@@ -21,6 +21,7 @@ enum {
   EVT_DATA_DRAGDROP = 3,
   EVT_DATA_NDOF_MOTION = 4,
   EVT_DATA_XR = 5,
+  EVT_DATA_TOUCH = 5,
 };
 
 /**
@@ -320,6 +321,8 @@ enum {
 #define _NDOF_MAX NDOF_BUTTON_C
 #define _NDOF_BUTTON_MAX NDOF_BUTTON_C
 
+  TOUCH,
+
   /* ********** End of Input devices. ********** */
 
   /* ********** Start of Blender internal events. ********** */
@@ -424,6 +427,9 @@ enum {
 #define ISNDOF_BUTTON(event_type) \
   ((event_type) >= _NDOF_BUTTON_MIN && (event_type) <= _NDOF_BUTTON_MAX)
 
+/* test whether the event is a touch event */
+#define ISTOUCH(event_type) ((event_type) == TOUCH)
+
 #define IS_EVENT_ACTIONZONE(event_type) \
   ELEM(event_type, EVT_ACTIONZONE_AREA, EVT_ACTIONZONE_REGION, EVT_ACTIONZONE_FULLSCREEN)
 
@@ -450,9 +456,12 @@ enum eEventType_Mask {
   EVT_TYPE_MASK_NDOF = (1 << 6),
   /** #IS_EVENT_ACTIONZONE */
   EVT_TYPE_MASK_ACTIONZONE = (1 << 7),
+  /* #ISTOUCH */
+  EVT_TYPE_MASK_TOUCH = (1 << 8),
 };
 #define EVT_TYPE_MASK_ALL \
-  (EVT_TYPE_MASK_KEYBOARD | EVT_TYPE_MASK_MOUSE | EVT_TYPE_MASK_NDOF | EVT_TYPE_MASK_ACTIONZONE)
+  (EVT_TYPE_MASK_KEYBOARD | EVT_TYPE_MASK_MOUSE | EVT_TYPE_MASK_NDOF | EVT_TYPE_MASK_ACTIONZONE | \
+   EVT_TYPE_MASK_TOUCH)
 
 #define EVT_TYPE_MASK_HOTKEY_INCLUDE \
   (EVT_TYPE_MASK_KEYBOARD | EVT_TYPE_MASK_MOUSE | EVT_TYPE_MASK_NDOF)

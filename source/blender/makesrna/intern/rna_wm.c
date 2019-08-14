@@ -376,6 +376,7 @@ const EnumPropertyItem rna_enum_event_type_items[] = {
      "AZone FullScr"},
     /* xr */
     {EVT_XR_ACTION, "XR_ACTION", 0, "XR Action", ""},
+    {TOUCH, "TOUCH", 0, "Touch", ""},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -427,6 +428,7 @@ const EnumPropertyItem rna_enum_event_type_mask_items[] = {
     {EVT_TYPE_MASK_MOUSE, "MOUSE", 0, "Mouse", ""},
     {EVT_TYPE_MASK_NDOF, "NDOF", 0, "NDOF", ""},
     {EVT_TYPE_MASK_ACTIONZONE, "ACTIONZONE", 0, "Action Zone", ""},
+    {EVT_TYPE_MASK_TOUCH, "TOUCH", 0, "Touch", ""},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -944,6 +946,10 @@ static void rna_wmKeyMapItem_map_type_set(PointerRNA *ptr, int value)
       case KMI_TYPE_NDOF:
         kmi->type = NDOF_MOTION;
         kmi->val = KM_NOTHING;
+        break;
+      case KMI_TYPE_TOUCH:
+        kmi->type = TOUCH;
+        kmi->val = KM_ANY;
         break;
     }
   }

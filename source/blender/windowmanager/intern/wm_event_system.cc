@@ -5820,6 +5820,34 @@ void wm_event_add_ghostevent(wmWindowManager *wm, wmWindow *win, const int type,
     }
 #endif /* WITH_INPUT_NDOF */
 
+    case GHOST_kEventTouch: {
+      GHOST_TEventTouchData *e = static_cast<GHOST_TEventTouchData *>(customdata);
+
+      wmTouchData *data = MEM_cnew<wmTouchData>("Custom-data Touch");
+      data->id = e->id;
+
+      event.xy[0] = e->x;
+      event.xy[1] = e->y;
+      switch (e->phase) {
+        case GHOST_kTouchDown:
+          event.val = KM_PRESS;
+          break;
+        case GHOST_kTouchMove:
+          event.val = KM_CLICK_DRAG;
+          break;
+        case GHOST_kTouchUp:
+        default:
+          event.val = KM_RELEASE;
+          break;
+      }
+      event.type = TOUCH;
+      event.custom = EVT_DATA_TOUCH;
+      event.customdata = data;
+
+      wm_event_add(win, &event);
+      break;
+    }
+
     case GHOST_kEventUnknown:
     case GHOST_kNumEventTypes:
       break;

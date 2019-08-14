@@ -863,6 +863,10 @@ typedef struct wmXrActionData {
 } wmXrActionData;
 #endif
 
+typedef struct wmTouchData {
+  int id;
+} wmTouchData;
+
 /** Timer flags. */
 typedef enum {
   /** Do not attempt to free custom-data pointer even if non-NULL. */
