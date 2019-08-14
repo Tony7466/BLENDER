@@ -13,6 +13,7 @@
 #include "DNA_windowmanager_types.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_ghash.h"
 #include "BLI_math_base.h"
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
@@ -26,6 +27,7 @@
 #include "WM_types.h"
 
 #include "ED_screen.h"
+#include "ED_touch.h"
 
 #include "UI_interface.h"
 #include "UI_view2d.h"
@@ -1522,6 +1524,211 @@ static void VIEW2D_OT_ndof(wmOperatorType *ot)
 }
 #endif /* WITH_INPUT_NDOF */
 
+typedef struct v2dTouchData {
+  GHash *touchpoints;
+} v2dTouchData;
+
+static void view2d_touch_exit(v2dTouchData *td)
+{
+  BLI_ghash_free(td->touchpoints, NULL, MEM_freeN);
+  td->touchpoints = NULL;
+  MEM_freeN(td);
+}
+
+static int view2d_touch_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  v2dTouchData *td;
+  Touch *touch;
+
+  wmTouchData *wmtd = (wmTouchData *)event->customdata;
+
+  if (event->val == KM_PRESS) {
+    td = MEM_cnew<v2dTouchData>(__func__);
+    // WARNING: BLI_ghash_int_new uses BLI_ghashutil_intcmp for hash comparison, which treats the
+    // void* key as an int without indirection
+    td->touchpoints = BLI_ghash_int_new("touchpoints");
+    op->customdata = td;
+
+    touch = MEM_cnew<Touch>(__func__);
+    touch->id = wmtd->id;
+    touch->x = event->mval[0];
+    touch->y = event->mval[1];
+    BLI_ghash_insert(td->touchpoints, POINTER_FROM_INT(touch->id), (void *)touch);
+  }
+  else {
+    return OPERATOR_FINISHED;
+  }
+
+  /* add temp handler */
+  WM_event_add_modal_handler(C, op);
+
+  return OPERATOR_RUNNING_MODAL;
+}
+
+static int view2d_touch_modal(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  v2dTouchData *td = static_cast<v2dTouchData *>(op->customdata);
+  wmTouchData *wmtd = static_cast<wmTouchData *>(event->customdata);
+
+  if (event->type != TOUCH) {
+    return OPERATOR_PASS_THROUGH;
+  }
+
+  switch (event->val) {
+    case KM_PRESS: {
+      if (!BLI_ghash_haskey(td->touchpoints, POINTER_FROM_INT(wmtd->id))) {
+        Touch *touch = MEM_cnew<Touch>(__func__);
+        touch->id = wmtd->id;
+        touch->x = event->mval[0];
+        touch->y = event->mval[1];
+        BLI_ghash_insert(td->touchpoints, POINTER_FROM_INT(touch->id), (void *)touch);
+      }
+      else {
+        // ???
+      }
+      break;
+    }
+    case KM_CLICK_DRAG: {
+      Touch *touchlast = (Touch *)BLI_ghash_lookup(td->touchpoints, POINTER_FROM_INT(wmtd->id));
+
+      switch (BLI_ghash_len(td->touchpoints)) {
+        // Pan the view for single touch
+        case 1: {
+          // Remove customdata pointer to prevent misuse in case it's read.
+          op->customdata = nullptr;
+          view_pan_init(C, op);
+
+          v2dViewPanData *vpd = static_cast<v2dViewPanData *>(op->customdata);
+
+          int dx = touchlast->x - event->mval[0];
+          int dy = touchlast->y - event->mval[1];
+
+          view_pan_apply_ex(C, vpd, dx, dy);
+
+          view_pan_exit(op);
+
+          // restore touch operator context overwritten by view_pan_init
+          op->customdata = td;
+
+          break;
+        }
+        // Pan and zoom the view for double touch
+        case 2: {
+          GHashIterator *it = BLI_ghashIterator_new(td->touchpoints);
+          for (it; !BLI_ghashIterator_done(it); BLI_ghashIterator_step(it)) {
+            if (POINTER_AS_INT(BLI_ghashIterator_getKey(it)) != wmtd->id) {
+              Touch *t2 = (Touch *)BLI_ghashIterator_getValue(it);
+
+              ARegion *region = CTX_wm_region(C);
+              View2D *v2d = &region->v2d;
+
+              float tmoved_last[2];
+              float tmoved_curr[2];
+              float tunmoved[2];
+
+              UI_view2d_region_to_view(
+                  v2d, (float)touchlast->x, (float)touchlast->y, &tmoved_last[0], &tmoved_last[1]);
+              UI_view2d_region_to_view(v2d,
+                                       (float)event->mval[0],
+                                       (float)event->mval[1],
+                                       &tmoved_curr[0],
+                                       &tmoved_curr[1]);
+              UI_view2d_region_to_view(
+                  v2d, (float)t2->x, (float)t2->y, &tunmoved[0], &tunmoved[1]);
+
+              // Scale about the unmoved touch point
+
+              v2d->cur.xmin = (tmoved_last[0] - tunmoved[0]) * (v2d->cur.xmin - tunmoved[0]) /
+                                  (tmoved_curr[0] - tunmoved[0]) +
+                              tunmoved[0];
+              v2d->cur.xmax = (tmoved_last[0] - tunmoved[0]) * (v2d->cur.xmax - tunmoved[0]) /
+                                  (tmoved_curr[0] - tunmoved[0]) +
+                              tunmoved[0];
+
+              v2d->cur.ymin = (tmoved_last[1] - tunmoved[1]) * (v2d->cur.ymin - tunmoved[1]) /
+                                  (tmoved_curr[1] - tunmoved[1]) +
+                              tunmoved[1];
+              v2d->cur.ymax = (tmoved_last[1] - tunmoved[1]) * (v2d->cur.ymax - tunmoved[1]) /
+                                  (tmoved_curr[1] - tunmoved[1]) +
+                              tunmoved[1];
+
+              /* Inform v2d about changes after this operation. */
+              UI_view2d_curRect_changed(C, v2d);
+
+              //if (ED_region_snap_size_apply(region, snap_test)) {
+              //  ScrArea *area = CTX_wm_area(C);
+              //  ED_area_tag_redraw(area);
+              //  WM_event_add_notifier(C, NC_SCREEN | NA_EDITED, nullptr);
+              //}
+
+              /* request updates to be done... */
+              ED_region_tag_redraw_no_rebuild(region);
+              UI_view2d_sync(CTX_wm_screen(C), CTX_wm_area(C), v2d, V2D_LOCK_COPY);
+
+              break;
+            }
+          }
+          BLI_ghashIterator_free(it);
+
+          break;
+        }
+        default: {
+          break;
+        }
+      }
+
+      touchlast->x = event->mval[0];
+      touchlast->y = event->mval[1];
+
+      break;
+    }
+    case KM_RELEASE: {
+      BLI_ghash_remove(td->touchpoints, POINTER_FROM_INT(wmtd->id), NULL, MEM_freeN);
+
+      if (BLI_ghash_len(td->touchpoints) == 0) {
+        view2d_touch_exit(td);
+        return OPERATOR_FINISHED;
+      }
+      break;
+    }
+    default: {
+      break;
+    }
+  }
+
+  return OPERATOR_RUNNING_MODAL;
+}
+
+static void view2d_touch_cancel(bContext *C, wmOperator *op)
+{
+  if (op->customdata) {
+    view2d_touch_exit((v2dTouchData *)op->customdata);
+  }
+}
+
+static void VIEW2D_OT_touch(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Touch Pan/Zoom";
+  ot->idname = "VIEW2D_OT_touch";
+  ot->description = "Use a touch device to pan/zoom the view";
+
+  /* api callbacks */
+  ot->poll = view2d_poll;
+  ot->invoke = view2d_touch_invoke;
+  ot->modal = view2d_touch_modal;
+  ot->cancel = view2d_touch_cancel;
+
+  /* operator is modal */
+  /* flags */
+  ot->flag = OPTYPE_LOCK_BYPASS;  // XXX from ndof
+  // ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR_XY; // XXX from panning
+
+  /* rna - must keep these in sync with the other operators */
+  // RNA_def_int(ot->srna, "deltax", 0, INT_MIN, INT_MAX, "Delta X", "", INT_MIN, INT_MAX);
+  // RNA_def_int(ot->srna, "deltay", 0, INT_MIN, INT_MAX, "Delta Y", "", INT_MIN, INT_MAX);
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -2286,6 +2493,8 @@ void ED_operatortypes_view2d(void)
 #ifdef WITH_INPUT_NDOF
   WM_operatortype_append(VIEW2D_OT_ndof);
 #endif
+
+  WM_operatortype_append(VIEW2D_OT_touch);
 
   WM_operatortype_append(VIEW2D_OT_smoothview);
 
