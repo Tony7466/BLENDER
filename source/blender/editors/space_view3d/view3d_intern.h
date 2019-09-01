@@ -55,6 +55,7 @@ void VIEW3D_OT_render_border(struct wmOperatorType *ot);
 void VIEW3D_OT_clear_render_border(struct wmOperatorType *ot);
 void VIEW3D_OT_toggle_shading(struct wmOperatorType *ot);
 void VIEW3D_OT_toggle_xray(struct wmOperatorType *ot);
+void VIEW3D_OT_touch(struct wmOperatorType *ot);
 
 /* view3d_draw.c */
 

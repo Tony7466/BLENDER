@@ -1552,6 +1552,7 @@ def km_view3d(params):
          {"properties": [("type", 'RIGHT'), ("align_active", True)]}),
         ("view3d.view_axis", {"type": 'NDOF_BUTTON_TOP', "value": 'PRESS', "shift": True},
          {"properties": [("type", 'TOP'), ("align_active", True)]}),
+        ("view3d.touch", {"type": 'TOUCH', "value": 'PRESS'}, None),
         # Selection.
         *_template_view3d_select(
             type=params.select_mouse,
