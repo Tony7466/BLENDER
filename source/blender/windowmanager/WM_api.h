@@ -469,6 +469,7 @@ ID *WM_operator_drop_load_path(struct bContext *C, struct wmOperator *op, const 
 
 bool WM_operator_last_properties_init(struct wmOperator *op);
 bool WM_operator_last_properties_store(struct wmOperator *op);
+void WM_operator_last_properties_alloc(struct wmOperator *op, const char *idname, struct PointerRNA *ptr);
 
 /* wm_operator_props.c */
 void WM_operator_properties_confirm_or_exec(struct wmOperatorType *ot);

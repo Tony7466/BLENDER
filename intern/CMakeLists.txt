@@ -80,3 +80,5 @@ endif()
 if(UNIX AND NOT APPLE)
   add_subdirectory(libc_compat)
 endif()
+
+add_subdirectory(slim)

@@ -55,6 +55,7 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_subsurf.h"
+#include "BKE_deform.h"
 
 #include "DEG_depsgraph.h"
 
@@ -81,25 +82,26 @@
 /** \name Utility Functions
  * \{ */
 
-static void modifier_unwrap_state(Object *obedit, const Scene *scene, bool *r_use_subsurf)
-{
-  ModifierData *md;
-  bool subsurf = (scene->toolsettings->uvcalc_flag & UVCALC_USESUBSURF) != 0;
+// SLIM REMOVED
+// static void modifier_unwrap_state(Object *obedit, const Scene *scene, bool *r_use_subsurf)
+// {
+//   ModifierData *md;
+//   bool subsurf = (scene->toolsettings->uvcalc_flag & UVCALC_USESUBSURF) != 0;
 
-  md = obedit->modifiers.first;
+//   md = obedit->modifiers.first;
 
-  /* subsurf will take the modifier settings only if modifier is first or right after mirror */
-  if (subsurf) {
-    if (md && md->type == eModifierType_Subsurf) {
-      subsurf = true;
-    }
-    else {
-      subsurf = false;
-    }
-  }
+//   /* subsurf will take the modifier settings only if modifier is first or right after mirror */
+//   if (subsurf) {
+//     if (md && md->type == eModifierType_Subsurf) {
+//       subsurf = true;
+//     }
+//     else {
+//       subsurf = false;
+//     }
+//   }
 
-  *r_use_subsurf = subsurf;
-}
+//   *r_use_subsurf = subsurf;
+// }
 
 static bool ED_uvedit_ensure_uvs(Object *obedit)
 {
@@ -139,6 +141,22 @@ static bool ED_uvedit_ensure_uvs(Object *obedit)
 
 /** \} */
 
+// SLIM TO MERGE
+// /******************* Remembered Properties ******************/
+
+// typedef struct UnwrapProperties {
+// 	bool use_slim;
+// 	bool use_abf;
+// 	bool correct_aspect;
+// 	bool fill_holes;
+// 	bool use_subsurf;
+// 	char vertex_group[MAX_ID_NAME];
+// 	float vertex_group_factor;
+// 	float relative_scale;
+// 	int reflection_mode;
+// 	int iterations;
+// } UnwrapProperties;
+
 /* -------------------------------------------------------------------- */
 /** \name Parametrizer Conversion
  * \{ */
@@ -152,7 +170,59 @@ typedef struct UnwrapOptions {
   bool fill_holes;
   /** Correct for mapped image texture aspect ratio. */
   bool correct_aspect;
+
+  bool use_subsurf;
+	char vertex_group[MAX_ID_NAME];
+	float vertex_group_factor;
+	float relative_scale;
+	int reflection_mode;
+	int iterations;
 } UnwrapOptions;
+
+static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob)
+{
+	/* We use the properties from the last unwrap operator for subsequent
+	 * live unwrap and minize stretch operators. */
+	PointerRNA ptr;
+	WM_operator_last_properties_alloc(op, "UV_OT_unwrap", &ptr);
+
+	UnwrapOptions options;
+
+  /* To be set by the upper layer */
+  options.topology_from_uvs = false;
+  options.only_selected = false;
+
+	// unwrap.use_abf = RNA_enum_get(&ptr, "method") == 0;
+	// unwrap.use_slim = RNA_enum_get(&ptr, "method") == 2;
+	options.correct_aspect = RNA_boolean_get(&ptr, "correct_aspect");
+	options.fill_holes = RNA_boolean_get(&ptr, "fill_holes");
+	options.use_subsurf = RNA_boolean_get(&ptr, "use_subsurf_data");
+	RNA_string_get(&ptr, "vertex_group", options.vertex_group);
+	options.vertex_group_factor = RNA_float_get(&ptr, "vertex_group_factor");
+	options.relative_scale = RNA_float_get(&ptr, "relative_scale");
+	options.reflection_mode = RNA_enum_get(&ptr, "reflection_mode");
+	options.iterations = RNA_int_get(&ptr, "iterations");
+
+	/* SLIM requires hole filling */
+	// if (unwrap.use_slim) {
+	// 	unwrap.fill_holes = true;
+	// }
+
+	/* Subsurf will take the modifier settings only if modifier is first or right after mirror */
+	// if (unwrap.use_subsurf) {
+	// 	ModifierData *md = ob->modifiers.first;
+
+	// 	if (!(md && md->type == eModifierType_Subsurf)) {
+	// 		unwrap.use_subsurf = false;
+	// 		if (op)
+	// 			BKE_report(op->reports, RPT_INFO, "Subdivision Surface modifier needs to be first to work with unwrap");
+	// 	}
+	// }
+
+	WM_operator_properties_free(&ptr);
+
+	return options;
+}
 
 static bool uvedit_have_selection(const Scene *scene, BMEditMesh *em, const UnwrapOptions *options)
 {
@@ -236,7 +306,9 @@ static void construct_param_handle_face_add(ParamHandle *handle,
                                             const Scene *scene,
                                             BMFace *efa,
                                             int face_index,
-                                            const int cd_loop_uv_offset)
+                                            const int cd_loop_uv_offset,
+                                            const int cd_weight_offset,
+											                      const int cd_weight_index)
 {
   ParamKey key;
   ParamKey *vkeys = BLI_array_alloca(vkeys, efa->len);
@@ -244,6 +316,7 @@ static void construct_param_handle_face_add(ParamHandle *handle,
   ParamBool *select = BLI_array_alloca(select, efa->len);
   float **co = BLI_array_alloca(co, efa->len);
   float **uv = BLI_array_alloca(uv, efa->len);
+  float *weight = BLI_array_alloca(weight, efa->len);
   int i;
 
   BMIter liter;
@@ -261,9 +334,18 @@ static void construct_param_handle_face_add(ParamHandle *handle,
     uv[i] = luv->uv;
     pin[i] = (luv->flag & MLOOPUV_PINNED) != 0;
     select[i] = uvedit_uv_select_test(scene, l, cd_loop_uv_offset);
+
+		/* optional vertex group weighting */
+		if (cd_weight_offset >= 0 && cd_weight_index >= 0) {
+			MDeformVert *dv = BM_ELEM_CD_GET_VOID_P(l->v, cd_weight_offset);
+			weight[i] = defvert_find_weight(dv, cd_weight_index);
+		}
+		else {
+			weight[i] = 1.0f;
+		}
   }
 
-  param_face_add(handle, key, i, vkeys, co, uv, pin, select);
+  param_face_add(handle, key, i, vkeys, co, uv, weight, pin, select);
 }
 
 /* See: construct_param_handle_multi to handle multiple objects at once. */
@@ -280,6 +362,8 @@ static ParamHandle *construct_param_handle(const Scene *scene,
   int i;
 
   const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_MLOOPUV);
+  const int cd_weight_offset = CustomData_get_offset(&bm->vdata, CD_MDEFORMVERT);
+	const int cd_weight_index = defgroup_name_index(ob, unwrap->vertex_group);
 
   handle = param_construct_begin();
 
@@ -317,7 +401,7 @@ static ParamHandle *construct_param_handle(const Scene *scene,
       }
     }
 
-    construct_param_handle_face_add(handle, scene, efa, i, cd_loop_uv_offset);
+    construct_param_handle_face_add(handle, scene, efa, i, cd_loop_uv_offset, cd_weight_offset, cd_weight_index);
   }
 
   if (!options->topology_from_uvs) {
@@ -483,6 +567,7 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
   MEdge *subsurfedEdges;
   MPoly *subsurfedPolys;
   MLoop *subsurfedLoops;
+  MDeformVert *subsurfedDVerts = NULL;
   /* number of vertices and faces for subsurfed mesh*/
   int numOfEdges, numOfFaces;
 
@@ -492,6 +577,7 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
   /* similar to the above, we need a way to map edges to their original ones */
   BMEdge **edgeMap;
 
+  const int cd_weight_index = defgroup_name_index(ob, unwrap->vertex_group);
   const int cd_loop_uv_offset = CustomData_get_offset(&em->bm->ldata, CD_MLOOPUV);
 
   handle = param_construct_begin();
@@ -528,6 +614,8 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
   subsurfedEdges = derivedMesh->getEdgeArray(derivedMesh);
   subsurfedPolys = derivedMesh->getPolyArray(derivedMesh);
   subsurfedLoops = derivedMesh->getLoopArray(derivedMesh);
+  if (cd_weight_index >= 0)
+		subsurfedDVerts = derivedMesh->getVertDataArray(derivedMesh, CD_MDEFORMVERT);
 
   origVertIndices = derivedMesh->getVertDataArray(derivedMesh, CD_ORIGINDEX);
   origEdgeIndices = derivedMesh->getEdgeDataArray(derivedMesh, CD_ORIGINDEX);
@@ -562,6 +650,7 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
     ParamBool pin[4], select[4];
     float *co[4];
     float *uv[4];
+    float weight[4];
     BMFace *origFace = faceMap[i];
 
     if (scene->toolsettings->uv_flag & UV_SYNC_SELECTION) {
@@ -590,6 +679,20 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
     co[1] = subsurfedVerts[mloop[1].v].co;
     co[2] = subsurfedVerts[mloop[2].v].co;
     co[3] = subsurfedVerts[mloop[3].v].co;
+
+    /* Optional vertex group weights. */
+		if (subsurfedDVerts) {
+			weight[0] = defvert_find_weight(subsurfedDVerts + mloop[0].v, cd_weight_index);
+			weight[1] = defvert_find_weight(subsurfedDVerts + mloop[1].v, cd_weight_index);
+			weight[2] = defvert_find_weight(subsurfedDVerts + mloop[2].v, cd_weight_index);
+			weight[3] = defvert_find_weight(subsurfedDVerts + mloop[3].v, cd_weight_index);
+		}
+		else {
+			weight[0] = 1.0f;
+			weight[1] = 1.0f;
+			weight[2] = 1.0f;
+			weight[3] = 1.0f;
+		}
 
     /* This is where all the magic is done.
      * If the vertex exists in the, we pass the original uv pointer to the solver, thus
@@ -623,7 +726,7 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
                                 &pin[3],
                                 &select[3]);
 
-    param_face_add(handle, key, 4, vkeys, co, uv, pin, select);
+    param_face_add(handle, key, 4, vkeys, co, uv, weight, pin, select);
   }
 
   /* these are calculated from original mesh too */
@@ -652,15 +755,34 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
 /** \name Minimize Stretch Operator
  * \{ */
 
+/* Get SLIM parameters from scene */
+static SLIMMatrixTransfer *slim_matrix_transfer(const UnwrapProperties *unwrap)
+{
+	SLIMMatrixTransfer *mt = MEM_callocN(sizeof(SLIMMatrixTransfer), "Matrix Transfer to SLIM");
+
+	mt->with_weighted_parameterization = strlen(unwrap->vertex_group) > 0;
+	mt->weight_influence = unwrap->vertex_group_factor;
+	mt->relative_scale = unwrap->relative_scale;
+	mt->n_iterations =  unwrap->iterations;
+
+	return mt;
+}
+
+/* Holds all necessary state for one session of interactive parametrisation. */
+
 typedef struct MinStretch {
-  const Scene *scene;
+  // SLIM REMOVED
+  // const Scene *scene;
   Object **objects_edit;
   uint objects_len;
   ParamHandle *handle;
-  float blend;
-  double lasttime;
-  int i, iterations;
+  // SLIM REMOVED
+  // float blend;
+  // double lasttime;
+  // int i, iterations;
   wmTimer *timer;
+  float blend;
+	bool fix_boundary;
 } MinStretch;
 
 static bool minimize_stretch_init(bContext *C, wmOperator *op)
@@ -704,6 +826,41 @@ static bool minimize_stretch_init(bContext *C, wmOperator *op)
   return true;
 }
 
+// SLIM VERSION
+/* Initializes SLIM and transfars data matrices */
+static bool minimize_stretch_init(bContext *C, wmOperator *op)
+{
+	Scene *scene = CTX_data_scene(C);
+	Object *obedit = CTX_data_edit_object(C);
+	BMEditMesh *em = BKE_editmesh_from_object(obedit);
+	bool implicit = true;
+
+	if (!uvedit_have_selection(scene, em, implicit)) {
+		return false;
+	}
+
+	UnwrapProperties unwrap = unwrap_properties_get(NULL, obedit);
+	unwrap.fill_holes = true;
+
+	ParamHandle *handle = construct_param_handle(scene, obedit, em->bm, implicit, true, &unwrap);
+
+	MinStretch *ms = MEM_callocN(sizeof(MinStretch), "Data for minimizing stretch with SLIM");
+
+	ms->handle = handle;
+	ms->obedit = obedit;
+	ms->fix_boundary = RNA_boolean_get(op->ptr, "fix_boundary");
+
+	SLIMMatrixTransfer *mt = slim_matrix_transfer(&unwrap);
+	mt->is_minimize_stretch = true;
+	mt->skip_initialization = true;
+	mt->fixed_boundary = ms->fix_boundary;
+
+	param_slim_begin(ms->handle, mt);
+
+	op->customdata = ms;
+	return true;
+}
+
 static void minimize_stretch_iteration(bContext *C, wmOperator *op, bool interactive)
 {
   MinStretch *ms = op->customdata;
@@ -743,6 +900,19 @@ static void minimize_stretch_iteration(bContext *C, wmOperator *op, bool interac
       WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
     }
   }
+}
+
+// SLIM VERSION
+/* After initialisation, these iterations are executed, until applied or canceled by the user. */
+static void minimize_stretch_iteration(bContext *C, wmOperator *op, bool interactive)
+{
+	MinStretch *ms = op->customdata;
+
+	param_slim_stretch_iteration(ms->handle, ms->blend);
+	param_flush(ms->handle);
+
+	DAG_id_tag_update(ms->obedit->data, 0);
+	WM_event_add_notifier(C, NC_GEOM | ND_DATA, ms->obedit->data);
 }
 
 static void minimize_stretch_exit(bContext *C, wmOperator *op, bool cancel)
@@ -787,6 +957,27 @@ static void minimize_stretch_exit(bContext *C, wmOperator *op, bool cancel)
   op->customdata = NULL;
 }
 
+// SLIM VERSION
+/* Exit interactive parametrisation. Clean up memory. */
+static void minimize_stretch_exit(bContext *C, wmOperator *op, bool cancel)
+{
+	MinStretch *ms = op->customdata;
+
+	param_slim_end(ms->handle);
+
+	if (cancel) {
+		param_flush_restore(ms->handle);
+	}
+
+	param_delete(ms->handle);
+
+	DAG_id_tag_update(ms->obedit->data, 0);
+	WM_event_add_notifier(C, NC_GEOM | ND_DATA, ms->obedit->data);
+
+	MEM_freeN(ms);
+	op->customdata = NULL;
+}
+
 static int minimize_stretch_exec(bContext *C, wmOperator *op)
 {
   int i, iterations;
@@ -804,6 +995,14 @@ static int minimize_stretch_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+// SLIM VERSION
+/* Used Only to adjust parameters. */
+static int minimize_stretch_exec(bContext *C, wmOperator *op)
+{
+	return OPERATOR_FINISHED;
+}
+
+/* Entry point to interactive parametrisation. Already executes one iteration, allowing faster feedback. */
 static int minimize_stretch_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
   MinStretch *ms;
@@ -821,6 +1020,7 @@ static int minimize_stretch_invoke(bContext *C, wmOperator *op, const wmEvent *U
   return OPERATOR_RUNNING_MODAL;
 }
 
+/* The control structure of the modal operator. a next iteration is either started due to a timer or user input. */
 static int minimize_stretch_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   MinStretch *ms = op->customdata;
@@ -838,10 +1038,8 @@ static int minimize_stretch_modal(bContext *C, wmOperator *op, const wmEvent *ev
     case EVT_PADPLUSKEY:
     case WHEELUPMOUSE:
       if (event->val == KM_PRESS) {
-        if (ms->blend < 0.95f) {
-          ms->blend += 0.1f;
-          ms->lasttime = 0.0f;
-          RNA_float_set(op->ptr, "blend", ms->blend);
+				if (ms->blend < 1.0f) {
+					ms->blend += MIN2(0.1f, 1 - (ms->blend));
           minimize_stretch_iteration(C, op, true);
         }
       }
@@ -849,10 +1047,8 @@ static int minimize_stretch_modal(bContext *C, wmOperator *op, const wmEvent *ev
     case EVT_PADMINUS:
     case WHEELDOWNMOUSE:
       if (event->val == KM_PRESS) {
-        if (ms->blend > 0.05f) {
-          ms->blend -= 0.1f;
-          ms->lasttime = 0.0f;
-          RNA_float_set(op->ptr, "blend", ms->blend);
+				if (ms->blend > 0.0f) {
+					ms->blend -= MIN2(0.1f, ms->blend);
           minimize_stretch_iteration(C, op, true);
         }
       }
@@ -868,26 +1064,28 @@ static int minimize_stretch_modal(bContext *C, wmOperator *op, const wmEvent *ev
       break;
   }
 
-  if (ms->iterations && ms->i >= ms->iterations) {
-    minimize_stretch_exit(C, op, false);
-    return OPERATOR_FINISHED;
-  }
+  // if (ms->iterations && ms->i >= ms->iterations) {
+  //   minimize_stretch_exit(C, op, false);
+  //   return OPERATOR_FINISHED;
+  // }
 
   return OPERATOR_RUNNING_MODAL;
 }
 
+/* Cancels the interactive parametrisation and discards the obtained map. */
 static void minimize_stretch_cancel(bContext *C, wmOperator *op)
 {
   minimize_stretch_exit(C, op, true);
 }
 
+/* Registration of the operator and integration into UI */
 void UV_OT_minimize_stretch(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Minimize Stretch";
   ot->idname = "UV_OT_minimize_stretch";
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_GRAB_CURSOR_XY | OPTYPE_BLOCKING;
-  ot->description = "Reduce UV stretching by relaxing angles";
+  ot->description = "Reduce UV stretching by applying the SLIM algorithm";
 
   /* api callbacks */
   ot->exec = minimize_stretch_exec;
@@ -897,30 +1095,11 @@ void UV_OT_minimize_stretch(wmOperatorType *ot)
   ot->poll = ED_operator_uvedit;
 
   /* properties */
-  RNA_def_boolean(ot->srna,
-                  "fill_holes",
+  RNA_def_boolean(ot->srna, 
+                  "fix_boundary",
                   1,
-                  "Fill Holes",
-                  "Virtual fill holes in mesh before unwrapping, to better avoid overlaps and "
-                  "preserve symmetry");
-  RNA_def_float_factor(ot->srna,
-                       "blend",
-                       0.0f,
-                       0.0f,
-                       1.0f,
-                       "Blend",
-                       "Blend factor between stretch minimized and original",
-                       0.0f,
-                       1.0f);
-  RNA_def_int(ot->srna,
-              "iterations",
-              0,
-              0,
-              INT_MAX,
-              "Iterations",
-              "Number of iterations to run, 0 is unlimited when run interactively",
-              0,
-              100);
+                  "Fix Boundary",
+                  "Wether the vertices on the border may move or not.");
 }
 
 /** \} */
@@ -1126,7 +1305,18 @@ void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit)
     handle = construct_param_handle(scene, obedit, em->bm, &options);
   }
 
-  param_lscm_begin(handle, PARAM_TRUE, abf);
+  // SLIM REMOVED
+  // param_lscm_begin(handle, PARAM_TRUE, abf);
+
+  if (unwrap.use_slim) {
+		SLIMMatrixTransfer *mt = slim_matrix_transfer(&unwrap);
+		mt->skip_initialization = true;
+
+		param_slim_begin(liveHandle, mt);
+	}
+	else {
+		param_lscm_begin(liveHandle, PARAM_TRUE, unwrap.use_abf);
+	}
 
   /* Create or increase size of g_live_unwrap.handles array */
   if (g_live_unwrap.handles == NULL) {
@@ -1148,7 +1338,17 @@ void ED_uvedit_live_unwrap_re_solve(void)
 {
   if (g_live_unwrap.handles) {
     for (int i = 0; i < g_live_unwrap.len; i++) {
-      param_lscm_solve(g_live_unwrap.handles[i]);
+      // SLIM REMOVED
+      // param_lscm_solve(g_live_unwrap.handles[i]);
+
+      if (param_is_slim(liveHandle)) {
+        slim_reload_all_uvs(liveHandle);
+        param_slim_solve_iteration(liveHandle);
+      }
+      else {
+        param_lscm_solve(liveHandle);
+      }
+
       param_flush(g_live_unwrap.handles[i]);
     }
   }
@@ -1158,7 +1358,16 @@ void ED_uvedit_live_unwrap_end(short cancel)
 {
   if (g_live_unwrap.handles) {
     for (int i = 0; i < g_live_unwrap.len; i++) {
-      param_lscm_end(g_live_unwrap.handles[i]);
+      // SLIM REMOVED
+      // param_lscm_end(g_live_unwrap.handles[i]);
+
+      if (param_is_slim(liveHandle)) {
+        param_slim_end(liveHandle);
+      }
+      else {
+        param_lscm_end(liveHandle);
+      }
+
       if (cancel) {
         param_flush_restore(g_live_unwrap.handles[i]);
       }
@@ -1170,6 +1379,8 @@ void ED_uvedit_live_unwrap_end(short cancel)
     g_live_unwrap.len_alloc = 0;
   }
 }
+
+// SLIM REMARK: ED_uvedit_live_unwrap missing here
 
 /** \} */
 
@@ -1606,9 +1817,23 @@ static void uvedit_unwrap(const Scene *scene, Object *obedit, const UnwrapOption
     handle = construct_param_handle(scene, obedit, em->bm, options);
   }
 
-  param_lscm_begin(handle, PARAM_FALSE, scene->toolsettings->unwrapper == 0);
-  param_lscm_solve(handle);
-  param_lscm_end(handle);
+  // SLIM REMOVED
+  // param_lscm_begin(handle, PARAM_FALSE, scene->toolsettings->unwrapper == 0);
+  // param_lscm_solve(handle);
+  // param_lscm_end(handle);
+
+  if (unwrap.use_slim) {
+		SLIMMatrixTransfer *mt = slim_matrix_transfer(&unwrap);
+		mt->reflection_mode = unwrap.reflection_mode;
+		mt->transform_islands = true;
+
+		param_slim_solve(handle, mt);
+	}
+	else {
+		param_lscm_begin(handle, PARAM_FALSE, unwrap.use_abf);
+		param_lscm_solve(handle);
+		param_lscm_end(handle);
+	}
 
   param_average(handle, true);
 
@@ -1657,8 +1882,11 @@ static int unwrap_exec(bContext *C, wmOperator *op)
 {
   ViewLayer *view_layer = CTX_data_view_layer(C);
   const Scene *scene = CTX_data_scene(C);
-  int method = RNA_enum_get(op->ptr, "method");
-  const bool use_subsurf = RNA_boolean_get(op->ptr, "use_subsurf_data");
+
+  // SLIM REMOVED
+  // int method = RNA_enum_get(op->ptr, "method");
+  // const bool use_subsurf = RNA_boolean_get(op->ptr, "use_subsurf_data");
+
   int reported_errors = 0;
   /* We will report an error unless at least one object
    * has the subsurf modifier in the right place. */
@@ -1733,13 +1961,14 @@ static int unwrap_exec(bContext *C, wmOperator *op)
                "Subdivision Surface modifier needs to be first to work with unwrap");
   }
 
-  /* remember last method for live unwrap */
-  if (RNA_struct_property_is_set(op->ptr, "method")) {
-    scene->toolsettings->unwrapper = method;
-  }
-  else {
-    RNA_enum_set(op->ptr, "method", scene->toolsettings->unwrapper);
-  }
+  // SLIM REMOVED
+  // /* remember last method for live unwrap */
+  // if (RNA_struct_property_is_set(op->ptr, "method")) {
+  //   scene->toolsettings->unwrapper = method;
+  // }
+  // else {
+  //   RNA_enum_set(op->ptr, "method", scene->toolsettings->unwrapper);
+  // }
 
   /* remember packing margin */
   if (RNA_struct_property_is_set(op->ptr, "margin")) {
@@ -1749,26 +1978,27 @@ static int unwrap_exec(bContext *C, wmOperator *op)
     RNA_float_set(op->ptr, "margin", scene->toolsettings->uvcalc_margin);
   }
 
-  if (options.fill_holes) {
-    scene->toolsettings->uvcalc_flag |= UVCALC_FILLHOLES;
-  }
-  else {
-    scene->toolsettings->uvcalc_flag &= ~UVCALC_FILLHOLES;
-  }
+  // SLIM REMOVED
+  // if (options.fill_holes) {
+  //   scene->toolsettings->uvcalc_flag |= UVCALC_FILLHOLES;
+  // }
+  // else {
+  //   scene->toolsettings->uvcalc_flag &= ~UVCALC_FILLHOLES;
+  // }
 
-  if (options.correct_aspect) {
-    scene->toolsettings->uvcalc_flag &= ~UVCALC_NO_ASPECT_CORRECT;
-  }
-  else {
-    scene->toolsettings->uvcalc_flag |= UVCALC_NO_ASPECT_CORRECT;
-  }
+  // if (options.correct_aspect) {
+  //   scene->toolsettings->uvcalc_flag &= ~UVCALC_NO_ASPECT_CORRECT;
+  // }
+  // else {
+  //   scene->toolsettings->uvcalc_flag |= UVCALC_NO_ASPECT_CORRECT;
+  // }
 
-  if (use_subsurf) {
-    scene->toolsettings->uvcalc_flag |= UVCALC_USESUBSURF;
-  }
-  else {
-    scene->toolsettings->uvcalc_flag &= ~UVCALC_USESUBSURF;
-  }
+  // if (use_subsurf) {
+  //   scene->toolsettings->uvcalc_flag |= UVCALC_USESUBSURF;
+  // }
+  // else {
+  //   scene->toolsettings->uvcalc_flag &= ~UVCALC_USESUBSURF;
+  // }
 
   /* execute unwrap */
   uvedit_unwrap_multi(scene, objects, objects_len, &options);
@@ -1779,13 +2009,55 @@ static int unwrap_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static bool unwrap_draw_check_prop_slim(PointerRNA *UNUSED(ptr), PropertyRNA *prop)
+{
+	const char *prop_id = RNA_property_identifier(prop);
+
+	return !(STREQ(prop_id, "fill_holes"));
+}
+
+static bool unwrap_draw_check_prop_abf(PointerRNA *UNUSED(ptr), PropertyRNA *prop)
+{
+	const char *prop_id = RNA_property_identifier(prop);
+
+	return !(STREQ(prop_id, "reflection_mode") ||
+			 STREQ(prop_id, "iterations") ||
+			 STREQ(prop_id, "relative_scale") ||
+			 STREQ(prop_id, "vertex_group") ||
+			 STREQ(prop_id, "vertex_group_factor")
+			 );
+}
+
+static void unwrap_draw(bContext *UNUSED(C), wmOperator *op)
+{
+	uiLayout *layout = op->layout;
+	PointerRNA ptr;
+
+	/* main draw call */
+	RNA_pointer_create(NULL, op->type->srna, op->properties, &ptr);
+
+	if (RNA_enum_get(op->ptr, "method") == 2) {
+		uiDefAutoButsRNA(layout, &ptr, unwrap_draw_check_prop_slim, '\0');
+	}
+	else {
+		uiDefAutoButsRNA(layout, &ptr, unwrap_draw_check_prop_abf, '\0');
+	}
+}
+
 void UV_OT_unwrap(wmOperatorType *ot)
 {
   static const EnumPropertyItem method_items[] = {
       {0, "ANGLE_BASED", 0, "Angle Based", ""},
       {1, "CONFORMAL", 0, "Conformal", ""},
+      {2, "SLIM", 0, "SLIM", "" },
       {0, NULL, 0, NULL, NULL},
   };
+
+	static const EnumPropertyItem reflection_items[] = {
+		{0, "ALLOW", 0, "Allow Flips", ""},
+		{1, "DISALLOW", 0, "Don't Allow Flips", ""},
+		{0, NULL, 0, NULL, NULL}
+	};
 
   /* identifiers */
   ot->name = "Unwrap";
@@ -1797,20 +2069,17 @@ void UV_OT_unwrap(wmOperatorType *ot)
   ot->exec = unwrap_exec;
   ot->poll = ED_operator_uvmap;
 
+	/* Only draw relevant ui elements */
+	ot->ui = unwrap_draw;
+
   /* properties */
   RNA_def_enum(ot->srna,
                "method",
                method_items,
-               0,
+               2,
                "Method",
                "Unwrapping method (Angle Based usually gives better results than Conformal, while "
                "being somewhat slower)");
-  RNA_def_boolean(ot->srna,
-                  "fill_holes",
-                  1,
-                  "Fill Holes",
-                  "Virtual fill holes in mesh before unwrapping, to better avoid overlaps and "
-                  "preserve symmetry");
   RNA_def_boolean(ot->srna,
                   "correct_aspect",
                   1,
@@ -1824,6 +2093,49 @@ void UV_OT_unwrap(wmOperatorType *ot)
       "Map UVs taking vertex position after Subdivision Surface modifier has been applied");
   RNA_def_float_factor(
       ot->srna, "margin", 0.001f, 0.0f, 1.0f, "Margin", "Space between islands", 0.0f, 1.0f);
+
+  /* ABF / LSCM only */
+  RNA_def_boolean(ot->srna,
+                  "fill_holes",
+                  1,
+                  "Fill Holes",
+                  "Virtual fill holes in mesh before unwrapping, to better avoid overlaps and "
+                  "preserve symmetry");
+
+	/* SLIM only */
+	RNA_def_enum(ot->srna,
+               "reflection_mode",
+               reflection_items,
+               0,
+               "Reflection Mode",
+				       "Allowing reflections means that depending on the position of pins, the map may be flipped. Lower distortion");
+	RNA_def_int(ot->srna,
+              "iterations",
+              10,
+              0,
+              10000,
+              "Iterations",
+				      "Number of Iterations if the SLIM algorithm is used", 1, 30);
+	RNA_def_float(ot->srna,
+                "relative_scale",
+                1.0,
+                0.001,
+                1000.0,
+                "Relative Scale",
+				        "Relative Scale of UV Map with respect to pins", 0.1, 10.0);
+	RNA_def_string(ot->srna,  
+                 "vertex_group",
+                 NULL,
+                 MAX_ID_NAME,
+                 "Vertex Group",
+                 "Vertex group name for modulating the deform");
+	RNA_def_float(ot->srna,
+                "vertex_group_factor",
+                1.0,
+                -10000.0,
+                10000.0,
+                "Factor",
+				        "How much influence the weightmap has for weighted parameterization, 0 being no influence", -10.0, 10.0);
 }
 
 /** \} */

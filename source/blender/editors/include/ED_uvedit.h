@@ -42,8 +42,10 @@ struct Scene;
 struct SpaceImage;
 struct ToolSettings;
 struct ViewLayer;
+struct UnwrapProperties;
 struct bNode;
 struct wmKeyConfig;
+struct wmOperator;
 
 /* uvedit_ops.c */
 void ED_operatortypes_uvedit(void);

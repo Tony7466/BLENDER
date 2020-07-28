@@ -23,6 +23,8 @@
 
 #include "BLI_sys_types.h"  // for intptr_t support
 
+#include "slim_matrix_transfer.h" // for SLIM
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -55,6 +57,7 @@ void param_face_add(ParamHandle *handle,
                     ParamKey *vkeys,
                     float *co[4],
                     float *uv[4],
+                    float weight[4],
                     ParamBool *pin,
                     ParamBool *select);
 
@@ -62,6 +65,22 @@ void param_edge_set_seam(ParamHandle *handle, ParamKey *vkeys);
 
 void param_construct_end(ParamHandle *handle, ParamBool fill, ParamBool impl);
 void param_delete(ParamHandle *chart);
+
+/* SLIM:
+ * -----------------------------
+ * - begin: data is gathered into matrices and transferred to SLIM
+ * - solve: compute cheap initialization (if necessary) and refine iteratively
+ * - end: clean up
+*/
+void slim_reload_all_uvs(ParamHandle *handle);
+void param_slim_solve(ParamHandle *handle, SLIMMatrixTransfer *mt);
+
+void param_slim_begin(ParamHandle *handle, SLIMMatrixTransfer *mt);
+void param_slim_solve_iteration(ParamHandle *handle);
+void param_slim_stretch_iteration(ParamHandle *handle, float blend);
+void param_slim_end(ParamHandle *handle);
+
+bool param_is_slim(ParamHandle *handle);
 
 /* Least Squares Conformal Maps:
  * -----------------------------
@@ -78,12 +97,13 @@ void param_lscm_begin(ParamHandle *handle, ParamBool live, ParamBool abf);
 void param_lscm_solve(ParamHandle *handle);
 void param_lscm_end(ParamHandle *handle);
 
-/* Stretch */
+// SLIM REMOVED
+// /* Stretch */
 
-void param_stretch_begin(ParamHandle *handle);
-void param_stretch_blend(ParamHandle *handle, float blend);
-void param_stretch_iter(ParamHandle *handle);
-void param_stretch_end(ParamHandle *handle);
+// void param_stretch_begin(ParamHandle *handle);
+// void param_stretch_blend(ParamHandle *handle, float blend);
+// void param_stretch_iter(ParamHandle *handle);
+// void param_stretch_end(ParamHandle *handle);
 
 /* Area Smooth */
 
