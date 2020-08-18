@@ -29,6 +29,7 @@ set(INC
   ../../../../intern/eigen
   ../../../../intern/glew-mx
   ../../../../intern/guardedalloc
+  ../../../../intern/slim
 )
 
 set(INC_SYS
@@ -52,6 +53,7 @@ set(SRC
 
 set(LIB
   bf_bmesh
+  bf_intern_slim
 )
 
 if(WITH_INTERNATIONAL)

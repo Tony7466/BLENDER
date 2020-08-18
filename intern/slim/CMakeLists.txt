@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.6)
 
 set(INC
-  ./
+  .
   ext/libigl_extract
   ../../source/blender/editors/uvedit
   ../../source/blender/makesdna
@@ -34,5 +34,8 @@ set(SRC
   ${ADDITIONAL_SOURCES}
 )
 
-blender_add_lib(bf_intern_slim "${SRC}" "${INC}" "${INC_SYS}")
+set(LIB
+)
+
+blender_add_lib(bf_intern_slim "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 target_link_libraries(bf_intern_slim ${ADDITIONAL_LIBRARIES})

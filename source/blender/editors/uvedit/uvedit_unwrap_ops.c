@@ -83,25 +83,26 @@
  * \{ */
 
 // SLIM REMOVED
-// static void modifier_unwrap_state(Object *obedit, const Scene *scene, bool *r_use_subsurf)
-// {
-//   ModifierData *md;
-//   bool subsurf = (scene->toolsettings->uvcalc_flag & UVCALC_USESUBSURF) != 0;
+static void modifier_unwrap_state(Object *obedit, const Scene *scene, bool *r_use_subsurf)
+{
+  ModifierData *md;
+  bool subsurf = (scene->toolsettings->uvcalc_flag & UVCALC_USESUBSURF) != 0;
 
-//   md = obedit->modifiers.first;
+  md = obedit->modifiers.first;
 
-//   /* subsurf will take the modifier settings only if modifier is first or right after mirror */
-//   if (subsurf) {
-//     if (md && md->type == eModifierType_Subsurf) {
-//       subsurf = true;
-//     }
-//     else {
-//       subsurf = false;
-//     }
-//   }
+  /* subsurf will take the modifier settings only if modifier is first or right after mirror */
+  if (subsurf) {
+    if (md && md->type == eModifierType_Subsurf) {
+      subsurf = true;
+    }
+    else {
+      subsurf = false;
+    }
+  }
 
-//   *r_use_subsurf = subsurf;
-// }
+  *r_use_subsurf = subsurf;
+}
+// ---
 
 static bool ED_uvedit_ensure_uvs(Object *obedit)
 {
@@ -338,7 +339,7 @@ static void construct_param_handle_face_add(ParamHandle *handle,
 		/* optional vertex group weighting */
 		if (cd_weight_offset >= 0 && cd_weight_index >= 0) {
 			MDeformVert *dv = BM_ELEM_CD_GET_VOID_P(l->v, cd_weight_offset);
-			weight[i] = defvert_find_weight(dv, cd_weight_index);
+			weight[i] = BKE_defvert_find_weight(dv, cd_weight_index);
 		}
 		else {
 			weight[i] = 1.0f;
@@ -363,7 +364,7 @@ static ParamHandle *construct_param_handle(const Scene *scene,
 
   const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_MLOOPUV);
   const int cd_weight_offset = CustomData_get_offset(&bm->vdata, CD_MDEFORMVERT);
-	const int cd_weight_index = defgroup_name_index(ob, unwrap->vertex_group);
+	const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->vertex_group);
 
   handle = param_construct_begin();
 
@@ -458,6 +459,8 @@ static ParamHandle *construct_param_handle_multi(const Scene *scene,
     BMesh *bm = em->bm;
 
     const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_MLOOPUV);
+    const int cd_weight_offset = CustomData_get_offset(&bm->vdata, CD_MDEFORMVERT);
+	  const int cd_weight_index = BKE_object_defgroup_name_index(obedit, options->vertex_group);
 
     if (cd_loop_uv_offset == -1) {
       continue;
@@ -484,7 +487,13 @@ static ParamHandle *construct_param_handle_multi(const Scene *scene,
         }
       }
 
-      construct_param_handle_face_add(handle, scene, efa, i + offset, cd_loop_uv_offset);
+      construct_param_handle_face_add(handle,
+                                      scene,
+                                      efa,
+                                      i + offset,
+                                      cd_loop_uv_offset,
+                                      cd_weight_offset,
+                                      cd_weight_index);
     }
 
     if (!options->topology_from_uvs) {
@@ -577,7 +586,7 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
   /* similar to the above, we need a way to map edges to their original ones */
   BMEdge **edgeMap;
 
-  const int cd_weight_index = defgroup_name_index(ob, unwrap->vertex_group);
+  const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->vertex_group);
   const int cd_loop_uv_offset = CustomData_get_offset(&em->bm->ldata, CD_MLOOPUV);
 
   handle = param_construct_begin();
@@ -682,10 +691,10 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
 
     /* Optional vertex group weights. */
 		if (subsurfedDVerts) {
-			weight[0] = defvert_find_weight(subsurfedDVerts + mloop[0].v, cd_weight_index);
-			weight[1] = defvert_find_weight(subsurfedDVerts + mloop[1].v, cd_weight_index);
-			weight[2] = defvert_find_weight(subsurfedDVerts + mloop[2].v, cd_weight_index);
-			weight[3] = defvert_find_weight(subsurfedDVerts + mloop[3].v, cd_weight_index);
+			weight[0] = BKE_defvert_find_weight(subsurfedDVerts + mloop[0].v, cd_weight_index);
+			weight[1] = BKE_defvert_find_weight(subsurfedDVerts + mloop[1].v, cd_weight_index);
+			weight[2] = BKE_defvert_find_weight(subsurfedDVerts + mloop[2].v, cd_weight_index);
+			weight[3] = BKE_defvert_find_weight(subsurfedDVerts + mloop[3].v, cd_weight_index);
 		}
 		else {
 			weight[0] = 1.0f;
@@ -756,14 +765,14 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
  * \{ */
 
 /* Get SLIM parameters from scene */
-static SLIMMatrixTransfer *slim_matrix_transfer(const UnwrapProperties *unwrap)
+static SLIMMatrixTransfer *slim_matrix_transfer(const UnwrapOptions *options)
 {
 	SLIMMatrixTransfer *mt = MEM_callocN(sizeof(SLIMMatrixTransfer), "Matrix Transfer to SLIM");
 
-	mt->with_weighted_parameterization = strlen(unwrap->vertex_group) > 0;
-	mt->weight_influence = unwrap->vertex_group_factor;
-	mt->relative_scale = unwrap->relative_scale;
-	mt->n_iterations =  unwrap->iterations;
+	mt->with_weighted_parameterization = strlen(options->vertex_group) > 0;
+	mt->weight_influence = options->vertex_group_factor;
+	mt->relative_scale = options->relative_scale;
+	mt->n_iterations =  options->iterations;
 
 	return mt;
 }
@@ -772,16 +781,20 @@ static SLIMMatrixTransfer *slim_matrix_transfer(const UnwrapProperties *unwrap)
 
 typedef struct MinStretch {
   // SLIM REMOVED
-  // const Scene *scene;
+  const Scene *scene;
+  // --
+
   Object **objects_edit;
   uint objects_len;
   ParamHandle *handle;
+
   // SLIM REMOVED
-  // float blend;
-  // double lasttime;
-  // int i, iterations;
-  wmTimer *timer;
   float blend;
+  double lasttime;
+  int i, iterations;
+  // --
+  wmTimer *timer;
+  // float blend;
 	bool fix_boundary;
 } MinStretch;
 
@@ -828,7 +841,7 @@ static bool minimize_stretch_init(bContext *C, wmOperator *op)
 
 // SLIM VERSION
 /* Initializes SLIM and transfars data matrices */
-static bool minimize_stretch_init(bContext *C, wmOperator *op)
+/*static bool minimize_stretch_init(bContext *C, wmOperator *op)
 {
 	Scene *scene = CTX_data_scene(C);
 	Object *obedit = CTX_data_edit_object(C);
@@ -859,7 +872,7 @@ static bool minimize_stretch_init(bContext *C, wmOperator *op)
 
 	op->customdata = ms;
 	return true;
-}
+}*/
 
 static void minimize_stretch_iteration(bContext *C, wmOperator *op, bool interactive)
 {
@@ -904,7 +917,7 @@ static void minimize_stretch_iteration(bContext *C, wmOperator *op, bool interac
 
 // SLIM VERSION
 /* After initialisation, these iterations are executed, until applied or canceled by the user. */
-static void minimize_stretch_iteration(bContext *C, wmOperator *op, bool interactive)
+/*static void minimize_stretch_iteration(bContext *C, wmOperator *op, bool interactive)
 {
 	MinStretch *ms = op->customdata;
 
@@ -913,7 +926,7 @@ static void minimize_stretch_iteration(bContext *C, wmOperator *op, bool interac
 
 	DAG_id_tag_update(ms->obedit->data, 0);
 	WM_event_add_notifier(C, NC_GEOM | ND_DATA, ms->obedit->data);
-}
+}*/
 
 static void minimize_stretch_exit(bContext *C, wmOperator *op, bool cancel)
 {
@@ -959,7 +972,7 @@ static void minimize_stretch_exit(bContext *C, wmOperator *op, bool cancel)
 
 // SLIM VERSION
 /* Exit interactive parametrisation. Clean up memory. */
-static void minimize_stretch_exit(bContext *C, wmOperator *op, bool cancel)
+/*static void minimize_stretch_exit(bContext *C, wmOperator *op, bool cancel)
 {
 	MinStretch *ms = op->customdata;
 
@@ -976,7 +989,7 @@ static void minimize_stretch_exit(bContext *C, wmOperator *op, bool cancel)
 
 	MEM_freeN(ms);
 	op->customdata = NULL;
-}
+}*/
 
 static int minimize_stretch_exec(bContext *C, wmOperator *op)
 {
@@ -997,10 +1010,10 @@ static int minimize_stretch_exec(bContext *C, wmOperator *op)
 
 // SLIM VERSION
 /* Used Only to adjust parameters. */
-static int minimize_stretch_exec(bContext *C, wmOperator *op)
+/*static int minimize_stretch_exec(bContext *C, wmOperator *op)
 {
 	return OPERATOR_FINISHED;
-}
+}*/
 
 /* Entry point to interactive parametrisation. Already executes one iteration, allowing faster feedback. */
 static int minimize_stretch_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
@@ -1308,14 +1321,14 @@ void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit)
   // SLIM REMOVED
   // param_lscm_begin(handle, PARAM_TRUE, abf);
 
-  if (unwrap.use_slim) {
-		SLIMMatrixTransfer *mt = slim_matrix_transfer(&unwrap);
+  if (scene->toolsettings->unwrapper == 2) {
+		SLIMMatrixTransfer *mt = slim_matrix_transfer(&options);
 		mt->skip_initialization = true;
 
-		param_slim_begin(liveHandle, mt);
+		param_slim_begin(handle, mt);
 	}
 	else {
-		param_lscm_begin(liveHandle, PARAM_TRUE, unwrap.use_abf);
+		param_lscm_begin(handle, PARAM_TRUE, abf);
 	}
 
   /* Create or increase size of g_live_unwrap.handles array */
@@ -1341,12 +1354,12 @@ void ED_uvedit_live_unwrap_re_solve(void)
       // SLIM REMOVED
       // param_lscm_solve(g_live_unwrap.handles[i]);
 
-      if (param_is_slim(liveHandle)) {
-        slim_reload_all_uvs(liveHandle);
-        param_slim_solve_iteration(liveHandle);
+      if (param_is_slim(g_live_unwrap.handles[i])) {
+        slim_reload_all_uvs(g_live_unwrap.handles[i]);
+        param_slim_solve_iteration(g_live_unwrap.handles[i]);
       }
       else {
-        param_lscm_solve(liveHandle);
+        param_lscm_solve(g_live_unwrap.handles[i]);
       }
 
       param_flush(g_live_unwrap.handles[i]);
@@ -1361,11 +1374,11 @@ void ED_uvedit_live_unwrap_end(short cancel)
       // SLIM REMOVED
       // param_lscm_end(g_live_unwrap.handles[i]);
 
-      if (param_is_slim(liveHandle)) {
-        param_slim_end(liveHandle);
+      if (param_is_slim(g_live_unwrap.handles[i])) {
+        param_slim_end(g_live_unwrap.handles[i]);
       }
       else {
-        param_lscm_end(liveHandle);
+        param_lscm_end(g_live_unwrap.handles[i]);
       }
 
       if (cancel) {
@@ -1822,15 +1835,15 @@ static void uvedit_unwrap(const Scene *scene, Object *obedit, const UnwrapOption
   // param_lscm_solve(handle);
   // param_lscm_end(handle);
 
-  if (unwrap.use_slim) {
-		SLIMMatrixTransfer *mt = slim_matrix_transfer(&unwrap);
-		mt->reflection_mode = unwrap.reflection_mode;
+  if (scene->toolsettings->unwrapper == 2) {
+		SLIMMatrixTransfer *mt = slim_matrix_transfer(&options);
+		mt->reflection_mode = options->reflection_mode;
 		mt->transform_islands = true;
 
 		param_slim_solve(handle, mt);
 	}
 	else {
-		param_lscm_begin(handle, PARAM_FALSE, unwrap.use_abf);
+		param_lscm_begin(handle, PARAM_FALSE, scene->toolsettings->unwrapper == 0);
 		param_lscm_solve(handle);
 		param_lscm_end(handle);
 	}
@@ -1885,7 +1898,7 @@ static int unwrap_exec(bContext *C, wmOperator *op)
 
   // SLIM REMOVED
   // int method = RNA_enum_get(op->ptr, "method");
-  // const bool use_subsurf = RNA_boolean_get(op->ptr, "use_subsurf_data");
+  const bool use_subsurf = RNA_boolean_get(op->ptr, "use_subsurf_data");
 
   int reported_errors = 0;
   /* We will report an error unless at least one object
@@ -2028,21 +2041,22 @@ static bool unwrap_draw_check_prop_abf(PointerRNA *UNUSED(ptr), PropertyRNA *pro
 			 );
 }
 
-static void unwrap_draw(bContext *UNUSED(C), wmOperator *op)
-{
-	uiLayout *layout = op->layout;
-	PointerRNA ptr;
+// SLIM ADDED
+// static void unwrap_draw(bContext *UNUSED(C), wmOperator *op)
+// {
+// 	uiLayout *layout = op->layout;
+// 	PointerRNA ptr;
 
-	/* main draw call */
-	RNA_pointer_create(NULL, op->type->srna, op->properties, &ptr);
+// 	/* main draw call */
+// 	RNA_pointer_create(NULL, op->type->srna, op->properties, &ptr);
 
-	if (RNA_enum_get(op->ptr, "method") == 2) {
-		uiDefAutoButsRNA(layout, &ptr, unwrap_draw_check_prop_slim, '\0');
-	}
-	else {
-		uiDefAutoButsRNA(layout, &ptr, unwrap_draw_check_prop_abf, '\0');
-	}
-}
+// 	if (RNA_enum_get(op->ptr, "method") == 2) {
+// 		uiDefAutoButsRNA(layout, &ptr, unwrap_draw_check_prop_slim, '\0');
+// 	}
+// 	else {
+// 		uiDefAutoButsRNA(layout, &ptr, unwrap_draw_check_prop_abf, '\0');
+// 	}
+// }
 
 void UV_OT_unwrap(wmOperatorType *ot)
 {
@@ -2070,7 +2084,7 @@ void UV_OT_unwrap(wmOperatorType *ot)
   ot->poll = ED_operator_uvmap;
 
 	/* Only draw relevant ui elements */
-	ot->ui = unwrap_draw;
+	// ot->ui = unwrap_draw;
 
   /* properties */
   RNA_def_enum(ot->srna,

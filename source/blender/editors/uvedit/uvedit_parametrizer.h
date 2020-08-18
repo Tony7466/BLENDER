@@ -100,10 +100,11 @@ void param_lscm_end(ParamHandle *handle);
 // SLIM REMOVED
 // /* Stretch */
 
-// void param_stretch_begin(ParamHandle *handle);
-// void param_stretch_blend(ParamHandle *handle, float blend);
-// void param_stretch_iter(ParamHandle *handle);
-// void param_stretch_end(ParamHandle *handle);
+void param_stretch_begin(ParamHandle *handle);
+void param_stretch_blend(ParamHandle *handle, float blend);
+void param_stretch_iter(ParamHandle *handle);
+void param_stretch_end(ParamHandle *handle);
+// ---
 
 /* Area Smooth */
 
