@@ -194,7 +194,7 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob)
   options.only_selected = false;
 
 	// unwrap.use_abf = RNA_enum_get(&ptr, "method") == 0;
-	// unwrap.use_slim = RNA_enum_get(&ptr, "method") == 2;
+	bool use_slim = RNA_enum_get(&ptr, "method") == 2;
 	options.correct_aspect = RNA_boolean_get(&ptr, "correct_aspect");
 	options.fill_holes = RNA_boolean_get(&ptr, "fill_holes");
 	options.use_subsurf = RNA_boolean_get(&ptr, "use_subsurf_data");
@@ -205,9 +205,9 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob)
 	options.iterations = RNA_int_get(&ptr, "iterations");
 
 	/* SLIM requires hole filling */
-	// if (unwrap.use_slim) {
-	// 	unwrap.fill_holes = true;
-	// }
+	if (use_slim) {
+		options.fill_holes = true;
+	}
 
 	/* Subsurf will take the modifier settings only if modifier is first or right after mirror */
 	// if (unwrap.use_subsurf) {
@@ -1897,7 +1897,8 @@ static int unwrap_exec(bContext *C, wmOperator *op)
   const Scene *scene = CTX_data_scene(C);
 
   // SLIM REMOVED
-  // int method = RNA_enum_get(op->ptr, "method");
+  int method = RNA_enum_get(op->ptr, "method");
+  // ---
   const bool use_subsurf = RNA_boolean_get(op->ptr, "use_subsurf_data");
 
   int reported_errors = 0;
@@ -1909,12 +1910,16 @@ static int unwrap_exec(bContext *C, wmOperator *op)
   Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
       view_layer, CTX_wm_view3d(C), &objects_len);
 
-  const UnwrapOptions options = {
-      .topology_from_uvs = false,
-      .only_selected = true,
-      .fill_holes = RNA_boolean_get(op->ptr, "fill_holes"),
-      .correct_aspect = RNA_boolean_get(op->ptr, "correct_aspect"),
-  };
+  // const UnwrapOptions options = {
+  //     .topology_from_uvs = false,
+  //     .only_selected = true,
+  //     .fill_holes = (method == 2) || RNA_boolean_get(op->ptr, "fill_holes"),
+  //     .correct_aspect = RNA_boolean_get(op->ptr, "correct_aspect"),
+  // };
+
+  UnwrapOptions options = unwrap_options_get(op, objects[0]);
+  options.only_selected = true;
+  options.topology_from_uvs = false;
 
   bool rotate = true;
   bool ignore_pinned = true;
@@ -1975,13 +1980,14 @@ static int unwrap_exec(bContext *C, wmOperator *op)
   }
 
   // SLIM REMOVED
-  // /* remember last method for live unwrap */
-  // if (RNA_struct_property_is_set(op->ptr, "method")) {
-  //   scene->toolsettings->unwrapper = method;
-  // }
-  // else {
-  //   RNA_enum_set(op->ptr, "method", scene->toolsettings->unwrapper);
-  // }
+  /* remember last method for live unwrap */
+  if (RNA_struct_property_is_set(op->ptr, "method")) {
+    scene->toolsettings->unwrapper = method;
+  }
+  else {
+    RNA_enum_set(op->ptr, "method", scene->toolsettings->unwrapper);
+  }
+  // ---
 
   /* remember packing margin */
   if (RNA_struct_property_is_set(op->ptr, "margin")) {
@@ -1992,26 +1998,26 @@ static int unwrap_exec(bContext *C, wmOperator *op)
   }
 
   // SLIM REMOVED
-  // if (options.fill_holes) {
-  //   scene->toolsettings->uvcalc_flag |= UVCALC_FILLHOLES;
-  // }
-  // else {
-  //   scene->toolsettings->uvcalc_flag &= ~UVCALC_FILLHOLES;
-  // }
+  if (options.fill_holes) {
+    scene->toolsettings->uvcalc_flag |= UVCALC_FILLHOLES;
+  }
+  else {
+    scene->toolsettings->uvcalc_flag &= ~UVCALC_FILLHOLES;
+  }
 
-  // if (options.correct_aspect) {
-  //   scene->toolsettings->uvcalc_flag &= ~UVCALC_NO_ASPECT_CORRECT;
-  // }
-  // else {
-  //   scene->toolsettings->uvcalc_flag |= UVCALC_NO_ASPECT_CORRECT;
-  // }
+  if (options.correct_aspect) {
+    scene->toolsettings->uvcalc_flag &= ~UVCALC_NO_ASPECT_CORRECT;
+  }
+  else {
+    scene->toolsettings->uvcalc_flag |= UVCALC_NO_ASPECT_CORRECT;
+  }
 
-  // if (use_subsurf) {
-  //   scene->toolsettings->uvcalc_flag |= UVCALC_USESUBSURF;
-  // }
-  // else {
-  //   scene->toolsettings->uvcalc_flag &= ~UVCALC_USESUBSURF;
-  // }
+  if (use_subsurf) {
+    scene->toolsettings->uvcalc_flag |= UVCALC_USESUBSURF;
+  }
+  else {
+    scene->toolsettings->uvcalc_flag &= ~UVCALC_USESUBSURF;
+  }
 
   /* execute unwrap */
   uvedit_unwrap_multi(scene, objects, objects_len, &options);
