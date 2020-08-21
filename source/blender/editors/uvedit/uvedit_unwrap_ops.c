@@ -1122,6 +1122,12 @@ void UV_OT_minimize_stretch(wmOperatorType *ot)
                   1,
                   "Fix Boundary",
                   "Wether the vertices on the border may move or not.");
+
+  // SLIM REMOVED
+	RNA_def_boolean(ot->srna, "fill_holes", 1, "Fill Holes", "Virtual fill holes in mesh before unwrapping, to better avoid overlaps and preserve symmetry");
+	RNA_def_float_factor(ot->srna, "blend", 0.0f, 0.0f, 1.0f, "Blend", "Blend factor between stretch minimized and original", 0.0f, 1.0f);
+	RNA_def_int(ot->srna, "iterations", 0, 0, INT_MAX, "Iterations", "Number of iterations to run, 0 is unlimited when run interactively", 0, 100);
+	// ---
 }
 
 /** \} */
