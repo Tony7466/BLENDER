@@ -807,7 +807,8 @@ typedef struct MinStretch {
 	bool fix_boundary;
 } MinStretch;
 
-static bool minimize_stretch_init(bContext *C, wmOperator *op)
+// SLIM REMOVED
+/* static bool minimize_stretch_init(bContext *C, wmOperator *op)
 {
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
@@ -846,33 +847,38 @@ static bool minimize_stretch_init(bContext *C, wmOperator *op)
   op->customdata = ms;
 
   return true;
-}
+} */
+// ---
 
 // SLIM VERSION
 /* Initializes SLIM and transfars data matrices */
-/*static bool minimize_stretch_init(bContext *C, wmOperator *op)
+static bool minimize_stretch_init(bContext *C, wmOperator *op)
 {
-	Scene *scene = CTX_data_scene(C);
-	Object *obedit = CTX_data_edit_object(C);
-	BMEditMesh *em = BKE_editmesh_from_object(obedit);
+  const Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
 	bool implicit = true;
 
-	if (!uvedit_have_selection(scene, em, implicit)) {
-		return false;
-	}
+  uint objects_len = 0;
+  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
+      view_layer, CTX_wm_view3d(C), &objects_len);
 
-	UnwrapProperties unwrap = unwrap_properties_get(NULL, obedit);
-	unwrap.fill_holes = true;
+  UnwrapOptions options = unwrap_options_get(NULL, NULL);
+	options.fill_holes = true;
 
-	ParamHandle *handle = construct_param_handle(scene, obedit, em->bm, implicit, true, &unwrap);
+  if (!uvedit_have_selection_multi(scene, objects, objects_len, &options)) {
+    MEM_freeN(objects);
+    return false;
+  }
 
+	ParamHandle *handle = construct_param_handle_multi(scene, objects, objects_len, &options);
 	MinStretch *ms = MEM_callocN(sizeof(MinStretch), "Data for minimizing stretch with SLIM");
 
 	ms->handle = handle;
-	ms->obedit = obedit;
+  ms->objects_edit = objects;
+  ms->objects_len = objects_len;
 	ms->fix_boundary = RNA_boolean_get(op->ptr, "fix_boundary");
 
-	SLIMMatrixTransfer *mt = slim_matrix_transfer(&unwrap);
+	SLIMMatrixTransfer *mt = slim_matrix_transfer(&options);
 	mt->is_minimize_stretch = true;
 	mt->skip_initialization = true;
 	mt->fixed_boundary = ms->fix_boundary;
@@ -881,9 +887,10 @@ static bool minimize_stretch_init(bContext *C, wmOperator *op)
 
 	op->customdata = ms;
 	return true;
-}*/
+}
 
-static void minimize_stretch_iteration(bContext *C, wmOperator *op, bool interactive)
+// SLIM REMOVED
+/* static void minimize_stretch_iteration(bContext *C, wmOperator *op, bool interactive)
 {
   MinStretch *ms = op->customdata;
   ScrArea *area = CTX_wm_area(C);
@@ -922,22 +929,29 @@ static void minimize_stretch_iteration(bContext *C, wmOperator *op, bool interac
       WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
     }
   }
-}
+} */
+// ---
 
 // SLIM VERSION
 /* After initialisation, these iterations are executed, until applied or canceled by the user. */
-/*static void minimize_stretch_iteration(bContext *C, wmOperator *op, bool interactive)
+static void minimize_stretch_iteration(bContext *C, wmOperator *op, bool interactive)
 {
 	MinStretch *ms = op->customdata;
 
 	param_slim_stretch_iteration(ms->handle, ms->blend);
 	param_flush(ms->handle);
 
-	DAG_id_tag_update(ms->obedit->data, 0);
-	WM_event_add_notifier(C, NC_GEOM | ND_DATA, ms->obedit->data);
-}*/
+  for (uint ob_index = 0; ob_index < ms->objects_len; ob_index++) {
+    Object *obedit = ms->objects_edit[ob_index];
 
-static void minimize_stretch_exit(bContext *C, wmOperator *op, bool cancel)
+    // SLIM TOCHECK: what flag to use here
+    DEG_id_tag_update(obedit->data, 0);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
+  }
+}
+
+// SLIM REMOVED
+/* static void minimize_stretch_exit(bContext *C, wmOperator *op, bool cancel)
 {
   MinStretch *ms = op->customdata;
   ScrArea *area = CTX_wm_area(C);
@@ -977,30 +991,43 @@ static void minimize_stretch_exit(bContext *C, wmOperator *op, bool cancel)
   MEM_freeN(ms->objects_edit);
   MEM_freeN(ms);
   op->customdata = NULL;
-}
+} */
+// ---
 
 // SLIM VERSION
 /* Exit interactive parametrisation. Clean up memory. */
-/*static void minimize_stretch_exit(bContext *C, wmOperator *op, bool cancel)
+static void minimize_stretch_exit(bContext *C, wmOperator *op, bool cancel)
 {
 	MinStretch *ms = op->customdata;
 
 	param_slim_end(ms->handle);
 
+  if (ms->timer) {
+    WM_event_remove_timer(CTX_wm_manager(C), CTX_wm_window(C), ms->timer);
+  }
+
 	if (cancel) {
 		param_flush_restore(ms->handle);
 	}
+  // SLIM TOCHECK: should use "else param_flush"?
 
 	param_delete(ms->handle);
 
-	DAG_id_tag_update(ms->obedit->data, 0);
-	WM_event_add_notifier(C, NC_GEOM | ND_DATA, ms->obedit->data);
+  for (uint ob_index = 0; ob_index < ms->objects_len; ob_index++) {
+    Object *obedit = ms->objects_edit[ob_index];
 
+    // SLIM TOCHECK: what flag to use here
+    DEG_id_tag_update(obedit->data, 0);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
+  }
+
+  MEM_freeN(ms->objects_edit);
 	MEM_freeN(ms);
 	op->customdata = NULL;
-}*/
+}
 
-static int minimize_stretch_exec(bContext *C, wmOperator *op)
+// SLIM REMOVED
+/* static int minimize_stretch_exec(bContext *C, wmOperator *op)
 {
   int i, iterations;
 
@@ -1015,14 +1042,15 @@ static int minimize_stretch_exec(bContext *C, wmOperator *op)
   minimize_stretch_exit(C, op, false);
 
   return OPERATOR_FINISHED;
-}
+} */
+// ---
 
 // SLIM VERSION
 /* Used Only to adjust parameters. */
-/*static int minimize_stretch_exec(bContext *C, wmOperator *op)
+static int minimize_stretch_exec(bContext *C, wmOperator *op)
 {
 	return OPERATOR_FINISHED;
-}*/
+}
 
 /* Entry point to interactive parametrisation. Already executes one iteration, allowing faster feedback. */
 static int minimize_stretch_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
@@ -1086,10 +1114,12 @@ static int minimize_stretch_modal(bContext *C, wmOperator *op, const wmEvent *ev
       break;
   }
 
+  // SLIM REMOVED
   // if (ms->iterations && ms->i >= ms->iterations) {
   //   minimize_stretch_exit(C, op, false);
   //   return OPERATOR_FINISHED;
   // }
+  // ---
 
   return OPERATOR_RUNNING_MODAL;
 }
