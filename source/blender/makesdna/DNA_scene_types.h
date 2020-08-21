@@ -1376,7 +1376,10 @@ typedef struct ToolSettings {
   short selectmode;
 
   /* UV Calculation */
-  char unwrapper;
+  // SLIM REMOVED
+  // char unwrapper;
+  // ---
+  char unused;
   char uvcalc_flag;
   char uv_flag;
   char uv_selectmode;

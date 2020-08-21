@@ -78,19 +78,40 @@
 #include "uvedit_intern.h"
 #include "uvedit_parametrizer.h"
 
+
+typedef struct UnwrapOptions {
+  /** Connectivity based on UV coordinates instead of seams. */
+  bool topology_from_uvs;
+  /** Only affect selected faces. */
+  bool only_selected;
+  /** Fill holes to better preserve shape. */
+  bool fill_holes;
+  /** Correct for mapped image texture aspect ratio. */
+  bool correct_aspect;
+
+  bool use_slim;
+  bool use_abf;
+  bool use_subsurf;
+	char vertex_group[MAX_ID_NAME];
+	float vertex_group_factor;
+	float relative_scale;
+	int reflection_mode;
+	int iterations;
+} UnwrapOptions;
+
 /* -------------------------------------------------------------------- */
 /** \name Utility Functions
  * \{ */
 
 // SLIM REMOVED
-static void modifier_unwrap_state(Object *obedit, const Scene *scene, bool *r_use_subsurf)
+static void modifier_unwrap_state(Object *obedit, const UnwrapOptions *options, bool *r_use_subsurf)
 {
   ModifierData *md;
-  bool subsurf = (scene->toolsettings->uvcalc_flag & UVCALC_USESUBSURF) != 0;
+  bool subsurf = options->use_subsurf;
 
   md = obedit->modifiers.first;
 
-  /* subsurf will take the modifier settings only if modifier is first or right after mirror */
+  /* Subsurf will take the modifier settings only if modifier is first or right after mirror */
   if (subsurf) {
     if (md && md->type == eModifierType_Subsurf) {
       subsurf = true;
@@ -162,24 +183,6 @@ static bool ED_uvedit_ensure_uvs(Object *obedit)
 /** \name Parametrizer Conversion
  * \{ */
 
-typedef struct UnwrapOptions {
-  /** Connectivity based on UV coordinates instead of seams. */
-  bool topology_from_uvs;
-  /** Only affect selected faces. */
-  bool only_selected;
-  /** Fill holes to better preserve shape. */
-  bool fill_holes;
-  /** Correct for mapped image texture aspect ratio. */
-  bool correct_aspect;
-
-  bool use_subsurf;
-	char vertex_group[MAX_ID_NAME];
-	float vertex_group_factor;
-	float relative_scale;
-	int reflection_mode;
-	int iterations;
-} UnwrapOptions;
-
 static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob)
 {
 	/* We use the properties from the last unwrap operator for subsequent
@@ -193,8 +196,8 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob)
   options.topology_from_uvs = false;
   options.only_selected = false;
 
-	// unwrap.use_abf = RNA_enum_get(&ptr, "method") == 0;
-	bool use_slim = RNA_enum_get(&ptr, "method") == 2;
+	options.use_abf = RNA_enum_get(&ptr, "method") == 0;
+	options.use_slim = RNA_enum_get(&ptr, "method") == 2;
 	options.correct_aspect = RNA_boolean_get(&ptr, "correct_aspect");
 	options.fill_holes = RNA_boolean_get(&ptr, "fill_holes");
 	options.use_subsurf = RNA_boolean_get(&ptr, "use_subsurf_data");
@@ -205,20 +208,26 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob)
 	options.iterations = RNA_int_get(&ptr, "iterations");
 
 	/* SLIM requires hole filling */
-	if (use_slim) {
+	if (options.use_slim) {
 		options.fill_holes = true;
 	}
 
 	/* Subsurf will take the modifier settings only if modifier is first or right after mirror */
-	// if (unwrap.use_subsurf) {
+	// if (options.use_subsurf) {
 	// 	ModifierData *md = ob->modifiers.first;
 
 	// 	if (!(md && md->type == eModifierType_Subsurf)) {
-	// 		unwrap.use_subsurf = false;
+	// 		options.use_subsurf = false;
 	// 		if (op)
 	// 			BKE_report(op->reports, RPT_INFO, "Subdivision Surface modifier needs to be first to work with unwrap");
 	// 	}
 	// }
+
+  if (ob) {
+    bool use_subsurf_final;
+    modifier_unwrap_state(ob, &options, &use_subsurf_final);
+    options.use_subsurf = use_subsurf_final;
+  }
 
 	WM_operator_properties_free(&ptr);
 
@@ -1123,12 +1132,18 @@ void UV_OT_minimize_stretch(wmOperatorType *ot)
 
 static void uvedit_pack_islands(const Scene *scene, Object *ob, BMesh *bm)
 {
-  const UnwrapOptions options = {
-      .topology_from_uvs = true,
-      .only_selected = false,
-      .fill_holes = false,
-      .correct_aspect = false,
-  };
+  // const UnwrapOptions options = {
+  //     .topology_from_uvs = true,
+  //     .only_selected = false,
+  //     .fill_holes = false,
+  //     .correct_aspect = false,
+  // };
+
+  UnwrapOptions options = unwrap_options_get(NULL, ob);
+  options.topology_from_uvs = true;
+  options.only_selected = false;
+  options.fill_holes = false;
+  options.correct_aspect = false;
 
   bool rotate = true;
   bool ignore_pinned = false;
@@ -1165,12 +1180,18 @@ static int pack_islands_exec(bContext *C, wmOperator *op)
   ViewLayer *view_layer = CTX_data_view_layer(C);
   const Scene *scene = CTX_data_scene(C);
 
-  const UnwrapOptions options = {
-      .topology_from_uvs = true,
-      .only_selected = true,
-      .fill_holes = false,
-      .correct_aspect = true,
-  };
+  // const UnwrapOptions options = {
+  //     .topology_from_uvs = true,
+  //     .only_selected = true,
+  //     .fill_holes = false,
+  //     .correct_aspect = true,
+  // };
+
+  UnwrapOptions options = unwrap_options_get(op, NULL);
+  options.topology_from_uvs = true;
+  options.only_selected = true;
+  options.fill_holes = false;
+  options.correct_aspect = true;
 
   bool rotate = RNA_boolean_get(op->ptr, "rotate");
   bool ignore_pinned = false;
@@ -1230,12 +1251,18 @@ static int average_islands_scale_exec(bContext *C, wmOperator *UNUSED(op))
   ToolSettings *ts = scene->toolsettings;
   const bool synced_selection = (ts->uv_flag & UV_SYNC_SELECTION) != 0;
 
-  const UnwrapOptions options = {
-      .topology_from_uvs = true,
-      .only_selected = true,
-      .fill_holes = false,
-      .correct_aspect = true,
-  };
+  // const UnwrapOptions options = {
+  //     .topology_from_uvs = true,
+  //     .only_selected = true,
+  //     .fill_holes = false,
+  //     .correct_aspect = true,
+  // };
+
+  UnwrapOptions options = unwrap_options_get(NULL, NULL);
+  options.topology_from_uvs = true;
+  options.only_selected = true;
+  options.fill_holes = false;
+  options.correct_aspect = true;
 
   uint objects_len = 0;
   Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
@@ -1295,23 +1322,23 @@ void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit)
 {
   ParamHandle *handle = NULL;
   BMEditMesh *em = BKE_editmesh_from_object(obedit);
-  const bool abf = (scene->toolsettings->unwrapper == 0);
-  bool use_subsurf;
-
-  modifier_unwrap_state(obedit, scene, &use_subsurf);
 
   if (!ED_uvedit_test(obedit)) {
     return;
   }
 
-  const UnwrapOptions options = {
-      .topology_from_uvs = false,
-      .only_selected = false,
-      .fill_holes = (scene->toolsettings->uvcalc_flag & UVCALC_FILLHOLES) != 0,
-      .correct_aspect = (scene->toolsettings->uvcalc_flag & UVCALC_NO_ASPECT_CORRECT) == 0,
-  };
+  // const UnwrapOptions options = {
+  //     .topology_from_uvs = false,
+  //     .only_selected = false,
+  //     .fill_holes = (scene->toolsettings->uvcalc_flag & UVCALC_FILLHOLES) != 0,
+  //     .correct_aspect = (scene->toolsettings->uvcalc_flag & UVCALC_NO_ASPECT_CORRECT) == 0,
+  // };
 
-  if (use_subsurf) {
+  UnwrapOptions options = unwrap_options_get(NULL, obedit);
+  options.topology_from_uvs = false;
+  options.only_selected = false;
+
+  if (options.use_subsurf) {
     handle = construct_param_handle_subsurfed(scene, obedit, em, &options);
   }
   else {
@@ -1321,14 +1348,14 @@ void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit)
   // SLIM REMOVED
   // param_lscm_begin(handle, PARAM_TRUE, abf);
 
-  if (scene->toolsettings->unwrapper == 2) {
+  if (options.use_slim) {
 		SLIMMatrixTransfer *mt = slim_matrix_transfer(&options);
 		mt->skip_initialization = true;
 
 		param_slim_begin(handle, mt);
 	}
 	else {
-		param_lscm_begin(handle, PARAM_TRUE, abf);
+		param_lscm_begin(handle, PARAM_TRUE, options.use_abf);
 	}
 
   /* Create or increase size of g_live_unwrap.handles array */
@@ -1820,7 +1847,7 @@ static void uvedit_unwrap(const Scene *scene, Object *obedit, const UnwrapOption
   }
 
   bool use_subsurf;
-  modifier_unwrap_state(obedit, scene, &use_subsurf);
+  modifier_unwrap_state(obedit, options, &use_subsurf);
 
   ParamHandle *handle;
   if (use_subsurf) {
@@ -1835,15 +1862,15 @@ static void uvedit_unwrap(const Scene *scene, Object *obedit, const UnwrapOption
   // param_lscm_solve(handle);
   // param_lscm_end(handle);
 
-  if (scene->toolsettings->unwrapper == 2) {
-		SLIMMatrixTransfer *mt = slim_matrix_transfer(&options);
+  if (options->use_slim) {
+		SLIMMatrixTransfer *mt = slim_matrix_transfer(options);
 		mt->reflection_mode = options->reflection_mode;
 		mt->transform_islands = true;
 
 		param_slim_solve(handle, mt);
 	}
 	else {
-		param_lscm_begin(handle, PARAM_FALSE, scene->toolsettings->unwrapper == 0);
+		param_lscm_begin(handle, PARAM_FALSE, options->use_abf);
 		param_lscm_solve(handle);
 		param_lscm_end(handle);
 	}
@@ -1871,12 +1898,16 @@ static void uvedit_unwrap_multi(const Scene *scene,
 void ED_uvedit_live_unwrap(const Scene *scene, Object **objects, int objects_len)
 {
   if (scene->toolsettings->edge_mode_live_unwrap) {
-    const UnwrapOptions options = {
-        .topology_from_uvs = false,
-        .only_selected = false,
-        .fill_holes = (scene->toolsettings->uvcalc_flag & UVCALC_FILLHOLES) != 0,
-        .correct_aspect = (scene->toolsettings->uvcalc_flag & UVCALC_NO_ASPECT_CORRECT) == 0,
-    };
+    // const UnwrapOptions options = {
+    //     .topology_from_uvs = false,
+    //     .only_selected = false,
+    //     .fill_holes = (scene->toolsettings->uvcalc_flag & UVCALC_FILLHOLES) != 0,
+    //     .correct_aspect = (scene->toolsettings->uvcalc_flag & UVCALC_NO_ASPECT_CORRECT) == 0,
+    // };
+
+    UnwrapOptions options = unwrap_options_get(NULL, NULL);
+    options.topology_from_uvs = false;
+    options.only_selected = false;
 
     bool rotate = true;
     bool ignore_pinned = true;
@@ -1897,14 +1928,11 @@ static int unwrap_exec(bContext *C, wmOperator *op)
   const Scene *scene = CTX_data_scene(C);
 
   // SLIM REMOVED
-  int method = RNA_enum_get(op->ptr, "method");
+  // int method = RNA_enum_get(op->ptr, "method");
+  // const bool use_subsurf = RNA_boolean_get(op->ptr, "use_subsurf_data");
   // ---
-  const bool use_subsurf = RNA_boolean_get(op->ptr, "use_subsurf_data");
 
   int reported_errors = 0;
-  /* We will report an error unless at least one object
-   * has the subsurf modifier in the right place. */
-  bool subsurf_error = use_subsurf;
 
   uint objects_len = 0;
   Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
@@ -1917,9 +1945,13 @@ static int unwrap_exec(bContext *C, wmOperator *op)
   //     .correct_aspect = RNA_boolean_get(op->ptr, "correct_aspect"),
   // };
 
-  UnwrapOptions options = unwrap_options_get(op, objects[0]);
+  UnwrapOptions options = unwrap_options_get(op, NULL);
   options.only_selected = true;
   options.topology_from_uvs = false;
+
+  /* We will report an error unless at least one object
+   * has the subsurf modifier in the right place. */
+  bool subsurf_error = options.use_subsurf;
 
   bool rotate = true;
   bool ignore_pinned = true;
@@ -1942,7 +1974,7 @@ static int unwrap_exec(bContext *C, wmOperator *op)
     if (subsurf_error) {
       /* Double up the check here but better keep uvedit_unwrap interface simple and not
        * pass operator for warning append. */
-      modifier_unwrap_state(obedit, scene, &use_subsurf_final);
+      modifier_unwrap_state(obedit, &options, &use_subsurf_final);
       if (use_subsurf_final) {
         subsurf_error = false;
       }
@@ -1981,12 +2013,12 @@ static int unwrap_exec(bContext *C, wmOperator *op)
 
   // SLIM REMOVED
   /* remember last method for live unwrap */
-  if (RNA_struct_property_is_set(op->ptr, "method")) {
-    scene->toolsettings->unwrapper = method;
-  }
-  else {
-    RNA_enum_set(op->ptr, "method", scene->toolsettings->unwrapper);
-  }
+  // if (RNA_struct_property_is_set(op->ptr, "method")) {
+  //   scene->toolsettings->unwrapper = method;
+  // }
+  // else {
+  //   RNA_enum_set(op->ptr, "method", scene->toolsettings->unwrapper);
+  // }
   // ---
 
   /* remember packing margin */
@@ -1998,26 +2030,27 @@ static int unwrap_exec(bContext *C, wmOperator *op)
   }
 
   // SLIM REMOVED
-  if (options.fill_holes) {
-    scene->toolsettings->uvcalc_flag |= UVCALC_FILLHOLES;
-  }
-  else {
-    scene->toolsettings->uvcalc_flag &= ~UVCALC_FILLHOLES;
-  }
+  // if (options.fill_holes) {
+  //   scene->toolsettings->uvcalc_flag |= UVCALC_FILLHOLES;
+  // }
+  // else {
+  //   scene->toolsettings->uvcalc_flag &= ~UVCALC_FILLHOLES;
+  // }
 
-  if (options.correct_aspect) {
-    scene->toolsettings->uvcalc_flag &= ~UVCALC_NO_ASPECT_CORRECT;
-  }
-  else {
-    scene->toolsettings->uvcalc_flag |= UVCALC_NO_ASPECT_CORRECT;
-  }
+  // if (options.correct_aspect) {
+  //   scene->toolsettings->uvcalc_flag &= ~UVCALC_NO_ASPECT_CORRECT;
+  // }
+  // else {
+  //   scene->toolsettings->uvcalc_flag |= UVCALC_NO_ASPECT_CORRECT;
+  // }
 
-  if (use_subsurf) {
-    scene->toolsettings->uvcalc_flag |= UVCALC_USESUBSURF;
-  }
-  else {
-    scene->toolsettings->uvcalc_flag &= ~UVCALC_USESUBSURF;
-  }
+  // if (use_subsurf) {
+  //   scene->toolsettings->uvcalc_flag |= UVCALC_USESUBSURF;
+  // }
+  // else {
+  //   scene->toolsettings->uvcalc_flag &= ~UVCALC_USESUBSURF;
+  // }
+  // ---
 
   /* execute unwrap */
   uvedit_unwrap_multi(scene, objects, objects_len, &options);
@@ -2028,24 +2061,24 @@ static int unwrap_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static bool unwrap_draw_check_prop_slim(PointerRNA *UNUSED(ptr), PropertyRNA *prop)
-{
-	const char *prop_id = RNA_property_identifier(prop);
+// static bool unwrap_draw_check_prop_slim(PointerRNA *UNUSED(ptr), PropertyRNA *prop)
+// {
+// 	const char *prop_id = RNA_property_identifier(prop);
 
-	return !(STREQ(prop_id, "fill_holes"));
-}
+// 	return !(STREQ(prop_id, "fill_holes"));
+// }
 
-static bool unwrap_draw_check_prop_abf(PointerRNA *UNUSED(ptr), PropertyRNA *prop)
-{
-	const char *prop_id = RNA_property_identifier(prop);
+// static bool unwrap_draw_check_prop_abf(PointerRNA *UNUSED(ptr), PropertyRNA *prop)
+// {
+// 	const char *prop_id = RNA_property_identifier(prop);
 
-	return !(STREQ(prop_id, "reflection_mode") ||
-			 STREQ(prop_id, "iterations") ||
-			 STREQ(prop_id, "relative_scale") ||
-			 STREQ(prop_id, "vertex_group") ||
-			 STREQ(prop_id, "vertex_group_factor")
-			 );
-}
+// 	return !(STREQ(prop_id, "reflection_mode") ||
+// 			 STREQ(prop_id, "iterations") ||
+// 			 STREQ(prop_id, "relative_scale") ||
+// 			 STREQ(prop_id, "vertex_group") ||
+// 			 STREQ(prop_id, "vertex_group_factor")
+// 			 );
+// }
 
 // SLIM ADDED
 // static void unwrap_draw(bContext *UNUSED(C), wmOperator *op)
