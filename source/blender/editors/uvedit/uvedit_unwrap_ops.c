@@ -876,7 +876,9 @@ static bool minimize_stretch_init(bContext *C, wmOperator *op)
 	ms->handle = handle;
   ms->objects_edit = objects;
   ms->objects_len = objects_len;
+  ms->blend = RNA_float_get(op->ptr, "blend");
 	ms->fix_boundary = RNA_boolean_get(op->ptr, "fix_boundary");
+  ms->lasttime = PIL_check_seconds_timer();
 
 	SLIMMatrixTransfer *mt = slim_matrix_transfer(&options);
 	mt->is_minimize_stretch = true;
@@ -936,17 +938,38 @@ static bool minimize_stretch_init(bContext *C, wmOperator *op)
 /* After initialisation, these iterations are executed, until applied or canceled by the user. */
 static void minimize_stretch_iteration(bContext *C, wmOperator *op, bool interactive)
 {
-	MinStretch *ms = op->customdata;
+  MinStretch *ms = op->customdata;
+  ScrArea *area = CTX_wm_area(C);
+  const Scene *scene = CTX_data_scene(C);
+  ToolSettings *ts = scene->toolsettings;
+  const bool synced_selection = (ts->uv_flag & UV_SYNC_SELECTION) != 0;
 
 	param_slim_stretch_iteration(ms->handle, ms->blend);
-	param_flush(ms->handle);
 
-  for (uint ob_index = 0; ob_index < ms->objects_len; ob_index++) {
-    Object *obedit = ms->objects_edit[ob_index];
+  if (interactive && (PIL_check_seconds_timer() - ms->lasttime > 0.5)) {
+    char str[UI_MAX_DRAW_STR];
 
-    // SLIM TOCHECK: what flag to use here
-    DEG_id_tag_update(obedit->data, 0);
-    WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
+    param_flush(ms->handle);
+
+    if (area) {
+      BLI_snprintf(str, sizeof(str), TIP_("Minimize Stretch. Blend %.2f"), ms->blend);
+      ED_area_status_text(area, str);
+      ED_workspace_status_text(C, TIP_("Press + and -, or scroll wheel to set blending"));
+    }
+
+    ms->lasttime = PIL_check_seconds_timer();
+
+    for (uint ob_index = 0; ob_index < ms->objects_len; ob_index++) {
+      Object *obedit = ms->objects_edit[ob_index];
+      BMEditMesh *em = BKE_editmesh_from_object(obedit);
+
+      if (synced_selection && (em->bm->totfacesel == 0)) {
+        continue;
+      }
+
+      DEG_id_tag_update(obedit->data, ID_RECALC_GEOMETRY);
+      WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
+    }
   }
 }
 
@@ -998,13 +1021,20 @@ static void minimize_stretch_iteration(bContext *C, wmOperator *op, bool interac
 /* Exit interactive parametrisation. Clean up memory. */
 static void minimize_stretch_exit(bContext *C, wmOperator *op, bool cancel)
 {
-	MinStretch *ms = op->customdata;
+  MinStretch *ms = op->customdata;
+  ScrArea *area = CTX_wm_area(C);
+  const Scene *scene = CTX_data_scene(C);
+  ToolSettings *ts = scene->toolsettings;
+  const bool synced_selection = (ts->uv_flag & UV_SYNC_SELECTION) != 0;
 
-	param_slim_end(ms->handle);
+  ED_area_status_text(area, NULL);
+  ED_workspace_status_text(C, NULL);
 
   if (ms->timer) {
     WM_event_remove_timer(CTX_wm_manager(C), CTX_wm_window(C), ms->timer);
   }
+
+	param_slim_end(ms->handle);
 
 	if (cancel) {
 		param_flush_restore(ms->handle);
@@ -1015,9 +1045,13 @@ static void minimize_stretch_exit(bContext *C, wmOperator *op, bool cancel)
 
   for (uint ob_index = 0; ob_index < ms->objects_len; ob_index++) {
     Object *obedit = ms->objects_edit[ob_index];
+    BMEditMesh *em = BKE_editmesh_from_object(obedit);
 
-    // SLIM TOCHECK: what flag to use here
-    DEG_id_tag_update(obedit->data, 0);
+    if (synced_selection && (em->bm->totfacesel == 0)) {
+      continue;
+    }
+
+    DEG_id_tag_update(obedit->data, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
   }
 
@@ -1089,7 +1123,7 @@ static int minimize_stretch_modal(bContext *C, wmOperator *op, const wmEvent *ev
     case WHEELUPMOUSE:
       if (event->val == KM_PRESS) {
 				if (ms->blend < 1.0f) {
-					ms->blend += MIN2(0.1f, 1 - (ms->blend));
+					ms->blend = MIN2(ms->blend + 0.1f, 1.0);
           minimize_stretch_iteration(C, op, true);
         }
       }
@@ -1098,7 +1132,7 @@ static int minimize_stretch_modal(bContext *C, wmOperator *op, const wmEvent *ev
     case WHEELDOWNMOUSE:
       if (event->val == KM_PRESS) {
 				if (ms->blend > 0.0f) {
-					ms->blend -= MIN2(0.1f, ms->blend);
+					ms->blend = MAX2(ms->blend - 0.1f, 0.0);
           minimize_stretch_iteration(C, op, true);
         }
       }
