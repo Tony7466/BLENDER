@@ -224,6 +224,16 @@ class TEXT_MT_view(Menu):
 
         layout.separator()
 
+        op = layout.operator("wm.context_cycle_int", text="Zoom In")
+        op.data_path = "space_data.font_size"
+        op.reverse = False
+
+        op = layout.operator("wm.context_cycle_int", text="Zoom Out")
+        op.data_path = "space_data.font_size"
+        op.reverse = True
+
+        layout.separator()
+
         layout.menu("TEXT_MT_view_navigation")
 
         layout.separator()
