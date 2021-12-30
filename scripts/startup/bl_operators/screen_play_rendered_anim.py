@@ -25,6 +25,8 @@ def guess_player_path(preset):
         elif sys.platform == "win32":
             import winreg
 
+            # TODO: This can be removed if/when DJV adds their executable
+            # to the PATH. See issue #449 on their github project page.
             reg_path = r'SOFTWARE\Classes\djv\shell\open\command'
             reg_value = None
             try:
