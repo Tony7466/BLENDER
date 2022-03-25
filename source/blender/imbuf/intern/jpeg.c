@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup imbuf
@@ -33,13 +17,16 @@
 
 #include "BKE_idprop.h"
 
+#include "DNA_ID.h" /* ID property definitions. */
+
 #include "IMB_filetype.h"
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 #include "IMB_metadata.h"
 #include "imbuf.h"
-#include "jerror.h"
-#include "jpeglib.h"
+
+#include <jerror.h>
+#include <jpeglib.h>
 
 #include "IMB_colormanagement.h"
 #include "IMB_colormanagement_intern.h"
@@ -57,12 +44,13 @@ static ImBuf *ibJpegImageFromCinfo(struct jpeg_decompress_struct *cinfo, int fla
 static const uchar jpeg_default_quality = 75;
 static uchar ibuf_quality;
 
-int imb_is_a_jpeg(const unsigned char *mem)
+bool imb_is_a_jpeg(const unsigned char *mem, const size_t size)
 {
-  if ((mem[0] == 0xFF) && (mem[1] == 0xD8)) {
-    return 1;
+  const char magic[2] = {0xFF, 0xD8};
+  if (size < sizeof(magic)) {
+    return false;
   }
-  return 0;
+  return memcmp(mem, magic, sizeof(magic)) == 0;
 }
 
 /*----------------------------------------------------------
@@ -246,7 +234,7 @@ static boolean handle_app1(j_decompress_ptr cinfo)
       INPUT_BYTE(cinfo, neogeo[i], return false);
     }
     length = 0;
-    if (STREQLEN(neogeo, "NeoGeo", 6)) {
+    if (STRPREFIX(neogeo, "NeoGeo")) {
       struct NeoGeo_Word *neogeo_word = (struct NeoGeo_Word *)(neogeo + 6);
       ibuf_quality = neogeo_word->quality;
     }
@@ -362,7 +350,7 @@ static ImBuf *ibJpegImageFromCinfo(struct jpeg_decompress_struct *cinfo, int fla
          * That is why we need split it to the
          * common key/value here.
          */
-        if (!STREQLEN(str, "Blender", 7)) {
+        if (!STRPREFIX(str, "Blender")) {
           /*
            * Maybe the file have text that
            * we don't know "what it's", in that
@@ -410,14 +398,25 @@ static ImBuf *ibJpegImageFromCinfo(struct jpeg_decompress_struct *cinfo, int fla
       jpeg_finish_decompress(cinfo);
     }
 
-    jpeg_destroy((j_common_ptr)cinfo);
     if (ibuf) {
+      /* Density_unit may be 0 for unknown, 1 for dots/inch, or 2 for dots/cm. */
+      if (cinfo->density_unit == 1) {
+        /* Convert inches to meters. */
+        ibuf->ppm[0] = cinfo->X_density / 0.0254f;
+        ibuf->ppm[1] = cinfo->Y_density / 0.0254f;
+      }
+      else if (cinfo->density_unit == 2) {
+        ibuf->ppm[0] = cinfo->X_density * 100.0f;
+        ibuf->ppm[1] = cinfo->Y_density * 100.0f;
+      }
+
       ibuf->ftype = IMB_FTYPE_JPG;
       ibuf->foptions.quality = MIN2(ibuf_quality, 100);
     }
+    jpeg_destroy((j_common_ptr)cinfo);
   }
 
-  return (ibuf);
+  return ibuf;
 }
 
 ImBuf *imb_load_jpeg(const unsigned char *buffer,
@@ -429,7 +428,7 @@ ImBuf *imb_load_jpeg(const unsigned char *buffer,
   struct my_error_mgr jerr;
   ImBuf *ibuf;
 
-  if (!imb_is_a_jpeg(buffer)) {
+  if (!imb_is_a_jpeg(buffer, size)) {
     return NULL;
   }
 
@@ -452,7 +451,7 @@ ImBuf *imb_load_jpeg(const unsigned char *buffer,
 
   ibuf = ibJpegImageFromCinfo(cinfo, flags);
 
-  return (ibuf);
+  return ibuf;
 }
 
 static void write_jpeg(struct jpeg_compress_struct *cinfo, struct ImBuf *ibuf)
@@ -479,7 +478,7 @@ static void write_jpeg(struct jpeg_compress_struct *cinfo, struct ImBuf *ibuf)
     for (prop = ibuf->metadata->data.group.first; prop; prop = prop->next) {
       if (prop->type == IDP_STRING) {
         int text_len;
-        if (!strcmp(prop->name, "None")) {
+        if (STREQ(prop->name, "None")) {
           jpeg_write_marker(cinfo, JPEG_COM, (JOCTET *)IDP_String(prop), prop->len + 1);
         }
 
@@ -502,7 +501,8 @@ static void write_jpeg(struct jpeg_compress_struct *cinfo, struct ImBuf *ibuf)
          * The first "Blender" is a simple identify to help
          * in the read process.
          */
-        text_len = BLI_snprintf(text, text_size, "Blender:%s:%s", prop->name, IDP_String(prop));
+        text_len = BLI_snprintf_rlen(
+            text, text_size, "Blender:%s:%s", prop->name, IDP_String(prop));
         jpeg_write_marker(cinfo, JPEG_COM, (JOCTET *)text, text_len + 1);
 
         /* TODO(sergey): Ideally we will try to re-use allocation as
@@ -605,10 +605,10 @@ static int init_jpeg(FILE *outfile, struct jpeg_compress_struct *cinfo, struct I
   cinfo->dct_method = JDCT_FLOAT;
   jpeg_set_quality(cinfo, quality, true);
 
-  return (0);
+  return 0;
 }
 
-static int save_stdjpeg(const char *name, struct ImBuf *ibuf)
+static bool save_stdjpeg(const char *name, struct ImBuf *ibuf)
 {
   FILE *outfile;
   struct jpeg_compress_struct _cinfo, *cinfo = &_cinfo;
@@ -642,9 +642,9 @@ static int save_stdjpeg(const char *name, struct ImBuf *ibuf)
   return 1;
 }
 
-int imb_savejpeg(struct ImBuf *ibuf, const char *name, int flags)
+bool imb_savejpeg(struct ImBuf *ibuf, const char *filepath, int flags)
 {
 
   ibuf->flags = flags;
-  return save_stdjpeg(name, ibuf);
+  return save_stdjpeg(filepath, ibuf);
 }

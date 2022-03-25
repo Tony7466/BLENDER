@@ -13,11 +13,14 @@ in vec4 norAndFlag;
 #endif
 
 out vec4 finalColor;
+#ifdef VERT
+out float vertexCrease;
+#endif
 #ifdef EDGE
 out vec4 finalColorOuter;
 #endif
 #ifdef USE_GEOM_SHADER
-out int selectOveride;
+out int selectOverride;
 #endif
 
 bool test_occlusion()
@@ -44,8 +47,9 @@ void main()
   ivec4 m_data = data & dataMask;
 
 #if defined(VERT)
-  finalColor = EDIT_MESH_vertex_color(m_data.y);
-  gl_PointSize = sizeVertex * 2.0;
+  vertexCrease = float(m_data.z >> 4) / 15.0;
+  finalColor = EDIT_MESH_vertex_color(m_data.y, vertexCrease);
+  gl_PointSize = sizeVertex * ((vertexCrease > 0.0) ? 3.0 : 2.0);
   /* Make selected and active vertex always on top. */
   if ((data.x & VERT_SELECTED) != 0) {
     gl_Position.z -= 5e-7 * abs(gl_Position.w);
@@ -59,15 +63,15 @@ void main()
 #elif defined(EDGE)
 #  ifdef FLAT
   finalColor = EDIT_MESH_edge_color_inner(m_data.y);
-  selectOveride = 1;
+  selectOverride = 1;
 #  else
   finalColor = EDIT_MESH_edge_vertex_color(m_data.y);
-  selectOveride = (m_data.y & EDGE_SELECTED);
+  selectOverride = (m_data.y & EDGE_SELECTED);
 #  endif
 
-  float crease = float(m_data.z) / 255.0;
+  float edge_crease = float(m_data.z & 0xF) / 15.0;
   float bweight = float(m_data.w) / 255.0;
-  finalColorOuter = EDIT_MESH_edge_color_outer(m_data.y, m_data.x, crease, bweight);
+  finalColorOuter = EDIT_MESH_edge_color_outer(m_data.y, m_data.x, edge_crease, bweight);
 
   if (finalColorOuter.a > 0.0) {
     gl_Position.z -= 5e-7 * abs(gl_Position.w);

@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -41,9 +27,6 @@
 
 #define EPS_SATURATION 0.0005f
 
-/**
- * Apply callback to each vertex of the active vertex color layer.
- */
 bool ED_vpaint_color_transform(struct Object *ob,
                                VPaintTransform_Callback vpaint_tx_fn,
                                const void *user_data)
@@ -435,9 +418,7 @@ BLI_INLINE uint mcol_softlight(uint col_src, uint col_dst, int fac)
   cp_dst = (uchar *)&col_dst;
   cp_mix = (uchar *)&col_mix;
 
-  int i = 0;
-
-  for (i = 0; i < 4; i++) {
+  for (int i = 0; i < 4; i++) {
     if (cp_src[i] < 127) {
       temp = ((2 * ((cp_dst[i] / 2) + 64)) * cp_src[i]) / 255;
     }
@@ -612,7 +593,6 @@ BLI_INLINE uint mcol_alpha_sub(uint col_src, int fac)
   return col_mix;
 }
 
-/* wpaint has 'ED_wpaint_blend_tool' */
 uint ED_vpaint_blend_tool(const int tool, const uint col, const uint paintcol, const int alpha_i)
 {
   switch ((IMB_BlendMode)tool) {

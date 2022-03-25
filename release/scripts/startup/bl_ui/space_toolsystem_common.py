@@ -1,20 +1,4 @@
-# ##### BEGIN GPL LICENSE BLOCK #####
-#
-#  This program is free software; you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License
-#  as published by the Free Software Foundation; either version 2
-#  of the License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software Foundation,
-#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# ##### END GPL LICENSE BLOCK #####
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 # <pep8 compliant>
 import bpy
@@ -64,27 +48,29 @@ from collections import namedtuple
 ToolDef = namedtuple(
     "ToolDef",
     (
-        # Unique tool name (withing space & mode context).
+        # Unique tool name (within space & mode context).
         "idname",
         # The name to display in the interface.
         "label",
         # Description (for tool-tip), when not set, use the description of 'operator',
         # may be a string or a 'function(context, item, key-map) -> string'.
         "description",
-        # The name of the icon to use (found in ``release/datafiles/icons``) or None for no icon.
+        # The name of the icon to use (found in `release/datafiles/icons`) or None for no icon.
         "icon",
         # An optional cursor to use when this tool is active.
         "cursor",
+        # The properties to use for the widget.
+        "widget_properties",
         # An optional gizmo group to activate when the tool is set or None for no gizmo.
         "widget",
         # Optional key-map for tool, possible values are:
         #
-        # - ``None`` when the tool doesn't have a key-map.
+        # - `None` when the tool doesn't have a key-map.
         #   Also the default value when no key-map value is defined.
         #
         # - A string literal for the key-map name, the key-map items are located in the default key-map.
         #
-        # - ``()`` an empty tuple for a default name.
+        # - `()` an empty tuple for a default name.
         #   This is convenience functionality for generating a key-map name.
         #   So if a tool name is "Bone Size", in "Edit Armature" mode for the "3D View",
         #   All of these values are combined into an id, e.g:
@@ -96,7 +82,7 @@ ToolDef = namedtuple(
         # - A function that populates a key-maps passed in as an argument.
         #
         # - A tuple filled with triple's of:
-        #   ``(operator_id, operator_properties, keymap_item_args)``.
+        #   `(operator_id, operator_properties, keymap_item_args)`.
         #
         #   Use this to define the key-map in-line.
         #
@@ -104,7 +90,7 @@ ToolDef = namedtuple(
         #   Keep this functionality since it's likely useful for add-on key-maps.
         #
         # Warning: currently 'from_dict' this is a list of one item,
-        # so internally we can swap the key-map function for the key-map it's self.
+        # so internally we can swap the key-map function for the key-map itself.
         # This isn't very nice and may change, tool definitions shouldn't care about this.
         "keymap",
         # Optional data-block associated with this tool.
@@ -116,6 +102,8 @@ ToolDef = namedtuple(
         "draw_settings",
         # Optional draw cursor.
         "draw_cursor",
+        # Various options, see: `bpy.types.WorkSpaceTool.setup` options argument.
+        "options",
     )
 )
 del namedtuple
@@ -131,7 +119,9 @@ def from_dict(kw_args):
         "description": None,
         "icon": None,
         "cursor": None,
+        "options": None,
         "widget": None,
+        "widget_properties": None,
         "keymap": None,
         "data_block": None,
         "operator": None,
@@ -184,7 +174,7 @@ class ToolActivePanelHelper:
         ToolSelectPanelHelper.draw_active_tool_header(
             context,
             layout.column(),
-            show_tool_name=True,
+            show_tool_icon_always=True,
             tool_key=ToolSelectPanelHelper._tool_key_from_context(context, space_type=self.bl_space_type),
         )
 
@@ -196,12 +186,40 @@ class ToolSelectPanelHelper:
     - keymap_prefix:
       The text prefix for each key-map for this spaces tools.
     - tools_all():
-      Returns (context_mode, tools) tuple pair for all tools defined.
+      Generator (context_mode, tools) tuple pairs for all tools defined.
     - tools_from_context(context, mode=None):
-      Returns tools available in this context.
+      A generator for all tools available in the current context.
 
-    Each tool is a 'ToolDef' or None for a separator in the toolbar, use ``None``.
+    Tool Sequence Structure
+    =======================
+
+    Sequences of tools as returned by tools_all() and tools_from_context() are comprised of:
+
+    - A `ToolDef` instance (representing a tool that can be activated).
+    - None (a visual separator in the tool list).
+    - A tuple of `ToolDef` or None values
+      (representing a group of tools that can be selected between using a click-drag action).
+      Note that only a single level of nesting is supported (groups cannot contain sub-groups).
+    - A callable which takes a single context argument and returns a tuple of values described above.
+      When the context is None, all potential tools must be returned.
     """
+
+    @classmethod
+    def tools_all(cls):
+        """
+        Return all tools for this toolbar, this must include all available tools ignoring the current context.
+        The value is must be a sequence of (mode, tool_list) pairs, where mode may be object-mode edit-mode etc.
+        The mode may be None for tool-bars that don't make use of sub-modes.
+        """
+        raise Exception("Sub-class %r must implement this method!" % cls)
+
+    @classmethod
+    def tools_from_context(cls, context, mode=None):
+        """
+        Return all tools for the current context,
+        this result is used at run-time and may filter out tools to display.
+        """
+        raise Exception("Sub-class %r must implement this method!" % cls)
 
     @staticmethod
     def _tool_class_from_space_type(space_type):
@@ -218,7 +236,7 @@ class ToolSelectPanelHelper:
             assert(type(icon_name) is str)
             icon_value = _icon_cache.get(icon_name)
             if icon_value is None:
-                dirname = bpy.utils.system_resource('DATAFILES', "icons")
+                dirname = bpy.utils.system_resource('DATAFILES', path="icons")
                 filename = os.path.join(dirname, icon_name + ".dat")
                 try:
                     icon_value = bpy.app.icons.new_triangles_from_file(filename)
@@ -288,7 +306,6 @@ class ToolSelectPanelHelper:
                 else:
                     yield item
 
-
     @classmethod
     def _tool_get_active(cls, context, space_type, mode, with_icon=False):
         """
@@ -326,7 +343,7 @@ class ToolSelectPanelHelper:
             if item is not None:
                 if type(item) is tuple:
                     if item[0].idname == idname:
-                        index = cls._tool_group_active.get(item[0].idname, 0)
+                        index = cls._tool_group_active_get_from_item(item)
                         return (item[index], index)
                 else:
                     if item.idname == idname:
@@ -342,7 +359,7 @@ class ToolSelectPanelHelper:
             if item is not None:
                 if type(item) is tuple:
                     if item[0].idname == idname:
-                        index = cls._tool_group_active.get(item[0].idname, 0)
+                        index = cls._tool_group_active_get_from_item(item)
                         return (item[index], index, item)
                 else:
                     if item.idname == idname:
@@ -395,13 +412,26 @@ class ToolSelectPanelHelper:
             if item is not None:
                 if i == tool_index:
                     if type(item) is tuple:
-                        index = cls._tool_group_active.get(item[0].idname, 0)
+                        index = cls._tool_group_active_get_from_item(item)
                         item = item[index]
                     else:
                         index = -1
                     return (item, index)
                 i += 1
         return None, -1
+
+    @classmethod
+    def _tool_group_active_get_from_item(cls, item):
+        index = cls._tool_group_active.get(item[0].idname, 0)
+        # Can happen in the case a group is dynamic.
+        #
+        # NOTE(Campbell): that in this case it's possible the order could change too,
+        # So if we want to support this properly we will need to switch away from using
+        # an index and instead use an ID.
+        # Currently this is such a rare case occurrence that a range check is OK for now.
+        if index >= len(item):
+            index = 0
+        return index
 
     @classmethod
     def _tool_group_active_set_by_id(cls, context, idname_group, idname):
@@ -521,6 +551,9 @@ class ToolSelectPanelHelper:
                     visited.add(km_name)
 
                     yield (km_name, cls.bl_space_type, 'WINDOW', [])
+                    # Callable types don't use fall-backs.
+                    if isinstance(km_name, str):
+                        yield (km_name + " (fallback)", cls.bl_space_type, 'WINDOW', [])
 
     # -------------------------------------------------------------------------
     # Layout Generators
@@ -664,7 +697,7 @@ class ToolSelectPanelHelper:
                     # not ideal, write this every time :S
                     cls._tool_group_active[item[0].idname] = index
                 else:
-                    index = cls._tool_group_active.get(item[0].idname, 0)
+                    index = cls._tool_group_active_get_from_item(item)
 
                 item = item[index]
                 use_menu = True
@@ -745,7 +778,7 @@ class ToolSelectPanelHelper:
     def draw_active_tool_header(
             context, layout,
             *,
-            show_tool_name=False,
+            show_tool_icon_always=False,
             tool_key=None,
     ):
         if tool_key is None:
@@ -762,9 +795,16 @@ class ToolSelectPanelHelper:
             return None
         # Note: we could show 'item.text' here but it makes the layout jitter when switching tools.
         # Add some spacing since the icon is currently assuming regular small icon size.
-        layout.label(text="    " + item.label if show_tool_name else " ", icon_value=icon_value)
-        if show_tool_name:
+        if show_tool_icon_always:
+            layout.label(text="    " + item.label, icon_value=icon_value)
             layout.separator()
+        else:
+            if context.space_data.show_region_toolbar:
+                layout.template_icon(icon_value=0, scale=0.5)
+            else:
+                layout.template_icon(icon_value=icon_value, scale=0.5)
+            layout.separator()
+
         draw_settings = item.draw_settings
         if draw_settings is not None:
             draw_settings(context, layout, tool)
@@ -821,7 +861,8 @@ class ToolSelectPanelHelper:
         if is_active_tool:
             index_current = -1
         else:
-            index_current = cls._tool_group_active.get(item_group[0].idname, 0)
+            index_current = cls._tool_group_active_get_from_item(item_group)
+
         for i, sub_item in enumerate(item_group):
             is_active = (i == index_current)
 
@@ -871,7 +912,7 @@ class ToolSelectPanelHelper:
         if is_active_tool:
             index_current = -1
         else:
-            index_current = cls._tool_group_active.get(item_group[0].idname, 0)
+            index_current = cls._tool_group_active_get_from_item(item_group)
         for i, sub_item in enumerate(item_group):
             is_active = (i == index_current)
             props = pie.operator(
@@ -970,17 +1011,40 @@ def _activate_by_item(context, space_type, item, index, *, as_fallback=False):
         item_fallback, _index = cls._tool_get_active_by_index(context, select_index)
     # End calculating fallback.
 
+    gizmo_group = item.widget or ""
+
+    idname_fallback = (item_fallback and item_fallback.idname) or ""
+    keymap_fallback = (item_fallback and item_fallback.keymap and item_fallback.keymap[0]) or ""
+    if keymap_fallback:
+        keymap_fallback = keymap_fallback + " (fallback)"
+
     tool.setup(
         idname=item.idname,
         keymap=item.keymap[0] if item.keymap is not None else "",
         cursor=item.cursor or 'DEFAULT',
-        gizmo_group=item.widget or "",
+        options=item.options or set(),
+        gizmo_group=gizmo_group,
         data_block=item.data_block or "",
         operator=item.operator or "",
         index=index,
-        idname_fallback=(item_fallback and item_fallback.idname) or "",
-        keymap_fallback=(item_fallback and item_fallback.keymap and item_fallback.keymap[0]) or "",
+        idname_fallback=idname_fallback,
+        keymap_fallback=keymap_fallback,
     )
+
+    if (
+            (gizmo_group != "") and
+            (props := tool.gizmo_group_properties(gizmo_group))
+    ):
+        if props is None:
+            print("Error:", gizmo_group, "could not access properties!")
+        else:
+            gizmo_properties = item.widget_properties
+            if gizmo_properties is not None:
+                if not isinstance(gizmo_properties, list):
+                    raise Exception("expected a list, not a %r" % type(gizmo_properties))
+
+                from bl_keymap_utils.io import _init_properties_from_data
+                _init_properties_from_data(props, gizmo_properties)
 
     WindowManager = bpy.types.WindowManager
 
@@ -991,7 +1055,7 @@ def _activate_by_item(context, space_type, item, index, *, as_fallback=False):
     if item.draw_cursor is not None:
         def handle_fn(context, item, tool, xy):
             item.draw_cursor(context, tool, xy)
-        handle = WindowManager.draw_cursor_add(handle_fn, (context, item, tool), space_type)
+        handle = WindowManager.draw_cursor_add(handle_fn, (context, item, tool), space_type, 'WINDOW')
         handle_map[space_type] = handle
 
 
@@ -1023,7 +1087,7 @@ def activate_by_id_or_cycle(context, space_type, idname, *, offset=1, as_fallbac
     id_current = ""
     for item_group in cls.tools_from_context(context):
         if type(item_group) is tuple:
-            index_current = cls._tool_group_active.get(item_group[0].idname, 0)
+            index_current = cls._tool_group_active_get_from_item(item_group)
             for sub_item in item_group:
                 if sub_item.idname == idname:
                     id_current = item_group[index_current].idname

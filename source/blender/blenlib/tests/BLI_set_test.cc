@@ -1,8 +1,9 @@
-/* Apache License, Version 2.0 */
+/* SPDX-License-Identifier: Apache-2.0 */
 
 #include <set>
 #include <unordered_set>
 
+#include "BLI_exception_safety_test_utils.hh"
 #include "BLI_ghash.h"
 #include "BLI_rand.h"
 #include "BLI_set.hh"
@@ -220,10 +221,10 @@ TEST(set, OftenAddRemoveContained)
 TEST(set, UniquePtrValues)
 {
   Set<std::unique_ptr<int>> set;
-  set.add_new(std::unique_ptr<int>(new int()));
-  auto value1 = std::unique_ptr<int>(new int());
+  set.add_new(std::make_unique<int>());
+  auto value1 = std::make_unique<int>();
   set.add_new(std::move(value1));
-  set.add(std::unique_ptr<int>(new int()));
+  set.add(std::make_unique<int>());
 
   EXPECT_EQ(set.size(), 3);
 }
@@ -450,6 +451,123 @@ TEST(set, LookupKeyPtr)
   EXPECT_EQ(set.lookup_key_ptr({1, 50})->attached_data, 10);
   EXPECT_EQ(set.lookup_key_ptr({2, 50})->attached_data, 20);
   EXPECT_EQ(set.lookup_key_ptr({3, 50}), nullptr);
+}
+
+TEST(set, LookupKeyOrAdd)
+{
+  Set<MyKeyType> set;
+  set.lookup_key_or_add({1, 10});
+  set.lookup_key_or_add({2, 20});
+  EXPECT_EQ(set.size(), 2);
+  EXPECT_EQ(set.lookup_key_or_add({2, 40}).attached_data, 20);
+  EXPECT_EQ(set.size(), 2);
+  EXPECT_EQ(set.lookup_key_or_add({3, 40}).attached_data, 40);
+  EXPECT_EQ(set.size(), 3);
+  EXPECT_EQ(set.lookup_key_or_add({3, 60}).attached_data, 40);
+  EXPECT_EQ(set.size(), 3);
+}
+
+TEST(set, StringViewKeys)
+{
+  Set<std::string_view> set;
+  set.add("hello");
+  set.add("world");
+  EXPECT_FALSE(set.contains("worlds"));
+  EXPECT_TRUE(set.contains("world"));
+  EXPECT_TRUE(set.contains("hello"));
+}
+
+TEST(set, SpanConstructorExceptions)
+{
+  std::array<ExceptionThrower, 5> array = {1, 2, 3, 4, 5};
+  array[3].throw_during_copy = true;
+  Span<ExceptionThrower> span = array;
+
+  EXPECT_ANY_THROW({ Set<ExceptionThrower> set(span); });
+}
+
+TEST(set, CopyConstructorExceptions)
+{
+  Set<ExceptionThrower> set = {1, 2, 3, 4, 5};
+  set.lookup_key(3).throw_during_copy = true;
+  EXPECT_ANY_THROW({ Set<ExceptionThrower> set_copy(set); });
+}
+
+TEST(set, MoveConstructorExceptions)
+{
+  using SetType = Set<ExceptionThrower, 4>;
+  SetType set = {1, 2, 3};
+  set.lookup_key(2).throw_during_move = true;
+  EXPECT_ANY_THROW({ SetType set_moved(std::move(set)); });
+  EXPECT_EQ(set.size(), 0); /* NOLINT: bugprone-use-after-move */
+  set.add_multiple({3, 6, 7});
+  EXPECT_EQ(set.size(), 3);
+}
+
+TEST(set, AddNewExceptions)
+{
+  Set<ExceptionThrower> set;
+  ExceptionThrower value;
+  value.throw_during_copy = true;
+  EXPECT_ANY_THROW({ set.add_new(value); });
+  EXPECT_EQ(set.size(), 0);
+  EXPECT_ANY_THROW({ set.add_new(value); });
+  EXPECT_EQ(set.size(), 0);
+}
+
+TEST(set, AddExceptions)
+{
+  Set<ExceptionThrower> set;
+  ExceptionThrower value;
+  value.throw_during_copy = true;
+  EXPECT_ANY_THROW({ set.add(value); });
+  EXPECT_EQ(set.size(), 0);
+  EXPECT_ANY_THROW({ set.add(value); });
+  EXPECT_EQ(set.size(), 0);
+}
+
+TEST(set, ForwardIterator)
+{
+  Set<int> set = {5, 2, 6, 4, 1};
+  Set<int>::iterator iter1 = set.begin();
+  int value1 = *iter1;
+  Set<int>::iterator iter2 = iter1++;
+  EXPECT_EQ(*iter1, value1);
+  EXPECT_EQ(*iter2, *(++iter1));
+}
+
+TEST(set, GenericAlgorithms)
+{
+  Set<int> set = {1, 20, 30, 40};
+  EXPECT_FALSE(std::any_of(set.begin(), set.end(), [](int v) { return v == 5; }));
+  EXPECT_TRUE(std::any_of(set.begin(), set.end(), [](int v) { return v == 30; }));
+  EXPECT_EQ(std::count(set.begin(), set.end(), 20), 1);
+}
+
+TEST(set, RemoveDuringIteration)
+{
+  Set<int> set;
+  set.add(6);
+  set.add(5);
+  set.add(2);
+  set.add(3);
+
+  EXPECT_EQ(set.size(), 4);
+
+  using Iter = Set<int>::Iterator;
+  Iter begin = set.begin();
+  Iter end = set.end();
+  for (Iter iter = begin; iter != end; ++iter) {
+    int item = *iter;
+    if (item == 2) {
+      set.remove(iter);
+    }
+  }
+
+  EXPECT_EQ(set.size(), 3);
+  EXPECT_TRUE(set.contains(5));
+  EXPECT_TRUE(set.contains(6));
+  EXPECT_TRUE(set.contains(3));
 }
 
 /**

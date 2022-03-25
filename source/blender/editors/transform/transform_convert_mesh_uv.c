@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edtransform
@@ -30,6 +14,7 @@
 #include "BLI_math.h"
 
 #include "BKE_context.h"
+#include "BKE_customdata.h"
 #include "BKE_editmesh.h"
 #include "BKE_mesh_mapping.h"
 
@@ -44,7 +29,6 @@
 
 /* -------------------------------------------------------------------- */
 /** \name UVs Transform Creation
- *
  * \{ */
 
 static void UVsToTransData(const float aspect[2],
@@ -92,7 +76,7 @@ static void UVsToTransData(const float aspect[2],
  */
 static void uv_set_connectivity_distance(BMesh *bm, float *dists, const float aspect[2])
 {
-  /* Mostly copied from #editmesh_set_connectivity_distance. */
+  /* Mostly copied from #transform_convert_mesh_connectivity_distance. */
   BLI_LINKSTACK_DECLARE(queue, BMLoop *);
 
   /* Any BM_ELEM_TAG'd loop is added to 'queue_next', this makes sure that we don't add things
@@ -301,6 +285,9 @@ void createTransUVs(bContext *C, TransInfo *t)
 
       BM_elem_flag_enable(efa, BM_ELEM_TAG);
       BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
+        /* Make sure that the loop element flag is cleared for when we use it in
+         * uv_set_connectivity_distance later. */
+        BM_elem_flag_disable(l, BM_ELEM_TAG);
         if (uvedit_uv_select_test(scene, l, cd_loop_uv_offset)) {
           countsel++;
 
@@ -321,6 +308,8 @@ void createTransUVs(bContext *C, TransInfo *t)
         }
       }
     }
+
+    float *prop_dists = NULL;
 
     /* Support other objects using PET to adjust these, unless connected is enabled. */
     if (((is_prop_edit && !is_prop_connected) ? count : countsel) == 0) {
@@ -348,8 +337,6 @@ void createTransUVs(bContext *C, TransInfo *t)
 
     td = tc->data;
     td2d = tc->data_2d;
-
-    float *prop_dists = NULL;
 
     if (is_prop_connected) {
       prop_dists = MEM_callocN(em->bm->totloop * sizeof(float), "TransObPropDists(UV Editing)");
@@ -397,7 +384,7 @@ void createTransUVs(bContext *C, TransInfo *t)
 
   finally:
     if (is_prop_connected) {
-      MEM_freeN(prop_dists);
+      MEM_SAFE_FREE(prop_dists);
     }
     if (is_island_center) {
       BM_uv_element_map_free(elementmap);
@@ -411,7 +398,6 @@ void createTransUVs(bContext *C, TransInfo *t)
 
 /* -------------------------------------------------------------------- */
 /** \name UVs Transform Flush
- *
  * \{ */
 
 static void flushTransUVs(TransInfo *t)
@@ -462,7 +448,6 @@ static void flushTransUVs(TransInfo *t)
   }
 }
 
-/* helper for recalcData() - for Image Editor transforms */
 void recalcData_uv(TransInfo *t)
 {
   SpaceImage *sima = t->area->spacedata.first;
@@ -474,7 +459,7 @@ void recalcData_uv(TransInfo *t)
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
     if (tc->data_len) {
-      DEG_id_tag_update(tc->obedit->data, 0);
+      DEG_id_tag_update(tc->obedit->data, ID_RECALC_GEOMETRY);
     }
   }
 }

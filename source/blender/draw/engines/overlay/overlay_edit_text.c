@@ -1,20 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Copyright 2019, Blender Foundation.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2019 Blender Foundation. */
 
 /** \file
  * \ingroup draw_engine
@@ -22,7 +7,7 @@
 
 #include "DRW_render.h"
 
-#include "BKE_font.h"
+#include "BKE_vfont.h"
 
 #include "DNA_curve_types.h"
 
@@ -74,7 +59,7 @@ void OVERLAY_edit_text_cache_init(OVERLAY_Data *vedata)
 
 /* Use 2D quad corners to create a matrix that set
  * a [-1..1] quad at the right position. */
-static void v2_quad_corners_to_mat4(float corners[4][2], float r_mat[4][4])
+static void v2_quad_corners_to_mat4(const float corners[4][2], float r_mat[4][4])
 {
   unit_m4(r_mat);
   sub_v2_v2v2(r_mat[0], corners[1], corners[0]);
@@ -180,19 +165,12 @@ static void edit_text_cache_populate_boxes(OVERLAY_Data *vedata, Object *ob)
 void OVERLAY_edit_text_cache_populate(OVERLAY_Data *vedata, Object *ob)
 {
   OVERLAY_PrivateData *pd = vedata->stl->pd;
-  Curve *cu = ob->data;
   struct GPUBatch *geom;
   bool do_in_front = (ob->dtx & OB_DRAW_IN_FRONT) != 0;
 
-  bool has_surface = (cu->flag & (CU_FRONT | CU_BACK)) || cu->ext1 != 0.0f || cu->ext2 != 0.0f;
-  if ((cu->flag & CU_FAST) || !has_surface) {
-    geom = DRW_cache_text_edge_wire_get(ob);
-    if (geom) {
-      DRW_shgroup_call(pd->edit_text_wire_grp[do_in_front], geom, ob);
-    }
-  }
-  else {
-    /* object mode draws */
+  geom = DRW_cache_text_edge_wire_get(ob);
+  if (geom) {
+    DRW_shgroup_call(pd->edit_text_wire_grp[do_in_front], geom, ob);
   }
 
   edit_text_cache_populate_select(vedata, ob);

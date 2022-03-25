@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2014 Blender Foundation. All rights reserved. */
 #ifndef __BLENDER_TESTING_H__
 #define __BLENDER_TESTING_H__
 
@@ -15,6 +17,13 @@ const std::string &flags_test_asset_dir();   /* ../lib/tests in the SVN director
 const std::string &flags_test_release_dir(); /* bin/{blender version} in the build directory. */
 
 }  // namespace blender::tests
+
+#define EXPECT_V2_NEAR(a, b, eps) \
+  { \
+    EXPECT_NEAR(a[0], b[0], eps); \
+    EXPECT_NEAR(a[1], b[1], eps); \
+  } \
+  (void)0
 
 #define EXPECT_V3_NEAR(a, b, eps) \
   { \
@@ -136,5 +145,23 @@ inline void EXPECT_EQ_ARRAY_ND(const T *expected, const T *actual, const size_t 
     }
   }
 }
+
+#ifdef _WIN32
+#  define ABORT_PREDICATE ::testing::ExitedWithCode(3)
+#else
+#  define ABORT_PREDICATE ::testing::KilledBySignal(SIGABRT)
+#endif
+
+/* Test macro for when BLI_assert() is expected to fail.
+ * Note that the EXPECT_BLI_ASSERT macro is a no-op, unless used in a debug build with
+ * WITH_ASSERT_ABORT=ON. */
+#if defined(WITH_ASSERT_ABORT) && !defined(NDEBUG)
+/* EXPECT_EXIT() is used as that's the only exit-expecting function in GTest that allows us to
+ * check for SIGABRT. */
+#  define EXPECT_BLI_ASSERT(function_call, expect_message) \
+    EXPECT_EXIT(function_call, ABORT_PREDICATE, expect_message)
+#else
+#  define EXPECT_BLI_ASSERT(function_call, expect_message) function_call
+#endif
 
 #endif  // __BLENDER_TESTING_H__

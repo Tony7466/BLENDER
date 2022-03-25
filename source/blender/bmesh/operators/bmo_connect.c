@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bmesh
@@ -58,7 +44,7 @@ static int bm_face_connect_verts(BMesh *bm, BMFace *f, const bool check_degenera
   l_iter = l_first = BM_FACE_FIRST_LOOP(f);
   do {
     if (BMO_vert_flag_test(bm, l_iter->v, VERT_INPUT) &&
-        /* ensure this vertex isnt part of a contiguous group */
+        /* Ensure this vertex isn't part of a contiguous group. */
         ((BMO_vert_flag_test(bm, l_iter->prev->v, VERT_INPUT) == 0) ||
          (BMO_vert_flag_test(bm, l_iter->next->v, VERT_INPUT) == 0))) {
       if (!l_tag_prev) {
@@ -211,7 +197,7 @@ void bmo_connect_verts_exec(BMesh *bm, BMOperator *op)
   /* connect faces */
   while ((f = BLI_LINKSTACK_POP(faces))) {
     if (bm_face_connect_verts(bm, f, check_degenerate) == -1) {
-      BMO_error_raise(bm, op, BMERR_CONNECTVERT_FAILED, NULL);
+      BMO_error_raise(bm, op, BMO_ERROR_FATAL, "Could not connect vertices");
     }
   }
 

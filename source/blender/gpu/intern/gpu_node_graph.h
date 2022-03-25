@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2005 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup gpu
@@ -23,20 +7,16 @@
  * Intermediate node graph for generating GLSL shaders.
  */
 
-#ifndef __GPU_NODE_GRAPH_H__
-#define __GPU_NODE_GRAPH_H__
+#pragma once
 
 #include "DNA_customdata_types.h"
 #include "DNA_listBase.h"
 
-#include "GPU_glew.h"
 #include "GPU_material.h"
 #include "GPU_shader.h"
 
 struct GPUNode;
 struct GPUOutput;
-struct GPUShader;
-struct GPUVertAttrLayers;
 struct ListBase;
 
 typedef enum eGPUDataSource {
@@ -44,6 +24,7 @@ typedef enum eGPUDataSource {
   GPU_SOURCE_CONSTANT,
   GPU_SOURCE_UNIFORM,
   GPU_SOURCE_ATTR,
+  GPU_SOURCE_UNIFORM_ATTR,
   GPU_SOURCE_BUILTIN,
   GPU_SOURCE_STRUCT,
   GPU_SOURCE_TEX,
@@ -55,6 +36,7 @@ typedef enum eGPUDataSource {
 typedef enum {
   GPU_NODE_LINK_NONE = 0,
   GPU_NODE_LINK_ATTR,
+  GPU_NODE_LINK_UNIFORM_ATTR,
   GPU_NODE_LINK_BUILTIN,
   GPU_NODE_LINK_COLORBAND,
   GPU_NODE_LINK_CONSTANT,
@@ -98,6 +80,8 @@ struct GPUNodeLink {
     struct GPUOutput *output;
     /* GPU_NODE_LINK_ATTR */
     struct GPUMaterialAttribute *attr;
+    /* GPU_NODE_LINK_UNIFORM_ATTR */
+    struct GPUUniformAttr *uniform_attr;
     /* GPU_NODE_LINK_IMAGE_BLENDER */
     struct GPUMaterialTexture *texture;
   };
@@ -132,38 +116,59 @@ typedef struct GPUInput {
     struct GPUMaterialTexture *texture;
     /* GPU_SOURCE_ATTR */
     struct GPUMaterialAttribute *attr;
+    /* GPU_SOURCE_UNIFORM_ATTR */
+    struct GPUUniformAttr *uniform_attr;
     /* GPU_SOURCE_VOLUME_GRID | GPU_SOURCE_VOLUME_GRID_TRANSFORM */
     struct GPUMaterialVolumeGrid *volume_grid;
   };
 } GPUInput;
 
+typedef struct GPUNodeGraphOutputLink {
+  struct GPUNodeGraphOutputLink *next, *prev;
+  int hash;
+  GPUNodeLink *outlink;
+} GPUNodeGraphOutputLink;
+
 typedef struct GPUNodeGraph {
   /* Nodes */
   ListBase nodes;
 
-  /* Output. */
+  /* Main Output. */
   GPUNodeLink *outlink;
+  /* List of GPUNodeGraphOutputLink */
+  ListBase outlink_aovs;
 
   /* Requested attributes and textures. */
   ListBase attributes;
   ListBase textures;
   ListBase volume_grids;
+
+  /* The list of uniform attributes. */
+  GPUUniformAttrList uniform_attrs;
 } GPUNodeGraph;
 
 /* Node Graph */
 
 void gpu_node_graph_prune_unused(GPUNodeGraph *graph);
+void gpu_node_graph_finalize_uniform_attrs(GPUNodeGraph *graph);
+/**
+ * Free intermediate node graph.
+ */
 void gpu_node_graph_free_nodes(GPUNodeGraph *graph);
+/**
+ * Free both node graph and requested attributes and textures.
+ */
 void gpu_node_graph_free(GPUNodeGraph *graph);
 
 /* Material calls */
 
 struct GPUNodeGraph *gpu_material_node_graph(struct GPUMaterial *material);
+/**
+ * Returns the address of the future pointer to coba_tex.
+ */
 struct GPUTexture **gpu_material_ramp_texture_row_set(struct GPUMaterial *mat,
                                                       int size,
                                                       float *pixels,
                                                       float *row);
 
 struct GSet *gpu_material_used_libraries(struct GPUMaterial *material);
-
-#endif /* __GPU_NODE_GRAPH_H__ */

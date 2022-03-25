@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <iomanip>
 
@@ -28,7 +14,7 @@ Node &Graph::new_node(StringRef label)
   Node *node = new Node(*this);
   nodes_.append(std::unique_ptr<Node>(node));
   top_level_nodes_.add_new(node);
-  node->set_attribute("label", label);
+  node->attributes.set("label", label);
   return *node;
 }
 
@@ -37,7 +23,7 @@ Cluster &Graph::new_cluster(StringRef label)
   Cluster *cluster = new Cluster(*this);
   clusters_.append(std::unique_ptr<Cluster>(cluster));
   top_level_clusters_.add_new(cluster);
-  cluster->set_attribute("label", label);
+  cluster->attributes.set("label", label);
   return *cluster;
 }
 
@@ -60,7 +46,7 @@ void Cluster::set_parent_cluster(Cluster *new_parent)
   if (parent_ == new_parent) {
     return;
   }
-  else if (parent_ == nullptr) {
+  if (parent_ == nullptr) {
     graph_.top_level_clusters_.remove(this);
     new_parent->children_.add_new(this);
   }
@@ -80,7 +66,7 @@ void Node::set_parent_cluster(Cluster *cluster)
   if (cluster_ == cluster) {
     return;
   }
-  else if (cluster_ == nullptr) {
+  if (cluster_ == nullptr) {
     graph_.top_level_nodes_.remove(this);
     cluster->nodes_.add_new(this);
   }
@@ -110,11 +96,23 @@ void Cluster::set_random_cluster_bgcolors()
   float hue = rand() / (float)RAND_MAX;
   float staturation = 0.3f;
   float value = 0.8f;
-  this->set_attribute("bgcolor", color_attr_from_hsv(hue, staturation, value));
+  this->attributes.set("bgcolor", color_attr_from_hsv(hue, staturation, value));
 
   for (Cluster *cluster : children_) {
     cluster->set_random_cluster_bgcolors();
   }
+}
+
+bool Cluster::contains(Node &node) const
+{
+  Cluster *current = node.parent_cluster();
+  while (current != nullptr) {
+    if (current == this) {
+      return true;
+    }
+    current = current->parent_;
+  }
+  return false;
 }
 
 /* Dot Generation
@@ -155,7 +153,7 @@ std::string UndirectedGraph::to_dot_string() const
 void Graph::export__declare_nodes_and_clusters(std::stringstream &ss) const
 {
   ss << "graph ";
-  attributes_.export__as_bracket_list(ss);
+  attributes.export__as_bracket_list(ss);
   ss << "\n\n";
 
   for (Node *node : top_level_nodes_) {
@@ -169,10 +167,10 @@ void Graph::export__declare_nodes_and_clusters(std::stringstream &ss) const
 
 void Cluster::export__declare_nodes_and_clusters(std::stringstream &ss) const
 {
-  ss << "subgraph cluster_" << (uintptr_t)this << " {\n";
+  ss << "subgraph " << this->name() << " {\n";
 
   ss << "graph ";
-  attributes_.export__as_bracket_list(ss);
+  attributes.export__as_bracket_list(ss);
   ss << "\n\n";
 
   for (Node *node : nodes_) {
@@ -192,7 +190,7 @@ void DirectedEdge::export__as_edge_statement(std::stringstream &ss) const
   ss << " -> ";
   b_.to_dot_string(ss);
   ss << " ";
-  attributes_.export__as_bracket_list(ss);
+  attributes.export__as_bracket_list(ss);
 }
 
 void UndirectedEdge::export__as_edge_statement(std::stringstream &ss) const
@@ -201,19 +199,27 @@ void UndirectedEdge::export__as_edge_statement(std::stringstream &ss) const
   ss << " -- ";
   b_.to_dot_string(ss);
   ss << " ";
-  attributes_.export__as_bracket_list(ss);
+  attributes.export__as_bracket_list(ss);
 }
 
-void AttributeList::export__as_bracket_list(std::stringstream &ss) const
+void Attributes::export__as_bracket_list(std::stringstream &ss) const
 {
   ss << "[";
   attributes_.foreach_item([&](StringRef key, StringRef value) {
     if (StringRef(value).startswith("<")) {
-      /* Don't draw the quotes, this is an html-like value. */
+      /* Don't draw the quotes, this is an HTML-like value. */
       ss << key << "=" << value << ", ";
     }
     else {
-      ss << key << "=\"" << value << "\", ";
+      ss << key << "=\"";
+      for (char c : value) {
+        if (c == '\"') {
+          /* Escape double quotes. */
+          ss << '\\';
+        }
+        ss << c;
+      }
+      ss << "\", ";
     }
   });
   ss << "]";
@@ -228,7 +234,7 @@ void Node::export__as_declaration(std::stringstream &ss) const
 {
   this->export__as_id(ss);
   ss << " ";
-  attributes_.export__as_bracket_list(ss);
+  attributes.export__as_bracket_list(ss);
   ss << "\n";
 }
 
@@ -255,10 +261,10 @@ NodeWithSocketsRef::NodeWithSocketsRef(Node &node,
 {
   std::stringstream ss;
 
-  ss << "<<table border=\"0\" cellspacing=\"3\">";
+  ss << R"(<<table border="0" cellspacing="3">)";
 
   /* Header */
-  ss << "<tr><td colspan=\"3\" align=\"center\"><b>";
+  ss << R"(<tr><td colspan="3" align="center"><b>)";
   ss << ((name.size() == 0) ? "No Name" : name);
   ss << "</b></td></tr>";
 
@@ -271,7 +277,7 @@ NodeWithSocketsRef::NodeWithSocketsRef(Node &node,
       if (name.size() == 0) {
         name = "No Name";
       }
-      ss << "<td align=\"left\" port=\"in" << i << "\">";
+      ss << R"(<td align="left" port="in)" << i << "\">";
       ss << name;
       ss << "</td>";
     }
@@ -284,7 +290,7 @@ NodeWithSocketsRef::NodeWithSocketsRef(Node &node,
       if (name.size() == 0) {
         name = "No Name";
       }
-      ss << "<td align=\"right\" port=\"out" << i << "\">";
+      ss << R"(<td align="right" port="out)" << i << "\">";
       ss << name;
       ss << "</td>";
     }
@@ -296,7 +302,7 @@ NodeWithSocketsRef::NodeWithSocketsRef(Node &node,
 
   ss << "</table>>";
 
-  node_->set_attribute("label", ss.str());
+  node_->attributes.set("label", ss.str());
   node_->set_shape(Attr_shape::Rectangle);
 }
 

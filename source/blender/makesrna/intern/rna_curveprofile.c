@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -23,9 +9,6 @@
 
 #include "DNA_curve_types.h"
 #include "DNA_curveprofile_types.h"
-#include "DNA_texture_types.h"
-
-#include "BLI_utildefines.h"
 
 #include "RNA_define.h"
 #include "rna_internal.h"
@@ -37,30 +20,7 @@
 
 #  include "RNA_access.h"
 
-#  include "DNA_image_types.h"
-#  include "DNA_material_types.h"
-#  include "DNA_movieclip_types.h"
-#  include "DNA_node_types.h"
-#  include "DNA_object_types.h"
-#  include "DNA_particle_types.h"
-#  include "DNA_sequence_types.h"
-
-#  include "MEM_guardedalloc.h"
-
-#  include "BKE_colorband.h"
 #  include "BKE_curveprofile.h"
-#  include "BKE_image.h"
-#  include "BKE_linestyle.h"
-#  include "BKE_movieclip.h"
-#  include "BKE_node.h"
-#  include "BKE_sequencer.h"
-
-#  include "DEG_depsgraph.h"
-
-#  include "ED_node.h"
-
-#  include "IMB_colormanagement.h"
-#  include "IMB_imbuf.h"
 
 /**
  * Set both handle types for all selected points in the profile-- faster than changing types
@@ -136,7 +96,7 @@ static void rna_CurveProfile_remove_point(CurveProfile *profile,
 static void rna_CurveProfile_evaluate(struct CurveProfile *profile,
                                       ReportList *reports,
                                       float length_portion,
-                                      float *location)
+                                      float location[2])
 {
   if (!profile->table) {
     BKE_report(reports, RPT_ERROR, "CurveProfile table not initialized, call initialize()");
@@ -146,7 +106,7 @@ static void rna_CurveProfile_evaluate(struct CurveProfile *profile,
 
 static void rna_CurveProfile_initialize(struct CurveProfile *profile, int segments_len)
 {
-  BKE_curveprofile_initialize(profile, (short)segments_len);
+  BKE_curveprofile_init(profile, (short)segments_len);
 }
 
 static void rna_CurveProfile_update(struct CurveProfile *profile)
@@ -279,6 +239,9 @@ static void rna_def_curveprofile(BlenderRNA *brna)
 
   func = RNA_def_function(srna, "update", "rna_CurveProfile_update");
   RNA_def_function_ui_description(func, "Refresh internal data, remove doubles and clip points");
+
+  func = RNA_def_function(srna, "reset_view", "BKE_curveprofile_reset_view");
+  RNA_def_function_ui_description(func, "Reset the curve profile grid to its clipping size");
 
   func = RNA_def_function(srna, "initialize", "rna_CurveProfile_initialize");
   parm = RNA_def_int(func,

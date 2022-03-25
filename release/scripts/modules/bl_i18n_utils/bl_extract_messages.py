@@ -1,20 +1,4 @@
-# ***** BEGIN GPL LICENSE BLOCK *****
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
-# of the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# ***** END GPL LICENSE BLOCK *****
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 # <pep8 compliant>
 
@@ -22,8 +6,6 @@
 # XXX: This script is meant to be used from inside Blender!
 #      You should not directly use this script, rather use update_msg.py!
 
-import collections
-import copy
 import datetime
 import os
 import re
@@ -177,7 +159,7 @@ def print_info(reports, pot):
                 _print("\t“{}”|“{}”:".format(*key))
                 # We support multi-lines tooltips now...
                 # ~ if multi_lines and key in multi_lines:
-                    # ~ _print("\t\t-> newline in this message!")
+                # ~     _print("\t\t-> newline in this message!")
                 if not_capitalized and key in not_capitalized:
                     _print("\t\t-> message not capitalized!")
                 if end_point and key in end_point:
@@ -254,27 +236,50 @@ def dump_rna_messages(msgs, reports, settings, verbose=False):
 
     # Function definitions
     def walk_properties(cls):
+        # This handles properties whose name is the same as their identifier.
+        # Usually, it means that those are internal properties not exposed in the UI, however there are some cases
+        # where the UI label is actually defined and same as the identifier (color spaces e.g., `RGB` etc.).
+        # So we only exclude those properties in case they belong to an operator for now.
+        def prop_name_validate(cls, prop_name, prop_identifier):
+            if prop_name != prop_identifier:
+                return True
+            # Heuristic: A lot of operator's HIDDEN properties have no UI label/description.
+            # While this is not ideal (for API doc purposes, description should always be provided),
+            # for now skip those properties.
+            # NOTE: keep in sync with C code in ui_searchbox_region_draw_cb__operator().
+            if issubclass(cls, bpy.types.OperatorProperties) and "_OT_" in cls.__name__:
+                return False
+            # Heuristic: If UI label is not capitalized, it is likely a private (undocumented) property,
+            # that can be skipped.
+            if prop_name and not prop_name[0].isupper():
+                return False
+            return True
+
         bl_rna = cls.bl_rna
         # Get our parents' properties, to not export them multiple times.
         bl_rna_base = bl_rna.base
+        bl_rna_base_props = set()
         if bl_rna_base:
-            bl_rna_base_props = set(bl_rna_base.properties.values())
-        else:
-            bl_rna_base_props = set()
+            bl_rna_base_props |= set(bl_rna_base.properties.values())
+        for cls_base in cls.__bases__:
+            bl_rna_base = getattr(cls_base, "bl_rna", None)
+            if not bl_rna_base:
+                continue
+            bl_rna_base_props |= set(bl_rna_base.properties.values())
 
         props = sorted(bl_rna.properties, key=lambda p: p.identifier)
         for prop in props:
             # Only write this property if our parent hasn't got it.
             if prop in bl_rna_base_props:
                 continue
-            if prop.identifier == "rna_type":
+            if prop.identifier in {"rna_type", "bl_icon", "icon"}:
                 continue
             reports["rna_props"].append((cls, prop))
 
             msgsrc = "bpy.types.{}.{}".format(bl_rna.identifier, prop.identifier)
             msgctxt = prop.translation_context or default_context
 
-            if prop.name and (prop.name != prop.identifier or msgctxt != default_context):
+            if prop.name and prop_name_validate(cls, prop.name, prop.identifier):
                 process_msg(msgs, msgctxt, prop.name, msgsrc, reports, check_ctxt_rna, settings)
             if prop.description:
                 process_msg(msgs, default_context, prop.description, msgsrc, reports, check_ctxt_rna_tip, settings)
@@ -284,7 +289,7 @@ def dump_rna_messages(msgs, reports, settings, verbose=False):
                 for item in prop.enum_items:
                     msgsrc = "bpy.types.{}.{}:'{}'".format(bl_rna.identifier, prop.identifier, item.identifier)
                     done_items.add(item.identifier)
-                    if item.name and item.name != item.identifier:
+                    if item.name and prop_name_validate(cls, item.name, item.identifier):
                         process_msg(msgs, msgctxt, item.name, msgsrc, reports, check_ctxt_rna, settings)
                     if item.description:
                         process_msg(msgs, default_context, item.description, msgsrc, reports, check_ctxt_rna_tip,
@@ -294,7 +299,7 @@ def dump_rna_messages(msgs, reports, settings, verbose=False):
                         continue
                     msgsrc = "bpy.types.{}.{}:'{}'".format(bl_rna.identifier, prop.identifier, item.identifier)
                     done_items.add(item.identifier)
-                    if item.name and item.name != item.identifier:
+                    if item.name and prop_name_validate(cls, item.name, item.identifier):
                         process_msg(msgs, msgctxt, item.name, msgsrc, reports, check_ctxt_rna, settings)
                     if item.description:
                         process_msg(msgs, default_context, item.description, msgsrc, reports, check_ctxt_rna_tip,
@@ -380,7 +385,15 @@ def dump_rna_messages(msgs, reports, settings, verbose=False):
             if cls in blacklist_rna_class:
                 return cls.__name__
             cls_id = ""
-            bl_rna = cls.bl_rna
+            bl_rna = getattr(cls, "bl_rna", None)
+            # It seems that py-defined 'wrappers' RNA classes (like `MeshEdge` in `bpy_types.py`) need to be accessed
+            # once from `bpy.types` before they have a valid `bl_rna` member.
+            # Weirdly enough, this is only triggered on release builds, debug builds somehow do not have that issue.
+            if bl_rna is None:
+                if getattr(bpy.types, cls.__name__, None) is not None:
+                    bl_rna = getattr(cls, "bl_rna", None)
+                if bl_rna is None:
+                    raise TypeError("Unknown RNA class")
             while bl_rna:
                 cls_id = bl_rna.identifier + "." + cls_id
                 bl_rna = bl_rna.base
@@ -456,9 +469,11 @@ def dump_py_messages_from_files(msgs, reports, files, settings):
         Recursively get strings, needed in case we have "Blah" + "Blah", passed as an argument in that case it won't
         evaluate to a string. However, break on some kind of stopper nodes, like e.g. Subscript.
         """
-        if type(node) == ast.Str:
+        # New in py 3.8: all constants are of type 'ast.Constant'.
+        # 'ast.Str' will have to be removed when we officially switch to this version.
+        if type(node) in {ast.Str, getattr(ast, "Constant", None)}:
             eval_str = ast.literal_eval(node)
-            if eval_str:
+            if eval_str and type(eval_str) == str:
                 yield (is_split, eval_str, (node,))
         else:
             is_split = (type(node) in separate_nodes)
@@ -556,6 +571,7 @@ def dump_py_messages_from_files(msgs, reports, files, settings):
         "msgid": ((("msgctxt",), _ctxt_to_ctxt),
                   ),
         "message": (),
+        "heading": (),
     }
 
     context_kw_set = {}
@@ -624,6 +640,7 @@ def dump_py_messages_from_files(msgs, reports, files, settings):
         }
 
     for fp in files:
+        # ~ print("Checking File ", fp)
         with open(fp, 'r', encoding="utf8") as filedata:
             root_node = ast.parse(filedata.read(), fp, 'exec')
 
@@ -631,8 +648,8 @@ def dump_py_messages_from_files(msgs, reports, files, settings):
 
         for node in ast.walk(root_node):
             if type(node) == ast.Call:
-                # print("found function at")
-                # print("%s:%d" % (fp, node.lineno))
+                # ~ print("found function at")
+                # ~ print("%s:%d" % (fp, node.lineno))
 
                 # We can't skip such situations! from blah import foo\nfoo("bar") would also be an ast.Name func!
                 if type(node.func) == ast.Name:
@@ -657,31 +674,31 @@ def dump_py_messages_from_files(msgs, reports, files, settings):
                                 if kw.arg == arg_kw:
                                     context_elements[arg_kw] = kw.value
                                     break
-                    # print(context_elements)
+                    # ~ print(context_elements)
                     for kws, proc in translate_kw[msgid]:
                         if set(kws) <= context_elements.keys():
                             args = tuple(context_elements[k] for k in kws)
-                            #print("running ", proc, " with ", args)
+                            # ~ print("running ", proc, " with ", args)
                             ctxt = proc(*args)
                             if ctxt:
                                 msgctxts[msgid] = ctxt
                                 break
 
-                # print(translate_args)
+                # ~ print(func_args)
                 # do nothing if not found
                 for arg_kw, (arg_pos, _) in func_args.items():
                     msgctxt = msgctxts[arg_kw]
                     estr_lst = [(None, ())]
                     if arg_pos < len(node.args):
                         estr_lst = extract_strings_split(node.args[arg_pos])
-                        #print(estr, nds)
                     else:
                         for kw in node.keywords:
                             if kw.arg == arg_kw:
+                                # ~ print(kw.arg, kw.value)
                                 estr_lst = extract_strings_split(kw.value)
                                 break
-                        #print(estr, nds)
                     for estr, nds in estr_lst:
+                        # ~ print(estr, nds)
                         if estr:
                             if nds:
                                 msgsrc = "{}:{}".format(fp_rel, sorted({nd.lineno for nd in nds})[0])
@@ -731,7 +748,11 @@ def dump_src_messages(msgs, reports, settings):
     _clean_str = re.compile(settings.str_clean_re).finditer
 
     def clean_str(s):
-        return "".join(m.group("clean") for m in _clean_str(s))
+        # The encode/decode to/from 'raw_unicode_escape' allows to transform the C-type unicode hexadecimal escapes
+        # (like '\u2715' for the '×' symbol) back into a proper unicode character.
+        return "".join(
+            m.group("clean") for m in _clean_str(s)
+        ).encode('raw_unicode_escape').decode('raw_unicode_escape')
 
     def dump_src_file(path, rel_path, msgs, reports, settings):
         def process_entry(_msgctxt, _msgid):
@@ -840,7 +861,7 @@ def dump_messages(do_messages, do_checks, settings):
     addons = utils.enable_addons(support={"OFFICIAL"})
     # Note this is not needed if we have been started with factory settings, but just in case...
     # XXX This is not working well, spent a whole day trying to understand *why* we still have references of
-    #     those removed calsses in things like `bpy.types.OperatorProperties.__subclasses__()`
+    #     those removed classes in things like `bpy.types.OperatorProperties.__subclasses__()`
     #     (could not even reproduce it from regular py console in Blender with UI...).
     #     For some reasons, cleanup does not happen properly, *and* we have no way to tell which class is valid
     #     and which has been unregistered. So for now, just go for the dirty, easy way: do not disable add-ons. :(
@@ -858,7 +879,10 @@ def dump_messages(do_messages, do_checks, settings):
     dump_src_messages(msgs, reports, settings)
 
     # Get strings from addons' categories.
-    for uid, label, tip in bpy.types.WindowManager.addon_filter[1]['items'](bpy.context.window_manager, bpy.context):
+    for uid, label, tip in bpy.types.WindowManager.addon_filter.keywords['items'](
+            bpy.context.window_manager,
+            bpy.context,
+    ):
         process_msg(msgs, settings.DEFAULT_CONTEXT, label, "Add-ons' categories", reports, None, settings)
         if tip:
             process_msg(msgs, settings.DEFAULT_CONTEXT, tip, "Add-ons' categories", reports, None, settings)

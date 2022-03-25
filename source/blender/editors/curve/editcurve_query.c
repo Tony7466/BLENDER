@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edcurve
@@ -26,6 +10,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_listbase.h"
 #include "BLI_math.h"
 
 #include "BKE_curve.h"
@@ -62,7 +47,7 @@ static void ED_curve_pick_vert__do_closest(void *userData,
     bool is_changed;
   } *data = userData;
 
-  short flag;
+  uint8_t flag;
   float dist_test;
 
   if (bp) {
@@ -167,10 +152,9 @@ bool ED_curve_pick_vert(ViewContext *vc,
 void ED_curve_nurb_vert_selected_find(
     Curve *cu, View3D *v3d, Nurb **r_nu, BezTriple **r_bezt, BPoint **r_bp)
 {
-  /* in nu and (bezt or bp) selected are written if there's 1 sel.  */
-  /* if more points selected in 1 spline: return only nu, bezt and bp are 0 */
+  /* In nu and (bezt or bp) selected are written if there's 1 sel. */
+  /* If more points selected in 1 spline: return only nu, bezt and bp are 0. */
   ListBase *editnurb = &cu->editnurb->nurbs;
-  Nurb *nu1;
   BezTriple *bezt1;
   BPoint *bp1;
   int a;
@@ -179,13 +163,13 @@ void ED_curve_nurb_vert_selected_find(
   *r_bezt = NULL;
   *r_bp = NULL;
 
-  for (nu1 = editnurb->first; nu1; nu1 = nu1->next) {
+  LISTBASE_FOREACH (Nurb *, nu1, editnurb) {
     if (nu1->type == CU_BEZIER) {
       bezt1 = nu1->bezt;
       a = nu1->pntsu;
       while (a--) {
         if (BEZT_ISSEL_ANY_HIDDENHANDLES(v3d, bezt1)) {
-          if (*r_nu != NULL && *r_nu != nu1) {
+          if (!ELEM(*r_nu, NULL, nu1)) {
             *r_nu = NULL;
             *r_bp = NULL;
             *r_bezt = NULL;
@@ -209,7 +193,7 @@ void ED_curve_nurb_vert_selected_find(
       a = nu1->pntsu * nu1->pntsv;
       while (a--) {
         if (bp1->f1 & SELECT) {
-          if (*r_nu != NULL && *r_nu != nu1) {
+          if (!ELEM(*r_nu, NULL, nu1)) {
             *r_bp = NULL;
             *r_bezt = NULL;
             *r_nu = NULL;

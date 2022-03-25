@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2005 by the Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup modifiers
@@ -29,6 +13,7 @@
 
 #include "BLT_translation.h"
 
+#include "DNA_defaults.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
@@ -49,14 +34,13 @@
 #include "UI_resources.h"
 
 #include "RNA_access.h"
+#include "RNA_prototypes.h"
 
 #include "MOD_modifiertypes.h"
 #include "MOD_ui_common.h"
 #include "MOD_util.h"
 
 #include "BLO_read_write.h"
-
-#include "BLI_strict_flags.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -74,19 +58,14 @@ static void initData(ModifierData *md)
 {
   CorrectiveSmoothModifierData *csmd = (CorrectiveSmoothModifierData *)md;
 
-  csmd->bind_coords = NULL;
-  csmd->bind_coords_num = 0;
+  BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(csmd, modifier));
 
-  csmd->lambda = 0.5f;
-  csmd->scale = 1.0f;
-  csmd->repeat = 5;
-  csmd->flag = 0;
-  csmd->smooth_type = MOD_CORRECTIVESMOOTH_SMOOTH_SIMPLE;
-
-  csmd->defgrp_name[0] = '\0';
+  MEMCPY_STRUCT_AFTER(csmd, DNA_struct_default_get(CorrectiveSmoothModifierData), modifier);
 
   csmd->delta_cache.deltas = NULL;
 }
+
+#include "BLI_strict_flags.h"
 
 static void copyData(const ModifierData *md, ModifierData *target, const int flag)
 {
@@ -273,7 +252,7 @@ static void smooth_iter__length_weight(CorrectiveSmoothModifierData *csmd,
 {
   const float eps = FLT_EPSILON * 10.0f;
   const uint numEdges = (uint)mesh->totedge;
-  /* note: the way this smoothing method works, its approx half as strong as the simple-smooth,
+  /* NOTE: the way this smoothing method works, its approx half as strong as the simple-smooth,
    * and 2.0 rarely spikes, double the value for consistent behavior. */
   const float lambda = csmd->lambda * 2.0f;
   const MEdge *edges = mesh->medge;
@@ -429,11 +408,11 @@ static void calc_tangent_ortho(float ts[3][3])
   cross_v3_v3v3(ts[1], ts[2], v_tan_a);
   mul_v3_fl(ts[1], dot_v3v3(ts[1], v_tan_b) < 0.0f ? -1.0f : 1.0f);
 
-  /* orthognalise tangent */
+  /* Orthogonalize tangent. */
   mul_v3_v3fl(t_vec_a, ts[2], dot_v3v3(ts[2], v_tan_a));
   sub_v3_v3v3(ts[0], v_tan_a, t_vec_a);
 
-  /* orthognalise bitangent */
+  /* Orthogonalize bi-tangent. */
   mul_v3_v3fl(t_vec_a, ts[2], dot_v3v3(ts[2], ts[1]));
   mul_v3_v3fl(t_vec_b, ts[0], dot_v3v3(ts[0], ts[1]) / dot_v3v3(v_tan_a, v_tan_a));
   sub_v3_v3(ts[1], t_vec_a);
@@ -594,7 +573,7 @@ static void correctivesmooth_modifier_do(ModifierData *md,
   CorrectiveSmoothModifierData *csmd = (CorrectiveSmoothModifierData *)md;
 
   const bool force_delta_cache_update =
-      /* XXX, take care! if mesh data its self changes we need to forcefully recalculate deltas */
+      /* XXX, take care! if mesh data itself changes we need to forcefully recalculate deltas */
       !cache_settings_equal(csmd) ||
       ((csmd->rest_source == MOD_CORRECTIVESMOOTH_RESTSOURCE_ORCO) &&
        (((ID *)ob->data)->recalc & ID_RECALC_ALL));
@@ -616,12 +595,12 @@ static void correctivesmooth_modifier_do(ModifierData *md,
       BLI_assert(csmd->bind_coords != NULL);
       /* Copy bound data to the original modifier. */
       CorrectiveSmoothModifierData *csmd_orig = (CorrectiveSmoothModifierData *)
-          BKE_modifier_get_original(&csmd->modifier);
+          BKE_modifier_get_original(ob, &csmd->modifier);
       csmd_orig->bind_coords = MEM_dupallocN(csmd->bind_coords);
       csmd_orig->bind_coords_num = csmd->bind_coords_num;
     }
     else {
-      BKE_modifier_set_error(md, "Attempt to bind from inactive dependency graph");
+      BKE_modifier_set_error(ob, md, "Attempt to bind from inactive dependency graph");
     }
   }
 
@@ -631,7 +610,7 @@ static void correctivesmooth_modifier_do(ModifierData *md,
   }
 
   if ((csmd->rest_source == MOD_CORRECTIVESMOOTH_RESTSOURCE_BIND) && (csmd->bind_coords == NULL)) {
-    BKE_modifier_set_error(md, "Bind data required");
+    BKE_modifier_set_error(ob, md, "Bind data required");
     goto error;
   }
 
@@ -639,14 +618,14 @@ static void correctivesmooth_modifier_do(ModifierData *md,
   if (csmd->rest_source == MOD_CORRECTIVESMOOTH_RESTSOURCE_BIND) {
     if (csmd->bind_coords_num != numVerts) {
       BKE_modifier_set_error(
-          md, "Bind vertex count mismatch: %u to %u", csmd->bind_coords_num, numVerts);
+          ob, md, "Bind vertex count mismatch: %u to %u", csmd->bind_coords_num, numVerts);
       goto error;
     }
   }
   else {
     /* MOD_CORRECTIVESMOOTH_RESTSOURCE_ORCO */
     if (ob->type != OB_MESH) {
-      BKE_modifier_set_error(md, "Object is not a mesh");
+      BKE_modifier_set_error(ob, md, "Object is not a mesh");
       goto error;
     }
     else {
@@ -654,7 +633,7 @@ static void correctivesmooth_modifier_do(ModifierData *md,
 
       if (me_numVerts != numVerts) {
         BKE_modifier_set_error(
-            md, "Original vertex count mismatch: %u to %u", me_numVerts, numVerts);
+            ob, md, "Original vertex count mismatch: %u to %u", me_numVerts, numVerts);
         goto error;
       }
     }
@@ -783,35 +762,34 @@ static void deformVertsEM(ModifierData *md,
   }
 }
 
-static void panel_draw(const bContext *C, Panel *panel)
+static void panel_draw(const bContext *UNUSED(C), Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA ptr;
   PointerRNA ob_ptr;
-  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, &ptr, "factor", 0, IFACE_("Factor"), ICON_NONE);
-  uiItemR(layout, &ptr, "iterations", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "scale", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "smooth_type", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "factor", 0, IFACE_("Factor"), ICON_NONE);
+  uiItemR(layout, ptr, "iterations", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "scale", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "smooth_type", 0, NULL, ICON_NONE);
 
-  modifier_vgroup_ui(layout, &ptr, &ob_ptr, "vertex_group", "invert_vertex_group", NULL);
+  modifier_vgroup_ui(layout, ptr, &ob_ptr, "vertex_group", "invert_vertex_group", NULL);
 
-  uiItemR(layout, &ptr, "use_only_smooth", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "use_pin_boundary", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "use_only_smooth", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "use_pin_boundary", 0, NULL, ICON_NONE);
 
-  uiItemR(layout, &ptr, "rest_source", 0, NULL, ICON_NONE);
-  if (RNA_enum_get(&ptr, "rest_source") == MOD_CORRECTIVESMOOTH_RESTSOURCE_BIND) {
+  uiItemR(layout, ptr, "rest_source", 0, NULL, ICON_NONE);
+  if (RNA_enum_get(ptr, "rest_source") == MOD_CORRECTIVESMOOTH_RESTSOURCE_BIND) {
     uiItemO(layout,
-            (RNA_boolean_get(&ptr, "is_bind") ? IFACE_("Unbind") : IFACE_("Bind")),
+            (RNA_boolean_get(ptr, "is_bind") ? IFACE_("Unbind") : IFACE_("Bind")),
             ICON_NONE,
             "OBJECT_OT_correctivesmooth_bind");
   }
 
-  modifier_panel_end(layout, &ptr);
+  modifier_panel_end(layout, ptr);
 }
 
 static void panelRegister(ARegionType *region_type)
@@ -824,7 +802,7 @@ static void blendWrite(BlendWriter *writer, const ModifierData *md)
   const CorrectiveSmoothModifierData *csmd = (const CorrectiveSmoothModifierData *)md;
 
   if (csmd->bind_coords) {
-    BLO_write_float3_array(writer, (int)csmd->bind_coords_num, (float *)csmd->bind_coords);
+    BLO_write_float3_array(writer, csmd->bind_coords_num, (float *)csmd->bind_coords);
   }
 }
 
@@ -845,8 +823,10 @@ ModifierTypeInfo modifierType_CorrectiveSmooth = {
     /* name */ "CorrectiveSmooth",
     /* structName */ "CorrectiveSmoothModifierData",
     /* structSize */ sizeof(CorrectiveSmoothModifierData),
+    /* srna */ &RNA_CorrectiveSmoothModifier,
     /* type */ eModifierTypeType_OnlyDeform,
     /* flags */ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsEditmode,
+    /* icon */ ICON_MOD_SMOOTH,
 
     /* copyData */ copyData,
 
@@ -855,9 +835,7 @@ ModifierTypeInfo modifierType_CorrectiveSmooth = {
     /* deformVertsEM */ deformVertsEM,
     /* deformMatricesEM */ NULL,
     /* modifyMesh */ NULL,
-    /* modifyHair */ NULL,
-    /* modifyPointCloud */ NULL,
-    /* modifyVolume */ NULL,
+    /* modifyGeometrySet */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ requiredDataMask,
@@ -866,7 +844,6 @@ ModifierTypeInfo modifierType_CorrectiveSmooth = {
     /* updateDepsgraph */ NULL,
     /* dependsOnTime */ NULL,
     /* dependsOnNormals */ NULL,
-    /* foreachObjectLink */ NULL,
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,

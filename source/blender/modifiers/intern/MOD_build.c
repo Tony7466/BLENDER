@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2005 by the Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup modifiers
@@ -29,6 +13,7 @@
 #include "BLI_math_vector.h"
 #include "BLI_rand.h"
 
+#include "DNA_defaults.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
@@ -47,6 +32,7 @@
 #include "UI_resources.h"
 
 #include "RNA_access.h"
+#include "RNA_prototypes.h"
 
 #include "MOD_modifiertypes.h"
 #include "MOD_ui_common.h"
@@ -55,11 +41,14 @@ static void initData(ModifierData *md)
 {
   BuildModifierData *bmd = (BuildModifierData *)md;
 
-  bmd->start = 1.0;
-  bmd->length = 100.0;
+  BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(bmd, modifier));
+
+  MEMCPY_STRUCT_AFTER(bmd, DNA_struct_default_get(BuildModifierData), modifier);
 }
 
-static bool dependsOnTime(ModifierData *UNUSED(md))
+static bool dependsOnTime(struct Scene *UNUSED(scene),
+                          ModifierData *UNUSED(md),
+                          const int UNUSED(dag_eval_mode))
 {
   return true;
 }
@@ -99,7 +88,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, struct
   range_vn_i(faceMap, numPoly_src, 0);
 
   struct Scene *scene = DEG_get_input_scene(ctx->depsgraph);
-  frac = (BKE_scene_frame_get(scene) - bmd->start) / bmd->length;
+  frac = (BKE_scene_ctime_get(scene) - bmd->start) / bmd->length;
   CLAMP(frac, 0.0f, 1.0f);
   if (bmd->flag & MOD_BUILD_FLAG_REVERSE) {
     frac = 1.0f - frac;
@@ -276,51 +265,46 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, struct
   MEM_freeN(edgeMap);
   MEM_freeN(faceMap);
 
-  if (mesh->runtime.cd_dirty_vert & CD_MASK_NORMAL) {
-    result->runtime.cd_dirty_vert |= CD_MASK_NORMAL;
-  }
+  BKE_mesh_normals_tag_dirty(result);
 
   /* TODO(sybren): also copy flags & tags? */
   return result;
 }
 
-static void panel_draw(const bContext *C, Panel *panel)
+static void panel_draw(const bContext *UNUSED(C), Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, NULL);
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, &ptr, "frame_start", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "frame_duration", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "use_reverse", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "frame_start", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "frame_duration", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "use_reverse", 0, NULL, ICON_NONE);
 
-  modifier_panel_end(layout, &ptr);
+  modifier_panel_end(layout, ptr);
 }
 
-static void random_panel_header_draw(const bContext *C, Panel *panel)
+static void random_panel_header_draw(const bContext *UNUSED(C), Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, NULL);
 
-  uiItemR(layout, &ptr, "use_random_order", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "use_random_order", 0, NULL, ICON_NONE);
 }
 
-static void random_panel_draw(const bContext *C, Panel *panel)
+static void random_panel_draw(const bContext *UNUSED(C), Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, NULL);
 
   uiLayoutSetPropSep(layout, true);
 
-  uiLayoutSetActive(layout, RNA_boolean_get(&ptr, "use_random_order"));
-  uiItemR(layout, &ptr, "seed", 0, NULL, ICON_NONE);
+  uiLayoutSetActive(layout, RNA_boolean_get(ptr, "use_random_order"));
+  uiItemR(layout, ptr, "seed", 0, NULL, ICON_NONE);
 }
 
 static void panelRegister(ARegionType *region_type)
@@ -334,8 +318,10 @@ ModifierTypeInfo modifierType_Build = {
     /* name */ "Build",
     /* structName */ "BuildModifierData",
     /* structSize */ sizeof(BuildModifierData),
+    /* srna */ &RNA_BuildModifier,
     /* type */ eModifierTypeType_Nonconstructive,
     /* flags */ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_AcceptsCVs,
+    /* icon */ ICON_MOD_BUILD,
 
     /* copyData */ BKE_modifier_copydata_generic,
 
@@ -344,9 +330,7 @@ ModifierTypeInfo modifierType_Build = {
     /* deformVertsEM */ NULL,
     /* deformMatricesEM */ NULL,
     /* modifyMesh */ modifyMesh,
-    /* modifyHair */ NULL,
-    /* modifyPointCloud */ NULL,
-    /* modifyVolume */ NULL,
+    /* modifyGeometrySet */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ NULL,
@@ -355,7 +339,6 @@ ModifierTypeInfo modifierType_Build = {
     /* updateDepsgraph */ NULL,
     /* dependsOnTime */ dependsOnTime,
     /* dependsOnNormals */ NULL,
-    /* foreachObjectLink */ NULL,
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,

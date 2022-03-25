@@ -1,21 +1,6 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
-#ifndef __BLI_VECTOR_SET_HH__
-#define __BLI_VECTOR_SET_HH__
+#pragma once
 
 /** \file
  * \ingroup bli
@@ -101,6 +86,16 @@ template<
      */
     typename Allocator = GuardedAllocator>
 class VectorSet {
+ public:
+  using value_type = Key;
+  using pointer = Key *;
+  using const_pointer = const Key *;
+  using reference = Key &;
+  using const_reference = const Key &;
+  using iterator = Key *;
+  using const_iterator = const Key *;
+  using size_type = int64_t;
+
  private:
   /**
    * Slots are either empty, occupied or removed. The number of occupied slots can be computed by
@@ -144,7 +139,7 @@ class VectorSet {
    * no keys are removed. The first set->size() elements in this array are initialized. The
    * capacity of the array is usable_slots_.
    */
-  Key *keys_;
+  Key *keys_ = nullptr;
 
   /** Iterate over a slot index sequence for a given hash. */
 #define VECTOR_SET_SLOT_PROBING_BEGIN(HASH, R_SLOT) \
@@ -158,22 +153,31 @@ class VectorSet {
    * necessary to avoid a high cost when no elements are added at all. An optimized grow operation
    * is performed on the first insertion.
    */
-  VectorSet()
+  VectorSet(Allocator allocator = {}) noexcept
       : removed_slots_(0),
         occupied_and_removed_slots_(0),
         usable_slots_(0),
         slot_mask_(0),
-        slots_(1),
+        slots_(1, allocator),
         keys_(nullptr)
   {
+  }
+
+  VectorSet(NoExceptConstructor, Allocator allocator = {}) : VectorSet(allocator)
+  {
+  }
+
+  VectorSet(Span<Key> keys, Allocator allocator = {}) : VectorSet(NoExceptConstructor(), allocator)
+  {
+    this->add_multiple(keys);
   }
 
   /**
    * Construct a vector set that contains the given keys. Duplicates will be removed automatically.
    */
-  VectorSet(const std::initializer_list<Key> &keys) : VectorSet()
+  VectorSet(const std::initializer_list<Key> &keys, Allocator allocator = {})
+      : VectorSet(Span(keys), allocator)
   {
-    this->add_multiple(keys);
   }
 
   ~VectorSet()
@@ -184,15 +188,23 @@ class VectorSet {
     }
   }
 
-  VectorSet(const VectorSet &other)
-      : removed_slots_(other.removed_slots_),
-        occupied_and_removed_slots_(other.occupied_and_removed_slots_),
-        usable_slots_(other.usable_slots_),
-        slot_mask_(other.slot_mask_),
-        slots_(other.slots_)
+  VectorSet(const VectorSet &other) : slots_(other.slots_)
   {
-    keys_ = this->allocate_keys_array(usable_slots_);
-    uninitialized_copy_n(other.keys_, other.size(), keys_);
+    keys_ = this->allocate_keys_array(other.usable_slots_);
+    try {
+      uninitialized_copy_n(other.keys_, other.size(), keys_);
+    }
+    catch (...) {
+      this->deallocate_keys_array(keys_);
+      throw;
+    }
+
+    removed_slots_ = other.removed_slots_;
+    occupied_and_removed_slots_ = other.occupied_and_removed_slots_;
+    usable_slots_ = other.usable_slots_;
+    slot_mask_ = other.slot_mask_;
+    hash_ = other.hash_;
+    is_equal_ = other.is_equal_;
   }
 
   VectorSet(VectorSet &&other) noexcept
@@ -213,26 +225,12 @@ class VectorSet {
 
   VectorSet &operator=(const VectorSet &other)
   {
-    if (this == &other) {
-      return *this;
-    }
-
-    this->~VectorSet();
-    new (this) VectorSet(other);
-
-    return *this;
+    return copy_assign_container(*this, other);
   }
 
   VectorSet &operator=(VectorSet &&other)
   {
-    if (this == &other) {
-      return *this;
-    }
-
-    this->~VectorSet();
-    new (this) VectorSet(std::move(other));
-
-    return *this;
+    return move_assign_container(*this, std::move(other));
   }
 
   /**
@@ -251,7 +249,7 @@ class VectorSet {
   }
 
   /**
-   * Get an Span referencing the keys vector. The referenced memory buffer is only valid as
+   * Get a Span referencing the keys vector. The referenced memory buffer is only valid as
    * long as the vector set is not changed.
    *
    * The keys must not be changed, because this would change their hash value.
@@ -386,6 +384,55 @@ class VectorSet {
   }
 
   /**
+   * Return the index of the key in the vector. If the key is not in the set, add it and return its
+   * index.
+   */
+  int64_t index_of_or_add(const Key &key)
+  {
+    return this->index_of_or_add_as(key);
+  }
+  int64_t index_of_or_add(Key &&key)
+  {
+    return this->index_of_or_add_as(std::move(key));
+  }
+  template<typename ForwardKey> int64_t index_of_or_add_as(ForwardKey &&key)
+  {
+    return this->index_of_or_add__impl(std::forward<ForwardKey>(key), hash_(key));
+  }
+
+  /**
+   * Returns the key that is stored in the vector set that compares equal to the given key. This
+   * invokes undefined behavior when the key is not in the set.
+   */
+  const Key &lookup_key(const Key &key) const
+  {
+    return this->lookup_key_as(key);
+  }
+  template<typename ForwardKey> const Key &lookup_key_as(const ForwardKey &key) const
+  {
+    const Key *key_ptr = this->lookup_key_ptr_as(key);
+    BLI_assert(key_ptr != nullptr);
+    return *key_ptr;
+  }
+
+  /**
+   * Returns a pointer to the key that is stored in the vector set that compares equal to the given
+   * key. If the key is not in the set, null is returned.
+   */
+  const Key *lookup_key_ptr(const Key &key) const
+  {
+    return this->lookup_key_ptr_as(key);
+  }
+  template<typename ForwardKey> const Key *lookup_key_ptr_as(const ForwardKey &key) const
+  {
+    const int64_t index = this->index_of_try__impl(key, hash_(key));
+    if (index >= 0) {
+      return keys_ + index;
+    }
+    return nullptr;
+  }
+
+  /**
    * Get a pointer to the beginning of the array containing all keys.
    */
   const Key *data() const
@@ -401,6 +448,14 @@ class VectorSet {
   const Key *end() const
   {
     return keys_ + this->size();
+  }
+
+  /**
+   * Get an index range containing all valid indices for this array.
+   */
+  IndexRange index_range() const
+  {
+    return IndexRange(this->size());
   }
 
   /**
@@ -458,7 +513,7 @@ class VectorSet {
    */
   int64_t size_in_bytes() const
   {
-    return (int64_t)(sizeof(Slot) * slots_.size() + sizeof(Key) * usable_slots_);
+    return static_cast<int64_t>(sizeof(Slot) * slots_.size() + sizeof(Key) * usable_slots_);
   }
 
   /**
@@ -469,6 +524,14 @@ class VectorSet {
     if (usable_slots_ < n) {
       this->realloc_and_reinsert(n);
     }
+  }
+
+  /**
+   * Remove all keys from the vector set.
+   */
+  void clear()
+  {
+    this->noexcept_reset();
   }
 
   /**
@@ -487,36 +550,56 @@ class VectorSet {
     max_load_factor_.compute_total_and_usable_slots(
         SlotArray::inline_buffer_capacity(), min_usable_slots, &total_slots, &usable_slots);
     BLI_assert(total_slots >= 1);
-    const uint64_t new_slot_mask = (uint64_t)total_slots - 1;
+    const uint64_t new_slot_mask = static_cast<uint64_t>(total_slots) - 1;
 
     /* Optimize the case when the set was empty beforehand. We can avoid some copies here. */
     if (this->size() == 0) {
-      slots_.~Array();
-      new (&slots_) SlotArray(total_slots);
+      try {
+        slots_.reinitialize(total_slots);
+        if (keys_ != nullptr) {
+          this->deallocate_keys_array(keys_);
+          keys_ = nullptr;
+        }
+        keys_ = this->allocate_keys_array(usable_slots);
+      }
+      catch (...) {
+        this->noexcept_reset();
+        throw;
+      }
       removed_slots_ = 0;
       occupied_and_removed_slots_ = 0;
       usable_slots_ = usable_slots;
       slot_mask_ = new_slot_mask;
-      keys_ = this->allocate_keys_array(usable_slots);
       return;
     }
 
     SlotArray new_slots(total_slots);
 
-    for (Slot &slot : slots_) {
-      if (slot.is_occupied()) {
-        this->add_after_grow_and_destruct_old(slot, new_slots, new_slot_mask);
+    try {
+      for (Slot &slot : slots_) {
+        if (slot.is_occupied()) {
+          this->add_after_grow(slot, new_slots, new_slot_mask);
+          slot.remove();
+        }
       }
+      slots_ = std::move(new_slots);
+    }
+    catch (...) {
+      this->noexcept_reset();
+      throw;
     }
 
     Key *new_keys = this->allocate_keys_array(usable_slots);
-    uninitialized_relocate_n(keys_, this->size(), new_keys);
+    try {
+      uninitialized_relocate_n(keys_, this->size(), new_keys);
+    }
+    catch (...) {
+      this->deallocate_keys_array(new_keys);
+      this->noexcept_reset();
+      throw;
+    }
     this->deallocate_keys_array(keys_);
 
-    /* All occupied slots have been destructed already and empty/removed slots are assumed to be
-     * trivially destructible. */
-    slots_.clear_without_destruct();
-    slots_ = std::move(new_slots);
     keys_ = new_keys;
     occupied_and_removed_slots_ -= removed_slots_;
     usable_slots_ = usable_slots;
@@ -524,9 +607,7 @@ class VectorSet {
     slot_mask_ = new_slot_mask;
   }
 
-  void add_after_grow_and_destruct_old(Slot &old_slot,
-                                       SlotArray &new_slots,
-                                       const uint64_t new_slot_mask)
+  void add_after_grow(Slot &old_slot, SlotArray &new_slots, const uint64_t new_slot_mask)
   {
     const Key &key = keys_[old_slot.index()];
     const uint64_t hash = old_slot.get_hash(key, Hash());
@@ -534,11 +615,18 @@ class VectorSet {
     SLOT_PROBING_BEGIN (ProbingStrategy, hash, new_slot_mask, slot_index) {
       Slot &slot = new_slots[slot_index];
       if (slot.is_empty()) {
-        slot.relocate_occupied_here(old_slot, hash);
+        slot.occupy(old_slot.index(), hash);
         return;
       }
     }
     SLOT_PROBING_END();
+  }
+
+  void noexcept_reset() noexcept
+  {
+    Allocator allocator = slots_.allocator();
+    this->~VectorSet();
+    new (this) VectorSet(NoExceptConstructor(), allocator);
   }
 
   template<typename ForwardKey>
@@ -581,8 +669,8 @@ class VectorSet {
       if (slot.is_empty()) {
         int64_t index = this->size();
         new (keys_ + index) Key(std::forward<ForwardKey>(key));
-        occupied_and_removed_slots_++;
         slot.occupy(index, hash);
+        occupied_and_removed_slots_++;
         return true;
       }
       if (slot.contains(key, is_equal_, hash, keys_)) {
@@ -614,6 +702,26 @@ class VectorSet {
       }
       if (slot.is_empty()) {
         return -1;
+      }
+    }
+    VECTOR_SET_SLOT_PROBING_END();
+  }
+
+  template<typename ForwardKey>
+  int64_t index_of_or_add__impl(ForwardKey &&key, const uint64_t hash)
+  {
+    this->ensure_can_add();
+
+    VECTOR_SET_SLOT_PROBING_BEGIN (hash, slot) {
+      if (slot.contains(key, is_equal_, hash, keys_)) {
+        return slot.index();
+      }
+      if (slot.is_empty()) {
+        const int64_t index = this->size();
+        new (keys_ + index) Key(std::forward<ForwardKey>(key));
+        slot.occupy(index, hash);
+        occupied_and_removed_slots_++;
+        return index;
       }
     }
     VECTOR_SET_SLOT_PROBING_END();
@@ -723,7 +831,8 @@ class VectorSet {
 
   Key *allocate_keys_array(const int64_t size)
   {
-    return (Key *)slots_.allocator().allocate(sizeof(Key) * (size_t)size, alignof(Key), AT);
+    return static_cast<Key *>(
+        slots_.allocator().allocate(sizeof(Key) * static_cast<size_t>(size), alignof(Key), AT));
   }
 
   void deallocate_keys_array(Key *keys)
@@ -744,5 +853,3 @@ template<typename Key,
 using RawVectorSet = VectorSet<Key, ProbingStrategy, Hash, IsEqual, Slot, RawAllocator>;
 
 }  // namespace blender
-
-#endif /* __BLI_VECTOR_SET_HH__ */

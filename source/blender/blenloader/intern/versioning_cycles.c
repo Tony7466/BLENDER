@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup blenloader
@@ -42,12 +28,15 @@
 #include "BKE_main.h"
 #include "BKE_node.h"
 
+#include "NOD_shader.h"
+
 #include "MEM_guardedalloc.h"
 
 #include "IMB_colormanagement.h"
 
 #include "BLO_readfile.h"
 #include "readfile.h"
+#include "versioning_common.h"
 
 static bool socket_is_used(bNodeSocket *sock)
 {
@@ -76,6 +65,12 @@ static IDProperty *cycles_properties_from_ID(ID *id)
 {
   IDProperty *idprop = IDP_GetProperties(id, false);
   return (idprop) ? IDP_GetPropertyTypeFromGroup(idprop, "cycles", IDP_GROUP) : NULL;
+}
+
+static IDProperty *cycles_visibility_properties_from_ID(ID *id)
+{
+  IDProperty *idprop = IDP_GetProperties(id, false);
+  return (idprop) ? IDP_GetPropertyTypeFromGroup(idprop, "cycles_visibility", IDP_GROUP) : NULL;
 }
 
 static IDProperty *cycles_properties_from_view_layer(ViewLayer *view_layer)
@@ -164,7 +159,7 @@ static void displacement_node_insert(bNodeTree *ntree)
   }
 
   if (need_update) {
-    ntreeUpdateTree(NULL, ntree);
+    version_socket_update_is_used(ntree);
   }
 }
 
@@ -182,7 +177,7 @@ static void displacement_principled_nodes(bNode *node)
   }
 }
 
-static bool node_has_roughness(bNode *node)
+static bool node_has_roughness(const bNode *node)
 {
   return ELEM(node->type,
               SH_NODE_BSDF_ANISOTROPIC,
@@ -237,7 +232,7 @@ static void square_roughness_node_insert(bNodeTree *ntree)
   }
 
   if (need_update) {
-    ntreeUpdateTree(NULL, ntree);
+    version_socket_update_is_used(ntree);
   }
 }
 
@@ -312,7 +307,7 @@ static void ambient_occlusion_node_relink(bNodeTree *ntree)
   }
 
   if (need_update) {
-    ntreeUpdateTree(NULL, ntree);
+    version_socket_update_is_used(ntree);
   }
 }
 
@@ -335,7 +330,7 @@ static void image_node_colorspace(bNode *node)
     return;
   }
 
-  const int SHD_COLORSPACE_NONE = 0;
+  enum { SHD_COLORSPACE_NONE = 0 };
   Image *image = (Image *)node->id;
   if (color_space == SHD_COLORSPACE_NONE) {
     STRNCPY(image->colorspace_settings.name,
@@ -460,7 +455,7 @@ static void update_math_node_single_operand_operators(bNodeTree *ntree)
   }
 
   if (need_update) {
-    ntreeUpdateTree(NULL, ntree);
+    version_socket_update_is_used(ntree);
   }
 }
 
@@ -522,7 +517,7 @@ static void update_vector_math_node_add_and_subtract_operators(bNodeTree *ntree)
   }
 
   if (need_update) {
-    ntreeUpdateTree(NULL, ntree);
+    version_socket_update_is_used(ntree);
   }
 }
 
@@ -560,7 +555,7 @@ static void update_vector_math_node_dot_product_operator(bNodeTree *ntree)
   }
 
   if (need_update) {
-    ntreeUpdateTree(NULL, ntree);
+    version_socket_update_is_used(ntree);
   }
 }
 
@@ -625,7 +620,7 @@ static void update_vector_math_node_cross_product_operator(bNodeTree *ntree)
   }
 
   if (need_update) {
-    ntreeUpdateTree(NULL, ntree);
+    version_socket_update_is_used(ntree);
   }
 }
 
@@ -677,7 +672,7 @@ static void update_vector_math_node_normalize_operator(bNodeTree *ntree)
     }
   }
   if (need_update) {
-    ntreeUpdateTree(NULL, ntree);
+    version_socket_update_is_used(ntree);
   }
 }
 
@@ -779,7 +774,7 @@ static void update_vector_math_node_average_operator(bNodeTree *ntree)
   }
 
   if (need_update) {
-    ntreeUpdateTree(NULL, ntree);
+    version_socket_update_is_used(ntree);
   }
 }
 
@@ -840,12 +835,14 @@ static void update_mapping_node_fcurve_rna_path_callback(ID *UNUSED(id),
     fcurve->rna_path = BLI_sprintfN("%s.%s", data->nodePath, "inputs[3].default_value");
   }
   else if (data->minimumNode && BLI_str_endswith(old_fcurve_rna_path, "max")) {
-    fcurve->rna_path = BLI_sprintfN(
-        "nodes[\"%s\"].%s", data->minimumNode->name, "inputs[1].default_value");
+    char node_name_esc[sizeof(data->minimumNode->name) * 2];
+    BLI_str_escape(node_name_esc, data->minimumNode->name, sizeof(node_name_esc));
+    fcurve->rna_path = BLI_sprintfN("nodes[\"%s\"].%s", node_name_esc, "inputs[1].default_value");
   }
   else if (data->maximumNode && BLI_str_endswith(old_fcurve_rna_path, "min")) {
-    fcurve->rna_path = BLI_sprintfN(
-        "nodes[\"%s\"].%s", data->maximumNode->name, "inputs[1].default_value");
+    char node_name_esc[sizeof(data->maximumNode->name) * 2];
+    BLI_str_escape(node_name_esc, data->maximumNode->name, sizeof(node_name_esc));
+    fcurve->rna_path = BLI_sprintfN("nodes[\"%s\"].%s", node_name_esc, "inputs[1].default_value");
   }
 
   if (fcurve->rna_path != old_fcurve_rna_path) {
@@ -955,7 +952,10 @@ static void update_mapping_node_inputs_and_properties(bNodeTree *ntree)
       MEM_freeN(node->storage);
       node->storage = NULL;
 
-      char *nodePath = BLI_sprintfN("nodes[\"%s\"]", node->name);
+      char node_name_esc[sizeof(node->name) * 2];
+      BLI_str_escape(node_name_esc, node->name, sizeof(node_name_esc));
+
+      char *nodePath = BLI_sprintfN("nodes[\"%s\"]", node_name_esc);
       MappingNodeFCurveCallbackData data = {nodePath, minimumNode, maximumNode};
       BKE_fcurves_id_cb(&ntree->id, update_mapping_node_fcurve_rna_path_callback, &data);
       MEM_freeN(nodePath);
@@ -963,7 +963,7 @@ static void update_mapping_node_inputs_and_properties(bNodeTree *ntree)
   }
 
   if (need_update) {
-    ntreeUpdateTree(NULL, ntree);
+    version_socket_update_is_used(ntree);
   }
 }
 
@@ -1138,7 +1138,7 @@ static void update_voronoi_node_crackle(bNodeTree *ntree)
   }
 
   if (need_update) {
-    ntreeUpdateTree(NULL, ntree);
+    version_socket_update_is_used(ntree);
   }
 }
 
@@ -1180,7 +1180,7 @@ static void update_voronoi_node_coloring(bNodeTree *ntree)
   }
 
   if (need_update) {
-    ntreeUpdateTree(NULL, ntree);
+    version_socket_update_is_used(ntree);
   }
 }
 
@@ -1197,8 +1197,7 @@ static void update_voronoi_node_square_distance(bNodeTree *ntree)
       NodeTexVoronoi *tex = (NodeTexVoronoi *)node->storage;
       bNodeSocket *sockDistance = nodeFindSocket(node, SOCK_OUT, "Distance");
       if (tex->distance == SHD_VORONOI_EUCLIDEAN &&
-          (tex->feature == SHD_VORONOI_F1 || tex->feature == SHD_VORONOI_F2) &&
-          socket_is_used(sockDistance)) {
+          (ELEM(tex->feature, SHD_VORONOI_F1, SHD_VORONOI_F2)) && socket_is_used(sockDistance)) {
         bNode *multiplyNode = nodeAddStaticNode(NULL, ntree, SH_NODE_MATH);
         multiplyNode->custom1 = NODE_MATH_MULTIPLY;
         multiplyNode->locx = node->locx + node->width + 20.0f;
@@ -1224,7 +1223,7 @@ static void update_voronoi_node_square_distance(bNodeTree *ntree)
   }
 
   if (need_update) {
-    ntreeUpdateTree(NULL, ntree);
+    version_socket_update_is_used(ntree);
   }
 }
 
@@ -1237,7 +1236,7 @@ static void update_noise_and_wave_distortion(bNodeTree *ntree)
   bool need_update = false;
 
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-    if (node->type == SH_NODE_TEX_NOISE || node->type == SH_NODE_TEX_WAVE) {
+    if (ELEM(node->type, SH_NODE_TEX_NOISE, SH_NODE_TEX_WAVE)) {
 
       bNodeSocket *sockDistortion = nodeFindSocket(node, SOCK_IN, "Distortion");
       float *distortion = cycles_node_socket_float_value(sockDistortion);
@@ -1269,7 +1268,7 @@ static void update_noise_and_wave_distortion(bNodeTree *ntree)
   }
 
   if (need_update) {
-    ntreeUpdateTree(NULL, ntree);
+    version_socket_update_is_used(ntree);
   }
 }
 
@@ -1363,6 +1362,13 @@ void blo_do_versions_cycles(FileData *UNUSED(fd), Library *UNUSED(lib), Main *bm
 
 void do_versions_after_linking_cycles(Main *bmain)
 {
+  enum {
+    DENOISER_AUTO = 0,
+    DENOISER_NLM = 1,
+    DENOISER_OPTIX = 2,
+    DENOISER_OPENIMAGEDENOISE = 4,
+  };
+
   if (!MAIN_VERSION_ATLEAST(bmain, 280, 66)) {
     /* Shader node tree changes. After lib linking so we have all the typeinfo
      * pointers and updated sockets and we can use the high level node API to
@@ -1416,7 +1422,7 @@ void do_versions_after_linking_cycles(Main *bmain)
   }
 
   if (!MAIN_VERSION_ATLEAST(bmain, 280, 64)) {
-    /* Unfiy Cycles and Eevee settings. */
+    /* Unify Cycles and Eevee settings. */
     Scene *scene = bmain->scenes.first;
     const char *engine = (scene) ? scene->r.engine : "CYCLES";
 
@@ -1447,7 +1453,7 @@ void do_versions_after_linking_cycles(Main *bmain)
           if (is_fstop) {
             continue;
           }
-          else if (aperture_size > 0.0f) {
+          if (aperture_size > 0.0f) {
             if (camera->type == CAM_ORTHO) {
               camera->dof.aperture_fstop = 1.0f / (2.0f * aperture_size);
             }
@@ -1568,10 +1574,6 @@ void do_versions_after_linking_cycles(Main *bmain)
       }
 
       if (cscene) {
-        const int DENOISER_AUTO = 0;
-        const int DENOISER_NLM = 1;
-        const int DENOISER_OPTIX = 2;
-
         /* Enable denoiser if it was enabled for one view layer before. */
         cycles_property_int_set(cscene, "denoiser", (use_optix) ? DENOISER_OPTIX : DENOISER_NLM);
         cycles_property_boolean_set(cscene, "use_denoising", use_denoising);
@@ -1592,6 +1594,52 @@ void do_versions_after_linking_cycles(Main *bmain)
           if (cview_layer) {
             cycles_property_boolean_set(cview_layer, "use_denoising", true);
           }
+        }
+      }
+    }
+  }
+
+  /* Move visibility from Cycles to Blender. */
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 17)) {
+    LISTBASE_FOREACH (Object *, object, &bmain->objects) {
+      IDProperty *cvisibility = cycles_visibility_properties_from_ID(&object->id);
+      int flag = 0;
+
+      if (cvisibility) {
+        flag |= cycles_property_boolean(cvisibility, "camera", true) ? 0 : OB_HIDE_CAMERA;
+        flag |= cycles_property_boolean(cvisibility, "diffuse", true) ? 0 : OB_HIDE_DIFFUSE;
+        flag |= cycles_property_boolean(cvisibility, "glossy", true) ? 0 : OB_HIDE_GLOSSY;
+        flag |= cycles_property_boolean(cvisibility, "transmission", true) ? 0 :
+                                                                             OB_HIDE_TRANSMISSION;
+        flag |= cycles_property_boolean(cvisibility, "scatter", true) ? 0 : OB_HIDE_VOLUME_SCATTER;
+        flag |= cycles_property_boolean(cvisibility, "shadow", true) ? 0 : OB_HIDE_SHADOW;
+      }
+
+      IDProperty *cobject = cycles_properties_from_ID(&object->id);
+      if (cobject) {
+        flag |= cycles_property_boolean(cobject, "is_holdout", false) ? OB_HOLDOUT : 0;
+        flag |= cycles_property_boolean(cobject, "is_shadow_catcher", false) ? OB_SHADOW_CATCHER :
+                                                                               0;
+      }
+
+      if (object->type == OB_LAMP) {
+        flag |= OB_HIDE_CAMERA | OB_SHADOW_CATCHER;
+      }
+
+      /* Clear unused bits from old version, and add new flags. */
+      object->visibility_flag &= (OB_HIDE_VIEWPORT | OB_HIDE_SELECT | OB_HIDE_RENDER);
+      object->visibility_flag |= flag;
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 300, 25)) {
+    /* Removal of NLM denoiser. */
+    for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
+      IDProperty *cscene = cycles_properties_from_ID(&scene->id);
+
+      if (cscene) {
+        if (cycles_property_int(cscene, "denoiser", DENOISER_NLM) == DENOISER_NLM) {
+          cycles_property_int_set(cscene, "denoiser", DENOISER_OPENIMAGEDENOISE);
         }
       }
     }

@@ -1,21 +1,4 @@
-# ##### BEGIN GPL LICENSE BLOCK #####
-
-#
-#  This program is free software; you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License
-#  as published by the Free Software Foundation; either version 2
-#  of the License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software Foundation,
-#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# ##### END GPL LICENSE BLOCK #####
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 # <pep8 compliant>
 from bpy.types import Panel
@@ -173,7 +156,9 @@ class RENDER_PT_eevee_motion_blur(RenderButtonsPanel, Panel):
 
         layout.active = props.use_motion_blur
         col = layout.column()
+        col.prop(props, "motion_blur_position", text="Position")
         col.prop(props, "motion_blur_shutter")
+        col.separator()
         col.prop(props, "motion_blur_depth_scale")
         col.prop(props, "motion_blur_max")
         col.prop(props, "motion_blur_steps", text="Steps")
@@ -196,8 +181,15 @@ class RENDER_PT_eevee_depth_of_field(RenderButtonsPanel, Panel):
 
         col = layout.column()
         col.prop(props, "bokeh_max_size")
-        # Not supported yet
-        # col.prop(props, "bokeh_threshold")
+        col.prop(props, "bokeh_threshold")
+        col.prop(props, "bokeh_neighbor_max")
+        col.prop(props, "bokeh_denoise_fac")
+        col.prop(props, "use_bokeh_high_quality_slight_defocus")
+        col.prop(props, "use_bokeh_jittered")
+
+        col = layout.column()
+        col.active = props.use_bokeh_jittered
+        col.prop(props, "bokeh_overblur")
 
 
 class RENDER_PT_eevee_bloom(RenderButtonsPanel, Panel):
@@ -484,14 +476,24 @@ class RENDER_PT_eevee_film(RenderButtonsPanel, Panel):
         col.prop(rd, "film_transparent", text="Transparent")
 
         col = layout.column(align=False, heading="Overscan")
-        col.use_property_decorate = False
         row = col.row(align=True)
         sub = row.row(align=True)
         sub.prop(props, "use_overscan", text="")
         sub = sub.row(align=True)
         sub.active = props.use_overscan
         sub.prop(props, "overscan_size", text="")
-        row.prop_decorator(props, "overscan_size")
+
+
+def draw_hair_settings(self, context):
+    layout = self.layout
+    scene = context.scene
+    rd = scene.render
+
+    layout.use_property_split = True
+    layout.use_property_decorate = False  # No animation.
+
+    layout.prop(rd, "hair_type", text="Shape", expand=True)
+    layout.prop(rd, "hair_subdiv")
 
 
 class RENDER_PT_eevee_hair(RenderButtonsPanel, Panel):
@@ -504,14 +506,7 @@ class RENDER_PT_eevee_hair(RenderButtonsPanel, Panel):
         return (context.engine in cls.COMPAT_ENGINES)
 
     def draw(self, context):
-        layout = self.layout
-        scene = context.scene
-        rd = scene.render
-
-        layout.use_property_split = True
-
-        layout.prop(rd, "hair_type", expand=True)
-        layout.prop(rd, "hair_subdiv")
+        draw_hair_settings(self, context)
 
 
 class RENDER_PT_eevee_performance(RenderButtonsPanel, Panel):
@@ -529,6 +524,7 @@ class RENDER_PT_eevee_performance(RenderButtonsPanel, Panel):
         rd = scene.render
 
         layout.use_property_split = True
+        layout.use_property_decorate = False  # No animation.
 
         layout.prop(rd, "use_high_quality_normals")
 
@@ -537,10 +533,7 @@ class RENDER_PT_gpencil(RenderButtonsPanel, Panel):
     bl_label = "Grease Pencil"
     bl_options = {'DEFAULT_CLOSED'}
     bl_order = 10
-
-    @classmethod
-    def poll(cls, context):
-        return True
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
@@ -658,6 +651,9 @@ class RENDER_PT_simplify_viewport(RenderButtonsPanel, Panel):
 
         col = flow.column()
         col.prop(rd, "simplify_child_particles", text="Max Child Particles")
+
+        col = flow.column()
+        col.prop(rd, "simplify_volumes", text="Volume Resolution")
 
 
 class RENDER_PT_simplify_render(RenderButtonsPanel, Panel):

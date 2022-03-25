@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2019 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2019 Blender Foundation. All rights reserved. */
 #include "usd_writer_light.h"
 #include "usd_hierarchy_iterator.h"
 
@@ -30,9 +14,7 @@
 #include "DNA_light_types.h"
 #include "DNA_object_types.h"
 
-namespace blender {
-namespace io {
-namespace usd {
+namespace blender::io::usd {
 
 USDLightWriter::USDLightWriter(const USDExporterContext &ctx) : USDAbstractWriter(ctx)
 {
@@ -89,7 +71,7 @@ void USDLightWriter::do_write(HierarchyContext &context)
       usd_light = pxr::UsdLuxDistantLight::Define(stage, usd_path);
       break;
     default:
-      BLI_assert(!"is_supported() returned true for unsupported light type");
+      BLI_assert_msg(0, "is_supported() returned true for unsupported light type");
   }
 
   /* Scale factor to get to somewhat-similar illumination. Since the USDViewer had similar
@@ -101,7 +83,7 @@ void USDLightWriter::do_write(HierarchyContext &context)
     usd_intensity = light->energy;
   }
   else {
-    usd_intensity = light->energy / 100.f;
+    usd_intensity = light->energy / 100.0f;
   }
   usd_light.CreateIntensityAttr().Set(usd_intensity, timecode);
 
@@ -109,6 +91,4 @@ void USDLightWriter::do_write(HierarchyContext &context)
   usd_light.CreateSpecularAttr().Set(light->spec_fac, timecode);
 }
 
-}  // namespace usd
-}  // namespace io
-}  // namespace blender
+}  // namespace blender::io::usd

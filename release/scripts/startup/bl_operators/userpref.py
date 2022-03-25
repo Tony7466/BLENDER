@@ -1,24 +1,6 @@
-# ##### BEGIN GPL LICENSE BLOCK #####
-#
-#  This program is free software; you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License
-#  as published by the Free Software Foundation; either version 2
-#  of the License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software Foundation,
-#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# ##### END GPL LICENSE BLOCK #####
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 # <pep8 compliant>
-
-# TODO, use PREFERENCES_OT_* prefix for operators.
 
 import bpy
 from bpy.types import (
@@ -36,59 +18,39 @@ from bpy.props import (
 from bpy.app.translations import pgettext_tip as tip_
 
 
-def module_filesystem_remove(path_base, module_name):
+def _zipfile_root_namelist(file_to_extract):
+    # Return a list of root paths from zipfile.ZipFile.namelist.
     import os
+    root_paths = []
+    for f in file_to_extract.namelist():
+        # Python's `zipfile` API always adds a separate at the end of directories.
+        # use `os.path.normpath` instead of `f.removesuffix(os.sep)`
+        # since paths could be stored as `./paths/./`.
+        #
+        # Note that `..` prefixed paths can exist in ZIP files but they don't write to parent directory when extracting.
+        # Nor do they pass the `os.sep not in f` test, this is important,
+        # otherwise `shutil.rmtree` below could made to remove directories outside the installation directory.
+        f = os.path.normpath(f)
+        if os.sep not in f:
+            root_paths.append(f)
+    return root_paths
+
+
+def _module_filesystem_remove(path_base, module_name):
+    # Remove all Python modules with `module_name` in `base_path`.
+    # The `module_name` is expected to be a result from `_zipfile_root_namelist`.
+    import os
+    import shutil
     module_name = os.path.splitext(module_name)[0]
     for f in os.listdir(path_base):
         f_base = os.path.splitext(f)[0]
         if f_base == module_name:
             f_full = os.path.join(path_base, f)
-
             if os.path.isdir(f_full):
-                os.rmdir(f_full)
+                shutil.rmtree(f_full)
             else:
                 os.remove(f_full)
 
-# This duplicates shutil.copytree from Python 3.8, with the new dirs_exist_ok
-# argument that we need. Once we upgrade to 3.8 we can remove this.
-def _preferences_copytree(entries, src, dst):
-    import os
-    import shutil
-    from shutil import Error
-
-    os.makedirs(dst, exist_ok=True)
-    errors = []
-
-    for srcentry in entries:
-        srcname = os.path.join(src, srcentry.name)
-        dstname = os.path.join(dst, srcentry.name)
-        srcobj = srcentry
-        try:
-            if srcentry.is_symlink():
-                linkto = os.readlink(srcname)
-                os.symlink(linkto, dstname)
-                shutil.copystat(srcobj, dstname, follow_symlinks=False)
-            elif srcentry.is_dir():
-                preferences_copytree(srcobj, dstname)
-            else:
-                shutil.copy2(srcentry, dstname)
-        except Error as err:
-            errors.extend(err.args[0])
-        except OSError as why:
-            errors.append((srcname, dstname, str(why)))
-    try:
-        shutil.copystat(src, dst)
-    except OSError as why:
-        if getattr(why, 'winerror', None) is None:
-            errors.append((src, dst, str(why)))
-    if errors:
-        raise Error(errors)
-    return dst
-
-def preferences_copytree(src, dst):
-    import os
-    with os.scandir(src) as entries:
-        return _preferences_copytree(entries=entries, src=src, dst=dst)
 
 class PREFERENCES_OT_keyconfig_activate(Operator):
     bl_idname = "preferences.keyconfig_activate"
@@ -112,7 +74,7 @@ class PREFERENCES_OT_copy_prev(Operator):
 
     @classmethod
     def _old_version_path(cls, version):
-        return bpy.utils.resource_path('USER', version[0], version[1])
+        return bpy.utils.resource_path('USER', major=version[0], minor=version[1])
 
     @classmethod
     def previous_version(cls):
@@ -121,6 +83,7 @@ class PREFERENCES_OT_copy_prev(Operator):
         version = bpy.app.version
         version_new = ((version[0] * 100) + version[1])
         version_old = ((version[0] * 100) + version[1]) - 1
+
         # Ensure we only try to copy files from a point release.
         # The check below ensures the second numbers match.
         while (version_new % 100) // 10 == (version_old % 100) // 10:
@@ -165,10 +128,8 @@ class PREFERENCES_OT_copy_prev(Operator):
         return os.path.isfile(old_userpref) and not os.path.isfile(new_userpref)
 
     def execute(self, _context):
-        # Use this instead once we upgrade to Python 3.8 with dirs_exist_ok.
-        # import shutil
-        # shutil.copytree(self._old_path(), self._new_path(), dirs_exist_ok=True)
-        preferences_copytree(self._old_path(), self._new_path())
+        import shutil
+        shutil.copytree(self._old_path(), self._new_path(), dirs_exist_ok=True, symlinks=True)
 
         # reload preferences and recent-files.txt
         bpy.ops.wm.read_userpref()
@@ -184,7 +145,7 @@ class PREFERENCES_OT_copy_prev(Operator):
 
 
 class PREFERENCES_OT_keyconfig_test(Operator):
-    """Test key-config for conflicts"""
+    """Test key configuration for conflicts"""
     bl_idname = "preferences.keyconfig_test"
     bl_label = "Test Key Configuration for Conflicts"
 
@@ -225,7 +186,7 @@ class PREFERENCES_OT_keyconfig_import(Operator):
         options={'HIDDEN'},
     )
     keep_original: BoolProperty(
-        name="Keep original",
+        name="Keep Original",
         description="Keep original file after copying to configuration folder",
         default=True,
     )
@@ -241,7 +202,11 @@ class PREFERENCES_OT_keyconfig_import(Operator):
 
         config_name = basename(self.filepath)
 
-        path = bpy.utils.user_resource('SCRIPTS', os.path.join("presets", "keyconfig"), create=True)
+        path = bpy.utils.user_resource(
+            'SCRIPTS',
+            path=os.path.join("presets", "keyconfig"),
+            create=True,
+        )
         path = os.path.join(path, config_name)
 
         try:
@@ -279,7 +244,7 @@ class PREFERENCES_OT_keyconfig_export(Operator):
     )
     filepath: StringProperty(
         subtype='FILE_PATH',
-        default="keymap.py",
+        default="",
     )
     filter_folder: BoolProperty(
         name="Filter folders",
@@ -318,7 +283,13 @@ class PREFERENCES_OT_keyconfig_export(Operator):
         return {'FINISHED'}
 
     def invoke(self, context, _event):
+        import os
         wm = context.window_manager
+        if not self.filepath:
+            self.filepath = os.path.join(
+                os.path.expanduser("~"),
+                bpy.path.display_name_to_filepath(wm.keyconfigs.active.name) + ".py",
+            )
         wm.fileselect_add(self)
         return {'RUNNING_MODAL'}
 
@@ -354,7 +325,7 @@ class PREFERENCES_OT_keyitem_restore(Operator):
 
     item_id: IntProperty(
         name="Item Identifier",
-        description="Identifier of the item to remove",
+        description="Identifier of the item to restore",
     )
 
     @classmethod
@@ -544,7 +515,11 @@ class PREFERENCES_OT_theme_install(Operator):
 
         xmlfile = self.filepath
 
-        path_themes = bpy.utils.user_resource('SCRIPTS', "presets/interface_theme", create=True)
+        path_themes = bpy.utils.user_resource(
+            'SCRIPTS',
+            path=os.path.join("presets", "interface_theme"),
+            create=True,
+        )
 
         if not path_themes:
             self.report({'ERROR'}, "Failed to get themes path")
@@ -605,7 +580,7 @@ class PREFERENCES_OT_addon_install(Operator):
         name="Target Path",
         items=(
             ('DEFAULT', "Default", ""),
-            ('PREFS', "User Prefs", ""),
+            ('PREFS', "Preferences", ""),
         ),
     )
 
@@ -637,8 +612,8 @@ class PREFERENCES_OT_addon_install(Operator):
         pyfile = self.filepath
 
         if self.target == 'DEFAULT':
-            # don't use bpy.utils.script_paths("addons") because we may not be able to write to it.
-            path_addons = bpy.utils.user_resource('SCRIPTS', "addons", create=True)
+            # Don't use `bpy.utils.script_paths(path="addons")` because we may not be able to write to it.
+            path_addons = bpy.utils.user_resource('SCRIPTS', path="addons", create=True)
         else:
             path_addons = context.preferences.filepaths.script_directory
             if path_addons:
@@ -677,11 +652,12 @@ class PREFERENCES_OT_addon_install(Operator):
                 traceback.print_exc()
                 return {'CANCELLED'}
 
+            file_to_extract_root = _zipfile_root_namelist(file_to_extract)
             if self.overwrite:
-                for f in file_to_extract.namelist():
-                    module_filesystem_remove(path_addons, f)
+                for f in file_to_extract_root:
+                    _module_filesystem_remove(path_addons, f)
             else:
-                for f in file_to_extract.namelist():
+                for f in file_to_extract_root:
                     path_dest = os.path.join(path_addons, os.path.basename(f))
                     if os.path.exists(path_dest):
                         self.report({'WARNING'}, "File already installed to %r\n" % path_dest)
@@ -697,7 +673,7 @@ class PREFERENCES_OT_addon_install(Operator):
             path_dest = os.path.join(path_addons, os.path.basename(pyfile))
 
             if self.overwrite:
-                module_filesystem_remove(path_addons, os.path.basename(pyfile))
+                _module_filesystem_remove(path_addons, os.path.basename(pyfile))
             elif os.path.exists(path_dest):
                 self.report({'WARNING'}, "File already installed to %r\n" % path_dest)
                 return {'CANCELLED'}
@@ -713,7 +689,7 @@ class PREFERENCES_OT_addon_install(Operator):
         addons_new.discard("modules")
 
         # disable any addons we may have enabled previously and removed.
-        # this is unlikely but do just in case. bug [#23978]
+        # this is unlikely but do just in case. bug T23978.
         for new_addon in addons_new:
             addon_utils.disable(new_addon, default_set=True)
 
@@ -865,7 +841,7 @@ class PREFERENCES_OT_addon_show(Operator):
 # Note: shares some logic with PREFERENCES_OT_addon_install
 # but not enough to de-duplicate. Fixes here may apply to both.
 class PREFERENCES_OT_app_template_install(Operator):
-    """Install an application-template"""
+    """Install an application template"""
     bl_idname = "preferences.app_template_install"
     bl_label = "Install Template from File..."
 
@@ -896,7 +872,8 @@ class PREFERENCES_OT_app_template_install(Operator):
         filepath = self.filepath
 
         path_app_templates = bpy.utils.user_resource(
-            'SCRIPTS', os.path.join("startup", "bl_app_templates_user"),
+            'SCRIPTS',
+            path=os.path.join("startup", "bl_app_templates_user"),
             create=True,
         )
 
@@ -920,11 +897,12 @@ class PREFERENCES_OT_app_template_install(Operator):
                 traceback.print_exc()
                 return {'CANCELLED'}
 
+            file_to_extract_root = _zipfile_root_namelist(file_to_extract)
             if self.overwrite:
-                for f in file_to_extract.namelist():
-                    module_filesystem_remove(path_app_templates, f)
+                for f in file_to_extract_root:
+                    _module_filesystem_remove(path_app_templates, f)
             else:
-                for f in file_to_extract.namelist():
+                for f in file_to_extract_root:
                     path_dest = os.path.join(path_app_templates, os.path.basename(f))
                     if os.path.exists(path_dest):
                         self.report({'WARNING'}, "File already installed to %r\n" % path_dest)
@@ -966,9 +944,9 @@ class PREFERENCES_OT_app_template_install(Operator):
 # Studio Light Operations
 
 class PREFERENCES_OT_studiolight_install(Operator):
-    """Install a user defined studio light"""
+    """Install a user defined light"""
     bl_idname = "preferences.studiolight_install"
-    bl_label = "Install Custom Studio Light"
+    bl_label = "Install Light"
 
     files: CollectionProperty(
         name="File Path",
@@ -978,7 +956,7 @@ class PREFERENCES_OT_studiolight_install(Operator):
         subtype='DIR_PATH',
     )
     filter_folder: BoolProperty(
-        name="Filter folders",
+        name="Filter Folders",
         default=True,
         options={'HIDDEN'},
     )
@@ -989,9 +967,9 @@ class PREFERENCES_OT_studiolight_install(Operator):
     type: EnumProperty(
         name="Type",
         items=(
-            ('MATCAP', "MatCap", ""),
-            ('WORLD', "World", ""),
-            ('STUDIO', "Studio", ""),
+            ('MATCAP', "MatCap", "Install custom MatCaps"),
+            ('WORLD', "World", "Install custom HDRIs"),
+            ('STUDIO', "Studio", "Install custom Studio Lights"),
         )
     )
 
@@ -1001,7 +979,7 @@ class PREFERENCES_OT_studiolight_install(Operator):
         prefs = context.preferences
 
         path_studiolights = os.path.join("studiolights", self.type.lower())
-        path_studiolights = bpy.utils.user_resource('DATAFILES', path_studiolights, create=True)
+        path_studiolights = bpy.utils.user_resource('DATAFILES', path=path_studiolights, create=True)
         if not path_studiolights:
             self.report({'ERROR'}, "Failed to create Studio Light path")
             return {'CANCELLED'}
@@ -1039,7 +1017,7 @@ class PREFERENCES_OT_studiolight_new(Operator):
         default="StudioLight",
     )
 
-    ask_overide = False
+    ask_override = False
 
     def execute(self, context):
         import os
@@ -1047,15 +1025,19 @@ class PREFERENCES_OT_studiolight_new(Operator):
         wm = context.window_manager
         filename = bpy.path.ensure_ext(self.filename, ".sl")
 
-        path_studiolights = bpy.utils.user_resource('DATAFILES', os.path.join("studiolights", "studio"), create=True)
+        path_studiolights = bpy.utils.user_resource(
+            'DATAFILES',
+            path=os.path.join("studiolights", "studio"),
+            create=True,
+        )
         if not path_studiolights:
             self.report({'ERROR'}, "Failed to get Studio Light path")
             return {'CANCELLED'}
 
         filepath_final = os.path.join(path_studiolights, filename)
         if os.path.isfile(filepath_final):
-            if not self.ask_overide:
-                self.ask_overide = True
+            if not self.ask_override:
+                self.ask_override = True
                 return wm.invoke_props_dialog(self, width=320)
             else:
                 for studio_light in prefs.studio_lights:
@@ -1075,7 +1057,7 @@ class PREFERENCES_OT_studiolight_new(Operator):
 
     def draw(self, _context):
         layout = self.layout
-        if self.ask_overide:
+        if self.ask_override:
             layout.label(text="Warning, file already exists. Overwrite existing file?")
         else:
             layout.prop(self, "filename")
@@ -1109,9 +1091,9 @@ class PREFERENCES_OT_studiolight_uninstall(Operator):
 
 
 class PREFERENCES_OT_studiolight_copy_settings(Operator):
-    """Copy Studio Light settings to the Studio light editor"""
+    """Copy Studio Light settings to the Studio Light editor"""
     bl_idname = "preferences.studiolight_copy_settings"
-    bl_label = "Copy Studio Light settings"
+    bl_label = "Copy Studio Light Settings"
     index: IntProperty()
 
     def execute(self, context):

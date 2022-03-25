@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2011 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2011 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup spclip
@@ -46,6 +30,7 @@
 #include "ED_gpencil.h"
 #include "ED_mask.h"
 #include "ED_screen.h"
+#include "ED_util.h"
 
 #include "BIF_glutil.h"
 
@@ -62,7 +47,7 @@
 
 #include "BLF_api.h"
 
-#include "clip_intern.h"  // own include
+#include "clip_intern.h" /* own include */
 
 /*********************** main area drawing *************************/
 
@@ -153,9 +138,7 @@ static void draw_movieclip_cache(SpaceClip *sc, ARegion *region, MovieClip *clip
   MovieTrackingPlaneTrack *act_plane_track = BKE_tracking_plane_track_get_active(&clip->tracking);
   MovieTrackingReconstruction *reconstruction = BKE_tracking_get_active_reconstruction(tracking);
 
-  GPU_blend(true);
-  GPU_blend_set_func_separate(
-      GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
+  GPU_blend(GPU_BLEND_ALPHA);
 
   /* cache background */
   ED_region_cache_draw_background(region);
@@ -245,7 +228,7 @@ static void draw_movieclip_cache(SpaceClip *sc, ARegion *region, MovieClip *clip
     }
   }
 
-  GPU_blend(false);
+  GPU_blend(GPU_BLEND_NONE);
 
   /* current frame */
   x = (sc->user.framenr - sfra) / (efra - sfra + 1) * region->winx;
@@ -322,7 +305,7 @@ static void draw_movieclip_buffer(const bContext *C,
                                   float zoomy)
 {
   MovieClip *clip = ED_space_clip_get_clip(sc);
-  int filter = GL_LINEAR;
+  bool use_filter = true;
   int x, y;
 
   /* find window pixel coordinates of origin */
@@ -330,9 +313,7 @@ static void draw_movieclip_buffer(const bContext *C,
 
   /* checkerboard for case alpha */
   if (ibuf->planes == 32) {
-    GPU_blend(true);
-    GPU_blend_set_func_separate(
-        GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
+    GPU_blend(GPU_BLEND_ALPHA);
 
     imm_draw_box_checker_2d(x, y, x + zoomx * ibuf->x, y + zoomy * ibuf->y);
   }
@@ -340,13 +321,13 @@ static void draw_movieclip_buffer(const bContext *C,
   /* non-scaled proxy shouldn't use filtering */
   if ((clip->flag & MCLIP_USE_PROXY) == 0 ||
       ELEM(sc->user.render_size, MCLIP_PROXY_RENDER_SIZE_FULL, MCLIP_PROXY_RENDER_SIZE_100)) {
-    filter = GL_NEAREST;
+    use_filter = false;
   }
 
-  ED_draw_imbuf_ctx(C, ibuf, x, y, filter, zoomx * width / ibuf->x, zoomy * height / ibuf->y);
+  ED_draw_imbuf_ctx(C, ibuf, x, y, use_filter, zoomx * width / ibuf->x, zoomy * height / ibuf->y);
 
   if (ibuf->planes == 32) {
-    GPU_blend(false);
+    GPU_blend(GPU_BLEND_NONE);
   }
 
   if (sc->flag & SC_SHOW_METADATA) {
@@ -875,16 +856,11 @@ static void draw_marker_areas(SpaceClip *sc,
 
 static float get_shortest_pattern_side(MovieTrackingMarker *marker)
 {
-  int i, next;
   float len_sq = FLT_MAX;
 
-  for (i = 0; i < 4; i++) {
-    float cur_len;
-
-    next = (i + 1) % 4;
-
-    cur_len = len_squared_v2v2(marker->pattern_corners[i], marker->pattern_corners[next]);
-
+  for (int i = 0; i < 4; i++) {
+    int next = (i + 1) % 4;
+    float cur_len = len_squared_v2v2(marker->pattern_corners[i], marker->pattern_corners[next]);
     len_sq = min_ff(cur_len, len_sq);
   }
 
@@ -987,7 +963,6 @@ static void draw_marker_slide_zones(SpaceClip *sc,
   }
 
   if ((sc->flag & SC_SHOW_MARKER_PATTERN) && ((track->pat_flag & SELECT) == sel || outline)) {
-    int i;
     float pat_min[2], pat_max[2];
     /*      float dx = 12.0f / width, dy = 12.0f / height;*/ /* XXX UNUSED */
     float tilt_ctrl[2];
@@ -997,7 +972,7 @@ static void draw_marker_slide_zones(SpaceClip *sc,
     }
 
     /* pattern's corners sliding squares */
-    for (i = 0; i < 4; i++) {
+    for (int i = 0; i < 4; i++) {
       draw_marker_slide_square(marker->pattern_corners[i][0],
                                marker->pattern_corners[i][1],
                                patdx / 1.5f,
@@ -1212,21 +1187,12 @@ static void draw_plane_marker_image(Scene *scene,
 
       if (plane_track->image_opacity != 1.0f || ibuf->planes == 32) {
         transparent = true;
-        GPU_blend(true);
-        GPU_blend_set_func_separate(
-            GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
+        GPU_blend(GPU_BLEND_ALPHA);
       }
 
-      GPUTexture *texture = GPU_texture_create_nD(ibuf->x,
-                                                  ibuf->y,
-                                                  0,
-                                                  2,
-                                                  display_buffer,
-                                                  GPU_RGBA8,
-                                                  GPU_DATA_UNSIGNED_BYTE,
-                                                  0,
-                                                  false,
-                                                  NULL);
+      GPUTexture *texture = GPU_texture_create_2d(
+          "plane_marker_image", ibuf->x, ibuf->y, 1, GPU_RGBA8, NULL);
+      GPU_texture_update(texture, GPU_DATA_UBYTE, display_buffer);
       GPU_texture_filter_mode(texture, false);
 
       GPU_matrix_push();
@@ -1237,10 +1203,11 @@ static void draw_plane_marker_image(Scene *scene,
       uint texCoord = GPU_vertformat_attr_add(
           imm_format, "texCoord", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
-      immBindBuiltinProgram(GPU_SHADER_2D_IMAGE_COLOR);
+      /* Use 3D image for correct display of planar tracked images. */
+      immBindBuiltinProgram(GPU_SHADER_3D_IMAGE_MODULATE_ALPHA);
 
       immBindTexture("image", texture);
-      immUniformColor4f(1.0f, 1.0f, 1.0f, plane_track->image_opacity);
+      immUniform1f("alpha", plane_track->image_opacity);
 
       immBegin(GPU_PRIM_TRI_FAN, 4);
 
@@ -1266,7 +1233,7 @@ static void draw_plane_marker_image(Scene *scene,
       GPU_texture_free(texture);
 
       if (transparent) {
-        GPU_blend(false);
+        GPU_blend(GPU_BLEND_NONE);
       }
     }
 
@@ -1394,8 +1361,7 @@ static void draw_plane_marker_ex(SpaceClip *sc,
         immUniformColor3fv(selected_color);
       }
 
-      int i;
-      for (i = 0; i < 4; i++) {
+      for (int i = 0; i < 4; i++) {
         draw_marker_slide_square(plane_marker->corners[i][0],
                                  plane_marker->corners[i][1],
                                  3.0f * px[0],
@@ -1515,7 +1481,7 @@ static void draw_tracking_tracks(SpaceClip *sc,
 
     /* undistort */
     if (count) {
-      marker_pos = MEM_callocN(2 * sizeof(float) * count, "draw_tracking_tracks marker_pos");
+      marker_pos = MEM_callocN(sizeof(float[2]) * count, "draw_tracking_tracks marker_pos");
 
       track = tracksbase->first;
       fp = marker_pos;
@@ -1999,7 +1965,6 @@ void clip_draw_cache_and_notes(const bContext *C, SpaceClip *sc, ARegion *region
   }
 }
 
-/* draw grease pencil */
 void clip_draw_grease_pencil(bContext *C, int onlyv2d)
 {
   SpaceClip *sc = CTX_wm_space_clip(C);

@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2017 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2017 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup depsgraph
@@ -38,8 +22,7 @@
 
 namespace deg = blender::deg;
 
-namespace blender {
-namespace deg {
+namespace blender::deg {
 namespace {
 
 struct DebugContext {
@@ -66,8 +49,8 @@ void deg_debug_fprintf(const DebugContext &ctx, const char *fmt, ...)
 
 inline double get_node_time(const DebugContext & /*ctx*/, const Node *node)
 {
-  // TODO(sergey): Figure out a nice way to define which exact time
-  // we want to show.
+  /* TODO(sergey): Figure out a nice way to define which exact time
+   * we want to show. */
   return node->stats.current_time;
 }
 
@@ -83,12 +66,12 @@ string gnuplotify_id_code(const string &name)
 
 string gnuplotify_name(const string &name)
 {
-  string result = "";
+  string result;
   const int length = name.length();
   for (int i = 0; i < length; i++) {
     const char ch = name[i];
     if (ch == '_') {
-      result += "\\\\\\";
+      result += R"(\\\)";
     }
     result += ch;
   }
@@ -97,7 +80,7 @@ string gnuplotify_name(const string &name)
 
 void write_stats_data(const DebugContext &ctx)
 {
-  // Fill in array of all stats which are to be displayed.
+  /* Fill in array of all stats which are to be displayed. */
   Vector<StatsEntry> stats;
   stats.reserve(ctx.graph->id_nodes.size());
   for (const IDNode *id_node : ctx.graph->id_nodes) {
@@ -110,12 +93,12 @@ void write_stats_data(const DebugContext &ctx)
     entry.time = time;
     stats.append(entry);
   }
-  // Sort the data.
+  /* Sort the data. */
   std::sort(stats.begin(), stats.end(), stat_entry_comparator);
-  // We limit number of entries, otherwise things become unreadable.
+  /* We limit number of entries, otherwise things become unreadable. */
   stats.resize(min_ii(stats.size(), 32));
   std::reverse(stats.begin(), stats.end());
-  // Print data to the file stream.
+  /* Print data to the file stream. */
   deg_debug_fprintf(ctx, "$data << EOD" NL);
   for (const StatsEntry &entry : stats) {
     deg_debug_fprintf(ctx,
@@ -129,14 +112,14 @@ void write_stats_data(const DebugContext &ctx)
 
 void deg_debug_stats_gnuplot(const DebugContext &ctx)
 {
-  // Data itself.
+  /* Data itself. */
   write_stats_data(ctx);
-  // Optional label.
+  /* Optional label. */
   if (ctx.label && ctx.label[0]) {
     deg_debug_fprintf(ctx, "set title \"%s\"" NL, ctx.label);
   }
-  // Rest of the commands.
-  // TODO(sergey): Need to decide on the resolution somehow.
+  /* Rest of the commands.
+   * TODO(sergey): Need to decide on the resolution somehow. */
   deg_debug_fprintf(ctx, "set terminal pngcairo size 1920,1080" NL);
   deg_debug_fprintf(ctx, "set output \"%s\"" NL, ctx.output_filename);
   deg_debug_fprintf(ctx, "set grid" NL);
@@ -149,11 +132,10 @@ void deg_debug_stats_gnuplot(const DebugContext &ctx)
 }
 
 }  // namespace
-}  // namespace deg
-}  // namespace blender
+}  // namespace blender::deg
 
 void DEG_debug_stats_gnuplot(const Depsgraph *depsgraph,
-                             FILE *f,
+                             FILE *fp,
                              const char *label,
                              const char *output_filename)
 {
@@ -161,7 +143,7 @@ void DEG_debug_stats_gnuplot(const Depsgraph *depsgraph,
     return;
   }
   deg::DebugContext ctx;
-  ctx.file = f;
+  ctx.file = fp;
   ctx.graph = (deg::Depsgraph *)depsgraph;
   ctx.label = label;
   ctx.output_filename = output_filename;

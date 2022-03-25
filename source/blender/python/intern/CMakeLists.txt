@@ -1,22 +1,5 @@
-# ***** BEGIN GPL LICENSE BLOCK *****
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
-# of the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# The Original Code is Copyright (C) 2006, Blender Foundation
-# All rights reserved.
-# ***** END GPL LICENSE BLOCK *****
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2006 Blender Foundation. All rights reserved.
 
 set(INC
   ..
@@ -35,6 +18,8 @@ set(INC
   ../../../../intern/guardedalloc
   ../../../../intern/mantaflow/extern
   ../../../../intern/opencolorio
+  # RNA_prototypes.h
+  ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
 set(INC_SYS
@@ -62,6 +47,7 @@ set(SRC
   bpy_gizmo_wrap.c
   bpy_interface.c
   bpy_interface_atexit.c
+  bpy_interface_run.c
   bpy_intern_string.c
   bpy_library_load.c
   bpy_library_write.c
@@ -74,10 +60,13 @@ set(SRC
   bpy_rna_anim.c
   bpy_rna_array.c
   bpy_rna_callback.c
+  bpy_rna_data.c
   bpy_rna_driver.c
   bpy_rna_gizmo.c
   bpy_rna_id_collection.c
+  bpy_rna_operator.c
   bpy_rna_types_capi.c
+  bpy_rna_ui.c
   bpy_traceback.c
   bpy_utils_previews.c
   bpy_utils_units.c
@@ -111,15 +100,20 @@ set(SRC
   bpy_rna.h
   bpy_rna_anim.h
   bpy_rna_callback.h
+  bpy_rna_data.h
   bpy_rna_driver.h
   bpy_rna_gizmo.h
   bpy_rna_id_collection.h
+  bpy_rna_operator.h
   bpy_rna_types_capi.h
+  bpy_rna_ui.h
   bpy_traceback.h
   bpy_utils_previews.h
   bpy_utils_units.h
   ../BPY_extern.h
   ../BPY_extern_clog.h
+  ../BPY_extern_python.h
+  ../BPY_extern_run.h
 )
 
 set(LIB
@@ -230,6 +224,10 @@ if(WITH_IMAGE_TIFF)
   add_definitions(-DWITH_TIFF)
 endif()
 
+if(WITH_WEBP)
+	add_definitions(-DWITH_WEBP)
+endif()
+
 if(WITH_INPUT_NDOF)
   add_definitions(-DWITH_INPUT_NDOF)
 endif()
@@ -250,7 +248,11 @@ if(WITH_SDL)
   list(APPEND INC_SYS
     ${SDL_INCLUDE_DIR}
   )
-  if(NOT WITH_SDL_DYNLOAD)
+  if(WITH_SDL_DYNLOAD)
+    list(APPEND LIB
+      extern_sdlew
+    )
+  else()
     list(APPEND LIB
       ${SDL_LIBRARY}
     )
@@ -269,8 +271,20 @@ if(WITH_JACK)
   add_definitions(-DWITH_JACK)
 endif()
 
+if(WITH_COREAUDIO)
+  add_definitions(-DWITH_COREAUDIO)
+endif()
+
 if(WITH_LIBMV)
   add_definitions(-DWITH_LIBMV)
+endif()
+
+if(WITH_PULSEAUDIO)
+  add_definitions(-DWITH_PULSEAUDIO)
+endif()
+
+if(WITH_WASAPI)
+  add_definitions(-DWITH_WASAPI)
 endif()
 
 if(WITH_MOD_OCEANSIM)
@@ -336,6 +350,19 @@ if(WITH_XR_OPENXR)
   add_definitions(-DWITH_XR_OPENXR)
 endif()
 
-add_definitions(${GL_DEFINITIONS})
+if(WITH_POTRACE)
+  add_definitions(-DWITH_POTRACE)
+endif()
+
+if(WITH_PUGIXML)
+  add_definitions(-DWITH_PUGIXML)
+endif()
+
+if(WITH_HARU)
+  add_definitions(-DWITH_HARU)
+endif()
 
 blender_add_lib(bf_python "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+
+# RNA_prototypes.h
+add_dependencies(bf_python bf_rna)

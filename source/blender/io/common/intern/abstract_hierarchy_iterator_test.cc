@@ -1,26 +1,14 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2019 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2019 Blender Foundation. All rights reserved. */
 #include "IO_abstract_hierarchy_iterator.h"
-#include "blenloader/blendfile_loading_base_test.h"
 
+#include "tests/blendfile_loading_base_test.h"
+
+#include "BKE_scene.h"
 #include "BLI_math.h"
+#include "BLO_readfile.h"
 #include "DEG_depsgraph.h"
+#include "DEG_depsgraph_build.h"
 #include "DNA_object_types.h"
 
 #include <map>
@@ -32,7 +20,7 @@ namespace {
 
 /* Mapping from ID.name to set of export hierarchy path. Duplicated objects can be exported
  * multiple times with different export paths, hence the set. */
-typedef std::map<std::string, std::set<std::string>> used_writers;
+using used_writers = std::map<std::string, std::set<std::string>>;
 
 class TestHierarchyWriter : public AbstractHierarchyWriter {
  public:
@@ -69,7 +57,7 @@ class TestingHierarchyIterator : public AbstractHierarchyIterator {
   explicit TestingHierarchyIterator(Depsgraph *depsgraph) : AbstractHierarchyIterator(depsgraph)
   {
   }
-  virtual ~TestingHierarchyIterator()
+  ~TestingHierarchyIterator() override
   {
     release_writers();
   }
@@ -98,17 +86,17 @@ class TestingHierarchyIterator : public AbstractHierarchyIterator {
   }
 };
 
-class USDHierarchyIteratorTest : public BlendfileLoadingBaseTest {
+class AbstractHierarchyIteratorTest : public BlendfileLoadingBaseTest {
  protected:
   TestingHierarchyIterator *iterator;
 
-  virtual void SetUp()
+  void SetUp() override
   {
     BlendfileLoadingBaseTest::SetUp();
     iterator = nullptr;
   }
 
-  virtual void TearDown()
+  void TearDown() override
   {
     iterator_free();
     BlendfileLoadingBaseTest::TearDown();
@@ -130,7 +118,7 @@ class USDHierarchyIteratorTest : public BlendfileLoadingBaseTest {
   }
 };
 
-TEST_F(USDHierarchyIteratorTest, ExportHierarchyTest)
+TEST_F(AbstractHierarchyIteratorTest, ExportHierarchyTest)
 {
   /* Load the test blend file. */
   if (!blendfile_load("usd/usd_hierarchy_export_test.blend")) {
@@ -141,7 +129,7 @@ TEST_F(USDHierarchyIteratorTest, ExportHierarchyTest)
 
   iterator->iterate_and_write();
 
-  // Mapping from object name to set of export paths.
+  /* Mapping from object name to set of export paths. */
   used_writers expected_transforms = {
       {"OBCamera", {"/Camera"}},
       {"OBDupli1", {"/Dupli1"}},
@@ -192,12 +180,12 @@ TEST_F(USDHierarchyIteratorTest, ExportHierarchyTest)
 
   EXPECT_EQ(expected_data, iterator->data_writers);
 
-  // The scene has no hair or particle systems.
+  /* The scene has no hair or particle systems. */
   EXPECT_EQ(0, iterator->hair_writers.size());
   EXPECT_EQ(0, iterator->particle_writers.size());
 
-  // On the second iteration, everything should be written as well.
-  // This tests the default value of iterator->export_subset_.
+  /* On the second iteration, everything should be written as well.
+   * This tests the default value of iterator->export_subset_. */
   iterator->transform_writers.clear();
   iterator->data_writers.clear();
   iterator->iterate_and_write();
@@ -205,10 +193,10 @@ TEST_F(USDHierarchyIteratorTest, ExportHierarchyTest)
   EXPECT_EQ(expected_data, iterator->data_writers);
 }
 
-TEST_F(USDHierarchyIteratorTest, ExportSubsetTest)
+TEST_F(AbstractHierarchyIteratorTest, ExportSubsetTest)
 {
-  // The scene has no hair or particle systems, and this is already covered by ExportHierarchyTest,
-  // so not included here. Update this test when hair & particle systems are included.
+  /* The scene has no hair or particle systems, and this is already covered by ExportHierarchyTest,
+   * so not included here. Update this test when hair & particle systems are included. */
 
   /* Load the test blend file. */
   if (!blendfile_load("usd/usd_hierarchy_export_test.blend")) {
@@ -217,7 +205,7 @@ TEST_F(USDHierarchyIteratorTest, ExportSubsetTest)
   depsgraph_create(DAG_EVAL_RENDER);
   iterator_create();
 
-  // Mapping from object name to set of export paths.
+  /* Mapping from object name to set of export paths. */
   used_writers expected_transforms = {
       {"OBCamera", {"/Camera"}},
       {"OBDupli1", {"/Dupli1"}},
@@ -265,10 +253,10 @@ TEST_F(USDHierarchyIteratorTest, ExportSubsetTest)
       {"OBParentOfDupli2", {"/ParentOfDupli2/Icosphere"}},
   };
 
-  // Even when only asking an export of transforms, on the first frame everything should be
-  // exported.
+  /* Even when only asking an export of transforms, on the first frame everything should be
+   * exported. */
   {
-    ExportSubset export_subset = {0};
+    ExportSubset export_subset = {false};
     export_subset.transforms = true;
     export_subset.shapes = false;
     iterator->set_export_subset(export_subset);
@@ -277,22 +265,22 @@ TEST_F(USDHierarchyIteratorTest, ExportSubsetTest)
   EXPECT_EQ(expected_transforms, iterator->transform_writers);
   EXPECT_EQ(expected_data, iterator->data_writers);
 
-  // Clear data to prepare for the next iteration.
+  /* Clear data to prepare for the next iteration. */
   iterator->transform_writers.clear();
   iterator->data_writers.clear();
 
-  // Second iteration, should only write transforms now.
+  /* Second iteration, should only write transforms now. */
   iterator->iterate_and_write();
   EXPECT_EQ(expected_transforms, iterator->transform_writers);
   EXPECT_EQ(0, iterator->data_writers.size());
 
-  // Clear data to prepare for the next iteration.
+  /* Clear data to prepare for the next iteration. */
   iterator->transform_writers.clear();
   iterator->data_writers.clear();
 
-  // Third iteration, should only write data now.
+  /* Third iteration, should only write data now. */
   {
-    ExportSubset export_subset = {0};
+    ExportSubset export_subset = {false};
     export_subset.transforms = false;
     export_subset.shapes = true;
     iterator->set_export_subset(export_subset);
@@ -301,13 +289,13 @@ TEST_F(USDHierarchyIteratorTest, ExportSubsetTest)
   EXPECT_EQ(0, iterator->transform_writers.size());
   EXPECT_EQ(expected_data, iterator->data_writers);
 
-  // Clear data to prepare for the next iteration.
+  /* Clear data to prepare for the next iteration. */
   iterator->transform_writers.clear();
   iterator->data_writers.clear();
 
-  // Fourth iteration, should export everything now.
+  /* Fourth iteration, should export everything now. */
   {
-    ExportSubset export_subset = {0};
+    ExportSubset export_subset = {false};
     export_subset.transforms = true;
     export_subset.shapes = true;
     iterator->set_export_subset(export_subset);
@@ -316,4 +304,44 @@ TEST_F(USDHierarchyIteratorTest, ExportSubsetTest)
   EXPECT_EQ(expected_transforms, iterator->transform_writers);
   EXPECT_EQ(expected_data, iterator->data_writers);
 }
+
+/* Test class that constructs a depsgraph in such a way that it includes invisible objects. */
+class AbstractHierarchyIteratorInvisibleTest : public AbstractHierarchyIteratorTest {
+ protected:
+  void depsgraph_create(eEvaluationMode depsgraph_evaluation_mode) override
+  {
+    depsgraph = DEG_graph_new(
+        bfile->main, bfile->curscene, bfile->cur_view_layer, depsgraph_evaluation_mode);
+    DEG_graph_build_for_all_objects(depsgraph);
+    BKE_scene_graph_update_tagged(depsgraph, bfile->main);
+  }
+};
+
+TEST_F(AbstractHierarchyIteratorInvisibleTest, ExportInvisibleTest)
+{
+  if (!blendfile_load("alembic/visibility.blend")) {
+    return;
+  }
+  depsgraph_create(DAG_EVAL_RENDER);
+  iterator_create();
+
+  iterator->iterate_and_write();
+
+  /* Mapping from object name to set of export paths. */
+  used_writers expected_transforms = {{"OBInvisibleAnimatedCube", {"/InvisibleAnimatedCube"}},
+                                      {"OBInvisibleCube", {"/InvisibleCube"}},
+                                      {"OBVisibleCube", {"/VisibleCube"}}};
+  EXPECT_EQ(expected_transforms, iterator->transform_writers);
+
+  used_writers expected_data = {{"OBInvisibleAnimatedCube", {"/InvisibleAnimatedCube/Cube"}},
+                                {"OBInvisibleCube", {"/InvisibleCube/Cube"}},
+                                {"OBVisibleCube", {"/VisibleCube/Cube"}}};
+
+  EXPECT_EQ(expected_data, iterator->data_writers);
+
+  /* The scene has no hair or particle systems. */
+  EXPECT_EQ(0, iterator->hair_writers.size());
+  EXPECT_EQ(0, iterator->particle_writers.size());
+}
+
 }  // namespace blender::io

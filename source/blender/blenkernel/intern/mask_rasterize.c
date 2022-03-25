@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2012 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2012 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup bke
@@ -106,7 +90,7 @@
 
 /* for debugging add... */
 #ifndef NDEBUG
-/* printf("%u %u %u %u\n", _t[0], _t[1], _t[2], _t[3]); \ */
+// printf("%u %u %u %u\n", _t[0], _t[1], _t[2], _t[3]);
 #  define FACE_ASSERT(face, vert_max) \
     { \
       unsigned int *_t = face; \
@@ -151,7 +135,7 @@ BLI_INLINE unsigned int clampis_uint(const unsigned int v,
 }
 
 /* --------------------------------------------------------------------- */
-/* local structs for mask rasterizeing                                   */
+/* local structs for mask rasterizing                                    */
 /* --------------------------------------------------------------------- */
 
 /**
@@ -226,10 +210,9 @@ MaskRasterHandle *BKE_maskrasterize_handle_new(void)
 void BKE_maskrasterize_handle_free(MaskRasterHandle *mr_handle)
 {
   const unsigned int layers_tot = mr_handle->layers_tot;
-  unsigned int i;
   MaskRasterLayer *layer = mr_handle->layers;
 
-  for (i = 0; i < layers_tot; i++, layer++) {
+  for (uint i = 0; i < layers_tot; i++, layer++) {
 
     if (layer->face_array) {
       MEM_freeN(layer->face_array);
@@ -293,10 +276,10 @@ static void maskrasterize_spline_differentiate_point_outset(float (*diff_feather
     co_curr = diff_points[k_curr];
     co_next = diff_points[k_next];
 
-    /* sub_v2_v2v2(d_prev, co_prev, co_curr); */ /* precalc */
+    // sub_v2_v2v2(d_prev, co_prev, co_curr); /* precalc */
     sub_v2_v2v2(d_next, co_curr, co_next);
 
-    /* normalize_v2(d_prev); */ /* precalc */
+    // normalize_v2(d_prev); /* precalc */
     normalize_v2(d_next);
 
     if ((do_test == false) ||
@@ -354,43 +337,38 @@ static bool layer_bucket_isect_test(const MaskRasterLayer *layer,
     if (isect_point_tri_v2(cent, v1, v2, v3)) {
       return true;
     }
-    else {
-      if ((dist_squared_to_line_segment_v2(cent, v1, v2) < bucket_max_rad_squared) ||
-          (dist_squared_to_line_segment_v2(cent, v2, v3) < bucket_max_rad_squared) ||
-          (dist_squared_to_line_segment_v2(cent, v3, v1) < bucket_max_rad_squared)) {
-        return true;
-      }
-      else {
-        // printf("skip tri\n");
-        return false;
-      }
-    }
-  }
-  else {
-    const float *v1 = cos[face[0]];
-    const float *v2 = cos[face[1]];
-    const float *v3 = cos[face[2]];
-    const float *v4 = cos[face[3]];
 
-    if (isect_point_tri_v2(cent, v1, v2, v3)) {
+    if ((dist_squared_to_line_segment_v2(cent, v1, v2) < bucket_max_rad_squared) ||
+        (dist_squared_to_line_segment_v2(cent, v2, v3) < bucket_max_rad_squared) ||
+        (dist_squared_to_line_segment_v2(cent, v3, v1) < bucket_max_rad_squared)) {
       return true;
     }
-    else if (isect_point_tri_v2(cent, v1, v3, v4)) {
-      return true;
-    }
-    else {
-      if ((dist_squared_to_line_segment_v2(cent, v1, v2) < bucket_max_rad_squared) ||
-          (dist_squared_to_line_segment_v2(cent, v2, v3) < bucket_max_rad_squared) ||
-          (dist_squared_to_line_segment_v2(cent, v3, v4) < bucket_max_rad_squared) ||
-          (dist_squared_to_line_segment_v2(cent, v4, v1) < bucket_max_rad_squared)) {
-        return true;
-      }
-      else {
-        // printf("skip quad\n");
-        return false;
-      }
-    }
+
+    // printf("skip tri\n");
+    return false;
   }
+
+  const float *v1 = cos[face[0]];
+  const float *v2 = cos[face[1]];
+  const float *v3 = cos[face[2]];
+  const float *v4 = cos[face[3]];
+
+  if (isect_point_tri_v2(cent, v1, v2, v3)) {
+    return true;
+  }
+  if (isect_point_tri_v2(cent, v1, v3, v4)) {
+    return true;
+  }
+
+  if ((dist_squared_to_line_segment_v2(cent, v1, v2) < bucket_max_rad_squared) ||
+      (dist_squared_to_line_segment_v2(cent, v2, v3) < bucket_max_rad_squared) ||
+      (dist_squared_to_line_segment_v2(cent, v3, v4) < bucket_max_rad_squared) ||
+      (dist_squared_to_line_segment_v2(cent, v4, v1) < bucket_max_rad_squared)) {
+    return true;
+  }
+
+  // printf("skip quad\n");
+  return false;
 }
 
 static void layer_bucket_init_dummy(MaskRasterLayer *layer)
@@ -520,7 +498,7 @@ static void layer_bucket_init(MaskRasterLayer *layer, const float pixel_size)
               BLI_assert(bucket_index < bucket_tot);
 
               /* Check if the bucket intersects with the face. */
-              /* Note: there is a trade off here since checking box/tri intersections isn't as
+              /* NOTE: there is a trade off here since checking box/tri intersections isn't as
                * optimal as it could be, but checking pixels against faces they will never
                * intersect with is likely the greater slowdown here -
                * so check if the cell intersects the face. */
@@ -625,7 +603,7 @@ void BKE_maskrasterize_handle_init(MaskRasterHandle *mr_handle,
     unsigned int tot_boundary_found = 0;
 #endif
 
-    if (masklay->restrictflag & MASK_RESTRICT_RENDER) {
+    if (masklay->visibility_flag & MASK_HIDE_RENDER) {
       /* skip the layer */
       mr_handle->layers_tot--;
       masklay_index--;
@@ -652,11 +630,11 @@ void BKE_maskrasterize_handle_init(MaskRasterHandle *mr_handle,
       const unsigned int resol_b = BKE_mask_spline_feather_resolution(spline, width, height) / 4;
       const unsigned int resol = CLAMPIS(MAX2(resol_a, resol_b), 4, 512);
 
-      diff_points = BKE_mask_spline_differentiate_with_resolution(spline, &tot_diff_point, resol);
+      diff_points = BKE_mask_spline_differentiate_with_resolution(spline, resol, &tot_diff_point);
 
       if (do_feather) {
         diff_feather_points = BKE_mask_spline_feather_differentiated_points_with_resolution(
-            spline, &tot_diff_feather_points, resol, false);
+            spline, resol, false, &tot_diff_feather_points);
         BLI_assert(diff_feather_points);
       }
       else {
@@ -677,7 +655,6 @@ void BKE_maskrasterize_handle_init(MaskRasterHandle *mr_handle,
           if (width != height) {
             float *fp;
             float *ffp;
-            unsigned int i;
             float asp;
 
             if (width < height) {
@@ -691,12 +668,12 @@ void BKE_maskrasterize_handle_init(MaskRasterHandle *mr_handle,
               asp = (float)height / (float)width;
             }
 
-            for (i = 0; i < tot_diff_point; i++, fp += 2) {
+            for (uint i = 0; i < tot_diff_point; i++, fp += 2) {
               (*fp) = (((*fp) - 0.5f) / asp) + 0.5f;
             }
 
             if (tot_diff_feather_points) {
-              for (i = 0; i < tot_diff_feather_points; i++, ffp += 2) {
+              for (uint i = 0; i < tot_diff_feather_points; i++, ffp += 2) {
                 (*ffp) = (((*ffp) - 0.5f) / asp) + 0.5f;
               }
             }
@@ -736,7 +713,7 @@ void BKE_maskrasterize_handle_init(MaskRasterHandle *mr_handle,
 
           sf_vert_tot++;
 
-          /* TODO, an alternate functions so we can avoid double vector copy! */
+          /* TODO: an alternate functions so we can avoid double vector copy! */
           for (j = 1; j < tot_diff_point; j++) {
             copy_v2_v2(co, diff_points[j]);
             sf_vert = BLI_scanfill_vert_add(&sf_ctx, co);
@@ -769,7 +746,7 @@ void BKE_maskrasterize_handle_init(MaskRasterHandle *mr_handle,
 
             BLI_assert(tot_diff_feather_points == tot_diff_point);
 
-            /* Note: only added for convenience, we don't in fact use these to scan-fill,
+            /* NOTE: only added for convenience, we don't in fact use these to scan-fill,
              * only to create feather faces after scan-fill. */
             for (j = 0; j < tot_diff_feather_points; j++) {
               copy_v2_v2(co_feather, diff_feather_points[j]);
@@ -791,7 +768,7 @@ void BKE_maskrasterize_handle_init(MaskRasterHandle *mr_handle,
             co_feather[2] = 1.0f;
 
             if (spline->flag & MASK_SPLINE_NOINTERSECT) {
-              diff_feather_points_flip = MEM_mallocN(sizeof(float) * 2 * tot_diff_feather_points,
+              diff_feather_points_flip = MEM_mallocN(sizeof(float[2]) * tot_diff_feather_points,
                                                      "diff_feather_points_flip");
 
               for (j = 0; j < tot_diff_point; j++) {
@@ -811,7 +788,7 @@ void BKE_maskrasterize_handle_init(MaskRasterHandle *mr_handle,
             open_spline_ranges[open_spline_index].vertex_offset = sf_vert_tot;
             open_spline_ranges[open_spline_index].vertex_total = tot_diff_point;
 
-            /* TODO, an alternate functions so we can avoid double vector copy! */
+            /* TODO: an alternate functions so we can avoid double vector copy! */
             for (j = 0; j < tot_diff_point; j++) {
 
               /* center vert */
@@ -944,7 +921,7 @@ void BKE_maskrasterize_handle_init(MaskRasterHandle *mr_handle,
       ListBase isect_remedgebase = {NULL, NULL};
 
       /* now we have all the splines */
-      face_coords = MEM_mallocN((sizeof(float) * 3) * sf_vert_tot, "maskrast_face_coords");
+      face_coords = MEM_mallocN(sizeof(float[3]) * sf_vert_tot, "maskrast_face_coords");
 
       /* init bounds */
       BLI_rctf_init_minmax(&bounds);
@@ -1220,7 +1197,7 @@ void BKE_maskrasterize_handle_init(MaskRasterHandle *mr_handle,
         layer->falloff = masklay->falloff;
       }
 
-      /* printf("tris %d, feather tris %d\n", sf_tri_tot, tot_feather_quads); */
+      // printf("tris %d, feather tris %d\n", sf_tri_tot, tot_feather_quads);
     }
 
     /* add trianges */
@@ -1348,9 +1325,8 @@ static float layer_bucket_depth_from_xy(MaskRasterLayer *layer, const float xy[2
     }
     return best_dist;
   }
-  else {
-    return 1.0f;
-  }
+
+  return 1.0f;
 }
 
 float BKE_maskrasterize_handle_sample(MaskRasterHandle *mr_handle, const float xy[2])
@@ -1359,13 +1335,12 @@ float BKE_maskrasterize_handle_sample(MaskRasterHandle *mr_handle, const float x
   /* if (BLI_rctf_isect_pt_v(&mr_handle->bounds, xy)) */
 
   const unsigned int layers_tot = mr_handle->layers_tot;
-  unsigned int i;
   MaskRasterLayer *layer = mr_handle->layers;
 
   /* return value */
   float value = 0.0f;
 
-  for (i = 0; i < layers_tot; i++, layer++) {
+  for (uint i = 0; i < layers_tot; i++, layer++) {
     float value_layer;
 
     /* also used as signal for unused layer (when render is disabled) */
@@ -1483,9 +1458,6 @@ static void maskrasterize_buffer_cb(void *__restrict userdata,
   }
 }
 
-/**
- * \brief Rasterize a buffer from a single mask (threaded execution).
- */
 void BKE_maskrasterize_buffer(MaskRasterHandle *mr_handle,
                               const unsigned int width,
                               const unsigned int height,

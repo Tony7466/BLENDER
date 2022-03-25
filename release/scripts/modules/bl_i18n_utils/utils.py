@@ -1,32 +1,13 @@
-# ***** BEGIN GPL LICENSE BLOCK *****
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
-# of the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# ***** END GPL LICENSE BLOCK *****
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 # <pep8 compliant>
 
 # Some misc utilities...
 
 import collections
-import copy
-import hashlib
 import os
 import re
 import struct
-import sys
 import tempfile
 #import time
 
@@ -35,13 +16,8 @@ from bl_i18n_utils import (
     utils_rtl,
 )
 
-import bpy
-
 
 ##### Misc Utils #####
-from bpy.app.translations import locale_explode
-
-
 _valid_po_path_re = re.compile(r"^\S+:[0-9]+$")
 
 
@@ -77,6 +53,28 @@ def get_best_similar(data):
                     tmp = x
                     use_similar = sratio
     return key, tmp
+
+
+_locale_explode_re = re.compile(r"^([a-z]{2,})(?:_([A-Z]{2,}))?(?:@([a-z]{2,}))?$")
+
+
+def locale_explode(locale):
+    """Copies behavior of `BLT_lang_locale_explode`, keep them in sync."""
+    ret = (None, None, None, None, None)
+    m = _locale_explode_re.match(locale)
+    if m:
+        lang, country, variant = m.groups()
+        return (lang, country, variant,
+                "%s_%s" % (lang, country) if country else None,
+                "%s@%s" % (lang, variant) if variant else None)
+
+    try:
+        import bpy.app.translations as bpy_translations
+        assert(ret == bpy_translations.locale_explode(locale))
+    except ModuleNotFoundError:
+        pass
+
+    return ret
 
 
 def locale_match(loc1, loc2):
@@ -164,6 +162,36 @@ def get_po_files_from_dir(root_dir, langs=set()):
         yield uid, po_file
 
 
+def list_po_dir(root_path, settings):
+    """
+    Generator. List given directory (expecting one sub-directory per languages)
+    and return all files matching languages listed in settings.
+
+    Yield tuples (can_use, uid, num_id, name, isocode, po_path)
+
+    Note that po_path may not actually exists.
+    """
+    isocodes = ((e, os.path.join(root_path, e, e + ".po")) for e in os.listdir(root_path))
+    isocodes = dict(e for e in isocodes if os.path.isfile(e[1]))
+    for num_id, name, uid in settings.LANGUAGES[2:]:  # Skip "default" and "en" languages!
+        best_po = find_best_isocode_matches(uid, isocodes)
+        #print(uid, "->", best_po)
+        if best_po:
+            isocode = best_po[0]
+            yield (True, uid, num_id, name, isocode, isocodes[isocode])
+        else:
+            yielded = False
+            language, _1, _2, language_country, language_variant = locale_explode(uid)
+            for isocode in (language, language_variant, language_country, uid):
+                p = os.path.join(root_path, isocode, isocode + ".po")
+                if not os.path.exists(p):
+                    yield (True, uid, num_id, name, isocode, p)
+                    yielded = True
+                    break
+            if not yielded:
+                yield (False, uid, num_id, name, None, None)
+
+
 def enable_addons(addons=None, support=None, disable=False, check_only=False):
     """
     Enable (or disable) addons based either on a set of names, or a set of 'support' types.
@@ -171,6 +199,12 @@ def enable_addons(addons=None, support=None, disable=False, check_only=False):
     If "check_only" is set, no addon will be enabled nor disabled.
     """
     import addon_utils
+
+    try:
+        import bpy
+    except ModuleNotFoundError:
+        print("Could not import bpy, enable_addons must be run from within Blender.")
+        return
 
     if addons is None:
         addons = {}
@@ -185,7 +219,7 @@ def enable_addons(addons=None, support=None, disable=False, check_only=False):
     ret = [
         mod for mod in addon_utils.modules()
         if (((addons and mod.__name__ in addons) or
-            (not addons and addon_utils.module_bl_info(mod)["support"] in support)) and
+             (not addons and addon_utils.module_bl_info(mod)["support"] in support)) and
             (mod.__name__ not in black_list))
     ]
 
@@ -725,6 +759,12 @@ class I18nMessages:
                 rna_ctxt: the labels' i18n context.
                 rna_struct_name, rna_prop_name, rna_enum_name: should be self-explanatory!
         """
+        try:
+            import bpy
+        except ModuleNotFoundError:
+            print("Could not import bpy, find_best_messages_matches must be run from within Blender.")
+            return
+
         # Build helper mappings.
         # Note it's user responsibility to know when to invalidate (and hence force rebuild) this cache!
         if self._reverse_cache is None:
@@ -1079,6 +1119,7 @@ class I18nMessages:
         # XXX Temp solution, until I can make own mo generator working...
         import subprocess
         with tempfile.NamedTemporaryFile(mode='w+', encoding="utf-8") as tmp_po_f:
+            os.makedirs(os.path.dirname(fname), exist_ok=True)
             self.write_messages_to_po(tmp_po_f)
             cmd = (
                 self.settings.GETTEXT_MSGFMT_EXECUTABLE,
@@ -1275,7 +1316,7 @@ class I18n:
                 msgs.print_stats(prefix=msgs_prefix)
                 print(prefix)
 
-        nbr_contexts = len(self.contexts - {bpy.app.translations.contexts.default})
+        nbr_contexts = len(self.contexts - {self.settings.DEFAULT_CONTEXT})
         if nbr_contexts != 1:
             if nbr_contexts == 0:
                 nbr_contexts = "No"
@@ -1293,13 +1334,13 @@ class I18n:
             "    The org msgids are currently made of {} signs.\n".format(self.nbr_signs),
             "    All processed translations are currently made of {} signs.\n".format(self.nbr_trans_signs),
             "    {} specific context{} present:\n".format(self.nbr_contexts, _ctx_txt)) +
-            tuple("            " + c + "\n" for c in self.contexts - {bpy.app.translations.contexts.default}) +
+            tuple("            " + c + "\n" for c in self.contexts - {self.settings.DEFAULT_CONTEXT}) +
             ("\n",)
         )
         print(prefix.join(lines))
 
     @classmethod
-    def check_py_module_has_translations(clss, src, settings=settings):
+    def check_py_module_has_translations(cls, src, settings=settings):
         """
         Check whether a given src (a py module, either a directory or a py file) has some i18n translation data,
         and returns a tuple (src_file, translations_tuple) if yes, else (None, None).
@@ -1311,11 +1352,11 @@ class I18n:
                     if not fname.endswith(".py"):
                         continue
                     path = os.path.join(root, fname)
-                    _1, txt, _2, has_trans = clss._parser_check_file(path)
+                    _1, txt, _2, has_trans = cls._parser_check_file(path)
                     if has_trans:
                         txts.append((path, txt))
         elif src.endswith(".py") and os.path.isfile(src):
-            _1, txt, _2, has_trans = clss._parser_check_file(src)
+            _1, txt, _2, has_trans = cls._parser_check_file(src)
             if has_trans:
                 txts.append((src, txt))
         for path, txt in txts:
@@ -1515,7 +1556,7 @@ class I18n:
             if not os.path.isfile(dst):
                 print("WARNING: trying to write as python code into {}, which is not a file! Aborting.".format(dst))
                 return
-            prev, txt, nxt, has_trans = self._parser_check_file(dst)
+            prev, txt, nxt, _has_trans = self._parser_check_file(dst)
             if prev is None and nxt is None:
                 print("WARNING: Looks like given python file {} has no auto-generated translations yet, will be added "
                       "at the end of the file, you can move that section later if needed...".format(dst))

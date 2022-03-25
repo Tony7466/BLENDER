@@ -22,7 +22,7 @@ Data Access
 ===========
 
 The most common case for using the reference API is to find out how to access data in the blend-file.
-Before going any further its best to be aware of ID data-blocks in Blender since you will often find properties
+Before going any further it's best to be aware of ID data-blocks in Blender since you will often find properties
 relative to them.
 
 
@@ -55,9 +55,9 @@ Start by collecting the information where the data is located.
 First find this setting in the interface ``Properties editor -> Object -> Transform -> Location``.
 From the button context menu select *Online Python Reference*, this will link you to:
 :class:`bpy.types.Object.location`.
-Being an API reference, this link often gives little more information then the tooltip, though some of the pages
+Being an API reference, this link often gives little more information than the tooltip, though some of the pages
 include examples (normally at the top of the page).
-But you now know that you have to use ``.location`` and that its an array of three floats.
+But you now know that you have to use ``.location`` and that it's an array of three floats.
 
 So the next step is to find out where to access objects, go down to the bottom of the page to the references section,
 for objects there are many references, but one of the most common places to access objects is via the context.
@@ -154,7 +154,7 @@ The tooltip includes :class:`bpy.types.SubsurfModifier.levels` but you want the 
 
 Note that the text copied won't include the ``bpy.data.collection["name"].`` component since its assumed that
 you won't be doing collection look-ups on every access and typically you'll want to use the context rather
-then access each :class:`bpy.types.ID` instance by name.
+than access each :class:`bpy.types.ID` instance by name.
 
 Type in the ID path into a Python console :mod:`bpy.context.active_object`.
 Include the trailing dot and don't execute the code, yet.
@@ -163,13 +163,13 @@ Now in the button's context menu select *Copy Data Path*, then paste the result 
 
 .. code-block:: python
 
-   bpy.context.active_object.modifiers["Subsurf"].levels
+   bpy.context.active_object.modifiers["Subdivision"].levels
 
 Press :kbd:`Return` and you'll get the current value of 1. Now try changing the value to 2:
 
 .. code-block:: python
 
-   bpy.context.active_object.modifiers["Subsurf"].levels = 2
+   bpy.context.active_object.modifiers["Subdivision"].levels = 2
 
 You can see the value update in the Subdivision Surface modifier's UI as well as the cube.
 
@@ -185,43 +185,31 @@ For example, if you want to access the texture of a brush via Python to adjust i
 #. Start in the default scene and enable Sculpt Mode from the 3D Viewport header.
 #. From the Sidebar expand the Brush Settings panel's *Texture* subpanel and add a new texture.
    *Notice the texture data-block menu itself doesn't have very useful links (you can check the tooltips).*
-#. The contrast setting isn't exposed in the Sidebar, so view the texture in the properties editor:
-
-   - In the properties editor select the Texture tab.
-   - Select brush texture.
-   - Expand the *Colors* panel to locate the *Contrast* number field.
+#. The contrast setting isn't exposed in the Sidebar, so view the texture in the
+   :ref:`Properties Editor <blender_manual:bpy.types.Texture.contrast>`.
 #. Open the context menu of the contrast field and select *Online Python Reference*.
    This takes you to ``bpy.types.Texture.contrast``. Now you can see that ``contrast`` is a property of texture.
 #. To find out how to access the texture from the brush check on the references at the bottom of the page.
    Sometimes there are many references, and it may take some guesswork to find the right one,
-   but in this case it's ``Brush.texture``.
-
+   but in this case it's ``tool_settings.sculpt.brush.texture``.
 #. Now you know that the texture can be accessed from ``bpy.data.brushes["BrushName"].texture``
    but normally you *won't* want to access the brush by name, instead you want to access the active brush.
    So the next step is to check on where brushes are accessed from via the references.
-   In this case there it is simply ``bpy.context.brush``.
 
 Now you can use the Python console to form the nested properties needed to access brush textures contrast:
-*Context -> Brush -> Texture -> Contrast*.
+:menuselection:`Context --> Tool Settings --> Sculpt --> Brush --> Texture --> Contrast`.
 
 Since the attribute for each is given along the way you can compose the data path in the Python console:
 
 .. code-block:: python
 
-   bpy.context.brush.texture.contrast
-
-There can be multiple ways to access the same data, which you choose often depends on the task.
-An alternate path to access the same setting is:
-
-.. code-block:: python
-
-   bpy.context.sculpt.brush.texture.contrast
+   bpy.context.tool_settings.sculpt.brush.texture.contrast
 
 Or access the brush directly:
 
 .. code-block:: python
 
-   bpy.data.brushes["BrushName"].texture.contrast
+   bpy.data.textures["Texture"].contrast
 
 
 If you are writing a user tool normally you want to use the :mod:`bpy.context` since the user normally expects
@@ -264,6 +252,6 @@ Each entry can be selected, then copied :kbd:`Ctrl-C`, usually to paste in the t
 .. note::
 
    Not all operators get registered for display,
-   zooming the view for example isn't so useful to repeat so its excluded from the output.
+   zooming the view for example isn't so useful to repeat so it's excluded from the output.
 
    To display *every* operator that runs see :ref:`Show All Operators <info_show_all_operators>`.

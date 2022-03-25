@@ -1,20 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Copyright 2016, Blender Foundation.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2016 Blender Foundation. */
 
 /** \file
  * \ingroup draw_engine
@@ -28,6 +13,8 @@
 #include "BLI_memblock.h"
 
 #include "BKE_duplilist.h"
+#include "BKE_modifier.h"
+#include "BKE_object.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -40,20 +27,12 @@
 
 static void eevee_motion_blur_mesh_data_free(void *val)
 {
-  EEVEE_GeometryMotionData *geom_mb = (EEVEE_GeometryMotionData *)val;
-  switch (geom_mb->type) {
-    case EEVEE_HAIR_GEOM_MOTION_DATA:
-      for (int i = 0; i < ARRAY_SIZE(geom_mb->vbo); i++) {
-        GPU_VERTBUF_DISCARD_SAFE(geom_mb->hair_pos[i]);
-        DRW_TEXTURE_FREE_SAFE(geom_mb->hair_pos_tx[i]);
-      }
-      break;
-
-    case EEVEE_MESH_GEOM_MOTION_DATA:
-      for (int i = 0; i < ARRAY_SIZE(geom_mb->vbo); i++) {
-        GPU_VERTBUF_DISCARD_SAFE(geom_mb->vbo[i]);
-      }
-      break;
+  EEVEE_ObjectMotionData *mb_data = (EEVEE_ObjectMotionData *)val;
+  if (mb_data->hair_data != NULL) {
+    MEM_freeN(mb_data->hair_data);
+  }
+  if (mb_data->geometry_data != NULL) {
+    MEM_freeN(mb_data->geometry_data);
   }
   MEM_freeN(val);
 }
@@ -63,7 +42,7 @@ static uint eevee_object_key_hash(const void *key)
   EEVEE_ObjectKey *ob_key = (EEVEE_ObjectKey *)key;
   uint hash = BLI_ghashutil_ptrhash(ob_key->ob);
   hash = BLI_ghashutil_combine_hash(hash, BLI_ghashutil_ptrhash(ob_key->parent));
-  for (int i = 0; i < 16; i++) {
+  for (int i = 0; i < MAX_DUPLI_RECUR; i++) {
     if (ob_key->id[i] != 0) {
       hash = BLI_ghashutil_combine_hash(hash, BLI_ghashutil_inthash(ob_key->id[i]));
     }
@@ -92,39 +71,59 @@ static bool eevee_object_key_cmp(const void *a, const void *b)
   return false;
 }
 
+void EEVEE_motion_hair_step_free(EEVEE_HairMotionStepData *step_data)
+{
+  GPU_vertbuf_discard(step_data->hair_pos);
+  DRW_texture_free(step_data->hair_pos_tx);
+  MEM_freeN(step_data);
+}
+
 void EEVEE_motion_blur_data_init(EEVEE_MotionBlurData *mb)
 {
   if (mb->object == NULL) {
     mb->object = BLI_ghash_new(eevee_object_key_hash, eevee_object_key_cmp, "EEVEE Object Motion");
   }
-  if (mb->geom == NULL) {
-    mb->geom = BLI_ghash_new(BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp, "EEVEE Mesh Motion");
+  for (int i = 0; i < 2; i++) {
+    if (mb->position_vbo_cache[i] == NULL) {
+      mb->position_vbo_cache[i] = BLI_ghash_new(
+          BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp, "EEVEE duplicate vbo cache");
+    }
+    if (mb->hair_motion_step_cache[i] == NULL) {
+      mb->hair_motion_step_cache[i] = BLI_ghash_new(
+          BLI_ghashutil_ptrhash, BLI_ghashutil_ptrcmp, "EEVEE hair motion step cache");
+    }
   }
 }
 
 void EEVEE_motion_blur_data_free(EEVEE_MotionBlurData *mb)
 {
   if (mb->object) {
-    BLI_ghash_free(mb->object, MEM_freeN, MEM_freeN);
+    BLI_ghash_free(mb->object, MEM_freeN, eevee_motion_blur_mesh_data_free);
     mb->object = NULL;
   }
-  if (mb->geom) {
-    BLI_ghash_free(mb->geom, NULL, eevee_motion_blur_mesh_data_free);
-    mb->geom = NULL;
+  for (int i = 0; i < 2; i++) {
+    if (mb->position_vbo_cache[i]) {
+      BLI_ghash_free(mb->position_vbo_cache[i], NULL, (GHashValFreeFP)GPU_vertbuf_discard);
+      mb->position_vbo_cache[i] = NULL;
+    }
+    if (mb->hair_motion_step_cache[i]) {
+      BLI_ghash_free(
+          mb->hair_motion_step_cache[i], NULL, (GHashValFreeFP)EEVEE_motion_hair_step_free);
+      mb->hair_motion_step_cache[i] = NULL;
+    }
   }
 }
 
-EEVEE_ObjectMotionData *EEVEE_motion_blur_object_data_get(EEVEE_MotionBlurData *mb,
-                                                          Object *ob,
-                                                          bool hair)
+EEVEE_ObjectMotionData *EEVEE_motion_blur_object_data_get(EEVEE_MotionBlurData *mb, Object *ob)
 {
   if (mb->object == NULL) {
     return NULL;
   }
 
   EEVEE_ObjectKey key, *key_p;
-  /* Small hack to avoid another comparisson. */
-  key.ob = (Object *)((char *)ob + hair);
+  /* Assumes that all instances have the same object pointer. This is currently the case because
+   * instance objects are temporary objects on the stack. */
+  key.ob = ob;
   DupliObject *dup = DRW_object_get_dupli(ob);
   if (dup) {
     key.parent = DRW_object_get_dupli_parent(ob);
@@ -147,26 +146,28 @@ EEVEE_ObjectMotionData *EEVEE_motion_blur_object_data_get(EEVEE_MotionBlurData *
   return ob_step;
 }
 
-EEVEE_GeometryMotionData *EEVEE_motion_blur_geometry_data_get(EEVEE_MotionBlurData *mb,
-                                                              Object *ob,
-                                                              bool hair)
+EEVEE_GeometryMotionData *EEVEE_motion_blur_geometry_data_get(EEVEE_ObjectMotionData *mb_data)
 {
-  if (mb->geom == NULL) {
-    return NULL;
+  if (mb_data->geometry_data == NULL) {
+    EEVEE_GeometryMotionData *geom_step = MEM_callocN(sizeof(EEVEE_GeometryMotionData), __func__);
+    geom_step->type = EEVEE_MOTION_DATA_MESH;
+    mb_data->geometry_data = geom_step;
   }
+  return mb_data->geometry_data;
+}
 
-  /* Use original data as key to ensure matching accross update. */
-  Object *ob_orig = DEG_get_original_object(ob);
-
-  void *key = (char *)ob_orig->data + hair;
-  EEVEE_GeometryMotionData *geom_step = BLI_ghash_lookup(mb->geom, key);
-  if (geom_step == NULL) {
-    geom_step = MEM_callocN(sizeof(EEVEE_GeometryMotionData), __func__);
-    geom_step->type = (hair) ? EEVEE_HAIR_GEOM_MOTION_DATA : EEVEE_MESH_GEOM_MOTION_DATA;
-    BLI_ghash_insert(mb->geom, key, geom_step);
+EEVEE_HairMotionData *EEVEE_motion_blur_hair_data_get(EEVEE_ObjectMotionData *mb_data, Object *ob)
+{
+  if (mb_data->hair_data == NULL) {
+    /* Ugly, we allocate for each modifiers and just fill based on modifier index in the list. */
+    int psys_len = (ob->type != OB_CURVES) ? BLI_listbase_count(&ob->modifiers) : 1;
+    EEVEE_HairMotionData *hair_step = MEM_callocN(
+        sizeof(EEVEE_HairMotionData) + sizeof(hair_step->psys[0]) * psys_len, __func__);
+    hair_step->psys_len = psys_len;
+    hair_step->type = EEVEE_MOTION_DATA_HAIR;
+    mb_data->hair_data = hair_step;
   }
-
-  return geom_step;
+  return mb_data->hair_data;
 }
 
 /* View Layer data. */
@@ -206,6 +207,9 @@ void EEVEE_view_layer_data_free(void *storage)
   DRW_UBO_FREE_SAFE(sldata->renderpass_ubo.spec_light);
   DRW_UBO_FREE_SAFE(sldata->renderpass_ubo.emit);
   DRW_UBO_FREE_SAFE(sldata->renderpass_ubo.environment);
+  for (int aov_index = 0; aov_index < MAX_AOVS; aov_index++) {
+    DRW_UBO_FREE_SAFE(sldata->renderpass_ubo.aovs[aov_index]);
+  }
 
   if (sldata->material_cache) {
     BLI_memblock_destroy(sldata->material_cache, NULL);
@@ -218,6 +222,11 @@ EEVEE_ViewLayerData *EEVEE_view_layer_data_get(void)
   return (EEVEE_ViewLayerData *)DRW_view_layer_engine_data_get(&draw_engine_eevee_type);
 }
 
+static void eevee_view_layer_init(EEVEE_ViewLayerData *sldata)
+{
+  sldata->common_ubo = GPU_uniformbuf_create(sizeof(sldata->common_data));
+}
+
 EEVEE_ViewLayerData *EEVEE_view_layer_data_ensure_ex(struct ViewLayer *view_layer)
 {
   EEVEE_ViewLayerData **sldata = (EEVEE_ViewLayerData **)DRW_view_layer_engine_data_ensure_ex(
@@ -225,6 +234,7 @@ EEVEE_ViewLayerData *EEVEE_view_layer_data_ensure_ex(struct ViewLayer *view_laye
 
   if (*sldata == NULL) {
     *sldata = MEM_callocN(sizeof(**sldata), "EEVEE_ViewLayerData");
+    eevee_view_layer_init(*sldata);
   }
 
   return *sldata;
@@ -237,6 +247,7 @@ EEVEE_ViewLayerData *EEVEE_view_layer_data_ensure(void)
 
   if (*sldata == NULL) {
     *sldata = MEM_callocN(sizeof(**sldata), "EEVEE_ViewLayerData");
+    eevee_view_layer_init(*sldata);
   }
 
   return *sldata;

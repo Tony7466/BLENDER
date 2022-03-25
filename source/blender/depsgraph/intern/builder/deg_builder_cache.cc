@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2018 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2018 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup depsgraph
@@ -31,8 +15,7 @@
 
 #include "BKE_animsys.h"
 
-namespace blender {
-namespace deg {
+namespace blender::deg {
 
 /* Animated property storage. */
 
@@ -76,7 +59,7 @@ uint64_t AnimatedPropertyID::hash() const
 {
   uintptr_t ptr1 = (uintptr_t)data;
   uintptr_t ptr2 = (uintptr_t)property_rna;
-  return (uint64_t)(((ptr1 >> 4) * 33) ^ (ptr2 >> 4));
+  return static_cast<uint64_t>(((ptr1 >> 4) * 33) ^ (ptr2 >> 4));
 }
 
 namespace {
@@ -128,6 +111,7 @@ void AnimatedPropertyStorage::initializeFromID(DepsgraphBuilderCache *builder_ca
 
 void AnimatedPropertyStorage::tagPropertyAsAnimated(const AnimatedPropertyID &property_id)
 {
+  animated_objects_set.add(property_id.data);
   animated_properties_set.add(property_id);
 }
 
@@ -148,11 +132,12 @@ bool AnimatedPropertyStorage::isPropertyAnimated(const PointerRNA *pointer_rna,
   return isPropertyAnimated(AnimatedPropertyID(pointer_rna, property_rna));
 }
 
-/* Builder cache itself. */
-
-DepsgraphBuilderCache::DepsgraphBuilderCache()
+bool AnimatedPropertyStorage::isAnyPropertyAnimated(const PointerRNA *pointer_rna)
 {
+  return animated_objects_set.contains(pointer_rna->data);
 }
+
+/* Builder cache itself. */
 
 DepsgraphBuilderCache::~DepsgraphBuilderCache()
 {
@@ -178,5 +163,4 @@ AnimatedPropertyStorage *DepsgraphBuilderCache::ensureInitializedAnimatedPropert
   return animated_property_storage;
 }
 
-}  // namespace deg
-}  // namespace blender
+}  // namespace blender::deg

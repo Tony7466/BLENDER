@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup bke
@@ -47,6 +31,7 @@
 
 #include "BKE_action.h"
 #include "BKE_armature.h"
+#include "BKE_customdata.h"
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
 #include "BKE_lattice.h"
@@ -120,7 +105,6 @@ static void b_bone_deform(const bPoseChannel *pchan,
       &quats[index + 1], mats[index + 2].mat, co, weight * blend, vec, dq, defmat);
 }
 
-/* using vec with dist to bone b1 - b2 */
 float distfactor_to_bone(
     const float vec[3], const float b1[3], const float b2[3], float rad1, float rad2, float rdist)
 {
@@ -444,7 +428,9 @@ static void armature_vert_task(void *__restrict userdata,
   armature_vert_task_with_dvert(data, i, dvert);
 }
 
-static void armature_vert_task_editmesh(void *__restrict userdata, MempoolIterData *iter)
+static void armature_vert_task_editmesh(void *__restrict userdata,
+                                        MempoolIterData *iter,
+                                        const TaskParallelTLS *__restrict UNUSED(tls))
 {
   const ArmatureUserdata *data = userdata;
   BMVert *v = (BMVert *)iter;
@@ -452,7 +438,9 @@ static void armature_vert_task_editmesh(void *__restrict userdata, MempoolIterDa
   armature_vert_task_with_dvert(data, BM_elem_index_get(v), dvert);
 }
 
-static void armature_vert_task_editmesh_no_dvert(void *__restrict userdata, MempoolIterData *iter)
+static void armature_vert_task_editmesh_no_dvert(void *__restrict userdata,
+                                                 MempoolIterData *iter,
+                                                 const TaskParallelTLS *__restrict UNUSED(tls))
 {
   const ArmatureUserdata *data = userdata;
   BMVert *v = (BMVert *)iter;
@@ -481,7 +469,7 @@ static void armature_deform_coords_impl(const Object *ob_arm,
   int defbase_len = 0;   /* safety for vertexgroup index overflow */
   int i, dverts_len = 0; /* safety for vertexgroup overflow */
   bool use_dverts = false;
-  int armature_def_nr;
+  int armature_def_nr = -1;
   int cd_dvert_offset = -1;
 
   /* in editmode, or not an armature */
@@ -496,11 +484,11 @@ static void armature_deform_coords_impl(const Object *ob_arm,
     BLI_assert(0);
   }
 
-  /* get the def_nr for the overall armature vertex group if present */
-  armature_def_nr = BKE_object_defgroup_name_index(ob_target, defgrp_name);
+  if (BKE_object_supports_vertex_groups(ob_target)) {
+    /* get the def_nr for the overall armature vertex group if present */
+    armature_def_nr = BKE_object_defgroup_name_index(ob_target, defgrp_name);
 
-  if (ELEM(ob_target->type, OB_MESH, OB_LATTICE, OB_GPENCIL)) {
-    defbase_len = BLI_listbase_count(&ob_target->defbase);
+    defbase_len = BKE_object_defgroup_count(ob_target);
 
     if (ob_target->type == OB_MESH) {
       if (em_target == NULL) {
@@ -524,11 +512,9 @@ static void armature_deform_coords_impl(const Object *ob_arm,
         dverts_len = gps_target->totpoints;
       }
     }
-  }
 
-  /* get a vertex-deform-index to posechannel array */
-  if (deformflag & ARM_DEF_VGROUP) {
-    if (ELEM(ob_target->type, OB_MESH, OB_LATTICE, OB_GPENCIL)) {
+    /* get a vertex-deform-index to posechannel array */
+    if (deformflag & ARM_DEF_VGROUP) {
       /* if we have a Mesh, only use dverts if it has them */
       if (em_target) {
         cd_dvert_offset = CustomData_get_offset(&em_target->bm->vdata, CD_MDEFORMVERT);
@@ -547,7 +533,8 @@ static void armature_deform_coords_impl(const Object *ob_arm,
          *
          * - Check whether keeping this consistent across frames gives speedup.
          */
-        for (i = 0, dg = ob_target->defbase.first; dg; i++, dg = dg->next) {
+        const ListBase *defbase = BKE_object_defgroup_list(ob_target);
+        for (i = 0, dg = defbase->first; dg; i++, dg = dg->next) {
           pchan_from_defbase[i] = BKE_pose_channel_find_name(ob_arm->pose, dg->name);
           /* exclude non-deforming bones */
           if (pchan_from_defbase[i]) {
@@ -593,12 +580,16 @@ static void armature_deform_coords_impl(const Object *ob_arm,
      * have already been properly set. */
     BM_mesh_elem_index_ensure(em_target->bm, BM_VERT);
 
+    TaskParallelSettings settings;
+    BLI_parallel_mempool_settings_defaults(&settings);
+
     if (use_dverts) {
-      BLI_task_parallel_mempool(em_target->bm->vpool, &data, armature_vert_task_editmesh, true);
+      BLI_task_parallel_mempool(
+          em_target->bm->vpool, &data, armature_vert_task_editmesh, &settings);
     }
     else {
       BLI_task_parallel_mempool(
-          em_target->bm->vpool, &data, armature_vert_task_editmesh_no_dvert, true);
+          em_target->bm->vpool, &data, armature_vert_task_editmesh_no_dvert, &settings);
     }
   }
   else {

@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "GHOST_NDOFManagerUnix.h"
 #include "GHOST_System.h"
@@ -97,7 +83,7 @@ bool GHOST_NDOFManagerUnix::processEvents()
       switch (e.type) {
         case SPNAV_EVENT_MOTION: {
           /* convert to blender view coords */
-          GHOST_TUns64 now = m_system.getMilliSeconds();
+          uint64_t now = m_system.getMilliSeconds();
           const int t[3] = {(int)e.motion.x, (int)e.motion.y, (int)-e.motion.z};
           const int r[3] = {(int)-e.motion.rx, (int)-e.motion.ry, (int)e.motion.rz};
 
@@ -109,7 +95,7 @@ bool GHOST_NDOFManagerUnix::processEvents()
           break;
         }
         case SPNAV_EVENT_BUTTON:
-          GHOST_TUns64 now = m_system.getMilliSeconds();
+          uint64_t now = m_system.getMilliSeconds();
           updateButton(e.button.bnum, e.button.press, now);
           break;
       }
@@ -118,7 +104,7 @@ bool GHOST_NDOFManagerUnix::processEvents()
 
 #ifdef USE_FINISH_GLITCH_WORKAROUND
     if (motion_test_prev == true && motion_test == false) {
-      GHOST_TUns64 now = m_system.getMilliSeconds();
+      uint64_t now = m_system.getMilliSeconds();
       const int v[3] = {0, 0, 0};
 
       updateTranslation(v, now);

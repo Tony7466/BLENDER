@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2013 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2013 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup depsgraph
@@ -58,19 +42,18 @@
 
 #include "intern/eval/deg_eval_copy_on_write.h"
 
-// Invalidate data-block data when update is flushed on it.
-//
-// The idea of this is to help catching cases when area is accessing data which
-// is not yet evaluated, which could happen due to missing relations. The issue
-// is that usually that data will be kept from previous frame, and it looks to
-// be plausible.
-//
-// This ensures that data does not look plausible, making it much easier to
-// catch usage of invalid state.
+/* Invalidate data-block data when update is flushed on it.
+ *
+ * The idea of this is to help catching cases when area is accessing data which
+ * is not yet evaluated, which could happen due to missing relations. The issue
+ * is that usually that data will be kept from previous frame, and it looks to
+ * be plausible.
+ *
+ * This ensures that data does not look plausible, making it much easier to
+ * catch usage of invalid state. */
 #undef INVALIDATE_ON_FLUSH
 
-namespace blender {
-namespace deg {
+namespace blender::deg {
 
 enum {
   ID_STATE_NONE = 0,
@@ -83,7 +66,7 @@ enum {
   COMPONENT_STATE_DONE = 2,
 };
 
-typedef deque<OperationNode *> FlushQueue;
+using FlushQueue = deque<OperationNode *>;
 
 namespace {
 
@@ -145,8 +128,7 @@ inline void flush_handle_component_node(IDNode *id_node,
    * special component where we don't want all operations to be tagged.
    *
    * TODO(sergey): Make this a more generic solution. */
-  if (comp_node->type != NodeType::PARTICLE_SETTINGS &&
-      comp_node->type != NodeType::PARTICLE_SYSTEM) {
+  if (!ELEM(comp_node->type, NodeType::PARTICLE_SETTINGS, NodeType::PARTICLE_SYSTEM)) {
     for (OperationNode *op : comp_node->operations) {
       op->flag |= DEPSOP_FLAG_NEEDS_UPDATE;
     }
@@ -348,22 +330,15 @@ void invalidate_tagged_evaluated_data(Depsgraph *graph)
 
 }  // namespace
 
-/* Flush updates from tagged nodes outwards until all affected nodes
- * are tagged.
- */
-void deg_graph_flush_updates(Main *bmain, Depsgraph *graph)
+void deg_graph_flush_updates(Depsgraph *graph)
 {
   /* Sanity checks. */
-  BLI_assert(bmain != nullptr);
   BLI_assert(graph != nullptr);
+  Main *bmain = graph->bmain;
+
+  graph->time_source->flush_update_tag(graph);
+
   /* Nothing to update, early out. */
-  if (graph->need_update_time) {
-    const Scene *scene_orig = graph->scene;
-    const float ctime = BKE_scene_frame_get(scene_orig);
-    TimeSourceNode *time_source = graph->find_time_source();
-    graph->ctime = ctime;
-    time_source->tag_update(graph, DEG_UPDATE_SOURCE_TIME);
-  }
   if (graph->entry_tags.is_empty()) {
     return;
   }
@@ -401,7 +376,6 @@ void deg_graph_flush_updates(Main *bmain, Depsgraph *graph)
   invalidate_tagged_evaluated_data(graph);
 }
 
-/* Clear tags from all operation nodes. */
 void deg_graph_clear_tags(Depsgraph *graph)
 {
   /* Go over all operation nodes, clearing tags. */
@@ -411,7 +385,8 @@ void deg_graph_clear_tags(Depsgraph *graph)
   }
   /* Clear any entry tags which haven't been flushed. */
   graph->entry_tags.clear();
+
+  graph->time_source->tagged_for_update = false;
 }
 
-}  // namespace deg
-}  // namespace blender
+}  // namespace blender::deg

@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edtransform
@@ -36,7 +20,6 @@
 
 /* -------------------------------------------------------------------- */
 /** \name Sculpt Transform Creation
- *
  * \{ */
 
 void createTransSculpt(bContext *C, TransInfo *t)
@@ -49,7 +32,7 @@ void createTransSculpt(bContext *C, TransInfo *t)
     return;
   }
 
-  Object *ob = CTX_data_active_object(t->context);
+  Object *ob = OBACT(t->view_layer);
   SculptSession *ss = ob->sculpt;
 
   {
@@ -101,19 +84,19 @@ void createTransSculpt(bContext *C, TransInfo *t)
   copy_m3_m4(td->axismtx, ob->obmat);
 
   BLI_assert(!(t->options & CTX_PAINT_CURVE));
-  ED_sculpt_init_transform(C);
+  ED_sculpt_init_transform(C, ob);
 }
 
 /** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Recalc Data object
- *
  * \{ */
 
 void recalcData_sculpt(TransInfo *t)
 {
-  ED_sculpt_update_modal_transform(t->context);
+  Object *ob = OBACT(t->view_layer);
+  ED_sculpt_update_modal_transform(t->context, ob);
 }
 
 void special_aftertrans_update__sculpt(bContext *C, TransInfo *t)
@@ -124,8 +107,9 @@ void special_aftertrans_update__sculpt(bContext *C, TransInfo *t)
     return;
   }
 
+  Object *ob = OBACT(t->view_layer);
   BLI_assert(!(t->options & CTX_PAINT_CURVE));
-  ED_sculpt_end_transform(C);
+  ED_sculpt_end_transform(C, ob);
 }
 
 /** \} */

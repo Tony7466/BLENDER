@@ -1,36 +1,19 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edtransform
  * \brief transform modes used by different operators.
  */
 
-#ifndef __TRANSFORM_MODE_H__
-#define __TRANSFORM_MODE_H__
+#pragma once
 
 struct AnimData;
-struct bContext;
 struct LinkNode;
 struct TransData;
 struct TransDataContainer;
 struct TransInfo;
+struct bContext;
 struct wmOperator;
 
 /* header of TransDataEdgeSlideVert, TransDataEdgeSlideEdge */
@@ -42,25 +25,45 @@ typedef struct TransDataGenericSlideVert {
 
 /* transform_mode.c */
 int transform_mode_really_used(struct bContext *C, int mode);
-bool transdata_check_local_center(TransInfo *t, short around);
-bool transform_mode_is_changeable(const int mode);
+bool transdata_check_local_center(const TransInfo *t, short around);
+/**
+ * Informs if the mode can be switched during modal.
+ */
+bool transform_mode_is_changeable(int mode);
 void protectedTransBits(short protectflag, float vec[3]);
-void constraintTransLim(TransInfo *t, TransData *td);
-void postInputRotation(TransInfo *t, float values[3]);
-void headerRotation(TransInfo *t, char *str, float final);
-void ElementRotation_ex(TransInfo *t,
-                        TransDataContainer *tc,
+void protectedSizeBits(short protectflag, float size[3]);
+void constraintTransLim(const TransInfo *t, TransData *td);
+void constraintSizeLim(const TransInfo *t, TransData *td);
+/**
+ * Used by Transform Rotation and Transform Normal Rotation.
+ */
+void headerRotation(TransInfo *t, char *str, int str_size, float final);
+/**
+ * Applies values of rotation to `td->loc` and `td->ext->quat`
+ * based on a rotation matrix (mat) and a pivot (center).
+ *
+ * Protected axis and other transform settings are taken into account.
+ */
+void ElementRotation_ex(const TransInfo *t,
+                        const TransDataContainer *tc,
                         TransData *td,
                         const float mat[3][3],
                         const float *center);
-void ElementRotation(
-    TransInfo *t, TransDataContainer *tc, TransData *td, float mat[3][3], const short around);
-void headerResize(TransInfo *t, const float vec[3], char *str);
-void ElementResize(TransInfo *t, TransDataContainer *tc, TransData *td, float mat[3][3]);
-short getAnimEdit_SnapMode(TransInfo *t);
-void doAnimEdit_SnapFrame(
-    TransInfo *t, TransData *td, TransData2D *td2d, struct AnimData *adt, short autosnap);
-void transform_mode_init(TransInfo *t, struct wmOperator *op, const int mode);
+void ElementRotation(const TransInfo *t,
+                     const TransDataContainer *tc,
+                     TransData *td,
+                     const float mat[3][3],
+                     short around);
+void headerResize(TransInfo *t, const float vec[3], char *str, int str_size);
+void ElementResize(const TransInfo *t,
+                   const TransDataContainer *tc,
+                   TransData *td,
+                   const float mat[3][3]);
+void transform_mode_init(TransInfo *t, struct wmOperator *op, int mode);
+/**
+ * When in modal and not set, initializes a default orientation for the mode.
+ */
+void transform_mode_default_modal_orientation_set(TransInfo *t, int type);
 
 /* transform_mode_align.c */
 void initAlign(TransInfo *t);
@@ -87,7 +90,8 @@ void initCurveShrinkFatten(TransInfo *t);
 void initBevelWeight(TransInfo *t);
 
 /* transform_mode_edge_crease.c */
-void initCrease(TransInfo *t);
+void initEgdeCrease(TransInfo *t);
+void initVertCrease(TransInfo *t);
 
 /* transform_mode_edge_rotate_normal.c */
 void initNormalRotation(TransInfo *t);
@@ -117,7 +121,7 @@ void initMirror(TransInfo *t);
 void initPushPull(TransInfo *t);
 
 /* transform_mode_resize.c */
-void initResize(TransInfo *t);
+void initResize(TransInfo *t, float mouse_dir_constraint[3]);
 
 /* transform_mode_rotate.c */
 void initRotation(TransInfo *t);
@@ -156,4 +160,3 @@ void initTranslation(TransInfo *t);
 void drawVertSlide(TransInfo *t);
 void initVertSlide_ex(TransInfo *t, bool use_even, bool flipped, bool use_clamp);
 void initVertSlide(TransInfo *t);
-#endif

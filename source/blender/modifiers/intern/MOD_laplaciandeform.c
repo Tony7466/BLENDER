@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2013 by the Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2013 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup modifiers
@@ -31,6 +15,7 @@
 
 #include "BLT_translation.h"
 
+#include "DNA_defaults.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_screen_types.h"
@@ -52,6 +37,7 @@
 #include "BLO_read_write.h"
 
 #include "RNA_access.h"
+#include "RNA_prototypes.h"
 
 #include "MOD_ui_common.h"
 #include "MOD_util.h"
@@ -665,8 +651,7 @@ static void LaplacianDeformModifier_do(
     sysdif = isSystemDifferent(lmd, ob, mesh, numVerts);
     sys = lmd->cache_system;
     if (sysdif) {
-      if (sysdif == LAPDEFORM_SYSTEM_ONLY_CHANGE_ANCHORS ||
-          sysdif == LAPDEFORM_SYSTEM_ONLY_CHANGE_GROUP) {
+      if (ELEM(sysdif, LAPDEFORM_SYSTEM_ONLY_CHANGE_ANCHORS, LAPDEFORM_SYSTEM_ONLY_CHANGE_GROUP)) {
         filevertexCos = MEM_malloc_arrayN(numVerts, sizeof(float[3]), "TempModDeformCoordinates");
         memcpy(filevertexCos, lmd->vertexco, sizeof(float[3]) * numVerts);
         MEM_SAFE_FREE(lmd->vertexco);
@@ -683,14 +668,15 @@ static void LaplacianDeformModifier_do(
       else {
         if (sysdif == LAPDEFORM_SYSTEM_CHANGE_VERTEXES) {
           BKE_modifier_set_error(
-              &lmd->modifier, "Vertices changed from %d to %d", lmd->total_verts, numVerts);
+              ob, &lmd->modifier, "Vertices changed from %d to %d", lmd->total_verts, numVerts);
         }
         else if (sysdif == LAPDEFORM_SYSTEM_CHANGE_EDGES) {
           BKE_modifier_set_error(
-              &lmd->modifier, "Edges changed from %d to %d", sys->total_edges, mesh->totedge);
+              ob, &lmd->modifier, "Edges changed from %d to %d", sys->total_edges, mesh->totedge);
         }
         else if (sysdif == LAPDEFORM_SYSTEM_CHANGE_NOT_VALID_GROUP) {
-          BKE_modifier_set_error(&lmd->modifier,
+          BKE_modifier_set_error(ob,
+                                 &lmd->modifier,
                                  "Vertex group '%s' is not valid, or maybe empty",
                                  sys->anchor_grp_name);
         }
@@ -703,8 +689,10 @@ static void LaplacianDeformModifier_do(
   }
   else {
     if (!isValidVertexGroup(lmd, ob, mesh)) {
-      BKE_modifier_set_error(
-          &lmd->modifier, "Vertex group '%s' is not valid, or maybe empty", lmd->anchor_grp_name);
+      BKE_modifier_set_error(ob,
+                             &lmd->modifier,
+                             "Vertex group '%s' is not valid, or maybe empty",
+                             lmd->anchor_grp_name);
       lmd->flag &= ~MOD_LAPLACIANDEFORM_BIND;
     }
     else if (lmd->total_verts > 0 && lmd->total_verts == numVerts) {
@@ -724,19 +712,17 @@ static void LaplacianDeformModifier_do(
     }
   }
   if (sys && sys->is_matrix_computed && !sys->has_solution) {
-    BKE_modifier_set_error(&lmd->modifier, "The system did not find a solution");
+    BKE_modifier_set_error(ob, &lmd->modifier, "The system did not find a solution");
   }
 }
 
 static void initData(ModifierData *md)
 {
   LaplacianDeformModifierData *lmd = (LaplacianDeformModifierData *)md;
-  lmd->anchor_grp_name[0] = '\0';
-  lmd->total_verts = 0;
-  lmd->repeat = 1;
-  lmd->vertexco = NULL;
-  lmd->cache_system = NULL;
-  lmd->flag = 0;
+
+  BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(lmd, modifier));
+
+  MEMCPY_STRUCT_AFTER(lmd, DNA_struct_default_get(LaplacianDeformModifierData), modifier);
 }
 
 static void copyData(const ModifierData *md, ModifierData *target, const int flag)
@@ -822,23 +808,22 @@ static void freeData(ModifierData *md)
   lmd->total_verts = 0;
 }
 
-static void panel_draw(const bContext *C, Panel *panel)
+static void panel_draw(const bContext *UNUSED(C), Panel *panel)
 {
   uiLayout *row;
   uiLayout *layout = panel->layout;
 
-  PointerRNA ptr;
   PointerRNA ob_ptr;
-  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
 
-  bool is_bind = RNA_boolean_get(&ptr, "is_bind");
-  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
+  bool is_bind = RNA_boolean_get(ptr, "is_bind");
+  bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, &ptr, "iterations", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "iterations", 0, NULL, ICON_NONE);
 
-  modifier_vgroup_ui(layout, &ptr, &ob_ptr, "vertex_group", "invert_vertex_group", NULL);
+  modifier_vgroup_ui(layout, ptr, &ob_ptr, "vertex_group", "invert_vertex_group", NULL);
 
   uiItemS(layout);
 
@@ -849,7 +834,7 @@ static void panel_draw(const bContext *C, Panel *panel)
           ICON_NONE,
           "OBJECT_OT_laplaciandeform_bind");
 
-  modifier_panel_end(layout, &ptr);
+  modifier_panel_end(layout, ptr);
 }
 
 static void panelRegister(ARegionType *region_type)
@@ -876,8 +861,10 @@ ModifierTypeInfo modifierType_LaplacianDeform = {
     /* name */ "LaplacianDeform",
     /* structName */ "LaplacianDeformModifierData",
     /* structSize */ sizeof(LaplacianDeformModifierData),
+    /* srna */ &RNA_LaplacianDeformModifier,
     /* type */ eModifierTypeType_OnlyDeform,
     /* flags */ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsEditmode,
+    /* icon */ ICON_MOD_MESHDEFORM,
     /* copyData */ copyData,
 
     /* deformVerts */ deformVerts,
@@ -885,9 +872,7 @@ ModifierTypeInfo modifierType_LaplacianDeform = {
     /* deformVertsEM */ deformVertsEM,
     /* deformMatricesEM */ NULL,
     /* modifyMesh */ NULL,
-    /* modifyHair */ NULL,
-    /* modifyPointCloud */ NULL,
-    /* modifyVolume */ NULL,
+    /* modifyGeometrySet */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ requiredDataMask,
@@ -896,7 +881,6 @@ ModifierTypeInfo modifierType_LaplacianDeform = {
     /* updateDepsgraph */ NULL,
     /* dependsOnTime */ NULL,
     /* dependsOnNormals */ NULL,
-    /* foreachObjectLink */ NULL,
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,

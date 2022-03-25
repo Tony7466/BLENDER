@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eduv
@@ -66,14 +52,14 @@
 
 /** Unordered loop data, stored in #BMLoop.head.index. */
 typedef struct ULData {
-  /** When this UV is selected as well as the next UV. */
+  /** When the specified UV edge is selected. */
   uint is_select_edge : 1;
   /**
    * When only this UV is selected and none of the other UV's
    * around the connected fan are attached to an edge.
    *
    * In this case there is no need to detect contiguous loops,
-   * each isolated case is handled on it's own, no need to walk over selected edges.
+   * each isolated case is handled on its own, no need to walk over selected edges.
    *
    * \note This flag isn't flushed to other loops which could also have this enabled.
    * Currently it's not necessary since we can start off on any one of these loops,
@@ -169,7 +155,7 @@ static BMLoop *bm_loop_find_other_fan_loop_with_visible_face(BMLoop *l_src,
       l_other = l_other->prev;
     }
     else {
-      BLI_assert(0);
+      BLI_assert_unreachable();
     }
   }
   return l_other;
@@ -189,7 +175,7 @@ static BMLoop *bm_vert_step_fan_loop_uv(BMLoop *l, BMEdge **e_step, const int cd
     l_next = l;
   }
   else {
-    BLI_assert(0);
+    BLI_assert_unreachable();
     return NULL;
   }
 
@@ -538,23 +524,22 @@ static bool uv_rip_pairs_loop_change_sides_test(BMLoop *l_switch,
   if (count_a + count_b == 4) {
     return count_a > count_b;
   }
-  else {
-    const float angle_a_before = uv_rip_pairs_calc_uv_angle(
-        l_switch, side_a, aspect_y, cd_loop_uv_offset);
-    const float angle_b_before = uv_rip_pairs_calc_uv_angle(
-        l_target, side_b, aspect_y, cd_loop_uv_offset);
 
-    UL(l_switch)->side = side_b;
+  const float angle_a_before = uv_rip_pairs_calc_uv_angle(
+      l_switch, side_a, aspect_y, cd_loop_uv_offset);
+  const float angle_b_before = uv_rip_pairs_calc_uv_angle(
+      l_target, side_b, aspect_y, cd_loop_uv_offset);
 
-    const float angle_a_after = uv_rip_pairs_calc_uv_angle(
-        l_switch, side_a, aspect_y, cd_loop_uv_offset);
-    const float angle_b_after = uv_rip_pairs_calc_uv_angle(
-        l_target, side_b, aspect_y, cd_loop_uv_offset);
+  UL(l_switch)->side = side_b;
 
-    UL(l_switch)->side = side_a;
+  const float angle_a_after = uv_rip_pairs_calc_uv_angle(
+      l_switch, side_a, aspect_y, cd_loop_uv_offset);
+  const float angle_b_after = uv_rip_pairs_calc_uv_angle(
+      l_target, side_b, aspect_y, cd_loop_uv_offset);
 
-    return fabsf(angle_a_before - angle_b_before) > fabsf(angle_a_after - angle_b_after);
-  }
+  UL(l_switch)->side = side_a;
+
+  return fabsf(angle_a_before - angle_b_before) > fabsf(angle_a_after - angle_b_after);
 }
 
 /**
@@ -573,7 +558,7 @@ static UVRipPairs *uv_rip_pairs_from_loop(BMLoop *l_init,
   rip->loops = BLI_gset_ptr_new(__func__);
 
   /* We can rely on this stack being small, as we're walking down two sides of an edge loop,
-   * so the stack wont be much larger than the total number of fans at any one vertex. */
+   * so the stack won't be much larger than the total number of fans at any one vertex. */
   BLI_SMALLSTACK_DECLARE(stack, BMLoop *);
 
   /* Needed for cases when we walk onto loops which already have a side assigned,
@@ -777,15 +762,17 @@ static bool uv_rip_object(Scene *scene, Object *obedit, const float co[2], const
         const MLoopUV *luv = BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
         if (luv->flag & MLOOPUV_VERTSEL) {
           const MLoopUV *luv_prev = BM_ELEM_CD_GET_VOID_P(l->prev, cd_loop_uv_offset);
-          const MLoopUV *luv_next = BM_ELEM_CD_GET_VOID_P(l->next, cd_loop_uv_offset);
-          if (luv_next->flag & MLOOPUV_VERTSEL) {
+          if (luv->flag & MLOOPUV_EDGESEL) {
             UL(l)->is_select_edge = true;
           }
+          else if ((luv_prev->flag & MLOOPUV_EDGESEL) == 0) {
+            /* #bm_loop_uv_select_single_vert_validate validates below. */
+            UL(l)->is_select_vert_single = true;
+            is_all = false;
+          }
           else {
-            if ((luv_prev->flag & MLOOPUV_VERTSEL) == 0) {
-              /* #bm_loop_uv_select_single_vert_validate validates below. */
-              UL(l)->is_select_vert_single = true;
-            }
+            /* Cases where all vertices of a face are selected but not all edges are selected. */
+            is_all = false;
           }
         }
         else {
@@ -812,7 +799,7 @@ static bool uv_rip_object(Scene *scene, Object *obedit, const float co[2], const
     }
   }
 
-  /* Special case: if we have selected faces, isolated them.
+  /* Special case: if we have selected faces, isolate them.
    * This isn't a rip, however it's useful for users as a quick way
    * to detach the selection.
    *
@@ -825,6 +812,10 @@ static bool uv_rip_object(Scene *scene, Object *obedit, const float co[2], const
           MLoopUV *luv = BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
           if (luv->flag & MLOOPUV_VERTSEL) {
             luv->flag &= ~MLOOPUV_VERTSEL;
+            changed = true;
+          }
+          if (luv->flag & MLOOPUV_EDGESEL) {
+            luv->flag &= ~MLOOPUV_EDGESEL;
             changed = true;
           }
         }
@@ -886,6 +877,9 @@ static bool uv_rip_object(Scene *scene, Object *obedit, const float co[2], const
       }
     }
   }
+  if (changed) {
+    uvedit_deselect_flush(scene, em);
+  }
   return changed;
 }
 
@@ -908,7 +902,7 @@ static int uv_rip_exec(bContext *C, wmOperator *op)
 
   float aspx, aspy;
   {
-    /* Note that we only want to run this on the  */
+    /* Note that we only want to run this on the. */
     Object *obedit = CTX_data_edit_object(C);
     ED_uvedit_get_aspect(obedit, &aspx, &aspy);
   }
@@ -939,10 +933,10 @@ static int uv_rip_exec(bContext *C, wmOperator *op)
 
 static int uv_rip_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  ARegion *ar = CTX_wm_region(C);
+  ARegion *region = CTX_wm_region(C);
   float co[2];
 
-  UI_view2d_region_to_view(&ar->v2d, event->mval[0], event->mval[1], &co[0], &co[1]);
+  UI_view2d_region_to_view(&region->v2d, event->mval[0], event->mval[1], &co[0], &co[1]);
   RNA_float_set_array(op->ptr, "location", co);
 
   return uv_rip_exec(C, op);
@@ -954,7 +948,7 @@ void UV_OT_rip(wmOperatorType *ot)
   ot->name = "UV Rip";
   ot->description = "Rip selected vertices or a selected region";
   ot->idname = "UV_OT_rip";
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_DEPENDS_ON_CURSOR;
 
   /* api callbacks */
   ot->exec = uv_rip_exec;

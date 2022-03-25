@@ -1,20 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Copyright 2018, Blender Foundation.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2018 Blender Foundation. */
 
 /** \file
  * \ingroup draw_engine
@@ -32,24 +17,24 @@
 
 #include "UI_resources.h"
 
-#include "GPU_uniformbuffer.h"
+#include "GPU_uniform_buffer.h"
 
 /* -------------------------------------------------------------------- */
 /** \name World Data
  * \{ */
 
-GPUUniformBuffer *workbench_material_ubo_alloc(WORKBENCH_PrivateData *wpd)
+GPUUniformBuf *workbench_material_ubo_alloc(WORKBENCH_PrivateData *wpd)
 {
-  struct GPUUniformBuffer **ubo = BLI_memblock_alloc(wpd->material_ubo);
+  struct GPUUniformBuf **ubo = BLI_memblock_alloc(wpd->material_ubo);
   if (*ubo == NULL) {
-    *ubo = GPU_uniformbuffer_create(sizeof(WORKBENCH_UBO_Material) * MAX_MATERIAL, NULL, NULL);
+    *ubo = GPU_uniformbuf_create(sizeof(WORKBENCH_UBO_Material) * MAX_MATERIAL);
   }
   return *ubo;
 }
 
 static void workbench_ubo_free(void *elem)
 {
-  GPUUniformBuffer **ubo = elem;
+  GPUUniformBuf **ubo = elem;
   DRW_UBO_FREE_SAFE(*ubo);
 }
 
@@ -78,13 +63,13 @@ static WORKBENCH_ViewLayerData *workbench_view_layer_data_ensure_ex(struct ViewL
     size_t matbuf_size = sizeof(WORKBENCH_UBO_Material) * MAX_MATERIAL;
     (*vldata)->material_ubo_data = BLI_memblock_create_ex(matbuf_size, matbuf_size * 2);
     (*vldata)->material_ubo = BLI_memblock_create_ex(sizeof(void *), sizeof(void *) * 8);
-    (*vldata)->world_ubo = DRW_uniformbuffer_create(sizeof(WORKBENCH_UBO_World), NULL);
+    (*vldata)->world_ubo = GPU_uniformbuf_create_ex(sizeof(WORKBENCH_UBO_World), NULL, "wb_World");
   }
 
   return *vldata;
 }
 
-/* \} */
+/** \} */
 
 static void workbench_studiolight_data_update(WORKBENCH_PrivateData *wpd, WORKBENCH_UBO_World *wd)
 {
@@ -123,6 +108,7 @@ static void workbench_studiolight_data_update(WORKBENCH_PrivateData *wpd, WORKBE
       copy_v3_fl3(light->light_direction, 1.0f, 0.0f, 0.0f);
       copy_v3_fl(light->specular_color, 0.0f);
       copy_v3_fl(light->diffuse_color, 0.0f);
+      light->wrapped = 0.0f;
     }
   }
 
@@ -134,6 +120,15 @@ static void workbench_studiolight_data_update(WORKBENCH_PrivateData *wpd, WORKBE
   }
 
   wd->use_specular = workbench_is_specular_highlight_enabled(wpd);
+}
+
+void workbench_private_data_alloc(WORKBENCH_StorageList *stl)
+{
+  if (!stl->wpd) {
+    stl->wpd = MEM_callocN(sizeof(*stl->wpd), __func__);
+    stl->wpd->taa_sample_len_previous = -1;
+    stl->wpd->view_updated = true;
+  }
 }
 
 void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
@@ -178,14 +173,21 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
   }
 
   if (!v3d || (v3d->shading.type == OB_RENDER && BKE_scene_uses_blender_workbench(scene))) {
+    short shading_flag = scene->display.shading.flag;
+    if (XRAY_FLAG_ENABLED((&scene->display))) {
+      /* Disable shading options that aren't supported in transparency mode. */
+      shading_flag &= ~(V3D_SHADING_SHADOW | V3D_SHADING_CAVITY | V3D_SHADING_DEPTH_OF_FIELD);
+    }
+
     /* FIXME: This reproduce old behavior when workbench was separated in 2 engines.
      * But this is a workaround for a missing update tagging from operators. */
-    if ((v3d && (XRAY_ENABLED(v3d) != XRAY_ENABLED(&scene->display))) ||
-        (scene->display.shading.flag != wpd->shading.flag)) {
+    if ((XRAY_ENABLED(wpd) != XRAY_ENABLED(&scene->display)) ||
+        (shading_flag != wpd->shading.flag)) {
       wpd->view_updated = true;
     }
 
     wpd->shading = scene->display.shading;
+    wpd->shading.flag = shading_flag;
     if (XRAY_FLAG_ENABLED((&scene->display))) {
       wpd->shading.xray_alpha = XRAY_ALPHA((&scene->display));
     }
@@ -205,13 +207,20 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
     }
   }
   else {
+    short shading_flag = v3d->shading.flag;
+    if (XRAY_ENABLED(v3d)) {
+      /* Disable shading options that aren't supported in transparency mode. */
+      shading_flag &= ~(V3D_SHADING_SHADOW | V3D_SHADING_CAVITY | V3D_SHADING_DEPTH_OF_FIELD);
+    }
+
     /* FIXME: This reproduce old behavior when workbench was separated in 2 engines.
      * But this is a workaround for a missing update tagging from operators. */
-    if (XRAY_ENABLED(v3d) != XRAY_ENABLED(wpd) || v3d->shading.flag != wpd->shading.flag) {
+    if (XRAY_ENABLED(v3d) != XRAY_ENABLED(wpd) || shading_flag != wpd->shading.flag) {
       wpd->view_updated = true;
     }
 
     wpd->shading = v3d->shading;
+    wpd->shading.flag = shading_flag;
     if (wpd->shading.type < OB_SOLID) {
       wpd->shading.light = V3D_LIGHTING_FLAT;
       wpd->shading.color_type = V3D_SHADING_OBJECT_COLOR;
@@ -219,8 +228,6 @@ void workbench_private_data_init(WORKBENCH_PrivateData *wpd)
     }
     else if (XRAY_ENABLED(v3d)) {
       wpd->shading.xray_alpha = XRAY_ALPHA(v3d);
-      /* Disable shading options that aren't supported in transparency mode. */
-      wpd->shading.flag &= ~(V3D_SHADING_SHADOW | V3D_SHADING_CAVITY | V3D_SHADING_DEPTH_OF_FIELD);
     }
     else {
       wpd->shading.xray_alpha = 1.0f;
@@ -268,14 +275,14 @@ void workbench_update_world_ubo(WORKBENCH_PrivateData *wpd)
   copy_v2_v2(wd.viewport_size_inv, DRW_viewport_invert_size_get());
   copy_v3_v3(wd.object_outline_color, wpd->shading.object_outline_color);
   wd.object_outline_color[3] = 1.0f;
-  wd.ui_scale = G_draw.block.sizePixel;
+  wd.ui_scale = DRW_state_is_image_render() ? 1.0f : G_draw.block.sizePixel;
   wd.matcap_orientation = (wpd->shading.flag & V3D_SHADING_MATCAP_FLIP_X) != 0;
 
   workbench_studiolight_data_update(wpd, &wd);
   workbench_shadow_data_update(wpd, &wd);
   workbench_cavity_data_update(wpd, &wd);
 
-  DRW_uniformbuffer_update(wpd->world_ubo, &wd);
+  GPU_uniformbuf_update(wpd->world_ubo, &wd);
 }
 
 void workbench_update_material_ubos(WORKBENCH_PrivateData *UNUSED(wpd))
@@ -288,9 +295,9 @@ void workbench_update_material_ubos(WORKBENCH_PrivateData *UNUSED(wpd))
   BLI_memblock_iternew(vldata->material_ubo_data, &iter_data);
   WORKBENCH_UBO_Material *matchunk;
   while ((matchunk = BLI_memblock_iterstep(&iter_data))) {
-    GPUUniformBuffer **ubo = BLI_memblock_iterstep(&iter);
+    GPUUniformBuf **ubo = BLI_memblock_iterstep(&iter);
     BLI_assert(*ubo != NULL);
-    GPU_uniformbuffer_update(*ubo, matchunk);
+    GPU_uniformbuf_update(*ubo, matchunk);
   }
 
   BLI_memblock_clear(vldata->material_ubo, workbench_ubo_free);

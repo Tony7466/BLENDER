@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2013 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2013 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup GHOST
@@ -335,10 +319,11 @@ void GHOST_ContextWGL::initContextWGLEW(PIXELFORMATDESCRIPTOR &preferredPFD)
   if (!WIN32_CHK(::wglMakeCurrent(dummyHDC, dummyHGLRC)))
     goto finalize;
 
-  if (GLEW_CHK(glewInit()) != GLEW_OK)
+  if (GLEW_CHK(glewInit()) != GLEW_OK) {
     fprintf(stderr, "Warning! Dummy GLEW/WGLEW failed to initialize properly.\n");
+  }
 
-    // the following are not technially WGLEW, but they also require a context to work
+  /* The following are not technically WGLEW, but they also require a context to work. */
 
 #ifndef NDEBUG
   free((void *)m_dummyRenderer);
@@ -474,16 +459,15 @@ int GHOST_ContextWGL::choose_pixel_format(bool stereoVisual, bool needAlpha)
   PIXELFORMATDESCRIPTOR preferredPFD = {
       sizeof(PIXELFORMATDESCRIPTOR), /* size */
       1,                             /* version */
-      (DWORD)(
-          PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW |
-          PFD_DOUBLEBUFFER |                /* support double-buffering */
-          (stereoVisual ? PFD_STEREO : 0) | /* support stereo */
-          (
+      (DWORD)(PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW |
+              PFD_DOUBLEBUFFER |                /* support double-buffering */
+              (stereoVisual ? PFD_STEREO : 0) | /* support stereo */
+              (
 #ifdef WIN32_COMPOSITING
-              needAlpha ?
-                  PFD_SUPPORT_COMPOSITION : /* support composition for transparent background */
+                  /* Support composition for transparent background. */
+                  needAlpha ? PFD_SUPPORT_COMPOSITION :
 #endif
-                  0)),
+                              0)),
       PFD_TYPE_RGBA,               /* color type */
       (BYTE)(needAlpha ? 32 : 24), /* preferred color depth */
       0,

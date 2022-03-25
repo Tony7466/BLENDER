@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2007, Blender Foundation
- * This is a new part of Blender
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2007 Blender Foundation. */
 
 /** \file
  * \ingroup edarmature
@@ -53,6 +37,7 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
+#include "RNA_prototypes.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -62,8 +47,8 @@
 
 #include "ED_anim_api.h"
 #include "ED_armature.h"
-#include "ED_keyframes_draw.h"
 #include "ED_keyframes_edit.h"
+#include "ED_keyframes_keylist.h"
 #include "ED_keyframing.h"
 #include "ED_object.h"
 #include "ED_screen.h"
@@ -113,7 +98,7 @@ static int poselib_get_free_index(bAction *act)
 
   /* As poses are not stored in chronological order, we must iterate over this list
    * a few times until we don't make any new discoveries (mostly about the lower bound).
-   * Prevents problems with deleting then trying to add new poses [#27412]
+   * Prevents problems with deleting then trying to add new poses T27412.
    */
   do {
     changed = false;
@@ -304,8 +289,6 @@ static int poselib_sanitize_exec(bContext *C, wmOperator *op)
 {
   Object *ob = get_poselib_object(C);
   bAction *act = (ob) ? ob->poselib : NULL;
-  DLRBT_Tree keys;
-  ActKeyColumn *ak;
   TimeMarker *marker, *markern;
 
   /* validate action */
@@ -315,11 +298,11 @@ static int poselib_sanitize_exec(bContext *C, wmOperator *op)
   }
 
   /* determine which frames have keys */
-  BLI_dlrbTree_init(&keys);
-  action_to_keylist(NULL, act, &keys, 0);
+  struct AnimKeylist *keylist = ED_keylist_create();
+  action_to_keylist(NULL, act, keylist, 0);
 
   /* for each key, make sure there is a corresponding pose */
-  for (ak = keys.first; ak; ak = ak->next) {
+  LISTBASE_FOREACH (const ActKeyColumn *, ak, ED_keylist_listbase(keylist)) {
     /* check if any pose matches this */
     /* TODO: don't go looking through the list like this every time... */
     for (marker = act->markers.first; marker; marker = marker->next) {
@@ -356,7 +339,7 @@ static int poselib_sanitize_exec(bContext *C, wmOperator *op)
   }
 
   /* free temp memory */
-  BLI_dlrbTree_free(&keys);
+  ED_keylist_free(keylist);
 
   /* send notifiers for this - using keyframe editing notifiers, since action
    * may be being shown in anim editors as active action
@@ -516,7 +499,7 @@ static int poselib_add_exec(bContext *C, wmOperator *op)
 
   /* use Keying Set to determine what to store for the pose */
 
-  /* this includes custom props :)*/
+  /* This includes custom props :). */
   ks = ANIM_builtin_keyingset_get_named(NULL, ANIM_KS_WHOLE_CHARACTER_SELECTED_ID);
 
   ANIM_apply_keyingset(C, NULL, act, ks, MODIFYKEY_MODE_INSERT, (float)frame);
@@ -863,7 +846,7 @@ typedef struct tPoseLib_PreviewData {
   /** active area. */
   ScrArea *area;
 
-  /** RNA-Pointer to Object 'ob' .*/
+  /** RNA-Pointer to Object 'ob'. */
   PointerRNA rna_ptr;
   /** object to work on. */
   Object *ob;
@@ -1072,7 +1055,7 @@ static void poselib_apply_pose(tPoseLib_PreviewData *pld,
         else if (pchan->bone) {
           /* only ok if bone is visible and selected */
           if ((pchan->bone->flag & BONE_SELECTED) && (pchan->bone->flag & BONE_HIDDEN_P) == 0 &&
-              (pchan->bone->layer & arm->layer)) {
+              BKE_pose_is_layer_visible(arm, pchan)) {
             ok = 1;
           }
         }
@@ -1100,25 +1083,14 @@ static void poselib_keytag_pose(bContext *C, Scene *scene, tPoseLib_PreviewData 
 
   /* start tagging/keying */
   for (agrp = act->groups.first; agrp; agrp = agrp->next) {
-    /* only for selected bones unless there aren't any selected, in which case all are included  */
+    /* Only for selected bones unless there aren't any selected, in which case all are included. */
     pchan = BKE_pose_channel_find_name(pose, agrp->name);
 
     if (pchan) {
       if (!any_bone_selected || ((pchan->bone) && (pchan->bone->flag & BONE_SELECTED))) {
         if (autokey) {
-          /* add datasource override for the PoseChannel, to be used later */
+          /* Add data-source override for the PoseChannel, to be used later. */
           ANIM_relative_keyingset_add_source(&dsources, &pld->ob->id, &RNA_PoseBone, pchan);
-
-          /* clear any unkeyed tags */
-          if (pchan->bone) {
-            pchan->bone->flag &= ~BONE_UNKEYED;
-          }
-        }
-        else {
-          /* add unkeyed tags */
-          if (pchan->bone) {
-            pchan->bone->flag |= BONE_UNKEYED;
-          }
         }
       }
     }
@@ -1142,7 +1114,7 @@ static void poselib_preview_apply(bContext *C, wmOperator *op)
 
   /* only recalc pose (and its dependencies) if pose has changed */
   if (pld->redraw == PL_PREVIEW_REDRAWALL) {
-    /* don't clear pose if firsttime */
+    /* Don't clear pose if first time. */
     if ((pld->flag & PL_PREVIEW_FIRSTTIME) == 0) {
       poselib_backup_restore(pld);
     }
@@ -1321,10 +1293,10 @@ static void poselib_preview_get_next(tPoseLib_PreviewData *pld, int step)
 }
 
 /* specially handle events for searching */
-static void poselib_preview_handle_search(tPoseLib_PreviewData *pld, ushort event, char ascii)
+static void poselib_preview_handle_search(tPoseLib_PreviewData *pld, ushort event_type, char ascii)
 {
   /* try doing some form of string manipulation first */
-  switch (event) {
+  switch (event_type) {
     case EVT_BACKSPACEKEY:
       if (pld->searchstr[0] && pld->search_cursor) {
         short len = strlen(pld->searchstr);
@@ -1473,7 +1445,7 @@ static int poselib_preview_handle_event(bContext *UNUSED(C), wmOperator *op, con
       pld->state = PL_PREVIEW_CONFIRM;
       break;
 
-    /* toggle between original pose and poselib pose*/
+    /* Toggle between original pose and poselib pose. */
     case EVT_TABKEY:
       pld->flag |= PL_PREVIEW_SHOWORIGINAL;
       pld->redraw = PL_PREVIEW_REDRAWALL;
@@ -1856,7 +1828,7 @@ void POSELIB_OT_browse_interactive(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING;
 
   /* properties */
-  // TODO: make the pose_index into a proper enum instead of a cryptic int...
+  /* TODO: make the pose_index into a proper enum instead of a cryptic int. */
   ot->prop = RNA_def_int(
       ot->srna,
       "pose_index",
@@ -1868,7 +1840,7 @@ void POSELIB_OT_browse_interactive(wmOperatorType *ot)
       0,
       INT_MAX);
 
-  // XXX: percentage vs factor?
+  /* XXX: percentage vs factor? */
   /* not used yet */
 #if 0
   RNA_def_float_factor(ot->srna,

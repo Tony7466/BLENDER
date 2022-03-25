@@ -1,20 +1,4 @@
-# ##### BEGIN GPL LICENSE BLOCK #####
-#
-#  This program is free software; you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License
-#  as published by the Free Software Foundation; either version 2
-#  of the License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software Foundation,
-#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# ##### END GPL LICENSE BLOCK #####
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 # <pep8 compliant>
 import bpy
@@ -617,7 +601,6 @@ class PARTICLE_PT_rotation(ParticleButtonsPanel, Panel):
         layout = self.layout
         layout.prop(part, "use_rotations", text="")
         layout.enabled = particle_panel_enabled(context, psys)
-
 
     def draw(self, context):
         layout = self.layout
@@ -1264,6 +1247,8 @@ class PARTICLE_PT_render(ParticleButtonsPanel, Panel):
 
         if (
                 part.type == 'EMITTER' or
+                part.type in {'FLIP', 'SPRAY', 'BUBBLE', 'FOAM', 'TRACER',
+                              'SPRAYFOAM', 'SPRAYBUBBLE', 'FOAMBUBBLE', 'SPRAYFOAMBUBBLE'} or
                 (part.render_type in {'OBJECT', 'COLLECTION'} and part.type == 'HAIR')
         ):
             if part.render_type != 'NONE':
@@ -1802,9 +1787,10 @@ class PARTICLE_PT_force_fields_type1(ParticleButtonsPanel, Panel):
 
         part = particle_get_settings(context)
 
-        col = layout.column()
-        col.prop(part.force_field_1, "type", text="Type 1")
-        basic_force_field_settings_ui(self, part.force_field_1)
+        if part.force_field_1:
+            col = layout.column()
+            col.prop(part.force_field_1, "type", text="Type 1")
+            basic_force_field_settings_ui(self, part.force_field_1)
 
 
 class PARTICLE_PT_force_fields_type2(ParticleButtonsPanel, Panel):
@@ -1818,9 +1804,10 @@ class PARTICLE_PT_force_fields_type2(ParticleButtonsPanel, Panel):
 
         part = particle_get_settings(context)
 
-        col = layout.column()
-        col.prop(part.force_field_2, "type", text="Type 2")
-        basic_force_field_settings_ui(self, part.force_field_2)
+        if part.force_field_2:
+            col = layout.column()
+            col.prop(part.force_field_2, "type", text="Type 2")
+            basic_force_field_settings_ui(self, part.force_field_2)
 
 
 class PARTICLE_PT_force_fields_type1_falloff(ParticleButtonsPanel, Panel):
@@ -1835,7 +1822,8 @@ class PARTICLE_PT_force_fields_type1_falloff(ParticleButtonsPanel, Panel):
 
         part = particle_get_settings(context)
 
-        basic_force_field_falloff_ui(self, part.force_field_1)
+        if part.force_field_1:
+            basic_force_field_falloff_ui(self, part.force_field_1)
 
 
 class PARTICLE_PT_force_fields_type2_falloff(ParticleButtonsPanel, Panel):
@@ -1850,7 +1838,8 @@ class PARTICLE_PT_force_fields_type2_falloff(ParticleButtonsPanel, Panel):
 
         part = particle_get_settings(context)
 
-        basic_force_field_falloff_ui(self, part.force_field_2)
+        if part.force_field_2:
+            basic_force_field_falloff_ui(self, part.force_field_2)
 
 
 class PARTICLE_PT_vertexgroups(ParticleButtonsPanel, Panel):

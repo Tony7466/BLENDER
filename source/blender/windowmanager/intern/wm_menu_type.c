@@ -1,24 +1,12 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup wm
  *
  * Menu Registry.
  */
+
+#include <stdio.h>
 
 #include "BLI_sys_types.h"
 
@@ -41,10 +29,8 @@ static GHash *menutypes_hash = NULL;
 
 MenuType *WM_menutype_find(const char *idname, bool quiet)
 {
-  MenuType *mt;
-
   if (idname[0]) {
-    mt = BLI_ghash_lookup(menutypes_hash, idname);
+    MenuType *mt = BLI_ghash_lookup(menutypes_hash, idname);
     if (mt) {
       return mt;
     }
@@ -71,15 +57,12 @@ bool WM_menutype_add(MenuType *mt)
 
 void WM_menutype_freelink(MenuType *mt)
 {
-  bool ok;
-
-  ok = BLI_ghash_remove(menutypes_hash, mt->idname, NULL, MEM_freeN);
+  bool ok = BLI_ghash_remove(menutypes_hash, mt->idname, NULL, MEM_freeN);
 
   BLI_assert(ok);
-  (void)ok;
+  UNUSED_VARS_NDEBUG(ok);
 }
 
-/* called on initialize WM_init() */
 void WM_menutype_init(void)
 {
   /* reserve size is set based on blender default setup */

@@ -1,24 +1,7 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2010 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2010 Blender Foundation. All rights reserved. */
 
-#ifndef __DNA_LINESTYLE_TYPES_H__
-#define __DNA_LINESTYLE_TYPES_H__
+#pragma once
 
 /** \file
  * \ingroup DNA
@@ -27,12 +10,16 @@
 #include "DNA_ID.h"
 #include "DNA_listBase.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef MAX_MTEX
 #  define MAX_MTEX 18
 #endif
 
 /* texco (also in DNA_material_types.h) */
-#define TEXCO_STROKE 16 /* actually it's UV */
+#define TEXCO_STROKE 16 /* actually its UV */
 
 struct AnimData;
 struct ColorBand;
@@ -379,7 +366,7 @@ typedef struct LineStyleGeometryModifier_PerlinNoise1D {
   struct LineStyleModifier modifier;
 
   float frequency, amplitude;
-  /** In radians!. */
+  /** In radians. */
   float angle;
   unsigned int octaves;
   int seed;
@@ -390,7 +377,7 @@ typedef struct LineStyleGeometryModifier_PerlinNoise2D {
   struct LineStyleModifier modifier;
 
   float frequency, amplitude;
-  /** In radians!. */
+  /** In radians. */
   float angle;
   unsigned int octaves;
   int seed;
@@ -460,7 +447,7 @@ typedef struct LineStyleGeometryModifier_2DTransform {
 
   int pivot;
   float scale_x, scale_y;
-  /** In radians!. */
+  /** In radians. */
   float angle;
   float pivot_u;
   float pivot_x, pivot_y;
@@ -480,7 +467,7 @@ typedef struct LineStyleThicknessModifier_Calligraphy {
   struct LineStyleModifier modifier;
 
   float min_thickness, max_thickness;
-  /** In radians!. */
+  /** In radians. */
   float orientation;
   char _pad[4];
 } LineStyleThicknessModifier_Calligraphy;
@@ -577,4 +564,6 @@ typedef struct FreestyleLineStyle {
   ListBase geometry_modifiers;
 } FreestyleLineStyle;
 
+#ifdef __cplusplus
+}
 #endif

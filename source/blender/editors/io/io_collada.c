@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2008 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup collada
@@ -29,7 +13,6 @@
 #  include "BLI_utildefines.h"
 
 #  include "BKE_context.h"
-#  include "BKE_global.h"
 #  include "BKE_main.h"
 #  include "BKE_object.h"
 #  include "BKE_report.h"
@@ -37,7 +20,6 @@
 #  include "DEG_depsgraph.h"
 
 #  include "ED_object.h"
-#  include "ED_screen.h"
 
 #  include "RNA_access.h"
 #  include "RNA_define.h"
@@ -222,12 +204,12 @@ static int wm_collada_export_exec(bContext *C, wmOperator *op)
   export_settings.keep_smooth_curves = keep_smooth_curves != 0;
 
   if (export_animation_type != BC_ANIMATION_EXPORT_SAMPLES) {
-    // When curves are exported then we can not export as matrix
+    /* When curves are exported then we can not export as matrix. */
     export_settings.animation_transformation_type = BC_TRANSFORMATION_TYPE_DECOMPOSED;
   }
 
   if (export_settings.animation_transformation_type != BC_TRANSFORMATION_TYPE_DECOMPOSED) {
-    // Can not export smooth curves when Matrix export is enabled.
+    /* Can not export smooth curves when Matrix export is enabled. */
     export_settings.keep_smooth_curves = false;
   }
 
@@ -238,14 +220,6 @@ static int wm_collada_export_exec(bContext *C, wmOperator *op)
   export_settings.open_sim = open_sim != 0;
   export_settings.limit_precision = limit_precision != 0;
   export_settings.keep_bind_info = keep_bind_info != 0;
-
-  int includeFilter = OB_REL_NONE;
-  if (export_settings.include_armatures) {
-    includeFilter |= OB_REL_MOD_ARMATURE;
-  }
-  if (export_settings.include_children) {
-    includeFilter |= OB_REL_CHILDREN_RECURSIVE;
-  }
 
   export_count = collada_export(C, &export_settings);
 
@@ -404,10 +378,7 @@ static void uiCollada_exportSettings(uiLayout *layout, PointerRNA *imfptr)
 
 static void wm_collada_export_draw(bContext *UNUSED(C), wmOperator *op)
 {
-  PointerRNA ptr;
-
-  RNA_pointer_create(NULL, op->type->srna, op->properties, &ptr);
-  uiCollada_exportSettings(op->layout, &ptr);
+  uiCollada_exportSettings(op->layout, op->ptr);
 }
 
 static bool wm_collada_export_check(bContext *UNUSED(C), wmOperator *op)
@@ -481,11 +452,11 @@ void WM_OT_collada_export(wmOperatorType *ot)
       {0, NULL, 0, NULL, NULL}};
 
   static const EnumPropertyItem prop_bc_export_ui_section[] = {
-      {BC_UI_SECTION_MAIN, "main", 0, "Main", "Data Export Section"},
-      {BC_UI_SECTION_GEOMETRY, "geometry", 0, "Geom", "Geometry Export Section"},
-      {BC_UI_SECTION_ARMATURE, "armature", 0, "Arm", "Armature Export Section"},
-      {BC_UI_SECTION_ANIMATION, "animation", 0, "Anim", "Animation Export Section"},
-      {BC_UI_SECTION_COLLADA, "collada", 0, "Extra", "Collada Export Section"},
+      {BC_UI_SECTION_MAIN, "main", 0, "Main", "Data export section"},
+      {BC_UI_SECTION_GEOMETRY, "geometry", 0, "Geom", "Geometry export section"},
+      {BC_UI_SECTION_ARMATURE, "armature", 0, "Arm", "Armature export section"},
+      {BC_UI_SECTION_ANIMATION, "animation", 0, "Anim", "Animation export section"},
+      {BC_UI_SECTION_COLLADA, "collada", 0, "Extra", "Collada export section"},
       {0, NULL, 0, NULL, NULL}};
 
   ot->name = "Export COLLADA";
@@ -507,7 +478,7 @@ void WM_OT_collada_export(wmOperatorType *ot)
                                  FILE_SAVE,
                                  WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS,
                                  FILE_DEFAULTDISPLAY,
-                                 FILE_SORT_ALPHA);
+                                 FILE_SORT_DEFAULT);
 
   RNA_def_enum(func,
                "prop_bc_export_ui_section",
@@ -649,7 +620,7 @@ void WM_OT_collada_export(wmOperatorType *ot)
                   "Copy textures to same folder where the .dae file is exported");
 
   RNA_def_boolean(
-      func, "triangulate", 1, "Triangulate", "Export Polygons (Quads & NGons) as Triangles");
+      func, "triangulate", 1, "Triangulate", "Export polygons (quads and n-gons) as triangles");
 
   RNA_def_boolean(func,
                   "use_object_instantiation",
@@ -801,10 +772,7 @@ static void uiCollada_importSettings(uiLayout *layout, PointerRNA *imfptr)
 
 static void wm_collada_import_draw(bContext *UNUSED(C), wmOperator *op)
 {
-  PointerRNA ptr;
-
-  RNA_pointer_create(NULL, op->type->srna, op->properties, &ptr);
-  uiCollada_importSettings(op->layout, &ptr);
+  uiCollada_importSettings(op->layout, op->ptr);
 }
 
 void WM_OT_collada_import(wmOperatorType *ot)
@@ -828,7 +796,7 @@ void WM_OT_collada_import(wmOperatorType *ot)
                                  FILE_OPENFILE,
                                  WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS,
                                  FILE_DEFAULTDISPLAY,
-                                 FILE_SORT_ALPHA);
+                                 FILE_SORT_DEFAULT);
 
   RNA_def_boolean(ot->srna,
                   "import_units",

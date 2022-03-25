@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2005 by the Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup modifiers
@@ -30,6 +14,7 @@
 
 #include "BLT_translation.h"
 
+#include "DNA_defaults.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
@@ -52,6 +37,7 @@
 #include "BLO_read_write.h"
 
 #include "RNA_access.h"
+#include "RNA_prototypes.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -64,8 +50,9 @@ static void initData(ModifierData *md)
 {
   ExplodeModifierData *emd = (ExplodeModifierData *)md;
 
-  emd->facepa = NULL;
-  emd->flag |= eExplodeFlag_Unborn + eExplodeFlag_Alive + eExplodeFlag_Dead;
+  BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(emd, modifier));
+
+  MEMCPY_STRUCT_AFTER(emd, DNA_struct_default_get(ExplodeModifierData), modifier);
 }
 static void freeData(ModifierData *md)
 {
@@ -84,7 +71,9 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
 
   temd->facepa = NULL;
 }
-static bool dependsOnTime(ModifierData *UNUSED(md))
+static bool dependsOnTime(struct Scene *UNUSED(scene),
+                          ModifierData *UNUSED(md),
+                          const int UNUSED(dag_eval_mode))
 {
   return true;
 }
@@ -754,9 +743,9 @@ static Mesh *cutEdges(ExplodeModifierData *emd, Mesh *mesh)
 
   /* override original facepa (original pointer is saved in caller function) */
 
-  /* BMESH_TODO, (totfsplit * 2) over allocation is used since the quads are
+  /* TODO(campbell): `(totfsplit * 2)` over allocation is used since the quads are
    * later interpreted as tri's, for this to work right I think we probably
-   * have to stop using tessface - campbell */
+   * have to stop using tessface. */
 
   facepa = MEM_calloc_arrayN((totface + (totfsplit * 2)), sizeof(int), "explode_facepa");
   // memcpy(facepa, emd->facepa, totface*sizeof(int));
@@ -889,7 +878,7 @@ static Mesh *cutEdges(ExplodeModifierData *emd, Mesh *mesh)
 
   for (i = 0; i < curdupface; i++) {
     mf = &split_m->mface[i];
-    test_index_face(mf, &split_m->fdata, i, ((mf->flag & ME_FACE_SEL) ? 4 : 3));
+    BKE_mesh_mface_index_validate(mf, &split_m->fdata, i, ((mf->flag & ME_FACE_SEL) ? 4 : 3));
   }
 
   BLI_edgehash_free(edgehash, NULL);
@@ -917,7 +906,7 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
   EdgeHashIterator *ehi;
   float *vertco = NULL, imat[4][4];
   float rot[4];
-  float cfra;
+  float ctime;
   /* float timestep; */
   const int *facepa = emd->facepa;
   int totdup = 0, totvert = 0, totface = 0, totpart = 0, delface = 0;
@@ -938,9 +927,9 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
 
   /* timestep = psys_get_timestep(&sim); */
 
-  cfra = BKE_scene_frame_get(scene);
+  ctime = BKE_scene_ctime_get(scene);
 
-  /* hash table for vertice <-> particle relations */
+  /* hash table for vertex <-> particle relations */
   vertpahash = BLI_edgehash_new(__func__);
 
   for (i = 0; i < totface; i++) {
@@ -960,7 +949,7 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
 
     /* do mindex + totvert to ensure the vertex index to be the first
      * with BLI_edgehashIterator_getKey */
-    if (pa == NULL || cfra < pa->time) {
+    if (pa == NULL || ctime < pa->time) {
       mindex = totvert + totpart;
     }
     else {
@@ -978,7 +967,7 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
     }
   }
 
-  /* make new vertice indexes & count total vertices after duplication */
+  /* make new vertex indexes & count total vertices after duplication */
   ehi = BLI_edgehashIterator_new(vertpahash);
   for (; !BLI_edgehashIterator_isDone(ehi); BLI_edgehashIterator_step(ehi)) {
     BLI_edgehashIterator_setValue(ehi, POINTER_FROM_INT(totdup));
@@ -1020,7 +1009,7 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
 
       psys_get_birth_coords(&sim, pa, &birth, 0, 0);
 
-      state.time = cfra;
+      state.time = ctime;
       psys_get_particle_state(&sim, ed_v2, &state, 1);
 
       vertco = explode->mvert[v].co;
@@ -1046,7 +1035,7 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
   }
   BLI_edgehashIterator_free(ehi);
 
-  /*map new vertices to faces*/
+  /* Map new vertices to faces. */
   for (i = 0, u = 0; i < totface; i++) {
     MFace source;
     int orig_v4;
@@ -1074,7 +1063,7 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
     orig_v4 = source.v4;
 
     /* Same as above in the first loop over mesh's faces. */
-    if (pa == NULL || cfra < pa->time) {
+    if (pa == NULL || ctime < pa->time) {
       mindex = totvert + totpart;
     }
     else {
@@ -1094,7 +1083,7 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
 
     /* override uv channel for particle age */
     if (mtface) {
-      float age = (pa != NULL) ? (cfra - pa->time) / pa->lifetime : 0.0f;
+      float age = (pa != NULL) ? (ctime - pa->time) / pa->lifetime : 0.0f;
       /* Clamp to this range to avoid flipping to the other side of the coordinates. */
       CLAMP(age, 0.001f, 0.999f);
 
@@ -1104,7 +1093,7 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
       mtf->uv[0][1] = mtf->uv[1][1] = mtf->uv[2][1] = mtf->uv[3][1] = 0.5f;
     }
 
-    test_index_face(mf, &explode->fdata, u, (orig_v4 ? 4 : 3));
+    BKE_mesh_mface_index_validate(mf, &explode->fdata, u, (orig_v4 ? 4 : 3));
     u++;
   }
 
@@ -1114,7 +1103,7 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
   /* finalization */
   BKE_mesh_calc_edges_tessface(explode);
   BKE_mesh_convert_mfaces_to_mpolys(explode);
-  explode->runtime.cd_dirty_vert |= CD_MASK_NORMAL;
+  BKE_mesh_normals_tag_dirty(explode);
 
   if (psmd->psys->lattice_deform_data) {
     BKE_lattice_deform_data_destroy(psmd->psys->lattice_deform_data);
@@ -1180,50 +1169,48 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
       BKE_id_free(NULL, split_m);
       return explode;
     }
-    else {
-      return explodeMesh(emd, psmd, ctx, scene, mesh);
-    }
+
+    return explodeMesh(emd, psmd, ctx, scene, mesh);
   }
   return mesh;
 }
 
-static void panel_draw(const bContext *C, Panel *panel)
+static void panel_draw(const bContext *UNUSED(C), Panel *panel)
 {
   uiLayout *row, *col;
   uiLayout *layout = panel->layout;
   int toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
 
-  PointerRNA ptr;
   PointerRNA ob_ptr;
-  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
 
   PointerRNA obj_data_ptr = RNA_pointer_get(&ob_ptr, "data");
-  bool has_vertex_group = RNA_string_length(&ptr, "vertex_group") != 0;
+  bool has_vertex_group = RNA_string_length(ptr, "vertex_group") != 0;
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemPointerR(layout, &ptr, "particle_uv", &obj_data_ptr, "uv_layers", NULL, ICON_NONE);
+  uiItemPointerR(layout, ptr, "particle_uv", &obj_data_ptr, "uv_layers", NULL, ICON_NONE);
 
   row = uiLayoutRowWithHeading(layout, true, IFACE_("Show"));
-  uiItemR(row, &ptr, "show_alive", toggles_flag, NULL, ICON_NONE);
-  uiItemR(row, &ptr, "show_dead", toggles_flag, NULL, ICON_NONE);
-  uiItemR(row, &ptr, "show_unborn", toggles_flag, NULL, ICON_NONE);
+  uiItemR(row, ptr, "show_alive", toggles_flag, NULL, ICON_NONE);
+  uiItemR(row, ptr, "show_dead", toggles_flag, NULL, ICON_NONE);
+  uiItemR(row, ptr, "show_unborn", toggles_flag, NULL, ICON_NONE);
 
   uiLayoutSetPropSep(layout, true);
 
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, &ptr, "use_edge_cut", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "use_size", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "use_edge_cut", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "use_size", 0, NULL, ICON_NONE);
 
-  modifier_vgroup_ui(layout, &ptr, &ob_ptr, "vertex_group", "invert_vertex_group", NULL);
+  modifier_vgroup_ui(layout, ptr, &ob_ptr, "vertex_group", "invert_vertex_group", NULL);
 
   row = uiLayoutRow(layout, false);
   uiLayoutSetActive(row, has_vertex_group);
-  uiItemR(row, &ptr, "protect", 0, NULL, ICON_NONE);
+  uiItemR(row, ptr, "protect", 0, NULL, ICON_NONE);
 
   uiItemO(layout, IFACE_("Refresh"), ICON_NONE, "OBJECT_OT_explode_refresh");
 
-  modifier_panel_end(layout, &ptr);
+  modifier_panel_end(layout, ptr);
 }
 
 static void panelRegister(ARegionType *region_type)
@@ -1242,8 +1229,10 @@ ModifierTypeInfo modifierType_Explode = {
     /* name */ "Explode",
     /* structName */ "ExplodeModifierData",
     /* structSize */ sizeof(ExplodeModifierData),
+    /* srna */ &RNA_ExplodeModifier,
     /* type */ eModifierTypeType_Constructive,
     /* flags */ eModifierTypeFlag_AcceptsMesh,
+    /* icon */ ICON_MOD_EXPLODE,
     /* copyData */ copyData,
 
     /* deformVerts */ NULL,
@@ -1251,9 +1240,7 @@ ModifierTypeInfo modifierType_Explode = {
     /* deformVertsEM */ NULL,
     /* deformMatricesEM */ NULL,
     /* modifyMesh */ modifyMesh,
-    /* modifyHair */ NULL,
-    /* modifyPointCloud */ NULL,
-    /* modifyVolume */ NULL,
+    /* modifyGeometrySet */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ requiredDataMask,
@@ -1262,7 +1249,6 @@ ModifierTypeInfo modifierType_Explode = {
     /* updateDepsgraph */ NULL,
     /* dependsOnTime */ dependsOnTime,
     /* dependsOnNormals */ NULL,
-    /* foreachObjectLink */ NULL,
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,

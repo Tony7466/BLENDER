@@ -1,27 +1,11 @@
-# ##### BEGIN GPL LICENSE BLOCK #####
-#
-#  This program is free software; you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License
-#  as published by the Free Software Foundation; either version 2
-#  of the License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software Foundation,
-#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# ##### END GPL LICENSE BLOCK #####
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 # <pep8-80 compliant>
 
 
-def url_prefill_from_blender(addon_info=None):
+def url_prefill_from_blender(*, addon_info=None):
     import bpy
-    import bgl
+    import gpu
     import struct
     import platform
     import urllib.parse
@@ -38,9 +22,9 @@ def url_prefill_from_blender(addon_info=None):
     )
     fh.write(
         "Graphics card: %s %s %s\n" % (
-            bgl.glGetString(bgl.GL_RENDERER),
-            bgl.glGetString(bgl.GL_VENDOR),
-            bgl.glGetString(bgl.GL_VERSION),
+            gpu.platform.renderer_get(),
+            gpu.platform.vendor_get(),
+            gpu.platform.version_get(),
         )
     )
     fh.write(

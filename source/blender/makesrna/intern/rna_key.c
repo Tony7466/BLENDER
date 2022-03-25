@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -61,7 +47,7 @@
 static Key *rna_ShapeKey_find_key(ID *id)
 {
   switch (GS(id->name)) {
-    case ID_CU:
+    case ID_CU_LEGACY:
       return ((Curve *)id)->key;
     case ID_KE:
       return (Key *)id;
@@ -167,10 +153,10 @@ static void rna_ShapeKey_slider_max_set(PointerRNA *ptr, float value)
 
 #  undef SHAPEKEY_SLIDER_TOL
 
-/* ***** Normals accessors for shapekeys. ***** */
-/* Note: with this we may recompute several times the same data, should we want to access verts,
+/* ***** Normals accessors for shape-keys. ***** */
+/* NOTE: with this we may recompute several times the same data, should we want to access verts,
  *       then polys, then loops normals... However,
- *       such case looks rather unlikely - and not worth adding some kind of caching in KeyBlocks.
+ *       such case looks rather unlikely - and not worth adding some kind of caching in key-blocks.
  */
 
 static Mesh *rna_KeyBlock_normals_get_mesh(PointerRNA *ptr, ID *id)
@@ -541,7 +527,7 @@ static void rna_ShapeKey_data_begin_mixed(CollectionPropertyIterator *iter,
   int point_count = rna_ShapeKey_curve_find_index(key, kb->totelem);
 
   ShapeKeyCurvePoint *points = MEM_malloc_arrayN(
-      sizeof(ShapeKeyCurvePoint), point_count, __func__);
+      point_count, sizeof(ShapeKeyCurvePoint), __func__);
 
   char *databuf = kb->data;
   int items_left = point_count;
@@ -570,7 +556,7 @@ static void rna_ShapeKey_data_begin(CollectionPropertyIterator *iter, PointerRNA
   KeyBlock *kb = (KeyBlock *)ptr->data;
   int tot = kb->totelem, size = key->elemsize;
 
-  if (GS(key->from->name) == ID_CU && tot > 0) {
+  if (GS(key->from->name) == ID_CU_LEGACY && tot > 0) {
     Curve *cu = (Curve *)key->from;
     StructRNA *type = NULL;
     NurbInfo info = {0};
@@ -607,7 +593,7 @@ static int rna_ShapeKey_data_length(PointerRNA *ptr)
   KeyBlock *kb = (KeyBlock *)ptr->data;
   int tot = kb->totelem;
 
-  if (GS(key->from->name) == ID_CU) {
+  if (GS(key->from->name) == ID_CU_LEGACY) {
     tot = rna_ShapeKey_curve_find_index(key, tot);
   }
 
@@ -627,7 +613,7 @@ static PointerRNA rna_ShapeKey_data_get(CollectionPropertyIterator *iter)
     return rna_pointer_inherit_refine(&iter->parent, point->type, point->data);
   }
 
-  if (GS(key->from->name) == ID_CU) {
+  if (GS(key->from->name) == ID_CU_LEGACY) {
     Curve *cu = (Curve *)key->from;
 
     type = rna_ShapeKey_curve_point_type(cu->nurb.first);
@@ -649,7 +635,7 @@ int rna_ShapeKey_data_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
     return false;
   }
 
-  if (GS(key->from->name) == ID_CU) {
+  if (GS(key->from->name) == ID_CU_LEGACY) {
     NurbInfo info;
     rna_ShapeKey_NurbInfo_find_index(key, index, false, &info);
 
@@ -676,7 +662,7 @@ static char *rna_ShapeKey_path(PointerRNA *ptr)
   ID *id = ptr->owner_id;
   char name_esc[sizeof(kb->name) * 2];
 
-  BLI_strescape(name_esc, kb->name, sizeof(name_esc));
+  BLI_str_escape(name_esc, kb->name, sizeof(name_esc));
 
   if ((id) && (GS(id->name) != ID_KE)) {
     return BLI_sprintfN("shape_keys.key_blocks[\"%s\"]", name_esc);
@@ -697,6 +683,16 @@ static void rna_Key_update_data(Main *bmain, Scene *UNUSED(scene), PointerRNA *p
       WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, ob);
     }
   }
+}
+
+static void rna_ShapeKey_update_minmax(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+  KeyBlock *data = (KeyBlock *)ptr->data;
+  if (IN_RANGE_INCL(data->curval, data->slidermin, data->slidermax)) {
+    return;
+  }
+  CLAMP(data->curval, data->slidermin, data->slidermax);
+  rna_Key_update_data(bmain, scene, ptr);
 }
 
 static KeyBlock *rna_ShapeKeyData_find_keyblock(Key *key, float *point)
@@ -774,7 +770,7 @@ static char *rna_ShapeKeyPoint_path(PointerRNA *ptr)
       index = rna_ShapeKey_curve_find_index(key, index);
     }
 
-    BLI_strescape(name_esc_kb, kb->name, sizeof(name_esc_kb));
+    BLI_str_escape(name_esc_kb, kb->name, sizeof(name_esc_kb));
 
     if (GS(id->name) == ID_KE) {
       return BLI_sprintfN("key_blocks[\"%s\"].data[%d]", name_esc_kb, index);
@@ -955,6 +951,7 @@ static void rna_def_keyblock(BlenderRNA *brna)
   RNA_def_property_float_funcs(
       prop, NULL, "rna_ShapeKey_slider_min_set", "rna_ShapeKey_slider_min_range");
   RNA_def_property_ui_text(prop, "Slider Min", "Minimum for slider");
+  RNA_def_property_update(prop, 0, "rna_ShapeKey_update_minmax");
 
   prop = RNA_def_property(srna, "slider_max", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "slidermax");
@@ -963,6 +960,7 @@ static void rna_def_keyblock(BlenderRNA *brna)
   RNA_def_property_float_funcs(
       prop, NULL, "rna_ShapeKey_slider_max_set", "rna_ShapeKey_slider_max_range");
   RNA_def_property_ui_text(prop, "Slider Max", "Maximum for slider");
+  RNA_def_property_update(prop, 0, "rna_ShapeKey_update_minmax");
 
   prop = RNA_def_property(srna, "data", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, NULL, "data", "totelem");

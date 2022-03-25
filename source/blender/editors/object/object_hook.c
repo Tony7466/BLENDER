@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edobj
@@ -57,6 +41,7 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
+#include "RNA_prototypes.h"
 
 #include "ED_curve.h"
 #include "ED_mesh.h"
@@ -105,14 +90,13 @@ static int return_editmesh_indexar(BMEditMesh *em, int *r_tot, int **r_indexar, 
 
 static bool return_editmesh_vgroup(Object *obedit, BMEditMesh *em, char *r_name, float r_cent[3])
 {
-  const int cd_dvert_offset = obedit->actdef ?
+  const int active_index = BKE_object_defgroup_active_index_get(obedit);
+  const int cd_dvert_offset = active_index ?
                                   CustomData_get_offset(&em->bm->vdata, CD_MDEFORMVERT) :
                                   -1;
 
-  zero_v3(r_cent);
-
   if (cd_dvert_offset != -1) {
-    const int defgrp_index = obedit->actdef - 1;
+    const int defgrp_index = active_index - 1;
     int totvert = 0;
 
     MDeformVert *dvert;
@@ -129,7 +113,8 @@ static bool return_editmesh_vgroup(Object *obedit, BMEditMesh *em, char *r_name,
       }
     }
     if (totvert) {
-      bDeformGroup *dg = BLI_findlink(&obedit->defbase, defgrp_index);
+      const ListBase *defbase = BKE_object_defgroup_list(obedit);
+      bDeformGroup *dg = BLI_findlink(defbase, defgrp_index);
       BLI_strncpy(r_name, dg->name, sizeof(dg->name));
       mul_v3_fl(r_cent, 1.0f / (float)totvert);
       return true;
@@ -238,12 +223,11 @@ static void select_editlattice_hook(Object *obedit, HookModifierData *hmd)
 static int return_editcurve_indexar(Object *obedit, int *r_tot, int **r_indexar, float r_cent[3])
 {
   ListBase *editnurb = object_editcurve_get(obedit);
-  Nurb *nu;
   BPoint *bp;
   BezTriple *bezt;
   int *index, a, nr, totvert = 0;
 
-  for (nu = editnurb->first; nu; nu = nu->next) {
+  LISTBASE_FOREACH (Nurb *, nu, editnurb) {
     if (nu->type == CU_BEZIER) {
       bezt = nu->bezt;
       a = nu->pntsu;
@@ -280,7 +264,7 @@ static int return_editcurve_indexar(Object *obedit, int *r_tot, int **r_indexar,
   nr = 0;
   zero_v3(r_cent);
 
-  for (nu = editnurb->first; nu; nu = nu->next) {
+  LISTBASE_FOREACH (Nurb *, nu, editnurb) {
     if (nu->type == CU_BEZIER) {
       bezt = nu->bezt;
       a = nu->pntsu;
@@ -351,8 +335,7 @@ static bool object_hook_index_array(Main *bmain,
 
       em = me->edit_mesh;
 
-      EDBM_mesh_normals_update(em);
-      BKE_editmesh_looptri_calc(em);
+      BKE_editmesh_looptri_and_normals_calc(em);
 
       /* check selected vertices first */
       if (return_editmesh_indexar(em, r_tot, r_indexar, r_cent) == 0) {
@@ -360,7 +343,7 @@ static bool object_hook_index_array(Main *bmain,
       }
       return true;
     }
-    case OB_CURVE:
+    case OB_CURVES_LEGACY:
     case OB_SURF:
       ED_curve_editnurb_load(bmain, obedit);
       ED_curve_editnurb_make(obedit);
@@ -377,12 +360,11 @@ static bool object_hook_index_array(Main *bmain,
 static void select_editcurve_hook(Object *obedit, HookModifierData *hmd)
 {
   ListBase *editnurb = object_editcurve_get(obedit);
-  Nurb *nu;
   BPoint *bp;
   BezTriple *bezt;
   int index = 0, a, nr = 0;
 
-  for (nu = editnurb->first; nu; nu = nu->next) {
+  LISTBASE_FOREACH (Nurb *, nu, editnurb) {
     if (nu->type == CU_BEZIER) {
       bezt = nu->bezt;
       a = nu->pntsu;
@@ -466,7 +448,7 @@ static void object_hook_select(Object *ob, HookModifierData *hmd)
   else if (ob->type == OB_LATTICE) {
     select_editlattice_hook(ob, hmd);
   }
-  else if (ob->type == OB_CURVE) {
+  else if (ob->type == OB_CURVES_LEGACY) {
     select_editcurve_hook(ob, hmd);
   }
   else if (ob->type == OB_SURF) {
@@ -482,27 +464,26 @@ static bool hook_op_edit_poll(bContext *C)
 
   if (obedit) {
     if (ED_operator_editmesh(C)) {
-      return 1;
+      return true;
     }
     if (ED_operator_editsurfcurve(C)) {
-      return 1;
+      return true;
     }
     if (ED_operator_editlattice(C)) {
-      return 1;
+      return true;
     }
-    // if (ED_operator_editmball(C)) return 1;
+    // if (ED_operator_editmball(C)) return true;
   }
 
-  return 0;
+  return false;
 }
 
-static Object *add_hook_object_new(
-    Main *bmain, Scene *scene, ViewLayer *view_layer, View3D *v3d, Object *obedit)
+static Object *add_hook_object_new(Main *bmain, ViewLayer *view_layer, View3D *v3d, Object *obedit)
 {
   Base *basedit;
   Object *ob;
 
-  ob = BKE_object_add(bmain, scene, view_layer, OB_EMPTY, NULL);
+  ob = BKE_object_add(bmain, view_layer, OB_EMPTY, NULL);
 
   basedit = BKE_view_layer_base_find(view_layer, obedit);
   BLI_assert(view_layer->basact->object == ob);
@@ -545,7 +526,7 @@ static int add_hook_object(const bContext *C,
 
   if (mode == OBJECT_ADDHOOK_NEWOB && !ob) {
 
-    ob = add_hook_object_new(bmain, scene, view_layer, v3d, obedit);
+    ob = add_hook_object_new(bmain, view_layer, v3d, obedit);
 
     /* transform cent to global coords for loc */
     mul_v3_m4v3(ob->loc, obedit->obmat, cent);
@@ -586,7 +567,7 @@ static int add_hook_object(const bContext *C,
 
       BLI_strncpy(hmd->subtarget, arm->act_bone->name, sizeof(hmd->subtarget));
 
-      pchan_act = BKE_pose_channel_active(ob);
+      pchan_act = BKE_pose_channel_active_if_layer_visible(ob);
       if (LIKELY(pchan_act)) {
         invert_m4_m4(pose_mat, pchan_act->pose_mat);
         mul_v3_m4v3(cent, ob->obmat, pchan_act->pose_mat[3]);
@@ -720,7 +701,7 @@ static int object_hook_remove_exec(bContext *C, wmOperator *op)
 
   /* remove functionality */
 
-  BLI_remlink(&ob->modifiers, (ModifierData *)hmd);
+  BKE_modifier_remove_from_list(ob, (ModifierData *)hmd);
   BKE_modifier_free((ModifierData *)hmd);
 
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
@@ -776,7 +757,7 @@ void OBJECT_OT_hook_remove(wmOperatorType *ot)
 
   /* flags */
   /* this operator removes modifier which isn't stored in local undo stack,
-   * so redoing it from redo panel gives totally weird results  */
+   * so redoing it from redo panel gives totally weird results. */
   ot->flag = /*OPTYPE_REGISTER|*/ OPTYPE_UNDO;
 
   /* properties */
@@ -935,7 +916,7 @@ void OBJECT_OT_hook_assign(wmOperatorType *ot)
 
   /* flags */
   /* this operator changes data stored in modifier which doesn't get pushed to undo stack,
-   * so redoing it from redo panel gives totally weird results  */
+   * so redoing it from redo panel gives totally weird results. */
   ot->flag = /*OPTYPE_REGISTER|*/ OPTYPE_UNDO;
 
   /* properties */

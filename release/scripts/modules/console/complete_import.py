@@ -1,22 +1,6 @@
-# Copyright (c) 2009 Fernando Perez, www.stani.be (GPL license)
+# SPDX-License-Identifier: GPL-2.0-or-later
 
-# ##### BEGIN GPL LICENSE BLOCK #####
-#
-#  This program is free software; you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License
-#  as published by the Free Software Foundation; either version 2
-#  of the License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software Foundation,
-#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# ##### END GPL LICENSE BLOCK #####
+# Copyright (c) 2009 Fernando Perez, www.stani.be
 
 # Original copyright (see docstring):
 # ****************************************************************************
@@ -143,7 +127,7 @@ def complete(line):
     """
     import inspect
 
-    def try_import(mod, only_modules=False):
+    def try_import(mod, *, only_modules=False):
 
         def is_importable(module, attr):
             if only_modules:
@@ -184,7 +168,7 @@ def complete(line):
         mod = words[1].split('.')
         if len(mod) < 2:
             return filter_prefix(get_root_modules(), words[-1])
-        completion_list = try_import('.'.join(mod[:-1]), True)
+        completion_list = try_import('.'.join(mod[:-1]), only_modules=True)
         completion_list = ['.'.join(mod[:-1] + [el]) for el in completion_list]
         return filter_prefix(completion_list, words[-1])
     if len(words) >= 3 and words[0] == 'from':

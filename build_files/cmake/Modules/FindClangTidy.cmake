@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright 2020 Blender Foundation.
+
 # - Find clang-tidy executable
 #
 # Find the native clang-tidy executable
@@ -14,17 +17,6 @@
 #
 #  CLANG_TIDY_FOUND, If false, do not try to use Eigen3.
 
-#=============================================================================
-# Copyright 2020 Blender Foundation.
-#
-# Distributed under the OSI-approved BSD License (the "License");
-# see accompanying file Copyright.txt for details.
-#
-# This software is distributed WITHOUT ANY WARRANTY; without even the
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the License for more information.
-#=============================================================================
-
 # If CLANG_TIDY_ROOT_DIR was defined in the environment, use it.
 if(NOT CLANG_TIDY_ROOT_DIR AND NOT $ENV{CLANG_TIDY_ROOT_DIR} STREQUAL "")
   set(CLANG_TIDY_ROOT_DIR $ENV{CLANG_TIDY_ROOT_DIR})
@@ -38,6 +30,8 @@ set(_clang_tidy_SEARCH_DIRS
 # TODO(sergey): Find more reliable way of finding the latest clang-tidy.
 find_program(CLANG_TIDY_EXECUTABLE
   NAMES
+    clang-tidy-12
+    clang-tidy-11
     clang-tidy-10
     clang-tidy-9
     clang-tidy-8
@@ -47,7 +41,10 @@ find_program(CLANG_TIDY_EXECUTABLE
     ${_clang_tidy_SEARCH_DIRS}
 )
 
-if(CLANG_TIDY_EXECUTABLE)
+if(CLANG_TIDY_EXECUTABLE AND NOT EXISTS ${CLANG_TIDY_EXECUTABLE})
+  message(WARNING "Cached or directly specified Clang-Tidy executable does not exist.")
+  set(CLANG_TIDY_FOUND FALSE)
+elseif(CLANG_TIDY_EXECUTABLE)
   # Mark clang-tidy as found.
   set(CLANG_TIDY_FOUND TRUE)
 

@@ -1,4 +1,4 @@
-# Apache License, Version 2.0
+# SPDX-License-Identifier: Apache-2.0
 
 """
 Example Usage
@@ -44,6 +44,7 @@ the ``.dat`` file extension should be used.
 import bpy
 
 # Generic functions
+
 
 def area_tri_signed_2x_v2(v1, v2, v3):
     return (v1[0] - v2[0]) * (v2[1] - v3[1]) + (v1[1] - v2[1]) * (v3[0] - v2[0])

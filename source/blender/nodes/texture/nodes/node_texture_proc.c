@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2005 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup texnodes
@@ -24,7 +8,7 @@
 #include "NOD_texture.h"
 #include "node_texture_util.h"
 
-#include "RE_shader_ext.h"
+#include "RE_texture.h"
 
 /*
  * In this file: wrappers to use procedural textures as nodes
@@ -72,7 +56,7 @@ static void do_proc(float *result,
   }
 
   if (textype & TEX_RGB) {
-    copy_v4_v4(result, &texres.tr);
+    copy_v4_v4(result, texres.trgba);
   }
   else {
     copy_v4_v4(result, col1);
@@ -137,10 +121,12 @@ static int count_outputs(bNode *node)
                           bNodeStack **out) \
   { \
     int outs = count_outputs(node); \
-    if (outs >= 1) \
+    if (outs >= 1) { \
       tex_output(node, execdata, in, out[0], &name##_colorfn, data); \
-    if (outs >= 2) \
+    } \
+    if (outs >= 2) { \
       tex_output(node, execdata, in, out[1], &name##_normalfn, data); \
+    } \
   }
 
 /* --- VORONOI -- */
@@ -292,12 +278,13 @@ static void init(bNodeTree *UNUSED(ntree), bNode *node)
   { \
     static bNodeType ntype; \
 \
-    tex_node_type_base(&ntype, TEX_NODE_PROC + TEXTYPE, Name, NODE_CLASS_TEXTURE, NODE_PREVIEW); \
+    tex_node_type_base(&ntype, TEX_NODE_PROC + TEXTYPE, Name, NODE_CLASS_TEXTURE); \
     node_type_socket_templates(&ntype, name##_inputs, outputs); \
     node_type_size_preset(&ntype, NODE_SIZE_MIDDLE); \
     node_type_init(&ntype, init); \
     node_type_storage(&ntype, "Tex", node_free_standard_storage, node_copy_standard_storage); \
     node_type_exec(&ntype, NULL, NULL, name##_exec); \
+    ntype.flag |= NODE_PREVIEW; \
 \
     nodeRegisterType(&ntype); \
   }

@@ -1,23 +1,9 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bmesh
  *
- * Edgenet Fill.
+ * Edge-net Fill.
  */
 
 #include <limits.h>
@@ -51,7 +37,7 @@ enum {
  */
 static bool bm_edge_step_ok(BMEdge *e)
 {
-  return BM_elem_flag_test(e, BM_ELEM_TAG) && ((e->l == NULL) || (e->l->radial_next == e->l));
+  return BM_elem_flag_test(e, BM_ELEM_TAG) && (ELEM(e->l, NULL, e->l->radial_next));
 }
 
 static int bm_edge_face(BMEdge *e)
@@ -60,7 +46,7 @@ static int bm_edge_face(BMEdge *e)
 }
 
 /**
- * Get the next available edge we can use to attempt tp calculate a path from.
+ * Get the next available edge we can use to attempt to calculate a path from.
  */
 static BMEdge *bm_edgenet_edge_get_next(BMesh *bm,
                                         LinkNode **edge_queue,
@@ -295,7 +281,7 @@ static LinkNode *bm_edgenet_path_calc(BMEdge *e,
 
   vn_1->flag = vn_2->flag = (f_index == -1) ? VNINFO_FLAG_IS_MIXFACE : 0;
 
-  /* prime the searchlist */
+  /* Prime the search-list. */
   BLI_linklist_prepend_pool(&v_ls_prev, e->v1, path_pool);
   BLI_linklist_prepend_pool(&v_ls_prev, e->v2, path_pool);
 
@@ -422,15 +408,6 @@ static LinkNode *bm_edgenet_path_calc_best(BMEdge *e,
   return path;
 }
 
-/**
- * Fill in faces from an edgenet made up of boundary and wire edges.
- *
- * \note New faces currently don't have their normals calculated and are flipped randomly.
- *       The caller needs to flip faces correctly.
- *
- * \param bm: The mesh to operate on.
- * \param use_edge_tag: Only fill tagged edges.
- */
 void BM_mesh_edgenet(BMesh *bm, const bool use_edge_tag, const bool use_new_face_tag)
 {
   VertNetInfo *vnet_info = MEM_callocN(sizeof(*vnet_info) * (size_t)bm->totvert, __func__);

@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -29,10 +15,11 @@
 #ifdef RNA_RUNTIME
 
 #  include "BKE_context.h"
-#  include "BKE_sequencer.h"
 #  include "BKE_sound.h"
 
 #  include "DEG_depsgraph.h"
+
+#  include "SEQ_sequencer.h"
 
 static void rna_Sound_update(Main *UNUSED(bmain), Scene *UNUSED(scene), PointerRNA *ptr)
 {
@@ -59,7 +46,7 @@ static void rna_def_sound(BlenderRNA *brna)
       srna, "Sound", "Sound data-block referencing an external or packed sound file");
   RNA_def_struct_ui_icon(srna, ICON_SOUND);
 
-  /*rna_def_ipo_common(srna); */
+  // rna_def_ipo_common(srna);
 
   prop = RNA_def_property(srna, "filepath", PROP_STRING, PROP_FILEPATH);
   RNA_def_property_string_sdna(prop, NULL, "filepath");

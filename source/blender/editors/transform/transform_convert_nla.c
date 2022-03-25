@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edtransform
@@ -36,11 +20,18 @@
 #include "ED_markers.h"
 
 #include "WM_api.h"
+#include "WM_types.h"
 
 #include "RNA_access.h"
+#include "RNA_prototypes.h"
 
 #include "transform.h"
+#include "transform_snap.h"
+
 #include "transform_convert.h"
+#include "transform_snap.h"
+
+#include "transform_mode.h"
 
 /** Used for NLA transform (stored in #TransData.extra pointer). */
 typedef struct TransDataNla {
@@ -69,7 +60,6 @@ typedef struct TransDataNla {
 
 /* -------------------------------------------------------------------- */
 /** \name NLA Transform Creation
- *
  * \{ */
 
 void createTransNlaData(bContext *C, TransInfo *t)
@@ -117,7 +107,7 @@ void createTransNlaData(bContext *C, TransInfo *t)
 
     /* only consider selected strips */
     for (strip = nlt->strips.first; strip; strip = strip->next) {
-      // TODO: we can make strips have handles later on...
+      /* TODO: we can make strips have handles later on. */
       /* transition strips can't get directly transformed */
       if (strip->type != NLASTRIP_TYPE_TRANSITION) {
         if (strip->flag & NLASTRIP_FLAG_SELECT) {
@@ -166,7 +156,7 @@ void createTransNlaData(bContext *C, TransInfo *t)
 
       /* only consider selected strips */
       for (strip = nlt->strips.first; strip; strip = strip->next) {
-        // TODO: we can make strips have handles later on...
+        /* TODO: we can make strips have handles later on. */
         /* transition strips can't get directly transformed */
         if (strip->type != NLASTRIP_TYPE_TRANSITION) {
           if (strip->flag & NLASTRIP_FLAG_SELECT) {
@@ -203,29 +193,17 @@ void createTransNlaData(bContext *C, TransInfo *t)
               /* just set tdn to assume that it only has one handle for now */
               tdn->handle = -1;
 
-              /* now, link the transform data up to this data */
+              /* Now, link the transform data up to this data. */
+              td->loc = tdn->h1;
+              copy_v3_v3(td->iloc, tdn->h1);
+
               if (ELEM(t->mode, TFM_TRANSLATION, TFM_TIME_EXTEND)) {
-                td->loc = tdn->h1;
-                copy_v3_v3(td->iloc, tdn->h1);
-
-                /* store all the other gunk that is required by transform */
+                /* Store all the other gunk that is required by transform. */
                 copy_v3_v3(td->center, center);
-                memset(td->axismtx, 0, sizeof(td->axismtx));
                 td->axismtx[2][2] = 1.0f;
-
-                td->ext = NULL;
-                td->val = NULL;
-
                 td->flag |= TD_SELECTED;
-                td->dist = 0.0f;
-
                 unit_m3(td->mtx);
                 unit_m3(td->smtx);
-              }
-              else {
-                /* time scaling only needs single value */
-                td->val = &tdn->h1[0];
-                td->ival = tdn->h1[0];
               }
 
               td->extra = tdn;
@@ -236,29 +214,17 @@ void createTransNlaData(bContext *C, TransInfo *t)
                * then we're doing both, otherwise, only end */
               tdn->handle = (tdn->handle) ? 2 : 1;
 
-              /* now, link the transform data up to this data */
+              /* Now, link the transform data up to this data. */
+              td->loc = tdn->h2;
+              copy_v3_v3(td->iloc, tdn->h2);
+
               if (ELEM(t->mode, TFM_TRANSLATION, TFM_TIME_EXTEND)) {
-                td->loc = tdn->h2;
-                copy_v3_v3(td->iloc, tdn->h2);
-
-                /* store all the other gunk that is required by transform */
+                /* Store all the other gunk that is required by transform. */
                 copy_v3_v3(td->center, center);
-                memset(td->axismtx, 0, sizeof(td->axismtx));
                 td->axismtx[2][2] = 1.0f;
-
-                td->ext = NULL;
-                td->val = NULL;
-
                 td->flag |= TD_SELECTED;
-                td->dist = 0.0f;
-
                 unit_m3(td->mtx);
                 unit_m3(td->smtx);
-              }
-              else {
-                /* time scaling only needs single value */
-                td->val = &tdn->h2[0];
-                td->ival = tdn->h2[0];
               }
 
               td->extra = tdn;
@@ -285,25 +251,33 @@ void createTransNlaData(bContext *C, TransInfo *t)
   ANIM_animdata_freelist(&anim_data);
 }
 
-/* helper for recalcData() - for NLA Editor transforms */
 void recalcData_nla(TransInfo *t)
 {
   SpaceNla *snla = (SpaceNla *)t->area->spacedata.first;
-  Scene *scene = t->scene;
-  double secf = FPS;
-  int i;
 
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
-  TransDataNla *tdn = tc->custom.type.data;
+
+  /* handle auto-snapping
+   * NOTE: only do this when transform is still running, or we can't restore
+   */
+  if (t->state != TRANS_CANCEL) {
+    const short autosnap = getAnimEdit_SnapMode(t);
+    if (autosnap != SACTSNAP_OFF) {
+      TransData *td = tc->data;
+      for (int i = 0; i < tc->data_len; i++, td++) {
+        transform_snap_anim_flush_data(t, td, autosnap, td->loc);
+      }
+    }
+  }
 
   /* For each strip we've got, perform some additional validation of the values
    * that got set before using RNA to set the value (which does some special
    * operations when setting these values to make sure that everything works ok).
    */
-  for (i = 0; i < tc->data_len; i++, tdn++) {
+  TransDataNla *tdn = tc->custom.type.data;
+  for (int i = 0; i < tc->data_len; i++, tdn++) {
     NlaStrip *strip = tdn->strip;
     PointerRNA strip_ptr;
-    short pExceeded, nExceeded, iter;
     int delta_y1, delta_y2;
 
     /* if this tdn has no handles, that means it is just a dummy that should be skipped */
@@ -357,21 +331,30 @@ void recalcData_nla(TransInfo *t)
      *
      * this is done as a iterative procedure (done 5 times max for now)
      */
-    for (iter = 0; iter < 5; iter++) {
-      pExceeded = ((strip->prev) && (strip->prev->type != NLASTRIP_TYPE_TRANSITION) &&
-                   (tdn->h1[0] < strip->prev->end));
-      nExceeded = ((strip->next) && (strip->next->type != NLASTRIP_TYPE_TRANSITION) &&
-                   (tdn->h2[0] > strip->next->start));
+    NlaStrip *prev = strip->prev;
+    while (prev != NULL && (prev->type & NLASTRIP_TYPE_TRANSITION)) {
+      prev = prev->prev;
+    }
+
+    NlaStrip *next = strip->next;
+    while (next != NULL && (next->type & NLASTRIP_TYPE_TRANSITION)) {
+      next = next->next;
+    }
+
+    for (short iter = 0; iter < 5; iter++) {
+      const bool pExceeded = (prev != NULL) && (tdn->h1[0] < prev->end);
+      const bool nExceeded = (next != NULL) && (tdn->h2[0] > next->start);
 
       if ((pExceeded && nExceeded) || (iter == 4)) {
-        /* both endpoints exceeded (or iteration ping-pong'd meaning that we need a compromise)
+        /* both endpoints exceeded (or iteration ping-pong'd meaning that we need a
+         * compromise)
          * - Simply crop strip to fit within the bounds of the strips bounding it
          * - If there were no neighbors, clear the transforms
          *   (make it default to the strip's current values).
          */
-        if (strip->prev && strip->next) {
-          tdn->h1[0] = strip->prev->end;
-          tdn->h2[0] = strip->next->start;
+        if (prev && next) {
+          tdn->h1[0] = prev->end;
+          tdn->h2[0] = next->start;
         }
         else {
           tdn->h1[0] = strip->start;
@@ -380,14 +363,14 @@ void recalcData_nla(TransInfo *t)
       }
       else if (nExceeded) {
         /* move backwards */
-        float offset = tdn->h2[0] - strip->next->start;
+        float offset = tdn->h2[0] - next->start;
 
         tdn->h1[0] -= offset;
         tdn->h2[0] -= offset;
       }
       else if (pExceeded) {
         /* more forwards */
-        float offset = strip->prev->end - tdn->h1[0];
+        float offset = prev->end - tdn->h1[0];
 
         tdn->h1[0] += offset;
         tdn->h2[0] += offset;
@@ -397,55 +380,11 @@ void recalcData_nla(TransInfo *t)
       }
     }
 
-    /* handle auto-snapping
-     * NOTE: only do this when transform is still running, or we can't restore
-     */
-    if (t->state != TRANS_CANCEL) {
-      switch (snla->autosnap) {
-        case SACTSNAP_FRAME: /* snap to nearest frame */
-        case SACTSNAP_STEP:  /* frame step - this is basically the same,
-                              * since we don't have any remapping going on */
-        {
-          tdn->h1[0] = floorf(tdn->h1[0] + 0.5f);
-          tdn->h2[0] = floorf(tdn->h2[0] + 0.5f);
-          break;
-        }
-
-        case SACTSNAP_SECOND: /* snap to nearest second */
-        case SACTSNAP_TSTEP:  /* second step - this is basically the same,
-                               * since we don't have any remapping going on */
-        {
-          /* This case behaves differently from the rest, since lengths of strips
-           * may not be multiples of a second. If we just naively resize adjust
-           * the handles, things may not work correctly. Instead, we only snap
-           * the first handle, and move the other to fit.
-           *
-           * FIXME: we do run into problems here when user attempts to negatively
-           *        scale the strip, as it then just compresses down and refuses
-           *        to expand out the other end.
-           */
-          float h1_new = (float)(floor(((double)tdn->h1[0] / secf) + 0.5) * secf);
-          float delta = h1_new - tdn->h1[0];
-
-          tdn->h1[0] = h1_new;
-          tdn->h2[0] += delta;
-          break;
-        }
-
-        case SACTSNAP_MARKER: /* snap to nearest marker */
-        {
-          tdn->h1[0] = (float)ED_markers_find_nearest_marker_time(&t->scene->markers, tdn->h1[0]);
-          tdn->h2[0] = (float)ED_markers_find_nearest_marker_time(&t->scene->markers, tdn->h2[0]);
-          break;
-        }
-      }
-    }
-
     /* Use RNA to write the values to ensure that constraints on these are obeyed
      * (e.g. for transition strips, the values are taken from the neighbors)
      *
      * NOTE: we write these twice to avoid truncation errors which can arise when
-     * moving the strips a large distance using numeric input [#33852]
+     * moving the strips a large distance using numeric input T33852.
      */
     RNA_pointer_create(NULL, &RNA_NlaStrip, strip, &strip_ptr);
 
@@ -462,6 +401,12 @@ void recalcData_nla(TransInfo *t)
      * - we need to calculate both,
      *   as only one may have been altered by transform if only 1 handle moved.
      */
+    /* In LibOverride case, we cannot move strips across tracks that come from the linked data. */
+    const bool is_liboverride = ID_IS_OVERRIDE_LIBRARY(tdn->id);
+    if (BKE_nlatrack_is_nonlocal_in_liboverride(tdn->id, tdn->nlt)) {
+      continue;
+    }
+
     delta_y1 = ((int)tdn->h1[1] / NLACHANNEL_STEP(snla) - tdn->trackIndex);
     delta_y2 = ((int)tdn->h2[1] / NLACHANNEL_STEP(snla) - tdn->trackIndex);
 
@@ -477,10 +422,11 @@ void recalcData_nla(TransInfo *t)
       if (delta > 0) {
         for (track = tdn->nlt->next, n = 0; (track) && (n < delta); track = track->next, n++) {
           /* check if space in this track for the strip */
-          if (BKE_nlatrack_has_space(track, strip->start, strip->end)) {
+          if (BKE_nlatrack_has_space(track, strip->start, strip->end) &&
+              !BKE_nlatrack_is_nonlocal_in_liboverride(tdn->id, track)) {
             /* move strip to this track */
             BLI_remlink(&tdn->nlt->strips, strip);
-            BKE_nlatrack_add_strip(track, strip);
+            BKE_nlatrack_add_strip(track, strip, is_liboverride);
 
             tdn->nlt = track;
             tdn->trackIndex++;
@@ -496,10 +442,11 @@ void recalcData_nla(TransInfo *t)
 
         for (track = tdn->nlt->prev, n = 0; (track) && (n < delta); track = track->prev, n++) {
           /* check if space in this track for the strip */
-          if (BKE_nlatrack_has_space(track, strip->start, strip->end)) {
+          if (BKE_nlatrack_has_space(track, strip->start, strip->end) &&
+              !BKE_nlatrack_is_nonlocal_in_liboverride(tdn->id, track)) {
             /* move strip to this track */
             BLI_remlink(&tdn->nlt->strips, strip);
-            BKE_nlatrack_add_strip(track, strip);
+            BKE_nlatrack_add_strip(track, strip, is_liboverride);
 
             tdn->nlt = track;
             tdn->trackIndex--;
@@ -546,10 +493,16 @@ void special_aftertrans_update__nla(bContext *C, TransInfo *UNUSED(t))
       BKE_nlastrips_clear_metas(&nlt->strips, 0, 1);
     }
 
+    /* General refresh for the outliner because the following might have happened:
+     * - strips moved between tracks
+     * - strips swapped order
+     * - duplicate-move moves to different track. */
+    WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_ADDED, NULL);
+
     /* free temp memory */
     ANIM_animdata_freelist(&anim_data);
 
-    /* perform after-transfrom validation */
+    /* Perform after-transform validation. */
     ED_nla_postop_refresh(&ac);
   }
 }

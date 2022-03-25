@@ -1,20 +1,4 @@
-# ##### BEGIN GPL LICENSE BLOCK #####
-#
-#  This program is free software; you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License
-#  as published by the Free Software Foundation; either version 2
-#  of the License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software Foundation,
-#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# ##### END GPL LICENSE BLOCK #####
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 # <pep8 compliant>
 import bpy
@@ -42,6 +26,10 @@ class MATERIAL_UL_matslots(UIList):
         # ob = data
         slot = item
         ma = slot.material
+
+        layout.context_pointer_set("id", ma)
+        layout.context_pointer_set("material_slot", slot)
+
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             if ma:
                 layout.prop(ma, "name", text="", emboss=False, icon_value=icon)
@@ -271,6 +259,37 @@ class MATERIAL_PT_viewport(MaterialButtonsPanel, Panel):
         col.prop(mat, "roughness")
 
 
+class MATERIAL_PT_lineart(MaterialButtonsPanel, Panel):
+    bl_label = "Line Art"
+    bl_options = {'DEFAULT_CLOSED'}
+    bl_order = 10
+
+    @classmethod
+    def poll(cls, context):
+        mat = context.material
+        return mat and not mat.grease_pencil
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        mat = context.material
+        lineart = mat.lineart
+
+        layout.prop(lineart, "use_material_mask", text="Material Mask")
+
+        col = layout.column(align=True)
+        col.active = lineart.use_material_mask
+        row = col.row(align=True, heading="Masks")
+        for i in range(8):
+            row.prop(lineart, "use_material_mask_bits", text=" ", index=i, toggle=True)
+            if i == 3:
+                row = col.row(align=True)
+
+        row = layout.row(align=True, heading="Custom Occlusion")
+        row.prop(lineart, "mat_occlusion", text="Levels")
+
+
 classes = (
     MATERIAL_MT_context_menu,
     MATERIAL_UL_matslots,
@@ -279,6 +298,7 @@ classes = (
     EEVEE_MATERIAL_PT_surface,
     EEVEE_MATERIAL_PT_volume,
     EEVEE_MATERIAL_PT_settings,
+    MATERIAL_PT_lineart,
     MATERIAL_PT_viewport,
     EEVEE_MATERIAL_PT_viewport_settings,
     MATERIAL_PT_custom_props,

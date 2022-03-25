@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup bke
@@ -32,6 +16,9 @@
 #include "BLI_threads.h"
 
 #include "BLT_translation.h"
+
+/* Allow using deprecated functionality for .blend file I/O. */
+#define DNA_DEPRECATED_ALLOW
 
 #include "DNA_anim_types.h"
 #include "DNA_object_types.h"
@@ -51,17 +38,22 @@
 #  include <AUD_Special.h>
 #endif
 
+#include "BKE_bpath.h"
 #include "BKE_global.h"
 #include "BKE_idtype.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_packedFile.h"
 #include "BKE_scene.h"
-#include "BKE_sequencer.h"
 #include "BKE_sound.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
+
+#include "BLO_read_write.h"
+
+#include "SEQ_sequencer.h"
+#include "SEQ_sound.h"
 
 static void sound_free_audio(bSound *sound);
 
@@ -95,7 +87,7 @@ static void sound_free_data(ID *id)
 {
   bSound *sound = (bSound *)id;
 
-  /* No animdata here. */
+  /* No animation-data here. */
 
   if (sound->packedfile) {
     BKE_packedfile_free(sound->packedfile);
@@ -126,6 +118,80 @@ static void sound_foreach_cache(ID *id,
   function_callback(id, &key, &sound->waveform, 0, user_data);
 }
 
+static void sound_foreach_path(ID *id, BPathForeachPathData *bpath_data)
+{
+  bSound *sound = (bSound *)id;
+  if (sound->packedfile != NULL && (bpath_data->flag & BKE_BPATH_FOREACH_PATH_SKIP_PACKED) != 0) {
+    return;
+  }
+
+  /* FIXME: This does not check for empty path... */
+  BKE_bpath_foreach_path_fixed_process(bpath_data, sound->filepath);
+}
+
+static void sound_blend_write(BlendWriter *writer, ID *id, const void *id_address)
+{
+  bSound *sound = (bSound *)id;
+  const bool is_undo = BLO_write_is_undo(writer);
+
+  /* Clean up, important in undo case to reduce false detection of changed datablocks. */
+  sound->tags = 0;
+  sound->handle = NULL;
+  sound->playback_handle = NULL;
+  sound->spinlock = NULL;
+
+  /* Do not store packed files in case this is a library override ID. */
+  if (ID_IS_OVERRIDE_LIBRARY(sound) && !is_undo) {
+    sound->packedfile = NULL;
+  }
+
+  /* write LibData */
+  BLO_write_id_struct(writer, bSound, id_address, &sound->id);
+  BKE_id_blend_write(writer, &sound->id);
+
+  BKE_packedfile_blend_write(writer, sound->packedfile);
+}
+
+static void sound_blend_read_data(BlendDataReader *reader, ID *id)
+{
+  bSound *sound = (bSound *)id;
+  sound->tags = 0;
+  sound->handle = NULL;
+  sound->playback_handle = NULL;
+
+  /* versioning stuff, if there was a cache, then we enable caching: */
+  if (sound->cache) {
+    sound->flags |= SOUND_FLAGS_CACHING;
+    sound->cache = NULL;
+  }
+
+  if (BLO_read_data_is_undo(reader)) {
+    sound->tags |= SOUND_TAGS_WAVEFORM_NO_RELOAD;
+  }
+
+  sound->spinlock = MEM_mallocN(sizeof(SpinLock), "sound_spinlock");
+  BLI_spin_init(sound->spinlock);
+
+  /* clear waveform loading flag */
+  sound->tags &= ~SOUND_TAGS_WAVEFORM_LOADING;
+
+  BKE_packedfile_blend_read(reader, &sound->packedfile);
+  BKE_packedfile_blend_read(reader, &sound->newpackedfile);
+}
+
+static void sound_blend_read_lib(BlendLibReader *reader, ID *id)
+{
+  bSound *sound = (bSound *)id;
+  /* XXX: deprecated - old animation system. */
+  BLO_read_id_address(reader, sound->id.lib, &sound->ipo);
+}
+
+static void sound_blend_read_expand(BlendExpander *expander, ID *id)
+{
+  bSound *snd = (bSound *)id;
+  BLO_expand(expander, snd->ipo); /* XXX deprecated - old animation system */
+}
+
 IDTypeInfo IDType_ID_SO = {
     .id_code = ID_SO,
     .id_filter = FILTER_ID_SO,
@@ -134,7 +200,8 @@ IDTypeInfo IDType_ID_SO = {
     .name = "Sound",
     .name_plural = "sounds",
     .translation_context = BLT_I18NCONTEXT_ID_SOUND,
-    .flags = 0,
+    .flags = IDTYPE_FLAGS_NO_ANIMDATA | IDTYPE_FLAGS_APPEND_IS_REUSABLE,
+    .asset_type_info = NULL,
 
     /* A fuzzy case, think NULLified content is OK here... */
     .init_data = NULL,
@@ -143,6 +210,17 @@ IDTypeInfo IDType_ID_SO = {
     .make_local = NULL,
     .foreach_id = NULL,
     .foreach_cache = sound_foreach_cache,
+    .foreach_path = sound_foreach_path,
+    .owner_get = NULL,
+
+    .blend_write = sound_blend_write,
+    .blend_read_data = sound_blend_read_data,
+    .blend_read_lib = sound_blend_read_lib,
+    .blend_read_expand = sound_blend_read_expand,
+
+    .blend_read_undo_preserve = NULL,
+
+    .lib_override_apply_post = NULL,
 };
 
 #ifdef WITH_AUDASPACE
@@ -161,7 +239,7 @@ BLI_INLINE void sound_verify_evaluated_id(const ID *id)
    *
    * Data-blocks which are covered by a copy-on-write system of dependency graph will have
    * LIB_TAG_COPIED_ON_WRITE tag set on them. But if some of data-blocks during its evaluation
-   * decides to re-allocate it's nested one (for example, object evaluation could re-allocate mesh
+   * decides to re-allocate its nested one (for example, object evaluation could re-allocate mesh
    * when evaluating modifier stack). Such data-blocks will have
    * LIB_TAG_COPIED_ON_WRITE_EVAL_RESULT tag set on them.
    *
@@ -177,14 +255,11 @@ BLI_INLINE void sound_verify_evaluated_id(const ID *id)
 bSound *BKE_sound_new_file(Main *bmain, const char *filepath)
 {
   bSound *sound;
-  const char *path;
+  const char *blendfile_path = BKE_main_blendfile_path(bmain);
   char str[FILE_MAX];
 
   BLI_strncpy(str, filepath, sizeof(str));
-
-  path = BKE_main_blendfile_path(bmain);
-
-  BLI_path_abs(str, path);
+  BLI_path_abs(str, blendfile_path);
 
   sound = BKE_libblock_alloc(bmain, ID_SO, BLI_path_basename(filepath), 0);
   BLI_strncpy(sound->filepath, filepath, FILE_MAX);
@@ -332,7 +407,7 @@ void BKE_sound_init(Main *bmain)
   }
 
   if (!(sound_device = AUD_init(device_name, specs, buffersize, "Blender"))) {
-    sound_device = AUD_init("Null", specs, buffersize, "Blender");
+    sound_device = AUD_init("None", specs, buffersize, "Blender");
   }
 
   BKE_sound_init_main(bmain);
@@ -606,7 +681,7 @@ void BKE_sound_update_fps(Main *bmain, Scene *scene)
     AUD_Sequence_setFPS(scene->sound_scene, FPS);
   }
 
-  BKE_sequencer_refresh_sound_length(bmain, scene);
+  SEQ_sound_update_length(bmain, scene);
 }
 
 void BKE_sound_update_scene_listener(Scene *scene)
@@ -652,16 +727,11 @@ void *BKE_sound_add_scene_sound(
   }
   sound_verify_evaluated_id(&sequence->sound->id);
   const double fps = FPS;
-  void *handle = AUD_Sequence_add(scene->sound_scene,
-                                  sequence->sound->playback_handle,
-                                  startframe / fps,
-                                  endframe / fps,
-                                  frameskip / fps);
-  AUD_SequenceEntry_setMuted(handle, (sequence->flag & SEQ_MUTE) != 0);
-  AUD_SequenceEntry_setAnimationData(handle, AUD_AP_VOLUME, CFRA, &sequence->volume, 0);
-  AUD_SequenceEntry_setAnimationData(handle, AUD_AP_PITCH, CFRA, &sequence->pitch, 0);
-  AUD_SequenceEntry_setAnimationData(handle, AUD_AP_PANNING, CFRA, &sequence->pan, 0);
-  return handle;
+  return AUD_Sequence_add(scene->sound_scene,
+                          sequence->sound->playback_handle,
+                          startframe / fps,
+                          endframe / fps,
+                          frameskip / fps + sequence->sound->offset_time);
 }
 
 void *BKE_sound_add_scene_sound_defaults(Scene *scene, Sequence *sequence)
@@ -684,11 +754,11 @@ void BKE_sound_mute_scene_sound(void *handle, char mute)
 }
 
 void BKE_sound_move_scene_sound(
-    Scene *scene, void *handle, int startframe, int endframe, int frameskip)
+    Scene *scene, void *handle, int startframe, int endframe, int frameskip, double audio_offset)
 {
   sound_verify_evaluated_id(&scene->id);
   const double fps = FPS;
-  AUD_SequenceEntry_move(handle, startframe / fps, endframe / fps, frameskip / fps);
+  AUD_SequenceEntry_move(handle, startframe / fps, endframe / fps, frameskip / fps + audio_offset);
 }
 
 void BKE_sound_move_scene_sound_defaults(Scene *scene, Sequence *sequence)
@@ -699,7 +769,8 @@ void BKE_sound_move_scene_sound_defaults(Scene *scene, Sequence *sequence)
                                sequence->scene_sound,
                                sequence->startdisp,
                                sequence->enddisp,
-                               sequence->startofs + sequence->anim_startofs);
+                               sequence->startofs + sequence->anim_startofs,
+                               0.0);
   }
 }
 
@@ -743,12 +814,12 @@ void BKE_sound_set_scene_sound_pan(void *handle, float pan, char animated)
 
 void BKE_sound_update_sequencer(Main *main, bSound *sound)
 {
-  BLI_assert(!"is not supposed to be used, is weird function.");
+  BLI_assert_msg(0, "is not supposed to be used, is weird function.");
 
   Scene *scene;
 
   for (scene = main->scenes.first; scene; scene = scene->id.next) {
-    BKE_sequencer_update_sound(scene, sound);
+    SEQ_sound_update(scene, sound);
   }
 }
 
@@ -889,7 +960,7 @@ double BKE_sound_sync_scene(Scene *scene)
 {
   sound_verify_evaluated_id(&scene->id);
 
-  // Ugly: Blender doesn't like it when the animation is played back during rendering
+  /* Ugly: Blender doesn't like it when the animation is played back during rendering */
   if (G.is_rendering) {
     return NAN_FLT;
   }
@@ -898,9 +969,8 @@ double BKE_sound_sync_scene(Scene *scene)
     if (scene->audio.flag & AUDIO_SYNC) {
       return AUD_getSynchronizerPosition(scene->playback_handle);
     }
-    else {
-      return AUD_Handle_getPosition(scene->playback_handle);
-    }
+
+    return AUD_Handle_getPosition(scene->playback_handle);
   }
   return NAN_FLT;
 }
@@ -909,12 +979,12 @@ int BKE_sound_scene_playing(Scene *scene)
 {
   sound_verify_evaluated_id(&scene->id);
 
-  // Ugly: Blender doesn't like it when the animation is played back during rendering
+  /* Ugly: Blender doesn't like it when the animation is played back during rendering */
   if (G.is_rendering) {
     return -1;
   }
 
-  // in case of a "Null" audio device, we have no playback information
+  /* In case of a "None" audio device, we have no playback information. */
   if (AUD_Device_getRate(sound_device) == AUD_RATE_INVALID) {
     return -1;
   }
@@ -922,9 +992,8 @@ int BKE_sound_scene_playing(Scene *scene)
   if (scene->audio.flag & AUDIO_SYNC) {
     return AUD_isSynchronizerPlaying();
   }
-  else {
-    return -1;
-  }
+
+  return -1;
 }
 
 void BKE_sound_free_waveform(bSound *sound)
@@ -959,7 +1028,7 @@ void BKE_sound_read_waveform(Main *bmain, bSound *sound, short *stop)
   if (info.length > 0) {
     int length = info.length * SOUND_WAVE_SAMPLES_PER_SECOND;
 
-    waveform->data = MEM_mallocN(length * sizeof(float) * 3, "SoundWaveform.samples");
+    waveform->data = MEM_mallocN(sizeof(float[3]) * length, "SoundWaveform.samples");
     waveform->length = AUD_readSound(
         sound->playback_handle, waveform->data, length, SOUND_WAVE_SAMPLES_PER_SECOND, stop);
   }
@@ -1151,6 +1220,46 @@ bool BKE_sound_info_get(struct Main *main, struct bSound *sound, SoundInfo *soun
   return result;
 }
 
+bool BKE_sound_stream_info_get(struct Main *main,
+                               const char *filepath,
+                               int stream,
+                               SoundStreamInfo *sound_info)
+{
+  const char *blendfile_path = BKE_main_blendfile_path(main);
+  char str[FILE_MAX];
+  AUD_Sound *sound;
+  AUD_StreamInfo *stream_infos;
+  int stream_count;
+
+  BLI_strncpy(str, filepath, sizeof(str));
+  BLI_path_abs(str, blendfile_path);
+
+  sound = AUD_Sound_file(str);
+  if (!sound) {
+    return false;
+  }
+
+  stream_count = AUD_Sound_getFileStreams(sound, &stream_infos);
+
+  AUD_Sound_free(sound);
+
+  if (!stream_infos) {
+    return false;
+  }
+
+  if ((stream < 0) || (stream >= stream_count)) {
+    free(stream_infos);
+    return false;
+  }
+
+  sound_info->start = stream_infos[stream].start;
+  sound_info->duration = stream_infos[stream].duration;
+
+  free(stream_infos);
+
+  return true;
+}
+
 #else /* WITH_AUDASPACE */
 
 #  include "BLI_utildefines.h"
@@ -1231,7 +1340,8 @@ void BKE_sound_move_scene_sound(Scene *UNUSED(scene),
                                 void *UNUSED(handle),
                                 int UNUSED(startframe),
                                 int UNUSED(endframe),
-                                int UNUSED(frameskip))
+                                int UNUSED(frameskip),
+                                double UNUSED(audio_offset))
 {
 }
 void BKE_sound_move_scene_sound_defaults(Scene *UNUSED(scene), Sequence *UNUSED(sequence))
@@ -1254,7 +1364,10 @@ int BKE_sound_scene_playing(Scene *UNUSED(scene))
 {
   return -1;
 }
-void BKE_sound_read_waveform(Main *bmain, bSound *sound, short *stop)
+void BKE_sound_read_waveform(Main *bmain,
+                             bSound *sound,
+                             /* NOLINTNEXTLINE: readability-non-const-parameter. */
+                             short *stop)
 {
   UNUSED_VARS(sound, stop, bmain);
 }
@@ -1312,6 +1425,14 @@ void BKE_sound_free_waveform(bSound *UNUSED(sound))
 bool BKE_sound_info_get(struct Main *UNUSED(main),
                         struct bSound *UNUSED(sound),
                         SoundInfo *UNUSED(sound_info))
+{
+  return false;
+}
+
+bool BKE_sound_stream_info_get(struct Main *UNUSED(main),
+                               const char *UNUSED(filepath),
+                               int UNUSED(stream),
+                               SoundStreamInfo *UNUSED(sound_info))
 {
   return false;
 }

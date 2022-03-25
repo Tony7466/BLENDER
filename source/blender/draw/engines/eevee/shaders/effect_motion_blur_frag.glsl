@@ -1,4 +1,6 @@
 
+#pragma BLENDER_REQUIRE(common_utiltex_lib.glsl)
+
 /*
  * Based on:
  * A Fast and Stable Feature-Aware Motion Blur Filter
@@ -14,11 +16,6 @@ uniform sampler2D velocityBuffer;
 uniform sampler2D tileMaxBuffer;
 
 #define KERNEL 8
-
-/* TODO(fclem) deduplicate this code. */
-uniform sampler2DArray utilTex;
-#define LUT_SIZE 64
-#define texelfetch_noise_tex(coord) texelFetch(utilTex, ivec3(ivec2(coord) % LUT_SIZE, 2.0), 0)
 
 uniform float depthScale;
 uniform ivec2 tileBufferSize;
@@ -63,7 +60,7 @@ vec2 sample_weights(float center_depth,
                     float sample_motion_length,
                     float offset_length)
 {
-  /* Clasify foreground/background. */
+  /* Classify foreground/background. */
   vec2 depth_weight = depth_compare(center_depth, sample_depth);
   /* Weight if sample is overlapping or under the center pixel. */
   vec2 spread_weight = spread_compare(center_motion_length, sample_motion_length, offset_length);
@@ -164,7 +161,7 @@ void gather_blur(vec2 screen_uv,
 
   for (i = 0, t = ofs * inc; i < KERNEL; i++, t += inc) {
     /* Also sample in center motion direction.
-     * Allow to recover motion where there is conflicting
+     * Allow recovering motion where there is conflicting
      * motion between foreground and background. */
     gather_sample(screen_uv,
                   center_depth,
@@ -214,16 +211,16 @@ void main()
   float w = 1.0 / (50.0 * float(KERNEL) * 4.0);
   accum_bg += center_color * w;
   w_accum.x += w;
-  /* Note: In Jimenez's presentation, they used center sample.
-   * We use background color as it contains more informations for foreground
+  /* NOTE: In Jimenez's presentation, they used center sample.
+   * We use background color as it contains more information for foreground
    * elements that have not enough weights.
-   * Yield beter blur in complex motion. */
+   * Yield better blur in complex motion. */
   center_color = accum_bg / w_accum.x;
 #endif
   /* Merge background. */
   accum += accum_bg;
   w_accum.y += w_accum.x;
-  /* Balance accumulation for failled samples.
+  /* Balance accumulation for failed samples.
    * We replace the missing foreground by the background. */
   float blend_fac = saturate(1.0 - w_accum.y / w_accum.z);
   fragColor = (accum / w_accum.z) + center_color * blend_fac;

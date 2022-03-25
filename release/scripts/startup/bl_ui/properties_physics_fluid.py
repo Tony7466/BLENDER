@@ -1,25 +1,9 @@
-# ##### BEGIN GPL LICENSE BLOCK #####
-#
-#  This program is free software; you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License
-#  as published by the Free Software Foundation; either version 2
-#  of the License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software Foundation,
-#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# ##### END GPL LICENSE BLOCK #####
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 # <pep8 compliant>
 
 import bpy
-from bpy.types import Menu, Panel
+from bpy.types import Panel
 from bl_ui.utils import PresetPanel
 from .properties_physics_common import (
     effector_weights_ui,
@@ -196,24 +180,43 @@ class PHYSICS_PT_settings(PhysicButtonsPanel, Panel):
             col = flow.column()
             if PhysicButtonsPanel.poll_gas_domain(context):
                 col.prop(domain, "clipping", text="Empty Space")
-            col.prop(domain, "delete_in_obstacle", text="Delete In Obstacle")
+            col.prop(domain, "delete_in_obstacle", text="Delete in Obstacle")
 
             if domain.cache_type == 'MODULAR':
                 col.separator()
+                label = ""
 
                 # Deactivate bake operator if guides are enabled but not baked yet.
                 note_flag = True
-                if self.check_domain_has_unbaked_guide(domain) and domain.cache_type == 'MODULAR':
-                    note = layout.split()
+                if self.check_domain_has_unbaked_guide(domain):
                     note_flag = False
+                    label = "Unbaked Guides: Bake Guides or disable them"
+                elif not domain.cache_resumable and not label:
+                    label = "Non Resumable Cache: Baking "
+                    if PhysicButtonsPanel.poll_liquid_domain(context):
+                        label += "mesh or particles will not be possible"
+                    elif PhysicButtonsPanel.poll_gas_domain(context):
+                        label += "noise will not be possible"
+                    else:
+                        label = ""
+
+                if label:
+                    info = layout.split()
+                    note = info.row()
                     note.enabled = note_flag
-                    note.label(icon='INFO', text="Unbaked Guides: Bake Guides or disable them")
+                    note.alignment = 'RIGHT'
+                    note.label(icon='INFO', text=label)
 
                 split = layout.split()
                 split.enabled = note_flag and ob.mode == 'OBJECT'
 
                 bake_incomplete = (domain.cache_frame_pause_data < domain.cache_frame_end)
-                if domain.cache_resumable and domain.has_cache_baked_data and not domain.is_cache_baking_data and bake_incomplete:
+                if (
+                        domain.cache_resumable and
+                        domain.has_cache_baked_data and
+                        not domain.is_cache_baking_data and
+                        bake_incomplete
+                ):
                     col = split.column()
                     col.operator("fluid.bake_data", text="Resume")
                     col = split.column()
@@ -472,7 +475,9 @@ class PHYSICS_PT_liquid(PhysicButtonsPanel, Panel):
 
         col = flow.column()
         col.prop(domain, "simulation_method", expand=False)
-        col.prop(domain, "flip_ratio", text="FLIP Ratio")
+        if domain.simulation_method == 'FLIP':
+            col.prop(domain, "flip_ratio", text="FLIP Ratio")
+        col.prop(domain, "sys_particle_maximum", text="System Maximum")
         col = col.column(align=True)
         col.prop(domain, "particle_radius", text="Particle Radius")
         col.prop(domain, "particle_number", text="Sampling")
@@ -492,7 +497,8 @@ class PHYSICS_PT_liquid(PhysicButtonsPanel, Panel):
         col.prop(domain, "use_fractions", text="Fractional Obstacles")
         sub = col.column()
         sub.active = domain.use_fractions
-        sub.prop(domain, "fractions_threshold", text="Obstacle-Fluid Threshold")
+        sub.prop(domain, "fractions_distance", text="Obstacle Distance")
+        sub.prop(domain, "fractions_threshold", text="Threshold")
 
 
 class PHYSICS_PT_flow_source(PhysicButtonsPanel, Panel):
@@ -717,11 +723,9 @@ class PHYSICS_PT_noise(PhysicButtonsPanel, Panel):
 
         col = flow.column()
         col.prop(domain, "noise_scale", text="Upres Factor")
-        # TODO (sebbas): Mantaflow only supports wavelet noise. Maybe get rid of noise type field.
-        col.prop(domain, "noise_type", text="Noise Method")
+        col.prop(domain, "noise_strength", text="Strength")
 
         col = flow.column()
-        col.prop(domain, "noise_strength", text="Strength")
         col.prop(domain, "noise_pos_scale", text="Scale")
         col.prop(domain, "noise_time_anim", text="Time")
 
@@ -730,11 +734,20 @@ class PHYSICS_PT_noise(PhysicButtonsPanel, Panel):
 
             # Deactivate bake operator if data has not been baked yet.
             note_flag = True
-            if domain.use_noise and not domain.has_cache_baked_data and domain.cache_type == 'MODULAR':
-                note = layout.split()
-                note_flag = False
-                note.enabled = note_flag
-                note.label(icon='INFO', text="Unbaked Data: Bake Data first")
+            if domain.use_noise:
+                label = ""
+                if not domain.cache_resumable:
+                    label = "Non Resumable Cache: Enable resumable option first"
+                elif not domain.has_cache_baked_data:
+                    label = "Unbaked Data: Bake Data first"
+
+                if label:
+                    info = layout.split()
+                    note = info.row()
+                    note_flag = False
+                    note.enabled = note_flag
+                    note.alignment = 'RIGHT'
+                    note.label(icon='INFO', text=label)
 
             split = layout.split()
             split.enabled = domain.has_cache_baked_data and note_flag and ob.mode == 'OBJECT'
@@ -816,11 +829,20 @@ class PHYSICS_PT_mesh(PhysicButtonsPanel, Panel):
 
             # Deactivate bake operator if data has not been baked yet.
             note_flag = True
-            if domain.use_mesh and not domain.has_cache_baked_data and domain.cache_type == 'MODULAR':
-                note = layout.split()
-                note_flag = False
-                note.enabled = note_flag
-                note.label(icon='INFO', text="Unbaked Data: Bake Data first")
+            if domain.use_mesh:
+                label = ""
+                if not domain.cache_resumable:
+                    label = "Non Resumable Cache: Enable resumable option first"
+                elif not domain.has_cache_baked_data:
+                    label = "Unbaked Data: Bake Data first"
+
+                if label:
+                    info = layout.split()
+                    note = info.row()
+                    note_flag = False
+                    note.enabled = note_flag
+                    note.alignment = 'RIGHT'
+                    note.label(icon='INFO', text=label)
 
             split = layout.split()
             split.enabled = domain.has_cache_baked_data and note_flag and ob.mode == 'OBJECT'
@@ -923,18 +945,27 @@ class PHYSICS_PT_particles(PhysicButtonsPanel, Panel):
         col.separator()
 
         col = flow.column()
-        col.prop(domain, "sndparticle_boundary", text="Particles in Boundary:")
+        col.prop(domain, "sndparticle_boundary", text="Particles in Boundary")
 
         if domain.cache_type == 'MODULAR':
             col.separator()
 
             # Deactivate bake operator if data has not been baked yet.
             note_flag = True
-            if using_particles and not domain.has_cache_baked_data and domain.cache_type == 'MODULAR':
-                note = layout.split()
-                note_flag = False
-                note.enabled = note_flag
-                note.label(icon='INFO', text="Unbaked Data: Bake Data first")
+            if using_particles:
+                label = ""
+                if not domain.cache_resumable:
+                    label = "Non Resumable Cache: Enable resumable option first"
+                elif not domain.has_cache_baked_data:
+                    label = "Unbaked Data: Bake Data first"
+
+                if label:
+                    info = layout.split()
+                    note = info.row()
+                    note_flag = False
+                    note.enabled = note_flag
+                    note.alignment = 'RIGHT'
+                    note.label(icon='INFO', text=label)
 
             split = layout.split()
             split.enabled = (
@@ -960,6 +991,46 @@ class PHYSICS_PT_particles(PhysicButtonsPanel, Panel):
                 split.operator("fluid.bake_particles", text="Bake Particles")
             else:
                 split.operator("fluid.free_particles", text="Free Particles")
+
+
+class PHYSICS_PT_viscosity(PhysicButtonsPanel, Panel):
+    bl_label = "Viscosity"
+    bl_parent_id = 'PHYSICS_PT_liquid'
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+
+    @classmethod
+    def poll(cls, context):
+        # Fluid viscosity only enabled for liquids
+        if not PhysicButtonsPanel.poll_liquid_domain(context):
+            return False
+
+        return (context.engine in cls.COMPAT_ENGINES)
+
+    def draw_header(self, context):
+        md = context.fluid.domain_settings
+        domain = context.fluid.domain_settings
+        is_baking_any = domain.is_cache_baking_any
+        has_baked_any = domain.has_cache_baked_any
+        self.layout.enabled = not is_baking_any and not has_baked_any
+        self.layout.prop(md, "use_viscosity", text="")
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        domain = context.fluid.domain_settings
+        layout.active = domain.use_viscosity
+
+        is_baking_any = domain.is_cache_baking_any
+        has_baked_any = domain.has_cache_baked_any
+        has_baked_data = domain.has_cache_baked_data
+
+        flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=False)
+        flow.enabled = not is_baking_any and not has_baked_any and not has_baked_data
+
+        col = flow.column(align=True)
+        col.prop(domain, "viscosity_value", text="Strength")
 
 
 class PHYSICS_PT_diffusion(PhysicButtonsPanel, Panel):
@@ -1162,13 +1233,17 @@ class PHYSICS_PT_cache(PhysicButtonsPanel, Panel):
             row.prop(domain, "cache_mesh_format", text="Meshes")
 
         if domain.cache_type == 'ALL':
-
             col.separator()
             split = layout.split()
             split.enabled = ob.mode == 'OBJECT'
 
             bake_incomplete = (domain.cache_frame_pause_data < domain.cache_frame_end)
-            if domain.cache_resumable and domain.has_cache_baked_data and not domain.is_cache_baking_data and bake_incomplete:
+            if (
+                    domain.cache_resumable and
+                    domain.has_cache_baked_data and
+                    not domain.is_cache_baking_data and
+                    bake_incomplete
+            ):
                 col = split.column()
                 col.operator("fluid.bake_all", text="Resume")
                 col = split.column()
@@ -1191,7 +1266,10 @@ class PHYSICS_PT_export(PhysicButtonsPanel, Panel):
     @classmethod
     def poll(cls, context):
         domain = context.fluid.domain_settings
-        if not PhysicButtonsPanel.poll_fluid_domain(context) or (domain.cache_data_format != 'OPENVDB' and bpy.app.debug_value != 3001):
+        if (
+                not PhysicButtonsPanel.poll_fluid_domain(context) or
+                (domain.cache_data_format != 'OPENVDB' and bpy.app.debug_value != 3001)
+        ):
             return False
 
         return (context.engine in cls.COMPAT_ENGINES)
@@ -1249,7 +1327,7 @@ class PHYSICS_PT_viewport_display(PhysicButtonsPanel, Panel):
 
     @classmethod
     def poll(cls, context):
-        return (PhysicButtonsPanel.poll_gas_domain(context))
+        return (PhysicButtonsPanel.poll_fluid_domain(context))
 
     def draw(self, context):
         layout = self.layout
@@ -1257,41 +1335,61 @@ class PHYSICS_PT_viewport_display(PhysicButtonsPanel, Panel):
         flow = layout.grid_flow(row_major=True, columns=0, even_columns=True, even_rows=False, align=True)
 
         domain = context.fluid.domain_settings
-        slice_method = domain.slice_method
-        axis_slice_method = domain.axis_slice_method
-
-        do_axis_slicing = (slice_method == 'AXIS_ALIGNED')
-        do_full_slicing = (axis_slice_method == 'FULL')
 
         col = flow.column(align=False)
         col.prop(domain, "display_thickness")
-        col.prop(domain, "display_interpolation")
-        col.separator()
 
-        col = flow.column()
-        col.prop(domain, "slice_method", text="Slicing")
+        sub = col.column()
+        sub.prop(domain, "display_interpolation")
 
-        col = col.column()
-        col.active = do_axis_slicing
-        col.prop(domain, "axis_slice_method")
-
-        if not do_full_slicing and do_axis_slicing:
-            col.prop(domain, "slice_axis")
-            col.prop(domain, "slice_depth")
+        if domain.use_color_ramp and domain.color_ramp_field == 'FLAGS':
+            sub.enabled = False
 
         col = col.column()
-        col.active = do_full_slicing or not do_axis_slicing
+        col.active = not domain.use_slice
         col.prop(domain, "slice_per_voxel")
 
 
-class PHYSICS_PT_viewport_display_color(PhysicButtonsPanel, Panel):
-    bl_label = "Color Mapping"
+class PHYSICS_PT_viewport_display_slicing(PhysicButtonsPanel, Panel):
+    bl_label = "Slice"
     bl_parent_id = 'PHYSICS_PT_viewport_display'
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
     def poll(cls, context):
-        return (PhysicButtonsPanel.poll_gas_domain(context))
+        return (PhysicButtonsPanel.poll_fluid_domain(context))
+
+    def draw_header(self, context):
+        md = context.fluid.domain_settings
+
+        self.layout.prop(md, "use_slice", text="")
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        domain = context.fluid.domain_settings
+
+        layout.active = domain.use_slice
+
+        col = layout.column()
+        col.prop(domain, "slice_axis")
+        col.prop(domain, "slice_depth")
+
+        sub = col.column()
+        sub.prop(domain, "show_gridlines")
+
+        sub.active = domain.display_interpolation == 'CLOSEST' or domain.color_ramp_field == 'FLAGS'
+
+
+class PHYSICS_PT_viewport_display_color(PhysicButtonsPanel, Panel):
+    bl_label = "Grid Display"
+    bl_parent_id = 'PHYSICS_PT_viewport_display'
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        return (PhysicButtonsPanel.poll_fluid_domain(context))
 
     def draw_header(self, context):
         md = context.fluid.domain_settings
@@ -1305,22 +1403,26 @@ class PHYSICS_PT_viewport_display_color(PhysicButtonsPanel, Panel):
         domain = context.fluid.domain_settings
         col = layout.column()
         col.active = domain.use_color_ramp
-        col.prop(domain, "coba_field")
+        col.prop(domain, "color_ramp_field")
+
+        if not domain.color_ramp_field == 'FLAGS':
+            col.prop(domain, "color_ramp_field_scale")
 
         col.use_property_split = False
 
-        col = col.column()
-        col.template_color_ramp(domain, "color_ramp", expand=True)
+        if domain.color_ramp_field[:3] != 'PHI' and domain.color_ramp_field not in {'FLAGS', 'PRESSURE'}:
+            col = col.column()
+            col.template_color_ramp(domain, "color_ramp", expand=True)
 
 
 class PHYSICS_PT_viewport_display_debug(PhysicButtonsPanel, Panel):
-    bl_label = "Debug Velocity"
+    bl_label = "Vector Display"
     bl_parent_id = 'PHYSICS_PT_viewport_display'
     bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
     def poll(cls, context):
-        return (PhysicButtonsPanel.poll_gas_domain(context))
+        return (PhysicButtonsPanel.poll_fluid_domain(context))
 
     def draw_header(self, context):
         md = context.fluid.domain_settings
@@ -1337,7 +1439,56 @@ class PHYSICS_PT_viewport_display_debug(PhysicButtonsPanel, Panel):
         col = flow.column()
         col.active = domain.show_velocity
         col.prop(domain, "vector_display_type", text="Display As")
+
+        if not domain.use_guide and domain.vector_field == 'GUIDE_VELOCITY':
+            note = layout.split()
+            note.label(icon='INFO', text="Enable Guides first! Defaulting to Fluid Velocity")
+
+        if domain.vector_display_type == 'MAC':
+            sub = col.column(heading="MAC Grid")
+            sub.prop(domain, "vector_show_mac_x")
+            sub.prop(domain, "vector_show_mac_y")
+            sub.prop(domain, "vector_show_mac_z")
+        else:
+            col.prop(domain, "vector_scale_with_magnitude")
+
+        col.prop(domain, "vector_field")
         col.prop(domain, "vector_scale")
+
+
+class PHYSICS_PT_viewport_display_advanced(PhysicButtonsPanel, Panel):
+    bl_label = "Advanced"
+    bl_parent_id = 'PHYSICS_PT_viewport_display'
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        domain = context.fluid.domain_settings
+        return PhysicButtonsPanel.poll_fluid_domain(context) and domain.use_slice and domain.show_gridlines
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        domain = context.fluid.domain_settings
+
+        layout.active = domain.display_interpolation == 'CLOSEST' or domain.color_ramp_field == 'FLAGS'
+
+        col = layout.column()
+        col.prop(domain, "gridlines_color_field", text="Color Gridlines")
+
+        if domain.gridlines_color_field == 'RANGE':
+            if domain.use_color_ramp and domain.color_ramp_field != 'FLAGS':
+                col.prop(domain, "gridlines_lower_bound")
+                col.prop(domain, "gridlines_upper_bound")
+                col.prop(domain, "gridlines_range_color")
+                col.prop(domain, "gridlines_cell_filter")
+            else:
+                note = layout.split()
+                if not domain.use_color_ramp:
+                    note.label(icon='INFO', text="Enable Grid Display to use range highlighting!")
+                else:
+                    note.label(icon='INFO', text="Range highlighting for flags is not available!")
 
 
 classes = (
@@ -1351,6 +1502,7 @@ classes = (
     PHYSICS_PT_noise,
     PHYSICS_PT_fire,
     PHYSICS_PT_liquid,
+    PHYSICS_PT_viscosity,
     PHYSICS_PT_diffusion,
     PHYSICS_PT_particles,
     PHYSICS_PT_mesh,
@@ -1363,8 +1515,10 @@ classes = (
     PHYSICS_PT_flow_initial_velocity,
     PHYSICS_PT_flow_texture,
     PHYSICS_PT_viewport_display,
+    PHYSICS_PT_viewport_display_slicing,
     PHYSICS_PT_viewport_display_color,
     PHYSICS_PT_viewport_display_debug,
+    PHYSICS_PT_viewport_display_advanced,
 )
 
 

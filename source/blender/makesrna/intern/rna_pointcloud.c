@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -135,7 +121,7 @@ static void rna_def_pointcloud(BlenderRNA *brna)
   PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, "PointCloud", "ID");
-  RNA_def_struct_ui_text(srna, "PointCloud", "Point cloud data-block");
+  RNA_def_struct_ui_text(srna, "Point Cloud", "Point cloud data-block");
   RNA_def_struct_ui_icon(srna, ICON_POINTCLOUD_DATA);
 
   /* geometry */
@@ -155,6 +141,8 @@ static void rna_def_pointcloud(BlenderRNA *brna)
   RNA_def_property_srna(prop, "IDMaterials"); /* see rna_ID.c */
   RNA_def_property_collection_funcs(
       prop, NULL, NULL, NULL, NULL, NULL, NULL, NULL, "rna_IDMaterials_assign_int");
+
+  rna_def_attributes_common(srna);
 
   /* common */
   rna_def_animdata_common(srna);

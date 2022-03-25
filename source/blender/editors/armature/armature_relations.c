@@ -1,25 +1,9 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
- * All rights reserved.
- * Operators for relations between bones and for transferring bones between armature objects
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edarmature
+ * Operators for relations between bones and for transferring bones between armature objects.
  */
 
 #include "MEM_guardedalloc.h"
@@ -269,7 +253,6 @@ static void joined_armature_fix_links(
   }
 }
 
-/* join armature exec is exported for use in object->join objects operator... */
 int ED_armature_join_objects_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
@@ -304,6 +287,10 @@ int ED_armature_join_objects_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+  /* Inverse transform for all selected armatures in this object,
+   * See #object_join_exec for detailed comment on why the safe version is used. */
+  invert_m4_m4_safe_ortho(oimat, ob_active->obmat);
+
   /* Get edit-bones of active armature to add edit-bones to */
   ED_armature_to_edit(arm);
 
@@ -334,7 +321,6 @@ int ED_armature_join_objects_exec(bContext *C, wmOperator *op)
       // BASACT->flag &= ~OB_MODE_POSE;
 
       /* Find the difference matrix */
-      invert_m4_m4(oimat, ob_active->obmat);
       mul_m4_m4m4(mat, oimat, ob_iter->obmat);
 
       /* Copy bones and posechannels from the object to the edit armature */
@@ -384,11 +370,21 @@ int ED_armature_join_objects_exec(bContext *C, wmOperator *op)
         BLI_remlink(curarm->edbo, curbone);
         BLI_addtail(arm->edbo, curbone);
 
+        /* Pose channel is moved from one storage to another, its UUID is still unique. */
         BLI_remlink(&opose->chanbase, pchan);
         BLI_addtail(&pose->chanbase, pchan);
         BKE_pose_channels_hash_free(opose);
         BKE_pose_channels_hash_free(pose);
       }
+
+      /* Armature ID itself is not freed below, however it has been modified (and is now completely
+       * empty). This needs to be told to the depsgraph, it will also ensure that the global
+       * memfile undo system properly detects the change.
+       *
+       * FIXME: Modifying an existing obdata because we are joining an object using it into another
+       * object is a very questionable behavior, which also does not match with other object types
+       * joining. */
+      DEG_id_tag_update_ex(bmain, &curarm->id, ID_RECALC_GEOMETRY);
 
       /* Fix all the drivers (and animation data) */
       BKE_fcurves_main_cb(bmain, joined_armature_fix_animdata_cb, &afd);
@@ -434,6 +430,7 @@ int ED_armature_join_objects_exec(bContext *C, wmOperator *op)
 
   DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
   WM_event_add_notifier(C, NC_SCENE | ND_OB_ACTIVE, scene);
+  WM_event_add_notifier(C, NC_SCENE | ND_LAYER_CONTENT, scene);
 
   return OPERATOR_FINISHED;
 }
@@ -452,7 +449,7 @@ static void separated_armature_fix_links(Main *bmain, Object *origArm, Object *n
   bConstraint *con;
   ListBase *opchans, *npchans;
 
-  /* get reference to list of bones in original and new armatures  */
+  /* Get reference to list of bones in original and new armatures. */
   opchans = &origArm->pose->chanbase;
   npchans = &newArm->pose->chanbase;
 
@@ -547,9 +544,12 @@ static void separated_armature_fix_links(Main *bmain, Object *origArm, Object *n
   }
 }
 
-/* Helper function for armature separating - remove certain bones from the given armature
- * sel: remove selected bones from the armature, otherwise the unselected bones are removed
- * (ob is not in edit-mode)
+/**
+ * Helper function for armature separating - remove certain bones from the given armature.
+ *
+ * \param ob: Armature object (must not be is not in edit-mode).
+ * \param is_select: remove selected bones from the armature,
+ * otherwise the unselected bones are removed.
  */
 static void separate_armature_bones(Main *bmain, Object *ob, const bool is_select)
 {
@@ -568,7 +568,7 @@ static void separate_armature_bones(Main *bmain, Object *ob, const bool is_selec
     /* check if bone needs to be removed */
     if (is_select == (EBONE_VISIBLE(arm, curbone) && (curbone->flag & BONE_SELECTED))) {
 
-      /* clear the bone->parent var of any bone that had this as its parent  */
+      /* Clear the bone->parent var of any bone that had this as its parent. */
       LISTBASE_FOREACH (EditBone *, ebo, arm->edbo) {
         if (ebo->parent == curbone) {
           ebo->parent = NULL;
@@ -616,7 +616,7 @@ static int separate_armature_exec(bContext *C, wmOperator *op)
   bool ok = false;
 
   /* set wait cursor in case this takes a while */
-  WM_cursor_wait(1);
+  WM_cursor_wait(true);
 
   uint bases_len = 0;
   Base **bases = BKE_view_layer_array_from_bases_in_edit_mode_unique_data(
@@ -680,7 +680,7 @@ static int separate_armature_exec(bContext *C, wmOperator *op)
     separate_armature_bones(bmain, ob_old, true);
     separate_armature_bones(bmain, ob_new, false);
 
-    /* 4) fix links before depsgraph flushes */  // err... or after?
+    /* 4) fix links before depsgraph flushes, err... or after? */
     separated_armature_fix_links(bmain, ob_old, ob_new);
 
     DEG_id_tag_update(&ob_old->id, ID_RECALC_GEOMETRY); /* this is the original one */
@@ -695,13 +695,13 @@ static int separate_armature_exec(bContext *C, wmOperator *op)
 
     ok = true;
 
-    /* note, notifier might evolve */
+    /* NOTE: notifier might evolve. */
     WM_event_add_notifier(C, NC_OBJECT | ND_POSE, ob_old);
   }
   MEM_freeN(bases);
 
   /* Recalculate/redraw + cleanup */
-  WM_cursor_wait(0);
+  WM_cursor_wait(false);
 
   if (ok) {
     BKE_report(op->reports, RPT_INFO, "Separated bones");
@@ -736,6 +736,10 @@ void ARMATURE_OT_separate(wmOperatorType *ot)
 /* armature parenting options */
 #define ARM_PAR_CONNECT 1
 #define ARM_PAR_OFFSET 2
+
+/* armature un-parenting options */
+#define ARM_PAR_CLEAR 1
+#define ARM_PAR_CLEAR_DISCONNECT 2
 
 /* check for null, before calling! */
 static void bone_connect_to_existing_parent(EditBone *bone)
@@ -830,7 +834,7 @@ static int armature_parent_set_exec(bContext *C, wmOperator *op)
     }
   }
 
-  /* If there is only 1 selected bone, we assume that that is the active bone,
+  /* If there is only 1 selected bone, we assume that it is the active bone,
    * since a user will need to have clicked on a bone (thus selecting it) to make it active. */
   bool is_active_only_selected = false;
   if (actbone->flag & BONE_SELECTED) {
@@ -885,7 +889,7 @@ static int armature_parent_set_exec(bContext *C, wmOperator *op)
     }
   }
 
-  /* note, notifier might evolve */
+  /* NOTE: notifier might evolve. */
   WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, ob);
   DEG_id_tag_update(&ob->id, ID_RECALC_SELECT);
 
@@ -896,19 +900,29 @@ static int armature_parent_set_invoke(bContext *C,
                                       wmOperator *UNUSED(op),
                                       const wmEvent *UNUSED(event))
 {
-  bool all_childbones = false;
+  /* False when all selected bones are parented to the active bone. */
+  bool enable_offset = false;
+  /* False when all selected bones are connected to the active bone. */
+  bool enable_connect = false;
   {
     Object *ob = CTX_data_edit_object(C);
     bArmature *arm = ob->data;
     EditBone *actbone = arm->act_edbone;
     LISTBASE_FOREACH (EditBone *, ebone, arm->edbo) {
-      if (EBONE_EDITABLE(ebone) && (ebone->flag & BONE_SELECTED)) {
-        if (ebone != actbone) {
-          if (ebone->parent != actbone) {
-            all_childbones = true;
-            break;
-          }
-        }
+      if (!EBONE_EDITABLE(ebone) || !(ebone->flag & BONE_SELECTED)) {
+        continue;
+      }
+      if (ebone == actbone) {
+        continue;
+      }
+
+      if (ebone->parent != actbone) {
+        enable_offset = true;
+        enable_connect = true;
+        break;
+      }
+      if (!(ebone->flag & BONE_CONNECTED)) {
+        enable_connect = true;
       }
     }
   }
@@ -916,11 +930,14 @@ static int armature_parent_set_invoke(bContext *C,
   uiPopupMenu *pup = UI_popup_menu_begin(
       C, CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Make Parent"), ICON_NONE);
   uiLayout *layout = UI_popup_menu_layout(pup);
-  uiItemEnumO(layout, "ARMATURE_OT_parent_set", NULL, 0, "type", ARM_PAR_CONNECT);
-  if (all_childbones) {
-    /* Object becomes parent, make the associated menus. */
-    uiItemEnumO(layout, "ARMATURE_OT_parent_set", NULL, 0, "type", ARM_PAR_OFFSET);
-  }
+
+  uiLayout *row_offset = uiLayoutRow(layout, false);
+  uiLayoutSetEnabled(row_offset, enable_offset);
+  uiItemEnumO(row_offset, "ARMATURE_OT_parent_set", NULL, 0, "type", ARM_PAR_OFFSET);
+
+  uiLayout *row_connect = uiLayoutRow(layout, false);
+  uiLayoutSetEnabled(row_connect, enable_connect);
+  uiItemEnumO(row_connect, "ARMATURE_OT_parent_set", NULL, 0, "type", ARM_PAR_CONNECT);
 
   UI_popup_menu_end(C, pup);
 
@@ -943,12 +960,12 @@ void ARMATURE_OT_parent_set(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   RNA_def_enum(
-      ot->srna, "type", prop_editarm_make_parent_types, 0, "ParentType", "Type of parenting");
+      ot->srna, "type", prop_editarm_make_parent_types, 0, "Parent Type", "Type of parenting");
 }
 
 static const EnumPropertyItem prop_editarm_clear_parent_types[] = {
-    {1, "CLEAR", 0, "Clear Parent", ""},
-    {2, "DISCONNECT", 0, "Disconnect Bone", ""},
+    {ARM_PAR_CLEAR, "CLEAR", 0, "Clear Parent", ""},
+    {ARM_PAR_CLEAR_DISCONNECT, "DISCONNECT", 0, "Disconnect Bone", ""},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -996,12 +1013,57 @@ static int armature_parent_clear_exec(bContext *C, wmOperator *op)
 
     ED_armature_edit_sync_selection(arm->edbo);
 
-    /* Note, notifier might evolve. */
+    /* NOTE: notifier might evolve. */
     WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, ob);
   }
   MEM_freeN(objects);
 
   return OPERATOR_FINISHED;
+}
+
+static int armature_parent_clear_invoke(bContext *C,
+                                        wmOperator *UNUSED(op),
+                                        const wmEvent *UNUSED(event))
+{
+  /* False when no selected bones are connected to the active bone. */
+  bool enable_disconnect = false;
+  /* False when no selected bones are parented to the active bone. */
+  bool enable_clear = false;
+  {
+    Object *ob = CTX_data_edit_object(C);
+    bArmature *arm = ob->data;
+    LISTBASE_FOREACH (EditBone *, ebone, arm->edbo) {
+      if (!EBONE_EDITABLE(ebone) || !(ebone->flag & BONE_SELECTED)) {
+        continue;
+      }
+      if (ebone->parent == NULL) {
+        continue;
+      }
+      enable_clear = true;
+
+      if (ebone->flag & BONE_CONNECTED) {
+        enable_disconnect = true;
+        break;
+      }
+    }
+  }
+
+  uiPopupMenu *pup = UI_popup_menu_begin(
+      C, CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Clear Parent"), ICON_NONE);
+  uiLayout *layout = UI_popup_menu_layout(pup);
+
+  uiLayout *row_clear = uiLayoutRow(layout, false);
+  uiLayoutSetEnabled(row_clear, enable_clear);
+  uiItemEnumO(row_clear, "ARMATURE_OT_parent_clear", NULL, 0, "type", ARM_PAR_CLEAR);
+
+  uiLayout *row_disconnect = uiLayoutRow(layout, false);
+  uiLayoutSetEnabled(row_disconnect, enable_disconnect);
+  uiItemEnumO(
+      row_disconnect, "ARMATURE_OT_parent_clear", NULL, 0, "type", ARM_PAR_CLEAR_DISCONNECT);
+
+  UI_popup_menu_end(C, pup);
+
+  return OPERATOR_INTERFACE;
 }
 
 void ARMATURE_OT_parent_clear(wmOperatorType *ot)
@@ -1013,7 +1075,7 @@ void ARMATURE_OT_parent_clear(wmOperatorType *ot)
       "Remove the parent-child relationship between selected bones and their parents";
 
   /* api callbacks */
-  ot->invoke = WM_menu_invoke;
+  ot->invoke = armature_parent_clear_invoke;
   ot->exec = armature_parent_clear_exec;
   ot->poll = ED_operator_editarmature;
 
@@ -1024,7 +1086,7 @@ void ARMATURE_OT_parent_clear(wmOperatorType *ot)
                           "type",
                           prop_editarm_clear_parent_types,
                           0,
-                          "ClearType",
+                          "Clear Type",
                           "What way to clear parenting");
 }
 

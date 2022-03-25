@@ -1,26 +1,10 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
- * All rights reserved.
- * API's for creating vertex groups from bones
- * - Interfaces with heat weighting in meshlaplacian
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edarmature
+ * API's for creating vertex groups from bones
+ * - Interfaces with heat weighting in meshlaplacian.
  */
 
 #include "DNA_armature_types.h"
@@ -30,7 +14,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_blenlib.h"
 #include "BLI_math.h"
 #include "BLI_string_utils.h"
 
@@ -49,8 +32,6 @@
 
 #include "ED_armature.h"
 #include "ED_mesh.h"
-
-#include "eigen_capi.h"
 
 #include "armature_intern.h"
 #include "meshlaplacian.h"
@@ -212,10 +193,6 @@ static void envelope_bone_weighting(Object *ob,
 {
   /* Create vertex group weights from envelopes */
 
-  Bone *bone;
-  bDeformGroup *dgroup;
-  float distance;
-  int i, iflip, j;
   bool use_topology = (mesh->editflag & ME_EDIT_MIRROR_TOPO) != 0;
   bool use_mask = false;
 
@@ -225,30 +202,30 @@ static void envelope_bone_weighting(Object *ob,
   }
 
   /* for each vertex in the mesh */
-  for (i = 0; i < mesh->totvert; i++) {
+  for (int i = 0; i < mesh->totvert; i++) {
 
     if (use_mask && !(mesh->mvert[i].flag & SELECT)) {
       continue;
     }
 
-    iflip = (dgroupflip) ? mesh_get_x_mirror_vert(ob, NULL, i, use_topology) : -1;
+    int iflip = (dgroupflip) ? mesh_get_x_mirror_vert(ob, NULL, i, use_topology) : -1;
 
     /* for each skinnable bone */
-    for (j = 0; j < numbones; j++) {
+    for (int j = 0; j < numbones; j++) {
       if (!selected[j]) {
         continue;
       }
 
-      bone = bonelist[j];
-      dgroup = dgrouplist[j];
+      Bone *bone = bonelist[j];
+      bDeformGroup *dgroup = dgrouplist[j];
 
       /* store the distance-factor from the vertex to the bone */
-      distance = distfactor_to_bone(verts[i],
-                                    root[j],
-                                    tip[j],
-                                    bone->rad_head * scale,
-                                    bone->rad_tail * scale,
-                                    bone->dist * scale);
+      float distance = distfactor_to_bone(verts[i],
+                                          root[j],
+                                          tip[j],
+                                          bone->rad_head * scale,
+                                          bone->rad_tail * scale,
+                                          bone->dist * scale);
 
       /* add the vert to the deform group if (weight != 0.0) */
       if (distance != 0.0f) {
@@ -300,7 +277,7 @@ static void add_verts_to_dgroups(ReportList *reports,
   Mat4 bbone_array[MAX_BBONE_SUBDIV], *bbone = NULL;
   float(*root)[3], (*tip)[3], (*verts)[3];
   int *selected;
-  int numbones, vertsfilled = 0, i, j, segments = 0;
+  int numbones, vertsfilled = 0, segments = 0;
   const bool wpmode = (ob->mode & OB_MODE_WEIGHT_PAINT);
   struct {
     Object *armob;
@@ -342,11 +319,11 @@ static void add_verts_to_dgroups(ReportList *reports,
 
   /* create an array of root and tip positions transformed into
    * global coords */
-  root = MEM_callocN(numbones * sizeof(float) * 3, "root");
-  tip = MEM_callocN(numbones * sizeof(float) * 3, "tip");
-  selected = MEM_callocN(numbones * sizeof(int), "selected");
+  root = MEM_callocN(sizeof(float[3]) * numbones, "root");
+  tip = MEM_callocN(sizeof(float[3]) * numbones, "tip");
+  selected = MEM_callocN(sizeof(int) * numbones, "selected");
 
-  for (j = 0; j < numbones; j++) {
+  for (int j = 0; j < numbones; j++) {
     bone = bonelist[j];
     dgroup = dgrouplist[j];
 
@@ -427,7 +404,7 @@ static void add_verts_to_dgroups(ReportList *reports,
   }
 
   /* transform verts to global space */
-  for (i = 0; i < mesh->totvert; i++) {
+  for (int i = 0; i < mesh->totvert; i++) {
     if (!vertsfilled) {
       copy_v3_v3(verts[i], mesh->mvert[i].co);
     }
@@ -485,7 +462,7 @@ void ED_object_vgroup_calc_from_armature(ReportList *reports,
   bArmature *arm = par->data;
 
   if (mode == ARM_GROUPS_NAME) {
-    const int defbase_tot = BLI_listbase_count(&ob->defbase);
+    const int defbase_tot = BKE_object_defgroup_count(ob);
     int defbase_add;
     /* Traverse the bone list, trying to create empty vertex
      * groups corresponding to the bone.
@@ -493,8 +470,8 @@ void ED_object_vgroup_calc_from_armature(ReportList *reports,
     defbase_add = bone_looper(ob, arm->bonebase.first, NULL, vgroup_add_unique_bone_cb);
 
     if (defbase_add) {
-      /* its possible there are DWeight's outside the range of the current
-       * objects deform groups, in this case the new groups wont be empty [#33889] */
+      /* It's possible there are DWeights outside the range of the current
+       * object's deform groups. In this case the new groups won't be empty T33889. */
       ED_vgroup_data_clamp_range(ob->data, defbase_tot);
     }
   }

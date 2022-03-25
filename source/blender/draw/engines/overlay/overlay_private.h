@@ -1,33 +1,29 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Copyright 2019, Blender Foundation.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2019 Blender Foundation. */
 
 /** \file
  * \ingroup DNA
  */
 
-#ifndef __OVERLAY_PRIVATE_H__
-#define __OVERLAY_PRIVATE_H__
+#pragma once
+
+#include "DRW_render.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifdef __APPLE__
 #  define USE_GEOM_SHADER_WORKAROUND 1
 #else
 #  define USE_GEOM_SHADER_WORKAROUND 0
 #endif
+
+/* Needed for eSpaceImage_UVDT_Stretch and eMaskOverlayMode */
+#include "DNA_mask_types.h"
+#include "DNA_space_types.h"
+/* Forward declarations */
+struct ImBuf;
 
 typedef struct OVERLAY_FramebufferList {
   struct GPUFrameBuffer *overlay_default_fb;
@@ -50,6 +46,14 @@ typedef struct OVERLAY_TextureList {
 #define NOT_IN_FRONT 0
 #define IN_FRONT 1
 
+typedef enum OVERLAY_UVLineStyle {
+  OVERLAY_UV_LINE_STYLE_OUTLINE = 0,
+  OVERLAY_UV_LINE_STYLE_DASH = 1,
+  OVERLAY_UV_LINE_STYLE_BLACK = 2,
+  OVERLAY_UV_LINE_STYLE_WHITE = 3,
+  OVERLAY_UV_LINE_STYLE_SHADOW = 4,
+} OVERLAY_UVLineStyle;
+
 typedef struct OVERLAY_PassList {
   DRWPass *antialiasing_ps;
   DRWPass *armature_ps[2];
@@ -61,6 +65,7 @@ typedef struct OVERLAY_PassList {
   DRWPass *edit_curve_handle_ps;
   DRWPass *edit_gpencil_ps;
   DRWPass *edit_gpencil_gizmos_ps;
+  DRWPass *edit_gpencil_curve_ps;
   DRWPass *edit_lattice_ps;
   DRWPass *edit_mesh_depth_ps[2];
   DRWPass *edit_mesh_verts_ps[2];
@@ -73,19 +78,30 @@ typedef struct OVERLAY_PassList {
   DRWPass *edit_text_overlay_ps;
   DRWPass *edit_text_darken_ps;
   DRWPass *edit_text_wire_ps[2];
+  DRWPass *edit_uv_edges_ps;
+  DRWPass *edit_uv_verts_ps;
+  DRWPass *edit_uv_faces_ps;
+  DRWPass *edit_uv_stretching_ps;
+  DRWPass *edit_uv_tiled_image_borders_ps;
+  DRWPass *edit_uv_stencil_ps;
+  DRWPass *edit_uv_mask_ps;
   DRWPass *extra_ps[2];
   DRWPass *extra_blend_ps;
   DRWPass *extra_centers_ps;
   DRWPass *extra_grid_ps;
   DRWPass *gpencil_canvas_ps;
   DRWPass *facing_ps[2];
+  DRWPass *fade_ps[2];
+  DRWPass *mode_transfer_ps[2];
   DRWPass *grid_ps;
   DRWPass *image_background_ps;
+  DRWPass *image_background_scene_ps;
   DRWPass *image_empties_ps;
   DRWPass *image_empties_back_ps;
   DRWPass *image_empties_blend_ps;
   DRWPass *image_empties_front_ps;
   DRWPass *image_foreground_ps;
+  DRWPass *image_foreground_scene_ps;
   DRWPass *metaball_ps[2];
   DRWPass *motion_paths_ps;
   DRWPass *outlines_prepass_ps;
@@ -97,6 +113,7 @@ typedef struct OVERLAY_PassList {
   DRWPass *particle_ps;
   DRWPass *pointcloud_ps;
   DRWPass *sculpt_mask_ps;
+  DRWPass *volume_ps;
   DRWPass *wireframe_ps;
   DRWPass *wireframe_xray_ps;
   DRWPass *xray_fade_ps;
@@ -106,15 +123,17 @@ typedef struct OVERLAY_PassList {
 typedef struct OVERLAY_ShadingData {
   /** Grid */
   float grid_axes[3], grid_distance;
-  float zplane_axes[3], grid_mesh_size;
-  float grid_steps[8];
+  float zplane_axes[3], grid_size[3];
+  float grid_steps[SI_GRID_STEPS_LEN];
   float inv_viewport_size[2];
   float grid_line_size;
+  float zoom_factor; /* Only for UV editor */
   int grid_flag;
   int zpos_flag;
   int zneg_flag;
   /** Wireframe */
   float wire_step_param;
+  float wire_opacity;
   /** Edit Curve */
   float edit_curve_normal_length;
   /** Edit Mesh */
@@ -182,37 +201,37 @@ typedef struct OVERLAY_ExtraCallBuffers {
   DRWShadingGroup *extra_loose_points;
 } OVERLAY_ExtraCallBuffers;
 
-typedef struct OVERLAY_ArmatureCallBuffers {
+typedef struct OVERLAY_ArmatureCallBuffersInner {
   DRWCallBuffer *box_outline;
-  DRWCallBuffer *box_solid;
-  DRWCallBuffer *box_transp;
+  DRWCallBuffer *box_fill;
 
   DRWCallBuffer *dof_lines;
   DRWCallBuffer *dof_sphere;
 
   DRWCallBuffer *envelope_distance;
   DRWCallBuffer *envelope_outline;
-  DRWCallBuffer *envelope_solid;
-  DRWCallBuffer *envelope_transp;
+  DRWCallBuffer *envelope_fill;
 
   DRWCallBuffer *octa_outline;
-  DRWCallBuffer *octa_solid;
-  DRWCallBuffer *octa_transp;
+  DRWCallBuffer *octa_fill;
 
   DRWCallBuffer *point_outline;
-  DRWCallBuffer *point_solid;
-  DRWCallBuffer *point_transp;
+  DRWCallBuffer *point_fill;
 
   DRWCallBuffer *stick;
 
   DRWCallBuffer *wire;
 
   DRWShadingGroup *custom_outline;
-  DRWShadingGroup *custom_solid;
-  DRWShadingGroup *custom_transp;
+  DRWShadingGroup *custom_fill;
   DRWShadingGroup *custom_wire;
-  GHash *custom_shapes_transp_ghash;
+
   GHash *custom_shapes_ghash;
+} OVERLAY_ArmatureCallBuffersInner;
+
+typedef struct OVERLAY_ArmatureCallBuffers {
+  OVERLAY_ArmatureCallBuffersInner solid;
+  OVERLAY_ArmatureCallBuffersInner transp;
 } OVERLAY_ArmatureCallBuffers;
 
 typedef struct OVERLAY_PrivateData {
@@ -226,6 +245,8 @@ typedef struct OVERLAY_PrivateData {
   DRWShadingGroup *edit_lattice_wires_grp;
   DRWShadingGroup *edit_gpencil_points_grp;
   DRWShadingGroup *edit_gpencil_wires_grp;
+  DRWShadingGroup *edit_gpencil_curve_handle_grp;
+  DRWShadingGroup *edit_gpencil_curve_points_grp;
   DRWShadingGroup *edit_mesh_depth_grp[2];
   DRWShadingGroup *edit_mesh_faces_grp[2];
   DRWShadingGroup *edit_mesh_faces_cage_grp[2];
@@ -239,8 +260,16 @@ typedef struct OVERLAY_PrivateData {
   DRWShadingGroup *edit_particle_point_grp;
   DRWShadingGroup *edit_text_overlay_grp;
   DRWShadingGroup *edit_text_wire_grp[2];
+  DRWShadingGroup *edit_uv_verts_grp;
+  DRWShadingGroup *edit_uv_edges_grp;
+  DRWShadingGroup *edit_uv_shadow_edges_grp;
+  DRWShadingGroup *edit_uv_faces_grp;
+  DRWShadingGroup *edit_uv_face_dots_grp;
+  DRWShadingGroup *edit_uv_stretching_grp;
   DRWShadingGroup *extra_grid_grp;
   DRWShadingGroup *facing_grp[2];
+  DRWShadingGroup *fade_grp[2];
+  DRWShadingGroup *flash_grp[2];
   DRWShadingGroup *motion_path_lines_grp;
   DRWShadingGroup *motion_path_points_grp;
   DRWShadingGroup *outlines_grp;
@@ -256,6 +285,7 @@ typedef struct OVERLAY_PrivateData {
   DRWShadingGroup *particle_shapes_grp;
   DRWShadingGroup *pointcloud_dots_grp;
   DRWShadingGroup *sculpt_mask_grp;
+  DRWShadingGroup *volume_selection_surface_grp;
   DRWShadingGroup *wires_grp[2][2];      /* With and without coloring. */
   DRWShadingGroup *wires_all_grp[2][2];  /* With and without coloring. */
   DRWShadingGroup *wires_hair_grp[2][2]; /* With and without coloring. */
@@ -270,7 +300,7 @@ typedef struct OVERLAY_PrivateData {
   DRWView *view_edit_text;
   DRWView *view_reference_images;
 
-  /** TODO get rid of this. */
+  /** TODO: get rid of this. */
   ListBase smoke_domains;
   ListBase bg_movie_clips;
 
@@ -281,6 +311,7 @@ typedef struct OVERLAY_PrivateData {
 
   View3DOverlay overlay;
   enum eContextObjectMode ctx_mode;
+  char space_type;
   bool clear_in_front;
   bool use_in_front;
   bool wireframe_mode;
@@ -288,8 +319,8 @@ typedef struct OVERLAY_PrivateData {
   bool xray_enabled;
   bool xray_enabled_and_not_wire;
   float xray_opacity;
-  short v3d_flag;     /* TODO move to View3DOverlay */
-  short v3d_gridflag; /* TODO move to View3DOverlay */
+  short v3d_flag;     /* TODO: move to #View3DOverlay. */
+  short v3d_gridflag; /* TODO: move to #View3DOverlay. */
   int cfra;
   DRWState clipping_state;
   OVERLAY_ShadingData shdata;
@@ -307,20 +338,58 @@ typedef struct OVERLAY_PrivateData {
     float overlay_color[4];
   } edit_text;
   struct {
-    int ghost_ob;
-    int edit_ob;
     bool do_zbufclip;
     bool do_faces;
     bool do_edges;
     bool select_vert;
     bool select_face;
     bool select_edge;
-    int flag; /** Copy of v3d->overlay.edit_flag.  */
+    int flag; /** Copy of #v3d->overlay.edit_flag. */
   } edit_mesh;
   struct {
     bool use_weight;
     int select_mode;
   } edit_particle;
+  struct {
+    bool do_uv_overlay;
+    bool do_uv_shadow_overlay;
+    bool do_uv_stretching_overlay;
+    bool do_tiled_image_overlay;
+    bool do_tiled_image_border_overlay;
+    bool do_stencil_overlay;
+    bool do_mask_overlay;
+
+    bool do_verts;
+    bool do_faces;
+    bool do_face_dots;
+
+    float uv_opacity;
+
+    int image_size[2];
+    float image_aspect[2];
+
+    /* edge drawing */
+    OVERLAY_UVLineStyle line_style;
+    float dash_length;
+    int do_smooth_wire;
+
+    /* stretching overlay */
+    float uv_aspect[2];
+    eSpaceImage_UVDT_Stretch draw_type;
+    ListBase totals;
+    float total_area_ratio;
+    float total_area_ratio_inv;
+
+    /* stencil overlay */
+    struct Image *stencil_image;
+    struct ImBuf *stencil_ibuf;
+    void *stencil_lock;
+
+    /* mask overlay */
+    Mask *mask;
+    eMaskOverlayMode mask_overlay_mode;
+    GPUTexture *mask_texture;
+  } edit_uv;
   struct {
     bool transparent;
     bool show_relations;
@@ -334,6 +403,10 @@ typedef struct OVERLAY_PrivateData {
   struct {
     DRWCallBuffer *handle[2];
   } mball;
+  struct {
+    double time;
+    bool any_animated;
+  } mode_transfer;
 } OVERLAY_PrivateData; /* Transient data */
 
 typedef struct OVERLAY_StorageList {
@@ -423,6 +496,9 @@ void OVERLAY_xray_fade_draw(OVERLAY_Data *vedata);
 void OVERLAY_xray_depth_copy(OVERLAY_Data *vedata);
 void OVERLAY_xray_depth_infront_copy(OVERLAY_Data *vedata);
 
+/**
+ * Return true if armature should be handled by the pose mode engine.
+ */
 bool OVERLAY_armature_is_pose_mode(Object *ob, const struct DRWContextState *draw_ctx);
 void OVERLAY_armature_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_armature_cache_populate(OVERLAY_Data *vedata, Object *ob);
@@ -460,6 +536,10 @@ void OVERLAY_edit_text_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_edit_text_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_edit_text_draw(OVERLAY_Data *vedata);
 
+void OVERLAY_volume_cache_init(OVERLAY_Data *vedata);
+void OVERLAY_volume_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_volume_draw(OVERLAY_Data *vedata);
+
 void OVERLAY_edit_mesh_init(OVERLAY_Data *vedata);
 void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_edit_mesh_cache_populate(OVERLAY_Data *vedata, Object *ob);
@@ -468,6 +548,11 @@ void OVERLAY_edit_mesh_draw(OVERLAY_Data *vedata);
 void OVERLAY_edit_particle_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_edit_particle_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_edit_particle_draw(OVERLAY_Data *vedata);
+
+void OVERLAY_edit_uv_init(OVERLAY_Data *vedata);
+void OVERLAY_edit_uv_cache_init(OVERLAY_Data *vedata);
+void OVERLAY_edit_uv_cache_finish(OVERLAY_Data *vedata);
+void OVERLAY_edit_uv_draw(OVERLAY_Data *vedata);
 
 void OVERLAY_extra_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_extra_cache_populate(OVERLAY_Data *vedata, Object *ob);
@@ -491,11 +576,11 @@ void OVERLAY_extra_line_dashed(OVERLAY_ExtraCallBuffers *cb,
 void OVERLAY_extra_line(OVERLAY_ExtraCallBuffers *cb,
                         const float start[3],
                         const float end[3],
-                        const int color_id);
+                        int color_id);
 void OVERLAY_empty_shape(OVERLAY_ExtraCallBuffers *cb,
                          const float mat[4][4],
-                         const float draw_size,
-                         const char draw_type,
+                         float draw_size,
+                         char draw_type,
                          const float color[4]);
 void OVERLAY_extra_loose_points(OVERLAY_ExtraCallBuffers *cb,
                                 struct GPUBatch *geom,
@@ -512,6 +597,18 @@ void OVERLAY_facing_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_facing_draw(OVERLAY_Data *vedata);
 void OVERLAY_facing_infront_draw(OVERLAY_Data *vedata);
 
+void OVERLAY_fade_init(OVERLAY_Data *vedata);
+void OVERLAY_fade_cache_init(OVERLAY_Data *vedata);
+void OVERLAY_fade_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_fade_draw(OVERLAY_Data *vedata);
+void OVERLAY_fade_infront_draw(OVERLAY_Data *vedata);
+
+void OVERLAY_mode_transfer_cache_init(OVERLAY_Data *vedata);
+void OVERLAY_mode_transfer_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_mode_transfer_draw(OVERLAY_Data *vedata);
+void OVERLAY_mode_transfer_infront_draw(OVERLAY_Data *vedata);
+void OVERLAY_mode_transfer_cache_finish(OVERLAY_Data *vedata);
+
 void OVERLAY_grid_init(OVERLAY_Data *vedata);
 void OVERLAY_grid_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_grid_draw(OVERLAY_Data *vedata);
@@ -523,6 +620,11 @@ void OVERLAY_image_empty_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_image_cache_finish(OVERLAY_Data *vedata);
 void OVERLAY_image_draw(OVERLAY_Data *vedata);
 void OVERLAY_image_background_draw(OVERLAY_Data *vedata);
+/**
+ * This function draws images that needs the view transform applied.
+ * It draws these images directly into the scene color buffer.
+ */
+void OVERLAY_image_scene_background_draw(OVERLAY_Data *vedata);
 void OVERLAY_image_in_front_draw(OVERLAY_Data *vedata);
 
 void OVERLAY_metaball_cache_init(OVERLAY_Data *vedata);
@@ -567,6 +669,7 @@ void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata,
 void OVERLAY_wireframe_draw(OVERLAY_Data *vedata);
 void OVERLAY_wireframe_in_front_draw(OVERLAY_Data *vedata);
 
+void OVERLAY_shader_library_ensure(void);
 GPUShader *OVERLAY_shader_antialiasing(void);
 GPUShader *OVERLAY_shader_armature_degrees_of_freedom_wire(void);
 GPUShader *OVERLAY_shader_armature_degrees_of_freedom_solid(void);
@@ -596,6 +699,16 @@ GPUShader *OVERLAY_shader_edit_mesh_skin_root(void);
 GPUShader *OVERLAY_shader_edit_mesh_vert(void);
 GPUShader *OVERLAY_shader_edit_particle_strand(void);
 GPUShader *OVERLAY_shader_edit_particle_point(void);
+GPUShader *OVERLAY_shader_edit_uv_edges_get(void);
+GPUShader *OVERLAY_shader_edit_uv_edges_for_edge_select_get(void);
+GPUShader *OVERLAY_shader_edit_uv_face_get(void);
+GPUShader *OVERLAY_shader_edit_uv_face_dots_get(void);
+GPUShader *OVERLAY_shader_edit_uv_verts_get(void);
+GPUShader *OVERLAY_shader_edit_uv_stretching_area_get(void);
+GPUShader *OVERLAY_shader_edit_uv_stretching_angle_get(void);
+GPUShader *OVERLAY_shader_edit_uv_tiled_image_borders_get(void);
+GPUShader *OVERLAY_shader_edit_uv_stencil_image(void);
+GPUShader *OVERLAY_shader_edit_uv_mask_image(void);
 GPUShader *OVERLAY_shader_extra(bool is_select);
 GPUShader *OVERLAY_shader_extra_groundline(void);
 GPUShader *OVERLAY_shader_extra_wire(bool use_object, bool is_select);
@@ -604,6 +717,8 @@ GPUShader *OVERLAY_shader_extra_point(void);
 GPUShader *OVERLAY_shader_facing(void);
 GPUShader *OVERLAY_shader_gpencil_canvas(void);
 GPUShader *OVERLAY_shader_grid(void);
+GPUShader *OVERLAY_shader_grid_background(void);
+GPUShader *OVERLAY_shader_grid_image(void);
 GPUShader *OVERLAY_shader_image(void);
 GPUShader *OVERLAY_shader_motion_path_line(void);
 GPUShader *OVERLAY_shader_motion_path_vert(void);
@@ -617,12 +732,13 @@ GPUShader *OVERLAY_shader_paint_face(void);
 GPUShader *OVERLAY_shader_paint_point(void);
 GPUShader *OVERLAY_shader_paint_texture(void);
 GPUShader *OVERLAY_shader_paint_vertcol(void);
-GPUShader *OVERLAY_shader_paint_weight(void);
+GPUShader *OVERLAY_shader_paint_weight(bool shading);
 GPUShader *OVERLAY_shader_paint_wire(void);
 GPUShader *OVERLAY_shader_particle_dot(void);
 GPUShader *OVERLAY_shader_particle_shape(void);
 GPUShader *OVERLAY_shader_sculpt_mask(void);
-GPUShader *OVERLAY_shader_volume_velocity(bool use_needle);
+GPUShader *OVERLAY_shader_volume_velocity(bool use_needle, bool use_mac);
+GPUShader *OVERLAY_shader_volume_gridlines(bool color_with_flags, bool color_range);
 GPUShader *OVERLAY_shader_wireframe(bool custom_bias);
 GPUShader *OVERLAY_shader_wireframe_select(void);
 GPUShader *OVERLAY_shader_xray_fade(void);
@@ -631,4 +747,6 @@ OVERLAY_InstanceFormats *OVERLAY_shader_instance_formats_get(void);
 
 void OVERLAY_shader_free(void);
 
-#endif /* __OVERLAY_PRIVATE_H__ */
+#ifdef __cplusplus
+}
+#endif

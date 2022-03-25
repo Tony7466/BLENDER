@@ -1,4 +1,4 @@
-/* Apache License, Version 2.0 */
+/* SPDX-License-Identifier: Apache-2.0 */
 
 #include "BLI_index_range.hh"
 #include "BLI_strict_flags.h"
@@ -129,6 +129,79 @@ TEST(index_range, SliceRange)
   EXPECT_EQ(slice.last(), 12);
 }
 
+TEST(index_range, DropBack)
+{
+  IndexRange a(4, 4);
+  auto slice = a.drop_back(2);
+  EXPECT_EQ(slice.size(), 2);
+  EXPECT_EQ(slice.start(), 4);
+  EXPECT_EQ(slice[1], 5);
+}
+
+TEST(index_range, DropBackAll)
+{
+  IndexRange a(4, 4);
+  auto slice = a.drop_back(a.size());
+  EXPECT_TRUE(slice.is_empty());
+}
+
+TEST(index_range, DropFront)
+{
+  IndexRange a(4, 4);
+  auto slice = a.drop_front(1);
+  EXPECT_EQ(slice.size(), 3);
+  EXPECT_EQ(slice[0], 5);
+  EXPECT_EQ(slice[1], 6);
+  EXPECT_EQ(slice.last(), 7);
+}
+
+TEST(index_range, DropFrontLargeN)
+{
+  IndexRange a(1, 5);
+  IndexRange slice = a.drop_front(100);
+  EXPECT_TRUE(slice.is_empty());
+}
+
+TEST(index_range, DropFrontAll)
+{
+  IndexRange a(50);
+  IndexRange slice = a.drop_front(a.size());
+  EXPECT_TRUE(slice.is_empty());
+}
+
+TEST(index_range, TakeFront)
+{
+  IndexRange a(4, 4);
+  IndexRange slice = a.take_front(2);
+  EXPECT_EQ(slice.size(), 2);
+  EXPECT_EQ(slice[0], 4);
+  EXPECT_EQ(slice[1], 5);
+}
+
+TEST(index_range, TakeFrontLargeN)
+{
+  IndexRange a(4, 4);
+  IndexRange slice = a.take_front(100);
+  EXPECT_EQ(slice.size(), 4);
+}
+
+TEST(index_range, TakeBack)
+{
+  IndexRange a(4, 4);
+  auto slice = a.take_back(2);
+  EXPECT_EQ(slice.size(), 2);
+  EXPECT_EQ(slice[0], 6);
+  EXPECT_EQ(slice[1], 7);
+}
+
+TEST(index_range, TakeBackLargeN)
+{
+  IndexRange a(3, 4);
+  IndexRange slice = a.take_back(100);
+  EXPECT_EQ(slice.size(), 4);
+  EXPECT_EQ(slice.size(), 4);
+}
+
 TEST(index_range, AsSpan)
 {
   IndexRange range = IndexRange(4, 6);
@@ -138,6 +211,22 @@ TEST(index_range, AsSpan)
   EXPECT_EQ(span[1], 5);
   EXPECT_EQ(span[2], 6);
   EXPECT_EQ(span[3], 7);
+}
+
+TEST(index_range, constexpr_)
+{
+  constexpr IndexRange range = IndexRange(1, 1);
+  std::array<int, range[0]> compiles = {1};
+  BLI_STATIC_ASSERT(range.size() == 1, "");
+  EXPECT_EQ(compiles[0], 1);
+}
+
+TEST(index_range, GenericAlgorithms)
+{
+  IndexRange range{4, 10};
+  EXPECT_TRUE(std::any_of(range.begin(), range.end(), [](int v) { return v == 6; }));
+  EXPECT_FALSE(std::any_of(range.begin(), range.end(), [](int v) { return v == 20; }));
+  EXPECT_EQ(std::count_if(range.begin(), range.end(), [](int v) { return v < 7; }), 3);
 }
 
 }  // namespace blender::tests

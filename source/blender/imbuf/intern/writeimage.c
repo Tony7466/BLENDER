@@ -1,22 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
- * All rights reserved.
- * writeimage.c
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup imbuf
@@ -41,28 +24,22 @@ static bool prepare_write_imbuf(const ImFileType *type, ImBuf *ibuf)
   return IMB_prepare_write_ImBuf((type->flag & IM_FTYPE_FLOAT), ibuf);
 }
 
-short IMB_saveiff(struct ImBuf *ibuf, const char *name, int flags)
+bool IMB_saveiff(struct ImBuf *ibuf, const char *filepath, int flags)
 {
-  const ImFileType *type;
-
   errno = 0;
 
-  BLI_assert(!BLI_path_is_rel(name));
+  BLI_assert(!BLI_path_is_rel(filepath));
 
   if (ibuf == NULL) {
-    return (false);
+    return false;
   }
   ibuf->flags = flags;
 
-  for (type = IMB_FILE_TYPES; type < IMB_FILE_TYPES_LAST; type++) {
-    if (type->save && type->ftype(type, ibuf)) {
-      short result = false;
-
+  const ImFileType *type = IMB_file_type_from_ibuf(ibuf);
+  if (type != NULL) {
+    if (type->save != NULL) {
       prepare_write_imbuf(type, ibuf);
-
-      result = type->save(ibuf, name, flags);
-
-      return result;
+      return type->save(ibuf, filepath, flags);
     }
   }
 

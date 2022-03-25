@@ -1,23 +1,15 @@
-# ***** BEGIN GPL LICENSE BLOCK *****
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
-# of the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# ***** END GPL LICENSE BLOCK *****
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 if(BUILD_MODE STREQUAL Debug)
   set(BLOSC_POST _d)
+endif()
+
+if(WIN32)
+  set(OPENVDB_SHARED ON)
+  set(OPENVDB_STATIC OFF)
+else()
+  set(OPENVDB_SHARED OFF)
+  set(OPENVDB_STATIC ON)
 endif()
 
 set(OPENVDB_EXTRA_ARGS
@@ -42,8 +34,12 @@ set(OPENVDB_EXTRA_ARGS
   -DOPENEXR_LIBRARYDIR=${LIBDIR}/openexr/lib
    # All libs live in openexr, even the ilmbase ones
   -DILMBASE_LIBRARYDIR=${LIBDIR}/openexr/lib
-  -DOPENVDB_CORE_SHARED=Off
+  -DOPENVDB_CORE_SHARED=${OPENVDB_SHARED}
+  -DOPENVDB_CORE_STATIC=${OPENVDB_STATIC}
   -DOPENVDB_BUILD_BINARIES=Off
+  -DCMAKE_DEBUG_POSTFIX=_d
+  -DILMBASE_USE_STATIC_LIBS=On
+  -DOPENEXR_USE_STATIC_LIBS=On
 )
 
 if(WIN32)
@@ -65,9 +61,9 @@ else()
 endif()
 
 ExternalProject_Add(openvdb
-  URL ${OPENVDB_URI}
+  URL file://${PACKAGE_DIR}/${OPENVDB_FILE}
   DOWNLOAD_DIR ${DOWNLOAD_DIR}
-  URL_HASH MD5=${OPENVDB_HASH}
+  URL_HASH ${OPENVDB_HASH_TYPE}=${OPENVDB_HASH}
   PREFIX ${BUILD_DIR}/openvdb
   PATCH_COMMAND ${PATCH_CMD} -p 1 -d ${BUILD_DIR}/openvdb/src/openvdb < ${PATCH_DIR}/openvdb.diff
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${LIBDIR}/openvdb ${DEFAULT_CMAKE_FLAGS} ${OPENVDB_EXTRA_ARGS}
@@ -86,14 +82,16 @@ add_dependencies(
 if(WIN32)
   if(BUILD_MODE STREQUAL Release)
     ExternalProject_Add_Step(openvdb after_install
-      COMMAND ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/openvdb/include ${HARVEST_TARGET}/openvdb/include
-      COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/openvdb/lib/libopenvdb.lib ${HARVEST_TARGET}/openvdb/lib/openvdb.lib
+      COMMAND ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/openvdb/include/openvdb ${HARVEST_TARGET}/openvdb/include/openvdb
+      COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/openvdb/lib/openvdb.lib ${HARVEST_TARGET}/openvdb/lib/openvdb.lib
+      COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/openvdb/bin/openvdb.dll ${HARVEST_TARGET}/openvdb/bin/openvdb.dll
       DEPENDEES install
     )
   endif()
   if(BUILD_MODE STREQUAL Debug)
     ExternalProject_Add_Step(openvdb after_install
-      COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/openvdb/lib/libopenvdb.lib ${HARVEST_TARGET}/openvdb/lib/openvdb_d.lib
+      COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/openvdb/lib/openvdb_d.lib ${HARVEST_TARGET}/openvdb/lib/openvdb_d.lib
+      COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/openvdb/bin/openvdb_d.dll ${HARVEST_TARGET}/openvdb/bin/openvdb_d.dll
       DEPENDEES install
     )
   endif()

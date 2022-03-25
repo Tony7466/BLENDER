@@ -1,22 +1,6 @@
-# Copyright (c) 2009 www.stani.be (GPL license)
+# SPDX-License-Identifier: GPL-2.0-or-later
 
-# ##### BEGIN GPL LICENSE BLOCK #####
-#
-#  This program is free software; you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License
-#  as published by the Free Software Foundation; either version 2
-#  of the License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software Foundation,
-#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# ##### END GPL LICENSE BLOCK #####
+# Copyright (c) 2009 www.stani.be
 
 # <pep8-80 compliant>
 
@@ -25,23 +9,23 @@ import re
 
 
 # regular expression constants
-DEF_DOC = '%s\s*(\(.*?\))'
-DEF_SOURCE = 'def\s+%s\s*(\(.*?\)):'
-RE_EMPTY_LINE = re.compile('^\s*\n')
+DEF_DOC = r'%s\s*(\(.*?\))'
+DEF_SOURCE = r'def\s+%s\s*(\(.*?\)):'
+RE_EMPTY_LINE = re.compile(r'^\s*\n')
 RE_FLAG = re.MULTILINE | re.DOTALL
 RE_NEWLINE = re.compile('\n+')
-RE_SPACE = re.compile('\s+')
+RE_SPACE = re.compile(r'\s+')
 RE_DEF_COMPLETE = re.compile(
     # don't start with a quote
     '''(?:^|[^"'a-zA-Z0-9_])'''
     # start with a \w = [a-zA-Z0-9_]
-    '''((\w+'''
+    r'''((\w+'''
     # allow also dots and closed bracket pairs []
-    '''(?:\w|[.]|\[.+?\])*'''
+    r'''(?:\w|[.]|\[.+?\])*'''
     # allow empty string
     '''|)'''
     # allow opening bracket(s)
-    '''(?:\(|\s)*)$''')
+    r'''(?:\(|\s)*)$''')
 
 
 def reduce_newlines(text):
@@ -86,7 +70,7 @@ def get_doc(obj):
     return result and RE_EMPTY_LINE.sub('', result.rstrip()) or ''
 
 
-def get_argspec(func, strip_self=True, doc=None, source=None):
+def get_argspec(func, *, strip_self=True, doc=None, source=None):
     """Get argument specifications.
 
     :param strip_self: strip `self` from argspec
@@ -107,11 +91,7 @@ def get_argspec(func, strip_self=True, doc=None, source=None):
     try:
         func = func.__func__
     except AttributeError:
-        try:
-            # py 2.X
-            func = func.im_func
-        except AttributeError:
-            pass
+        pass
     # is callable?
     if not hasattr(func, '__call__'):
         return ''
@@ -141,14 +121,10 @@ def get_argspec(func, strip_self=True, doc=None, source=None):
             argspec = inspect.formatargspec(*inspect.getfullargspec(func))
         except:
             try:
-                # py 2.X
-                argspec = inspect.formatargspec(*inspect.getargspec(func))
+                argspec = inspect.formatargvalues(
+                    *inspect.getargvalues(func))
             except:
-                try:
-                    argspec = inspect.formatargvalues(
-                        *inspect.getargvalues(func))
-                except:
-                    argspec = ''
+                argspec = ''
         if strip_self:
             argspec = argspec.replace('self, ', '')
     return argspec

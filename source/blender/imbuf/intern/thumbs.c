@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2007 Blender Foundation
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2007 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup imbuf
@@ -63,7 +47,7 @@
  * because 'near' is disabled through BLI_windstuff */
 #  include "BLI_winstuff.h"
 #  include "utfconv.h"
-#  include <direct.h> /* chdir */
+#  include <direct.h> /* #chdir */
 #  include <shlobj.h>
 #endif
 
@@ -88,7 +72,7 @@ static bool get_thumb_dir(char *dir, ThumbSize size)
   const char *subdir;
 #ifdef WIN32
   wchar_t dir_16[MAX_PATH];
-  /* yes, applications shouldn't store data there, but so does GIMP :)*/
+  /* Yes, applications shouldn't store data there, but so does GIMP :). */
   SHGetSpecialFolderPathW(0, dir_16, CSIDL_PROFILE, 0);
   conv_utf_16_to_8(dir_16, dir, FILE_MAX);
   s += strlen(dir);
@@ -112,13 +96,13 @@ static bool get_thumb_dir(char *dir, ThumbSize size)
 #endif
   switch (size) {
     case THB_NORMAL:
-      subdir = "/" THUMBNAILS "/normal/";
+      subdir = SEP_STR THUMBNAILS SEP_STR "normal" SEP_STR;
       break;
     case THB_LARGE:
-      subdir = "/" THUMBNAILS "/large/";
+      subdir = SEP_STR THUMBNAILS SEP_STR "large" SEP_STR;
       break;
     case THB_FAIL:
-      subdir = "/" THUMBNAILS "/fail/blender/";
+      subdir = SEP_STR THUMBNAILS SEP_STR "fail" SEP_STR "blender" SEP_STR;
       break;
     default:
       return 0; /* unknown size */
@@ -144,14 +128,14 @@ static bool get_thumb_dir(char *dir, ThumbSize size)
  * \{ */
 
 typedef enum {
-  UNSAFE_ALL = 0x1,        /* Escape all unsafe characters   */
-  UNSAFE_ALLOW_PLUS = 0x2, /* Allows '+'  */
+  UNSAFE_ALL = 0x1,        /* Escape all unsafe characters. */
+  UNSAFE_ALLOW_PLUS = 0x2, /* Allows '+' */
   UNSAFE_PATH = 0x8,       /* Allows '/', '&', '=', ':', '@', '+', '$' and ',' */
   UNSAFE_HOST = 0x10,      /* Allows '/' and ':' and '@' */
   UNSAFE_SLASHES = 0x20,   /* Allows all characters except for '/' and '%' */
 } UnsafeCharacterSet;
 
-/* Don't loose comment alignment. */
+/* Don't lose comment alignment. */
 /* clang-format off */
 static const unsigned char acceptable[96] = {
     /* A table of the ASCII chars from space (32) to DEL (127) */
@@ -172,7 +156,7 @@ static const unsigned char acceptable[96] = {
 
 static const char hex[17] = "0123456789abcdef";
 
-/* Note: This escape function works on file: URIs, but if you want to
+/* NOTE: This escape function works on file: URIs, but if you want to
  * escape something else, please read RFC-2396 */
 static void escape_uri_string(const char *string,
                               char *escaped_string,
@@ -347,7 +331,7 @@ static ImBuf *thumb_create_ex(const char *file_path,
       tsize = PREVIEW_RENDER_DEFAULT_HEIGHT;
       break;
     case THB_LARGE:
-      tsize = PREVIEW_RENDER_DEFAULT_HEIGHT * 2;
+      tsize = PREVIEW_RENDER_LARGE_HEIGHT;
       break;
     case THB_FAIL:
       tsize = 1;
@@ -393,7 +377,7 @@ static ImBuf *thumb_create_ex(const char *file_path,
               img = IMB_thumb_load_font(file_path, tsize, tsize);
               break;
             default:
-              BLI_assert(0); /* This should never happen */
+              BLI_assert_unreachable(); /* This should never happen */
           }
         }
 
@@ -435,8 +419,9 @@ static ImBuf *thumb_create_ex(const char *file_path,
         scaledy = (float)tsize;
         scaledx = ((float)img->x / (float)img->y) * tsize;
       }
-      ex = (short)scaledx;
-      ey = (short)scaledy;
+      /* Scaling down must never assign zero width/height, see: T89868. */
+      ex = MAX2(1, (short)scaledx);
+      ey = MAX2(1, (short)scaledy);
 
       /* save some time by only scaling byte buf */
       if (img->rect_float) {
@@ -522,7 +507,6 @@ ImBuf *IMB_thumb_create(const char *path, ThumbSize size, ThumbSource source, Im
       path, uri, thumb_name, false, THUMB_DEFAULT_HASH, NULL, NULL, size, source, img);
 }
 
-/* read thumbnail for file and returns new imbuf for thumbnail */
 ImBuf *IMB_thumb_read(const char *path, ThumbSize size)
 {
   char thumb[FILE_MAX];
@@ -539,7 +523,6 @@ ImBuf *IMB_thumb_read(const char *path, ThumbSize size)
   return img;
 }
 
-/* delete all thumbs for the file */
 void IMB_thumb_delete(const char *path, ThumbSize size)
 {
   char thumb[FILE_MAX];
@@ -558,7 +541,6 @@ void IMB_thumb_delete(const char *path, ThumbSize size)
   }
 }
 
-/* create the thumb if necessary and manage failed and old thumbs */
 ImBuf *IMB_thumb_manage(const char *org_path, ThumbSize size, ThumbSource source)
 {
   char thumb_path[FILE_MAX];
@@ -738,7 +720,7 @@ void IMB_thumb_path_unlock(const char *path)
 
   if (thumb_locks.locked_paths) {
     if (!BLI_gset_remove(thumb_locks.locked_paths, key, MEM_freeN)) {
-      BLI_assert(0);
+      BLI_assert_unreachable();
     }
     BLI_condition_notify_all(&thumb_locks.cond);
   }

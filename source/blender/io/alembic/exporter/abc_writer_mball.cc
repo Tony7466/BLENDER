@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup balembic
@@ -32,9 +18,7 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meta_types.h"
 
-namespace blender {
-namespace io {
-namespace alembic {
+namespace blender::io::alembic {
 
 ABCMetaballWriter::ABCMetaballWriter(const ABCWriterConstructorArgs &args)
     : ABCGenericMeshWriter(args)
@@ -71,7 +55,7 @@ Mesh *ABCMetaballWriter::get_export_mesh(Object *object_eval, bool &r_needsfree)
     return mesh_eval;
   }
   r_needsfree = true;
-  return BKE_mesh_new_from_object(args_.depsgraph, object_eval, false);
+  return BKE_mesh_new_from_object(args_.depsgraph, object_eval, false, false);
 }
 
 void ABCMetaballWriter::free_export_mesh(Mesh *mesh)
@@ -85,6 +69,4 @@ bool ABCMetaballWriter::is_basis_ball(Scene *scene, Object *ob) const
   return ob == basis_ob;
 }
 
-}  // namespace alembic
-}  // namespace io
-}  // namespace blender
+}  // namespace blender::io::alembic

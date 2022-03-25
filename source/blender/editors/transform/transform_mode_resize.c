@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edtransform
@@ -24,6 +8,7 @@
 #include <stdlib.h>
 
 #include "BLI_math.h"
+#include "BLI_task.h"
 
 #include "BKE_context.h"
 #include "BKE_unit.h"
@@ -39,9 +24,31 @@
 #include "transform_snap.h"
 
 /* -------------------------------------------------------------------- */
-/* Transform (Resize) */
+/** \name Transform (Resize) Element
+ * \{ */
 
-/** \name Transform Resize
+struct ElemResizeData {
+  const TransInfo *t;
+  const TransDataContainer *tc;
+  float mat[3][3];
+};
+
+static void element_resize_fn(void *__restrict iter_data_v,
+                              const int iter,
+                              const TaskParallelTLS *__restrict UNUSED(tls))
+{
+  struct ElemResizeData *data = iter_data_v;
+  TransData *td = &data->tc->data[iter];
+  if (td->flag & TD_SKIP) {
+    return;
+  }
+  ElementResize(data->t, data->tc, td, data->mat);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Transform (Resize)
  * \{ */
 
 static float ResizeBetween(TransInfo *t, const float p1[3], const float p2[3])
@@ -90,8 +97,9 @@ static void applyResize(TransInfo *t, const int UNUSED(mval[2]))
     float ratio = t->values[0];
 
     copy_v3_fl(t->values_final, ratio);
+    add_v3_v3(t->values_final, t->values_modal_offset);
 
-    snapGridIncrement(t, t->values_final);
+    transform_snap_increment(t, t->values_final);
 
     if (applyNumInput(&t->num, t->values_final)) {
       constraintNumInput(t, t->values_final);
@@ -115,26 +123,40 @@ static void applyResize(TransInfo *t, const int UNUSED(mval[2]))
         pvec[j++] = t->values_final[i];
       }
     }
-    headerResize(t, pvec, str);
+    headerResize(t, pvec, str, sizeof(str));
   }
   else {
-    headerResize(t, t->values_final, str);
+    headerResize(t, t->values_final, str, sizeof(str));
   }
 
-  copy_m3_m3(t->mat, mat);  // used in gizmo
+  copy_m3_m3(t->mat, mat); /* used in gizmo */
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-    TransData *td = tc->data;
-    for (i = 0; i < tc->data_len; i++, td++) {
-      if (td->flag & TD_SKIP) {
-        continue;
-      }
 
-      ElementResize(t, tc, td, mat);
+    if (tc->data_len < TRANSDATA_THREAD_LIMIT) {
+      TransData *td = tc->data;
+      for (i = 0; i < tc->data_len; i++, td++) {
+        if (td->flag & TD_SKIP) {
+          continue;
+        }
+
+        ElementResize(t, tc, td, mat);
+      }
+    }
+    else {
+      struct ElemResizeData data = {
+          .t = t,
+          .tc = tc,
+      };
+      copy_m3_m3(data.mat, mat);
+
+      TaskParallelSettings settings;
+      BLI_parallel_range_settings_defaults(&settings);
+      BLI_task_parallel_range(0, tc->data_len, &data, element_resize_fn, &settings);
     }
   }
 
-  /* evil hack - redo resize if cliping needed */
+  /* Evil hack - redo resize if clipping needed. */
   if (t->flag & T_CLIP_UV && clipUVTransform(t, t->values_final, 1)) {
     size_to_mat3(mat, t->values_final);
 
@@ -163,14 +185,45 @@ static void applyResize(TransInfo *t, const int UNUSED(mval[2]))
   ED_area_status_text(t->area, str);
 }
 
-void initResize(TransInfo *t)
+void initResize(TransInfo *t, float mouse_dir_constraint[3])
 {
   t->mode = TFM_RESIZE;
   t->transform = applyResize;
   t->tsnap.applySnap = ApplySnapResize;
   t->tsnap.distance = ResizeBetween;
 
-  initMouseInputMode(t, &t->mouse, INPUT_SPRING_FLIP);
+  if (is_zero_v3(mouse_dir_constraint)) {
+    initMouseInputMode(t, &t->mouse, INPUT_SPRING_FLIP);
+  }
+  else {
+    int mval_start[2], mval_end[2];
+    float mval_dir[3], t_mval[2];
+    float viewmat[3][3];
+
+    copy_m3_m4(viewmat, t->viewmat);
+    mul_v3_m3v3(mval_dir, viewmat, mouse_dir_constraint);
+    normalize_v2(mval_dir);
+    if (is_zero_v2(mval_dir)) {
+      /* The screen space direction is orthogonal to the view.
+       * Fall back to constraining on the Y axis. */
+      mval_dir[0] = 0;
+      mval_dir[1] = 1;
+    }
+
+    mval_start[0] = t->center2d[0];
+    mval_start[1] = t->center2d[1];
+
+    t_mval[0] = t->mval[0] - mval_start[0];
+    t_mval[1] = t->mval[1] - mval_start[1];
+    project_v2_v2v2(mval_dir, t_mval, mval_dir);
+
+    mval_end[0] = t->center2d[0] + mval_dir[0];
+    mval_end[1] = t->center2d[1] + mval_dir[1];
+
+    setCustomPoints(t, &t->mouse, mval_end, mval_start);
+
+    initMouseInputMode(t, &t->mouse, INPUT_CUSTOM_RATIO);
+  }
 
   t->flag |= T_NULL_ONE;
   t->num.val_flag[0] |= NUM_NULL_ONE;
@@ -178,7 +231,6 @@ void initResize(TransInfo *t)
   t->num.val_flag[2] |= NUM_NULL_ONE;
   t->num.flag |= NUM_AFFECT_ALL;
   if ((t->flag & T_EDIT) == 0) {
-    t->flag |= T_NO_ZERO;
 #ifdef USE_NUM_NO_ZERO
     t->num.val_flag[0] |= NUM_NO_ZERO;
     t->num.val_flag[1] |= NUM_NO_ZERO;
@@ -188,14 +240,16 @@ void initResize(TransInfo *t)
 
   t->idx_max = 2;
   t->num.idx_max = 2;
-  t->snap[0] = 0.0f;
-  t->snap[1] = 0.1f;
-  t->snap[2] = t->snap[1] * 0.1f;
+  t->snap[0] = 0.1f;
+  t->snap[1] = t->snap[0] * 0.1f;
 
-  copy_v3_fl(t->num.val_inc, t->snap[1]);
+  copy_v3_fl(t->num.val_inc, t->snap[0]);
   t->num.unit_sys = t->scene->unit.system;
   t->num.unit_type[0] = B_UNIT_NONE;
   t->num.unit_type[1] = B_UNIT_NONE;
   t->num.unit_type[2] = B_UNIT_NONE;
+
+  transform_mode_default_modal_orientation_set(t, V3D_ORIENT_GLOBAL);
 }
+
 /** \} */

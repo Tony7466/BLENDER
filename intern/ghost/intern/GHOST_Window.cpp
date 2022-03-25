@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup GHOST
@@ -31,8 +15,8 @@
 
 #include <assert.h>
 
-GHOST_Window::GHOST_Window(GHOST_TUns32 width,
-                           GHOST_TUns32 height,
+GHOST_Window::GHOST_Window(uint32_t width,
+                           uint32_t height,
                            GHOST_TWindowState state,
                            const bool wantStereoVisual,
                            const bool /*exclusive*/)
@@ -143,7 +127,7 @@ GHOST_TSuccess GHOST_Window::setCursorVisibility(bool visible)
 GHOST_TSuccess GHOST_Window::setCursorGrab(GHOST_TGrabCursorMode mode,
                                            GHOST_TAxisFlag wrap_axis,
                                            GHOST_Rect *bounds,
-                                           GHOST_TInt32 mouse_ungrab_xy[2])
+                                           int32_t mouse_ungrab_xy[2])
 {
   if (m_cursorGrab == mode)
     return GHOST_kSuccess;
@@ -192,13 +176,8 @@ GHOST_TSuccess GHOST_Window::setCursorShape(GHOST_TStandardCursor cursorShape)
   }
 }
 
-GHOST_TSuccess GHOST_Window::setCustomCursorShape(GHOST_TUns8 *bitmap,
-                                                  GHOST_TUns8 *mask,
-                                                  int sizex,
-                                                  int sizey,
-                                                  int hotX,
-                                                  int hotY,
-                                                  bool canInvertColor)
+GHOST_TSuccess GHOST_Window::setCustomCursorShape(
+    uint8_t *bitmap, uint8_t *mask, int sizex, int sizey, int hotX, int hotY, bool canInvertColor)
 {
   if (setWindowCustomCursorShape(bitmap, mask, sizex, sizey, hotX, hotY, canInvertColor)) {
     m_cursorShape = GHOST_kStandardCursorCustom;

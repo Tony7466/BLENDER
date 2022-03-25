@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pythonintern
@@ -38,33 +24,6 @@
 
 #include "../generic/py_capi_utils.h"
 
-static bContext *__py_context = NULL;
-bContext *BPy_GetContext(void)
-{
-  return __py_context;
-}
-void BPy_SetContext(bContext *C)
-{
-  __py_context = C;
-}
-
-char *BPy_enum_as_string(const EnumPropertyItem *item)
-{
-  DynStr *dynstr = BLI_dynstr_new();
-  const EnumPropertyItem *e;
-  char *cstring;
-
-  for (e = item; item->identifier; item++) {
-    if (item->identifier[0]) {
-      BLI_dynstr_appendf(dynstr, (e == item) ? "'%s'" : ", '%s'", item->identifier);
-    }
-  }
-
-  cstring = BLI_dynstr_get_cstring(dynstr);
-  BLI_dynstr_free(dynstr);
-  return cstring;
-}
-
 short BPy_reports_to_error(ReportList *reports, PyObject *exception, const bool clear)
 {
   char *report_str;
@@ -83,9 +42,6 @@ short BPy_reports_to_error(ReportList *reports, PyObject *exception, const bool 
   return (report_str == NULL) ? 0 : -1;
 }
 
-/**
- * A version of #BKE_report_write_file_fp that uses Python's stdout.
- */
 void BPy_reports_write_stdout(const ReportList *reports, const char *header)
 {
   if (header) {
@@ -97,7 +53,10 @@ void BPy_reports_write_stdout(const ReportList *reports, const char *header)
   }
 }
 
-bool BPy_errors_to_report_ex(ReportList *reports, const bool use_full, const bool use_location)
+bool BPy_errors_to_report_ex(ReportList *reports,
+                             const char *error_prefix,
+                             const bool use_full,
+                             const bool use_location)
 {
   PyObject *pystring;
 
@@ -124,40 +83,38 @@ bool BPy_errors_to_report_ex(ReportList *reports, const bool use_full, const boo
     return 0;
   }
 
+  if (error_prefix == NULL) {
+    /* Not very helpful, better than nothing. */
+    error_prefix = "Python";
+  }
+
   if (use_location) {
     const char *filename;
     int lineno;
-
-    PyObject *pystring_format; /* workaround, see below */
-    const char *cstring;
 
     PyC_FileAndNum(&filename, &lineno);
     if (filename == NULL) {
       filename = "<unknown location>";
     }
 
-#if 0 /* ARG!. workaround for a bug in blenders use of vsnprintf */
     BKE_reportf(reports,
                 RPT_ERROR,
-                "%s\nlocation: %s:%d\n",
-                _PyUnicode_AsString(pystring),
+                TIP_("%s: %s\nlocation: %s:%d\n"),
+                error_prefix,
+                PyUnicode_AsUTF8(pystring),
                 filename,
                 lineno);
-#else
-    pystring_format = PyUnicode_FromFormat(
-        TIP_("%s\nlocation: %s:%d\n"), _PyUnicode_AsString(pystring), filename, lineno);
 
-    cstring = _PyUnicode_AsString(pystring_format);
-    BKE_report(reports, RPT_ERROR, cstring);
-
-    /* not exactly needed. just for testing */
-    fprintf(stderr, TIP_("%s\nlocation: %s:%d\n"), cstring, filename, lineno);
-
-    Py_DECREF(pystring_format); /* workaround */
-#endif
+    /* Not exactly needed. Useful for developers tracking down issues. */
+    fprintf(stderr,
+            TIP_("%s: %s\nlocation: %s:%d\n"),
+            error_prefix,
+            PyUnicode_AsUTF8(pystring),
+            filename,
+            lineno);
   }
   else {
-    BKE_report(reports, RPT_ERROR, _PyUnicode_AsString(pystring));
+    BKE_reportf(reports, RPT_ERROR, "%s: %s", error_prefix, PyUnicode_AsUTF8(pystring));
   }
 
   Py_DECREF(pystring);
@@ -166,5 +123,5 @@ bool BPy_errors_to_report_ex(ReportList *reports, const bool use_full, const boo
 
 bool BPy_errors_to_report(ReportList *reports)
 {
-  return BPy_errors_to_report_ex(reports, true, true);
+  return BPy_errors_to_report_ex(reports, NULL, true, true);
 }

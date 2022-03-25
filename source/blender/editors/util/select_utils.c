@@ -1,22 +1,10 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edutil
  */
+
+#include <float.h>
 
 #include "BLI_kdtree.h"
 #include "BLI_math.h"
@@ -24,9 +12,6 @@
 
 #include "ED_select_utils.h"
 
-#include "float.h"
-
-/** 1: select, 0: deselect, -1: pass. */
 int ED_select_op_action(const eSelectOp sel_op, const bool is_select, const bool is_inside)
 {
   switch (sel_op) {
@@ -41,15 +26,9 @@ int ED_select_op_action(const eSelectOp sel_op, const bool is_select, const bool
     case SEL_OP_XOR:
       return (is_select && is_inside) ? 0 : ((!is_select && is_inside) ? 1 : -1);
   }
-  BLI_assert(!"invalid sel_op");
+  BLI_assert_msg(0, "invalid sel_op");
   return -1;
 }
-/**
- * Use when we've de-selected all items first (for modes that need it).
- *
- * \note In some cases changing selection needs to perform other checks,
- * so it's more straightforward to deselect all, then select.
- */
 int ED_select_op_action_deselected(const eSelectOp sel_op,
                                    const bool is_select,
                                    const bool is_inside)
@@ -67,13 +46,10 @@ int ED_select_op_action_deselected(const eSelectOp sel_op,
     case SEL_OP_XOR:
       return (is_select && is_inside) ? 0 : ((!is_select && is_inside) ? 1 : -1);
   }
-  BLI_assert(!"invalid sel_op");
+  BLI_assert_msg(0, "invalid sel_op");
   return -1;
 }
 
-/**
- * Utility to use for selection operations that run multiple times (circle select).
- */
 eSelectOp ED_select_op_modal(const eSelectOp sel_op, const bool is_first)
 {
   if (sel_op == SEL_OP_SET) {
@@ -88,13 +64,13 @@ int ED_select_similar_compare_float(const float delta, const float thresh, const
 {
   switch (compare) {
     case SIM_CMP_EQ:
-      return (fabsf(delta) < thresh + FLT_EPSILON);
+      return (fabsf(delta) <= thresh);
     case SIM_CMP_GT:
-      return ((delta + thresh) > -FLT_EPSILON);
+      return ((delta + thresh) >= 0.0);
     case SIM_CMP_LT:
-      return ((delta - thresh) < FLT_EPSILON);
+      return ((delta - thresh) <= 0.0);
     default:
-      BLI_assert(0);
+      BLI_assert_unreachable();
       return 0;
   }
 }
@@ -124,7 +100,7 @@ bool ED_select_similar_compare_float_tree(const KDTree_1d *tree,
       nearest_edge_length = FLT_MAX;
       break;
     default:
-      BLI_assert(0);
+      BLI_assert_unreachable();
       return false;
   }
 
@@ -135,4 +111,18 @@ bool ED_select_similar_compare_float_tree(const KDTree_1d *tree,
   }
 
   return false;
+}
+
+eSelectOp ED_select_op_from_booleans(const bool extend, const bool deselect, const bool toggle)
+{
+  if (extend) {
+    return SEL_OP_ADD;
+  }
+  if (deselect) {
+    return SEL_OP_SUB;
+  }
+  if (toggle) {
+    return SEL_OP_XOR;
+  }
+  return SEL_OP_SET;
 }

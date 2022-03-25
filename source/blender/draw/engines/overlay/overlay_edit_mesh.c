@@ -1,20 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Copyright 2019, Blender Foundation.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2019 Blender Foundation. */
 
 /** \file
  * \ingroup draw_engine
@@ -26,7 +11,9 @@
 
 #include "DNA_mesh_types.h"
 
+#include "BKE_customdata.h"
 #include "BKE_editmesh.h"
+#include "BKE_object.h"
 
 #include "draw_cache_impl.h"
 #include "draw_manager_text.h"
@@ -75,8 +62,6 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
   bool show_face_dots = (v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_FACE_DOT) != 0 ||
                         pd->edit_mesh.do_zbufclip;
 
-  pd->edit_mesh.ghost_ob = 0;
-  pd->edit_mesh.edit_ob = 0;
   pd->edit_mesh.do_faces = true;
   pd->edit_mesh.do_edges = true;
 
@@ -112,12 +97,6 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
   float face_alpha = (do_occlude_wire || !pd->edit_mesh.do_faces) ? 0.0f : 1.0f;
   GPUTexture **depth_tex = (pd->edit_mesh.do_zbufclip) ? &dtxl->depth : &txl->dummy_depth_tx;
 
-  if (select_face && !pd->edit_mesh.do_faces && pd->edit_mesh.do_edges) {
-    /* Force display of face centers in this case because that's
-     * the only way to see if a face is selected. */
-    show_face_dots = true;
-  }
-
   /* Run Twice for in-front passes. */
   for (int i = 0; i < 2; i++) {
     /* Complementary Depth Pass */
@@ -139,6 +118,11 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
     DRW_shgroup_uniform_float_copy(grp, "normalSize", v3d->overlay.normals_length);
     DRW_shgroup_uniform_float_copy(grp, "alpha", backwire_opacity);
     DRW_shgroup_uniform_texture_ref(grp, "depthTex", depth_tex);
+    DRW_shgroup_uniform_bool_copy(grp,
+                                  "isConstantScreenSizeNormals",
+                                  (flag & V3D_OVERLAY_EDIT_CONSTANT_SCREEN_SIZE_NORMALS) != 0);
+    DRW_shgroup_uniform_float_copy(
+        grp, "normalScreenSize", v3d->overlay.normals_constant_screen_size);
   }
   {
     /* Mesh Analysis Pass */
@@ -157,7 +141,7 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
     DRWState state_common = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL |
                             DRW_STATE_BLEND_ALPHA;
     /* Faces */
-    /* Cage geom needs to be offsetted to avoid Z-fighting. */
+    /* Cage geom needs an offset applied to avoid Z-fighting. */
     for (int j = 0; j < 2; j++) {
       DRWPass **edit_face_ps = (j == 0) ? &psl->edit_mesh_faces_ps[i] :
                                           &psl->edit_mesh_faces_cage_ps[i];
@@ -205,7 +189,7 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
       grp = pd->edit_mesh_skin_roots_grp[i] = DRW_shgroup_create(sh, psl->edit_mesh_verts_ps[i]);
       DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
     }
-    /* Facedots */
+    /* Face-dots */
     if (select_face && show_face_dots) {
       sh = OVERLAY_shader_edit_mesh_facedot();
       grp = pd->edit_mesh_facedots_grp[i] = DRW_shgroup_create(sh, psl->edit_mesh_verts_ps[i]);
@@ -231,7 +215,10 @@ static void overlay_edit_mesh_add_ob_to_pass(OVERLAY_PrivateData *pd, Object *ob
   Mesh *me = (Mesh *)ob->data;
   BMEditMesh *embm = me->edit_mesh;
   if (embm) {
-    has_edit_mesh_cage = embm->mesh_eval_cage && (embm->mesh_eval_cage != embm->mesh_eval_final);
+    Mesh *editmesh_eval_final = BKE_object_get_editmesh_eval_final(ob);
+    Mesh *editmesh_eval_cage = BKE_object_get_editmesh_eval_cage(ob);
+
+    has_edit_mesh_cage = editmesh_eval_cage && (editmesh_eval_cage != editmesh_eval_final);
     has_skin_roots = CustomData_get_offset(&embm->bm->vdata, CD_MVERT_SKIN) != -1;
   }
 
@@ -312,9 +299,6 @@ void OVERLAY_edit_mesh_cache_populate(OVERLAY_Data *vedata, Object *ob)
     overlay_edit_mesh_add_ob_to_pass(pd, ob, do_in_front);
   }
 
-  pd->edit_mesh.ghost_ob += (ob->dtx & OB_DRAW_IN_FRONT) ? 1 : 0;
-  pd->edit_mesh.edit_ob += 1;
-
   if (DRW_state_show_text() && (pd->edit_mesh.flag & OVERLAY_EDIT_TEXT)) {
     const DRWContextState *draw_ctx = DRW_context_state_get();
     DRW_text_edit_mesh_measure_stats(draw_ctx->region, draw_ctx->v3d, ob, &draw_ctx->scene->unit);
@@ -355,7 +339,7 @@ void OVERLAY_edit_mesh_draw(OVERLAY_Data *vedata)
   if (pd->edit_mesh.do_zbufclip) {
     DRW_draw_pass(psl->edit_mesh_depth_ps[IN_FRONT]);
 
-    /* render facefill */
+    /* Render face-fill. */
     DRW_view_set_active(pd->view_edit_faces);
     DRW_draw_pass(psl->edit_mesh_faces_ps[NOT_IN_FRONT]);
 
@@ -375,18 +359,11 @@ void OVERLAY_edit_mesh_draw(OVERLAY_Data *vedata)
     DRW_draw_pass(psl->edit_mesh_verts_ps[NOT_IN_FRONT]);
   }
   else {
-    const DRWContextState *draw_ctx = DRW_context_state_get();
-    View3D *v3d = draw_ctx->v3d;
-
     DRW_draw_pass(psl->edit_mesh_normals_ps);
     overlay_edit_mesh_draw_components(psl, pd, false);
 
-    if (!DRW_state_is_depth() && v3d->shading.type == OB_SOLID && pd->edit_mesh.ghost_ob == 1 &&
-        pd->edit_mesh.edit_ob == 1) {
-      /* In the case of single ghost object edit (common case for retopology):
-       * we clear the depth buffer so that only the depth of the retopo mesh
-       * is occluding the edit cage. */
-      GPU_framebuffer_clear_depth(fbl->overlay_default_fb, 1.0f);
+    if (DRW_state_is_fbo()) {
+      GPU_framebuffer_bind(fbl->overlay_in_front_fb);
     }
 
     if (!DRW_pass_is_empty(psl->edit_mesh_depth_ps[IN_FRONT])) {

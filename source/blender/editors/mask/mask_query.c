@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2012 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2012 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup edmask
@@ -85,7 +69,7 @@ bool ED_mask_find_nearest_diff_point(const bContext *C,
                  *mask_layer_eval = mask_eval->masklayers.first;
        mask_layer_orig != NULL;
        mask_layer_orig = mask_layer_orig->next, mask_layer_eval = mask_layer_eval->next) {
-    if (mask_layer_orig->restrictflag & (MASK_RESTRICT_VIEW | MASK_RESTRICT_SELECT)) {
+    if (mask_layer_orig->visibility_flag & (MASK_HIDE_VIEW | MASK_HIDE_SELECT)) {
       continue;
     }
 
@@ -169,7 +153,7 @@ bool ED_mask_find_nearest_diff_point(const bContext *C,
     }
 
     if (r_u) {
-      /* TODO(sergey): Projection fails in some weirdo cases.. */
+      /* TODO(sergey): Projection fails in some weirdo cases. */
       if (use_project) {
         u = BKE_mask_spline_project_co(point_spline, point, u, normal_co, MASK_PROJ_ANY);
       }
@@ -245,7 +229,7 @@ MaskSplinePoint *ED_mask_point_find_nearest(const bContext *C,
        mask_layer_orig != NULL;
        mask_layer_orig = mask_layer_orig->next, mask_layer_eval = mask_layer_eval->next) {
 
-    if (mask_layer_orig->restrictflag & (MASK_RESTRICT_VIEW | MASK_RESTRICT_SELECT)) {
+    if (mask_layer_orig->visibility_flag & (MASK_HIDE_VIEW | MASK_HIDE_SELECT)) {
       continue;
     }
 
@@ -409,7 +393,7 @@ bool ED_mask_feather_find_nearest(const bContext *C,
       int i, tot_feather_point;
       float(*feather_points)[2], (*fp)[2];
 
-      if (mask_layer_orig->restrictflag & (MASK_RESTRICT_VIEW | MASK_RESTRICT_SELECT)) {
+      if (mask_layer_orig->visibility_flag & (MASK_HIDE_VIEW | MASK_HIDE_SELECT)) {
         continue;
       }
 
@@ -489,7 +473,6 @@ bool ED_mask_feather_find_nearest(const bContext *C,
   return false;
 }
 
-/* takes event->mval */
 void ED_mask_mouse_pos(ScrArea *area, ARegion *region, const int mval[2], float co[2])
 {
   if (area) {
@@ -523,8 +506,6 @@ void ED_mask_mouse_pos(ScrArea *area, ARegion *region, const int mval[2], float 
   }
 }
 
-/* input:  x/y   - mval space
- * output: xr/yr - mask point space */
 void ED_mask_point_pos(ScrArea *area, ARegion *region, float x, float y, float *xr, float *yr)
 {
   float co[2];
@@ -604,19 +585,41 @@ void ED_mask_point_pos__reverse(
   *yr = co[1];
 }
 
-bool ED_mask_selected_minmax(const bContext *C, float min[2], float max[2])
+static void handle_position_for_minmax(const MaskSplinePoint *point,
+                                       eMaskWhichHandle which_handle,
+                                       bool handles_as_control_point,
+                                       float r_handle[2])
 {
+  if (handles_as_control_point) {
+    copy_v2_v2(r_handle, point->bezt.vec[1]);
+    return;
+  }
+  BKE_mask_point_handle(point, which_handle, r_handle);
+}
+
+bool ED_mask_selected_minmax(const bContext *C,
+                             float min[2],
+                             float max[2],
+                             bool handles_as_control_point)
+{
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Mask *mask = CTX_data_edit_mask(C);
+
   bool ok = false;
 
   if (mask == NULL) {
     return ok;
   }
 
+  /* Use evaluated mask to take animation into account.
+   * The animation of splies is not "flushed" back to original, so need to explicitly
+   * sue evaluated datablock here. */
+  Mask *mask_eval = (Mask *)DEG_get_evaluated_id(depsgraph, &mask->id);
+
   INIT_MINMAX2(min, max);
-  for (MaskLayer *mask_layer = mask->masklayers.first; mask_layer != NULL;
+  for (MaskLayer *mask_layer = mask_eval->masklayers.first; mask_layer != NULL;
        mask_layer = mask_layer->next) {
-    if (mask_layer->restrictflag & (MASK_RESTRICT_VIEW | MASK_RESTRICT_SELECT)) {
+    if (mask_layer->visibility_flag & (MASK_HIDE_VIEW | MASK_HIDE_SELECT)) {
       continue;
     }
     for (MaskSpline *spline = mask_layer->splines.first; spline != NULL; spline = spline->next) {
@@ -631,22 +634,29 @@ bool ED_mask_selected_minmax(const bContext *C, float min[2], float max[2])
         }
         if (bezt->f2 & SELECT) {
           minmax_v2v2_v2(min, max, deform_point->bezt.vec[1]);
+          ok = true;
         }
+
         if (BKE_mask_point_handles_mode_get(point) == MASK_HANDLE_MODE_STICK) {
-          BKE_mask_point_handle(deform_point, MASK_WHICH_HANDLE_STICK, handle);
+          handle_position_for_minmax(
+              deform_point, MASK_WHICH_HANDLE_STICK, handles_as_control_point, handle);
           minmax_v2v2_v2(min, max, handle);
+          ok = true;
         }
         else {
           if ((bezt->f1 & SELECT) && (bezt->h1 != HD_VECT)) {
-            BKE_mask_point_handle(deform_point, MASK_WHICH_HANDLE_LEFT, handle);
+            handle_position_for_minmax(
+                deform_point, MASK_WHICH_HANDLE_LEFT, handles_as_control_point, handle);
             minmax_v2v2_v2(min, max, handle);
+            ok = true;
           }
           if ((bezt->f3 & SELECT) && (bezt->h2 != HD_VECT)) {
-            BKE_mask_point_handle(deform_point, MASK_WHICH_HANDLE_RIGHT, handle);
+            handle_position_for_minmax(
+                deform_point, MASK_WHICH_HANDLE_RIGHT, handles_as_control_point, handle);
             minmax_v2v2_v2(min, max, handle);
+            ok = true;
           }
         }
-        ok = true;
       }
     }
   }

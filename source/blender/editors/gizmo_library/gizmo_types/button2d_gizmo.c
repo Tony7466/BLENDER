@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edgizmolib
@@ -59,6 +45,10 @@
 #include "../gizmo_geometry.h"
 #include "../gizmo_library_intern.h"
 
+/* -------------------------------------------------------------------- */
+/** \name Internal Types
+ * \{ */
+
 typedef struct ButtonGizmo2D {
   wmGizmo gizmo;
   bool is_init;
@@ -69,7 +59,11 @@ typedef struct ButtonGizmo2D {
 
 #define CIRCLE_RESOLUTION 32
 
+/** \} */
+
 /* -------------------------------------------------------------------- */
+/** \name Internal API
+ * \{ */
 
 static void button2d_geom_draw_backdrop(const wmGizmo *gz,
                                         const float color[4],
@@ -82,7 +76,7 @@ static void button2d_geom_draw_backdrop(const wmGizmo *gz,
   GPUVertFormat *format = immVertexFormat();
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
-  /* TODO, other draw styles */
+  /* TODO: other draw styles. */
   if (color[3] == 1.0 && fill_alpha == 1.0 && select == false) {
     immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
     immUniformColor4fv(color);
@@ -99,7 +93,7 @@ static void button2d_geom_draw_backdrop(const wmGizmo *gz,
   else {
     /* Draw fill. */
     if ((fill_alpha != 0.0f) || (select == true)) {
-      float fill_color[4] = {UNPACK3(color), fill_alpha * color[3]};
+      const float fill_color[4] = {UNPACK3(color), fill_alpha * color[3]};
       immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
       immUniformColor4fv(fill_color);
       imm_draw_circle_fill_2d(pos, 0, 0, 1.0f, CIRCLE_RESOLUTION);
@@ -195,7 +189,7 @@ static void button2d_draw_intern(const bContext *C,
   }
   else {
 
-    GPU_blend(true);
+    GPU_blend(GPU_BLEND_ALPHA);
 
     if (draw_options & ED_GIZMO_BUTTON_SHOW_BACKDROP) {
       const float fill_alpha = RNA_float_get(gz->ptr, "backdrop_fill_alpha");
@@ -226,10 +220,10 @@ static void button2d_draw_intern(const bContext *C,
           float color_contrast[4];
           copy_v3_fl(color_contrast, rgb_to_grayscale(color) < 0.2f ? 1 : 0);
           color_contrast[3] = color[3];
-          GPU_batch_uniform_4f(button->shape_batch[i], "color", UNPACK4(color_contrast));
+          GPU_shader_uniform_4f(button->shape_batch[i]->shader, "color", UNPACK4(color_contrast));
         }
         else {
-          GPU_batch_uniform_4f(button->shape_batch[i], "color", UNPACK4(color));
+          GPU_shader_uniform_4f(button->shape_batch[i]->shader, "color", UNPACK4(color));
         }
 
         GPU_batch_draw(button->shape_batch[i]);
@@ -265,7 +259,7 @@ static void button2d_draw_intern(const bContext *C,
       UI_icon_draw_alpha(pos[0], pos[1], button->icon, alpha);
       GPU_polygon_smooth(true);
     }
-    GPU_blend(false);
+    GPU_blend(GPU_BLEND_NONE);
   }
 
   if (need_to_pop) {
@@ -283,9 +277,9 @@ static void gizmo_button2d_draw(const bContext *C, wmGizmo *gz)
 {
   const bool is_highlight = (gz->state & WM_GIZMO_STATE_HIGHLIGHT) != 0;
 
-  GPU_blend(true);
+  GPU_blend(GPU_BLEND_ALPHA);
   button2d_draw_intern(C, gz, false, is_highlight);
-  GPU_blend(false);
+  GPU_blend(GPU_BLEND_NONE);
 }
 
 static int gizmo_button2d_test_select(bContext *C, wmGizmo *gz, const int mval[2])
@@ -320,6 +314,46 @@ static int gizmo_button2d_cursor_get(wmGizmo *gz)
   return WM_CURSOR_DEFAULT;
 }
 
+static bool gizmo_button2d_bounds(bContext *C, wmGizmo *gz, rcti *r_bounding_box)
+{
+  ScrArea *area = CTX_wm_area(C);
+  float rad = CIRCLE_RESOLUTION * U.dpi_fac / 2.0f;
+  const float *co = NULL;
+  float matrix_final[4][4];
+  float co_proj[3];
+  WM_gizmo_calc_matrix_final(gz, matrix_final);
+
+  if (gz->parent_gzgroup->type->flag & WM_GIZMOGROUPTYPE_3D) {
+    ARegion *region = CTX_wm_region(C);
+    if (ED_view3d_project_float_global(region, matrix_final[3], co_proj, V3D_PROJ_TEST_NOP) ==
+        V3D_PROJ_RET_OK) {
+      float matrix_final_no_offset[4][4];
+      const RegionView3D *rv3d = region->regiondata;
+      WM_gizmo_calc_matrix_final_no_offset(gz, matrix_final_no_offset);
+      const float factor = ED_view3d_pixel_size_no_ui_scale(rv3d, matrix_final_no_offset[3]) /
+                           ED_view3d_pixel_size_no_ui_scale(rv3d, matrix_final[3]);
+      /* It's possible (although unlikely) `matrix_final_no_offset` is behind the view.
+       * `matrix_final` has already been projected so both can't be negative. */
+      if (factor > 0.0f) {
+        rad *= factor;
+      }
+      co = co_proj;
+    }
+  }
+  else {
+    co = matrix_final[3];
+  }
+
+  if (co != NULL) {
+    r_bounding_box->xmin = co[0] + area->totrct.xmin - rad;
+    r_bounding_box->ymin = co[1] + area->totrct.ymin - rad;
+    r_bounding_box->xmax = r_bounding_box->xmin + rad;
+    r_bounding_box->ymax = r_bounding_box->ymin + rad;
+    return true;
+  }
+  return false;
+}
+
 static void gizmo_button2d_free(wmGizmo *gz)
 {
   ButtonGizmo2D *shape = (ButtonGizmo2D *)gz;
@@ -333,7 +367,6 @@ static void gizmo_button2d_free(wmGizmo *gz)
 
 /* -------------------------------------------------------------------- */
 /** \name Button Gizmo API
- *
  * \{ */
 
 static void GIZMO_GT_button_2d(wmGizmoType *gzt)
@@ -346,6 +379,7 @@ static void GIZMO_GT_button_2d(wmGizmoType *gzt)
   gzt->draw_select = gizmo_button2d_draw_select;
   gzt->test_select = gizmo_button2d_test_select;
   gzt->cursor_get = gizmo_button2d_cursor_get;
+  gzt->screen_bounds_get = gizmo_button2d_bounds;
   gzt->free = gizmo_button2d_free;
 
   gzt->struct_size = sizeof(ButtonGizmo2D);
@@ -386,4 +420,4 @@ void ED_gizmotypes_button_2d(void)
   WM_gizmotype_append(GIZMO_GT_button_2d);
 }
 
-/** \} */  // Button Gizmo API
+/** \} */ /* Button Gizmo API */

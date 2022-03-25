@@ -1,9 +1,13 @@
-void node_hair_info(out float is_strand,
+
+void node_hair_info(float hair_length,
+                    out float is_strand,
                     out float intercept,
+                    out float length,
                     out float thickness,
                     out vec3 tangent,
                     out float random)
 {
+  length = hair_length;
 #ifdef HAIR_SHADER
   is_strand = 1.0;
   intercept = hairTime;

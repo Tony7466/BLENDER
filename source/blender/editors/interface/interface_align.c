@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2015 by Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2015 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup edinterface
@@ -24,6 +8,7 @@
 #include "DNA_screen_types.h"
 #include "DNA_userdef_types.h"
 
+#include "BLI_listbase.h"
 #include "BLI_math.h"
 #include "BLI_rect.h"
 
@@ -342,7 +327,7 @@ static int ui_block_align_butal_cmp(const void *a, const void *b)
    *     stupid UI code produces widgets which have the same TOP and LEFT positions...
    *     We do not care really,
    *     because this happens when UI is way too small to be usable anyway. */
-  /* BLI_assert(0); */
+  // BLI_assert(0);
   return 0;
 }
 
@@ -371,21 +356,13 @@ static void ui_block_align_but_to_region(uiBut *but, const ARegion *region)
       rect->xmin = rect->xmax - but_width;
       break;
     default:
-      BLI_assert(0);
+      /* Tabs may be shown in unaligned regions too, they just appear as regular buttons then. */
       break;
   }
 }
 
-/**
- * Compute the alignment of all 'align groups' of buttons in given block.
- *
- * This is using an order-independent algorithm,
- * i.e. alignment of buttons should be OK regardless of order in which
- * they are added to the block.
- */
 void ui_block_align_calc(uiBlock *block, const ARegion *region)
 {
-  uiBut *but;
   int num_buttons = 0;
 
   const int sides_to_ui_but_align_flags[4] = SIDE_TO_UI_BUT_ALIGN;
@@ -393,12 +370,11 @@ void ui_block_align_calc(uiBlock *block, const ARegion *region)
   ButAlign *butal_array;
   ButAlign *butal, *butal_other;
   int side;
-  int i, j;
 
   /* First loop: we count number of buttons belonging to an align group,
    * and clear their align flag.
    * Tabs get some special treatment here, they get aligned to region border. */
-  for (but = block->buttons.first; but; but = but->next) {
+  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
     /* special case: tabs need to be aligned to a region border, drawflag tells which one */
     if (but->type == UI_BTYPE_TAB) {
       ui_block_align_but_to_region(but, region);
@@ -431,7 +407,8 @@ void ui_block_align_calc(uiBlock *block, const ARegion *region)
   memset(butal_array, 0, sizeof(*butal_array) * (size_t)num_buttons);
 
   /* Second loop: we initialize our ButAlign data for each button. */
-  for (but = block->buttons.first, butal = butal_array; but; but = but->next) {
+  butal = butal_array;
+  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
     if (but->alignnr != 0) {
       butal->but = but;
       butal->borders[LEFT] = &but->rect.xmin;
@@ -451,9 +428,11 @@ void ui_block_align_calc(uiBlock *block, const ARegion *region)
   /* Third loop: for each pair of buttons in the same align group,
    * we compute their potential proximity. Note that each pair is checked only once, and that we
    * break early in case we know all remaining pairs will always be too far away. */
+  int i;
   for (i = 0, butal = butal_array; i < num_buttons; i++, butal++) {
     const short alignnr = butal->but->alignnr;
 
+    int j;
     for (j = i + 1, butal_other = &butal_array[i + 1]; j < num_buttons; j++, butal_other++) {
       const float max_delta = MAX_DELTA;
 
@@ -557,7 +536,7 @@ static bool buts_are_horiz(uiBut *but1, uiBut *but2)
   float dx, dy;
 
   /* simple case which can fail if buttons shift apart
-   * with proportional layouts, see: [#38602] */
+   * with proportional layouts, see: T38602. */
   if ((but1->rect.ymin == but2->rect.ymin) && (but1->rect.xmin != but2->rect.xmin)) {
     return true;
   }
@@ -588,7 +567,8 @@ static void ui_block_align_calc_but(uiBut *first, short nr)
 
   /* rows == 0: 1 row, cols == 0: 1 column */
 
-  /* note;  how it uses 'flag' in loop below (either set it, or OR it) is confusing */
+  /* NOTE: manipulation of 'flag' in the loop below is confusing.
+   * In some cases it's assigned, other times OR is used. */
   for (but = first, prev = NULL; but && but->alignnr == nr; prev = but, but = but->next) {
     next = but->next;
     if (next && next->alignnr != nr) {
@@ -726,11 +706,10 @@ static void ui_block_align_calc_but(uiBut *first, short nr)
 
 void ui_block_align_calc(uiBlock *block, const struct ARegion *UNUSED(region))
 {
-  uiBut *but;
   short nr;
 
   /* align buttons with same align nr */
-  for (but = block->buttons.first; but;) {
+  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
     if (but->alignnr) {
       nr = but->alignnr;
       ui_block_align_calc_but(but, nr);

@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2019 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2019 Blender Foundation. All rights reserved. */
 #include "IO_abstract_hierarchy_iterator.h"
 
 #include "testing/testing.h"
@@ -129,7 +113,7 @@ TEST_F(ObjectIdentifierOrderTest, duplicated_objects)
   EXPECT_FALSE(id_different_dupli_b < id_dupli_b);
 }
 
-TEST_F(ObjectIdentifierOrderTest, behaviour_as_map_keys)
+TEST_F(ObjectIdentifierOrderTest, behavior_as_map_keys)
 {
   ObjectIdentifier id_root = ObjectIdentifier::for_graph_root();
   ObjectIdentifier id_another_root = ObjectIdentifier::for_graph_root();
@@ -175,7 +159,7 @@ TEST_F(ObjectIdentifierOrderTest, map_copy_and_update)
   AbstractHierarchyIterator::ExportGraph graph_copy = graph;
   EXPECT_EQ(5, graph_copy.size());
 
-  // Updating a value in a copy should not update the original.
+  /* Updating a value in a copy should not update the original. */
   HierarchyContext ctx1;
   HierarchyContext ctx2;
   ctx1.object = fake_pointer(1);
@@ -184,7 +168,7 @@ TEST_F(ObjectIdentifierOrderTest, map_copy_and_update)
   graph_copy[id_root].insert(&ctx1);
   EXPECT_EQ(0, graph[id_root].size());
 
-  // Deleting a key in the copy should not update the original.
+  /* Deleting a key in the copy should not update the original. */
   graph_copy.erase(id_dupli_c);
   EXPECT_EQ(4, graph_copy.size());
   EXPECT_EQ(5, graph.size());

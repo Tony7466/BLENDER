@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edsculpt
@@ -54,6 +38,7 @@
 
 #include "RNA_access.h"
 #include "RNA_define.h"
+#include "RNA_prototypes.h"
 
 #include "GPU_framebuffer.h"
 #include "GPU_matrix.h"
@@ -64,8 +49,9 @@
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 
-#include "RE_render_ext.h"
+#include "RE_texture.h"
 
+#include "ED_image.h"
 #include "ED_screen.h"
 #include "ED_view3d.h"
 
@@ -79,9 +65,6 @@
 
 #include "paint_intern.h"
 
-/* Convert the object-space axis-aligned bounding box (expressed as
- * its minimum and maximum corners) into a screen-space rectangle,
- * returns zero if the result is empty */
 bool paint_convert_bb_to_rect(rcti *rect,
                               const float bb_min[3],
                               const float bb_max[3],
@@ -96,7 +79,7 @@ bool paint_convert_bb_to_rect(rcti *rect,
 
   /* return zero if the bounding box has non-positive volume */
   if (bb_min[0] > bb_max[0] || bb_min[1] > bb_max[1] || bb_min[2] > bb_max[2]) {
-    return 0;
+    return false;
   }
 
   ED_view3d_ob_project_mat_get(rv3d, ob, projection_mat);
@@ -126,9 +109,6 @@ bool paint_convert_bb_to_rect(rcti *rect,
   return rect->xmin < rect->xmax && rect->ymin < rect->ymax;
 }
 
-/* Get four planes in object-space that describe the projection of
- * screen_rect from screen into object-space (essentially converting a
- * 2D screens-space bounding box into four 3D planes) */
 void paint_calc_redraw_planes(float planes[4][4],
                               const ARegion *region,
                               Object *ob,
@@ -151,13 +131,12 @@ float paint_calc_object_space_radius(ViewContext *vc, const float center[3], flo
 {
   Object *ob = vc->obact;
   float delta[3], scale, loc[3];
-  const float mval_f[2] = {pixel_radius, 0.0f};
-  float zfac;
+  const float xy_delta[2] = {pixel_radius, 0.0f};
 
   mul_v3_m4v3(loc, ob->obmat, center);
 
-  zfac = ED_view3d_calc_zfac(vc->rv3d, loc, NULL);
-  ED_view3d_win_to_delta(vc->region, mval_f, delta, zfac);
+  const float zfac = ED_view3d_calc_zfac(vc->rv3d, loc);
+  ED_view3d_win_to_delta(vc->region, xy_delta, zfac, delta);
 
   scale = fabsf(mat4_to_scale(ob->obmat));
   scale = (scale == 0.0f) ? 1.0f : scale;
@@ -169,7 +148,7 @@ float paint_get_tex_pixel(const MTex *mtex, float u, float v, struct ImagePool *
 {
   float intensity;
   float rgba_dummy[4];
-  float co[3] = {u, v, 0.0f};
+  const float co[3] = {u, v, 0.0f};
 
   RE_texture_evaluate(mtex, co, thread, pool, false, false, &intensity, rgba_dummy);
 
@@ -185,7 +164,7 @@ void paint_get_tex_pixel_col(const MTex *mtex,
                              bool convert_to_linear,
                              struct ColorSpace *colorspace)
 {
-  float co[3] = {u, v, 0.0f};
+  const float co[3] = {u, v, 0.0f};
   float intensity;
 
   const bool hasrgb = RE_texture_evaluate(mtex, co, thread, pool, false, false, &intensity, rgba);
@@ -238,7 +217,7 @@ void paint_stroke_operator_properties(wmOperatorType *ot)
 
 /* 3D Paint */
 
-static void imapaint_project(float matrix[4][4], const float co[3], float pco[4])
+static void imapaint_project(const float matrix[4][4], const float co[3], float pco[4])
 {
   copy_v3_v3(pco, co);
   pco[3] = 1.0f;
@@ -402,53 +381,6 @@ static Image *imapaint_face_image(Object *ob, Mesh *me, int face_index)
   return ima;
 }
 
-/* Uses symm to selectively flip any axis of a coordinate. */
-void flip_v3_v3(float out[3], const float in[3], const ePaintSymmetryFlags symm)
-{
-  if (symm & PAINT_SYMM_X) {
-    out[0] = -in[0];
-  }
-  else {
-    out[0] = in[0];
-  }
-  if (symm & PAINT_SYMM_Y) {
-    out[1] = -in[1];
-  }
-  else {
-    out[1] = in[1];
-  }
-  if (symm & PAINT_SYMM_Z) {
-    out[2] = -in[2];
-  }
-  else {
-    out[2] = in[2];
-  }
-}
-
-void flip_qt_qt(float out[4], const float in[4], const ePaintSymmetryFlags symm)
-{
-  float axis[3], angle;
-
-  quat_to_axis_angle(axis, &angle, in);
-  normalize_v3(axis);
-
-  if (symm & PAINT_SYMM_X) {
-    axis[0] *= -1.0f;
-    angle *= -1.0f;
-  }
-  if (symm & PAINT_SYMM_Y) {
-    axis[1] *= -1.0f;
-    angle *= -1.0f;
-  }
-  if (symm & PAINT_SYMM_Z) {
-    axis[2] *= -1.0f;
-    angle *= -1.0f;
-  }
-
-  axis_angle_normalized_to_quat(out, axis, angle);
-}
-
-/* used for both 3d view and image window */
 void paint_sample_color(
     bContext *C, ARegion *region, int x, int y, bool texpaint_proj, bool use_palette)
 {
@@ -458,8 +390,6 @@ void paint_sample_color(
   Palette *palette = BKE_paint_palette(paint);
   PaletteColor *color = NULL;
   Brush *br = BKE_paint_brush(BKE_paint_get_active_from_context(C));
-  uint col;
-  const uchar *cp;
 
   CLAMP(x, 0, region->winx);
   CLAMP(y, 0, region->winy);
@@ -474,12 +404,14 @@ void paint_sample_color(
     palette->active_color = BLI_listbase_count(&palette->colors) - 1;
   }
 
-  if (CTX_wm_view3d(C) && texpaint_proj) {
+  SpaceImage *sima = CTX_wm_space_image(C);
+  const View3D *v3d = CTX_wm_view3d(C);
+
+  if (v3d && texpaint_proj) {
     /* first try getting a color directly from the mesh faces if possible */
     ViewLayer *view_layer = CTX_data_view_layer(C);
     Object *ob = OBACT(view_layer);
     Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
-    bool sample_success = false;
     ImagePaintSettings *imapaint = &scene->toolsettings->imapaint;
     bool use_material = (imapaint->mode == IMAGEPAINT_MODE_MATERIAL);
 
@@ -539,8 +471,6 @@ void paint_sample_color(
 
             ImBuf *ibuf = BKE_image_acquire_ibuf(image, &iuser, NULL);
             if (ibuf && (ibuf->rect || ibuf->rect_float)) {
-              sample_success = true;
-
               u = u * ibuf->x;
               v = v * ibuf->y;
 
@@ -568,6 +498,8 @@ void paint_sample_color(
                   BKE_brush_color_set(scene, br, rgba_f);
                 }
               }
+              BKE_image_release_ibuf(image, ibuf, NULL);
+              return;
             }
 
             BKE_image_release_ibuf(image, ibuf, NULL);
@@ -575,28 +507,39 @@ void paint_sample_color(
         }
       }
     }
+  }
+  else if (sima != NULL) {
+    /* Sample from the active image buffer. The sampled color is in
+     * Linear Scene Reference Space. */
+    float rgba_f[3];
+    bool is_data;
+    if (ED_space_image_color_sample(sima, region, (int[2]){x, y}, rgba_f, &is_data)) {
+      if (!is_data) {
+        linearrgb_to_srgb_v3_v3(rgba_f, rgba_f);
+      }
 
-    if (!sample_success) {
-      GPU_frontbuffer_read_pixels(
-          x + region->winrct.xmin, y + region->winrct.ymin, 1, 1, 4, GPU_DATA_UNSIGNED_BYTE, &col);
-    }
-    else {
+      if (use_palette) {
+        copy_v3_v3(color->rgb, rgba_f);
+      }
+      else {
+        BKE_brush_color_set(scene, br, rgba_f);
+      }
       return;
     }
   }
-  else {
-    GPU_frontbuffer_read_pixels(
-        x + region->winrct.xmin, y + region->winrct.ymin, 1, 1, 4, GPU_DATA_UNSIGNED_BYTE, &col);
-  }
-  cp = (uchar *)&col;
 
-  if (use_palette) {
-    rgb_uchar_to_float(color->rgb, cp);
-  }
-  else {
-    float rgba_f[3];
-    rgb_uchar_to_float(rgba_f, cp);
-    BKE_brush_color_set(scene, br, rgba_f);
+  /* No sample found; sample directly from the GPU front buffer. */
+  {
+    float rgba_f[4];
+    GPU_frontbuffer_read_pixels(
+        x + region->winrct.xmin, y + region->winrct.ymin, 1, 1, 4, GPU_DATA_FLOAT, &rgba_f);
+
+    if (use_palette) {
+      copy_v3_v3(color->rgb, rgba_f);
+    }
+    else {
+      BKE_brush_color_set(scene, br, rgba_f);
+    }
   }
 }
 
@@ -642,7 +585,8 @@ void BRUSH_OT_curve_preset(wmOperatorType *ot)
   ot->poll = brush_curve_preset_poll;
 
   prop = RNA_def_enum(ot->srna, "shape", prop_shape_items, CURVE_PRESET_SMOOTH, "Mode", "");
-  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_CURVE); /* Abusing id_curve :/ */
+  RNA_def_property_translation_context(prop,
+                                       BLT_I18NCONTEXT_ID_CURVE_LEGACY); /* Abusing id_curve :/ */
 }
 
 /* face-select ops */
@@ -740,7 +684,7 @@ static int vert_select_ungrouped_exec(bContext *C, wmOperator *op)
   Object *ob = CTX_data_active_object(C);
   Mesh *me = ob->data;
 
-  if (BLI_listbase_is_empty(&ob->defbase) || (me->dvert == NULL)) {
+  if (BLI_listbase_is_empty(&me->vertex_group_names) || (me->dvert == NULL)) {
     BKE_report(op->reports, RPT_ERROR, "No weights/vertex groups on object");
     return OPERATOR_CANCELLED;
   }

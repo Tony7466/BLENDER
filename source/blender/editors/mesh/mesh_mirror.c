@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edmesh
@@ -308,8 +294,9 @@ void ED_mesh_mirrtopo_init(BMEditMesh *em,
 
   last = 0;
 
-  /* Get the pairs out of the sorted hashes, note, totvert+1 means we can use the previous 2,
-   * but you cant ever access the last 'a' index of MirrTopoPairs */
+  /* Get the pairs out of the sorted hashes.
+   * NOTE: `totvert + 1` means we can use the previous 2,
+   * but you can't ever access the last 'a' index of #MirrTopoPairs. */
   if (em) {
     BMVert **vtable = em->bm->vtable;
     for (a = 1; a <= totvert; a++) {
@@ -364,10 +351,7 @@ void ED_mesh_mirrtopo_init(BMEditMesh *em,
 
 void ED_mesh_mirrtopo_free(MirrTopoStore_t *mesh_topo_store)
 {
-  if (mesh_topo_store->index_lookup) {
-    MEM_freeN(mesh_topo_store->index_lookup);
-  }
-  mesh_topo_store->index_lookup = NULL;
+  MEM_SAFE_FREE(mesh_topo_store->index_lookup);
   mesh_topo_store->prev_vert_tot = -1;
   mesh_topo_store->prev_edge_tot = -1;
 }

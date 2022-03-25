@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2019 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2019 Blender Foundation. All rights reserved. */
 #include "usd_writer_camera.h"
 #include "usd_hierarchy_iterator.h"
 
@@ -28,9 +12,7 @@
 #include "DNA_camera_types.h"
 #include "DNA_scene_types.h"
 
-namespace blender {
-namespace io {
-namespace usd {
+namespace blender::io::usd {
 
 USDCameraWriter::USDCameraWriter(const USDExporterContext &ctx) : USDAbstractWriter(ctx)
 {
@@ -63,7 +45,7 @@ static void camera_sensor_size_for_render(const Camera *camera,
       *r_sensor_y = camera->sensor_y;
       break;
     case CAMERA_SENSOR_FIT_AUTO:
-      BLI_assert(!"Camera fit should be either horizontal or vertical");
+      BLI_assert_msg(0, "Camera fit should be either horizontal or vertical");
       break;
   }
 }
@@ -98,7 +80,7 @@ void USDCameraWriter::do_write(HierarchyContext &context)
   usd_camera.CreateClippingRangeAttr().Set(
       pxr::VtValue(pxr::GfVec2f(camera->clip_start, camera->clip_end)), timecode);
 
-  // Write DoF-related attributes.
+  /* Write DoF-related attributes. */
   if (camera->dof.flag & CAM_DOF_ENABLED) {
     usd_camera.CreateFStopAttr().Set(camera->dof.aperture_fstop, timecode);
 
@@ -108,6 +90,4 @@ void USDCameraWriter::do_write(HierarchyContext &context)
   }
 }
 
-}  // namespace usd
-}  // namespace io
-}  // namespace blender
+}  // namespace blender::io::usd

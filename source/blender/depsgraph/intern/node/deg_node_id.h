@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2013 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2013 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup depsgraph
@@ -58,6 +42,7 @@ struct IDNode : public Node {
     const char *name;
   };
 
+  /** Initialize 'id' node - from pointer data given. */
   virtual void init(const ID *id, const char *subdata) override;
   void init_copy_on_write(ID *id_cow_hint = nullptr);
   ~IDNode();
@@ -74,12 +59,22 @@ struct IDNode : public Node {
 
   IDComponentsMask get_visible_components_mask() const;
 
-  /* ID Block referenced. */
   /* Type of the ID stored separately, so it's possible to perform check whether CoW is needed
    * without de-referencing the id_cow (which is not safe when ID is NOT covered by CoW and has
    * been deleted from the main database.) */
   ID_Type id_type;
+
+  /* ID Block referenced. */
   ID *id_orig;
+
+  /* Session-wide UUID of the id_orig.
+   * Is used on relations update to map evaluated state from old nodes to the new ones, without
+   * relying on pointers (which are not guaranteed to be unique) and without dereferencing id_orig
+   * which could be "stale" pointer. */
+  uint id_orig_session_uuid;
+
+  /* Evaluated data-block.
+   * Will be covered by the copy-on-write system if the ID Type needs it. */
   ID *id_cow;
 
   /* Hash to make it faster to look up components. */
@@ -97,7 +92,7 @@ struct IDNode : public Node {
 
   eDepsNode_LinkedState_Type linked_state;
 
-  /* Indicates the datablock is visible in the evaluated scene. */
+  /* Indicates the data-block is visible in the evaluated scene. */
   bool is_directly_visible;
 
   /* For the collection type of ID, denotes whether collection was fully
@@ -109,6 +104,12 @@ struct IDNode : public Node {
 
   /* Accumulated flag from operation. Is initialized and used during updates flush. */
   bool is_user_modified;
+
+  /* Copy-on-Write component has been explicitly tagged for update. */
+  bool is_cow_explicitly_tagged;
+
+  /* Accumulate recalc flags from multiple update passes. */
+  int id_cow_recalc_backup;
 
   IDComponentsMask visible_components_mask;
   IDComponentsMask previously_visible_components_mask;

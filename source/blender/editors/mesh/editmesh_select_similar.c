@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2004 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2004 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup edmesh
@@ -29,11 +13,14 @@
 #include "BLI_math.h"
 
 #include "BKE_context.h"
+#include "BKE_customdata.h"
+#include "BKE_deform.h"
 #include "BKE_editmesh.h"
 #include "BKE_layer.h"
 #include "BKE_material.h"
 #include "BKE_report.h"
 
+#include "DNA_material_types.h"
 #include "DNA_meshdata_types.h"
 
 #include "WM_api.h"
@@ -64,7 +51,8 @@ static const EnumPropertyItem prop_similar_types[] = {
     {SIMVERT_NORMAL, "NORMAL", 0, "Normal", ""},
     {SIMVERT_FACE, "FACE", 0, "Amount of Adjacent Faces", ""},
     {SIMVERT_VGROUP, "VGROUP", 0, "Vertex Groups", ""},
-    {SIMVERT_EDGE, "EDGE", 0, "Amount of connecting edges", ""},
+    {SIMVERT_EDGE, "EDGE", 0, "Amount of Connecting Edges", ""},
+    {SIMVERT_CREASE, "VCREASE", 0, "Vertex Crease", ""},
 
     {SIMEDGE_LENGTH, "LENGTH", 0, "Length", ""},
     {SIMEDGE_DIR, "DIR", 0, "Direction", ""},
@@ -83,9 +71,9 @@ static const EnumPropertyItem prop_similar_types[] = {
     {SIMFACE_SIDES, "SIDES", 0, "Polygon Sides", ""},
     {SIMFACE_PERIMETER, "PERIMETER", 0, "Perimeter", ""},
     {SIMFACE_NORMAL, "NORMAL", 0, "Normal", ""},
-    {SIMFACE_COPLANAR, "COPLANAR", 0, "Co-planar", ""},
+    {SIMFACE_COPLANAR, "COPLANAR", 0, "Coplanar", ""},
     {SIMFACE_SMOOTH, "SMOOTH", 0, "Flat/Smooth", ""},
-    {SIMFACE_FACEMAP, "FACE_MAP", 0, "Face-Map", ""},
+    {SIMFACE_FACEMAP, "FACE_MAP", 0, "Face Map", ""},
 #ifdef WITH_FREESTYLE
     {SIMFACE_FREESTYLE, "FREESTYLE_FACE", 0, "Freestyle Face Marks", ""},
 #endif
@@ -496,7 +484,12 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
 
     if (changed) {
       EDBM_selectmode_flush(em);
-      EDBM_update_generic(ob->data, false, false);
+      EDBM_update(ob->data,
+                  &(const struct EDBMUpdate_Params){
+                      .calc_looptri = false,
+                      .calc_normals = false,
+                      .is_destructive = false,
+                  });
     }
   }
 
@@ -518,7 +511,12 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
         }
       }
       EDBM_selectmode_flush(em);
-      EDBM_update_generic(ob->data, false, false);
+      EDBM_update(ob->data,
+                  &(const struct EDBMUpdate_Params){
+                      .calc_looptri = false,
+                      .calc_normals = false,
+                      .is_destructive = false,
+                  });
     }
   }
 
@@ -548,7 +546,7 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
  * \{ */
 
 /**
- * Note: This is not normal, but the edge direction itself and always in
+ * NOTE: This is not normal, but the edge direction itself and always in
  * a positive quadrant (tries z, y then x).
  * Therefore we need to use the entire object transformation matrix.
  */
@@ -916,7 +914,12 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
 
     if (changed) {
       EDBM_selectmode_flush(em);
-      EDBM_update_generic(ob->data, false, false);
+      EDBM_update(ob->data,
+                  &(const struct EDBMUpdate_Params){
+                      .calc_looptri = false,
+                      .calc_normals = false,
+                      .is_destructive = false,
+                  });
     }
   }
 
@@ -938,7 +941,12 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
         }
       }
       EDBM_selectmode_flush(em);
-      EDBM_update_generic(ob->data, false, false);
+      EDBM_update(ob->data,
+                  &(const struct EDBMUpdate_Params){
+                      .calc_looptri = false,
+                      .calc_normals = false,
+                      .is_destructive = false,
+                  });
     }
   }
 
@@ -951,6 +959,7 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
 
   return OPERATOR_FINISHED;
 }
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -985,11 +994,15 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
   }
 
   KDTree_3d *tree_3d = NULL;
+  KDTree_1d *tree_1d = NULL;
   GSet *gset = NULL;
 
   switch (type) {
     case SIMVERT_NORMAL:
       tree_3d = BLI_kdtree_3d_new(tot_verts_selected_all);
+      break;
+    case SIMVERT_CREASE:
+      tree_1d = BLI_kdtree_1d_new(tot_verts_selected_all);
       break;
     case SIMVERT_EDGE:
     case SIMVERT_FACE:
@@ -1001,6 +1014,7 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
   }
 
   int normal_tree_index = 0;
+  int tree_1d_index = 0;
   for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
     Object *ob = objects[ob_index];
     BMEditMesh *em = BKE_editmesh_from_object(ob);
@@ -1020,11 +1034,17 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
       if (cd_dvert_offset == -1) {
         continue;
       }
-      defbase_len = BLI_listbase_count(&ob->defbase);
+      defbase_len = BKE_object_defgroup_count(ob);
       if (defbase_len == 0) {
         continue;
       }
       defbase_selected = BLI_BITMAP_NEW(defbase_len, __func__);
+    }
+    else if (type == SIMVERT_CREASE) {
+      if (!CustomData_has_layer(&bm->vdata, CD_CREASE)) {
+        BLI_kdtree_1d_insert(tree_1d, tree_1d_index++, (float[1]){0.0f});
+        continue;
+      }
     }
 
     BMVert *vert; /* Mesh vertex. */
@@ -1061,6 +1081,11 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
             }
             break;
           }
+          case SIMVERT_CREASE: {
+            const float *value = CustomData_bmesh_get(&bm->vdata, vert->head.data, CD_CREASE);
+            BLI_kdtree_1d_insert(tree_1d, tree_1d_index++, value);
+            break;
+          }
         }
       }
     }
@@ -1069,8 +1094,10 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
       /* We store the names of the vertex groups, so we can select
        * vertex groups with the same name in different objects. */
 
+      const ListBase *defbase = BKE_object_defgroup_list(ob);
+
       int i = 0;
-      LISTBASE_FOREACH (bDeformGroup *, dg, &ob->defbase) {
+      LISTBASE_FOREACH (bDeformGroup *, dg, defbase) {
         if (BLI_BITMAP_TEST(defbase_selected, i)) {
           BLI_gset_add(gset, dg->name);
         }
@@ -1087,6 +1114,10 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
   }
 
   /* Remove duplicated entries. */
+  if (tree_1d != NULL) {
+    BLI_kdtree_1d_deduplicate(tree_1d);
+    BLI_kdtree_1d_balance(tree_1d);
+  }
   if (tree_3d != NULL) {
     BLI_kdtree_3d_deduplicate(tree_3d);
     BLI_kdtree_3d_balance(tree_3d);
@@ -1098,6 +1129,7 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
     BMEditMesh *em = BKE_editmesh_from_object(ob);
     BMesh *bm = em->bm;
     bool changed = false;
+    bool has_crease_layer = false;
     int cd_dvert_offset = -1;
     BLI_bitmap *defbase_selected = NULL;
     int defbase_len = 0;
@@ -1107,7 +1139,8 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
       if (cd_dvert_offset == -1) {
         continue;
       }
-      defbase_len = BLI_listbase_count(&ob->defbase);
+      const ListBase *defbase = BKE_object_defgroup_list(ob);
+      defbase_len = BLI_listbase_count(defbase);
       if (defbase_len == 0) {
         continue;
       }
@@ -1120,7 +1153,7 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
       GSetIterator gs_iter;
       GSET_ITER (gs_iter, gset) {
         const char *name = BLI_gsetIterator_getKey(&gs_iter);
-        int vgroup_id = BLI_findstringindex(&ob->defbase, name, offsetof(bDeformGroup, name));
+        int vgroup_id = BLI_findstringindex(defbase, name, offsetof(bDeformGroup, name));
         if (vgroup_id != -1) {
           BLI_BITMAP_ENABLE(defbase_selected, vgroup_id);
           found_any = true;
@@ -1129,6 +1162,17 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
       if (found_any == false) {
         MEM_freeN(defbase_selected);
         continue;
+      }
+    }
+    else if (type == SIMVERT_CREASE) {
+      has_crease_layer = CustomData_has_layer(&bm->vdata, CD_CREASE);
+      if (!has_crease_layer) {
+        /* Proceed only if we have to select all the vertices that have custom data value of 0.0f.
+         * In this case we will just select all the vertices.
+         * Otherwise continue the for loop. */
+        if (!ED_select_similar_compare_float_tree(tree_1d, 0.0f, thresh, compare)) {
+          continue;
+        }
       }
     }
 
@@ -1197,6 +1241,17 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
             }
             break;
           }
+          case SIMVERT_CREASE: {
+            if (!has_crease_layer) {
+              select = true;
+              break;
+            }
+            const float *value = CustomData_bmesh_get(&bm->vdata, vert->head.data, CD_CREASE);
+            if (ED_select_similar_compare_float_tree(tree_1d, *value, thresh, compare)) {
+              select = true;
+            }
+            break;
+          }
         }
 
         if (select) {
@@ -1212,11 +1267,17 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
 
     if (changed) {
       EDBM_selectmode_flush(em);
-      EDBM_update_generic(ob->data, false, false);
+      EDBM_update(ob->data,
+                  &(const struct EDBMUpdate_Params){
+                      .calc_looptri = false,
+                      .calc_normals = false,
+                      .is_destructive = false,
+                  });
     }
   }
 
   MEM_freeN(objects);
+  BLI_kdtree_1d_free(tree_1d);
   BLI_kdtree_3d_free(tree_3d);
   if (gset != NULL) {
     BLI_gset_free(gset, NULL);
@@ -1224,6 +1285,7 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
 
   return OPERATOR_FINISHED;
 }
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1301,6 +1363,33 @@ static const EnumPropertyItem *select_similar_type_itemf(bContext *C,
   return prop_similar_types;
 }
 
+static bool edbm_select_similar_poll_property(const bContext *UNUSED(C),
+                                              wmOperator *op,
+                                              const PropertyRNA *prop)
+{
+  const char *prop_id = RNA_property_identifier(prop);
+  const int type = RNA_enum_get(op->ptr, "type");
+
+  /* Only show threshold when it is used. */
+  if (STREQ(prop_id, "threshold")) {
+    if (!ELEM(type,
+              SIMVERT_NORMAL,
+              SIMEDGE_BEVEL,
+              SIMEDGE_CREASE,
+              SIMEDGE_DIR,
+              SIMEDGE_LENGTH,
+              SIMEDGE_FACE_ANGLE,
+              SIMFACE_AREA,
+              SIMFACE_PERIMETER,
+              SIMFACE_NORMAL,
+              SIMFACE_COPLANAR)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 void MESH_OT_select_similar(wmOperatorType *ot)
 {
   PropertyRNA *prop;
@@ -1314,6 +1403,7 @@ void MESH_OT_select_similar(wmOperatorType *ot)
   ot->invoke = WM_menu_invoke;
   ot->exec = edbm_select_similar_exec;
   ot->poll = ED_operator_editmesh;
+  ot->poll_property = edbm_select_similar_poll_property;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -1324,7 +1414,9 @@ void MESH_OT_select_similar(wmOperatorType *ot)
 
   RNA_def_enum(ot->srna, "compare", prop_similar_compare_types, SIM_CMP_EQ, "Compare", "");
 
-  RNA_def_float(ot->srna, "threshold", 0.0f, 0.0f, 1.0f, "Threshold", "", 0.0f, 1.0f);
+  prop = RNA_def_float(ot->srna, "threshold", 0.0f, 0.0f, 1.0f, "Threshold", "", 0.0f, 1.0f);
+  /* Very small values are needed sometimes, similar area of small faces for e.g: see T87823 */
+  RNA_def_property_ui_range(prop, 0.0, 1.0, 0.01, 5);
 }
 
 /** \} */

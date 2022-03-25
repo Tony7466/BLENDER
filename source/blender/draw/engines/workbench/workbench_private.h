@@ -1,27 +1,11 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Copyright 2016, Blender Foundation.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2016 Blender Foundation. */
 
 /** \file
  * \ingroup draw_engine
  */
 
-#ifndef __WORKBENCH_PRIVATE_H__
-#define __WORKBENCH_PRIVATE_H__
+#pragma once
 
 #include "BKE_studiolight.h"
 
@@ -33,6 +17,10 @@
 #include "DRW_render.h"
 
 #include "workbench_engine.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 extern struct DrawEngineType draw_engine_workbench;
 
@@ -67,6 +55,7 @@ extern struct DrawEngineType draw_engine_workbench;
 #define OBJECT_ID_PASS_ENABLED(wpd) (OBJECT_OUTLINE_ENABLED(wpd) || CURVATURE_ENABLED(wpd))
 #define NORMAL_ENCODING_ENABLED() (true)
 
+struct Object;
 struct RenderEngine;
 struct RenderLayer;
 struct rcti;
@@ -78,6 +67,13 @@ typedef enum eWORKBENCH_DataType {
 
   WORKBENCH_DATATYPE_MAX,
 } eWORKBENCH_DataType;
+
+/* Types of volume display interpolation. */
+typedef enum eWORKBENCH_VolumeInterpType {
+  WORKBENCH_VOLUME_INTERP_LINEAR = 0,
+  WORKBENCH_VOLUME_INTERP_CUBIC,
+  WORKBENCH_VOLUME_INTERP_CLOSEST,
+} eWORKBENCH_VolumeInterpType;
 
 typedef struct WORKBENCH_FramebufferList {
   struct GPUFrameBuffer *opaque_fb;
@@ -128,6 +124,9 @@ typedef struct WORKBENCH_PassList {
   struct DRWPass *transp_accum_ps;
   struct DRWPass *transp_accum_infront_ps;
 
+  struct DRWPass *transp_depth_infront_ps;
+  struct DRWPass *transp_depth_ps;
+
   struct DRWPass *shadow_ps[2];
 
   struct DRWPass *merge_infront_ps;
@@ -150,6 +149,7 @@ typedef struct WORKBENCH_PassList {
   struct DRWPass *volume_ps;
 
   struct DRWPass *aa_accum_ps;
+  struct DRWPass *aa_accum_replace_ps;
   struct DRWPass *aa_edge_ps;
   struct DRWPass *aa_weight_ps;
   struct DRWPass *aa_resolve_ps;
@@ -211,7 +211,7 @@ BLI_STATIC_ASSERT_ALIGN(WORKBENCH_UBO_Material, 16)
 typedef struct WORKBENCH_Prepass {
   /** Hash storing shading group for each Material or GPUTexture to reduce state changes. */
   struct GHash *material_hash;
-  /** First common (non-vcol and non-image colored) shading group to created subgroups. */
+  /** First common (non-vertex-color and non-image-colored) shading group to created subgroups. */
   struct DRWShadingGroup *common_shgrp;
   /** First Vertex Color shading group to created subgroups. */
   struct DRWShadingGroup *vcol_shgrp;
@@ -239,7 +239,7 @@ typedef struct WORKBENCH_PrivateData {
   /** Copy of context mode for faster access. */
   eContextObjectMode ctx_mode;
   /** Shorthand for wpd->vldata->world_ubo. */
-  struct GPUUniformBuffer *world_ubo;
+  struct GPUUniformBuf *world_ubo;
   /** Background color to clear the color buffer with. */
   float background_color[4];
 
@@ -272,8 +272,12 @@ typedef struct WORKBENCH_PrivateData {
   int taa_sample_len_previous;
   /** Current TAA sample index in [0..taa_sample_len[ range. */
   int taa_sample;
-  /** Inverse of taa_sample to divide the accumulation buffer. */
-  float taa_sample_inv;
+  /** Weight accumulated. */
+  float taa_weight_accum;
+  /** Samples weight for this iteration. */
+  float taa_weights[9];
+  /** Sum of taa_weights. */
+  float taa_weights_sum;
   /** If the view has been updated and TAA needs to be reset. */
   bool view_updated;
   /** True if the history buffer contains relevant data and false if it could contain garbage. */
@@ -310,7 +314,7 @@ typedef struct WORKBENCH_PrivateData {
   struct BLI_memblock *material_ubo_data;
   /** Current material chunk being filled by workbench_material_setup_ex(). */
   WORKBENCH_UBO_Material *material_ubo_data_curr;
-  struct GPUUniformBuffer *material_ubo_curr;
+  struct GPUUniformBuf *material_ubo_curr;
   /** Copy of txl->dummy_image_tx for faster access. */
   struct GPUTexture *dummy_image_tx;
   /** Total number of used material chunk. */
@@ -338,6 +342,9 @@ typedef struct WORKBENCH_PrivateData {
   float dof_rotation;
   float dof_ratio;
 
+  /* Camera override for rendering. */
+  struct Object *cam_original_ob;
+
   /** True if any volume needs to be rendered. */
   bool volumes_do;
   /** Convenience boolean. */
@@ -359,15 +366,15 @@ typedef struct WORKBENCH_ObjectData {
 } WORKBENCH_ObjectData;
 
 typedef struct WORKBENCH_ViewLayerData {
-  /** Depth of field sample location array.*/
-  struct GPUUniformBuffer *dof_sample_ubo;
-  /** All constant data used for a render loop.*/
-  struct GPUUniformBuffer *world_ubo;
-  /** Cavity sample location array.*/
-  struct GPUUniformBuffer *cavity_sample_ubo;
-  /** Blue noise texture used to randomize the sampling of some effects.*/
+  /** Depth of field sample location array. */
+  struct GPUUniformBuf *dof_sample_ubo;
+  /** All constant data used for a render loop. */
+  struct GPUUniformBuf *world_ubo;
+  /** Cavity sample location array. */
+  struct GPUUniformBuf *cavity_sample_ubo;
+  /** Blue noise texture used to randomize the sampling of some effects. */
   struct GPUTexture *cavity_jitter_tx;
-  /** Materials ubos allocated in a memblock for easy bookeeping. */
+  /** Materials UBO's allocated in a memblock for easy bookkeeping. */
   struct BLI_memblock *material_ubo;
   struct BLI_memblock *material_ubo_data;
   /** Number of samples for which cavity_sample_ubo is valid. */
@@ -377,7 +384,7 @@ typedef struct WORKBENCH_ViewLayerData {
 /* inline helper functions */
 BLI_INLINE bool workbench_is_specular_highlight_enabled(WORKBENCH_PrivateData *wpd)
 {
-  if ((wpd->shading.flag & V3D_SHADING_SPECULAR_HIGHLIGHT)) {
+  if (wpd->shading.flag & V3D_SHADING_SPECULAR_HIGHLIGHT) {
     if (STUDIOLIGHT_ENABLED(wpd) || MATCAP_ENABLED(wpd)) {
       return (wpd->studio_light->flag & STUDIOLIGHT_SPECULAR_HIGHLIGHT_PASS) != 0;
     }
@@ -392,12 +399,16 @@ void workbench_opaque_cache_init(WORKBENCH_Data *data);
 /* workbench_transparent.c */
 void workbench_transparent_engine_init(WORKBENCH_Data *data);
 void workbench_transparent_cache_init(WORKBENCH_Data *data);
+/**
+ * Redraw the transparent passes but with depth test
+ * to output correct outline IDs and depth.
+ */
 void workbench_transparent_draw_depth_pass(WORKBENCH_Data *data);
 
 /* workbench_shadow.c */
 void workbench_shadow_data_update(WORKBENCH_PrivateData *wpd, WORKBENCH_UBO_World *wd);
 void workbench_shadow_cache_init(WORKBENCH_Data *data);
-void workbench_shadow_cache_populate(WORKBENCH_Data *data, Object *ob, const bool has_transp_mat);
+void workbench_shadow_cache_populate(WORKBENCH_Data *data, Object *ob, bool has_transp_mat);
 
 /* workbench_shader.c */
 GPUShader *workbench_shader_opaque_get(WORKBENCH_PrivateData *wpd, eWORKBENCH_DataType data);
@@ -422,7 +433,10 @@ GPUShader *workbench_shader_outline_get(void);
 GPUShader *workbench_shader_antialiasing_accumulation_get(void);
 GPUShader *workbench_shader_antialiasing_get(int stage);
 
-GPUShader *workbench_shader_volume_get(bool slice, bool coba, bool cubic, bool smoke);
+GPUShader *workbench_shader_volume_get(bool slice,
+                                       bool coba,
+                                       eWORKBENCH_VolumeInterpType interp_type,
+                                       bool smoke);
 
 void workbench_shader_depth_of_field_get(GPUShader **prepare_sh,
                                          GPUShader **downsample_sh,
@@ -430,7 +444,6 @@ void workbench_shader_depth_of_field_get(GPUShader **prepare_sh,
                                          GPUShader **blur2_sh,
                                          GPUShader **resolve_sh);
 
-void workbench_shader_library_ensure(void);
 void workbench_shader_free(void);
 
 /* workbench_effect_antialiasing.c */
@@ -438,6 +451,9 @@ int workbench_antialiasing_sample_count_get(WORKBENCH_PrivateData *wpd);
 void workbench_antialiasing_engine_init(WORKBENCH_Data *vedata);
 void workbench_antialiasing_cache_init(WORKBENCH_Data *vedata);
 void workbench_antialiasing_view_updated(WORKBENCH_Data *vedata);
+/**
+ * Return true if render is not cached.
+ */
 bool workbench_antialiasing_setup(WORKBENCH_Data *vedata);
 void workbench_antialiasing_draw_pass(WORKBENCH_Data *vedata);
 
@@ -466,6 +482,9 @@ DRWShadingGroup *workbench_material_setup_ex(WORKBENCH_PrivateData *wpd,
                                              eV3DShadingColorType color_type,
                                              eWORKBENCH_DataType datatype,
                                              bool *r_transp);
+/**
+ * If `ima` is null, search appropriate image node but will fallback to purple texture otherwise.
+ */
 DRWShadingGroup *workbench_image_setup_ex(WORKBENCH_PrivateData *wpd,
                                           Object *ob,
                                           int mat_nr,
@@ -488,16 +507,17 @@ DRWShadingGroup *workbench_image_setup_ex(WORKBENCH_PrivateData *wpd,
   workbench_image_setup_ex(wpd, ob, mat_nr, ima, iuser, interp, WORKBENCH_DATATYPE_HAIR)
 
 /* workbench_data.c */
+void workbench_private_data_alloc(WORKBENCH_StorageList *stl);
 void workbench_private_data_init(WORKBENCH_PrivateData *wpd);
 void workbench_update_world_ubo(WORKBENCH_PrivateData *wpd);
 void workbench_update_material_ubos(WORKBENCH_PrivateData *wpd);
-struct GPUUniformBuffer *workbench_material_ubo_alloc(WORKBENCH_PrivateData *wpd);
+struct GPUUniformBuf *workbench_material_ubo_alloc(WORKBENCH_PrivateData *wpd);
 
 /* workbench_volume.c */
 void workbench_volume_engine_init(WORKBENCH_Data *vedata);
 void workbench_volume_cache_init(WORKBENCH_Data *vedata);
 void workbench_volume_cache_populate(WORKBENCH_Data *vedata,
-                                     struct Scene *UNUSED(scene),
+                                     struct Scene *scene,
                                      struct Object *ob,
                                      struct ModifierData *md,
                                      eV3DShadingColorType color_type);
@@ -509,6 +529,10 @@ void workbench_engine_init(void *ved);
 void workbench_cache_init(void *ved);
 void workbench_cache_populate(void *ved, Object *ob);
 void workbench_cache_finish(void *ved);
+/**
+ * Used by viewport rendering & final rendering.
+ * Do one render loop iteration (i.e: One TAA sample).
+ */
 void workbench_draw_sample(void *ved);
 void workbench_draw_finish(void *ved);
 
@@ -520,5 +544,6 @@ void workbench_render(void *ved,
 void workbench_render_update_passes(struct RenderEngine *engine,
                                     struct Scene *scene,
                                     struct ViewLayer *view_layer);
-
+#ifdef __cplusplus
+}
 #endif

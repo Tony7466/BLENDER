@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2014 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2014 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup wm
@@ -38,10 +22,11 @@
 #include "ED_select_utils.h"
 #include "ED_view3d.h"
 
-#include "GPU_glew.h"
+#include "GPU_framebuffer.h"
 #include "GPU_matrix.h"
 #include "GPU_select.h"
 #include "GPU_state.h"
+#include "GPU_viewport.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -92,7 +77,7 @@ enum {
 /* -------------------------------------------------------------------- */
 /** \name wmGizmoMap Selection Array API
  *
- * Just handle ``wm_gizmomap_select_array_*``, not flags or callbacks.
+ * Just handle `wm_gizmomap_select_array_*`, not flags or callbacks.
  *
  * \{ */
 
@@ -159,7 +144,6 @@ void wm_gizmomap_select_array_remove(wmGizmoMap *gzmap, wmGizmo *gz)
 
 /* -------------------------------------------------------------------- */
 /** \name wmGizmoMap
- *
  * \{ */
 
 static wmGizmoMap *wm_gizmomap_new_from_type_ex(struct wmGizmoMapType *gzmap_type,
@@ -178,9 +162,6 @@ static wmGizmoMap *wm_gizmomap_new_from_type_ex(struct wmGizmoMapType *gzmap_typ
   return gzmap;
 }
 
-/**
- * Creates a gizmo-map with all registered gizmos for that type
- */
 wmGizmoMap *WM_gizmomap_new_from_type(const struct wmGizmoMapType_Params *gzmap_params)
 {
   wmGizmoMapType *gzmap_type = WM_gizmomaptype_ensure(gzmap_params);
@@ -209,7 +190,6 @@ void wm_gizmomap_remove(wmGizmoMap *gzmap)
   MEM_freeN(gzmap);
 }
 
-/** Re-create the gizmos (use when changing theme settings). */
 void WM_gizmomap_reinit(wmGizmoMap *gzmap)
 {
   wmGizmoMapType *gzmap_type = gzmap->type;
@@ -248,9 +228,6 @@ bool WM_gizmomap_is_any_selected(const wmGizmoMap *gzmap)
   return gzmap->gzmap_context.select.len != 0;
 }
 
-/**
- * \note We could use a callback to define bounds, for now just use matrix location.
- */
 bool WM_gizmomap_minmax(const wmGizmoMap *gzmap,
                         bool UNUSED(use_hidden),
                         bool use_select,
@@ -264,11 +241,10 @@ bool WM_gizmomap_minmax(const wmGizmoMap *gzmap,
     }
     return i != 0;
   }
-  else {
-    bool ok = false;
-    BLI_assert(!"TODO");
-    return ok;
-  }
+
+  bool ok = false;
+  BLI_assert_msg(0, "TODO");
+  return ok;
 }
 
 /**
@@ -384,29 +360,29 @@ static void gizmomap_prepare_drawing(wmGizmoMap *gzmap,
 
   wmGizmo *gz_modal = gzmap->gzmap_context.modal;
 
-  /* only active gizmo needs updating */
-  if (gz_modal) {
-    if ((gz_modal->parent_gzgroup->type->flag & WM_GIZMOGROUPTYPE_DRAW_MODAL_ALL) == 0) {
-      if ((gz_modal->parent_gzgroup->hide.any == 0) &&
-          wm_gizmogroup_is_visible_in_drawstep(gz_modal->parent_gzgroup, drawstep)) {
-        if (gizmo_prepare_drawing(gzmap, gz_modal, C, draw_gizmos, drawstep)) {
-          gzmap->update_flag[drawstep] &= ~GIZMOMAP_IS_PREPARE_DRAW;
-        }
-      }
-      /* don't draw any other gizmos */
-      return;
-    }
-  }
-
   /* Allow refresh functions to ask to be refreshed again, clear before the loop below. */
   const bool do_refresh = gzmap->update_flag[drawstep] & GIZMOMAP_IS_REFRESH_CALLBACK;
   gzmap->update_flag[drawstep] &= ~GIZMOMAP_IS_REFRESH_CALLBACK;
 
   LISTBASE_FOREACH (wmGizmoGroup *, gzgroup, &gzmap->groups) {
     /* check group visibility - drawstep first to avoid unnecessary call of group poll callback */
-    if (!wm_gizmogroup_is_visible_in_drawstep(gzgroup, drawstep) ||
-        !WM_gizmo_group_type_poll(C, gzgroup->type)) {
+    if (!wm_gizmogroup_is_visible_in_drawstep(gzgroup, drawstep)) {
       continue;
+    }
+
+    if (gz_modal && (gzgroup == gz_modal->parent_gzgroup)) {
+      if (gzgroup->type->flag & WM_GIZMOGROUPTYPE_DRAW_MODAL_EXCLUDE) {
+        continue;
+      }
+    }
+    else { /* Don't poll modal gizmo since some poll functions unlink. */
+      if (!WM_gizmo_group_type_poll(C, gzgroup->type)) {
+        continue;
+      }
+      /* When modal only show other gizmo groups tagged with #WM_GIZMOGROUPTYPE_DRAW_MODAL_ALL. */
+      if (gz_modal && ((gzgroup->type->flag & WM_GIZMOGROUPTYPE_DRAW_MODAL_ALL) == 0)) {
+        continue;
+      }
     }
 
     /* Needs to be initialized on first draw. */
@@ -472,10 +448,10 @@ static void gizmos_draw_list(const wmGizmoMap *gzmap, const bContext *C, ListBas
     }
     else {
       if (is_depth) {
-        GPU_depth_test(true);
+        GPU_depth_test(GPU_DEPTH_LESS_EQUAL);
       }
       else {
-        GPU_depth_test(false);
+        GPU_depth_test(GPU_DEPTH_NONE);
       }
       is_depth_prev = is_depth;
     }
@@ -494,7 +470,7 @@ static void gizmos_draw_list(const wmGizmoMap *gzmap, const bContext *C, ListBas
   }
 
   if (is_depth_prev) {
-    GPU_depth_test(false);
+    GPU_depth_test(GPU_DEPTH_NONE);
   }
 }
 
@@ -515,8 +491,7 @@ void WM_gizmomap_draw(wmGizmoMap *gzmap,
 
 static void gizmo_draw_select_3d_loop(const bContext *C,
                                       wmGizmo **visible_gizmos,
-                                      const int visible_gizmos_len,
-                                      bool *r_use_select_bias)
+                                      const int visible_gizmos_len)
 {
 
   /* TODO(campbell): this depends on depth buffer being written to,
@@ -536,10 +511,10 @@ static void gizmo_draw_select_3d_loop(const bContext *C,
     }
     else {
       if (is_depth) {
-        GPU_depth_test(true);
+        GPU_depth_test(GPU_DEPTH_LESS_EQUAL);
       }
       else {
-        GPU_depth_test(false);
+        GPU_depth_test(GPU_DEPTH_NONE);
       }
       is_depth_prev = is_depth;
     }
@@ -552,17 +527,13 @@ static void gizmo_draw_select_3d_loop(const bContext *C,
       is_depth_skip_prev = is_depth_skip;
     }
 
-    if (gz->select_bias != 0.0) {
-      *r_use_select_bias = true;
-    }
-
     /* pass the selection id shifted by 8 bits. Last 8 bits are used for selected gizmo part id */
 
     gz->type->draw_select(C, gz, select_id << 8);
   }
 
   if (is_depth_prev) {
-    GPU_depth_test(false);
+    GPU_depth_test(GPU_DEPTH_NONE);
   }
   if (is_depth_skip_prev) {
     GPU_depth_mask(true);
@@ -573,7 +544,10 @@ static int gizmo_find_intersected_3d_intern(wmGizmo **visible_gizmos,
                                             const int visible_gizmos_len,
                                             const bContext *C,
                                             const int co[2],
-                                            const int hotspot)
+                                            const int hotspot,
+                                            const bool use_depth_test,
+                                            const bool has_3d_select_bias,
+                                            int *r_hits)
 {
   const wmWindowManager *wm = CTX_wm_manager(C);
   ScrArea *area = CTX_wm_area(C);
@@ -582,35 +556,81 @@ static int gizmo_find_intersected_3d_intern(wmGizmo **visible_gizmos,
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   rcti rect;
   /* Almost certainly overkill, but allow for many custom gizmos. */
-  GLuint buffer[MAXPICKBUF];
+  GPUSelectResult buffer[MAXPICKELEMS];
   short hits;
 
   BLI_rcti_init_pt_radius(&rect, co, hotspot);
 
-  ED_view3d_draw_setup_view(
-      wm, CTX_wm_window(C), depsgraph, CTX_data_scene(C), region, v3d, NULL, NULL, &rect);
+  /* The selection mode is assigned for the following reasons:
+   *
+   * - #GPU_SELECT_ALL: Use it to check if there is anything at the cursor location
+   *   (only ever runs once).
+   * - #GPU_SELECT_PICK_NEAREST: Use if there are more than 1 item at the cursor location,
+   *   pick the nearest one.
+   * - #GPU_SELECT_PICK_ALL: Use for the same purpose as #GPU_SELECT_PICK_NEAREST
+   *   when the selection depths need to re-ordered based on a bias.
+   * */
+  const eGPUSelectMode gpu_select_mode =
+      (use_depth_test ? (has_3d_select_bias ?
+                              /* Using select bias means the depths need to be
+                               * re-calculated based on the bias to pick the best. */
+                              GPU_SELECT_PICK_ALL :
+                              /* No bias, just pick the closest. */
+                              GPU_SELECT_PICK_NEAREST) :
+                        /* Fast-path (occlusion queries). */
+                        GPU_SELECT_ALL);
 
-  bool use_select_bias = false;
-
-  /* TODO: waiting for the GPU in the middle of the event loop for every
-   * mouse move is bad for performance, we need to find a solution to not
-   * use the GPU or draw something once. (see T61474) */
-  GPU_select_begin(buffer, ARRAY_SIZE(buffer), &rect, GPU_SELECT_NEAREST_FIRST_PASS, 0);
-  /* do the drawing */
-  gizmo_draw_select_3d_loop(C, visible_gizmos, visible_gizmos_len, &use_select_bias);
-
-  hits = GPU_select_end();
-
-  if (hits > 0) {
-    GPU_select_begin(buffer, ARRAY_SIZE(buffer), &rect, GPU_SELECT_NEAREST_SECOND_PASS, hits);
-    gizmo_draw_select_3d_loop(C, visible_gizmos, visible_gizmos_len, &use_select_bias);
-    GPU_select_end();
+  /* When switching between modes and the mouse pointer is over a gizmo, the highlight test is
+   * performed before the viewport is fully initialized (region->draw_buffer = NULL).
+   * When this is the case we should not use depth testing. */
+  GPUViewport *gpu_viewport = WM_draw_region_get_viewport(region);
+  if (use_depth_test && gpu_viewport == NULL) {
+    return -1;
   }
 
-  ED_view3d_draw_setup_view(
-      wm, CTX_wm_window(C), depsgraph, CTX_data_scene(C), region, v3d, NULL, NULL, NULL);
+  if (GPU_select_is_cached()) {
+    GPU_select_begin(buffer, ARRAY_SIZE(buffer), &rect, gpu_select_mode, 0);
+    GPU_select_cache_load_id();
+    hits = GPU_select_end();
+  }
+  else {
+    /* TODO: waiting for the GPU in the middle of the event loop for every
+     * mouse move is bad for performance, we need to find a solution to not
+     * use the GPU or draw something once. (see T61474) */
 
-  if (use_select_bias && (hits > 1)) {
+    ED_view3d_draw_setup_view(
+        wm, CTX_wm_window(C), depsgraph, CTX_data_scene(C), region, v3d, NULL, NULL, &rect);
+
+    /* There is no need to bind to the depth buffer outside this function
+     * because all future passes the will use the cached depths. */
+    GPUFrameBuffer *depth_read_fb = NULL;
+    if (use_depth_test) {
+      GPUTexture *depth_tx = GPU_viewport_depth_texture(gpu_viewport);
+      GPU_framebuffer_ensure_config(&depth_read_fb,
+                                    {
+                                        GPU_ATTACHMENT_TEXTURE(depth_tx),
+                                        GPU_ATTACHMENT_NONE,
+                                    });
+      GPU_framebuffer_bind(depth_read_fb);
+    }
+
+    GPU_select_begin(buffer, ARRAY_SIZE(buffer), &rect, gpu_select_mode, 0);
+    gizmo_draw_select_3d_loop(C, visible_gizmos, visible_gizmos_len);
+    hits = GPU_select_end();
+
+    if (use_depth_test) {
+      GPU_framebuffer_restore();
+      GPU_framebuffer_free(depth_read_fb);
+    }
+
+    ED_view3d_draw_setup_view(
+        wm, CTX_wm_window(C), depsgraph, CTX_data_scene(C), region, v3d, NULL, NULL, NULL);
+  }
+
+  /* When selection bias is needed, this function will run again with `use_depth_test` enabled. */
+  int hit_found = -1;
+
+  if (has_3d_select_bias && use_depth_test && (hits > 1)) {
     float co_direction[3];
     float co_screen[3] = {co[0], co[1], 0.0f};
     ED_view3d_win_to_vector(region, (float[2]){UNPACK2(co)}, co_direction);
@@ -619,22 +639,17 @@ static int gizmo_find_intersected_3d_intern(wmGizmo **visible_gizmos,
     const int viewport[4] = {0, 0, region->winx, region->winy};
     float co_3d_origin[3];
 
-    /* Avoid multiple calculations. */
-    struct GPUMatrixUnproject_Precalc unproj_precalc;
-    GPU_matrix_unproject_precalc(&unproj_precalc, rv3d->viewmat, rv3d->winmat, viewport);
+    GPU_matrix_unproject_3fv(co_screen, rv3d->viewinv, rv3d->winmat, viewport, co_3d_origin);
 
-    GPU_matrix_unproject_with_precalc(&unproj_precalc, co_screen, co_3d_origin);
-
-    GLuint *buf_iter = buffer;
-    int hit_found = -1;
+    GPUSelectResult *buf_iter = buffer;
     float dot_best = FLT_MAX;
 
-    for (int i = 0; i < hits; i++, buf_iter += 4) {
-      BLI_assert(buf_iter[3] != -1);
-      wmGizmo *gz = visible_gizmos[buf_iter[3] >> 8];
+    for (int i = 0; i < hits; i++, buf_iter++) {
+      BLI_assert(buf_iter->id != -1);
+      wmGizmo *gz = visible_gizmos[buf_iter->id >> 8];
       float co_3d[3];
-      co_screen[2] = int_as_float(buf_iter[1]);
-      GPU_matrix_unproject_with_precalc(&unproj_precalc, co_screen, co_3d);
+      co_screen[2] = int_as_float(buf_iter->depth);
+      GPU_matrix_unproject_3fv(co_screen, rv3d->viewinv, rv3d->winmat, viewport, co_3d);
       float select_bias = gz->select_bias;
       if ((gz->flag & WM_GIZMO_DRAW_NO_SCALE) == 0) {
         select_bias *= gz->scale_final;
@@ -643,15 +658,19 @@ static int gizmo_find_intersected_3d_intern(wmGizmo **visible_gizmos,
       const float dot_test = dot_v3v3(co_3d, co_direction) - select_bias;
       if (dot_best > dot_test) {
         dot_best = dot_test;
-        hit_found = buf_iter[3];
+        hit_found = buf_iter->id;
       }
     }
-    return hit_found;
   }
   else {
-    const GLuint *hit_near = GPU_select_buffer_near(buffer, hits);
-    return hit_near ? hit_near[3] : -1;
+    const GPUSelectResult *hit_near = GPU_select_buffer_near(buffer, hits);
+    if (hit_near) {
+      hit_found = hit_near->id;
+    }
   }
+
+  *r_hits = hits;
+  return hit_found;
 }
 
 /**
@@ -674,6 +693,7 @@ static wmGizmo *gizmo_find_intersected_3d(bContext *C,
 
   /* Search for 3D gizmo's that use the 2D callback for checking intersections. */
   bool has_3d = false;
+  bool has_3d_select_bias = false;
   {
     for (int select_id = 0; select_id < visible_gizmos_len; select_id++) {
       wmGizmo *gz = visible_gizmos[select_id];
@@ -689,6 +709,9 @@ static wmGizmo *gizmo_find_intersected_3d(bContext *C,
       }
       else if (gz->type->draw_select != NULL) {
         has_3d = true;
+        if (gz->select_bias != 0.0f) {
+          has_3d_select_bias = true;
+        }
       }
     }
   }
@@ -696,17 +719,78 @@ static wmGizmo *gizmo_find_intersected_3d(bContext *C,
   /* Search for 3D intersections if they're before 2D that have been found (if any).
    * This way we always use the first hit. */
   if (has_3d) {
+
+    /* NOTE(@campbellbarton): The selection logic here uses a fast-path that exits early
+     * where possible. This is important as this runs on cursor-motion in the 3D view-port.
+     *
+     * - First, don't use the depth buffer at all, use occlusion queries to detect any gizmos.
+     *   If there are no gizmos or only one - early exit, otherwise.
+     *
+     * - Bind the depth buffer and use selection picking logic.
+     *   This is much slower than occlusion queries (since it's reading depths while drawing).
+     *   When there is a single gizmo under the cursor (quite common), early exit, otherwise.
+     *
+     * - Perform another pass at a reduced size (see: `hotspot_radii`),
+     *   since the result depths are cached this pass is practically free.
+     *
+     * Other notes:
+     *
+     * - If any of these passes fail, use the nearest result from the previous pass.
+     *
+     * - Drawing is only ever done twice.
+     */
+
+    /* Order largest to smallest so the first pass can be used as cache for
+     * later passes (when `use_depth_test == true`). */
     const int hotspot_radii[] = {
-        3 * U.pixelsize,
-        /* This runs on mouse move, careful doing too many tests! */
         10 * U.pixelsize,
+        /* This runs on mouse move, careful doing too many tests! */
+        3 * U.pixelsize,
     };
+
+    /* Narrowing may assign zero to `hit`, allow falling back to the previous test. */
+    int hit_prev = -1;
+
+    bool use_depth_test = false;
+    bool use_depth_cache = false;
+
     for (int i = 0; i < ARRAY_SIZE(hotspot_radii); i++) {
-      hit = gizmo_find_intersected_3d_intern(
-          visible_gizmos, visible_gizmos_len_trim, C, co, hotspot_radii[i]);
-      if (hit != -1) {
+
+      if (use_depth_test && (use_depth_cache == false)) {
+        GPU_select_cache_begin();
+        use_depth_cache = true;
+      }
+
+      int hit_count;
+      hit = gizmo_find_intersected_3d_intern(visible_gizmos,
+                                             visible_gizmos_len_trim,
+                                             C,
+                                             co,
+                                             hotspot_radii[i],
+                                             use_depth_test,
+                                             has_3d_select_bias,
+                                             &hit_count);
+      /* Only continue searching when there are multiple options to narrow down. */
+      if (hit_count < 2) {
         break;
       }
+
+      /* Fast path for simple case, one item or nothing. */
+      if (use_depth_test == false) {
+        /* Restart, using depth buffer (slower). */
+        use_depth_test = true;
+        i = -1;
+      }
+      hit_prev = hit;
+    }
+    /* Narrowing the search area may yield no hits,
+     * in this case fall back to the previous search. */
+    if (hit == -1) {
+      hit = hit_prev;
+    }
+
+    if (use_depth_cache) {
+      GPU_select_cache_end();
     }
 
     if (hit != -1) {
@@ -721,10 +805,6 @@ static wmGizmo *gizmo_find_intersected_3d(bContext *C,
   return result;
 }
 
-/**
- * Try to find a gizmo under the mouse position. 2D intersections have priority over
- * 3D ones (could check for smallest screen-space distance but not needed right now).
- */
 wmGizmo *wm_gizmomap_highlight_find(wmGizmoMap *gzmap,
                                     bContext *C,
                                     const wmEvent *event,
@@ -735,20 +815,17 @@ wmGizmo *wm_gizmomap_highlight_find(wmGizmoMap *gzmap,
   BLI_buffer_declare_static(wmGizmo *, visible_3d_gizmos, BLI_BUFFER_NOP, 128);
   bool do_step[WM_GIZMOMAP_DRAWSTEP_MAX];
 
-  int mval[2] = {UNPACK2(event->mval)};
-
-  /* Ensure for drag events we use the location where the user clicked.
-   * Without this click-dragging on a gizmo can accidentally act on the wrong gizmo. */
-  if (ISTWEAK(event->type) || (event->val == KM_CLICK_DRAG)) {
-    mval[0] += event->x - event->prevclickx;
-    mval[1] += event->y - event->prevclicky;
+  int mval[2];
+  if (event->val == KM_CLICK_DRAG) {
+    WM_event_drag_start_mval(event, CTX_wm_region(C), mval);
+  }
+  else {
+    copy_v2_v2_int(mval, event->mval);
   }
 
   for (int i = 0; i < ARRAY_SIZE(do_step); i++) {
     do_step[i] = WM_gizmo_context_check_drawstep(C, i);
   }
-
-  const int event_modifier = WM_event_modifier_flag(event);
 
   LISTBASE_FOREACH (wmGizmoGroup *, gzgroup, &gzmap->groups) {
 
@@ -760,14 +837,7 @@ wmGizmo *wm_gizmomap_highlight_find(wmGizmoMap *gzmap,
     }
 
     if (WM_gizmo_group_type_poll(C, gzgroup->type)) {
-      eWM_GizmoFlagMapDrawStep step;
-      if (gzgroup->type->flag & WM_GIZMOGROUPTYPE_3D) {
-        step = WM_GIZMOMAP_DRAWSTEP_3D;
-      }
-      else {
-        step = WM_GIZMOMAP_DRAWSTEP_2D;
-      }
-
+      const eWM_GizmoFlagMapDrawStep step = WM_gizmomap_drawstep_from_gizmo_group(gzgroup);
       if (do_step[step]) {
         if (gzmap->update_flag[step] & GIZMOMAP_IS_REFRESH_CALLBACK) {
           WM_gizmo_group_refresh(C, gzgroup);
@@ -775,11 +845,11 @@ wmGizmo *wm_gizmomap_highlight_find(wmGizmoMap *gzmap,
         }
         if (step == WM_GIZMOMAP_DRAWSTEP_3D) {
           wm_gizmogroup_intersectable_gizmos_to_list(
-              wm, gzgroup, event_modifier, &visible_3d_gizmos);
+              wm, gzgroup, event->modifier, &visible_3d_gizmos);
         }
         else if (step == WM_GIZMOMAP_DRAWSTEP_2D) {
           if ((gz = wm_gizmogroup_find_intersected_gizmo(
-                   wm, gzgroup, C, event_modifier, mval, r_part))) {
+                   wm, gzgroup, C, event->modifier, mval, r_part))) {
             break;
           }
         }
@@ -867,10 +937,6 @@ void wm_gizmomaps_handled_modal_update(bContext *C, wmEvent *event, wmEventHandl
   CTX_wm_region_set(C, region);
 }
 
-/**
- * Deselect all selected gizmos in \a gzmap.
- * \return if selection has changed.
- */
 bool wm_gizmomap_deselect_all(wmGizmoMap *gzmap)
 {
   wmGizmoMapSelectState *msel = &gzmap->gzmap_context.select;
@@ -927,12 +993,6 @@ static bool wm_gizmomap_select_all_intern(bContext *C, wmGizmoMap *gzmap)
   return changed;
 }
 
-/**
- * Select/Deselect all selectable gizmos in \a gzmap.
- * \return if selection has changed.
- *
- * TODO select all by type
- */
 bool WM_gizmomap_select_all(bContext *C, wmGizmoMap *gzmap, const int action)
 {
   bool changed = false;
@@ -945,7 +1005,7 @@ bool WM_gizmomap_select_all(bContext *C, wmGizmoMap *gzmap, const int action)
       changed = wm_gizmomap_deselect_all(gzmap);
       break;
     default:
-      BLI_assert(0);
+      BLI_assert_unreachable();
       break;
   }
 
@@ -956,10 +1016,6 @@ bool WM_gizmomap_select_all(bContext *C, wmGizmoMap *gzmap, const int action)
   return changed;
 }
 
-/**
- * Prepare context for gizmo handling (but only if area/region is
- * part of screen). Version of #wm_handler_op_context for gizmos.
- */
 void wm_gizmomap_handler_context_op(bContext *C, wmEventHandler_Op *handler)
 {
   bScreen *screen = CTX_wm_screen(C);
@@ -1061,12 +1117,11 @@ wmGizmo *wm_gizmomap_highlight_get(wmGizmoMap *gzmap)
   return gzmap->gzmap_context.highlight;
 }
 
-/**
- * Caller should call exit when (enable == False).
- */
 void wm_gizmomap_modal_set(
     wmGizmoMap *gzmap, bContext *C, wmGizmo *gz, const wmEvent *event, bool enable)
 {
+  bool do_refresh = false;
+
   if (enable) {
     BLI_assert(gzmap->gzmap_context.modal == NULL);
     wmWindow *win = CTX_wm_window(C);
@@ -1085,12 +1140,15 @@ void wm_gizmomap_modal_set(
       }
     }
 
+    if (gzmap->gzmap_context.modal != gz) {
+      do_refresh = true;
+    }
     gz->state |= WM_GIZMO_STATE_MODAL;
     gzmap->gzmap_context.modal = gz;
 
     if ((gz->flag & WM_GIZMO_MOVE_CURSOR) && (event->tablet.is_motion_absolute == false)) {
       WM_cursor_grab_enable(win, WM_CURSOR_WRAP_XY, true, NULL);
-      copy_v2_v2_int(gzmap->gzmap_context.event_xy, &event->x);
+      copy_v2_v2_int(gzmap->gzmap_context.event_xy, event->xy);
       gzmap->gzmap_context.event_grabcursor = win->grabcursor;
     }
     else {
@@ -1099,7 +1157,7 @@ void wm_gizmomap_modal_set(
 
     struct wmGizmoOpElem *gzop = WM_gizmo_operator_get(gz, gz->highlight_part);
     if (gzop && gzop->type) {
-      const int retval = WM_gizmo_operator_invoke(C, gz, gzop);
+      const int retval = WM_gizmo_operator_invoke(C, gz, gzop, event);
       if ((retval & OPERATOR_RUNNING_MODAL) == 0) {
         wm_gizmomap_modal_set(gzmap, C, gz, event, false);
       }
@@ -1109,7 +1167,6 @@ void wm_gizmomap_modal_set(
         gz->state &= ~WM_GIZMO_STATE_MODAL;
         MEM_SAFE_FREE(gz->interaction_data);
       }
-      return;
     }
   }
   else {
@@ -1119,6 +1176,10 @@ void wm_gizmomap_modal_set(
     if (gz) {
       gz->state &= ~WM_GIZMO_STATE_MODAL;
       MEM_SAFE_FREE(gz->interaction_data);
+    }
+
+    if (gzmap->gzmap_context.modal != NULL) {
+      do_refresh = true;
     }
     gzmap->gzmap_context.modal = NULL;
 
@@ -1141,6 +1202,12 @@ void wm_gizmomap_modal_set(
 
     gzmap->gzmap_context.event_xy[0] = INT_MAX;
   }
+
+  if (do_refresh) {
+    const eWM_GizmoFlagMapDrawStep step = WM_gizmomap_drawstep_from_gizmo_group(
+        gz->parent_gzgroup);
+    gzmap->update_flag[step] |= GIZMOMAP_IS_REFRESH_CALLBACK;
+  }
 }
 
 wmGizmo *wm_gizmomap_modal_get(wmGizmoMap *gzmap)
@@ -1159,7 +1226,7 @@ ListBase *wm_gizmomap_groups_get(wmGizmoMap *gzmap)
   return &gzmap->groups;
 }
 
-void WM_gizmomap_message_subscribe(bContext *C,
+void WM_gizmomap_message_subscribe(const bContext *C,
                                    wmGizmoMap *gzmap,
                                    ARegion *region,
                                    struct wmMsgBus *mbus)
@@ -1185,7 +1252,6 @@ void WM_gizmomap_message_subscribe(bContext *C,
 
 /* -------------------------------------------------------------------- */
 /** \name Tooltip Handling
- *
  * \{ */
 
 struct ARegion *WM_gizmomap_tooltip_init(struct bContext *C,
@@ -1214,7 +1280,6 @@ struct ARegion *WM_gizmomap_tooltip_init(struct bContext *C,
 
 /* -------------------------------------------------------------------- */
 /** \name wmGizmoMapType
- *
  * \{ */
 
 wmGizmoMapType *WM_gizmomaptype_find(const struct wmGizmoMapType_Params *gzmap_params)
@@ -1259,14 +1324,8 @@ void wm_gizmomaptypes_free(void)
   }
 }
 
-/**
- * Initialize keymaps for all existing gizmo-groups
- */
 void wm_gizmos_keymap(wmKeyConfig *keyconf)
 {
-  /* we add this item-less keymap once and use it to group gizmo-group keymaps into it */
-  WM_keymap_ensure(keyconf, "Gizmos", 0, 0);
-
   LISTBASE_FOREACH (wmGizmoMapType *, gzmap_type, &gizmomaptypes) {
     LISTBASE_FOREACH (wmGizmoGroupTypeRef *, gzgt_ref, &gzmap_type->grouptype_refs) {
       wm_gizmogrouptype_setup_keymap(gzgt_ref->type, keyconf);
@@ -1280,7 +1339,6 @@ void wm_gizmos_keymap(wmKeyConfig *keyconf)
 
 /* -------------------------------------------------------------------- */
 /** \name Updates for Dynamic Type Registration
- *
  * \{ */
 
 void WM_gizmoconfig_update_tag_group_type_init(wmGizmoMapType *gzmap_type, wmGizmoGroupType *gzgt)
@@ -1309,10 +1367,6 @@ void WM_gizmoconfig_update_tag_group_remove(wmGizmoMap *gzmap)
   wm_gzmap_type_update_flag |= WM_GIZMOTYPE_GLOBAL_UPDATE_REMOVE;
 }
 
-/**
- * Run in case new types have been added (runs often, early exit where possible).
- * Follows #WM_keyconfig_update conventions.
- */
 void WM_gizmoconfig_update(struct Main *bmain)
 {
   if (G.background) {

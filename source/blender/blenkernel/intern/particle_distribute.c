@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2007 by Janne Karhu.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2007 by Janne Karhu. All rights reserved. */
 
 /** \file
  * \ingroup bke
@@ -40,6 +24,7 @@
 #include "DNA_particle_types.h"
 #include "DNA_scene_types.h"
 
+#include "BKE_customdata.h"
 #include "BKE_global.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.h"
@@ -79,14 +64,14 @@ static void distribute_simple_children(Scene *scene,
 {
   ChildParticle *cpa = NULL;
   int i, p;
-  int child_nbr = psys_get_child_number(scene, psys, use_render_params);
-  int totpart = psys_get_tot_child(scene, psys, use_render_params);
+  const int child_num = psys_get_child_number(scene, psys, use_render_params);
+  const int totpart = psys_get_tot_child(scene, psys, use_render_params);
   RNG *rng = BLI_rng_new_srandom(31415926 + psys->seed + psys->child_seed);
 
   alloc_child_particles(psys, totpart);
 
   cpa = psys->child;
-  for (i = 0; i < child_nbr; i++) {
+  for (i = 0; i < child_num; i++) {
     for (p = 0; p < psys->totpart; p++, cpa++) {
       float length = 2.0;
       cpa->parent = p;
@@ -141,7 +126,7 @@ static void distribute_grid(Mesh *mesh, ParticleSystem *psys)
   size[(axis + 1) % 3] = (int)ceil(delta[(axis + 1) % 3] / d);
   size[(axis + 2) % 3] = (int)ceil(delta[(axis + 2) % 3] / d);
 
-  /* float errors grrr.. */
+  /* float errors grrr. */
   size[(axis + 1) % 3] = MIN2(size[(axis + 1) % 3], res);
   size[(axis + 2) % 3] = MIN2(size[(axis + 2) % 3], res);
 
@@ -150,9 +135,9 @@ static void distribute_grid(Mesh *mesh, ParticleSystem *psys)
   size[2] = MAX2(size[2], 1);
 
   /* no full offset for flat/thin objects */
-  min[0] += d < delta[0] ? d / 2.f : delta[0] / 2.f;
-  min[1] += d < delta[1] ? d / 2.f : delta[1] / 2.f;
-  min[2] += d < delta[2] ? d / 2.f : delta[2] / 2.f;
+  min[0] += d < delta[0] ? d / 2.0f : delta[0] / 2.0f;
+  min[1] += d < delta[1] ? d / 2.0f : delta[1] / 2.0f;
+  min[2] += d < delta[2] ? d / 2.0f : delta[2] / 2.0f;
 
   for (i = 0, p = 0, pa = psys->particles; i < res; i++) {
     for (j = 0; j < res; j++) {
@@ -220,7 +205,7 @@ static void distribute_grid(Mesh *mesh, ParticleSystem *psys)
 
           pa = psys->particles + a1 * a1mul + a2 * a2mul;
           copy_v3_v3(co1, pa->fuv);
-          co1[a] -= d < delta[a] ? d / 2.f : delta[a] / 2.f;
+          co1[a] -= d < delta[a] ? d / 2.0f : delta[a] / 2.0f;
           copy_v3_v3(co2, co1);
           co2[a] += delta[a] + 0.001f * d;
           co1[a] -= 0.001f * d;
@@ -295,12 +280,12 @@ static void distribute_grid(Mesh *mesh, ParticleSystem *psys)
       for (j = 0; j < res; j++) {
         for (k = 0; k < res; k++, p++, pa++) {
           if (j % 2) {
-            pa->fuv[0] += d / 2.f;
+            pa->fuv[0] += d / 2.0f;
           }
 
           if (k % 2) {
-            pa->fuv[0] += d / 2.f;
-            pa->fuv[1] += d / 2.f;
+            pa->fuv[0] += d / 2.0f;
+            pa->fuv[1] += d / 2.0f;
           }
         }
       }
@@ -318,7 +303,7 @@ static void distribute_grid(Mesh *mesh, ParticleSystem *psys)
     }
   }
 
-  if (psys->part->grid_rand > 0.f) {
+  if (psys->part->grid_rand > 0.0f) {
     float rfac = d * psys->part->grid_rand;
     for (p = 0, pa = psys->particles; p < psys->totpart; p++, pa++) {
       if (pa->flag & PARS_UNEXIST) {
@@ -337,18 +322,18 @@ static void hammersley_create(float *out, int n, int seed, float amount)
 {
   RNG *rng;
 
-  double offs[2], t;
+  double ofs[2], t;
 
   rng = BLI_rng_new(31415926 + n + seed);
-  offs[0] = BLI_rng_get_double(rng) + (double)amount;
-  offs[1] = BLI_rng_get_double(rng) + (double)amount;
+  ofs[0] = BLI_rng_get_double(rng) + (double)amount;
+  ofs[1] = BLI_rng_get_double(rng) + (double)amount;
   BLI_rng_free(rng);
 
   for (int k = 0; k < n; k++) {
     BLI_hammersley_1d(k, &t);
 
-    out[2 * k + 0] = fmod((double)k / (double)n + offs[0], 1.0);
-    out[2 * k + 1] = fmod(t + offs[1], 1.0);
+    out[2 * k + 0] = fmod((double)k / (double)n + ofs[0], 1.0);
+    out[2 * k + 1] = fmod(t + ofs[1], 1.0);
   }
 }
 
@@ -382,7 +367,7 @@ static void init_mv_jit(float *jit, int num, int seed2, float amount)
     x -= (float)floor(x);
   }
 
-  jit2 = MEM_mallocN(12 + 2 * sizeof(float) * num, "initjit");
+  jit2 = MEM_mallocN(12 + sizeof(float[2]) * num, "initjit");
 
   for (i = 0; i < 4; i++) {
     BLI_jitterate1((float(*)[2])jit, (float(*)[2])jit2, num, rad1);
@@ -471,7 +456,7 @@ static int distribute_binary_search(const float *sum, int n, float value)
  * be sure to keep up to date if this changes */
 #define PSYS_RND_DIST_SKIP 3
 
-/* note: this function must be thread safe, for from == PART_FROM_CHILD */
+/* NOTE: this function must be thread safe, for `from == PART_FROM_CHILD`. */
 #define ONLY_WORKING_WITH_PA_VERTS 0
 static void distribute_from_verts_exec(ParticleTask *thread, ParticleData *pa, int p)
 {
@@ -480,7 +465,7 @@ static void distribute_from_verts_exec(ParticleTask *thread, ParticleData *pa, i
 
   mface = ctx->mesh->mface;
 
-  int rng_skip_tot = PSYS_RND_DIST_SKIP; /* count how many rng_* calls wont need skipping */
+  int rng_skip_tot = PSYS_RND_DIST_SKIP; /* count how many rng_* calls won't need skipping */
 
   /* TODO_PARTICLE - use original index */
   pa->num = ctx->index[p];
@@ -537,7 +522,7 @@ static void distribute_from_faces_exec(ParticleTask *thread, ParticleData *pa, i
   float randu, randv;
   int distr = ctx->distr;
   int i;
-  int rng_skip_tot = PSYS_RND_DIST_SKIP; /* count how many rng_* calls wont need skipping */
+  int rng_skip_tot = PSYS_RND_DIST_SKIP; /* count how many rng_* calls won't need skipping */
 
   MFace *mface;
 
@@ -586,7 +571,7 @@ static void distribute_from_volume_exec(ParticleTask *thread, ParticleData *pa, 
   float cur_d, min_d, randu, randv;
   int distr = ctx->distr;
   int i, intersect, tot;
-  int rng_skip_tot = PSYS_RND_DIST_SKIP; /* count how many rng_* calls wont need skipping */
+  int rng_skip_tot = PSYS_RND_DIST_SKIP; /* count how many rng_* calls won't need skipping */
 
   MFace *mface;
   MVert *mvert = mesh->mvert;
@@ -625,7 +610,8 @@ static void distribute_from_volume_exec(ParticleTask *thread, ParticleData *pa, 
   /* experimental */
   tot = mesh->totface;
 
-  psys_interpolate_face(mvert, mface, 0, 0, pa->fuv, co, nor, 0, 0, 0);
+  psys_interpolate_face(
+      mesh, mvert, BKE_mesh_vertex_normals_ensure(mesh), mface, 0, 0, pa->fuv, co, nor, 0, 0, 0);
 
   normalize_v3(nor);
   negate_v3(nor);
@@ -691,7 +677,7 @@ static void distribute_children_exec(ParticleTask *thread, ChildParticle *cpa, i
   float randu, randv;
   int cfrom = ctx->cfrom;
   int i;
-  int rng_skip_tot = PSYS_RND_DIST_SKIP; /* count how many rng_* calls wont need skipping */
+  int rng_skip_tot = PSYS_RND_DIST_SKIP; /* count how many rng_* calls won't need skipping */
 
   MFace *mf;
 
@@ -829,22 +815,20 @@ static int distribute_compare_orig_index(const void *p1, const void *p2, void *u
   if (index1 < index2) {
     return -1;
   }
-  else if (index1 == index2) {
+  if (index1 == index2) {
     /* this pointer comparison appears to make qsort stable for glibc,
      * and apparently on solaris too, makes the renders reproducible */
     if (p1 < p2) {
       return -1;
     }
-    else if (p1 == p2) {
+    if (p1 == p2) {
       return 0;
     }
-    else {
-      return 1;
-    }
-  }
-  else {
+
     return 1;
   }
+
+  return 1;
 }
 
 static void distribute_invalid(ParticleSimulationData *sim, int from)
@@ -944,7 +928,7 @@ static int psys_thread_context_init_distribute(ParticleThreadContext *ctx,
         mesh = final_mesh;
       }
       else {
-        BKE_id_copy_ex(NULL, ob->data, (ID **)&mesh, LIB_ID_COPY_LOCALIZE);
+        mesh = (Mesh *)BKE_id_copy_ex(NULL, ob->data, NULL, LIB_ID_COPY_LOCALIZE);
       }
       BKE_mesh_tessface_ensure(mesh);
 
@@ -957,6 +941,9 @@ static int psys_thread_context_init_distribute(ParticleThreadContext *ctx,
       return 0;
     }
   }
+
+  /* After this #BKE_mesh_orco_verts_transform can be used safely from multiple threads. */
+  BKE_mesh_texspace_ensure(final_mesh);
 
   /* Create trees and original coordinates if needed */
   if (from == PART_FROM_CHILD) {
@@ -992,18 +979,13 @@ static int psys_thread_context_init_distribute(ParticleThreadContext *ctx,
       mesh = final_mesh;
     }
     else {
-      BKE_id_copy_ex(NULL, ob->data, (ID **)&mesh, LIB_ID_COPY_LOCALIZE);
+      mesh = (Mesh *)BKE_id_copy_ex(NULL, ob->data, NULL, LIB_ID_COPY_LOCALIZE);
     }
 
     BKE_mesh_tessface_ensure(mesh);
 
     /* we need orco for consistent distributions */
-    if (!CustomData_has_layer(&mesh->vdata, CD_ORCO)) {
-      /* Orcos are stored in normalized 0..1 range by convention. */
-      float(*orcodata)[3] = BKE_mesh_orco_verts_get(ob);
-      BKE_mesh_orco_verts_transform(mesh, orcodata, mesh->totvert, false);
-      CustomData_add_layer(&mesh->vdata, CD_ORCO, CD_ASSIGN, orcodata, mesh->totvert);
-    }
+    BKE_mesh_orco_ensure(ob, mesh);
 
     if (from == PART_FROM_VERT) {
       MVert *mv = mesh->mvert;
@@ -1054,7 +1036,7 @@ static int psys_thread_context_init_distribute(ParticleThreadContext *ctx,
   /* Calculate weights from face areas */
   if ((part->flag & PART_EDISTR || children) && from != PART_FROM_VERT) {
     MVert *v1, *v2, *v3, *v4;
-    float totarea = 0.f, co1[3], co2[3], co3[3], co4[3];
+    float totarea = 0.0f, co1[3], co2[3], co3[3], co4[3];
     float(*orcodata)[3];
 
     orcodata = CustomData_get_layer(&mesh->vdata, CD_ORCO);
@@ -1215,7 +1197,7 @@ static int psys_thread_context_init_distribute(ParticleThreadContext *ctx,
      * It allows us to consider pos as 'midpoint between v and v+1'
      * (or 'p and p+1', depending whether we have more vertices than particles or not),
      * and avoid stumbling over float impression in element_sum.
-     * Note: moved face and volume distribution to this as well (instead of starting at zero),
+     * NOTE: moved face and volume distribution to this as well (instead of starting at zero),
      * for the same reasons, see T52682. */
     pos = (totpart < totmapped) ? 0.5 / (double)totmapped :
                                   step * 0.5; /* We choose the smaller step. */
@@ -1282,7 +1264,7 @@ static int psys_thread_context_init_distribute(ParticleThreadContext *ctx,
       hammersley_create(jit, jitlevel + 1, psys->seed, part->jitfac);
     }
     BLI_array_randomize(
-        jit, 2 * sizeof(float), jitlevel, psys->seed); /* for custom jit or even distribution */
+        jit, sizeof(float[2]), jitlevel, psys->seed); /* for custom jit or even distribution */
   }
 
   /* Setup things for threaded distribution */

@@ -1,24 +1,8 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) Blender Foundation
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright Blender Foundation. All rights reserved. */
 
 /** \file
- * \ingroup bph
+ * \ingroup sim
  */
 
 #include "MEM_guardedalloc.h"
@@ -203,7 +187,7 @@ int SIM_cloth_solver_init(Object *UNUSED(ob), ClothModifierData *clmd)
   cloth->implicit = id = SIM_mass_spring_solver_create(cloth->mvert_num, nondiag);
 
   for (i = 0; i < cloth->mvert_num; i++) {
-    SIM_mass_spring_set_vertex_mass(id, i, verts[i].mass);
+    SIM_mass_spring_set_implicit_vertex_mass(id, i, verts[i].mass);
   }
 
   for (i = 0; i < cloth->mvert_num; i++) {
@@ -213,13 +197,18 @@ int SIM_cloth_solver_init(Object *UNUSED(ob), ClothModifierData *clmd)
   return 1;
 }
 
+void SIM_mass_spring_set_implicit_vertex_mass(Implicit_Data *data, int index, float mass)
+{
+  SIM_mass_spring_set_vertex_mass(data, index, mass);
+}
+
 void SIM_cloth_solver_free(ClothModifierData *clmd)
 {
   Cloth *cloth = clmd->clothObject;
 
   if (cloth->implicit) {
     SIM_mass_spring_solver_free(cloth->implicit);
-    cloth->implicit = NULL;
+    cloth->implicit = nullptr;
   }
 }
 
@@ -277,10 +266,12 @@ static void cloth_setup_constraints(ClothModifierData *clmd)
   }
 }
 
-/* computes where the cloth would be if it were subject to perfectly stiff edges
+/**
+ * Computes where the cloth would be if it were subject to perfectly stiff edges
  * (edge distance constraints) in a lagrangian solver.  then add forces to help
  * guide the implicit solver to that state.  this function is called after
- * collisions*/
+ * collisions.
+ */
 static int UNUSED_FUNCTION(cloth_calc_helper_forces)(Object *UNUSED(ob),
                                                      ClothModifierData *clmd,
                                                      float (*initial_cos)[3],
@@ -317,8 +308,7 @@ static int UNUSED_FUNCTION(cloth_calc_helper_forces)(Object *UNUSED(ob),
       float len, c, l, vec[3];
 
       spring = (ClothSpring *)node->link;
-      if (spring->type != CLOTH_SPRING_TYPE_STRUCTURAL &&
-          spring->type != CLOTH_SPRING_TYPE_SHEAR) {
+      if (!ELEM(spring->type, CLOTH_SPRING_TYPE_STRUCTURAL, CLOTH_SPRING_TYPE_SHEAR)) {
         continue;
       }
 
@@ -353,7 +343,7 @@ static int UNUSED_FUNCTION(cloth_calc_helper_forces)(Object *UNUSED(ob),
   for (i = 0; i < cloth->mvert_num; i++, cv++) {
     float vec[3];
 
-    /*compute forces*/
+    /* Compute forces. */
     sub_v3_v3v3(vec, cos[i], cv->tx);
     mul_v3_fl(vec, cv->mass * dt * 20.0f);
     add_v3_v3(cv->tv, vec);
@@ -510,7 +500,7 @@ BLI_INLINE void cloth_calc_spring_force(ClothModifierData *clmd, ClothSpring *s)
     scaling = parms->bending + s->lin_stiffness * fabsf(parms->max_bend - parms->bending);
     kb = scaling / (20.0f * (parms->avg_spring_len + FLT_EPSILON));
 
-    // Fix for [#45084] for cloth stiffness must have cb proportional to kb
+    /* Fix for T45084 for cloth stiffness must have cb proportional to kb */
     cb = kb * parms->bending_damping;
 
     SIM_mass_spring_force_spring_bending(data, s->ij, s->kl, s->restlen, kb, cb);
@@ -529,7 +519,7 @@ BLI_INLINE void cloth_calc_spring_force(ClothModifierData *clmd, ClothSpring *s)
     scaling = s->lin_stiffness * parms->bending;
     kb = scaling / (20.0f * (parms->avg_spring_len + FLT_EPSILON));
 
-    // Fix for [#45084] for cloth stiffness must have cb proportional to kb
+    /* Fix for T45084 for cloth stiffness must have cb proportional to kb */
     cb = kb * parms->bending_damping;
 
     /* XXX assuming same restlen for ij and jk segments here,
@@ -569,7 +559,7 @@ static void hair_get_boundbox(ClothModifierData *clmd, float gmin[3], float gmax
   INIT_MINMAX(gmin, gmax);
   for (i = 0; i < mvert_num; i++) {
     float x[3];
-    SIM_mass_spring_get_motion_state(data, i, x, NULL);
+    SIM_mass_spring_get_motion_state(data, i, x, nullptr);
     DO_MINMAX(x, gmin, gmax);
   }
 }
@@ -619,14 +609,14 @@ static void cloth_calc_force(
   }
 #endif
 
-  /* cloth_calc_volume_force(clmd); */
+  // cloth_calc_volume_force(clmd);
 
 #ifdef CLOTH_FORCE_DRAG
   SIM_mass_spring_force_drag(data, drag);
 #endif
   /* handle pressure forces (making sure that this never gets computed for hair). */
-  if ((parms->flags & CLOTH_SIMSETTINGS_FLAG_PRESSURE) && (clmd->hairdata == NULL)) {
-    /* The difference in pressure between the inside and outside of the mesh.*/
+  if ((parms->flags & CLOTH_SIMSETTINGS_FLAG_PRESSURE) && (clmd->hairdata == nullptr)) {
+    /* The difference in pressure between the inside and outside of the mesh. */
     float pressure_difference = 0.0f;
     float volume_factor = 1.0f;
 
@@ -659,7 +649,7 @@ static void cloth_calc_force(
 
     /* Compute the hydrostatic pressure gradient if enabled. */
     float fluid_density = clmd->sim_parms->fluid_density * 1000; /* kg/l -> kg/m3 */
-    float *hydrostatic_pressure = NULL;
+    float *hydrostatic_pressure = nullptr;
 
     if (fabs(fluid_density) > 1e-6f) {
       float hydrostatic_vector[3];
@@ -712,7 +702,7 @@ static void cloth_calc_force(
 
   /* handle external forces like wind */
   if (effectors) {
-    bool is_not_hair = (clmd->hairdata == NULL) && (cloth->primitive_num > 0);
+    bool is_not_hair = (clmd->hairdata == nullptr) && (cloth->primitive_num > 0);
     bool has_wind = false, has_force = false;
 
     /* cache per-vertex forces to avoid redundant calculation */
@@ -727,12 +717,12 @@ static void cloth_calc_force(
       SIM_mass_spring_get_motion_state(data, i, x, v);
       pd_point_from_loc(scene, x, v, i, &epoint);
       BKE_effectors_apply(effectors,
-                          NULL,
+                          nullptr,
                           clmd->sim_parms->effector_weights,
                           &epoint,
                           forcevec[i],
                           winvec[i],
-                          NULL);
+                          nullptr);
 
       has_wind = has_wind || !is_zero_v3(winvec[i]);
       has_force = has_force || !is_zero_v3(forcevec[i]);
@@ -788,17 +778,17 @@ static void cloth_calc_force(
     MEM_freeN(winvec);
   }
 
-  // calculate spring forces
+  /* calculate spring forces */
   for (LinkNode *link = cloth->springs; link; link = link->next) {
     ClothSpring *spring = (ClothSpring *)link->link;
-    // only handle active springs
+    /* only handle active springs */
     if (!(spring->flags & CLOTH_SPRING_FLAG_DEACTIVATE)) {
       cloth_calc_spring_force(clmd, spring);
     }
   }
 }
 
-/* returns vertexes' motion state */
+/* returns vertices' motion state */
 BLI_INLINE void cloth_get_grid_location(Implicit_Data *data,
                                         float cell_scale,
                                         const float cell_offset[3],
@@ -824,7 +814,7 @@ BLI_INLINE LinkNode *hair_spring_next(LinkNode *spring_link)
       return next;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 /* XXX this is nasty: cloth meshes do not explicitly store
@@ -841,15 +831,15 @@ static LinkNode *cloth_continuum_add_hair_segments(HairGrid *grid,
                                                    LinkNode *spring_link)
 {
   Implicit_Data *data = cloth->implicit;
-  LinkNode *next_spring_link = NULL; /* return value */
+  LinkNode *next_spring_link = nullptr; /* return value */
   ClothSpring *spring1, *spring2, *spring3;
   // ClothVertex *verts = cloth->verts;
   // ClothVertex *vert3, *vert4;
   float x1[3], v1[3], x2[3], v2[3], x3[3], v3[3], x4[3], v4[3];
   float dir1[3], dir2[3], dir3[3];
 
-  spring1 = NULL;
-  spring2 = NULL;
+  spring1 = nullptr;
+  spring2 = nullptr;
   spring3 = (ClothSpring *)spring_link->link;
 
   zero_v3(x1);
@@ -895,15 +885,25 @@ static LinkNode *cloth_continuum_add_hair_segments(HairGrid *grid,
       normalize_v3(dir3);
     }
     else {
-      spring3 = NULL;
+      spring3 = nullptr;
       // vert4 = NULL;
       zero_v3(x4);
       zero_v3(v4);
       zero_v3(dir3);
     }
 
-    SIM_hair_volume_add_segment(
-        grid, x1, v1, x2, v2, x3, v3, x4, v4, spring1 ? dir1 : NULL, dir2, spring3 ? dir3 : NULL);
+    SIM_hair_volume_add_segment(grid,
+                                x1,
+                                v1,
+                                x2,
+                                v2,
+                                x3,
+                                v3,
+                                x4,
+                                v4,
+                                spring1 ? dir1 : nullptr,
+                                dir2,
+                                spring3 ? dir3 : nullptr);
   }
 
   return next_spring_link;
@@ -930,7 +930,7 @@ static void cloth_continuum_fill_grid(HairGrid *grid, Cloth *cloth)
   /* scale and offset for transforming vertex locations into grid space
    * (cell size is 0..1, gmin becomes origin)
    */
-  SIM_hair_volume_grid_geometry(grid, &cellsize, NULL, gmin, NULL);
+  SIM_hair_volume_grid_geometry(grid, &cellsize, nullptr, gmin, nullptr);
   cell_scale = cellsize > 0.0f ? 1.0f / cellsize : 0.0f;
   mul_v3_v3fl(cell_offset, gmin, cell_scale);
   negate_v3(cell_offset);
@@ -1036,18 +1036,22 @@ static void cloth_continuum_step(ClothModifierData *clmd, float dt)
 
           SIM_hair_volume_grid_interpolate(grid, x, &gdensity, gvel, gvel_smooth, NULL, NULL);
 
-          // BKE_sim_debug_data_add_circle(
-          //     clmd->debug_data, x, gdensity, 0.7, 0.3, 1,
-          //     "grid density", i, j, 3111);
+#  if 0
+          BKE_sim_debug_data_add_circle(
+              clmd->debug_data, x, gdensity, 0.7, 0.3, 1,
+              "grid density", i, j, 3111);
+#  endif
           if (!is_zero_v3(gvel) || !is_zero_v3(gvel_smooth)) {
             float dvel[3];
             sub_v3_v3v3(dvel, gvel_smooth, gvel);
-            // BKE_sim_debug_data_add_vector(
-            //     clmd->debug_data, x, gvel, 0.4, 0, 1,
-            //     "grid velocity", i, j, 3112);
-            // BKE_sim_debug_data_add_vector(
-            //     clmd->debug_data, x, gvel_smooth, 0.6, 1, 1,
-            //     "grid velocity", i, j, 3113);
+#  if 0
+            BKE_sim_debug_data_add_vector(
+                clmd->debug_data, x, gvel, 0.4, 0, 1,
+                "grid velocity", i, j, 3112);
+            BKE_sim_debug_data_add_vector(
+                clmd->debug_data, x, gvel_smooth, 0.6, 1, 1,
+                "grid velocity", i, j, 3113);
+#  endif
             BKE_sim_debug_data_add_vector(
                 clmd->debug_data, x, dvel, 0.4, 1, 0.7, "grid velocity", i, j, 3114);
 #  if 0
@@ -1058,12 +1062,14 @@ static void cloth_continuum_step(ClothModifierData *clmd, float dt)
 
               interp_v3_v3v3(col, col0, col1,
                              CLAMPIS(gdensity * clmd->sim_parms->density_strength, 0.0, 1.0));
-              // BKE_sim_debug_data_add_circle(
-              //     clmd->debug_data, x, gdensity * clmd->sim_parms->density_strength, 0, 1, 0.4,
-              //     "grid velocity", i, j, 3115);
-              // BKE_sim_debug_data_add_dot(
-              //     clmd->debug_data, x, col[0], col[1], col[2],
-              //     "grid velocity", i, j, 3115);
+#    if 0
+              BKE_sim_debug_data_add_circle(
+                  clmd->debug_data, x, gdensity * clmd->sim_parms->density_strength, 0, 1, 0.4,
+                  "grid velocity", i, j, 3115);
+              BKE_sim_debug_data_add_dot(
+                  clmd->debug_data, x, col[0], col[1], col[2],
+                  "grid velocity", i, j, 3115);
+#    endif
               BKE_sim_debug_data_add_circle(
                   clmd->debug_data, x, 0.01f, col[0], col[1], col[2], "grid velocity", i, j, 3115);
             }
@@ -1256,7 +1262,7 @@ int SIM_cloth_solve(
    * Bad design, TODO
    */
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
-  const bool is_hair = (clmd->hairdata != NULL);
+  const bool is_hair = (clmd->hairdata != nullptr);
 
   unsigned int i = 0;
   float step = 0.0f, tf = clmd->sim_parms->timescale;
@@ -1273,14 +1279,13 @@ int SIM_cloth_solve(
   BKE_sim_debug_data_clear_category("collision");
 
   if (!clmd->solver_result) {
-    clmd->solver_result = (ClothSolverResult *)MEM_callocN(sizeof(ClothSolverResult),
-                                                           "cloth solver result");
+    clmd->solver_result = MEM_cnew<ClothSolverResult>("cloth solver result");
   }
   cloth_clear_result(clmd);
 
   if (clmd->sim_parms->vgroup_mass > 0) { /* Do goal stuff. */
     for (i = 0; i < mvert_num; i++) {
-      // update velocities with constrained velocities from pinned verts
+      /* update velocities with constrained velocities from pinned verts */
       if (verts[i].flags & CLOTH_VERT_FLAG_PINNED) {
         float v[3];
         sub_v3_v3v3(v, verts[i].xconst, verts[i].xold);
@@ -1305,10 +1310,10 @@ int SIM_cloth_solve(
     /* initialize forces to zero */
     SIM_mass_spring_clear_forces(id);
 
-    // calculate forces
+    /* calculate forces */
     cloth_calc_force(scene, clmd, frame, effectors, step);
 
-    // calculate new velocity and position
+    /* calculate new velocity and position */
     SIM_mass_spring_solve_velocities(id, dt, &result);
     cloth_record_result(clmd, &result, dt);
 
@@ -1339,7 +1344,7 @@ int SIM_cloth_solve(
         }
       }
 
-      SIM_mass_spring_get_motion_state(id, i, verts[i].txold, NULL);
+      SIM_mass_spring_get_motion_state(id, i, verts[i].txold, nullptr);
     }
 
     step += dt;

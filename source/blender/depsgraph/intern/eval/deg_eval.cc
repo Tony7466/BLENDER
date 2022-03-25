@@ -1,26 +1,10 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2013 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2013 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup depsgraph
  *
- * Evaluation engine entrypoints for Depsgraph Engine.
+ * Evaluation engine entry-points for Depsgraph Engine.
  */
 
 #include "intern/eval/deg_eval.h"
@@ -41,10 +25,15 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
+#ifdef WITH_PYTHON
+#  include "BPY_extern.h"
+#endif
+
 #include "atomic_ops.h"
 
 #include "intern/depsgraph.h"
 #include "intern/depsgraph_relation.h"
+#include "intern/depsgraph_tag.h"
 #include "intern/eval/deg_eval_copy_on_write.h"
 #include "intern/eval/deg_eval_flush.h"
 #include "intern/eval/deg_eval_stats.h"
@@ -54,8 +43,7 @@
 #include "intern/node/deg_node_operation.h"
 #include "intern/node/deg_node_time.h"
 
-namespace blender {
-namespace deg {
+namespace blender::deg {
 
 namespace {
 
@@ -71,7 +59,7 @@ void schedule_children(DepsgraphEvalState *state,
 
 void schedule_node_to_pool(OperationNode *node, const int UNUSED(thread_id), TaskPool *pool)
 {
-  BLI_task_pool_push(pool, deg_task_run_func, node, false, NULL);
+  BLI_task_pool_push(pool, deg_task_run_func, node, false, nullptr);
 }
 
 /* Denotes which part of dependency graph is being evaluated. */
@@ -86,8 +74,8 @@ enum class EvaluationStage {
 
   /* Workaround for areas which can not be evaluated in threads.
    *
-   * For example, metaballs, which are iterating over all bases and are requesting dupli-lists
-   * to see whether there are metaballs inside. */
+   * For example, meta-balls, which are iterating over all bases and are requesting dupli-lists
+   * to see whether there are meta-balls inside. */
   SINGLE_THREADED_WORKAROUND,
 };
 
@@ -103,7 +91,7 @@ void evaluate_node(const DepsgraphEvalState *state, OperationNode *operation_nod
   ::Depsgraph *depsgraph = reinterpret_cast<::Depsgraph *>(state->graph);
 
   /* Sanity checks. */
-  BLI_assert(!operation_node->is_noop() && "NOOP nodes should not actually be scheduled");
+  BLI_assert_msg(!operation_node->is_noop(), "NOOP nodes should not actually be scheduled");
   /* Perform operation. */
   if (state->do_stats) {
     const double start_time = PIL_check_seconds_timer();
@@ -223,7 +211,7 @@ bool need_evaluate_operation_at_stage(DepsgraphEvalState *state,
     case EvaluationStage::SINGLE_THREADED_WORKAROUND:
       return true;
   }
-  BLI_assert(!"Unhandled evaluation stage, should never happen.");
+  BLI_assert_msg(0, "Unhandled evaluation stage, should never happen.");
   return false;
 }
 
@@ -353,18 +341,10 @@ static TaskPool *deg_evaluate_task_pool_create(DepsgraphEvalState *state)
   if (G.debug & G_DEBUG_DEPSGRAPH_NO_THREADS) {
     return BLI_task_pool_create_no_threads(state);
   }
-  else {
-    return BLI_task_pool_create_suspended(state, TASK_PRIORITY_HIGH);
-  }
+
+  return BLI_task_pool_create_suspended(state, TASK_PRIORITY_HIGH);
 }
 
-/**
- * Evaluate all nodes tagged for updating,
- * \warning This is usually done as part of main loop, but may also be
- * called from frame-change update.
- *
- * \note Time sources should be all valid!
- */
 void deg_evaluate_on_refresh(Depsgraph *graph)
 {
   /* Nothing to update, early out. */
@@ -373,6 +353,11 @@ void deg_evaluate_on_refresh(Depsgraph *graph)
   }
 
   graph->debug.begin_graph_evaluation();
+
+#ifdef WITH_PYTHON
+  /* Release the GIL so that Python drivers can be evaluated. See T91046. */
+  BPy_BEGIN_ALLOW_THREADS;
+#endif
 
   graph->is_evaluating = true;
   depsgraph_ensure_view_layer(graph);
@@ -414,8 +399,11 @@ void deg_evaluate_on_refresh(Depsgraph *graph)
   deg_graph_clear_tags(graph);
   graph->is_evaluating = false;
 
+#ifdef WITH_PYTHON
+  BPy_END_ALLOW_THREADS;
+#endif
+
   graph->debug.end_graph_evaluation();
 }
 
-}  // namespace deg
-}  // namespace blender
+}  // namespace blender::deg

@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edtransform
@@ -57,7 +41,6 @@ typedef struct TransDataMasking {
 
 /* -------------------------------------------------------------------- */
 /** \name Masking Transform Creation
- *
  * \{ */
 
 static void MaskHandleToTransData(MaskSplinePoint *point,
@@ -138,12 +121,11 @@ static void MaskPointToTransData(Scene *scene,
   invert_m3_m3(parent_inverse_matrix, parent_matrix);
 
   if (is_prop_edit || is_sel_point) {
-    int i;
 
     tdm->point = point;
     copy_m3_m3(tdm->vec, bezt->vec);
 
-    for (i = 0; i < 3; i++) {
+    for (int i = 0; i < 3; i++) {
       copy_m3_m3(tdm->parent_matrix, parent_matrix);
       copy_m3_m3(tdm->parent_inverse_matrix, parent_inverse_matrix);
 
@@ -295,7 +277,7 @@ void createTransMaskingData(bContext *C, TransInfo *t)
   for (masklay = mask->masklayers.first; masklay; masklay = masklay->next) {
     MaskSpline *spline;
 
-    if (masklay->restrictflag & (MASK_RESTRICT_VIEW | MASK_RESTRICT_SELECT)) {
+    if (masklay->visibility_flag & (MASK_HIDE_VIEW | MASK_HIDE_SELECT)) {
       continue;
     }
 
@@ -332,7 +314,7 @@ void createTransMaskingData(bContext *C, TransInfo *t)
     }
   }
 
-  /* note: in prop mode we need at least 1 selected */
+  /* NOTE: in prop mode we need at least 1 selected. */
   if (countsel == 0) {
     return;
   }
@@ -353,7 +335,7 @@ void createTransMaskingData(bContext *C, TransInfo *t)
   for (masklay = mask->masklayers.first; masklay; masklay = masklay->next) {
     MaskSpline *spline;
 
-    if (masklay->restrictflag & (MASK_RESTRICT_VIEW | MASK_RESTRICT_SELECT)) {
+    if (masklay->visibility_flag & (MASK_HIDE_VIEW | MASK_HIDE_SELECT)) {
       continue;
     }
 
@@ -401,7 +383,6 @@ void createTransMaskingData(bContext *C, TransInfo *t)
 
 /* -------------------------------------------------------------------- */
 /** \name Recalc TransData Masking
- *
  * \{ */
 
 static void flushTransMasking(TransInfo *t)
@@ -475,15 +456,10 @@ void special_aftertrans_update__mask(bContext *C, TransInfo *t)
   }
 
   if (t->scene->nodetree) {
-    /* tracks can be used for stabilization nodes,
-     * flush update for such nodes */
-    // if (nodeUpdateID(t->scene->nodetree, &mask->id))
-    {
-      WM_event_add_notifier(C, NC_MASK | ND_DATA, &mask->id);
-    }
+    WM_event_add_notifier(C, NC_MASK | ND_DATA, &mask->id);
   }
 
-  /* TODO - dont key all masks... */
+  /* TODO: don't key all masks. */
   if (IS_AUTOKEY_ON(t->scene)) {
     Scene *scene = t->scene;
 

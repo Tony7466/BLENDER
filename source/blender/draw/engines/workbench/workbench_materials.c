@@ -1,20 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Copyright 2018, Blender Foundation.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2018 Blender Foundation. */
 
 /** \file
  * \ingroup draw_engine
@@ -33,7 +18,7 @@
 #include "DNA_mesh_types.h"
 #include "DNA_node_types.h"
 
-#include "GPU_uniformbuffer.h"
+#include "GPU_uniform_buffer.h"
 
 #include "ED_uvedit.h"
 
@@ -60,7 +45,7 @@ void workbench_material_ubo_data(WORKBENCH_PrivateData *wpd,
         hash = (hash * 13) ^ BLI_ghashutil_strhash_p_murmur(ob->id.lib->filepath);
       }
       float hue = BLI_hash_int_01(hash);
-      float hsv[3] = {hue, HSV_SATURATION, HSV_VALUE};
+      const float hsv[3] = {hue, HSV_SATURATION, HSV_VALUE};
       hsv_to_rgb_v(hsv, data->base_color);
       break;
     }
@@ -76,7 +61,7 @@ void workbench_material_ubo_data(WORKBENCH_PrivateData *wpd,
         alpha *= mat->a;
         copy_v3_v3(data->base_color, &mat->r);
         metallic = mat->metallic;
-        roughness = sqrtf(mat->roughness); /* Remap to disney roughness. */
+        roughness = sqrtf(mat->roughness); /* Remap to Disney roughness. */
       }
       else {
         copy_v3_fl(data->base_color, 0.8f);
@@ -93,7 +78,7 @@ void workbench_material_ubo_data(WORKBENCH_PrivateData *wpd,
 /* Return correct material or empty default material if slot is empty. */
 BLI_INLINE Material *workbench_object_material_get(Object *ob, int mat_nr)
 {
-  Material *ma = BKE_object_material_get(ob, mat_nr);
+  Material *ma = BKE_object_material_get_eval(ob, mat_nr);
   if (ma == NULL) {
     ma = BKE_material_default_empty();
   }
@@ -126,7 +111,7 @@ BLI_INLINE void workbench_material_get_image(
         break;
       }
       default:
-        BLI_assert(!"Node type not supported by workbench");
+        BLI_assert_msg(0, "Node type not supported by workbench");
     }
   }
 }
@@ -198,7 +183,7 @@ DRWShadingGroup *workbench_material_setup_ex(WORKBENCH_PrivateData *wpd,
       }
 
       DRWShadingGroup **grp_mat = NULL;
-      /* A hashmap stores material shgroups to pack all similar drawcalls together. */
+      /* A hash-map stores material shgroups to pack all similar drawcalls together. */
       if (BLI_ghash_ensure_p(prepass->material_hash, ma, (void ***)&grp_mat)) {
         return *grp_mat;
       }
@@ -210,7 +195,7 @@ DRWShadingGroup *workbench_material_setup_ex(WORKBENCH_PrivateData *wpd,
 
       DRWShadingGroup *grp = prepass->common_shgrp;
       *grp_mat = grp = DRW_shgroup_create_sub(grp);
-      DRW_shgroup_uniform_block(grp, "material_block", wpd->material_ubo_curr);
+      DRW_shgroup_uniform_block(grp, "materials_data", wpd->material_ubo_curr);
       DRW_shgroup_uniform_int_copy(grp, "materialIndex", mat_id);
       return grp;
     }
@@ -231,20 +216,19 @@ DRWShadingGroup *workbench_material_setup_ex(WORKBENCH_PrivateData *wpd,
       workbench_material_ubo_data(wpd, ob, NULL, &wpd->material_ubo_data_curr[mat_id], color_type);
 
       const bool transp = wpd->shading.xray_alpha < 1.0f || ob->color[3] < 1.0f;
-      DRWShadingGroup *grp = wpd->prepass[transp][infront][datatype].common_shgrp;
+      DRWShadingGroup **grp = &wpd->prepass[transp][infront][datatype].common_shgrp;
       if (resource_changed) {
-        grp = DRW_shgroup_create_sub(grp);
-        DRW_shgroup_uniform_block(grp, "material_block", wpd->material_ubo_curr);
+        *grp = DRW_shgroup_create_sub(*grp);
+        DRW_shgroup_uniform_block(*grp, "materials_data", wpd->material_ubo_curr);
       }
       if (r_transp && transp) {
         *r_transp = true;
       }
-      return grp;
+      return *grp;
     }
   }
 }
 
-/* If ima is null, search appropriate image node but will fallback to purple texture otherwise. */
 DRWShadingGroup *workbench_image_setup_ex(WORKBENCH_PrivateData *wpd,
                                           Object *ob,
                                           int mat_nr,
@@ -261,11 +245,11 @@ DRWShadingGroup *workbench_image_setup_ex(WORKBENCH_PrivateData *wpd,
 
   if (ima) {
     if (ima->source == IMA_SRC_TILED) {
-      tex = GPU_texture_from_blender(ima, iuser, NULL, GL_TEXTURE_2D_ARRAY);
-      tex_tile_data = GPU_texture_from_blender(ima, iuser, NULL, GL_TEXTURE_1D_ARRAY);
+      tex = BKE_image_get_gpu_tiles(ima, iuser, NULL);
+      tex_tile_data = BKE_image_get_gpu_tilemap(ima, iuser, NULL);
     }
     else {
-      tex = GPU_texture_from_blender(ima, iuser, NULL, GL_TEXTURE_2D);
+      tex = BKE_image_get_gpu_texture(ima, iuser, NULL);
     }
   }
 
@@ -278,7 +262,7 @@ DRWShadingGroup *workbench_image_setup_ex(WORKBENCH_PrivateData *wpd,
   WORKBENCH_Prepass *prepass = &wpd->prepass[transp][infront][datatype];
 
   DRWShadingGroup **grp_tex = NULL;
-  /* A hashmap stores image shgroups to pack all similar drawcalls together. */
+  /* A hash-map stores image shgroups to pack all similar drawcalls together. */
   if (BLI_ghash_ensure_p(prepass->material_hash, tex, (void ***)&grp_tex)) {
     return *grp_tex;
   }
@@ -294,5 +278,6 @@ DRWShadingGroup *workbench_image_setup_ex(WORKBENCH_PrivateData *wpd,
     DRW_shgroup_uniform_texture_ex(grp, "imageTexture", tex, sampler);
   }
   DRW_shgroup_uniform_bool_copy(grp, "imagePremult", (ima && ima->alpha_mode == IMA_ALPHA_PREMUL));
+  DRW_shgroup_uniform_float_copy(grp, "imageTransparencyCutoff", 0.1f);
   return grp;
 }

@@ -1,25 +1,10 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
  */
 
-#ifndef __RNA_INTERNAL_TYPES_H__
-#define __RNA_INTERNAL_TYPES_H__
+#pragma once
 
 #include "DNA_listBase.h"
 
@@ -43,19 +28,25 @@ struct bContext;
 
 typedef struct IDProperty IDProperty;
 
-/* store local properties here */
-#define RNA_IDP_UI "_RNA_UI"
-
 /* Function Callbacks */
 
-typedef void (*UpdateFunc)(struct Main *main, struct Scene *scene, struct PointerRNA *ptr);
+/** Update callback for an RNA property.
+ *
+ *  \note This is NOT called automatically when writing into the property, it needs to be called
+ * manually (through #RNA_property_update or #RNA_property_update_main) when needed.
+ *
+ *  \param bmain: the Main data-base to which `ptr` data belongs.
+ *  \param active_scene: The current active scene (may be NULL in some cases).
+ *  \param ptr: The RNA pointer data to update. */
+typedef void (*UpdateFunc)(struct Main *bmain, struct Scene *active_scene, struct PointerRNA *ptr);
 typedef void (*ContextPropUpdateFunc)(struct bContext *C,
                                       struct PointerRNA *ptr,
                                       struct PropertyRNA *prop);
 typedef void (*ContextUpdateFunc)(struct bContext *C, struct PointerRNA *ptr);
+
 typedef int (*EditableFunc)(struct PointerRNA *ptr, const char **r_info);
 typedef int (*ItemEditableFunc)(struct PointerRNA *ptr, int index);
-typedef struct IDProperty *(*IDPropertiesFunc)(struct PointerRNA *ptr, bool create);
+typedef struct IDProperty **(*IDPropertiesFunc)(struct PointerRNA *ptr);
 typedef struct StructRNA *(*StructRefineFunc)(struct PointerRNA *ptr);
 typedef char *(*StructPathFunc)(struct PointerRNA *ptr);
 
@@ -206,11 +197,11 @@ typedef struct PropertyRNAOrID {
 typedef int (*RNAPropOverrideDiff)(struct Main *bmain,
                                    struct PropertyRNAOrID *prop_a,
                                    struct PropertyRNAOrID *prop_b,
-                                   const int mode,
+                                   int mode,
                                    struct IDOverrideLibrary *override,
                                    const char *rna_path,
-                                   const size_t rna_path_len,
-                                   const int flags,
+                                   size_t rna_path_len,
+                                   int flags,
                                    bool *r_override_changed);
 
 /**
@@ -230,9 +221,9 @@ typedef bool (*RNAPropOverrideStore)(struct Main *bmain,
                                      struct PropertyRNA *prop_local,
                                      struct PropertyRNA *prop_reference,
                                      struct PropertyRNA *prop_storage,
-                                     const int len_local,
-                                     const int len_reference,
-                                     const int len_storage,
+                                     int len_local,
+                                     int len_reference,
+                                     int len_storage,
                                      struct IDOverrideLibraryPropertyOperation *opop);
 
 /**
@@ -249,9 +240,9 @@ typedef bool (*RNAPropOverrideApply)(struct Main *bmain,
                                      struct PropertyRNA *prop_dst,
                                      struct PropertyRNA *prop_src,
                                      struct PropertyRNA *prop_storage,
-                                     const int len_dst,
-                                     const int len_src,
-                                     const int len_storage,
+                                     int len_dst,
+                                     int len_src,
+                                     int len_storage,
                                      struct PointerRNA *ptr_item_dst,
                                      struct PointerRNA *ptr_item_src,
                                      struct PointerRNA *ptr_item_storage,
@@ -281,7 +272,7 @@ struct FunctionRNA {
   CallFunc call;
 
   /* parameter for the return value
-   * note: this is only the C return value, rna functions can have multiple return values */
+   * NOTE: this is only the C return value, rna functions can have multiple return values. */
   PropertyRNA *c_ret;
 };
 
@@ -321,7 +312,7 @@ struct PropertyRNA {
   PropArrayLengthGetFunc getlength;
   /* dimension of array */
   unsigned int arraydimension;
-  /* array lengths lengths for all dimensions (when arraydimension > 0) */
+  /* Array lengths for all dimensions (when `arraydimension > 0`). */
   unsigned int arraylength[RNA_MAX_ARRAY_DIMENSION];
   unsigned int totarraylength;
 
@@ -401,6 +392,7 @@ typedef struct IntPropertyRNA {
   PropIntArraySetFuncEx setarray_ex;
   PropIntRangeFuncEx range_ex;
 
+  PropertyScaleType ui_scale_type;
   int softmin, softmax;
   int hardmin, hardmax;
   int step;
@@ -424,6 +416,7 @@ typedef struct FloatPropertyRNA {
   PropFloatArraySetFuncEx setarray_ex;
   PropFloatRangeFuncEx range_ex;
 
+  PropertyScaleType ui_scale_type;
   float softmin, softmax;
   float hardmin, hardmax;
   float step;
@@ -454,11 +447,10 @@ typedef struct EnumPropertyRNA {
 
   PropEnumGetFunc get;
   PropEnumSetFunc set;
-  PropEnumItemFunc itemf;
+  PropEnumItemFunc item_fn;
 
   PropEnumGetFuncEx get_ex;
   PropEnumSetFuncEx set_ex;
-  void *py_data; /* store py callback here */
 
   const EnumPropertyItem *item;
   int totitem;
@@ -472,7 +464,7 @@ typedef struct PointerPropertyRNA {
 
   PropPointerGetFunc get;
   PropPointerSetFunc set;
-  PropPointerTypeFunc typef;
+  PropPointerTypeFunc type_fn;
   /** unlike operators, 'set' can still run if poll fails, used for filtering display. */
   PropPointerPollFunc poll;
 
@@ -546,9 +538,20 @@ struct StructRNA {
   /* function to register/unregister subclasses */
   StructRegisterFunc reg;
   StructUnregisterFunc unreg;
+  /**
+   * Optionally support reusing Python instances for this type.
+   *
+   * Without this, an operator class created for #wmOperatorType.invoke (for example)
+   * would have a different instance passed to the #wmOperatorType.modal callback.
+   * So any variables assigned to `self` from Python would not be available to other callbacks.
+   *
+   * Being able to access the instance also has the advantage that we can invalidate
+   * the Python instance when the data has been removed, see: #BPY_DECREF_RNA_INVALIDATE
+   * so accessing the variables from Python raises an exception instead of crashing.
+   */
   StructInstanceFunc instance;
 
-  /* callback to get id properties */
+  /** Return the location of the struct's pointer to the root group IDProperty. */
   IDPropertiesFunc idproperties;
 
   /* functions of this struct */
@@ -569,5 +572,3 @@ struct BlenderRNA {
 };
 
 #define CONTAINER_RNA_ID(cont) (*(const char **)(((ContainerRNA *)(cont)) + 1))
-
-#endif /* __RNA_INTERNAL_TYPES_H__ */

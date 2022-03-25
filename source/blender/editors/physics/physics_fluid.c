@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) Blender Foundation
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup edphys
@@ -33,21 +17,17 @@
 #include "DNA_object_types.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 #include "BLI_path_util.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
 #include "BKE_context.h"
-#include "BKE_customdata.h"
 #include "BKE_fluid.h"
 #include "BKE_global.h"
 #include "BKE_main.h"
 #include "BKE_modifier.h"
-#include "BKE_object.h"
 #include "BKE_report.h"
-#include "BKE_scene.h"
 #include "BKE_screen.h"
 
 #include "DEG_depsgraph.h"
@@ -59,11 +39,9 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
-#include "manta_fluid_API.h"
-#include "physics_intern.h"  // own include
+#include "physics_intern.h" /* own include */
 
 #include "DNA_fluid_types.h"
-#include "DNA_mesh_types.h"
 #include "DNA_scene_types.h"
 
 #define FLUID_JOB_BAKE_ALL "FLUID_OT_bake_all"
@@ -409,8 +387,10 @@ static void fluid_bake_startjob(void *customdata, short *stop, short *do_update,
     BLI_path_join(
         temp_dir, sizeof(temp_dir), fds->cache_directory, FLUID_DOMAIN_DIR_PARTICLES, NULL);
     BLI_path_abs(temp_dir, relbase);
-    BLI_dir_create_recursive(
-        temp_dir); /* Create 'particles' subdir if it does not exist already */
+
+    /* Create 'particles' subdir if it does not exist already */
+    BLI_dir_create_recursive(temp_dir);
+
     fds->cache_flag &= ~(FLUID_DOMAIN_BAKED_PARTICLES | FLUID_DOMAIN_OUTDATED_PARTICLES);
     fds->cache_flag |= FLUID_DOMAIN_BAKING_PARTICLES;
     job->pause_frame = &fds->cache_frame_pause_particles;

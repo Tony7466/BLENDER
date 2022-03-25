@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pythonintern
@@ -22,9 +8,13 @@
  * A script writer should never directly access this module.
  */
 
+/* Future-proof, See https://docs.python.org/3/c-api/arg.html#strings-and-buffers */
+#define PY_SSIZE_T_CLEAN
+
 #include <Python.h>
 
 #include "BLI_string.h"
+#include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_appdir.h"
@@ -33,7 +23,10 @@
 #include "BKE_global.h" /* XXX, G_MAIN only */
 
 #include "RNA_access.h"
+#include "RNA_prototypes.h"
 #include "RNA_types.h"
+
+#include "GPU_state.h"
 
 #include "bpy.h"
 #include "bpy_app.h"
@@ -42,6 +35,7 @@
 #include "bpy_operator.h"
 #include "bpy_props.h"
 #include "bpy_rna.h"
+#include "bpy_rna_data.h"
 #include "bpy_rna_gizmo.h"
 #include "bpy_rna_id_collection.h"
 #include "bpy_rna_types_capi.h"
@@ -53,6 +47,7 @@
 
 /* external util modules */
 #include "../generic/idprop_py_api.h"
+#include "../generic/idprop_py_ui_api.h"
 #include "bpy_msgbus.h"
 
 #ifdef WITH_FREESTYLE
@@ -86,10 +81,13 @@ static PyObject *bpy_script_paths(PyObject *UNUSED(self))
   return ret;
 }
 
-static bool bpy_blend_paths_visit_cb(void *userdata, char *UNUSED(path_dst), const char *path_src)
+static bool bpy_blend_foreach_path_cb(BPathForeachPathData *bpath_data,
+                                      char *UNUSED(path_dst),
+                                      const char *path_src)
 {
-  PyList_APPEND((PyObject *)userdata, PyC_UnicodeFromByte(path_src));
-  return false; /* never edits the path */
+  PyObject *py_list = bpath_data->user_data;
+  PyList_APPEND(py_list, PyC_UnicodeFromByte(path_src));
+  return false; /* Never edits the path. */
 }
 
 PyDoc_STRVAR(bpy_blend_paths_doc,
@@ -107,7 +105,7 @@ PyDoc_STRVAR(bpy_blend_paths_doc,
              "   :rtype: list of strings\n");
 static PyObject *bpy_blend_paths(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
 {
-  int flag = 0;
+  eBPathForeachFlag flag = 0;
   PyObject *list;
 
   bool absolute = false;
@@ -115,7 +113,7 @@ static PyObject *bpy_blend_paths(PyObject *UNUSED(self), PyObject *args, PyObjec
   bool local = false;
 
   static const char *_keywords[] = {"absolute", "packed", "local", NULL};
-  static _PyArg_Parser _parser = {"|O&O&O&:blend_paths", _keywords, 0};
+  static _PyArg_Parser _parser = {"|$O&O&O&:blend_paths", _keywords, 0};
   if (!_PyArg_ParseTupleAndKeywordsFast(args,
                                         kw,
                                         &_parser,
@@ -129,23 +127,74 @@ static PyObject *bpy_blend_paths(PyObject *UNUSED(self), PyObject *args, PyObjec
   }
 
   if (absolute) {
-    flag |= BKE_BPATH_TRAVERSE_ABS;
+    flag |= BKE_BPATH_FOREACH_PATH_ABSOLUTE;
   }
   if (!packed) {
-    flag |= BKE_BPATH_TRAVERSE_SKIP_PACKED;
+    flag |= BKE_BPATH_FOREACH_PATH_SKIP_PACKED;
   }
   if (local) {
-    flag |= BKE_BPATH_TRAVERSE_SKIP_LIBRARY;
+    flag |= BKE_BPATH_FOREACH_PATH_SKIP_LINKED;
   }
 
   list = PyList_New(0);
 
-  BKE_bpath_traverse_main(G_MAIN, bpy_blend_paths_visit_cb, flag, (void *)list);
+  BKE_bpath_foreach_path_main(&(BPathForeachPathData){
+      .bmain = G_MAIN,
+      .callback_function = bpy_blend_foreach_path_cb,
+      .flag = flag,
+      .user_data = list,
+  });
 
   return list;
 }
 
-// PyDoc_STRVAR(bpy_user_resource_doc[] = // now in bpy/utils.py
+PyDoc_STRVAR(bpy_flip_name_doc,
+             ".. function:: flip_name(name, strip_digits=False)\n"
+             "\n"
+             "   Flip a name between left/right sides, useful for \n"
+             "   mirroring bone names.\n"
+             "\n"
+             "   :arg name: Bone name to flip.\n"
+             "   :type name: string\n"
+             "   :arg strip_digits: Whether to remove ``.###`` suffix.\n"
+             "   :type strip_digits: bool\n"
+             "   :return: The flipped name.\n"
+             "   :rtype: string\n");
+static PyObject *bpy_flip_name(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
+{
+  const char *name_src = NULL;
+  Py_ssize_t name_src_len;
+  bool strip_digits = false;
+
+  static const char *_keywords[] = {"", "strip_digits", NULL};
+  static _PyArg_Parser _parser = {
+      "s#" /* `name` */
+      "|$" /* Optional, keyword only arguments. */
+      "O&" /* `strip_digits` */
+      /* Name to show in the case of an error. */
+      ":flip_name",
+      _keywords,
+      0,
+  };
+  if (!_PyArg_ParseTupleAndKeywordsFast(
+          args, kw, &_parser, &name_src, &name_src_len, PyC_ParseBool, &strip_digits)) {
+    return NULL;
+  }
+
+  /* Worst case we gain one extra byte (besides null-terminator) by changing
+  "Left" to "Right", because only the first appearance of "Left" gets replaced. */
+  const size_t size = name_src_len + 2;
+  char *name_dst = PyMem_MALLOC(size);
+  const size_t name_dst_len = BLI_string_flip_side_name(name_dst, name_src, strip_digits, size);
+
+  PyObject *result = PyUnicode_FromStringAndSize(name_dst, name_dst_len);
+
+  PyMem_FREE(name_dst);
+
+  return result;
+}
+
+// PyDoc_STRVAR(bpy_user_resource_doc[] = /* now in bpy/utils.py */
 static PyObject *bpy_user_resource(PyObject *UNUSED(self), PyObject *args, PyObject *kw)
 {
   const struct PyC_StringEnumItems type_items[] = {
@@ -161,8 +210,8 @@ static PyObject *bpy_user_resource(PyObject *UNUSED(self), PyObject *args, PyObj
 
   const char *path;
 
-  static const char *_keywords[] = {"type", "subdir", NULL};
-  static _PyArg_Parser _parser = {"O&|s:user_resource", _keywords, 0};
+  static const char *_keywords[] = {"type", "path", NULL};
+  static _PyArg_Parser _parser = {"O&|$s:user_resource", _keywords, 0};
   if (!_PyArg_ParseTupleAndKeywordsFast(args, kw, &_parser, PyC_ParseStringEnum, &type, &subdir)) {
     return NULL;
   }
@@ -198,7 +247,7 @@ static PyObject *bpy_system_resource(PyObject *UNUSED(self), PyObject *args, PyO
   const char *path;
 
   static const char *_keywords[] = {"type", "path", NULL};
-  static _PyArg_Parser _parser = {"O&|s:system_resource", _keywords, 0};
+  static _PyArg_Parser _parser = {"O&|$s:system_resource", _keywords, 0};
   if (!_PyArg_ParseTupleAndKeywordsFast(args, kw, &_parser, PyC_ParseStringEnum, &type, &subdir)) {
     return NULL;
   }
@@ -236,7 +285,7 @@ static PyObject *bpy_resource_path(PyObject *UNUSED(self), PyObject *args, PyObj
   const char *path;
 
   static const char *_keywords[] = {"type", "major", "minor", NULL};
-  static _PyArg_Parser _parser = {"O&|ii:resource_path", _keywords, 0};
+  static _PyArg_Parser _parser = {"O&|$ii:resource_path", _keywords, 0};
   if (!_PyArg_ParseTupleAndKeywordsFast(
           args, kw, &_parser, PyC_ParseStringEnum, &type, &major, &minor)) {
     return NULL;
@@ -258,25 +307,19 @@ PyDoc_STRVAR(bpy_escape_identifier_doc,
              "   :rtype: string\n");
 static PyObject *bpy_escape_identifier(PyObject *UNUSED(self), PyObject *value)
 {
-  const char *value_str;
   Py_ssize_t value_str_len;
-
-  char *value_escape_str;
-  Py_ssize_t value_escape_str_len;
-  PyObject *value_escape;
-  size_t size;
-
-  value_str = _PyUnicode_AsStringAndSize(value, &value_str_len);
+  const char *value_str = PyUnicode_AsUTF8AndSize(value, &value_str_len);
 
   if (value_str == NULL) {
     PyErr_SetString(PyExc_TypeError, "expected a string");
     return NULL;
   }
 
-  size = (value_str_len * 2) + 1;
-  value_escape_str = PyMem_MALLOC(size);
-  value_escape_str_len = BLI_strescape(value_escape_str, value_str, size);
+  const size_t size = (value_str_len * 2) + 1;
+  char *value_escape_str = PyMem_MALLOC(size);
+  const Py_ssize_t value_escape_str_len = BLI_str_escape(value_escape_str, value_str, size);
 
+  PyObject *value_escape;
   if (value_escape_str_len == value_str_len) {
     Py_INCREF(value);
     value_escape = value;
@@ -290,6 +333,44 @@ static PyObject *bpy_escape_identifier(PyObject *UNUSED(self), PyObject *value)
   return value_escape;
 }
 
+PyDoc_STRVAR(bpy_unescape_identifier_doc,
+             ".. function:: unescape_identifier(string)\n"
+             "\n"
+             "   Simple string un-escape function used for animation paths.\n"
+             "   This performs the reverse of `escape_identifier`.\n"
+             "\n"
+             "   :arg string: text\n"
+             "   :type string: string\n"
+             "   :return: The un-escaped string.\n"
+             "   :rtype: string\n");
+static PyObject *bpy_unescape_identifier(PyObject *UNUSED(self), PyObject *value)
+{
+  Py_ssize_t value_str_len;
+  const char *value_str = PyUnicode_AsUTF8AndSize(value, &value_str_len);
+
+  if (value_str == NULL) {
+    PyErr_SetString(PyExc_TypeError, "expected a string");
+    return NULL;
+  }
+
+  const size_t size = value_str_len + 1;
+  char *value_unescape_str = PyMem_MALLOC(size);
+  const Py_ssize_t value_unescape_str_len = BLI_str_unescape(value_unescape_str, value_str, size);
+
+  PyObject *value_unescape;
+  if (value_unescape_str_len == value_str_len) {
+    Py_INCREF(value);
+    value_unescape = value;
+  }
+  else {
+    value_unescape = PyUnicode_FromStringAndSize(value_unescape_str, value_unescape_str_len);
+  }
+
+  PyMem_FREE(value_unescape_str);
+
+  return value_unescape;
+}
+
 static PyMethodDef meth_bpy_script_paths = {
     "script_paths",
     (PyCFunction)bpy_script_paths,
@@ -301,6 +382,12 @@ static PyMethodDef meth_bpy_blend_paths = {
     (PyCFunction)bpy_blend_paths,
     METH_VARARGS | METH_KEYWORDS,
     bpy_blend_paths_doc,
+};
+static PyMethodDef meth_bpy_flip_name = {
+    "flip_name",
+    (PyCFunction)bpy_flip_name,
+    METH_VARARGS | METH_KEYWORDS,
+    bpy_flip_name_doc,
 };
 static PyMethodDef meth_bpy_user_resource = {
     "user_resource",
@@ -326,10 +413,19 @@ static PyMethodDef meth_bpy_escape_identifier = {
     METH_O,
     bpy_escape_identifier_doc,
 };
+static PyMethodDef meth_bpy_unescape_identifier = {
+    "unescape_identifier",
+    (PyCFunction)bpy_unescape_identifier,
+    METH_O,
+    bpy_unescape_identifier_doc,
+};
 
 static PyObject *bpy_import_test(const char *modname)
 {
   PyObject *mod = PyImport_ImportModuleLevel(modname, NULL, NULL, NULL, 0);
+
+  GPU_bgl_end();
+
   if (mod) {
     Py_DECREF(mod);
   }
@@ -341,10 +437,7 @@ static PyObject *bpy_import_test(const char *modname)
   return mod;
 }
 
-/******************************************************************************
- * Description: Creates the bpy module and adds it to sys.modules for importing
- ******************************************************************************/
-void BPy_init_modules(void)
+void BPy_init_modules(struct bContext *C)
 {
   PointerRNA ctx_ptr;
   PyObject *mod;
@@ -359,10 +452,11 @@ void BPy_init_modules(void)
     Py_DECREF(py_modpath);
   }
   else {
-    printf("bpy: couldn't find 'scripts/modules', blender probably wont start.\n");
+    printf("bpy: couldn't find 'scripts/modules', blender probably won't start.\n");
   }
   /* stand alone utility modules not related to blender directly */
   IDProp_Init_Types(); /* not actually a submodule, just types */
+  IDPropertyUIData_Init_Types();
 #ifdef WITH_FREESTYLE
   Freestyle_Init();
 #endif
@@ -373,14 +467,13 @@ void BPy_init_modules(void)
   PyDict_SetItemString(PyImport_GetModuleDict(), "_bpy", mod);
   Py_DECREF(mod);
 
-  /* run first, initializes rna types */
-  BPY_rna_init();
-
   /* needs to be first so bpy_types can run */
   PyModule_AddObject(mod, "types", BPY_rna_types());
 
   /* needs to be first so bpy_types can run */
   BPY_library_load_type_ready();
+
+  BPY_rna_data_context_type_ready();
 
   BPY_rna_gizmo_module(mod);
 
@@ -395,8 +488,7 @@ void BPy_init_modules(void)
   PyModule_AddObject(mod, "_utils_previews", BPY_utils_previews_module());
   PyModule_AddObject(mod, "msgbus", BPY_msgbus_module());
 
-  /* bpy context */
-  RNA_pointer_create(NULL, &RNA_Context, (void *)BPy_GetContext(), &ctx_ptr);
+  RNA_pointer_create(NULL, &RNA_Context, C, &ctx_ptr);
   bpy_context_module = (BPy_StructRNA *)pyrna_struct_CreatePyObject(&ctx_ptr);
   /* odd that this is needed, 1 ref on creation and another for the module
    * but without we get a crash on exit */
@@ -425,6 +517,11 @@ void BPy_init_modules(void)
   PyModule_AddObject(mod,
                      meth_bpy_escape_identifier.ml_name,
                      (PyObject *)PyCFunction_New(&meth_bpy_escape_identifier, NULL));
+  PyModule_AddObject(mod,
+                     meth_bpy_unescape_identifier.ml_name,
+                     (PyObject *)PyCFunction_New(&meth_bpy_unescape_identifier, NULL));
+  PyModule_AddObject(
+      mod, meth_bpy_flip_name.ml_name, (PyObject *)PyCFunction_New(&meth_bpy_flip_name, NULL));
 
   /* register funcs (bpy_rna.c) */
   PyModule_AddObject(mod,

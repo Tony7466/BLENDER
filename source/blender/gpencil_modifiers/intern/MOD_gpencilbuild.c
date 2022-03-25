@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2017, Blender Foundation
- * This is a new part of Blender
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2017 Blender Foundation. */
 
 /** \file
  * \ingroup modifiers
@@ -32,6 +16,7 @@
 
 #include "BLT_translation.h"
 
+#include "DNA_defaults.h"
 #include "DNA_gpencil_modifier_types.h"
 #include "DNA_gpencil_types.h"
 #include "DNA_meshdata_types.h"
@@ -55,21 +40,14 @@
 
 #include "MOD_gpencil_modifiertypes.h"
 #include "MOD_gpencil_ui_common.h"
-#include "MOD_gpencil_util.h"
 
 static void initData(GpencilModifierData *md)
 {
   BuildGpencilModifierData *gpmd = (BuildGpencilModifierData *)md;
 
-  /* We deliberately set this range to the half the default
-   * frame-range to have an immediate effect to suggest use-cases
-   */
-  gpmd->start_frame = 1;
-  gpmd->end_frame = 125;
+  BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(gpmd, modifier));
 
-  /* Init default length of each build effect - Nothing special */
-  gpmd->start_delay = 0.0f;
-  gpmd->length = 100.0f;
+  MEMCPY_STRUCT_AFTER(gpmd, DNA_struct_default_get(BuildGpencilModifierData), modifier);
 }
 
 static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
@@ -118,9 +96,10 @@ static void gpf_clear_all_strokes(bGPDframe *gpf)
 
 /* Reduce the number of points in the stroke
  *
- * Note: This won't be called if all points are present/removed
+ * NOTE: This won't be called if all points are present/removed
  */
-static void reduce_stroke_points(bGPDstroke *gps,
+static void reduce_stroke_points(bGPdata *gpd,
+                                 bGPDstroke *gps,
                                  const int num_points,
                                  const eBuildGpencil_Transition transition)
 {
@@ -185,7 +164,7 @@ static void reduce_stroke_points(bGPDstroke *gps,
   gps->totpoints = num_points;
 
   /* Calc geometry data. */
-  BKE_gpencil_stroke_geometry_update(gps);
+  BKE_gpencil_stroke_geometry_update(gpd, gps);
 }
 
 /* --------------------------------------------- */
@@ -201,20 +180,42 @@ typedef struct tStrokeBuildDetails {
   int totpoints;
 } tStrokeBuildDetails;
 
-/* Sequential - Show strokes one after the other */
-static void build_sequential(BuildGpencilModifierData *mmd, bGPDframe *gpf, float fac)
+/* Sequential and additive - Show strokes one after the other. */
+static void build_sequential(
+    BuildGpencilModifierData *mmd, bGPdata *gpd, bGPDframe *gpf, float fac, bool additive)
 {
-  const size_t tot_strokes = BLI_listbase_count(&gpf->strokes);
+  size_t tot_strokes = BLI_listbase_count(&gpf->strokes);
+  size_t start_stroke;
   bGPDstroke *gps;
   size_t i;
 
-  /* 1) Compute proportion of time each stroke should occupy */
+  /* 1) Determine which strokes to start with & total strokes to build. */
+
+  if (additive) {
+    if (gpf->prev) {
+      start_stroke = BLI_listbase_count(&gpf->prev->strokes);
+    }
+    else {
+      start_stroke = 0;
+    }
+    if (start_stroke <= tot_strokes) {
+      tot_strokes = tot_strokes - start_stroke;
+    }
+    else {
+      start_stroke = 0;
+    }
+  }
+  else {
+    start_stroke = 0;
+  }
+
+  /* 2) Compute proportion of time each stroke should occupy */
   /* NOTE: This assumes that the total number of points won't overflow! */
   tStrokeBuildDetails *table = MEM_callocN(sizeof(tStrokeBuildDetails) * tot_strokes, __func__);
   size_t totpoints = 0;
 
-  /* 1.1) First pass - Tally up points */
-  for (gps = gpf->strokes.first, i = 0; gps; gps = gps->next, i++) {
+  /* 2.1) First pass - Tally up points */
+  for (gps = BLI_findlink(&gpf->strokes, start_stroke), i = 0; gps; gps = gps->next, i++) {
     tStrokeBuildDetails *cell = &table[i];
 
     cell->gps = gps;
@@ -223,7 +224,7 @@ static void build_sequential(BuildGpencilModifierData *mmd, bGPDframe *gpf, floa
     totpoints += cell->totpoints;
   }
 
-  /* 1.2) Second pass - Compute the overall indices for points */
+  /* 2.2) Second pass - Compute the overall indices for points */
   for (i = 0; i < tot_strokes; i++) {
     tStrokeBuildDetails *cell = &table[i];
 
@@ -236,37 +237,37 @@ static void build_sequential(BuildGpencilModifierData *mmd, bGPDframe *gpf, floa
     cell->end_idx = cell->start_idx + cell->totpoints - 1;
   }
 
-  /* 2) Determine the global indices for points that should be visible */
+  /* 3) Determine the global indices for points that should be visible */
   size_t first_visible = 0;
   size_t last_visible = 0;
 
   switch (mmd->transition) {
-    /* Show in forward order
-     *  - As fac increases, the number of visible points increases
-     */
+      /* Show in forward order
+       *  - As fac increases, the number of visible points increases
+       */
     case GP_BUILD_TRANSITION_GROW:
       first_visible = 0; /* always visible */
       last_visible = (size_t)roundf(totpoints * fac);
       break;
 
-    /* Hide in reverse order
-     *  - As fac increases, the number of points visible at the end decreases
-     */
+      /* Hide in reverse order
+       *  - As fac increases, the number of points visible at the end decreases
+       */
     case GP_BUILD_TRANSITION_SHRINK:
       first_visible = 0; /* always visible (until last point removed) */
       last_visible = (size_t)(totpoints * (1.0f - fac));
       break;
 
-    /* Hide in forward order
-     *  - As fac increases, the early points start getting hidden
-     */
+      /* Hide in forward order
+       *  - As fac increases, the early points start getting hidden
+       */
     case GP_BUILD_TRANSITION_FADE:
       first_visible = (size_t)(totpoints * fac);
       last_visible = totpoints; /* i.e. visible until the end, unless first overlaps this */
       break;
   }
 
-  /* 3) Go through all strokes, deciding which to keep, and/or how much of each to keep */
+  /* 4) Go through all strokes, deciding which to keep, and/or how much of each to keep */
   for (i = 0; i < tot_strokes; i++) {
     tStrokeBuildDetails *cell = &table[i];
 
@@ -283,12 +284,12 @@ static void build_sequential(BuildGpencilModifierData *mmd, bGPDframe *gpf, floa
       else if (first_visible > cell->start_idx) {
         /* Starts partway through this stroke */
         int num_points = cell->end_idx - first_visible;
-        reduce_stroke_points(cell->gps, num_points, mmd->transition);
+        reduce_stroke_points(gpd, cell->gps, num_points, mmd->transition);
       }
       else {
         /* Ends partway through this stroke */
         int num_points = last_visible - cell->start_idx;
-        reduce_stroke_points(cell->gps, num_points, mmd->transition);
+        reduce_stroke_points(gpd, cell->gps, num_points, mmd->transition);
       }
     }
   }
@@ -300,7 +301,10 @@ static void build_sequential(BuildGpencilModifierData *mmd, bGPDframe *gpf, floa
 /* --------------------------------------------- */
 
 /* Concurrent - Show multiple strokes at once */
-static void build_concurrent(BuildGpencilModifierData *mmd, bGPDframe *gpf, float fac)
+static void build_concurrent(BuildGpencilModifierData *mmd,
+                             bGPdata *gpd,
+                             bGPDframe *gpf,
+                             float fac)
 {
   bGPDstroke *gps, *gps_next;
   int max_points = 0;
@@ -395,18 +399,20 @@ static void build_concurrent(BuildGpencilModifierData *mmd, bGPDframe *gpf, floa
     }
     else if (num_points < gps->totpoints) {
       /* Remove some points */
-      reduce_stroke_points(gps, num_points, mmd->transition);
+      reduce_stroke_points(gpd, gps, num_points, mmd->transition);
     }
   }
 }
 
 /* --------------------------------------------- */
-static void generate_geometry(GpencilModifierData *md,
-                              Depsgraph *depsgraph,
-                              bGPDlayer *gpl,
-                              bGPDframe *gpf)
+
+static void generate_geometry(
+    GpencilModifierData *md, Depsgraph *depsgraph, bGPdata *gpd, bGPDlayer *gpl, bGPDframe *gpf)
 {
   BuildGpencilModifierData *mmd = (BuildGpencilModifierData *)md;
+  if (mmd->mode == GP_BUILD_MODE_ADDITIVE) {
+    mmd->transition = GP_BUILD_TRANSITION_GROW;
+  }
   const bool reverse = (mmd->transition != GP_BUILD_TRANSITION_GROW);
   const bool is_percentage = (mmd->flag & GP_BUILD_PERCENTAGE);
 
@@ -456,8 +462,10 @@ static void generate_geometry(GpencilModifierData *md,
   /* Compute start and end frames for the animation effect
    * By default, the upper bound is given by the "maximum length" setting
    */
-  float start_frame = gpf->framenum + mmd->start_delay;
-  float end_frame = start_frame + mmd->length;
+  float start_frame = is_percentage ? gpf->framenum : gpf->framenum + mmd->start_delay;
+  /* When use percentage don't need a limit in the upper bound, so use a maximum value for the last
+   * frame. */
+  float end_frame = is_percentage ? start_frame + 9999 : start_frame + mmd->length;
 
   if (gpf->next) {
     /* Use the next frame or upper bound as end frame, whichever is lower/closer */
@@ -484,7 +492,7 @@ static void generate_geometry(GpencilModifierData *md,
     /* Early exit */
     return;
   }
-  else if (ctime >= end_frame) {
+  if (ctime >= end_frame) {
     /* Past End - Animation finished. Display final result. */
     if (reverse) {
       /* 1) Reverse = Start with all, end with nothing.
@@ -509,11 +517,15 @@ static void generate_geometry(GpencilModifierData *md,
   /* Time management mode */
   switch (mmd->mode) {
     case GP_BUILD_MODE_SEQUENTIAL:
-      build_sequential(mmd, gpf, fac);
+      build_sequential(mmd, gpd, gpf, fac, false);
       break;
 
     case GP_BUILD_MODE_CONCURRENT:
-      build_concurrent(mmd, gpf, fac);
+      build_concurrent(mmd, gpd, gpf, fac);
+      break;
+
+    case GP_BUILD_MODE_ADDITIVE:
+      build_sequential(mmd, gpd, gpf, fac, true);
       break;
 
     default:
@@ -535,80 +547,86 @@ static void generateStrokes(GpencilModifierData *md, Depsgraph *depsgraph, Objec
     if (gpf == NULL) {
       continue;
     }
-    generate_geometry(md, depsgraph, gpl, gpf);
+    generate_geometry(md, depsgraph, gpd, gpl, gpf);
   }
 }
 
-static void panel_draw(const bContext *C, Panel *panel)
+static void panel_draw(const bContext *UNUSED(C), Panel *panel)
 {
   uiLayout *row, *sub;
   uiLayout *layout = panel->layout;
 
-  PointerRNA ptr;
   PointerRNA ob_ptr;
-  gpencil_modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, &ob_ptr);
 
-  int mode = RNA_enum_get(&ptr, "mode");
+  int mode = RNA_enum_get(ptr, "mode");
+  const bool use_percentage = RNA_boolean_get(ptr, "use_percentage");
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, &ptr, "mode", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "mode", 0, NULL, ICON_NONE);
   if (mode == GP_BUILD_MODE_CONCURRENT) {
-    uiItemR(layout, &ptr, "concurrent_time_alignment", 0, NULL, ICON_NONE);
+    uiItemR(layout, ptr, "concurrent_time_alignment", 0, NULL, ICON_NONE);
   }
 
   uiItemS(layout);
 
-  uiItemR(layout, &ptr, "transition", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "start_delay", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "length", 0, IFACE_("Frames"), ICON_NONE);
+  if (ELEM(mode, GP_BUILD_MODE_SEQUENTIAL, GP_BUILD_MODE_CONCURRENT)) {
+    uiItemR(layout, ptr, "transition", 0, NULL, ICON_NONE);
+  }
+  row = uiLayoutRow(layout, true);
+  uiLayoutSetActive(row, !use_percentage);
+  uiItemR(row, ptr, "start_delay", 0, NULL, ICON_NONE);
+  row = uiLayoutRow(layout, true);
+  uiLayoutSetActive(row, !use_percentage);
+  uiItemR(row, ptr, "length", 0, IFACE_("Frames"), ICON_NONE);
 
   uiItemS(layout);
 
   row = uiLayoutRowWithHeading(layout, true, IFACE_("Use Factor"));
-  uiItemR(row, &ptr, "use_percentage", 0, "", ICON_NONE);
+  uiLayoutSetPropDecorate(row, false);
+  uiItemR(row, ptr, "use_percentage", 0, "", ICON_NONE);
   sub = uiLayoutRow(row, true);
-  uiLayoutSetActive(sub, RNA_boolean_get(&ptr, "use_percentage"));
-  uiItemR(sub, &ptr, "percentage_factor", 0, "", ICON_NONE);
+  uiLayoutSetActive(sub, use_percentage);
+  uiItemR(sub, ptr, "percentage_factor", 0, "", ICON_NONE);
+  uiItemDecoratorR(row, ptr, "percentage_factor", 0);
 
   /* Check for incompatible time modifier. */
   Object *ob = ob_ptr.data;
-  GpencilModifierData *md = ptr.data;
+  GpencilModifierData *md = ptr->data;
   if (BKE_gpencil_modifiers_findby_type(ob, eGpencilModifierType_Time) != NULL) {
     BKE_gpencil_modifier_set_error(md, "Build and Time Offset modifiers are incompatible");
   }
 
-  gpencil_modifier_panel_end(layout, &ptr);
+  gpencil_modifier_panel_end(layout, ptr);
 }
 
-static void frame_range_header_draw(const bContext *C, Panel *panel)
+static void frame_range_header_draw(const bContext *UNUSED(C), Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA ptr;
-  gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
 
-  uiItemR(layout, &ptr, "use_restrict_frame_range", 0, IFACE_("Custom Range"), ICON_NONE);
+  uiItemR(layout, ptr, "use_restrict_frame_range", 0, IFACE_("Custom Range"), ICON_NONE);
 }
 
-static void frame_range_panel_draw(const bContext *C, Panel *panel)
+static void frame_range_panel_draw(const bContext *UNUSED(C), Panel *panel)
 {
   uiLayout *col;
   uiLayout *layout = panel->layout;
 
-  PointerRNA ptr;
-  gpencil_modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+  PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
 
   uiLayoutSetPropSep(layout, true);
 
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, &ptr, "frame_start", 0, IFACE_("Start"), ICON_NONE);
-  uiItemR(col, &ptr, "frame_end", 0, IFACE_("End"), ICON_NONE);
+  uiItemR(col, ptr, "frame_start", 0, IFACE_("Start"), ICON_NONE);
+  uiItemR(col, ptr, "frame_end", 0, IFACE_("End"), ICON_NONE);
 }
 
-static void mask_panel_draw(const bContext *C, Panel *panel)
+static void mask_panel_draw(const bContext *UNUSED(C), Panel *panel)
 {
-  gpencil_modifier_masking_panel_draw(C, panel, false, false);
+  gpencil_modifier_masking_panel_draw(panel, false, false);
 }
 
 static void panelRegister(ARegionType *region_type)
@@ -642,7 +660,6 @@ GpencilModifierTypeInfo modifierType_Gpencil_Build = {
     /* isDisabled */ NULL,
     /* updateDepsgraph */ NULL,
     /* dependsOnTime */ dependsOnTime,
-    /* foreachObjectLink */ NULL,
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* panelRegister */ panelRegister,

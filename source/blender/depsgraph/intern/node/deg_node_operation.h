@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2013 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2013 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup depsgraph
@@ -35,7 +19,7 @@ namespace deg {
 struct ComponentNode;
 
 /* Evaluation Operation for atomic operation */
-// XXX: move this to another header that can be exposed?
+/* XXX: move this to another header that can be exposed? */
 typedef function<void(struct ::Depsgraph *)> DepsEvalOperationCb;
 
 /* Identifiers for common operations (as an enum). */
@@ -79,7 +63,7 @@ enum class OperationCode {
   TRANSFORM_PARENT,
   /* Constraints */
   TRANSFORM_CONSTRAINTS,
-  /* Handle object-level updates, mainly proxies hacks and recalc flags.  */
+  /* Handle object-level updates, mainly proxies hacks and recalc flags. */
   TRANSFORM_EVAL,
   /* Initializes transformation for simulation.
    * For example, ensures point cache is properly reset before doing rigid
@@ -102,7 +86,7 @@ enum class OperationCode {
   GEOMETRY_EVAL_INIT,
   /* Evaluate the whole geometry, including modifiers. */
   GEOMETRY_EVAL,
-  /* Evaluation of geometry is completely done.. */
+  /* Evaluation of geometry is completely done. */
   GEOMETRY_EVAL_DONE,
   /* Evaluation of a shape key.
    * NOTE: Currently only for object data data-blocks. */
@@ -143,7 +127,7 @@ enum class OperationCode {
    *
    * - "DONE"   This noop is used to signal that the bone's final pose
    *            transform can be read by others. */
-  // TODO: deform mats could get calculated in the final_transform ops...
+  /* TODO: deform mats could get calculated in the final_transform ops... */
   BONE_READY,
   BONE_DONE,
   /* B-Bone segment shape computation (after DONE) */
@@ -176,6 +160,9 @@ enum class OperationCode {
   MATERIAL_UPDATE,
   LIGHT_UPDATE,
   WORLD_UPDATE,
+
+  /* Node Tree. ----------------------------------------------------------- */
+  NTREE_OUTPUT,
 
   /* Batch caches. -------------------------------------------------------- */
   GEOMETRY_SELECT_UPDATE,
@@ -231,9 +218,12 @@ enum OperationFlag {
 /* Atomic Operation - Base type for all operations */
 struct OperationNode : public Node {
   OperationNode();
-  ~OperationNode();
 
   virtual string identifier() const override;
+  /**
+   * Full node identifier, including owner name.
+   * used for logging and debug prints.
+   */
   string full_identifier() const;
 
   virtual void tag_update(Depsgraph *graph, eUpdateSource source) override;

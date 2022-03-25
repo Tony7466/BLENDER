@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edtransform
@@ -67,7 +53,7 @@ static void InputSpringFlip(TransInfo *t, MouseInput *mi, const double mval[2], 
   InputSpring(t, mi, mval, output);
 
   /* flip scale */
-  /* values can become really big when zoomed in so use longs [#26598] */
+  /* values can become really big when zoomed in so use longs T26598. */
   if (((int64_t)((int)mi->center[0] - mval[0]) * (int64_t)((int)mi->center[0] - mi->imval[0]) +
        (int64_t)((int)mi->center[1] - mval[1]) * (int64_t)((int)mi->center[1] - mi->imval[1])) <
       0) {
@@ -186,57 +172,24 @@ struct InputAngle_Data {
 static void InputAngle(TransInfo *UNUSED(t), MouseInput *mi, const double mval[2], float output[3])
 {
   struct InputAngle_Data *data = mi->data;
-  double dx2 = mval[0] - (double)mi->center[0];
-  double dy2 = mval[1] - (double)mi->center[1];
-  double B = sqrt(dx2 * dx2 + dy2 * dy2);
+  float dir_prev[2], dir_curr[2], mi_center[2];
+  copy_v2_v2(mi_center, mi->center);
 
-  double dx1 = data->mval_prev[0] - (double)mi->center[0];
-  double dy1 = data->mval_prev[1] - (double)mi->center[1];
-  double A = sqrt(dx1 * dx1 + dy1 * dy1);
+  sub_v2_v2v2(dir_prev, (const float[2]){UNPACK2(data->mval_prev)}, mi_center);
+  sub_v2_v2v2(dir_curr, (const float[2]){UNPACK2(mval)}, mi_center);
 
-  double dx3 = mval[0] - data->mval_prev[0];
-  double dy3 = mval[1] - data->mval_prev[1];
+  if (normalize_v2(dir_prev) && normalize_v2(dir_curr)) {
+    float dphi = angle_normalized_v2v2(dir_prev, dir_curr);
 
-  /* use doubles here, to make sure a "1.0" (no rotation)
-   * doesn't become 9.999999e-01, which gives 0.02 for acos */
-  double deler = (((dx1 * dx1 + dy1 * dy1) + (dx2 * dx2 + dy2 * dy2) - (dx3 * dx3 + dy3 * dy3)) /
-                  (2.0 * (((A * B) != 0.0) ? (A * B) : 1.0)));
-  /* ((A * B) ? (A * B) : 1.0) this takes care of potential divide by zero errors */
-
-  float dphi;
-
-  dphi = saacos((float)deler);
-  if ((dx1 * dy2 - dx2 * dy1) > 0.0) {
-    dphi = -dphi;
-  }
-
-  /* If the angle is zero, because of lack of precision close to the 1.0 value in acos
-   * approximate the angle with the opposite side of the normalized triangle
-   * This is a good approximation here since the smallest acos value seems to be around
-   * 0.02 degree and lower values don't even have a 0.01% error compared to the approximation
-   */
-  if (dphi == 0) {
-    double dx, dy;
-
-    dx2 /= A;
-    dy2 /= A;
-
-    dx1 /= B;
-    dy1 /= B;
-
-    dx = dx1 - dx2;
-    dy = dy1 - dy2;
-
-    dphi = sqrt(dx * dx + dy * dy);
-    if ((dx1 * dy2 - dx2 * dy1) > 0.0) {
+    if (cross_v2v2(dir_prev, dir_curr) > 0.0f) {
       dphi = -dphi;
     }
+
+    data->angle += ((double)dphi) * (mi->precision ? (double)mi->precision_factor : 1.0);
+
+    data->mval_prev[0] = mval[0];
+    data->mval_prev[1] = mval[1];
   }
-
-  data->angle += ((double)dphi) * (mi->precision ? (double)mi->precision_factor : 1.0);
-
-  data->mval_prev[0] = mval[0];
-  data->mval_prev[1] = mval[1];
 
   output[0] = data->angle;
 }
@@ -267,7 +220,7 @@ void setCustomPoints(TransInfo *UNUSED(t),
 {
   int *data;
 
-  mi->data = MEM_reallocN(mi->data, sizeof(int) * 4);
+  mi->data = MEM_reallocN(mi->data, sizeof(int[4]));
 
   data = mi->data;
 
@@ -438,7 +391,7 @@ void initMouseInputMode(TransInfo *t, MouseInput *mi, MouseInputMode mode)
   }
 
   /* if we've allocated new data, free the old data
-   * less hassle then checking before every alloc above */
+   * less hassle than checking before every alloc above */
   if (mi_data_prev && (mi_data_prev != mi->data)) {
     MEM_freeN(mi_data_prev);
   }
@@ -483,44 +436,9 @@ void applyMouseInput(TransInfo *t, MouseInput *mi, const int mval[2], float outp
     mi->apply(t, mi, mval_db, output);
   }
 
-  if (!is_zero_v3(t->values_modal_offset)) {
-    float values_ofs[3];
-    if (t->con.mode & CON_APPLY) {
-      mul_v3_m3v3(values_ofs, t->spacemtx, t->values_modal_offset);
-    }
-    else {
-      copy_v3_v3(values_ofs, t->values_modal_offset);
-    }
-    add_v3_v3(t->values, values_ofs);
-  }
-
   if (mi->post) {
     mi->post(t, output);
   }
-}
-
-eRedrawFlag handleMouseInput(TransInfo *t, MouseInput *mi, const wmEvent *event)
-{
-  eRedrawFlag redraw = TREDRAW_NOTHING;
-
-  switch (event->type) {
-    case EVT_LEFTSHIFTKEY:
-    case EVT_RIGHTSHIFTKEY:
-      if (event->val == KM_PRESS) {
-        t->modifiers |= MOD_PRECISION;
-        /* shift is modifier for higher precision transforn */
-        mi->precision = 1;
-        redraw = TREDRAW_HARD;
-      }
-      else if (event->val == KM_RELEASE) {
-        t->modifiers &= ~MOD_PRECISION;
-        mi->precision = 0;
-        redraw = TREDRAW_HARD;
-      }
-      break;
-  }
-
-  return redraw;
 }
 
 /** \} */

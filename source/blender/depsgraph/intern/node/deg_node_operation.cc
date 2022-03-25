@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2013 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2013 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup depsgraph
@@ -32,8 +16,7 @@
 #include "intern/node/deg_node_factory.h"
 #include "intern/node/deg_node_id.h"
 
-namespace blender {
-namespace deg {
+namespace blender::deg {
 
 const char *operationCodeAsString(OperationCode opcode)
 {
@@ -183,6 +166,9 @@ const char *operationCodeAsString(OperationCode opcode)
       return "LIGHT_UPDATE";
     case OperationCode::WORLD_UPDATE:
       return "WORLD_UPDATE";
+    /* Node Tree. */
+    case OperationCode::NTREE_OUTPUT:
+      return "NTREE_OUTPUT";
     /* Movie clip. */
     case OperationCode::MOVIECLIP_EVAL:
       return "MOVIECLIP_EVAL";
@@ -206,15 +192,11 @@ const char *operationCodeAsString(OperationCode opcode)
     case OperationCode::SIMULATION_EVAL:
       return "SIMULATION_EVAL";
   }
-  BLI_assert(!"Unhandled operation code, should never happen.");
+  BLI_assert_msg(0, "Unhandled operation code, should never happen.");
   return "UNKNOWN";
 }
 
 OperationNode::OperationNode() : name_tag(-1), flag(0)
-{
-}
-
-OperationNode::~OperationNode()
 {
 }
 
@@ -223,8 +205,6 @@ string OperationNode::identifier() const
   return string(operationCodeAsString(opcode)) + "(" + name + ")";
 }
 
-/* Full node identifier, including owner name.
- * used for logging and debug prints. */
 string OperationNode::full_identifier() const
 {
   string owner_str = owner->owner->name;
@@ -273,5 +253,4 @@ void deg_register_operation_depsnodes()
   register_node_typeinfo(&DNTI_OPERATION);
 }
 
-}  // namespace deg
-}  // namespace blender
+}  // namespace blender::deg

@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup bke
@@ -31,6 +15,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_math.h"
+#include "BLI_simd.h"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
 
@@ -46,6 +31,7 @@
 #include "BKE_key.h"
 #include "BKE_lattice.h"
 #include "BKE_modifier.h"
+#include "BKE_object.h"
 
 #include "BKE_deform.h"
 
@@ -54,15 +40,21 @@
  * \{ */
 
 typedef struct LatticeDeformData {
-  const Object *object;
-  float *latticedata;
+  /* Convert from object space to deform space */
   float latmat[4][4];
+  /* Cached reference to the lattice to use for evaluation. When in edit mode this attribute
+   * is set to the edit mode lattice. */
+  const Lattice *lt;
+  /* Preprocessed lattice points (converted to deform space). */
+  float *latticedata;
+  /* Prefetched DeformWeights of the lattice. */
+  float *lattice_weights;
 } LatticeDeformData;
 
 LatticeDeformData *BKE_lattice_deform_data_create(const Object *oblatt, const Object *ob)
 {
   /* we make an array with all differences */
-  Lattice *lt = oblatt->data;
+  Lattice *lt = BKE_object_get_lattice(oblatt);
   BPoint *bp;
   DispList *dl = oblatt->runtime.curve_cache ?
                      BKE_displist_find(&oblatt->runtime.curve_cache->disp, DL_VERTS) :
@@ -72,32 +64,46 @@ LatticeDeformData *BKE_lattice_deform_data_create(const Object *oblatt, const Ob
   float fu, fv, fw;
   int u, v, w;
   float *latticedata;
+  float *lattice_weights = NULL;
   float latmat[4][4];
   LatticeDeformData *lattice_deform_data;
 
-  if (lt->editlatt) {
-    lt = lt->editlatt->latt;
-  }
   bp = lt->def;
 
-  fp = latticedata = MEM_mallocN(sizeof(float) * 3 * lt->pntsu * lt->pntsv * lt->pntsw,
-                                 "latticedata");
+  const int32_t num_points = lt->pntsu * lt->pntsv * lt->pntsw;
+  /* We allocate one additional float for SSE2 optimizations. Without this
+   * the SSE2 instructions for the last item would read in unallocated memory. */
+  fp = latticedata = MEM_mallocN(sizeof(float[3]) * num_points + sizeof(float), "latticedata");
 
   /* for example with a particle system: (ob == NULL) */
   if (ob == NULL) {
-    /* in deformspace, calc matrix  */
+    /* In deform-space, calc matrix. */
     invert_m4_m4(latmat, oblatt->obmat);
 
     /* back: put in deform array */
     invert_m4_m4(imat, latmat);
   }
   else {
-    /* in deformspace, calc matrix */
+    /* In deform-space, calc matrix. */
     invert_m4_m4(imat, oblatt->obmat);
     mul_m4_m4m4(latmat, imat, ob->obmat);
 
-    /* back: put in deform array */
+    /* back: put in deform array. */
     invert_m4_m4(imat, latmat);
+  }
+
+  /* Prefetch lattice deform group weights. */
+  int defgrp_index = -1;
+  const MDeformVert *dvert = BKE_lattice_deform_verts_get(oblatt);
+  if (lt->vgroup[0] && dvert) {
+    defgrp_index = BKE_id_defgroup_name_index(&lt->id, lt->vgroup);
+
+    if (defgrp_index != -1) {
+      lattice_weights = MEM_malloc_arrayN(num_points, sizeof(float), "lattice_weights");
+      for (int index = 0; index < num_points; index++) {
+        lattice_weights[index] = BKE_defvert_find_weight(dvert + index, defgrp_index);
+      }
+    }
   }
 
   for (w = 0, fw = lt->fw; w < lt->pntsw; w++, fw += lt->dw) {
@@ -121,7 +127,8 @@ LatticeDeformData *BKE_lattice_deform_data_create(const Object *oblatt, const Ob
 
   lattice_deform_data = MEM_mallocN(sizeof(LatticeDeformData), "Lattice Deform Data");
   lattice_deform_data->latticedata = latticedata;
-  lattice_deform_data->object = oblatt;
+  lattice_deform_data->lattice_weights = lattice_weights;
+  lattice_deform_data->lt = lt;
   copy_m4_m4(lattice_deform_data->latmat, latmat);
 
   return lattice_deform_data;
@@ -131,30 +138,21 @@ void BKE_lattice_deform_data_eval_co(LatticeDeformData *lattice_deform_data,
                                      float co[3],
                                      float weight)
 {
-  const Object *ob = lattice_deform_data->object;
-  Lattice *lt = ob->data;
+  float *latticedata = lattice_deform_data->latticedata;
+  float *lattice_weights = lattice_deform_data->lattice_weights;
+  BLI_assert(latticedata);
+  const Lattice *lt = lattice_deform_data->lt;
   float u, v, w, tu[4], tv[4], tw[4];
   float vec[3];
   int idx_w, idx_v, idx_u;
   int ui, vi, wi, uu, vv, ww;
 
   /* vgroup influence */
-  int defgrp_index = -1;
-  float co_prev[3], weight_blend = 0.0f;
-  const MDeformVert *dvert = BKE_lattice_deform_verts_get(ob);
-  float *__restrict latticedata = lattice_deform_data->latticedata;
-
-  if (lt->editlatt) {
-    lt = lt->editlatt->latt;
-  }
-  if (latticedata == NULL) {
-    return;
-  }
-
-  if (lt->vgroup[0] && dvert) {
-    defgrp_index = BKE_object_defgroup_name_index(ob, lt->vgroup);
-    copy_v3_v3(co_prev, co);
-  }
+  float co_prev[4] = {0}, weight_blend = 0.0f;
+  copy_v3_v3(co_prev, co);
+#ifdef BLI_HAVE_SSE2
+  __m128 co_vec = _mm_loadu_ps(co_prev);
+#endif
 
   /* co is in local coords, treat with latmat */
   mul_v3_m4v3(vec, lattice_deform_data->latmat, co);
@@ -197,67 +195,53 @@ void BKE_lattice_deform_data_eval_co(LatticeDeformData *lattice_deform_data,
     wi = 0;
   }
 
+  const int w_stride = lt->pntsu * lt->pntsv;
+  const int idx_w_max = (lt->pntsw - 1) * lt->pntsu * lt->pntsv;
+  const int v_stride = lt->pntsu;
+  const int idx_v_max = (lt->pntsv - 1) * lt->pntsu;
+  const int idx_u_max = (lt->pntsu - 1);
+
   for (ww = wi - 1; ww <= wi + 2; ww++) {
-    w = tw[ww - wi + 1];
-
-    if (w != 0.0f) {
-      if (ww > 0) {
-        if (ww < lt->pntsw) {
-          idx_w = ww * lt->pntsu * lt->pntsv;
-        }
-        else {
-          idx_w = (lt->pntsw - 1) * lt->pntsu * lt->pntsv;
-        }
-      }
-      else {
-        idx_w = 0;
-      }
-
-      for (vv = vi - 1; vv <= vi + 2; vv++) {
-        v = w * tv[vv - vi + 1];
-
-        if (v != 0.0f) {
-          if (vv > 0) {
-            if (vv < lt->pntsv) {
-              idx_v = idx_w + vv * lt->pntsu;
-            }
-            else {
-              idx_v = idx_w + (lt->pntsv - 1) * lt->pntsu;
-            }
+    w = weight * tw[ww - wi + 1];
+    idx_w = CLAMPIS(ww * w_stride, 0, idx_w_max);
+    for (vv = vi - 1; vv <= vi + 2; vv++) {
+      v = w * tv[vv - vi + 1];
+      idx_v = CLAMPIS(vv * v_stride, 0, idx_v_max);
+      for (uu = ui - 1; uu <= ui + 2; uu++) {
+        u = v * tu[uu - ui + 1];
+        idx_u = CLAMPIS(uu, 0, idx_u_max);
+        const int idx = idx_w + idx_v + idx_u;
+#ifdef BLI_HAVE_SSE2
+        {
+          __m128 weight_vec = _mm_set1_ps(u);
+          /* We need to address special case for last item to avoid accessing invalid memory. */
+          __m128 lattice_vec;
+          if (idx * 3 == idx_w_max) {
+            copy_v3_v3((float *)&lattice_vec, &latticedata[idx * 3]);
           }
           else {
-            idx_v = idx_w;
+            /* When not on last item, we can safely access one extra float, it will be ignored
+             * anyway. */
+            lattice_vec = _mm_loadu_ps(&latticedata[idx * 3]);
           }
-
-          for (uu = ui - 1; uu <= ui + 2; uu++) {
-            u = weight * v * tu[uu - ui + 1];
-
-            if (u != 0.0f) {
-              if (uu > 0) {
-                if (uu < lt->pntsu) {
-                  idx_u = idx_v + uu;
-                }
-                else {
-                  idx_u = idx_v + (lt->pntsu - 1);
-                }
-              }
-              else {
-                idx_u = idx_v;
-              }
-
-              madd_v3_v3fl(co, &latticedata[idx_u * 3], u);
-
-              if (defgrp_index != -1) {
-                weight_blend += (u * BKE_defvert_find_weight(dvert + idx_u, defgrp_index));
-              }
-            }
-          }
+          co_vec = _mm_add_ps(co_vec, _mm_mul_ps(lattice_vec, weight_vec));
+        }
+#else
+        madd_v3_v3fl(co, &latticedata[idx * 3], u);
+#endif
+        if (lattice_weights) {
+          weight_blend += (u * lattice_weights[idx]);
         }
       }
     }
   }
+#ifdef BLI_HAVE_SSE2
+  {
+    copy_v3_v3(co, (float *)&co_vec);
+  }
+#endif
 
-  if (defgrp_index != -1) {
+  if (lattice_weights) {
     interp_v3_v3v3(co, co_prev, co, weight_blend);
   }
 }
@@ -320,7 +304,9 @@ static void lattice_deform_vert_task(void *__restrict userdata,
   lattice_deform_vert_with_dvert(data, index, data->dvert ? &data->dvert[index] : NULL);
 }
 
-static void lattice_vert_task_editmesh(void *__restrict userdata, MempoolIterData *iter)
+static void lattice_vert_task_editmesh(void *__restrict userdata,
+                                       MempoolIterData *iter,
+                                       const TaskParallelTLS *__restrict UNUSED(tls))
 {
   const LatticeDeformUserdata *data = userdata;
   BMVert *v = (BMVert *)iter;
@@ -328,7 +314,9 @@ static void lattice_vert_task_editmesh(void *__restrict userdata, MempoolIterDat
   lattice_deform_vert_with_dvert(data, BM_elem_index_get(v), dvert);
 }
 
-static void lattice_vert_task_editmesh_no_dvert(void *__restrict userdata, MempoolIterData *iter)
+static void lattice_vert_task_editmesh_no_dvert(void *__restrict userdata,
+                                                MempoolIterData *iter,
+                                                const TaskParallelTLS *__restrict UNUSED(tls))
 {
   const LatticeDeformUserdata *data = userdata;
   BMVert *v = (BMVert *)iter;
@@ -360,7 +348,7 @@ static void lattice_deform_coords_impl(const Object *ob_lattice,
    * We want either a Mesh/Lattice with no derived data, or derived data with deformverts.
    */
   if (defgrp_name && defgrp_name[0] && ob_target && ELEM(ob_target->type, OB_MESH, OB_LATTICE)) {
-    defgrp_index = BKE_object_defgroup_name_index(ob_target, defgrp_name);
+    defgrp_index = BKE_id_defgroup_name_index((ID *)ob_target->data, defgrp_name);
 
     if (defgrp_index != -1) {
       /* if there's derived data without deformverts, don't use vgroups */
@@ -397,12 +385,16 @@ static void lattice_deform_coords_impl(const Object *ob_lattice,
      * have already been properly set. */
     BM_mesh_elem_index_ensure(em_target->bm, BM_VERT);
 
+    TaskParallelSettings settings;
+    BLI_parallel_mempool_settings_defaults(&settings);
+
     if (cd_dvert_offset != -1) {
-      BLI_task_parallel_mempool(em_target->bm->vpool, &data, lattice_vert_task_editmesh, true);
+      BLI_task_parallel_mempool(
+          em_target->bm->vpool, &data, lattice_vert_task_editmesh, &settings);
     }
     else {
       BLI_task_parallel_mempool(
-          em_target->bm->vpool, &data, lattice_vert_task_editmesh_no_dvert, true);
+          em_target->bm->vpool, &data, lattice_vert_task_editmesh_no_dvert, &settings);
     }
   }
   else {
@@ -453,7 +445,7 @@ void BKE_lattice_deform_coords_with_editmesh(const struct Object *ob_lattice,
                                              const int vert_coords_len,
                                              const short flag,
                                              const char *defgrp_name,
-                                             const float influence,
+                                             const float fac,
                                              struct BMEditMesh *em_target)
 {
   lattice_deform_coords_impl(ob_lattice,
@@ -462,7 +454,7 @@ void BKE_lattice_deform_coords_with_editmesh(const struct Object *ob_lattice,
                              vert_coords_len,
                              flag,
                              defgrp_name,
-                             influence,
+                             fac,
                              NULL,
                              em_target);
 }

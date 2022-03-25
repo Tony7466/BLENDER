@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2008 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup edinterface
@@ -57,6 +41,7 @@
 /* -------------------------------------------------------------------- */
 /** \name Utilities
  * \{ */
+
 struct HudRegionData {
   short regionid;
 };
@@ -146,7 +131,7 @@ static void hud_panels_register(ARegionType *art, int space_type, int region_typ
   pt->poll = hud_panel_operator_redo_poll;
   pt->space_type = space_type;
   pt->region_type = region_type;
-  pt->flag |= PNL_DEFAULT_CLOSED;
+  pt->flag |= PANEL_TYPE_DEFAULT_CLOSED;
   BLI_addtail(&art->paneltypes, pt);
 }
 
@@ -178,7 +163,7 @@ static void hud_region_layout(const bContext *C, ARegion *region)
   }
 
   ScrArea *area = CTX_wm_area(C);
-  int size_y = region->sizey;
+  const int size_y = region->sizey;
 
   ED_region_panels_layout(C, region);
 
@@ -201,7 +186,7 @@ static void hud_region_layout(const bContext *C, ARegion *region)
     region->winrct.xmax = (region->winrct.xmin + region->winx) - 1;
     region->winrct.ymax = (region->winrct.ymin + region->winy) - 1;
 
-    UI_view2d_region_reinit(v2d, V2D_COMMONVIEW_PANELS_UI, region->winx, region->winy);
+    UI_view2d_region_reinit(v2d, V2D_COMMONVIEW_LIST, region->winx, region->winy);
 
     /* Weak, but needed to avoid glitches, especially with hi-dpi
      * (where resizing the view glitches often).
@@ -217,8 +202,7 @@ static void hud_region_draw(const bContext *C, ARegion *region)
 {
   UI_view2d_view_ortho(&region->v2d);
   wmOrtho2_region_pixelspace(region);
-  GPU_clear_color(0, 0, 0, 0.0f);
-  GPU_clear(GPU_COLOR_BIT);
+  GPU_clear_color(0.0f, 0.0f, 0.0f, 0.0f);
 
   if ((region->flag & RGN_FLAG_HIDDEN) == 0) {
     ui_draw_menu_back(NULL,
@@ -317,7 +301,7 @@ void ED_area_type_hud_ensure(bContext *C, ScrArea *area)
   }
 
   bool init = false;
-  bool was_hidden = region == NULL || region->visible == false;
+  const bool was_hidden = region == NULL || region->visible == false;
   ARegion *region_op = CTX_wm_region(C);
   BLI_assert((region_op == NULL) || (region_op->regiontype != RGN_TYPE_HUD));
   if (!last_redo_poll(C, region_op ? region_op->regiontype : -1)) {
@@ -367,7 +351,7 @@ void ED_area_type_hud_ensure(bContext *C, ScrArea *area)
     ED_area_update_region_sizes(wm, win, area);
   }
 
-  ED_region_floating_initialize(region);
+  ED_region_floating_init(region);
   ED_region_tag_redraw(region);
 
   /* Reset zoom level (not well supported). */

@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2020 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2020 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup bke
@@ -111,7 +95,7 @@ static BMVert *unsubdivide_find_any_pole(BMesh *bm, int *elem_id, int elem)
     if (is_vertex_in_id(v, elem_id, elem) && is_vertex_pole_three(v)) {
       return v;
     }
-    else if (is_vertex_in_id(v, elem_id, elem) && is_vertex_pole(v)) {
+    if (is_vertex_in_id(v, elem_id, elem) && is_vertex_pole(v)) {
       pole = v;
     }
   }
@@ -177,7 +161,7 @@ static bool is_vertex_diagonal(BMVert *from_v, BMVert *to_v)
  */
 static void unsubdivide_face_center_vertex_tag(BMesh *bm, BMVert *initial_vertex)
 {
-  bool *visited_vertices = MEM_calloc_arrayN(sizeof(bool), bm->totvert, "visited vertices");
+  bool *visited_vertices = MEM_calloc_arrayN(bm->totvert, sizeof(bool), "visited vertices");
   GSQueue *queue;
   queue = BLI_gsqueue_new(sizeof(BMVert *));
 
@@ -201,8 +185,8 @@ static void unsubdivide_face_center_vertex_tag(BMesh *bm, BMVert *initial_vertex
 
   /* Repeat a similar operation for all vertices in the queue. */
   /* In this case, add to the queue the vertices connected by 2 steps using the diagonals in any
-   * direction. If a solution exists and intial_vertex was a pole, this is guaranteed that will tag
-   * all the (0,0) vertices of the grids, and nothing else. */
+   * direction. If a solution exists and `initial_vertex` was a pole, this is guaranteed that will
+   * tag all the (0,0) vertices of the grids, and nothing else. */
   /* If it was not a pole, it may or may not find a solution, even if the solution exists. */
   while (!BLI_gsqueue_is_empty(queue)) {
     BMVert *from_v;
@@ -312,7 +296,7 @@ static bool unsubdivide_tag_disconnected_mesh_element(BMesh *bm, int *elem_id, i
 
   /* Also try from the different 4 vertices of a quad in the current
    * disconnected element ID. If a solution exists the search should return a valid solution from
-   * one of these vertices.*/
+   * one of these vertices. */
   BMFace *f, *init_face = NULL;
   BMVert *v;
   BMIter iter_a, iter_b;
@@ -368,7 +352,7 @@ static bool unsubdivide_tag_disconnected_mesh_element(BMesh *bm, int *elem_id, i
  */
 static int unsubdivide_init_elem_ids(BMesh *bm, int *elem_id)
 {
-  bool *visited_vertices = MEM_calloc_arrayN(sizeof(bool), bm->totvert, "visited vertices");
+  bool *visited_vertices = MEM_calloc_arrayN(bm->totvert, sizeof(bool), "visited vertices");
   int current_id = 0;
   for (int i = 0; i < bm->totvert; i++) {
     if (!visited_vertices[i]) {
@@ -475,7 +459,7 @@ static bool multires_unsubdivide_single_level(BMesh *bm)
   BM_mesh_elem_table_ensure(bm, BM_VERT);
 
   /* Build disconnected elements IDs. Each disconnected mesh element is evaluated separately. */
-  int *elem_id = MEM_calloc_arrayN(sizeof(int), bm->totvert, " ELEM ID");
+  int *elem_id = MEM_calloc_arrayN(bm->totvert, sizeof(int), " ELEM ID");
   const int tot_ids = unsubdivide_init_elem_ids(bm, elem_id);
 
   bool valid_tag_found = true;
@@ -603,7 +587,7 @@ static void write_loop_in_face_grid(
       step_y[1] = 0;
       break;
     default:
-      BLI_assert(!"Should never happen");
+      BLI_assert_msg(0, "Should never happen");
       break;
   }
 
@@ -677,7 +661,7 @@ static void store_grid_data(MultiresUnsubdivideContext *context,
   const int grid_size = BKE_ccg_gridsize(context->num_original_levels);
   const int face_grid_size = BKE_ccg_gridsize(context->num_original_levels + 1);
   const int face_grid_area = face_grid_size * face_grid_size;
-  float(*face_grid)[3] = MEM_calloc_arrayN(face_grid_area, 3 * sizeof(float), "face_grid");
+  float(*face_grid)[3] = MEM_calloc_arrayN(face_grid_area, sizeof(float[3]), "face_grid");
 
   for (int i = 0; i < poly->totloop; i++) {
     const int loop_index = poly->loopstart + i;
@@ -731,7 +715,7 @@ static void multires_unsubdivide_extract_single_grid_from_face_edge(
   const int unsubdiv_grid_size = grid->grid_size = BKE_ccg_gridsize(context->num_total_levels);
   grid->grid_size = unsubdiv_grid_size;
   grid->grid_co = MEM_calloc_arrayN(
-      unsubdiv_grid_size * unsubdiv_grid_size, 3 * sizeof(float), "grids coordinates");
+      unsubdiv_grid_size * unsubdiv_grid_size, sizeof(float[3]), "grids coordinates");
 
   /* Get the vertex on the corner of the grid. This vertex was tagged previously as it also exist
    * on the base mesh. */
@@ -885,6 +869,7 @@ static BMesh *get_bmesh_from_mesh(Mesh *mesh)
                      mesh,
                      (&(struct BMeshFromMeshParams){
                          .calc_face_normal = true,
+                         .calc_vert_normal = true,
                      }));
 
   return bm;
@@ -961,7 +946,7 @@ static void multires_unsubdivide_prepare_original_bmesh_for_extract(
   }
 
   /* Create a map from loop index to poly index for the original mesh. */
-  context->loop_to_face_map = MEM_calloc_arrayN(sizeof(int), original_mesh->totloop, "loop map");
+  context->loop_to_face_map = MEM_calloc_arrayN(original_mesh->totloop, sizeof(int), "loop map");
 
   for (int i = 0; i < original_mesh->totpoly; i++) {
     MPoly *poly = &original_mesh->mpoly[i];
@@ -1005,13 +990,13 @@ static void multires_unsubdivide_extract_grids(MultiresUnsubdivideContext *conte
 
   context->num_grids = base_mesh->totloop;
   context->base_mesh_grids = MEM_calloc_arrayN(
-      sizeof(MultiresUnsubdivideGrid), base_mesh->totloop, "grids");
+      base_mesh->totloop, sizeof(MultiresUnsubdivideGrid), "grids");
 
   /* Based on the existing indices in the data-layers, generate two vertex indices maps. */
   /* From vertex index in original to vertex index in base and from vertex index in base to vertex
    * index in original. */
-  int *orig_to_base_vmap = MEM_calloc_arrayN(sizeof(int), bm_original_mesh->totvert, "orig vmap");
-  int *base_to_orig_vmap = MEM_calloc_arrayN(sizeof(int), base_mesh->totvert, "base vmap");
+  int *orig_to_base_vmap = MEM_calloc_arrayN(bm_original_mesh->totvert, sizeof(int), "orig vmap");
+  int *base_to_orig_vmap = MEM_calloc_arrayN(base_mesh->totvert, sizeof(int), "base vmap");
 
   context->base_to_orig_vmap = CustomData_get_layer_named(&base_mesh->vdata, CD_PROP_INT32, vname);
   for (int i = 0; i < base_mesh->totvert; i++) {
@@ -1198,7 +1183,7 @@ static void multires_create_grids_in_unsubdivided_base_mesh(MultiresUnsubdivideC
 
   /* Allocate the MDISPS grids and copy the extracted data from context. */
   for (int i = 0; i < totloop; i++) {
-    float(*disps)[3] = MEM_calloc_arrayN(totdisp, 3 * sizeof(float), "multires disps");
+    float(*disps)[3] = MEM_calloc_arrayN(totdisp, sizeof(float[3]), "multires disps");
 
     if (mdisps[i].disps) {
       MEM_freeN(mdisps[i].disps);

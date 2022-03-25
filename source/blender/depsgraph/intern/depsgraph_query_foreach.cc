@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2017 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2017 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup depsgraph
@@ -44,13 +28,12 @@ namespace deg = blender::deg;
 
 /* ************************ DEG TRAVERSAL ********************* */
 
-namespace blender {
-namespace deg {
+namespace blender::deg {
 namespace {
 
-typedef deque<OperationNode *> TraversalQueue;
+using TraversalQueue = deque<OperationNode *>;
 
-typedef void (*DEGForeachOperation)(OperationNode *op_node, void *user_data);
+using DEGForeachOperation = void (*)(OperationNode *, void *);
 
 bool deg_foreach_needs_visit(const OperationNode *op_node, const int flags)
 {
@@ -78,6 +61,12 @@ void deg_foreach_dependent_operation(const Depsgraph *UNUSED(graph),
   TraversalQueue queue;
   Set<OperationNode *> scheduled;
   for (ComponentNode *comp_node : target_id_node->components.values()) {
+    if (comp_node->type == NodeType::VISIBILITY) {
+      /* Visibility component is only used internally. It is not to be reporting dependencies to
+       * the outer world. */
+      continue;
+    }
+
     if (source_component_type != DEG_OB_COMP_ANY &&
         nodeTypeToObjectComponent(comp_node->type) != source_component_type) {
       continue;
@@ -265,8 +254,7 @@ void deg_foreach_id(const Depsgraph *depsgraph, DEGForeachIDCallback callback, v
 }
 
 }  // namespace
-}  // namespace deg
-}  // namespace blender
+}  // namespace blender::deg
 
 void DEG_foreach_dependent_ID(const Depsgraph *depsgraph,
                               const ID *id,

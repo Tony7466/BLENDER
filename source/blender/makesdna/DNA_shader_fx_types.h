@@ -1,28 +1,17 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
  */
 
-#ifndef __DNA_SHADER_FX_TYPES_H__
-#define __DNA_SHADER_FX_TYPES_H__
+#pragma once
 
 #include "DNA_defs.h"
 #include "DNA_listBase.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct DRWShadingGroup;
 
@@ -50,7 +39,9 @@ typedef enum ShaderFxMode {
   eShaderFxMode_Realtime = (1 << 0),
   eShaderFxMode_Render = (1 << 1),
   eShaderFxMode_Editmode = (1 << 2),
+#ifdef DNA_DEPRECATED_ALLOW
   eShaderFxMode_Expanded_DEPRECATED = (1 << 3),
+#endif
 } ShaderFxMode;
 
 typedef enum {
@@ -62,9 +53,9 @@ typedef struct ShaderFxData {
   struct ShaderFxData *next, *prev;
 
   int type, mode;
-  int stackindex;
+  char _pad0[4];
   short flag;
-  /* Expansion for shader effect panels and sub-panels. */
+  /* An "expand" bit for each of the constraint's (sub)panels (uiPanelDataExpansion). */
   short ui_expand_flag;
   /** MAX_NAME. */
   char name[64];
@@ -72,7 +63,7 @@ typedef struct ShaderFxData {
   char *error;
 } ShaderFxData;
 
-/* Runtime temp data */
+/** Runtime temp data. */
 typedef struct ShaderFxData_Runtime {
   float loc[3];
   char _pad[4];
@@ -88,7 +79,7 @@ typedef struct BlurShaderFxData {
   int flag;
   /** Number of samples. */
   int samples;
-  /** Rotation of blur effect.  */
+  /** Rotation of blur effect. */
   float rotation;
   char _pad[4];
 
@@ -144,7 +135,7 @@ typedef struct GlowShaderFxData {
   int mode;
   float blur[2];
   int samples;
-  /** Rotation of effect.  */
+  /** Rotation of effect. */
   float rotation;
   /** Blend modes. */
   int blend_mode;
@@ -250,4 +241,7 @@ typedef struct WaveShaderFxData {
   char _pad[4];
   ShaderFxData_Runtime runtime;
 } WaveShaderFxData;
-#endif /* __DNA_SHADER_FX_TYPES_H__ */
+
+#ifdef __cplusplus
+}
+#endif

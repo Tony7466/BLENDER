@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -27,6 +13,7 @@
 
 #  include "BKE_global.h"
 
+#  include "ED_fileselect.h"
 #  include "ED_screen.h"
 #  include "ED_text.h"
 
@@ -49,7 +36,7 @@ static void rna_RegionView3D_update(ID *id, RegionView3D *rv3d, bContext *C)
       if (WM_window_get_active_screen(win) == screen) {
         Scene *scene = WM_window_get_active_scene(win);
         ViewLayer *view_layer = WM_window_get_active_view_layer(win);
-        Depsgraph *depsgraph = BKE_scene_get_depsgraph(bmain, scene, view_layer, true);
+        Depsgraph *depsgraph = BKE_scene_ensure_depsgraph(bmain, scene, view_layer);
 
         ED_view3d_update_viewmat(depsgraph, scene, v3d, region, NULL, NULL, NULL, false);
         break;
@@ -113,6 +100,39 @@ void RNA_api_space_text(StructRNA *srna)
   parm = RNA_def_int_array(
       func, "result", 2, NULL, -1, INT_MAX, "", "Region coordinates", -1, INT_MAX);
   RNA_def_function_output(func, parm);
+}
+
+void RNA_api_space_filebrowser(StructRNA *srna)
+{
+  FunctionRNA *func;
+  PropertyRNA *parm;
+
+  func = RNA_def_function(srna, "activate_asset_by_id", "ED_fileselect_activate_by_id");
+  RNA_def_function_ui_description(
+      func, "Activate and select the asset entry that represents the given ID");
+
+  parm = RNA_def_property(func, "id_to_activate", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(parm, "ID");
+  RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);
+
+  parm = RNA_def_boolean(
+      func,
+      "deferred",
+      0,
+      "",
+      "Whether to activate the ID immediately (false) or after the file browser refreshes (true)");
+
+  /* Select file by relative path. */
+  func = RNA_def_function(
+      srna, "activate_file_by_relative_path", "ED_fileselect_activate_by_relpath");
+  RNA_def_function_ui_description(func,
+                                  "Set active file and add to selection based on relative path to "
+                                  "current File Browser directory");
+  RNA_def_property(func, "relative_path", PROP_STRING, PROP_FILEPATH);
+
+  /* Deselect all files. */
+  func = RNA_def_function(srna, "deselect_all", "ED_fileselect_deselect_all");
+  RNA_def_function_ui_description(func, "Deselect all files");
 }
 
 #endif

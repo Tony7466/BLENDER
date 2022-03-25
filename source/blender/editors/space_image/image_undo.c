@@ -1,17 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spimage
@@ -59,8 +46,6 @@
 #include "ED_paint.h"
 #include "ED_undo.h"
 #include "ED_util.h"
-
-#include "GPU_draw.h"
 
 #include "WM_api.h"
 
@@ -295,7 +280,9 @@ static void ptile_restore_runtime_list(ListBase *paint_tiles)
       SWAP(uint *, ptile->rect.uint, tmpibuf->rect);
     }
 
-    GPU_free_image(image); /* force OpenGL reload (maybe partial update will operate better?) */
+    /* Force OpenGL reload (maybe partial update will operate better?) */
+    BKE_image_free_gputextures(image);
+
     if (ibuf->rect_float) {
       ibuf->userflags |= IB_RECT_INVALID; /* force recreate of char rect */
     }
@@ -570,7 +557,8 @@ static void uhandle_restore_list(ListBase *undo_handles, bool use_init)
 
     if (changed) {
       BKE_image_mark_dirty(image, ibuf);
-      GPU_free_image(image); /* force OpenGL reload */
+      /* TODO(jbakker): only mark areas that are actually updated to improve performance. */
+      BKE_image_partial_update_mark_full_update(image);
 
       if (ibuf->rect_float) {
         ibuf->userflags |= IB_RECT_INVALID; /* force recreate of char rect */
@@ -668,7 +656,6 @@ static UndoImageHandle *uhandle_add(ListBase *undo_handles, Image *image, ImageU
   uh->image_ref.ptr = image;
   uh->iuser = *iuser;
   uh->iuser.scene = NULL;
-  uh->iuser.ok = 1;
   BLI_addtail(undo_handles, uh);
   return uh;
 }
@@ -884,6 +871,7 @@ static bool image_undosys_step_encode(struct bContext *C,
     }
   }
   else {
+    BLI_assert(C != NULL);
     /* Happens when switching modes. */
     ePaintMode paint_mode = BKE_paintmode_get_active_from_context(C);
     BLI_assert(ELEM(paint_mode, PAINT_MODE_TEXTURE_2D, PAINT_MODE_TEXTURE_3D));
@@ -911,6 +899,8 @@ static void image_undosys_step_decode_redo_impl(ImageUndoStep *us)
 
 static void image_undosys_step_decode_undo(ImageUndoStep *us, bool is_final)
 {
+  /* Walk forward over any applied steps of same type,
+   * then walk back in the next loop, un-applying them. */
   ImageUndoStep *us_iter = us;
   while (us_iter->step.next && (us_iter->step.next->type == us_iter->step.type)) {
     if (us_iter->step.next->is_applied == false) {
@@ -919,7 +909,7 @@ static void image_undosys_step_decode_undo(ImageUndoStep *us, bool is_final)
     us_iter = (ImageUndoStep *)us_iter->step.next;
   }
   while (us_iter != us || (!is_final && us_iter == us)) {
-
+    BLI_assert(us_iter->step.type == us->step.type); /* Previous loop ensures this. */
     image_undosys_step_decode_undo_impl(us_iter, is_final);
     if (us_iter == us) {
       break;
@@ -947,13 +937,16 @@ static void image_undosys_step_decode_redo(ImageUndoStep *us)
 }
 
 static void image_undosys_step_decode(
-    struct bContext *C, struct Main *bmain, UndoStep *us_p, int dir, bool is_final)
+    struct bContext *C, struct Main *bmain, UndoStep *us_p, const eUndoStepDir dir, bool is_final)
 {
+  /* NOTE: behavior for undo/redo closely matches sculpt undo. */
+  BLI_assert(dir != STEP_INVALID);
+
   ImageUndoStep *us = (ImageUndoStep *)us_p;
-  if (dir < 0) {
+  if (dir == STEP_UNDO) {
     image_undosys_step_decode_undo(us, is_final);
   }
-  else {
+  else if (dir == STEP_REDO) {
     image_undosys_step_decode_redo(us);
   }
 
@@ -984,7 +977,6 @@ static void image_undosys_foreach_ID_ref(UndoStep *us_p,
   }
 }
 
-/* Export for ED_undo_sys. */
 void ED_image_undosys_type(UndoType *ut)
 {
   ut->name = "Image";
@@ -996,7 +988,11 @@ void ED_image_undosys_type(UndoType *ut)
 
   ut->step_foreach_ID_ref = image_undosys_foreach_ID_ref;
 
-  ut->use_context = true;
+  /* NOTE: this is actually a confusing case, since it expects a valid context, but only in a
+   * specific case, see `image_undosys_step_encode` code. We cannot specify
+   * `UNDOTYPE_FLAG_NEED_CONTEXT_FOR_ENCODE` though, as it can be called with a NULL context by
+   * current code. */
+  ut->flags = UNDOTYPE_FLAG_DECODE_ACTIVE_STEP;
 
   ut->step_size = sizeof(ImageUndoStep);
 }
@@ -1005,6 +1001,14 @@ void ED_image_undosys_type(UndoType *ut)
 
 /* -------------------------------------------------------------------- */
 /** \name Utilities
+ *
+ * \note image undo exposes #ED_image_undo_push_begin, #ED_image_undo_push_end
+ * which must be called by the operator directly.
+ *
+ * Unlike most other undo stacks this is needed:
+ * - So we can always access the state before the image was painted onto,
+ *   which is needed if previous undo states aren't image-type.
+ * - So operators can access the pixel-data before the stroke was applied, at run-time.
  * \{ */
 
 ListBase *ED_image_paint_tile_list_get(void)
@@ -1023,7 +1027,6 @@ ListBase *ED_image_paint_tile_list_get(void)
   return &us->paint_tiles;
 }
 
-/* restore painting image to previous state. Used for anchored and drag-dot style brushes*/
 void ED_image_undo_restore(UndoStep *us)
 {
   ListBase *paint_tiles = &((ImageUndoStep *)us)->paint_tiles;

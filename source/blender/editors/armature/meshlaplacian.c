@@ -1,22 +1,8 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- * meshlaplacian.c: Algorithms using the mesh laplacian.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edarmature
+ * Algorithms using the mesh laplacian.
  */
 
 #include "MEM_guardedalloc.h"
@@ -37,6 +23,7 @@
 #include "BKE_bvhutils.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
+#include "BKE_mesh_wrapper.h"
 #include "BKE_modifier.h"
 
 #include "ED_armature.h"
@@ -223,7 +210,7 @@ static LaplacianSystem *laplacian_system_construct_begin(int totvert, int totfac
 
   sys->verts = MEM_callocN(sizeof(float *) * totvert, "LaplacianSystemVerts");
   sys->vpinned = MEM_callocN(sizeof(char) * totvert, "LaplacianSystemVpinned");
-  sys->faces = MEM_callocN(sizeof(int) * 3 * totface, "LaplacianSystemFaces");
+  sys->faces = MEM_callocN(sizeof(int[3]) * totface, "LaplacianSystemFaces");
 
   sys->totvert = 0;
   sys->totface = 0;
@@ -296,7 +283,7 @@ static void laplacian_system_construct_end(LaplacianSystem *sys)
   }
 
   if (sys->storeweights) {
-    sys->fweights = MEM_callocN(sizeof(float) * 3 * totface, "LaplacianFWeight");
+    sys->fweights = MEM_callocN(sizeof(float[3]) * totface, "LaplacianFWeight");
   }
 
   for (a = 0, face = sys->faces; a < totface; a++, face++) {
@@ -306,10 +293,7 @@ static void laplacian_system_construct_end(LaplacianSystem *sys)
   MEM_freeN(sys->faces);
   sys->faces = NULL;
 
-  if (sys->varea) {
-    MEM_freeN(sys->varea);
-    sys->varea = NULL;
-  }
+  MEM_SAFE_FREE(sys->varea);
 
   BLI_edgehash_free(sys->edgehash, NULL);
   sys->edgehash = NULL;
@@ -421,7 +405,7 @@ static void bvh_callback(void *userdata, int index, const BVHTreeRay *ray, BVHTr
   }
 }
 
-/* Raytracing for vertex to bone/vertex visibility */
+/* Ray-tracing for vertex to bone/vertex visibility. */
 static void heat_ray_tree_create(LaplacianSystem *sys)
 {
   const MLoopTri *looptri = sys->heat.mlooptri;
@@ -450,7 +434,7 @@ static void heat_ray_tree_create(LaplacianSystem *sys)
 
     BLI_bvhtree_insert(sys->heat.bvhtree, a, bb, 2);
 
-    // Setup inverse pointers to use on isect.orig
+    /* Setup inverse pointers to use on isect.orig */
     sys->heat.vltree[vtri[0]] = lt;
     sys->heat.vltree[vtri[1]] = lt;
     sys->heat.vltree[vtri[2]] = lt;
@@ -496,7 +480,7 @@ static float heat_source_distance(LaplacianSystem *sys, int vertex, int source)
 {
   float closest[3], d[3], dist, cosine;
 
-  /* compute euclidian distance */
+  /* compute Euclidean distance */
   closest_to_line_segment_v3(
       closest, sys->heat.verts[vertex], sys->heat.root[source], sys->heat.tip[source]);
 
@@ -568,7 +552,7 @@ static void heat_calc_vnormals(LaplacianSystem *sys)
   float fnor[3];
   int a, v1, v2, v3, (*face)[3];
 
-  sys->heat.vnors = MEM_callocN(sizeof(float) * 3 * sys->totvert, "HeatVNors");
+  sys->heat.vnors = MEM_callocN(sizeof(float[3]) * sys->totvert, "HeatVNors");
 
   for (a = 0, face = sys->faces; a < sys->totface; a++, face++) {
     v1 = (*face)[0];
@@ -650,13 +634,13 @@ static float heat_limit_weight(float weight)
 void heat_bone_weighting(Object *ob,
                          Mesh *me,
                          float (*verts)[3],
-                         int numsource,
+                         int numbones,
                          bDeformGroup **dgrouplist,
                          bDeformGroup **dgroupflip,
                          float (*root)[3],
                          float (*tip)[3],
                          const int *selected,
-                         const char **err_str)
+                         const char **error_str)
 {
   LaplacianSystem *sys;
   MLoopTri *mlooptri;
@@ -671,7 +655,7 @@ void heat_bone_weighting(Object *ob,
   bool use_vert_sel = (me->editflag & ME_EDIT_PAINT_VERT_SEL) != 0;
   bool use_face_sel = (me->editflag & ME_EDIT_PAINT_FACE_SEL) != 0;
 
-  *err_str = NULL;
+  *error_str = NULL;
 
   /* bone heat needs triangulated faces */
   tottri = poly_to_tri_count(me->totpoly, me->totloop);
@@ -713,7 +697,7 @@ void heat_bone_weighting(Object *ob,
   sys->heat.verts = verts;
   sys->heat.root = root;
   sys->heat.tip = tip;
-  sys->heat.numsource = numsource;
+  sys->heat.numsource = numbones;
 
   heat_ray_tree_create(sys);
   heat_laplacian_create(sys);
@@ -728,13 +712,13 @@ void heat_bone_weighting(Object *ob,
   }
 
   /* compute weights per bone */
-  for (j = 0; j < numsource; j++) {
+  for (j = 0; j < numbones; j++) {
     if (!selected[j]) {
       continue;
     }
 
     firstsegment = (j == 0 || dgrouplist[j - 1] != dgrouplist[j]);
-    lastsegment = (j == numsource - 1 || dgrouplist[j] != dgrouplist[j + 1]);
+    lastsegment = (j == numbones - 1 || dgrouplist[j] != dgrouplist[j + 1]);
     bbone = !(firstsegment && lastsegment);
 
     /* clear weights */
@@ -804,8 +788,8 @@ void heat_bone_weighting(Object *ob,
         }
       }
     }
-    else if (*err_str == NULL) {
-      *err_str = N_("Bone Heat Weighting: failed to find solution for one or more bones");
+    else if (*error_str == NULL) {
+      *error_str = N_("Bone Heat Weighting: failed to find solution for one or more bones");
       break;
     }
 
@@ -1040,7 +1024,6 @@ static MDefBoundIsect *meshdeform_ray_tree_intersect(MeshDeformBind *mdb,
     MDefBoundIsect *isect;
 
     float(*mp_cagecos)[3] = BLI_array_alloca(mp_cagecos, mp->totloop);
-    int i;
 
     /* create MDefBoundIsect, and extra for 'poly_weights[]' */
     isect = BLI_memarena_alloc(mdb->memarena, sizeof(*isect) + (sizeof(float) * mp->totloop));
@@ -1055,7 +1038,7 @@ static MDefBoundIsect *meshdeform_ray_tree_intersect(MeshDeformBind *mdb,
     isect->len = max_ff(len_v3v3(co1, isect->co), MESHDEFORM_LEN_THRESHOLD);
 
     /* compute mean value coordinates for interpolation */
-    for (i = 0; i < mp->totloop; i++) {
+    for (int i = 0; i < mp->totloop; i++) {
       copy_v3_v3(mp_cagecos[i], cagecos[mloop[mp->loopstart + i].v]);
     }
 
@@ -1224,9 +1207,8 @@ static float meshdeform_boundary_phi(const MeshDeformBind *mdb,
 {
   const MLoop *mloop = mdb->cagemesh_cache.mloop;
   const MPoly *mp = &mdb->cagemesh_cache.mpoly[isect->poly_index];
-  int i;
 
-  for (i = 0; i < mp->totloop; i++) {
+  for (int i = 0; i < mp->totloop; i++) {
     if (mloop[mp->loopstart + i].v == cagevert) {
       return isect->poly_weights[i];
     }
@@ -1240,16 +1222,18 @@ static float meshdeform_interp_w(MeshDeformBind *mdb,
                                  float *UNUSED(vec),
                                  int UNUSED(cagevert))
 {
-  float dvec[3], ivec[3], wx, wy, wz, result = 0.0f;
-  float weight, totweight = 0.0f;
-  int i, a, x, y, z;
+  float dvec[3], ivec[3], result = 0.0f;
+  float totweight = 0.0f;
 
-  for (i = 0; i < 3; i++) {
+  for (int i = 0; i < 3; i++) {
     ivec[i] = (int)gridvec[i];
     dvec[i] = gridvec[i] - ivec[i];
   }
 
-  for (i = 0; i < 8; i++) {
+  for (int i = 0; i < 8; i++) {
+    int x, y, z;
+    float wx, wy, wz;
+
     if (i & 1) {
       x = ivec[0] + 1;
       wx = dvec[0];
@@ -1281,8 +1265,8 @@ static float meshdeform_interp_w(MeshDeformBind *mdb,
     CLAMP(y, 0, mdb->size - 1);
     CLAMP(z, 0, mdb->size - 1);
 
-    a = meshdeform_index(mdb, x, y, z, 0);
-    weight = wx * wy * wz;
+    int a = meshdeform_index(mdb, x, y, z, 0);
+    float weight = wx * wy * wz;
     result += weight * mdb->phi[a];
     totweight += weight;
   }
@@ -1546,7 +1530,8 @@ static void meshdeform_matrix_solve(MeshDeformModifierData *mmd, MeshDeformBind 
       }
     }
     else {
-      BKE_modifier_set_error(&mmd->modifier, "Failed to find bind solution (increase precision?)");
+      BKE_modifier_set_error(
+          mmd->object, &mmd->modifier, "Failed to find bind solution (increase precision?)");
       error("Mesh Deform: failed to find bind solution.");
       break;
     }
@@ -1619,8 +1604,7 @@ static void harmonic_coordinates_bind(MeshDeformModifierData *mmd, MeshDeformBin
     mdb->cagemesh_cache.mpoly = me->mpoly;
     mdb->cagemesh_cache.mloop = me->mloop;
     mdb->cagemesh_cache.looptri = BKE_mesh_runtime_looptri_ensure(me);
-    /* can be NULL */
-    mdb->cagemesh_cache.poly_nors = CustomData_get_layer(&me->pdata, CD_NORMAL);
+    mdb->cagemesh_cache.poly_nors = BKE_mesh_poly_normals_ensure(me);
   }
 
   /* make bounding box equal size in all directions, add padding, and compute
@@ -1744,14 +1728,15 @@ static void harmonic_coordinates_bind(MeshDeformModifierData *mmd, MeshDeformBin
   free_bvhtree_from_mesh(&mdb->bvhdata);
 }
 
-void ED_mesh_deform_bind_callback(MeshDeformModifierData *mmd,
+void ED_mesh_deform_bind_callback(Object *object,
+                                  MeshDeformModifierData *mmd,
                                   Mesh *cagemesh,
                                   float *vertexcos,
                                   int totvert,
                                   float cagemat[4][4])
 {
   MeshDeformModifierData *mmd_orig = (MeshDeformModifierData *)BKE_modifier_get_original(
-      &mmd->modifier);
+      object, &mmd->modifier);
   MeshDeformBind mdb;
   MVert *mvert;
   int a;
@@ -1761,8 +1746,11 @@ void ED_mesh_deform_bind_callback(MeshDeformModifierData *mmd,
 
   memset(&mdb, 0, sizeof(MeshDeformBind));
 
+  /* No need to support other kinds of mesh data as binding is a one-off action. */
+  BKE_mesh_wrapper_ensure_mdata(cagemesh);
+
   /* get mesh and cage mesh */
-  mdb.vertexcos = MEM_callocN(sizeof(float) * 3 * totvert, "MeshDeformCos");
+  mdb.vertexcos = MEM_callocN(sizeof(float[3]) * totvert, "MeshDeformCos");
   mdb.totvert = totvert;
 
   mdb.cagemesh = cagemesh;

@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup bke
@@ -43,13 +27,19 @@
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_font.h"
 #include "BKE_image.h"
+#include "BKE_image_format.h"
 #include "BKE_main.h"
 #include "BKE_packedFile.h"
 #include "BKE_report.h"
 #include "BKE_sound.h"
+#include "BKE_vfont.h"
 #include "BKE_volume.h"
+
+#include "IMB_imbuf.h"
+#include "IMB_imbuf_types.h"
+
+#include "BLO_read_write.h"
 
 int BKE_packedfile_seek(PackedFile *pf, int offset, int whence)
 {
@@ -80,7 +70,7 @@ int BKE_packedfile_seek(PackedFile *pf, int offset, int whence)
     pf->seek = seek;
   }
 
-  return (oldseek);
+  return oldseek;
 }
 
 void BKE_packedfile_rewind(PackedFile *pf)
@@ -108,7 +98,7 @@ int BKE_packedfile_read(PackedFile *pf, void *data, int size)
     size = -1;
   }
 
-  return (size);
+  return size;
 }
 
 int BKE_packedfile_count_all(Main *bmain)
@@ -184,16 +174,16 @@ PackedFile *BKE_packedfile_new_from_memory(void *mem, int memlen)
   return pf;
 }
 
-PackedFile *BKE_packedfile_new(ReportList *reports, const char *filename, const char *basepath)
+PackedFile *BKE_packedfile_new(ReportList *reports, const char *filepath, const char *basepath)
 {
   PackedFile *pf = NULL;
   int file, filelen;
   char name[FILE_MAX];
   void *data;
 
-  /* render result has no filename and can be ignored
+  /* render result has no filepath and can be ignored
    * any other files with no name can be ignored too */
-  if (filename[0] == '\0') {
+  if (filepath[0] == '\0') {
     return pf;
   }
 
@@ -201,7 +191,7 @@ PackedFile *BKE_packedfile_new(ReportList *reports, const char *filename, const 
 
   /* convert relative filenames to absolute filenames */
 
-  BLI_strncpy(name, filename, sizeof(name));
+  BLI_strncpy(name, filepath, sizeof(name));
   BLI_path_abs(name, basepath);
 
   /* open the file
@@ -234,10 +224,9 @@ PackedFile *BKE_packedfile_new(ReportList *reports, const char *filename, const 
 
   // XXX waitcursor(0);
 
-  return (pf);
+  return pf;
 }
 
-/* no libraries for now */
 void BKE_packedfile_pack_all(Main *bmain, ReportList *reports, bool verbose)
 {
   Image *ima;
@@ -296,7 +285,7 @@ void BKE_packedfile_pack_all(Main *bmain, ReportList *reports, bool verbose)
 
 int BKE_packedfile_write_to_file(ReportList *reports,
                                  const char *ref_file_name,
-                                 const char *filename,
+                                 const char *filepath,
                                  PackedFile *pf,
                                  const bool guimode)
 {
@@ -310,7 +299,7 @@ int BKE_packedfile_write_to_file(ReportList *reports,
   if (guimode) {
   }  // XXX  waitcursor(1);
 
-  BLI_strncpy(name, filename, sizeof(name));
+  BLI_strncpy(name, filepath, sizeof(name));
   BLI_path_abs(name, ref_file_name);
 
   if (BLI_exists(name)) {
@@ -365,19 +354,11 @@ int BKE_packedfile_write_to_file(ReportList *reports,
   if (guimode) {
   }  // XXX waitcursor(0);
 
-  return (ret_value);
+  return ret_value;
 }
 
-/**
- * This function compares a packed file to a 'real' file.
- * It returns an integer indicating if:
- *
- * - PF_EQUAL:     the packed file and original file are identical
- * - PF_DIFFERENT: the packed file and original file differ
- * - PF_NOFILE:    the original file doesn't exist
- */
 enum ePF_FileCompare BKE_packedfile_compare_to_file(const char *ref_file_name,
-                                                    const char *filename,
+                                                    const char *filepath,
                                                     PackedFile *pf)
 {
   BLI_stat_t st;
@@ -385,7 +366,7 @@ enum ePF_FileCompare BKE_packedfile_compare_to_file(const char *ref_file_name,
   char buf[4096];
   char name[FILE_MAX];
 
-  BLI_strncpy(name, filename, sizeof(name));
+  BLI_strncpy(name, filepath, sizeof(name));
   BLI_path_abs(name, ref_file_name);
 
   if (BLI_stat(name, &st) == -1) {
@@ -415,11 +396,10 @@ enum ePF_FileCompare BKE_packedfile_compare_to_file(const char *ref_file_name,
           ret_val = PF_CMP_DIFFERS;
           break;
         }
-        else {
-          if (memcmp(buf, ((char *)pf->data) + i, len)) {
-            ret_val = PF_CMP_DIFFERS;
-            break;
-          }
+
+        if (memcmp(buf, ((char *)pf->data) + i, len) != 0) {
+          ret_val = PF_CMP_DIFFERS;
+          break;
         }
       }
 
@@ -427,19 +407,9 @@ enum ePF_FileCompare BKE_packedfile_compare_to_file(const char *ref_file_name,
     }
   }
 
-  return (ret_val);
+  return ret_val;
 }
 
-/**
- * #BKE_packedfile_unpack_to_file() looks at the existing files (abs_name, local_name)
- * and a packed file.
- *
- * It returns a char *to the existing file name / new file name or NULL when
- * there was an error or when the user decides to cancel the operation.
- *
- * \warning 'abs_name' may be relative still! (use a "//" prefix)
- * be sure to run #BLI_path_abs on it first.
- */
 char *BKE_packedfile_unpack_to_file(ReportList *reports,
                                     const char *ref_file_name,
                                     const char *abs_name,
@@ -516,15 +486,30 @@ static void unpack_generate_paths(const char *name,
                                   size_t abspathlen,
                                   size_t relpathlen)
 {
+  const short id_type = GS(id->name);
   char tempname[FILE_MAX];
   char tempdir[FILE_MAXDIR];
 
   BLI_split_dirfile(name, tempdir, tempname, sizeof(tempdir), sizeof(tempname));
 
   if (tempname[0] == '\0') {
-    /* Note: we do not have any real way to re-create extension out of data... */
+    /* NOTE: we generally do not have any real way to re-create extension out of data. */
     BLI_strncpy(tempname, id->name + 2, sizeof(tempname));
     printf("%s\n", tempname);
+
+    /* For images we can add the file extension based on the file magic. */
+    if (id_type == ID_IM) {
+      ImagePackedFile *imapf = ((Image *)id)->packedfiles.last;
+      if (imapf != NULL && imapf->packedfile != NULL) {
+        const PackedFile *pf = imapf->packedfile;
+        enum eImbFileType ftype = IMB_ispic_type_from_memory((const uchar *)pf->data, pf->size);
+        if (ftype != IMB_FTYPE_NONE) {
+          const int imtype = BKE_ftype_to_imtype(ftype, NULL);
+          BKE_image_path_ensure_ext_from_imtype(tempname, imtype);
+        }
+      }
+    }
+
     BLI_filename_make_safe(tempname);
     printf("%s\n", tempname);
   }
@@ -534,7 +519,7 @@ static void unpack_generate_paths(const char *name,
     BLI_strncpy(tempdir, "//", sizeof(tempdir));
   }
 
-  switch (GS(id->name)) {
+  switch (id_type) {
     case ID_VF:
       BLI_snprintf(r_relpath, relpathlen, "//fonts/%s", tempname);
       break;
@@ -557,30 +542,46 @@ static void unpack_generate_paths(const char *name,
   }
 }
 
+char *BKE_packedfile_unpack(Main *bmain,
+                            ReportList *reports,
+                            ID *id,
+                            const char *orig_file_path,
+                            PackedFile *pf,
+                            enum ePF_FileStatus how)
+{
+  char localname[FILE_MAX], absname[FILE_MAX];
+  char *new_name = NULL;
+
+  if (id != NULL) {
+    unpack_generate_paths(
+        orig_file_path, id, absname, localname, sizeof(absname), sizeof(localname));
+    new_name = BKE_packedfile_unpack_to_file(
+        reports, BKE_main_blendfile_path(bmain), absname, localname, pf, how);
+  }
+
+  return new_name;
+}
+
 int BKE_packedfile_unpack_vfont(Main *bmain,
                                 ReportList *reports,
                                 VFont *vfont,
                                 enum ePF_FileStatus how)
 {
-  char localname[FILE_MAX], absname[FILE_MAX];
-  char *newname;
   int ret_value = RET_ERROR;
+  if (vfont) {
+    char *new_file_path = BKE_packedfile_unpack(
+        bmain, reports, (ID *)vfont, vfont->filepath, vfont->packedfile, how);
 
-  if (vfont != NULL) {
-    unpack_generate_paths(
-        vfont->filepath, (ID *)vfont, absname, localname, sizeof(absname), sizeof(localname));
-    newname = BKE_packedfile_unpack_to_file(
-        reports, BKE_main_blendfile_path(bmain), absname, localname, vfont->packedfile, how);
-    if (newname != NULL) {
+    if (new_file_path != NULL) {
       ret_value = RET_OK;
       BKE_packedfile_free(vfont->packedfile);
       vfont->packedfile = NULL;
-      BLI_strncpy(vfont->filepath, newname, sizeof(vfont->filepath));
-      MEM_freeN(newname);
+      BLI_strncpy(vfont->filepath, new_file_path, sizeof(vfont->filepath));
+      MEM_freeN(new_file_path);
     }
   }
 
-  return (ret_value);
+  return ret_value;
 }
 
 int BKE_packedfile_unpack_sound(Main *bmain,
@@ -588,18 +589,14 @@ int BKE_packedfile_unpack_sound(Main *bmain,
                                 bSound *sound,
                                 enum ePF_FileStatus how)
 {
-  char localname[FILE_MAX], absname[FILE_MAX];
-  char *newname;
   int ret_value = RET_ERROR;
 
   if (sound != NULL) {
-    unpack_generate_paths(
-        sound->filepath, (ID *)sound, absname, localname, sizeof(absname), sizeof(localname));
-    newname = BKE_packedfile_unpack_to_file(
-        reports, BKE_main_blendfile_path(bmain), absname, localname, sound->packedfile, how);
-    if (newname != NULL) {
-      BLI_strncpy(sound->filepath, newname, sizeof(sound->filepath));
-      MEM_freeN(newname);
+    char *new_file_path = BKE_packedfile_unpack(
+        bmain, reports, (ID *)sound, sound->filepath, sound->packedfile, how);
+    if (new_file_path != NULL) {
+      BLI_strncpy(sound->filepath, new_file_path, sizeof(sound->filepath));
+      MEM_freeN(new_file_path);
 
       BKE_packedfile_free(sound->packedfile);
       sound->packedfile = NULL;
@@ -610,7 +607,7 @@ int BKE_packedfile_unpack_sound(Main *bmain,
     }
   }
 
-  return (ret_value);
+  return ret_value;
 }
 
 int BKE_packedfile_unpack_image(Main *bmain,
@@ -622,16 +619,11 @@ int BKE_packedfile_unpack_image(Main *bmain,
 
   if (ima != NULL) {
     while (ima->packedfiles.last) {
-      char localname[FILE_MAX], absname[FILE_MAX];
-      char *newname;
       ImagePackedFile *imapf = ima->packedfiles.last;
+      char *new_file_path = BKE_packedfile_unpack(
+          bmain, reports, (ID *)ima, imapf->filepath, imapf->packedfile, how);
 
-      unpack_generate_paths(
-          imapf->filepath, (ID *)ima, absname, localname, sizeof(absname), sizeof(localname));
-      newname = BKE_packedfile_unpack_to_file(
-          reports, BKE_main_blendfile_path(bmain), absname, localname, imapf->packedfile, how);
-
-      if (newname != NULL) {
+      if (new_file_path != NULL) {
         ImageView *iv;
 
         ret_value = ret_value == RET_ERROR ? RET_ERROR : RET_OK;
@@ -641,14 +633,14 @@ int BKE_packedfile_unpack_image(Main *bmain,
         /* update the new corresponding view filepath */
         iv = BLI_findstring(&ima->views, imapf->filepath, offsetof(ImageView, filepath));
         if (iv) {
-          BLI_strncpy(iv->filepath, newname, sizeof(imapf->filepath));
+          BLI_strncpy(iv->filepath, new_file_path, sizeof(imapf->filepath));
         }
 
         /* keep the new name in the image for non-pack specific reasons */
         if (how != PF_REMOVE) {
-          BLI_strncpy(ima->filepath, newname, sizeof(imapf->filepath));
+          BLI_strncpy(ima->filepath, new_file_path, sizeof(imapf->filepath));
         }
-        MEM_freeN(newname);
+        MEM_freeN(new_file_path);
       }
       else {
         ret_value = RET_ERROR;
@@ -663,7 +655,7 @@ int BKE_packedfile_unpack_image(Main *bmain,
     BKE_image_signal(bmain, ima, NULL, IMA_SIGNAL_RELOAD);
   }
 
-  return (ret_value);
+  return ret_value;
 }
 
 int BKE_packedfile_unpack_volume(Main *bmain,
@@ -671,18 +663,14 @@ int BKE_packedfile_unpack_volume(Main *bmain,
                                  Volume *volume,
                                  enum ePF_FileStatus how)
 {
-  char localname[FILE_MAX], absname[FILE_MAX];
-  char *newfilepath;
   int ret_value = RET_ERROR;
 
   if (volume != NULL) {
-    unpack_generate_paths(
-        volume->filepath, (ID *)volume, absname, localname, sizeof(absname), sizeof(localname));
-    newfilepath = BKE_packedfile_unpack_to_file(
-        reports, BKE_main_blendfile_path(bmain), absname, localname, volume->packedfile, how);
-    if (newfilepath != NULL) {
-      BLI_strncpy(volume->filepath, newfilepath, sizeof(volume->filepath));
-      MEM_freeN(newfilepath);
+    char *new_file_path = BKE_packedfile_unpack(
+        bmain, reports, (ID *)volume, volume->filepath, volume->packedfile, how);
+    if (new_file_path != NULL) {
+      BLI_strncpy(volume->filepath, new_file_path, sizeof(volume->filepath));
+      MEM_freeN(new_file_path);
 
       BKE_packedfile_free(volume->packedfile);
       volume->packedfile = NULL;
@@ -693,7 +681,7 @@ int BKE_packedfile_unpack_volume(Main *bmain,
     }
   }
 
-  return (ret_value);
+  return ret_value;
 }
 
 int BKE_packedfile_unpack_all_libraries(Main *bmain, ReportList *reports)
@@ -724,14 +712,14 @@ int BKE_packedfile_unpack_all_libraries(Main *bmain, ReportList *reports)
     }
   }
 
-  return (ret_value);
+  return ret_value;
 }
 
 void BKE_packedfile_pack_all_libraries(Main *bmain, ReportList *reports)
 {
   Library *lib;
 
-  /* test for relativenss */
+  /* Test for relativeness. */
   for (lib = bmain->libraries.first; lib; lib = lib->id.next) {
     if (!BLI_path_is_rel(lib->filepath)) {
       break;
@@ -782,28 +770,27 @@ void BKE_packedfile_unpack_all(Main *bmain, ReportList *reports, enum ePF_FileSt
   }
 }
 
-/* ID should be not NULL, return 1 if there's a packed file */
-bool BKE_packedfile_id_check(ID *id)
+bool BKE_packedfile_id_check(const ID *id)
 {
   switch (GS(id->name)) {
     case ID_IM: {
-      Image *ima = (Image *)id;
+      const Image *ima = (const Image *)id;
       return BKE_image_has_packedfile(ima);
     }
     case ID_VF: {
-      VFont *vf = (VFont *)id;
+      const VFont *vf = (const VFont *)id;
       return vf->packedfile != NULL;
     }
     case ID_SO: {
-      bSound *snd = (bSound *)id;
+      const bSound *snd = (const bSound *)id;
       return snd->packedfile != NULL;
     }
     case ID_VO: {
-      Volume *volume = (Volume *)id;
+      const Volume *volume = (const Volume *)id;
       return volume->packedfile != NULL;
     }
     case ID_LI: {
-      Library *li = (Library *)id;
+      const Library *li = (const Library *)id;
       return li->packedfile != NULL;
     }
     default:
@@ -812,7 +799,6 @@ bool BKE_packedfile_id_check(ID *id)
   return false;
 }
 
-/* ID should be not NULL */
 void BKE_packedfile_id_unpack(Main *bmain, ID *id, ReportList *reports, enum ePF_FileStatus how)
 {
   switch (GS(id->name)) {
@@ -851,5 +837,31 @@ void BKE_packedfile_id_unpack(Main *bmain, ID *id, ReportList *reports, enum ePF
     }
     default:
       break;
+  }
+}
+
+void BKE_packedfile_blend_write(BlendWriter *writer, PackedFile *pf)
+{
+  if (pf == NULL) {
+    return;
+  }
+  BLO_write_struct(writer, PackedFile, pf);
+  BLO_write_raw(writer, pf->size, pf->data);
+}
+
+void BKE_packedfile_blend_read(BlendDataReader *reader, PackedFile **pf_p)
+{
+  BLO_read_packed_address(reader, pf_p);
+  PackedFile *pf = *pf_p;
+  if (pf == NULL) {
+    return;
+  }
+
+  BLO_read_packed_address(reader, &pf->data);
+  if (pf->data == NULL) {
+    /* We cannot allow a PackedFile with a NULL data field,
+     * the whole code assumes this is not possible. See T70315. */
+    printf("%s: NULL packedfile data, cleaning up...\n", __func__);
+    MEM_SAFE_FREE(pf);
   }
 }

@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -132,7 +118,7 @@ void BLI_kdtree_nd_(insert)(KDTree *tree, int index, const float co[KD_DIMS])
   BLI_assert(tree->nodes_len <= tree->nodes_len_capacity);
 #endif
 
-  /* note, array isn't calloc'd,
+  /* NOTE: array isn't calloc'd,
    * need to initialize all struct members */
 
   node->left = node->right = KD_NODE_UNSET;
@@ -158,7 +144,7 @@ static uint kdtree_balance(KDTreeNode *nodes, uint nodes_len, uint axis, const u
     return 0 + ofs;
   }
 
-  /* quicksort style sorting around median */
+  /* Quick-sort style sorting around median. */
   left = 0;
   right = nodes_len - 1;
   median = nodes_len / 2;
@@ -190,7 +176,7 @@ static uint kdtree_balance(KDTreeNode *nodes, uint nodes_len, uint axis, const u
     }
   }
 
-  /* set node and sort subnodes */
+  /* Set node and sort sub-nodes. */
   node = &nodes[median];
   node->d = axis;
   axis = (axis + 1) % KD_DIMS;
@@ -594,7 +580,7 @@ int BLI_kdtree_nd_(find_nearest_n_with_len_squared_cb)(
 int BLI_kdtree_nd_(find_nearest_n)(const KDTree *tree,
                                    const float co[KD_DIMS],
                                    KDTreeNearest r_nearest[],
-                                   const uint nearest_len_capacity)
+                                   uint nearest_len_capacity)
 {
   return BLI_kdtree_nd_(find_nearest_n_with_len_squared_cb)(
       tree, co, r_nearest, nearest_len_capacity, NULL, NULL);
@@ -726,7 +712,7 @@ int BLI_kdtree_nd_(range_search_with_len_squared_cb)(
 int BLI_kdtree_nd_(range_search)(const KDTree *tree,
                                  const float co[KD_DIMS],
                                  KDTreeNearest **r_nearest,
-                                 const float range)
+                                 float range)
 {
   return BLI_kdtree_nd_(range_search_with_len_squared_cb)(tree, co, r_nearest, range, NULL, NULL);
 }
@@ -878,11 +864,11 @@ static void deduplicate_recursive(const struct DeDuplicateParams *p, uint i)
  * the iteration order.
  * \param duplicates: An array of int's the length of #KDTree.nodes_len
  * Values initialized to -1 are candidates to me merged.
- * Setting the index to it's own position in the array prevents it from being touched,
+ * Setting the index to its own position in the array prevents it from being touched,
  * although it can still be used as a target.
  * \returns The number of merges found (includes any merges already in the \a duplicates array).
  *
- * \note Merging is always a single step (target indices wont be marked for merging).
+ * \note Merging is always a single step (target indices won't be marked for merging).
  */
 int BLI_kdtree_nd_(calc_duplicates_fast)(const KDTree *tree,
                                          const float range,
@@ -967,7 +953,7 @@ static int kdtree_node_cmp_deduplicate(const void *n0_p, const void *n1_p)
 }
 
 /**
- * Remove exact duplicates (run before before balancing).
+ * Remove exact duplicates (run before balancing).
  *
  * Keep the first element added when duplicates are found.
  */

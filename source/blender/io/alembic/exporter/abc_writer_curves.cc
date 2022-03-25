@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2016 Kévin Dietrich.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2016 Kévin Dietrich. All rights reserved. */
 
 /** \file
  * \ingroup balembic
@@ -41,9 +25,7 @@ using Alembic::AbcGeom::OInt16Property;
 using Alembic::AbcGeom::ON3fGeomParam;
 using Alembic::AbcGeom::OV2fGeomParam;
 
-namespace blender {
-namespace io {
-namespace alembic {
+namespace blender::io::alembic {
 
 const std::string ABC_CURVE_RESOLUTION_U_PROPNAME("blender:resolution");
 
@@ -63,9 +45,14 @@ void ABCCurveWriter::create_alembic_objects(const HierarchyContext *context)
   user_prop_resolu.set(cu->resolu);
 }
 
-const Alembic::Abc::OObject ABCCurveWriter::get_alembic_object() const
+Alembic::Abc::OObject ABCCurveWriter::get_alembic_object() const
 {
   return abc_curve_;
+}
+
+Alembic::Abc::OCompoundProperty ABCCurveWriter::abc_prop_for_custom_props()
+{
+  return abc_schema_prop_for_custom_props(abc_curve_schema_);
 }
 
 void ABCCurveWriter::do_write(HierarchyContext &context)
@@ -80,9 +67,9 @@ void ABCCurveWriter::do_write(HierarchyContext &context)
   std::vector<uint8_t> orders;
   Imath::V3f temp_vert;
 
-  Alembic::AbcGeom::BasisType curve_basis;
-  Alembic::AbcGeom::CurveType curve_type;
-  Alembic::AbcGeom::CurvePeriodicity periodicity;
+  Alembic::AbcGeom::BasisType curve_basis = Alembic::AbcGeom::kNoBasis;
+  Alembic::AbcGeom::CurveType curve_type = Alembic::AbcGeom::kVariableOrder;
+  Alembic::AbcGeom::CurvePeriodicity periodicity = Alembic::AbcGeom::kNonPeriodic;
 
   Nurb *nurbs = static_cast<Nurb *>(curve->nurb.first);
   for (; nurbs; nurbs = nurbs->next) {
@@ -132,7 +119,7 @@ void ABCCurveWriter::do_write(HierarchyContext &context)
       }
     }
 
-    if (nurbs->knotsu != NULL) {
+    if (nurbs->knotsu != nullptr) {
       const size_t num_knots = KNOTSU(nurbs);
 
       /* Add an extra knot at the beginning and end of the array since most apps
@@ -186,7 +173,7 @@ ABCCurveMeshWriter::ABCCurveMeshWriter(const ABCWriterConstructorArgs &args)
 Mesh *ABCCurveMeshWriter::get_export_mesh(Object *object_eval, bool &r_needsfree)
 {
   Mesh *mesh_eval = BKE_object_get_evaluated_mesh(object_eval);
-  if (mesh_eval != NULL) {
+  if (mesh_eval != nullptr) {
     /* Mesh_eval only exists when generative modifiers are in use. */
     r_needsfree = false;
     return mesh_eval;
@@ -196,6 +183,4 @@ Mesh *ABCCurveMeshWriter::get_export_mesh(Object *object_eval, bool &r_needsfree
   return BKE_mesh_new_nomain_from_curve(object_eval);
 }
 
-}  // namespace alembic
-}  // namespace io
-}  // namespace blender
+}  // namespace blender::io::alembic

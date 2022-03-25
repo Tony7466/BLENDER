@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2012 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2012 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup spseq
@@ -28,7 +12,6 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_context.h"
-#include "BKE_sequencer.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -38,6 +21,10 @@
 #include "UI_view2d.h"
 
 #include "RNA_define.h"
+
+#include "SEQ_select.h"
+#include "SEQ_sequencer.h"
+#include "SEQ_time.h"
 
 /* For menu, popup, icons, etc. */
 #include "ED_anim_api.h"
@@ -86,8 +73,17 @@ static int sequencer_view_all_exec(bContext *C, wmOperator *op)
   rctf box;
 
   const int smooth_viewtx = WM_operator_smooth_viewtx_get(op);
+  Scene *scene = CTX_data_scene(C);
+  const Editing *ed = SEQ_editing_get(scene);
 
-  boundbox_seq(CTX_data_scene(C), &box);
+  SEQ_timeline_init_boundbox(scene, &box);
+  MetaStack *ms = SEQ_meta_stack_active_get(ed);
+  /* Use meta strip range instead of scene. */
+  if (ms != NULL) {
+    box.xmin = ms->disp_range[0] - 1;
+    box.xmax = ms->disp_range[1] + 1;
+  }
+  SEQ_timeline_expand_boundbox(SEQ_active_seqbase_get(ed), &box);
   UI_view2d_smooth_view(C, region, &box, smooth_viewtx);
   return OPERATOR_FINISHED;
 }
@@ -144,17 +140,17 @@ void SEQUENCER_OT_view_frame(wmOperatorType *ot)
 
 static int sequencer_view_all_preview_exec(bContext *C, wmOperator *UNUSED(op))
 {
+  SpaceSeq *sseq = CTX_wm_space_seq(C);
   bScreen *screen = CTX_wm_screen(C);
   ScrArea *area = CTX_wm_area(C);
 #if 0
   ARegion *region = CTX_wm_region(C);
-  SpaceSeq *sseq = area->spacedata.first;
   Scene *scene = CTX_data_scene(C);
 #endif
   View2D *v2d = UI_view2d_fromcontext(C);
 
   v2d->cur = v2d->tot;
-  UI_view2d_curRect_validate(v2d);
+  UI_view2d_curRect_changed(C, v2d);
   UI_view2d_sync(screen, area, v2d, V2D_LOCK_COPY);
 
 #if 0
@@ -185,6 +181,8 @@ static int sequencer_view_all_preview_exec(bContext *C, wmOperator *UNUSED(op))
     sseq->zoom = 1.0f;
   }
 #endif
+
+  sseq->flag |= SEQ_ZOOM_TO_FIT;
 
   ED_area_tag_redraw(CTX_wm_area(C));
   return OPERATOR_FINISHED;
@@ -228,6 +226,8 @@ static int sequencer_view_zoom_ratio_exec(bContext *C, wmOperator *op)
 
   ED_region_tag_redraw(CTX_wm_region(C));
 
+  UI_view2d_curRect_changed(C, v2d);
+
   return OPERATOR_FINISHED;
 }
 
@@ -265,8 +265,7 @@ static int sequencer_view_selected_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   View2D *v2d = UI_view2d_fromcontext(C);
   ARegion *region = CTX_wm_region(C);
-  Editing *ed = BKE_sequencer_editing_get(scene, false);
-  Sequence *last_seq = BKE_sequencer_active_get(scene);
+  Editing *ed = SEQ_editing_get(scene);
   Sequence *seq;
   rctf cur_new = v2d->cur;
 
@@ -284,7 +283,7 @@ static int sequencer_view_selected_exec(bContext *C, wmOperator *op)
   }
 
   for (seq = ed->seqbasep->first; seq; seq = seq->next) {
-    if ((seq->flag & SELECT) || (seq == last_seq)) {
+    if (seq->flag & SELECT) {
       xmin = min_ii(xmin, seq->startdisp);
       xmax = max_ii(xmax, seq->enddisp);
 
@@ -372,7 +371,7 @@ static int view_ghost_border_exec(bContext *C, wmOperator *op)
   CLAMP(rect.xmax, 0.0f, 1.0f);
   CLAMP(rect.ymax, 0.0f, 1.0f);
 
-  scene->ed->over_border = rect;
+  scene->ed->overlay_frame_rect = rect;
 
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
 
@@ -384,13 +383,13 @@ void SEQUENCER_OT_view_ghost_border(wmOperatorType *ot)
   /* Identifiers. */
   ot->name = "Border Offset View";
   ot->idname = "SEQUENCER_OT_view_ghost_border";
-  ot->description = "Set the boundaries of the border used for offset-view";
+  ot->description = "Set the boundaries of the border used for offset view";
 
   /* Api callbacks. */
   ot->invoke = WM_gesture_box_invoke;
   ot->exec = view_ghost_border_exec;
   ot->modal = WM_gesture_box_modal;
-  ot->poll = sequencer_view_preview_poll;
+  ot->poll = sequencer_view_has_preview_poll;
   ot->cancel = WM_gesture_box_cancel;
 
   /* Flags. */

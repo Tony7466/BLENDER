@@ -162,13 +162,13 @@ void main()
     int color_class = int(floor(color.r));
     float color_intensity = fract(color.r);
     switch (color_class) {
-      case 0: /* No eye (convergence plane) */
+      case 0: /* No eye (convergence plane). */
         finalColor = vec4(1.0, 1.0, 1.0, 1.0);
         break;
-      case 1: /* Left eye  */
+      case 1: /* Left eye. */
         finalColor = vec4(0.0, 1.0, 1.0, 1.0);
         break;
-      case 2: /* Right eye */
+      case 2: /* Right eye. */
         finalColor = vec4(1.0, 0.0, 0.0, 1.0);
         break;
     }
@@ -207,7 +207,7 @@ void main()
     vec3 n1 = normalize(cross(edge, world_pos - p1));
     bool persp = (ProjectionMatrix[3][3] == 0.0);
     vec3 V = (persp) ? normalize(ViewMatrixInverse[3].xyz - world_pos) : ViewMatrixInverse[2].xyz;
-    /* Discard non-silhouete edges.  */
+    /* Discard non-silhouette edges. */
     bool facing0 = dot(n0, V) > 0.0;
     bool facing1 = dot(n1, V) > 0.0;
     if (facing0 == facing1) {
@@ -222,9 +222,9 @@ void main()
   edgePos = edgeStart = ((gl_Position.xy / gl_Position.w) * 0.5 + 0.5) * sizeViewport.xy;
 
 #ifdef SELECT_EDGES
-  /* HACK: to avoid loosing sub pixel object in selections, we add a bit of randomness to the
+  /* HACK: to avoid losing sub-pixel object in selections, we add a bit of randomness to the
    * wire to at least create one fragment that will pass the occlusion query. */
-  /* TODO(fclem) Limit this workaround to selection. It's not very noticeable but still... */
+  /* TODO(fclem): Limit this workaround to selection. It's not very noticeable but still... */
   gl_Position.xy += sizeViewportInv.xy * gl_Position.w * ((gl_VertexID % 2 == 0) ? -1.0 : 1.0);
 #endif
 

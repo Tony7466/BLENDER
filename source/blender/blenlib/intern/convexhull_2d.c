@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -28,7 +14,7 @@
 #include "BLI_strict_flags.h"
 #include "BLI_utildefines.h"
 
-/* Copyright 2001, softSurfer (www.softsurfer.com)
+/* Copyright 2001, softSurfer (http://www.softsurfer.com)
  * This code may be freely used and modified for any purpose
  * providing that this copyright notice is included with it.
  * SoftSurfer makes no warranty for this code, and cannot be held
@@ -37,6 +23,7 @@
  * http://softsurfer.com/Archive/algorithm_0203/algorithm_0203.htm
  */
 
+/* -------------------------------------------------------------------- */
 /** \name Main Convex-Hull Calculation
  * \{ */
 
@@ -52,14 +39,6 @@ static float is_left(const float p0[2], const float p1[2], const float p2[2])
   return (p1[0] - p0[0]) * (p2[1] - p0[1]) - (p2[0] - p0[0]) * (p1[1] - p0[1]);
 }
 
-/**
- * A.M. Andrew's monotone chain 2D convex hull algorithm
- *
- * \param points: An array of 2D points presorted by increasing x and y-coords.
- * \param n: The number of points in points.
- * \param r_points: An array of the convex hull vertex indices (max is n).
- * \returns the number of points in r_points.
- */
 int BLI_convexhull_2d_sorted(const float (*points)[2], const int n, int r_points[])
 {
   /* the output array r_points[] will be used as the stack */
@@ -115,9 +94,7 @@ int BLI_convexhull_2d_sorted(const float (*points)[2], const int n, int r_points
       if (is_left(points[r_points[top - 1]], points[r_points[top]], points[i]) > 0.0f) {
         break; /* points[i] is a new hull vertex */
       }
-      else {
-        top--; /* pop top point off stack */
-      }
+      top--; /* pop top point off stack */
     }
 
     r_points[++top] = i; /* push points[i] onto stack */
@@ -141,9 +118,7 @@ int BLI_convexhull_2d_sorted(const float (*points)[2], const int n, int r_points
       if (is_left(points[r_points[top - 1]], points[r_points[top]], points[i]) > 0.0f) {
         break; /* points[i] is a new hull vertex */
       }
-      else {
-        top--; /* pop top point off stack */
-      }
+      top--; /* pop top point off stack */
     }
 
     if (points[i][0] == points[r_points[0]][0] && points[i][1] == points[r_points[0]][1]) {
@@ -172,32 +147,19 @@ static int pointref_cmp_yx(const void *a_, const void *b_)
   if (a->pt[1] > b->pt[1]) {
     return 1;
   }
-  else if (a->pt[1] < b->pt[1]) {
+  if (a->pt[1] < b->pt[1]) {
     return -1;
   }
 
   if (a->pt[0] > b->pt[0]) {
     return 1;
   }
-  else if (a->pt[0] < b->pt[0]) {
+  if (a->pt[0] < b->pt[0]) {
     return -1;
   }
-
-  else {
-    return 0;
-  }
+  return 0;
 }
 
-/**
- * A.M. Andrew's monotone chain 2D convex hull algorithm
- *
- * \param points: An array of 2D points.
- * \param n: The number of points in points.
- * \param r_points: An array of the convex hull vertex indices (max is n).
- * _must_ be allocated as ``n * 2`` because of how its used internally,
- * even though the final result will be no more than \a n in size.
- * \returns the number of points in r_points.
- */
 int BLI_convexhull_2d(const float (*points)[2], const int n, int r_points[])
 {
   struct PointRef *points_ref = MEM_mallocN(sizeof(*points_ref) * (size_t)n, __func__);
@@ -234,22 +196,12 @@ int BLI_convexhull_2d(const float (*points)[2], const int n, int r_points[])
 
 /** \} */
 
-/* -------------------------------------------------------------------- */
 /* Helper functions */
 
+/* -------------------------------------------------------------------- */
 /** \name Utility Convex-Hull Functions
  * \{ */
 
-/**
- * \return The best angle for fitting the convex hull to an axis aligned bounding box.
- *
- * Intended to be used with #BLI_convexhull_2d
- *
- * \param points_hull: Ordered hull points
- * (result of #BLI_convexhull_2d mapped to a contiguous array).
- *
- * \note we could return the index of the best edge too if its needed.
- */
 float BLI_convexhull_aabb_fit_hull_2d(const float (*points_hull)[2], unsigned int n)
 {
   unsigned int i, i_prev;
@@ -297,11 +249,6 @@ float BLI_convexhull_aabb_fit_hull_2d(const float (*points_hull)[2], unsigned in
   return (area_best != FLT_MAX) ? atan2f(dvec_best[0], dvec_best[1]) : 0.0f;
 }
 
-/**
- * Wrap #BLI_convexhull_aabb_fit_hull_2d and do the convex hull calculation.
- *
- * \param points: arbitrary 2d points.
- */
 float BLI_convexhull_aabb_fit_points_2d(const float (*points)[2], unsigned int n)
 {
   int *index_map;

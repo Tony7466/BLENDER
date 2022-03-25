@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pymathutils
@@ -42,7 +28,7 @@ static PyObject *Quaternion_deepcopy(QuaternionObject *self, PyObject *args);
 
 /* -----------------------------METHODS------------------------------ */
 
-/* note: BaseMath_ReadCallback must be called beforehand */
+/* NOTE: BaseMath_ReadCallback must be called beforehand. */
 static PyObject *Quaternion_to_tuple_ext(QuaternionObject *self, int ndigits)
 {
   PyObject *ret;
@@ -95,7 +81,7 @@ static PyObject *Quaternion_to_euler(QuaternionObject *self, PyObject *args)
   }
 
   if (order_str) {
-    order = euler_order_from_string(order_str, "Matrix.to_euler()");
+    order = euler_order_from_string(order_str, "Quaternion.to_euler()");
 
     if (order == -1) {
       return NULL;
@@ -195,7 +181,7 @@ static PyObject *Quaternion_to_swing_twist(QuaternionObject *self, PyObject *axi
   int axis;
 
   if (axis_arg && PyUnicode_Check(axis_arg)) {
-    axis_str = _PyUnicode_AsString(axis_arg);
+    axis_str = PyUnicode_AsUTF8(axis_arg);
   }
 
   if (axis_str && axis_str[0] >= 'X' && axis_str[0] <= 'Z' && axis_str[1] == 0) {
@@ -320,7 +306,7 @@ static PyObject *Quaternion_rotation_difference(QuaternionObject *self, PyObject
                             QUAT_SIZE,
                             QUAT_SIZE,
                             value,
-                            "Quaternion.difference(other), invalid 'other' arg") == -1) {
+                            "Quaternion.rotation_difference(other), invalid 'other' arg") == -1) {
     return NULL;
   }
 
@@ -815,7 +801,7 @@ static PyObject *Quaternion_subscript(QuaternionObject *self, PyObject *item)
     }
     return Quaternion_item(self, i);
   }
-  else if (PySlice_Check(item)) {
+  if (PySlice_Check(item)) {
     Py_ssize_t start, stop, step, slicelength;
 
     if (PySlice_GetIndicesEx(item, QUAT_SIZE, &start, &stop, &step, &slicelength) < 0) {
@@ -825,20 +811,17 @@ static PyObject *Quaternion_subscript(QuaternionObject *self, PyObject *item)
     if (slicelength <= 0) {
       return PyTuple_New(0);
     }
-    else if (step == 1) {
+    if (step == 1) {
       return Quaternion_slice(self, start, stop);
     }
-    else {
-      PyErr_SetString(PyExc_IndexError, "slice steps not supported with quaternions");
-      return NULL;
-    }
-  }
-  else {
-    PyErr_Format(PyExc_TypeError,
-                 "quaternion indices must be integers, not %.200s",
-                 Py_TYPE(item)->tp_name);
+
+    PyErr_SetString(PyExc_IndexError, "slice steps not supported with quaternions");
     return NULL;
   }
+
+  PyErr_Format(
+      PyExc_TypeError, "quaternion indices must be integers, not %.200s", Py_TYPE(item)->tp_name);
+  return NULL;
 }
 
 static int Quaternion_ass_subscript(QuaternionObject *self, PyObject *item, PyObject *value)
@@ -853,7 +836,7 @@ static int Quaternion_ass_subscript(QuaternionObject *self, PyObject *item, PyOb
     }
     return Quaternion_ass_item(self, i, value);
   }
-  else if (PySlice_Check(item)) {
+  if (PySlice_Check(item)) {
     Py_ssize_t start, stop, step, slicelength;
 
     if (PySlice_GetIndicesEx(item, QUAT_SIZE, &start, &stop, &step, &slicelength) < 0) {
@@ -863,17 +846,14 @@ static int Quaternion_ass_subscript(QuaternionObject *self, PyObject *item, PyOb
     if (step == 1) {
       return Quaternion_ass_slice(self, start, stop, value);
     }
-    else {
-      PyErr_SetString(PyExc_IndexError, "slice steps not supported with quaternion");
-      return -1;
-    }
-  }
-  else {
-    PyErr_Format(PyExc_TypeError,
-                 "quaternion indices must be integers, not %.200s",
-                 Py_TYPE(item)->tp_name);
+
+    PyErr_SetString(PyExc_IndexError, "slice steps not supported with quaternion");
     return -1;
   }
+
+  PyErr_Format(
+      PyExc_TypeError, "quaternion indices must be integers, not %.200s", Py_TYPE(item)->tp_name);
+  return -1;
 }
 
 /* ------------------------NUMERIC PROTOCOLS---------------------- */
@@ -967,7 +947,7 @@ static PyObject *Quaternion_mul(PyObject *q1, PyObject *q2)
     return Quaternion_CreatePyObject(quat, Py_TYPE(q1));
   }
   /* the only case this can happen (for a supported type is "FLOAT * QUAT") */
-  else if (quat2) { /* FLOAT * QUAT */
+  if (quat2) { /* FLOAT * QUAT */
     if (((scalar = PyFloat_AsDouble(q1)) == -1.0f && PyErr_Occurred()) == 0) {
       return quat_mul_float(quat2, scalar);
     }
@@ -1049,7 +1029,7 @@ static PyObject *Quaternion_matmul(PyObject *q1, PyObject *q2)
     mul_qt_qtqt(quat, quat1->quat, quat2->quat);
     return Quaternion_CreatePyObject(quat, Py_TYPE(q1));
   }
-  else if (quat1) {
+  if (quat1) {
     /* QUAT @ VEC */
     if (VectorObject_Check(q2)) {
       VectorObject *vec2 = (VectorObject *)q2;
@@ -1119,7 +1099,7 @@ static PyObject *Quaternion_imatmul(PyObject *q1, PyObject *q2)
 }
 
 /* -obj
- * returns the negative of this object*/
+ * Returns the negative of this object. */
 static PyObject *Quaternion_neg(QuaternionObject *self)
 {
   float tquat[QUAT_SIZE];
@@ -1384,10 +1364,9 @@ static PyObject *quat__apply_to_copy(PyObject *(*quat_func)(QuaternionObject *),
     Py_DECREF(ret_dummy);
     return ret;
   }
-  else { /* error */
-    Py_DECREF(ret);
-    return NULL;
-  }
+  /* error */
+  Py_DECREF(ret);
+  return NULL;
 }
 
 /* axis vector suffers from precision errors, use this function to ensure */
@@ -1414,11 +1393,11 @@ static void quat__axis_angle_sanitize(float axis[3], float *angle)
 
 /* -----------------------METHOD DEFINITIONS ---------------------- */
 static struct PyMethodDef Quaternion_methods[] = {
-    /* in place only */
+    /* In place only. */
     {"identity", (PyCFunction)Quaternion_identity, METH_NOARGS, Quaternion_identity_doc},
     {"negate", (PyCFunction)Quaternion_negate, METH_NOARGS, Quaternion_negate_doc},
 
-    /* operate on original or copy */
+    /* Operate on original or copy. */
     {"conjugate", (PyCFunction)Quaternion_conjugate, METH_NOARGS, Quaternion_conjugate_doc},
     {"conjugated", (PyCFunction)Quaternion_conjugated, METH_NOARGS, Quaternion_conjugated_doc},
 
@@ -1428,7 +1407,7 @@ static struct PyMethodDef Quaternion_methods[] = {
     {"normalize", (PyCFunction)Quaternion_normalize, METH_NOARGS, Quaternion_normalize_doc},
     {"normalized", (PyCFunction)Quaternion_normalized, METH_NOARGS, Quaternion_normalized_doc},
 
-    /* return converted representation */
+    /* Return converted representation. */
     {"to_euler", (PyCFunction)Quaternion_to_euler, METH_VARARGS, Quaternion_to_euler_doc},
     {"to_matrix", (PyCFunction)Quaternion_to_matrix, METH_NOARGS, Quaternion_to_matrix_doc},
     {"to_axis_angle",
@@ -1444,7 +1423,7 @@ static struct PyMethodDef Quaternion_methods[] = {
      METH_NOARGS,
      Quaternion_to_exponential_map_doc},
 
-    /* operation between 2 or more types  */
+    /* Operation between 2 or more types. */
     {"cross", (PyCFunction)Quaternion_cross, METH_O, Quaternion_cross_doc},
     {"dot", (PyCFunction)Quaternion_dot, METH_O, Quaternion_dot_doc},
     {"rotation_difference",
@@ -1458,7 +1437,7 @@ static struct PyMethodDef Quaternion_methods[] = {
      METH_O,
      Quaternion_make_compatible_doc},
 
-    /* base-math methods */
+    /* Base-math methods. */
     {"freeze", (PyCFunction)BaseMathObject_freeze, METH_NOARGS, BaseMathObject_freeze_doc},
 
     {"copy", (PyCFunction)Quaternion_copy, METH_NOARGS, Quaternion_copy_doc},
@@ -1511,6 +1490,11 @@ static PyGetSetDef Quaternion_getseters[] = {
      (getter)BaseMathObject_is_frozen_get,
      (setter)NULL,
      BaseMathObject_is_frozen_doc,
+     NULL},
+    {"is_valid",
+     (getter)BaseMathObject_is_valid_get,
+     (setter)NULL,
+     BaseMathObject_is_valid_doc,
      NULL},
     {"owner", (getter)BaseMathObject_owner_get, (setter)NULL, BaseMathObject_owner_doc, NULL},
     {NULL, NULL, NULL, NULL, NULL} /* Sentinel */

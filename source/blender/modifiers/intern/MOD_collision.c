@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2005 by the Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup modifiers
@@ -23,12 +7,15 @@
 
 #include "BLI_utildefines.h"
 
+#include "BLI_kdopbvh.h"
 #include "BLI_math.h"
 
 #include "BLT_translation.h"
 
+#include "DNA_defaults.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_object_force_types.h"
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
 
@@ -49,6 +36,7 @@
 #include "UI_resources.h"
 
 #include "RNA_access.h"
+#include "RNA_prototypes.h"
 
 #include "MOD_modifiertypes.h"
 #include "MOD_ui_common.h"
@@ -62,16 +50,9 @@ static void initData(ModifierData *md)
 {
   CollisionModifierData *collmd = (CollisionModifierData *)md;
 
-  collmd->x = NULL;
-  collmd->xnew = NULL;
-  collmd->current_x = NULL;
-  collmd->current_xnew = NULL;
-  collmd->current_v = NULL;
-  collmd->time_x = collmd->time_xnew = -1000;
-  collmd->mvert_num = 0;
-  collmd->tri_num = 0;
-  collmd->is_static = false;
-  collmd->bvhtree = NULL;
+  BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(collmd, modifier));
+
+  MEMCPY_STRUCT_AFTER(collmd, DNA_struct_default_get(CollisionModifierData), modifier);
 }
 
 static void freeData(ModifierData *md)
@@ -99,7 +80,9 @@ static void freeData(ModifierData *md)
   }
 }
 
-static bool dependsOnTime(ModifierData *UNUSED(md))
+static bool dependsOnTime(struct Scene *UNUSED(scene),
+                          ModifierData *UNUSED(md),
+                          const int UNUSED(dag_eval_mode))
 {
   return true;
 }
@@ -115,18 +98,23 @@ static void deformVerts(ModifierData *md,
   MVert *tempVert = NULL;
   Object *ob = ctx->object;
 
+  /* If collision is disabled, free the stale data and exit. */
+  if (!ob->pd || !ob->pd->deflect) {
+    if (!ob->pd) {
+      printf("CollisionModifier: collision settings are missing!\n");
+    }
+
+    freeData(md);
+    return;
+  }
+
   if (mesh == NULL) {
     mesh_src = MOD_deform_mesh_eval_get(ob, NULL, NULL, NULL, numVerts, false, false);
   }
   else {
     /* Not possible to use get_mesh() in this case as we'll modify its vertices
      * and get_mesh() would return 'mesh' directly. */
-    BKE_id_copy_ex(NULL, (ID *)mesh, (ID **)&mesh_src, LIB_ID_COPY_LOCALIZE);
-  }
-
-  if (!ob->pd) {
-    printf("CollisionModifier deformVerts: Should not happen!\n");
-    return;
+    mesh_src = (Mesh *)BKE_id_copy_ex(NULL, (ID *)mesh, NULL, LIB_ID_COPY_LOCALIZE);
   }
 
   if (mesh_src) {
@@ -167,10 +155,10 @@ static void deformVerts(ModifierData *md,
         mul_m4_v3(ob->obmat, collmd->x[i].co);
       }
 
-      collmd->xnew = MEM_dupallocN(collmd->x);          // frame end position
-      collmd->current_x = MEM_dupallocN(collmd->x);     // inter-frame
-      collmd->current_xnew = MEM_dupallocN(collmd->x);  // inter-frame
-      collmd->current_v = MEM_dupallocN(collmd->x);     // inter-frame
+      collmd->xnew = MEM_dupallocN(collmd->x);         /* Frame end position. */
+      collmd->current_x = MEM_dupallocN(collmd->x);    /* Inter-frame. */
+      collmd->current_xnew = MEM_dupallocN(collmd->x); /* Inter-frame. */
+      collmd->current_v = MEM_dupallocN(collmd->x);    /* Inter-frame. */
 
       collmd->mvert_num = mvert_num;
 
@@ -221,7 +209,7 @@ static void deformVerts(ModifierData *md,
         }
       }
 
-      /* happens on file load (ONLY when i decomment changes in readfile.c) */
+      /* Happens on file load (ONLY when I un-comment changes in readfile.c) */
       if (!collmd->bvhtree) {
         collmd->bvhtree = bvhtree_build_from_mvert(
             collmd->current_x, collmd->tri, collmd->tri_num, ob->pd->pdef_sboft);
@@ -254,16 +242,15 @@ static void updateDepsgraph(ModifierData *UNUSED(md), const ModifierUpdateDepsgr
   DEG_add_modifier_to_transform_relation(ctx->node, "Collision Modifier");
 }
 
-static void panel_draw(const bContext *C, Panel *panel)
+static void panel_draw(const bContext *UNUSED(C), Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA ptr;
-  modifier_panel_get_property_pointers(C, panel, NULL, &ptr);
+  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, NULL);
 
-  uiItemL(layout, IFACE_("Settings are inside the Physics tab"), ICON_NONE);
+  uiItemL(layout, TIP_("Settings are inside the Physics tab"), ICON_NONE);
 
-  modifier_panel_end(layout, &ptr);
+  modifier_panel_end(layout, ptr);
 }
 
 static void panelRegister(ARegionType *region_type)
@@ -275,8 +262,8 @@ static void blendRead(BlendDataReader *UNUSED(reader), ModifierData *md)
 {
   CollisionModifierData *collmd = (CollisionModifierData *)md;
 #if 0
-      // TODO: CollisionModifier should use pointcache
-      // + have proper reset events before enabling this
+      /* TODO: #CollisionModifier should use point-cache
+       * + have proper reset events before enabling this. */
       collmd->x = newdataadr(fd, collmd->x);
       collmd->xnew = newdataadr(fd, collmd->xnew);
       collmd->mfaces = newdataadr(fd, collmd->mfaces);
@@ -303,8 +290,10 @@ ModifierTypeInfo modifierType_Collision = {
     /* name */ "Collision",
     /* structName */ "CollisionModifierData",
     /* structSize */ sizeof(CollisionModifierData),
+    /* srna */ &RNA_CollisionModifier,
     /* type */ eModifierTypeType_OnlyDeform,
     /* flags */ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_Single,
+    /* icon */ ICON_MOD_PHYSICS,
 
     /* copyData */ NULL,
 
@@ -313,9 +302,7 @@ ModifierTypeInfo modifierType_Collision = {
     /* deformVertsEM */ NULL,
     /* deformMatricesEM */ NULL,
     /* modifyMesh */ NULL,
-    /* modifyHair */ NULL,
-    /* modifyPointCloud */ NULL,
-    /* modifyVolume */ NULL,
+    /* modifyGeometrySet */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ NULL,
@@ -324,7 +311,6 @@ ModifierTypeInfo modifierType_Collision = {
     /* updateDepsgraph */ updateDepsgraph,
     /* dependsOnTime */ dependsOnTime,
     /* dependsOnNormals */ NULL,
-    /* foreachObjectLink */ NULL,
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,

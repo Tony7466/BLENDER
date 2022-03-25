@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup balembic
@@ -38,9 +24,7 @@
 
 #include "PIL_time.h"
 
-namespace blender {
-namespace io {
-namespace alembic {
+namespace blender::io::alembic {
 
 std::string get_id_name(const Object *const ob)
 {
@@ -65,15 +49,6 @@ std::string get_valid_abc_name(const char *name)
   return name_string;
 }
 
-/**
- * \brief get_object_dag_path_name returns the name under which the object
- *  will be exported in the Alembic file. It is of the form
- *  "[../grandparent/]parent/object" if dupli_parent is NULL, or
- *  "dupli_parent/[../grandparent/]parent/object" otherwise.
- * \param ob:
- * \param dupli_parent:
- * \return
- */
 std::string get_object_dag_path_name(const Object *const ob, Object *dupli_parent)
 {
   std::string name = get_id_name(ob);
@@ -134,10 +109,10 @@ bool has_property(const Alembic::Abc::ICompoundProperty &prop, const std::string
     return false;
   }
 
-  return prop.getPropertyHeader(name) != NULL;
+  return prop.getPropertyHeader(name) != nullptr;
 }
 
-typedef std::pair<Alembic::AbcCoreAbstract::index_t, float> index_time_pair_t;
+using index_time_pair_t = std::pair<Alembic::AbcCoreAbstract::index_t, float>;
 
 float get_weight_and_index(float time,
                            const Alembic::AbcCoreAbstract::TimeSamplingPtr &time_sampling,
@@ -175,7 +150,7 @@ float get_weight_and_index(float time,
 
 AbcObjectReader *create_reader(const Alembic::AbcGeom::IObject &object, ImportSettings &settings)
 {
-  AbcObjectReader *reader = NULL;
+  AbcObjectReader *reader = nullptr;
 
   const Alembic::AbcGeom::MetaData &md = object.getMetaData();
 
@@ -261,6 +236,4 @@ std::ostream &operator<<(std::ostream &os, const SimpleLogger &logger)
   return os;
 }
 
-}  // namespace alembic
-}  // namespace io
-}  // namespace blender
+}  // namespace blender::io::alembic

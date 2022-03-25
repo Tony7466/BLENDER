@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2013 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2013 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup depsgraph
@@ -23,8 +7,8 @@
 
 #include "intern/node/deg_node_id.h"
 
+#include <cstdio>
 #include <cstring> /* required for STREQ later on. */
-#include <stdio.h>
 
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
@@ -41,8 +25,7 @@
 #include "intern/node/deg_node_factory.h"
 #include "intern/node/deg_node_time.h"
 
-namespace blender {
-namespace deg {
+namespace blender::deg {
 
 const char *linkedStateAsString(eDepsNode_LinkedState_Type linked_state)
 {
@@ -54,7 +37,7 @@ const char *linkedStateAsString(eDepsNode_LinkedState_Type linked_state)
     case DEG_ID_LINKED_DIRECTLY:
       return "DIRECTLY";
   }
-  BLI_assert(!"Unhandled linked state, should never happen.");
+  BLI_assert_msg(0, "Unhandled linked state, should never happen.");
   return "UNKNOWN";
 }
 
@@ -74,13 +57,13 @@ uint64_t IDNode::ComponentIDKey::hash() const
                                     BLI_ghashutil_strhash_p(name));
 }
 
-/* Initialize 'id' node - from pointer data given. */
 void IDNode::init(const ID *id, const char *UNUSED(subdata))
 {
   BLI_assert(id != nullptr);
   /* Store ID-pointer. */
   id_type = GS(id->name);
   id_orig = (ID *)id;
+  id_orig_session_uuid = id->session_uuid;
   eval_flags = 0;
   previous_eval_flags = 0;
   customdata_masks = DEGCustomDataMeshMasks();
@@ -90,6 +73,7 @@ void IDNode::init(const ID *id, const char *UNUSED(subdata))
   is_collection_fully_expanded = false;
   has_base = false;
   is_user_modified = false;
+  id_cow_recalc_backup = 0;
 
   visible_components_mask = 0;
   previously_visible_components_mask = 0;
@@ -137,7 +121,7 @@ void IDNode::destroy()
   }
 
   /* Free memory used by this CoW ID. */
-  if (id_cow != id_orig && id_cow != nullptr) {
+  if (!ELEM(id_cow, id_orig, nullptr)) {
     deg_free_copy_on_write_datablock(id_cow);
     MEM_freeN(id_cow);
     id_cow = nullptr;
@@ -213,5 +197,4 @@ IDComponentsMask IDNode::get_visible_components_mask() const
   return result;
 }
 
-}  // namespace deg
-}  // namespace blender
+}  // namespace blender::deg

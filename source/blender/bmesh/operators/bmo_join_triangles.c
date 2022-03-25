@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bmesh
@@ -44,7 +30,7 @@ static float quad_calc_error(const float v1[3],
 {
   /* Gives a 'weight' to a pair of triangles that join an edge
    * to decide how good a join they would make. */
-  /* Note: this is more complicated than it needs to be and should be cleaned up.. */
+  /* NOTE: this is more complicated than it needs to be and should be cleaned up. */
   float error = 0.0f;
 
   /* Normal difference */
@@ -66,7 +52,7 @@ static float quad_calc_error(const float v1[3],
     error += diff;
   }
 
-  /* Colinearity */
+  /* Co-linearity */
   {
     float edge_vecs[4][3];
     float diff;
@@ -166,7 +152,7 @@ static bool bm_edge_delimit_cdata(CustomData *ldata,
   r_delim_cd->cd_type = type;
   r_delim_cd->cd_size = CustomData_sizeof(r_delim_cd->cd_type);
   r_delim_cd->cd_offset = CustomData_get_n_offset(ldata, type, 0);
-  r_delim_cd->cd_offset_end = r_delim_cd->cd_size * layer_len;
+  r_delim_cd->cd_offset_end = r_delim_cd->cd_offset + (r_delim_cd->cd_size * layer_len);
   return (r_delim_cd->cd_offset != -1);
 }
 

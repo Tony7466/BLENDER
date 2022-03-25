@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bmesh
@@ -139,7 +125,7 @@ struct LinkNode *BM_mesh_calc_path_uv_vert(BMesh *bm,
   int i = 0, totloop;
   BMFace *f;
 
-  /* Note, would pass BM_EDGE except we are looping over all faces anyway. */
+  /* NOTE: would pass BM_EDGE except we are looping over all faces anyway. */
   // BM_mesh_elem_index_ensure(bm, BM_LOOP); // NOT NEEDED FOR FACETAG
 
   BM_ITER_MESH (f, &viter, bm, BM_FACES_OF_MESH) {
@@ -198,7 +184,9 @@ struct LinkNode *BM_mesh_calc_path_uv_vert(BMesh *bm,
 /* -------------------------------------------------------------------- */
 /** \name BM_mesh_calc_path_uv_edge
  * \{ */
-/* TODO(campbell): not very urgent, since the operator fakes this using vertex path. */
+
+/* TODO(@sidd017): Setting this as todo, since we now support proper UV edge selection (D12028).
+ * Till then, continue using vertex path to fake shortest path calculation for edges. */
 
 /** \} */
 
@@ -377,7 +365,7 @@ struct LinkNode *BM_mesh_calc_path_uv_face(BMesh *bm,
   /* Start measuring face path at the face edges, ignoring their centers. */
   const void *const f_endpoints[2] = {f_src, f_dst};
 
-  /* Note, would pass BM_EDGE except we are looping over all faces anyway. */
+  /* NOTE: would pass BM_EDGE except we are looping over all faces anyway. */
   // BM_mesh_elem_index_ensure(bm, BM_LOOP); // NOT NEEDED FOR FACETAG
 
   {

@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2009, Blender Foundation
- * This is a new part of Blender
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2009 Blender Foundation. */
 
 /** \file
  * \ingroup edgpencil
@@ -27,9 +11,7 @@
 
 #include "BLI_sys_types.h"
 
-#include "BKE_brush.h"
 #include "BKE_context.h"
-#include "BKE_gpencil.h"
 #include "BKE_paint.h"
 
 #include "DNA_brush_types.h"
@@ -45,9 +27,6 @@
 #include "RNA_access.h"
 
 #include "ED_gpencil.h"
-#include "ED_object.h"
-#include "ED_select_utils.h"
-#include "ED_transform.h"
 
 #include "gpencil_intern.h"
 
@@ -67,6 +46,13 @@ static bool gpencil_stroke_editmode_poll(bContext *C)
 {
   bGPdata *gpd = CTX_data_gpencil_data(C);
   return (gpd && (gpd->flag & GP_DATA_STROKE_EDITMODE));
+}
+
+/* Poll callback for stroke curve editing mode */
+static bool gpencil_stroke_editmode_curve_poll(bContext *C)
+{
+  bGPdata *gpd = CTX_data_gpencil_data(C);
+  return (GPENCIL_EDIT_MODE(gpd) && GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd));
 }
 
 /* Poll callback for stroke painting mode */
@@ -315,6 +301,15 @@ static void ed_keymap_gpencil_editing(wmKeyConfig *keyconf)
   keymap->poll = gpencil_stroke_editmode_poll;
 }
 
+/* Stroke Curve Editing Keymap - Only when editmode is enabled and in curve edit mode */
+static void ed_keymap_gpencil_curve_editing(wmKeyConfig *keyconf)
+{
+  wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Stroke Curve Edit Mode", 0, 0);
+
+  /* set poll callback - so that this keymap only gets enabled when curve editmode is enabled */
+  keymap->poll = gpencil_stroke_editmode_curve_poll;
+}
+
 /* keys for draw with a drawing brush (no fill) */
 static void ed_keymap_gpencil_painting_draw(wmKeyConfig *keyconf)
 {
@@ -471,6 +466,7 @@ static void ed_keymap_gpencil_weightpainting_draw(wmKeyConfig *keyconf)
 void ED_keymap_gpencil(wmKeyConfig *keyconf)
 {
   ed_keymap_gpencil_general(keyconf);
+  ed_keymap_gpencil_curve_editing(keyconf);
   ed_keymap_gpencil_editing(keyconf);
   ed_keymap_gpencil_painting(keyconf);
   ed_keymap_gpencil_painting_draw(keyconf);
@@ -543,6 +539,7 @@ void ED_operatortypes_gpencil(void)
   WM_operatortype_append(GPENCIL_OT_select_first);
   WM_operatortype_append(GPENCIL_OT_select_last);
   WM_operatortype_append(GPENCIL_OT_select_alternate);
+  WM_operatortype_append(GPENCIL_OT_select_random);
   WM_operatortype_append(GPENCIL_OT_select_vertex_color);
 
   WM_operatortype_append(GPENCIL_OT_duplicate);
@@ -568,6 +565,11 @@ void ED_operatortypes_gpencil(void)
   WM_operatortype_append(GPENCIL_OT_sculpt_paint);
   WM_operatortype_append(GPENCIL_OT_weight_paint);
 
+  /* Edit stroke editcurve */
+
+  WM_operatortype_append(GPENCIL_OT_stroke_enter_editcurve_mode);
+  WM_operatortype_append(GPENCIL_OT_stroke_editcurve_set_handle_type);
+
   /* Editing (Buttons) ------------ */
 
   WM_operatortype_append(GPENCIL_OT_annotation_add);
@@ -584,6 +586,7 @@ void ED_operatortypes_gpencil(void)
 
   WM_operatortype_append(GPENCIL_OT_layer_mask_add);
   WM_operatortype_append(GPENCIL_OT_layer_mask_remove);
+  WM_operatortype_append(GPENCIL_OT_layer_mask_move);
 
   WM_operatortype_append(GPENCIL_OT_hide);
   WM_operatortype_append(GPENCIL_OT_reveal);
@@ -600,12 +603,16 @@ void ED_operatortypes_gpencil(void)
   WM_operatortype_append(GPENCIL_OT_frame_duplicate);
   WM_operatortype_append(GPENCIL_OT_frame_clean_fill);
   WM_operatortype_append(GPENCIL_OT_frame_clean_loose);
+  WM_operatortype_append(GPENCIL_OT_frame_clean_duplicate);
 
   WM_operatortype_append(GPENCIL_OT_convert);
   WM_operatortype_append(GPENCIL_OT_bake_mesh_animation);
+  WM_operatortype_append(GPENCIL_OT_bake_grease_pencil_animation);
 
   WM_operatortype_append(GPENCIL_OT_image_to_grease_pencil);
-
+#ifdef WITH_POTRACE
+  WM_operatortype_append(GPENCIL_OT_trace_image);
+#endif
   WM_operatortype_append(GPENCIL_OT_stroke_arrange);
   WM_operatortype_append(GPENCIL_OT_stroke_change_color);
   WM_operatortype_append(GPENCIL_OT_material_lock_unused);
@@ -626,9 +633,12 @@ void ED_operatortypes_gpencil(void)
   WM_operatortype_append(GPENCIL_OT_stroke_trim);
   WM_operatortype_append(GPENCIL_OT_stroke_merge_by_distance);
   WM_operatortype_append(GPENCIL_OT_stroke_merge_material);
+  WM_operatortype_append(GPENCIL_OT_stroke_reset_vertex_color);
+  WM_operatortype_append(GPENCIL_OT_stroke_normalize);
 
   WM_operatortype_append(GPENCIL_OT_material_to_vertex_color);
   WM_operatortype_append(GPENCIL_OT_extract_palette_vertex);
+  WM_operatortype_append(GPENCIL_OT_materials_copy_to_object);
 
   WM_operatortype_append(GPENCIL_OT_transform_fill);
   WM_operatortype_append(GPENCIL_OT_reset_transform_fill);
@@ -664,7 +674,11 @@ void ED_operatortypes_gpencil(void)
   WM_operatortype_append(GPENCIL_OT_interpolate_reverse);
 
   /* Primitives */
-  WM_operatortype_append(GPENCIL_OT_primitive);
+  WM_operatortype_append(GPENCIL_OT_primitive_box);
+  WM_operatortype_append(GPENCIL_OT_primitive_line);
+  WM_operatortype_append(GPENCIL_OT_primitive_polyline);
+  WM_operatortype_append(GPENCIL_OT_primitive_circle);
+  WM_operatortype_append(GPENCIL_OT_primitive_curve);
 
   /* convert old 2.7 files to 2.8 */
   WM_operatortype_append(GPENCIL_OT_convert_old_files);

@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2018, Blender Foundation
- * This is a new part of Blender
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2018 Blender Foundation. */
 
 /** \file
  * \ingroup shader_fx
@@ -58,46 +42,44 @@ static void copyData(const ShaderFxData *md, ShaderFxData *target)
   BKE_shaderfx_copydata_generic(md, target);
 }
 
-static void panel_draw(const bContext *C, Panel *panel)
+static void panel_draw(const bContext *UNUSED(C), Panel *panel)
 {
   uiLayout *col;
   uiLayout *layout = panel->layout;
 
-  PointerRNA ptr;
-  shaderfx_panel_get_property_pointers(C, panel, NULL, &ptr);
+  PointerRNA *ptr = shaderfx_panel_get_property_pointers(panel, NULL);
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, &ptr, "rim_color", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "mask_color", 0, NULL, ICON_NONE);
-  uiItemR(layout, &ptr, "mode", 0, IFACE_("Blend Mode"), ICON_NONE);
+  uiItemR(layout, ptr, "rim_color", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "mask_color", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "mode", 0, IFACE_("Blend Mode"), ICON_NONE);
 
-  /* Add the X, Z labels manually because offset is a #PROP_PIXEL. */
+  /* Add the X, Y labels manually because offset is a #PROP_PIXEL. */
   col = uiLayoutColumn(layout, true);
-  PropertyRNA *prop = RNA_struct_find_property(&ptr, "offset");
-  uiItemFullR(col, &ptr, prop, 0, 0, 0, IFACE_("Offset X"), ICON_NONE);
-  uiItemFullR(col, &ptr, prop, 1, 0, 0, IFACE_("Z"), ICON_NONE);
+  PropertyRNA *prop = RNA_struct_find_property(ptr, "offset");
+  uiItemFullR(col, ptr, prop, 0, 0, 0, IFACE_("Offset X"), ICON_NONE);
+  uiItemFullR(col, ptr, prop, 1, 0, 0, IFACE_("Y"), ICON_NONE);
 
-  shaderfx_panel_end(layout, &ptr);
+  shaderfx_panel_end(layout, ptr);
 }
 
-static void blur_panel_draw(const bContext *C, Panel *panel)
+static void blur_panel_draw(const bContext *UNUSED(C), Panel *panel)
 {
   uiLayout *col;
   uiLayout *layout = panel->layout;
 
-  PointerRNA ptr;
-  shaderfx_panel_get_property_pointers(C, panel, NULL, &ptr);
+  PointerRNA *ptr = shaderfx_panel_get_property_pointers(panel, NULL);
 
   uiLayoutSetPropSep(layout, true);
 
-  /* Add the X, Z labels manually because blur is a #PROP_PIXEL. */
+  /* Add the X, Y labels manually because blur is a #PROP_PIXEL. */
   col = uiLayoutColumn(layout, true);
-  PropertyRNA *prop = RNA_struct_find_property(&ptr, "blur");
-  uiItemFullR(col, &ptr, prop, 0, 0, 0, IFACE_("Blur X"), ICON_NONE);
-  uiItemFullR(col, &ptr, prop, 1, 0, 0, IFACE_("Z"), ICON_NONE);
+  PropertyRNA *prop = RNA_struct_find_property(ptr, "blur");
+  uiItemFullR(col, ptr, prop, 0, 0, 0, IFACE_("Blur X"), ICON_NONE);
+  uiItemFullR(col, ptr, prop, 1, 0, 0, IFACE_("Y"), ICON_NONE);
 
-  uiItemR(layout, &ptr, "samples", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "samples", 0, NULL, ICON_NONE);
 }
 
 static void panelRegister(ARegionType *region_type)
@@ -120,7 +102,6 @@ ShaderFxTypeInfo shaderfx_Type_Rim = {
     /* isDisabled */ NULL,
     /* updateDepsgraph */ NULL,
     /* dependsOnTime */ NULL,
-    /* foreachObjectLink */ NULL,
     /* foreachIDLink */ NULL,
     /* panelRegister */ panelRegister,
 };

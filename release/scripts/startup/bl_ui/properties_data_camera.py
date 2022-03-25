@@ -1,20 +1,4 @@
-# ##### BEGIN GPL LICENSE BLOCK #####
-#
-#  This program is free software; you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License
-#  as published by the Free Software Foundation; either version 2
-#  of the License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software Foundation,
-#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# ##### END GPL LICENSE BLOCK #####
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 # <pep8 compliant>
 import bpy
@@ -110,6 +94,14 @@ class DATA_PT_lens(CameraButtonsPanel, Panel):
                     sub = col.column(align=True)
                     sub.prop(ccam, "longitude_min", text="Longitude Min")
                     sub.prop(ccam, "longitude_max", text="Max")
+                elif ccam.panorama_type == 'FISHEYE_LENS_POLYNOMIAL':
+                    col.prop(ccam, "fisheye_fov")
+                    col.prop(ccam, "fisheye_polynomial_k0", text="K0")
+                    col.prop(ccam, "fisheye_polynomial_k1", text="K1")
+                    col.prop(ccam, "fisheye_polynomial_k2", text="K2")
+                    col.prop(ccam, "fisheye_polynomial_k3", text="K3")
+                    col.prop(ccam, "fisheye_polynomial_k4", text="K4")
+
             elif engine in {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}:
                 if cam.lens_unit == 'MILLIMETERS':
                     col.prop(cam, "lens")
@@ -385,6 +377,16 @@ class DATA_PT_camera_display(CameraButtonsPanel, Panel):
         col.prop(cam, "show_sensor", text="Sensor")
         col.prop(cam, "show_name", text="Name")
 
+        col = layout.column(align=False, heading="Passepartout")
+        col.use_property_decorate = False
+        row = col.row(align=True)
+        sub = row.row(align=True)
+        sub.prop(cam, "show_passepartout", text="")
+        sub = sub.row(align=True)
+        sub.active = cam.show_passepartout
+        sub.prop(cam, "passepartout_alpha", text="")
+        row.prop_decorator(cam, "passepartout_alpha")
+
 
 class DATA_PT_camera_display_composition_guides(CameraButtonsPanel, Panel):
     bl_label = "Composition Guides"
@@ -412,27 +414,6 @@ class DATA_PT_camera_display_composition_guides(CameraButtonsPanel, Panel):
         col = layout.column(heading="Harmony", align=True)
         col.prop(cam, "show_composition_harmony_tri_a", text="Triangle A")
         col.prop(cam, "show_composition_harmony_tri_b", text="Triangle B")
-
-
-class DATA_PT_camera_display_passepartout(CameraButtonsPanel, Panel):
-    bl_label = "Passepartout"
-    bl_parent_id = "DATA_PT_camera_display"
-    bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
-
-    def draw_header(self, context):
-        cam = context.camera
-
-        self.layout.prop(cam, "show_passepartout", text="")
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-
-        cam = context.camera
-
-        layout.active = cam.show_passepartout
-        layout.prop(cam, "passepartout_alpha", text="Opacity", slider=True)
 
 
 class DATA_PT_camera_safe_areas(CameraButtonsPanel, Panel):
@@ -534,7 +515,6 @@ classes = (
     DATA_PT_camera_background_image,
     DATA_PT_camera_display,
     DATA_PT_camera_display_composition_guides,
-    DATA_PT_camera_display_passepartout,
     DATA_PT_custom_props_camera,
 )
 

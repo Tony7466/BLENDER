@@ -7,8 +7,6 @@ layout(std140) uniform globalsBlock
   vec4 colorWireEdit;
   vec4 colorActive;
   vec4 colorSelect;
-  vec4 colorDupliSelect;
-  vec4 colorDupli;
   vec4 colorLibrarySelect;
   vec4 colorLibrary;
   vec4 colorTransform;
@@ -95,13 +93,15 @@ layout(std140) uniform globalsBlock
   vec4 colorCurrentFrame;
 
   vec4 colorGrid;
-  vec4 colorGridEmphasise;
+  vec4 colorGridEmphasis;
   vec4 colorGridAxisX;
   vec4 colorGridAxisY;
   vec4 colorGridAxisZ;
 
   vec4 colorFaceBack;
   vec4 colorFaceFront;
+
+  vec4 colorUVShadow;
 
   vec4 screenVecs[2];
   vec4 sizeViewport; /* Inverted size in zw. */
@@ -117,14 +117,13 @@ layout(std140) uniform globalsBlock
   float sizeEdgeFix;
   float sizeFaceDot;
   float sizeChecker;
-
-  float pad_globalsBlock;
+  float sizeVertexGpencil;
 };
 
 #define sizeViewportInv (sizeViewport.zw)
 
 /* See: 'draw_cache_impl.h' for matching includes. */
-
+#define VERT_GPENCIL_BEZT_HANDLE (1 << 30)
 /* data[0] (1st byte flags) */
 #define FACE_ACTIVE (1 << 0)
 #define FACE_SELECTED (1 << 1)

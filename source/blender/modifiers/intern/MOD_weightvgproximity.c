@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2011 by Bastien Montagne.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2011 by Bastien Montagne. All rights reserved. */
 
 /** \file
  * \ingroup modifiers
@@ -31,6 +15,8 @@
 
 #include "BLT_translation.h"
 
+#include "DNA_color_types.h" /* CurveMapping. */
+#include "DNA_defaults.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
@@ -38,6 +24,7 @@
 #include "DNA_screen_types.h"
 
 #include "BKE_bvhutils.h"
+#include "BKE_colortools.h" /* CurveMapping. */
 #include "BKE_context.h"
 #include "BKE_curve.h"
 #include "BKE_customdata.h"
@@ -45,6 +32,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_mesh.h"
+#include "BKE_mesh_wrapper.h"
 #include "BKE_modifier.h"
 #include "BKE_screen.h"
 #include "BKE_texture.h" /* Texture masking. */
@@ -52,7 +40,10 @@
 #include "UI_interface.h"
 #include "UI_resources.h"
 
+#include "BLO_read_write.h"
+
 #include "RNA_access.h"
+#include "RNA_prototypes.h"
 
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
@@ -168,7 +159,7 @@ static void get_vert2geom_distance(int numVerts,
   BVHTreeFromMesh treeData_f = {NULL};
 
   if (dist_v) {
-    /* Create a bvh-tree of the given target's verts. */
+    /* Create a BVH-tree of the given target's verts. */
     BKE_bvhtree_from_mesh_get(&treeData_v, target, BVHTREE_FROM_VERTS, 2);
     if (treeData_v.tree == NULL) {
       OUT_OF_MEMORY();
@@ -176,7 +167,7 @@ static void get_vert2geom_distance(int numVerts,
     }
   }
   if (dist_e) {
-    /* Create a bvh-tree of the given target's edges. */
+    /* Create a BVH-tree of the given target's edges. */
     BKE_bvhtree_from_mesh_get(&treeData_e, target, BVHTREE_FROM_EDGES, 2);
     if (treeData_e.tree == NULL) {
       OUT_OF_MEMORY();
@@ -184,7 +175,7 @@ static void get_vert2geom_distance(int numVerts,
     }
   }
   if (dist_f) {
-    /* Create a bvh-tree of the given target's faces. */
+    /* Create a BVH-tree of the given target's faces. */
     BKE_bvhtree_from_mesh_get(&treeData_f, target, BVHTREE_FROM_LOOPTRI, 2);
     if (treeData_f.tree == NULL) {
       OUT_OF_MEMORY();
@@ -256,7 +247,8 @@ static void do_map(Object *ob,
                    const float min_d,
                    const float max_d,
                    short mode,
-                   const bool do_invert_mapping)
+                   const bool do_invert_mapping,
+                   CurveMapping *cmap)
 {
   const float range_inv = 1.0f / (max_d - min_d); /* invert since multiplication is faster */
   uint i = nidx;
@@ -292,7 +284,6 @@ static void do_map(Object *ob,
     }
   }
 
-  BLI_assert(mode != MOD_WVG_MAPPING_CURVE);
   if (do_invert_mapping || mode != MOD_WVG_MAPPING_NONE) {
     RNG *rng = NULL;
 
@@ -300,7 +291,7 @@ static void do_map(Object *ob,
       rng = BLI_rng_new_srandom(BLI_ghashutil_strhash(ob->id.name + 2));
     }
 
-    weightvg_do_map(nidx, weights, mode, do_invert_mapping, NULL, rng);
+    weightvg_do_map(nidx, weights, mode, do_invert_mapping, cmap, rng);
 
     if (rng) {
       BLI_rng_free(rng);
@@ -315,15 +306,28 @@ static void initData(ModifierData *md)
 {
   WeightVGProximityModifierData *wmd = (WeightVGProximityModifierData *)md;
 
-  wmd->proximity_mode = MOD_WVG_PROXIMITY_OBJECT;
-  wmd->proximity_flags = MOD_WVG_PROXIMITY_GEOM_VERTS;
+  BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(wmd, modifier));
 
-  wmd->falloff_type = MOD_WVG_MAPPING_NONE;
+  MEMCPY_STRUCT_AFTER(wmd, DNA_struct_default_get(WeightVGProximityModifierData), modifier);
 
-  wmd->mask_constant = 1.0f;
-  wmd->mask_tex_use_channel = MOD_WVG_MASK_TEX_USE_INT; /* Use intensity by default. */
-  wmd->mask_tex_mapping = MOD_DISP_MAP_LOCAL;
-  wmd->max_dist = 1.0f; /* vert arbitrary distance, but don't use 0 */
+  wmd->cmap_curve = BKE_curvemapping_add(1, 0.0, 0.0, 1.0, 1.0);
+  BKE_curvemapping_init(wmd->cmap_curve);
+}
+
+static void freeData(ModifierData *md)
+{
+  WeightVGProximityModifierData *wmd = (WeightVGProximityModifierData *)md;
+  BKE_curvemapping_free(wmd->cmap_curve);
+}
+
+static void copyData(const ModifierData *md, ModifierData *target, const int flag)
+{
+  const WeightVGProximityModifierData *wmd = (const WeightVGProximityModifierData *)md;
+  WeightVGProximityModifierData *twmd = (WeightVGProximityModifierData *)target;
+
+  BKE_modifier_copydata_generic(md, target, flag);
+
+  twmd->cmap_curve = BKE_curvemapping_copy(wmd->cmap_curve);
 }
 
 static void requiredDataMask(Object *UNUSED(ob),
@@ -343,7 +347,9 @@ static void requiredDataMask(Object *UNUSED(ob),
   /* No need to ask for CD_PREVIEW_MLOOPCOL... */
 }
 
-static bool dependsOnTime(ModifierData *md)
+static bool dependsOnTime(struct Scene *UNUSED(scene),
+                          ModifierData *md,
+                          const int UNUSED(dag_eval_mode))
 {
   WeightVGProximityModifierData *wmd = (WeightVGProximityModifierData *)md;
 
@@ -353,20 +359,13 @@ static bool dependsOnTime(ModifierData *md)
   return 0;
 }
 
-static void foreachObjectLink(ModifierData *md, Object *ob, ObjectWalkFunc walk, void *userData)
-{
-  WeightVGProximityModifierData *wmd = (WeightVGProximityModifierData *)md;
-  walk(userData, ob, &wmd->proximity_ob_target, IDWALK_CB_NOP);
-  walk(userData, ob, &wmd->mask_tex_map_obj, IDWALK_CB_NOP);
-}
-
 static void foreachIDLink(ModifierData *md, Object *ob, IDWalkFunc walk, void *userData)
 {
   WeightVGProximityModifierData *wmd = (WeightVGProximityModifierData *)md;
 
   walk(userData, ob, (ID **)&wmd->mask_texture, IDWALK_CB_USER);
-
-  foreachObjectLink(md, ob, (ObjectWalkFunc)walk, userData);
+  walk(userData, ob, (ID **)&wmd->proximity_ob_target, IDWALK_CB_NOP);
+  walk(userData, ob, (ID **)&wmd->mask_tex_map_obj, IDWALK_CB_NOP);
 }
 
 static void foreachTexLink(ModifierData *md, Object *ob, TexWalkFunc walk, void *userData)
@@ -415,7 +414,7 @@ static bool isDisabled(const struct Scene *UNUSED(scene),
   WeightVGProximityModifierData *wmd = (WeightVGProximityModifierData *)md;
   /* If no vertex group, bypass. */
   if (wmd->defgrp_name[0] == '\0') {
-    return 1;
+    return true;
   }
   /* If no target object, bypass. */
   return (wmd->proximity_ob_target == NULL);
@@ -456,7 +455,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   /* Check if we can just return the original mesh.
    * Must have verts and therefore verts assigned to vgroups to do anything useful!
    */
-  if ((numVerts == 0) || BLI_listbase_is_empty(&ctx->object->defbase)) {
+  if ((numVerts == 0) || BLI_listbase_is_empty(&mesh->vertex_group_names)) {
     return mesh;
   }
 
@@ -467,11 +466,10 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   }
 
   /* Get vgroup idx from its name. */
-  defgrp_index = BKE_object_defgroup_name_index(ob, wmd->defgrp_name);
+  defgrp_index = BKE_id_defgroup_name_index(&mesh->id, wmd->defgrp_name);
   if (defgrp_index == -1) {
     return mesh;
   }
-
   const bool has_mdef = CustomData_has_layer(&mesh->vdata, CD_MDEFORMVERT);
   /* If no vertices were ever added to an object's vgroup, dvert might be NULL. */
   /* As this modifier never add vertices to vgroup, just return. */
@@ -552,6 +550,11 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 
       /* We must check that we do have a valid target_mesh! */
       if (target_mesh != NULL) {
+
+        /* TODO: edit-mode versions of the BVH lookup functions are available so it could be
+         * avoided. */
+        BKE_mesh_wrapper_ensure_mdata(target_mesh);
+
         SpaceTransform loc2trgt;
         float *dists_v = use_trgt_verts ? MEM_malloc_arrayN(numIdx, sizeof(float), "dists_v") :
                                           NULL;
@@ -593,7 +596,8 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
          wmd->min_dist,
          wmd->max_dist,
          wmd->falloff_type,
-         (wmd->proximity_flags & MOD_WVG_PROXIMITY_INVERT_FALLOFF) != 0);
+         (wmd->proximity_flags & MOD_WVG_PROXIMITY_INVERT_FALLOFF) != 0,
+         wmd->cmap_curve);
 
   /* Do masking. */
   struct Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
@@ -637,67 +641,69 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   TIMEIT_END(perf);
 #endif
 
+  mesh->runtime.is_original = false;
+
   /* Return the vgroup-modified mesh. */
   return mesh;
 }
 
-static void panel_draw(const bContext *C, Panel *panel)
+static void panel_draw(const bContext *UNUSED(C), Panel *panel)
 {
   uiLayout *col;
   uiLayout *layout = panel->layout;
 
-  PointerRNA ptr;
   PointerRNA ob_ptr;
-  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemPointerR(layout, &ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
+  uiItemPointerR(layout, ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
 
-  uiItemR(layout, &ptr, "target", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "target", 0, NULL, ICON_NONE);
 
   uiItemS(layout);
 
-  uiItemR(layout, &ptr, "proximity_mode", 0, NULL, ICON_NONE);
-  if (RNA_enum_get(&ptr, "proximity_mode") == MOD_WVG_PROXIMITY_GEOMETRY) {
-    uiItemR(layout, &ptr, "proximity_geometry", UI_ITEM_R_EXPAND, IFACE_("Geometry"), ICON_NONE);
+  uiItemR(layout, ptr, "proximity_mode", 0, NULL, ICON_NONE);
+  if (RNA_enum_get(ptr, "proximity_mode") == MOD_WVG_PROXIMITY_GEOMETRY) {
+    uiItemR(layout, ptr, "proximity_geometry", UI_ITEM_R_EXPAND, IFACE_("Geometry"), ICON_NONE);
   }
 
   col = uiLayoutColumn(layout, true);
-  uiItemR(col, &ptr, "min_dist", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "max_dist", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "min_dist", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "max_dist", 0, NULL, ICON_NONE);
 
-  uiItemR(layout, &ptr, "normalize", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "normalize", 0, NULL, ICON_NONE);
 }
 
-static void falloff_panel_draw(const bContext *C, Panel *panel)
+static void falloff_panel_draw(const bContext *UNUSED(C), Panel *panel)
 {
   uiLayout *row, *sub;
   uiLayout *layout = panel->layout;
 
-  PointerRNA ptr;
   PointerRNA ob_ptr;
-  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
 
   uiLayoutSetPropSep(layout, true);
 
   row = uiLayoutRow(layout, true);
-  uiItemR(row, &ptr, "falloff_type", 0, IFACE_("Type"), ICON_NONE);
+  uiItemR(row, ptr, "falloff_type", 0, IFACE_("Type"), ICON_NONE);
   sub = uiLayoutRow(row, true);
   uiLayoutSetPropSep(sub, false);
-  uiItemR(row, &ptr, "invert_falloff", 0, "", ICON_ARROW_LEFTRIGHT);
-  modifier_panel_end(layout, &ptr);
+  uiItemR(row, ptr, "invert_falloff", 0, "", ICON_ARROW_LEFTRIGHT);
+  if (RNA_enum_get(ptr, "falloff_type") == MOD_WVG_MAPPING_CURVE) {
+    uiTemplateCurveMapping(layout, ptr, "map_curve", 0, false, false, false, false);
+  }
+  modifier_panel_end(layout, ptr);
 }
 
 static void influence_panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA ptr;
   PointerRNA ob_ptr;
-  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
 
-  weightvg_ui_common(C, &ob_ptr, &ptr, layout);
+  weightvg_ui_common(C, &ob_ptr, ptr, layout);
 }
 
 static void panelRegister(ARegionType *region_type)
@@ -710,37 +716,55 @@ static void panelRegister(ARegionType *region_type)
       region_type, "influence", "Influence", NULL, influence_panel_draw, panel_type);
 }
 
+static void blendWrite(BlendWriter *writer, const ModifierData *md)
+{
+  const WeightVGProximityModifierData *wmd = (const WeightVGProximityModifierData *)md;
+
+  if (wmd->cmap_curve) {
+    BKE_curvemapping_blend_write(writer, wmd->cmap_curve);
+  }
+}
+
+static void blendRead(BlendDataReader *reader, ModifierData *md)
+{
+  WeightVGProximityModifierData *wmd = (WeightVGProximityModifierData *)md;
+
+  BLO_read_data_address(reader, &wmd->cmap_curve);
+  if (wmd->cmap_curve) {
+    BKE_curvemapping_blend_read(reader, wmd->cmap_curve);
+  }
+}
+
 ModifierTypeInfo modifierType_WeightVGProximity = {
     /* name */ "VertexWeightProximity",
     /* structName */ "WeightVGProximityModifierData",
     /* structSize */ sizeof(WeightVGProximityModifierData),
+    /* srna */ &RNA_VertexWeightProximityModifier,
     /* type */ eModifierTypeType_NonGeometrical,
     /* flags */ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsMapping |
         eModifierTypeFlag_SupportsEditmode | eModifierTypeFlag_UsesPreview,
+    /* icon */ ICON_MOD_VERTEX_WEIGHT,
 
-    /* copyData */ BKE_modifier_copydata_generic,
+    /* copyData */ copyData,
 
     /* deformVerts */ NULL,
     /* deformMatrices */ NULL,
     /* deformVertsEM */ NULL,
     /* deformMatricesEM */ NULL,
     /* modifyMesh */ modifyMesh,
-    /* modifyHair */ NULL,
-    /* modifyPointCloud */ NULL,
-    /* modifyVolume */ NULL,
+    /* modifyGeometrySet */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ requiredDataMask,
-    /* freeData */ NULL,
+    /* freeData */ freeData,
     /* isDisabled */ isDisabled,
     /* updateDepsgraph */ updateDepsgraph,
     /* dependsOnTime */ dependsOnTime,
     /* dependsOnNormals */ NULL,
-    /* foreachObjectLink */ foreachObjectLink,
     /* foreachIDLink */ foreachIDLink,
     /* foreachTexLink */ foreachTexLink,
     /* freeRuntimeData */ NULL,
     /* panelRegister */ panelRegister,
-    /* blendWrite */ NULL,
-    /* blendRead */ NULL,
+    /* blendWrite */ blendWrite,
+    /* blendRead */ blendRead,
 };

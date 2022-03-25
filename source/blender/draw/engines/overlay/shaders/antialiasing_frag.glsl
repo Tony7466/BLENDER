@@ -1,4 +1,6 @@
 
+#pragma BLENDER_REQUIRE(common_math_lib.glsl)
+
 uniform sampler2D colorTex;
 uniform sampler2D depthTex;
 uniform sampler2D lineTex;
@@ -103,7 +105,7 @@ void main()
   float dist_raw = texelFetch(lineTex, center_texel, 0).b;
   float dist = decode_line_dist(dist_raw);
 
-  /* TODO Opti: use textureGather */
+  /* TODO: Opti: use textureGather. */
   vec4 neightbor_col0 = texelFetchOffset(colorTex, center_texel, 0, ivec2(1, 0));
   vec4 neightbor_col1 = texelFetchOffset(colorTex, center_texel, 0, ivec2(-1, 0));
   vec4 neightbor_col2 = texelFetchOffset(colorTex, center_texel, 0, ivec2(0, 1));
@@ -132,7 +134,8 @@ void main()
     fragColor *= line_coverage(dist, line_kernel);
   }
 
-  /* We dont order fragments but use alpha over/alpha under based on current minimum frag depth. */
+  /* We don't order fragments but use alpha over/alpha under based on current minimum frag depth.
+   */
   neighbor_blend(coverage.x, depths.x, neightbor_col0, depth, fragColor);
   neighbor_blend(coverage.y, depths.y, neightbor_col1, depth, fragColor);
   neighbor_blend(coverage.z, depths.z, neightbor_col2, depth, fragColor);
@@ -144,7 +147,7 @@ void main()
     vec4 lines = vec4(neightbor_line0.z, neightbor_line1.z, neightbor_line2.z, neightbor_line3.z);
     /* Count number of line neighbors. */
     float blend = dot(vec4(0.25), step(0.001, lines));
-    /* Only do blend if there is more than 2 neighbor. This avoid loosing too much AA. */
+    /* Only do blend if there are more than 2 neighbors. This avoids losing too much AA. */
     blend = clamp(blend * 2.0 - 1.0, 0.0, 1.0);
     fragColor = mix(fragColor, fragColor / fragColor.a, blend);
   }

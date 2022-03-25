@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2012 by the Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2012 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup GHOST
@@ -112,12 +96,13 @@ GHOST_DropTargetX11::~GHOST_DropTargetX11()
   }
 }
 
-/* based on a code from Saul Rennison
- * http://stackoverflow.com/questions/2673207/c-c-url-decode-library */
+/* Based on: https://stackoverflow.com/a/2766963/432509 */
 
 typedef enum DecodeState_e {
-  STATE_SEARCH = 0,  ///< searching for an ampersand to convert
-  STATE_CONVERTING   ///< convert the two proceeding characters from hex
+  /** Searching for an ampersand to convert. */
+  STATE_SEARCH = 0,
+  /** Convert the two proceeding characters from hex. */
+  STATE_CONVERTING
 } DecodeState_e;
 
 void GHOST_DropTargetX11::UrlDecode(char *decodedOut, int bufferSize, const char *encodedIn)
@@ -203,7 +188,7 @@ void *GHOST_DropTargetX11::getURIListGhostData(unsigned char *dropBuffer, int dr
   GHOST_TStringArray *strArray = NULL;
   int totPaths = 0, curLength = 0;
 
-  /* count total number of file pathes in buffer */
+  /* Count total number of file paths in buffer. */
   for (int i = 0; i <= dropBufferSize; i++) {
     if (dropBuffer[i] == 0 || dropBuffer[i] == '\n' || dropBuffer[i] == '\r') {
       if (curLength) {
@@ -217,7 +202,7 @@ void *GHOST_DropTargetX11::getURIListGhostData(unsigned char *dropBuffer, int dr
 
   strArray = (GHOST_TStringArray *)malloc(sizeof(GHOST_TStringArray));
   strArray->count = 0;
-  strArray->strings = (GHOST_TUns8 **)malloc(totPaths * sizeof(GHOST_TUns8 *));
+  strArray->strings = (uint8_t **)malloc(totPaths * sizeof(uint8_t *));
 
   curLength = 0;
   for (int i = 0; i <= dropBufferSize; i++) {
@@ -231,7 +216,7 @@ void *GHOST_DropTargetX11::getURIListGhostData(unsigned char *dropBuffer, int dr
 
         decodedPath = FileUrlDecode(curPath);
         if (decodedPath) {
-          strArray->strings[strArray->count] = (GHOST_TUns8 *)decodedPath;
+          strArray->strings[strArray->count] = (uint8_t *)decodedPath;
           strArray->count++;
         }
 

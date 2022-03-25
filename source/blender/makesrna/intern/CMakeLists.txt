@@ -1,26 +1,9 @@
-# ***** BEGIN GPL LICENSE BLOCK *****
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
-# of the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# The Original Code is Copyright (C) 2006, Blender Foundation
-# All rights reserved.
-# ***** END GPL LICENSE BLOCK *****
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2006 Blender Foundation. All rights reserved.
 
 if(CMAKE_COMPILER_IS_GNUCC)
   # add here so we fail early.
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=implicit-function-declaration")
+  string(APPEND CMAKE_C_FLAGS " -Werror=implicit-function-declaration")
 endif()
 
 # files rna_access.c rna_define.c makesrna.c intentionally excluded.
@@ -30,6 +13,8 @@ set(DEFSRC
   rna_animation.c
   rna_animviz.c
   rna_armature.c
+  rna_asset.c
+  rna_attribute.c
   rna_boid.c
   rna_brush.c
   rna_cachefile.c
@@ -47,7 +32,6 @@ set(DEFSRC
   rna_fluid.c
   rna_gpencil.c
   rna_gpencil_modifier.c
-  rna_hair.c
   rna_image.c
   rna_key.c
   rna_lattice.c
@@ -79,7 +63,6 @@ set(DEFSRC
   rna_sculpt_paint.c
   rna_sequencer.c
   rna_shader_fx.c
-  rna_simulation.c
   rna_sound.c
   rna_space.c
   rna_speaker.c
@@ -98,6 +81,15 @@ set(DEFSRC
   rna_world.c
   rna_xr.c
 )
+
+if(WITH_EXPERIMENTAL_FEATURES)
+  add_definitions(-DWITH_SIMULATION_DATABLOCK)
+  add_definitions(-DWITH_NEW_CURVES_TYPE)
+  list(APPEND DEFSRC
+    rna_curves.c
+    rna_simulation.c
+  )
+endif()
 
 set(APISRC
   rna_action_api.c
@@ -130,6 +122,7 @@ set(APISRC
 string(REGEX REPLACE "rna_([a-zA-Z0-9_-]*).c" "${CMAKE_CURRENT_BINARY_DIR}/rna_\\1_gen.c" GENSRC "${DEFSRC}")
 list(APPEND GENSRC
   "${CMAKE_CURRENT_BINARY_DIR}/rna_prototypes_gen.h"
+  "${CMAKE_CURRENT_BINARY_DIR}/../RNA_prototypes.h"
 )
 set_source_files_properties(${GENSRC} PROPERTIES GENERATED TRUE)
 
@@ -142,7 +135,7 @@ if(CMAKE_COMPILER_IS_GNUCC OR (CMAKE_C_COMPILER_ID MATCHES "Clang"))
   set(GENSRC_CFLAGS "-Wno-missing-prototypes")
 endif()
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-  set(GENSRC_CFLAGS "${GENSRC_CFLAGS} -Wno-missing-variable-declarations")
+  string(APPEND GENSRC_CFLAGS " -Wno-missing-variable-declarations")
 endif()
 
 if(GENSRC_CFLAGS)
@@ -165,6 +158,7 @@ set(SRC_RNA_INC
   ../RNA_access.h
   ../RNA_define.h
   ../RNA_documentation.h
+  ../RNA_enum_items.h
   ../RNA_enum_types.h
   ../RNA_types.h
 )
@@ -175,10 +169,10 @@ set(SRC
   ${DEFSRC}
   ${APISRC}
   ../../../../intern/clog/clog.c
+  ../../../../intern/guardedalloc/intern/leak_detector.cc
   ../../../../intern/guardedalloc/intern/mallocn.c
   ../../../../intern/guardedalloc/intern/mallocn_guarded_impl.c
   ../../../../intern/guardedalloc/intern/mallocn_lockfree_impl.c
-  ../../../../intern/guardedalloc/intern/mmap_win.c
 
   # Needed for defaults.
   ../../../../release/datafiles/userdef/userdef_default.c
@@ -192,6 +186,11 @@ set(INC
   ../../blenloader
 
   ${CMAKE_BINARY_DIR}/source/blender/makesdna/intern
+
+  # dna_type_offsets.h
+  ${CMAKE_CURRENT_BINARY_DIR}/../../makesdna/intern
+  # RNA_prototypes.h
+  ${CMAKE_CURRENT_BINARY_DIR}/../../makesrna/
 )
 
 set(INC_SYS
@@ -235,6 +234,10 @@ endif()
 
 if(WITH_IMAGE_HDR)
   add_definitions(-DWITH_HDR)
+endif()
+
+if(WITH_IMAGE_WEBP)
+	add_definitions(-DWITH_WEBP)
 endif()
 
 if(WITH_AUDASPACE)
@@ -288,8 +291,20 @@ if(WITH_OPENAL)
   add_definitions(-DWITH_OPENAL)
 endif()
 
+if(WITH_COREAUDIO)
+  add_definitions(-DWITH_COREAUDIO)
+endif()
+
 if(WITH_JACK)
   add_definitions(-DWITH_JACK)
+endif()
+
+if(WITH_PULSEAUDIO)
+  add_definitions(-DWITH_PULSEAUDIO)
+endif()
+
+if(WITH_WASAPI)
+  add_definitions(-DWITH_WASAPI)
 endif()
 
 if(WITH_OPENCOLLADA)
@@ -344,6 +359,10 @@ if(WITH_XR_OPENXR)
   add_definitions(-DWITH_XR_OPENXR)
 endif()
 
+if(WITH_GMP)
+  add_definitions(-DWITH_GMP)
+endif()
+
 # Build makesrna executable
 blender_include_dirs(
   .
@@ -359,11 +378,13 @@ blender_include_dirs(
   ../../ikplugin
   ../../imbuf
   ../../makesdna
+  ../../modifiers
   ../../nodes/
+  ../../sequencer
   ../../simulation
   ../../windowmanager
   ../../editors/include
-  ../../render/extern/include
+  ../../render
   ../../../../intern/cycles/blender
   ../../../../intern/atomic
   ../../../../intern/glew-mx
@@ -372,14 +393,10 @@ blender_include_dirs(
   ../../../../intern/mantaflow/extern
 )
 
-blender_include_dirs_sys(
-  "${GLEW_INCLUDE_PATH}"
-)
-
 add_cc_flags_custom_test(makesrna)
-setup_platform_linker_flags()
 
 add_executable(makesrna ${SRC} ${SRC_RNA_INC} ${SRC_DNA_INC})
+setup_platform_linker_flags(makesrna)
 
 target_link_libraries(makesrna bf_dna)
 target_link_libraries(makesrna bf_dna_blenlib)
@@ -392,7 +409,7 @@ endif()
 # note (linux only): with crashes try add this after COMMAND: valgrind --leak-check=full --track-origins=yes
 add_custom_command(
   OUTPUT ${GENSRC}
-  COMMAND "$<TARGET_FILE:makesrna>" ${CMAKE_CURRENT_BINARY_DIR}/
+  COMMAND "$<TARGET_FILE:makesrna>" ${CMAKE_CURRENT_BINARY_DIR}/  ${CMAKE_CURRENT_BINARY_DIR}/../
   DEPENDS makesrna
 )
 
@@ -415,7 +432,9 @@ set(LIB
 
   bf_editor_animation
   bf_editor_armature
+  bf_editor_asset
   bf_editor_curve
+  bf_editor_curves
   bf_editor_gizmo_library
   bf_editor_gpencil
   bf_editor_io

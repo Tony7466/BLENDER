@@ -1,35 +1,18 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
- * All rights reserved.
- * allocimbuf.c
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup imbuf
  */
 
 #ifdef _WIN32
-#  include "mmap_win.h"
 #  include <io.h>
 #  include <stddef.h>
 #  include <sys/types.h>
 #endif
 
 #include "BLI_fileops.h"
+#include "BLI_mmap.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
@@ -52,7 +35,7 @@ static void imb_handle_alpha(ImBuf *ibuf,
   if (colorspace) {
     if (ibuf->rect != NULL && ibuf->rect_float == NULL) {
       /* byte buffer is never internally converted to some standard space,
-       * store pointer to it's color space descriptor instead
+       * store pointer to its color space descriptor instead
        */
       ibuf->rect_colorspace = colormanage_colorspace_get_named(effective_colorspace);
     }
@@ -126,7 +109,7 @@ ImBuf *IMB_ibImageFromMemory(const unsigned char *mem,
   }
 
   if ((flags & IB_test) == 0) {
-    fprintf(stderr, "%s: unknown fileformat (%s)\n", __func__, descr);
+    fprintf(stderr, "%s: unknown file-format (%s)\n", __func__, descr);
   }
 
   return NULL;
@@ -186,20 +169,19 @@ ImBuf *IMB_loadifffile(
   size = BLI_file_descriptor_size(file);
 
   imb_mmap_lock();
-  mem = mmap(NULL, size, PROT_READ, MAP_SHARED, file, 0);
+  BLI_mmap_file *mmap_file = BLI_mmap_open(file);
   imb_mmap_unlock();
-
-  if (mem == (unsigned char *)-1) {
+  if (mmap_file == NULL) {
     fprintf(stderr, "%s: couldn't get mapping %s\n", __func__, descr);
     return NULL;
   }
 
+  mem = BLI_mmap_get_pointer(mmap_file);
+
   ibuf = IMB_ibImageFromMemory(mem, size, flags, colorspace, descr);
 
   imb_mmap_lock();
-  if (munmap(mem, size)) {
-    fprintf(stderr, "%s: couldn't unmap file %s\n", __func__, descr);
-  }
+  BLI_mmap_free(mmap_file);
   imb_mmap_unlock();
 
   return ibuf;
@@ -282,7 +264,6 @@ ImBuf *IMB_testiffname(const char *filepath, int flags)
 
 static void imb_loadtilefile(ImBuf *ibuf, int file, int tx, int ty, unsigned int *rect)
 {
-  const ImFileType *type;
   unsigned char *mem;
   size_t size;
 
@@ -293,24 +274,24 @@ static void imb_loadtilefile(ImBuf *ibuf, int file, int tx, int ty, unsigned int
   size = BLI_file_descriptor_size(file);
 
   imb_mmap_lock();
-  mem = mmap(NULL, size, PROT_READ, MAP_SHARED, file, 0);
+  BLI_mmap_file *mmap_file = BLI_mmap_open(file);
   imb_mmap_unlock();
-
-  if (mem == (unsigned char *)-1) {
+  if (mmap_file == NULL) {
     fprintf(stderr, "Couldn't get memory mapping for %s\n", ibuf->cachename);
     return;
   }
 
-  for (type = IMB_FILE_TYPES; type < IMB_FILE_TYPES_LAST; type++) {
-    if (type->load_tile && type->ftype(type, ibuf)) {
+  mem = BLI_mmap_get_pointer(mmap_file);
+
+  const ImFileType *type = IMB_file_type_from_ibuf(ibuf);
+  if (type != NULL) {
+    if (type->load_tile != NULL) {
       type->load_tile(ibuf, mem, size, tx, ty, rect);
     }
   }
 
   imb_mmap_lock();
-  if (munmap(mem, size)) {
-    fprintf(stderr, "Couldn't unmap memory for %s.\n", ibuf->cachename);
-  }
+  BLI_mmap_free(mmap_file);
   imb_mmap_unlock();
 }
 

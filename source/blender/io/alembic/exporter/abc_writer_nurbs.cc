@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup balembic
@@ -31,9 +17,7 @@
 #include "CLG_log.h"
 static CLG_LogRef LOG = {"io.alembic"};
 
-namespace blender {
-namespace io {
-namespace alembic {
+namespace blender::io::alembic {
 
 using Alembic::Abc::OObject;
 using Alembic::AbcGeom::FloatArraySample;
@@ -70,7 +54,7 @@ void ABCNurbsWriter::create_alembic_objects(const HierarchyContext *context)
   }
 }
 
-const OObject ABCNurbsWriter::get_alembic_object() const
+OObject ABCNurbsWriter::get_alembic_object() const
 {
   if (abc_nurbs_.empty()) {
     return OObject();
@@ -80,16 +64,27 @@ const OObject ABCNurbsWriter::get_alembic_object() const
   return abc_nurbs_[0];
 }
 
+Alembic::Abc::OCompoundProperty ABCNurbsWriter::abc_prop_for_custom_props()
+{
+  if (abc_nurbs_.empty()) {
+    return Alembic::Abc::OCompoundProperty();
+  }
+
+  /* A single NURBS object in Blender is expanded to multiple curves in Alembic.
+   * Just store the custom properties on the first one for simplicity. */
+  return abc_schema_prop_for_custom_props(abc_nurbs_schemas_[0]);
+}
+
 bool ABCNurbsWriter::check_is_animated(const HierarchyContext &context) const
 {
   /* Check if object has shape keys. */
   Curve *cu = static_cast<Curve *>(context.object->data);
-  return (cu->key != NULL);
+  return (cu->key != nullptr);
 }
 
 bool ABCNurbsWriter::is_supported(const HierarchyContext *context) const
 {
-  return ELEM(context->object->type, OB_SURF, OB_CURVE);
+  return ELEM(context->object->type, OB_SURF, OB_CURVES_LEGACY);
 }
 
 static void get_knots(std::vector<float> &knots, const int num_knots, float *nu_knots)
@@ -117,7 +112,7 @@ void ABCNurbsWriter::do_write(HierarchyContext &context)
   Curve *curve = static_cast<Curve *>(context.object->data);
   ListBase *nulb;
 
-  if (context.object->runtime.curve_cache->deformed_nurbs.first != NULL) {
+  if (context.object->runtime.curve_cache->deformed_nurbs.first != nullptr) {
     nulb = &context.object->runtime.curve_cache->deformed_nurbs;
   }
   else {
@@ -181,6 +176,4 @@ void ABCNurbsWriter::do_write(HierarchyContext &context)
   }
 }
 
-}  // namespace alembic
-}  // namespace io
-}  // namespace blender
+}  // namespace blender::io::alembic

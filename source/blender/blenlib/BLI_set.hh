@@ -1,21 +1,6 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
-#ifndef __BLI_SET_HH__
-#define __BLI_SET_HH__
+#pragma once
 
 /** \file
  * \ingroup bli
@@ -49,7 +34,7 @@
  * - Small buffer optimization is enabled by default, if the key is not too large.
  * - The methods `add_new` and `remove_contained` should be used instead of `add` and `remove`
  *   whenever appropriate. Assumptions and intention are described better this way.
- * - Look-ups can be performed using types other than Key without conversion. For that use the
+ * - Lookups can be performed using types other than Key without conversion. For that use the
  *   methods ending with `_as`. The template parameters Hash and #IsEqual have to support the other
  *   key type. This can greatly improve performance when the set contains strings.
  * - The default constructor is cheap, even when a large #InlineBufferCapacity is used. A large
@@ -120,6 +105,16 @@ template<
      */
     typename Allocator = GuardedAllocator>
 class Set {
+ public:
+  class Iterator;
+  using value_type = Key;
+  using pointer = Key *;
+  using const_pointer = const Key *;
+  using reference = Key &;
+  using const_reference = const Key &;
+  using iterator = Iterator;
+  using size_type = int64_t;
+
  private:
   /**
    * Slots are either empty, occupied or removed. The number of occupied slots can be computed by
@@ -171,62 +166,68 @@ class Set {
    * is. This is necessary to avoid a high cost when no elements are added at all. An optimized
    * grow operation is performed on the first insertion.
    */
-  Set()
+  Set(Allocator allocator = {}) noexcept
       : removed_slots_(0),
         occupied_and_removed_slots_(0),
         usable_slots_(0),
         slot_mask_(0),
-        slots_(1)
+        slots_(1, allocator)
+  {
+  }
+
+  Set(NoExceptConstructor, Allocator allocator = {}) noexcept : Set(allocator)
+  {
+  }
+
+  Set(Span<Key> values, Allocator allocator = {}) : Set(NoExceptConstructor(), allocator)
+  {
+    this->add_multiple(values);
+  }
+
+  /**
+   * Construct a set that contains the given keys. Duplicates will be removed automatically.
+   */
+  Set(const std::initializer_list<Key> &values) : Set(Span<Key>(values))
   {
   }
 
   ~Set() = default;
 
-  /**
-   * Construct a set that contains the given keys. Duplicates will be removed automatically.
-   */
-  Set(const std::initializer_list<Key> &list) : Set()
-  {
-    this->add_multiple(list);
-  }
-
   Set(const Set &other) = default;
 
-  Set(Set &&other) noexcept
-      : removed_slots_(other.removed_slots_),
-        occupied_and_removed_slots_(other.occupied_and_removed_slots_),
-        usable_slots_(other.usable_slots_),
-        slot_mask_(other.slot_mask_),
-        hash_(std::move(other.hash_)),
-        is_equal_(std::move(other.is_equal_)),
-        slots_(std::move(other.slots_))
+  Set(Set &&other) noexcept(std::is_nothrow_move_constructible_v<SlotArray>)
+      : Set(NoExceptConstructor(), other.slots_.allocator())
+
   {
-    other.~Set();
-    new (&other) Set();
+    if constexpr (std::is_nothrow_move_constructible_v<SlotArray>) {
+      slots_ = std::move(other.slots_);
+    }
+    else {
+      try {
+        slots_ = std::move(other.slots_);
+      }
+      catch (...) {
+        other.noexcept_reset();
+        throw;
+      }
+    }
+    removed_slots_ = other.removed_slots_;
+    occupied_and_removed_slots_ = other.occupied_and_removed_slots_;
+    usable_slots_ = other.usable_slots_;
+    slot_mask_ = other.slot_mask_;
+    hash_ = std::move(other.hash_);
+    is_equal_ = std::move(other.is_equal_);
+    other.noexcept_reset();
   }
 
   Set &operator=(const Set &other)
   {
-    if (this == &other) {
-      return *this;
-    }
-
-    this->~Set();
-    new (this) Set(other);
-
-    return *this;
+    return copy_assign_container(*this, other);
   }
 
   Set &operator=(Set &&other)
   {
-    if (this == &other) {
-      return *this;
-    }
-
-    this->~Set();
-    new (this) Set(std::move(other));
-
-    return *this;
+    return move_assign_container(*this, std::move(other));
   }
 
   /**
@@ -346,6 +347,23 @@ class Set {
   }
 
   /**
+   * Returns the key in the set that compares equal to the given key. If it does not exist, the key
+   * is newly added.
+   */
+  const Key &lookup_key_or_add(const Key &key)
+  {
+    return this->lookup_key_or_add_as(key);
+  }
+  const Key &lookup_key_or_add(Key &&key)
+  {
+    return this->lookup_key_or_add_as(std::move(key));
+  }
+  template<typename ForwardKey> const Key &lookup_key_or_add_as(ForwardKey &&key)
+  {
+    return this->lookup_key_or_add__impl(std::forward<ForwardKey>(key), hash_(key));
+  }
+
+  /**
    * Deletes the key from the set. Returns true when the key did exist beforehand, otherwise false.
    *
    * This is similar to std::unordered_set::erase.
@@ -379,10 +397,19 @@ class Set {
    * also change their hash.
    */
   class Iterator {
+   public:
+    using iterator_category = std::forward_iterator_tag;
+    using value_type = Key;
+    using pointer = const Key *;
+    using reference = const Key &;
+    using difference_type = std::ptrdiff_t;
+
    private:
     const Slot *slots_;
     int64_t total_slots_;
     int64_t current_slot_;
+
+    friend Set;
 
    public:
     Iterator(const Slot *slots, int64_t total_slots, int64_t current_slot)
@@ -400,9 +427,21 @@ class Set {
       return *this;
     }
 
+    Iterator operator++(int) const
+    {
+      Iterator copied_iterator = *this;
+      ++copied_iterator;
+      return copied_iterator;
+    }
+
     const Key &operator*() const
     {
       return *slots_[current_slot_].key();
+    }
+
+    const Key *operator->() const
+    {
+      return slots_[current_slot_].key();
     }
 
     friend bool operator!=(const Iterator &a, const Iterator &b)
@@ -410,6 +449,17 @@ class Set {
       BLI_assert(a.slots_ == b.slots_);
       BLI_assert(a.total_slots_ == b.total_slots_);
       return a.current_slot_ != b.current_slot_;
+    }
+
+    friend bool operator==(const Iterator &a, const Iterator &b)
+    {
+      return !(a != b);
+    }
+
+   protected:
+    const Slot &current_slot() const
+    {
+      return slots_[current_slot_];
     }
   };
 
@@ -426,6 +476,20 @@ class Set {
   Iterator end() const
   {
     return Iterator(slots_.data(), slots_.size(), slots_.size());
+  }
+
+  /**
+   * Remove the key that the iterator is currently pointing at. It is valid to call this method
+   * while iterating over the set. However, after this method has been called, the removed element
+   * must not be accessed anymore.
+   */
+  void remove(const Iterator &iterator)
+  {
+    /* The const cast is valid because this method itself is not const. */
+    Slot &slot = const_cast<Slot &>(iterator.current_slot());
+    BLI_assert(slot.is_occupied());
+    slot.remove();
+    removed_slots_++;
   }
 
   /**
@@ -557,14 +621,19 @@ class Set {
     max_load_factor_.compute_total_and_usable_slots(
         SlotArray::inline_buffer_capacity(), min_usable_slots, &total_slots, &usable_slots);
     BLI_assert(total_slots >= 1);
-    const uint64_t new_slot_mask = (uint64_t)total_slots - 1;
+    const uint64_t new_slot_mask = static_cast<uint64_t>(total_slots) - 1;
 
     /**
      * Optimize the case when the set was empty beforehand. We can avoid some copies here.
      */
     if (this->size() == 0) {
-      slots_.~Array();
-      new (&slots_) SlotArray(total_slots);
+      try {
+        slots_.reinitialize(total_slots);
+      }
+      catch (...) {
+        this->noexcept_reset();
+        throw;
+      }
       removed_slots_ = 0;
       occupied_and_removed_slots_ = 0;
       usable_slots_ = usable_slots;
@@ -575,36 +644,49 @@ class Set {
     /* The grown array that we insert the keys into. */
     SlotArray new_slots(total_slots);
 
-    for (Slot &slot : slots_) {
-      if (slot.is_occupied()) {
-        this->add_after_grow_and_destruct_old(slot, new_slots, new_slot_mask);
+    try {
+      for (Slot &slot : slots_) {
+        if (slot.is_occupied()) {
+          this->add_after_grow(slot, new_slots, new_slot_mask);
+          slot.remove();
+        }
       }
+      slots_ = std::move(new_slots);
+    }
+    catch (...) {
+      this->noexcept_reset();
+      throw;
     }
 
-    /* All occupied slots have been destructed already and empty/removed slots are assumed to be
-     * trivially destructible. */
-    slots_.clear_without_destruct();
-    slots_ = std::move(new_slots);
     occupied_and_removed_slots_ -= removed_slots_;
     usable_slots_ = usable_slots;
     removed_slots_ = 0;
     slot_mask_ = new_slot_mask;
   }
 
-  void add_after_grow_and_destruct_old(Slot &old_slot,
-                                       SlotArray &new_slots,
-                                       const uint64_t new_slot_mask)
+  void add_after_grow(Slot &old_slot, SlotArray &new_slots, const uint64_t new_slot_mask)
   {
     const uint64_t hash = old_slot.get_hash(Hash());
 
     SLOT_PROBING_BEGIN (ProbingStrategy, hash, new_slot_mask, slot_index) {
       Slot &slot = new_slots[slot_index];
       if (slot.is_empty()) {
-        slot.relocate_occupied_here(old_slot, hash);
+        slot.occupy(std::move(*old_slot.key()), hash);
         return;
       }
     }
     SLOT_PROBING_END();
+  }
+
+  /**
+   * In some cases when exceptions are thrown, it's best to just reset the entire container to make
+   * sure that invariants are maintained. This should happen very rarely in practice.
+   */
+  void noexcept_reset() noexcept
+  {
+    Allocator allocator = slots_.allocator();
+    this->~Set();
+    new (this) Set(NoExceptConstructor(), allocator);
   }
 
   template<typename ForwardKey>
@@ -700,12 +782,30 @@ class Set {
   void remove_contained__impl(const ForwardKey &key, const uint64_t hash)
   {
     BLI_assert(this->contains_as(key));
-    removed_slots_++;
 
     SET_SLOT_PROBING_BEGIN (hash, slot) {
       if (slot.contains(key, is_equal_, hash)) {
         slot.remove();
+        removed_slots_++;
         return;
+      }
+    }
+    SET_SLOT_PROBING_END();
+  }
+
+  template<typename ForwardKey>
+  const Key &lookup_key_or_add__impl(ForwardKey &&key, const uint64_t hash)
+  {
+    this->ensure_can_add();
+
+    SET_SLOT_PROBING_BEGIN (hash, slot) {
+      if (slot.contains(key, is_equal_, hash)) {
+        return *slot.key();
+      }
+      if (slot.is_empty()) {
+        slot.occupy(std::forward<ForwardKey>(key), hash);
+        occupied_and_removed_slots_++;
+        return *slot.key();
       }
     }
     SET_SLOT_PROBING_END();
@@ -749,7 +849,7 @@ template<typename Key> class StdUnorderedSetWrapper {
  public:
   int64_t size() const
   {
-    return (int64_t)set_.size();
+    return static_cast<int64_t>(set_.size());
   }
 
   bool is_empty() const
@@ -831,5 +931,3 @@ template<typename Key,
 using RawSet = Set<Key, InlineBufferCapacity, ProbingStrategy, Hash, IsEqual, Slot, RawAllocator>;
 
 }  // namespace blender
-
-#endif /* __BLI_SET_HH__ */

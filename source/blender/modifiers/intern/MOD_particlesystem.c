@@ -1,32 +1,18 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2005 by the Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup modifiers
  */
 
 #include <stddef.h>
+#include <string.h>
 
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
+#include "DNA_defaults.h"
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_screen_types.h"
@@ -43,6 +29,7 @@
 #include "UI_resources.h"
 
 #include "RNA_access.h"
+#include "RNA_prototypes.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -54,10 +41,10 @@
 static void initData(ModifierData *md)
 {
   ParticleSystemModifierData *psmd = (ParticleSystemModifierData *)md;
-  psmd->psys = NULL;
-  psmd->mesh_final = NULL;
-  psmd->mesh_original = NULL;
-  psmd->totdmvert = psmd->totdmedge = psmd->totdmface = 0;
+
+  BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(psmd, modifier));
+
+  MEMCPY_STRUCT_AFTER(psmd, DNA_struct_default_get(ParticleSystemModifierData), modifier);
 }
 static void freeData(ModifierData *md)
 {
@@ -89,6 +76,11 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
 
   BKE_modifier_copydata_generic(md, target, flag);
 
+  /* NOTE: `psys` pointer here is just copied over from `md` to `target`. This is dangerous, as it
+   * will generate invalid data in case we are copying between different objects. Extra external
+   * code has to be called then to ensure proper remapping of that pointer. See e.g.
+   * `BKE_object_copy_particlesystems` or `BKE_object_copy_modifier`. */
+
   tpsmd->mesh_final = NULL;
   tpsmd->mesh_original = NULL;
   tpsmd->totdmvert = tpsmd->totdmedge = tpsmd->totdmface = 0;
@@ -113,7 +105,6 @@ static void deformVerts(ModifierData *md,
   Mesh *mesh_src = mesh;
   ParticleSystemModifierData *psmd = (ParticleSystemModifierData *)md;
   ParticleSystem *psys = NULL;
-  /* float cfra = BKE_scene_frame_get(md->scene); */ /* UNUSED */
 
   if (ctx->object->particlesystem.first) {
     psys = psmd->psys;
@@ -219,7 +210,7 @@ static void deformVerts(ModifierData *md,
   psmd->totdmedge = psmd->mesh_final->totedge;
   psmd->totdmface = psmd->mesh_final->totface;
 
-  if (!(ctx->object->transflag & OB_NO_PSYS_UPDATE)) {
+  {
     struct Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
     psmd->flag &= ~eParticleSystemFlag_psys_updated;
     particle_system_update(
@@ -260,36 +251,35 @@ static void deformVertsEM(ModifierData *md,
 }
 #endif
 
-static void panel_draw(const bContext *C, Panel *panel)
+static void panel_draw(const bContext *UNUSED(C), Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
-  PointerRNA ptr;
   PointerRNA ob_ptr;
-  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
 
   Object *ob = ob_ptr.data;
-  ModifierData *md = (ModifierData *)ptr.data;
+  ModifierData *md = (ModifierData *)ptr->data;
   ParticleSystem *psys = ((ParticleSystemModifierData *)md)->psys;
 
-  uiItemL(layout, IFACE_("Settings are in the particle tab"), ICON_NONE);
+  uiItemL(layout, TIP_("Settings are in the particle tab"), ICON_NONE);
 
   if (!(ob->mode & OB_MODE_PARTICLE_EDIT)) {
     if (ELEM(psys->part->ren_as, PART_DRAW_GR, PART_DRAW_OB)) {
       uiItemO(layout,
-              CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Convert"),
+              CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Make Instances Real"),
               ICON_NONE,
               "OBJECT_OT_duplicates_make_real");
     }
     else if (psys->part->ren_as == PART_DRAW_PATH) {
       uiItemO(layout,
-              CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Convert"),
+              CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Convert to Mesh"),
               ICON_NONE,
               "OBJECT_OT_modifier_convert");
     }
   }
 
-  modifier_panel_end(layout, &ptr);
+  modifier_panel_end(layout, ptr);
 }
 
 static void panelRegister(ARegionType *region_type)
@@ -313,12 +303,14 @@ ModifierTypeInfo modifierType_ParticleSystem = {
     /* name */ "ParticleSystem",
     /* structName */ "ParticleSystemModifierData",
     /* structSize */ sizeof(ParticleSystemModifierData),
+    /* srna */ &RNA_ParticleSystemModifier,
     /* type */ eModifierTypeType_OnlyDeform,
     /* flags */ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsMapping |
         eModifierTypeFlag_UsesPointCache /* |
                           eModifierTypeFlag_SupportsEditmode |
                           eModifierTypeFlag_EnableInEditmode */
     ,
+    /* icon */ ICON_MOD_PARTICLES,
 
     /* copyData */ copyData,
 
@@ -327,9 +319,7 @@ ModifierTypeInfo modifierType_ParticleSystem = {
     /* deformVertsEM */ NULL,
     /* deformMatricesEM */ NULL,
     /* modifyMesh */ NULL,
-    /* modifyHair */ NULL,
-    /* modifyPointCloud */ NULL,
-    /* modifyVolume */ NULL,
+    /* modifyGeometrySet */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ requiredDataMask,
@@ -338,7 +328,6 @@ ModifierTypeInfo modifierType_ParticleSystem = {
     /* updateDepsgraph */ NULL,
     /* dependsOnTime */ NULL,
     /* dependsOnNormals */ NULL,
-    /* foreachObjectLink */ NULL,
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,

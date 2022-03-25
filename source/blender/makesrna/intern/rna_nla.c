@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -88,8 +74,8 @@ static char *rna_NlaStrip_path(PointerRNA *ptr)
           char name_esc_nlt[sizeof(nlt->name) * 2];
           char name_esc_strip[sizeof(strip->name) * 2];
 
-          BLI_strescape(name_esc_nlt, nlt->name, sizeof(name_esc_nlt));
-          BLI_strescape(name_esc_strip, strip->name, sizeof(name_esc_strip));
+          BLI_str_escape(name_esc_nlt, nlt->name, sizeof(name_esc_nlt));
+          BLI_str_escape(name_esc_strip, strip->name, sizeof(name_esc_strip));
           return BLI_sprintfN(
               "animation_data.nla_tracks[\"%s\"].strips[\"%s\"]", name_esc_nlt, name_esc_strip);
         }
@@ -297,7 +283,7 @@ static int rna_NlaStrip_action_editable(PointerRNA *ptr, const char **UNUSED(r_i
 {
   NlaStrip *strip = (NlaStrip *)ptr->data;
 
-  /* strip actions shouldn't be editable if NLA tweakmode is on */
+  /* Strip actions shouldn't be editable if NLA tweak-mode is on. */
   if (ptr->owner_id) {
     AnimData *adt = BKE_animdata_from_id(ptr->owner_id);
 
@@ -607,6 +593,8 @@ static void rna_def_nlastrip(BlenderRNA *brna)
   RNA_def_struct_path_func(srna, "rna_NlaStrip_path");
   RNA_def_struct_ui_icon(srna, ICON_NLA); /* XXX */
 
+  RNA_define_lib_overridable(true);
+
   /* name property */
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(prop, "Name", "");
@@ -749,14 +737,14 @@ static void rna_def_nlastrip(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Influence", "Amount the strip contributes to the current result");
   /* XXX: Update temporarily disabled so that the property can be edited at all!
-   * Even autokey only applies after the curves have been re-evaluated,
+   * Even auto-key only applies after the curves have been re-evaluated,
    * causing the unkeyed values to be lost. */
   RNA_def_property_update(prop, NC_ANIMATION | ND_NLA | NA_EDITED, /*"rna_NlaStrip_update"*/ NULL);
 
   prop = RNA_def_property(srna, "strip_time", PROP_FLOAT, PROP_TIME);
   RNA_def_property_ui_text(prop, "Strip Time", "Frame of referenced Action to evaluate");
   /* XXX: Update temporarily disabled so that the property can be edited at all!
-   * Even autokey only applies after the curves have been re-evaluated,
+   * Even auto-key only applies after the curves have been re-evaluated,
    * causing the unkeyed values to be lost. */
   RNA_def_property_update(prop, NC_ANIMATION | ND_NLA | NA_EDITED, /*"rna_NlaStrip_update"*/ NULL);
 
@@ -782,7 +770,7 @@ static void rna_def_nlastrip(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_animated_time_cyclic", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", NLASTRIP_FLAG_USR_TIME_CYCLIC);
   RNA_def_property_ui_text(
-      prop, "Cyclic Strip Time", "Cycle the animated time within the action start & end");
+      prop, "Cyclic Strip Time", "Cycle the animated time within the action start and end");
   RNA_def_property_update(
       prop, NC_ANIMATION | ND_NLA | NA_EDITED, "rna_NlaStrip_transform_update");
 
@@ -820,6 +808,8 @@ static void rna_def_nlastrip(BlenderRNA *brna)
                            "Update range of frames referenced from action "
                            "after tweaking strip and its keyframes");
   RNA_def_property_update(prop, NC_ANIMATION | ND_NLA | NA_EDITED, "rna_NlaStrip_update");
+
+  RNA_define_lib_overridable(false);
 }
 
 static void rna_api_nlatrack_strips(BlenderRNA *brna, PropertyRNA *cprop)
@@ -877,9 +867,22 @@ static void rna_def_nlatrack(BlenderRNA *brna)
   /* strips collection */
   prop = RNA_def_property(srna, "strips", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "NlaStrip");
+  /* We do not support inserting or removing strips in overrides of tracks for now. */
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "NLA Strips", "NLA Strips on this NLA-track");
 
   rna_api_nlatrack_strips(brna, prop);
+
+  prop = RNA_def_boolean(srna,
+                         "is_override_data",
+                         false,
+                         "Override Track",
+                         "In a local override data, whether this NLA track comes from the linked "
+                         "reference data, or is local to the override");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_boolean_negative_sdna(prop, NULL, "flag", NLATRACK_OVERRIDELIBRARY_LOCAL);
+
+  RNA_define_lib_overridable(true);
 
   /* name property */
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
@@ -920,6 +923,8 @@ static void rna_def_nlatrack(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "flag", NLATRACK_PROTECTED);
   RNA_def_property_ui_text(prop, "Locked", "NLA Track is locked");
   RNA_def_property_update(prop, NC_ANIMATION | ND_NLA, NULL); /* this will do? */
+
+  RNA_define_lib_overridable(false);
 }
 
 /* --------- */

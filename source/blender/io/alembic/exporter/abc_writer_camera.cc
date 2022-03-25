@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup balembic
@@ -31,9 +17,7 @@
 #include "CLG_log.h"
 static CLG_LogRef LOG = {"io.alembic"};
 
-namespace blender {
-namespace io {
-namespace alembic {
+namespace blender::io::alembic {
 
 using Alembic::AbcGeom::CameraSample;
 using Alembic::AbcGeom::OCamera;
@@ -62,9 +46,14 @@ void ABCCameraWriter::create_alembic_objects(const HierarchyContext * /*context*
       abc_custom_data_container_, "eyeSeparation", timesample_index_);
 }
 
-const Alembic::Abc::OObject ABCCameraWriter::get_alembic_object() const
+Alembic::Abc::OObject ABCCameraWriter::get_alembic_object() const
 {
   return abc_camera_;
+}
+
+Alembic::Abc::OCompoundProperty ABCCameraWriter::abc_prop_for_custom_props()
+{
+  return abc_schema_prop_for_custom_props(abc_camera_schema_);
 }
 
 void ABCCameraWriter::do_write(HierarchyContext &context)
@@ -105,6 +94,4 @@ void ABCCameraWriter::do_write(HierarchyContext &context)
   abc_camera_schema_.set(camera_sample);
 }
 
-}  // namespace alembic
-}  // namespace io
-}  // namespace blender
+}  // namespace blender::io::alembic

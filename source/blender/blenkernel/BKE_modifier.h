@@ -1,20 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
-#ifndef __BKE_MODIFIER_H__
-#define __BKE_MODIFIER_H__
+/* SPDX-License-Identifier: GPL-2.0-or-later */
+#pragma once
 
 /** \file
  * \ingroup bke
@@ -30,9 +15,13 @@ extern "C" {
 
 struct ARegionType;
 struct BMEditMesh;
+struct BlendDataReader;
+struct BlendLibReader;
+struct BlendWriter;
 struct CustomData_MeshMasks;
 struct DepsNodeHandle;
 struct Depsgraph;
+struct GeometrySet;
 struct ID;
 struct ListBase;
 struct Main;
@@ -41,8 +30,6 @@ struct ModifierData;
 struct Object;
 struct Scene;
 struct bArmature;
-struct BlendWriter;
-struct BlendDataReader;
 
 typedef enum {
   /* Should not be used, only for None modifier type */
@@ -97,7 +84,7 @@ typedef enum {
   eModifierTypeFlag_RequiresOriginalData = (1 << 5),
 
   /**
-   * For modifiers that support pointcache,
+   * For modifiers that support point-cache,
    * so we can check to see if it has files we need to deal with.
    */
   eModifierTypeFlag_UsesPointCache = (1 << 6),
@@ -116,11 +103,6 @@ typedef enum {
   eModifierTypeFlag_AcceptsBMesh = (1 << 11),
 } ModifierTypeFlag;
 
-/* IMPORTANT! Keep ObjectWalkFunc and IDWalkFunc signatures compatible. */
-typedef void (*ObjectWalkFunc)(void *userData,
-                               struct Object *ob,
-                               struct Object **obpoin,
-                               int cb_flag);
 typedef void (*IDWalkFunc)(void *userData, struct Object *ob, struct ID **idpoin, int cb_flag);
 typedef void (*TexWalkFunc)(void *userData,
                             struct Object *ob,
@@ -171,8 +153,14 @@ typedef struct ModifierTypeInfo {
   /* The size of the modifier data type, used by allocation. */
   int structSize;
 
+  /* StructRNA of this modifier. This is typically something like RNA_*Modifier. */
+  struct StructRNA *srna;
+
   ModifierTypeType type;
   ModifierTypeFlag flags;
+
+  /* Icon of the modifier. Usually something like ICON_MOD_*. */
+  int icon;
 
   /********************* Non-optional functions *********************/
 
@@ -182,7 +170,7 @@ typedef struct ModifierTypeInfo {
    *
    * \param flag: Copying options (see BKE_lib_id.h's LIB_ID_COPY_... flags for more).
    */
-  void (*copyData)(const struct ModifierData *md, struct ModifierData *target, const int flag);
+  void (*copyData)(const struct ModifierData *md, struct ModifierData *target, int flag);
 
   /********************* Deform modifier functions *********************/
 
@@ -242,15 +230,15 @@ typedef struct ModifierTypeInfo {
   struct Mesh *(*modifyMesh)(struct ModifierData *md,
                              const struct ModifierEvalContext *ctx,
                              struct Mesh *mesh);
-  struct Hair *(*modifyHair)(struct ModifierData *md,
-                             const struct ModifierEvalContext *ctx,
-                             struct Hair *hair);
-  struct PointCloud *(*modifyPointCloud)(struct ModifierData *md,
-                                         const struct ModifierEvalContext *ctx,
-                                         struct PointCloud *pointcloud);
-  struct Volume *(*modifyVolume)(struct ModifierData *md,
-                                 const struct ModifierEvalContext *ctx,
-                                 struct Volume *volume);
+
+  /**
+   * The modifier has to change the geometry set in-place. The geometry set can contain zero or
+   * more geometry components. This callback can be used by modifiers that don't work on any
+   * specific type of geometry (e.g. mesh).
+   */
+  void (*modifyGeometrySet)(struct ModifierData *md,
+                            const struct ModifierEvalContext *ctx,
+                            struct GeometrySet *geometry_set);
 
   /********************* Optional functions *********************/
 
@@ -313,12 +301,14 @@ typedef struct ModifierTypeInfo {
    * changes.
    *
    * This function is optional (assumes false if not present).
+   *
+   * The dag_eval_mode should be of type eEvaluationMode.
    */
-  bool (*dependsOnTime)(struct ModifierData *md);
+  bool (*dependsOnTime)(struct Scene *scene, struct ModifierData *md, int dag_eval_mode);
 
   /**
    * True when a deform modifier uses normals, the requiredDataMask
-   * cant be used here because that refers to a normal layer whereas
+   * can't be used here because that refers to a normal layer whereas
    * in this case we need to know if the deform modifier uses normals.
    *
    * this is needed because applying 2 deform modifiers will give the
@@ -327,25 +317,12 @@ typedef struct ModifierTypeInfo {
   bool (*dependsOnNormals)(struct ModifierData *md);
 
   /**
-   * Should call the given walk function on with a pointer to each Object
-   * pointer that the modifier data stores. This is used for linking on file
-   * load and for unlinking objects or forwarding object references.
-   *
-   * This function is optional.
-   */
-  void (*foreachObjectLink)(struct ModifierData *md,
-                            struct Object *ob,
-                            ObjectWalkFunc walk,
-                            void *userData);
-
-  /**
    * Should call the given walk function with a pointer to each ID
    * pointer (i.e. each data-block pointer) that the modifier data
    * stores. This is used for linking on file load and for
    * unlinking data-blocks or forwarding data-block references.
    *
-   * This function is optional. If it is not present, foreachObjectLink
-   * will be used.
+   * This function is optional.
    */
   void (*foreachIDLink)(struct ModifierData *md,
                         struct Object *ob,
@@ -402,52 +379,93 @@ typedef struct ModifierTypeInfo {
 /* Used to find a modifier's panel type. */
 #define MODIFIER_TYPE_PANEL_PREFIX "MOD_PT_"
 
-/* Initialize modifier's global data (type info and some common global storages). */
+/* Initialize modifier's global data (type info and some common global storage). */
 void BKE_modifier_init(void);
 
 const ModifierTypeInfo *BKE_modifier_get_info(ModifierType type);
 
 /* For modifier UI panels. */
+
+/**
+ * Get the idname of the modifier type's panel, which was defined in the #panelRegister callback.
+ */
 void BKE_modifier_type_panel_id(ModifierType type, char *r_idname);
+void BKE_modifier_panel_expand(struct ModifierData *md);
 
 /* Modifier utility calls, do call through type pointer and return
  * default values if pointer is optional.
  */
 struct ModifierData *BKE_modifier_new(int type);
-void BKE_modifier_free_ex(struct ModifierData *md, const int flag);
+
+void BKE_modifier_free_ex(struct ModifierData *md, int flag);
 void BKE_modifier_free(struct ModifierData *md);
+/**
+ * Use instead of `BLI_remlink` when the object's active modifier should change.
+ */
+void BKE_modifier_remove_from_list(struct Object *ob, struct ModifierData *md);
+
+/* Generate new UUID for the given modifier. */
+void BKE_modifier_session_uuid_generate(struct ModifierData *md);
 
 bool BKE_modifier_unique_name(struct ListBase *modifiers, struct ModifierData *md);
 
+struct ModifierData *BKE_modifier_copy_ex(const struct ModifierData *md, int flag);
+
+/**
+ * Callback's can use this to avoid copying every member.
+ */
 void BKE_modifier_copydata_generic(const struct ModifierData *md,
-                                   struct ModifierData *target,
-                                   const int flag);
-void BKE_modifier_copydata(struct ModifierData *md, struct ModifierData *target);
-void BKE_modifier_copydata_ex(struct ModifierData *md,
+                                   struct ModifierData *md_dst,
+                                   int flag);
+void BKE_modifier_copydata(const struct ModifierData *md, struct ModifierData *target);
+void BKE_modifier_copydata_ex(const struct ModifierData *md,
                               struct ModifierData *target,
-                              const int flag);
-bool BKE_modifier_depends_ontime(struct ModifierData *md);
+                              int flag);
+bool BKE_modifier_depends_ontime(struct Scene *scene, struct ModifierData *md, int dag_eval_mode);
 bool BKE_modifier_supports_mapping(struct ModifierData *md);
 bool BKE_modifier_supports_cage(struct Scene *scene, struct ModifierData *md);
 bool BKE_modifier_couldbe_cage(struct Scene *scene, struct ModifierData *md);
 bool BKE_modifier_is_correctable_deformed(struct ModifierData *md);
 bool BKE_modifier_is_same_topology(ModifierData *md);
 bool BKE_modifier_is_non_geometrical(ModifierData *md);
+/**
+ * Check whether is enabled.
+ *
+ * \param scene: Current scene, may be NULL,
+ * in which case `isDisabled` callback of the modifier is never called.
+ */
 bool BKE_modifier_is_enabled(const struct Scene *scene,
                              struct ModifierData *md,
                              int required_mode);
-void BKE_modifier_set_error(struct ModifierData *md, const char *format, ...)
-    ATTR_PRINTF_FORMAT(2, 3);
+/**
+ * Check whether given modifier is not local (i.e. from linked data) when the object is a library
+ * override.
+ *
+ * \param md: May be NULL, in which case we consider it as a non-local modifier case.
+ */
+bool BKE_modifier_is_nonlocal_in_liboverride(const struct Object *ob,
+                                             const struct ModifierData *md);
+void BKE_modifier_set_error(const struct Object *ob,
+                            struct ModifierData *md,
+                            const char *format,
+                            ...) ATTR_PRINTF_FORMAT(3, 4);
 bool BKE_modifier_is_preview(struct ModifierData *md);
 
-void BKE_modifiers_foreach_object_link(struct Object *ob, ObjectWalkFunc walk, void *userData);
 void BKE_modifiers_foreach_ID_link(struct Object *ob, IDWalkFunc walk, void *userData);
 void BKE_modifiers_foreach_tex_link(struct Object *ob, TexWalkFunc walk, void *userData);
 
-struct ModifierData *BKE_modifiers_findby_type(struct Object *ob, ModifierType type);
-struct ModifierData *BKE_modifiers_findby_name(struct Object *ob, const char *name);
+struct ModifierData *BKE_modifiers_findby_type(const struct Object *ob, ModifierType type);
+struct ModifierData *BKE_modifiers_findby_name(const struct Object *ob, const char *name);
+struct ModifierData *BKE_modifiers_findby_session_uuid(const struct Object *ob,
+                                                       const SessionUUID *session_uuid);
 void BKE_modifiers_clear_errors(struct Object *ob);
-int BKE_modifiers_get_cage_index(struct Scene *scene,
+/**
+ * used for buttons, to find out if the 'draw deformed in edit-mode option is there.
+ *
+ * Also used in transform_conversion.c, to detect crazy-space (2nd arg then is NULL).
+ * Also used for some mesh tools to give warnings.
+ */
+int BKE_modifiers_get_cage_index(const struct Scene *scene,
                                  struct Object *ob,
                                  int *r_lastPossibleCageIndex,
                                  bool is_virtual);
@@ -457,14 +475,26 @@ bool BKE_modifiers_is_softbody_enabled(struct Object *ob);
 bool BKE_modifiers_is_cloth_enabled(struct Object *ob);
 bool BKE_modifiers_is_particle_enabled(struct Object *ob);
 
+/**
+ * Takes an object and returns its first selected armature, else just its armature.
+ * This should work for multiple armatures per object.
+ */
 struct Object *BKE_modifiers_is_deformed_by_armature(struct Object *ob);
 struct Object *BKE_modifiers_is_deformed_by_meshdeform(struct Object *ob);
+/**
+ * Takes an object and returns its first selected lattice, else just its lattice.
+ * This should work for multiple lattices per object.
+ */
 struct Object *BKE_modifiers_is_deformed_by_lattice(struct Object *ob);
+/**
+ * Takes an object and returns its first selected curve, else just its curve.
+ * This should work for multiple curves per object.
+ */
 struct Object *BKE_modifiers_is_deformed_by_curve(struct Object *ob);
 bool BKE_modifiers_uses_multires(struct Object *ob);
 bool BKE_modifiers_uses_armature(struct Object *ob, struct bArmature *arm);
-bool BKE_modifiers_uses_subsurf_facedots(struct Scene *scene, struct Object *ob);
-bool BKE_modifiers_is_correctable_deformed(struct Scene *scene, struct Object *ob);
+bool BKE_modifiers_uses_subsurf_facedots(const struct Scene *scene, struct Object *ob);
+bool BKE_modifiers_is_correctable_deformed(const struct Scene *scene, struct Object *ob);
 void BKE_modifier_free_temporary_data(struct ModifierData *md);
 
 typedef struct CDMaskLink {
@@ -478,14 +508,14 @@ typedef struct CDMaskLink {
  * pointed to by md for correct evaluation, assuming the data indicated by
  * final_datamask is required at the end of the stack.
  */
-struct CDMaskLink *BKE_modifier_calc_data_masks(struct Scene *scene,
+struct CDMaskLink *BKE_modifier_calc_data_masks(const struct Scene *scene,
                                                 struct Object *ob,
                                                 struct ModifierData *md,
                                                 struct CustomData_MeshMasks *final_datamask,
                                                 int required_mode,
                                                 ModifierData *previewmd,
                                                 const struct CustomData_MeshMasks *previewmask);
-struct ModifierData *BKE_modifier_get_last_preview(struct Scene *scene,
+struct ModifierData *BKE_modifier_get_last_preview(const struct Scene *scene,
                                                    struct ModifierData *md,
                                                    int required_mode);
 
@@ -496,24 +526,38 @@ typedef struct VirtualModifierData {
   ShapeKeyModifierData smd;
 } VirtualModifierData;
 
+/**
+ * This is to include things that are not modifiers in the evaluation of the modifier stack,
+ * for example parenting to an armature.
+ */
 struct ModifierData *BKE_modifiers_get_virtual_modifierlist(const struct Object *ob,
                                                             struct VirtualModifierData *data);
 
-/** Ensure modifier correctness when changing ob->data. */
+/**
+ * Ensure modifier correctness when changing `ob->data`.
+ */
 void BKE_modifiers_test_object(struct Object *ob);
 
-/* here for do_versions */
+/**
+ * Here for #do_versions.
+ */
 void BKE_modifier_mdef_compact_influences(struct ModifierData *md);
 
+/**
+ * Initializes `path` with either the blend file or temporary directory.
+ */
 void BKE_modifier_path_init(char *path, int path_maxlen, const char *name);
 const char *BKE_modifier_path_relbase(struct Main *bmain, struct Object *ob);
 const char *BKE_modifier_path_relbase_from_global(struct Object *ob);
 
 /* Accessors of original/evaluated modifiers. */
 
-/* For a given modifier data, get corresponding original one.
- * If the modifier data is already original, return it as-is. */
-struct ModifierData *BKE_modifier_get_original(struct ModifierData *md);
+/**
+ * For a given modifier data, get corresponding original one.
+ * If the modifier data is already original, return it as-is.
+ */
+struct ModifierData *BKE_modifier_get_original(const struct Object *object,
+                                               struct ModifierData *md);
 struct ModifierData *BKE_modifier_get_evaluated(struct Depsgraph *depsgraph,
                                                 struct Object *object,
                                                 struct ModifierData *md);
@@ -537,11 +581,26 @@ void BKE_modifier_deform_vertsEM(ModifierData *md,
                                  float (*vertexCos)[3],
                                  int numVerts);
 
+/**
+ * Get evaluated mesh for other evaluated object, which is used as an operand for the modifier,
+ * e.g. second operand for boolean modifier.
+ * Note that modifiers in stack always get fully evaluated COW ID pointers,
+ * never original ones. Makes things simpler.
+ *
+ * \param get_cage_mesh: Return evaluated mesh with only deforming modifiers applied
+ * (i.e. mesh topology remains the same as original one, a.k.a. 'cage' mesh).
+ */
 struct Mesh *BKE_modifier_get_evaluated_mesh_from_evaluated_object(struct Object *ob_eval,
-                                                                   const bool get_cage_mesh);
+                                                                   bool get_cage_mesh);
+
+void BKE_modifier_check_uuids_unique_and_report(const struct Object *object);
+
+void BKE_modifier_blend_write(struct BlendWriter *writer, struct ListBase *modbase);
+void BKE_modifier_blend_read_data(struct BlendDataReader *reader,
+                                  struct ListBase *lb,
+                                  struct Object *ob);
+void BKE_modifier_blend_read_lib(struct BlendLibReader *reader, struct Object *ob);
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

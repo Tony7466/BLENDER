@@ -1,24 +1,8 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2020 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2020 Blender Foundation. All rights reserved. */
 #include "abc_subdiv_disabler.h"
 
-#include <stdio.h>
+#include <cstdio>
 
 #include "BLI_listbase.h"
 
@@ -32,9 +16,7 @@
 
 #include "BKE_modifier.h"
 
-namespace blender {
-namespace io {
-namespace alembic {
+namespace blender::io::alembic {
 
 SubdivModifierDisabler::SubdivModifierDisabler(Depsgraph *depsgraph) : depsgraph_(depsgraph)
 {
@@ -74,8 +56,6 @@ void SubdivModifierDisabler::disable_modifiers()
   }
 }
 
-/* Check if the mesh is a subsurf, ignoring disabled modifiers and
- * displace if it's after subsurf. */
 ModifierData *SubdivModifierDisabler::get_subdiv_modifier(Scene *scene, Object *ob)
 {
   ModifierData *md = static_cast<ModifierData *>(ob->modifiers.last);
@@ -94,7 +74,7 @@ ModifierData *SubdivModifierDisabler::get_subdiv_modifier(Scene *scene, Object *
     }
 
     /* mesh is not a subsurf. break */
-    if ((md->type != eModifierType_Displace) && (md->type != eModifierType_ParticleSystem)) {
+    if (!ELEM(md->type, eModifierType_Displace, eModifierType_ParticleSystem)) {
       return nullptr;
     }
   }
@@ -102,6 +82,4 @@ ModifierData *SubdivModifierDisabler::get_subdiv_modifier(Scene *scene, Object *
   return nullptr;
 }
 
-}  // namespace alembic
-}  // namespace io
-}  // namespace blender
+}  // namespace blender::io::alembic

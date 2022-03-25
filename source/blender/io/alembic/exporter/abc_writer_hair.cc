@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup balembic
@@ -30,6 +16,7 @@
 
 #include "BLI_math_geom.h"
 
+#include "BKE_customdata.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_particle.h"
@@ -43,9 +30,7 @@ using Alembic::AbcGeom::OCurvesSchema;
 using Alembic::AbcGeom::ON3fGeomParam;
 using Alembic::AbcGeom::OV2fGeomParam;
 
-namespace blender {
-namespace io {
-namespace alembic {
+namespace blender::io::alembic {
 
 ABCHairWriter::ABCHairWriter(const ABCWriterConstructorArgs &args)
     : ABCAbstractWriter(args), uv_warning_shown_(false)
@@ -59,9 +44,14 @@ void ABCHairWriter::create_alembic_objects(const HierarchyContext * /*context*/)
   abc_curves_schema_ = abc_curves_.getSchema();
 }
 
-const Alembic::Abc::OObject ABCHairWriter::get_alembic_object() const
+Alembic::Abc::OObject ABCHairWriter::get_alembic_object() const
 {
   return abc_curves_;
+}
+
+Alembic::Abc::OCompoundProperty ABCHairWriter::abc_prop_for_custom_props()
+{
+  return abc_schema_prop_for_custom_props(abc_curves_schema_);
 }
 
 bool ABCHairWriter::check_is_animated(const HierarchyContext & /*context*/) const
@@ -132,6 +122,7 @@ void ABCHairWriter::write_hair_sample(const HierarchyContext &context,
   MTFace *mtface = mesh->mtface;
   MFace *mface = mesh->mface;
   MVert *mverts = mesh->mvert;
+  const float(*vert_normals)[3] = BKE_mesh_vertex_normals_ensure(mesh);
 
   if ((!mtface || !mface) && !uv_warning_shown_) {
     std::fprintf(stderr,
@@ -160,16 +151,27 @@ void ABCHairWriter::write_hair_sample(const HierarchyContext &context,
 
       if (num < mesh->totface) {
         /* TODO(Sybren): check whether the NULL check here and if(mface) are actually required */
-        MFace *face = mface == NULL ? NULL : &mface[num];
+        MFace *face = mface == nullptr ? nullptr : &mface[num];
         MTFace *tface = mtface + num;
 
         if (mface) {
           float r_uv[2], mapfw[4], vec[3];
 
           psys_interpolate_uvs(tface, face->v4, pa->fuv, r_uv);
-          uv_values.push_back(Imath::V2f(r_uv[0], r_uv[1]));
+          uv_values.emplace_back(r_uv[0], r_uv[1]);
 
-          psys_interpolate_face(mverts, face, tface, NULL, mapfw, vec, normal, NULL, NULL, NULL);
+          psys_interpolate_face(mesh,
+                                mverts,
+                                vert_normals,
+                                face,
+                                tface,
+                                nullptr,
+                                mapfw,
+                                vec,
+                                normal,
+                                nullptr,
+                                nullptr,
+                                nullptr);
 
           copy_yup_from_zup(tmp_nor.getValue(), normal);
           norm_values.push_back(tmp_nor);
@@ -200,11 +202,8 @@ void ABCHairWriter::write_hair_sample(const HierarchyContext &context,
           }
 
           if (vtx[o] == num) {
-            uv_values.push_back(Imath::V2f(tface->uv[o][0], tface->uv[o][1]));
-
-            MVert *mv = mverts + vtx[o];
-
-            normal_short_to_float_v3(normal, mv->no);
+            uv_values.emplace_back(tface->uv[o][0], tface->uv[o][1]);
+            copy_v3_v3(normal, vert_normals[vtx[o]]);
             copy_yup_from_zup(tmp_nor.getValue(), normal);
             norm_values.push_back(tmp_nor);
             found = true;
@@ -227,7 +226,7 @@ void ABCHairWriter::write_hair_sample(const HierarchyContext &context,
       mul_m4_v3(inv_mat, vert);
 
       /* Convert Z-up to Y-up. */
-      verts.push_back(Imath::V3f(vert[0], vert[2], -vert[1]));
+      verts.emplace_back(vert[0], vert[2], -vert[1]);
     }
   }
 }
@@ -245,6 +244,7 @@ void ABCHairWriter::write_hair_child_sample(const HierarchyContext &context,
 
   MTFace *mtface = mesh->mtface;
   MVert *mverts = mesh->mvert;
+  const float(*vert_normals)[3] = BKE_mesh_vertex_normals_ensure(mesh);
 
   ParticleSystem *psys = context.particle_system;
   ParticleSettings *part = psys->part;
@@ -274,12 +274,23 @@ void ABCHairWriter::write_hair_child_sample(const HierarchyContext &context,
       float r_uv[2], tmpnor[3], mapfw[4], vec[3];
 
       psys_interpolate_uvs(tface, face->v4, pc->fuv, r_uv);
-      uv_values.push_back(Imath::V2f(r_uv[0], r_uv[1]));
+      uv_values.emplace_back(r_uv[0], r_uv[1]);
 
-      psys_interpolate_face(mverts, face, tface, NULL, mapfw, vec, tmpnor, NULL, NULL, NULL);
+      psys_interpolate_face(mesh,
+                            mverts,
+                            vert_normals,
+                            face,
+                            tface,
+                            nullptr,
+                            mapfw,
+                            vec,
+                            tmpnor,
+                            nullptr,
+                            nullptr,
+                            nullptr);
 
       /* Convert Z-up to Y-up. */
-      norm_values.push_back(Imath::V3f(tmpnor[0], tmpnor[2], -tmpnor[1]));
+      norm_values.emplace_back(tmpnor[0], tmpnor[2], -tmpnor[1]);
     }
     else {
       if (!uv_values.empty()) {
@@ -299,13 +310,11 @@ void ABCHairWriter::write_hair_child_sample(const HierarchyContext &context,
       mul_m4_v3(inv_mat, vert);
 
       /* Convert Z-up to Y-up. */
-      verts.push_back(Imath::V3f(vert[0], vert[2], -vert[1]));
+      verts.emplace_back(vert[0], vert[2], -vert[1]);
 
       path++;
     }
   }
 }
 
-}  // namespace alembic
-}  // namespace io
-}  // namespace blender
+}  // namespace blender::io::alembic

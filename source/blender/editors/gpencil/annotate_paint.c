@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2008/2018, Blender Foundation
- * This is a new part of Blender
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008-2018 Blender Foundation. */
 
 /** \file
  * \ingroup edgpencil
@@ -38,10 +22,12 @@
 
 #include "PIL_time.h"
 
+#include "BKE_callbacks.h"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_gpencil.h"
+#include "BKE_gpencil_geom.h"
 #include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
@@ -66,6 +52,7 @@
 
 #include "RNA_access.h"
 #include "RNA_define.h"
+#include "RNA_prototypes.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -76,6 +63,8 @@
 
 /* ******************************************* */
 /* 'Globals' and Defines */
+
+#define DEPTH_INVALID 1.0f
 
 /* values for tGPsdata->status */
 typedef enum eGPencil_PaintStatus {
@@ -122,6 +111,8 @@ typedef struct tGPsdata {
   ARegion *region;
   /** needed for GP_STROKE_2DSPACE. */
   View2D *v2d;
+  /** For operations that require occlusion testing. */
+  ViewDepths *depths;
   /** for using the camera rect within the 3d view. */
   rctf *subrect;
   rctf subrect_data;
@@ -200,7 +191,7 @@ typedef struct tGPsdata {
 
 /* Macros for accessing sensitivity thresholds... */
 /* minimum number of pixels mouse should move before new point created */
-#define MIN_MANHATTEN_PX (U.gp_manhattendist)
+#define MIN_MANHATTAN_PX (U.gp_manhattandist)
 /* minimum length of new segment before new point can be added */
 #define MIN_EUCLIDEAN_PX (U.gp_euclideandist)
 
@@ -271,7 +262,7 @@ static void annotation_get_3d_reference(tGPsdata *p, float vec[3])
 /* Stroke Editing ---------------------------- */
 
 /* check if the current mouse position is suitable for adding a new point */
-static bool annotation_stroke_filtermval(tGPsdata *p, const float mval[2], float pmval[2])
+static bool annotation_stroke_filtermval(tGPsdata *p, const float mval[2], const float pmval[2])
 {
   int dx = (int)fabsf(mval[0] - pmval[0]);
   int dy = (int)fabsf(mval[1] - pmval[1]);
@@ -297,7 +288,7 @@ static bool annotation_stroke_filtermval(tGPsdata *p, const float mval[2], float
     return false;
   }
 
-  if ((dx > MIN_MANHATTEN_PX) && (dy > MIN_MANHATTEN_PX)) {
+  if ((dx > MIN_MANHATTAN_PX) && (dy > MIN_MANHATTAN_PX)) {
     return true;
   }
 
@@ -321,6 +312,9 @@ static void annotation_stroke_convertcoords(tGPsdata *p,
                                             float *depth)
 {
   bGPdata *gpd = p->gpd;
+  if (depth && (*depth == DEPTH_INVALID)) {
+    depth = NULL;
+  }
 
   /* in 3d-space - pt->x/y/z are 3 side-by-side floats */
   if (gpd->runtime.sbuffer_sflag & GP_STROKE_3DSPACE) {
@@ -334,8 +328,7 @@ static void annotation_stroke_convertcoords(tGPsdata *p,
     }
     else {
       float mval_prj[2];
-      float rvec[3], dvec[3];
-      float zfac;
+      float rvec[3];
 
       /* Current method just converts each point in screen-coordinates to
        * 3D-coordinates using the 3D-cursor as reference. In general, this
@@ -347,13 +340,14 @@ static void annotation_stroke_convertcoords(tGPsdata *p,
        */
 
       annotation_get_3d_reference(p, rvec);
-      zfac = ED_view3d_calc_zfac(p->region->regiondata, rvec, NULL);
+      const float zfac = ED_view3d_calc_zfac(p->region->regiondata, rvec);
 
       if (ED_view3d_project_float_global(p->region, rvec, mval_prj, V3D_PROJ_TEST_NOP) ==
           V3D_PROJ_RET_OK) {
-        float mval_f[2];
-        sub_v2_v2v2(mval_f, mval_prj, mval);
-        ED_view3d_win_to_delta(p->region, mval_f, dvec, zfac);
+        float dvec[3];
+        float xy_delta[2];
+        sub_v2_v2v2(xy_delta, mval_prj, mval);
+        ED_view3d_win_to_delta(p->region, xy_delta, zfac, dvec);
         sub_v3_v3v3(out, rvec, dvec);
       }
       else {
@@ -418,38 +412,38 @@ static void annotation_smooth_buffer(tGPsdata *p, float inf, int idx)
 
   /* Compute smoothed coordinate by taking the ones nearby */
   if (pta) {
-    copy_v2_v2(a, &pta->x);
+    copy_v2_v2(a, pta->m_xy);
     madd_v2_v2fl(sco, a, average_fac);
   }
   if (ptb) {
-    copy_v2_v2(b, &ptb->x);
+    copy_v2_v2(b, ptb->m_xy);
     madd_v2_v2fl(sco, b, average_fac);
   }
   if (ptc) {
-    copy_v2_v2(c, &ptc->x);
+    copy_v2_v2(c, ptc->m_xy);
     madd_v2_v2fl(sco, c, average_fac);
   }
   if (ptd) {
-    copy_v2_v2(d, &ptd->x);
+    copy_v2_v2(d, ptd->m_xy);
     madd_v2_v2fl(sco, d, average_fac);
   }
 
   /* Based on influence factor, blend between original and optimal smoothed coordinate */
   interp_v2_v2v2(c, c, sco, inf);
-  copy_v2_v2(&ptc->x, c);
+  copy_v2_v2(ptc->m_xy, c);
 }
 
 static void annotation_stroke_arrow_calc_points_segment(float stroke_points[8],
                                                         const float ref_point[2],
                                                         const float dir_cw[2],
                                                         const float dir_ccw[2],
-                                                        const float lenght,
+                                                        const float length,
                                                         const float sign)
 {
-  stroke_points[0] = ref_point[0] + dir_cw[0] * lenght * sign;
-  stroke_points[1] = ref_point[1] + dir_cw[1] * lenght * sign;
-  stroke_points[2] = ref_point[0] + dir_ccw[0] * lenght * sign;
-  stroke_points[3] = ref_point[1] + dir_ccw[1] * lenght * sign;
+  stroke_points[0] = ref_point[0] + dir_cw[0] * length * sign;
+  stroke_points[1] = ref_point[1] + dir_cw[1] * length * sign;
+  stroke_points[2] = ref_point[0] + dir_ccw[0] * length * sign;
+  stroke_points[3] = ref_point[1] + dir_ccw[1] * length * sign;
 }
 
 static void annotation_stroke_arrow_calc_points(tGPspoint *point,
@@ -458,7 +452,7 @@ static void annotation_stroke_arrow_calc_points(tGPspoint *point,
                                                 float stroke_points[8],
                                                 const int arrow_style)
 {
-  const int arrow_lenght = 8;
+  const int arrow_length = 8;
   float norm_dir[2];
   copy_v2_v2(norm_dir, stroke_dir);
   normalize_v2(norm_dir);
@@ -467,46 +461,46 @@ static void annotation_stroke_arrow_calc_points(tGPspoint *point,
 
   switch (arrow_style) {
     case GP_STROKE_ARROWSTYLE_OPEN:
-      mul_v2_fl(norm_dir, arrow_lenght);
-      stroke_points[0] = corner[0] + inv_norm_dir_clockwise[0] * arrow_lenght + norm_dir[0];
-      stroke_points[1] = corner[1] + inv_norm_dir_clockwise[1] * arrow_lenght + norm_dir[1];
-      stroke_points[2] = corner[0] + inv_norm_dir_counterclockwise[0] * arrow_lenght + norm_dir[0];
-      stroke_points[3] = corner[1] + inv_norm_dir_counterclockwise[1] * arrow_lenght + norm_dir[1];
+      mul_v2_fl(norm_dir, arrow_length);
+      stroke_points[0] = corner[0] + inv_norm_dir_clockwise[0] * arrow_length + norm_dir[0];
+      stroke_points[1] = corner[1] + inv_norm_dir_clockwise[1] * arrow_length + norm_dir[1];
+      stroke_points[2] = corner[0] + inv_norm_dir_counterclockwise[0] * arrow_length + norm_dir[0];
+      stroke_points[3] = corner[1] + inv_norm_dir_counterclockwise[1] * arrow_length + norm_dir[1];
       break;
     case GP_STROKE_ARROWSTYLE_SEGMENT:
       annotation_stroke_arrow_calc_points_segment(stroke_points,
                                                   corner,
                                                   inv_norm_dir_clockwise,
                                                   inv_norm_dir_counterclockwise,
-                                                  arrow_lenght,
+                                                  arrow_length,
                                                   1.0f);
       break;
     case GP_STROKE_ARROWSTYLE_CLOSED:
-      mul_v2_fl(norm_dir, arrow_lenght);
+      mul_v2_fl(norm_dir, arrow_length);
       if (point != NULL) {
-        add_v2_v2(&point->x, norm_dir);
-        copy_v2_v2(corner, &point->x);
+        add_v2_v2(point->m_xy, norm_dir);
+        copy_v2_v2(corner, point->m_xy);
       }
       annotation_stroke_arrow_calc_points_segment(stroke_points,
                                                   corner,
                                                   inv_norm_dir_clockwise,
                                                   inv_norm_dir_counterclockwise,
-                                                  arrow_lenght,
+                                                  arrow_length,
                                                   -1.0f);
       stroke_points[4] = corner[0] - norm_dir[0];
       stroke_points[5] = corner[1] - norm_dir[1];
       break;
     case GP_STROKE_ARROWSTYLE_SQUARE:
-      mul_v2_fl(norm_dir, arrow_lenght * 1.5f);
+      mul_v2_fl(norm_dir, arrow_length * 1.5f);
       if (point != NULL) {
-        add_v2_v2(&point->x, norm_dir);
-        copy_v2_v2(corner, &point->x);
+        add_v2_v2(point->m_xy, norm_dir);
+        copy_v2_v2(corner, point->m_xy);
       }
       annotation_stroke_arrow_calc_points_segment(stroke_points,
                                                   corner,
                                                   inv_norm_dir_clockwise,
                                                   inv_norm_dir_counterclockwise,
-                                                  arrow_lenght * 0.75f,
+                                                  arrow_length * 0.75f,
                                                   -1.0f);
       stroke_points[4] = stroke_points[0] - norm_dir[0];
       stroke_points[5] = stroke_points[1] - norm_dir[1];
@@ -536,7 +530,7 @@ static short annotation_stroke_addpoint(tGPsdata *p,
       pt = (tGPspoint *)(gpd->runtime.sbuffer);
 
       /* store settings */
-      copy_v2_v2(&pt->x, mval);
+      copy_v2_v2(pt->m_xy, mval);
       /* T44932 - Pressure vals are unreliable, so ignore for now */
       pt->pressure = 1.0f;
       pt->strength = 1.0f;
@@ -552,7 +546,7 @@ static short annotation_stroke_addpoint(tGPsdata *p,
       pt = ((tGPspoint *)(gpd->runtime.sbuffer) + 1);
 
       /* store settings */
-      copy_v2_v2(&pt->x, mval);
+      copy_v2_v2(pt->m_xy, mval);
       /* T44932 - Pressure vals are unreliable, so ignore for now */
       pt->pressure = 1.0f;
       pt->strength = 1.0f;
@@ -565,22 +559,22 @@ static short annotation_stroke_addpoint(tGPsdata *p,
       if (gpd->runtime.sbuffer_sflag & (GP_STROKE_USE_ARROW_START | GP_STROKE_USE_ARROW_END)) {
         /* Store start and end point coords for arrows. */
         float end[2];
-        copy_v2_v2(end, &pt->x);
+        copy_v2_v2(end, pt->m_xy);
         pt = ((tGPspoint *)(gpd->runtime.sbuffer));
         float start[2];
-        copy_v2_v2(start, &pt->x);
+        copy_v2_v2(start, pt->m_xy);
 
         /* Arrow end corner. */
         if (gpd->runtime.sbuffer_sflag & GP_STROKE_USE_ARROW_END) {
           pt++;
-          float e_heading[2] = {start[0] - end[0], start[1] - end[1]};
+          const float e_heading[2] = {start[0] - end[0], start[1] - end[1]};
           /* Calculate points for ending arrow. */
           annotation_stroke_arrow_calc_points(
               pt, e_heading, end, gpd->runtime.arrow_end, gpd->runtime.arrow_end_style);
         }
         /* Arrow start corner. */
         if (gpd->runtime.sbuffer_sflag & GP_STROKE_USE_ARROW_START) {
-          float s_heading[2] = {end[0] - start[0], end[1] - start[1]};
+          const float s_heading[2] = {end[0] - start[0], end[1] - start[1]};
           /* Calculate points for starting arrow. */
           annotation_stroke_arrow_calc_points(
               NULL, s_heading, start, gpd->runtime.arrow_start, gpd->runtime.arrow_start_style);
@@ -601,9 +595,9 @@ static short annotation_stroke_addpoint(tGPsdata *p,
     pt = ((tGPspoint *)(gpd->runtime.sbuffer) + gpd->runtime.sbuffer_used);
 
     /* store settings */
-    copy_v2_v2(&pt->x, mval);
+    copy_v2_v2(pt->m_xy, mval);
     pt->pressure = pressure;
-    /* unused for annotations, but initialise for easier conversions to GP Object */
+    /* Unused for annotations, but initialize for easier conversions to GP Object. */
     pt->strength = 1.0f;
 
     /* point time */
@@ -628,7 +622,7 @@ static short annotation_stroke_addpoint(tGPsdata *p,
     pt = (tGPspoint *)gpd->runtime.sbuffer;
 
     /* store settings */
-    copy_v2_v2(&pt->x, mval);
+    copy_v2_v2(pt->m_xy, mval);
     /* T44932 - Pressure vals are unreliable, so ignore for now */
     pt->pressure = 1.0f;
     pt->strength = 1.0f;
@@ -659,14 +653,18 @@ static short annotation_stroke_addpoint(tGPsdata *p,
         View3D *v3d = p->area->spacedata.first;
 
         view3d_region_operator_needs_opengl(p->win, p->region);
-        ED_view3d_autodist_init(p->depsgraph,
-                                p->region,
-                                v3d,
-                                (ts->annotate_v3d_align & GP_PROJECT_DEPTH_STROKE) ? 1 : 0);
+        ED_view3d_depth_override(p->depsgraph,
+                                 p->region,
+                                 v3d,
+                                 NULL,
+                                 (ts->annotate_v3d_align & GP_PROJECT_DEPTH_STROKE) ?
+                                     V3D_DEPTH_GPENCIL_ONLY :
+                                     V3D_DEPTH_NO_GPENCIL,
+                                 NULL);
       }
 
       /* convert screen-coordinates to appropriate coordinates (and store them) */
-      annotation_stroke_convertcoords(p, &pt->x, &pts->x, NULL);
+      annotation_stroke_convertcoords(p, pt->m_xy, &pts->x, NULL);
 
       /* copy pressure and time */
       pts->pressure = pt->pressure;
@@ -703,10 +701,10 @@ static void annotation_stroke_arrow_init_conv_point(bGPDspoint *pt, const float 
 static void annotation_stroke_arrow_init_point(
     tGPsdata *p, tGPspoint *ptc, bGPDspoint *pt, const float co[8], const int co_idx)
 {
-  /* Note: provided co_idx should be always pair number as it's [x1, y1, x2, y2, x3, y3]. */
-  float real_co[2] = {co[co_idx], co[co_idx + 1]};
-  copy_v2_v2(&ptc->x, real_co);
-  annotation_stroke_convertcoords(p, &ptc->x, &pt->x, NULL);
+  /* NOTE: provided co_idx should be always pair number as it's [x1, y1, x2, y2, x3, y3]. */
+  const float real_co[2] = {co[co_idx], co[co_idx + 1]};
+  copy_v2_v2(ptc->m_xy, real_co);
+  annotation_stroke_convertcoords(p, ptc->m_xy, &pt->x, NULL);
   annotation_stroke_arrow_init_point_default(pt);
 }
 
@@ -831,10 +829,6 @@ static void annotation_stroke_newfrombuffer(tGPsdata *p)
 
   /* exit with error if no valid points from this stroke */
   if (totelem == 0) {
-    if (G.debug & G_DEBUG) {
-      printf("Error: No valid points in stroke buffer to convert (tot=%d)\n",
-             gpd->runtime.sbuffer_used);
-    }
     return;
   }
 
@@ -877,7 +871,7 @@ static void annotation_stroke_newfrombuffer(tGPsdata *p)
       ptc = gpd->runtime.sbuffer;
 
       /* convert screen-coordinates to appropriate coordinates (and store them) */
-      annotation_stroke_convertcoords(p, &ptc->x, &pt->x, NULL);
+      annotation_stroke_convertcoords(p, ptc->m_xy, &pt->x, NULL);
 
       /* copy pressure and time */
       pt->pressure = ptc->pressure;
@@ -895,7 +889,7 @@ static void annotation_stroke_newfrombuffer(tGPsdata *p)
       ptc = ((tGPspoint *)runtime.sbuffer) + (runtime.sbuffer_used - 1);
 
       /* Convert screen-coordinates to appropriate coordinates (and store them). */
-      annotation_stroke_convertcoords(p, &ptc->x, &pt->x, NULL);
+      annotation_stroke_convertcoords(p, ptc->m_xy, &pt->x, NULL);
 
       /* Copy pressure and time. */
       pt->pressure = ptc->pressure;
@@ -903,14 +897,14 @@ static void annotation_stroke_newfrombuffer(tGPsdata *p)
       CLAMP(pt->strength, GPENCIL_STRENGTH_MIN, 1.0f);
       pt->time = ptc->time;
 
-      /** Create arrow strokes. **/
+      /** Create arrow strokes. */
       /* End arrow stroke. */
       if ((runtime.sbuffer_sflag & GP_STROKE_USE_ARROW_END) &&
           (runtime.arrow_end_style != GP_STROKE_ARROWSTYLE_NONE)) {
         int totarrowpoints = runtime.arrow_end_style;
 
         /* Setting up arrow stroke. */
-        bGPDstroke *e_arrow_gps = BKE_gpencil_stroke_duplicate(gps, false);
+        bGPDstroke *e_arrow_gps = BKE_gpencil_stroke_duplicate(gps, false, false);
         annotation_stroke_arrow_allocate(e_arrow_gps, totarrowpoints);
 
         /* Set pointer to first non-initialized point. */
@@ -918,7 +912,7 @@ static void annotation_stroke_newfrombuffer(tGPsdata *p)
 
         /* End point. */
         ptc = ((tGPspoint *)runtime.sbuffer) + (runtime.sbuffer_used - 1);
-        annotation_stroke_convertcoords(p, &ptc->x, &pt->x, NULL);
+        annotation_stroke_convertcoords(p, ptc->m_xy, &pt->x, NULL);
         annotation_stroke_arrow_init_point_default(pt);
 
         /* Fill and convert arrow points to create arrow shape. */
@@ -931,7 +925,7 @@ static void annotation_stroke_newfrombuffer(tGPsdata *p)
         int totarrowpoints = runtime.arrow_start_style;
 
         /* Setting up arrow stroke. */
-        bGPDstroke *s_arrow_gps = BKE_gpencil_stroke_duplicate(gps, false);
+        bGPDstroke *s_arrow_gps = BKE_gpencil_stroke_duplicate(gps, false, false);
         annotation_stroke_arrow_allocate(s_arrow_gps, totarrowpoints);
 
         /* Set pointer to first non-initialized point. */
@@ -939,7 +933,7 @@ static void annotation_stroke_newfrombuffer(tGPsdata *p)
 
         /* Start point. */
         ptc = runtime.sbuffer;
-        annotation_stroke_convertcoords(p, &ptc->x, &pt->x, NULL);
+        annotation_stroke_convertcoords(p, ptc->m_xy, &pt->x, NULL);
         annotation_stroke_arrow_init_point_default(pt);
 
         /* Fill and convert arrow points to create arrow shape. */
@@ -953,7 +947,7 @@ static void annotation_stroke_newfrombuffer(tGPsdata *p)
     ptc = gpd->runtime.sbuffer;
 
     /* convert screen-coordinates to appropriate coordinates (and store them) */
-    annotation_stroke_convertcoords(p, &ptc->x, &pt->x, NULL);
+    annotation_stroke_convertcoords(p, ptc->m_xy, &pt->x, NULL);
 
     /* copy pressure and time */
     pt->pressure = ptc->pressure;
@@ -971,12 +965,13 @@ static void annotation_stroke_newfrombuffer(tGPsdata *p)
 
       depth_arr = MEM_mallocN(sizeof(float) * gpd->runtime.sbuffer_used, "depth_points");
 
+      const ViewDepths *depths = p->depths;
       for (i = 0, ptc = gpd->runtime.sbuffer; i < gpd->runtime.sbuffer_used; i++, ptc++, pt++) {
-        round_v2i_v2fl(mval_i, &ptc->x);
+        round_v2i_v2fl(mval_i, ptc->m_xy);
 
-        if ((ED_view3d_autodist_depth(p->region, mval_i, depth_margin, depth_arr + i) == 0) &&
-            (i && (ED_view3d_autodist_depth_seg(
-                       p->region, mval_i, mval_prev, depth_margin + 1, depth_arr + i) == 0))) {
+        if ((ED_view3d_depth_read_cached(depths, mval_i, depth_margin, depth_arr + i) == 0) &&
+            (i && (ED_view3d_depth_read_cached_seg(
+                       depths, mval_i, mval_prev, depth_margin + 1, depth_arr + i) == 0))) {
           interp_depth = true;
         }
         else {
@@ -987,7 +982,8 @@ static void annotation_stroke_newfrombuffer(tGPsdata *p)
       }
 
       if (found_depth == false) {
-        /* eeh... not much we can do.. :/, ignore depth in this case, use the 3D cursor */
+        /* Unfortunately there is not much we can do when the depth isn't found,
+         * ignore depth in this case, use the 3D cursor. */
         for (i = gpd->runtime.sbuffer_used - 1; i >= 0; i--) {
           depth_arr[i] = 0.9999f;
         }
@@ -999,14 +995,14 @@ static void annotation_stroke_newfrombuffer(tGPsdata *p)
           int last_valid = 0;
 
           for (i = 0; i < gpd->runtime.sbuffer_used; i++) {
-            if (depth_arr[i] != FLT_MAX) {
+            if (depth_arr[i] != DEPTH_INVALID) {
               break;
             }
           }
           first_valid = i;
 
           for (i = gpd->runtime.sbuffer_used - 1; i >= 0; i--) {
-            if (depth_arr[i] != FLT_MAX) {
+            if (depth_arr[i] != DEPTH_INVALID) {
               break;
             }
           }
@@ -1014,14 +1010,14 @@ static void annotation_stroke_newfrombuffer(tGPsdata *p)
 
           /* invalidate non-endpoints, so only blend between first and last */
           for (i = first_valid + 1; i < last_valid; i++) {
-            depth_arr[i] = FLT_MAX;
+            depth_arr[i] = DEPTH_INVALID;
           }
 
           interp_depth = true;
         }
 
         if (interp_depth) {
-          interp_sparse_array(depth_arr, gpd->runtime.sbuffer_used, FLT_MAX);
+          interp_sparse_array(depth_arr, gpd->runtime.sbuffer_used, DEPTH_INVALID);
         }
       }
     }
@@ -1032,7 +1028,7 @@ static void annotation_stroke_newfrombuffer(tGPsdata *p)
     for (i = 0, ptc = gpd->runtime.sbuffer; i < gpd->runtime.sbuffer_used && ptc;
          i++, ptc++, pt++) {
       /* convert screen-coordinates to appropriate coordinates (and store them) */
-      annotation_stroke_convertcoords(p, &ptc->x, &pt->x, depth_arr ? depth_arr + i : NULL);
+      annotation_stroke_convertcoords(p, ptc->m_xy, &pt->x, depth_arr ? depth_arr + i : NULL);
 
       /* copy pressure and time */
       pt->pressure = ptc->pressure;
@@ -1074,17 +1070,6 @@ static void annotation_free_stroke(bGPDframe *gpf, bGPDstroke *gps)
   BLI_freelinkN(&gpf->strokes, gps);
 }
 
-/**
- * Which which point is in front (result should only be used for comparison).
- */
-static float view3d_point_depth(const RegionView3D *rv3d, const float co[3])
-{
-  if (rv3d->is_persp) {
-    return ED_view3d_calc_zfac(rv3d, co, NULL);
-  }
-  return -dot_v3v3(rv3d->viewinv[2], co);
-}
-
 /* only erase stroke points that are visible (3d view) */
 static bool annotation_stroke_eraser_is_occluded(tGPsdata *p,
                                                  const bGPDspoint *pt,
@@ -1096,9 +1081,12 @@ static bool annotation_stroke_eraser_is_occluded(tGPsdata *p,
     const int mval_i[2] = {x, y};
     float mval_3d[3];
 
-    if (ED_view3d_autodist_simple(p->region, mval_i, mval_3d, 0, NULL)) {
-      const float depth_mval = view3d_point_depth(rv3d, mval_3d);
-      const float depth_pt = view3d_point_depth(rv3d, &pt->x);
+    float p_depth;
+    if (ED_view3d_depth_read_cached(p->depths, mval_i, 0, &p_depth)) {
+      ED_view3d_depth_unproject_v3(p->region, mval_i, (double)p_depth, mval_3d);
+
+      const float depth_mval = ED_view3d_calc_depth_for_comparison(rv3d, mval_3d);
+      const float depth_pt = ED_view3d_calc_depth_for_comparison(rv3d, &pt->x);
 
       if (depth_pt > depth_mval) {
         return true;
@@ -1119,7 +1107,6 @@ static void annotation_stroke_eraser_dostroke(tGPsdata *p,
   bGPDspoint *pt1, *pt2;
   int pc1[2] = {0};
   int pc2[2] = {0};
-  int i;
   int mval_i[2];
   round_v2i_v2fl(mval_i, mval);
 
@@ -1132,7 +1119,7 @@ static void annotation_stroke_eraser_dostroke(tGPsdata *p,
     if (!(p->flags & GP_PAINTFLAG_SELECTMASK) || (gps->points->flag & GP_SPOINT_SELECT)) {
       gpencil_point_to_xy(&p->gsc, gps, gps->points, &pc1[0], &pc1[1]);
 
-      /* do boundbox check first */
+      /* Do bound-box check first. */
       if ((!ELEM(V2D_IS_CLIPPED, pc1[0], pc1[1])) && BLI_rcti_isect_pt(rect, pc1[0], pc1[1])) {
         /* only check if point is inside */
         if (len_v2v2_int(mval_i, pc1) <= radius) {
@@ -1148,11 +1135,11 @@ static void annotation_stroke_eraser_dostroke(tGPsdata *p,
 
     /* Clear Tags
      *
-     * Note: It's better this way, as we are sure that
+     * NOTE: It's better this way, as we are sure that
      * we don't miss anything, though things will be
      * slightly slower as a result
      */
-    for (i = 0; i < gps->totpoints; i++) {
+    for (int i = 0; i < gps->totpoints; i++) {
       bGPDspoint *pt = &gps->points[i];
       pt->flag &= ~GP_SPOINT_TAG;
     }
@@ -1161,7 +1148,7 @@ static void annotation_stroke_eraser_dostroke(tGPsdata *p,
      *   1) Thin out parts of the stroke under the brush
      *   2) Tag "too thin" parts for removal (in second pass)
      */
-    for (i = 0; (i + 1) < gps->totpoints; i++) {
+    for (int i = 0; (i + 1) < gps->totpoints; i++) {
       /* get points to work with */
       pt1 = gps->points + i;
       pt2 = gps->points + i + 1;
@@ -1174,12 +1161,12 @@ static void annotation_stroke_eraser_dostroke(tGPsdata *p,
       gpencil_point_to_xy(&p->gsc, gps, pt1, &pc1[0], &pc1[1]);
       gpencil_point_to_xy(&p->gsc, gps, pt2, &pc2[0], &pc2[1]);
 
-      /* Check that point segment of the boundbox of the eraser stroke */
+      /* Check that point segment of the bound-box of the eraser stroke. */
       if (((!ELEM(V2D_IS_CLIPPED, pc1[0], pc1[1])) && BLI_rcti_isect_pt(rect, pc1[0], pc1[1])) ||
           ((!ELEM(V2D_IS_CLIPPED, pc2[0], pc2[1])) && BLI_rcti_isect_pt(rect, pc2[0], pc2[1]))) {
         /* Check if point segment of stroke had anything to do with
          * eraser region  (either within stroke painted, or on its lines)
-         *  - this assumes that linewidth is irrelevant
+         *  - this assumes that line-width is irrelevant.
          */
         if (gpencil_stroke_inside_circle(mval, radius, pc1[0], pc1[1], pc2[0], pc2[1])) {
           if ((annotation_stroke_eraser_is_occluded(p, pt1, pc1[0], pc1[1]) == false) ||
@@ -1199,7 +1186,8 @@ static void annotation_stroke_eraser_dostroke(tGPsdata *p,
 
     /* Second Pass: Remove any points that are tagged */
     if (do_cull) {
-      gpencil_stroke_delete_tagged_points(gpf, gps, gps->next, GP_SPOINT_TAG, false, 0);
+      BKE_gpencil_stroke_delete_tagged_points(
+          p->gpd, gpf, gps, gps->next, GP_SPOINT_TAG, false, false, 0);
     }
   }
 }
@@ -1221,7 +1209,8 @@ static void annotation_stroke_doeraser(tGPsdata *p)
     if (p->flags & GP_PAINTFLAG_V3D_ERASER_DEPTH) {
       View3D *v3d = p->area->spacedata.first;
       view3d_region_operator_needs_opengl(p->win, p->region);
-      ED_view3d_autodist_init(p->depsgraph, p->region, v3d, 0);
+      ED_view3d_depth_override(
+          p->depsgraph, p->region, v3d, NULL, V3D_DEPTH_NO_GPENCIL, &p->depths);
     }
   }
 
@@ -1269,9 +1258,6 @@ static bool annotation_session_initdata(bContext *C, tGPsdata *p)
   /* make sure the active view (at the starting time) is a 3d-view */
   if (curarea == NULL) {
     p->status = GP_STATUS_ERROR;
-    if (G.debug & G_DEBUG) {
-      printf("Error: No active view for painting\n");
-    }
     return 0;
   }
 
@@ -1300,11 +1286,6 @@ static bool annotation_session_initdata(bContext *C, tGPsdata *p)
 
       if (region->regiondata == NULL) {
         p->status = GP_STATUS_ERROR;
-        if (G.debug & G_DEBUG) {
-          printf(
-              "Error: 3D-View active region doesn't have any region data, so cannot be "
-              "drawable\n");
-        }
         return 0;
       }
       break;
@@ -1326,14 +1307,11 @@ static bool annotation_session_initdata(bContext *C, tGPsdata *p)
       p->area = curarea;
       p->region = region;
       p->v2d = &region->v2d;
-      p->align_flag = &ts->gpencil_seq_align;
+      p->align_flag = &ts->gpencil_v2d_align;
 
       /* check that gpencil data is allowed to be drawn */
-      if (sseq->mainb == SEQ_DRAW_SEQUENCE) {
+      if (!((sseq->mainb == SEQ_DRAW_IMG_IMBUF) && (region->regiontype == RGN_TYPE_PREVIEW))) {
         p->status = GP_STATUS_ERROR;
-        if (G.debug & G_DEBUG) {
-          printf("Error: In active view (sequencer), active mode doesn't support Grease Pencil\n");
-        }
         return 0;
       }
       break;
@@ -1345,7 +1323,7 @@ static bool annotation_session_initdata(bContext *C, tGPsdata *p)
       p->area = curarea;
       p->region = region;
       p->v2d = &region->v2d;
-      p->align_flag = &ts->gpencil_ima_align;
+      p->align_flag = &ts->gpencil_v2d_align;
       break;
     }
     case SPACE_CLIP: {
@@ -1393,9 +1371,6 @@ static bool annotation_session_initdata(bContext *C, tGPsdata *p)
     /* unsupported views */
     default: {
       p->status = GP_STATUS_ERROR;
-      if (G.debug & G_DEBUG) {
-        printf("Error: Annotations are not supported in this editor\n");
-      }
       return 0;
     }
   }
@@ -1404,9 +1379,6 @@ static bool annotation_session_initdata(bContext *C, tGPsdata *p)
   gpd_ptr = ED_annotation_data_get_pointers(C, &p->ownerPtr);
   if ((gpd_ptr == NULL) || !ED_gpencil_data_owner_is_annotation(&p->ownerPtr)) {
     p->status = GP_STATUS_ERROR;
-    if (G.debug & G_DEBUG) {
-      printf("Error: Current context doesn't allow for any Annotation data\n");
-    }
     return 0;
   }
 
@@ -1433,6 +1405,41 @@ static bool annotation_session_initdata(bContext *C, tGPsdata *p)
   return 1;
 }
 
+/* Enable the annotations in the current space. */
+static void annotation_visible_on_space(tGPsdata *p)
+{
+  ScrArea *area = p->area;
+  switch (area->spacetype) {
+    case SPACE_VIEW3D: {
+      View3D *v3d = (View3D *)area->spacedata.first;
+      v3d->flag2 |= V3D_SHOW_ANNOTATION;
+      break;
+    }
+    case SPACE_SEQ: {
+      SpaceSeq *sseq = (SpaceSeq *)area->spacedata.first;
+      sseq->flag |= SEQ_PREVIEW_SHOW_GPENCIL;
+      break;
+    }
+    case SPACE_IMAGE: {
+      SpaceImage *sima = (SpaceImage *)area->spacedata.first;
+      sima->flag |= SI_SHOW_GPENCIL;
+      break;
+    }
+    case SPACE_NODE: {
+      SpaceNode *snode = (SpaceNode *)area->spacedata.first;
+      snode->flag |= SNODE_SHOW_GPENCIL;
+      break;
+    }
+    case SPACE_CLIP: {
+      SpaceClip *sclip = (SpaceClip *)area->spacedata.first;
+      sclip->flag |= SC_SHOW_ANNOTATION;
+      break;
+    }
+    default:
+      break;
+  }
+}
+
 /* init new painting session */
 static tGPsdata *annotation_session_initpaint(bContext *C)
 {
@@ -1453,11 +1460,14 @@ static tGPsdata *annotation_session_initpaint(bContext *C)
     return NULL;
   }
 
-  /* Radius for eraser circle is defined in userprefs */
+  /* Radius for eraser circle is defined in user-preferences. */
   /* NOTE: we do this here, so that if we exit immediately,
    *       erase size won't get lost
    */
   p->radius = U.gp_eraser;
+
+  /* Annotations must be always visible when use it. */
+  annotation_visible_on_space(p);
 
   /* return context data for running paint operator */
   return p;
@@ -1475,7 +1485,6 @@ static void annotation_session_cleanup(tGPsdata *p)
 
   /* free stroke buffer */
   if (gpd->runtime.sbuffer) {
-    /* printf("\t\tGP - free sbuffer\n"); */
     MEM_freeN(gpd->runtime.sbuffer);
     gpd->runtime.sbuffer = NULL;
   }
@@ -1489,6 +1498,9 @@ static void annotation_session_cleanup(tGPsdata *p)
 
 static void annotation_session_free(tGPsdata *p)
 {
+  if (p->depths) {
+    ED_view3d_depths_free(p->depths);
+  }
   MEM_freeN(p);
 }
 
@@ -1500,12 +1512,15 @@ static void annotation_paint_initstroke(tGPsdata *p,
   Scene *scene = p->scene;
   ToolSettings *ts = scene->toolsettings;
 
+  /* Call to the annotation pre handler to notify python the annotation starts. */
+  BKE_callback_exec_id_depsgraph(p->bmain, &p->gpd->id, p->depsgraph, BKE_CB_EVT_ANNOTATION_PRE);
+
   /* get active layer (or add a new one if non-existent) */
   p->gpl = BKE_gpencil_layer_active_get(p->gpd);
   if (p->gpl == NULL) {
     /* tag for annotations */
     p->gpd->flag |= GP_DATA_ANNOTATIONS;
-    p->gpl = BKE_gpencil_layer_addnew(p->gpd, DATA_("Note"), true);
+    p->gpl = BKE_gpencil_layer_addnew(p->gpd, DATA_("Note"), true, false);
 
     if (p->custom_color[3]) {
       copy_v3_v3(p->gpl->color, p->custom_color);
@@ -1513,9 +1528,6 @@ static void annotation_paint_initstroke(tGPsdata *p,
   }
   if (p->gpl->flag & GP_LAYER_LOCKED) {
     p->status = GP_STATUS_ERROR;
-    if (G.debug & G_DEBUG) {
-      printf("Error: Cannot paint on locked layer\n");
-    }
     return;
   }
 
@@ -1541,7 +1553,6 @@ static void annotation_paint_initstroke(tGPsdata *p,
 
     if (has_layer_to_erase == false) {
       p->status = GP_STATUS_CAPTURE;
-      // if (G.debug & G_DEBUG)
       printf("Error: Eraser will not be affecting anything (gpencil_paint_init)\n");
       return;
     }
@@ -1561,9 +1572,6 @@ static void annotation_paint_initstroke(tGPsdata *p,
 
     if (p->gpf == NULL) {
       p->status = GP_STATUS_ERROR;
-      if (G.debug & G_DEBUG) {
-        printf("Error: No frame created (gpencil_paint_init)\n");
-      }
       return;
     }
 
@@ -1648,6 +1656,7 @@ static void annotation_paint_initstroke(tGPsdata *p,
 static void annotation_paint_strokeend(tGPsdata *p)
 {
   ToolSettings *ts = p->scene->toolsettings;
+  const bool is_eraser = (p->gpd->runtime.sbuffer_sflag & GP_STROKE_ERASER) != 0;
   /* for surface sketching, need to set the right OpenGL context stuff so that
    * the conversions will project the values correctly...
    */
@@ -1656,15 +1665,24 @@ static void annotation_paint_strokeend(tGPsdata *p)
 
     /* need to restore the original projection settings before packing up */
     view3d_region_operator_needs_opengl(p->win, p->region);
-    ED_view3d_autodist_init(
-        p->depsgraph, p->region, v3d, (ts->annotate_v3d_align & GP_PROJECT_DEPTH_STROKE) ? 1 : 0);
+    ED_view3d_depth_override(p->depsgraph,
+                             p->region,
+                             v3d,
+                             NULL,
+                             (ts->annotate_v3d_align & GP_PROJECT_DEPTH_STROKE) ?
+                                 V3D_DEPTH_GPENCIL_ONLY :
+                                 V3D_DEPTH_NO_GPENCIL,
+                             is_eraser ? NULL : &p->depths);
   }
 
   /* check if doing eraser or not */
-  if ((p->gpd->runtime.sbuffer_sflag & GP_STROKE_ERASER) == 0) {
+  if (!is_eraser) {
     /* transfer stroke to frame */
     annotation_stroke_newfrombuffer(p);
   }
+
+  /* Call to the annotation post handler to notify python the annotation is done. */
+  BKE_callback_exec_id_depsgraph(p->bmain, &p->gpd->id, p->depsgraph, BKE_CB_EVT_ANNOTATION_POST);
 
   /* clean up buffer now */
   annotation_session_validatebuffer(p);
@@ -1700,9 +1718,7 @@ static void annotation_draw_eraser(bContext *UNUSED(C), int x, int y, void *p_pt
     immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
 
     GPU_line_smooth(true);
-    GPU_blend(true);
-    GPU_blend_set_func_separate(
-        GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
+    GPU_blend(GPU_BLEND_ALPHA);
 
     immUniformColor4ub(255, 100, 100, 20);
     imm_draw_circle_fill_2d(shdr_pos, x, y, p->radius, 40);
@@ -1730,7 +1746,7 @@ static void annotation_draw_eraser(bContext *UNUSED(C), int x, int y, void *p_pt
 
     immUnbindProgram();
 
-    GPU_blend(false);
+    GPU_blend(GPU_BLEND_NONE);
     GPU_line_smooth(false);
   }
 }
@@ -1768,7 +1784,7 @@ static void annotation_draw_stabilizer(bContext *C, int x, int y, void *p_ptr)
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
   GPU_line_smooth(true);
-  GPU_blend(true);
+  GPU_blend(GPU_BLEND_ALPHA);
   GPU_line_width(1.25f);
   const float color[3] = {1.0f, 0.39f, 0.39f};
 
@@ -1788,12 +1804,12 @@ static void annotation_draw_stabilizer(bContext *C, int x, int y, void *p_ptr)
   /* Rope Simple. */
   immUniformColor4f(color[0], color[1], color[2], 0.8f);
   immBegin(GPU_PRIM_LINES, 2);
-  immVertex2f(pos, pt->x + region->winrct.xmin, pt->y + region->winrct.ymin);
+  immVertex2f(pos, pt->m_xy[0] + region->winrct.xmin, pt->m_xy[1] + region->winrct.ymin);
   immVertex2f(pos, x, y);
   immEnd();
 
   /* Returns back all GPU settings */
-  GPU_blend(false);
+  GPU_blend(GPU_BLEND_NONE);
   GPU_line_smooth(false);
 
   immUnbindProgram();
@@ -2006,7 +2022,7 @@ static void annotation_draw_apply(wmOperator *op, tGPsdata *p, Depsgraph *depsgr
     short ok = annotation_stroke_addpoint(p, p->mval, p->pressure, p->curtime);
 
     /* handle errors while adding point */
-    if ((ok == GP_STROKEADD_FULL) || (ok == GP_STROKEADD_OVERFLOW)) {
+    if (ELEM(ok, GP_STROKEADD_FULL, GP_STROKEADD_OVERFLOW)) {
       /* finish off old stroke */
       annotation_paint_strokeend(p);
       /* And start a new one!!! Else, projection errors! */
@@ -2027,9 +2043,6 @@ static void annotation_draw_apply(wmOperator *op, tGPsdata *p, Depsgraph *depsgr
       BKE_report(op->reports, RPT_ERROR, "Cannot paint stroke");
       p->status = GP_STATUS_ERROR;
 
-      if (G.debug & G_DEBUG) {
-        printf("Error: Grease-Pencil Paint - Add Point Invalid\n");
-      }
       return;
     }
 
@@ -2056,7 +2069,7 @@ static void annotation_draw_apply_event(
   p->mval[1] = (float)event->mval[1] - y;
 
   /* Key to toggle stabilization. */
-  if (event->shift > 0 && p->paintmode == GP_PAINTMODE_DRAW) {
+  if ((event->modifier & KM_SHIFT) && (p->paintmode == GP_PAINTMODE_DRAW)) {
     /* Using permanent stabilization, shift will deactivate the flag. */
     if (p->flags & GP_PAINTFLAG_USE_STABILIZER) {
       if (p->flags & GP_PAINTFLAG_USE_STABILIZER_TEMP) {
@@ -2071,7 +2084,7 @@ static void annotation_draw_apply_event(
     }
   }
   /* verify key status for straight lines */
-  else if ((event->ctrl > 0) || (event->alt > 0)) {
+  else if (event->modifier & (KM_CTRL | KM_ALT)) {
     if (p->straight[0] == 0) {
       int dx = abs((int)(p->mval[0] - p->mvalo[0]));
       int dy = abs((int)(p->mval[1] - p->mvalo[1]));
@@ -2092,17 +2105,17 @@ static void annotation_draw_apply_event(
   }
   else {
     p->straight[0] = 0;
-    /* We were using shift while having permanent stabilization actived,
-       so activate the temp flag back again. */
+    /* We were using shift while having permanent stabilization active,
+     * so activate the temp flag back again. */
     if (p->flags & GP_PAINTFLAG_USE_STABILIZER) {
       if ((p->flags & GP_PAINTFLAG_USE_STABILIZER_TEMP) == 0) {
         annotation_draw_toggle_stabilizer_cursor(p, true);
         p->flags |= GP_PAINTFLAG_USE_STABILIZER_TEMP;
       }
     }
-    /* We are using the temporal stabilizer flag atm,
-       but shift is not pressed as well as the permanent flag is not used,
-       so we don't need the cursor anymore. */
+    /* We are using the temporal stabilizer flag at the moment,
+     * but shift is not pressed as well as the permanent flag is not used,
+     * so we don't need the cursor anymore. */
     else if (p->flags & GP_PAINTFLAG_USE_STABILIZER_TEMP) {
       /* Reset temporal stabilizer flag and remove cursor. */
       p->flags &= ~GP_PAINTFLAG_USE_STABILIZER_TEMP;
@@ -2185,28 +2198,21 @@ static int annotation_draw_exec(bContext *C, wmOperator *op)
   tGPsdata *p = NULL;
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
 
-  /* printf("GPencil - Starting Re-Drawing\n"); */
-
   /* try to initialize context data needed while drawing */
   if (!annotation_draw_init(C, op, NULL)) {
     if (op->customdata) {
       MEM_freeN(op->customdata);
     }
-    /* printf("\tGP - no valid data\n"); */
     return OPERATOR_CANCELLED;
   }
 
   p = op->customdata;
-
-  /* printf("\tGP - Start redrawing stroke\n"); */
 
   /* loop over the stroke RNA elements recorded (i.e. progress of mouse movement),
    * setting the relevant values in context at each step, then applying
    */
   RNA_BEGIN (op->ptr, itemptr, "stroke") {
     float mousef[2];
-
-    /* printf("\t\tGP - stroke elem\n"); */
 
     /* get relevant data for this point from stroke */
     RNA_float_get_array(&itemptr, "mouse", mousef);
@@ -2241,8 +2247,6 @@ static int annotation_draw_exec(bContext *C, wmOperator *op)
   }
   RNA_END;
 
-  /* printf("\tGP - done\n"); */
-
   /* cleanup */
   annotation_draw_exit(C, op);
 
@@ -2265,17 +2269,10 @@ static int annotation_draw_invoke(bContext *C, wmOperator *op, const wmEvent *ev
     RNA_enum_set(op->ptr, "mode", GP_PAINTMODE_ERASER);
   }
 
-  if (G.debug & G_DEBUG) {
-    printf("GPencil - Starting Drawing\n");
-  }
-
   /* try to initialize context data needed while drawing */
   if (!annotation_draw_init(C, op, event)) {
     if (op->customdata) {
       MEM_freeN(op->customdata);
-    }
-    if (G.debug & G_DEBUG) {
-      printf("\tGP - no valid data\n");
     }
     return OPERATOR_CANCELLED;
   }
@@ -2311,7 +2308,7 @@ static int annotation_draw_invoke(bContext *C, wmOperator *op, const wmEvent *ev
       p->flags |= GP_PAINTFLAG_USE_STABILIZER | GP_PAINTFLAG_USE_STABILIZER_TEMP;
       annotation_draw_toggle_stabilizer_cursor(p, true);
     }
-    else if (event->shift > 0) {
+    else if (event->modifier & KM_SHIFT) {
       p->flags |= GP_PAINTFLAG_USE_STABILIZER_TEMP;
       annotation_draw_toggle_stabilizer_cursor(p, true);
     }
@@ -2325,7 +2322,6 @@ static int annotation_draw_invoke(bContext *C, wmOperator *op, const wmEvent *ev
   /* only start drawing immediately if we're allowed to do so... */
   if (RNA_boolean_get(op->ptr, "wait_for_input") == false) {
     /* hotkey invoked - start drawing */
-    /* printf("\tGP - set first spot\n"); */
     p->status = GP_STATUS_PAINTING;
 
     /* handle the initial drawing - i.e. for just doing a simple dot */
@@ -2334,7 +2330,6 @@ static int annotation_draw_invoke(bContext *C, wmOperator *op, const wmEvent *ev
   }
   else {
     /* toolbar invoked - don't start drawing yet... */
-    /* printf("\tGP - hotkey invoked... waiting for click-drag\n"); */
     op->flag |= OP_IS_MODAL_CURSOR_REGION;
   }
 
@@ -2356,14 +2351,12 @@ static tGPsdata *annotation_stroke_begin(bContext *C, wmOperator *op)
   tGPsdata *p = op->customdata;
 
   /* we must check that we're still within the area that we're set up to work from
-   * otherwise we could crash (see bug #20586)
+   * otherwise we could crash (see bug T20586)
    */
   if (CTX_wm_area(C) != p->area) {
     printf("\t\t\tGP - wrong area execution abort!\n");
     p->status = GP_STATUS_ERROR;
   }
-
-  /* printf("\t\tGP - start stroke\n"); */
 
   /* we may need to set up paint env again if we're resuming */
   /* XXX: watch it with the paintmode! in future,
@@ -2439,21 +2432,18 @@ static void annotation_add_missing_events(bContext *C,
 static int annotation_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   tGPsdata *p = op->customdata;
-  /* default exit state - pass through to support MMB view nav, etc. */
+  /* Default exit state - pass through to support MMB view navigation, etc. */
   int estate = OPERATOR_PASS_THROUGH;
 
-  /* if (event->type == NDOF_MOTION)
-   *    return OPERATOR_PASS_THROUGH;
-   * -------------------------------
-   * [mce] Not quite what I was looking
-   * for, but a good start! GP continues to
-   * draw on the screen while the 3D mouse
-   * moves the viewpoint. Problem is that
-   * the stroke is converted to 3D only after
-   * it is finished. This approach should work
-   * better in tools that immediately apply
-   * in 3D space.
-   */
+  /* NOTE(mike erwin): Not quite what I was looking for, but a good start!
+   * grease-pencil continues to draw on the screen while the 3D mouse moves the viewpoint.
+   * Problem is that the stroke is converted to 3D only after it is finished.
+   * This approach should work better in tools that immediately apply in 3D space. */
+#if 0
+  if (event->type == NDOF_MOTION) {
+    return OPERATOR_PASS_THROUGH;
+  }
+#endif
 
   if (p->status == GP_STATUS_IDLING) {
     ARegion *region = CTX_wm_region(C);
@@ -2470,8 +2460,8 @@ static int annotation_draw_modal(bContext *C, wmOperator *op, const wmEvent *eve
              EVT_UPARROWKEY,
              EVT_ZKEY)) {
       /* allow some keys:
-       *   - for frame changing [#33412]
-       *   - for undo (during sketching sessions)
+       *   - For frame changing T33412.
+       *   - For undo (during sketching sessions).
        */
     }
     else if (ELEM(event->type,
@@ -2485,10 +2475,10 @@ static int annotation_draw_modal(bContext *C, wmOperator *op, const wmEvent *eve
                   EVT_PAD7,
                   EVT_PAD8,
                   EVT_PAD9)) {
-      /* allow numpad keys so that camera/view manipulations can still take place
-       * - PAD0 in particular is really important for Grease Pencil drawing,
+      /* Allow numpad keys so that camera/view manipulations can still take place
+       * - #EVT_PAD0 in particular is really important for Grease Pencil drawing,
        *   as animators may be working "to camera", so having this working
-       *   is essential for ensuring that they can quickly return to that view
+       *   is essential for ensuring that they can quickly return to that view.
        */
     }
     else if ((event->type == EVT_BKEY) && (event->val == KM_RELEASE)) {
@@ -2496,15 +2486,13 @@ static int annotation_draw_modal(bContext *C, wmOperator *op, const wmEvent *eve
        * - Since this operator is non-modal, we can just call it here, and keep going...
        * - This operator is especially useful when animating
        */
-      WM_operator_name_call(C, "GPENCIL_OT_blank_frame_add", WM_OP_EXEC_DEFAULT, NULL);
+      WM_operator_name_call(C, "GPENCIL_OT_blank_frame_add", WM_OP_EXEC_DEFAULT, NULL, event);
       estate = OPERATOR_RUNNING_MODAL;
     }
     else {
       estate = OPERATOR_RUNNING_MODAL;
     }
   }
-
-  // printf("\tGP - handle modal event...\n");
 
   /* Exit painting mode (and/or end current stroke)
    *
@@ -2514,7 +2502,6 @@ static int annotation_draw_modal(bContext *C, wmOperator *op, const wmEvent *eve
   if (event->val == KM_PRESS &&
       ELEM(event->type, EVT_RETKEY, EVT_PADENTER, EVT_ESCKEY, EVT_SPACEKEY, EVT_EKEY)) {
     /* exit() ends the current stroke before cleaning up */
-    /* printf("\t\tGP - end of paint op + end of stroke\n"); */
     p->status = GP_STATUS_DONE;
     estate = OPERATOR_FINISHED;
   }
@@ -2523,7 +2510,7 @@ static int annotation_draw_modal(bContext *C, wmOperator *op, const wmEvent *eve
    *  - LEFTMOUSE  = standard drawing (all) / straight line drawing (all) / polyline (toolbox
    * only)
    *  - RIGHTMOUSE = polyline (hotkey) / eraser (all)
-   *    (Disabling RIGHTMOUSE case here results in bugs like [#32647])
+   *    (Disabling RIGHTMOUSE case here results in bugs like T32647)
    * also making sure we have a valid event value, to not exit too early
    */
   if (ELEM(event->type, LEFTMOUSE, RIGHTMOUSE) && (ELEM(event->val, KM_PRESS, KM_RELEASE))) {
@@ -2538,7 +2525,6 @@ static int annotation_draw_modal(bContext *C, wmOperator *op, const wmEvent *eve
 
       if (sketch) {
         /* end stroke only, and then wait to resume painting soon */
-        /* printf("\t\tGP - end stroke only\n"); */
         annotation_stroke_end(op);
 
         /* If eraser mode is on, turn it off after the stroke finishes
@@ -2569,7 +2555,6 @@ static int annotation_draw_modal(bContext *C, wmOperator *op, const wmEvent *eve
         WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, NULL);
       }
       else {
-        /* printf("\t\tGP - end of stroke + op\n"); */
         p->status = GP_STATUS_DONE;
         estate = OPERATOR_FINISHED;
       }
@@ -2583,20 +2568,7 @@ static int annotation_draw_modal(bContext *C, wmOperator *op, const wmEvent *eve
        */
       if ((p->region) && (p->region->regiontype == RGN_TYPE_TOOLS)) {
         /* Change to whatever region is now under the mouse */
-        ARegion *current_region = BKE_area_find_region_xy(
-            p->area, RGN_TYPE_ANY, event->x, event->y);
-
-        if (G.debug & G_DEBUG) {
-          printf("found alternative region %p (old was %p) - at %d %d (area: %d %d -> %d %d)\n",
-                 current_region,
-                 p->region,
-                 event->x,
-                 event->y,
-                 p->area->totrct.xmin,
-                 p->area->totrct.ymin,
-                 p->area->totrct.xmax,
-                 p->area->totrct.ymax);
-        }
+        ARegion *current_region = BKE_area_find_region_xy(p->area, RGN_TYPE_ANY, event->xy);
 
         if (current_region) {
           /* Assume that since we found the cursor in here, it is in bounds
@@ -2609,10 +2581,6 @@ static int annotation_draw_modal(bContext *C, wmOperator *op, const wmEvent *eve
           /* Out of bounds, or invalid in some other way */
           p->status = GP_STATUS_ERROR;
           estate = OPERATOR_CANCELLED;
-
-          if (G.debug & G_DEBUG) {
-            printf("%s: Region under cursor is out of bounds, so cannot be drawn on\n", __func__);
-          }
         }
       }
       else if (p->region) {
@@ -2624,10 +2592,6 @@ static int annotation_draw_modal(bContext *C, wmOperator *op, const wmEvent *eve
         /* No region */
         p->status = GP_STATUS_ERROR;
         estate = OPERATOR_CANCELLED;
-
-        if (G.debug & G_DEBUG) {
-          printf("%s: No active region found in GP Paint session data\n", __func__);
-        }
       }
 
       if (in_bounds) {
@@ -2686,7 +2650,6 @@ static int annotation_draw_modal(bContext *C, wmOperator *op, const wmEvent *eve
       }
       else {
         /* event handled, so just tag as running modal */
-        /* printf("\t\t\t\tGP - add point handled!\n"); */
         estate = OPERATOR_RUNNING_MODAL;
       }
     }
@@ -2696,7 +2659,6 @@ static int annotation_draw_modal(bContext *C, wmOperator *op, const wmEvent *eve
       /* just resize the brush (local version)
        * TODO: fix the hardcoded size jumps (set to make a visible difference) and hardcoded keys
        */
-      /* printf("\t\tGP - resize eraser\n"); */
       switch (event->type) {
         case WHEELDOWNMOUSE: /* larger */
         case EVT_PADPLUSKEY:
@@ -2754,12 +2716,6 @@ static int annotation_draw_modal(bContext *C, wmOperator *op, const wmEvent *eve
 
     case OPERATOR_RUNNING_MODAL | OPERATOR_PASS_THROUGH:
       /* event doesn't need to be handled */
-#if 0
-      printf("unhandled event -> %d (mmb? = %d | mmv? = %d)\n",
-             event->type,
-             event->type == MIDDLEMOUSE,
-             event->type == MOUSEMOVE);
-#endif
       break;
   }
 

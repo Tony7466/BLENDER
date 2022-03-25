@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pythonintern
@@ -149,7 +135,7 @@ void python_script_error_jump(const char *filepath, int *lineno, int *offset)
       PyObject *filename_py, *text_py;
 
       if (parse_syntax_error(value, &message, &filename_py, lineno, offset, &text_py)) {
-        const char *filename = _PyUnicode_AsString(filename_py);
+        const char *filename = PyUnicode_AsUTF8(filename_py);
         /* python adds a '/', prefix, so check for both */
         if ((BLI_path_cmp(filename, filepath) == 0) ||
             (ELEM(filename[0], '\\', '/') && BLI_path_cmp(filename + 1, filepath) == 0)) {

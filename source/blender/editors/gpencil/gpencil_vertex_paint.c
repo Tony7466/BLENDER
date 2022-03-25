@@ -1,25 +1,9 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2015, Blender Foundation
- * This is a new part of Blender
- * Brush based operators for editing Grease Pencil strokes
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2015 Blender Foundation. */
 
 /** \file
  * \ingroup edgpencil
+ * Brush based operators for editing Grease Pencil strokes.
  */
 
 #include "MEM_guardedalloc.h"
@@ -31,6 +15,7 @@
 
 #include "DNA_brush_types.h"
 #include "DNA_gpencil_types.h"
+#include "DNA_material_types.h"
 
 #include "BKE_brush.h"
 #include "BKE_colortools.h"
@@ -44,6 +29,7 @@
 
 #include "RNA_access.h"
 #include "RNA_define.h"
+#include "RNA_prototypes.h"
 
 #include "UI_view2d.h"
 
@@ -150,7 +136,7 @@ typedef struct tGP_BrushVertexpaintData {
   tGP_Grid *grid;
   /** Total number of rows/cols. */
   int grid_size;
-  /** Total number of cells elments in the grid array. */
+  /** Total number of cells elements in the grid array. */
   int grid_len;
   /** Grid sample position (used to determine distance of falloff) */
   int grid_sample[2];
@@ -231,8 +217,8 @@ static float brush_influence_calc(tGP_BrushVertexpaintData *gso, const int radiu
   float distance = (float)len_v2v2_int(mval_i, co);
 
   /* Apply Brush curve. */
-  float brush_fallof = BKE_brush_curve_strength(brush, distance, (float)radius);
-  influence *= brush_fallof;
+  float brush_falloff = BKE_brush_curve_strength(brush, distance, (float)radius);
+  influence *= brush_falloff;
 
   /* apply multiframe falloff */
   influence *= gso->mf_falloff;
@@ -440,12 +426,12 @@ static bool brush_tint_apply(tGP_BrushVertexpaintData *gso,
       CLAMP_MIN(pt->vert_color[3], 0.0f);
     }
     else {
-      /* Premult. */
+      /* Pre-multiply. */
       mul_v3_fl(pt->vert_color, pt->vert_color[3]);
       /* "Alpha over" blending. */
       interp_v3_v3v3(pt->vert_color, pt->vert_color, gso->linear_color, inf);
       pt->vert_color[3] = pt->vert_color[3] * (1.0 - inf) + inf;
-      /* Un-premult. */
+      /* Un pre-multiply. */
       if (pt->vert_color[3] > 0.0f) {
         mul_v3_fl(pt->vert_color, 1.0f / pt->vert_color[3]);
       }
@@ -459,12 +445,12 @@ static bool brush_tint_apply(tGP_BrushVertexpaintData *gso,
       CLAMP_MIN(gps->vert_color_fill[3], 0.0f);
     }
     else {
-      /* Premult. */
+      /* Pre-multiply. */
       mul_v3_fl(gps->vert_color_fill, gps->vert_color_fill[3]);
       /* "Alpha over" blending. */
       interp_v3_v3v3(gps->vert_color_fill, gps->vert_color_fill, gso->linear_color, inf_fill);
       gps->vert_color_fill[3] = gps->vert_color_fill[3] * (1.0 - inf_fill) + inf_fill;
-      /* Un-premult. */
+      /* Un pre-multiply. */
       if (gps->vert_color_fill[3] > 0.0f) {
         mul_v3_fl(gps->vert_color_fill, 1.0f / gps->vert_color_fill[3]);
       }
@@ -646,7 +632,7 @@ static bool brush_smear_apply(tGP_BrushVertexpaintData *gso,
     inf *= gso->pressure;
   }
 
-  /* Calc distance from initial sample location and add a fallof effect. */
+  /* Calc distance from initial sample location and add a falloff effect. */
   int mval_i[2];
   round_v2i_v2fl(mval_i, gso->mval);
   float distance = (float)len_v2v2_int(mval_i, gso->grid_sample);
@@ -727,7 +713,7 @@ static bool gpencil_vertexpaint_brush_init(bContext *C, wmOperator *op)
 
   gso->brush = paint->brush;
   srgb_to_linearrgb_v3_v3(gso->linear_color, gso->brush->rgb);
-  BKE_curvemapping_initialize(gso->brush->curve);
+  BKE_curvemapping_init(gso->brush->curve);
 
   gso->is_painting = false;
   gso->first = true;
@@ -759,7 +745,7 @@ static bool gpencil_vertexpaint_brush_init(bContext *C, wmOperator *op)
   /* Init multi-edit falloff curve data before doing anything,
    * so we won't have to do it again later. */
   if (gso->is_multiframe) {
-    BKE_curvemapping_initialize(ts->gp_sculpt.cur_falloff);
+    BKE_curvemapping_init(ts->gp_sculpt.cur_falloff);
   }
 
   /* Setup space conversions. */
@@ -819,11 +805,13 @@ static void gpencil_save_selected_point(tGP_BrushVertexpaintData *gso,
   gso->pbuffer_used++;
 }
 
-/* Select points in this stroke and add to an array to be used later. */
-static void gpencil_vertexpaint_select_stroke(tGP_BrushVertexpaintData *gso,
+/* Select points in this stroke and add to an array to be used later.
+ * Returns true if any point was hit and got saved */
+static bool gpencil_vertexpaint_select_stroke(tGP_BrushVertexpaintData *gso,
                                               bGPDstroke *gps,
                                               const char tool,
-                                              const float diff_mat[4][4])
+                                              const float diff_mat[4][4],
+                                              const float bound_mat[4][4])
 {
   GP_SpaceConversion *gsc = &gso->gsc;
   rcti *rect = &gso->brush_rect;
@@ -841,9 +829,18 @@ static void gpencil_vertexpaint_select_stroke(tGP_BrushVertexpaintData *gso,
   int index;
   bool include_last = false;
 
+  bool saved = false;
+
+  /* Check stroke masking. */
+  if (GPENCIL_ANY_VERTEX_MASK(gso->mask)) {
+    if ((gps->flag & GP_STROKE_SELECT) == 0) {
+      return false;
+    }
+  }
+
   /* Check if the stroke collide with brush. */
-  if (!ED_gpencil_stroke_check_collision(gsc, gps, gso->mval, radius, diff_mat)) {
-    return;
+  if (!ED_gpencil_stroke_check_collision(gsc, gps, gso->mval, radius, bound_mat)) {
+    return false;
   }
 
   if (gps->totpoints == 1) {
@@ -853,7 +850,7 @@ static void gpencil_vertexpaint_select_stroke(tGP_BrushVertexpaintData *gso,
     gpencil_point_to_xy(gsc, gps, &pt_temp, &pc1[0], &pc1[1]);
 
     pt_active = (pt->runtime.pt_orig) ? pt->runtime.pt_orig : pt;
-    /* do boundbox check first */
+    /* Do bound-box check first. */
     if ((!ELEM(V2D_IS_CLIPPED, pc1[0], pc1[1])) && BLI_rcti_isect_pt(rect, pc1[0], pc1[1])) {
       /* only check if point is inside */
       int mval_i[2];
@@ -862,6 +859,7 @@ static void gpencil_vertexpaint_select_stroke(tGP_BrushVertexpaintData *gso,
         /* apply operation to this point */
         if (pt_active != NULL) {
           gpencil_save_selected_point(gso, gps_active, 0, pc1);
+          saved = true;
         }
       }
     }
@@ -892,27 +890,28 @@ static void gpencil_vertexpaint_select_stroke(tGP_BrushVertexpaintData *gso,
       gpencil_point_to_parent_space(pt2, diff_mat, &npt);
       gpencil_point_to_xy(gsc, gps, &npt, &pc2[0], &pc2[1]);
 
-      /* Check that point segment of the boundbox of the selection stroke */
+      /* Check that point segment of the bound-box of the selection stroke. */
       if (((!ELEM(V2D_IS_CLIPPED, pc1[0], pc1[1])) && BLI_rcti_isect_pt(rect, pc1[0], pc1[1])) ||
           ((!ELEM(V2D_IS_CLIPPED, pc2[0], pc2[1])) && BLI_rcti_isect_pt(rect, pc2[0], pc2[1]))) {
         /* Check if point segment of stroke had anything to do with
          * brush region  (either within stroke painted, or on its lines)
-         * - this assumes that linewidth is irrelevant
+         * - this assumes that line-width is irrelevant.
          */
         if (gpencil_stroke_inside_circle(gso->mval, radius, pc1[0], pc1[1], pc2[0], pc2[1])) {
 
           /* To each point individually... */
           pt = &gps->points[i];
-          pt_active = (pt->runtime.pt_orig) ? pt->runtime.pt_orig : pt;
-          index = (pt->runtime.pt_orig) ? pt->runtime.idx_orig : i;
+          pt_active = pt->runtime.pt_orig;
           if (pt_active != NULL) {
             /* If masked and the point is not selected, skip it. */
-            if ((GPENCIL_ANY_VERTEX_MASK(gso->mask)) &&
+            if (GPENCIL_ANY_VERTEX_MASK(gso->mask) &&
                 ((pt_active->flag & GP_SPOINT_SELECT) == 0)) {
               continue;
             }
+            index = (pt->runtime.pt_orig) ? pt->runtime.idx_orig : i;
             hit = true;
             gpencil_save_selected_point(gso, gps_active, index, pc1);
+            saved = true;
           }
 
           /* Only do the second point if this is the last segment,
@@ -925,12 +924,13 @@ static void gpencil_vertexpaint_select_stroke(tGP_BrushVertexpaintData *gso,
            */
           if (i + 1 == gps->totpoints - 1) {
             pt = &gps->points[i + 1];
-            pt_active = (pt->runtime.pt_orig) ? pt->runtime.pt_orig : pt;
-            index = (pt->runtime.pt_orig) ? pt->runtime.idx_orig : i + 1;
+            pt_active = pt->runtime.pt_orig;
             if (pt_active != NULL) {
+              index = (pt->runtime.pt_orig) ? pt->runtime.idx_orig : i + 1;
               hit = true;
               gpencil_save_selected_point(gso, gps_active, index, pc2);
               include_last = false;
+              saved = true;
             }
           }
           else {
@@ -944,13 +944,13 @@ static void gpencil_vertexpaint_select_stroke(tGP_BrushVertexpaintData *gso,
            * (but wasn't added then, to avoid double-ups).
            */
           pt = &gps->points[i];
-          pt_active = (pt->runtime.pt_orig) ? pt->runtime.pt_orig : pt;
-          index = (pt->runtime.pt_orig) ? pt->runtime.idx_orig : i;
+          pt_active = pt->runtime.pt_orig;
           if (pt_active != NULL) {
+            index = (pt->runtime.pt_orig) ? pt->runtime.idx_orig : i;
             hit = true;
             gpencil_save_selected_point(gso, gps_active, index, pc1);
-
             include_last = false;
+            saved = true;
           }
         }
       }
@@ -970,10 +970,13 @@ static void gpencil_vertexpaint_select_stroke(tGP_BrushVertexpaintData *gso,
           for (int repeat = 0; repeat < 50; repeat++) {
             gpencil_save_selected_point(gso, gps_active, -1, NULL);
           }
+          saved = true;
         }
       }
     }
   }
+
+  return saved;
 }
 
 /* Apply vertex paint brushes to strokes in the given frame. */
@@ -981,7 +984,8 @@ static bool gpencil_vertexpaint_brush_do_frame(bContext *C,
                                                tGP_BrushVertexpaintData *gso,
                                                bGPDlayer *gpl,
                                                bGPDframe *gpf,
-                                               const float diff_mat[4][4])
+                                               const float diff_mat[4][4],
+                                               const float bound_mat[4][4])
 {
   Object *ob = CTX_data_active_object(C);
   const char tool = ob->mode == OB_MODE_VERTEX_GPENCIL ? gso->brush->gpencil_vertex_tool :
@@ -1003,12 +1007,18 @@ static bool gpencil_vertexpaint_brush_do_frame(bContext *C,
       continue;
     }
     /* Check if the color is editable. */
-    if (ED_gpencil_stroke_color_use(ob, gpl, gps) == false) {
+    if (ED_gpencil_stroke_material_editable(ob, gpl, gps) == false) {
       continue;
     }
 
     /* Check points below the brush. */
-    gpencil_vertexpaint_select_stroke(gso, gps, tool, diff_mat);
+    bool hit = gpencil_vertexpaint_select_stroke(gso, gps, tool, diff_mat, bound_mat);
+
+    /* If stroke was hit and has an editcurve the curve needs an update. */
+    bGPDstroke *gps_active = (gps->runtime.gps_orig) ? gps->runtime.gps_orig : gps;
+    if (gps_active->editcurve != NULL && hit) {
+      gps_active->editcurve->flag |= GP_CURVE_NEEDS_STROKE_UPDATE;
+    }
   }
 
   /* For Average tool, need calculate the average resulting color from all colors
@@ -1082,7 +1092,7 @@ static bool gpencil_vertexpaint_brush_do_frame(bContext *C,
         break;
     }
   }
-  /* Clear the selected array, but keep the memory allocation.*/
+  /* Clear the selected array, but keep the memory allocation. */
   gso->pbuffer = gpencil_select_buffer_ensure(
       gso->pbuffer, &gso->pbuffer_size, &gso->pbuffer_used, true);
 
@@ -1107,9 +1117,11 @@ static bool gpencil_vertexpaint_brush_apply_to_layers(bContext *C, tGP_BrushVert
       continue;
     }
 
-    /* calculate difference matrix */
-    float diff_mat[4][4];
-    BKE_gpencil_parent_matrix_get(depsgraph, obact, gpl, diff_mat);
+    /* Calculate transform matrix. */
+    float diff_mat[4][4], bound_mat[4][4];
+    BKE_gpencil_layer_transform_matrix_get(depsgraph, obact, gpl, diff_mat);
+    copy_m4_m4(bound_mat, diff_mat);
+    mul_m4_m4m4(diff_mat, diff_mat, gpl->layer_invmat);
 
     /* Active Frame or MultiFrame? */
     if (gso->is_multiframe) {
@@ -1136,7 +1148,7 @@ static bool gpencil_vertexpaint_brush_apply_to_layers(bContext *C, tGP_BrushVert
           }
 
           /* affect strokes in this frame */
-          changed |= gpencil_vertexpaint_brush_do_frame(C, gso, gpl, gpf, diff_mat);
+          changed |= gpencil_vertexpaint_brush_do_frame(C, gso, gpl, gpf, diff_mat, bound_mat);
         }
       }
     }
@@ -1144,7 +1156,8 @@ static bool gpencil_vertexpaint_brush_apply_to_layers(bContext *C, tGP_BrushVert
       /* Apply to active frame's strokes */
       if (gpl->actframe != NULL) {
         gso->mf_falloff = 1.0f;
-        changed |= gpencil_vertexpaint_brush_do_frame(C, gso, gpl, gpl->actframe, diff_mat);
+        changed |= gpencil_vertexpaint_brush_do_frame(
+            C, gso, gpl, gpl->actframe, diff_mat, bound_mat);
       }
     }
   }
@@ -1229,7 +1242,7 @@ static void gpencil_vertexpaint_brush_apply_event(bContext *C,
   RNA_collection_add(op->ptr, "stroke", &itemptr);
 
   RNA_float_set_array(&itemptr, "mouse", mouse);
-  RNA_boolean_set(&itemptr, "pen_flip", event->ctrl != false);
+  RNA_boolean_set(&itemptr, "pen_flip", event->modifier & KM_CTRL);
   RNA_boolean_set(&itemptr, "is_start", gso->first);
 
   /* Handle pressure sensitivity (which is supplied by tablets). */
@@ -1307,7 +1320,7 @@ static int gpencil_vertexpaint_brush_modal(bContext *C, wmOperator *op, const wm
 
   /* The operator can be in 2 states: Painting and Idling */
   if (gso->is_painting) {
-    /* Painting  */
+    /* Painting. */
     switch (event->type) {
       /* Mouse Move = Apply somewhere else */
       case MOUSEMOVE:

@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -101,7 +87,7 @@ static unsigned int tse_hash(const void *ptr)
     unsigned int u_int;
   } hash;
 
-  BLI_assert(tse->type || !tse->nr);
+  BLI_assert((tse->type != TSE_SOME_ID) || !tse->nr);
 
   hash.h_pair[0] = tse->type;
   hash.h_pair[1] = tse->nr;
@@ -193,7 +179,7 @@ static TseGroup *BKE_outliner_treehash_lookup_group(GHash *th, short type, short
 {
   TreeStoreElem tse_template;
   tse_template.type = type;
-  tse_template.nr = type ? nr : 0;  // we're picky! :)
+  tse_template.nr = (type == TSE_SOME_ID) ? 0 : nr; /* we're picky! :) */
   tse_template.id = id;
 
   BLI_assert(th);

@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2019 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2019 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup bmesh
@@ -39,7 +23,7 @@
 
 #define KDOP_TREE_TYPE 4
 #define KDOP_AXIS_LEN 14
-#define BLI_STACK_PAIR_LEN 2 * KDOP_TREE_TYPE
+#define BLI_STACK_PAIR_LEN (2 * KDOP_TREE_TYPE)
 
 /* -------------------------------------------------------------------- */
 /** \name Weld Linked Wire Edges into Linked Faces
@@ -455,7 +439,7 @@ static void bm_elemxelem_bvhtree_overlap(const BVHTree *tree1,
   int parallel_tasks_num = BLI_bvhtree_overlap_thread_num(tree1);
   for (int i = 0; i < parallel_tasks_num; i++) {
     if (pair_stack[i] == NULL) {
-      pair_stack[i] = BLI_stack_new(sizeof(struct EDBMSplitElem[2]), __func__);
+      pair_stack[i] = BLI_stack_new(sizeof(const struct EDBMSplitElem[2]), __func__);
     }
   }
   data->pair_stack = pair_stack;
@@ -938,7 +922,7 @@ bool BM_mesh_intersect_edges(
             }
 
             if (va_dest == v_other_dest) {
-              /* Edge/Edgenet to vertex - we can't split the face. */
+              /* Edge/Edge-net to vertex - we can't split the face. */
               break;
             }
             if (edgenet_len == 0 && BM_edge_exists(va_dest, v_other_dest)) {

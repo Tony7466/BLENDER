@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2008 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup edinterface
@@ -23,7 +7,6 @@
  * Pie Menu Region
  */
 
-#include <assert.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,6 +27,7 @@
 #include "WM_types.h"
 
 #include "RNA_access.h"
+#include "RNA_prototypes.h"
 
 #include "UI_interface.h"
 
@@ -123,34 +107,34 @@ uiPieMenu *UI_pie_menu_begin(struct bContext *C, const char *title, int icon, co
    * it is always assumed to be click style */
   if (event->type == LEFTMOUSE || ELEM(event->val, KM_RELEASE, KM_CLICK)) {
     pie->block_radial->pie_data.flags |= UI_PIE_CLICK_STYLE;
-    pie->block_radial->pie_data.event = EVENT_NONE;
-    win->lock_pie_event = EVENT_NONE;
+    pie->block_radial->pie_data.event_type = EVENT_NONE;
+    win->pie_event_type_lock = EVENT_NONE;
   }
   else {
-    if (win->last_pie_event != EVENT_NONE) {
+    if (win->pie_event_type_last != EVENT_NONE) {
       /* original pie key has been released, so don't propagate the event */
-      if (win->lock_pie_event == EVENT_NONE) {
+      if (win->pie_event_type_lock == EVENT_NONE) {
         event_type = EVENT_NONE;
         pie->block_radial->pie_data.flags |= UI_PIE_CLICK_STYLE;
       }
       else {
-        event_type = win->last_pie_event;
+        event_type = win->pie_event_type_last;
       }
     }
     else {
       event_type = event->type;
     }
 
-    pie->block_radial->pie_data.event = event_type;
-    win->lock_pie_event = event_type;
+    pie->block_radial->pie_data.event_type = event_type;
+    win->pie_event_type_lock = event_type;
   }
 
   pie->layout = UI_block_layout(
       pie->block_radial, UI_LAYOUT_VERTICAL, UI_LAYOUT_PIEMENU, 0, 0, 200, 0, 0, style);
 
-  /* Note event->x/y is where we started dragging in case of KM_CLICK_DRAG. */
-  pie->mx = event->x;
-  pie->my = event->y;
+  /* NOTE: #wmEvent.xy is where we started dragging in case of #KM_CLICK_DRAG. */
+  pie->mx = event->xy[0];
+  pie->my = event->xy[1];
 
   /* create title button */
   if (title[0]) {
@@ -306,8 +290,7 @@ int UI_pie_menu_invoke_from_rna_enum(struct bContext *C,
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/**
- * \name Pie Menu Levels
+/** \name Pie Menu Levels
  *
  * Pie menus can't contain more than 8 items (yet).
  * When using #uiItemsFullEnumO, a "More" button is created that calls
@@ -319,7 +302,6 @@ int UI_pie_menu_invoke_from_rna_enum(struct bContext *C,
  * Ideally we'd have some way of handling this for all kinds of pie items, but that's tricky.
  *
  * - Julian (Feb 2016)
- *
  * \{ */
 
 typedef struct PieMenuLevelData {
@@ -331,7 +313,7 @@ typedef struct PieMenuLevelData {
   wmOperatorType *ot;
   const char *propname;
   IDProperty *properties;
-  int context, flag;
+  wmOperatorCallContext context, flag;
 } PieMenuLevelData;
 
 /**
@@ -373,27 +355,24 @@ static void ui_pie_menu_level_invoke(bContext *C, void *argN, void *arg2)
   UI_pie_menu_end(C, pie);
 }
 
-/**
- * Set up data for defining a new pie menu level and add button that invokes it.
- */
 void ui_pie_menu_level_create(uiBlock *block,
                               wmOperatorType *ot,
                               const char *propname,
                               IDProperty *properties,
                               const EnumPropertyItem *items,
                               int totitem,
-                              int context,
+                              wmOperatorCallContext context,
                               int flag)
 {
   const int totitem_parent = PIE_MAX_ITEMS - 1;
   const int totitem_remain = totitem - totitem_parent;
-  size_t array_size = sizeof(EnumPropertyItem) * totitem_remain;
+  const size_t array_size = sizeof(EnumPropertyItem) * totitem_remain;
 
   /* used as but->func_argN so freeing is handled elsewhere */
   EnumPropertyItem *remaining = MEM_mallocN(array_size + sizeof(EnumPropertyItem),
                                             "pie_level_item_array");
   memcpy(remaining, items + totitem_parent, array_size);
-  /* a NULL terminating sentinal element is required */
+  /* A NULL terminating sentinel element is required. */
   memset(&remaining[totitem_remain], 0, sizeof(EnumPropertyItem));
 
   /* yuk, static... issue is we can't reliably free this without doing dangerous changes */

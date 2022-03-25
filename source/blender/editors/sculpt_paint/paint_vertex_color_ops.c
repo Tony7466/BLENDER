@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -48,7 +34,7 @@ static bool vertex_weight_paint_mode_poll(bContext *C)
 {
   Object *ob = CTX_data_active_object(C);
   Mesh *me = BKE_mesh_from_object(ob);
-  return (ob && (ob->mode == OB_MODE_VERTEX_PAINT || ob->mode == OB_MODE_WEIGHT_PAINT)) &&
+  return (ob && (ELEM(ob->mode, OB_MODE_VERTEX_PAINT, OB_MODE_WEIGHT_PAINT))) &&
          (me && me->totpoly && me->dvert);
 }
 
@@ -68,9 +54,6 @@ static void tag_object_after_update(Object *object)
 static bool vertex_color_set(Object *ob, uint paintcol)
 {
   Mesh *me;
-  const MPoly *mp;
-  int i, j;
-
   if (((me = BKE_mesh_from_object(ob)) == NULL) || (ED_mesh_color_ensure(me, NULL) == false)) {
     return false;
   }
@@ -78,15 +61,15 @@ static bool vertex_color_set(Object *ob, uint paintcol)
   const bool use_face_sel = (me->editflag & ME_EDIT_PAINT_FACE_SEL) != 0;
   const bool use_vert_sel = (me->editflag & ME_EDIT_PAINT_VERT_SEL) != 0;
 
-  mp = me->mpoly;
-  for (i = 0; i < me->totpoly; i++, mp++) {
+  const MPoly *mp = me->mpoly;
+  for (int i = 0; i < me->totpoly; i++, mp++) {
     MLoopCol *lcol = me->mloopcol + mp->loopstart;
 
     if (use_face_sel && !(mp->flag & ME_FACE_SEL)) {
       continue;
     }
 
-    j = 0;
+    int j = 0;
     do {
       uint vidx = me->mloop[mp->loopstart + j].v;
       if (!(use_vert_sel && !(me->mvert[vidx].flag & SELECT))) {
@@ -152,7 +135,7 @@ static bool vertex_paint_from_weight(Object *ob)
   /* TODO: respect selection. */
   /* TODO: Do we want to take weights from evaluated mesh instead? 2.7x was not doing it anyway. */
   mp = me->mpoly;
-  vgroup_active = ob->actdef - 1;
+  vgroup_active = me->vertex_group_active_index - 1;
   for (int i = 0; i < me->totpoly; i++, mp++) {
     MLoopCol *lcol = &me->mloopcol[mp->loopstart];
     uint j = 0;
@@ -211,11 +194,7 @@ static void vertex_color_smooth_looptag(Mesh *me, const bool *mlooptag)
   const bool use_face_sel = (me->editflag & ME_EDIT_PAINT_FACE_SEL) != 0;
   const MPoly *mp;
   int(*scol)[4];
-  int i, j;
   bool has_shared = false;
-
-  /* if no mloopcol: do not do */
-  /* if mtexpoly: only the involved faces, otherwise all */
 
   if (me->mloopcol == NULL || me->totvert == 0 || me->totpoly == 0) {
     return;
@@ -223,11 +202,12 @@ static void vertex_color_smooth_looptag(Mesh *me, const bool *mlooptag)
 
   scol = MEM_callocN(sizeof(int) * me->totvert * 5, "scol");
 
+  int i;
   for (i = 0, mp = me->mpoly; i < me->totpoly; i++, mp++) {
     if ((use_face_sel == false) || (mp->flag & ME_FACE_SEL)) {
       const MLoop *ml = me->mloop + mp->loopstart;
       MLoopCol *lcol = me->mloopcol + mp->loopstart;
-      for (j = 0; j < mp->totloop; j++, ml++, lcol++) {
+      for (int j = 0; j < mp->totloop; j++, ml++, lcol++) {
         scol[ml->v][0] += lcol->r;
         scol[ml->v][1] += lcol->g;
         scol[ml->v][2] += lcol->b;
@@ -250,7 +230,7 @@ static void vertex_color_smooth_looptag(Mesh *me, const bool *mlooptag)
       if ((use_face_sel == false) || (mp->flag & ME_FACE_SEL)) {
         const MLoop *ml = me->mloop + mp->loopstart;
         MLoopCol *lcol = me->mloopcol + mp->loopstart;
-        for (j = 0; j < mp->totloop; j++, ml++, lcol++) {
+        for (int j = 0; j < mp->totloop; j++, ml++, lcol++) {
           if (mlooptag[mp->loopstart + j]) {
             lcol->r = scol[ml->v][0];
             lcol->g = scol[ml->v][1];
@@ -404,7 +384,7 @@ void PAINT_OT_vertex_color_brightness_contrast(wmOperatorType *ot)
   PropertyRNA *prop;
 
   /* identifiers */
-  ot->name = "Vertex Paint Bright/Contrast";
+  ot->name = "Vertex Paint Brightness/Contrast";
   ot->idname = "PAINT_OT_vertex_color_brightness_contrast";
   ot->description = "Adjust vertex color brightness/contrast";
 

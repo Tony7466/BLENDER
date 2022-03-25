@@ -1,4 +1,18 @@
 
+/* Required by some nodes. */
+#pragma BLENDER_REQUIRE(common_hair_lib.glsl)
+#pragma BLENDER_REQUIRE(common_utiltex_lib.glsl)
+
+#pragma BLENDER_REQUIRE(common_view_lib.glsl)
+#pragma BLENDER_REQUIRE(common_uniforms_lib.glsl)
+#pragma BLENDER_REQUIRE(closure_type_lib.glsl)
+#pragma BLENDER_REQUIRE(closure_eval_lib.glsl)
+#pragma BLENDER_REQUIRE(closure_eval_diffuse_lib.glsl)
+#pragma BLENDER_REQUIRE(closure_eval_glossy_lib.glsl)
+#pragma BLENDER_REQUIRE(closure_eval_translucent_lib.glsl)
+#pragma BLENDER_REQUIRE(closure_eval_refraction_lib.glsl)
+#pragma BLENDER_REQUIRE(surface_lib.glsl)
+
 #ifdef USE_ALPHA_HASH
 
 /* From the paper "Hashed Alpha Testing" by Chris Wyman and Morgan McGuire */
@@ -56,8 +70,6 @@ float hashed_alpha_threshold(vec3 co)
 
 #endif
 
-#define NODETREE_EXEC
-
 void main()
 {
 #if defined(USE_ALPHA_HASH)
@@ -66,11 +78,9 @@ void main()
 
   float opacity = saturate(1.0 - avg(cl.transmittance));
 
-#  if defined(USE_ALPHA_HASH)
   /* Hashed Alpha Testing */
   if (opacity < hashed_alpha_threshold(worldPosition)) {
     discard;
   }
-#  endif
 #endif
 }

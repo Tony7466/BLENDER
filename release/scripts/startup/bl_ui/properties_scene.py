@@ -1,20 +1,4 @@
-# ##### BEGIN GPL LICENSE BLOCK #####
-#
-#  This program is free software; you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License
-#  as published by the Free Software Foundation; either version 2
-#  of the License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software Foundation,
-#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# ##### END GPL LICENSE BLOCK #####
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 # <pep8 compliant>
 
@@ -92,6 +76,7 @@ class SCENE_PT_unit(SceneButtonsPanel, Panel):
         subcol.prop(unit, "length_unit", text="Length")
         subcol.prop(unit, "mass_unit", text="Mass")
         subcol.prop(unit, "time_unit", text="Time")
+        subcol.prop(unit, "temperature_unit", text="Temperature")
 
 
 class SceneKeyingSetsPanel:
@@ -385,8 +370,8 @@ class SCENE_PT_rigid_body_world_settings(RigidBodySubPanel, Panel):
             col.prop(rbw, "use_split_impulse")
 
             col = col.column()
-            col.prop(rbw, "steps_per_second", text="Steps Per Second")
-            col.prop(rbw, "solver_iterations", text="Solver Iterations")
+            col.prop(rbw, "substeps_per_frame")
+            col.prop(rbw, "solver_iterations")
 
 
 class SCENE_PT_rigid_body_cache(RigidBodySubPanel, Panel):

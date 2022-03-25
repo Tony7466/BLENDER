@@ -1,20 +1,4 @@
-# ##### BEGIN GPL LICENSE BLOCK #####
-#
-#  This program is free software; you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License
-#  as published by the Free Software Foundation; either version 2
-#  of the License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software Foundation,
-#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# ##### END GPL LICENSE BLOCK #####
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 # <pep8-80 compliant>
 
@@ -133,7 +117,7 @@ class SelectCamera(Operator):
         scene = context.scene
         view_layer = context.view_layer
         view = context.space_data
-        if view.type == 'VIEW_3D' and view.use_local_camera:
+        if view and view.type == 'VIEW_3D' and view.use_local_camera:
             camera = view.camera
         else:
             camera = scene.camera
@@ -208,7 +192,6 @@ class SelectHierarchy(Operator):
                 select_new.sort(key=lambda obj_iter: obj_iter.name)
                 act_new = select_new[0]
 
-
         # don't edit any object settings above this
         if select_new:
             if not self.extend:
@@ -224,7 +207,7 @@ class SelectHierarchy(Operator):
 
 
 class SubdivisionSet(Operator):
-    """Sets a Subdivision Surface Level (1-5)"""
+    """Sets a Subdivision Surface level (1 to 5)"""
 
     bl_idname = "object.subdivision_set"
     bl_label = "Subdivision Set"
@@ -567,7 +550,7 @@ class JoinUVs(Operator):
                                     uv_other = mesh_other.uv_layers.active
                                     if not uv_other:
                                         self.report({'ERROR'}, "Could not add "
-                                                    "a new UV map tp object "
+                                                    "a new UV map to object "
                                                     "'%s' (Mesh '%s')\n"
                                                     % (obj_other.name,
                                                        mesh_other.name,
@@ -801,7 +784,7 @@ class TransformsToDeltasAnim(Operator):
                 continue
 
             # first pass over F-Curves: ensure that we don't have conflicting
-            # transforms already (e.g. if this was applied already) [#29110]
+            # transforms already (e.g. if this was applied already) T29110.
             existingFCurves = {}
             for fcu in adt.action.fcurves:
                 # get "delta" path - i.e. the final paths which may clash
@@ -862,7 +845,7 @@ class TransformsToDeltasAnim(Operator):
 class DupliOffsetFromCursor(Operator):
     """Set offset used for collection instances based on cursor position"""
     bl_idname = "object.instance_offset_from_cursor"
-    bl_label = "Set Offset From Cursor"
+    bl_label = "Set Offset from Cursor"
     bl_options = {'INTERNAL', 'UNDO'}
 
     @classmethod
@@ -889,7 +872,7 @@ class LoadImageAsEmpty:
     filter_folder: BoolProperty(default=True, options={'HIDDEN', 'SKIP_SAVE'})
 
     view_align: BoolProperty(
-        name="Align to view",
+        name="Align to View",
         default=True,
     )
 
@@ -971,7 +954,7 @@ class OBJECT_OT_assign_property_defaults(Operator):
     def assign_defaults(obj):
         from rna_prop_ui import rna_idprop_ui_prop_default_set
 
-        rna_properties = {'_RNA_UI'} | {prop.identifier for prop in obj.bl_rna.properties if prop.is_runtime}
+        rna_properties = {prop.identifier for prop in obj.bl_rna.properties if prop.is_runtime}
 
         for prop, value in obj.items():
             if prop not in rna_properties:

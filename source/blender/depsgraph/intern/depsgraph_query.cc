@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2013 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2013 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup depsgraph
@@ -25,12 +9,12 @@
 
 #include "MEM_guardedalloc.h"
 
-#include <string.h>  // XXX: memcpy
+#include <cstring> /* XXX: memcpy */
 
 #include "BLI_listbase.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_action.h"  // XXX: BKE_pose_channel_find_name
+#include "BKE_action.h" /* XXX: BKE_pose_channel_find_name */
 #include "BKE_customdata.h"
 #include "BKE_idtype.h"
 #include "BKE_main.h"
@@ -39,6 +23,7 @@
 #include "DNA_scene_types.h"
 
 #include "RNA_access.h"
+#include "RNA_prototypes.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -59,6 +44,12 @@ struct ViewLayer *DEG_get_input_view_layer(const Depsgraph *graph)
 {
   const deg::Depsgraph *deg_graph = reinterpret_cast<const deg::Depsgraph *>(graph);
   return deg_graph->view_layer;
+}
+
+struct Main *DEG_get_bmain(const Depsgraph *graph)
+{
+  const deg::Depsgraph *deg_graph = reinterpret_cast<const deg::Depsgraph *>(graph);
+  return deg_graph->bmain;
 }
 
 eEvaluationMode DEG_get_mode(const Depsgraph *graph)
@@ -84,8 +75,8 @@ bool DEG_id_type_any_updated(const Depsgraph *graph)
   const deg::Depsgraph *deg_graph = reinterpret_cast<const deg::Depsgraph *>(graph);
 
   /* Loop over all ID types. */
-  for (int id_type_index = 0; id_type_index < MAX_LIBARRAY; id_type_index++) {
-    if (deg_graph->id_type_updated[id_type_index]) {
+  for (char id_type_index : deg_graph->id_type_updated) {
+    if (id_type_index) {
       return true;
     }
   }
@@ -162,7 +153,7 @@ ViewLayer *DEG_get_evaluated_view_layer(const Depsgraph *graph)
   const deg::Depsgraph *deg_graph = reinterpret_cast<const deg::Depsgraph *>(graph);
   Scene *scene_cow = DEG_get_evaluated_scene(graph);
   if (scene_cow == nullptr) {
-    return nullptr; /* Happens with new, not-yet-built/evaluated graphes. */
+    return nullptr; /* Happens with new, not-yet-built/evaluated graphs. */
   }
   /* Do name-based lookup. */
   /* TODO(sergey): Can this be optimized? */
@@ -194,7 +185,6 @@ ID *DEG_get_evaluated_id(const Depsgraph *depsgraph, ID *id)
   return id_node->id_cow;
 }
 
-/* Get evaluated version of data pointed to by RNA pointer */
 void DEG_get_evaluated_rna_pointer(const Depsgraph *depsgraph,
                                    PointerRNA *ptr,
                                    PointerRNA *r_ptr_eval)

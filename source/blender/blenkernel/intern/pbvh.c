@@ -1,21 +1,7 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
- * \ingroup bli
+ * \ingroup bke
  */
 
 #include "MEM_guardedalloc.h"
@@ -32,7 +18,7 @@
 #include "DNA_meshdata_types.h"
 
 #include "BKE_ccg.h"
-#include "BKE_mesh.h" /* for BKE_mesh_calc_normals */
+#include "BKE_mesh.h"
 #include "BKE_paint.h"
 #include "BKE_pbvh.h"
 #include "BKE_subdiv_ccg.h"
@@ -78,7 +64,6 @@ void BB_reset(BB *bb)
   bb->bmax[0] = bb->bmax[1] = bb->bmax[2] = -FLT_MAX;
 }
 
-/* Expand the bounding box to include a new coordinate */
 void BB_expand(BB *bb, const float co[3])
 {
   for (int i = 0; i < 3; i++) {
@@ -87,7 +72,6 @@ void BB_expand(BB *bb, const float co[3])
   }
 }
 
-/* Expand the bounding box to include another bounding box */
 void BB_expand_with_bb(BB *bb, BB *bb2)
 {
   for (int i = 0; i < 3; i++) {
@@ -96,7 +80,6 @@ void BB_expand_with_bb(BB *bb, BB *bb2)
   }
 }
 
-/* Return 0, 1, or 2 to indicate the widest axis of the bounding box */
 int BB_widest_axis(const BB *bb)
 {
   float dim[3];
@@ -109,18 +92,15 @@ int BB_widest_axis(const BB *bb)
     if (dim[0] > dim[2]) {
       return 0;
     }
-    else {
-      return 2;
-    }
+
+    return 2;
   }
-  else {
-    if (dim[1] > dim[2]) {
-      return 1;
-    }
-    else {
-      return 2;
-    }
+
+  if (dim[1] > dim[2]) {
+    return 1;
   }
+
+  return 2;
 }
 
 void BBC_update_centroid(BBC *bbc)
@@ -140,8 +120,7 @@ static void update_node_vb(PBVH *pbvh, PBVHNode *node)
   if (node->flag & PBVH_Leaf) {
     PBVHVertexIter vd;
 
-    BKE_pbvh_vertex_iter_begin(pbvh, node, vd, PBVH_ITER_ALL)
-    {
+    BKE_pbvh_vertex_iter_begin (pbvh, node, vd, PBVH_ITER_ALL) {
       BB_expand(&vb, vd.co);
     }
     BKE_pbvh_vertex_iter_end;
@@ -275,9 +254,8 @@ static int map_insert_vert(
     *value_p = POINTER_FROM_INT(value_i);
     return value_i;
   }
-  else {
-    return POINTER_AS_INT(*value_p);
-  }
+
+  return POINTER_AS_INT(*value_p);
 }
 
 /* Find vertices used by the faces in this node and update the draw buffers */
@@ -356,7 +334,6 @@ static void update_vb(PBVH *pbvh, PBVHNode *node, BBC *prim_bbc, int offset, int
   node->orig_vb = node->vb;
 }
 
-/* Returns the number of visible quads in the nodes' grids. */
 int BKE_pbvh_count_grid_quads(BLI_bitmap **grid_hidden,
                               const int *grid_indices,
                               int totgrid,
@@ -560,14 +537,8 @@ static void pbvh_build(PBVH *pbvh, BB *cb, BBC *prim_bbc, int totprim)
   build_sub(pbvh, 0, cb, prim_bbc, 0, totprim);
 }
 
-/**
- * Do a full rebuild with on Mesh data structure.
- *
- * \note Unlike mpoly/mloop/verts, looptri is **totally owned** by PBVH
- * (which means it may rewrite it if needed, see #BKE_pbvh_vert_coords_apply().
- */
 void BKE_pbvh_build_mesh(PBVH *pbvh,
-                         const Mesh *mesh,
+                         Mesh *mesh,
                          const MPoly *mpoly,
                          const MLoop *mloop,
                          MVert *verts,
@@ -587,6 +558,8 @@ void BKE_pbvh_build_mesh(PBVH *pbvh,
   pbvh->mloop = mloop;
   pbvh->looptri = looptri;
   pbvh->verts = verts;
+  BKE_mesh_vertex_normals_ensure(mesh);
+  pbvh->vert_normals = BKE_mesh_vertex_normals_for_write(mesh);
   pbvh->vert_bitmap = BLI_BITMAP_NEW(totvert, "bvh->vert_bitmap");
   pbvh->totvert = totvert;
   pbvh->leaf_limit = LEAF_LIMIT;
@@ -623,10 +596,11 @@ void BKE_pbvh_build_mesh(PBVH *pbvh,
   }
 
   MEM_freeN(prim_bbc);
-  MEM_freeN(pbvh->vert_bitmap);
+
+  /* Clear the bitmap so it can be used as an update tag later on. */
+  BLI_bitmap_set_all(pbvh->vert_bitmap, false, totvert);
 }
 
-/* Do a full rebuild with on Grids data structure */
 void BKE_pbvh_build_grids(PBVH *pbvh,
                           CCGElem **grids,
                           int totgrid,
@@ -644,7 +618,7 @@ void BKE_pbvh_build_grids(PBVH *pbvh,
   pbvh->totgrid = totgrid;
   pbvh->gridkey = *key;
   pbvh->grid_hidden = grid_hidden;
-  pbvh->leaf_limit = max_ii(LEAF_LIMIT / ((gridsize - 1) * (gridsize - 1)), 1);
+  pbvh->leaf_limit = max_ii(LEAF_LIMIT / (gridsize * gridsize), 1);
 
   BB cb;
   BB_reset(&cb);
@@ -728,6 +702,8 @@ void BKE_pbvh_free(PBVH *pbvh)
     MEM_freeN(pbvh->prim_indices);
   }
 
+  MEM_SAFE_FREE(pbvh->vert_bitmap);
+
   MEM_freeN(pbvh);
 }
 
@@ -804,14 +780,13 @@ static PBVHNode *pbvh_iter_next(PBVHIter *iter)
       /* immediately hit leaf node */
       return node;
     }
-    else {
-      /* come back later when children are done */
-      pbvh_stack_push(iter, node, true);
 
-      /* push two child nodes on the stack */
-      pbvh_stack_push(iter, iter->pbvh->nodes + node->children_offset + 1, false);
-      pbvh_stack_push(iter, iter->pbvh->nodes + node->children_offset, false);
-    }
+    /* come back later when children are done */
+    pbvh_stack_push(iter, node, true);
+
+    /* push two child nodes on the stack */
+    pbvh_stack_push(iter, iter->pbvh->nodes + node->children_offset + 1, false);
+    pbvh_stack_push(iter, iter->pbvh->nodes + node->children_offset, false);
   }
 
   return NULL;
@@ -838,10 +813,9 @@ static PBVHNode *pbvh_iter_next_occluded(PBVHIter *iter)
       /* immediately hit leaf node */
       return node;
     }
-    else {
-      pbvh_stack_push(iter, iter->pbvh->nodes + node->children_offset + 1, false);
-      pbvh_stack_push(iter, iter->pbvh->nodes + node->children_offset, false);
-    }
+
+    pbvh_stack_push(iter, iter->pbvh->nodes + node->children_offset + 1, false);
+    pbvh_stack_push(iter, iter->pbvh->nodes + node->children_offset, false);
   }
 
   return NULL;
@@ -1023,6 +997,27 @@ typedef struct PBVHUpdateData {
   bool show_sculpt_face_sets;
 } PBVHUpdateData;
 
+static void pbvh_update_normals_clear_task_cb(void *__restrict userdata,
+                                              const int n,
+                                              const TaskParallelTLS *__restrict UNUSED(tls))
+{
+  PBVHUpdateData *data = userdata;
+  PBVH *pbvh = data->pbvh;
+  PBVHNode *node = data->nodes[n];
+  float(*vnors)[3] = data->vnors;
+
+  if (node->flag & PBVH_UpdateNormals) {
+    const int *verts = node->vert_indices;
+    const int totvert = node->uniq_verts;
+    for (int i = 0; i < totvert; i++) {
+      const int v = verts[i];
+      if (BLI_BITMAP_TEST(pbvh->vert_bitmap, v)) {
+        zero_v3(vnors[v]);
+      }
+    }
+  }
+}
+
 static void pbvh_update_normals_accum_task_cb(void *__restrict userdata,
                                               const int n,
                                               const TaskParallelTLS *__restrict UNUSED(tls))
@@ -1033,7 +1028,7 @@ static void pbvh_update_normals_accum_task_cb(void *__restrict userdata,
   PBVHNode *node = data->nodes[n];
   float(*vnors)[3] = data->vnors;
 
-  if ((node->flag & PBVH_UpdateNormals)) {
+  if (node->flag & PBVH_UpdateNormals) {
     unsigned int mpoly_prev = UINT_MAX;
     float fn[3];
 
@@ -1059,8 +1054,8 @@ static void pbvh_update_normals_accum_task_cb(void *__restrict userdata,
       for (int j = sides; j--;) {
         const int v = vtri[j];
 
-        if (pbvh->verts[v].flag & ME_VERT_PBVH_UPDATE) {
-          /* Note: This avoids `lock, add_v3_v3, unlock`
+        if (BLI_BITMAP_TEST(pbvh->vert_bitmap, v)) {
+          /* NOTE: This avoids `lock, add_v3_v3, unlock`
            * and is five to ten times quicker than a spin-lock.
            * Not exact equivalent though, since atomicity is only ensured for one component
            * of the vector at a time, but here it shall not make any sensible difference. */
@@ -1088,14 +1083,12 @@ static void pbvh_update_normals_store_task_cb(void *__restrict userdata,
 
     for (int i = 0; i < totvert; i++) {
       const int v = verts[i];
-      MVert *mvert = &pbvh->verts[v];
 
       /* No atomics necessary because we are iterating over uniq_verts only,
        * so we know only this thread will handle this vertex. */
-      if (mvert->flag & ME_VERT_PBVH_UPDATE) {
+      if (BLI_BITMAP_TEST(pbvh->vert_bitmap, v)) {
         normalize_v3(vnors[v]);
-        normal_float_to_short_v3(mvert->no, vnors[v]);
-        mvert->flag &= ~ME_VERT_PBVH_UPDATE;
+        BLI_BITMAP_DISABLE(pbvh->vert_bitmap, v);
       }
     }
 
@@ -1105,33 +1098,29 @@ static void pbvh_update_normals_store_task_cb(void *__restrict userdata,
 
 static void pbvh_faces_update_normals(PBVH *pbvh, PBVHNode **nodes, int totnode)
 {
-  /* could be per node to save some memory, but also means
-   * we have to store for each vertex which node it is in */
-  float(*vnors)[3] = MEM_callocN(sizeof(*vnors) * pbvh->totvert, __func__);
-
   /* subtle assumptions:
    * - We know that for all edited vertices, the nodes with faces
    *   adjacent to these vertices have been marked with PBVH_UpdateNormals.
    *   This is true because if the vertex is inside the brush radius, the
-   *   bounding box of it's adjacent faces will be as well.
+   *   bounding box of its adjacent faces will be as well.
    * - However this is only true for the vertices that have actually been
    *   edited, not for all vertices in the nodes marked for update, so we
-   *   can only update vertices marked with ME_VERT_PBVH_UPDATE.
+   *   can only update vertices marked in the `vert_bitmap`.
    */
 
   PBVHUpdateData data = {
       .pbvh = pbvh,
       .nodes = nodes,
-      .vnors = vnors,
+      .vnors = pbvh->vert_normals,
   };
 
   TaskParallelSettings settings;
   BKE_pbvh_parallel_range_settings(&settings, true, totnode);
 
+  /* Zero normals before accumulation. */
+  BLI_task_parallel_range(0, totnode, &data, pbvh_update_normals_clear_task_cb, &settings);
   BLI_task_parallel_range(0, totnode, &data, pbvh_update_normals_accum_task_cb, &settings);
   BLI_task_parallel_range(0, totnode, &data, pbvh_update_normals_store_task_cb, &settings);
-
-  MEM_freeN(vnors);
 }
 
 static void pbvh_update_mask_redraw_task_cb(void *__restrict userdata,
@@ -1149,8 +1138,7 @@ static void pbvh_update_mask_redraw_task_cb(void *__restrict userdata,
     if (node->flag & PBVH_Leaf) {
       PBVHVertexIter vd;
 
-      BKE_pbvh_vertex_iter_begin(pbvh, node, vd, PBVH_ITER_ALL)
-      {
+      BKE_pbvh_vertex_iter_begin (pbvh, node, vd, PBVH_ITER_ALL) {
         if (vd.mask && *vd.mask < 1.0f) {
           has_unmasked = true;
         }
@@ -1197,8 +1185,7 @@ static void pbvh_update_visibility_redraw_task_cb(void *__restrict userdata,
     BKE_pbvh_node_fully_hidden_set(node, true);
     if (node->flag & PBVH_Leaf) {
       PBVHVertexIter vd;
-      BKE_pbvh_vertex_iter_begin(pbvh, node, vd, PBVH_ITER_ALL)
-      {
+      BKE_pbvh_vertex_iter_begin (pbvh, node, vd, PBVH_ITER_ALL) {
         if (vd.visible) {
           BKE_pbvh_node_fully_hidden_set(node, false);
           return;
@@ -1320,6 +1307,7 @@ static void pbvh_update_draw_buffer_cb(void *__restrict userdata,
       case PBVH_FACES:
         GPU_pbvh_mesh_buffers_update(node->draw_buffers,
                                      pbvh->verts,
+                                     pbvh->vert_normals,
                                      CustomData_get_layer(pbvh->vdata, CD_PAINT_MASK),
                                      CustomData_get_layer(pbvh->ldata, CD_MLOOPCOL),
                                      CustomData_get_layer(pbvh->pdata, CD_SCULPT_FACE_SETS),
@@ -1371,13 +1359,24 @@ static void pbvh_update_draw_buffers(PBVH *pbvh, PBVHNode **nodes, int totnode, 
   TaskParallelSettings settings;
   BKE_pbvh_parallel_range_settings(&settings, true, totnode);
   BLI_task_parallel_range(0, totnode, &data, pbvh_update_draw_buffer_cb, &settings);
+
+  for (int i = 0; i < totnode; i++) {
+    PBVHNode *node = nodes[i];
+
+    if (node->flag & PBVH_UpdateDrawBuffers) {
+      /* Flush buffers uses OpenGL, so not in parallel. */
+      GPU_pbvh_buffers_update_flush(node->draw_buffers);
+    }
+
+    node->flag &= ~(PBVH_RebuildDrawBuffers | PBVH_UpdateDrawBuffers);
+  }
 }
 
 static int pbvh_flush_bb(PBVH *pbvh, PBVHNode *node, int flag)
 {
   int update = 0;
 
-  /* difficult to multithread well, we just do single threaded recursive */
+  /* Difficult to multi-thread well, we just do single threaded recursive. */
   if (node->flag & PBVH_Leaf) {
     if (flag & PBVH_UpdateBB) {
       update |= (node->flag & PBVH_UpdateBB);
@@ -1391,16 +1390,15 @@ static int pbvh_flush_bb(PBVH *pbvh, PBVHNode *node, int flag)
 
     return update;
   }
-  else {
-    update |= pbvh_flush_bb(pbvh, pbvh->nodes + node->children_offset, flag);
-    update |= pbvh_flush_bb(pbvh, pbvh->nodes + node->children_offset + 1, flag);
 
-    if (update & PBVH_UpdateBB) {
-      update_node_vb(pbvh, node);
-    }
-    if (update & PBVH_UpdateOriginalBB) {
-      node->orig_vb = node->vb;
-    }
+  update |= pbvh_flush_bb(pbvh, pbvh->nodes + node->children_offset, flag);
+  update |= pbvh_flush_bb(pbvh, pbvh->nodes + node->children_offset + 1, flag);
+
+  if (update & PBVH_UpdateBB) {
+    update_node_vb(pbvh, node);
+  }
+  if (update & PBVH_UpdateOriginalBB) {
+    node->orig_vb = node->vb;
   }
 
   return update;
@@ -1667,9 +1665,8 @@ bool BKE_pbvh_has_faces(const PBVH *pbvh)
   if (pbvh->type == PBVH_BMESH) {
     return (pbvh->bm->totface != 0);
   }
-  else {
-    return (pbvh->totprim != 0);
-  }
+
+  return (pbvh->totprim != 0);
 }
 
 void BKE_pbvh_bounding_box(const PBVH *pbvh, float min[3], float max[3])
@@ -1713,6 +1710,12 @@ int BKE_pbvh_get_grid_num_vertices(const PBVH *pbvh)
 {
   BLI_assert(pbvh->type == PBVH_GRIDS);
   return pbvh->totgrid * pbvh->gridkey.grid_area;
+}
+
+int BKE_pbvh_get_grid_num_faces(const PBVH *pbvh)
+{
+  BLI_assert(pbvh->type == PBVH_GRIDS);
+  return pbvh->totgrid * (pbvh->gridkey.grid_size - 1) * (pbvh->gridkey.grid_size - 1);
 }
 
 BMesh *BKE_pbvh_get_bmesh(PBVH *pbvh)
@@ -1809,6 +1812,12 @@ void BKE_pbvh_node_fully_unmasked_set(PBVHNode *node, int fully_masked)
 bool BKE_pbvh_node_fully_unmasked_get(PBVHNode *node)
 {
   return (node->flag & PBVH_Leaf) && (node->flag & PBVH_FullyUnmasked);
+}
+
+void BKE_pbvh_vert_mark_update(PBVH *pbvh, int index)
+{
+  BLI_assert(pbvh->type == PBVH_FACES);
+  BLI_BITMAP_ENABLE(pbvh->vert_bitmap, index);
 }
 
 void BKE_pbvh_node_get_verts(PBVH *pbvh,
@@ -1948,11 +1957,6 @@ void BKE_pbvh_node_get_bm_orco_data(PBVHNode *node,
   *r_orco_coords = node->bm_orco;
 }
 
-/**
- * \note doing a full search on all vertices here seems expensive,
- * however this is important to avoid having to recalculate bound-box & sync the buffers to the
- * GPU (which is far more expensive!) See: T47232.
- */
 bool BKE_pbvh_node_vert_update_check_any(PBVH *pbvh, PBVHNode *node)
 {
   BLI_assert(pbvh->type == PBVH_FACES);
@@ -1961,9 +1965,8 @@ bool BKE_pbvh_node_vert_update_check_any(PBVH *pbvh, PBVHNode *node)
 
   for (int i = 0; i < totvert; i++) {
     const int v = verts[i];
-    const MVert *mvert = &pbvh->verts[v];
 
-    if (mvert->flag & ME_VERT_PBVH_UPDATE) {
+    if (BLI_BITMAP_TEST(pbvh->vert_bitmap, v)) {
       return true;
     }
   }
@@ -1971,7 +1974,7 @@ bool BKE_pbvh_node_vert_update_check_any(PBVH *pbvh, PBVHNode *node)
   return false;
 }
 
-/********************************* Raycast ***********************************/
+/********************************* Ray-cast ***********************************/
 
 typedef struct {
   struct IsectRayAABB_Precalc ray;
@@ -2029,9 +2032,8 @@ bool ray_face_intersection_quad(const float ray_start[3],
     *depth = depth_test;
     return true;
   }
-  else {
-    return false;
-  }
+
+  return false;
 }
 
 bool ray_face_intersection_tri(const float ray_start[3],
@@ -2047,12 +2049,11 @@ bool ray_face_intersection_tri(const float ray_start[3],
     *depth = depth_test;
     return true;
   }
-  else {
-    return false;
-  }
+
+  return false;
 }
 
-/* Take advantage of the fact we know this wont be an intersection.
+/* Take advantage of the fact we know this won't be an intersection.
  * Just handle ray-tri edges. */
 static float dist_squared_ray_to_tri_v3_fast(const float ray_origin[3],
                                              const float ray_direction[3],
@@ -2100,9 +2101,8 @@ bool ray_face_nearest_quad(const float ray_start[3],
     }
     return true;
   }
-  else {
-    return false;
-  }
+
+  return false;
 }
 
 bool ray_face_nearest_tri(const float ray_start[3],
@@ -2122,9 +2122,8 @@ bool ray_face_nearest_tri(const float ray_start[3],
     *depth = depth_test;
     return true;
   }
-  else {
-    return false;
-  }
+
+  return false;
 }
 
 static bool pbvh_faces_node_raycast(PBVH *pbvh,
@@ -2155,7 +2154,7 @@ static bool pbvh_faces_node_raycast(PBVH *pbvh,
 
     const float *co[3];
     if (origco) {
-      /* intersect with backuped original coordinates */
+      /* Intersect with backed up original coordinates. */
       co[0] = origco[face_verts[0]];
       co[1] = origco[face_verts[1]];
       co[2] = origco[face_verts[2]];
@@ -2357,7 +2356,7 @@ void BKE_pbvh_raycast_project_ray_root(
     struct IsectRayAABB_Precalc ray;
     float ray_normal_inv[3];
     float offset = 1.0f + 1e-3f;
-    float offset_vec[3] = {1e-3f, 1e-3f, 1e-3f};
+    const float offset_vec[3] = {1e-3f, 1e-3f, 1e-3f};
 
     if (original) {
       BKE_pbvh_node_get_original_BB(pbvh->nodes, bb_min_root, bb_max_root);
@@ -2617,7 +2616,7 @@ static PlaneAABBIsect test_frustum_aabb(const float bb_min[3],
     if (dot_v3v3(planes[i], vmin) + planes[i][3] < 0) {
       return ISECT_OUTSIDE;
     }
-    else if (dot_v3v3(planes[i], vmax) + planes[i][3] <= 0) {
+    if (dot_v3v3(planes[i], vmax) + planes[i][3] <= 0) {
       ret = ISECT_INTERSECT;
     }
   }
@@ -2710,49 +2709,35 @@ void BKE_pbvh_draw_cb(PBVH *pbvh,
 {
   PBVHNode **nodes;
   int totnode;
+  int update_flag = 0;
 
-  const int update_flag = PBVH_RebuildDrawBuffers | PBVH_UpdateDrawBuffers;
-
-  if (!update_only_visible) {
-    /* Update all draw buffers, also those outside the view. */
+  /* Search for nodes that need updates. */
+  if (update_only_visible) {
+    /* Get visible nodes with draw updates. */
+    PBVHDrawSearchData data = {.frustum = update_frustum, .accum_update_flag = 0};
+    BKE_pbvh_search_gather(pbvh, pbvh_draw_search_cb, &data, &nodes, &totnode);
+    update_flag = data.accum_update_flag;
+  }
+  else {
+    /* Get all nodes with draw updates, also those outside the view. */
+    const int search_flag = PBVH_RebuildDrawBuffers | PBVH_UpdateDrawBuffers;
     BKE_pbvh_search_gather(
-        pbvh, update_search_cb, POINTER_FROM_INT(update_flag), &nodes, &totnode);
-
-    if (totnode) {
-      pbvh_update_draw_buffers(pbvh, nodes, totnode, update_flag);
-    }
-
-    MEM_SAFE_FREE(nodes);
+        pbvh, update_search_cb, POINTER_FROM_INT(search_flag), &nodes, &totnode);
+    update_flag = PBVH_RebuildDrawBuffers | PBVH_UpdateDrawBuffers;
   }
 
-  /* Gather visible nodes. */
-  PBVHDrawSearchData data = {.frustum = update_frustum, .accum_update_flag = 0};
-  BKE_pbvh_search_gather(pbvh, pbvh_draw_search_cb, &data, &nodes, &totnode);
-
-  if (update_only_visible && (data.accum_update_flag & update_flag)) {
-    /* Update draw buffers in visible nodes. */
-    pbvh_update_draw_buffers(pbvh, nodes, totnode, data.accum_update_flag);
+  /* Update draw buffers. */
+  if (totnode != 0 && (update_flag & (PBVH_RebuildDrawBuffers | PBVH_UpdateDrawBuffers))) {
+    pbvh_update_draw_buffers(pbvh, nodes, totnode, update_flag);
   }
-
-  /* Draw. */
-  for (int a = 0; a < totnode; a++) {
-    PBVHNode *node = nodes[a];
-
-    if (node->flag & PBVH_UpdateDrawBuffers) {
-      /* Flush buffers uses OpenGL, so not in parallel. */
-      GPU_pbvh_buffers_update_flush(node->draw_buffers);
-    }
-
-    node->flag &= ~(PBVH_RebuildDrawBuffers | PBVH_UpdateDrawBuffers);
-  }
-
   MEM_SAFE_FREE(nodes);
 
+  /* Draw visible nodes. */
   PBVHDrawSearchData draw_data = {.frustum = draw_frustum, .accum_update_flag = 0};
   BKE_pbvh_search_gather(pbvh, pbvh_draw_search_cb, &draw_data, &nodes, &totnode);
 
-  for (int a = 0; a < totnode; a++) {
-    PBVHNode *node = nodes[a];
+  for (int i = 0; i < totnode; i++) {
+    PBVHNode *node = nodes[i];
     if (!(node->flag & PBVH_FullyHidden)) {
       draw_fn(user_data, node->draw_buffers);
     }
@@ -2810,7 +2795,7 @@ float (*BKE_pbvh_vert_coords_alloc(PBVH *pbvh))[3]
 void BKE_pbvh_vert_coords_apply(PBVH *pbvh, const float (*vertCos)[3], const int totvert)
 {
   if (totvert != pbvh->totvert) {
-    BLI_assert(!"PBVH: Given deforming vcos number does not natch PBVH vertex number!");
+    BLI_assert_msg(0, "PBVH: Given deforming vcos number does not match PBVH vertex number!");
     return;
   }
 
@@ -2835,7 +2820,7 @@ void BKE_pbvh_vert_coords_apply(PBVH *pbvh, const float (*vertCos)[3], const int
       /* no need for float comparison here (memory is exactly equal or not) */
       if (memcmp(mvert->co, vertCos[a], sizeof(float[3])) != 0) {
         copy_v3_v3(mvert->co, vertCos[a]);
-        mvert->flag |= ME_VERT_PBVH_UPDATE;
+        BKE_pbvh_vert_mark_update(pbvh, a);
       }
     }
 
@@ -2924,7 +2909,7 @@ PBVHColorBufferNode *BKE_pbvh_node_color_buffer_get(PBVHNode *node)
 {
 
   if (!node->color_buffer.color) {
-    node->color_buffer.color = MEM_callocN(node->uniq_verts * sizeof(float) * 4, "Color buffer");
+    node->color_buffer.color = MEM_callocN(sizeof(float[4]) * node->uniq_verts, "Color buffer");
   }
   return &node->color_buffer;
 }
@@ -2992,12 +2977,14 @@ void pbvh_vertex_iter_init(PBVH *pbvh, PBVHNode *node, PBVHVertexIter *vi, int m
 
   vi->mask = NULL;
   if (pbvh->type == PBVH_FACES) {
+    vi->vert_normals = pbvh->vert_normals;
+
     vi->vmask = CustomData_get_layer(pbvh->vdata, CD_PAINT_MASK);
     vi->vcol = CustomData_get_layer(pbvh->vdata, CD_PROP_COLOR);
   }
 }
 
-bool pbvh_has_mask(PBVH *pbvh)
+bool pbvh_has_mask(const PBVH *pbvh)
 {
   switch (pbvh->type) {
     case PBVH_GRIDS:
@@ -3063,6 +3050,12 @@ MVert *BKE_pbvh_get_verts(const PBVH *pbvh)
 {
   BLI_assert(pbvh->type == PBVH_FACES);
   return pbvh->verts;
+}
+
+const float (*BKE_pbvh_get_vert_normals(const PBVH *pbvh))[3]
+{
+  BLI_assert(pbvh->type == PBVH_FACES);
+  return pbvh->vert_normals;
 }
 
 void BKE_pbvh_subdiv_cgg_set(PBVH *pbvh, SubdivCCG *subdiv_ccg)

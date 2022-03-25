@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2008 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup edinterface
@@ -67,10 +51,10 @@ static float select_major_distance(const float *possible_distances,
     return possible_distances[0];
   }
 
-  float pixels_per_view_unit = pixel_width / view_width;
+  const float pixels_per_view_unit = pixel_width / view_width;
 
   for (uint i = 0; i < amount; i++) {
-    float distance = possible_distances[i];
+    const float distance = possible_distances[i];
     if (pixels_per_view_unit * distance >= MIN_MAJOR_LINE_DISTANCE) {
       return distance;
     }
@@ -111,7 +95,7 @@ static float view2d_major_step_y__continuous(const View2D *v2d)
 
 static float view2d_major_step_x__time(const View2D *v2d, const Scene *scene)
 {
-  double fps = FPS;
+  const double fps = FPS;
 
   float *possible_distances = NULL;
   BLI_array_staticdeclare(possible_distances, 32);
@@ -174,28 +158,40 @@ static void get_parallel_lines_draw_steps(const ParallelLinesSet *lines,
   }
 }
 
+/**
+ * \param rect_mask: Region size in pixels.
+ */
 static void draw_parallel_lines(const ParallelLinesSet *lines,
                                 const rctf *rect,
-                                const uchar *color,
+                                const rcti *rect_mask,
+                                const uchar color[3],
                                 char direction)
 {
   float first;
-  uint steps;
+  uint steps, steps_max;
 
   if (direction == 'v') {
     get_parallel_lines_draw_steps(lines, rect->xmin, rect->xmax, &first, &steps);
+    steps_max = BLI_rcti_size_x(rect_mask);
   }
   else {
     BLI_assert(direction == 'h');
     get_parallel_lines_draw_steps(lines, rect->ymin, rect->ymax, &first, &steps);
+    steps_max = BLI_rcti_size_y(rect_mask);
   }
 
   if (steps == 0) {
     return;
   }
 
+  if (UNLIKELY(steps >= steps_max)) {
+    /* Note that we could draw a solid color,
+     * however this flickers because of numeric instability when zoomed out. */
+    return;
+  }
+
   GPUVertFormat *format = immVertexFormat();
-  uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  const uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
   if (U.pixelsize > 1.0f) {
     float viewport[4];
@@ -204,7 +200,7 @@ static void draw_parallel_lines(const ParallelLinesSet *lines,
     immBindBuiltinProgram(GPU_SHADER_3D_POLYLINE_UNIFORM_COLOR);
     immUniform2fv("viewportSize", &viewport[2]);
     /* -1.0f offset here  is because the line is too fat due to the builtin anti-aliasing.
-     * TODO make a variant or a uniform to toggle it off. */
+     * TODO: make a variant or a uniform to toggle it off. */
     immUniform1f("lineWidth", U.pixelsize - 1.0f);
   }
   else {
@@ -215,14 +211,14 @@ static void draw_parallel_lines(const ParallelLinesSet *lines,
 
   if (direction == 'v') {
     for (uint i = 0; i < steps; i++) {
-      float xpos = first + i * lines->distance;
+      const float xpos = first + i * lines->distance;
       immVertex2f(pos, xpos, rect->ymin);
       immVertex2f(pos, xpos, rect->ymax);
     }
   }
   else {
     for (uint i = 0; i < steps; i++) {
-      float ypos = first + i * lines->distance;
+      const float ypos = first + i * lines->distance;
       immVertex2f(pos, rect->xmin, ypos);
       immVertex2f(pos, rect->xmax, ypos);
     }
@@ -234,12 +230,12 @@ static void draw_parallel_lines(const ParallelLinesSet *lines,
 
 static void view2d_draw_lines_internal(const View2D *v2d,
                                        const ParallelLinesSet *lines,
-                                       const uchar *color,
+                                       const uchar color[3],
                                        char direction)
 {
   GPU_matrix_push_projection();
   UI_view2d_view_ortho(v2d);
-  draw_parallel_lines(lines, &v2d->cur, color, direction);
+  draw_parallel_lines(lines, &v2d->cur, &v2d->mask, color, direction);
   GPU_matrix_pop_projection();
 }
 
@@ -248,17 +244,18 @@ static void view2d_draw_lines(const View2D *v2d,
                               bool display_minor_lines,
                               char direction)
 {
-  uchar major_color[3];
-  uchar minor_color[3];
-  UI_GetThemeColor3ubv(TH_GRID, major_color);
-  UI_GetThemeColorShade3ubv(TH_GRID, 16, minor_color);
-
-  ParallelLinesSet major_lines;
-  major_lines.distance = major_distance;
-  major_lines.offset = 0;
-  view2d_draw_lines_internal(v2d, &major_lines, major_color, direction);
+  {
+    uchar major_color[3];
+    UI_GetThemeColor3ubv(TH_GRID, major_color);
+    ParallelLinesSet major_lines;
+    major_lines.distance = major_distance;
+    major_lines.offset = 0;
+    view2d_draw_lines_internal(v2d, &major_lines, major_color, direction);
+  }
 
   if (display_minor_lines) {
+    uchar minor_color[3];
+    UI_GetThemeColorShade3ubv(TH_GRID, 16, minor_color);
     ParallelLinesSet minor_lines;
     minor_lines.distance = major_distance;
     minor_lines.offset = major_distance / 2.0f;
@@ -284,9 +281,6 @@ static void draw_horizontal_scale_indicators(const ARegion *region,
     return;
   }
 
-  GPU_matrix_push_projection();
-  wmOrtho2_region_pixelspace(region);
-
   float start;
   uint steps;
   {
@@ -298,31 +292,53 @@ static void draw_horizontal_scale_indicators(const ARegion *region,
                                   UI_view2d_region_to_view_x(v2d, rect->xmax),
                                   &start,
                                   &steps);
+    const uint steps_max = BLI_rcti_size_x(&v2d->mask);
+    if (UNLIKELY(steps >= steps_max)) {
+      return;
+    }
   }
+
+  GPU_matrix_push_projection();
+  wmOrtho2_region_pixelspace(region);
 
   const int font_id = BLF_default();
   UI_FontThemeColor(font_id, colorid);
 
   BLF_batch_draw_begin();
 
-  float ypos = rect->ymin + 4 * UI_DPI_FAC;
-  float xmin = rect->xmin;
-  float xmax = rect->xmax;
+  const float ypos = rect->ymin + 4 * UI_DPI_FAC;
+  const float xmin = rect->xmin;
+  const float xmax = rect->xmax;
 
-  for (uint i = 0; i < steps; i++) {
-    float xpos_view = start + i * distance;
-    float xpos_region = UI_view2d_view_to_region_x(v2d, xpos_view);
-    char text[32];
-    to_string(to_string_data, xpos_view, distance, sizeof(text), text);
-    float text_width = BLF_width(font_id, text, strlen(text));
+  char text[32];
 
-    if (xpos_region - text_width / 2.0f >= xmin && xpos_region + text_width / 2.0f <= xmax) {
-      BLF_draw_default_ascii(xpos_region - text_width / 2.0f, ypos, 0.0f, text, sizeof(text));
+  /* Calculate max_label_count and draw_frequency based on largest visible label. */
+  int draw_frequency;
+  {
+    to_string(to_string_data, start, 0, sizeof(text), text);
+    const float left_text_width = BLF_width(font_id, text, strlen(text));
+    to_string(to_string_data, start + steps * distance, 0, sizeof(text), text);
+    const float right_text_width = BLF_width(font_id, text, strlen(text));
+    const float max_text_width = max_ff(left_text_width, right_text_width);
+    const float max_label_count = BLI_rcti_size_x(&v2d->mask) / (max_text_width + 10.0f);
+    draw_frequency = ceil((float)steps / max_label_count);
+  }
+
+  if (draw_frequency != 0) {
+    const int start_index = abs((int)(start / distance)) % draw_frequency;
+    for (uint i = start_index; i < steps; i += draw_frequency) {
+      const float xpos_view = start + i * distance;
+      const float xpos_region = UI_view2d_view_to_region_x(v2d, xpos_view);
+      to_string(to_string_data, xpos_view, distance, sizeof(text), text);
+      const float text_width = BLF_width(font_id, text, strlen(text));
+
+      if (xpos_region - text_width / 2.0f >= xmin && xpos_region + text_width / 2.0f <= xmax) {
+        BLF_draw_default(xpos_region - text_width / 2.0f, ypos, 0.0f, text, sizeof(text));
+      }
     }
   }
 
   BLF_batch_draw_end();
-
   GPU_matrix_pop_projection();
 }
 
@@ -339,9 +355,6 @@ static void draw_vertical_scale_indicators(const ARegion *region,
     return;
   }
 
-  GPU_matrix_push_projection();
-  wmOrtho2_region_pixelspace(region);
-
   float start;
   uint steps;
   {
@@ -353,34 +366,45 @@ static void draw_vertical_scale_indicators(const ARegion *region,
                                   UI_view2d_region_to_view_y(v2d, rect->ymax),
                                   &start,
                                   &steps);
+    const uint steps_max = BLI_rcti_size_y(&v2d->mask);
+    if (UNLIKELY(steps >= steps_max)) {
+      return;
+    }
   }
+
+  GPU_matrix_push_projection();
+  wmOrtho2_region_pixelspace(region);
 
   const int font_id = BLF_default();
   UI_FontThemeColor(font_id, colorid);
 
-  BLF_enable(font_id, BLF_ROTATION);
-  BLF_rotation(font_id, M_PI_2);
-
   BLF_batch_draw_begin();
 
-  float xpos = rect->xmax - 2.0f * UI_DPI_FAC;
-  float ymin = rect->ymin;
-  float ymax = rect->ymax;
+  BLF_enable(font_id, BLF_SHADOW);
+  const float shadow_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+  BLF_shadow(font_id, 5, shadow_color);
+  BLF_shadow_offset(font_id, 1, -1);
+
+  const float x_offset = 8.0f;
+  const float xpos = (rect->xmin + x_offset) * UI_DPI_FAC;
+  const float ymin = rect->ymin;
+  const float ymax = rect->ymax;
+  const float y_offset = (BLF_height(font_id, "0", 1) / 2.0f) - U.pixelsize;
 
   for (uint i = 0; i < steps; i++) {
-    float ypos_view = start + i * distance;
-    float ypos_region = UI_view2d_view_to_region_y(v2d, ypos_view + display_offset);
+    const float ypos_view = start + i * distance;
+    const float ypos_region = UI_view2d_view_to_region_y(v2d, ypos_view + display_offset);
     char text[32];
     to_string(to_string_data, ypos_view, distance, sizeof(text), text);
-    float text_width = BLF_width(font_id, text, strlen(text));
 
-    if (ypos_region - text_width / 2.0f >= ymin && ypos_region + text_width / 2.0f <= ymax) {
-      BLF_draw_default_ascii(xpos, ypos_region - text_width / 2.0f, 0.0f, text, sizeof(text));
+    if (ypos_region - y_offset >= ymin && ypos_region + y_offset <= ymax) {
+      BLF_draw_default(xpos, ypos_region - y_offset, 0.0f, text, sizeof(text));
     }
   }
 
+  BLF_disable(font_id, BLF_SHADOW);
+
   BLF_batch_draw_end();
-  BLF_disable(font_id, BLF_ROTATION);
 
   GPU_matrix_pop_projection();
 }
@@ -392,11 +416,15 @@ static void view_to_string__frame_number(
 }
 
 static void view_to_string__time(
-    void *user_data, float v2d_pos, float UNUSED(v2d_step), uint max_len, char *r_str)
+    void *user_data, float v2d_pos, float v2d_step, uint max_len, char *r_str)
 {
   const Scene *scene = (const Scene *)user_data;
 
   int brevity_level = 0;
+  if (U.timecode_style == USER_TIMECODE_MINIMAL && v2d_step >= FPS) {
+    brevity_level = 1;
+  }
+
   BLI_timecode_string_from_time(
       r_str, max_len, brevity_level, v2d_pos / (float)FPS, FPS, U.timecode_style);
 }
@@ -439,39 +467,44 @@ float UI_view2d_grid_resolution_y__values(const struct View2D *v2d)
 /* Line Drawing API
  **************************************************/
 
-void UI_view2d_draw_lines_x__discrete_values(const View2D *v2d)
+void UI_view2d_draw_lines_x__discrete_values(const View2D *v2d, bool display_minor_lines)
 {
-  uint major_line_distance = view2d_major_step_x__discrete(v2d);
-  view2d_draw_lines(v2d, major_line_distance, major_line_distance > 1, 'v');
+  const uint major_line_distance = view2d_major_step_x__discrete(v2d);
+  view2d_draw_lines(
+      v2d, major_line_distance, display_minor_lines && (major_line_distance > 1), 'v');
 }
 
 void UI_view2d_draw_lines_x__values(const View2D *v2d)
 {
-  float major_line_distance = view2d_major_step_x__continuous(v2d);
+  const float major_line_distance = view2d_major_step_x__continuous(v2d);
   view2d_draw_lines(v2d, major_line_distance, true, 'v');
 }
 
 void UI_view2d_draw_lines_y__values(const View2D *v2d)
 {
-  float major_line_distance = view2d_major_step_y__continuous(v2d);
+  const float major_line_distance = view2d_major_step_y__continuous(v2d);
   view2d_draw_lines(v2d, major_line_distance, true, 'h');
 }
 
-void UI_view2d_draw_lines_x__discrete_time(const View2D *v2d, const Scene *scene)
+void UI_view2d_draw_lines_x__discrete_time(const View2D *v2d,
+                                           const Scene *scene,
+                                           bool display_minor_lines)
 {
-  float major_line_distance = view2d_major_step_x__time(v2d, scene);
-  view2d_draw_lines(v2d, major_line_distance, major_line_distance > 1, 'v');
+  const float major_line_distance = view2d_major_step_x__time(v2d, scene);
+  view2d_draw_lines(
+      v2d, major_line_distance, display_minor_lines && (major_line_distance > 1), 'v');
 }
 
 void UI_view2d_draw_lines_x__discrete_frames_or_seconds(const View2D *v2d,
                                                         const Scene *scene,
-                                                        bool display_seconds)
+                                                        bool display_seconds,
+                                                        bool display_minor_lines)
 {
   if (display_seconds) {
-    UI_view2d_draw_lines_x__discrete_time(v2d, scene);
+    UI_view2d_draw_lines_x__discrete_time(v2d, scene, display_minor_lines);
   }
   else {
-    UI_view2d_draw_lines_x__discrete_values(v2d);
+    UI_view2d_draw_lines_x__discrete_values(v2d, display_minor_lines);
   }
 }
 
@@ -480,7 +513,7 @@ void UI_view2d_draw_lines_x__frames_or_seconds(const View2D *v2d,
                                                bool display_seconds)
 {
   if (display_seconds) {
-    UI_view2d_draw_lines_x__discrete_time(v2d, scene);
+    UI_view2d_draw_lines_x__discrete_time(v2d, scene, true);
   }
   else {
     UI_view2d_draw_lines_x__values(v2d);
@@ -495,7 +528,7 @@ static void UI_view2d_draw_scale_x__discrete_values(const ARegion *region,
                                                     const rcti *rect,
                                                     int colorid)
 {
-  float number_step = view2d_major_step_x__discrete(v2d);
+  const float number_step = view2d_major_step_x__discrete(v2d);
   draw_horizontal_scale_indicators(
       region, v2d, number_step, rect, view_to_string__frame_number, NULL, colorid);
 }
@@ -503,7 +536,7 @@ static void UI_view2d_draw_scale_x__discrete_values(const ARegion *region,
 static void UI_view2d_draw_scale_x__discrete_time(
     const ARegion *region, const View2D *v2d, const rcti *rect, const Scene *scene, int colorid)
 {
-  float step = view2d_major_step_x__time(v2d, scene);
+  const float step = view2d_major_step_x__time(v2d, scene);
   draw_horizontal_scale_indicators(
       region, v2d, step, rect, view_to_string__time, (void *)scene, colorid);
 }
@@ -513,7 +546,7 @@ static void UI_view2d_draw_scale_x__values(const ARegion *region,
                                            const rcti *rect,
                                            int colorid)
 {
-  float step = view2d_major_step_x__continuous(v2d);
+  const float step = view2d_major_step_x__continuous(v2d);
   draw_horizontal_scale_indicators(region, v2d, step, rect, view_to_string__value, NULL, colorid);
 }
 
@@ -522,7 +555,7 @@ void UI_view2d_draw_scale_y__values(const ARegion *region,
                                     const rcti *rect,
                                     int colorid)
 {
-  float step = view2d_major_step_y__continuous(v2d);
+  const float step = view2d_major_step_y__continuous(v2d);
   draw_vertical_scale_indicators(
       region, v2d, step, 0.0f, rect, view_to_string__value, NULL, colorid);
 }

@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup sptext
@@ -29,6 +13,7 @@
 #include "DNA_text_types.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_math.h"
 #include "BLI_math_base.h"
 
 #include "BLT_translation.h"
@@ -55,6 +40,7 @@
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"
+#  include "BPY_extern_run.h"
 #endif
 
 #include "text_format.h"
@@ -80,6 +66,30 @@ static void test_line_start(char c, bool *r_last_state)
   }
   else if (!ELEM(c, '\t', ' ')) {
     *r_last_state = false;
+  }
+}
+
+/**
+ * This function receives a character and returns its closing pair if it exists.
+ * \param character: Character to find the closing pair.
+ * \return The closing pair of the character if it exists.
+ */
+static char text_closing_character_pair_get(const char character)
+{
+
+  switch (character) {
+    case '(':
+      return ')';
+    case '[':
+      return ']';
+    case '{':
+      return '}';
+    case '"':
+      return '"';
+    case '\'':
+      return '\'';
+    default:
+      return 0;
   }
 }
 
@@ -158,6 +168,15 @@ static bool text_new_poll(bContext *UNUSED(C))
   return 1;
 }
 
+static bool text_data_poll(bContext *C)
+{
+  Text *text = CTX_data_edit_text(C);
+  if (!text) {
+    return false;
+  }
+  return true;
+}
+
 static bool text_edit_poll(bContext *C)
 {
   Text *text = CTX_data_edit_text(C);
@@ -226,10 +245,7 @@ void text_update_line_edited(TextLine *line)
   }
 
   /* we just free format here, and let it rebuild during draw */
-  if (line->format) {
-    MEM_freeN(line->format);
-    line->format = NULL;
-  }
+  MEM_SAFE_FREE(line->format);
 }
 
 void text_update_edited(Text *text)
@@ -256,8 +272,6 @@ static int text_new_exec(bContext *C, wmOperator *UNUSED(op))
   PropertyRNA *prop;
 
   text = BKE_text_add(bmain, "Text");
-  /* Texts have no user by default... Only the 'real' user flag. */
-  id_us_min(&text->id);
 
   /* hook into UI */
   UI_context_active_but_prop_get_templateID(C, &ptr, &prop);
@@ -328,8 +342,6 @@ static int text_open_exec(bContext *C, wmOperator *op)
   RNA_string_get(op->ptr, "filepath", str);
 
   text = BKE_text_load_ex(bmain, str, BKE_main_blendfile_path(bmain), internal);
-  /* Texts have no user by default... Only the 'real' user flag. */
-  id_us_min(&text->id);
 
   if (!text) {
     if (op->customdata) {
@@ -406,9 +418,9 @@ void TEXT_OT_open(wmOperatorType *ot)
                                  FILE_OPENFILE,
                                  WM_FILESEL_FILEPATH,
                                  FILE_DEFAULTDISPLAY,
-                                 FILE_SORT_ALPHA);  // XXX TODO, relative_path
+                                 FILE_SORT_DEFAULT); /* TODO: relative_path. */
   RNA_def_boolean(
-      ot->srna, "internal", 0, "Make internal", "Make text file internal after loading");
+      ot->srna, "internal", 0, "Make Internal", "Make text file internal after loading");
 }
 
 /** \} */
@@ -498,12 +510,10 @@ static int text_unlink_exec(bContext *C, wmOperator *UNUSED(op))
     if (text->id.prev) {
       st->text = text->id.prev;
       text_update_cursor_moved(C);
-      WM_event_add_notifier(C, NC_TEXT | ND_CURSOR, st->text);
     }
     else if (text->id.next) {
       st->text = text->id.next;
       text_update_cursor_moved(C);
-      WM_event_add_notifier(C, NC_TEXT | ND_CURSOR, st->text);
     }
   }
 
@@ -572,17 +582,6 @@ void TEXT_OT_make_internal(wmOperatorType *ot)
 /** \name Save Operator
  * \{ */
 
-static bool text_save_poll(bContext *C)
-{
-  Text *text = CTX_data_edit_text(C);
-
-  if (!text_edit_poll(C)) {
-    return 0;
-  }
-
-  return (text->filepath != NULL && !(text->flags & TXT_ISMEM));
-}
-
 static void txt_write_file(Main *bmain, Text *text, ReportList *reports)
 {
   FILE *fp;
@@ -592,6 +591,13 @@ static void txt_write_file(Main *bmain, Text *text, ReportList *reports)
 
   BLI_strncpy(filepath, text->filepath, FILE_MAX);
   BLI_path_abs(filepath, BKE_main_blendfile_path(bmain));
+
+  /* Check if file write permission is ok. */
+  if (BLI_exists(filepath) && !BLI_file_is_writable(filepath)) {
+    BKE_reportf(
+        reports, RPT_ERROR, "Cannot save text file, path \"%s\" is not writable", filepath);
+    return;
+  }
 
   fp = BLI_fopen(filepath, "w");
   if (fp == NULL) {
@@ -615,8 +621,8 @@ static void txt_write_file(Main *bmain, Text *text, ReportList *reports)
   if (BLI_stat(filepath, &st) == 0) {
     text->mtime = st.st_mtime;
 
-    /* report since this can be called from key-shortcuts */
-    BKE_reportf(reports, RPT_INFO, "Saved Text '%s'", filepath);
+    /* Report since this can be called from key shortcuts. */
+    BKE_reportf(reports, RPT_INFO, "Saved text \"%s\"", filepath);
   }
   else {
     text->mtime = 0;
@@ -643,6 +649,18 @@ static int text_save_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static int text_save_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  Text *text = CTX_data_edit_text(C);
+
+  /* Internal and texts without a filepath will go to "Save As". */
+  if (text->filepath == NULL || (text->flags & TXT_ISMEM)) {
+    WM_operator_name_call(C, "TEXT_OT_save_as", WM_OP_INVOKE_DEFAULT, NULL, event);
+    return OPERATOR_CANCELLED;
+  }
+  return text_save_exec(C, op);
+}
+
 void TEXT_OT_save(wmOperatorType *ot)
 {
   /* identifiers */
@@ -652,7 +670,8 @@ void TEXT_OT_save(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = text_save_exec;
-  ot->poll = text_save_poll;
+  ot->invoke = text_save_invoke;
+  ot->poll = text_edit_poll;
 }
 
 /** \} */
@@ -732,7 +751,7 @@ void TEXT_OT_save_as(wmOperatorType *ot)
                                  FILE_SAVE,
                                  WM_FILESEL_FILEPATH,
                                  FILE_DEFAULTDISPLAY,
-                                 FILE_SORT_ALPHA);  // XXX TODO, relative_path
+                                 FILE_SORT_DEFAULT); /* XXX TODO: relative_path. */
 }
 
 /** \} */
@@ -740,11 +759,6 @@ void TEXT_OT_save_as(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Run Script Operator
  * \{ */
-
-static bool text_run_script_poll(bContext *C)
-{
-  return (CTX_data_edit_text(C) != NULL);
-}
 
 static int text_run_script(bContext *C, ReportList *reports)
 {
@@ -756,7 +770,7 @@ static int text_run_script(bContext *C, ReportList *reports)
   void *curl_prev = text->curl;
   int curc_prev = text->curc;
 
-  if (BPY_execute_text(C, text, reports, !is_live)) {
+  if (BPY_run_text(C, text, reports, !is_live)) {
     if (is_live) {
       /* for nice live updates */
       WM_event_add_notifier(C, NC_WINDOW | NA_EDITED, NULL);
@@ -766,7 +780,7 @@ static int text_run_script(bContext *C, ReportList *reports)
 
   /* Don't report error messages while live editing */
   if (!is_live) {
-    /* text may have freed its self */
+    /* text may have freed itself */
     if (CTX_data_edit_text(C) == text) {
       if (text->curl != curl_prev || curc_prev != text->curc) {
         text_update_cursor_moved(C);
@@ -807,7 +821,7 @@ void TEXT_OT_run_script(wmOperatorType *ot)
   ot->description = "Run active script";
 
   /* api callbacks */
-  ot->poll = text_run_script_poll;
+  ot->poll = text_data_poll;
   ot->exec = text_run_script_exec;
 
   /* flags */
@@ -1084,10 +1098,10 @@ static int text_indent_or_autocomplete_exec(bContext *C, wmOperator *UNUSED(op))
   TextLine *line = text->curl;
   bool text_before_cursor = text->curc != 0 && !ELEM(line->line[text->curc - 1], ' ', '\t');
   if (text_before_cursor && (txt_has_sel(text) == false)) {
-    WM_operator_name_call(C, "TEXT_OT_autocomplete", WM_OP_INVOKE_DEFAULT, NULL);
+    WM_operator_name_call(C, "TEXT_OT_autocomplete", WM_OP_INVOKE_DEFAULT, NULL, NULL);
   }
   else {
-    WM_operator_name_call(C, "TEXT_OT_indent", WM_OP_EXEC_DEFAULT, NULL);
+    WM_operator_name_call(C, "TEXT_OT_indent", WM_OP_EXEC_DEFAULT, NULL, NULL);
   }
   return OPERATOR_FINISHED;
 }
@@ -1207,7 +1221,7 @@ static int text_line_break_exec(bContext *C, wmOperator *UNUSED(op))
 
   text_drawcache_tag_update(st, 0);
 
-  // double check tabs/spaces before splitting the line
+  /* Double check tabs/spaces before splitting the line. */
   curts = txt_setcurr_tab_spaces(text, space);
   ED_text_undo_push_init(C);
   txt_split_curline(text);
@@ -1708,7 +1722,7 @@ static int text_get_cursor_rel(
         loop = 0;
         break;
       }
-      else if (ch == ' ' || ch == '-') {
+      else if (ELEM(ch, ' ', '-')) {
         if (found) {
           loop = 0;
           break;
@@ -1883,7 +1897,7 @@ static void txt_wrap_move_bol(SpaceText *st, ARegion *region, const bool sel)
         end += max;
         chop = 1;
       }
-      else if (ch == ' ' || ch == '-' || ch == '\0') {
+      else if (ELEM(ch, ' ', '-', '\0')) {
         if (j >= oldc) {
           *charp = BLI_str_utf8_offset_from_column((*linep)->line, start);
           loop = 0;
@@ -1950,7 +1964,7 @@ static void txt_wrap_move_eol(SpaceText *st, ARegion *region, const bool sel)
         end = MIN2(end, i);
 
         if (chop) {
-          endj = BLI_str_prev_char_utf8((*linep)->line + j) - (*linep)->line;
+          endj = BLI_str_find_prev_char_utf8((*linep)->line + j, (*linep)->line) - (*linep)->line;
         }
 
         if (endj >= oldc) {
@@ -1973,7 +1987,7 @@ static void txt_wrap_move_eol(SpaceText *st, ARegion *region, const bool sel)
         loop = 0;
         break;
       }
-      else if (ch == ' ' || ch == '-') {
+      else if (ELEM(ch, ' ', '-')) {
         end = i + 1;
         endj = j;
         chop = 0;
@@ -2397,7 +2411,17 @@ static int text_delete_exec(bContext *C, wmOperator *op)
         }
       }
     }
-
+    if (U.text_flag & USER_TEXT_EDIT_AUTO_CLOSE) {
+      const char *curr = text->curl->line + text->curc;
+      if (*curr != '\0') {
+        const char *prev = BLI_str_find_prev_char_utf8(curr, text->curl->line);
+        if ((curr != prev) && /* When back-spacing from the start of the line. */
+            (*curr == text_closing_character_pair_get(*prev))) {
+          txt_move_right(text, false);
+          txt_backspace_char(text);
+        }
+      }
+    }
     txt_backspace_char(text);
   }
   else if (type == DEL_NEXT_WORD) {
@@ -2576,7 +2600,7 @@ static int text_scroll_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  txt_screen_skip(st, region, lines * U.wheellinescroll);
+  txt_screen_skip(st, region, lines * 3);
 
   ED_area_tag_redraw(CTX_wm_area(C));
 
@@ -2587,20 +2611,18 @@ static void text_scroll_apply(bContext *C, wmOperator *op, const wmEvent *event)
 {
   SpaceText *st = CTX_wm_space_text(C);
   TextScroll *tsc = op->customdata;
-  int mval[2] = {event->x, event->y};
+  const int mval[2] = {event->xy[0], event->xy[1]};
 
   text_update_character_width(st);
 
   /* compute mouse move distance */
   if (tsc->is_first) {
-    tsc->mval_prev[0] = mval[0];
-    tsc->mval_prev[1] = mval[1];
+    copy_v2_v2_int(tsc->mval_prev, mval);
     tsc->is_first = false;
   }
 
   if (event->type != MOUSEPAN) {
-    tsc->mval_delta[0] = mval[0] - tsc->mval_prev[0];
-    tsc->mval_delta[1] = mval[1] - tsc->mval_prev[1];
+    sub_v2_v2v2_int(tsc->mval_delta, mval, tsc->mval_prev);
   }
 
   /* accumulate scroll, in float values for events that give less than one
@@ -2752,11 +2774,10 @@ static int text_scroll_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   if (event->type == MOUSEPAN) {
     text_update_character_width(st);
 
-    tsc->mval_prev[0] = event->x;
-    tsc->mval_prev[1] = event->y;
+    copy_v2_v2_int(tsc->mval_prev, event->xy);
     /* Sensitivity of scroll set to 4pix per line/char */
-    tsc->mval_delta[0] = (event->x - event->prevx) * st->runtime.cwidth_px / 4;
-    tsc->mval_delta[1] = (event->y - event->prevy) * st->runtime.lheight_px / 4;
+    tsc->mval_delta[0] = (event->xy[0] - event->prev_xy[0]) * st->runtime.cwidth_px / 4;
+    tsc->mval_delta[1] = (event->xy[1] - event->prev_xy[1]) * st->runtime.lheight_px / 4;
     tsc->is_first = false;
     tsc->is_scrollbar = false;
     text_scroll_apply(C, op, event);
@@ -2774,8 +2795,7 @@ void TEXT_OT_scroll(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Scroll";
   /* don't really see the difference between this and
-   * scroll_bar. Both do basically the same thing (aside
-   * from keymaps).*/
+   * scroll_bar. Both do basically the same thing (aside from key-maps). */
   ot->idname = "TEXT_OT_scroll";
 
   /* api callbacks */
@@ -2881,8 +2901,7 @@ void TEXT_OT_scroll_bar(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Scrollbar";
   /* don't really see the difference between this and
-   * scroll. Both do basically the same thing (aside
-   * from keymaps).*/
+   * scroll. Both do basically the same thing (aside from key-maps). */
   ot->idname = "TEXT_OT_scroll_bar";
 
   /* api callbacks */
@@ -2913,9 +2932,9 @@ typedef struct SetSelection {
 
 static int flatten_width(SpaceText *st, const char *str)
 {
-  int i, total = 0;
+  int total = 0;
 
-  for (i = 0; str[i]; i += BLI_str_utf8_size_safe(str + i)) {
+  for (int i = 0; str[i]; i += BLI_str_utf8_size_safe(str + i)) {
     if (str[i] == '\t') {
       total += st->tabnumber - total % st->tabnumber;
     }
@@ -3051,7 +3070,7 @@ static void text_cursor_set_to_pos_wrapped(
             break;
           }
         }
-        else if (ch == ' ' || ch == '-' || ch == '\0') {
+        else if (ELEM(ch, ' ', '-', '\0')) {
           if (found) {
             break;
           }
@@ -3188,7 +3207,7 @@ static void text_cursor_set_apply(bContext *C, wmOperator *op, const wmEvent *ev
 
     if (event->type == TIMER) {
       text_cursor_set_to_pos(st, region, event->mval[0], event->mval[1], 1);
-      text_scroll_to_cursor(st, region, false);
+      ED_text_scroll_to_cursor(st, region, false);
       WM_event_add_notifier(C, NC_TEXT | ND_CURSOR, st->text);
     }
   }
@@ -3198,7 +3217,7 @@ static void text_cursor_set_apply(bContext *C, wmOperator *op, const wmEvent *ev
     if (event->type == TIMER) {
       text_cursor_set_to_pos(
           st, region, CLAMPIS(event->mval[0], 0, region->winx), event->mval[1], 1);
-      text_scroll_to_cursor(st, region, false);
+      ED_text_scroll_to_cursor(st, region, false);
       WM_event_add_notifier(C, NC_TEXT | ND_CURSOR, st->text);
     }
   }
@@ -3207,7 +3226,7 @@ static void text_cursor_set_apply(bContext *C, wmOperator *op, const wmEvent *ev
 
     if (event->type != TIMER) {
       text_cursor_set_to_pos(st, region, event->mval[0], event->mval[1], 1);
-      text_scroll_to_cursor(st, region, false);
+      ED_text_scroll_to_cursor(st, region, false);
       WM_event_add_notifier(C, NC_TEXT | ND_CURSOR, st->text);
 
       ssel->mval_prev[0] = event->mval[0];
@@ -3421,26 +3440,33 @@ static int text_insert_exec(bContext *C, wmOperator *op)
   SpaceText *st = CTX_wm_space_text(C);
   Text *text = CTX_data_edit_text(C);
   char *str;
+  int str_len;
   bool done = false;
   size_t i = 0;
   uint code;
 
   text_drawcache_tag_update(st, 0);
 
-  str = RNA_string_get_alloc(op->ptr, "text", NULL, 0);
+  str = RNA_string_get_alloc(op->ptr, "text", NULL, 0, &str_len);
 
   ED_text_undo_push_init(C);
 
   if (st && st->overwrite) {
     while (str[i]) {
-      code = BLI_str_utf8_as_unicode_step(str, &i);
+      code = BLI_str_utf8_as_unicode_step(str, str_len, &i);
       done |= txt_replace_char(text, code);
     }
   }
   else {
     while (str[i]) {
-      code = BLI_str_utf8_as_unicode_step(str, &i);
+      code = BLI_str_utf8_as_unicode_step(str, str_len, &i);
       done |= txt_add_char(text, code);
+      if (U.text_flag & USER_TEXT_EDIT_AUTO_CLOSE) {
+        if (text_closing_character_pair_get(code)) {
+          done |= txt_add_char(text, text_closing_character_pair_get(code));
+          txt_move_left(text, false);
+        }
+      }
     }
   }
 
@@ -3462,13 +3488,14 @@ static int text_insert_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   int ret;
 
-  // if (!RNA_struct_property_is_set(op->ptr, "text")) { /* always set from keymap XXX */
+  /* NOTE: the "text" property is always set from key-map,
+   * so we can't use #RNA_struct_property_is_set, check the length instead. */
   if (!RNA_string_length(op->ptr, "text")) {
     /* if alt/ctrl/super are pressed pass through except for utf8 character event
      * (when input method are used for utf8 inputs, the user may assign key event
      * including alt/ctrl/super like ctrl+m to commit utf8 string.  in such case,
      * the modifiers in the utf8 character event make no sense.) */
-    if ((event->ctrl || event->oskey) && !event->utf8_buf[0]) {
+    if ((event->modifier & (KM_CTRL | KM_OSKEY)) && !event->utf8_buf[0]) {
       return OPERATOR_PASS_THROUGH;
     }
 
@@ -3481,7 +3508,7 @@ static int text_insert_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     }
     else {
       /* in theory, ghost can set value to extended ascii here */
-      len = BLI_str_utf8_from_unicode(event->ascii, str);
+      len = BLI_str_utf8_from_unicode(event->ascii, str, sizeof(str) - 1);
     }
     str[len] = '\0';
     RNA_string_set(op->ptr, "text", str);
@@ -3691,7 +3718,7 @@ void TEXT_OT_replace(wmOperatorType *ot)
 
   /* properties */
   PropertyRNA *prop;
-  prop = RNA_def_boolean(ot->srna, "all", false, "Replace all", "Replace all occurrences");
+  prop = RNA_def_boolean(ot->srna, "all", false, "Replace All", "Replace all occurrences");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 
@@ -3779,6 +3806,17 @@ static const EnumPropertyItem resolution_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
+static bool text_resolve_conflict_poll(bContext *C)
+{
+  Text *text = CTX_data_edit_text(C);
+
+  if (!text_edit_poll(C)) {
+    return false;
+  }
+
+  return ((text->filepath != NULL) && !(text->flags & TXT_ISMEM));
+}
+
 static int text_resolve_conflict_exec(bContext *C, wmOperator *op)
 {
   Text *text = CTX_data_edit_text(C);
@@ -3808,7 +3846,7 @@ static int text_resolve_conflict_invoke(bContext *C, wmOperator *op, const wmEve
   switch (BKE_text_file_modified_check(text)) {
     case 1:
       if (text->flags & TXT_ISDIRTY) {
-        /* modified locally and externally, ahhh. offer more possibilities. */
+        /* Modified locally and externally, ah. offer more possibilities. */
         pup = UI_popup_menu_begin(
             C, IFACE_("File Modified Outside and Inside Blender"), ICON_NONE);
         layout = UI_popup_menu_layout(pup);
@@ -3870,7 +3908,7 @@ void TEXT_OT_resolve_conflict(wmOperatorType *ot)
   /* api callbacks */
   ot->exec = text_resolve_conflict_exec;
   ot->invoke = text_resolve_conflict_invoke;
-  ot->poll = text_save_poll;
+  ot->poll = text_resolve_conflict_poll;
 
   /* properties */
   RNA_def_enum(ot->srna,
@@ -3889,7 +3927,7 @@ void TEXT_OT_resolve_conflict(wmOperatorType *ot)
 
 static int text_to_3d_object_exec(bContext *C, wmOperator *op)
 {
-  Text *text = CTX_data_edit_text(C);
+  const Text *text = CTX_data_edit_text(C);
   const bool split_lines = RNA_boolean_get(op->ptr, "split_lines");
 
   ED_text_to_object(C, text, split_lines);
@@ -3906,7 +3944,7 @@ void TEXT_OT_to_3d_object(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = text_to_3d_object_exec;
-  ot->poll = text_edit_poll;
+  ot->poll = text_data_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;

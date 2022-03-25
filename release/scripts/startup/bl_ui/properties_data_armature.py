@@ -1,20 +1,4 @@
-# ##### BEGIN GPL LICENSE BLOCK #####
-#
-#  This program is free software; you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License
-#  as published by the Free Software Foundation; either version 2
-#  of the License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software Foundation,
-#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# ##### END GPL LICENSE BLOCK #####
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 # <pep8 compliant>
 import bpy
@@ -86,11 +70,18 @@ class DATA_PT_display(ArmatureButtonsPanel, Panel):
 
         col = layout.column(heading="Show")
         col.prop(arm, "show_names", text="Names")
-        col.prop(arm, "show_axes", text="Axes")
         col.prop(arm, "show_bone_custom_shapes", text="Shapes")
         col.prop(arm, "show_group_colors", text="Group Colors")
+
         if ob:
             col.prop(ob, "show_in_front", text="In Front")
+
+        col = layout.column(align=False, heading="Axes")
+        row = col.row(align=True)
+        row.prop(arm, "show_axes", text="")
+        sub = row.row(align=True)
+        sub.active = arm.show_axes
+        sub.prop(arm, "axes_position", text="Position")
 
 
 class DATA_MT_bone_group_context_menu(Menu):
@@ -133,7 +124,6 @@ class DATA_PT_bone_groups(ArmatureButtonsPanel, Panel):
         )
 
         col = row.column(align=True)
-        col.active = (ob.proxy is None)
         col.operator("pose.group_add", icon='ADD', text="")
         col.operator("pose.group_remove", icon='REMOVE', text="")
         col.menu("DATA_MT_bone_group_context_menu", icon='DOWNARROW_HLT', text="")
@@ -143,7 +133,6 @@ class DATA_PT_bone_groups(ArmatureButtonsPanel, Panel):
             col.operator("pose.group_move", icon='TRIA_DOWN', text="").direction = 'DOWN'
 
             split = layout.split()
-            split.active = (ob.proxy is None)
 
             col = split.column()
             col.prop(group, "color_set")
@@ -156,7 +145,6 @@ class DATA_PT_bone_groups(ArmatureButtonsPanel, Panel):
                 sub.prop(group.colors, "active", text="")
 
         row = layout.row()
-        row.active = (ob.proxy is None)
 
         sub = row.row(align=True)
         sub.operator("pose.group_assign", text="Assign")
@@ -215,6 +203,7 @@ class DATA_PT_pose_library(ArmatureButtonsPanel, Panel):
                 ).pose_index = poselib.pose_markers.active_index
 
             col.operator("poselib.action_sanitize", icon='HELP', text="")  # XXX: put in menu?
+            col.operator("poselib.convert_old_poselib", icon='ASSET_MANAGER', text="")
 
             if pose_marker_active is not None:
                 col.operator("poselib.pose_move", icon='TRIA_UP', text="").direction = 'UP'

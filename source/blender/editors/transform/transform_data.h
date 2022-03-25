@@ -1,35 +1,18 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edtransform
  */
 
-#ifndef __TRANSFORM_DATA_H__
-#define __TRANSFORM_DATA_H__
+#pragma once
 
-struct bConstraint;
 struct Object;
+struct bConstraint;
 
 #define TRANSDATABASIC \
-  /** Extra data (mirrored element pointer, in editmode mesh to BMVert) \
-   * (editbone for roll fixing) (...). */ \
+  /** Extra data (mirrored element pointer, in edit-mode mesh to #BMVert) \
+   * (edit-bone for roll fixing) (...). */ \
   void *extra; \
   /** Location of the data to transform. */ \
   float *loc; \
@@ -54,10 +37,12 @@ typedef struct TransDataMirror {
 typedef struct TransDataExtension {
   /** Initial object drot. */
   float drot[3];
-  // /* Initial object drotAngle,    TODO: not yet implemented */
-  // float drotAngle;
-  // /* Initial object drotAxis, TODO: not yet implemented */
-  // float drotAxis[3];
+#if 0 /* TODO: not yet implemented */
+  /* Initial object drotAngle */
+  float drotAngle;
+  /* Initial object drotAxis */
+  float drotAxis[3];
+#endif
   /** Initial object delta quat. */
   float dquat[4];
   /** Initial object delta scale. */
@@ -84,6 +69,8 @@ typedef struct TransDataExtension {
   float isize[3];
   /** Object matrix. */
   float obmat[4][4];
+  /** Use for #V3D_ORIENT_GIMBAL orientation. */
+  float axismtx_gimbal[3][3];
   /** Use instead of #TransData.smtx,
    * It is the same but without the #Bone.bone_mat, see #TD_PBONE_LOCAL_MTX_C. */
   float l_smtx[3][3];
@@ -115,17 +102,17 @@ typedef struct TransData2D {
  * Also to unset temporary flags.
  */
 typedef struct TransDataCurveHandleFlags {
-  char ih1, ih2;
-  char *h1, *h2;
+  uint8_t ih1, ih2;
+  uint8_t *h1, *h2;
 } TransDataCurveHandleFlags;
 
 typedef struct TransData {
   TRANSDATABASIC;
-  /** Distance needed to affect element (for Proportionnal Editing). */
+  /** Distance needed to affect element (for Proportional Editing). */
   float dist;
-  /** Distance to the nearest element (for Proportionnal Editing). */
+  /** Distance to the nearest element (for Proportional Editing). */
   float rdist;
-  /** Factor of the transformation (for Proportionnal Editing). */
+  /** Factor of the transformation (for Proportional Editing). */
   float factor;
   /** Value pointer for special transforms. */
   float *val;
@@ -140,13 +127,15 @@ typedef struct TransData {
   struct Object *ob;
   /** For objects/bones, the first constraint in its constraint stack. */
   struct bConstraint *con;
-  /** For objects, poses. 1 single malloc per TransInfo! */
+  /** For objects, poses. 1 single allocation per #TransInfo! */
   TransDataExtension *ext;
   /** for curves, stores handle flags for modification/cancel. */
   TransDataCurveHandleFlags *hdata;
-  /** If set, copy of Object or PoseChannel protection. */
+  /** If set, copy of Object or #bPoseChannel protection. */
   short protectflag;
 } TransData;
+
+#define TRANSDATA_THREAD_LIMIT 1024
 
 /** #TransData.flag */
 enum {
@@ -167,15 +156,17 @@ enum {
   TD_BEZTRIPLE = 1 << 8,
   /** when this is set, don't apply translation changes to this element */
   TD_NO_LOC = 1 << 9,
-  /** For Graph Editor autosnap, indicates that point should not undergo autosnapping */
+  /** For Graph Editor auto-snap, indicates that point should not undergo auto-snapping. */
   TD_NOTIMESNAP = 1 << 10,
   /** For Graph Editor - curves that can only have int-values
    * need their keyframes tagged with this. */
   TD_INTVALUES = 1 << 11,
+#define TD_MIRROR_AXIS_SHIFT 12
   /** For editmode mirror. */
   TD_MIRROR_X = 1 << 12,
   TD_MIRROR_Y = 1 << 13,
   TD_MIRROR_Z = 1 << 14,
+#define TD_MIRROR_EDGE_AXIS_SHIFT 12
   /** For editmode mirror, clamp axis to 0 */
   TD_MIRROR_EDGE_X = 1 << 12,
   TD_MIRROR_EDGE_Y = 1 << 13,
@@ -193,5 +184,3 @@ enum {
 /* Hard min/max for proportional size. */
 #define T_PROP_SIZE_MIN 1e-6f
 #define T_PROP_SIZE_MAX 1e12f
-
-#endif

@@ -1,25 +1,11 @@
-/* This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software  Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
  */
 
-#include <string.h>
-
 #include "BLI_listbase.h"
+#include "BLI_string.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -41,6 +27,7 @@
 #include "UI_resources.h"
 
 #include "RNA_access.h"
+#include "RNA_prototypes.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -56,35 +43,35 @@
  */
 static void shaderfx_reorder(bContext *C, Panel *panel, int new_index)
 {
-  Object *ob = ED_object_active_context(C);
+  PointerRNA *fx_ptr = UI_panel_custom_data_get(panel);
+  ShaderFxData *fx = (ShaderFxData *)fx_ptr->data;
 
-  ShaderFxData *fx = BLI_findlink(&ob->shader_fx, panel->runtime.list_index);
   PointerRNA props_ptr;
   wmOperatorType *ot = WM_operatortype_find("OBJECT_OT_shaderfx_move_to_index", false);
   WM_operator_properties_create_ptr(&props_ptr, ot);
   RNA_string_set(&props_ptr, "shaderfx", fx->name);
   RNA_int_set(&props_ptr, "index", new_index);
-  WM_operator_name_call_ptr(C, ot, WM_OP_INVOKE_DEFAULT, &props_ptr);
+  WM_operator_name_call_ptr(C, ot, WM_OP_INVOKE_DEFAULT, &props_ptr, NULL);
   WM_operator_properties_free(&props_ptr);
 }
 
 /**
  * Get the expand flag from the active effect to use for the panel.
  */
-static short get_shaderfx_expand_flag(const bContext *C, Panel *panel)
+static short get_shaderfx_expand_flag(const bContext *UNUSED(C), Panel *panel)
 {
-  Object *ob = ED_object_active_context(C);
-  ShaderFxData *fx = BLI_findlink(&ob->shader_fx, panel->runtime.list_index);
+  PointerRNA *fx_ptr = UI_panel_custom_data_get(panel);
+  ShaderFxData *fx = (ShaderFxData *)fx_ptr->data;
   return fx->ui_expand_flag;
 }
 
 /**
  * Save the expand flag for the panel and sub-panels to the effect.
  */
-static void set_shaderfx_expand_flag(const bContext *C, Panel *panel, short expand_flag)
+static void set_shaderfx_expand_flag(const bContext *UNUSED(C), Panel *panel, short expand_flag)
 {
-  Object *ob = ED_object_active_context(C);
-  ShaderFxData *fx = BLI_findlink(&ob->shader_fx, panel->runtime.list_index);
+  PointerRNA *fx_ptr = UI_panel_custom_data_get(panel);
+  ShaderFxData *fx = (ShaderFxData *)fx_ptr->data;
   fx->ui_expand_flag = expand_flag;
 }
 
@@ -94,49 +81,92 @@ static void set_shaderfx_expand_flag(const bContext *C, Panel *panel, short expa
 /** \name ShaderFx Panel Layouts
  * \{ */
 
-/**
- * Draw shaderfx error message.
- */
 void shaderfx_panel_end(uiLayout *layout, PointerRNA *ptr)
 {
   ShaderFxData *fx = ptr->data;
   if (fx->error) {
     uiLayout *row = uiLayoutRow(layout, false);
-    uiItemL(row, IFACE_(fx->error), ICON_ERROR);
+    uiItemL(row, TIP_(fx->error), ICON_ERROR);
   }
 }
 
-/**
- * Gets RNA pointers for the active object and the panel's shaderfx data.
- */
-void shaderfx_panel_get_property_pointers(const bContext *C,
-                                          Panel *panel,
-                                          PointerRNA *r_ob_ptr,
-                                          PointerRNA *r_md_ptr)
+PointerRNA *shaderfx_panel_get_property_pointers(Panel *panel, PointerRNA *r_ob_ptr)
 {
-  Object *ob = ED_object_active_context(C);
-  ShaderFxData *md = BLI_findlink(&ob->shader_fx, panel->runtime.list_index);
-
-  RNA_pointer_create(&ob->id, &RNA_ShaderFx, md, r_md_ptr);
+  PointerRNA *ptr = UI_panel_custom_data_get(panel);
+  BLI_assert(RNA_struct_is_a(ptr->type, &RNA_ShaderFx));
 
   if (r_ob_ptr != NULL) {
-    RNA_pointer_create(&ob->id, &RNA_Object, ob, r_ob_ptr);
+    RNA_pointer_create(ptr->owner_id, &RNA_Object, ptr->owner_id, r_ob_ptr);
   }
 
-  uiLayoutSetContextPointer(panel->layout, "shaderfx", r_md_ptr);
+  UI_panel_context_pointer_set(panel, "shaderfx", ptr);
+
+  return ptr;
 }
 
 #define ERROR_LIBDATA_MESSAGE TIP_("External library data")
 
-static void shaderfx_panel_header(const bContext *C, Panel *panel)
+static void gpencil_shaderfx_ops_extra_draw(bContext *C, uiLayout *layout, void *fx_v)
+{
+  PointerRNA op_ptr;
+  uiLayout *row;
+  ShaderFxData *fx = (ShaderFxData *)fx_v;
+
+  PointerRNA ptr;
+  Object *ob = ED_object_active_context(C);
+  RNA_pointer_create(&ob->id, &RNA_ShaderFx, fx, &ptr);
+  uiLayoutSetContextPointer(layout, "shaderfx", &ptr);
+  uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
+
+  uiLayoutSetUnitsX(layout, 4.0f);
+
+  /* Duplicate. */
+  uiItemO(layout,
+          CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Duplicate"),
+          ICON_DUPLICATE,
+          "OBJECT_OT_shaderfx_copy");
+
+  uiItemS(layout);
+
+  /* Move to first. */
+  row = uiLayoutColumn(layout, false);
+  uiItemFullO(row,
+              "OBJECT_OT_shaderfx_move_to_index",
+              IFACE_("Move to First"),
+              ICON_TRIA_UP,
+              NULL,
+              WM_OP_INVOKE_DEFAULT,
+              0,
+              &op_ptr);
+  RNA_int_set(&op_ptr, "index", 0);
+  if (!fx->prev) {
+    uiLayoutSetEnabled(row, false);
+  }
+
+  /* Move to last. */
+  row = uiLayoutColumn(layout, false);
+  uiItemFullO(row,
+              "OBJECT_OT_shaderfx_move_to_index",
+              IFACE_("Move to Last"),
+              ICON_TRIA_DOWN,
+              NULL,
+              WM_OP_INVOKE_DEFAULT,
+              0,
+              &op_ptr);
+  RNA_int_set(&op_ptr, "index", BLI_listbase_count(&ob->shader_fx) - 1);
+  if (!fx->next) {
+    uiLayoutSetEnabled(row, false);
+  }
+}
+
+static void shaderfx_panel_header(const bContext *UNUSED(C), Panel *panel)
 {
   uiLayout *layout = panel->layout;
   bool narrow_panel = (panel->sizex < UI_UNIT_X * 7 && panel->sizex != 0);
 
-  PointerRNA ptr;
-  shaderfx_panel_get_property_pointers(C, panel, NULL, &ptr);
-  Object *ob = ED_object_active_context(C);
-  ShaderFxData *fx = (ShaderFxData *)ptr.data;
+  PointerRNA *ptr = shaderfx_panel_get_property_pointers(panel, NULL);
+  Object *ob = (Object *)ptr->owner_id;
+  ShaderFxData *fx = (ShaderFxData *)ptr->data;
 
   const ShaderFxTypeInfo *fxti = BKE_shaderfx_get_info(fx->type);
 
@@ -147,22 +177,25 @@ static void shaderfx_panel_header(const bContext *C, Panel *panel)
   if (fxti->isDisabled && fxti->isDisabled(fx, 0)) {
     uiLayoutSetRedAlert(row, true);
   }
-  uiItemL(row, "", RNA_struct_ui_icon(ptr.type));
+  uiItemL(row, "", RNA_struct_ui_icon(ptr->type));
 
   /* Effect name. */
   row = uiLayoutRow(layout, true);
   if (!narrow_panel) {
-    uiItemR(row, &ptr, "name", 0, "", ICON_NONE);
+    uiItemR(row, ptr, "name", 0, "", ICON_NONE);
   }
 
   /* Mode enabling buttons. */
   if (fxti->flags & eShaderFxTypeFlag_SupportsEditmode) {
     uiLayout *sub = uiLayoutRow(row, true);
     uiLayoutSetActive(sub, false);
-    uiItemR(sub, &ptr, "show_in_editmode", 0, "", ICON_NONE);
+    uiItemR(sub, ptr, "show_in_editmode", 0, "", ICON_NONE);
   }
-  uiItemR(row, &ptr, "show_viewport", 0, "", ICON_NONE);
-  uiItemR(row, &ptr, "show_render", 0, "", ICON_NONE);
+  uiItemR(row, ptr, "show_viewport", 0, "", ICON_NONE);
+  uiItemR(row, ptr, "show_render", 0, "", ICON_NONE);
+
+  /* Extra operators. */
+  uiItemMenuF(row, "", ICON_DOWNARROW_HLT, gpencil_shaderfx_ops_extra_draw, fx);
 
   row = uiLayoutRow(row, false);
   uiLayoutSetEmboss(row, UI_EMBOSS_NONE);
@@ -185,22 +218,14 @@ static bool shaderfx_ui_poll(const bContext *C, PanelType *UNUSED(pt))
   return (ob != NULL) && (ob->type == OB_GPENCIL);
 }
 
-/**
- * Create a panel in the context's region
- */
 PanelType *shaderfx_panel_register(ARegionType *region_type, ShaderFxType type, PanelDrawFn draw)
 {
+  PanelType *panel_type = MEM_callocN(sizeof(PanelType), __func__);
 
-  /* Get the name for the effect's panel. */
-  char panel_idname[BKE_ST_MAXNAME];
-  BKE_shaderfxType_panel_id(type, panel_idname);
-
-  PanelType *panel_type = MEM_callocN(sizeof(PanelType), panel_idname);
-
-  strcpy(panel_type->idname, panel_idname);
-  strcpy(panel_type->label, "");
-  strcpy(panel_type->context, "shaderfx");
-  strcpy(panel_type->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
+  BKE_shaderfxType_panel_id(type, panel_type->idname);
+  BLI_strncpy(panel_type->label, "", BKE_ST_MAXNAME);
+  BLI_strncpy(panel_type->context, "shaderfx", BKE_ST_MAXNAME);
+  BLI_strncpy(panel_type->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA, BKE_ST_MAXNAME);
 
   panel_type->draw_header = shaderfx_panel_header;
   panel_type->draw = draw;
@@ -208,7 +233,7 @@ PanelType *shaderfx_panel_register(ARegionType *region_type, ShaderFxType type, 
 
   /* Give the panel the special flag that says it was built here and corresponds to a
    * shader effect rather than a PanelType. */
-  panel_type->flag = PNL_LAYOUT_HEADER_EXPAND | PNL_DRAW_BOX | PNL_INSTANCED;
+  panel_type->flag = PANEL_TYPE_HEADER_EXPAND | PANEL_TYPE_INSTANCED;
   panel_type->reorder = shaderfx_reorder;
   panel_type->get_list_data_expand_flag = get_shaderfx_expand_flag;
   panel_type->set_list_data_expand_flag = set_shaderfx_expand_flag;
@@ -218,12 +243,6 @@ PanelType *shaderfx_panel_register(ARegionType *region_type, ShaderFxType type, 
   return panel_type;
 }
 
-/**
- * Add a child panel to the parent.
- *
- * \note To create the panel type's idname, it appends the \a name argument to the \a parent's
- * idname.
- */
 PanelType *shaderfx_subpanel_register(ARegionType *region_type,
                                       const char *name,
                                       const char *label,
@@ -231,26 +250,20 @@ PanelType *shaderfx_subpanel_register(ARegionType *region_type,
                                       PanelDrawFn draw,
                                       PanelType *parent)
 {
-  /* Create the subpanel's ID name. */
-  char panel_idname[BKE_ST_MAXNAME];
-  strcpy(panel_idname, parent->idname);
-  strcat(panel_idname, "_");
-  strcat(panel_idname, name);
+  PanelType *panel_type = MEM_callocN(sizeof(PanelType), __func__);
 
-  PanelType *panel_type = MEM_callocN(sizeof(PanelType), panel_idname);
-
-  strcpy(panel_type->idname, panel_idname);
-  strcpy(panel_type->label, label);
-  strcpy(panel_type->context, "shaderfx");
-  strcpy(panel_type->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
+  BLI_snprintf(panel_type->idname, BKE_ST_MAXNAME, "%s_%s", parent->idname, name);
+  BLI_strncpy(panel_type->label, label, BKE_ST_MAXNAME);
+  BLI_strncpy(panel_type->context, "shaderfx", BKE_ST_MAXNAME);
+  BLI_strncpy(panel_type->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA, BKE_ST_MAXNAME);
 
   panel_type->draw_header = draw_header;
   panel_type->draw = draw;
   panel_type->poll = shaderfx_ui_poll;
-  panel_type->flag = (PNL_DEFAULT_CLOSED | PNL_DRAW_BOX);
+  panel_type->flag = PANEL_TYPE_DEFAULT_CLOSED;
 
   BLI_assert(parent != NULL);
-  strcpy(panel_type->parent_id, parent->idname);
+  BLI_strncpy(panel_type->parent_id, parent->idname, BKE_ST_MAXNAME);
   panel_type->parent = parent;
   BLI_addtail(&parent->children, BLI_genericNodeN(panel_type));
   BLI_addtail(&region_type->paneltypes, panel_type);

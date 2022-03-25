@@ -124,7 +124,7 @@ void straight_line_dir(bvec4 edges1, bvec4 edges2, out vec2 line_start, out vec2
 vec2 diag_offset(bvec4 edges)
 {
   /* X_NEG | Y_POS as reference. Other cases are rotated to match reference.
-   * So the line is comming from bottom left. */
+   * So the line is coming from bottom left. */
   if (all(edges.wz)) {
     /* Horizontal line. */
     return vec2(2.5, 0.5);
@@ -169,7 +169,7 @@ void diag_dir(bvec4 edges1, bvec4 edges2, out vec2 line_start, out vec2 line_end
 
 void main()
 {
-  uint ref = textureLod(outlineId, uvcoordsvar.st, 0.0).r;
+  uint ref = textureLod(outlineId, uvcoordsvar.xy, 0.0).r;
   uint ref_col = ref;
 
   vec2 uvs = gl_FragCoord.xy * sizeViewportInv.xy;
@@ -241,9 +241,6 @@ void main()
   else if (color_id == 1u) {
     fragColor = colorSelect;
   }
-  else if (color_id == 2u) {
-    fragColor = colorDupliSelect;
-  }
   else if (color_id == 3u) {
     fragColor = colorActive;
   }
@@ -279,7 +276,7 @@ void main()
   vec2 line_start, line_end;
   vec2 line_ofs;
   bvec4 extra_edges, extra_edges2;
-  /* TODO simplify this branching hell. */
+  /* TODO: simplify this branching hell. */
   switch (edge_case) {
       /* Straight lines. */
     case YPOS:

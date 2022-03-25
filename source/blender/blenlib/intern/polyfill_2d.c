@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -25,7 +11,7 @@
  *   and that triangles will have non-overlapping indices (even for degenerate geometry).
  * - Self-intersections are considered degenerate (resulting triangles will overlap).
  * - While multiple polygons aren't supported, holes can still be defined using *key-holes*
- *   (where the polygon doubles back on its self with *exactly* matching coordinates).
+ *   (where the polygon doubles back on itself with *exactly* matching coordinates).
  *
  * \note
  *
@@ -77,15 +63,15 @@ typedef signed char eSign;
 #ifdef USE_KDTREE
 /**
  * Spatial optimization for point-in-triangle intersection checks.
- * The simple version of this algorithm is ``O(n^2)`` complexity
+ * The simple version of this algorithm is `O(n^2)` complexity
  * (every point needing to check the triangle defined by every other point),
- * Using a binary-tree reduces the complexity to ``O(n log n)``
+ * Using a binary-tree reduces the complexity to `O(n log n)`
  * plus some overhead of creating the tree.
  *
  * This is a single purpose KDTree based on BLI_kdtree with some modifications
  * to better suit polyfill2d.
  * - #KDTreeNode2D is kept small (only 16 bytes),
- *   by not storing coords in the nodes and using index values rather then pointers
+ *   by not storing coords in the nodes and using index values rather than pointers
  *   to reference neg/pos values.
  *
  * - #kdtree2d_isect_tri is the only function currently used.
@@ -147,7 +133,7 @@ typedef struct PolyFill {
 #endif
 } PolyFill;
 
-/* circular linklist */
+/** Circular double linked-list. */
 typedef struct PolyIndex {
   struct PolyIndex *next, *prev;
   uint index;
@@ -177,12 +163,11 @@ BLI_INLINE eSign signum_enum(float a)
   if (UNLIKELY(a == 0.0f)) {
     return 0;
   }
-  else if (a > 0.0f) {
+  if (a > 0.0f) {
     return 1;
   }
-  else {
-    return -1;
-  }
+
+  return -1;
 }
 
 /**
@@ -250,11 +235,11 @@ static uint kdtree2d_balance_recursive(
   if (totnode <= 0) {
     return KDNODE_UNSET;
   }
-  else if (totnode == 1) {
+  if (totnode == 1) {
     return 0 + ofs;
   }
 
-  /* quicksort style sorting around median */
+  /* Quick-sort style sorting around median. */
   neg = 0;
   pos = totnode - 1;
   median = totnode / 2;
@@ -285,7 +270,7 @@ static uint kdtree2d_balance_recursive(
     }
   }
 
-  /* set node and sort subnodes */
+  /* Set node and sort sub-nodes. */
   node = &nodes[median];
   node->axis = axis;
   axis = !axis;
@@ -330,9 +315,8 @@ static void kdtree2d_node_remove(struct KDTree2D *tree, uint index)
   if (node_index == KDNODE_UNSET) {
     return;
   }
-  else {
-    tree->nodes_map[index] = KDNODE_UNSET;
-  }
+
+  tree->nodes_map[index] = KDNODE_UNSET;
 
   node = &tree->nodes[node_index];
   tree->totnode -= 1;
@@ -721,7 +705,7 @@ static bool pf_ear_tip_check(PolyFill *pf, PolyIndex *pi_ear_tip)
        * the area sign will be positive if the point is strictly inside.
        * It will be 0 on the edge, which we want to include as well. */
 
-      /* note: check (v3, v1) first since it fails _far_ more often then the other 2 checks
+      /* NOTE: check (v3, v1) first since it fails _far_ more often than the other 2 checks
        * (those fail equally).
        * It's logical - the chance is low that points exist on the
        * same side as the ear we're clipping off. */
@@ -843,9 +827,6 @@ static void polyfill_calc(PolyFill *pf)
   pf_triangulate(pf);
 }
 
-/**
- * A version of #BLI_polyfill_calc that uses a memory arena to avoid re-allocations.
- */
 void BLI_polyfill_calc_arena(const float (*coords)[2],
                              const uint coords_tot,
                              const int coords_sign,
@@ -891,24 +872,24 @@ void BLI_polyfill_calc_arena(const float (*coords)[2],
 #endif
 }
 
-/**
- * Triangulates the given (convex or concave) simple polygon to a list of triangle vertices.
- *
- * \param coords: 2D coordinates describing vertices of the polygon,
- * in either clockwise or counterclockwise order.
- * \param coords_tot: Total points in the array.
- * \param coords_sign: Pass this when we know the sign in advance to avoid extra calculations.
- *
- * \param r_tris: This array is filled in with triangle indices in clockwise order.
- * The length of the array must be ``coords_tot - 2``.
- * Indices are guaranteed to be assigned to unique triangles, with valid indices,
- * even in the case of degenerate input (self intersecting polygons, zero area ears... etc).
- */
 void BLI_polyfill_calc(const float (*coords)[2],
                        const uint coords_tot,
                        const int coords_sign,
                        uint (*r_tris)[3])
 {
+  /* Fallback to heap memory for large allocations.
+   * Avoid running out of stack memory on systems with 512kb stack (macOS).
+   * This happens at around 13,000 points, use a much lower value to be safe. */
+  if (UNLIKELY(coords_tot > 8192)) {
+    /* The buffer size only accounts for the index allocation,
+     * worst case we do two allocations when concave, while we should try to be efficient,
+     * any caller that relies on this frequently should use #BLI_polyfill_calc_arena directly. */
+    MemArena *arena = BLI_memarena_new(sizeof(PolyIndex) * coords_tot, __func__);
+    BLI_polyfill_calc_arena(coords, coords_tot, coords_sign, r_tris, arena);
+    BLI_memarena_free(arena);
+    return;
+  }
+
   PolyFill pf;
   PolyIndex *indices = BLI_array_alloca(indices, coords_tot);
 

@@ -1,24 +1,9 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
-#ifndef __PBVH_INTERN_H__
-#define __PBVH_INTERN_H__
+#pragma once
 
 /** \file
- * \ingroup bli
+ * \ingroup bke
  */
 
 /* Axis-aligned bounding box */
@@ -31,7 +16,7 @@ typedef struct {
   float bmin[3], bmax[3], bcentroid[3];
 } BBC;
 
-/* Note: this structure is getting large, might want to split it into
+/* NOTE: this structure is getting large, might want to split it into
  * union'd structs */
 struct PBVHNode {
   /* Opaque handle for drawing code */
@@ -131,6 +116,9 @@ struct PBVH {
 
   /* Mesh data */
   const struct Mesh *mesh;
+
+  /* Note: Normals are not const because they can be updated for drawing by sculpt code. */
+  float (*vert_normals)[3];
   MVert *verts;
   const MPoly *mpoly;
   const MLoop *mloop;
@@ -151,8 +139,8 @@ struct PBVH {
   int totgrid;
   BLI_bitmap **grid_hidden;
 
-  /* Only used during BVH build and update,
-   * don't need to remain valid after */
+  /* Used during BVH build and later to mark that a vertex needs to update
+   * (its normal must be recalculated). */
   BLI_bitmap *vert_bitmap;
 
 #ifdef PERFCNTRS
@@ -181,38 +169,47 @@ struct PBVH {
 
 /* pbvh.c */
 void BB_reset(BB *bb);
+/**
+ * Expand the bounding box to include a new coordinate.
+ */
 void BB_expand(BB *bb, const float co[3]);
+/**
+ * Expand the bounding box to include another bounding box.
+ */
 void BB_expand_with_bb(BB *bb, BB *bb2);
 void BBC_update_centroid(BBC *bbc);
+/**
+ * Return 0, 1, or 2 to indicate the widest axis of the bounding box.
+ */
 int BB_widest_axis(const BB *bb);
 void pbvh_grow_nodes(PBVH *bvh, int totnode);
 bool ray_face_intersection_quad(const float ray_start[3],
                                 struct IsectRayPrecalc *isect_precalc,
-                                const float *t0,
-                                const float *t1,
-                                const float *t2,
-                                const float *t3,
+                                const float t0[3],
+                                const float t1[3],
+                                const float t2[3],
+                                const float t3[3],
                                 float *depth);
 bool ray_face_intersection_tri(const float ray_start[3],
                                struct IsectRayPrecalc *isect_precalc,
-                               const float *t0,
-                               const float *t1,
-                               const float *t2,
+                               const float t0[3],
+                               const float t1[3],
+                               const float t2[3],
                                float *depth);
 
 bool ray_face_nearest_quad(const float ray_start[3],
                            const float ray_normal[3],
-                           const float *t0,
-                           const float *t1,
-                           const float *t2,
-                           const float *t3,
+                           const float t0[3],
+                           const float t1[3],
+                           const float t2[3],
+                           const float t3[3],
                            float *r_depth,
                            float *r_dist_sq);
 bool ray_face_nearest_tri(const float ray_start[3],
                           const float ray_normal[3],
-                          const float *t0,
-                          const float *t1,
-                          const float *t2,
+                          const float t0[3],
+                          const float t1[3],
+                          const float t2[3],
                           float *r_depth,
                           float *r_dist_sq);
 
@@ -235,5 +232,3 @@ bool pbvh_bmesh_node_nearest_to_ray(PBVHNode *node,
                                     bool use_original);
 
 void pbvh_bmesh_normals_update(PBVHNode **nodes, int totnode);
-
-#endif

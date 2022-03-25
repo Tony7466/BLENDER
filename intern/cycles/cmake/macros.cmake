@@ -1,5 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2011-2022 Blender Foundation
+
 function(cycles_set_solution_folder target)
-  if(WINDOWS_USE_VISUAL_STUDIO_FOLDERS)
+  if(IDE_GROUP_PROJECTS_IN_FOLDERS)
     get_filename_component(folderdir ${CMAKE_CURRENT_SOURCE_DIR} DIRECTORY)
     string(REPLACE ${CMAKE_SOURCE_DIR} "" folderdir ${folderdir})
     set_target_properties(${target} PROPERTIES FOLDER ${folderdir})
@@ -68,4 +71,88 @@ macro(cycles_add_library target library_deps)
   endif()
 
   cycles_set_solution_folder(${target})
+endmacro()
+
+macro(cycles_target_link_libraries target)
+  if(WITH_CYCLES_LOGGING)
+    target_link_libraries(${target} ${GLOG_LIBRARIES} ${GFLAGS_LIBRARIES})
+  endif()
+  if(WITH_CYCLES_OSL)
+    target_link_libraries(${target} ${OSL_LIBRARIES} ${LLVM_LIBRARY})
+  endif()
+  if(WITH_CYCLES_EMBREE)
+    target_link_libraries(${target} ${EMBREE_LIBRARIES})
+  endif()
+  if(WITH_OPENSUBDIV)
+    target_link_libraries(${target} ${OPENSUBDIV_LIBRARIES})
+  endif()
+  if(WITH_OPENCOLORIO)
+    target_link_libraries(${target} ${OPENCOLORIO_LIBRARIES})
+  endif()
+  if(WITH_OPENVDB)
+    target_link_libraries(${target} ${OPENVDB_LIBRARIES} ${BLOSC_LIBRARIES})
+  endif()
+  if(WITH_OPENIMAGEDENOISE)
+    target_link_libraries(${target} ${OPENIMAGEDENOISE_LIBRARIES})
+  endif()
+  target_link_libraries(
+    ${target}
+    ${OPENIMAGEIO_LIBRARIES}
+    ${PNG_LIBRARIES}
+    ${JPEG_LIBRARIES}
+    ${TIFF_LIBRARY}
+    ${WEBP_LIBRARIES}
+    ${OPENJPEG_LIBRARIES}
+    ${OPENEXR_LIBRARIES}
+    ${OPENEXR_LIBRARIES} # For circular dependencies between libs.
+    ${PUGIXML_LIBRARIES}
+    ${BOOST_LIBRARIES}
+    ${ZLIB_LIBRARIES}
+    ${CMAKE_DL_LIBS}
+    ${PTHREADS_LIBRARIES}
+    ${PLATFORM_LINKLIBS}
+  )
+
+  if(WITH_CYCLES_DEVICE_CUDA OR WITH_CYCLES_DEVICE_OPTIX)
+    if(WITH_CUDA_DYNLOAD)
+      target_link_libraries(${target} extern_cuew)
+    else()
+      target_link_libraries(${target} ${CUDA_CUDA_LIBRARY})
+    endif()
+  endif()
+
+  if(WITH_CYCLES_DEVICE_HIP AND WITH_HIP_DYNLOAD)
+    target_link_libraries(${target} extern_hipew)
+  endif()
+
+  if(UNIX AND NOT APPLE)
+    if(CYCLES_STANDALONE_REPOSITORY)
+      target_link_libraries(${target} extern_libc_compat)
+    else()
+      target_link_libraries(${target} bf_intern_libc_compat)
+    endif()
+  endif()
+
+  if(NOT CYCLES_STANDALONE_REPOSITORY)
+    target_link_libraries(${target} bf_intern_guardedalloc)
+  endif()
+endmacro()
+
+macro(cycles_install_libraries target)
+  # Copy DLLs for dynamically linked libraries.
+  if(WIN32)
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+      install(
+        FILES
+        ${TBB_ROOT_DIR}/lib/debug/tbb_debug${CMAKE_SHARED_LIBRARY_SUFFIX}
+        ${OPENVDB_ROOT_DIR}/bin/openvdb_d${CMAKE_SHARED_LIBRARY_SUFFIX}
+        DESTINATION $<TARGET_FILE_DIR:${target}>)
+    else()
+      install(
+        FILES
+        ${TBB_ROOT_DIR}/lib/tbb${CMAKE_SHARED_LIBRARY_SUFFIX}
+        ${OPENVDB_ROOT_DIR}/bin/openvdb${CMAKE_SHARED_LIBRARY_SUFFIX}
+        DESTINATION $<TARGET_FILE_DIR:${target}>)
+    endif()
+  endif()
 endmacro()

@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2005 by the Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup modifiers
@@ -29,8 +13,10 @@
 
 #include "BLT_translation.h"
 
+#include "DNA_defaults.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_object_types.h"
 #include "DNA_screen_types.h"
 
 #include "BKE_context.h"
@@ -46,6 +32,7 @@
 #include "UI_resources.h"
 
 #include "RNA_access.h"
+#include "RNA_prototypes.h"
 
 #include "MOD_modifiertypes.h"
 #include "MOD_ui_common.h"
@@ -55,10 +42,9 @@ static void initData(ModifierData *md)
 {
   SmoothModifierData *smd = (SmoothModifierData *)md;
 
-  smd->fac = 0.5f;
-  smd->repeat = 1;
-  smd->flag = MOD_SMOOTH_X | MOD_SMOOTH_Y | MOD_SMOOTH_Z;
-  smd->defgrp_name[0] = '\0';
+  BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(smd, modifier));
+
+  MEMCPY_STRUCT_AFTER(smd, DNA_struct_default_get(SmoothModifierData), modifier);
 }
 
 static bool isDisabled(const struct Scene *UNUSED(scene),
@@ -105,9 +91,7 @@ static void smoothModifier_do(
   uint *num_accumulated_vecs = MEM_calloc_arrayN(
       (size_t)numVerts, sizeof(*num_accumulated_vecs), __func__);
   if (!num_accumulated_vecs) {
-    if (accumulated_vecs) {
-      MEM_freeN(accumulated_vecs);
-    }
+    MEM_freeN(accumulated_vecs);
     return;
   }
 
@@ -147,7 +131,7 @@ static void smoothModifier_do(
       MDeformVert *dv = dvert;
       for (int i = 0; i < numVerts; i++, dv++) {
         float *vco_orig = vertexCos[i];
-        if (num_accumulated_vecs[0] > 0) {
+        if (num_accumulated_vecs[i] > 0) {
           mul_v3_fl(accumulated_vecs[i], 1.0f / (float)num_accumulated_vecs[i]);
         }
         float *vco_new = accumulated_vecs[i];
@@ -174,7 +158,7 @@ static void smoothModifier_do(
     else { /* no vertex group */
       for (int i = 0; i < numVerts; i++) {
         float *vco_orig = vertexCos[i];
-        if (num_accumulated_vecs[0] > 0) {
+        if (num_accumulated_vecs[i] > 0) {
           mul_v3_fl(accumulated_vecs[i], 1.0f / (float)num_accumulated_vecs[i]);
         }
         float *vco_new = accumulated_vecs[i];
@@ -238,30 +222,29 @@ static void deformVertsEM(ModifierData *md,
   }
 }
 
-static void panel_draw(const bContext *C, Panel *panel)
+static void panel_draw(const bContext *UNUSED(C), Panel *panel)
 {
   uiLayout *row, *col;
   uiLayout *layout = panel->layout;
   int toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
 
-  PointerRNA ptr;
   PointerRNA ob_ptr;
-  modifier_panel_get_property_pointers(C, panel, &ob_ptr, &ptr);
+  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
 
   uiLayoutSetPropSep(layout, true);
 
   row = uiLayoutRowWithHeading(layout, true, IFACE_("Axis"));
-  uiItemR(row, &ptr, "use_x", toggles_flag, NULL, ICON_NONE);
-  uiItemR(row, &ptr, "use_y", toggles_flag, NULL, ICON_NONE);
-  uiItemR(row, &ptr, "use_z", toggles_flag, NULL, ICON_NONE);
+  uiItemR(row, ptr, "use_x", toggles_flag, NULL, ICON_NONE);
+  uiItemR(row, ptr, "use_y", toggles_flag, NULL, ICON_NONE);
+  uiItemR(row, ptr, "use_z", toggles_flag, NULL, ICON_NONE);
 
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, &ptr, "factor", 0, NULL, ICON_NONE);
-  uiItemR(col, &ptr, "iterations", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "factor", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "iterations", 0, NULL, ICON_NONE);
 
-  modifier_vgroup_ui(layout, &ptr, &ob_ptr, "vertex_group", "invert_vertex_group", NULL);
+  modifier_vgroup_ui(layout, ptr, &ob_ptr, "vertex_group", "invert_vertex_group", NULL);
 
-  modifier_panel_end(layout, &ptr);
+  modifier_panel_end(layout, ptr);
 }
 
 static void panelRegister(ARegionType *region_type)
@@ -273,9 +256,11 @@ ModifierTypeInfo modifierType_Smooth = {
     /* name */ "Smooth",
     /* structName */ "SmoothModifierData",
     /* structSize */ sizeof(SmoothModifierData),
+    /* srna */ &RNA_SmoothModifier,
     /* type */ eModifierTypeType_OnlyDeform,
     /* flags */ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_AcceptsCVs |
         eModifierTypeFlag_SupportsEditmode,
+    /* icon */ ICON_MOD_SMOOTH,
 
     /* copyData */ BKE_modifier_copydata_generic,
 
@@ -284,9 +269,7 @@ ModifierTypeInfo modifierType_Smooth = {
     /* deformVertsEM */ deformVertsEM,
     /* deformMatricesEM */ NULL,
     /* modifyMesh */ NULL,
-    /* modifyHair */ NULL,
-    /* modifyPointCloud */ NULL,
-    /* modifyVolume */ NULL,
+    /* modifyGeometrySet */ NULL,
 
     /* initData */ initData,
     /* requiredDataMask */ requiredDataMask,
@@ -295,7 +278,6 @@ ModifierTypeInfo modifierType_Smooth = {
     /* updateDepsgraph */ NULL,
     /* dependsOnTime */ NULL,
     /* dependsOnNormals */ NULL,
-    /* foreachObjectLink */ NULL,
     /* foreachIDLink */ NULL,
     /* foreachTexLink */ NULL,
     /* freeRuntimeData */ NULL,

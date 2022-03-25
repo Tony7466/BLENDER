@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -24,6 +10,7 @@
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_object_types.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -68,6 +55,16 @@ static float angle_signed_on_axis_normalized_v3v3_v3(const float n[3],
     angle = 2 * M_PI - angle;
   }
   return angle;
+}
+
+static float clamp_nonzero(const float value, const float epsilon)
+{
+  BLI_assert(!(epsilon < 0.0f));
+  /* Return closest value with `abs(value) >= epsilon`. */
+  if (value < 0.0f) {
+    return min_ff(value, -epsilon);
+  }
+  return max_ff(value, epsilon);
 }
 
 /** \} */
@@ -132,6 +129,7 @@ static int comp_float_int_pair(const void *a, const void *b)
   return (int)(x->angle > y->angle) - (int)(x->angle < y->angle);
 }
 
+/* NOLINTNEXTLINE: readability-function-size */
 Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
                                           const ModifierEvalContext *ctx,
                                           Mesh *mesh)
@@ -146,7 +144,6 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
   const uint numVerts = (uint)mesh->totvert;
   const uint numEdges = (uint)mesh->totedge;
   const uint numPolys = (uint)mesh->totpoly;
-  const uint numLoops = (uint)mesh->totloop;
 
   if (numPolys == 0 && numVerts != 0) {
     return mesh;
@@ -158,17 +155,22 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
   const short mat_ofs = mat_nrs > 1 ? smd->mat_ofs : 0;
   const short mat_ofs_rim = mat_nrs > 1 ? smd->mat_ofs_rim : 0;
 
-  float(*poly_nors)[3] = NULL;
-
+  /* #ofs_front and #ofs_back are the offset from the original
+   * surface along the normal, where #oft_front is along the positive
+   * and #oft_back is along the negative normal. */
   const float ofs_front = (smd->offset_fac + 1.0f) * 0.5f * smd->offset;
   const float ofs_back = ofs_front - smd->offset * smd->offset_fac;
-  const float ofs_front_clamped = max_ff(1e-5f, fabsf(smd->offset > 0 ? ofs_front : ofs_back));
-  const float ofs_back_clamped = max_ff(1e-5f, fabsf(smd->offset > 0 ? ofs_back : ofs_front));
+  /* #ofs_front_clamped and #ofs_back_clamped are the same as
+   * #ofs_front and #ofs_back, but never zero. */
+  const float ofs_front_clamped = clamp_nonzero(ofs_front, 1e-5f);
+  const float ofs_back_clamped = clamp_nonzero(ofs_back, 1e-5f);
   const float offset_fac_vg = smd->offset_fac_vg;
   const float offset_fac_vg_inv = 1.0f - smd->offset_fac_vg;
   const float offset = fabsf(smd->offset) * smd->offset_clamp;
   const bool do_angle_clamp = smd->flag & MOD_SOLIDIFY_OFFSET_ANGLE_CLAMP;
-  const bool do_flip = (smd->flag & MOD_SOLIDIFY_FLIP) != 0;
+  /* #do_flip, flips the normals of the result. This is inverted if negative thickness
+   * is used, since simple solidify with negative thickness keeps the faces facing outside. */
+  const bool do_flip = ((smd->flag & MOD_SOLIDIFY_FLIP) != 0) == (smd->offset > 0);
   const bool do_rim = smd->flag & MOD_SOLIDIFY_RIM;
   const bool do_shell = ((smd->flag & MOD_SOLIDIFY_RIM) && (smd->flag & MOD_SOLIDIFY_NOSHELL)) ==
                         0;
@@ -179,9 +181,8 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
   MDeformVert *dvert;
   const bool defgrp_invert = (smd->flag & MOD_SOLIDIFY_VGROUP_INV) != 0;
   int defgrp_index;
-  const int shell_defgrp_index = BKE_object_defgroup_name_index(ctx->object,
-                                                                smd->shell_defgrp_name);
-  const int rim_defgrp_index = BKE_object_defgroup_name_index(ctx->object, smd->rim_defgrp_name);
+  const int shell_defgrp_index = BKE_id_defgroup_name_index(&mesh->id, smd->shell_defgrp_name);
+  const int rim_defgrp_index = BKE_id_defgroup_name_index(&mesh->id, smd->rim_defgrp_name);
 
   MOD_get_vgroup(ctx->object, mesh, smd->defgrp_name, &dvert, &defgrp_index);
 
@@ -199,17 +200,9 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
 
 #define MOD_SOLIDIFY_EMPTY_TAG ((uint)-1)
 
-  /* Calculate only face normals. */
-  poly_nors = MEM_malloc_arrayN(numPolys, sizeof(*poly_nors), __func__);
-  BKE_mesh_calc_normals_poly(orig_mvert,
-                             NULL,
-                             (int)numVerts,
-                             orig_mloop,
-                             orig_mpoly,
-                             (int)numLoops,
-                             (int)numPolys,
-                             poly_nors,
-                             true);
+  /* Calculate only face normals. Copied because they are modified directly below. */
+  float(*poly_nors)[3] = MEM_malloc_arrayN(numPolys, sizeof(float[3]), __func__);
+  memcpy(poly_nors, BKE_mesh_poly_normals_ensure(mesh), sizeof(float[3]) * numPolys);
 
   NewFaceRef *face_sides_arr = MEM_malloc_arrayN(
       numPolys * 2, sizeof(*face_sides_arr), "face_sides_arr in solidify");
@@ -365,41 +358,73 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
         if (edge_adj_faces_len[i] > 0) {
           uint v1 = vm[ed->v1];
           uint v2 = vm[ed->v2];
-          if (v1 != v2) {
-            if (v2 < v1) {
-              SWAP(uint, v1, v2);
-            }
-            sub_v3_v3v3(edgedir, orig_mvert_co[v2], orig_mvert_co[v1]);
-            orig_edge_lengths[i] = len_squared_v3(edgedir);
-            if (orig_edge_lengths[i] <= merge_tolerance_sqr) {
-              mul_v3_fl(edgedir,
-                        (combined_verts[v2] + 1) /
-                            (float)(combined_verts[v1] + combined_verts[v2] + 2));
-              add_v3_v3(orig_mvert_co[v1], edgedir);
-              for (uint j = v2; j < numVerts; j++) {
-                if (vm[j] == v2) {
-                  vm[j] = v1;
+          if (v1 == v2) {
+            continue;
+          }
+
+          if (v2 < v1) {
+            SWAP(uint, v1, v2);
+          }
+          sub_v3_v3v3(edgedir, orig_mvert_co[v2], orig_mvert_co[v1]);
+          orig_edge_lengths[i] = len_squared_v3(edgedir);
+
+          if (orig_edge_lengths[i] <= merge_tolerance_sqr) {
+            /* Merge verts. But first check if that would create a higher poly count. */
+            /* This check is very slow. It would need the vertex edge links to get
+             * accelerated that are not yet available at this point. */
+            bool can_merge = true;
+            for (uint k = 0; k < numEdges && can_merge; k++) {
+              if (k != i && edge_adj_faces_len[k] > 0 &&
+                  (ELEM(vm[orig_medge[k].v1], v1, v2) != ELEM(vm[orig_medge[k].v2], v1, v2))) {
+                for (uint j = 0; j < edge_adj_faces[k]->faces_len && can_merge; j++) {
+                  mp = orig_mpoly + edge_adj_faces[k]->faces[j];
+                  uint changes = 0;
+                  int cur = mp->totloop - 1;
+                  for (int next = 0; next < mp->totloop && changes <= 2; next++) {
+                    uint cur_v = vm[orig_mloop[mp->loopstart + cur].v];
+                    uint next_v = vm[orig_mloop[mp->loopstart + next].v];
+                    changes += (ELEM(cur_v, v1, v2) != ELEM(next_v, v1, v2));
+                    cur = next;
+                  }
+                  can_merge = can_merge && changes <= 2;
                 }
               }
-              vert_adj_edges_len[v1] += vert_adj_edges_len[v2];
-              vert_adj_edges_len[v2] = 0;
-              combined_verts[v1] += combined_verts[v2] + 1;
-
-              if (do_shell) {
-                numNewLoops -= edge_adj_faces_len[i] * 2;
-              }
-
-              edge_adj_faces_len[i] = 0;
-              MEM_freeN(edge_adj_faces[i]->faces);
-              MEM_freeN(edge_adj_faces[i]->faces_reversed);
-              MEM_freeN(edge_adj_faces[i]);
-              edge_adj_faces[i] = NULL;
             }
-            else {
-              orig_edge_lengths[i] = sqrtf(orig_edge_lengths[i]);
+
+            if (!can_merge) {
+              orig_edge_lengths[i] = 0.0f;
               vert_adj_edges_len[v1]++;
               vert_adj_edges_len[v2]++;
+              continue;
             }
+
+            mul_v3_fl(edgedir,
+                      (combined_verts[v2] + 1) /
+                          (float)(combined_verts[v1] + combined_verts[v2] + 2));
+            add_v3_v3(orig_mvert_co[v1], edgedir);
+            for (uint j = v2; j < numVerts; j++) {
+              if (vm[j] == v2) {
+                vm[j] = v1;
+              }
+            }
+            vert_adj_edges_len[v1] += vert_adj_edges_len[v2];
+            vert_adj_edges_len[v2] = 0;
+            combined_verts[v1] += combined_verts[v2] + 1;
+
+            if (do_shell) {
+              numNewLoops -= edge_adj_faces_len[i] * 2;
+            }
+
+            edge_adj_faces_len[i] = 0;
+            MEM_freeN(edge_adj_faces[i]->faces);
+            MEM_freeN(edge_adj_faces[i]->faces_reversed);
+            MEM_freeN(edge_adj_faces[i]);
+            edge_adj_faces[i] = NULL;
+          }
+          else {
+            orig_edge_lengths[i] = sqrtf(orig_edge_lengths[i]);
+            vert_adj_edges_len[v1]++;
+            vert_adj_edges_len[v2]++;
           }
         }
       }
@@ -479,12 +504,12 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
                     old_edge_vert_ref->edges_len++;
                     break;
                   }
-                  else if (vm[orig_medge[edge].v1] == vs[1 - j]) {
+                  if (vm[orig_medge[edge].v1] == vs[1 - j]) {
                     invalid_edge_index = edge + 1;
                     invalid_edge_reversed = (j == 0);
                     break;
                   }
-                  else if (vm[orig_medge[edge].v2] == vs[1 - j]) {
+                  if (vm[orig_medge[edge].v2] == vs[1 - j]) {
                     invalid_edge_index = edge + 1;
                     invalid_edge_reversed = (j == 1);
                     break;
@@ -618,7 +643,7 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
                       uint *e_adj_faces_faces = e_adj_faces->faces;
                       bool *e_adj_faces_reversed = e_adj_faces->faces_reversed;
                       const uint faces_len = e_adj_faces->faces_len;
-                      if (e != i) {
+                      if (e_adj_faces_faces != adj_faces->faces) {
                         /* Find index of e in #adj_faces. */
                         for (face_index = 0;
                              face_index < faces_len && e_adj_faces_faces[face_index] != face;
@@ -683,8 +708,49 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
         const uint v1 = vm[ed->v1];
         const uint v2 = vm[ed->v2];
         if (edge_adj_faces_len[i] > 0) {
-          sub_v3_v3v3(edgedir, orig_mvert_co[v2], orig_mvert_co[v1]);
-          mul_v3_fl(edgedir, 1.0f / orig_edge_lengths[i]);
+          if (LIKELY(orig_edge_lengths[i] > FLT_EPSILON)) {
+            sub_v3_v3v3(edgedir, orig_mvert_co[v2], orig_mvert_co[v1]);
+            mul_v3_fl(edgedir, 1.0f / orig_edge_lengths[i]);
+          }
+          else {
+            /* Smart fallback. */
+            /* This makes merging non essential, but correct
+             * merging will still give way better results. */
+            float pos[3];
+            copy_v3_v3(pos, orig_mvert_co[v2]);
+
+            OldVertEdgeRef *link1 = vert_adj_edges[v1];
+            float v1_dir[3];
+            zero_v3(v1_dir);
+            for (int j = 0; j < link1->edges_len; j++) {
+              uint e = link1->edges[j];
+              if (edge_adj_faces_len[e] > 0 && e != i) {
+                uint other_v =
+                    vm[vm[orig_medge[e].v1] == v1 ? orig_medge[e].v2 : orig_medge[e].v1];
+                sub_v3_v3v3(edgedir, orig_mvert_co[other_v], pos);
+                add_v3_v3(v1_dir, edgedir);
+              }
+            }
+            OldVertEdgeRef *link2 = vert_adj_edges[v2];
+            float v2_dir[3];
+            zero_v3(v2_dir);
+            for (int j = 0; j < link2->edges_len; j++) {
+              uint e = link2->edges[j];
+              if (edge_adj_faces_len[e] > 0 && e != i) {
+                uint other_v =
+                    vm[vm[orig_medge[e].v1] == v2 ? orig_medge[e].v2 : orig_medge[e].v1];
+                sub_v3_v3v3(edgedir, orig_mvert_co[other_v], pos);
+                add_v3_v3(v2_dir, edgedir);
+              }
+            }
+            sub_v3_v3v3(edgedir, v2_dir, v1_dir);
+            float len = normalize_v3(edgedir);
+            if (len == 0.0f) {
+              edgedir[0] = 0.0f;
+              edgedir[1] = 0.0f;
+              edgedir[2] = 1.0f;
+            }
+          }
 
           OldEdgeFaceRef *adj_faces = edge_adj_faces[i];
           const uint adj_len = adj_faces->faces_len;
@@ -838,7 +904,7 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
           uint unassigned_edges_len = 0;
           for (uint j = 0; j < tot_adj_edges; j++) {
             NewEdgeRef **new_edges = orig_edge_data_arr[adj_edges[j]];
-            /* TODO check where the null pointer come from,
+            /* TODO: check where the null pointer come from,
              * because there should not be any... */
             if (new_edges) {
               /* count the number of new edges around the original vert */
@@ -936,7 +1002,7 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
                     }
                     break;
                   }
-                  else if (edge->faces[0] == eg_track_faces[0]) {
+                  if (edge->faces[0] == eg_track_faces[0]) {
                     insert_at_start = true;
                     eg_track_faces[0] = edge->faces[1];
                     found_edge = edge;
@@ -945,14 +1011,14 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
                     }
                     break;
                   }
-                  else if (edge->faces[1] != NULL) {
+                  if (edge->faces[1] != NULL) {
                     if (edge->faces[1] == eg_track_faces[1]) {
                       insert_at_start = false;
                       eg_track_faces[1] = edge->faces[0];
                       found_edge = edge;
                       break;
                     }
-                    else if (edge->faces[1] == eg_track_faces[0]) {
+                    if (edge->faces[1] == eg_track_faces[0]) {
                       insert_at_start = true;
                       eg_track_faces[0] = edge->faces[0];
                       found_edge = edge;
@@ -1032,7 +1098,7 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
 
           MEM_freeN(unassigned_edges);
 
-          /* TODO reshape the edge_groups array to its actual size
+          /* TODO: reshape the edge_groups array to its actual size
            * after writing is finished to save on memory. */
         }
 
@@ -1092,9 +1158,9 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
                           add_index++;
                         }
                         if (last_split > split) {
-                          const uint size = (split + edges_len) - (uint)last_split;
+                          const uint edges_len_group = (split + edges_len) - (uint)last_split;
                           NewEdgeRef **edges = MEM_malloc_arrayN(
-                              size, sizeof(*edges), "edge_group split in solidify");
+                              edges_len_group, sizeof(*edges), "edge_group split in solidify");
                           memcpy(edges,
                                  g.edges + last_split,
                                  (edges_len - (uint)last_split) * sizeof(*edges));
@@ -1104,7 +1170,7 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
                           edge_groups[j + add_index] = (EdgeGroup){
                               .valid = true,
                               .edges = edges,
-                              .edges_len = size,
+                              .edges_len = edges_len_group,
                               .open_face_edge = MOD_SOLIDIFY_EMPTY_TAG,
                               .is_orig_closed = g.is_orig_closed,
                               .is_even_split = is_even_split,
@@ -1117,14 +1183,14 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
                           };
                         }
                         else {
-                          const uint size = split - (uint)last_split;
+                          const uint edges_len_group = split - (uint)last_split;
                           NewEdgeRef **edges = MEM_malloc_arrayN(
-                              size, sizeof(*edges), "edge_group split in solidify");
-                          memcpy(edges, g.edges + last_split, size * sizeof(*edges));
+                              edges_len_group, sizeof(*edges), "edge_group split in solidify");
+                          memcpy(edges, g.edges + last_split, edges_len_group * sizeof(*edges));
                           edge_groups[j + add_index] = (EdgeGroup){
                               .valid = true,
                               .edges = edges,
-                              .edges_len = size,
+                              .edges_len = edges_len_group,
                               .open_face_edge = MOD_SOLIDIFY_EMPTY_TAG,
                               .is_orig_closed = g.is_orig_closed,
                               .is_even_split = is_even_split,
@@ -1299,7 +1365,7 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
     MEM_freeN(vert_adj_edges);
   }
 
-  /* TODO create_regions if fix_intersections. */
+  /* TODO: create_regions if fix_intersections. */
 
   /* General use pointer for #EdgeGroup iteration. */
   EdgeGroup **gs_ptr;
@@ -1326,6 +1392,7 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
             scalar_vgroup = min_ff(BKE_defvert_find_weight(dv, defgrp_index), scalar_vgroup);
           }
         }
+        scalar_vgroup = offset_fac_vg + (scalar_vgroup * offset_fac_vg_inv);
         face_weight[i] = scalar_vgroup;
       }
     }
@@ -1338,21 +1405,26 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
         for (uint j = 0; g->valid; j++, g++) {
           if (!g->is_singularity) {
             float *nor = g->no;
+            /* During vertex position calculation, the algorithm decides if it wants to disable the
+             * boundary fix to maintain correct thickness. If the used algorithm does not produce a
+             * free move direction (move_nor), it can use approximate_free_direction to decide on
+             * a movement direction based on the connected edges. */
             float move_nor[3] = {0, 0, 0};
             bool disable_boundary_fix = (smd->nonmanifold_boundary_mode ==
                                              MOD_SOLIDIFY_NONMANIFOLD_BOUNDARY_MODE_NONE ||
                                          (g->is_orig_closed || g->split));
+            bool approximate_free_direction = false;
             /* Constraints Method. */
             if (smd->nonmanifold_offset_mode == MOD_SOLIDIFY_NONMANIFOLD_OFFSET_MODE_CONSTRAINTS) {
               NewEdgeRef *first_edge = NULL;
               NewEdgeRef **edge_ptr = g->edges;
               /* Contains normal and offset [nx, ny, nz, ofs]. */
-              float(*normals_queue)[4] = MEM_malloc_arrayN(
-                  g->edges_len + 1, sizeof(*normals_queue), "normals_queue in solidify");
+              float(*planes_queue)[4] = MEM_malloc_arrayN(
+                  g->edges_len + 1, sizeof(*planes_queue), "planes_queue in solidify");
               uint queue_index = 0;
 
-              float face_nors[3][3];
-              float nor_ofs[3];
+              float fallback_nor[3];
+              float fallback_ofs = 0.0f;
 
               const bool cycle = (g->is_orig_closed && !g->split) || g->is_even_split;
               for (uint k = 0; k < g->edges_len; k++, edge_ptr++) {
@@ -1369,17 +1441,17 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
                       }
 
                       if (!null_faces[face->index]) {
-                        /* And normal to the queue. */
-                        mul_v3_v3fl(normals_queue[queue_index],
+                        /* And plane to the queue. */
+                        mul_v3_v3fl(planes_queue[queue_index],
                                     poly_nors[face->index],
                                     face->reversed ? -1 : 1);
-                        normals_queue[queue_index++][3] = ofs;
+                        planes_queue[queue_index++][3] = ofs;
                       }
                       else {
                         /* Just use this approximate normal of the null face if there is no other
                          * normal to use. */
-                        mul_v3_v3fl(face_nors[0], poly_nors[face->index], face->reversed ? -1 : 1);
-                        nor_ofs[0] = ofs;
+                        mul_v3_v3fl(fallback_nor, poly_nors[face->index], face->reversed ? -1 : 1);
+                        fallback_ofs = ofs;
                       }
                     }
                   }
@@ -1388,131 +1460,173 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
                   }
                 }
               }
-              uint face_nors_len = 0;
-              const float stop_explosion = 0.999f - fabsf(smd->offset_fac) * 0.05f;
-              while (queue_index > 0) {
-                if (face_nors_len == 0) {
-                  if (queue_index <= 2) {
-                    for (uint k = 0; k < queue_index; k++) {
-                      copy_v3_v3(face_nors[k], normals_queue[k]);
-                      nor_ofs[k] = normals_queue[k][3];
-                    }
-                    face_nors_len = queue_index;
-                    queue_index = 0;
-                  }
-                  else {
-                    /* Find most different two normals. */
-                    float min_p = 2;
-                    uint min_n0 = 0;
-                    uint min_n1 = 0;
-                    for (uint k = 0; k < queue_index; k++) {
-                      for (uint m = k + 1; m < queue_index; m++) {
-                        float p = dot_v3v3(normals_queue[k], normals_queue[m]);
-                        if (p <= min_p + FLT_EPSILON) {
-                          min_p = p;
-                          min_n0 = m;
-                          min_n1 = k;
-                        }
-                      }
-                    }
-                    copy_v3_v3(face_nors[0], normals_queue[min_n0]);
-                    copy_v3_v3(face_nors[1], normals_queue[min_n1]);
-                    nor_ofs[0] = normals_queue[min_n0][3];
-                    nor_ofs[1] = normals_queue[min_n1][3];
-                    face_nors_len = 2;
-                    queue_index--;
-                    memmove(normals_queue + min_n0,
-                            normals_queue + min_n0 + 1,
-                            (queue_index - min_n0) * sizeof(*normals_queue));
-                    queue_index--;
-                    memmove(normals_queue + min_n1,
-                            normals_queue + min_n1 + 1,
-                            (queue_index - min_n1) * sizeof(*normals_queue));
-                    min_p = 1;
-                    min_n1 = 0;
-                    float max_p = -1;
-                    for (uint k = 0; k < queue_index; k++) {
-                      max_p = -1;
-                      for (uint m = 0; m < face_nors_len; m++) {
-                        float p = dot_v3v3(face_nors[m], normals_queue[k]);
-                        if (p > max_p + FLT_EPSILON) {
-                          max_p = p;
-                        }
-                      }
-                      if (max_p <= min_p + FLT_EPSILON) {
-                        min_p = max_p;
-                        min_n1 = k;
-                      }
-                    }
-                    if (min_p < 0.8) {
-                      copy_v3_v3(face_nors[2], normals_queue[min_n1]);
-                      nor_ofs[2] = normals_queue[min_n1][3];
-                      face_nors_len++;
-                      queue_index--;
-                      memmove(normals_queue + min_n1,
-                              normals_queue + min_n1 + 1,
-                              (queue_index - min_n1) * sizeof(*normals_queue));
+              if (queue_index > 2) {
+                /* Find the two most different normals. */
+                float min_p = 2.0f;
+                uint min_n0 = 0;
+                uint min_n1 = 0;
+                for (uint k = 0; k < queue_index; k++) {
+                  for (uint m = k + 1; m < queue_index; m++) {
+                    float p = dot_v3v3(planes_queue[k], planes_queue[m]);
+                    if (p < min_p) {
+                      min_p = p;
+                      min_n0 = k;
+                      min_n1 = m;
                     }
                   }
+                }
+                /* Put the two found normals, first in the array queue. */
+                if (min_n1 != 0) {
+                  swap_v4_v4(planes_queue[min_n0], planes_queue[0]);
+                  swap_v4_v4(planes_queue[min_n1], planes_queue[1]);
                 }
                 else {
-                  uint best = 0;
-                  uint best_group = 0;
-                  float best_p = -1.0f;
-                  for (uint k = 0; k < queue_index; k++) {
-                    for (uint m = 0; m < face_nors_len; m++) {
-                      float p = dot_v3v3(face_nors[m], normals_queue[k]);
-                      if (p > best_p + FLT_EPSILON) {
-                        best_p = p;
-                        best = m;
-                        best_group = k;
+                  swap_v4_v4(planes_queue[min_n0], planes_queue[1]);
+                }
+                /* Find the third most important/different normal. */
+                min_p = 1.0f;
+                min_n1 = 2;
+                float max_p = -1.0f;
+                for (uint k = 2; k < queue_index; k++) {
+                  max_p = max_ff(dot_v3v3(planes_queue[0], planes_queue[k]),
+                                 dot_v3v3(planes_queue[1], planes_queue[k]));
+                  if (max_p <= min_p) {
+                    min_p = max_p;
+                    min_n1 = k;
+                  }
+                }
+                swap_v4_v4(planes_queue[min_n1], planes_queue[2]);
+              }
+              /* Remove/average duplicate normals in planes_queue. */
+              while (queue_index > 2) {
+                uint best_n0 = 0;
+                uint best_n1 = 0;
+                float best_p = -1.0f;
+                float best_ofs_diff = 0.0f;
+                for (uint k = 0; k < queue_index; k++) {
+                  for (uint m = k + 1; m < queue_index; m++) {
+                    float p = dot_v3v3(planes_queue[m], planes_queue[k]);
+                    float ofs_diff = fabsf(planes_queue[m][3] - planes_queue[k][3]);
+                    if (p > best_p + FLT_EPSILON || (p >= best_p && ofs_diff < best_ofs_diff)) {
+                      best_p = p;
+                      best_ofs_diff = ofs_diff;
+                      best_n0 = k;
+                      best_n1 = m;
+                    }
+                  }
+                }
+                /* Make sure there are no equal planes. This threshold is crucial for the
+                 * methods below to work without numerical issues. */
+                if (best_p < 0.98f) {
+                  break;
+                }
+                add_v3_v3(planes_queue[best_n0], planes_queue[best_n1]);
+                normalize_v3(planes_queue[best_n0]);
+                planes_queue[best_n0][3] = (planes_queue[best_n0][3] + planes_queue[best_n1][3]) *
+                                           0.5f;
+                queue_index--;
+                memmove(planes_queue + best_n1,
+                        planes_queue + best_n1 + 1,
+                        (queue_index - best_n1) * sizeof(*planes_queue));
+              }
+              const uint size = queue_index;
+              /* If there is more than 2 planes at this vertex, the boundary fix should be disabled
+               * to stay at the correct thickness for all the faces. This is not very good in
+               * practice though, since that will almost always disable the boundary fix. Instead
+               * introduce a threshold which decides whether the boundary fix can be used without
+               * major thickness changes. If the following constant is 1.0, it would always
+               * prioritize correct thickness. At 0.7 the thickness is allowed to change a bit if
+               * necessary for the fix (~10%). Note this only applies if a boundary fix is used. */
+              const float boundary_fix_threshold = 0.7f;
+              if (size > 3) {
+                /* Use the most general least squares method to find the best position. */
+                float mat[3][3];
+                zero_m3(mat);
+                for (int k = 0; k < 3; k++) {
+                  for (int m = 0; m < size; m++) {
+                    madd_v3_v3fl(mat[k], planes_queue[m], planes_queue[m][k]);
+                  }
+                  /* Add a small epsilon to ensure the invert is going to work.
+                   * This addition makes the inverse more stable and the results
+                   * seem to get more precise. */
+                  mat[k][k] += 5e-5f;
+                }
+                /* NOTE: this matrix invert fails if there is less than 3 different normals. */
+                invert_m3(mat);
+                zero_v3(nor);
+                for (int k = 0; k < size; k++) {
+                  madd_v3_v3fl(nor, planes_queue[k], planes_queue[k][3]);
+                }
+                mul_v3_m3v3(nor, mat, nor);
+
+                if (!disable_boundary_fix) {
+                  /* Figure out if the approximate boundary fix can get use here. */
+                  float greatest_angle_cos = 1.0f;
+                  for (uint k = 0; k < 2; k++) {
+                    for (uint m = 2; m < size; m++) {
+                      float p = dot_v3v3(planes_queue[m], planes_queue[k]);
+                      if (p < greatest_angle_cos) {
+                        greatest_angle_cos = p;
                       }
                     }
                   }
-                  add_v3_v3(face_nors[best], normals_queue[best_group]);
-                  normalize_v3(face_nors[best]);
-                  nor_ofs[best] = (nor_ofs[best] + normals_queue[best_group][3]) * 0.5f;
-                  queue_index--;
-                  memmove(normals_queue + best_group,
-                          normals_queue + best_group + 1,
-                          (queue_index - best_group) * sizeof(*normals_queue));
+                  if (greatest_angle_cos > boundary_fix_threshold) {
+                    approximate_free_direction = true;
+                  }
+                  else {
+                    disable_boundary_fix = true;
+                  }
                 }
               }
-              MEM_freeN(normals_queue);
-
-              /* When up to 3 constraint normals are found. */
-              if (ELEM(face_nors_len, 2, 3)) {
-                const float q = dot_v3v3(face_nors[0], face_nors[1]);
+              else if (size > 1) {
+                /* When up to 3 constraint normals are found, there is a simple solution. */
+                const float stop_explosion = 0.999f - fabsf(smd->offset_fac) * 0.05f;
+                const float q = dot_v3v3(planes_queue[0], planes_queue[1]);
                 float d = 1.0f - q * q;
-                cross_v3_v3v3(move_nor, face_nors[0], face_nors[1]);
+                cross_v3_v3v3(move_nor, planes_queue[0], planes_queue[1]);
+                normalize_v3(move_nor);
                 if (d > FLT_EPSILON * 10 && q < stop_explosion) {
                   d = 1.0f / d;
-                  mul_v3_fl(face_nors[0], (nor_ofs[0] - nor_ofs[1] * q) * d);
-                  mul_v3_fl(face_nors[1], (nor_ofs[1] - nor_ofs[0] * q) * d);
+                  mul_v3_fl(planes_queue[0], (planes_queue[0][3] - planes_queue[1][3] * q) * d);
+                  mul_v3_fl(planes_queue[1], (planes_queue[1][3] - planes_queue[0][3] * q) * d);
                 }
                 else {
                   d = 1.0f / (fabsf(q) + 1.0f);
-                  mul_v3_fl(face_nors[0], nor_ofs[0] * d);
-                  mul_v3_fl(face_nors[1], nor_ofs[1] * d);
+                  mul_v3_fl(planes_queue[0], planes_queue[0][3] * d);
+                  mul_v3_fl(planes_queue[1], planes_queue[1][3] * d);
                 }
-                add_v3_v3v3(nor, face_nors[0], face_nors[1]);
-                if (face_nors_len == 3) {
-                  float *free_nor = move_nor;
-                  mul_v3_fl(face_nors[2], nor_ofs[2]);
-                  d = dot_v3v3(face_nors[2], free_nor);
-                  if (LIKELY(fabsf(d) > FLT_EPSILON)) {
-                    sub_v3_v3v3(face_nors[0], nor, face_nors[2]); /* Override face_nor[0]. */
-                    mul_v3_fl(free_nor, dot_v3v3(face_nors[2], face_nors[0]) / d);
-                    sub_v3_v3(nor, free_nor);
+                add_v3_v3v3(nor, planes_queue[0], planes_queue[1]);
+                if (size == 3) {
+                  d = dot_v3v3(planes_queue[2], move_nor);
+                  /* The following threshold ignores the third plane if it is almost orthogonal to
+                   * the still free direction. */
+                  if (fabsf(d) > 0.02f) {
+                    float tmp[3];
+                    madd_v3_v3v3fl(tmp, nor, planes_queue[2], -planes_queue[2][3]);
+                    mul_v3_v3fl(tmp, move_nor, dot_v3v3(planes_queue[2], tmp) / d);
+                    sub_v3_v3(nor, tmp);
+                    /* Disable boundary fix if the constraints would be majorly unsatisfied. */
+                    if (fabsf(d) > 1.0f - boundary_fix_threshold) {
+                      disable_boundary_fix = true;
+                    }
                   }
+                }
+                approximate_free_direction = false;
+              }
+              else if (size == 1) {
+                /* Face corner case. */
+                mul_v3_v3fl(nor, planes_queue[0], planes_queue[0][3]);
+                if (g->edges_len > 2) {
                   disable_boundary_fix = true;
+                  approximate_free_direction = true;
                 }
               }
               else {
-                BLI_assert(face_nors_len < 2);
-                mul_v3_v3fl(nor, face_nors[0], nor_ofs[0]);
+                /* Fallback case for null faces. */
+                mul_v3_v3fl(nor, fallback_nor, fallback_ofs);
                 disable_boundary_fix = true;
               }
+              MEM_freeN(planes_queue);
             }
             /* Fixed/Even Method. */
             else {
@@ -1640,24 +1754,27 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
               }
               /* Set move_nor for boundary fix. */
               if (!disable_boundary_fix && g->edges_len > 2) {
-                edge_ptr = g->edges + 1;
-                float tmp[3];
-                uint k;
-                for (k = 1; k + 1 < g->edges_len; k++, edge_ptr++) {
-                  MEdge *e = orig_medge + (*edge_ptr)->old_edge;
-                  sub_v3_v3v3(
-                      tmp, orig_mvert_co[vm[e->v1] == i ? e->v2 : e->v1], orig_mvert_co[i]);
-                  add_v3_v3(move_nor, tmp);
-                }
-                if (k == 1) {
-                  disable_boundary_fix = true;
-                }
-                else {
-                  disable_boundary_fix = normalize_v3(move_nor) == 0.0f;
-                }
+                approximate_free_direction = true;
               }
               else {
                 disable_boundary_fix = true;
+              }
+            }
+            if (approximate_free_direction) {
+              /* Set move_nor for boundary fix. */
+              NewEdgeRef **edge_ptr = g->edges + 1;
+              float tmp[3];
+              int k;
+              for (k = 1; k + 1 < g->edges_len; k++, edge_ptr++) {
+                MEdge *e = orig_medge + (*edge_ptr)->old_edge;
+                sub_v3_v3v3(tmp, orig_mvert_co[vm[e->v1] == i ? e->v2 : e->v1], orig_mvert_co[i]);
+                add_v3_v3(move_nor, tmp);
+              }
+              if (k == 1) {
+                disable_boundary_fix = true;
+              }
+              else {
+                disable_boundary_fix = normalize_v3(move_nor) == 0.0f;
               }
             }
             /* Fix boundary verts. */
@@ -1676,8 +1793,11 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
                           orig_mvert_co[i]);
               if (smd->nonmanifold_boundary_mode == MOD_SOLIDIFY_NONMANIFOLD_BOUNDARY_MODE_FLAT) {
                 cross_v3_v3v3(constr_nor, e0, e1);
+                normalize_v3(constr_nor);
               }
               else {
+                BLI_assert(smd->nonmanifold_boundary_mode ==
+                           MOD_SOLIDIFY_NONMANIFOLD_BOUNDARY_MODE_ROUND);
                 float f0[3];
                 float f1[3];
                 if (g->edges[0]->faces[0]->reversed) {
@@ -1699,9 +1819,11 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
                 normalize_v3(n0);
                 normalize_v3(n1);
                 add_v3_v3v3(constr_nor, n0, n1);
+                normalize_v3(constr_nor);
               }
               float d = dot_v3v3(constr_nor, move_nor);
-              if (LIKELY(fabsf(d) > FLT_EPSILON)) {
+              /* Only allow the thickness to increase about 10 times. */
+              if (fabsf(d) > 0.1f) {
                 mul_v3_fl(move_nor, dot_v3v3(constr_nor, nor) / d);
                 sub_v3_v3(nor, move_nor);
               }
@@ -1778,7 +1900,7 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
     MEM_freeN(null_faces);
   }
 
-  /* TODO create vertdata for intersection fixes (intersection fixing per topology region). */
+  /* TODO: create vertdata for intersection fixes (intersection fixing per topology region). */
 
   /* Correction for adjacent one sided groups around a vert to
    * prevent edge duplicates and null polys. */
@@ -1843,7 +1965,7 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
   int *origindex_edge = CustomData_get_layer(&result->edata, CD_ORIGINDEX);
   int *origindex_poly = CustomData_get_layer(&result->pdata, CD_ORIGINDEX);
 
-  if (bevel_convex != 0.0f) {
+  if (bevel_convex != 0.0f || (result->cd_flag & ME_CDFLAG_VERT_BWEIGHT) != 0) {
     /* make sure bweight is enabled */
     result->cd_flag |= ME_CDFLAG_EDGE_BWEIGHT;
   }
@@ -1858,6 +1980,18 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
           &result->vdata, CD_MDEFORMVERT, CD_CALLOC, NULL, result->totvert);
     }
     result->dvert = dvert;
+  }
+
+  /* Get vertex crease layer and ensure edge creases are active if vertex creases are found, since
+   * they will introduce edge creases in the used custom interpolation method. */
+  const float *vertex_crease = CustomData_get_layer(&mesh->vdata, CD_CREASE);
+  if (vertex_crease) {
+    result->cd_flag |= ME_CDFLAG_EDGE_CREASE;
+    /* delete all vertex creases in the result if a rim is used. */
+    if (do_rim) {
+      CustomData_free_layers(&result->vdata, CD_CREASE, result->totvert);
+      result->cd_flag &= (char)(~ME_CDFLAG_VERT_CREASE);
+    }
   }
 
   /* Make_new_verts. */
@@ -1878,7 +2012,7 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
     }
   }
 
-  result->runtime.cd_dirty_vert |= CD_MASK_NORMAL;
+  BKE_mesh_normals_tag_dirty(result);
 
   /* Make edges. */
   {
@@ -1942,7 +2076,7 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
      * - new_edge value should have no duplicates
      * - every old_edge value should appear twice
      * - every group should have at least two members (edges)
-     * Note: that there can be vertices that only have one group. They are called singularities.
+     * NOTE: that there can be vertices that only have one group. They are called singularities.
      * These vertices will only have one side (there is no way of telling apart front
      * from back like on a mobius strip)
      */
@@ -1983,6 +2117,7 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
         EdgeGroup *g2 = gs;
         EdgeGroup *last_g = NULL;
         EdgeGroup *first_g = NULL;
+        char mv_crease = vertex_crease ? (char)(vertex_crease[i] * 255.0f) : 0;
         /* Data calculation cache. */
         char max_crease;
         char last_max_crease = 0;
@@ -2052,7 +2187,7 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
               medge[edge_index].v2 = g->new_vert;
               medge[edge_index].flag = ME_EDGEDRAW | ME_EDGERENDER |
                                        ((last_flag | flag) & (ME_SEAM | ME_SHARP));
-              medge[edge_index].crease = min_cc(last_max_crease, max_crease);
+              medge[edge_index].crease = max_cc(mv_crease, min_cc(last_max_crease, max_crease));
               medge[edge_index++].bweight = max_cc(mv->bweight,
                                                    min_cc(last_max_bweight, max_bweight));
             }
@@ -2080,7 +2215,8 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
               medge[edge_index].v2 = first_g->new_vert;
               medge[edge_index].flag = ME_EDGEDRAW | ME_EDGERENDER |
                                        ((last_flag | first_flag) & (ME_SEAM | ME_SHARP));
-              medge[edge_index].crease = min_cc(last_max_crease, first_max_crease);
+              medge[edge_index].crease = max_cc(mv_crease,
+                                                min_cc(last_max_crease, first_max_crease));
               medge[edge_index++].bweight = max_cc(mv->bweight,
                                                    min_cc(last_max_bweight, first_max_bweight));
 
@@ -2188,8 +2324,10 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
 
         NewEdgeRef *edge1 = new_edges[0];
         NewEdgeRef *edge2 = new_edges[1];
-        const bool v1_singularity = edge1->link_edge_groups[0]->is_singularity;
-        const bool v2_singularity = edge1->link_edge_groups[1]->is_singularity;
+        const bool v1_singularity = edge1->link_edge_groups[0]->is_singularity &&
+                                    edge2->link_edge_groups[0]->is_singularity;
+        const bool v2_singularity = edge1->link_edge_groups[1]->is_singularity &&
+                                    edge2->link_edge_groups[1]->is_singularity;
         if (v1_singularity && v2_singularity) {
           continue;
         }
@@ -2356,9 +2494,9 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
                                      vm[orig_mloop[loopstart + j].v]);
             BLI_assert(flip ||
                        vm[orig_medge[new_edge->old_edge].v1] == vm[orig_mloop[loopstart + j].v]);
-            /* The vert thats in the current loop. */
+            /* The vert that's in the current loop. */
             const uint new_v1 = new_edge->link_edge_groups[flip]->new_vert;
-            /* The vert thats in the next loop. */
+            /* The vert that's in the next loop. */
             const uint new_v2 = new_edge->link_edge_groups[1 - flip]->new_vert;
             if (k == 0 || face_verts[k - 1] != new_v1) {
               face_loops[k] = loopstart + j;
@@ -2390,7 +2528,7 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
           CustomData_copy_data(&mesh->pdata, &result->pdata, (int)(i / 2), (int)poly_index, 1);
           mpoly[poly_index].loopstart = (int)loop_index;
           mpoly[poly_index].totloop = (int)k;
-          mpoly[poly_index].mat_nr = fr->face->mat_nr + (fr->reversed ? mat_ofs : 0);
+          mpoly[poly_index].mat_nr = fr->face->mat_nr + (fr->reversed != do_flip ? mat_ofs : 0);
           CLAMP(mpoly[poly_index].mat_nr, 0, mat_nr_max);
           mpoly[poly_index].flag = fr->face->flag;
           if (fr->reversed != do_flip) {
@@ -2424,16 +2562,25 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
     MEM_freeN(face_edges);
   }
   if (edge_index != numNewEdges) {
-    BKE_modifier_set_error(
-        md, "Internal Error: edges array wrong size: %u instead of %u", numNewEdges, edge_index);
+    BKE_modifier_set_error(ctx->object,
+                           md,
+                           "Internal Error: edges array wrong size: %u instead of %u",
+                           numNewEdges,
+                           edge_index);
   }
   if (poly_index != numNewPolys) {
-    BKE_modifier_set_error(
-        md, "Internal Error: polys array wrong size: %u instead of %u", numNewPolys, poly_index);
+    BKE_modifier_set_error(ctx->object,
+                           md,
+                           "Internal Error: polys array wrong size: %u instead of %u",
+                           numNewPolys,
+                           poly_index);
   }
   if (loop_index != numNewLoops) {
-    BKE_modifier_set_error(
-        md, "Internal Error: loops array wrong size: %u instead of %u", numNewLoops, loop_index);
+    BKE_modifier_set_error(ctx->object,
+                           md,
+                           "Internal Error: loops array wrong size: %u instead of %u",
+                           numNewLoops,
+                           loop_index);
   }
   BLI_assert(edge_index == numNewEdges);
   BLI_assert(poly_index == numNewPolys);

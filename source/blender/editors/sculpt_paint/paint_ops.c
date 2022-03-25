@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -53,24 +39,24 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 
+#include "curves_sculpt_intern.h"
 #include "paint_intern.h"
 #include "sculpt_intern.h"
 
-#include <string.h>
-//#include <stdio.h>
 #include <stddef.h>
+#include <string.h>
 
 /* Brush operators */
 static int brush_add_exec(bContext *C, wmOperator *UNUSED(op))
 {
-  /*int type = RNA_enum_get(op->ptr, "type");*/
+  // int type = RNA_enum_get(op->ptr, "type");
   Paint *paint = BKE_paint_get_active_from_context(C);
   Brush *br = BKE_paint_brush(paint);
   Main *bmain = CTX_data_main(C);
   ePaintMode mode = BKE_paintmode_get_active_from_context(C);
 
   if (br) {
-    br = BKE_brush_copy(bmain, br);
+    br = (Brush *)BKE_id_copy(bmain, &br->id);
   }
   else {
     br = BKE_brush_add(bmain, "Brush", BKE_paint_object_mode_from_paintmode(mode));
@@ -98,14 +84,14 @@ static void BRUSH_OT_add(wmOperatorType *ot)
 
 static int brush_add_gpencil_exec(bContext *C, wmOperator *UNUSED(op))
 {
-  /*int type = RNA_enum_get(op->ptr, "type");*/
+  // int type = RNA_enum_get(op->ptr, "type");
   ToolSettings *ts = CTX_data_tool_settings(C);
   Paint *paint = &ts->gp_paint->paint;
   Brush *br = BKE_paint_brush(paint);
   Main *bmain = CTX_data_main(C);
 
   if (br) {
-    br = BKE_brush_copy(bmain, br);
+    br = (Brush *)BKE_id_copy(bmain, &br->id);
   }
   else {
     br = BKE_brush_add(bmain, "Brush", OB_MODE_PAINT_GPENCIL);
@@ -140,13 +126,14 @@ static int brush_scale_size_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   Paint *paint = BKE_paint_get_active_from_context(C);
   Brush *brush = BKE_paint_brush(paint);
+  const bool is_gpencil = (brush && brush->gpencil_settings != NULL);
   // Object *ob = CTX_data_active_object(C);
   float scalar = RNA_float_get(op->ptr, "scalar");
 
   if (brush) {
-    // pixel radius
+    /* pixel radius */
     {
-      const int old_size = BKE_brush_size_get(scene, brush);
+      const int old_size = (!is_gpencil) ? BKE_brush_size_get(scene, brush) : brush->size;
       int size = (int)(scalar * old_size);
 
       if (abs(old_size - size) < U.pixelsize) {
@@ -157,15 +144,21 @@ static int brush_scale_size_exec(bContext *C, wmOperator *op)
           size -= U.pixelsize;
         }
       }
+      /* Grease Pencil does not use unified size. */
+      if (is_gpencil) {
+        brush->size = max_ii(size, 1);
+        WM_main_add_notifier(NC_BRUSH | NA_EDITED, brush);
+        return OPERATOR_FINISHED;
+      }
 
       BKE_brush_size_set(scene, brush, size);
     }
 
-    // unprojected radius
+    /* unprojected radius */
     {
       float unprojected_radius = scalar * BKE_brush_unprojected_radius_get(scene, brush);
 
-      if (unprojected_radius < 0.001f) {  // XXX magic number
+      if (unprojected_radius < 0.001f) { /* XXX magic number */
         unprojected_radius = 0.001f;
       }
 
@@ -227,7 +220,8 @@ static bool palette_poll(bContext *C)
 {
   Paint *paint = BKE_paint_get_active_from_context(C);
 
-  if (paint && paint->palette != NULL) {
+  if (paint && paint->palette != NULL && !ID_IS_LINKED(paint->palette) &&
+      !ID_IS_OVERRIDE_LIBRARY(paint->palette)) {
     return true;
   }
 
@@ -765,6 +759,7 @@ static const ePaintMode brush_select_paint_modes[] = {
     PAINT_MODE_VERTEX_GPENCIL,
     PAINT_MODE_SCULPT_GPENCIL,
     PAINT_MODE_WEIGHT_GPENCIL,
+    PAINT_MODE_SCULPT_CURVES,
 };
 
 static int brush_select_exec(bContext *C, wmOperator *op)
@@ -913,7 +908,7 @@ static int stencil_control_invoke(bContext *C, wmOperator *op, const wmEvent *ev
 {
   Paint *paint = BKE_paint_get_active_from_context(C);
   Brush *br = BKE_paint_brush(paint);
-  float mvalf[2] = {event->mval[0], event->mval[1]};
+  const float mvalf[2] = {event->mval[0], event->mval[1]};
   ARegion *region = CTX_wm_region(C);
   StencilControlData *scd;
   int mask = RNA_enum_get(op->ptr, "texmode");
@@ -968,7 +963,7 @@ static void stencil_control_calculate(StencilControlData *scd, const int mval[2]
 #define PIXEL_MARGIN 5
 
   float mdiff[2];
-  float mvalf[2] = {mval[0], mval[1]};
+  const float mvalf[2] = {mval[0], mval[1]};
   switch (scd->mode) {
     case STENCIL_TRANSLATE:
       sub_v2_v2v2(mdiff, mvalf, scd->init_mouse);
@@ -1301,7 +1296,7 @@ void ED_operatortypes_paint(void)
   WM_operatortype_append(BRUSH_OT_stencil_fit_image_aspect);
   WM_operatortype_append(BRUSH_OT_stencil_reset_transform);
 
-  /* note, particle uses a different system, can be added with existing operators in wm.py */
+  /* NOTE: particle uses a different system, can be added with existing operators in `wm.py`. */
   WM_operatortype_append(PAINT_OT_brush_select);
 
   /* image */
@@ -1356,6 +1351,8 @@ void ED_operatortypes_paint(void)
   /* paint masking */
   WM_operatortype_append(PAINT_OT_mask_flood_fill);
   WM_operatortype_append(PAINT_OT_mask_lasso_gesture);
+  WM_operatortype_append(PAINT_OT_mask_box_gesture);
+  WM_operatortype_append(PAINT_OT_mask_line_gesture);
 }
 
 void ED_keymap_paint(wmKeyConfig *keyconf)
@@ -1377,7 +1374,7 @@ void ED_keymap_paint(wmKeyConfig *keyconf)
   keymap = WM_keymap_ensure(keyconf, "Weight Paint", 0, 0);
   keymap->poll = weight_paint_mode_poll;
 
-  /*Weight paint's Vertex Selection Mode */
+  /* Weight paint's Vertex Selection Mode. */
   keymap = WM_keymap_ensure(keyconf, "Paint Vertex Selection (Weight, Vertex)", 0, 0);
   keymap->poll = vert_paint_poll;
 
@@ -1392,4 +1389,11 @@ void ED_keymap_paint(wmKeyConfig *keyconf)
   /* paint stroke */
   keymap = paint_stroke_modal_keymap(keyconf);
   WM_modalkeymap_assign(keymap, "SCULPT_OT_brush_stroke");
+
+  /* Curves Sculpt mode. */
+  keymap = WM_keymap_ensure(keyconf, "Sculpt Curves", 0, 0);
+  keymap->poll = CURVES_SCULPT_mode_poll;
+
+  /* sculpt expand. */
+  sculpt_expand_modal_keymap(keyconf);
 }

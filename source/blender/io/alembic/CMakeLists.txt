@@ -1,22 +1,5 @@
-# ***** BEGIN GPL LICENSE BLOCK *****
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
-# of the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# The Original Code is Copyright (C) 2006, Blender Foundation
-# All rights reserved.
-# ***** END GPL LICENSE BLOCK *****
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2006 Blender Foundation. All rights reserved.
 
 set(INC
   .
@@ -56,6 +39,7 @@ set(SRC
   intern/alembic_capi.cc
 
   exporter/abc_archive.cc
+  exporter/abc_custom_props.cc
   exporter/abc_export_capi.cc
   exporter/abc_hierarchy_iterator.cc
   exporter/abc_subdiv_disabler.cc
@@ -63,6 +47,7 @@ set(SRC
   exporter/abc_writer_camera.cc
   exporter/abc_writer_curves.cc
   exporter/abc_writer_hair.cc
+  exporter/abc_writer_instance.cc
   exporter/abc_writer_mball.cc
   exporter/abc_writer_mesh.cc
   exporter/abc_writer_nurbs.cc
@@ -83,12 +68,14 @@ set(SRC
   intern/abc_util.h
 
   exporter/abc_archive.h
+  exporter/abc_custom_props.h
   exporter/abc_hierarchy_iterator.h
   exporter/abc_subdiv_disabler.h
   exporter/abc_writer_abstract.h
   exporter/abc_writer_camera.h
   exporter/abc_writer_curves.h
   exporter/abc_writer_hair.h
+  exporter/abc_writer_instance.h
   exporter/abc_writer_mball.h
   exporter/abc_writer_mesh.h
   exporter/abc_writer_nurbs.h
@@ -110,3 +97,17 @@ list(APPEND LIB
 )
 
 blender_add_lib(bf_alembic "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+
+if(WITH_GTESTS)
+  set(TEST_SRC
+    tests/abc_export_test.cc
+    tests/abc_matrix_test.cc
+  )
+  set(TEST_INC
+  )
+  set(TEST_LIB
+    bf_alembic
+  )
+  include(GTestTesting)
+  blender_add_test_lib(bf_io_alembic_tests "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
+endif()

@@ -1,17 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup sptext
@@ -224,7 +211,7 @@ static uint txtfmt_py_numeral_string_count_hexadecimal(const char *string)
 /* Zeros. */
 static bool txtfmt_py_numeral_char_is_zero(const char c)
 {
-  return (c == '0') || (c == '_');
+  return (ELEM(c, '0', '_'));
 }
 static uint txtfmt_py_numeral_string_count_zeros(const char *string)
 {
@@ -290,7 +277,7 @@ static int txtfmt_py_literal_numeral(const char *string, char prev_fmt)
       return 1 + txtfmt_py_find_numeral_inner(string + 1);
     }
     /* Previous was a number; if immediately followed by '.' it's a floating point decimal number.
-     * Note: keep the decimal point, it's needed to allow leading zeros. */
+     * NOTE: keep the decimal point, it's needed to allow leading zeros. */
     if (first == '.') {
       return txtfmt_py_find_numeral_inner(string);
     }
@@ -315,10 +302,10 @@ static char txtfmt_py_format_identifier(const char *str)
   /* Keep aligned args for readability. */
   /* clang-format off */
 
-  if        ((txtfmt_py_find_specialvar(str))   != -1) { fmt = FMT_TYPE_SPECIAL;
-  } else if ((txtfmt_py_find_builtinfunc(str))  != -1) { fmt = FMT_TYPE_KEYWORD;
-  } else if ((txtfmt_py_find_decorator(str))    != -1) { fmt = FMT_TYPE_RESERVED;
-  } else                                               { fmt = FMT_TYPE_DEFAULT;
+  if        (txtfmt_py_find_specialvar(str)   != -1) { fmt = FMT_TYPE_SPECIAL;
+  } else if (txtfmt_py_find_builtinfunc(str)  != -1) { fmt = FMT_TYPE_KEYWORD;
+  } else if (txtfmt_py_find_decorator(str)    != -1) { fmt = FMT_TYPE_RESERVED;
+  } else                                             { fmt = FMT_TYPE_DEFAULT;
   }
 
   /* clang-format on */
@@ -408,7 +395,7 @@ static void txtfmt_py_format_line(SpaceText *st, TextLine *line, const bool do_n
         /* fill the remaining line */
         text_format_fill(&str, &fmt, FMT_TYPE_COMMENT, len - (int)(fmt - line->format));
       }
-      else if (*str == '"' || *str == '\'') {
+      else if (ELEM(*str, '"', '\'')) {
         /* Strings */
         find = *str;
         cont = (*str == '"') ? FMT_CONT_QUOTEDOUBLE : FMT_CONT_QUOTESINGLE;
@@ -423,7 +410,7 @@ static void txtfmt_py_format_line(SpaceText *st, TextLine *line, const bool do_n
         }
         *fmt = FMT_TYPE_STRING;
       }
-      /* Whitespace (all ws. has been converted to spaces) */
+      /* White-space (all ws. has been converted to spaces). */
       else if (*str == ' ') {
         *fmt = FMT_TYPE_WHITESPACE;
       }

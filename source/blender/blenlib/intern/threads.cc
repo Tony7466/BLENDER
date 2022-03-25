@@ -1,29 +1,13 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2006 Blender Foundation
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2006 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup bli
  */
 
-#include <errno.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cerrno>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -52,7 +36,6 @@
 #endif
 
 #include "atomic_ops.h"
-#include "numaapi.h"
 
 #if defined(__APPLE__) && defined(_OPENMP) && (__GNUC__ == 4) && (__GNUC_MINOR__ == 2) && \
     !defined(__clang__)
@@ -65,91 +48,88 @@ extern pthread_key_t gomp_tls_key;
 static void *thread_tls_data;
 #endif
 
-/* ********** basic thread control API ************
+/**
+ * Basic Thread Control API
+ * ========================
  *
  * Many thread cases have an X amount of jobs, and only an Y amount of
- * threads are useful (typically amount of cpus)
+ * threads are useful (typically amount of CPU's)
  *
  * This code can be used to start a maximum amount of 'thread slots', which
  * then can be filled in a loop with an idle timer.
  *
  * A sample loop can look like this (pseudo c);
  *
- *     ListBase lb;
- *     int maxthreads = 2;
- *     int cont = 1;
+ * \code{.c}
  *
- *     BLI_threadpool_init(&lb, do_something_func, maxthreads);
+ *   ListBase lb;
+ *   int max_threads = 2;
+ *   int cont = 1;
  *
- *     while (cont) {
- *         if (BLI_available_threads(&lb) && !(escape loop event)) {
- *             // get new job (data pointer)
- *             // tag job 'processed
- *             BLI_threadpool_insert(&lb, job);
- *         }
- *         else PIL_sleep_ms(50);
+ *   BLI_threadpool_init(&lb, do_something_func, max_threads);
  *
- *         // find if a job is ready, this the do_something_func() should write in job somewhere
- *         cont = 0;
- *         for (go over all jobs)
- *             if (job is ready) {
- *                 if (job was not removed) {
- *                     BLI_threadpool_remove(&lb, job); *                 }
- *             }
- *             else cont = 1; *         }
- *         // conditions to exit loop
- *         if (if escape loop event) {
- *             if (BLI_available_threadslots(&lb) == maxthreads) {
- *                 break;
- *             }
- *         }
+ *   while (cont) {
+ *     if (BLI_available_threads(&lb) && !(escape loop event)) {
+ *       // get new job (data pointer)
+ *       // tag job 'processed
+ *       BLI_threadpool_insert(&lb, job);
  *     }
+ *     else PIL_sleep_ms(50);
  *
- *     BLI_threadpool_end(&lb);
+ *     // Find if a job is ready, this the do_something_func() should write in job somewhere.
+ *     cont = 0;
+ *     for (go over all jobs)
+ *       if (job is ready) {
+ *         if (job was not removed) {
+ *           BLI_threadpool_remove(&lb, job);
+ *         }
+ *       }
+ *       else cont = 1;
+ *     }
+ *     // Conditions to exit loop.
+ *     if (if escape loop event) {
+ *       if (BLI_available_threadslots(&lb) == max_threads) {
+ *         break;
+ *       }
+ *     }
+ *   }
  *
- ************************************************ */
+ *   BLI_threadpool_end(&lb);
+ *
+ * \endcode
+ */
 static pthread_mutex_t _image_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t _image_draw_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t _viewer_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t _custom1_lock = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t _rcache_lock = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t _opengl_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t _nodes_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t _movieclip_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t _colormanage_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t _fftw_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t _view3d_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_t mainid;
-static bool is_numa_available = false;
 static unsigned int thread_levels = 0; /* threads can be invoked inside threads */
 static int num_threads_override = 0;
 
 /* just a max for security reasons */
 #define RE_MAX_THREAD BLENDER_MAX_THREADS
 
-typedef struct ThreadSlot {
+struct ThreadSlot {
   struct ThreadSlot *next, *prev;
   void *(*do_thread)(void *);
   void *callerdata;
   pthread_t pthread;
   int avail;
-} ThreadSlot;
+};
 
-void BLI_threadapi_init(void)
+void BLI_threadapi_init()
 {
   mainid = pthread_self();
-  if (numaAPI_Initialize() == NUMAAPI_SUCCESS) {
-    is_numa_available = true;
-  }
 }
 
-void BLI_threadapi_exit(void)
+void BLI_threadapi_exit()
 {
 }
-
-/* tot = 0 only initializes malloc mutex in a safe way (see sequence.c)
- * problem otherwise: scene render will kill of the mutex!
- */
 
 void BLI_threadpool_init(ListBase *threadbase, void *(*do_thread)(void *), int tot)
 {
@@ -184,7 +164,6 @@ void BLI_threadpool_init(ListBase *threadbase, void *(*do_thread)(void *), int t
   }
 }
 
-/* amount of available threads */
 int BLI_available_threads(ListBase *threadbase)
 {
   int counter = 0;
@@ -198,7 +177,6 @@ int BLI_available_threads(ListBase *threadbase)
   return counter;
 }
 
-/* returns thread number, for sample patterns or threadsafe tables */
 int BLI_threadpool_available_thread_index(ListBase *threadbase)
 {
   int counter = 0;
@@ -226,7 +204,7 @@ static void *tslot_thread_start(void *tslot_p)
   return tslot->do_thread(tslot->callerdata);
 }
 
-int BLI_thread_is_main(void)
+int BLI_thread_is_main()
 {
   return pthread_equal(pthread_self(), mainid);
 }
@@ -284,9 +262,8 @@ void BLI_threadpool_clear(ListBase *threadbase)
 void BLI_threadpool_end(ListBase *threadbase)
 {
 
-  /* only needed if there's actually some stuff to end
-   * this way we don't end up decrementing thread_levels on an empty threadbase
-   * */
+  /* Only needed if there's actually some stuff to end
+   * this way we don't end up decrementing thread_levels on an empty `threadbase`. */
   if (threadbase == nullptr || BLI_listbase_is_empty(threadbase)) {
     return;
   }
@@ -301,15 +278,14 @@ void BLI_threadpool_end(ListBase *threadbase)
 
 /* System Information */
 
-/* how many threads are native on this system? */
-int BLI_system_thread_count(void)
+int BLI_system_thread_count()
 {
   static int t = -1;
 
   if (num_threads_override != 0) {
     return num_threads_override;
   }
-  else if (LIKELY(t != -1)) {
+  if (LIKELY(t != -1)) {
     return t;
   }
 
@@ -343,7 +319,7 @@ void BLI_system_num_threads_override_set(int num)
   num_threads_override = num;
 }
 
-int BLI_system_num_threads_override_get(void)
+int BLI_system_num_threads_override_get()
 {
   return num_threads_override;
 }
@@ -361,10 +337,6 @@ static ThreadMutex *global_mutex_from_type(const int type)
       return &_viewer_lock;
     case LOCK_CUSTOM1:
       return &_custom1_lock;
-    case LOCK_RCACHE:
-      return &_rcache_lock;
-    case LOCK_OPENGL:
-      return &_opengl_lock;
     case LOCK_NODES:
       return &_nodes_lock;
     case LOCK_MOVIECLIP:
@@ -418,7 +390,7 @@ void BLI_mutex_end(ThreadMutex *mutex)
   pthread_mutex_destroy(mutex);
 }
 
-ThreadMutex *BLI_mutex_alloc(void)
+ThreadMutex *BLI_mutex_alloc()
 {
   ThreadMutex *mutex = static_cast<ThreadMutex *>(MEM_callocN(sizeof(ThreadMutex), "ThreadMutex"));
   BLI_mutex_init(mutex);
@@ -468,7 +440,7 @@ void BLI_spin_lock(SpinLock *spin)
 #elif defined(_MSC_VER)
   while (InterlockedExchangeAcquire(spin, 1)) {
     while (*spin) {
-      /* Spin-lock hint for processors with hyperthreading. */
+      /* Spin-lock hint for processors with hyper-threading. */
       YieldProcessor();
     }
   }
@@ -533,7 +505,7 @@ void BLI_rw_mutex_end(ThreadRWMutex *mutex)
   pthread_rwlock_destroy(mutex);
 }
 
-ThreadRWMutex *BLI_rw_mutex_alloc(void)
+ThreadRWMutex *BLI_rw_mutex_alloc()
 {
   ThreadRWMutex *mutex = static_cast<ThreadRWMutex *>(
       MEM_callocN(sizeof(ThreadRWMutex), "ThreadRWMutex"));
@@ -555,7 +527,7 @@ struct TicketMutex {
   unsigned int queue_head, queue_tail;
 };
 
-TicketMutex *BLI_ticket_mutex_alloc(void)
+TicketMutex *BLI_ticket_mutex_alloc()
 {
   TicketMutex *ticket = static_cast<TicketMutex *>(
       MEM_callocN(sizeof(TicketMutex), "TicketMutex"));
@@ -640,7 +612,7 @@ struct ThreadQueue {
   volatile int canceled;
 };
 
-ThreadQueue *BLI_thread_queue_init(void)
+ThreadQueue *BLI_thread_queue_init()
 {
   ThreadQueue *queue;
 
@@ -751,7 +723,7 @@ void *BLI_thread_queue_pop_timeout(ThreadQueue *queue, int ms)
     if (pthread_cond_timedwait(&queue->push_cond, &queue->mutex, &timeout) == ETIMEDOUT) {
       break;
     }
-    else if (PIL_check_seconds_timer() - t >= ms * 0.001) {
+    if (PIL_check_seconds_timer() - t >= ms * 0.001) {
       break;
     }
   }
@@ -813,114 +785,4 @@ void BLI_thread_queue_wait_finish(ThreadQueue *queue)
   }
 
   pthread_mutex_unlock(&queue->mutex);
-}
-
-/* **** Special functions to help performance on crazy NUMA setups. **** */
-
-#if 0  /* UNUSED */
-static bool check_is_threadripper2_alike_topology(void)
-{
-  /* NOTE: We hope operating system does not support CPU hot-swap to
-   * a different brand. And that SMP of different types is also not
-   * encouraged by the system. */
-  static bool is_initialized = false;
-  static bool is_threadripper2 = false;
-  if (is_initialized) {
-    return is_threadripper2;
-  }
-  is_initialized = true;
-  char *cpu_brand = BLI_cpu_brand_string();
-  if (cpu_brand == nullptr) {
-    return false;
-  }
-  if (strstr(cpu_brand, "Threadripper")) {
-    /* NOTE: We consider all Thread-rippers having similar topology to
-     * the second one. This is because we are trying to utilize NUMA node
-     * 0 as much as possible. This node does exist on earlier versions of
-     * thread-ripper and setting affinity to it should not have negative
-     * effect.
-     * This allows us to avoid per-model check, making the code more
-     * reliable for the CPUs which are not yet released.
-     */
-    if (strstr(cpu_brand, "2990WX") || strstr(cpu_brand, "2950X")) {
-      is_threadripper2 = true;
-    }
-  }
-  /* NOTE: While all dies of EPYC has memory controller, only two f them
-   * has access to a lower-indexed DDR slots. Those dies are same as on
-   * Threadripper2 with the memory controller.
-   * Now, it is rather likely that reasonable amount of users don't max
-   * up their DR slots, making it only two dies connected to a DDR slot
-   * with actual memory in it. */
-  if (strstr(cpu_brand, "EPYC")) {
-    /* NOTE: Similarly to Thread-ripper we do not do model check. */
-    is_threadripper2 = true;
-  }
-  MEM_freeN(cpu_brand);
-  return is_threadripper2;
-}
-
-static void threadripper_put_process_on_fast_node(void)
-{
-  if (!is_numa_available) {
-    return;
-  }
-  /* NOTE: Technically, we can use NUMA nodes 0 and 2 and using both of
-   * them in the affinity mask will allow OS to schedule threads more
-   * flexible,possibly increasing overall performance when multiple apps
-   * are crunching numbers.
-   *
-   * However, if scene fits into memory adjacent to a single die we don't
-   * want OS to re-schedule the process to another die since that will make
-   * it further away from memory allocated for .blend file. */
-  /* NOTE: Even if NUMA is available in the API but is disabled in BIOS on
-   * this workstation we still process here. If NUMA is disabled it will be a
-   * single node, so our action is no-visible-changes, but allows to keep
-   * things simple and unified. */
-  numaAPI_RunProcessOnNode(0);
-}
-
-static void threadripper_put_thread_on_fast_node(void)
-{
-  if (!is_numa_available) {
-    return;
-  }
-  /* NOTE: This is where things becomes more interesting. On the one hand
-   * we can use nodes 0 and 2 and allow operating system to do balancing
-   * of processes/threads for the maximum performance when multiple apps
-   * are running.
-   * On another hand, however, we probably want to use same node as the
-   * main thread since that's where the memory of .blend file is likely
-   * to be allocated.
-   * Since the main thread is currently on node 0, we also put thread on
-   * same node. */
-  /* See additional note about NUMA disabled in BIOS above. */
-  numaAPI_RunThreadOnNode(0);
-}
-#endif /* UNUSED */
-
-void BLI_thread_put_process_on_fast_node(void)
-{
-  /* Disabled for now since this causes only 16 threads to be used on a
-   * thread-ripper for computations like sculpting and fluid sim. The problem
-   * is that all threads created as children from this thread will inherit
-   * the NUMA node and so will end up on the same node. This can be fixed
-   * case-by-case by assigning the NUMA node for every child thread, however
-   * this is difficult for external libraries and OpenMP, and out of our
-   * control for plugins like external renderers. */
-#if 0
-  if (check_is_threadripper2_alike_topology()) {
-    threadripper_put_process_on_fast_node();
-  }
-#endif
-}
-
-void BLI_thread_put_thread_on_fast_node(void)
-{
-  /* Disabled for now, see comment above. */
-#if 0
-  if (check_is_threadripper2_alike_topology()) {
-    threadripper_put_thread_on_fast_node();
-  }
-#endif
 }

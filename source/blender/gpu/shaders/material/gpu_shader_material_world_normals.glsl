@@ -1,4 +1,4 @@
-/* TODO : clean this ifdef mess */
+/* TODO: clean this `ifdef` mess. */
 void world_normals_get(out vec3 N)
 {
 #ifndef VOLUMETRICS
@@ -6,7 +6,7 @@ void world_normals_get(out vec3 N)
   vec3 B = normalize(cross(worldNormal, hairTangent));
   float cos_theta;
   if (hairThicknessRes == 1) {
-    vec4 rand = texelFetch(utilTex, ivec3(ivec2(gl_FragCoord.xy) % LUT_SIZE, 2.0), 0);
+    vec4 rand = texelfetch_noise_tex(gl_FragCoord.xy);
     /* Random cosine normal distribution on the hair surface. */
     cos_theta = rand.x * 2.0 - 1.0;
   }

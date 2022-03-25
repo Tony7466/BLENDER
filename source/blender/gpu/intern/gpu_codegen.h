@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2005 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2005 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup gpu
@@ -23,15 +7,15 @@
  * Generate shader code from the intermediate node graph.
  */
 
-#ifndef __GPU_CODEGEN_H__
-#define __GPU_CODEGEN_H__
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct GPUMaterial;
 struct GPUNodeGraph;
-struct GPUOutput;
 struct GPUShader;
-struct GSet;
-struct ListBase;
 
 typedef struct GPUPass {
   struct GPUPass *next;
@@ -43,11 +27,6 @@ typedef struct GPUPass {
   char *defines;
   uint refcount; /* Orphaned GPUPasses gets freed by the garbage collector. */
   uint32_t hash; /* Identity hash generated from all GLSL code. */
-  struct {
-    char *content;
-    uint format;
-    int len;
-  } binary;
   bool compiled; /* Did we already tried to compile the attached GPUShader. */
 } GPUPass;
 
@@ -68,4 +47,6 @@ void GPU_pass_release(GPUPass *pass);
 void gpu_codegen_init(void);
 void gpu_codegen_exit(void);
 
-#endif /* __GPU_CODEGEN_H__ */
+#ifdef __cplusplus
+}
+#endif

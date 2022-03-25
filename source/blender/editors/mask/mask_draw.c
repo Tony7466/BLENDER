@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2012 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2012 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup edmask
@@ -111,7 +95,7 @@ static void draw_single_handle(const MaskLayer *mask_layer,
   const BezTriple *bezt = &point->bezt;
   char handle_type;
 
-  if (which_handle == MASK_WHICH_HANDLE_STICK || which_handle == MASK_WHICH_HANDLE_LEFT) {
+  if (ELEM(which_handle, MASK_WHICH_HANDLE_STICK, MASK_WHICH_HANDLE_LEFT)) {
     handle_type = bezt->h1;
   }
   else {
@@ -191,7 +175,7 @@ static void draw_spline_points(const bContext *C,
                                const char draw_type)
 {
   const bool is_spline_sel = (spline->flag & SELECT) &&
-                             (mask_layer->restrictflag & MASK_RESTRICT_SELECT) == 0;
+                             (mask_layer->visibility_flag & MASK_HIDE_SELECT) == 0;
   const bool is_smooth = (draw_flag & MASK_DRAWFLAG_SMOOTH) != 0;
 
   uchar rgb_spline[4];
@@ -211,7 +195,7 @@ static void draw_spline_points(const bContext *C,
     undistort = sc->clip && (sc->user.render_flag & MCLIP_PROXY_RENDER_UNDISTORT);
   }
 
-  /* TODO, add this to sequence editor */
+  /* TODO: add this to sequence editor. */
   float handle_size = 2.0f * UI_GetThemeValuef(TH_HANDLE_VERTEX_SIZE) * U.pixelsize;
 
   mask_spline_color_get(mask_layer, spline, is_spline_sel, rgb_spline);
@@ -529,7 +513,7 @@ static void draw_spline_curve(const bContext *C,
   uchar rgb_tmp[4];
 
   const bool is_spline_sel = (spline->flag & SELECT) &&
-                             (mask_layer->restrictflag & MASK_RESTRICT_SELECT) == 0;
+                             (mask_layer->visibility_flag & MASK_HIDE_SELECT) == 0;
   const bool is_smooth = (draw_flag & MASK_DRAWFLAG_SMOOTH) != 0;
   const bool is_fill = (spline->flag & MASK_SPLINE_NOFILL) == 0;
 
@@ -539,7 +523,7 @@ static void draw_spline_curve(const bContext *C,
   uint tot_feather_point;
   float(*feather_points)[2];
 
-  diff_points = BKE_mask_spline_differentiate_with_resolution(spline, &tot_diff_point, resol);
+  diff_points = BKE_mask_spline_differentiate_with_resolution(spline, resol, &tot_diff_point);
 
   if (!diff_points) {
     return;
@@ -550,7 +534,7 @@ static void draw_spline_curve(const bContext *C,
   }
 
   feather_points = BKE_mask_spline_feather_differentiated_points_with_resolution(
-      spline, &tot_feather_point, resol, (is_fill != false));
+      spline, resol, (is_fill != false), &tot_feather_point);
 
   /* draw feather */
   mask_spline_feather_color_get(mask_layer, spline, is_spline_sel, rgb_tmp);
@@ -587,6 +571,35 @@ static void draw_spline_curve(const bContext *C,
   }
 }
 
+static void draw_layer_splines(const bContext *C,
+                               MaskLayer *layer,
+                               const char draw_flag,
+                               const char draw_type,
+                               const int width,
+                               const int height,
+                               const bool is_active)
+{
+  LISTBASE_FOREACH (MaskSpline *, spline, &layer->splines) {
+    /* draw curve itself first... */
+    draw_spline_curve(C, layer, spline, draw_flag, draw_type, is_active, width, height);
+
+    if (!(layer->visibility_flag & MASK_HIDE_SELECT)) {
+      /* ...and then handles over the curve so they're nicely visible */
+      draw_spline_points(C, layer, spline, draw_flag, draw_type);
+    }
+
+    /* show undeform for testing */
+    if (0) {
+      void *back = spline->points_deform;
+
+      spline->points_deform = NULL;
+      draw_spline_curve(C, layer, spline, draw_flag, draw_type, is_active, width, height);
+      draw_spline_points(C, layer, spline, draw_flag, draw_type);
+      spline->points_deform = back;
+    }
+  }
+}
+
 static void draw_mask_layers(const bContext *C,
                              Mask *mask,
                              const char draw_flag,
@@ -594,61 +607,35 @@ static void draw_mask_layers(const bContext *C,
                              const int width,
                              const int height)
 {
-  GPU_blend(true);
-  GPU_blend_set_func_separate(
-      GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ONE, GPU_ONE_MINUS_SRC_ALPHA);
+  GPU_blend(GPU_BLEND_ALPHA);
   GPU_program_point_size(true);
 
   MaskLayer *mask_layer;
   int i;
 
+  MaskLayer *active = NULL;
   for (mask_layer = mask->masklayers.first, i = 0; mask_layer != NULL;
        mask_layer = mask_layer->next, i++) {
     const bool is_active = (i == mask->masklay_act);
 
-    if (mask_layer->restrictflag & MASK_RESTRICT_VIEW) {
+    if (mask_layer->visibility_flag & MASK_HIDE_VIEW) {
       continue;
     }
 
-    LISTBASE_FOREACH (MaskSpline *, spline, &mask_layer->splines) {
-
-      /* draw curve itself first... */
-      draw_spline_curve(C, mask_layer, spline, draw_flag, draw_type, is_active, width, height);
-
-      if (!(mask_layer->restrictflag & MASK_RESTRICT_SELECT)) {
-        /* ...and then handles over the curve so they're nicely visible */
-        draw_spline_points(C, mask_layer, spline, draw_flag, draw_type);
-      }
-
-      /* show undeform for testing */
-      if (0) {
-        void *back = spline->points_deform;
-
-        spline->points_deform = NULL;
-        draw_spline_curve(C, mask_layer, spline, draw_flag, draw_type, is_active, width, height);
-        draw_spline_points(C, mask_layer, spline, draw_flag, draw_type);
-        spline->points_deform = back;
-      }
+    if (is_active) {
+      active = mask_layer;
+      continue;
     }
+
+    draw_layer_splines(C, mask_layer, draw_flag, draw_type, width, height, is_active);
+  }
+
+  if (active != NULL) {
+    draw_layer_splines(C, active, draw_flag, draw_type, width, height, true);
   }
 
   GPU_program_point_size(false);
-  GPU_blend(false);
-}
-
-void ED_mask_draw(const bContext *C, const char draw_flag, const char draw_type)
-{
-  ScrArea *area = CTX_wm_area(C);
-  Mask *mask = CTX_data_edit_mask(C);
-  int width, height;
-
-  if (!mask) {
-    return;
-  }
-
-  ED_mask_get_size(area, &width, &height);
-
-  draw_mask_layers(C, mask, draw_flag, draw_type, width, height);
+  GPU_blend(GPU_BLEND_NONE);
 }
 
 static float *mask_rasterize(Mask *mask, const int width, const int height)
@@ -668,15 +655,13 @@ static float *mask_rasterize(Mask *mask, const int width, const int height)
   return buffer;
 }
 
-/* sets up the opengl context.
- * width, height are to match the values from ED_mask_get_size() */
 void ED_mask_draw_region(
     Depsgraph *depsgraph,
     Mask *mask_,
     ARegion *region,
     const char draw_flag,
     const char draw_type,
-    const char overlay_mode,
+    const eMaskOverlayMode overlay_mode,
     /* convert directly into aspect corrected vars */
     const int width_i,
     const int height_i,
@@ -706,8 +691,8 @@ void ED_mask_draw_region(
   /* find window pixel coordinates of origin */
   UI_view2d_view_to_region(&region->v2d, 0.0f, 0.0f, &x, &y);
 
-  /* w = BLI_rctf_size_x(&v2d->tot); */
-  /* h = BLI_rctf_size_y(&v2d->tot); */
+  // w = BLI_rctf_size_x(&v2d->tot);
+  // h = BLI_rctf_size_y(&v2d->tot);
 
   zoomx = (float)(BLI_rcti_size_x(&region->winrct) + 1) / BLI_rctf_size_x(&region->v2d.cur);
   zoomy = (float)(BLI_rcti_size_y(&region->winrct) + 1) / BLI_rctf_size_y(&region->v2d.cur);
@@ -735,13 +720,12 @@ void ED_mask_draw_region(
   }
 
   if (draw_flag & MASK_DRAWFLAG_OVERLAY) {
-    float red[4] = {1.0f, 0.0f, 0.0f, 0.0f};
+    const float red[4] = {1.0f, 0.0f, 0.0f, 0.0f};
     float *buffer = mask_rasterize(mask_eval, width, height);
 
     if (overlay_mode != MASK_OVERLAY_ALPHACHANNEL) {
       /* More blending types could be supported in the future. */
-      GPU_blend(true);
-      GPU_blend_set_func(GPU_DST_COLOR, GPU_ZERO);
+      GPU_blend(GPU_BLEND_MULTIPLY);
     }
 
     GPU_matrix_push();
@@ -753,13 +737,13 @@ void ED_mask_draw_region(
     IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_2D_IMAGE_SHUFFLE_COLOR);
     GPU_shader_uniform_vector(
         state.shader, GPU_shader_get_uniform(state.shader, "shuffle"), 4, 1, red);
-    immDrawPixelsTex(
-        &state, 0.0f, 0.0f, width, height, GL_RED, GL_FLOAT, GL_NEAREST, buffer, 1.0f, 1.0f, NULL);
+    immDrawPixelsTexTiled(
+        &state, 0.0f, 0.0f, width, height, GPU_R16F, false, buffer, 1.0f, 1.0f, NULL);
 
     GPU_matrix_pop();
 
     if (overlay_mode != MASK_OVERLAY_ALPHACHANNEL) {
-      GPU_blend(false);
+      GPU_blend(GPU_BLEND_NONE);
     }
 
     MEM_freeN(buffer);
@@ -821,7 +805,7 @@ void ED_mask_draw_frames(
        mask_layer_shape = mask_layer_shape->next) {
     int frame = mask_layer_shape->frame;
 
-    /* draw_keyframe(i, CFRA, sfra, framelen, 1); */
+    // draw_keyframe(i, CFRA, sfra, framelen, 1);
     int height = (frame == cfra) ? 22 : 10;
     int x = (frame - sfra) * framelen;
     immVertex2i(pos, x, region_bottom);

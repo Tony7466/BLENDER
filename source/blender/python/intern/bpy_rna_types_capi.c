@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pythonintern
@@ -36,12 +22,17 @@
 #include "bpy_library.h"
 #include "bpy_rna.h"
 #include "bpy_rna_callback.h"
+#include "bpy_rna_data.h"
 #include "bpy_rna_id_collection.h"
 #include "bpy_rna_types_capi.h"
+#include "bpy_rna_ui.h"
+
+#include "bpy_rna_operator.h"
 
 #include "../generic/py_capi_utils.h"
 
 #include "RNA_access.h"
+#include "RNA_prototypes.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -55,6 +46,7 @@ static struct PyMethodDef pyrna_blenddata_methods[] = {
     {NULL, NULL, 0, NULL}, /* #BPY_rna_id_collection_user_map_method_def */
     {NULL, NULL, 0, NULL}, /* #BPY_rna_id_collection_batch_remove_method_def */
     {NULL, NULL, 0, NULL}, /* #BPY_rna_id_collection_orphans_purge_method_def */
+    {NULL, NULL, 0, NULL}, /* #BPY_rna_data_context_method_def */
     {NULL, NULL, 0, NULL},
 };
 
@@ -73,9 +65,31 @@ static struct PyMethodDef pyrna_blenddatalibraries_methods[] = {
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name UI Layout
+ * \{ */
+
+static struct PyMethodDef pyrna_uilayout_methods[] = {
+    {NULL, NULL, 0, NULL}, /* #BPY_rna_uilayout_introspect_method_def */
+    {NULL, NULL, 0, NULL},
+};
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Operator
+ * \{ */
+
+static struct PyMethodDef pyrna_operator_methods[] = {
+    {NULL, NULL, 0, NULL}, /* #BPY_rna_operator_poll_message_set */
+    {NULL, NULL, 0, NULL},
+};
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Window Manager Clipboard Property
  *
- * Avoid using the RNA API because this value may change between checking it's length
+ * Avoid using the RNA API because this value may change between checking its length
  * and creating the buffer, causing writes past the allocated length.
  * \{ */
 
@@ -195,8 +209,9 @@ void BPY_rna_types_extend_capi(void)
   ARRAY_SET_ITEMS(pyrna_blenddata_methods,
                   BPY_rna_id_collection_user_map_method_def,
                   BPY_rna_id_collection_batch_remove_method_def,
-                  BPY_rna_id_collection_orphans_purge_method_def);
-  BLI_assert(ARRAY_SIZE(pyrna_blenddata_methods) == 4);
+                  BPY_rna_id_collection_orphans_purge_method_def,
+                  BPY_rna_data_context_method_def);
+  BLI_assert(ARRAY_SIZE(pyrna_blenddata_methods) == 5);
   pyrna_struct_type_extend_capi(&RNA_BlendData, pyrna_blenddata_methods, NULL);
 
   /* BlendDataLibraries */
@@ -205,8 +220,18 @@ void BPY_rna_types_extend_capi(void)
   BLI_assert(ARRAY_SIZE(pyrna_blenddatalibraries_methods) == 3);
   pyrna_struct_type_extend_capi(&RNA_BlendDataLibraries, pyrna_blenddatalibraries_methods, NULL);
 
+  /* uiLayout */
+  ARRAY_SET_ITEMS(pyrna_uilayout_methods, BPY_rna_uilayout_introspect_method_def);
+  BLI_assert(ARRAY_SIZE(pyrna_uilayout_methods) == 2);
+  pyrna_struct_type_extend_capi(&RNA_UILayout, pyrna_uilayout_methods, NULL);
+
   /* Space */
   pyrna_struct_type_extend_capi(&RNA_Space, pyrna_space_methods, NULL);
+
+  /* wmOperator */
+  ARRAY_SET_ITEMS(pyrna_operator_methods, BPY_rna_operator_poll_message_set_method_def);
+  BLI_assert(ARRAY_SIZE(pyrna_operator_methods) == 2);
+  pyrna_struct_type_extend_capi(&RNA_Operator, pyrna_operator_methods, NULL);
 
   /* WindowManager */
   pyrna_struct_type_extend_capi(

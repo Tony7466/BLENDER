@@ -1,21 +1,6 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
-#ifndef __BLI_HASH_HH__
-#define __BLI_HASH_HH__
+#pragma once
 
 /** \file
  * \ingroup bli
@@ -86,14 +71,37 @@
 namespace blender {
 
 /**
- * If there is no other specialization of #DefaultHash for a given type, try to call `hash()` on
- * the value. If there is no such method, this will result in a compiler error. Usually that means
- * that you have to implement a hash function using one of three strategies listed above.
+ * If there is no other specialization of #DefaultHash for a given type, look for a hash function
+ * on the type itself. Implementing a `hash()` method on a type is often significantly easier than
+ * specializing #DefaultHash.
+ *
+ * To support heterogeneous lookup, a type can also implement a static `hash_as(const OtherType &)`
+ * function.
+ *
+ * In the case of an enum type, the default hash is just to cast the enum value to an integer.
  */
 template<typename T> struct DefaultHash {
   uint64_t operator()(const T &value) const
   {
-    return value.hash();
+    if constexpr (std::is_enum_v<T>) {
+      /* For enums use the value as hash directly. */
+      return (uint64_t)value;
+    }
+    else {
+      /* Try to call the `hash()` function on the value. */
+      /* If this results in a compiler error, no hash function for the type has been found. */
+      return value.hash();
+    }
+  }
+
+  template<typename U> uint64_t operator()(const U &value) const
+  {
+    /* Try calling the static `T::hash_as(value)` function with the given value. The returned hash
+     * should be "compatible" with `T::hash()`. Usually that means that if `value` is converted to
+     * `T` its hash does not change. */
+    /* If this results in a compiler error, no hash function for the heterogeneous lookup has been
+     * found. */
+    return T::hash_as(value);
   }
 };
 
@@ -111,7 +119,7 @@ template<typename T> struct DefaultHash<const T> {
   template<> struct DefaultHash<TYPE> { \
     uint64_t operator()(TYPE value) const \
     { \
-      return (uint64_t)value; \
+      return static_cast<uint64_t>(value); \
     } \
   }
 
@@ -136,14 +144,21 @@ TRIVIAL_DEFAULT_INT_HASH(uint64_t);
 template<> struct DefaultHash<float> {
   uint64_t operator()(float value) const
   {
-    return *(uint32_t *)&value;
+    return *reinterpret_cast<uint32_t *>(&value);
+  }
+};
+
+template<> struct DefaultHash<double> {
+  uint64_t operator()(double value) const
+  {
+    return *reinterpret_cast<uint64_t *>(&value);
   }
 };
 
 template<> struct DefaultHash<bool> {
   uint64_t operator()(bool value) const
   {
-    return (uint64_t)(value != false) * 1298191;
+    return static_cast<uint64_t>((value != false) * 1298191);
   }
 };
 
@@ -181,34 +196,82 @@ template<> struct DefaultHash<StringRefNull> {
   }
 };
 
+template<> struct DefaultHash<std::string_view> {
+  uint64_t operator()(StringRef value) const
+  {
+    return hash_string(value);
+  }
+};
+
 /**
  * While we cannot guarantee that the lower 4 bits of a pointer are zero, it is often the case.
  */
 template<typename T> struct DefaultHash<T *> {
   uint64_t operator()(const T *value) const
   {
-    uintptr_t ptr = (uintptr_t)value;
-    uint64_t hash = (uint64_t)(ptr >> 4);
+    uintptr_t ptr = reinterpret_cast<uintptr_t>(value);
+    uint64_t hash = static_cast<uint64_t>(ptr >> 4);
     return hash;
   }
 };
 
+template<typename T> uint64_t get_default_hash(const T &v)
+{
+  return DefaultHash<T>{}(v);
+}
+
+template<typename T1, typename T2> uint64_t get_default_hash_2(const T1 &v1, const T2 &v2)
+{
+  const uint64_t h1 = get_default_hash(v1);
+  const uint64_t h2 = get_default_hash(v2);
+  return h1 ^ (h2 * 19349669);
+}
+
+template<typename T1, typename T2, typename T3>
+uint64_t get_default_hash_3(const T1 &v1, const T2 &v2, const T3 &v3)
+{
+  const uint64_t h1 = get_default_hash(v1);
+  const uint64_t h2 = get_default_hash(v2);
+  const uint64_t h3 = get_default_hash(v3);
+  return h1 ^ (h2 * 19349669) ^ (h3 * 83492791);
+}
+
+template<typename T1, typename T2, typename T3, typename T4>
+uint64_t get_default_hash_4(const T1 &v1, const T2 &v2, const T3 &v3, const T4 &v4)
+{
+  const uint64_t h1 = get_default_hash(v1);
+  const uint64_t h2 = get_default_hash(v2);
+  const uint64_t h3 = get_default_hash(v3);
+  const uint64_t h4 = get_default_hash(v4);
+  return h1 ^ (h2 * 19349669) ^ (h3 * 83492791) ^ (h4 * 3632623);
+}
+
 template<typename T> struct DefaultHash<std::unique_ptr<T>> {
   uint64_t operator()(const std::unique_ptr<T> &value) const
   {
-    return DefaultHash<T *>{}(value.get());
+    return get_default_hash(value.get());
+  }
+};
+
+template<typename T> struct DefaultHash<std::shared_ptr<T>> {
+  uint64_t operator()(const std::shared_ptr<T> &value) const
+  {
+    return get_default_hash(value.get());
+  }
+};
+
+template<typename T> struct DefaultHash<std::reference_wrapper<T>> {
+  uint64_t operator()(const std::reference_wrapper<T> &value) const
+  {
+    return get_default_hash(value.get());
   }
 };
 
 template<typename T1, typename T2> struct DefaultHash<std::pair<T1, T2>> {
   uint64_t operator()(const std::pair<T1, T2> &value) const
   {
-    uint64_t hash1 = DefaultHash<T1>{}(value.first);
-    uint64_t hash2 = DefaultHash<T2>{}(value.second);
-    return hash1 ^ (hash2 * 33);
+    return get_default_hash_2(value.first, value.second);
   }
 };
 
 }  // namespace blender
-
-#endif /* __BLI_HASH_HH__ */

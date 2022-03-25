@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2008 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup edinterface
@@ -23,7 +7,6 @@
  * PopUp Menu Region
  */
 
-#include <assert.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
@@ -87,6 +70,17 @@ int ui_but_menu_step(uiBut *but, int direction)
   return 0;
 }
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Popup Menu Memory
+ *
+ * Support menu-memory, a feature that positions the cursor
+ * over the previously used menu item.
+ *
+ * \note This is stored for each unique menu title.
+ * \{ */
+
 static uint ui_popup_string_hash(const char *str, const bool use_sep)
 {
   /* sometimes button contains hotkey, sometimes not, strip for proper compare */
@@ -130,9 +124,10 @@ static uiBut *ui_popup_menu_memory__internal(uiBlock *block, uiBut *but)
   }
 
   /* get */
-  for (but = block->buttons.first; but; but = but->next) {
-    if (mem[hash_mod] == ui_popup_string_hash(but->str, but->flag & UI_BUT_HAS_SEP_CHAR)) {
-      return but;
+  LISTBASE_FOREACH (uiBut *, but_iter, &block->buttons) {
+    if (mem[hash_mod] ==
+        ui_popup_string_hash(but_iter->str, but_iter->flag & UI_BUT_HAS_SEP_CHAR)) {
+      return but_iter;
     }
   }
 
@@ -188,7 +183,7 @@ static uiBlock *ui_block_func_POPUP(bContext *C, uiPopupBlockHandle *handle, voi
     minwidth = uiLayoutGetUnitsX(pup->layout) * UI_UNIT_X;
   }
   else if (pup->but) {
-    /* minimum width to enforece */
+    /* Minimum width to enforce. */
     if (pup->but->drawstr[0]) {
       minwidth = BLI_rctf_size_x(&pup->but->rect);
     }
@@ -232,7 +227,6 @@ static uiBlock *ui_block_func_POPUP(bContext *C, uiPopupBlockHandle *handle, voi
   UI_block_flag_enable(block, UI_BLOCK_MOVEMOUSE_QUIT);
 
   if (pup->popup) {
-    uiBut *bt;
     int offset[2];
 
     uiBut *but_activate = NULL;
@@ -241,6 +235,7 @@ static uiBlock *ui_block_func_POPUP(bContext *C, uiPopupBlockHandle *handle, voi
     UI_block_direction_set(block, direction);
 
     /* offset the mouse position, possibly based on earlier selection */
+    uiBut *bt;
     if ((block->flag & UI_BLOCK_POPUP_MEMORY) && (bt = ui_popup_menu_memory_get(block))) {
       /* position mouse on last clicked item, at 0.8*width of the
        * button, so it doesn't overlap the text too much, also note
@@ -257,15 +252,16 @@ static uiBlock *ui_block_func_POPUP(bContext *C, uiPopupBlockHandle *handle, voi
       /* position mouse at 0.8*width of the button and below the tile
        * on the first item */
       offset[0] = 0;
-      for (bt = block->buttons.first; bt; bt = bt->next) {
-        offset[0] = min_ii(offset[0], -(bt->rect.xmin + 0.8f * BLI_rctf_size_x(&bt->rect)));
+      LISTBASE_FOREACH (uiBut *, but_iter, &block->buttons) {
+        offset[0] = min_ii(offset[0],
+                           -(but_iter->rect.xmin + 0.8f * BLI_rctf_size_x(&but_iter->rect)));
       }
 
       offset[1] = 2.1 * UI_UNIT_Y;
 
-      for (bt = block->buttons.first; bt; bt = bt->next) {
-        if (ui_but_is_editable(bt)) {
-          but_activate = bt;
+      LISTBASE_FOREACH (uiBut *, but_iter, &block->buttons) {
+        if (ui_but_is_editable(but_iter)) {
+          but_activate = but_iter;
           break;
         }
       }
@@ -284,17 +280,10 @@ static uiBlock *ui_block_func_POPUP(bContext *C, uiPopupBlockHandle *handle, voi
   else {
     /* for a header menu we set the direction automatic */
     if (!pup->slideout && flip) {
-      ScrArea *area = CTX_wm_area(C);
       ARegion *region = CTX_wm_region(C);
-      if (area && region) {
-        if (ELEM(region->regiontype, RGN_TYPE_HEADER, RGN_TYPE_TOOL_HEADER)) {
-          if (RGN_ALIGN_ENUM_FROM_MASK(ED_area_header_alignment(area)) == RGN_ALIGN_BOTTOM) {
-            UI_block_direction_set(block, UI_DIR_UP);
-            UI_block_order_flip(block);
-          }
-        }
-        if (region->regiontype == RGN_TYPE_FOOTER) {
-          if (RGN_ALIGN_ENUM_FROM_MASK(ED_area_footer_alignment(area)) == RGN_ALIGN_BOTTOM) {
+      if (region) {
+        if (RGN_TYPE_IS_HEADER_ANY(region->regiontype)) {
+          if (RGN_ALIGN_ENUM_FROM_MASK(region->alignment) == RGN_ALIGN_BOTTOM) {
             UI_block_direction_set(block, UI_DIR_UP);
             UI_block_order_flip(block);
           }
@@ -333,8 +322,8 @@ uiPopupBlockHandle *ui_popup_menu_create(
 
   if (!but) {
     /* no button to start from, means we are a popup */
-    pup->mx = window->eventstate->x;
-    pup->my = window->eventstate->y;
+    pup->mx = window->eventstate->xy[0];
+    pup->my = window->eventstate->xy[1];
     pup->popup = true;
     pup->block->flag |= UI_BLOCK_NO_FLIP;
   }
@@ -345,7 +334,7 @@ uiPopupBlockHandle *ui_popup_menu_create(
 #if 0
     /* if this is an rna button then we can assume its an enum
      * flipping enums is generally not good since the order can be
-     * important [#28786] */
+     * important T28786. */
     if (but->rnaprop && RNA_property_type(but->rnaprop) == PROP_ENUM) {
       pup->block->flag |= UI_BLOCK_NO_FLIP;
     }
@@ -379,10 +368,6 @@ uiPopupBlockHandle *ui_popup_menu_create(
 /** \name Popup Menu API with begin & end
  * \{ */
 
-/**
- * Only return handler, and set optional title.
- * \param block_name: Assigned to uiBlock.name (useful info for debugging).
- */
 uiPopupMenu *UI_popup_menu_begin_ex(bContext *C,
                                     const char *title,
                                     const char *block_name,
@@ -398,7 +383,7 @@ uiPopupMenu *UI_popup_menu_begin_ex(bContext *C,
   pup->layout = UI_block_layout(
       pup->block, UI_LAYOUT_VERTICAL, UI_LAYOUT_MENU, 0, 0, 200, 0, UI_MENU_PADDING, style);
 
-  /* note, this intentionally differs from the menu & submenu default because many operators
+  /* NOTE: this intentionally differs from the menu & sub-menu default because many operators
    * use popups like this to select one of their options -
    * where having invoke doesn't make sense */
   uiLayoutSetOperatorContext(pup->layout, WM_OP_EXEC_REGION_WIN);
@@ -445,16 +430,12 @@ uiPopupMenu *UI_popup_menu_begin(bContext *C, const char *title, int icon)
   return UI_popup_menu_begin_ex(C, title, __func__, icon);
 }
 
-/**
- * Setting the button makes the popup open from the button instead of the cursor.
- */
 void UI_popup_menu_but_set(uiPopupMenu *pup, struct ARegion *butregion, uiBut *but)
 {
   pup->but = but;
   pup->butregion = butregion;
 }
 
-/* set the whole structure to work */
 void UI_popup_menu_end(bContext *C, uiPopupMenu *pup)
 {
   wmWindow *window = CTX_wm_window(C);
@@ -463,8 +444,8 @@ void UI_popup_menu_end(bContext *C, uiPopupMenu *pup)
   ARegion *butregion = NULL;
 
   pup->popup = true;
-  pup->mx = window->eventstate->x;
-  pup->my = window->eventstate->y;
+  pup->mx = window->eventstate->xy[0];
+  pup->my = window->eventstate->xy[1];
 
   if (pup->but) {
     but = pup->but;
@@ -506,8 +487,6 @@ uiLayout *UI_popup_menu_layout(uiPopupMenu *pup)
 
 void UI_popup_menu_reports(bContext *C, ReportList *reports)
 {
-  Report *report;
-
   uiPopupMenu *pup = NULL;
   uiLayout *layout;
 
@@ -515,7 +494,7 @@ void UI_popup_menu_reports(bContext *C, ReportList *reports)
     return;
   }
 
-  for (report = reports->list.first; report; report = report->next) {
+  LISTBASE_FOREACH (Report *, report, &reports->list) {
     int icon;
     const char *msg, *msg_next;
 
@@ -588,7 +567,7 @@ int UI_popup_menu_invoke(bContext *C, const char *idname, ReportList *reports)
  * \{ */
 
 void UI_popup_block_invoke_ex(
-    bContext *C, uiBlockCreateFunc func, void *arg, void (*arg_free)(void *arg), bool can_refresh)
+    bContext *C, uiBlockCreateFunc func, void *arg, uiFreeArgFunc arg_free, bool can_refresh)
 {
   wmWindow *window = CTX_wm_window(C);
   uiPopupBlockHandle *handle;
@@ -605,10 +584,7 @@ void UI_popup_block_invoke_ex(
   WM_event_add_mousemove(window);
 }
 
-void UI_popup_block_invoke(bContext *C,
-                           uiBlockCreateFunc func,
-                           void *arg,
-                           void (*arg_free)(void *arg))
+void UI_popup_block_invoke(bContext *C, uiBlockCreateFunc func, void *arg, uiFreeArgFunc arg_free)
 {
   UI_popup_block_invoke_ex(C, func, arg, arg_free, true);
 }
@@ -640,7 +616,7 @@ void UI_popup_block_ex(bContext *C,
 }
 
 #if 0 /* UNUSED */
-void uiPupBlockOperator(bContext *C, uiBlockCreateFunc func, wmOperator *op, int opcontext)
+void uiPupBlockOperator(bContext *C, uiBlockCreateFunc func, wmOperator *op, wmOperatorCallContext opcontext)
 {
   wmWindow *window = CTX_wm_window(C);
   uiPopupBlockHandle *handle;

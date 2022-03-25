@@ -1,27 +1,10 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup edobj
  */
 
-#include <assert.h>
 #include <math.h>
 #include <stddef.h>
 #include <string.h>
@@ -29,6 +12,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_curve_types.h"
+#include "DNA_gpencil_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -39,7 +23,9 @@
 
 #include "BLI_alloca.h"
 #include "BLI_array.h"
+#include "BLI_bitmap.h"
 #include "BLI_blenlib.h"
+#include "BLI_listbase.h"
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
 #include "BLI_utildefines_stack.h"
@@ -62,6 +48,8 @@
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_armature_types.h"
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -72,14 +60,31 @@
 
 #include "ED_mesh.h"
 #include "ED_object.h"
+#include "ED_screen.h"
 
 #include "UI_resources.h"
 
 #include "object_intern.h"
 
+static bool vertex_group_supported_poll_ex(bContext *C, const Object *ob);
+
 /* -------------------------------------------------------------------- */
-/** \name Public Utility Functions
+/** \name Local Utility Functions
  * \{ */
+
+static bool object_array_for_wpaint_filter(const Object *ob, void *user_data)
+{
+  bContext *C = user_data;
+  if (vertex_group_supported_poll_ex(C, ob)) {
+    return true;
+  }
+  return false;
+}
+
+static Object **object_array_for_wpaint(bContext *C, uint *r_objects_len)
+{
+  return ED_object_array_in_mode_or_selected(C, object_array_for_wpaint_filter, C, r_objects_len);
+}
 
 static bool vertex_group_use_vert_sel(Object *ob)
 {
@@ -100,6 +105,12 @@ static Lattice *vgroup_edit_lattice(Object *ob)
   return (lt->editlatt) ? lt->editlatt->latt : lt;
 }
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Public Utility Functions
+ * \{ */
+
 bool ED_vgroup_sync_from_pose(Object *ob)
 {
   Object *armobj = BKE_object_pose_armature_get(ob);
@@ -108,7 +119,7 @@ bool ED_vgroup_sync_from_pose(Object *ob)
     if (arm->act_bone) {
       int def_num = BKE_object_defgroup_name_index(ob, arm->act_bone->name);
       if (def_num != -1) {
-        ob->actdef = def_num + 1;
+        BKE_object_defgroup_active_index_set(ob, def_num + 1);
         return true;
       }
     }
@@ -116,20 +127,15 @@ bool ED_vgroup_sync_from_pose(Object *ob)
   return false;
 }
 
-/**
- * Removes out of range MDeformWeights
- */
 void ED_vgroup_data_clamp_range(ID *id, const int total)
 {
   MDeformVert **dvert_arr;
   int dvert_tot;
 
   if (ED_vgroup_parray_alloc(id, &dvert_arr, &dvert_tot, false)) {
-    int i;
-    for (i = 0; i < dvert_tot; i++) {
+    for (int i = 0; i < dvert_tot; i++) {
       MDeformVert *dv = dvert_arr[i];
-      int j;
-      for (j = 0; j < dv->totweight; j++) {
+      for (int j = 0; j < dv->totweight; j++) {
         if (dv->dw[j].def_nr >= total) {
           BKE_defvert_remove_group(dv, &dv->dw[j]);
           j--;
@@ -190,18 +196,17 @@ bool ED_vgroup_parray_alloc(ID *id,
         if (me->dvert) {
           MVert *mvert = me->mvert;
           MDeformVert *dvert = me->dvert;
-          int i;
 
           *dvert_tot = me->totvert;
           *dvert_arr = MEM_mallocN(sizeof(void *) * me->totvert, "vgroup parray from me");
 
           if (use_vert_sel) {
-            for (i = 0; i < me->totvert; i++) {
+            for (int i = 0; i < me->totvert; i++) {
               (*dvert_arr)[i] = (mvert[i].flag & SELECT) ? &dvert[i] : NULL;
             }
           }
           else {
-            for (i = 0; i < me->totvert; i++) {
+            for (int i = 0; i < me->totvert; i++) {
               (*dvert_arr)[i] = me->dvert + i;
             }
           }
@@ -211,8 +216,6 @@ bool ED_vgroup_parray_alloc(ID *id,
         return false;
       }
       case ID_LT: {
-        int i = 0;
-
         Lattice *lt = (Lattice *)id;
         lt = (lt->editlatt) ? lt->editlatt->latt : lt;
 
@@ -222,12 +225,12 @@ bool ED_vgroup_parray_alloc(ID *id,
           *dvert_arr = MEM_mallocN(sizeof(void *) * (*dvert_tot), "vgroup parray from me");
 
           if (use_vert_sel) {
-            for (i = 0; i < *dvert_tot; i++) {
+            for (int i = 0; i < *dvert_tot; i++) {
               (*dvert_arr)[i] = (def->f1 & SELECT) ? &lt->dvert[i] : NULL;
             }
           }
           else {
-            for (i = 0; i < *dvert_tot; i++) {
+            for (int i = 0; i < *dvert_tot; i++) {
               (*dvert_arr)[i] = lt->dvert + i;
             }
           }
@@ -245,13 +248,6 @@ bool ED_vgroup_parray_alloc(ID *id,
   return false;
 }
 
-/**
- * For use with tools that use ED_vgroup_parray_alloc with \a use_vert_sel == true.
- * This finds the unselected mirror deform verts and copies the weights to them from the selected.
- *
- * \note \a dvert_array has mirrored weights filled in,
- * in case cleanup operations are needed on both.
- */
 void ED_vgroup_parray_mirror_sync(Object *ob,
                                   MDeformVert **dvert_array,
                                   const int dvert_tot,
@@ -295,17 +291,11 @@ void ED_vgroup_parray_mirror_sync(Object *ob,
   MEM_freeN(dvert_array_all);
 }
 
-/**
- * Fill in the pointers for mirror verts (as if all mirror verts were selected too).
- *
- * similar to #ED_vgroup_parray_mirror_sync but only fill in mirror points.
- */
 void ED_vgroup_parray_mirror_assign(Object *ob, MDeformVert **dvert_array, const int dvert_tot)
 {
   BMEditMesh *em = BKE_editmesh_from_object(ob);
   MDeformVert **dvert_array_all = NULL;
   int dvert_tot_all;
-  int i;
 
   /* get an array of all verts, not only selected */
   if (ED_vgroup_parray_alloc(ob->data, &dvert_array_all, &dvert_tot_all, false) == false) {
@@ -317,7 +307,7 @@ void ED_vgroup_parray_mirror_assign(Object *ob, MDeformVert **dvert_array, const
     BM_mesh_elem_table_ensure(em->bm, BM_VERT);
   }
 
-  for (i = 0; i < dvert_tot; i++) {
+  for (int i = 0; i < dvert_tot; i++) {
     if (dvert_array[i] == NULL) {
       /* its unselected, check if its mirror is */
       int i_sel = ED_mesh_mirror_get_vert(ob, i);
@@ -339,17 +329,14 @@ void ED_vgroup_parray_remove_zero(MDeformVert **dvert_array,
                                   const bool keep_single)
 {
   MDeformVert *dv;
-  int i;
 
-  for (i = 0; i < dvert_tot; i++) {
-    int j;
-
+  for (int i = 0; i < dvert_tot; i++) {
     /* in case its not selected */
     if (!(dv = dvert_array[i])) {
       continue;
     }
 
-    j = dv->totweight;
+    int j = dv->totweight;
 
     while (j--) {
       MDeformWeight *dw;
@@ -368,7 +355,6 @@ void ED_vgroup_parray_remove_zero(MDeformVert **dvert_array,
   }
 }
 
-/* matching index only */
 bool ED_vgroup_array_copy(Object *ob, Object *ob_from)
 {
   MDeformVert **dvert_array_from = NULL, **dvf;
@@ -376,11 +362,16 @@ bool ED_vgroup_array_copy(Object *ob, Object *ob_from)
   int dvert_tot_from;
   int dvert_tot;
   int i;
-  int defbase_tot_from = BLI_listbase_count(&ob_from->defbase);
-  int defbase_tot = BLI_listbase_count(&ob->defbase);
+  ListBase *defbase_dst = BKE_object_defgroup_list_mutable(ob);
+  const ListBase *defbase_src = BKE_object_defgroup_list(ob_from);
+
+  int defbase_tot_from = BLI_listbase_count(defbase_src);
+  int defbase_tot = BLI_listbase_count(defbase_dst);
   bool new_vgroup = false;
 
-  if (ob == ob_from) {
+  BLI_assert(ob != ob_from);
+
+  if (ob->data == ob_from->data) {
     return true;
   }
 
@@ -416,9 +407,9 @@ bool ED_vgroup_array_copy(Object *ob, Object *ob_from)
   }
 
   /* do the copy */
-  BLI_freelistN(&ob->defbase);
-  BLI_duplicatelist(&ob->defbase, &ob_from->defbase);
-  ob->actdef = ob_from->actdef;
+  BLI_freelistN(defbase_dst);
+  BLI_duplicatelist(defbase_dst, defbase_src);
+  BKE_object_defgroup_active_index_set(ob, BKE_object_defgroup_active_index_get(ob_from));
 
   if (defbase_tot_from < defbase_tot) {
     /* correct vgroup indices because the number of vgroups is being reduced. */
@@ -459,9 +450,7 @@ void ED_vgroup_parray_to_weight_array(const MDeformVert **dvert_array,
                                       float *dvert_weights,
                                       const int def_nr)
 {
-  int i;
-
-  for (i = 0; i < dvert_tot; i++) {
+  for (int i = 0; i < dvert_tot; i++) {
     const MDeformVert *dv = dvert_array[i];
     dvert_weights[i] = dv ? BKE_defvert_find_weight(dv, def_nr) : 0.0f;
   }
@@ -498,21 +487,21 @@ void ED_vgroup_parray_from_weight_array(MDeformVert **dvert_array,
   }
 }
 
-/* TODO, cache flip data to speedup calls within a loop. */
+/* TODO: cache flip data to speedup calls within a loop. */
 static void mesh_defvert_mirror_update_internal(Object *ob,
                                                 MDeformVert *dvert_dst,
                                                 MDeformVert *dvert_src,
                                                 const int def_nr)
 {
   if (def_nr == -1) {
-    /* all vgroups, add groups where needed  */
+    /* All vgroups, add groups where needed. */
     int flip_map_len;
     int *flip_map = BKE_object_defgroup_flip_map(ob, &flip_map_len, true);
     BKE_defvert_sync_mapped(dvert_dst, dvert_src, flip_map, flip_map_len, true);
     MEM_freeN(flip_map);
   }
   else {
-    /* single vgroup */
+    /* Single vgroup. */
     MDeformWeight *dw = BKE_defvert_ensure_index(dvert_dst,
                                                  BKE_object_defgroup_flip_index(ob, def_nr, 1));
     if (dw) {
@@ -557,16 +546,13 @@ static void ED_mesh_defvert_mirror_update_ob(Object *ob, int def_nr, int vidx)
   }
 }
 
-/**
- * Use when adjusting the active vertex weight and apply to mirror vertices.
- */
 void ED_vgroup_vert_active_mirror(Object *ob, int def_nr)
 {
   Mesh *me = ob->data;
   BMEditMesh *em = me->edit_mesh;
   MDeformVert *dvert_act;
 
-  if (me->editflag & ME_EDIT_MIRROR_X) {
+  if (me->symmetry & ME_SYMMETRY_X) {
     if (em) {
       BMVert *eve_act;
       dvert_act = ED_mesh_active_dvert_get_em(ob, &eve_act);
@@ -622,7 +608,7 @@ static bool vgroup_normalize_active_vertex(Object *ob, eVGroupSelect subset_type
   BKE_defvert_normalize_subset(dvert_act, vgroup_validmap, vgroup_tot);
   MEM_freeN((void *)vgroup_validmap);
 
-  if (me->editflag & ME_EDIT_MIRROR_X) {
+  if (me->symmetry & ME_SYMMETRY_X) {
     if (em) {
       const int cd_dvert_offset = CustomData_get_offset(&em->bm->vdata, CD_MDEFORMVERT);
       ED_mesh_defvert_mirror_update_em(ob, eve_act, -1, -1, cd_dvert_offset);
@@ -655,7 +641,7 @@ static void vgroup_copy_active_to_sel(Object *ob, eVGroupSelect subset_type)
         if (BM_elem_flag_test(eve, BM_ELEM_SELECT) && eve != eve_act) {
           MDeformVert *dv = BM_ELEM_CD_GET_VOID_P(eve, cd_dvert_offset);
           BKE_defvert_copy_subset(dv, dvert_act, vgroup_validmap, vgroup_tot);
-          if (me->editflag & ME_EDIT_MIRROR_X) {
+          if (me->symmetry & ME_SYMMETRY_X) {
             ED_mesh_defvert_mirror_update_em(ob, eve, -1, i, cd_dvert_offset);
           }
         }
@@ -672,7 +658,7 @@ static void vgroup_copy_active_to_sel(Object *ob, eVGroupSelect subset_type)
       for (i = 0; i < me->totvert; i++, dv++) {
         if ((me->mvert[i].flag & SELECT) && dv != dvert_act) {
           BKE_defvert_copy_subset(dv, dvert_act, vgroup_validmap, vgroup_tot);
-          if (me->editflag & ME_EDIT_MIRROR_X) {
+          if (me->symmetry & ME_SYMMETRY_X) {
             ED_mesh_defvert_mirror_update_ob(ob, -1, i);
           }
         }
@@ -725,14 +711,19 @@ const EnumPropertyItem *ED_object_vgroup_selection_itemf_helper(const bContext *
     RNA_enum_items_add_value(&item, &totitem, WT_vertex_group_select_item, WT_VGROUP_ACTIVE);
   }
 
-  if (BKE_object_pose_armature_get(ob)) {
-    if (selection_mask & (1 << WT_VGROUP_BONE_SELECT)) {
-      RNA_enum_items_add_value(
-          &item, &totitem, WT_vertex_group_select_item, WT_VGROUP_BONE_SELECT);
+  if (ob) {
+    if (BKE_object_pose_armature_get(ob)) {
+      if (selection_mask & (1 << WT_VGROUP_BONE_SELECT)) {
+        RNA_enum_items_add_value(
+            &item, &totitem, WT_vertex_group_select_item, WT_VGROUP_BONE_SELECT);
+      }
     }
-    if (selection_mask & (1 << WT_VGROUP_BONE_DEFORM)) {
-      RNA_enum_items_add_value(
-          &item, &totitem, WT_vertex_group_select_item, WT_VGROUP_BONE_DEFORM);
+
+    if (BKE_modifiers_is_deformed_by_armature(ob)) {
+      if (selection_mask & (1 << WT_VGROUP_BONE_DEFORM)) {
+        RNA_enum_items_add_value(
+            &item, &totitem, WT_vertex_group_select_item, WT_VGROUP_BONE_DEFORM);
+      }
     }
   }
 
@@ -772,7 +763,7 @@ static void vgroup_operator_subset_select_props(wmOperatorType *ot, bool use_act
                       DummyRNA_NULL_items,
                       use_active ? WT_VGROUP_ACTIVE : WT_VGROUP_ALL,
                       "Subset",
-                      "Define which subset of Groups shall be used");
+                      "Define which subset of groups shall be used");
 
   if (use_active) {
     RNA_def_enum_funcs(prop, rna_vertex_group_with_single_itemf);
@@ -860,13 +851,13 @@ static void ED_vgroup_nr_vert_add(
   }
 }
 
-/* called while not in editmode */
 void ED_vgroup_vert_add(Object *ob, bDeformGroup *dg, int vertnum, float weight, int assignmode)
 {
   /* add the vert to the deform group with the
    * specified assign mode
    */
-  const int def_nr = BLI_findindex(&ob->defbase, dg);
+  const ListBase *defbase = BKE_object_defgroup_list(ob);
+  const int def_nr = BLI_findindex(defbase, dg);
 
   MDeformVert *dv = NULL;
   int tot;
@@ -888,7 +879,6 @@ void ED_vgroup_vert_add(Object *ob, bDeformGroup *dg, int vertnum, float weight,
   }
 }
 
-/* mesh object mode, lattice can be in editmode */
 void ED_vgroup_vert_remove(Object *ob, bDeformGroup *dg, int vertnum)
 {
   /* This routine removes the vertex from the specified
@@ -897,7 +887,8 @@ void ED_vgroup_vert_remove(Object *ob, bDeformGroup *dg, int vertnum)
 
   /* TODO(campbell): This is slow in a loop, better pass def_nr directly,
    * but leave for later. */
-  const int def_nr = BLI_findindex(&ob->defbase, dg);
+  const ListBase *defbase = BKE_object_defgroup_list(ob);
+  const int def_nr = BLI_findindex(defbase, dg);
 
   if (def_nr != -1) {
     MDeformVert *dvert = NULL;
@@ -973,7 +964,8 @@ static float get_vert_def_nr(Object *ob, const int def_nr, const int vertnum)
 
 float ED_vgroup_vert_weight(Object *ob, bDeformGroup *dg, int vertnum)
 {
-  const int def_nr = BLI_findindex(&ob->defbase, dg);
+  const ListBase *defbase = BKE_object_defgroup_list(ob);
+  const int def_nr = BLI_findindex(defbase, dg);
 
   if (def_nr == -1) {
     return -1;
@@ -984,9 +976,9 @@ float ED_vgroup_vert_weight(Object *ob, bDeformGroup *dg, int vertnum)
 
 void ED_vgroup_select_by_name(Object *ob, const char *name)
 {
-  /* note: ob->actdef==0 signals on painting to create a new one,
+  /* NOTE: actdef==0 signals on painting to create a new one,
    * if a bone in posemode is selected */
-  ob->actdef = BKE_object_defgroup_name_index(ob, name) + 1;
+  BKE_object_defgroup_active_index_set(ob, BKE_object_defgroup_name_index(ob, name) + 1);
 }
 
 /** \} */
@@ -998,9 +990,10 @@ void ED_vgroup_select_by_name(Object *ob, const char *name)
 /* only in editmode */
 static void vgroup_select_verts(Object *ob, int select)
 {
-  const int def_nr = ob->actdef - 1;
+  const int def_nr = BKE_object_defgroup_active_index_get(ob) - 1;
 
-  if (!BLI_findlink(&ob->defbase, def_nr)) {
+  const ListBase *defbase = BKE_object_defgroup_list(ob);
+  if (!BLI_findlink(defbase, def_nr)) {
     return;
   }
 
@@ -1095,7 +1088,9 @@ static void vgroup_duplicate(Object *ob)
   MDeformVert **dvert_array = NULL;
   int i, idg, icdg, dvert_tot = 0;
 
-  dg = BLI_findlink(&ob->defbase, (ob->actdef - 1));
+  ListBase *defbase = BKE_object_defgroup_list_mutable(ob);
+
+  dg = BLI_findlink(defbase, BKE_object_defgroup_active_index_get(ob) - 1);
   if (!dg) {
     return;
   }
@@ -1111,13 +1106,13 @@ static void vgroup_duplicate(Object *ob)
   BLI_strncpy(cdg->name, name, sizeof(cdg->name));
   BKE_object_defgroup_unique_name(cdg, ob);
 
-  BLI_addtail(&ob->defbase, cdg);
+  BLI_addtail(defbase, cdg);
 
-  idg = (ob->actdef - 1);
-  ob->actdef = BLI_listbase_count(&ob->defbase);
-  icdg = (ob->actdef - 1);
+  idg = BKE_object_defgroup_active_index_get(ob) - 1;
+  BKE_object_defgroup_active_index_set(ob, BLI_listbase_count(defbase));
+  icdg = BKE_object_defgroup_active_index_get(ob) - 1;
 
-  /* TODO, we might want to allow only copy selected verts here? - campbell */
+  /* TODO(campbell): we might want to allow only copy selected verts here? */
   ED_vgroup_parray_alloc(ob->data, &dvert_array, &dvert_tot, false);
 
   if (dvert_array) {
@@ -1140,12 +1135,13 @@ static bool vgroup_normalize(Object *ob)
 {
   MDeformWeight *dw;
   MDeformVert *dv, **dvert_array = NULL;
-  int i, dvert_tot = 0;
-  const int def_nr = ob->actdef - 1;
+  int dvert_tot = 0;
+  const int def_nr = BKE_object_defgroup_active_index_get(ob) - 1;
 
   const bool use_vert_sel = vertex_group_use_vert_sel(ob);
 
-  if (!BLI_findlink(&ob->defbase, def_nr)) {
+  const ListBase *defbase = BKE_object_defgroup_list(ob);
+  if (!BLI_findlink(defbase, def_nr)) {
     return false;
   }
 
@@ -1154,7 +1150,7 @@ static bool vgroup_normalize(Object *ob)
   if (dvert_array) {
     float weight_max = 0.0f;
 
-    for (i = 0; i < dvert_tot; i++) {
+    for (int i = 0; i < dvert_tot; i++) {
 
       /* in case its not selected */
       if (!(dv = dvert_array[i])) {
@@ -1168,7 +1164,7 @@ static bool vgroup_normalize(Object *ob)
     }
 
     if (weight_max > 0.0f) {
-      for (i = 0; i < dvert_tot; i++) {
+      for (int i = 0; i < dvert_tot; i++) {
 
         /* in case its not selected */
         if (!(dv = dvert_array[i])) {
@@ -1554,7 +1550,7 @@ static void vgroup_fix(
           mag = normalize_v3(norm);
           if (mag) { /* zeros fix */
             d = -dot_v3v3(norm, coord);
-            /* dist = (dot_v3v3(norm, m.co) + d); */ /* UNUSED */
+            // dist = (dot_v3v3(norm, m.co) + d); /* UNUSED */
             moveCloserToDistanceFromPlane(
                 depsgraph, scene_eval, object_eval, me, i, norm, coord, d, distToBe, strength, cp);
           }
@@ -1576,26 +1572,24 @@ static void vgroup_levels_subset(Object *ob,
 {
   MDeformWeight *dw;
   MDeformVert *dv, **dvert_array = NULL;
-  int i, dvert_tot = 0;
+  int dvert_tot = 0;
 
   const bool use_vert_sel = vertex_group_use_vert_sel(ob);
   const bool use_mirror = (ob->type == OB_MESH) ?
-                              (((Mesh *)ob->data)->editflag & ME_EDIT_MIRROR_X) != 0 :
+                              (((Mesh *)ob->data)->symmetry & ME_SYMMETRY_X) != 0 :
                               false;
 
   ED_vgroup_parray_alloc(ob->data, &dvert_array, &dvert_tot, use_vert_sel);
 
   if (dvert_array) {
 
-    for (i = 0; i < dvert_tot; i++) {
-      int j;
-
+    for (int i = 0; i < dvert_tot; i++) {
       /* in case its not selected */
       if (!(dv = dvert_array[i])) {
         continue;
       }
 
-      j = vgroup_tot;
+      int j = vgroup_tot;
       while (j--) {
         if (vgroup_validmap[j]) {
           dw = BKE_defvert_find_index(dv, j);
@@ -1625,7 +1619,7 @@ static bool vgroup_normalize_all(Object *ob,
 {
   MDeformVert *dv, **dvert_array = NULL;
   int i, dvert_tot = 0;
-  const int def_nr = ob->actdef - 1;
+  const int def_nr = BKE_object_defgroup_active_index_get(ob) - 1;
 
   const bool use_vert_sel = vertex_group_use_vert_sel(ob);
 
@@ -1637,7 +1631,8 @@ static bool vgroup_normalize_all(Object *ob,
   ED_vgroup_parray_alloc(ob->data, &dvert_array, &dvert_tot, use_vert_sel);
 
   if (dvert_array) {
-    const int defbase_tot = BLI_listbase_count(&ob->defbase);
+    const ListBase *defbase = BKE_object_defgroup_list(ob);
+    const int defbase_tot = BLI_listbase_count(defbase);
     bool *lock_flags = BKE_object_defgroup_lock_flags_get(ob, defbase_tot);
     bool changed = false;
 
@@ -1728,7 +1723,7 @@ static const EnumPropertyItem vgroup_lock_mask[] = {
 
 static bool *vgroup_selected_get(Object *ob)
 {
-  int sel_count = 0, defbase_tot = BLI_listbase_count(&ob->defbase);
+  int sel_count = 0, defbase_tot = BKE_object_defgroup_count(ob);
   bool *mask;
 
   if (ob->mode & OB_MODE_WEIGHT_PAINT) {
@@ -1737,7 +1732,7 @@ static bool *vgroup_selected_get(Object *ob)
     /* Mirror the selection if X Mirror is enabled. */
     Mesh *me = BKE_mesh_from_object(ob);
 
-    if (me && (me->editflag & ME_EDIT_MIRROR_X) != 0) {
+    if (me && ME_USING_MIRROR_X_VERTEX_GROUPS(me)) {
       BKE_object_defgroup_mirror_selection(ob, defbase_tot, mask, mask, &sel_count);
     }
   }
@@ -1745,8 +1740,9 @@ static bool *vgroup_selected_get(Object *ob)
     mask = MEM_callocN(defbase_tot * sizeof(bool), __func__);
   }
 
-  if (sel_count == 0 && ob->actdef >= 1 && ob->actdef <= defbase_tot) {
-    mask[ob->actdef - 1] = true;
+  const int actdef = BKE_object_defgroup_active_index_get(ob);
+  if (sel_count == 0 && actdef >= 1 && actdef <= defbase_tot) {
+    mask[actdef - 1] = true;
   }
 
   return mask;
@@ -1761,11 +1757,12 @@ static void vgroup_lock_all(Object *ob, int action, int mask)
   if (mask != VGROUP_MASK_ALL) {
     selected = vgroup_selected_get(ob);
   }
+  const ListBase *defbase = BKE_object_defgroup_list(ob);
 
   if (action == VGROUP_TOGGLE) {
     action = VGROUP_LOCK;
 
-    for (dg = ob->defbase.first, i = 0; dg; dg = dg->next, i++) {
+    for (dg = defbase->first, i = 0; dg; dg = dg->next, i++) {
       switch (mask) {
         case VGROUP_MASK_INVERT_UNSELECTED:
         case VGROUP_MASK_SELECTED:
@@ -1788,7 +1785,7 @@ static void vgroup_lock_all(Object *ob, int action, int mask)
     }
   }
 
-  for (dg = ob->defbase.first, i = 0; dg; dg = dg->next, i++) {
+  for (dg = defbase->first, i = 0; dg; dg = dg->next, i++) {
     switch (mask) {
       case VGROUP_MASK_SELECTED:
         if (!selected[i]) {
@@ -1834,24 +1831,22 @@ static void vgroup_invert_subset(Object *ob,
 {
   MDeformWeight *dw;
   MDeformVert *dv, **dvert_array = NULL;
-  int i, dvert_tot = 0;
+  int dvert_tot = 0;
   const bool use_vert_sel = vertex_group_use_vert_sel(ob);
   const bool use_mirror = (ob->type == OB_MESH) ?
-                              (((Mesh *)ob->data)->editflag & ME_EDIT_MIRROR_X) != 0 :
+                              (((Mesh *)ob->data)->symmetry & ME_SYMMETRY_X) != 0 :
                               false;
 
   ED_vgroup_parray_alloc(ob->data, &dvert_array, &dvert_tot, use_vert_sel);
 
   if (dvert_array) {
-    for (i = 0; i < dvert_tot; i++) {
-      int j;
-
+    for (int i = 0; i < dvert_tot; i++) {
       /* in case its not selected */
       if (!(dv = dvert_array[i])) {
         continue;
       }
 
-      j = vgroup_tot;
+      int j = vgroup_tot;
       while (j--) {
 
         if (vgroup_validmap[j]) {
@@ -1897,7 +1892,7 @@ static void vgroup_smooth_subset(Object *ob,
   int *vgroup_subset_map = BLI_array_alloca(vgroup_subset_map, subset_count);
   float *vgroup_subset_weights = BLI_array_alloca(vgroup_subset_weights, subset_count);
   const bool use_mirror = (ob->type == OB_MESH) ?
-                              (((Mesh *)ob->data)->editflag & ME_EDIT_MIRROR_X) != 0 :
+                              (((Mesh *)ob->data)->symmetry & ME_SYMMETRY_X) != 0 :
                               false;
   const bool use_select = vertex_group_use_vert_sel(ob);
   const bool use_hide = use_select;
@@ -2211,7 +2206,7 @@ static void vgroup_clean_subset(Object *ob,
   int dvert_tot = 0;
   const bool use_vert_sel = vertex_group_use_vert_sel(ob);
   const bool use_mirror = (ob->type == OB_MESH) ?
-                              (((Mesh *)ob->data)->editflag & ME_EDIT_MIRROR_X) != 0 :
+                              (((Mesh *)ob->data)->symmetry & ME_SYMMETRY_X) != 0 :
                               false;
 
   ED_vgroup_parray_alloc(ob->data, &dvert_array, &dvert_tot, use_vert_sel);
@@ -2241,28 +2236,27 @@ static void vgroup_quantize_subset(Object *ob,
   int dvert_tot = 0;
   const bool use_vert_sel = vertex_group_use_vert_sel(ob);
   const bool use_mirror = (ob->type == OB_MESH) ?
-                              (((Mesh *)ob->data)->editflag & ME_EDIT_MIRROR_X) != 0 :
+                              (((Mesh *)ob->data)->symmetry & ME_SYMMETRY_X) != 0 :
                               false;
   ED_vgroup_parray_alloc(ob->data, &dvert_array, &dvert_tot, use_vert_sel);
 
   if (dvert_array) {
     const float steps_fl = steps;
     MDeformVert *dv;
-    int i;
 
     if (use_mirror && use_vert_sel) {
       ED_vgroup_parray_mirror_assign(ob, dvert_array, dvert_tot);
     }
 
-    for (i = 0; i < dvert_tot; i++) {
+    for (int i = 0; i < dvert_tot; i++) {
       MDeformWeight *dw;
-      int j;
 
       /* in case its not selected */
       if (!(dv = dvert_array[i])) {
         continue;
       }
 
+      int j;
       for (j = 0, dw = dv->dw; j < dv->totweight; j++, dw++) {
         if ((dw->def_nr < vgroup_tot) && vgroup_validmap[dw->def_nr]) {
           dw->weight = floorf((dw->weight * steps_fl) + 0.5f) / steps_fl;
@@ -2341,8 +2335,6 @@ static void dvert_mirror_op(MDeformVert *dvert,
   }
 }
 
-/* TODO, vgroup locking */
-/* TODO, face masking */
 void ED_vgroup_mirror(Object *ob,
                       const bool mirror_weights,
                       const bool flip_vgroups,
@@ -2351,6 +2343,8 @@ void ED_vgroup_mirror(Object *ob,
                       int *r_totmirr,
                       int *r_totfail)
 {
+  /* TODO: vgroup locking.
+   * TODO: face masking. */
 
 #define VGROUP_MIRR_OP \
   dvert_mirror_op(dvert, \
@@ -2368,13 +2362,15 @@ void ED_vgroup_mirror(Object *ob,
   MDeformVert *dvert, *dvert_mirr;
   char sel, sel_mirr;
   int *flip_map = NULL, flip_map_len;
-  const int def_nr = ob->actdef - 1;
+  const int def_nr = BKE_object_defgroup_active_index_get(ob) - 1;
   int totmirr = 0, totfail = 0;
 
   *r_totmirr = *r_totfail = 0;
 
+  const ListBase *defbase = BKE_object_defgroup_list(ob);
+
   if ((mirror_weights == false && flip_vgroups == false) ||
-      (BLI_findlink(&ob->defbase, def_nr) == NULL)) {
+      (BLI_findlink(defbase, def_nr) == NULL)) {
     return;
   }
 
@@ -2407,11 +2403,11 @@ void ED_vgroup_mirror(Object *ob,
         goto cleanup;
       }
 
-      EDBM_verts_mirror_cache_begin(em, 0, true, false, use_topology);
+      EDBM_verts_mirror_cache_begin(em, 0, true, false, false, use_topology);
 
       BM_mesh_elem_hflag_disable_all(em->bm, BM_VERT, BM_ELEM_TAG, false);
 
-      /* Go through the list of editverts and assign them */
+      /* Go through the list of edit-vertices and assign them. */
       BM_ITER_MESH (eve, &iter, em->bm, BM_VERTS_OF_MESH) {
         if (!BM_elem_flag_test(eve, BM_ELEM_TAG)) {
           if ((eve_mirr = EDBM_verts_mirror_get(em, eve))) {
@@ -2455,17 +2451,14 @@ void ED_vgroup_mirror(Object *ob,
         sel = sel_mirr = true;
       }
 
-      /* tag verts we have used */
-      for (vidx = 0, mv = me->mvert; vidx < me->totvert; vidx++, mv++) {
-        mv->flag &= ~ME_VERT_TMP_TAG;
-      }
+      BLI_bitmap *vert_tag = BLI_BITMAP_NEW(me->totvert, __func__);
 
       for (vidx = 0, mv = me->mvert; vidx < me->totvert; vidx++, mv++) {
-        if ((mv->flag & ME_VERT_TMP_TAG) == 0) {
+        if (!BLI_BITMAP_TEST(vert_tag, vidx)) {
           if ((vidx_mirr = mesh_get_x_mirror_vert(ob, NULL, vidx, use_topology)) != -1) {
             if (vidx != vidx_mirr) {
               mv_mirr = &me->mvert[vidx_mirr];
-              if ((mv_mirr->flag & ME_VERT_TMP_TAG) == 0) {
+              if (!BLI_BITMAP_TEST(vert_tag, vidx_mirr)) {
 
                 if (use_vert_sel) {
                   sel = mv->flag & SELECT;
@@ -2480,8 +2473,8 @@ void ED_vgroup_mirror(Object *ob,
                   totmirr++;
                 }
 
-                mv->flag |= ME_VERT_TMP_TAG;
-                mv_mirr->flag |= ME_VERT_TMP_TAG;
+                BLI_BITMAP_ENABLE(vert_tag, vidx);
+                BLI_BITMAP_ENABLE(vert_tag, vidx_mirr);
               }
             }
           }
@@ -2490,6 +2483,8 @@ void ED_vgroup_mirror(Object *ob,
           }
         }
       }
+
+      MEM_freeN(vert_tag);
     }
   }
   else if (ob->type == OB_LATTICE) {
@@ -2558,7 +2553,8 @@ cleanup:
 
 static void vgroup_delete_active(Object *ob)
 {
-  bDeformGroup *dg = BLI_findlink(&ob->defbase, ob->actdef - 1);
+  const ListBase *defbase = BKE_object_defgroup_list(ob);
+  bDeformGroup *dg = BLI_findlink(defbase, BKE_object_defgroup_active_index_get(ob) - 1);
   if (!dg) {
     return;
   }
@@ -2569,9 +2565,10 @@ static void vgroup_delete_active(Object *ob)
 /* only in editmode */
 static void vgroup_assign_verts(Object *ob, const float weight)
 {
-  const int def_nr = ob->actdef - 1;
+  const int def_nr = BKE_object_defgroup_active_index_get(ob) - 1;
 
-  if (!BLI_findlink(&ob->defbase, def_nr)) {
+  const ListBase *defbase = BKE_object_defgroup_list(ob);
+  if (!BLI_findlink(defbase, def_nr)) {
     return;
   }
 
@@ -2591,7 +2588,7 @@ static void vgroup_assign_verts(Object *ob, const float weight)
 
       cd_dvert_offset = CustomData_get_offset(&em->bm->vdata, CD_MDEFORMVERT);
 
-      /* Go through the list of editverts and assign them */
+      /* Go through the list of edit-vertices and assign them. */
       BM_ITER_MESH (eve, &iter, em->bm, BM_VERTS_OF_MESH) {
         if (BM_elem_flag_test(eve, BM_ELEM_SELECT)) {
           MDeformVert *dv;
@@ -2605,18 +2602,14 @@ static void vgroup_assign_verts(Object *ob, const float weight)
       }
     }
     else {
-      MVert *mv;
-      MDeformVert *dv;
-      int i;
-
       if (!me->dvert) {
         BKE_object_defgroup_data_create(&me->id);
       }
 
-      mv = me->mvert;
-      dv = me->dvert;
+      MVert *mv = me->mvert;
+      MDeformVert *dv = me->dvert;
 
-      for (i = 0; i < me->totvert; i++, mv++, dv++) {
+      for (int i = 0; i < me->totvert; i++, mv++, dv++) {
         if (mv->flag & SELECT) {
           MDeformWeight *dw;
           dw = BKE_defvert_ensure_index(dv, def_nr);
@@ -2659,42 +2652,90 @@ static void vgroup_assign_verts(Object *ob, const float weight)
 /** \name Shared Operator Poll Functions
  * \{ */
 
+static bool vertex_group_supported_poll_ex(bContext *C, const Object *ob)
+{
+  if (!ED_operator_object_active_local_editable_ex(C, ob)) {
+    CTX_wm_operator_poll_msg_set(C, "No active editable object");
+    return false;
+  }
+
+  if (!OB_TYPE_SUPPORT_VGROUP(ob->type)) {
+    CTX_wm_operator_poll_msg_set(C, "Object type does not support vertex groups");
+    return false;
+  }
+
+  /* Data checks. */
+  const ID *data = ob->data;
+  if (data == NULL || ID_IS_LINKED(data) || ID_IS_OVERRIDE_LIBRARY(data)) {
+    CTX_wm_operator_poll_msg_set(C, "Object type \"%s\" does not have editable data");
+    return false;
+  }
+
+  return true;
+}
+
 static bool vertex_group_supported_poll(bContext *C)
 {
   Object *ob = ED_object_context(C);
-  ID *data = (ob) ? ob->data : NULL;
+  return vertex_group_supported_poll_ex(C, ob);
+}
 
-  return (ob && !ID_IS_LINKED(ob) && OB_TYPE_SUPPORT_VGROUP(ob->type) &&
-          !ID_IS_OVERRIDE_LIBRARY(ob) && data && !ID_IS_LINKED(data) &&
-          !ID_IS_OVERRIDE_LIBRARY(data));
+static bool vertex_group_poll_ex(bContext *C, Object *ob)
+{
+  if (!vertex_group_supported_poll_ex(C, ob)) {
+    return false;
+  }
+
+  const ListBase *defbase = BKE_object_defgroup_list(ob);
+  if (BLI_listbase_is_empty(defbase)) {
+    CTX_wm_operator_poll_msg_set(C, "Object has no vertex groups");
+    return false;
+  }
+
+  return true;
 }
 
 static bool vertex_group_poll(bContext *C)
 {
   Object *ob = ED_object_context(C);
-
-  return (vertex_group_supported_poll(C) && ob->defbase.first);
+  return vertex_group_poll_ex(C, ob);
 }
 
-static bool vertex_group_mesh_poll(bContext *C)
+static bool vertex_group_mesh_poll_ex(bContext *C, Object *ob)
 {
-  Object *ob = ED_object_context(C);
+  if (!vertex_group_poll_ex(C, ob)) {
+    return false;
+  }
 
-  return (vertex_group_poll(C) && ob->type == OB_MESH);
+  if (ob->type != OB_MESH) {
+    CTX_wm_operator_poll_msg_set(C, "Only mesh objects are supported");
+    return false;
+  }
+
+  return true;
 }
 
-static bool UNUSED_FUNCTION(vertex_group_mesh_supported_poll)(bContext *C)
+static bool vertex_group_mesh_with_dvert_poll(bContext *C)
 {
   Object *ob = ED_object_context(C);
+  if (!vertex_group_mesh_poll_ex(C, ob)) {
+    return false;
+  }
 
-  return (vertex_group_supported_poll(C) && ob->type == OB_MESH);
+  Mesh *me = ob->data;
+  if (me->dvert == NULL) {
+    CTX_wm_operator_poll_msg_set(C, "The active mesh object has no vertex group data");
+    return false;
+  }
+
+  return true;
 }
 
 static bool UNUSED_FUNCTION(vertex_group_poll_edit)(bContext *C)
 {
   Object *ob = ED_object_context(C);
 
-  if (!vertex_group_supported_poll(C)) {
+  if (!vertex_group_supported_poll_ex(C, ob)) {
     return false;
   }
 
@@ -2708,7 +2749,7 @@ static bool vertex_group_vert_poll_ex(bContext *C,
 {
   Object *ob = ED_object_context(C);
 
-  if (!vertex_group_supported_poll(C)) {
+  if (!vertex_group_supported_poll_ex(C, ob)) {
     return false;
   }
 
@@ -2761,7 +2802,7 @@ static bool vertex_group_vert_select_unlocked_poll(bContext *C)
 {
   Object *ob = ED_object_context(C);
 
-  if (!vertex_group_supported_poll(C)) {
+  if (!vertex_group_supported_poll_ex(C, ob)) {
     return false;
   }
 
@@ -2769,8 +2810,10 @@ static bool vertex_group_vert_select_unlocked_poll(bContext *C)
     return false;
   }
 
-  if (ob->actdef != 0) {
-    bDeformGroup *dg = BLI_findlink(&ob->defbase, ob->actdef - 1);
+  const int def_nr = BKE_object_defgroup_active_index_get(ob);
+  if (def_nr != 0) {
+    const ListBase *defbase = BKE_object_defgroup_list(ob);
+    const bDeformGroup *dg = BLI_findlink(defbase, def_nr - 1);
     if (dg) {
       return !(dg->flag & DG_LOCK_WEIGHT);
     }
@@ -2782,7 +2825,7 @@ static bool vertex_group_vert_select_mesh_poll(bContext *C)
 {
   Object *ob = ED_object_context(C);
 
-  if (!vertex_group_supported_poll(C)) {
+  if (!vertex_group_supported_poll_ex(C, ob)) {
     return false;
   }
 
@@ -2870,7 +2913,7 @@ void OBJECT_OT_vertex_group_remove(wmOperatorType *ot)
   /* flags */
   /* redo operator will fail in this case because vertex groups aren't stored
    * in local edit mode stack and toggling "all" property will lead to
-   * all groups deleted without way to restore them (see [#29527], sergey) */
+   * all groups deleted without way to restore them (see T29527, sergey) */
   ot->flag = /*OPTYPE_REGISTER|*/ OPTYPE_UNDO;
 
   /* properties */
@@ -2913,7 +2956,7 @@ void OBJECT_OT_vertex_group_assign(wmOperatorType *ot)
   /* flags */
   /* redo operator will fail in this case because vertex group assignment
    * isn't stored in local edit mode stack and toggling "new" property will
-   * lead to creating plenty of new vertex groups (see [#29527], sergey) */
+   * lead to creating plenty of new vertex groups (see T29527, sergey) */
   ot->flag = /*OPTYPE_REGISTER|*/ OPTYPE_UNDO;
 }
 
@@ -2948,7 +2991,7 @@ void OBJECT_OT_vertex_group_assign_new(wmOperatorType *ot)
   /* flags */
   /* redo operator will fail in this case because vertex group assignment
    * isn't stored in local edit mode stack and toggling "new" property will
-   * lead to creating plenty of new vertex groups (see [#29527], sergey) */
+   * lead to creating plenty of new vertex groups (see T29527, sergey) */
   ot->flag = /*OPTYPE_REGISTER|*/ OPTYPE_UNDO;
 }
 
@@ -2971,8 +3014,8 @@ static int vertex_group_remove_from_exec(bContext *C, wmOperator *op)
     }
   }
   else {
-    bDeformGroup *dg = BLI_findlink(&ob->defbase, ob->actdef - 1);
-
+    const ListBase *defbase = BKE_object_defgroup_list(ob);
+    bDeformGroup *dg = BLI_findlink(defbase, BKE_object_defgroup_active_index_get(ob) - 1);
     if ((dg == NULL) || (BKE_object_defgroup_clear(ob, dg, !use_all_verts) == false)) {
       return OPERATOR_CANCELLED;
     }
@@ -2999,7 +3042,7 @@ void OBJECT_OT_vertex_group_remove_from(wmOperatorType *ot)
   /* flags */
   /* redo operator will fail in this case because vertex groups assignment
    * isn't stored in local edit mode stack and toggling "all" property will lead to
-   * removing vertices from all groups (see [#29527], sergey) */
+   * removing vertices from all groups (see T29527, sergey) */
   ot->flag = /*OPTYPE_REGISTER|*/ OPTYPE_UNDO;
 
   /* properties */
@@ -3077,6 +3120,12 @@ void OBJECT_OT_vertex_group_deselect(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Vertex Group Copy Operator
+ * \{ */
+
 static int vertex_group_copy_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Object *ob = ED_object_context(C);
@@ -3089,12 +3138,6 @@ static int vertex_group_copy_exec(bContext *C, wmOperator *UNUSED(op))
 
   return OPERATOR_FINISHED;
 }
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Vertex Group Copy Operator
- * \{ */
 
 void OBJECT_OT_vertex_group_copy(wmOperatorType *ot)
 {
@@ -3110,6 +3153,12 @@ void OBJECT_OT_vertex_group_copy(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Vertex Group Levels Operator
+ * \{ */
 
 static int vertex_group_levels_exec(bContext *C, wmOperator *op)
 {
@@ -3133,12 +3182,6 @@ static int vertex_group_levels_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Vertex Group Levels Operator
- * \{ */
-
 void OBJECT_OT_vertex_group_levels(wmOperatorType *ot)
 {
   /* identifiers */
@@ -3156,10 +3199,16 @@ void OBJECT_OT_vertex_group_levels(wmOperatorType *ot)
 
   vgroup_operator_subset_select_props(ot, true);
   RNA_def_float(
-      ot->srna, "offset", 0.f, -1.0, 1.0, "Offset", "Value to add to weights", -1.0f, 1.f);
+      ot->srna, "offset", 0.0f, -1.0, 1.0, "Offset", "Value to add to weights", -1.0f, 1.0f);
   RNA_def_float(
-      ot->srna, "gain", 1.f, 0.f, FLT_MAX, "Gain", "Value to multiply weights by", 0.0f, 10.f);
+      ot->srna, "gain", 1.0f, 0.0f, FLT_MAX, "Gain", "Value to multiply weights by", 0.0f, 10.0f);
 }
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Vertex Group Normalize Operator
+ * \{ */
 
 static int vertex_group_normalize_exec(bContext *C, wmOperator *UNUSED(op))
 {
@@ -3178,12 +3227,6 @@ static int vertex_group_normalize_exec(bContext *C, wmOperator *UNUSED(op))
   return OPERATOR_CANCELLED;
 }
 
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Vertex Group Normalize Operator
- * \{ */
-
 void OBJECT_OT_vertex_group_normalize(wmOperatorType *ot)
 {
   /* identifiers */
@@ -3199,6 +3242,12 @@ void OBJECT_OT_vertex_group_normalize(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Vertex Group Normalize All Operator
+ * \{ */
 
 static int vertex_group_normalize_all_exec(bContext *C, wmOperator *op)
 {
@@ -3225,12 +3274,6 @@ static int vertex_group_normalize_all_exec(bContext *C, wmOperator *op)
   /* allow to adjust settings */
   return OPERATOR_FINISHED;
 }
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Vertex Group Normalize All Operator
- * \{ */
 
 void OBJECT_OT_vertex_group_normalize_all(wmOperatorType *ot)
 {
@@ -3304,7 +3347,7 @@ void OBJECT_OT_vertex_group_fix(wmOperatorType *ot)
       "groups' weights (this tool may be slow for many vertices)";
 
   /* api callbacks */
-  ot->poll = vertex_group_mesh_poll;
+  ot->poll = vertex_group_mesh_with_dvert_poll;
   ot->exec = vertex_group_fix_exec;
 
   /* flags */
@@ -3320,7 +3363,7 @@ void OBJECT_OT_vertex_group_fix(wmOperatorType *ot)
                 10.0f);
   RNA_def_float(ot->srna,
                 "strength",
-                1.f,
+                1.0f,
                 -2.0f,
                 FLT_MAX,
                 "Strength",
@@ -3336,7 +3379,7 @@ void OBJECT_OT_vertex_group_fix(wmOperatorType *ot)
       "Change Sensitivity",
       "Change the amount weights are altered with each iteration: lower values are slower",
       0.05f,
-      1.f);
+      1.0f);
 }
 
 /** \} */
@@ -3370,16 +3413,16 @@ static char *vertex_group_lock_description(struct bContext *UNUSED(C),
 
   switch (action) {
     case VGROUP_LOCK:
-      action_str = "Lock";
+      action_str = TIP_("Lock");
       break;
     case VGROUP_UNLOCK:
-      action_str = "Unlock";
+      action_str = TIP_("Unlock");
       break;
     case VGROUP_TOGGLE:
-      action_str = "Toggle locks of";
+      action_str = TIP_("Toggle locks of");
       break;
     case VGROUP_INVERT:
-      action_str = "Invert locks of";
+      action_str = TIP_("Invert locks of");
       break;
     default:
       return NULL;
@@ -3387,34 +3430,34 @@ static char *vertex_group_lock_description(struct bContext *UNUSED(C),
 
   switch (mask) {
     case VGROUP_MASK_ALL:
-      target_str = "all";
+      target_str = TIP_("all");
       break;
     case VGROUP_MASK_SELECTED:
-      target_str = "selected";
+      target_str = TIP_("selected");
       break;
     case VGROUP_MASK_UNSELECTED:
-      target_str = "unselected";
+      target_str = TIP_("unselected");
       break;
     case VGROUP_MASK_INVERT_UNSELECTED:
       switch (action) {
         case VGROUP_INVERT:
-          target_str = "selected";
+          target_str = TIP_("selected");
           break;
         case VGROUP_LOCK:
-          target_str = "selected and unlock unselected";
+          target_str = TIP_("selected and unlock unselected");
           break;
         case VGROUP_UNLOCK:
-          target_str = "selected and lock unselected";
+          target_str = TIP_("selected and lock unselected");
           break;
         default:
-          target_str = "all and invert unselected";
+          target_str = TIP_("all and invert unselected");
       }
       break;
     default:
       return NULL;
   }
 
-  return BLI_sprintfN("%s %s vertex groups of the active object", action_str, target_str);
+  return BLI_sprintfN(TIP_("%s %s vertex groups of the active object"), action_str, target_str);
 }
 
 void OBJECT_OT_vertex_group_lock(wmOperatorType *ot)
@@ -3512,22 +3555,11 @@ static int vertex_group_smooth_exec(bContext *C, wmOperator *op)
 {
   const float fac = RNA_float_get(op->ptr, "factor");
   const int repeat = RNA_int_get(op->ptr, "repeat");
-  eVGroupSelect subset_type = RNA_enum_get(op->ptr, "group_select_mode");
+  const eVGroupSelect subset_type = RNA_enum_get(op->ptr, "group_select_mode");
   const float fac_expand = RNA_float_get(op->ptr, "expand");
-  ViewLayer *view_layer = CTX_data_view_layer(C);
-  Object *ob_ctx = ED_object_context(C);
 
   uint objects_len;
-  Object **objects;
-  if (ob_ctx->mode == OB_MODE_WEIGHT_PAINT) {
-    /* Until weight paint supports multi-edit, use only the active. */
-    objects_len = 1;
-    objects = &ob_ctx;
-  }
-  else {
-    objects = BKE_view_layer_array_from_objects_in_mode_unique_data(
-        view_layer, CTX_wm_view3d(C), &objects_len, ob_ctx->mode);
-  }
+  Object **objects = object_array_for_wpaint(C, &objects_len);
 
   for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
     Object *ob = objects[ob_index];
@@ -3544,9 +3576,7 @@ static int vertex_group_smooth_exec(bContext *C, wmOperator *op)
     WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
   }
-  if (objects != &ob_ctx) {
-    MEM_freeN(objects);
-  }
+  MEM_freeN(objects);
 
   return OPERATOR_FINISHED;
 }
@@ -3588,22 +3618,29 @@ void OBJECT_OT_vertex_group_smooth(wmOperatorType *ot)
 
 static int vertex_group_clean_exec(bContext *C, wmOperator *op)
 {
-  Object *ob = ED_object_context(C);
+  const float limit = RNA_float_get(op->ptr, "limit");
+  const bool keep_single = RNA_boolean_get(op->ptr, "keep_single");
+  const eVGroupSelect subset_type = RNA_enum_get(op->ptr, "group_select_mode");
 
-  float limit = RNA_float_get(op->ptr, "limit");
-  bool keep_single = RNA_boolean_get(op->ptr, "keep_single");
-  eVGroupSelect subset_type = RNA_enum_get(op->ptr, "group_select_mode");
+  uint objects_len;
+  Object **objects = object_array_for_wpaint(C, &objects_len);
 
-  int subset_count, vgroup_tot;
+  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+    Object *ob = objects[ob_index];
 
-  const bool *vgroup_validmap = BKE_object_defgroup_subset_from_select_type(
-      ob, subset_type, &vgroup_tot, &subset_count);
-  vgroup_clean_subset(ob, vgroup_validmap, vgroup_tot, subset_count, limit, keep_single);
-  MEM_freeN((void *)vgroup_validmap);
+    int subset_count, vgroup_tot;
 
-  DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
-  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
-  WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
+    const bool *vgroup_validmap = BKE_object_defgroup_subset_from_select_type(
+        ob, subset_type, &vgroup_tot, &subset_count);
+
+    vgroup_clean_subset(ob, vgroup_validmap, vgroup_tot, subset_count, limit, keep_single);
+    MEM_freeN((void *)vgroup_validmap);
+
+    DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
+  }
+  MEM_freeN(objects);
 
   return OPERATOR_FINISHED;
 }
@@ -3611,7 +3648,7 @@ static int vertex_group_clean_exec(bContext *C, wmOperator *op)
 void OBJECT_OT_vertex_group_clean(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Clean Vertex Group";
+  ot->name = "Clean Vertex Group Weights";
   ot->idname = "OBJECT_OT_vertex_group_clean";
   ot->description = "Remove vertex group assignments which are not required";
 
@@ -3692,30 +3729,41 @@ void OBJECT_OT_vertex_group_quantize(wmOperatorType *ot)
 
 static int vertex_group_limit_total_exec(bContext *C, wmOperator *op)
 {
-  Object *ob = ED_object_context(C);
-
   const int limit = RNA_int_get(op->ptr, "limit");
-  eVGroupSelect subset_type = RNA_enum_get(op->ptr, "group_select_mode");
+  const eVGroupSelect subset_type = RNA_enum_get(op->ptr, "group_select_mode");
+  int remove_multi_count = 0;
 
-  int subset_count, vgroup_tot;
+  uint objects_len;
+  Object **objects = object_array_for_wpaint(C, &objects_len);
+  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+    Object *ob = objects[ob_index];
 
-  const bool *vgroup_validmap = BKE_object_defgroup_subset_from_select_type(
-      ob, subset_type, &vgroup_tot, &subset_count);
-  int remove_tot = vgroup_limit_total_subset(ob, vgroup_validmap, vgroup_tot, subset_count, limit);
-  MEM_freeN((void *)vgroup_validmap);
+    int subset_count, vgroup_tot;
+    const bool *vgroup_validmap = BKE_object_defgroup_subset_from_select_type(
+        ob, subset_type, &vgroup_tot, &subset_count);
+    const int remove_count = vgroup_limit_total_subset(
+        ob, vgroup_validmap, vgroup_tot, subset_count, limit);
+    MEM_freeN((void *)vgroup_validmap);
 
-  BKE_reportf(
-      op->reports, remove_tot ? RPT_INFO : RPT_WARNING, "%d vertex weights limited", remove_tot);
+    if (remove_count != 0) {
+      DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+      WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
+      WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
+    }
+    remove_multi_count += remove_count;
+  }
+  MEM_freeN(objects);
 
-  if (remove_tot) {
-    DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
-    WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
-    WM_event_add_notifier(C, NC_GEOM | ND_DATA, ob->data);
+  if (remove_multi_count) {
+    BKE_reportf(op->reports,
+                remove_multi_count ? RPT_INFO : RPT_WARNING,
+                "%d vertex weights limited",
+                remove_multi_count);
 
     return OPERATOR_FINISHED;
   }
 
-  /* note, would normally return canceled, except we want the redo
+  /* NOTE: would normally return canceled, except we want the redo
    * UI to show up for users to change */
   return OPERATOR_FINISHED;
 }
@@ -3801,55 +3849,6 @@ void OBJECT_OT_vertex_group_mirror(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Vertex Group Copy to Linked Operator
- * \{ */
-
-static int vertex_group_copy_to_linked_exec(bContext *C, wmOperator *UNUSED(op))
-{
-  Scene *scene = CTX_data_scene(C);
-  Object *ob_active = ED_object_context(C);
-  int retval = OPERATOR_CANCELLED;
-
-  FOREACH_SCENE_OBJECT_BEGIN (scene, ob_iter) {
-    if (ob_iter->type == ob_active->type) {
-      if (ob_iter != ob_active && ob_iter->data == ob_active->data) {
-        BLI_freelistN(&ob_iter->defbase);
-        BLI_duplicatelist(&ob_iter->defbase, &ob_active->defbase);
-        ob_iter->actdef = ob_active->actdef;
-
-        DEG_id_tag_update(&ob_iter->id, ID_RECALC_GEOMETRY);
-        WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob_iter);
-        WM_event_add_notifier(C, NC_GEOM | ND_VERTEX_GROUP, ob_iter->data);
-
-        retval = OPERATOR_FINISHED;
-      }
-    }
-  }
-  FOREACH_SCENE_OBJECT_END;
-
-  return retval;
-}
-
-void OBJECT_OT_vertex_group_copy_to_linked(wmOperatorType *ot)
-{
-  /* identifiers */
-  ot->name = "Copy Vertex Groups to Linked";
-  ot->idname = "OBJECT_OT_vertex_group_copy_to_linked";
-  ot->description =
-      "Replace vertex groups of all users of the same geometry data by vertex groups of active "
-      "object";
-
-  /* api callbacks */
-  ot->poll = vertex_group_poll;
-  ot->exec = vertex_group_copy_to_linked_exec;
-
-  /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Vertex Group Copy to Selected Operator
  * \{ */
 
@@ -3860,7 +3859,7 @@ static int vertex_group_copy_to_selected_exec(bContext *C, wmOperator *op)
   int fail = 0;
 
   CTX_DATA_BEGIN (C, Object *, ob, selected_editable_objects) {
-    if (obact != ob) {
+    if (obact != ob && BKE_object_supports_vertex_groups(ob)) {
       if (ED_vgroup_array_copy(ob, obact)) {
         DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
         DEG_relations_tag_update(CTX_data_main(C));
@@ -3877,8 +3876,8 @@ static int vertex_group_copy_to_selected_exec(bContext *C, wmOperator *op)
   if ((changed_tot == 0 && fail == 0) || fail) {
     BKE_reportf(op->reports,
                 RPT_ERROR,
-                "Copy vertex groups to selected: %d done, %d failed (object data must have "
-                "matching indices)",
+                "Copy vertex groups to selected: %d done, %d failed (object data must support "
+                "vertex groups and have matching indices)",
                 changed_tot,
                 fail);
   }
@@ -3913,7 +3912,7 @@ static int set_active_group_exec(bContext *C, wmOperator *op)
   int nr = RNA_enum_get(op->ptr, "group");
 
   BLI_assert(nr + 1 >= 0);
-  ob->actdef = nr + 1;
+  BKE_object_defgroup_active_index_set(ob, nr + 1);
 
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_GEOM | ND_VERTEX_GROUP, ob);
@@ -3926,6 +3925,10 @@ static const EnumPropertyItem *vgroup_itemf(bContext *C,
                                             PropertyRNA *UNUSED(prop),
                                             bool *r_free)
 {
+  if (C == NULL) {
+    return DummyRNA_NULL_items;
+  }
+
   Object *ob = ED_object_context(C);
   EnumPropertyItem tmp = {0, "", 0, "", ""};
   EnumPropertyItem *item = NULL;
@@ -3936,7 +3939,8 @@ static const EnumPropertyItem *vgroup_itemf(bContext *C,
     return DummyRNA_NULL_items;
   }
 
-  for (a = 0, def = ob->defbase.first; def; def = def->next, a++) {
+  const ListBase *defbase = BKE_object_defgroup_list(ob);
+  for (a = 0, def = defbase->first; def; def = def->next, a++) {
     tmp.value = a;
     tmp.icon = ICON_GROUP_VERTEX;
     tmp.identifier = def->name;
@@ -3985,13 +3989,13 @@ void OBJECT_OT_vertex_group_set_active(wmOperatorType *ot)
  * with the order of vgroups then call vgroup_do_remap after */
 static char *vgroup_init_remap(Object *ob)
 {
-  bDeformGroup *def;
-  int defbase_tot = BLI_listbase_count(&ob->defbase);
+  const ListBase *defbase = BKE_object_defgroup_list(ob);
+  int defbase_tot = BLI_listbase_count(defbase);
   char *name_array = MEM_mallocN(MAX_VGROUP_NAME * sizeof(char) * defbase_tot, "sort vgroups");
   char *name;
 
   name = name_array;
-  for (def = ob->defbase.first; def; def = def->next) {
+  for (const bDeformGroup *def = defbase->first; def; def = def->next) {
     BLI_strncpy(name, def->name, MAX_VGROUP_NAME);
     name += MAX_VGROUP_NAME;
   }
@@ -4002,10 +4006,11 @@ static char *vgroup_init_remap(Object *ob)
 static int vgroup_do_remap(Object *ob, const char *name_array, wmOperator *op)
 {
   MDeformVert *dvert = NULL;
-  bDeformGroup *def;
-  int defbase_tot = BLI_listbase_count(&ob->defbase);
+  const bDeformGroup *def;
+  const ListBase *defbase = BKE_object_defgroup_list(ob);
+  int defbase_tot = BLI_listbase_count(defbase);
 
-  /* needs a dummy index at the start*/
+  /* Needs a dummy index at the start. */
   int *sort_map_update = MEM_mallocN(sizeof(int) * (defbase_tot + 1), "sort vgroups");
   int *sort_map = sort_map_update + 1;
 
@@ -4013,8 +4018,8 @@ static int vgroup_do_remap(Object *ob, const char *name_array, wmOperator *op)
   int i;
 
   name = name_array;
-  for (def = ob->defbase.first, i = 0; def; def = def->next, i++) {
-    sort_map[i] = BLI_findstringindex(&ob->defbase, name, offsetof(bDeformGroup, name));
+  for (def = defbase->first, i = 0; def; def = def->next, i++) {
+    sort_map[i] = BLI_findstringindex(defbase, name, offsetof(bDeformGroup, name));
     name += MAX_VGROUP_NAME;
 
     BLI_assert(sort_map[i] != -1);
@@ -4045,16 +4050,38 @@ static int vgroup_do_remap(Object *ob, const char *name_array, wmOperator *op)
   }
   else {
     int dvert_tot = 0;
-
-    BKE_object_defgroup_array_get(ob->data, &dvert, &dvert_tot);
-
-    /*create as necessary*/
-    if (dvert) {
-      while (dvert_tot--) {
-        if (dvert->totweight) {
-          BKE_defvert_remap(dvert, sort_map, defbase_tot);
+    /* Grease pencil stores vertex groups separately for each stroke,
+     * so remap each stroke's weights separately. */
+    if (ob->type == OB_GPENCIL) {
+      bGPdata *gpd = ob->data;
+      LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+        LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+          LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
+            dvert = gps->dvert;
+            dvert_tot = gps->totpoints;
+            if (dvert) {
+              while (dvert_tot--) {
+                if (dvert->totweight) {
+                  BKE_defvert_remap(dvert, sort_map, defbase_tot);
+                }
+                dvert++;
+              }
+            }
+          }
         }
-        dvert++;
+      }
+    }
+    else {
+      BKE_object_defgroup_array_get(ob->data, &dvert, &dvert_tot);
+
+      /* Create as necessary. */
+      if (dvert) {
+        while (dvert_tot--) {
+          if (dvert->totweight) {
+            BKE_defvert_remap(dvert, sort_map, defbase_tot);
+          }
+          dvert++;
+        }
       }
     }
   }
@@ -4067,8 +4094,9 @@ static int vgroup_do_remap(Object *ob, const char *name_array, wmOperator *op)
   sort_map_update[0] = 0;
   BKE_object_defgroup_remap_update_users(ob, sort_map_update);
 
-  BLI_assert(sort_map_update[ob->actdef] >= 0);
-  ob->actdef = sort_map_update[ob->actdef];
+  BLI_assert(sort_map_update[BKE_object_defgroup_active_index_get(ob)] >= 0);
+  BKE_object_defgroup_active_index_set(ob,
+                                       sort_map_update[BKE_object_defgroup_active_index_get(ob)]);
 
   MEM_freeN(sort_map_update);
 
@@ -4096,6 +4124,7 @@ static void vgroup_sort_bone_hierarchy(Object *ob, ListBase *bonebase)
       bonebase = &armature->bonebase;
     }
   }
+  ListBase *defbase = BKE_object_defgroup_list_mutable(ob);
 
   if (bonebase != NULL) {
     Bone *bone;
@@ -4104,8 +4133,8 @@ static void vgroup_sort_bone_hierarchy(Object *ob, ListBase *bonebase)
       vgroup_sort_bone_hierarchy(ob, &bone->childbase);
 
       if (dg != NULL) {
-        BLI_remlink(&ob->defbase, dg);
-        BLI_addhead(&ob->defbase, dg);
+        BLI_remlink(defbase, dg);
+        BLI_addhead(defbase, dg);
       }
     }
   }
@@ -4123,20 +4152,22 @@ static int vertex_group_sort_exec(bContext *C, wmOperator *op)
   int ret;
   int sort_type = RNA_enum_get(op->ptr, "sort_type");
 
-  /*init remapping*/
+  /* Init remapping. */
   name_array = vgroup_init_remap(ob);
 
-  /*sort vgroup names*/
+  ListBase *defbase = BKE_object_defgroup_list_mutable(ob);
+
+  /* Sort vgroup names. */
   switch (sort_type) {
     case SORT_TYPE_NAME:
-      BLI_listbase_sort(&ob->defbase, vgroup_sort_name);
+      BLI_listbase_sort(defbase, vgroup_sort_name);
       break;
     case SORT_TYPE_BONEHIERARCHY:
       vgroup_sort_bone_hierarchy(ob, NULL);
       break;
   }
 
-  /*remap vgroup data to map to correct names*/
+  /* Remap vgroup data to map to correct names. */
   ret = vgroup_do_remap(ob, name_array, op);
 
   if (ret != OPERATOR_CANCELLED) {
@@ -4170,7 +4201,7 @@ void OBJECT_OT_vertex_group_sort(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_enum(ot->srna, "sort_type", vgroup_sort_type, SORT_TYPE_NAME, "Sort type", "Sort type");
+  RNA_def_enum(ot->srna, "sort_type", vgroup_sort_type, SORT_TYPE_NAME, "Sort Type", "Sort type");
 }
 
 /** \} */
@@ -4187,14 +4218,16 @@ static int vgroup_move_exec(bContext *C, wmOperator *op)
   int dir = RNA_enum_get(op->ptr, "direction");
   int ret = OPERATOR_FINISHED;
 
-  def = BLI_findlink(&ob->defbase, ob->actdef - 1);
+  ListBase *defbase = BKE_object_defgroup_list_mutable(ob);
+
+  def = BLI_findlink(defbase, BKE_object_defgroup_active_index_get(ob) - 1);
   if (!def) {
     return OPERATOR_CANCELLED;
   }
 
   name_array = vgroup_init_remap(ob);
 
-  if (BLI_listbase_link_move(&ob->defbase, def, dir)) {
+  if (BLI_listbase_link_move(defbase, def, dir)) {
     ret = vgroup_do_remap(ob, name_array, op);
 
     if (ret != OPERATOR_CANCELLED) {
@@ -4271,14 +4304,14 @@ static void vgroup_copy_active_to_sel_single(Object *ob, const int def_nr)
         if (dw) {
           dw->weight = weight_act;
 
-          if (me->editflag & ME_EDIT_MIRROR_X) {
+          if (me->symmetry & ME_SYMMETRY_X) {
             ED_mesh_defvert_mirror_update_em(ob, eve, -1, i, cd_dvert_offset);
           }
         }
       }
     }
 
-    if (me->editflag & ME_EDIT_MIRROR_X) {
+    if (me->symmetry & ME_SYMMETRY_X) {
       ED_mesh_defvert_mirror_update_em(ob, eve_act, -1, -1, cd_dvert_offset);
     }
   }
@@ -4298,14 +4331,14 @@ static void vgroup_copy_active_to_sel_single(Object *ob, const int def_nr)
         MDeformWeight *dw = BKE_defvert_find_index(dv, def_nr);
         if (dw) {
           dw->weight = weight_act;
-          if (me->editflag & ME_EDIT_MIRROR_X) {
+          if (me->symmetry & ME_SYMMETRY_X) {
             ED_mesh_defvert_mirror_update_ob(ob, -1, i);
           }
         }
       }
     }
 
-    if (me->editflag & ME_EDIT_MIRROR_X) {
+    if (me->symmetry & ME_SYMMETRY_X) {
       ED_mesh_defvert_mirror_update_ob(ob, -1, v_act);
     }
   }
@@ -4313,7 +4346,8 @@ static void vgroup_copy_active_to_sel_single(Object *ob, const int def_nr)
 
 static bool check_vertex_group_accessible(wmOperator *op, Object *ob, int def_nr)
 {
-  bDeformGroup *dg = BLI_findlink(&ob->defbase, def_nr);
+  const ListBase *defbase = BKE_object_defgroup_list(ob);
+  bDeformGroup *dg = BLI_findlink(defbase, def_nr);
 
   if (!dg) {
     BKE_report(op->reports, RPT_ERROR, "Invalid vertex group index");
@@ -4435,7 +4469,7 @@ static int vertex_weight_set_active_exec(bContext *C, wmOperator *op)
   const int wg_index = RNA_int_get(op->ptr, "weight_group");
 
   if (wg_index != -1) {
-    ob->actdef = wg_index + 1;
+    BKE_object_defgroup_active_index_set(ob, wg_index + 1);
     DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
   }

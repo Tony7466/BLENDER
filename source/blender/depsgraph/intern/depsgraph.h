@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2013 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2013 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup depsgraph
@@ -33,9 +17,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_ID.h" /* for ID_Type */
-
-#include "BKE_main.h" /* for MAX_LIBARRAY */
+#include "DNA_ID.h" /* for ID_Type and INDEX_ID_MAX */
 
 #include "BLI_threads.h" /* for SpinLock */
 
@@ -68,13 +50,13 @@ struct Depsgraph {
 
   TimeSourceNode *add_time_source();
   TimeSourceNode *find_time_source() const;
+  void tag_time_source();
 
   IDNode *find_id_node(const ID *id) const;
   IDNode *add_id_node(ID *id, ID *id_cow_hint = nullptr);
   void clear_id_nodes();
-  void clear_id_nodes_conditional(const std::function<bool(ID_Type id_type)> &filter);
 
-  /* Add new relationship between two nodes. */
+  /** Add new relationship between two nodes. */
   Relation *add_new_relation(Node *from, Node *to, const char *description, int flags = 0);
 
   /* Check whether two nodes are connected by relation with given
@@ -110,20 +92,21 @@ struct Depsgraph {
   /* Indicates whether relations needs to be updated. */
   bool need_update;
 
+  /* Indicated whether IDs in this graph are to be tagged as if they first appear visible, with
+   * an optional tag for their animation (time) update. */
+  bool need_visibility_update;
+  bool need_visibility_time_update;
+
   /* Indicates which ID types were updated. */
-  char id_type_updated[MAX_LIBARRAY];
+  char id_type_updated[INDEX_ID_MAX];
 
   /* Indicates type of IDs present in the depsgraph. */
-  char id_type_exist[MAX_LIBARRAY];
+  char id_type_exist[INDEX_ID_MAX];
 
   /* Quick-Access Temp Data ............. */
 
   /* Nodes which have been tagged as "directly modified". */
   Set<OperationNode *> entry_tags;
-
-  /* Special entry tag for time source. Allows to tag invisible dependency graphs for update when
-   * scene frame changes, so then when dependency graph becomes visible it is on a proper state. */
-  bool need_update_time;
 
   /* Convenience Data ................... */
 
@@ -141,7 +124,9 @@ struct Depsgraph {
   ViewLayer *view_layer;
   eEvaluationMode mode;
 
-  /* Time at which dependency graph is being or was last evaluated. */
+  /* Time at which dependency graph is being or was last evaluated.
+   * frame is the value before, and ctime the value after time remapping. */
+  float frame;
   float ctime;
 
   /* Evaluated version of datablocks we access a lot.
@@ -166,6 +151,9 @@ struct Depsgraph {
    * Such dependency graph needs all view layers (so render pipeline can access names), but it
    * does not need any bases. */
   bool is_render_pipeline_depsgraph;
+
+  /* Notify editors about changes to IDs in this depsgraph. */
+  bool use_editors_update;
 
   /* Cached list of colliders/effectors for collections and the scene
    * created along with relations, for fast lookup during evaluation. */

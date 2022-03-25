@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2020 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2020 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup edsculpt
@@ -85,8 +69,7 @@ static void sculpt_mask_expand_cancel(bContext *C, wmOperator *op)
     }
     else {
       PBVHVertexIter vd;
-      BKE_pbvh_vertex_iter_begin(ss->pbvh, node, vd, PBVH_ITER_UNIQUE)
-      {
+      BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
         *vd.mask = ss->filter_cache->prev_mask[vd.index];
       }
       BKE_pbvh_vertex_iter_end;
@@ -114,8 +97,7 @@ static void sculpt_expand_task_cb(void *__restrict userdata,
   PBVHVertexIter vd;
   int update_it = data->mask_expand_update_it;
 
-  BKE_pbvh_vertex_iter_begin(ss->pbvh, node, vd, PBVH_ITER_ALL)
-  {
+  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_ALL) {
     int vi = vd.index;
     float final_mask = *vd.mask;
     if (data->mask_expand_use_normals) {
@@ -155,7 +137,7 @@ static void sculpt_expand_task_cb(void *__restrict userdata,
 
       if (*vd.mask != final_mask) {
         if (vd.mvert) {
-          vd.mvert->flag |= ME_VERT_PBVH_UPDATE;
+          BKE_pbvh_vert_mark_update(ss->pbvh, vd.index);
         }
         *vd.mask = final_mask;
         BKE_pbvh_node_mark_update_mask(node);
@@ -172,10 +154,10 @@ static int sculpt_mask_expand_modal(bContext *C, wmOperator *op, const wmEvent *
   SculptSession *ss = ob->sculpt;
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
   ARegion *region = CTX_wm_region(C);
-  float prevclick_f[2];
-  copy_v2_v2(prevclick_f, op->customdata);
-  int prevclick[2] = {(int)prevclick_f[0], (int)prevclick_f[1]};
-  int len = (int)len_v2v2_int(prevclick, event->mval);
+  float prev_click_f[2];
+  copy_v2_v2(prev_click_f, op->customdata);
+  const int prev_click[2] = {(int)prev_click_f[0], (int)prev_click_f[1]};
+  int len = (int)len_v2v2_int(prev_click, event->mval);
   len = abs(len);
   int mask_speed = RNA_int_get(op->ptr, "mask_speed");
   int mask_expand_update_it = len / mask_speed;
@@ -188,8 +170,14 @@ static int sculpt_mask_expand_modal(bContext *C, wmOperator *op, const wmEvent *
     float mouse[2];
     mouse[0] = event->mval[0];
     mouse[1] = event->mval[1];
-    SCULPT_cursor_geometry_info_update(C, &sgi, mouse, false);
-    mask_expand_update_it = ss->filter_cache->mask_update_it[(int)SCULPT_active_vertex_get(ss)];
+    if (SCULPT_cursor_geometry_info_update(C, &sgi, mouse, false)) {
+      /* The cursor is over the mesh, get the update iteration from the updated active vertex. */
+      mask_expand_update_it = ss->filter_cache->mask_update_it[(int)SCULPT_active_vertex_get(ss)];
+    }
+    else {
+      /* When the cursor is outside the mesh, affect the entire connected component. */
+      mask_expand_update_it = ss->filter_cache->mask_update_last_it - 1;
+    }
   }
 
   if ((event->type == EVT_ESCKEY && event->val == KM_PRESS) ||
@@ -213,7 +201,7 @@ static int sculpt_mask_expand_modal(bContext *C, wmOperator *op, const wmEvent *
 
     /* Pivot position. */
     if (RNA_boolean_get(op->ptr, "update_pivot")) {
-      const char symm = sd->paint.symmetry_flags & PAINT_SYMM_AXIS_ALL;
+      const char symm = SCULPT_mesh_symmetry_xyz_get(ob);
       const float threshold = 0.2f;
       float avg[3];
       int total = 0;
@@ -221,8 +209,7 @@ static int sculpt_mask_expand_modal(bContext *C, wmOperator *op, const wmEvent *
 
       for (int n = 0; n < ss->filter_cache->totnode; n++) {
         PBVHVertexIter vd;
-        BKE_pbvh_vertex_iter_begin(ss->pbvh, ss->filter_cache->nodes[n], vd, PBVH_ITER_UNIQUE)
-        {
+        BKE_pbvh_vertex_iter_begin (ss->pbvh, ss->filter_cache->nodes[n], vd, PBVH_ITER_UNIQUE) {
           const float mask = (vd.mask) ? *vd.mask : 0.0f;
           if (mask < (0.5f + threshold) && mask > (0.5f - threshold)) {
             if (SCULPT_check_vertex_pivot_symmetry(
@@ -258,7 +245,7 @@ static int sculpt_mask_expand_modal(bContext *C, wmOperator *op, const wmEvent *
 
   /* When pressing Ctrl, expand directly to the max number of iterations. This allows to flood fill
    * mask and face sets by connectivity directly. */
-  if (event->ctrl) {
+  if (event->modifier & KM_CTRL) {
     mask_expand_update_it = ss->filter_cache->mask_update_last_it - 1;
   }
 
@@ -357,9 +344,9 @@ static int sculpt_mask_expand_invoke(bContext *C, wmOperator *op, const wmEvent 
   mouse[0] = event->mval[0];
   mouse[1] = event->mval[1];
 
-  SCULPT_vertex_random_access_init(ss);
+  SCULPT_vertex_random_access_ensure(ss);
 
-  op->customdata = MEM_mallocN(2 * sizeof(float), "initial mouse position");
+  op->customdata = MEM_mallocN(sizeof(float[2]), "initial mouse position");
   copy_v2_v2(op->customdata, mouse);
 
   SCULPT_cursor_geometry_info_update(C, &sgi, mouse, false);
@@ -372,7 +359,7 @@ static int sculpt_mask_expand_invoke(bContext *C, wmOperator *op, const wmEvent 
 
   BKE_pbvh_search_gather(pbvh, NULL, NULL, &ss->filter_cache->nodes, &ss->filter_cache->totnode);
 
-  SCULPT_undo_push_begin("Mask Expand");
+  SCULPT_undo_push_begin(ob, "Mask Expand");
 
   if (create_face_set) {
     SCULPT_undo_push_node(ob, ss->filter_cache->nodes[0], SCULPT_UNDO_FACE_SETS);
@@ -493,8 +480,8 @@ void SCULPT_OT_mask_expand(wmOperatorType *ot)
                              true,
                              "Update Pivot Position",
                              "Set the pivot position to the mask border after creating the mask");
-  ot->prop = RNA_def_int(ot->srna, "smooth_iterations", 2, 0, 10, "Smooth iterations", "", 0, 10);
-  ot->prop = RNA_def_int(ot->srna, "mask_speed", 5, 1, 10, "Mask speed", "", 1, 10);
+  ot->prop = RNA_def_int(ot->srna, "smooth_iterations", 2, 0, 10, "Smooth Iterations", "", 0, 10);
+  ot->prop = RNA_def_int(ot->srna, "mask_speed", 5, 1, 10, "Mask Speed", "", 1, 10);
 
   ot->prop = RNA_def_boolean(ot->srna,
                              "use_normals",

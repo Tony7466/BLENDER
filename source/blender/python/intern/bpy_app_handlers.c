@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup pythonintern
@@ -43,6 +29,9 @@ void bpy_app_generic_callback(struct Main *main,
 
 static PyTypeObject BlenderAppCbType;
 
+/**
+ * See `BKE_callbacks.h` #eCbEvent declaration for the policy on naming.
+ */
 static PyStructSequence_Field app_cb_info_fields[] = {
     {"frame_change_pre",
      "Called after frame change for playback and rendering, before any data is evaluated for the "
@@ -74,6 +63,9 @@ static PyStructSequence_Field app_cb_info_fields[] = {
     {"version_update", "on ending the versioning code"},
     {"load_factory_preferences_post", "on loading factory preferences (after)"},
     {"load_factory_startup_post", "on loading factory startup (after)"},
+    {"xr_session_start_pre", "on starting an xr session (before)"},
+    {"annotation_pre", "on drawing an annotation (before)"},
+    {"annotation_post", "on drawing an annotation (after)"},
 
 /* sets the permanent tag */
 #define APP_CB_OTHER_FIELDS 1
@@ -118,22 +110,20 @@ static PyObject *bpy_app_handlers_persistent_new(PyTypeObject *UNUSED(type),
                       "get the dictionary from the function passed");
       return NULL;
     }
-    else {
-      /* set id */
-      if (*dict_ptr == NULL) {
-        *dict_ptr = PyDict_New();
-      }
 
-      PyDict_SetItemString(*dict_ptr, PERMINENT_CB_ID, Py_None);
+    /* set id */
+    if (*dict_ptr == NULL) {
+      *dict_ptr = PyDict_New();
     }
+
+    PyDict_SetItemString(*dict_ptr, PERMINENT_CB_ID, Py_None);
 
     Py_INCREF(value);
     return value;
   }
-  else {
-    PyErr_SetString(PyExc_ValueError, "bpy.app.handlers.persistent expected a function");
-    return NULL;
-  }
+
+  PyErr_SetString(PyExc_ValueError, "bpy.app.handlers.persistent expected a function");
+  return NULL;
 }
 
 /* dummy type because decorators can't be PyCFunctions */
@@ -223,7 +213,7 @@ PyObject *BPY_app_handlers_struct(void)
 #endif
 
   if (PyType_Ready(&BPyPersistent_Type) < 0) {
-    BLI_assert(!"error initializing 'bpy.app.handlers.persistent'");
+    BLI_assert_msg(0, "error initializing 'bpy.app.handlers.persistent'");
   }
 
   PyStructSequence_InitType(&BlenderAppCbType, &app_cb_info_desc);
@@ -234,7 +224,7 @@ PyObject *BPY_app_handlers_struct(void)
   BlenderAppCbType.tp_init = NULL;
   BlenderAppCbType.tp_new = NULL;
   BlenderAppCbType.tp_hash = (hashfunc)
-      _Py_HashPointer; /* without this we can't do set(sys.modules) [#29635] */
+      _Py_HashPointer; /* without this we can't do set(sys.modules) T29635. */
 
   /* assign the C callbacks */
   if (ret) {
@@ -281,14 +271,14 @@ void BPY_app_handlers_reset(const short do_all)
 
       for (i = PyList_GET_SIZE(ls) - 1; i >= 0; i--) {
 
-        if ((PyFunction_Check((item = PyList_GET_ITEM(ls, i)))) &&
+        if (PyFunction_Check((item = PyList_GET_ITEM(ls, i))) &&
             (dict_ptr = _PyObject_GetDictPtr(item)) && (*dict_ptr) &&
             (PyDict_GetItem(*dict_ptr, perm_id_str) != NULL)) {
           /* keep */
         }
         else {
           /* remove */
-          /* PySequence_DelItem(ls, i); */ /* more obvious buw slower */
+          // PySequence_DelItem(ls, i); /* more obvious but slower */
           PyList_SetSlice(ls, i, i + 1, NULL);
         }
       }
@@ -320,7 +310,7 @@ void bpy_app_generic_callback(struct Main *UNUSED(main),
 {
   PyObject *cb_list = py_cb_array[POINTER_AS_INT(arg)];
   if (PyList_GET_SIZE(cb_list) > 0) {
-    PyGILState_STATE gilstate = PyGILState_Ensure();
+    const PyGILState_STATE gilstate = PyGILState_Ensure();
 
     const int num_arguments = 2;
     PyObject *args_all = PyTuple_New(num_arguments); /* save python creating each call */
@@ -345,7 +335,7 @@ void bpy_app_generic_callback(struct Main *UNUSED(main),
     }
 
     /* Iterate the list and run the callbacks
-     * note: don't store the list size since the scripts may remove themselves */
+     * NOTE: don't store the list size since the scripts may remove themselves. */
     for (pos = 0; pos < PyList_GET_SIZE(cb_list); pos++) {
       func = PyList_GET_ITEM(cb_list, pos);
       PyObject *args = choose_arguments(func, args_all, args_single);

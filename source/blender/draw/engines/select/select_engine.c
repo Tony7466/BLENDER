@@ -1,20 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Copyright 2019, Blender Foundation.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2019 Blender Foundation. */
 
 /** \file
  * \ingroup draw_engine
@@ -65,7 +50,7 @@ static void select_engine_framebuffer_setup(void)
   size[1] = GPU_texture_height(dtxl->depth);
 
   if (e_data.framebuffer_select_id == NULL) {
-    e_data.framebuffer_select_id = GPU_framebuffer_create();
+    e_data.framebuffer_select_id = GPU_framebuffer_create("framebuffer_select_id");
   }
 
   if ((e_data.texture_u32 != NULL) && ((GPU_texture_width(e_data.texture_u32) != size[0]) ||
@@ -79,7 +64,8 @@ static void select_engine_framebuffer_setup(void)
   GPU_framebuffer_texture_attach(e_data.framebuffer_select_id, dtxl->depth, 0, 0);
 
   if (e_data.texture_u32 == NULL) {
-    e_data.texture_u32 = GPU_texture_create_2d(size[0], size[1], GPU_R32UI, NULL, NULL);
+    e_data.texture_u32 = GPU_texture_create_2d(
+        "select_buf_ids", size[0], size[1], 1, GPU_R32UI, NULL);
     GPU_framebuffer_texture_attach(e_data.framebuffer_select_id, e_data.texture_u32, 0, 0);
 
     GPU_framebuffer_check_valid(e_data.framebuffer_select_id, NULL);
@@ -192,7 +178,7 @@ static void select_cache_init(void *vedata)
     if (e_data.context.select_mode & SCE_SELECT_VERTEX) {
       DRW_PASS_CREATE(psl->select_id_vert_pass, state);
       pd->shgrp_vert = DRW_shgroup_create(sh->select_id_flat, psl->select_id_vert_pass);
-      DRW_shgroup_uniform_float_copy(pd->shgrp_vert, "sizeVertex", G_draw.block.sizeVertex);
+      DRW_shgroup_uniform_float_copy(pd->shgrp_vert, "sizeVertex", 2 * G_draw.block.sizeVertex);
     }
   }
 
@@ -362,6 +348,7 @@ DrawEngineType draw_engine_select_type = {
     &select_data_size,
     &select_engine_init,
     &select_engine_free,
+    NULL, /* instance_free */
     &select_cache_init,
     &select_cache_populate,
     NULL,
@@ -369,9 +356,10 @@ DrawEngineType draw_engine_select_type = {
     NULL,
     NULL,
     NULL,
+    NULL,
 };
 
-/* Note: currently unused, we may want to register so we can see this when debugging the view. */
+/* NOTE: currently unused, we may want to register so we can see this when debugging the view. */
 
 RenderEngineType DRW_engine_viewport_select_type = {
     NULL,
@@ -379,6 +367,8 @@ RenderEngineType DRW_engine_viewport_select_type = {
     SELECT_ENGINE,
     N_("Select ID"),
     RE_INTERNAL | RE_USE_STEREO_VIEWPORT | RE_USE_GPU_CONTEXT,
+    NULL,
+    NULL,
     NULL,
     NULL,
     NULL,

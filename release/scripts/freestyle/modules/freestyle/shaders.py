@@ -1,20 +1,4 @@
-# ##### BEGIN GPL LICENSE BLOCK #####
-#
-#  This program is free software; you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License
-#  as published by the Free Software Foundation; either version 2
-#  of the License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software Foundation,
-#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# ##### END GPL LICENSE BLOCK #####
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 #  Filename : shaders.py
 #  Authors  : Fredo Durand, Stephane Grabli, Francois Sillion, Emmanuel Turquin
@@ -1153,11 +1137,9 @@ class RoundCapShader(StrokeShader):
             return
         # calculate the number of additional vertices to form caps
         thickness_beg = sum(stroke[0].attribute.thickness)
-        caplen_beg = thickness_beg / 2.0
         nverts_beg = max(5, int(thickness_beg))
 
         thickness_end = sum(stroke[-1].attribute.thickness)
-        caplen_end = (thickness_end) / 2.0
         nverts_end = max(5, int(thickness_end))
 
         # adjust the total number of stroke vertices
@@ -1169,7 +1151,7 @@ class RoundCapShader(StrokeShader):
         # reshape the cap at the beginning of the stroke
         q, attr = buffer[1]
         p, attr = buffer[0]
-        direction = (p - q).normalized() * caplen_beg
+        direction = (p - q).normalized() * thickness_beg
         n = 1.0 / nverts_beg
         R, L = attr.thickness
         for t, svert in zip(range(nverts_beg, 0, -1), stroke):
@@ -1180,7 +1162,7 @@ class RoundCapShader(StrokeShader):
         # reshape the cap at the end of the stroke
         q, attr = buffer[-2]
         p, attr = buffer[-1]
-        direction = (p - q).normalized() * caplen_beg
+        direction = (p - q).normalized() * thickness_end
         n = 1.0 / nverts_end
         R, L = attr.thickness
         for t, svert in zip(range(nverts_end, 0, -1), reversed(stroke)):

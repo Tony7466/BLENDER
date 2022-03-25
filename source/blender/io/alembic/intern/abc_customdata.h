@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2016 Kévin Dietrich.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2016 Kévin Dietrich. All rights reserved. */
 #pragma once
 
 /** \file
@@ -36,9 +20,7 @@ struct Mesh;
 
 using Alembic::Abc::ICompoundProperty;
 using Alembic::Abc::OCompoundProperty;
-namespace blender {
-namespace io {
-namespace alembic {
+namespace blender::io::alembic {
 
 struct UVSample {
   std::vector<Imath::V2f> uvs;
@@ -68,16 +50,25 @@ struct CDStreamConfig {
 
   float weight;
   float time;
+  int timesample_index;
+  bool use_vertex_interpolation;
   Alembic::AbcGeom::index_t index;
   Alembic::AbcGeom::index_t ceil_index;
 
   const char **modifier_error_message;
 
-  /* Alembic needs Blender to keep references to C++ objects (the destructors
-   * finalize the writing to ABC). This map stores OV2fGeomParam objects for the
-   * 2nd and subsequent UV maps; the primary UV map is kept alive by the Alembic
-   * mesh sample itself. */
+  /* Alembic needs Blender to keep references to C++ objects (the destructors finalize the writing
+   * to ABC). The following fields are all used to keep these references. */
+
+  /* Mapping from UV map name to its ABC property, for the 2nd and subsequent UV maps; the primary
+   * UV map is kept alive by the Alembic mesh sample itself. */
   std::map<std::string, Alembic::AbcGeom::OV2fGeomParam> abc_uv_maps;
+
+  /* ORCO coordinates, aka Generated Coordinates. */
+  Alembic::AbcGeom::OV3fGeomParam abc_orco;
+
+  /* Mapping from vertex color layer name to its Alembic color data. */
+  std::map<std::string, Alembic::AbcGeom::OC4fGeomParam> abc_vertex_colors;
 
   CDStreamConfig()
       : mloop(NULL),
@@ -103,6 +94,12 @@ struct CDStreamConfig {
  * For now the active layer is used, maybe needs a better way to choose this. */
 const char *get_uv_sample(UVSample &sample, const CDStreamConfig &config, CustomData *data);
 
+void write_generated_coordinates(const OCompoundProperty &prop, CDStreamConfig &config);
+
+void read_generated_coordinates(const ICompoundProperty &prop,
+                                const CDStreamConfig &config,
+                                const Alembic::Abc::ISampleSelector &iss);
+
 void write_custom_data(const OCompoundProperty &prop,
                        CDStreamConfig &config,
                        CustomData *data,
@@ -113,6 +110,22 @@ void read_custom_data(const std::string &iobject_full_name,
                       const CDStreamConfig &config,
                       const Alembic::Abc::ISampleSelector &iss);
 
-}  // namespace alembic
-}  // namespace io
-}  // namespace blender
+typedef enum {
+  ABC_UV_SCOPE_NONE,
+  ABC_UV_SCOPE_LOOP,
+  ABC_UV_SCOPE_VERTEX,
+} AbcUvScope;
+
+/**
+ * UVs can be defined per-loop (one value per vertex per face), or per-vertex (one value per
+ * vertex). The first case is the most common, as this is the standard way of storing this data
+ * given that some vertices might be on UV seams and have multiple possible UV coordinates; the
+ * second case can happen when the mesh is split according to the UV islands, in which case storing
+ * a single UV value per vertex allows to de-duplicate data and thus to reduce the file size since
+ * vertices are guaranteed to only have a single UV coordinate.
+ */
+AbcUvScope get_uv_scope(const Alembic::AbcGeom::GeometryScope scope,
+                        const CDStreamConfig &config,
+                        const Alembic::AbcGeom::UInt32ArraySamplePtr &indices);
+
+}  // namespace blender::io::alembic

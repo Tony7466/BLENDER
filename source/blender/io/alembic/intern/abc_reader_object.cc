@@ -1,18 +1,4 @@
-﻿/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup balembic
@@ -41,21 +27,16 @@ using Alembic::AbcGeom::IObject;
 using Alembic::AbcGeom::IXform;
 using Alembic::AbcGeom::IXformSchema;
 
-namespace blender {
-namespace io {
-namespace alembic {
+namespace blender::io::alembic {
 
 AbcObjectReader::AbcObjectReader(const IObject &object, ImportSettings &settings)
-    : m_name(""),
-      m_object_name(""),
-      m_data_name(""),
-      m_object(NULL),
+    : m_object(nullptr),
       m_iobject(object),
       m_settings(&settings),
       m_min_time(std::numeric_limits<chrono_t>::max()),
       m_max_time(std::numeric_limits<chrono_t>::min()),
       m_refcount(0),
-      parent_reader(NULL)
+      parent_reader(nullptr)
 {
   m_name = object.getFullName();
   std::vector<std::string> parts;
@@ -72,7 +53,6 @@ AbcObjectReader::AbcObjectReader(const IObject &object, ImportSettings &settings
   determine_inherits_xform();
 }
 
-/* Determine whether we can inherit our parent's XForm */
 void AbcObjectReader::determine_inherits_xform()
 {
   m_inherits_xform = false;
@@ -102,10 +82,6 @@ void AbcObjectReader::determine_inherits_xform()
   }
 }
 
-AbcObjectReader::~AbcObjectReader()
-{
-}
-
 const IObject &AbcObjectReader::iobject() const
 {
   return m_iobject;
@@ -130,29 +106,10 @@ static Imath::M44d blend_matrices(const Imath::M44d &m0, const Imath::M44d &m1, 
    * the matrices manually.
    */
 
-  for (int i = 0; i < 4; i++) {
-    for (int j = 0; j < 4; j++) {
-      mat0[i][j] = static_cast<float>(m0[i][j]);
-    }
-  }
-
-  for (int i = 0; i < 4; i++) {
-    for (int j = 0; j < 4; j++) {
-      mat1[i][j] = static_cast<float>(m1[i][j]);
-    }
-  }
-
+  convert_matrix_datatype(m0, mat0);
+  convert_matrix_datatype(m1, mat1);
   interp_m4_m4m4(ret, mat0, mat1, weight);
-
-  Imath::M44d m;
-
-  for (int i = 0; i < 4; i++) {
-    for (int j = 0; j < 4; j++) {
-      m[i][j] = ret[i][j];
-    }
-  }
-
-  return m;
+  return convert_matrix_datatype(ret);
 }
 
 Imath::M44d get_matrix(const IXformSchema &schema, const float time)
@@ -176,12 +133,14 @@ Imath::M44d get_matrix(const IXformSchema &schema, const float time)
 struct Mesh *AbcObjectReader::read_mesh(struct Mesh *existing_mesh,
                                         const Alembic::Abc::ISampleSelector &UNUSED(sample_sel),
                                         int UNUSED(read_flag),
+                                        const char *UNUSED(velocity_name),
+                                        const float UNUSED(velocity_scale),
                                         const char **UNUSED(err_str))
 {
   return existing_mesh;
 }
 
-bool AbcObjectReader::topology_changed(Mesh * /*existing_mesh*/,
+bool AbcObjectReader::topology_changed(const Mesh * /*existing_mesh*/,
                                        const Alembic::Abc::ISampleSelector & /*sample_sel*/)
 {
   /* The default implementation of read_mesh() just returns the original mesh, so never changes the
@@ -206,9 +165,9 @@ void AbcObjectReader::setupObjectTransform(const float time)
   BKE_object_apply_mat4(m_object, transform_from_alembic, true, false);
   BKE_object_to_mat4(m_object, m_object->obmat);
 
-  if (!is_constant) {
+  if (!is_constant || m_settings->always_add_cache_reader) {
     bConstraint *con = BKE_constraint_add_for_object(
-        m_object, NULL, CONSTRAINT_TYPE_TRANSFORM_CACHE);
+        m_object, nullptr, CONSTRAINT_TYPE_TRANSFORM_CACHE);
     bTransformCacheConstraint *data = static_cast<bTransformCacheConstraint *>(con->data);
     BLI_strncpy(data->object_path, m_iobject.getFullName().c_str(), FILE_MAX);
 
@@ -219,7 +178,7 @@ void AbcObjectReader::setupObjectTransform(const float time)
 
 Alembic::AbcGeom::IXform AbcObjectReader::xform()
 {
-  /* Check that we have an empty object (locator, bone head/tail...).  */
+  /* Check that we have an empty object (locator, bone head/tail...). */
   if (IXform::matches(m_iobject.getMetaData())) {
     try {
       return IXform(m_iobject, Alembic::AbcGeom::kWrapExisting);
@@ -335,6 +294,4 @@ void AbcObjectReader::decref()
   BLI_assert(m_refcount >= 0);
 }
 
-}  // namespace alembic
-}  // namespace io
-}  // namespace blender
+}  // namespace blender::io::alembic

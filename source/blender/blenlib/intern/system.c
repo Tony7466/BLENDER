@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -71,11 +57,8 @@ int BLI_cpu_support_sse2(void)
 #endif
 }
 
-/* Windows stackwalk lives in system_win32.c */
+/* Windows stack-walk lives in system_win32.c */
 #if !defined(_MSC_VER)
-/**
- * Write a backtrace into a file for systems which support it.
- */
 void BLI_system_backtrace(FILE *fp)
 {
   /* ------------- */
@@ -100,8 +83,8 @@ void BLI_system_backtrace(FILE *fp)
 #    undef SIZE
 
 #  else
-  /* ------------------ */
-  /* non msvc/osx/linux */
+  /* --------------------- */
+  /* Non MSVC/Apple/Linux. */
   (void)fp;
 #  endif
 }
@@ -128,6 +111,7 @@ static void __cpuid(
       : "a"(selector)
       : "ebx");
 #  else
+  (void)selector;
   data[0] = data[1] = data[2] = data[3] = 0;
 #  endif
 }
@@ -135,7 +119,7 @@ static void __cpuid(
 
 char *BLI_cpu_brand_string(void)
 {
-  char buf[48] = {0};
+  char buf[49] = {0};
   int result[4] = {0};
   __cpuid(result, 0x80000000);
   if (result[0] >= (int)0x80000004) {
@@ -183,7 +167,7 @@ size_t BLI_system_memory_max_in_megabytes(void)
   /* Maximum addressable bytes on this platform.
    *
    * NOTE: Due to the shift arithmetic this is a half of the memory. */
-  const size_t limit_bytes_half = (((size_t)1) << ((sizeof(size_t) * 8) - 1));
+  const size_t limit_bytes_half = (((size_t)1) << (sizeof(size_t[8]) - 1));
   /* Convert it to megabytes and return. */
   return (limit_bytes_half >> 20) * 2;
 }

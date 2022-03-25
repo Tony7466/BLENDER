@@ -1,20 +1,4 @@
-# ***** BEGIN GPL LICENSE BLOCK *****
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
-# of the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# ***** END GPL LICENSE BLOCK *****
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 if(BUILD_MODE STREQUAL Release)
   set(OIIO_TOOLS ON)
@@ -68,7 +52,6 @@ set(OPENIMAGEIO_EXTRA_ARGS
   -DBOOST_LIBRARYDIR=${LIBDIR}/boost/lib/
   -DBoost_NO_SYSTEM_PATHS=ON
   -DBoost_NO_BOOST_CMAKE=ON
-  -OIIO_BUILD_CPP11=ON
   -DUSE_LIBSQUISH=OFF
   -DUSE_QT5=OFF
   -DUSE_NUKE=OFF
@@ -112,14 +95,17 @@ set(OPENIMAGEIO_EXTRA_ARGS
   -DOPENEXR_IEX_LIBRARY=${LIBDIR}/openexr/lib/${LIBPREFIX}Iex${OPENEXR_VERSION_POSTFIX}${LIBEXT}
   -DOPENEXR_ILMIMF_LIBRARY=${LIBDIR}/openexr/lib/${LIBPREFIX}IlmImf${OPENEXR_VERSION_POSTFIX}${LIBEXT}
   -DSTOP_ON_WARNING=OFF
+  -DUSE_EXTERNAL_PUGIXML=ON
+  -DPUGIXML_LIBRARY=${LIBDIR}/pugixml/lib/${LIBPREFIX}pugixml${LIBEXT}
+  -DPUGIXML_INCLUDE_DIR=${LIBDIR}/pugixml/include/
   ${WEBP_FLAGS}
   ${OIIO_SIMD_FLAGS}
 )
 
 ExternalProject_Add(external_openimageio
-  URL ${OPENIMAGEIO_URI}
+  URL file://${PACKAGE_DIR}/${OPENIMAGEIO_FILE}
   DOWNLOAD_DIR ${DOWNLOAD_DIR}
-  URL_HASH MD5=${OPENIMAGEIO_HASH}
+  URL_HASH ${OPENIMAGEIO_HASH_TYPE}=${OPENIMAGEIO_HASH}
   PREFIX ${BUILD_DIR}/openimageio
   PATCH_COMMAND ${PATCH_CMD} -p 1 -N -d ${BUILD_DIR}/openimageio/src/external_openimageio/ < ${PATCH_DIR}/openimageio.diff
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${LIBDIR}/openimageio ${DEFAULT_CMAKE_FLAGS} ${OPENIMAGEIO_EXTRA_ARGS}
@@ -134,6 +120,7 @@ add_dependencies(
   external_jpeg
   external_boost
   external_tiff
+  external_pugixml
   external_openjpeg${OPENJPEG_POSTFIX}
   ${WEBP_DEP}
 )

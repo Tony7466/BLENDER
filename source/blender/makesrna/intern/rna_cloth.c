@@ -1,18 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup RNA
@@ -396,6 +382,24 @@ static void rna_CollSettings_selfcol_vgroup_set(PointerRNA *ptr, const char *val
   rna_object_vgroup_name_index_set(ptr, value, &coll->vgroup_selfcol);
 }
 
+static void rna_CollSettings_objcol_vgroup_get(PointerRNA *ptr, char *value)
+{
+  ClothCollSettings *coll = (ClothCollSettings *)ptr->data;
+  rna_object_vgroup_name_index_get(ptr, value, coll->vgroup_objcol);
+}
+
+static int rna_CollSettings_objcol_vgroup_length(PointerRNA *ptr)
+{
+  ClothCollSettings *coll = (ClothCollSettings *)ptr->data;
+  return rna_object_vgroup_name_index_length(ptr, coll->vgroup_objcol);
+}
+
+static void rna_CollSettings_objcol_vgroup_set(PointerRNA *ptr, const char *value)
+{
+  ClothCollSettings *coll = (ClothCollSettings *)ptr->data;
+  rna_object_vgroup_name_index_set(ptr, value, &coll->vgroup_objcol);
+}
+
 static PointerRNA rna_ClothSettings_rest_shape_key_get(PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->owner_id;
@@ -439,7 +443,7 @@ static char *rna_ClothSettings_path(PointerRNA *ptr)
 
   if (md) {
     char name_esc[sizeof(md->name) * 2];
-    BLI_strescape(name_esc, md->name, sizeof(name_esc));
+    BLI_str_escape(name_esc, md->name, sizeof(name_esc));
     return BLI_sprintfN("modifiers[\"%s\"].settings", name_esc);
   }
   else {
@@ -454,7 +458,7 @@ static char *rna_ClothCollisionSettings_path(PointerRNA *ptr)
 
   if (md) {
     char name_esc[sizeof(md->name) * 2];
-    BLI_strescape(name_esc, md->name, sizeof(name_esc));
+    BLI_str_escape(name_esc, md->name, sizeof(name_esc));
     return BLI_sprintfN("modifiers[\"%s\"].collision_settings", name_esc);
   }
   else {
@@ -566,6 +570,8 @@ static void rna_def_cloth_sim_settings(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "ClothSimSettings");
   RNA_def_struct_path_func(srna, "rna_ClothSettings_path");
 
+  RNA_define_lib_overridable(true);
+
   /* goal */
 
   prop = RNA_def_property(srna, "goal_min", PROP_FLOAT, PROP_FACTOR);
@@ -641,6 +647,7 @@ static void rna_def_cloth_sim_settings(BlenderRNA *brna)
                                 "rna_ClothSettings_mass_vgroup_get",
                                 "rna_ClothSettings_mass_vgroup_length",
                                 "rna_ClothSettings_mass_vgroup_set");
+  RNA_def_property_override_clear_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Mass Vertex Group", "Vertex Group for pinning of vertices");
   RNA_def_property_update(prop, 0, "rna_cloth_pinning_changed");
 
@@ -689,6 +696,7 @@ static void rna_def_cloth_sim_settings(BlenderRNA *brna)
                                 "rna_ClothSettings_shrink_vgroup_get",
                                 "rna_ClothSettings_shrink_vgroup_length",
                                 "rna_ClothSettings_shrink_vgroup_set");
+  RNA_def_property_override_clear_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Shrink Vertex Group", "Vertex Group for shrinking cloth");
   RNA_def_property_update(prop, 0, "rna_cloth_update");
 
@@ -711,7 +719,6 @@ static void rna_def_cloth_sim_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "voxel_cell_size", PROP_FLOAT, PROP_UNSIGNED);
   RNA_def_property_float_sdna(prop, NULL, "voxel_cell_size");
   RNA_def_property_range(prop, 0.0001f, 10000.0f);
-  RNA_def_property_float_default(prop, 0.1f);
   RNA_def_property_ui_text(
       prop, "Voxel Grid Cell Size", "Size of the voxel grid cells for interaction effects");
   RNA_def_property_update(prop, 0, "rna_cloth_update");
@@ -793,6 +800,7 @@ static void rna_def_cloth_sim_settings(BlenderRNA *brna)
                                 "rna_ClothSettings_struct_vgroup_get",
                                 "rna_ClothSettings_struct_vgroup_length",
                                 "rna_ClothSettings_struct_vgroup_set");
+  RNA_def_property_override_clear_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop,
                            "Structural Stiffness Vertex Group",
                            "Vertex group for fine control over structural stiffness");
@@ -803,6 +811,7 @@ static void rna_def_cloth_sim_settings(BlenderRNA *brna)
                                 "rna_ClothSettings_shear_vgroup_get",
                                 "rna_ClothSettings_shear_vgroup_length",
                                 "rna_ClothSettings_shear_vgroup_set");
+  RNA_def_property_override_clear_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(
       prop, "Shear Stiffness Vertex Group", "Vertex group for fine control over shear stiffness");
   RNA_def_property_update(prop, 0, "rna_cloth_update");
@@ -839,6 +848,7 @@ static void rna_def_cloth_sim_settings(BlenderRNA *brna)
                                 "rna_ClothSettings_bend_vgroup_get",
                                 "rna_ClothSettings_bend_vgroup_length",
                                 "rna_ClothSettings_bend_vgroup_set");
+  RNA_def_property_override_clear_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop,
                            "Bending Stiffness Vertex Group",
                            "Vertex group for fine control over bending stiffness");
@@ -857,6 +867,7 @@ static void rna_def_cloth_sim_settings(BlenderRNA *brna)
                                  "rna_ClothSettings_rest_shape_key_set",
                                  NULL,
                                  NULL);
+  RNA_def_property_override_clear_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(
       prop, "Rest Shape Key", "Shape key to use the rest spring lengths from");
   RNA_def_property_update(prop, 0, "rna_cloth_update");
@@ -911,7 +922,7 @@ static void rna_def_cloth_sim_settings(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "internal_spring_max_diversion", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, NULL, "internal_spring_max_diversion");
-  RNA_def_property_range(prop, 0.0f, M_PI / 4.0f);
+  RNA_def_property_range(prop, 0.0f, M_PI_4);
   RNA_def_property_ui_text(prop,
                            "Internal Spring Max Diversion",
                            "How much the rays used to connect the internal points can diverge "
@@ -959,6 +970,7 @@ static void rna_def_cloth_sim_settings(BlenderRNA *brna)
                                 "rna_ClothSettings_internal_vgroup_get",
                                 "rna_ClothSettings_internal_vgroup_length",
                                 "rna_ClothSettings_internal_vgroup_set");
+  RNA_def_property_override_clear_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop,
                            "Internal Springs Vertex Group",
                            "Vertex group for fine control over the internal spring stiffness");
@@ -1005,7 +1017,6 @@ static void rna_def_cloth_sim_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "pressure_factor", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "pressure_factor");
   RNA_def_property_range(prop, 0.0f, 10000.0f);
-  RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_ui_text(prop,
                            "Pressure Scale",
                            "Ambient pressure (kPa) that balances out between the inside and "
@@ -1028,6 +1039,7 @@ static void rna_def_cloth_sim_settings(BlenderRNA *brna)
                                 "rna_ClothSettings_pressure_vgroup_get",
                                 "rna_ClothSettings_pressure_vgroup_length",
                                 "rna_ClothSettings_pressure_vgroup_set");
+  RNA_def_property_override_clear_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(
       prop,
       "Pressure Vertex Group",
@@ -1066,6 +1078,8 @@ static void rna_def_cloth_sim_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Maximum Spring Extension", "Maximum extension before spring gets cut");
 #  endif
+
+  RNA_define_lib_overridable(false);
 }
 
 static void rna_def_cloth_collision_settings(BlenderRNA *brna)
@@ -1080,6 +1094,8 @@ static void rna_def_cloth_collision_settings(BlenderRNA *brna)
       "Cloth simulation settings for self collision and collision with other objects");
   RNA_def_struct_sdna(srna, "ClothCollSettings");
   RNA_def_struct_path_func(srna, "rna_ClothCollisionSettings_path");
+
+  RNA_define_lib_overridable(true);
 
   /* general collision */
 
@@ -1153,7 +1169,6 @@ static void rna_def_cloth_collision_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "collection", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, NULL, "group");
   RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(prop, "Collision Collection", "Limit colliders to this Collection");
   RNA_def_property_update(prop, 0, "rna_cloth_dependency_update");
 
@@ -1162,10 +1177,23 @@ static void rna_def_cloth_collision_settings(BlenderRNA *brna)
                                 "rna_CollSettings_selfcol_vgroup_get",
                                 "rna_CollSettings_selfcol_vgroup_length",
                                 "rna_CollSettings_selfcol_vgroup_set");
+  RNA_def_property_override_clear_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(
       prop,
       "Selfcollision Vertex Group",
-      "Vertex group to define vertices which are not used during self collisions");
+      "Triangles with all vertices in this group are not used during self collisions");
+  RNA_def_property_update(prop, 0, "rna_cloth_update");
+
+  prop = RNA_def_property(srna, "vertex_group_object_collisions", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_funcs(prop,
+                                "rna_CollSettings_objcol_vgroup_get",
+                                "rna_CollSettings_objcol_vgroup_length",
+                                "rna_CollSettings_objcol_vgroup_set");
+  RNA_def_property_override_clear_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_ui_text(
+      prop,
+      "Collision Vertex Group",
+      "Triangles with all vertices in this group are not used during object collisions");
   RNA_def_property_update(prop, 0, "rna_cloth_update");
 
   prop = RNA_def_property(srna, "self_impulse_clamp", PROP_FLOAT, PROP_NONE);
@@ -1176,6 +1204,8 @@ static void rna_def_cloth_collision_settings(BlenderRNA *brna)
       "Impulse Clamping",
       "Clamp collision impulses to avoid instability (0.0 to disable clamping)");
   RNA_def_property_update(prop, 0, "rna_cloth_update");
+
+  RNA_define_lib_overridable(false);
 }
 
 void RNA_def_cloth(BlenderRNA *brna)

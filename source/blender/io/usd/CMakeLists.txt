@@ -1,22 +1,5 @@
-# ***** BEGIN GPL LICENSE BLOCK *****
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
-# of the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# The Original Code is Copyright (C) 2019, Blender Foundation
-# All rights reserved.
-# ***** END GPL LICENSE BLOCK *****
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2019 Blender Foundation. All rights reserved.
 
 # This suppresses the warning "This file includes at least one deprecated or antiquated
 # header which may be removed without further notice at a future date", which is caused
@@ -29,6 +12,9 @@ if(WIN32)
   add_definitions(-DNOMINMAX -DWIN32_LEAN_AND_MEAN)
 endif()
 add_definitions(-DPXR_STATIC)
+
+# USD headers use deprecated TBB headers, silence warning.
+add_definitions(-DTBB_SUPPRESS_DEPRECATED_MESSAGES=1)
 
 set(INC
   .
@@ -53,26 +39,56 @@ set(INC_SYS
 )
 
 set(SRC
-  intern/usd_capi.cc
+  intern/usd_capi_export.cc
+  intern/usd_capi_import.cc
+  intern/usd_common.cc
   intern/usd_hierarchy_iterator.cc
   intern/usd_writer_abstract.cc
   intern/usd_writer_camera.cc
   intern/usd_writer_hair.cc
   intern/usd_writer_light.cc
+  intern/usd_writer_material.cc
   intern/usd_writer_mesh.cc
   intern/usd_writer_metaball.cc
   intern/usd_writer_transform.cc
 
+  intern/usd_reader_camera.cc
+  intern/usd_reader_curve.cc
+  intern/usd_reader_geom.cc
+  intern/usd_reader_light.cc
+  intern/usd_reader_material.cc
+  intern/usd_reader_mesh.cc
+  intern/usd_reader_nurbs.cc
+  intern/usd_reader_prim.cc
+  intern/usd_reader_stage.cc
+  intern/usd_reader_volume.cc
+  intern/usd_reader_xform.cc
+
   usd.h
+
+  intern/usd_common.h
   intern/usd_exporter_context.h
   intern/usd_hierarchy_iterator.h
   intern/usd_writer_abstract.h
   intern/usd_writer_camera.h
   intern/usd_writer_hair.h
   intern/usd_writer_light.h
+  intern/usd_writer_material.h
   intern/usd_writer_mesh.h
   intern/usd_writer_metaball.h
   intern/usd_writer_transform.h
+
+  intern/usd_reader_camera.h
+  intern/usd_reader_curve.h
+  intern/usd_reader_geom.h
+  intern/usd_reader_light.h
+  intern/usd_reader_material.h
+  intern/usd_reader_mesh.h
+  intern/usd_reader_nurbs.h
+  intern/usd_reader_prim.h
+  intern/usd_reader_stage.h
+  intern/usd_reader_volume.h
+  intern/usd_reader_xform.h
 )
 
 set(LIB

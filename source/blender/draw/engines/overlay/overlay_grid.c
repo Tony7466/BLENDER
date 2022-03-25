@@ -1,20 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * Copyright 2019, Blender Foundation.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2019 Blender Foundation. */
 
 /** \file
  * \ingroup draw_engine
@@ -23,10 +8,14 @@
 #include "DRW_render.h"
 
 #include "DNA_camera_types.h"
+#include "DNA_screen_types.h"
 
 #include "DEG_depsgraph_query.h"
 
+#include "ED_image.h"
 #include "ED_view3d.h"
+
+#include "UI_resources.h"
 
 #include "overlay_private.h"
 
@@ -42,14 +31,49 @@ enum {
   CLIP_ZNEG = (1 << 8),
   GRID_BACK = (1 << 9),
   GRID_CAMERA = (1 << 10),
+  PLANE_IMAGE = (1 << 11),
+  CUSTOM_GRID = (1 << 12),
 };
 
 void OVERLAY_grid_init(OVERLAY_Data *vedata)
 {
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   OVERLAY_ShadingData *shd = &pd->shdata;
-
   const DRWContextState *draw_ctx = DRW_context_state_get();
+
+  shd->grid_flag = 0;
+  shd->zneg_flag = 0;
+  shd->zpos_flag = 0;
+  shd->grid_line_size = max_ff(0.0f, U.pixelsize - 1.0f) * 0.5f;
+
+  if (pd->space_type == SPACE_IMAGE) {
+    SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
+    View2D *v2d = &draw_ctx->region->v2d;
+    if (sima->mode == SI_MODE_UV || !ED_space_image_has_buffer(sima)) {
+      shd->grid_flag = GRID_BACK | PLANE_IMAGE | SHOW_GRID;
+    }
+    else {
+      shd->grid_flag = 0;
+    }
+
+    if (sima->flag & SI_CUSTOM_GRID) {
+      shd->grid_flag |= CUSTOM_GRID;
+    }
+
+    shd->grid_distance = 1.0f;
+    copy_v3_fl3(shd->grid_size, 1.0f, 1.0f, 1.0f);
+    if (sima->mode == SI_MODE_UV) {
+      shd->grid_size[0] = (float)sima->tile_grid_shape[0];
+      shd->grid_size[1] = (float)sima->tile_grid_shape[1];
+    }
+
+    const int grid_size = SI_GRID_STEPS_LEN;
+    shd->zoom_factor = ED_space_image_zoom_level(v2d, grid_size);
+    ED_space_image_grid_steps(sima, shd->grid_steps, grid_size);
+
+    return;
+  }
+
   View3D *v3d = draw_ctx->v3d;
   Scene *scene = draw_ctx->scene;
   RegionView3D *rv3d = draw_ctx->rv3d;
@@ -59,10 +83,6 @@ void OVERLAY_grid_init(OVERLAY_Data *vedata)
   const bool show_axis_z = (pd->v3d_gridflag & V3D_SHOW_Z) != 0;
   const bool show_floor = (pd->v3d_gridflag & V3D_SHOW_FLOOR) != 0;
   const bool show_ortho_grid = (pd->v3d_gridflag & V3D_SHOW_ORTHO_GRID) != 0;
-
-  shd->grid_flag = 0;
-  shd->zneg_flag = 0;
-  shd->zpos_flag = 0;
 
   if (pd->hide_overlays || !(pd->v3d_gridflag & (V3D_SHOW_X | V3D_SHOW_Y | V3D_SHOW_Z |
                                                  V3D_SHOW_FLOOR | V3D_SHOW_ORTHO_GRID))) {
@@ -76,7 +96,7 @@ void OVERLAY_grid_init(OVERLAY_Data *vedata)
   DRW_view_viewmat_get(NULL, viewmat, false);
   DRW_view_viewmat_get(NULL, viewinv, true);
 
-  /* if perps */
+  /* If perspective view or non-axis aligned view. */
   if (winmat[3][3] == 0.0f || rv3d->view == RV3D_VIEW_USER) {
     if (show_axis_x) {
       shd->grid_flag |= PLANE_XY | SHOW_AXIS_X;
@@ -155,22 +175,33 @@ void OVERLAY_grid_init(OVERLAY_Data *vedata)
   }
 
   if (winmat[3][3] == 0.0f) {
-    shd->grid_mesh_size = dist;
+    copy_v3_fl(shd->grid_size, dist);
   }
   else {
     float viewdist = 1.0f / min_ff(fabsf(winmat[0][0]), fabsf(winmat[1][1]));
-    shd->grid_mesh_size = viewdist * dist;
+    copy_v3_fl(shd->grid_size, viewdist * dist);
   }
 
   shd->grid_distance = dist / 2.0f;
-  shd->grid_line_size = max_ff(0.0f, U.pixelsize - 1.0f) * 0.5f;
 
   ED_view3d_grid_steps(scene, v3d, rv3d, shd->grid_steps);
+
+  if ((v3d->flag & (V3D_XR_SESSION_SURFACE | V3D_XR_SESSION_MIRROR)) != 0) {
+    /* The calculations for the grid parameters assume that the view matrix has no scale component,
+     * which may not be correct if the user is "shrunk" or "enlarged" by zooming in or out.
+     * Therefore, we need to compensate the values here. */
+    float viewinvscale = len_v3(
+        viewinv[0]); /* Assumption is uniform scaling (all column vectors are of same length). */
+    shd->grid_distance *= viewinvscale;
+  }
 }
 
 void OVERLAY_grid_cache_init(OVERLAY_Data *vedata)
 {
-  OVERLAY_ShadingData *shd = &vedata->stl->pd->shdata;
+  OVERLAY_StorageList *stl = vedata->stl;
+  OVERLAY_PrivateData *pd = stl->pd;
+  OVERLAY_ShadingData *shd = &pd->shdata;
+
   OVERLAY_PassList *psl = vedata->psl;
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
 
@@ -182,25 +213,45 @@ void OVERLAY_grid_cache_init(OVERLAY_Data *vedata)
 
   DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA;
   DRW_PASS_CREATE(psl->grid_ps, state);
-
-  GPUShader *sh = OVERLAY_shader_grid();
+  DRWShadingGroup *grp;
+  GPUShader *sh;
   struct GPUBatch *geom = DRW_cache_grid_get();
 
+  if (pd->space_type == SPACE_IMAGE) {
+    float mat[4][4];
+
+    /* add quad background */
+    sh = OVERLAY_shader_grid_background();
+    grp = DRW_shgroup_create(sh, psl->grid_ps);
+    float color_back[4];
+    interp_v4_v4v4(color_back, G_draw.block.colorBackground, G_draw.block.colorGrid, 0.5);
+    DRW_shgroup_uniform_vec4_copy(grp, "color", color_back);
+    DRW_shgroup_uniform_texture_ref(grp, "depthBuffer", &dtxl->depth);
+    unit_m4(mat);
+    mat[0][0] = shd->grid_size[0];
+    mat[1][1] = shd->grid_size[1];
+    mat[2][2] = shd->grid_size[2];
+    DRW_shgroup_call_obmat(grp, DRW_cache_quad_get(), mat);
+  }
+
+  sh = OVERLAY_shader_grid();
+
   /* Create 3 quads to render ordered transparency Z axis */
-  DRWShadingGroup *grp = DRW_shgroup_create(sh, psl->grid_ps);
+  grp = DRW_shgroup_create(sh, psl->grid_ps);
   DRW_shgroup_uniform_int(grp, "gridFlag", &shd->zneg_flag, 1);
   DRW_shgroup_uniform_vec3(grp, "planeAxes", shd->zplane_axes, 1);
   DRW_shgroup_uniform_float(grp, "gridDistance", &shd->grid_distance, 1);
   DRW_shgroup_uniform_float_copy(grp, "lineKernel", shd->grid_line_size);
-  DRW_shgroup_uniform_float_copy(grp, "meshSize", shd->grid_mesh_size);
+  DRW_shgroup_uniform_vec3(grp, "gridSize", shd->grid_size, 1);
   DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
   DRW_shgroup_uniform_texture_ref(grp, "depthBuffer", &dtxl->depth);
-  if (shd->zneg_flag) {
+  if (shd->zneg_flag & SHOW_AXIS_Z) {
     DRW_shgroup_call(grp, geom, NULL);
   }
 
   grp = DRW_shgroup_create(sh, psl->grid_ps);
   DRW_shgroup_uniform_int(grp, "gridFlag", &shd->grid_flag, 1);
+  DRW_shgroup_uniform_float_copy(grp, "zoomFactor", shd->zoom_factor);
   DRW_shgroup_uniform_vec3(grp, "planeAxes", shd->grid_axes, 1);
   DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
   DRW_shgroup_uniform_texture_ref(grp, "depthBuffer", &dtxl->depth);
@@ -214,8 +265,28 @@ void OVERLAY_grid_cache_init(OVERLAY_Data *vedata)
   DRW_shgroup_uniform_vec3(grp, "planeAxes", shd->zplane_axes, 1);
   DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
   DRW_shgroup_uniform_texture_ref(grp, "depthBuffer", &dtxl->depth);
-  if (shd->zpos_flag) {
+  if (shd->zpos_flag & SHOW_AXIS_Z) {
     DRW_shgroup_call(grp, geom, NULL);
+  }
+
+  if (pd->space_type == SPACE_IMAGE) {
+    float theme_color[4];
+    UI_GetThemeColorShade4fv(TH_BACK, 60, theme_color);
+    srgb_to_linearrgb_v4(theme_color, theme_color);
+
+    float mat[4][4];
+    /* add wire border */
+    sh = OVERLAY_shader_grid_image();
+    grp = DRW_shgroup_create(sh, psl->grid_ps);
+    DRW_shgroup_uniform_vec4_copy(grp, "color", theme_color);
+    unit_m4(mat);
+    for (int x = 0; x < shd->grid_size[0]; x++) {
+      mat[3][0] = x;
+      for (int y = 0; y < shd->grid_size[1]; y++) {
+        mat[3][1] = y;
+        DRW_shgroup_call_obmat(grp, DRW_cache_quad_wires_get(), mat);
+      }
+    }
   }
 }
 

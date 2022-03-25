@@ -1,22 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
- * All rights reserved.
- * (uit traces) maart 95
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup bli
@@ -91,13 +74,13 @@ static int vergscdata(const void *a1, const void *a2)
   if (x1->vert->xy[1] < x2->vert->xy[1]) {
     return 1;
   }
-  else if (x1->vert->xy[1] > x2->vert->xy[1]) {
+  if (x1->vert->xy[1] > x2->vert->xy[1]) {
     return -1;
   }
-  else if (x1->vert->xy[0] > x2->vert->xy[0]) {
+  if (x1->vert->xy[0] > x2->vert->xy[0]) {
     return 1;
   }
-  else if (x1->vert->xy[0] < x2->vert->xy[0]) {
+  if (x1->vert->xy[0] < x2->vert->xy[0]) {
     return -1;
   }
 
@@ -111,13 +94,13 @@ static int vergpoly(const void *a1, const void *a2)
   if (x1->min_xy[0] > x2->min_xy[0]) {
     return 1;
   }
-  else if (x1->min_xy[0] < x2->min_xy[0]) {
+  if (x1->min_xy[0] < x2->min_xy[0]) {
     return -1;
   }
-  else if (x1->min_xy[1] > x2->min_xy[1]) {
+  if (x1->min_xy[1] > x2->min_xy[1]) {
     return 1;
   }
-  else if (x1->min_xy[1] < x2->min_xy[1]) {
+  if (x1->min_xy[1] < x2->min_xy[1]) {
     return -1;
   }
 
@@ -259,7 +242,7 @@ static bool testedgeside(const float v1[2], const float v2[2], const float v3[2]
   if (inp < 0.0f) {
     return false;
   }
-  else if (inp == 0.0f) {
+  if (inp == 0.0f) {
     if (v1[0] == v3[0] && v1[1] == v3[1]) {
       return false;
     }
@@ -357,8 +340,10 @@ static ScanFillVertLink *addedgetoscanlist(ScanFillVertLink *scdata,
   return NULL;
 }
 
+/**
+ * Return true if `eve` inside the bound-box of `eed`.
+ */
 static bool boundinsideEV(ScanFillEdge *eed, ScanFillVert *eve)
-/* is eve inside boundbox eed */
 {
   float minx, maxx, miny, maxy;
 
@@ -397,7 +382,7 @@ static void testvertexnearedge(ScanFillContext *sf_ctx)
   for (eve = sf_ctx->fillvertbase.first; eve; eve = eve->next) {
     if (eve->edge_tot == 1) {
       /* find the edge which has vertex eve,
-       * note: we _know_ this will crash if 'ed1' becomes NULL
+       * NOTE: we _know_ this will crash if 'ed1' becomes NULL
        * but this will never happen. */
       for (ed1 = sf_ctx->filledgebase.first; !(ed1->v1 == eve || ed1->v2 == eve);
            ed1 = ed1->next) {
@@ -417,25 +402,24 @@ static void testvertexnearedge(ScanFillContext *sf_ctx)
             eve->edge_tot = 0;
             break;
           }
-          else if (compare_v2v2(eve->xy, eed->v2->xy, SF_EPSILON)) {
+          if (compare_v2v2(eve->xy, eed->v2->xy, SF_EPSILON)) {
             ed1->v2 = eed->v2;
             eed->v2->edge_tot++;
             eve->edge_tot = 0;
             break;
           }
-          else {
-            if (boundinsideEV(eed, eve)) {
-              const float dist = dist_squared_to_line_v2(eed->v1->xy, eed->v2->xy, eve->xy);
-              if (dist < SF_EPSILON_SQ) {
-                /* new edge */
-                ed1 = BLI_scanfill_edge_add(sf_ctx, eed->v1, eve);
 
-                /* printf("fill: vertex near edge %x\n", eve); */
-                ed1->poly_nr = eed->poly_nr;
-                eed->v1 = eve;
-                eve->edge_tot = 3;
-                break;
-              }
+          if (boundinsideEV(eed, eve)) {
+            const float dist = dist_squared_to_line_v2(eed->v1->xy, eed->v2->xy, eve->xy);
+            if (dist < SF_EPSILON_SQ) {
+              /* new edge */
+              ed1 = BLI_scanfill_edge_add(sf_ctx, eed->v1, eve);
+
+              // printf("fill: vertex near edge %x\n", eve);
+              ed1->poly_nr = eed->poly_nr;
+              eed->v1 = eve;
+              eve->edge_tot = 3;
+              break;
             }
           }
         }
@@ -449,7 +433,7 @@ static void splitlist(ScanFillContext *sf_ctx,
                       ListBase *temped,
                       unsigned short nr)
 {
-  /* everything is in templist, write only poly nr to fillist */
+  /* Everything is in temp-list, write only poly nr to fill-list. */
   ScanFillVert *eve, *eve_next;
   ScanFillEdge *eed, *eed_next;
 
@@ -527,10 +511,10 @@ static unsigned int scanfill(ScanFillContext *sf_ctx, PolyFill *pf, const int fl
     if (eve->poly_nr == nr) {
       if (eve->f != SF_VERT_ZERO_LEN) {
         verts++;
-        eve->f = SF_VERT_NEW; /* flag for connectedges later on */
+        eve->f = SF_VERT_NEW; /* Flag for connect edges later on. */
         sc->vert = eve;
         sc->edge_first = sc->edge_last = NULL;
-        /* Note, debug print only will work for curve polyfill, union is in use for mesh */
+        /* NOTE: debug print only will work for curve poly-fill, union is in use for mesh. */
         /* if (even->tmp.v == NULL) eve->tmp.u = verts; */
         sc++;
       }
@@ -545,11 +529,11 @@ static unsigned int scanfill(ScanFillContext *sf_ctx, PolyFill *pf, const int fl
       BLI_remlink(&sf_ctx->filledgebase, eed);
       /* This code is for handling zero-length edges that get
        * collapsed in step 0. It was removed for some time to
-       * fix trunk bug #4544, so if that comes back, this code
+       * fix trunk bug T4544, so if that comes back, this code
        * may need some work, or there will have to be a better
-       * fix to #4544.
+       * fix to T4544.
        *
-       * warning, this can hang on un-ordered edges, see: [#33281]
+       * warning, this can hang on un-ordered edges, see: T33281.
        * for now disable 'BLI_SCANFILL_CALC_REMOVE_DOUBLES' for ngons.
        */
       if (eed->v1->f == SF_VERT_ZERO_LEN) {
@@ -609,8 +593,8 @@ static unsigned int scanfill(ScanFillContext *sf_ctx, PolyFill *pf, const int fl
 
   sc = scdata;
   for (a = 0; a < verts; a++) {
-    /* printf("VERTEX %d index %d\n", a, sc->vert->tmp.u); */
-    /* set connectflags  */
+    // printf("VERTEX %d index %d\n", a, sc->vert->tmp.u);
+    /* Set connect-flags. */
     for (ed1 = sc->edge_first; ed1; ed1 = eed_next) {
       eed_next = ed1->next;
       if (ed1->v1->edge_tot == 1 || ed1->v2->edge_tot == 1) {
@@ -635,13 +619,13 @@ static unsigned int scanfill(ScanFillContext *sf_ctx, PolyFill *pf, const int fl
        * (and doesn't work during grab). */
       /* if (callLocalInterruptCallBack()) break; */
       if (totface >= maxface) {
-        /* printf("Fill error: endless loop. Escaped at vert %d,  tot: %d.\n", a, verts); */
+        // printf("Fill error: endless loop. Escaped at vert %d,  tot: %d.\n", a, verts);
         a = verts;
         break;
       }
       if (ed2 == NULL) {
         sc->edge_first = sc->edge_last = NULL;
-        /* printf("just 1 edge to vert\n"); */
+        // printf("just 1 edge to vert\n");
         BLI_addtail(&sf_ctx->filledgebase, ed1);
         ed1->v2->f = SF_VERT_NEW;
         ed1->v1->edge_tot--;
@@ -663,7 +647,7 @@ static unsigned int scanfill(ScanFillContext *sf_ctx, PolyFill *pf, const int fl
           break;
         }
 
-        /* printf("test verts %d %d %d\n", v1->tmp.u, v2->tmp.u, v3->tmp.u); */
+        // printf("test verts %d %d %d\n", v1->tmp.u, v2->tmp.u, v3->tmp.u);
         miny = min_ff(v1->xy[1], v3->xy[1]);
         sc1 = sc + 1;
 
@@ -681,7 +665,7 @@ static unsigned int scanfill(ScanFillContext *sf_ctx, PolyFill *pf, const int fl
                    * (concave holes) we continue searching and pick the
                    * one with sharpest corner. */
                   if (best_sc == NULL) {
-                    /* even without holes we need to keep checking [#35861] */
+                    /* even without holes we need to keep checking T35861. */
                     best_sc = sc1;
                   }
                   else {
@@ -706,7 +690,7 @@ static unsigned int scanfill(ScanFillContext *sf_ctx, PolyFill *pf, const int fl
 
         if (best_sc) {
           /* make new edge, and start over */
-          /* printf("add new edge %d %d and start again\n", v2->tmp.u, best_sc->vert->tmp.u); */
+          // printf("add new edge %d %d and start again\n", v2->tmp.u, best_sc->vert->tmp.u);
 
           ed3 = BLI_scanfill_edge_add(sf_ctx, v2, best_sc->vert);
           BLI_remlink(&sf_ctx->filledgebase, ed3);
@@ -718,7 +702,7 @@ static unsigned int scanfill(ScanFillContext *sf_ctx, PolyFill *pf, const int fl
         }
         else {
           /* new triangle */
-          /* printf("add face %d %d %d\n", v1->tmp.u, v2->tmp.u, v3->tmp.u); */
+          // printf("add face %d %d %d\n", v1->tmp.u, v2->tmp.u, v3->tmp.u);
           addfillface(sf_ctx, v1, v2, v3);
           totface++;
           BLI_remlink((ListBase *)&(sc->edge_first), ed1);
@@ -742,11 +726,11 @@ static unsigned int scanfill(ScanFillContext *sf_ctx, PolyFill *pf, const int fl
           ed3->v1->edge_tot++;
           ed3->v2->edge_tot++;
 
-          /* printf("add new edge %x %x\n", v1, v3); */
+          // printf("add new edge %x %x\n", v1, v3);
           sc1 = addedgetoscanlist(scdata, ed3, verts);
 
           if (sc1) { /* ed3 already exists: remove if a boundary */
-            /* printf("Edge exists\n"); */
+            // printf("Edge exists\n");
             ed3->v1->edge_tot--;
             ed3->v2->edge_tot--;
 
@@ -875,40 +859,39 @@ unsigned int BLI_scanfill_calc_ex(ScanFillContext *sf_ctx, const int flag, const
   if (UNLIKELY(eve == NULL)) {
     return 0;
   }
+
+  float n[3];
+
+  if (nor_proj) {
+    copy_v3_v3(n, nor_proj);
+  }
   else {
-    float n[3];
+    /* define projection: with 'best' normal */
+    /* Newell's Method */
+    /* Similar code used elsewhere, but this checks for double ups
+     * which historically this function supports so better not change */
 
-    if (nor_proj) {
-      copy_v3_v3(n, nor_proj);
-    }
-    else {
-      /* define projection: with 'best' normal */
-      /* Newell's Method */
-      /* Similar code used elsewhere, but this checks for double ups
-       * which historically this function supports so better not change */
+    /* warning: this only gives stable direction with single polygons,
+     * ideally we'd calculate connectivity and each polys normal, see T41047 */
+    const float *v_prev;
 
-      /* warning: this only gives stable direction with single polygons,
-       * ideally we'd calculate connectivity and each polys normal, see T41047 */
-      const float *v_prev;
+    zero_v3(n);
+    eve = sf_ctx->fillvertbase.last;
+    v_prev = eve->co;
 
-      zero_v3(n);
-      eve = sf_ctx->fillvertbase.last;
-      v_prev = eve->co;
-
-      for (eve = sf_ctx->fillvertbase.first; eve; eve = eve->next) {
-        if (LIKELY(!compare_v3v3(v_prev, eve->co, SF_EPSILON))) {
-          add_newell_cross_v3_v3v3(n, v_prev, eve->co);
-          v_prev = eve->co;
-        }
+    for (eve = sf_ctx->fillvertbase.first; eve; eve = eve->next) {
+      if (LIKELY(!compare_v3v3(v_prev, eve->co, SF_EPSILON))) {
+        add_newell_cross_v3_v3v3(n, v_prev, eve->co);
+        v_prev = eve->co;
       }
     }
-
-    if (UNLIKELY(normalize_v3(n) == 0.0f)) {
-      return 0;
-    }
-
-    axis_dominant_v3_to_m3_negate(mat_2d, n);
   }
+
+  if (UNLIKELY(normalize_v3(n) == 0.0f)) {
+    return 0;
+  }
+
+  axis_dominant_v3_to_m3_negate(mat_2d, n);
 
   /* STEP 1: COUNT POLYS */
   if (sf_ctx->poly_nr != SF_POLY_UNSET) {
@@ -956,7 +939,7 @@ unsigned int BLI_scanfill_calc_ex(ScanFillContext *sf_ctx, const int flag, const
         poly++;
       }
     }
-    /* printf("amount of poly's: %d\n", poly); */
+    // printf("amount of poly's: %d\n", poly);
   }
   else if (poly) {
     /* we pre-calculated poly_nr */
@@ -1022,7 +1005,7 @@ unsigned int BLI_scanfill_calc_ex(ScanFillContext *sf_ctx, const int flag, const
       }
     }
     if (BLI_listbase_is_empty(&sf_ctx->filledgebase)) {
-      /* printf("All edges removed\n"); */
+      // printf("All edges removed\n");
       return 0;
     }
   }
@@ -1042,13 +1025,13 @@ unsigned int BLI_scanfill_calc_ex(ScanFillContext *sf_ctx, const int flag, const
   }
 
   /* CURRENT STATUS:
-   * - eve->f        :1 = available in edges
-   * - eve->poly_nr  :polynumber
-   * - eve->edge_tot :amount of edges connected to vertex
-   * - eve->tmp.v    :store! original vertex number
+   * - `eve->f`:        1 = available in edges.
+   * - `eve->poly_nr`:  poly-number.
+   * - `eve->edge_tot`: amount of edges connected to vertex.
+   * - `eve->tmp.v`:    store! original vertex number.
    *
-   * - eed->f        :1 = boundary edge (optionally set by caller)
-   * - eed->poly_nr  :poly number
+   * - `eed->f`:        1 = boundary edge (optionally set by caller).
+   * - `eed->poly_nr`:  poly number.
    */
 
   /* STEP 3: MAKE POLYFILL STRUCT */

@@ -1,22 +1,6 @@
-# Copyright (c) 2009 www.stani.be (GPL license)
+# SPDX-License-Identifier: GPL-2.0-or-later
 
-# ##### BEGIN GPL LICENSE BLOCK #####
-#
-#  This program is free software; you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License
-#  as published by the Free Software Foundation; either version 2
-#  of the License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software Foundation,
-#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# ##### END GPL LICENSE BLOCK #####
+# Copyright (c) 2009 www.stani.be
 
 # <pep8-80 compliant>
 
@@ -87,7 +71,7 @@ def complete(line, cursor, namespace, private):
             matches.sort()
         else:
             from . import complete_namespace
-            matches = complete_namespace.complete(word, namespace, private)
+            matches = complete_namespace.complete(word, namespace, private=private)
     else:
         # for now we don't have completers for strings
         # TODO: add file auto completer for strings
@@ -96,7 +80,7 @@ def complete(line, cursor, namespace, private):
     return matches, word
 
 
-def expand(line, cursor, namespace, private=True):
+def expand(line, cursor, namespace, *, private=True):
     """This method is invoked when the user asks autocompletion,
     e.g. when Ctrl+Space is clicked.
 
@@ -131,7 +115,7 @@ def expand(line, cursor, namespace, private=True):
         if len(matches) == 1:
             scrollback = ''
         else:
-            # causes blender bug [#27495] since string keys may contain '.'
+            # causes blender bug T27495 since string keys may contain '.'
             # scrollback = '  '.join([m.split('.')[-1] for m in matches])
 
             # add white space to align with the cursor
@@ -150,5 +134,5 @@ def expand(line, cursor, namespace, private=True):
         line = line[:cursor] + prefix + line[cursor:]
         cursor += len(prefix.encode('utf-8'))
         if no_calltip and prefix.endswith('('):
-            return expand(line, cursor, namespace, private)
+            return expand(line, cursor, namespace, private=private)
     return line, cursor, scrollback

@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2001-2002 by NaN Holding BV.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
 
 /** \file
  * \ingroup bke
@@ -49,11 +33,14 @@
 #include "DNA_text_types.h"
 #include "DNA_userdef_types.h"
 
+#include "BKE_bpath.h"
 #include "BKE_idtype.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_node.h"
 #include "BKE_text.h"
+
+#include "BLO_read_write.h"
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"
@@ -156,7 +143,7 @@ static void text_copy_data(Main *UNUSED(bmain),
 /** Free (or release) any data used by this text (does not free the text itself). */
 static void text_free_data(ID *id)
 {
-  /* No animdata here. */
+  /* No animation-data here. */
   Text *text = (Text *)id;
 
   BKE_text_free_lines(text);
@@ -167,6 +154,79 @@ static void text_free_data(ID *id)
 #endif
 }
 
+static void text_foreach_path(ID *id, BPathForeachPathData *bpath_data)
+{
+  Text *text = (Text *)id;
+
+  if (text->filepath != NULL) {
+    BKE_bpath_foreach_path_allocated_process(bpath_data, &text->filepath);
+  }
+}
+
+static void text_blend_write(BlendWriter *writer, ID *id, const void *id_address)
+{
+  Text *text = (Text *)id;
+
+  /* NOTE: we are clearing local temp data here, *not* the flag in the actual 'real' ID. */
+  if ((text->flags & TXT_ISMEM) && (text->flags & TXT_ISEXT)) {
+    text->flags &= ~TXT_ISEXT;
+  }
+
+  /* Clean up, important in undo case to reduce false detection of changed datablocks. */
+  text->compiled = NULL;
+
+  /* write LibData */
+  BLO_write_id_struct(writer, Text, id_address, &text->id);
+  BKE_id_blend_write(writer, &text->id);
+
+  if (text->filepath) {
+    BLO_write_string(writer, text->filepath);
+  }
+
+  if (!(text->flags & TXT_ISEXT)) {
+    /* now write the text data, in two steps for optimization in the readfunction */
+    LISTBASE_FOREACH (TextLine *, tmp, &text->lines) {
+      BLO_write_struct(writer, TextLine, tmp);
+    }
+
+    LISTBASE_FOREACH (TextLine *, tmp, &text->lines) {
+      BLO_write_raw(writer, tmp->len + 1, tmp->line);
+    }
+  }
+}
+
+static void text_blend_read_data(BlendDataReader *reader, ID *id)
+{
+  Text *text = (Text *)id;
+  BLO_read_data_address(reader, &text->filepath);
+
+  text->compiled = NULL;
+
+#if 0
+  if (text->flags & TXT_ISEXT) {
+    BKE_text_reload(text);
+  }
+  /* else { */
+#endif
+
+  BLO_read_list(reader, &text->lines);
+
+  BLO_read_data_address(reader, &text->curl);
+  BLO_read_data_address(reader, &text->sell);
+
+  LISTBASE_FOREACH (TextLine *, ln, &text->lines) {
+    BLO_read_data_address(reader, &ln->line);
+    ln->format = NULL;
+
+    if (ln->len != (int)strlen(ln->line)) {
+      printf("Error loading text, line lengths differ\n");
+      ln->len = strlen(ln->line);
+    }
+  }
+
+  text->flags = (text->flags) & ~TXT_ISEXT;
+}
+
 IDTypeInfo IDType_ID_TXT = {
     .id_code = ID_TXT,
     .id_filter = FILTER_ID_TXT,
@@ -175,13 +235,26 @@ IDTypeInfo IDType_ID_TXT = {
     .name = "Text",
     .name_plural = "texts",
     .translation_context = BLT_I18NCONTEXT_ID_TEXT,
-    .flags = 0,
+    .flags = IDTYPE_FLAGS_NO_ANIMDATA | IDTYPE_FLAGS_APPEND_IS_REUSABLE,
+    .asset_type_info = NULL,
 
     .init_data = text_init_data,
     .copy_data = text_copy_data,
     .free_data = text_free_data,
     .make_local = NULL,
     .foreach_id = NULL,
+    .foreach_cache = NULL,
+    .foreach_path = text_foreach_path,
+    .owner_get = NULL,
+
+    .blend_write = text_blend_write,
+    .blend_read_data = text_blend_read_data,
+    .blend_read_lib = NULL,
+    .blend_read_expand = NULL,
+
+    .blend_read_undo_preserve = NULL,
+
+    .lib_override_apply_post = NULL,
 };
 
 /** \} */
@@ -190,9 +263,6 @@ IDTypeInfo IDType_ID_TXT = {
 /** \name Text Add, Free, Validation
  * \{ */
 
-/**
- * \note caller must handle `compiled` member.
- */
 void BKE_text_free_lines(Text *text)
 {
   for (TextLine *tmp = text->lines.first, *tmp_next; tmp; tmp = tmp_next) {
@@ -213,17 +283,15 @@ Text *BKE_text_add(Main *bmain, const char *name)
 {
   Text *ta;
 
-  ta = BKE_libblock_alloc(bmain, ID_TXT, name, 0);
-  /* Texts always have 'real' user (see also read code). */
-  id_us_ensure_real(&ta->id);
-
-  text_init_data(&ta->id);
+  ta = BKE_id_new(bmain, ID_TXT, name);
+  /* Texts have no users by default... Set the fake user flag to ensure that this text block
+   * doesn't get deleted by default when cleaning up data blocks. */
+  id_us_min(&ta->id);
+  id_fake_user_set(&ta->id);
 
   return ta;
 }
 
-/* this function replaces extended ascii characters */
-/* to a valid utf-8 sequences */
 int txt_extended_ascii_as_utf8(char **str)
 {
   ptrdiff_t bad_char, i = 0;
@@ -231,7 +299,7 @@ int txt_extended_ascii_as_utf8(char **str)
   int added = 0;
 
   while ((*str)[i]) {
-    if ((bad_char = BLI_utf8_invalid_byte(*str + i, length - i)) == -1) {
+    if ((bad_char = BLI_str_utf8_invalid_byte(*str + i, length - i)) == -1) {
       break;
     }
 
@@ -245,14 +313,15 @@ int txt_extended_ascii_as_utf8(char **str)
     i = 0;
 
     while ((*str)[i]) {
-      if ((bad_char = BLI_utf8_invalid_byte((*str) + i, length - i)) == -1) {
+      if ((bad_char = BLI_str_utf8_invalid_byte((*str) + i, length - i)) == -1) {
         memcpy(newstr + mi, (*str) + i, length - i + 1);
         break;
       }
 
       memcpy(newstr + mi, (*str) + i, bad_char);
 
-      BLI_str_utf8_from_unicode((*str)[i + bad_char], newstr + mi + bad_char);
+      const int mofs = mi + bad_char;
+      BLI_str_utf8_from_unicode((*str)[i + bad_char], newstr + mofs, (length + added) - mofs);
       i += bad_char + 1;
       mi += bad_char + 2;
     }
@@ -264,9 +333,9 @@ int txt_extended_ascii_as_utf8(char **str)
   return added;
 }
 
-// this function removes any control characters from
-// a textline and fixes invalid utf-8 sequences
-
+/**
+ * Removes any control characters from a text-line and fixes invalid UTF8 sequences.
+ */
 static void cleanup_textline(TextLine *tl)
 {
   int i;
@@ -323,7 +392,7 @@ static void text_from_buf(Text *text, const unsigned char *buffer, const int len
    *   in this case content of such line would be used to fill text line buffer
    * - file is empty. in this case new line is needed to start editing from.
    * - last character in buffer is \n. in this case new line is needed to
-   *   deal with newline at end of file. (see [#28087]) (sergey) */
+   *   deal with newline at end of file. (see T28087) (sergey) */
   if (llen != 0 || lines_count == 0 || buffer[len - 1] == '\n') {
     TextLine *tmp;
 
@@ -394,7 +463,7 @@ Text *BKE_text_load_ex(Main *bmain, const char *file, const char *relpath, const
   BLI_stat_t st;
 
   BLI_strncpy(filepath_abs, file, FILE_MAX);
-  if (relpath) { /* can be NULL (bg mode) */
+  if (relpath) { /* Can be NULL (background mode). */
     BLI_path_abs(filepath_abs, relpath);
   }
 
@@ -404,8 +473,8 @@ Text *BKE_text_load_ex(Main *bmain, const char *file, const char *relpath, const
   }
 
   ta = BKE_libblock_alloc(bmain, ID_TXT, BLI_path_basename(filepath_abs), 0);
-  /* Texts always have 'real' user (see also read code). */
-  id_us_ensure_real(&ta->id);
+  id_us_min(&ta->id);
+  id_fake_user_set(&ta->id);
 
   BLI_listbase_clear(&ta->lines);
   ta->curl = ta->sell = NULL;
@@ -442,13 +511,6 @@ Text *BKE_text_load(Main *bmain, const char *file, const char *relpath)
   return BKE_text_load_ex(bmain, file, relpath, false);
 }
 
-Text *BKE_text_copy(Main *bmain, const Text *ta)
-{
-  Text *ta_copy;
-  BKE_id_copy(bmain, &ta->id, (ID **)&ta_copy);
-  return ta_copy;
-}
-
 void BKE_text_clear(Text *text) /* called directly from rna */
 {
   txt_sel_all(text);
@@ -462,11 +524,6 @@ void BKE_text_write(Text *text, const char *str) /* called directly from rna */
   txt_move_eof(text, 0);
   txt_make_dirty(text);
 }
-
-/* returns 0 if file on disk is the same or Text is in memory only
- * returns 1 if file has been modified on disk since last local edit
- * returns 2 if file on disk has been deleted
- * -1 is returned if an error occurs */
 
 int BKE_text_file_modified_check(Text *text)
 {
@@ -695,12 +752,12 @@ static void txt_curs_sel(Text *text, TextLine ***linep, int **charp)
   *charp = &text->selc;
 }
 
-bool txt_cursor_is_line_start(Text *text)
+bool txt_cursor_is_line_start(const Text *text)
 {
   return (text->selc == 0);
 }
 
-bool txt_cursor_is_line_end(Text *text)
+bool txt_cursor_is_line_end(const Text *text)
 {
   return (text->selc == text->sell->len);
 }
@@ -812,9 +869,8 @@ int txt_calc_tab_right(TextLine *tl, int ch)
 
     return i - ch;
   }
-  else {
-    return 0;
-  }
+
+  return 0;
 }
 
 void txt_move_left(Text *text, const bool sel)
@@ -842,7 +898,7 @@ void txt_move_left(Text *text, const bool sel)
   }
   else {
     /* do nice left only if there are only spaces */
-    // TXT_TABSIZE hardcoded in DNA_text_types.h
+    /* #TXT_TABSIZE hard-coded in DNA_text_types.h */
     if (text->flags & TXT_TABSTOSPACES) {
       tabsize = txt_calc_tab_left(*linep, *charp);
     }
@@ -851,7 +907,7 @@ void txt_move_left(Text *text, const bool sel)
       (*charp) -= tabsize;
     }
     else {
-      const char *prev = BLI_str_prev_char_utf8((*linep)->line + *charp);
+      const char *prev = BLI_str_find_prev_char_utf8((*linep)->line + *charp, (*linep)->line);
       *charp = prev - (*linep)->line;
     }
   }
@@ -1048,7 +1104,6 @@ void txt_move_toline(Text *text, unsigned int line, const bool sel)
   txt_move_to(text, line, 0, sel);
 }
 
-/* Moves to a certain byte in a line, not a certain utf8-character! */
 void txt_move_to(Text *text, unsigned int line, unsigned int ch, const bool sel)
 {
   TextLine **linep;
@@ -1154,7 +1209,7 @@ void txt_order_cursors(Text *text, const bool reverse)
   }
 }
 
-bool txt_has_sel(Text *text)
+bool txt_has_sel(const Text *text)
 {
   return ((text->curl != text->sell) || (text->curc != text->selc));
 }
@@ -1208,11 +1263,6 @@ void txt_sel_all(Text *text)
   text->selc = text->sell->len;
 }
 
-/**
- * Reverse of #txt_pop_sel
- * Clears the selection and ensures the cursor is located
- * at the selection (where the cursor is visually while editing).
- */
 void txt_sel_clear(Text *text)
 {
   if (text->sell) {
@@ -1299,10 +1349,7 @@ void txt_sel_set(Text *text, int startl, int startc, int endl, int endc)
  * - Are not null terminated.
  * \{ */
 
-/**
- * Create a buffer, the only requirement is #txt_from_buf_for_undo can decode it.
- */
-char *txt_to_buf_for_undo(Text *text, int *r_buf_len)
+char *txt_to_buf_for_undo(Text *text, size_t *r_buf_len)
 {
   int buf_len = 0;
   LISTBASE_FOREACH (const TextLine *, l, &text->lines) {
@@ -1319,10 +1366,7 @@ char *txt_to_buf_for_undo(Text *text, int *r_buf_len)
   return buf;
 }
 
-/**
- * Decode a buffer from #txt_to_buf_for_undo.
- */
-void txt_from_buf_for_undo(Text *text, const char *buf, int buf_len)
+void txt_from_buf_for_undo(Text *text, const char *buf, size_t buf_len)
 {
   const char *buf_end = buf + buf_len;
   const char *buf_step = buf;
@@ -1390,87 +1434,29 @@ void txt_from_buf_for_undo(Text *text, const char *buf, int buf_len)
 /** \name Cut and Paste Functions
  * \{ */
 
-char *txt_to_buf(Text *text, int *r_buf_strlen)
+char *txt_to_buf(Text *text, size_t *r_buf_strlen)
 {
-  int length;
-  TextLine *tmp, *linef, *linel;
-  int charf, charl;
-  char *buf;
-
-  if (r_buf_strlen) {
-    *r_buf_strlen = 0;
+  /* Identical to #txt_to_buf_for_undo except that the string is nil terminated. */
+  size_t buf_len = 0;
+  LISTBASE_FOREACH (const TextLine *, l, &text->lines) {
+    buf_len += l->len + 1;
   }
-
-  if (!text->curl) {
-    return NULL;
+  char *buf = MEM_mallocN(buf_len + 1, __func__);
+  char *buf_step = buf;
+  LISTBASE_FOREACH (const TextLine *, l, &text->lines) {
+    memcpy(buf_step, l->line, l->len);
+    buf_step += l->len;
+    *buf_step++ = '\n';
   }
-  if (!text->sell) {
-    return NULL;
-  }
-  if (!text->lines.first) {
-    return NULL;
-  }
-
-  linef = text->lines.first;
-  charf = 0;
-
-  linel = text->lines.last;
-  charl = linel->len;
-
-  if (linef == text->lines.last) {
-    length = charl - charf;
-
-    buf = MEM_mallocN(length + 2, "text buffer");
-
-    BLI_strncpy(buf, linef->line + charf, length + 1);
-    buf[length] = 0;
-  }
-  else {
-    length = linef->len - charf;
-    length += charl;
-    length += 2; /* For the 2 '\n' */
-
-    tmp = linef->next;
-    while (tmp && tmp != linel) {
-      length += tmp->len + 1;
-      tmp = tmp->next;
-    }
-
-    buf = MEM_mallocN(length + 1, "cut buffer");
-
-    strncpy(buf, linef->line + charf, linef->len - charf);
-    length = linef->len - charf;
-
-    buf[length++] = '\n';
-
-    tmp = linef->next;
-    while (tmp && tmp != linel) {
-      strncpy(buf + length, tmp->line, tmp->len);
-      length += tmp->len;
-
-      buf[length++] = '\n';
-
-      tmp = tmp->next;
-    }
-    strncpy(buf + length, linel->line, charl);
-    length += charl;
-
-    /* python compiler wants an empty end line */
-    buf[length++] = '\n';
-    buf[length] = 0;
-  }
-
-  if (r_buf_strlen) {
-    *r_buf_strlen = length;
-  }
-
+  *buf_step = '\0';
+  *r_buf_strlen = buf_len;
   return buf;
 }
 
-char *txt_sel_to_buf(Text *text, int *r_buf_strlen)
+char *txt_sel_to_buf(Text *text, size_t *r_buf_strlen)
 {
   char *buf;
-  int length = 0;
+  size_t length = 0;
   TextLine *tmp, *linef, *linel;
   int charf, charl;
 
@@ -1514,42 +1500,33 @@ char *txt_sel_to_buf(Text *text, int *r_buf_strlen)
 
   if (linef == linel) {
     length = charl - charf;
-
     buf = MEM_mallocN(length + 1, "sel buffer");
-
-    BLI_strncpy(buf, linef->line + charf, length + 1);
+    memcpy(buf, linef->line + charf, length);
+    buf[length] = '\0';
   }
   else {
-    length += linef->len - charf;
-    length += charl;
-    length++; /* For the '\n' */
+    /* Add 1 for the '\n' */
+    length = (linef->len - charf) + charl + 1;
 
-    tmp = linef->next;
-    while (tmp && tmp != linel) {
+    for (tmp = linef->next; tmp && tmp != linel; tmp = tmp->next) {
       length += tmp->len + 1;
-      tmp = tmp->next;
     }
 
     buf = MEM_mallocN(length + 1, "sel buffer");
 
-    strncpy(buf, linef->line + charf, linef->len - charf);
+    memcpy(buf, linef->line + charf, linef->len - charf);
     length = linef->len - charf;
-
     buf[length++] = '\n';
 
-    tmp = linef->next;
-    while (tmp && tmp != linel) {
-      strncpy(buf + length, tmp->line, tmp->len);
+    for (tmp = linef->next; tmp && tmp != linel; tmp = tmp->next) {
+      memcpy(buf + length, tmp->line, tmp->len);
       length += tmp->len;
-
       buf[length++] = '\n';
-
-      tmp = tmp->next;
     }
-    strncpy(buf + length, linel->line, charl);
-    length += charl;
 
-    buf[length] = 0;
+    memcpy(buf + length, linel->line, charl);
+    length += charl;
+    buf[length] = '\0';
   }
 
   if (r_buf_strlen) {
@@ -1578,7 +1555,7 @@ void txt_insert_buf(Text *text, const char *in_buffer)
 
   /* Read the first line (or as close as possible */
   while (buffer[i] && buffer[i] != '\n') {
-    txt_add_raw_char(text, BLI_str_utf8_as_unicode_step(buffer, &i));
+    txt_add_raw_char(text, BLI_str_utf8_as_unicode_step(buffer, len, &i));
   }
 
   if (buffer[i] == '\n') {
@@ -1600,7 +1577,7 @@ void txt_insert_buf(Text *text, const char *in_buffer)
       }
       else {
         for (j = i - l; j < i && j < len;) {
-          txt_add_raw_char(text, BLI_str_utf8_as_unicode_step(buffer, &j));
+          txt_add_raw_char(text, BLI_str_utf8_as_unicode_step(buffer, len, &j));
         }
         break;
       }
@@ -1664,9 +1641,8 @@ int txt_find_string(Text *text, const char *findstr, int wrap, int match_case)
     txt_move_to(text, newl, newc + strlen(findstr), 1);
     return 1;
   }
-  else {
-    return 0;
-  }
+
+  return 0;
 }
 
 /** \} */
@@ -1797,7 +1773,7 @@ void txt_delete_char(Text *text)
     txt_make_dirty(text);
     return;
   }
-  else if (text->curc == text->curl->len) { /* Appending two lines */
+  if (text->curc == text->curl->len) { /* Appending two lines */
     if (text->curl->next) {
       txt_combine_lines(text, text->curl, text->curl->next);
       txt_pop_sel(text);
@@ -1807,8 +1783,9 @@ void txt_delete_char(Text *text)
     }
   }
   else { /* Just deleting a char */
-    size_t c_len = 0;
-    c = BLI_str_utf8_as_unicode_and_size(text->curl->line + text->curc, &c_len);
+    size_t c_len = text->curc;
+    c = BLI_str_utf8_as_unicode_step(text->curl->line, text->curl->len, &c_len);
+    c_len -= text->curc;
     UNUSED_VARS(c);
 
     memmove(text->curl->line + text->curc,
@@ -1844,7 +1821,7 @@ void txt_backspace_char(Text *text)
     txt_make_dirty(text);
     return;
   }
-  else if (text->curc == 0) { /* Appending two lines */
+  if (text->curc == 0) { /* Appending two lines */
     if (!text->curl->prev) {
       return;
     }
@@ -1856,9 +1833,12 @@ void txt_backspace_char(Text *text)
     txt_pop_sel(text);
   }
   else { /* Just backspacing a char */
-    size_t c_len = 0;
-    const char *prev = BLI_str_prev_char_utf8(text->curl->line + text->curc);
-    c = BLI_str_utf8_as_unicode_and_size(prev, &c_len);
+    const char *prev = BLI_str_find_prev_char_utf8(text->curl->line + text->curc,
+                                                   text->curl->line);
+    size_t c_len = prev - text->curl->line;
+    c = BLI_str_utf8_as_unicode_step(text->curl->line, text->curl->len, &c_len);
+    c_len -= prev - text->curl->line;
+
     UNUSED_VARS(c);
 
     /* source and destination overlap, don't use memcpy() */
@@ -1891,7 +1871,7 @@ static char tab_to_spaces[] = "    ";
 static void txt_convert_tab_to_spaces(Text *text)
 {
   /* sb aims to pad adjust the tab-width needed so that the right number of spaces
-   * is added so that the indention of the line is the right width (i.e. aligned
+   * is added so that the indentation of the line is the right width (i.e. aligned
    * to multiples of TXT_TABSIZE)
    */
   const char *sb = &tab_to_spaces[text->curc % TXT_TABSIZE];
@@ -1920,7 +1900,7 @@ static bool txt_add_char_intern(Text *text, unsigned int add, bool replace_tabs)
 
   txt_delete_sel(text);
 
-  add_len = BLI_str_utf8_from_unicode(add, ch);
+  add_len = BLI_str_utf8_from_unicode(add, ch, sizeof(ch));
 
   tmp = MEM_mallocN(text->curl->len + add_len + 1, "textline_string");
 
@@ -1972,9 +1952,11 @@ bool txt_replace_char(Text *text, unsigned int add)
     return txt_add_char(text, add);
   }
 
-  del = BLI_str_utf8_as_unicode_and_size(text->curl->line + text->curc, &del_size);
+  del_size = text->curc;
+  del = BLI_str_utf8_as_unicode_step(text->curl->line, text->curl->len, &del_size);
+  del_size -= text->curc;
   UNUSED_VARS(del);
-  add_size = BLI_str_utf8_from_unicode(add, ch);
+  add_size = BLI_str_utf8_from_unicode(add, ch, sizeof(ch));
 
   if (add_size > del_size) {
     char *tmp = MEM_mallocN(text->curl->len + add_size - del_size + 1, "textline_string");
@@ -2052,10 +2034,9 @@ static void txt_select_prefix(Text *text, const char *add, bool skip_blank_lines
       }
       break;
     }
-    else {
-      text->curl = text->curl->next;
-      num++;
-    }
+
+    text->curl = text->curl->next;
+    num++;
   }
 
   while (num > 0) {
@@ -2140,10 +2121,9 @@ static bool txt_select_unprefix(Text *text, const char *remove, const bool requi
       }
       break;
     }
-    else {
-      text->curl = text->curl->next;
-      num++;
-    }
+
+    text->curl = text->curl->next;
+    num++;
   }
 
   if (unindented_first) {
@@ -2249,19 +2229,18 @@ int txt_setcurr_tab_spaces(Text *text, int space)
   }
 
   while (text->curl->line[i] == indent) {
-    // we only count those tabs/spaces that are before any text or before the curs;
+    /* We only count those tabs/spaces that are before any text or before the curs; */
     if (i == text->curc) {
       return i;
     }
-    else {
-      i++;
-    }
+
+    i++;
   }
   if (strstr(text->curl->line, word)) {
     /* if we find a ':' on this line, then add a tab but not if it is:
      * 1) in a comment
      * 2) within an identifier
-     * 3) after the cursor (text->curc), i.e. when creating space before a function def [#25414]
+     * 3) after the cursor (text->curc), i.e. when creating space before a function def T25414.
      */
     int a;
     bool is_indent = false;
@@ -2270,10 +2249,10 @@ int txt_setcurr_tab_spaces(Text *text, int space)
       if (ch == '#') {
         break;
       }
-      else if (ch == ':') {
+      if (ch == ':') {
         is_indent = 1;
       }
-      else if (ch != ' ' && ch != '\t') {
+      else if (!ELEM(ch, ' ', '\t')) {
         is_indent = 0;
       }
     }
@@ -2309,17 +2288,18 @@ int text_check_bracket(const char ch)
     if (ch == opens[a]) {
       return a + 1;
     }
-    else if (ch == close[a]) {
+    if (ch == close[a]) {
       return -(a + 1);
     }
   }
   return 0;
 }
 
-/* TODO, have a function for operators -
- * http://docs.python.org/py3k/reference/lexical_analysis.html#operators */
 bool text_check_delim(const char ch)
 {
+  /* TODO: have a function for operators:
+   * http://docs.python.org/py3k/reference/lexical_analysis.html#operators */
+
   int a;
   char delims[] = "():\"\' ~!%^&*-+=[]{};/<>|.#\t,@";
 
@@ -2399,7 +2379,7 @@ int text_check_identifier_nodigit_unicode(const unsigned int ch)
 
 bool text_check_whitespace(const char ch)
 {
-  if (ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n') {
+  if (ELEM(ch, ' ', '\t', '\r', '\n')) {
     return true;
   }
   return false;

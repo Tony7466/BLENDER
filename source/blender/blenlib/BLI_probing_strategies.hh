@@ -1,21 +1,6 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
-#ifndef __BLI_PROBING_STRATEGIES_HH__
-#define __BLI_PROBING_STRATEGIES_HH__
+#pragma once
 
 /** \file
  * \ingroup bli
@@ -236,7 +221,7 @@ using DefaultProbingStrategy = PythonProbingStrategy<>;
     int64_t linear_offset = 0; \
     uint64_t current_hash = probing_strategy.get(); \
     do { \
-      int64_t R_SLOT_INDEX = (int64_t)((current_hash + (uint64_t)linear_offset) & MASK);
+      int64_t R_SLOT_INDEX = static_cast<int64_t>((current_hash + static_cast<uint64_t>(linear_offset)) & MASK);
 
 #define SLOT_PROBING_END() \
     } while (++linear_offset < probing_strategy.linear_steps()); \
@@ -246,5 +231,3 @@ using DefaultProbingStrategy = PythonProbingStrategy<>;
 // clang-format on
 
 }  // namespace blender
-
-#endif /* __BLI_PROBING_STRATEGIES_HH__ */

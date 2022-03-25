@@ -1,22 +1,6 @@
-# Copyright (c) 2009 www.stani.be (GPL license)
+# SPDX-License-Identifier: GPL-2.0-or-later
 
-# ##### BEGIN GPL LICENSE BLOCK #####
-#
-#  This program is free software; you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License
-#  as published by the Free Software Foundation; either version 2
-#  of the License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software Foundation,
-#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# ##### END GPL LICENSE BLOCK #####
+# Copyright (c) 2009 www.stani.be
 
 # <pep8-80 compliant>
 
@@ -62,7 +46,7 @@ def complete_names(word, namespace):
     return sorted(set(completer.matches))
 
 
-def complete_indices(word, namespace, obj=None, base=None):
+def complete_indices(word, namespace, *, obj=None, base=None):
     """Complete a list or dictionary with its indices:
 
     * integer numbers for list
@@ -117,7 +101,7 @@ def complete_indices(word, namespace, obj=None, base=None):
     return matches
 
 
-def complete(word, namespace, private=True):
+def complete(word, namespace, *, private=True):
     """Complete word within a namespace with the standard rlcompleter
     module. Also supports index or key access [].
 
@@ -191,7 +175,7 @@ def complete(word, namespace, private=True):
         # an extra char '[', '(' or '.' will be added
         if hasattr(obj, '__getitem__') and not is_struct_seq(obj):
             # list or dictionary
-            matches = complete_indices(word, namespace, obj)
+            matches = complete_indices(word, namespace, obj=obj)
         elif hasattr(obj, '__call__'):
             # callables
             matches = [word + '(']

@@ -1,28 +1,11 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2008 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup edcurve
  */
 
-#ifndef __CURVE_INTERN_H__
-#define __CURVE_INTERN_H__
+#pragma once
 
 /* internal exports only */
 struct EditNurb;
@@ -72,8 +55,14 @@ typedef enum eCurveElem_Types {
 } eCurveElem_Types;
 
 /* internal select utils */
-bool select_beztriple(BezTriple *bezt, bool selstatus, short flag, eVisible_Types hidden);
-bool select_bpoint(BPoint *bp, bool selstatus, short flag, bool hidden);
+/**
+ * Returns 1 in case (de)selection was successful.
+ */
+bool select_beztriple(BezTriple *bezt, bool selstatus, uint8_t flag, eVisible_Types hidden);
+/**
+ * Returns 1 in case (de)selection was successful.
+ */
+bool select_bpoint(BPoint *bp, bool selstatus, uint8_t flag, bool hidden);
 
 void FONT_OT_text_insert(struct wmOperatorType *ot);
 void FONT_OT_line_break(struct wmOperatorType *ot);
@@ -143,8 +132,18 @@ struct GHash *ED_curve_keyindex_hash_duplicate(struct GHash *keyindex);
 void ED_curve_keyindex_update_nurb(struct EditNurb *editnurb, struct Nurb *nu, struct Nurb *newnu);
 
 /* helper functions */
-void ed_editnurb_translate_flag(struct ListBase *editnurb, short flag, const float vec[3]);
-bool ed_editnurb_extrude_flag(struct EditNurb *editnurb, const short flag);
+void ed_editnurb_translate_flag(struct ListBase *editnurb,
+                                uint8_t flag,
+                                const float vec[3],
+                                bool is_2d);
+/**
+ * Only for #OB_SURF.
+ */
+bool ed_editnurb_extrude_flag(struct EditNurb *editnurb, uint8_t flag);
+/**
+ * \param axis: is in world-space.
+ * \param cent: is in object-space.
+ */
 bool ed_editnurb_spin(float viewmat[4][4],
                       struct View3D *v3d,
                       struct Object *obedit,
@@ -182,6 +181,7 @@ void SURFACE_OT_primitive_nurbs_surface_sphere_add(struct wmOperatorType *ot);
 void SURFACE_OT_primitive_nurbs_surface_torus_add(struct wmOperatorType *ot);
 
 /* editcurve_query.c */
+
 bool ED_curve_pick_vert(struct ViewContext *vc,
                         short sel,
                         struct Nurb **r_nurb,
@@ -194,5 +194,3 @@ void ED_curve_nurb_vert_selected_find(
 
 /* editcurve_paint.c */
 void CURVE_OT_draw(struct wmOperatorType *ot);
-
-#endif /* __CURVE_INTERN_H__ */

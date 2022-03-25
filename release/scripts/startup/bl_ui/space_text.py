@@ -1,20 +1,4 @@
-# ##### BEGIN GPL LICENSE BLOCK #####
-#
-#  This program is free software; you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License
-#  as published by the Free Software Foundation; either version 2
-#  of the License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software Foundation,
-#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# ##### END GPL LICENSE BLOCK #####
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 # <pep8-80 compliant>
 import bpy
@@ -35,12 +19,12 @@ class TEXT_HT_header(Header):
 
         TEXT_MT_editor_menus.draw_collapsible(context, layout)
 
+        layout.separator_spacer()
+
         if text and text.is_modified:
             row = layout.row(align=True)
             row.alert = True
-            row.operator("text.resolve_conflict", text="", icon='HELP')
-
-        layout.separator_spacer()
+            row.operator("text.resolve_conflict", text="", icon='QUESTION')
 
         row = layout.row(align=True)
         row.template_ID(st, "text", new="text.new",
@@ -177,7 +161,7 @@ class TEXT_PT_find(Panel):
 
         row = col.row(align=True)
         row.operator("text.replace")
-        row.operator("text.replace", text = "Replace all").all = True
+        row.operator("text.replace", text="Replace All").all = True
 
         layout.separator()
 
@@ -268,10 +252,7 @@ class TEXT_MT_text(Menu):
                 layout.operator("text.make_internal")
 
             layout.separator()
-            row = layout.row()
-            row.active = text.name.endswith(".py")
-            row.prop(text, "use_module")
-            row = layout.row()
+            layout.prop(text, "use_module")
 
             layout.prop(st, "use_live_edit")
 
@@ -284,7 +265,7 @@ class TEXT_MT_templates_py(Menu):
 
     def draw(self, _context):
         self.path_menu(
-            bpy.utils.script_paths("templates_py"),
+            bpy.utils.script_paths(subdir="templates_py"),
             "text.open",
             props_default={"internal": True},
             filter_ext=lambda ext: (ext.lower() == ".py")
@@ -296,7 +277,7 @@ class TEXT_MT_templates_osl(Menu):
 
     def draw(self, _context):
         self.path_menu(
-            bpy.utils.script_paths("templates_osl"),
+            bpy.utils.script_paths(subdir="templates_osl"),
             "text.open",
             props_default={"internal": True},
             filter_ext=lambda ext: (ext.lower() == ".osl")
@@ -362,7 +343,7 @@ class TEXT_MT_format(Menu):
 
 
 class TEXT_MT_edit_to3d(Menu):
-    bl_label = "Text To 3D Object"
+    bl_label = "Text to 3D Object"
 
     def draw(self, _context):
         layout = self.layout

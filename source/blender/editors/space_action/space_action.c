@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2008 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2008 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup spaction
@@ -25,6 +9,7 @@
 #include <string.h>
 
 #include "DNA_action_types.h"
+#include "DNA_anim_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -35,6 +20,8 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
+#include "BKE_lib_remap.h"
+#include "BKE_nla.h"
 #include "BKE_screen.h"
 
 #include "RNA_access.h"
@@ -55,12 +42,11 @@
 #include "ED_space_api.h"
 #include "ED_time_scrub_ui.h"
 
-#include "GPU_framebuffer.h"
 #include "action_intern.h" /* own include */
 
 /* ******************** default callbacks for action space ***************** */
 
-static SpaceLink *action_new(const ScrArea *area, const Scene *scene)
+static SpaceLink *action_create(const ScrArea *area, const Scene *scene)
 {
   SpaceAction *saction;
   ARegion *region;
@@ -154,6 +140,8 @@ static SpaceLink *action_duplicate(SpaceLink *sl)
 {
   SpaceAction *sactionn = MEM_dupallocN(sl);
 
+  memset(&sactionn->runtime, 0x0, sizeof(sactionn->runtime));
+
   /* clear or remove stuff from old */
 
   return (SpaceLink *)sactionn;
@@ -182,26 +170,29 @@ static void action_main_region_draw(const bContext *C, ARegion *region)
   bAnimContext ac;
   View2D *v2d = &region->v2d;
   short marker_flag = 0;
-  short cfra_flag = 0;
 
   UI_view2d_view_ortho(v2d);
-  if (saction->flag & SACTION_DRAWTIME) {
-    cfra_flag |= DRAWCFRA_UNIT_SECONDS;
-  }
 
   /* clear and setup matrix */
   UI_ThemeClearColor(TH_BACK);
-  GPU_clear(GPU_COLOR_BIT);
 
   UI_view2d_view_ortho(v2d);
 
   /* time grid */
-  UI_view2d_draw_lines_x__discrete_frames_or_seconds(v2d, scene, saction->flag & SACTION_DRAWTIME);
+  UI_view2d_draw_lines_x__discrete_frames_or_seconds(
+      v2d, scene, saction->flag & SACTION_DRAWTIME, true);
 
   ED_region_draw_cb_draw(C, region, REGION_DRAW_PRE_VIEW);
 
   /* start and end frame */
   ANIM_draw_framerange(scene, v2d);
+
+  /* Draw the manually set intended playback frame range highlight in the Action editor. */
+  if (ELEM(saction->mode, SACTCONT_ACTION, SACTCONT_SHAPEKEY) && saction->action) {
+    AnimData *adt = ED_actedit_animdata_from_context(C, NULL);
+
+    ANIM_draw_action_framerange(adt, saction->action, v2d, -FLT_MAX, FLT_MAX);
+  }
 
   /* data */
   if (ANIM_animdata_get_context(C, &ac)) {
@@ -246,7 +237,7 @@ static void action_main_region_draw_overlay(const bContext *C, ARegion *region)
   View2D *v2d = &region->v2d;
 
   /* scrubbing region */
-  ED_time_scrub_draw_current_frame(region, scene, saction->flag & SACTION_DRAWTIME, true);
+  ED_time_scrub_draw_current_frame(region, scene, saction->flag & SACTION_DRAWTIME);
 
   /* scrollers */
   UI_view2d_scrollers_draw(v2d, NULL);
@@ -278,7 +269,6 @@ static void action_channel_region_draw(const bContext *C, ARegion *region)
 
   /* clear and setup matrix */
   UI_ThemeClearColor(TH_BACK);
-  GPU_clear(GPU_COLOR_BIT);
 
   UI_view2d_view_ortho(v2d);
 
@@ -304,15 +294,19 @@ static void action_header_region_init(wmWindowManager *UNUSED(wm), ARegion *regi
 
 static void action_header_region_draw(const bContext *C, ARegion *region)
 {
+  /* The anim context is not actually used, but this makes sure the action being displayed is up to
+   * date. */
+  bAnimContext ac;
+  ANIM_animdata_get_context(C, &ac);
+
   ED_region_header(C, region);
 }
 
-static void action_channel_region_listener(wmWindow *UNUSED(win),
-                                           ScrArea *UNUSED(area),
-                                           ARegion *region,
-                                           wmNotifier *wmn,
-                                           const Scene *UNUSED(scene))
+static void action_channel_region_listener(const wmRegionListenerParams *params)
 {
+  ARegion *region = params->region;
+  wmNotifier *wmn = params->notifier;
+
   /* context changes */
   switch (wmn->category) {
     case NC_ANIMATION:
@@ -358,14 +352,13 @@ static void action_channel_region_listener(wmWindow *UNUSED(win),
   }
 }
 
-static void saction_channel_region_message_subscribe(const struct bContext *UNUSED(C),
-                                                     struct WorkSpace *UNUSED(workspace),
-                                                     struct Scene *UNUSED(scene),
-                                                     struct bScreen *screen,
-                                                     struct ScrArea *area,
-                                                     struct ARegion *region,
-                                                     struct wmMsgBus *mbus)
+static void saction_channel_region_message_subscribe(const wmRegionMessageSubscribeParams *params)
 {
+  struct wmMsgBus *mbus = params->message_bus;
+  bScreen *screen = params->screen;
+  ScrArea *area = params->area;
+  ARegion *region = params->region;
+
   PointerRNA ptr;
   RNA_pointer_create(&screen->id, &RNA_SpaceDopeSheetEditor, area->spacedata.first, &ptr);
 
@@ -403,12 +396,11 @@ static void saction_channel_region_message_subscribe(const struct bContext *UNUS
   }
 }
 
-static void action_main_region_listener(wmWindow *UNUSED(win),
-                                        ScrArea *UNUSED(area),
-                                        ARegion *region,
-                                        wmNotifier *wmn,
-                                        const Scene *UNUSED(scene))
+static void action_main_region_listener(const wmRegionListenerParams *params)
 {
+  ARegion *region = params->region;
+  wmNotifier *wmn = params->notifier;
+
   /* context changes */
   switch (wmn->category) {
     case NC_ANIMATION:
@@ -462,14 +454,14 @@ static void action_main_region_listener(wmWindow *UNUSED(win),
   }
 }
 
-static void saction_main_region_message_subscribe(const struct bContext *C,
-                                                  struct WorkSpace *workspace,
-                                                  struct Scene *scene,
-                                                  struct bScreen *screen,
-                                                  struct ScrArea *area,
-                                                  struct ARegion *region,
-                                                  struct wmMsgBus *mbus)
+static void saction_main_region_message_subscribe(const wmRegionMessageSubscribeParams *params)
 {
+  struct wmMsgBus *mbus = params->message_bus;
+  Scene *scene = params->scene;
+  bScreen *screen = params->screen;
+  ScrArea *area = params->area;
+  ARegion *region = params->region;
+
   PointerRNA ptr;
   RNA_pointer_create(&screen->id, &RNA_SpaceDopeSheetEditor, area->spacedata.first, &ptr);
 
@@ -482,12 +474,6 @@ static void saction_main_region_message_subscribe(const struct bContext *C,
   /* Timeline depends on scene properties. */
   {
     bool use_preview = (scene->r.flag & SCER_PRV_RANGE);
-    extern PropertyRNA rna_Scene_frame_start;
-    extern PropertyRNA rna_Scene_frame_end;
-    extern PropertyRNA rna_Scene_frame_preview_start;
-    extern PropertyRNA rna_Scene_frame_preview_end;
-    extern PropertyRNA rna_Scene_use_preview_range;
-    extern PropertyRNA rna_Scene_frame_current;
     const PropertyRNA *props[] = {
         use_preview ? &rna_Scene_frame_preview_start : &rna_Scene_frame_start,
         use_preview ? &rna_Scene_frame_preview_end : &rna_Scene_frame_end,
@@ -504,15 +490,14 @@ static void saction_main_region_message_subscribe(const struct bContext *C,
   }
 
   /* Now run the general "channels region" one - since channels and main should be in sync */
-  saction_channel_region_message_subscribe(C, workspace, scene, screen, area, region, mbus);
+  saction_channel_region_message_subscribe(params);
 }
 
 /* editor level listener */
-static void action_listener(wmWindow *UNUSED(win),
-                            ScrArea *area,
-                            wmNotifier *wmn,
-                            Scene *UNUSED(scene))
+static void action_listener(const wmSpaceTypeListenerParams *params)
 {
+  ScrArea *area = params->area;
+  wmNotifier *wmn = params->notifier;
   SpaceAction *saction = (SpaceAction *)area->spacedata.first;
 
   /* context changes */
@@ -530,14 +515,14 @@ static void action_listener(wmWindow *UNUSED(win),
       }
       break;
     case NC_ANIMATION:
-      /* for NLA tweakmode enter/exit, need complete refresh */
+      /* For NLA tweak-mode enter/exit, need complete refresh. */
       if (wmn->data == ND_NLA_ACTCHANGE) {
         saction->runtime.flag |= SACTION_RUNTIME_FLAG_NEED_CHAN_SYNC;
         ED_area_tag_refresh(area);
       }
-      /* autocolor only really needs to change when channels are added/removed,
+      /* Auto-color only really needs to change when channels are added/removed,
        * or previously hidden stuff appears
-       * (assume for now that if just adding these works, that will be fine)
+       * (assume for now that if just adding these works, that will be fine).
        */
       else if (((wmn->data == ND_KEYFRAME) && ELEM(wmn->action, NA_ADDED, NA_REMOVED)) ||
                ((wmn->data == ND_ANIMCHAN) && (wmn->action != NA_SELECTED))) {
@@ -648,7 +633,7 @@ static void action_listener(wmWindow *UNUSED(win),
       break;
     case NC_WINDOW:
       if (saction->runtime.flag & SACTION_RUNTIME_FLAG_NEED_CHAN_SYNC) {
-        /* force redraw/refresh after undo/redo - [#28962] */
+        /* force redraw/refresh after undo/redo, see: T28962. */
         ED_area_tag_refresh(area);
       }
       break;
@@ -662,12 +647,11 @@ static void action_listener(wmWindow *UNUSED(win),
   }
 }
 
-static void action_header_region_listener(wmWindow *UNUSED(win),
-                                          ScrArea *area,
-                                          ARegion *region,
-                                          wmNotifier *wmn,
-                                          const Scene *UNUSED(scene))
+static void action_header_region_listener(const wmRegionListenerParams *params)
 {
+  ScrArea *area = params->area;
+  ARegion *region = params->region;
+  wmNotifier *wmn = params->notifier;
   SpaceAction *saction = (SpaceAction *)area->spacedata.first;
 
   /* context changes */
@@ -739,12 +723,11 @@ static void action_buttons_area_draw(const bContext *C, ARegion *region)
   ED_region_panels(C, region);
 }
 
-static void action_region_listener(wmWindow *UNUSED(win),
-                                   ScrArea *UNUSED(area),
-                                   ARegion *region,
-                                   wmNotifier *wmn,
-                                   const Scene *UNUSED(scene))
+static void action_region_listener(const wmRegionListenerParams *params)
 {
+  ARegion *region = params->region;
+  wmNotifier *wmn = params->notifier;
+
   /* context changes */
   switch (wmn->category) {
     case NC_ANIMATION:
@@ -794,7 +777,7 @@ static void action_refresh(const bContext *C, ScrArea *area)
 
     /* Tag everything for redraw
      * - Regions (such as header) need to be manually tagged for redraw too
-     *   or else they don't update [#28962]
+     *   or else they don't update T28962.
      */
     ED_area_tag_redraw(area);
     for (region = area->regionbase.first; region; region = region->next) {
@@ -803,23 +786,18 @@ static void action_refresh(const bContext *C, ScrArea *area)
   }
 
   /* region updates? */
-  // XXX re-sizing y-extents of tot should go here?
+  /* XXX re-sizing y-extents of tot should go here? */
 }
 
-static void action_id_remap(ScrArea *UNUSED(area), SpaceLink *slink, ID *old_id, ID *new_id)
+static void action_id_remap(ScrArea *UNUSED(area),
+                            SpaceLink *slink,
+                            const struct IDRemapper *mappings)
 {
   SpaceAction *sact = (SpaceAction *)slink;
 
-  if ((ID *)sact->action == old_id) {
-    sact->action = (bAction *)new_id;
-  }
-
-  if ((ID *)sact->ads.filter_grp == old_id) {
-    sact->ads.filter_grp = (Collection *)new_id;
-  }
-  if ((ID *)sact->ads.source == old_id) {
-    sact->ads.source = new_id;
-  }
+  BKE_id_remapper_apply(mappings, (ID **)&sact->action, ID_REMAP_APPLY_DEFAULT);
+  BKE_id_remapper_apply(mappings, (ID **)&sact->ads.filter_grp, ID_REMAP_APPLY_DEFAULT);
+  BKE_id_remapper_apply(mappings, &sact->ads.source, ID_REMAP_APPLY_DEFAULT);
 }
 
 /**
@@ -854,7 +832,6 @@ static void action_space_subtype_item_extend(bContext *UNUSED(C),
   RNA_enum_items_add(item, totitem, rna_enum_space_action_mode_items);
 }
 
-/* only called once, from space/spacetypes.c */
 void ED_spacetype_action(void)
 {
   SpaceType *st = MEM_callocN(sizeof(SpaceType), "spacetype action");
@@ -863,7 +840,7 @@ void ED_spacetype_action(void)
   st->spaceid = SPACE_ACTION;
   strncpy(st->name, "Action", BKE_ST_MAXNAME);
 
-  st->new = action_new;
+  st->create = action_create;
   st->free = action_free;
   st->init = action_init;
   st->duplicate = action_duplicate;

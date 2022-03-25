@@ -1,19 +1,4 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -37,6 +22,18 @@ MINLINE unsigned int bitscan_forward_uint(unsigned int a)
   return ctz;
 #else
   return (unsigned int)__builtin_ctz(a);
+#endif
+}
+
+MINLINE unsigned int bitscan_forward_uint64(unsigned long long a)
+{
+  BLI_assert(a != 0);
+#ifdef _MSC_VER
+  unsigned long ctz;
+  _BitScanForward64(&ctz, a);
+  return ctz;
+#else
+  return (unsigned int)__builtin_ctzll(a);
 #endif
 }
 
@@ -66,6 +63,18 @@ MINLINE unsigned int bitscan_reverse_uint(unsigned int a)
   return 31 - clz;
 #else
   return (unsigned int)__builtin_clz(a);
+#endif
+}
+
+MINLINE unsigned int bitscan_reverse_uint64(unsigned long long a)
+{
+  BLI_assert(a != 0);
+#ifdef _MSC_VER
+  unsigned long clz;
+  _BitScanReverse64(&clz, a);
+  return 31 - clz;
+#else
+  return (unsigned int)__builtin_clzll(a);
 #endif
 }
 

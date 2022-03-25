@@ -1,25 +1,10 @@
-# ##### BEGIN GPL LICENSE BLOCK #####
-#
-#  This program is free software; you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License
-#  as published by the Free Software Foundation; either version 2
-#  of the License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software Foundation,
-#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# ##### END GPL LICENSE BLOCK #####
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 # <pep8 compliant>
 import bpy
 from bpy.types import Menu, Panel, UIList
 from rna_prop_ui import PropertyPanel
+from collections import defaultdict
 
 
 class MESH_MT_vertex_group_context_menu(Menu):
@@ -40,7 +25,6 @@ class MESH_MT_vertex_group_context_menu(Menu):
         ).sort_type = 'BONE_HIERARCHY'
         layout.separator()
         layout.operator("object.vertex_group_copy", icon='DUPLICATE')
-        layout.operator("object.vertex_group_copy_to_linked")
         layout.operator("object.vertex_group_copy_to_selected")
         layout.separator()
         layout.operator("object.vertex_group_mirror", icon='ARROW_LEFTRIGHT').use_topology = False
@@ -57,7 +41,7 @@ class MESH_MT_vertex_group_context_menu(Menu):
         layout.separator()
         props = layout.operator("object.vertex_group_lock", icon='LOCKED', text="Lock All")
         props.action, props.mask = 'LOCK', 'ALL'
-        props = layout.operator("object.vertex_group_lock", icon='UNLOCKED', text="UnLock All")
+        props = layout.operator("object.vertex_group_lock", icon='UNLOCKED', text="Unlock All")
         props.action, props.mask = 'UNLOCK', 'ALL'
         props = layout.operator("object.vertex_group_lock", text="Lock Invert All")
         props.action, props.mask = 'INVERT', 'ALL'
@@ -69,7 +53,7 @@ class MESH_MT_shape_key_context_menu(Menu):
     def draw(self, _context):
         layout = self.layout
 
-        layout.operator("object.shape_key_add", icon='ADD', text="New Shape From Mix").from_mix = True
+        layout.operator("object.shape_key_add", icon='ADD', text="New Shape from Mix").from_mix = True
         layout.separator()
         layout.operator("object.shape_key_mirror", icon='ARROW_LEFTRIGHT').use_topology = False
         layout.operator("object.shape_key_mirror", text="Mirror Shape Key (Topology)").use_topology = True
@@ -81,6 +65,14 @@ class MESH_MT_shape_key_context_menu(Menu):
         layout.separator()
         layout.operator("object.shape_key_move", icon='TRIA_UP_BAR', text="Move to Top").type = 'TOP'
         layout.operator("object.shape_key_move", icon='TRIA_DOWN_BAR', text="Move to Bottom").type = 'BOTTOM'
+
+class MESH_MT_attribute_context_menu(Menu):
+    bl_label = "Attribute Specials"
+
+    def draw(self, context):
+        layout = self.layout
+
+        layout.operator("geometry.attribute_convert")
 
 
 class MESH_UL_vgroups(UIList):
@@ -117,12 +109,13 @@ class MESH_UL_shape_keys(UIList):
             split = layout.split(factor=0.66, align=False)
             split.prop(key_block, "name", text="", emboss=False, icon_value=icon)
             row = split.row(align=True)
+            row.emboss = 'NONE_OR_STATUS'
             if key_block.mute or (obj.mode == 'EDIT' and not (obj.use_shape_key_edit_mode and obj.type == 'MESH')):
                 row.active = False
             if not item.id_data.use_relative:
-                row.prop(key_block, "frame", text="", emboss=False)
+                row.prop(key_block, "frame", text="")
             elif index > 0:
-                row.prop(key_block, "value", text="", emboss=False)
+                row.prop(key_block, "value", text="")
             else:
                 row.label(text="")
             row.prop(key_block, "mute", text="", emboss=False)
@@ -346,9 +339,11 @@ class DATA_PT_shape_keys(MeshButtonsPanel, Panel):
 
         enable_edit = ob.mode != 'EDIT'
         enable_edit_value = False
+        enable_pin = False
 
-        if ob.show_only_shape_key is False:
-            if enable_edit or (ob.type == 'MESH' and ob.use_shape_key_edit_mode):
+        if enable_edit or (ob.use_shape_key_edit_mode and ob.type == 'MESH'):
+            enable_pin = True
+            if ob.show_only_shape_key is False:
                 enable_edit_value = True
 
         row = layout.row()
@@ -386,7 +381,7 @@ class DATA_PT_shape_keys(MeshButtonsPanel, Panel):
             sub = row.row(align=True)
             sub.label()  # XXX, for alignment only
             subsub = sub.row(align=True)
-            subsub.active = enable_edit_value
+            subsub.active = enable_pin
             subsub.prop(ob, "show_only_shape_key", text="")
             sub.prop(ob, "use_shape_key_edit_mode", text="")
 
@@ -466,7 +461,7 @@ class DATA_PT_sculpt_vertex_colors(MeshButtonsPanel, Panel):
 
     @classmethod
     def poll(cls, context):
-        return context.preferences.experimental.use_sculpt_vertex_colors
+        return super().poll(context) and context.preferences.experimental.use_sculpt_vertex_colors
 
     def draw(self, context):
         layout = self.layout
@@ -476,7 +471,15 @@ class DATA_PT_sculpt_vertex_colors(MeshButtonsPanel, Panel):
         row = layout.row()
         col = row.column()
 
-        col.template_list("MESH_UL_vcols", "svcols", me, "sculpt_vertex_colors", me.sculpt_vertex_colors, "active_index", rows=2)
+        col.template_list(
+            "MESH_UL_vcols",
+            "svcols",
+            me,
+            "sculpt_vertex_colors",
+            me.sculpt_vertex_colors,
+            "active_index",
+            rows=2,
+        )
 
         col = row.column(align=True)
         col.operator("mesh.sculpt_vertex_color_add", icon='ADD', text="")
@@ -506,7 +509,6 @@ class DATA_PT_remesh(MeshButtonsPanel, Panel):
             col.prop(mesh, "remesh_voxel_size")
             col.prop(mesh, "remesh_voxel_adaptivity")
             col.prop(mesh, "use_remesh_fix_poles")
-            col.prop(mesh, "use_remesh_smooth_normals")
 
             col = layout.column(heading="Preserve")
             col.prop(mesh, "use_remesh_preserve_volume", text="Volume")
@@ -547,6 +549,7 @@ class DATA_PT_customdata(MeshButtonsPanel, Panel):
         col.enabled = obj is not None and obj.mode != 'EDIT'
         col.prop(me, "use_customdata_vertex_bevel", text="Vertex Bevel Weight")
         col.prop(me, "use_customdata_edge_bevel", text="Edge Bevel Weight")
+        col.prop(me, "use_customdata_vertex_crease", text="Vertex Crease")
         col.prop(me, "use_customdata_edge_crease", text="Edge Crease")
 
 
@@ -556,14 +559,102 @@ class DATA_PT_custom_props_mesh(MeshButtonsPanel, PropertyPanel, Panel):
     _property_type = bpy.types.Mesh
 
 
+class MESH_UL_attributes(UIList):
+    display_domain_names = {
+        'POINT': "Vertex",
+        'EDGE': "Edge",
+        'FACE': "Face",
+        'CORNER': "Face Corner",
+    }
+
+    def draw_item(self, _context, layout, _data, attribute, _icon, _active_data, _active_propname, _index):
+        data_type = attribute.bl_rna.properties['data_type'].enum_items[attribute.data_type]
+
+        domain_name = self.display_domain_names.get(attribute.domain, "")
+
+        split = layout.split(factor=0.50)
+        split.emboss = 'NONE'
+        split.prop(attribute, "name", text="")
+        sub = split.row()
+        sub.alignment = 'RIGHT'
+        sub.active = False
+        sub.label(text="%s ▶ %s" % (domain_name, data_type.name))
+
+
+class DATA_PT_mesh_attributes(MeshButtonsPanel, Panel):
+    bl_label = "Attributes"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+
+    def draw(self, context):
+        mesh = context.mesh
+
+        layout = self.layout
+        row = layout.row()
+
+        col = row.column()
+        col.template_list(
+            "MESH_UL_attributes",
+            "attributes",
+            mesh,
+            "attributes",
+            mesh.attributes,
+            "active_index",
+            rows=3,
+        )
+
+        col = row.column(align=True)
+        col.operator("geometry.attribute_add", icon='ADD', text="")
+        col.operator("geometry.attribute_remove", icon='REMOVE', text="")
+
+        col.separator()
+
+        col.menu("MESH_MT_attribute_context_menu", icon='DOWNARROW_HLT', text="")
+
+        self.draw_attribute_warnings(context, layout)
+
+    def draw_attribute_warnings(self, context, layout):
+        attributes_by_name = defaultdict(list)
+
+        ob = context.object
+        mesh = ob.data
+
+        builtin_attribute = object()
+
+        def add_builtin(name):
+            attributes_by_name[name].append(builtin_attribute)
+
+        def add_attributes(layers):
+            for layer in layers:
+                attributes_by_name[layer.name].append(layer)
+
+        add_builtin("position")
+        add_builtin("material_index")
+        add_builtin("shade_smooth")
+        add_builtin("normal")
+        add_builtin("crease")
+
+        add_attributes(mesh.attributes)
+        add_attributes(mesh.uv_layers)
+        add_attributes(ob.vertex_groups)
+
+        colliding_names = [name for name, layers in attributes_by_name.items() if len(layers) >= 2]
+        if len(colliding_names) == 0:
+            return
+
+        layout.label(text="Name collisions: {}".format(", ".join(colliding_names)), icon='ERROR')
+
+
 classes = (
     MESH_MT_vertex_group_context_menu,
     MESH_MT_shape_key_context_menu,
+    MESH_MT_attribute_context_menu,
     MESH_UL_vgroups,
     MESH_UL_fmaps,
     MESH_UL_shape_keys,
     MESH_UL_uvmaps,
     MESH_UL_vcols,
+    MESH_UL_attributes,
     DATA_PT_context_mesh,
     DATA_PT_vertex_groups,
     DATA_PT_shape_keys,
@@ -571,6 +662,7 @@ classes = (
     DATA_PT_vertex_colors,
     DATA_PT_sculpt_vertex_colors,
     DATA_PT_face_maps,
+    DATA_PT_mesh_attributes,
     DATA_PT_normals,
     DATA_PT_texture_space,
     DATA_PT_remesh,

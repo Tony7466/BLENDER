@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2011 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2011 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup spclip
@@ -23,6 +7,8 @@
 
 #include <stdio.h>
 #include <string.h>
+
+#include "DNA_defaults.h"
 
 #include "DNA_mask_types.h"
 #include "DNA_movieclip_types.h"
@@ -37,6 +23,7 @@
 
 #include "BKE_context.h"
 #include "BKE_lib_id.h"
+#include "BKE_lib_remap.h"
 #include "BKE_movieclip.h"
 #include "BKE_screen.h"
 #include "BKE_tracking.h"
@@ -47,16 +34,12 @@
 #include "ED_clip.h"
 #include "ED_mask.h"
 #include "ED_screen.h"
-#include "ED_select_utils.h"
 #include "ED_space_api.h"
 #include "ED_time_scrub_ui.h"
-#include "ED_transform.h"
 #include "ED_uvedit.h" /* just for ED_image_draw_cursor */
 
 #include "IMB_imbuf.h"
 
-#include "GPU_framebuffer.h"
-#include "GPU_glew.h"
 #include "GPU_matrix.h"
 
 #include "WM_api.h"
@@ -230,7 +213,7 @@ static void clip_scopes_check_gpencil_change(ScrArea *area)
   }
 }
 
-static void clip_area_sync_frame_from_scene(ScrArea *area, Scene *scene)
+static void clip_area_sync_frame_from_scene(ScrArea *area, const Scene *scene)
 {
   SpaceClip *space_clip = (SpaceClip *)area->spacedata.first;
   BKE_movieclip_user_set_frame(&space_clip->user, scene->r.cfra);
@@ -238,19 +221,12 @@ static void clip_area_sync_frame_from_scene(ScrArea *area, Scene *scene)
 
 /* ******************** default callbacks for clip space ***************** */
 
-static SpaceLink *clip_new(const ScrArea *area, const Scene *scene)
+static SpaceLink *clip_create(const ScrArea *area, const Scene *scene)
 {
   ARegion *region;
   SpaceClip *sc;
 
-  sc = MEM_callocN(sizeof(SpaceClip), "initclip");
-  sc->spacetype = SPACE_CLIP;
-  sc->flag = SC_SHOW_MARKER_PATTERN | SC_SHOW_TRACK_PATH | SC_SHOW_GRAPH_TRACKS_MOTION |
-             SC_SHOW_GRAPH_FRAMES | SC_SHOW_ANNOTATION;
-  sc->zoom = 1.0f;
-  sc->path_length = 20;
-  sc->scopes.track_preview_height = 120;
-  sc->around = V3D_AROUND_CENTER_MEDIAN;
+  sc = DNA_struct_default_alloc(SpaceClip);
 
   /* header */
   region = MEM_callocN(sizeof(ARegion), "header for clip");
@@ -335,8 +311,12 @@ static SpaceLink *clip_duplicate(SpaceLink *sl)
   return (SpaceLink *)scn;
 }
 
-static void clip_listener(wmWindow *UNUSED(win), ScrArea *area, wmNotifier *wmn, Scene *scene)
+static void clip_listener(const wmSpaceTypeListenerParams *params)
 {
+  ScrArea *area = params->area;
+  wmNotifier *wmn = params->notifier;
+  const Scene *scene = params->scene;
+
   /* context changes */
   switch (wmn->category) {
     case NC_SCENE:
@@ -515,6 +495,7 @@ static void clip_operatortypes(void)
   /* clean-up */
   WM_operatortype_append(CLIP_OT_clear_track_path);
   WM_operatortype_append(CLIP_OT_join_tracks);
+  WM_operatortype_append(CLIP_OT_average_tracks);
   WM_operatortype_append(CLIP_OT_track_copy_color);
 
   WM_operatortype_append(CLIP_OT_clean_tracks);
@@ -576,36 +557,35 @@ static void clip_keymap(struct wmKeyConfig *keyconf)
 extern const char *clip_context_dir[]; /* quiet warning. */
 const char *clip_context_dir[] = {"edit_movieclip", "edit_mask", NULL};
 
-static int clip_context(const bContext *C, const char *member, bContextDataResult *result)
+static int /*eContextResult*/ clip_context(const bContext *C,
+                                           const char *member,
+                                           bContextDataResult *result)
 {
   SpaceClip *sc = CTX_wm_space_clip(C);
 
   if (CTX_data_dir(member)) {
     CTX_data_dir_set(result, clip_context_dir);
 
-    return true;
+    return CTX_RESULT_OK;
   }
   if (CTX_data_equals(member, "edit_movieclip")) {
     if (sc->clip) {
       CTX_data_id_pointer_set(result, &sc->clip->id);
     }
-    return true;
+    return CTX_RESULT_OK;
   }
   if (CTX_data_equals(member, "edit_mask")) {
     if (sc->mask_info.mask) {
       CTX_data_id_pointer_set(result, &sc->mask_info.mask->id);
     }
-    return true;
+    return CTX_RESULT_OK;
   }
 
-  return false;
+  return CTX_RESULT_MEMBER_NOT_FOUND;
 }
 
 /* dropboxes */
-static bool clip_drop_poll(bContext *UNUSED(C),
-                           wmDrag *drag,
-                           const wmEvent *UNUSED(event),
-                           const char **UNUSED(r_tooltip))
+static bool clip_drop_poll(bContext *UNUSED(C), wmDrag *drag, const wmEvent *UNUSED(event))
 {
   if (drag->type == WM_DRAG_PATH) {
     /* rule might not work? */
@@ -636,7 +616,7 @@ static void clip_dropboxes(void)
 {
   ListBase *lb = WM_dropboxmap_find("Clip", SPACE_CLIP, 0);
 
-  WM_dropbox_add(lb, "CLIP_OT_open", clip_drop_poll, clip_drop_copy);
+  WM_dropbox_add(lb, "CLIP_OT_open", clip_drop_poll, clip_drop_copy, NULL, NULL);
 }
 
 static void clip_refresh(const bContext *C, ScrArea *area)
@@ -685,7 +665,7 @@ static void clip_refresh(const bContext *C, ScrArea *area)
   if (main_visible) {
     if (region_main && (region_main->flag & RGN_FLAG_HIDDEN)) {
       region_main->flag &= ~RGN_FLAG_HIDDEN;
-      region_main->v2d.flag &= ~V2D_IS_INITIALISED;
+      region_main->v2d.flag &= ~V2D_IS_INIT;
       view_changed = true;
     }
 
@@ -697,7 +677,7 @@ static void clip_refresh(const bContext *C, ScrArea *area)
   else {
     if (region_main && !(region_main->flag & RGN_FLAG_HIDDEN)) {
       region_main->flag |= RGN_FLAG_HIDDEN;
-      region_main->v2d.flag &= ~V2D_IS_INITIALISED;
+      region_main->v2d.flag &= ~V2D_IS_INIT;
       WM_event_remove_handlers((bContext *)C, &region_main->handlers);
       view_changed = true;
     }
@@ -710,7 +690,7 @@ static void clip_refresh(const bContext *C, ScrArea *area)
   if (properties_visible) {
     if (region_properties && (region_properties->flag & RGN_FLAG_HIDDEN)) {
       region_properties->flag &= ~RGN_FLAG_HIDDEN;
-      region_properties->v2d.flag &= ~V2D_IS_INITIALISED;
+      region_properties->v2d.flag &= ~V2D_IS_INIT;
       view_changed = true;
     }
     if (region_properties && region_properties->alignment != RGN_ALIGN_RIGHT) {
@@ -721,7 +701,7 @@ static void clip_refresh(const bContext *C, ScrArea *area)
   else {
     if (region_properties && !(region_properties->flag & RGN_FLAG_HIDDEN)) {
       region_properties->flag |= RGN_FLAG_HIDDEN;
-      region_properties->v2d.flag &= ~V2D_IS_INITIALISED;
+      region_properties->v2d.flag &= ~V2D_IS_INIT;
       WM_event_remove_handlers((bContext *)C, &region_properties->handlers);
       view_changed = true;
     }
@@ -734,7 +714,7 @@ static void clip_refresh(const bContext *C, ScrArea *area)
   if (tools_visible) {
     if (region_tools && (region_tools->flag & RGN_FLAG_HIDDEN)) {
       region_tools->flag &= ~RGN_FLAG_HIDDEN;
-      region_tools->v2d.flag &= ~V2D_IS_INITIALISED;
+      region_tools->v2d.flag &= ~V2D_IS_INIT;
       view_changed = true;
     }
     if (region_tools && region_tools->alignment != RGN_ALIGN_LEFT) {
@@ -745,7 +725,7 @@ static void clip_refresh(const bContext *C, ScrArea *area)
   else {
     if (region_tools && !(region_tools->flag & RGN_FLAG_HIDDEN)) {
       region_tools->flag |= RGN_FLAG_HIDDEN;
-      region_tools->v2d.flag &= ~V2D_IS_INITIALISED;
+      region_tools->v2d.flag &= ~V2D_IS_INIT;
       WM_event_remove_handlers((bContext *)C, &region_tools->handlers);
       view_changed = true;
     }
@@ -758,7 +738,7 @@ static void clip_refresh(const bContext *C, ScrArea *area)
   if (preview_visible) {
     if (region_preview && (region_preview->flag & RGN_FLAG_HIDDEN)) {
       region_preview->flag &= ~RGN_FLAG_HIDDEN;
-      region_preview->v2d.flag &= ~V2D_IS_INITIALISED;
+      region_preview->v2d.flag &= ~V2D_IS_INIT;
       region_preview->v2d.cur = region_preview->v2d.tot;
       view_changed = true;
     }
@@ -770,7 +750,7 @@ static void clip_refresh(const bContext *C, ScrArea *area)
   else {
     if (region_preview && !(region_preview->flag & RGN_FLAG_HIDDEN)) {
       region_preview->flag |= RGN_FLAG_HIDDEN;
-      region_preview->v2d.flag &= ~V2D_IS_INITIALISED;
+      region_preview->v2d.flag &= ~V2D_IS_INIT;
       WM_event_remove_handlers((bContext *)C, &region_preview->handlers);
       view_changed = true;
     }
@@ -783,7 +763,7 @@ static void clip_refresh(const bContext *C, ScrArea *area)
   if (channels_visible) {
     if (region_channels && (region_channels->flag & RGN_FLAG_HIDDEN)) {
       region_channels->flag &= ~RGN_FLAG_HIDDEN;
-      region_channels->v2d.flag &= ~V2D_IS_INITIALISED;
+      region_channels->v2d.flag &= ~V2D_IS_INIT;
       view_changed = true;
     }
     if (region_channels && region_channels->alignment != RGN_ALIGN_LEFT) {
@@ -794,7 +774,7 @@ static void clip_refresh(const bContext *C, ScrArea *area)
   else {
     if (region_channels && !(region_channels->flag & RGN_FLAG_HIDDEN)) {
       region_channels->flag |= RGN_FLAG_HIDDEN;
-      region_channels->v2d.flag &= ~V2D_IS_INITIALISED;
+      region_channels->v2d.flag &= ~V2D_IS_INIT;
       WM_event_remove_handlers((bContext *)C, &region_channels->handlers);
       view_changed = true;
     }
@@ -805,7 +785,7 @@ static void clip_refresh(const bContext *C, ScrArea *area)
   }
 
   if (view_changed) {
-    ED_area_initialize(wm, window, area);
+    ED_area_init(wm, window, area);
     ED_area_tag_redraw(area);
   }
 
@@ -879,7 +859,8 @@ static void clip_main_region_init(wmWindowManager *wm, ARegion *region)
 {
   wmKeyMap *keymap;
 
-  UI_view2d_region_reinit(&region->v2d, V2D_COMMONVIEW_STANDARD, region->winx, region->winy);
+  /* NOTE: don't use `UI_view2d_region_reinit(&region->v2d, ...)`
+   * since the space clip manages own v2d in #movieclip_main_area_set_view2d */
 
   /* mask polls mode */
   keymap = WM_keymap_ensure(wm->defaultconf, "Mask Editing", 0, 0);
@@ -927,7 +908,6 @@ static void clip_main_region_draw(const bContext *C, ARegion *region)
 
   /* clear and setup matrix */
   UI_ThemeClearColor(TH_BACK);
-  GPU_clear(GPU_COLOR_BIT);
 
   /* data... */
   movieclip_main_area_set_view2d(C, region);
@@ -987,7 +967,14 @@ static void clip_main_region_draw(const bContext *C, ARegion *region)
   }
 
   /* callback */
+  /* TODO(sergey): For being consistent with space image the projection needs to be configured
+   * the way how the commented out code does it. This works correct for tracking data, but it
+   * causes wrong aspect correction for mask editor (see T84990). */
+  // GPU_matrix_push_projection();
+  // wmOrtho2(region->v2d.cur.xmin, region->v2d.cur.xmax, region->v2d.cur.ymin,
+  //          region->v2d.cur.ymax);
   ED_region_draw_cb_draw(C, region, REGION_DRAW_POST_VIEW);
+  // GPU_matrix_pop_projection();
 
   /* reset view matrix */
   UI_view2d_view_restore(C);
@@ -1000,12 +987,11 @@ static void clip_main_region_draw(const bContext *C, ARegion *region)
   WM_gizmomap_draw(region->gizmo_map, C, WM_GIZMOMAP_DRAWSTEP_2D);
 }
 
-static void clip_main_region_listener(wmWindow *UNUSED(win),
-                                      ScrArea *UNUSED(area),
-                                      ARegion *region,
-                                      wmNotifier *wmn,
-                                      const Scene *UNUSED(scene))
+static void clip_main_region_listener(const wmRegionListenerParams *params)
 {
+  ARegion *region = params->region;
+  wmNotifier *wmn = params->notifier;
+
   /* context changes */
   switch (wmn->category) {
     case NC_GPENCIL:
@@ -1055,7 +1041,6 @@ static void graph_region_draw(const bContext *C, ARegion *region)
 
   /* clear and setup matrix */
   UI_ThemeClearColor(TH_BACK);
-  GPU_clear(GPU_COLOR_BIT);
 
   UI_view2d_view_ortho(v2d);
 
@@ -1073,6 +1058,9 @@ static void graph_region_draw(const bContext *C, ARegion *region)
 
   /* time-scrubbing */
   ED_time_scrub_draw(region, scene, sc->flag & SC_SHOW_SECONDS, true);
+
+  /* current frame indicator */
+  ED_time_scrub_draw_current_frame(region, scene, sc->flag & SC_SHOW_SECONDS);
 
   /* scrollers */
   UI_view2d_scrollers_draw(v2d, NULL);
@@ -1100,12 +1088,11 @@ static void dopesheet_region_draw(const bContext *C, ARegion *region)
 
   /* clear and setup matrix */
   UI_ThemeClearColor(TH_BACK);
-  GPU_clear(GPU_COLOR_BIT);
 
   UI_view2d_view_ortho(v2d);
 
   /* time grid */
-  UI_view2d_draw_lines_x__discrete_frames_or_seconds(v2d, scene, sc->flag & SC_SHOW_SECONDS);
+  UI_view2d_draw_lines_x__discrete_frames_or_seconds(v2d, scene, sc->flag & SC_SHOW_SECONDS, true);
 
   /* data... */
   clip_draw_dopesheet_main(sc, region, scene);
@@ -1121,6 +1108,9 @@ static void dopesheet_region_draw(const bContext *C, ARegion *region)
 
   /* time-scrubbing */
   ED_time_scrub_draw(region, scene, sc->flag & SC_SHOW_SECONDS, true);
+
+  /* current frame indicator */
+  ED_time_scrub_draw_current_frame(region, scene, sc->flag & SC_SHOW_SECONDS);
 
   /* scrollers */
   UI_view2d_scrollers_draw(v2d, NULL);
@@ -1138,11 +1128,7 @@ static void clip_preview_region_draw(const bContext *C, ARegion *region)
   }
 }
 
-static void clip_preview_region_listener(wmWindow *UNUSED(win),
-                                         ScrArea *UNUSED(area),
-                                         ARegion *UNUSED(region),
-                                         wmNotifier *UNUSED(wmn),
-                                         const Scene *UNUSED(scene))
+static void clip_preview_region_listener(const wmRegionListenerParams *UNUSED(params))
 {
 }
 
@@ -1173,7 +1159,6 @@ static void clip_channels_region_draw(const bContext *C, ARegion *region)
 
   /* clear and setup matrix */
   UI_ThemeClearColor(TH_BACK);
-  GPU_clear(GPU_COLOR_BIT);
 
   UI_view2d_view_ortho(v2d);
 
@@ -1184,11 +1169,7 @@ static void clip_channels_region_draw(const bContext *C, ARegion *region)
   UI_view2d_view_restore(C);
 }
 
-static void clip_channels_region_listener(wmWindow *UNUSED(win),
-                                          ScrArea *UNUSED(area),
-                                          ARegion *UNUSED(region),
-                                          wmNotifier *UNUSED(wmn),
-                                          const Scene *UNUSED(scene))
+static void clip_channels_region_listener(const wmRegionListenerParams *UNUSED(params))
 {
 }
 
@@ -1205,19 +1186,18 @@ static void clip_header_region_draw(const bContext *C, ARegion *region)
   ED_region_header(C, region);
 }
 
-static void clip_header_region_listener(wmWindow *UNUSED(win),
-                                        ScrArea *UNUSED(area),
-                                        ARegion *region,
-                                        wmNotifier *wmn,
-                                        const Scene *UNUSED(scene))
+static void clip_header_region_listener(const wmRegionListenerParams *params)
 {
+  ARegion *region = params->region;
+  wmNotifier *wmn = params->notifier;
+
   /* context changes */
   switch (wmn->category) {
     case NC_SCENE:
       switch (wmn->data) {
         /* for proportional editmode only */
         case ND_TOOLSETTINGS:
-          /* TODO - should do this when in mask mode only but no data available */
+          /* TODO: should do this when in mask mode only but no data available. */
           // if (sc->mode == SC_MODE_MASKEDIT)
           {
             ED_region_tag_redraw(region);
@@ -1248,12 +1228,11 @@ static void clip_tools_region_draw(const bContext *C, ARegion *region)
 
 /****************** tool properties region ******************/
 
-static void clip_props_region_listener(wmWindow *UNUSED(win),
-                                       ScrArea *UNUSED(area),
-                                       ARegion *region,
-                                       wmNotifier *wmn,
-                                       const Scene *UNUSED(scene))
+static void clip_props_region_listener(const wmRegionListenerParams *params)
 {
+  ARegion *region = params->region;
+  wmNotifier *wmn = params->notifier;
+
   /* context changes */
   switch (wmn->category) {
     case NC_WM:
@@ -1301,12 +1280,11 @@ static void clip_properties_region_draw(const bContext *C, ARegion *region)
   ED_region_panels(C, region);
 }
 
-static void clip_properties_region_listener(wmWindow *UNUSED(win),
-                                            ScrArea *UNUSED(area),
-                                            ARegion *region,
-                                            wmNotifier *wmn,
-                                            const Scene *UNUSED(scene))
+static void clip_properties_region_listener(const wmRegionListenerParams *params)
 {
+  ARegion *region = params->region;
+  wmNotifier *wmn = params->notifier;
+
   /* context changes */
   switch (wmn->category) {
     case NC_GPENCIL:
@@ -1324,26 +1302,20 @@ static void clip_properties_region_listener(wmWindow *UNUSED(win),
 
 /********************* registration ********************/
 
-static void clip_id_remap(ScrArea *UNUSED(area), SpaceLink *slink, ID *old_id, ID *new_id)
+static void clip_id_remap(ScrArea *UNUSED(area),
+                          SpaceLink *slink,
+                          const struct IDRemapper *mappings)
 {
   SpaceClip *sclip = (SpaceClip *)slink;
 
-  if (!ELEM(GS(old_id->name), ID_MC, ID_MSK)) {
+  if (!BKE_id_remapper_has_mapping_for(mappings, FILTER_ID_MC | FILTER_ID_MSK)) {
     return;
   }
 
-  if ((ID *)sclip->clip == old_id) {
-    sclip->clip = (MovieClip *)new_id;
-    id_us_ensure_real(new_id);
-  }
-
-  if ((ID *)sclip->mask_info.mask == old_id) {
-    sclip->mask_info.mask = (Mask *)new_id;
-    id_us_ensure_real(new_id);
-  }
+  BKE_id_remapper_apply(mappings, (ID **)&sclip->clip, ID_REMAP_APPLY_ENSURE_REAL);
+  BKE_id_remapper_apply(mappings, (ID **)&sclip->mask_info.mask, ID_REMAP_APPLY_ENSURE_REAL);
 }
 
-/* only called once, from space/spacetypes.c */
 void ED_spacetype_clip(void)
 {
   SpaceType *st = MEM_callocN(sizeof(SpaceType), "spacetype clip");
@@ -1352,7 +1324,7 @@ void ED_spacetype_clip(void)
   st->spaceid = SPACE_CLIP;
   strncpy(st->name, "Clip", BKE_ST_MAXNAME);
 
-  st->new = clip_new;
+  st->create = clip_create;
   st->free = clip_free;
   st->init = clip_init;
   st->duplicate = clip_duplicate;

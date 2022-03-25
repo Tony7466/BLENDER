@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2013 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2013 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup depsgraph
@@ -25,9 +9,9 @@
 
 #include "intern/builder/deg_builder_relations.h"
 
+#include <cstdio>
+#include <cstdlib>
 #include <cstring> /* required for STREQ later on. */
-#include <stdio.h>
-#include <stdlib.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -39,6 +23,7 @@
 #include "DNA_armature_types.h"
 #include "DNA_cachefile_types.h"
 #include "DNA_camera_types.h"
+#include "DNA_cloth_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_constraint_types.h"
 #include "DNA_curve_types.h"
@@ -64,6 +49,7 @@
 #include "DNA_sound_types.h"
 #include "DNA_speaker_types.h"
 #include "DNA_texture_types.h"
+#include "DNA_vfont_types.h"
 #include "DNA_volume_types.h"
 #include "DNA_world_types.h"
 
@@ -89,7 +75,6 @@
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
 #include "BKE_rigidbody.h"
-#include "BKE_sequencer.h"
 #include "BKE_shader_fx.h"
 #include "BKE_shrinkwrap.h"
 #include "BKE_sound.h"
@@ -97,7 +82,10 @@
 #include "BKE_world.h"
 
 #include "RNA_access.h"
+#include "RNA_prototypes.h"
 #include "RNA_types.h"
+
+#include "SEQ_iterator.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -116,11 +104,11 @@
 #include "intern/node/deg_node_operation.h"
 #include "intern/node/deg_node_time.h"
 
+#include "intern/depsgraph.h"
 #include "intern/depsgraph_relation.h"
 #include "intern/depsgraph_type.h"
 
-namespace blender {
-namespace deg {
+namespace blender::deg {
 
 /* ***************** */
 /* Relations Builder */
@@ -219,7 +207,7 @@ OperationCode bone_target_opcode(ID *target,
                                  const char *component_subdata,
                                  RootPChanMap *root_map)
 {
-  /* Same armature.  */
+  /* Same armature. */
   if (target == id) {
     /* Using "done" here breaks in-chain deps, while using
      * "ready" here breaks most production rigs instead.
@@ -234,12 +222,13 @@ OperationCode bone_target_opcode(ID *target,
 
 bool object_have_geometry_component(const Object *object)
 {
-  return ELEM(object->type, OB_MESH, OB_CURVE, OB_FONT, OB_SURF, OB_MBALL, OB_LATTICE, OB_GPENCIL);
+  return ELEM(
+      object->type, OB_MESH, OB_CURVES_LEGACY, OB_FONT, OB_SURF, OB_MBALL, OB_LATTICE, OB_GPENCIL);
 }
 
 }  // namespace
 
-/* **** General purpose functions ****  */
+/* **** General purpose functions **** */
 
 DepsgraphRelationBuilder::DepsgraphRelationBuilder(Main *bmain,
                                                    Depsgraph *graph,
@@ -254,9 +243,8 @@ TimeSourceNode *DepsgraphRelationBuilder::get_node(const TimeSourceKey &key) con
     /* XXX TODO */
     return nullptr;
   }
-  else {
-    return graph_->time_source;
-  }
+
+  return graph_->time_source;
 }
 
 ComponentNode *DepsgraphRelationBuilder::get_node(const ComponentKey &key) const
@@ -326,7 +314,7 @@ void DepsgraphRelationBuilder::add_customdata_mask(Object *object,
     IDNode *id_node = graph_->find_id_node(&object->id);
 
     if (id_node == nullptr) {
-      BLI_assert(!"ID should always be valid");
+      BLI_assert_msg(0, "ID should always be valid");
     }
     else {
       id_node->customdata_masks |= customdata_masks;
@@ -338,7 +326,7 @@ void DepsgraphRelationBuilder::add_special_eval_flag(ID *id, uint32_t flag)
 {
   IDNode *id_node = graph_->find_id_node(id);
   if (id_node == nullptr) {
-    BLI_assert(!"ID should always be valid");
+    BLI_assert_msg(0, "ID should always be valid");
   }
   else {
     id_node->eval_flags |= flag;
@@ -353,17 +341,24 @@ Relation *DepsgraphRelationBuilder::add_time_relation(TimeSourceNode *timesrc,
   if (timesrc && node_to) {
     return graph_->add_new_relation(timesrc, node_to, description, flags);
   }
-  else {
-    DEG_DEBUG_PRINTF((::Depsgraph *)graph_,
-                     BUILD,
-                     "add_time_relation(%p = %s, %p = %s, %s) Failed\n",
-                     timesrc,
-                     (timesrc) ? timesrc->identifier().c_str() : "<None>",
-                     node_to,
-                     (node_to) ? node_to->identifier().c_str() : "<None>",
-                     description);
-  }
+
+  DEG_DEBUG_PRINTF((::Depsgraph *)graph_,
+                   BUILD,
+                   "add_time_relation(%p = %s, %p = %s, %s) Failed\n",
+                   timesrc,
+                   (timesrc) ? timesrc->identifier().c_str() : "<None>",
+                   node_to,
+                   (node_to) ? node_to->identifier().c_str() : "<None>",
+                   description);
+
   return nullptr;
+}
+
+void DepsgraphRelationBuilder::add_visibility_relation(ID *id_from, ID *id_to)
+{
+  ComponentKey from_key(id_from, NodeType::VISIBILITY);
+  ComponentKey to_key(id_to, NodeType::VISIBILITY);
+  add_relation(from_key, to_key, "visibility");
 }
 
 Relation *DepsgraphRelationBuilder::add_operation_relation(OperationNode *node_from,
@@ -374,16 +369,16 @@ Relation *DepsgraphRelationBuilder::add_operation_relation(OperationNode *node_f
   if (node_from && node_to) {
     return graph_->add_new_relation(node_from, node_to, description, flags);
   }
-  else {
-    DEG_DEBUG_PRINTF((::Depsgraph *)graph_,
-                     BUILD,
-                     "add_operation_relation(%p = %s, %p = %s, %s) Failed\n",
-                     node_from,
-                     (node_from) ? node_from->identifier().c_str() : "<None>",
-                     node_to,
-                     (node_to) ? node_to->identifier().c_str() : "<None>",
-                     description);
-  }
+
+  DEG_DEBUG_PRINTF((::Depsgraph *)graph_,
+                   BUILD,
+                   "add_operation_relation(%p = %s, %p = %s, %s) Failed\n",
+                   node_from,
+                   (node_from) ? node_from->identifier().c_str() : "<None>",
+                   node_to,
+                   (node_to) ? node_to->identifier().c_str() : "<None>",
+                   description);
+
   return nullptr;
 }
 
@@ -432,6 +427,13 @@ void DepsgraphRelationBuilder::add_particle_forcefield_relations(const Operation
           relation->pd->forcefield == PFIELD_GUIDE) {
         ComponentKey mod_key(&relation->ob->id, NodeType::GEOMETRY);
         add_relation(mod_key, key, name);
+      }
+
+      /* Force field Texture. */
+      if ((relation->pd != nullptr) && (relation->pd->forcefield == PFIELD_TEXTURE) &&
+          (relation->pd->tex != nullptr)) {
+        ComponentKey tex_key(&relation->pd->tex->id, NodeType::GENERIC_DATABLOCK);
+        add_relation(tex_key, key, "Force field Texture");
       }
 
       /* Smoke flow relations. */
@@ -484,7 +486,9 @@ void DepsgraphRelationBuilder::build_id(ID *id)
   if (id == nullptr) {
     return;
   }
-  switch (GS(id->name)) {
+
+  const ID_Type id_type = GS(id->name);
+  switch (id_type) {
     case ID_AC:
       build_action((bAction *)id);
       break;
@@ -534,12 +538,13 @@ void DepsgraphRelationBuilder::build_id(ID *id)
       build_movieclip((MovieClip *)id);
       break;
     case ID_ME:
-    case ID_CU:
     case ID_MB:
+    case ID_CU_LEGACY:
     case ID_LT:
-    case ID_HA:
+    case ID_CV:
     case ID_PT:
     case ID_VO:
+    case ID_GD:
       build_object_data_geometry_datablock(id);
       break;
     case ID_SPK:
@@ -560,11 +565,35 @@ void DepsgraphRelationBuilder::build_id(ID *id)
     case ID_SIM:
       build_simulation((Simulation *)id);
       break;
-    default:
-      fprintf(stderr, "Unhandled ID %s\n", id->name);
-      BLI_assert(!"Should never happen");
+    case ID_PA:
+      build_particle_settings((ParticleSettings *)id);
+      break;
+
+    case ID_LI:
+    case ID_IP:
+    case ID_SCR:
+    case ID_VF:
+    case ID_BR:
+    case ID_WM:
+    case ID_PAL:
+    case ID_PC:
+    case ID_WS:
+      BLI_assert(!deg_copy_on_write_is_needed(id_type));
+      build_generic_id(id);
       break;
   }
+}
+
+void DepsgraphRelationBuilder::build_generic_id(ID *id)
+{
+
+  if (built_map_.checkIsBuiltAndTag(id)) {
+    return;
+  }
+
+  build_idproperties(id->properties);
+  build_animdata(id);
+  build_parameters(id);
 }
 
 static void build_idproperties_callback(IDProperty *id_property, void *user_data)
@@ -592,18 +621,45 @@ void DepsgraphRelationBuilder::build_collection(LayerCollection *from_layer_coll
      * recurses into all the nested objects and collections. */
     return;
   }
-  build_idproperties(collection->id.properties);
   const bool group_done = built_map_.checkIsBuiltAndTag(collection);
   OperationKey object_transform_final_key(object != nullptr ? &object->id : nullptr,
                                           NodeType::TRANSFORM,
                                           OperationCode::TRANSFORM_FINAL);
   ComponentKey duplicator_key(object != nullptr ? &object->id : nullptr, NodeType::DUPLI);
   if (!group_done) {
+    build_idproperties(collection->id.properties);
+    OperationKey collection_geometry_key{
+        &collection->id, NodeType::GEOMETRY, OperationCode::GEOMETRY_EVAL_DONE};
     LISTBASE_FOREACH (CollectionObject *, cob, &collection->gobject) {
       build_object(cob->ob);
+
+      /* The geometry of a collection depends on the positions of the elements in it. */
+      OperationKey object_transform_key{
+          &cob->ob->id, NodeType::TRANSFORM, OperationCode::TRANSFORM_FINAL};
+      add_relation(object_transform_key, collection_geometry_key, "Collection Geometry");
+
+      /* Only create geometry relations to child objects, if they have a geometry component. */
+      OperationKey object_geometry_key{
+          &cob->ob->id, NodeType::GEOMETRY, OperationCode::GEOMETRY_EVAL};
+      if (find_node(object_geometry_key) != nullptr) {
+        add_relation(object_geometry_key, collection_geometry_key, "Collection Geometry");
+      }
+
+      /* An instance is part of the geometry of the collection. */
+      if (cob->ob->type == OB_EMPTY) {
+        Collection *collection_instance = cob->ob->instance_collection;
+        if (collection_instance != nullptr) {
+          OperationKey collection_instance_key{
+              &collection_instance->id, NodeType::GEOMETRY, OperationCode::GEOMETRY_EVAL_DONE};
+          add_relation(collection_instance_key, collection_geometry_key, "Collection Geometry");
+        }
+      }
     }
     LISTBASE_FOREACH (CollectionChild *, child, &collection->children) {
       build_collection(nullptr, nullptr, child->collection);
+      OperationKey child_collection_geometry_key{
+          &child->collection->id, NodeType::GEOMETRY, OperationCode::GEOMETRY_EVAL_DONE};
+      add_relation(child_collection_geometry_key, collection_geometry_key, "Collection Geometry");
     }
   }
   if (object != nullptr) {
@@ -712,9 +768,11 @@ void DepsgraphRelationBuilder::build_object(Object *object)
   if (object->particlesystem.first != nullptr) {
     build_particle_systems(object);
   }
-  /* Proxy object to copy from. */
-  build_object_proxy_from(object);
-  build_object_proxy_group(object);
+  /* Force field Texture. */
+  if ((object->pd != nullptr) && (object->pd->forcefield == PFIELD_TEXTURE) &&
+      (object->pd->tex != nullptr)) {
+    build_texture(object->pd->tex);
+  }
   /* Object dupligroup. */
   if (object->instance_collection != nullptr) {
     build_collection(nullptr, object, object->instance_collection);
@@ -727,31 +785,6 @@ void DepsgraphRelationBuilder::build_object(Object *object)
   add_relation(final_transform_key, synchronize_key, "Synchronize to Original");
   /* Parameters. */
   build_parameters(&object->id);
-}
-
-void DepsgraphRelationBuilder::build_object_proxy_from(Object *object)
-{
-  if (object->proxy_from == nullptr) {
-    return;
-  }
-  /* Object is linked here (comes from the library). */
-  build_object(object->proxy_from);
-  ComponentKey ob_transform_key(&object->proxy_from->id, NodeType::TRANSFORM);
-  ComponentKey proxy_transform_key(&object->id, NodeType::TRANSFORM);
-  add_relation(ob_transform_key, proxy_transform_key, "Proxy Transform");
-}
-
-void DepsgraphRelationBuilder::build_object_proxy_group(Object *object)
-{
-  if (object->proxy_group == nullptr || object->proxy_group == object->proxy) {
-    return;
-  }
-  /* Object is local here (local in .blend file, users interacts with it). */
-  build_object(object->proxy_group);
-  OperationKey proxy_group_eval_key(
-      &object->proxy_group->id, NodeType::TRANSFORM, OperationCode::TRANSFORM_EVAL);
-  OperationKey transform_eval_key(&object->id, NodeType::TRANSFORM, OperationCode::TRANSFORM_EVAL);
-  add_relation(proxy_group_eval_key, transform_eval_key, "Proxy Group Transform");
 }
 
 void DepsgraphRelationBuilder::build_object_from_layer_relations(Object *object)
@@ -796,13 +829,13 @@ void DepsgraphRelationBuilder::build_object_data(Object *object)
   /* type-specific data. */
   switch (object->type) {
     case OB_MESH:
-    case OB_CURVE:
+    case OB_CURVES_LEGACY:
     case OB_FONT:
     case OB_SURF:
     case OB_MBALL:
     case OB_LATTICE:
     case OB_GPENCIL:
-    case OB_HAIR:
+    case OB_CURVES:
     case OB_POINTCLOUD:
     case OB_VOLUME: {
       build_object_data_geometry(object);
@@ -820,12 +853,7 @@ void DepsgraphRelationBuilder::build_object_data(Object *object)
       break;
     }
     case OB_ARMATURE:
-      if (ID_IS_LINKED(object) && object->proxy_from != nullptr) {
-        build_proxy_rig(object);
-      }
-      else {
-        build_rig(object);
-      }
+      build_rig(object);
       break;
     case OB_LAMP:
       build_object_data_light(object);
@@ -939,11 +967,13 @@ void DepsgraphRelationBuilder::build_object_parent(Object *object)
 
     /* Bone Parent */
     case PARBONE: {
-      ComponentKey parent_bone_key(parent_id, NodeType::BONE, object->parsubstr);
-      OperationKey parent_transform_key(
-          parent_id, NodeType::TRANSFORM, OperationCode::TRANSFORM_FINAL);
-      add_relation(parent_bone_key, object_transform_key, "Bone Parent");
-      add_relation(parent_transform_key, object_transform_key, "Armature Parent");
+      if (object->parsubstr[0] != '\0') {
+        ComponentKey parent_bone_key(parent_id, NodeType::BONE, object->parsubstr);
+        OperationKey parent_transform_key(
+            parent_id, NodeType::TRANSFORM, OperationCode::TRANSFORM_FINAL);
+        add_relation(parent_bone_key, object_transform_key, "Bone Parent");
+        add_relation(parent_transform_key, object_transform_key, "Armature Parent");
+      }
       break;
     }
 
@@ -955,7 +985,7 @@ void DepsgraphRelationBuilder::build_object_parent(Object *object)
         add_relation(parent_key, object_transform_key, "Lattice Deform Parent");
         add_relation(geom_key, object_transform_key, "Lattice Deform Parent Geom");
       }
-      else if (object->parent->type == OB_CURVE) {
+      else if (object->parent->type == OB_CURVES_LEGACY) {
         Curve *cu = (Curve *)object->parent->data;
 
         if (cu->flag & CU_PATH) {
@@ -979,13 +1009,13 @@ void DepsgraphRelationBuilder::build_object_parent(Object *object)
       break;
     }
   }
-  /* Metaballs are the odd balls here (no pun intended): they will request
+  /* Meta-balls are the odd balls here (no pun intended): they will request
    * instance-list (formerly known as dupli-list) during evaluation. This is
    * their way of interacting with all instanced surfaces, making a nice
    * effect when is used form particle system. */
   if (object->type == OB_MBALL && parent->transflag & OB_DUPLI) {
     ComponentKey parent_geometry_key(parent_id, NodeType::GEOMETRY);
-    /* NOTE: Metaballs are evaluating geometry only after their transform,
+    /* NOTE: Meta-balls are evaluating geometry only after their transform,
      * so we only hook up to transform channel here. */
     add_relation(parent_geometry_key, object_transform_key, "Parent");
   }
@@ -1013,6 +1043,9 @@ void DepsgraphRelationBuilder::build_object_pointcache(Object *object)
     /* Check which components needs the point cache. */
     int flag = -1;
     if (ptcache_id->type == PTCACHE_TYPE_RIGIDBODY) {
+      if (object->rigidbody_object->type == RBO_TYPE_PASSIVE) {
+        continue;
+      }
       flag = FLAG_TRANSFORM;
       OperationKey transform_key(
           &object->id, NodeType::TRANSFORM, OperationCode::TRANSFORM_SIMULATION_INIT);
@@ -1077,7 +1110,7 @@ void DepsgraphRelationBuilder::build_constraints(ID *id,
     /* Special case for camera tracking -- it doesn't use targets to
      * define relations. */
     /* TODO: we can now represent dependencies in a much richer manner,
-     * so review how this is done.  */
+     * so review how this is done. */
     if (ELEM(cti->type,
              CONSTRAINT_TYPE_FOLLOWTRACK,
              CONSTRAINT_TYPE_CAMERASOLVER,
@@ -1194,7 +1227,7 @@ void DepsgraphRelationBuilder::build_constraints(ID *id,
           // TODO: loc vs rot vs scale?
           if (&ct->tar->id == id) {
             /* Constraint targeting own object:
-             * - This case is fine IFF we're dealing with a bone
+             * - This case is fine IF we're dealing with a bone
              *   constraint pointing to its own armature. In that
              *   case, it's just transform -> bone.
              * - If however it is a real self targeting case, just
@@ -1231,7 +1264,7 @@ void DepsgraphRelationBuilder::build_constraints(ID *id,
         }
       }
       if (cti->flush_constraint_targets) {
-        cti->flush_constraint_targets(con, &targets, 1);
+        cti->flush_constraint_targets(con, &targets, true);
       }
     }
   }
@@ -1250,6 +1283,7 @@ void DepsgraphRelationBuilder::build_animdata(ID *id)
     ComponentKey animation_key(id, NodeType::ANIMATION);
     ComponentKey parameters_key(id, NodeType::PARAMETERS);
     add_relation(animation_key, parameters_key, "Animation -> Parameters");
+    build_animdata_force(id);
   }
 }
 
@@ -1385,13 +1419,49 @@ void DepsgraphRelationBuilder::build_animdata_drivers(ID *id)
 
 void DepsgraphRelationBuilder::build_animation_images(ID *id)
 {
+  /* See #DepsgraphNodeBuilder::build_animation_images. */
+  const bool can_have_gpu_material = ELEM(GS(id->name), ID_MA, ID_WO);
+
   /* TODO: can we check for existence of node for performance? */
-  if (BKE_image_user_id_has_animation(id)) {
+  if (BKE_image_user_id_has_animation(id) || can_have_gpu_material) {
     OperationKey image_animation_key(
         id, NodeType::IMAGE_ANIMATION, OperationCode::IMAGE_ANIMATION);
     TimeSourceKey time_src_key;
     add_relation(time_src_key, image_animation_key, "TimeSrc -> Image Animation");
+
+    /* The image users of these ids may change during evaluation. Make sure that the image
+     * animation update happens after evaluation. */
+    if (GS(id->name) == ID_MA) {
+      OperationKey material_update_key(id, NodeType::SHADING, OperationCode::MATERIAL_UPDATE);
+      add_relation(material_update_key, image_animation_key, "Material Update -> Image Animation");
+    }
+    else if (GS(id->name) == ID_WO) {
+      OperationKey world_update_key(id, NodeType::SHADING, OperationCode::WORLD_UPDATE);
+      add_relation(world_update_key, image_animation_key, "World Update -> Image Animation");
+    }
+    else if (GS(id->name) == ID_NT) {
+      OperationKey ntree_output_key(id, NodeType::NTREE_OUTPUT, OperationCode::NTREE_OUTPUT);
+      add_relation(ntree_output_key, image_animation_key, "NTree Output -> Image Animation");
+    }
   }
+}
+
+void DepsgraphRelationBuilder::build_animdata_force(ID *id)
+{
+  if (GS(id->name) != ID_OB) {
+    return;
+  }
+
+  const Object *object = (Object *)id;
+  if (object->pd == nullptr || object->pd->forcefield == PFIELD_NULL) {
+    return;
+  }
+
+  /* Updates to animation data (in the UI, for example by altering FCurve Modifier parameters
+   * animating force field strength) may need to rebuild the rigid body world. */
+  ComponentKey animation_key(id, NodeType::ANIMATION);
+  OperationKey rigidbody_key(&scene_->id, NodeType::TRANSFORM, OperationCode::RIGIDBODY_REBUILD);
+  add_relation(animation_key, rigidbody_key, "Animation -> Rigid Body");
 }
 
 void DepsgraphRelationBuilder::build_action(bAction *action)
@@ -1463,31 +1533,40 @@ void DepsgraphRelationBuilder::build_driver_data(ID *id, FCurve *fcu)
     /* Drivers on armature-level bone settings (i.e. bbone stuff),
      * which will affect the evaluation of corresponding pose bones. */
     Bone *bone = (Bone *)property_entry_key.ptr.data;
-    if (bone != nullptr) {
-      /* Find objects which use this, and make their eval callbacks
-       * depend on this. */
-      for (IDNode *to_node : graph_->id_nodes) {
-        if (GS(to_node->id_orig->name) == ID_OB) {
-          Object *object = (Object *)to_node->id_orig;
-          /* We only care about objects with pose data which use this. */
-          if (object->data == id_ptr && object->pose != nullptr) {
-            bPoseChannel *pchan = BKE_pose_channel_find_name(object->pose, bone->name);
-            if (pchan != nullptr) {
-              OperationKey bone_key(
-                  &object->id, NodeType::BONE, pchan->name, OperationCode::BONE_LOCAL);
-              add_relation(driver_key, bone_key, "Arm Bone -> Driver -> Bone");
-            }
-          }
-        }
-      }
-      /* Make the driver depend on COW, similar to the generic case below. */
-      if (id_ptr != id) {
-        ComponentKey cow_key(id_ptr, NodeType::COPY_ON_WRITE);
-        add_relation(cow_key, driver_key, "Driven CoW -> Driver", RELATION_CHECK_BEFORE_ADD);
-      }
-    }
-    else {
+    if (bone == nullptr) {
       fprintf(stderr, "Couldn't find armature bone name for driver path - '%s'\n", rna_path);
+      return;
+    }
+
+    const char *prop_identifier = RNA_property_identifier(property_entry_key.prop);
+    const bool driver_targets_bbone = STRPREFIX(prop_identifier, "bbone_");
+
+    /* Find objects which use this, and make their eval callbacks depend on this. */
+    for (IDNode *to_node : graph_->id_nodes) {
+      if (GS(to_node->id_orig->name) != ID_OB) {
+        continue;
+      }
+
+      /* We only care about objects with pose data which use this. */
+      Object *object = (Object *)to_node->id_orig;
+      if (object->data != id_ptr || object->pose == nullptr) {
+        continue;
+      }
+
+      bPoseChannel *pchan = BKE_pose_channel_find_name(object->pose, bone->name);
+      if (pchan == nullptr) {
+        continue;
+      }
+
+      OperationCode target_op = driver_targets_bbone ? OperationCode::BONE_SEGMENTS :
+                                                       OperationCode::BONE_LOCAL;
+      OperationKey bone_key(&object->id, NodeType::BONE, pchan->name, target_op);
+      add_relation(driver_key, bone_key, "Arm Bone -> Driver -> Bone");
+    }
+    /* Make the driver depend on COW, similar to the generic case below. */
+    if (id_ptr != id) {
+      ComponentKey cow_key(id_ptr, NodeType::COPY_ON_WRITE);
+      add_relation(cow_key, driver_key, "Driven CoW -> Driver", RELATION_CHECK_BEFORE_ADD);
     }
   }
   else {
@@ -1511,7 +1590,7 @@ void DepsgraphRelationBuilder::build_driver_data(ID *id, FCurve *fcu)
         }
       }
     }
-    if (property_entry_key.prop != nullptr && RNA_property_is_idprop(property_entry_key.prop)) {
+    if (rna_prop_affects_parameters_node(&property_entry_key.ptr, property_entry_key.prop)) {
       RNAPathKey property_exit_key(property_entry_key.id,
                                    property_entry_key.ptr,
                                    property_entry_key.prop,
@@ -1519,6 +1598,14 @@ void DepsgraphRelationBuilder::build_driver_data(ID *id, FCurve *fcu)
       OperationKey parameters_key(id, NodeType::PARAMETERS, OperationCode::PARAMETERS_EVAL);
       add_relation(property_exit_key, parameters_key, "Driven Property -> Properties");
     }
+  }
+
+  /* Assume drivers on a node tree affect the evaluated output of the node tree. In theory we could
+   * check if the driven value actually affects the output, i.e. if it drives a node that is linked
+   * to the output. */
+  if (GS(id_ptr->name) == ID_NT) {
+    ComponentKey ntree_output_key(id_ptr, NodeType::NTREE_OUTPUT);
+    add_relation(driver_key, ntree_output_key, "Drivers -> NTree Output");
   }
 }
 
@@ -1541,18 +1628,9 @@ void DepsgraphRelationBuilder::build_driver_variables(ID *id, FCurve *fcu)
       }
       build_id(target_id);
       build_driver_id_property(target_id, dtar->rna_path);
-      /* Look up the proxy - matches dtar_id_ensure_proxy_from during evaluation. */
       Object *object = nullptr;
       if (GS(target_id->name) == ID_OB) {
         object = (Object *)target_id;
-        if (object->proxy_from != nullptr) {
-          /* Redirect the target to the proxy, like in evaluation. */
-          object = object->proxy_from;
-          target_id = &object->id;
-          /* Prepare the redirected target. */
-          build_id(target_id);
-          build_driver_id_property(target_id, dtar->rna_path);
-        }
       }
       /* Special handling for directly-named bones. */
       if ((dtar->flag & DTAR_FLAG_STRUCT_REF) && (object && object->type == OB_ARMATURE) &&
@@ -1614,12 +1692,26 @@ void DepsgraphRelationBuilder::build_driver_id_property(ID *id, const char *rna_
   if (prop == nullptr) {
     return;
   }
-  if (!RNA_property_is_idprop(prop)) {
+  if (!rna_prop_affects_parameters_node(&ptr, prop)) {
     return;
   }
   const char *prop_identifier = RNA_property_identifier((PropertyRNA *)prop);
-  OperationKey id_property_key(
-      id, NodeType::PARAMETERS, OperationCode::ID_PROPERTY, prop_identifier);
+  /* Custom properties of bones are placed in their components to improve granularity. */
+  OperationKey id_property_key;
+  if (RNA_struct_is_a(ptr.type, &RNA_PoseBone)) {
+    const bPoseChannel *pchan = static_cast<const bPoseChannel *>(ptr.data);
+    id_property_key = OperationKey(
+        id, NodeType::BONE, pchan->name, OperationCode::ID_PROPERTY, prop_identifier);
+    /* Create relation from the parameters component so that tagging armature for parameters update
+     * properly propagates updates to all properties on bones and deeper (if needed). */
+    OperationKey parameters_init_key(id, NodeType::PARAMETERS, OperationCode::PARAMETERS_ENTRY);
+    add_relation(
+        parameters_init_key, id_property_key, "Init -> ID Property", RELATION_CHECK_BEFORE_ADD);
+  }
+  else {
+    id_property_key = OperationKey(
+        id, NodeType::PARAMETERS, OperationCode::ID_PROPERTY, prop_identifier);
+  }
   OperationKey parameters_exit_key(id, NodeType::PARAMETERS, OperationCode::PARAMETERS_EXIT);
   add_relation(
       id_property_key, parameters_exit_key, "ID Property -> Done", RELATION_CHECK_BEFORE_ADD);
@@ -1652,12 +1744,17 @@ void DepsgraphRelationBuilder::build_world(World *world)
   /* animation */
   build_animdata(&world->id);
   build_parameters(&world->id);
+
+  /* Animated / driven parameters (without nodetree). */
+  OperationKey world_key(&world->id, NodeType::SHADING, OperationCode::WORLD_UPDATE);
+  ComponentKey parameters_key(&world->id, NodeType::PARAMETERS);
+  add_relation(parameters_key, world_key, "World's parameters");
+
   /* world's nodetree */
   if (world->nodetree != nullptr) {
     build_nodetree(world->nodetree);
     OperationKey ntree_key(
-        &world->nodetree->id, NodeType::SHADING, OperationCode::MATERIAL_UPDATE);
-    OperationKey world_key(&world->id, NodeType::SHADING, OperationCode::WORLD_UPDATE);
+        &world->nodetree->id, NodeType::NTREE_OUTPUT, OperationCode::NTREE_OUTPUT);
     add_relation(ntree_key, world_key, "World's NTree");
     build_nested_nodetree(&world->id, world->nodetree);
   }
@@ -1689,6 +1786,11 @@ void DepsgraphRelationBuilder::build_rigidbody(Scene *scene)
         ComponentKey effector_geometry_key(&effector_relation->ob->id, NodeType::GEOMETRY);
         add_relation(effector_geometry_key, rb_init_key, "RigidBody Field");
       }
+      if ((effector_relation->pd->forcefield == PFIELD_TEXTURE) &&
+          (effector_relation->pd->tex != nullptr)) {
+        ComponentKey tex_key(&effector_relation->pd->tex->id, NodeType::GENERIC_DATABLOCK);
+        add_relation(tex_key, rb_init_key, "Force field Texture");
+      }
     }
   }
   /* Objects. */
@@ -1698,10 +1800,19 @@ void DepsgraphRelationBuilder::build_rigidbody(Scene *scene)
       if (object->type != OB_MESH) {
         continue;
       }
-      OperationKey rb_transform_copy_key(
-          &object->id, NodeType::TRANSFORM, OperationCode::RIGIDBODY_TRANSFORM_COPY);
-      /* Rigid body synchronization depends on the actual simulation. */
-      add_relation(rb_simulate_key, rb_transform_copy_key, "Rigidbody Sim Eval -> RBO Sync");
+      if (object->rigidbody_object == nullptr) {
+        continue;
+      }
+
+      if (object->parent != nullptr && object->parent->rigidbody_object != nullptr &&
+          object->parent->rigidbody_object->shape == RB_SHAPE_COMPOUND) {
+        /* If we are a child of a compound shape object, the transforms and sim evaluation will be
+         * handled by the parent compound shape object. Do not add any evaluation triggers
+         * for the child objects.
+         */
+        continue;
+      }
+
       /* Simulation uses object transformation after parenting and solving constraints. */
       OperationKey object_transform_simulation_init_key(
           &object->id, NodeType::TRANSFORM, OperationCode::TRANSFORM_SIMULATION_INIT);
@@ -1713,49 +1824,35 @@ void DepsgraphRelationBuilder::build_rigidbody(Scene *scene)
       /* Geometry must be known to create the rigid body. RBO_MESH_BASE
        * uses the non-evaluated mesh, so then the evaluation is
        * unnecessary. */
-      if (object->rigidbody_object != nullptr &&
-          object->rigidbody_object->mesh_source != RBO_MESH_BASE) {
+      if (rigidbody_object_depends_on_evaluated_geometry(object->rigidbody_object)) {
         /* NOTE: We prefer this relation to be never killed, to avoid
          * access partially evaluated mesh from solver. */
         ComponentKey object_geometry_key(&object->id, NodeType::GEOMETRY);
         add_relation(object_geometry_key,
                      rb_simulate_key,
-                     "Object Geom Eval -> Rigidbody Rebuild",
+                     "Object Geom Eval -> Rigidbody Sim Eval",
                      RELATION_FLAG_GODMODE);
       }
-      /* Final transform is whetever solver gave to us. */
-      OperationKey object_transform_final_key(
-          &object->id, NodeType::TRANSFORM, OperationCode::TRANSFORM_FINAL);
-      add_relation(
-          rb_transform_copy_key, object_transform_final_key, "Rigidbody Sync -> Transform Final");
-    }
-    FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
-  }
-  /* Constraints. */
-  if (rbw->constraints != nullptr) {
-    FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (rbw->constraints, object) {
-      RigidBodyCon *rbc = object->rigidbody_constraint;
-      if (rbc == nullptr || rbc->ob1 == nullptr || rbc->ob2 == nullptr) {
-        /* When either ob1 or ob2 is nullptr, the constraint doesn't
-         * work. */
-        continue;
+
+      /* Final transform is whatever the solver gave to us. */
+      if (object->rigidbody_object->type == RBO_TYPE_ACTIVE) {
+        /* We do not have to update the objects final transform after the simulation if it is
+         * passive or controlled by the animation system in blender.
+         * (Bullet doesn't move the object at all in these cases).
+         * But we can't update the depgraph when the animated property in changed during playback.
+         * So always assume that active bodies needs updating.
+         */
+        OperationKey rb_transform_copy_key(
+            &object->id, NodeType::TRANSFORM, OperationCode::RIGIDBODY_TRANSFORM_COPY);
+        /* Rigid body synchronization depends on the actual simulation. */
+        add_relation(rb_simulate_key, rb_transform_copy_key, "Rigidbody Sim Eval -> RBO Sync");
+
+        OperationKey object_transform_final_key(
+            &object->id, NodeType::TRANSFORM, OperationCode::TRANSFORM_FINAL);
+        add_relation(rb_transform_copy_key,
+                     object_transform_final_key,
+                     "Rigidbody Sync -> Transform Final");
       }
-      /* Make sure indirectly linked objects are fully built. */
-      build_object(object);
-      build_object(rbc->ob1);
-      build_object(rbc->ob2);
-      /* final result of the constraint object's transform controls how
-       * the constraint affects the physics sim for these objects. */
-      ComponentKey trans_key(&object->id, NodeType::TRANSFORM);
-      OperationKey ob1_key(
-          &rbc->ob1->id, NodeType::TRANSFORM, OperationCode::RIGIDBODY_TRANSFORM_COPY);
-      OperationKey ob2_key(
-          &rbc->ob2->id, NodeType::TRANSFORM, OperationCode::RIGIDBODY_TRANSFORM_COPY);
-      /* Constrained-objects sync depends on the constraint-holder. */
-      add_relation(trans_key, ob1_key, "RigidBodyConstraint -> RBC.Object_1");
-      add_relation(trans_key, ob2_key, "RigidBodyConstraint -> RBC.Object_2");
-      /* Ensure that sim depends on this constraint's transform. */
-      add_relation(trans_key, rb_simulate_key, "RigidBodyConstraint Transform -> RB Simulation");
     }
     FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
   }
@@ -1807,7 +1904,7 @@ void DepsgraphRelationBuilder::build_particle_systems(Object *object)
     /* Effectors. */
     add_particle_forcefield_relations(
         psys_key, object, psys, part->effector_weights, part->type == PART_HAIR, "Particle Field");
-    /* Boids .*/
+    /* Boids. */
     if (part->boids != nullptr) {
       LISTBASE_FOREACH (BoidState *, state, &part->boids->states) {
         LISTBASE_FOREACH (BoidRule *, rule, &state->rules) {
@@ -1828,7 +1925,7 @@ void DepsgraphRelationBuilder::build_particle_systems(Object *object)
     /* Keyed particle targets. */
     if (ELEM(part->phystype, PART_PHYS_KEYED, PART_PHYS_BOIDS)) {
       LISTBASE_FOREACH (ParticleTarget *, particle_target, &psys->targets) {
-        if (particle_target->ob == nullptr || particle_target->ob == object) {
+        if (ELEM(particle_target->ob, nullptr, object)) {
           continue;
         }
         /* Make sure target object is pulled into the graph. */
@@ -1843,7 +1940,7 @@ void DepsgraphRelationBuilder::build_particle_systems(Object *object)
     switch (part->ren_as) {
       case PART_DRAW_OB:
         if (part->instance_object != nullptr) {
-          /* Make sure object's relations are all built.  */
+          /* Make sure object's relations are all built. */
           build_object(part->instance_object);
           /* Build relation for the particle visualization. */
           build_particle_system_visualization_object(object, psys, part->instance_object);
@@ -1882,8 +1979,7 @@ void DepsgraphRelationBuilder::build_particle_settings(ParticleSettings *part)
       particle_settings_init_key, particle_settings_eval_key, "Particle Settings Init Order");
   add_relation(particle_settings_reset_key, particle_settings_eval_key, "Particle Settings Reset");
   /* Texture slots. */
-  for (int mtex_index = 0; mtex_index < MAX_MTEX; mtex_index++) {
-    MTex *mtex = part->mtex[mtex_index];
+  for (MTex *mtex : part->mtex) {
     if (mtex == nullptr || mtex->tex == nullptr) {
       continue;
     }
@@ -1894,7 +1990,7 @@ void DepsgraphRelationBuilder::build_particle_settings(ParticleSettings *part)
                  "Particle Texture -> Particle Reset",
                  RELATION_FLAG_FLUSH_USER_EDIT_ONLY);
     add_relation(texture_key, particle_settings_eval_key, "Particle Texture -> Particle Eval");
-    /* TODO(sergey): Consider moving texture space handling to an own
+    /* TODO(sergey): Consider moving texture space handling to its own
      * function. */
     if (mtex->texco == TEXCO_OBJECT && mtex->object != nullptr) {
       ComponentKey object_key(&mtex->object->id, NodeType::TRANSFORM);
@@ -1954,14 +2050,15 @@ void DepsgraphRelationBuilder::build_shapekeys(Key *key)
  *   Therefore, each user of a piece of shared geometry data ends up evaluating
  *   its own version of the stuff, complete with whatever modifiers it may use.
  *
- * - The data-blocks for the geometry data - "obdata" (e.g. ID_ME, ID_CU, ID_LT.)
+ * - The data-blocks for the geometry data - "obdata" (e.g. ID_ME, ID_CU_LEGACY, ID_LT.)
  *   are used for
  *     1) calculating the bounding boxes of the geometry data,
  *     2) aggregating inward links from other objects (e.g. for text on curve)
  *        and also for the links coming from the shapekey data-blocks
  * - Animation/Drivers affecting the parameters of the geometry are made to
  *   trigger updates on the obdata geometry component, which then trigger
- *   downstream re-evaluation of the individual instances of this geometry. */
+ *   downstream re-evaluation of the individual instances of this geometry.
+ */
 void DepsgraphRelationBuilder::build_object_data_geometry(Object *object)
 {
   ID *obdata = (ID *)object->data;
@@ -1992,7 +2089,7 @@ void DepsgraphRelationBuilder::build_object_data_geometry(Object *object)
         ctx.node = reinterpret_cast<::DepsNodeHandle *>(&handle);
         mti->updateDepsgraph(md, &ctx);
       }
-      if (BKE_object_modifier_use_time(object, md)) {
+      if (BKE_object_modifier_use_time(scene_, object, md, graph_->mode)) {
         TimeSourceKey time_src_key;
         add_relation(time_src_key, obdata_ubereval_key, "Time Source");
       }
@@ -2009,7 +2106,7 @@ void DepsgraphRelationBuilder::build_object_data_geometry(Object *object)
       if (mti->updateDepsgraph) {
         DepsNodeHandle handle = create_node_handle(obdata_ubereval_key);
         ctx.node = reinterpret_cast<::DepsNodeHandle *>(&handle);
-        mti->updateDepsgraph(md, &ctx);
+        mti->updateDepsgraph(md, &ctx, graph_->mode);
       }
       if (BKE_object_modifier_gpencil_use_time(object, md)) {
         TimeSourceKey time_src_key;
@@ -2038,7 +2135,7 @@ void DepsgraphRelationBuilder::build_object_data_geometry(Object *object)
   /* Materials. */
   build_materials(object->mat, object->totcol);
   /* Geometry collision. */
-  if (ELEM(object->type, OB_MESH, OB_CURVE, OB_LATTICE)) {
+  if (ELEM(object->type, OB_MESH, OB_CURVES_LEGACY, OB_LATTICE)) {
     // add geometry collider relations
   }
   /* Make sure uber update is the last in the dependencies. */
@@ -2121,6 +2218,11 @@ void DepsgraphRelationBuilder::build_object_data_geometry_datablock(ID *obdata)
   OperationKey obdata_geom_eval_key(obdata, NodeType::GEOMETRY, OperationCode::GEOMETRY_EVAL);
   OperationKey obdata_geom_done_key(obdata, NodeType::GEOMETRY, OperationCode::GEOMETRY_EVAL_DONE);
   add_relation(obdata_geom_eval_key, obdata_geom_done_key, "ObData Geom Eval Done");
+
+  /* Link object data evaluation to parameter evaluation. */
+  ComponentKey parameters_key(obdata, NodeType::PARAMETERS);
+  add_relation(parameters_key, obdata_geom_eval_key, "ObData Geom Params");
+
   /* Type-specific links. */
   const ID_Type id_type = GS(obdata->name);
   switch (id_type) {
@@ -2128,7 +2230,7 @@ void DepsgraphRelationBuilder::build_object_data_geometry_datablock(ID *obdata)
       break;
     case ID_MB:
       break;
-    case ID_CU: {
+    case ID_CU_LEGACY: {
       Curve *cu = (Curve *)obdata;
       if (cu->bevobj != nullptr) {
         ComponentKey bevob_geom_key(&cu->bevobj->id, NodeType::GEOMETRY);
@@ -2178,7 +2280,7 @@ void DepsgraphRelationBuilder::build_object_data_geometry_datablock(ID *obdata)
 
       /* Layer parenting need react to the parent object transformation. */
       LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-        if (gpl->parent != NULL) {
+        if (gpl->parent != nullptr) {
           ComponentKey gpd_geom_key(&gpd->id, NodeType::GEOMETRY);
 
           if (gpl->partype == PARBONE) {
@@ -2197,7 +2299,7 @@ void DepsgraphRelationBuilder::build_object_data_geometry_datablock(ID *obdata)
       }
       break;
     }
-    case ID_HA:
+    case ID_CV:
       break;
     case ID_PT:
       break;
@@ -2211,7 +2313,7 @@ void DepsgraphRelationBuilder::build_object_data_geometry_datablock(ID *obdata)
       break;
     }
     default:
-      BLI_assert(!"Should not happen");
+      BLI_assert_msg(0, "Should not happen");
       break;
   }
 }
@@ -2263,17 +2365,18 @@ void DepsgraphRelationBuilder::build_light(Light *lamp)
 
   ComponentKey lamp_parameters_key(&lamp->id, NodeType::PARAMETERS);
 
-  /* light's nodetree */
-  if (lamp->nodetree != nullptr) {
-    build_nodetree(lamp->nodetree);
-    ComponentKey nodetree_key(&lamp->nodetree->id, NodeType::SHADING);
-    add_relation(nodetree_key, lamp_parameters_key, "NTree->Light Parameters");
-    build_nested_nodetree(&lamp->id, lamp->nodetree);
-  }
-
   /* For allowing drivers on lamp properties. */
   ComponentKey shading_key(&lamp->id, NodeType::SHADING);
   add_relation(lamp_parameters_key, shading_key, "Light Shading Parameters");
+
+  /* light's nodetree */
+  if (lamp->nodetree != nullptr) {
+    build_nodetree(lamp->nodetree);
+    OperationKey ntree_key(
+        &lamp->nodetree->id, NodeType::NTREE_OUTPUT, OperationCode::NTREE_OUTPUT);
+    add_relation(ntree_key, shading_key, "NTree->Light Parameters");
+    build_nested_nodetree(&lamp->id, lamp->nodetree);
+  }
 }
 
 void DepsgraphRelationBuilder::build_nodetree_socket(bNodeSocket *socket)
@@ -2292,6 +2395,24 @@ void DepsgraphRelationBuilder::build_nodetree_socket(bNodeSocket *socket)
       build_image(image);
     }
   }
+  else if (socket->type == SOCK_COLLECTION) {
+    Collection *collection = ((bNodeSocketValueCollection *)socket->default_value)->value;
+    if (collection != nullptr) {
+      build_collection(nullptr, nullptr, collection);
+    }
+  }
+  else if (socket->type == SOCK_TEXTURE) {
+    Tex *texture = ((bNodeSocketValueTexture *)socket->default_value)->value;
+    if (texture != nullptr) {
+      build_texture(texture);
+    }
+  }
+  else if (socket->type == SOCK_MATERIAL) {
+    Material *material = ((bNodeSocketValueMaterial *)socket->default_value)->value;
+    if (material != nullptr) {
+      build_material(material);
+    }
+  }
 }
 
 void DepsgraphRelationBuilder::build_nodetree(bNodeTree *ntree)
@@ -2305,7 +2426,7 @@ void DepsgraphRelationBuilder::build_nodetree(bNodeTree *ntree)
   build_idproperties(ntree->id.properties);
   build_animdata(&ntree->id);
   build_parameters(&ntree->id);
-  ComponentKey shading_key(&ntree->id, NodeType::SHADING);
+  OperationKey ntree_output_key(&ntree->id, NodeType::NTREE_OUTPUT, OperationCode::NTREE_OUTPUT);
   /* nodetree's nodes... */
   LISTBASE_FOREACH (bNode *, bnode, &ntree->nodes) {
     build_idproperties(bnode->prop);
@@ -2324,25 +2445,25 @@ void DepsgraphRelationBuilder::build_nodetree(bNodeTree *ntree)
     if (id_type == ID_MA) {
       build_material((Material *)bnode->id);
       ComponentKey material_key(id, NodeType::SHADING);
-      add_relation(material_key, shading_key, "Material -> Node");
+      add_relation(material_key, ntree_output_key, "Material -> Node");
     }
     else if (id_type == ID_TE) {
       build_texture((Tex *)bnode->id);
       ComponentKey texture_key(id, NodeType::GENERIC_DATABLOCK);
-      add_relation(texture_key, shading_key, "Texture -> Node");
+      add_relation(texture_key, ntree_output_key, "Texture -> Node");
     }
     else if (id_type == ID_IM) {
       build_image((Image *)bnode->id);
       ComponentKey image_key(id, NodeType::GENERIC_DATABLOCK);
-      add_relation(image_key, shading_key, "Image -> Node");
+      add_relation(image_key, ntree_output_key, "Image -> Node");
     }
     else if (id_type == ID_OB) {
       build_object((Object *)id);
       ComponentKey object_transform_key(id, NodeType::TRANSFORM);
-      add_relation(object_transform_key, shading_key, "Object Transform -> Node");
+      add_relation(object_transform_key, ntree_output_key, "Object Transform -> Node");
       if (object_have_geometry_component(reinterpret_cast<Object *>(id))) {
         ComponentKey object_geometry_key(id, NodeType::GEOMETRY);
-        add_relation(object_geometry_key, shading_key, "Object Geometry -> Node");
+        add_relation(object_geometry_key, ntree_output_key, "Object Geometry -> Node");
       }
     }
     else if (id_type == ID_SCE) {
@@ -2362,21 +2483,29 @@ void DepsgraphRelationBuilder::build_nodetree(bNodeTree *ntree)
     else if (id_type == ID_MSK) {
       build_mask((Mask *)id);
       OperationKey mask_key(id, NodeType::PARAMETERS, OperationCode::MASK_EVAL);
-      add_relation(mask_key, shading_key, "Mask -> Node");
+      add_relation(mask_key, ntree_output_key, "Mask -> Node");
     }
     else if (id_type == ID_MC) {
       build_movieclip((MovieClip *)id);
       OperationKey clip_key(id, NodeType::PARAMETERS, OperationCode::MOVIECLIP_EVAL);
-      add_relation(clip_key, shading_key, "Clip -> Node");
+      add_relation(clip_key, ntree_output_key, "Clip -> Node");
+    }
+    else if (id_type == ID_VF) {
+      build_vfont((VFont *)id);
+      ComponentKey vfont_key(id, NodeType::GENERIC_DATABLOCK);
+      add_relation(vfont_key, ntree_output_key, "VFont -> Node");
     }
     else if (ELEM(bnode->type, NODE_GROUP, NODE_CUSTOM_GROUP)) {
       bNodeTree *group_ntree = (bNodeTree *)id;
       build_nodetree(group_ntree);
-      ComponentKey group_shading_key(&group_ntree->id, NodeType::SHADING);
-      add_relation(group_shading_key, shading_key, "Group Node");
+      ComponentKey group_output_key(&group_ntree->id, NodeType::NTREE_OUTPUT);
+      /* This relation is not necessary in all cases (e.g. when the group node is not connected to
+       * the output). Currently, we lack the infrastructure to check for these cases efficiently.
+       * That can be added later. */
+      add_relation(group_output_key, ntree_output_key, "Group Node");
     }
     else {
-      BLI_assert(!"Unknown ID type used for node");
+      BLI_assert_msg(0, "Unknown ID type used for node");
     }
   }
 
@@ -2387,17 +2516,10 @@ void DepsgraphRelationBuilder::build_nodetree(bNodeTree *ntree)
     build_idproperties(socket->prop);
   }
 
-  OperationKey shading_update_key(&ntree->id, NodeType::SHADING, OperationCode::MATERIAL_UPDATE);
-  OperationKey shading_parameters_key(
-      &ntree->id, NodeType::SHADING_PARAMETERS, OperationCode::MATERIAL_UPDATE);
-  add_relation(shading_parameters_key, shading_update_key, "NTree Shading Parameters");
-
   if (check_id_has_anim_component(&ntree->id)) {
     ComponentKey animation_key(&ntree->id, NodeType::ANIMATION);
-    add_relation(animation_key, shading_parameters_key, "NTree Shading Parameters");
+    add_relation(animation_key, ntree_output_key, "NTree Shading Parameters");
   }
-  ComponentKey parameters_key(&ntree->id, NodeType::PARAMETERS);
-  add_relation(parameters_key, shading_parameters_key, "NTree Shading Parameters");
 }
 
 /* Recursively build graph for material */
@@ -2410,12 +2532,17 @@ void DepsgraphRelationBuilder::build_material(Material *material)
   /* animation */
   build_animdata(&material->id);
   build_parameters(&material->id);
+
+  /* Animated / driven parameters (without nodetree). */
+  OperationKey material_key(&material->id, NodeType::SHADING, OperationCode::MATERIAL_UPDATE);
+  ComponentKey parameters_key(&material->id, NodeType::PARAMETERS);
+  add_relation(parameters_key, material_key, "Material's parameters");
+
   /* material's nodetree */
   if (material->nodetree != nullptr) {
     build_nodetree(material->nodetree);
     OperationKey ntree_key(
-        &material->nodetree->id, NodeType::SHADING, OperationCode::MATERIAL_UPDATE);
-    OperationKey material_key(&material->id, NodeType::SHADING, OperationCode::MATERIAL_UPDATE);
+        &material->nodetree->id, NodeType::NTREE_OUTPUT, OperationCode::NTREE_OUTPUT);
     add_relation(ntree_key, material_key, "Material's NTree");
     build_nested_nodetree(&material->id, material->nodetree);
   }
@@ -2444,8 +2571,13 @@ void DepsgraphRelationBuilder::build_texture(Tex *texture)
   build_parameters(&texture->id);
 
   /* texture's nodetree */
-  build_nodetree(texture->nodetree);
-  build_nested_nodetree(&texture->id, texture->nodetree);
+  if (texture->nodetree) {
+    build_nodetree(texture->nodetree);
+    OperationKey ntree_key(
+        &texture->nodetree->id, NodeType::NTREE_OUTPUT, OperationCode::NTREE_OUTPUT);
+    add_relation(ntree_key, texture_key, "Texture's NTree");
+    build_nested_nodetree(&texture->id, texture->nodetree);
+  }
 
   /* Special cases for different IDs which texture uses. */
   if (texture->type == TEX_IMAGE) {
@@ -2475,18 +2607,6 @@ void DepsgraphRelationBuilder::build_image(Image *image)
   }
   build_idproperties(image->id.properties);
   build_parameters(&image->id);
-}
-
-void DepsgraphRelationBuilder::build_gpencil(bGPdata *gpd)
-{
-  if (built_map_.checkIsBuiltAndTag(gpd)) {
-    return;
-  }
-  /* animation */
-  build_animdata(&gpd->id);
-  build_parameters(&gpd->id);
-
-  // TODO: parent object (when that feature is implemented)
 }
 
 void DepsgraphRelationBuilder::build_cachefile(CacheFile *cache_file)
@@ -2635,25 +2755,45 @@ void DepsgraphRelationBuilder::build_simulation(Simulation *simulation)
   OperationKey nodetree_key(
       &simulation->nodetree->id, NodeType::PARAMETERS, OperationCode::PARAMETERS_EXIT);
   add_relation(nodetree_key, simulation_eval_key, "NodeTree -> Simulation", 0);
+}
 
-  LISTBASE_FOREACH (
-      PersistentDataHandleItem *, handle_item, &simulation->persistent_data_handles) {
-    if (handle_item->id == nullptr) {
-      continue;
-    }
-    build_id(handle_item->id);
-    if (GS(handle_item->id->name) == ID_OB) {
-      Object *object = (Object *)handle_item->id;
-      if (handle_item->flag & SIM_HANDLE_DEPENDS_ON_TRANSFORM) {
-        ComponentKey object_transform_key(&object->id, NodeType::TRANSFORM);
-        add_relation(object_transform_key, simulation_eval_key, "Object Transform -> Simulation");
-      }
-      if (handle_item->flag & SIM_HANDLE_DEPENDS_ON_GEOMETRY) {
-        ComponentKey object_geometry_key(&object->id, NodeType::GEOMETRY);
-        add_relation(object_geometry_key, simulation_eval_key, "Object Geometry -> Simulation");
-      }
-    }
+using Seq_build_prop_cb_data = struct Seq_build_prop_cb_data {
+  DepsgraphRelationBuilder *builder;
+  ComponentKey sequencer_key;
+  bool has_audio_strips;
+};
+
+static bool seq_build_prop_cb(Sequence *seq, void *user_data)
+{
+  Seq_build_prop_cb_data *cd = (Seq_build_prop_cb_data *)user_data;
+
+  cd->builder->build_idproperties(seq->prop);
+  if (seq->sound != nullptr) {
+    cd->builder->build_sound(seq->sound);
+    ComponentKey sound_key(&seq->sound->id, NodeType::AUDIO);
+    cd->builder->add_relation(sound_key, cd->sequencer_key, "Sound -> Sequencer");
+    cd->has_audio_strips = true;
   }
+  if (seq->scene != nullptr) {
+    cd->builder->build_scene_parameters(seq->scene);
+    /* This is to support 3D audio. */
+    cd->has_audio_strips = true;
+  }
+  if (seq->type == SEQ_TYPE_SCENE && seq->scene != nullptr) {
+    if (seq->flag & SEQ_SCENE_STRIPS) {
+      cd->builder->build_scene_sequencer(seq->scene);
+      ComponentKey sequence_scene_audio_key(&seq->scene->id, NodeType::AUDIO);
+      cd->builder->add_relation(
+          sequence_scene_audio_key, cd->sequencer_key, "Sequence Scene Audio -> Sequencer");
+      ComponentKey sequence_scene_key(&seq->scene->id, NodeType::SEQUENCER);
+      cd->builder->add_relation(
+          sequence_scene_key, cd->sequencer_key, "Sequence Scene -> Sequencer");
+    }
+    ViewLayer *sequence_view_layer = BKE_view_layer_default_render(seq->scene);
+    cd->builder->build_scene_speakers(seq->scene, sequence_view_layer);
+  }
+  /* TODO(sergey): Movie clip, camera, mask. */
+  return true;
 }
 
 void DepsgraphRelationBuilder::build_scene_sequencer(Scene *scene)
@@ -2661,40 +2801,18 @@ void DepsgraphRelationBuilder::build_scene_sequencer(Scene *scene)
   if (scene->ed == nullptr) {
     return;
   }
+  if (built_map_.checkIsBuiltAndTag(scene, BuilderMap::TAG_SCENE_SEQUENCER)) {
+    return;
+  }
   build_scene_audio(scene);
   ComponentKey scene_audio_key(&scene->id, NodeType::AUDIO);
   /* Make sure dependencies from sequences data goes to the sequencer evaluation. */
   ComponentKey sequencer_key(&scene->id, NodeType::SEQUENCER);
-  Sequence *seq;
-  bool has_audio_strips = false;
-  SEQ_BEGIN (scene->ed, seq) {
-    build_idproperties(seq->prop);
-    if (seq->sound != nullptr) {
-      build_sound(seq->sound);
-      ComponentKey sound_key(&seq->sound->id, NodeType::AUDIO);
-      add_relation(sound_key, sequencer_key, "Sound -> Sequencer");
-      has_audio_strips = true;
-    }
-    if (seq->scene != nullptr) {
-      build_scene_parameters(seq->scene);
-      /* This is to support 3D audio. */
-      has_audio_strips = true;
-    }
-    if (seq->type == SEQ_TYPE_SCENE && seq->scene != nullptr) {
-      if (seq->flag & SEQ_SCENE_STRIPS) {
-        build_scene_sequencer(seq->scene);
-        ComponentKey sequence_scene_audio_key(&seq->scene->id, NodeType::AUDIO);
-        add_relation(sequence_scene_audio_key, sequencer_key, "Sequence Scene Audio -> Sequencer");
-        ComponentKey sequence_scene_key(&seq->scene->id, NodeType::SEQUENCER);
-        add_relation(sequence_scene_key, sequencer_key, "Sequence Scene -> Sequencer");
-      }
-      ViewLayer *sequence_view_layer = BKE_view_layer_default_render(seq->scene);
-      build_scene_speakers(seq->scene, sequence_view_layer);
-    }
-    /* TODO(sergey): Movie clip, camera, mask. */
-  }
-  SEQ_END;
-  if (has_audio_strips) {
+
+  Seq_build_prop_cb_data cb_data = {this, sequencer_key, false};
+
+  SEQ_for_each_callback(&scene->ed->seqbase, seq_build_prop_cb, &cb_data);
+  if (cb_data.has_audio_strips) {
     add_relation(sequencer_key, scene_audio_key, "Sequencer -> Audio");
   }
 }
@@ -2724,6 +2842,15 @@ void DepsgraphRelationBuilder::build_scene_speakers(Scene * /*scene*/, ViewLayer
   }
 }
 
+void DepsgraphRelationBuilder::build_vfont(VFont *vfont)
+{
+  if (built_map_.checkIsBuiltAndTag(vfont)) {
+    return;
+  }
+  build_parameters(&vfont->id);
+  build_idproperties(vfont->id.properties);
+}
+
 void DepsgraphRelationBuilder::build_copy_on_write_relations()
 {
   for (IDNode *id_node : graph_->id_nodes) {
@@ -2731,17 +2858,22 @@ void DepsgraphRelationBuilder::build_copy_on_write_relations()
   }
 }
 
-/* Nested datablocks (node trees, shape keys) requires special relation to
+/**
+ * Nested datablocks (node trees, shape keys) requires special relation to
  * ensure owner's datablock remapping happens after node tree itself is ready.
  *
  * This is similar to what happens in ntree_hack_remap_pointers().
  */
-void DepsgraphRelationBuilder::build_nested_datablock(ID *owner, ID *id)
+void DepsgraphRelationBuilder::build_nested_datablock(ID *owner, ID *id, bool flush_cow_changes)
 {
+  int relation_flag = 0;
+  if (!flush_cow_changes) {
+    relation_flag |= RELATION_FLAG_NO_FLUSH;
+  }
   OperationKey owner_copy_on_write_key(
       owner, NodeType::COPY_ON_WRITE, OperationCode::COPY_ON_WRITE);
   OperationKey id_copy_on_write_key(id, NodeType::COPY_ON_WRITE, OperationCode::COPY_ON_WRITE);
-  add_relation(id_copy_on_write_key, owner_copy_on_write_key, "Eval Order");
+  add_relation(id_copy_on_write_key, owner_copy_on_write_key, "Eval Order", relation_flag);
 }
 
 void DepsgraphRelationBuilder::build_nested_nodetree(ID *owner, bNodeTree *ntree)
@@ -2749,7 +2881,10 @@ void DepsgraphRelationBuilder::build_nested_nodetree(ID *owner, bNodeTree *ntree
   if (ntree == nullptr) {
     return;
   }
-  build_nested_datablock(owner, &ntree->id);
+  /* Don't flush cow changes, because the node tree may change in ways that do not affect the
+   * owner data block (e.g. when a node is deleted that is not connected to any output).
+   * Data blocks owning node trees should add a relation to the `NTREE_OUTPUT` node instead. */
+  build_nested_datablock(owner, &ntree->id, false);
 }
 
 void DepsgraphRelationBuilder::build_nested_shapekey(ID *owner, Key *key)
@@ -2757,13 +2892,19 @@ void DepsgraphRelationBuilder::build_nested_shapekey(ID *owner, Key *key)
   if (key == nullptr) {
     return;
   }
-  build_nested_datablock(owner, &key->id);
+  build_nested_datablock(owner, &key->id, true);
 }
 
 void DepsgraphRelationBuilder::build_copy_on_write_relations(IDNode *id_node)
 {
   ID *id_orig = id_node->id_orig;
+
   const ID_Type id_type = GS(id_orig->name);
+
+  if (!deg_copy_on_write_is_needed(id_type)) {
+    return;
+  }
+
   TimeSourceKey time_source_key;
   OperationKey copy_on_write_key(id_orig, NodeType::COPY_ON_WRITE, OperationCode::COPY_ON_WRITE);
   /* XXX: This is a quick hack to make Alt-A to work. */
@@ -2783,7 +2924,7 @@ void DepsgraphRelationBuilder::build_copy_on_write_relations(IDNode *id_node)
       continue;
     }
     int rel_flag = (RELATION_FLAG_NO_FLUSH | RELATION_FLAG_GODMODE);
-    if ((ELEM(id_type, ID_ME, ID_HA, ID_PT, ID_VO) && comp_node->type == NodeType::GEOMETRY) ||
+    if ((ELEM(id_type, ID_ME, ID_CV, ID_PT, ID_VO) && comp_node->type == NodeType::GEOMETRY) ||
         (id_type == ID_CF && comp_node->type == NodeType::CACHE)) {
       rel_flag &= ~RELATION_FLAG_NO_FLUSH;
     }
@@ -2804,8 +2945,7 @@ void DepsgraphRelationBuilder::build_copy_on_write_relations(IDNode *id_node)
      *   to preserve that cache in copy-on-write, but for the time being
      *   we allow flush to layer collections component which will ensure
      *   that cached array of bases exists and is up-to-date. */
-    if (comp_node->type == NodeType::PARAMETERS ||
-        comp_node->type == NodeType::LAYER_COLLECTIONS) {
+    if (ELEM(comp_node->type, NodeType::PARAMETERS, NodeType::LAYER_COLLECTIONS)) {
       rel_flag &= ~RELATION_FLAG_NO_FLUSH;
     }
     /* All entry operations of each component should wait for a proper
@@ -2845,7 +2985,7 @@ void DepsgraphRelationBuilder::build_copy_on_write_relations(IDNode *id_node)
     /* NOTE: We currently ignore implicit relations to an external
      * data-blocks for copy-on-write operations. This means, for example,
      * copy-on-write component of Object will not wait for copy-on-write
-     * component of it's Mesh. This is because pointers are all known
+     * component of its Mesh. This is because pointers are all known
      * already so remapping will happen all correct. And then If some object
      * evaluation step needs geometry, it will have transitive dependency
      * to Mesh copy-on-write already. */
@@ -2917,5 +3057,4 @@ void DepsgraphRelationBuilder::constraint_walk(bConstraint * /*con*/,
   data->builder->build_id(id);
 }
 
-}  // namespace deg
-}  // namespace blender
+}  // namespace blender::deg

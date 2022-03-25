@@ -1,21 +1,6 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
-#ifndef __BLI_SET_SLOTS_HH__
-#define __BLI_SET_SLOTS_HH__
+#pragma once
 
 /** \file
  * \ingroup bli
@@ -89,7 +74,7 @@ template<typename Key> class SimpleSetSlot {
    * other slot has to be moved as well. The other slot stays in the state it was in before. Its
    * optionally stored key remains in a moved-from state.
    */
-  SimpleSetSlot(SimpleSetSlot &&other) noexcept
+  SimpleSetSlot(SimpleSetSlot &&other) noexcept(std::is_nothrow_move_constructible_v<Key>)
   {
     state_ = other.state_;
     if (other.state_ == Occupied) {
@@ -140,19 +125,6 @@ template<typename Key> class SimpleSetSlot {
   }
 
   /**
-   * Move the other slot into this slot and destruct it. We do destruction here, because this way
-   * we can avoid a comparison with the state, since we know the slot is occupied.
-   */
-  void relocate_occupied_here(SimpleSetSlot &other, uint64_t UNUSED(hash))
-  {
-    BLI_assert(!this->is_occupied());
-    BLI_assert(other.is_occupied());
-    state_ = Occupied;
-    new (&key_buffer_) Key(std::move(*other.key_buffer_));
-    other.key_buffer_.ref().~Key();
-  }
-
-  /**
    * Return true, when this slot is occupied and contains a key that compares equal to the given
    * key. The hash is used by other slot implementations to determine inequality faster.
    */
@@ -172,8 +144,8 @@ template<typename Key> class SimpleSetSlot {
   template<typename ForwardKey> void occupy(ForwardKey &&key, uint64_t UNUSED(hash))
   {
     BLI_assert(!this->is_occupied());
-    state_ = Occupied;
     new (&key_buffer_) Key(std::forward<ForwardKey>(key));
+    state_ = Occupied;
   }
 
   /**
@@ -182,8 +154,8 @@ template<typename Key> class SimpleSetSlot {
   void remove()
   {
     BLI_assert(this->is_occupied());
-    state_ = Removed;
     key_buffer_.ref().~Key();
+    state_ = Removed;
   }
 };
 
@@ -225,7 +197,7 @@ template<typename Key> class HashedSetSlot {
     }
   }
 
-  HashedSetSlot(HashedSetSlot &&other) noexcept
+  HashedSetSlot(HashedSetSlot &&other) noexcept(std::is_nothrow_move_constructible_v<Key>)
   {
     state_ = other.state_;
     if (other.state_ == Occupied) {
@@ -260,20 +232,10 @@ template<typename Key> class HashedSetSlot {
     return hash_;
   }
 
-  void relocate_occupied_here(HashedSetSlot &other, const uint64_t hash)
-  {
-    BLI_assert(!this->is_occupied());
-    BLI_assert(other.is_occupied());
-    state_ = Occupied;
-    hash_ = hash;
-    new (&key_buffer_) Key(std::move(*other.key_buffer_));
-    key_buffer_.ref().~Key();
-  }
-
   template<typename ForwardKey, typename IsEqual>
   bool contains(const ForwardKey &key, const IsEqual &is_equal, const uint64_t hash) const
   {
-    /* hash_ might be uninitialized here, but that is ok. */
+    /* `hash_` might be uninitialized here, but that is ok. */
     if (hash_ == hash) {
       if (state_ == Occupied) {
         return is_equal(key, *key_buffer_);
@@ -285,16 +247,16 @@ template<typename Key> class HashedSetSlot {
   template<typename ForwardKey> void occupy(ForwardKey &&key, const uint64_t hash)
   {
     BLI_assert(!this->is_occupied());
+    new (&key_buffer_) Key(std::forward<ForwardKey>(key));
     state_ = Occupied;
     hash_ = hash;
-    new (&key_buffer_) Key(std::forward<ForwardKey>(key));
   }
 
   void remove()
   {
     BLI_assert(this->is_occupied());
-    state_ = Removed;
     key_buffer_.ref().~Key();
+    state_ = Removed;
   }
 };
 
@@ -314,7 +276,8 @@ template<typename Key, typename KeyInfo> class IntrusiveSetSlot {
   IntrusiveSetSlot() = default;
   ~IntrusiveSetSlot() = default;
   IntrusiveSetSlot(const IntrusiveSetSlot &other) = default;
-  IntrusiveSetSlot(IntrusiveSetSlot &&other) noexcept = default;
+  IntrusiveSetSlot(IntrusiveSetSlot &&other) noexcept(std::is_nothrow_move_constructible_v<Key>) =
+      default;
 
   Key *key()
   {
@@ -342,14 +305,6 @@ template<typename Key, typename KeyInfo> class IntrusiveSetSlot {
     return hash(key_);
   }
 
-  void relocate_occupied_here(IntrusiveSetSlot &other, const uint64_t UNUSED(hash))
-  {
-    BLI_assert(!this->is_occupied());
-    BLI_assert(other.is_occupied());
-    key_ = std::move(other.key_);
-    other.key_.~Key();
-  }
-
   template<typename ForwardKey, typename IsEqual>
   bool contains(const ForwardKey &key, const IsEqual &is_equal, const uint64_t UNUSED(hash)) const
   {
@@ -361,7 +316,6 @@ template<typename Key, typename KeyInfo> class IntrusiveSetSlot {
   {
     BLI_assert(!this->is_occupied());
     BLI_assert(KeyInfo::is_not_empty_or_removed(key));
-
     key_ = std::forward<ForwardKey>(key);
   }
 
@@ -411,5 +365,3 @@ template<typename Key> struct DefaultSetSlot<Key *> {
 };
 
 }  // namespace blender
-
-#endif /* __BLI_SET_SLOTS_HH__ */

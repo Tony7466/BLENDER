@@ -1,20 +1,4 @@
-# ##### BEGIN GPL LICENSE BLOCK #####
-#
-#  This program is free software; you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License
-#  as published by the Free Software Foundation; either version 2
-#  of the License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software Foundation,
-#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# ##### END GPL LICENSE BLOCK #####
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 # <pep8 compliant>
 
@@ -102,7 +86,7 @@ class PHYSICS_PT_field_settings(PhysicButtonsPanel, Panel):
             col.separator()
 
             col = flow.column()
-            col.prop(field, "guide_clump_amount", text="Clumping amount")
+            col.prop(field, "guide_clump_amount", text="Clumping Amount")
             col.prop(field, "guide_clump_shape")
             col.prop(field, "use_max_distance")
 
@@ -118,6 +102,9 @@ class PHYSICS_PT_field_settings(PhysicButtonsPanel, Panel):
 
             col.prop(field, "strength")
 
+            sub = col.column(heading="Affect")
+            sub.prop(field, "apply_to_location", text="Location")
+
             col = flow.column()
             col.prop(field, "texture_nabla")
             col.prop(field, "use_object_coords")
@@ -127,6 +114,10 @@ class PHYSICS_PT_field_settings(PhysicButtonsPanel, Panel):
             col = flow.column()
             col.prop(field, "strength")
             col.prop(field, "flow")
+
+            sub = col.column(heading="Affect")
+            sub.prop(field, "apply_to_location", text="Location")
+            sub.prop(field, "apply_to_rotation", text="Rotation")
 
             col = flow.column()
             col.prop(field, "source_object")
@@ -378,7 +369,7 @@ class PHYSICS_PT_collision_particle(PhysicButtonsPanel, Panel):
 
 
 class PHYSICS_PT_collision_softbody(PhysicButtonsPanel, Panel):
-    bl_label = "Softbody And Cloth"
+    bl_label = "Softbody & Cloth"
     bl_parent_id = "PHYSICS_PT_collision"
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 

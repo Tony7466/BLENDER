@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2020 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2020 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup edsculpt
@@ -36,6 +20,7 @@
 
 #include "BKE_brush.h"
 #include "BKE_context.h"
+#include "BKE_global.h"
 #include "BKE_main.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_mapping.h"
@@ -58,6 +43,7 @@
 #include "ED_object.h"
 #include "ED_screen.h"
 #include "ED_sculpt.h"
+#include "ED_undo.h"
 #include "ED_view3d.h"
 #include "paint_intern.h"
 #include "sculpt_intern.h"
@@ -92,15 +78,9 @@ void SCULPT_pbvh_clear(Object *ob)
     ss->pbvh = NULL;
   }
 
-  if (ss->pmap) {
-    MEM_freeN(ss->pmap);
-    ss->pmap = NULL;
-  }
+  MEM_SAFE_FREE(ss->pmap);
 
-  if (ss->pmap_mem) {
-    MEM_freeN(ss->pmap_mem);
-    ss->pmap_mem = NULL;
-  }
+  MEM_SAFE_FREE(ss->pmap_mem);
 
   BKE_object_free_derived_caches(ob);
 
@@ -154,7 +134,7 @@ void SCULPT_dynamic_topology_enable_ex(Main *bmain, Depsgraph *depsgraph, Scene 
   ss->bm_smooth_shading = (scene->toolsettings->sculpt->flags & SCULPT_DYNTOPO_SMOOTH_SHADING) !=
                           0;
 
-  /* Dynamic topology doesn't ensure selection state is valid, so remove [#36280]. */
+  /* Dynamic topology doesn't ensure selection state is valid, so remove T36280. */
   BKE_mesh_mselect_clear(me);
 
   /* Create triangles-only BMesh. */
@@ -167,6 +147,7 @@ void SCULPT_dynamic_topology_enable_ex(Main *bmain, Depsgraph *depsgraph, Scene 
                      me,
                      (&(struct BMeshFromMeshParams){
                          .calc_face_normal = true,
+                         .calc_vert_normal = true,
                          .use_shapekey = true,
                          .active_shapekey = ob->shapenr,
                      }));
@@ -244,14 +225,13 @@ static void SCULPT_dynamic_topology_disable_ex(
     /* Sync the visibility to vertices manually as the pmap is still not initialized. */
     for (int i = 0; i < me->totvert; i++) {
       me->mvert[i].flag &= ~ME_HIDE;
-      me->mvert[i].flag |= ME_VERT_PBVH_UPDATE;
     }
   }
 
   /* Clear data. */
   me->flag &= ~ME_SCULPT_DYNAMIC_TOPOLOGY;
 
-  /* Typically valid but with global-undo they can be NULL. [#36234] */
+  /* Typically valid but with global-undo they can be NULL, see: T36234. */
   if (ss->bm) {
     BM_mesh_free(ss->bm);
     ss->bm = NULL;
@@ -285,11 +265,17 @@ void sculpt_dynamic_topology_disable_with_undo(Main *bmain,
                                                Object *ob)
 {
   SculptSession *ss = ob->sculpt;
-  if (ss->bm) {
-    SCULPT_undo_push_begin("Dynamic topology disable");
-    SCULPT_undo_push_node(ob, NULL, SCULPT_UNDO_DYNTOPO_END);
+  if (ss->bm != NULL) {
+    /* May be false in background mode. */
+    const bool use_undo = G.background ? (ED_undo_stack_get() != NULL) : true;
+    if (use_undo) {
+      SCULPT_undo_push_begin(ob, "Dynamic topology disable");
+      SCULPT_undo_push_node(ob, NULL, SCULPT_UNDO_DYNTOPO_END);
+    }
     SCULPT_dynamic_topology_disable_ex(bmain, depsgraph, scene, ob, NULL);
-    SCULPT_undo_push_end();
+    if (use_undo) {
+      SCULPT_undo_push_end();
+    }
   }
 }
 
@@ -300,10 +286,16 @@ static void sculpt_dynamic_topology_enable_with_undo(Main *bmain,
 {
   SculptSession *ss = ob->sculpt;
   if (ss->bm == NULL) {
-    SCULPT_undo_push_begin("Dynamic topology enable");
+    /* May be false in background mode. */
+    const bool use_undo = G.background ? (ED_undo_stack_get() != NULL) : true;
+    if (use_undo) {
+      SCULPT_undo_push_begin(ob, "Dynamic topology enable");
+    }
     SCULPT_dynamic_topology_enable_ex(bmain, depsgraph, scene, ob);
-    SCULPT_undo_push_node(ob, NULL, SCULPT_UNDO_DYNTOPO_BEGIN);
-    SCULPT_undo_push_end();
+    if (use_undo) {
+      SCULPT_undo_push_node(ob, NULL, SCULPT_UNDO_DYNTOPO_BEGIN);
+      SCULPT_undo_push_end();
+    }
   }
 }
 

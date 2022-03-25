@@ -1,21 +1,5 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- *
- * The Original Code is Copyright (C) 2014 Blender Foundation.
- * All rights reserved.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2014 Blender Foundation. All rights reserved. */
 
 /** \file
  * \ingroup GHOST
@@ -32,7 +16,7 @@
 #include <cstdio>
 #include <cstring>
 
-/* needed for intel drivers (works w/ mesa-swrast & nvidia) */
+/* Needed for Intel drivers (works with MESA-software-rasterizer (`swrast`) & NVIDIA). */
 #define USE_GLXEW_INIT_WORKAROUND
 
 #ifdef USE_GLXEW_INIT_WORKAROUND
@@ -124,7 +108,7 @@ GHOST_TSuccess GHOST_ContextGLX::initializeDrawingContext()
   GHOST_X11_ERROR_HANDLERS_OVERRIDE(handler_store);
 
   /* -------------------------------------------------------------------- */
-  /* Begin Inline Glew  */
+  /* Begin Inline Glew */
 
 #ifdef USE_GLXEW_INIT_WORKAROUND
   const GLubyte *extStart = (GLubyte *)"";
@@ -239,7 +223,7 @@ GHOST_TSuccess GHOST_ContextGLX::initializeDrawingContext()
     }
     attribs[i++] = 0;
 
-    /* Some drivers don't like having a true offscreen context.
+    /* Some drivers don't like having a true off-screen context.
      * Create a pixel buffer instead of a window to render to.
      * even if it will never be used for drawing. */
     int pbuffer_attribs[] = {GLX_PBUFFER_WIDTH, 1, GLX_PBUFFER_HEIGHT, 1, None};
@@ -295,8 +279,8 @@ GHOST_TSuccess GHOST_ContextGLX::initializeDrawingContext()
 
     glXMakeCurrent(m_display, m_window, m_context);
 
-    // Seems that this has to be called after MakeCurrent,
-    // which means we cannot use glX extensions until after we create a context
+    /* Seems that this has to be called after #glXMakeCurrent,
+     * which means we cannot use `glX` extensions until after we create a context. */
     initContextGLXEW();
 
     if (m_window) {

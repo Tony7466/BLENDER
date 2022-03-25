@@ -1,27 +1,12 @@
-/*
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
- */
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
-#ifndef __UVEDIT_PARAMETRIZER_H__
-#define __UVEDIT_PARAMETRIZER_H__
+#pragma once
 
 /** \file
  * \ingroup eduv
  */
 
-#include "BLI_sys_types.h"  // for intptr_t support
+#include "BLI_sys_types.h" /* for intptr_t support */
 
 #include "slim_matrix_transfer.h" // for SLIM
 
@@ -63,8 +48,11 @@ void param_face_add(ParamHandle *handle,
 
 void param_edge_set_seam(ParamHandle *handle, ParamKey *vkeys);
 
-void param_construct_end(ParamHandle *handle, ParamBool fill, ParamBool impl);
-void param_delete(ParamHandle *chart);
+void param_construct_end(ParamHandle *handle,
+                         ParamBool fill,
+                         ParamBool topology_from_uvs,
+                         int *count_fail);
+void param_delete(ParamHandle *handle);
 
 /* SLIM:
  * -----------------------------
@@ -86,7 +74,7 @@ bool param_is_slim(ParamHandle *handle);
  * -----------------------------
  * - charts with less than two pinned vertices are assigned 2 pins
  * - lscm is divided in three steps:
- * - begin: compute matrix and it's factorization (expensive)
+ * - begin: compute matrix and its factorization (expensive)
  * - solve using pinned coordinates (cheap)
  * - end: clean up
  * - uv coordinates are allowed to change within begin/end, for
@@ -94,7 +82,7 @@ bool param_is_slim(ParamHandle *handle);
  */
 
 void param_lscm_begin(ParamHandle *handle, ParamBool live, ParamBool abf);
-void param_lscm_solve(ParamHandle *handle);
+void param_lscm_solve(ParamHandle *handle, int *count_changed, int *count_failed);
 void param_lscm_end(ParamHandle *handle);
 
 // SLIM REMOVED
@@ -130,5 +118,3 @@ void param_flush_restore(ParamHandle *handle);
 #ifdef __cplusplus
 }
 #endif
-
-#endif /*__UVEDIT_PARAMETRIZER_H__*/
