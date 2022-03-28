@@ -14,12 +14,9 @@ set(INC
   ../../../../intern/eigen
   ../../../../intern/glew-mx
   ../../../../intern/guardedalloc
-<<<<<<< HEAD
   ../../../../intern/slim
-=======
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
->>>>>>> master
 )
 
 
