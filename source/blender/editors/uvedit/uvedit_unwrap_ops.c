@@ -72,27 +72,6 @@
 /** \name Utility Functions
  * \{ */
 
-// SLIM REMOVED
-static void modifier_unwrap_state(Object *obedit, const UnwrapOptions *options, bool *r_use_subsurf)
-{
-  ModifierData *md;
-  bool subsurf = options->use_subsurf;
-
-  md = obedit->modifiers.first;
-
-  /* Subsurf will take the modifier settings only if modifier is first or right after mirror */
-  if (subsurf) {
-    if (md && md->type == eModifierType_Subsurf) {
-      subsurf = true;
-    }
-    else {
-      subsurf = false;
-    }
-  }
-
-  *r_use_subsurf = subsurf;
-}
-// ---
 
 static bool ED_uvedit_ensure_uvs(Object *obedit)
 {
@@ -243,6 +222,15 @@ typedef struct UnwrapOptions {
   bool fill_holes;
   /** Correct for mapped image texture aspect ratio. */
   bool correct_aspect;
+
+  bool use_slim;
+  bool use_abf;
+  bool use_subsurf;
+  char vertex_group[MAX_ID_NAME];
+  float vertex_group_factor;
+  float relative_scale;
+  int reflection_mode;
+  int iterations;
 } UnwrapOptions;
 
 
@@ -251,6 +239,30 @@ typedef struct UnwrapResultInfo {
   int count_failed;
 } UnwrapResultInfo;
 
+
+// SLIM REMOVED
+static void modifier_unwrap_state(Object *obedit,
+                                  const UnwrapOptions *options,
+                                  bool *r_use_subsurf)
+{
+  ModifierData *md;
+  bool subsurf = options->use_subsurf;
+
+  md = obedit->modifiers.first;
+
+  /* Subsurf will take the modifier settings only if modifier is first or right after mirror */
+  if (subsurf) {
+    if (md && md->type == eModifierType_Subsurf) {
+      subsurf = true;
+    }
+    else {
+      subsurf = false;
+    }
+  }
+
+  *r_use_subsurf = subsurf;
+}
+// ---
 
 static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob)
 {
@@ -263,7 +275,8 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob)
 
   /* To be set by the upper layer */
   options.topology_from_uvs = false;
-  options.only_selected = false;
+  options.only_selected_faces = false;
+  options.only_selected_uvs = false;
 
   options.use_abf = RNA_enum_get(&ptr, "method") == 0;
   options.use_slim = RNA_enum_get(&ptr, "method") == 2;
@@ -956,7 +969,7 @@ static bool minimize_stretch_init(bContext *C, wmOperator *op)
     return false;
   }
 
-	ParamHandle *handle = construct_param_handle_multi(scene, objects, objects_len, &options);
+	ParamHandle *handle = construct_param_handle_multi(scene, objects, objects_len, &options, NULL);
 	MinStretch *ms = MEM_callocN(sizeof(MinStretch), "Data for minimizing stretch with SLIM");
 
 	ms->handle = handle;
