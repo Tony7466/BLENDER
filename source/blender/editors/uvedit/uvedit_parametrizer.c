@@ -5355,7 +5355,10 @@ void slim_reload_all_uvs(ParamHandle *liveHandle)
 	}
 }
 
-void param_slim_solve(ParamHandle *handle, SLIMMatrixTransfer *mt)
+void param_slim_solve(ParamHandle *handle,
+                      SLIMMatrixTransfer *mt,
+                      int *count_changed,
+                      int *count_failed)
 {
 	PHandle *phandle = (PHandle *) handle;
 
@@ -5363,6 +5366,10 @@ void param_slim_solve(ParamHandle *handle, SLIMMatrixTransfer *mt)
 	slim_transfer_data_to_slim(handle);
 
 	SLIM_parametrize(mt, mt->n_iterations, mt->fixed_boundary, mt->skip_initialization);
+
+  if (count_changed) {
+    *count_changed += phandle->ncharts;
+  }
 
 	slim_flush_uvs(handle, mt);
 	slim_free_matrix_transfer(mt);

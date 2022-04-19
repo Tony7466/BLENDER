@@ -61,7 +61,10 @@ void param_delete(ParamHandle *handle);
  * - end: clean up
 */
 void slim_reload_all_uvs(ParamHandle *handle);
-void param_slim_solve(ParamHandle *handle, SLIMMatrixTransfer *mt);
+void param_slim_solve(ParamHandle *handle,
+                      SLIMMatrixTransfer *mt,
+                      int *count_changed,
+                      int *count_failed);
 
 void param_slim_begin(ParamHandle *handle, SLIMMatrixTransfer *mt);
 void param_slim_solve_iteration(ParamHandle *handle);

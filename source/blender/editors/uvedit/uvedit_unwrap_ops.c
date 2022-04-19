@@ -2071,7 +2071,10 @@ static void uvedit_unwrap(const Scene *scene,
 		mt->reflection_mode = options->reflection_mode;
 		mt->transform_islands = true;
 
-		param_slim_solve(handle, mt);
+		param_slim_solve(handle,
+                     mt,
+                     result_info ? &result_info->count_changed : NULL,
+                     result_info ? &result_info->count_failed : NULL);
 	}
 	else {
 		param_lscm_begin(handle, PARAM_FALSE, options->use_abf);
