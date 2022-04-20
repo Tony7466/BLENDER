@@ -149,15 +149,20 @@ void param_slim(SLIMMatrixTransfer *mt, int nIterations, bool borderVerticesAreP
 	igl::Timer timer;
 	timer.start();
 
-	for (int uvChartIndex = 0; uvChartIndex < mt->n_charts; uvChartIndex++) {
-
+	for (int uvChartIndex = 0; uvChartIndex < mt->n_charts; uvChartIndex++)
+	{
 		SLIMData *slimData = setup_slim(mt, nIterations, uvChartIndex, timer, borderVerticesArePinned, skipInitialization);
 
-		slim_solve(*slimData, nIterations);
-
-		areacomp::correctMapSurfaceAreaIfNecessary(slimData);
-
-		transferUvsBackToNativePart(mt, slimData->V_o, uvChartIndex);
+		mt->succeeded[uvChartIndex] = true;
+		try {
+			slim_solve(*slimData, nIterations);
+			areacomp::correctMapSurfaceAreaIfNecessary(slimData);
+			transferUvsBackToNativePart(mt, slimData->V_o, uvChartIndex);
+		}
+		catch (SlimFailedException&)
+		{
+			mt->succeeded[uvChartIndex] = false;
+		}
 
 		free_slim_data(slimData);
 	}

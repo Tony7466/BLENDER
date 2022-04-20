@@ -5013,6 +5013,8 @@ static void slim_allocate_pointerarrays(SLIMMatrixTransfer *mt, PHandle *phandle
 	mt->n_pinned_vertices = MEM_mallocN(mt->n_charts * sizeof(*mt->n_pinned_vertices), "Array of number of Faces per Chart");
 	mt->n_boundary_vertices = MEM_mallocN(mt->n_charts * sizeof(*mt->n_boundary_vertices), "Array of number of Faces per Chart");
 
+  mt->succeeded = MEM_mallocN(mt->n_charts * sizeof(*mt->succeeded), "Array of operation status per Chart");
+
 	mt->v_matrices = MEM_mallocN(mt->n_charts * sizeof(*mt->v_matrices), "Array of pointers to Vertex matrices");
 	mt->uv_matrices = MEM_mallocN(mt->n_charts * sizeof(*mt->uv_matrices), "Array of pointers to UV matrices");
 	mt->pp_matrices = MEM_mallocN(mt->n_charts * sizeof(*mt->pp_matrices), "Array of pointers to Pinned-Vertex-Position matrices");
@@ -5204,6 +5206,7 @@ static void slim_convert_blender(ParamHandle *handle)
 
 	/* For each chart, fill up matrices */
 	for (int i = 0; i < phandle->ncharts; i++) {
+    mt->succeeded[i] = false;
 		mt->n_pinned_vertices[i] = 0;
 		mt->n_boundary_vertices[i] = 0;
 
@@ -5229,7 +5232,10 @@ static void slim_transfer_data_to_slim(ParamHandle *handle)
 }
 
 /* Set UV on each vertex after SLIM parametrization, for each chart. */
-static void slim_flush_uvs(ParamHandle *handle, SLIMMatrixTransfer *mt)
+static void slim_flush_uvs(ParamHandle *handle,
+                           SLIMMatrixTransfer *mt,
+                           int *count_changed,
+                           int *count_failed)
 {
 	PHandle *phandle = (PHandle*) handle;
 	int vid;
@@ -5238,15 +5244,31 @@ static void slim_flush_uvs(ParamHandle *handle, SLIMMatrixTransfer *mt)
 	for (int i = 0; i < phandle->ncharts; i++) {
 		PChart *chart = phandle->charts[i];
 
-		if (!(chart->flag & PCHART_NOFLUSH)) {
-			double *UV = mt->uv_matrices[i];
+    if (mt->succeeded[i]) {
+      if (count_changed) {
+        (*count_changed)++;
+      }
 
-			for (v = chart->verts; v; v = v->nextlink) {
-				vid = v->slim_id;
-				v->uv[0] = UV[vid*2];
-				v->uv[1] = UV[vid*2 + 1];
-			}
-		}
+      if (!(chart->flag & PCHART_NOFLUSH)) {
+        double *UV = mt->uv_matrices[i];
+
+        for (v = chart->verts; v; v = v->nextlink) {
+          vid = v->slim_id;
+          v->uv[0] = UV[vid * 2];
+          v->uv[1] = UV[vid * 2 + 1];
+        }
+      }
+    }
+    else {
+      if (count_failed) {
+        (*count_failed)++;
+      }
+
+      for (v = chart->verts; v; v = v->nextlink) {
+        v->uv[0] = 0.0f;
+        v->uv[1] = 0.0f;
+      }
+    }
 	}
 }
 
@@ -5274,6 +5296,8 @@ static void slim_free_matrix_transfer(SLIMMatrixTransfer *mt)
 	MEM_freeN(mt->p_matrices);
 	MEM_freeN(mt->e_matrices);
 	MEM_freeN(mt->b_vectors);
+
+  MEM_freeN(mt->succeeded);
 
 	MEM_freeN(mt->n_verts);
 	MEM_freeN(mt->n_faces);
@@ -5367,11 +5391,7 @@ void param_slim_solve(ParamHandle *handle,
 
 	SLIM_parametrize(mt, mt->n_iterations, mt->fixed_boundary, mt->skip_initialization);
 
-  if (count_changed) {
-    *count_changed += phandle->ncharts;
-  }
-
-	slim_flush_uvs(handle, mt);
+	slim_flush_uvs(handle, mt, count_changed, count_failed);
 	slim_free_matrix_transfer(mt);
 }
 
@@ -5431,7 +5451,7 @@ void param_slim_stretch_iteration(ParamHandle *handle, float blend)
 	}
 
 	//	Assign new UVs back to each vertex
-	slim_flush_uvs(handle, mt);
+	slim_flush_uvs(handle, mt, NULL, NULL);
 }
 
 void param_slim_solve_iteration(ParamHandle *handle)
@@ -5481,7 +5501,7 @@ void param_slim_solve_iteration(ParamHandle *handle)
 	}
 
 	//	Assign new UVs back to each vertex
-	slim_flush_uvs(handle, mt);
+	slim_flush_uvs(handle, mt, NULL, NULL);
 }
 
 void param_slim_end(ParamHandle *handle)

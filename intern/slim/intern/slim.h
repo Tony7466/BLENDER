@@ -13,8 +13,18 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 
+#include <exception>
+
+
 namespace igl
 {
+
+class SlimFailedException : public std::exception {
+ public:
+  SlimFailedException() : std::exception("Slim operation failed")
+  {}
+};
+
 
 // Compute a SLIM map as derived in "Scalable Locally Injective Maps" [Rabinovich et al. 2016].
 struct SLIMData

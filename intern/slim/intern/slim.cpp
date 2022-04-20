@@ -441,6 +441,10 @@ namespace igl
         Uc = solver.compute(L).solveWithGuess(s.rhs, guess);
       }
 
+      for (int i = 0; i < Uc.size(); i++)
+        if (!std::isfinite(Uc(i)))
+          throw SlimFailedException();
+
       for (int i = 0; i < s.dim; i++)
         uv.col(i) = Uc.block(i * s.v_n, 0, s.v_n, 1);
     }

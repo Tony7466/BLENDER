@@ -54,6 +54,8 @@ typedef struct {
 	int n_charts;
 	int *n_verts, *n_faces, *n_pinned_vertices, *n_boundary_vertices, *n_edges;
 
+  bool *succeeded;
+
 	double **v_matrices, **uv_matrices, **pp_matrices;
 	double **el_vectors;
 	float **w_vectors;
