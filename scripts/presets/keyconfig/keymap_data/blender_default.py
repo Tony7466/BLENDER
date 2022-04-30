@@ -2430,6 +2430,7 @@ def km_dopesheet(params):
         ("action.select_more", {"type": 'NUMPAD_PLUS', "value": 'PRESS', "ctrl": True, "repeat": True}, None),
         ("action.select_less", {"type": 'NUMPAD_MINUS', "value": 'PRESS', "ctrl": True, "repeat": True}, None),
         ("action.select_linked", {"type": 'L', "value": 'PRESS'}, None),
+        ("action.select_grouped", {"type": 'G', "value": 'PRESS', "shift": True}, None),
         ("action.frame_jump", {"type": 'G', "value": 'PRESS', "ctrl": True}, None),
         (
             op_menu_pie("DOPESHEET_MT_snap_pie", {"type": 'S', "value": 'PRESS', "shift": True})

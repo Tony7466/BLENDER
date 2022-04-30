@@ -1906,3 +1906,300 @@ void ACTION_OT_clickselect(wmOperatorType *ot)
 }
 
 /* ************************************************************************** */
+
+/* Select Grouped Operator */
+
+enum {
+  ACTKEYS_SELECT_GROUP_CHANNEL_TYPE,
+  ACTKEYS_SELECT_GROUP_KEY_TYPE,
+  ACTKEYS_SELECT_GROUP_INTERPOLATION_TYPE,
+  ACTKEYS_SELECT_GROUP_HANDLE_TYPE,
+  ACTKEYS_SELECT_GROUP_INTERPOLATION_HANDLE_TYPE,
+  ACTKEYS_SELECT_GROUP_MODIFIERS,
+  ACTKEYS_SELECT_GROUP_DATABLOCK,
+};
+
+static const EnumPropertyItem actkeys_prop_select_grouped_types[] = {
+    {ACTKEYS_SELECT_GROUP_CHANNEL_TYPE,
+     "CHANNEL_TYPE",
+     0,
+     "Channel Type",
+     "All keyframes of same type of channel (X Location, etc.)"},
+    {ACTKEYS_SELECT_GROUP_KEY_TYPE,
+     "KEY_TYPE",
+     0,
+     "Key Type",
+     "All keyframes of the same type (breakdown, extreme, etc.)"},
+    {ACTKEYS_SELECT_GROUP_INTERPOLATION_TYPE,
+     "INTERPOLATION_TYPE",
+     0,
+     "Interpolation Mode",
+     "All keyframes of the same interpolation mode (constant, bezier, etc.)"},
+    {ACTKEYS_SELECT_GROUP_HANDLE_TYPE,
+     "HANDLE_TYPE",
+     0,
+     "Handle Type",
+     "All keyframes of the same handle type (vector, automatic, etc.)"},
+    {ACTKEYS_SELECT_GROUP_MODIFIERS,
+     "MODIFIERS",
+     0,
+     "Modifiers",
+     "All keyframes on each channel that has the same modifiers"},
+    {ACTKEYS_SELECT_GROUP_DATABLOCK,
+     "DATABLOCK",
+     0,
+     "Datablock",
+     "All keyframes that are part of the same datablock"},
+    {0, NULL, 0, NULL, NULL},
+};
+
+/* ACTKEYS_SELECT_GROUP_DATABLOCK */
+
+static short select_grouped_datablock(KeyframeEditData *ked, struct BezTriple *bezt)
+{
+  /* Actual filtering is done via the anim data list. */
+  return KEYFRAME_OK_ALL;
+}
+
+static short select_grouped_active_datablock(KeyframeEditData *ked, struct BezTriple *bezt)
+{
+  /* Stop after the first selected bezt was found. */
+  return 1;
+}
+
+/* ACTKEYS_SELECT_GROUP_HANDLE_TYPE */
+
+static short select_grouped_handle_type(KeyframeEditData *ked, struct BezTriple *bezt)
+{
+  /* TODO(redmser): Should this compare left and right handle individually? In dopesheet, you can't
+   * select individual handles to clarify the intent. */
+  char handle = *(char *)ked->data;
+  if (bezt->h1 == handle && bezt->h2 == handle) {
+    return KEYFRAME_OK_ALL;
+  }
+  return 0;
+}
+
+static short select_grouped_active_handle_type(KeyframeEditData *ked, struct BezTriple *bezt)
+{
+  if (bezt->h1 == bezt->h2) {
+    *((uint8_t *)ked->data) = bezt->h1;
+  }
+  return 1;
+}
+
+/* ACTKEYS_SELECT_GROUP_INTERPOLATION_TYPE */
+
+static short select_grouped_interpolation_type(KeyframeEditData *ked, struct BezTriple *bezt)
+{
+  char ipo = *(char *)ked->data;
+  if (bezt->ipo == ipo) {
+    return KEYFRAME_OK_ALL;
+  }
+  return 0;
+}
+
+static short select_grouped_active_interpolation_type(KeyframeEditData *ked,
+                                                      struct BezTriple *bezt)
+{
+  *((char *)ked->data) = bezt->ipo;
+  return 1;
+}
+
+/* ACTKEYS_SELECT_GROUP_KEY_TYPE */
+
+static short select_grouped_key_type(KeyframeEditData *ked, struct BezTriple *bezt)
+{
+  char key_type = *(char *)ked->data;
+  if (BEZKEYTYPE(bezt) == key_type) {
+    return KEYFRAME_OK_ALL;
+  }
+  return 0;
+}
+
+static short select_grouped_active_key_type(KeyframeEditData *ked, struct BezTriple *bezt)
+{
+  *((char *)ked->data) = BEZKEYTYPE(bezt);
+  return 1;
+}
+
+/* TODO(redmser): These filters could all allow multi-selection. Instead of setting ked->data, add
+ * the filter (if unique) to ked->list and do an "includes" check instead. */
+
+static KeyframeEditFunc select_grouped_get_filter_callback(ListBase *anim_data,
+                                                           KeyframeEditData *ked,
+                                                           int type)
+{
+  KeyframeEditFunc ok_cb = ANIM_editkeyframes_ok(BEZT_OK_SELECTED);
+
+  bAnimListElem *ale;
+  for (ale = anim_data->first; ale; ale = ale->next) {
+    /* TODO(redmser): Other types (GP, mask, etc.). */
+    if (ale->datatype != ALE_FCURVE) {
+      continue;
+    }
+
+    /* Only continue if F-Curve has keyframes. */
+    FCurve *fcu = (FCurve *)ale->key_data;
+    if (fcu->bezt == NULL) {
+      continue;
+    }
+
+    /* Find first selected keyframe for context info. */
+    switch (type) {
+      case ACTKEYS_SELECT_GROUP_CHANNEL_TYPE: {
+        /* TODO(redmser): Channel type (by name?). */
+        break;
+      }
+      case ACTKEYS_SELECT_GROUP_HANDLE_TYPE: {
+        char handle = 0;
+        ked->data = &handle;
+        short result = ANIM_fcurve_keyframes_loop(
+            ked, fcu, ok_cb, select_grouped_active_handle_type, NULL);
+        if (result == 1) {
+          return select_grouped_handle_type;
+        }
+        break;
+      }
+      case ACTKEYS_SELECT_GROUP_INTERPOLATION_TYPE: {
+        char ipo = 0;
+        ked->data = &ipo;
+        short result = ANIM_fcurve_keyframes_loop(
+            ked, fcu, ok_cb, select_grouped_active_interpolation_type, NULL);
+        if (result == 1) {
+          return select_grouped_interpolation_type;
+        }
+        break;
+      }
+      case ACTKEYS_SELECT_GROUP_KEY_TYPE: {
+        char key_type = 0;
+        ked->data = &key_type;
+        short result = ANIM_fcurve_keyframes_loop(
+            ked, fcu, ok_cb, select_grouped_active_key_type, NULL);
+        if (result == 1) {
+          return select_grouped_key_type;
+        }
+        break;
+      }
+      case ACTKEYS_SELECT_GROUP_MODIFIERS: {
+        /* TODO(redmser): Modifier types. */
+        break;
+      }
+      case ACTKEYS_SELECT_GROUP_DATABLOCK: {
+        /* Same datablock, identified by name. */
+        short result = ANIM_fcurve_keyframes_loop(
+            ked, fcu, ok_cb, select_grouped_active_datablock, NULL);
+        if (result == 1) {
+          ked->data = ale->id->name;
+          return select_grouped_datablock;
+        }
+        break;
+      }
+      default: {
+        BLI_assert(0);
+        break;
+      }
+    }
+  }
+
+  if (type == ACTKEYS_SELECT_GROUP_DATABLOCK) {
+    char empty[1] = {'\0'};
+    ked->data = empty;
+  }
+  return NULL;
+}
+
+static int actkeys_select_grouped_exec(bContext *C, wmOperator *op)
+{
+  bAnimContext ac;
+
+  if (ANIM_animdata_get_context(C, &ac) == 0) {
+    return OPERATOR_CANCELLED;
+  }
+
+  const int type = RNA_enum_get(op->ptr, "type");
+  const bool use_selected_channels = RNA_boolean_get(op->ptr, "use_selected_channels");
+
+  /* Filter data. */
+  int filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_NODUPLIS);
+  if (use_selected_channels) {
+    /* TODO(redmser): Doing it this way means that the keyframe that we're getting the reference
+     * value from must also be in a selected channel. But not sure if filtering twice is a better
+     * solution here either. */
+    filter |= ANIMFILTER_SEL;
+  }
+
+  ListBase anim_data = {NULL, NULL};
+  ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
+
+  KeyframeEditData ked = {{NULL}};
+  KeyframeEditFunc ok_cb = select_grouped_get_filter_callback(&anim_data, &ked, type);
+  KeyframeEditFunc select_cb = ANIM_editkeyframes_select(SELECT_ADD);
+
+  if (!RNA_boolean_get(op->ptr, "extend")) {
+    /* If not extending, deselect all first. */
+    deselect_action_keys(&ac, 0, SELECT_SUBTRACT);
+  }
+
+  bAnimListElem *ale;
+  for (ale = anim_data.first; ale; ale = ale->next) {
+    /* TODO(redmser): Other types (GP, mask, etc.). */
+    if (ale->datatype != ALE_FCURVE) {
+      continue;
+    }
+
+    /* Only continue if F-Curve has keyframes. */
+    FCurve *fcu = (FCurve *)ale->key_data;
+    if (fcu->bezt == NULL) {
+      continue;
+    }
+
+    /* Filtering by datablock has to be done on anim data level. */
+    /* TODO(redmser): This will not work for datablocks from different libraries, since they have
+     * the same name. */
+    if (type == ACTKEYS_SELECT_GROUP_DATABLOCK && !STREQ(ale->id->name, (char *)ked.data)) {
+      continue;
+    }
+
+    ANIM_fcurve_keyframes_loop(&ked, fcu, ok_cb, select_cb, NULL);
+  }
+
+  ANIM_animdata_freelist(&anim_data);
+
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
+  return OPERATOR_FINISHED;
+}
+
+void ACTION_OT_select_grouped(wmOperatorType *ot)
+{
+  /* Identifiers. */
+  ot->name = "Select Grouped";
+  ot->idname = "ACTION_OT_select_grouped";
+  ot->description = "Select all keyframes grouped by various properties";
+
+  /* Api callbacks. */
+  ot->invoke = WM_menu_invoke;
+  ot->exec = actkeys_select_grouped_exec;
+  ot->poll = ED_operator_action_active;
+
+  /* Flags. */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* Properties. */
+  ot->prop = RNA_def_enum(ot->srna,
+                          "type",
+                          actkeys_prop_select_grouped_types,
+                          0,
+                          "Type",
+                          "Which criterion to filter selection by");
+  RNA_def_boolean(ot->srna,
+                  "extend",
+                  false,
+                  "Extend",
+                  "Extend selection instead of deselecting everything first");
+  RNA_def_boolean(ot->srna,
+                  "use_selected_channels",
+                  false,
+                  "Use Selected Channels",
+                  "Only consider keyframes on the same channel as the selected ones");
+}

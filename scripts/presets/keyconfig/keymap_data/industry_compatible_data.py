@@ -1393,6 +1393,7 @@ def km_dopesheet(params):
         ("action.select_more", {"type": 'UP_ARROW', "value": 'PRESS', "ctrl": True, "repeat": True}, None),
         ("action.select_less", {"type": 'DOWN_ARROW', "value": 'PRESS', "ctrl": True, "repeat": True}, None),
         ("action.select_linked", {"type": 'RIGHT_BRACKET', "value": 'PRESS'}, None),
+        ("action.select_grouped", {"type": 'G', "value": 'PRESS', "shift": True}, None),
         ("action.frame_jump", {"type": 'G', "value": 'PRESS', "ctrl": True}, None),
         ("wm.context_menu_enum", {"type": 'X', "value": 'PRESS'},
          {"properties": [("data_path", 'space_data.auto_snap')]}),

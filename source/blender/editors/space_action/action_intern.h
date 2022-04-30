@@ -51,6 +51,7 @@ void ACTION_OT_select_linked(struct wmOperatorType *ot);
 void ACTION_OT_select_more(struct wmOperatorType *ot);
 void ACTION_OT_select_less(struct wmOperatorType *ot);
 void ACTION_OT_select_leftright(struct wmOperatorType *ot);
+void ACTION_OT_select_grouped(struct wmOperatorType *ot);
 void ACTION_OT_clickselect(struct wmOperatorType *ot);
 
 /* defines for left-right select tool */
