@@ -14,6 +14,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_dlrbTree.h"
+#include "BLI_ghash.h"
 #include "BLI_lasso_2d.h"
 #include "BLI_utildefines.h"
 
@@ -1963,7 +1964,8 @@ static short select_grouped_datablock(KeyframeEditData *ked, struct BezTriple *b
 
 static short select_grouped_active_datablock(KeyframeEditData *ked, struct BezTriple *bezt)
 {
-  /* Stop after the first selected bezt was found. */
+  /* Cancel iteration if we found any selected key. The key will be added to the set in the loop,
+   * since the info comes from the anim data list. */
   return 1;
 }
 
@@ -1971,29 +1973,32 @@ static short select_grouped_active_datablock(KeyframeEditData *ked, struct BezTr
 
 static short select_grouped_handle_type(KeyframeEditData *ked, struct BezTriple *bezt)
 {
-  /* TODO(redmser): Should this compare left and right handle individually? In dopesheet, you can't
-   * select individual handles to clarify the intent. */
-  char handle = *(char *)ked->data;
-  if (bezt->h1 == handle && bezt->h2 == handle) {
-    return KEYFRAME_OK_ALL;
+  short ok = 0;
+  if (BLI_gset_haskey(ked->data, POINTER_FROM_INT(bezt->h1))) {
+    ok |= KEYFRAME_OK_H1;
   }
-  return 0;
+  if (BLI_gset_haskey(ked->data, POINTER_FROM_INT(bezt->h2))) {
+    ok |= KEYFRAME_OK_H2;
+  }
+  if (ok == (KEYFRAME_OK_H1 | KEYFRAME_OK_H2)) {
+    ok |= KEYFRAME_OK_KEY;
+  }
+  return ok;
 }
 
 static short select_grouped_active_handle_type(KeyframeEditData *ked, struct BezTriple *bezt)
 {
   if (bezt->h1 == bezt->h2) {
-    *((uint8_t *)ked->data) = bezt->h1;
+    BLI_gset_add(ked->data, POINTER_FROM_INT(bezt->h1));
   }
-  return 1;
+  return 0;
 }
 
 /* ACTKEYS_SELECT_GROUP_INTERPOLATION_TYPE */
 
 static short select_grouped_interpolation_type(KeyframeEditData *ked, struct BezTriple *bezt)
 {
-  char ipo = *(char *)ked->data;
-  if (bezt->ipo == ipo) {
+  if (BLI_gset_haskey(ked->data, POINTER_FROM_INT(bezt->ipo))) {
     return KEYFRAME_OK_ALL;
   }
   return 0;
@@ -2002,16 +2007,15 @@ static short select_grouped_interpolation_type(KeyframeEditData *ked, struct Bez
 static short select_grouped_active_interpolation_type(KeyframeEditData *ked,
                                                       struct BezTriple *bezt)
 {
-  *((char *)ked->data) = bezt->ipo;
-  return 1;
+  BLI_gset_add(ked->data, POINTER_FROM_INT(bezt->ipo));
+  return 0;
 }
 
 /* ACTKEYS_SELECT_GROUP_KEY_TYPE */
 
 static short select_grouped_key_type(KeyframeEditData *ked, struct BezTriple *bezt)
 {
-  char key_type = *(char *)ked->data;
-  if (BEZKEYTYPE(bezt) == key_type) {
+  if (BLI_gset_haskey(ked->data, POINTER_FROM_INT(BEZKEYTYPE(bezt)))) {
     return KEYFRAME_OK_ALL;
   }
   return 0;
@@ -2019,30 +2023,41 @@ static short select_grouped_key_type(KeyframeEditData *ked, struct BezTriple *be
 
 static short select_grouped_active_key_type(KeyframeEditData *ked, struct BezTriple *bezt)
 {
-  *((char *)ked->data) = BEZKEYTYPE(bezt);
-  return 1;
+  BLI_gset_add(ked->data, POINTER_FROM_INT(BEZKEYTYPE(bezt)));
+  return 0;
 }
-
-/* TODO(redmser): These filters could all allow multi-selection. Instead of setting ked->data, add
- * the filter (if unique) to ked->list and do an "includes" check instead. */
 
 static KeyframeEditFunc select_grouped_get_filter_callback(ListBase *anim_data,
                                                            KeyframeEditData *ked,
                                                            int type)
 {
   KeyframeEditFunc ok_cb = ANIM_editkeyframes_ok(BEZT_OK_SELECTED);
+  GSet *comp_set;
 
+  if (type == ACTKEYS_SELECT_GROUP_DATABLOCK) {
+    comp_set = BLI_gset_str_new(__func__);
+  }
+  else {
+    comp_set = BLI_gset_int_new(__func__);
+  }
+
+  ked->data = comp_set;
+
+  /* Last iteration of this loop will be used to return a callback based on type. */
   bAnimListElem *ale;
-  for (ale = anim_data->first; ale; ale = ale->next) {
-    /* TODO(redmser): Other types (GP, mask, etc.). */
-    if (ale->datatype != ALE_FCURVE) {
-      continue;
-    }
+  for (ale = anim_data->first;; ale = ale->next) {
+    FCurve *fcu;
+    if (ale != NULL) {
+      /* TODO(redmser): Other types (GP, mask, etc.). */
+      if (ale->datatype != ALE_FCURVE) {
+        continue;
+      }
 
-    /* Only continue if F-Curve has keyframes. */
-    FCurve *fcu = (FCurve *)ale->key_data;
-    if (fcu->bezt == NULL) {
-      continue;
+      /* Only continue if F-Curve has keyframes. */
+      fcu = (FCurve *)ale->key_data;
+      if (fcu->bezt == NULL) {
+        continue;
+      }
     }
 
     /* Find first selected keyframe for context info. */
@@ -2052,33 +2067,28 @@ static KeyframeEditFunc select_grouped_get_filter_callback(ListBase *anim_data,
         break;
       }
       case ACTKEYS_SELECT_GROUP_HANDLE_TYPE: {
-        char handle = 0;
-        ked->data = &handle;
-        short result = ANIM_fcurve_keyframes_loop(
-            ked, fcu, ok_cb, select_grouped_active_handle_type, NULL);
-        if (result == 1) {
+        if (ale == NULL) {
           return select_grouped_handle_type;
         }
+
+        ANIM_fcurve_keyframes_loop(ked, fcu, ok_cb, select_grouped_active_handle_type, NULL);
         break;
       }
       case ACTKEYS_SELECT_GROUP_INTERPOLATION_TYPE: {
-        char ipo = 0;
-        ked->data = &ipo;
-        short result = ANIM_fcurve_keyframes_loop(
-            ked, fcu, ok_cb, select_grouped_active_interpolation_type, NULL);
-        if (result == 1) {
+        if (ale == NULL) {
           return select_grouped_interpolation_type;
         }
+
+        ANIM_fcurve_keyframes_loop(
+            ked, fcu, ok_cb, select_grouped_active_interpolation_type, NULL);
         break;
       }
       case ACTKEYS_SELECT_GROUP_KEY_TYPE: {
-        char key_type = 0;
-        ked->data = &key_type;
-        short result = ANIM_fcurve_keyframes_loop(
-            ked, fcu, ok_cb, select_grouped_active_key_type, NULL);
-        if (result == 1) {
+        if (ale == NULL) {
           return select_grouped_key_type;
         }
+
+        ANIM_fcurve_keyframes_loop(ked, fcu, ok_cb, select_grouped_active_key_type, NULL);
         break;
       }
       case ACTKEYS_SELECT_GROUP_MODIFIERS: {
@@ -2087,11 +2097,15 @@ static KeyframeEditFunc select_grouped_get_filter_callback(ListBase *anim_data,
       }
       case ACTKEYS_SELECT_GROUP_DATABLOCK: {
         /* Same datablock, identified by name. */
+        if (ale == NULL) {
+          return select_grouped_datablock;
+        }
+
         short result = ANIM_fcurve_keyframes_loop(
             ked, fcu, ok_cb, select_grouped_active_datablock, NULL);
         if (result == 1) {
-          ked->data = ale->id->name;
-          return select_grouped_datablock;
+          /* Found a selected key in this datablock, add its id. */
+          BLI_gset_add(ked->data, BLI_strdup(ale->id->name));
         }
         break;
       }
@@ -2102,10 +2116,6 @@ static KeyframeEditFunc select_grouped_get_filter_callback(ListBase *anim_data,
     }
   }
 
-  if (type == ACTKEYS_SELECT_GROUP_DATABLOCK) {
-    char empty[1] = {'\0'};
-    ked->data = empty;
-  }
   return NULL;
 }
 
@@ -2157,7 +2167,7 @@ static int actkeys_select_grouped_exec(bContext *C, wmOperator *op)
     /* Filtering by datablock has to be done on anim data level. */
     /* TODO(redmser): This will not work for datablocks from different libraries, since they have
      * the same name. */
-    if (type == ACTKEYS_SELECT_GROUP_DATABLOCK && !STREQ(ale->id->name, (char *)ked.data)) {
+    if (type == ACTKEYS_SELECT_GROUP_DATABLOCK && !BLI_gset_haskey(ked.data, ale->id->name)) {
       continue;
     }
 
@@ -2165,6 +2175,13 @@ static int actkeys_select_grouped_exec(bContext *C, wmOperator *op)
   }
 
   ANIM_animdata_freelist(&anim_data);
+
+  if (type == ACTKEYS_SELECT_GROUP_DATABLOCK) {
+    BLI_gset_free(ked.data, MEM_freeN);
+  }
+  else {
+    BLI_gset_free(ked.data, NULL);
+  }
 
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
   return OPERATOR_FINISHED;
