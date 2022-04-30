@@ -2035,7 +2035,7 @@ static KeyframeEditFunc select_grouped_get_filter_callback(ListBase *anim_data,
   GSet *comp_set;
 
   if (type == ACTKEYS_SELECT_GROUP_DATABLOCK) {
-    comp_set = BLI_gset_str_new(__func__);
+    comp_set = BLI_gset_ptr_new(__func__);
   }
   else {
     comp_set = BLI_gset_int_new(__func__);
@@ -2096,7 +2096,6 @@ static KeyframeEditFunc select_grouped_get_filter_callback(ListBase *anim_data,
         break;
       }
       case ACTKEYS_SELECT_GROUP_DATABLOCK: {
-        /* Same datablock, identified by name. */
         if (ale == NULL) {
           return select_grouped_datablock;
         }
@@ -2105,7 +2104,7 @@ static KeyframeEditFunc select_grouped_get_filter_callback(ListBase *anim_data,
             ked, fcu, ok_cb, select_grouped_active_datablock, NULL);
         if (result == 1) {
           /* Found a selected key in this datablock, add its id. */
-          BLI_gset_add(ked->data, BLI_strdup(ale->id->name));
+          BLI_gset_add(ked->data, ale->id);
         }
         break;
       }
@@ -2165,9 +2164,7 @@ static int actkeys_select_grouped_exec(bContext *C, wmOperator *op)
     }
 
     /* Filtering by datablock has to be done on anim data level. */
-    /* TODO(redmser): This will not work for datablocks from different libraries, since they have
-     * the same name. */
-    if (type == ACTKEYS_SELECT_GROUP_DATABLOCK && !BLI_gset_haskey(ked.data, ale->id->name)) {
+    if (type == ACTKEYS_SELECT_GROUP_DATABLOCK && !BLI_gset_haskey(ked.data, ale->id)) {
       continue;
     }
 
@@ -2175,13 +2172,7 @@ static int actkeys_select_grouped_exec(bContext *C, wmOperator *op)
   }
 
   ANIM_animdata_freelist(&anim_data);
-
-  if (type == ACTKEYS_SELECT_GROUP_DATABLOCK) {
-    BLI_gset_free(ked.data, MEM_freeN);
-  }
-  else {
-    BLI_gset_free(ked.data, NULL);
-  }
+  BLI_gset_free(ked.data, NULL);
 
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
   return OPERATOR_FINISHED;
