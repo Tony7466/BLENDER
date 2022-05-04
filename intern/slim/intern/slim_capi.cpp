@@ -72,9 +72,9 @@ void* SLIM_setup(SLIMMatrixTransfer *mt, int uv_chart_index, bool are_border_ver
 
 /*	Executes a single iteration of SLIM, to be called from the native part. It recasts the pointer to a SLIM object.
  */
-void SLIM_parametrize_single_iteration(void* slim_data_ptr){
+void SLIM_parametrize_single_iteration(SLIMMatrixTransfer* mt, int uv_chart_index, void* slim_data_ptr){
 	SLIMData* slim_data = (SLIMData*) slim_data_ptr;
-	param_slim_single_iteration(slim_data);
+	param_slim_single_iteration(mt, uv_chart_index, slim_data);
 }
 
 /*	Executes slim iterations during live unwrap. needs to provide new selected-pin positions

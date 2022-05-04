@@ -45,11 +45,12 @@ SLIMData* setup_slim(SLIMMatrixTransfer *transferredData,
 						 igl::Timer &timer,
 						 bool borderVerticesArePinned,
 						 bool skipInitialization);
+bool try_slim_solve(SLIMData &data, int iter_num);
 void transferUvsBackToNativePartLive(SLIMMatrixTransfer *mt,
 									 Eigen::MatrixXd &UV,
 									 int uvChartIndex);
 void transferUvsBackToNativePart(SLIMMatrixTransfer *mt, Eigen::MatrixXd &UV, int uvChartIndex);
-void param_slim_single_iteration(SLIMData *slimData);
+void param_slim_single_iteration(SLIMMatrixTransfer* mt, int uv_chart_index, SLIMData *slimData);
 void param_slim_live_unwrap(SLIMData *slimData,
 							int n_pins,
 							int* pinnedVertexIndices,

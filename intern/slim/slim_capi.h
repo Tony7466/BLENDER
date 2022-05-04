@@ -39,7 +39,7 @@ void SLIM_transfer_uvs_blended_live(SLIMMatrixTransfer *mt,
 									void* slim_data_ptr,
 									int uv_chart_index);
 void SLIM_transfer_uvs_blended(SLIMMatrixTransfer *mt, void *slim, int uv_chart_index, float blend);
-void SLIM_parametrize_single_iteration(void *slim);
+void SLIM_parametrize_single_iteration(SLIMMatrixTransfer* mt, int uv_chart_index, void *slim);
 void SLIM_parametrize_live(void* slim_data_ptr,
 						   int n_pins,
 						   int* selected_pinned_vertex_indices,

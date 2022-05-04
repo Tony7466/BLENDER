@@ -5427,14 +5427,15 @@ void param_slim_begin(ParamHandle *handle, SLIMMatrixTransfer *mt)
 				deselect = P_TRUE;
 		}
 
-		if ((!mt->is_minimize_stretch && (!select || !deselect)) || (npins == 0)) {
-			/* nothing to unwrap */
-			chart->u.slim.ptr = NULL;
-			chart->flag |= PCHART_NOFLUSH;
-		}
-		else {
+    // SLIM TODO: verify this logic
+		//if ((!mt->is_minimize_stretch && (!select || !deselect)) || (npins == 0)) {
+		//	/* nothing to unwrap */
+		//	chart->u.slim.ptr = NULL;
+		//	chart->flag |= PCHART_NOFLUSH;
+		//}
+		//else {
 			chart->u.slim.ptr = SLIM_setup(mt, i, mt->fixed_boundary, mt->is_minimize_stretch);
-		}
+		//}
 	}
 }
 
@@ -5446,7 +5447,7 @@ void param_slim_stretch_iteration(ParamHandle *handle, float blend)
 	// Do one iteration and tranfer UVs
 	for (int i = 0; i < phandle->ncharts; i++) {
 		PChart *chart = phandle->charts[i];
-		SLIM_parametrize_single_iteration(chart->u.slim.ptr);
+		SLIM_parametrize_single_iteration(mt, i, chart->u.slim.ptr);
 		SLIM_transfer_uvs_blended(mt, chart->u.slim.ptr, i, blend);
 	}
 

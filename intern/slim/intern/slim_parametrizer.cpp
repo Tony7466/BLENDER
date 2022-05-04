@@ -85,9 +85,9 @@ Eigen::MatrixXd getInteractiveResultBlendedWithOriginal(float blend, SLIMData *s
 /*
 	Executes a single iteration of SLIM, must follow a proper setup & initialisation.
  */
-void param_slim_single_iteration(SLIMData *slimData){
+void param_slim_single_iteration(SLIMMatrixTransfer* mt, int uv_chart_index, SLIMData *slimData){
 	int numberOfIterations = 1;
-	slim_solve(*slimData, numberOfIterations);
+	mt->succeeded[uv_chart_index] = try_slim_solve(*slimData, numberOfIterations);
 }
 
 static void adjustPins(SLIMData *slimData, int n_pins, int* pinnedVertexIndices, double *pinnedVertexPositions2D, int n_selected_pins, int *selected_pins){
@@ -153,20 +153,15 @@ void param_slim(SLIMMatrixTransfer *mt, int nIterations, bool borderVerticesAreP
 	{
 		SLIMData *slimData = setup_slim(mt, nIterations, uvChartIndex, timer, borderVerticesArePinned, skipInitialization);
 
-		mt->succeeded[uvChartIndex] = true;
-		try {
-			slim_solve(*slimData, nIterations);
+		mt->succeeded[uvChartIndex] = try_slim_solve(*slimData, nIterations);
+		
+		if (mt->succeeded[uvChartIndex]) {
 			areacomp::correctMapSurfaceAreaIfNecessary(slimData);
 			transferUvsBackToNativePart(mt, slimData->V_o, uvChartIndex);
-		}
-		catch (SlimFailedException&)
-		{
-			mt->succeeded[uvChartIndex] = false;
 		}
 
 		free_slim_data(slimData);
 	}
-
 };
 
 void initializeUvs(retrieval::GeometryData &gd, SLIMData *slimData){
@@ -236,6 +231,18 @@ SLIMData* setup_slim(SLIMMatrixTransfer *transferredData,
 					slimData->soft_const_p);
 
 	return slimData;
+}
+
+bool try_slim_solve(SLIMData &data, int iter_num)
+{
+  try {
+    slim_solve(data, iter_num);
+  }
+  catch (SlimFailedException &) {
+    return false;
+  }
+
+  return true;
 }
 
 void free_slim_data(SLIMData *slimData){
