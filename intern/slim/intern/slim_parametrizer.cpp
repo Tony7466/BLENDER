@@ -135,12 +135,20 @@ static void adjustPins(SLIMData *slimData, int n_pins, int* pinnedVertexIndices,
 	Executes several iterations of SLIM when used with LiveUnwrap
  */
 
-void param_slim_live_unwrap(SLIMData *slimData, int n_pins, int* pinnedVertexIndices, double *pinnedVertexPositions2D, int n_selected_pins, int *selected_pins) {
+void param_slim_live_unwrap(SLIMMatrixTransfer *mt,
+                            int uv_chart_index,
+                            SLIMData *slimData,
+                            int n_pins,
+                            int *pinnedVertexIndices,
+                            double *pinnedVertexPositions2D,
+                            int n_selected_pins,
+                            int *selected_pins)
+{
 	int numberOfIterations = 3;
 	adjustPins(slimData, n_pins, pinnedVertexIndices, pinnedVertexPositions2D, n_selected_pins, selected_pins);
 	// recompute current energy
 	//recompute_energy(*slimData);
-	slim_solve(*slimData, numberOfIterations);
+	mt->succeeded[uv_chart_index] = try_slim_solve(*slimData, numberOfIterations);
 }
 
 

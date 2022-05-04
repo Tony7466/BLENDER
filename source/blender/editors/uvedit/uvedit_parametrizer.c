@@ -5488,7 +5488,10 @@ void param_slim_solve_iteration(ParamHandle *handle)
 									&n_selected_pins,
 									selected_pins);
 
-		SLIM_parametrize_live(chart->u.slim.ptr,
+		SLIM_parametrize_live(
+								mt,
+								i,
+								chart->u.slim.ptr,
 							  n_pins,
 							  pinned_vertex_indices,
 							  pinned_vertex_positions_2D,

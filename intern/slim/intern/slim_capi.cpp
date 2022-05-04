@@ -79,15 +79,19 @@ void SLIM_parametrize_single_iteration(SLIMMatrixTransfer* mt, int uv_chart_inde
 
 /*	Executes slim iterations during live unwrap. needs to provide new selected-pin positions
  */
-void SLIM_parametrize_live(void* slim_data_ptr,
+void SLIM_parametrize_live(SLIMMatrixTransfer *mt,
+                           int uv_chart_index,
+						   void* slim_data_ptr,
 						   int n_pins,
 						   int* pinned_vertex_indices,
 						   double *pinned_vertex_positions_2D,
 						   int n_selected_pins,
 						   int *selected_pins){
 
-	SLIMData* slim_data = (SLIMData*) slim_data_ptr;
-	param_slim_live_unwrap(slim_data,
+	SLIMData* slim_data = (SLIMData*)slim_data_ptr;
+	param_slim_live_unwrap(mt,
+						   uv_chart_index,
+						   slim_data,
 						   n_pins,
 						   pinned_vertex_indices,
 						   pinned_vertex_positions_2D,
