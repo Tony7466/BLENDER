@@ -13,6 +13,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_ghash.h"
 #include "BLI_lasso_2d.h"
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
@@ -2020,3 +2021,319 @@ void GRAPH_OT_clickselect(wmOperatorType *ot)
 }
 
 /** \} */
+
+/* Select Grouped Operator */
+/* TODO(redmser): This can be de-duplicated almost completely from the action variant of this
+ * operator. */
+
+enum {
+  GRAPHKEYS_SELECT_GROUP_CHANNEL_TYPE,
+  GRAPHKEYS_SELECT_GROUP_KEY_TYPE,
+  GRAPHKEYS_SELECT_GROUP_INTERPOLATION_TYPE,
+  GRAPHKEYS_SELECT_GROUP_HANDLE_TYPE,
+  GRAPHKEYS_SELECT_GROUP_INTERPOLATION_HANDLE_TYPE,
+  GRAPHKEYS_SELECT_GROUP_MODIFIERS,
+  GRAPHKEYS_SELECT_GROUP_DATABLOCK,
+};
+
+static const EnumPropertyItem graphkeys_prop_select_grouped_types[] = {
+    {GRAPHKEYS_SELECT_GROUP_CHANNEL_TYPE,
+     "CHANNEL_TYPE",
+     0,
+     "Channel Type",
+     "All keyframes of same type of channel (X Location, etc.)"},
+    {GRAPHKEYS_SELECT_GROUP_KEY_TYPE,
+     "KEY_TYPE",
+     0,
+     "Key Type",
+     "All keyframes of the same type (breakdown, extreme, etc.)"},
+    {GRAPHKEYS_SELECT_GROUP_INTERPOLATION_TYPE,
+     "INTERPOLATION_TYPE",
+     0,
+     "Interpolation Mode",
+     "All keyframes of the same interpolation mode (constant, bezier, etc.)"},
+    {GRAPHKEYS_SELECT_GROUP_HANDLE_TYPE,
+     "HANDLE_TYPE",
+     0,
+     "Handle Type",
+     "All keyframes of the same handle type (vector, automatic, etc.)"},
+    {GRAPHKEYS_SELECT_GROUP_MODIFIERS,
+     "MODIFIERS",
+     0,
+     "Modifiers",
+     "All keyframes on each channel that has the same modifiers"},
+    {GRAPHKEYS_SELECT_GROUP_DATABLOCK,
+     "DATABLOCK",
+     0,
+     "Datablock",
+     "All keyframes that are part of the same datablock"},
+    {0, NULL, 0, NULL, NULL},
+};
+
+/* GRAPHKEYS_SELECT_GROUP_DATABLOCK */
+
+static short select_grouped_datablock(KeyframeEditData *ked, struct BezTriple *bezt)
+{
+  /* Actual filtering is done via the anim data list. */
+  return KEYFRAME_OK_ALL;
+}
+
+static short select_grouped_active_datablock(KeyframeEditData *ked, struct BezTriple *bezt)
+{
+  /* Cancel iteration if we found any selected key. The key will be added to the set in the loop,
+   * since the info comes from the anim data list. */
+  return 1;
+}
+
+/* GRAPHKEYS_SELECT_GROUP_HANDLE_TYPE */
+
+static short select_grouped_handle_type(KeyframeEditData *ked, struct BezTriple *bezt)
+{
+  short ok = 0;
+  if (BLI_gset_haskey(ked->data, POINTER_FROM_INT(bezt->h1))) {
+    ok |= KEYFRAME_OK_H1;
+  }
+  if (BLI_gset_haskey(ked->data, POINTER_FROM_INT(bezt->h2))) {
+    ok |= KEYFRAME_OK_H2;
+  }
+  if (ok == (KEYFRAME_OK_H1 | KEYFRAME_OK_H2)) {
+    ok |= KEYFRAME_OK_KEY;
+  }
+  return ok;
+}
+
+static short select_grouped_active_handle_type(KeyframeEditData *ked, struct BezTriple *bezt)
+{
+  BLI_gset_add(ked->data, POINTER_FROM_INT(bezt->h1));
+  BLI_gset_add(ked->data, POINTER_FROM_INT(bezt->h2));
+  return 0;
+}
+
+/* GRAPHKEYS_SELECT_GROUP_INTERPOLATION_TYPE */
+
+static short select_grouped_interpolation_type(KeyframeEditData *ked, struct BezTriple *bezt)
+{
+  if (BLI_gset_haskey(ked->data, POINTER_FROM_INT(bezt->ipo))) {
+    return KEYFRAME_OK_ALL;
+  }
+  return 0;
+}
+
+static short select_grouped_active_interpolation_type(KeyframeEditData *ked,
+                                                      struct BezTriple *bezt)
+{
+  BLI_gset_add(ked->data, POINTER_FROM_INT(bezt->ipo));
+  return 0;
+}
+
+/* GRAPHKEYS_SELECT_GROUP_KEY_TYPE */
+
+static short select_grouped_key_type(KeyframeEditData *ked, struct BezTriple *bezt)
+{
+  if (BLI_gset_haskey(ked->data, POINTER_FROM_INT(BEZKEYTYPE(bezt)))) {
+    return KEYFRAME_OK_ALL;
+  }
+  return 0;
+}
+
+static short select_grouped_active_key_type(KeyframeEditData *ked, struct BezTriple *bezt)
+{
+  BLI_gset_add(ked->data, POINTER_FROM_INT(BEZKEYTYPE(bezt)));
+  return 0;
+}
+
+static KeyframeEditFunc select_grouped_get_filter_callback(ListBase *anim_data,
+                                                           KeyframeEditData *ked,
+                                                           int type)
+{
+  KeyframeEditFunc ok_cb = ANIM_editkeyframes_ok(BEZT_OK_SELECTED);
+  GSet *comp_set;
+
+  if (type == GRAPHKEYS_SELECT_GROUP_DATABLOCK) {
+    comp_set = BLI_gset_ptr_new(__func__);
+  }
+  else {
+    comp_set = BLI_gset_int_new(__func__);
+  }
+
+  ked->data = comp_set;
+
+  /* Last iteration of this loop will be used to return a callback based on type. */
+  bAnimListElem *ale;
+  for (ale = anim_data->first;; ale = ale->next) {
+    FCurve *fcu;
+    if (ale != NULL) {
+      /* TODO(redmser): Other types (GP, mask, etc.). */
+      if (ale->datatype != ALE_FCURVE) {
+        continue;
+      }
+
+      /* Only continue if F-Curve has keyframes. */
+      fcu = (FCurve *)ale->key_data;
+      if (fcu->bezt == NULL) {
+        continue;
+      }
+    }
+
+    /* Find first selected keyframe for context info. */
+    switch (type) {
+      case GRAPHKEYS_SELECT_GROUP_CHANNEL_TYPE: {
+        /* TODO(redmser): Channel type (by name?). */
+        BLI_assert(0);
+        break;
+      }
+      case GRAPHKEYS_SELECT_GROUP_HANDLE_TYPE: {
+        if (ale == NULL) {
+          return select_grouped_handle_type;
+        }
+
+        ANIM_fcurve_keyframes_loop(ked, fcu, ok_cb, select_grouped_active_handle_type, NULL);
+        break;
+      }
+      case GRAPHKEYS_SELECT_GROUP_INTERPOLATION_TYPE: {
+        if (ale == NULL) {
+          return select_grouped_interpolation_type;
+        }
+
+        ANIM_fcurve_keyframes_loop(
+            ked, fcu, ok_cb, select_grouped_active_interpolation_type, NULL);
+        break;
+      }
+      case GRAPHKEYS_SELECT_GROUP_KEY_TYPE: {
+        if (ale == NULL) {
+          return select_grouped_key_type;
+        }
+
+        ANIM_fcurve_keyframes_loop(ked, fcu, ok_cb, select_grouped_active_key_type, NULL);
+        break;
+      }
+      case GRAPHKEYS_SELECT_GROUP_MODIFIERS: {
+        /* TODO(redmser): Modifier types. */
+        BLI_assert(0);
+        break;
+      }
+      case GRAPHKEYS_SELECT_GROUP_DATABLOCK: {
+        if (ale == NULL) {
+          return select_grouped_datablock;
+        }
+
+        short result = ANIM_fcurve_keyframes_loop(
+            ked, fcu, ok_cb, select_grouped_active_datablock, NULL);
+        if (result == 1) {
+          /* Found a selected key in this datablock, add its id. */
+          BLI_gset_add(ked->data, ale->id);
+        }
+        break;
+      }
+      default: {
+        BLI_assert(0);
+        break;
+      }
+    }
+  }
+
+  return NULL;
+}
+
+static int graphkeys_select_grouped_exec(bContext *C, wmOperator *op)
+{
+  bAnimContext ac;
+
+  if (ANIM_animdata_get_context(C, &ac) == 0) {
+    return OPERATOR_CANCELLED;
+  }
+
+  const int type = RNA_enum_get(op->ptr, "type");
+  const bool use_selected_channels = RNA_boolean_get(op->ptr, "use_selected_channels");
+
+  /* Filter data. */
+  int filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_NODUPLIS);
+  if (use_selected_channels) {
+    /* TODO(redmser): Doing it this way means that the keyframe that we're getting the reference
+     * value from must also be in a selected channel. But not sure if filtering twice is a better
+     * solution here either. */
+    filter |= ANIMFILTER_SEL;
+  }
+
+  ListBase anim_data = {NULL, NULL};
+  ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
+
+  KeyframeEditData ked = {{NULL}};
+  KeyframeEditFunc ok_cb = select_grouped_get_filter_callback(&anim_data, &ked, type);
+  KeyframeEditFunc select_cb = ANIM_editkeyframes_select(SELECT_ADD);
+
+  if (!RNA_boolean_get(op->ptr, "extend")) {
+    /* If not extending, deselect all first. */
+    deselect_graph_keys(&ac, 0, SELECT_SUBTRACT, true);
+  }
+
+  bAnimListElem *ale;
+  SpaceGraph *sipo = (SpaceGraph *)ac.sl;
+  for (ale = anim_data.first; ale; ale = ale->next) {
+    if (ale->datatype != ALE_FCURVE) {
+      continue;
+    }
+
+    /* Only continue if F-Curve has keyframes. */
+    FCurve *fcu = (FCurve *)ale->key_data;
+    if (fcu->bezt == NULL) {
+      continue;
+    }
+
+    /* Filtering by datablock has to be done on anim data level. */
+    if (type == GRAPHKEYS_SELECT_GROUP_DATABLOCK && !BLI_gset_haskey(ked.data, ale->id)) {
+      continue;
+    }
+
+    /* Check if any keyframe will be selected. */
+    if (ANIM_fcurve_keyframes_loop(&ked, fcu, NULL, ok_cb, NULL)) {
+      ANIM_fcurve_keyframes_loop(&ked, fcu, ok_cb, select_cb, NULL);
+
+      /* Only change selection of channel when the visibility of keyframes
+       * doesn't depend on this. */
+      if ((sipo->flag & SIPO_SELCUVERTSONLY) == 0) {
+        fcu->flag |= FCURVE_SELECTED;
+      }
+    }
+  }
+
+  ANIM_animdata_freelist(&anim_data);
+  BLI_gset_free(ked.data, NULL);
+
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
+  return OPERATOR_FINISHED;
+}
+
+void GRAPH_OT_select_grouped(wmOperatorType *ot)
+{
+  /* Identifiers. */
+  ot->name = "Select Grouped";
+  ot->idname = "GRAPH_OT_select_grouped";
+  ot->description = "Select all keyframes grouped by various properties";
+
+  /* Api callbacks. */
+  ot->invoke = WM_menu_invoke;
+  ot->exec = graphkeys_select_grouped_exec;
+  ot->poll = graphop_visible_keyframes_poll;
+
+  /* Flags. */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* Properties. */
+  ot->prop = RNA_def_enum(ot->srna,
+                          "type",
+                          graphkeys_prop_select_grouped_types,
+                          0,
+                          "Type",
+                          "Which criterion to filter selection by");
+  RNA_def_boolean(ot->srna,
+                  "extend",
+                  false,
+                  "Extend",
+                  "Extend selection instead of deselecting everything first");
+  RNA_def_boolean(ot->srna,
+                  "use_selected_channels",
+                  false,
+                  "Use Selected Channels",
+                  "Only consider keyframes on the same channels as the selected ones");
+}

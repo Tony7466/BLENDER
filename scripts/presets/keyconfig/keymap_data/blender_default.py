@@ -1768,6 +1768,7 @@ def km_graph_editor(params):
         ("graph.select_leftright", {"type": 'RIGHT_BRACKET', "value": 'PRESS'},
          {"properties": [("mode", 'RIGHT')]}),
         *_template_items_select_actions(params, "graph.select_all"),
+        ("graph.select_grouped", {"type": 'G', "value": 'PRESS', "shift": True}, None),
         ("graph.select_box", {"type": 'B', "value": 'PRESS'}, None),
         ("graph.select_box", {"type": 'B', "value": 'PRESS', "alt": True},
          {"properties": [("axis_range", True)]}),

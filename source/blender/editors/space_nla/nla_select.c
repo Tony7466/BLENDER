@@ -794,7 +794,7 @@ static void select_grouped_tag_strips(int type, bAnimListElem *ale, GSet *comp_s
   NlaTrack *track = (NlaTrack *)ale->data;
 
   for (NlaStrip *strip = track->strips.first; strip; strip = strip->next) {
-    if (!(strip->flag & NLASTRIP_FLAG_SELECT)) {
+    if ((strip->flag & NLASTRIP_FLAG_SELECT) == 0) {
       continue;
     }
 

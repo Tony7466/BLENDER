@@ -1988,9 +1988,8 @@ static short select_grouped_handle_type(KeyframeEditData *ked, struct BezTriple 
 
 static short select_grouped_active_handle_type(KeyframeEditData *ked, struct BezTriple *bezt)
 {
-  if (bezt->h1 == bezt->h2) {
-    BLI_gset_add(ked->data, POINTER_FROM_INT(bezt->h1));
-  }
+  BLI_gset_add(ked->data, POINTER_FROM_INT(bezt->h1));
+  BLI_gset_add(ked->data, POINTER_FROM_INT(bezt->h2));
   return 0;
 }
 

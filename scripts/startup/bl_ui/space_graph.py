@@ -179,6 +179,9 @@ class GRAPH_MT_select(Menu):
         props.mode = 'RIGHT'
 
         layout.separator()
+        layout.operator_menu_enum("graph.select_grouped", "type", text="Select Grouped")
+
+        layout.separator()
         layout.operator("graph.select_more")
         layout.operator("graph.select_less")
 
