@@ -2209,5 +2209,5 @@ void ACTION_OT_select_grouped(wmOperatorType *ot)
                   "use_selected_channels",
                   false,
                   "Use Selected Channels",
-                  "Only consider keyframes on the same channel as the selected ones");
+                  "Only consider keyframes on the same channels as the selected ones");
 }
