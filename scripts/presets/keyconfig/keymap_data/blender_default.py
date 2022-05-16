@@ -2557,6 +2557,7 @@ def km_nla_editor(params):
         ("nla.select_leftright", {"type": 'RIGHT_BRACKET', "value": 'PRESS'},
          {"properties": [("mode", 'RIGHT')]}),
         *_template_items_select_actions(params, "nla.select_all"),
+        ("nla.select_grouped", {"type": 'G', "value": 'PRESS', "shift": True}, None),
         ("nla.select_box", {"type": 'B', "value": 'PRESS'},
          {"properties": [("axis_range", False)]}),
         ("nla.select_box", {"type": 'B', "value": 'PRESS', "alt": True},

@@ -14,6 +14,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_ghash.h"
 #include "BLI_math_base.h"
 
 #include "BKE_context.h"
@@ -742,3 +743,240 @@ void NLA_OT_click_select(wmOperatorType *ot)
 }
 
 /* *********************************************** */
+
+/* Select Grouped Operator */
+
+enum {
+  NLAEDIT_SELECT_GROUP_BLENDING,
+  NLAEDIT_SELECT_GROUP_ACTION,
+  NLAEDIT_SELECT_GROUP_EXTRAPOLATION,
+  NLAEDIT_SELECT_GROUP_REVERSED,
+  NLAEDIT_SELECT_GROUP_DATABLOCK,
+  NLAEDIT_SELECT_GROUP_MUTED,
+};
+
+static const EnumPropertyItem nlaedit_prop_select_grouped_types[] = {
+    {NLAEDIT_SELECT_GROUP_BLENDING,
+     "BLENDING",
+     0,
+     "Blending Mode",
+     "All strips with the same blending mode (replace, combine, add, etc.)"},
+    {NLAEDIT_SELECT_GROUP_ACTION,
+     "ACTION",
+     0,
+     "Action",
+     "All strips that use the same action datablock"},
+    {NLAEDIT_SELECT_GROUP_EXTRAPOLATION,
+     "EXTRAPOLATION",
+     0,
+     "Extrapolation Mode",
+     "All strips the use the same extrapolation mode (hold, hold forward, etc.)"},
+    {NLAEDIT_SELECT_GROUP_REVERSED,
+     "REVERSED",
+     0,
+     "Reversed",
+     "All strips that have the same value for the reversed option"},
+    {NLAEDIT_SELECT_GROUP_DATABLOCK,
+     "DATABLOCK",
+     0,
+     "Datablock",
+     "All strips that are part of the same datablock"},
+    {NLAEDIT_SELECT_GROUP_MUTED,
+     "MUTED",
+     0,
+     "Muted",
+     "All strips that have the same value for the muted option"},
+    {0, NULL, 0, NULL, NULL},
+};
+
+static void select_grouped_tag_strips(int type, bAnimListElem *ale, GSet *comp_set)
+{
+  NlaTrack *track = (NlaTrack *)ale->data;
+
+  for (NlaStrip *strip = track->strips.first; strip; strip = strip->next) {
+    if (!(strip->flag & NLASTRIP_FLAG_SELECT)) {
+      continue;
+    }
+
+    switch (type) {
+      case NLAEDIT_SELECT_GROUP_ACTION: {
+        BLI_gset_add(comp_set, strip->act);
+        break;
+      }
+      case NLAEDIT_SELECT_GROUP_BLENDING: {
+        BLI_gset_add(comp_set, POINTER_FROM_INT(strip->blendmode));
+        break;
+      }
+      case NLAEDIT_SELECT_GROUP_DATABLOCK: {
+        BLI_gset_add(comp_set, ale->id);
+
+        /* No need to check all strips in the track. */
+        return;
+      }
+      case NLAEDIT_SELECT_GROUP_EXTRAPOLATION: {
+        BLI_gset_add(comp_set, POINTER_FROM_INT(strip->extendmode));
+        break;
+      }
+      case NLAEDIT_SELECT_GROUP_REVERSED: {
+        BLI_gset_add(comp_set, POINTER_FROM_INT(strip->flag & NLASTRIP_FLAG_REVERSE));
+        break;
+      }
+      case NLAEDIT_SELECT_GROUP_MUTED: {
+        BLI_gset_add(comp_set, POINTER_FROM_INT(strip->flag & NLASTRIP_FLAG_MUTED));
+        break;
+      }
+      default: {
+        BLI_assert(0);
+        break;
+      }
+    }
+  }
+}
+
+static void select_grouped_select_matching_strips(int type, bAnimListElem *ale, GSet *comp_set)
+{
+  NlaTrack *track = (NlaTrack *)ale->data;
+
+  for (NlaStrip *strip = track->strips.first; strip; strip = strip->next) {
+    switch (type) {
+      case NLAEDIT_SELECT_GROUP_ACTION: {
+        if (!BLI_gset_haskey(comp_set, strip->act)) {
+          continue;
+        }
+        break;
+      }
+      case NLAEDIT_SELECT_GROUP_BLENDING: {
+        if (!BLI_gset_haskey(comp_set, POINTER_FROM_INT(strip->blendmode))) {
+          continue;
+        }
+        break;
+      }
+      case NLAEDIT_SELECT_GROUP_DATABLOCK: {
+        if (!BLI_gset_haskey(comp_set, ale->id)) {
+          /* No need to check all strips in the track. */
+          return;
+        }
+        break;
+      }
+      case NLAEDIT_SELECT_GROUP_EXTRAPOLATION: {
+        if (!BLI_gset_haskey(comp_set, POINTER_FROM_INT(strip->extendmode))) {
+          continue;
+        }
+        break;
+      }
+      case NLAEDIT_SELECT_GROUP_REVERSED: {
+        if (!BLI_gset_haskey(comp_set, POINTER_FROM_INT(strip->flag & NLASTRIP_FLAG_REVERSE))) {
+          continue;
+        }
+        break;
+      }
+      case NLAEDIT_SELECT_GROUP_MUTED: {
+        if (!BLI_gset_haskey(comp_set, POINTER_FROM_INT(strip->flag & NLASTRIP_FLAG_MUTED))) {
+          continue;
+        }
+        break;
+      }
+      default: {
+        BLI_assert(0);
+        break;
+      }
+    }
+
+    ACHANNEL_SET_FLAG(strip, SELECT_ADD, NLASTRIP_FLAG_SELECT);
+  }
+}
+
+static int nlaedit_select_grouped_exec(bContext *C, wmOperator *op)
+{
+  bAnimContext ac;
+
+  if (ANIM_animdata_get_context(C, &ac) == 0) {
+    return OPERATOR_CANCELLED;
+  }
+
+  Scene *scene = ac.scene;
+  /* If currently in tweak-mode, exit tweak-mode first. */
+  if (scene->flag & SCE_NLA_EDIT_ON) {
+    WM_operator_name_call(C, "NLA_OT_tweakmode_exit", WM_OP_EXEC_DEFAULT, NULL, NULL);
+  }
+
+  const int type = RNA_enum_get(op->ptr, "type");
+  const bool use_selected_tracks = RNA_boolean_get(op->ptr, "use_selected_tracks");
+
+  /* Filter data. */
+  int filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE);
+  if (use_selected_tracks) {
+    /* TODO(redmser): Doing it this way means that the strip that we're getting the reference
+     * value from must also be in a selected track. But not sure if filtering twice is a better
+     * solution here either. */
+    filter |= ANIMFILTER_SEL;
+  }
+
+  ListBase anim_data = {NULL, NULL};
+  ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
+
+  /* Collect list of selected strips' properties. */
+  GSet *comp_set;
+  if (type == NLAEDIT_SELECT_GROUP_DATABLOCK || type == NLAEDIT_SELECT_GROUP_ACTION) {
+    comp_set = BLI_gset_ptr_new(__func__);
+  }
+  else {
+    comp_set = BLI_gset_int_new(__func__);
+  }
+
+  for (bAnimListElem *ale = anim_data.first; ale; ale = ale->next) {
+    select_grouped_tag_strips(type, ale, comp_set);
+  }
+
+  if (!RNA_boolean_get(op->ptr, "extend")) {
+    /* If not extending, deselect all first. */
+    /* TODO(redmser): This is acting a bit weirdly... */
+    deselect_nla_strips(&ac, 0, SELECT_SUBTRACT);
+  }
+
+  /* Select all strips that match. */
+  for (bAnimListElem *ale = anim_data.first; ale; ale = ale->next) {
+    select_grouped_select_matching_strips(type, ale, comp_set);
+  }
+
+  ANIM_animdata_freelist(&anim_data);
+  BLI_gset_free(comp_set, NULL);
+
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_SELECTED, NULL);
+  return OPERATOR_FINISHED;
+}
+
+void NLA_OT_select_grouped(wmOperatorType *ot)
+{
+  /* Identifiers. */
+  ot->name = "Select Grouped";
+  ot->idname = "NLA_OT_select_grouped";
+  ot->description = "Select all strips grouped by various properties";
+
+  /* Api callbacks. */
+  ot->invoke = WM_menu_invoke;
+  ot->exec = nlaedit_select_grouped_exec;
+  ot->poll = ED_operator_nla_active;
+
+  /* Flags. */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* Properties. */
+  ot->prop = RNA_def_enum(ot->srna,
+                          "type",
+                          nlaedit_prop_select_grouped_types,
+                          0,
+                          "Type",
+                          "Which criterion to filter selection by");
+  RNA_def_boolean(ot->srna,
+                  "extend",
+                  false,
+                  "Extend",
+                  "Extend selection instead of deselecting everything first");
+  RNA_def_boolean(ot->srna,
+                  "use_selected_tracks",
+                  false,
+                  "Use Selected Tracks",
+                  "Only consider strips on the same track as the selected ones");
+}

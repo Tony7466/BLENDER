@@ -138,6 +138,9 @@ class NLA_MT_select(Menu):
         props.extend = False
         props.mode = 'RIGHT'
 
+        layout.separator()
+        layout.operator_menu_enum("nla.select_grouped", "type", text="Select Grouped")
+
 
 class NLA_MT_marker(Menu):
     bl_label = "Marker"

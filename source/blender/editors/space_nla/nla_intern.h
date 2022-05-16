@@ -44,6 +44,7 @@ enum eNlaEdit_LeftRightSelect_Mode {
 void NLA_OT_select_all(wmOperatorType *ot);
 void NLA_OT_select_box(wmOperatorType *ot);
 void NLA_OT_select_leftright(wmOperatorType *ot);
+void NLA_OT_select_grouped(wmOperatorType *ot);
 void NLA_OT_click_select(wmOperatorType *ot);
 
 /* **************************************** */

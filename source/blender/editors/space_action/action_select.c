@@ -2064,6 +2064,7 @@ static KeyframeEditFunc select_grouped_get_filter_callback(ListBase *anim_data,
     switch (type) {
       case ACTKEYS_SELECT_GROUP_CHANNEL_TYPE: {
         /* TODO(redmser): Channel type (by name?). */
+        BLI_assert(0);
         break;
       }
       case ACTKEYS_SELECT_GROUP_HANDLE_TYPE: {
@@ -2093,6 +2094,7 @@ static KeyframeEditFunc select_grouped_get_filter_callback(ListBase *anim_data,
       }
       case ACTKEYS_SELECT_GROUP_MODIFIERS: {
         /* TODO(redmser): Modifier types. */
+        BLI_assert(0);
         break;
       }
       case ACTKEYS_SELECT_GROUP_DATABLOCK: {

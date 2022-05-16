@@ -1496,6 +1496,7 @@ def km_nla_editor(params):
          {"properties": [("mode", 'LEFT'), ("extend", False)]}),
         ("nla.select_leftright", {"type": 'RIGHT_BRACKET', "value": 'PRESS'},
          {"properties": [("mode", 'RIGHT'), ("extend", False)]}),
+        ("nla.select_grouped", {"type": 'G', "value": 'PRESS', "shift": True}, None),
         ("nla.select_all", {"type": 'A', "value": 'PRESS', "ctrl": True}, {"properties": [("action", 'SELECT')]}),
         ("nla.select_all", {"type": 'A', "value": 'PRESS', "ctrl": True,
          "shift": True}, {"properties": [("action", 'DESELECT')]}),

@@ -97,6 +97,7 @@ void nla_operatortypes(void)
   WM_operatortype_append(NLA_OT_select_box);
   WM_operatortype_append(NLA_OT_select_all);
   WM_operatortype_append(NLA_OT_select_leftright);
+  WM_operatortype_append(NLA_OT_select_grouped);
 
   /* view */
   WM_operatortype_append(NLA_OT_view_all);
