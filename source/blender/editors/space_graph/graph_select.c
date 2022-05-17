@@ -2029,6 +2029,7 @@ void GRAPH_OT_clickselect(wmOperatorType *ot)
 enum {
   GRAPHKEYS_SELECT_GROUP_CHANNEL_TYPE,
   GRAPHKEYS_SELECT_GROUP_KEY_TYPE,
+  GRAPHKEYS_SELECT_GROUP_HANDLE_SIDE,
   GRAPHKEYS_SELECT_GROUP_INTERPOLATION_TYPE,
   GRAPHKEYS_SELECT_GROUP_HANDLE_TYPE,
   GRAPHKEYS_SELECT_GROUP_INTERPOLATION_HANDLE_TYPE,
@@ -2047,6 +2048,11 @@ static const EnumPropertyItem graphkeys_prop_select_grouped_types[] = {
      0,
      "Key Type",
      "All keyframes of the same type (breakdown, extreme, etc.)"},
+    {GRAPHKEYS_SELECT_GROUP_HANDLE_SIDE,
+     "HANDLE_SIDE",
+     0,
+     "Handle Side",
+     "All handles that are on the same side as the selected (left or right)"},
     {GRAPHKEYS_SELECT_GROUP_INTERPOLATION_TYPE,
      "INTERPOLATION_TYPE",
      0,
@@ -2085,6 +2091,33 @@ static short select_grouped_active_datablock(KeyframeEditData *ked, struct BezTr
   return 1;
 }
 
+/* GRAPHKEYS_SELECT_GROUP_HANDLE_SIDE */
+
+static short select_grouped_handle_side(KeyframeEditData *ked, struct BezTriple *bezt)
+{
+  short ok = 0;
+  if (BLI_gset_haskey(ked->data, POINTER_FROM_INT(1))) {
+    ok |= KEYFRAME_OK_H1;
+  }
+  if (BLI_gset_haskey(ked->data, POINTER_FROM_INT(2))) {
+    ok |= KEYFRAME_OK_H2;
+  }
+  return ok;
+}
+
+static short select_grouped_active_handle_side(KeyframeEditData *ked, struct BezTriple *bezt)
+{
+  /* Left handle. */
+  if ((bezt->f1 & SELECT) != 0) {
+    BLI_gset_add(ked->data, POINTER_FROM_INT(1));
+  }
+  /* Right handle. */
+  if ((bezt->f3 & SELECT) != 0) {
+    BLI_gset_add(ked->data, POINTER_FROM_INT(2));
+  }
+  return 0;
+}
+
 /* GRAPHKEYS_SELECT_GROUP_HANDLE_TYPE */
 
 static short select_grouped_handle_type(KeyframeEditData *ked, struct BezTriple *bezt)
@@ -2104,8 +2137,14 @@ static short select_grouped_handle_type(KeyframeEditData *ked, struct BezTriple 
 
 static short select_grouped_active_handle_type(KeyframeEditData *ked, struct BezTriple *bezt)
 {
-  BLI_gset_add(ked->data, POINTER_FROM_INT(bezt->h1));
-  BLI_gset_add(ked->data, POINTER_FROM_INT(bezt->h2));
+  /* Left handle. */
+  if ((bezt->f1 & SELECT) != 0) {
+    BLI_gset_add(ked->data, POINTER_FROM_INT(bezt->h1));
+  }
+  /* Right handle. */
+  if ((bezt->f3 & SELECT) != 0) {
+    BLI_gset_add(ked->data, POINTER_FROM_INT(bezt->h2));
+  }
   return 0;
 }
 
@@ -2199,6 +2238,14 @@ static KeyframeEditFunc select_grouped_get_filter_callback(ListBase *anim_data,
             ked, fcu, ok_cb, select_grouped_active_interpolation_type, NULL);
         break;
       }
+      case GRAPHKEYS_SELECT_GROUP_HANDLE_SIDE: {
+        if (ale == NULL) {
+          return select_grouped_handle_side;
+        }
+
+        ANIM_fcurve_keyframes_loop(ked, fcu, ok_cb, select_grouped_active_handle_side, NULL);
+        break;
+      }
       case GRAPHKEYS_SELECT_GROUP_KEY_TYPE: {
         if (ale == NULL) {
           return select_grouped_key_type;
@@ -2269,6 +2316,7 @@ static int graphkeys_select_grouped_exec(bContext *C, wmOperator *op)
 
   bAnimListElem *ale;
   SpaceGraph *sipo = (SpaceGraph *)ac.sl;
+  ked.iterflags |= KEYFRAME_ITER_INCL_HANDLES;
   for (ale = anim_data.first; ale; ale = ale->next) {
     if (ale->datatype != ALE_FCURVE) {
       continue;
