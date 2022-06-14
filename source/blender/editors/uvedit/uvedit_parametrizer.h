@@ -88,15 +88,6 @@ void param_lscm_begin(ParamHandle *handle, ParamBool live, ParamBool abf);
 void param_lscm_solve(ParamHandle *handle, int *count_changed, int *count_failed);
 void param_lscm_end(ParamHandle *handle);
 
-// SLIM REMOVED
-// /* Stretch */
-
-void param_stretch_begin(ParamHandle *handle);
-void param_stretch_blend(ParamHandle *handle, float blend);
-void param_stretch_iter(ParamHandle *handle);
-void param_stretch_end(ParamHandle *handle);
-// ---
-
 /* Area Smooth */
 
 void param_smooth_area(ParamHandle *handle);

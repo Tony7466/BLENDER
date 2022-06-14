@@ -111,22 +111,6 @@ static bool ED_uvedit_ensure_uvs(Object *obedit)
 
 /** \} */
 
-// SLIM TO MERGE
-// /******************* Remembered Properties ******************/
-
-// typedef struct UnwrapProperties {
-// 	bool use_slim;
-// 	bool use_abf;
-// 	bool correct_aspect;
-// 	bool fill_holes;
-// 	bool use_subsurf;
-// 	char vertex_group[MAX_ID_NAME];
-// 	float vertex_group_factor;
-// 	float relative_scale;
-// 	int reflection_mode;
-// 	int iterations;
-// } UnwrapProperties;
-
 /* -------------------------------------------------------------------- */
 /** \name UDIM Access
  * \{ */
@@ -887,67 +871,18 @@ static SLIMMatrixTransfer *slim_matrix_transfer(const UnwrapOptions *options)
 /* Holds all necessary state for one session of interactive parametrisation. */
 
 typedef struct MinStretch {
-  // SLIM REMOVED
-  const Scene *scene;
-  // --
-
   Object **objects_edit;
   uint objects_len;
   ParamHandle *handle;
 
-  // SLIM REMOVED
   float blend;
   double lasttime;
-  int i, iterations;
-  // --
+
   wmTimer *timer;
-  // float blend;
+
 	bool fix_boundary;
 } MinStretch;
 
-// SLIM REMOVED
-/* static bool minimize_stretch_init(bContext *C, wmOperator *op)
-{
-  const Scene *scene = CTX_data_scene(C);
-  ViewLayer *view_layer = CTX_data_view_layer(C);
-
-  const UnwrapOptions options = {
-      .topology_from_uvs = true,
-      .fill_holes = RNA_boolean_get(op->ptr, "fill_holes"),
-      .only_selected_faces = true,
-      .only_selected_uvs = true,
-      .correct_aspect = true,
-  };
-
-  uint objects_len = 0;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
-      view_layer, CTX_wm_view3d(C), &objects_len);
-
-  if (!uvedit_have_selection_multi(scene, objects, objects_len, &options)) {
-    MEM_freeN(objects);
-    return false;
-  }
-
-  MinStretch *ms = MEM_callocN(sizeof(MinStretch), "MinStretch");
-  ms->scene = scene;
-  ms->objects_edit = objects;
-  ms->objects_len = objects_len;
-  ms->blend = RNA_float_get(op->ptr, "blend");
-  ms->iterations = RNA_int_get(op->ptr, "iterations");
-  ms->i = 0;
-  ms->handle = construct_param_handle_multi(scene, objects, objects_len, &options, NULL);
-  ms->lasttime = PIL_check_seconds_timer();
-
-  param_stretch_begin(ms->handle);
-  if (ms->blend != 0.0f) {
-    param_stretch_blend(ms->handle, ms->blend);
-  }
-
-  op->customdata = ms;
-
-  return true;
-} */
-// ---
 
 // SLIM VERSION
 /* Initializes SLIM and transfars data matrices */
@@ -990,50 +925,7 @@ static bool minimize_stretch_init(bContext *C, wmOperator *op)
 	return true;
 }
 
-// SLIM REMOVED
-/* static void minimize_stretch_iteration(bContext *C, wmOperator *op, bool interactive)
-{
-  MinStretch *ms = op->customdata;
-  ScrArea *area = CTX_wm_area(C);
-  const Scene *scene = CTX_data_scene(C);
-  ToolSettings *ts = scene->toolsettings;
-  const bool synced_selection = (ts->uv_flag & UV_SYNC_SELECTION) != 0;
 
-  param_stretch_blend(ms->handle, ms->blend);
-  param_stretch_iter(ms->handle);
-
-  ms->i++;
-  RNA_int_set(op->ptr, "iterations", ms->i);
-
-  if (interactive && (PIL_check_seconds_timer() - ms->lasttime > 0.5)) {
-    char str[UI_MAX_DRAW_STR];
-
-    param_flush(ms->handle);
-
-    if (area) {
-      BLI_snprintf(str, sizeof(str), TIP_("Minimize Stretch. Blend %.2f"), ms->blend);
-      ED_area_status_text(area, str);
-      ED_workspace_status_text(C, TIP_("Press + and -, or scroll wheel to set blending"));
-    }
-
-    ms->lasttime = PIL_check_seconds_timer();
-
-    for (uint ob_index = 0; ob_index < ms->objects_len; ob_index++) {
-      Object *obedit = ms->objects_edit[ob_index];
-      BMEditMesh *em = BKE_editmesh_from_object(obedit);
-
-      if (synced_selection && (em->bm->totfacesel == 0)) {
-        continue;
-      }
-
-      DEG_id_tag_update(obedit->data, ID_RECALC_GEOMETRY);
-      WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
-    }
-  }
-} */
-// ---
-
-// SLIM VERSION
 /* After initialisation, these iterations are executed, until applied or canceled by the user. */
 static void minimize_stretch_iteration(bContext *C, wmOperator *op, bool interactive)
 {
@@ -1072,51 +964,6 @@ static void minimize_stretch_iteration(bContext *C, wmOperator *op, bool interac
   }
 }
 
-// SLIM REMOVED
-/* static void minimize_stretch_exit(bContext *C, wmOperator *op, bool cancel)
-{
-  MinStretch *ms = op->customdata;
-  ScrArea *area = CTX_wm_area(C);
-  const Scene *scene = CTX_data_scene(C);
-  ToolSettings *ts = scene->toolsettings;
-  const bool synced_selection = (ts->uv_flag & UV_SYNC_SELECTION) != 0;
-
-  ED_area_status_text(area, NULL);
-  ED_workspace_status_text(C, NULL);
-
-  if (ms->timer) {
-    WM_event_remove_timer(CTX_wm_manager(C), CTX_wm_window(C), ms->timer);
-  }
-
-  if (cancel) {
-    param_flush_restore(ms->handle);
-  }
-  else {
-    param_flush(ms->handle);
-  }
-
-  param_stretch_end(ms->handle);
-  param_delete(ms->handle);
-
-  for (uint ob_index = 0; ob_index < ms->objects_len; ob_index++) {
-    Object *obedit = ms->objects_edit[ob_index];
-    BMEditMesh *em = BKE_editmesh_from_object(obedit);
-
-    if (synced_selection && (em->bm->totfacesel == 0)) {
-      continue;
-    }
-
-    DEG_id_tag_update(obedit->data, ID_RECALC_GEOMETRY);
-    WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
-  }
-
-  MEM_freeN(ms->objects_edit);
-  MEM_freeN(ms);
-  op->customdata = NULL;
-} */
-// ---
-
-// SLIM VERSION
 /* Exit interactive parametrisation. Clean up memory. */
 static void minimize_stretch_exit(bContext *C, wmOperator *op, bool cancel)
 {
@@ -1159,26 +1006,6 @@ static void minimize_stretch_exit(bContext *C, wmOperator *op, bool cancel)
 	op->customdata = NULL;
 }
 
-// SLIM REMOVED
-/* static int minimize_stretch_exec(bContext *C, wmOperator *op)
-{
-  int i, iterations;
-
-  if (!minimize_stretch_init(C, op)) {
-    return OPERATOR_CANCELLED;
-  }
-
-  iterations = RNA_int_get(op->ptr, "iterations");
-  for (i = 0; i < iterations; i++) {
-    minimize_stretch_iteration(C, op, false);
-  }
-  minimize_stretch_exit(C, op, false);
-
-  return OPERATOR_FINISHED;
-} */
-// ---
-
-// SLIM VERSION
 /* Used Only to adjust parameters. */
 static int minimize_stretch_exec(bContext *C, wmOperator *op)
 {
@@ -1517,14 +1344,6 @@ void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit)
     return;
   }
 
-  //const UnwrapOptions options = {
-  //    .topology_from_uvs = false,
-  //    .only_selected_faces = false,
-  //    .only_selected_uvs = true,
-  //    .fill_holes = (scene->toolsettings->uvcalc_flag & UVCALC_FILLHOLES) != 0,
-  //    .correct_aspect = (scene->toolsettings->uvcalc_flag & UVCALC_NO_ASPECT_CORRECT) == 0,
-  //};
-
   UnwrapOptions options = unwrap_options_get(NULL, obedit);
   options.topology_from_uvs = false;
   options.only_selected_faces = false;
@@ -1537,8 +1356,6 @@ void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit)
     handle = construct_param_handle(scene, obedit, em->bm, &options, NULL);
   }
 
-  // SLIM REMOVED
-  // param_lscm_begin(handle, PARAM_TRUE, abf);
 
   if (options.use_slim) {
 		SLIMMatrixTransfer *mt = slim_matrix_transfer(&options);
@@ -1570,9 +1387,6 @@ void ED_uvedit_live_unwrap_re_solve(void)
 {
   if (g_live_unwrap.handles) {
     for (int i = 0; i < g_live_unwrap.len; i++) {
-      // SLIM REMOVED
-      // param_lscm_solve(g_live_unwrap.handles[i]);
-
       if (param_is_slim(g_live_unwrap.handles[i])) {
         slim_reload_all_uvs(g_live_unwrap.handles[i]);
         param_slim_solve_iteration(g_live_unwrap.handles[i]);
@@ -1590,9 +1404,6 @@ void ED_uvedit_live_unwrap_end(short cancel)
 {
   if (g_live_unwrap.handles) {
     for (int i = 0; i < g_live_unwrap.len; i++) {
-      // SLIM REMOVED
-      // param_lscm_end(g_live_unwrap.handles[i]);
-
       if (param_is_slim(g_live_unwrap.handles[i])) {
         param_slim_end(g_live_unwrap.handles[i]);
       }
@@ -2061,11 +1872,6 @@ static void uvedit_unwrap(const Scene *scene,
     handle = construct_param_handle(scene, obedit, em->bm, options, result_info);
   }
 
-  // SLIM REMOVED
-  // param_lscm_begin(handle, PARAM_FALSE, scene->toolsettings->unwrapper == 0);
-  // param_lscm_solve(handle);
-  // param_lscm_end(handle);
-
   if (options->use_slim) {
 		SLIMMatrixTransfer *mt = slim_matrix_transfer(options);
 		mt->reflection_mode = options->reflection_mode;
@@ -2139,24 +1945,11 @@ static int unwrap_exec(bContext *C, wmOperator *op)
   ViewLayer *view_layer = CTX_data_view_layer(C);
   const Scene *scene = CTX_data_scene(C);
 
-  // SLIM REMOVED
-  // int method = RNA_enum_get(op->ptr, "method");
-  // const bool use_subsurf = RNA_boolean_get(op->ptr, "use_subsurf_data");
-  // ---
-
   int reported_errors = 0;
 
   uint objects_len = 0;
   Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
       view_layer, CTX_wm_view3d(C), &objects_len);
-
-  //const UnwrapOptions options = {
-  //    .topology_from_uvs = false,
-  //    .only_selected_faces = true,
-  //    .only_selected_uvs = true,
-  //    .fill_holes = RNA_boolean_get(op->ptr, "fill_holes"),
-  //    .correct_aspect = RNA_boolean_get(op->ptr, "correct_aspect"),
-  //};
 
   UnwrapOptions options = unwrap_options_get(op, NULL);
   options.topology_from_uvs = false;
