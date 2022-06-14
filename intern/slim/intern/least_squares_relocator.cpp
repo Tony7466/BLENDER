@@ -32,19 +32,28 @@
 #include <Eigen/Dense>
 #include <iostream>
 
+#include "BLI_assert.h"
+
+
 using namespace std;
 using namespace Eigen;
 using namespace igl;
 
 namespace relocator {
 
-	void applyTransformation(SLIMData &slimData, Matrix2d &transformationMatrix){
+	void applyTransformation(SLIMData &slimData, Matrix2d &transformationMatrix)
+	{
+		BLI_assert(slimData.valid);
+
 		for (int i = 0; i < slimData.V_o.rows(); i++){
 			slimData.V_o.row(i) = transformationMatrix * slimData.V_o.row(i).transpose();
 		}
 	}
 
-	void applyTranslation(SLIMData &slimData, Vector2d &translationVector){
+	void applyTranslation(SLIMData &slimData, Vector2d &translationVector)
+	{
+		BLI_assert(slimData.valid);
+
 		for (int i = 0; i < slimData.V_o.rows(); i++){
 			slimData.V_o.row(i) = translationVector.transpose() + slimData.V_o.row(i);
 		}
@@ -52,7 +61,8 @@ namespace relocator {
 
 	void retrievePositionsOfPinnedVerticesInInitialization(const MatrixXd &allUVPositionsInInitialization,
 														   const VectorXi &indicesOfPinnedVertices,
-														   MatrixXd &positionOfPinnedVerticesInInitialization){
+														   MatrixXd &positionOfPinnedVerticesInInitialization)
+	{
 		int i = 0;
 		for (VectorXi::InnerIterator it(indicesOfPinnedVertices, 0); it; ++it, i++){
 			int vertexIndex = it.value();
@@ -60,7 +70,9 @@ namespace relocator {
 		}
 	}
 
-	void flipInputGeometry(SLIMData &slimData){
+	void flipInputGeometry(SLIMData &slimData)
+	{
+		BLI_assert(slimData.valid);
 		//slimData.V.col(0) *= -1;
 
 		VectorXi temp = slimData.F.col(0);
@@ -69,7 +81,8 @@ namespace relocator {
 
 	}
 
-	void computeCentroid(MatrixXd &pointCloud, Vector2d &centroid){
+	void computeCentroid(MatrixXd &pointCloud, Vector2d &centroid)
+	{
 		centroid << pointCloud.col(0).sum(), pointCloud.col(1).sum();
 		centroid /= pointCloud.rows();
 	};
@@ -107,8 +120,8 @@ namespace relocator {
 	 */
 	void computeLeastSquaresScaling(MatrixXd centeredPins,
 									MatrixXd centeredInitializedPins,
-									Matrix2d &transformationMatrix){
-
+									Matrix2d &transformationMatrix)
+	{
 		int numberOfPinnedVertices = centeredPins.rows();
 
 		MatrixXd A = MatrixXd::Zero(numberOfPinnedVertices * 2, 1);
@@ -125,7 +138,9 @@ namespace relocator {
 	void computLeastSquaresRotationScaleOnly(SLIMData &slimData,
 											 Vector2d &translationVector,
 											 Matrix2d &transformationMatrix,
-											 bool isFlipAllowed){
+											 bool isFlipAllowed)
+	{
+		BLI_assert(slimData.valid);
 
 		MatrixXd positionOfInitializedPins(slimData.b.rows(), 2);
 		retrievePositionsOfPinnedVerticesInInitialization(slimData.V_o,
@@ -167,7 +182,10 @@ namespace relocator {
 		translationVector = centroidOfPins - transformationMatrix*centroidOfInitialized;
 	}
 
-	void computeTransformationMatrix2Pins(SLIMData &slimData, Matrix2d &transformationMatrix){
+	void computeTransformationMatrix2Pins(SLIMData &slimData, Matrix2d &transformationMatrix)
+	{
+		BLI_assert(slimData.valid);
+
 		Vector2d pinnedPositionDifferenceVector = slimData.bc.row(0) - slimData.bc.row(1);
 		Vector2d initializedPositionDifferenceVector = slimData.V_o.row(slimData.b(0)) - slimData.V_o.row(slimData.b(1));
 
@@ -184,11 +202,15 @@ namespace relocator {
 		transformationMatrix = (Matrix2d::Identity()*scale) * transformationMatrix;
 	}
 
-	void computeTranslation1Pin(SLIMData &slimData, Vector2d &translationVector){
-			translationVector = slimData.bc.row(0) - slimData.V_o.row(slimData.b(0));
+	void computeTranslation1Pin(SLIMData &slimData, Vector2d &translationVector)
+	{
+		BLI_assert(slimData.valid);
+		translationVector = slimData.bc.row(0) - slimData.V_o.row(slimData.b(0));
 	}
 
-	void transformInitializedMap(SLIMData &slimData){
+	void transformInitializedMap(SLIMData &slimData)
+	{
+		BLI_assert(slimData.valid);
 		Matrix2d transformationMatrix;
 		Vector2d translationVector;
 
@@ -224,13 +246,18 @@ namespace relocator {
 		}
 	}
 
-	bool isTranslationNeeded(SLIMData &slimData){
+	bool isTranslationNeeded(SLIMData &slimData)
+	{
+		BLI_assert(slimData.valid);
 		bool pinnedVerticesExist = (slimData.b.rows() > 0);
 		bool wasInitialized = !slimData.skipInitialization;
 		return wasInitialized && pinnedVerticesExist;
 	}
 
-	void transformInitializationIfNecessary(SLIMData &slimData){
+	void transformInitializationIfNecessary(SLIMData &slimData)
+	{
+		BLI_assert(slimData.valid);
+
 		if (!isTranslationNeeded(slimData)){
 			return;
 		}

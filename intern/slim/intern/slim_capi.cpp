@@ -40,8 +40,11 @@ using namespace igl;
 
 void SLIM_transfer_uvs_blended_live(SLIMMatrixTransfer *mt,
 									void* slim_data_ptr,
-									int uv_chart_index){
-
+									int uv_chart_index)
+{
+	if (!mt->succeeded[uv_chart_index]) {
+		return;
+	}
 	SLIMData* slim_data = (SLIMData*) slim_data_ptr;
 	areacomp::correctMapSurfaceAreaIfNecessary(slim_data);
 	transferUvsBackToNativePartLive(mt,
@@ -54,7 +57,12 @@ void SLIM_transfer_uvs_blended_live(SLIMMatrixTransfer *mt,
 	The blend parameter decides the linear blending between the original UV map and the one
 	optained from the accumulated SLIM iterations so far.
  */
-void SLIM_transfer_uvs_blended(SLIMMatrixTransfer *mt, void* slim_data_ptr, int uv_chart_index, float blend){
+void SLIM_transfer_uvs_blended(SLIMMatrixTransfer *mt, void* slim_data_ptr, int uv_chart_index, float blend)
+{
+	if (!mt->succeeded[uv_chart_index]) {
+		return;
+	}
+
 	SLIMData* slim_data = (SLIMData*) slim_data_ptr;
 	Eigen::MatrixXd blended_uvs = getInteractiveResultBlendedWithOriginal(blend, slim_data);
 	areacomp::correctMapSurfaceAreaIfNecessary(slim_data);
@@ -63,7 +71,8 @@ void SLIM_transfer_uvs_blended(SLIMMatrixTransfer *mt, void* slim_data_ptr, int 
 
 /*	Setup call from the native C part. Necessary for interactive parametrisation.
  */
-void* SLIM_setup(SLIMMatrixTransfer *mt, int uv_chart_index, bool are_border_vertices_pinned, bool skip_initialization){
+void* SLIM_setup(SLIMMatrixTransfer *mt, int uv_chart_index, bool are_border_vertices_pinned, bool skip_initialization)
+{
 	igl::Timer timer;
 	timer.start();
 	SLIMData* slim_data = setup_slim(mt, 0, uv_chart_index, timer, are_border_vertices_pinned, skip_initialization);
@@ -72,7 +81,8 @@ void* SLIM_setup(SLIMMatrixTransfer *mt, int uv_chart_index, bool are_border_ver
 
 /*	Executes a single iteration of SLIM, to be called from the native part. It recasts the pointer to a SLIM object.
  */
-void SLIM_parametrize_single_iteration(SLIMMatrixTransfer* mt, int uv_chart_index, void* slim_data_ptr){
+void SLIM_parametrize_single_iteration(SLIMMatrixTransfer* mt, int uv_chart_index, void* slim_data_ptr)
+{
 	SLIMData* slim_data = (SLIMData*) slim_data_ptr;
 	param_slim_single_iteration(mt, uv_chart_index, slim_data);
 }
@@ -86,8 +96,8 @@ void SLIM_parametrize_live(SLIMMatrixTransfer *mt,
 						   int* pinned_vertex_indices,
 						   double *pinned_vertex_positions_2D,
 						   int n_selected_pins,
-						   int *selected_pins){
-
+						   int *selected_pins)
+{
 	SLIMData* slim_data = (SLIMData*)slim_data_ptr;
 	param_slim_live_unwrap(mt,
 						   uv_chart_index,
@@ -99,10 +109,12 @@ void SLIM_parametrize_live(SLIMMatrixTransfer *mt,
 						   selected_pins);
 }
 
-void SLIM_parametrize(SLIMMatrixTransfer *mt, int n_iterations, bool are_border_vertices_pinned, bool skip_initialization){
+void SLIM_parametrize(SLIMMatrixTransfer *mt, int n_iterations, bool are_border_vertices_pinned, bool skip_initialization)
+{
 	param_slim(mt, n_iterations, are_border_vertices_pinned, skip_initialization);
 }
 
-void SLIM_free_data(void* slim_data_ptr){
+void SLIM_free_data(void* slim_data_ptr)
+{
 	free_slim_data((SLIMData*) slim_data_ptr);
 }

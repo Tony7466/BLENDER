@@ -106,8 +106,8 @@ void UVInitializer::convex_border_parameterization(const Eigen::MatrixXi &F,
 												   const Eigen::VectorXi &bnd,
 												   const Eigen::MatrixXd &bnd_uv,
 												   Eigen::MatrixXd &UV,
-												   Method method){
-
+												   Method method)
+{
 	int nVerts = UV.rows();
 	int nEdges = E.rows();
 

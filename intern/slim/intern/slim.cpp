@@ -14,6 +14,8 @@
 #include "polar_svd.h"
 #include "flip_avoiding_line_search.h"
 
+#include "BLI_assert.h"
+
 #include <iostream>
 #include <map>
 #include <set>
@@ -65,7 +67,6 @@ namespace igl
                                                     const Eigen::MatrixXd &F1, const Eigen::MatrixXd &F2,
                                          Eigen::SparseMatrix<double> &D1, Eigen::SparseMatrix<double> &D2)
     {
-
       Eigen::SparseMatrix<double> G;
       igl::grad(V, F, G);
       Eigen::SparseMatrix<double> Dx = G.block(0, 0, F.rows(), V.rows());
@@ -78,6 +79,8 @@ namespace igl
 
 	  IGL_INLINE void compute_weighted_jacobians(igl::SLIMData& s, const Eigen::MatrixXd &uv)
 	  {
+          BLI_assert(s.valid);
+
 		  if (s.F.cols() == 3)
 		  {
 			  // Ji=[D1*u,D2*u,D1*v,D2*v];
@@ -109,6 +112,8 @@ namespace igl
 
 	  IGL_INLINE void compute_unweighted_jacobians(igl::SLIMData& s, const Eigen::MatrixXd &uv)
 	  {
+          BLI_assert(s.valid);
+
 		  if (s.F.cols() == 3)
 		  {
 			  // Ji=[D1*u,D2*u,D1*v,D2*v];
@@ -133,6 +138,8 @@ namespace igl
 
 	  IGL_INLINE void compute_jacobians(igl::SLIMData& s, const Eigen::MatrixXd &uv)
 	  {
+          BLI_assert(s.valid);
+
 		  if (s.withWeightedParameterization){
 			  compute_weighted_jacobians(s, uv);
 		  } else {
@@ -147,6 +154,7 @@ namespace igl
                                               const Eigen::MatrixXi &F,
                                               Eigen::MatrixXd &uv)
     {
+        BLI_assert(s.valid);
       compute_jacobians(s, uv);
 
       const double eps = 1e-8;
@@ -420,6 +428,7 @@ namespace igl
                                         Eigen::VectorXi &soft_b_p,
                                         Eigen::MatrixXd &soft_bc_p)
     {
+        BLI_assert(s.valid);
       using namespace Eigen;
 
       Eigen::SparseMatrix<double> L;
@@ -452,6 +461,7 @@ namespace igl
 
     IGL_INLINE void pre_calc(igl::SLIMData& s)
     {
+        BLI_assert(s.valid);
       if (!s.has_pre_calc)
       {
         s.v_n = s.v_num;
@@ -511,6 +521,7 @@ namespace igl
 
     IGL_INLINE void build_linear_system(igl::SLIMData& s, Eigen::SparseMatrix<double> &L)
     {
+        BLI_assert(s.valid);
       // formula (35) in paper
       Eigen::SparseMatrix<double> A(s.dim * s.dim * s.f_n, s.dim * s.v_n);
       buildA(s,A);
@@ -533,6 +544,7 @@ namespace igl
 
     IGL_INLINE void add_soft_constraints(igl::SLIMData& s, Eigen::SparseMatrix<double> &L)
     {
+        BLI_assert(s.valid);
       int v_n = s.v_num;
       for (int d = 0; d < s.dim; d++)
       {
@@ -550,6 +562,7 @@ namespace igl
 									   Eigen::VectorXd &singularValues,
 									   bool gatherSingularValues)
 	  {
+          BLI_assert(s.valid);
 		  compute_jacobians(s,V_new);
 		  return compute_energy_with_jacobians(s, s.V, s.F, s.Ji, V_new, s.M, singularValues, gatherSingularValues) +
 		  compute_soft_const_energy(s, s.V, s.F, V_new);
@@ -557,13 +570,14 @@ namespace igl
 
 	  IGL_INLINE double compute_energy(igl::SLIMData& s, Eigen::MatrixXd &V_new)
 	  {
+          BLI_assert(s.valid);
 		  Eigen::VectorXd temp;
 		  return compute_energy(s, V_new, temp, false);
 	  }
 
 	  IGL_INLINE double compute_energy(igl::SLIMData& s, Eigen::MatrixXd &V_new, Eigen::VectorXd &singularValues)
 	  {
-
+          BLI_assert(s.valid);
 		  return compute_energy(s, V_new, singularValues, true);
 	  }
 
@@ -572,6 +586,7 @@ namespace igl
                                                 const Eigen::MatrixXi &F,
                                                 Eigen::MatrixXd &V_o)
     {
+        BLI_assert(s.valid);
       double e = 0;
       for (int i = 0; i < s.b.rows(); i++)
       {
@@ -587,6 +602,7 @@ namespace igl
 													Eigen::VectorXd &singularValues,
 													bool gatherSingularValues)
     {
+        BLI_assert(s.valid);
       double energy = 0;
       if (s.dim == 2)
       {
@@ -714,6 +730,7 @@ namespace igl
 
     IGL_INLINE void buildA(igl::SLIMData& s, Eigen::SparseMatrix<double> &A)
     {
+        BLI_assert(s.valid);
       // formula (35) in paper
       std::vector<Eigen::Triplet<double> > IJV;
       if (s.dim == 2)
@@ -842,6 +859,8 @@ namespace igl
 
     IGL_INLINE void buildRhs(igl::SLIMData& s, const Eigen::SparseMatrix<double> &At)
     {
+        BLI_assert(s.valid);
+
       Eigen::VectorXd f_rhs(s.dim * s.dim * s.f_n);
       f_rhs.setZero();
       if (s.dim == 2)
@@ -899,7 +918,7 @@ void igl::slim_precompute(Eigen::MatrixXd &V, Eigen::MatrixXi &F, Eigen::MatrixX
                                      SLIMData::SLIM_ENERGY slim_energy, Eigen::VectorXi &b, Eigen::MatrixXd &bc,
                                      double soft_p)
 {
-
+    BLI_assert(data.valid);
   data.V = V;
   data.F = F;
   data.V_o = V_init;
@@ -931,8 +950,8 @@ void igl::slim_precompute(Eigen::MatrixXd &V, Eigen::MatrixXi &F, Eigen::MatrixX
 
 IGL_INLINE double computeGlobalScaleInvarianceFactor(Eigen::VectorXd &singularValues,
 													 Eigen::VectorXd &areas,
-													 double relativeScaleFactor){
-
+													 double relativeScaleFactor)
+{
 	int nFaces = singularValues.rows()/2;
 
 	Eigen::VectorXd areasChained(2*nFaces);
@@ -985,6 +1004,7 @@ IGL_INLINE double computeGlobalScaleInvarianceFactor(Eigen::VectorXd &singularVa
 
 Eigen::MatrixXd igl::slim_solve(SLIMData &data, int iter_num)
 {
+    BLI_assert(data.valid);
 	Eigen::VectorXd singularValues;
 	bool arePinsPresent = data.b.rows() > 0;
 

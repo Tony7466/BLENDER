@@ -29,6 +29,8 @@ class SlimFailedException : public std::exception {
 // Compute a SLIM map as derived in "Scalable Locally Injective Maps" [Rabinovich et al. 2016].
 struct SLIMData
 {
+  bool valid = false;
+
   // Input
   Eigen::MatrixXd V; // #V by 3 list of mesh vertex positions
   Eigen::MatrixXi F; // #F by 3/3 list of mesh faces (triangles/tets)

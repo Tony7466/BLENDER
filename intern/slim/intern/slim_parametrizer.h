@@ -45,7 +45,7 @@ SLIMData* setup_slim(SLIMMatrixTransfer *transferredData,
 						 igl::Timer &timer,
 						 bool borderVerticesArePinned,
 						 bool skipInitialization);
-bool try_slim_solve(SLIMData &data, int iter_num);
+void try_slim_solve(SLIMMatrixTransfer *mt, int uvChartIndex, SLIMData &data, int iter_num);
 void transferUvsBackToNativePartLive(SLIMMatrixTransfer *mt,
 									 Eigen::MatrixXd &UV,
 									 int uvChartIndex);

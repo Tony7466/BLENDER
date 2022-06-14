@@ -33,12 +33,20 @@
 #include <Eigen/Dense>
 #include "slim_matrix_transfer.h"
 
+#include "BLI_assert.h"
+
+
 using namespace igl;
 using namespace Eigen;
 
 namespace retrieval {
 
-	void create_weights_per_face(SLIMData *slimData){
+	void create_weights_per_face(SLIMData *slimData)
+	{
+		if (!slimData->valid) {
+			return;
+		}
+
 		if (!slimData->withWeightedParameterization){
 			slimData->weightPerFaceMap = Eigen::VectorXf::Ones(slimData->F.rows());
 			return;
@@ -66,7 +74,12 @@ namespace retrieval {
 		}
 	}
 
-	void setGeometryDataMatrices(GeometryData &gd, SLIMData *slimData){
+	void setGeometryDataMatrices(GeometryData &gd, SLIMData *slimData)
+	{
+		if (!slimData->valid) {
+			return;
+		}
+
 		slimData->V = gd.vertexPositions3D;
 		slimData->F = gd.facesByVertexindices;
 		slimData->b = gd.PinnedVertexIndices;
@@ -77,7 +90,8 @@ namespace retrieval {
 		create_weights_per_face(slimData);
 	}
 
-	bool hasValidPreinitializedMap(GeometryData &gd){
+	bool hasValidPreinitializedMap(GeometryData &gd)
+	{
 		if (gd.uvPositions2D.rows() == gd.vertexPositions3D.rows() &&
 			gd.uvPositions2D.cols() == gd.COLUMNS_2){
 
@@ -93,11 +107,13 @@ namespace retrieval {
 	 Also, pinning of vertices has some issues with initialisation with convex border.
 	 We therefore may want to skip initialization. However, to skip initialization we need a preexisting valid starting map.
 	 */
-	bool canInitializationBeSkipped(GeometryData &gd, bool skipInitialization){
+	bool canInitializationBeSkipped(GeometryData &gd, bool skipInitialization)
+	{
 		return (skipInitialization && hasValidPreinitializedMap(gd));
 	}
 
-	void constructSlimData(GeometryData &gd, SLIMData *slimData, bool skipInitialization, int reflection_mode, double relativeScale){
+	void constructSlimData(GeometryData &gd, SLIMData *slimData, bool skipInitialization, int reflection_mode, double relativeScale)
+	{
 		slimData->skipInitialization = canInitializationBeSkipped(gd, skipInitialization);
 		slimData->weightInfluence = gd.weightInfluence;
 		slimData->relativeScale = relativeScale;
@@ -111,9 +127,8 @@ namespace retrieval {
 	}
 
 
-	void combineMatricesOfPinnedAndBoundaryVertices(GeometryData &gd){
-
-
+	void combineMatricesOfPinnedAndBoundaryVertices(GeometryData &gd)
+	{
 		// over-allocate pessimistically to avoid multiple reallocation
 		int upperBoundOnNumberOfPinnedVertices = gd.numberOfBoundaryVertices + gd.numberOfPinnedVertices;
 		gd.PinnedVertexIndices = VectorXi(upperBoundOnNumberOfPinnedVertices);
@@ -147,7 +162,8 @@ namespace retrieval {
 	/*
 	 If the border is fixed, we simply pin the border vertices additionally to other pinned vertices.
 	 */
-	void retrievePinnedVertices(GeometryData &gd, bool borderVerticesArePinned){
+	void retrievePinnedVertices(GeometryData &gd, bool borderVerticesArePinned)
+	{
 		if (borderVerticesArePinned){
 			combineMatricesOfPinnedAndBoundaryVertices(gd);
 		} else {
@@ -158,8 +174,8 @@ namespace retrieval {
 
 	void retrieveGeometryDataMatrices(const SLIMMatrixTransfer *transferredData,
 									  const int uvChartIndex,
-									  GeometryData &gd){
-
+									  GeometryData &gd)
+	{
 		gd.numberOfVertices = transferredData->n_verts[uvChartIndex];
 		gd.numberOfFaces = transferredData->n_faces[uvChartIndex];
 		// nEdges in transferredData accounts for boundary edges only once

@@ -35,22 +35,28 @@ using namespace igl;
 
 namespace areacomp {
 
-	void correctGeometrySize(double surfaceAreaToMapAreaRatio, MatrixXd &VertexPositions, double desiredSurfaceAreaToMapRation){
+	void correctGeometrySize(double surfaceAreaToMapAreaRatio, MatrixXd &VertexPositions, double desiredSurfaceAreaToMapRation)
+	{
 		assert(surfaceAreaToMapAreaRatio > 0);
 		double sqrtOfRatio = sqrt(surfaceAreaToMapAreaRatio/desiredSurfaceAreaToMapRation);
 		VertexPositions = VertexPositions / sqrtOfRatio;
 	}
 
 	template<typename VertexPositionType, typename FaceIndicesType>
-	double computeSurfaceArea(VertexPositionType V, FaceIndicesType F){
+	double computeSurfaceArea(VertexPositionType V, FaceIndicesType F)
+	{
 		Eigen::VectorXd doubledAreaOfTriangles;
 		igl::doublearea(V, F, doubledAreaOfTriangles);
 		double areaOfMap = doubledAreaOfTriangles.sum() / 2;
 		return areaOfMap;
 	}
 
-	void correctMapSurfaceAreaIfNecessary(SLIMData *slimData){
-
+	void correctMapSurfaceAreaIfNecessary(SLIMData *slimData)
+	{
+		if (!slimData->valid) {
+			return;
+		}
+		
 		bool meshSurfaceAreaWasCorrected = (slimData->expectedSurfaceAreaOfResultingMap != 0);
 		int numberOfPinnedVertices = slimData->b.rows();
 		bool noPinnedVerticesExist = numberOfPinnedVertices == 0;
@@ -70,7 +76,12 @@ namespace areacomp {
 		correctGeometrySize(resultingAreaToExpectedAreaRatio, slimData->V_o, desiredRatio);
 	}
 
-	void correctMeshSurfaceAreaIfNecessary(SLIMData *slimData){
+	void correctMeshSurfaceAreaIfNecessary(SLIMData *slimData)
+	{
+		if (!slimData->valid) {
+			return;
+		}
+
 		int numberOfPinnedVertices = slimData->b.rows();
 		bool pinnedVerticesExist = numberOfPinnedVertices > 0;
 		bool needsAreaCorrection = 	slimData->skipInitialization || pinnedVerticesExist;

@@ -5064,9 +5064,17 @@ static void slim_transfer_edges(const int chartNr, const PHandle *phandle, const
 	PEdge *be = outer;
 	int eid = 0;
 
+  static const float DOUBLED_VERT_THRESHOLD = 1.0e-5;
+
 	do {
 		E[eid] = be->vert->slim_id;
-		EL[eid] = p_edge_length(be);
+		float edge_len = p_edge_length(be);
+    EL[eid] = edge_len;
+
+    // Temporary solution: SLIM doesn't support doubled vertices for now
+    if (edge_len < DOUBLED_VERT_THRESHOLD) {
+      mt->succeeded[chartNr] = false;
+    }
 
 		be = p_boundary_edge_next(be);
 		E[eid + mt->n_edges[chartNr] + mt->n_boundary_vertices[chartNr]] = be->vert->slim_id;
@@ -5078,7 +5086,13 @@ static void slim_transfer_edges(const int chartNr, const PHandle *phandle, const
 		PEdge *e1 = e->next;
 
 		E[eid] = e->vert->slim_id;
-		EL[eid] = p_edge_length(e);
+    float edge_len = p_edge_length(e);
+    EL[eid] = edge_len;
+
+    // Temporary solution: SLIM doesn't support doubled vertices for now
+    if (edge_len < DOUBLED_VERT_THRESHOLD) {
+      mt->succeeded[chartNr] = false;
+    }
 
 		E[eid + mt->n_edges[chartNr] + mt->n_boundary_vertices[chartNr]] = e1->vert->slim_id;
 		eid++;
@@ -5206,7 +5220,7 @@ static void slim_convert_blender(ParamHandle *handle)
 
 	/* For each chart, fill up matrices */
 	for (int i = 0; i < phandle->ncharts; i++) {
-    mt->succeeded[i] = false;
+    mt->succeeded[i] = true;
 		mt->n_pinned_vertices[i] = 0;
 		mt->n_boundary_vertices[i] = 0;
 
