@@ -34,6 +34,8 @@
 #include "least_squares_relocator.h"
 #include "geometry_data_retrieval.h"
 
+#include "BLI_assert.h"
+
 #include "igl/Timer.h"
 
 #include "igl/map_vertices_to_circle.h"
@@ -214,6 +216,8 @@ void initializeUvs(retrieval::GeometryData &gd, SLIMData *slimData){
 
 void initializeIfNeeded(retrieval::GeometryData &gd, SLIMData *slimData)
 {
+	BLI_assert(slimData->valid);
+
 	if (!slimData->skipInitialization){
 		initializeUvs(gd, slimData);
 	}
@@ -262,8 +266,6 @@ SLIMData* setup_slim(SLIMMatrixTransfer *transferredData,
 						slimData->b,
 						slimData->bc,
 						slimData->soft_const_p);
-
-		slimData->valid = true;
 	}
 	catch (SlimFailedException&) {
 		slimData->valid = false;

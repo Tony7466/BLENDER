@@ -27,6 +27,8 @@
 
 #include "slim.h"
 
+#include "BLI_assert.h"
+
 #include <doublearea.h>
 #include <Eigen/Dense>
 
@@ -78,9 +80,7 @@ namespace areacomp {
 
 	void correctMeshSurfaceAreaIfNecessary(SLIMData *slimData)
 	{
-		if (!slimData->valid) {
-			return;
-		}
+		BLI_assert(slimData->valid);
 
 		int numberOfPinnedVertices = slimData->b.rows();
 		bool pinnedVerticesExist = numberOfPinnedVertices > 0;

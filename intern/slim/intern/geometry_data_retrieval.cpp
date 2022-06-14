@@ -114,6 +114,8 @@ namespace retrieval {
 
 	void constructSlimData(GeometryData &gd, SLIMData *slimData, bool skipInitialization, int reflection_mode, double relativeScale)
 	{
+		BLI_assert(slimData->valid);
+
 		slimData->skipInitialization = canInitializationBeSkipped(gd, skipInitialization);
 		slimData->weightInfluence = gd.weightInfluence;
 		slimData->relativeScale = relativeScale;
