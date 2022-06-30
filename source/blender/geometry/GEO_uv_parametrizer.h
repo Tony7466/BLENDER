@@ -46,7 +46,7 @@ void GEO_uv_parametrizer_face_add(ParamHandle *handle,
                                   const ParamKey *vkeys,
                                   const float **co,
                                   float **uv, /* Output will eventually be written to `uv`. */
-                                  float weight[4],
+                                  float *weight,
                                   const bool *pin,
                                   const bool *select);
 

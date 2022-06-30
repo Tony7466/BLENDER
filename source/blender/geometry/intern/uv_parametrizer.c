@@ -1059,9 +1059,21 @@ static PFace *p_face_add_construct(ParamHandle *handle,
   PFace *f = p_face_add(handle);
   PEdge *e1 = f->edge, *e2 = e1->next, *e3 = e2->next;
 
-  e1->vert = p_vert_lookup(handle, vkeys[i1], co[i1], weight[i1], e1);
-  e2->vert = p_vert_lookup(handle, vkeys[i2], co[i2], weight[i2], e2);
-  e3->vert = p_vert_lookup(handle, vkeys[i3], co[i3], weight[i3], e3);
+  float weight1, weight2, weight3;
+  if (weight) {
+    weight1 = weight[i1];
+    weight2 = weight[i2];
+    weight3 = weight[i3];
+  }
+  else {
+    weight1 = 0.0f;
+    weight2 = 0.0f;
+    weight3 = 0.0f;
+  }
+  
+  e1->vert = p_vert_lookup(handle, vkeys[i1], co[i1], weight1, e1);
+  e2->vert = p_vert_lookup(handle, vkeys[i2], co[i2], weight2, e2);
+  e3->vert = p_vert_lookup(handle, vkeys[i3], co[i3], weight3, e3);
 
   e1->orig_uv = uv[i1];
   e2->orig_uv = uv[i2];
@@ -3906,7 +3918,17 @@ static void p_add_ngon(ParamHandle *handle,
     const ParamKey tri_vkeys[3] = {vkeys[v0], vkeys[v1], vkeys[v2]};
     const float *tri_co[3] = {co[v0], co[v1], co[v2]};
     float *tri_uv[3] = {uv[v0], uv[v1], uv[v2]};
-    float tri_weight[3] = {weight[v0], weight[v1], weight[v2]};
+
+    float *tri_weight = NULL;
+    float tri_weight_tmp[3];
+
+    if (weight) {
+      tri_weight_tmp[0] = weight[v0];
+      tri_weight_tmp[1] = weight[v1];
+      tri_weight_tmp[2] = weight[v2];
+      tri_weight = tri_weight_tmp;
+    };
+
     bool tri_pin[3] = {pin[v0], pin[v1], pin[v2]};
     bool tri_select[3] = {select[v0], select[v1], select[v2]};
 
