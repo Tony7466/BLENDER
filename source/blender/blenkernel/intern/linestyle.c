@@ -55,7 +55,7 @@ static void linestyle_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const
   FreestyleLineStyle *linestyle_dst = (FreestyleLineStyle *)id_dst;
   const FreestyleLineStyle *linestyle_src = (const FreestyleLineStyle *)id_src;
 
-  /* We never handle usercount here for own data. */
+  /* We never handle user-count here for own data. */
   const int flag_subdata = flag | LIB_ID_CREATE_NO_USER_REFCOUNT;
   /* We always need allocation of our private ID data. */
   const int flag_private_id_data = flag & ~LIB_ID_CREATE_NO_ALLOCATE;
@@ -784,7 +784,7 @@ static const char *modifier_name[LS_MODIFIER_NUM] = {
     "Noise",
     "Crease Angle",
     "Simplification",
-    "3D Curvature",
+    "Curvature 3D",
 };
 
 void BKE_linestyle_init(FreestyleLineStyle *linestyle)

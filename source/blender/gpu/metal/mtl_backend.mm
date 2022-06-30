@@ -8,6 +8,8 @@
 
 #include "gpu_backend.hh"
 #include "mtl_backend.hh"
+#include "mtl_context.hh"
+#include "mtl_framebuffer.hh"
 
 #include "gpu_capabilities_private.hh"
 #include "gpu_platform_private.hh"
@@ -16,8 +18,7 @@
 #include <Metal/Metal.h>
 #include <QuartzCore/QuartzCore.h>
 
-namespace blender {
-namespace gpu {
+namespace blender::gpu {
 
 /* Global per-thread AutoReleasePool. */
 thread_local NSAutoreleasePool *g_autoreleasepool = nil;
@@ -33,8 +34,7 @@ void MTLBackend::samplers_update(){
 
 Context *MTLBackend::context_alloc(void *ghost_window)
 {
-  /* TODO(Metal): Implement MTLContext. */
-  return nullptr;
+  return new MTLContext(ghost_window);
 };
 
 Batch *MTLBackend::batch_alloc()
@@ -51,8 +51,9 @@ DrawList *MTLBackend::drawlist_alloc(int list_length)
 
 FrameBuffer *MTLBackend::framebuffer_alloc(const char *name)
 {
-  /* TODO(Metal): Implement MTLFrameBuffer. */
-  return nullptr;
+  MTLContext *mtl_context = static_cast<MTLContext *>(
+      reinterpret_cast<Context *>(GPU_context_active_get()));
+  return new MTLFrameBuffer(mtl_context, name);
 };
 
 IndexBuf *MTLBackend::indexbuf_alloc()
@@ -75,8 +76,7 @@ Shader *MTLBackend::shader_alloc(const char *name)
 
 Texture *MTLBackend::texture_alloc(const char *name)
 {
-  /* TODO(Metal): Implement MTLTexture. */
-  return nullptr;
+  return new gpu::MTLTexture(name);
 }
 
 UniformBuf *MTLBackend::uniformbuf_alloc(int size, const char *name)
@@ -84,6 +84,12 @@ UniformBuf *MTLBackend::uniformbuf_alloc(int size, const char *name)
   /* TODO(Metal): Implement MTLUniformBuf. */
   return nullptr;
 };
+
+StorageBuf *MTLBackend::storagebuf_alloc(int size, GPUUsageType usage, const char *name)
+{
+  /* TODO(Metal): Implement MTLStorageBuf. */
+  return nullptr;
+}
 
 VertBuf *MTLBackend::vertbuf_alloc()
 {
@@ -252,7 +258,7 @@ bool MTLBackend::metal_is_supported()
 
   NSOperatingSystemVersion version = [[NSProcessInfo processInfo] operatingSystemVersion];
 
-  /* Metal Viewport requires macOS Version 10.15 onwards. */
+  /* Metal Viewport requires macOS Version 10.15 onward. */
   bool supported_os_version = version.majorVersion >= 11 ||
                               (version.majorVersion == 10 ? version.minorVersion >= 15 : false);
   if (!supported_os_version) {
@@ -363,7 +369,7 @@ void MTLBackend::capabilities_init(MTLContext *ctx)
                                            MTLBackend::capabilities.supports_family_mac2);
   GCaps.compute_shader_support = false; /* TODO(Metal): Add compute support. */
   GCaps.shader_storage_buffer_objects_support =
-      false; /* TODO(Metal): implement Storage Buffer support.*/
+      false; /* TODO(Metal): implement Storage Buffer support. */
 
   /* Maximum buffer bindings: 31. Consider required slot for uniforms/UBOs/Vertex attributes.
    * Can use argument buffers if a higher limit is required. */
@@ -376,11 +382,10 @@ void MTLBackend::capabilities_init(MTLContext *ctx)
 
     /* In Metal, total_thread_count is 512 or 1024, such that
      * threadgroup `width*height*depth <= total_thread_count` */
-    unsigned int max_threads_per_threadgroup_per_dim =
-        ([device supportsFamily:MTLGPUFamilyApple4] ||
-         MTLBackend::capabilities.supports_family_mac1) ?
-            1024 :
-            512;
+    uint max_threads_per_threadgroup_per_dim = ([device supportsFamily:MTLGPUFamilyApple4] ||
+                                                MTLBackend::capabilities.supports_family_mac1) ?
+                                                   1024 :
+                                                   512;
     GCaps.max_work_group_size[0] = max_threads_per_threadgroup_per_dim;
     GCaps.max_work_group_size[1] = max_threads_per_threadgroup_per_dim;
     GCaps.max_work_group_size[2] = max_threads_per_threadgroup_per_dim;
@@ -404,5 +409,4 @@ void MTLBackend::capabilities_init(MTLContext *ctx)
 
 /** \} */
 
-}  // gpu
-}  // blender
+}  // blender::gpu

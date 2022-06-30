@@ -32,9 +32,7 @@ static void add_final_mesh_as_geometry_component(const Object &object, GeometryS
 
   if (mesh != nullptr) {
     BKE_mesh_wrapper_ensure_mdata(mesh);
-
-    MeshComponent &mesh_component = geometry_set.get_component_for_write<MeshComponent>();
-    mesh_component.replace(mesh, GeometryOwnershipType::ReadOnly);
+    geometry_set.replace_mesh(mesh, GeometryOwnershipType::ReadOnly);
   }
 }
 
@@ -50,7 +48,12 @@ GeometrySet object_get_evaluated_geometry_set(const Object &object)
     return geometry_set;
   }
   if (object.runtime.geometry_set_eval != nullptr) {
-    return *object.runtime.geometry_set_eval;
+    GeometrySet geometry_set = *object.runtime.geometry_set_eval;
+    /* Ensure that subdivision is performed on the CPU. */
+    if (geometry_set.has_mesh()) {
+      add_final_mesh_as_geometry_component(object, geometry_set);
+    }
+    return geometry_set;
   }
 
   /* Otherwise, construct a new geometry set with the component based on the object type. */

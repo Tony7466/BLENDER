@@ -1,4 +1,8 @@
 
+/* WORKAROUND: to guard against double include in EEVEE. */
+#ifndef COMMON_MATH_LIB_GLSL
+#define COMMON_MATH_LIB_GLSL
+
 /* ---------------------------------------------------------------------- */
 /** \name Common Math Utilities
  * \{ */
@@ -106,6 +110,7 @@ float len_squared(vec3 a) { return dot(a, a); }
 float len_squared(vec2 a) { return dot(a, a); }
 
 bool flag_test(uint flag, uint val) { return (flag & val) != 0u; }
+bool flag_test(int flag, uint val) { return flag_test(uint(flag), val); }
 bool flag_test(int flag, int val) { return (flag & val) != 0; }
 
 void set_flag_from_test(inout uint value, bool test, uint flag) { if (test) { value |= flag; } else { value &= ~flag; } }
@@ -276,3 +281,5 @@ vec3 hue_gradient(float t)
   vec3 p = abs(fract(t + vec3(1.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0);
   return (clamp(p - 1.0, 0.0, 1.0));
 }
+
+#endif /* COMMON_MATH_LIB_GLSL */

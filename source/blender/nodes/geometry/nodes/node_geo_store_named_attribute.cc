@@ -5,6 +5,8 @@
 
 #include "NOD_socket_search_link.hh"
 
+#include "BKE_type_conversions.hh"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_store_named_attribute_cc {
@@ -43,7 +45,7 @@ static void node_init(bNodeTree *UNUSED(tree), bNode *node)
 static void node_update(bNodeTree *ntree, bNode *node)
 {
   const NodeGeometryStoreNamedAttribute &storage = node_storage(*node);
-  const CustomDataType data_type = static_cast<CustomDataType>(storage.data_type);
+  const eCustomDataType data_type = static_cast<eCustomDataType>(storage.data_type);
 
   bNodeSocket *socket_geometry = (bNodeSocket *)node->inputs.first;
   bNodeSocket *socket_name = socket_geometry->next;
@@ -55,21 +57,19 @@ static void node_update(bNodeTree *ntree, bNode *node)
 
   nodeSetSocketAvailability(ntree, socket_vector, data_type == CD_PROP_FLOAT3);
   nodeSetSocketAvailability(ntree, socket_float, data_type == CD_PROP_FLOAT);
-  nodeSetSocketAvailability(ntree, socket_color4f, data_type == CD_PROP_COLOR);
+  nodeSetSocketAvailability(
+      ntree, socket_color4f, ELEM(data_type, CD_PROP_COLOR, CD_PROP_BYTE_COLOR));
   nodeSetSocketAvailability(ntree, socket_boolean, data_type == CD_PROP_BOOL);
   nodeSetSocketAvailability(ntree, socket_int32, data_type == CD_PROP_INT32);
 }
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
-  if (U.experimental.use_named_attribute_nodes == 0) {
-    return;
-  }
   const NodeDeclaration &declaration = *params.node_type().fixed_declaration;
   search_link_ops_for_declarations(params, declaration.inputs().take_front(2));
 
   if (params.in_out() == SOCK_OUT) {
-    const std::optional<CustomDataType> type = node_data_type_to_custom_data_type(
+    const std::optional<eCustomDataType> type = node_data_type_to_custom_data_type(
         static_cast<eNodeSocketDatatype>(params.other_socket().type));
     if (type && *type != CD_PROP_STRING) {
       /* The input and output sockets have the same name. */
@@ -84,25 +84,43 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 
 static void try_capture_field_on_geometry(GeometryComponent &component,
                                           const StringRef name,
-                                          const AttributeDomain domain,
+                                          const eAttrDomain domain,
                                           const GField &field)
 {
   GeometryComponentFieldContext field_context{component, domain};
-  const int domain_size = component.attribute_domain_size(domain);
-  const IndexMask mask{IndexMask(domain_size)};
+  const int domain_num = component.attribute_domain_num(domain);
+  const IndexMask mask{IndexMask(domain_num)};
 
-  const CustomDataType data_type = bke::cpp_type_to_custom_data_type(field.cpp_type());
+  const CPPType &type = field.cpp_type();
+  const eCustomDataType data_type = bke::cpp_type_to_custom_data_type(type);
 
-  /* Don't use #add_with_destination because the field might depend on an attribute
-   * with that name, and changing it as part of evaluation might affect the result. */
+  /* Could avoid allocating a new buffer if:
+   * - We are writing to an attribute that exists already.
+   * - The field does not depend on that attribute (we can't easily check for that yet). */
+  void *buffer = MEM_mallocN(type.size() * domain_num, __func__);
+
   fn::FieldEvaluator evaluator{field_context, &mask};
-  evaluator.add(field);
+  evaluator.add_with_destination(field, GMutableSpan{type, buffer, domain_num});
   evaluator.evaluate();
-  const GVArray &result = evaluator.get_evaluated(0);
-  OutputAttribute attribute = component.attribute_try_get_for_output_only(name, domain, data_type);
-  if (attribute) {
-    result.materialize(attribute.as_span().data());
-    attribute.save();
+
+  component.attribute_try_delete(name);
+  if (component.attribute_exists(name)) {
+    WriteAttributeLookup write_attribute = component.attribute_try_get_for_write(name);
+    if (write_attribute && write_attribute.domain == domain &&
+        write_attribute.varray.type() == type) {
+      write_attribute.varray.set_all(buffer);
+      write_attribute.tag_modified_fn();
+    }
+    else {
+      /* Cannot change type of built-in attribute. */
+    }
+    type.destruct_n(buffer, domain_num);
+    MEM_freeN(buffer);
+  }
+  else {
+    if (!component.attribute_try_create(name, domain, data_type, AttributeInitMove{buffer})) {
+      MEM_freeN(buffer);
+    }
   }
 }
 
@@ -111,14 +129,21 @@ static void node_geo_exec(GeoNodeExecParams params)
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Geometry");
   std::string name = params.extract_input<std::string>("Name");
 
-  if (!U.experimental.use_named_attribute_nodes) {
+  if (name.empty()) {
+    params.set_output("Geometry", std::move(geometry_set));
+    return;
+  }
+  if (!bke::allow_procedural_attribute_access(name)) {
+    params.error_message_add(NodeWarningType::Info, TIP_(bke::no_procedural_access_message));
     params.set_output("Geometry", std::move(geometry_set));
     return;
   }
 
+  params.used_named_attribute(name, eNamedAttrUsage::Write);
+
   const NodeGeometryStoreNamedAttribute &storage = node_storage(params.node());
-  const CustomDataType data_type = static_cast<CustomDataType>(storage.data_type);
-  const AttributeDomain domain = static_cast<AttributeDomain>(storage.domain);
+  const eCustomDataType data_type = static_cast<eCustomDataType>(storage.data_type);
+  const eAttrDomain domain = static_cast<eAttrDomain>(storage.domain);
 
   GField field;
   switch (data_type) {
@@ -131,6 +156,12 @@ static void node_geo_exec(GeoNodeExecParams params)
     case CD_PROP_COLOR:
       field = params.get_input<Field<ColorGeometry4f>>("Value_Color");
       break;
+    case CD_PROP_BYTE_COLOR: {
+      field = params.get_input<Field<ColorGeometry4f>>("Value_Color");
+      field = bke::get_implicit_type_conversions().try_convert(field,
+                                                               CPPType::get<ColorGeometry4b>());
+      break;
+    }
     case CD_PROP_BOOL:
       field = params.get_input<Field<bool>>("Value_Bool");
       break;

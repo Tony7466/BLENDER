@@ -108,14 +108,14 @@ static void rna_Pose_IK_update(Main *UNUSED(bmain), Scene *UNUSED(scene), Pointe
   BIK_clear_data(ob->pose);
 }
 
-static char *rna_Pose_path(PointerRNA *UNUSED(ptr))
+static char *rna_Pose_path(const PointerRNA *UNUSED(ptr))
 {
   return BLI_strdup("pose");
 }
 
-static char *rna_PoseBone_path(PointerRNA *ptr)
+static char *rna_PoseBone_path(const PointerRNA *ptr)
 {
-  bPoseChannel *pchan = ptr->data;
+  const bPoseChannel *pchan = ptr->data;
   char name_esc[sizeof(pchan->name) * 2];
 
   BLI_str_escape(name_esc, pchan->name, sizeof(name_esc));
@@ -644,11 +644,11 @@ static bConstraint *rna_PoseChannel_constraints_copy(ID *id,
   return new_con;
 }
 
-bool rna_PoseChannel_constraints_override_apply(Main *UNUSED(bmain),
+bool rna_PoseChannel_constraints_override_apply(Main *bmain,
                                                 PointerRNA *ptr_dst,
                                                 PointerRNA *ptr_src,
                                                 PointerRNA *UNUSED(ptr_storage),
-                                                PropertyRNA *UNUSED(prop_dst),
+                                                PropertyRNA *prop_dst,
                                                 PropertyRNA *UNUSED(prop_src),
                                                 PropertyRNA *UNUSED(prop_storage),
                                                 const int UNUSED(len_dst),
@@ -694,19 +694,22 @@ bool rna_PoseChannel_constraints_override_apply(Main *UNUSED(bmain),
   BKE_constraint_unique_name(con_dst, &pchan_dst->constraints);
 
   //  printf("%s: We inserted a constraint...\n", __func__);
+  RNA_property_update_main(bmain, NULL, ptr_dst, prop_dst);
   return true;
 }
 
-static int rna_PoseChannel_proxy_editable(PointerRNA *ptr, const char **r_info)
+static int rna_PoseChannel_proxy_editable(PointerRNA *UNUSED(ptr), const char **UNUSED(r_info))
 {
+#  if 0
   Object *ob = (Object *)ptr->owner_id;
   bArmature *arm = ob->data;
   bPoseChannel *pchan = (bPoseChannel *)ptr->data;
 
-  if (false && pchan->bone && (pchan->bone->layer & arm->layer_protected)) {
+  if (pchan->bone && (pchan->bone->layer & arm->layer_protected)) {
     *r_info = "Can't edit property of a proxy on a protected layer";
     return 0;
   }
+#  endif
 
   return PROP_EDITABLE;
 }
@@ -1359,7 +1362,7 @@ static void rna_def_pose_channel(BlenderRNA *brna)
   RNA_def_property_pointer_sdna(prop, NULL, "custom_tx");
   RNA_def_property_struct_type(prop, "PoseBone");
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_PTR_NO_OWNERSHIP);
-  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_NO_COMPARISON);
   RNA_def_property_ui_text(prop,
                            "Custom Shape Transform",
                            "Bone that defines the display transform of this custom shape");

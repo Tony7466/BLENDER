@@ -693,7 +693,7 @@ static const EnumPropertyItem WT_vertex_group_select_item[] = {
 
 const EnumPropertyItem *ED_object_vgroup_selection_itemf_helper(const bContext *C,
                                                                 PointerRNA *UNUSED(ptr),
-                                                                PropertyRNA *UNUSED(prop),
+                                                                PropertyRNA *prop,
                                                                 bool *r_free,
                                                                 const uint selection_mask)
 {
@@ -730,6 +730,10 @@ const EnumPropertyItem *ED_object_vgroup_selection_itemf_helper(const bContext *
   if (selection_mask & (1 << WT_VGROUP_ALL)) {
     RNA_enum_items_add_value(&item, &totitem, WT_vertex_group_select_item, WT_VGROUP_ALL);
   }
+
+  /* Set `Deform Bone` as default selection if armature is present. */
+  RNA_def_property_enum_default(
+    prop, BKE_modifiers_is_deformed_by_armature(ob) ? WT_VGROUP_BONE_DEFORM : WT_VGROUP_ALL);
 
   RNA_enum_item_end(&item, &totitem);
   *r_free = true;
@@ -1340,17 +1344,17 @@ static void moveCloserToDistanceFromPlane(Depsgraph *depsgraph,
   float oldPos[3] = {0};
   float vc, hc, dist = 0.0f;
   int i, k;
-  float(*changes)[2] = MEM_mallocN(sizeof(float *) * totweight * 2, "vertHorzChange");
+  float(*changes)[2] = MEM_mallocN(sizeof(float[2]) * totweight, "vertHorzChange");
   float *dists = MEM_mallocN(sizeof(float) * totweight, "distance");
 
   /* track if up or down moved it closer for each bone */
-  int *upDown = MEM_callocN(sizeof(int) * totweight, "upDownTracker");
+  bool *upDown = MEM_callocN(sizeof(bool) * totweight, "upDownTracker");
 
   int *dwIndices = MEM_callocN(sizeof(int) * totweight, "dwIndexTracker");
   float distToStart;
   int bestIndex = 0;
   bool wasChange;
-  char wasUp;
+  bool wasUp;
   int lastIndex = -1;
   float originalDistToBe = distToBe;
   do {
@@ -1410,13 +1414,13 @@ static void moveCloserToDistanceFromPlane(Depsgraph *depsgraph,
         }
         else {
           if (fabsf(dist - distToBe) < fabsf(dists[i] - distToBe)) {
-            upDown[i] = 0;
+            upDown[i] = false;
             changes[i][0] = vc;
             changes[i][1] = hc;
             dists[i] = dist;
           }
           else {
-            upDown[i] = 1;
+            upDown[i] = true;
           }
           if (fabsf(dists[i] - distToBe) > fabsf(distToStart - distToBe)) {
             changes[i][0] = 0;
@@ -1428,8 +1432,6 @@ static void moveCloserToDistanceFromPlane(Depsgraph *depsgraph,
     }
     /* sort the changes by the vertical change */
     for (k = 0; k < totweight; k++) {
-      float tf;
-      int ti;
       bestIndex = k;
       for (i = k + 1; i < totweight; i++) {
         dist = dists[i];
@@ -1440,25 +1442,10 @@ static void moveCloserToDistanceFromPlane(Depsgraph *depsgraph,
       }
       /* switch with k */
       if (bestIndex != k) {
-        ti = upDown[k];
-        upDown[k] = upDown[bestIndex];
-        upDown[bestIndex] = ti;
-
-        ti = dwIndices[k];
-        dwIndices[k] = dwIndices[bestIndex];
-        dwIndices[bestIndex] = ti;
-
-        tf = changes[k][0];
-        changes[k][0] = changes[bestIndex][0];
-        changes[bestIndex][0] = tf;
-
-        tf = changes[k][1];
-        changes[k][1] = changes[bestIndex][1];
-        changes[bestIndex][1] = tf;
-
-        tf = dists[k];
-        dists[k] = dists[bestIndex];
-        dists[bestIndex] = tf;
+        SWAP(bool, upDown[k], upDown[bestIndex]);
+        SWAP(int, dwIndices[k], dwIndices[bestIndex]);
+        swap_v2_v2(changes[k], changes[bestIndex]);
+        SWAP(float, dists[k], dists[bestIndex]);
       }
     }
     bestIndex = -1;
@@ -3062,7 +3049,7 @@ static int vertex_group_select_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Object *ob = ED_object_context(C);
 
-  if (!ob || ID_IS_LINKED(ob)) {
+  if (!ob || ID_IS_LINKED(ob) || ID_IS_OVERRIDE_LIBRARY(ob)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -4283,7 +4270,6 @@ static void vgroup_copy_active_to_sel_single(Object *ob, const int def_nr)
 
   Mesh *me = ob->data;
   BMEditMesh *em = me->edit_mesh;
-  float weight_act;
   int i;
 
   if (em) {
@@ -4295,18 +4281,15 @@ static void vgroup_copy_active_to_sel_single(Object *ob, const int def_nr)
     if (dvert_act == NULL) {
       return;
     }
-    weight_act = BKE_defvert_find_weight(dvert_act, def_nr);
 
     BM_ITER_MESH_INDEX (eve, &iter, em->bm, BM_VERTS_OF_MESH, i) {
       if (BM_elem_flag_test(eve, BM_ELEM_SELECT) && (eve != eve_act)) {
-        MDeformVert *dv = BM_ELEM_CD_GET_VOID_P(eve, cd_dvert_offset);
-        MDeformWeight *dw = BKE_defvert_find_index(dv, def_nr);
-        if (dw) {
-          dw->weight = weight_act;
+        MDeformVert *dvert_dst = BM_ELEM_CD_GET_VOID_P(eve, cd_dvert_offset);
 
-          if (me->symmetry & ME_SYMMETRY_X) {
-            ED_mesh_defvert_mirror_update_em(ob, eve, -1, i, cd_dvert_offset);
-          }
+        BKE_defvert_copy_index(dvert_dst, def_nr, dvert_act, def_nr);
+
+        if (me->symmetry & ME_SYMMETRY_X) {
+          ED_mesh_defvert_mirror_update_em(ob, eve, -1, i, cd_dvert_offset);
         }
       }
     }
@@ -4323,17 +4306,15 @@ static void vgroup_copy_active_to_sel_single(Object *ob, const int def_nr)
     if (dvert_act == NULL) {
       return;
     }
-    weight_act = BKE_defvert_find_weight(dvert_act, def_nr);
 
     dv = me->dvert;
     for (i = 0; i < me->totvert; i++, dv++) {
       if ((me->mvert[i].flag & SELECT) && (dv != dvert_act)) {
-        MDeformWeight *dw = BKE_defvert_find_index(dv, def_nr);
-        if (dw) {
-          dw->weight = weight_act;
-          if (me->symmetry & ME_SYMMETRY_X) {
-            ED_mesh_defvert_mirror_update_ob(ob, -1, i);
-          }
+
+        BKE_defvert_copy_index(dv, def_nr, dvert_act, def_nr);
+
+        if (me->symmetry & ME_SYMMETRY_X) {
+          ED_mesh_defvert_mirror_update_ob(ob, -1, i);
         }
       }
     }

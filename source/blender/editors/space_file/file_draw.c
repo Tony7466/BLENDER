@@ -202,7 +202,7 @@ static void file_draw_string(int sx,
   }
 
   const uiStyle *style = UI_style_get();
-  fs = style->widgetlabel;
+  fs = style->widget;
 
   BLI_strncpy(fname, string, FILE_MAXFILE);
   UI_text_clip_middle_ex(&fs, fname, width, UI_DPI_ICON_SIZE, sizeof(fname), '\0');
@@ -245,10 +245,10 @@ static void file_draw_string_multiline(int sx,
   }
 
   const uiStyle *style = UI_style_get();
-  int font_id = style->widgetlabel.uifont_id;
+  int font_id = style->widget.uifont_id;
   int len = strlen(string);
 
-  rctf textbox;
+  rcti textbox;
   BLF_wordwrap(font_id, wrap_width);
   BLF_enable(font_id, BLF_WORD_WRAP);
   BLF_boundbox(font_id, string, len, &textbox);
@@ -260,7 +260,7 @@ static void file_draw_string_multiline(int sx,
   rect.xmax = sx + wrap_width;
   /* Need to increase the clipping rect by one more line, since the #UI_fontstyle_draw_ex() will
    * actually start drawing at (ymax - line-height). */
-  rect.ymin = sy - round_fl_to_int(BLI_rctf_size_y(&textbox)) - line_height;
+  rect.ymin = sy - BLI_rcti_size_y(&textbox) - line_height;
   rect.ymax = sy;
 
   struct ResultBLF result;

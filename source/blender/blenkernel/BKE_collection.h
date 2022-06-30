@@ -115,6 +115,18 @@ bool BKE_collection_is_empty(const struct Collection *collection);
 bool BKE_collection_object_add(struct Main *bmain,
                                struct Collection *collection,
                                struct Object *ob);
+
+/**
+ * Add object to given collection, similar to #BKE_collection_object_add.
+ *
+ * However, it additionally ensures that the selected collection is also part of the given
+ * `view_layer`, if non-NULL. Otherwise, the object is not added to any collection.
+ */
+bool BKE_collection_viewlayer_object_add(struct Main *bmain,
+                                         const struct ViewLayer *view_layer,
+                                         struct Collection *collection,
+                                         struct Object *ob);
+
 /**
  * Same as #BKE_collection_object_add, but unconditionally adds the object to the given collection.
  *
@@ -345,6 +357,20 @@ void BKE_scene_collections_iterator_end(struct BLI_Iterator *iter);
 void BKE_scene_objects_iterator_begin(struct BLI_Iterator *iter, void *data_in);
 void BKE_scene_objects_iterator_next(struct BLI_Iterator *iter);
 void BKE_scene_objects_iterator_end(struct BLI_Iterator *iter);
+
+/** Iterate over objects in the scene based on a flag.
+ *
+ * \note The object->flag is tested against flag.
+ * */
+typedef struct SceneObjectsIteratorExData {
+  struct Scene *scene;
+  int flag;
+  void *iter_data;
+} SceneObjectsIteratorExData;
+
+void BKE_scene_objects_iterator_begin_ex(struct BLI_Iterator *iter, void *data_in);
+void BKE_scene_objects_iterator_next_ex(struct BLI_Iterator *iter);
+void BKE_scene_objects_iterator_end_ex(struct BLI_Iterator *iter);
 
 /**
  * Generate a new #GSet (or extend given `objects_gset` if not NULL) with all objects referenced by

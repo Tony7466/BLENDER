@@ -7,6 +7,8 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 
+#include "BKE_curves.hh"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_set_position_cc {
@@ -23,7 +25,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 static void set_computed_position_and_offset(GeometryComponent &component,
                                              const VArray<float3> &in_positions,
                                              const VArray<float3> &in_offsets,
-                                             const AttributeDomain domain,
+                                             const eAttrDomain domain,
                                              const IndexMask selection)
 {
 
@@ -62,6 +64,9 @@ static void set_computed_position_and_offset(GeometryComponent &component,
       break;
     }
     case GEO_COMPONENT_TYPE_CURVE: {
+      CurveComponent &curve_component = static_cast<CurveComponent &>(component);
+      Curves &curves_id = *curve_component.get_for_write();
+      bke::CurvesGeometry &curves = bke::CurvesGeometry::wrap(curves_id.geometry);
       if (component.attribute_exists("handle_right") &&
           component.attribute_exists("handle_left")) {
         OutputAttribute_Typed<float3> handle_right_attribute =
@@ -90,6 +95,9 @@ static void set_computed_position_and_offset(GeometryComponent &component,
 
         handle_right_attribute.save();
         handle_left_attribute.save();
+
+        /* Automatic Bezier handles must be recalculated based on the new positions. */
+        curves.calculate_bezier_auto_handles();
         break;
       }
       else {
@@ -131,16 +139,15 @@ static void set_position_in_component(GeometryComponent &component,
                                       const Field<float3> &position_field,
                                       const Field<float3> &offset_field)
 {
-  AttributeDomain domain = component.type() == GEO_COMPONENT_TYPE_INSTANCES ?
-                               ATTR_DOMAIN_INSTANCE :
-                               ATTR_DOMAIN_POINT;
+  eAttrDomain domain = component.type() == GEO_COMPONENT_TYPE_INSTANCES ? ATTR_DOMAIN_INSTANCE :
+                                                                          ATTR_DOMAIN_POINT;
   GeometryComponentFieldContext field_context{component, domain};
-  const int domain_size = component.attribute_domain_size(domain);
-  if (domain_size == 0) {
+  const int domain_num = component.attribute_domain_num(domain);
+  if (domain_num == 0) {
     return;
   }
 
-  fn::FieldEvaluator evaluator{field_context, domain_size};
+  fn::FieldEvaluator evaluator{field_context, domain_num};
   evaluator.set_selection(selection_field);
   evaluator.add(position_field);
   evaluator.add(offset_field);

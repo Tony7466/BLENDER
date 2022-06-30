@@ -54,6 +54,7 @@
 
 #include "SEQ_sequencer.h"
 #include "SEQ_sound.h"
+#include "SEQ_time.h"
 
 static void sound_free_audio(bSound *sound);
 
@@ -112,7 +113,6 @@ static void sound_foreach_cache(ID *id,
   IDCacheKey key = {
       .id_session_uuid = id->session_uuid,
       .offset_in_ID = offsetof(bSound, waveform),
-      .cache_v = sound->waveform,
   };
 
   function_callback(id, &key, &sound->waveform, 0, user_data);
@@ -264,6 +264,14 @@ bSound *BKE_sound_new_file(Main *bmain, const char *filepath)
   sound = BKE_libblock_alloc(bmain, ID_SO, BLI_path_basename(filepath), 0);
   BLI_strncpy(sound->filepath, filepath, FILE_MAX);
   /* sound->type = SOUND_TYPE_FILE; */ /* XXX unused currently */
+
+  /* Extract sound specs for bSound */
+  SoundInfo info;
+  bool success = BKE_sound_info_get(bmain, sound, &info);
+  if (success) {
+    sound->samplerate = info.specs.samplerate;
+    sound->audio_channels = info.specs.channels;
+  }
 
   sound->spinlock = MEM_mallocN(sizeof(SpinLock), "sound_spinlock");
   BLI_spin_init(sound->spinlock);
@@ -712,8 +720,8 @@ void *BKE_sound_scene_add_scene_sound_defaults(Scene *scene, Sequence *sequence)
 {
   return BKE_sound_scene_add_scene_sound(scene,
                                          sequence,
-                                         sequence->startdisp,
-                                         sequence->enddisp,
+                                         SEQ_time_left_handle_frame_get(scene, sequence),
+                                         SEQ_time_right_handle_frame_get(scene, sequence),
                                          sequence->startofs + sequence->anim_startofs);
 }
 
@@ -738,8 +746,8 @@ void *BKE_sound_add_scene_sound_defaults(Scene *scene, Sequence *sequence)
 {
   return BKE_sound_add_scene_sound(scene,
                                    sequence,
-                                   sequence->startdisp,
-                                   sequence->enddisp,
+                                   SEQ_time_left_handle_frame_get(scene, sequence),
+                                   SEQ_time_right_handle_frame_get(scene, sequence),
                                    sequence->startofs + sequence->anim_startofs);
 }
 
@@ -753,8 +761,12 @@ void BKE_sound_mute_scene_sound(void *handle, char mute)
   AUD_SequenceEntry_setMuted(handle, mute);
 }
 
-void BKE_sound_move_scene_sound(
-    Scene *scene, void *handle, int startframe, int endframe, int frameskip, double audio_offset)
+void BKE_sound_move_scene_sound(const Scene *scene,
+                                void *handle,
+                                int startframe,
+                                int endframe,
+                                int frameskip,
+                                double audio_offset)
 {
   sound_verify_evaluated_id(&scene->id);
   const double fps = FPS;
@@ -767,8 +779,8 @@ void BKE_sound_move_scene_sound_defaults(Scene *scene, Sequence *sequence)
   if (sequence->scene_sound) {
     BKE_sound_move_scene_sound(scene,
                                sequence->scene_sound,
-                               sequence->startdisp,
-                               sequence->enddisp,
+                               SEQ_time_left_handle_frame_get(scene, sequence),
+                               SEQ_time_right_handle_frame_get(scene, sequence),
                                sequence->startofs + sequence->anim_startofs,
                                0.0);
   }
@@ -1203,6 +1215,7 @@ static bool sound_info_from_playback_handle(void *playback_handle, SoundInfo *so
   AUD_SoundInfo info = AUD_getInfo(playback_handle);
   sound_info->specs.channels = (eSoundChannels)info.specs.channels;
   sound_info->length = info.length;
+  sound_info->specs.samplerate = info.specs.rate;
   return true;
 }
 
@@ -1336,7 +1349,7 @@ void BKE_sound_remove_scene_sound(Scene *UNUSED(scene), void *UNUSED(handle))
 void BKE_sound_mute_scene_sound(void *UNUSED(handle), char UNUSED(mute))
 {
 }
-void BKE_sound_move_scene_sound(Scene *UNUSED(scene),
+void BKE_sound_move_scene_sound(const Scene *UNUSED(scene),
                                 void *UNUSED(handle),
                                 int UNUSED(startframe),
                                 int UNUSED(endframe),

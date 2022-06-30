@@ -12,10 +12,7 @@
 
 #include "GPU_capabilities.h"
 
-#include "glew-mx.h"
-
 #include "gl_context.hh"
-#include "gl_debug.hh"
 #include "gl_framebuffer.hh"
 #include "gl_texture.hh"
 
@@ -152,12 +149,12 @@ void GLStateManager::set_mutable_state(const GPUStateMutable &state)
     }
   }
 
-  if (changed.line_width != 0) {
+  if (float_as_uint(changed.line_width) != 0) {
     /* TODO: remove, should use wide line shader. */
     glLineWidth(clamp_f(state.line_width, line_width_range_[0], line_width_range_[1]));
   }
 
-  if (changed.depth_range[0] != 0 || changed.depth_range[1] != 0) {
+  if (float_as_uint(changed.depth_range[0]) != 0 || float_as_uint(changed.depth_range[1]) != 0) {
     /* TODO: remove, should modify the projection matrix instead. */
     glDepthRange(UNPACK2(state.depth_range));
   }

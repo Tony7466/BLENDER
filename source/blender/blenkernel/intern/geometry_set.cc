@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_bounds.hh"
 #include "BLI_map.hh"
 #include "BLI_task.hh"
 
@@ -8,13 +9,13 @@
 #include "BKE_attribute.h"
 #include "BKE_attribute_access.hh"
 #include "BKE_curves.hh"
+#include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_wrapper.h"
 #include "BKE_modifier.h"
 #include "BKE_pointcloud.h"
-#include "BKE_spline.hh"
 #include "BKE_volume.h"
 
 #include "DNA_collection_types.h"
@@ -174,24 +175,27 @@ Vector<const GeometryComponent *> GeometrySet::get_components_for_read() const
 
 bool GeometrySet::compute_boundbox_without_instances(float3 *r_min, float3 *r_max) const
 {
+  using namespace blender;
   bool have_minmax = false;
-  const PointCloud *pointcloud = this->get_pointcloud_for_read();
-  if (pointcloud != nullptr) {
+  if (const PointCloud *pointcloud = this->get_pointcloud_for_read()) {
     have_minmax |= BKE_pointcloud_minmax(pointcloud, *r_min, *r_max);
   }
-  const Mesh *mesh = this->get_mesh_for_read();
-  if (mesh != nullptr) {
+  if (const Mesh *mesh = this->get_mesh_for_read()) {
     have_minmax |= BKE_mesh_wrapper_minmax(mesh, *r_min, *r_max);
   }
-  const Volume *volume = this->get_volume_for_read();
-  if (volume != nullptr) {
+  if (const Volume *volume = this->get_volume_for_read()) {
     have_minmax |= BKE_volume_min_max(volume, *r_min, *r_max);
   }
-  const Curves *curves = this->get_curves_for_read();
-  if (curves != nullptr) {
-    std::unique_ptr<CurveEval> curve = curves_to_curve_eval(*curves);
+  if (const Curves *curves_id = this->get_curves_for_read()) {
+    const bke::CurvesGeometry &curves = bke::CurvesGeometry::wrap(curves_id->geometry);
     /* Using the evaluated positions is somewhat arbitrary, but it is probably expected. */
-    have_minmax |= curve->bounds_min_max(*r_min, *r_max, true);
+    std::optional<bounds::MinMaxResult<float3>> min_max = bounds::min_max(
+        curves.evaluated_positions());
+    if (min_max) {
+      have_minmax = true;
+      *r_min = math::min(*r_min, min_max->min);
+      *r_max = math::max(*r_max, min_max->max);
+    }
   }
   return have_minmax;
 }
@@ -275,7 +279,7 @@ bool GeometrySet::has_pointcloud() const
 bool GeometrySet::has_instances() const
 {
   const InstancesComponent *component = this->get_component_for_read<InstancesComponent>();
-  return component != nullptr && component->instances_amount() >= 1;
+  return component != nullptr && component->instances_num() >= 1;
 }
 
 bool GeometrySet::has_volume() const
@@ -314,6 +318,16 @@ GeometrySet GeometrySet::create_with_mesh(Mesh *mesh, GeometryOwnershipType owne
   if (mesh != nullptr) {
     MeshComponent &component = geometry_set.get_component_for_write<MeshComponent>();
     component.replace(mesh, ownership);
+  }
+  return geometry_set;
+}
+
+GeometrySet GeometrySet::create_with_volume(Volume *volume, GeometryOwnershipType ownership)
+{
+  GeometrySet geometry_set;
+  if (volume != nullptr) {
+    VolumeComponent &component = geometry_set.get_component_for_write<VolumeComponent>();
+    component.replace(volume, ownership);
   }
   return geometry_set;
 }
@@ -473,7 +487,7 @@ void GeometrySet::gather_attributes_for_propagation(
           return;
         }
 
-        AttributeDomain domain = meta_data.domain;
+        eAttrDomain domain = meta_data.domain;
         if (dst_component_type != GEO_COMPONENT_TYPE_INSTANCES && domain == ATTR_DOMAIN_INSTANCE) {
           domain = ATTR_DOMAIN_POINT;
         }
@@ -551,8 +565,14 @@ void GeometrySet::modify_geometry_sets(ForeachSubGeometryCallback callback)
 {
   Vector<GeometrySet *> geometry_sets;
   gather_mutable_geometry_sets(*this, geometry_sets);
-  blender::threading::parallel_for_each(
-      geometry_sets, [&](GeometrySet *geometry_set) { callback(*geometry_set); });
+  if (geometry_sets.size() == 1) {
+    /* Avoid possible overhead and a large call stack when multithreading is pointless. */
+    callback(*geometry_sets.first());
+  }
+  else {
+    blender::threading::parallel_for_each(
+        geometry_sets, [&](GeometrySet *geometry_set) { callback(*geometry_set); });
+  }
 }
 
 /** \} */
@@ -564,7 +584,7 @@ void GeometrySet::modify_geometry_sets(ForeachSubGeometryCallback callback)
 namespace blender::bke {
 
 GVArray NormalFieldInput::get_varray_for_context(const GeometryComponent &component,
-                                                 const AttributeDomain domain,
+                                                 const eAttrDomain domain,
                                                  IndexMask mask) const
 {
   if (component.type() == GEO_COMPONENT_TYPE_MESH) {

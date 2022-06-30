@@ -22,8 +22,6 @@
 #include "BKE_attribute_access.hh"
 #include "BKE_geometry_set.h"
 
-#include "FN_field.hh"
-
 struct Curves;
 struct Collection;
 struct Curve;
@@ -96,11 +94,11 @@ class GeometryComponent {
    * \note Conceptually this function is static, the result is always the same for different
    * instances of the same geometry component type.
    */
-  bool attribute_domain_supported(AttributeDomain domain) const;
+  bool attribute_domain_supported(eAttrDomain domain) const;
   /**
    * Return the length of a specific domain, or 0 if the domain is not supported.
    */
-  virtual int attribute_domain_size(AttributeDomain domain) const;
+  virtual int attribute_domain_num(eAttrDomain domain) const;
 
   /**
    * Return true if the attribute name corresponds to a built-in attribute with a hardcoded domain
@@ -132,16 +130,16 @@ class GeometryComponent {
    * \return null if the interpolation is not implemented.
    */
   blender::GVArray attribute_try_adapt_domain(const blender::GVArray &varray,
-                                              const AttributeDomain from_domain,
-                                              const AttributeDomain to_domain) const
+                                              const eAttrDomain from_domain,
+                                              const eAttrDomain to_domain) const
   {
     return this->attribute_try_adapt_domain_impl(varray, from_domain, to_domain);
   }
   /* Use instead of the method above when the type is known at compile time for type safety. */
   template<typename T>
   blender::VArray<T> attribute_try_adapt_domain(const blender::VArray<T> &varray,
-                                                const AttributeDomain from_domain,
-                                                const AttributeDomain to_domain) const
+                                                const eAttrDomain from_domain,
+                                                const eAttrDomain to_domain) const
   {
     return this->attribute_try_adapt_domain_impl(varray, from_domain, to_domain)
         .template typed<T>();
@@ -150,10 +148,16 @@ class GeometryComponent {
   /** Returns true when the attribute has been deleted. */
   bool attribute_try_delete(const blender::bke::AttributeIDRef &attribute_id);
 
+  /**
+   * Remove any anonymous attributes on the geometry (they generally shouldn't exist on original
+   * geometry).
+   */
+  void attributes_remove_anonymous();
+
   /** Returns true when the attribute has been created. */
   bool attribute_try_create(const blender::bke::AttributeIDRef &attribute_id,
-                            AttributeDomain domain,
-                            const CustomDataType data_type,
+                            eAttrDomain domain,
+                            eCustomDataType data_type,
                             const AttributeInit &initializer);
 
   /**
@@ -178,8 +182,8 @@ class GeometryComponent {
    * interpolated or converted.
    */
   blender::GVArray attribute_try_get_for_read(const blender::bke::AttributeIDRef &attribute_id,
-                                              AttributeDomain domain,
-                                              const CustomDataType data_type) const;
+                                              eAttrDomain domain,
+                                              eCustomDataType data_type) const;
 
   /**
    * Get a virtual array that refers to the data of an attribute, interpolated to the given domain.
@@ -187,7 +191,7 @@ class GeometryComponent {
    * interpolated.
    */
   blender::GVArray attribute_try_get_for_read(const blender::bke::AttributeIDRef &attribute_id,
-                                              AttributeDomain domain) const;
+                                              eAttrDomain domain) const;
 
   /**
    * Get a virtual array that refers to the data of an attribute converted to the given data type.
@@ -195,7 +199,7 @@ class GeometryComponent {
    * cannot be converted.
    */
   blender::bke::ReadAttributeLookup attribute_try_get_for_read(
-      const blender::bke::AttributeIDRef &attribute_id, const CustomDataType data_type) const;
+      const blender::bke::AttributeIDRef &attribute_id, eCustomDataType data_type) const;
 
   /**
    * Get a virtual array that refers to the data of an attribute, interpolated to the given domain
@@ -203,17 +207,17 @@ class GeometryComponent {
    * contain a default value. This never returns null.
    */
   blender::GVArray attribute_get_for_read(const blender::bke::AttributeIDRef &attribute_id,
-                                          AttributeDomain domain,
-                                          const CustomDataType data_type,
+                                          eAttrDomain domain,
+                                          eCustomDataType data_type,
                                           const void *default_value = nullptr) const;
   /* Use instead of the method above when the type is known at compile time for type safety. */
   template<typename T>
   blender::VArray<T> attribute_get_for_read(const blender::bke::AttributeIDRef &attribute_id,
-                                            const AttributeDomain domain,
+                                            const eAttrDomain domain,
                                             const T &default_value) const
   {
     const blender::CPPType &cpp_type = blender::CPPType::get<T>();
-    const CustomDataType type = blender::bke::cpp_type_to_custom_data_type(cpp_type);
+    const eCustomDataType type = blender::bke::cpp_type_to_custom_data_type(cpp_type);
     return this->attribute_get_for_read(attribute_id, domain, type, &default_value)
         .template typed<T>();
   }
@@ -230,18 +234,18 @@ class GeometryComponent {
    */
   blender::bke::OutputAttribute attribute_try_get_for_output(
       const blender::bke::AttributeIDRef &attribute_id,
-      AttributeDomain domain,
-      const CustomDataType data_type,
+      eAttrDomain domain,
+      eCustomDataType data_type,
       const void *default_value = nullptr);
   /* Use instead of the method above when the type is known at compile time for type safety. */
   template<typename T>
   blender::bke::OutputAttribute_Typed<T> attribute_try_get_for_output(
       const blender::bke::AttributeIDRef &attribute_id,
-      const AttributeDomain domain,
+      const eAttrDomain domain,
       const T default_value)
   {
     const blender::CPPType &cpp_type = blender::CPPType::get<T>();
-    const CustomDataType data_type = blender::bke::cpp_type_to_custom_data_type(cpp_type);
+    const eCustomDataType data_type = blender::bke::cpp_type_to_custom_data_type(cpp_type);
     return this->attribute_try_get_for_output(attribute_id, domain, data_type, &default_value);
   }
 
@@ -253,15 +257,15 @@ class GeometryComponent {
    */
   blender::bke::OutputAttribute attribute_try_get_for_output_only(
       const blender::bke::AttributeIDRef &attribute_id,
-      AttributeDomain domain,
-      const CustomDataType data_type);
+      eAttrDomain domain,
+      eCustomDataType data_type);
   /* Use instead of the method above when the type is known at compile time for type safety. */
   template<typename T>
   blender::bke::OutputAttribute_Typed<T> attribute_try_get_for_output_only(
-      const blender::bke::AttributeIDRef &attribute_id, const AttributeDomain domain)
+      const blender::bke::AttributeIDRef &attribute_id, const eAttrDomain domain)
   {
     const blender::CPPType &cpp_type = blender::CPPType::get<T>();
-    const CustomDataType data_type = blender::bke::cpp_type_to_custom_data_type(cpp_type);
+    const eCustomDataType data_type = blender::bke::cpp_type_to_custom_data_type(cpp_type);
     return this->attribute_try_get_for_output_only(attribute_id, domain, data_type);
   }
 
@@ -269,8 +273,8 @@ class GeometryComponent {
   virtual const blender::bke::ComponentAttributeProviders *get_attribute_providers() const;
 
   virtual blender::GVArray attribute_try_adapt_domain_impl(const blender::GVArray &varray,
-                                                           AttributeDomain from_domain,
-                                                           AttributeDomain to_domain) const;
+                                                           eAttrDomain from_domain,
+                                                           eAttrDomain to_domain) const;
 };
 
 template<typename T>
@@ -408,6 +412,11 @@ struct GeometrySet {
   static GeometrySet create_with_mesh(
       Mesh *mesh, GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
   /**
+   * Create a new geometry set that only contains the given volume.
+   */
+  static GeometrySet create_with_volume(
+      Volume *volume, GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
+  /**
    * Create a new geometry set that only contains the given point cloud.
    */
   static GeometrySet create_with_pointcloud(
@@ -517,11 +526,11 @@ struct GeometrySet {
 };
 
 /**
- * A geometry component that can store a mesh, storing the #Mesh data structure.
+ * A geometry component that can store a mesh, using the #Mesh data-block.
  *
- * Attributes are stored in the mesh itself, on any of the four attribute domains. Generic
- * attributes are stored in contiguous arrays, but often built-in attributes are stored in an
- * array of structs fashion for historical reasons, requiring more complex attribute access.
+ * Attributes are stored, on any of the four attribute domains. Generic attributes are stored in
+ * contiguous arrays, but often built-in attributes are stored in an array of structs fashion for
+ * historical reasons, requiring more complex attribute access.
  */
 class MeshComponent : public GeometryComponent {
  private:
@@ -556,7 +565,7 @@ class MeshComponent : public GeometryComponent {
    */
   Mesh *get_for_write();
 
-  int attribute_domain_size(AttributeDomain domain) const final;
+  int attribute_domain_num(eAttrDomain domain) const final;
 
   bool is_empty() const final;
 
@@ -569,8 +578,8 @@ class MeshComponent : public GeometryComponent {
   const blender::bke::ComponentAttributeProviders *get_attribute_providers() const final;
 
   blender::GVArray attribute_try_adapt_domain_impl(const blender::GVArray &varray,
-                                                   AttributeDomain from_domain,
-                                                   AttributeDomain to_domain) const final;
+                                                   eAttrDomain from_domain,
+                                                   eAttrDomain to_domain) const final;
 };
 
 /**
@@ -619,7 +628,7 @@ class PointCloudComponent : public GeometryComponent {
    */
   PointCloud *get_for_write();
 
-  int attribute_domain_size(AttributeDomain domain) const final;
+  int attribute_domain_num(eAttrDomain domain) const final;
 
   bool is_empty() const final;
 
@@ -660,7 +669,7 @@ class CurveComponentLegacy : public GeometryComponent {
   const CurveEval *get_for_read() const;
   CurveEval *get_for_write();
 
-  int attribute_domain_size(AttributeDomain domain) const final;
+  int attribute_domain_num(eAttrDomain domain) const final;
 
   bool is_empty() const final;
 
@@ -673,13 +682,14 @@ class CurveComponentLegacy : public GeometryComponent {
   const blender::bke::ComponentAttributeProviders *get_attribute_providers() const final;
 
   blender::GVArray attribute_try_adapt_domain_impl(const blender::GVArray &varray,
-                                                   AttributeDomain from_domain,
-                                                   AttributeDomain to_domain) const final;
+                                                   eAttrDomain from_domain,
+                                                   eAttrDomain to_domain) const final;
 };
 
 /**
- * A geometry component that stores a group of curves, corresponding the #Curves and
- * #CurvesGeometry types.
+ * A geometry component that stores a group of curves, corresponding the #Curves data-block type
+ * and the #CurvesGeometry type. Attributes are are stored on the control point domain and the
+ * curve domain.
  */
 class CurveComponent : public GeometryComponent {
  private:
@@ -711,7 +721,7 @@ class CurveComponent : public GeometryComponent {
   const Curves *get_for_read() const;
   Curves *get_for_write();
 
-  int attribute_domain_size(AttributeDomain domain) const final;
+  int attribute_domain_num(eAttrDomain domain) const final;
 
   bool is_empty() const final;
 
@@ -730,8 +740,8 @@ class CurveComponent : public GeometryComponent {
   const blender::bke::ComponentAttributeProviders *get_attribute_providers() const final;
 
   blender::GVArray attribute_try_adapt_domain_impl(const blender::GVArray &varray,
-                                                   AttributeDomain from_domain,
-                                                   AttributeDomain to_domain) const final;
+                                                   eAttrDomain from_domain,
+                                                   eAttrDomain to_domain) const final;
 };
 
 /**
@@ -945,8 +955,8 @@ class InstancesComponent : public GeometryComponent {
   blender::MutableSpan<blender::float4x4> instance_transforms();
   blender::Span<blender::float4x4> instance_transforms() const;
 
-  int instances_amount() const;
-  int references_amount() const;
+  int instances_num() const;
+  int references_num() const;
 
   /**
    * Remove the indices that are not contained in the mask input, and remove unused instance
@@ -959,7 +969,7 @@ class InstancesComponent : public GeometryComponent {
   blender::bke::CustomDataAttributes &attributes();
   const blender::bke::CustomDataAttributes &attributes() const;
 
-  int attribute_domain_size(AttributeDomain domain) const final;
+  int attribute_domain_num(eAttrDomain domain) const final;
 
   void foreach_referenced_geometry(
       blender::FunctionRef<void(const GeometrySet &geometry_set)> callback) const;
@@ -1019,155 +1029,3 @@ class VolumeComponent : public GeometryComponent {
 
   static constexpr inline GeometryComponentType static_type = GEO_COMPONENT_TYPE_VOLUME;
 };
-
-namespace blender::bke {
-
-class GeometryComponentFieldContext : public fn::FieldContext {
- private:
-  const GeometryComponent &component_;
-  const AttributeDomain domain_;
-
- public:
-  GeometryComponentFieldContext(const GeometryComponent &component, const AttributeDomain domain)
-      : component_(component), domain_(domain)
-  {
-  }
-
-  const GeometryComponent &geometry_component() const
-  {
-    return component_;
-  }
-
-  AttributeDomain domain() const
-  {
-    return domain_;
-  }
-};
-
-class GeometryFieldInput : public fn::FieldInput {
- public:
-  using fn::FieldInput::FieldInput;
-
-  GVArray get_varray_for_context(const fn::FieldContext &context,
-                                 IndexMask mask,
-                                 ResourceScope &scope) const override;
-
-  virtual GVArray get_varray_for_context(const GeometryComponent &component,
-                                         AttributeDomain domain,
-                                         IndexMask mask) const = 0;
-};
-
-class AttributeFieldInput : public GeometryFieldInput {
- private:
-  std::string name_;
-
- public:
-  AttributeFieldInput(std::string name, const CPPType &type)
-      : GeometryFieldInput(type, name), name_(std::move(name))
-  {
-    category_ = Category::NamedAttribute;
-  }
-
-  template<typename T> static fn::Field<T> Create(std::string name)
-  {
-    const CPPType &type = CPPType::get<T>();
-    auto field_input = std::make_shared<AttributeFieldInput>(std::move(name), type);
-    return fn::Field<T>{field_input};
-  }
-
-  StringRefNull attribute_name() const
-  {
-    return name_;
-  }
-
-  GVArray get_varray_for_context(const GeometryComponent &component,
-                                 AttributeDomain domain,
-                                 IndexMask mask) const override;
-
-  std::string socket_inspection_name() const override;
-
-  uint64_t hash() const override;
-  bool is_equal_to(const fn::FieldNode &other) const override;
-};
-
-class IDAttributeFieldInput : public GeometryFieldInput {
- public:
-  IDAttributeFieldInput() : GeometryFieldInput(CPPType::get<int>())
-  {
-    category_ = Category::Generated;
-  }
-
-  GVArray get_varray_for_context(const GeometryComponent &component,
-                                 AttributeDomain domain,
-                                 IndexMask mask) const override;
-
-  std::string socket_inspection_name() const override;
-
-  uint64_t hash() const override;
-  bool is_equal_to(const fn::FieldNode &other) const override;
-};
-
-VArray<float3> curve_normals_varray(const CurveComponent &component, const AttributeDomain domain);
-
-VArray<float3> mesh_normals_varray(const MeshComponent &mesh_component,
-                                   const Mesh &mesh,
-                                   const IndexMask mask,
-                                   const AttributeDomain domain);
-
-class NormalFieldInput : public GeometryFieldInput {
- public:
-  NormalFieldInput() : GeometryFieldInput(CPPType::get<float3>())
-  {
-    category_ = Category::Generated;
-  }
-
-  GVArray get_varray_for_context(const GeometryComponent &component,
-                                 const AttributeDomain domain,
-                                 IndexMask mask) const override;
-
-  std::string socket_inspection_name() const override;
-
-  uint64_t hash() const override;
-  bool is_equal_to(const fn::FieldNode &other) const override;
-};
-
-class AnonymousAttributeFieldInput : public GeometryFieldInput {
- private:
-  /**
-   * A strong reference is required to make sure that the referenced attribute is not removed
-   * automatically.
-   */
-  StrongAnonymousAttributeID anonymous_id_;
-  std::string producer_name_;
-
- public:
-  AnonymousAttributeFieldInput(StrongAnonymousAttributeID anonymous_id,
-                               const CPPType &type,
-                               std::string producer_name)
-      : GeometryFieldInput(type, anonymous_id.debug_name()),
-        anonymous_id_(std::move(anonymous_id)),
-        producer_name_(producer_name)
-  {
-    category_ = Category::AnonymousAttribute;
-  }
-
-  template<typename T>
-  static fn::Field<T> Create(StrongAnonymousAttributeID anonymous_id, std::string producer_name)
-  {
-    const CPPType &type = CPPType::get<T>();
-    auto field_input = std::make_shared<AnonymousAttributeFieldInput>(
-        std::move(anonymous_id), type, std::move(producer_name));
-    return fn::Field<T>{field_input};
-  }
-
-  GVArray get_varray_for_context(const GeometryComponent &component,
-                                 AttributeDomain domain,
-                                 IndexMask mask) const override;
-
-  std::string socket_inspection_name() const override;
-
-  uint64_t hash() const override;
-  bool is_equal_to(const fn::FieldNode &other) const override;
-};
-
-}  // namespace blender::bke

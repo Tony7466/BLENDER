@@ -42,7 +42,7 @@ void BKE_mesh_remap_free(MeshPairRemap *map);
 void BKE_mesh_remap_item_define_invalid(MeshPairRemap *map, int index);
 
 /* TODO:
- * Add other 'from/to' mapping sources, like e.g. using an UVMap, etc.
+ * Add other 'from/to' mapping sources, like e.g. using a UVMap, etc.
  * https://blenderartists.org/t/619105
  *
  * We could also use similar topology mappings inside a same mesh
@@ -178,6 +178,7 @@ void BKE_mesh_remap_calc_verts_from_mesh(int mode,
                                          int numverts_dst,
                                          bool dirty_nors_dst,
                                          struct Mesh *me_src,
+                                         struct Mesh *me_dst,
                                          MeshPairRemap *r_map);
 
 void BKE_mesh_remap_calc_edges_from_mesh(int mode,
@@ -190,6 +191,7 @@ void BKE_mesh_remap_calc_edges_from_mesh(int mode,
                                          int numedges_dst,
                                          bool dirty_nors_dst,
                                          struct Mesh *me_src,
+                                         struct Mesh *me_dst,
                                          MeshPairRemap *r_map);
 
 void BKE_mesh_remap_calc_loops_from_mesh(int mode,

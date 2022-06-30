@@ -153,7 +153,7 @@ static void transfer_attributes(
       continue;
     }
 
-    AttributeDomain out_domain;
+    eAttrDomain out_domain;
     if (src_attribute.domain == ATTR_DOMAIN_FACE) {
       out_domain = ATTR_DOMAIN_POINT;
     }
@@ -164,7 +164,7 @@ static void transfer_attributes(
       /* Edges and Face Corners. */
       out_domain = src_attribute.domain;
     }
-    const CustomDataType data_type = bke::cpp_type_to_custom_data_type(
+    const eCustomDataType data_type = bke::cpp_type_to_custom_data_type(
         src_attribute.varray.type());
     OutputAttribute dst_attribute = dst_component.attribute_try_get_for_output_only(
         attribute_id, out_domain, data_type);
@@ -627,7 +627,7 @@ static void calc_dual_mesh(GeometrySet &geometry_set,
   calc_boundaries(mesh_in, vertex_types, edge_types);
   /* Stores the indices of the polygons connected to the vertex. Because the polygons are looped
    * over in order of their indices, the polygon's indices will be sorted in ascending order.
-   (This can change once they are sorted using `sort_vertex_polys`). */
+   * (This can change once they are sorted using `sort_vertex_polys`). */
   Array<Vector<int>> vertex_poly_indices(mesh_in.totvert);
   Array<Array<int>> vertex_shared_edges(mesh_in.totvert);
   Array<Array<int>> vertex_corners(mesh_in.totvert);
@@ -897,7 +897,6 @@ static void calc_dual_mesh(GeometrySet &geometry_set,
     copy_v3_v3(mesh_out->mvert[i].co, vertex_positions[i]);
   }
   memcpy(mesh_out->medge, new_edges.data(), sizeof(MEdge) * new_edges.size());
-  BKE_mesh_normals_tag_dirty(mesh_out);
   geometry_set.replace_mesh(mesh_out);
 }
 

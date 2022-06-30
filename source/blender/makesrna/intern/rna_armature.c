@@ -216,10 +216,10 @@ static void rna_Bone_select_update(Main *UNUSED(bmain), Scene *UNUSED(scene), Po
   WM_main_add_notifier(NC_ANIMATION | ND_ANIMCHAN, id);
 }
 
-static char *rna_Bone_path(PointerRNA *ptr)
+static char *rna_Bone_path(const PointerRNA *ptr)
 {
-  ID *id = ptr->owner_id;
-  Bone *bone = (Bone *)ptr->data;
+  const ID *id = ptr->owner_id;
+  const Bone *bone = (const Bone *)ptr->data;
   char name_esc[sizeof(bone->name) * 2];
 
   BLI_str_escape(name_esc, bone->name, sizeof(name_esc));
@@ -1047,6 +1047,7 @@ static void rna_def_bone_common(StructRNA *srna, int editbone)
     RNA_def_property_update(prop, 0, "rna_Bone_bbone_handle_update");
   }
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_PTR_NO_OWNERSHIP);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_NO_COMPARISON);
   RNA_def_property_ui_text(
       prop, "B-Bone Start Handle", "Bone that serves as the start handle for the B-Bone curve");
 
@@ -1091,6 +1092,7 @@ static void rna_def_bone_common(StructRNA *srna, int editbone)
     RNA_def_property_update(prop, 0, "rna_Bone_bbone_handle_update");
   }
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_PTR_NO_OWNERSHIP);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_NO_COMPARISON);
   RNA_def_property_ui_text(
       prop, "B-Bone End Handle", "Bone that serves as the end handle for the B-Bone curve");
 
@@ -1383,7 +1385,7 @@ static void rna_def_armature_edit_bones(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_property_pointer_sdna(prop, NULL, "act_edbone");
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Active EditBone", "Armatures active edit bone");
-  /*RNA_def_property_update(prop, 0, "rna_Armature_act_editbone_update"); */
+  // RNA_def_property_update(prop, 0, "rna_Armature_act_editbone_update");
   RNA_def_property_pointer_funcs(prop, NULL, "rna_Armature_act_edit_bone_set", NULL, NULL);
 
   /* TODO: redraw. */

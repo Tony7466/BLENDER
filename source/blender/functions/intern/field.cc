@@ -8,6 +8,7 @@
 #include "BLI_vector_set.hh"
 
 #include "FN_field.hh"
+#include "FN_multi_function_builder.hh"
 #include "FN_multi_function_procedure.hh"
 #include "FN_multi_function_procedure_builder.hh"
 #include "FN_multi_function_procedure_executor.hh"
@@ -468,16 +469,21 @@ Vector<GVArray> evaluate_fields(ResourceScope &scope,
       /* Still have to copy over the data in the destination provided by the caller. */
       if (dst_varray.is_span()) {
         /* Materialize into a span. */
-        computed_varray.materialize_to_uninitialized(mask, dst_varray.get_internal_span().data());
+        threading::parallel_for(mask.index_range(), 2048, [&](const IndexRange range) {
+          computed_varray.materialize_to_uninitialized(mask.slice(range),
+                                                       dst_varray.get_internal_span().data());
+        });
       }
       else {
         /* Slower materialize into a different structure. */
         const CPPType &type = computed_varray.type();
-        BUFFER_FOR_CPP_TYPE_VALUE(type, buffer);
-        for (const int i : mask) {
-          computed_varray.get_to_uninitialized(i, buffer);
-          dst_varray.set_by_relocate(i, buffer);
-        }
+        threading::parallel_for(mask.index_range(), 2048, [&](const IndexRange range) {
+          BUFFER_FOR_CPP_TYPE_VALUE(type, buffer);
+          for (const int i : mask.slice(range)) {
+            computed_varray.get_to_uninitialized(i, buffer);
+            dst_varray.set_by_relocate(i, buffer);
+          }
+        });
       }
       r_varrays[out_index] = dst_varray;
     }
@@ -489,7 +495,7 @@ void evaluate_constant_field(const GField &field, void *r_value)
 {
   if (field.node().depends_on_input()) {
     const CPPType &type = field.cpp_type();
-    type.copy_construct(type.default_value(), r_value);
+    type.value_initialize(r_value);
     return;
   }
 
@@ -510,6 +516,14 @@ GField make_field_constant_if_possible(GField field)
   GField new_field = make_constant_field(type, buffer);
   type.destruct(buffer);
   return new_field;
+}
+
+Field<bool> invert_boolean_field(const Field<bool> &field)
+{
+  static CustomMF_SI_SO<bool, bool> not_fn{
+      "Not", [](bool a) { return !a; }, CustomMF_presets::AllSpanOrSingle()};
+  auto not_op = std::make_shared<FieldOperation>(FieldOperation(not_fn, {field}));
+  return Field<bool>(not_op);
 }
 
 GField make_constant_field(const CPPType &type, const void *value)
@@ -694,20 +708,11 @@ GPointer FieldConstant::value() const
  */
 
 static IndexMask index_mask_from_selection(const IndexMask full_mask,
-                                           VArray<bool> &selection,
+                                           const VArray<bool> &selection,
                                            ResourceScope &scope)
 {
-  if (selection.is_span()) {
-    Span<bool> span = selection.get_internal_span();
-    return index_mask_ops::find_indices_based_on_predicate(
-        full_mask, 4096, scope.construct<Vector<int64_t>>(), [&](const int curve_index) {
-          return span[curve_index];
-        });
-  }
-  return index_mask_ops::find_indices_based_on_predicate(
-      full_mask, 1024, scope.construct<Vector<int64_t>>(), [&](const int curve_index) {
-        return selection[curve_index];
-      });
+  return index_mask_ops::find_indices_from_virtual_array(
+      full_mask, selection, 1024, scope.construct<Vector<int64_t>>());
 }
 
 int FieldEvaluator::add_with_destination(GField field, GVMutableArray dst)
@@ -750,12 +755,6 @@ static IndexMask evaluate_selection(const Field<bool> &selection_field,
   if (selection_field) {
     VArray<bool> selection =
         evaluate_fields(scope, {selection_field}, full_mask, context)[0].typed<bool>();
-    if (selection.is_single()) {
-      if (selection.get_internal_single()) {
-        return full_mask;
-      }
-      return IndexRange(0);
-    }
     return index_mask_from_selection(full_mask, selection, scope);
   }
   return full_mask;

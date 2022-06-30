@@ -33,6 +33,7 @@ void ED_operatortypes_object(void)
   WM_operatortype_append(OBJECT_OT_origin_clear);
   WM_operatortype_append(OBJECT_OT_visual_transform_apply);
   WM_operatortype_append(OBJECT_OT_transform_apply);
+  WM_operatortype_append(OBJECT_OT_parent_inverse_apply);
   WM_operatortype_append(OBJECT_OT_transform_axis_target);
   WM_operatortype_append(OBJECT_OT_origin_set);
 
@@ -45,7 +46,6 @@ void ED_operatortypes_object(void)
   WM_operatortype_append(OBJECT_OT_paths_calculate);
   WM_operatortype_append(OBJECT_OT_paths_update);
   WM_operatortype_append(OBJECT_OT_paths_clear);
-  WM_operatortype_append(OBJECT_OT_paths_range_update);
   WM_operatortype_append(OBJECT_OT_paths_update_visible);
   WM_operatortype_append(OBJECT_OT_forcefield_toggle);
 
@@ -89,7 +89,8 @@ void ED_operatortypes_object(void)
   WM_operatortype_append(OBJECT_OT_light_add);
   WM_operatortype_append(OBJECT_OT_camera_add);
   WM_operatortype_append(OBJECT_OT_speaker_add);
-  WM_operatortype_append(OBJECT_OT_hair_curves_add);
+  WM_operatortype_append(OBJECT_OT_curves_random_add);
+  WM_operatortype_append(OBJECT_OT_curves_empty_hair_add);
   WM_operatortype_append(OBJECT_OT_pointcloud_add);
   WM_operatortype_append(OBJECT_OT_volume_add);
   WM_operatortype_append(OBJECT_OT_volume_import);
@@ -98,6 +99,7 @@ void ED_operatortypes_object(void)
   WM_operatortype_append(OBJECT_OT_transform_to_mouse);
   WM_operatortype_append(OBJECT_OT_effector_add);
   WM_operatortype_append(OBJECT_OT_collection_instance_add);
+  WM_operatortype_append(OBJECT_OT_collection_external_asset_drop);
   WM_operatortype_append(OBJECT_OT_data_instance_add);
   WM_operatortype_append(OBJECT_OT_metaball_add);
   WM_operatortype_append(OBJECT_OT_duplicates_make_real);
@@ -130,6 +132,7 @@ void ED_operatortypes_object(void)
   WM_operatortype_append(OBJECT_OT_skin_radii_equalize);
   WM_operatortype_append(OBJECT_OT_skin_armature_create);
   WM_operatortype_append(OBJECT_OT_geometry_nodes_input_attribute_toggle);
+  WM_operatortype_append(OBJECT_OT_geometry_node_tree_copy_assign);
 
   /* grease pencil modifiers */
   WM_operatortype_append(OBJECT_OT_gpencil_modifier_add);
@@ -278,7 +281,7 @@ void ED_operatormacros_object(void)
 
   ot = WM_operatortype_append_macro("OBJECT_OT_duplicate_move",
                                     "Duplicate Objects",
-                                    "Duplicate selected objects and move them",
+                                    "Duplicate the selected objects and move them",
                                     OPTYPE_UNDO | OPTYPE_REGISTER);
   if (ot) {
     WM_operatortype_macro_define(ot, "OBJECT_OT_duplicate");
@@ -286,11 +289,11 @@ void ED_operatormacros_object(void)
     RNA_boolean_set(otmacro->ptr, "use_proportional_edit", false);
   }
 
-  /* grr, should be able to pass options on... */
-  ot = WM_operatortype_append_macro("OBJECT_OT_duplicate_move_linked",
-                                    "Duplicate Linked",
-                                    "Duplicate selected objects and move them",
-                                    OPTYPE_UNDO | OPTYPE_REGISTER);
+  ot = WM_operatortype_append_macro(
+      "OBJECT_OT_duplicate_move_linked",
+      "Duplicate Linked",
+      "Duplicate the selected objects, but not their object data, and move them",
+      OPTYPE_UNDO | OPTYPE_REGISTER);
   if (ot) {
     otmacro = WM_operatortype_macro_define(ot, "OBJECT_OT_duplicate");
     RNA_boolean_set(otmacro->ptr, "linked", true);

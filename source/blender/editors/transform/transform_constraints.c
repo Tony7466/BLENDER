@@ -402,7 +402,7 @@ static void applyAxisConstraintVec(const TransInfo *t,
     if (activeSnap(t)) {
       if (validSnap(t)) {
         is_snap_to_edge = (t->tsnap.snapElem & SCE_SNAP_MODE_EDGE) != 0;
-        is_snap_to_face = (t->tsnap.snapElem & SCE_SNAP_MODE_FACE) != 0;
+        is_snap_to_face = (t->tsnap.snapElem & SCE_SNAP_MODE_FACE_RAYCAST) != 0;
         is_snap_to_point = !is_snap_to_edge && !is_snap_to_face;
       }
       else if (t->tsnap.snapElem & SCE_SNAP_MODE_GRID) {
@@ -996,19 +996,10 @@ void selectConstraint(TransInfo *t)
 
 void postSelectConstraint(TransInfo *t)
 {
-  if (!(t->con.mode & CON_SELECT)) {
-    return;
-  }
-
-  t->con.mode &= ~CON_AXIS0;
-  t->con.mode &= ~CON_AXIS1;
-  t->con.mode &= ~CON_AXIS2;
   t->con.mode &= ~CON_SELECT;
-
-  setNearestAxis(t);
-
-  startConstraint(t);
-  t->redraw = TREDRAW_HARD;
+  if (!(t->con.mode & (CON_AXIS0 | CON_AXIS1 | CON_AXIS2))) {
+    t->con.mode &= ~CON_APPLY;
+  }
 }
 
 static void setNearestAxis2d(TransInfo *t)

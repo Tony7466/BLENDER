@@ -98,6 +98,7 @@ static int nlaedit_enable_tweakmode_exec(bContext *C, wmOperator *op)
   int filter;
 
   const bool do_solo = RNA_boolean_get(op->ptr, "isolate_action");
+  const bool use_upper_stack_evaluation = RNA_boolean_get(op->ptr, "use_upper_stack_evaluation");
   bool ok = false;
 
   /* get editor data */
@@ -118,6 +119,13 @@ static int nlaedit_enable_tweakmode_exec(bContext *C, wmOperator *op)
   /* for each AnimData block with NLA-data, try setting it in tweak-mode */
   for (ale = anim_data.first; ale; ale = ale->next) {
     AnimData *adt = ale->data;
+
+    if (use_upper_stack_evaluation) {
+      adt->flag |= ADT_NLA_EVAL_UPPER_TRACKS;
+    }
+    else {
+      adt->flag &= ~ADT_NLA_EVAL_UPPER_TRACKS;
+    }
 
     /* Try entering tweak-mode if valid. */
     ok |= BKE_nla_tweakmode_enter(adt);
@@ -180,6 +188,13 @@ void NLA_OT_tweakmode_enter(wmOperatorType *ot)
                          "Isolate Action",
                          "Enable 'solo' on the NLA Track containing the active strip, "
                          "to edit it without seeing the effects of the NLA stack");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
+  prop = RNA_def_boolean(ot->srna,
+                         "use_upper_stack_evaluation",
+                         false,
+                         "Evaluate Upper Stack",
+                         "In tweak mode, display the effects of the tracks above the tweak strip");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
@@ -989,7 +1004,7 @@ static int nlaedit_add_meta_exec(bContext *C, wmOperator *UNUSED(op))
     NlaStrip *strip;
 
     if (BKE_nlatrack_is_nonlocal_in_liboverride(ale->id, nlt)) {
-      /* No making metastrips in non-local tracks of override data. */
+      /* No making meta-strips in non-local tracks of override data. */
       continue;
     }
 
@@ -1063,7 +1078,7 @@ static int nlaedit_remove_meta_exec(bContext *C, wmOperator *UNUSED(op))
     NlaTrack *nlt = (NlaTrack *)ale->data;
 
     if (BKE_nlatrack_is_nonlocal_in_liboverride(ale->id, nlt)) {
-      /* No removing metastrips from non-local tracks of override data. */
+      /* No removing meta-strips from non-local tracks of override data. */
       continue;
     }
 
@@ -1699,7 +1714,7 @@ static int nlaedit_swap_exec(bContext *C, wmOperator *op)
       BKE_nlatrack_add_strip(nlt, sb, is_liboverride);
     }
 
-    /* clear (temp) metastrips */
+    /* Clear (temp) meta-strips. */
     BKE_nlastrips_clear_metas(&nlt->strips, 0, 1);
   }
 

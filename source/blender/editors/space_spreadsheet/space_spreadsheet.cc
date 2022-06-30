@@ -32,8 +32,6 @@
 
 #include "BLF_api.h"
 
-#include "spreadsheet_intern.hh"
-
 #include "spreadsheet_context.hh"
 #include "spreadsheet_data_source_geometry.hh"
 #include "spreadsheet_dataset_draw.hh"
@@ -264,7 +262,13 @@ Object *spreadsheet_get_object_eval(const SpaceSpreadsheet *sspreadsheet,
     return nullptr;
   }
   Object *object_orig = (Object *)used_id;
-  if (!ELEM(object_orig->type, OB_MESH, OB_POINTCLOUD, OB_VOLUME, OB_CURVES_LEGACY, OB_FONT)) {
+  if (!ELEM(object_orig->type,
+            OB_MESH,
+            OB_POINTCLOUD,
+            OB_VOLUME,
+            OB_CURVES_LEGACY,
+            OB_FONT,
+            OB_CURVES)) {
     return nullptr;
   }
 
@@ -297,6 +301,7 @@ static float get_default_column_width(const ColumnValues &values)
   switch (values.type()) {
     case SPREADSHEET_VALUE_TYPE_BOOL:
       return 2.0f;
+    case SPREADSHEET_VALUE_TYPE_INT8:
     case SPREADSHEET_VALUE_TYPE_INT32:
       return float_width;
     case SPREADSHEET_VALUE_TYPE_FLOAT:
@@ -306,6 +311,7 @@ static float get_default_column_width(const ColumnValues &values)
     case SPREADSHEET_VALUE_TYPE_FLOAT3:
       return 3.0f * float_width;
     case SPREADSHEET_VALUE_TYPE_COLOR:
+    case SPREADSHEET_VALUE_TYPE_BYTE_COLOR:
       return 4.0f * float_width;
     case SPREADSHEET_VALUE_TYPE_INSTANCES:
       return 8.0f;

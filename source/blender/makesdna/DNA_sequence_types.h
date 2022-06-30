@@ -151,21 +151,21 @@ typedef struct Sequence {
    * Start frame of contents of strip in absolute frame coordinates.
    * For metastrips start of first strip startdisp.
    */
-  int start;
+  float start;
   /**
    * Frames after the first frame where display starts,
    * frames before the last frame where display ends.
    */
-  int startofs, endofs;
+  float startofs, endofs;
   /**
    * Frames that use the first frame before data begins,
    * frames that use the last frame after data ends.
    */
-  int startstill, endstill;
+  float startstill, endstill;
   /** Machine: the strip channel */
   int machine;
   int _pad3;
-  /** Starting and ending points of the strip in the sequence. */
+  /** Starting and ending points of the effect strip. Undefined for other strip types. */
   int startdisp, enddisp;
   float sat;
   float mul;
@@ -205,6 +205,7 @@ typedef struct Sequence {
 
   /** List of strips for metastrips. */
   ListBase seqbase;
+  ListBase channels; /* SeqTimelineChannel */
 
   /** The linked "bSound" object. */
   struct bSound *sound;
@@ -212,7 +213,7 @@ typedef struct Sequence {
   float volume;
 
   /** Pitch (-0.1..10), pan -2..2. */
-  float pitch, pan;
+  float pitch DNA_DEPRECATED, pan;
   float strobe;
 
   /** Struct pointer for effect settings. */
@@ -248,16 +249,29 @@ typedef struct Sequence {
   /* modifiers */
   ListBase modifiers;
 
+  /* Playback rate of strip content in frames per second. */
+  float media_playback_rate;
+  /* Multiply strip playback speed. */
+  float speed_factor;
+
   SequenceRuntime runtime;
 } Sequence;
 
 typedef struct MetaStack {
   struct MetaStack *next, *prev;
   ListBase *oldbasep;
+  ListBase *old_channels;
   Sequence *parseq;
   /* the startdisp/enddisp when entering the meta */
   int disp_range[2];
 } MetaStack;
+
+typedef struct SeqTimelineChannel {
+  struct SeqTimelineChannel *next, *prev;
+  char name[64];
+  int index;
+  int flag;
+} SeqTimelineChannel;
 
 typedef struct EditingRuntime {
   struct SequenceLookup *sequence_lookup;
@@ -266,9 +280,12 @@ typedef struct EditingRuntime {
 typedef struct Editing {
   /** Pointer to the current list of seq's being edited (can be within a meta strip). */
   ListBase *seqbasep;
+  ListBase *displayed_channels;
+  void *_pad0;
   /** Pointer to the top-most seq's. */
   ListBase seqbase;
   ListBase metastack;
+  ListBase channels; /* SeqTimelineChannel */
 
   /* Context vars, used to be static */
   Sequence *act_seq;
@@ -550,8 +567,8 @@ enum {
   SEQ_MAKE_FLOAT = (1 << 13),
   SEQ_LOCK = (1 << 14),
   SEQ_USE_PROXY = (1 << 15),
-  SEQ_FLAG_UNUSED_23 = (1 << 16), /* cleared */
-  SEQ_FLAG_UNUSED_22 = (1 << 17), /* cleared */
+  SEQ_IGNORE_CHANNEL_LOCK = (1 << 16),
+  SEQ_AUTO_PLAYBACK_RATE = (1 << 17),
   SEQ_FLAG_UNUSED_18 = (1 << 18), /* cleared */
   SEQ_FLAG_UNUSED_19 = (1 << 19), /* cleared */
   SEQ_FLAG_UNUSED_21 = (1 << 21), /* cleared */
@@ -778,6 +795,11 @@ enum {
   SEQ_TRANSFORM_FILTER_NEAREST = 0,
   SEQ_TRANSFORM_FILTER_BILINEAR = 1,
 };
+
+typedef enum eSeqChannelFlag {
+  SEQ_CHANNEL_LOCK = (1 << 0),
+  SEQ_CHANNEL_MUTE = (1 << 1),
+} eSeqChannelFlag;
 
 /** \} */
 

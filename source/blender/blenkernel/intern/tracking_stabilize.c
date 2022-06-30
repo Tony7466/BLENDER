@@ -198,7 +198,7 @@ static void use_values_from_fcurves(StabContext *ctx, bool toggle)
 }
 
 /* Prepare per call private working area.
- * Used for access to possibly animated values: retrieve available F-curves.
+ * Used for access to possibly animated values: retrieve available F-Curves.
  */
 static StabContext *init_stabilization_working_context(MovieClip *clip)
 {
@@ -362,7 +362,7 @@ static MovieTrackingMarker *get_tracking_data_point(StabContext *ctx,
  *
  * As a simple default, we use the weighted average of the location markers
  * of the current frame as pivot point. TODO: It is planned to add further
- * options,  like e.g. anchoring the pivot point at the canvas. Moreover,
+ * options, like e.g. anchoring the pivot point at the canvas. Moreover,
  * it is planned to allow for a user controllable offset.
  */
 static void setup_pivot(const float ref_pos[2], float r_pivot[2])

@@ -1,7 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-# <pep8 compliant>
-
 # note, properties_animviz is a helper module only.
 
 # support reloading sub-modules
@@ -238,5 +236,6 @@ class UI_MT_list_item_context_menu(bpy.types.Menu):
         # Dummy function. This type is just for scripts to append their own
         # context menu items.
         pass
+
 
 bpy.utils.register_class(UI_MT_list_item_context_menu)

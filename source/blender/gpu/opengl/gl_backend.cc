@@ -10,8 +10,6 @@
 #include "gpu_capabilities_private.hh"
 #include "gpu_platform_private.hh"
 
-#include "glew-mx.h"
-
 #include "gl_debug.hh"
 
 #include "gl_backend.hh"
@@ -291,26 +289,12 @@ static void detect_workarounds()
   }
   /* See T82856: AMD drivers since 20.11 running on a polaris architecture doesn't support the
    * `GL_INT_2_10_10_10_REV` data type correctly. This data type is used to pack normals and flags.
-   * The work around uses `GPU_RGBA16I`.
+   * The work around uses `GPU_RGBA16I`. In 22.?.? drivers this has been fixed for
+   * polaris platform. Keeping legacy platforms around just in case.
    */
   if (GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_ANY, GPU_DRIVER_OFFICIAL)) {
-    const Vector<std::string> matches = {"RX 460",
-                                         "RX 470",
-                                         "RX 480",
-                                         "RX 490",
-                                         "RX 560",
-                                         "RX 560X",
-                                         "RX 570",
-                                         "RX 580",
-                                         "RX 580X",
-                                         "RX 590",
-                                         "RX550/550",
-                                         "(TM) 520",
-                                         "(TM) 530",
-                                         "(TM) 535",
-                                         "R5",
-                                         "R7",
-                                         "R9"};
+    const Vector<std::string> matches = {
+        "RX550/550", "(TM) 520", "(TM) 530", "(TM) 535", "R5", "R7", "R9"};
 
     if (match_renderer(renderer, matches)) {
       GCaps.use_hq_normals_workaround = true;
@@ -419,6 +403,13 @@ static void detect_workarounds()
     GCaps.shader_storage_buffer_objects_support = false;
   }
 
+  /* Certain Intel/AMD based platforms don't clear the viewport textures. Always clearing leads to
+   * noticeable performance regressions on other platforms as well. */
+  if (GPU_type_matches(GPU_DEVICE_ANY, GPU_OS_MAC, GPU_DRIVER_ANY) ||
+      GPU_type_matches(GPU_DEVICE_INTEL, GPU_OS_ANY, GPU_DRIVER_ANY)) {
+    GCaps.clear_viewport_workaround = true;
+  }
+
   /* Metal-related Workarounds. */
 
   /* Minimum Per-Vertex stride is 1 byte for OpenGL. */
@@ -479,7 +470,14 @@ void GLBackend::capabilities_init()
   glGetIntegerv(GL_MAX_ELEMENTS_INDICES, &GCaps.max_batch_indices);
   glGetIntegerv(GL_MAX_ELEMENTS_VERTICES, &GCaps.max_batch_vertices);
   glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &GCaps.max_vertex_attribs);
-  glGetIntegerv(GL_MAX_VARYING_FLOATS, &GCaps.max_varying_floats);
+  if (GPU_type_matches(GPU_DEVICE_APPLE, GPU_OS_MAC, GPU_DRIVER_OFFICIAL)) {
+    /* Due to a bug, querying GL_MAX_VARYING_FLOATS is emitting GL_INVALID_ENUM.
+     * Force use minimum required value. */
+    GCaps.max_varying_floats = 32;
+  }
+  else {
+    glGetIntegerv(GL_MAX_VARYING_FLOATS, &GCaps.max_varying_floats);
+  }
 
   glGetIntegerv(GL_NUM_EXTENSIONS, &GCaps.extensions_len);
   GCaps.extension_get = gl_extension_get;
@@ -496,15 +494,18 @@ void GLBackend::capabilities_init()
     glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, &GCaps.max_work_group_size[2]);
     glGetIntegerv(GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS,
                   &GCaps.max_shader_storage_buffer_bindings);
+    glGetIntegerv(GL_MAX_COMPUTE_SHADER_STORAGE_BLOCKS, &GCaps.max_compute_shader_storage_blocks);
   }
   GCaps.shader_storage_buffer_objects_support = GLEW_ARB_shader_storage_buffer_object;
   /* GL specific capabilities. */
   glGetIntegerv(GL_MAX_3D_TEXTURE_SIZE, &GLContext::max_texture_3d_size);
   glGetIntegerv(GL_MAX_CUBE_MAP_TEXTURE_SIZE, &GLContext::max_cubemap_size);
   glGetIntegerv(GL_MAX_FRAGMENT_UNIFORM_BLOCKS, &GLContext::max_ubo_binds);
-  glGetIntegerv(GL_MAX_FRAGMENT_SHADER_STORAGE_BLOCKS, &GLContext::max_ssbo_binds);
   glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &GLContext::max_ubo_size);
-  glGetIntegerv(GL_MAX_SHADER_STORAGE_BLOCK_SIZE, &GLContext::max_ssbo_size);
+  if (GCaps.shader_storage_buffer_objects_support) {
+    glGetIntegerv(GL_MAX_FRAGMENT_SHADER_STORAGE_BLOCKS, &GLContext::max_ssbo_binds);
+    glGetIntegerv(GL_MAX_SHADER_STORAGE_BLOCK_SIZE, &GLContext::max_ssbo_size);
+  }
   GLContext::base_instance_support = GLEW_ARB_base_instance;
   GLContext::clear_texture_support = GLEW_ARB_clear_texture;
   GLContext::copy_image_support = GLEW_ARB_copy_image;

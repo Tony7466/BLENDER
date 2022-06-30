@@ -1,6 +1,4 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-
-# <pep8 compliant>
 from bpy.types import Panel
 from bl_ui.space_view3d import (
     VIEW3D_PT_shading_lighting,
@@ -484,7 +482,7 @@ class RENDER_PT_eevee_film(RenderButtonsPanel, Panel):
         sub.prop(props, "overscan_size", text="")
 
 
-def draw_hair_settings(self, context):
+def draw_curves_settings(self, context):
     layout = self.layout
     scene = context.scene
     rd = scene.render
@@ -497,7 +495,7 @@ def draw_hair_settings(self, context):
 
 
 class RENDER_PT_eevee_hair(RenderButtonsPanel, Panel):
-    bl_label = "Hair"
+    bl_label = "Curves"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_EEVEE'}
 
@@ -506,7 +504,7 @@ class RENDER_PT_eevee_hair(RenderButtonsPanel, Panel):
         return (context.engine in cls.COMPAT_ENGINES)
 
     def draw(self, context):
-        draw_hair_settings(self, context)
+        draw_curves_settings(self, context)
 
 
 class RENDER_PT_eevee_performance(RenderButtonsPanel, Panel):

@@ -724,6 +724,9 @@ static void buttons_area_listener(const wmSpaceTypeListenerParams *params)
           /* Needed to refresh context path when changing active particle system index. */
           buttons_area_redraw(area, BCONTEXT_PARTICLE);
           break;
+        case ND_DRAW_ANIMVIZ:
+          buttons_area_redraw(area, BCONTEXT_OBJECT);
+          break;
         default:
           /* Not all object RNA props have a ND_ notifier (yet) */
           ED_area_tag_redraw(area);
@@ -861,12 +864,11 @@ static void buttons_id_remap(ScrArea *UNUSED(area),
     for (int i = 0; i < path->len; i++) {
       switch (BKE_id_remapper_apply(mappings, &path->ptr[i].owner_id, ID_REMAP_APPLY_DEFAULT)) {
         case ID_REMAP_RESULT_SOURCE_UNASSIGNED: {
-          if (i == 0) {
-            MEM_SAFE_FREE(sbuts->path);
-          }
-          else {
+          path->len = i;
+          if (i != 0) {
+            /* If the first item in the path is cleared, the whole path is cleared, so no need to
+             * clear further items here, see also at the end of this block. */
             memset(&path->ptr[i], 0, sizeof(path->ptr[i]) * (path->len - i));
-            path->len = i;
           }
           break;
         }
@@ -886,6 +888,9 @@ static void buttons_id_remap(ScrArea *UNUSED(area),
           break;
         }
       }
+    }
+    if (path->len == 0) {
+      MEM_SAFE_FREE(sbuts->path);
     }
   }
 

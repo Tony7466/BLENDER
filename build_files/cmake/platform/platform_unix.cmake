@@ -38,13 +38,22 @@ if(EXISTS ${LIBDIR})
   message(STATUS "Using pre-compiled LIBDIR: ${LIBDIR}")
 
   file(GLOB LIB_SUBDIRS ${LIBDIR}/*)
+
   # Ignore Mesa software OpenGL libraries, they are not intended to be
   # linked against but to optionally override at runtime.
   list(REMOVE_ITEM LIB_SUBDIRS ${LIBDIR}/mesa)
+
+  # Ignore DPC++ as it contains its own copy of LLVM/CLang which we do
+  # not need to be ever discovered for the Blender linking.
+  list(REMOVE_ITEM LIB_SUBDIRS ${LIBDIR}/dpcpp)
+
   # NOTE: Make sure "proper" compiled zlib comes first before the one
   # which is a part of OpenCollada. They have different ABI, and we
   # do need to use the official one.
   set(CMAKE_PREFIX_PATH ${LIBDIR}/zlib ${LIB_SUBDIRS})
+
+  include(platform_old_libs_update)
+
   set(WITH_STATIC_LIBS ON)
   # OpenMP usually can't be statically linked into shared libraries,
   # due to not being compiled with position independent code.
@@ -268,6 +277,18 @@ if(WITH_CYCLES AND WITH_CYCLES_OSL)
   endif()
 endif()
 
+if(WITH_CYCLES_DEVICE_ONEAPI)
+  set(CYCLES_LEVEL_ZERO ${LIBDIR}/level-zero CACHE PATH "Path to Level Zero installation")
+  if(EXISTS ${CYCLES_LEVEL_ZERO} AND NOT LEVEL_ZERO_ROOT_DIR)
+    set(LEVEL_ZERO_ROOT_DIR ${CYCLES_LEVEL_ZERO})
+  endif()
+
+  set(CYCLES_SYCL ${LIBDIR}/dpcpp CACHE PATH "Path to DPC++ and SYCL installation")
+  if(EXISTS ${CYCLES_SYCL} AND NOT SYCL_ROOT_DIR)
+    set(SYCL_ROOT_DIR ${CYCLES_SYCL})
+  endif()
+endif()
+
 if(WITH_OPENVDB)
   find_package_wrapper(OpenVDB)
   find_package_wrapper(Blosc)
@@ -373,6 +394,7 @@ if(WITH_IMAGE_WEBP)
   find_package_wrapper(WebP)
   if(NOT WEBP_FOUND)
     set(WITH_IMAGE_WEBP OFF)
+    message(WARNING "WebP not found, disabling WITH_IMAGE_WEBP")
   endif()
 endif()
 
@@ -393,6 +415,9 @@ if(WITH_OPENIMAGEIO)
   endif()
   if(WITH_IMAGE_OPENEXR)
     list(APPEND OPENIMAGEIO_LIBRARIES "${OPENEXR_LIBRARIES}")
+  endif()
+  if(WITH_IMAGE_WEBP)
+    list(APPEND OPENIMAGEIO_LIBRARIES "${WEBP_LIBRARIES}")
   endif()
 
   if(NOT OPENIMAGEIO_FOUND)
@@ -606,17 +631,35 @@ if(WITH_GHOST_WAYLAND)
   pkg_check_modules(wayland-scanner REQUIRED wayland-scanner)
   pkg_check_modules(xkbcommon REQUIRED xkbcommon)
   pkg_check_modules(wayland-cursor REQUIRED wayland-cursor)
-  pkg_check_modules(dbus REQUIRED dbus-1)
 
-  set(WITH_GL_EGL ON)
+  if(WITH_GHOST_WAYLAND_DBUS)
+    pkg_check_modules(dbus REQUIRED dbus-1)
+  endif()
+
+  if(WITH_GHOST_WAYLAND_LIBDECOR)
+    pkg_check_modules(libdecor REQUIRED libdecor-0>=0.1)
+  endif()
 
   list(APPEND PLATFORM_LINKLIBS
     ${wayland-client_LINK_LIBRARIES}
     ${wayland-egl_LINK_LIBRARIES}
     ${xkbcommon_LINK_LIBRARIES}
     ${wayland-cursor_LINK_LIBRARIES}
-    ${dbus_LINK_LIBRARIES}
   )
+
+  if(WITH_GHOST_WAYLAND_DBUS)
+    list(APPEND PLATFORM_LINKLIBS
+      ${dbus_LINK_LIBRARIES}
+    )
+    add_definitions(-DWITH_GHOST_WAYLAND_DBUS)
+  endif()
+
+  if(WITH_GHOST_WAYLAND_LIBDECOR)
+    list(APPEND PLATFORM_LINKLIBS
+      ${libdecor_LIBRARIES}
+    )
+    add_definitions(-DWITH_GHOST_WAYLAND_LIBDECOR)
+  endif()
 endif()
 
 if(WITH_GHOST_X11)

@@ -259,6 +259,16 @@ class GHOST_SystemWin32 : public GHOST_System {
    */
   void setTabletAPI(GHOST_TTabletAPI api) override;
 
+  /***************************************************************************************
+   ** Debug Info
+   ***************************************************************************************/
+
+  /**
+   * Specify which debug messages are to be shown.
+   * \param debug: Flag for systems to debug.
+   */
+  void initDebug(GHOST_Debug debug) override;
+
  protected:
   /**
    * Initializes the system.
@@ -300,7 +310,7 @@ class GHOST_SystemWin32 : public GHOST_System {
    */
   static GHOST_EventButton *processButtonEvent(GHOST_TEventType type,
                                                GHOST_WindowWin32 *window,
-                                               GHOST_TButtonMask mask);
+                                               GHOST_TButton mask);
 
   /**
    * Creates tablet events from Wintab events.
@@ -395,6 +405,16 @@ class GHOST_SystemWin32 : public GHOST_System {
    */
   bool processNDOF(RAWINPUT const &raw);
 #endif
+
+  /**
+   * Drives Direct Manipulation update.
+   */
+  void driveTrackpad();
+
+  /**
+   * Creates trackpad events for the active window.
+   */
+  void processTrackpad();
 
   /**
    * Returns the local state of the modifier keys (from the message queue).

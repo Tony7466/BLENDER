@@ -17,8 +17,10 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 
+#include "BKE_attribute.h"
 #include "BKE_ccg.h"
 #include "BKE_mesh.h"
+#include "BKE_mesh_mapping.h"
 #include "BKE_paint.h"
 #include "BKE_pbvh.h"
 #include "BKE_subdiv_ccg.h"
@@ -242,8 +244,8 @@ static int map_insert_vert(
   key = POINTER_FROM_INT(vertex);
   if (!BLI_ghash_ensure_p(map, key, &value_p)) {
     int value_i;
-    if (BLI_BITMAP_TEST(pbvh->vert_bitmap, vertex) == 0) {
-      BLI_BITMAP_ENABLE(pbvh->vert_bitmap, vertex);
+    if (!pbvh->vert_bitmap[vertex]) {
+      pbvh->vert_bitmap[vertex] = true;
       value_i = *uniq_verts;
       (*uniq_verts)++;
     }
@@ -560,7 +562,7 @@ void BKE_pbvh_build_mesh(PBVH *pbvh,
   pbvh->verts = verts;
   BKE_mesh_vertex_normals_ensure(mesh);
   pbvh->vert_normals = BKE_mesh_vertex_normals_for_write(mesh);
-  pbvh->vert_bitmap = BLI_BITMAP_NEW(totvert, "bvh->vert_bitmap");
+  pbvh->vert_bitmap = MEM_calloc_arrayN(totvert, sizeof(bool), "bvh->vert_bitmap");
   pbvh->totvert = totvert;
   pbvh->leaf_limit = LEAF_LIMIT;
   pbvh->vdata = vdata;
@@ -598,7 +600,9 @@ void BKE_pbvh_build_mesh(PBVH *pbvh,
   MEM_freeN(prim_bbc);
 
   /* Clear the bitmap so it can be used as an update tag later on. */
-  BLI_bitmap_set_all(pbvh->vert_bitmap, false, totvert);
+  memset(pbvh->vert_bitmap, 0, sizeof(bool) * totvert);
+
+  BKE_pbvh_update_active_vcol(pbvh, mesh);
 }
 
 void BKE_pbvh_build_grids(PBVH *pbvh,
@@ -652,6 +656,7 @@ PBVH *BKE_pbvh_new(void)
 {
   PBVH *pbvh = MEM_callocN(sizeof(PBVH), "pbvh");
   pbvh->respect_hide = true;
+  pbvh->draw_cache_invalid = true;
   return pbvh;
 }
 
@@ -667,6 +672,9 @@ void BKE_pbvh_free(PBVH *pbvh)
       if (node->vert_indices) {
         MEM_freeN((void *)node->vert_indices);
       }
+      if (node->loop_indices) {
+        MEM_freeN(node->loop_indices);
+      }
       if (node->face_vert_indices) {
         MEM_freeN((void *)node->face_vert_indices);
       }
@@ -679,6 +687,8 @@ void BKE_pbvh_free(PBVH *pbvh)
       if (node->bm_other_verts) {
         BLI_gset_free(node->bm_other_verts, NULL);
       }
+
+      pbvh_pixels_free(node);
     }
   }
 
@@ -703,6 +713,10 @@ void BKE_pbvh_free(PBVH *pbvh)
   }
 
   MEM_SAFE_FREE(pbvh->vert_bitmap);
+
+  if (pbvh->vbo_id) {
+    GPU_pbvh_free_format(pbvh->vbo_id);
+  }
 
   MEM_freeN(pbvh);
 }
@@ -1011,7 +1025,7 @@ static void pbvh_update_normals_clear_task_cb(void *__restrict userdata,
     const int totvert = node->uniq_verts;
     for (int i = 0; i < totvert; i++) {
       const int v = verts[i];
-      if (BLI_BITMAP_TEST(pbvh->vert_bitmap, v)) {
+      if (pbvh->vert_bitmap[v]) {
         zero_v3(vnors[v]);
       }
     }
@@ -1054,7 +1068,7 @@ static void pbvh_update_normals_accum_task_cb(void *__restrict userdata,
       for (int j = sides; j--;) {
         const int v = vtri[j];
 
-        if (BLI_BITMAP_TEST(pbvh->vert_bitmap, v)) {
+        if (pbvh->vert_bitmap[v]) {
           /* NOTE: This avoids `lock, add_v3_v3, unlock`
            * and is five to ten times quicker than a spin-lock.
            * Not exact equivalent though, since atomicity is only ensured for one component
@@ -1086,9 +1100,9 @@ static void pbvh_update_normals_store_task_cb(void *__restrict userdata,
 
       /* No atomics necessary because we are iterating over uniq_verts only,
        * so we know only this thread will handle this vertex. */
-      if (BLI_BITMAP_TEST(pbvh->vert_bitmap, v)) {
+      if (pbvh->vert_bitmap[v]) {
         normalize_v3(vnors[v]);
-        BLI_BITMAP_DISABLE(pbvh->vert_bitmap, v);
+        pbvh->vert_bitmap[v] = false;
       }
     }
 
@@ -1254,6 +1268,30 @@ static int pbvh_get_buffers_update_flags(PBVH *UNUSED(pbvh))
   return update_flags;
 }
 
+bool BKE_pbvh_get_color_layer(const Mesh *me, CustomDataLayer **r_layer, eAttrDomain *r_attr)
+{
+  CustomDataLayer *layer = BKE_id_attributes_active_color_get((ID *)me);
+
+  if (!layer || !ELEM(layer->type, CD_PROP_COLOR, CD_PROP_BYTE_COLOR)) {
+    *r_layer = NULL;
+    *r_attr = ATTR_DOMAIN_NUM;
+    return false;
+  }
+
+  eAttrDomain domain = BKE_id_attribute_domain((ID *)me, layer);
+
+  if (!ELEM(domain, ATTR_DOMAIN_POINT, ATTR_DOMAIN_CORNER)) {
+    *r_layer = NULL;
+    *r_attr = ATTR_DOMAIN_NUM;
+    return false;
+  }
+
+  *r_layer = layer;
+  *r_attr = domain;
+
+  return true;
+}
+
 static void pbvh_update_draw_buffer_cb(void *__restrict userdata,
                                        const int n,
                                        const TaskParallelTLS *__restrict UNUSED(tls))
@@ -1265,11 +1303,27 @@ static void pbvh_update_draw_buffer_cb(void *__restrict userdata,
   PBVH *pbvh = data->pbvh;
   PBVHNode *node = data->nodes[n];
 
+  CustomData *vdata, *ldata;
+
+  if (!pbvh->bm) {
+    vdata = pbvh->vdata;
+    ldata = pbvh->ldata;
+  }
+  else {
+    vdata = &pbvh->bm->vdata;
+    ldata = &pbvh->bm->ldata;
+  }
+
   if (node->flag & PBVH_RebuildDrawBuffers) {
     switch (pbvh->type) {
-      case PBVH_GRIDS:
-        node->draw_buffers = GPU_pbvh_grid_buffers_build(node->totprim, pbvh->grid_hidden);
+      case PBVH_GRIDS: {
+        bool smooth = node->totprim > 0 ?
+                          pbvh->grid_flag_mats[node->prim_indices[0]].flag & ME_SMOOTH :
+                          false;
+
+        node->draw_buffers = GPU_pbvh_grid_buffers_build(node->totprim, pbvh->grid_hidden, smooth);
         break;
+      }
       case PBVH_FACES:
         node->draw_buffers = GPU_pbvh_mesh_buffers_build(
             pbvh->mpoly,
@@ -1292,7 +1346,8 @@ static void pbvh_update_draw_buffer_cb(void *__restrict userdata,
     const int update_flags = pbvh_get_buffers_update_flags(pbvh);
     switch (pbvh->type) {
       case PBVH_GRIDS:
-        GPU_pbvh_grid_buffers_update(node->draw_buffers,
+        GPU_pbvh_grid_buffers_update(pbvh->vbo_id,
+                                     node->draw_buffers,
                                      pbvh->subdiv_ccg,
                                      pbvh->grids,
                                      pbvh->grid_flag_mats,
@@ -1304,20 +1359,23 @@ static void pbvh_update_draw_buffer_cb(void *__restrict userdata,
                                      &pbvh->gridkey,
                                      update_flags);
         break;
-      case PBVH_FACES:
-        GPU_pbvh_mesh_buffers_update(node->draw_buffers,
+      case PBVH_FACES: {
+        GPU_pbvh_mesh_buffers_update(pbvh->vbo_id,
+                                     node->draw_buffers,
                                      pbvh->verts,
-                                     pbvh->vert_normals,
+                                     vdata,
+                                     ldata,
                                      CustomData_get_layer(pbvh->vdata, CD_PAINT_MASK),
-                                     CustomData_get_layer(pbvh->ldata, CD_MLOOPCOL),
                                      CustomData_get_layer(pbvh->pdata, CD_SCULPT_FACE_SETS),
                                      pbvh->face_sets_color_seed,
                                      pbvh->face_sets_color_default,
-                                     CustomData_get_layer(pbvh->vdata, CD_PROP_COLOR),
-                                     update_flags);
+                                     update_flags,
+                                     pbvh->vert_normals);
         break;
+      }
       case PBVH_BMESH:
-        GPU_pbvh_bmesh_buffers_update(node->draw_buffers,
+        GPU_pbvh_bmesh_buffers_update(pbvh->vbo_id,
+                                      node->draw_buffers,
                                       pbvh->bm,
                                       node->bm_faces,
                                       node->bm_unique_verts,
@@ -1328,15 +1386,95 @@ static void pbvh_update_draw_buffer_cb(void *__restrict userdata,
   }
 }
 
+void pbvh_free_draw_buffers(PBVH *pbvh, PBVHNode *node)
+{
+  if (node->draw_buffers) {
+    pbvh->draw_cache_invalid = true;
+
+    GPU_pbvh_buffers_free(node->draw_buffers);
+    node->draw_buffers = NULL;
+  }
+}
+
+static void pbvh_check_draw_layout(PBVH *pbvh)
+{
+  const CustomData *vdata;
+  const CustomData *ldata;
+
+  if (!pbvh->vbo_id) {
+    pbvh->vbo_id = GPU_pbvh_make_format();
+  }
+
+  switch (pbvh->type) {
+    case PBVH_BMESH:
+      if (!pbvh->bm) {
+        /* BMesh hasn't been created yet */
+        return;
+      }
+
+      vdata = &pbvh->bm->vdata;
+      ldata = &pbvh->bm->ldata;
+      break;
+    case PBVH_FACES:
+      vdata = pbvh->vdata;
+      ldata = pbvh->ldata;
+      break;
+    case PBVH_GRIDS:
+      ldata = vdata = NULL;
+      break;
+  }
+
+  /* Rebuild all draw buffers if attribute layout changed.
+   *
+   * NOTE: The optimization where we only send active attributes
+   * to the GPU in workbench mode is disabled due to bugs
+   * (there's no guarantee there isn't another EEVEE viewport which would
+   *  free the draw buffers and corrupt the draw cache).
+   */
+  if (GPU_pbvh_attribute_names_update(pbvh->type, pbvh->vbo_id, vdata, ldata, false)) {
+    /* attribute layout changed; force rebuild */
+    for (int i = 0; i < pbvh->totnode; i++) {
+      PBVHNode *node = pbvh->nodes + i;
+
+      if (node->flag & PBVH_Leaf) {
+        node->flag |= PBVH_RebuildDrawBuffers | PBVH_UpdateDrawBuffers | PBVH_UpdateRedraw;
+      }
+    }
+  }
+}
+
 static void pbvh_update_draw_buffers(PBVH *pbvh, PBVHNode **nodes, int totnode, int update_flag)
 {
+  const CustomData *vdata;
+
+  if (!pbvh->vbo_id) {
+    pbvh->vbo_id = GPU_pbvh_make_format();
+  }
+
+  switch (pbvh->type) {
+    case PBVH_BMESH:
+      if (!pbvh->bm) {
+        /* BMesh hasn't been created yet */
+        return;
+      }
+
+      vdata = &pbvh->bm->vdata;
+      break;
+    case PBVH_FACES:
+      vdata = pbvh->vdata;
+      break;
+    case PBVH_GRIDS:
+      vdata = NULL;
+      break;
+  }
+  UNUSED_VARS(vdata);
+
   if ((update_flag & PBVH_RebuildDrawBuffers) || ELEM(pbvh->type, PBVH_GRIDS, PBVH_BMESH)) {
     /* Free buffers uses OpenGL, so not in parallel. */
     for (int n = 0; n < totnode; n++) {
       PBVHNode *node = nodes[n];
       if (node->flag & PBVH_RebuildDrawBuffers) {
-        GPU_pbvh_buffers_free(node->draw_buffers);
-        node->draw_buffers = NULL;
+        pbvh_free_draw_buffers(pbvh, node);
       }
       else if ((node->flag & PBVH_UpdateDrawBuffers) && node->draw_buffers) {
         if (pbvh->type == PBVH_GRIDS) {
@@ -1442,7 +1580,9 @@ void BKE_pbvh_update_vertex_data(PBVH *pbvh, int flag)
   }
 
   if (flag & (PBVH_UpdateColor)) {
-    /* Do nothing */
+    for (int i = 0; i < totnode; i++) {
+      nodes[i]->flag |= PBVH_UpdateRedraw | PBVH_UpdateDrawBuffers | PBVH_UpdateColor;
+    }
   }
 
   if (flag & (PBVH_UpdateVisibility)) {
@@ -1729,7 +1869,7 @@ BMesh *BKE_pbvh_get_bmesh(PBVH *pbvh)
 void BKE_pbvh_node_mark_update(PBVHNode *node)
 {
   node->flag |= PBVH_UpdateNormals | PBVH_UpdateBB | PBVH_UpdateOriginalBB |
-                PBVH_UpdateDrawBuffers | PBVH_UpdateRedraw;
+                PBVH_UpdateDrawBuffers | PBVH_UpdateRedraw | PBVH_RebuildPixels;
 }
 
 void BKE_pbvh_node_mark_update_mask(PBVHNode *node)
@@ -1740,6 +1880,16 @@ void BKE_pbvh_node_mark_update_mask(PBVHNode *node)
 void BKE_pbvh_node_mark_update_color(PBVHNode *node)
 {
   node->flag |= PBVH_UpdateColor | PBVH_UpdateDrawBuffers | PBVH_UpdateRedraw;
+}
+
+void BKE_pbvh_mark_rebuild_pixels(PBVH *pbvh)
+{
+  for (int n = 0; n < pbvh->totnode; n++) {
+    PBVHNode *node = &pbvh->nodes[n];
+    if (node->flag & PBVH_Leaf) {
+      node->flag |= PBVH_RebuildPixels;
+    }
+  }
 }
 
 void BKE_pbvh_node_mark_update_visibility(PBVHNode *node)
@@ -1817,7 +1967,23 @@ bool BKE_pbvh_node_fully_unmasked_get(PBVHNode *node)
 void BKE_pbvh_vert_mark_update(PBVH *pbvh, int index)
 {
   BLI_assert(pbvh->type == PBVH_FACES);
-  BLI_BITMAP_ENABLE(pbvh->vert_bitmap, index);
+  pbvh->vert_bitmap[index] = true;
+}
+
+void BKE_pbvh_node_get_loops(PBVH *pbvh,
+                             PBVHNode *node,
+                             const int **r_loop_indices,
+                             const MLoop **r_loops)
+{
+  BLI_assert(BKE_pbvh_type(pbvh) == PBVH_FACES);
+
+  if (r_loop_indices) {
+    *r_loop_indices = node->loop_indices;
+  }
+
+  if (r_loops) {
+    *r_loops = pbvh->mloop;
+  }
 }
 
 void BKE_pbvh_node_get_verts(PBVH *pbvh,
@@ -1966,7 +2132,7 @@ bool BKE_pbvh_node_vert_update_check_any(PBVH *pbvh, PBVHNode *node)
   for (int i = 0; i < totvert; i++) {
     const int v = verts[i];
 
-    if (BLI_BITMAP_TEST(pbvh->vert_bitmap, v)) {
+    if (pbvh->vert_bitmap[v]) {
       return true;
     }
   }
@@ -2233,16 +2399,16 @@ static bool pbvh_grids_node_raycast(PBVH *pbvh,
 
         const float *co[4];
         if (origco) {
-          co[0] = origco[y * gridsize + x];
-          co[1] = origco[y * gridsize + x + 1];
-          co[2] = origco[(y + 1) * gridsize + x + 1];
-          co[3] = origco[(y + 1) * gridsize + x];
+          co[0] = origco[(y + 1) * gridsize + x];
+          co[1] = origco[(y + 1) * gridsize + x + 1];
+          co[2] = origco[y * gridsize + x + 1];
+          co[3] = origco[y * gridsize + x];
         }
         else {
-          co[0] = CCG_grid_elem_co(gridkey, grid, x, y);
-          co[1] = CCG_grid_elem_co(gridkey, grid, x + 1, y);
-          co[2] = CCG_grid_elem_co(gridkey, grid, x + 1, y + 1);
-          co[3] = CCG_grid_elem_co(gridkey, grid, x, y + 1);
+          co[0] = CCG_grid_elem_co(gridkey, grid, x, y + 1);
+          co[1] = CCG_grid_elem_co(gridkey, grid, x + 1, y + 1);
+          co[2] = CCG_grid_elem_co(gridkey, grid, x + 1, y);
+          co[3] = CCG_grid_elem_co(gridkey, grid, x, y);
         }
 
         if (ray_face_intersection_quad(
@@ -2462,7 +2628,7 @@ static bool pbvh_faces_node_nearest_to_ray(PBVH *pbvh,
     }
 
     if (origco) {
-      /* intersect with backuped original coordinates */
+      /* Intersect with backed-up original coordinates. */
       hit |= ray_face_nearest_tri(ray_start,
                                   ray_normal,
                                   origco[face_verts[0]],
@@ -2705,11 +2871,14 @@ void BKE_pbvh_draw_cb(PBVH *pbvh,
                       PBVHFrustumPlanes *update_frustum,
                       PBVHFrustumPlanes *draw_frustum,
                       void (*draw_fn)(void *user_data, GPU_PBVH_Buffers *buffers),
-                      void *user_data)
+                      void *user_data,
+                      bool UNUSED(full_render))
 {
   PBVHNode **nodes;
   int totnode;
   int update_flag = 0;
+
+  pbvh->draw_cache_invalid = false;
 
   /* Search for nodes that need updates. */
   if (update_only_visible) {
@@ -2725,6 +2894,8 @@ void BKE_pbvh_draw_cb(PBVH *pbvh,
         pbvh, update_search_cb, POINTER_FROM_INT(search_flag), &nodes, &totnode);
     update_flag = PBVH_RebuildDrawBuffers | PBVH_UpdateDrawBuffers;
   }
+
+  pbvh_check_draw_layout(pbvh);
 
   /* Update draw buffers. */
   if (totnode != 0 && (update_flag & (PBVH_RebuildDrawBuffers | PBVH_UpdateDrawBuffers))) {
@@ -2980,7 +3151,6 @@ void pbvh_vertex_iter_init(PBVH *pbvh, PBVHNode *node, PBVHVertexIter *vi, int m
     vi->vert_normals = pbvh->vert_normals;
 
     vi->vmask = CustomData_get_layer(pbvh->vdata, CD_PAINT_MASK);
-    vi->vcol = CustomData_get_layer(pbvh->vdata, CD_PROP_COLOR);
   }
 }
 
@@ -3071,4 +3241,87 @@ void BKE_pbvh_face_sets_set(PBVH *pbvh, int *face_sets)
 void BKE_pbvh_respect_hide_set(PBVH *pbvh, bool respect_hide)
 {
   pbvh->respect_hide = respect_hide;
+}
+bool BKE_pbvh_is_drawing(const PBVH *pbvh)
+{
+  return pbvh->is_drawing;
+}
+
+bool BKE_pbvh_draw_cache_invalid(const PBVH *pbvh)
+{
+  return pbvh->draw_cache_invalid;
+}
+
+void BKE_pbvh_is_drawing_set(PBVH *pbvh, bool val)
+{
+  pbvh->is_drawing = val;
+}
+
+void BKE_pbvh_node_num_loops(PBVH *pbvh, PBVHNode *node, int *r_totloop)
+{
+  UNUSED_VARS(pbvh);
+  BLI_assert(BKE_pbvh_type(pbvh) == PBVH_FACES);
+
+  if (r_totloop) {
+    *r_totloop = node->loop_indices_num;
+  }
+}
+
+void BKE_pbvh_update_active_vcol(PBVH *pbvh, const Mesh *mesh)
+{
+  BKE_pbvh_get_color_layer(mesh, &pbvh->color_layer, &pbvh->color_domain);
+}
+
+void BKE_pbvh_pmap_set(PBVH *pbvh, const MeshElemMap *pmap)
+{
+  pbvh->pmap = pmap;
+}
+
+void BKE_pbvh_ensure_node_loops(PBVH *pbvh)
+{
+  BLI_assert(BKE_pbvh_type(pbvh) == PBVH_FACES);
+
+  int totloop = 0;
+
+  /* Check if nodes already have loop indices. */
+  for (int i = 0; i < pbvh->totnode; i++) {
+    PBVHNode *node = pbvh->nodes + i;
+
+    if (!(node->flag & PBVH_Leaf)) {
+      continue;
+    }
+
+    if (node->loop_indices) {
+      return;
+    }
+
+    totloop += node->totprim * 3;
+  }
+
+  BLI_bitmap *visit = BLI_BITMAP_NEW(totloop, __func__);
+
+  /* Create loop indices from node loop triangles. */
+  for (int i = 0; i < pbvh->totnode; i++) {
+    PBVHNode *node = pbvh->nodes + i;
+
+    if (!(node->flag & PBVH_Leaf)) {
+      continue;
+    }
+
+    node->loop_indices = MEM_malloc_arrayN(node->totprim * 3, sizeof(int), __func__);
+    node->loop_indices_num = 0;
+
+    for (int j = 0; j < node->totprim; j++) {
+      const MLoopTri *mlt = pbvh->looptri + node->prim_indices[j];
+
+      for (int k = 0; k < 3; k++) {
+        if (!BLI_BITMAP_TEST(visit, mlt->tri[k])) {
+          node->loop_indices[node->loop_indices_num++] = mlt->tri[k];
+          BLI_BITMAP_ENABLE(visit, mlt->tri[k]);
+        }
+      }
+    }
+  }
+
+  MEM_SAFE_FREE(visit);
 }

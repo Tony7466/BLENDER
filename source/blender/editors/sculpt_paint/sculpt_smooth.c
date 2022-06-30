@@ -179,7 +179,11 @@ void SCULPT_neighbor_color_average(SculptSession *ss, float result[4], int index
 
   SculptVertexNeighborIter ni;
   SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, index, ni) {
-    add_v4_v4(avg, SCULPT_vertex_color_get(ss, ni.index));
+    float tmp[4] = {0};
+
+    SCULPT_vertex_color_get(ss, ni.index, tmp);
+
+    add_v4_v4(avg, tmp);
     total++;
   }
   SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
@@ -188,7 +192,7 @@ void SCULPT_neighbor_color_average(SculptSession *ss, float result[4], int index
     mul_v4_v4fl(result, avg, 1.0f / total);
   }
   else {
-    copy_v4_v4(result, SCULPT_vertex_color_get(ss, index));
+    SCULPT_vertex_color_get(ss, index, result);
   }
 }
 
@@ -456,7 +460,7 @@ static void SCULPT_do_surface_smooth_brush_laplacian_task_cb_ex(
       ss, &test, data->brush->falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(tls);
 
-  SCULPT_orig_vert_data_init(&orig_data, data->ob, data->nodes[n]);
+  SCULPT_orig_vert_data_init(&orig_data, data->ob, data->nodes[n], SCULPT_UNDO_COORDS);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
     SCULPT_orig_vert_data_update(&orig_data, &vd);

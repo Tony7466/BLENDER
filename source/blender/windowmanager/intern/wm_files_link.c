@@ -438,7 +438,7 @@ void WM_OT_link(wmOperatorType *ot)
   ot->exec = wm_link_append_exec;
   ot->poll = wm_link_append_poll;
 
-  ot->flag |= OPTYPE_UNDO;
+  ot->flag = OPTYPE_UNDO;
 
   WM_operator_properties_filesel(ot,
                                  FILE_TYPE_FOLDER | FILE_TYPE_BLENDER | FILE_TYPE_BLENDERLIB,
@@ -462,7 +462,7 @@ void WM_OT_append(wmOperatorType *ot)
   ot->exec = wm_link_append_exec;
   ot->poll = wm_link_append_poll;
 
-  ot->flag |= OPTYPE_UNDO;
+  ot->flag = OPTYPE_UNDO;
 
   WM_operator_properties_filesel(ot,
                                  FILE_TYPE_FOLDER | FILE_TYPE_BLENDER | FILE_TYPE_BLENDERLIB,
@@ -756,10 +756,10 @@ static int wm_lib_relocate_exec_do(bContext *C, wmOperator *op, bool do_reload)
       }
     }
 
-    if (do_reload) {
-      BKE_blendfile_link_append_context_flag_set(
-          lapp_context, BLO_LIBLINK_USE_PLACEHOLDERS | BLO_LIBLINK_FORCE_INDIRECT, true);
-    }
+    BKE_blendfile_link_append_context_flag_set(lapp_context,
+                                               BLO_LIBLINK_FORCE_INDIRECT |
+                                                   (do_reload ? BLO_LIBLINK_USE_PLACEHOLDERS : 0),
+                                               true);
 
     BKE_blendfile_library_relocate(lapp_context, op->reports, lib, do_reload);
 
@@ -803,7 +803,7 @@ void WM_OT_lib_relocate(wmOperatorType *ot)
   ot->invoke = wm_lib_relocate_invoke;
   ot->exec = wm_lib_relocate_exec;
 
-  ot->flag |= OPTYPE_UNDO;
+  ot->flag = OPTYPE_UNDO;
 
   prop = RNA_def_string(ot->srna, "library", NULL, MAX_NAME, "Library", "Library to relocate");
   RNA_def_property_flag(prop, PROP_HIDDEN);
@@ -833,7 +833,7 @@ void WM_OT_lib_reload(wmOperatorType *ot)
 
   ot->exec = wm_lib_reload_exec;
 
-  ot->flag |= OPTYPE_UNDO;
+  ot->flag = OPTYPE_UNDO;
 
   prop = RNA_def_string(ot->srna, "library", NULL, MAX_NAME, "Library", "Library to reload");
   RNA_def_property_flag(prop, PROP_HIDDEN);

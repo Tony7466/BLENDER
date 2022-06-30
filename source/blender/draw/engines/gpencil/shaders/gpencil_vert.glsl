@@ -61,7 +61,9 @@ void main()
                                gp_interp.hardness);
 
   if (GPENCIL_IS_STROKE_VERTEX) {
-    gp_interp.uv.x *= gp_mat._stroke_u_scale;
+    if (!flag_test(gp_flag, GP_STROKE_ALIGNMENT)) {
+      gp_interp.uv.x *= gp_mat._stroke_u_scale;
+    }
 
     /* Special case: We don't use vertex color if material Holdout. */
     if (flag_test(gp_flag, GP_STROKE_HOLDOUT)) {
@@ -123,7 +125,7 @@ void main()
     gpencil_color_output(fill_col, fcol_decode, 1.0, gp_mat._fill_texture_mix);
 
     gp_interp.mat_flag = gp_flag & GP_FILL_FLAGS;
-    gp_interp.mat_flag |= uint(ma1.x) << GPENCIl_MATID_SHIFT;
+    gp_interp.mat_flag |= uint(ma1.x + gpMaterialOffset) << GPENCIl_MATID_SHIFT;
 
     gp_interp.uv = mat2(gp_mat.fill_uv_rot_scale.xy, gp_mat.fill_uv_rot_scale.zw) * uv1.xy +
                    gp_mat._fill_uv_offset;

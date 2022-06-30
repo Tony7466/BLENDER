@@ -23,6 +23,7 @@
 #include "DNA_curveprofile_types.h"
 #include "DNA_gpencil_types.h"
 #include "DNA_light_types.h"
+#include "DNA_mask_types.h"
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -184,6 +185,8 @@ static void blo_update_defaults_screen(bScreen *screen,
     else if (area->spacetype == SPACE_CLIP) {
       SpaceClip *sclip = area->spacedata.first;
       sclip->around = V3D_AROUND_CENTER_MEDIAN;
+      sclip->mask_info.blend_factor = 0.7f;
+      sclip->mask_info.draw_flag = MASK_DRAWFLAG_SPLINE;
     }
   }
 
@@ -532,11 +535,13 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
   for (Mesh *mesh = bmain->meshes.first; mesh; mesh = mesh->id.next) {
     /* Match default for new meshes. */
     mesh->smoothresh = DEG2RADF(30);
+    /* Match voxel remesher options for all existing meshes in templates. */
+    mesh->flag |= ME_REMESH_REPROJECT_VOLUME | ME_REMESH_REPROJECT_PAINT_MASK |
+                  ME_REMESH_REPROJECT_SCULPT_FACE_SETS | ME_REMESH_REPROJECT_VERTEX_COLORS;
 
     /* For Sculpting template. */
     if (app_template && STREQ(app_template, "Sculpting")) {
       mesh->remesh_voxel_size = 0.035f;
-      mesh->flag |= ME_REMESH_FIX_POLES | ME_REMESH_REPROJECT_VOLUME;
       BKE_mesh_smooth_flag_set(mesh, false);
     }
     else {

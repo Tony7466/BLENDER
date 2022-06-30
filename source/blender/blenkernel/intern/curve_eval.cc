@@ -117,7 +117,7 @@ float CurveEval::total_length() const
   return length;
 }
 
-int CurveEval::total_control_point_size() const
+int CurveEval::total_control_point_num() const
 {
   int count = 0;
   for (const SplinePtr &spline : this->splines()) {
@@ -144,7 +144,7 @@ blender::Array<int> CurveEval::evaluated_point_offsets() const
   int offset = 0;
   for (const int i : splines_.index_range()) {
     offsets[i] = offset;
-    offset += splines_[i]->evaluated_points_size();
+    offset += splines_[i]->evaluated_points_num();
   }
   offsets.last() = offset;
   return offsets;
@@ -189,18 +189,17 @@ static HandleType handle_type_from_dna_bezt(const eBezTriple_Handle dna_handle_t
   return BEZIER_HANDLE_AUTO;
 }
 
-static Spline::NormalCalculationMode normal_mode_from_dna_curve(const int twist_mode)
+static NormalMode normal_mode_from_dna_curve(const int twist_mode)
 {
   switch (twist_mode) {
     case CU_TWIST_Z_UP:
-      return Spline::NormalCalculationMode::ZUp;
-    case CU_TWIST_MINIMUM:
-      return Spline::NormalCalculationMode::Minimum;
     case CU_TWIST_TANGENT:
-      return Spline::NormalCalculationMode::Tangent;
+      return NORMAL_MODE_Z_UP;
+    case CU_TWIST_MINIMUM:
+      return NORMAL_MODE_MINIMUM_TWIST;
   }
   BLI_assert_unreachable();
-  return Spline::NormalCalculationMode::Minimum;
+  return NORMAL_MODE_MINIMUM_TWIST;
 }
 
 static KnotsMode knots_mode_from_dna_nurb(const short flag)
@@ -333,8 +332,7 @@ std::unique_ptr<CurveEval> curve_eval_from_dna_curve(const Curve &dna_curve,
 
   /* Normal mode is stored separately in each spline to facilitate combining
    * splines from multiple curve objects, where the value may be different. */
-  const Spline::NormalCalculationMode normal_mode = normal_mode_from_dna_curve(
-      dna_curve.twist_mode);
+  const NormalMode normal_mode = normal_mode_from_dna_curve(dna_curve.twist_mode);
   for (SplinePtr &spline : curve->splines()) {
     spline->normal_mode = normal_mode;
   }
@@ -375,17 +373,20 @@ static void copy_attributes_between_components(const GeometryComponent &src_comp
       });
 }
 
-std::unique_ptr<CurveEval> curves_to_curve_eval(const Curves &curves)
+std::unique_ptr<CurveEval> curves_to_curve_eval(const Curves &curves_id)
 {
   CurveComponent src_component;
-  src_component.replace(&const_cast<Curves &>(curves), GeometryOwnershipType::ReadOnly);
-  const blender::bke::CurvesGeometry &geometry = blender::bke::CurvesGeometry::wrap(
-      curves.geometry);
+  src_component.replace(&const_cast<Curves &>(curves_id), GeometryOwnershipType::ReadOnly);
+  const blender::bke::CurvesGeometry &curves = blender::bke::CurvesGeometry::wrap(
+      curves_id.geometry);
+
+  VArray<int> resolution = curves.resolution();
+  VArray<int8_t> normal_mode = curves.normal_mode();
 
   VArray_Span<float> nurbs_weights{
       src_component.attribute_get_for_read<float>("nurbs_weight", ATTR_DOMAIN_POINT, 0.0f)};
-  VArray_Span<int> nurbs_orders{
-      src_component.attribute_get_for_read<int>("nurbs_order", ATTR_DOMAIN_CURVE, 4)};
+  VArray_Span<int8_t> nurbs_orders{
+      src_component.attribute_get_for_read<int8_t>("nurbs_order", ATTR_DOMAIN_CURVE, 4)};
   VArray_Span<int8_t> nurbs_knots_modes{
       src_component.attribute_get_for_read<int8_t>("knots_mode", ATTR_DOMAIN_CURVE, 0)};
 
@@ -395,31 +396,34 @@ std::unique_ptr<CurveEval> curves_to_curve_eval(const Curves &curves)
       src_component.attribute_get_for_read<int8_t>("handle_type_left", ATTR_DOMAIN_POINT, 0)};
 
   /* Create splines with the correct size and type. */
-  VArray<int8_t> curve_types = geometry.curve_types();
+  VArray<int8_t> curve_types = curves.curve_types();
   std::unique_ptr<CurveEval> curve_eval = std::make_unique<CurveEval>();
   for (const int curve_index : curve_types.index_range()) {
-    const IndexRange point_range = geometry.points_for_curve(curve_index);
+    const IndexRange points = curves.points_for_curve(curve_index);
 
     std::unique_ptr<Spline> spline;
-    switch (curve_types[curve_index]) {
+    /* #CurveEval does not support catmull rom curves, so convert those to poly splines. */
+    switch (std::max<int8_t>(1, curve_types[curve_index])) {
       case CURVE_TYPE_POLY: {
         spline = std::make_unique<PolySpline>();
-        spline->resize(point_range.size());
+        spline->resize(points.size());
         break;
       }
       case CURVE_TYPE_BEZIER: {
         std::unique_ptr<BezierSpline> bezier_spline = std::make_unique<BezierSpline>();
-        bezier_spline->resize(point_range.size());
-        bezier_spline->handle_types_left().copy_from(handle_types_left.slice(point_range));
-        bezier_spline->handle_types_right().copy_from(handle_types_right.slice(point_range));
+        bezier_spline->resize(points.size());
+        bezier_spline->set_resolution(resolution[curve_index]);
+        bezier_spline->handle_types_left().copy_from(handle_types_left.slice(points));
+        bezier_spline->handle_types_right().copy_from(handle_types_right.slice(points));
 
         spline = std::move(bezier_spline);
         break;
       }
       case CURVE_TYPE_NURBS: {
         std::unique_ptr<NURBSpline> nurb_spline = std::make_unique<NURBSpline>();
-        nurb_spline->resize(point_range.size());
-        nurb_spline->weights().copy_from(nurbs_weights.slice(point_range));
+        nurb_spline->resize(points.size());
+        nurb_spline->set_resolution(resolution[curve_index]);
+        nurb_spline->weights().copy_from(nurbs_weights.slice(points));
         nurb_spline->set_order(nurbs_orders[curve_index]);
         nurb_spline->knots_mode = static_cast<KnotsMode>(nurbs_knots_modes[curve_index]);
 
@@ -434,6 +438,7 @@ std::unique_ptr<CurveEval> curves_to_curve_eval(const Curves &curves)
     spline->positions().fill(float3(0));
     spline->tilts().fill(0.0f);
     spline->radii().fill(1.0f);
+    spline->normal_mode = static_cast<NormalMode>(normal_mode[curve_index]);
     curve_eval->add_spline(std::move(spline));
   }
 
@@ -445,6 +450,8 @@ std::unique_ptr<CurveEval> curves_to_curve_eval(const Curves &curves)
   copy_attributes_between_components(src_component,
                                      dst_component,
                                      {"curve_type",
+                                      "resolution",
+                                      "normal_mode",
                                       "nurbs_weight",
                                       "nurbs_order",
                                       "knots_mode",
@@ -456,15 +463,17 @@ std::unique_ptr<CurveEval> curves_to_curve_eval(const Curves &curves)
 
 Curves *curve_eval_to_curves(const CurveEval &curve_eval)
 {
-  Curves *curves = blender::bke::curves_new_nomain(curve_eval.total_control_point_size(),
-                                                   curve_eval.splines().size());
+  Curves *curves_id = blender::bke::curves_new_nomain(curve_eval.total_control_point_num(),
+                                                      curve_eval.splines().size());
   CurveComponent dst_component;
-  dst_component.replace(curves, GeometryOwnershipType::Editable);
+  dst_component.replace(curves_id, GeometryOwnershipType::Editable);
 
-  blender::bke::CurvesGeometry &geometry = blender::bke::CurvesGeometry::wrap(curves->geometry);
-  geometry.offsets().copy_from(curve_eval.control_point_offsets());
-  MutableSpan<int8_t> curve_types = geometry.curve_types();
+  blender::bke::CurvesGeometry &curves = blender::bke::CurvesGeometry::wrap(curves_id->geometry);
+  curves.offsets_for_write().copy_from(curve_eval.control_point_offsets());
+  MutableSpan<int8_t> curve_types = curves.curve_types_for_write();
 
+  OutputAttribute_Typed<int8_t> normal_mode =
+      dst_component.attribute_try_get_for_output_only<int8_t>("normal_mode", ATTR_DOMAIN_CURVE);
   OutputAttribute_Typed<float> nurbs_weight;
   OutputAttribute_Typed<int> nurbs_order;
   OutputAttribute_Typed<int8_t> nurbs_knots_mode;
@@ -488,23 +497,23 @@ Curves *curve_eval_to_curves(const CurveEval &curve_eval)
   for (const int curve_index : curve_eval.splines().index_range()) {
     const Spline &spline = *curve_eval.splines()[curve_index];
     curve_types[curve_index] = curve_eval.splines()[curve_index]->type();
-
-    const IndexRange point_range = geometry.points_for_curve(curve_index);
+    normal_mode.as_span()[curve_index] = curve_eval.splines()[curve_index]->normal_mode;
+    const IndexRange points = curves.points_for_curve(curve_index);
 
     switch (spline.type()) {
       case CURVE_TYPE_POLY:
         break;
       case CURVE_TYPE_BEZIER: {
         const BezierSpline &src = static_cast<const BezierSpline &>(spline);
-        handle_type_right.as_span().slice(point_range).copy_from(src.handle_types_right());
-        handle_type_left.as_span().slice(point_range).copy_from(src.handle_types_left());
+        handle_type_right.as_span().slice(points).copy_from(src.handle_types_right());
+        handle_type_left.as_span().slice(points).copy_from(src.handle_types_left());
         break;
       }
       case CURVE_TYPE_NURBS: {
         const NURBSpline &src = static_cast<const NURBSpline &>(spline);
         nurbs_knots_mode.as_span()[curve_index] = static_cast<int8_t>(src.knots_mode);
         nurbs_order.as_span()[curve_index] = src.order();
-        nurbs_weight.as_span().slice(point_range).copy_from(src.weights());
+        nurbs_weight.as_span().slice(points).copy_from(src.weights());
         break;
       }
       case CURVE_TYPE_CATMULL_ROM: {
@@ -514,6 +523,9 @@ Curves *curve_eval_to_curves(const CurveEval &curve_eval)
     }
   }
 
+  curves.update_curve_types();
+
+  normal_mode.save();
   nurbs_weight.save();
   nurbs_order.save();
   nurbs_knots_mode.save();
@@ -525,7 +537,7 @@ Curves *curve_eval_to_curves(const CurveEval &curve_eval)
 
   copy_attributes_between_components(src_component, dst_component, {});
 
-  return curves;
+  return curves_id;
 }
 
 void CurveEval::assert_valid_point_attributes() const

@@ -271,17 +271,17 @@ static void pointdensity_cache_vertex_color(PointDensity *pd,
 {
   const MLoop *mloop = mesh->mloop;
   const int totloop = mesh->totloop;
-  const MLoopCol *mcol;
   char layername[MAX_CUSTOMDATA_LAYER_NAME];
   int i;
 
   BLI_assert(data_color);
 
-  if (!CustomData_has_layer(&mesh->ldata, CD_MLOOPCOL)) {
+  if (!CustomData_has_layer(&mesh->ldata, CD_PROP_BYTE_COLOR)) {
     return;
   }
-  CustomData_validate_layer_name(&mesh->ldata, CD_MLOOPCOL, pd->vertex_attribute_name, layername);
-  mcol = CustomData_get_layer_named(&mesh->ldata, CD_MLOOPCOL, layername);
+  CustomData_validate_layer_name(
+      &mesh->ldata, CD_PROP_BYTE_COLOR, pd->vertex_attribute_name, layername);
+  const MLoopCol *mcol = CustomData_get_layer_named(&mesh->ldata, CD_PROP_BYTE_COLOR, layername);
   if (!mcol) {
     return;
   }
@@ -322,13 +322,12 @@ static void pointdensity_cache_vertex_weight(PointDensity *pd,
                                              float *data_color)
 {
   const int totvert = mesh->totvert;
-  const MDeformVert *mdef, *dv;
   int mdef_index;
   int i;
 
   BLI_assert(data_color);
 
-  mdef = CustomData_get_layer(&mesh->vdata, CD_MDEFORMVERT);
+  const MDeformVert *mdef = CustomData_get_layer(&mesh->vdata, CD_MDEFORMVERT);
   if (!mdef) {
     return;
   }
@@ -340,6 +339,7 @@ static void pointdensity_cache_vertex_weight(PointDensity *pd,
     return;
   }
 
+  const MDeformVert *dv;
   for (i = 0, dv = mdef; i < totvert; i++, dv++, data_color += 3) {
     MDeformWeight *dw;
     int j;
@@ -372,7 +372,7 @@ static void pointdensity_cache_object(PointDensity *pd, Object *ob)
   mask.fmask |= CD_MASK_MTFACE | CD_MASK_MCOL;
   switch (pd->ob_color_source) {
     case TEX_PD_COLOR_VERTCOL:
-      mask.lmask |= CD_MASK_MLOOPCOL;
+      mask.lmask |= CD_MASK_PROP_BYTE_COLOR;
       break;
     case TEX_PD_COLOR_VERTWEIGHT:
       mask.vmask |= CD_MASK_MDEFORMVERT;
@@ -843,7 +843,7 @@ void RE_point_density_minmax(struct Depsgraph *depsgraph,
   }
   else {
     const float radius[3] = {pd->radius, pd->radius, pd->radius};
-    BoundBox *bb = BKE_object_boundbox_get(object);
+    const BoundBox *bb = BKE_object_boundbox_get(object);
 
     if (bb != NULL) {
       BLI_assert((bb->flag & BOUNDBOX_DIRTY) == 0);

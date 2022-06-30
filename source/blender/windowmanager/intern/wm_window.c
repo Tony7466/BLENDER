@@ -23,6 +23,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
+#include "BLI_system.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -578,6 +579,9 @@ static void wm_window_ghostwindow_add(wmWindowManager *wm,
 
     wm_window_swap_buffers(win);
 
+    /* Clear double buffer to avoids flickering of new windows on certain drivers. (See T97600) */
+    GPU_clear_color(0.55f, 0.55f, 0.55f, 1.0f);
+
     // GHOST_SetWindowState(ghostwin, GHOST_kWindowStateModified);
   }
   else {
@@ -959,7 +963,7 @@ typedef enum {
 /* check if specified modifier key type is pressed */
 static int query_qual(modifierKeyType qual)
 {
-  GHOST_TModifierKeyMask left, right;
+  GHOST_TModifierKey left, right;
   switch (qual) {
     case SHIFT:
       left = GHOST_kModifierKeyLeftShift;
@@ -979,7 +983,7 @@ static int query_qual(modifierKeyType qual)
       break;
   }
 
-  int val = 0;
+  bool val = false;
   GHOST_GetModifierKeyState(g_system, left, &val);
   if (!val) {
     GHOST_GetModifierKeyState(g_system, right, &val);
@@ -1049,7 +1053,7 @@ void wm_window_reset_drawable(void)
  *
  * Mouse coordinate conversion happens here.
  */
-static int ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_ptr)
+static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_ptr)
 {
   bContext *C = C_void_ptr;
   wmWindowManager *wm = CTX_wm_manager(C);
@@ -1087,17 +1091,17 @@ static int ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_ptr
      * but it should return if WM didn't initialize yet.
      * Can happen on file read (especially full size window). */
     if ((wm->initialized & WM_WINDOW_IS_INIT) == 0) {
-      return 1;
+      return true;
     }
     if (!ghostwin) {
       /* XXX: should be checked, why are we getting an event here, and what is it? */
       puts("<!> event has no window");
-      return 1;
+      return true;
     }
     if (!GHOST_ValidWindow(g_system, ghostwin)) {
       /* XXX: should be checked, why are we getting an event here, and what is it? */
       puts("<!> event has invalid window");
-      return 1;
+      return true;
     }
     wmWindow *win = GHOST_GetWindowUserData(ghostwin);
 
@@ -1112,7 +1116,6 @@ static int ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_ptr
 
         break;
       case GHOST_kEventWindowActivate: {
-        GHOST_TEventKeyData kdata;
         const int keymodifier = ((query_qual(SHIFT) ? KM_SHIFT : 0) |
                                  (query_qual(CONTROL) ? KM_CTRL : 0) |
                                  (query_qual(ALT) ? KM_ALT : 0) | (query_qual(OS) ? KM_OSKEY : 0));
@@ -1135,9 +1138,12 @@ static int ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_ptr
          *
          * For now don't send GHOST_kEventKeyDown events, just set the 'eventstate'.
          */
-        kdata.ascii = '\0';
-        kdata.utf8_buf[0] = '\0';
-
+        GHOST_TEventKeyData kdata = {
+            .key = GHOST_kKeyUnknown,
+            .ascii = '\0',
+            .utf8_buf = {'\0'},
+            .is_repeat = false,
+        };
         if (win->eventstate->modifier & KM_SHIFT) {
           if ((keymodifier & KM_SHIFT) == 0) {
             kdata.key = GHOST_kKeyLeftShift;
@@ -1440,7 +1446,7 @@ static int ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_ptr
       }
     }
   }
-  return 1;
+  return true;
 }
 
 /**
@@ -1540,8 +1546,18 @@ void wm_ghost_init(bContext *C)
       consumer = GHOST_CreateEventConsumer(ghost_event_proc, C);
     }
 
+    GHOST_SetBacktraceHandler((GHOST_TBacktraceFn)BLI_system_backtrace);
+
     g_system = GHOST_CreateSystem();
-    GHOST_SystemInitDebug(g_system, G.debug & G_DEBUG_GHOST);
+
+    GHOST_Debug debug = {0};
+    if (G.debug & G_DEBUG_GHOST) {
+      debug.flags |= GHOST_kDebugDefault;
+    }
+    if (G.debug & G_DEBUG_WINTAB) {
+      debug.flags |= GHOST_kDebugWintab;
+    }
+    GHOST_SystemInitDebug(g_system, debug);
 
     if (C != NULL) {
       GHOST_AddEventConsumer(g_system, consumer);
@@ -1858,11 +1874,10 @@ wmWindow *WM_window_find_under_cursor(wmWindow *win, const int mval[2], int r_mv
     return NULL;
   }
 
-  wmWindow *r_win = GHOST_GetWindowUserData(ghostwin);
-  wm_cursor_position_from_ghost(r_win, &tmp[0], &tmp[1]);
+  wmWindow *win_other = GHOST_GetWindowUserData(ghostwin);
+  wm_cursor_position_from_ghost(win_other, &tmp[0], &tmp[1]);
   copy_v2_v2_int(r_mval, tmp);
-
-  return r_win;
+  return win_other;
 }
 
 void WM_window_pixel_sample_read(const wmWindowManager *wm,
@@ -2008,15 +2023,6 @@ void WM_cursor_warp(wmWindow *win, int x, int y)
 
     win->eventstate->xy[0] = oldx;
     win->eventstate->xy[1] = oldy;
-  }
-}
-
-void WM_cursor_compatible_xy(wmWindow *win, int *x, int *y)
-{
-  float f = GHOST_GetNativePixelSize(win->ghostwin);
-  if (f != 1.0f) {
-    *x = (int)(*x / f) * f;
-    *y = (int)(*y / f) * f;
   }
 }
 

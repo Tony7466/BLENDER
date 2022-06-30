@@ -130,11 +130,6 @@ void BKE_object_eval_transform_final(Depsgraph *depsgraph, Object *ob)
   else {
     ob->transflag &= ~OB_NEG_SCALE;
   }
-
-  /* Assign evaluated version. */
-  if ((ob->type == OB_GPENCIL) && (ob->runtime.gpd_eval != NULL)) {
-    ob->data = ob->runtime.gpd_eval;
-  }
 }
 
 void BKE_object_handle_data_update(Depsgraph *depsgraph, Scene *scene, Object *ob)
@@ -167,7 +162,7 @@ void BKE_object_handle_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
 #endif
       if (DEG_get_mode(depsgraph) == DAG_EVAL_RENDER) {
         /* Always compute UVs, vertex colors as orcos for render. */
-        cddata_masks.lmask |= CD_MASK_MLOOPUV | CD_MASK_MLOOPCOL;
+        cddata_masks.lmask |= CD_MASK_MLOOPUV | CD_MASK_PROP_BYTE_COLOR;
         cddata_masks.vmask |= CD_MASK_ORCO | CD_MASK_PROP_COLOR;
       }
       makeDerivedMesh(depsgraph, scene, ob, &cddata_masks); /* was CD_MASK_BAREMESH */
@@ -243,7 +238,7 @@ void BKE_object_handle_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
 /** Bounding box from evaluated geometry. */
 static void object_sync_boundbox_to_original(Object *object_orig, Object *object_eval)
 {
-  BoundBox *bb = object_eval->runtime.bb;
+  const BoundBox *bb = object_eval->runtime.bb;
   if (!bb || (bb->flag & BOUNDBOX_DIRTY)) {
     BKE_object_boundbox_calc_from_evaluated_geometry(object_eval);
   }

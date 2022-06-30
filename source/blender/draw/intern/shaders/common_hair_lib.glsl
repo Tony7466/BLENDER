@@ -5,6 +5,8 @@
  * of data the CPU has to precompute and transfer for each update.
  */
 
+#define COMMON_HAIR_LIB
+
 /* TODO(fclem): Keep documentation but remove the uniform declaration. */
 #ifndef USE_GPU_SHADER_CREATE_INFO
 
@@ -29,7 +31,7 @@ uniform float hairRadTip = 0.0;
 uniform float hairRadShape = 0.5;
 uniform bool hairCloseTip = true;
 
-uniform vec4 hairDupliMatrix[4];
+uniform mat4 hairDupliMatrix;
 
 /* Strand batch offset when used in compute shaders. */
 uniform int hairStrandOffset = 0;
@@ -192,9 +194,7 @@ void hair_get_pos_tan_binor_time(bool is_persp,
     wtan = wpos - texelFetch(hairPointBuffer, id - 1).point_position;
   }
 
-  mat4 obmat = mat4(
-      hairDupliMatrix[0], hairDupliMatrix[1], hairDupliMatrix[2], hairDupliMatrix[3]);
-
+  mat4 obmat = hairDupliMatrix;
   wpos = (obmat * vec4(wpos, 1.0)).xyz;
   wtan = -normalize(mat3(obmat) * wtan);
 
@@ -212,6 +212,11 @@ void hair_get_pos_tan_binor_time(bool is_persp,
     float scale = 1.0 / length(mat3(invmodel_mat) * wbinor);
 
     wpos += wbinor * thick_time * scale;
+  }
+  else {
+    /* NOTE: Ensures 'hairThickTime' is initialized -
+     * avoids undefined behavior on certain macOS configurations. */
+    thick_time = 0.0;
   }
 }
 

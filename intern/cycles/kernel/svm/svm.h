@@ -95,14 +95,14 @@ ccl_device_inline bool stack_valid(uint a)
 
 ccl_device_inline uint4 read_node(KernelGlobals kg, ccl_private int *offset)
 {
-  uint4 node = kernel_tex_fetch(__svm_nodes, *offset);
+  uint4 node = kernel_data_fetch(svm_nodes, *offset);
   (*offset)++;
   return node;
 }
 
 ccl_device_inline float4 read_node_float(KernelGlobals kg, ccl_private int *offset)
 {
-  uint4 node = kernel_tex_fetch(__svm_nodes, *offset);
+  uint4 node = kernel_data_fetch(svm_nodes, *offset);
   float4 f = make_float4(__uint_as_float(node.x),
                          __uint_as_float(node.y),
                          __uint_as_float(node.z),
@@ -113,7 +113,7 @@ ccl_device_inline float4 read_node_float(KernelGlobals kg, ccl_private int *offs
 
 ccl_device_inline float4 fetch_node_float(KernelGlobals kg, int offset)
 {
-  uint4 node = kernel_tex_fetch(__svm_nodes, offset);
+  uint4 node = kernel_data_fetch(svm_nodes, offset);
   return make_float4(__uint_as_float(node.x),
                      __uint_as_float(node.y),
                      __uint_as_float(node.z),
@@ -181,6 +181,7 @@ CCL_NAMESPACE_END
 #include "kernel/svm/noisetex.h"
 #include "kernel/svm/normal.h"
 #include "kernel/svm/ramp.h"
+#include "kernel/svm/sepcomb_color.h"
 #include "kernel/svm/sepcomb_hsv.h"
 #include "kernel/svm/sepcomb_vector.h"
 #include "kernel/svm/sky.h"
@@ -263,11 +264,11 @@ ccl_device void svm_eval_nodes(KernelGlobals kg,
         svm_node_mix_closure(sd, stack, node);
         break;
       case NODE_JUMP_IF_ZERO:
-        if (stack_load_float(stack, node.z) == 0.0f)
+        if (stack_load_float(stack, node.z) <= 0.0f)
           offset += node.y;
         break;
       case NODE_JUMP_IF_ONE:
-        if (stack_load_float(stack, node.z) == 1.0f)
+        if (stack_load_float(stack, node.z) >= 1.0f)
           offset += node.y;
         break;
       case NODE_GEOMETRY:
@@ -304,22 +305,13 @@ ccl_device void svm_eval_nodes(KernelGlobals kg,
         }
         break;
       case NODE_SET_DISPLACEMENT:
-        IF_KERNEL_NODES_FEATURE(BUMP)
-        {
-          svm_node_set_displacement(kg, sd, stack, node.y);
-        }
+        svm_node_set_displacement<node_feature_mask>(kg, sd, stack, node.y);
         break;
       case NODE_DISPLACEMENT:
-        IF_KERNEL_NODES_FEATURE(BUMP)
-        {
-          svm_node_displacement(kg, sd, stack, node);
-        }
+        svm_node_displacement<node_feature_mask>(kg, sd, stack, node);
         break;
       case NODE_VECTOR_DISPLACEMENT:
-        IF_KERNEL_NODES_FEATURE(BUMP)
-        {
-          offset = svm_node_vector_displacement(kg, sd, stack, node, offset);
-        }
+        offset = svm_node_vector_displacement<node_feature_mask>(kg, sd, stack, node, offset);
         break;
       case NODE_TEX_IMAGE:
         offset = svm_node_tex_image(kg, sd, stack, node, offset);
@@ -331,10 +323,7 @@ ccl_device void svm_eval_nodes(KernelGlobals kg,
         offset = svm_node_tex_noise(kg, sd, stack, node.y, node.z, node.w, offset);
         break;
       case NODE_SET_BUMP:
-        IF_KERNEL_NODES_FEATURE(BUMP)
-        {
-          svm_node_set_bump(kg, sd, stack, node);
-        }
+        svm_node_set_bump<node_feature_mask>(kg, sd, stack, node);
         break;
       case NODE_ATTR_BUMP_DX:
         IF_KERNEL_NODES_FEATURE(BUMP)
@@ -519,6 +508,12 @@ ccl_device void svm_eval_nodes(KernelGlobals kg,
         break;
       case NODE_MIX:
         offset = svm_node_mix(kg, sd, stack, node.y, node.z, node.w, offset);
+        break;
+      case NODE_SEPARATE_COLOR:
+        svm_node_separate_color(kg, sd, stack, node.y, node.z, node.w);
+        break;
+      case NODE_COMBINE_COLOR:
+        svm_node_combine_color(kg, sd, stack, node.y, node.z, node.w);
         break;
       case NODE_SEPARATE_VECTOR:
         svm_node_separate_vector(sd, stack, node.y, node.z, node.w);

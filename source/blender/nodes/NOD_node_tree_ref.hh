@@ -41,6 +41,7 @@
 #include "BLI_vector.hh"
 
 #include "BKE_node.h"
+#include "BKE_node_runtime.hh"
 
 #include "DNA_node_types.h"
 
@@ -65,7 +66,6 @@ class SocketRef : NonCopyable, NonMovable {
   bool is_input_;
   int id_;
   int index_;
-  PointerRNA rna_;
   Vector<LinkRef *> directly_linked_links_;
 
   /* These sockets are linked directly, i.e. with a single link in between. */
@@ -101,7 +101,7 @@ class SocketRef : NonCopyable, NonMovable {
   const InputSocketRef &as_input() const;
   const OutputSocketRef &as_output() const;
 
-  PointerRNA *rna() const;
+  PointerRNA rna() const;
 
   StringRefNull idname() const;
   StringRefNull name() const;
@@ -152,7 +152,6 @@ class NodeRef : NonCopyable, NonMovable {
  private:
   NodeTreeRef *tree_;
   bNode *bnode_;
-  PointerRNA rna_;
   int id_;
   Vector<InputSocketRef *> inputs_;
   Vector<OutputSocketRef *> outputs_;
@@ -183,7 +182,7 @@ class NodeRef : NonCopyable, NonMovable {
   bNode *bnode() const;
   bNodeTree *btree() const;
 
-  PointerRNA *rna() const;
+  PointerRNA rna() const;
   StringRefNull idname() const;
   StringRefNull name() const;
   StringRefNull label() const;
@@ -410,11 +409,6 @@ inline const OutputSocketRef &SocketRef::as_output() const
   return static_cast<const OutputSocketRef &>(*this);
 }
 
-inline PointerRNA *SocketRef::rna() const
-{
-  return const_cast<PointerRNA *>(&rna_);
-}
-
 inline StringRefNull SocketRef::idname() const
 {
   return bsocket_->idname;
@@ -571,11 +565,6 @@ inline bNodeTree *NodeRef::btree() const
   return tree_->btree();
 }
 
-inline PointerRNA *NodeRef::rna() const
-{
-  return const_cast<PointerRNA *>(&rna_);
-}
-
 inline StringRefNull NodeRef::idname() const
 {
   return bnode_->idname;
@@ -609,7 +598,7 @@ inline bNodeType *NodeRef::typeinfo() const
 inline const NodeDeclaration *NodeRef::declaration() const
 {
   nodeDeclarationEnsure(this->tree().btree(), bnode_);
-  return bnode_->declaration;
+  return bnode_->runtime->declaration;
 }
 
 inline int NodeRef::id() const

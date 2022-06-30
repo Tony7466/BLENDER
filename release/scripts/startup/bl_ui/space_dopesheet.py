@@ -1,7 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-# <pep8 compliant>
-
 import bpy
 from bpy.types import (
     Header,
@@ -16,6 +14,8 @@ from bl_ui.properties_grease_pencil_common import (
     GreasePencilLayerRelationsPanel,
     GreasePencilLayerDisplayPanel,
 )
+
+from rna_prop_ui import PropertyPanel
 
 #######################################
 # DopeSheet Filtering - Header Buttons
@@ -510,6 +510,9 @@ class DOPESHEET_MT_key(Menu):
         layout.operator("action.clean", text="Clean Channels").channels = True
         layout.operator("action.sample")
 
+        layout.separator()
+        layout.operator("graph.euler_filter", text="Discontinuity (Euler) Filter")
+
 
 class DOPESHEET_MT_key_transform(Menu):
     bl_label = "Transform"
@@ -541,6 +544,21 @@ class DopesheetActionPanelBase:
         row.prop(action, "frame_end", text="End")
 
         col.prop(action, "use_cyclic")
+
+
+class DOPESHEET_PT_custom_props_action(PropertyPanel, Panel):
+    bl_space_type = 'DOPESHEET_EDITOR'
+    bl_category = "Item"
+    bl_region_type = 'UI'
+    bl_context = 'data'
+    _context_path = "active_object.animation_data.action"
+    _property_type = bpy.types.Action
+
+    @classmethod
+    def poll(cls, context):
+        return context.active_object \
+            and context.active_object.animation_data \
+            and context.active_object.animation_data.action
 
 
 class DOPESHEET_PT_action(DopesheetActionPanelBase, Panel):
@@ -816,6 +834,7 @@ classes = (
     DOPESHEET_PT_gpencil_layer_adjustments,
     DOPESHEET_PT_gpencil_layer_relations,
     DOPESHEET_PT_gpencil_layer_display,
+    DOPESHEET_PT_custom_props_action,
 )
 
 if __name__ == "__main__":  # only for live edit.

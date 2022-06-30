@@ -9,6 +9,7 @@
 
 #include "DNA_key_types.h"
 #include "DNA_mesh_types.h"
+#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
 #include "BLI_alloca.h"
@@ -19,6 +20,7 @@
 
 #include "BKE_DerivedMesh.h"
 #include "BKE_context.h"
+#include "BKE_customdata.h"
 #include "BKE_editmesh.h"
 #include "BKE_editmesh_bvh.h"
 #include "BKE_global.h"
@@ -937,7 +939,7 @@ bool EDBM_uv_check(BMEditMesh *em)
 bool EDBM_vert_color_check(BMEditMesh *em)
 {
   /* some of these checks could be a touch overkill */
-  return em && em->bm->totface && CustomData_has_layer(&em->bm->ldata, CD_MLOOPCOL);
+  return em && em->bm->totface && CustomData_has_layer(&em->bm->ldata, CD_PROP_BYTE_COLOR);
 }
 
 /** \} */
@@ -1639,21 +1641,23 @@ void EDBM_project_snap_verts(
       float mval[2], co_proj[3];
       if (ED_view3d_project_float_object(region, eve->co, mval, V3D_PROJ_TEST_NOP) ==
           V3D_PROJ_RET_OK) {
-        if (ED_transform_snap_object_project_view3d(snap_context,
-                                                    depsgraph,
-                                                    region,
-                                                    CTX_wm_view3d(C),
-                                                    SCE_SNAP_MODE_FACE,
-                                                    &(const struct SnapObjectParams){
-                                                        .snap_select = SNAP_NOT_ACTIVE,
-                                                        .edit_mode_type = SNAP_GEOM_FINAL,
-                                                        .use_occlusion_test = true,
-                                                    },
-                                                    mval,
-                                                    NULL,
-                                                    NULL,
-                                                    co_proj,
-                                                    NULL)) {
+        if (ED_transform_snap_object_project_view3d(
+                snap_context,
+                depsgraph,
+                region,
+                CTX_wm_view3d(C),
+                SCE_SNAP_MODE_FACE_RAYCAST,
+                &(const struct SnapObjectParams){
+                    .snap_target_select = SCE_SNAP_TARGET_NOT_ACTIVE,
+                    .edit_mode_type = SNAP_GEOM_FINAL,
+                    .use_occlusion_test = true,
+                },
+                NULL,
+                mval,
+                NULL,
+                NULL,
+                co_proj,
+                NULL)) {
           mul_v3_m4v3(eve->co, obedit->imat, co_proj);
         }
       }

@@ -49,8 +49,21 @@ enum eView2D_CommonViewTypes {
 /* ------ Defines for Scrollers ----- */
 
 /** Scroll bar area. */
-#define V2D_SCROLL_HEIGHT (0.45f * U.widget_unit)
-#define V2D_SCROLL_WIDTH (0.45f * U.widget_unit)
+
+/* Maximum has to include outline which varies with line width. */
+#define V2D_SCROLL_HEIGHT ((0.45f * U.widget_unit) + (2.0f * U.pixelsize))
+#define V2D_SCROLL_WIDTH ((0.45f * U.widget_unit) + (2.0f * U.pixelsize))
+
+/* Alpha of scrollbar when at minimum size. */
+#define V2D_SCROLL_MIN_ALPHA (0.4f)
+
+/* Minimum size needs to include outline which varies with line width. */
+#define V2D_SCROLL_MIN_WIDTH ((5.0f * U.dpi_fac) + (2.0f * U.pixelsize))
+
+/* When to start showing the full-width scroller. */
+#define V2D_SCROLL_HIDE_WIDTH (AREAMINX * U.dpi_fac)
+#define V2D_SCROLL_HIDE_HEIGHT (HEADERY * U.dpi_fac)
+
 /** Scroll bars with 'handles' used for scale (zoom). */
 #define V2D_SCROLL_HANDLE_HEIGHT (0.6f * U.widget_unit)
 #define V2D_SCROLL_HANDLE_WIDTH (0.6f * U.widget_unit)
@@ -178,12 +191,12 @@ void UI_view2d_multi_grid_draw(
  * \param grid_color_id: The theme color used for the points. Faded dynamically based on zoom.
  * \param min_step: The base size of the grid. At different zoom levels, the visible grid may have
  * a larger step size.
- * \param grid_levels: The maximum grid depth. Larger grid levels will subdivide the grid more.
+ * \param grid_subdivisions: The maximum number of sub-levels drawn at once.
  */
 void UI_view2d_dot_grid_draw(const struct View2D *v2d,
                              int grid_color_id,
                              float min_step,
-                             int grid_levels);
+                             int grid_subdivisions);
 
 void UI_view2d_draw_lines_y__values(const struct View2D *v2d);
 void UI_view2d_draw_lines_x__values(const struct View2D *v2d);
@@ -236,9 +249,13 @@ void UI_view2d_draw_scale_x__frames_or_seconds(const struct ARegion *region,
 void UI_view2d_scrollers_calc(struct View2D *v2d,
                               const struct rcti *mask_custom,
                               struct View2DScrollers *r_scrollers);
+
 /**
  * Draw scroll-bars in the given 2D-region.
  */
+void UI_view2d_scrollers_draw_ex(struct View2D *v2d,
+                                 const struct rcti *mask_custom,
+                                 bool use_full_hide);
 void UI_view2d_scrollers_draw(struct View2D *v2d, const struct rcti *mask_custom);
 
 /* List view tools. */
@@ -329,8 +346,10 @@ struct View2D *UI_view2d_fromcontext_rwin(const struct bContext *C);
 /**
  * Get scrollbar sizes of the current 2D view.
  * The size will be zero if the view has its scrollbars disabled.
+ *
+ * \param mapped: whether to use view2d_scroll_mapped which changes flags
  */
-void UI_view2d_scroller_size_get(const struct View2D *v2d, float *r_x, float *r_y);
+void UI_view2d_scroller_size_get(const struct View2D *v2d, bool mapped, float *r_x, float *r_y);
 /**
  * Calculate the scale per-axis of the drawing-area
  *
@@ -416,7 +435,7 @@ void ED_keymap_view2d(struct wmKeyConfig *keyconf);
  * Will start timer if appropriate.
  * the arguments are the desired situation.
  */
-void UI_view2d_smooth_view(struct bContext *C,
+void UI_view2d_smooth_view(const struct bContext *C,
                            struct ARegion *region,
                            const struct rctf *cur,
                            int smooth_viewtx);
@@ -447,6 +466,8 @@ typedef struct View2DEdgePanData {
   struct ARegion *region;
   /** View2d we're operating in. */
   struct View2D *v2d;
+  /** Limit maximum pannable area. */
+  struct rctf limit;
 
   /** Panning should only start once being in the inside rect once (e.g. adding nodes can happen
    * outside). */
@@ -491,6 +512,12 @@ void UI_view2d_edge_pan_init(struct bContext *C,
                              float max_speed,
                              float delay,
                              float zoom_influence);
+
+/**
+ * Set area which can be panned
+ */
+void UI_view2d_edge_pan_set_limits(
+    struct View2DEdgePanData *vpd, float xmin, float xmax, float ymin, float ymax);
 
 void UI_view2d_edge_pan_reset(struct View2DEdgePanData *vpd);
 

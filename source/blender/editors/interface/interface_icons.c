@@ -465,6 +465,32 @@ DEF_ICON_STRIP_COLOR_DRAW(09, SEQUENCE_COLOR_09);
 
 #  undef DEF_ICON_STRIP_COLOR_DRAW
 
+#  define ICON_INDIRECT_DATA_ALPHA 0.6f
+
+static void vicon_strip_color_draw_library_data_indirect(
+    int x, int y, int w, int UNUSED(h), float alpha)
+{
+  const float aspect = (float)ICON_DEFAULT_WIDTH / (float)w;
+
+  UI_icon_draw_ex(
+      x, y, ICON_LIBRARY_DATA_DIRECT, aspect, ICON_INDIRECT_DATA_ALPHA * alpha, 0.0f, NULL, false);
+}
+
+static void vicon_strip_color_draw_library_data_override_noneditable(
+    int x, int y, int w, int UNUSED(h), float alpha)
+{
+  const float aspect = (float)ICON_DEFAULT_WIDTH / (float)w;
+
+  UI_icon_draw_ex(x,
+                  y,
+                  ICON_LIBRARY_DATA_OVERRIDE,
+                  aspect,
+                  ICON_INDIRECT_DATA_ALPHA * alpha * 0.75f,
+                  0.0f,
+                  NULL,
+                  false);
+}
+
 /* Dynamically render icon instead of rendering a plain color to a texture/buffer
  * This is not strictly a "vicon", as it needs access to icon->obj to get the color info,
  * but it works in a very similar way.
@@ -520,6 +546,7 @@ static void init_brush_icons(void)
   INIT_BRUSH_ICON(ICON_BRUSH_MASK, mask);
   INIT_BRUSH_ICON(ICON_BRUSH_MIX, mix);
   INIT_BRUSH_ICON(ICON_BRUSH_NUDGE, nudge);
+  INIT_BRUSH_ICON(ICON_BRUSH_PAINT_SELECT, paint_select);
   INIT_BRUSH_ICON(ICON_BRUSH_PINCH, pinch);
   INIT_BRUSH_ICON(ICON_BRUSH_SCRAPE, scrape);
   INIT_BRUSH_ICON(ICON_BRUSH_SMEAR, smear);
@@ -557,6 +584,19 @@ static void init_brush_icons(void)
   INIT_BRUSH_ICON(ICON_GPBRUSH_ERASE_SOFT, gp_brush_erase_soft);
   INIT_BRUSH_ICON(ICON_GPBRUSH_ERASE_HARD, gp_brush_erase_hard);
   INIT_BRUSH_ICON(ICON_GPBRUSH_ERASE_STROKE, gp_brush_erase_stroke);
+
+  /* Curves sculpt. */
+  INIT_BRUSH_ICON(ICON_BRUSH_CURVES_ADD, curves_sculpt_add);
+  INIT_BRUSH_ICON(ICON_BRUSH_CURVES_COMB, curves_sculpt_comb);
+  INIT_BRUSH_ICON(ICON_BRUSH_CURVES_CUT, curves_sculpt_cut);
+  INIT_BRUSH_ICON(ICON_BRUSH_CURVES_DELETE, curves_sculpt_delete);
+  INIT_BRUSH_ICON(ICON_BRUSH_CURVES_DENSITY, curves_sculpt_density);
+  INIT_BRUSH_ICON(ICON_BRUSH_CURVES_GROW_SHRINK, curves_sculpt_grow_shrink);
+  INIT_BRUSH_ICON(ICON_BRUSH_CURVES_PINCH, curves_sculpt_pinch);
+  INIT_BRUSH_ICON(ICON_BRUSH_CURVES_PUFF, curves_sculpt_puff);
+  INIT_BRUSH_ICON(ICON_BRUSH_CURVES_SLIDE, curves_sculpt_slide);
+  INIT_BRUSH_ICON(ICON_BRUSH_CURVES_SMOOTH, curves_sculpt_smooth);
+  INIT_BRUSH_ICON(ICON_BRUSH_CURVES_SNAKE_HOOK, curves_sculpt_snake_hook);
 
 #  undef INIT_BRUSH_ICON
 }
@@ -974,6 +1014,10 @@ static void init_internal_icons(void)
   def_internal_vicon(ICON_SEQUENCE_COLOR_07, vicon_strip_color_draw_07);
   def_internal_vicon(ICON_SEQUENCE_COLOR_08, vicon_strip_color_draw_08);
   def_internal_vicon(ICON_SEQUENCE_COLOR_09, vicon_strip_color_draw_09);
+
+  def_internal_vicon(ICON_LIBRARY_DATA_INDIRECT, vicon_strip_color_draw_library_data_indirect);
+  def_internal_vicon(ICON_LIBRARY_DATA_OVERRIDE_NONEDITABLE,
+                     vicon_strip_color_draw_library_data_override_noneditable);
 }
 
 static void init_iconfile_list(struct ListBase *list)
@@ -1554,10 +1598,10 @@ static void icon_draw_cache_texture_flush_ex(GPUTexture *texture,
   GPUShader *shader = GPU_shader_get_builtin_shader(GPU_SHADER_2D_IMAGE_MULTI_RECT_COLOR);
   GPU_shader_bind(shader);
 
-  const int data_loc = GPU_shader_get_uniform_block(shader, "multi_rect_data");
+  const int data_binding = GPU_shader_get_uniform_block_binding(shader, "multi_rect_data");
   GPUUniformBuf *ubo = GPU_uniformbuf_create_ex(
       sizeof(struct MultiRectCallData), texture_draw_calls->drawcall_cache, __func__);
-  GPU_uniformbuf_bind(ubo, data_loc);
+  GPU_uniformbuf_bind(ubo, data_binding);
 
   const int img_binding = GPU_shader_get_texture_binding(shader, "image");
   GPU_texture_bind_ex(texture, GPU_SAMPLER_ICON, img_binding, false);
@@ -2004,6 +2048,9 @@ static int ui_id_brush_get_icon(const bContext *C, ID *id)
       else if (ob->mode & OB_MODE_TEXTURE_PAINT) {
         paint_mode = PAINT_MODE_TEXTURE_3D;
       }
+      else if (ob->mode & OB_MODE_SCULPT_CURVES) {
+        paint_mode = PAINT_MODE_SCULPT_CURVES;
+      }
     }
     else if (space_type == SPACE_IMAGE) {
       if (area->spacetype == space_type) {
@@ -2179,6 +2226,10 @@ int UI_icon_from_library(const ID *id)
     return ICON_LIBRARY_DATA_DIRECT;
   }
   if (ID_IS_OVERRIDE_LIBRARY(id)) {
+    if (!ID_IS_OVERRIDE_LIBRARY_REAL(id) ||
+        (id->override_library->flag & IDOVERRIDE_LIBRARY_FLAG_SYSTEM_DEFINED) != 0) {
+      return ICON_LIBRARY_DATA_OVERRIDE_NONEDITABLE;
+    }
     return ICON_LIBRARY_DATA_OVERRIDE;
   }
   if (ID_IS_ASSET(id)) {

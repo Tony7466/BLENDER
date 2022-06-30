@@ -66,14 +66,19 @@ static void camera_init_data(ID *id)
  *
  * \param flag: Copying options (see BKE_lib_id.h's LIB_ID_COPY_... flags for more).
  */
-static void camera_copy_data(Main *UNUSED(bmain),
-                             ID *id_dst,
-                             const ID *id_src,
-                             const int UNUSED(flag))
+static void camera_copy_data(Main *UNUSED(bmain), ID *id_dst, const ID *id_src, const int flag)
 {
   Camera *cam_dst = (Camera *)id_dst;
   const Camera *cam_src = (const Camera *)id_src;
-  BLI_duplicatelist(&cam_dst->bg_images, &cam_src->bg_images);
+
+  /* We never handle usercount here for own data. */
+  const int flag_subdata = flag | LIB_ID_CREATE_NO_USER_REFCOUNT;
+
+  BLI_listbase_clear(&cam_dst->bg_images);
+  LISTBASE_FOREACH (CameraBGImage *, bgpic_src, &cam_src->bg_images) {
+    CameraBGImage *bgpic_dst = BKE_camera_background_image_copy(bgpic_src, flag_subdata);
+    BLI_addtail(&cam_dst->bg_images, bgpic_dst);
+  }
 }
 
 /** Free (or release) any data used by this camera (does not free the camera itself). */
@@ -125,6 +130,11 @@ static void camera_blend_read_data(BlendDataReader *reader, ID *id)
 
   LISTBASE_FOREACH (CameraBGImage *, bgpic, &ca->bg_images) {
     bgpic->iuser.scene = NULL;
+
+    /* If linking from a library, clear 'local' library override flag. */
+    if (ID_IS_LINKED(ca)) {
+      bgpic->flag &= ~CAM_BGIMG_FLAG_OVERRIDE_LIBRARY_LOCAL;
+    }
   }
 }
 
@@ -302,7 +312,7 @@ void BKE_camera_params_from_object(CameraParams *params, const Object *cam_ob)
 }
 
 void BKE_camera_params_from_view3d(CameraParams *params,
-                                   Depsgraph *depsgraph,
+                                   const Depsgraph *depsgraph,
                                    const View3D *v3d,
                                    const RegionView3D *rv3d)
 {
@@ -518,7 +528,7 @@ void BKE_camera_view_frame_ex(const Scene *scene,
 
   if (do_clip) {
     /* Ensure the frame isn't behind the near clipping plane, T62814. */
-    float fac = (camera->clip_start + 0.1f) / -r_vec[0][2];
+    float fac = ((camera->clip_start + 0.1f) / -r_vec[0][2]) * scale[2];
     for (uint i = 0; i < 4; i++) {
       if (camera->type == CAM_ORTHO) {
         r_vec[i][2] *= fac;
@@ -552,12 +562,11 @@ void BKE_camera_view_frame(const Scene *scene, const Camera *camera, float r_vec
 typedef struct CameraViewFrameData {
   float plane_tx[CAMERA_VIEWFRAME_NUM_PLANES][4]; /* 4 planes normalized */
   float dist_vals[CAMERA_VIEWFRAME_NUM_PLANES];   /* distance (signed) */
+  float camera_no[3];
+  float z_range[2];
   unsigned int tot;
 
-  /* Ortho camera only. */
-  bool is_ortho;
-  float camera_no[3];
-  float dist_to_cam;
+  bool do_zrange;
 
   /* Not used by callbacks... */
   float camera_rotmat[3][3];
@@ -572,9 +581,10 @@ static void camera_to_frame_view_cb(const float co[3], void *user_data)
     CLAMP_MAX(data->dist_vals[i], nd);
   }
 
-  if (data->is_ortho) {
+  if (data->do_zrange) {
     const float d = dot_v3v3(data->camera_no, co);
-    CLAMP_MAX(data->dist_to_cam, d);
+    CLAMP_MAX(data->z_range[0], d);
+    CLAMP_MIN(data->z_range[1], d);
   }
 
   data->tot++;
@@ -582,6 +592,7 @@ static void camera_to_frame_view_cb(const float co[3], void *user_data)
 
 static void camera_frame_fit_data_init(const Scene *scene,
                                        const Object *ob,
+                                       const bool do_clip_dists,
                                        CameraParams *params,
                                        CameraViewFrameData *data)
 {
@@ -626,22 +637,27 @@ static void camera_frame_fit_data_init(const Scene *scene,
     mul_m4_v4(camera_rotmat_transposed_inversed, data->plane_tx[i]);
     /* Normalize. */
     data->plane_tx[i][3] /= normalize_v3(data->plane_tx[i]);
+
+    data->dist_vals[i] = FLT_MAX;
   }
 
-  copy_v4_fl(data->dist_vals, FLT_MAX);
   data->tot = 0;
-  data->is_ortho = params->is_ortho;
-  if (params->is_ortho) {
-    /* we want (0, 0, -1) transformed by camera_rotmat, this is a quicker shortcut. */
+  data->do_zrange = params->is_ortho || do_clip_dists;
+
+  if (data->do_zrange) {
+    /* We want (0, 0, -1) transformed by camera_rotmat, this is a quicker shortcut. */
     negate_v3_v3(data->camera_no, data->camera_rotmat[2]);
-    data->dist_to_cam = FLT_MAX;
+    data->z_range[0] = FLT_MAX;
+    data->z_range[1] = -FLT_MAX;
   }
 }
 
 static bool camera_frame_fit_calc_from_data(CameraParams *params,
                                             CameraViewFrameData *data,
                                             float r_co[3],
-                                            float *r_scale)
+                                            float *r_scale,
+                                            float *r_clip_start,
+                                            float *r_clip_end)
 {
   float plane_tx[CAMERA_VIEWFRAME_NUM_PLANES][4];
 
@@ -669,37 +685,38 @@ static bool camera_frame_fit_calc_from_data(CameraParams *params,
     zero_v3(r_co);
     madd_v3_v3fl(r_co, cam_axis_x, (dists[2] - dists[0]) * 0.5f + params->shiftx * scale_diff);
     madd_v3_v3fl(r_co, cam_axis_y, (dists[1] - dists[3]) * 0.5f + params->shifty * scale_diff);
-    madd_v3_v3fl(r_co, cam_axis_z, -(data->dist_to_cam - 1.0f - params->clip_start));
-
-    return true;
+    madd_v3_v3fl(r_co, cam_axis_z, -(data->z_range[0] - 1.0f - params->clip_start));
   }
+  else {
+    float plane_isect_1[3], plane_isect_1_no[3], plane_isect_1_other[3];
+    float plane_isect_2[3], plane_isect_2_no[3], plane_isect_2_other[3];
 
-  float plane_isect_1[3], plane_isect_1_no[3], plane_isect_1_other[3];
-  float plane_isect_2[3], plane_isect_2_no[3], plane_isect_2_other[3];
+    float plane_isect_pt_1[3], plane_isect_pt_2[3];
 
-  float plane_isect_pt_1[3], plane_isect_pt_2[3];
+    /* apply the dist-from-plane's to the transformed plane points */
+    for (int i = 0; i < CAMERA_VIEWFRAME_NUM_PLANES; i++) {
+      float co[3];
+      mul_v3_v3fl(co, data->plane_tx[i], data->dist_vals[i]);
+      plane_from_point_normal_v3(plane_tx[i], co, data->plane_tx[i]);
+    }
 
-  /* apply the dist-from-plane's to the transformed plane points */
-  for (int i = 0; i < CAMERA_VIEWFRAME_NUM_PLANES; i++) {
-    float co[3];
-    mul_v3_v3fl(co, data->plane_tx[i], data->dist_vals[i]);
-    plane_from_point_normal_v3(plane_tx[i], co, data->plane_tx[i]);
-  }
+    if ((!isect_plane_plane_v3(plane_tx[0], plane_tx[2], plane_isect_1, plane_isect_1_no)) ||
+        (!isect_plane_plane_v3(plane_tx[1], plane_tx[3], plane_isect_2, plane_isect_2_no))) {
+      return false;
+    }
 
-  if ((!isect_plane_plane_v3(plane_tx[0], plane_tx[2], plane_isect_1, plane_isect_1_no)) ||
-      (!isect_plane_plane_v3(plane_tx[1], plane_tx[3], plane_isect_2, plane_isect_2_no))) {
-    return false;
-  }
+    add_v3_v3v3(plane_isect_1_other, plane_isect_1, plane_isect_1_no);
+    add_v3_v3v3(plane_isect_2_other, plane_isect_2, plane_isect_2_no);
 
-  add_v3_v3v3(plane_isect_1_other, plane_isect_1, plane_isect_1_no);
-  add_v3_v3v3(plane_isect_2_other, plane_isect_2, plane_isect_2_no);
+    if (isect_line_line_v3(plane_isect_1,
+                           plane_isect_1_other,
+                           plane_isect_2,
+                           plane_isect_2_other,
+                           plane_isect_pt_1,
+                           plane_isect_pt_2) == 0) {
+      return false;
+    }
 
-  if (isect_line_line_v3(plane_isect_1,
-                         plane_isect_1_other,
-                         plane_isect_2,
-                         plane_isect_2_other,
-                         plane_isect_pt_1,
-                         plane_isect_pt_2) != 0) {
     float cam_plane_no[3];
     float plane_isect_delta[3];
     float plane_isect_delta_len;
@@ -728,15 +745,23 @@ static bool camera_frame_fit_calc_from_data(CameraParams *params,
       normalize_v3(plane_isect_2_no);
       madd_v3_v3fl(r_co, plane_isect_2_no, params->shiftx * plane_isect_delta_len * shift_fac);
     }
-
-    return true;
   }
 
-  return false;
+  if (r_clip_start && r_clip_end) {
+    const float z_offs = dot_v3v3(r_co, data->camera_no);
+    *r_clip_start = data->z_range[0] - z_offs;
+    *r_clip_end = data->z_range[1] - z_offs;
+  }
+  return true;
 }
 
-bool BKE_camera_view_frame_fit_to_scene(
-    Depsgraph *depsgraph, const Scene *scene, Object *camera_ob, float r_co[3], float *r_scale)
+bool BKE_camera_view_frame_fit_to_scene(Depsgraph *depsgraph,
+                                        const Scene *scene,
+                                        Object *camera_ob,
+                                        float r_co[3],
+                                        float *r_scale,
+                                        float *r_clip_start,
+                                        float *r_clip_end)
 {
   CameraParams params;
   CameraViewFrameData data_cb;
@@ -744,12 +769,13 @@ bool BKE_camera_view_frame_fit_to_scene(
   /* just in case */
   *r_scale = 1.0f;
 
-  camera_frame_fit_data_init(scene, camera_ob, &params, &data_cb);
+  camera_frame_fit_data_init(scene, camera_ob, r_clip_start && r_clip_end, &params, &data_cb);
 
   /* run callback on all visible points */
   BKE_scene_foreach_display_point(depsgraph, camera_to_frame_view_cb, &data_cb);
 
-  return camera_frame_fit_calc_from_data(&params, &data_cb, r_co, r_scale);
+  return camera_frame_fit_calc_from_data(
+      &params, &data_cb, r_co, r_scale, r_clip_start, r_clip_end);
 }
 
 bool BKE_camera_view_frame_fit_to_coords(const Depsgraph *depsgraph,
@@ -767,14 +793,14 @@ bool BKE_camera_view_frame_fit_to_coords(const Depsgraph *depsgraph,
   /* just in case */
   *r_scale = 1.0f;
 
-  camera_frame_fit_data_init(scene_eval, camera_ob_eval, &params, &data_cb);
+  camera_frame_fit_data_init(scene_eval, camera_ob_eval, false, &params, &data_cb);
 
   /* run callback on all given coordinates */
   while (num_cos--) {
     camera_to_frame_view_cb(cos[num_cos], &data_cb);
   }
 
-  return camera_frame_fit_calc_from_data(&params, &data_cb, r_co, r_scale);
+  return camera_frame_fit_calc_from_data(&params, &data_cb, r_co, r_scale, NULL, NULL);
 }
 
 /** \} */
@@ -1103,11 +1129,29 @@ CameraBGImage *BKE_camera_background_image_new(Camera *cam)
   bgpic->scale = 1.0f;
   bgpic->alpha = 0.5f;
   bgpic->iuser.flag |= IMA_ANIM_ALWAYS;
-  bgpic->flag |= CAM_BGIMG_FLAG_EXPANDED;
+  bgpic->flag |= CAM_BGIMG_FLAG_EXPANDED | CAM_BGIMG_FLAG_OVERRIDE_LIBRARY_LOCAL;
 
   BLI_addtail(&cam->bg_images, bgpic);
 
   return bgpic;
+}
+
+CameraBGImage *BKE_camera_background_image_copy(CameraBGImage *bgpic_src, const int flag)
+{
+  CameraBGImage *bgpic_dst = MEM_dupallocN(bgpic_src);
+
+  bgpic_dst->next = bgpic_dst->prev = NULL;
+
+  if ((flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0) {
+    id_us_plus((ID *)bgpic_dst->ima);
+    id_us_plus((ID *)bgpic_dst->clip);
+  }
+
+  if ((flag & LIB_ID_COPY_NO_LIB_OVERRIDE_LOCAL_DATA_FLAG) == 0) {
+    bgpic_dst->flag |= CAM_BGIMG_FLAG_OVERRIDE_LIBRARY_LOCAL;
+  }
+
+  return bgpic_dst;
 }
 
 void BKE_camera_background_image_remove(Camera *cam, CameraBGImage *bgpic)

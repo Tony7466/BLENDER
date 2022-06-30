@@ -90,10 +90,15 @@ NODE_DEFINE(Object)
 
   SOCKET_BOOLEAN(is_shadow_catcher, "Shadow Catcher", false);
 
+  SOCKET_BOOLEAN(is_caustics_caster, "Cast Shadow Caustics", false);
+  SOCKET_BOOLEAN(is_caustics_receiver, "Receive Shadow Caustics", false);
+
   SOCKET_NODE(particle_system, "Particle System", ParticleSystem::get_node_type());
   SOCKET_INT(particle_index, "Particle Index", 0);
 
   SOCKET_FLOAT(ao_distance, "AO Distance", 0.0f);
+
+  SOCKET_STRING(lightgroup, "Light Group", ustring());
 
   return type;
 }
@@ -215,7 +220,7 @@ void Object::tag_update(Scene *scene)
   }
 
   if (geometry) {
-    if (tfm_is_modified()) {
+    if (tfm_is_modified() || motion_is_modified()) {
       flag |= ObjectManager::TRANSFORM_MODIFIED;
     }
 
@@ -322,9 +327,11 @@ float Object::compute_volume_step_size() const
           /* Auto detect step size. */
           float3 size = one_float3();
 #ifdef WITH_NANOVDB
-          /* Dimensions were not applied to image transform with NanOVDB (see image_vdb.cpp) */
+          /* Dimensions were not applied to image transform with NanoVDB (see image_vdb.cpp) */
           if (metadata.type != IMAGE_DATA_TYPE_NANOVDB_FLOAT &&
-              metadata.type != IMAGE_DATA_TYPE_NANOVDB_FLOAT3)
+              metadata.type != IMAGE_DATA_TYPE_NANOVDB_FLOAT3 &&
+              metadata.type != IMAGE_DATA_TYPE_NANOVDB_FPN &&
+              metadata.type != IMAGE_DATA_TYPE_NANOVDB_FP16)
 #endif
             size /= make_float3(metadata.width, metadata.height, metadata.depth);
 
@@ -333,12 +340,12 @@ float Object::compute_volume_step_size() const
           if (metadata.use_transform_3d) {
             voxel_tfm = tfm * transform_inverse(metadata.transform_3d);
           }
-          voxel_step_size = min3(fabs(transform_direction(&voxel_tfm, size)));
+          voxel_step_size = reduce_min(fabs(transform_direction(&voxel_tfm, size)));
         }
         else if (volume->get_object_space()) {
           /* User specified step size in object space. */
           float3 size = make_float3(voxel_step_size, voxel_step_size, voxel_step_size);
-          voxel_step_size = min3(fabs(transform_direction(&tfm, size)));
+          voxel_step_size = reduce_min(fabs(transform_direction(&tfm, size)));
         }
 
         if (voxel_step_size > 0.0f) {
@@ -390,7 +397,8 @@ static float object_volume_density(const Transform &tfm, Geometry *geom)
 
 void ObjectManager::device_update_object_transform(UpdateObjectTransformState *state,
                                                    Object *ob,
-                                                   bool update_all)
+                                                   bool update_all,
+                                                   const Scene *scene)
 {
   KernelObject &kobject = state->objects[ob->index];
   Transform *object_motion_pass = state->object_motion_pass;
@@ -433,6 +441,14 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
       flag |= SD_OBJECT_HAS_VERTEX_MOTION;
     }
   }
+  else if (geom->is_volume()) {
+    Volume *volume = static_cast<Volume *>(geom);
+    if (volume->attributes.find(ATTR_STD_VOLUME_VELOCITY) &&
+        volume->get_velocity_scale() != 0.0f) {
+      flag |= SD_OBJECT_HAS_VOLUME_MOTION;
+      kobject.velocity_scale = volume->get_velocity_scale();
+    }
+  }
 
   if (state->need_motion == Scene::MOTION_PASS) {
     /* Clear motion array if there is no actual motion. */
@@ -466,7 +482,7 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
       kobject.motion_offset = state->motion_offset[ob->index];
 
       /* Decompose transforms for interpolation. */
-      if (ob->tfm_is_modified() || update_all) {
+      if (ob->tfm_is_modified() || ob->motion_is_modified() || update_all) {
         DecomposedTransform *decomp = state->object_motion + kobject.motion_offset;
         transform_motion_decompose(decomp, ob->motion.data(), ob->motion.size());
       }
@@ -510,6 +526,14 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
   kobject.visibility = ob->visibility_for_tracing();
   kobject.primitive_type = geom->primitive_type();
 
+  /* Object shadow caustics flag */
+  if (ob->is_caustics_caster) {
+    flag |= SD_OBJECT_CAUSTICS_CASTER;
+  }
+  if (ob->is_caustics_receiver) {
+    flag |= SD_OBJECT_CAUSTICS_RECEIVER;
+  }
+
   /* Object flag. */
   if (ob->use_holdout) {
     flag |= SD_OBJECT_HOLDOUT_MASK;
@@ -520,6 +544,15 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
   /* Have curves. */
   if (geom->geometry_type == Geometry::HAIR) {
     state->have_curves = true;
+  }
+
+  /* Light group. */
+  auto it = scene->lightgroups.find(ob->lightgroup);
+  if (it != scene->lightgroups.end()) {
+    kobject.lightgroup = it->second;
+  }
+  else {
+    kobject.lightgroup = LIGHTGROUP_NONE;
   }
 }
 
@@ -607,7 +640,7 @@ void ObjectManager::device_update_transforms(DeviceScene *dscene, Scene *scene, 
                [&](const blocked_range<size_t> &r) {
                  for (size_t i = r.begin(); i != r.end(); i++) {
                    Object *ob = state.scene->objects[i];
-                   device_update_object_transform(&state, ob, update_all);
+                   device_update_object_transform(&state, ob, update_all, scene);
                  }
                });
 
@@ -655,7 +688,7 @@ void ObjectManager::device_update(Device *device,
     dscene->objects.tag_modified();
   }
 
-  VLOG(1) << "Total " << scene->objects.size() << " objects.";
+  VLOG_INFO << "Total " << scene->objects.size() << " objects.";
 
   device_free(device, dscene, false);
 

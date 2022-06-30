@@ -1,7 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-# <pep8 compliant>
-
 import enchant
 import os
 import pickle
@@ -104,6 +102,7 @@ class SpellChecker:
         "builtin", "builtins",
         "bytecode",
         "chunksize",
+        "codebase",
         "customdata",
         "dataset", "datasets",
         "de",
@@ -123,6 +122,7 @@ class SpellChecker:
         "filepath", "filepaths",
         "forcefield", "forcefields",
         "framerange",
+        "frontmost",
         "fulldome", "fulldomes",
         "fullscreen",
         "gamepad",
@@ -134,6 +134,7 @@ class SpellChecker:
         "inscatter", "inscattering",
         "libdata",
         "lightcache",
+        "lightgroup", "lightgroups",
         "lightprobe", "lightprobes",
         "lightless",
         "lineset",
@@ -392,9 +393,11 @@ class SpellChecker:
         "bitangent",
         "boid", "boids",
         "ceil",
+        "centum",  # From 'centum weight'
         "compressibility",
         "coplanar",
         "curvilinear",
+        "dekameter", "dekameters",
         "equiangular",
         "equisolid",
         "euler", "eulers",
@@ -412,8 +415,11 @@ class SpellChecker:
         "lambertian",
         "laplacian",
         "metadata",
+        "microwatt", "microwatts",
+        "milliwatt", "milliwatts",
         "msgfmt",
         "nand", "xnor",
+        "nanowatt", "nanowatts",
         "normals",
         "numpad",
         "octahedral",
@@ -660,6 +666,7 @@ class SpellChecker:
 
         # Acronyms
         "aa", "msaa",
+        "acescg",  # ACEScg color space.
         "ao",
         "aov", "aovs",
         "api",

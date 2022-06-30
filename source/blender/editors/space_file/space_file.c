@@ -695,6 +695,7 @@ static void file_operatortypes(void)
   WM_operatortype_append(FILE_OT_smoothscroll);
   WM_operatortype_append(FILE_OT_filepath_drop);
   WM_operatortype_append(FILE_OT_start_filter);
+  WM_operatortype_append(FILE_OT_edit_directory_path);
   WM_operatortype_append(FILE_OT_view_selected);
 }
 
@@ -844,7 +845,7 @@ static bool filepath_drop_poll(bContext *C, wmDrag *drag, const wmEvent *UNUSED(
   return false;
 }
 
-static void filepath_drop_copy(wmDrag *drag, wmDropBox *drop)
+static void filepath_drop_copy(bContext *UNUSED(C), wmDrag *drag, wmDropBox *drop)
 {
   RNA_string_set(drop->ptr, "filepath", drag->path);
 }

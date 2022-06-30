@@ -23,6 +23,7 @@
 #include "intern/builder/deg_builder.h"
 #include "intern/builder/deg_builder_map.h"
 #include "intern/builder/deg_builder_rna.h"
+#include "intern/builder/deg_builder_stack.h"
 #include "intern/depsgraph.h"
 #include "intern/node/deg_node.h"
 #include "intern/node/deg_node_component.h"
@@ -200,7 +201,8 @@ class DepsgraphRelationBuilder : public DepsgraphBuilder {
                                 Object *object,
                                 Collection *collection);
   virtual void build_object(Object *object);
-  virtual void build_object_from_layer_relations(Object *object);
+  virtual void build_object_from_view_layer_base(Object *object);
+  virtual void build_object_layer_component_relations(Object *object);
   virtual void build_object_data(Object *object);
   virtual void build_object_data_camera(Object *object);
   virtual void build_object_data_geometry(Object *object);
@@ -362,6 +364,7 @@ class DepsgraphRelationBuilder : public DepsgraphBuilder {
 
   BuilderMap built_map_;
   RNANodeQuery rna_node_query_;
+  BuilderStack stack_;
 };
 
 struct DepsNodeHandle {

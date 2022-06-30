@@ -27,6 +27,9 @@
 #include "UI_view2d.h"
 
 #include "outliner_intern.hh"
+#include "tree/tree_iterator.hh"
+
+using namespace blender::ed::outliner;
 
 /* -------------------------------------------------------------------- */
 /** \name Tree View Context
@@ -324,7 +327,14 @@ float outliner_right_columns_width(const SpaceOutliner *space_outliner)
     case SO_LIBRARIES:
       return 0.0f;
     case SO_OVERRIDES_LIBRARY:
-      num_columns = OL_RNA_COL_SIZEX / UI_UNIT_X;
+      switch ((eSpaceOutliner_LibOverrideViewMode)space_outliner->lib_override_view_mode) {
+        case SO_LIB_OVERRIDE_VIEW_PROPERTIES:
+          num_columns = OL_RNA_COL_SIZEX / UI_UNIT_X;
+          break;
+        case SO_LIB_OVERRIDE_VIEW_HIERARCHIES:
+          num_columns = 1;
+          break;
+      }
       break;
     case SO_ID_ORPHANS:
       num_columns = 3;

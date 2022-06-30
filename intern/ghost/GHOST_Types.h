@@ -42,6 +42,18 @@ GHOST_DECLARE_HANDLE(GHOST_EventConsumerHandle);
 GHOST_DECLARE_HANDLE(GHOST_ContextHandle);
 GHOST_DECLARE_HANDLE(GHOST_XrContextHandle);
 
+typedef void (*GHOST_TBacktraceFn)(void *file_handle);
+
+/**
+ * A reference to cursor bitmap data.
+ */
+typedef struct {
+  /** `RGBA` bytes. */
+  const uint8_t *data;
+  int data_size[2];
+  int hot_spot[2];
+} GHOST_CursorBitmapRef;
+
 typedef struct {
   int flags;
 } GHOST_GLSettings;
@@ -111,8 +123,8 @@ typedef enum {
   GHOST_kModifierKeyLeftControl,
   GHOST_kModifierKeyRightControl,
   GHOST_kModifierKeyOS,
-  GHOST_kModifierKeyNumMasks
-} GHOST_TModifierKeyMask;
+  GHOST_kModifierKeyNum
+} GHOST_TModifierKey;
 
 typedef enum {
   GHOST_kWindowStateNormal = 0,
@@ -151,8 +163,8 @@ typedef enum {
   /* Trackballs and programmable buttons. */
   GHOST_kButtonMaskButton6,
   GHOST_kButtonMaskButton7,
-  GHOST_kButtonNumMasks
-} GHOST_TButtonMask;
+  GHOST_kButtonNum
+} GHOST_TButton;
 
 typedef enum {
   GHOST_kEventUnknown = 0,
@@ -403,11 +415,13 @@ typedef enum {
   GHOST_kGrabHide,
 } GHOST_TGrabCursorMode;
 
+#define GHOST_GRAB_NEEDS_SOFTWARE_CURSOR_FOR_WARP(grab) ((grab) == GHOST_kGrabWrap)
+
 typedef enum {
   /** Axis that cursor grab will wrap. */
-  GHOST_kGrabAxisNone = 0,
+  GHOST_kAxisNone = 0,
   GHOST_kAxisX = (1 << 0),
-  GHOST_kGrabAxisY = (1 << 1),
+  GHOST_kAxisY = (1 << 1),
 } GHOST_TAxisFlag;
 
 typedef void *GHOST_TEventDataPtr;
@@ -423,7 +437,7 @@ typedef struct {
 
 typedef struct {
   /** The mask of the mouse button. */
-  GHOST_TButtonMask button;
+  GHOST_TButton button;
   /** Associated tablet data. */
   GHOST_TabletData tablet;
 } GHOST_TEventButtonData;
@@ -521,7 +535,7 @@ typedef struct {
 } GHOST_TEventNDOFMotionData;
 
 typedef enum { GHOST_kPress, GHOST_kRelease } GHOST_TButtonAction;
-/* Good for mouse or other buttons too, hmmm? */
+/* Good for mouse or other buttons too? */
 
 typedef struct {
   GHOST_TButtonAction action;
@@ -573,6 +587,16 @@ typedef struct {
   uint32_t frequency;
 } GHOST_DisplaySetting;
 
+typedef enum {
+  /** Axis that cursor grab will wrap. */
+  GHOST_kDebugDefault = (1 << 1),
+  GHOST_kDebugWintab = (1 << 2),
+} GHOST_TDebugFlags;
+
+typedef struct {
+  int flags;
+} GHOST_Debug;
+
 #ifdef _WIN32
 typedef void *GHOST_TEmbedderWindowID;
 #endif  // _WIN32
@@ -586,7 +610,7 @@ typedef int GHOST_TEmbedderWindowID;
 /**
  * A timer task callback routine.
  * \param task: The timer task object.
- * \param time: The current time.
+ * \param time: Time since this timer started (in milliseconds).
  */
 #ifdef __cplusplus
 class GHOST_ITimerTask;

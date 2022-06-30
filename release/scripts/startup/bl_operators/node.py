@@ -1,6 +1,4 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-
-# <pep8-80 compliant>
 from __future__ import annotations
 
 import bpy
@@ -73,7 +71,11 @@ class NodeAddOperator:
         for n in tree.nodes:
             n.select = False
 
-        node = tree.nodes.new(type=node_type)
+        try:
+            node = tree.nodes.new(type=node_type)
+        except RuntimeError as e:
+            self.report({'ERROR'}, str(e))
+            return None
 
         for setting in self.settings:
             # XXX catch exceptions here?
@@ -126,6 +128,15 @@ class NodeAddOperator:
             bpy.ops.node.translate_attach_remove_on_cancel('INVOKE_DEFAULT')
 
         return result
+
+    @classmethod
+    def description(cls, _context, properties):
+        nodetype = properties["type"]
+        bl_rna = bpy.types.Node.bl_rna_get_subclass(nodetype)
+        if bl_rna is not None:
+            return bl_rna.description
+        else:
+            return ""
 
 
 # Simple basic operator for adding a node

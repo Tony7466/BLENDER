@@ -57,8 +57,6 @@
 #include "BKE_tracking.h"
 #include "BKE_workspace.h"
 
-#include "DEG_depsgraph.h"
-
 #include "WM_api.h"
 #include "WM_toolsystem.h"
 #include "WM_types.h"
@@ -126,6 +124,7 @@ void ED_view3d_viewcontext_init(bContext *C, ViewContext *vc, Depsgraph *depsgra
 void ED_view3d_viewcontext_init_object(ViewContext *vc, Object *obact)
 {
   vc->obact = obact;
+  /* See public doc-string for rationale on checking the existing values first. */
   if (vc->obedit) {
     BLI_assert(BKE_object_is_in_editmode(obact));
     vc->obedit = obact;
@@ -1646,9 +1645,7 @@ static int bone_select_menu_exec(bContext *C, wmOperator *op)
   const int name_index = RNA_enum_get(op->ptr, "name");
 
   const struct SelectPick_Params params = {
-      .sel_op = ED_select_op_from_booleans(RNA_boolean_get(op->ptr, "extend"),
-                                           RNA_boolean_get(op->ptr, "deselect"),
-                                           RNA_boolean_get(op->ptr, "toggle")),
+      .sel_op = ED_select_op_from_operator(op->ptr),
   };
 
   View3D *v3d = CTX_wm_view3d(C);
@@ -2125,49 +2122,6 @@ static Base *mouse_select_eval_buffer(ViewContext *vc,
         if (min > buffer[a].depth) {
           min = buffer[a].depth;
           hit_index = a;
-        }
-      }
-
-      /* Find the best active & non-active hits.
-       * NOTE(@campbellbarton): Checking if `hits > 1` isn't a reliable way to know
-       * if there are multiple objects selected since it's possible the same object
-       * generates multiple hits, either from:
-       * - Multiple sub-components (bones & camera tracks).
-       * - Multiple selectable elements such as the object center and the geometry.
-       *
-       * For this reason, keep track of the best hit as well as the best hit that
-       * excludes the selected & active object, using this value when it's valid. */
-      if ((hit_index != -1) &&
-          /* Special case, cycling away from the active object should only be done when it
-           * doesn't have a bone selection, otherwise selecting sub-elements is difficult. */
-          ((buffer[hit_index].id & 0xFFFF0000) == 0) &&
-          /* Only exclude active object when it is selected. */
-          (BASACT(view_layer) && (BASACT(view_layer)->flag & BASE_SELECTED)) &&
-          /* Allow disabling this behavior entirely. */
-          (U.experimental.use_select_nearest_on_first_click == false)) {
-
-        const int select_id_active = BASACT(view_layer)->object->runtime.select_id;
-
-        /* Check if `hit_index` is the current active object. */
-        if ((buffer[hit_index].id & 0xFFFF) == select_id_active) {
-          uint min_not_active = 0xFFFFFFFF;
-          int hit_index_not_active = -1;
-          for (a = 0; a < hits; a++) {
-            /* Any object other than the active-selected. */
-            if (select_id_active == (buffer[a].id & 0xFFFF)) {
-              continue;
-            }
-            if (min_not_active > buffer[a].depth) {
-              min_not_active = buffer[a].depth;
-              hit_index_not_active = a;
-            }
-          }
-
-          /* When the active was selected, first try to use the index
-           * for the best non-active hit that was found. */
-          if (hit_index_not_active != -1) {
-            hit_index = hit_index_not_active;
-          }
         }
       }
     }
@@ -2747,11 +2701,6 @@ static bool ed_object_select_pick(bContext *C,
     if (params->sel_op == SEL_OP_SET) {
       if ((found && params->select_passthrough) && (basact->flag & BASE_SELECTED)) {
         found = false;
-        /* NOTE(@campbellbarton): Experimental behavior to set active even keeping the selection
-         * without this it's inconvenient to set the active object. */
-        if (basact != oldbasact) {
-          use_activate_selected_base = true;
-        }
       }
       else if (found || params->deselect_all) {
         /* Deselect everything. */
@@ -2923,14 +2872,11 @@ static int view3d_select_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   Object *obedit = CTX_data_edit_object(C);
   Object *obact = CTX_data_active_object(C);
-  const struct SelectPick_Params params = {
-      .sel_op = ED_select_op_from_booleans(RNA_boolean_get(op->ptr, "extend"),
-                                           RNA_boolean_get(op->ptr, "deselect"),
-                                           RNA_boolean_get(op->ptr, "toggle")),
-      .deselect_all = RNA_boolean_get(op->ptr, "deselect_all"),
-      .select_passthrough = RNA_boolean_get(op->ptr, "select_passthrough"),
 
-  };
+  struct SelectPick_Params params = {0};
+  ED_select_pick_params_from_operator(op->ptr, &params);
+
+  const bool vert_without_handles = RNA_boolean_get(op->ptr, "vert_without_handles");
   bool center = RNA_boolean_get(op->ptr, "center");
   bool enumerate = RNA_boolean_get(op->ptr, "enumerate");
   /* Only force object select for edit-mode to support vertex parenting,
@@ -2985,7 +2931,8 @@ static int view3d_select_exec(bContext *C, wmOperator *op)
       changed = ED_lattice_select_pick(C, mval, &params);
     }
     else if (ELEM(obedit->type, OB_CURVES_LEGACY, OB_SURF)) {
-      changed = ED_curve_editnurb_select_pick(C, mval, &params);
+      changed = ED_curve_editnurb_select_pick(
+          C, mval, ED_view3d_select_dist_px(), vert_without_handles, &params);
     }
     else if (obedit->type == OB_MBALL) {
       changed = ED_mball_select_pick(C, mval, &params);
@@ -3041,6 +2988,7 @@ void VIEW3D_OT_select(wmOperatorType *ot)
   ot->invoke = view3d_select_invoke;
   ot->exec = view3d_select_exec;
   ot->poll = ED_operator_view3d_active;
+  ot->get_name = ED_select_pick_get_name;
 
   /* flags */
   ot->flag = OPTYPE_UNDO;
@@ -3059,6 +3007,15 @@ void VIEW3D_OT_select(wmOperatorType *ot)
       ot->srna, "enumerate", 0, "Enumerate", "List objects under the mouse (object mode only)");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   prop = RNA_def_boolean(ot->srna, "object", 0, "Object", "Use object selection (edit mode only)");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
+  /* Needed for select-through to usefully drag handles, see: T98254.
+   * NOTE: this option may be removed and become default behavior, see design task: T98552. */
+  prop = RNA_def_boolean(ot->srna,
+                         "vert_without_handles",
+                         0,
+                         "Control Point Without Handles",
+                         "Only select the curve control point, not it's handles");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
   prop = RNA_def_int_vector(ot->srna,
@@ -4656,6 +4613,48 @@ static bool object_circle_select(ViewContext *vc,
 }
 
 /* not a real operator, only for circle test */
+static void view3d_circle_select_recalc(void *user_data)
+{
+  bContext *C = user_data;
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+  ViewContext vc;
+  ED_view3d_viewcontext_init(C, &vc, depsgraph);
+  em_setup_viewcontext(C, &vc);
+
+  if (vc.obedit) {
+    switch (vc.obedit->type) {
+      case OB_MESH: {
+        FOREACH_OBJECT_IN_MODE_BEGIN (
+            vc.view_layer, vc.v3d, vc.obact->type, vc.obact->mode, ob_iter) {
+          ED_view3d_viewcontext_init_object(&vc, ob_iter);
+          BM_mesh_select_mode_flush_ex(
+              vc.em->bm, vc.em->selectmode, BM_SELECT_LEN_FLUSH_RECALC_ALL);
+        }
+        FOREACH_OBJECT_IN_MODE_END;
+        break;
+      }
+
+      default:
+        break;
+    }
+  }
+}
+
+static int view3d_circle_select_modal(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  int result = WM_gesture_circle_modal(C, op, event);
+  if (result & OPERATOR_FINISHED) {
+    view3d_circle_select_recalc(C);
+  }
+  return result;
+}
+
+static void view3d_circle_select_cancel(bContext *C, wmOperator *op)
+{
+  WM_gesture_circle_cancel(C, op);
+  view3d_circle_select_recalc(C);
+}
+
 static int view3d_circle_select_exec(bContext *C, wmOperator *op)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
@@ -4747,10 +4746,11 @@ void VIEW3D_OT_select_circle(wmOperatorType *ot)
   ot->idname = "VIEW3D_OT_select_circle";
 
   ot->invoke = WM_gesture_circle_invoke;
-  ot->modal = WM_gesture_circle_modal;
+  ot->modal = view3d_circle_select_modal;
   ot->exec = view3d_circle_select_exec;
   ot->poll = view3d_selectable_data;
-  ot->cancel = WM_gesture_circle_cancel;
+  ot->cancel = view3d_circle_select_cancel;
+  ot->get_name = ED_select_circle_get_name;
 
   /* flags */
   ot->flag = OPTYPE_UNDO;

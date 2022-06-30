@@ -15,6 +15,7 @@
 #include "BKE_object.h"
 #include "BKE_paint.h"
 #include "BKE_pbvh.h"
+#include "BKE_volume.h"
 
 #include "DNA_curve_types.h"
 #include "DNA_mesh_types.h"
@@ -485,10 +486,9 @@ void DRW_shgroup_uniform_vec4_copy(DRWShadingGroup *shgroup, const char *name, c
   drw_shgroup_uniform(shgroup, name, DRW_UNIFORM_FLOAT_COPY, value, 4, 1);
 }
 
-void DRW_shgroup_uniform_vec4_array_copy(DRWShadingGroup *shgroup,
-                                         const char *name,
-                                         const float (*value)[4],
-                                         int arraysize)
+void DRW_shgroup_uniform_mat4_copy(DRWShadingGroup *shgroup,
+                                   const char *name,
+                                   const float (*value)[4])
 {
   int location = GPU_shader_get_uniform(shgroup->shader, name);
 
@@ -498,9 +498,12 @@ void DRW_shgroup_uniform_vec4_array_copy(DRWShadingGroup *shgroup,
     return;
   }
 
-  for (int i = 0; i < arraysize; i++) {
-    drw_shgroup_uniform_create_ex(
-        shgroup, location + i, DRW_UNIFORM_FLOAT_COPY, &value[i], 0, 4, 1);
+  /* Each array element stored as an individual entry in the uniform list.
+   * All entries from the same array share the same base location,
+   * and array-size used to determine the number of elements
+   * copied in draw_update_uniforms. */
+  for (int i = 0; i < 4; i++) {
+    drw_shgroup_uniform_create_ex(shgroup, location, DRW_UNIFORM_FLOAT_COPY, &value[i], 0, 4, 4);
   }
 }
 
@@ -544,6 +547,29 @@ void DRW_shgroup_vertex_buffer_ref_ex(DRWShadingGroup *shgroup,
       shgroup, location, DRW_UNIFORM_VERTEX_BUFFER_AS_STORAGE_REF, vertex_buffer, 0, 0, 1);
 }
 
+void DRW_shgroup_buffer_texture(DRWShadingGroup *shgroup,
+                                const char *name,
+                                GPUVertBuf *vertex_buffer)
+{
+  int location = GPU_shader_get_ssbo(shgroup->shader, name);
+  if (location == -1) {
+    return;
+  }
+  drw_shgroup_uniform_create_ex(
+      shgroup, location, DRW_UNIFORM_VERTEX_BUFFER_AS_TEXTURE, vertex_buffer, 0, 0, 1);
+}
+
+void DRW_shgroup_buffer_texture_ref(DRWShadingGroup *shgroup,
+                                    const char *name,
+                                    GPUVertBuf **vertex_buffer)
+{
+  int location = GPU_shader_get_ssbo(shgroup->shader, name);
+  if (location == -1) {
+    return;
+  }
+  drw_shgroup_uniform_create_ex(
+      shgroup, location, DRW_UNIFORM_VERTEX_BUFFER_AS_TEXTURE_REF, vertex_buffer, 0, 0, 1);
+}
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -553,10 +579,19 @@ void DRW_shgroup_vertex_buffer_ref_ex(DRWShadingGroup *shgroup,
 static void drw_call_calc_orco(Object *ob, float (*r_orcofacs)[4])
 {
   ID *ob_data = (ob) ? ob->data : NULL;
+  float loc[3], size[3];
   float *texcoloc = NULL;
   float *texcosize = NULL;
   if (ob_data != NULL) {
     switch (GS(ob_data->name)) {
+      case ID_VO: {
+        BoundBox *bbox = BKE_volume_boundbox_get(ob);
+        mid_v3_v3v3(loc, bbox->vec[0], bbox->vec[6]);
+        sub_v3_v3v3(size, bbox->vec[0], bbox->vec[6]);
+        texcoloc = loc;
+        texcosize = size;
+        break;
+      }
       case ID_ME:
         BKE_mesh_texspace_get_reference((Mesh *)ob_data, NULL, &texcoloc, &texcosize);
         break;
@@ -636,7 +671,7 @@ static void drw_call_obinfos_init(DRWObjectInfos *ob_infos, Object *ob)
 
 static void drw_call_culling_init(DRWCullingState *cull, Object *ob)
 {
-  BoundBox *bbox;
+  const BoundBox *bbox;
   if (ob != NULL && (bbox = BKE_object_boundbox_get(ob))) {
     float corner[3];
     /* Get BoundSphere center and radius from the BoundBox. */
@@ -925,25 +960,25 @@ void DRW_shgroup_call_ex(DRWShadingGroup *shgroup,
 }
 
 void DRW_shgroup_call_range(
-    DRWShadingGroup *shgroup, struct Object *ob, GPUBatch *geom, uint v_sta, uint v_ct)
+    DRWShadingGroup *shgroup, struct Object *ob, GPUBatch *geom, uint v_sta, uint v_num)
 {
   BLI_assert(geom != NULL);
   if (G.f & G_FLAG_PICKSEL) {
     drw_command_set_select_id(shgroup, NULL, DST.select_id);
   }
   DRWResourceHandle handle = drw_resource_handle(shgroup, ob ? ob->obmat : NULL, ob);
-  drw_command_draw_range(shgroup, geom, handle, v_sta, v_ct);
+  drw_command_draw_range(shgroup, geom, handle, v_sta, v_num);
 }
 
 void DRW_shgroup_call_instance_range(
-    DRWShadingGroup *shgroup, Object *ob, struct GPUBatch *geom, uint i_sta, uint i_ct)
+    DRWShadingGroup *shgroup, Object *ob, struct GPUBatch *geom, uint i_sta, uint i_num)
 {
   BLI_assert(geom != NULL);
   if (G.f & G_FLAG_PICKSEL) {
     drw_command_set_select_id(shgroup, NULL, DST.select_id);
   }
   DRWResourceHandle handle = drw_resource_handle(shgroup, ob ? ob->obmat : NULL, ob);
-  drw_command_draw_intance_range(shgroup, geom, handle, i_sta, i_ct);
+  drw_command_draw_intance_range(shgroup, geom, handle, i_sta, i_num);
 }
 
 void DRW_shgroup_call_compute(DRWShadingGroup *shgroup,
@@ -1203,7 +1238,8 @@ static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd)
                    &update_frustum,
                    &draw_frustum,
                    (void (*)(void *, GPU_PBVH_Buffers *))sculpt_draw_cb,
-                   scd);
+                   scd,
+                   scd->use_mats);
 
   if (SCULPT_DEBUG_BUFFERS) {
     int debug_node_nr = 0;
@@ -1893,8 +1929,8 @@ DRWView *DRW_view_create(const float viewmat[4][4],
 {
   DRWView *view = BLI_memblock_alloc(DST.vmempool->views);
 
-  if (DST.primary_view_ct < MAX_CULLED_VIEWS) {
-    view->culling_mask = 1u << DST.primary_view_ct++;
+  if (DST.primary_view_num < MAX_CULLED_VIEWS) {
+    view->culling_mask = 1u << DST.primary_view_num++;
   }
   else {
     BLI_assert(0);
@@ -2044,6 +2080,11 @@ void DRW_view_clip_planes_set(DRWView *view, float (*planes)[4], int plane_len)
 void DRW_view_camtexco_set(DRWView *view, float texco[4])
 {
   copy_v4_v4(view->storage.viewcamtexcofac, texco);
+}
+
+void DRW_view_camtexco_get(const DRWView *view, float r_texco[4])
+{
+  copy_v4_v4(r_texco, view->storage.viewcamtexcofac);
 }
 
 void DRW_view_frustum_corners_get(const DRWView *view, BoundBox *corners)

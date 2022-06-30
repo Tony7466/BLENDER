@@ -31,6 +31,7 @@ struct Curve;
 struct FluidsimSettings;
 struct GeometrySet;
 struct Ipo;
+struct LightgroupMembership;
 struct Material;
 struct Mesh;
 struct Object;
@@ -93,7 +94,7 @@ typedef struct BoundBox {
 
 /** #BoundBox.flag */
 enum {
-  BOUNDBOX_DISABLED = (1 << 0),
+  /* BOUNDBOX_DISABLED = (1 << 0), */ /* UNUSED */
   BOUNDBOX_DIRTY = (1 << 1),
 };
 
@@ -203,7 +204,7 @@ typedef struct Object_Runtime {
 
   float (*crazyspace_deform_imats)[3][3];
   float (*crazyspace_deform_cos)[3];
-  int crazyspace_num_verts;
+  int crazyspace_verts_num;
 
   int _pad3[3];
 } Object_Runtime;
@@ -214,6 +215,10 @@ typedef struct ObjectLineArt {
 
   /** if OBJECT_LRT_OWN_CREASE is set */
   float crease_threshold;
+
+  unsigned char intersection_priority;
+
+  char _pad[7];
 } ObjectLineArt;
 
 /**
@@ -230,9 +235,12 @@ enum eObjectLineArt_Usage {
 
 enum eObjectLineArt_Flags {
   OBJECT_LRT_OWN_CREASE = (1 << 0),
+  OBJECT_LRT_OWN_INTERSECTION_PRIORITY = (1 << 1),
 };
 
 typedef struct Object {
+  DNA_DEFINE_CXX_METHODS(Object)
+
   ID id;
   /** Animation data (must be immediately after id for utilities to use it). */
   struct AnimData *adt;
@@ -371,7 +379,7 @@ typedef struct Object {
   /** Dupliface scale. */
   float instance_faces_scale;
 
-  /** Custom index, for renderpasses. */
+  /** Custom index, for render-passes. */
   short index;
   /** Current deformation group, NOTE: index starts at 1. */
   unsigned short actdef DNA_DEPRECATED;
@@ -432,8 +440,10 @@ typedef struct Object {
 
   ObjectLineArt lineart;
 
+  /** Lightgroup membership information. */
+  struct LightgroupMembership *lightgroup;
+
   /** Runtime evaluation data (keep last). */
-  void *_pad9;
   Object_Runtime runtime;
 } Object;
 
@@ -529,7 +539,9 @@ enum {
   (ELEM(_type, OB_MESH, OB_SURF, OB_CURVES_LEGACY, OB_LATTICE))
 
 /** Matches #OB_TYPE_SUPPORT_EDITMODE. */
-#define OB_DATA_SUPPORT_EDITMODE(_type) (ELEM(_type, ID_ME, ID_CU_LEGACY, ID_MB, ID_LT, ID_AR))
+#define OB_DATA_SUPPORT_EDITMODE(_type) \
+  (ELEM(_type, ID_ME, ID_CU_LEGACY, ID_MB, ID_LT, ID_AR) || \
+   (U.experimental.use_new_curves_tools && (_type) == ID_CV))
 
 /* is this ID type used as object data */
 #define OB_DATA_SUPPORT_ID(_id_type) \

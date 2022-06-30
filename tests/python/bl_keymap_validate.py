@@ -1,7 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-# <pep8 compliant>
-
 # ./blender.bin --background -noaudio --factory-startup --python tests/python/bl_keymap_validate.py
 #
 
@@ -71,6 +69,7 @@ ALLOW_DUPLICATES = {
 
 # -----------------------------------------------------------------------------
 # Generic Utilities
+
 
 @contextlib.contextmanager
 def temp_fn_argument_extractor(
@@ -200,7 +199,7 @@ def keyconfig_config_as_filename_component(values: Sequence[Tuple[str, Any]]) ->
     return "(" + quote(
         ".".join([
             "-".join((str(key), str(val)))
-                for key, val in values
+            for key, val in values
         ]),
         # Needed so forward slashes aren't included in the resulting name.
         safe="",

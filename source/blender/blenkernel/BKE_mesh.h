@@ -52,6 +52,18 @@ extern "C" {
 #  define BKE_MESH_OMP_LIMIT 10000
 #endif
 
+/*  mesh_runtime.cc  */
+
+/**
+ * Call after changing vertex positions to tag lazily calculated caches for recomputation.
+ */
+void BKE_mesh_tag_coords_changed(struct Mesh *mesh);
+
+/**
+ * Call after moving every mesh vertex by the same translation.
+ */
+void BKE_mesh_tag_coords_changed_uniformly(struct Mesh *mesh);
+
 /* *** mesh.c *** */
 
 struct BMesh *BKE_mesh_to_bmesh_ex(const struct Mesh *me,
@@ -204,6 +216,7 @@ bool BKE_mesh_material_index_used(struct Mesh *me, short index);
 void BKE_mesh_material_index_clear(struct Mesh *me);
 void BKE_mesh_material_remap(struct Mesh *me, const unsigned int *remap, unsigned int remap_len);
 void BKE_mesh_smooth_flag_set(struct Mesh *me, bool use_smooth);
+void BKE_mesh_auto_smooth_flag_set(struct Mesh *me, bool use_auto_smooth, float auto_smooth_angle);
 
 /**
  * Needed after converting a mesh with subsurf optimal display to mesh.
@@ -318,28 +331,15 @@ void BKE_mesh_vert_coords_apply_with_mat4(struct Mesh *mesh,
                                           const float mat[4][4]);
 void BKE_mesh_vert_coords_apply(struct Mesh *mesh, const float (*vert_coords)[3]);
 
-void BKE_mesh_anonymous_attributes_remove(struct Mesh *mesh);
-
 /* *** mesh_tessellate.c *** */
 
 /**
  * Recreate #MFace Tessellation.
  *
- * \param do_face_nor_copy: Controls whether the normals from the poly
- * are copied to the tessellated faces.
- *
- * \return number of tessellation faces.
- *
  * \note This doesn't use multi-threading like #BKE_mesh_recalc_looptri since
  * it's not used in many places and #MFace should be phased out.
  */
-int BKE_mesh_tessface_calc_ex(struct CustomData *fdata,
-                              struct CustomData *ldata,
-                              struct CustomData *pdata,
-                              struct MVert *mvert,
-                              int totface,
-                              int totloop,
-                              int totpoly);
+
 void BKE_mesh_tessface_calc(struct Mesh *mesh);
 
 /**
@@ -571,7 +571,7 @@ typedef struct MLoopNorSpaceArray {
   struct LinkNode
       *loops_pool; /* Allocated once, avoids to call BLI_linklist_prepend_arena() for each loop! */
   char data_type;  /* Whether we store loop indices, or pointers to BMLoop. */
-  int num_spaces;  /* Number of clnors spaces defined in this array. */
+  int spaces_num;  /* Number of clnors spaces defined in this array. */
   struct MemArena *mem;
 } MLoopNorSpaceArray;
 /**
@@ -886,14 +886,19 @@ enum {
  * Actually this later behavior could apply to the Mirror Modifier as well,
  * but the additional checks are costly and not necessary in the case of mirror,
  * because each vertex is only merged to its own mirror.
- *
- * \note #BKE_mesh_tessface_calc_ex has to run on the returned DM
- * if you want to access tess-faces.
  */
 struct Mesh *BKE_mesh_merge_verts(struct Mesh *mesh,
                                   const int *vtargetmap,
                                   int tot_vtargetmap,
                                   int merge_mode);
+
+/**
+ * Account for custom-data such as UV's becoming detached because of of imprecision
+ * in custom-data interpolation.
+ * Without running this operation subdivision surface can cause UV's to be disconnected,
+ * see: T81065.
+ */
+void BKE_mesh_merge_customdata_for_apply_modifier(struct Mesh *me);
 
 /* Flush flags. */
 
@@ -925,13 +930,6 @@ void BKE_mesh_flush_select_from_polys_ex(struct MVert *mvert,
                                          const struct MPoly *mpoly,
                                          int totpoly);
 void BKE_mesh_flush_select_from_polys(struct Mesh *me);
-void BKE_mesh_flush_select_from_verts_ex(const struct MVert *mvert,
-                                         int totvert,
-                                         const struct MLoop *mloop,
-                                         struct MEdge *medge,
-                                         int totedge,
-                                         struct MPoly *mpoly,
-                                         int totpoly);
 void BKE_mesh_flush_select_from_verts(struct Mesh *me);
 
 /* spatial evaluation */
@@ -1067,6 +1065,7 @@ extern void (*BKE_mesh_batch_cache_dirty_tag_cb)(struct Mesh *me, eMeshBatchDirt
 extern void (*BKE_mesh_batch_cache_free_cb)(struct Mesh *me);
 
 /* mesh_debug.c */
+
 #ifndef NDEBUG
 char *BKE_mesh_debug_info(const struct Mesh *me)
     ATTR_NONNULL(1) ATTR_MALLOC ATTR_WARN_UNUSED_RESULT;

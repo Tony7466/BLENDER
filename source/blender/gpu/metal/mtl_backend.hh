@@ -11,8 +11,7 @@
 #include "gpu_backend.hh"
 #include "mtl_capabilities.hh"
 
-namespace blender {
-namespace gpu {
+namespace blender::gpu {
 
 class Batch;
 class DrawList;
@@ -20,7 +19,6 @@ class FrameBuffer;
 class IndexBuf;
 class QueryPool;
 class Shader;
-class Texture;
 class UniformBuf;
 class VertBuf;
 class MTLContext;
@@ -32,19 +30,29 @@ class MTLBackend : public GPUBackend {
   /* Capabilities. */
   static MTLCapabilities capabilities;
 
-  inline ~MTLBackend()
+  static MTLCapabilities &get_capabilities()
+  {
+    return MTLBackend::capabilities;
+  }
+
+  ~MTLBackend()
   {
     MTLBackend::platform_exit();
   }
 
   static bool metal_is_supported();
-  inline static MTLBackend *get()
+  static MTLBackend *get()
   {
     return static_cast<MTLBackend *>(GPUBackend::get());
   }
 
   void samplers_update() override;
-  inline void compute_dispatch(int groups_x_len, int groups_y_len, int groups_z_len) override
+  void compute_dispatch(int groups_x_len, int groups_y_len, int groups_z_len) override
+  {
+    /* Placeholder */
+  }
+
+  void compute_dispatch_indirect(StorageBuf *indirect_buf) override
   {
     /* Placeholder */
   }
@@ -60,6 +68,7 @@ class MTLBackend : public GPUBackend {
   Shader *shader_alloc(const char *name) override;
   Texture *texture_alloc(const char *name) override;
   UniformBuf *uniformbuf_alloc(int size, const char *name) override;
+  StorageBuf *storagebuf_alloc(int size, GPUUsageType usage, const char *name) override;
   VertBuf *vertbuf_alloc() override;
 
   /* Render Frame Coordination. */
@@ -75,5 +84,4 @@ class MTLBackend : public GPUBackend {
   static void capabilities_init(MTLContext *ctx);
 };
 
-}  // namespace gpu
-}  // namespace blender
+}  // namespace blender::gpu

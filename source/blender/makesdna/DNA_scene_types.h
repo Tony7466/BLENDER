@@ -930,6 +930,20 @@ typedef struct ImagePaintSettings {
 } ImagePaintSettings;
 
 /* ------------------------------------------- */
+/* Paint mode settings */
+
+typedef struct PaintModeSettings {
+  /** Source to select canvas from to paint on (ePaintCanvasSource) */
+  char canvas_source;
+  char _pad[7];
+
+  /** Selected image when canvas_source=PAINT_CANVAS_SOURCE_IMAGE. */
+  Image *canvas_image;
+  ImageUser image_user;
+
+} PaintModeSettings;
+
+/* ------------------------------------------- */
 /* Particle Edit */
 
 /** Settings for a Particle Editing Brush. */
@@ -977,6 +991,9 @@ typedef struct Sculpt {
   // float pivot[3]; XXX not used?
   int flags;
 
+  /* Transform tool. */
+  int transform_mode;
+
   int automasking_flags;
 
   /* Control tablet input */
@@ -997,26 +1014,13 @@ typedef struct Sculpt {
   float constant_detail;
   float detail_percent;
 
+  char _pad[4];
+
   struct Object *gravity_object;
 } Sculpt;
 
-typedef enum CurvesSculptFlag {
-  CURVES_SCULPT_FLAG_INTERPOLATE_LENGTH = (1 << 0),
-  CURVES_SCULPT_FLAG_INTERPOLATE_SHAPE = (1 << 1),
-} CurvesSculptFlag;
-
 typedef struct CurvesSculpt {
   Paint paint;
-  /** Minimum distance between newly added curves on a surface. */
-  float distance;
-
-  /** CurvesSculptFlag. */
-  uint32_t flag;
-
-  /** Length of newly added curves when it is not interpolated from other curves. */
-  float curve_length;
-
-  char _pad[4];
 } CurvesSculpt;
 
 typedef struct UvSculpt {
@@ -1113,7 +1117,7 @@ typedef struct GP_Sculpt_Settings {
   /** Threshold for intersections */
   float isect_threshold;
   char _pad[4];
-  /** Multiframe edit falloff effect by frame. */
+  /** Multi-frame edit falloff effect by frame. */
   struct CurveMapping *cur_falloff;
   /** Curve used for primitive tools. */
   struct CurveMapping *cur_primitive;
@@ -1256,8 +1260,7 @@ typedef struct UnifiedPaintSettings {
    * In case of anchored brushes contains the anchored radius */
   float pixel_radius;
   float initial_pixel_radius;
-
-  char _pad[4];
+  float start_pixel_radius;
 
   /* drawing pressure */
   float size_pressure_value;
@@ -1465,6 +1468,9 @@ typedef struct ToolSettings {
   /* Image Paint (8 bytes aligned please!) */
   struct ImagePaintSettings imapaint;
 
+  /** Settings for paint mode. */
+  struct PaintModeSettings paint_mode;
+
   /* Particle Editing */
   struct ParticleEditSettings particle;
 
@@ -1492,19 +1498,25 @@ typedef struct ToolSettings {
   /* Transform */
   char transform_pivot_point;
   char transform_flag;
-  /** Snap elements (per spacetype). */
-  char snap_mode;
+  /** Snap elements (per spacetype), #eSnapMode. */
+  char _pad1[1];
+  short snap_mode;
   char snap_node_mode;
   char snap_uv_mode;
-  /** Generic flags (per spacetype). */
-  char snap_flag;
-  char snap_flag_node;
-  char snap_flag_seq;
-  char snap_uv_flag;
-  /** Default snap source. */
+  /** Generic flags (per spacetype), #eSnapFlag. */
+  short snap_flag;
+  short snap_flag_node;
+  short snap_flag_seq;
+  short snap_uv_flag;
+  /** Default snap source, #eSnapSourceSelect. */
+  /* TODO(@gfxcoder): Rename `snap_target` to `snap_source` to avoid previous ambiguity of
+   * "target" (now, "source" is geometry to be moved and "target" is geometry to which moved
+   * geometry is snapped). */
   char snap_target;
-  /** Snap mask for transform modes. */
+  /** Snap mask for transform modes, #eSnapTransformMode. */
   char snap_transform_mode_flag;
+  /** Steps to break transformation into with face nearest snapping */
+  short snap_face_nearest_steps;
 
   char proportional_edit, prop_mode;
   /** Proportional edit, object mode. */
@@ -1993,7 +2005,7 @@ enum {
 
 /* sequencer seq_prev_type seq_rend_type */
 
-/** #RenderData.engine (scene.c) */
+/** #RenderData.engine (scene.cc) */
 extern const char *RE_engine_id_BLENDER_EEVEE;
 extern const char *RE_engine_id_BLENDER_WORKBENCH;
 extern const char *RE_engine_id_CYCLES;
@@ -2020,7 +2032,10 @@ extern const char *RE_engine_id_CYCLES;
    ((v3d == NULL) || (((1 << (base)->object->type) & (v3d)->object_type_exclude_select) == 0)) && \
    (((base)->flag & BASE_SELECTABLE) != 0))
 #define BASE_SELECTED(v3d, base) (BASE_VISIBLE(v3d, base) && (((base)->flag & BASE_SELECTED) != 0))
-#define BASE_EDITABLE(v3d, base) (BASE_VISIBLE(v3d, base) && !ID_IS_LINKED((base)->object))
+#define BASE_EDITABLE(v3d, base) \
+  (BASE_VISIBLE(v3d, base) && !ID_IS_LINKED((base)->object) && \
+   (!ID_IS_OVERRIDE_LIBRARY_REAL((base)->object) || \
+    ((base)->object->id.override_library->flag & IDOVERRIDE_LIBRARY_FLAG_SYSTEM_DEFINED) == 0))
 #define BASE_SELECTED_EDITABLE(v3d, base) \
   (BASE_EDITABLE(v3d, base) && (((base)->flag & BASE_SELECTED) != 0))
 
@@ -2074,30 +2089,73 @@ enum {
 };
 
 /** #ToolSettings.snap_flag */
-#define SCE_SNAP (1 << 0)
-#define SCE_SNAP_ROTATE (1 << 1)
-#define SCE_SNAP_PEEL_OBJECT (1 << 2)
-#define SCE_SNAP_PROJECT (1 << 3)
-#define SCE_SNAP_NO_SELF (1 << 4)
-#define SCE_SNAP_ABS_GRID (1 << 5)
-#define SCE_SNAP_BACKFACE_CULLING (1 << 6)
+typedef enum eSnapFlag {
+  SCE_SNAP = (1 << 0),
+  SCE_SNAP_ROTATE = (1 << 1),
+  SCE_SNAP_PEEL_OBJECT = (1 << 2),
+  SCE_SNAP_PROJECT = (1 << 3),       /* Project individual elements instead of whole object. */
+  SCE_SNAP_NOT_TO_ACTIVE = (1 << 4), /* Was `SCE_SNAP_NO_SELF`, but self should be active. */
+  SCE_SNAP_ABS_GRID = (1 << 5),
+  SCE_SNAP_BACKFACE_CULLING = (1 << 6),
+  SCE_SNAP_KEEP_ON_SAME_OBJECT = (1 << 7),
+  /* see #eSnapTargetSelect */
+  SCE_SNAP_TO_INCLUDE_EDITED = (1 << 8),
+  SCE_SNAP_TO_INCLUDE_NONEDITED = (1 << 9),
+  SCE_SNAP_TO_ONLY_SELECTABLE = (1 << 10),
+} eSnapFlag;
+/* Due to dependency conflicts with Cycles, header cannot directly include `BLI_utildefines.h`. */
+/* TODO: move this macro to a more general place. */
+#ifdef ENUM_OPERATORS
+ENUM_OPERATORS(eSnapFlag, SCE_SNAP_BACKFACE_CULLING)
+#endif
 
-/** #ToolSettings.snap_target */
-#define SCE_SNAP_TARGET_CLOSEST 0
-#define SCE_SNAP_TARGET_CENTER 1
-#define SCE_SNAP_TARGET_MEDIAN 2
-#define SCE_SNAP_TARGET_ACTIVE 3
+/** See #ToolSettings.snap_target (to be renamed `snap_source`) and #TransSnap.source_select */
+typedef enum eSnapSourceSelect {
+  SCE_SNAP_SOURCE_CLOSEST = 0,
+  SCE_SNAP_SOURCE_CENTER = 1,
+  SCE_SNAP_SOURCE_MEDIAN = 2,
+  SCE_SNAP_SOURCE_ACTIVE = 3,
+} eSnapSourceSelect;
+
+/** #TransSnap.target_select and #ToolSettings.snap_flag (#SCE_SNAP_NOT_TO_ACTIVE,
+ * #SCE_SNAP_TO_INCLUDE_EDITED, #SCE_SNAP_TO_INCLUDE_NONEDITED, #SCE_SNAP_TO_ONLY_SELECTABLE) */
+typedef enum eSnapTargetSelect {
+  SCE_SNAP_TARGET_ALL = 0,
+  SCE_SNAP_TARGET_NOT_SELECTED = (1 << 0),
+  SCE_SNAP_TARGET_NOT_ACTIVE = (1 << 1),
+  SCE_SNAP_TARGET_NOT_EDITED = (1 << 2),
+  SCE_SNAP_TARGET_ONLY_SELECTABLE = (1 << 3),
+  SCE_SNAP_TARGET_NOT_NONEDITED = (1 << 4),
+} eSnapTargetSelect;
 
 /** #ToolSettings.snap_mode */
-#define SCE_SNAP_MODE_VERTEX (1 << 0)
-#define SCE_SNAP_MODE_EDGE (1 << 1)
-#define SCE_SNAP_MODE_FACE (1 << 2)
-#define SCE_SNAP_MODE_VOLUME (1 << 3)
-#define SCE_SNAP_MODE_EDGE_MIDPOINT (1 << 4)
-#define SCE_SNAP_MODE_EDGE_PERPENDICULAR (1 << 5)
-#define SCE_SNAP_MODE_GEOM \
-  (SCE_SNAP_MODE_VERTEX | SCE_SNAP_MODE_EDGE | SCE_SNAP_MODE_FACE | \
-   SCE_SNAP_MODE_EDGE_PERPENDICULAR | SCE_SNAP_MODE_EDGE_MIDPOINT)
+typedef enum eSnapMode {
+  SCE_SNAP_MODE_NONE = 0,
+  SCE_SNAP_MODE_VERTEX = (1 << 0),
+  SCE_SNAP_MODE_EDGE = (1 << 1),
+  SCE_SNAP_MODE_FACE_RAYCAST = (1 << 2),
+  SCE_SNAP_MODE_VOLUME = (1 << 3),
+  SCE_SNAP_MODE_EDGE_MIDPOINT = (1 << 4),
+  SCE_SNAP_MODE_EDGE_PERPENDICULAR = (1 << 5),
+  SCE_SNAP_MODE_FACE_NEAREST = (1 << 8),
+
+  SCE_SNAP_MODE_GEOM = (SCE_SNAP_MODE_VERTEX | SCE_SNAP_MODE_EDGE | SCE_SNAP_MODE_FACE_RAYCAST |
+                        SCE_SNAP_MODE_EDGE_PERPENDICULAR | SCE_SNAP_MODE_EDGE_MIDPOINT |
+                        SCE_SNAP_MODE_FACE_NEAREST),
+
+  /** #ToolSettings.snap_node_mode */
+  SCE_SNAP_MODE_NODE_X = (1 << 0),
+  SCE_SNAP_MODE_NODE_Y = (1 << 1),
+
+  /** #ToolSettings.snap_mode and #ToolSettings.snap_node_mode and #ToolSettings.snap_uv_mode */
+  SCE_SNAP_MODE_INCREMENT = (1 << 6),
+  SCE_SNAP_MODE_GRID = (1 << 7),
+} eSnapMode;
+/* Due to dependency conflicts with Cycles, header cannot directly include `BLI_utildefines.h`. */
+/* TODO: move this macro to a more general place. */
+#ifdef ENUM_OPERATORS
+ENUM_OPERATORS(eSnapMode, SCE_SNAP_MODE_GRID)
+#endif
 
 /** #SequencerToolSettings.snap_mode */
 #define SEQ_SNAP_TO_STRIPS (1 << 0)
@@ -2109,22 +2167,12 @@ enum {
 #define SEQ_SNAP_IGNORE_SOUND (1 << 1)
 #define SEQ_SNAP_CURRENT_FRAME_TO_STRIPS (1 << 2)
 
-/** #ToolSettings.snap_node_mode */
-#define SCE_SNAP_MODE_NODE_X (1 << 0)
-#define SCE_SNAP_MODE_NODE_Y (1 << 1)
-
-/**
- * #ToolSettings.snap_mode and #ToolSettings.snap_node_mode
- */
-#define SCE_SNAP_MODE_INCREMENT (1 << 6)
-#define SCE_SNAP_MODE_GRID (1 << 7)
-
 /** #ToolSettings.snap_transform_mode_flag */
-enum {
+typedef enum eSnapTransformMode {
   SCE_SNAP_TRANSFORM_MODE_TRANSLATE = (1 << 0),
   SCE_SNAP_TRANSFORM_MODE_ROTATE = (1 << 1),
   SCE_SNAP_TRANSFORM_MODE_SCALE = (1 << 2),
-};
+} eSnapTransformMode;
 
 /** #ToolSettings.selectmode */
 #define SCE_SELECT_VERTEX (1 << 0) /* for mesh */
@@ -2169,6 +2217,7 @@ enum {
 };
 
 /* object_vgroup.c */
+
 /** #ToolSettings.vgroupsubset */
 typedef enum eVGroupSelect {
   WT_VGROUP_ALL = 0,
@@ -2277,11 +2326,27 @@ typedef enum eSculptFlags {
   SCULPT_HIDE_FACE_SETS = (1 << 17),
 } eSculptFlags;
 
+/* Sculpt.transform_mode */
+typedef enum eSculptTransformMode {
+  SCULPT_TRANSFORM_MODE_ALL_VERTICES = 0,
+  SCULPT_TRANSFORM_MODE_RADIUS_ELASTIC = 1,
+} eSculptTrasnformMode;
+
+/** PaintModeSettings.mode */
+typedef enum ePaintCanvasSource {
+  /** Paint on the active node of the active material slot. */
+  PAINT_CANVAS_SOURCE_MATERIAL = 0,
+  /** Paint on a selected image. */
+  PAINT_CANVAS_SOURCE_IMAGE = 1,
+  /** Paint on the active color attribute (vertex color) layer. */
+  PAINT_CANVAS_SOURCE_COLOR_ATTRIBUTE = 2,
+} ePaintCanvasSource;
+
 /** #ImagePaintSettings.mode */
-typedef enum eImagePaintMode {
-  IMAGEPAINT_MODE_MATERIAL = 0, /* detect texture paint slots from the material */
-  IMAGEPAINT_MODE_IMAGE = 1,    /* select texture paint image directly */
-} eImagePaintMode;
+/* Defines to let old texture painting use the new enum. */
+/* TODO(jbakker): rename usages. */
+#define IMAGEPAINT_MODE_MATERIAL PAINT_CANVAS_SOURCE_MATERIAL
+#define IMAGEPAINT_MODE_IMAGE PAINT_CANVAS_SOURCE_IMAGE
 
 /** #ImagePaintSettings.interp */
 enum {
@@ -2446,11 +2511,11 @@ typedef enum eGPencil_Guide_Reference {
 /* UnitSettings */
 
 #define USER_UNIT_ADAPTIVE 0xFF
-/* UnitSettings.system */
+/** #UnitSettings.system */
 #define USER_UNIT_NONE 0
 #define USER_UNIT_METRIC 1
 #define USER_UNIT_IMPERIAL 2
-/* UnitSettings.flag */
+/** #UnitSettings.flag */
 #define USER_UNIT_OPT_SPLIT 1
 #define USER_UNIT_ROT_RADIANS 2
 

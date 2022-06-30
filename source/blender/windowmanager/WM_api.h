@@ -39,6 +39,7 @@ struct MenuType;
 struct PointerRNA;
 struct PropertyRNA;
 struct ScrArea;
+struct SelectPick_Params;
 struct View3D;
 struct ViewLayer;
 struct bContext;
@@ -313,10 +314,6 @@ void WM_paint_cursor_tag_redraw(struct wmWindow *win, struct ARegion *region);
  * This function requires access to the GHOST_SystemHandle (g_system).
  */
 void WM_cursor_warp(struct wmWindow *win, int x, int y);
-/**
- * Set x, y to values we can actually position the cursor to.
- */
-void WM_cursor_compatible_xy(wmWindow *win, int *x, int *y);
 
 /* Handlers. */
 
@@ -387,6 +384,12 @@ struct wmEventHandler_UI *WM_event_add_ui_handler(const struct bContext *C,
                                                   wmUIHandlerRemoveFunc remove_fn,
                                                   void *user_data,
                                                   char flag);
+
+/**
+ * Return the first modal operator of type \a ot or NULL.
+ */
+wmOperator *WM_operator_find_modal_by_type(wmWindow *win, const wmOperatorType *ot);
+
 /**
  * \param postpone: Enable for `win->modalhandlers`,
  * this is in a running for () loop in wm_handlers_do().
@@ -731,6 +734,7 @@ void WM_operator_last_properties_ensure(struct wmOperatorType *ot, struct Pointe
 wmOperator *WM_operator_last_redo(const struct bContext *C);
 /**
  * Use for drag & drop a path or name with operators invoke() function.
+ * Returns null if no operator property is set to identify the file or ID to use.
  */
 ID *WM_operator_drop_load_path(struct bContext *C, struct wmOperator *op, short idcode);
 
@@ -741,16 +745,70 @@ void WM_operator_last_properties_alloc(struct wmOperator *op, const char *idname
 /* wm_operator_props.c */
 
 void WM_operator_properties_confirm_or_exec(struct wmOperatorType *ot);
+
+/** Flags for #WM_operator_properties_filesel. */
+typedef enum eFileSel_Flag {
+  WM_FILESEL_RELPATH = 1 << 0,
+  WM_FILESEL_DIRECTORY = 1 << 1,
+  WM_FILESEL_FILENAME = 1 << 2,
+  WM_FILESEL_FILEPATH = 1 << 3,
+  WM_FILESEL_FILES = 1 << 4,
+  /** Show the properties sidebar by default. */
+  WM_FILESEL_SHOW_PROPS = 1 << 5,
+} eFileSel_Flag;
+ENUM_OPERATORS(eFileSel_Flag, WM_FILESEL_SHOW_PROPS)
+
+/** Action for #WM_operator_properties_filesel. */
+typedef enum eFileSel_Action {
+  FILE_OPENFILE = 0,
+  FILE_SAVE = 1,
+} eFileSel_Action;
+
 /**
  * Default properties for file-select.
  */
 void WM_operator_properties_filesel(struct wmOperatorType *ot,
                                     int filter,
                                     short type,
-                                    short action,
-                                    short flag,
+                                    eFileSel_Action action,
+                                    eFileSel_Flag flag,
                                     short display,
                                     short sort);
+
+/**
+ * Tries to pass \a id to an operator via either a "session_uuid" or a "name" property defined in
+ * the properties of \a ptr. The former is preferred, since it works properly with linking and
+ * library overrides (which may both result in multiple IDs with the same name and type).
+ *
+ * Also see #WM_operator_properties_id_lookup() and
+ * #WM_operator_properties_id_lookup_from_name_or_session_uuid()
+ */
+void WM_operator_properties_id_lookup_set_from_id(PointerRNA *ptr, const ID *id);
+/**
+ * Tries to find an ID in \a bmain. There needs to be either a "session_uuid" int or "name" string
+ * property defined and set. The former has priority. See #WM_operator_properties_id_lookup() for a
+ * helper to add the properties.
+ */
+struct ID *WM_operator_properties_id_lookup_from_name_or_session_uuid(struct Main *bmain,
+                                                                      PointerRNA *ptr,
+                                                                      enum ID_Type type);
+/**
+ * Check if either the "session_uuid" or "name" property is set inside \a ptr. If this is the case
+ * the ID can be looked up by #WM_operator_properties_id_lookup_from_name_or_session_uuid().
+ */
+bool WM_operator_properties_id_lookup_is_set(PointerRNA *ptr);
+/**
+ * Adds "name" and "session_uuid" properties so the caller can tell the operator which ID to act
+ * on. See #WM_operator_properties_id_lookup_from_name_or_session_uuid(). Both properties will be
+ * hidden in the UI and not be saved over consecutive operator calls.
+ *
+ * \note New operators should probably use "session_uuid" only (set \a add_name_prop to #false),
+ * since this works properly with linked data and/or library overrides (in both cases, multiple IDs
+ * with the same name and type may be present). The "name" property is only kept to not break
+ * compatibility with old scripts using some previously existing operators.
+ */
+void WM_operator_properties_id_lookup(wmOperatorType *ot, const bool add_name_prop);
+
 /**
  * Disable using cursor position,
  * use when view operators are initialized from buttons.
@@ -778,6 +836,9 @@ void WM_operator_properties_gesture_straightline(struct wmOperatorType *ot, int 
  * Use with #WM_gesture_circle_invoke
  */
 void WM_operator_properties_gesture_circle(struct wmOperatorType *ot);
+/**
+ * See #ED_select_pick_params_from_operator to initialize parameters defined here.
+ */
 void WM_operator_properties_mouse_select(struct wmOperatorType *ot);
 void WM_operator_properties_select_all(struct wmOperatorType *ot);
 void WM_operator_properties_select_action(struct wmOperatorType *ot,
@@ -842,16 +903,6 @@ void WM_operator_properties_checker_interval_from_op(struct wmOperator *op,
 bool WM_operator_properties_checker_interval_test(const struct CheckerIntervalParams *op_params,
                                                   int depth);
 
-/* flags for WM_operator_properties_filesel */
-#define WM_FILESEL_RELPATH (1 << 0)
-
-#define WM_FILESEL_DIRECTORY (1 << 1)
-#define WM_FILESEL_FILENAME (1 << 2)
-#define WM_FILESEL_FILEPATH (1 << 3)
-#define WM_FILESEL_FILES (1 << 4)
-/* Show the properties sidebar by default. */
-#define WM_FILESEL_SHOW_PROPS (1 << 5)
-
 /**
  * Operator as a Python command (resulting string must be freed).
  *
@@ -883,12 +934,14 @@ char *WM_prop_pystring_assign(struct bContext *C,
                               int index);
 /**
  * Convert: `some.op` -> `SOME_OT_op` or leave as-is.
+ * \return the length of `dst`.
  */
-void WM_operator_bl_idname(char *to, const char *from);
+size_t WM_operator_bl_idname(char *dst, const char *src) ATTR_NONNULL(1, 2);
 /**
  * Convert: `SOME_OT_op` -> `some.op` or leave as-is.
+ * \return the length of `dst`.
  */
-void WM_operator_py_idname(char *to, const char *from);
+size_t WM_operator_py_idname(char *dst, const char *src) ATTR_NONNULL(1, 2);
 /**
  * Sanity check to ensure #WM_operator_bl_idname won't fail.
  * \returns true when there are no problems with \a idname, otherwise report an error.
@@ -925,6 +978,14 @@ bool WM_operatortype_remove(const char *idname);
  * Remove memory of all previously executed tools.
  */
 void WM_operatortype_last_properties_clear_all(void);
+
+void WM_operatortype_idname_visit_for_search(const struct bContext *C,
+                                             PointerRNA *ptr,
+                                             PropertyRNA *prop,
+                                             const char *edit_text,
+                                             StringPropertySearchVisitFunc visit_fn,
+                                             void *visit_user_data);
+
 /**
  * Tag all operator-properties of \a ot defined after calling this, until
  * the next #WM_operatortype_props_advanced_end call (if available), with
@@ -1028,6 +1089,13 @@ void WM_menutype_freelink(struct MenuType *mt);
 void WM_menutype_free(void);
 bool WM_menutype_poll(struct bContext *C, struct MenuType *mt);
 
+void WM_menutype_idname_visit_for_search(const struct bContext *C,
+                                         struct PointerRNA *ptr,
+                                         struct PropertyRNA *prop,
+                                         const char *edit_text,
+                                         StringPropertySearchVisitFunc visit_fn,
+                                         void *visit_user_data);
+
 /* wm_panel_type.c */
 
 /**
@@ -1039,7 +1107,15 @@ struct PanelType *WM_paneltype_find(const char *idname, bool quiet);
 bool WM_paneltype_add(struct PanelType *pt);
 void WM_paneltype_remove(struct PanelType *pt);
 
+void WM_paneltype_idname_visit_for_search(const struct bContext *C,
+                                          struct PointerRNA *ptr,
+                                          struct PropertyRNA *prop,
+                                          const char *edit_text,
+                                          StringPropertySearchVisitFunc visit_fn,
+                                          void *visit_user_data);
+
 /* wm_gesture_ops.c */
+
 int WM_gesture_box_invoke(struct bContext *C, struct wmOperator *op, const struct wmEvent *event);
 int WM_gesture_box_modal(struct bContext *C, struct wmOperator *op, const struct wmEvent *event);
 void WM_gesture_box_cancel(struct bContext *C, struct wmOperator *op);
@@ -1151,7 +1227,7 @@ struct wmDropBox *WM_dropbox_add(
     ListBase *lb,
     const char *idname,
     bool (*poll)(struct bContext *, struct wmDrag *, const struct wmEvent *event),
-    void (*copy)(struct wmDrag *, struct wmDropBox *),
+    void (*copy)(struct bContext *, struct wmDrag *, struct wmDropBox *),
     void (*cancel)(struct Main *, struct wmDrag *, struct wmDropBox *),
     WMDropboxTooltipFunc tooltip);
 void WM_drag_draw_item_name_fn(struct bContext *C,
@@ -1183,7 +1259,7 @@ struct ID *WM_drag_get_local_ID_from_event(const struct wmEvent *event, short id
 bool WM_drag_is_ID_type(const struct wmDrag *drag, int idcode);
 
 /**
- * \note: Does not store \a asset in any way, so it's fine to pass a temporary.
+ * \note Does not store \a asset in any way, so it's fine to pass a temporary.
  */
 wmDragAsset *WM_drag_create_asset_data(const struct AssetHandle *asset,
                                        struct AssetMetaData *metadata,
@@ -1215,7 +1291,7 @@ void WM_drag_free_imported_drag_ID(struct Main *bmain,
 struct wmDragAssetCatalog *WM_drag_get_asset_catalog_data(const struct wmDrag *drag);
 
 /**
- * \note: Does not store \a asset in any way, so it's fine to pass a temporary.
+ * \note Does not store \a asset in any way, so it's fine to pass a temporary.
  */
 void WM_drag_add_asset_list_item(wmDrag *drag,
                                  const struct bContext *C,
@@ -1281,6 +1357,7 @@ enum {
   WM_JOB_TYPE_TRACE_IMAGE,
   WM_JOB_TYPE_LINEART,
   WM_JOB_TYPE_SEQ_DRAW_THUMBNAIL,
+  WM_JOB_TYPE_SEQ_DRAG_DROP_PREVIEW,
   /* add as needed, bake, seq proxy build
    * if having hard coded values is a problem */
 };
@@ -1308,8 +1385,7 @@ const char *WM_jobs_name(const struct wmWindowManager *wm, const void *owner);
  * Time that job started.
  */
 double WM_jobs_starttime(const struct wmWindowManager *wm, const void *owner);
-void *WM_jobs_customdata(struct wmWindowManager *wm, const void *owner);
-void *WM_jobs_customdata_from_type(struct wmWindowManager *wm, int job_type);
+void *WM_jobs_customdata_from_type(struct wmWindowManager *wm, const void *owner, int job_type);
 
 bool WM_jobs_is_running(const struct wmJob *wm_job);
 bool WM_jobs_is_stopped(const wmWindowManager *wm, const void *owner);
@@ -1327,6 +1403,14 @@ void WM_jobs_callbacks(struct wmJob *,
                        void (*initjob)(void *),
                        void (*update)(void *),
                        void (*endjob)(void *));
+
+void WM_jobs_callbacks_ex(wmJob *wm_job,
+                          wm_jobs_start_callback startjob,
+                          void (*initjob)(void *),
+                          void (*update)(void *),
+                          void (*endjob)(void *),
+                          void (*completed)(void *),
+                          void (*canceled)(void *));
 
 /**
  * If job running, the same owner gave it a new job.
@@ -1354,6 +1438,7 @@ void WM_jobs_kill_all_except(struct wmWindowManager *wm, const void *owner);
 void WM_jobs_kill_type(struct wmWindowManager *wm, const void *owner, int job_type);
 
 bool WM_jobs_has_running(const struct wmWindowManager *wm);
+bool WM_jobs_has_running_type(const struct wmWindowManager *wm, int job_type);
 
 void WM_job_main_thread_lock_acquire(struct wmJob *job);
 void WM_job_main_thread_lock_release(struct wmJob *job);
@@ -1628,7 +1713,7 @@ void WM_xr_action_binding_destroy(wmXrData *xr,
 /**
  * If action_set_name is NULL, then all action sets will be treated as active.
  */
-bool WM_xr_active_action_set_set(wmXrData *xr, const char *action_set_name);
+bool WM_xr_active_action_set_set(wmXrData *xr, const char *action_set_name, bool delayed);
 
 bool WM_xr_controller_pose_actions_set(wmXrData *xr,
                                        const char *action_set_name,

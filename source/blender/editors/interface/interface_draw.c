@@ -38,6 +38,7 @@
 
 #include "GPU_batch.h"
 #include "GPU_batch_presets.h"
+#include "GPU_context.h"
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_matrix.h"
@@ -129,7 +130,7 @@ void UI_draw_roundbox_4fv_ex(const rctf *rect,
 void UI_draw_roundbox_3ub_alpha(
     const rctf *rect, bool filled, float rad, const uchar col[3], uchar alpha)
 {
-  float colv[4] = {
+  const float colv[4] = {
       ((float)col[0]) / 255,
       ((float)col[1]) / 255,
       ((float)col[2]) / 255,
@@ -141,7 +142,7 @@ void UI_draw_roundbox_3ub_alpha(
 void UI_draw_roundbox_3fv_alpha(
     const rctf *rect, bool filled, float rad, const float col[3], float alpha)
 {
-  float colv[4] = {col[0], col[1], col[2], alpha};
+  const float colv[4] = {col[0], col[1], col[2], alpha};
   UI_draw_roundbox_4fv_ex(rect, (filled) ? colv : NULL, NULL, 1.0f, colv, U.pixelsize, rad);
 }
 
@@ -1084,12 +1085,23 @@ static void ui_draw_colorband_handle_tri(
 static void ui_draw_colorband_handle_box(
     uint pos, float x1, float y1, float x2, float y2, bool fill)
 {
-  immBegin(fill ? GPU_PRIM_TRI_FAN : GPU_PRIM_LINE_LOOP, 4);
-  immVertex2f(pos, x1, y1);
-  immVertex2f(pos, x1, y2);
-  immVertex2f(pos, x2, y2);
-  immVertex2f(pos, x2, y1);
-  immEnd();
+  if (fill) {
+    immBegin(GPU_PRIM_TRI_STRIP, 4);
+    immVertex2f(pos, x2, y1);
+    immVertex2f(pos, x1, y1);
+    immVertex2f(pos, x2, y2);
+    immVertex2f(pos, x1, y2);
+    immEnd();
+  }
+  else {
+    immBegin(GPU_PRIM_LINE_STRIP, 5);
+    immVertex2f(pos, x1, y1);
+    immVertex2f(pos, x1, y2);
+    immVertex2f(pos, x2, y2);
+    immVertex2f(pos, x2, y1);
+    immVertex2f(pos, x1, y1);
+    immEnd();
+  }
 }
 
 static void ui_draw_colorband_handle(uint shdr_pos,
@@ -1123,8 +1135,8 @@ static void ui_draw_colorband_handle(uint shdr_pos,
     immUniform2f("viewport_size", viewport_size[2] / UI_DPI_FAC, viewport_size[3] / UI_DPI_FAC);
 
     immUniform1i("colors_len", 2); /* "advanced" mode */
-    immUniformArray4fv(
-        "colors", (float *)(float[][4]){{0.8f, 0.8f, 0.8f, 1.0f}, {0.0f, 0.0f, 0.0f, 1.0f}}, 2);
+    immUniform4f("color", 0.8f, 0.8f, 0.8f, 1.0f);
+    immUniform4f("color2", 0.0f, 0.0f, 0.0f, 1.0f);
     immUniform1f("dash_width", active ? 4.0f : 2.0f);
     immUniform1f("dash_factor", 0.5f);
 

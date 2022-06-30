@@ -26,12 +26,10 @@
 #include "BLI_span.hh"
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
-#include "BLI_vector_set.hh"
 
 #include "BLT_translation.h"
 
 #include "BKE_context.h"
-#include "BKE_geometry_set.hh"
 #include "BKE_idtype.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
@@ -68,16 +66,17 @@
 
 #include "NOD_geometry_nodes_eval_log.hh"
 #include "NOD_node_declaration.hh"
+#include "NOD_socket_declarations_geometry.hh"
 
+#include "FN_field.hh"
 #include "FN_field_cpp_type.hh"
 
 #include "node_intern.hh" /* own include */
 
 using blender::GPointer;
-using blender::fn::FieldCPPType;
-using blender::fn::FieldInput;
 using blender::fn::GField;
 namespace geo_log = blender::nodes::geometry_nodes_eval_log;
+using geo_log::eNamedAttrUsage;
 
 extern "C" {
 /* XXX interface.h */
@@ -373,6 +372,8 @@ static void node_update_basis(const bContext &C, bNodeTree &ntree, bNode &node, 
     const char *socket_label = nodeSocketLabel(nsock);
     nsock->typeinfo->draw((bContext *)&C, row, &sockptr, &nodeptr, IFACE_(socket_label));
 
+    node_socket_add_tooltip(&ntree, &node, nsock, row);
+
     UI_block_align_end(&block);
     UI_block_layout_resolve(&block, nullptr, &buty);
 
@@ -502,6 +503,8 @@ static void node_update_basis(const bContext &C, bNodeTree &ntree, bNode &node, 
 
     const char *socket_label = nodeSocketLabel(nsock);
     nsock->typeinfo->draw((bContext *)&C, row, &sockptr, &nodeptr, IFACE_(socket_label));
+
+    node_socket_add_tooltip(&ntree, &node, nsock, row);
 
     UI_block_align_end(&block);
     UI_block_layout_resolve(&block, nullptr, &buty);
@@ -746,14 +749,13 @@ static void node_socket_outline_color_get(const bool selected,
   if (selected) {
     UI_GetThemeColor4fv(TH_ACTIVE, r_outline_color);
   }
+  else if (socket_type == SOCK_CUSTOM) {
+    /* Until there is a better place for per socket color,
+     * the outline color for virtual sockets is set  here. */
+    copy_v4_v4(r_outline_color, virtual_node_socket_outline_color);
+  }
   else {
     UI_GetThemeColor4fv(TH_WIRE, r_outline_color);
-  }
-
-  /* Until there is a better place for per socket color,
-   * the outline color for virtual sockets is set  here. */
-  if (socket_type == SOCK_CUSTOM) {
-    copy_v4_v4(r_outline_color, virtual_node_socket_outline_color);
   }
 }
 
@@ -778,26 +780,27 @@ struct SocketTooltipData {
 
 static void create_inspection_string_for_generic_value(const GPointer value, std::stringstream &ss)
 {
-  auto id_to_inspection_string = [&](ID *id, short idcode) {
-    ss << (id ? id->name + 2 : TIP_("None")) << " (" << BKE_idtype_idcode_to_name(idcode) << ")";
+  auto id_to_inspection_string = [&](const ID *id, const short idcode) {
+    ss << (id ? id->name + 2 : TIP_("None")) << " (" << TIP_(BKE_idtype_idcode_to_name(idcode))
+       << ")";
   };
 
   const CPPType &type = *value.type();
   const void *buffer = value.get();
   if (type.is<Object *>()) {
-    id_to_inspection_string((ID *)buffer, ID_OB);
+    id_to_inspection_string(*static_cast<const ID *const *>(buffer), ID_OB);
   }
   else if (type.is<Material *>()) {
-    id_to_inspection_string((ID *)buffer, ID_MA);
+    id_to_inspection_string(*static_cast<const ID *const *>(buffer), ID_MA);
   }
   else if (type.is<Tex *>()) {
-    id_to_inspection_string((ID *)buffer, ID_TE);
+    id_to_inspection_string(*static_cast<const ID *const *>(buffer), ID_TE);
   }
   else if (type.is<Image *>()) {
-    id_to_inspection_string((ID *)buffer, ID_IM);
+    id_to_inspection_string(*static_cast<const ID *const *>(buffer), ID_IM);
   }
   else if (type.is<Collection *>()) {
-    id_to_inspection_string((ID *)buffer, ID_GR);
+    id_to_inspection_string(*static_cast<const ID *const *>(buffer), ID_GR);
   }
   else if (type.is<int>()) {
     ss << *(int *)buffer << TIP_(" (Integer)");
@@ -868,7 +871,8 @@ static void create_inspection_string_for_gfield(const geo_log::GFieldValueLog &v
 }
 
 static void create_inspection_string_for_geometry(const geo_log::GeometryValueLog &value_log,
-                                                  std::stringstream &ss)
+                                                  std::stringstream &ss,
+                                                  const nodes::decl::Geometry *geometry)
 {
   Span<GeometryComponentType> component_types = value_log.component_types();
   if (component_types.is_empty()) {
@@ -892,9 +896,9 @@ static void create_inspection_string_for_geometry(const geo_log::GeometryValueLo
         BLI_snprintf(line,
                      sizeof(line),
                      TIP_("\u2022 Mesh: %s vertices, %s edges, %s faces"),
-                     to_string(mesh_info.tot_verts).c_str(),
-                     to_string(mesh_info.tot_edges).c_str(),
-                     to_string(mesh_info.tot_faces).c_str());
+                     to_string(mesh_info.verts_num).c_str(),
+                     to_string(mesh_info.edges_num).c_str(),
+                     to_string(mesh_info.faces_num).c_str());
         ss << line << line_end;
         break;
       }
@@ -905,7 +909,7 @@ static void create_inspection_string_for_geometry(const geo_log::GeometryValueLo
         BLI_snprintf(line,
                      sizeof(line),
                      TIP_("\u2022 Point Cloud: %s points"),
-                     to_string(pointcloud_info.tot_points).c_str());
+                     to_string(pointcloud_info.points_num).c_str());
         ss << line << line_end;
         break;
       }
@@ -915,7 +919,7 @@ static void create_inspection_string_for_geometry(const geo_log::GeometryValueLo
         BLI_snprintf(line,
                      sizeof(line),
                      TIP_("\u2022 Curve: %s splines"),
-                     to_string(curve_info.tot_splines).c_str());
+                     to_string(curve_info.splines_num).c_str());
         ss << line << line_end;
         break;
       }
@@ -925,7 +929,7 @@ static void create_inspection_string_for_geometry(const geo_log::GeometryValueLo
         BLI_snprintf(line,
                      sizeof(line),
                      TIP_("\u2022 Instances: %s"),
-                     to_string(instances_info.tot_instances).c_str());
+                     to_string(instances_info.instances_num).c_str());
         ss << line << line_end;
         break;
       }
@@ -935,6 +939,45 @@ static void create_inspection_string_for_geometry(const geo_log::GeometryValueLo
       }
     }
   }
+
+  /* If the geometry declaration is null, as is the case for input to group output,
+   * or it is an output socket don't show supported types. */
+  if (geometry == nullptr || geometry->in_out() == SOCK_OUT) {
+    return;
+  }
+
+  Span<GeometryComponentType> supported_types = geometry->supported_types();
+  if (supported_types.is_empty()) {
+    ss << ".\n\n" << TIP_("Supported: All Types");
+    return;
+  }
+
+  ss << ".\n\n" << TIP_("Supported: ");
+  for (GeometryComponentType type : supported_types) {
+    switch (type) {
+      case GEO_COMPONENT_TYPE_MESH: {
+        ss << TIP_("Mesh");
+        break;
+      }
+      case GEO_COMPONENT_TYPE_POINT_CLOUD: {
+        ss << TIP_("Point Cloud");
+        break;
+      }
+      case GEO_COMPONENT_TYPE_CURVE: {
+        ss << TIP_("Curve");
+        break;
+      }
+      case GEO_COMPONENT_TYPE_INSTANCES: {
+        ss << TIP_("Instances");
+        break;
+      }
+      case GEO_COMPONENT_TYPE_VOLUME: {
+        ss << TIP_("Volume");
+        break;
+      }
+    }
+    ss << ((type == supported_types.last()) ? "" : ", ");
+  }
 }
 
 static std::optional<std::string> create_socket_inspection_string(bContext *C,
@@ -942,6 +985,10 @@ static std::optional<std::string> create_socket_inspection_string(bContext *C,
                                                                   bNodeSocket &socket)
 {
   SpaceNode *snode = CTX_wm_space_node(C);
+  if (snode == nullptr) {
+    return {};
+  };
+
   const geo_log::SocketLog *socket_log = geo_log::ModifierLog::find_socket_by_node_editor_context(
       *snode, node, socket);
   if (socket_log == nullptr) {
@@ -963,10 +1010,85 @@ static std::optional<std::string> create_socket_inspection_string(bContext *C,
   }
   else if (const geo_log::GeometryValueLog *geo_value_log =
                dynamic_cast<const geo_log::GeometryValueLog *>(value_log)) {
-    create_inspection_string_for_geometry(*geo_value_log, ss);
+    create_inspection_string_for_geometry(
+        *geo_value_log,
+        ss,
+        dynamic_cast<const nodes::decl::Geometry *>(socket.runtime->declaration));
   }
 
   return ss.str();
+}
+
+static bool node_socket_has_tooltip(bNodeTree *ntree, bNodeSocket *socket)
+{
+  if (ntree->type == NTREE_GEOMETRY) {
+    return true;
+  }
+
+  if (socket->runtime->declaration != nullptr) {
+    const blender::nodes::SocketDeclaration &socket_decl = *socket->runtime->declaration;
+    return !socket_decl.description().is_empty();
+  }
+
+  return false;
+}
+
+static char *node_socket_get_tooltip(bContext *C,
+                                     bNodeTree *ntree,
+                                     bNode *node,
+                                     bNodeSocket *socket)
+{
+  std::stringstream output;
+  if (socket->runtime->declaration != nullptr) {
+    const blender::nodes::SocketDeclaration &socket_decl = *socket->runtime->declaration;
+    blender::StringRef description = socket_decl.description();
+    if (!description.is_empty()) {
+      output << TIP_(description.data());
+    }
+  }
+
+  if (ntree->type == NTREE_GEOMETRY) {
+    if (!output.str().empty()) {
+      output << ".\n\n";
+    }
+
+    std::optional<std::string> socket_inspection_str = create_socket_inspection_string(
+        C, *node, *socket);
+    if (socket_inspection_str.has_value()) {
+      output << *socket_inspection_str;
+    }
+    else {
+      output << TIP_("The socket value has not been computed yet");
+    }
+  }
+
+  if (output.str().empty()) {
+    output << nodeSocketLabel(socket);
+  }
+
+  return BLI_strdup(output.str().c_str());
+}
+
+void node_socket_add_tooltip(bNodeTree *ntree, bNode *node, bNodeSocket *sock, uiLayout *layout)
+{
+  if (!node_socket_has_tooltip(ntree, sock)) {
+    return;
+  }
+
+  SocketTooltipData *data = MEM_cnew<SocketTooltipData>(__func__);
+  data->ntree = ntree;
+  data->node = node;
+  data->socket = sock;
+
+  uiLayoutSetTooltipFunc(
+      layout,
+      [](bContext *C, void *argN, const char *UNUSED(tip)) {
+        SocketTooltipData *data = static_cast<SocketTooltipData *>(argN);
+        return node_socket_get_tooltip(C, data->ntree, data->node, data->socket);
+      },
+      data,
+      MEM_dupallocN,
+      MEM_freeN);
 }
 
 static void node_socket_draw_nested(const bContext &C,
@@ -1000,8 +1122,7 @@ static void node_socket_draw_nested(const bContext &C,
                    size_id,
                    outline_col_id);
 
-  if (ntree.type != NTREE_GEOMETRY) {
-    /* Only geometry nodes has socket value tooltips currently. */
+  if (!node_socket_has_tooltip(&ntree, &sock)) {
     return;
   }
 
@@ -1033,24 +1154,7 @@ static void node_socket_draw_nested(const bContext &C,
       but,
       [](bContext *C, void *argN, const char *UNUSED(tip)) {
         SocketTooltipData *data = (SocketTooltipData *)argN;
-        std::optional<std::string> socket_inspection_str = create_socket_inspection_string(
-            C, *data->node, *data->socket);
-
-        std::stringstream output;
-        if (data->socket->declaration != nullptr) {
-          const blender::nodes::SocketDeclaration &socket_decl = *data->socket->declaration;
-          blender::StringRef description = socket_decl.description();
-          if (!description.is_empty()) {
-            output << TIP_(description.data()) << ".\n\n";
-          }
-        }
-        if (socket_inspection_str.has_value()) {
-          output << *socket_inspection_str;
-        }
-        else {
-          output << TIP_("The socket value has not been computed yet");
-        }
-        return BLI_strdup(output.str().c_str());
+        return node_socket_get_tooltip(C, data->ntree, data->node, data->socket);
       },
       data,
       MEM_freeN);
@@ -1625,15 +1729,153 @@ static std::string node_get_execution_time_label(const SpaceNode &snode, const b
 
 struct NodeExtraInfoRow {
   std::string text;
-  const char *tooltip;
   int icon;
+  const char *tooltip = nullptr;
+
+  uiButToolTipFunc tooltip_fn = nullptr;
+  void *tooltip_fn_arg = nullptr;
+  void (*tooltip_fn_free_arg)(void *) = nullptr;
 };
+
+struct NamedAttributeTooltipArg {
+  Map<std::string, eNamedAttrUsage> usage_by_attribute;
+};
+
+static char *named_attribute_tooltip(bContext *UNUSED(C), void *argN, const char *UNUSED(tip))
+{
+  NamedAttributeTooltipArg &arg = *static_cast<NamedAttributeTooltipArg *>(argN);
+
+  std::stringstream ss;
+  ss << TIP_("Accessed named attributes:\n");
+
+  struct NameWithUsage {
+    StringRefNull name;
+    eNamedAttrUsage usage;
+  };
+
+  Vector<NameWithUsage> sorted_used_attribute;
+  for (auto &&item : arg.usage_by_attribute.items()) {
+    sorted_used_attribute.append({item.key, item.value});
+  }
+  std::sort(sorted_used_attribute.begin(),
+            sorted_used_attribute.end(),
+            [](const NameWithUsage &a, const NameWithUsage &b) {
+              return BLI_strcasecmp_natural(a.name.c_str(), b.name.c_str()) <= 0;
+            });
+
+  for (const NameWithUsage &attribute : sorted_used_attribute) {
+    const StringRefNull name = attribute.name;
+    const eNamedAttrUsage usage = attribute.usage;
+    ss << "  \u2022 \"" << name << "\": ";
+    Vector<std::string> usages;
+    if ((usage & eNamedAttrUsage::Read) != eNamedAttrUsage::None) {
+      usages.append(TIP_("read"));
+    }
+    if ((usage & eNamedAttrUsage::Write) != eNamedAttrUsage::None) {
+      usages.append(TIP_("write"));
+    }
+    if ((usage & eNamedAttrUsage::Remove) != eNamedAttrUsage::None) {
+      usages.append(TIP_("remove"));
+    }
+    for (const int i : usages.index_range()) {
+      ss << usages[i];
+      if (i < usages.size() - 1) {
+        ss << ", ";
+      }
+    }
+    ss << "\n";
+  }
+  ss << "\n";
+  ss << TIP_(
+      "Attributes with these names used within the group may conflict with existing attributes");
+  return BLI_strdup(ss.str().c_str());
+}
+
+static NodeExtraInfoRow row_from_used_named_attribute(
+    const Map<std::string, eNamedAttrUsage> &usage_by_attribute_name)
+{
+  const int attributes_num = usage_by_attribute_name.size();
+
+  NodeExtraInfoRow row;
+  row.text = std::to_string(attributes_num) +
+             TIP_(attributes_num == 1 ? " Named Attribute" : " Named Attributes");
+  row.icon = ICON_SPREADSHEET;
+  row.tooltip_fn = named_attribute_tooltip;
+  row.tooltip_fn_arg = new NamedAttributeTooltipArg{usage_by_attribute_name};
+  row.tooltip_fn_free_arg = [](void *arg) { delete static_cast<NamedAttributeTooltipArg *>(arg); };
+  return row;
+}
+
+static std::optional<NodeExtraInfoRow> node_get_accessed_attributes_row(const SpaceNode &snode,
+                                                                        const bNode &node)
+{
+  if (node.type == NODE_GROUP) {
+    const geo_log::TreeLog *root_tree_log = geo_log::ModifierLog::find_tree_by_node_editor_context(
+        snode);
+    if (root_tree_log == nullptr) {
+      return std::nullopt;
+    }
+    const geo_log::TreeLog *tree_log = root_tree_log->lookup_child_log(node.name);
+    if (tree_log == nullptr) {
+      return std::nullopt;
+    }
+
+    Map<std::string, eNamedAttrUsage> usage_by_attribute;
+    tree_log->foreach_node_log([&](const geo_log::NodeLog &node_log) {
+      for (const geo_log::UsedNamedAttribute &used_attribute : node_log.used_named_attributes()) {
+        usage_by_attribute.lookup_or_add_as(used_attribute.name,
+                                            used_attribute.usage) |= used_attribute.usage;
+      }
+    });
+    if (usage_by_attribute.is_empty()) {
+      return std::nullopt;
+    }
+
+    return row_from_used_named_attribute(usage_by_attribute);
+  }
+  if (ELEM(node.type,
+           GEO_NODE_STORE_NAMED_ATTRIBUTE,
+           GEO_NODE_REMOVE_ATTRIBUTE,
+           GEO_NODE_INPUT_NAMED_ATTRIBUTE)) {
+    /* Only show the overlay when the name is passed in from somewhere else. */
+    LISTBASE_FOREACH (bNodeSocket *, socket, &node.inputs) {
+      if (STREQ(socket->name, "Name")) {
+        if ((socket->flag & SOCK_IN_USE) == 0) {
+          return std::nullopt;
+        }
+      }
+    }
+    const geo_log::NodeLog *node_log = geo_log::ModifierLog::find_node_by_node_editor_context(
+        snode, node.name);
+    if (node_log == nullptr) {
+      return std::nullopt;
+    }
+    Map<std::string, eNamedAttrUsage> usage_by_attribute;
+    for (const geo_log::UsedNamedAttribute &used_attribute : node_log->used_named_attributes()) {
+      usage_by_attribute.lookup_or_add_as(used_attribute.name,
+                                          used_attribute.usage) |= used_attribute.usage;
+    }
+    if (usage_by_attribute.is_empty()) {
+      return std::nullopt;
+    }
+    return row_from_used_named_attribute(usage_by_attribute);
+  }
+
+  return std::nullopt;
+}
 
 static Vector<NodeExtraInfoRow> node_get_extra_info(const SpaceNode &snode, const bNode &node)
 {
   Vector<NodeExtraInfoRow> rows;
   if (!(snode.overlay.flag & SN_OVERLAY_SHOW_OVERLAYS)) {
     return rows;
+  }
+
+  if (snode.overlay.flag & SN_OVERLAY_SHOW_NAMED_ATTRIBUTES &&
+      snode.edittree->type == NTREE_GEOMETRY) {
+    if (std::optional<NodeExtraInfoRow> row = node_get_accessed_attributes_row(snode, node)) {
+      rows.append(std::move(*row));
+    }
   }
 
   if (snode.overlay.flag & SN_OVERLAY_SHOW_TIMINGS && snode.edittree->type == NTREE_GEOMETRY &&
@@ -1659,6 +1901,7 @@ static Vector<NodeExtraInfoRow> node_get_extra_info(const SpaceNode &snode, cons
       rows.append(std::move(row));
     }
   }
+
   return rows;
 }
 
@@ -1668,28 +1911,18 @@ static void node_draw_extra_info_row(const bNode &node,
                                      const int row,
                                      const NodeExtraInfoRow &extra_info_row)
 {
-  uiBut *but_timing = uiDefBut(&block,
-                               UI_BTYPE_LABEL,
-                               0,
-                               extra_info_row.text.c_str(),
-                               (int)(rect.xmin + 4.0f * U.dpi_fac + NODE_MARGIN_X + 0.4f),
-                               (int)(rect.ymin + row * (20.0f * U.dpi_fac)),
-                               (short)(rect.xmax - rect.xmin),
-                               (short)NODE_DY,
-                               nullptr,
-                               0,
-                               0,
-                               0,
-                               0,
-                               "");
+  const float but_icon_left = rect.xmin + 6.0f * U.dpi_fac;
+  const float but_icon_width = NODE_HEADER_ICON_SIZE * 0.8f;
+  const float but_icon_right = but_icon_left + but_icon_width;
+
   UI_block_emboss_set(&block, UI_EMBOSS_NONE);
   uiBut *but_icon = uiDefIconBut(&block,
                                  UI_BTYPE_BUT,
                                  0,
                                  extra_info_row.icon,
-                                 (int)(rect.xmin + 6.0f * U.dpi_fac),
+                                 (int)but_icon_left,
                                  (int)(rect.ymin + row * (20.0f * U.dpi_fac)),
-                                 NODE_HEADER_ICON_SIZE * 0.8f,
+                                 but_icon_width,
                                  UI_UNIT_Y,
                                  nullptr,
                                  0,
@@ -1697,9 +1930,35 @@ static void node_draw_extra_info_row(const bNode &node,
                                  0,
                                  0,
                                  extra_info_row.tooltip);
+  if (extra_info_row.tooltip_fn != nullptr) {
+    UI_but_func_tooltip_set(but_icon,
+                            extra_info_row.tooltip_fn,
+                            extra_info_row.tooltip_fn_arg,
+                            extra_info_row.tooltip_fn_free_arg);
+  }
   UI_block_emboss_set(&block, UI_EMBOSS);
+
+  const float but_text_left = but_icon_right + 6.0f * U.dpi_fac;
+  const float but_text_right = rect.xmax;
+  const float but_text_width = but_text_right - but_text_left;
+
+  uiBut *but_text = uiDefBut(&block,
+                             UI_BTYPE_LABEL,
+                             0,
+                             extra_info_row.text.c_str(),
+                             (int)but_text_left,
+                             (int)(rect.ymin + row * (20.0f * U.dpi_fac)),
+                             (short)but_text_width,
+                             (short)NODE_DY,
+                             nullptr,
+                             0,
+                             0,
+                             0,
+                             0,
+                             "");
+
   if (node.flag & NODE_MUTED) {
-    UI_but_flag_enable(but_timing, UI_BUT_INACTIVE);
+    UI_but_flag_enable(but_text, UI_BUT_INACTIVE);
     UI_but_flag_enable(but_icon, UI_BUT_INACTIVE);
   }
 }
@@ -1716,6 +1975,8 @@ static void node_draw_extra_info_panel(const SpaceNode &snode, const bNode &node
   float color[4];
   rctf extra_info_rect;
 
+  const float width = (node.width - 6.0f) * U.dpi_fac;
+
   if (node.type == NODE_FRAME) {
     extra_info_rect.xmin = rct.xmin;
     extra_info_rect.xmax = rct.xmin + 95.0f * U.dpi_fac;
@@ -1724,7 +1985,7 @@ static void node_draw_extra_info_panel(const SpaceNode &snode, const bNode &node
   }
   else {
     extra_info_rect.xmin = rct.xmin + 3.0f * U.dpi_fac;
-    extra_info_rect.xmax = rct.xmin + 95.0f * U.dpi_fac;
+    extra_info_rect.xmax = rct.xmin + width;
     extra_info_rect.ymin = rct.ymax;
     extra_info_rect.ymax = rct.ymax + extra_info_rows.size() * (20.0f * U.dpi_fac);
 
@@ -1743,7 +2004,7 @@ static void node_draw_extra_info_panel(const SpaceNode &snode, const bNode &node
     /* Draw outline. */
     const float outline_width = 1.0f;
     extra_info_rect.xmin = rct.xmin + 3.0f * U.dpi_fac - outline_width;
-    extra_info_rect.xmax = rct.xmin + 95.0f * U.dpi_fac + outline_width;
+    extra_info_rect.xmax = rct.xmin + width + outline_width;
     extra_info_rect.ymin = rct.ymax - outline_width;
     extra_info_rect.ymax = rct.ymax + outline_width + extra_info_rows.size() * (20.0f * U.dpi_fac);
 
@@ -2065,6 +2326,8 @@ static void node_draw_hidden(const bContext &C,
   UI_view2d_scale_get(&v2d, &scale, nullptr);
 
   const int color_id = node_get_colorid(node);
+
+  node_draw_extra_info_panel(snode, node, block);
 
   /* Shadow. */
   node_draw_shadow(snode, node, hiddenrad, 1.0f);
@@ -2434,7 +2697,7 @@ static void frame_node_draw_label(const bNodeTree &ntree,
   BLF_enable(fontid, BLF_ASPECT);
   BLF_aspect(fontid, aspect, aspect, 1.0f);
   /* clamp otherwise it can suck up a LOT of memory */
-  BLF_size(fontid, MIN2(24.0f, font_size), U.dpi);
+  BLF_size(fontid, MIN2(24.0f, font_size) * U.pixelsize, U.dpi);
 
   /* title color */
   int color_id = node_get_colorid(node);
@@ -2574,20 +2837,26 @@ static void reroute_node_draw(
   if (node.label[0] != '\0') {
     /* draw title (node label) */
     BLI_strncpy(showname, node.label, sizeof(showname));
-    uiDefBut(&block,
-             UI_BTYPE_LABEL,
-             0,
-             showname,
-             (int)(rct.xmin - NODE_DYS),
-             (int)(rct.ymax),
-             (short)512,
-             (short)NODE_DY,
-             nullptr,
-             0,
-             0,
-             0,
-             0,
-             nullptr);
+    const short width = 512;
+    const int x = BLI_rctf_cent_x(&node.totr) - (width / 2);
+    const int y = node.totr.ymax;
+
+    uiBut *label_but = uiDefBut(&block,
+                                UI_BTYPE_LABEL,
+                                0,
+                                showname,
+                                x,
+                                y,
+                                width,
+                                (short)NODE_DY,
+                                nullptr,
+                                0,
+                                0,
+                                0,
+                                0,
+                                nullptr);
+
+    UI_but_drawflag_disable(label_but, UI_BUT_TEXT_LEFT);
   }
 
   /* only draw input socket. as they all are placed on the same position.

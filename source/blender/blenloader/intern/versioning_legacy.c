@@ -1254,7 +1254,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
       }
       cam = cam->id.next;
     }
-    /* Force oops draw if depgraph was set. */
+    /* Force oops draw if depsgraph was set. */
     /* Set time line var. */
 
     /* softbody init new vars */
@@ -2298,7 +2298,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
         psys->vgroup[PSYS_VG_VEL] = paf->vertgroup_v;
         psys->vgroup[PSYS_VG_LENGTH] = paf->vertgroup_v;
 
-        /* dupliobjects */
+        /* Dupli-objects. */
         if (ob->transflag & OB_DUPLIVERTS) {
           Object *dup = bmain->objects.first;
 

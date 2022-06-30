@@ -13,6 +13,7 @@
 #include "BKE_animsys.h"
 #include "BKE_context.h"
 #include "BKE_layer.h"
+#include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_object.h"
 #include "BKE_pointcache.h"
@@ -481,6 +482,7 @@ static void clear_trans_object_base_flags(TransInfo *t)
 
 void createTransObject(bContext *C, TransInfo *t)
 {
+  Main *bmain = CTX_data_main(C);
   TransData *td = NULL;
   TransDataExtension *tx;
   const bool is_prop_edit = (t->flag & T_PROP_EDIT) != 0;
@@ -527,7 +529,7 @@ void createTransObject(bContext *C, TransInfo *t)
     }
 
     /* select linked objects, but skip them later */
-    if (ID_IS_LINKED(ob)) {
+    if (!BKE_id_is_editable(bmain, &ob->id)) {
       td->flag |= TD_SKIP;
     }
 
@@ -863,7 +865,7 @@ void recalcData_objects(TransInfo *t)
   bool motionpath_update = false;
 
   if (t->state != TRANS_CANCEL) {
-    applyProject(t);
+    applySnappingIndividual(t);
   }
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
@@ -882,7 +884,7 @@ void recalcData_objects(TransInfo *t)
       /* TODO: autokeyframe calls need some setting to specify to add samples
        * (FPoints) instead of keyframes? */
       if ((t->animtimer) && IS_AUTOKEY_ON(t->scene)) {
-        animrecord_check_state(t, ob);
+        animrecord_check_state(t, &ob->id);
         autokeyframe_object(t->context, t->scene, t->view_layer, ob, t->mode);
       }
 

@@ -87,8 +87,6 @@
 #  include "FRS_freestyle.h"
 #endif
 
-#include "DEG_depsgraph.h"
-
 /* internal */
 #include "pipeline.h"
 #include "render_result.h"
@@ -155,12 +153,12 @@ static void render_callback_exec_id(Render *re, Main *bmain, ID *id, eCbEvent ev
 /** \name Allocation & Free
  * \{ */
 
-static int do_write_image_or_movie(Render *re,
-                                   Main *bmain,
-                                   Scene *scene,
-                                   bMovieHandle *mh,
-                                   const int totvideos,
-                                   const char *name_override);
+static bool do_write_image_or_movie(Render *re,
+                                    Main *bmain,
+                                    Scene *scene,
+                                    bMovieHandle *mh,
+                                    const int totvideos,
+                                    const char *name_override);
 
 /* default callbacks, set in each new render */
 static void result_nothing(void *UNUSED(arg), RenderResult *UNUSED(rr))
@@ -983,7 +981,7 @@ static void render_result_uncrop(Render *re)
       render_result_free(re->result);
       re->result = rres;
 
-      /* weak... the display callback wants an active renderlayer pointer... */
+      /* Weak, the display callback wants an active render-layer pointer. */
       re->result->renlay = render_get_active_layer(re, re->result);
 
       BLI_rw_mutex_unlock(&re->resultmutex);
@@ -1224,7 +1222,7 @@ static void do_render_compositor(Render *re)
     }
   }
 
-  /* weak... the display callback wants an active renderlayer pointer... */
+  /* Weak: the display callback wants an active render-layer pointer. */
   if (re->result != NULL) {
     re->result->renlay = render_get_active_layer(re, re->result);
     re->display_update(re->duh, re->result, NULL);
@@ -1315,8 +1313,8 @@ static void do_render_sequencer(Render *re)
                              true,
                              &context);
 
-  /* the renderresult gets destroyed during the rendering, so we first collect all ibufs
-   * and then we populate the final renderesult */
+  /* The render-result gets destroyed during the rendering, so we first collect all ibufs
+   * and then we populate the final render-result. */
 
   for (view_id = 0; view_id < tot_views; view_id++) {
     context.view_id = view_id;
@@ -2020,12 +2018,12 @@ bool RE_WriteRenderViewsMovie(ReportList *reports,
   return ok;
 }
 
-static int do_write_image_or_movie(Render *re,
-                                   Main *bmain,
-                                   Scene *scene,
-                                   bMovieHandle *mh,
-                                   const int totvideos,
-                                   const char *name_override)
+static bool do_write_image_or_movie(Render *re,
+                                    Main *bmain,
+                                    Scene *scene,
+                                    bMovieHandle *mh,
+                                    const int totvideos,
+                                    const char *name_override)
 {
   char name[FILE_MAX];
   RenderResult rres;

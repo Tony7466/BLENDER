@@ -50,6 +50,7 @@
 #include "RE_engine.h"
 #include "RE_pipeline.h"
 
+#include "SEQ_channels.h"
 #include "SEQ_effects.h"
 #include "SEQ_iterator.h"
 #include "SEQ_modifier.h"
@@ -72,6 +73,7 @@
 
 static ImBuf *seq_render_strip_stack(const SeqRenderData *context,
                                      SeqRenderState *state,
+                                     ListBase *channels,
                                      ListBase *seqbasep,
                                      float timeline_frame,
                                      int chanshown);
@@ -231,7 +233,7 @@ void seq_render_state_init(SeqRenderState *state)
   state->scene_parents = NULL;
 }
 
-StripElem *SEQ_render_give_stripelem(Sequence *seq, int timeline_frame)
+StripElem *SEQ_render_give_stripelem(const Scene *scene, Sequence *seq, int timeline_frame)
 {
   StripElem *se = seq->strip->stripdata;
 
@@ -240,7 +242,7 @@ StripElem *SEQ_render_give_stripelem(Sequence *seq, int timeline_frame)
      * all other strips don't use this...
      */
 
-    int frame_index = (int)seq_give_frame_index(seq, timeline_frame);
+    int frame_index = (int)seq_give_frame_index(scene, seq, timeline_frame);
 
     if (frame_index == -1 || se == NULL) {
       return NULL;
@@ -256,12 +258,15 @@ static int seq_channel_cmp_fn(const void *a, const void *b)
   return (*(Sequence **)a)->machine - (*(Sequence **)b)->machine;
 }
 
-int seq_get_shown_sequences(ListBase *seqbase,
+int seq_get_shown_sequences(const Scene *scene,
+                            ListBase *channels,
+                            ListBase *seqbase,
                             const int timeline_frame,
                             const int chanshown,
                             Sequence **r_seq_arr)
 {
-  SeqCollection *collection = SEQ_query_rendered_strips(seqbase, timeline_frame, chanshown);
+  SeqCollection *collection = SEQ_query_rendered_strips(
+      scene, channels, seqbase, timeline_frame, chanshown);
   const int strip_count = BLI_gset_len(collection->set);
 
   if (strip_count > MAXSEQ) {
@@ -791,7 +796,7 @@ static ImBuf *seq_render_effect_strip_impl(const SeqRenderData *context,
   }
 
   if (seq->flag & SEQ_USE_EFFECT_DEFAULT_FADE) {
-    sh.get_default_fac(seq, timeline_frame, &fac);
+    sh.get_default_fac(scene, seq, timeline_frame, &fac);
   }
   else {
     fcu = id_data_find_fcurve(&scene->id, seq, &RNA_Sequence, "effect_fader", 0, NULL);
@@ -932,7 +937,7 @@ static ImBuf *seq_render_image_strip(const SeqRenderData *context,
   char prefix[FILE_MAX];
   ImBuf *ibuf = NULL;
 
-  StripElem *s_elem = SEQ_render_give_stripelem(seq, timeline_frame);
+  StripElem *s_elem = SEQ_render_give_stripelem(context->scene, seq, timeline_frame);
   if (s_elem == NULL) {
     return NULL;
   }
@@ -1020,7 +1025,8 @@ static ImBuf *seq_render_movie_strip_custom_file_proxy(const SeqRenderData *cont
     }
   }
 
-  int frameno = (int)seq_give_frame_index(seq, timeline_frame) + seq->anim_startofs;
+  int frameno = (int)seq_give_frame_index(context->scene, seq, timeline_frame) +
+                seq->anim_startofs;
   return IMB_anim_absolute(proxy->anim, frameno, IMB_TC_NONE, IMB_PROXY_NONE);
 }
 
@@ -1582,9 +1588,10 @@ static ImBuf *do_render_strip_seqbase(const SeqRenderData *context,
 {
   ImBuf *ibuf = NULL;
   ListBase *seqbase = NULL;
+  ListBase *channels = NULL;
   int offset;
 
-  seqbase = SEQ_get_seqbase_from_sequence(seq, &offset);
+  seqbase = SEQ_get_seqbase_from_sequence(seq, &channels, &offset);
 
   if (seqbase && !BLI_listbase_is_empty(seqbase)) {
 
@@ -1594,6 +1601,7 @@ static ImBuf *do_render_strip_seqbase(const SeqRenderData *context,
 
     ibuf = seq_render_strip_stack(context,
                                   state,
+                                  channels,
                                   seqbase,
                                   /* scene strips don't have their start taken into account */
                                   frame_index + offset,
@@ -1616,7 +1624,7 @@ static ImBuf *do_render_strip_uncached(const SeqRenderData *context,
                                        bool *r_is_proxy_image)
 {
   ImBuf *ibuf = NULL;
-  float frame_index = seq_give_frame_index(seq, timeline_frame);
+  float frame_index = seq_give_frame_index(context->scene, seq, timeline_frame);
   int type = (seq->type & SEQ_TYPE_EFFECT) ? SEQ_TYPE_EFFECT : seq->type;
   switch (type) {
     case SEQ_TYPE_META: {
@@ -1809,6 +1817,7 @@ static ImBuf *seq_render_strip_stack_apply_effect(
 
 static ImBuf *seq_render_strip_stack(const SeqRenderData *context,
                                      SeqRenderState *state,
+                                     ListBase *channels,
                                      ListBase *seqbasep,
                                      float timeline_frame,
                                      int chanshown)
@@ -1818,7 +1827,8 @@ static ImBuf *seq_render_strip_stack(const SeqRenderData *context,
   int i;
   ImBuf *out = NULL;
 
-  count = seq_get_shown_sequences(seqbasep, timeline_frame, chanshown, (Sequence **)&seq_arr);
+  count = seq_get_shown_sequences(
+      context->scene, channels, seqbasep, timeline_frame, chanshown, (Sequence **)&seq_arr);
 
   if (count == 0) {
     return NULL;
@@ -1909,6 +1919,7 @@ ImBuf *SEQ_render_give_ibuf(const SeqRenderData *context, float timeline_frame, 
   Scene *scene = context->scene;
   Editing *ed = SEQ_editing_get(scene);
   ListBase *seqbasep;
+  ListBase *channels;
 
   if (ed == NULL) {
     return NULL;
@@ -1918,9 +1929,11 @@ ImBuf *SEQ_render_give_ibuf(const SeqRenderData *context, float timeline_frame, 
     int count = BLI_listbase_count(&ed->metastack);
     count = max_ii(count + chanshown, 0);
     seqbasep = ((MetaStack *)BLI_findlink(&ed->metastack, count))->oldbasep;
+    channels = ((MetaStack *)BLI_findlink(&ed->metastack, count))->old_channels;
   }
   else {
     seqbasep = ed->seqbasep;
+    channels = ed->displayed_channels;
   }
 
   SeqRenderState state;
@@ -1929,7 +1942,7 @@ ImBuf *SEQ_render_give_ibuf(const SeqRenderData *context, float timeline_frame, 
   Sequence *seq_arr[MAXSEQ + 1];
   int count;
 
-  count = seq_get_shown_sequences(seqbasep, timeline_frame, chanshown, seq_arr);
+  count = seq_get_shown_sequences(scene, channels, seqbasep, timeline_frame, chanshown, seq_arr);
 
   if (count) {
     out = seq_cache_get(context, seq_arr[count - 1], timeline_frame, SEQ_CACHE_STORE_FINAL_OUT);
@@ -1941,7 +1954,7 @@ ImBuf *SEQ_render_give_ibuf(const SeqRenderData *context, float timeline_frame, 
 
   if (count && !out) {
     BLI_mutex_lock(&seq_render_mutex);
-    out = seq_render_strip_stack(context, &state, seqbasep, timeline_frame, chanshown);
+    out = seq_render_strip_stack(context, &state, channels, seqbasep, timeline_frame, chanshown);
 
     if (context->is_prefetch_render) {
       seq_cache_put(context, seq_arr[count - 1], timeline_frame, SEQ_CACHE_STORE_FINAL_OUT, out);
@@ -1961,12 +1974,13 @@ ImBuf *SEQ_render_give_ibuf(const SeqRenderData *context, float timeline_frame, 
 ImBuf *seq_render_give_ibuf_seqbase(const SeqRenderData *context,
                                     float timeline_frame,
                                     int chan_shown,
+                                    ListBase *channels,
                                     ListBase *seqbasep)
 {
   SeqRenderState state;
   seq_render_state_init(&state);
 
-  return seq_render_strip_stack(context, &state, seqbasep, timeline_frame, chan_shown);
+  return seq_render_strip_stack(context, &state, channels, seqbasep, timeline_frame, chan_shown);
 }
 
 ImBuf *SEQ_render_give_ibuf_direct(const SeqRenderData *context,
@@ -1978,6 +1992,39 @@ ImBuf *SEQ_render_give_ibuf_direct(const SeqRenderData *context,
 
   ImBuf *ibuf = seq_render_strip(context, &state, seq, timeline_frame);
   return ibuf;
+}
+
+float SEQ_render_thumbnail_first_frame_get(const Scene *scene,
+                                           Sequence *seq,
+                                           float frame_step,
+                                           rctf *view_area)
+{
+  int first_drawable_frame = max_iii(
+      SEQ_time_left_handle_frame_get(scene, seq), seq->start, view_area->xmin);
+
+  /* First frame should correspond to handle position. */
+  if (first_drawable_frame == SEQ_time_left_handle_frame_get(scene, seq)) {
+    return SEQ_time_left_handle_frame_get(scene, seq);
+  }
+
+  float aligned_frame_offset = (int)((first_drawable_frame - seq->start) / frame_step) *
+                               frame_step;
+  return seq->start + aligned_frame_offset;
+}
+
+float SEQ_render_thumbnail_next_frame_get(const Scene *scene,
+                                          Sequence *seq,
+                                          float last_frame,
+                                          float frame_step)
+{
+  float next_frame = last_frame + frame_step;
+
+  /* If handle position was displayed, align next frame with `seq->start`. */
+  if (last_frame == SEQ_time_left_handle_frame_get(scene, seq)) {
+    next_frame = seq->start + ((int)((last_frame - seq->start) / frame_step) + 1) * frame_step;
+  }
+
+  return next_frame;
 }
 
 /* Gets the direct image from source and scales to thumbnail size. */
@@ -2041,34 +2088,36 @@ ImBuf *SEQ_get_thumbnail(
 void SEQ_render_thumbnails(const SeqRenderData *context,
                            Sequence *seq,
                            Sequence *seq_orig,
-                           float start_frame,
                            float frame_step,
                            rctf *view_area,
                            const short *stop)
 {
   SeqRenderState state;
   seq_render_state_init(&state);
+  const Scene *scene = context->scene;
 
   /* Adding the hold offset value (seq->anim_startofs) to the start frame. Position of image not
    * affected, but frame loaded affected. */
-  start_frame = start_frame - frame_step;
-  float upper_thumb_bound = (seq->endstill) ? (seq->start + seq->len) : seq->enddisp;
+  float upper_thumb_bound = SEQ_time_has_right_still_frames(scene, seq) ?
+                                (seq->start + seq->len) :
+                                SEQ_time_right_handle_frame_get(scene, seq);
   upper_thumb_bound = (upper_thumb_bound > view_area->xmax) ? view_area->xmax + frame_step :
                                                               upper_thumb_bound;
 
-  while ((start_frame < upper_thumb_bound) & !*stop) {
+  float timeline_frame = SEQ_render_thumbnail_first_frame_get(scene, seq, frame_step, view_area);
+  while ((timeline_frame < upper_thumb_bound) & !*stop) {
     ImBuf *ibuf = seq_cache_get(
-        context, seq_orig, round_fl_to_int(start_frame), SEQ_CACHE_STORE_THUMBNAIL);
+        context, seq_orig, round_fl_to_int(timeline_frame), SEQ_CACHE_STORE_THUMBNAIL);
     if (ibuf) {
       IMB_freeImBuf(ibuf);
-      start_frame += frame_step;
+      timeline_frame = SEQ_render_thumbnail_next_frame_get(scene, seq, timeline_frame, frame_step);
       continue;
     }
 
-    ibuf = seq_get_uncached_thumbnail(context, &state, seq, round_fl_to_int(start_frame));
+    ibuf = seq_get_uncached_thumbnail(context, &state, seq, round_fl_to_int(timeline_frame));
 
     if (ibuf) {
-      seq_cache_thumbnail_put(context, seq_orig, round_fl_to_int(start_frame), ibuf, view_area);
+      seq_cache_thumbnail_put(context, seq_orig, round_fl_to_int(timeline_frame), ibuf, view_area);
       IMB_freeImBuf(ibuf);
       seq_orig->flag &= ~SEQ_FLAG_SKIP_THUMBNAILS;
     }
@@ -2078,13 +2127,16 @@ void SEQ_render_thumbnails(const SeqRenderData *context,
       return;
     }
 
-    start_frame += frame_step;
+    timeline_frame = SEQ_render_thumbnail_next_frame_get(scene, seq, timeline_frame, frame_step);
   }
 }
 
-int SEQ_render_thumbnails_guaranteed_set_frame_step_get(const Sequence *seq)
+int SEQ_render_thumbnails_guaranteed_set_frame_step_get(const Scene *scene, const Sequence *seq)
 {
-  const int content_len = (seq->enddisp - seq->startdisp - seq->startstill - seq->endstill);
+  const int content_start = max_ii(SEQ_time_left_handle_frame_get(scene, seq), seq->start);
+  const int content_end = min_ii(SEQ_time_right_handle_frame_get(scene, seq),
+                                 seq->start + seq->len);
+  const int content_len = content_end - content_start;
 
   /* Arbitrary, but due to performance reasons should be as low as possible. */
   const int thumbnails_base_set_count = min_ii(content_len / 100, 30);
@@ -2102,11 +2154,12 @@ void SEQ_render_thumbnails_base_set(const SeqRenderData *context,
 {
   SeqRenderState state;
   seq_render_state_init(&state);
+  const Scene *scene = context->scene;
 
-  int timeline_frame = seq->startdisp;
-  const int frame_step = SEQ_render_thumbnails_guaranteed_set_frame_step_get(seq);
+  int timeline_frame = SEQ_time_left_handle_frame_get(scene, seq);
+  const int frame_step = SEQ_render_thumbnails_guaranteed_set_frame_step_get(scene, seq);
 
-  while (timeline_frame < seq->enddisp && !*stop) {
+  while (timeline_frame < SEQ_time_right_handle_frame_get(scene, seq) && !*stop) {
     ImBuf *ibuf = seq_cache_get(
         context, seq_orig, roundf(timeline_frame), SEQ_CACHE_STORE_THUMBNAIL);
     if (ibuf) {
@@ -2133,6 +2186,13 @@ void SEQ_render_thumbnails_base_set(const SeqRenderData *context,
 
     timeline_frame += frame_step;
   }
+}
+
+bool SEQ_render_is_muted(const ListBase *channels, const Sequence *seq)
+{
+
+  SeqTimelineChannel *channel = SEQ_channel_get_by_index(channels, seq->machine);
+  return seq->flag & SEQ_MUTE || SEQ_channel_is_muted(channel);
 }
 
 /** \} */

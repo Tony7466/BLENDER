@@ -846,8 +846,13 @@ static void file_read_reports_finalize(BlendFileReadReport *bf_reports)
                 bf_reports->count.missing_obproxies);
   }
   else {
-    BLI_assert(bf_reports->count.missing_obdata == 0);
-    BLI_assert(bf_reports->count.missing_obproxies == 0);
+    if (bf_reports->count.missing_obdata != 0 || bf_reports->count.missing_obproxies != 0) {
+      CLOG_ERROR(&LOG,
+                 "%d local ObjectData and %d local Object proxies are reported to be missing, "
+                 "this should never happen",
+                 bf_reports->count.missing_obdata,
+                 bf_reports->count.missing_obproxies);
+    }
   }
 
   if (bf_reports->resynced_lib_overrides_libraries_count != 0) {
@@ -867,7 +872,7 @@ static void file_read_reports_finalize(BlendFileReadReport *bf_reports)
         RPT_WARNING,
         "Proxies have been removed from Blender (%d proxies were automatically converted "
         "to library overrides, %d proxies could not be converted and were cleared). "
-        "Please also consider re-saving any library .blend file with the newest Blender version.",
+        "Please also consider re-saving any library .blend file with the newest Blender version",
         bf_reports->count.proxies_to_lib_overrides_success,
         bf_reports->count.proxies_to_lib_overrides_failures);
   }
@@ -1091,7 +1096,7 @@ void wm_homefile_read_ex(bContext *C,
   const bool reset_app_template = ((!app_template && U.app_template[0]) ||
                                    (app_template && !STREQ(app_template, U.app_template)));
 
-  /* options exclude eachother */
+  /* Options exclude each other. */
   BLI_assert((use_factory_settings && filepath_startup_override) == 0);
 
   if ((G.f & G_FLAG_SCRIPT_OVERRIDE_PREF) == 0) {
@@ -1760,11 +1765,9 @@ static bool wm_file_write(bContext *C,
   /* Enforce full override check/generation on file save. */
   BKE_lib_override_library_main_operations_create(bmain, true);
 
-  if (!G.background && BLI_thread_is_main()) {
-    /* Redraw to remove menus that might be open.
-     * But only in the main thread otherwise this can crash, see T92704. */
-    WM_redraw_windows(C);
-  }
+  /* NOTE: Ideally we would call `WM_redraw_windows` here to remove any open menus. But we
+   * can crash if saving from a script, see T92704 & T97627. Just checking `!G.background
+   * && BLI_thread_is_main()` is not sufficient to fix this. */
 
   /* don't forget not to return without! */
   WM_cursor_wait(true);
@@ -3060,8 +3063,7 @@ static int wm_save_as_mainfile_exec(bContext *C, wmOperator *op)
   Main *bmain = CTX_data_main(C);
   char path[FILE_MAX];
   const bool is_save_as = (op->type->invoke == wm_save_as_mainfile_invoke);
-  const bool use_save_as_copy = (RNA_struct_property_is_set(op->ptr, "copy") &&
-                                 RNA_boolean_get(op->ptr, "copy"));
+  const bool use_save_as_copy = RNA_boolean_get(op->ptr, "copy");
 
   /* We could expose all options to the users however in most cases remapping
    * existing relative paths is a good default.

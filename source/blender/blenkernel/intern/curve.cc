@@ -44,7 +44,6 @@
 #include "BKE_lib_query.h"
 #include "BKE_main.h"
 #include "BKE_object.h"
-#include "BKE_spline.hh"
 #include "BKE_vfont.h"
 
 #include "DEG_depsgraph.h"
@@ -113,9 +112,12 @@ static void curve_free_data(ID *id)
   BKE_curve_batch_cache_free(curve);
 
   BKE_nurbList_free(&curve->nurb);
-  BKE_curve_editfont_free(curve);
 
-  BKE_curve_editNurb_free(curve);
+  if (!curve->edit_data_from_original) {
+    BKE_curve_editfont_free(curve);
+
+    BKE_curve_editNurb_free(curve);
+  }
 
   BKE_curveprofile_free(curve->bevel_profile);
 
@@ -123,8 +125,6 @@ static void curve_free_data(ID *id)
   MEM_SAFE_FREE(curve->str);
   MEM_SAFE_FREE(curve->strinfo);
   MEM_SAFE_FREE(curve->tb);
-
-  delete curve->curve_eval;
 }
 
 static void curve_foreach_id(ID *id, LibraryForeachIDData *data)
@@ -667,7 +667,7 @@ Nurb *BKE_nurb_duplicate(const Nurb *nu)
   if (newnu == nullptr) {
     return nullptr;
   }
-  memcpy(newnu, nu, sizeof(Nurb));
+  *newnu = blender::dna::shallow_copy(*nu);
 
   if (nu->bezt) {
     newnu->bezt = (BezTriple *)MEM_malloc_arrayN(nu->pntsu, sizeof(BezTriple), "duplicateNurb2");
@@ -701,7 +701,7 @@ Nurb *BKE_nurb_duplicate(const Nurb *nu)
 Nurb *BKE_nurb_copy(Nurb *src, int pntsu, int pntsv)
 {
   Nurb *newnu = (Nurb *)MEM_mallocN(sizeof(Nurb), "copyNurb");
-  memcpy(newnu, src, sizeof(Nurb));
+  *newnu = blender::dna::shallow_copy(*src);
 
   if (pntsu == 1) {
     SWAP(int, pntsu, pntsv);
@@ -3184,7 +3184,7 @@ static void calchandleNurb_intern(BezTriple *bezt,
     len *= 2.5614f;
 
     if (len != 0.0f) {
-      /* only for fcurves */
+      /* Only for F-Curves. */
       bool leftviolate = false, rightviolate = false;
 
       if (!is_fcurve || fcurve_smoothing == FCURVE_SMOOTH_NONE) {
@@ -4765,7 +4765,7 @@ bool BKE_nurb_valid_message(const int pnts,
         message_dst[0] = 0;
         return false;
       }
-      msg_template = TIP_("At least two points required.");
+      msg_template = TIP_("At least two points required");
       break;
     case NURBSValidationStatus::MorePointsThanOrderRequired:
       msg_template = TIP_("Must have more control points than Order");

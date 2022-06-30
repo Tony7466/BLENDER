@@ -285,6 +285,21 @@ ccl_device_inline bool operator!=(const Transform &A, const Transform &B)
   return !(A == B);
 }
 
+ccl_device_inline bool transform_equal_threshold(const Transform &A,
+                                                 const Transform &B,
+                                                 const float threshold)
+{
+  for (int x = 0; x < 3; x++) {
+    for (int y = 0; y < 4; y++) {
+      if (fabsf(A[x][y] - B[x][y]) > threshold) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
 ccl_device_inline float3 transform_get_column(const Transform *t, int column)
 {
   return make_float3(t->x[column], t->y[column], t->z[column]);
@@ -478,13 +493,13 @@ ccl_device void transform_motion_array_interpolate(ccl_private Transform *tfm,
 
 ccl_device_inline bool transform_isfinite_safe(ccl_private Transform *tfm)
 {
-  return isfinite4_safe(tfm->x) && isfinite4_safe(tfm->y) && isfinite4_safe(tfm->z);
+  return isfinite_safe(tfm->x) && isfinite_safe(tfm->y) && isfinite_safe(tfm->z);
 }
 
 ccl_device_inline bool transform_decomposed_isfinite_safe(ccl_private DecomposedTransform *decomp)
 {
-  return isfinite4_safe(decomp->x) && isfinite4_safe(decomp->y) && isfinite4_safe(decomp->z) &&
-         isfinite4_safe(decomp->w);
+  return isfinite_safe(decomp->x) && isfinite_safe(decomp->y) && isfinite_safe(decomp->z) &&
+         isfinite_safe(decomp->w);
 }
 
 #ifndef __KERNEL_GPU__

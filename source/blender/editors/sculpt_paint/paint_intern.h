@@ -88,7 +88,7 @@ struct wmKeyMap *paint_stroke_modal_keymap(struct wmKeyConfig *keyconf);
 int paint_stroke_modal(struct bContext *C,
                        struct wmOperator *op,
                        const struct wmEvent *event,
-                       struct PaintStroke *stroke);
+                       struct PaintStroke **stroke_p);
 int paint_stroke_exec(struct bContext *C, struct wmOperator *op, struct PaintStroke *stroke);
 void paint_stroke_cancel(struct bContext *C, struct wmOperator *op, struct PaintStroke *stroke);
 bool paint_stroke_flipped(struct PaintStroke *stroke);
@@ -98,7 +98,6 @@ void *paint_stroke_mode_data(struct PaintStroke *stroke);
 float paint_stroke_distance_get(struct PaintStroke *stroke);
 void paint_stroke_set_mode_data(struct PaintStroke *stroke, void *mode_data);
 bool PAINT_brush_tool_poll(struct bContext *C);
-void paint_cursor_start(struct Paint *p, bool (*poll)(struct bContext *C));
 /**
  * Delete overlay cursor textures to preserve memory and invalidate all overlay flags.
  */
@@ -133,20 +132,12 @@ void PAINT_OT_weight_gradient(struct wmOperatorType *ot);
 void PAINT_OT_vertex_paint_toggle(struct wmOperatorType *ot);
 void PAINT_OT_vertex_paint(struct wmOperatorType *ot);
 
-unsigned int vpaint_get_current_col(struct Scene *scene, struct VPaint *vp, bool secondary);
-
-/* paint_vertex_color_utils.c */
+unsigned int vpaint_get_current_color(struct Scene *scene, struct VPaint *vp, bool secondary);
 
 /**
  * \note weight-paint has an equivalent function: #ED_wpaint_blend_tool
  */
 unsigned int ED_vpaint_blend_tool(int tool, uint col, uint paintcol, int alpha_i);
-/**
- * Apply callback to each vertex of the active vertex color layer.
- */
-bool ED_vpaint_color_transform(struct Object *ob,
-                               VPaintTransform_Callback vpaint_tx_fn,
-                               const void *user_data);
 
 /* paint_vertex_weight_utils.c */
 
@@ -194,6 +185,7 @@ void PAINT_OT_weight_sample(struct wmOperatorType *ot);
 void PAINT_OT_weight_sample_group(struct wmOperatorType *ot);
 
 /* paint_vertex_proj.c */
+
 struct VertProjHandle;
 struct VertProjHandle *ED_vpaint_proj_handle_create(struct Depsgraph *depsgraph,
                                                     struct Scene *scene,
@@ -207,6 +199,7 @@ void ED_vpaint_proj_handle_update(struct Depsgraph *depsgraph,
 void ED_vpaint_proj_handle_free(struct VertProjHandle *vp_handle);
 
 /* paint_image.c */
+
 typedef struct ImagePaintPartialRedraw {
   rcti dirty_region;
 } ImagePaintPartialRedraw;
@@ -282,6 +275,7 @@ void PAINT_OT_image_paint(struct wmOperatorType *ot);
 void PAINT_OT_add_simple_uvs(struct wmOperatorType *ot);
 
 /* paint_image_2d_curve_mask.cc */
+
 /**
  * \brief Caching structure for curve mask.
  *
@@ -482,6 +476,7 @@ void PAINT_OT_mask_box_gesture(struct wmOperatorType *ot);
 void PAINT_OT_mask_line_gesture(struct wmOperatorType *ot);
 
 /* paint_curve.c */
+
 void PAINTCURVE_OT_new(struct wmOperatorType *ot);
 void PAINTCURVE_OT_add_point(struct wmOperatorType *ot);
 void PAINTCURVE_OT_delete_point(struct wmOperatorType *ot);

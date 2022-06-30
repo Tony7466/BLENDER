@@ -1,6 +1,4 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-
-# <pep8 compliant>
 import bpy
 from bpy.types import Panel
 from rna_prop_ui import PropertyPanel
@@ -48,12 +46,7 @@ class EEVEE_WORLD_PT_mist(WorldButtonsPanel, Panel):
     @classmethod
     def poll(cls, context):
         engine = context.engine
-        if context.world and (engine in cls.COMPAT_ENGINES):
-            for view_layer in context.scene.view_layers:
-                if view_layer.use_pass_mist:
-                    return True
-
-        return False
+        return context.world and (engine in cls.COMPAT_ENGINES)
 
     def draw(self, context):
         layout = self.layout

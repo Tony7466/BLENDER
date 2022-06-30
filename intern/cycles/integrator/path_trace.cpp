@@ -334,7 +334,7 @@ void PathTrace::init_render_buffers(const RenderWork &render_work)
 
   /* Handle initialization scheduled by the render scheduler. */
   if (render_work.init_render_buffers) {
-    tbb::parallel_for_each(path_trace_works_, [&](unique_ptr<PathTraceWork> &path_trace_work) {
+    parallel_for_each(path_trace_works_, [&](unique_ptr<PathTraceWork> &path_trace_work) {
       path_trace_work->zero_render_buffers();
     });
 
@@ -348,14 +348,16 @@ void PathTrace::path_trace(RenderWork &render_work)
     return;
   }
 
-  VLOG(3) << "Will path trace " << render_work.path_trace.num_samples
-          << " samples at the resolution divider " << render_work.resolution_divider;
+  VLOG_WORK << "Will path trace " << render_work.path_trace.num_samples
+            << " samples at the resolution divider " << render_work.resolution_divider;
 
   const double start_time = time_dt();
 
   const int num_works = path_trace_works_.size();
 
-  tbb::parallel_for(0, num_works, [&](int i) {
+  thread_capture_fp_settings();
+
+  parallel_for(0, num_works, [&](int i) {
     const double work_start_time = time_dt();
     const int num_samples = render_work.path_trace.num_samples;
 
@@ -371,9 +373,9 @@ void PathTrace::path_trace(RenderWork &render_work)
     work_balance_infos_[i].time_spent += work_time;
     work_balance_infos_[i].occupancy = statistics.occupancy;
 
-    VLOG(3) << "Rendered " << num_samples << " samples in " << work_time << " seconds ("
-            << work_time / num_samples
-            << " seconds per sample), occupancy: " << statistics.occupancy;
+    VLOG_WORK << "Rendered " << num_samples << " samples in " << work_time << " seconds ("
+              << work_time / num_samples
+              << " seconds per sample), occupancy: " << statistics.occupancy;
   });
 
   float occupancy_accum = 0.0f;
@@ -396,16 +398,16 @@ void PathTrace::adaptive_sample(RenderWork &render_work)
   bool did_reschedule_on_idle = false;
 
   while (true) {
-    VLOG(3) << "Will filter adaptive stopping buffer, threshold "
-            << render_work.adaptive_sampling.threshold;
+    VLOG_WORK << "Will filter adaptive stopping buffer, threshold "
+              << render_work.adaptive_sampling.threshold;
     if (render_work.adaptive_sampling.reset) {
-      VLOG(3) << "Will re-calculate convergency flag for currently converged pixels.";
+      VLOG_WORK << "Will re-calculate convergency flag for currently converged pixels.";
     }
 
     const double start_time = time_dt();
 
     uint num_active_pixels = 0;
-    tbb::parallel_for_each(path_trace_works_, [&](unique_ptr<PathTraceWork> &path_trace_work) {
+    parallel_for_each(path_trace_works_, [&](unique_ptr<PathTraceWork> &path_trace_work) {
       const uint num_active_pixels_in_work =
           path_trace_work->adaptive_sampling_converge_filter_count_active(
               render_work.adaptive_sampling.threshold, render_work.adaptive_sampling.reset);
@@ -418,11 +420,11 @@ void PathTrace::adaptive_sample(RenderWork &render_work)
         render_work, time_dt() - start_time, is_cancel_requested());
 
     if (num_active_pixels == 0) {
-      VLOG(3) << "All pixels converged.";
+      VLOG_WORK << "All pixels converged.";
       if (!render_scheduler_.render_work_reschedule_on_converge(render_work)) {
         break;
       }
-      VLOG(3) << "Continuing with lower threshold.";
+      VLOG_WORK << "Continuing with lower threshold.";
     }
     else if (did_reschedule_on_idle) {
       break;
@@ -434,10 +436,10 @@ void PathTrace::adaptive_sample(RenderWork &render_work)
        * A better heuristic is possible here: for example, use maximum of 128^2 and percentage of
        * the final resolution. */
       if (!render_scheduler_.render_work_reschedule_on_idle(render_work)) {
-        VLOG(3) << "Rescheduling is not possible: final threshold is reached.";
+        VLOG_WORK << "Rescheduling is not possible: final threshold is reached.";
         break;
       }
-      VLOG(3) << "Rescheduling lower threshold.";
+      VLOG_WORK << "Rescheduling lower threshold.";
       did_reschedule_on_idle = true;
     }
     else {
@@ -481,9 +483,9 @@ void PathTrace::cryptomatte_postprocess(const RenderWork &render_work)
   if (!render_work.cryptomatte.postprocess) {
     return;
   }
-  VLOG(3) << "Perform cryptomatte work.";
+  VLOG_WORK << "Perform cryptomatte work.";
 
-  tbb::parallel_for_each(path_trace_works_, [&](unique_ptr<PathTraceWork> &path_trace_work) {
+  parallel_for_each(path_trace_works_, [&](unique_ptr<PathTraceWork> &path_trace_work) {
     path_trace_work->cryptomatte_postproces();
   });
 }
@@ -499,7 +501,7 @@ void PathTrace::denoise(const RenderWork &render_work)
     return;
   }
 
-  VLOG(3) << "Perform denoising work.";
+  VLOG_WORK << "Perform denoising work.";
 
   const double start_time = time_dt();
 
@@ -536,7 +538,7 @@ void PathTrace::denoise(const RenderWork &render_work)
 
   if (multi_device_buffers) {
     multi_device_buffers->copy_from_device();
-    tbb::parallel_for_each(
+    parallel_for_each(
         path_trace_works_, [&multi_device_buffers](unique_ptr<PathTraceWork> &path_trace_work) {
           path_trace_work->copy_from_denoised_render_buffers(multi_device_buffers.get());
         });
@@ -597,26 +599,26 @@ void PathTrace::update_display(const RenderWork &render_work)
   }
 
   if (!display_ && !output_driver_) {
-    VLOG(3) << "Ignore display update.";
+    VLOG_WORK << "Ignore display update.";
     return;
   }
 
   if (full_params_.width == 0 || full_params_.height == 0) {
-    VLOG(3) << "Skipping PathTraceDisplay update due to 0 size of the render buffer.";
+    VLOG_WORK << "Skipping PathTraceDisplay update due to 0 size of the render buffer.";
     return;
   }
 
   const double start_time = time_dt();
 
   if (output_driver_) {
-    VLOG(3) << "Invoke buffer update callback.";
+    VLOG_WORK << "Invoke buffer update callback.";
 
     PathTraceTile tile(*this);
     output_driver_->update_render_tile(tile);
   }
 
   if (display_) {
-    VLOG(3) << "Perform copy to GPUDisplay work.";
+    VLOG_WORK << "Perform copy to GPUDisplay work.";
 
     const int texture_width = render_state_.effective_big_tile_params.window_width;
     const int texture_height = render_state_.effective_big_tile_params.window_height;
@@ -645,8 +647,6 @@ void PathTrace::update_display(const RenderWork &render_work)
 
 void PathTrace::rebalance(const RenderWork &render_work)
 {
-  static const int kLogLevel = 3;
-
   if (!render_work.rebalance) {
     return;
   }
@@ -654,33 +654,33 @@ void PathTrace::rebalance(const RenderWork &render_work)
   const int num_works = path_trace_works_.size();
 
   if (num_works == 1) {
-    VLOG(kLogLevel) << "Ignoring rebalance work due to single device render.";
+    VLOG_WORK << "Ignoring rebalance work due to single device render.";
     return;
   }
 
   const double start_time = time_dt();
 
-  if (VLOG_IS_ON(kLogLevel)) {
-    VLOG(kLogLevel) << "Perform rebalance work.";
-    VLOG(kLogLevel) << "Per-device path tracing time (seconds):";
+  if (VLOG_IS_ON(3)) {
+    VLOG_WORK << "Perform rebalance work.";
+    VLOG_WORK << "Per-device path tracing time (seconds):";
     for (int i = 0; i < num_works; ++i) {
-      VLOG(kLogLevel) << path_trace_works_[i]->get_device()->info.description << ": "
-                      << work_balance_infos_[i].time_spent;
+      VLOG_WORK << path_trace_works_[i]->get_device()->info.description << ": "
+                << work_balance_infos_[i].time_spent;
     }
   }
 
   const bool did_rebalance = work_balance_do_rebalance(work_balance_infos_);
 
-  if (VLOG_IS_ON(kLogLevel)) {
-    VLOG(kLogLevel) << "Calculated per-device weights for works:";
+  if (VLOG_IS_ON(3)) {
+    VLOG_WORK << "Calculated per-device weights for works:";
     for (int i = 0; i < num_works; ++i) {
-      VLOG(kLogLevel) << path_trace_works_[i]->get_device()->info.description << ": "
-                      << work_balance_infos_[i].weight;
+      VLOG_WORK << path_trace_works_[i]->get_device()->info.description << ": "
+                << work_balance_infos_[i].weight;
     }
   }
 
   if (!did_rebalance) {
-    VLOG(kLogLevel) << "Balance in path trace works did not change.";
+    VLOG_WORK << "Balance in path trace works did not change.";
     render_scheduler_.report_rebalance_time(render_work, time_dt() - start_time, false);
     return;
   }
@@ -704,7 +704,7 @@ void PathTrace::write_tile_buffer(const RenderWork &render_work)
     return;
   }
 
-  VLOG(3) << "Write tile result.";
+  VLOG_WORK << "Write tile result.";
 
   render_state_.tile_written = true;
 
@@ -718,14 +718,14 @@ void PathTrace::write_tile_buffer(const RenderWork &render_work)
    *
    * Important thing is: tile should be written to the software via callback only once. */
   if (!has_multiple_tiles) {
-    VLOG(3) << "Write tile result via buffer write callback.";
+    VLOG_WORK << "Write tile result via buffer write callback.";
     tile_buffer_write();
   }
 
   /* Write tile to disk, so that the render work's render buffer can be re-used for the next tile.
    */
   if (has_multiple_tiles) {
-    VLOG(3) << "Write tile result into .";
+    VLOG_WORK << "Write tile result into .";
     tile_buffer_write_to_disk();
   }
 }
@@ -736,10 +736,10 @@ void PathTrace::finalize_full_buffer_on_disk(const RenderWork &render_work)
     return;
   }
 
-  VLOG(3) << "Handle full-frame render buffer work.";
+  VLOG_WORK << "Handle full-frame render buffer work.";
 
   if (!tile_manager_.has_written_tiles()) {
-    VLOG(3) << "No tiles on disk.";
+    VLOG_WORK << "No tiles on disk.";
     return;
   }
 
@@ -806,7 +806,7 @@ void PathTrace::tile_buffer_read()
   }
 
   /* Read buffers back from device. */
-  tbb::parallel_for_each(path_trace_works_, [&](unique_ptr<PathTraceWork> &path_trace_work) {
+  parallel_for_each(path_trace_works_, [&](unique_ptr<PathTraceWork> &path_trace_work) {
     path_trace_work->copy_render_buffers_from_device();
   });
 
@@ -814,7 +814,7 @@ void PathTrace::tile_buffer_read()
   PathTraceTile tile(*this);
   if (output_driver_->read_render_tile(tile)) {
     /* Copy buffers to device again. */
-    tbb::parallel_for_each(path_trace_works_, [](unique_ptr<PathTraceWork> &path_trace_work) {
+    parallel_for_each(path_trace_works_, [](unique_ptr<PathTraceWork> &path_trace_work) {
       path_trace_work->copy_render_buffers_to_device();
     });
   }
@@ -878,20 +878,20 @@ void PathTrace::progress_set_status(const string &status, const string &substatu
 
 void PathTrace::copy_to_render_buffers(RenderBuffers *render_buffers)
 {
-  tbb::parallel_for_each(path_trace_works_,
-                         [&render_buffers](unique_ptr<PathTraceWork> &path_trace_work) {
-                           path_trace_work->copy_to_render_buffers(render_buffers);
-                         });
+  parallel_for_each(path_trace_works_,
+                    [&render_buffers](unique_ptr<PathTraceWork> &path_trace_work) {
+                      path_trace_work->copy_to_render_buffers(render_buffers);
+                    });
   render_buffers->copy_to_device();
 }
 
 void PathTrace::copy_from_render_buffers(RenderBuffers *render_buffers)
 {
   render_buffers->copy_from_device();
-  tbb::parallel_for_each(path_trace_works_,
-                         [&render_buffers](unique_ptr<PathTraceWork> &path_trace_work) {
-                           path_trace_work->copy_from_render_buffers(render_buffers);
-                         });
+  parallel_for_each(path_trace_works_,
+                    [&render_buffers](unique_ptr<PathTraceWork> &path_trace_work) {
+                      path_trace_work->copy_from_render_buffers(render_buffers);
+                    });
 }
 
 bool PathTrace::copy_render_tile_from_device()
@@ -903,7 +903,7 @@ bool PathTrace::copy_render_tile_from_device()
 
   bool success = true;
 
-  tbb::parallel_for_each(path_trace_works_, [&](unique_ptr<PathTraceWork> &path_trace_work) {
+  parallel_for_each(path_trace_works_, [&](unique_ptr<PathTraceWork> &path_trace_work) {
     if (!success) {
       return;
     }
@@ -935,7 +935,7 @@ static string get_layer_view_name(const RenderBuffers &buffers)
 
 void PathTrace::process_full_buffer_from_disk(string_view filename)
 {
-  VLOG(3) << "Processing full frame buffer file " << filename;
+  VLOG_WORK << "Processing full frame buffer file " << filename;
 
   progress_set_status("Reading full buffer from disk");
 
@@ -1004,7 +1004,7 @@ bool PathTrace::get_render_tile_pixels(const PassAccessor &pass_accessor,
 
   bool success = true;
 
-  tbb::parallel_for_each(path_trace_works_, [&](unique_ptr<PathTraceWork> &path_trace_work) {
+  parallel_for_each(path_trace_works_, [&](unique_ptr<PathTraceWork> &path_trace_work) {
     if (!success) {
       return;
     }
@@ -1021,7 +1021,7 @@ bool PathTrace::set_render_tile_pixels(PassAccessor &pass_accessor,
 {
   bool success = true;
 
-  tbb::parallel_for_each(path_trace_works_, [&](unique_ptr<PathTraceWork> &path_trace_work) {
+  parallel_for_each(path_trace_works_, [&](unique_ptr<PathTraceWork> &path_trace_work) {
     if (!success) {
       return;
     }
@@ -1103,6 +1103,8 @@ static const char *device_type_for_description(const DeviceType type)
       return "OptiX";
     case DEVICE_HIP:
       return "HIP";
+    case DEVICE_ONEAPI:
+      return "oneAPI";
     case DEVICE_DUMMY:
       return "Dummy";
     case DEVICE_MULTI:

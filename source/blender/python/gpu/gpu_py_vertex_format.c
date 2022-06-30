@@ -9,10 +9,6 @@
 
 #include <Python.h>
 
-#include "BLI_math.h"
-
-#include "MEM_guardedalloc.h"
-
 #include "../generic/py_capi_utils.h"
 #include "../generic/python_utildefines.h"
 
@@ -94,7 +90,16 @@ static PyObject *pygpu_vertformat_attr_add(BPyGPUVertFormat *self, PyObject *arg
   }
 
   static const char *_keywords[] = {"id", "comp_type", "len", "fetch_mode", NULL};
-  static _PyArg_Parser _parser = {"$sO&IO&:attr_add", _keywords, 0};
+  static _PyArg_Parser _parser = {
+      "$"  /* Keyword only arguments. */
+      "s"  /* `id` */
+      "O&" /* `comp_type` */
+      "I"  /* `len` */
+      "O&" /* `fetch_mode` */
+      ":attr_add",
+      _keywords,
+      0,
+  };
   if (!_PyArg_ParseTupleAndKeywordsFast(args,
                                         kwds,
                                         &_parser,

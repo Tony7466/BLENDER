@@ -1,6 +1,4 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-
-# <pep8 compliant>
 import bpy
 from bpy.types import (
     Header,
@@ -1198,6 +1196,8 @@ class ThemeGenericClassGenerator:
             ("Scroll Bar", "wcol_scroll"),
             ("Progress Bar", "wcol_progress"),
             ("List Item", "wcol_list_item"),
+            # Not used yet, so hide this from the UI.
+            # ("Data-View Item", "wcol_view_item"),
             ("Tab", "wcol_tab"),
         ]
 
@@ -2259,12 +2259,9 @@ class USERPREF_PT_experimental_new_features(ExperimentalPanel, Panel):
     def draw(self, context):
         self._draw_items(
             context, (
-                ({"property": "use_sculpt_vertex_colors"}, "T71947"),
                 ({"property": "use_sculpt_tools_tilt"}, "T82877"),
-                ({"property": "use_select_nearest_on_first_click"}, "T96752"),
                 ({"property": "use_extended_asset_browser"}, ("project/view/130/", "Project Page")),
                 ({"property": "use_override_templates"}, ("T73318", "Milestone 4")),
-                ({"property": "use_named_attribute_nodes"}, ("T91742")),
             ),
         )
 
@@ -2276,11 +2273,29 @@ class USERPREF_PT_experimental_prototypes(ExperimentalPanel, Panel):
         self._draw_items(
             context, (
                 ({"property": "use_new_curves_type"}, "T68981"),
+                ({"property": "use_new_curves_tools"}, "T68981"),
                 ({"property": "use_new_point_cloud_type"}, "T75717"),
+                ({"property": "use_sculpt_texture_paint"}, "T96225"),
                 ({"property": "use_full_frame_compositor"}, "T88150"),
                 ({"property": "enable_eevee_next"}, "T93220"),
+                ({"property": "use_draw_manager_acquire_lock"}, "T98016"),
             ),
         )
+
+
+# Keep this as tweaks can be useful to restore.
+"""
+class USERPREF_PT_experimental_tweaks(ExperimentalPanel, Panel):
+    bl_label = "Tweaks"
+
+    def draw(self, context):
+        self._draw_items(
+            context, (
+                ({"property": "use_select_nearest_on_first_click"}, "T96752"),
+            ),
+        )
+
+"""
 
 
 class USERPREF_PT_experimental_debugging(ExperimentalPanel, Panel):
@@ -2403,6 +2418,7 @@ classes = (
 
     USERPREF_PT_experimental_new_features,
     USERPREF_PT_experimental_prototypes,
+    # USERPREF_PT_experimental_tweaks,
     USERPREF_PT_experimental_debugging,
 
     # Add dynamically generated editor theme panels last,

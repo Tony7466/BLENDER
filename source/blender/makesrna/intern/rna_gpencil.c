@@ -307,7 +307,7 @@ bool rna_GPencil_datablocks_obdata_poll(PointerRNA *UNUSED(ptr), const PointerRN
   return (gpd->flag & GP_DATA_ANNOTATIONS) == 0;
 }
 
-static char *rna_GPencilLayer_path(PointerRNA *ptr)
+static char *rna_GPencilLayer_path(const PointerRNA *ptr)
 {
   bGPDlayer *gpl = (bGPDlayer *)ptr->data;
   char name_esc[sizeof(gpl->info) * 2];
@@ -407,7 +407,7 @@ static void rna_GPencilLayer_parent_bone_set(PointerRNA *ptr, const char *value)
   }
 }
 
-static char *rna_GPencilLayerMask_path(PointerRNA *ptr)
+static char *rna_GPencilLayerMask_path(const PointerRNA *ptr)
 {
   bGPdata *gpd = (bGPdata *)ptr->owner_id;
   bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
@@ -848,10 +848,6 @@ static float rna_GPencilStrokePoints_weight_get(bGPDstroke *stroke,
   }
 
   MDeformVert *pt_dvert = stroke->dvert + point_index;
-  if ((pt_dvert) && (pt_dvert->totweight <= vertex_group_index || vertex_group_index < 0)) {
-    BKE_report(reports, RPT_ERROR, "Groups: index out of range");
-    return -1.0f;
-  }
 
   MDeformWeight *dw = BKE_defvert_find_index(pt_dvert, vertex_group_index);
   if (dw) {
@@ -1126,7 +1122,7 @@ static void rna_GPencil_clear(bGPdata *gpd)
   WM_main_add_notifier(NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
 }
 
-static char *rna_GreasePencilGrid_path(PointerRNA *UNUSED(ptr))
+static char *rna_GreasePencilGrid_path(const PointerRNA *UNUSED(ptr))
 {
   return BLI_strdup("grid");
 }

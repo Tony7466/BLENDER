@@ -1,7 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-# <pep8 compliant>
-
 __all__ = (
     "build_info",
     "SOURCE_DIR",
@@ -114,12 +112,11 @@ def makefile_log() -> List[str]:
         print("Can't execute process")
         sys.exit(1)
 
-
     while process.poll():
         time.sleep(1)
 
     # We know this is always true based on the input arguments to `Popen`.
-    stdout: IO[bytes] = process.stdout # type: ignore
+    stdout: IO[bytes] = process.stdout  # type: ignore
 
     out = stdout.read()
     stdout.close()
@@ -210,7 +207,7 @@ def build_defines_as_source() -> str:
     )
 
     # We know this is always true based on the input arguments to `Popen`.
-    stdout: IO[bytes] = process.stdout # type: ignore
+    stdout: IO[bytes] = process.stdout  # type: ignore
 
     return cast(str, stdout.read().strip().decode('ascii'))
 
@@ -228,7 +225,7 @@ def build_defines_as_args() -> List[str]:
 def queue_processes(
         process_funcs: Sequence[Tuple[Callable[..., subprocess.Popen[Any]], Tuple[Any, ...]]],
         *,
-        job_total: int =-1,
+        job_total: int = -1,
         sleep: float = 0.1,
 ) -> None:
     """ Takes a list of function arg pairs, each function must return a process

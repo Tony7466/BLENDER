@@ -110,6 +110,10 @@ void SCULPT_filter_cache_init(bContext *C, Object *ob, Sculpt *sd, const int und
 
   ss->filter_cache->random_seed = rand();
 
+  if (undo_type == SCULPT_UNDO_COLOR) {
+    BKE_pbvh_ensure_node_loops(ss->pbvh);
+  }
+
   const float center[3] = {0.0f};
   SculptSearchSphereData search_data = {
       .original = true,
@@ -174,6 +178,7 @@ void SCULPT_filter_cache_free(SculptSession *ss)
   MEM_SAFE_FREE(ss->filter_cache->sharpen_factor);
   MEM_SAFE_FREE(ss->filter_cache->detail_directions);
   MEM_SAFE_FREE(ss->filter_cache->limit_surface_co);
+  MEM_SAFE_FREE(ss->filter_cache->pre_smoothed_color);
   MEM_SAFE_FREE(ss->filter_cache);
 }
 
@@ -276,7 +281,7 @@ static void mesh_filter_task_cb(void *__restrict userdata,
   const eSculptMeshFilterType filter_type = data->filter_type;
 
   SculptOrigVertData orig_data;
-  SCULPT_orig_vert_data_init(&orig_data, data->ob, data->nodes[i]);
+  SCULPT_orig_vert_data_init(&orig_data, data->ob, data->nodes[i], SCULPT_UNDO_COORDS);
 
   /* When using the relax face sets meshes filter,
    * each 3 iterations, do a whole mesh relax to smooth the contents of the Face Set. */
@@ -597,7 +602,7 @@ static int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *
 
   if (event->type == LEFTMOUSE && event->val == KM_RELEASE) {
     SCULPT_filter_cache_free(ss);
-    SCULPT_undo_push_end();
+    SCULPT_undo_push_end(ob);
     SCULPT_flush_update_done(C, ob, SCULPT_UPDATE_COORDS);
     return OPERATOR_FINISHED;
   }
@@ -670,11 +675,9 @@ static int sculpt_mesh_filter_invoke(bContext *C, wmOperator *op, const wmEvent 
   if (use_automasking) {
     /* Update the active face set manually as the paint cursor is not enabled when using the Mesh
      * Filter Tool. */
-    float mouse[2];
+    float mval_fl[2] = {UNPACK2(event->mval)};
     SculptCursorGeometryInfo sgi;
-    mouse[0] = event->mval[0];
-    mouse[1] = event->mval[1];
-    SCULPT_cursor_geometry_info_update(C, &sgi, mouse, false);
+    SCULPT_cursor_geometry_info_update(C, &sgi, mval_fl, false);
   }
 
   SCULPT_vertex_random_access_ensure(ss);

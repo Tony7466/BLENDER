@@ -994,9 +994,10 @@ static int gpencil_duplicate_exec(bContext *C, wmOperator *op)
     /* updates */
     DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
+    return OPERATOR_FINISHED;
   }
 
-  return OPERATOR_FINISHED;
+  return OPERATOR_CANCELLED;
 }
 
 void GPENCIL_OT_duplicate(wmOperatorType *ot)
@@ -1810,7 +1811,16 @@ static int gpencil_move_to_layer_exec(bContext *C, wmOperator *op)
   }
   else {
     /* Create a new layer. */
-    target_layer = BKE_gpencil_layer_addnew(gpd, "GP_Layer", true, false);
+    PropertyRNA *prop;
+    char name[128];
+    prop = RNA_struct_find_property(op->ptr, "new_layer_name");
+    if (RNA_property_is_set(op->ptr, prop)) {
+      RNA_property_string_get(op->ptr, prop, name);
+    }
+    else {
+      strcpy(name, "GP_Layer");
+    }
+    target_layer = BKE_gpencil_layer_addnew(gpd, name, true, false);
   }
 
   if (target_layer == NULL) {
@@ -1887,8 +1897,46 @@ static int gpencil_move_to_layer_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static void layer_new_name_get(bGPdata *gpd, char *rname)
+{
+  int index = 0;
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+    if (strstr(gpl->info, "GP_Layer")) {
+      index++;
+    }
+  }
+
+  if (index == 0) {
+    BLI_strncpy(rname, "GP_Layer", 128);
+    return;
+  }
+  char *name = BLI_sprintfN("%.*s.%03d", 128, "GP_Layer", index);
+  BLI_strncpy(rname, name, 128);
+  MEM_freeN(name);
+}
+
+static int gpencil_move_to_layer_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+{
+  Object *ob = CTX_data_active_object(C);
+  PropertyRNA *prop;
+  if (RNA_int_get(op->ptr, "layer") == -1) {
+    prop = RNA_struct_find_property(op->ptr, "new_layer_name");
+    if (!RNA_property_is_set(op->ptr, prop)) {
+      char name[MAX_NAME];
+      bGPdata *gpd = ob->data;
+      layer_new_name_get(gpd, name);
+      RNA_property_string_set(op->ptr, prop, name);
+      return WM_operator_props_dialog_popup(C, op, 200);
+    }
+  }
+
+  return gpencil_move_to_layer_exec(C, op);
+}
+
 void GPENCIL_OT_move_to_layer(wmOperatorType *ot)
 {
+  PropertyRNA *prop;
+
   /* identifiers */
   ot->name = "Move Strokes to Layer";
   ot->idname = "GPENCIL_OT_move_to_layer";
@@ -1897,15 +1945,20 @@ void GPENCIL_OT_move_to_layer(wmOperatorType *ot)
 
   /* callbacks */
   ot->exec = gpencil_move_to_layer_exec;
-  ot->poll = gpencil_stroke_edit_poll; /* XXX? */
+  ot->invoke = gpencil_move_to_layer_invoke;
+  ot->poll = gpencil_stroke_edit_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* GPencil layer to use. */
-  ot->prop = RNA_def_int(
-      ot->srna, "layer", 0, -1, INT_MAX, "Grease Pencil Layer", "", -1, INT_MAX);
-  RNA_def_property_flag(ot->prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_int(ot->srna, "layer", 0, -1, INT_MAX, "Grease Pencil Layer", "", -1, INT_MAX);
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+
+  prop = RNA_def_string(
+      ot->srna, "new_layer_name", NULL, MAX_NAME, "Name", "Name of the newly added layer");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+  ot->prop = prop;
 }
 
 /** \} */
@@ -3924,31 +3977,36 @@ static void gpencil_smooth_stroke(bContext *C, wmOperator *op)
 
   GP_EDITABLE_STROKES_BEGIN (gpstroke_iter, C, gpl, gps) {
     if (gps->flag & GP_STROKE_SELECT) {
-      for (int r = 0; r < repeat; r++) {
+      /* TODO use `BKE_gpencil_stroke_smooth` when the weights are better used. */
+      bGPDstroke gps_old = *gps;
+      gps_old.points = (bGPDspoint *)MEM_dupallocN(gps->points);
+      /* Here the iteration needs to be done outside the smooth functions,
+       * as there are points that don't get smoothed. */
+      for (int n = 0; n < repeat; n++) {
         for (int i = 0; i < gps->totpoints; i++) {
-          bGPDspoint *pt = &gps->points[i];
-          if ((only_selected) && ((pt->flag & GP_SPOINT_SELECT) == 0)) {
+          if (only_selected && (gps->points[i].flag & GP_SPOINT_SELECT) == 0) {
             continue;
           }
 
-          /* perform smoothing */
+          /* Perform smoothing. */
           if (smooth_position) {
-            BKE_gpencil_stroke_smooth_point(gps, i, factor, false);
+            BKE_gpencil_stroke_smooth_point(&gps_old, i, factor, 1, false, false, gps);
           }
           if (smooth_strength) {
-            BKE_gpencil_stroke_smooth_strength(gps, i, factor);
+            BKE_gpencil_stroke_smooth_strength(&gps_old, i, factor, 1, gps);
           }
           if (smooth_thickness) {
-            /* thickness need to repeat process several times */
-            for (int r2 = 0; r2 < repeat * 2; r2++) {
-              BKE_gpencil_stroke_smooth_thickness(gps, i, 1.0f - factor);
-            }
+            BKE_gpencil_stroke_smooth_thickness(&gps_old, i, 1.0f - factor, 1, gps);
           }
           if (smooth_uv) {
-            BKE_gpencil_stroke_smooth_uv(gps, i, factor);
+            BKE_gpencil_stroke_smooth_uv(&gps_old, i, factor, 1, gps);
           }
         }
+        if (n < repeat - 1) {
+          memcpy(gps_old.points, gps->points, sizeof(bGPDspoint) * gps->totpoints);
+        }
       }
+      MEM_freeN(gps_old.points);
     }
   }
   GP_EDITABLE_STROKES_END(gpstroke_iter);
@@ -4926,10 +4984,10 @@ void GPENCIL_OT_stroke_smooth(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  prop = RNA_def_int(ot->srna, "repeat", 1, 1, 50, "Repeat", "", 1, 20);
+  prop = RNA_def_int(ot->srna, "repeat", 2, 1, 1000, "Repeat", "", 1, 1000);
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
-  RNA_def_float(ot->srna, "factor", 0.5f, 0.0f, 2.0f, "Factor", "", 0.0f, 2.0f);
+  RNA_def_float(ot->srna, "factor", 1.0f, 0.0f, 2.0f, "Factor", "", 0.0f, 1.0f);
   RNA_def_boolean(ot->srna,
                   "only_selected",
                   true,

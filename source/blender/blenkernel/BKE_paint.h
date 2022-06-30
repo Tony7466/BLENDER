@@ -12,6 +12,8 @@
 #include "DNA_brush_enums.h"
 #include "DNA_object_enums.h"
 
+#include "BKE_attribute.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -28,7 +30,9 @@ struct EdgeSet;
 struct EnumPropertyItem;
 struct GHash;
 struct GridPaintMask;
+struct Image;
 struct ImagePool;
+struct ImageUser;
 struct ListBase;
 struct MLoop;
 struct MLoopTri;
@@ -40,6 +44,7 @@ struct Object;
 struct PBVH;
 struct Paint;
 struct PaintCurve;
+struct PaintModeSettings;
 struct Palette;
 struct PaletteColor;
 struct Scene;
@@ -175,6 +180,7 @@ struct Paint *BKE_paint_get_active_from_context(const struct bContext *C);
 ePaintMode BKE_paintmode_get_active_from_context(const struct bContext *C);
 ePaintMode BKE_paintmode_get_from_tool(const struct bToolRef *tref);
 struct Brush *BKE_paint_brush(struct Paint *paint);
+const struct Brush *BKE_paint_brush_for_read(const struct Paint *p);
 void BKE_paint_brush_set(struct Paint *paint, struct Brush *br);
 struct Palette *BKE_paint_palette(struct Paint *paint);
 void BKE_paint_palette_set(struct Paint *p, struct Palette *palette);
@@ -493,6 +499,11 @@ typedef struct SculptSession {
 
   struct KeyBlock *shapekey_active;
   struct MPropCol *vcol;
+  struct MLoopCol *mcol;
+
+  eAttrDomain vcol_domain;
+  eCustomDataType vcol_type;
+
   float *vmask;
 
   /* Mesh connectivity maps. */
@@ -541,8 +552,7 @@ typedef struct SculptSession {
   float (*deform_cos)[3];       /* Coords of deformed mesh but without stroke displacement. */
   float (*deform_imats)[3][3];  /* Crazy-space deformation matrices. */
 
-  /* Used to cache the render of the active texture */
-  unsigned int texcache_side, *texcache, texcache_actual;
+  /* Pool for texture evaluations. */
   struct ImagePool *tex_pool;
 
   struct StrokeCache *cache;
@@ -602,12 +612,13 @@ typedef struct SculptSession {
   float init_pivot_rot[4];
   float init_pivot_scale[3];
 
+  float prev_pivot_pos[3];
+  float prev_pivot_rot[4];
+  float prev_pivot_scale[3];
+
   union {
     struct {
       struct SculptVertexPaintGeomMap gmap;
-
-      /* For non-airbrush painting to re-apply from the original (MLoop aligned). */
-      unsigned int *previous_color;
     } vpaint;
 
     struct {
@@ -634,6 +645,19 @@ typedef struct SculptSession {
    */
   char needs_flush_to_id;
 
+  /**
+   * Some tools follows the shading chosen by the last used tool canvas.
+   * When not set the viewport shading color would be used.
+   *
+   * NOTE: This setting is temporarily until paint mode is added.
+   */
+  bool sticky_shading_color;
+
+  /**
+   * Last used painting canvas key.
+   */
+  char *last_paint_canvas_key;
+
 } SculptSession;
 
 void BKE_sculptsession_free(struct Object *ob);
@@ -655,8 +679,8 @@ void BKE_sculpt_update_object_for_edit(struct Depsgraph *depsgraph,
                                        struct Object *ob_orig,
                                        bool need_pmap,
                                        bool need_mask,
-                                       bool need_colors);
-void BKE_sculpt_update_object_before_eval(struct Object *ob_eval);
+                                       bool is_paint_tool);
+void BKE_sculpt_update_object_before_eval(const struct Scene *scene, struct Object *ob_eval);
 void BKE_sculpt_update_object_after_eval(struct Depsgraph *depsgraph, struct Object *ob_eval);
 
 /**
@@ -709,6 +733,36 @@ enum {
   SCULPT_MASK_LAYER_CALC_VERT = (1 << 0),
   SCULPT_MASK_LAYER_CALC_LOOP = (1 << 1),
 };
+
+/* paint_vertex.cc */
+
+/**
+ * Fills the object's active color attribute layer with the fill color.
+ *
+ * \param[in] ob: The object.
+ * \param[in] fill_color: The fill color.
+ * \param[in] only_selected: Limit the fill to selected faces or vertices.
+ *
+ * \return #true if successful.
+ */
+bool BKE_object_attributes_active_color_fill(struct Object *ob,
+                                             const float fill_color[4],
+                                             bool only_selected);
+
+/* paint_canvas.cc */
+
+/**
+ * Create a key that can be used to compare with previous ones to identify changes.
+ * The resulting 'string' is owned by the caller.
+ */
+char *BKE_paint_canvas_key_get(struct PaintModeSettings *settings, struct Object *ob);
+
+bool BKE_paint_canvas_image_get(struct PaintModeSettings *settings,
+                                struct Object *ob,
+                                struct Image **r_image,
+                                struct ImageUser **r_image_user);
+int BKE_paint_canvas_uvmap_layer_index_get(const struct PaintModeSettings *settings,
+                                           struct Object *ob);
 
 #ifdef __cplusplus
 }

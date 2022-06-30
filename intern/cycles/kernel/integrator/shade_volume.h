@@ -222,7 +222,7 @@ ccl_device void volume_shadow_heterogeneous(KernelGlobals kg,
        * check then. */
       sum += (-sigma_t * dt);
       if ((i & 0x07) == 0) { /* TODO: Other interval? */
-        tp = *throughput * exp3(sum);
+        tp = *throughput * exp(sum);
 
         /* stop if nearly all light is blocked */
         if (tp.x < VOLUME_THROUGHPUT_EPSILON && tp.y < VOLUME_THROUGHPUT_EPSILON &&
@@ -235,7 +235,7 @@ ccl_device void volume_shadow_heterogeneous(KernelGlobals kg,
     t = new_t;
     if (t == ray->t) {
       /* Update throughput in case we haven't done it above */
-      tp = *throughput * exp3(sum);
+      tp = *throughput * exp(sum);
       break;
     }
   }
@@ -626,13 +626,13 @@ ccl_device_forceinline void volume_integrate_heterogeneous(
 
         /* Stop if nearly all light blocked. */
         if (!result.indirect_scatter) {
-          if (max3(result.indirect_throughput) < VOLUME_THROUGHPUT_EPSILON) {
+          if (reduce_max(result.indirect_throughput) < VOLUME_THROUGHPUT_EPSILON) {
             result.indirect_throughput = zero_float3();
             break;
           }
         }
         else if (!result.direct_scatter) {
-          if (max3(result.direct_throughput) < VOLUME_THROUGHPUT_EPSILON) {
+          if (reduce_max(result.direct_throughput) < VOLUME_THROUGHPUT_EPSILON) {
             break;
           }
         }
@@ -653,7 +653,8 @@ ccl_device_forceinline void volume_integrate_heterogeneous(
 
   /* Write accumulated emission. */
   if (!is_zero(accum_emission)) {
-    kernel_accum_emission(kg, state, accum_emission, render_buffer);
+    kernel_accum_emission(
+        kg, state, accum_emission, render_buffer, object_lightgroup(kg, sd->object));
   }
 
 #  ifdef __DENOISING_FEATURES__
@@ -759,7 +760,7 @@ ccl_device_forceinline void integrate_volume_direct_light(
     bsdf_eval_mul(&phase_eval, mis_weight);
   }
 
-  bsdf_eval_mul3(&phase_eval, light_eval / ls->pdf);
+  bsdf_eval_mul(&phase_eval, light_eval / ls->pdf);
 
   /* Path termination. */
   const float terminate = path_state_rng_light_termination(kg, rng_state);
@@ -832,6 +833,12 @@ ccl_device_forceinline void integrate_volume_direct_light(
   if (kernel_data.kernel_features & KERNEL_FEATURE_SHADOW_PASS) {
     INTEGRATOR_STATE_WRITE(shadow_state, shadow_path, unshadowed_throughput) = throughput;
   }
+
+  /* Write Lightgroup, +1 as lightgroup is int but we need to encode into a uint8_t. */
+  INTEGRATOR_STATE_WRITE(
+      shadow_state, shadow_path, lightgroup) = (ls->type != LIGHT_BACKGROUND) ?
+                                                   ls->group + 1 :
+                                                   kernel_data.background.lightgroup + 1;
 
   integrator_state_copy_volume_stack_to_shadow(kg, shadow_state, state);
 }

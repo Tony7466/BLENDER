@@ -335,7 +335,7 @@ void mesh_foreachScreenVert(
 
   Mesh *me = editbmesh_get_eval_cage_from_orig(
       vc->depsgraph, vc->scene, vc->obedit, &CD_MASK_BAREMESH);
-  me = BKE_mesh_wrapper_ensure_subdivision(vc->obedit, me);
+  me = BKE_mesh_wrapper_ensure_subdivision(me);
 
   ED_view3d_check_mats_rv3d(vc->rv3d);
 
@@ -398,7 +398,7 @@ void mesh_foreachScreenEdge(ViewContext *vc,
 
   Mesh *me = editbmesh_get_eval_cage_from_orig(
       vc->depsgraph, vc->scene, vc->obedit, &CD_MASK_BAREMESH);
-  me = BKE_mesh_wrapper_ensure_subdivision(vc->obedit, me);
+  me = BKE_mesh_wrapper_ensure_subdivision(me);
 
   ED_view3d_check_mats_rv3d(vc->rv3d);
 
@@ -486,7 +486,7 @@ void mesh_foreachScreenEdge_clip_bb_segment(ViewContext *vc,
 
   Mesh *me = editbmesh_get_eval_cage_from_orig(
       vc->depsgraph, vc->scene, vc->obedit, &CD_MASK_BAREMESH);
-  me = BKE_mesh_wrapper_ensure_subdivision(vc->obedit, me);
+  me = BKE_mesh_wrapper_ensure_subdivision(me);
 
   ED_view3d_check_mats_rv3d(vc->rv3d);
 
@@ -558,7 +558,7 @@ void mesh_foreachScreenFace(
 
   Mesh *me = editbmesh_get_eval_cage_from_orig(
       vc->depsgraph, vc->scene, vc->obedit, &CD_MASK_BAREMESH);
-  me = BKE_mesh_wrapper_ensure_subdivision(vc->obedit, me);
+  me = BKE_mesh_wrapper_ensure_subdivision(me);
   ED_view3d_check_mats_rv3d(vc->rv3d);
 
   data.vc = *vc;
@@ -568,7 +568,7 @@ void mesh_foreachScreenFace(
 
   BM_mesh_elem_table_ensure(vc->em->bm, BM_FACE);
 
-  if (BKE_modifiers_uses_subsurf_facedots(vc->scene, vc->obedit)) {
+  if (me->runtime.subsurf_face_dot_tags != NULL) {
     BKE_mesh_foreach_mapped_subdiv_face_center(
         me, mesh_foreachScreenFace__mapFunc, &data, MESH_FOREACH_NOP);
   }

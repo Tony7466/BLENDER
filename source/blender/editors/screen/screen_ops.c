@@ -177,10 +177,10 @@ bool ED_operator_scene(bContext *C)
 bool ED_operator_scene_editable(bContext *C)
 {
   Scene *scene = CTX_data_scene(C);
-  if (scene && !ID_IS_LINKED(scene)) {
-    return true;
+  if (scene == NULL || !BKE_id_is_editable(CTX_data_main(C), &scene->id)) {
+    return false;
   }
-  return false;
+  return true;
 }
 
 bool ED_operator_objectmode(bContext *C)
@@ -319,7 +319,7 @@ bool ED_operator_node_editable(bContext *C)
 {
   SpaceNode *snode = CTX_wm_space_node(C);
 
-  if (snode && snode->edittree && !ID_IS_LINKED(snode->edittree)) {
+  if (snode && snode->edittree && BKE_id_is_editable(CTX_data_main(C), &snode->edittree->id)) {
     return true;
   }
 
@@ -380,8 +380,8 @@ bool ED_operator_object_active_editable_ex(bContext *C, const Object *ob)
     return false;
   }
 
-  if (ID_IS_LINKED(ob)) {
-    CTX_wm_operator_poll_msg_set(C, "Cannot edit library linked object");
+  if (!BKE_id_is_editable(CTX_data_main(C), (ID *)ob)) {
+    CTX_wm_operator_poll_msg_set(C, "Cannot edit library linked or non-editable override object");
     return false;
   }
 
@@ -546,9 +546,10 @@ bool ED_operator_posemode(bContext *C)
 bool ED_operator_posemode_local(bContext *C)
 {
   if (ED_operator_posemode(C)) {
+    Main *bmain = CTX_data_main(C);
     Object *ob = BKE_object_pose_armature_get(CTX_data_active_object(C));
     bArmature *arm = ob->data;
-    return !(ID_IS_LINKED(&ob->id) || ID_IS_LINKED(&arm->id));
+    return (BKE_id_is_editable(bmain, &ob->id) && BKE_id_is_editable(bmain, &arm->id));
   }
   return false;
 }
@@ -658,36 +659,10 @@ bool ED_operator_editmball(bContext *C)
   return false;
 }
 
-bool ED_operator_mask(bContext *C)
-{
-  ScrArea *area = CTX_wm_area(C);
-  if (area && area->spacedata.first) {
-    switch (area->spacetype) {
-      case SPACE_CLIP: {
-        SpaceClip *screen = area->spacedata.first;
-        return ED_space_clip_check_show_maskedit(screen);
-      }
-      case SPACE_SEQ: {
-        SpaceSeq *sseq = area->spacedata.first;
-        Scene *scene = CTX_data_scene(C);
-        return ED_space_sequencer_check_show_maskedit(sseq, scene);
-      }
-      case SPACE_IMAGE: {
-        SpaceImage *sima = area->spacedata.first;
-        ViewLayer *view_layer = CTX_data_view_layer(C);
-        Object *obedit = OBEDIT_FROM_VIEW_LAYER(view_layer);
-        return ED_space_image_check_show_maskedit(sima, obedit);
-      }
-    }
-  }
-
-  return false;
-}
-
-bool ED_operator_camera(bContext *C)
+bool ED_operator_camera_poll(bContext *C)
 {
   struct Camera *cam = CTX_data_pointer_get_type(C, "camera", &RNA_Camera).data;
-  return (cam != NULL);
+  return (cam != NULL && !ID_IS_LINKED(cam));
 }
 
 /** \} */
@@ -912,14 +887,16 @@ static AZone *area_actionzone_refresh_xy(ScrArea *area, const int xy[2], const b
             float dist_fac = 0.0f, alpha = 0.0f;
 
             if (az->direction == AZ_SCROLL_HOR) {
-              dist_fac = BLI_rcti_length_y(&v2d->hor, local_xy[1]) / AZONEFADEIN;
+              float hide_width = (az->y2 - az->y1) / 2.0f;
+              dist_fac = BLI_rcti_length_y(&v2d->hor, local_xy[1]) / hide_width;
               CLAMP(dist_fac, 0.0f, 1.0f);
               alpha = 1.0f - dist_fac;
 
               v2d->alpha_hor = alpha * 255;
             }
             else if (az->direction == AZ_SCROLL_VERT) {
-              dist_fac = BLI_rcti_length_x(&v2d->vert, local_xy[0]) / AZONEFADEIN;
+              float hide_width = (az->x2 - az->x1) / 2.0f;
+              dist_fac = BLI_rcti_length_x(&v2d->vert, local_xy[0]) / hide_width;
               CLAMP(dist_fac, 0.0f, 1.0f);
               alpha = 1.0f - dist_fac;
 
@@ -1476,7 +1453,7 @@ static int area_close_exec(bContext *C, wmOperator *op)
   bScreen *screen = CTX_wm_screen(C);
   ScrArea *area = CTX_wm_area(C);
 
-  /* This operator is scriptable, so the area passed could be invalid. */
+  /* This operator is script-able, so the area passed could be invalid. */
   if (BLI_findindex(&screen->areabase, area) == -1) {
     BKE_report(op->reports, RPT_ERROR, "Area not found in the active screen");
     return OPERATOR_CANCELLED;
@@ -2489,6 +2466,7 @@ static int area_split_modal(bContext *C, wmOperator *op, const wmEvent *event)
       return OPERATOR_CANCELLED;
 
     case EVT_LEFTCTRLKEY:
+    case EVT_RIGHTCTRLKEY:
       sd->do_snap = event->val == KM_PRESS;
       update_factor = true;
       break;
@@ -2721,7 +2699,7 @@ static int region_scale_invoke(bContext *C, wmOperator *op, const wmEvent *event
       rmd->region->sizey = rmd->region->winy;
     }
 
-    /* now copy to regionmovedata */
+    /* Now copy to region-move-data. */
     if (ELEM(rmd->edge, AE_LEFT_TO_TOPRIGHT, AE_RIGHT_TO_TOPLEFT)) {
       rmd->origval = rmd->region->sizex;
     }
@@ -5770,7 +5748,7 @@ static bool blend_file_drop_poll(bContext *UNUSED(C), wmDrag *drag, const wmEven
   return false;
 }
 
-static void blend_file_drop_copy(wmDrag *drag, wmDropBox *drop)
+static void blend_file_drop_copy(bContext *UNUSED(C), wmDrag *drag, wmDropBox *drop)
 {
   /* copy drag path to properties */
   RNA_string_set(drop->ptr, "filepath", drag->path);
