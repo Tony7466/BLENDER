@@ -3,6 +3,7 @@
 #pragma once
 
 #include "BLI_sys_types.h" /* for intptr_t support */
+#include "slim_matrix_transfer.h" // for SLIM
 
 /** \file
  * \ingroup geo
@@ -45,6 +46,7 @@ void GEO_uv_parametrizer_face_add(ParamHandle *handle,
                                   const ParamKey *vkeys,
                                   const float **co,
                                   float **uv, /* Output will eventually be written to `uv`. */
+                                  float weight[4],
                                   const bool *pin,
                                   const bool *select);
 
@@ -55,6 +57,27 @@ void GEO_uv_parametrizer_construct_end(ParamHandle *handle,
                                        bool topology_from_uvs,
                                        int *count_fail);
 void GEO_uv_parametrizer_delete(ParamHandle *handle);
+
+
+/* SLIM:
+ * -----------------------------
+ * - begin: data is gathered into matrices and transferred to SLIM
+ * - solve: compute cheap initialization (if necessary) and refine iteratively
+ * - end: clean up
+*/
+void slim_reload_all_uvs(ParamHandle* handle);
+void param_slim_solve(ParamHandle* handle,
+  SLIMMatrixTransfer* mt,
+  int* count_changed,
+  int* count_failed);
+
+void param_slim_begin(ParamHandle* handle, SLIMMatrixTransfer* mt);
+void param_slim_solve_iteration(ParamHandle* handle);
+void param_slim_stretch_iteration(ParamHandle* handle, float blend);
+void param_slim_end(ParamHandle* handle);
+
+bool param_is_slim(ParamHandle* handle);
+
 
 /** \} */
 

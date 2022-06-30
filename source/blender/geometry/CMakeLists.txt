@@ -11,6 +11,7 @@ set(INC
   ../makesrna
   ../../../intern/eigen
   ../../../intern/guardedalloc
+  ../../../intern/slim
   ${CMAKE_BINARY_DIR}/source/blender/makesdna/intern
 )
 

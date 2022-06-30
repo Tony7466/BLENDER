@@ -486,7 +486,7 @@ static void construct_param_handle_face_add(ParamHandle *handle,
 		}
   }
 
-  GEO_uv_parametrizer_face_add(handle, face_index, i, vkeys, co, uv, pin, select);
+  GEO_uv_parametrizer_face_add(handle, face_index, i, vkeys, co, uv, weight, pin, select);
 }
 
 /* Set seams on UV Parametrizer based on options. */
@@ -541,10 +541,6 @@ static ParamHandle *construct_param_handle(const Scene *scene,
   BMIter iter;
   int i;
 
-  const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_MLOOPUV);
-  const int cd_weight_offset = CustomData_get_offset(&bm->vdata, CD_MDEFORMVERT);
-	const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->vertex_group);
-
   ParamHandle *handle = GEO_uv_parametrizer_construct_begin();
 
   if (options->correct_aspect) {
@@ -561,6 +557,9 @@ static ParamHandle *construct_param_handle(const Scene *scene,
   BM_mesh_elem_index_ensure(bm, BM_VERT);
 
   const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_MLOOPUV);
+  const int cd_weight_offset = CustomData_get_offset(&bm->vdata, CD_MDEFORMVERT);
+  const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->vertex_group);
+
   BM_ITER_MESH_INDEX (efa, &iter, bm, BM_FACES_OF_MESH, i) {
     if (uvedit_is_face_affected(scene, efa, options, cd_loop_uv_offset)) {
       uvedit_prepare_pinned_indices(handle, scene, efa, options, cd_loop_uv_offset);
@@ -915,46 +914,41 @@ static SLIMMatrixTransfer *slim_matrix_transfer(const UnwrapOptions *options)
 	return mt;
 }
 
-/* Holds all necessary state for one session of interactive parametrisation. */
-
 typedef struct MinStretch {
+  const Scene *scene;
   Object **objects_edit;
   uint objects_len;
   ParamHandle *handle;
-
   float blend;
   double lasttime;
-
+  int i, iterations;
   wmTimer *timer;
-
-	bool fix_boundary;
 } MinStretch;
 
-
-// SLIM VERSION
-/* Initializes SLIM and transfars data matrices */
 static bool minimize_stretch_init(bContext *C, wmOperator *op)
 {
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
-	bool implicit = true;
+
+  const UnwrapOptions options = {
+      .topology_from_uvs = true,
+      .fill_holes = RNA_boolean_get(op->ptr, "fill_holes"),
+      .only_selected_faces = true,
+      .only_selected_uvs = true,
+      .correct_aspect = true,
+  };
 
   uint objects_len = 0;
   Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
       view_layer, CTX_wm_view3d(C), &objects_len);
-
-  UnwrapOptions options = unwrap_options_get(NULL, NULL);
-	options.fill_holes = true;
 
   if (!uvedit_have_selection_multi(scene, objects, objects_len, &options)) {
     MEM_freeN(objects);
     return false;
   }
 
-	ParamHandle *handle = construct_param_handle_multi(scene, objects, objects_len, &options, NULL);
-	MinStretch *ms = MEM_callocN(sizeof(MinStretch), "Data for minimizing stretch with SLIM");
-
-	ms->handle = handle;
+  MinStretch *ms = MEM_callocN(sizeof(MinStretch), "MinStretch");
+  ms->scene = scene;
   ms->objects_edit = objects;
   ms->objects_len = objects_len;
   ms->blend = RNA_float_get(op->ptr, "blend");
@@ -968,14 +962,11 @@ static bool minimize_stretch_init(bContext *C, wmOperator *op)
     GEO_uv_parametrizer_stretch_blend(ms->handle, ms->blend);
   }
 
-	param_slim_begin(ms->handle, mt);
+  op->customdata = ms;
 
-	op->customdata = ms;
-	return true;
+  return true;
 }
 
-
-/* After initialisation, these iterations are executed, until applied or canceled by the user. */
 static void minimize_stretch_iteration(bContext *C, wmOperator *op, bool interactive)
 {
   MinStretch *ms = op->customdata;
@@ -1017,7 +1008,6 @@ static void minimize_stretch_iteration(bContext *C, wmOperator *op, bool interac
   }
 }
 
-/* Exit interactive parametrisation. Clean up memory. */
 static void minimize_stretch_exit(bContext *C, wmOperator *op, bool cancel)
 {
   MinStretch *ms = op->customdata;
@@ -1056,17 +1046,27 @@ static void minimize_stretch_exit(bContext *C, wmOperator *op, bool cancel)
   }
 
   MEM_freeN(ms->objects_edit);
-	MEM_freeN(ms);
-	op->customdata = NULL;
+  MEM_freeN(ms);
+  op->customdata = NULL;
 }
 
-/* Used Only to adjust parameters. */
 static int minimize_stretch_exec(bContext *C, wmOperator *op)
 {
-	return OPERATOR_FINISHED;
+  int i, iterations;
+
+  if (!minimize_stretch_init(C, op)) {
+    return OPERATOR_CANCELLED;
+  }
+
+  iterations = RNA_int_get(op->ptr, "iterations");
+  for (i = 0; i < iterations; i++) {
+    minimize_stretch_iteration(C, op, false);
+  }
+  minimize_stretch_exit(C, op, false);
+
+  return OPERATOR_FINISHED;
 }
 
-/* Entry point to interactive parametrisation. Already executes one iteration, allowing faster feedback. */
 static int minimize_stretch_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
 {
   MinStretch *ms;
@@ -1084,7 +1084,6 @@ static int minimize_stretch_invoke(bContext *C, wmOperator *op, const wmEvent *U
   return OPERATOR_RUNNING_MODAL;
 }
 
-/* The control structure of the modal operator. a next iteration is either started due to a timer or user input. */
 static int minimize_stretch_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   MinStretch *ms = op->customdata;
@@ -1102,8 +1101,10 @@ static int minimize_stretch_modal(bContext *C, wmOperator *op, const wmEvent *ev
     case EVT_PADPLUSKEY:
     case WHEELUPMOUSE:
       if (event->val == KM_PRESS) {
-				if (ms->blend < 1.0f) {
-					ms->blend = MIN2(ms->blend + 0.1f, 1.0);
+        if (ms->blend < 0.95f) {
+          ms->blend += 0.1f;
+          ms->lasttime = 0.0f;
+          RNA_float_set(op->ptr, "blend", ms->blend);
           minimize_stretch_iteration(C, op, true);
         }
       }
@@ -1111,8 +1112,10 @@ static int minimize_stretch_modal(bContext *C, wmOperator *op, const wmEvent *ev
     case EVT_PADMINUS:
     case WHEELDOWNMOUSE:
       if (event->val == KM_PRESS) {
-				if (ms->blend > 0.0f) {
-					ms->blend = MAX2(ms->blend - 0.1f, 0.0);
+        if (ms->blend > 0.05f) {
+          ms->blend -= 0.1f;
+          ms->lasttime = 0.0f;
+          RNA_float_set(op->ptr, "blend", ms->blend);
           minimize_stretch_iteration(C, op, true);
         }
       }
@@ -1128,30 +1131,26 @@ static int minimize_stretch_modal(bContext *C, wmOperator *op, const wmEvent *ev
       break;
   }
 
-  // SLIM REMOVED
-  // if (ms->iterations && ms->i >= ms->iterations) {
-  //   minimize_stretch_exit(C, op, false);
-  //   return OPERATOR_FINISHED;
-  // }
-  // ---
+  if (ms->iterations && ms->i >= ms->iterations) {
+    minimize_stretch_exit(C, op, false);
+    return OPERATOR_FINISHED;
+  }
 
   return OPERATOR_RUNNING_MODAL;
 }
 
-/* Cancels the interactive parametrisation and discards the obtained map. */
 static void minimize_stretch_cancel(bContext *C, wmOperator *op)
 {
   minimize_stretch_exit(C, op, true);
 }
 
-/* Registration of the operator and integration into UI */
 void UV_OT_minimize_stretch(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Minimize Stretch";
   ot->idname = "UV_OT_minimize_stretch";
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_GRAB_CURSOR_XY | OPTYPE_BLOCKING;
-  ot->description = "Reduce UV stretching by applying the SLIM algorithm";
+  ot->description = "Reduce UV stretching by relaxing angles";
 
   /* api callbacks */
   ot->exec = minimize_stretch_exec;
@@ -1161,18 +1160,32 @@ void UV_OT_minimize_stretch(wmOperatorType *ot)
   ot->poll = ED_operator_uvedit;
 
   /* properties */
-  RNA_def_boolean(ot->srna, 
-                  "fix_boundary",
+  RNA_def_boolean(ot->srna,
+                  "fill_holes",
                   1,
-                  "Fix Boundary",
-                  "Wether the vertices on the border may move or not.");
-
-  // SLIM REMOVED
-	RNA_def_boolean(ot->srna, "fill_holes", 1, "Fill Holes", "Virtual fill holes in mesh before unwrapping, to better avoid overlaps and preserve symmetry");
-	RNA_def_float_factor(ot->srna, "blend", 0.0f, 0.0f, 1.0f, "Blend", "Blend factor between stretch minimized and original", 0.0f, 1.0f);
-	RNA_def_int(ot->srna, "iterations", 0, 0, INT_MAX, "Iterations", "Number of iterations to run, 0 is unlimited when run interactively", 0, 100);
-	// ---
+                  "Fill Holes",
+                  "Virtual fill holes in mesh before unwrapping, to better avoid overlaps and "
+                  "preserve symmetry");
+  RNA_def_float_factor(ot->srna,
+                       "blend",
+                       0.0f,
+                       0.0f,
+                       1.0f,
+                       "Blend",
+                       "Blend factor between stretch minimized and original",
+                       0.0f,
+                       1.0f);
+  RNA_def_int(ot->srna,
+              "iterations",
+              0,
+              0,
+              INT_MAX,
+              "Iterations",
+              "Number of iterations to run, 0 is unlimited when run interactively",
+              0,
+              100);
 }
+
 
 /** \} */
 
@@ -1416,7 +1429,7 @@ void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit)
 		param_slim_begin(handle, mt);
 	}
 	else {
-		GEO_uv_parametrizer_lscm_begin(handle, true, abf);
+		GEO_uv_parametrizer_lscm_begin(handle, true, options.use_abf);
 	}
 
   /* Create or increase size of g_live_unwrap.handles array */
@@ -1994,7 +2007,7 @@ static void uvedit_unwrap(const Scene *scene,
                      result_info ? &result_info->count_failed : NULL);
 	}
 	else {
-    GEO_uv_parametrizer_lscm_begin(handle, false, scene->toolsettings->unwrapper == 0);
+    GEO_uv_parametrizer_lscm_begin(handle, false, options->use_abf);
     GEO_uv_parametrizer_lscm_solve(handle,
                                   result_info ? &result_info->count_changed : NULL,
                                   result_info ? &result_info->count_failed : NULL);
