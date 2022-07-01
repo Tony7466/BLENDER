@@ -1587,13 +1587,11 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
         ntree_version_241(sce->nodetree);
       }
 
-      // SLIM REMOVED
       /* uv calculation options moved to toolsettings */
-      // if (sce->toolsettings->unwrapper == 0) {
-      //   sce->toolsettings->uvcalc_flag = UVCALC_FILLHOLES;
-      //   sce->toolsettings->unwrapper = 1;
-      // }
-      // ---
+       if (sce->toolsettings->unwrapper == 0) {
+         sce->toolsettings->uvcalc_flag = UVCALC_FILLHOLES;
+         sce->toolsettings->unwrapper = 1;
+       }
     }
 
     for (ntree = bmain->nodetrees.first; ntree; ntree = ntree->id.next) {

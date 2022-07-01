@@ -210,6 +210,7 @@ typedef struct UnwrapOptions {
   /** Treat unselected uvs as if they were pinned. */
   bool pin_unselected;
 
+  int method;
   bool use_slim;
   bool use_abf;
   bool use_subsurf;
@@ -265,8 +266,9 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob)
   options.only_selected_faces = false;
   options.only_selected_uvs = false;
 
-  options.use_abf = RNA_enum_get(&ptr, "method") == 0;
-  options.use_slim = RNA_enum_get(&ptr, "method") == 2;
+  options.method = RNA_enum_get(&ptr, "method");
+  options.use_abf = options.method == 0;
+  options.use_slim = options.method == 2;
   options.correct_aspect = RNA_boolean_get(&ptr, "correct_aspect");
   options.fill_holes = RNA_boolean_get(&ptr, "fill_holes");
   options.use_subsurf = RNA_boolean_get(&ptr, "use_subsurf_data");
@@ -2149,15 +2151,13 @@ static int unwrap_exec(bContext *C, wmOperator *op)
                "Subdivision Surface modifier needs to be first to work with unwrap");
   }
 
-  // SLIM REMOVED
   /* remember last method for live unwrap */
-  // if (RNA_struct_property_is_set(op->ptr, "method")) {
-  //   scene->toolsettings->unwrapper = method;
-  // }
-  // else {
-  //   RNA_enum_set(op->ptr, "method", scene->toolsettings->unwrapper);
-  // }
-  // ---
+   if (RNA_struct_property_is_set(op->ptr, "method")) {
+     scene->toolsettings->unwrapper = options.method;
+   }
+   else {
+     RNA_enum_set(op->ptr, "method", scene->toolsettings->unwrapper);
+   }
 
   /* remember packing margin */
   if (RNA_struct_property_is_set(op->ptr, "margin")) {
