@@ -261,18 +261,6 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob)
     options.fill_holes = true;
   }
 
-  /* Subsurf will take the modifier settings only if modifier is first or right after mirror */
-  // if (options.use_subsurf) {
-  // 	ModifierData *md = ob->modifiers.first;
-
-  // 	if (!(md && md->type == eModifierType_Subsurf)) {
-  // 		options.use_subsurf = false;
-  // 		if (op)
-  // 			BKE_report(op->reports, RPT_INFO, "Subdivision Surface modifier needs to be first to work
-  // with unwrap");
-  // 	}
-  // }
-
   if (ob) {
     bool use_subsurf_final;
     modifier_unwrap_state(ob, &options, &use_subsurf_final);
