@@ -33,6 +33,7 @@
 #include "BKE_cdderivedmesh.h"
 #include "BKE_context.h"
 #include "BKE_customdata.h"
+#include "BKE_deform.h"
 #include "BKE_editmesh.h"
 #include "BKE_image.h"
 #include "BKE_layer.h"
@@ -43,7 +44,6 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_subsurf.h"
-#include "BKE_deform.h"
 
 #include "DEG_depsgraph.h"
 
@@ -68,11 +68,9 @@
 
 #include "uvedit_intern.h"
 
-
 /* -------------------------------------------------------------------- */
 /** \name Utility Functions
  * \{ */
-
 
 static bool ED_uvedit_ensure_uvs(Object *obedit)
 {
@@ -201,12 +199,10 @@ typedef struct UnwrapOptions {
   int iterations;
 } UnwrapOptions;
 
-
 typedef struct UnwrapResultInfo {
   int count_changed;
   int count_failed;
 } UnwrapResultInfo;
-
 
 static void modifier_unwrap_state(Object *obedit,
                                   const UnwrapOptions *options,
@@ -271,7 +267,6 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob)
 
   return options;
 }
-
 
 static bool uvedit_have_selection(const Scene *scene, BMEditMesh *em, const UnwrapOptions *options)
 {
@@ -417,7 +412,7 @@ static void construct_param_handle_face_add(ParamHandle *handle,
                                             const UnwrapOptions *options,
                                             const int cd_loop_uv_offset,
                                             const int cd_weight_offset,
-											                      const int cd_weight_index)
+                                            const int cd_weight_index)
 {
   ParamKey *vkeys = BLI_array_alloca(vkeys, efa->len);
   bool *pin = BLI_array_alloca(pin, efa->len);
@@ -444,14 +439,14 @@ static void construct_param_handle_face_add(ParamHandle *handle,
       pin[i] = true;
     }
 
-  	/* optional vertex group weighting */
-		if (cd_weight_offset >= 0 && cd_weight_index >= 0) {
-			MDeformVert *dv = BM_ELEM_CD_GET_VOID_P(l->v, cd_weight_offset);
-			weight[i] = BKE_defvert_find_weight(dv, cd_weight_index);
-		}
-		else {
-			weight[i] = 1.0f;
-		}
+    /* optional vertex group weighting */
+    if (cd_weight_offset >= 0 && cd_weight_index >= 0) {
+      MDeformVert *dv = BM_ELEM_CD_GET_VOID_P(l->v, cd_weight_offset);
+      weight[i] = BKE_defvert_find_weight(dv, cd_weight_index);
+    }
+    else {
+      weight[i] = 1.0f;
+    }
   }
 
   GEO_uv_parametrizer_face_add(handle, face_index, i, vkeys, co, uv, weight, pin, select);
@@ -536,7 +531,8 @@ static ParamHandle *construct_param_handle(const Scene *scene,
 
   BM_ITER_MESH_INDEX (efa, &iter, bm, BM_FACES_OF_MESH, i) {
     if (uvedit_is_face_affected(scene, efa, options, cd_loop_uv_offset)) {
-      construct_param_handle_face_add(handle, scene, efa, i, options, cd_loop_uv_offset, cd_weight_offset, cd_weight_index);
+      construct_param_handle_face_add(
+          handle, scene, efa, i, options, cd_loop_uv_offset, cd_weight_offset, cd_weight_index);
     }
   }
 
@@ -586,7 +582,7 @@ static ParamHandle *construct_param_handle_multi(const Scene *scene,
 
     const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_MLOOPUV);
     const int cd_weight_offset = CustomData_get_offset(&bm->vdata, CD_MDEFORMVERT);
-	  const int cd_weight_index = BKE_object_defgroup_name_index(obedit, options->vertex_group);
+    const int cd_weight_index = BKE_object_defgroup_name_index(obedit, options->vertex_group);
 
     if (cd_loop_uv_offset == -1) {
       continue;
@@ -600,8 +596,14 @@ static ParamHandle *construct_param_handle_multi(const Scene *scene,
 
     BM_ITER_MESH_INDEX (efa, &iter, bm, BM_FACES_OF_MESH, i) {
       if (uvedit_is_face_affected(scene, efa, options, cd_loop_uv_offset)) {
-        construct_param_handle_face_add(
-            handle, scene, efa, i + offset, options, cd_loop_uv_offset, cd_weight_offset, cd_weight_index);
+        construct_param_handle_face_add(handle,
+                                        scene,
+                                        efa,
+                                        i + offset,
+                                        options,
+                                        cd_loop_uv_offset,
+                                        cd_weight_offset,
+                                        cd_weight_index);
       }
     }
 
@@ -726,7 +728,7 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
   subsurfedPolys = derivedMesh->getPolyArray(derivedMesh);
   subsurfedLoops = derivedMesh->getLoopArray(derivedMesh);
   if (cd_weight_index >= 0)
-		subsurfedDVerts = derivedMesh->getVertDataArray(derivedMesh, CD_MDEFORMVERT);
+    subsurfedDVerts = derivedMesh->getVertDataArray(derivedMesh, CD_MDEFORMVERT);
 
   origVertIndices = derivedMesh->getVertDataArray(derivedMesh, CD_ORIGINDEX);
   origEdgeIndices = derivedMesh->getEdgeDataArray(derivedMesh, CD_ORIGINDEX);
@@ -792,18 +794,18 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
     co[3] = subsurfedVerts[mloop[3].v].co;
 
     /* Optional vertex group weights. */
-		if (subsurfedDVerts) {
-			weight[0] = BKE_defvert_find_weight(subsurfedDVerts + mloop[0].v, cd_weight_index);
-			weight[1] = BKE_defvert_find_weight(subsurfedDVerts + mloop[1].v, cd_weight_index);
-			weight[2] = BKE_defvert_find_weight(subsurfedDVerts + mloop[2].v, cd_weight_index);
-			weight[3] = BKE_defvert_find_weight(subsurfedDVerts + mloop[3].v, cd_weight_index);
-		}
-		else {
-			weight[0] = 1.0f;
-			weight[1] = 1.0f;
-			weight[2] = 1.0f;
-			weight[3] = 1.0f;
-		}
+    if (subsurfedDVerts) {
+      weight[0] = BKE_defvert_find_weight(subsurfedDVerts + mloop[0].v, cd_weight_index);
+      weight[1] = BKE_defvert_find_weight(subsurfedDVerts + mloop[1].v, cd_weight_index);
+      weight[2] = BKE_defvert_find_weight(subsurfedDVerts + mloop[2].v, cd_weight_index);
+      weight[3] = BKE_defvert_find_weight(subsurfedDVerts + mloop[3].v, cd_weight_index);
+    }
+    else {
+      weight[0] = 1.0f;
+      weight[1] = 1.0f;
+      weight[2] = 1.0f;
+      weight[3] = 1.0f;
+    }
 
     /* This is where all the magic is done.
      * If the vertex exists in the, we pass the original uv pointer to the solver, thus
@@ -872,14 +874,14 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
 /* Get SLIM parameters from scene */
 static SLIMMatrixTransfer *slim_matrix_transfer(const UnwrapOptions *options)
 {
-	SLIMMatrixTransfer *mt = MEM_callocN(sizeof(SLIMMatrixTransfer), "Matrix Transfer to SLIM");
+  SLIMMatrixTransfer *mt = MEM_callocN(sizeof(SLIMMatrixTransfer), "Matrix Transfer to SLIM");
 
-	mt->with_weighted_parameterization = strlen(options->vertex_group) > 0;
-	mt->weight_influence = options->vertex_group_factor;
-	mt->relative_scale = options->relative_scale;
-	mt->n_iterations =  options->iterations;
+  mt->with_weighted_parameterization = strlen(options->vertex_group) > 0;
+  mt->weight_influence = options->vertex_group_factor;
+  mt->relative_scale = options->relative_scale;
+  mt->n_iterations = options->iterations;
 
-	return mt;
+  return mt;
 }
 
 typedef struct MinStretch {
@@ -1154,7 +1156,6 @@ void UV_OT_minimize_stretch(wmOperatorType *ot)
               100);
 }
 
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1389,16 +1390,15 @@ void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit)
     handle = construct_param_handle(scene, obedit, em->bm, &options, NULL);
   }
 
-
   if (options.use_slim) {
-		SLIMMatrixTransfer *mt = slim_matrix_transfer(&options);
-		mt->skip_initialization = true;
+    SLIMMatrixTransfer *mt = slim_matrix_transfer(&options);
+    mt->skip_initialization = true;
 
-		GEO_uv_parametrizer_slim_begin(handle, mt);
-	}
-	else {
-		GEO_uv_parametrizer_lscm_begin(handle, true, options.use_abf);
-	}
+    GEO_uv_parametrizer_slim_begin(handle, mt);
+  }
+  else {
+    GEO_uv_parametrizer_lscm_begin(handle, true, options.use_abf);
+  }
 
   /* Create or increase size of g_live_unwrap.handles array */
   if (g_live_unwrap.handles == NULL) {
@@ -1963,23 +1963,22 @@ static void uvedit_unwrap(const Scene *scene,
   }
 
   if (options->use_slim) {
-		SLIMMatrixTransfer *mt = slim_matrix_transfer(options);
-		mt->reflection_mode = options->reflection_mode;
-		mt->transform_islands = true;
+    SLIMMatrixTransfer *mt = slim_matrix_transfer(options);
+    mt->reflection_mode = options->reflection_mode;
+    mt->transform_islands = true;
 
-		GEO_uv_parametrizer_slim_solve(handle,
-                     mt,
-                     result_info ? &result_info->count_changed : NULL,
-                     result_info ? &result_info->count_failed : NULL);
-	}
-	else {
+    GEO_uv_parametrizer_slim_solve(handle,
+                                   mt,
+                                   result_info ? &result_info->count_changed : NULL,
+                                   result_info ? &result_info->count_failed : NULL);
+  }
+  else {
     GEO_uv_parametrizer_lscm_begin(handle, false, options->use_abf);
     GEO_uv_parametrizer_lscm_solve(handle,
-                                  result_info ? &result_info->count_changed : NULL,
-                                  result_info ? &result_info->count_failed : NULL);
+                                   result_info ? &result_info->count_changed : NULL,
+                                   result_info ? &result_info->count_failed : NULL);
     GEO_uv_parametrizer_lscm_end(handle);
-	}
-  
+  }
 
   GEO_uv_parametrizer_average(handle, true);
 
@@ -2108,12 +2107,12 @@ static int unwrap_exec(bContext *C, wmOperator *op)
   }
 
   /* remember last method for live unwrap */
-   if (RNA_struct_property_is_set(op->ptr, "method")) {
-     scene->toolsettings->unwrapper = options.method;
-   }
-   else {
-     RNA_enum_set(op->ptr, "method", scene->toolsettings->unwrapper);
-   }
+  if (RNA_struct_property_is_set(op->ptr, "method")) {
+    scene->toolsettings->unwrapper = options.method;
+  }
+  else {
+    RNA_enum_set(op->ptr, "method", scene->toolsettings->unwrapper);
+  }
 
   /* remember packing margin */
   if (RNA_struct_property_is_set(op->ptr, "margin")) {
@@ -2123,26 +2122,26 @@ static int unwrap_exec(bContext *C, wmOperator *op)
     RNA_float_set(op->ptr, "margin", scene->toolsettings->uvcalc_margin);
   }
 
-   if (options.fill_holes) {
-     scene->toolsettings->uvcalc_flag |= UVCALC_FILLHOLES;
-   }
-   else {
-     scene->toolsettings->uvcalc_flag &= ~UVCALC_FILLHOLES;
-   }
+  if (options.fill_holes) {
+    scene->toolsettings->uvcalc_flag |= UVCALC_FILLHOLES;
+  }
+  else {
+    scene->toolsettings->uvcalc_flag &= ~UVCALC_FILLHOLES;
+  }
 
-   if (options.correct_aspect) {
-     scene->toolsettings->uvcalc_flag &= ~UVCALC_NO_ASPECT_CORRECT;
-   }
-   else {
-     scene->toolsettings->uvcalc_flag |= UVCALC_NO_ASPECT_CORRECT;
-   }
+  if (options.correct_aspect) {
+    scene->toolsettings->uvcalc_flag &= ~UVCALC_NO_ASPECT_CORRECT;
+  }
+  else {
+    scene->toolsettings->uvcalc_flag |= UVCALC_NO_ASPECT_CORRECT;
+  }
 
-   if (options.use_subsurf) {
-     scene->toolsettings->uvcalc_flag |= UVCALC_USESUBSURF;
-   }
-   else {
-     scene->toolsettings->uvcalc_flag &= ~UVCALC_USESUBSURF;
-   }
+  if (options.use_subsurf) {
+    scene->toolsettings->uvcalc_flag |= UVCALC_USESUBSURF;
+  }
+  else {
+    scene->toolsettings->uvcalc_flag &= ~UVCALC_USESUBSURF;
+  }
 
   /* execute unwrap */
   UnwrapResultInfo result_info = {
@@ -2170,55 +2169,50 @@ static int unwrap_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
- static bool unwrap_draw_check_prop_slim(PointerRNA *UNUSED(ptr), PropertyRNA *prop)
- {
- 	const char *prop_id = RNA_property_identifier(prop);
+static bool unwrap_draw_check_prop_slim(PointerRNA *UNUSED(ptr), PropertyRNA *prop)
+{
+  const char *prop_id = RNA_property_identifier(prop);
 
- 	return !(STREQ(prop_id, "fill_holes"));
- }
+  return !(STREQ(prop_id, "fill_holes"));
+}
 
- static bool unwrap_draw_check_prop_abf(PointerRNA *UNUSED(ptr), PropertyRNA *prop)
- {
- 	const char *prop_id = RNA_property_identifier(prop);
+static bool unwrap_draw_check_prop_abf(PointerRNA *UNUSED(ptr), PropertyRNA *prop)
+{
+  const char *prop_id = RNA_property_identifier(prop);
 
- 	return !(STREQ(prop_id, "reflection_mode") ||
- 			 STREQ(prop_id, "iterations") ||
- 			 STREQ(prop_id, "relative_scale") ||
- 			 STREQ(prop_id, "vertex_group") ||
- 			 STREQ(prop_id, "vertex_group_factor")
- 			 );
- }
+  return !(STREQ(prop_id, "reflection_mode") || STREQ(prop_id, "iterations") ||
+           STREQ(prop_id, "relative_scale") || STREQ(prop_id, "vertex_group") ||
+           STREQ(prop_id, "vertex_group_factor"));
+}
 
- static void unwrap_draw(bContext *UNUSED(C), wmOperator *op)
- {
- 	uiLayout *layout = op->layout;
- 	PointerRNA ptr;
+static void unwrap_draw(bContext *UNUSED(C), wmOperator *op)
+{
+  uiLayout *layout = op->layout;
+  PointerRNA ptr;
 
- 	/* Main draw call */
- 	RNA_pointer_create(NULL, op->type->srna, op->properties, &ptr);
+  /* Main draw call */
+  RNA_pointer_create(NULL, op->type->srna, op->properties, &ptr);
 
- 	if (RNA_enum_get(op->ptr, "method") == 2) {
- 		uiDefAutoButsRNA(layout, &ptr, unwrap_draw_check_prop_slim, NULL, NULL, '\0', false);
- 	}
- 	else {
- 		uiDefAutoButsRNA(layout, &ptr, unwrap_draw_check_prop_abf, NULL, NULL, '\0', false);
- 	}
- }
+  if (RNA_enum_get(op->ptr, "method") == 2) {
+    uiDefAutoButsRNA(layout, &ptr, unwrap_draw_check_prop_slim, NULL, NULL, '\0', false);
+  }
+  else {
+    uiDefAutoButsRNA(layout, &ptr, unwrap_draw_check_prop_abf, NULL, NULL, '\0', false);
+  }
+}
 
 void UV_OT_unwrap(wmOperatorType *ot)
 {
   static const EnumPropertyItem method_items[] = {
       {0, "ANGLE_BASED", 0, "Angle Based", ""},
       {1, "CONFORMAL", 0, "Conformal", ""},
-      {2, "SLIM", 0, "SLIM", "" },
+      {2, "SLIM", 0, "SLIM", ""},
       {0, NULL, 0, NULL, NULL},
   };
 
-	static const EnumPropertyItem reflection_items[] = {
-		{0, "ALLOW", 0, "Allow Flips", ""},
-		{1, "DISALLOW", 0, "Don't Allow Flips", ""},
-		{0, NULL, 0, NULL, NULL}
-	};
+  static const EnumPropertyItem reflection_items[] = {{0, "ALLOW", 0, "Allow Flips", ""},
+                                                      {1, "DISALLOW", 0, "Don't Allow Flips", ""},
+                                                      {0, NULL, 0, NULL, NULL}};
 
   /* identifiers */
   ot->name = "Unwrap";
@@ -2230,8 +2224,8 @@ void UV_OT_unwrap(wmOperatorType *ot)
   ot->exec = unwrap_exec;
   ot->poll = ED_operator_uvmap;
 
-	/* Only draw relevant ui elements */
-	ot->ui = unwrap_draw;
+  /* Only draw relevant ui elements */
+  ot->ui = unwrap_draw;
 
   /* properties */
   RNA_def_enum(ot->srna,
@@ -2263,40 +2257,48 @@ void UV_OT_unwrap(wmOperatorType *ot)
                   "Virtual fill holes in mesh before unwrapping, to better avoid overlaps and "
                   "preserve symmetry");
 
-	/* SLIM only */
-	RNA_def_enum(ot->srna,
+  /* SLIM only */
+  RNA_def_enum(ot->srna,
                "reflection_mode",
                reflection_items,
                0,
                "Reflection Mode",
-				       "Allowing reflections means that depending on the position of pins, the map may be flipped. Lower distortion");
-	RNA_def_int(ot->srna,
+               "Allowing reflections means that depending on the position of pins, the map may be "
+               "flipped. Lower distortion");
+  RNA_def_int(ot->srna,
               "iterations",
               10,
               0,
               10000,
               "Iterations",
-				      "Number of Iterations if the SLIM algorithm is used", 1, 30);
-	RNA_def_float(ot->srna,
+              "Number of Iterations if the SLIM algorithm is used",
+              1,
+              30);
+  RNA_def_float(ot->srna,
                 "relative_scale",
                 1.0,
                 0.001,
                 1000.0,
                 "Relative Scale",
-				        "Relative Scale of UV Map with respect to pins", 0.1, 10.0);
-	RNA_def_string(ot->srna,  
+                "Relative Scale of UV Map with respect to pins",
+                0.1,
+                10.0);
+  RNA_def_string(ot->srna,
                  "vertex_group",
                  NULL,
                  MAX_ID_NAME,
                  "Vertex Group",
                  "Vertex group name for modulating the deform");
-	RNA_def_float(ot->srna,
-                "vertex_group_factor",
-                1.0,
-                -10000.0,
-                10000.0,
-                "Factor",
-				        "How much influence the weightmap has for weighted parameterization, 0 being no influence", -10.0, 10.0);
+  RNA_def_float(
+      ot->srna,
+      "vertex_group_factor",
+      1.0,
+      -10000.0,
+      10000.0,
+      "Factor",
+      "How much influence the weightmap has for weighted parameterization, 0 being no influence",
+      -10.0,
+      10.0);
 }
 
 /** \} */
