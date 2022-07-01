@@ -1468,8 +1468,6 @@ void ED_uvedit_live_unwrap_end(short cancel)
   }
 }
 
-// SLIM REMARK: ED_uvedit_live_unwrap missing here
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -2145,28 +2143,26 @@ static int unwrap_exec(bContext *C, wmOperator *op)
     RNA_float_set(op->ptr, "margin", scene->toolsettings->uvcalc_margin);
   }
 
-  // SLIM REMOVED
-  // if (options.fill_holes) {
-  //   scene->toolsettings->uvcalc_flag |= UVCALC_FILLHOLES;
-  // }
-  // else {
-  //   scene->toolsettings->uvcalc_flag &= ~UVCALC_FILLHOLES;
-  // }
+   if (options.fill_holes) {
+     scene->toolsettings->uvcalc_flag |= UVCALC_FILLHOLES;
+   }
+   else {
+     scene->toolsettings->uvcalc_flag &= ~UVCALC_FILLHOLES;
+   }
 
-  // if (options.correct_aspect) {
-  //   scene->toolsettings->uvcalc_flag &= ~UVCALC_NO_ASPECT_CORRECT;
-  // }
-  // else {
-  //   scene->toolsettings->uvcalc_flag |= UVCALC_NO_ASPECT_CORRECT;
-  // }
+   if (options.correct_aspect) {
+     scene->toolsettings->uvcalc_flag &= ~UVCALC_NO_ASPECT_CORRECT;
+   }
+   else {
+     scene->toolsettings->uvcalc_flag |= UVCALC_NO_ASPECT_CORRECT;
+   }
 
-  // if (use_subsurf) {
-  //   scene->toolsettings->uvcalc_flag |= UVCALC_USESUBSURF;
-  // }
-  // else {
-  //   scene->toolsettings->uvcalc_flag &= ~UVCALC_USESUBSURF;
-  // }
-  // ---
+   if (options.use_subsurf) {
+     scene->toolsettings->uvcalc_flag |= UVCALC_USESUBSURF;
+   }
+   else {
+     scene->toolsettings->uvcalc_flag &= ~UVCALC_USESUBSURF;
+   }
 
   /* execute unwrap */
   UnwrapResultInfo result_info = {
@@ -2194,41 +2190,40 @@ static int unwrap_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-// static bool unwrap_draw_check_prop_slim(PointerRNA *UNUSED(ptr), PropertyRNA *prop)
-// {
-// 	const char *prop_id = RNA_property_identifier(prop);
+ static bool unwrap_draw_check_prop_slim(PointerRNA *UNUSED(ptr), PropertyRNA *prop)
+ {
+ 	const char *prop_id = RNA_property_identifier(prop);
 
-// 	return !(STREQ(prop_id, "fill_holes"));
-// }
+ 	return !(STREQ(prop_id, "fill_holes"));
+ }
 
-// static bool unwrap_draw_check_prop_abf(PointerRNA *UNUSED(ptr), PropertyRNA *prop)
-// {
-// 	const char *prop_id = RNA_property_identifier(prop);
+ static bool unwrap_draw_check_prop_abf(PointerRNA *UNUSED(ptr), PropertyRNA *prop)
+ {
+ 	const char *prop_id = RNA_property_identifier(prop);
 
-// 	return !(STREQ(prop_id, "reflection_mode") ||
-// 			 STREQ(prop_id, "iterations") ||
-// 			 STREQ(prop_id, "relative_scale") ||
-// 			 STREQ(prop_id, "vertex_group") ||
-// 			 STREQ(prop_id, "vertex_group_factor")
-// 			 );
-// }
+ 	return !(STREQ(prop_id, "reflection_mode") ||
+ 			 STREQ(prop_id, "iterations") ||
+ 			 STREQ(prop_id, "relative_scale") ||
+ 			 STREQ(prop_id, "vertex_group") ||
+ 			 STREQ(prop_id, "vertex_group_factor")
+ 			 );
+ }
 
-// SLIM ADDED
-// static void unwrap_draw(bContext *UNUSED(C), wmOperator *op)
-// {
-// 	uiLayout *layout = op->layout;
-// 	PointerRNA ptr;
+ static void unwrap_draw(bContext *UNUSED(C), wmOperator *op)
+ {
+ 	uiLayout *layout = op->layout;
+ 	PointerRNA ptr;
 
-// 	/* main draw call */
-// 	RNA_pointer_create(NULL, op->type->srna, op->properties, &ptr);
+ 	/* Main draw call */
+ 	RNA_pointer_create(NULL, op->type->srna, op->properties, &ptr);
 
-// 	if (RNA_enum_get(op->ptr, "method") == 2) {
-// 		uiDefAutoButsRNA(layout, &ptr, unwrap_draw_check_prop_slim, '\0');
-// 	}
-// 	else {
-// 		uiDefAutoButsRNA(layout, &ptr, unwrap_draw_check_prop_abf, '\0');
-// 	}
-// }
+ 	if (RNA_enum_get(op->ptr, "method") == 2) {
+ 		uiDefAutoButsRNA(layout, &ptr, unwrap_draw_check_prop_slim, NULL, NULL, '\0', false);
+ 	}
+ 	else {
+ 		uiDefAutoButsRNA(layout, &ptr, unwrap_draw_check_prop_abf, NULL, NULL, '\0', false);
+ 	}
+ }
 
 void UV_OT_unwrap(wmOperatorType *ot)
 {
@@ -2256,7 +2251,7 @@ void UV_OT_unwrap(wmOperatorType *ot)
   ot->poll = ED_operator_uvmap;
 
 	/* Only draw relevant ui elements */
-	// ot->ui = unwrap_draw;
+	ot->ui = unwrap_draw;
 
   /* properties */
   RNA_def_enum(ot->srna,

@@ -200,11 +200,7 @@ typedef struct ParamHandle {
   RNG *rng;
   float blend;
 
-  // SLIM TOCHECK
-  // char do_aspect;
-  // ---
-
-	// SLIM uv unwrapping
+	/* SLIM uv unwrapping */
 	SLIMMatrixTransfer *slim_mt;
 } ParamHandle;
 

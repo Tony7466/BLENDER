@@ -3,7 +3,7 @@
 #pragma once
 
 #include "BLI_sys_types.h" /* for intptr_t support */
-#include "slim_matrix_transfer.h" // for SLIM
+#include "slim_matrix_transfer.h"
 
 /** \file
  * \ingroup geo
