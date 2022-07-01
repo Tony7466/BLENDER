@@ -1406,7 +1406,7 @@ void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit)
 		SLIMMatrixTransfer *mt = slim_matrix_transfer(&options);
 		mt->skip_initialization = true;
 
-		param_slim_begin(handle, mt);
+		GEO_uv_parametrizer_slim_begin(handle, mt);
 	}
 	else {
 		GEO_uv_parametrizer_lscm_begin(handle, true, options.use_abf);
@@ -1432,9 +1432,9 @@ void ED_uvedit_live_unwrap_re_solve(void)
 {
   if (g_live_unwrap.handles) {
     for (int i = 0; i < g_live_unwrap.len; i++) {
-      if (param_is_slim(g_live_unwrap.handles[i])) {
-        slim_reload_all_uvs(g_live_unwrap.handles[i]);
-        param_slim_solve_iteration(g_live_unwrap.handles[i]);
+      if (GEO_uv_parametrizer_is_slim(g_live_unwrap.handles[i])) {
+        GEO_uv_parametrizer_slim_reload_all_uvs(g_live_unwrap.handles[i]);
+        GEO_uv_parametrizer_slim_solve_iteration(g_live_unwrap.handles[i]);
       }
       else {
         GEO_uv_parametrizer_lscm_solve(g_live_unwrap.handles[i], NULL, NULL);
@@ -1449,8 +1449,8 @@ void ED_uvedit_live_unwrap_end(short cancel)
 {
   if (g_live_unwrap.handles) {
     for (int i = 0; i < g_live_unwrap.len; i++) {
-      if (param_is_slim(g_live_unwrap.handles[i])) {
-        param_slim_end(g_live_unwrap.handles[i]);
+      if (GEO_uv_parametrizer_is_slim(g_live_unwrap.handles[i])) {
+        GEO_uv_parametrizer_slim_end(g_live_unwrap.handles[i]);
       }
       else {
         GEO_uv_parametrizer_lscm_end(g_live_unwrap.handles[i]);
@@ -1981,7 +1981,7 @@ static void uvedit_unwrap(const Scene *scene,
 		mt->reflection_mode = options->reflection_mode;
 		mt->transform_islands = true;
 
-		param_slim_solve(handle,
+		GEO_uv_parametrizer_slim_solve(handle,
                      mt,
                      result_info ? &result_info->count_changed : NULL,
                      result_info ? &result_info->count_failed : NULL);

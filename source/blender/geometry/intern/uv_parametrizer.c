@@ -4774,7 +4774,7 @@ static void slim_get_pinned_vertex_data(ParamHandle *phandle,
 	phandle->slim_mt->n_pinned_vertices[chartNr] = i;
 }
 
-void slim_reload_all_uvs(ParamHandle *phandle)
+void GEO_uv_parametrizer_slim_reload_all_uvs(ParamHandle *phandle)
 {
 	PVert *v;
 	for (int i = 0; i < phandle->ncharts; i++) {
@@ -4786,7 +4786,7 @@ void slim_reload_all_uvs(ParamHandle *phandle)
 	}
 }
 
-void param_slim_solve(ParamHandle *phandle,
+void GEO_uv_parametrizer_slim_solve(ParamHandle *phandle,
                       SLIMMatrixTransfer *mt,
                       int *count_changed,
                       int *count_failed)
@@ -4800,7 +4800,7 @@ void param_slim_solve(ParamHandle *phandle,
 	slim_free_matrix_transfer(mt);
 }
 
-void param_slim_begin(ParamHandle *phandle, SLIMMatrixTransfer *mt)
+void GEO_uv_parametrizer_slim_begin(ParamHandle *phandle, SLIMMatrixTransfer *mt)
 {
 	phandle->slim_mt = mt;
 
@@ -4842,7 +4842,7 @@ void param_slim_begin(ParamHandle *phandle, SLIMMatrixTransfer *mt)
 	}
 }
 
-void param_slim_stretch_iteration(ParamHandle *phandle, float blend)
+void GEO_uv_parametrizer_slim_stretch_iteration(ParamHandle *phandle, float blend)
 {
 	SLIMMatrixTransfer *mt = phandle->slim_mt;
 
@@ -4857,7 +4857,7 @@ void param_slim_stretch_iteration(ParamHandle *phandle, float blend)
 	slim_flush_uvs(phandle, mt, NULL, NULL);
 }
 
-void param_slim_solve_iteration(ParamHandle *phandle)
+void GEO_uv_parametrizer_slim_solve_iteration(ParamHandle *phandle)
 {
 	SLIMMatrixTransfer *mt = phandle->slim_mt;
 
@@ -4909,7 +4909,7 @@ void param_slim_solve_iteration(ParamHandle *phandle)
 	slim_flush_uvs(phandle, mt, NULL, NULL);
 }
 
-void param_slim_end(ParamHandle *phandle)
+void GEO_uv_parametrizer_slim_end(ParamHandle *phandle)
 {
 	SLIMMatrixTransfer *mt = phandle->slim_mt;
 
@@ -4922,7 +4922,7 @@ void param_slim_end(ParamHandle *phandle)
 	slim_free_matrix_transfer(mt);
 }
 
-bool param_is_slim(ParamHandle *phandle)
+bool GEO_uv_parametrizer_is_slim(ParamHandle *phandle)
 {
 	return phandle->slim_mt != NULL;
 }

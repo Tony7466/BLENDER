@@ -65,19 +65,17 @@ void GEO_uv_parametrizer_delete(ParamHandle *handle);
  * - solve: compute cheap initialization (if necessary) and refine iteratively
  * - end: clean up
 */
-void slim_reload_all_uvs(ParamHandle* handle);
-void param_slim_solve(ParamHandle* handle,
+void GEO_uv_parametrizer_slim_reload_all_uvs(ParamHandle* handle);
+void GEO_uv_parametrizer_slim_solve(ParamHandle* handle,
   SLIMMatrixTransfer* mt,
   int* count_changed,
   int* count_failed);
 
-void param_slim_begin(ParamHandle* handle, SLIMMatrixTransfer* mt);
-void param_slim_solve_iteration(ParamHandle* handle);
-void param_slim_stretch_iteration(ParamHandle* handle, float blend);
-void param_slim_end(ParamHandle* handle);
-
-bool param_is_slim(ParamHandle* handle);
-
+void GEO_uv_parametrizer_slim_begin(ParamHandle* handle, SLIMMatrixTransfer* mt);
+void GEO_uv_parametrizer_slim_solve_iteration(ParamHandle* handle);
+void GEO_uv_parametrizer_slim_stretch_iteration(ParamHandle* handle, float blend);
+void GEO_uv_parametrizer_slim_end(ParamHandle* handle);
+bool GEO_uv_parametrizer_is_slim(ParamHandle* handle);
 
 /** \} */
 
