@@ -4460,7 +4460,7 @@ static void slim_transfer_edges(const int chartNr, const ParamHandle *phandle, c
 	double *EL = mt->el_vectors[chartNr];
 
 	PEdge *outer;
-	p_chart_boundaries(chart, NULL, &outer);
+	p_chart_boundaries(chart, &outer);
 
 	PEdge *be = outer;
 	int eid = 0;
@@ -4560,7 +4560,7 @@ static void slim_transfer_boundary_vertices(const int chartNr, const ParamHandle
 
 	/* Find vertices on boundary and save into vector B */
 	PEdge *outer;
-	p_chart_boundaries(chart, NULL, &outer);
+	p_chart_boundaries(chart, &outer);
 
 	PEdge *be = outer;
 	int vid = 0;
@@ -4734,7 +4734,7 @@ static void slim_get_pinned_vertex_data(ParamHandle *phandle,
 
 	/* Boundary vertices have lower slim_ids, process them first */
 	PEdge *outer;
-	p_chart_boundaries(chart, NULL, &outer);
+	p_chart_boundaries(chart, &outer);
 	PEdge *be = outer;
 	do {
 		if (be->vert->flag & PVERT_PIN) {
