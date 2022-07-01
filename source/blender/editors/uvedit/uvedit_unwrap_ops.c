@@ -1392,7 +1392,7 @@ void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit)
   UnwrapOptions options = unwrap_options_get(NULL, obedit);
   options.topology_from_uvs = false;
   options.only_selected_faces = false;
-  options.only_selected_uvs = true;
+  options.only_selected_uvs = false;
 
   if (options.use_subsurf) {
     handle = construct_param_handle_subsurfed(scene, obedit, em, &options, NULL);
@@ -2017,14 +2017,6 @@ static void uvedit_unwrap_multi(const Scene *scene,
 void ED_uvedit_live_unwrap(const Scene *scene, Object **objects, int objects_len)
 {
   if (scene->toolsettings->edge_mode_live_unwrap) {
-    //const UnwrapOptions options = {
-    //    .topology_from_uvs = false,
-    //    .only_selected_faces = false,
-    //    .only_selected_uvs = true,
-    //    .fill_holes = (scene->toolsettings->uvcalc_flag & UVCALC_FILLHOLES) != 0,
-    //    .correct_aspect = (scene->toolsettings->uvcalc_flag & UVCALC_NO_ASPECT_CORRECT) == 0,
-    //};
-
     UnwrapOptions options = unwrap_options_get(NULL, NULL);
     options.topology_from_uvs = false;
     options.only_selected_faces = false;
