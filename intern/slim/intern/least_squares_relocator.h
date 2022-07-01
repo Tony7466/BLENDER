@@ -28,13 +28,13 @@
 #ifndef least_squares_relocator_hpp
 #define least_squares_relocator_hpp
 
-#include <stdio.h>
 #include "slim.h"
+#include <stdio.h>
 
 using namespace igl;
 
 namespace relocator {
-	void transformInitializationIfNecessary(SLIMData &slimData);
+void transformInitializationIfNecessary(SLIMData &slimData);
 }
 
 #endif /* least_squares_relocator_hpp */
