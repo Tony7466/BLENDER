@@ -1066,9 +1066,9 @@ static PFace *p_face_add_construct(ParamHandle *handle,
     weight3 = weight[i3];
   }
   else {
-    weight1 = 0.0f;
-    weight2 = 0.0f;
-    weight3 = 0.0f;
+    weight1 = 1.0f;
+    weight2 = 1.0f;
+    weight3 = 1.0f;
   }
   
   e1->vert = p_vert_lookup(handle, vkeys[i1], co[i1], weight1, e1);

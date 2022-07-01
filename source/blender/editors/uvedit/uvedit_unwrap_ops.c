@@ -170,26 +170,6 @@ bool ED_uvedit_udim_params_from_image_space(const SpaceImage *sima,
 /** \name Parametrizer Conversion
  * \{ */
 
-//typedef struct UnwrapOptions {
-//  /** Connectivity based on UV coordinates instead of seams. */
-//  bool topology_from_uvs;
-//  /** Only affect selected faces. */
-//  bool only_selected;
-//  /** Fill holes to better preserve shape. */
-//  bool fill_holes;
-//  /** Correct for mapped image texture aspect ratio. */
-//  bool correct_aspect;
-//
-//  bool use_slim;
-//  bool use_abf;
-//  bool use_subsurf;
-//  char vertex_group[MAX_ID_NAME];
-//  float vertex_group_factor;
-//  float relative_scale;
-//  int reflection_mode;
-//  int iterations;
-//} UnwrapOptions;
-
 typedef struct UnwrapOptions {
   /** Connectivity based on UV coordinates instead of seams. */
   bool topology_from_uvs;
@@ -228,7 +208,6 @@ typedef struct UnwrapResultInfo {
 } UnwrapResultInfo;
 
 
-// SLIM REMOVED
 static void modifier_unwrap_state(Object *obedit,
                                   const UnwrapOptions *options,
                                   bool *r_use_subsurf)
@@ -250,7 +229,6 @@ static void modifier_unwrap_state(Object *obedit,
 
   *r_use_subsurf = subsurf;
 }
-// ---
 
 static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob)
 {

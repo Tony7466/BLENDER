@@ -26,12 +26,10 @@ struct SpaceImage;
 struct ToolSettings;
 struct View2D;
 struct ViewLayer;
-struct UnwrapProperties;
 struct bContext;
 struct bNode;
 struct bNodeTree;
 struct wmKeyConfig;
-struct wmOperator;
 
 /* uvedit_ops.c */
 
