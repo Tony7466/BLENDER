@@ -13,15 +13,15 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 
-#include <exception>
+#include <stdexcept>
 
 
 namespace igl
 {
 
-class SlimFailedException : public std::exception {
+class SlimFailedException : public std::runtime_error {
  public:
-  SlimFailedException() : std::exception("Slim operation failed")
+  SlimFailedException() : std::runtime_error("Slim operation failed")
   {}
 };
 
