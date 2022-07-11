@@ -247,6 +247,8 @@ void USDMeshReader::read_object_data(Main *bmain, const double motionSampleTime)
   USDMeshReadParams params = {};
   params.motion_sample_time = motionSampleTime;
   params.read_flags = import_params_.mesh_read_flag;
+  params.velocity_name = "";
+  params.velocity_scale = 0.0;
 
   Mesh *read_mesh = this->read_mesh(mesh, params, nullptr);
 
@@ -730,6 +732,31 @@ void USDMeshReader::read_mesh_sample(ImportSettings *settings,
   if ((settings->read_flag & MOD_MESHSEQ_READ_COLOR) != 0) {
     read_colors(mesh, motionSampleTime);
   }
+
+  if (!settings->velocity_name.empty() && settings->velocity_scale != 0.0f) {
+    read_velocities(mesh, motionSampleTime);
+  }
+}
+
+void USDMeshReader::read_velocities(Mesh *mesh, double motionSampleTime)
+{
+  pxr::VtVec3fArray usd_velocities;
+  mesh_prim_.GetVelocitiesAttr().Get(&usd_velocities, motionSampleTime);
+
+  const int num_velocity_vectors = static_cast<int>(usd_velocities.size());
+  if (num_velocity_vectors != mesh->totvert) {
+    /* Files containing videogrammetry data may be malformed and export velocity data on missing
+     * frames (most likely by copying the last valid data). */
+    return;
+  }
+
+  CustomDataLayer *velocity_layer = BKE_id_attribute_new(
+      &mesh->id, "velocity", CD_PROP_FLOAT3, ATTR_DOMAIN_POINT, nullptr);
+  float(*velocity)[3] = (float(*)[3])velocity_layer->data;
+
+  for (int vertex_idx = 0, totvert = mesh->totvert; vertex_idx < totvert; ++vertex_idx) {
+    copy_v3_v3(velocity[vertex_idx], usd_velocities[vertex_idx].data());
+  }
 }
 
 void USDMeshReader::assign_facesets_to_material_indices(double motionSampleTime,
@@ -891,6 +918,8 @@ Mesh *USDMeshReader::read_mesh(Mesh *existing_mesh,
 
   ImportSettings settings;
   settings.read_flag |= params.read_flags;
+  settings.velocity_name = params.velocity_name;
+  settings.velocity_scale = params.velocity_scale;
 
   if (topology_changed(existing_mesh, params.motion_sample_time)) {
     new_mesh = true;
@@ -902,7 +931,8 @@ Mesh *USDMeshReader::read_mesh(Mesh *existing_mesh,
     }
   }
 
-  read_mesh_sample(&settings, active_mesh, params.motion_sample_time, new_mesh || is_initial_load_);
+  read_mesh_sample(
+      &settings, active_mesh, params.motion_sample_time, new_mesh || is_initial_load_);
 
   if (new_mesh) {
     /* Here we assume that the number of materials doesn't change, i.e. that
@@ -914,7 +944,8 @@ Mesh *USDMeshReader::read_mesh(Mesh *existing_mesh,
       bke::MutableAttributeAccessor attributes = active_mesh->attributes_for_write();
       bke::SpanAttributeWriter<int> material_indices =
           attributes.lookup_or_add_for_write_span<int>("material_index", ATTR_DOMAIN_FACE);
-      assign_facesets_to_material_indices(params.motion_sample_time, material_indices.span, &mat_map);
+      assign_facesets_to_material_indices(
+          params.motion_sample_time, material_indices.span, &mat_map);
       material_indices.finish();
     }
   }

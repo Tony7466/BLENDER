@@ -250,6 +250,8 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
       USDMeshReadParams params = {};
       params.motion_sample_time = time * FPS;
       params.read_flags = mcmd->read_flag;
+      params.velocity_name = mcmd->cache_file->velocity_name;
+      params.velocity_scale = mcmd->velocity_scale;
 
       result = USD_read_mesh(mcmd->reader, ctx->object, mesh, params, &err_str);
 #  endif

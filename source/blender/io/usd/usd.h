@@ -72,6 +72,8 @@ struct USDImportParams {
 typedef struct USDMeshReadParams {
   double motion_sample_time; /* Read USD TimeCode in frames. */
   int read_flags; /* MOD_MESHSEQ_xxx value that is set from MeshSeqCacheModifierData.read_flag. */
+  const char *velocity_name; /* From CacheFile and MeshSeqCacheModifierData */
+  float velocity_scale; /* From CacheFile and MeshSeqCacheModifierData */
 } USDMeshReadParams;
 
 /* The USD_export takes a as_background_job parameter, and returns a boolean.

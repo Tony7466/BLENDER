@@ -34,6 +34,10 @@ struct ImportSettings {
   /* From MeshSeqCacheModifierData.read_flag */
   int read_flag;
 
+  /* From CacheFile and MeshSeqCacheModifierData */
+  std::string velocity_name;
+  float velocity_scale;
+
   bool validate_meshes;
 
   CacheFile *cache_file;
@@ -59,6 +63,8 @@ struct ImportSettings {
         sequence_len(1),
         sequence_offset(0),
         read_flag(0),
+        velocity_name(""),
+        velocity_scale(1.0f),
         validate_meshes(false),
         cache_file(NULL)
   {
