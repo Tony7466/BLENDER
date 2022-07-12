@@ -245,12 +245,16 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 #  endif
       break;
     }
-    case CACHEFILE_TYPE_USD:
+    case CACHEFILE_TYPE_USD: {
 #  ifdef WITH_USD
-      result = USD_read_mesh(
-          mcmd->reader, ctx->object, mesh, time * FPS, &err_str, mcmd->read_flag);
+      USDMeshReadParams params = {};
+      params.time = time * FPS;
+      params.read_flags = mcmd->read_flag;
+
+      result = USD_read_mesh(mcmd->reader, ctx->object, mesh, &params, &err_str);
 #  endif
       break;
+    }
     case CACHE_FILE_TYPE_INVALID:
       break;
   }
