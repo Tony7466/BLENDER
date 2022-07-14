@@ -239,6 +239,7 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob)
   options.topology_from_uvs = false;
   options.only_selected_faces = false;
   options.only_selected_uvs = false;
+  options.pin_unselected = false;
 
   options.method = RNA_enum_get(&ptr, "method");
   options.use_abf = options.method == 0;
@@ -256,6 +257,8 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob)
   if (options.use_slim) {
     options.fill_holes = true;
   }
+
+  options.use_subsurf = false;
 
   if (ob) {
     bool use_subsurf_final;
