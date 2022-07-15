@@ -12,6 +12,7 @@
 #include <igl/Timer.h>
 
 using namespace igl;
+using namespace slim;
 
 void SLIM_transfer_uvs_blended_live(SLIMMatrixTransfer *mt,
                                     void *slim_data_ptr,
@@ -21,7 +22,7 @@ void SLIM_transfer_uvs_blended_live(SLIMMatrixTransfer *mt,
     return;
   }
   SLIMData *slim_data = (SLIMData *)slim_data_ptr;
-  areacomp::correctMapSurfaceAreaIfNecessary(slim_data);
+  correctMapSurfaceAreaIfNecessary(slim_data);
   transferUvsBackToNativePartLive(mt, slim_data->V_o, uv_chart_index);
 }
 
@@ -40,7 +41,7 @@ void SLIM_transfer_uvs_blended(SLIMMatrixTransfer *mt,
 
   SLIMData *slim_data = (SLIMData *)slim_data_ptr;
   Eigen::MatrixXd blended_uvs = getInteractiveResultBlendedWithOriginal(blend, slim_data);
-  areacomp::correctMapSurfaceAreaIfNecessary(slim_data);
+  correctMapSurfaceAreaIfNecessary(slim_data);
   transferUvsBackToNativePart(mt, blended_uvs, uv_chart_index);
 }
 

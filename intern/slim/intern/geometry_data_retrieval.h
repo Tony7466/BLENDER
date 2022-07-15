@@ -12,7 +12,7 @@
 using namespace Eigen;
 using namespace igl;
 
-namespace retrieval {
+namespace slim {
 
 struct GeometryData {
   Map<MatrixXd> vertexPositions3D = Map<MatrixXd>(NULL, 0, 0);
@@ -53,4 +53,4 @@ void retrievePinnedVertices(GeometryData &gd, bool borderVerticesArePinned);
 void retrieveGeometryDataMatrices(const SLIMMatrixTransfer *transferredData,
                                   const int uvChartIndex,
                                   GeometryData &gd);
-}  // namespace retrieval
+}

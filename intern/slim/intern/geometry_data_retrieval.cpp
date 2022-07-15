@@ -14,7 +14,7 @@
 using namespace igl;
 using namespace Eigen;
 
-namespace retrieval {
+namespace slim {
 
 void create_weights_per_face(SLIMData *slimData)
 {
@@ -70,7 +70,7 @@ bool hasValidPreinitializedMap(GeometryData &gd)
   if (gd.uvPositions2D.rows() == gd.vertexPositions3D.rows() &&
       gd.uvPositions2D.cols() == gd.COLUMNS_2) {
 
-    int numberOfFlips = UVInitializer::count_flips(
+    int numberOfFlips = count_flips(
         gd.vertexPositions3D, gd.facesByVertexindices, gd.uvPositions2D);
     bool noFlipsPresent = (numberOfFlips == 0);
     return (noFlipsPresent);
@@ -196,4 +196,4 @@ void retrieveGeometryDataMatrices(const SLIMMatrixTransfer *transferredData,
             transferredData->pp_matrices[uvChartIndex], gd.numberOfPinnedVertices, gd.COLUMNS_2);
   }
 }
-}  // namespace retrieval
+}

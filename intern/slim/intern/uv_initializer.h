@@ -9,7 +9,7 @@
 
 enum Method { TUTTE, HARMONIC, MVC };
 
-namespace UVInitializer {
+namespace slim {
 
 void convex_border_parameterization(const Eigen::MatrixXi &F,
                                     const Eigen::MatrixXd &V,
@@ -54,4 +54,5 @@ void harmonic(const Eigen::MatrixXd &V,
 void mapVerticesToConvexBorder(Eigen::MatrixXd &vertex_positions);
 
 int count_flips(const Eigen::MatrixXd &V, const Eigen::MatrixXi &F, const Eigen::MatrixXd &uv);
-}  // namespace UVInitializer
+
+}

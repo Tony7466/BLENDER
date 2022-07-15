@@ -10,7 +10,7 @@
 using namespace Eigen;
 using namespace igl;
 
-namespace areacomp {
+namespace slim {
 void correctMapSurfaceAreaIfNecessary(SLIMData *slimData);
 void correctMeshSurfaceAreaIfNecessary(SLIMData *slimData);
-}  // namespace areacomp
+}

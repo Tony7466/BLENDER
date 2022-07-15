@@ -7,6 +7,6 @@
 
 using namespace igl;
 
-namespace relocator {
+namespace slim {
 void transformInitializationIfNecessary(SLIMData &slimData);
 }

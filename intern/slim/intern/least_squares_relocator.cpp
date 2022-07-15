@@ -14,7 +14,7 @@ using namespace std;
 using namespace Eigen;
 using namespace igl;
 
-namespace relocator {
+namespace slim {
 
 void applyTransformation(SLIMData &slimData, Matrix2d &transformationMatrix)
 {
@@ -239,4 +239,4 @@ void transformInitializationIfNecessary(SLIMData &slimData)
 
   transformInitializedMap(slimData);
 }
-}  // namespace relocator
+}

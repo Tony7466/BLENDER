@@ -11,7 +11,7 @@
 using namespace Eigen;
 using namespace igl;
 
-namespace areacomp {
+namespace slim {
 
 void correctGeometrySize(double surfaceAreaToMapAreaRatio,
                          MatrixXd &VertexPositions,
@@ -85,4 +85,4 @@ void correctMeshSurfaceAreaIfNecessary(SLIMData *slimData)
   double desiredRatio = 1.0;
   correctGeometrySize(surfaceAreaToMapAreaRatio, slimData->V, desiredRatio);
 }
-}  // namespace areacomp
+}
