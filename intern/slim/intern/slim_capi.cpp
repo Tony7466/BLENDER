@@ -47,7 +47,7 @@ void SLIM_transfer_uvs_blended(SLIMMatrixTransfer *mt,
 
 /*	Setup call from the native C part. Necessary for interactive parametrisation.
  */
-void *SLIM_setup(SLIMMatrixTransfer *mt,
+void *SLIM_setup(const SLIMMatrixTransfer *mt,
                  int uv_chart_index,
                  bool are_border_vertices_pinned,
                  bool skip_initialization)

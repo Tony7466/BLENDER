@@ -23,7 +23,7 @@ void correctGeometrySize(double surfaceAreaToMapAreaRatio,
 }
 
 template<typename VertexPositionType, typename FaceIndicesType>
-double computeSurfaceArea(VertexPositionType V, FaceIndicesType F)
+double computeSurfaceArea(const VertexPositionType V, const FaceIndicesType F)
 {
   Eigen::VectorXd doubledAreaOfTriangles;
   igl::doublearea(V, F, doubledAreaOfTriangles);

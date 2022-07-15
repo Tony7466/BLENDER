@@ -64,7 +64,7 @@ namespace slim {
         }
     }
 
-    Eigen::MatrixXd getInteractiveResultBlendedWithOriginal(float blend, SLIMData* slimData)
+    Eigen::MatrixXd getInteractiveResultBlendedWithOriginal(float blend, const SLIMData* slimData)
     {
         Eigen::MatrixXd originalMapWeighted = blend * slimData->oldUVs;
         Eigen::MatrixXd InteractiveResultMap = (1.0 - blend) * slimData->V_o;
@@ -217,7 +217,7 @@ namespace slim {
     /*
       Transfers all the matrices from the native part and initialises slim.
      */
-    SLIMData* setup_slim(SLIMMatrixTransfer* transferredData,
+    SLIMData* setup_slim(const SLIMMatrixTransfer* transferredData,
         int nIterations,
         int uvChartIndex,
         igl::Timer& timer,

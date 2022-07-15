@@ -49,7 +49,7 @@ void create_weights_per_face(SLIMData *slimData)
   }
 }
 
-void setGeometryDataMatrices(GeometryData &gd, SLIMData *slimData)
+void setGeometryDataMatrices(const GeometryData &gd, SLIMData *slimData)
 {
   if (!slimData->valid) {
     return;
@@ -65,7 +65,7 @@ void setGeometryDataMatrices(GeometryData &gd, SLIMData *slimData)
   create_weights_per_face(slimData);
 }
 
-bool hasValidPreinitializedMap(GeometryData &gd)
+bool hasValidPreinitializedMap(const GeometryData &gd)
 {
   if (gd.uvPositions2D.rows() == gd.vertexPositions3D.rows() &&
       gd.uvPositions2D.cols() == gd.COLUMNS_2) {
@@ -84,12 +84,12 @@ bool hasValidPreinitializedMap(GeometryData &gd)
  We therefore may want to skip initialization. However, to skip initialization we need a
  preexisting valid starting map.
  */
-bool canInitializationBeSkipped(GeometryData &gd, bool skipInitialization)
+bool canInitializationBeSkipped(const GeometryData &gd, bool skipInitialization)
 {
   return (skipInitialization && hasValidPreinitializedMap(gd));
 }
 
-void constructSlimData(GeometryData &gd,
+void constructSlimData(const GeometryData &gd,
                        SLIMData *slimData,
                        bool skipInitialization,
                        int reflection_mode,

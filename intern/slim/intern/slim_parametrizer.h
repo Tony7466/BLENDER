@@ -12,8 +12,8 @@ namespace slim {
   /*	The header file that exposes the C++ functions to the native C part of Blender, see thesis.
    */
 
-  Eigen::MatrixXd getInteractiveResultBlendedWithOriginal(float blend, SLIMData* slimData);
-  SLIMData* setup_slim(SLIMMatrixTransfer* transferredData,
+  Eigen::MatrixXd getInteractiveResultBlendedWithOriginal(float blend, const SLIMData* slimData);
+  SLIMData* setup_slim(const SLIMMatrixTransfer* transferredData,
     int nIterations,
     int uvChartIndex,
     igl::Timer& timer,

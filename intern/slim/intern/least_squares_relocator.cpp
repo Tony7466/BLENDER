@@ -57,7 +57,7 @@ void flipInputGeometry(SLIMData &slimData)
   slimData.F.col(2) = temp;
 }
 
-void computeCentroid(MatrixXd &pointCloud, Vector2d &centroid)
+void computeCentroid(const MatrixXd &pointCloud, Vector2d &centroid)
 {
   centroid << pointCloud.col(0).sum(), pointCloud.col(1).sum();
   centroid /= pointCloud.rows();
@@ -157,7 +157,7 @@ void computLeastSquaresRotationScaleOnly(SLIMData &slimData,
   translationVector = centroidOfPins - transformationMatrix * centroidOfInitialized;
 }
 
-void computeTransformationMatrix2Pins(SLIMData &slimData, Matrix2d &transformationMatrix)
+void computeTransformationMatrix2Pins(const SLIMData &slimData, Matrix2d &transformationMatrix)
 {
   BLI_assert(slimData.valid);
 
@@ -179,7 +179,7 @@ void computeTransformationMatrix2Pins(SLIMData &slimData, Matrix2d &transformati
   transformationMatrix = (Matrix2d::Identity() * scale) * transformationMatrix;
 }
 
-void computeTranslation1Pin(SLIMData &slimData, Vector2d &translationVector)
+void computeTranslation1Pin(const SLIMData &slimData, Vector2d &translationVector)
 {
   BLI_assert(slimData.valid);
   translationVector = slimData.bc.row(0) - slimData.V_o.row(slimData.b(0));
@@ -221,7 +221,7 @@ void transformInitializedMap(SLIMData &slimData)
   }
 }
 
-bool isTranslationNeeded(SLIMData &slimData)
+bool isTranslationNeeded(const SLIMData &slimData)
 {
   BLI_assert(slimData.valid);
   bool pinnedVerticesExist = (slimData.b.rows() > 0);

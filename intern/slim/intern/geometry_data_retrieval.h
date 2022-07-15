@@ -42,7 +42,7 @@ struct GeometryData {
   double weightInfluence;
 };
 
-void constructSlimData(GeometryData &gd,
+void constructSlimData(const GeometryData &gd,
                        SLIMData *slimData,
                        bool skipInitialization,
                        int reflection_mode,

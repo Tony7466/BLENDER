@@ -28,7 +28,7 @@ void SLIM_parametrize_live(SLIMMatrixTransfer *mt,
                            double *selected_pinned_vertex_positions_2D,
                            int n_selected_pins,
                            int *selected_pins);
-void *SLIM_setup(SLIMMatrixTransfer *mt,
+void *SLIM_setup(const SLIMMatrixTransfer *mt,
                  int uv_chart_index,
                  bool are_border_vertices_pinned,
                  bool skip_initialization);
