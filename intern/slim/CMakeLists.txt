@@ -3,8 +3,6 @@ cmake_minimum_required(VERSION 2.6)
 set(INC
   ./
   ext/libigl_extract
-  ../../source/blender/editors/uvedit
-  ../../source/blender/makesdna
   ../../source/blender/blenlib
 )
 
@@ -29,13 +27,9 @@ set(SRC
   intern/slim_parametrizer.h
   intern/uv_initializer.cpp
   intern/uv_initializer.h
-
-
-  ${ADDITIONAL_SOURCES}
 )
 
 set(LIB
 )
 
 blender_add_lib(bf_intern_slim "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
-target_link_libraries(bf_intern_slim ${ADDITIONAL_LIBRARIES})
