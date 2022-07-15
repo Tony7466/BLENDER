@@ -10,8 +10,6 @@
 
 namespace slim {
 
-    using namespace std;
-
     double computeAngle(const Eigen::Vector3d& a, const Eigen::Vector3d& b)
     {
         return acos(a.dot(b) / (a.norm() * b.norm()));

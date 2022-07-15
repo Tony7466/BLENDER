@@ -10,11 +10,11 @@
 
 #include "BLI_assert.h"
 
-using namespace std;
-using namespace Eigen;
-using namespace igl;
 
 namespace slim {
+
+    using namespace Eigen;
+    using namespace igl;
 
 void applyTransformation(SLIMData &slimData, Matrix2d &transformationMatrix)
 {
@@ -195,7 +195,7 @@ void transformInitializedMap(SLIMData &slimData)
 
   switch (numberOfPinnedVertices) {
     case 0:
-      cout << "No transformation possible because no pinned vertices exist." << endl;
+      std::cout << "No transformation possible because no pinned vertices exist." << std::endl;
       return;
     case 1:  // only translation is needed with one pin
       computeTranslation1Pin(slimData, translationVector);

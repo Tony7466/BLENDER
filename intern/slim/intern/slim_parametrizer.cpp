@@ -29,7 +29,6 @@
 
 namespace slim {
 
-    using namespace std;
     using namespace igl;
     using namespace Eigen;
 
