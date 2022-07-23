@@ -146,11 +146,9 @@ Nurb *ED_curve_add_nurbs_primitive(
         bezt->f1 = bezt->f2 = bezt->f3 = SELECT;
         bezt->radius = 1.0;
 
-        bezt->vec[1][0] += -grid;
-        bezt->vec[0][0] += -1.5f * grid;
-        bezt->vec[0][1] += -0.5f * grid;
-        bezt->vec[2][0] += -0.5f * grid;
-        bezt->vec[2][1] += 0.5f * grid;
+        bezt->vec[0][0] = -grid * 2;
+        bezt->vec[1][0] = -grid;
+        bezt->vec[2][0] = 0;
         for (a = 0; a < 3; a++) {
           mul_m4_v3(mat, bezt->vec[a]);
         }
@@ -161,11 +159,8 @@ Nurb *ED_curve_add_nurbs_primitive(
         bezt->radius = bezt->weight = 1.0;
 
         bezt->vec[0][0] = 0;
-        bezt->vec[0][1] = 0;
         bezt->vec[1][0] = grid;
-        bezt->vec[1][1] = 0;
         bezt->vec[2][0] = grid * 2;
-        bezt->vec[2][1] = 0;
         for (a = 0; a < 3; a++) {
           mul_m4_v3(mat, bezt->vec[a]);
         }
@@ -174,31 +169,31 @@ Nurb *ED_curve_add_nurbs_primitive(
       }
       else {
 
-        nu->pntsu = 4;
+        nu->pntsu = 5;
         nu->pntsv = 1;
         nu->orderu = 4;
         nu->bp = (BPoint *)MEM_callocN(sizeof(BPoint) * nu->pntsu, "addNurbprim3");
 
         bp = nu->bp;
-        for (a = 0; a < 4; a++, bp++) {
+        for (a = 0; a < 5; a++, bp++) {
           bp->vec[3] = 1.0;
           bp->f1 = SELECT;
           bp->radius = bp->weight = 1.0;
         }
 
         bp = nu->bp;
-        bp->vec[0] += -1.5f * grid;
+        bp->vec[0] = -2 * grid;
         bp++;
-        bp->vec[0] += -grid;
-        bp->vec[1] += grid;
+        bp->vec[0] = -grid;
         bp++;
-        bp->vec[0] += grid;
-        bp->vec[1] += grid;
+        bp->vec[0] = 0;
         bp++;
-        bp->vec[0] += 1.5f * grid;
+        bp->vec[0] = grid;
+        bp++;
+        bp->vec[0] = 2 * grid;
 
         bp = nu->bp;
-        for (a = 0; a < 4; a++, bp++) {
+        for (a = 0; a < 5; a++, bp++) {
           mul_m4_v3(mat, bp->vec);
         }
 
