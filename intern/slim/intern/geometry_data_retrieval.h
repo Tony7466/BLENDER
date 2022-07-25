@@ -43,14 +43,14 @@ struct GeometryData {
 };
 
 void construct_slim_data(const GeometryData &gd,
-                       SLIMData *slim_data,
-                       bool skip_initialization,
-                       int reflection_mode,
-                       double relative_scale);
+                         SLIMData *slim_data,
+                         bool skip_initialization,
+                         int reflection_mode,
+                         double relative_scale);
 
 void retrieve_pinned_vertices(GeometryData &gd, bool border_vertices_are_pinned);
 
 void retrieve_geometry_data_matrices(const SLIMMatrixTransfer *transferred_data,
-                                  const int uv_chart_index,
-                                  GeometryData &gd);
-}
+                                     const int uv_chart_index,
+                                     GeometryData &gd);
+}  // namespace slim

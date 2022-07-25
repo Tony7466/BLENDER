@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
-
 #include "geometry_data_retrieval.h"
 
 #include <iostream>
@@ -88,10 +87,10 @@ bool can_initialization_be_skipped(const GeometryData &gd, bool skip_initializat
 }
 
 void construct_slim_data(const GeometryData &gd,
-                       SLIMData *slim_data,
-                       bool skip_initialization,
-                       int reflection_mode,
-                       double relative_scale)
+                         SLIMData *slim_data,
+                         bool skip_initialization,
+                         int reflection_mode,
+                         double relative_scale)
 {
   BLI_assert(slim_data->valid);
 
@@ -110,9 +109,11 @@ void construct_slim_data(const GeometryData &gd,
 void combine_matrices_of_pinned_and_boundary_vertices(GeometryData &gd)
 {
   /* Over - allocate pessimistically to avoid multiple reallocation. */
-  int upper_bound_on_number_of_pinned_vertices = gd.number_of_boundary_vertices + gd.number_of_pinned_vertices;
+  int upper_bound_on_number_of_pinned_vertices = gd.number_of_boundary_vertices +
+                                                 gd.number_of_pinned_vertices;
   gd.pinned_vertex_indices = VectorXi(upper_bound_on_number_of_pinned_vertices);
-  gd.positions_of_pinned_vertices2d = MatrixXd(upper_bound_on_number_of_pinned_vertices, gd.columns_2);
+  gd.positions_of_pinned_vertices2d = MatrixXd(upper_bound_on_number_of_pinned_vertices,
+                                               gd.columns_2);
 
   /* Since border vertices use vertex indices 0 ... #bordervertices we can do: */
   gd.pinned_vertex_indices.segment(0, gd.number_of_boundary_vertices) = gd.boundary_vertex_indices;
@@ -133,12 +134,14 @@ void combine_matrices_of_pinned_and_boundary_vertices(GeometryData &gd)
 
   int actual_number_of_pinned_vertices = index;
   gd.pinned_vertex_indices.conservativeResize(actual_number_of_pinned_vertices);
-  gd.positions_of_pinned_vertices2d.conservativeResize(actual_number_of_pinned_vertices, gd.columns_2);
+  gd.positions_of_pinned_vertices2d.conservativeResize(actual_number_of_pinned_vertices,
+                                                       gd.columns_2);
 
   gd.number_of_pinned_vertices = actual_number_of_pinned_vertices;
 }
 
-/* If the border is fixed, we simply pin the border vertices additionally to other pinned vertices. */
+/* If the border is fixed, we simply pin the border vertices additionally to other pinned vertices.
+ */
 void retrieve_pinned_vertices(GeometryData &gd, bool border_vertices_are_pinned)
 {
   if (border_vertices_are_pinned) {
@@ -151,25 +154,25 @@ void retrieve_pinned_vertices(GeometryData &gd, bool border_vertices_are_pinned)
 }
 
 void retrieve_geometry_data_matrices(const SLIMMatrixTransfer *transferred_data,
-                                  const int uv_chart_index,
-                                  GeometryData &gd)
+                                     const int uv_chart_index,
+                                     GeometryData &gd)
 {
   gd.number_of_vertices = transferred_data->n_verts[uv_chart_index];
   gd.number_of_faces = transferred_data->n_faces[uv_chart_index];
   /* `n_edges` in transferred_data accounts for boundary edges only once. */
   gd.number_of_edges_twice = transferred_data->n_edges[uv_chart_index] +
-                          transferred_data->n_boundary_vertices[uv_chart_index];
+                             transferred_data->n_boundary_vertices[uv_chart_index];
   gd.number_of_boundary_vertices = transferred_data->n_boundary_vertices[uv_chart_index];
   gd.number_of_pinned_vertices = transferred_data->n_pinned_vertices[uv_chart_index];
 
-  new (&gd.vertex_positions3d)
-      Map<MatrixXd>(transferred_data->v_matrices[uv_chart_index], gd.number_of_vertices, gd.columns_3);
-  new (&gd.uv_positions2d)
-      Map<MatrixXd>(transferred_data->uv_matrices[uv_chart_index], gd.number_of_vertices, gd.columns_2);
+  new (&gd.vertex_positions3d) Map<MatrixXd>(
+      transferred_data->v_matrices[uv_chart_index], gd.number_of_vertices, gd.columns_3);
+  new (&gd.uv_positions2d) Map<MatrixXd>(
+      transferred_data->uv_matrices[uv_chart_index], gd.number_of_vertices, gd.columns_2);
   gd.positions_of_pinned_vertices2d = MatrixXd();
 
-  new (&gd.faces_by_vertexindices)
-      Map<MatrixXi>(transferred_data->f_matrices[uv_chart_index], gd.number_of_faces, gd.columns_3);
+  new (&gd.faces_by_vertexindices) Map<MatrixXi>(
+      transferred_data->f_matrices[uv_chart_index], gd.number_of_faces, gd.columns_3);
   new (&gd.edges_by_vertexindices) Map<MatrixXi>(
       transferred_data->e_matrices[uv_chart_index], gd.number_of_edges_twice, gd.columns_2);
   gd.pinned_vertex_indices = VectorXi();
@@ -189,7 +192,9 @@ void retrieve_geometry_data_matrices(const SLIMMatrixTransfer *transferred_data,
         Map<VectorXi>(transferred_data->p_matrices[uv_chart_index], gd.number_of_pinned_vertices);
     new (&gd.positions_of_explicitly_pinned_vertices2d)
         Map<Matrix<double, Dynamic, Dynamic, RowMajor>>(
-            transferred_data->pp_matrices[uv_chart_index], gd.number_of_pinned_vertices, gd.columns_2);
+            transferred_data->pp_matrices[uv_chart_index],
+            gd.number_of_pinned_vertices,
+            gd.columns_2);
   }
 }
-}
+}  // namespace slim

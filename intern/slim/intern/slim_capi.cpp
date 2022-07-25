@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
-
 #include <Eigen/Dense>
 
 #include "slim.h"

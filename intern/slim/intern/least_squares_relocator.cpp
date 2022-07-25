@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
-
 #include "least_squares_relocator.h"
 
 #include "slim.h"
@@ -10,11 +9,10 @@
 
 #include "BLI_assert.h"
 
-
 namespace slim {
 
-    using namespace Eigen;
-    using namespace igl;
+using namespace Eigen;
+using namespace igl;
 
 void apply_transformation(SLIMData &slim_data, Matrix2d &transformation_matrix)
 {
@@ -90,8 +88,8 @@ void compute_centroid(const MatrixXd &point_cloud, Vector2d &centroid)
  * `t` is of dimension `1 x 1` and `p` of dimension `2*numberOfPinnedVertices x 1`
  * is the vector holding the uv positions of the pinned vertices. */
 void compute_least_squares_scaling(MatrixXd centered_pins,
-                                MatrixXd centered_initialized_pins,
-                                Matrix2d &transformation_matrix)
+                                   MatrixXd centered_initialized_pins,
+                                   Matrix2d &transformation_matrix)
 {
   int number_of_pinned_vertices = centered_pins.rows();
 
@@ -107,9 +105,9 @@ void compute_least_squares_scaling(MatrixXd centered_pins,
 }
 
 void comput_least_squares_rotation_scale_only(SLIMData &slim_data,
-                                         Vector2d &translation_vector,
-                                         Matrix2d &transformation_matrix,
-                                         bool is_flip_allowed)
+                                              Vector2d &translation_vector,
+                                              Matrix2d &transformation_matrix,
+                                              bool is_flip_allowed)
 {
   BLI_assert(slim_data.valid);
 
@@ -148,18 +146,19 @@ void comput_least_squares_rotation_scale_only(SLIMData &slim_data,
   compute_least_squares_scaling(centeredpins, centered_initialized_pins, transformation_matrix);
 
   transformation_matrix = transformation_matrix * svd.matrixV() * singular_values *
-                         svd.matrixU().transpose();
+                          svd.matrixU().transpose();
 
   translation_vector = centroid_of_pins - transformation_matrix * centroid_of_initialized;
 }
 
-void compute_transformation_matrix2_pins(const SLIMData &slim_data, Matrix2d &transformation_matrix)
+void compute_transformation_matrix2_pins(const SLIMData &slim_data,
+                                         Matrix2d &transformation_matrix)
 {
   BLI_assert(slim_data.valid);
 
   Vector2d pinned_position_difference_vector = slim_data.bc.row(0) - slim_data.bc.row(1);
   Vector2d initialized_position_difference_vector = slim_data.V_o.row(slim_data.b(0)) -
-                                                 slim_data.V_o.row(slim_data.b(1));
+                                                    slim_data.V_o.row(slim_data.b(1));
 
   double scale = pinned_position_difference_vector.norm() /
                  initialized_position_difference_vector.norm();
@@ -235,4 +234,4 @@ void transform_initialization_if_necessary(SLIMData &slim_data)
 
   transform_initialized_map(slim_data);
 }
-}
+}  // namespace slim
