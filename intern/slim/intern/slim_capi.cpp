@@ -26,10 +26,9 @@ void SLIM_transfer_uvs_blended_live(SLIMMatrixTransfer *mt,
   transfer_uvs_back_to_native_part_live(mt, slim_data->V_o, uv_chart_index);
 }
 
-/*  Called from the native part during each iteration of interactive parametrisation.
-  The blend parameter decides the linear blending between the original UV map and the one
-  optained from the accumulated SLIM iterations so far.
- */
+/* Called from the native part during each iteration of interactive parametrisation.
+ * The blend parameter decides the linear blending between the original UV map and the one
+ * optained from the accumulated SLIM iterations so far. */
 void SLIM_transfer_uvs_blended(SLIMMatrixTransfer *mt,
                                void *slim_data_ptr,
                                int uv_chart_index,
@@ -45,8 +44,7 @@ void SLIM_transfer_uvs_blended(SLIMMatrixTransfer *mt,
   transfer_uvs_back_to_native_part(mt, blended_uvs, uv_chart_index);
 }
 
-/*	Setup call from the native C part. Necessary for interactive parametrisation.
- */
+/* Setup call from the native C part. Necessary for interactive parametrisation. */
 void *SLIM_setup(const SLIMMatrixTransfer *mt,
                  int uv_chart_index,
                  bool are_border_vertices_pinned,
@@ -59,9 +57,8 @@ void *SLIM_setup(const SLIMMatrixTransfer *mt,
   return slim_data;
 }
 
-/*	Executes a single iteration of SLIM, to be called from the native part. It recasts the pointer
- * to a SLIM object.
- */
+/* Executes a single iteration of SLIM, to be called from the native part. It recasts the pointer
+ * to a SLIM object. */
 void SLIM_parametrize_single_iteration(SLIMMatrixTransfer *mt,
                                        int uv_chart_index,
                                        void *slim_data_ptr)
@@ -70,8 +67,7 @@ void SLIM_parametrize_single_iteration(SLIMMatrixTransfer *mt,
   param_slim_single_iteration(mt, uv_chart_index, slim_data);
 }
 
-/*	Executes slim iterations during live unwrap. needs to provide new selected-pin positions
- */
+/* Executes slim iterations during live unwrap. needs to provide new selected-pin positions. */
 void SLIM_parametrize_live(SLIMMatrixTransfer *mt,
                            int uv_chart_index,
                            void *slim_data_ptr,

@@ -9,9 +9,6 @@
 using namespace igl;
 
 namespace slim {
-  /*	The header file that exposes the C++ functions to the native C part of Blender, see thesis.
-   */
-
   Eigen::MatrixXd get_interactive_result_blended_with_original(float blend, const SLIMData* slim_data);
   SLIMData* setup_slim(const SLIMMatrixTransfer* transferred_data,
     int n_iterations,
@@ -35,5 +32,4 @@ namespace slim {
     int* selected_pins);
   void param_slim(SLIMMatrixTransfer* mt, int n_iterations, bool fix_border, bool skip_initialization);
   void free_slim_data(SLIMData* slim_data);
-
 }

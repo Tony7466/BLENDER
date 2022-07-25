@@ -71,9 +71,7 @@ namespace slim {
         return original_map_weighted + interactive_result_map;
     }
 
-    /*
-      Executes a single iteration of SLIM, must follow a proper setup & initialisation.
-     */
+    /* Executes a single iteration of SLIM, must follow a proper setup & initialisation. */
     void param_slim_single_iteration(SLIMMatrixTransfer* mt, int uv_chart_index, SLIMData* slim_data)
     {
         int number_of_iterations = 1;
@@ -134,10 +132,7 @@ namespace slim {
         }
     }
 
-    /*
-      Executes several iterations of SLIM when used with LiveUnwrap
-     */
-
+    /* Executes several iterations of SLIM when used with LiveUnwrap */
     void param_slim_live_unwrap(SLIMMatrixTransfer* mt,
         int uv_chart_index,
         SLIMData* slim_data,
@@ -154,8 +149,7 @@ namespace slim {
             pinned_vertex_positions2d,
             n_selected_pins,
             selected_pins);
-        // recompute current energy
-        // recompute_energy(*slim_data);
+
         try_slim_solve(mt, uv_chart_index, *slim_data, number_of_iterations);
     }
 
@@ -215,9 +209,7 @@ namespace slim {
         }
     }
 
-    /*
-      Transfers all the matrices from the native part and initialises slim.
-     */
+    /* Transfers all the matrices from the native part and initialises SLIM. */
     SLIMData* setup_slim(const SLIMMatrixTransfer* transferred_data,
         int n_iterations,
         int uv_chart_index,

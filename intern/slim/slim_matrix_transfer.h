@@ -4,24 +4,22 @@
 
 #include <stdio.h>
 
-/*
-  Struct that holds all the information and data matrices to be transfered from the native
-  Blender part to SLIM, named as follows:
 
-  Matrix/Vector   | contains pointers to arrays of:
-  ________________|_____________________________________________
-  v_matrices      | vertex positions
-  uv_matrices     | UV positions of vertices
-  PPmatrice       | positions of pinned vertices
-  el_vectors      | Edge lengths
-  w_vectors       | weights pre vertex
-  f_matrices      | vertexindex-triplets making up the faces
-  p_matrices      | indices of pinned vertices
-  Ematrix         | vertexindex-tuples making up edges
-  Bvector         | vertexindices of boundary vertices
-  ---------------------------------------------------------------
-*/
-
+/* Struct that holds all the information and data matrices to be transfered from the native
+ * Blender part to SLIM, named as follows:
+ *
+ * Matrix/Vector   | contains pointers to arrays of:
+ * ________________|_____________________________________________
+ * v_matrices      | vertex positions
+ * uv_matrices     | UV positions of vertices
+ * PPmatrice       | positions of pinned vertices
+ * el_vectors      | Edge lengths
+ * w_vectors       | weights pre vertex
+ * f_matrices      | vertexindex-triplets making up the faces
+ * p_matrices      | indices of pinned vertices
+ * Ematrix         | vertexindex-tuples making up edges
+ * Bvector         | vertexindices of boundary vertices
+ * ________________|_____________________________________________ */
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -47,7 +45,7 @@ typedef struct {
   int reflection_mode;
   double relative_scale;
 
-  /* external */
+  /* External. */
   int n_iterations;
   bool skip_initialization;
   bool is_minimize_stretch;

@@ -31,7 +31,7 @@ void create_weights_per_face(SLIMData *slim_data)
 
   slim_data->weightPerFaceMap = Eigen::VectorXf(slim_data->F.rows());
 
-  /* the actual weight is max_factor ^ (2 * (mean - 0.5)) */
+  /* The actual weight is `max_factor ^ (2 * (mean - 0.5))` */
   int weight_influence_sign = (slim_data->weightInfluence >= 0) ? 1 : -1;
   double max_factor = std::abs(slim_data->weightInfluence) + 1;
 
@@ -78,12 +78,10 @@ bool has_valid_preinitialized_map(const GeometryData &gd)
   return false;
 }
 
-/*
- If we use interactive parametrisation, we usually start form an existing, flip-free unwrapping.
- Also, pinning of vertices has some issues with initialisation with convex border.
- We therefore may want to skip initialization. however, to skip initialization we need a
- preexisting valid starting map.
- */
+/* If we use interactive parametrisation, we usually start form an existing, flip-free unwrapping.
+ * Also, pinning of vertices has some issues with initialisation with convex border.
+ * We therefore may want to skip initialization. however, to skip initialization we need a
+ * preexisting valid starting map. */
 bool can_initialization_be_skipped(const GeometryData &gd, bool skip_initialization)
 {
   return (skip_initialization && has_valid_preinitialized_map(gd));
@@ -111,12 +109,12 @@ void construct_slim_data(const GeometryData &gd,
 
 void combine_matrices_of_pinned_and_boundary_vertices(GeometryData &gd)
 {
-  // over-allocate pessimistically to avoid multiple reallocation
+  /* Over - allocate pessimistically to avoid multiple reallocation. */
   int upper_bound_on_number_of_pinned_vertices = gd.number_of_boundary_vertices + gd.number_of_pinned_vertices;
   gd.pinned_vertex_indices = VectorXi(upper_bound_on_number_of_pinned_vertices);
   gd.positions_of_pinned_vertices2d = MatrixXd(upper_bound_on_number_of_pinned_vertices, gd.columns_2);
 
-  // since border vertices use vertex indices 0 ... #bordervertices we can do:
+  /* Since border vertices use vertex indices 0 ... #bordervertices we can do: */
   gd.pinned_vertex_indices.segment(0, gd.number_of_boundary_vertices) = gd.boundary_vertex_indices;
   gd.positions_of_pinned_vertices2d.block(0, 0, gd.number_of_boundary_vertices, gd.columns_2) =
       gd.uv_positions2d.block(0, 0, gd.number_of_boundary_vertices, gd.columns_2);
@@ -140,9 +138,7 @@ void combine_matrices_of_pinned_and_boundary_vertices(GeometryData &gd)
   gd.number_of_pinned_vertices = actual_number_of_pinned_vertices;
 }
 
-/*
- if the border is fixed, we simply pin the border vertices additionally to other pinned vertices.
- */
+/* If the border is fixed, we simply pin the border vertices additionally to other pinned vertices. */
 void retrieve_pinned_vertices(GeometryData &gd, bool border_vertices_are_pinned)
 {
   if (border_vertices_are_pinned) {
@@ -160,7 +156,7 @@ void retrieve_geometry_data_matrices(const SLIMMatrixTransfer *transferred_data,
 {
   gd.number_of_vertices = transferred_data->n_verts[uv_chart_index];
   gd.number_of_faces = transferred_data->n_faces[uv_chart_index];
-  // n_edges in transferred_data accounts for boundary edges only once
+  /* `n_edges` in transferred_data accounts for boundary edges only once. */
   gd.number_of_edges_twice = transferred_data->n_edges[uv_chart_index] +
                           transferred_data->n_boundary_vertices[uv_chart_index];
   gd.number_of_boundary_vertices = transferred_data->n_boundary_vertices[uv_chart_index];

@@ -25,9 +25,9 @@ namespace slim {
 
         for (int i = 0; i < f.rows(); i++) {
 
-            int vertex_index1 = f(i, 0);  // retrieve vertex index that is part of face
-            int vertex_index2 = f(i, 1);  // retrieve vertex index that is part of face
-            int vertex_index3 = f(i, 2);  // retrieve vertex index that is part of face
+            int vertex_index1 = f(i, 0);
+            int vertex_index2 = f(i, 1);
+            int vertex_index3 = f(i, 2);
 
             double angle1 = compute_angle(v.row(vertex_index2) - v.row(vertex_index1),
                 v.row(vertex_index3) - v.row(vertex_index1));
@@ -59,9 +59,9 @@ namespace slim {
 
         for (int i = 0; i < f.rows(); i++) {
 
-            int vertex_index1 = f(i, 0);  // retrieve vertex index that is part of face
-            int vertex_index2 = f(i, 1);  // retrieve vertex index that is part of face
-            int vertex_index3 = f(i, 2);  // retrieve vertex index that is part of face
+            int vertex_index1 = f(i, 0);
+            int vertex_index2 = f(i, 1);
+            int vertex_index3 = f(i, 2);
 
             double angle1 = compute_angle(v.row(vertex_index2) - v.row(vertex_index1),
                 v.row(vertex_index3) - v.row(vertex_index1));
@@ -135,8 +135,8 @@ namespace slim {
             first_vertex = edge(0);
             second_vertex = edge(1);
 
-            if (first_vertex >= n_knowns) {  // into aint
-
+            if (first_vertex >= n_knowns) {
+                /* Into aint. */
                 rowindex = first_vertex - n_knowns;
 
                 double angle1 = vertex_to_angles.coeff(first_vertex, 2 * second_vertex);
@@ -157,12 +157,14 @@ namespace slim {
 
                 int_triplet_vector.push_back(Eigen::Triplet<double>(rowindex, rowindex, edge_weight));
 
-                if (second_vertex >= n_knowns) {  // also an unknown point in the interior
+                if (second_vertex >= n_knowns) {
+                    /* Also an unknown point in the interior. */
                     columnindex = second_vertex - n_knowns;
 
                     int_triplet_vector.push_back(Eigen::Triplet<double>(rowindex, columnindex, -edge_weight));
                 }
-                else {  // known point on the border
+                else {
+                    /* Known point on the border. */
                     columnindex = second_vertex;
                     bnd_triplet_vector.push_back(Eigen::Triplet<double>(rowindex, columnindex, edge_weight));
                 }
@@ -184,7 +186,7 @@ namespace slim {
         Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
         solver.compute(aint);
 
-        for (int i = 0; i < 2; i++) {  // solve for u and v coordinates
+        for (int i = 0; i < 2; i++) {
 
             for (int zindex = 0; zindex < n_knowns; zindex++) {
                 z(zindex) = bnd_uv(bnd(zindex), i);
@@ -272,7 +274,6 @@ namespace slim {
             double det = t2_homo.determinant();
             assert(det == det);
             if (det < 0) {
-                // cout << "flip at face #" << i << " det = " << t2_homo.determinant() << endl;
                 flip_idx.push_back(i);
             }
         }

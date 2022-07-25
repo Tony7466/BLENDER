@@ -50,7 +50,6 @@ void retrieve_positions_of_pinned_vertices_in_initialization(
 void flip_input_geometry(SLIMData &slim_data)
 {
   BLI_assert(slim_data.valid);
-  // slim_data.v.col(0) *= -1;
 
   VectorXi temp = slim_data.F.col(0);
   slim_data.F.col(0) = slim_data.F.col(2);
@@ -63,36 +62,33 @@ void compute_centroid(const MatrixXd &point_cloud, Vector2d &centroid)
   centroid /= point_cloud.rows();
 };
 
-/*
- Finds scaling matrix
-
- T = |a 0|
-     |0 a|
-
-
- s.t. if to each point p in the inizialized map the following is applied
-
- T*p
-
- we get the closest scaling of the positions of the vertices in the initialized map to the pinned
- vertices in a least squares sense. We find them by solving
-
- argmin_{t}	At = p
-
- i.e.:
-
- | x_1 |           |u_1|
- |  .  |           | . |
- |  .  |           | . |
- | x_n |           |u_n|
- | y_1 | * | a | = |v_1|
- |  .  |           | . |
- |  .  |           | . |
- | y_n |           |v_n|
-
- t is of dimension 1 x 1 and p of dimension 2*numberOfPinnedVertices x 1
- is the vector holding the uv positions of the pinned vertices.
- */
+/* Finds scaling matrix:
+ *
+ * T = |a 0|
+ *     |0 a|
+ *
+ * s.t. if to each point p in the inizialized map the following is applied
+ *
+ *  T*p
+ *
+ * We get the closest scaling of the positions of the vertices in the initialized map to the pinned
+ * vertices in a least squares sense. We find them by solving
+ *
+ * argmin_{t}	At = p
+ *
+ * i.e.:
+ *
+ * | x_1 |           |u_1|
+ * |  .  |           | . |
+ * |  .  |           | . |
+ * | x_n |           |u_n|
+ * | y_1 | * | a | = |v_1|
+ * |  .  |           | . |
+ * |  .  |           | . |
+ * | y_n |           |v_n|
+ *
+ * `t` is of dimension `1 x 1` and `p` of dimension `2*numberOfPinnedVertices x 1`
+ * is the vector holding the uv positions of the pinned vertices. */
 void compute_least_squares_scaling(MatrixXd centered_pins,
                                 MatrixXd centered_initialized_pins,
                                 Matrix2d &transformation_matrix)
@@ -171,7 +167,7 @@ void compute_transformation_matrix2_pins(const SLIMData &slim_data, Matrix2d &tr
   pinned_position_difference_vector.normalize();
   initialized_position_difference_vector.normalize();
 
-  // todo: sometimes rotates in wrong direction
+  /* TODO: sometimes rotates in wrong direction. */
   double cos_angle = pinned_position_difference_vector.dot(initialized_position_difference_vector);
   double sin_angle = sqrt(1 - pow(cos_angle, 2));
 
@@ -197,7 +193,7 @@ void transform_initialized_map(SLIMData &slim_data)
     case 0:
       std::cout << "no transformation possible because no pinned vertices exist." << std::endl;
       return;
-    case 1:  // only translation is needed with one pin
+    case 1: /* Only translation is needed with one pin. */
       compute_translation1_pin(slim_data, translation_vector);
       apply_translation(slim_data, translation_vector);
       break;

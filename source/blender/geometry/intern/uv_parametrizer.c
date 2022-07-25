@@ -4496,7 +4496,7 @@ static void slim_transfer_edges(const int chartNr,
     float edge_len = p_edge_length(be);
     EL[eid] = edge_len;
 
-    // Temporary solution: SLIM doesn't support doubled vertices for now
+    /* Temporary solution : SLIM doesn't support doubled vertices for now. */
     if (edge_len < DOUBLED_VERT_THRESHOLD) {
       mt->succeeded[chartNr] = false;
     }
@@ -4514,7 +4514,7 @@ static void slim_transfer_edges(const int chartNr,
     float edge_len = p_edge_length(e);
     EL[eid] = edge_len;
 
-    // Temporary solution: SLIM doesn't support doubled vertices for now
+    /* Temporary solution : SLIM doesn't support doubled vertices for now. */
     if (edge_len < DOUBLED_VERT_THRESHOLD) {
       mt->succeeded[chartNr] = false;
     }
@@ -4639,16 +4639,16 @@ static void slim_convert_blender(ParamHandle *phandle)
 {
   SLIMMatrixTransfer *mt = phandle->slim_mt;
 
-  // allocate memory for the arrays that hold the pointers to the matrices for each chart
-  // there are #charts pointers of each kind
+  /* Allocate memory for the arrays that hold the pointers to the matrices for each chart
+   * there are #charts pointers of each kind */
   slim_allocate_pointerarrays(mt, phandle);
 
-  /* Allocate memory for matrices of Vertices,Faces etc. for each chart */
+  /* Allocate memory for matrices of Vertices,Faces etc. for each chart. */
   for (int i = 0; i < phandle->ncharts; i++) {
     slim_allocate_matrices(i, phandle, mt);
   }
 
-  /* For each chart, fill up matrices */
+  /* For each chart, fill up matrices. */
   for (int i = 0; i < phandle->ncharts; i++) {
     mt->succeeded[i] = true;
     mt->n_pinned_vertices[i] = 0;
@@ -4769,15 +4769,17 @@ static void slim_get_pinned_vertex_data(ParamHandle *phandle,
 {
   PChart *chart = phandle->charts[chartNr];
 
-  int i = 0;  // index of pinned vertex
+  /* Index of pinned vertex. */
+  int i = 0;
 
-  /* Boundary vertices have lower slim_ids, process them first */
+  /* Boundary vertices have lower slim_ids, process them first. */
   PEdge *outer;
   p_chart_boundaries(chart, &outer);
   PEdge *be = outer;
   do {
     if (be->vert->flag & PVERT_PIN) {
-      p_vert_load_pin_select_uvs(phandle, be->vert); /* reload vertex position */
+      /* Reload vertex position. */
+      p_vert_load_pin_select_uvs(phandle, be->vert);
 
       if (be->vert->flag & PVERT_SELECT) {
         selected_pins[*n_selected_pins] = be->vert->slim_id;
@@ -4877,14 +4879,14 @@ void GEO_uv_parametrizer_slim_stretch_iteration(ParamHandle *phandle, float blen
 {
   SLIMMatrixTransfer *mt = phandle->slim_mt;
 
-  // Do one iteration and tranfer UVs
+  /* Do one iterationand tranfer UVs. */
   for (int i = 0; i < phandle->ncharts; i++) {
     PChart *chart = phandle->charts[i];
     SLIM_parametrize_single_iteration(mt, i, chart->slim.ptr);
     SLIM_transfer_uvs_blended(mt, chart->slim.ptr, i, blend);
   }
 
-  //	Assign new UVs back to each vertex
+  /* Assign new UVs back to each vertex. */
   slim_flush_uvs(phandle, mt, NULL, NULL);
 }
 
@@ -4933,7 +4935,7 @@ void GEO_uv_parametrizer_slim_solve_iteration(ParamHandle *phandle)
     MEM_freeN(pinned_vertex_positions_2D);
   }
 
-  //	Assign new UVs back to each vertex
+  /* Assign new UVs back to each vertex. */
   slim_flush_uvs(phandle, mt, NULL, NULL);
 }
 
