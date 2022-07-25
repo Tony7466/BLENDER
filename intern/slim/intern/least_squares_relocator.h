@@ -8,5 +8,5 @@
 using namespace igl;
 
 namespace slim {
-void transformInitializationIfNecessary(SLIMData &slimData);
+void transform_initialization_if_necessary(SLIMData &slimData);
 }

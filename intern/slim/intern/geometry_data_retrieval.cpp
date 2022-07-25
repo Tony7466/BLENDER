@@ -16,64 +16,64 @@ using namespace Eigen;
 
 namespace slim {
 
-void create_weights_per_face(SLIMData *slimData)
+void create_weights_per_face(SLIMData *slim_data)
 {
-  if (!slimData->valid) {
+  if (!slim_data->valid) {
     return;
   }
 
-  if (!slimData->withWeightedParameterization) {
-    slimData->weightPerFaceMap = Eigen::VectorXf::Ones(slimData->F.rows());
+  if (!slim_data->withWeightedParameterization) {
+    slim_data->weightPerFaceMap = Eigen::VectorXf::Ones(slim_data->F.rows());
     return;
   }
 
-  std::cout << "weightmap: " << slimData->weightmap << std::endl;
+  std::cout << "weightmap: " << slim_data->weightmap << std::endl;
 
-  slimData->weightPerFaceMap = Eigen::VectorXf(slimData->F.rows());
+  slim_data->weightPerFaceMap = Eigen::VectorXf(slim_data->F.rows());
 
-  /* the actual weight is maxFactor ^ (2 * (mean - 0.5)) */
-  int weightInfluenceSign = (slimData->weightInfluence >= 0) ? 1 : -1;
-  double maxFactor = std::abs(slimData->weightInfluence) + 1;
+  /* the actual weight is max_factor ^ (2 * (mean - 0.5)) */
+  int weight_influence_sign = (slim_data->weightInfluence >= 0) ? 1 : -1;
+  double max_factor = std::abs(slim_data->weightInfluence) + 1;
 
-  for (int fid = 0; fid < slimData->F.rows(); fid++) {
-    Eigen::RowVector3i row = slimData->F.row(fid);
-    float w1, w2, w3, mean, weightFactor, flippedMean;
-    w1 = slimData->weightmap(row(0));
-    w2 = slimData->weightmap(row(1));
-    w3 = slimData->weightmap(row(2));
+  for (int fid = 0; fid < slim_data->F.rows(); fid++) {
+    Eigen::RowVector3i row = slim_data->F.row(fid);
+    float w1, w2, w3, mean, weight_factor, flipped_mean;
+    w1 = slim_data->weightmap(row(0));
+    w2 = slim_data->weightmap(row(1));
+    w3 = slim_data->weightmap(row(2));
     mean = (w1 + w2 + w3) / 3;
-    flippedMean = 1 - mean;
+    flipped_mean = 1 - mean;
 
-    weightFactor = std::pow(maxFactor, weightInfluenceSign * 2 * (flippedMean - 0.5));
-    slimData->weightPerFaceMap(fid) = weightFactor;
+    weight_factor = std::pow(max_factor, weight_influence_sign * 2 * (flipped_mean - 0.5));
+    slim_data->weightPerFaceMap(fid) = weight_factor;
   }
 }
 
-void setGeometryDataMatrices(const GeometryData &gd, SLIMData *slimData)
+void set_geometry_data_matrices(const GeometryData &gd, SLIMData *slim_data)
 {
-  if (!slimData->valid) {
+  if (!slim_data->valid) {
     return;
   }
 
-  slimData->V = gd.vertexPositions3D;
-  slimData->F = gd.facesByVertexindices;
-  slimData->b = gd.PinnedVertexIndices;
-  slimData->bc = gd.positionsOfPinnedVertices2D;
-  slimData->V_o = gd.uvPositions2D;
-  slimData->oldUVs = gd.uvPositions2D;
-  slimData->weightmap = gd.weightsPerVertex;
-  create_weights_per_face(slimData);
+  slim_data->V = gd.vertex_positions3d;
+  slim_data->F = gd.faces_by_vertexindices;
+  slim_data->b = gd.pinned_vertex_indices;
+  slim_data->bc = gd.positions_of_pinned_vertices2d;
+  slim_data->V_o = gd.uv_positions2d;
+  slim_data->oldUVs = gd.uv_positions2d;
+  slim_data->weightmap = gd.weights_per_vertex;
+  create_weights_per_face(slim_data);
 }
 
-bool hasValidPreinitializedMap(const GeometryData &gd)
+bool has_valid_preinitialized_map(const GeometryData &gd)
 {
-  if (gd.uvPositions2D.rows() == gd.vertexPositions3D.rows() &&
-      gd.uvPositions2D.cols() == gd.COLUMNS_2) {
+  if (gd.uv_positions2d.rows() == gd.vertex_positions3d.rows() &&
+      gd.uv_positions2d.cols() == gd.columns_2) {
 
-    int numberOfFlips = count_flips(
-        gd.vertexPositions3D, gd.facesByVertexindices, gd.uvPositions2D);
-    bool noFlipsPresent = (numberOfFlips == 0);
-    return (noFlipsPresent);
+    int number_of_flips = count_flips(
+        gd.vertex_positions3d, gd.faces_by_vertexindices, gd.uv_positions2d);
+    bool no_flips_present = (number_of_flips == 0);
+    return (no_flips_present);
   }
   return false;
 }
@@ -81,119 +81,119 @@ bool hasValidPreinitializedMap(const GeometryData &gd)
 /*
  If we use interactive parametrisation, we usually start form an existing, flip-free unwrapping.
  Also, pinning of vertices has some issues with initialisation with convex border.
- We therefore may want to skip initialization. However, to skip initialization we need a
+ We therefore may want to skip initialization. however, to skip initialization we need a
  preexisting valid starting map.
  */
-bool canInitializationBeSkipped(const GeometryData &gd, bool skipInitialization)
+bool can_initialization_be_skipped(const GeometryData &gd, bool skip_initialization)
 {
-  return (skipInitialization && hasValidPreinitializedMap(gd));
+  return (skip_initialization && has_valid_preinitialized_map(gd));
 }
 
-void constructSlimData(const GeometryData &gd,
-                       SLIMData *slimData,
-                       bool skipInitialization,
+void construct_slim_data(const GeometryData &gd,
+                       SLIMData *slim_data,
+                       bool skip_initialization,
                        int reflection_mode,
-                       double relativeScale)
+                       double relative_scale)
 {
-  BLI_assert(slimData->valid);
+  BLI_assert(slim_data->valid);
 
-  slimData->skipInitialization = canInitializationBeSkipped(gd, skipInitialization);
-  slimData->weightInfluence = gd.weightInfluence;
-  slimData->relativeScale = relativeScale;
-  slimData->reflection_mode = reflection_mode;
-  slimData->withWeightedParameterization = gd.withWeightedParameteriztion;
-  setGeometryDataMatrices(gd, slimData);
+  slim_data->skipInitialization = can_initialization_be_skipped(gd, skip_initialization);
+  slim_data->weightInfluence = gd.weight_influence;
+  slim_data->relativeScale = relative_scale;
+  slim_data->reflection_mode = reflection_mode;
+  slim_data->withWeightedParameterization = gd.with_weighted_parameteriztion;
+  set_geometry_data_matrices(gd, slim_data);
 
-  double penaltyForViolatingPinnedPositions = pow(10, 9);
-  slimData->soft_const_p = penaltyForViolatingPinnedPositions;
-  slimData->slim_energy = SLIMData::SYMMETRIC_DIRICHLET;
+  double penalty_for_violating_pinned_positions = pow(10, 9);
+  slim_data->soft_const_p = penalty_for_violating_pinned_positions;
+  slim_data->slim_energy = SLIMData::SYMMETRIC_DIRICHLET;
 }
 
-void combineMatricesOfPinnedAndBoundaryVertices(GeometryData &gd)
+void combine_matrices_of_pinned_and_boundary_vertices(GeometryData &gd)
 {
   // over-allocate pessimistically to avoid multiple reallocation
-  int upperBoundOnNumberOfPinnedVertices = gd.numberOfBoundaryVertices + gd.numberOfPinnedVertices;
-  gd.PinnedVertexIndices = VectorXi(upperBoundOnNumberOfPinnedVertices);
-  gd.positionsOfPinnedVertices2D = MatrixXd(upperBoundOnNumberOfPinnedVertices, gd.COLUMNS_2);
+  int upper_bound_on_number_of_pinned_vertices = gd.number_of_boundary_vertices + gd.number_of_pinned_vertices;
+  gd.pinned_vertex_indices = VectorXi(upper_bound_on_number_of_pinned_vertices);
+  gd.positions_of_pinned_vertices2d = MatrixXd(upper_bound_on_number_of_pinned_vertices, gd.columns_2);
 
   // since border vertices use vertex indices 0 ... #bordervertices we can do:
-  gd.PinnedVertexIndices.segment(0, gd.numberOfBoundaryVertices) = gd.boundaryVertexIndices;
-  gd.positionsOfPinnedVertices2D.block(0, 0, gd.numberOfBoundaryVertices, gd.COLUMNS_2) =
-      gd.uvPositions2D.block(0, 0, gd.numberOfBoundaryVertices, gd.COLUMNS_2);
+  gd.pinned_vertex_indices.segment(0, gd.number_of_boundary_vertices) = gd.boundary_vertex_indices;
+  gd.positions_of_pinned_vertices2d.block(0, 0, gd.number_of_boundary_vertices, gd.columns_2) =
+      gd.uv_positions2d.block(0, 0, gd.number_of_boundary_vertices, gd.columns_2);
 
-  int index = gd.numberOfBoundaryVertices;
-  int highestVertexIndex = (gd.boundaryVertexIndices)(index - 1);
+  int index = gd.number_of_boundary_vertices;
+  int highest_vertex_index = (gd.boundary_vertex_indices)(index - 1);
 
-  for (Map<VectorXi>::InnerIterator it(gd.ExplicitlyPinnedVertexIndices, 0); it; ++it) {
-    int vertexIndex = it.value();
-    if (vertexIndex > highestVertexIndex) {
-      gd.PinnedVertexIndices(index) = vertexIndex;
-      gd.positionsOfPinnedVertices2D.row(index) = gd.uvPositions2D.row(vertexIndex);
+  for (Map<VectorXi>::InnerIterator it(gd.explicitly_pinned_vertex_indices, 0); it; ++it) {
+    int vertex_index = it.value();
+    if (vertex_index > highest_vertex_index) {
+      gd.pinned_vertex_indices(index) = vertex_index;
+      gd.positions_of_pinned_vertices2d.row(index) = gd.uv_positions2d.row(vertex_index);
       index++;
     }
   }
 
-  int actualNumberOfPinnedVertices = index;
-  gd.PinnedVertexIndices.conservativeResize(actualNumberOfPinnedVertices);
-  gd.positionsOfPinnedVertices2D.conservativeResize(actualNumberOfPinnedVertices, gd.COLUMNS_2);
+  int actual_number_of_pinned_vertices = index;
+  gd.pinned_vertex_indices.conservativeResize(actual_number_of_pinned_vertices);
+  gd.positions_of_pinned_vertices2d.conservativeResize(actual_number_of_pinned_vertices, gd.columns_2);
 
-  gd.numberOfPinnedVertices = actualNumberOfPinnedVertices;
+  gd.number_of_pinned_vertices = actual_number_of_pinned_vertices;
 }
 
 /*
- If the border is fixed, we simply pin the border vertices additionally to other pinned vertices.
+ if the border is fixed, we simply pin the border vertices additionally to other pinned vertices.
  */
-void retrievePinnedVertices(GeometryData &gd, bool borderVerticesArePinned)
+void retrieve_pinned_vertices(GeometryData &gd, bool border_vertices_are_pinned)
 {
-  if (borderVerticesArePinned) {
-    combineMatricesOfPinnedAndBoundaryVertices(gd);
+  if (border_vertices_are_pinned) {
+    combine_matrices_of_pinned_and_boundary_vertices(gd);
   }
   else {
-    gd.PinnedVertexIndices = VectorXi(gd.ExplicitlyPinnedVertexIndices);
-    gd.positionsOfPinnedVertices2D = MatrixXd(gd.positionsOfExplicitlyPinnedVertices2D);
+    gd.pinned_vertex_indices = VectorXi(gd.explicitly_pinned_vertex_indices);
+    gd.positions_of_pinned_vertices2d = MatrixXd(gd.positions_of_explicitly_pinned_vertices2d);
   }
 }
 
-void retrieveGeometryDataMatrices(const SLIMMatrixTransfer *transferredData,
-                                  const int uvChartIndex,
+void retrieve_geometry_data_matrices(const SLIMMatrixTransfer *transferred_data,
+                                  const int uv_chart_index,
                                   GeometryData &gd)
 {
-  gd.numberOfVertices = transferredData->n_verts[uvChartIndex];
-  gd.numberOfFaces = transferredData->n_faces[uvChartIndex];
-  // nEdges in transferredData accounts for boundary edges only once
-  gd.numberOfEdgesTwice = transferredData->n_edges[uvChartIndex] +
-                          transferredData->n_boundary_vertices[uvChartIndex];
-  gd.numberOfBoundaryVertices = transferredData->n_boundary_vertices[uvChartIndex];
-  gd.numberOfPinnedVertices = transferredData->n_pinned_vertices[uvChartIndex];
+  gd.number_of_vertices = transferred_data->n_verts[uv_chart_index];
+  gd.number_of_faces = transferred_data->n_faces[uv_chart_index];
+  // n_edges in transferred_data accounts for boundary edges only once
+  gd.number_of_edges_twice = transferred_data->n_edges[uv_chart_index] +
+                          transferred_data->n_boundary_vertices[uv_chart_index];
+  gd.number_of_boundary_vertices = transferred_data->n_boundary_vertices[uv_chart_index];
+  gd.number_of_pinned_vertices = transferred_data->n_pinned_vertices[uv_chart_index];
 
-  new (&gd.vertexPositions3D)
-      Map<MatrixXd>(transferredData->v_matrices[uvChartIndex], gd.numberOfVertices, gd.COLUMNS_3);
-  new (&gd.uvPositions2D)
-      Map<MatrixXd>(transferredData->uv_matrices[uvChartIndex], gd.numberOfVertices, gd.COLUMNS_2);
-  gd.positionsOfPinnedVertices2D = MatrixXd();
+  new (&gd.vertex_positions3d)
+      Map<MatrixXd>(transferred_data->v_matrices[uv_chart_index], gd.number_of_vertices, gd.columns_3);
+  new (&gd.uv_positions2d)
+      Map<MatrixXd>(transferred_data->uv_matrices[uv_chart_index], gd.number_of_vertices, gd.columns_2);
+  gd.positions_of_pinned_vertices2d = MatrixXd();
 
-  new (&gd.facesByVertexindices)
-      Map<MatrixXi>(transferredData->f_matrices[uvChartIndex], gd.numberOfFaces, gd.COLUMNS_3);
-  new (&gd.edgesByVertexindices) Map<MatrixXi>(
-      transferredData->e_matrices[uvChartIndex], gd.numberOfEdgesTwice, gd.COLUMNS_2);
-  gd.PinnedVertexIndices = VectorXi();
+  new (&gd.faces_by_vertexindices)
+      Map<MatrixXi>(transferred_data->f_matrices[uv_chart_index], gd.number_of_faces, gd.columns_3);
+  new (&gd.edges_by_vertexindices) Map<MatrixXi>(
+      transferred_data->e_matrices[uv_chart_index], gd.number_of_edges_twice, gd.columns_2);
+  gd.pinned_vertex_indices = VectorXi();
 
-  new (&gd.edgeLengths)
-      Map<VectorXd>(transferredData->el_vectors[uvChartIndex], gd.numberOfEdgesTwice);
-  new (&gd.boundaryVertexIndices)
-      Map<VectorXi>(transferredData->b_vectors[uvChartIndex], gd.numberOfBoundaryVertices);
+  new (&gd.edge_lengths)
+      Map<VectorXd>(transferred_data->el_vectors[uv_chart_index], gd.number_of_edges_twice);
+  new (&gd.boundary_vertex_indices)
+      Map<VectorXi>(transferred_data->b_vectors[uv_chart_index], gd.number_of_boundary_vertices);
 
-  gd.withWeightedParameteriztion = transferredData->with_weighted_parameterization;
-  new (&gd.weightsPerVertex)
-      Map<VectorXf>(transferredData->w_vectors[uvChartIndex], gd.numberOfVertices);
-  gd.weightInfluence = transferredData->weight_influence;
+  gd.with_weighted_parameteriztion = transferred_data->with_weighted_parameterization;
+  new (&gd.weights_per_vertex)
+      Map<VectorXf>(transferred_data->w_vectors[uv_chart_index], gd.number_of_vertices);
+  gd.weight_influence = transferred_data->weight_influence;
 
-  if (gd.numberOfPinnedVertices != 0) {
-    new (&gd.ExplicitlyPinnedVertexIndices)
-        Map<VectorXi>(transferredData->p_matrices[uvChartIndex], gd.numberOfPinnedVertices);
-    new (&gd.positionsOfExplicitlyPinnedVertices2D)
+  if (gd.number_of_pinned_vertices != 0) {
+    new (&gd.explicitly_pinned_vertex_indices)
+        Map<VectorXi>(transferred_data->p_matrices[uv_chart_index], gd.number_of_pinned_vertices);
+    new (&gd.positions_of_explicitly_pinned_vertices2d)
         Map<Matrix<double, Dynamic, Dynamic, RowMajor>>(
-            transferredData->pp_matrices[uvChartIndex], gd.numberOfPinnedVertices, gd.COLUMNS_2);
+            transferred_data->pp_matrices[uv_chart_index], gd.number_of_pinned_vertices, gd.columns_2);
   }
 }
 }

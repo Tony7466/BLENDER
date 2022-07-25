@@ -13,76 +13,76 @@ using namespace igl;
 
 namespace slim {
 
-void correctGeometrySize(double surfaceAreaToMapAreaRatio,
-                         MatrixXd &VertexPositions,
-                         double desiredSurfaceAreaToMapRation)
+void correct_geometry_size(double surface_area_to_map_area_ratio,
+                         MatrixXd &vertex_positions,
+                         double desired_surface_area_to_map_ration)
 {
-  assert(surfaceAreaToMapAreaRatio > 0);
-  double sqrtOfRatio = sqrt(surfaceAreaToMapAreaRatio / desiredSurfaceAreaToMapRation);
-  VertexPositions = VertexPositions / sqrtOfRatio;
+  assert(surface_area_to_map_area_ratio > 0);
+  double sqrt_of_ratio = sqrt(surface_area_to_map_area_ratio / desired_surface_area_to_map_ration);
+  vertex_positions = vertex_positions / sqrt_of_ratio;
 }
 
 template<typename VertexPositionType, typename FaceIndicesType>
-double computeSurfaceArea(const VertexPositionType V, const FaceIndicesType F)
+double compute_surface_area(const VertexPositionType v, const FaceIndicesType f)
 {
-  Eigen::VectorXd doubledAreaOfTriangles;
-  igl::doublearea(V, F, doubledAreaOfTriangles);
-  double areaOfMap = doubledAreaOfTriangles.sum() / 2;
-  return areaOfMap;
+  Eigen::VectorXd doubled_area_of_triangles;
+  igl::doublearea(v, f, doubled_area_of_triangles);
+  double area_of_map = doubled_area_of_triangles.sum() / 2;
+  return area_of_map;
 }
 
-void correctMapSurfaceAreaIfNecessary(SLIMData *slimData)
+void correct_map_surface_area_if_necessary(SLIMData *slim_data)
 {
-  if (!slimData->valid) {
+  if (!slim_data->valid) {
     return;
   }
 
-  bool meshSurfaceAreaWasCorrected = (slimData->expectedSurfaceAreaOfResultingMap != 0);
-  int numberOfPinnedVertices = slimData->b.rows();
-  bool noPinnedVerticesExist = numberOfPinnedVertices == 0;
+  bool mesh_surface_area_was_corrected = (slim_data->expectedSurfaceAreaOfResultingMap != 0);
+  int number_of_pinned_vertices = slim_data->b.rows();
+  bool no_pinned_vertices_exist = number_of_pinned_vertices == 0;
 
-  bool needsAreaCorrection = meshSurfaceAreaWasCorrected && noPinnedVerticesExist;
-  if (!needsAreaCorrection) {
+  bool needs_area_correction = mesh_surface_area_was_corrected && no_pinned_vertices_exist;
+  if (!needs_area_correction) {
     return;
   }
 
-  double areaOfresultingMap = computeSurfaceArea(slimData->V_o, slimData->F);
-  if (!areaOfresultingMap) {
+  double area_ofresulting_map = compute_surface_area(slim_data->V_o, slim_data->F);
+  if (!area_ofresulting_map) {
     return;
   }
 
-  double resultingAreaToExpectedAreaRatio = areaOfresultingMap /
-                                            slimData->expectedSurfaceAreaOfResultingMap;
-  double desiredRatio = 1.0;
-  correctGeometrySize(resultingAreaToExpectedAreaRatio, slimData->V_o, desiredRatio);
+  double resulting_area_to_expected_area_ratio = area_ofresulting_map /
+                                            slim_data->expectedSurfaceAreaOfResultingMap;
+  double desired_ratio = 1.0;
+  correct_geometry_size(resulting_area_to_expected_area_ratio, slim_data->V_o, desired_ratio);
 }
 
-void correctMeshSurfaceAreaIfNecessary(SLIMData *slimData)
+void correct_mesh_surface_area_if_necessary(SLIMData *slim_data)
 {
-  BLI_assert(slimData->valid);
+  BLI_assert(slim_data->valid);
 
-  int numberOfPinnedVertices = slimData->b.rows();
-  bool pinnedVerticesExist = numberOfPinnedVertices > 0;
-  bool needsAreaCorrection = slimData->skipInitialization || pinnedVerticesExist;
+  int number_of_pinned_vertices = slim_data->b.rows();
+  bool pinned_vertices_exist = number_of_pinned_vertices > 0;
+  bool needs_area_correction = slim_data->skipInitialization || pinned_vertices_exist;
 
-  if (!needsAreaCorrection) {
+  if (!needs_area_correction) {
     return;
   }
 
-  double areaOfPreinitializedMap = computeSurfaceArea(slimData->V_o, slimData->F);
-  if (!areaOfPreinitializedMap) {
+  double area_of_preinitialized_map = compute_surface_area(slim_data->V_o, slim_data->F);
+  if (!area_of_preinitialized_map) {
     return;
   }
 
-  if (areaOfPreinitializedMap < 0) {
-    areaOfPreinitializedMap *= -1;
+  if (area_of_preinitialized_map < 0) {
+    area_of_preinitialized_map *= -1;
   }
 
-  slimData->expectedSurfaceAreaOfResultingMap = areaOfPreinitializedMap;
-  double surfaceAreaOf3DMesh = computeSurfaceArea(slimData->V, slimData->F);
-  double surfaceAreaToMapAreaRatio = surfaceAreaOf3DMesh / areaOfPreinitializedMap;
+  slim_data->expectedSurfaceAreaOfResultingMap = area_of_preinitialized_map;
+  double surface_area_of3d_mesh = compute_surface_area(slim_data->V, slim_data->F);
+  double surface_area_to_map_area_ratio = surface_area_of3d_mesh / area_of_preinitialized_map;
 
-  double desiredRatio = 1.0;
-  correctGeometrySize(surfaceAreaToMapAreaRatio, slimData->V, desiredRatio);
+  double desired_ratio = 1.0;
+  correct_geometry_size(surface_area_to_map_area_ratio, slim_data->V, desired_ratio);
 }
 }

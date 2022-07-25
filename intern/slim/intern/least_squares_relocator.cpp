@@ -16,51 +16,51 @@ namespace slim {
     using namespace Eigen;
     using namespace igl;
 
-void applyTransformation(SLIMData &slimData, Matrix2d &transformationMatrix)
+void apply_transformation(SLIMData &slim_data, Matrix2d &transformation_matrix)
 {
-  BLI_assert(slimData.valid);
+  BLI_assert(slim_data.valid);
 
-  for (int i = 0; i < slimData.V_o.rows(); i++) {
-    slimData.V_o.row(i) = transformationMatrix * slimData.V_o.row(i).transpose();
+  for (int i = 0; i < slim_data.V_o.rows(); i++) {
+    slim_data.V_o.row(i) = transformation_matrix * slim_data.V_o.row(i).transpose();
   }
 }
 
-void applyTranslation(SLIMData &slimData, Vector2d &translationVector)
+void apply_translation(SLIMData &slim_data, Vector2d &translation_vector)
 {
-  BLI_assert(slimData.valid);
+  BLI_assert(slim_data.valid);
 
-  for (int i = 0; i < slimData.V_o.rows(); i++) {
-    slimData.V_o.row(i) = translationVector.transpose() + slimData.V_o.row(i);
+  for (int i = 0; i < slim_data.V_o.rows(); i++) {
+    slim_data.V_o.row(i) = translation_vector.transpose() + slim_data.V_o.row(i);
   }
 }
 
-void retrievePositionsOfPinnedVerticesInInitialization(
-    const MatrixXd &allUVPositionsInInitialization,
-    const VectorXi &indicesOfPinnedVertices,
-    MatrixXd &positionOfPinnedVerticesInInitialization)
+void retrieve_positions_of_pinned_vertices_in_initialization(
+    const MatrixXd &all_uv_positions_in_initialization,
+    const VectorXi &indices_of_pinned_vertices,
+    MatrixXd &position_of_pinned_vertices_in_initialization)
 {
   int i = 0;
-  for (VectorXi::InnerIterator it(indicesOfPinnedVertices, 0); it; ++it, i++) {
-    int vertexIndex = it.value();
-    positionOfPinnedVerticesInInitialization.row(i) = allUVPositionsInInitialization.row(
-        vertexIndex);
+  for (VectorXi::InnerIterator it(indices_of_pinned_vertices, 0); it; ++it, i++) {
+    int vertex_index = it.value();
+    position_of_pinned_vertices_in_initialization.row(i) = all_uv_positions_in_initialization.row(
+        vertex_index);
   }
 }
 
-void flipInputGeometry(SLIMData &slimData)
+void flip_input_geometry(SLIMData &slim_data)
 {
-  BLI_assert(slimData.valid);
-  // slimData.V.col(0) *= -1;
+  BLI_assert(slim_data.valid);
+  // slim_data.v.col(0) *= -1;
 
-  VectorXi temp = slimData.F.col(0);
-  slimData.F.col(0) = slimData.F.col(2);
-  slimData.F.col(2) = temp;
+  VectorXi temp = slim_data.F.col(0);
+  slim_data.F.col(0) = slim_data.F.col(2);
+  slim_data.F.col(2) = temp;
 }
 
-void computeCentroid(const MatrixXd &pointCloud, Vector2d &centroid)
+void compute_centroid(const MatrixXd &point_cloud, Vector2d &centroid)
 {
-  centroid << pointCloud.col(0).sum(), pointCloud.col(1).sum();
-  centroid /= pointCloud.rows();
+  centroid << point_cloud.col(0).sum(), point_cloud.col(1).sum();
+  centroid /= point_cloud.rows();
 };
 
 /*
@@ -93,150 +93,150 @@ void computeCentroid(const MatrixXd &pointCloud, Vector2d &centroid)
  t is of dimension 1 x 1 and p of dimension 2*numberOfPinnedVertices x 1
  is the vector holding the uv positions of the pinned vertices.
  */
-void computeLeastSquaresScaling(MatrixXd centeredPins,
-                                MatrixXd centeredInitializedPins,
-                                Matrix2d &transformationMatrix)
+void compute_least_squares_scaling(MatrixXd centered_pins,
+                                MatrixXd centered_initialized_pins,
+                                Matrix2d &transformation_matrix)
 {
-  int numberOfPinnedVertices = centeredPins.rows();
+  int number_of_pinned_vertices = centered_pins.rows();
 
-  MatrixXd A = MatrixXd::Zero(numberOfPinnedVertices * 2, 1);
-  A << centeredInitializedPins.col(0), centeredInitializedPins.col(1);
+  MatrixXd a = MatrixXd::Zero(number_of_pinned_vertices * 2, 1);
+  a << centered_initialized_pins.col(0), centered_initialized_pins.col(1);
 
-  VectorXd p(2 * numberOfPinnedVertices);
-  p << centeredPins.col(0), centeredPins.col(1);
+  VectorXd p(2 * number_of_pinned_vertices);
+  p << centered_pins.col(0), centered_pins.col(1);
 
-  VectorXd t = A.colPivHouseholderQr().solve(p);
+  VectorXd t = a.colPivHouseholderQr().solve(p);
   t(0) = abs(t(0));
-  transformationMatrix << t(0), 0, 0, t(0);
+  transformation_matrix << t(0), 0, 0, t(0);
 }
 
-void computLeastSquaresRotationScaleOnly(SLIMData &slimData,
-                                         Vector2d &translationVector,
-                                         Matrix2d &transformationMatrix,
-                                         bool isFlipAllowed)
+void comput_least_squares_rotation_scale_only(SLIMData &slim_data,
+                                         Vector2d &translation_vector,
+                                         Matrix2d &transformation_matrix,
+                                         bool is_flip_allowed)
 {
-  BLI_assert(slimData.valid);
+  BLI_assert(slim_data.valid);
 
-  MatrixXd positionOfInitializedPins(slimData.b.rows(), 2);
-  retrievePositionsOfPinnedVerticesInInitialization(
-      slimData.V_o, slimData.b, positionOfInitializedPins);
+  MatrixXd position_of_initialized_pins(slim_data.b.rows(), 2);
+  retrieve_positions_of_pinned_vertices_in_initialization(
+      slim_data.V_o, slim_data.b, position_of_initialized_pins);
 
-  Vector2d centroidOfInitialized;
-  computeCentroid(positionOfInitializedPins, centroidOfInitialized);
+  Vector2d centroid_of_initialized;
+  compute_centroid(position_of_initialized_pins, centroid_of_initialized);
 
-  Vector2d centroidOfPins;
-  computeCentroid(slimData.bc, centroidOfPins);
+  Vector2d centroid_of_pins;
+  compute_centroid(slim_data.bc, centroid_of_pins);
 
-  MatrixXd centeredInitializedPins = positionOfInitializedPins.rowwise().operator-(
-      centroidOfInitialized.transpose());
-  MatrixXd centeredpins = slimData.bc.rowwise().operator-(centroidOfPins.transpose());
+  MatrixXd centered_initialized_pins = position_of_initialized_pins.rowwise().operator-(
+      centroid_of_initialized.transpose());
+  MatrixXd centeredpins = slim_data.bc.rowwise().operator-(centroid_of_pins.transpose());
 
-  MatrixXd S = centeredInitializedPins.transpose() * centeredpins;
+  MatrixXd s = centered_initialized_pins.transpose() * centeredpins;
 
-  JacobiSVD<MatrixXd> svd(S, ComputeFullU | ComputeFullV);
+  JacobiSVD<MatrixXd> svd(s, ComputeFullU | ComputeFullV);
 
-  Matrix2d VU_T = svd.matrixV() * svd.matrixU().transpose();
+  Matrix2d vu_t = svd.matrixV() * svd.matrixU().transpose();
 
-  Matrix2d singularValues = Matrix2d::Identity();
+  Matrix2d singular_values = Matrix2d::Identity();
 
-  bool containsReflection = VU_T.determinant() < 0;
-  if (containsReflection) {
-    if (!isFlipAllowed) {
-      singularValues(1, 1) = VU_T.determinant();
+  bool contains_reflection = vu_t.determinant() < 0;
+  if (contains_reflection) {
+    if (!is_flip_allowed) {
+      singular_values(1, 1) = vu_t.determinant();
     }
     else {
-      flipInputGeometry(slimData);
+      flip_input_geometry(slim_data);
     }
   }
 
-  computeLeastSquaresScaling(centeredpins, centeredInitializedPins, transformationMatrix);
+  compute_least_squares_scaling(centeredpins, centered_initialized_pins, transformation_matrix);
 
-  transformationMatrix = transformationMatrix * svd.matrixV() * singularValues *
+  transformation_matrix = transformation_matrix * svd.matrixV() * singular_values *
                          svd.matrixU().transpose();
 
-  translationVector = centroidOfPins - transformationMatrix * centroidOfInitialized;
+  translation_vector = centroid_of_pins - transformation_matrix * centroid_of_initialized;
 }
 
-void computeTransformationMatrix2Pins(const SLIMData &slimData, Matrix2d &transformationMatrix)
+void compute_transformation_matrix2_pins(const SLIMData &slim_data, Matrix2d &transformation_matrix)
 {
-  BLI_assert(slimData.valid);
+  BLI_assert(slim_data.valid);
 
-  Vector2d pinnedPositionDifferenceVector = slimData.bc.row(0) - slimData.bc.row(1);
-  Vector2d initializedPositionDifferenceVector = slimData.V_o.row(slimData.b(0)) -
-                                                 slimData.V_o.row(slimData.b(1));
+  Vector2d pinned_position_difference_vector = slim_data.bc.row(0) - slim_data.bc.row(1);
+  Vector2d initialized_position_difference_vector = slim_data.V_o.row(slim_data.b(0)) -
+                                                 slim_data.V_o.row(slim_data.b(1));
 
-  double scale = pinnedPositionDifferenceVector.norm() /
-                 initializedPositionDifferenceVector.norm();
+  double scale = pinned_position_difference_vector.norm() /
+                 initialized_position_difference_vector.norm();
 
-  pinnedPositionDifferenceVector.normalize();
-  initializedPositionDifferenceVector.normalize();
+  pinned_position_difference_vector.normalize();
+  initialized_position_difference_vector.normalize();
 
-  // TODO: sometimes rotates in wrong direction
-  double cosAngle = pinnedPositionDifferenceVector.dot(initializedPositionDifferenceVector);
-  double sinAngle = sqrt(1 - pow(cosAngle, 2));
+  // todo: sometimes rotates in wrong direction
+  double cos_angle = pinned_position_difference_vector.dot(initialized_position_difference_vector);
+  double sin_angle = sqrt(1 - pow(cos_angle, 2));
 
-  transformationMatrix << cosAngle, -sinAngle, sinAngle, cosAngle;
-  transformationMatrix = (Matrix2d::Identity() * scale) * transformationMatrix;
+  transformation_matrix << cos_angle, -sin_angle, sin_angle, cos_angle;
+  transformation_matrix = (Matrix2d::Identity() * scale) * transformation_matrix;
 }
 
-void computeTranslation1Pin(const SLIMData &slimData, Vector2d &translationVector)
+void compute_translation1_pin(const SLIMData &slim_data, Vector2d &translation_vector)
 {
-  BLI_assert(slimData.valid);
-  translationVector = slimData.bc.row(0) - slimData.V_o.row(slimData.b(0));
+  BLI_assert(slim_data.valid);
+  translation_vector = slim_data.bc.row(0) - slim_data.V_o.row(slim_data.b(0));
 }
 
-void transformInitializedMap(SLIMData &slimData)
+void transform_initialized_map(SLIMData &slim_data)
 {
-  BLI_assert(slimData.valid);
-  Matrix2d transformationMatrix;
-  Vector2d translationVector;
+  BLI_assert(slim_data.valid);
+  Matrix2d transformation_matrix;
+  Vector2d translation_vector;
 
-  int numberOfPinnedVertices = slimData.b.rows();
+  int number_of_pinned_vertices = slim_data.b.rows();
 
-  switch (numberOfPinnedVertices) {
+  switch (number_of_pinned_vertices) {
     case 0:
-      std::cout << "No transformation possible because no pinned vertices exist." << std::endl;
+      std::cout << "no transformation possible because no pinned vertices exist." << std::endl;
       return;
     case 1:  // only translation is needed with one pin
-      computeTranslation1Pin(slimData, translationVector);
-      applyTranslation(slimData, translationVector);
+      compute_translation1_pin(slim_data, translation_vector);
+      apply_translation(slim_data, translation_vector);
       break;
     case 2:
-      computeTransformationMatrix2Pins(slimData, transformationMatrix);
-      applyTransformation(slimData, transformationMatrix);
-      computeTranslation1Pin(slimData, translationVector);
-      applyTranslation(slimData, translationVector);
+      compute_transformation_matrix2_pins(slim_data, transformation_matrix);
+      apply_transformation(slim_data, transformation_matrix);
+      compute_translation1_pin(slim_data, translation_vector);
+      apply_translation(slim_data, translation_vector);
       break;
     default:
 
-      bool flipAllowed = slimData.reflection_mode == 0;
+      bool flip_allowed = slim_data.reflection_mode == 0;
 
-      computLeastSquaresRotationScaleOnly(
-          slimData, translationVector, transformationMatrix, flipAllowed);
+      comput_least_squares_rotation_scale_only(
+          slim_data, translation_vector, transformation_matrix, flip_allowed);
 
-      applyTransformation(slimData, transformationMatrix);
-      applyTranslation(slimData, translationVector);
+      apply_transformation(slim_data, transformation_matrix);
+      apply_translation(slim_data, translation_vector);
 
       break;
   }
 }
 
-bool isTranslationNeeded(const SLIMData &slimData)
+bool is_translation_needed(const SLIMData &slim_data)
 {
-  BLI_assert(slimData.valid);
-  bool pinnedVerticesExist = (slimData.b.rows() > 0);
-  bool wasInitialized = !slimData.skipInitialization;
-  return wasInitialized && pinnedVerticesExist;
+  BLI_assert(slim_data.valid);
+  bool pinned_vertices_exist = (slim_data.b.rows() > 0);
+  bool was_initialized = !slim_data.skipInitialization;
+  return was_initialized && pinned_vertices_exist;
 }
 
-void transformInitializationIfNecessary(SLIMData &slimData)
+void transform_initialization_if_necessary(SLIMData &slim_data)
 {
-  BLI_assert(slimData.valid);
+  BLI_assert(slim_data.valid);
 
-  if (!isTranslationNeeded(slimData)) {
+  if (!is_translation_needed(slim_data)) {
     return;
   }
 
-  transformInitializedMap(slimData);
+  transform_initialized_map(slim_data);
 }
 }

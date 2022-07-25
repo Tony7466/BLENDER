@@ -15,42 +15,42 @@ using namespace igl;
 namespace slim {
 
 struct GeometryData {
-  Map<MatrixXd> vertexPositions3D = Map<MatrixXd>(NULL, 0, 0);
-  Map<MatrixXd> uvPositions2D = Map<MatrixXd>(NULL, 0, 0);
-  MatrixXd positionsOfPinnedVertices2D;
-  Map<Matrix<double, Dynamic, Dynamic, RowMajor>> positionsOfExplicitlyPinnedVertices2D =
+  Map<MatrixXd> vertex_positions3d = Map<MatrixXd>(NULL, 0, 0);
+  Map<MatrixXd> uv_positions2d = Map<MatrixXd>(NULL, 0, 0);
+  MatrixXd positions_of_pinned_vertices2d;
+  Map<Matrix<double, Dynamic, Dynamic, RowMajor>> positions_of_explicitly_pinned_vertices2d =
       Map<Matrix<double, Dynamic, Dynamic, RowMajor>>(NULL, 0, 0);
 
-  Map<MatrixXi> facesByVertexindices = Map<MatrixXi>(NULL, 0, 0);
-  Map<MatrixXi> edgesByVertexindices = Map<MatrixXi>(NULL, 0, 0);
-  VectorXi PinnedVertexIndices;
-  Map<VectorXi> ExplicitlyPinnedVertexIndices = Map<VectorXi>(NULL, 0);
+  Map<MatrixXi> faces_by_vertexindices = Map<MatrixXi>(NULL, 0, 0);
+  Map<MatrixXi> edges_by_vertexindices = Map<MatrixXi>(NULL, 0, 0);
+  VectorXi pinned_vertex_indices;
+  Map<VectorXi> explicitly_pinned_vertex_indices = Map<VectorXi>(NULL, 0);
 
-  Map<VectorXd> edgeLengths = Map<VectorXd>(NULL, 0);
-  Map<VectorXi> boundaryVertexIndices = Map<VectorXi>(NULL, 0);
-  Map<VectorXf> weightsPerVertex = Map<VectorXf>(NULL, 0);
+  Map<VectorXd> edge_lengths = Map<VectorXd>(NULL, 0);
+  Map<VectorXi> boundary_vertex_indices = Map<VectorXi>(NULL, 0);
+  Map<VectorXf> weights_per_vertex = Map<VectorXf>(NULL, 0);
 
-  int COLUMNS_2 = 2;
-  int COLUMNS_3 = 3;
-  int numberOfVertices;
-  int numberOfFaces;
-  int numberOfEdgesTwice;
-  int numberOfBoundaryVertices;
-  int numberOfPinnedVertices;
+  int columns_2 = 2;
+  int columns_3 = 3;
+  int number_of_vertices;
+  int number_of_faces;
+  int number_of_edges_twice;
+  int number_of_boundary_vertices;
+  int number_of_pinned_vertices;
 
-  bool withWeightedParameteriztion;
-  double weightInfluence;
+  bool with_weighted_parameteriztion;
+  double weight_influence;
 };
 
-void constructSlimData(const GeometryData &gd,
-                       SLIMData *slimData,
-                       bool skipInitialization,
+void construct_slim_data(const GeometryData &gd,
+                       SLIMData *slim_data,
+                       bool skip_initialization,
                        int reflection_mode,
-                       double relativeScale);
+                       double relative_scale);
 
-void retrievePinnedVertices(GeometryData &gd, bool borderVerticesArePinned);
+void retrieve_pinned_vertices(GeometryData &gd, bool border_vertices_are_pinned);
 
-void retrieveGeometryDataMatrices(const SLIMMatrixTransfer *transferredData,
-                                  const int uvChartIndex,
+void retrieve_geometry_data_matrices(const SLIMMatrixTransfer *transferred_data,
+                                  const int uv_chart_index,
                                   GeometryData &gd);
 }

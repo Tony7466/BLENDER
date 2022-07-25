@@ -22,8 +22,8 @@ void SLIM_transfer_uvs_blended_live(SLIMMatrixTransfer *mt,
     return;
   }
   SLIMData *slim_data = (SLIMData *)slim_data_ptr;
-  correctMapSurfaceAreaIfNecessary(slim_data);
-  transferUvsBackToNativePartLive(mt, slim_data->V_o, uv_chart_index);
+  correct_map_surface_area_if_necessary(slim_data);
+  transfer_uvs_back_to_native_part_live(mt, slim_data->V_o, uv_chart_index);
 }
 
 /*  Called from the native part during each iteration of interactive parametrisation.
@@ -40,9 +40,9 @@ void SLIM_transfer_uvs_blended(SLIMMatrixTransfer *mt,
   }
 
   SLIMData *slim_data = (SLIMData *)slim_data_ptr;
-  Eigen::MatrixXd blended_uvs = getInteractiveResultBlendedWithOriginal(blend, slim_data);
-  correctMapSurfaceAreaIfNecessary(slim_data);
-  transferUvsBackToNativePart(mt, blended_uvs, uv_chart_index);
+  Eigen::MatrixXd blended_uvs = get_interactive_result_blended_with_original(blend, slim_data);
+  correct_map_surface_area_if_necessary(slim_data);
+  transfer_uvs_back_to_native_part(mt, blended_uvs, uv_chart_index);
 }
 
 /*	Setup call from the native C part. Necessary for interactive parametrisation.

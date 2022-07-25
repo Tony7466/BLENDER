@@ -32,104 +32,105 @@ namespace slim {
     using namespace igl;
     using namespace Eigen;
 
-    void transferUvsBackToNativePartLive(SLIMMatrixTransfer* mt, Eigen::MatrixXd& UV, int uvChartIndex)
+    void transfer_uvs_back_to_native_part_live(SLIMMatrixTransfer* mt, Eigen::MatrixXd& uv, int uv_chart_index)
     {
-        if (!mt->succeeded[uvChartIndex]) {
+        if (!mt->succeeded[uv_chart_index]) {
             return;
         }
 
-        double* uvCoordinateArray = mt->uv_matrices[uvChartIndex];
-        int numberOfVertices = mt->n_verts[uvChartIndex];
+        double* uv_coordinate_array = mt->uv_matrices[uv_chart_index];
+        int number_of_vertices = mt->n_verts[uv_chart_index];
 
-        for (int i = 0; i < numberOfVertices; i++) {
-            *(uvCoordinateArray++) = UV(i, 0);
-            *(uvCoordinateArray++) = UV(i, 1);
+        for (int i = 0; i < number_of_vertices; i++) {
+            *(uv_coordinate_array++) = uv(i, 0);
+            *(uv_coordinate_array++) = uv(i, 1);
         }
     }
 
-    void transferUvsBackToNativePart(SLIMMatrixTransfer* mt, Eigen::MatrixXd& UV, int uvChartIndex)
+    void transfer_uvs_back_to_native_part(SLIMMatrixTransfer* mt, Eigen::MatrixXd& uv, int uv_chart_index)
     {
-        if (!mt->succeeded[uvChartIndex]) {
+        if (!mt->succeeded[uv_chart_index]) {
             return;
         }
 
-        double* uvCoordinateArray;
-        uvCoordinateArray = mt->uv_matrices[uvChartIndex];
-        int numberOfVertices = mt->n_verts[uvChartIndex];
+        double* uv_coordinate_array;
+        uv_coordinate_array = mt->uv_matrices[uv_chart_index];
+        int number_of_vertices = mt->n_verts[uv_chart_index];
 
-        for (int i = 0; i < numberOfVertices; i++) {
+        for (int i = 0; i < number_of_vertices; i++) {
             for (int j = 0; j < 2; j++) {
-                uvCoordinateArray[i * 2 + j] = UV(i, j);
+                uv_coordinate_array[i * 2 + j] = uv(i, j);
             }
         }
     }
 
-    Eigen::MatrixXd getInteractiveResultBlendedWithOriginal(float blend, const SLIMData* slimData)
+    Eigen::MatrixXd get_interactive_result_blended_with_original(float blend, const SLIMData* slim_data)
     {
-        Eigen::MatrixXd originalMapWeighted = blend * slimData->oldUVs;
-        Eigen::MatrixXd InteractiveResultMap = (1.0 - blend) * slimData->V_o;
-        return originalMapWeighted + InteractiveResultMap;
+        Eigen::MatrixXd original_map_weighted = blend * slim_data->oldUVs;
+        Eigen::MatrixXd interactive_result_map = (1.0 - blend) * slim_data->V_o;
+        return original_map_weighted + interactive_result_map;
     }
 
     /*
       Executes a single iteration of SLIM, must follow a proper setup & initialisation.
      */
-    void param_slim_single_iteration(SLIMMatrixTransfer* mt, int uv_chart_index, SLIMData* slimData)
+    void param_slim_single_iteration(SLIMMatrixTransfer* mt, int uv_chart_index, SLIMData* slim_data)
     {
-        int numberOfIterations = 1;
-        try_slim_solve(mt, uv_chart_index, *slimData, numberOfIterations);
+        int number_of_iterations = 1;
+        try_slim_solve(mt, uv_chart_index, *slim_data, number_of_iterations);
     }
 
-    static void adjustPins(SLIMData* slimData,
+    static void adjust_pins(
+        SLIMData* slim_data,
         int n_pins,
-        int* pinnedVertexIndices,
-        double* pinnedVertexPositions2D,
+        int* pinned_vertex_indices,
+        double* pinned_vertex_positions2d,
         int n_selected_pins,
         int* selected_pins)
     {
-        if (!slimData->valid) {
+        if (!slim_data->valid) {
             return;
         }
 
-        Eigen::VectorXi oldPinIndices = slimData->b;
-        Eigen::MatrixXd oldPinPositions = slimData->bc;
+        Eigen::VectorXi old_pin_indices = slim_data->b;
+        Eigen::MatrixXd old_pin_positions = slim_data->bc;
 
-        slimData->b.resize(n_pins);
-        slimData->bc.resize(n_pins, 2);
+        slim_data->b.resize(n_pins);
+        slim_data->bc.resize(n_pins, 2);
 
-        int oldPinPointer = 0;
-        int newPinPointer = 0;
-        int selectedPinPointer = 0;
+        int old_pin_pointer = 0;
+        int new_pin_pointer = 0;
+        int selected_pin_pointer = 0;
 
-        while (newPinPointer < n_pins) {
+        while (new_pin_pointer < n_pins) {
 
-            int pinnedVertexIndex = pinnedVertexIndices[newPinPointer];
-            slimData->b(newPinPointer) = pinnedVertexIndex;
+            int pinned_vertex_index = pinned_vertex_indices[new_pin_pointer];
+            slim_data->b(new_pin_pointer) = pinned_vertex_index;
 
-            while (oldPinIndices(oldPinPointer) < pinnedVertexIndex) {
-                ++oldPinPointer;
-                if (oldPinPointer == oldPinIndices.size()) {
+            while (old_pin_indices(old_pin_pointer) < pinned_vertex_index) {
+                ++old_pin_pointer;
+                if (old_pin_pointer == old_pin_indices.size()) {
                     break;
                 }
             }
 
-            while (selected_pins[selectedPinPointer] < pinnedVertexIndex) {
-                ++selectedPinPointer;
-                if (selectedPinPointer == n_selected_pins) {
+            while (selected_pins[selected_pin_pointer] < pinned_vertex_index) {
+                ++selected_pin_pointer;
+                if (selected_pin_pointer == n_selected_pins) {
                     break;
                 }
             }
 
-            if (!(pinnedVertexIndex == selected_pins[selectedPinPointer]) &&
-                oldPinIndices(oldPinPointer) == pinnedVertexIndex) {
-                slimData->bc.row(newPinPointer) = oldPinPositions.row(oldPinPointer);
+            if (!(pinned_vertex_index == selected_pins[selected_pin_pointer]) &&
+                old_pin_indices(old_pin_pointer) == pinned_vertex_index) {
+                slim_data->bc.row(new_pin_pointer) = old_pin_positions.row(old_pin_pointer);
             }
             else {
-                slimData->bc(newPinPointer, 0) = pinnedVertexPositions2D[2 * newPinPointer];
-                slimData->bc(newPinPointer, 1) = pinnedVertexPositions2D[2 * newPinPointer + 1];
+                slim_data->bc(new_pin_pointer, 0) = pinned_vertex_positions2d[2 * new_pin_pointer];
+                slim_data->bc(new_pin_pointer, 1) = pinned_vertex_positions2d[2 * new_pin_pointer + 1];
             }
 
-            ++newPinPointer;
+            ++new_pin_pointer;
         }
     }
 
@@ -139,136 +140,136 @@ namespace slim {
 
     void param_slim_live_unwrap(SLIMMatrixTransfer* mt,
         int uv_chart_index,
-        SLIMData* slimData,
+        SLIMData* slim_data,
         int n_pins,
-        int* pinnedVertexIndices,
-        double* pinnedVertexPositions2D,
+        int* pinned_vertex_indices,
+        double* pinned_vertex_positions2d,
         int n_selected_pins,
         int* selected_pins)
     {
-        int numberOfIterations = 3;
-        adjustPins(slimData,
+        int number_of_iterations = 3;
+        adjust_pins(slim_data,
             n_pins,
-            pinnedVertexIndices,
-            pinnedVertexPositions2D,
+            pinned_vertex_indices,
+            pinned_vertex_positions2d,
             n_selected_pins,
             selected_pins);
         // recompute current energy
-        // recompute_energy(*slimData);
-        try_slim_solve(mt, uv_chart_index, *slimData, numberOfIterations);
+        // recompute_energy(*slim_data);
+        try_slim_solve(mt, uv_chart_index, *slim_data, number_of_iterations);
     }
 
     void param_slim(SLIMMatrixTransfer* mt,
-        int nIterations,
-        bool borderVerticesArePinned,
-        bool skipInitialization)
+        int n_iterations,
+        bool border_vertices_are_pinned,
+        bool skip_initialization)
     {
 
         igl::Timer timer;
         timer.start();
 
-        for (int uvChartIndex = 0; uvChartIndex < mt->n_charts; uvChartIndex++) {
-            SLIMData* slimData = setup_slim(
-                mt, nIterations, uvChartIndex, timer, borderVerticesArePinned, skipInitialization);
-            try_slim_solve(mt, uvChartIndex, *slimData, nIterations);
+        for (int uv_chart_index = 0; uv_chart_index < mt->n_charts; uv_chart_index++) {
+            SLIMData* slim_data = setup_slim(
+                mt, n_iterations, uv_chart_index, timer, border_vertices_are_pinned, skip_initialization);
+            try_slim_solve(mt, uv_chart_index, *slim_data, n_iterations);
 
-            correctMapSurfaceAreaIfNecessary(slimData);
-            transferUvsBackToNativePart(mt, slimData->V_o, uvChartIndex);
+            correct_map_surface_area_if_necessary(slim_data);
+            transfer_uvs_back_to_native_part(mt, slim_data->V_o, uv_chart_index);
 
-            free_slim_data(slimData);
+            free_slim_data(slim_data);
         }
     };
 
-    void initializeUvs(GeometryData& gd, SLIMData* slimData)
+    void initialize_uvs(GeometryData& gd, SLIMData* slim_data)
     {
 
-        MatrixXd vertexPositions2D = slimData->V;
-        MatrixXi facesByVertexIndices = slimData->F;
-        VectorXi boundaryVertexIndices = gd.boundaryVertexIndices;
-        MatrixXd uvPositions2D = slimData->V_o;
+        MatrixXd vertex_positions2d = slim_data->V;
+        MatrixXi faces_by_vertex_indices = slim_data->F;
+        VectorXi boundary_vertex_indices = gd.boundary_vertex_indices;
+        MatrixXd uv_positions2d = slim_data->V_o;
 
-        Eigen::MatrixXd uvPositionsOfBoundary(boundaryVertexIndices.rows(), 2);
-        mapVerticesToConvexBorder(uvPositionsOfBoundary);
+        Eigen::MatrixXd uv_positions_of_boundary(boundary_vertex_indices.rows(), 2);
+        map_vertices_to_convex_border(uv_positions_of_boundary);
 
-        bool allVerticesOnBoundary = (slimData->V_o.rows() == uvPositionsOfBoundary.rows());
-        if (allVerticesOnBoundary) {
-            slimData->V_o = uvPositionsOfBoundary;
+        bool all_vertices_on_boundary = (slim_data->V_o.rows() == uv_positions_of_boundary.rows());
+        if (all_vertices_on_boundary) {
+            slim_data->V_o = uv_positions_of_boundary;
             return;
         }
 
-        mvc(gd.facesByVertexindices,
-            gd.vertexPositions3D,
-            gd.edgesByVertexindices,
-            gd.edgeLengths,
-            boundaryVertexIndices,
-            uvPositionsOfBoundary,
-            slimData->V_o);
+        mvc(gd.faces_by_vertexindices,
+            gd.vertex_positions3d,
+            gd.edges_by_vertexindices,
+            gd.edge_lengths,
+            boundary_vertex_indices,
+            uv_positions_of_boundary,
+            slim_data->V_o);
     }
 
-    void initializeIfNeeded(GeometryData& gd, SLIMData* slimData)
+    void initialize_if_needed(GeometryData& gd, SLIMData* slim_data)
     {
-        BLI_assert(slimData->valid);
+        BLI_assert(slim_data->valid);
 
-        if (!slimData->skipInitialization) {
-            initializeUvs(gd, slimData);
+        if (!slim_data->skipInitialization) {
+            initialize_uvs(gd, slim_data);
         }
     }
 
     /*
       Transfers all the matrices from the native part and initialises slim.
      */
-    SLIMData* setup_slim(const SLIMMatrixTransfer* transferredData,
-        int nIterations,
-        int uvChartIndex,
+    SLIMData* setup_slim(const SLIMMatrixTransfer* transferred_data,
+        int n_iterations,
+        int uv_chart_index,
         igl::Timer& timer,
-        bool borderVerticesArePinned,
-        bool skipInitialization)
+        bool border_vertices_are_pinned,
+        bool skip_initialization)
     {
-        SLIMData* slimData = new SLIMData();
+        SLIMData* slim_data = new SLIMData();
 
         try {
-            if (!transferredData->succeeded[uvChartIndex]) {
+            if (!transferred_data->succeeded[uv_chart_index]) {
                 throw SlimFailedException();
             }
 
-            GeometryData geometryData;
-            retrieveGeometryDataMatrices(transferredData, uvChartIndex, geometryData);
+            GeometryData geometry_data;
+            retrieve_geometry_data_matrices(transferred_data, uv_chart_index, geometry_data);
 
-            retrievePinnedVertices(geometryData, borderVerticesArePinned);
-            transferredData->n_pinned_vertices[uvChartIndex] = geometryData.numberOfPinnedVertices;
+            retrieve_pinned_vertices(geometry_data, border_vertices_are_pinned);
+            transferred_data->n_pinned_vertices[uv_chart_index] = geometry_data.number_of_pinned_vertices;
 
-            constructSlimData(geometryData,
-                slimData,
-                skipInitialization,
-                transferredData->reflection_mode,
-                transferredData->relative_scale);
-            slimData->nIterations = nIterations;
+            construct_slim_data(geometry_data,
+                slim_data,
+                skip_initialization,
+                transferred_data->reflection_mode,
+                transferred_data->relative_scale);
+            slim_data->nIterations = n_iterations;
 
-            initializeIfNeeded(geometryData, slimData);
-            transformInitializationIfNecessary(*slimData);
+            initialize_if_needed(geometry_data, slim_data);
+            transform_initialization_if_necessary(*slim_data);
 
-            correctMeshSurfaceAreaIfNecessary(slimData);
+            correct_mesh_surface_area_if_necessary(slim_data);
 
-            slim_precompute(slimData->V,
-                slimData->F,
-                slimData->V_o,
-                *slimData,
-                slimData->slim_energy,
-                slimData->b,
-                slimData->bc,
-                slimData->soft_const_p);
+            slim_precompute(slim_data->V,
+                slim_data->F,
+                slim_data->V_o,
+                *slim_data,
+                slim_data->slim_energy,
+                slim_data->b,
+                slim_data->bc,
+                slim_data->soft_const_p);
         }
         catch (SlimFailedException&) {
-            slimData->valid = false;
-            transferredData->succeeded[uvChartIndex] = false;
+            slim_data->valid = false;
+            transferred_data->succeeded[uv_chart_index] = false;
         }
 
-        return slimData;
+        return slim_data;
     }
 
-    void try_slim_solve(SLIMMatrixTransfer* mt, int uvChartIndex, SLIMData& data, int iter_num)
+    void try_slim_solve(SLIMMatrixTransfer* mt, int uv_chart_index, SLIMData& data, int iter_num)
     {
-        if (!mt->succeeded[uvChartIndex]) {
+        if (!mt->succeeded[uv_chart_index]) {
             return;
         }
 
@@ -276,13 +277,13 @@ namespace slim {
             slim_solve(data, iter_num);
         }
         catch (SlimFailedException&) {
-            mt->succeeded[uvChartIndex] = false;
+            mt->succeeded[uv_chart_index] = false;
         }
     }
 
-    void free_slim_data(SLIMData* slimData)
+    void free_slim_data(SLIMData* slim_data)
     {
-        delete slimData;
+        delete slim_data;
     };
 
 }
