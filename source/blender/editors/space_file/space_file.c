@@ -967,7 +967,7 @@ static int /*eContextResult*/ file_context(const bContext *C,
         CTX_data_id_list_add(result, id);
       }
     }
-	  CTX_data_type_set(result, CTX_DATA_TYPE_COLLECTION);
+    CTX_data_type_set(result, CTX_DATA_TYPE_COLLECTION);
     return CTX_RESULT_OK;
   }
   if (CTX_data_equals(member, "id")) {
