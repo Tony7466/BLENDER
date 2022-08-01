@@ -957,6 +957,19 @@ static int /*eContextResult*/ file_context(const bContext *C,
     CTX_data_type_set(result, CTX_DATA_TYPE_COLLECTION);
     return CTX_RESULT_OK;
   }
+  if (CTX_data_equals(member, "selected_ids")) {
+    const int num_files_filtered = filelist_files_ensure(sfile->files);
+
+    for (int file_index = 0; file_index < num_files_filtered; file_index++) {
+      if (filelist_entry_is_selected(sfile->files, file_index)) {
+        FileDirEntry *entry = filelist_file(sfile->files, file_index);
+        ID *id = filelist_file_get_id(entry);
+        CTX_data_id_list_add(result, id);
+      }
+    }
+	  CTX_data_type_set(result, CTX_DATA_TYPE_COLLECTION);
+    return CTX_RESULT_OK;
+  }
   if (CTX_data_equals(member, "id")) {
     const FileDirEntry *file = filelist_file(sfile->files, params->active_file);
     if (file == NULL) {

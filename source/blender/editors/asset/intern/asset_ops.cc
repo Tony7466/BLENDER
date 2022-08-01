@@ -51,18 +51,19 @@ static PointerRNAVec asset_operation_get_ids_from_context(const bContext *C)
 {
   PointerRNAVec ids;
 
+  ListBase ids_list;
+  /* First check if there is a selected_ids list to use. */
+  if (CTX_data_selected_ids(C, &ids_list)) {
+    LISTBASE_FOREACH (CollectionPointerLink *, link, &ids_list) {
+      ids.append(link->ptr);
+    }
+    BLI_freelistN(&ids_list);
+    return ids;
+  }
   PointerRNA idptr = CTX_data_pointer_get_type(C, "id", &RNA_ID);
   if (idptr.data) {
     /* Single ID. */
     ids.append(idptr);
-  }
-  else {
-    ListBase list;
-    CTX_data_selected_ids(C, &list);
-    LISTBASE_FOREACH (CollectionPointerLink *, link, &list) {
-      ids.append(link->ptr);
-    }
-    BLI_freelistN(&list);
   }
 
   return ids;
