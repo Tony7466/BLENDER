@@ -1429,7 +1429,17 @@ typedef struct ToolSettings {
   char uv_selectmode;
   char uv_sticky;
 
+  char uvcalc_reflection_mode;
+  char _pad0[3];
+
   float uvcalc_margin;
+  int uvcalc_iterations;
+  float uvcalc_vertex_group_factor;
+  float uvcalc_relative_scale;
+
+  /** 2 characters for ID code and 64 for actual name, MAX_ID_NAME. */
+  char uvcalc_vertex_group[66];
+  char _pad1[6];
 
   /* Auto-IK */
   /** Runtime only. */
@@ -1443,7 +1453,7 @@ typedef struct ToolSettings {
   char gpencil_v3d_align;
   /** General 2D Editor. */
   char gpencil_v2d_align;
-  char _pad0[2];
+  char _pad2[2];
 
   /* Annotations */
   /** Stroke placement settings - 3D View. */
@@ -1496,7 +1506,7 @@ typedef struct ToolSettings {
   char transform_pivot_point;
   char transform_flag;
   /** Snap elements (per spacetype), #eSnapMode. */
-  char _pad1[1];
+  char _pad3[1];
   short snap_mode;
   char snap_node_mode;
   char snap_uv_mode;
@@ -1563,7 +1573,7 @@ typedef struct ToolSettings {
 
   /* Normal Editing */
   float normal_vector[3];
-  char _pad6[4];
+  char _pad4[4];
 
   /* Custom Curve Profile for bevel tool:
    * Temporary until there is a proper preset system that stores the profiles or maybe stores

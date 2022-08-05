@@ -327,6 +327,11 @@
     .uvcalc_margin = 0.001f, \
     .uvcalc_flag = UVCALC_TRANSFORM_CORRECT_SLIDE, \
     .unwrapper = 1, \
+    .uvcalc_iterations = 10, \
+    .uvcalc_vertex_group = { 0 }, \
+    .uvcalc_vertex_group_factor = 1.0, \
+    .uvcalc_relative_scale = 1.0, \
+    .uvcalc_reflection_mode = 0, \
     .select_thresh = 0.01f, \
  \
     .selectmode = SCE_SELECT_VERTEX, \

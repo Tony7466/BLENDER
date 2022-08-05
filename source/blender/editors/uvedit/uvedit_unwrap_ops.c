@@ -226,47 +226,65 @@ static void modifier_unwrap_state(Object *obedit,
   *r_use_subsurf = subsurf;
 }
 
-static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob)
+static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSettings* ts)
 {
-  /* We use the properties from the last unwrap operator for subsequent
-   * live unwrap and minize stretch operators. */
-  PointerRNA ptr;
-  WM_operator_last_properties_alloc(op, "UV_OT_unwrap", &ptr);
-
   UnwrapOptions options;
 
   /* To be set by the upper layer */
   options.topology_from_uvs = false;
+  options.topology_from_uvs_use_seams = false;
   options.only_selected_faces = false;
   options.only_selected_uvs = false;
   options.pin_unselected = false;
 
-  options.method = RNA_enum_get(&ptr, "method");
+  if (ts)
+  {
+    options.method = ts->unwrapper;
+    options.correct_aspect = (ts->uvcalc_flag & UVCALC_NO_ASPECT_CORRECT) == 0;
+    options.fill_holes = (ts->uvcalc_flag & UVCALC_FILLHOLES) != 0;
+    options.use_subsurf = (ts->uvcalc_flag & UVCALC_USESUBSURF) != 0;
+
+    static_assert(sizeof(options.vertex_group) == sizeof(ts->uvcalc_vertex_group), "vertex_group size mismatch.");
+    memcpy(options.vertex_group, ts->uvcalc_vertex_group, sizeof(options.vertex_group));
+
+    options.vertex_group_factor = ts->uvcalc_vertex_group_factor;
+    options.relative_scale = ts->uvcalc_relative_scale;
+    options.reflection_mode = ts->uvcalc_reflection_mode;
+    options.iterations = ts->uvcalc_iterations;
+  }
+  else
+  {
+    /* We use the properties from the last unwrap operator for subsequent
+     * live unwrap and minize stretch operators. */
+    PointerRNA ptr;
+    WM_operator_last_properties_alloc(op, "UV_OT_unwrap", &ptr);
+
+    options.method = RNA_enum_get(&ptr, "method");
+    options.correct_aspect = RNA_boolean_get(&ptr, "correct_aspect");
+    options.fill_holes = RNA_boolean_get(&ptr, "fill_holes");
+    options.use_subsurf = RNA_boolean_get(&ptr, "use_subsurf_data");
+    RNA_string_get(&ptr, "vertex_group", options.vertex_group);
+    options.vertex_group_factor = RNA_float_get(&ptr, "vertex_group_factor");
+    options.relative_scale = RNA_float_get(&ptr, "relative_scale");
+    options.reflection_mode = RNA_enum_get(&ptr, "reflection_mode");
+    options.iterations = RNA_int_get(&ptr, "iterations");
+
+    WM_operator_properties_free(&ptr);
+  }
+
   options.use_abf = options.method == 0;
   options.use_slim = options.method == 2;
-  options.correct_aspect = RNA_boolean_get(&ptr, "correct_aspect");
-  options.fill_holes = RNA_boolean_get(&ptr, "fill_holes");
-  options.use_subsurf = RNA_boolean_get(&ptr, "use_subsurf_data");
-  RNA_string_get(&ptr, "vertex_group", options.vertex_group);
-  options.vertex_group_factor = RNA_float_get(&ptr, "vertex_group_factor");
-  options.relative_scale = RNA_float_get(&ptr, "relative_scale");
-  options.reflection_mode = RNA_enum_get(&ptr, "reflection_mode");
-  options.iterations = RNA_int_get(&ptr, "iterations");
 
   /* SLIM requires hole filling */
   if (options.use_slim) {
     options.fill_holes = true;
   }
 
-  options.use_subsurf = false;
-
   if (ob) {
     bool use_subsurf_final;
     modifier_unwrap_state(ob, &options, &use_subsurf_final);
     options.use_subsurf = use_subsurf_final;
   }
-
-  WM_operator_properties_free(&ptr);
 
   return options;
 }
@@ -1167,7 +1185,7 @@ void UV_OT_minimize_stretch(wmOperatorType *ot)
 
 static void uvedit_pack_islands(const Scene *scene, Object *ob, BMesh *bm)
 {
-  UnwrapOptions options = unwrap_options_get(NULL, ob);
+  UnwrapOptions options = unwrap_options_get(NULL, ob, NULL);
   options.topology_from_uvs = true;
   options.only_selected_faces = false;
   options.only_selected_uvs = true;
@@ -1220,7 +1238,7 @@ static int pack_islands_exec(bContext *C, wmOperator *op)
   const Scene *scene = CTX_data_scene(C);
   const SpaceImage *sima = CTX_wm_space_image(C);
 
-  UnwrapOptions options = unwrap_options_get(op, NULL);
+  UnwrapOptions options = unwrap_options_get(op, NULL, NULL);
   options.topology_from_uvs = true;
   options.only_selected_faces = true;
   options.only_selected_uvs = true;
@@ -1311,7 +1329,7 @@ static int average_islands_scale_exec(bContext *C, wmOperator *UNUSED(op))
   ToolSettings *ts = scene->toolsettings;
   const bool synced_selection = (ts->uv_flag & UV_SYNC_SELECTION) != 0;
 
-  UnwrapOptions options = unwrap_options_get(NULL, NULL);
+  UnwrapOptions options = unwrap_options_get(NULL, NULL, NULL);
   options.topology_from_uvs = true;
   options.only_selected_faces = true;
   options.only_selected_uvs = true;
@@ -1381,7 +1399,7 @@ void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit)
     return;
   }
 
-  UnwrapOptions options = unwrap_options_get(NULL, obedit);
+  UnwrapOptions options = unwrap_options_get(NULL, obedit, scene->toolsettings);
   options.topology_from_uvs = false;
   options.only_selected_faces = false;
   options.only_selected_uvs = false;
@@ -2007,7 +2025,7 @@ static void uvedit_unwrap_multi(const Scene *scene,
 void ED_uvedit_live_unwrap(const Scene *scene, Object **objects, int objects_len)
 {
   if (scene->toolsettings->edge_mode_live_unwrap) {
-    UnwrapOptions options = unwrap_options_get(NULL, NULL);
+    UnwrapOptions options = unwrap_options_get(NULL, NULL, scene->toolsettings);
     options.topology_from_uvs = false;
     options.only_selected_faces = false;
     options.only_selected_uvs = false;
@@ -2036,7 +2054,7 @@ static int unwrap_exec(bContext *C, wmOperator *op)
   Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
       view_layer, CTX_wm_view3d(C), &objects_len);
 
-  UnwrapOptions options = unwrap_options_get(op, NULL);
+  UnwrapOptions options = unwrap_options_get(op, NULL, NULL);
   options.topology_from_uvs = false;
   options.only_selected_faces = false;
   options.only_selected_uvs = false;
