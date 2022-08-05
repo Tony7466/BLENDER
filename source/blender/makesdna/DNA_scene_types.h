@@ -1429,10 +1429,10 @@ typedef struct ToolSettings {
   char uv_selectmode;
   char uv_sticky;
 
+  float uvcalc_margin;
   char uvcalc_reflection_mode;
   char _pad0[3];
 
-  float uvcalc_margin;
   int uvcalc_iterations;
   float uvcalc_vertex_group_factor;
   float uvcalc_relative_scale;

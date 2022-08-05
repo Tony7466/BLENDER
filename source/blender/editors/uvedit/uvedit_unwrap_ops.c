@@ -289,6 +289,61 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
   return options;
 }
 
+static void unwrap_options_sync_toolsettings(wmOperator* op, ToolSettings* ts)
+{
+  /* remember last method for live unwrap */
+  if (RNA_struct_property_is_set(op->ptr, "method")) {
+    ts->unwrapper = RNA_enum_get(op->ptr, "method");
+  }
+  else {
+    RNA_enum_set(op->ptr, "method", ts->unwrapper);
+  }
+
+  /* remember packing margin */
+  if (RNA_struct_property_is_set(op->ptr, "margin")) {
+    ts->uvcalc_margin = RNA_float_get(op->ptr, "margin");
+  }
+  else {
+    RNA_float_set(op->ptr, "margin", ts->uvcalc_margin);
+  }
+
+  if (RNA_struct_property_is_set(op->ptr, "reflection_mode")) {
+    ts->uvcalc_reflection_mode = RNA_enum_get(op->ptr, "reflection_mode");
+  }
+  else {
+    RNA_enum_set(op->ptr, "reflection_mode", ts->uvcalc_reflection_mode);
+  }
+
+  if (RNA_struct_property_is_set(op->ptr, "iterations")) {
+    ts->uvcalc_iterations = RNA_int_get(op->ptr, "iterations");
+  }
+  else {
+    RNA_int_set(op->ptr, "iterations", ts->uvcalc_iterations);
+  }
+
+  if (RNA_struct_property_is_set(op->ptr, "vertex_group_factor")) {
+    ts->uvcalc_vertex_group_factor = RNA_float_get(op->ptr, "vertex_group_factor");
+  }
+  else {
+    RNA_float_set(op->ptr, "vertex_group_factor", ts->uvcalc_vertex_group_factor);
+  }
+
+  if (RNA_struct_property_is_set(op->ptr, "relative_scale")) {
+    ts->uvcalc_relative_scale = RNA_float_get(op->ptr, "relative_scale");
+  }
+  else {
+    RNA_float_set(op->ptr, "relative_scale", ts->uvcalc_relative_scale);
+  }
+
+  if (RNA_struct_property_is_set(op->ptr, "vertex_group")) {
+    RNA_string_get(op->ptr, "vertex_group", ts->uvcalc_vertex_group);
+  }
+  else {
+    RNA_string_set(op->ptr, "vertex_group", ts->uvcalc_vertex_group);
+  }
+}
+
+
 static bool uvedit_have_selection(const Scene *scene, BMEditMesh *em, const UnwrapOptions *options)
 {
   BMFace *efa;
@@ -2054,6 +2109,8 @@ static int unwrap_exec(bContext *C, wmOperator *op)
   Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
       view_layer, CTX_wm_view3d(C), &objects_len);
 
+  unwrap_options_sync_toolsettings(op, scene->toolsettings);
+
   UnwrapOptions options = unwrap_options_get(op, NULL, NULL);
   options.topology_from_uvs = false;
   options.only_selected_faces = false;
@@ -2127,21 +2184,21 @@ static int unwrap_exec(bContext *C, wmOperator *op)
                "Subdivision Surface modifier needs to be first to work with unwrap");
   }
 
-  /* remember last method for live unwrap */
-  if (RNA_struct_property_is_set(op->ptr, "method")) {
-    scene->toolsettings->unwrapper = options.method;
-  }
-  else {
-    RNA_enum_set(op->ptr, "method", scene->toolsettings->unwrapper);
-  }
+  ///* remember last method for live unwrap */
+  //if (RNA_struct_property_is_set(op->ptr, "method")) {
+  //  scene->toolsettings->unwrapper = options.method;
+  //}
+  //else {
+  //  RNA_enum_set(op->ptr, "method", scene->toolsettings->unwrapper);
+  //}
 
-  /* remember packing margin */
-  if (RNA_struct_property_is_set(op->ptr, "margin")) {
-    scene->toolsettings->uvcalc_margin = RNA_float_get(op->ptr, "margin");
-  }
-  else {
-    RNA_float_set(op->ptr, "margin", scene->toolsettings->uvcalc_margin);
-  }
+  ///* remember packing margin */
+  //if (RNA_struct_property_is_set(op->ptr, "margin")) {
+  //  scene->toolsettings->uvcalc_margin = RNA_float_get(op->ptr, "margin");
+  //}
+  //else {
+  //  RNA_float_set(op->ptr, "margin", scene->toolsettings->uvcalc_margin);
+  //}
 
   if (options.fill_holes) {
     scene->toolsettings->uvcalc_flag |= UVCALC_FILLHOLES;
