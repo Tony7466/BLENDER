@@ -38,6 +38,7 @@
 #include "DNA_space_types.h"
 #include "DNA_text_types.h"
 #include "DNA_workspace_types.h"
+#include "DNA_scene_defaults.h"
 
 #include "BKE_action.h"
 #include "BKE_anim_data.h"
@@ -3243,5 +3244,13 @@ void blo_do_versions_300(FileData *fd, Library *UNUSED(lib), Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+
+    LISTBASE_FOREACH(Scene*, scene, &bmain->scenes) {
+      scene->toolsettings->uvcalc_iterations = _DNA_DEFAULT_ToolSettings_UVCalc_Iterations;
+      scene->toolsettings->uvcalc_vertex_group_factor = _DNA_DEFAULT_ToolSettings_UVCalc_VertexGroupFactor;
+      scene->toolsettings->uvcalc_relative_scale = _DNA_DEFAULT_ToolSettings_UVCalc_RelativeScale;
+      scene->toolsettings->uvcalc_reflection_mode = _DNA_DEFAULT_ToolSettings_UVCalc_ReflectionMode;
+      memset(scene->toolsettings->uvcalc_vertex_group, 0, sizeof(scene->toolsettings->uvcalc_vertex_group));
+    }
   }
 }

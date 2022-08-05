@@ -17,6 +17,7 @@
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_scene_defaults.h"
 
 #include "BLI_alloca.h"
 #include "BLI_array.h"
@@ -2184,22 +2185,6 @@ static int unwrap_exec(bContext *C, wmOperator *op)
                "Subdivision Surface modifier needs to be first to work with unwrap");
   }
 
-  ///* remember last method for live unwrap */
-  //if (RNA_struct_property_is_set(op->ptr, "method")) {
-  //  scene->toolsettings->unwrapper = options.method;
-  //}
-  //else {
-  //  RNA_enum_set(op->ptr, "method", scene->toolsettings->unwrapper);
-  //}
-
-  ///* remember packing margin */
-  //if (RNA_struct_property_is_set(op->ptr, "margin")) {
-  //  scene->toolsettings->uvcalc_margin = RNA_float_get(op->ptr, "margin");
-  //}
-  //else {
-  //  RNA_float_set(op->ptr, "margin", scene->toolsettings->uvcalc_margin);
-  //}
-
   if (options.fill_holes) {
     scene->toolsettings->uvcalc_flag |= UVCALC_FILLHOLES;
   }
@@ -2309,28 +2294,28 @@ void UV_OT_unwrap(wmOperatorType *ot)
   RNA_def_enum(ot->srna,
                "method",
                method_items,
-               2,
+               _DNA_DEFAULT_ToolSettings_UVCalc_Unwrapper,
                "Method",
                "Unwrapping method (Angle Based usually gives better results than Conformal, while "
                "being somewhat slower)");
   RNA_def_boolean(ot->srna,
                   "correct_aspect",
-                  1,
+                  !(_DNA_DEFAULT_ToolSettings_UVCalc_Flag & UVCALC_NO_ASPECT_CORRECT),
                   "Correct Aspect",
                   "Map UVs taking image aspect ratio into account");
   RNA_def_boolean(
       ot->srna,
       "use_subsurf_data",
-      0,
+      _DNA_DEFAULT_ToolSettings_UVCalc_Flag & UVCALC_USESUBSURF,
       "Use Subdivision Surface",
       "Map UVs taking vertex position after Subdivision Surface modifier has been applied");
   RNA_def_float_factor(
-      ot->srna, "margin", 0.001f, 0.0f, 1.0f, "Margin", "Space between islands", 0.0f, 1.0f);
+      ot->srna, "margin", _DNA_DEFAULT_ToolSettings_UVCalc_Margin, 0.0f, 1.0f, "Margin", "Space between islands", 0.0f, 1.0f);
 
   /* ABF / LSCM only */
   RNA_def_boolean(ot->srna,
                   "fill_holes",
-                  1,
+                  _DNA_DEFAULT_ToolSettings_UVCalc_Flag & UVCALC_FILLHOLES,
                   "Fill Holes",
                   "Virtual fill holes in mesh before unwrapping, to better avoid overlaps and "
                   "preserve symmetry");
@@ -2339,13 +2324,13 @@ void UV_OT_unwrap(wmOperatorType *ot)
   RNA_def_enum(ot->srna,
                "reflection_mode",
                reflection_items,
-               0,
+               _DNA_DEFAULT_ToolSettings_UVCalc_ReflectionMode,
                "Reflection Mode",
                "Allowing reflections means that depending on the position of pins, the map may be "
                "flipped. Lower distortion");
   RNA_def_int(ot->srna,
               "iterations",
-              10,
+              _DNA_DEFAULT_ToolSettings_UVCalc_Iterations,
               0,
               10000,
               "Iterations",
@@ -2354,7 +2339,7 @@ void UV_OT_unwrap(wmOperatorType *ot)
               30);
   RNA_def_float(ot->srna,
                 "relative_scale",
-                1.0,
+                _DNA_DEFAULT_ToolSettings_UVCalc_RelativeScale,
                 0.001,
                 1000.0,
                 "Relative Scale",
@@ -2370,7 +2355,7 @@ void UV_OT_unwrap(wmOperatorType *ot)
   RNA_def_float(
       ot->srna,
       "vertex_group_factor",
-      1.0,
+      _DNA_DEFAULT_ToolSettings_UVCalc_VertexGroupFactor,
       -10000.0,
       10000.0,
       "Factor",

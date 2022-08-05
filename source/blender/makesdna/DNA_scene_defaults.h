@@ -319,19 +319,29 @@
     .sharp_max = DEG2RADF(180.0f), \
   }
 
+#define _DNA_DEFAULT_ToolSettings_UVCalc_Margin               (0.001f)
+#define _DNA_DEFAULT_ToolSettings_UVCalc_Flag                 (UVCALC_TRANSFORM_CORRECT_SLIDE)
+#define _DNA_DEFAULT_ToolSettings_UVCalc_Unwrapper            (1)
+#define _DNA_DEFAULT_ToolSettings_UVCalc_Iterations           (10)
+#define _DNA_DEFAULT_ToolSettings_UVCalc_VertexGroupFactor    (1.0)
+#define _DNA_DEFAULT_ToolSettings_UVCalc_RelativeScale        (1.0)
+#define _DNA_DEFAULT_ToolSettings_UVCalc_ReflectionMode       (0)
+
 #define _DNA_DEFAULT_ToolSettings \
   { \
     .object_flag = SCE_OBJECT_MODE_LOCK, \
     .doublimit = 0.001, \
     .vgroup_weight = 1.0f, \
-    .uvcalc_margin = 0.001f, \
-    .uvcalc_flag = UVCALC_TRANSFORM_CORRECT_SLIDE, \
-    .unwrapper = 1, \
-    .uvcalc_iterations = 10, \
+ \
+    .uvcalc_margin = _DNA_DEFAULT_ToolSettings_UVCalc_Margin, \
+    .uvcalc_flag = _DNA_DEFAULT_ToolSettings_UVCalc_Flag, \
+    .unwrapper = _DNA_DEFAULT_ToolSettings_UVCalc_Unwrapper, \
+    .uvcalc_iterations = _DNA_DEFAULT_ToolSettings_UVCalc_Iterations, \
     .uvcalc_vertex_group = { 0 }, \
-    .uvcalc_vertex_group_factor = 1.0, \
-    .uvcalc_relative_scale = 1.0, \
-    .uvcalc_reflection_mode = 0, \
+    .uvcalc_vertex_group_factor = _DNA_DEFAULT_ToolSettings_UVCalc_VertexGroupFactor, \
+    .uvcalc_relative_scale = _DNA_DEFAULT_ToolSettings_UVCalc_RelativeScale, \
+    .uvcalc_reflection_mode = _DNA_DEFAULT_ToolSettings_UVCalc_ReflectionMode, \
+ \
     .select_thresh = 0.01f, \
  \
     .selectmode = SCE_SELECT_VERTEX, \

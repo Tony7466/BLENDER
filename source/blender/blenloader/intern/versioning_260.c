@@ -31,6 +31,7 @@
 #include "DNA_text_types.h"
 #include "DNA_view3d_types.h"
 #include "DNA_world_types.h"
+#include "DNA_scene_defaults.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -1697,13 +1698,13 @@ void blo_do_versions_260(FileData *fd, Library *UNUSED(lib), Main *bmain)
   }
 
   if (!MAIN_VERSION_ATLEAST(bmain, 264, 5)) {
-    /* set a unwrapping margin and ABF by default */
+    /* set an unwrapping margin and unwrapper to the deafult values */
     Scene *scene;
 
     for (scene = bmain->scenes.first; scene; scene = scene->id.next) {
       if (scene->toolsettings->uvcalc_margin == 0.0f) {
-        scene->toolsettings->uvcalc_margin = 0.001f;
-        scene->toolsettings->unwrapper = 0;
+        scene->toolsettings->uvcalc_margin = _DNA_DEFAULT_ToolSettings_UVCalc_Margin;
+        scene->toolsettings->unwrapper = _DNA_DEFAULT_ToolSettings_UVCalc_Unwrapper;
       }
     }
   }
