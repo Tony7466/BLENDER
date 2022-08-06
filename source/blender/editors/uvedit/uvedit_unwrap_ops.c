@@ -169,6 +169,13 @@ bool ED_uvedit_udim_params_from_image_space(const SpaceImage *sima,
 /** \name Parametrizer Conversion
  * \{ */
 
+typedef struct MatrixTransferOptions {
+  char vertex_group[MAX_ID_NAME];
+  float vertex_group_factor;
+  float relative_scale;
+  int iterations;
+} MatrixTransferOptions;
+
 typedef struct UnwrapOptions {
   /** Connectivity based on UV coordinates instead of seams. */
   bool topology_from_uvs;
@@ -193,11 +200,9 @@ typedef struct UnwrapOptions {
   bool use_slim;
   bool use_abf;
   bool use_subsurf;
-  char vertex_group[MAX_ID_NAME];
-  float vertex_group_factor;
-  float relative_scale;
   int reflection_mode;
-  int iterations;
+
+  MatrixTransferOptions mt_options;
 } UnwrapOptions;
 
 typedef struct UnwrapResultInfo {
@@ -244,14 +249,14 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
     options.correct_aspect = (ts->uvcalc_flag & UVCALC_NO_ASPECT_CORRECT) == 0;
     options.fill_holes = (ts->uvcalc_flag & UVCALC_FILLHOLES) != 0;
     options.use_subsurf = (ts->uvcalc_flag & UVCALC_USESUBSURF) != 0;
-
-    static_assert(sizeof(options.vertex_group) == sizeof(ts->uvcalc_vertex_group), "vertex_group size mismatch.");
-    memcpy(options.vertex_group, ts->uvcalc_vertex_group, sizeof(options.vertex_group));
-
-    options.vertex_group_factor = ts->uvcalc_vertex_group_factor;
-    options.relative_scale = ts->uvcalc_relative_scale;
     options.reflection_mode = ts->uvcalc_reflection_mode;
-    options.iterations = ts->uvcalc_iterations;
+
+    static_assert(sizeof(options.mt_options.vertex_group) == sizeof(ts->uvcalc_vertex_group), "vertex_group size mismatch.");
+    memcpy(options.mt_options.vertex_group, ts->uvcalc_vertex_group, sizeof(options.mt_options.vertex_group));
+
+    options.mt_options.vertex_group_factor = ts->uvcalc_vertex_group_factor;
+    options.mt_options.relative_scale = ts->uvcalc_relative_scale;
+    options.mt_options.iterations = ts->uvcalc_iterations;
   }
   else
   {
@@ -264,11 +269,12 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
     options.correct_aspect = RNA_boolean_get(&ptr, "correct_aspect");
     options.fill_holes = RNA_boolean_get(&ptr, "fill_holes");
     options.use_subsurf = RNA_boolean_get(&ptr, "use_subsurf_data");
-    RNA_string_get(&ptr, "vertex_group", options.vertex_group);
-    options.vertex_group_factor = RNA_float_get(&ptr, "vertex_group_factor");
-    options.relative_scale = RNA_float_get(&ptr, "relative_scale");
     options.reflection_mode = RNA_enum_get(&ptr, "reflection_mode");
-    options.iterations = RNA_int_get(&ptr, "iterations");
+
+    RNA_string_get(&ptr, "vertex_group", options.mt_options.vertex_group);
+    options.mt_options.vertex_group_factor = RNA_float_get(&ptr, "vertex_group_factor");
+    options.mt_options.relative_scale = RNA_float_get(&ptr, "relative_scale");
+    options.mt_options.iterations = RNA_int_get(&ptr, "iterations");
 
     WM_operator_properties_free(&ptr);
   }
@@ -617,7 +623,7 @@ static ParamHandle *construct_param_handle(const Scene *scene,
 
   const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_MLOOPUV);
   const int cd_weight_offset = CustomData_get_offset(&bm->vdata, CD_MDEFORMVERT);
-  const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->vertex_group);
+  const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->mt_options.vertex_group);
 
   BM_ITER_MESH_INDEX (efa, &iter, bm, BM_FACES_OF_MESH, i) {
     if (uvedit_is_face_affected(scene, efa, options, cd_loop_uv_offset)) {
@@ -678,7 +684,7 @@ static ParamHandle *construct_param_handle_multi(const Scene *scene,
 
     const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_MLOOPUV);
     const int cd_weight_offset = CustomData_get_offset(&bm->vdata, CD_MDEFORMVERT);
-    const int cd_weight_index = BKE_object_defgroup_name_index(obedit, options->vertex_group);
+    const int cd_weight_index = BKE_object_defgroup_name_index(obedit, options->mt_options.vertex_group);
 
     if (cd_loop_uv_offset == -1) {
       continue;
@@ -786,7 +792,7 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
   /* similar to the above, we need a way to map edges to their original ones */
   BMEdge **edgeMap;
 
-  const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->vertex_group);
+  const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->mt_options.vertex_group);
   const int cd_loop_uv_offset = CustomData_get_offset(&em->bm->ldata, CD_MLOOPUV);
 
   ParamHandle *handle = GEO_uv_parametrizer_construct_begin();
@@ -968,14 +974,14 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
  * \{ */
 
 /* Get SLIM parameters from scene */
-static SLIMMatrixTransfer *slim_matrix_transfer(const UnwrapOptions *options)
+static SLIMMatrixTransfer *slim_matrix_transfer(const MatrixTransferOptions *mt_options)
 {
   SLIMMatrixTransfer *mt = MEM_callocN(sizeof(SLIMMatrixTransfer), "Matrix Transfer to SLIM");
 
-  mt->with_weighted_parameterization = strlen(options->vertex_group) > 0;
-  mt->weight_influence = options->vertex_group_factor;
-  mt->relative_scale = options->relative_scale;
-  mt->n_iterations = options->iterations;
+  mt->with_weighted_parameterization = strlen(mt_options->vertex_group) > 0;
+  mt->weight_influence = mt_options->vertex_group_factor;
+  mt->relative_scale = mt_options->relative_scale;
+  mt->n_iterations = mt_options->iterations;
 
   return mt;
 }
@@ -1487,7 +1493,7 @@ void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit)
   }
 
   if (options.use_slim) {
-    SLIMMatrixTransfer *mt = slim_matrix_transfer(&options);
+    SLIMMatrixTransfer *mt = slim_matrix_transfer(&options.mt_options);
     mt->skip_initialization = true;
 
     GEO_uv_parametrizer_slim_begin(handle, mt);
@@ -2059,7 +2065,7 @@ static void uvedit_unwrap(const Scene *scene,
   }
 
   if (options->use_slim) {
-    SLIMMatrixTransfer *mt = slim_matrix_transfer(options);
+    SLIMMatrixTransfer *mt = slim_matrix_transfer(&options->mt_options);
     mt->reflection_mode = options->reflection_mode;
     mt->transform_islands = true;
 
