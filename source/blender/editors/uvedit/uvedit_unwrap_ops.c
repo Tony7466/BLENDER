@@ -290,6 +290,21 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
   return options;
 }
 
+static void unwrap_options_sync_flag(wmOperator* op, ToolSettings* ts, const char* property_name, char flag, bool flipped)
+{
+  if (RNA_struct_property_is_set(op->ptr, property_name)) {
+    if (RNA_boolean_get(op->ptr, property_name) ^ flipped) {
+      ts->uvcalc_flag |= flag;
+    }
+    else {
+      ts->uvcalc_flag &= ~flag;
+    }
+  }
+  else {
+    RNA_boolean_set(op->ptr, property_name, ((ts->uvcalc_flag & flag) > 0) ^ flipped);
+  }
+}
+
 static void unwrap_options_sync_toolsettings(wmOperator* op, ToolSettings* ts)
 {
   /* remember last method for live unwrap */
@@ -342,6 +357,10 @@ static void unwrap_options_sync_toolsettings(wmOperator* op, ToolSettings* ts)
   else {
     RNA_string_set(op->ptr, "vertex_group", ts->uvcalc_vertex_group);
   }
+
+  unwrap_options_sync_flag(op, ts, "fill_holes", UVCALC_FILLHOLES, false);
+  unwrap_options_sync_flag(op, ts, "correct_aspect", UVCALC_NO_ASPECT_CORRECT, true);
+  unwrap_options_sync_flag(op, ts, "use_subsurf_data", UVCALC_USESUBSURF, false);
 }
 
 
@@ -2183,27 +2202,6 @@ static int unwrap_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports,
                RPT_INFO,
                "Subdivision Surface modifier needs to be first to work with unwrap");
-  }
-
-  if (options.fill_holes) {
-    scene->toolsettings->uvcalc_flag |= UVCALC_FILLHOLES;
-  }
-  else {
-    scene->toolsettings->uvcalc_flag &= ~UVCALC_FILLHOLES;
-  }
-
-  if (options.correct_aspect) {
-    scene->toolsettings->uvcalc_flag &= ~UVCALC_NO_ASPECT_CORRECT;
-  }
-  else {
-    scene->toolsettings->uvcalc_flag |= UVCALC_NO_ASPECT_CORRECT;
-  }
-
-  if (options.use_subsurf) {
-    scene->toolsettings->uvcalc_flag |= UVCALC_USESUBSURF;
-  }
-  else {
-    scene->toolsettings->uvcalc_flag &= ~UVCALC_USESUBSURF;
   }
 
   /* execute unwrap */
