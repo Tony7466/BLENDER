@@ -169,13 +169,6 @@ bool ED_uvedit_udim_params_from_image_space(const SpaceImage *sima,
 /** \name Parametrizer Conversion
  * \{ */
 
-typedef struct MatrixTransferOptions {
-  char vertex_group[MAX_ID_NAME];
-  float vertex_group_factor;
-  float relative_scale;
-  int iterations;
-} MatrixTransferOptions;
-
 typedef struct UnwrapOptions {
   /** Connectivity based on UV coordinates instead of seams. */
   bool topology_from_uvs;
@@ -973,19 +966,6 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
 /** \name Minimize Stretch Operator
  * \{ */
 
-/* Get SLIM parameters from scene */
-static SLIMMatrixTransfer *slim_matrix_transfer(const MatrixTransferOptions *mt_options)
-{
-  SLIMMatrixTransfer *mt = MEM_callocN(sizeof(SLIMMatrixTransfer), "Matrix Transfer to SLIM");
-
-  mt->with_weighted_parameterization = strlen(mt_options->vertex_group) > 0;
-  mt->weight_influence = mt_options->vertex_group_factor;
-  mt->relative_scale = mt_options->relative_scale;
-  mt->n_iterations = mt_options->iterations;
-
-  return mt;
-}
-
 typedef struct MinStretch {
   const Scene *scene;
   Object **objects_edit;
@@ -1493,10 +1473,7 @@ void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit)
   }
 
   if (options.use_slim) {
-    SLIMMatrixTransfer *mt = slim_matrix_transfer(&options.mt_options);
-    mt->skip_initialization = true;
-
-    GEO_uv_parametrizer_slim_begin(handle, mt);
+    GEO_uv_parametrizer_slim_begin(handle, &options.mt_options);
   }
   else {
     GEO_uv_parametrizer_lscm_begin(handle, true, options.use_abf);
@@ -2065,12 +2042,9 @@ static void uvedit_unwrap(const Scene *scene,
   }
 
   if (options->use_slim) {
-    SLIMMatrixTransfer *mt = slim_matrix_transfer(&options->mt_options);
-    mt->reflection_mode = options->reflection_mode;
-    mt->transform_islands = true;
-
     GEO_uv_parametrizer_slim_solve(handle,
-                                   mt,
+                                   &options->mt_options,
+                                   options->reflection_mode,
                                    result_info ? &result_info->count_changed : NULL,
                                    result_info ? &result_info->count_failed : NULL);
   }

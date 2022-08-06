@@ -17,6 +17,7 @@
 #include "BLI_polyfill_2d_beautify.h"
 #include "BLI_rand.h"
 
+#include "slim_matrix_transfer.h"
 #include "slim_capi.h"
 
 #include "eigen_capi.h"
@@ -4399,6 +4400,19 @@ void GEO_uv_parametrizer_flush_restore(ParamHandle *phandle)
 
 /***************************** SLIM Integration *******************************/
 
+/* Get SLIM parameters from scene */
+static SLIMMatrixTransfer* slim_matrix_transfer(const MatrixTransferOptions* mt_options)
+{
+  SLIMMatrixTransfer* mt = MEM_callocN(sizeof(SLIMMatrixTransfer), "Matrix Transfer to SLIM");
+
+  mt->with_weighted_parameterization = strlen(mt_options->vertex_group) > 0;
+  mt->weight_influence = mt_options->vertex_group_factor;
+  mt->relative_scale = mt_options->relative_scale;
+  mt->n_iterations = mt_options->iterations;
+
+  return mt;
+}
+
 /* Allocate pointer arrays for each matrix-group. Meaning as many pointers per
  * array as there are charts. */
 static void slim_allocate_pointerarrays(SLIMMatrixTransfer *mt, ParamHandle *phandle)
@@ -4828,10 +4842,15 @@ void GEO_uv_parametrizer_slim_reload_all_uvs(ParamHandle *phandle)
 }
 
 void GEO_uv_parametrizer_slim_solve(ParamHandle *phandle,
-                                    SLIMMatrixTransfer *mt,
+                                    const MatrixTransferOptions* mt_options,
+                                    int reflection_mode,
                                     int *count_changed,
                                     int *count_failed)
 {
+  SLIMMatrixTransfer* mt = slim_matrix_transfer(mt_options);
+  mt->reflection_mode = reflection_mode;
+  mt->transform_islands = true;
+
   phandle->slim_mt = mt;
   slim_transfer_data_to_slim(phandle);
 
@@ -4841,8 +4860,11 @@ void GEO_uv_parametrizer_slim_solve(ParamHandle *phandle,
   slim_free_matrix_transfer(mt);
 }
 
-void GEO_uv_parametrizer_slim_begin(ParamHandle *phandle, SLIMMatrixTransfer *mt)
+void GEO_uv_parametrizer_slim_begin(ParamHandle *phandle, const MatrixTransferOptions* mt_options)
 {
+  SLIMMatrixTransfer* mt = slim_matrix_transfer(mt_options);
+  mt->skip_initialization = true;
+
   phandle->slim_mt = mt;
 
   for (int i = 0; i < phandle->ncharts; i++) {
