@@ -258,7 +258,7 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
     /* We use the properties from the last unwrap operator for subsequent
      * live unwrap and minize stretch operators. */
     PointerRNA ptr;
-    WM_operator_last_properties_alloc(op, "UV_OT_unwrap", &ptr);
+    WM_operator_current_or_default_properties_alloc(op, "UV_OT_unwrap", &ptr);
 
     options.method = RNA_enum_get(&ptr, "method");
     options.correct_aspect = RNA_boolean_get(&ptr, "correct_aspect");
