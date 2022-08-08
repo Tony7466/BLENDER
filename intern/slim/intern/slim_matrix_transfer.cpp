@@ -13,60 +13,54 @@
 using namespace igl;
 using namespace slim;
 
-void SLIMMatrixTransfer::transfer_uvs_blended_live(
-                                    SLIMData *slim_data,
-                                    int uv_chart_index)
+void SLIMMatrixTransfer::transfer_uvs_blended_live(SLIMMatrixTransferChart& mt_chart)
 {
-  if (!succeeded[uv_chart_index]) {
+  if (!mt_chart.succeeded) {
     return;
   }
-  correct_map_surface_area_if_necessary(slim_data);
-  transfer_uvs_back_to_native_part_live(this, slim_data->V_o, uv_chart_index);
+  correct_map_surface_area_if_necessary(mt_chart.data);
+  transfer_uvs_back_to_native_part_live(mt_chart, mt_chart.data->V_o);
 }
 
 /* Called from the native part during each iteration of interactive parametrisation.
  * The blend parameter decides the linear blending between the original UV map and the one
  * optained from the accumulated SLIM iterations so far. */
 void SLIMMatrixTransfer::transfer_uvs_blended(
-                               SLIMData *slim_data,
-                               int uv_chart_index,
+                               SLIMMatrixTransferChart& mt_chart,
                                float blend)
 {
-  if (!succeeded[uv_chart_index]) {
+  if (!mt_chart.succeeded) {
     return;
   }
 
-  Eigen::MatrixXd blended_uvs = get_interactive_result_blended_with_original(blend, slim_data);
-  correct_map_surface_area_if_necessary(slim_data);
-  transfer_uvs_back_to_native_part(this, blended_uvs, uv_chart_index);
+  Eigen::MatrixXd blended_uvs = get_interactive_result_blended_with_original(blend, mt_chart.data);
+  correct_map_surface_area_if_necessary(mt_chart.data);
+  transfer_uvs_back_to_native_part(mt_chart, blended_uvs);
 }
 
 /* Setup call from the native C part. Necessary for interactive parametrisation. */
-void* SLIMMatrixTransfer::setup(
-                 int uv_chart_index,
+SLIMData* SLIMMatrixTransfer::setup(
+                 SLIMMatrixTransferChart& mt_chart,
                  bool are_border_vertices_pinned,
                  bool skip_initialization) const
 {
   igl::Timer timer;
   timer.start();
   SLIMData *slim_data = setup_slim(
-      this, 0, uv_chart_index, timer, are_border_vertices_pinned, skip_initialization);
+      *this, mt_chart, 0, timer, are_border_vertices_pinned, skip_initialization);
   return slim_data;
 }
 
 /* Executes a single iteration of SLIM, to be called from the native part. It recasts the pointer
  * to a SLIM object. */
-void SLIMMatrixTransfer::parametrize_single_iteration(
-                                       int uv_chart_index,
-                                       SLIMData *slim_data)
+void SLIMMatrixTransfer::parametrize_single_iteration(SLIMMatrixTransferChart& mt_chart)
 {
-  param_slim_single_iteration(this, uv_chart_index, slim_data);
+  param_slim_single_iteration(this, mt_chart);
 }
 
 /* Executes slim iterations during live unwrap. needs to provide new selected-pin positions. */
 void SLIMMatrixTransfer::parametrize_live(
-                           int uv_chart_index,
-                           SLIMData *slim_data,
+                           SLIMMatrixTransferChart& mt_chart,
                            int n_pins,
                            std::vector<int>& pinned_vertex_indices,
                            std::vector<double>& pinned_vertex_positions_2D,
@@ -74,8 +68,7 @@ void SLIMMatrixTransfer::parametrize_live(
                            std::vector<int>& selected_pins)
 {
   param_slim_live_unwrap(this,
-                         uv_chart_index,
-                         slim_data,
+                         mt_chart,
                          n_pins,
                          pinned_vertex_indices,
                          pinned_vertex_positions_2D,

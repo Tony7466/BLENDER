@@ -20,6 +20,10 @@
  * ________________|_____________________________________________ */
 
 
+namespace igl {
+  struct SLIMData;
+}
+
 
 struct SLIMMatrixTransferChart {
   int n_verts = 0;
@@ -41,7 +45,13 @@ struct SLIMMatrixTransferChart {
   int* e_matrices = nullptr;
   int* b_vectors = nullptr;
 
-  void* data = nullptr;
+  igl::SLIMData* data = nullptr;
+
+  SLIMMatrixTransferChart() = default;
+  SLIMMatrixTransferChart(SLIMMatrixTransferChart&&) = default;
+
+  SLIMMatrixTransferChart(const SLIMMatrixTransferChart&) = delete;
+  SLIMMatrixTransferChart& operator=(const SLIMMatrixTransferChart&) = delete;
 };
 
 struct SLIMMatrixTransfer {
@@ -62,35 +72,35 @@ struct SLIMMatrixTransfer {
 
   std::vector<SLIMMatrixTransferChart> mt_charts;
 
+  SLIMMatrixTransfer() = default;
+  SLIMMatrixTransfer(const SLIMMatrixTransfer&) = delete;
+  SLIMMatrixTransfer& operator=(const SLIMMatrixTransfer&) = delete;
+
   void parametrize(
     int n_iterations,
     bool are_border_vertices_pinned,
     bool skip_initialization);
 
-  void transfer_uvs_blended_live(
-    SLIMData* slim_data,
-    int uv_chart_index);
+  void transfer_uvs_blended_live(SLIMMatrixTransferChart& mt_chart);
 
   void transfer_uvs_blended(
-    SLIMData* slim_data,
-    int uv_chart_index,
+    SLIMMatrixTransferChart& mt_chart,
     float blend);
 
-  void parametrize_single_iteration(int uv_chart_index, SLIMData* slim_data);
+  void parametrize_single_iteration(SLIMMatrixTransferChart& mt_chart);
 
   void parametrize_live(
-    int uv_chart_index,
+    SLIMMatrixTransferChart& mt_chart,
+    int n_pins,
+    std::vector<int>& pinned_vertex_indices,
+    std::vector<double>& pinned_vertex_positions_2D,
+    int n_selected_pins,
+    std::vector<int>& selected_pins);
 
-    SLIMData* slim_data,
-
-    int n_pins, std::vector<int>& pinned_vertex_indices, std::vector<double>& pinned_vertex_positions_2D,
-
-    int n_selected_pins, std::vector<int>& selected_pins);
-
-  void* setup(
-    int uv_chart_index,
+  igl::SLIMData* setup(
+    SLIMMatrixTransferChart& mt_chart,
     bool are_border_vertices_pinned,
     bool skip_initialization) const;
 
-  void free_data(SLIMData* slim_data);
+  void free_data(igl::SLIMData* slim_data);
 };

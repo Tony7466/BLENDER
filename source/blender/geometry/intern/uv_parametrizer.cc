@@ -4680,6 +4680,8 @@ static void slim_transfer_faces(const PChart* chart, SLIMMatrixTransferChart* mt
 static void slim_convert_blender(ParamHandle *phandle)
 {
   SLIMMatrixTransfer *mt = phandle->slim_mt;
+
+  mt->n_charts = phandle->ncharts;
   mt->mt_charts.resize(phandle->ncharts);
 
   for (int i = 0; i < phandle->ncharts; i++) {
@@ -4888,6 +4890,7 @@ void GEO_uv_parametrizer_slim_begin(ParamHandle *phandle, const MatrixTransferOp
 
   for (int i = 0; i < phandle->ncharts; i++) {
     PChart *chart = phandle->charts[i];
+    SLIMMatrixTransferChart& mt_chart = mt->mt_charts[i];
 
     bool select = false, deselect = false;
     int npins = 0;
@@ -4904,7 +4907,7 @@ void GEO_uv_parametrizer_slim_begin(ParamHandle *phandle, const MatrixTransferOp
         deselect = true;
     }
 
-    mt->mt_charts[i].data = mt->setup(i, mt->fixed_boundary, mt->is_minimize_stretch);
+    mt->mt_charts[i].data = mt->setup(mt_chart, mt->fixed_boundary, mt->is_minimize_stretch);
   }
 }
 
@@ -4914,8 +4917,8 @@ void GEO_uv_parametrizer_slim_stretch_iteration(ParamHandle *phandle, float blen
 
   /* Do one iterationand tranfer UVs. */
   for (int i = 0; i < phandle->ncharts; i++) {
-    mt->parametrize_single_iteration(i, mt->mt_charts[i].data);
-    mt->transfer_uvs_blended(mt->mt_charts[i].data, i, blend);
+    mt->parametrize_single_iteration(mt->mt_charts[i]);
+    mt->transfer_uvs_blended(mt->mt_charts[i], blend);
   }
 
   /* Assign new UVs back to each vertex. */
@@ -4951,14 +4954,13 @@ void GEO_uv_parametrizer_slim_solve_iteration(ParamHandle *phandle)
                                 selected_pins);
 
     mt->parametrize_live(
-                          i,
-                          mt_chart->data,
+                          *mt_chart,
                           n_pins,
                           pinned_vertex_indices,
                           pinned_vertex_positions_2D,
                           n_selected_pins,
                           selected_pins);
-    mt->transfer_uvs_blended_live(mt_chart->data, i);
+    mt->transfer_uvs_blended_live(*mt_chart);
   }
 
   /* Assign new UVs back to each vertex. */

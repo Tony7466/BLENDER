@@ -153,46 +153,46 @@ void retrieve_pinned_vertices(GeometryData &gd, bool border_vertices_are_pinned)
   }
 }
 
-void retrieve_geometry_data_matrices(const SLIMMatrixTransfer *transferred_data,
-                                     const int uv_chart_index,
+void retrieve_geometry_data_matrices(const SLIMMatrixTransfer& mt,
+                                     const SLIMMatrixTransferChart& mt_chart,
                                      GeometryData &gd)
 {
-  gd.number_of_vertices = transferred_data->n_verts[uv_chart_index];
-  gd.number_of_faces = transferred_data->n_faces[uv_chart_index];
+  gd.number_of_vertices = mt_chart.n_verts;
+  gd.number_of_faces = mt_chart.n_faces;
   /* `n_edges` in transferred_data accounts for boundary edges only once. */
-  gd.number_of_edges_twice = transferred_data->n_edges[uv_chart_index] +
-                             transferred_data->n_boundary_vertices[uv_chart_index];
-  gd.number_of_boundary_vertices = transferred_data->n_boundary_vertices[uv_chart_index];
-  gd.number_of_pinned_vertices = transferred_data->n_pinned_vertices[uv_chart_index];
+  gd.number_of_edges_twice = mt_chart.n_edges +
+                             mt_chart.n_boundary_vertices;
+  gd.number_of_boundary_vertices = mt_chart.n_boundary_vertices;
+  gd.number_of_pinned_vertices = mt_chart.n_pinned_vertices;
 
   new (&gd.vertex_positions3d) Map<MatrixXd>(
-      transferred_data->v_matrices[uv_chart_index], gd.number_of_vertices, gd.columns_3);
+      mt_chart.v_matrices, gd.number_of_vertices, gd.columns_3);
   new (&gd.uv_positions2d) Map<MatrixXd>(
-      transferred_data->uv_matrices[uv_chart_index], gd.number_of_vertices, gd.columns_2);
+      mt_chart.uv_matrices, gd.number_of_vertices, gd.columns_2);
   gd.positions_of_pinned_vertices2d = MatrixXd();
 
   new (&gd.faces_by_vertexindices) Map<MatrixXi>(
-      transferred_data->f_matrices[uv_chart_index], gd.number_of_faces, gd.columns_3);
+      mt_chart.f_matrices, gd.number_of_faces, gd.columns_3);
   new (&gd.edges_by_vertexindices) Map<MatrixXi>(
-      transferred_data->e_matrices[uv_chart_index], gd.number_of_edges_twice, gd.columns_2);
+      mt_chart.e_matrices, gd.number_of_edges_twice, gd.columns_2);
   gd.pinned_vertex_indices = VectorXi();
 
   new (&gd.edge_lengths)
-      Map<VectorXd>(transferred_data->el_vectors[uv_chart_index], gd.number_of_edges_twice);
+      Map<VectorXd>(mt_chart.el_vectors, gd.number_of_edges_twice);
   new (&gd.boundary_vertex_indices)
-      Map<VectorXi>(transferred_data->b_vectors[uv_chart_index], gd.number_of_boundary_vertices);
+      Map<VectorXi>(mt_chart.b_vectors, gd.number_of_boundary_vertices);
 
-  gd.with_weighted_parameteriztion = transferred_data->with_weighted_parameterization;
+  gd.with_weighted_parameteriztion = mt.with_weighted_parameterization;
   new (&gd.weights_per_vertex)
-      Map<VectorXf>(transferred_data->w_vectors[uv_chart_index], gd.number_of_vertices);
-  gd.weight_influence = transferred_data->weight_influence;
+      Map<VectorXf>(mt_chart.w_vectors, gd.number_of_vertices);
+  gd.weight_influence = mt.weight_influence;
 
   if (gd.number_of_pinned_vertices != 0) {
     new (&gd.explicitly_pinned_vertex_indices)
-        Map<VectorXi>(transferred_data->p_matrices[uv_chart_index], gd.number_of_pinned_vertices);
+        Map<VectorXi>(mt_chart.p_matrices, gd.number_of_pinned_vertices);
     new (&gd.positions_of_explicitly_pinned_vertices2d)
         Map<Matrix<double, Dynamic, Dynamic, RowMajor>>(
-            transferred_data->pp_matrices[uv_chart_index],
+            mt_chart.pp_matrices,
             gd.number_of_pinned_vertices,
             gd.columns_2);
   }

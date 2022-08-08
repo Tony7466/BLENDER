@@ -30,16 +30,15 @@ namespace slim {
 using namespace igl;
 using namespace Eigen;
 
-void transfer_uvs_back_to_native_part_live(SLIMMatrixTransfer *mt,
-                                           Eigen::MatrixXd &uv,
-                                           int uv_chart_index)
+void transfer_uvs_back_to_native_part_live(SLIMMatrixTransferChart& mt_chart,
+                                           Eigen::MatrixXd &uv)
 {
-  if (!mt->succeeded[uv_chart_index]) {
+  if (!mt_chart.succeeded) {
     return;
   }
 
-  double *uv_coordinate_array = mt->uv_matrices[uv_chart_index];
-  int number_of_vertices = mt->n_verts[uv_chart_index];
+  double *uv_coordinate_array = mt_chart.uv_matrices;
+  int number_of_vertices = mt_chart.n_verts;
 
   for (int i = 0; i < number_of_vertices; i++) {
     *(uv_coordinate_array++) = uv(i, 0);
@@ -47,17 +46,16 @@ void transfer_uvs_back_to_native_part_live(SLIMMatrixTransfer *mt,
   }
 }
 
-void transfer_uvs_back_to_native_part(SLIMMatrixTransfer *mt,
-                                      Eigen::MatrixXd &uv,
-                                      int uv_chart_index)
+void transfer_uvs_back_to_native_part(SLIMMatrixTransferChart& mt_chart,
+                                      Eigen::MatrixXd &uv)
 {
-  if (!mt->succeeded[uv_chart_index]) {
+  if (!mt_chart.succeeded) {
     return;
   }
 
   double *uv_coordinate_array;
-  uv_coordinate_array = mt->uv_matrices[uv_chart_index];
-  int number_of_vertices = mt->n_verts[uv_chart_index];
+  uv_coordinate_array = mt_chart.uv_matrices;
+  int number_of_vertices = mt_chart.n_verts;
 
   for (int i = 0; i < number_of_vertices; i++) {
     for (int j = 0; j < 2; j++) {
@@ -75,18 +73,18 @@ Eigen::MatrixXd get_interactive_result_blended_with_original(float blend,
 }
 
 /* Executes a single iteration of SLIM, must follow a proper setup & initialisation. */
-void param_slim_single_iteration(SLIMMatrixTransfer *mt, int uv_chart_index, SLIMData *slim_data)
+void param_slim_single_iteration(SLIMMatrixTransfer *mt, SLIMMatrixTransferChart& mt_chart)
 {
   int number_of_iterations = 1;
-  try_slim_solve(mt, uv_chart_index, *slim_data, number_of_iterations);
+  try_slim_solve(mt, mt_chart, number_of_iterations);
 }
 
 static void adjust_pins(SLIMData *slim_data,
                         int n_pins,
-                        int *pinned_vertex_indices,
-                        double *pinned_vertex_positions2d,
+                        std::vector<int>& pinned_vertex_indices,
+                        std::vector<double>& pinned_vertex_positions2d,
                         int n_selected_pins,
-                        int *selected_pins)
+                        std::vector<int>& selected_pins)
 {
   if (!slim_data->valid) {
     return;
@@ -136,23 +134,22 @@ static void adjust_pins(SLIMData *slim_data,
 
 /* Executes several iterations of SLIM when used with LiveUnwrap */
 void param_slim_live_unwrap(SLIMMatrixTransfer *mt,
-                            int uv_chart_index,
-                            SLIMData *slim_data,
+                            SLIMMatrixTransferChart& mt_chart,
                             int n_pins,
-                            int *pinned_vertex_indices,
-                            double *pinned_vertex_positions2d,
+                            std::vector<int>& pinned_vertex_indices,
+                            std::vector<double>& pinned_vertex_positions2d,
                             int n_selected_pins,
-                            int *selected_pins)
+                            std::vector<int>& selected_pins)
 {
   int number_of_iterations = 3;
-  adjust_pins(slim_data,
+  adjust_pins((SLIMData*)mt_chart.data,
               n_pins,
               pinned_vertex_indices,
               pinned_vertex_positions2d,
               n_selected_pins,
               selected_pins);
 
-  try_slim_solve(mt, uv_chart_index, *slim_data, number_of_iterations);
+  try_slim_solve(mt, mt_chart, number_of_iterations);
 }
 
 void param_slim(SLIMMatrixTransfer *mt,
@@ -165,14 +162,16 @@ void param_slim(SLIMMatrixTransfer *mt,
   timer.start();
 
   for (int uv_chart_index = 0; uv_chart_index < mt->n_charts; uv_chart_index++) {
-    SLIMData *slim_data = setup_slim(
-        mt, n_iterations, uv_chart_index, timer, border_vertices_are_pinned, skip_initialization);
-    try_slim_solve(mt, uv_chart_index, *slim_data, n_iterations);
+    SLIMMatrixTransferChart& mt_chart = mt->mt_charts[uv_chart_index];
+    mt_chart.data = setup_slim(
+        *mt, mt_chart, n_iterations, timer, border_vertices_are_pinned, skip_initialization);
 
-    correct_map_surface_area_if_necessary(slim_data);
-    transfer_uvs_back_to_native_part(mt, slim_data->V_o, uv_chart_index);
+    try_slim_solve(mt, mt_chart, n_iterations);
 
-    free_slim_data(slim_data);
+    correct_map_surface_area_if_necessary(mt_chart.data);
+    transfer_uvs_back_to_native_part(mt_chart, mt_chart.data->V_o);
+
+    free_slim_data(mt_chart.data);
   }
 };
 
@@ -212,9 +211,9 @@ void initialize_if_needed(GeometryData &gd, SLIMData *slim_data)
 }
 
 /* Transfers all the matrices from the native part and initialises SLIM. */
-SLIMData *setup_slim(const SLIMMatrixTransfer *transferred_data,
+SLIMData *setup_slim(const SLIMMatrixTransfer& mt,
+                     SLIMMatrixTransferChart& mt_chart,
                      int n_iterations,
-                     int uv_chart_index,
                      igl::Timer &timer,
                      bool border_vertices_are_pinned,
                      bool skip_initialization)
@@ -222,21 +221,21 @@ SLIMData *setup_slim(const SLIMMatrixTransfer *transferred_data,
   SLIMData *slim_data = new SLIMData();
 
   try {
-    if (!transferred_data->succeeded[uv_chart_index]) {
+    if (!mt_chart.succeeded) {
       throw SlimFailedException();
     }
 
     GeometryData geometry_data;
-    retrieve_geometry_data_matrices(transferred_data, uv_chart_index, geometry_data);
+    retrieve_geometry_data_matrices(mt, mt_chart, geometry_data);
 
     retrieve_pinned_vertices(geometry_data, border_vertices_are_pinned);
-    transferred_data->n_pinned_vertices[uv_chart_index] = geometry_data.number_of_pinned_vertices;
+    mt_chart.n_pinned_vertices = geometry_data.number_of_pinned_vertices;
 
     construct_slim_data(geometry_data,
                         slim_data,
                         skip_initialization,
-                        transferred_data->reflection_mode,
-                        transferred_data->relative_scale);
+                        mt.reflection_mode,
+                        mt.relative_scale);
     slim_data->nIterations = n_iterations;
 
     initialize_if_needed(geometry_data, slim_data);
@@ -255,23 +254,23 @@ SLIMData *setup_slim(const SLIMMatrixTransfer *transferred_data,
   }
   catch (SlimFailedException &) {
     slim_data->valid = false;
-    transferred_data->succeeded[uv_chart_index] = false;
+    mt_chart.succeeded = false;
   }
 
   return slim_data;
 }
 
-void try_slim_solve(SLIMMatrixTransfer *mt, int uv_chart_index, SLIMData &data, int iter_num)
+void try_slim_solve(SLIMMatrixTransfer *mt, SLIMMatrixTransferChart& mt_chart, int iter_num)
 {
-  if (!mt->succeeded[uv_chart_index]) {
+  if (!mt_chart.succeeded) {
     return;
   }
 
   try {
-    slim_solve(data, iter_num);
+    slim_solve(*(SLIMData*)mt_chart.data, iter_num);
   }
   catch (SlimFailedException &) {
-    mt->succeeded[uv_chart_index] = false;
+      mt_chart.succeeded = false;
   }
 }
 
