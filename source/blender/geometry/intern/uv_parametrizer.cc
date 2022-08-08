@@ -17,7 +17,6 @@
 #include "BLI_polyfill_2d_beautify.h"
 #include "BLI_rand.h"
 
-#include "slim_matrix_transfer.h"
 #include "slim_capi.h"
 
 #include "eigen_capi.h"
@@ -158,16 +157,11 @@ typedef struct PChart {
   } u;
 
   struct PChartSLIM {
-    bool pins_exist;
     void *ptr;
   } slim;
 
-  uchar flag;
-  ParamHandle *handle;
   bool has_pins;
 } PChart;
-
-enum PChartFlag { PCHART_HAS_PINS = 1, PCHART_NOFLUSH = 2 };
 
 enum PHandleState {
   PHANDLE_STATE_ALLOCATED,
@@ -4776,14 +4770,12 @@ static void slim_flush_uvs(ParamHandle *phandle,
         (*count_changed)++;
       }
 
-      if (!(chart->flag & PCHART_NOFLUSH)) {
-        double *UV = mt->uv_matrices[i];
+      double *UV = mt->uv_matrices[i];
 
-        for (v = chart->verts; v; v = v->nextlink) {
-          vid = v->slim_id;
-          v->uv[0] = UV[vid * 2];
-          v->uv[1] = UV[vid * 2 + 1];
-        }
+      for (v = chart->verts; v; v = v->nextlink) {
+        vid = v->slim_id;
+        v->uv[0] = UV[vid * 2];
+        v->uv[1] = UV[vid * 2 + 1];
       }
     }
     else {

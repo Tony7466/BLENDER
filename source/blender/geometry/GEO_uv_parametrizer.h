@@ -3,8 +3,7 @@
 #pragma once
 
 #include "BLI_sys_types.h" /* for intptr_t support */
-#include "DNA_ID.h"
-#include "slim_matrix_transfer.h"
+#include "DNA_ID.h" /* for MAX_ID_NAME */
 
 /** \file
  * \ingroup geo
