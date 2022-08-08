@@ -14,13 +14,12 @@ using namespace igl;
 using namespace slim;
 
 void SLIMMatrixTransfer::transfer_uvs_blended_live(
-                                    void *slim_data_ptr,
+                                    SLIMData *slim_data,
                                     int uv_chart_index)
 {
   if (!succeeded[uv_chart_index]) {
     return;
   }
-  SLIMData *slim_data = (SLIMData *)slim_data_ptr;
   correct_map_surface_area_if_necessary(slim_data);
   transfer_uvs_back_to_native_part_live(this, slim_data->V_o, uv_chart_index);
 }
@@ -29,7 +28,7 @@ void SLIMMatrixTransfer::transfer_uvs_blended_live(
  * The blend parameter decides the linear blending between the original UV map and the one
  * optained from the accumulated SLIM iterations so far. */
 void SLIMMatrixTransfer::transfer_uvs_blended(
-                               void *slim_data_ptr,
+                               SLIMData *slim_data,
                                int uv_chart_index,
                                float blend)
 {
@@ -37,7 +36,6 @@ void SLIMMatrixTransfer::transfer_uvs_blended(
     return;
   }
 
-  SLIMData *slim_data = (SLIMData *)slim_data_ptr;
   Eigen::MatrixXd blended_uvs = get_interactive_result_blended_with_original(blend, slim_data);
   correct_map_surface_area_if_necessary(slim_data);
   transfer_uvs_back_to_native_part(this, blended_uvs, uv_chart_index);
@@ -60,23 +58,21 @@ void* SLIMMatrixTransfer::setup(
  * to a SLIM object. */
 void SLIMMatrixTransfer::parametrize_single_iteration(
                                        int uv_chart_index,
-                                       void *slim_data_ptr)
+                                       SLIMData *slim_data)
 {
-  SLIMData *slim_data = (SLIMData *)slim_data_ptr;
   param_slim_single_iteration(this, uv_chart_index, slim_data);
 }
 
 /* Executes slim iterations during live unwrap. needs to provide new selected-pin positions. */
 void SLIMMatrixTransfer::parametrize_live(
                            int uv_chart_index,
-                           void *slim_data_ptr,
+                           SLIMData *slim_data,
                            int n_pins,
-                           int *pinned_vertex_indices,
-                           double *pinned_vertex_positions_2D,
+                           std::vector<int>& pinned_vertex_indices,
+                           std::vector<double>& pinned_vertex_positions_2D,
                            int n_selected_pins,
-                           int *selected_pins)
+                           std::vector<int>& selected_pins)
 {
-  SLIMData *slim_data = (SLIMData *)slim_data_ptr;
   param_slim_live_unwrap(this,
                          uv_chart_index,
                          slim_data,
@@ -95,7 +91,7 @@ void SLIMMatrixTransfer::parametrize(
   param_slim(this, n_iterations, are_border_vertices_pinned, skip_initialization);
 }
 
-void SLIMMatrixTransfer::free_data(void *slim_data_ptr)
+void SLIMMatrixTransfer::free_data(SLIMData* slim_data)
 {
-  free_slim_data((SLIMData *)slim_data_ptr);
+  free_slim_data(slim_data);
 }

@@ -20,31 +20,47 @@
  * ________________|_____________________________________________ */
 
 
+
+struct SLIMMatrixTransferChart {
+  int n_verts = 0;
+  int n_faces = 0;
+  int n_pinned_vertices = 0;
+  int n_boundary_vertices = 0;
+  int n_edges = 0;
+
+  bool succeeded = false;
+
+  double* v_matrices = nullptr;
+  double* uv_matrices = nullptr;
+  double* pp_matrices = nullptr;
+  double* el_vectors = nullptr;
+  float* w_vectors = nullptr;
+
+  int* f_matrices = nullptr;
+  int* p_matrices = nullptr;
+  int* e_matrices = nullptr;
+  int* b_vectors = nullptr;
+
+  void* data = nullptr;
+};
+
 struct SLIMMatrixTransfer {
-  int n_charts;
-  int *n_verts, *n_faces, *n_pinned_vertices, *n_boundary_vertices, *n_edges;
+  int n_charts = 0;
 
-  bool *succeeded;
-
-  double **v_matrices, **uv_matrices, **pp_matrices;
-  double **el_vectors;
-  float **w_vectors;
-
-  int **f_matrices, **p_matrices, **e_matrices;
-  int **b_vectors;
-
-  bool fixed_boundary;
-  bool pinned_vertices;
-  bool with_weighted_parameterization;
-  double weight_influence;
-  bool transform_islands;
-  int reflection_mode;
-  double relative_scale;
+  bool fixed_boundary = false;
+  bool pinned_vertices = false;
+  bool with_weighted_parameterization = false;
+  double weight_influence = 0.0;
+  bool transform_islands = false;
+  int reflection_mode = 0;
+  double relative_scale = 0.0;
 
   /* External. */
-  int n_iterations;
-  bool skip_initialization;
-  bool is_minimize_stretch;
+  int n_iterations = 0;
+  bool skip_initialization = false;
+  bool is_minimize_stretch = false;
+
+  std::vector<SLIMMatrixTransferChart> mt_charts;
 
   void parametrize(
     int n_iterations,
@@ -52,29 +68,29 @@ struct SLIMMatrixTransfer {
     bool skip_initialization);
 
   void transfer_uvs_blended_live(
-    void* slim_data_ptr,
+    SLIMData* slim_data,
     int uv_chart_index);
 
   void transfer_uvs_blended(
-    void* slim,
+    SLIMData* slim_data,
     int uv_chart_index,
     float blend);
 
-  void parametrize_single_iteration(int uv_chart_index, void* slim);
+  void parametrize_single_iteration(int uv_chart_index, SLIMData* slim_data);
 
   void parametrize_live(
     int uv_chart_index,
-    void* slim_data_ptr,
-    int n_pins,
-    int* selected_pinned_vertex_indices,
-    double* selected_pinned_vertex_positions_2D,
-    int n_selected_pins,
-    int* selected_pins);
+
+    SLIMData* slim_data,
+
+    int n_pins, std::vector<int>& pinned_vertex_indices, std::vector<double>& pinned_vertex_positions_2D,
+
+    int n_selected_pins, std::vector<int>& selected_pins);
 
   void* setup(
     int uv_chart_index,
     bool are_border_vertices_pinned,
     bool skip_initialization) const;
 
-  void free_data(void* slim_data_ptr);
+  void free_data(SLIMData* slim_data);
 };
