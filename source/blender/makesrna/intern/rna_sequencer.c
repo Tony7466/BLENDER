@@ -1754,12 +1754,12 @@ static void rna_def_color_balance(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "invert_gain", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", SEQ_COLOR_BALANCE_INVERSE_GAIN);
-  RNA_def_property_ui_text(prop, "Inverse Gain", "Invert the gain color`");
+  RNA_def_property_ui_text(prop, "Inverse Gain", "Invert the gain color");
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_SequenceColorBalance_update");
 
   prop = RNA_def_property(srna, "invert_slope", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", SEQ_COLOR_BALANCE_INVERSE_SLOPE);
-  RNA_def_property_ui_text(prop, "Inverse Slope", "Invert the slope color`");
+  RNA_def_property_ui_text(prop, "Inverse Slope", "Invert the slope color");
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_SequenceColorBalance_update");
 
   prop = RNA_def_property(srna, "invert_offset", PROP_BOOLEAN, PROP_NONE);
@@ -2331,7 +2331,6 @@ static void rna_def_speed_factor(StructRNA *srna)
   RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_range(prop, 0.1f, FLT_MAX);
   RNA_def_property_ui_range(prop, 1.0f, 100.0f, 10.0, 3);
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Speed Factor", "Multiply playback speed");
   RNA_def_property_float_funcs(
       prop, NULL, "rna_Sequence_speed_factor_set", NULL); /* overlap test */

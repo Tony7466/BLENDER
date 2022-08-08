@@ -137,7 +137,6 @@ void EDBM_update_extern(struct Mesh *me, bool do_tessellation, bool is_destructi
  */
 struct UvElementMap *BM_uv_element_map_create(struct BMesh *bm,
                                               const struct Scene *scene,
-                                              bool face_selected,
                                               bool uv_selected,
                                               bool use_winding,
                                               bool do_islands);
@@ -145,6 +144,7 @@ void BM_uv_element_map_free(struct UvElementMap *element_map);
 struct UvElement *BM_uv_element_get(struct UvElementMap *map,
                                     struct BMFace *efa,
                                     struct BMLoop *l);
+struct UvElement *BM_uv_element_get_head(struct UvElementMap *map, struct UvElement *child);
 
 /**
  * Can we edit UV's for this mesh?
@@ -425,6 +425,9 @@ void paintvert_select_ungrouped(struct Object *ob, bool extend, bool flush_flags
 void paintvert_flush_flags(struct Object *ob);
 void paintvert_tag_select_update(struct bContext *C, struct Object *ob);
 
+void paintvert_hide(struct bContext *C, struct Object *ob, bool unselected);
+void paintvert_reveal(struct bContext *C, struct Object *ob, bool select);
+
 /* mirrtopo */
 typedef struct MirrTopoStore_t {
   intptr_t *index_lookup;
@@ -550,16 +553,10 @@ void ED_mesh_uv_loop_reset_ex(struct Mesh *me, int layernum);
 bool ED_mesh_color_ensure(struct Mesh *me, const char *name);
 int ED_mesh_color_add(
     struct Mesh *me, const char *name, bool active_set, bool do_init, struct ReportList *reports);
-bool ED_mesh_color_remove_index(struct Mesh *me, int n);
-bool ED_mesh_color_remove_active(struct Mesh *me);
-bool ED_mesh_color_remove_named(struct Mesh *me, const char *name);
-
-bool ED_mesh_sculpt_color_ensure(struct Mesh *me, const char *name);
-int ED_mesh_sculpt_color_add(
-    struct Mesh *me, const char *name, bool active_set, bool do_init, struct ReportList *reports);
-bool ED_mesh_sculpt_color_remove_index(struct Mesh *me, int n);
-bool ED_mesh_sculpt_color_remove_active(struct Mesh *me);
-bool ED_mesh_sculpt_color_remove_named(struct Mesh *me, const char *name);
+int ED_mesh_sculpt_color_add(struct Mesh *me,
+                             const char *name,
+                             bool do_init,
+                             struct ReportList *reports);
 
 void ED_mesh_report_mirror(struct wmOperator *op, int totmirr, int totfail);
 void ED_mesh_report_mirror_ex(struct wmOperator *op, int totmirr, int totfail, char selectmode);

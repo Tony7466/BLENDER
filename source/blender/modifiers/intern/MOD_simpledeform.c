@@ -438,7 +438,7 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
   if (smd->origin != NULL) {
     DEG_add_object_relation(
         ctx->node, smd->origin, DEG_OB_COMP_TRANSFORM, "SimpleDeform Modifier");
-    DEG_add_modifier_to_transform_relation(ctx->node, "SimpleDeform Modifier");
+    DEG_add_depends_on_transform_relation(ctx->node, "SimpleDeform Modifier");
   }
 }
 
@@ -564,7 +564,7 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_SimpleDeform = {
-    /* name */ "SimpleDeform",
+    /* name */ N_("SimpleDeform"),
     /* structName */ "SimpleDeformModifierData",
     /* structSize */ sizeof(SimpleDeformModifierData),
     /* srna */ &RNA_SimpleDeformModifier,

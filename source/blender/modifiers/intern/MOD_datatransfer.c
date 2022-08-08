@@ -129,7 +129,7 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
     if (dtmd->flags & MOD_DATATRANSFER_OBSRC_TRANSFORM) {
       DEG_add_object_relation(
           ctx->node, dtmd->ob_source, DEG_OB_COMP_TRANSFORM, "DataTransfer Modifier");
-      DEG_add_modifier_to_transform_relation(ctx->node, "DataTransfer Modifier");
+      DEG_add_depends_on_transform_relation(ctx->node, "DataTransfer Modifier");
     }
   }
 }
@@ -474,7 +474,7 @@ static void panelRegister(ARegionType *region_type)
 #undef DT_TYPES_AFFECT_MESH
 
 ModifierTypeInfo modifierType_DataTransfer = {
-    /* name */ "DataTransfer",
+    /* name */ N_("DataTransfer"),
     /* structName */ "DataTransferModifierData",
     /* structSize */ sizeof(DataTransferModifierData),
     /* srna */ &RNA_DataTransferModifier,

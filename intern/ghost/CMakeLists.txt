@@ -3,7 +3,9 @@
 
 set(INC
   .
+  ../clog
   ../glew-mx
+  ../../source/blender/blenlib
   ../../source/blender/imbuf
   ../../source/blender/makesdna
 )
@@ -24,6 +26,7 @@ set(SRC
   intern/GHOST_ISystemPaths.cpp
   intern/GHOST_ModifierKeys.cpp
   intern/GHOST_Path-api.cpp
+  intern/GHOST_PathUtils.cpp
   intern/GHOST_Rect.cpp
   intern/GHOST_System.cpp
   intern/GHOST_TimerManager.cpp
@@ -58,6 +61,7 @@ set(SRC
   intern/GHOST_EventTrackpad.h
   intern/GHOST_EventWheel.h
   intern/GHOST_ModifierKeys.h
+  intern/GHOST_PathUtils.h
   intern/GHOST_System.h
   intern/GHOST_SystemPaths.h
   intern/GHOST_TimerManager.h
@@ -65,6 +69,8 @@ set(SRC
   intern/GHOST_Util.h
   intern/GHOST_Window.h
   intern/GHOST_WindowManager.h
+  intern/GHOST_utildefines.h
+  intern/GHOST_utildefines_variadic.h
 )
 
 set(LIB
@@ -269,6 +275,16 @@ elseif(WITH_GHOST_X11 OR WITH_GHOST_WAYLAND)
       ${xkbcommon_INCLUDE_DIRS}
       ${wayland-cursor_INCLUDE_DIRS}
     )
+
+    if(WITH_GHOST_WAYLAND_DYNLOAD)
+      list(APPEND INC_SYS
+        ../../intern/wayland_dynload/extern
+      )
+      list(APPEND LIB
+        bf_intern_wayland_dynload
+      )
+      add_definitions(-DWITH_GHOST_WAYLAND_DYNLOAD)
+    endif()
 
     if(WITH_GHOST_WAYLAND_DBUS)
       list(APPEND INC_SYS

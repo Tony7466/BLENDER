@@ -122,7 +122,7 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
     DEG_add_object_relation(ctx->node, hmd->object, DEG_OB_COMP_TRANSFORM, "Hook Modifier");
   }
   /* We need own transformation as well. */
-  DEG_add_modifier_to_transform_relation(ctx->node, "Hook Modifier");
+  DEG_add_depends_on_transform_relation(ctx->node, "Hook Modifier");
 }
 
 struct HookData_cb {
@@ -545,7 +545,7 @@ static void blendRead(BlendDataReader *reader, ModifierData *md)
 }
 
 ModifierTypeInfo modifierType_Hook = {
-    /* name */ "Hook",
+    /* name */ N_("Hook"),
     /* structName */ "HookModifierData",
     /* structSize */ sizeof(HookModifierData),
     /* srna */ &RNA_HookModifier,

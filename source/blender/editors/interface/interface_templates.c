@@ -659,6 +659,27 @@ static void template_id_liboverride_hierarchy_create(bContext *C,
   ID *id = idptr->data;
   ID *owner_id = template_ui->ptr.owner_id;
 
+  /* If this is called on an already local override, 'toggle' between user-editable state, and
+   * system override with reset. */
+  if (!ID_IS_LINKED(id) && ID_IS_OVERRIDE_LIBRARY(id)) {
+    if (!ID_IS_OVERRIDE_LIBRARY_REAL(id)) {
+      BKE_lib_override_library_get(bmain, id, &id);
+    }
+    if (id->override_library->flag & IDOVERRIDE_LIBRARY_FLAG_SYSTEM_DEFINED) {
+      id->override_library->flag &= ~IDOVERRIDE_LIBRARY_FLAG_SYSTEM_DEFINED;
+      *r_undo_push_label = "Make Library Override Hierarchy Editable";
+    }
+    else {
+      BKE_lib_override_library_id_reset(bmain, id, true);
+      *r_undo_push_label = "Clear Library Override Hierarchy";
+    }
+
+    WM_event_add_notifier(C, NC_WM | ND_DATACHANGED, NULL);
+    WM_event_add_notifier(C, NC_WM | ND_LIB_OVERRIDE_CHANGED, NULL);
+    WM_event_add_notifier(C, NC_SPACE | ND_SPACE_VIEW3D, NULL);
+    return;
+  }
+
   /* Attempt to perform a hierarchy override, based on contextual data available.
    * NOTE: do not attempt to perform such hierarchy override at all cost, if there is not enough
    * context, better to abort than create random overrides all over the place. */
@@ -741,8 +762,15 @@ static void template_id_liboverride_hierarchy_create(bContext *C,
         if (object_active != NULL) {
           object_active->id.tag |= LIB_TAG_DOIT;
         }
-        BKE_lib_override_library_create(
-            bmain, scene, view_layer, NULL, id, &collection_active->id, NULL, &id_override, false);
+        BKE_lib_override_library_create(bmain,
+                                        scene,
+                                        view_layer,
+                                        NULL,
+                                        id,
+                                        &collection_active->id,
+                                        NULL,
+                                        &id_override,
+                                        U.experimental.use_override_new_fully_editable);
       }
       else if (object_active != NULL && !ID_IS_LINKED(object_active) &&
                &object_active->instance_collection->id == id) {
@@ -755,7 +783,7 @@ static void template_id_liboverride_hierarchy_create(bContext *C,
                                         &object_active->id,
                                         &object_active->id,
                                         &id_override,
-                                        false);
+                                        U.experimental.use_override_new_fully_editable);
       }
       break;
     case ID_OB:
@@ -765,8 +793,15 @@ static void template_id_liboverride_hierarchy_create(bContext *C,
         if (object_active != NULL) {
           object_active->id.tag |= LIB_TAG_DOIT;
         }
-        BKE_lib_override_library_create(
-            bmain, scene, view_layer, NULL, id, &collection_active->id, NULL, &id_override, false);
+        BKE_lib_override_library_create(bmain,
+                                        scene,
+                                        view_layer,
+                                        NULL,
+                                        id,
+                                        &collection_active->id,
+                                        NULL,
+                                        &id_override,
+                                        U.experimental.use_override_new_fully_editable);
       }
       break;
     case ID_ME:
@@ -796,12 +831,19 @@ static void template_id_liboverride_hierarchy_create(bContext *C,
                                           &collection_active->id,
                                           NULL,
                                           &id_override,
-                                          false);
+                                          U.experimental.use_override_new_fully_editable);
         }
         else {
           object_active->id.tag |= LIB_TAG_DOIT;
-          BKE_lib_override_library_create(
-              bmain, scene, view_layer, NULL, id, &object_active->id, NULL, &id_override, false);
+          BKE_lib_override_library_create(bmain,
+                                          scene,
+                                          view_layer,
+                                          NULL,
+                                          id,
+                                          &object_active->id,
+                                          NULL,
+                                          &id_override,
+                                          U.experimental.use_override_new_fully_editable);
         }
       }
       break;
@@ -897,12 +939,19 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
       break;
     case UI_ID_OVERRIDE:
       if (id && ID_IS_OVERRIDE_LIBRARY(id)) {
-        BKE_lib_override_library_make_local(id);
-        /* Reassign to get proper updates/notifiers. */
-        idptr = RNA_property_pointer_get(&template_ui->ptr, template_ui->prop);
-        RNA_property_pointer_set(&template_ui->ptr, template_ui->prop, idptr, NULL);
-        RNA_property_update(C, &template_ui->ptr, template_ui->prop);
-        undo_push_label = "Make Local";
+        Main *bmain = CTX_data_main(C);
+        if (CTX_wm_window(C)->eventstate->modifier & KM_SHIFT) {
+          template_id_liboverride_hierarchy_create(
+              C, bmain, template_ui, &idptr, &undo_push_label);
+        }
+        else {
+          BKE_lib_override_library_make_local(id);
+          /* Reassign to get proper updates/notifiers. */
+          idptr = RNA_property_pointer_get(&template_ui->ptr, template_ui->prop);
+          RNA_property_pointer_set(&template_ui->ptr, template_ui->prop, idptr, NULL);
+          RNA_property_update(C, &template_ui->ptr, template_ui->prop);
+          undo_push_label = "Make Local";
+        }
       }
       break;
     case UI_ID_ALONE:
@@ -1021,6 +1070,26 @@ static const char *template_id_browse_tip(const StructRNA *type)
     }
   }
   return N_("Browse ID data to be linked");
+}
+
+/**
+ * Add a superimposed extra icon to \a but, for workspace pinning.
+ * Rather ugly special handling, but this is really a special case at this point, nothing worth
+ * generalizing.
+ */
+static void template_id_workspace_pin_extra_icon(const TemplateID *template_ui, uiBut *but)
+{
+  if ((template_ui->idcode != ID_SCE) || (template_ui->ptr.type != &RNA_Window)) {
+    return;
+  }
+
+  const wmWindow *win = template_ui->ptr.data;
+  const WorkSpace *workspace = WM_window_get_active_workspace(win);
+  UI_but_extra_operator_icon_add(but,
+                                 "WORKSPACE_OT_scene_pin_toggle",
+                                 WM_OP_INVOKE_DEFAULT,
+                                 (workspace->flags & WORKSPACE_USE_PIN_SCENE) ? ICON_PINNED :
+                                                                                ICON_UNPINNED);
 }
 
 /**
@@ -1219,6 +1288,8 @@ static void template_ID(const bContext *C,
     if (user_alert) {
       UI_but_flag_enable(but, UI_BUT_REDALERT);
     }
+
+    template_id_workspace_pin_extra_icon(template_ui, but);
 
     if (ID_IS_LINKED(id)) {
       const bool disabled = !BKE_idtype_idcode_is_localizable(GS(id->name));
@@ -6631,7 +6702,7 @@ void uiTemplateCacheFileTimeSettings(uiLayout *layout, PointerRNA *fileptr)
 }
 
 static void cache_file_layer_item(uiList *UNUSED(ui_list),
-                                  bContext *UNUSED(C),
+                                  const bContext *UNUSED(C),
                                   uiLayout *layout,
                                   PointerRNA *UNUSED(dataptr),
                                   PointerRNA *itemptr,

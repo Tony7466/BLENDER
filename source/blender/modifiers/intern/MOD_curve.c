@@ -97,7 +97,7 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
     DEG_add_special_eval_flag(ctx->node, &cmd->object->id, DAG_EVAL_NEED_CURVE_PATH);
   }
 
-  DEG_add_modifier_to_transform_relation(ctx->node, "Curve Modifier");
+  DEG_add_depends_on_transform_relation(ctx->node, "Curve Modifier");
 }
 
 static void deformVerts(ModifierData *md,
@@ -203,7 +203,7 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_Curve = {
-    /* name */ "Curve",
+    /* name */ N_("Curve"),
     /* structName */ "CurveModifierData",
     /* structSize */ sizeof(CurveModifierData),
     /* srna */ &RNA_CurveModifier,

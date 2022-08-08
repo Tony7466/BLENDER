@@ -33,10 +33,12 @@ class GLTexture : public Texture {
   /** opengl identifier for texture. */
   GLuint tex_id_ = 0;
   /** Legacy workaround for texture copy. Created when using framebuffer_get(). */
-  struct GPUFrameBuffer *framebuffer_ = NULL;
+  struct GPUFrameBuffer *framebuffer_ = nullptr;
   /** True if this texture is bound to at least one texture unit. */
   /* TODO(fclem): How do we ensure thread safety here? */
   bool is_bound_ = false;
+  /** Same as is_bound_ but for image slots. */
+  bool is_bound_image_ = false;
   /** True if pixels in the texture have been initialized. */
   bool has_pixels_ = false;
 

@@ -87,7 +87,7 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
   CastModifierData *cmd = (CastModifierData *)md;
   if (cmd->object != NULL) {
     DEG_add_object_relation(ctx->node, cmd->object, DEG_OB_COMP_TRANSFORM, "Cast Modifier");
-    DEG_add_modifier_to_transform_relation(ctx->node, "Cast Modifier");
+    DEG_add_depends_on_transform_relation(ctx->node, "Cast Modifier");
   }
 }
 
@@ -559,7 +559,7 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_Cast = {
-    /* name */ "Cast",
+    /* name */ N_("Cast"),
     /* structName */ "CastModifierData",
     /* structSize */ sizeof(CastModifierData),
     /* srna */ &RNA_CastModifier,

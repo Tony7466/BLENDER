@@ -3,6 +3,9 @@
 /** \file
  * \ingroup gpu
  */
+
+#pragma once
+
 #include "MEM_guardedalloc.h"
 
 #include "gpu_context_private.hh"
@@ -12,7 +15,9 @@
 
 #include "mtl_backend.hh"
 #include "mtl_capabilities.hh"
+#include "mtl_common.hh"
 #include "mtl_framebuffer.hh"
+#include "mtl_memory.hh"
 #include "mtl_texture.hh"
 
 #include <Cocoa/Cocoa.h>
@@ -30,7 +35,6 @@ class MTLContext;
 class MTLCommandBufferManager;
 class MTLShader;
 class MTLUniformBuf;
-class MTLBuffer;
 
 /* Structs containing information on current binding state for textures and samplers. */
 struct MTLTextureBinding {
@@ -56,10 +60,13 @@ struct MTLSamplerBinding {
 struct MTLRenderPassState {
   friend class MTLContext;
 
+  MTLRenderPassState(MTLContext &context, MTLCommandBufferManager &command_buffer_manager)
+      : ctx(context), cmd(command_buffer_manager){};
+
   /* Given a RenderPassState is associated with a live RenderCommandEncoder,
    * this state sits within the MTLCommandBufferManager. */
-  MTLCommandBufferManager *cmd;
-  MTLContext *ctx;
+  MTLContext &ctx;
+  MTLCommandBufferManager &cmd;
 
   /* Caching of resource bindings for active MTLRenderCommandEncoder.
    * In Metal, resource bindings are local to the MTLCommandEncoder,
@@ -109,9 +116,6 @@ struct MTLRenderPassState {
 
   SamplerStateBindingCached cached_vertex_sampler_state_bindings[MTL_MAX_TEXTURE_SLOTS];
   SamplerStateBindingCached cached_fragment_sampler_state_bindings[MTL_MAX_TEXTURE_SLOTS];
-
-  /* Prepare. */
-  void prepare(MTLCommandBufferManager *cmd, MTLContext *ctx);
 
   /* Reset RenderCommandEncoder binding state. */
   void reset_state();
@@ -446,18 +450,6 @@ struct MTLContextGlobalShaderPipelineState {
   float line_width = 1.0f;
 };
 
-/* Metal Buffer */
-struct MTLTemporaryBufferRange {
-  id<MTLBuffer> metal_buffer;
-  void *host_ptr;
-  unsigned long long buffer_offset;
-  unsigned long long size;
-  MTLResourceOptions options;
-
-  void flush();
-  bool requires_flush();
-};
-
 /* Command Buffer Manager - Owned by MTLContext.
  * The MTLCommandBufferManager represents all work associated with
  * a command buffer of a given identity. This manager is a fixed-state
@@ -477,14 +469,14 @@ class MTLCommandBufferManager {
  public:
   /* Event to coordinate sequential execution across all "main" command buffers. */
   static id<MTLEvent> sync_event;
-  static unsigned long long event_signal_val;
+  static uint64_t event_signal_val;
 
   /* Counter for active command buffers. */
   static int num_active_cmd_bufs;
 
  private:
   /* Associated Context and properties. */
-  MTLContext *context_ = nullptr;
+  MTLContext &context_;
   bool supports_render_ = false;
 
   /* CommandBuffer tracking. */
@@ -516,7 +508,9 @@ class MTLCommandBufferManager {
   bool empty_ = true;
 
  public:
-  void prepare(MTLContext *ctx, bool supports_render = true);
+  MTLCommandBufferManager(MTLContext &context)
+      : context_(context), render_pass_state_(context, *this){};
+  void prepare(bool supports_render = true);
 
   /* If wait is true, CPU will stall until GPU work has completed. */
   bool submit(bool wait);
@@ -582,7 +576,7 @@ class MTLContext : public Context {
 
   /* Texture Samplers. */
   /* Cache of generated MTLSamplerState objects based on permutations of `eGPUSamplerState`. */
-  id<MTLSamplerState> sampler_state_cache_[GPU_SAMPLER_MAX] = {0};
+  id<MTLSamplerState> sampler_state_cache_[GPU_SAMPLER_MAX];
   id<MTLSamplerState> default_sampler_state_ = nil;
 
   /* When texture sampler count exceeds the resource bind limit, an
@@ -595,6 +589,11 @@ class MTLContext : public Context {
 
   /* Frame. */
   bool is_inside_frame_ = false;
+  uint current_frame_index_;
+
+  /* Visibility buffer for MTLQuery results. */
+  gpu::MTLBuffer *visibility_buffer_ = nullptr;
+  bool visibility_is_dirty_ = false;
 
  public:
   /* Shaders and Pipeline state. */
@@ -603,6 +602,10 @@ class MTLContext : public Context {
   /* Metal API Resource Handles. */
   id<MTLCommandQueue> queue = nil;
   id<MTLDevice> device = nil;
+
+  /* Memory Management */
+  MTLScratchBufferManager memory_manager;
+  static MTLBufferPool global_memory_manager;
 
   /* CommandBuffer managers. */
   MTLCommandBufferManager main_command_buffer;
@@ -623,8 +626,13 @@ class MTLContext : public Context {
 
   void memory_statistics_get(int *total_mem, int *free_mem) override;
 
+  static MTLContext *get()
+  {
+    return static_cast<MTLContext *>(Context::get());
+  }
+
   void debug_group_begin(const char *name, int index) override;
-  void debug_group_end(void) override;
+  void debug_group_end() override;
 
   /*** MTLContext Utility functions. */
   /*
@@ -664,6 +672,18 @@ class MTLContext : public Context {
   void set_scissor(int scissor_x, int scissor_y, int scissor_width, int scissor_height);
   void set_scissor_enabled(bool scissor_enabled);
 
+  /* Visibility buffer control. */
+  void set_visibility_buffer(gpu::MTLBuffer *buffer);
+  gpu::MTLBuffer *get_visibility_buffer() const;
+
+  /* Flag whether the visibility buffer for query results
+   * has changed. This requires a new RenderPass in order
+   * to update.*/
+  bool is_visibility_dirty() const;
+
+  /* Reset dirty flag state for visibility buffer. */
+  void clear_visibility_dirty();
+
   /* Texture utilities. */
   MTLContextTextureUtils &get_texture_utils()
   {
@@ -678,6 +698,21 @@ class MTLContext : public Context {
   bool get_inside_frame()
   {
     return is_inside_frame_;
+  }
+
+  uint get_current_frame_index()
+  {
+    return current_frame_index_;
+  }
+
+  MTLScratchBufferManager &get_scratchbuffer_manager()
+  {
+    return this->memory_manager;
+  }
+
+  static MTLBufferPool &get_global_memory_manager()
+  {
+    return MTLContext::global_memory_manager;
   }
 };
 

@@ -179,13 +179,19 @@ void OBJWriter::write_mtllib_name(const StringRefNull mtl_filepath) const
   fh.write_to_file(outfile_);
 }
 
+static void spaces_to_underscores(std::string &r_name)
+{
+  std::replace(r_name.begin(), r_name.end(), ' ', '_');
+}
+
 void OBJWriter::write_object_name(FormatHandler<eFileType::OBJ> &fh,
                                   const OBJMesh &obj_mesh_data) const
 {
-  const char *object_name = obj_mesh_data.get_object_name();
+  std::string object_name = obj_mesh_data.get_object_name();
+  spaces_to_underscores(object_name);
   if (export_params_.export_object_groups) {
-    const std::string object_name = obj_mesh_data.get_object_name();
-    const char *mesh_name = obj_mesh_data.get_object_mesh_name();
+    std::string mesh_name = obj_mesh_data.get_object_mesh_name();
+    spaces_to_underscores(mesh_name);
     fh.write<eOBJSyntaxElement::object_group>(object_name + "_" + mesh_name);
     return;
   }
@@ -254,9 +260,8 @@ void OBJWriter::write_vertex_coords(FormatHandler<eFileType::OBJ> &fh,
     colors_layer = BKE_id_attributes_active_color_get(&mesh->id);
   }
   if (write_colors && (colors_layer != nullptr)) {
-    MeshComponent component;
-    component.replace(mesh, GeometryOwnershipType::ReadOnly);
-    VArray<ColorGeometry4f> attribute = component.attribute_get_for_read<ColorGeometry4f>(
+    const bke::AttributeAccessor attributes = bke::mesh_attributes(*mesh);
+    const VArray<ColorGeometry4f> attribute = attributes.lookup_or_default<ColorGeometry4f>(
         colors_layer->name, ATTR_DOMAIN_POINT, {0.0f, 0.0f, 0.0f, 0.0f});
 
     BLI_assert(tot_count == attribute.size());
@@ -390,7 +395,8 @@ void OBJWriter::write_poly_elements(FormatHandler<eFileType::OBJ> &fh,
             mat_name = MATERIAL_GROUP_DISABLED;
           }
           if (export_params_.export_material_groups) {
-            const std::string object_name = obj_mesh_data.get_object_name();
+            std::string object_name = obj_mesh_data.get_object_name();
+            spaces_to_underscores(object_name);
             fh.write<eOBJSyntaxElement::object_group>(object_name + "_" + mat_name);
           }
           buf.write<eOBJSyntaxElement::poly_usemtl>(mat_name);

@@ -171,7 +171,7 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
   }
 
   if (need_transform_relation) {
-    DEG_add_modifier_to_transform_relation(ctx->node, "Warp Modifier");
+    DEG_add_depends_on_transform_relation(ctx->node, "Warp Modifier");
   }
 }
 
@@ -510,7 +510,7 @@ static void blendRead(BlendDataReader *reader, ModifierData *md)
 }
 
 ModifierTypeInfo modifierType_Warp = {
-    /* name */ "Warp",
+    /* name */ N_("Warp"),
     /* structName */ "WarpModifierData",
     /* structSize */ sizeof(WarpModifierData),
     /* srna */ &RNA_WarpModifier,

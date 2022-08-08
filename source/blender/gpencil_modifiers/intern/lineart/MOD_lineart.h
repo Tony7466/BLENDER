@@ -366,8 +366,9 @@ typedef struct LineartData {
 
     /* Keep an copy of these data so when line art is running it's self-contained. */
     bool cam_is_persp;
-    bool cam_is_persp_secondary; /* "Secondary" ones are from viewing camera (as opposed to shadow
-                                    camera), during shadow calculation. */
+    /* "Secondary" ones are from viewing camera
+     * (as opposed to shadow camera), during shadow calculation. */
+    bool cam_is_persp_secondary;
     float cam_obmat[4][4];
     float cam_obmat_secondary[4][4];
     double camera_pos[3];
@@ -439,12 +440,17 @@ typedef enum eLineartTriangleFlags {
 } eLineartTriangleFlags;
 
 #define LRT_SHADOW_MASK_UNDEFINED 0
-#define LRT_SHADOW_MASK_LIT (1 << 0)
+#define LRT_SHADOW_MASK_ILLUMINATED (1 << 0)
 #define LRT_SHADOW_MASK_SHADED (1 << 1)
 #define LRT_SHADOW_MASK_ENCLOSED_SHAPE (1 << 2)
 #define LRT_SHADOW_MASK_INHIBITED (1 << 3)
 #define LRT_SHADOW_SILHOUETTE_ERASED_GROUP (1 << 4)
 #define LRT_SHADOW_SILHOUETTE_ERASED_OBJECT (1 << 5)
+#define LRT_SHADOW_MASK_ILLUMINATED_SHAPE (1 << 6)
+
+#define LRT_SHADOW_TEST_SHAPE_BITS \
+  (LRT_SHADOW_MASK_ILLUMINATED | LRT_SHADOW_MASK_SHADED | LRT_SHADOW_MASK_INHIBITED | \
+   LRT_SHADOW_MASK_ILLUMINATED_SHAPE)
 
 /**
  * Controls how many edges a worker thread is processing at one request.
@@ -549,7 +555,7 @@ typedef struct LineartBoundingArea {
   uint32_t max_triangle_count;
   uint32_t line_count;
   uint32_t max_line_count;
-  uint32_t user_count;
+  uint32_t insider_triangle_count;
 
   /* Use array for speeding up multiple accesses. */
   struct LineartTriangle **linked_triangles;
@@ -845,7 +851,7 @@ void MOD_lineart_chain_split_for_fixed_occlusion(LineartData *ld);
  * implemented yet.
  */
 void MOD_lineart_chain_connect(LineartData *ld);
-void MOD_lineart_chain_discard_short(LineartData *ld, float threshold);
+void MOD_lineart_chain_discard_unused(LineartData *ld, float threshold, uint8_t max_occlusion);
 void MOD_lineart_chain_clip_at_border(LineartData *ld);
 /**
  * This should always be the last stage!, see the end of

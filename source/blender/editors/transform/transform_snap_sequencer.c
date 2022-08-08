@@ -28,6 +28,7 @@
 #include "SEQ_time.h"
 
 #include "transform.h"
+#include "transform_convert.h"
 #include "transform_snap.h"
 
 typedef struct TransSeqSnapData {
@@ -191,7 +192,7 @@ static void seq_snap_target_points_build(Scene *scene,
   int i = 0;
 
   if (snap_mode & SEQ_SNAP_TO_CURRENT_FRAME) {
-    snap_data->target_snap_points[i] = CFRA;
+    snap_data->target_snap_points[i] = scene->r.cfra;
     i++;
   }
 
@@ -244,7 +245,7 @@ static int seq_snap_threshold_get_frame_distance(const TransInfo *t)
 
 TransSeqSnapData *transform_snap_sequencer_data_alloc(const TransInfo *t)
 {
-  if (t->data_type == TC_SEQ_IMAGE_DATA) {
+  if (t->data_type == &TransConvertType_SequencerImage) {
     return NULL;
   }
 
@@ -375,7 +376,7 @@ bool ED_transform_snap_sequencer_to_closest_strip_calc(Scene *scene,
   t.scene = scene;
   t.region = region;
   t.values[0] = 0;
-  t.data_type = TC_SEQ_DATA;
+  t.data_type = &TransConvertType_Sequencer;
 
   t.tsnap.mode = SEQ_tool_settings_snap_mode_get(scene);
   *r_snap_distance = transform_snap_sequencer_to_closest_strip_ex(&t, frame_1, frame_2);

@@ -14,6 +14,7 @@ add_subdirectory(mikktspace)
 add_subdirectory(glew-mx)
 add_subdirectory(eigen)
 add_subdirectory(sky)
+add_subdirectory(slim)
 
 if(WITH_AUDASPACE)
   add_subdirectory(audaspace)
@@ -68,4 +69,9 @@ if(UNIX AND NOT APPLE)
   add_subdirectory(libc_compat)
 endif()
 
-add_subdirectory(slim)
+if(UNIX AND NOT APPLE)
+  # Important this comes after "ghost" as it uses includes defined by GHOST's CMake.
+  if(WITH_GHOST_WAYLAND AND WITH_GHOST_WAYLAND_DYNLOAD)
+    add_subdirectory(wayland_dynload)
+  endif()
+endif()

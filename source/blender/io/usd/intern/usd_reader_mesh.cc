@@ -64,7 +64,22 @@ static void build_mat_map(const Main *bmain, std::map<std::string, Material *> *
 
 static pxr::UsdShadeMaterial compute_bound_material(const pxr::UsdPrim &prim)
 {
-  return pxr::UsdShadeMaterialBindingAPI(prim).ComputeBoundMaterial();
+  pxr::UsdShadeMaterialBindingAPI api = pxr::UsdShadeMaterialBindingAPI(prim);
+
+  /* Compute generically bound ('allPurpose') materials. */
+  pxr::UsdShadeMaterial mtl = api.ComputeBoundMaterial();
+
+  /* If no generic material could be resolved, also check for 'preview' and
+   * 'full' purpose materials as fallbacks. */
+  if (!mtl) {
+    mtl = api.ComputeBoundMaterial(pxr::UsdShadeTokens->preview);
+  }
+
+  if (!mtl) {
+    mtl = api.ComputeBoundMaterial(pxr::UsdShadeTokens->full);
+  }
+
+  return mtl;
 }
 
 /* Returns an existing Blender material that corresponds to the USD
@@ -116,24 +131,15 @@ static void assign_materials(Main *bmain,
     return;
   }
 
-  bool can_assign = true;
-  std::map<pxr::SdfPath, int>::const_iterator it = mat_index_map.begin();
-
-  int matcount = 0;
-  for (; it != mat_index_map.end(); ++it, matcount++) {
-    if (!BKE_object_material_slot_add(bmain, ob)) {
-      can_assign = false;
-      break;
-    }
-  }
-
-  if (!can_assign) {
+  if (mat_index_map.size() > MAXMAT) {
     return;
   }
 
   blender::io::usd::USDMaterialReader mat_reader(params, bmain);
 
-  for (it = mat_index_map.begin(); it != mat_index_map.end(); ++it) {
+  for (std::map<pxr::SdfPath, int>::const_iterator it = mat_index_map.begin();
+       it != mat_index_map.end();
+       ++it) {
 
     Material *assigned_mat = find_existing_material(
         it->first, params, mat_name_to_mat, usd_path_to_mat_name);
@@ -170,7 +176,7 @@ static void assign_materials(Main *bmain,
     }
 
     if (assigned_mat) {
-      BKE_object_material_assign(bmain, ob, assigned_mat, it->second, BKE_MAT_ASSIGN_OBDATA);
+      BKE_object_material_assign_single_obdata(bmain, ob, assigned_mat, it->second);
     }
     else {
       /* This shouldn't happen. */

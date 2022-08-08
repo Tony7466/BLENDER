@@ -670,7 +670,7 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
   NormalEditModifierData *enmd = (NormalEditModifierData *)md;
   if (enmd->target) {
     DEG_add_object_relation(ctx->node, enmd->target, DEG_OB_COMP_TRANSFORM, "NormalEdit Modifier");
-    DEG_add_modifier_to_transform_relation(ctx->node, "NormalEdit Modifier");
+    DEG_add_depends_on_transform_relation(ctx->node, "NormalEdit Modifier");
   }
 }
 
@@ -756,7 +756,7 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_NormalEdit = {
-    /* name */ "NormalEdit",
+    /* name */ N_("NormalEdit"),
     /* structName */ "NormalEditModifierData",
     /* structSize */ sizeof(NormalEditModifierData),
     /* srna */ &RNA_NormalEditModifier,

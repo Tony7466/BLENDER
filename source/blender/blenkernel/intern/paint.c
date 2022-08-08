@@ -996,6 +996,12 @@ bool BKE_paint_select_elem_test(Object *ob)
   return (BKE_paint_select_vert_test(ob) || BKE_paint_select_face_test(ob));
 }
 
+bool BKE_paint_always_hide_test(Object *ob)
+{
+  return ((ob != NULL) && (ob->type == OB_MESH) && (ob->data != NULL) &&
+          (ob->mode & OB_MODE_WEIGHT_PAINT || ob->mode & OB_MODE_VERTEX_PAINT));
+}
+
 void BKE_paint_cavity_curve_preset(Paint *p, int preset)
 {
   CurveMapping *cumap = NULL;
@@ -1427,10 +1433,10 @@ static void sculptsession_free_pbvh(Object *object)
 
   MEM_SAFE_FREE(ss->persistent_base);
 
-  MEM_SAFE_FREE(ss->preview_vert_index_list);
-  ss->preview_vert_index_count = 0;
+  MEM_SAFE_FREE(ss->preview_vert_list);
+  ss->preview_vert_count = 0;
 
-  MEM_SAFE_FREE(ss->preview_vert_index_list);
+  MEM_SAFE_FREE(ss->preview_vert_list);
 
   MEM_SAFE_FREE(ss->vertex_info.connected_component);
   MEM_SAFE_FREE(ss->vertex_info.boundary);
@@ -2255,12 +2261,7 @@ PBVH *BKE_sculpt_object_pbvh_ensure(Depsgraph *depsgraph, Object *ob)
     return NULL;
   }
 
-  bool respect_hide = true;
-  if (ob->mode & (OB_MODE_VERTEX_PAINT | OB_MODE_WEIGHT_PAINT)) {
-    if (!(BKE_paint_select_vert_test(ob) || BKE_paint_select_face_test(ob))) {
-      respect_hide = false;
-    }
-  }
+  const bool respect_hide = true;
 
   PBVH *pbvh = ob->sculpt->pbvh;
   if (pbvh != NULL) {

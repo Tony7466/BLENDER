@@ -44,6 +44,7 @@
 
 #include "ED_keyframing.h"
 #include "ED_screen.h"
+#include "ED_undo.h"
 #include "ED_view3d.h"
 
 #include "UI_resources.h"
@@ -633,7 +634,7 @@ bool ED_view3d_camera_autokey(const Scene *scene,
                               const bool do_translate)
 {
   if (autokeyframe_cfra_can_key(scene, id_key)) {
-    const float cfra = (float)CFRA;
+    const float cfra = (float)scene->r.cfra;
     ListBase dsources = {NULL, NULL};
 
     /* add data-source override for the camera object */
@@ -686,6 +687,43 @@ bool ED_view3d_camera_lock_autokey(View3D *v3d,
     return ED_view3d_camera_autokey(scene, id_key, C, do_rotate, do_translate);
   }
   return false;
+}
+
+/**
+ * Create a MEMFILE undo-step for locked camera movement when transforming the view.
+ * Edit and texture paint mode don't use MEMFILE undo so undo push is skipped for them.
+ * NDOF and track-pad navigation would create an undo step on every gesture and we may end up with
+ * unnecessary undo steps so undo push for them is not supported for now. Also operators that uses
+ * smooth view for navigation are excluded too, but they can be supported, see: D15345.
+ */
+static bool view3d_camera_lock_undo_ex(
+    const char *str, View3D *v3d, RegionView3D *rv3d, struct bContext *C, bool undo_group)
+{
+  if (ED_view3d_camera_lock_check(v3d, rv3d)) {
+    if (ED_undo_is_memfile_compatible(C)) {
+      if (undo_group) {
+        ED_undo_grouped_push(C, str);
+      }
+      else {
+        ED_undo_push(C, str);
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
+bool ED_view3d_camera_lock_undo_push(const char *str, View3D *v3d, RegionView3D *rv3d, bContext *C)
+{
+  return view3d_camera_lock_undo_ex(str, v3d, rv3d, C, false);
+}
+
+bool ED_view3d_camera_lock_undo_grouped_push(const char *str,
+                                             View3D *v3d,
+                                             RegionView3D *rv3d,
+                                             bContext *C)
+{
+  return view3d_camera_lock_undo_ex(str, v3d, rv3d, C, true);
 }
 
 /** \} */
@@ -1492,10 +1530,12 @@ static bool view3d_camera_to_view_selected_impl(struct Main *bmain,
           depsgraph, scene, camera_ob_eval, co, &scale, r_clip_start, r_clip_end)) {
     ObjectTfmProtectedChannels obtfm;
     float obmat_new[4][4];
+    bool is_ortho_camera = false;
 
     if ((camera_ob_eval->type == OB_CAMERA) &&
         (((Camera *)camera_ob_eval->data)->type == CAM_ORTHO)) {
       ((Camera *)camera_ob->data)->ortho_scale = scale;
+      is_ortho_camera = true;
     }
 
     copy_m4_m4(obmat_new, camera_ob_eval->obmat);
@@ -1508,6 +1548,9 @@ static bool view3d_camera_to_view_selected_impl(struct Main *bmain,
 
     /* notifiers */
     DEG_id_tag_update_ex(bmain, &camera_ob->id, ID_RECALC_TRANSFORM);
+    if (is_ortho_camera) {
+      DEG_id_tag_update_ex(bmain, camera_ob->data, ID_RECALC_PARAMETERS);
+    }
 
     return true;
   }
