@@ -17,7 +17,7 @@
 #include "BLI_polyfill_2d_beautify.h"
 #include "BLI_rand.h"
 
-#include "slim_capi.h"
+#include "slim_matrix_transfer.h"
 
 #include "eigen_capi.h"
 
@@ -4908,7 +4908,7 @@ void GEO_uv_parametrizer_slim_solve(ParamHandle *phandle,
   phandle->slim_mt = mt;
   slim_transfer_data_to_slim(phandle);
 
-  SLIM_parametrize(mt, mt->n_iterations, mt->fixed_boundary, mt->skip_initialization);
+  mt->parametrize(mt->n_iterations, mt->fixed_boundary, mt->skip_initialization);
 
   slim_flush_uvs(phandle, mt, count_changed, count_failed);
   slim_free_matrix_transfer(mt);
@@ -4947,7 +4947,7 @@ void GEO_uv_parametrizer_slim_begin(ParamHandle *phandle, const MatrixTransferOp
         deselect = true;
     }
 
-    chart->slim.ptr = SLIM_setup(mt, i, mt->fixed_boundary, mt->is_minimize_stretch);
+    chart->slim.ptr = mt->setup(i, mt->fixed_boundary, mt->is_minimize_stretch);
   }
 }
 
@@ -4958,8 +4958,8 @@ void GEO_uv_parametrizer_slim_stretch_iteration(ParamHandle *phandle, float blen
   /* Do one iterationand tranfer UVs. */
   for (int i = 0; i < phandle->ncharts; i++) {
     PChart *chart = phandle->charts[i];
-    SLIM_parametrize_single_iteration(mt, i, chart->slim.ptr);
-    SLIM_transfer_uvs_blended(mt, chart->slim.ptr, i, blend);
+    mt->parametrize_single_iteration(i, chart->slim.ptr);
+    mt->transfer_uvs_blended(chart->slim.ptr, i, blend);
   }
 
   /* Assign new UVs back to each vertex. */
@@ -4996,7 +4996,7 @@ void GEO_uv_parametrizer_slim_solve_iteration(ParamHandle *phandle)
                                 &n_selected_pins,
                                 selected_pins);
 
-    SLIM_parametrize_live(mt,
+    mt->parametrize_live(
                           i,
                           chart->slim.ptr,
                           n_pins,
@@ -5004,7 +5004,7 @@ void GEO_uv_parametrizer_slim_solve_iteration(ParamHandle *phandle)
                           pinned_vertex_positions_2D,
                           n_selected_pins,
                           selected_pins);
-    SLIM_transfer_uvs_blended_live(mt, chart->slim.ptr, i);
+    mt->transfer_uvs_blended_live(chart->slim.ptr, i);
 
     MEM_freeN(selected_pins);
     MEM_freeN(pinned_vertex_indices);
@@ -5022,7 +5022,7 @@ void GEO_uv_parametrizer_slim_end(ParamHandle *phandle)
   for (int i = 0; i < phandle->ncharts; i++) {
     PChart *chart = phandle->charts[i];
     if (chart->slim.ptr)
-      SLIM_free_data(chart->slim.ptr);
+      mt->free_data(chart->slim.ptr);
   }
 
   slim_free_matrix_transfer(mt);

@@ -2,8 +2,6 @@
 
 #pragma once
 
-#include <stdio.h>
-
 
 /* Struct that holds all the information and data matrices to be transfered from the native
  * Blender part to SLIM, named as follows:
@@ -20,11 +18,9 @@
  * Ematrix         | vertexindex-tuples making up edges
  * Bvector         | vertexindices of boundary vertices
  * ________________|_____________________________________________ */
-#ifdef __cplusplus
-extern "C" {
-#endif
 
-typedef struct {
+
+struct SLIMMatrixTransfer {
   int n_charts;
   int *n_verts, *n_faces, *n_pinned_vertices, *n_boundary_vertices, *n_edges;
 
@@ -49,8 +45,36 @@ typedef struct {
   int n_iterations;
   bool skip_initialization;
   bool is_minimize_stretch;
-} SLIMMatrixTransfer;
 
-#ifdef __cplusplus
-}
-#endif
+  void parametrize(
+    int n_iterations,
+    bool are_border_vertices_pinned,
+    bool skip_initialization);
+
+  void transfer_uvs_blended_live(
+    void* slim_data_ptr,
+    int uv_chart_index);
+
+  void transfer_uvs_blended(
+    void* slim,
+    int uv_chart_index,
+    float blend);
+
+  void parametrize_single_iteration(int uv_chart_index, void* slim);
+
+  void parametrize_live(
+    int uv_chart_index,
+    void* slim_data_ptr,
+    int n_pins,
+    int* selected_pinned_vertex_indices,
+    double* selected_pinned_vertex_positions_2D,
+    int n_selected_pins,
+    int* selected_pins);
+
+  void* setup(
+    int uv_chart_index,
+    bool are_border_vertices_pinned,
+    bool skip_initialization) const;
+
+  void free_data(void* slim_data_ptr);
+};

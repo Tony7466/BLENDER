@@ -12,7 +12,6 @@ set(INC_SYS
 
 set(SRC
   slim_matrix_transfer.h
-  slim_capi.h
 
   intern/area_compensation.cpp
   intern/area_compensation.h
@@ -22,7 +21,7 @@ set(SRC
   intern/least_squares_relocator.h
   intern/slim.cpp
   intern/slim.h
-  intern/slim_capi.cpp
+  intern/slim_matrix_transfer.cpp
   intern/slim_parametrizer.cpp
   intern/slim_parametrizer.h
   intern/uv_initializer.cpp
