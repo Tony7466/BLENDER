@@ -76,7 +76,6 @@ struct SLIMMatrixTransfer {
   bool pinned_vertices = false;
   bool with_weighted_parameterization = false;
   double weight_influence = 0.0;
-  bool transform_islands = false;
   int reflection_mode = 0;
   double relative_scale = 0.0;
 

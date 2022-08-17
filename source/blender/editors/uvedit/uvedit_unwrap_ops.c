@@ -235,6 +235,8 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
   options.only_selected_uvs = false;
   options.pin_unselected = false;
 
+  options.mt_options.skip_initialization = false;
+
   if (ts)
   {
     options.method = ts->unwrapper;
@@ -1481,6 +1483,7 @@ void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit)
 
   if (options.use_slim) {
     options.mt_options.reflection_mode = 0;
+    options.mt_options.skip_initialization = true;
     GEO_uv_parametrizer_slim_begin(handle, &options.mt_options);
   }
   else {

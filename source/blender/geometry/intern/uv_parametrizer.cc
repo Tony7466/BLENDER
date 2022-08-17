@@ -4466,6 +4466,7 @@ static SLIMMatrixTransfer* slim_matrix_transfer(const MatrixTransferOptions* mt_
   mt->relative_scale = mt_options->relative_scale;
   mt->n_iterations = mt_options->iterations;
   mt->reflection_mode = mt_options->reflection_mode;
+  mt->skip_initialization = mt_options->skip_initialization;
 
   return mt;
 }
@@ -4803,7 +4804,6 @@ void GEO_uv_parametrizer_slim_solve(ParamHandle *phandle,
                                     int *count_failed)
 {
   SLIMMatrixTransfer* mt = slim_matrix_transfer(mt_options);
-  mt->transform_islands = true;
 
   phandle->slim_mt = mt;
   slim_transfer_data_to_slim(phandle);
@@ -4817,7 +4817,6 @@ void GEO_uv_parametrizer_slim_solve(ParamHandle *phandle,
 void GEO_uv_parametrizer_slim_begin(ParamHandle *phandle, const MatrixTransferOptions* mt_options)
 {
   SLIMMatrixTransfer* mt = slim_matrix_transfer(mt_options);
-  mt->skip_initialization = true;
 
   phandle->slim_mt = mt;
 

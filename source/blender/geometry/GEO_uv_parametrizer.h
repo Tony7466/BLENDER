@@ -72,6 +72,8 @@ typedef struct MatrixTransferOptions {
   float relative_scale;
   int iterations;
   int reflection_mode;
+
+  bool skip_initialization;
 } MatrixTransferOptions;
 
 void GEO_uv_parametrizer_slim_reload_all_uvs(ParamHandle* handle);
