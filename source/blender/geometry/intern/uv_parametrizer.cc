@@ -4848,7 +4848,7 @@ void GEO_uv_parametrizer_slim_begin(ParamHandle *phandle, const MatrixTransferOp
         deselect = true;
     }
 
-    mt->setup(mt_chart, mt->fixed_boundary, mt->is_minimize_stretch);
+    mt->setup_slim_data(mt_chart, mt->fixed_boundary, mt->is_minimize_stretch);
   }
 }
 

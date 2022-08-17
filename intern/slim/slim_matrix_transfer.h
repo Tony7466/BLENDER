@@ -60,6 +60,7 @@ struct SLIMMatrixTransferChart {
 
   ~SLIMMatrixTransferChart();
 
+  void try_slim_solve(int iter_num);
   void free_slim_data();
 };
 
@@ -81,11 +82,11 @@ struct SLIMMatrixTransfer {
 
   std::vector<SLIMMatrixTransferChart> mt_charts;
 
+
   SLIMMatrixTransfer();
   SLIMMatrixTransfer(const SLIMMatrixTransfer&) = delete;
   SLIMMatrixTransfer& operator=(const SLIMMatrixTransfer&) = delete;
   ~SLIMMatrixTransfer();
-
 
   void parametrize(
     int n_iterations,
@@ -108,14 +109,12 @@ struct SLIMMatrixTransfer {
     int n_selected_pins,
     std::vector<int>& selected_pins);
 
-  void setup(
+  void setup_slim_data(
     SLIMMatrixTransferChart& mt_chart,
     bool are_border_vertices_pinned,
     bool skip_initialization) const;
 
-  //void free_data(igl::SLIMData* slim_data);
-
-  void setup_slim(
+  void setup_slim_data(
     SLIMMatrixTransferChart& mt_chart,
     int n_iterations,
     igl::Timer& timer,
