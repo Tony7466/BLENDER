@@ -22,29 +22,27 @@ SLIMMatrixTransfer::SLIMMatrixTransfer() = default;
 SLIMMatrixTransfer::~SLIMMatrixTransfer() = default;
 
 
-void SLIMMatrixTransfer::transfer_uvs_blended_live(SLIMMatrixTransferChart& mt_chart)
+void SLIMMatrixTransferChart::transfer_uvs_blended_live()
 {
-  if (!mt_chart.succeeded) {
+  if (!succeeded) {
     return;
   }
-  correct_map_surface_area_if_necessary(*mt_chart.data);
-  transfer_uvs_back_to_native_part_live(mt_chart, mt_chart.data->V_o);
+  correct_map_surface_area_if_necessary(*data);
+  transfer_uvs_back_to_native_part_live(*this, data->V_o);
 }
 
 /* Called from the native part during each iteration of interactive parametrisation.
  * The blend parameter decides the linear blending between the original UV map and the one
  * optained from the accumulated SLIM iterations so far. */
-void SLIMMatrixTransfer::transfer_uvs_blended(
-                               SLIMMatrixTransferChart& mt_chart,
-                               float blend)
+void SLIMMatrixTransferChart::transfer_uvs_blended(float blend)
 {
-  if (!mt_chart.succeeded) {
+  if (!succeeded) {
     return;
   }
 
-  Eigen::MatrixXd blended_uvs = get_interactive_result_blended_with_original(blend, *mt_chart.data);
-  correct_map_surface_area_if_necessary(*mt_chart.data);
-  transfer_uvs_back_to_native_part(mt_chart, blended_uvs);
+  Eigen::MatrixXd blended_uvs = get_interactive_result_blended_with_original(blend, *data);
+  correct_map_surface_area_if_necessary(*data);
+  transfer_uvs_back_to_native_part(*this, blended_uvs);
 }
 
 /* Setup call from the native C part. Necessary for interactive parametrisation. */
@@ -56,13 +54,6 @@ void SLIMMatrixTransfer::setup_slim_data(
   igl::Timer timer;
   timer.start();
   setup_slim_data(mt_chart, 0, timer, are_border_vertices_pinned, skip_initialization);
-}
-
-/* Executes a single iteration of SLIM, to be called from the native part. It recasts the pointer
- * to a SLIM object. */
-void SLIMMatrixTransfer::parametrize_single_iteration(SLIMMatrixTransferChart& mt_chart)
-{
-  param_slim_single_iteration(this, mt_chart);
 }
 
 }

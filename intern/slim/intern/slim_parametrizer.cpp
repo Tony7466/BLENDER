@@ -72,13 +72,6 @@ Eigen::MatrixXd get_interactive_result_blended_with_original(float blend,
   return original_map_weighted + interactive_result_map;
 }
 
-/* Executes a single iteration of SLIM, must follow a proper setup & initialisation. */
-void param_slim_single_iteration(SLIMMatrixTransfer *mt, SLIMMatrixTransferChart& mt_chart)
-{
-  int number_of_iterations = 1;
-  mt_chart.try_slim_solve(number_of_iterations);
-}
-
 static void adjust_pins(SLIMData& slim_data,
                         int n_pins,
                         std::vector<int>& pinned_vertex_indices,
@@ -144,6 +137,13 @@ void SLIMMatrixTransferChart::try_slim_solve(int iter_num)
     catch (SlimFailedException&) {
         succeeded = false;
     }
+}
+
+/* Executes a single iteration of SLIM, must follow a proper setup & initialisation. */
+void SLIMMatrixTransferChart::parametrize_single_iteration()
+{
+    int number_of_iterations = 1;
+    try_slim_solve(number_of_iterations);
 }
 
 void SLIMMatrixTransferChart::free_slim_data()

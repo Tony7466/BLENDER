@@ -4858,8 +4858,8 @@ void GEO_uv_parametrizer_slim_stretch_iteration(ParamHandle *phandle, float blen
 
   /* Do one iterationand tranfer UVs. */
   for (int i = 0; i < phandle->ncharts; i++) {
-    mt->parametrize_single_iteration(mt->mt_charts[i]);
-    mt->transfer_uvs_blended(mt->mt_charts[i], blend);
+    mt->mt_charts[i].parametrize_single_iteration();
+    mt->mt_charts[i].transfer_uvs_blended(blend);
   }
 
   /* Assign new UVs back to each vertex. */
@@ -4901,7 +4901,7 @@ void GEO_uv_parametrizer_slim_solve_iteration(ParamHandle *phandle)
                           pinned_vertex_positions_2D,
                           n_selected_pins,
                           selected_pins);
-    mt->transfer_uvs_blended_live(*mt_chart);
+    mt_chart->transfer_uvs_blended_live();
   }
 
   /* Assign new UVs back to each vertex. */

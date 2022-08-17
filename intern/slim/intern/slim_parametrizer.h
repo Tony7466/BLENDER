@@ -18,14 +18,4 @@ void transfer_uvs_back_to_native_part_live(SLIMMatrixTransferChart& mt_chart,
 void transfer_uvs_back_to_native_part(SLIMMatrixTransferChart& mt_chart,
                                       Eigen::MatrixXd &uv);
 
-void param_slim_single_iteration(SLIMMatrixTransfer *mt, SLIMMatrixTransferChart& mt_chart);
-
-void param_slim_live_unwrap(SLIMMatrixTransfer *mt,
-                            SLIMMatrixTransferChart& mt_chart,
-                            int n_pins,
-                            std::vector<int>& pinned_vertex_indices,
-                            std::vector<double>& pinned_vertex_positions2d,
-                            int n_selected_pins,
-                            std::vector<int>& selected_pins);
-
 }  // namespace slim

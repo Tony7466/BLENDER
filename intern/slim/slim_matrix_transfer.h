@@ -61,6 +61,11 @@ struct SLIMMatrixTransferChart {
   ~SLIMMatrixTransferChart();
 
   void try_slim_solve(int iter_num);
+  void parametrize_single_iteration();
+
+  void transfer_uvs_blended_live();
+  void transfer_uvs_blended(float blend);
+
   void free_slim_data();
 };
 
@@ -92,14 +97,6 @@ struct SLIMMatrixTransfer {
     int n_iterations,
     bool are_border_vertices_pinned,
     bool skip_initialization);
-
-  void transfer_uvs_blended_live(SLIMMatrixTransferChart& mt_chart);
-
-  void transfer_uvs_blended(
-    SLIMMatrixTransferChart& mt_chart,
-    float blend);
-
-  void parametrize_single_iteration(SLIMMatrixTransferChart& mt_chart);
 
   void parametrize_live(
     SLIMMatrixTransferChart& mt_chart,
