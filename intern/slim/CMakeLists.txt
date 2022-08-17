@@ -23,7 +23,6 @@ set(SRC
   intern/slim.h
   intern/slim_matrix_transfer.cpp
   intern/slim_parametrizer.cpp
-  intern/slim_parametrizer.h
   intern/uv_initializer.cpp
   intern/uv_initializer.h
 )
