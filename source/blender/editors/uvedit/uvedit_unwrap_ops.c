@@ -193,7 +193,6 @@ typedef struct UnwrapOptions {
   bool use_slim;
   bool use_abf;
   bool use_subsurf;
-  int reflection_mode;
 
   MatrixTransferOptions mt_options;
 } UnwrapOptions;
@@ -242,7 +241,6 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
     options.correct_aspect = (ts->uvcalc_flag & UVCALC_NO_ASPECT_CORRECT) == 0;
     options.fill_holes = (ts->uvcalc_flag & UVCALC_FILLHOLES) != 0;
     options.use_subsurf = (ts->uvcalc_flag & UVCALC_USESUBSURF) != 0;
-    options.reflection_mode = ts->uvcalc_reflection_mode;
 
     static_assert(sizeof(options.mt_options.vertex_group) == sizeof(ts->uvcalc_vertex_group), "vertex_group size mismatch.");
     memcpy(options.mt_options.vertex_group, ts->uvcalc_vertex_group, sizeof(options.mt_options.vertex_group));
@@ -250,6 +248,7 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
     options.mt_options.vertex_group_factor = ts->uvcalc_vertex_group_factor;
     options.mt_options.relative_scale = ts->uvcalc_relative_scale;
     options.mt_options.iterations = ts->uvcalc_iterations;
+    options.mt_options.reflection_mode = ts->uvcalc_reflection_mode;
   }
   else
   {
@@ -262,12 +261,12 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
     options.correct_aspect = RNA_boolean_get(&ptr, "correct_aspect");
     options.fill_holes = RNA_boolean_get(&ptr, "fill_holes");
     options.use_subsurf = RNA_boolean_get(&ptr, "use_subsurf_data");
-    options.reflection_mode = RNA_enum_get(&ptr, "reflection_mode");
 
     RNA_string_get(&ptr, "vertex_group", options.mt_options.vertex_group);
     options.mt_options.vertex_group_factor = RNA_float_get(&ptr, "vertex_group_factor");
     options.mt_options.relative_scale = RNA_float_get(&ptr, "relative_scale");
     options.mt_options.iterations = RNA_int_get(&ptr, "iterations");
+    options.mt_options.reflection_mode = RNA_enum_get(&ptr, "reflection_mode");
 
     WM_operator_properties_free(&ptr);
   }
@@ -1481,6 +1480,7 @@ void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit)
   }
 
   if (options.use_slim) {
+    options.mt_options.reflection_mode = 0;
     GEO_uv_parametrizer_slim_begin(handle, &options.mt_options);
   }
   else {
@@ -2052,7 +2052,6 @@ static void uvedit_unwrap(const Scene *scene,
   if (options->use_slim) {
     GEO_uv_parametrizer_slim_solve(handle,
                                    &options->mt_options,
-                                   options->reflection_mode,
                                    result_info ? &result_info->count_changed : NULL,
                                    result_info ? &result_info->count_failed : NULL);
   }

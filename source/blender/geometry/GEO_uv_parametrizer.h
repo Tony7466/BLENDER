@@ -71,12 +71,12 @@ typedef struct MatrixTransferOptions {
   float vertex_group_factor;
   float relative_scale;
   int iterations;
+  int reflection_mode;
 } MatrixTransferOptions;
 
 void GEO_uv_parametrizer_slim_reload_all_uvs(ParamHandle* handle);
 void GEO_uv_parametrizer_slim_solve(ParamHandle* handle,
   const MatrixTransferOptions* mt_options,
-  int reflection_mode,
   int* count_changed,
   int* count_failed);
 

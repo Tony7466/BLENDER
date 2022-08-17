@@ -4465,6 +4465,7 @@ static SLIMMatrixTransfer* slim_matrix_transfer(const MatrixTransferOptions* mt_
   mt->weight_influence = mt_options->vertex_group_factor;
   mt->relative_scale = mt_options->relative_scale;
   mt->n_iterations = mt_options->iterations;
+  mt->reflection_mode = mt_options->reflection_mode;
 
   return mt;
 }
@@ -4725,7 +4726,8 @@ static void slim_flush_uvs(ParamHandle *phandle,
 static void slim_free_matrix_transfer(ParamHandle* phandle)
 {
   SLIMMatrixTransfer* mt = phandle->slim_mt;
-  delete (phandle->slim_mt);
+  delete phandle->slim_mt;
+  phandle->slim_mt = nullptr;
 }
 
 static void slim_get_pinned_vertex_data(ParamHandle *phandle,
@@ -4797,12 +4799,10 @@ void GEO_uv_parametrizer_slim_reload_all_uvs(ParamHandle *phandle)
 
 void GEO_uv_parametrizer_slim_solve(ParamHandle *phandle,
                                     const MatrixTransferOptions* mt_options,
-                                    int reflection_mode,
                                     int *count_changed,
                                     int *count_failed)
 {
   SLIMMatrixTransfer* mt = slim_matrix_transfer(mt_options);
-  mt->reflection_mode = reflection_mode;
   mt->transform_islands = true;
 
   phandle->slim_mt = mt;
