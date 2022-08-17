@@ -75,29 +75,29 @@ void create_weights_per_face(SLIMData *slim_data)
   }
 }
 
-void set_geometry_data_matrices(const GeometryData &gd, SLIMData *slim_data)
+void GeometryData::set_geometry_data_matrices(SLIMData *slim_data) const
 {
   if (!slim_data->valid) {
     return;
   }
 
-  slim_data->V = gd.vertex_positions3d;
-  slim_data->F = gd.faces_by_vertexindices;
-  slim_data->b = gd.pinned_vertex_indices;
-  slim_data->bc = gd.positions_of_pinned_vertices2d;
-  slim_data->V_o = gd.uv_positions2d;
-  slim_data->oldUVs = gd.uv_positions2d;
-  slim_data->weightmap = gd.weights_per_vertex;
+  slim_data->V = vertex_positions3d;
+  slim_data->F = faces_by_vertexindices;
+  slim_data->b = pinned_vertex_indices;
+  slim_data->bc = positions_of_pinned_vertices2d;
+  slim_data->V_o = uv_positions2d;
+  slim_data->oldUVs = uv_positions2d;
+  slim_data->weightmap = weights_per_vertex;
   create_weights_per_face(slim_data);
 }
 
-bool has_valid_preinitialized_map(const GeometryData &gd)
+bool GeometryData::has_valid_preinitialized_map() const
 {
-  if (gd.uv_positions2d.rows() == gd.vertex_positions3d.rows() &&
-      gd.uv_positions2d.cols() == gd.columns_2) {
+  if (uv_positions2d.rows() == vertex_positions3d.rows() &&
+      uv_positions2d.cols() == columns_2) {
 
     int number_of_flips = count_flips(
-        gd.vertex_positions3d, gd.faces_by_vertexindices, gd.uv_positions2d);
+        vertex_positions3d, faces_by_vertexindices, uv_positions2d);
     bool no_flips_present = (number_of_flips == 0);
     return (no_flips_present);
   }
@@ -108,75 +108,75 @@ bool has_valid_preinitialized_map(const GeometryData &gd)
  * Also, pinning of vertices has some issues with initialisation with convex border.
  * We therefore may want to skip initialization. however, to skip initialization we need a
  * preexisting valid starting map. */
-bool can_initialization_be_skipped(const GeometryData &gd, bool skip_initialization)
+bool GeometryData::can_initialization_be_skipped(bool skip_initialization) const
 {
-  return (skip_initialization && has_valid_preinitialized_map(gd));
+  return (skip_initialization && has_valid_preinitialized_map());
 }
 
-void construct_slim_data(const GeometryData &gd,
+void GeometryData::construct_slim_data(
                          SLIMData *slim_data,
                          bool skip_initialization,
                          int reflection_mode,
-                         double relative_scale)
+                         double relative_scale) const
 {
   BLI_assert(slim_data->valid);
 
-  slim_data->skipInitialization = can_initialization_be_skipped(gd, skip_initialization);
-  slim_data->weightInfluence = gd.weight_influence;
+  slim_data->skipInitialization = can_initialization_be_skipped(skip_initialization);
+  slim_data->weightInfluence = weight_influence;
   slim_data->relativeScale = relative_scale;
   slim_data->reflection_mode = reflection_mode;
-  slim_data->withWeightedParameterization = gd.with_weighted_parameteriztion;
-  set_geometry_data_matrices(gd, slim_data);
+  slim_data->withWeightedParameterization = with_weighted_parameteriztion;
+  set_geometry_data_matrices(slim_data);
 
   double penalty_for_violating_pinned_positions = pow(10, 9);
   slim_data->soft_const_p = penalty_for_violating_pinned_positions;
   slim_data->slim_energy = SLIMData::SYMMETRIC_DIRICHLET;
 }
 
-void combine_matrices_of_pinned_and_boundary_vertices(GeometryData &gd)
+void GeometryData::combine_matrices_of_pinned_and_boundary_vertices()
 {
   /* Over - allocate pessimistically to avoid multiple reallocation. */
-  int upper_bound_on_number_of_pinned_vertices = gd.number_of_boundary_vertices +
-                                                 gd.number_of_pinned_vertices;
-  gd.pinned_vertex_indices = VectorXi(upper_bound_on_number_of_pinned_vertices);
-  gd.positions_of_pinned_vertices2d = MatrixXd(upper_bound_on_number_of_pinned_vertices,
-                                               gd.columns_2);
+  int upper_bound_on_number_of_pinned_vertices = number_of_boundary_vertices +
+                                                 number_of_pinned_vertices;
+  pinned_vertex_indices = VectorXi(upper_bound_on_number_of_pinned_vertices);
+  positions_of_pinned_vertices2d = MatrixXd(upper_bound_on_number_of_pinned_vertices,
+                                               columns_2);
 
   /* Since border vertices use vertex indices 0 ... #bordervertices we can do: */
-  gd.pinned_vertex_indices.segment(0, gd.number_of_boundary_vertices) = gd.boundary_vertex_indices;
-  gd.positions_of_pinned_vertices2d.block(0, 0, gd.number_of_boundary_vertices, gd.columns_2) =
-      gd.uv_positions2d.block(0, 0, gd.number_of_boundary_vertices, gd.columns_2);
+  pinned_vertex_indices.segment(0, number_of_boundary_vertices) = boundary_vertex_indices;
+  positions_of_pinned_vertices2d.block(0, 0, number_of_boundary_vertices, columns_2) =
+      uv_positions2d.block(0, 0, number_of_boundary_vertices, columns_2);
 
-  int index = gd.number_of_boundary_vertices;
-  int highest_vertex_index = (gd.boundary_vertex_indices)(index - 1);
+  int index = number_of_boundary_vertices;
+  int highest_vertex_index = (boundary_vertex_indices)(index - 1);
 
-  for (Map<VectorXi>::InnerIterator it(gd.explicitly_pinned_vertex_indices, 0); it; ++it) {
+  for (Map<VectorXi>::InnerIterator it(explicitly_pinned_vertex_indices, 0); it; ++it) {
     int vertex_index = it.value();
     if (vertex_index > highest_vertex_index) {
-      gd.pinned_vertex_indices(index) = vertex_index;
-      gd.positions_of_pinned_vertices2d.row(index) = gd.uv_positions2d.row(vertex_index);
+      pinned_vertex_indices(index) = vertex_index;
+      positions_of_pinned_vertices2d.row(index) = uv_positions2d.row(vertex_index);
       index++;
     }
   }
 
   int actual_number_of_pinned_vertices = index;
-  gd.pinned_vertex_indices.conservativeResize(actual_number_of_pinned_vertices);
-  gd.positions_of_pinned_vertices2d.conservativeResize(actual_number_of_pinned_vertices,
-                                                       gd.columns_2);
+  pinned_vertex_indices.conservativeResize(actual_number_of_pinned_vertices);
+  positions_of_pinned_vertices2d.conservativeResize(actual_number_of_pinned_vertices,
+                                                       columns_2);
 
-  gd.number_of_pinned_vertices = actual_number_of_pinned_vertices;
+  number_of_pinned_vertices = actual_number_of_pinned_vertices;
 }
 
 /* If the border is fixed, we simply pin the border vertices additionally to other pinned vertices.
  */
-void retrieve_pinned_vertices(GeometryData &gd, bool border_vertices_are_pinned)
+void GeometryData::retrieve_pinned_vertices(bool border_vertices_are_pinned)
 {
   if (border_vertices_are_pinned) {
-    combine_matrices_of_pinned_and_boundary_vertices(gd);
+    combine_matrices_of_pinned_and_boundary_vertices();
   }
   else {
-    gd.pinned_vertex_indices = VectorXi(gd.explicitly_pinned_vertex_indices);
-    gd.positions_of_pinned_vertices2d = MatrixXd(gd.positions_of_explicitly_pinned_vertices2d);
+    pinned_vertex_indices = VectorXi(explicitly_pinned_vertex_indices);
+    positions_of_pinned_vertices2d = MatrixXd(positions_of_explicitly_pinned_vertices2d);
   }
 }
 
