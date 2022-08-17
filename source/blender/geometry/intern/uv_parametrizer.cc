@@ -4467,47 +4467,6 @@ static SLIMMatrixTransfer* slim_matrix_transfer(const MatrixTransferOptions* mt_
   return mt;
 }
 
-/* Allocate pointer arrays for each matrix-group. Meaning as many pointers per
- * array as there are charts. */
-//static void slim_allocate_pointerarrays(SLIMMatrixTransfer *mt, ParamHandle *phandle)
-//{
-//  mt->n_charts = phandle->ncharts;
-//  mt->n_verts = (int*)MEM_mallocN(mt->n_charts * sizeof(*mt->n_verts),
-//                            "Array of number of vertices per Chart");
-//  mt->n_faces = (int*)MEM_mallocN(mt->n_charts * sizeof(*mt->n_faces),
-//                            "Array of number of Faces per Chart");
-//  mt->n_edges = (int*)MEM_mallocN(mt->n_charts * sizeof(*mt->n_edges),
-//                            "Array of number of Edges per Chart");
-//  mt->n_pinned_vertices = (int*)MEM_mallocN(mt->n_charts * sizeof(*mt->n_pinned_vertices),
-//                                      "Array of number of Faces per Chart");
-//  mt->n_boundary_vertices = (int*)MEM_mallocN(mt->n_charts * sizeof(*mt->n_boundary_vertices),
-//                                        "Array of number of Faces per Chart");
-//
-//  mt->succeeded = (bool*)MEM_mallocN(mt->n_charts * sizeof(*mt->succeeded),
-//                              "Array of operation status per Chart");
-//
-//  mt->v_matrices = (double**)MEM_mallocN(mt->n_charts * sizeof(*mt->v_matrices),
-//                               "Array of pointers to Vertex matrices");
-//  mt->uv_matrices = (double**)MEM_mallocN(mt->n_charts * sizeof(*mt->uv_matrices),
-//                                "Array of pointers to UV matrices");
-//  mt->pp_matrices = (double**)MEM_mallocN(mt->n_charts * sizeof(*mt->pp_matrices),
-//                                "Array of pointers to Pinned-Vertex-Position matrices");
-//
-//  mt->f_matrices = (int**)MEM_mallocN(mt->n_charts * sizeof(*mt->f_matrices),
-//                               "Array of pointers to Face matrices");
-//  mt->p_matrices = (int**)MEM_mallocN(mt->n_charts * sizeof(*mt->p_matrices),
-//                               "Array of pointers to Pinned-Vertex matrices");
-//  mt->b_vectors = (int**)MEM_mallocN(mt->n_charts * sizeof(*mt->b_vectors),
-//                              "Array of pointers to boundary-Vertex vectors");
-//  mt->e_matrices = (int**)MEM_mallocN(mt->n_charts * sizeof(*mt->e_matrices),
-//                               "Array of pointers to Edge matrices");
-//
-//  mt->el_vectors = (double**)MEM_mallocN(mt->n_charts * sizeof(*mt->el_vectors),
-//                               "Array of pointers to Edge-Length vectors");
-//  mt->w_vectors = (float**)MEM_mallocN(mt->n_charts * sizeof(*mt->w_vectors),
-//                              "Array of pointers to weight-per-face vectors");
-//}
-
 /* For one chart, allocate memory. If no accurate estimate (e.g. for number of
  * pinned vertices) overestimate and correct later. */
 static void slim_allocate_matrices(const PChart *chart, SLIMMatrixTransferChart* mt_chart)
@@ -4516,25 +4475,25 @@ static void slim_allocate_matrices(const PChart *chart, SLIMMatrixTransferChart*
   mt_chart->n_faces = chart->nfaces;
   mt_chart->n_edges = chart->nedges;
 
-  mt_chart->v_matrices = new double[mt_chart->n_verts * 3];
-  mt_chart->uv_matrices = new double[mt_chart->n_verts * 2];
-  mt_chart->pp_matrices = new double[mt_chart->n_verts * 2];
+  mt_chart->v_matrices.resize(mt_chart->n_verts * 3);
+  mt_chart->uv_matrices.resize(mt_chart->n_verts * 2);
+  mt_chart->pp_matrices.resize(mt_chart->n_verts * 2);
 
-  mt_chart->f_matrices = new int[mt_chart->n_faces * 3];
-  mt_chart->p_matrices = new int[mt_chart->n_verts];
-  mt_chart->b_vectors = new int[mt_chart->n_verts];
+  mt_chart->f_matrices.resize(mt_chart->n_faces * 3);
+  mt_chart->p_matrices.resize(mt_chart->n_verts);
+  mt_chart->b_vectors.resize(mt_chart->n_verts);
   /* also clear memory for weight vectors, hence 'new' followed by '()' */
-  mt_chart->w_vectors = new float[mt_chart->n_verts]();
+  mt_chart->w_vectors.resize(mt_chart->n_verts, 0.0);
 
-  mt_chart->e_matrices = new int[mt_chart->n_edges * 2 * 2];
-  mt_chart->el_vectors = new double [mt_chart->n_edges * 2];
+  mt_chart->e_matrices.resize(mt_chart->n_edges * 2 * 2);
+  mt_chart->el_vectors.resize(mt_chart->n_edges * 2);
 }
 
 /* Transfer edges and edge lengths */
 static void slim_transfer_edges(PChart* chart, SLIMMatrixTransferChart* mt_chart)
 {
-  int *E = mt_chart->e_matrices;
-  double *EL = mt_chart->el_vectors;
+  auto& E = mt_chart->e_matrices;
+  auto& EL = mt_chart->el_vectors;
 
   PEdge *outer;
   p_chart_boundaries(chart, &outer);
@@ -4581,11 +4540,11 @@ static void slim_transfer_edges(PChart* chart, SLIMMatrixTransferChart* mt_chart
 static void slim_transfer_vertices(const PChart* chart, SLIMMatrixTransferChart* mt_chart, SLIMMatrixTransfer *mt)
 {
   int r = mt_chart->n_verts;
-  double *V = mt_chart->v_matrices;
-  double *UV = mt_chart->uv_matrices;
-  int *P = mt_chart->p_matrices;
-  double *PP = mt_chart->pp_matrices;
-  float *W = mt_chart->w_vectors;
+  auto& V = mt_chart->v_matrices;
+  auto& UV = mt_chart->uv_matrices;
+  auto& P = mt_chart->p_matrices;
+  auto& PP = mt_chart->pp_matrices;
+  auto& W = mt_chart->w_vectors;
 
   int pVid = 0;
   int vid = mt_chart->n_boundary_vertices;
@@ -4623,8 +4582,8 @@ static void slim_transfer_vertices(const PChart* chart, SLIMMatrixTransferChart*
 /* Transfer boundary vertices */
 static void slim_transfer_boundary_vertices(PChart* chart, SLIMMatrixTransferChart* mt_chart, const SLIMMatrixTransfer *mt)
 {
-  int *B = mt_chart->b_vectors;
-  float *W = mt_chart->w_vectors;
+  auto& B = mt_chart->b_vectors;
+  auto& W = mt_chart->w_vectors;
 
   /* For every vertex, set slim_flag to 0 */
   for (PVert *v = chart->verts; v; v = v->nextlink) {
@@ -4665,9 +4624,7 @@ static void slim_transfer_faces(const PChart* chart, SLIMMatrixTransferChart* mt
     PEdge *e2 = e1->next;
 
     int r = mt_chart->n_faces;
-    int *F;
-
-    F = mt_chart->f_matrices;
+    auto& F = mt_chart->f_matrices;
 
     F[fid] = e->vert->slim_id;
     F[r + fid] = e1->vert->slim_id;
@@ -4701,19 +4658,17 @@ static void slim_convert_blender(ParamHandle *phandle)
     slim_transfer_edges(chart, mt_chart);
     slim_transfer_faces(chart, mt_chart);
 
-    //mt->pp_matrices[i] = (double*)MEM_reallocN_id(mt->pp_matrices[i],
-    //                                     mt->n_pinned_vertices[i] * 2 * sizeof(**mt->pp_matrices),
-    //                                     "Pinned-Vertex-position Matrix");
-    //mt->p_matrices[i] = (int*)MEM_reallocN_id(mt->p_matrices[i],
-    //                                    mt->n_pinned_vertices[i] * sizeof(**mt->p_matrices),
-    //                                    " Pinned-Vertex Matrix");
-    //mt->b_vectors[i] = (int*)MEM_reallocN_id(mt->b_vectors[i],
-    //                                   mt->n_boundary_vertices[i] * sizeof(**mt->b_vectors),
-    //                                   " boundary-Vertex Matrix");
-    //mt->e_matrices[i] = (int*)MEM_reallocN_id(mt->e_matrices[i],
-    //                                    (mt->n_edges[i] + mt->n_boundary_vertices[i]) * 2 *
-    //                                        sizeof(**mt->e_matrices),
-    //                                    " boundarys-Vertex Matrix");
+    mt_chart->pp_matrices.resize(mt_chart->n_pinned_vertices * 2);
+    mt_chart->pp_matrices.shrink_to_fit();
+
+    mt_chart->p_matrices.resize(mt_chart->n_pinned_vertices);
+    mt_chart->p_matrices.shrink_to_fit();
+
+    mt_chart->b_vectors.resize(mt_chart->n_boundary_vertices);
+    mt_chart->b_vectors.shrink_to_fit();
+
+    mt_chart->e_matrices.resize((mt_chart->n_edges + mt_chart->n_boundary_vertices) * 2);
+    mt_chart->e_matrices.shrink_to_fit();
   }
 }
 
@@ -4743,7 +4698,7 @@ static void slim_flush_uvs(ParamHandle *phandle,
         (*count_changed)++;
       }
 
-      double *UV = mt_chart->uv_matrices;
+      auto& UV = mt_chart->uv_matrices;
 
       for (v = chart->verts; v; v = v->nextlink) {
         vid = v->slim_id;
@@ -4768,22 +4723,6 @@ static void slim_flush_uvs(ParamHandle *phandle,
 static void slim_free_matrix_transfer(ParamHandle* phandle)
 {
   SLIMMatrixTransfer* mt = phandle->slim_mt;
-
-  for (int i = 0; i < phandle->ncharts; i++) {
-    PChart* chart = phandle->charts[i];
-    SLIMMatrixTransferChart* mt_chart = &mt->mt_charts[i];
-
-    delete[] (mt_chart->v_matrices);
-    delete[] (mt_chart->uv_matrices);
-    delete[] (mt_chart->f_matrices);
-    delete[] (mt_chart->pp_matrices);
-    delete[] (mt_chart->el_vectors);
-    delete[] (mt_chart->w_vectors);
-    delete[] (mt_chart->p_matrices);
-    delete[] (mt_chart->e_matrices);
-    delete[] (mt_chart->b_vectors);
-  }
-
   delete (phandle->slim_mt);
 }
 

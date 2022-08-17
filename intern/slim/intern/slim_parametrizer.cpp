@@ -37,12 +37,13 @@ void transfer_uvs_back_to_native_part_live(SLIMMatrixTransferChart& mt_chart,
     return;
   }
 
-  double *uv_coordinate_array = mt_chart.uv_matrices;
+  auto& uv_coordinate_array = mt_chart.uv_matrices;
+  size_t uv_idx = 0;
   int number_of_vertices = mt_chart.n_verts;
 
   for (int i = 0; i < number_of_vertices; i++) {
-    *(uv_coordinate_array++) = uv(i, 0);
-    *(uv_coordinate_array++) = uv(i, 1);
+    uv_coordinate_array[uv_idx++] = uv(i, 0);
+    uv_coordinate_array[uv_idx++] = uv(i, 1);
   }
 }
 
@@ -53,8 +54,7 @@ void transfer_uvs_back_to_native_part(SLIMMatrixTransferChart& mt_chart,
     return;
   }
 
-  double *uv_coordinate_array;
-  uv_coordinate_array = mt_chart.uv_matrices;
+  auto& uv_coordinate_array = mt_chart.uv_matrices;
   int number_of_vertices = mt_chart.n_verts;
 
   for (int i = 0; i < number_of_vertices; i++) {

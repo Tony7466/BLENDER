@@ -34,16 +34,16 @@ struct SLIMMatrixTransferChart {
 
   bool succeeded = false;
 
-  double* v_matrices = nullptr;
-  double* uv_matrices = nullptr;
-  double* pp_matrices = nullptr;
-  double* el_vectors = nullptr;
-  float* w_vectors = nullptr;
+  std::vector<double> v_matrices;
+  std::vector<double> uv_matrices;
+  std::vector<double> pp_matrices;
+  std::vector<double> el_vectors;
+  std::vector<float> w_vectors;
 
-  int* f_matrices = nullptr;
-  int* p_matrices = nullptr;
-  int* e_matrices = nullptr;
-  int* b_vectors = nullptr;
+  std::vector<int> f_matrices;
+  std::vector<int> p_matrices;
+  std::vector<int> e_matrices;
+  std::vector<int> b_vectors;
 
   igl::SLIMData* data = nullptr;
 

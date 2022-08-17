@@ -51,6 +51,6 @@ void construct_slim_data(const GeometryData &gd,
 void retrieve_pinned_vertices(GeometryData &gd, bool border_vertices_are_pinned);
 
 void retrieve_geometry_data_matrices(const SLIMMatrixTransfer& mt,
-                                     const SLIMMatrixTransferChart& mt_chart,
+                                     SLIMMatrixTransferChart& mt_chart,
                                      GeometryData &gd);
 }  // namespace slim
