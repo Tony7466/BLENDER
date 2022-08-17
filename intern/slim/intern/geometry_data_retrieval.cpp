@@ -42,52 +42,52 @@ GeometryData::GeometryData(const SLIMMatrixTransfer& mt, SLIMMatrixTransferChart
         columns_2)
 {}
 
-void create_weights_per_face(SLIMData *slim_data)
+void create_weights_per_face(SLIMData& slim_data)
 {
-  if (!slim_data->valid) {
+  if (!slim_data.valid) {
     return;
   }
 
-  if (!slim_data->withWeightedParameterization) {
-    slim_data->weightPerFaceMap = Eigen::VectorXf::Ones(slim_data->F.rows());
+  if (!slim_data.withWeightedParameterization) {
+    slim_data.weightPerFaceMap = Eigen::VectorXf::Ones(slim_data.F.rows());
     return;
   }
 
-  std::cout << "weightmap: " << slim_data->weightmap << std::endl;
+  std::cout << "weightmap: " << slim_data.weightmap << std::endl;
 
-  slim_data->weightPerFaceMap = Eigen::VectorXf(slim_data->F.rows());
+  slim_data.weightPerFaceMap = Eigen::VectorXf(slim_data.F.rows());
 
   /* The actual weight is `max_factor ^ (2 * (mean - 0.5))` */
-  int weight_influence_sign = (slim_data->weightInfluence >= 0) ? 1 : -1;
-  double max_factor = std::abs(slim_data->weightInfluence) + 1;
+  int weight_influence_sign = (slim_data.weightInfluence >= 0) ? 1 : -1;
+  double max_factor = std::abs(slim_data.weightInfluence) + 1;
 
-  for (int fid = 0; fid < slim_data->F.rows(); fid++) {
-    Eigen::RowVector3i row = slim_data->F.row(fid);
+  for (int fid = 0; fid < slim_data.F.rows(); fid++) {
+    Eigen::RowVector3i row = slim_data.F.row(fid);
     float w1, w2, w3, mean, weight_factor, flipped_mean;
-    w1 = slim_data->weightmap(row(0));
-    w2 = slim_data->weightmap(row(1));
-    w3 = slim_data->weightmap(row(2));
+    w1 = slim_data.weightmap(row(0));
+    w2 = slim_data.weightmap(row(1));
+    w3 = slim_data.weightmap(row(2));
     mean = (w1 + w2 + w3) / 3;
     flipped_mean = 1 - mean;
 
     weight_factor = std::pow(max_factor, weight_influence_sign * 2 * (flipped_mean - 0.5));
-    slim_data->weightPerFaceMap(fid) = weight_factor;
+    slim_data.weightPerFaceMap(fid) = weight_factor;
   }
 }
 
-void GeometryData::set_geometry_data_matrices(SLIMData *slim_data) const
+void GeometryData::set_geometry_data_matrices(SLIMData& slim_data) const
 {
-  if (!slim_data->valid) {
+  if (!slim_data.valid) {
     return;
   }
 
-  slim_data->V = vertex_positions3d;
-  slim_data->F = faces_by_vertexindices;
-  slim_data->b = pinned_vertex_indices;
-  slim_data->bc = positions_of_pinned_vertices2d;
-  slim_data->V_o = uv_positions2d;
-  slim_data->oldUVs = uv_positions2d;
-  slim_data->weightmap = weights_per_vertex;
+  slim_data.V = vertex_positions3d;
+  slim_data.F = faces_by_vertexindices;
+  slim_data.b = pinned_vertex_indices;
+  slim_data.bc = positions_of_pinned_vertices2d;
+  slim_data.V_o = uv_positions2d;
+  slim_data.oldUVs = uv_positions2d;
+  slim_data.weightmap = weights_per_vertex;
   create_weights_per_face(slim_data);
 }
 
@@ -114,23 +114,23 @@ bool GeometryData::can_initialization_be_skipped(bool skip_initialization) const
 }
 
 void GeometryData::construct_slim_data(
-                         SLIMData *slim_data,
+                         SLIMData& slim_data,
                          bool skip_initialization,
                          int reflection_mode,
                          double relative_scale) const
 {
-  BLI_assert(slim_data->valid);
+  BLI_assert(slim_data.valid);
 
-  slim_data->skipInitialization = can_initialization_be_skipped(skip_initialization);
-  slim_data->weightInfluence = weight_influence;
-  slim_data->relativeScale = relative_scale;
-  slim_data->reflection_mode = reflection_mode;
-  slim_data->withWeightedParameterization = with_weighted_parameteriztion;
+  slim_data.skipInitialization = can_initialization_be_skipped(skip_initialization);
+  slim_data.weightInfluence = weight_influence;
+  slim_data.relativeScale = relative_scale;
+  slim_data.reflection_mode = reflection_mode;
+  slim_data.withWeightedParameterization = with_weighted_parameteriztion;
   set_geometry_data_matrices(slim_data);
 
   double penalty_for_violating_pinned_positions = pow(10, 9);
-  slim_data->soft_const_p = penalty_for_violating_pinned_positions;
-  slim_data->slim_energy = SLIMData::SYMMETRIC_DIRICHLET;
+  slim_data.soft_const_p = penalty_for_violating_pinned_positions;
+  slim_data.slim_energy = SLIMData::SYMMETRIC_DIRICHLET;
 }
 
 void GeometryData::combine_matrices_of_pinned_and_boundary_vertices()

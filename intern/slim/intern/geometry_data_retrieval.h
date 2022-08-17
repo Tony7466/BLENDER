@@ -43,9 +43,11 @@ struct GeometryData {
   Map<VectorXf> weights_per_vertex = Map<VectorXf>(NULL, 0);
 
   GeometryData(const SLIMMatrixTransfer& mt, SLIMMatrixTransferChart& mt_chart);
+  GeometryData(const GeometryData&) = delete;
+  GeometryData& operator=(const GeometryData&) = delete;
 
   void construct_slim_data(
-    SLIMData* slim_data,
+    SLIMData& slim_data,
     bool skip_initialization,
     int reflection_mode,
     double relative_scale) const;
@@ -53,7 +55,7 @@ struct GeometryData {
   void retrieve_pinned_vertices(bool border_vertices_are_pinned);
 
 private:
-  void set_geometry_data_matrices(SLIMData* slim_data) const;
+  void set_geometry_data_matrices(SLIMData& slim_data) const;
   bool has_valid_preinitialized_map() const;
   bool can_initialization_be_skipped(bool skip_initialization) const;
   void combine_matrices_of_pinned_and_boundary_vertices();

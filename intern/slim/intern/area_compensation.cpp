@@ -29,14 +29,14 @@ double compute_surface_area(const VertexPositionType v, const FaceIndicesType f)
   return area_of_map;
 }
 
-void correct_map_surface_area_if_necessary(SLIMData *slim_data)
+void correct_map_surface_area_if_necessary(SLIMData& slim_data)
 {
-  if (!slim_data->valid) {
+  if (!slim_data.valid) {
     return;
   }
 
-  bool mesh_surface_area_was_corrected = (slim_data->expectedSurfaceAreaOfResultingMap != 0);
-  int number_of_pinned_vertices = slim_data->b.rows();
+  bool mesh_surface_area_was_corrected = (slim_data.expectedSurfaceAreaOfResultingMap != 0);
+  int number_of_pinned_vertices = slim_data.b.rows();
   bool no_pinned_vertices_exist = number_of_pinned_vertices == 0;
 
   bool needs_area_correction = mesh_surface_area_was_corrected && no_pinned_vertices_exist;
@@ -44,30 +44,30 @@ void correct_map_surface_area_if_necessary(SLIMData *slim_data)
     return;
   }
 
-  double area_ofresulting_map = compute_surface_area(slim_data->V_o, slim_data->F);
+  double area_ofresulting_map = compute_surface_area(slim_data.V_o, slim_data.F);
   if (!area_ofresulting_map) {
     return;
   }
 
   double resulting_area_to_expected_area_ratio = area_ofresulting_map /
-                                                 slim_data->expectedSurfaceAreaOfResultingMap;
+                                                 slim_data.expectedSurfaceAreaOfResultingMap;
   double desired_ratio = 1.0;
-  correct_geometry_size(resulting_area_to_expected_area_ratio, slim_data->V_o, desired_ratio);
+  correct_geometry_size(resulting_area_to_expected_area_ratio, slim_data.V_o, desired_ratio);
 }
 
-void correct_mesh_surface_area_if_necessary(SLIMData *slim_data)
+void correct_mesh_surface_area_if_necessary(SLIMData& slim_data)
 {
-  BLI_assert(slim_data->valid);
+  BLI_assert(slim_data.valid);
 
-  int number_of_pinned_vertices = slim_data->b.rows();
+  int number_of_pinned_vertices = slim_data.b.rows();
   bool pinned_vertices_exist = number_of_pinned_vertices > 0;
-  bool needs_area_correction = slim_data->skipInitialization || pinned_vertices_exist;
+  bool needs_area_correction = slim_data.skipInitialization || pinned_vertices_exist;
 
   if (!needs_area_correction) {
     return;
   }
 
-  double area_of_preinitialized_map = compute_surface_area(slim_data->V_o, slim_data->F);
+  double area_of_preinitialized_map = compute_surface_area(slim_data.V_o, slim_data.F);
   if (!area_of_preinitialized_map) {
     return;
   }
@@ -76,11 +76,11 @@ void correct_mesh_surface_area_if_necessary(SLIMData *slim_data)
     area_of_preinitialized_map *= -1;
   }
 
-  slim_data->expectedSurfaceAreaOfResultingMap = area_of_preinitialized_map;
-  double surface_area_of3d_mesh = compute_surface_area(slim_data->V, slim_data->F);
+  slim_data.expectedSurfaceAreaOfResultingMap = area_of_preinitialized_map;
+  double surface_area_of3d_mesh = compute_surface_area(slim_data.V, slim_data.F);
   double surface_area_to_map_area_ratio = surface_area_of3d_mesh / area_of_preinitialized_map;
 
   double desired_ratio = 1.0;
-  correct_geometry_size(surface_area_to_map_area_ratio, slim_data->V, desired_ratio);
+  correct_geometry_size(surface_area_to_map_area_ratio, slim_data.V, desired_ratio);
 }
 }  // namespace slim

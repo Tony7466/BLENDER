@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <memory>
 
 /* Struct that holds all the information and data matrices to be transfered from the native
  * Blender part to SLIM, named as follows:
@@ -22,8 +23,12 @@
 
 namespace igl {
   struct SLIMData;
+  class Timer;
 }
 
+namespace slim {
+
+typedef std::unique_ptr<igl::SLIMData> SLIMDataPtr;
 
 struct SLIMMatrixTransferChart {
   int n_verts = 0;
@@ -45,13 +50,17 @@ struct SLIMMatrixTransferChart {
   std::vector<int> e_matrices;
   std::vector<int> b_vectors;
 
-  igl::SLIMData* data = nullptr;
+  SLIMDataPtr data;
 
-  SLIMMatrixTransferChart() = default;
-  SLIMMatrixTransferChart(SLIMMatrixTransferChart&&) = default;
+  SLIMMatrixTransferChart();
+  SLIMMatrixTransferChart(SLIMMatrixTransferChart&&);
 
   SLIMMatrixTransferChart(const SLIMMatrixTransferChart&) = delete;
   SLIMMatrixTransferChart& operator=(const SLIMMatrixTransferChart&) = delete;
+
+  ~SLIMMatrixTransferChart();
+
+  void free_slim_data();
 };
 
 struct SLIMMatrixTransfer {
@@ -72,9 +81,11 @@ struct SLIMMatrixTransfer {
 
   std::vector<SLIMMatrixTransferChart> mt_charts;
 
-  SLIMMatrixTransfer() = default;
+  SLIMMatrixTransfer();
   SLIMMatrixTransfer(const SLIMMatrixTransfer&) = delete;
   SLIMMatrixTransfer& operator=(const SLIMMatrixTransfer&) = delete;
+  ~SLIMMatrixTransfer();
+
 
   void parametrize(
     int n_iterations,
@@ -97,10 +108,19 @@ struct SLIMMatrixTransfer {
     int n_selected_pins,
     std::vector<int>& selected_pins);
 
-  igl::SLIMData* setup(
+  void setup(
     SLIMMatrixTransferChart& mt_chart,
     bool are_border_vertices_pinned,
     bool skip_initialization) const;
 
-  void free_data(igl::SLIMData* slim_data);
+  //void free_data(igl::SLIMData* slim_data);
+
+  void setup_slim(
+    SLIMMatrixTransferChart& mt_chart,
+    int n_iterations,
+    igl::Timer& timer,
+    bool border_vertices_are_pinned,
+    bool skip_initialization) const;
 };
+
+}

@@ -10,15 +10,24 @@
 
 #include <igl/Timer.h>
 
+namespace slim {
+
 using namespace igl;
-using namespace slim;
+
+SLIMMatrixTransferChart::SLIMMatrixTransferChart() = default;
+SLIMMatrixTransferChart::SLIMMatrixTransferChart(SLIMMatrixTransferChart&&) = default;
+SLIMMatrixTransferChart::~SLIMMatrixTransferChart() = default;
+
+SLIMMatrixTransfer::SLIMMatrixTransfer() = default;
+SLIMMatrixTransfer::~SLIMMatrixTransfer() = default;
+
 
 void SLIMMatrixTransfer::transfer_uvs_blended_live(SLIMMatrixTransferChart& mt_chart)
 {
   if (!mt_chart.succeeded) {
     return;
   }
-  correct_map_surface_area_if_necessary(mt_chart.data);
+  correct_map_surface_area_if_necessary(*mt_chart.data);
   transfer_uvs_back_to_native_part_live(mt_chart, mt_chart.data->V_o);
 }
 
@@ -33,22 +42,20 @@ void SLIMMatrixTransfer::transfer_uvs_blended(
     return;
   }
 
-  Eigen::MatrixXd blended_uvs = get_interactive_result_blended_with_original(blend, mt_chart.data);
-  correct_map_surface_area_if_necessary(mt_chart.data);
+  Eigen::MatrixXd blended_uvs = get_interactive_result_blended_with_original(blend, *mt_chart.data);
+  correct_map_surface_area_if_necessary(*mt_chart.data);
   transfer_uvs_back_to_native_part(mt_chart, blended_uvs);
 }
 
 /* Setup call from the native C part. Necessary for interactive parametrisation. */
-SLIMData* SLIMMatrixTransfer::setup(
+void SLIMMatrixTransfer::setup(
                  SLIMMatrixTransferChart& mt_chart,
                  bool are_border_vertices_pinned,
                  bool skip_initialization) const
 {
   igl::Timer timer;
   timer.start();
-  SLIMData *slim_data = setup_slim(
-      *this, mt_chart, 0, timer, are_border_vertices_pinned, skip_initialization);
-  return slim_data;
+  setup_slim(mt_chart, 0, timer, are_border_vertices_pinned, skip_initialization);
 }
 
 /* Executes a single iteration of SLIM, to be called from the native part. It recasts the pointer
@@ -84,7 +91,9 @@ void SLIMMatrixTransfer::parametrize(
   param_slim(this, n_iterations, are_border_vertices_pinned, skip_initialization);
 }
 
-void SLIMMatrixTransfer::free_data(SLIMData* slim_data)
-{
-  free_slim_data(slim_data);
+//void SLIMMatrixTransfer::free_data(SLIMData* slim_data)
+//{
+//  free_slim_data(slim_data);
+//}
+
 }

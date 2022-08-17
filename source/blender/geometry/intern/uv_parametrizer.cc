@@ -32,6 +32,8 @@
 #define param_warning(message) \
   {/*printf("Warning %s:%d: %s\n", __FILE__, __LINE__, message);*/}(void)0
 
+using namespace slim;
+
 /* Special Purpose Hash */
 
 typedef intptr_t PHashKey;
@@ -191,7 +193,7 @@ typedef struct ParamHandle {
   float blend;
 
   /* SLIM uv unwrapping */
-  SLIMMatrixTransfer *slim_mt;
+  slim::SLIMMatrixTransfer *slim_mt;
 } ParamHandle;
 
 /* PHash
@@ -4846,7 +4848,7 @@ void GEO_uv_parametrizer_slim_begin(ParamHandle *phandle, const MatrixTransferOp
         deselect = true;
     }
 
-    mt->mt_charts[i].data = mt->setup(mt_chart, mt->fixed_boundary, mt->is_minimize_stretch);
+    mt->setup(mt_chart, mt->fixed_boundary, mt->is_minimize_stretch);
   }
 }
 
@@ -4914,8 +4916,7 @@ void GEO_uv_parametrizer_slim_end(ParamHandle *phandle)
     PChart *chart = phandle->charts[i];
     SLIMMatrixTransferChart* mt_chart = &mt->mt_charts[i];
 
-    if (mt_chart->data)
-      mt->free_data(mt_chart->data);
+    mt_chart->free_slim_data();
   }
 
   slim_free_matrix_transfer(phandle);

@@ -10,13 +10,7 @@ using namespace igl;
 
 namespace slim {
 Eigen::MatrixXd get_interactive_result_blended_with_original(float blend,
-                                                             const SLIMData *slim_data);
-SLIMData *setup_slim(const SLIMMatrixTransfer& mt,
-                     SLIMMatrixTransferChart& mt_chart,
-                     int n_iterations,
-                     igl::Timer &timer,
-                     bool border_vertices_are_pinned,
-                     bool skip_initialization);
+                                                             const SLIMData& slim_data);
 void try_slim_solve(SLIMMatrixTransfer *mt, SLIMMatrixTransferChart& mt_chart, int iter_num);
 
 void transfer_uvs_back_to_native_part_live(SLIMMatrixTransferChart& mt_chart,
@@ -39,6 +33,4 @@ void param_slim(SLIMMatrixTransfer *mt,
                 int n_iterations,
                 bool fix_border,
                 bool skip_initialization);
-
-void free_slim_data(SLIMData *slim_data);
 }  // namespace slim
