@@ -225,8 +225,7 @@ SLIMData *setup_slim(const SLIMMatrixTransfer& mt,
       throw SlimFailedException();
     }
 
-    GeometryData geometry_data;
-    retrieve_geometry_data_matrices(mt, mt_chart, geometry_data);
+    GeometryData geometry_data(mt, mt_chart);
 
     retrieve_pinned_vertices(geometry_data, border_vertices_are_pinned);
     mt_chart.n_pinned_vertices = geometry_data.number_of_pinned_vertices;

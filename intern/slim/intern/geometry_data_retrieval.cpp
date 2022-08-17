@@ -15,6 +15,33 @@ using namespace Eigen;
 
 namespace slim {
 
+GeometryData::GeometryData(const SLIMMatrixTransfer& mt, SLIMMatrixTransferChart& mt_chart) :
+    number_of_vertices(mt_chart.n_verts),
+    number_of_faces(mt_chart.n_faces),
+    /* `n_edges` in transferred_data accounts for boundary edges only once. */
+    number_of_edges_twice(mt_chart.n_edges + mt_chart.n_boundary_vertices),
+    number_of_boundary_vertices(mt_chart.n_boundary_vertices),
+    number_of_pinned_vertices(mt_chart.n_pinned_vertices),
+    vertex_positions3d(mt_chart.v_matrices.data(), number_of_vertices, columns_3),
+    uv_positions2d(mt_chart.uv_matrices.data(), number_of_vertices, columns_2),
+    positions_of_pinned_vertices2d(),
+    faces_by_vertexindices(mt_chart.f_matrices.data(), number_of_faces, columns_3),
+    edges_by_vertexindices(mt_chart.e_matrices.data(), number_of_edges_twice, columns_2),
+    pinned_vertex_indices(),
+    edge_lengths(mt_chart.el_vectors.data(), number_of_edges_twice),
+    boundary_vertex_indices(mt_chart.b_vectors.data(), number_of_boundary_vertices),
+    with_weighted_parameteriztion(mt.with_weighted_parameterization),
+    weights_per_vertex(mt_chart.w_vectors.data(), number_of_vertices),
+    weight_influence(mt.weight_influence),
+    explicitly_pinned_vertex_indices(
+        number_of_pinned_vertices != 0 ? mt_chart.p_matrices.data() : nullptr,
+        number_of_pinned_vertices),
+    positions_of_explicitly_pinned_vertices2d(
+        number_of_pinned_vertices != 0 ? mt_chart.pp_matrices.data() : nullptr,
+        number_of_pinned_vertices,
+        columns_2)
+{}
+
 void create_weights_per_face(SLIMData *slim_data)
 {
   if (!slim_data->valid) {
@@ -153,48 +180,4 @@ void retrieve_pinned_vertices(GeometryData &gd, bool border_vertices_are_pinned)
   }
 }
 
-void retrieve_geometry_data_matrices(const SLIMMatrixTransfer& mt,
-                                     SLIMMatrixTransferChart& mt_chart,
-                                     GeometryData &gd)
-{
-  gd.number_of_vertices = mt_chart.n_verts;
-  gd.number_of_faces = mt_chart.n_faces;
-  /* `n_edges` in transferred_data accounts for boundary edges only once. */
-  gd.number_of_edges_twice = mt_chart.n_edges +
-                             mt_chart.n_boundary_vertices;
-  gd.number_of_boundary_vertices = mt_chart.n_boundary_vertices;
-  gd.number_of_pinned_vertices = mt_chart.n_pinned_vertices;
-
-  new (&gd.vertex_positions3d) Map<MatrixXd>(
-      mt_chart.v_matrices.data(), gd.number_of_vertices, gd.columns_3);
-  new (&gd.uv_positions2d) Map<MatrixXd>(
-      mt_chart.uv_matrices.data(), gd.number_of_vertices, gd.columns_2);
-  gd.positions_of_pinned_vertices2d = MatrixXd();
-
-  new (&gd.faces_by_vertexindices) Map<MatrixXi>(
-      mt_chart.f_matrices.data(), gd.number_of_faces, gd.columns_3);
-  new (&gd.edges_by_vertexindices) Map<MatrixXi>(
-      mt_chart.e_matrices.data(), gd.number_of_edges_twice, gd.columns_2);
-  gd.pinned_vertex_indices = VectorXi();
-
-  new (&gd.edge_lengths)
-      Map<VectorXd>(mt_chart.el_vectors.data(), gd.number_of_edges_twice);
-  new (&gd.boundary_vertex_indices)
-      Map<VectorXi>(mt_chart.b_vectors.data(), gd.number_of_boundary_vertices);
-
-  gd.with_weighted_parameteriztion = mt.with_weighted_parameterization;
-  new (&gd.weights_per_vertex)
-      Map<VectorXf>(mt_chart.w_vectors.data(), gd.number_of_vertices);
-  gd.weight_influence = mt.weight_influence;
-
-  if (gd.number_of_pinned_vertices != 0) {
-    new (&gd.explicitly_pinned_vertex_indices)
-        Map<VectorXi>(mt_chart.p_matrices.data(), gd.number_of_pinned_vertices);
-    new (&gd.positions_of_explicitly_pinned_vertices2d)
-        Map<Matrix<double, Dynamic, Dynamic, RowMajor>>(
-            mt_chart.pp_matrices.data(),
-            gd.number_of_pinned_vertices,
-            gd.columns_2);
-  }
-}
 }  // namespace slim
