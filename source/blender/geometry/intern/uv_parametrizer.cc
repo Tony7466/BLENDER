@@ -4638,10 +4638,8 @@ static void slim_transfer_faces(const PChart* chart, SLIMMatrixTransferChart* mt
 }
 
 /* Conversion Function to build matrix for SLIM Parametrization */
-static void slim_convert_blender(ParamHandle *phandle)
+static void slim_convert_blender(ParamHandle *phandle, SLIMMatrixTransfer* mt)
 {
-  SLIMMatrixTransfer *mt = phandle->slim_mt;
-
   mt->n_charts = phandle->ncharts;
   mt->mt_charts.resize(phandle->ncharts);
 
@@ -4676,12 +4674,12 @@ static void slim_convert_blender(ParamHandle *phandle)
   }
 }
 
-static void slim_transfer_data_to_slim(ParamHandle *phandle)
+static void slim_transfer_data_to_slim(ParamHandle *phandle, const MatrixTransferOptions* mt_options)
 {
-  SLIMMatrixTransfer *mt = phandle->slim_mt;
+  SLIMMatrixTransfer *mt = slim_matrix_transfer(mt_options);
 
-  mt->pinned_vertices = false;
-  slim_convert_blender(phandle);
+  slim_convert_blender(phandle, mt);
+  phandle->slim_mt = mt;
 }
 
 /* Set UV on each vertex after SLIM parametrization, for each chart. */
@@ -4803,10 +4801,8 @@ void GEO_uv_parametrizer_slim_solve(ParamHandle *phandle,
                                     int *count_changed,
                                     int *count_failed)
 {
-  SLIMMatrixTransfer* mt = slim_matrix_transfer(mt_options);
-
-  phandle->slim_mt = mt;
-  slim_transfer_data_to_slim(phandle);
+  slim_transfer_data_to_slim(phandle, mt_options);
+  SLIMMatrixTransfer* mt = phandle->slim_mt;
 
   mt->parametrize(mt->n_iterations, mt->fixed_boundary, mt->skip_initialization);
 
@@ -4816,17 +4812,14 @@ void GEO_uv_parametrizer_slim_solve(ParamHandle *phandle,
 
 void GEO_uv_parametrizer_slim_begin(ParamHandle *phandle, const MatrixTransferOptions* mt_options)
 {
-  SLIMMatrixTransfer* mt = slim_matrix_transfer(mt_options);
-
-  phandle->slim_mt = mt;
+  slim_transfer_data_to_slim(phandle, mt_options);
+  SLIMMatrixTransfer* mt = phandle->slim_mt;
 
   for (int i = 0; i < phandle->ncharts; i++) {
-    for (PFace *f = phandle->charts[i]->faces; f; f = f->nextlink) {
+    for (PFace* f = phandle->charts[i]->faces; f; f = f->nextlink) {
       p_face_backup_uvs(f);
     }
   }
-
-  slim_transfer_data_to_slim(phandle);
 
   for (int i = 0; i < phandle->ncharts; i++) {
     PChart *chart = phandle->charts[i];
