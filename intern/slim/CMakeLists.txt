@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.6)
 
 set(INC
   ./
-  ext/libigl_extract
+  extern/libigl_extract
   ../../source/blender/blenlib
 )
 
