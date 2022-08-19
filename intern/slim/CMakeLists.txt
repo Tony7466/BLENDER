@@ -19,12 +19,13 @@ set(SRC
   intern/geometry_data_retrieval.h
   intern/least_squares_relocator.cpp
   intern/least_squares_relocator.h
-  intern/slim.cpp
-  intern/slim.h
   intern/slim_matrix_transfer.cpp
   intern/slim_parametrizer.cpp
   intern/uv_initializer.cpp
   intern/uv_initializer.h
+
+  extern/libigl_extract/slim.h
+  extern/libigl_extract/slim.cpp
 )
 
 set(LIB
