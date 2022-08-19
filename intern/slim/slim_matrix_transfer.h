@@ -100,10 +100,10 @@ struct SLIMMatrixTransfer {
   void parametrize_live(
     SLIMMatrixTransferChart& mt_chart,
     int n_pins,
-    std::vector<int>& pinned_vertex_indices,
-    std::vector<double>& pinned_vertex_positions_2D,
+    const std::vector<int>& pinned_vertex_indices,
+    const std::vector<double>& pinned_vertex_positions_2D,
     int n_selected_pins,
-    std::vector<int>& selected_pins);
+    const std::vector<int>& selected_pins);
 
   void setup_slim_data(
     SLIMMatrixTransferChart& mt_chart,

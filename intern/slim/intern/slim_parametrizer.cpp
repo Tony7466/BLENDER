@@ -73,10 +73,10 @@ Eigen::MatrixXd get_interactive_result_blended_with_original(float blend,
 
 static void adjust_pins(SLIMData& slim_data,
                         int n_pins,
-                        std::vector<int>& pinned_vertex_indices,
-                        std::vector<double>& pinned_vertex_positions2d,
+                        const std::vector<int>& pinned_vertex_indices,
+                        const std::vector<double>& pinned_vertex_positions2d,
                         int n_selected_pins,
-                        std::vector<int>& selected_pins)
+                        const std::vector<int>& selected_pins)
 {
   if (!slim_data.valid) {
     return;
@@ -173,10 +173,10 @@ void SLIMMatrixTransferChart::parametrize_single_iteration()
 void SLIMMatrixTransfer::parametrize_live(
     SLIMMatrixTransferChart& mt_chart,
     int n_pins,
-    std::vector<int>& pinned_vertex_indices,
-    std::vector<double>& pinned_vertex_positions_2D,
+    const std::vector<int>& pinned_vertex_indices,
+    const std::vector<double>& pinned_vertex_positions_2D,
     int n_selected_pins,
-    std::vector<int>& selected_pins)
+    const std::vector<int>& selected_pins)
 {
   int number_of_iterations = 3;
   adjust_pins(*mt_chart.data,
