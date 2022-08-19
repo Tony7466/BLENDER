@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "slim.h"
 #include "BLI_assert.h"
+#include "slim.h"
 
 #include <Eigen/Dense>
 #include <doublearea.h>
@@ -29,7 +29,7 @@ double compute_surface_area(const VertexPositionType v, const FaceIndicesType f)
   return area_of_map;
 }
 
-void correct_map_surface_area_if_necessary(SLIMData& slim_data)
+void correct_map_surface_area_if_necessary(SLIMData &slim_data)
 {
   if (!slim_data.valid) {
     return;
@@ -55,7 +55,7 @@ void correct_map_surface_area_if_necessary(SLIMData& slim_data)
   correct_geometry_size(resulting_area_to_expected_area_ratio, slim_data.V_o, desired_ratio);
 }
 
-void correct_mesh_surface_area_if_necessary(SLIMData& slim_data)
+void correct_mesh_surface_area_if_necessary(SLIMData &slim_data)
 {
   BLI_assert(slim_data.valid);
 

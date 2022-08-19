@@ -15,34 +15,35 @@ using namespace Eigen;
 
 namespace slim {
 
-GeometryData::GeometryData(const SLIMMatrixTransfer& mt, SLIMMatrixTransferChart& mt_chart) :
-    number_of_vertices(mt_chart.n_verts),
-    number_of_faces(mt_chart.n_faces),
-    /* `n_edges` in transferred_data accounts for boundary edges only once. */
-    number_of_edges_twice(mt_chart.n_edges + mt_chart.n_boundary_vertices),
-    number_of_boundary_vertices(mt_chart.n_boundary_vertices),
-    number_of_pinned_vertices(mt_chart.n_pinned_vertices),
-    vertex_positions3d(mt_chart.v_matrices.data(), number_of_vertices, columns_3),
-    uv_positions2d(mt_chart.uv_matrices.data(), number_of_vertices, columns_2),
-    positions_of_pinned_vertices2d(),
-    faces_by_vertexindices(mt_chart.f_matrices.data(), number_of_faces, columns_3),
-    edges_by_vertexindices(mt_chart.e_matrices.data(), number_of_edges_twice, columns_2),
-    pinned_vertex_indices(),
-    edge_lengths(mt_chart.el_vectors.data(), number_of_edges_twice),
-    boundary_vertex_indices(mt_chart.b_vectors.data(), number_of_boundary_vertices),
-    with_weighted_parameteriztion(mt.with_weighted_parameterization),
-    weights_per_vertex(mt_chart.w_vectors.data(), number_of_vertices),
-    weight_influence(mt.weight_influence),
-    explicitly_pinned_vertex_indices(
-        number_of_pinned_vertices != 0 ? mt_chart.p_matrices.data() : nullptr,
-        number_of_pinned_vertices),
-    positions_of_explicitly_pinned_vertices2d(
-        number_of_pinned_vertices != 0 ? mt_chart.pp_matrices.data() : nullptr,
-        number_of_pinned_vertices,
-        columns_2)
-{}
+GeometryData::GeometryData(const SLIMMatrixTransfer &mt, SLIMMatrixTransferChart &mt_chart)
+    : number_of_vertices(mt_chart.n_verts),
+      number_of_faces(mt_chart.n_faces),
+      /* `n_edges` in transferred_data accounts for boundary edges only once. */
+      number_of_edges_twice(mt_chart.n_edges + mt_chart.n_boundary_vertices),
+      number_of_boundary_vertices(mt_chart.n_boundary_vertices),
+      number_of_pinned_vertices(mt_chart.n_pinned_vertices),
+      vertex_positions3d(mt_chart.v_matrices.data(), number_of_vertices, columns_3),
+      uv_positions2d(mt_chart.uv_matrices.data(), number_of_vertices, columns_2),
+      positions_of_pinned_vertices2d(),
+      faces_by_vertexindices(mt_chart.f_matrices.data(), number_of_faces, columns_3),
+      edges_by_vertexindices(mt_chart.e_matrices.data(), number_of_edges_twice, columns_2),
+      pinned_vertex_indices(),
+      edge_lengths(mt_chart.el_vectors.data(), number_of_edges_twice),
+      boundary_vertex_indices(mt_chart.b_vectors.data(), number_of_boundary_vertices),
+      with_weighted_parameteriztion(mt.with_weighted_parameterization),
+      weights_per_vertex(mt_chart.w_vectors.data(), number_of_vertices),
+      weight_influence(mt.weight_influence),
+      explicitly_pinned_vertex_indices(
+          number_of_pinned_vertices != 0 ? mt_chart.p_matrices.data() : nullptr,
+          number_of_pinned_vertices),
+      positions_of_explicitly_pinned_vertices2d(
+          number_of_pinned_vertices != 0 ? mt_chart.pp_matrices.data() : nullptr,
+          number_of_pinned_vertices,
+          columns_2)
+{
+}
 
-void create_weights_per_face(SLIMData& slim_data)
+void create_weights_per_face(SLIMData &slim_data)
 {
   if (!slim_data.valid) {
     return;
@@ -75,7 +76,7 @@ void create_weights_per_face(SLIMData& slim_data)
   }
 }
 
-void GeometryData::set_geometry_data_matrices(SLIMData& slim_data) const
+void GeometryData::set_geometry_data_matrices(SLIMData &slim_data) const
 {
   if (!slim_data.valid) {
     return;
@@ -93,11 +94,9 @@ void GeometryData::set_geometry_data_matrices(SLIMData& slim_data) const
 
 bool GeometryData::has_valid_preinitialized_map() const
 {
-  if (uv_positions2d.rows() == vertex_positions3d.rows() &&
-      uv_positions2d.cols() == columns_2) {
+  if (uv_positions2d.rows() == vertex_positions3d.rows() && uv_positions2d.cols() == columns_2) {
 
-    int number_of_flips = count_flips(
-        vertex_positions3d, faces_by_vertexindices, uv_positions2d);
+    int number_of_flips = count_flips(vertex_positions3d, faces_by_vertexindices, uv_positions2d);
     bool no_flips_present = (number_of_flips == 0);
     return (no_flips_present);
   }
@@ -113,11 +112,10 @@ bool GeometryData::can_initialization_be_skipped(bool skip_initialization) const
   return (skip_initialization && has_valid_preinitialized_map());
 }
 
-void GeometryData::construct_slim_data(
-                         SLIMData& slim_data,
-                         bool skip_initialization,
-                         int reflection_mode,
-                         double relative_scale) const
+void GeometryData::construct_slim_data(SLIMData &slim_data,
+                                       bool skip_initialization,
+                                       int reflection_mode,
+                                       double relative_scale) const
 {
   BLI_assert(slim_data.valid);
 
@@ -139,8 +137,7 @@ void GeometryData::combine_matrices_of_pinned_and_boundary_vertices()
   int upper_bound_on_number_of_pinned_vertices = number_of_boundary_vertices +
                                                  number_of_pinned_vertices;
   pinned_vertex_indices = VectorXi(upper_bound_on_number_of_pinned_vertices);
-  positions_of_pinned_vertices2d = MatrixXd(upper_bound_on_number_of_pinned_vertices,
-                                               columns_2);
+  positions_of_pinned_vertices2d = MatrixXd(upper_bound_on_number_of_pinned_vertices, columns_2);
 
   /* Since border vertices use vertex indices 0 ... #bordervertices we can do: */
   pinned_vertex_indices.segment(0, number_of_boundary_vertices) = boundary_vertex_indices;
@@ -161,8 +158,7 @@ void GeometryData::combine_matrices_of_pinned_and_boundary_vertices()
 
   int actual_number_of_pinned_vertices = index;
   pinned_vertex_indices.conservativeResize(actual_number_of_pinned_vertices);
-  positions_of_pinned_vertices2d.conservativeResize(actual_number_of_pinned_vertices,
-                                                       columns_2);
+  positions_of_pinned_vertices2d.conservativeResize(actual_number_of_pinned_vertices, columns_2);
 
   number_of_pinned_vertices = actual_number_of_pinned_vertices;
 }

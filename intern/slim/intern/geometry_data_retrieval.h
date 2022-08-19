@@ -31,7 +31,7 @@ struct GeometryData {
   Map<MatrixXd> uv_positions2d = Map<MatrixXd>(NULL, 0, 0);
   MatrixXd positions_of_pinned_vertices2d;
   Map<Matrix<double, Dynamic, Dynamic, RowMajor>> positions_of_explicitly_pinned_vertices2d =
-    Map<Matrix<double, Dynamic, Dynamic, RowMajor>>(NULL, 0, 0);
+      Map<Matrix<double, Dynamic, Dynamic, RowMajor>>(NULL, 0, 0);
 
   Map<MatrixXi> faces_by_vertexindices = Map<MatrixXi>(NULL, 0, 0);
   Map<MatrixXi> edges_by_vertexindices = Map<MatrixXi>(NULL, 0, 0);
@@ -42,20 +42,19 @@ struct GeometryData {
   Map<VectorXi> boundary_vertex_indices = Map<VectorXi>(NULL, 0);
   Map<VectorXf> weights_per_vertex = Map<VectorXf>(NULL, 0);
 
-  GeometryData(const SLIMMatrixTransfer& mt, SLIMMatrixTransferChart& mt_chart);
-  GeometryData(const GeometryData&) = delete;
-  GeometryData& operator=(const GeometryData&) = delete;
+  GeometryData(const SLIMMatrixTransfer &mt, SLIMMatrixTransferChart &mt_chart);
+  GeometryData(const GeometryData &) = delete;
+  GeometryData &operator=(const GeometryData &) = delete;
 
-  void construct_slim_data(
-    SLIMData& slim_data,
-    bool skip_initialization,
-    int reflection_mode,
-    double relative_scale) const;
+  void construct_slim_data(SLIMData &slim_data,
+                           bool skip_initialization,
+                           int reflection_mode,
+                           double relative_scale) const;
 
   void retrieve_pinned_vertices(bool border_vertices_are_pinned);
 
-private:
-  void set_geometry_data_matrices(SLIMData& slim_data) const;
+ private:
+  void set_geometry_data_matrices(SLIMData &slim_data) const;
   bool has_valid_preinitialized_map() const;
   bool can_initialization_be_skipped(bool skip_initialization) const;
   void combine_matrices_of_pinned_and_boundary_vertices();

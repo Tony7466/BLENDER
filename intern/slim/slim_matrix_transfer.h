@@ -20,11 +20,10 @@
  * Bvector         | vertexindices of boundary vertices
  * ________________|_____________________________________________ */
 
-
 namespace igl {
-  struct SLIMData;
-  class Timer;
-}
+struct SLIMData;
+class Timer;
+}  // namespace igl
 
 namespace slim {
 
@@ -53,10 +52,10 @@ struct SLIMMatrixTransferChart {
   SLIMDataPtr data;
 
   SLIMMatrixTransferChart();
-  SLIMMatrixTransferChart(SLIMMatrixTransferChart&&);
+  SLIMMatrixTransferChart(SLIMMatrixTransferChart &&);
 
-  SLIMMatrixTransferChart(const SLIMMatrixTransferChart&) = delete;
-  SLIMMatrixTransferChart& operator=(const SLIMMatrixTransferChart&) = delete;
+  SLIMMatrixTransferChart(const SLIMMatrixTransferChart &) = delete;
+  SLIMMatrixTransferChart &operator=(const SLIMMatrixTransferChart &) = delete;
 
   ~SLIMMatrixTransferChart();
 
@@ -86,36 +85,29 @@ struct SLIMMatrixTransfer {
 
   std::vector<SLIMMatrixTransferChart> mt_charts;
 
-
   SLIMMatrixTransfer();
-  SLIMMatrixTransfer(const SLIMMatrixTransfer&) = delete;
-  SLIMMatrixTransfer& operator=(const SLIMMatrixTransfer&) = delete;
+  SLIMMatrixTransfer(const SLIMMatrixTransfer &) = delete;
+  SLIMMatrixTransfer &operator=(const SLIMMatrixTransfer &) = delete;
   ~SLIMMatrixTransfer();
 
-  void parametrize(
-    int n_iterations,
-    bool are_border_vertices_pinned,
-    bool skip_initialization);
+  void parametrize(int n_iterations, bool are_border_vertices_pinned, bool skip_initialization);
 
-  void parametrize_live(
-    SLIMMatrixTransferChart& mt_chart,
-    int n_pins,
-    const std::vector<int>& pinned_vertex_indices,
-    const std::vector<double>& pinned_vertex_positions_2D,
-    int n_selected_pins,
-    const std::vector<int>& selected_pins);
+  void parametrize_live(SLIMMatrixTransferChart &mt_chart,
+                        int n_pins,
+                        const std::vector<int> &pinned_vertex_indices,
+                        const std::vector<double> &pinned_vertex_positions_2D,
+                        int n_selected_pins,
+                        const std::vector<int> &selected_pins);
 
-  void setup_slim_data(
-    SLIMMatrixTransferChart& mt_chart,
-    bool are_border_vertices_pinned,
-    bool skip_initialization) const;
+  void setup_slim_data(SLIMMatrixTransferChart &mt_chart,
+                       bool are_border_vertices_pinned,
+                       bool skip_initialization) const;
 
-  void setup_slim_data(
-    SLIMMatrixTransferChart& mt_chart,
-    int n_iterations,
-    igl::Timer& timer,
-    bool border_vertices_are_pinned,
-    bool skip_initialization) const;
+  void setup_slim_data(SLIMMatrixTransferChart &mt_chart,
+                       int n_iterations,
+                       igl::Timer &timer,
+                       bool border_vertices_are_pinned,
+                       bool skip_initialization) const;
 };
 
-}
+}  // namespace slim
