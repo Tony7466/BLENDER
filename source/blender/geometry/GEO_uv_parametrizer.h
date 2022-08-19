@@ -3,7 +3,7 @@
 #pragma once
 
 #include "BLI_sys_types.h" /* for intptr_t support */
-#include "DNA_ID.h" /* for MAX_ID_NAME */
+#include "DNA_ID.h"        /* for MAX_ID_NAME */
 
 /** \file
  * \ingroup geo
@@ -58,13 +58,12 @@ void GEO_uv_parametrizer_construct_end(ParamHandle *handle,
                                        int *count_fail);
 void GEO_uv_parametrizer_delete(ParamHandle *handle);
 
-
 /* SLIM:
  * -----------------------------
  * - begin: data is gathered into matrices and transferred to SLIM
  * - solve: compute cheap initialization (if necessary) and refine iteratively
  * - end: clean up
-*/
+ */
 
 typedef struct MatrixTransferOptions {
   char vertex_group[MAX_ID_NAME];
@@ -76,17 +75,17 @@ typedef struct MatrixTransferOptions {
   bool skip_initialization;
 } MatrixTransferOptions;
 
-void GEO_uv_parametrizer_slim_reload_all_uvs(ParamHandle* handle);
-void GEO_uv_parametrizer_slim_solve(ParamHandle* handle,
-  const MatrixTransferOptions* mt_options,
-  int* count_changed,
-  int* count_failed);
+void GEO_uv_parametrizer_slim_reload_all_uvs(ParamHandle *handle);
+void GEO_uv_parametrizer_slim_solve(ParamHandle *handle,
+                                    const MatrixTransferOptions *mt_options,
+                                    int *count_changed,
+                                    int *count_failed);
 
-void GEO_uv_parametrizer_slim_begin(ParamHandle* handle, const MatrixTransferOptions* mt_options);
-void GEO_uv_parametrizer_slim_solve_iteration(ParamHandle* handle);
-void GEO_uv_parametrizer_slim_stretch_iteration(ParamHandle* handle, float blend);
-void GEO_uv_parametrizer_slim_end(ParamHandle* handle);
-bool GEO_uv_parametrizer_is_slim(ParamHandle* handle);
+void GEO_uv_parametrizer_slim_begin(ParamHandle *handle, const MatrixTransferOptions *mt_options);
+void GEO_uv_parametrizer_slim_solve_iteration(ParamHandle *handle);
+void GEO_uv_parametrizer_slim_stretch_iteration(ParamHandle *handle, float blend);
+void GEO_uv_parametrizer_slim_end(ParamHandle *handle);
+bool GEO_uv_parametrizer_is_slim(ParamHandle *handle);
 
 /** \} */
 

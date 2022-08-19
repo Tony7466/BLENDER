@@ -16,8 +16,8 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
-#include "DNA_scene_types.h"
 #include "DNA_scene_defaults.h"
+#include "DNA_scene_types.h"
 
 #include "BLI_alloca.h"
 #include "BLI_array.h"
@@ -224,7 +224,7 @@ static void modifier_unwrap_state(Object *obedit,
   *r_use_subsurf = subsurf;
 }
 
-static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSettings* ts)
+static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSettings *ts)
 {
   UnwrapOptions options;
 
@@ -237,23 +237,24 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
 
   options.mt_options.skip_initialization = false;
 
-  if (ts)
-  {
+  if (ts) {
     options.method = ts->unwrapper;
     options.correct_aspect = (ts->uvcalc_flag & UVCALC_NO_ASPECT_CORRECT) == 0;
     options.fill_holes = (ts->uvcalc_flag & UVCALC_FILLHOLES) != 0;
     options.use_subsurf = (ts->uvcalc_flag & UVCALC_USESUBSURF) != 0;
 
-    static_assert(sizeof(options.mt_options.vertex_group) == sizeof(ts->uvcalc_vertex_group), "vertex_group size mismatch.");
-    memcpy(options.mt_options.vertex_group, ts->uvcalc_vertex_group, sizeof(options.mt_options.vertex_group));
+    static_assert(sizeof(options.mt_options.vertex_group) == sizeof(ts->uvcalc_vertex_group),
+                  "vertex_group size mismatch.");
+    memcpy(options.mt_options.vertex_group,
+           ts->uvcalc_vertex_group,
+           sizeof(options.mt_options.vertex_group));
 
     options.mt_options.vertex_group_factor = ts->uvcalc_vertex_group_factor;
     options.mt_options.relative_scale = ts->uvcalc_relative_scale;
     options.mt_options.iterations = ts->uvcalc_iterations;
     options.mt_options.reflection_mode = ts->uvcalc_reflection_mode;
   }
-  else
-  {
+  else {
     /* We use the properties from the last unwrap operator for subsequent
      * live unwrap and minize stretch operators. */
     PointerRNA ptr;
@@ -290,7 +291,8 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
   return options;
 }
 
-static void unwrap_options_sync_flag(wmOperator* op, ToolSettings* ts, const char* property_name, char flag, bool flipped)
+static void unwrap_options_sync_flag(
+    wmOperator *op, ToolSettings *ts, const char *property_name, char flag, bool flipped)
 {
   if (RNA_struct_property_is_set(op->ptr, property_name)) {
     if (RNA_boolean_get(op->ptr, property_name) ^ flipped) {
@@ -305,7 +307,7 @@ static void unwrap_options_sync_flag(wmOperator* op, ToolSettings* ts, const cha
   }
 }
 
-static void unwrap_options_sync_toolsettings(wmOperator* op, ToolSettings* ts)
+static void unwrap_options_sync_toolsettings(wmOperator *op, ToolSettings *ts)
 {
   /* remember last method for live unwrap */
   if (RNA_struct_property_is_set(op->ptr, "method")) {
@@ -362,7 +364,6 @@ static void unwrap_options_sync_toolsettings(wmOperator* op, ToolSettings* ts)
   unwrap_options_sync_flag(op, ts, "correct_aspect", UVCALC_NO_ASPECT_CORRECT, true);
   unwrap_options_sync_flag(op, ts, "use_subsurf_data", UVCALC_USESUBSURF, false);
 }
-
 
 static bool uvedit_have_selection(const Scene *scene, BMEditMesh *em, const UnwrapOptions *options)
 {
@@ -678,7 +679,8 @@ static ParamHandle *construct_param_handle_multi(const Scene *scene,
 
     const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_MLOOPUV);
     const int cd_weight_offset = CustomData_get_offset(&bm->vdata, CD_MDEFORMVERT);
-    const int cd_weight_index = BKE_object_defgroup_name_index(obedit, options->mt_options.vertex_group);
+    const int cd_weight_index = BKE_object_defgroup_name_index(obedit,
+                                                               options->mt_options.vertex_group);
 
     if (cd_loop_uv_offset == -1) {
       continue;
@@ -2296,8 +2298,15 @@ void UV_OT_unwrap(wmOperatorType *ot)
       _DNA_DEFAULT_ToolSettings_UVCalc_Flag & UVCALC_USESUBSURF,
       "Use Subdivision Surface",
       "Map UVs taking vertex position after Subdivision Surface modifier has been applied");
-  RNA_def_float_factor(
-      ot->srna, "margin", _DNA_DEFAULT_ToolSettings_UVCalc_Margin, 0.0f, 1.0f, "Margin", "Space between islands", 0.0f, 1.0f);
+  RNA_def_float_factor(ot->srna,
+                       "margin",
+                       _DNA_DEFAULT_ToolSettings_UVCalc_Margin,
+                       0.0f,
+                       1.0f,
+                       "Margin",
+                       "Space between islands",
+                       0.0f,
+                       1.0f);
 
   /* ABF / LSCM only */
   RNA_def_boolean(ot->srna,

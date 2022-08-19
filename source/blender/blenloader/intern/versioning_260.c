@@ -25,13 +25,13 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_object_fluidsim_types.h"
 #include "DNA_object_types.h"
+#include "DNA_scene_defaults.h"
 #include "DNA_screen_types.h"
 #include "DNA_sdna_types.h"
 #include "DNA_space_types.h"
 #include "DNA_text_types.h"
 #include "DNA_view3d_types.h"
 #include "DNA_world_types.h"
-#include "DNA_scene_defaults.h"
 
 #include "MEM_guardedalloc.h"
 
