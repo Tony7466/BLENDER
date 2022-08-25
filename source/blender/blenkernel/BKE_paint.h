@@ -98,6 +98,7 @@ typedef enum ePaintOverlayControlFlags {
   PAINT_OVERLAY_OVERRIDE_PRIMARY = (1 << 5),
   PAINT_OVERLAY_OVERRIDE_SECONDARY = (1 << 6),
 } ePaintOverlayControlFlags;
+ENUM_OPERATORS(ePaintOverlayControlFlags, PAINT_OVERLAY_OVERRIDE_SECONDARY);
 
 #define PAINT_OVERRIDE_MASK \
   (PAINT_OVERLAY_OVERRIDE_SECONDARY | PAINT_OVERLAY_OVERRIDE_PRIMARY | \
@@ -213,7 +214,7 @@ bool BKE_paint_always_hide_test(struct Object *ob);
  * Returns non-zero if any of the face's vertices are hidden, zero otherwise.
  */
 bool paint_is_face_hidden(const struct MLoopTri *lt,
-                          const struct MVert *mvert,
+                          const bool *hide_vert,
                           const struct MLoop *mloop);
 /**
  * Returns non-zero if any of the corners of the grid

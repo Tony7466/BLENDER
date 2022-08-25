@@ -61,6 +61,8 @@ class obj_importer_test : public BlendfileLoadingBaseTest {
     params.up_axis = IO_AXIS_Y;
     params.validate_meshes = true;
     params.import_vertex_groups = false;
+    params.relative_paths = true;
+    params.clear_selection = true;
 
     std::string obj_path = blender::tests::flags_test_asset_dir() + "/io_tests/obj/" + path;
     strncpy(params.filepath, obj_path.c_str(), FILE_MAX - 1);
@@ -177,7 +179,7 @@ TEST_F(obj_importer_test, import_cube_o_after_verts)
       {
           "OBSparseTri",
           OB_MESH,
-          6,
+          3,
           3,
           1,
           3,
@@ -289,7 +291,7 @@ TEST_F(obj_importer_test, import_nurbs_mesh)
 {
   Expectation expect[] = {
       {"OBCube", OB_MESH, 8, 12, 6, 24, float3(1, 1, -1), float3(-1, 1, 1)},
-      {"OBTorus Knot",
+      {"OBTorus_Knot",
        OB_MESH,
        108,
        108,
@@ -307,7 +309,7 @@ TEST_F(obj_importer_test, import_materials)
       {"OBCube", OB_MESH, 8, 12, 6, 24, float3(1, 1, -1), float3(-1, 1, 1)},
       {"OBmaterials", OB_MESH, 8, 12, 6, 24, float3(-1, -1, 1), float3(1, -1, -1)},
   };
-  import_and_check("materials.obj", expect, std::size(expect), 4, 1);
+  import_and_check("materials.obj", expect, std::size(expect), 4, 8);
 }
 
 TEST_F(obj_importer_test, import_cubes_with_textures_rel)
@@ -322,6 +324,16 @@ TEST_F(obj_importer_test, import_cubes_with_textures_rel)
        24,
        float3(1, 1, -1),
        float3(-1, -1, 1),
+       float3(0, 1, 0),
+       float2(0.9935f, 0.0020f)},
+      {"OBCubeTexMul",
+       OB_MESH,
+       8,
+       12,
+       6,
+       24,
+       float3(4, -2, -1),
+       float3(2, -4, 1),
        float3(0, 1, 0),
        float2(0.9935f, 0.0020f)},
       {"OBCubeTiledTex",
@@ -345,7 +357,7 @@ TEST_F(obj_importer_test, import_cubes_with_textures_rel)
        float3(0, 1, 0),
        float2(0.9935f, 0.0020f)},
   };
-  import_and_check("cubes_with_textures_rel.obj", expect, std::size(expect), 3, 4);
+  import_and_check("cubes_with_textures_rel.obj", expect, std::size(expect), 4, 4);
 }
 
 TEST_F(obj_importer_test, import_faces_invalid_or_with_holes)
