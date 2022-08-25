@@ -964,6 +964,9 @@ static int /*eContextResult*/ file_context(const bContext *C,
       if (filelist_entry_is_selected(sfile->files, file_index)) {
         FileDirEntry *entry = filelist_file(sfile->files, file_index);
         ID *id = filelist_file_get_id(entry);
+        if (id == NULL) {
+          continue;
+        }
         CTX_data_id_list_add(result, id);
       }
     }
