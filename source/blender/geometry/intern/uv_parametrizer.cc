@@ -32,8 +32,6 @@
 #define param_warning(message) \
   {/*printf("Warning %s:%d: %s\n", __FILE__, __LINE__, message);*/}(void)0
 
-using namespace slim;
-
 /* Special Purpose Hash */
 
 typedef intptr_t PHashKey;
@@ -4455,6 +4453,8 @@ void GEO_uv_parametrizer_flush_restore(ParamHandle *phandle)
 }
 
 /***************************** SLIM Integration *******************************/
+
+using namespace slim;
 
 /* Get SLIM parameters from scene */
 static SLIMMatrixTransfer *slim_matrix_transfer(const MatrixTransferOptions *mt_options)
