@@ -468,6 +468,11 @@ static PEdge *p_wheel_edge_next(PEdge *e)
   return e->next->next->pair;
 }
 
+static const PEdge* p_wheel_edge_next(const PEdge* e)
+{
+  return e->next->next->pair;
+}
+
 static PEdge *p_wheel_edge_prev(PEdge *e)
 {
   return (e->pair) ? e->pair->next : NULL;
@@ -2286,19 +2291,42 @@ static void p_chart_simplify(PChart *chart)
 #  endif
 #endif
 
+static const float CORRECT_AREA_EPS = 1.0e-6f;
+static const float CORRECT_MIN_VERT_DISTANCE = 1.0e-5;
+
+static bool p_validate_corrected_coords(const PEdge* correct_e, const PVert* correct_v, const float correct_co[3])
+{
+  const PEdge* e = correct_v->edge;
+
+  do {
+    if (e == correct_e) {
+      continue;
+    }
+
+    const PVert* other_v1 = e->next->vert;
+    const PVert* other_v2 = e->next->next->vert;
+
+    float f_area = area_tri_v3(correct_co, other_v1->co, other_v2->co);
+    //std::cerr << "f_area: " << f_area << '\n';
+
+    if (f_area < CORRECT_AREA_EPS) {
+      return false;
+    }
+  } while ((e = p_wheel_edge_next(e)) && (e != correct_v->edge));
+
+  return true;
+}
+
 static bool p_chart_correct_zero_area_faces(PChart* chart)
 {
   PFace* f;
-
-  static const float AREA_EPS = 1.0e-6f;
-  static const float MIN_VERT_DISTANCE = 1.0e-5;
 
   const float normal[3] = { 0.0f, 0.0f, 1.0f };
 
   for (f = chart->faces; f; f = f->nextlink) {
     float area = p_face_area(f);
 
-    if (area > AREA_EPS) {
+    if (area > CORRECT_AREA_EPS) {
       continue;
     }
     
@@ -2315,11 +2343,12 @@ static bool p_chart_correct_zero_area_faces(PChart* chart)
       }
     }
 
-    if (max_edge_len < MIN_VERT_DISTANCE) {
+    if (max_edge_len < CORRECT_MIN_VERT_DISTANCE) {
       return false;
     }
 
-    PVert* vert_to_correct = max_edge->next->next->vert;
+    PEdge* correct_e = max_edge->next->next;
+    PVert* correct_v = correct_e->vert;
 
     float max_edge_dir[3];
     copy_v3_v3(max_edge_dir, max_edge->next->vert->co);
@@ -2329,10 +2358,19 @@ static bool p_chart_correct_zero_area_faces(PChart* chart)
     float correct_dir[3];
     cross_v3_v3v3(correct_dir, max_edge_dir, normal);
 
-    float correct_len = 2.0f * AREA_EPS / max_edge_len;
-    std::cerr << "correct_len: " << correct_len << '\n';
+    float correct_len = 2.0f * CORRECT_AREA_EPS / max_edge_len;
+    //std::cerr << "correct_len: " << correct_len << '\n';
     mul_v3_fl(correct_dir, correct_len);
-    add_v3_v3(vert_to_correct->co, correct_dir);
+
+    float correct_co[3];
+    copy_v3_v3(correct_co, correct_v->co);
+    add_v3_v3(correct_co, correct_dir);
+
+    if (!p_validate_corrected_coords(correct_e, correct_v, correct_co)) {
+      return false;
+    }
+
+    copy_v3_v3(correct_v->co, correct_co);
   }
 
   return true;
