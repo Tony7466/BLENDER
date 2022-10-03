@@ -5,6 +5,7 @@
  */
 
 #include <vector>
+#include <iostream>
 
 #include "GEO_uv_parametrizer.h"
 
@@ -106,6 +107,7 @@ enum PVertFlag {
   PVERT_INTERIOR = 4,
   PVERT_COLLAPSE = 8,
   PVERT_SPLIT = 16,
+  PVERT_DONE = 32,
 };
 
 enum PEdgeFlag {
@@ -127,6 +129,7 @@ enum PFaceFlag {
   PFACE_CONNECTED = 1,
   PFACE_FILLED = 2,
   PFACE_COLLAPSE = 4,
+  PFACE_DONE = 8,
 };
 
 /* Chart */
@@ -2282,6 +2285,58 @@ static void p_chart_simplify(PChart *chart)
 }
 #  endif
 #endif
+
+static bool p_chart_correct_zero_area_faces(PChart* chart)
+{
+  PFace* f;
+
+  static const float AREA_EPS = 1.0e-6f;
+  static const float MIN_VERT_DISTANCE = 1.0e-5;
+
+  const float normal[3] = { 0.0f, 0.0f, 1.0f };
+
+  for (f = chart->faces; f; f = f->nextlink) {
+    float area = p_face_area(f);
+
+    if (area > AREA_EPS) {
+      continue;
+    }
+    
+    PEdge* max_edge = NULL;
+    float max_edge_len = -1.0f;
+
+    PEdge* e = f->edge;
+    for (int i = 0; i < 3; i++, e = e->next) {
+      float len = p_edge_length(e);
+
+      if (len > max_edge_len) {
+        max_edge = e;
+        max_edge_len = len;
+      }
+    }
+
+    if (max_edge_len < MIN_VERT_DISTANCE) {
+      return false;
+    }
+
+    PVert* vert_to_correct = max_edge->next->next->vert;
+
+    float max_edge_dir[3];
+    copy_v3_v3(max_edge_dir, max_edge->next->vert->co);
+    sub_v3_v3(max_edge_dir, max_edge->vert->co);
+    mul_v3_fl(max_edge_dir, 1.0f / max_edge_len);
+
+    float correct_dir[3];
+    cross_v3_v3v3(correct_dir, max_edge_dir, normal);
+
+    float correct_len = 2.0f * AREA_EPS / max_edge_len;
+    std::cerr << "correct_len: " << correct_len << '\n';
+    mul_v3_fl(correct_dir, correct_len);
+    add_v3_v3(vert_to_correct->co, correct_dir);
+  }
+
+  return true;
+}
 
 /* ABF */
 
@@ -4650,6 +4705,11 @@ static void slim_convert_blender(ParamHandle *phandle, SLIMMatrixTransfer *mt)
   for (int i = 0; i < phandle->ncharts; i++) {
     PChart *chart = phandle->charts[i];
     SLIMMatrixTransferChart *mt_chart = &mt->mt_charts[i];
+
+    if (!p_chart_correct_zero_area_faces(chart)) {
+      mt_chart->succeeded = false;
+      continue;
+    }
 
     mt_chart->succeeded = true;
     mt_chart->n_pinned_vertices = 0;
