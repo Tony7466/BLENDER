@@ -2317,11 +2317,55 @@ static bool p_validate_corrected_coords(const PEdge* correct_e, const PVert* cor
   return true;
 }
 
+static bool p_edge_matrix(float R[3][3], const PEdge *e)
+{
+  static const float n1[3] = { 0.0f, 0.0f, 1.0f };
+  static const float n2[3] = { 0.0f, 1.0f, 0.0f };
+
+  float edge_dir[3];
+  copy_v3_v3(edge_dir, e->next->vert->co);
+  sub_v3_v3(edge_dir, e->vert->co);
+
+  float edge_len = len_v3(edge_dir);
+  if (edge_len < CORRECT_MIN_VERT_DISTANCE) {
+    return false;
+  }
+  mul_v3_fl(edge_dir, 1.0f / edge_len);
+
+  float normal_dir[3];
+  cross_v3_v3v3(normal_dir, edge_dir, n1);
+  float normal_len = len_v3(normal_dir);
+
+  if (normal_len < CORRECT_MIN_VERT_DISTANCE) {
+    cross_v3_v3v3(normal_dir, edge_dir, n2);
+    normal_len = len_v3(normal_dir);
+
+    if (normal_len < CORRECT_MIN_VERT_DISTANCE) {
+      return false;
+    }
+  }
+
+  mul_v3_fl(normal_dir, 1.0f / normal_len);
+
+  float tangent_dir[3];
+  cross_v3_v3v3(tangent_dir, edge_dir, normal_dir);
+
+  R[0][0] = edge_dir[0];
+  R[1][0] = edge_dir[1];
+  R[2][0] = edge_dir[2];
+
+  R[0][1] = normal_dir[0];
+  R[1][1] = normal_dir[1];
+  R[2][1] = normal_dir[2];
+
+  R[0][2] = tangent_dir[0];
+  R[1][2] = tangent_dir[1];
+  R[2][2] = tangent_dir[2];
+}
+
 static bool p_chart_correct_zero_area_faces(PChart* chart)
 {
   PFace* f;
-
-  const float normal[3] = { 0.0f, 0.0f, 1.0f };
 
   for (f = chart->faces; f; f = f->nextlink) {
     float area = p_face_area(f);
@@ -2355,18 +2399,33 @@ static bool p_chart_correct_zero_area_faces(PChart* chart)
     sub_v3_v3(max_edge_dir, max_edge->vert->co);
     mul_v3_fl(max_edge_dir, 1.0f / max_edge_len);
 
-    float correct_dir[3];
-    cross_v3_v3v3(correct_dir, max_edge_dir, normal);
-
     float correct_len = 2.0f * CORRECT_AREA_EPS / max_edge_len;
-    //std::cerr << "correct_len: " << correct_len << '\n';
-    mul_v3_fl(correct_dir, correct_len);
 
+    float M[3][3];
+    if (!p_edge_matrix(M, max_edge)) {
+      return false;
+    }
+
+    static const int DIR_COUNT = 4;
+    int d;
     float correct_co[3];
-    copy_v3_v3(correct_co, correct_v->co);
-    add_v3_v3(correct_co, correct_dir);
 
-    if (!p_validate_corrected_coords(correct_e, correct_v, correct_co)) {
+    for (d = 0; d < DIR_COUNT; d++) {
+      float angle = (float)d / DIR_COUNT * 2.0 * M_PI;
+      float correct_dir[3] = { 0.0f, cos(angle), sin(angle) };
+
+      mul_m3_v3(M, correct_dir);
+      mul_v3_fl(correct_dir, correct_len);
+
+      copy_v3_v3(correct_co, correct_v->co);
+      add_v3_v3(correct_co, correct_dir);
+
+      if (p_validate_corrected_coords(correct_e, correct_v, correct_co)) {
+        break;
+      }
+    }
+
+    if (d == DIR_COUNT) {
       return false;
     }
 
