@@ -2291,14 +2291,17 @@ static void p_chart_simplify(PChart *chart)
 #  endif
 #endif
 
-static const float CORRECT_AREA_EPS = 1.0e-6f;
+static const float CORRECT_AREA_EPS = 1.0e-7f;
 static const float CORRECT_MIN_VERT_DISTANCE = 1.0e-5;
 
-static bool p_validate_corrected_coords(const PEdge* correct_e, const PVert* correct_v, const float correct_co[3])
+static bool p_validate_corrected_coords(const PEdge* correct_e, const PVert* correct_v, const float correct_co[3], std::vector<PFace*>& faces)
 {
+  faces.clear();
   const PEdge* e = correct_v->edge;
 
   do {
+    faces.push_back(e->face);
+
     if (e == correct_e) {
       continue;
     }
@@ -2363,11 +2366,16 @@ static bool p_edge_matrix(float R[3][3], const PEdge *e)
   R[2][2] = tangent_dir[2];
 }
 
-static bool p_chart_correct_zero_area_faces(PChart* chart)
+static bool p_chart_correct_zero_area_faces2(PChart* chart)
 {
-  PFace* f;
+  std::vector<PFace*> faces;
+  faces.reserve(4);
 
-  for (f = chart->faces; f; f = f->nextlink) {
+  for (PFace* f = chart->faces; f; f = f->nextlink) {
+    if (f->flag & PFACE_DONE) {
+      continue;
+    }
+
     float area = p_face_area(f);
 
     if (area > CORRECT_AREA_EPS) {
@@ -2420,7 +2428,7 @@ static bool p_chart_correct_zero_area_faces(PChart* chart)
       copy_v3_v3(correct_co, correct_v->co);
       add_v3_v3(correct_co, correct_dir);
 
-      if (p_validate_corrected_coords(correct_e, correct_v, correct_co)) {
+      if (p_validate_corrected_coords(correct_e, correct_v, correct_co, faces)) {
         break;
       }
     }
@@ -2430,9 +2438,23 @@ static bool p_chart_correct_zero_area_faces(PChart* chart)
     }
 
     copy_v3_v3(correct_v->co, correct_co);
+    for (PFace* f : faces) {
+      f->flag |= PFACE_DONE;
+    }
   }
 
   return true;
+}
+
+static bool p_chart_correct_zero_area_faces(PChart* chart)
+{
+  bool ret = p_chart_correct_zero_area_faces2(chart);
+
+  for (PFace* f = chart->faces; f; f = f->nextlink) {
+    f->flag &= ~PFACE_DONE;
+  }
+
+  return ret;
 }
 
 /* ABF */
