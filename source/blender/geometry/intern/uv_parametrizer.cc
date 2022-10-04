@@ -4,8 +4,8 @@
  * \ingroup eduv
  */
 
-#include <vector>
 #include <iostream>
+#include <vector>
 
 #include "GEO_uv_parametrizer.h"
 
@@ -342,18 +342,22 @@ static float p_vec_cos(const float v1[3], const float v2[3], const float v3[3])
   return cos_v3v3v3(v1, v2, v3);
 }
 
-static void p_triangle_cos(
-  const float v1[3], const float v2[3], const float v3[3], float* r_cos1, float* r_cos2, float* r_cos3)
+static void p_triangle_cos(const float v1[3],
+                           const float v2[3],
+                           const float v3[3],
+                           float *r_cos1,
+                           float *r_cos2,
+                           float *r_cos3)
 {
   *r_cos1 = p_vec_cos(v3, v1, v2);
   *r_cos2 = p_vec_cos(v1, v2, v3);
   *r_cos3 = p_vec_cos(v2, v3, v1);
 }
 
-static void p_face_cos(PFace* f, float* r_cos1, float* r_cos2, float* r_cos3)
+static void p_face_cos(PFace *f, float *r_cos1, float *r_cos2, float *r_cos3)
 {
-  PEdge* e1 = f->edge, * e2 = e1->next, * e3 = e2->next;
-  PVert* v1 = e1->vert, * v2 = e2->vert, * v3 = e3->vert;
+  PEdge *e1 = f->edge, *e2 = e1->next, *e3 = e2->next;
+  PVert *v1 = e1->vert, *v2 = e2->vert, *v3 = e3->vert;
 
   p_triangle_cos(v1->co, v2->co, v3->co, r_cos1, r_cos2, r_cos3);
 }
@@ -489,7 +493,7 @@ static PEdge *p_wheel_edge_next(PEdge *e)
   return e->next->next->pair;
 }
 
-static const PEdge* p_wheel_edge_next(const PEdge* e)
+static const PEdge *p_wheel_edge_next(const PEdge *e)
 {
   return e->next->next->pair;
 }
@@ -2312,14 +2316,18 @@ static void p_chart_simplify(PChart *chart)
 #  endif
 #endif
 
-static bool p_validate_corrected_coords(const PEdge* corr_e, const PVert* corr_v, const float corr_co[3], float corr_min_angle_cos, std::vector<PFace*>& r_faces)
+static bool p_validate_corrected_coords(const PEdge *corr_e,
+                                        const PVert *corr_v,
+                                        const float corr_co[3],
+                                        float corr_min_angle_cos,
+                                        std::vector<PFace *> &r_faces)
 {
-  /* Check whether the given corrected coordinates don't result in any other angle lower than `corr_min_angle` -
-   * in such a case the coordinates have to be rejected.
+  /* Check whether the given corrected coordinates don't result in any other angle lower than
+   * `corr_min_angle` - in such a case the coordinates have to be rejected.
    */
 
   r_faces.clear();
-  const PEdge* e = corr_v->edge;
+  const PEdge *e = corr_v->edge;
 
   do {
     r_faces.push_back(e->face);
@@ -2328,8 +2336,8 @@ static bool p_validate_corrected_coords(const PEdge* corr_e, const PVert* corr_v
       continue;
     }
 
-    const PVert* other_v1 = e->next->vert;
-    const PVert* other_v2 = e->next->next->vert;
+    const PVert *other_v1 = e->next->vert;
+    const PVert *other_v2 = e->next->next->vert;
 
     float f_cos[3];
     p_triangle_cos(corr_co, other_v1->co, other_v2->co, f_cos, f_cos + 1, f_cos + 2);
@@ -2358,8 +2366,8 @@ static bool p_validate_corrected_coords(const PEdge* corr_e, const PVert* corr_v
 static bool p_edge_matrix(float R[3][3], const PEdge *e)
 {
   static const float eps = 1.0e-5;
-  static const float n1[3] = { 0.0f, 0.0f, 1.0f };
-  static const float n2[3] = { 0.0f, 1.0f, 0.0f };
+  static const float n1[3] = {0.0f, 0.0f, 1.0f};
+  static const float n2[3] = {0.0f, 1.0f, 0.0f};
 
   float edge_dir[3];
   copy_v3_v3(edge_dir, e->next->vert->co);
@@ -2402,20 +2410,20 @@ static bool p_edge_matrix(float R[3][3], const PEdge *e)
   R[2][2] = tangent_dir[2];
 }
 
-static bool p_chart_correct_zero_angles2(PChart* chart, float corr_min_angle)
+static bool p_chart_correct_zero_angles2(PChart *chart, float corr_min_angle)
 {
-  std::vector<PFace*> faces;
+  std::vector<PFace *> faces;
   faces.reserve(4);
 
   float corr_min_angle_sin = sin(corr_min_angle);
   float corr_min_angle_cos = cos(corr_min_angle);
 
-  for (PFace* f = chart->faces; f; f = f->nextlink) {
+  for (PFace *f = chart->faces; f; f = f->nextlink) {
     if (f->flag & PFACE_DONE) {
       continue;
     }
 
-    PEdge* edges[3];
+    PEdge *edges[3];
     edges[0] = f->edge;
     edges[1] = f->edge->next;
     edges[2] = f->edge->next->next;
@@ -2447,9 +2455,9 @@ static bool p_chart_correct_zero_angles2(PChart* chart, float corr_min_angle)
       continue;
     }
 
-    PEdge* max_angle_edge = edges[max_angle_idx];
+    PEdge *max_angle_edge = edges[max_angle_idx];
 
-    PEdge* ref_edge;
+    PEdge *ref_edge;
     if (((min_angle_idx + 1) % 3) == max_angle_idx) {
       ref_edge = max_angle_edge->next->next;
     }
@@ -2459,10 +2467,10 @@ static bool p_chart_correct_zero_angles2(PChart* chart, float corr_min_angle)
 
     float ref_len = p_edge_length(ref_edge);
 
-    PEdge* corr_e = max_angle_edge;
-    PVert* corr_v = corr_e->vert;
+    PEdge *corr_e = max_angle_edge;
+    PVert *corr_v = corr_e->vert;
     float corr_len = ref_len * corr_min_angle_sin;
-    PEdge* max_edge = max_angle_edge->next;
+    PEdge *max_edge = max_angle_edge->next;
 
     float M[3][3];
     if (!p_edge_matrix(M, max_edge)) {
@@ -2476,7 +2484,7 @@ static bool p_chart_correct_zero_angles2(PChart* chart, float corr_min_angle)
 
     for (d = 0; d < DIR_COUNT; d++) {
       float angle = (float)d / DIR_COUNT * 2.0 * M_PI;
-      float corr_dir[3] = { 0.0f, cos(angle), sin(angle) };
+      float corr_dir[3] = {0.0f, cos(angle), sin(angle)};
 
       mul_m3_v3(M, corr_dir);
       mul_v3_fl(corr_dir, corr_len);
@@ -2494,7 +2502,7 @@ static bool p_chart_correct_zero_angles2(PChart* chart, float corr_min_angle)
     }
 
     copy_v3_v3(corr_v->co, corr_co);
-    for (PFace* f : faces) {
+    for (PFace *f : faces) {
       f->flag |= PFACE_DONE;
     }
   }
@@ -2502,26 +2510,26 @@ static bool p_chart_correct_zero_angles2(PChart* chart, float corr_min_angle)
   return true;
 }
 
-static bool p_chart_correct_zero_angles(PChart* chart, float corr_min_angle)
+static bool p_chart_correct_zero_angles(PChart *chart, float corr_min_angle)
 {
-  /* Look for angles in the 3D space which are lower than `corr_min_angle` and try to
-   * correct vertex coordinates so that the resulting angle
-   * is greater than `corr_min_angle`. The algorithm will result
-   * in correcting all triangles with zero area.
+  /* Look for angles in the 3D space which are lower than `corr_min_angle`
+   * and try to correct vertex coordinates so that the resulting angle
+   * is greater than `corr_min_angle`. The algorithm will result in correcting
+   * all triangles with zero area.
    *
-   * The return value indicates whether zero angles could
-   * be corrected by the algorithm.
+   * The return value indicates whether zero angles could be corrected by
+   * the algorithm.
    *
-   * Due to performance reasons, if the chart
-   * contains doubled vertices, the function may return true with
-   * the chart still having zero area triangles. The function will not crash in such
-   * a case though. It is recommended to always run the function on a chart
-   * with doubled vertices removed beforehand.
+   * Due to performance reasons, if the chart contains doubled vertices,
+   * the function may return true with the chart still having zero area
+   * triangles. The function will not crash in such a case though.
+   * It is recommended to always run the function on a chart with doubled
+   * vertices removed beforehand.
    */
 
   bool ret = p_chart_correct_zero_angles2(chart, corr_min_angle);
 
-  for (PFace* f = chart->faces; f; f = f->nextlink) {
+  for (PFace *f = chart->faces; f; f = f->nextlink) {
     f->flag &= ~PFACE_DONE;
   }
 
