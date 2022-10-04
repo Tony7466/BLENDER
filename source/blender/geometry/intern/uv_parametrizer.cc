@@ -2312,15 +2312,15 @@ static void p_chart_simplify(PChart *chart)
 #  endif
 #endif
 
-static bool p_validate_corrected_coords(const PEdge* correct_e, const PVert* correct_v, const float correct_co[3], float corr_min_angle_cos, std::vector<PFace*>& r_faces)
+static bool p_validate_corrected_coords(const PEdge* corr_e, const PVert* corr_v, const float corr_co[3], float corr_min_angle_cos, std::vector<PFace*>& r_faces)
 {
   r_faces.clear();
-  const PEdge* e = correct_v->edge;
+  const PEdge* e = corr_v->edge;
 
   do {
     r_faces.push_back(e->face);
 
-    if (e == correct_e) {
+    if (e == corr_e) {
       continue;
     }
 
@@ -2328,7 +2328,7 @@ static bool p_validate_corrected_coords(const PEdge* correct_e, const PVert* cor
     const PVert* other_v2 = e->next->next->vert;
 
     float f_cos[3];
-    p_triangle_cos(correct_co, other_v1->co, other_v2->co, f_cos, f_cos + 1, f_cos + 2);
+    p_triangle_cos(corr_co, other_v1->co, other_v2->co, f_cos, f_cos + 1, f_cos + 2);
 
     int min_angle_idx = 0;
 
@@ -2346,7 +2346,7 @@ static bool p_validate_corrected_coords(const PEdge* correct_e, const PVert* cor
       return false;
     }
 
-  } while ((e = p_wheel_edge_next(e)) && (e != correct_v->edge));
+  } while ((e = p_wheel_edge_next(e)) && (e != corr_v->edge));
 
   return true;
 }
@@ -2455,9 +2455,9 @@ static bool p_chart_correct_zero_angles2(PChart* chart, float corr_min_angle)
 
     float ref_len = p_edge_length(ref_edge);
 
-    PEdge* correct_e = max_angle_edge;
-    PVert* correct_v = correct_e->vert;
-    float correct_len = ref_len * corr_min_angle_sin;
+    PEdge* corr_e = max_angle_edge;
+    PVert* corr_v = corr_e->vert;
+    float corr_len = ref_len * corr_min_angle_sin;
     PEdge* max_edge = max_angle_edge->next;
 
     float M[3][3];
@@ -2466,20 +2466,20 @@ static bool p_chart_correct_zero_angles2(PChart* chart, float corr_min_angle)
     }
 
     static const int DIR_COUNT = 4;
-    float correct_co[3];
+    float corr_co[3];
     int d;
 
     for (d = 0; d < DIR_COUNT; d++) {
       float angle = (float)d / DIR_COUNT * 2.0 * M_PI;
-      float correct_dir[3] = { 0.0f, cos(angle), sin(angle) };
+      float corr_dir[3] = { 0.0f, cos(angle), sin(angle) };
 
-      mul_m3_v3(M, correct_dir);
-      mul_v3_fl(correct_dir, correct_len);
+      mul_m3_v3(M, corr_dir);
+      mul_v3_fl(corr_dir, corr_len);
 
-      copy_v3_v3(correct_co, correct_v->co);
-      add_v3_v3(correct_co, correct_dir);
+      copy_v3_v3(corr_co, corr_v->co);
+      add_v3_v3(corr_co, corr_dir);
 
-      if (p_validate_corrected_coords(correct_e, correct_v, correct_co, corr_min_angle_cos, faces)) {
+      if (p_validate_corrected_coords(corr_e, corr_v, corr_co, corr_min_angle_cos, faces)) {
         break;
       }
     }
@@ -2488,7 +2488,7 @@ static bool p_chart_correct_zero_angles2(PChart* chart, float corr_min_angle)
       return false;
     }
 
-    copy_v3_v3(correct_v->co, correct_co);
+    copy_v3_v3(corr_v->co, corr_co);
     for (PFace* f : faces) {
       f->flag |= PFACE_DONE;
     }
