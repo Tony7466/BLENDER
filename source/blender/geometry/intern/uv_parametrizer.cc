@@ -2293,6 +2293,7 @@ static void p_chart_simplify(PChart *chart)
 
 static const float CORRECT_AREA_EPS = 1.0e-7f;
 static const float CORRECT_MIN_VERT_DISTANCE = 1.0e-5;
+static const float CORRECT_MIN_ANGLE = 0.5f * M_PI / 180.0f;
 
 static bool p_validate_corrected_coords(const PEdge* correct_e, const PVert* correct_v, const float correct_co[3], std::vector<PFace*>& faces)
 {
@@ -2371,43 +2372,82 @@ static bool p_chart_correct_zero_area_faces2(PChart* chart)
   std::vector<PFace*> faces;
   faces.reserve(4);
 
+  float correct_min_angle_sin = sin(CORRECT_MIN_ANGLE);
+
   for (PFace* f = chart->faces; f; f = f->nextlink) {
     if (f->flag & PFACE_DONE) {
       continue;
     }
 
-    float area = p_face_area(f);
+    PEdge* edges[3];
+    edges[0] = f->edge;
+    edges[1] = f->edge->next;
+    edges[2] = f->edge->next->next;
 
-    if (area > CORRECT_AREA_EPS) {
-      continue;
-    }
-    
-    PEdge* max_edge = NULL;
-    float max_edge_len = -1.0f;
+    float f_angles[3];
+    p_face_angles(f, f_angles, f_angles + 1, f_angles + 2);
 
-    PEdge* e = f->edge;
-    for (int i = 0; i < 3; i++, e = e->next) {
-      float len = p_edge_length(e);
+    int min_angle_idx = 0;
+    int max_angle_idx = 0;
 
-      if (len > max_edge_len) {
-        max_edge = e;
-        max_edge_len = len;
+    for (int i = 1; i < 3; i++) {
+      if (f_angles[i] < f_angles[min_angle_idx]) {
+        min_angle_idx = i;
+      }
+      else if (f_angles[i] > f_angles[max_angle_idx]) {
+        max_angle_idx = i;
       }
     }
 
-    if (max_edge_len < CORRECT_MIN_VERT_DISTANCE) {
-      return false;
+    if (min_angle_idx == max_angle_idx) {
+      continue;
     }
 
-    PEdge* correct_e = max_edge->next->next;
+    if (f_angles[min_angle_idx] >= CORRECT_MIN_ANGLE) {
+      continue;
+    }
+
+    PEdge* max_angle_edge = edges[max_angle_idx];
+
+    PEdge* ref_edge;
+    if (((min_angle_idx + 1) % 3) == max_angle_idx) {
+      ref_edge = max_angle_edge->next->next;
+    }
+    else {
+      ref_edge = max_angle_edge;
+    }
+
+    float ref_len = p_edge_length(ref_edge);
+
+
+
+    //float area = p_face_area(f);
+
+    //if (area > CORRECT_AREA_EPS) {
+    //  continue;
+    //}
+    //
+    //PEdge* max_edge = NULL;
+    //float max_edge_len = -1.0f;
+
+    //PEdge* e = f->edge;
+    //for (int i = 0; i < 3; i++, e = e->next) {
+    //  float len = p_edge_length(e);
+
+    //  if (len > max_edge_len) {
+    //    max_edge = e;
+    //    max_edge_len = len;
+    //  }
+    //}
+
+    //if (max_edge_len < CORRECT_MIN_VERT_DISTANCE) {
+    //  return false;
+    //}
+
+    PEdge* correct_e = max_angle_edge;
     PVert* correct_v = correct_e->vert;
-
-    float max_edge_dir[3];
-    copy_v3_v3(max_edge_dir, max_edge->next->vert->co);
-    sub_v3_v3(max_edge_dir, max_edge->vert->co);
-    mul_v3_fl(max_edge_dir, 1.0f / max_edge_len);
-
-    float correct_len = 2.0f * CORRECT_AREA_EPS / max_edge_len;
+    float correct_len = ref_len * correct_min_angle_sin;
+    PEdge* max_edge = max_angle_edge->next;
 
     float M[3][3];
     if (!p_edge_matrix(M, max_edge)) {
