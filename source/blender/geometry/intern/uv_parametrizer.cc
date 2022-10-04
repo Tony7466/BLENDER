@@ -2291,17 +2291,13 @@ static void p_chart_simplify(PChart *chart)
 #  endif
 #endif
 
-static const float CORRECT_AREA_EPS = 1.0e-7f;
-static const float CORRECT_MIN_VERT_DISTANCE = 1.0e-5;
-static const float CORRECT_MIN_ANGLE = 0.1f * M_PI / 180.0f;
-
-static bool p_validate_corrected_coords(const PEdge* correct_e, const PVert* correct_v, const float correct_co[3], std::vector<PFace*>& faces)
+static bool p_validate_corrected_coords(const PEdge* correct_e, const PVert* correct_v, const float correct_co[3], float min_angle, std::vector<PFace*>& r_faces)
 {
-  faces.clear();
+  r_faces.clear();
   const PEdge* e = correct_v->edge;
 
   do {
-    faces.push_back(e->face);
+    r_faces.push_back(e->face);
 
     if (e == correct_e) {
       continue;
@@ -2321,7 +2317,7 @@ static bool p_validate_corrected_coords(const PEdge* correct_e, const PVert* cor
       }
     }
 
-    if (f_angles[min_angle_idx] < CORRECT_MIN_ANGLE) {
+    if (f_angles[min_angle_idx] < min_angle) {
       return false;
     }
 
@@ -2332,6 +2328,7 @@ static bool p_validate_corrected_coords(const PEdge* correct_e, const PVert* cor
 
 static bool p_edge_matrix(float R[3][3], const PEdge *e)
 {
+  static const float eps = 1.0e-5;
   static const float n1[3] = { 0.0f, 0.0f, 1.0f };
   static const float n2[3] = { 0.0f, 1.0f, 0.0f };
 
@@ -2340,7 +2337,7 @@ static bool p_edge_matrix(float R[3][3], const PEdge *e)
   sub_v3_v3(edge_dir, e->vert->co);
 
   float edge_len = len_v3(edge_dir);
-  if (edge_len < CORRECT_MIN_VERT_DISTANCE) {
+  if (edge_len < eps) {
     return false;
   }
   mul_v3_fl(edge_dir, 1.0f / edge_len);
@@ -2349,11 +2346,11 @@ static bool p_edge_matrix(float R[3][3], const PEdge *e)
   cross_v3_v3v3(normal_dir, edge_dir, n1);
   float normal_len = len_v3(normal_dir);
 
-  if (normal_len < CORRECT_MIN_VERT_DISTANCE) {
+  if (normal_len < eps) {
     cross_v3_v3v3(normal_dir, edge_dir, n2);
     normal_len = len_v3(normal_dir);
 
-    if (normal_len < CORRECT_MIN_VERT_DISTANCE) {
+    if (normal_len < eps) {
       return false;
     }
   }
@@ -2376,12 +2373,12 @@ static bool p_edge_matrix(float R[3][3], const PEdge *e)
   R[2][2] = tangent_dir[2];
 }
 
-static bool p_chart_correct_zero_area_faces2(PChart* chart)
+static bool p_chart_correct_zero_angles2(PChart* chart, float min_angle)
 {
   std::vector<PFace*> faces;
   faces.reserve(4);
 
-  float correct_min_angle_sin = sin(CORRECT_MIN_ANGLE);
+  float min_angle_sin = sin(min_angle);
 
   for (PFace* f = chart->faces; f; f = f->nextlink) {
     if (f->flag & PFACE_DONE) {
@@ -2412,7 +2409,7 @@ static bool p_chart_correct_zero_area_faces2(PChart* chart)
       continue;
     }
 
-    if (f_angles[min_angle_idx] >= CORRECT_MIN_ANGLE) {
+    if (f_angles[min_angle_idx] >= min_angle) {
       continue;
     }
 
@@ -2430,7 +2427,7 @@ static bool p_chart_correct_zero_area_faces2(PChart* chart)
 
     PEdge* correct_e = max_angle_edge;
     PVert* correct_v = correct_e->vert;
-    float correct_len = ref_len * correct_min_angle_sin;
+    float correct_len = ref_len * min_angle_sin;
     PEdge* max_edge = max_angle_edge->next;
 
     float M[3][3];
@@ -2452,7 +2449,7 @@ static bool p_chart_correct_zero_area_faces2(PChart* chart)
       copy_v3_v3(correct_co, correct_v->co);
       add_v3_v3(correct_co, correct_dir);
 
-      if (p_validate_corrected_coords(correct_e, correct_v, correct_co, faces)) {
+      if (p_validate_corrected_coords(correct_e, correct_v, correct_co, min_angle, faces)) {
         break;
       }
     }
@@ -2470,9 +2467,9 @@ static bool p_chart_correct_zero_area_faces2(PChart* chart)
   return true;
 }
 
-static bool p_chart_correct_zero_area_faces(PChart* chart)
+static bool p_chart_correct_zero_angles(PChart* chart, float min_angle)
 {
-  bool ret = p_chart_correct_zero_area_faces2(chart);
+  bool ret = p_chart_correct_zero_angles2(chart, min_angle);
 
   for (PFace* f = chart->faces; f; f = f->nextlink) {
     f->flag &= ~PFACE_DONE;
@@ -4842,6 +4839,8 @@ static void slim_transfer_faces(const PChart *chart, SLIMMatrixTransferChart *mt
 /* Conversion Function to build matrix for SLIM Parametrization */
 static void slim_convert_blender(ParamHandle *phandle, SLIMMatrixTransfer *mt)
 {
+  static const float SLIM_MIN_ANGLE = 0.1f * M_PI / 180.0f;
+
   mt->n_charts = phandle->ncharts;
   mt->mt_charts.resize(phandle->ncharts);
 
@@ -4849,7 +4848,7 @@ static void slim_convert_blender(ParamHandle *phandle, SLIMMatrixTransfer *mt)
     PChart *chart = phandle->charts[i];
     SLIMMatrixTransferChart *mt_chart = &mt->mt_charts[i];
 
-    if (!p_chart_correct_zero_area_faces(chart)) {
+    if (!p_chart_correct_zero_angles(chart, SLIM_MIN_ANGLE)) {
       mt_chart->succeeded = false;
       continue;
     }
