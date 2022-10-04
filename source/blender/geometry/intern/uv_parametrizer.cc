@@ -2293,7 +2293,7 @@ static void p_chart_simplify(PChart *chart)
 
 static const float CORRECT_AREA_EPS = 1.0e-7f;
 static const float CORRECT_MIN_VERT_DISTANCE = 1.0e-5;
-static const float CORRECT_MIN_ANGLE = 0.5f * M_PI / 180.0f;
+static const float CORRECT_MIN_ANGLE = 0.1f * M_PI / 180.0f;
 
 static bool p_validate_corrected_coords(const PEdge* correct_e, const PVert* correct_v, const float correct_co[3], std::vector<PFace*>& faces)
 {
@@ -2310,12 +2310,21 @@ static bool p_validate_corrected_coords(const PEdge* correct_e, const PVert* cor
     const PVert* other_v1 = e->next->vert;
     const PVert* other_v2 = e->next->next->vert;
 
-    float f_area = area_tri_v3(correct_co, other_v1->co, other_v2->co);
-    //std::cerr << "f_area: " << f_area << '\n';
+    float f_angles[3];
+    p_triangle_angles(correct_co, other_v1->co, other_v2->co, f_angles, f_angles + 1, f_angles + 2);
 
-    if (f_area < CORRECT_AREA_EPS) {
+    int min_angle_idx = 0;
+
+    for (int i = 1; i < 3; i++) {
+      if (f_angles[i] < f_angles[min_angle_idx]) {
+        min_angle_idx = i;
+      }
+    }
+
+    if (f_angles[min_angle_idx] < CORRECT_MIN_ANGLE) {
       return false;
     }
+
   } while ((e = p_wheel_edge_next(e)) && (e != correct_v->edge));
 
   return true;
@@ -2419,31 +2428,6 @@ static bool p_chart_correct_zero_area_faces2(PChart* chart)
 
     float ref_len = p_edge_length(ref_edge);
 
-
-
-    //float area = p_face_area(f);
-
-    //if (area > CORRECT_AREA_EPS) {
-    //  continue;
-    //}
-    //
-    //PEdge* max_edge = NULL;
-    //float max_edge_len = -1.0f;
-
-    //PEdge* e = f->edge;
-    //for (int i = 0; i < 3; i++, e = e->next) {
-    //  float len = p_edge_length(e);
-
-    //  if (len > max_edge_len) {
-    //    max_edge = e;
-    //    max_edge_len = len;
-    //  }
-    //}
-
-    //if (max_edge_len < CORRECT_MIN_VERT_DISTANCE) {
-    //  return false;
-    //}
-
     PEdge* correct_e = max_angle_edge;
     PVert* correct_v = correct_e->vert;
     float correct_len = ref_len * correct_min_angle_sin;
@@ -2455,8 +2439,8 @@ static bool p_chart_correct_zero_area_faces2(PChart* chart)
     }
 
     static const int DIR_COUNT = 4;
-    int d;
     float correct_co[3];
+    int d;
 
     for (d = 0; d < DIR_COUNT; d++) {
       float angle = (float)d / DIR_COUNT * 2.0 * M_PI;
