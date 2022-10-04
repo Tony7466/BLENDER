@@ -337,6 +337,27 @@ static void p_face_angles(PFace *f, float *r_a1, float *r_a2, float *r_a3)
   p_triangle_angles(v1->co, v2->co, v3->co, r_a1, r_a2, r_a3);
 }
 
+static float p_vec_cos(const float v1[3], const float v2[3], const float v3[3])
+{
+  return cos_v3v3v3(v1, v2, v3);
+}
+
+static void p_triangle_cos(
+  const float v1[3], const float v2[3], const float v3[3], float* r_cos1, float* r_cos2, float* r_cos3)
+{
+  *r_cos1 = p_vec_cos(v3, v1, v2);
+  *r_cos2 = p_vec_cos(v1, v2, v3);
+  *r_cos3 = p_vec_cos(v2, v3, v1);
+}
+
+static void p_face_cos(PFace* f, float* r_cos1, float* r_cos2, float* r_cos3)
+{
+  PEdge* e1 = f->edge, * e2 = e1->next, * e3 = e2->next;
+  PVert* v1 = e1->vert, * v2 = e2->vert, * v3 = e3->vert;
+
+  p_triangle_cos(v1->co, v2->co, v3->co, r_cos1, r_cos2, r_cos3);
+}
+
 static float p_face_area(PFace *f)
 {
   PEdge *e1 = f->edge, *e2 = e1->next, *e3 = e2->next;
@@ -2291,7 +2312,7 @@ static void p_chart_simplify(PChart *chart)
 #  endif
 #endif
 
-static bool p_validate_corrected_coords(const PEdge* correct_e, const PVert* correct_v, const float correct_co[3], float min_angle, std::vector<PFace*>& r_faces)
+static bool p_validate_corrected_coords(const PEdge* correct_e, const PVert* correct_v, const float correct_co[3], float corr_min_angle_cos, std::vector<PFace*>& r_faces)
 {
   r_faces.clear();
   const PEdge* e = correct_v->edge;
@@ -2306,18 +2327,22 @@ static bool p_validate_corrected_coords(const PEdge* correct_e, const PVert* cor
     const PVert* other_v1 = e->next->vert;
     const PVert* other_v2 = e->next->next->vert;
 
-    float f_angles[3];
-    p_triangle_angles(correct_co, other_v1->co, other_v2->co, f_angles, f_angles + 1, f_angles + 2);
+    float f_cos[3];
+    p_triangle_cos(correct_co, other_v1->co, other_v2->co, f_cos, f_cos + 1, f_cos + 2);
 
     int min_angle_idx = 0;
 
+    /* cos is a decreasing funtion on [0.0, PI] so we can
+     * comapre angles by comparing their cos values using the
+     * inverted operator.
+     */
     for (int i = 1; i < 3; i++) {
-      if (f_angles[i] < f_angles[min_angle_idx]) {
+      if (f_cos[i] > f_cos[min_angle_idx]) {
         min_angle_idx = i;
       }
     }
 
-    if (f_angles[min_angle_idx] < min_angle) {
+    if (f_cos[min_angle_idx] > corr_min_angle_cos) {
       return false;
     }
 
@@ -2373,12 +2398,13 @@ static bool p_edge_matrix(float R[3][3], const PEdge *e)
   R[2][2] = tangent_dir[2];
 }
 
-static bool p_chart_correct_zero_angles2(PChart* chart, float min_angle)
+static bool p_chart_correct_zero_angles2(PChart* chart, float corr_min_angle)
 {
   std::vector<PFace*> faces;
   faces.reserve(4);
 
-  float min_angle_sin = sin(min_angle);
+  float corr_min_angle_sin = sin(corr_min_angle);
+  float corr_min_angle_cos = cos(corr_min_angle);
 
   for (PFace* f = chart->faces; f; f = f->nextlink) {
     if (f->flag & PFACE_DONE) {
@@ -2390,17 +2416,21 @@ static bool p_chart_correct_zero_angles2(PChart* chart, float min_angle)
     edges[1] = f->edge->next;
     edges[2] = f->edge->next->next;
 
-    float f_angles[3];
-    p_face_angles(f, f_angles, f_angles + 1, f_angles + 2);
+    float f_cos[3];
+    p_face_cos(f, f_cos, f_cos + 1, f_cos + 2);
 
     int min_angle_idx = 0;
     int max_angle_idx = 0;
 
+    /* cos is a decreasing funtion on [0.0, PI] so we can
+     * comapre angles by comparing their cos values using the
+     * inverted operator.
+     */
     for (int i = 1; i < 3; i++) {
-      if (f_angles[i] < f_angles[min_angle_idx]) {
+      if (f_cos[i] > f_cos[min_angle_idx]) {
         min_angle_idx = i;
       }
-      else if (f_angles[i] > f_angles[max_angle_idx]) {
+      else if (f_cos[i] < f_cos[max_angle_idx]) {
         max_angle_idx = i;
       }
     }
@@ -2409,7 +2439,7 @@ static bool p_chart_correct_zero_angles2(PChart* chart, float min_angle)
       continue;
     }
 
-    if (f_angles[min_angle_idx] >= min_angle) {
+    if (f_cos[min_angle_idx] < corr_min_angle_cos) {
       continue;
     }
 
@@ -2427,7 +2457,7 @@ static bool p_chart_correct_zero_angles2(PChart* chart, float min_angle)
 
     PEdge* correct_e = max_angle_edge;
     PVert* correct_v = correct_e->vert;
-    float correct_len = ref_len * min_angle_sin;
+    float correct_len = ref_len * corr_min_angle_sin;
     PEdge* max_edge = max_angle_edge->next;
 
     float M[3][3];
@@ -2449,7 +2479,7 @@ static bool p_chart_correct_zero_angles2(PChart* chart, float min_angle)
       copy_v3_v3(correct_co, correct_v->co);
       add_v3_v3(correct_co, correct_dir);
 
-      if (p_validate_corrected_coords(correct_e, correct_v, correct_co, min_angle, faces)) {
+      if (p_validate_corrected_coords(correct_e, correct_v, correct_co, corr_min_angle_cos, faces)) {
         break;
       }
     }
@@ -2467,11 +2497,11 @@ static bool p_chart_correct_zero_angles2(PChart* chart, float min_angle)
   return true;
 }
 
-static bool p_chart_correct_zero_angles(PChart* chart, float min_angle)
+static bool p_chart_correct_zero_angles(PChart* chart, float corr_min_angle)
 {
-  /* Look for angles lower than `min_angle` and try to
+  /* Look for angles lower than `corr_min_angle` and try to
    * correct vertex coordinates so that the resulting angle
-   * is greater than `min_angle`. The operation should result
+   * is greater than `corr_min_angle`. The operation should result
    * in correcting all triangles with area close to zero.
    *
    * The return value indicates whether zero angles could
@@ -2484,7 +2514,7 @@ static bool p_chart_correct_zero_angles(PChart* chart, float min_angle)
    * with doubled vertices removed beforehand.
    */
 
-  bool ret = p_chart_correct_zero_angles2(chart, min_angle);
+  bool ret = p_chart_correct_zero_angles2(chart, corr_min_angle);
 
   for (PFace* f = chart->faces; f; f = f->nextlink) {
     f->flag &= ~PFACE_DONE;
@@ -4855,7 +4885,7 @@ static void slim_transfer_faces(const PChart *chart, SLIMMatrixTransferChart *mt
 static void slim_convert_blender(ParamHandle *phandle, SLIMMatrixTransfer *mt)
 {
   /* 0.1 degree */
-  static const float SLIM_MIN_ANGLE = 0.1f * M_PI / 180.0f;
+  static const float SLIM_CORR_MIN_ANGLE = 0.1f * M_PI / 180.0f;
 
   mt->n_charts = phandle->ncharts;
   mt->mt_charts.resize(phandle->ncharts);
@@ -4864,7 +4894,7 @@ static void slim_convert_blender(ParamHandle *phandle, SLIMMatrixTransfer *mt)
     PChart *chart = phandle->charts[i];
     SLIMMatrixTransferChart *mt_chart = &mt->mt_charts[i];
 
-    if (!p_chart_correct_zero_angles(chart, SLIM_MIN_ANGLE)) {
+    if (!p_chart_correct_zero_angles(chart, SLIM_CORR_MIN_ANGLE)) {
       mt_chart->succeeded = false;
       continue;
     }
