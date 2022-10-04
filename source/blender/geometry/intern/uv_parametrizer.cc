@@ -2314,6 +2314,10 @@ static void p_chart_simplify(PChart *chart)
 
 static bool p_validate_corrected_coords(const PEdge* corr_e, const PVert* corr_v, const float corr_co[3], float corr_min_angle_cos, std::vector<PFace*>& r_faces)
 {
+  /* Check whether the given corrected coordinates don't result in any other angle lower than `corr_min_angle` -
+   * in such a case the coordinates have to be rejected.
+   */
+
   r_faces.clear();
   const PEdge* e = corr_v->edge;
 
@@ -2465,6 +2469,7 @@ static bool p_chart_correct_zero_angles2(PChart* chart, float corr_min_angle)
       return false;
     }
 
+    /* check 4 distinct directions */
     static const int DIR_COUNT = 4;
     float corr_co[3];
     int d;
@@ -2499,13 +2504,13 @@ static bool p_chart_correct_zero_angles2(PChart* chart, float corr_min_angle)
 
 static bool p_chart_correct_zero_angles(PChart* chart, float corr_min_angle)
 {
-  /* Look for angles lower than `corr_min_angle` and try to
+  /* Look for angles in the 3D space which are lower than `corr_min_angle` and try to
    * correct vertex coordinates so that the resulting angle
-   * is greater than `corr_min_angle`. The operation should result
-   * in correcting all triangles with area close to zero.
+   * is greater than `corr_min_angle`. The algorithm will result
+   * in correcting all triangles with zero area.
    *
    * The return value indicates whether zero angles could
-   * be corrected.
+   * be corrected by the algorithm.
    *
    * Due to performance reasons, if the chart
    * contains doubled vertices, the function may return true with
