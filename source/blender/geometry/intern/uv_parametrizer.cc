@@ -2469,6 +2469,21 @@ static bool p_chart_correct_zero_angles2(PChart* chart, float min_angle)
 
 static bool p_chart_correct_zero_angles(PChart* chart, float min_angle)
 {
+  /* Look for angles lower than `min_angle` and try to
+   * correct vertex coordinates so that the resulting angle
+   * is greater than `min_angle`. The operation should result
+   * in correcting all triangles with area close to zero.
+   *
+   * The return value indicates whether zero angles could
+   * be corrected.
+   *
+   * Due to performance reasons, if the chart
+   * contains doubled vertices, the function may return true with
+   * the chart still having zero area triangles. The function will not crash in such
+   * a case though. It is recommended to always run the function on a chart
+   * with doubled vertices removed beforehand.
+   */
+
   bool ret = p_chart_correct_zero_angles2(chart, min_angle);
 
   for (PFace* f = chart->faces; f; f = f->nextlink) {
@@ -4839,6 +4854,7 @@ static void slim_transfer_faces(const PChart *chart, SLIMMatrixTransferChart *mt
 /* Conversion Function to build matrix for SLIM Parametrization */
 static void slim_convert_blender(ParamHandle *phandle, SLIMMatrixTransfer *mt)
 {
+  /* 0.1 degree */
   static const float SLIM_MIN_ANGLE = 0.1f * M_PI / 180.0f;
 
   mt->n_charts = phandle->ncharts;
