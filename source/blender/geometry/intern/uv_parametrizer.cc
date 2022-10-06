@@ -107,7 +107,6 @@ enum PVertFlag {
   PVERT_INTERIOR = 4,
   PVERT_COLLAPSE = 8,
   PVERT_SPLIT = 16,
-  PVERT_DONE = 32,
 };
 
 enum PEdgeFlag {
