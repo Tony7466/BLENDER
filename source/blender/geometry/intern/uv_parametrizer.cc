@@ -2407,6 +2407,8 @@ static bool p_edge_matrix(float R[3][3], const PEdge *e)
   R[0][2] = tangent_dir[0];
   R[1][2] = tangent_dir[1];
   R[2][2] = tangent_dir[2];
+
+  return true;
 }
 
 static bool p_chart_correct_zero_angles2(PChart *chart, float corr_min_angle)
