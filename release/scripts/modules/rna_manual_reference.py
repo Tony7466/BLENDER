@@ -8,12 +8,7 @@ manual_version = '%d.%d' % bpy.app.version[:2]
 
 url_manual_prefix = "https://docs.blender.org/manual/en/" + manual_version + "/"
 
-language = bpy.context.preferences.view.language
-if language == 'DEFAULT':
-    import os
-    language = os.getenv('LANG', '').split('.')[0]
-
-LANG = {
+language_codes = {
 "ar_EG":        "ar",
 "de_DE":        "de",
 "es":           "es",
@@ -32,10 +27,16 @@ LANG = {
 "vi_VN":        "vi",
 "zh_CN":        "zh-hans",
 "zh_TW":        "zh-hant",
-}.get(language)
+}
 
-if LANG is not None:
-    url_manual_prefix = url_manual_prefix.replace("manual/en", "manual/" + LANG)
+def get_current_language_code():
+    language = bpy.context.preferences.view.language
+    if language == 'DEFAULT':
+        import os
+        language = os.getenv("LANG", "").split(".")[0]
+    return language_codes.get(language, "en")
+
+url_manual_prefix = url_manual_prefix.replace("manual/en", "manual/" + get_current_language_code())
 
 url_manual_mapping = (
     ("bpy.types.movietrackingsettings.refine_intrinsics_tangential_distortion*", "movie_clip/tracking/clip/toolbar/solve.html#bpy-types-movietrackingsettings-refine-intrinsics-tangential-distortion"),
