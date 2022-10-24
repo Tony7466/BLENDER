@@ -388,6 +388,11 @@ static float p_edge_length(PEdge *e)
   return len_v3v3(e->vert->co, e->next->vert->co);
 }
 
+static float p_edge_length_squared(PEdge* e)
+{
+  return len_squared_v3v3(e->vert->co, e->next->vert->co);
+}
+
 static float p_edge_uv_length(PEdge *e)
 {
   return len_v2v2(e->vert->uv, e->next->vert->uv);
@@ -2339,9 +2344,6 @@ static void p_chart_simplify(PChart *chart)
 #  endif
 #endif
 
-int NCOLLAPSE = 1;
-int NCOLLAPSEX = 0;
-static const float COLLAPSE_LENGTH_TRESHOLD = 1.0e-5;
 
 static void p_vert_fix_edge_pointer(PVert* v)
 {
@@ -2466,7 +2468,32 @@ static void p_collapse_edge(PEdge* edge, PEdge* pair)
   }
 }
 
-static bool p_collapse_allowed(PEdge* edge, PEdge* pair)
+static bool p_collapse_allowed_topologic(PEdge* edge, PEdge* pair)
+{
+  PVert* oldv, * keepv;
+
+  p_collapsing_verts(edge, pair, &oldv, &keepv);
+
+  /* boundary edges */
+  if (!edge || !pair) {
+    /* avoid collapsing chart into an edge */
+    if (edge && !edge->next->pair && !edge->next->next->pair) {
+      return false;
+    }
+    else if (pair && !pair->next->pair && !pair->next->next->pair) {
+      return false;
+    }
+  }
+  /* avoid merging two boundaries (oldv and keepv are on the 'other side' of
+   * the chart) */
+  else if (!p_vert_interior(oldv) && !p_vert_interior(keepv)) {
+    return false;
+  }
+
+  return true;
+}
+
+static bool p_collapse_allowed(PEdge* edge, PEdge* pair, float threshold_squared)
 {
   PVert* oldv, * keepv;
 
@@ -2478,17 +2505,21 @@ static bool p_collapse_allowed(PEdge* edge, PEdge* pair)
     return false;
   }
 
+  if (!p_collapse_allowed_topologic(edge, pair)) {
+    return false;
+  }
+
   PEdge* collapse_e = edge ? edge : pair;
-  return p_edge_length(collapse_e) < COLLAPSE_LENGTH_TRESHOLD;
+  return p_edge_length_squared(collapse_e) < threshold_squared;
 }
 
 static float p_collapse_cost(PEdge* edge, PEdge* pair)
 {
   PEdge* collapse_e = edge ? edge : pair;
-  return p_edge_length(collapse_e);
+  return p_edge_length_squared(collapse_e);
 }
 
-static void p_collapse_cost_vertex(PVert* vert, float* r_mincost, PEdge** r_mine)
+static void p_collapse_cost_vertex(PVert* vert, float* r_mincost, PEdge** r_mine, float threshold_squared)
 {
   PEdge* e, * enext, * pair;
 
@@ -2496,7 +2527,7 @@ static void p_collapse_cost_vertex(PVert* vert, float* r_mincost, PEdge** r_mine
   *r_mincost = 0.0f;
   e = vert->edge;
   do {
-    if (p_collapse_allowed(e, e->pair)) {
+    if (p_collapse_allowed(e, e->pair, threshold_squared)) {
       float cost = p_collapse_cost(e, e->pair);
 
       if ((*r_mine == NULL) || (cost < *r_mincost)) {
@@ -2511,7 +2542,7 @@ static void p_collapse_cost_vertex(PVert* vert, float* r_mincost, PEdge** r_mine
       /* The other boundary edge, where we only have the pair half-edge. */
       pair = e->next->next;
 
-      if (p_collapse_allowed(NULL, pair)) {
+      if (p_collapse_allowed(NULL, pair, threshold_squared)) {
         float cost = p_collapse_cost(NULL, pair);
 
         if ((*r_mine == NULL) || (cost < *r_mincost)) {
@@ -2597,12 +2628,15 @@ static void p_chart_post_collapse_flush(PChart* chart, PEdge* collapsed)
   }
 }
 
-static void p_chart_collapse_doubles(PChart* chart)
+static void p_chart_collapse_doubles(PChart* chart, float threshold)
 {
   /* Computes a list of edge collapses / vertex splits. The collapsed
    * simplices go in the `chart->collapsed_*` lists, The original and
    * collapsed may then be view as stacks, where the next collapse/split
    * is at the top of the respective lists. */
+
+  /* unlimited collapsing */
+  static const int NCOLLAPSE = -1;
 
   Heap* heap = BLI_heap_new();
   PVert* v;
@@ -2611,12 +2645,14 @@ static void p_chart_collapse_doubles(PChart* chart)
   std::vector<PVert*> wheelverts;
   wheelverts.reserve(6);
 
+  float threshold_squared = threshold * threshold;
+
   /* insert all potential collapses into heap */
   for (v = chart->verts; v; v = v->nextlink) {
     float cost;
     PEdge* e = NULL;
 
-    p_collapse_cost_vertex(v, &cost, &e);
+    p_collapse_cost_vertex(v, &cost, &e, threshold_squared);
 
     if (e) {
       v->u.heaplink = BLI_heap_insert(heap, cost, e);
@@ -2684,7 +2720,7 @@ static void p_chart_collapse_doubles(PChart* chart)
         v->u.heaplink = NULL;
       }
 
-      p_collapse_cost_vertex(v, &cost, &collapse);
+      p_collapse_cost_vertex(v, &cost, &collapse, threshold_squared);
 
       if (collapse) {
         v->u.heaplink = BLI_heap_insert(heap, cost, collapse);
@@ -5305,6 +5341,7 @@ static void slim_transfer_faces(const PChart *chart, SLIMMatrixTransferChart *mt
 /* Conversion Function to build matrix for SLIM Parametrization */
 static void slim_convert_blender(ParamHandle *phandle, SLIMMatrixTransfer *mt)
 {
+  static const float SLIM_COLLAPSE_THRESHOLD = 1.0e-5f;
   /* 0.1 degree */
   static const float SLIM_CORR_MIN_ANGLE = 0.1f * M_PI / 180.0f;
 
@@ -5315,7 +5352,7 @@ static void slim_convert_blender(ParamHandle *phandle, SLIMMatrixTransfer *mt)
     PChart *chart = phandle->charts[i];
     SLIMMatrixTransferChart *mt_chart = &mt->mt_charts[i];
 
-    p_chart_collapse_doubles(chart);
+    p_chart_collapse_doubles(chart, SLIM_COLLAPSE_THRESHOLD);
 
     if (!p_chart_correct_zero_angles(chart, SLIM_CORR_MIN_ANGLE)) {
       mt_chart->succeeded = false;
