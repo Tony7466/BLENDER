@@ -86,38 +86,30 @@ static void adjust_pins(SLIMData &slim_data,
   slim_data.bc.resize(n_pins, 2);
 
   int old_pin_pointer = 0;
-  int new_pin_pointer = 0;
   int selected_pin_pointer = 0;
 
-  while (new_pin_pointer < n_pins) {
+  for (int new_pin_pointer = 0; new_pin_pointer < n_pins; new_pin_pointer++) {
 
     int pinned_vertex_index = pinned_vertex_indices[new_pin_pointer];
     slim_data.b(new_pin_pointer) = pinned_vertex_index;
 
-    while (old_pin_indices(old_pin_pointer) < pinned_vertex_index) {
+    while ((old_pin_pointer < old_pin_indices.size()) && (old_pin_indices(old_pin_pointer) < pinned_vertex_index)) {
       ++old_pin_pointer;
-      if (old_pin_pointer == old_pin_indices.size()) {
-        break;
-      }
     }
+    bool old_pointer_valid = (old_pin_pointer < old_pin_indices.size()) && (old_pin_indices(old_pin_pointer) == pinned_vertex_index);
 
-    while (selected_pins[selected_pin_pointer] < pinned_vertex_index) {
+    while ((selected_pin_pointer < n_selected_pins) && (selected_pins[selected_pin_pointer] < pinned_vertex_index)) {
       ++selected_pin_pointer;
-      if (selected_pin_pointer == n_selected_pins) {
-        break;
-      }
     }
+    bool pin_selected = (selected_pin_pointer < n_selected_pins) && (selected_pins[selected_pin_pointer] == pinned_vertex_index);
 
-    if (!(pinned_vertex_index == selected_pins[selected_pin_pointer]) &&
-        old_pin_indices(old_pin_pointer) == pinned_vertex_index) {
+    if (!pin_selected && old_pointer_valid) {
       slim_data.bc.row(new_pin_pointer) = old_pin_positions.row(old_pin_pointer);
     }
     else {
       slim_data.bc(new_pin_pointer, 0) = pinned_vertex_positions2d[2 * new_pin_pointer];
       slim_data.bc(new_pin_pointer, 1) = pinned_vertex_positions2d[2 * new_pin_pointer + 1];
     }
-
-    ++new_pin_pointer;
   }
 }
 
