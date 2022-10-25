@@ -2448,11 +2448,8 @@ static bool p_chart_correct_zero_angles2(PChart *chart, float corr_min_angle)
       }
     }
 
-    if (min_angle_idx == max_angle_idx) {
-      continue;
-    }
-
     if (f_cos[min_angle_idx] < corr_min_angle_cos) {
+      f->flag |= PFACE_DONE;
       continue;
     }
 
@@ -2475,7 +2472,7 @@ static bool p_chart_correct_zero_angles2(PChart *chart, float corr_min_angle)
 
     float M[3][3];
     if (!p_edge_matrix(M, max_edge)) {
-      return false;
+      continue;
     }
 
     /* check 4 distinct directions */
@@ -2499,12 +2496,12 @@ static bool p_chart_correct_zero_angles2(PChart *chart, float corr_min_angle)
     }
 
     if (d == DIR_COUNT) {
-      return false;
+      continue;
     }
 
     copy_v3_v3(corr_v->co, corr_co);
-    for (PFace *f : faces) {
-      f->flag |= PFACE_DONE;
+    for (PFace *other_f : faces) {
+      other_f->flag |= PFACE_DONE;
     }
   }
 
@@ -2531,6 +2528,10 @@ static bool p_chart_correct_zero_angles(PChart *chart, float corr_min_angle)
   bool ret = p_chart_correct_zero_angles2(chart, corr_min_angle);
 
   for (PFace *f = chart->faces; f; f = f->nextlink) {
+    if (!(f->flag & PFACE_DONE)) {
+      ret = false;
+    }
+
     f->flag &= ~PFACE_DONE;
   }
 
