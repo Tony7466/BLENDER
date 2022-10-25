@@ -772,7 +772,7 @@ void postTrans(bContext *C, TransInfo *t)
     else {
       SpaceImage *sima = t->area->spacedata.first;
       if (sima->flag & SI_LIVE_UNWRAP) {
-        ED_uvedit_live_unwrap_end(t->state == TRANS_CANCEL);
+        ED_uvedit_live_unwrap_end(C, t->state == TRANS_CANCEL);
       }
     }
   }

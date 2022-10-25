@@ -288,9 +288,9 @@ void ED_uvedit_select_sync_flush(const struct ToolSettings *ts,
 
 /* uvedit_unwrap_ops.c */
 
-void ED_uvedit_live_unwrap_begin(struct Scene *scene, struct Object *obedit);
+void ED_uvedit_live_unwrap_begin(struct bContext *C, struct Scene *scene, struct Object *obedit);
 void ED_uvedit_live_unwrap_re_solve(void);
-void ED_uvedit_live_unwrap_end(short cancel);
+void ED_uvedit_live_unwrap_end(struct bContext *C, short cancel);
 
 void ED_uvedit_live_unwrap(const struct Scene *scene, struct Object **objects, int objects_len);
 void ED_uvedit_add_simple_uvs(struct Main *bmain, const struct Scene *scene, struct Object *ob);

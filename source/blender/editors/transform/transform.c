@@ -944,6 +944,9 @@ int transformEvent(TransInfo *t, const wmEvent *event)
     t->redraw |= TREDRAW_HARD;
     handled = true;
   }
+  else if (event->type == TIMER) {
+    t->redraw |= TREDRAW_HARD;
+  }
   else if (event->type == MOUSEMOVE) {
     copy_v2_v2_int(t->mval, event->mval);
 

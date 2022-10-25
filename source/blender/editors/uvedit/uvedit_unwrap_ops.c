@@ -1461,9 +1461,11 @@ void UV_OT_average_islands_scale(wmOperatorType *ot)
 static struct {
   ParamHandle **handles;
   uint len, len_alloc;
+
+  wmTimer* timer;
 } g_live_unwrap = {NULL};
 
-void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit)
+void ED_uvedit_live_unwrap_begin(bContext *C, Scene *scene, Object *obedit)
 {
   ParamHandle *handle = NULL;
   BMEditMesh *em = BKE_editmesh_from_object(obedit);
@@ -1488,6 +1490,11 @@ void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit)
     options.mt_options.reflection_mode = 0;
     options.mt_options.skip_initialization = true;
     GEO_uv_parametrizer_slim_begin(handle, &options.mt_options);
+
+    if (C) {
+      BLI_assert(!g_live_unwrap.timer);
+      g_live_unwrap.timer = WM_event_add_timer(CTX_wm_manager(C), CTX_wm_window(C), TIMER, 0.01f);
+    }
   }
   else {
     GEO_uv_parametrizer_lscm_begin(handle, true, options.use_abf);
@@ -1526,8 +1533,13 @@ void ED_uvedit_live_unwrap_re_solve(void)
   }
 }
 
-void ED_uvedit_live_unwrap_end(short cancel)
+void ED_uvedit_live_unwrap_end(bContext* C, short cancel)
 {
+  if (C && g_live_unwrap.timer) {
+    WM_event_remove_timer(CTX_wm_manager(C), CTX_wm_window(C), g_live_unwrap.timer);
+    g_live_unwrap.timer = NULL;
+  }
+
   if (g_live_unwrap.handles) {
     for (int i = 0; i < g_live_unwrap.len; i++) {
       if (GEO_uv_parametrizer_is_slim(g_live_unwrap.handles[i])) {
