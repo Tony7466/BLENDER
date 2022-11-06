@@ -2,6 +2,8 @@
  * Copyright 2011-2022 Blender Foundation */
 
 #pragma once
+#include <util/hash.h>
+#include "types.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -916,32 +918,41 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                              int offset)
 {
   uint4 stack_offsets = read_node(kg, &offset);
-  uint4 defaults = read_node(kg, &offset);
+  uint4 defaults1 = read_node(kg, &offset);
+  uint4 defaults2 = read_node(kg, &offset);
 
-  uint coord_stack_offset, w_stack_offset, scale_stack_offset, smoothness_stack_offset;
-  uint exponent_stack_offset, randomness_stack_offset, distance_out_stack_offset,
-      color_out_stack_offset;
-  uint position_out_stack_offset, w_out_stack_offset, radius_out_stack_offset;
+  uint coord_stack_offset, w_stack_offset, scale_stack_offset, detail_stack_offset;
+  uint roughness_stack_offset, lacunarity_stack_offset, smoothness_stack_offset, exponent_stack_offset;
+  uint randomness_stack_offset, distance_out_stack_offset,
+    color_out_stack_offset, position_out_stack_offset;
+  uint w_out_stack_offset, radius_out_stack_offset, normalize;
 
   svm_unpack_node_uchar4(stack_offsets.x,
                          &coord_stack_offset,
                          &w_stack_offset,
-                         &scale_stack_offset,
-                         &smoothness_stack_offset);
+                         &scale_stack_offset, &detail_stack_offset
+                         );
   svm_unpack_node_uchar4(stack_offsets.y,
-                         &exponent_stack_offset,
-                         &randomness_stack_offset,
-                         &distance_out_stack_offset,
-                         &color_out_stack_offset);
+    &roughness_stack_offset, &lacunarity_stack_offset,
+    &smoothness_stack_offset,
+                         &exponent_stack_offset
+                        );
+  svm_unpack_node_uchar4(
+      stack_offsets.z, &randomness_stack_offset,
+    &distance_out_stack_offset,
+    &color_out_stack_offset, &position_out_stack_offset);
   svm_unpack_node_uchar3(
-      stack_offsets.z, &position_out_stack_offset, &w_out_stack_offset, &radius_out_stack_offset);
+    stack_offsets.w, &w_out_stack_offset, &radius_out_stack_offset, &normalize);
 
   float3 coord = stack_load_float3(stack, coord_stack_offset);
-  float w = stack_load_float_default(stack, w_stack_offset, stack_offsets.w);
-  float scale = stack_load_float_default(stack, scale_stack_offset, defaults.x);
-  float smoothness = stack_load_float_default(stack, smoothness_stack_offset, defaults.y);
-  float exponent = stack_load_float_default(stack, exponent_stack_offset, defaults.z);
-  float randomness = stack_load_float_default(stack, randomness_stack_offset, defaults.w);
+  float w = stack_load_float_default(stack, w_stack_offset, defaults1.x);
+  float scale = stack_load_float_default(stack, scale_stack_offset, defaults1.y);
+  float detail = stack_load_float_default(stack, detail_stack_offset, defaults1.z);
+  float roughness = stack_load_float_default(stack, roughness_stack_offset, defaults1.w);
+  float lacunarity = stack_load_float_default(stack, smoothness_stack_offset, defaults2.x);
+  float smoothness = stack_load_float_default(stack, smoothness_stack_offset, defaults2.y);
+  float exponent = stack_load_float_default(stack, exponent_stack_offset, defaults2.z);
+  float randomness = stack_load_float_default(stack, randomness_stack_offset, defaults2.w);
 
   NodeVoronoiFeature voronoi_feature = (NodeVoronoiFeature)feature;
   NodeVoronoiDistanceMetric voronoi_metric = (NodeVoronoiDistanceMetric)metric;
@@ -954,7 +965,7 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
   smoothness = clamp(smoothness / 2.0f, 0.0f, 0.5f);
 
   w *= scale;
-  coord *= scale;
+  coord *= scale;//Don't forget to remove the headers!!!!!!!
 
   switch (dimensions) {
     case 1: {

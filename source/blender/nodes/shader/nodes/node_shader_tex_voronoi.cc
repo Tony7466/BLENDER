@@ -23,6 +23,22 @@ static void sh_node_tex_voronoi_declare(NodeDeclarationBuilder &b)
     node_storage(node).dimensions = 1;
   });
   b.add_input<decl::Float>(N_("Scale")).min(-1000.0f).max(1000.0f).default_value(5.0f);
+  b.add_input<decl::Float>(N_("Detail"))
+    .min(0.0f)
+    .max(15.0f)
+    .default_value(0.0f)
+    .make_available([](bNode& node) { node_storage(node).feature = SHD_VORONOI_SMOOTH_F1; });
+  b.add_input<decl::Float>(N_("Roughness"))
+    .min(0.0f)
+    .max(1.0f)
+    .default_value(0.5f)
+    .subtype(PROP_FACTOR)
+    .make_available([](bNode& node) { node_storage(node).feature = SHD_VORONOI_SMOOTH_F1; });;
+  b.add_input<decl::Float>(N_("Lacunarity"))
+    .min(0.0f)
+    .max(1000.0f)
+    .default_value(2.0f)
+    .make_available([](bNode& node) { node_storage(node).feature = SHD_VORONOI_SMOOTH_F1; });
   b.add_input<decl::Float>(N_("Smoothness"))
       .min(0.0f)
       .max(1.0f)
@@ -60,6 +76,9 @@ static void node_shader_buts_tex_voronoi(uiLayout *layout, bContext * /*C*/, Poi
       RNA_enum_get(ptr, "voronoi_dimensions") != 1) {
     uiItemR(layout, ptr, "distance", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
   }
+  if (!ELEM(feature, SHD_VORONOI_DISTANCE_TO_EDGE, SHD_VORONOI_N_SPHERE_RADIUS)){
+    uiItemR(layout, ptr, "normalize", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
+  }
 }
 
 static void node_shader_init_tex_voronoi(bNodeTree * /*ntree*/, bNode *node)
@@ -70,6 +89,7 @@ static void node_shader_init_tex_voronoi(bNodeTree * /*ntree*/, bNode *node)
   tex->dimensions = 3;
   tex->distance = SHD_VORONOI_EUCLIDEAN;
   tex->feature = SHD_VORONOI_F1;
+  tex->normalize = false;
 
   node->storage = tex;
 }
@@ -130,10 +150,11 @@ static int node_shader_gpu_tex_voronoi(GPUMaterial *mat,
 
   NodeTexVoronoi *tex = (NodeTexVoronoi *)node->storage;
   float metric = tex->distance;
+  float normalize = tex->normalize;
 
   const char *name = gpu_shader_get_name(tex->feature, tex->dimensions);
 
-  return GPU_stack_link(mat, node, name, in, out, GPU_constant(&metric));
+  return GPU_stack_link(mat, node, name, in, out, GPU_constant(&metric), GPU_constant(&normalize));
 }
 
 static void node_shader_update_tex_voronoi(bNodeTree *ntree, bNode *node)
