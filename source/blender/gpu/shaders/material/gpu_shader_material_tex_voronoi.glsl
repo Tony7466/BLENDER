@@ -25,17 +25,21 @@ float voronoi_distance(float a, float b, float metric, float exponent)
 }
 
 void node_tex_voronoi_f1_1d(vec3 coord,
-                            float w,
-                            float scale,
-                            float smoothness,
-                            float exponent,
-                            float randomness,
-                            float metric,
-                            out float outDistance,
-                            out vec4 outColor,
-                            out vec3 outPosition,
-                            out float outW,
-                            out float outRadius)
+  float w,
+  float scale,
+  float detail,
+  float roughness,
+  float lacunarity,
+  float smoothness,
+  float exponent,
+  float randomness,
+  float metric,
+  float boolnormalize,
+  out float outDistance,
+  out vec4 outColor,
+  out vec3 outPosition,
+  out float outW,
+  out float outRadius)
 {
   randomness = clamp(randomness, 0.0, 1.0);
 
@@ -61,17 +65,21 @@ void node_tex_voronoi_f1_1d(vec3 coord,
 }
 
 void node_tex_voronoi_smooth_f1_1d(vec3 coord,
-                                   float w,
-                                   float scale,
-                                   float smoothness,
-                                   float exponent,
-                                   float randomness,
-                                   float metric,
-                                   out float outDistance,
-                                   out vec4 outColor,
-                                   out vec3 outPosition,
-                                   out float outW,
-                                   out float outRadius)
+  float w,
+  float scale,
+  float detail,
+  float roughness,
+  float lacunarity,
+  float smoothness,
+  float exponent,
+  float randomness,
+  float metric,
+  float boolnormalize,
+  out float outDistance,
+  out vec4 outColor,
+  out vec3 outPosition,
+  out float outW,
+  out float outRadius)
 {
   randomness = clamp(randomness, 0.0, 1.0);
   smoothness = clamp(smoothness / 2.0, 0.0, 0.5);
@@ -101,17 +109,21 @@ void node_tex_voronoi_smooth_f1_1d(vec3 coord,
 }
 
 void node_tex_voronoi_f2_1d(vec3 coord,
-                            float w,
-                            float scale,
-                            float smoothness,
-                            float exponent,
-                            float randomness,
-                            float metric,
-                            out float outDistance,
-                            out vec4 outColor,
-                            out vec3 outPosition,
-                            out float outW,
-                            out float outRadius)
+  float w,
+  float scale,
+  float detail,
+  float roughness,
+  float lacunarity,
+  float smoothness,
+  float exponent,
+  float randomness,
+  float metric,
+  float boolnormalize,
+  out float outDistance,
+  out vec4 outColor,
+  out vec3 outPosition,
+  out float outW,
+  out float outRadius)
 {
   randomness = clamp(randomness, 0.0, 1.0);
 
@@ -148,17 +160,21 @@ void node_tex_voronoi_f2_1d(vec3 coord,
 }
 
 void node_tex_voronoi_distance_to_edge_1d(vec3 coord,
-                                          float w,
-                                          float scale,
-                                          float smoothness,
-                                          float exponent,
-                                          float randomness,
-                                          float metric,
-                                          out float outDistance,
-                                          out vec4 outColor,
-                                          out vec3 outPosition,
-                                          out float outW,
-                                          out float outRadius)
+  float w,
+  float scale,
+  float detail,
+  float roughness,
+  float lacunarity,
+  float smoothness,
+  float exponent,
+  float randomness,
+  float metric,
+  float boolnormalize,
+  out float outDistance,
+  out vec4 outColor,
+  out vec3 outPosition,
+  out float outW,
+  out float outRadius)
 {
   randomness = clamp(randomness, 0.0, 1.0);
 
@@ -177,17 +193,21 @@ void node_tex_voronoi_distance_to_edge_1d(vec3 coord,
 }
 
 void node_tex_voronoi_n_sphere_radius_1d(vec3 coord,
-                                         float w,
-                                         float scale,
-                                         float smoothness,
-                                         float exponent,
-                                         float randomness,
-                                         float metric,
-                                         out float outDistance,
-                                         out vec4 outColor,
-                                         out vec3 outPosition,
-                                         out float outW,
-                                         out float outRadius)
+  float w,
+  float scale,
+  float detail,
+  float roughness,
+  float lacunarity,
+  float smoothness,
+  float exponent,
+  float randomness,
+  float metric,
+  float boolnormalize,
+  out float outDistance,
+  out vec4 outColor,
+  out vec3 outPosition,
+  out float outW,
+  out float outRadius)
 {
   randomness = clamp(randomness, 0.0, 1.0);
 
@@ -252,17 +272,21 @@ float voronoi_distance(vec2 a, vec2 b, float metric, float exponent)
 }
 
 void node_tex_voronoi_f1_2d(vec3 coord,
-                            float w,
-                            float scale,
-                            float smoothness,
-                            float exponent,
-                            float randomness,
-                            float metric,
-                            out float outDistance,
-                            out vec4 outColor,
-                            out vec3 outPosition,
-                            out float outW,
-                            out float outRadius)
+  float w,
+  float scale,
+  float detail,
+  float roughness,
+  float lacunarity,
+  float smoothness,
+  float exponent,
+  float randomness,
+  float metric,
+  float boolnormalize,
+  out float outDistance,
+  out vec4 outColor,
+  out vec3 outPosition,
+  out float outW,
+  out float outRadius)
 {
   randomness = clamp(randomness, 0.0, 1.0);
 
@@ -290,17 +314,21 @@ void node_tex_voronoi_f1_2d(vec3 coord,
 }
 
 void node_tex_voronoi_smooth_f1_2d(vec3 coord,
-                                   float w,
-                                   float scale,
-                                   float smoothness,
-                                   float exponent,
-                                   float randomness,
-                                   float metric,
-                                   out float outDistance,
-                                   out vec4 outColor,
-                                   out vec3 outPosition,
-                                   out float outW,
-                                   out float outRadius)
+  float w,
+  float scale,
+  float detail,
+  float roughness,
+  float lacunarity,
+  float smoothness,
+  float exponent,
+  float randomness,
+  float metric,
+  float boolnormalize,
+  out float outDistance,
+  out vec4 outColor,
+  out vec3 outPosition,
+  out float outW,
+  out float outRadius)
 {
   randomness = clamp(randomness, 0.0, 1.0);
   smoothness = clamp(smoothness / 2.0, 0.0, 0.5);
@@ -332,17 +360,21 @@ void node_tex_voronoi_smooth_f1_2d(vec3 coord,
 }
 
 void node_tex_voronoi_f2_2d(vec3 coord,
-                            float w,
-                            float scale,
-                            float smoothness,
-                            float exponent,
-                            float randomness,
-                            float metric,
-                            out float outDistance,
-                            out vec4 outColor,
-                            out vec3 outPosition,
-                            out float outW,
-                            out float outRadius)
+  float w,
+  float scale,
+  float detail,
+  float roughness,
+  float lacunarity,
+  float smoothness,
+  float exponent,
+  float randomness,
+  float metric,
+  float boolnormalize,
+  out float outDistance,
+  out vec4 outColor,
+  out vec3 outPosition,
+  out float outW,
+  out float outRadius)
 {
   randomness = clamp(randomness, 0.0, 1.0);
 
@@ -381,17 +413,21 @@ void node_tex_voronoi_f2_2d(vec3 coord,
 }
 
 void node_tex_voronoi_distance_to_edge_2d(vec3 coord,
-                                          float w,
-                                          float scale,
-                                          float smoothness,
-                                          float exponent,
-                                          float randomness,
-                                          float metric,
-                                          out float outDistance,
-                                          out vec4 outColor,
-                                          out vec3 outPosition,
-                                          out float outW,
-                                          out float outRadius)
+  float w,
+  float scale,
+  float detail,
+  float roughness,
+  float lacunarity,
+  float smoothness,
+  float exponent,
+  float randomness,
+  float metric,
+  float boolnormalize,
+  out float outDistance,
+  out vec4 outColor,
+  out vec3 outPosition,
+  out float outW,
+  out float outRadius)
 {
   randomness = clamp(randomness, 0.0, 1.0);
 
@@ -432,17 +468,21 @@ void node_tex_voronoi_distance_to_edge_2d(vec3 coord,
 }
 
 void node_tex_voronoi_n_sphere_radius_2d(vec3 coord,
-                                         float w,
-                                         float scale,
-                                         float smoothness,
-                                         float exponent,
-                                         float randomness,
-                                         float metric,
-                                         out float outDistance,
-                                         out vec4 outColor,
-                                         out vec3 outPosition,
-                                         out float outW,
-                                         out float outRadius)
+  float w,
+  float scale,
+  float detail,
+  float roughness,
+  float lacunarity,
+  float smoothness,
+  float exponent,
+  float randomness,
+  float metric,
+  float boolnormalize,
+  out float outDistance,
+  out vec4 outColor,
+  out vec3 outPosition,
+  out float outW,
+  out float outRadius)
 {
   randomness = clamp(randomness, 0.0, 1.0);
 
@@ -513,17 +553,21 @@ float voronoi_distance(vec3 a, vec3 b, float metric, float exponent)
 }
 
 void node_tex_voronoi_f1_3d(vec3 coord,
-                            float w,
-                            float scale,
-                            float smoothness,
-                            float exponent,
-                            float randomness,
-                            float metric,
-                            out float outDistance,
-                            out vec4 outColor,
-                            out vec3 outPosition,
-                            out float outW,
-                            out float outRadius)
+  float w,
+  float scale,
+  float detail,
+  float roughness,
+  float lacunarity,
+  float smoothness,
+  float exponent,
+  float randomness,
+  float metric,
+  float boolnormalize,
+  out float outDistance,
+  out vec4 outColor,
+  out vec3 outPosition,
+  out float outW,
+  out float outRadius)
 {
   randomness = clamp(randomness, 0.0, 1.0);
 
@@ -554,18 +598,21 @@ void node_tex_voronoi_f1_3d(vec3 coord,
 }
 
 void node_tex_voronoi_smooth_f1_3d(vec3 coord,
-                                   float w,
-                                   float scale,
-                                   float smoothness,
-                                   float exponent,
-                                   float randomness,
-                                   float metric,
-                                   float normalize,
-                                   out float outDistance,
-                                   out vec4 outColor,
-                                   out vec3 outPosition,
-                                   out float outW,
-                                   out float outRadius)
+  float w,
+  float scale,
+  float detail,
+  float roughness,
+  float lacunarity,
+  float smoothness,
+  float exponent,
+  float randomness,
+  float metric,
+  float boolnormalize,
+  out float outDistance,
+  out vec4 outColor,
+  out vec3 outPosition,
+  out float outW,
+  out float outRadius)
 {
   randomness = clamp(randomness, 0.0, 1.0);
   smoothness = clamp(smoothness / 2.0, 0.0, 0.5);
@@ -601,17 +648,21 @@ void node_tex_voronoi_smooth_f1_3d(vec3 coord,
 }
 
 void node_tex_voronoi_f2_3d(vec3 coord,
-                            float w,
-                            float scale,
-                            float smoothness,
-                            float exponent,
-                            float randomness,
-                            float metric,
-                            out float outDistance,
-                            out vec4 outColor,
-                            out vec3 outPosition,
-                            out float outW,
-                            out float outRadius)
+  float w,
+  float scale,
+  float detail,
+  float roughness,
+  float lacunarity,
+  float smoothness,
+  float exponent,
+  float randomness,
+  float metric,
+  float boolnormalize,
+  out float outDistance,
+  out vec4 outColor,
+  out vec3 outPosition,
+  out float outW,
+  out float outRadius)
 {
   randomness = clamp(randomness, 0.0, 1.0);
 
@@ -653,17 +704,21 @@ void node_tex_voronoi_f2_3d(vec3 coord,
 }
 
 void node_tex_voronoi_distance_to_edge_3d(vec3 coord,
-                                          float w,
-                                          float scale,
-                                          float smoothness,
-                                          float exponent,
-                                          float randomness,
-                                          float metric,
-                                          out float outDistance,
-                                          out vec4 outColor,
-                                          out vec3 outPosition,
-                                          out float outW,
-                                          out float outRadius)
+  float w,
+  float scale,
+  float detail,
+  float roughness,
+  float lacunarity,
+  float smoothness,
+  float exponent,
+  float randomness,
+  float metric,
+  float boolnormalize,
+  out float outDistance,
+  out vec4 outColor,
+  out vec3 outPosition,
+  out float outW,
+  out float outRadius)
 {
   randomness = clamp(randomness, 0.0, 1.0);
 
@@ -710,17 +765,21 @@ void node_tex_voronoi_distance_to_edge_3d(vec3 coord,
 }
 
 void node_tex_voronoi_n_sphere_radius_3d(vec3 coord,
-                                         float w,
-                                         float scale,
-                                         float smoothness,
-                                         float exponent,
-                                         float randomness,
-                                         float metric,
-                                         out float outDistance,
-                                         out vec4 outColor,
-                                         out vec3 outPosition,
-                                         out float outW,
-                                         out float outRadius)
+  float w,
+  float scale,
+  float detail,
+  float roughness,
+  float lacunarity,
+  float smoothness,
+  float exponent,
+  float randomness,
+  float metric,
+  float boolnormalize,
+  out float outDistance,
+  out vec4 outColor,
+  out vec3 outPosition,
+  out float outW,
+  out float outRadius)
 {
   randomness = clamp(randomness, 0.0, 1.0);
 
@@ -797,17 +856,21 @@ float voronoi_distance(vec4 a, vec4 b, float metric, float exponent)
 }
 
 void node_tex_voronoi_f1_4d(vec3 coord,
-                            float w,
-                            float scale,
-                            float smoothness,
-                            float exponent,
-                            float randomness,
-                            float metric,
-                            out float outDistance,
-                            out vec4 outColor,
-                            out vec3 outPosition,
-                            out float outW,
-                            out float outRadius)
+  float w,
+  float scale,
+  float detail,
+  float roughness,
+  float lacunarity,
+  float smoothness,
+  float exponent,
+  float randomness,
+  float metric,
+  float boolnormalize,
+  out float outDistance,
+  out vec4 outColor,
+  out vec3 outPosition,
+  out float outW,
+  out float outRadius)
 {
   randomness = clamp(randomness, 0.0, 1.0);
 
@@ -842,17 +905,21 @@ void node_tex_voronoi_f1_4d(vec3 coord,
 }
 
 void node_tex_voronoi_smooth_f1_4d(vec3 coord,
-                                   float w,
-                                   float scale,
-                                   float smoothness,
-                                   float exponent,
-                                   float randomness,
-                                   float metric,
-                                   out float outDistance,
-                                   out vec4 outColor,
-                                   out vec3 outPosition,
-                                   out float outW,
-                                   out float outRadius)
+  float w,
+  float scale,
+  float detail,
+  float roughness,
+  float lacunarity,
+  float smoothness,
+  float exponent,
+  float randomness,
+  float metric,
+  float boolnormalize,
+  out float outDistance,
+  out vec4 outColor,
+  out vec3 outPosition,
+  out float outW,
+  out float outRadius)
 {
   randomness = clamp(randomness, 0.0, 1.0);
   smoothness = clamp(smoothness / 2.0, 0.0, 0.5);
@@ -892,17 +959,21 @@ void node_tex_voronoi_smooth_f1_4d(vec3 coord,
 }
 
 void node_tex_voronoi_f2_4d(vec3 coord,
-                            float w,
-                            float scale,
-                            float smoothness,
-                            float exponent,
-                            float randomness,
-                            float metric,
-                            out float outDistance,
-                            out vec4 outColor,
-                            out vec3 outPosition,
-                            out float outW,
-                            out float outRadius)
+  float w,
+  float scale,
+  float detail,
+  float roughness,
+  float lacunarity,
+  float smoothness,
+  float exponent,
+  float randomness,
+  float metric,
+  float boolnormalize,
+  out float outDistance,
+  out vec4 outColor,
+  out vec3 outPosition,
+  out float outW,
+  out float outRadius)
 {
   randomness = clamp(randomness, 0.0, 1.0);
 
@@ -948,17 +1019,21 @@ void node_tex_voronoi_f2_4d(vec3 coord,
 }
 
 void node_tex_voronoi_distance_to_edge_4d(vec3 coord,
-                                          float w,
-                                          float scale,
-                                          float smoothness,
-                                          float exponent,
-                                          float randomness,
-                                          float metric,
-                                          out float outDistance,
-                                          out vec4 outColor,
-                                          out vec3 outPosition,
-                                          out float outW,
-                                          out float outRadius)
+  float w,
+  float scale,
+  float detail,
+  float roughness,
+  float lacunarity,
+  float smoothness,
+  float exponent,
+  float randomness,
+  float metric,
+  float boolnormalize,
+  out float outDistance,
+  out vec4 outColor,
+  out vec3 outPosition,
+  out float outW,
+  out float outRadius)
 {
   randomness = clamp(randomness, 0.0, 1.0);
 
@@ -1009,17 +1084,21 @@ void node_tex_voronoi_distance_to_edge_4d(vec3 coord,
 }
 
 void node_tex_voronoi_n_sphere_radius_4d(vec3 coord,
-                                         float w,
-                                         float scale,
-                                         float smoothness,
-                                         float exponent,
-                                         float randomness,
-                                         float metric,
-                                         out float outDistance,
-                                         out vec4 outColor,
-                                         out vec3 outPosition,
-                                         out float outW,
-                                         out float outRadius)
+  float w,
+  float scale,
+  float detail,
+  float roughness,
+  float lacunarity,
+  float smoothness,
+  float exponent,
+  float randomness,
+  float metric,
+  float boolnormalize,
+  out float outDistance,
+  out vec4 outColor,
+  out vec3 outPosition,
+  out float outW,
+  out float outRadius)
 {
   randomness = clamp(randomness, 0.0, 1.0);
 

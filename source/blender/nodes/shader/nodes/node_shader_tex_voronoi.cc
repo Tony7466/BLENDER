@@ -27,18 +27,18 @@ static void sh_node_tex_voronoi_declare(NodeDeclarationBuilder &b)
     .min(0.0f)
     .max(15.0f)
     .default_value(0.0f)
-    .make_available([](bNode& node) { node_storage(node).feature = SHD_VORONOI_SMOOTH_F1; });
+    .make_available([](bNode& node) { node_storage(node).feature = SHD_VORONOI_F1; });
   b.add_input<decl::Float>(N_("Roughness"))
     .min(0.0f)
     .max(1.0f)
     .default_value(0.5f)
     .subtype(PROP_FACTOR)
-    .make_available([](bNode& node) { node_storage(node).feature = SHD_VORONOI_SMOOTH_F1; });;
+    .make_available([](bNode& node) { node_storage(node).feature = SHD_VORONOI_F1; });;
   b.add_input<decl::Float>(N_("Lacunarity"))
     .min(0.0f)
     .max(1000.0f)
     .default_value(2.0f)
-    .make_available([](bNode& node) { node_storage(node).feature = SHD_VORONOI_SMOOTH_F1; });
+    .make_available([](bNode& node) { node_storage(node).feature = SHD_VORONOI_F1; });
   b.add_input<decl::Float>(N_("Smoothness"))
       .min(0.0f)
       .max(1.0f)
@@ -161,6 +161,9 @@ static void node_shader_update_tex_voronoi(bNodeTree *ntree, bNode *node)
 {
   bNodeSocket *inVectorSock = nodeFindSocket(node, SOCK_IN, "Vector");
   bNodeSocket *inWSock = nodeFindSocket(node, SOCK_IN, "W");
+  bNodeSocket *inDetailSock= nodeFindSocket(node, SOCK_IN, "Detail");
+  bNodeSocket* inRoughnessSock = nodeFindSocket(node, SOCK_IN, "Roughness");
+  bNodeSocket* inLacunaritySock = nodeFindSocket(node, SOCK_IN, "Lacunarity");
   bNodeSocket *inSmoothnessSock = nodeFindSocket(node, SOCK_IN, "Smoothness");
   bNodeSocket *inExponentSock = nodeFindSocket(node, SOCK_IN, "Exponent");
 
@@ -179,6 +182,9 @@ static void node_shader_update_tex_voronoi(bNodeTree *ntree, bNode *node)
       inExponentSock,
       storage.distance == SHD_VORONOI_MINKOWSKI && storage.dimensions != 1 &&
           !ELEM(storage.feature, SHD_VORONOI_DISTANCE_TO_EDGE, SHD_VORONOI_N_SPHERE_RADIUS));
+  nodeSetSocketAvailability(ntree, inDetailSock, storage.feature != SHD_VORONOI_N_SPHERE_RADIUS);
+  nodeSetSocketAvailability(ntree, inRoughnessSock, storage.feature != SHD_VORONOI_N_SPHERE_RADIUS);
+  nodeSetSocketAvailability(ntree, inLacunaritySock, storage.feature != SHD_VORONOI_N_SPHERE_RADIUS);
   nodeSetSocketAvailability(ntree, inSmoothnessSock, storage.feature == SHD_VORONOI_SMOOTH_F1);
 
   nodeSetSocketAvailability(
@@ -206,9 +212,10 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
  private:
   int dimensions_;
   int feature_;
+  bool normalize_;
 
  public:
-  VoronoiMinowskiFunction(int dimensions, int feature) : dimensions_(dimensions), feature_(feature)
+  VoronoiMinowskiFunction(int dimensions, int feature, bool normalize) : dimensions_(dimensions), feature_(feature), normalize_(normalize)
   {
     BLI_assert(dimensions >= 2 && dimensions <= 4);
     BLI_assert(feature >= 0 && feature <= 2);
@@ -239,6 +246,9 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
       signature.single_input<float>("W");
     }
     signature.single_input<float>("Scale");
+    signature.single_input<float>("Detail");
+    signature.single_input<float>("Roughness");
+    signature.single_input<float>("Lacunarity");
     if (feature == SHD_VORONOI_SMOOTH_F1) {
       signature.single_input<float>("Smoothness");
     }
@@ -267,6 +277,15 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
     };
     auto get_scale = [&](int param_index) -> VArray<float> {
       return params.readonly_single_input<float>(param_index, "Scale");
+    };
+    auto get_detail = [&](int param_index) -> VArray<float> {
+      return params.readonly_single_input<float>(param_index, "Detail");
+    };
+    auto get_roughness = [&](int param_index) -> VArray<float> {
+      return params.readonly_single_input<float>(param_index, "Roughness");
+    };
+    auto get_lacunarity = [&](int param_index) -> VArray<float> {
+      return params.readonly_single_input<float>(param_index, "Lacunarity");
     };
     auto get_smoothness = [&](int param_index) -> VArray<float> {
       return params.readonly_single_input<float>(param_index, "Smoothness");
@@ -297,6 +316,9 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
           case SHD_VORONOI_F1: {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &scale = get_scale(param++);
+            const VArray<float>& detail = get_detail(param++);
+            const VArray<float>& roughness = get_roughness(param++);
+            const VArray<float>& lacunarity = get_lacunarity(param++);
             const VArray<float> &exponent = get_exponent(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
@@ -329,6 +351,9 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
           case SHD_VORONOI_F2: {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &scale = get_scale(param++);
+            const VArray<float>& detail = get_detail(param++);
+            const VArray<float>& roughness = get_roughness(param++);
+            const VArray<float>& lacunarity = get_lacunarity(param++);
             const VArray<float> &exponent = get_exponent(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
@@ -361,6 +386,9 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
           case SHD_VORONOI_SMOOTH_F1: {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &scale = get_scale(param++);
+            const VArray<float>& detail = get_detail(param++);
+            const VArray<float>& roughness = get_roughness(param++);
+            const VArray<float>& lacunarity = get_lacunarity(param++);
             const VArray<float> &smoothness = get_smoothness(param++);
             const VArray<float> &exponent = get_exponent(param++);
             const VArray<float> &randomness = get_randomness(param++);
@@ -401,6 +429,9 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
           case SHD_VORONOI_F1: {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &scale = get_scale(param++);
+            const VArray<float>& detail = get_detail(param++);
+            const VArray<float>& roughness = get_roughness(param++);
+            const VArray<float>& lacunarity = get_lacunarity(param++);
             const VArray<float> &exponent = get_exponent(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
@@ -431,6 +462,9 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
           case SHD_VORONOI_F2: {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &scale = get_scale(param++);
+            const VArray<float>& detail = get_detail(param++);
+            const VArray<float>& roughness = get_roughness(param++);
+            const VArray<float>& lacunarity = get_lacunarity(param++);
             const VArray<float> &exponent = get_exponent(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
@@ -461,6 +495,9 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
           case SHD_VORONOI_SMOOTH_F1: {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &scale = get_scale(param++);
+            const VArray<float>& detail = get_detail(param++);
+            const VArray<float>& roughness = get_roughness(param++);
+            const VArray<float>& lacunarity = get_lacunarity(param++);
             const VArray<float> &smoothness = get_smoothness(param++);
             const VArray<float> &exponent = get_exponent(param++);
             const VArray<float> &randomness = get_randomness(param++);
@@ -500,6 +537,9 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &w = get_w(param++);
             const VArray<float> &scale = get_scale(param++);
+            const VArray<float>& detail = get_detail(param++);
+            const VArray<float>& roughness = get_roughness(param++);
+            const VArray<float>& lacunarity = get_lacunarity(param++);
             const VArray<float> &exponent = get_exponent(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
@@ -541,6 +581,9 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &w = get_w(param++);
             const VArray<float> &scale = get_scale(param++);
+            const VArray<float>& detail = get_detail(param++);
+            const VArray<float>& roughness = get_roughness(param++);
+            const VArray<float>& lacunarity = get_lacunarity(param++);
             const VArray<float> &exponent = get_exponent(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
@@ -582,6 +625,9 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &w = get_w(param++);
             const VArray<float> &scale = get_scale(param++);
+            const VArray<float>& detail = get_detail(param++);
+            const VArray<float>& roughness = get_roughness(param++);
+            const VArray<float>& lacunarity = get_lacunarity(param++);
             const VArray<float> &smoothness = get_smoothness(param++);
             const VArray<float> &exponent = get_exponent(param++);
             const VArray<float> &randomness = get_randomness(param++);
@@ -639,10 +685,11 @@ class VoronoiMetricFunction : public fn::MultiFunction {
   int dimensions_;
   int feature_;
   int metric_;
+  bool invert_;
 
  public:
-  VoronoiMetricFunction(int dimensions, int feature, int metric)
-      : dimensions_(dimensions), feature_(feature), metric_(metric)
+  VoronoiMetricFunction(int dimensions, int feature, int metric, bool invert)
+      : dimensions_(dimensions), feature_(feature), metric_(metric), invert_(invert)
   {
     BLI_assert(dimensions >= 1 && dimensions <= 4);
     BLI_assert(feature >= 0 && feature <= 4);
@@ -676,6 +723,9 @@ class VoronoiMetricFunction : public fn::MultiFunction {
       signature.single_input<float>("W");
     }
     signature.single_input<float>("Scale");
+    signature.single_input<float>("Detail");
+    signature.single_input<float>("Roughness");
+    signature.single_input<float>("Lacunarity");
     if (feature == SHD_VORONOI_SMOOTH_F1) {
       signature.single_input<float>("Smoothness");
     }
@@ -704,6 +754,15 @@ class VoronoiMetricFunction : public fn::MultiFunction {
     auto get_scale = [&](int param_index) -> VArray<float> {
       return params.readonly_single_input<float>(param_index, "Scale");
     };
+    auto get_detail = [&](int param_index) -> VArray<float> {
+      return params.readonly_single_input<float>(param_index, "Detail");
+    };
+    auto get_roughness = [&](int param_index) -> VArray<float> {
+      return params.readonly_single_input<float>(param_index, "Roughness");
+    };
+    auto get_lacunarity = [&](int param_index) -> VArray<float> {
+      return params.readonly_single_input<float>(param_index, "Lacunarity");
+    };
     auto get_smoothness = [&](int param_index) -> VArray<float> {
       return params.readonly_single_input<float>(param_index, "Smoothness");
     };
@@ -730,6 +789,9 @@ class VoronoiMetricFunction : public fn::MultiFunction {
           case SHD_VORONOI_F1: {
             const VArray<float> &w = get_w(param++);
             const VArray<float> &scale = get_scale(param++);
+            const VArray<float>& detail = get_detail(param++);
+            const VArray<float>& roughness = get_roughness(param++);
+            const VArray<float>& lacunarity = get_lacunarity(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -758,6 +820,9 @@ class VoronoiMetricFunction : public fn::MultiFunction {
           case SHD_VORONOI_F2: {
             const VArray<float> &w = get_w(param++);
             const VArray<float> &scale = get_scale(param++);
+            const VArray<float>& detail = get_detail(param++);
+            const VArray<float>& roughness = get_roughness(param++);
+            const VArray<float>& lacunarity = get_lacunarity(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -786,6 +851,9 @@ class VoronoiMetricFunction : public fn::MultiFunction {
           case SHD_VORONOI_SMOOTH_F1: {
             const VArray<float> &w = get_w(param++);
             const VArray<float> &scale = get_scale(param++);
+            const VArray<float>& detail = get_detail(param++);
+            const VArray<float>& roughness = get_roughness(param++);
+            const VArray<float>& lacunarity = get_lacunarity(param++);
             const VArray<float> &smoothness = get_smoothness(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
@@ -822,6 +890,9 @@ class VoronoiMetricFunction : public fn::MultiFunction {
           case SHD_VORONOI_F1: {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &scale = get_scale(param++);
+            const VArray<float>& detail = get_detail(param++);
+            const VArray<float>& roughness = get_roughness(param++);
+            const VArray<float>& lacunarity = get_lacunarity(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -853,6 +924,9 @@ class VoronoiMetricFunction : public fn::MultiFunction {
           case SHD_VORONOI_F2: {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &scale = get_scale(param++);
+            const VArray<float>& detail = get_detail(param++);
+            const VArray<float>& roughness = get_roughness(param++);
+            const VArray<float>& lacunarity = get_lacunarity(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -884,6 +958,9 @@ class VoronoiMetricFunction : public fn::MultiFunction {
           case SHD_VORONOI_SMOOTH_F1: {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &scale = get_scale(param++);
+            const VArray<float>& detail = get_detail(param++);
+            const VArray<float>& roughness = get_roughness(param++);
+            const VArray<float>& lacunarity = get_lacunarity(param++);
             const VArray<float> &smoothness = get_smoothness(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
@@ -923,6 +1000,9 @@ class VoronoiMetricFunction : public fn::MultiFunction {
           case SHD_VORONOI_F1: {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &scale = get_scale(param++);
+            const VArray<float>& detail = get_detail(param++);
+            const VArray<float>& roughness = get_roughness(param++);
+            const VArray<float>& lacunarity = get_lacunarity(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -952,6 +1032,9 @@ class VoronoiMetricFunction : public fn::MultiFunction {
           case SHD_VORONOI_F2: {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &scale = get_scale(param++);
+            const VArray<float>& detail = get_detail(param++);
+            const VArray<float>& roughness = get_roughness(param++);
+            const VArray<float>& lacunarity = get_lacunarity(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -981,6 +1064,9 @@ class VoronoiMetricFunction : public fn::MultiFunction {
           case SHD_VORONOI_SMOOTH_F1: {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &scale = get_scale(param++);
+            const VArray<float>& detail = get_detail(param++);
+            const VArray<float>& roughness = get_roughness(param++);
+            const VArray<float>& lacunarity = get_lacunarity(param++);
             const VArray<float> &smoothness = get_smoothness(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
@@ -1022,6 +1108,9 @@ class VoronoiMetricFunction : public fn::MultiFunction {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &w = get_w(param++);
             const VArray<float> &scale = get_scale(param++);
+            const VArray<float>& detail = get_detail(param++);
+            const VArray<float>& roughness = get_roughness(param++);
+            const VArray<float>& lacunarity = get_lacunarity(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -1062,6 +1151,9 @@ class VoronoiMetricFunction : public fn::MultiFunction {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &w = get_w(param++);
             const VArray<float> &scale = get_scale(param++);
+            const VArray<float>& detail = get_detail(param++);
+            const VArray<float>& roughness = get_roughness(param++);
+            const VArray<float>& lacunarity = get_lacunarity(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -1102,6 +1194,9 @@ class VoronoiMetricFunction : public fn::MultiFunction {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &w = get_w(param++);
             const VArray<float> &scale = get_scale(param++);
+            const VArray<float>& detail = get_detail(param++);
+            const VArray<float>& roughness = get_roughness(param++);
+            const VArray<float>& lacunarity = get_lacunarity(param++);
             const VArray<float> &smoothness = get_smoothness(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
@@ -1188,6 +1283,11 @@ class VoronoiEdgeFunction : public fn::MultiFunction {
       signature.single_input<float>("W");
     }
     signature.single_input<float>("Scale");
+    if (feature == SHD_VORONOI_DISTANCE_TO_EDGE) {
+      signature.single_input<float>("Detail");
+      signature.single_input<float>("Roughness");
+      signature.single_input<float>("Lacunarity");
+    }
     signature.single_input<float>("Randomness");
 
     if (feature == SHD_VORONOI_DISTANCE_TO_EDGE) {
@@ -1211,6 +1311,15 @@ class VoronoiEdgeFunction : public fn::MultiFunction {
     auto get_scale = [&](int param_index) -> VArray<float> {
       return params.readonly_single_input<float>(param_index, "Scale");
     };
+    auto get_detail = [&](int param_index) -> VArray<float> {
+      return params.readonly_single_input<float>(param_index, "Detail");
+    };
+    auto get_roughness = [&](int param_index) -> VArray<float> {
+      return params.readonly_single_input<float>(param_index, "Roughness");
+    };
+    auto get_lacunarity = [&](int param_index) -> VArray<float> {
+      return params.readonly_single_input<float>(param_index, "Lacunarity");
+    };
     auto get_randomness = [&](int param_index) -> VArray<float> {
       return params.readonly_single_input<float>(param_index, "Randomness");
     };
@@ -1226,9 +1335,12 @@ class VoronoiEdgeFunction : public fn::MultiFunction {
       case 1: {
         const VArray<float> &w = get_w(param++);
         const VArray<float> &scale = get_scale(param++);
-        const VArray<float> &randomness = get_randomness(param++);
         switch (feature_) {
           case SHD_VORONOI_DISTANCE_TO_EDGE: {
+            const VArray<float>& detail = get_detail(param++);
+            const VArray<float>& roughness = get_roughness(param++);
+            const VArray<float>& lacunarity = get_lacunarity(param++);
+            const VArray<float>& randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             for (int64_t i : mask) {
               const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
@@ -1238,6 +1350,7 @@ class VoronoiEdgeFunction : public fn::MultiFunction {
             break;
           }
           case SHD_VORONOI_N_SPHERE_RADIUS: {
+            const VArray<float>& randomness = get_randomness(param++);
             MutableSpan<float> r_radius = get_r_radius(param++);
             for (int64_t i : mask) {
               const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
@@ -1252,9 +1365,12 @@ class VoronoiEdgeFunction : public fn::MultiFunction {
       case 2: {
         const VArray<float3> &vector = get_vector(param++);
         const VArray<float> &scale = get_scale(param++);
-        const VArray<float> &randomness = get_randomness(param++);
         switch (feature_) {
           case SHD_VORONOI_DISTANCE_TO_EDGE: {
+            const VArray<float>& detail = get_detail(param++);
+            const VArray<float>& roughness = get_roughness(param++);
+            const VArray<float>& lacunarity = get_lacunarity(param++);
+            const VArray<float>& randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             for (int64_t i : mask) {
               const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
@@ -1264,6 +1380,7 @@ class VoronoiEdgeFunction : public fn::MultiFunction {
             break;
           }
           case SHD_VORONOI_N_SPHERE_RADIUS: {
+            const VArray<float>& randomness = get_randomness(param++);
             MutableSpan<float> r_radius = get_r_radius(param++);
             for (int64_t i : mask) {
               const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
@@ -1278,9 +1395,12 @@ class VoronoiEdgeFunction : public fn::MultiFunction {
       case 3: {
         const VArray<float3> &vector = get_vector(param++);
         const VArray<float> &scale = get_scale(param++);
-        const VArray<float> &randomness = get_randomness(param++);
         switch (feature_) {
           case SHD_VORONOI_DISTANCE_TO_EDGE: {
+            const VArray<float>& detail = get_detail(param++);
+            const VArray<float>& roughness = get_roughness(param++);
+            const VArray<float>& lacunarity = get_lacunarity(param++);
+            const VArray<float>& randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             for (int64_t i : mask) {
               const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
@@ -1289,6 +1409,7 @@ class VoronoiEdgeFunction : public fn::MultiFunction {
             break;
           }
           case SHD_VORONOI_N_SPHERE_RADIUS: {
+            const VArray<float>& randomness = get_randomness(param++);
             MutableSpan<float> r_radius = get_r_radius(param++);
             for (int64_t i : mask) {
               const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
@@ -1303,9 +1424,12 @@ class VoronoiEdgeFunction : public fn::MultiFunction {
         const VArray<float3> &vector = get_vector(param++);
         const VArray<float> &w = get_w(param++);
         const VArray<float> &scale = get_scale(param++);
-        const VArray<float> &randomness = get_randomness(param++);
         switch (feature_) {
           case SHD_VORONOI_DISTANCE_TO_EDGE: {
+            const VArray<float>& detail = get_detail(param++);
+            const VArray<float>& roughness = get_roughness(param++);
+            const VArray<float>& lacunarity = get_lacunarity(param++);
+            const VArray<float>& randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             for (int64_t i : mask) {
               const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
@@ -1315,6 +1439,7 @@ class VoronoiEdgeFunction : public fn::MultiFunction {
             break;
           }
           case SHD_VORONOI_N_SPHERE_RADIUS: {
+            const VArray<float>& randomness = get_randomness(param++);
             MutableSpan<float> r_radius = get_r_radius(param++);
             for (int64_t i : mask) {
               const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
@@ -1349,11 +1474,11 @@ static void sh_node_voronoi_build_multi_function(NodeMultiFunctionBuilder &build
   }
   else if (minowski) {
     builder.construct_and_set_matching_fn<VoronoiMinowskiFunction>(storage.dimensions,
-                                                                   storage.feature);
+                                                                   storage.feature, storage.normalize);
   }
   else {
     builder.construct_and_set_matching_fn<VoronoiMetricFunction>(
-        storage.dimensions, storage.feature, storage.distance);
+        storage.dimensions, storage.feature, storage.distance, storage.normalize);
   }
 }
 
