@@ -74,6 +74,7 @@ set(SRC
   intern/usd_hierarchy_iterator.cc
   intern/usd_writer_abstract.cc
   intern/usd_writer_camera.cc
+  intern/usd_writer_curves.cc
   intern/usd_writer_hair.cc
   intern/usd_writer_light.cc
   intern/usd_writer_material.cc
@@ -103,6 +104,7 @@ set(SRC
   intern/usd_hierarchy_iterator.h
   intern/usd_writer_abstract.h
   intern/usd_writer_camera.h
+  intern/usd_writer_curves.h
   intern/usd_writer_hair.h
   intern/usd_writer_light.h
   intern/usd_writer_material.h

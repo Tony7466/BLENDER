@@ -5,6 +5,7 @@
 #include "usd_hierarchy_iterator.h"
 #include "usd_writer_abstract.h"
 #include "usd_writer_camera.h"
+#include "usd_writer_curves.h"
 #include "usd_writer_hair.h"
 #include "usd_writer_light.h"
 #include "usd_writer_mesh.h"
@@ -16,6 +17,7 @@
 
 #include <pxr/base/tf/stringUtils.h>
 
+#include "BKE_curve_legacy_convert.hh"
 #include "BKE_duplilist.h"
 
 #include "BLI_assert.h"
@@ -105,12 +107,19 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const Hierarch
     case OB_MBALL:
       data_writer = new USDMetaballWriter(usd_export_context);
       break;
+    case OB_CURVES_LEGACY: {
+      auto legacy_curve = static_cast<Curve *>(context->object->data);
+      auto curves = bke::curve_legacy_to_curves(*legacy_curve);
+      data_writer = new USDCurvesWriter(usd_export_context, curves);
+    } break;
+    case OB_CURVES:
+      data_writer = new USDCurvesWriter(usd_export_context);
+      break;
     case OB_VOLUME:
       data_writer = new USDVolumeWriter(usd_export_context);
       break;
 
     case OB_EMPTY:
-    case OB_CURVES_LEGACY:
     case OB_SURF:
     case OB_FONT:
     case OB_SPEAKER:
