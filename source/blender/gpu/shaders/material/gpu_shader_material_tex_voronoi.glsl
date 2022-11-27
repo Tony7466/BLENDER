@@ -25,21 +25,21 @@ float voronoi_distance(float a, float b, float metric, float exponent)
 }
 
 void node_tex_voronoi_f1_1d(vec3 coord,
-  float w,
-  float scale,
-  float detail,
-  float roughness,
-  float lacunarity,
-  float smoothness,
-  float exponent,
-  float randomness,
-  float metric,
-  float bool_normalize,
-  out float outDistance,
-  out vec4 outColor,
-  out vec3 outPosition,
-  out float outW,
-  out float outRadius)
+                            float w,
+                            float scale,
+                            float detail,
+                            float roughness,
+                            float lacunarity,
+                            float smoothness,
+                            float exponent,
+                            float randomness,
+                            float metric,
+                            float bool_normalize,
+                            out float outDistance,
+                            out vec4 outColor,
+                            out vec3 outPosition,
+                            out float outW,
+                            out float outRadius)
 {
   detail = clamp(detail, 0.0, 15.0);
   roughness = clamp(roughness, 0.0, 1.0);
@@ -72,7 +72,7 @@ void node_tex_voronoi_f1_1d(vec3 coord,
     float octave_distance = 0.0;
 
     for (int i = 0; i < int(detail); ++i) {
-      scaledCoord = w * scale* octave_scale;
+      scaledCoord = w * scale * octave_scale;
       cellPosition = floor(scaledCoord);
       localPosition = scaledCoord - cellPosition;
 
@@ -80,7 +80,8 @@ void node_tex_voronoi_f1_1d(vec3 coord,
       float targetOffset, targetPosition;
       for (int i = -1; i <= 1; i++) {
         float cellOffset = float(i);
-        float pointPosition = cellOffset + hash_float_to_float(cellPosition + cellOffset) * randomness;
+        float pointPosition = cellOffset +
+                              hash_float_to_float(cellPosition + cellOffset) * randomness;
         float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
         if (distanceToPoint < minDistance) {
           targetOffset = cellOffset;
@@ -110,7 +111,8 @@ void node_tex_voronoi_f1_1d(vec3 coord,
       float targetOffset, targetPosition;
       for (int i = -1; i <= 1; i++) {
         float cellOffset = float(i);
-        float pointPosition = cellOffset + hash_float_to_float(cellPosition + cellOffset) * randomness;
+        float pointPosition = cellOffset +
+                              hash_float_to_float(cellPosition + cellOffset) * randomness;
         float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
         if (distanceToPoint < minDistance) {
           targetOffset = cellOffset;
@@ -134,21 +136,21 @@ void node_tex_voronoi_f1_1d(vec3 coord,
 }
 
 void node_tex_voronoi_smooth_f1_1d(vec3 coord,
-  float w,
-  float scale,
-  float detail,
-  float roughness,
-  float lacunarity,
-  float smoothness,
-  float exponent,
-  float randomness,
-  float metric,
-  float bool_normalize,
-  out float outDistance,
-  out vec4 outColor,
-  out vec3 outPosition,
-  out float outW,
-  out float outRadius)
+                                   float w,
+                                   float scale,
+                                   float detail,
+                                   float roughness,
+                                   float lacunarity,
+                                   float smoothness,
+                                   float exponent,
+                                   float randomness,
+                                   float metric,
+                                   float bool_normalize,
+                                   out float outDistance,
+                                   out vec4 outColor,
+                                   out vec3 outPosition,
+                                   out float outW,
+                                   out float outRadius)
 {
   detail = clamp(detail, 0.0, 15.0);
   roughness = clamp(roughness, 0.0, 1.0);
@@ -177,24 +179,101 @@ void node_tex_voronoi_smooth_f1_1d(vec3 coord,
   outDistance = smoothDistance;
   outColor.xyz = smoothColor;
   outW = safe_divide(cellPosition + smoothPosition, scale);
+
+  float max_amplitude = 1.0;
+  if (detail != 0.0 && roughness != 0.0 && lacunarity != 0.0) {
+    float octave_scale = lacunarity;
+    float octave_amplitude = roughness;
+    float octave_distance = 0.0;
+
+    for (int i = 0; i < int(detail); ++i) {
+      scaledCoord = w * scale * octave_scale;
+      cellPosition = floor(scaledCoord);
+      localPosition = scaledCoord - cellPosition;
+
+      float smoothDistance = 8.0;
+      float smoothPosition = 0.0;
+      vec3 smoothColor = vec3(0.0);
+      for (int i = -2; i <= 2; i++) {
+        float cellOffset = float(i);
+        float pointPosition = cellOffset +
+                              hash_float_to_float(cellPosition + cellOffset) * randomness;
+        float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
+        float h = smoothstep(
+            0.0, 1.0, 0.5 + 0.5 * (smoothDistance - distanceToPoint) / smoothness);
+        float correctionFactor = smoothness * h * (1.0 - h);
+        smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
+        correctionFactor /= 1.0 + 3.0 * smoothness;
+        vec3 cellColor = hash_float_to_vec3(cellPosition + cellOffset);
+        smoothColor = mix(smoothColor, cellColor, h) - correctionFactor;
+        smoothPosition = mix(smoothPosition, pointPosition, h) - correctionFactor;
+      }
+      octave_distance = smoothDistance;
+      outColor.xyz = smoothColor;
+      outW = safe_divide(cellPosition + smoothPosition, scale);
+
+      max_amplitude += octave_amplitude;
+      outDistance += octave_distance * octave_amplitude;
+      octave_scale *= lacunarity;
+      octave_amplitude *= roughness;
+    }
+
+    outPosition /= octave_scale / lacunarity;
+
+    float remainder = detail - int(detail);
+    if (remainder != 0.0) {
+      scaledCoord = w * scale * octave_scale;
+      cellPosition = floor(scaledCoord);
+      localPosition = scaledCoord - cellPosition;
+
+      float smoothDistance = 8.0;
+      float smoothPosition = 0.0;
+      vec3 smoothColor = vec3(0.0);
+      for (int i = -2; i <= 2; i++) {
+        float cellOffset = float(i);
+        float pointPosition = cellOffset +
+                              hash_float_to_float(cellPosition + cellOffset) * randomness;
+        float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
+        float h = smoothstep(
+            0.0, 1.0, 0.5 + 0.5 * (smoothDistance - distanceToPoint) / smoothness);
+        float correctionFactor = smoothness * h * (1.0 - h);
+        smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
+        correctionFactor /= 1.0 + 3.0 * smoothness;
+        vec3 cellColor = hash_float_to_vec3(cellPosition + cellOffset);
+        smoothColor = mix(smoothColor, cellColor, h) - correctionFactor;
+        smoothPosition = mix(smoothPosition, pointPosition, h) - correctionFactor;
+      }
+      octave_distance = smoothDistance;
+      outColor.xyz = smoothColor;
+      outW = safe_divide(cellPosition + smoothPosition, scale);
+
+      max_amplitude += octave_amplitude;
+      float lerp_distance = outDistance + octave_distance * octave_amplitude;
+      outDistance = (1.0 - remainder) * outDistance + remainder * lerp_distance;
+      outPosition /= octave_scale;
+    }
+  }
+  if (bool_normalize != 0.0) {
+    outDistance /= max_amplitude;
+  }
 }
 
 void node_tex_voronoi_f2_1d(vec3 coord,
-  float w,
-  float scale,
-  float detail,
-  float roughness,
-  float lacunarity,
-  float smoothness,
-  float exponent,
-  float randomness,
-  float metric,
-  float bool_normalize,
-  out float outDistance,
-  out vec4 outColor,
-  out vec3 outPosition,
-  out float outW,
-  out float outRadius)
+                            float w,
+                            float scale,
+                            float detail,
+                            float roughness,
+                            float lacunarity,
+                            float smoothness,
+                            float exponent,
+                            float randomness,
+                            float metric,
+                            float bool_normalize,
+                            out float outDistance,
+                            out vec4 outColor,
+                            out vec3 outPosition,
+                            out float outW,
+                            out float outRadius)
 {
   detail = clamp(detail, 0.0, 15.0);
   roughness = clamp(roughness, 0.0, 1.0);
@@ -230,24 +309,115 @@ void node_tex_voronoi_f2_1d(vec3 coord,
   outDistance = distanceF2;
   outColor.xyz = hash_float_to_vec3(cellPosition + offsetF2);
   outW = safe_divide(positionF2 + cellPosition, scale);
+
+  float max_amplitude = 1.0;
+  if (detail != 0.0 && roughness != 0.0 && lacunarity != 0.0) {
+    float octave_scale = lacunarity;
+    float octave_amplitude = roughness;
+    float octave_distance = 0.0;
+
+    for (int i = 0; i < int(detail); ++i) {
+      scaledCoord = w * scale * octave_scale;
+      cellPosition = floor(scaledCoord);
+      localPosition = scaledCoord - cellPosition;
+
+      float distanceF1 = 8.0;
+      float distanceF2 = 8.0;
+      float offsetF1 = 0.0;
+      float positionF1 = 0.0;
+      float offsetF2, positionF2;
+      for (int i = -1; i <= 1; i++) {
+        float cellOffset = float(i);
+        float pointPosition = cellOffset +
+                              hash_float_to_float(cellPosition + cellOffset) * randomness;
+        float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
+        if (distanceToPoint < distanceF1) {
+          distanceF2 = distanceF1;
+          distanceF1 = distanceToPoint;
+          offsetF2 = offsetF1;
+          offsetF1 = cellOffset;
+          positionF2 = positionF1;
+          positionF1 = pointPosition;
+        }
+        else if (distanceToPoint < distanceF2) {
+          distanceF2 = distanceToPoint;
+          offsetF2 = cellOffset;
+          positionF2 = pointPosition;
+        }
+      }
+      octave_distance = distanceF2;
+      outColor.xyz = hash_float_to_vec3(cellPosition + offsetF2);
+      outW = safe_divide(positionF2 + cellPosition, scale);
+
+      max_amplitude += octave_amplitude;
+      outDistance += octave_distance * octave_amplitude;
+      octave_scale *= lacunarity;
+      octave_amplitude *= roughness;
+    }
+
+    outPosition /= octave_scale / lacunarity;
+
+    float remainder = detail - int(detail);
+    if (remainder != 0.0) {
+      scaledCoord = w * scale * octave_scale;
+      cellPosition = floor(scaledCoord);
+      localPosition = scaledCoord - cellPosition;
+
+      float distanceF1 = 8.0;
+      float distanceF2 = 8.0;
+      float offsetF1 = 0.0;
+      float positionF1 = 0.0;
+      float offsetF2, positionF2;
+      for (int i = -1; i <= 1; i++) {
+        float cellOffset = float(i);
+        float pointPosition = cellOffset +
+                              hash_float_to_float(cellPosition + cellOffset) * randomness;
+        float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
+        if (distanceToPoint < distanceF1) {
+          distanceF2 = distanceF1;
+          distanceF1 = distanceToPoint;
+          offsetF2 = offsetF1;
+          offsetF1 = cellOffset;
+          positionF2 = positionF1;
+          positionF1 = pointPosition;
+        }
+        else if (distanceToPoint < distanceF2) {
+          distanceF2 = distanceToPoint;
+          offsetF2 = cellOffset;
+          positionF2 = pointPosition;
+        }
+      }
+      octave_distance = distanceF2;
+      outColor.xyz = hash_float_to_vec3(cellPosition + offsetF2);
+      outW = safe_divide(positionF2 + cellPosition, scale);
+
+      max_amplitude += octave_amplitude;
+      float lerp_distance = outDistance + octave_distance * octave_amplitude;
+      outDistance = (1.0 - remainder) * outDistance + remainder * lerp_distance;
+      outPosition /= octave_scale;
+    }
+  }
+  if (bool_normalize != 0.0) {
+    outDistance /= max_amplitude;
+  }
 }
 
 void node_tex_voronoi_distance_to_edge_1d(vec3 coord,
-  float w,
-  float scale,
-  float detail,
-  float roughness,
-  float lacunarity,
-  float smoothness,
-  float exponent,
-  float randomness,
-  float metric,
-  float bool_normalize,
-  out float outDistance,
-  out vec4 outColor,
-  out vec3 outPosition,
-  out float outW,
-  out float outRadius)
+                                          float w,
+                                          float scale,
+                                          float detail,
+                                          float roughness,
+                                          float lacunarity,
+                                          float smoothness,
+                                          float exponent,
+                                          float randomness,
+                                          float metric,
+                                          float bool_normalize,
+                                          out float outDistance,
+                                          out vec4 outColor,
+                                          out vec3 outPosition,
+                                          out float outW,
+                                          out float outRadius)
 {
   detail = clamp(detail, 0.0, 15.0);
   randomness = clamp(randomness, 0.0, 1.0);
@@ -267,21 +437,21 @@ void node_tex_voronoi_distance_to_edge_1d(vec3 coord,
 }
 
 void node_tex_voronoi_n_sphere_radius_1d(vec3 coord,
-  float w,
-  float scale,
-  float detail,
-  float roughness,
-  float lacunarity,
-  float smoothness,
-  float exponent,
-  float randomness,
-  float metric,
-  float bool_normalize,
-  out float outDistance,
-  out vec4 outColor,
-  out vec3 outPosition,
-  out float outW,
-  out float outRadius)
+                                         float w,
+                                         float scale,
+                                         float detail,
+                                         float roughness,
+                                         float lacunarity,
+                                         float smoothness,
+                                         float exponent,
+                                         float randomness,
+                                         float metric,
+                                         float bool_normalize,
+                                         out float outDistance,
+                                         out vec4 outColor,
+                                         out vec3 outPosition,
+                                         out float outW,
+                                         out float outRadius)
 {
   randomness = clamp(randomness, 0.0, 1.0);
 
@@ -346,21 +516,21 @@ float voronoi_distance(vec2 a, vec2 b, float metric, float exponent)
 }
 
 void node_tex_voronoi_f1_2d(vec3 coord,
-  float w,
-  float scale,
-  float detail,
-  float roughness,
-  float lacunarity,
-  float smoothness,
-  float exponent,
-  float randomness,
-  float metric,
-  float bool_normalize,
-  out float outDistance,
-  out vec4 outColor,
-  out vec3 outPosition,
-  out float outW,
-  out float outRadius)
+                            float w,
+                            float scale,
+                            float detail,
+                            float roughness,
+                            float lacunarity,
+                            float smoothness,
+                            float exponent,
+                            float randomness,
+                            float metric,
+                            float bool_normalize,
+                            out float outDistance,
+                            out vec4 outColor,
+                            out vec3 outPosition,
+                            out float outW,
+                            out float outRadius)
 {
   detail = clamp(detail, 0.0, 15.0);
   roughness = clamp(roughness, 0.0, 1.0);
@@ -388,7 +558,9 @@ void node_tex_voronoi_f1_2d(vec3 coord,
   outColor.xyz = hash_vec2_to_vec3(cellPosition + targetOffset);
   outPosition = vec3(safe_divide(targetPosition + cellPosition, scale), 0.0);
 
-  float max_amplitude = 1.41421356237; /* 1.41421356237 == sqrt(2) */
+  const float max_distance = voronoi_distance(
+    vec2(1.0,  1.0), vec2(0.0, 0.0), metric, exponent);
+  float max_amplitude = max_distance;
   if (detail != 0.0 && roughness != 0.0 && lacunarity != 0.0) {
     float octave_scale = lacunarity;
     float octave_amplitude = roughness;
@@ -405,8 +577,10 @@ void node_tex_voronoi_f1_2d(vec3 coord,
         for (int j = -1; j <= 1; j++) {
           for (int i = -1; i <= 1; i++) {
             vec2 cellOffset = vec2(i, j);
-            vec2 pointPosition = cellOffset + hash_vec2_to_vec2(cellPosition + cellOffset) * randomness;
-            float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
+            vec2 pointPosition = cellOffset +
+                                 hash_vec2_to_vec2(cellPosition + cellOffset) * randomness;
+            float distanceToPoint = voronoi_distance(
+                pointPosition, localPosition, metric, exponent);
             if (distanceToPoint < minDistance) {
               targetOffset = cellOffset;
               minDistance = distanceToPoint;
@@ -419,7 +593,7 @@ void node_tex_voronoi_f1_2d(vec3 coord,
       outColor.xyz = hash_vec2_to_vec3(cellPosition + targetOffset);
       outPosition = vec3(safe_divide(targetPosition + cellPosition, scale), 0.0);
 
-      max_amplitude += 1.41421356237 * octave_amplitude;
+      max_amplitude += max_distance * octave_amplitude;
       outDistance += octave_distance * octave_amplitude;
       octave_scale *= lacunarity;
       octave_amplitude *= roughness;
@@ -439,8 +613,10 @@ void node_tex_voronoi_f1_2d(vec3 coord,
         for (int j = -1; j <= 1; j++) {
           for (int i = -1; i <= 1; i++) {
             vec2 cellOffset = vec2(i, j);
-            vec2 pointPosition = cellOffset + hash_vec2_to_vec2(cellPosition + cellOffset) * randomness;
-            float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
+            vec2 pointPosition = cellOffset +
+                                 hash_vec2_to_vec2(cellPosition + cellOffset) * randomness;
+            float distanceToPoint = voronoi_distance(
+                pointPosition, localPosition, metric, exponent);
             if (distanceToPoint < minDistance) {
               targetOffset = cellOffset;
               minDistance = distanceToPoint;
@@ -453,7 +629,7 @@ void node_tex_voronoi_f1_2d(vec3 coord,
       outColor.xyz = hash_vec2_to_vec3(cellPosition + targetOffset);
       outPosition = vec3(safe_divide(targetPosition + cellPosition, scale), 0.0);
 
-      max_amplitude += 1.41421356237 * octave_amplitude;
+      max_amplitude += max_distance * octave_amplitude;
       float lerp_distance = outDistance + octave_distance * octave_amplitude;
       outDistance = (1.0 - remainder) * outDistance + remainder * lerp_distance;
       outPosition /= octave_scale;
@@ -465,21 +641,21 @@ void node_tex_voronoi_f1_2d(vec3 coord,
 }
 
 void node_tex_voronoi_smooth_f1_2d(vec3 coord,
-  float w,
-  float scale,
-  float detail,
-  float roughness,
-  float lacunarity,
-  float smoothness,
-  float exponent,
-  float randomness,
-  float metric,
-  float bool_normalize,
-  out float outDistance,
-  out vec4 outColor,
-  out vec3 outPosition,
-  out float outW,
-  out float outRadius)
+                                   float w,
+                                   float scale,
+                                   float detail,
+                                   float roughness,
+                                   float lacunarity,
+                                   float smoothness,
+                                   float exponent,
+                                   float randomness,
+                                   float metric,
+                                   float bool_normalize,
+                                   out float outDistance,
+                                   out vec4 outColor,
+                                   out vec3 outPosition,
+                                   out float outW,
+                                   out float outRadius)
 {
   detail = clamp(detail, 0.0, 15.0);
   roughness = clamp(roughness, 0.0, 1.0);
@@ -510,24 +686,107 @@ void node_tex_voronoi_smooth_f1_2d(vec3 coord,
   outDistance = smoothDistance;
   outColor.xyz = smoothColor;
   outPosition = vec3(safe_divide(cellPosition + smoothPosition, scale), 0.0);
+
+  const float max_distance = voronoi_distance(
+    vec2(1.0, 1.0), vec2(0.0, 0.0), metric, exponent);
+  float max_amplitude = max_distance;
+  if (detail != 0.0 && roughness != 0.0 && lacunarity != 0.0) {
+    float octave_scale = lacunarity;
+    float octave_amplitude = roughness;
+    float octave_distance = 0.0;
+
+    for (int i = 0; i < int(detail); ++i) {
+      scaledCoord = coord.xy * scale * octave_scale;
+      cellPosition = floor(scaledCoord);
+      localPosition = scaledCoord - cellPosition;
+
+      float smoothDistance = 8.0;
+      vec3 smoothColor = vec3(0.0);
+      vec2 smoothPosition = vec2(0.0);
+      for (int j = -2; j <= 2; j++) {
+        for (int i = -2; i <= 2; i++) {
+          vec2 cellOffset = vec2(i, j);
+          vec2 pointPosition = cellOffset +
+                               hash_vec2_to_vec2(cellPosition + cellOffset) * randomness;
+          float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
+          float h = smoothstep(
+              0.0, 1.0, 0.5 + 0.5 * (smoothDistance - distanceToPoint) / smoothness);
+          float correctionFactor = smoothness * h * (1.0 - h);
+          smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
+          correctionFactor /= 1.0 + 3.0 * smoothness;
+          vec3 cellColor = hash_vec2_to_vec3(cellPosition + cellOffset);
+          smoothColor = mix(smoothColor, cellColor, h) - correctionFactor;
+          smoothPosition = mix(smoothPosition, pointPosition, h) - correctionFactor;
+        }
+      }
+      octave_distance = smoothDistance;
+      outColor.xyz = smoothColor;
+      outPosition = vec3(safe_divide(cellPosition + smoothPosition, scale), 0.0);
+
+      max_amplitude += max_distance * octave_amplitude;
+      outDistance += octave_distance * octave_amplitude;
+      octave_scale *= lacunarity;
+      octave_amplitude *= roughness;
+    }
+
+    outPosition /= octave_scale / lacunarity;
+
+    float remainder = detail - int(detail);
+    if (remainder != 0.0) {
+      scaledCoord = coord.xy * scale * octave_scale;
+      cellPosition = floor(scaledCoord);
+      localPosition = scaledCoord - cellPosition;
+
+      float smoothDistance = 8.0;
+      vec3 smoothColor = vec3(0.0);
+      vec2 smoothPosition = vec2(0.0);
+      for (int j = -2; j <= 2; j++) {
+        for (int i = -2; i <= 2; i++) {
+          vec2 cellOffset = vec2(i, j);
+          vec2 pointPosition = cellOffset +
+                               hash_vec2_to_vec2(cellPosition + cellOffset) * randomness;
+          float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
+          float h = smoothstep(
+              0.0, 1.0, 0.5 + 0.5 * (smoothDistance - distanceToPoint) / smoothness);
+          float correctionFactor = smoothness * h * (1.0 - h);
+          smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
+          correctionFactor /= 1.0 + 3.0 * smoothness;
+          vec3 cellColor = hash_vec2_to_vec3(cellPosition + cellOffset);
+          smoothColor = mix(smoothColor, cellColor, h) - correctionFactor;
+          smoothPosition = mix(smoothPosition, pointPosition, h) - correctionFactor;
+        }
+      }
+      octave_distance = smoothDistance;
+      outColor.xyz = smoothColor;
+      outPosition = vec3(safe_divide(cellPosition + smoothPosition, scale), 0.0);
+
+      max_amplitude += max_distance * octave_amplitude;
+      float lerp_distance = outDistance + octave_distance * octave_amplitude;
+      outDistance = (1.0 - remainder) * outDistance + remainder * lerp_distance;
+      outPosition /= octave_scale;
+    }
+  }
+  if (bool_normalize != 0.0) {
+    outDistance /= max_amplitude;
+  }
 }
 
 void node_tex_voronoi_f2_2d(vec3 coord,
-  float w,
-  float scale,
-  float detail,
-  float roughness,
-  float lacunarity,
-  float smoothness,
-  float exponent,
-  float randomness,
-  float metric,
-  float bool_normalize,
-  out float outDistance,
-  out vec4 outColor,
-  out vec3 outPosition,
-  out float outW,
-  out float outRadius)
+                            float w,
+                            float scale,
+                            float detail,
+                            float roughness,
+                            float lacunarity,
+                            float smoothness,
+                            float exponent,
+                            float randomness,
+                            float metric,
+                            float bool_normalize,
+                            out float outDistance,
+                            out vec4 outColor,
+                            out vec3 outPosition,
+                            out float outW,
+                            out float outRadius)
 {
   detail = clamp(detail, 0.0, 15.0);
   roughness = clamp(roughness, 0.0, 1.0);
@@ -565,24 +824,121 @@ void node_tex_voronoi_f2_2d(vec3 coord,
   outDistance = distanceF2;
   outColor.xyz = hash_vec2_to_vec3(cellPosition + offsetF2);
   outPosition = vec3(safe_divide(positionF2 + cellPosition, scale), 0.0);
+
+  const float max_distance = voronoi_distance(
+    vec2(1.0, 1.0), vec2(0.0, 0.0), metric, exponent);
+  float max_amplitude = max_distance;
+  if (detail != 0.0 && roughness != 0.0 && lacunarity != 0.0) {
+    float octave_scale = lacunarity;
+    float octave_amplitude = roughness;
+    float octave_distance = 0.0;
+
+    for (int i = 0; i < int(detail); ++i) {
+      scaledCoord = coord.xy * scale * octave_scale;
+      cellPosition = floor(scaledCoord);
+      localPosition = scaledCoord - cellPosition;
+
+      float distanceF1 = 8.0;
+      float distanceF2 = 8.0;
+      vec2 offsetF1 = vec2(0.0);
+      vec2 positionF1 = vec2(0.0);
+      vec2 offsetF2, positionF2;
+      for (int j = -1; j <= 1; j++) {
+        for (int i = -1; i <= 1; i++) {
+          vec2 cellOffset = vec2(i, j);
+          vec2 pointPosition = cellOffset +
+                               hash_vec2_to_vec2(cellPosition + cellOffset) * randomness;
+          float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
+          if (distanceToPoint < distanceF1) {
+            distanceF2 = distanceF1;
+            distanceF1 = distanceToPoint;
+            offsetF2 = offsetF1;
+            offsetF1 = cellOffset;
+            positionF2 = positionF1;
+            positionF1 = pointPosition;
+          }
+          else if (distanceToPoint < distanceF2) {
+            distanceF2 = distanceToPoint;
+            offsetF2 = cellOffset;
+            positionF2 = pointPosition;
+          }
+        }
+      }
+      octave_distance = distanceF2;
+      outColor.xyz = hash_vec2_to_vec3(cellPosition + offsetF2);
+      outPosition = vec3(safe_divide(positionF2 + cellPosition, scale), 0.0);
+
+      max_amplitude += max_distance * octave_amplitude;
+      outDistance += octave_distance * octave_amplitude;
+      octave_scale *= lacunarity;
+      octave_amplitude *= roughness;
+    }
+
+    outPosition /= octave_scale / lacunarity;
+
+    float remainder = detail - int(detail);
+    if (remainder != 0.0) {
+      scaledCoord = coord.xy * scale * octave_scale;
+      cellPosition = floor(scaledCoord);
+      localPosition = scaledCoord - cellPosition;
+
+      float distanceF1 = 8.0;
+      float distanceF2 = 8.0;
+      vec2 offsetF1 = vec2(0.0);
+      vec2 positionF1 = vec2(0.0);
+      vec2 offsetF2, positionF2;
+      for (int j = -1; j <= 1; j++) {
+        for (int i = -1; i <= 1; i++) {
+          vec2 cellOffset = vec2(i, j);
+          vec2 pointPosition = cellOffset +
+                               hash_vec2_to_vec2(cellPosition + cellOffset) * randomness;
+          float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
+          if (distanceToPoint < distanceF1) {
+            distanceF2 = distanceF1;
+            distanceF1 = distanceToPoint;
+            offsetF2 = offsetF1;
+            offsetF1 = cellOffset;
+            positionF2 = positionF1;
+            positionF1 = pointPosition;
+          }
+          else if (distanceToPoint < distanceF2) {
+            distanceF2 = distanceToPoint;
+            offsetF2 = cellOffset;
+            positionF2 = pointPosition;
+          }
+        }
+      }
+      octave_distance = distanceF2;
+      outColor.xyz = hash_vec2_to_vec3(cellPosition + offsetF2);
+      outPosition = vec3(safe_divide(positionF2 + cellPosition, scale), 0.0);
+
+      max_amplitude += max_distance * octave_amplitude;
+      float lerp_distance = outDistance + octave_distance * octave_amplitude;
+      outDistance = (1.0 - remainder) * outDistance + remainder * lerp_distance;
+      outPosition /= octave_scale;
+    }
+  }
+  if (bool_normalize != 0.0) {
+    outDistance /= max_amplitude;
+  }
 }
 
 void node_tex_voronoi_distance_to_edge_2d(vec3 coord,
-  float w,
-  float scale,
-  float detail,
-  float roughness,
-  float lacunarity,
-  float smoothness,
-  float exponent,
-  float randomness,
-  float metric,
-  float bool_normalize,
-  out float outDistance,
-  out vec4 outColor,
-  out vec3 outPosition,
-  out float outW,
-  out float outRadius)
+                                          float w,
+                                          float scale,
+                                          float detail,
+                                          float roughness,
+                                          float lacunarity,
+                                          float smoothness,
+                                          float exponent,
+                                          float randomness,
+                                          float metric,
+                                          float bool_normalize,
+                                          out float outDistance,
+                                          out vec4 outColor,
+                                          out vec3 outPosition,
+                                          out float outW,
+                                          out float outRadius)
 {
   detail = clamp(detail, 0.0, 15.0);
   randomness = clamp(randomness, 0.0, 1.0);
@@ -624,21 +980,21 @@ void node_tex_voronoi_distance_to_edge_2d(vec3 coord,
 }
 
 void node_tex_voronoi_n_sphere_radius_2d(vec3 coord,
-  float w,
-  float scale,
-  float detail,
-  float roughness,
-  float lacunarity,
-  float smoothness,
-  float exponent,
-  float randomness,
-  float metric,
-  float bool_normalize,
-  out float outDistance,
-  out vec4 outColor,
-  out vec3 outPosition,
-  out float outW,
-  out float outRadius)
+                                         float w,
+                                         float scale,
+                                         float detail,
+                                         float roughness,
+                                         float lacunarity,
+                                         float smoothness,
+                                         float exponent,
+                                         float randomness,
+                                         float metric,
+                                         float bool_normalize,
+                                         out float outDistance,
+                                         out vec4 outColor,
+                                         out vec3 outPosition,
+                                         out float outW,
+                                         out float outRadius)
 {
   randomness = clamp(randomness, 0.0, 1.0);
 
@@ -709,21 +1065,21 @@ float voronoi_distance(vec3 a, vec3 b, float metric, float exponent)
 }
 
 void node_tex_voronoi_f1_3d(vec3 coord,
-  float w,
-  float scale,
-  float detail,
-  float roughness,
-  float lacunarity,
-  float smoothness,
-  float exponent,
-  float randomness,
-  float metric,
-  float bool_normalize,
-  out float outDistance,
-  out vec4 outColor,
-  out vec3 outPosition,
-  out float outW,
-  out float outRadius)
+                            float w,
+                            float scale,
+                            float detail,
+                            float roughness,
+                            float lacunarity,
+                            float smoothness,
+                            float exponent,
+                            float randomness,
+                            float metric,
+                            float bool_normalize,
+                            out float outDistance,
+                            out vec4 outColor,
+                            out vec3 outPosition,
+                            out float outW,
+                            out float outRadius)
 {
   detail = clamp(detail, 0.0, 15.0);
   roughness = clamp(roughness, 0.0, 1.0);
@@ -754,7 +1110,9 @@ void node_tex_voronoi_f1_3d(vec3 coord,
   outColor.xyz = hash_vec3_to_vec3(cellPosition + targetOffset);
   outPosition = safe_divide(targetPosition + cellPosition, scale);
 
-  float max_amplitude = 1.73205080757; /* 1.73205080757 == sqrt(3) */
+  const float max_distance = voronoi_distance(
+    vec3(1.0,1.0,1.0), vec3(0.0, 0.0, 0.0), metric, exponent);
+  float max_amplitude = max_distance;
   if (detail != 0.0 && roughness != 0.0 && lacunarity != 0.0) {
     float octave_scale = lacunarity;
     float octave_amplitude = roughness;
@@ -772,8 +1130,9 @@ void node_tex_voronoi_f1_3d(vec3 coord,
           for (int i = -1; i <= 1; i++) {
             vec3 cellOffset = vec3(i, j, k);
             vec3 pointPosition = cellOffset +
-              hash_vec3_to_vec3(cellPosition + cellOffset) * randomness;
-            float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
+                                 hash_vec3_to_vec3(cellPosition + cellOffset) * randomness;
+            float distanceToPoint = voronoi_distance(
+                pointPosition, localPosition, metric, exponent);
             if (distanceToPoint < minDistance) {
               targetOffset = cellOffset;
               minDistance = distanceToPoint;
@@ -786,7 +1145,7 @@ void node_tex_voronoi_f1_3d(vec3 coord,
       outColor.xyz = hash_vec3_to_vec3(cellPosition + targetOffset);
       outPosition = safe_divide(targetPosition + cellPosition, scale);
 
-      max_amplitude += 1.73205080757 * octave_amplitude;
+      max_amplitude += max_distance * octave_amplitude;
       outDistance += octave_distance * octave_amplitude;
       octave_scale *= lacunarity;
       octave_amplitude *= roughness;
@@ -796,7 +1155,7 @@ void node_tex_voronoi_f1_3d(vec3 coord,
 
     float remainder = detail - int(detail);
     if (remainder != 0.0) {
-      scaledCoord = coord * scale*  octave_scale;
+      scaledCoord = coord * scale * octave_scale;
       cellPosition = floor(scaledCoord);
       localPosition = scaledCoord - cellPosition;
 
@@ -807,8 +1166,9 @@ void node_tex_voronoi_f1_3d(vec3 coord,
           for (int i = -1; i <= 1; i++) {
             vec3 cellOffset = vec3(i, j, k);
             vec3 pointPosition = cellOffset +
-              hash_vec3_to_vec3(cellPosition + cellOffset) * randomness;
-            float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
+                                 hash_vec3_to_vec3(cellPosition + cellOffset) * randomness;
+            float distanceToPoint = voronoi_distance(
+                pointPosition, localPosition, metric, exponent);
             if (distanceToPoint < minDistance) {
               targetOffset = cellOffset;
               minDistance = distanceToPoint;
@@ -821,7 +1181,7 @@ void node_tex_voronoi_f1_3d(vec3 coord,
       outColor.xyz = hash_vec3_to_vec3(cellPosition + targetOffset);
       outPosition = safe_divide(targetPosition + cellPosition, scale);
 
-      max_amplitude += 1.73205080757 * octave_amplitude;
+      max_amplitude += max_distance * octave_amplitude;
       float lerp_distance = outDistance + octave_distance * octave_amplitude;
       outDistance = (1.0 - remainder) * outDistance + remainder * lerp_distance;
       outPosition /= octave_scale;
@@ -833,21 +1193,21 @@ void node_tex_voronoi_f1_3d(vec3 coord,
 }
 
 void node_tex_voronoi_smooth_f1_3d(vec3 coord,
-  float w,
-  float scale,
-  float detail,
-  float roughness,
-  float lacunarity,
-  float smoothness,
-  float exponent,
-  float randomness,
-  float metric,
-  float bool_normalize,
-  out float outDistance,
-  out vec4 outColor,
-  out vec3 outPosition,
-  out float outW,
-  out float outRadius)
+                                   float w,
+                                   float scale,
+                                   float detail,
+                                   float roughness,
+                                   float lacunarity,
+                                   float smoothness,
+                                   float exponent,
+                                   float randomness,
+                                   float metric,
+                                   float bool_normalize,
+                                   out float outDistance,
+                                   out vec4 outColor,
+                                   out vec3 outPosition,
+                                   out float outW,
+                                   out float outRadius)
 {
   detail = clamp(detail, 0.0, 15.0);
   roughness = clamp(roughness, 0.0, 1.0);
@@ -882,24 +1242,113 @@ void node_tex_voronoi_smooth_f1_3d(vec3 coord,
   outDistance = smoothDistance;
   outColor.xyz = smoothColor;
   outPosition = safe_divide(cellPosition + smoothPosition, scale);
+
+  const float max_distance = voronoi_distance(
+    vec3(1.0, 1.0, 1.0), vec3(0.0, 0.0, 0.0), metric, exponent);
+  float max_amplitude = max_distance;
+  if (detail != 0.0 && roughness != 0.0 && lacunarity != 0.0) {
+    float octave_scale = lacunarity;
+    float octave_amplitude = roughness;
+    float octave_distance = 0.0;
+
+    for (int i = 0; i < int(detail); ++i) {
+      scaledCoord = coord * scale * octave_scale;
+      cellPosition = floor(scaledCoord);
+      localPosition = scaledCoord - cellPosition;
+
+      float smoothDistance = 8.0;
+      vec3 smoothColor = vec3(0.0);
+      vec3 smoothPosition = vec3(0.0);
+      for (int k = -2; k <= 2; k++) {
+        for (int j = -2; j <= 2; j++) {
+          for (int i = -2; i <= 2; i++) {
+            vec3 cellOffset = vec3(i, j, k);
+            vec3 pointPosition = cellOffset +
+                                 hash_vec3_to_vec3(cellPosition + cellOffset) * randomness;
+            float distanceToPoint = voronoi_distance(
+                pointPosition, localPosition, metric, exponent);
+            float h = smoothstep(
+                0.0, 1.0, 0.5 + 0.5 * (smoothDistance - distanceToPoint) / smoothness);
+            float correctionFactor = smoothness * h * (1.0 - h);
+            smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
+            correctionFactor /= 1.0 + 3.0 * smoothness;
+            vec3 cellColor = hash_vec3_to_vec3(cellPosition + cellOffset);
+            smoothColor = mix(smoothColor, cellColor, h) - correctionFactor;
+            smoothPosition = mix(smoothPosition, pointPosition, h) - correctionFactor;
+          }
+        }
+      }
+      octave_distance = smoothDistance;
+      outColor.xyz = smoothColor;
+      outPosition = safe_divide(cellPosition + smoothPosition, scale);
+
+      max_amplitude += max_distance * octave_amplitude;
+      outDistance += octave_distance * octave_amplitude;
+      octave_scale *= lacunarity;
+      octave_amplitude *= roughness;
+    }
+
+    outPosition /= octave_scale / lacunarity;
+
+    float remainder = detail - int(detail);
+    if (remainder != 0.0) {
+      scaledCoord = coord * scale * octave_scale;
+      cellPosition = floor(scaledCoord);
+      localPosition = scaledCoord - cellPosition;
+
+      float smoothDistance = 8.0;
+      vec3 smoothColor = vec3(0.0);
+      vec3 smoothPosition = vec3(0.0);
+      for (int k = -2; k <= 2; k++) {
+        for (int j = -2; j <= 2; j++) {
+          for (int i = -2; i <= 2; i++) {
+            vec3 cellOffset = vec3(i, j, k);
+            vec3 pointPosition = cellOffset +
+                                 hash_vec3_to_vec3(cellPosition + cellOffset) * randomness;
+            float distanceToPoint = voronoi_distance(
+                pointPosition, localPosition, metric, exponent);
+            float h = smoothstep(
+                0.0, 1.0, 0.5 + 0.5 * (smoothDistance - distanceToPoint) / smoothness);
+            float correctionFactor = smoothness * h * (1.0 - h);
+            smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
+            correctionFactor /= 1.0 + 3.0 * smoothness;
+            vec3 cellColor = hash_vec3_to_vec3(cellPosition + cellOffset);
+            smoothColor = mix(smoothColor, cellColor, h) - correctionFactor;
+            smoothPosition = mix(smoothPosition, pointPosition, h) - correctionFactor;
+          }
+        }
+      }
+      octave_distance = smoothDistance;
+      outColor.xyz = smoothColor;
+      outPosition = safe_divide(cellPosition + smoothPosition, scale);
+
+      max_amplitude += max_distance * octave_amplitude;
+      float lerp_distance = outDistance + octave_distance * octave_amplitude;
+      outDistance = (1.0 - remainder) * outDistance + remainder * lerp_distance;
+      outPosition /= octave_scale;
+    }
+  }
+  if (bool_normalize != 0.0) {
+    outDistance /= max_amplitude;
+  }
 }
 
 void node_tex_voronoi_f2_3d(vec3 coord,
-  float w,
-  float scale,
-  float detail,
-  float roughness,
-  float lacunarity,
-  float smoothness,
-  float exponent,
-  float randomness,
-  float metric,
-  float bool_normalize,
-  out float outDistance,
-  out vec4 outColor,
-  out vec3 outPosition,
-  out float outW,
-  out float outRadius)
+                            float w,
+                            float scale,
+                            float detail,
+                            float roughness,
+                            float lacunarity,
+                            float smoothness,
+                            float exponent,
+                            float randomness,
+                            float metric,
+                            float bool_normalize,
+                            out float outDistance,
+                            out vec4 outColor,
+                            out vec3 outPosition,
+                            out float outW,
+                            out float outRadius)
 {
   detail = clamp(detail, 0.0, 15.0);
   roughness = clamp(roughness, 0.0, 1.0);
@@ -940,24 +1389,127 @@ void node_tex_voronoi_f2_3d(vec3 coord,
   outDistance = distanceF2;
   outColor.xyz = hash_vec3_to_vec3(cellPosition + offsetF2);
   outPosition = safe_divide(positionF2 + cellPosition, scale);
+
+  const float max_distance = voronoi_distance(
+    vec3(1.0, 1.0, 1.0), vec3(0.0, 0.0, 0.0), metric, exponent);
+  float max_amplitude = max_distance;
+  if (detail != 0.0 && roughness != 0.0 && lacunarity != 0.0) {
+    float octave_scale = lacunarity;
+    float octave_amplitude = roughness;
+    float octave_distance = 0.0;
+
+    for (int i = 0; i < int(detail); ++i) {
+      scaledCoord = coord * scale * octave_scale;
+      cellPosition = floor(scaledCoord);
+      localPosition = scaledCoord - cellPosition;
+
+      float distanceF1 = 8.0;
+      float distanceF2 = 8.0;
+      vec3 offsetF1 = vec3(0.0);
+      vec3 positionF1 = vec3(0.0);
+      vec3 offsetF2, positionF2;
+      for (int k = -1; k <= 1; k++) {
+        for (int j = -1; j <= 1; j++) {
+          for (int i = -1; i <= 1; i++) {
+            vec3 cellOffset = vec3(i, j, k);
+            vec3 pointPosition = cellOffset +
+                                 hash_vec3_to_vec3(cellPosition + cellOffset) * randomness;
+            float distanceToPoint = voronoi_distance(
+                pointPosition, localPosition, metric, exponent);
+            if (distanceToPoint < distanceF1) {
+              distanceF2 = distanceF1;
+              distanceF1 = distanceToPoint;
+              offsetF2 = offsetF1;
+              offsetF1 = cellOffset;
+              positionF2 = positionF1;
+              positionF1 = pointPosition;
+            }
+            else if (distanceToPoint < distanceF2) {
+              distanceF2 = distanceToPoint;
+              offsetF2 = cellOffset;
+              positionF2 = pointPosition;
+            }
+          }
+        }
+      }
+      octave_distance = distanceF2;
+      outColor.xyz = hash_vec3_to_vec3(cellPosition + offsetF2);
+      outPosition = safe_divide(positionF2 + cellPosition, scale);
+
+      max_amplitude += max_distance * octave_amplitude;
+      outDistance += octave_distance * octave_amplitude;
+      octave_scale *= lacunarity;
+      octave_amplitude *= roughness;
+    }
+
+    outPosition /= octave_scale / lacunarity;
+
+    float remainder = detail - int(detail);
+    if (remainder != 0.0) {
+      scaledCoord = coord * scale * octave_scale;
+      cellPosition = floor(scaledCoord);
+      localPosition = scaledCoord - cellPosition;
+
+      float distanceF1 = 8.0;
+      float distanceF2 = 8.0;
+      vec3 offsetF1 = vec3(0.0);
+      vec3 positionF1 = vec3(0.0);
+      vec3 offsetF2, positionF2;
+      for (int k = -1; k <= 1; k++) {
+        for (int j = -1; j <= 1; j++) {
+          for (int i = -1; i <= 1; i++) {
+            vec3 cellOffset = vec3(i, j, k);
+            vec3 pointPosition = cellOffset +
+                                 hash_vec3_to_vec3(cellPosition + cellOffset) * randomness;
+            float distanceToPoint = voronoi_distance(
+                pointPosition, localPosition, metric, exponent);
+            if (distanceToPoint < distanceF1) {
+              distanceF2 = distanceF1;
+              distanceF1 = distanceToPoint;
+              offsetF2 = offsetF1;
+              offsetF1 = cellOffset;
+              positionF2 = positionF1;
+              positionF1 = pointPosition;
+            }
+            else if (distanceToPoint < distanceF2) {
+              distanceF2 = distanceToPoint;
+              offsetF2 = cellOffset;
+              positionF2 = pointPosition;
+            }
+          }
+        }
+      }
+      octave_distance = distanceF2;
+      outColor.xyz = hash_vec3_to_vec3(cellPosition + offsetF2);
+      outPosition = safe_divide(positionF2 + cellPosition, scale);
+
+      max_amplitude += max_distance * octave_amplitude;
+      float lerp_distance = outDistance + octave_distance * octave_amplitude;
+      outDistance = (1.0 - remainder) * outDistance + remainder * lerp_distance;
+      outPosition /= octave_scale;
+    }
+  }
+  if (bool_normalize != 0.0) {
+    outDistance /= max_amplitude;
+  }
 }
 
 void node_tex_voronoi_distance_to_edge_3d(vec3 coord,
-  float w,
-  float scale,
-  float detail,
-  float roughness,
-  float lacunarity,
-  float smoothness,
-  float exponent,
-  float randomness,
-  float metric,
-  float bool_normalize,
-  out float outDistance,
-  out vec4 outColor,
-  out vec3 outPosition,
-  out float outW,
-  out float outRadius)
+                                          float w,
+                                          float scale,
+                                          float detail,
+                                          float roughness,
+                                          float lacunarity,
+                                          float smoothness,
+                                          float exponent,
+                                          float randomness,
+                                          float metric,
+                                          float bool_normalize,
+                                          out float outDistance,
+                                          out vec4 outColor,
+                                          out vec3 outPosition,
+                                          out float outW,
+                                          out float outRadius)
 {
   detail = clamp(detail, 0.0, 15.0);
   randomness = clamp(randomness, 0.0, 1.0);
@@ -1005,21 +1557,21 @@ void node_tex_voronoi_distance_to_edge_3d(vec3 coord,
 }
 
 void node_tex_voronoi_n_sphere_radius_3d(vec3 coord,
-  float w,
-  float scale,
-  float detail,
-  float roughness,
-  float lacunarity,
-  float smoothness,
-  float exponent,
-  float randomness,
-  float metric,
-  float bool_normalize,
-  out float outDistance,
-  out vec4 outColor,
-  out vec3 outPosition,
-  out float outW,
-  out float outRadius)
+                                         float w,
+                                         float scale,
+                                         float detail,
+                                         float roughness,
+                                         float lacunarity,
+                                         float smoothness,
+                                         float exponent,
+                                         float randomness,
+                                         float metric,
+                                         float bool_normalize,
+                                         out float outDistance,
+                                         out vec4 outColor,
+                                         out vec3 outPosition,
+                                         out float outW,
+                                         out float outRadius)
 {
   randomness = clamp(randomness, 0.0, 1.0);
 
@@ -1096,21 +1648,21 @@ float voronoi_distance(vec4 a, vec4 b, float metric, float exponent)
 }
 
 void node_tex_voronoi_f1_4d(vec3 coord,
-  float w,
-  float scale,
-  float detail,
-  float roughness,
-  float lacunarity,
-  float smoothness,
-  float exponent,
-  float randomness,
-  float metric,
-  float bool_normalize,
-  out float outDistance,
-  out vec4 outColor,
-  out vec3 outPosition,
-  out float outW,
-  out float outRadius)
+                            float w,
+                            float scale,
+                            float detail,
+                            float roughness,
+                            float lacunarity,
+                            float smoothness,
+                            float exponent,
+                            float randomness,
+                            float metric,
+                            float bool_normalize,
+                            out float outDistance,
+                            out vec4 outColor,
+                            out vec3 outPosition,
+                            out float outW,
+                            out float outRadius)
 {
   detail = clamp(detail, 0.0, 15.0);
   roughness = clamp(roughness, 0.0, 1.0);
@@ -1145,14 +1697,16 @@ void node_tex_voronoi_f1_4d(vec3 coord,
   outPosition = p.xyz;
   outW = p.w;
 
-  float max_amplitude = 2.0;
+  const float max_distance = voronoi_distance(
+    vec4(1.0, 1.0, 1.0,1.0), vec4(0.0, 0.0, 0.0,0.0), metric, exponent);
+  float max_amplitude = max_distance;
   if (detail != 0.0 && roughness != 0.0 && lacunarity != 0.0) {
     float octave_scale = lacunarity;
     float octave_amplitude = roughness;
     float octave_distance = 0.0;
 
     for (int i = 0; i < int(detail); ++i) {
-      scaledCoord = vec4(coord, w) * scale* octave_scale;
+      scaledCoord = vec4(coord, w) * scale * octave_scale;
       cellPosition = floor(scaledCoord);
       localPosition = scaledCoord - cellPosition;
 
@@ -1164,8 +1718,9 @@ void node_tex_voronoi_f1_4d(vec3 coord,
             for (int i = -1; i <= 1; i++) {
               vec4 cellOffset = vec4(i, j, k, u);
               vec4 pointPosition = cellOffset +
-                hash_vec4_to_vec4(cellPosition + cellOffset) * randomness;
-              float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
+                                   hash_vec4_to_vec4(cellPosition + cellOffset) * randomness;
+              float distanceToPoint = voronoi_distance(
+                  pointPosition, localPosition, metric, exponent);
               if (distanceToPoint < minDistance) {
                 targetOffset = cellOffset;
                 minDistance = distanceToPoint;
@@ -1181,7 +1736,7 @@ void node_tex_voronoi_f1_4d(vec3 coord,
       outPosition = p.xyz;
       outW = p.w;
 
-      max_amplitude += 2.0 * octave_amplitude;
+      max_amplitude += max_distance * octave_amplitude;
       outDistance += octave_distance * octave_amplitude;
       octave_scale *= lacunarity;
       octave_amplitude *= roughness;
@@ -1204,8 +1759,9 @@ void node_tex_voronoi_f1_4d(vec3 coord,
             for (int i = -1; i <= 1; i++) {
               vec4 cellOffset = vec4(i, j, k, u);
               vec4 pointPosition = cellOffset +
-                hash_vec4_to_vec4(cellPosition + cellOffset) * randomness;
-              float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
+                                   hash_vec4_to_vec4(cellPosition + cellOffset) * randomness;
+              float distanceToPoint = voronoi_distance(
+                  pointPosition, localPosition, metric, exponent);
               if (distanceToPoint < minDistance) {
                 targetOffset = cellOffset;
                 minDistance = distanceToPoint;
@@ -1221,7 +1777,7 @@ void node_tex_voronoi_f1_4d(vec3 coord,
       outPosition = p.xyz;
       outW = p.w;
 
-      max_amplitude += 2.0 * octave_amplitude;
+      max_amplitude += max_distance * octave_amplitude;
       float lerp_distance = outDistance + octave_distance * octave_amplitude;
       outDistance = (1.0 - remainder) * outDistance + remainder * lerp_distance;
       outPosition /= octave_scale;
@@ -1234,21 +1790,21 @@ void node_tex_voronoi_f1_4d(vec3 coord,
 }
 
 void node_tex_voronoi_smooth_f1_4d(vec3 coord,
-  float w,
-  float scale,
-  float detail,
-  float roughness,
-  float lacunarity,
-  float smoothness,
-  float exponent,
-  float randomness,
-  float metric,
-  float bool_normalize,
-  out float outDistance,
-  out vec4 outColor,
-  out vec3 outPosition,
-  out float outW,
-  out float outRadius)
+                                   float w,
+                                   float scale,
+                                   float detail,
+                                   float roughness,
+                                   float lacunarity,
+                                   float smoothness,
+                                   float exponent,
+                                   float randomness,
+                                   float metric,
+                                   float bool_normalize,
+                                   out float outDistance,
+                                   out vec4 outColor,
+                                   out vec3 outPosition,
+                                   out float outW,
+                                   out float outRadius)
 {
   detail = clamp(detail, 0.0, 15.0);
   roughness = clamp(roughness, 0.0, 1.0);
@@ -1287,24 +1843,123 @@ void node_tex_voronoi_smooth_f1_4d(vec3 coord,
   vec4 p = safe_divide(cellPosition + smoothPosition, scale);
   outPosition = p.xyz;
   outW = p.w;
+
+  const float max_distance = voronoi_distance(
+    vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0, 0.0, 0.0, 0.0), metric, exponent);
+  float max_amplitude = max_distance;
+  if (detail != 0.0 && roughness != 0.0 && lacunarity != 0.0) {
+    float octave_scale = lacunarity;
+    float octave_amplitude = roughness;
+    float octave_distance = 0.0;
+
+    for (int i = 0; i < int(detail); ++i) {
+      scaledCoord = vec4(coord, w) * scale * octave_scale;
+      cellPosition = floor(scaledCoord);
+      localPosition = scaledCoord - cellPosition;
+
+      float smoothDistance = 8.0;
+      vec3 smoothColor = vec3(0.0);
+      vec4 smoothPosition = vec4(0.0);
+      for (int u = -2; u <= 2; u++) {
+        for (int k = -2; k <= 2; k++) {
+          for (int j = -2; j <= 2; j++) {
+            for (int i = -2; i <= 2; i++) {
+              vec4 cellOffset = vec4(i, j, k, u);
+              vec4 pointPosition = cellOffset +
+                                   hash_vec4_to_vec4(cellPosition + cellOffset) * randomness;
+              float distanceToPoint = voronoi_distance(
+                  pointPosition, localPosition, metric, exponent);
+              float h = smoothstep(
+                  0.0, 1.0, 0.5 + 0.5 * (smoothDistance - distanceToPoint) / smoothness);
+              float correctionFactor = smoothness * h * (1.0 - h);
+              smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
+              correctionFactor /= 1.0 + 3.0 * smoothness;
+              vec3 cellColor = hash_vec4_to_vec3(cellPosition + cellOffset);
+              smoothColor = mix(smoothColor, cellColor, h) - correctionFactor;
+              smoothPosition = mix(smoothPosition, pointPosition, h) - correctionFactor;
+            }
+          }
+        }
+      }
+      octave_distance = smoothDistance;
+      outColor.xyz = smoothColor;
+      vec4 p = safe_divide(cellPosition + smoothPosition, scale);
+      outPosition = p.xyz;
+      outW = p.w;
+
+      max_amplitude += max_distance * octave_amplitude;
+      outDistance += octave_distance * octave_amplitude;
+      octave_scale *= lacunarity;
+      octave_amplitude *= roughness;
+    }
+
+    outPosition /= octave_scale / lacunarity;
+    outW /= octave_scale / lacunarity;
+
+    float remainder = detail - int(detail);
+    if (remainder != 0.0) {
+      scaledCoord = vec4(coord, w) * scale * octave_scale;
+      cellPosition = floor(scaledCoord);
+      localPosition = scaledCoord - cellPosition;
+
+      float smoothDistance = 8.0;
+      vec3 smoothColor = vec3(0.0);
+      vec4 smoothPosition = vec4(0.0);
+      for (int u = -2; u <= 2; u++) {
+        for (int k = -2; k <= 2; k++) {
+          for (int j = -2; j <= 2; j++) {
+            for (int i = -2; i <= 2; i++) {
+              vec4 cellOffset = vec4(i, j, k, u);
+              vec4 pointPosition = cellOffset +
+                                   hash_vec4_to_vec4(cellPosition + cellOffset) * randomness;
+              float distanceToPoint = voronoi_distance(
+                  pointPosition, localPosition, metric, exponent);
+              float h = smoothstep(
+                  0.0, 1.0, 0.5 + 0.5 * (smoothDistance - distanceToPoint) / smoothness);
+              float correctionFactor = smoothness * h * (1.0 - h);
+              smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
+              correctionFactor /= 1.0 + 3.0 * smoothness;
+              vec3 cellColor = hash_vec4_to_vec3(cellPosition + cellOffset);
+              smoothColor = mix(smoothColor, cellColor, h) - correctionFactor;
+              smoothPosition = mix(smoothPosition, pointPosition, h) - correctionFactor;
+            }
+          }
+        }
+      }
+      octave_distance = smoothDistance;
+      outColor.xyz = smoothColor;
+      vec4 p = safe_divide(cellPosition + smoothPosition, scale);
+      outPosition = p.xyz;
+      outW = p.w;
+
+      max_amplitude += max_distance * octave_amplitude;
+      float lerp_distance = outDistance + octave_distance * octave_amplitude;
+      outDistance = (1.0 - remainder) * outDistance + remainder * lerp_distance;
+      outPosition /= octave_scale;
+      outW /= octave_scale;
+    }
+  }
+  if (bool_normalize != 0.0) {
+    outDistance /= max_amplitude;
+  }
 }
 
 void node_tex_voronoi_f2_4d(vec3 coord,
-  float w,
-  float scale,
-  float detail,
-  float roughness,
-  float lacunarity,
-  float smoothness,
-  float exponent,
-  float randomness,
-  float metric,
-  float bool_normalize,
-  out float outDistance,
-  out vec4 outColor,
-  out vec3 outPosition,
-  out float outW,
-  out float outRadius)
+                            float w,
+                            float scale,
+                            float detail,
+                            float roughness,
+                            float lacunarity,
+                            float smoothness,
+                            float exponent,
+                            float randomness,
+                            float metric,
+                            float bool_normalize,
+                            out float outDistance,
+                            out vec4 outColor,
+                            out vec3 outPosition,
+                            out float outW,
+                            out float outRadius)
 {
   detail = clamp(detail, 0.0, 15.0);
   roughness = clamp(roughness, 0.0, 1.0);
@@ -1349,24 +2004,137 @@ void node_tex_voronoi_f2_4d(vec3 coord,
   vec4 p = safe_divide(positionF2 + cellPosition, scale);
   outPosition = p.xyz;
   outW = p.w;
+
+  const float max_distance = voronoi_distance(
+    vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0, 0.0, 0.0, 0.0), metric, exponent);
+  float max_amplitude = max_distance;
+  if (detail != 0.0 && roughness != 0.0 && lacunarity != 0.0) {
+    float octave_scale = lacunarity;
+    float octave_amplitude = roughness;
+    float octave_distance = 0.0;
+
+    for (int i = 0; i < int(detail); ++i) {
+      scaledCoord = vec4(coord, w) * scale * octave_scale;
+      cellPosition = floor(scaledCoord);
+      localPosition = scaledCoord - cellPosition;
+
+      float distanceF1 = 8.0;
+      float distanceF2 = 8.0;
+      vec4 offsetF1 = vec4(0.0);
+      vec4 positionF1 = vec4(0.0);
+      vec4 offsetF2, positionF2;
+      for (int u = -1; u <= 1; u++) {
+        for (int k = -1; k <= 1; k++) {
+          for (int j = -1; j <= 1; j++) {
+            for (int i = -1; i <= 1; i++) {
+              vec4 cellOffset = vec4(i, j, k, u);
+              vec4 pointPosition = cellOffset +
+                                   hash_vec4_to_vec4(cellPosition + cellOffset) * randomness;
+              float distanceToPoint = voronoi_distance(
+                  pointPosition, localPosition, metric, exponent);
+              if (distanceToPoint < distanceF1) {
+                distanceF2 = distanceF1;
+                distanceF1 = distanceToPoint;
+                offsetF2 = offsetF1;
+                offsetF1 = cellOffset;
+                positionF2 = positionF1;
+                positionF1 = pointPosition;
+              }
+              else if (distanceToPoint < distanceF2) {
+                distanceF2 = distanceToPoint;
+                offsetF2 = cellOffset;
+                positionF2 = pointPosition;
+              }
+            }
+          }
+        }
+      }
+      octave_distance = distanceF2;
+      outColor.xyz = hash_vec4_to_vec3(cellPosition + offsetF2);
+      vec4 p = safe_divide(positionF2 + cellPosition, scale);
+      outPosition = p.xyz;
+      outW = p.w;
+
+      max_amplitude += max_distance * octave_amplitude;
+      outDistance += octave_distance * octave_amplitude;
+      octave_scale *= lacunarity;
+      octave_amplitude *= roughness;
+    }
+
+    outPosition /= octave_scale / lacunarity;
+    outW /= octave_scale / lacunarity;
+
+    float remainder = detail - int(detail);
+    if (remainder != 0.0) {
+      scaledCoord = vec4(coord, w) * scale * octave_scale;
+      cellPosition = floor(scaledCoord);
+      localPosition = scaledCoord - cellPosition;
+
+      float distanceF1 = 8.0;
+      float distanceF2 = 8.0;
+      vec4 offsetF1 = vec4(0.0);
+      vec4 positionF1 = vec4(0.0);
+      vec4 offsetF2, positionF2;
+      for (int u = -1; u <= 1; u++) {
+        for (int k = -1; k <= 1; k++) {
+          for (int j = -1; j <= 1; j++) {
+            for (int i = -1; i <= 1; i++) {
+              vec4 cellOffset = vec4(i, j, k, u);
+              vec4 pointPosition = cellOffset +
+                                   hash_vec4_to_vec4(cellPosition + cellOffset) * randomness;
+              float distanceToPoint = voronoi_distance(
+                  pointPosition, localPosition, metric, exponent);
+              if (distanceToPoint < distanceF1) {
+                distanceF2 = distanceF1;
+                distanceF1 = distanceToPoint;
+                offsetF2 = offsetF1;
+                offsetF1 = cellOffset;
+                positionF2 = positionF1;
+                positionF1 = pointPosition;
+              }
+              else if (distanceToPoint < distanceF2) {
+                distanceF2 = distanceToPoint;
+                offsetF2 = cellOffset;
+                positionF2 = pointPosition;
+              }
+            }
+          }
+        }
+      }
+      octave_distance = distanceF2;
+      outColor.xyz = hash_vec4_to_vec3(cellPosition + offsetF2);
+      vec4 p = safe_divide(positionF2 + cellPosition, scale);
+      outPosition = p.xyz;
+      outW = p.w;
+
+      max_amplitude += max_distance * octave_amplitude;
+      float lerp_distance = outDistance + octave_distance * octave_amplitude;
+      outDistance = (1.0 - remainder) * outDistance + remainder * lerp_distance;
+      outPosition /= octave_scale;
+      outW /= octave_scale;
+    }
+  }
+  if (bool_normalize != 0.0) {
+    outDistance /= max_amplitude;
+  }
 }
 
 void node_tex_voronoi_distance_to_edge_4d(vec3 coord,
-  float w,
-  float scale,
-  float detail,
-  float roughness,
-  float lacunarity,
-  float smoothness,
-  float exponent,
-  float randomness,
-  float metric,
-  float bool_normalize,
-  out float outDistance,
-  out vec4 outColor,
-  out vec3 outPosition,
-  out float outW,
-  out float outRadius)
+                                          float w,
+                                          float scale,
+                                          float detail,
+                                          float roughness,
+                                          float lacunarity,
+                                          float smoothness,
+                                          float exponent,
+                                          float randomness,
+                                          float metric,
+                                          float bool_normalize,
+                                          out float outDistance,
+                                          out vec4 outColor,
+                                          out vec3 outPosition,
+                                          out float outW,
+                                          out float outRadius)
 {
   detail = clamp(detail, 0.0, 15.0);
   randomness = clamp(randomness, 0.0, 1.0);
@@ -1418,21 +2186,21 @@ void node_tex_voronoi_distance_to_edge_4d(vec3 coord,
 }
 
 void node_tex_voronoi_n_sphere_radius_4d(vec3 coord,
-  float w,
-  float scale,
-  float detail,
-  float roughness,
-  float lacunarity,
-  float smoothness,
-  float exponent,
-  float randomness,
-  float metric,
-  float bool_normalize,
-  out float outDistance,
-  out vec4 outColor,
-  out vec3 outPosition,
-  out float outW,
-  out float outRadius)
+                                         float w,
+                                         float scale,
+                                         float detail,
+                                         float roughness,
+                                         float lacunarity,
+                                         float smoothness,
+                                         float exponent,
+                                         float randomness,
+                                         float metric,
+                                         float bool_normalize,
+                                         out float outDistance,
+                                         out vec4 outColor,
+                                         out vec3 outPosition,
+                                         out float outW,
+                                         out float outRadius)
 {
   randomness = clamp(randomness, 0.0, 1.0);
 

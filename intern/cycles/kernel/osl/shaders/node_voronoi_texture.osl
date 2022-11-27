@@ -964,9 +964,75 @@ shader node_voronoi_texture(
     }
     else if (feature == "smooth_f1") {
       voronoi_smooth_f1_1d(w, smoothness, Exponent, randomness, metric, Distance, Color, WOut);
+
+                  float max_amplitude = 1.0;
+      if(detail!=0.0&&roughness != 0.0 && Lacunarity != 0.0)
+      {
+      float octave_scale = Lacunarity;
+      float octave_amplitude = roughness;
+      float octave_distance = 0.0;
+
+      for(int i = 0; i < int(detail);++i)
+      {
+         voronoi_smooth_f1_1d(w*octave_scale,smoothness, Exponent, randomness, metric, octave_distance, Color, WOut);
+
+         max_amplitude += octave_amplitude;
+         Distance += octave_distance * octave_amplitude;
+         octave_scale *= Lacunarity;
+         octave_amplitude *= roughness;
+      }
+
+      WOut /= octave_scale / Lacunarity;
+
+      float remainder = detail - int(detail);
+      if (remainder != 0.0)
+      {
+        voronoi_smooth_f1_1d(w*octave_scale,smoothness, Exponent, randomness, metric, octave_distance, Color, WOut);
+        max_amplitude += octave_amplitude;
+        float lerp_distance = Distance + octave_distance * octave_amplitude;
+              Distance = (1.0 - remainder) * Distance + remainder * lerp_distance;
+              WOut /= octave_scale;
+       }
+    }
+          if (normalize) {
+            Distance /= max_amplitude;
+          }
     }
     else if (feature == "f2") {
       voronoi_f2_1d(w, Exponent, randomness, metric, Distance, Color, WOut);
+
+                  float max_amplitude = 1.0;
+      if(detail!=0.0&&roughness != 0.0 && Lacunarity != 0.0)
+      {
+      float octave_scale = Lacunarity;
+      float octave_amplitude = roughness;
+      float octave_distance = 0.0;
+
+      for(int i = 0; i < int(detail);++i)
+      {
+         voronoi_f2_1d(w*octave_scale, Exponent, randomness, metric, octave_distance, Color, WOut);
+
+         max_amplitude += octave_amplitude;
+         Distance += octave_distance * octave_amplitude;
+         octave_scale *= Lacunarity;
+         octave_amplitude *= roughness;
+      }
+
+      WOut /= octave_scale / Lacunarity;
+
+      float remainder = detail - int(detail);
+      if (remainder != 0.0)
+      {
+        voronoi_f2_1d(w*octave_scale, Exponent, randomness, metric, octave_distance, Color, WOut);
+        max_amplitude += octave_amplitude;
+        float lerp_distance = Distance + octave_distance * octave_amplitude;
+              Distance = (1.0 - remainder) * Distance + remainder * lerp_distance;
+              WOut /= octave_scale;
+       }
+    }
+          if (normalize) {
+            Distance /= max_amplitude;
+          }
     }
     else if (feature == "distance_to_edge") {
       voronoi_distance_to_edge_1d(w, randomness, Distance);
@@ -985,7 +1051,8 @@ shader node_voronoi_texture(
     if (feature == "f1") {
       voronoi_f1_2d(coord2D, Exponent, randomness, metric, Distance, Color, outPosition2D);
 
-       float max_amplitude = 1.41421356237; /* 1.41421356237 == sqrt(2) */
+             float max_distance = voronoi_distance(vector2(1.0,1.0), vector2(0.0,0.0), metric, Exponent);
+      float max_amplitude = max_distance;
       if(detail!=0.0&&roughness != 0.0 && Lacunarity != 0.0)
       {
       float octave_scale = Lacunarity;
@@ -996,7 +1063,7 @@ shader node_voronoi_texture(
       {
          voronoi_f1_2d(coord2D*octave_scale, Exponent, randomness, metric, octave_distance, Color, outPosition2D);
 
-         max_amplitude += 1.41421356237 * octave_amplitude;
+         max_amplitude += max_distance * octave_amplitude;
          Distance += octave_distance * octave_amplitude;
          octave_scale *= Lacunarity;
          octave_amplitude *= roughness;
@@ -1008,7 +1075,7 @@ shader node_voronoi_texture(
       if (remainder != 0.0)
       {
         voronoi_f1_2d(coord2D*octave_scale, Exponent, randomness, metric, octave_distance, Color, outPosition2D);
-        max_amplitude += 1.41421356237 * octave_amplitude;
+        max_amplitude += max_distance * octave_amplitude;
         float lerp_distance = Distance + octave_distance * octave_amplitude;
               Distance = (1.0 - remainder) * Distance + remainder * lerp_distance;
               outPosition2D /= octave_scale;
@@ -1021,9 +1088,77 @@ shader node_voronoi_texture(
     else if (feature == "smooth_f1") {
       voronoi_smooth_f1_2d(
           coord2D, smoothness, Exponent, randomness, metric, Distance, Color, outPosition2D);
+
+                       float max_distance = voronoi_distance(vector2(1.0,1.0), vector2(0.0,0.0), metric, Exponent);
+      float max_amplitude = max_distance;
+      if(detail!=0.0&&roughness != 0.0 && Lacunarity != 0.0)
+      {
+      float octave_scale = Lacunarity;
+      float octave_amplitude = roughness;
+      float octave_distance = 0.0;
+
+      for(int i = 0; i < int(detail);++i)
+      {
+         voronoi_smooth_f1_2d(coord2D*octave_scale, smoothness,Exponent, randomness, metric, octave_distance, Color, outPosition2D);
+
+         max_amplitude += max_distance * octave_amplitude;
+         Distance += octave_distance * octave_amplitude;
+         octave_scale *= Lacunarity;
+         octave_amplitude *= roughness;
+      }
+
+      outPosition2D /= octave_scale / Lacunarity;
+
+      float remainder = detail - int(detail);
+      if (remainder != 0.0)
+      {
+        voronoi_smooth_f1_2d(coord2D*octave_scale, smoothness,Exponent, randomness, metric, octave_distance, Color, outPosition2D);
+        max_amplitude += max_distance * octave_amplitude;
+        float lerp_distance = Distance + octave_distance * octave_amplitude;
+              Distance = (1.0 - remainder) * Distance + remainder * lerp_distance;
+              outPosition2D /= octave_scale;
+       }
+    }
+          if (normalize) {
+            Distance /= max_amplitude;
+          }
     }
     else if (feature == "f2") {
       voronoi_f2_2d(coord2D, Exponent, randomness, metric, Distance, Color, outPosition2D);
+
+                   float max_distance = voronoi_distance(vector2(1.0,1.0), vector2(0.0,0.0), metric, Exponent);
+      float max_amplitude = max_distance;
+      if(detail!=0.0&&roughness != 0.0 && Lacunarity != 0.0)
+      {
+      float octave_scale = Lacunarity;
+      float octave_amplitude = roughness;
+      float octave_distance = 0.0;
+
+      for(int i = 0; i < int(detail);++i)
+      {
+         voronoi_f2_2d(coord2D*octave_scale, Exponent, randomness, metric, octave_distance, Color, outPosition2D);
+
+         max_amplitude += max_distance * octave_amplitude;
+         Distance += octave_distance * octave_amplitude;
+         octave_scale *= Lacunarity;
+         octave_amplitude *= roughness;
+      }
+
+      outPosition2D /= octave_scale / Lacunarity;
+
+      float remainder = detail - int(detail);
+      if (remainder != 0.0)
+      {
+        voronoi_f2_2d(coord2D*octave_scale, Exponent, randomness, metric, octave_distance, Color, outPosition2D);
+        max_amplitude += max_distance * octave_amplitude;
+        float lerp_distance = Distance + octave_distance * octave_amplitude;
+              Distance = (1.0 - remainder) * Distance + remainder * lerp_distance;
+              outPosition2D /= octave_scale;
+       }
+    }
+          if (normalize) {
+            Distance /= max_amplitude;
+          }
     }
     else if (feature == "distance_to_edge") {
       voronoi_distance_to_edge_2d(coord2D, randomness, Distance);
@@ -1041,7 +1176,8 @@ shader node_voronoi_texture(
     if (feature == "f1") {
       voronoi_f1_3d(coord, Exponent, randomness, metric, Distance, Color, Position);
       
-      float max_amplitude = 1.73205080757; /* 1.73205080757 == sqrt(3) */
+      float max_distance = voronoi_distance(vector3(1.0,1.0,1.0), vector3(0.0,0.0,0.0), metric, Exponent);
+      float max_amplitude = max_distance;
       if(detail!=0.0&&roughness != 0.0 && Lacunarity != 0.0)
       {
       float octave_scale = Lacunarity;
@@ -1052,7 +1188,7 @@ shader node_voronoi_texture(
       {
          voronoi_f1_3d(coord*octave_scale, Exponent, randomness, metric, octave_distance, Color, Position);
 
-         max_amplitude += 1.73205080757 * octave_amplitude;
+         max_amplitude += max_distance * octave_amplitude;
          Distance += octave_distance * octave_amplitude;
          octave_scale *= Lacunarity;
          octave_amplitude *= roughness;
@@ -1064,7 +1200,7 @@ shader node_voronoi_texture(
       if (remainder != 0.0)
       {
         voronoi_f1_3d(coord*octave_scale, Exponent, randomness, metric, octave_distance, Color, Position);
-        max_amplitude += 1.73205080757 * octave_amplitude;
+        max_amplitude += max_distance * octave_amplitude;
         float lerp_distance = Distance + octave_distance * octave_amplitude;
               Distance = (1.0 - remainder) * Distance + remainder * lerp_distance;
               Position /= octave_scale;
@@ -1077,9 +1213,77 @@ shader node_voronoi_texture(
     else if (feature == "smooth_f1") {
       voronoi_smooth_f1_3d(
           coord, smoothness, Exponent, randomness, metric, Distance, Color, Position);
+
+                float max_distance = voronoi_distance(vector3(1.0,1.0,1.0), vector3(0.0,0.0,0.0), metric, Exponent);
+      float max_amplitude = max_distance;
+      if(detail!=0.0&&roughness != 0.0 && Lacunarity != 0.0)
+      {
+      float octave_scale = Lacunarity;
+      float octave_amplitude = roughness;
+      float octave_distance = 0.0;
+
+      for(int i = 0; i < int(detail);++i)
+      {
+         voronoi_smooth_f1_3d(coord*octave_scale,smoothness, Exponent, randomness, metric, octave_distance, Color, Position);
+
+         max_amplitude += max_distance * octave_amplitude;
+         Distance += octave_distance * octave_amplitude;
+         octave_scale *= Lacunarity;
+         octave_amplitude *= roughness;
+      }
+
+      Position /= octave_scale / Lacunarity;
+
+      float remainder = detail - int(detail);
+      if (remainder != 0.0)
+      {
+        voronoi_smooth_f1_3d(coord*octave_scale,smoothness, Exponent, randomness, metric, octave_distance, Color, Position);
+        max_amplitude += max_distance * octave_amplitude;
+        float lerp_distance = Distance + octave_distance * octave_amplitude;
+              Distance = (1.0 - remainder) * Distance + remainder * lerp_distance;
+              Position /= octave_scale;
+       }
+    }
+          if (normalize) {
+            Distance /= max_amplitude;
+          }
     }
     else if (feature == "f2") {
       voronoi_f2_3d(coord, Exponent, randomness, metric, Distance, Color, Position);
+
+            float max_distance = voronoi_distance(vector3(1.0,1.0,1.0), vector3(0.0,0.0,0.0), metric, Exponent);
+      float max_amplitude = max_distance;
+      if(detail!=0.0&&roughness != 0.0 && Lacunarity != 0.0)
+      {
+      float octave_scale = Lacunarity;
+      float octave_amplitude = roughness;
+      float octave_distance = 0.0;
+
+      for(int i = 0; i < int(detail);++i)
+      {
+         voronoi_f2_3d(coord*octave_scale, Exponent, randomness, metric, octave_distance, Color, Position);
+
+         max_amplitude += max_distance * octave_amplitude;
+         Distance += octave_distance * octave_amplitude;
+         octave_scale *= Lacunarity;
+         octave_amplitude *= roughness;
+      }
+
+      Position /= octave_scale / Lacunarity;
+
+      float remainder = detail - int(detail);
+      if (remainder != 0.0)
+      {
+        voronoi_f2_3d(coord*octave_scale, Exponent, randomness, metric, octave_distance, Color, Position);
+        max_amplitude += max_distance * octave_amplitude;
+        float lerp_distance = Distance + octave_distance * octave_amplitude;
+              Distance = (1.0 - remainder) * Distance + remainder * lerp_distance;
+              Position /= octave_scale;
+       }
+    }
+          if (normalize) {
+            Distance /= max_amplitude;
+          }
     }
     else if (feature == "distance_to_edge") {
       voronoi_distance_to_edge_3d(coord, randomness, Distance);
@@ -1098,7 +1302,8 @@ shader node_voronoi_texture(
     if (feature == "f1") {
       voronoi_f1_4d(coord4D, Exponent, randomness, metric, Distance, Color, outPosition4D);
 
-            float max_amplitude = 2.0;
+            float max_distance = voronoi_distance(vector4(1.0,1.0,1.0,1.0), vector4(0.0,0.0,0.0,0.0), metric, Exponent);
+      float max_amplitude = max_distance;
       if(detail!=0.0&&roughness != 0.0 && Lacunarity != 0.0)
       {
       float octave_scale = Lacunarity;
@@ -1109,7 +1314,7 @@ shader node_voronoi_texture(
       {
          voronoi_f1_4d(coord4D * octave_scale, Exponent, randomness, metric, octave_distance, Color, outPosition4D);
 
-         max_amplitude += 2.0 * octave_amplitude;
+         max_amplitude += max_distance * octave_amplitude;
          Distance += octave_distance * octave_amplitude;
          octave_scale *= Lacunarity;
          octave_amplitude *= roughness;
@@ -1121,7 +1326,7 @@ shader node_voronoi_texture(
       if (remainder != 0.0)
       {
         voronoi_f1_4d(coord4D * octave_scale, Exponent, randomness, metric, octave_distance, Color, outPosition4D);
-        max_amplitude += 2.0 * octave_amplitude;
+        max_amplitude += max_distance * octave_amplitude;
         float lerp_distance = Distance + octave_distance * octave_amplitude;
               Distance = (1.0 - remainder) * Distance + remainder * lerp_distance;
               outPosition4D /= octave_scale;
@@ -1134,9 +1339,77 @@ shader node_voronoi_texture(
     else if (feature == "smooth_f1") {
       voronoi_smooth_f1_4d(
           coord4D, smoothness, Exponent, randomness, metric, Distance, Color, outPosition4D);
+
+                      float max_distance = voronoi_distance(vector4(1.0,1.0,1.0,1.0), vector4(0.0,0.0,0.0,0.0), metric, Exponent);
+      float max_amplitude = max_distance;
+      if(detail!=0.0&&roughness != 0.0 && Lacunarity != 0.0)
+      {
+      float octave_scale = Lacunarity;
+      float octave_amplitude = roughness;
+      float octave_distance = 0.0;
+
+      for(int i = 0; i < int(detail);++i)
+      {
+         voronoi_smooth_f1_4d(coord4D * octave_scale,smoothness, Exponent, randomness, metric, octave_distance, Color, outPosition4D);
+
+         max_amplitude += max_distance * octave_amplitude;
+         Distance += octave_distance * octave_amplitude;
+         octave_scale *= Lacunarity;
+         octave_amplitude *= roughness;
+      }
+
+      outPosition4D /= octave_scale / Lacunarity;
+
+      float remainder = detail - int(detail);
+      if (remainder != 0.0)
+      {
+        voronoi_smooth_f1_4d(coord4D * octave_scale, smoothness,Exponent, randomness, metric, octave_distance, Color, outPosition4D);
+        max_amplitude += max_distance * octave_amplitude;
+        float lerp_distance = Distance + octave_distance * octave_amplitude;
+              Distance = (1.0 - remainder) * Distance + remainder * lerp_distance;
+              outPosition4D /= octave_scale;
+       }
+    }
+          if (normalize) {
+            Distance /= max_amplitude;
+          }
     }
     else if (feature == "f2") {
       voronoi_f2_4d(coord4D, Exponent, randomness, metric, Distance, Color, outPosition4D);
+
+                  float max_distance = voronoi_distance(vector4(1.0,1.0,1.0,1.0), vector4(0.0,0.0,0.0,0.0), metric, Exponent);
+      float max_amplitude = max_distance;
+      if(detail!=0.0&&roughness != 0.0 && Lacunarity != 0.0)
+      {
+      float octave_scale = Lacunarity;
+      float octave_amplitude = roughness;
+      float octave_distance = 0.0;
+
+      for(int i = 0; i < int(detail);++i)
+      {
+         voronoi_f2_4d(coord4D * octave_scale, Exponent, randomness, metric, octave_distance, Color, outPosition4D);
+
+         max_amplitude += max_distance * octave_amplitude;
+         Distance += octave_distance * octave_amplitude;
+         octave_scale *= Lacunarity;
+         octave_amplitude *= roughness;
+      }
+
+      outPosition4D /= octave_scale / Lacunarity;
+
+      float remainder = detail - int(detail);
+      if (remainder != 0.0)
+      {
+        voronoi_f2_4d(coord4D * octave_scale, Exponent, randomness, metric, octave_distance, Color, outPosition4D);
+        max_amplitude += max_distance * octave_amplitude;
+        float lerp_distance = Distance + octave_distance * octave_amplitude;
+              Distance = (1.0 - remainder) * Distance + remainder * lerp_distance;
+              outPosition4D /= octave_scale;
+       }
+    }
+          if (normalize) {
+            Distance /= max_amplitude;
+          }
     }
     else if (feature == "distance_to_edge") {
       voronoi_distance_to_edge_4d(coord4D, randomness, Distance);

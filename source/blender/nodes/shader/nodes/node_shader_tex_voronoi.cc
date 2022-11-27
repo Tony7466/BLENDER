@@ -24,21 +24,22 @@ static void sh_node_tex_voronoi_declare(NodeDeclarationBuilder &b)
   });
   b.add_input<decl::Float>(N_("Scale")).min(-1000.0f).max(1000.0f).default_value(5.0f);
   b.add_input<decl::Float>(N_("Detail"))
-    .min(0.0f)
-    .max(15.0f)
-    .default_value(0.0f)
-    .make_available([](bNode& node) { node_storage(node).feature = SHD_VORONOI_F1; });
+      .min(0.0f)
+      .max(15.0f)
+      .default_value(0.0f)
+      .make_available([](bNode &node) { node_storage(node).feature = SHD_VORONOI_F1; });
   b.add_input<decl::Float>(N_("Roughness"))
-    .min(0.0f)
-    .max(1.0f)
-    .default_value(0.5f)
-    .subtype(PROP_FACTOR)
-    .make_available([](bNode& node) { node_storage(node).feature = SHD_VORONOI_F1; });;
+      .min(0.0f)
+      .max(1.0f)
+      .default_value(0.5f)
+      .subtype(PROP_FACTOR)
+      .make_available([](bNode &node) { node_storage(node).feature = SHD_VORONOI_F1; });
+  ;
   b.add_input<decl::Float>(N_("Lacunarity"))
-    .min(0.0f)
-    .max(1000.0f)
-    .default_value(2.0f)
-    .make_available([](bNode& node) { node_storage(node).feature = SHD_VORONOI_F1; });
+      .min(0.0f)
+      .max(1000.0f)
+      .default_value(2.0f)
+      .make_available([](bNode &node) { node_storage(node).feature = SHD_VORONOI_F1; });
   b.add_input<decl::Float>(N_("Smoothness"))
       .min(0.0f)
       .max(1.0f)
@@ -76,7 +77,7 @@ static void node_shader_buts_tex_voronoi(uiLayout *layout, bContext * /*C*/, Poi
       RNA_enum_get(ptr, "voronoi_dimensions") != 1) {
     uiItemR(layout, ptr, "distance", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
   }
-  if (!ELEM(feature, SHD_VORONOI_DISTANCE_TO_EDGE, SHD_VORONOI_N_SPHERE_RADIUS)){
+  if (!ELEM(feature, SHD_VORONOI_DISTANCE_TO_EDGE, SHD_VORONOI_N_SPHERE_RADIUS)) {
     uiItemR(layout, ptr, "normalize", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
   }
 }
@@ -161,9 +162,9 @@ static void node_shader_update_tex_voronoi(bNodeTree *ntree, bNode *node)
 {
   bNodeSocket *inVectorSock = nodeFindSocket(node, SOCK_IN, "Vector");
   bNodeSocket *inWSock = nodeFindSocket(node, SOCK_IN, "W");
-  bNodeSocket *inDetailSock= nodeFindSocket(node, SOCK_IN, "Detail");
-  bNodeSocket* inRoughnessSock = nodeFindSocket(node, SOCK_IN, "Roughness");
-  bNodeSocket* inLacunaritySock = nodeFindSocket(node, SOCK_IN, "Lacunarity");
+  bNodeSocket *inDetailSock = nodeFindSocket(node, SOCK_IN, "Detail");
+  bNodeSocket *inRoughnessSock = nodeFindSocket(node, SOCK_IN, "Roughness");
+  bNodeSocket *inLacunaritySock = nodeFindSocket(node, SOCK_IN, "Lacunarity");
   bNodeSocket *inSmoothnessSock = nodeFindSocket(node, SOCK_IN, "Smoothness");
   bNodeSocket *inExponentSock = nodeFindSocket(node, SOCK_IN, "Exponent");
 
@@ -183,8 +184,12 @@ static void node_shader_update_tex_voronoi(bNodeTree *ntree, bNode *node)
       storage.distance == SHD_VORONOI_MINKOWSKI && storage.dimensions != 1 &&
           !ELEM(storage.feature, SHD_VORONOI_DISTANCE_TO_EDGE, SHD_VORONOI_N_SPHERE_RADIUS));
   nodeSetSocketAvailability(ntree, inDetailSock, storage.feature != SHD_VORONOI_N_SPHERE_RADIUS);
-  nodeSetSocketAvailability(ntree, inRoughnessSock, storage.feature != SHD_VORONOI_N_SPHERE_RADIUS&& storage.feature != SHD_VORONOI_DISTANCE_TO_EDGE);
-  nodeSetSocketAvailability(ntree, inLacunaritySock, storage.feature != SHD_VORONOI_N_SPHERE_RADIUS);
+  nodeSetSocketAvailability(ntree,
+                            inRoughnessSock,
+                            storage.feature != SHD_VORONOI_N_SPHERE_RADIUS &&
+                                storage.feature != SHD_VORONOI_DISTANCE_TO_EDGE);
+  nodeSetSocketAvailability(
+      ntree, inLacunaritySock, storage.feature != SHD_VORONOI_N_SPHERE_RADIUS);
   nodeSetSocketAvailability(ntree, inSmoothnessSock, storage.feature == SHD_VORONOI_SMOOTH_F1);
 
   nodeSetSocketAvailability(
@@ -208,6 +213,84 @@ static void node_shader_update_tex_voronoi(bNodeTree *ntree, bNode *node)
 
 static MultiFunction::ExecutionHints voronoi_execution_hints{50, false};
 
+BLI_INLINE float voronoi_distance(const float a, const float b)
+{
+  return std::abs(b - a);
+}
+
+static float voronoi_distance(const float2 a,
+                              const float2 b,
+                              const int metric,
+                              const float exponent)
+{
+  switch (metric) {
+    case SHD_VORONOI_EUCLIDEAN:
+      return math::distance(a, b);
+    case SHD_VORONOI_MANHATTAN:
+      return std::abs(a.x - b.x) + std::abs(a.y - b.y);
+    case SHD_VORONOI_CHEBYCHEV:
+      return std::max(std::abs(a.x - b.x), std::abs(a.y - b.y));
+    case SHD_VORONOI_MINKOWSKI:
+      return std::pow(std::pow(std::abs(a.x - b.x), exponent) +
+                          std::pow(std::abs(a.y - b.y), exponent),
+                      1.0f / exponent);
+    default:
+      BLI_assert_unreachable();
+      break;
+  }
+  return 0.0f;
+}
+
+static float voronoi_distance(const float3 a,
+                              const float3 b,
+                              const int metric,
+                              const float exponent)
+{
+  switch (metric) {
+    case SHD_VORONOI_EUCLIDEAN:
+      return math::distance(a, b);
+    case SHD_VORONOI_MANHATTAN:
+      return std::abs(a.x - b.x) + std::abs(a.y - b.y) + std::abs(a.z - b.z);
+    case SHD_VORONOI_CHEBYCHEV:
+      return std::max(std::abs(a.x - b.x), std::max(std::abs(a.y - b.y), std::abs(a.z - b.z)));
+    case SHD_VORONOI_MINKOWSKI:
+      return std::pow(std::pow(std::abs(a.x - b.x), exponent) +
+                          std::pow(std::abs(a.y - b.y), exponent) +
+                          std::pow(std::abs(a.z - b.z), exponent),
+                      1.0f / exponent);
+    default:
+      BLI_assert_unreachable();
+      break;
+  }
+  return 0.0f;
+}
+
+static float voronoi_distance(const float4 a,
+                              const float4 b,
+                              const int metric,
+                              const float exponent)
+{
+  switch (metric) {
+    case SHD_VORONOI_EUCLIDEAN:
+      return math::distance(a, b);
+    case SHD_VORONOI_MANHATTAN:
+      return std::abs(a.x - b.x) + std::abs(a.y - b.y) + std::abs(a.z - b.z) + std::abs(a.w - b.w);
+    case SHD_VORONOI_CHEBYCHEV:
+      return std::max(
+          std::abs(a.x - b.x),
+          std::max(std::abs(a.y - b.y), std::max(std::abs(a.z - b.z), std::abs(a.w - b.w))));
+    case SHD_VORONOI_MINKOWSKI:
+      return std::pow(
+          std::pow(std::abs(a.x - b.x), exponent) + std::pow(std::abs(a.y - b.y), exponent) +
+              std::pow(std::abs(a.z - b.z), exponent) + std::pow(std::abs(a.w - b.w), exponent),
+          1.0f / exponent);
+    default:
+      BLI_assert_unreachable();
+      break;
+  }
+  return 0.0f;
+}
+
 class VoronoiMinowskiFunction : public fn::MultiFunction {
  private:
   int dimensions_;
@@ -215,7 +298,8 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
   bool normalize_;
 
  public:
-  VoronoiMinowskiFunction(int dimensions, int feature, bool normalize) : dimensions_(dimensions), feature_(feature), normalize_(normalize)
+  VoronoiMinowskiFunction(int dimensions, int feature, bool normalize)
+      : dimensions_(dimensions), feature_(feature), normalize_(normalize)
   {
     BLI_assert(dimensions >= 2 && dimensions <= 4);
     BLI_assert(feature >= 0 && feature <= 2);
@@ -316,9 +400,9 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
           case SHD_VORONOI_F1: {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &scale = get_scale(param++);
-            const VArray<float>& detail = get_detail(param++);
-            const VArray<float>& roughness = get_roughness(param++);
-            const VArray<float>& lacunarity = get_lacunarity(param++);
+            const VArray<float> &detail = get_detail(param++);
+            const VArray<float> &roughness = get_roughness(param++);
+            const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &exponent = get_exponent(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
@@ -346,7 +430,9 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
                 r_position[i] = float3(pos.x, pos.y, 0.0f);
               }
 
-              float max_amplitude = 1.41421356237f; /* 1.41421356237f  == sqrt(2) */
+              const float max_distance = voronoi_distance(
+                  float2(1.0f, 1.0f), float2(0.0f, 0.0f), SHD_VORONOI_MINKOWSKI, exponent);
+              float max_amplitude = max_distance;
               if (detail[i] != 0.0f && roughness[i] != 0.0f && lacunarity[i] != 0.0f) {
                 float octave_scale = lacunarity[i];
                 float octave_amplitude = roughness[i];
@@ -354,15 +440,15 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
 
                 for (int n = 0; n < int(detail[i]); ++n) {
                   noise::voronoi_f1(float2(vector[i].x, vector[i].y) * scale[i] * octave_scale,
-                    exponent[i],
-                    rand,
-                    SHD_VORONOI_MINKOWSKI,
-                    calc_distance ? &octave_distance : nullptr,
-                    calc_color ? &col : nullptr,
-                    calc_position ? &pos : nullptr);
+                                    exponent[i],
+                                    rand,
+                                    SHD_VORONOI_MINKOWSKI,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_position ? &pos : nullptr);
 
                   if (calc_distance) {
-                    max_amplitude += 1.41421356237f * octave_amplitude;
+                    max_amplitude += max_distance * octave_amplitude;
                     r_distance[i] += octave_distance * octave_amplitude;
                   }
                   octave_scale *= lacunarity[i];
@@ -379,16 +465,15 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
                 float remainder = detail[i] - int(detail[i]);
                 if (remainder != 0.0f) {
                   noise::voronoi_f1(float2(vector[i].x, vector[i].y) * scale[i] * octave_scale,
-                    exponent[i],
-                    rand,
-                    SHD_VORONOI_MINKOWSKI,
-                    calc_distance ? &octave_distance : nullptr,
-                    calc_color ? &col : nullptr,
-                    calc_position ? &pos : nullptr);
+                                    exponent[i],
+                                    rand,
+                                    SHD_VORONOI_MINKOWSKI,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_position ? &pos : nullptr);
 
-                  if (calc_distance)
-                  {
-                    max_amplitude += 1.41421356237f * octave_amplitude;
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
                     float lerp_distance = r_distance[i] + octave_distance * octave_amplitude;
                     r_distance[i] = (1.0f - remainder) * r_distance[i] + remainder * lerp_distance;
                   }
@@ -410,9 +495,9 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
           case SHD_VORONOI_F2: {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &scale = get_scale(param++);
-            const VArray<float>& detail = get_detail(param++);
-            const VArray<float>& roughness = get_roughness(param++);
-            const VArray<float>& lacunarity = get_lacunarity(param++);
+            const VArray<float> &detail = get_detail(param++);
+            const VArray<float> &roughness = get_roughness(param++);
+            const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &exponent = get_exponent(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
@@ -439,15 +524,75 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
                 pos = math::safe_divide(pos, scale[i]);
                 r_position[i] = float3(pos.x, pos.y, 0.0f);
               }
+
+              const float max_distance = voronoi_distance(
+                  float2(1.0f, 1.0f), float2(0.0f, 0.0f), SHD_VORONOI_MINKOWSKI, exponent);
+              float max_amplitude = max_distance;
+              if (detail[i] != 0.0f && roughness[i] != 0.0f && lacunarity[i] != 0.0f) {
+                float octave_scale = lacunarity[i];
+                float octave_amplitude = roughness[i];
+                float octave_distance = 0.0f;
+
+                for (int n = 0; n < int(detail[i]); ++n) {
+                  noise::voronoi_f2(float2(vector[i].x, vector[i].y) * scale[i] * octave_scale,
+                                    exponent[i],
+                                    rand,
+                                    SHD_VORONOI_MINKOWSKI,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_position ? &pos : nullptr);
+
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
+                    r_distance[i] += octave_distance * octave_amplitude;
+                  }
+                  octave_scale *= lacunarity[i];
+                  octave_amplitude *= roughness[i];
+                  if (calc_color) {
+                    r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                  }
+                  if (calc_position) {
+                    pos = math::safe_divide(pos, scale[i]);
+                    r_position[i] = (float3(pos.x, pos.y, 0.0f) / octave_scale) * lacunarity[i];
+                  }
+                }
+
+                float remainder = detail[i] - int(detail[i]);
+                if (remainder != 0.0f) {
+                  noise::voronoi_f2(float2(vector[i].x, vector[i].y) * scale[i] * octave_scale,
+                                    exponent[i],
+                                    rand,
+                                    SHD_VORONOI_MINKOWSKI,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_position ? &pos : nullptr);
+
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
+                    float lerp_distance = r_distance[i] + octave_distance * octave_amplitude;
+                    r_distance[i] = (1.0f - remainder) * r_distance[i] + remainder * lerp_distance;
+                  }
+                  if (calc_color) {
+                    r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                  }
+                  if (calc_position) {
+                    pos = math::safe_divide(pos, scale[i]);
+                    r_position[i] = float3(pos.x, pos.y, 0.0f) / octave_scale;
+                  }
+                }
+              }
+              if (normalize_ && calc_distance) {
+                r_distance[i] /= max_amplitude;
+              }
             }
             break;
           }
           case SHD_VORONOI_SMOOTH_F1: {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &scale = get_scale(param++);
-            const VArray<float>& detail = get_detail(param++);
-            const VArray<float>& roughness = get_roughness(param++);
-            const VArray<float>& lacunarity = get_lacunarity(param++);
+            const VArray<float> &detail = get_detail(param++);
+            const VArray<float> &roughness = get_roughness(param++);
+            const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &smoothness = get_smoothness(param++);
             const VArray<float> &exponent = get_exponent(param++);
             const VArray<float> &randomness = get_randomness(param++);
@@ -477,6 +622,70 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
                 pos = math::safe_divide(pos, scale[i]);
                 r_position[i] = float3(pos.x, pos.y, 0.0f);
               }
+
+              const float max_distance = voronoi_distance(
+                  float2(1.0f, 1.0f), float2(0.0f, 0.0f), SHD_VORONOI_MINKOWSKI, exponent);
+              float max_amplitude = max_distance;
+              if (detail[i] != 0.0f && roughness[i] != 0.0f && lacunarity[i] != 0.0f) {
+                float octave_scale = lacunarity[i];
+                float octave_amplitude = roughness[i];
+                float octave_distance = 0.0f;
+
+                for (int n = 0; n < int(detail[i]); ++n) {
+                  noise::voronoi_smooth_f1(float2(vector[i].x, vector[i].y) * scale[i] *
+                                               octave_scale,
+                                           smth,
+                                           exponent[i],
+                                           rand,
+                                           SHD_VORONOI_MINKOWSKI,
+                                           calc_distance ? &octave_distance : nullptr,
+                                           calc_color ? &col : nullptr,
+                                           calc_position ? &pos : nullptr);
+
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
+                    r_distance[i] += octave_distance * octave_amplitude;
+                  }
+                  octave_scale *= lacunarity[i];
+                  octave_amplitude *= roughness[i];
+                  if (calc_color) {
+                    r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                  }
+                  if (calc_position) {
+                    pos = math::safe_divide(pos, scale[i]);
+                    r_position[i] = (float3(pos.x, pos.y, 0.0f) / octave_scale) * lacunarity[i];
+                  }
+                }
+
+                float remainder = detail[i] - int(detail[i]);
+                if (remainder != 0.0f) {
+                  noise::voronoi_smooth_f1(float2(vector[i].x, vector[i].y) * scale[i] *
+                                               octave_scale,
+                                           smth,
+                                           exponent[i],
+                                           rand,
+                                           SHD_VORONOI_MINKOWSKI,
+                                           calc_distance ? &octave_distance : nullptr,
+                                           calc_color ? &col : nullptr,
+                                           calc_position ? &pos : nullptr);
+
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
+                    float lerp_distance = r_distance[i] + octave_distance * octave_amplitude;
+                    r_distance[i] = (1.0f - remainder) * r_distance[i] + remainder * lerp_distance;
+                  }
+                  if (calc_color) {
+                    r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                  }
+                  if (calc_position) {
+                    pos = math::safe_divide(pos, scale[i]);
+                    r_position[i] = float3(pos.x, pos.y, 0.0f) / octave_scale;
+                  }
+                }
+              }
+              if (normalize_ && calc_distance) {
+                r_distance[i] /= max_amplitude;
+              }
             }
             break;
           }
@@ -488,9 +697,9 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
           case SHD_VORONOI_F1: {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &scale = get_scale(param++);
-            const VArray<float>& detail = get_detail(param++);
-            const VArray<float>& roughness = get_roughness(param++);
-            const VArray<float>& lacunarity = get_lacunarity(param++);
+            const VArray<float> &detail = get_detail(param++);
+            const VArray<float> &roughness = get_roughness(param++);
+            const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &exponent = get_exponent(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
@@ -516,7 +725,11 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
                 r_position[i] = math::safe_divide(r_position[i], scale[i]);
               }
 
-              float max_amplitude = 1.73205080757f; /* 1.73205080757f == sqrt(3) */
+              const float max_distance = voronoi_distance(float3(1.0f, 1.0f, 1.0f),
+                                                          float3(0.0f, 0.0f, 0.0f),
+                                                          SHD_VORONOI_MINKOWSKI,
+                                                          exponent);
+              float max_amplitude = max_distance;
               if (detail[i] != 0.0f && roughness[i] != 0.0f && lacunarity[i] != 0.0f) {
                 float octave_scale = lacunarity[i];
                 float octave_amplitude = roughness[i];
@@ -524,14 +737,14 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
 
                 for (int n = 0; n < int(detail[i]); ++n) {
                   noise::voronoi_f1(vector[i] * scale[i] * octave_scale,
-                    exponent[i],
-                    rand,
-                    SHD_VORONOI_MINKOWSKI,
-                    calc_distance ? &octave_distance : nullptr,
-                    calc_color ? &col : nullptr,
-                    calc_position ? &r_position[i] : nullptr);
+                                    exponent[i],
+                                    rand,
+                                    SHD_VORONOI_MINKOWSKI,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_position ? &r_position[i] : nullptr);
                   if (calc_distance) {
-                    max_amplitude += 1.73205080757f * octave_amplitude;
+                    max_amplitude += max_distance * octave_amplitude;
                     r_distance[i] += octave_distance * octave_amplitude;
                   }
                   octave_scale *= lacunarity[i];
@@ -540,22 +753,22 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
                     r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
                   }
                   if (calc_position) {
-                    r_position[i] = (math::safe_divide(r_position[i], scale[i]) / octave_scale) * lacunarity[i];
+                    r_position[i] = (math::safe_divide(r_position[i], scale[i]) / octave_scale) *
+                                    lacunarity[i];
                   }
                 }
 
                 float remainder = detail[i] - int(detail[i]);
                 if (remainder != 0.0f) {
                   noise::voronoi_f1(vector[i] * scale[i] * octave_scale,
-                    exponent[i],
-                    rand,
-                    SHD_VORONOI_MINKOWSKI,
-                    calc_distance ? &octave_distance : nullptr,
-                    calc_color ? &col : nullptr,
-                    calc_position ? &r_position[i] : nullptr);
-                  if (calc_distance)
-                  {
-                    max_amplitude += 1.73205080757f * octave_amplitude;
+                                    exponent[i],
+                                    rand,
+                                    SHD_VORONOI_MINKOWSKI,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_position ? &r_position[i] : nullptr);
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
                     float lerp_distance = r_distance[i] + octave_distance * octave_amplitude;
                     r_distance[i] = (1.0f - remainder) * r_distance[i] + remainder * lerp_distance;
                   }
@@ -576,9 +789,9 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
           case SHD_VORONOI_F2: {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &scale = get_scale(param++);
-            const VArray<float>& detail = get_detail(param++);
-            const VArray<float>& roughness = get_roughness(param++);
-            const VArray<float>& lacunarity = get_lacunarity(param++);
+            const VArray<float> &detail = get_detail(param++);
+            const VArray<float> &roughness = get_roughness(param++);
+            const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &exponent = get_exponent(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
@@ -603,15 +816,74 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
               if (calc_position) {
                 r_position[i] = math::safe_divide(r_position[i], scale[i]);
               }
+
+              const float max_distance = voronoi_distance(float3(1.0f, 1.0f, 1.0f),
+                                                          float3(0.0f, 0.0f, 0.0f),
+                                                          SHD_VORONOI_MINKOWSKI,
+                                                          exponent);
+              float max_amplitude = max_distance;
+              if (detail[i] != 0.0f && roughness[i] != 0.0f && lacunarity[i] != 0.0f) {
+                float octave_scale = lacunarity[i];
+                float octave_amplitude = roughness[i];
+                float octave_distance = 0.0f;
+
+                for (int n = 0; n < int(detail[i]); ++n) {
+                  noise::voronoi_f2(vector[i] * scale[i] * octave_scale,
+                                    exponent[i],
+                                    rand,
+                                    SHD_VORONOI_MINKOWSKI,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_position ? &r_position[i] : nullptr);
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
+                    r_distance[i] += octave_distance * octave_amplitude;
+                  }
+                  octave_scale *= lacunarity[i];
+                  octave_amplitude *= roughness[i];
+                  if (calc_color) {
+                    r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                  }
+                  if (calc_position) {
+                    r_position[i] = (math::safe_divide(r_position[i], scale[i]) / octave_scale) *
+                                    lacunarity[i];
+                  }
+                }
+
+                float remainder = detail[i] - int(detail[i]);
+                if (remainder != 0.0f) {
+                  noise::voronoi_f2(vector[i] * scale[i] * octave_scale,
+                                    exponent[i],
+                                    rand,
+                                    SHD_VORONOI_MINKOWSKI,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_position ? &r_position[i] : nullptr);
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
+                    float lerp_distance = r_distance[i] + octave_distance * octave_amplitude;
+                    r_distance[i] = (1.0f - remainder) * r_distance[i] + remainder * lerp_distance;
+                  }
+                  if (calc_color) {
+                    r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                  }
+                  if (calc_position) {
+                    r_position[i] = math::safe_divide(r_position[i], scale[i]) / octave_scale;
+                  }
+                }
+              }
+              if (normalize_ && calc_distance) {
+                r_distance[i] /= max_amplitude;
+              }
             }
             break;
           }
           case SHD_VORONOI_SMOOTH_F1: {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &scale = get_scale(param++);
-            const VArray<float>& detail = get_detail(param++);
-            const VArray<float>& roughness = get_roughness(param++);
-            const VArray<float>& lacunarity = get_lacunarity(param++);
+            const VArray<float> &detail = get_detail(param++);
+            const VArray<float> &roughness = get_roughness(param++);
+            const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &smoothness = get_smoothness(param++);
             const VArray<float> &exponent = get_exponent(param++);
             const VArray<float> &randomness = get_randomness(param++);
@@ -639,6 +911,67 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
               if (calc_position) {
                 r_position[i] = math::safe_divide(r_position[i], scale[i]);
               }
+
+              const float max_distance = voronoi_distance(float3(1.0f, 1.0f, 1.0f),
+                                                          float3(0.0f, 0.0f, 0.0f),
+                                                          SHD_VORONOI_MINKOWSKI,
+                                                          exponent);
+              float max_amplitude = max_distance;
+              if (detail[i] != 0.0f && roughness[i] != 0.0f && lacunarity[i] != 0.0f) {
+                float octave_scale = lacunarity[i];
+                float octave_amplitude = roughness[i];
+                float octave_distance = 0.0f;
+
+                for (int n = 0; n < int(detail[i]); ++n) {
+                  noise::voronoi_smooth_f1(vector[i] * scale[i] * octave_scale,
+                                           smth,
+                                           exponent[i],
+                                           rand,
+                                           SHD_VORONOI_MINKOWSKI,
+                                           calc_distance ? &octave_distance : nullptr,
+                                           calc_color ? &col : nullptr,
+                                           calc_position ? &r_position[i] : nullptr);
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
+                    r_distance[i] += octave_distance * octave_amplitude;
+                  }
+                  octave_scale *= lacunarity[i];
+                  octave_amplitude *= roughness[i];
+                  if (calc_color) {
+                    r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                  }
+                  if (calc_position) {
+                    r_position[i] = (math::safe_divide(r_position[i], scale[i]) / octave_scale) *
+                                    lacunarity[i];
+                  }
+                }
+
+                float remainder = detail[i] - int(detail[i]);
+                if (remainder != 0.0f) {
+                  noise::voronoi_smooth_f1(vector[i] * scale[i] * octave_scale,
+                                           smth,
+                                           exponent[i],
+                                           rand,
+                                           SHD_VORONOI_MINKOWSKI,
+                                           calc_distance ? &octave_distance : nullptr,
+                                           calc_color ? &col : nullptr,
+                                           calc_position ? &r_position[i] : nullptr);
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
+                    float lerp_distance = r_distance[i] + octave_distance * octave_amplitude;
+                    r_distance[i] = (1.0f - remainder) * r_distance[i] + remainder * lerp_distance;
+                  }
+                  if (calc_color) {
+                    r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                  }
+                  if (calc_position) {
+                    r_position[i] = math::safe_divide(r_position[i], scale[i]) / octave_scale;
+                  }
+                }
+              }
+              if (normalize_ && calc_distance) {
+                r_distance[i] /= max_amplitude;
+              }
             }
             break;
           }
@@ -651,9 +984,9 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &w = get_w(param++);
             const VArray<float> &scale = get_scale(param++);
-            const VArray<float>& detail = get_detail(param++);
-            const VArray<float>& roughness = get_roughness(param++);
-            const VArray<float>& lacunarity = get_lacunarity(param++);
+            const VArray<float> &detail = get_detail(param++);
+            const VArray<float> &roughness = get_roughness(param++);
+            const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &exponent = get_exponent(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
@@ -689,7 +1022,11 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
                 }
               }
 
-              float max_amplitude = 2.0f;
+              const float max_distance = voronoi_distance(float4(1.0f, 1.0f, 1.0f, 1.0f),
+                                                          float4(0.0f, 0.0f, 0.0f, 0.0f),
+                                                          SHD_VORONOI_MINKOWSKI,
+                                                          exponent);
+              float max_amplitude = max_distance;
               if (detail[i] != 0.0f && roughness[i] != 0.0f && lacunarity[i] != 0.0f) {
                 float octave_scale = lacunarity[i];
                 float octave_amplitude = roughness[i];
@@ -697,14 +1034,14 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
 
                 for (int n = 0; n < int(detail[i]); ++n) {
                   noise::voronoi_f1(p * octave_scale,
-                    exponent[i],
-                    rand,
-                    SHD_VORONOI_F1,
-                    calc_distance ? &octave_distance : nullptr,
-                    calc_color ? &col : nullptr,
-                    calc_position || calc_w ? &pos : nullptr);
+                                    exponent[i],
+                                    rand,
+                                    SHD_VORONOI_F1,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_position || calc_w ? &pos : nullptr);
                   if (calc_distance) {
-                    max_amplitude += 2.0f * octave_amplitude;
+                    max_amplitude += max_distance * octave_amplitude;
                     r_distance[i] += octave_distance * octave_amplitude;
                   }
                   octave_scale *= lacunarity[i];
@@ -726,15 +1063,14 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
                 float remainder = detail[i] - int(detail[i]);
                 if (remainder != 0.0f) {
                   noise::voronoi_f1(p * octave_scale,
-                    exponent[i],
-                    rand,
-                    SHD_VORONOI_F1,
-                    calc_distance ? &octave_distance : nullptr,
-                    calc_color ? &col : nullptr,
-                    calc_position || calc_w ? &pos : nullptr);
-                  if (calc_distance)
-                  {
-                    max_amplitude += 2.0f * octave_amplitude;
+                                    exponent[i],
+                                    rand,
+                                    SHD_VORONOI_F1,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_position || calc_w ? &pos : nullptr);
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
                     float lerp_distance = r_distance[i] + octave_distance * octave_amplitude;
                     r_distance[i] = (1.0f - remainder) * r_distance[i] + remainder * lerp_distance;
                   }
@@ -762,9 +1098,9 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &w = get_w(param++);
             const VArray<float> &scale = get_scale(param++);
-            const VArray<float>& detail = get_detail(param++);
-            const VArray<float>& roughness = get_roughness(param++);
-            const VArray<float>& lacunarity = get_lacunarity(param++);
+            const VArray<float> &detail = get_detail(param++);
+            const VArray<float> &roughness = get_roughness(param++);
+            const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &exponent = get_exponent(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
@@ -799,6 +1135,76 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
                   r_w[i] = pos.w;
                 }
               }
+
+              const float max_distance = voronoi_distance(float4(1.0f, 1.0f, 1.0f, 1.0f),
+                                                          float4(0.0f, 0.0f, 0.0f, 0.0f),
+                                                          SHD_VORONOI_MINKOWSKI,
+                                                          exponent);
+              float max_amplitude = max_distance;
+              if (detail[i] != 0.0f && roughness[i] != 0.0f && lacunarity[i] != 0.0f) {
+                float octave_scale = lacunarity[i];
+                float octave_amplitude = roughness[i];
+                float octave_distance = 0.0f;
+
+                for (int n = 0; n < int(detail[i]); ++n) {
+                  noise::voronoi_f2(p * octave_scale,
+                                    exponent[i],
+                                    rand,
+                                    SHD_VORONOI_F1,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_position || calc_w ? &pos : nullptr);
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
+                    r_distance[i] += octave_distance * octave_amplitude;
+                  }
+                  octave_scale *= lacunarity[i];
+                  octave_amplitude *= roughness[i];
+                  if (calc_color) {
+                    r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                  }
+                  if (calc_position || calc_w) {
+                    pos = math::safe_divide(pos, scale[i]);
+                    if (calc_position) {
+                      r_position[i] = (float3(pos.x, pos.y, pos.z) / octave_scale) * lacunarity[i];
+                    }
+                    if (calc_w) {
+                      r_w[i] = (pos.w / octave_scale) * lacunarity[i];
+                    }
+                  }
+                }
+
+                float remainder = detail[i] - int(detail[i]);
+                if (remainder != 0.0f) {
+                  noise::voronoi_f2(p * octave_scale,
+                                    exponent[i],
+                                    rand,
+                                    SHD_VORONOI_F1,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_position || calc_w ? &pos : nullptr);
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
+                    float lerp_distance = r_distance[i] + octave_distance * octave_amplitude;
+                    r_distance[i] = (1.0f - remainder) * r_distance[i] + remainder * lerp_distance;
+                  }
+                  if (calc_color) {
+                    r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                  }
+                  if (calc_position || calc_w) {
+                    pos = math::safe_divide(pos, scale[i]);
+                    if (calc_position) {
+                      r_position[i] = float3(pos.x, pos.y, pos.z) / octave_scale;
+                    }
+                    if (calc_w) {
+                      r_w[i] = pos.w / octave_scale;
+                    }
+                  }
+                }
+              }
+              if (normalize_ && calc_distance) {
+                r_distance[i] /= max_amplitude;
+              }
             }
             break;
           }
@@ -806,9 +1212,9 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &w = get_w(param++);
             const VArray<float> &scale = get_scale(param++);
-            const VArray<float>& detail = get_detail(param++);
-            const VArray<float>& roughness = get_roughness(param++);
-            const VArray<float>& lacunarity = get_lacunarity(param++);
+            const VArray<float> &detail = get_detail(param++);
+            const VArray<float> &roughness = get_roughness(param++);
+            const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &smoothness = get_smoothness(param++);
             const VArray<float> &exponent = get_exponent(param++);
             const VArray<float> &randomness = get_randomness(param++);
@@ -845,6 +1251,78 @@ class VoronoiMinowskiFunction : public fn::MultiFunction {
                 if (calc_w) {
                   r_w[i] = pos.w;
                 }
+              }
+
+              const float max_distance = voronoi_distance(float4(1.0f, 1.0f, 1.0f, 1.0f),
+                                                          float4(0.0f, 0.0f, 0.0f, 0.0f),
+                                                          SHD_VORONOI_MINKOWSKI,
+                                                          exponent);
+              float max_amplitude = max_distance;
+              if (detail[i] != 0.0f && roughness[i] != 0.0f && lacunarity[i] != 0.0f) {
+                float octave_scale = lacunarity[i];
+                float octave_amplitude = roughness[i];
+                float octave_distance = 0.0f;
+
+                for (int n = 0; n < int(detail[i]); ++n) {
+                  noise::voronoi_smooth_f1(p * octave_scale,
+                                           smth,
+                                           exponent[i],
+                                           rand,
+                                           SHD_VORONOI_F1,
+                                           calc_distance ? &octave_distance : nullptr,
+                                           calc_color ? &col : nullptr,
+                                           calc_position || calc_w ? &pos : nullptr);
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
+                    r_distance[i] += octave_distance * octave_amplitude;
+                  }
+                  octave_scale *= lacunarity[i];
+                  octave_amplitude *= roughness[i];
+                  if (calc_color) {
+                    r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                  }
+                  if (calc_position || calc_w) {
+                    pos = math::safe_divide(pos, scale[i]);
+                    if (calc_position) {
+                      r_position[i] = (float3(pos.x, pos.y, pos.z) / octave_scale) * lacunarity[i];
+                    }
+                    if (calc_w) {
+                      r_w[i] = (pos.w / octave_scale) * lacunarity[i];
+                    }
+                  }
+                }
+
+                float remainder = detail[i] - int(detail[i]);
+                if (remainder != 0.0f) {
+                  noise::voronoi_smooth_f1(p * octave_scale,
+                                           smth,
+                                           exponent[i],
+                                           rand,
+                                           SHD_VORONOI_F1,
+                                           calc_distance ? &octave_distance : nullptr,
+                                           calc_color ? &col : nullptr,
+                                           calc_position || calc_w ? &pos : nullptr);
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
+                    float lerp_distance = r_distance[i] + octave_distance * octave_amplitude;
+                    r_distance[i] = (1.0f - remainder) * r_distance[i] + remainder * lerp_distance;
+                  }
+                  if (calc_color) {
+                    r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                  }
+                  if (calc_position || calc_w) {
+                    pos = math::safe_divide(pos, scale[i]);
+                    if (calc_position) {
+                      r_position[i] = float3(pos.x, pos.y, pos.z) / octave_scale;
+                    }
+                    if (calc_w) {
+                      r_w[i] = pos.w / octave_scale;
+                    }
+                  }
+                }
+              }
+              if (normalize_ && calc_distance) {
+                r_distance[i] /= max_amplitude;
               }
             }
             break;
@@ -970,9 +1448,9 @@ class VoronoiMetricFunction : public fn::MultiFunction {
           case SHD_VORONOI_F1: {
             const VArray<float> &w = get_w(param++);
             const VArray<float> &scale = get_scale(param++);
-            const VArray<float>& detail = get_detail(param++);
-            const VArray<float>& roughness = get_roughness(param++);
-            const VArray<float>& lacunarity = get_lacunarity(param++);
+            const VArray<float> &detail = get_detail(param++);
+            const VArray<float> &roughness = get_roughness(param++);
+            const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -1003,11 +1481,11 @@ class VoronoiMetricFunction : public fn::MultiFunction {
                 float octave_distance = 0.0f;
 
                 for (int n = 0; n < int(detail[i]); ++n) {
-                  noise::voronoi_f1(p* octave_scale,
-                    rand,
-                    calc_distance ? &octave_distance : nullptr,
-                    calc_color ? &col : nullptr,
-                    calc_w ? &r_w[i] : nullptr);
+                  noise::voronoi_f1(p * octave_scale,
+                                    rand,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_w ? &r_w[i] : nullptr);
                   if (calc_distance) {
                     max_amplitude += octave_amplitude;
                     r_distance[i] += octave_distance * octave_amplitude;
@@ -1025,12 +1503,11 @@ class VoronoiMetricFunction : public fn::MultiFunction {
                 float remainder = detail[i] - int(detail[i]);
                 if (remainder != 0.0f) {
                   noise::voronoi_f1(p * octave_scale,
-                    rand,
-                    calc_distance ? &octave_distance : nullptr,
-                    calc_color ? &col : nullptr,
-                    calc_w ? &r_w[i] : nullptr);
-                  if (calc_distance)
-                  {
+                                    rand,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_w ? &r_w[i] : nullptr);
+                  if (calc_distance) {
                     max_amplitude += octave_amplitude;
                     float lerp_distance = r_distance[i] + octave_distance * octave_amplitude;
                     r_distance[i] = (1.0f - remainder) * r_distance[i] + remainder * lerp_distance;
@@ -1052,9 +1529,9 @@ class VoronoiMetricFunction : public fn::MultiFunction {
           case SHD_VORONOI_F2: {
             const VArray<float> &w = get_w(param++);
             const VArray<float> &scale = get_scale(param++);
-            const VArray<float>& detail = get_detail(param++);
-            const VArray<float>& roughness = get_roughness(param++);
-            const VArray<float>& lacunarity = get_lacunarity(param++);
+            const VArray<float> &detail = get_detail(param++);
+            const VArray<float> &roughness = get_roughness(param++);
+            const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -1077,15 +1554,65 @@ class VoronoiMetricFunction : public fn::MultiFunction {
               if (calc_w) {
                 r_w[i] = safe_divide(r_w[i], scale[i]);
               }
+
+              float max_amplitude = 1.0f;
+              if (detail[i] != 0.0f && roughness[i] != 0.0f && lacunarity[i] != 0.0f) {
+                float octave_scale = lacunarity[i];
+                float octave_amplitude = roughness[i];
+                float octave_distance = 0.0f;
+
+                for (int n = 0; n < int(detail[i]); ++n) {
+                  noise::voronoi_f2(p * octave_scale,
+                                    rand,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_w ? &r_w[i] : nullptr);
+                  if (calc_distance) {
+                    max_amplitude += octave_amplitude;
+                    r_distance[i] += octave_distance * octave_amplitude;
+                  }
+                  octave_scale *= lacunarity[i];
+                  octave_amplitude *= roughness[i];
+                  if (calc_color) {
+                    r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                  }
+                  if (calc_w) {
+                    r_w[i] = (safe_divide(r_w[i], scale[i]) / octave_scale) * lacunarity[i];
+                  }
+                }
+
+                float remainder = detail[i] - int(detail[i]);
+                if (remainder != 0.0f) {
+                  noise::voronoi_f2(p * octave_scale,
+                                    rand,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_w ? &r_w[i] : nullptr);
+                  if (calc_distance) {
+                    max_amplitude += octave_amplitude;
+                    float lerp_distance = r_distance[i] + octave_distance * octave_amplitude;
+                    r_distance[i] = (1.0f - remainder) * r_distance[i] + remainder * lerp_distance;
+                  }
+                  if (calc_color) {
+                    r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                  }
+                  if (calc_w) {
+                    r_w[i] = safe_divide(r_w[i], scale[i]) / octave_scale;
+                  }
+                }
+              }
+              if (normalize_ && calc_distance) {
+                r_distance[i] /= max_amplitude;
+              }
             }
             break;
           }
           case SHD_VORONOI_SMOOTH_F1: {
             const VArray<float> &w = get_w(param++);
             const VArray<float> &scale = get_scale(param++);
-            const VArray<float>& detail = get_detail(param++);
-            const VArray<float>& roughness = get_roughness(param++);
-            const VArray<float>& lacunarity = get_lacunarity(param++);
+            const VArray<float> &detail = get_detail(param++);
+            const VArray<float> &roughness = get_roughness(param++);
+            const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &smoothness = get_smoothness(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
@@ -1111,6 +1638,58 @@ class VoronoiMetricFunction : public fn::MultiFunction {
               if (calc_w) {
                 r_w[i] = safe_divide(r_w[i], scale[i]);
               }
+
+              float max_amplitude = 1.0f;
+              if (detail[i] != 0.0f && roughness[i] != 0.0f && lacunarity[i] != 0.0f) {
+                float octave_scale = lacunarity[i];
+                float octave_amplitude = roughness[i];
+                float octave_distance = 0.0f;
+
+                for (int n = 0; n < int(detail[i]); ++n) {
+                  noise::voronoi_smooth_f1(p * octave_scale,
+                                           smth,
+                                           rand,
+                                           calc_distance ? &octave_distance : nullptr,
+                                           calc_color ? &col : nullptr,
+                                           calc_w ? &r_w[i] : nullptr);
+                  if (calc_distance) {
+                    max_amplitude += octave_amplitude;
+                    r_distance[i] += octave_distance * octave_amplitude;
+                  }
+                  octave_scale *= lacunarity[i];
+                  octave_amplitude *= roughness[i];
+                  if (calc_color) {
+                    r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                  }
+                  if (calc_w) {
+                    r_w[i] = (safe_divide(r_w[i], scale[i]) / octave_scale) * lacunarity[i];
+                  }
+                }
+
+                float remainder = detail[i] - int(detail[i]);
+                if (remainder != 0.0f) {
+                  noise::voronoi_smooth_f1(p * octave_scale,
+                                           smth,
+                                           rand,
+                                           calc_distance ? &octave_distance : nullptr,
+                                           calc_color ? &col : nullptr,
+                                           calc_w ? &r_w[i] : nullptr);
+                  if (calc_distance) {
+                    max_amplitude += octave_amplitude;
+                    float lerp_distance = r_distance[i] + octave_distance * octave_amplitude;
+                    r_distance[i] = (1.0f - remainder) * r_distance[i] + remainder * lerp_distance;
+                  }
+                  if (calc_color) {
+                    r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                  }
+                  if (calc_w) {
+                    r_w[i] = safe_divide(r_w[i], scale[i]) / octave_scale;
+                  }
+                }
+              }
+              if (normalize_ && calc_distance) {
+                r_distance[i] /= max_amplitude;
+              }
             }
             break;
           }
@@ -1122,9 +1701,9 @@ class VoronoiMetricFunction : public fn::MultiFunction {
           case SHD_VORONOI_F1: {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &scale = get_scale(param++);
-            const VArray<float>& detail = get_detail(param++);
-            const VArray<float>& roughness = get_roughness(param++);
-            const VArray<float>& lacunarity = get_lacunarity(param++);
+            const VArray<float> &detail = get_detail(param++);
+            const VArray<float> &roughness = get_roughness(param++);
+            const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -1151,23 +1730,25 @@ class VoronoiMetricFunction : public fn::MultiFunction {
                 r_position[i] = float3(pos.x, pos.y, 0.0f);
               }
 
-              float max_amplitude = 1.41421356237f; /* 1.41421356237f == sqrt(2) */
+              const float max_distance = voronoi_distance(
+                  float2(1.0f, 1.0f), float2(0.0f, 0.0f), metric_, 0.0f);
+              float max_amplitude = max_distance;
               if (detail[i] != 0.0f && roughness[i] != 0.0f && lacunarity[i] != 0.0f) {
                 float octave_scale = lacunarity[i];
                 float octave_amplitude = roughness[i];
                 float octave_distance = 0.0f;
 
                 for (int n = 0; n < int(detail[i]); ++n) {
-                  noise::voronoi_f1(float2(vector[i].x, vector[i].y)* scale[i]* octave_scale,
-                    0.0f,
-                    rand,
-                    metric_,
-                    calc_distance ? &octave_distance : nullptr,
-                    calc_color ? &col : nullptr,
-                    calc_position ? &pos : nullptr);
+                  noise::voronoi_f1(float2(vector[i].x, vector[i].y) * scale[i] * octave_scale,
+                                    0.0f,
+                                    rand,
+                                    metric_,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_position ? &pos : nullptr);
 
                   if (calc_distance) {
-                    max_amplitude += 1.41421356237f * octave_amplitude;
+                    max_amplitude += max_distance * octave_amplitude;
                     r_distance[i] += octave_distance * octave_amplitude;
                   }
                   octave_scale *= lacunarity[i];
@@ -1183,17 +1764,16 @@ class VoronoiMetricFunction : public fn::MultiFunction {
 
                 float remainder = detail[i] - int(detail[i]);
                 if (remainder != 0.0f) {
-                  noise::voronoi_f1(float2(vector[i].x, vector[i].y)* scale[i]* octave_scale,
-                    0.0f,
-                    rand,
-                    metric_,
-                    calc_distance ? &octave_distance : nullptr,
-                    calc_color ? &col : nullptr,
-                    calc_position ? &pos : nullptr);
+                  noise::voronoi_f1(float2(vector[i].x, vector[i].y) * scale[i] * octave_scale,
+                                    0.0f,
+                                    rand,
+                                    metric_,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_position ? &pos : nullptr);
 
-                  if (calc_distance)
-                  {
-                    max_amplitude += 1.41421356237f * octave_amplitude;
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
                     float lerp_distance = r_distance[i] + octave_distance * octave_amplitude;
                     r_distance[i] = (1.0f - remainder) * r_distance[i] + remainder * lerp_distance;
                   }
@@ -1215,9 +1795,9 @@ class VoronoiMetricFunction : public fn::MultiFunction {
           case SHD_VORONOI_F2: {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &scale = get_scale(param++);
-            const VArray<float>& detail = get_detail(param++);
-            const VArray<float>& roughness = get_roughness(param++);
-            const VArray<float>& lacunarity = get_lacunarity(param++);
+            const VArray<float> &detail = get_detail(param++);
+            const VArray<float> &roughness = get_roughness(param++);
+            const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -1243,15 +1823,75 @@ class VoronoiMetricFunction : public fn::MultiFunction {
                 pos = math::safe_divide(pos, scale[i]);
                 r_position[i] = float3(pos.x, pos.y, 0.0f);
               }
+
+              const float max_distance = voronoi_distance(
+                  float2(1.0f, 1.0f), float2(0.0f, 0.0f), metric_, 0.0f);
+              float max_amplitude = max_distance;
+              if (detail[i] != 0.0f && roughness[i] != 0.0f && lacunarity[i] != 0.0f) {
+                float octave_scale = lacunarity[i];
+                float octave_amplitude = roughness[i];
+                float octave_distance = 0.0f;
+
+                for (int n = 0; n < int(detail[i]); ++n) {
+                  noise::voronoi_f2(float2(vector[i].x, vector[i].y) * scale[i] * octave_scale,
+                                    0.0f,
+                                    rand,
+                                    metric_,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_position ? &pos : nullptr);
+
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
+                    r_distance[i] += octave_distance * octave_amplitude;
+                  }
+                  octave_scale *= lacunarity[i];
+                  octave_amplitude *= roughness[i];
+                  if (calc_color) {
+                    r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                  }
+                  if (calc_position) {
+                    pos = math::safe_divide(pos, scale[i]);
+                    r_position[i] = (float3(pos.x, pos.y, 0.0f) / octave_scale) * lacunarity[i];
+                  }
+                }
+
+                float remainder = detail[i] - int(detail[i]);
+                if (remainder != 0.0f) {
+                  noise::voronoi_f2(float2(vector[i].x, vector[i].y) * scale[i] * octave_scale,
+                                    0.0f,
+                                    rand,
+                                    metric_,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_position ? &pos : nullptr);
+
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
+                    float lerp_distance = r_distance[i] + octave_distance * octave_amplitude;
+                    r_distance[i] = (1.0f - remainder) * r_distance[i] + remainder * lerp_distance;
+                  }
+                  if (calc_color) {
+                    r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                  }
+                  if (calc_position) {
+                    pos = math::safe_divide(pos, scale[i]);
+                    r_position[i] = float3(pos.x, pos.y, 0.0f) / octave_scale;
+                  }
+                }
+              }
+              if (normalize_ && calc_distance) {
+                r_distance[i] /= max_amplitude;
+              }
             }
             break;
           }
           case SHD_VORONOI_SMOOTH_F1: {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &scale = get_scale(param++);
-            const VArray<float>& detail = get_detail(param++);
-            const VArray<float>& roughness = get_roughness(param++);
-            const VArray<float>& lacunarity = get_lacunarity(param++);
+            const VArray<float> &detail = get_detail(param++);
+            const VArray<float> &roughness = get_roughness(param++);
+            const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &smoothness = get_smoothness(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
@@ -1280,6 +1920,70 @@ class VoronoiMetricFunction : public fn::MultiFunction {
                 pos = math::safe_divide(pos, scale[i]);
                 r_position[i] = float3(pos.x, pos.y, 0.0f);
               }
+
+              const float max_distance = voronoi_distance(
+                  float2(1.0f, 1.0f), float2(0.0f, 0.0f), metric_, 0.0f);
+              float max_amplitude = max_distance;
+              if (detail[i] != 0.0f && roughness[i] != 0.0f && lacunarity[i] != 0.0f) {
+                float octave_scale = lacunarity[i];
+                float octave_amplitude = roughness[i];
+                float octave_distance = 0.0f;
+
+                for (int n = 0; n < int(detail[i]); ++n) {
+                  noise::voronoi_smooth_f1(float2(vector[i].x, vector[i].y) * scale[i] *
+                                               octave_scale,
+                                           smth,
+                                           0.0f,
+                                           rand,
+                                           metric_,
+                                           calc_distance ? &octave_distance : nullptr,
+                                           calc_color ? &col : nullptr,
+                                           calc_position ? &pos : nullptr);
+
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
+                    r_distance[i] += octave_distance * octave_amplitude;
+                  }
+                  octave_scale *= lacunarity[i];
+                  octave_amplitude *= roughness[i];
+                  if (calc_color) {
+                    r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                  }
+                  if (calc_position) {
+                    pos = math::safe_divide(pos, scale[i]);
+                    r_position[i] = (float3(pos.x, pos.y, 0.0f) / octave_scale) * lacunarity[i];
+                  }
+                }
+
+                float remainder = detail[i] - int(detail[i]);
+                if (remainder != 0.0f) {
+                  noise::voronoi_smooth_f1(float2(vector[i].x, vector[i].y) * scale[i] *
+                                               octave_scale,
+                                           smth,
+                                           0.0f,
+                                           rand,
+                                           metric_,
+                                           calc_distance ? &octave_distance : nullptr,
+                                           calc_color ? &col : nullptr,
+                                           calc_position ? &pos : nullptr);
+
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
+                    float lerp_distance = r_distance[i] + octave_distance * octave_amplitude;
+                    r_distance[i] = (1.0f - remainder) * r_distance[i] + remainder * lerp_distance;
+                  }
+                  if (calc_color) {
+                    r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                  }
+                  if (calc_position) {
+                    pos = math::safe_divide(pos, scale[i]);
+                    r_position[i] = float3(pos.x, pos.y, 0.0f) / octave_scale;
+                  }
+                }
+              }
+              if (normalize_ && calc_distance) {
+                r_distance[i] /= max_amplitude;
+              }
             }
             break;
           }
@@ -1291,9 +1995,9 @@ class VoronoiMetricFunction : public fn::MultiFunction {
           case SHD_VORONOI_F1: {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &scale = get_scale(param++);
-            const VArray<float>& detail = get_detail(param++);
-            const VArray<float>& roughness = get_roughness(param++);
-            const VArray<float>& lacunarity = get_lacunarity(param++);
+            const VArray<float> &detail = get_detail(param++);
+            const VArray<float> &roughness = get_roughness(param++);
+            const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -1318,22 +2022,24 @@ class VoronoiMetricFunction : public fn::MultiFunction {
                 r_position[i] = math::safe_divide(r_position[i], scale[i]);
               }
 
-              float max_amplitude = 1.73205080757f; /* 1.73205080757f == sqrt(3) */
+              const float max_distance = voronoi_distance(
+                  float3(1.0f, 1.0f, 1.0f), float3(0.0f, 0.0f, 0.0f), metric_, 0.0f);
+              float max_amplitude = max_distance;
               if (detail[i] != 0.0f && roughness[i] != 0.0f && lacunarity[i] != 0.0f) {
                 float octave_scale = lacunarity[i];
                 float octave_amplitude = roughness[i];
                 float octave_distance = 0.0f;
 
                 for (int n = 0; n < int(detail[i]); ++n) {
-                  noise::voronoi_f1(vector[i] * scale[i]* octave_scale,
-                    0.0f,
-                    rand,
-                    metric_,
-                    calc_distance ? &octave_distance : nullptr,
-                    calc_color ? &col : nullptr,
-                    calc_position ? &r_position[i] : nullptr);
+                  noise::voronoi_f1(vector[i] * scale[i] * octave_scale,
+                                    0.0f,
+                                    rand,
+                                    metric_,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_position ? &r_position[i] : nullptr);
                   if (calc_distance) {
-                    max_amplitude += 1.73205080757f * octave_amplitude;
+                    max_amplitude += max_distance * octave_amplitude;
                     r_distance[i] += octave_distance * octave_amplitude;
                   }
                   octave_scale *= lacunarity[i];
@@ -1342,22 +2048,22 @@ class VoronoiMetricFunction : public fn::MultiFunction {
                     r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
                   }
                   if (calc_position) {
-                    r_position[i] = (math::safe_divide(r_position[i], scale[i]) / octave_scale) * lacunarity[i];
+                    r_position[i] = (math::safe_divide(r_position[i], scale[i]) / octave_scale) *
+                                    lacunarity[i];
                   }
                 }
 
                 float remainder = detail[i] - int(detail[i]);
                 if (remainder != 0.0f) {
                   noise::voronoi_f1(vector[i] * scale[i] * octave_scale,
-                    0.0f,
-                    rand,
-                    metric_,
-                    calc_distance ? &octave_distance : nullptr,
-                    calc_color ? &col : nullptr,
-                    calc_position ? &r_position[i] : nullptr);
-                  if (calc_distance)
-                  {
-                    max_amplitude += 1.73205080757f * octave_amplitude;
+                                    0.0f,
+                                    rand,
+                                    metric_,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_position ? &r_position[i] : nullptr);
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
                     float lerp_distance = r_distance[i] + octave_distance * octave_amplitude;
                     r_distance[i] = (1.0f - remainder) * r_distance[i] + remainder * lerp_distance;
                   }
@@ -1369,7 +2075,7 @@ class VoronoiMetricFunction : public fn::MultiFunction {
                   }
                 }
               }
-              if (normalize_&& calc_distance) {
+              if (normalize_ && calc_distance) {
                 r_distance[i] /= max_amplitude;
               }
             }
@@ -1378,9 +2084,9 @@ class VoronoiMetricFunction : public fn::MultiFunction {
           case SHD_VORONOI_F2: {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &scale = get_scale(param++);
-            const VArray<float>& detail = get_detail(param++);
-            const VArray<float>& roughness = get_roughness(param++);
-            const VArray<float>& lacunarity = get_lacunarity(param++);
+            const VArray<float> &detail = get_detail(param++);
+            const VArray<float> &roughness = get_roughness(param++);
+            const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -1404,15 +2110,72 @@ class VoronoiMetricFunction : public fn::MultiFunction {
               if (calc_position) {
                 r_position[i] = math::safe_divide(r_position[i], scale[i]);
               }
+
+              const float max_distance = voronoi_distance(
+                  float3(1.0f, 1.0f, 1.0f), float3(0.0f, 0.0f, 0.0f), metric_, 0.0f);
+              float max_amplitude = max_distance;
+              if (detail[i] != 0.0f && roughness[i] != 0.0f && lacunarity[i] != 0.0f) {
+                float octave_scale = lacunarity[i];
+                float octave_amplitude = roughness[i];
+                float octave_distance = 0.0f;
+
+                for (int n = 0; n < int(detail[i]); ++n) {
+                  noise::voronoi_f2(vector[i] * scale[i] * octave_scale,
+                                    0.0f,
+                                    rand,
+                                    metric_,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_position ? &r_position[i] : nullptr);
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
+                    r_distance[i] += octave_distance * octave_amplitude;
+                  }
+                  octave_scale *= lacunarity[i];
+                  octave_amplitude *= roughness[i];
+                  if (calc_color) {
+                    r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                  }
+                  if (calc_position) {
+                    r_position[i] = (math::safe_divide(r_position[i], scale[i]) / octave_scale) *
+                                    lacunarity[i];
+                  }
+                }
+
+                float remainder = detail[i] - int(detail[i]);
+                if (remainder != 0.0f) {
+                  noise::voronoi_f2(vector[i] * scale[i] * octave_scale,
+                                    0.0f,
+                                    rand,
+                                    metric_,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_position ? &r_position[i] : nullptr);
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
+                    float lerp_distance = r_distance[i] + octave_distance * octave_amplitude;
+                    r_distance[i] = (1.0f - remainder) * r_distance[i] + remainder * lerp_distance;
+                  }
+                  if (calc_color) {
+                    r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                  }
+                  if (calc_position) {
+                    r_position[i] = math::safe_divide(r_position[i], scale[i]) / octave_scale;
+                  }
+                }
+              }
+              if (normalize_ && calc_distance) {
+                r_distance[i] /= max_amplitude;
+              }
             }
             break;
           }
           case SHD_VORONOI_SMOOTH_F1: {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &scale = get_scale(param++);
-            const VArray<float>& detail = get_detail(param++);
-            const VArray<float>& roughness = get_roughness(param++);
-            const VArray<float>& lacunarity = get_lacunarity(param++);
+            const VArray<float> &detail = get_detail(param++);
+            const VArray<float> &roughness = get_roughness(param++);
+            const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &smoothness = get_smoothness(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
@@ -1440,6 +2203,66 @@ class VoronoiMetricFunction : public fn::MultiFunction {
                 if (calc_position) {
                   r_position[i] = math::safe_divide(r_position[i], scale[i]);
                 }
+
+                const float max_distance = voronoi_distance(
+                    float3(1.0f, 1.0f, 1.0f), float3(0.0f, 0.0f, 0.0f), metric_, 0.0f);
+                float max_amplitude = max_distance;
+                if (detail[i] != 0.0f && roughness[i] != 0.0f && lacunarity[i] != 0.0f) {
+                  float octave_scale = lacunarity[i];
+                  float octave_amplitude = roughness[i];
+                  float octave_distance = 0.0f;
+
+                  for (int n = 0; n < int(detail[i]); ++n) {
+                    noise::voronoi_smooth_f1(vector[i] * scale[i] * octave_scale,
+                                             smth,
+                                             0.0f,
+                                             rand,
+                                             metric_,
+                                             calc_distance ? &octave_distance : nullptr,
+                                             calc_color ? &col : nullptr,
+                                             calc_position ? &r_position[i] : nullptr);
+                    if (calc_distance) {
+                      max_amplitude += max_distance * octave_amplitude;
+                      r_distance[i] += octave_distance * octave_amplitude;
+                    }
+                    octave_scale *= lacunarity[i];
+                    octave_amplitude *= roughness[i];
+                    if (calc_color) {
+                      r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                    }
+                    if (calc_position) {
+                      r_position[i] = (math::safe_divide(r_position[i], scale[i]) / octave_scale) *
+                                      lacunarity[i];
+                    }
+                  }
+
+                  float remainder = detail[i] - int(detail[i]);
+                  if (remainder != 0.0f) {
+                    noise::voronoi_smooth_f1(vector[i] * scale[i] * octave_scale,
+                                             smth,
+                                             0.0f,
+                                             rand,
+                                             metric_,
+                                             calc_distance ? &octave_distance : nullptr,
+                                             calc_color ? &col : nullptr,
+                                             calc_position ? &r_position[i] : nullptr);
+                    if (calc_distance) {
+                      max_amplitude += max_distance * octave_amplitude;
+                      float lerp_distance = r_distance[i] + octave_distance * octave_amplitude;
+                      r_distance[i] = (1.0f - remainder) * r_distance[i] +
+                                      remainder * lerp_distance;
+                    }
+                    if (calc_color) {
+                      r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                    }
+                    if (calc_position) {
+                      r_position[i] = math::safe_divide(r_position[i], scale[i]) / octave_scale;
+                    }
+                  }
+                }
+                if (normalize_ && calc_distance) {
+                  r_distance[i] /= max_amplitude;
+                }
               }
             }
 
@@ -1454,9 +2277,9 @@ class VoronoiMetricFunction : public fn::MultiFunction {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &w = get_w(param++);
             const VArray<float> &scale = get_scale(param++);
-            const VArray<float>& detail = get_detail(param++);
-            const VArray<float>& roughness = get_roughness(param++);
-            const VArray<float>& lacunarity = get_lacunarity(param++);
+            const VArray<float> &detail = get_detail(param++);
+            const VArray<float> &roughness = get_roughness(param++);
+            const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -1491,22 +2314,24 @@ class VoronoiMetricFunction : public fn::MultiFunction {
                 }
               }
 
-              float max_amplitude = 2.0f;
+              const float max_distance = voronoi_distance(
+                  float4(1.0f, 1.0f, 1.0f, 1.0f), float4(0.0f, 0.0f, 0.0f, 0.0f), metric_, 0.0f);
+              float max_amplitude = max_distance;
               if (detail[i] != 0.0f && roughness[i] != 0.0f && lacunarity[i] != 0.0f) {
                 float octave_scale = lacunarity[i];
                 float octave_amplitude = roughness[i];
                 float octave_distance = 0.0f;
 
                 for (int n = 0; n < int(detail[i]); ++n) {
-                  noise::voronoi_f1(p* octave_scale,
-                    0.0f,
-                    rand,
-                    metric_,
-                    calc_distance ? &octave_distance : nullptr,
-                    calc_color ? &col : nullptr,
-                    calc_position || calc_w ? &pos : nullptr);
+                  noise::voronoi_f1(p * octave_scale,
+                                    0.0f,
+                                    rand,
+                                    metric_,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_position || calc_w ? &pos : nullptr);
                   if (calc_distance) {
-                    max_amplitude += 2.0f * octave_amplitude;
+                    max_amplitude += max_distance * octave_amplitude;
                     r_distance[i] += octave_distance * octave_amplitude;
                   }
                   octave_scale *= lacunarity[i];
@@ -1527,16 +2352,15 @@ class VoronoiMetricFunction : public fn::MultiFunction {
 
                 float remainder = detail[i] - int(detail[i]);
                 if (remainder != 0.0f) {
-                  noise::voronoi_f1(p* octave_scale,
-                    0.0f,
-                    rand,
-                    metric_,
-                    calc_distance ? &octave_distance : nullptr,
-                    calc_color ? &col : nullptr,
-                    calc_position || calc_w ? &pos : nullptr);
-                  if (calc_distance)
-                  {
-                    max_amplitude += 2.0f * octave_amplitude;
+                  noise::voronoi_f1(p * octave_scale,
+                                    0.0f,
+                                    rand,
+                                    metric_,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_position || calc_w ? &pos : nullptr);
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
                     float lerp_distance = r_distance[i] + octave_distance * octave_amplitude;
                     r_distance[i] = (1.0f - remainder) * r_distance[i] + remainder * lerp_distance;
                   }
@@ -1564,9 +2388,9 @@ class VoronoiMetricFunction : public fn::MultiFunction {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &w = get_w(param++);
             const VArray<float> &scale = get_scale(param++);
-            const VArray<float>& detail = get_detail(param++);
-            const VArray<float>& roughness = get_roughness(param++);
-            const VArray<float>& lacunarity = get_lacunarity(param++);
+            const VArray<float> &detail = get_detail(param++);
+            const VArray<float> &roughness = get_roughness(param++);
+            const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -1600,6 +2424,74 @@ class VoronoiMetricFunction : public fn::MultiFunction {
                   r_w[i] = pos.w;
                 }
               }
+
+              const float max_distance = voronoi_distance(
+                  float4(1.0f, 1.0f, 1.0f, 1.0f), float4(0.0f, 0.0f, 0.0f, 0.0f), metric_, 0.0f);
+              float max_amplitude = max_distance;
+              if (detail[i] != 0.0f && roughness[i] != 0.0f && lacunarity[i] != 0.0f) {
+                float octave_scale = lacunarity[i];
+                float octave_amplitude = roughness[i];
+                float octave_distance = 0.0f;
+
+                for (int n = 0; n < int(detail[i]); ++n) {
+                  noise::voronoi_f2(p * octave_scale,
+                                    0.0f,
+                                    rand,
+                                    metric_,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_position || calc_w ? &pos : nullptr);
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
+                    r_distance[i] += octave_distance * octave_amplitude;
+                  }
+                  octave_scale *= lacunarity[i];
+                  octave_amplitude *= roughness[i];
+                  if (calc_color) {
+                    r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                  }
+                  if (calc_position || calc_w) {
+                    pos = math::safe_divide(pos, scale[i]);
+                    if (calc_position) {
+                      r_position[i] = (float3(pos.x, pos.y, pos.z) / octave_scale) * lacunarity[i];
+                    }
+                    if (calc_w) {
+                      r_w[i] = (pos.w / octave_scale) * lacunarity[i];
+                    }
+                  }
+                }
+
+                float remainder = detail[i] - int(detail[i]);
+                if (remainder != 0.0f) {
+                  noise::voronoi_f2(p * octave_scale,
+                                    0.0f,
+                                    rand,
+                                    metric_,
+                                    calc_distance ? &octave_distance : nullptr,
+                                    calc_color ? &col : nullptr,
+                                    calc_position || calc_w ? &pos : nullptr);
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
+                    float lerp_distance = r_distance[i] + octave_distance * octave_amplitude;
+                    r_distance[i] = (1.0f - remainder) * r_distance[i] + remainder * lerp_distance;
+                  }
+                  if (calc_color) {
+                    r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                  }
+                  if (calc_position || calc_w) {
+                    pos = math::safe_divide(pos, scale[i]);
+                    if (calc_position) {
+                      r_position[i] = float3(pos.x, pos.y, pos.z) / octave_scale;
+                    }
+                    if (calc_w) {
+                      r_w[i] = pos.w / octave_scale;
+                    }
+                  }
+                }
+              }
+              if (normalize_ && calc_distance) {
+                r_distance[i] /= max_amplitude;
+              }
             }
             break;
           }
@@ -1607,9 +2499,9 @@ class VoronoiMetricFunction : public fn::MultiFunction {
             const VArray<float3> &vector = get_vector(param++);
             const VArray<float> &w = get_w(param++);
             const VArray<float> &scale = get_scale(param++);
-            const VArray<float>& detail = get_detail(param++);
-            const VArray<float>& roughness = get_roughness(param++);
-            const VArray<float>& lacunarity = get_lacunarity(param++);
+            const VArray<float> &detail = get_detail(param++);
+            const VArray<float> &roughness = get_roughness(param++);
+            const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &smoothness = get_smoothness(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
@@ -1645,6 +2537,76 @@ class VoronoiMetricFunction : public fn::MultiFunction {
                 if (calc_w) {
                   r_w[i] = pos.w;
                 }
+              }
+
+              const float max_distance = voronoi_distance(
+                  float4(1.0f, 1.0f, 1.0f, 1.0f), float4(0.0f, 0.0f, 0.0f, 0.0f), metric_, 0.0f);
+              float max_amplitude = max_distance;
+              if (detail[i] != 0.0f && roughness[i] != 0.0f && lacunarity[i] != 0.0f) {
+                float octave_scale = lacunarity[i];
+                float octave_amplitude = roughness[i];
+                float octave_distance = 0.0f;
+
+                for (int n = 0; n < int(detail[i]); ++n) {
+                  noise::voronoi_smooth_f1(p * octave_scale,
+                                           smth,
+                                           0.0f,
+                                           rand,
+                                           metric_,
+                                           calc_distance ? &octave_distance : nullptr,
+                                           calc_color ? &col : nullptr,
+                                           calc_position || calc_w ? &pos : nullptr);
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
+                    r_distance[i] += octave_distance * octave_amplitude;
+                  }
+                  octave_scale *= lacunarity[i];
+                  octave_amplitude *= roughness[i];
+                  if (calc_color) {
+                    r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                  }
+                  if (calc_position || calc_w) {
+                    pos = math::safe_divide(pos, scale[i]);
+                    if (calc_position) {
+                      r_position[i] = (float3(pos.x, pos.y, pos.z) / octave_scale) * lacunarity[i];
+                    }
+                    if (calc_w) {
+                      r_w[i] = (pos.w / octave_scale) * lacunarity[i];
+                    }
+                  }
+                }
+
+                float remainder = detail[i] - int(detail[i]);
+                if (remainder != 0.0f) {
+                  noise::voronoi_smooth_f1(p * octave_scale,
+                                           smth,
+                                           0.0f,
+                                           rand,
+                                           metric_,
+                                           calc_distance ? &octave_distance : nullptr,
+                                           calc_color ? &col : nullptr,
+                                           calc_position || calc_w ? &pos : nullptr);
+                  if (calc_distance) {
+                    max_amplitude += max_distance * octave_amplitude;
+                    float lerp_distance = r_distance[i] + octave_distance * octave_amplitude;
+                    r_distance[i] = (1.0f - remainder) * r_distance[i] + remainder * lerp_distance;
+                  }
+                  if (calc_color) {
+                    r_color[i] = ColorGeometry4f(col[0], col[1], col[2], 1.0f);
+                  }
+                  if (calc_position || calc_w) {
+                    pos = math::safe_divide(pos, scale[i]);
+                    if (calc_position) {
+                      r_position[i] = float3(pos.x, pos.y, pos.z) / octave_scale;
+                    }
+                    if (calc_w) {
+                      r_w[i] = pos.w / octave_scale;
+                    }
+                  }
+                }
+              }
+              if (normalize_ && calc_distance) {
+                r_distance[i] /= max_amplitude;
               }
             }
             break;
@@ -1746,9 +2708,9 @@ class VoronoiEdgeFunction : public fn::MultiFunction {
         const VArray<float> &scale = get_scale(param++);
         switch (feature_) {
           case SHD_VORONOI_DISTANCE_TO_EDGE: {
-            const VArray<float>& detail = get_detail(param++);
-            const VArray<float>& lacunarity = get_lacunarity(param++);
-            const VArray<float>& randomness = get_randomness(param++);
+            const VArray<float> &detail = get_detail(param++);
+            const VArray<float> &lacunarity = get_lacunarity(param++);
+            const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             for (int64_t i : mask) {
               const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
@@ -1758,7 +2720,7 @@ class VoronoiEdgeFunction : public fn::MultiFunction {
             break;
           }
           case SHD_VORONOI_N_SPHERE_RADIUS: {
-            const VArray<float>& randomness = get_randomness(param++);
+            const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_radius = get_r_radius(param++);
             for (int64_t i : mask) {
               const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
@@ -1775,9 +2737,9 @@ class VoronoiEdgeFunction : public fn::MultiFunction {
         const VArray<float> &scale = get_scale(param++);
         switch (feature_) {
           case SHD_VORONOI_DISTANCE_TO_EDGE: {
-            const VArray<float>& detail = get_detail(param++);
-            const VArray<float>& lacunarity = get_lacunarity(param++);
-            const VArray<float>& randomness = get_randomness(param++);
+            const VArray<float> &detail = get_detail(param++);
+            const VArray<float> &lacunarity = get_lacunarity(param++);
+            const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             for (int64_t i : mask) {
               const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
@@ -1787,7 +2749,7 @@ class VoronoiEdgeFunction : public fn::MultiFunction {
             break;
           }
           case SHD_VORONOI_N_SPHERE_RADIUS: {
-            const VArray<float>& randomness = get_randomness(param++);
+            const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_radius = get_r_radius(param++);
             for (int64_t i : mask) {
               const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
@@ -1804,9 +2766,9 @@ class VoronoiEdgeFunction : public fn::MultiFunction {
         const VArray<float> &scale = get_scale(param++);
         switch (feature_) {
           case SHD_VORONOI_DISTANCE_TO_EDGE: {
-            const VArray<float>& detail = get_detail(param++);
-            const VArray<float>& lacunarity = get_lacunarity(param++);
-            const VArray<float>& randomness = get_randomness(param++);
+            const VArray<float> &detail = get_detail(param++);
+            const VArray<float> &lacunarity = get_lacunarity(param++);
+            const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             for (int64_t i : mask) {
               const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
@@ -1815,7 +2777,7 @@ class VoronoiEdgeFunction : public fn::MultiFunction {
             break;
           }
           case SHD_VORONOI_N_SPHERE_RADIUS: {
-            const VArray<float>& randomness = get_randomness(param++);
+            const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_radius = get_r_radius(param++);
             for (int64_t i : mask) {
               const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
@@ -1832,9 +2794,9 @@ class VoronoiEdgeFunction : public fn::MultiFunction {
         const VArray<float> &scale = get_scale(param++);
         switch (feature_) {
           case SHD_VORONOI_DISTANCE_TO_EDGE: {
-            const VArray<float>& detail = get_detail(param++);
-            const VArray<float>& lacunarity = get_lacunarity(param++);
-            const VArray<float>& randomness = get_randomness(param++);
+            const VArray<float> &detail = get_detail(param++);
+            const VArray<float> &lacunarity = get_lacunarity(param++);
+            const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             for (int64_t i : mask) {
               const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
@@ -1844,7 +2806,7 @@ class VoronoiEdgeFunction : public fn::MultiFunction {
             break;
           }
           case SHD_VORONOI_N_SPHERE_RADIUS: {
-            const VArray<float>& randomness = get_randomness(param++);
+            const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_radius = get_r_radius(param++);
             for (int64_t i : mask) {
               const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
@@ -1878,8 +2840,8 @@ static void sh_node_voronoi_build_multi_function(NodeMultiFunctionBuilder &build
                                                                storage.feature);
   }
   else if (minowski) {
-    builder.construct_and_set_matching_fn<VoronoiMinowskiFunction>(storage.dimensions,
-                                                                   storage.feature, storage.normalize);
+    builder.construct_and_set_matching_fn<VoronoiMinowskiFunction>(
+        storage.dimensions, storage.feature, storage.normalize);
   }
   else {
     builder.construct_and_set_matching_fn<VoronoiMetricFunction>(
