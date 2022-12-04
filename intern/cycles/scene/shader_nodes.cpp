@@ -1188,19 +1188,23 @@ void VoronoiTextureNode::compile(SVMCompiler &compiler)
   compiler.add_node(NODE_TEX_VORONOI, dimensions, feature, metric);
   compiler.add_node(
       compiler.encode_uchar4(
-          vector_stack_offset, w_in_stack_offset, scale_stack_offset, detail_stack_offset), 
-      compiler.encode_uchar4(roughness_stack_offset, lacunarity_stack_offset, smoothness_stack_offset, exponent_stack_offset),
-      compiler.encode_uchar4(
-                             randomness_stack_offset,
+          vector_stack_offset, w_in_stack_offset, scale_stack_offset, detail_stack_offset),
+      compiler.encode_uchar4(roughness_stack_offset,
+                             lacunarity_stack_offset,
+                             smoothness_stack_offset,
+                             exponent_stack_offset),
+      compiler.encode_uchar4(randomness_stack_offset,
                              distance_stack_offset,
-                             color_stack_offset, position_stack_offset),
-      compiler.encode_uchar4(w_out_stack_offset, radius_stack_offset, normalize)
-      );
+                             color_stack_offset,
+                             position_stack_offset),
+      compiler.encode_uchar4(w_out_stack_offset, radius_stack_offset, normalize));
 
-  compiler.add_node( __float_as_int(w), __float_as_int(scale), __float_as_int(detail), __float_as_int(roughness)
-                   );
+  compiler.add_node(
+      __float_as_int(w), __float_as_int(scale), __float_as_int(detail), __float_as_int(roughness));
   compiler.add_node(__float_as_int(lacunarity),
-      __float_as_int(smoothness),__float_as_int(exponent), __float_as_int(randomness));
+                    __float_as_int(smoothness),
+                    __float_as_int(exponent),
+                    __float_as_int(randomness));
   tex_mapping.compile_end(compiler, vector_in, vector_stack_offset);
 }
 

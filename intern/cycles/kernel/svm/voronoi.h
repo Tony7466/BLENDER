@@ -2,8 +2,6 @@
  * Copyright 2011-2022 Blender Foundation */
 
 #pragma once
-#include "types.h"
-#include <util/hash.h>
 
 CCL_NAMESPACE_BEGIN
 
@@ -969,7 +967,7 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
   smoothness = clamp(smoothness / 2.0f, 0.0f, 0.5f);
 
   w *= scale;
-  coord *= scale;  // Don't forget to remove the headers!!!!!!!
+  coord *= scale;
 
   switch (dimensions) {
     case 1: {
@@ -997,7 +995,6 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
               octave_scale *= lacunarity;
               octave_amplitude *= roughness;
             }
-
             w_out /= octave_scale / lacunarity;
 
             float remainder = detail - int(detail);
@@ -1051,7 +1048,6 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
               octave_scale *= lacunarity;
               octave_amplitude *= roughness;
             }
-
             w_out /= octave_scale / lacunarity;
 
             float remainder = detail - int(detail);
@@ -1098,7 +1094,6 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
               octave_scale *= lacunarity;
               octave_amplitude *= roughness;
             }
-
             w_out /= octave_scale / lacunarity;
 
             float remainder = detail - int(detail);
@@ -1121,9 +1116,23 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
           }
           break;
         }
-        case NODE_VORONOI_DISTANCE_TO_EDGE:
+        case NODE_VORONOI_DISTANCE_TO_EDGE: {
           voronoi_distance_to_edge_1d(w, randomness, &distance_out);
+
+          if (detail != 0.0f && lacunarity != 0.0f) {
+            float octave_scale = lacunarity;
+            float octave_distance = 0.0f;
+            for (int i = 0; i < detail; ++i) {
+              voronoi_distance_to_edge_1d(w * octave_scale, randomness, &octave_distance);
+              distance_out = min(distance_out, octave_distance / octave_scale);
+              octave_scale *= lacunarity;
+            }
+            if (normalize) {
+              distance_out *= octave_scale / lacunarity;
+            }
+          }
           break;
+        }
         case NODE_VORONOI_N_SPHERE_RADIUS:
           voronoi_n_sphere_radius_1d(w, randomness, &radius_out);
           break;
@@ -1146,7 +1155,8 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                         &color_out,
                         &position_out_2d);
 
-          const float max_distance = voronoi_distance_2d(make_float2(1.0f,1.0f), make_float2(0.0f, 0.0f), voronoi_metric, exponent);
+          const float max_distance = voronoi_distance_2d(
+              make_float2(1.0f, 1.0f), make_float2(0.0f, 0.0f), voronoi_metric, exponent);
           float max_amplitude = max_distance;
           if (detail != 0.0f && roughness != 0.0f && lacunarity != 0.0f) {
             float octave_scale = lacunarity;
@@ -1166,7 +1176,6 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
               octave_scale *= lacunarity;
               octave_amplitude *= roughness;
             }
-
             position_out_2d /= octave_scale / lacunarity;
 
             float remainder = detail - int(detail);
@@ -1201,7 +1210,8 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                  &color_out,
                                  &position_out_2d);
 
-            const float max_distance = voronoi_distance_2d(make_float2(1.0f, 1.0f), make_float2(0.0f, 0.0f), voronoi_metric, exponent);
+            const float max_distance = voronoi_distance_2d(
+                make_float2(1.0f, 1.0f), make_float2(0.0f, 0.0f), voronoi_metric, exponent);
             float max_amplitude = max_distance;
             if (detail != 0.0f && roughness != 0.0f && lacunarity != 0.0f) {
               float octave_scale = lacunarity;
@@ -1222,7 +1232,6 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                 octave_scale *= lacunarity;
                 octave_amplitude *= roughness;
               }
-
               position_out_2d /= octave_scale / lacunarity;
 
               float remainder = detail - int(detail);
@@ -1255,7 +1264,8 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                         &color_out,
                         &position_out_2d);
 
-          const float max_distance = voronoi_distance_2d(make_float2(1.0f, 1.0f), make_float2(0.0f, 0.0f), voronoi_metric, exponent);
+          const float max_distance = voronoi_distance_2d(
+              make_float2(1.0f, 1.0f), make_float2(0.0f, 0.0f), voronoi_metric, exponent);
           float max_amplitude = max_distance;
           if (detail != 0.0f && roughness != 0.0f && lacunarity != 0.0f) {
             float octave_scale = lacunarity;
@@ -1275,7 +1285,6 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
               octave_scale *= lacunarity;
               octave_amplitude *= roughness;
             }
-
             position_out_2d /= octave_scale / lacunarity;
 
             float remainder = detail - int(detail);
@@ -1298,9 +1307,23 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
           }
           break;
         }
-        case NODE_VORONOI_DISTANCE_TO_EDGE:
+        case NODE_VORONOI_DISTANCE_TO_EDGE: {
           voronoi_distance_to_edge_2d(coord_2d, randomness, &distance_out);
+
+          if (detail != 0.0f && lacunarity != 0.0f) {
+            float octave_scale = lacunarity;
+            float octave_distance = 0.0f;
+            for (int i = 0; i < detail; ++i) {
+              voronoi_distance_to_edge_2d(coord_2d * octave_scale, randomness, &octave_distance);
+              distance_out = min(distance_out, octave_distance / octave_scale);
+              octave_scale *= lacunarity;
+            }
+            if (normalize) {
+              distance_out *= octave_scale / lacunarity;
+            }
+          }
           break;
+        }
         case NODE_VORONOI_N_SPHERE_RADIUS:
           voronoi_n_sphere_radius_2d(coord_2d, randomness, &radius_out);
           break;
@@ -1322,7 +1345,10 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                         &color_out,
                         &position_out);
 
-          const float max_distance = voronoi_distance_3d(make_float3(1.0f, 1.0f, 1.0f), make_float3(0.0f, 0.0f, 0.0f), voronoi_metric, exponent);
+          const float max_distance = voronoi_distance_3d(make_float3(1.0f, 1.0f, 1.0f),
+                                                         make_float3(0.0f, 0.0f, 0.0f),
+                                                         voronoi_metric,
+                                                         exponent);
           float max_amplitude = max_distance;
           if (detail != 0.0f && roughness != 0.0f && lacunarity != 0.0f) {
             float octave_scale = lacunarity;
@@ -1342,7 +1368,6 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
               octave_scale *= lacunarity;
               octave_amplitude *= roughness;
             }
-
             position_out /= octave_scale / lacunarity;
 
             float remainder = detail - int(detail);
@@ -1378,7 +1403,10 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                  &color_out,
                                  &position_out);
 
-            const float max_distance = voronoi_distance_3d(make_float3(1.0f, 1.0f, 1.0f), make_float3(0.0f, 0.0f, 0.0f), voronoi_metric, exponent);
+            const float max_distance = voronoi_distance_3d(make_float3(1.0f, 1.0f, 1.0f),
+                                                           make_float3(0.0f, 0.0f, 0.0f),
+                                                           voronoi_metric,
+                                                           exponent);
             float max_amplitude = max_distance;
             if (detail != 0.0f && roughness != 0.0f && lacunarity != 0.0f) {
               float octave_scale = lacunarity;
@@ -1399,7 +1427,6 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                 octave_scale *= lacunarity;
                 octave_amplitude *= roughness;
               }
-
               position_out /= octave_scale / lacunarity;
 
               float remainder = detail - int(detail);
@@ -1433,7 +1460,10 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                         &color_out,
                         &position_out);
 
-          const float max_distance = voronoi_distance_3d(make_float3(1.0f, 1.0f, 1.0f), make_float3(0.0f, 0.0f, 0.0f), voronoi_metric, exponent);
+          const float max_distance = voronoi_distance_3d(make_float3(1.0f, 1.0f, 1.0f),
+                                                         make_float3(0.0f, 0.0f, 0.0f),
+                                                         voronoi_metric,
+                                                         exponent);
           float max_amplitude = max_distance;
           if (detail != 0.0f && roughness != 0.0f && lacunarity != 0.0f) {
             float octave_scale = lacunarity;
@@ -1453,7 +1483,6 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
               octave_scale *= lacunarity;
               octave_amplitude *= roughness;
             }
-
             position_out /= octave_scale / lacunarity;
 
             float remainder = detail - int(detail);
@@ -1477,9 +1506,23 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
           }
           break;
         }
-        case NODE_VORONOI_DISTANCE_TO_EDGE:
+        case NODE_VORONOI_DISTANCE_TO_EDGE: {
           voronoi_distance_to_edge_3d(coord, randomness, &distance_out);
+
+          if (detail != 0.0f && lacunarity != 0.0f) {
+            float octave_scale = lacunarity;
+            float octave_distance = 0.0f;
+            for (int i = 0; i < detail; ++i) {
+              voronoi_distance_to_edge_3d(coord * octave_scale, randomness, &octave_distance);
+              distance_out = min(distance_out, octave_distance / octave_scale);
+              octave_scale *= lacunarity;
+            }
+            if (normalize) {
+              distance_out *= octave_scale / lacunarity;
+            }
+          }
           break;
+        }
         case NODE_VORONOI_N_SPHERE_RADIUS:
           voronoi_n_sphere_radius_3d(coord, randomness, &radius_out);
           break;
@@ -1505,7 +1548,10 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                           &color_out,
                           &position_out_4d);
 
-            const float max_distance = voronoi_distance_4d(make_float4(1.0f, 1.0f, 1.0f, 1.0f), make_float4(0.0f, 0.0f, 0.0f, 0.0f), voronoi_metric, exponent);
+            const float max_distance = voronoi_distance_4d(make_float4(1.0f, 1.0f, 1.0f, 1.0f),
+                                                           make_float4(0.0f, 0.0f, 0.0f, 0.0f),
+                                                           voronoi_metric,
+                                                           exponent);
             float max_amplitude = max_distance;
             if (detail != 0.0f && roughness != 0.0f && lacunarity != 0.0f) {
               float octave_scale = lacunarity;
@@ -1525,7 +1571,6 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                 octave_scale *= lacunarity;
                 octave_amplitude *= roughness;
               }
-
               position_out_4d /= octave_scale / lacunarity;
 
               float remainder = detail - int(detail);
@@ -1558,7 +1603,10 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                  &color_out,
                                  &position_out_4d);
 
-            const float max_distance = voronoi_distance_4d(make_float4(1.0f, 1.0f, 1.0f, 1.0f), make_float4(0.0f, 0.0f, 0.0f, 0.0f), voronoi_metric, exponent);
+            const float max_distance = voronoi_distance_4d(make_float4(1.0f, 1.0f, 1.0f, 1.0f),
+                                                           make_float4(0.0f, 0.0f, 0.0f, 0.0f),
+                                                           voronoi_metric,
+                                                           exponent);
             float max_amplitude = max_distance;
             if (detail != 0.0f && roughness != 0.0f && lacunarity != 0.0f) {
               float octave_scale = lacunarity;
@@ -1579,7 +1627,6 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                 octave_scale *= lacunarity;
                 octave_amplitude *= roughness;
               }
-
               position_out_4d /= octave_scale / lacunarity;
 
               float remainder = detail - int(detail);
@@ -1612,7 +1659,10 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                           &color_out,
                           &position_out_4d);
 
-            const float max_distance = voronoi_distance_4d(make_float4(1.0f, 1.0f, 1.0f, 1.0f), make_float4(0.0f, 0.0f, 0.0f, 0.0f), voronoi_metric, exponent);
+            const float max_distance = voronoi_distance_4d(make_float4(1.0f, 1.0f, 1.0f, 1.0f),
+                                                           make_float4(0.0f, 0.0f, 0.0f, 0.0f),
+                                                           voronoi_metric,
+                                                           exponent);
             float max_amplitude = max_distance;
             if (detail != 0.0f && roughness != 0.0f && lacunarity != 0.0f) {
               float octave_scale = lacunarity;
@@ -1632,7 +1682,6 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                 octave_scale *= lacunarity;
                 octave_amplitude *= roughness;
               }
-
               position_out_4d /= octave_scale / lacunarity;
 
               float remainder = detail - int(detail);
@@ -1655,9 +1704,23 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
             }
             break;
           }
-          case NODE_VORONOI_DISTANCE_TO_EDGE:
+          case NODE_VORONOI_DISTANCE_TO_EDGE: {
             voronoi_distance_to_edge_4d(coord_4d, randomness, &distance_out);
+
+            if (detail != 0.0f && lacunarity != 0.0f) {
+              float octave_scale = lacunarity;
+              float octave_distance = 0.0f;
+              for (int i = 0; i < detail; ++i) {
+                voronoi_distance_to_edge_4d(coord_4d * octave_scale, randomness, &octave_distance);
+                distance_out = min(distance_out, octave_distance / octave_scale);
+                octave_scale *= lacunarity;
+              }
+              if (normalize) {
+                distance_out *= octave_scale / lacunarity;
+              }
+            }
             break;
+          }
           case NODE_VORONOI_N_SPHERE_RADIUS:
             voronoi_n_sphere_radius_4d(coord_4d, randomness, &radius_out);
             break;
