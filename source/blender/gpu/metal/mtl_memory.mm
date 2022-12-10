@@ -73,7 +73,9 @@ gpu::MTLBuffer *MTLBufferPool::allocate_with_data(uint64_t size,
   return this->allocate_aligned_with_data(size, 256, cpu_visible, data);
 }
 
-gpu::MTLBuffer *MTLBufferPool::allocate_aligned(uint64_t size, uint alignment, bool cpu_visible)
+gpu::MTLBuffer *MTLBufferPool::allocate_aligned(uint64_t size,
+                                                uint32_t alignment,
+                                                bool cpu_visible)
 {
   /* Check not required. Main GPU module usage considered thread-safe. */
   // BLI_assert(BLI_thread_is_main());
@@ -160,14 +162,14 @@ gpu::MTLBuffer *MTLBufferPool::allocate_aligned(uint64_t size, uint alignment, b
   new_buffer->flag_in_use(true);
 
 #if MTL_DEBUG_MEMORY_STATISTICS == 1
-  this->per_frame_allocation_count++;
+  per_frame_allocation_count_++;
 #endif
 
   return new_buffer;
 }
 
 gpu::MTLBuffer *MTLBufferPool::allocate_aligned_with_data(uint64_t size,
-                                                          uint alignment,
+                                                          uint32_t alignment,
                                                           bool cpu_visible,
                                                           const void *data)
 {
@@ -264,7 +266,7 @@ void MTLBufferPool::update_memory_pools()
   printf("--- Allocation Stats ---\n");
   printf("  Num buffers processed in pool (this frame): %u\n", num_buffers_added);
 
-  uint framealloc = (uint)this->per_frame_allocation_count;
+  uint framealloc = (uint)per_frame_allocation_count_;
   printf("  Allocations in frame: %u\n", framealloc);
   printf("  Total Buffers allocated: %u\n", (uint)allocations_.size());
   printf("  Total Memory allocated: %u MB\n", (uint)total_allocation_bytes_ / (1024 * 1024));
@@ -295,7 +297,7 @@ void MTLBufferPool::update_memory_pools()
     ++value_iterator;
   }
 
-  this->per_frame_allocation_count = 0;
+  per_frame_allocation_count_ = 0;
 #endif
 
   /* Clear safe pools list */
@@ -430,7 +432,7 @@ void MTLSafeFreeList::decrement_reference()
   int ref_count = --reference_count_;
 
   if (ref_count == 0) {
-    MTLContext::get_global_memory_manager().push_completed_safe_list(this);
+    MTLContext::get_global_memory_manager()->push_completed_safe_list(this);
   }
   lock_.unlock();
 }
@@ -460,7 +462,6 @@ MTLBuffer::MTLBuffer(id<MTLDevice> mtl_device,
 
   metal_buffer_ = [device_ newBufferWithLength:aligned_alloc_size options:options];
   BLI_assert(metal_buffer_);
-  [metal_buffer_ retain];
 
   size_ = aligned_alloc_size;
   this->set_usage_size(size_);
@@ -502,7 +503,7 @@ gpu::MTLBuffer::~MTLBuffer()
 void gpu::MTLBuffer::free()
 {
   if (!is_external_) {
-    MTLContext::get_global_memory_manager().free_buffer(this);
+    MTLContext::get_global_memory_manager()->free_buffer(this);
   }
   else {
     if (metal_buffer_ != nil) {
@@ -548,9 +549,10 @@ void gpu::MTLBuffer::set_label(NSString *str)
 void gpu::MTLBuffer::debug_ensure_used()
 {
   /* Debug: If buffer is not flagged as in-use, this is a problem. */
-  BLI_assert(in_use_ &&
-             "Buffer should be marked as 'in-use' if being actively used by an instance. Buffer "
-             "has likely already been freed.");
+  BLI_assert_msg(
+      in_use_,
+      "Buffer should be marked as 'in-use' if being actively used by an instance. Buffer "
+      "has likely already been freed.");
 }
 
 void gpu::MTLBuffer::flush()
@@ -665,9 +667,9 @@ MTLTemporaryBuffer MTLScratchBufferManager::scratch_buffer_allocate_range_aligne
   /* Ensure scratch buffer allocation alignment adheres to offset alignment requirements. */
   alignment = max_uu(alignment, 256);
 
-  BLI_assert(current_scratch_buffer_ >= 0 && "Scratch Buffer index not set");
+  BLI_assert_msg(current_scratch_buffer_ >= 0, "Scratch Buffer index not set");
   MTLCircularBuffer *current_scratch_buff = this->scratch_buffers_[current_scratch_buffer_];
-  BLI_assert(current_scratch_buff != nullptr && "Scratch Buffer does not exist");
+  BLI_assert_msg(current_scratch_buff != nullptr, "Scratch Buffer does not exist");
   MTLTemporaryBuffer allocated_range = current_scratch_buff->allocate_range_aligned(alloc_size,
                                                                                     alignment);
   BLI_assert(allocated_range.size >= alloc_size && allocated_range.size <= alloc_size + alignment);

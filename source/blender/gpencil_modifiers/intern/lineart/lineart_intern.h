@@ -17,6 +17,10 @@
 #include <math.h>
 #include <string.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct LineartEdge;
 struct LineartData;
 struct LineartStaticMemPool;
@@ -133,6 +137,7 @@ void lineart_main_transform_and_add_shadow(struct LineartData *ld,
                                            struct LineartElementLinkNode *eeln);
 
 LineartElementLinkNode *lineart_find_matching_eln(struct ListBase *shadow_elns, int obindex);
+LineartElementLinkNode *lineart_find_matching_eln_obj(struct ListBase *elns, struct Object *ob);
 LineartEdge *lineart_find_matching_edge(struct LineartElementLinkNode *shadow_eln,
                                         uint64_t edge_identifier);
 void lineart_register_shadow_cuts(struct LineartData *ld,
@@ -147,7 +152,7 @@ bool lineart_edge_from_triangle(const struct LineartTriangle *tri,
 LineartBoundingArea *lineart_edge_first_bounding_area(struct LineartData *ld,
                                                       double *fbcoord1,
                                                       double *fbcoord2);
-LineartBoundingArea *lineart_bounding_area_next(struct LineartBoundingArea *_this,
+LineartBoundingArea *lineart_bounding_area_next(struct LineartBoundingArea *self,
                                                 double *fbcoord1,
                                                 double *fbcoord2,
                                                 double x,
@@ -167,10 +172,6 @@ void lineart_edge_cut(struct LineartData *ld,
 void lineart_add_edge_to_array(struct LineartPendingEdges *pe, struct LineartEdge *e);
 void lineart_finalize_object_edge_array_reserve(struct LineartPendingEdges *pe, int count);
 void lineart_destroy_render_data_keep_init(struct LineartData *ld);
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 void lineart_sort_adjacent_items(struct LineartAdjacentEdge *ai, int length);
 

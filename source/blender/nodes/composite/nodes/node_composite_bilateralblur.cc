@@ -21,6 +21,8 @@
 
 namespace blender::nodes::node_composite_bilateralblur_cc {
 
+NODE_STORAGE_FUNCS(NodeBilateralBlurData)
+
 static void cmp_node_bilateralblur_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Color>(N_("Image"))
@@ -32,7 +34,7 @@ static void cmp_node_bilateralblur_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Color>(N_("Image"));
 }
 
-static void node_composit_init_bilateralblur(bNodeTree *UNUSED(ntree), bNode *node)
+static void node_composit_init_bilateralblur(bNodeTree * /*ntree*/, bNode *node)
 {
   NodeBilateralBlurData *nbbd = MEM_cnew<NodeBilateralBlurData>(__func__);
   node->storage = nbbd;
@@ -41,9 +43,7 @@ static void node_composit_init_bilateralblur(bNodeTree *UNUSED(ntree), bNode *no
   nbbd->sigma_space = 5.0;
 }
 
-static void node_composit_buts_bilateralblur(uiLayout *layout,
-                                             bContext *UNUSED(C),
-                                             PointerRNA *ptr)
+static void node_composit_buts_bilateralblur(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiLayout *col;
 
@@ -94,18 +94,12 @@ class BilateralBlurOperation : public NodeOperation {
 
   int get_blur_radius()
   {
-    return math::ceil(get_node_bilateral_blur_data().iter +
-                      get_node_bilateral_blur_data().sigma_space);
+    return math::ceil(node_storage(bnode()).iter + node_storage(bnode()).sigma_space);
   }
 
   float get_threshold()
   {
-    return get_node_bilateral_blur_data().sigma_color;
-  }
-
-  NodeBilateralBlurData &get_node_bilateral_blur_data()
-  {
-    return *static_cast<NodeBilateralBlurData *>(bnode().storage);
+    return node_storage(bnode()).sigma_color;
   }
 };
 
@@ -125,7 +119,7 @@ void register_node_type_cmp_bilateralblur()
   cmp_node_type_base(&ntype, CMP_NODE_BILATERALBLUR, "Bilateral Blur", NODE_CLASS_OP_FILTER);
   ntype.declare = file_ns::cmp_node_bilateralblur_declare;
   ntype.draw_buttons = file_ns::node_composit_buts_bilateralblur;
-  node_type_init(&ntype, file_ns::node_composit_init_bilateralblur);
+  ntype.initfunc = file_ns::node_composit_init_bilateralblur;
   node_type_storage(
       &ntype, "NodeBilateralBlurData", node_free_standard_storage, node_copy_standard_storage);
   ntype.get_compositor_operation = file_ns::get_compositor_operation;

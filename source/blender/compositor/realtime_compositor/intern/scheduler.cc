@@ -8,6 +8,9 @@
 
 #include "NOD_derived_node_tree.hh"
 
+#include "BKE_node.h"
+#include "BKE_node_runtime.hh"
+
 #include "COM_scheduler.hh"
 #include "COM_utilities.hh"
 
@@ -15,34 +18,107 @@ namespace blender::realtime_compositor {
 
 using namespace nodes::derived_node_tree_types;
 
-/* Compute the output node whose result should be computed. The output node is the node marked as
- * NODE_DO_OUTPUT. If multiple types of output nodes are marked, then the preference will be
- * CMP_NODE_COMPOSITE > CMP_NODE_VIEWER > CMP_NODE_SPLITVIEWER. If no output node exists, a null
- * node will be returned. */
-static DNode compute_output_node(DerivedNodeTree &tree)
+/* Find the active context from the given context and its descendants contexts. The active context
+ * is the one whose node instance key matches the active_viewer_key stored in the root node tree.
+ * The instance key of each context is computed by calling BKE_node_instance_key given the key of
+ * the parent as well as the group node making the context. */
+static const DTreeContext *find_active_context_recursive(const DTreeContext *context,
+                                                         bNodeInstanceKey key)
 {
-  const NodeTreeRef &root_tree = tree.root_context().tree();
+  /* The instance key of the given context matches the active viewer instance key, so this is the
+   * active context, return it. */
+  if (key.value == context->derived_tree().root_context().btree().active_viewer_key.value) {
+    return context;
+  }
 
-  for (const NodeRef *node : root_tree.nodes_by_type("CompositorNodeComposite")) {
-    if (node->bnode()->flag & NODE_DO_OUTPUT) {
-      return DNode(&tree.root_context(), node);
+  /* For each of the group nodes, compute their instance key and contexts and call this function
+   * recursively. */
+  for (const bNode *group_node : context->btree().group_nodes()) {
+    const bNodeInstanceKey child_key = BKE_node_instance_key(key, &context->btree(), group_node);
+    const DTreeContext *child_context = context->child_context(*group_node);
+    const DTreeContext *found_context = find_active_context_recursive(child_context, child_key);
+
+    /* If the found context is null, that means neither the child context nor one of its descendant
+     * contexts is active. */
+    if (!found_context) {
+      continue;
+    }
+
+    /* Otherwise, we have found our active context, return it. */
+    return found_context;
+  }
+
+  /* Neither the given context nor one of its descendant contexts is active, so return null. */
+  return nullptr;
+}
+
+/* Find the active context for the given node tree. The active context represents the node tree
+ * currently being edited. In most cases, that would be the top level node tree itself, but in the
+ * case where the user is editing the node tree of a node group, the active context would be a
+ * representation of the node tree of that node group. Note that the context also stores the group
+ * node that the user selected to edit the node tree, so the context fully represents a particular
+ * instance of the node group. */
+static const DTreeContext *find_active_context(const DerivedNodeTree &tree)
+{
+  /* If the active viewer key is NODE_INSTANCE_KEY_NONE, that means it is not yet initialized and
+   * we return the root context in that case. See the find_active_context_recursive function. */
+  if (tree.root_context().btree().active_viewer_key.value == NODE_INSTANCE_KEY_NONE.value) {
+    return &tree.root_context();
+  }
+
+  /* The root context has an instance key of NODE_INSTANCE_KEY_BASE by definition. */
+  return find_active_context_recursive(&tree.root_context(), NODE_INSTANCE_KEY_BASE);
+}
+
+/* Return the output node which is marked as NODE_DO_OUTPUT. If multiple types of output nodes are
+ * marked, then the preference will be CMP_NODE_COMPOSITE > CMP_NODE_VIEWER > CMP_NODE_SPLITVIEWER.
+ * If no output node exists, a null node will be returned. */
+static DNode find_output_in_context(const DTreeContext *context)
+{
+  const bNodeTree &tree = context->btree();
+
+  for (const bNode *node : tree.nodes_by_type("CompositorNodeComposite")) {
+    if (node->flag & NODE_DO_OUTPUT) {
+      return DNode(context, node);
     }
   }
 
-  for (const NodeRef *node : root_tree.nodes_by_type("CompositorNodeViewer")) {
-    if (node->bnode()->flag & NODE_DO_OUTPUT) {
-      return DNode(&tree.root_context(), node);
+  for (const bNode *node : tree.nodes_by_type("CompositorNodeViewer")) {
+    if (node->flag & NODE_DO_OUTPUT) {
+      return DNode(context, node);
     }
   }
 
-  for (const NodeRef *node : root_tree.nodes_by_type("CompositorNodeSplitViewer")) {
-    if (node->bnode()->flag & NODE_DO_OUTPUT) {
-      return DNode(&tree.root_context(), node);
+  for (const bNode *node : tree.nodes_by_type("CompositorNodeSplitViewer")) {
+    if (node->flag & NODE_DO_OUTPUT) {
+      return DNode(context, node);
     }
   }
 
-  /* No output node found, return a null node. */
   return DNode();
+}
+
+/* Compute the output node whose result should be computed. This node is the output node that
+ * satisfies the requirements in the find_output_in_context function. First, the active context is
+ * searched for an output node, if non was found, the root context is search. For more information
+ * on what contexts mean here, see the find_active_context function. */
+static DNode compute_output_node(const DerivedNodeTree &tree)
+{
+  const DTreeContext *active_context = find_active_context(tree);
+
+  const DNode node = find_output_in_context(active_context);
+  if (node) {
+    return node;
+  }
+
+  /* If the active context is the root one and no output node was found, we consider this node tree
+   * to have no output node, even if one of the non-active descendants have an output node. */
+  if (active_context->is_root()) {
+    return DNode();
+  }
+
+  /* The active context doesn't have an output node, search in the root context as a fallback. */
+  return find_output_in_context(&tree.root_context());
 }
 
 /* A type representing a mapping that associates each node with a heuristic estimation of the
@@ -120,25 +196,25 @@ static NeededBuffers compute_number_of_needed_buffers(DNode output_node)
     /* Go over the node dependencies connected to the inputs of the node and push them to the node
      * stack if they were not computed already. */
     Set<DNode> pushed_nodes;
-    for (const InputSocketRef *input_ref : node->inputs()) {
-      const DInputSocket input{node.context(), input_ref};
+    for (const bNodeSocket *input : node->input_sockets()) {
+      const DInputSocket dinput{node.context(), input};
 
       /* Get the output linked to the input. If it is null, that means the input is unlinked and
        * has no dependency node. */
-      const DOutputSocket output = get_output_linked_to_input(input);
-      if (!output) {
+      const DOutputSocket doutput = get_output_linked_to_input(dinput);
+      if (!doutput) {
         continue;
       }
 
       /* The node dependency was already computed or pushed before, so skip it. */
-      if (needed_buffers.contains(output.node()) || pushed_nodes.contains(output.node())) {
+      if (needed_buffers.contains(doutput.node()) || pushed_nodes.contains(doutput.node())) {
         continue;
       }
 
       /* The output node needs to be computed, push the node dependency to the node stack and
        * indicate that it was pushed. */
-      node_stack.push(output.node());
-      pushed_nodes.add_new(output.node());
+      node_stack.push(doutput.node());
+      pushed_nodes.add_new(doutput.node());
     }
 
     /* If any of the node dependencies were pushed, that means that not all of them were computed
@@ -154,26 +230,26 @@ static NeededBuffers compute_number_of_needed_buffers(DNode output_node)
      * buffers needed to compute the most demanding of the node dependencies. */
     int number_of_input_buffers = 0;
     int buffers_needed_by_dependencies = 0;
-    for (const InputSocketRef *input_ref : node->inputs()) {
-      const DInputSocket input{node.context(), input_ref};
+    for (const bNodeSocket *input : node->input_sockets()) {
+      const DInputSocket dinput{node.context(), input};
 
       /* Get the output linked to the input. If it is null, that means the input is unlinked.
        * Unlinked inputs do not take a buffer, so skip those inputs. */
-      const DOutputSocket output = get_output_linked_to_input(input);
-      if (!output) {
+      const DOutputSocket doutput = get_output_linked_to_input(dinput);
+      if (!doutput) {
         continue;
       }
 
       /* Since this input is linked, if the link is not between two shader nodes, it means that the
        * node takes a buffer through this input and so we increment the number of input buffers. */
-      if (!is_shader_node(node) || !is_shader_node(output.node())) {
+      if (!is_shader_node(node) || !is_shader_node(doutput.node())) {
         number_of_input_buffers++;
       }
 
       /* If the number of buffers needed by the node dependency is more than the total number of
        * buffers needed by the dependencies, then update the latter to be the former. This is
        * computing the "d" in the aforementioned equation "max(n + m, d)". */
-      const int buffers_needed_by_dependency = needed_buffers.lookup(output.node());
+      const int buffers_needed_by_dependency = needed_buffers.lookup(doutput.node());
       if (buffers_needed_by_dependency > buffers_needed_by_dependencies) {
         buffers_needed_by_dependencies = buffers_needed_by_dependency;
       }
@@ -181,17 +257,18 @@ static NeededBuffers compute_number_of_needed_buffers(DNode output_node)
 
     /* Compute the number of buffers that will be computed/output by this node. */
     int number_of_output_buffers = 0;
-    for (const OutputSocketRef *output_ref : node->outputs()) {
-      const DOutputSocket output{node.context(), output_ref};
+    for (const bNodeSocket *output : node->output_sockets()) {
+      const DOutputSocket doutput{node.context(), output};
 
       /* The output is not linked, it outputs no buffer. */
-      if (output->logically_linked_sockets().is_empty()) {
+      if (!output->is_logically_linked()) {
         continue;
       }
 
       /* If any of the links is not between two shader nodes, it means that the node outputs
        * a buffer through this output and so we increment the number of output buffers. */
-      if (!is_output_linked_to_node_conditioned(output, is_shader_node) || !is_shader_node(node)) {
+      if (!is_output_linked_to_node_conditioned(doutput, is_shader_node) ||
+          !is_shader_node(node)) {
         number_of_output_buffers++;
       }
     }
@@ -222,7 +299,7 @@ static NeededBuffers compute_number_of_needed_buffers(DNode output_node)
  * doesn't always guarantee an optimal evaluation order, as the optimal evaluation order is very
  * difficult to compute, however, this method works well in most cases. Moreover it assumes that
  * all buffers will have roughly the same size, which may not always be the case. */
-Schedule compute_schedule(DerivedNodeTree &tree)
+Schedule compute_schedule(const DerivedNodeTree &tree)
 {
   Schedule schedule;
 
@@ -255,24 +332,24 @@ Schedule compute_schedule(DerivedNodeTree &tree)
      * want the node with the highest number of needed buffers to be schedule first, but since
      * those are pushed to the traversal stack, we need to push them in reverse order. */
     Vector<DNode> sorted_dependency_nodes;
-    for (const InputSocketRef *input_ref : node->inputs()) {
-      const DInputSocket input{node.context(), input_ref};
+    for (const bNodeSocket *input : node->input_sockets()) {
+      const DInputSocket dinput{node.context(), input};
 
       /* Get the output linked to the input. If it is null, that means the input is unlinked and
        * has no dependency node, so skip it. */
-      const DOutputSocket output = get_output_linked_to_input(input);
-      if (!output) {
+      const DOutputSocket doutput = get_output_linked_to_input(dinput);
+      if (!doutput) {
         continue;
       }
 
       /* The dependency node was added before, so skip it. The number of dependency nodes is very
        * small, typically less than 3, so a linear search is okay. */
-      if (sorted_dependency_nodes.contains(output.node())) {
+      if (sorted_dependency_nodes.contains(doutput.node())) {
         continue;
       }
 
       /* The dependency node was already schedule, so skip it. */
-      if (schedule.contains(output.node())) {
+      if (schedule.contains(doutput.node())) {
         continue;
       }
 
@@ -280,7 +357,7 @@ Schedule compute_schedule(DerivedNodeTree &tree)
        * typically less than 3, so insertion sort is okay. */
       int insertion_position = 0;
       for (int i = 0; i < sorted_dependency_nodes.size(); i++) {
-        if (needed_buffers.lookup(output.node()) >
+        if (needed_buffers.lookup(doutput.node()) >
             needed_buffers.lookup(sorted_dependency_nodes[i])) {
           insertion_position++;
         }
@@ -288,7 +365,7 @@ Schedule compute_schedule(DerivedNodeTree &tree)
           break;
         }
       }
-      sorted_dependency_nodes.insert(insertion_position, output.node());
+      sorted_dependency_nodes.insert(insertion_position, doutput.node());
     }
 
     /* Push the sorted dependency nodes to the node stack in order. */

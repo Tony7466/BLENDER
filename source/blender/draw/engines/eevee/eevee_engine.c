@@ -174,7 +174,7 @@ static void eevee_cache_finish(void *vedata)
   }
 
   if (g_data->queued_shaders_count > 0) {
-    SNPRINTF(ved->info, "Compiling Shaders %d", g_data->queued_shaders_count);
+    SNPRINTF(ved->info, "Compiling Shaders (%d remaining)", g_data->queued_shaders_count);
   }
 }
 
@@ -366,7 +366,7 @@ static void eevee_draw_scene(void *vedata)
 static void eevee_view_update(void *vedata)
 {
   EEVEE_StorageList *stl = ((EEVEE_Data *)vedata)->stl;
-  if (stl->g_data) {
+  if (stl && stl->g_data) {
     stl->g_data->view_updated = true;
   }
 }

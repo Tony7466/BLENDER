@@ -119,9 +119,7 @@ static void copyData(const ModifierData *md, ModifierData *target, const int fla
   }
 }
 
-static void requiredDataMask(Object *UNUSED(ob),
-                             ModifierData *md,
-                             CustomData_MeshMasks *r_cddata_masks)
+static void requiredDataMask(ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {
   MeshDeformModifierData *mmd = (MeshDeformModifierData *)md;
 
@@ -330,7 +328,7 @@ static void meshdeformModifier_do(ModifierData *md,
   Object *ob = ctx->object;
 
   Mesh *cagemesh;
-  MDeformVert *dvert = NULL;
+  const MDeformVert *dvert = NULL;
   float imat[4][4], cagemat[4][4], iobmat[4][4], icagemat[3][3], cmat[4][4];
   float(*dco)[3] = NULL, (*bindcagecos)[3];
   int a, cage_verts_num, defgrp_index;
@@ -360,8 +358,8 @@ static void meshdeformModifier_do(ModifierData *md,
   }
 
   /* compute matrices to go in and out of cage object space */
-  invert_m4_m4(imat, ob_target->obmat);
-  mul_m4_m4m4(cagemat, imat, ob->obmat);
+  invert_m4_m4(imat, ob_target->object_to_world);
+  mul_m4_m4m4(cagemat, imat, ob->object_to_world);
   mul_m4_m4m4(cmat, mmd->bindmat, cagemat);
   invert_m4_m4(iobmat, cmat);
   copy_m3_m4(icagemat, iobmat);

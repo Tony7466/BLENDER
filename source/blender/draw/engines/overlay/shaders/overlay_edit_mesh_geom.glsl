@@ -56,7 +56,7 @@ void main()
     half_size += 0.5;
   }
 
-  vec3 edge_ofs = vec3(half_size * drw_view.viewport_size_inverse, 0.0);
+  vec3 edge_ofs = vec3(half_size * sizeViewportInv, 0.0);
 
   bool horizontal = line.x > line.y;
   edge_ofs = (horizontal) ? edge_ofs.zyz : edge_ofs.xzz;
@@ -68,8 +68,8 @@ void main()
   do_vertex(geometry_in[0].finalColor_, pos0, -half_size, -edge_ofs.xy);
 
   view_clipping_distances_set(gl_in[1]);
-  vec4 final_color = (geometry_in[0].selectOverride_ == 0) ? geometry_in[1].finalColor_ :
-                                                             geometry_in[0].finalColor_;
+  vec4 final_color = (geometry_in[0].selectOverride_ == 0u) ? geometry_in[1].finalColor_ :
+                                                              geometry_in[0].finalColor_;
   do_vertex(final_color, pos1, half_size, edge_ofs.xy);
   do_vertex(final_color, pos1, -half_size, -edge_ofs.xy);
 

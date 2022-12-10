@@ -93,7 +93,7 @@ IDTypeInfo IDType_ID_LINK_PLACEHOLDER = {
     .foreach_id = NULL,
     .foreach_cache = NULL,
     .foreach_path = NULL,
-    .owner_get = NULL,
+    .owner_pointer_get = NULL,
 
     .blend_write = NULL,
     .blend_read_data = NULL,
@@ -168,6 +168,8 @@ static int lib_id_clear_library_data_users_update_cb(LibraryIDLinkCallbackData *
 {
   ID *id = cb_data->user_data;
   if (*cb_data->id_pointer == id) {
+    /* Even though the ID itself remain the same after being made local, from depsgraph point of
+     * view this is a different ID. Hence we need to tag all of its users for COW update. */
     DEG_id_tag_update_ex(
         cb_data->bmain, cb_data->id_owner, ID_RECALC_TAG_FOR_UNDO | ID_RECALC_COPY_ON_WRITE);
     return IDWALK_RET_STOP_ITER;
@@ -232,6 +234,8 @@ void BKE_lib_id_clear_library_data(Main *bmain, ID *id, const int flags)
     BKE_lib_id_clear_library_data(bmain, &key->id, flags);
   }
 
+  /* Even though the ID itself remain the same after being made local, from depsgraph point of view
+   * this is a different ID. Hence we rebuild depsgraph relationships. */
   DEG_relations_tag_update(bmain);
 }
 
@@ -416,7 +420,7 @@ static int lib_id_expand_local_cb(LibraryIDLinkCallbackData *cb_data)
   /* Can happen that we get un-linkable ID here, e.g. with shape-key referring to itself
    * (through drivers)...
    * Just skip it, shape key can only be either indirectly linked, or fully local, period.
-   * And let's curse one more time that stupid useless shapekey ID type! */
+   * And let's curse one more time that stupid useless shape-key ID type! */
   if (*id_pointer && *id_pointer != id_self &&
       BKE_idtype_idcode_is_linkable(GS((*id_pointer)->name))) {
     id_lib_extern(*id_pointer);
@@ -566,7 +570,7 @@ struct IDCopyLibManagementData {
   int flag;
 };
 
-/* Increases usercount as required, and remap self ID pointers. */
+/** Increases user-count as required, and remap self ID pointers. */
 static int id_copy_libmanagement_cb(LibraryIDLinkCallbackData *cb_data)
 {
   ID **id_pointer = cb_data->id_pointer;
@@ -1289,7 +1293,7 @@ void BKE_libblock_copy_ex(Main *bmain, const ID *id, ID **r_newid, const int ori
 
   new_id->flag = (new_id->flag & ~copy_idflag_mask) | (id->flag & copy_idflag_mask);
 
-  /* We do not want any handling of usercount in code duplicating the data here, we do that all
+  /* We do not want any handling of user-count in code duplicating the data here, we do that all
    * at once in id_copy_libmanagement_cb() at the end. */
   const int copy_data_flag = orig_flag | LIB_ID_CREATE_NO_USER_REFCOUNT;
 
@@ -1566,7 +1570,7 @@ void BKE_main_id_refcount_recompute(struct Main *bmain, const bool do_linked_onl
   }
   FOREACH_MAIN_ID_END;
 
-  /* Go over whole Main database to re-generate proper usercounts... */
+  /* Go over whole Main database to re-generate proper user-counts. */
   FOREACH_MAIN_ID_BEGIN (bmain, id) {
     BKE_library_foreach_ID_link(bmain,
                                 id,
@@ -1612,7 +1616,7 @@ static void library_make_local_copying_check(ID *id,
     if (!BLI_gset_haskey(done_ids, from_id)) {
       if (BLI_gset_haskey(loop_tags, from_id)) {
         /* We are in a 'dependency loop' of IDs, this does not say us anything, skip it.
-         * Note that this is the situation that can lead to archipelagoes of linked data-blocks
+         * Note that this is the situation that can lead to archipelagos of linked data-blocks
          * (since all of them have non-local users, they would all be duplicated,
          * leading to a loop of unused linked data-blocks that cannot be freed since they all use
          * each other...). */
@@ -1963,6 +1967,18 @@ bool BKE_id_can_be_asset(const ID *id)
 {
   return !ID_IS_LINKED(id) && !ID_IS_OVERRIDE_LIBRARY(id) &&
          BKE_idtype_idcode_is_linkable(GS(id->name));
+}
+
+ID *BKE_id_owner_get(ID *id)
+{
+  const IDTypeInfo *idtype = BKE_idtype_get_info_from_id(id);
+  if (idtype->owner_pointer_get != NULL) {
+    ID **owner_id_pointer = idtype->owner_pointer_get(id);
+    if (owner_id_pointer != NULL) {
+      return *owner_id_pointer;
+    }
+  }
+  return NULL;
 }
 
 bool BKE_id_is_editable(const Main *bmain, const ID *id)

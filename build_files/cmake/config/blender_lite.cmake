@@ -7,8 +7,6 @@
 #   cmake -C../blender/build_files/cmake/config/blender_lite.cmake  ../blender
 #
 
-set(WITH_INSTALL_PORTABLE    ON  CACHE BOOL "" FORCE)
-
 set(WITH_ALEMBIC             OFF CACHE BOOL "" FORCE)
 set(WITH_AUDASPACE           OFF CACHE BOOL "" FORCE)
 set(WITH_BLENDER_THUMBNAILER OFF CACHE BOOL "" FORCE)
@@ -35,6 +33,7 @@ set(WITH_IMAGE_OPENEXR       OFF CACHE BOOL "" FORCE)
 set(WITH_IMAGE_OPENJPEG      OFF CACHE BOOL "" FORCE)
 set(WITH_IMAGE_TIFF          OFF CACHE BOOL "" FORCE)
 set(WITH_IMAGE_WEBP          OFF CACHE BOOL "" FORCE)
+set(WITH_INPUT_IME           OFF CACHE BOOL "" FORCE)
 set(WITH_INPUT_NDOF          OFF CACHE BOOL "" FORCE)
 set(WITH_INTERNATIONAL       OFF CACHE BOOL "" FORCE)
 set(WITH_IO_STL              OFF CACHE BOOL "" FORCE)
@@ -64,6 +63,7 @@ set(WITH_QUADRIFLOW          OFF CACHE BOOL "" FORCE)
 set(WITH_SDL                 OFF CACHE BOOL "" FORCE)
 set(WITH_TBB                 OFF CACHE BOOL "" FORCE)
 set(WITH_USD                 OFF CACHE BOOL "" FORCE)
+set(WITH_MATERIALX           OFF CACHE BOOL "" FORCE)
 set(WITH_WASAPI              OFF CACHE BOOL "" FORCE)
 set(WITH_XR_OPENXR           OFF CACHE BOOL "" FORCE)
 

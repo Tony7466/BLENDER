@@ -109,7 +109,18 @@ class USERPREF_MT_save_load(Menu):
         sub_revert.operator("wm.read_userpref", text="Revert to Saved Preferences")
 
         layout.operator_context = 'INVOKE_AREA'
-        layout.operator("wm.read_factory_userpref", text="Load Factory Preferences")
+
+        app_template = prefs.app_template
+        if app_template:
+            display_name = bpy.path.display_name(iface_(app_template))
+            layout.operator("wm.read_factory_userpref", text="Load Factory Blender Preferences")
+            props = layout.operator("wm.read_factory_userpref",
+                                    text=iface_("Load Factory %s Preferences") % display_name,
+                                    translate=False)
+            props.use_factory_startup_app_template_only = True
+            del display_name
+        else:
+            layout.operator("wm.read_factory_userpref", text="Load Factory Preferences")
 
 
 class USERPREF_PT_save_preferences(Panel):
@@ -386,20 +397,20 @@ class USERPREF_PT_edit_objects_duplicate_data(EditingPanel, CenterAlignMixIn, Pa
         col.prop(edit, "use_duplicate_camera", text="Camera")
         col.prop(edit, "use_duplicate_curve", text="Curve")
         # col.prop(edit, "use_duplicate_fcurve", text="F-Curve")  # Not implemented.
+        col.prop(edit, "use_duplicate_curves", text="Curves")
         col.prop(edit, "use_duplicate_grease_pencil", text="Grease Pencil")
-        if hasattr(edit, "use_duplicate_curves"):
-            col.prop(edit, "use_duplicate_curves", text="Curves")
+        col.prop(edit, "use_duplicate_lattice", text="Lattice")
 
         col = flow.column()
-        col.prop(edit, "use_duplicate_lattice", text="Lattice")
         col.prop(edit, "use_duplicate_light", text="Light")
         col.prop(edit, "use_duplicate_lightprobe", text="Light Probe")
         col.prop(edit, "use_duplicate_material", text="Material")
         col.prop(edit, "use_duplicate_mesh", text="Mesh")
         col.prop(edit, "use_duplicate_metaball", text="Metaball")
+        col.prop(edit, "use_duplicate_node_tree", text="Node Tree")
+        col.prop(edit, "use_duplicate_particle", text="Particle")
 
         col = flow.column()
-        col.prop(edit, "use_duplicate_particle", text="Particle")
         if hasattr(edit, "use_duplicate_pointcloud"):
             col.prop(edit, "use_duplicate_pointcloud", text="Point Cloud")
         col.prop(edit, "use_duplicate_speaker", text="Speaker")
@@ -1535,6 +1546,23 @@ class USERPREF_PT_input_mouse(InputPanel, CenterAlignMixIn, Panel):
         flow.prop(inputs, "move_threshold")
 
 
+class USERPREF_PT_input_touchpad(InputPanel, CenterAlignMixIn, Panel):
+    bl_label = "Touchpad"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        import sys
+        return sys.platform[:3] == "win" or sys.platform == "darwin"
+
+    def draw_centered(self, context, layout):
+        prefs = context.preferences
+        inputs = prefs.inputs
+
+        col = layout.column()
+        col.prop(inputs, "use_multitouch_gestures")
+
+
 class USERPREF_PT_input_tablet(InputPanel, CenterAlignMixIn, Panel):
     bl_label = "Tablet"
 
@@ -1928,9 +1956,11 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
 
             if is_visible:
                 if search and not (
-                        (search in info["name"].lower()) or
+                        (search in info["name"].lower() or
+                         search in iface_(info["name"]).lower()) or
                         (info["author"] and (search in info["author"].lower())) or
-                        ((filter == "All") and (search in info["category"].lower()))
+                        ((filter == "All") and (search in info["category"].lower() or
+                                                search in iface_(info["category"]).lower()))
                 ):
                     continue
 
@@ -1954,7 +1984,7 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
 
                 sub = row.row()
                 sub.active = is_enabled
-                sub.label(text="%s: %s" % (info["category"], info["name"]))
+                sub.label(text=iface_("%s: %s") % (iface_(info["category"]), iface_(info["name"])))
 
                 if info["warning"]:
                     sub.label(icon='ERROR')
@@ -1967,11 +1997,11 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
                     if info["description"]:
                         split = colsub.row().split(factor=0.15)
                         split.label(text="Description:")
-                        split.label(text=info["description"])
+                        split.label(text=tip_(info["description"]))
                     if info["location"]:
                         split = colsub.row().split(factor=0.15)
                         split.label(text="Location:")
-                        split.label(text=info["location"])
+                        split.label(text=tip_(info["location"]))
                     if mod:
                         split = colsub.row().split(factor=0.15)
                         split.label(text="File:")
@@ -2289,7 +2319,6 @@ class USERPREF_PT_experimental_prototypes(ExperimentalPanel, Panel):
                 ({"property": "use_sculpt_texture_paint"}, "T96225"),
                 ({"property": "use_full_frame_compositor"}, "T88150"),
                 ({"property": "enable_eevee_next"}, "T93220"),
-                ({"property": "use_draw_manager_acquire_lock"}, "T98016"),
             ),
         )
 
@@ -2326,6 +2355,7 @@ class USERPREF_PT_experimental_debugging(ExperimentalPanel, Panel):
                 ({"property": "use_cycles_debug"}, None),
                 ({"property": "show_asset_debug_info"}, None),
                 ({"property": "use_asset_indexing"}, None),
+                ({"property": "use_viewport_debug"}, None),
             ),
         )
 
@@ -2409,6 +2439,7 @@ classes = (
     USERPREF_PT_input_keyboard,
     USERPREF_PT_input_mouse,
     USERPREF_PT_input_tablet,
+    USERPREF_PT_input_touchpad,
     USERPREF_PT_input_ndof,
     USERPREF_PT_navigation_orbit,
     USERPREF_PT_navigation_zoom,

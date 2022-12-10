@@ -1326,7 +1326,7 @@ static int actkeys_expo_exec(bContext *C, wmOperator *op)
 void ACTION_OT_extrapolation_type(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Set Keyframe Extrapolation";
+  ot->name = "Set F-Curve Extrapolation";
   ot->idname = "ACTION_OT_extrapolation_type";
   ot->description = "Set extrapolation mode for selected F-Curves";
 
@@ -1364,7 +1364,7 @@ static int actkeys_ipo_exec(bContext *C, wmOperator *op)
 
   /* set handle type */
   ANIM_animdata_keyframe_callback(&ac,
-                                  (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE |
+                                  (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE |
                                    ANIMFILTER_FOREDIT | ANIMFILTER_NODUPLIS |
                                    ANIMFILTER_FCURVESONLY),
                                   ANIM_editkeyframes_ipo(mode));
@@ -1414,7 +1414,7 @@ static int actkeys_easing_exec(bContext *C, wmOperator *op)
 
   /* set handle type */
   ANIM_animdata_keyframe_callback(&ac,
-                                  (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE |
+                                  (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE |
                                    ANIMFILTER_FOREDIT | ANIMFILTER_NODUPLIS |
                                    ANIMFILTER_FCURVESONLY),
                                   ANIM_editkeyframes_easing(mode));
@@ -1735,7 +1735,7 @@ static const EnumPropertyItem prop_actkeys_snap_types[] = {
      0,
      "Selection to Nearest Frame",
      "Snap selected keyframes to the nearest (whole) frame "
-     "(use to fix accidental sub-frame offsets)"},
+     "(use to fix accidental subframe offsets)"},
     {ACTKEYS_SNAP_NEAREST_SECOND,
      "NEAREST_SECOND",
      0,
@@ -1791,10 +1791,14 @@ static void snap_action_keys(bAnimContext *ac, short mode)
     else if (adt) {
       ANIM_nla_mapping_apply_fcurve(adt, ale->key_data, 0, 0);
       ANIM_fcurve_keyframes_loop(&ked, ale->key_data, NULL, edit_cb, BKE_fcurve_handles_recalc);
+      BKE_fcurve_merge_duplicate_keys(
+          ale->key_data, SELECT, false); /* only use handles in graph editor */
       ANIM_nla_mapping_apply_fcurve(adt, ale->key_data, 1, 0);
     }
     else {
       ANIM_fcurve_keyframes_loop(&ked, ale->key_data, NULL, edit_cb, BKE_fcurve_handles_recalc);
+      BKE_fcurve_merge_duplicate_keys(
+          ale->key_data, SELECT, false); /* only use handles in graph editor */
     }
 
     ale->update |= ANIM_UPDATE_DEFAULT;

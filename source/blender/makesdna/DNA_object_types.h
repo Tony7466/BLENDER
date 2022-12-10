@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "BLI_utildefines.h"
+
 #include "DNA_object_enums.h"
 
 #include "DNA_customdata_types.h"
@@ -231,7 +233,9 @@ enum eObjectLineArt_Usage {
   OBJECT_LRT_EXCLUDE = (1 << 2),
   OBJECT_LRT_INTERSECTION_ONLY = (1 << 3),
   OBJECT_LRT_NO_INTERSECTION = (1 << 4),
+  OBJECT_LRT_FORCE_INTERSECTION = (1 << 5),
 };
+ENUM_OPERATORS(eObjectLineArt_Usage, OBJECT_LRT_FORCE_INTERSECTION);
 
 enum eObjectLineArt_Flags {
   OBJECT_LRT_OWN_CREASE = (1 << 0),
@@ -262,8 +266,8 @@ typedef struct Object {
   /** Old animation system, deprecated for 2.5. */
   struct Ipo *ipo DNA_DEPRECATED;
   /* struct Path *path; */
-  struct bAction *action DNA_DEPRECATED; /* XXX deprecated... old animation system */
-  struct bAction *poselib;
+  struct bAction *action DNA_DEPRECATED;  /* XXX deprecated... old animation system */
+  struct bAction *poselib DNA_DEPRECATED; /* Pre-Blender 3.0 pose library, deprecated in 3.5. */
   /** Pose data, armature objects only. */
   struct bPose *pose;
   /** Pointer to objects data - an 'ID' or NULL. */
@@ -321,20 +325,14 @@ typedef struct Object {
   float rotAxis[3], drotAxis[3];
   /** Axis angle rotation - angle part. */
   float rotAngle, drotAngle;
-  /** Final world-space matrix with constraints & animsys applied. */
-  float obmat[4][4];
+  /** Final transformation matrices with constraints & animsys applied. */
+  float object_to_world[4][4];
+  float world_to_object[4][4];
   /** Inverse result of parent, so that object doesn't 'stick' to parent. */
   float parentinv[4][4];
   /** Inverse result of constraints.
    * doesn't include effect of parent or object local transform. */
   float constinv[4][4];
-  /**
-   * Inverse matrix of 'obmat' for any other use than rendering!
-   *
-   * \note this isn't assured to be valid as with 'obmat',
-   * before using this value you should do: `invert_m4_m4(ob->imat, ob->obmat)`
-   */
-  float imat[4][4];
 
   /** Copy of Base's layer in the scene. */
   unsigned int lay DNA_DEPRECATED;
@@ -477,7 +475,13 @@ typedef struct ObHook {
 
 /* **************** OBJECT ********************* */
 
-/* used many places, should be specialized. */
+/**
+ * This is used as a flag for many kinds of data that use selections, examples include:
+ * - #BezTriple.f1, #BezTriple.f2, #BezTriple.f3
+ * - #bNote.flag
+ * - #MovieTrackingTrack.flag
+ * And more, ideally this would have a generic location.
+ */
 #define SELECT 1
 
 /** #Object.type */

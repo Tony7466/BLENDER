@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "DEG_depsgraph.h"
+#include "DNA_ID.h"
 #include "DNA_listBase.h"
 #include "DNA_vec_types.h"
 
@@ -101,7 +101,6 @@ typedef struct RenderResult {
 
   /* target image size */
   int rectx, recty;
-  short sample_nr;
 
   /* The following rect32, rectf and rectz buffers are for temporary storage only,
    * for RenderResult structs created in #RE_AcquireResultImage - which do not have RenderView */
@@ -124,8 +123,7 @@ typedef struct RenderResult {
   /* multiView maps to a StringVector in OpenEXR */
   ListBase views; /* RenderView */
 
-  /* allowing live updates: */
-  rcti renrect;
+  /* Render layer to display. */
   RenderLayer *renlay;
 
   /* for render results in Image, verify validity for sequences */
@@ -400,7 +398,7 @@ void RE_display_update_cb(struct Render *re,
 void RE_stats_draw_cb(struct Render *re, void *handle, void (*f)(void *handle, RenderStats *rs));
 void RE_progress_cb(struct Render *re, void *handle, void (*f)(void *handle, float));
 void RE_draw_lock_cb(struct Render *re, void *handle, void (*f)(void *handle, bool lock));
-void RE_test_break_cb(struct Render *re, void *handle, int (*f)(void *handle));
+void RE_test_break_cb(struct Render *re, void *handle, bool (*f)(void *handle));
 void RE_current_scene_update_cb(struct Render *re,
                                 void *handle,
                                 void (*f)(void *handle, struct Scene *scene));
@@ -461,9 +459,9 @@ bool RE_allow_render_generic_object(struct Object *ob);
 
 /******* defined in render_result.c *********/
 
-bool RE_HasCombinedLayer(const RenderResult *res);
-bool RE_HasFloatPixels(const RenderResult *res);
-bool RE_RenderResult_is_stereo(const RenderResult *res);
+bool RE_HasCombinedLayer(const RenderResult *result);
+bool RE_HasFloatPixels(const RenderResult *result);
+bool RE_RenderResult_is_stereo(const RenderResult *result);
 struct RenderView *RE_RenderViewGetById(struct RenderResult *rr, int view_id);
 struct RenderView *RE_RenderViewGetByName(struct RenderResult *rr, const char *viewname);
 

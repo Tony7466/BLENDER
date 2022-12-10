@@ -125,7 +125,7 @@ enum eImbFileType {
 
 typedef struct ImbFormatOptions {
   short flag;
-  /** quality serves dual purpose as quality number for jpeg or compression amount for png */
+  /** Quality serves dual purpose as quality number for JPEG or compression amount for PNG. */
   char quality;
 } ImbFormatOptions;
 
@@ -144,8 +144,7 @@ typedef enum eImBufFlags {
   IB_multilayer = 1 << 7,
   IB_metadata = 1 << 8,
   IB_animdeinterlace = 1 << 9,
-  IB_tiles = 1 << 10,
-  IB_tilecache = 1 << 11,
+
   /** indicates whether image on disk have premul alpha */
   IB_alphamode_premul = 1 << 12,
   /** if this flag is set, alpha mode would be guessed from file */
@@ -166,8 +165,6 @@ typedef enum eImBufFlags {
  * \{ */
 
 typedef struct ImBuf {
-  struct ImBuf *next, *prev; /** < allow lists of #ImBufs, for caches or flip-books. */
-
   /* dimensions */
   /** Width and Height of our image buffer.
    * Should be 'unsigned int' since most formats use this.
@@ -204,11 +201,6 @@ typedef struct ImBuf {
   /** Resolution in pixels per meter. Multiply by `0.0254` for DPI. */
   double ppm[2];
 
-  /* tiled pixel storage */
-  int tilex, tiley;
-  int xtiles, ytiles;
-  unsigned int **tiles;
-
   /* zbuffer */
   /** z buffer data, original zbuffer */
   int *zbuf;
@@ -241,8 +233,6 @@ typedef struct ImBuf {
   ImbFormatOptions foptions;
   /** filename associated with this image */
   char name[IMB_FILENAME_SIZE];
-  /** full filename used for reading from cache */
-  char cachename[IMB_FILENAME_SIZE];
 
   /* memory cache limiter */
   /** handle for cache limiter */

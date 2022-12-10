@@ -683,7 +683,7 @@ class SEQUENCER_MT_add(Menu):
         elif bpy_data_movieclips_len > 0:
             layout.operator_menu_enum("sequencer.movieclip_strip_add", "clip", text="Clip", icon='TRACKER')
         else:
-            layout.menu("SEQUENCER_MT_add_empty", text="Clip", icon='TRACKER')
+            layout.menu("SEQUENCER_MT_add_empty", text="Clip", text_ctxt=i18n_contexts.id_movieclip, icon='TRACKER')
         del bpy_data_movieclips_len
 
         bpy_data_masks_len = len(bpy.data.masks)
@@ -2196,7 +2196,7 @@ class SEQUENCER_PT_cache_settings(SequencerButtonsPanel, Panel):
         col = layout.column(heading="Cache", align=True)
 
         col.prop(ed, "use_cache_raw", text="Raw")
-        col.prop(ed, "use_cache_preprocessed", text="Pre-Processed")
+        col.prop(ed, "use_cache_preprocessed", text="Preprocessed")
         col.prop(ed, "use_cache_composite", text="Composite")
         col.prop(ed, "use_cache_final", text="Final")
 
@@ -2315,7 +2315,7 @@ class SEQUENCER_PT_strip_cache(SequencerButtonsPanel, Panel):
 
         col = layout.column(heading="Cache")
         col.prop(strip, "use_cache_raw", text="Raw")
-        col.prop(strip, "use_cache_preprocessed", text="Pre-Processed")
+        col.prop(strip, "use_cache_preprocessed", text="Preprocessed")
         col.prop(strip, "use_cache_composite", text="Composite")
 
 

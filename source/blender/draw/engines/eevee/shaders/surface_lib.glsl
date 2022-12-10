@@ -1,49 +1,58 @@
 /** This describe the entire interface of the shader. */
 
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
+#pragma BLENDER_REQUIRE(common_math_lib.glsl)
 
-#define SURFACE_INTERFACE \
-  vec3 worldPosition; \
-  vec3 viewPosition; \
-  vec3 worldNormal; \
-  vec3 viewNormal;
-
-#ifndef IN_OUT
-#  if defined(GPU_VERTEX_SHADER)
-#    define IN_OUT out
-#  elif defined(GPU_FRAGMENT_SHADER)
-#    define IN_OUT in
-#  endif
-#endif
-
-#ifndef EEVEE_GENERATED_INTERFACE
-#  if defined(STEP_RESOLVE) || defined(STEP_RAYTRACE)
-/* SSR will set these global variables itself.
+/* Global interface for SSR.
+ * SSR will set these global variables itself.
  * Also make false positive compiler warnings disappear by setting values. */
-vec3 worldPosition = vec3(0);
-vec3 viewPosition = vec3(0);
-vec3 worldNormal = vec3(0);
-vec3 viewNormal = vec3(0);
+#define SSR_INTERFACE \
+  vec3 worldPosition = vec3(0); \
+  vec3 viewPosition = vec3(0); \
+  vec3 worldNormal = vec3(0); \
+  vec3 viewNormal = vec3(0);
 
-#  elif defined(GPU_GEOMETRY_SHADER)
+/* Skip interface declaration when using create-info. */
+#ifndef USE_GPU_SHADER_CREATE_INFO
+
+#  define SURFACE_INTERFACE \
+    vec3 worldPosition; \
+    vec3 viewPosition; \
+    vec3 worldNormal; \
+    vec3 viewNormal;
+
+#  ifndef IN_OUT
+#    if defined(GPU_VERTEX_SHADER)
+#      define IN_OUT out
+#    elif defined(GPU_FRAGMENT_SHADER)
+#      define IN_OUT in
+#    endif
+#  endif
+
+#  ifndef EEVEE_GENERATED_INTERFACE
+#    if defined(STEP_RESOLVE) || defined(STEP_RAYTRACE)
+
+SSR_INTERFACE
+
+#    elif defined(GPU_GEOMETRY_SHADER)
 in ShaderStageInterface{SURFACE_INTERFACE} dataIn[];
 
 out ShaderStageInterface{SURFACE_INTERFACE} dataOut;
 
-#    define PASS_SURFACE_INTERFACE(vert) \
-      dataOut.worldPosition = dataIn[vert].worldPosition; \
-      dataOut.viewPosition = dataIn[vert].viewPosition; \
-      dataOut.worldNormal = dataIn[vert].worldNormal; \
-      dataOut.viewNormal = dataIn[vert].viewNormal;
+#      define PASS_SURFACE_INTERFACE(vert) \
+        dataOut.worldPosition = dataIn[vert].worldPosition; \
+        dataOut.viewPosition = dataIn[vert].viewPosition; \
+        dataOut.worldNormal = dataIn[vert].worldNormal; \
+        dataOut.viewNormal = dataIn[vert].viewNormal;
 
-#  else /* GPU_VERTEX_SHADER || GPU_FRAGMENT_SHADER*/
+#    else /* GPU_VERTEX_SHADER || GPU_FRAGMENT_SHADER*/
 
 IN_OUT ShaderStageInterface{SURFACE_INTERFACE};
 
-#  endif
-#endif /* EEVEE_GENERATED_INTERFACE */
+#    endif
+#  endif /* EEVEE_GENERATED_INTERFACE */
 
-#ifdef HAIR_SHADER
+#  ifdef HAIR_SHADER
 IN_OUT ShaderHairInterface
 {
   /* world space */
@@ -54,9 +63,9 @@ IN_OUT ShaderHairInterface
   flat int hairStrandID;
   vec2 hairBary;
 };
-#endif
+#  endif
 
-#ifdef POINTCLOUD_SHADER
+#  ifdef POINTCLOUD_SHADER
 IN_OUT ShaderPointCloudInterface
 {
   /* world space */
@@ -64,7 +73,28 @@ IN_OUT ShaderPointCloudInterface
   float pointPosition;
   flat int pointID;
 };
-#endif
+#  endif
+
+#else
+/** Checks to ensure create-info is setup correctly. **/
+#  ifdef HAIR_SHADER
+#    ifndef USE_SURFACE_LIB_HAIR
+#error Ensure CreateInfo eevee_legacy_surface_lib_hair is included if using surface library with a hair shader.
+#    endif
+#  endif
+
+#  ifdef POINTCLOUD_SHADER
+#    ifndef USE_SURFACE_LIB_POINTCLOUD
+#error Ensure CreateInfo eevee_legacy_surface_lib_pointcloud is included if using surface library with a hair shader.
+#    endif
+#  endif
+
+/* SSR Global Interface. */
+#  if defined(STEP_RESOLVE) || defined(STEP_RAYTRACE)
+SSR_INTERFACE
+#  endif
+
+#endif /* USE_GPU_SHADER_CREATE_INFO */
 
 #if defined(GPU_FRAGMENT_SHADER) && defined(CODEGEN_LIB)
 
@@ -97,11 +127,12 @@ GlobalData init_globals(void)
   GlobalData surf;
 
 #  if defined(WORLD_BACKGROUND) || defined(PROBE_CAPTURE)
-  surf.P = transform_direction(ViewMatrixInverse, viewCameraVec(viewPosition));
-  surf.N = surf.Ng = -surf.P;
+  surf.P = transform_direction(ViewMatrixInverse, -viewCameraVec(viewPosition));
+  surf.N = surf.Ng = surf.Ni = -surf.P;
   surf.ray_length = 0.0;
 #  else
   surf.P = worldPosition;
+  surf.Ni = worldNormal;
   surf.N = safe_normalize(worldNormal);
   surf.Ng = safe_normalize(cross(dFdx(surf.P), dFdy(surf.P)));
   surf.ray_length = distance(surf.P, cameraPos);
@@ -109,6 +140,7 @@ GlobalData init_globals(void)
   surf.barycentric_coords = vec2(0.0);
   surf.barycentric_dists = vec3(0.0);
   surf.N = (FrontFacing) ? surf.N : -surf.N;
+  surf.Ni = (FrontFacing) ? surf.Ni : -surf.Ni;
 #  ifdef HAIR_SHADER
   vec3 V = cameraVec(surf.P);
   /* Shade as a cylinder. */
@@ -123,7 +155,7 @@ GlobalData init_globals(void)
     cos_theta = hairThickTime / hairThickness;
   }
   float sin_theta = sqrt(max(0.0, 1.0 - cos_theta * cos_theta));
-  surf.N = safe_normalize(worldNormal * sin_theta + B * cos_theta);
+  surf.N = surf.Ni = safe_normalize(worldNormal * sin_theta + B * cos_theta);
   surf.curve_T = -hairTangent;
   /* Costly, but follows cycles per pixel tangent space (not following curve shape). */
   surf.curve_B = cross(V, surf.curve_T);
@@ -174,13 +206,13 @@ vec3 coordinate_screen(vec3 P)
   /* Unsupported. It would make the probe camera-dependent. */
   window.xy = vec2(0.5);
 
-#elif defined(WORLD_BACKGROUND)
+#elif defined(WORLD_BACKGROUND) && defined(COMMON_UNIFORMS_LIB)
   window.xy = project_point(ProjectionMatrix, viewPosition).xy * 0.5 + 0.5;
-  window.xy = window.xy * CameraTexCoFactors.xy + CameraTexCoFactors.zw;
+  window.xy = window.xy * cameraUvScaleBias.xy + cameraUvScaleBias.zw;
 
-#else /* MESH */
-  window.xy = project_point(ViewProjectionMatrix, P).xy * 0.5 + 0.5;
-  window.xy = window.xy * CameraTexCoFactors.xy + CameraTexCoFactors.zw;
+#elif defined(COMMON_UNIFORMS_LIB) /* MESH */
+  window.xy = project_point(ProjectionMatrix, transform_point(ViewMatrix, P)).xy * 0.5 + 0.5;
+  window.xy = window.xy * cameraUvScaleBias.xy + cameraUvScaleBias.zw;
 #endif
   return window;
 }

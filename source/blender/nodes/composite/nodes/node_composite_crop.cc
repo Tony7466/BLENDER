@@ -27,6 +27,8 @@
 
 namespace blender::nodes::node_composite_crop_cc {
 
+NODE_STORAGE_FUNCS(NodeTwoXYs)
+
 static void cmp_node_crop_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Color>(N_("Image"))
@@ -35,7 +37,7 @@ static void cmp_node_crop_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Color>(N_("Image"));
 }
 
-static void node_composit_init_crop(bNodeTree *UNUSED(ntree), bNode *node)
+static void node_composit_init_crop(bNodeTree * /*ntree*/, bNode *node)
 {
   NodeTwoXYs *nxy = MEM_cnew<NodeTwoXYs>(__func__);
   node->storage = nxy;
@@ -45,7 +47,7 @@ static void node_composit_init_crop(bNodeTree *UNUSED(ntree), bNode *node)
   nxy->y2 = 0;
 }
 
-static void node_composit_buts_crop(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
+static void node_composit_buts_crop(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiLayout *col;
 
@@ -163,11 +165,6 @@ class CropOperation : public NodeOperation {
     return bnode().custom2;
   }
 
-  NodeTwoXYs &get_node_two_xys()
-  {
-    return *static_cast<NodeTwoXYs *>(bnode().storage);
-  }
-
   /* Returns true if the operation does nothing and the input can be passed through. */
   bool is_identity()
   {
@@ -190,7 +187,7 @@ class CropOperation : public NodeOperation {
 
   void compute_cropping_bounds(int2 &lower_bound, int2 &upper_bound)
   {
-    const NodeTwoXYs &node_two_xys = get_node_two_xys();
+    const NodeTwoXYs &node_two_xys = node_storage(bnode());
     const int2 input_size = get_input("Image").domain().size;
 
     if (get_is_relative()) {
@@ -233,7 +230,7 @@ void register_node_type_cmp_crop()
   cmp_node_type_base(&ntype, CMP_NODE_CROP, "Crop", NODE_CLASS_DISTORT);
   ntype.declare = file_ns::cmp_node_crop_declare;
   ntype.draw_buttons = file_ns::node_composit_buts_crop;
-  node_type_init(&ntype, file_ns::node_composit_init_crop);
+  ntype.initfunc = file_ns::node_composit_init_crop;
   node_type_storage(&ntype, "NodeTwoXYs", node_free_standard_storage, node_copy_standard_storage);
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 

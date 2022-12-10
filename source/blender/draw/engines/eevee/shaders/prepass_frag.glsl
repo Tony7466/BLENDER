@@ -11,8 +11,6 @@
 #pragma BLENDER_REQUIRE(surface_lib.glsl)
 
 #ifdef USE_ALPHA_HASH
-/* A value of -1.0 will disable alpha clip and use alpha hash. */
-uniform float alphaClipThreshold;
 
 /* From the paper "Hashed Alpha Testing" by Chris Wyman and Morgan McGuire */
 float hash(vec2 a)
@@ -90,4 +88,18 @@ void main()
     }
   }
 #endif
+}
+
+/* Passthrough. */
+float attr_load_temperature_post(float attr)
+{
+  return attr;
+}
+vec4 attr_load_color_post(vec4 attr)
+{
+  return attr;
+}
+vec4 attr_load_uniform(vec4 attr, const uint attr_hash)
+{
+  return attr;
 }

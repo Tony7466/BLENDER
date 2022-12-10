@@ -8,6 +8,7 @@
 #pragma BLENDER_REQUIRE(eevee_camera_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_velocity_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_colorspace_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_cryptomatte_lib.glsl)
 
 /* Return scene linear Z depth from the camera or radial depth for panoramic cameras. */
 float film_depth_convert_to_scene(float depth)
@@ -133,7 +134,7 @@ void film_sample_accum_mist(FilmSample samp, inout float accum)
     return;
   }
   float depth = texelFetch(depth_tx, samp.texel, 0).x;
-  vec2 uv = (vec2(samp.texel) + 0.5) / textureSize(depth_tx, 0).xy;
+  vec2 uv = (vec2(samp.texel) + 0.5) / vec2(textureSize(depth_tx, 0).xy);
   vec3 vP = get_view_space_from_depth(uv, depth);
   bool is_persp = ProjectionMatrix[3][3] == 0.0;
   float mist = (is_persp) ? length(vP) : abs(vP.z);
@@ -158,14 +159,57 @@ void film_sample_accum_combined(FilmSample samp, inout vec4 accum, inout float w
   weight_accum += weight;
 }
 
+#ifdef GPU_METAL
+void film_sample_cryptomatte_accum(FilmSample samp,
+                                   int layer,
+                                   sampler2D tex,
+                                   thread vec2 *crypto_samples)
+#else
+void film_sample_cryptomatte_accum(FilmSample samp,
+                                   int layer,
+                                   sampler2D tex,
+                                   inout vec2 crypto_samples[4])
+#endif
+{
+  float hash = texelFetch(tex, samp.texel, 0)[layer];
+  /* Find existing entry. */
+  for (int i = 0; i < 4; i++) {
+    if (crypto_samples[i].x == hash) {
+      crypto_samples[i].y += samp.weight;
+      return;
+    }
+  }
+  /* Overwrite entry with less weight. */
+  for (int i = 0; i < 4; i++) {
+    if (crypto_samples[i].y < samp.weight) {
+      crypto_samples[i] = vec2(hash, samp.weight);
+      return;
+    }
+  }
+}
+
+void film_cryptomatte_layer_accum_and_store(
+    FilmSample dst, ivec2 texel_film, int pass_id, int layer_component, inout vec4 out_color)
+{
+  if (pass_id == -1) {
+    return;
+  }
+  /* x = hash, y = accumulated weight. Only keep track of 4 highest weighted samples. */
+  vec2 crypto_samples[4] = vec2[4](vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0));
+  for (int i = 0; i < film_buf.samples_len; i++) {
+    FilmSample src = film_sample_get(i, texel_film);
+    film_sample_cryptomatte_accum(src, layer_component, cryptomatte_tx, crypto_samples);
+  }
+  for (int i = 0; i < 4; i++) {
+    cryptomatte_store_film_sample(dst, pass_id, crypto_samples[i], out_color);
+  }
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Load/Store Data
  * \{ */
-
-#define WEIGHT_lAYER_ACCUMULATION 0
-#define WEIGHT_lAYER_DISTANCE 1
 
 /* Returns the distance used to store nearest interpolation data. */
 float film_distance_load(ivec2 texel)
@@ -176,7 +220,7 @@ float film_distance_load(ivec2 texel)
   if (!film_buf.use_history || film_buf.use_reprojection) {
     return 1.0e16;
   }
-  return imageLoad(in_weight_img, ivec3(texel, WEIGHT_lAYER_DISTANCE)).x;
+  return imageLoad(in_weight_img, ivec3(texel, FILM_WEIGHT_LAYER_DISTANCE)).x;
 }
 
 float film_weight_load(ivec2 texel)
@@ -187,7 +231,7 @@ float film_weight_load(ivec2 texel)
   if (!film_buf.use_history || film_buf.use_reprojection) {
     return 0.0;
   }
-  return imageLoad(in_weight_img, ivec3(texel, WEIGHT_lAYER_ACCUMULATION)).x;
+  return imageLoad(in_weight_img, ivec3(texel, FILM_WEIGHT_LAYER_ACCUMULATION)).x;
 }
 
 /* Returns motion in pixel space to retrieve the pixel history. */
@@ -220,7 +264,11 @@ vec2 film_pixel_history_motion_vector(ivec2 texel_sample)
 /* \a t is inter-pixel position. 0 means perfectly on a pixel center.
  * Returns weights in both dimensions.
  * Multiply each dimension weights to get final pixel weights. */
+#ifdef GPU_METAL
+void film_get_catmull_rom_weights(vec2 t, thread vec2 *weights)
+#else
 void film_get_catmull_rom_weights(vec2 t, out vec2 weights[4])
+#endif
 {
   vec2 t2 = t * t;
   vec2 t3 = t2 * t;
@@ -399,7 +447,7 @@ float film_history_blend_factor(float velocity,
   /* Linearly blend when history gets below to 25% of the bbox size. */
   blend *= saturate(distance_to_luma_clip * 4.0 + 0.1);
   /* Discard out of view history. */
-  if (any(lessThan(texel, vec2(0))) || any(greaterThanEqual(texel, film_buf.extent))) {
+  if (any(lessThan(texel, vec2(0))) || any(greaterThanEqual(texel, vec2(film_buf.extent)))) {
     blend = 1.0;
   }
   /* Discard history if invalid. */
@@ -550,12 +598,12 @@ void film_store_depth(ivec2 texel_film, float value, out float out_depth)
 
 void film_store_distance(ivec2 texel, float value)
 {
-  imageStore(out_weight_img, ivec3(texel, WEIGHT_lAYER_DISTANCE), vec4(value));
+  imageStore(out_weight_img, ivec3(texel, FILM_WEIGHT_LAYER_DISTANCE), vec4(value));
 }
 
 void film_store_weight(ivec2 texel, float value)
 {
-  imageStore(out_weight_img, ivec3(texel, WEIGHT_lAYER_ACCUMULATION), vec4(value));
+  imageStore(out_weight_img, ivec3(texel, FILM_WEIGHT_LAYER_ACCUMULATION), vec4(value));
 }
 
 float film_display_depth_ammend(ivec2 texel, float depth)
@@ -618,7 +666,7 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
       float depth = texelFetch(depth_tx, film_sample.texel, 0).x;
       vec4 vector = velocity_resolve(vector_tx, film_sample.texel, depth);
       /* Transform to pixel space. */
-      vector *= vec4(film_buf.render_extent, -film_buf.render_extent);
+      vector *= vec4(vec2(film_buf.render_extent), -vec2(film_buf.render_extent));
 
       film_store_depth(texel_film, depth, out_depth);
       film_store_data(texel_film, film_buf.normal_id, normal, out_color);
@@ -700,5 +748,19 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
       film_sample_accum(src, aov, aov_value_tx, aov_accum);
     }
     film_store_value(dst, film_buf.aov_value_id + aov, aov_accum, out_color);
+  }
+
+  if (film_buf.cryptomatte_samples_len != 0) {
+    /* Cryptomatte passes cannot be cleared by a weighted store like other passes. */
+    if (!film_buf.use_history || film_buf.use_reprojection) {
+      cryptomatte_clear_samples(dst);
+    }
+
+    film_cryptomatte_layer_accum_and_store(
+        dst, texel_film, film_buf.cryptomatte_object_id, 0, out_color);
+    film_cryptomatte_layer_accum_and_store(
+        dst, texel_film, film_buf.cryptomatte_asset_id, 1, out_color);
+    film_cryptomatte_layer_accum_and_store(
+        dst, texel_film, film_buf.cryptomatte_material_id, 2, out_color);
   }
 }

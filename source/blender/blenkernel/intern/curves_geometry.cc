@@ -9,10 +9,11 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_bounds.hh"
 #include "BLI_index_mask_ops.hh"
 #include "BLI_length_parameterize.hh"
-#include "BLI_math_rotation.hh"
+#include "BLI_math_rotation_legacy.hh"
 #include "BLI_task.hh"
 
 #include "DNA_curves_types.h"
@@ -58,7 +59,7 @@ CurvesGeometry::CurvesGeometry(const int point_num, const int curve_num)
 
   CustomData_add_layer_named(&this->point_data,
                              CD_PROP_FLOAT3,
-                             CD_DEFAULT,
+                             CD_CONSTRUCT,
                              nullptr,
                              this->point_num,
                              ATTR_POSITION.c_str());
@@ -94,6 +95,7 @@ static void copy_curves_geometry(CurvesGeometry &dst, const CurvesGeometry &src)
 
   /* Though type counts are a cache, they must be copied because they are calculated eagerly. */
   dst.runtime->type_counts = src.runtime->type_counts;
+  dst.runtime->bounds_cache = src.runtime->bounds_cache;
 }
 
 CurvesGeometry::CurvesGeometry(const CurvesGeometry &other)
@@ -222,7 +224,7 @@ static MutableSpan<T> get_mutable_attribute(CurvesGeometry &curves,
     return {data, num};
   }
   data = (T *)CustomData_add_layer_named(
-      &custom_data, type, CD_CALLOC, nullptr, num, name.c_str());
+      &custom_data, type, CD_SET_DEFAULT, nullptr, num, name.c_str());
   MutableSpan<T> span = {data, num};
   if (num > 0 && span.first() != default_value) {
     span.fill(default_value);
@@ -254,6 +256,12 @@ void CurvesGeometry::fill_curve_types(const IndexMask selection, const CurveType
   if (selection.size() == this->curves_num()) {
     this->fill_curve_types(type);
     return;
+  }
+  if (std::optional<int8_t> single_type = this->curve_types().get_if_single()) {
+    if (single_type == type) {
+      /* No need for an array if the types are already a single with the correct type. */
+      return;
+    }
   }
   /* A potential performance optimization is only counting the changed indices. */
   this->curve_types_for_write().fill_indices(selection, type);
@@ -504,31 +512,19 @@ static void calculate_evaluated_offsets(const CurvesGeometry &curves,
 
 void CurvesGeometry::ensure_evaluated_offsets() const
 {
-  if (!this->runtime->offsets_cache_dirty) {
-    return;
-  }
-
-  /* A double checked lock. */
-  std::scoped_lock lock{this->runtime->offsets_cache_mutex};
-  if (!this->runtime->offsets_cache_dirty) {
-    return;
-  }
-
-  threading::isolate_task([&]() {
+  this->runtime->offsets_cache_mutex.ensure([&]() {
     this->runtime->evaluated_offsets_cache.resize(this->curves_num() + 1);
 
     if (this->has_curve_with_type(CURVE_TYPE_BEZIER)) {
       this->runtime->bezier_evaluated_offsets.resize(this->points_num());
     }
     else {
-      this->runtime->bezier_evaluated_offsets.clear_and_make_inline();
+      this->runtime->bezier_evaluated_offsets.clear_and_shrink();
     }
 
     calculate_evaluated_offsets(
         *this, this->runtime->evaluated_offsets_cache, this->runtime->bezier_evaluated_offsets);
   });
-
-  this->runtime->offsets_cache_dirty = false;
 }
 
 Span<int> CurvesGeometry::evaluated_offsets() const
@@ -551,19 +547,18 @@ IndexMask CurvesGeometry::indices_for_curve_type(const CurveType type,
       this->curve_types(), this->curve_type_counts(), type, selection, r_indices);
 }
 
+Array<int> CurvesGeometry::point_to_curve_map() const
+{
+  Array<int> map(this->points_num());
+  for (const int i : this->curves_range()) {
+    map.as_mutable_span().slice(this->points_for_curve(i)).fill(i);
+  }
+  return map;
+}
+
 void CurvesGeometry::ensure_nurbs_basis_cache() const
 {
-  if (!this->runtime->nurbs_basis_cache_dirty) {
-    return;
-  }
-
-  /* A double checked lock. */
-  std::scoped_lock lock{this->runtime->nurbs_basis_cache_mutex};
-  if (!this->runtime->nurbs_basis_cache_dirty) {
-    return;
-  }
-
-  threading::isolate_task([&]() {
+  this->runtime->nurbs_basis_cache_mutex.ensure([&]() {
     Vector<int64_t> nurbs_indices;
     const IndexMask nurbs_mask = this->indices_for_curve_type(CURVE_TYPE_NURBS, nurbs_indices);
     if (nurbs_mask.is_empty()) {
@@ -603,26 +598,14 @@ void CurvesGeometry::ensure_nurbs_basis_cache() const
       }
     });
   });
-
-  this->runtime->nurbs_basis_cache_dirty = false;
 }
 
 Span<float3> CurvesGeometry::evaluated_positions() const
 {
-  if (!this->runtime->position_cache_dirty) {
-    return this->runtime->evaluated_positions_span;
-  }
-
-  /* A double checked lock. */
-  std::scoped_lock lock{this->runtime->position_cache_mutex};
-  if (!this->runtime->position_cache_dirty) {
-    return this->runtime->evaluated_positions_span;
-  }
-
-  threading::isolate_task([&]() {
+  this->runtime->position_cache_mutex.ensure([&]() {
     if (this->is_single_type(CURVE_TYPE_POLY)) {
       this->runtime->evaluated_positions_span = this->positions();
-      this->runtime->evaluated_position_cache.clear_and_make_inline();
+      this->runtime->evaluated_position_cache.clear_and_shrink();
       return;
     }
 
@@ -671,7 +654,7 @@ Span<float3> CurvesGeometry::evaluated_positions() const
           case CURVE_TYPE_NURBS: {
             curves::nurbs::interpolate_to_evaluated(this->runtime->nurbs_basis_cache[curve_index],
                                                     nurbs_orders[curve_index],
-                                                    nurbs_weights.slice(points),
+                                                    nurbs_weights.slice_safe(points),
                                                     positions.slice(points),
                                                     evaluated_positions.slice(evaluated_points));
             break;
@@ -683,24 +666,12 @@ Span<float3> CurvesGeometry::evaluated_positions() const
       }
     });
   });
-
-  this->runtime->position_cache_dirty = false;
   return this->runtime->evaluated_positions_span;
 }
 
 Span<float3> CurvesGeometry::evaluated_tangents() const
 {
-  if (!this->runtime->tangent_cache_dirty) {
-    return this->runtime->evaluated_tangent_cache;
-  }
-
-  /* A double checked lock. */
-  std::scoped_lock lock{this->runtime->tangent_cache_mutex};
-  if (!this->runtime->tangent_cache_dirty) {
-    return this->runtime->evaluated_tangent_cache;
-  }
-
-  threading::isolate_task([&]() {
+  this->runtime->tangent_cache_mutex.ensure([&]() {
     const Span<float3> evaluated_positions = this->evaluated_positions();
     const VArray<bool> cyclic = this->cyclic();
 
@@ -716,9 +687,9 @@ Span<float3> CurvesGeometry::evaluated_tangents() const
       }
     });
 
-    /* Correct the first and last tangents of non-cyclic Bezier curves so that they align with the
-     * inner handles. This is a separate loop to avoid the cost when Bezier type curves are not
-     * used. */
+    /* Correct the first and last tangents of non-cyclic Bezier curves so that they align with
+     * the inner handles. This is a separate loop to avoid the cost when Bezier type curves are
+     * not used. */
     Vector<int64_t> bezier_indices;
     const IndexMask bezier_mask = this->indices_for_curve_type(CURVE_TYPE_BEZIER, bezier_indices);
     if (!bezier_mask.is_empty()) {
@@ -734,11 +705,14 @@ Span<float3> CurvesGeometry::evaluated_tangents() const
           const IndexRange points = this->points_for_curve(curve_index);
           const IndexRange evaluated_points = this->evaluated_points_for_curve(curve_index);
 
-          if (handles_right[points.first()] != positions[points.first()]) {
+          const float epsilon = 1e-6f;
+          if (!math::almost_equal_relative(
+                  handles_right[points.first()], positions[points.first()], epsilon)) {
             tangents[evaluated_points.first()] = math::normalize(handles_right[points.first()] -
                                                                  positions[points.first()]);
           }
-          if (handles_left[points.last()] != positions[points.last()]) {
+          if (!math::almost_equal_relative(
+                  handles_left[points.last()], positions[points.last()], epsilon)) {
             tangents[evaluated_points.last()] = math::normalize(positions[points.last()] -
                                                                 handles_left[points.last()]);
           }
@@ -746,8 +720,6 @@ Span<float3> CurvesGeometry::evaluated_tangents() const
       });
     }
   });
-
-  this->runtime->tangent_cache_dirty = false;
   return this->runtime->evaluated_tangent_cache;
 }
 
@@ -762,17 +734,7 @@ static void rotate_directions_around_axes(MutableSpan<float3> directions,
 
 Span<float3> CurvesGeometry::evaluated_normals() const
 {
-  if (!this->runtime->normal_cache_dirty) {
-    return this->runtime->evaluated_normal_cache;
-  }
-
-  /* A double checked lock. */
-  std::scoped_lock lock{this->runtime->normal_cache_mutex};
-  if (!this->runtime->normal_cache_dirty) {
-    return this->runtime->evaluated_normal_cache;
-  }
-
-  threading::isolate_task([&]() {
+  this->runtime->normal_cache_mutex.ensure([&]() {
     const Span<float3> evaluated_tangents = this->evaluated_tangents();
     const VArray<bool> cyclic = this->cyclic();
     const VArray<int8_t> normal_mode = this->normal_mode();
@@ -823,8 +785,6 @@ Span<float3> CurvesGeometry::evaluated_normals() const
       }
     });
   });
-
-  this->runtime->normal_cache_dirty = false;
   return this->runtime->evaluated_normal_cache;
 }
 
@@ -832,8 +792,8 @@ void CurvesGeometry::interpolate_to_evaluated(const int curve_index,
                                               const GSpan src,
                                               GMutableSpan dst) const
 {
-  BLI_assert(!this->runtime->offsets_cache_dirty);
-  BLI_assert(!this->runtime->nurbs_basis_cache_dirty);
+  BLI_assert(this->runtime->offsets_cache_mutex.is_cached());
+  BLI_assert(this->runtime->nurbs_basis_cache_mutex.is_cached());
   const IndexRange points = this->points_for_curve(curve_index);
   BLI_assert(src.size() == points.size());
   BLI_assert(dst.size() == this->evaluated_points_for_curve(curve_index).size());
@@ -852,7 +812,7 @@ void CurvesGeometry::interpolate_to_evaluated(const int curve_index,
     case CURVE_TYPE_NURBS:
       curves::nurbs::interpolate_to_evaluated(this->runtime->nurbs_basis_cache[curve_index],
                                               this->nurbs_orders()[curve_index],
-                                              this->nurbs_weights().slice(points),
+                                              this->nurbs_weights().slice_safe(points),
                                               src,
                                               dst);
       return;
@@ -862,8 +822,8 @@ void CurvesGeometry::interpolate_to_evaluated(const int curve_index,
 
 void CurvesGeometry::interpolate_to_evaluated(const GSpan src, GMutableSpan dst) const
 {
-  BLI_assert(!this->runtime->offsets_cache_dirty);
-  BLI_assert(!this->runtime->nurbs_basis_cache_dirty);
+  BLI_assert(this->runtime->offsets_cache_mutex.is_cached());
+  BLI_assert(this->runtime->nurbs_basis_cache_mutex.is_cached());
   const VArray<int8_t> types = this->curve_types();
   const VArray<int> resolution = this->resolution();
   const VArray<bool> cyclic = this->cyclic();
@@ -893,7 +853,7 @@ void CurvesGeometry::interpolate_to_evaluated(const GSpan src, GMutableSpan dst)
         case CURVE_TYPE_NURBS:
           curves::nurbs::interpolate_to_evaluated(this->runtime->nurbs_basis_cache[curve_index],
                                                   nurbs_orders[curve_index],
-                                                  nurbs_weights.slice(points),
+                                                  nurbs_weights.slice_safe(points),
                                                   src.slice(points),
                                                   dst.slice(evaluated_points));
           continue;
@@ -904,17 +864,7 @@ void CurvesGeometry::interpolate_to_evaluated(const GSpan src, GMutableSpan dst)
 
 void CurvesGeometry::ensure_evaluated_lengths() const
 {
-  if (!this->runtime->length_cache_dirty) {
-    return;
-  }
-
-  /* A double checked lock. */
-  std::scoped_lock lock{this->runtime->length_cache_mutex};
-  if (!this->runtime->length_cache_dirty) {
-    return;
-  }
-
-  threading::isolate_task([&]() {
+  this->runtime->length_cache_mutex.ensure([&]() {
     /* Use an extra length value for the final cyclic segment for a consistent size
      * (see comment on #evaluated_length_cache). */
     const int total_num = this->evaluated_points_num() + this->curves_num();
@@ -935,8 +885,6 @@ void CurvesGeometry::ensure_evaluated_lengths() const
       }
     });
   });
-
-  this->runtime->length_cache_dirty = false;
 }
 
 void CurvesGeometry::ensure_can_interpolate_to_evaluated() const
@@ -954,11 +902,11 @@ void CurvesGeometry::ensure_can_interpolate_to_evaluated() const
 void CurvesGeometry::resize(const int points_num, const int curves_num)
 {
   if (points_num != this->point_num) {
-    CustomData_realloc(&this->point_data, points_num);
+    CustomData_realloc(&this->point_data, this->points_num(), points_num);
     this->point_num = points_num;
   }
   if (curves_num != this->curve_num) {
-    CustomData_realloc(&this->curve_data, curves_num);
+    CustomData_realloc(&this->curve_data, this->curves_num(), curves_num);
     this->curve_num = curves_num;
     this->curve_offsets = (int *)MEM_reallocN(this->curve_offsets, sizeof(int) * (curves_num + 1));
   }
@@ -967,23 +915,25 @@ void CurvesGeometry::resize(const int points_num, const int curves_num)
 
 void CurvesGeometry::tag_positions_changed()
 {
-  this->runtime->position_cache_dirty = true;
-  this->runtime->tangent_cache_dirty = true;
-  this->runtime->normal_cache_dirty = true;
-  this->runtime->length_cache_dirty = true;
+  this->runtime->position_cache_mutex.tag_dirty();
+  this->runtime->tangent_cache_mutex.tag_dirty();
+  this->runtime->normal_cache_mutex.tag_dirty();
+  this->runtime->length_cache_mutex.tag_dirty();
+  this->runtime->bounds_cache.tag_dirty();
 }
 void CurvesGeometry::tag_topology_changed()
 {
-  this->runtime->position_cache_dirty = true;
-  this->runtime->tangent_cache_dirty = true;
-  this->runtime->normal_cache_dirty = true;
-  this->runtime->offsets_cache_dirty = true;
-  this->runtime->nurbs_basis_cache_dirty = true;
-  this->runtime->length_cache_dirty = true;
+  this->tag_positions_changed();
+  this->runtime->offsets_cache_mutex.tag_dirty();
+  this->runtime->nurbs_basis_cache_mutex.tag_dirty();
 }
 void CurvesGeometry::tag_normals_changed()
 {
-  this->runtime->normal_cache_dirty = true;
+  this->runtime->normal_cache_mutex.tag_dirty();
+}
+void CurvesGeometry::tag_radii_changed()
+{
+  this->runtime->bounds_cache.tag_dirty();
 }
 
 static void translate_positions(MutableSpan<float3> positions, const float3 &translation)
@@ -1006,13 +956,13 @@ static void transform_positions(MutableSpan<float3> positions, const float4x4 &m
 
 void CurvesGeometry::calculate_bezier_auto_handles()
 {
-  const VArray<int8_t> types = this->curve_types();
-  if (types.is_single() && types.get_internal_single() != CURVE_TYPE_BEZIER) {
+  if (!this->has_curve_with_type(CURVE_TYPE_BEZIER)) {
     return;
   }
   if (this->handle_positions_left().is_empty() || this->handle_positions_right().is_empty()) {
     return;
   }
+  const VArray<int8_t> types = this->curve_types();
   const VArray<bool> cyclic = this->cyclic();
   const VArraySpan<int8_t> types_left{this->handle_types_left()};
   const VArraySpan<int8_t> types_right{this->handle_types_right()};
@@ -1059,25 +1009,29 @@ void CurvesGeometry::transform(const float4x4 &matrix)
   this->tag_positions_changed();
 }
 
-static std::optional<bounds::MinMaxResult<float3>> curves_bounds(const CurvesGeometry &curves)
-{
-  const Span<float3> positions = curves.positions();
-  const VArray<float> radii = curves.attributes().lookup_or_default<float>(
-      ATTR_RADIUS, ATTR_DOMAIN_POINT, 0.0f);
-  if (!(radii.is_single() && radii.get_internal_single() == 0.0f)) {
-    return bounds::min_max_with_radii(positions, radii.get_internal_span());
-  }
-  return bounds::min_max(positions);
-}
-
 bool CurvesGeometry::bounds_min_max(float3 &min, float3 &max) const
 {
-  const std::optional<bounds::MinMaxResult<float3>> bounds = curves_bounds(*this);
-  if (!bounds) {
+  if (this->points_num() == 0) {
     return false;
   }
-  min = math::min(bounds->min, min);
-  max = math::max(bounds->max, max);
+
+  this->runtime->bounds_cache.ensure([&](Bounds<float3> &r_bounds) {
+    const Span<float3> positions = this->evaluated_positions();
+    if (this->attributes().contains("radius")) {
+      const VArraySpan<float> radii = this->attributes().lookup<float>("radius");
+      Array<float> evaluated_radii(this->evaluated_points_num());
+      this->ensure_can_interpolate_to_evaluated();
+      this->interpolate_to_evaluated(radii, evaluated_radii.as_mutable_span());
+      r_bounds = *bounds::min_max_with_radii(positions, evaluated_radii.as_span());
+    }
+    else {
+      r_bounds = *bounds::min_max(positions);
+    }
+  });
+
+  const Bounds<float3> &bounds = this->runtime->bounds_cache.data();
+  min = math::min(bounds.min, min);
+  max = math::max(bounds.max, max);
   return true;
 }
 
@@ -1093,21 +1047,11 @@ static void copy_between_buffers(const CPPType &type,
                         src_range.size());
 }
 
-template<typename T>
-static void copy_with_map(const Span<T> src, const Span<int> map, MutableSpan<T> dst)
-{
-  threading::parallel_for(map.index_range(), 1024, [&](const IndexRange range) {
-    for (const int i : range) {
-      dst[i] = src[map[i]];
-    }
-  });
-}
-
 static void copy_with_map(const GSpan src, const Span<int> map, GMutableSpan dst)
 {
   attribute_math::convert_to_static_type(src.type(), [&](auto dummy) {
     using T = decltype(dummy);
-    copy_with_map(src.typed<T>(), map, dst.typed<T>());
+    array_utils::gather(src.typed<T>(), map, dst.typed<T>());
   });
 }
 
@@ -1215,6 +1159,10 @@ static CurvesGeometry copy_with_removed_points(const CurvesGeometry &curves,
     attribute.dst.finish();
   }
 
+  if (new_curves.curves_num() != curves.curves_num()) {
+    new_curves.remove_attributes_based_on_types();
+  }
+
   return new_curves;
 }
 
@@ -1320,6 +1268,8 @@ static CurvesGeometry copy_with_removed_curves(const CurvesGeometry &curves,
     attribute.dst.finish();
   }
 
+  new_curves.remove_attributes_based_on_types();
+
   return new_curves;
 }
 
@@ -1363,73 +1313,60 @@ static void reverse_swap_curve_point_data(const CurvesGeometry &curves,
         std::swap(a[end_index], b[i]);
         std::swap(b[end_index], a[i]);
       }
+      if (points.size() % 2) {
+        const int64_t middle_index = points.size() / 2;
+        std::swap(a[middle_index], b[middle_index]);
+      }
     }
   });
 }
 
-static bool layer_matches_name_and_type(const CustomDataLayer &layer,
-                                        const StringRef name,
-                                        const eCustomDataType type)
-{
-  if (layer.type != type) {
-    return false;
-  }
-  return layer.name == name;
-}
-
 void CurvesGeometry::reverse_curves(const IndexMask curves_to_reverse)
 {
-  CustomData_duplicate_referenced_layers(&this->point_data, this->points_num());
+  Set<StringRef> bezier_handle_names{{ATTR_HANDLE_POSITION_LEFT,
+                                      ATTR_HANDLE_POSITION_RIGHT,
+                                      ATTR_HANDLE_TYPE_LEFT,
+                                      ATTR_HANDLE_TYPE_RIGHT}};
 
-  /* Collect the Bezier handle attributes while iterating through the point custom data layers;
-   * they need special treatment later. */
-  MutableSpan<float3> positions_left;
-  MutableSpan<float3> positions_right;
-  MutableSpan<int8_t> types_left;
-  MutableSpan<int8_t> types_right;
+  MutableAttributeAccessor attributes = this->attributes_for_write();
 
-  for (const int layer_i : IndexRange(this->point_data.totlayer)) {
-    CustomDataLayer &layer = this->point_data.layers[layer_i];
-
-    if (positions_left.is_empty() &&
-        layer_matches_name_and_type(layer, ATTR_HANDLE_POSITION_LEFT, CD_PROP_FLOAT3)) {
-      positions_left = {static_cast<float3 *>(layer.data), this->points_num()};
-      continue;
+  attributes.for_all([&](const AttributeIDRef &id, AttributeMetaData meta_data) {
+    if (meta_data.domain != ATTR_DOMAIN_POINT) {
+      return true;
     }
-    if (positions_right.is_empty() &&
-        layer_matches_name_and_type(layer, ATTR_HANDLE_POSITION_RIGHT, CD_PROP_FLOAT3)) {
-      positions_right = {static_cast<float3 *>(layer.data), this->points_num()};
-      continue;
+    if (meta_data.data_type == CD_PROP_STRING) {
+      return true;
     }
-    if (types_left.is_empty() &&
-        layer_matches_name_and_type(layer, ATTR_HANDLE_TYPE_LEFT, CD_PROP_INT8)) {
-      types_left = {static_cast<int8_t *>(layer.data), this->points_num()};
-      continue;
-    }
-    if (types_right.is_empty() &&
-        layer_matches_name_and_type(layer, ATTR_HANDLE_TYPE_RIGHT, CD_PROP_INT8)) {
-      types_right = {static_cast<int8_t *>(layer.data), this->points_num()};
-      continue;
+    if (id.is_named() && bezier_handle_names.contains(id.name())) {
+      return true;
     }
 
-    const eCustomDataType data_type = static_cast<eCustomDataType>(layer.type);
-    attribute_math::convert_to_static_type(data_type, [&](auto dummy) {
+    GSpanAttributeWriter attribute = attributes.lookup_for_write_span(id);
+    attribute_math::convert_to_static_type(attribute.span.type(), [&](auto dummy) {
       using T = decltype(dummy);
-      reverse_curve_point_data<T>(
-          *this, curves_to_reverse, {static_cast<T *>(layer.data), this->points_num()});
+      reverse_curve_point_data<T>(*this, curves_to_reverse, attribute.span.typed<T>());
     });
-  }
+    attribute.finish();
+    return true;
+  });
 
   /* In order to maintain the shape of Bezier curves, handle attributes must reverse, but also the
    * values for the left and right must swap. Use a utility to swap and reverse at the same time,
    * to avoid loading the attribute twice. Generally we can expect the right layer to exist when
    * the left does, but there's no need to count on it, so check for both attributes. */
 
-  if (!positions_left.is_empty() && !positions_right.is_empty()) {
-    reverse_swap_curve_point_data(*this, curves_to_reverse, positions_left, positions_right);
+  if (attributes.contains(ATTR_HANDLE_POSITION_LEFT) &&
+      attributes.contains(ATTR_HANDLE_POSITION_RIGHT)) {
+    reverse_swap_curve_point_data(*this,
+                                  curves_to_reverse,
+                                  this->handle_positions_left_for_write(),
+                                  this->handle_positions_right_for_write());
   }
-  if (!types_left.is_empty() && !types_right.is_empty()) {
-    reverse_swap_curve_point_data(*this, curves_to_reverse, types_left, types_right);
+  if (attributes.contains(ATTR_HANDLE_TYPE_LEFT) && attributes.contains(ATTR_HANDLE_TYPE_RIGHT)) {
+    reverse_swap_curve_point_data(*this,
+                                  curves_to_reverse,
+                                  this->handle_types_left_for_write(),
+                                  this->handle_types_right_for_write());
   }
 
   this->tag_topology_changed();
@@ -1437,21 +1374,20 @@ void CurvesGeometry::reverse_curves(const IndexMask curves_to_reverse)
 
 void CurvesGeometry::remove_attributes_based_on_types()
 {
-  const int points_num = this->points_num();
-  const int curves_num = this->curves_num();
+  MutableAttributeAccessor attributes = this->attributes_for_write();
   if (!this->has_curve_with_type(CURVE_TYPE_BEZIER)) {
-    CustomData_free_layer_named(&this->point_data, ATTR_HANDLE_TYPE_LEFT.c_str(), points_num);
-    CustomData_free_layer_named(&this->point_data, ATTR_HANDLE_TYPE_RIGHT.c_str(), points_num);
-    CustomData_free_layer_named(&this->point_data, ATTR_HANDLE_POSITION_LEFT.c_str(), points_num);
-    CustomData_free_layer_named(&this->point_data, ATTR_HANDLE_POSITION_RIGHT.c_str(), points_num);
+    attributes.remove(ATTR_HANDLE_TYPE_LEFT);
+    attributes.remove(ATTR_HANDLE_TYPE_RIGHT);
+    attributes.remove(ATTR_HANDLE_POSITION_LEFT);
+    attributes.remove(ATTR_HANDLE_POSITION_RIGHT);
   }
   if (!this->has_curve_with_type(CURVE_TYPE_NURBS)) {
-    CustomData_free_layer_named(&this->point_data, ATTR_NURBS_WEIGHT.c_str(), points_num);
-    CustomData_free_layer_named(&this->curve_data, ATTR_NURBS_ORDER.c_str(), curves_num);
-    CustomData_free_layer_named(&this->curve_data, ATTR_NURBS_KNOTS_MODE.c_str(), curves_num);
+    attributes.remove(ATTR_NURBS_WEIGHT);
+    attributes.remove(ATTR_NURBS_ORDER);
+    attributes.remove(ATTR_NURBS_KNOTS_MODE);
   }
   if (!this->has_curve_with_type({CURVE_TYPE_BEZIER, CURVE_TYPE_CATMULL_ROM, CURVE_TYPE_NURBS})) {
-    CustomData_free_layer_named(&this->curve_data, ATTR_RESOLUTION.c_str(), curves_num);
+    attributes.remove(ATTR_RESOLUTION);
   }
 }
 
@@ -1565,6 +1501,11 @@ GVArray CurvesGeometry::adapt_domain(const GVArray &varray,
   }
   if (from == to) {
     return varray;
+  }
+  if (varray.is_single()) {
+    BUFFER_FOR_CPP_TYPE_VALUE(varray.type(), value);
+    varray.get_internal_single(value);
+    return GVArray::ForSingle(varray.type(), this->attributes().domain_size(to), value);
   }
 
   if (from == ATTR_DOMAIN_POINT && to == ATTR_DOMAIN_CURVE) {

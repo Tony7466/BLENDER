@@ -8,7 +8,7 @@
 
 #include "node_composite_util.hh"
 
-static void node_cmp_combsep_color_init(bNodeTree *UNUSED(ntree), bNode *node)
+static void node_cmp_combsep_color_init(bNodeTree * /*ntree*/, bNode *node)
 {
   NodeCMPCombSepColor *data = MEM_cnew<NodeCMPCombSepColor>(__func__);
   data->mode = CMP_NODE_COMBSEP_COLOR_RGB;
@@ -62,6 +62,8 @@ static void node_cmp_combsep_color_label(const ListBase *sockets, CMPNodeCombSep
 
 namespace blender::nodes::node_composite_separate_color_cc {
 
+NODE_STORAGE_FUNCS(NodeCMPCombSepColor)
+
 static void cmp_node_separate_color_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Color>(N_("Image"))
@@ -73,7 +75,7 @@ static void cmp_node_separate_color_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Float>(N_("Alpha"));
 }
 
-static void cmp_node_separate_color_update(bNodeTree *UNUSED(ntree), bNode *node)
+static void cmp_node_separate_color_update(bNodeTree * /*ntree*/, bNode *node)
 {
   const NodeCMPCombSepColor *storage = (NodeCMPCombSepColor *)node->storage;
   node_cmp_combsep_color_label(&node->outputs, (CMPNodeCombSepColorMode)storage->mode);
@@ -93,14 +95,9 @@ class SeparateColorShaderNode : public ShaderNode {
     GPU_stack_link(material, &bnode(), get_shader_function_name(), inputs, outputs);
   }
 
-  NodeCMPCombSepColor *get_node_combine_separate_color()
-  {
-    return static_cast<NodeCMPCombSepColor *>(bnode().storage);
-  }
-
   const char *get_shader_function_name()
   {
-    switch (get_node_combine_separate_color()->mode) {
+    switch (node_storage(bnode()).mode) {
       case CMP_NODE_COMBSEP_COLOR_RGB:
         return "node_composite_separate_rgba";
       case CMP_NODE_COMBSEP_COLOR_HSV:
@@ -110,7 +107,7 @@ class SeparateColorShaderNode : public ShaderNode {
       case CMP_NODE_COMBSEP_COLOR_YUV:
         return "node_composite_separate_yuva_itu_709";
       case CMP_NODE_COMBSEP_COLOR_YCC:
-        switch (get_node_combine_separate_color()->ycc_mode) {
+        switch (node_storage(bnode()).ycc_mode) {
           case BLI_YCC_ITU_BT601:
             return "node_composite_separate_ycca_itu_601";
           case BLI_YCC_ITU_BT709:
@@ -140,10 +137,10 @@ void register_node_type_cmp_separate_color()
 
   cmp_node_type_base(&ntype, CMP_NODE_SEPARATE_COLOR, "Separate Color", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::cmp_node_separate_color_declare;
-  node_type_init(&ntype, node_cmp_combsep_color_init);
+  ntype.initfunc = node_cmp_combsep_color_init;
   node_type_storage(
       &ntype, "NodeCMPCombSepColor", node_free_standard_storage, node_copy_standard_storage);
-  node_type_update(&ntype, file_ns::cmp_node_separate_color_update);
+  ntype.updatefunc = file_ns::cmp_node_separate_color_update;
   ntype.get_compositor_shader_node = file_ns::get_compositor_shader_node;
 
   nodeRegisterType(&ntype);
@@ -152,6 +149,8 @@ void register_node_type_cmp_separate_color()
 /* **************** COMBINE COLOR ******************** */
 
 namespace blender::nodes::node_composite_combine_color_cc {
+
+NODE_STORAGE_FUNCS(NodeCMPCombSepColor)
 
 static void cmp_node_combine_color_declare(NodeDeclarationBuilder &b)
 {
@@ -182,7 +181,7 @@ static void cmp_node_combine_color_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Color>(N_("Image"));
 }
 
-static void cmp_node_combine_color_update(bNodeTree *UNUSED(ntree), bNode *node)
+static void cmp_node_combine_color_update(bNodeTree * /*ntree*/, bNode *node)
 {
   const NodeCMPCombSepColor *storage = (NodeCMPCombSepColor *)node->storage;
   node_cmp_combsep_color_label(&node->inputs, (CMPNodeCombSepColorMode)storage->mode);
@@ -202,14 +201,9 @@ class CombineColorShaderNode : public ShaderNode {
     GPU_stack_link(material, &bnode(), get_shader_function_name(), inputs, outputs);
   }
 
-  NodeCMPCombSepColor *get_node_combine_separate_color()
-  {
-    return static_cast<NodeCMPCombSepColor *>(bnode().storage);
-  }
-
   const char *get_shader_function_name()
   {
-    switch (get_node_combine_separate_color()->mode) {
+    switch (node_storage(bnode()).mode) {
       case CMP_NODE_COMBSEP_COLOR_RGB:
         return "node_composite_combine_rgba";
       case CMP_NODE_COMBSEP_COLOR_HSV:
@@ -219,7 +213,7 @@ class CombineColorShaderNode : public ShaderNode {
       case CMP_NODE_COMBSEP_COLOR_YUV:
         return "node_composite_combine_yuva_itu_709";
       case CMP_NODE_COMBSEP_COLOR_YCC:
-        switch (get_node_combine_separate_color()->ycc_mode) {
+        switch (node_storage(bnode()).ycc_mode) {
           case BLI_YCC_ITU_BT601:
             return "node_composite_combine_ycca_itu_601";
           case BLI_YCC_ITU_BT709:
@@ -249,10 +243,10 @@ void register_node_type_cmp_combine_color()
 
   cmp_node_type_base(&ntype, CMP_NODE_COMBINE_COLOR, "Combine Color", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::cmp_node_combine_color_declare;
-  node_type_init(&ntype, node_cmp_combsep_color_init);
+  ntype.initfunc = node_cmp_combsep_color_init;
   node_type_storage(
       &ntype, "NodeCMPCombSepColor", node_free_standard_storage, node_copy_standard_storage);
-  node_type_update(&ntype, file_ns::cmp_node_combine_color_update);
+  ntype.updatefunc = file_ns::cmp_node_combine_color_update;
   ntype.get_compositor_shader_node = file_ns::get_compositor_shader_node;
 
   nodeRegisterType(&ntype);

@@ -51,7 +51,6 @@
 #include "ED_screen.h"
 #include "ED_select_utils.h"
 #include "ED_transform.h"
-#include "ED_types.h"
 #include "ED_util.h"
 
 #include "DEG_depsgraph.h"
@@ -437,7 +436,7 @@ static void draw_marker_line(const uchar *color, int xpos, int ymin, int ymax)
   GPUVertFormat *format = immVertexFormat();
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
-  immBindBuiltinProgram(GPU_SHADER_2D_LINE_DASHED_UNIFORM_COLOR);
+  immBindBuiltinProgram(GPU_SHADER_3D_LINE_DASHED_UNIFORM_COLOR);
 
   float viewport_size[4];
   GPU_viewport_size_get_f(viewport_size);
@@ -446,7 +445,7 @@ static void draw_marker_line(const uchar *color, int xpos, int ymin, int ymax)
   immUniformColor4ubv(color);
   immUniform1i("colors_len", 0); /* "simple" mode */
   immUniform1f("dash_width", 6.0f);
-  immUniform1f("dash_factor", 0.5f);
+  immUniform1f("udash_factor", 0.5f);
 
   immBegin(GPU_PRIM_LINES, 2);
   immVertex2f(pos, xpos, ymin);
@@ -459,9 +458,7 @@ static void draw_marker_line(const uchar *color, int xpos, int ymin, int ymax)
 static int marker_get_icon_id(TimeMarker *marker, int flag)
 {
   if (flag & DRAW_MARKERS_LOCAL) {
-    return (marker->flag & ACTIVE) ? ICON_PMARKER_ACT :
-           (marker->flag & SELECT) ? ICON_PMARKER_SEL :
-                                     ICON_PMARKER;
+    return (marker->flag & SELECT) ? ICON_PMARKER_SEL : ICON_PMARKER;
   }
 #ifdef DURIAN_CAMERA_SWITCH
   if (marker->camera) {
@@ -503,7 +500,7 @@ static void draw_marker(const uiFontStyle *fstyle,
 static void draw_markers_background(rctf *rect)
 {
   uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  immBindBuiltinProgram(GPU_SHADER_2D_UNIFORM_COLOR);
+  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
   uchar shade[4];
   UI_GetThemeColor4ubv(TH_TIME_SCRUB_BACKGROUND, shade);
@@ -666,11 +663,16 @@ static bool ed_markers_poll_selected_markers(bContext *C)
   ListBase *markers = ED_context_get_markers(C);
 
   if (!ED_operator_markers_region_active(C)) {
-    return 0;
+    return false;
   }
 
   /* check if some marker is selected */
-  return ED_markers_get_first_selected(markers) != NULL;
+  if (ED_markers_get_first_selected(markers) == NULL) {
+    CTX_wm_operator_poll_msg_set(C, "No markers are selected");
+    return false;
+  }
+
+  return true;
 }
 
 static bool ed_markers_poll_selected_no_locked_markers(bContext *C)
@@ -678,12 +680,22 @@ static bool ed_markers_poll_selected_no_locked_markers(bContext *C)
   ListBase *markers = ED_context_get_markers(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
 
-  if (ts->lock_markers || !ED_operator_markers_region_active(C)) {
-    return 0;
+  if (!ED_operator_markers_region_active(C)) {
+    return false;
+  }
+
+  if (ts->lock_markers) {
+    CTX_wm_operator_poll_msg_set(C, "Markers are locked");
+    return false;
   }
 
   /* check if some marker is selected */
-  return ED_markers_get_first_selected(markers) != NULL;
+  if (ED_markers_get_first_selected(markers) == NULL) {
+    CTX_wm_operator_poll_msg_set(C, "No markers are selected");
+    return false;
+  }
+
+  return true;
 }
 
 /* special poll() which checks if there are any markers at all first */
@@ -1113,7 +1125,7 @@ static void MARKER_OT_move(wmOperatorType *ot)
   RNA_def_int(ot->srna, "frames", 0, INT_MIN, INT_MAX, "Frames", "", INT_MIN, INT_MAX);
   PropertyRNA *prop = RNA_def_boolean(
       ot->srna, "tweak", 0, "Tweak", "Operator has been activated using a click-drag event");
-  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE | PROP_HIDDEN);
 }
 
 /** \} */
@@ -1258,14 +1270,14 @@ static int select_timeline_marker_frame(ListBase *markers,
       deselect_markers(markers);
     }
 
-    LISTBASE_CIRCULAR_FORWARD_BEGIN (markers, marker, marker_cycle_selected) {
+    LISTBASE_CIRCULAR_FORWARD_BEGIN (TimeMarker *, markers, marker, marker_cycle_selected) {
       /* this way a not-extend select will always give 1 selected marker */
       if (marker->frame == frame) {
         marker->flag ^= SELECT;
         break;
       }
     }
-    LISTBASE_CIRCULAR_FORWARD_END(markers, marker, marker_cycle_selected);
+    LISTBASE_CIRCULAR_FORWARD_END(TimeMarker *, markers, marker, marker_cycle_selected);
   }
 
   return ret_val;
@@ -1284,7 +1296,7 @@ static void select_marker_camera_switch(
     int sel = 0;
 
     if (!extend) {
-      BKE_view_layer_base_deselect_all(view_layer);
+      BKE_view_layer_base_deselect_all(scene, view_layer);
     }
 
     for (marker = markers->first; marker; marker = marker->next) {
@@ -1294,6 +1306,7 @@ static void select_marker_camera_switch(
       }
     }
 
+    BKE_view_layer_synced_ensure(scene, view_layer);
     for (marker = markers->first; marker; marker = marker->next) {
       if (marker->camera) {
         if (marker->frame == cfra) {
@@ -1381,7 +1394,7 @@ static void MARKER_OT_select(wmOperatorType *ot)
   ot->modal = WM_generic_select_modal;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  ot->flag = OPTYPE_UNDO;
 
   WM_operator_properties_generic_select(ot);
   prop = RNA_def_boolean(ot->srna, "extend", 0, "Extend", "Extend the selection");
@@ -1481,7 +1494,7 @@ static void MARKER_OT_select_box(wmOperatorType *ot)
   ot->poll = ed_markers_poll_markers_exist;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  ot->flag = OPTYPE_UNDO;
 
   /* properties */
   WM_operator_properties_gesture_box(ot);
@@ -1605,8 +1618,8 @@ static void MARKER_OT_select_leftright(wmOperatorType *ot)
 
   /* rna storage */
   RNA_def_enum(
-      ot->srna, "mode", prop_markers_select_leftright_modes, MARKERS_LRSEL_LEFT, "mode", "Mode");
-  RNA_def_boolean(ot->srna, "extend", false, "extend", "Extend");
+      ot->srna, "mode", prop_markers_select_leftright_modes, MARKERS_LRSEL_LEFT, "Mode", "");
+  RNA_def_boolean(ot->srna, "extend", false, "Extend Select", "");
 }
 
 /** \} */

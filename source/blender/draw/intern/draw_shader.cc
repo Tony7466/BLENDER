@@ -17,48 +17,33 @@
 #include "draw_shader.h"
 
 extern "C" char datatoc_common_hair_lib_glsl[];
-
 extern "C" char datatoc_common_hair_refine_vert_glsl[];
-extern "C" char datatoc_common_hair_refine_comp_glsl[];
-extern "C" char datatoc_gpu_shader_3D_smooth_color_frag_glsl[];
 
 static struct {
   struct GPUShader *hair_refine_sh[PART_REFINE_MAX_SHADER];
   struct GPUShader *debug_print_display_sh;
   struct GPUShader *debug_draw_display_sh;
+  struct GPUShader *draw_visibility_compute_sh;
+  struct GPUShader *draw_resource_finalize_sh;
+  struct GPUShader *draw_command_generate_sh;
 } e_data = {{nullptr}};
 
 /* -------------------------------------------------------------------- */
 /** \name Hair refinement
  * \{ */
 
-static GPUShader *hair_refine_shader_compute_create(ParticleRefineShader UNUSED(refinement))
+static GPUShader *hair_refine_shader_compute_create(ParticleRefineShader /*refinement*/)
 {
   return GPU_shader_create_from_info_name("draw_hair_refine_compute");
 }
 
-static GPUShader *hair_refine_shader_transform_feedback_create(
-    ParticleRefineShader UNUSED(refinement))
+static GPUShader *hair_refine_shader_transform_feedback_create(ParticleRefineShader /*refinement*/)
 {
-  GPUShader *sh = nullptr;
-
-  std::string shader_src = std::string(datatoc_common_hair_lib_glsl) +
-                           std::string(datatoc_common_hair_refine_vert_glsl);
-
-  const char *var_names[1] = {"finalColor"};
-  sh = DRW_shader_create_with_transform_feedback(shader_src.c_str(),
-                                                 nullptr,
-                                                 "#define HAIR_PHASE_SUBDIV\n"
-                                                 "#define USE_TF\n",
-                                                 GPU_SHADER_TFB_POINTS,
-                                                 var_names,
-                                                 1);
-
-  return sh;
+  return GPU_shader_create_from_info_name("legacy_hair_refine_shader_transform_feedback");
 }
 
 static GPUShader *hair_refine_shader_transform_feedback_workaround_create(
-    ParticleRefineShader UNUSED(refinement))
+    ParticleRefineShader /*refinement*/)
 {
   return GPU_shader_create_from_info_name("draw_hair_refine_transform_feedback_workaround");
 }
@@ -127,6 +112,31 @@ GPUShader *DRW_shader_debug_draw_display_get()
   return e_data.debug_draw_display_sh;
 }
 
+GPUShader *DRW_shader_draw_visibility_compute_get()
+{
+  if (e_data.draw_visibility_compute_sh == nullptr) {
+    e_data.draw_visibility_compute_sh = GPU_shader_create_from_info_name(
+        "draw_visibility_compute");
+  }
+  return e_data.draw_visibility_compute_sh;
+}
+
+GPUShader *DRW_shader_draw_resource_finalize_get()
+{
+  if (e_data.draw_resource_finalize_sh == nullptr) {
+    e_data.draw_resource_finalize_sh = GPU_shader_create_from_info_name("draw_resource_finalize");
+  }
+  return e_data.draw_resource_finalize_sh;
+}
+
+GPUShader *DRW_shader_draw_command_generate_get()
+{
+  if (e_data.draw_command_generate_sh == nullptr) {
+    e_data.draw_command_generate_sh = GPU_shader_create_from_info_name("draw_command_generate");
+  }
+  return e_data.draw_command_generate_sh;
+}
+
 /** \} */
 
 void DRW_shaders_free()
@@ -136,4 +146,7 @@ void DRW_shaders_free()
   }
   DRW_SHADER_FREE_SAFE(e_data.debug_print_display_sh);
   DRW_SHADER_FREE_SAFE(e_data.debug_draw_display_sh);
+  DRW_SHADER_FREE_SAFE(e_data.draw_visibility_compute_sh);
+  DRW_SHADER_FREE_SAFE(e_data.draw_resource_finalize_sh);
+  DRW_SHADER_FREE_SAFE(e_data.draw_command_generate_sh);
 }

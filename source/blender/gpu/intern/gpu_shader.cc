@@ -95,6 +95,9 @@ static void standard_defines(Vector<const char *> &sources)
     case GPU_BACKEND_OPENGL:
       sources.append("#define GPU_OPENGL\n");
       break;
+    case GPU_BACKEND_METAL:
+      sources.append("#define GPU_METAL\n");
+      break;
     default:
       BLI_assert(false && "Invalid GPU Backend Type");
       break;
@@ -389,6 +392,10 @@ GPUShader *GPU_shader_create_from_info(const GPUShaderCreateInfo *_info)
     shader->compute_shader_from_glsl(sources);
   }
 
+  if (info.tf_type_ != GPU_SHADER_TFB_NONE && info.tf_names_.size() > 0) {
+    shader->transform_feedback_names_set(info.tf_names_.as_span(), info.tf_type_);
+  }
+
   if (!shader->finalize(&info)) {
     delete shader;
     GPU_debug_group_end();
@@ -524,6 +531,15 @@ void GPU_shader_unbind()
 #endif
 }
 
+GPUShader *GPU_shader_get_bound()
+{
+  Context *ctx = Context::get();
+  if (ctx) {
+    return wrap(ctx->shader);
+  }
+  return nullptr;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -612,11 +628,34 @@ int GPU_shader_get_texture_binding(GPUShader *shader, const char *name)
   return tex ? tex->binding : -1;
 }
 
+uint GPU_shader_get_attribute_len(const GPUShader *shader)
+{
+  ShaderInterface *interface = unwrap(shader)->interface;
+  return interface->attr_len_;
+}
+
 int GPU_shader_get_attribute(GPUShader *shader, const char *name)
 {
   ShaderInterface *interface = unwrap(shader)->interface;
   const ShaderInput *attr = interface->attr_get(name);
   return attr ? attr->location : -1;
+}
+
+bool GPU_shader_get_attribute_info(const GPUShader *shader,
+                                   int attr_location,
+                                   char r_name[256],
+                                   int *r_type)
+{
+  ShaderInterface *interface = unwrap(shader)->interface;
+
+  const ShaderInput *attr = interface->attr_get(attr_location);
+  if (!attr) {
+    return false;
+  }
+
+  BLI_strncpy(r_name, interface->input_name_get(attr), 256);
+  *r_type = attr->location != -1 ? interface->attr_types_[attr->location] : -1;
+  return true;
 }
 
 /** \} */

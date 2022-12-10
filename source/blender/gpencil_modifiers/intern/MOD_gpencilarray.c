@@ -104,9 +104,9 @@ static void BKE_gpencil_instance_modifier_instance_tfm(Object *ob,
     if (mmd->flag & GP_ARRAY_USE_OFFSET) {
       add_v3_v3(mat_offset[3], mmd->offset);
     }
-    invert_m4_m4(obinv, ob->obmat);
+    invert_m4_m4(obinv, ob->object_to_world);
 
-    mul_m4_series(r_offset, mat_offset, obinv, mmd->object->obmat);
+    mul_m4_series(r_offset, mat_offset, obinv, mmd->object->object_to_world);
     copy_m4_m4(mat_offset, r_offset);
 
     /* clear r_mat locations to avoid double transform */
@@ -385,7 +385,7 @@ static void object_offset_header_draw(const bContext *UNUSED(C), Panel *panel)
 
   PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
 
-  uiItemR(layout, ptr, "use_object_offset", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "use_object_offset", 0, IFACE_("Object Offset"), ICON_NONE);
 }
 
 static void object_offset_draw(const bContext *UNUSED(C), Panel *panel)
@@ -399,7 +399,7 @@ static void object_offset_draw(const bContext *UNUSED(C), Panel *panel)
   uiLayout *col = uiLayoutColumn(layout, false);
 
   uiLayoutSetActive(col, RNA_boolean_get(ptr, "use_object_offset"));
-  uiItemR(col, ptr, "offset_object", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "offset_object", 0, IFACE_("Object"), ICON_NONE);
 }
 
 static void random_panel_draw(const bContext *UNUSED(C), Panel *panel)

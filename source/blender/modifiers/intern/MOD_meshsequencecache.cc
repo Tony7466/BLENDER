@@ -60,6 +60,8 @@
 #  include "usd.h"
 #endif
 
+using blender::Span;
+
 static void initData(ModifierData *md)
 {
   MeshSeqCacheModifierData *mcmd = reinterpret_cast<MeshSeqCacheModifierData *>(md);
@@ -96,14 +98,51 @@ static void freeData(ModifierData *md)
   }
 }
 
-static bool isDisabled(const struct Scene *UNUSED(scene),
-                       ModifierData *md,
-                       bool UNUSED(useRenderParams))
+static bool isDisabled(const struct Scene * /*scene*/, ModifierData *md, bool /*useRenderParams*/)
 {
   MeshSeqCacheModifierData *mcmd = reinterpret_cast<MeshSeqCacheModifierData *>(md);
 
   /* leave it up to the modifier to check the file is valid on calculation */
   return (mcmd->cache_file == nullptr) || (mcmd->object_path[0] == '\0');
+}
+
+#if defined(WITH_USD) || defined(WITH_ALEMBIC)
+
+/* Return true if the modifier evaluation is for the ORCO mesh and the mesh hasn't changed
+ * topology.
+ */
+static bool can_use_mesh_for_orco_evaluation(MeshSeqCacheModifierData *mcmd,
+                                             const ModifierEvalContext *ctx,
+                                             const Mesh *mesh,
+                                             const float time,
+                                             const char **err_str)
+{
+  if ((ctx->flag & MOD_APPLY_ORCO) == 0) {
+    return false;
+  }
+
+  CacheFile *cache_file = mcmd->cache_file;
+
+  switch (cache_file->type) {
+    case CACHEFILE_TYPE_ALEMBIC:
+#  ifdef WITH_ALEMBIC
+      if (!ABC_mesh_topology_changed(mcmd->reader, ctx->object, mesh, time, err_str)) {
+        return true;
+      }
+#  endif
+      break;
+    case CACHEFILE_TYPE_USD:
+#  ifdef WITH_USD
+      if (!USD_mesh_topology_changed(mcmd->reader, ctx->object, mesh, time, err_str)) {
+        return true;
+      }
+#  endif
+      break;
+    case CACHE_FILE_TYPE_INVALID:
+      break;
+  }
+
+  return false;
 }
 
 static Mesh *generate_bounding_box_mesh(const Mesh *org_mesh)
@@ -121,6 +160,8 @@ static Mesh *generate_bounding_box_mesh(const Mesh *org_mesh)
   return result;
 }
 
+#endif
+
 static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
 #if defined(WITH_USD) || defined(WITH_ALEMBIC)
@@ -133,7 +174,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
   CacheFile *cache_file = mcmd->cache_file;
   const float frame = DEG_get_ctime(ctx->depsgraph);
-  const double time = BKE_cachefile_time_offset(cache_file, (double)frame, FPS);
+  const double time = BKE_cachefile_time_offset(cache_file, double(frame), FPS);
   const char *err_str = nullptr;
 
   if (!mcmd->reader || !STREQ(mcmd->reader_object_path, mcmd->object_path)) {
@@ -154,35 +195,23 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 
   /* If this invocation is for the ORCO mesh, and the mesh hasn't changed topology, we
    * must return the mesh as-is instead of deforming it. */
-  if (ctx->flag & MOD_APPLY_ORCO) {
-    switch (cache_file->type) {
-      case CACHEFILE_TYPE_ALEMBIC:
-#  ifdef WITH_ALEMBIC
-        if (!ABC_mesh_topology_changed(mcmd->reader, ctx->object, mesh, time, &err_str)) {
-          return mesh;
-        }
-#  endif
-        break;
-      case CACHEFILE_TYPE_USD:
-#  ifdef WITH_USD
-        if (!USD_mesh_topology_changed(mcmd->reader, ctx->object, mesh, time, &err_str)) {
-          return mesh;
-        }
-#  endif
-        break;
-      case CACHE_FILE_TYPE_INVALID:
-        break;
-    }
+  if (can_use_mesh_for_orco_evaluation(mcmd, ctx, mesh, time, &err_str)) {
+    return mesh;
   }
 
   if (me != nullptr) {
-    MVert *mvert = mesh->mvert;
-    MEdge *medge = mesh->medge;
-    MPoly *mpoly = mesh->mpoly;
+    const Span<MVert> mesh_verts = mesh->verts();
+    const Span<MEdge> mesh_edges = mesh->edges();
+    const Span<MPoly> mesh_polys = mesh->polys();
+    const Span<MVert> me_verts = me->verts();
+    const Span<MEdge> me_edges = me->edges();
+    const Span<MPoly> me_polys = me->polys();
 
     /* TODO(sybren+bastien): possibly check relevant custom data layers (UV/color depending on
-     * flags) and duplicate those too. */
-    if ((me->mvert == mvert) || (me->medge == medge) || (me->mpoly == mpoly)) {
+     * flags) and duplicate those too.
+     * XXX(Hans): This probably isn't true anymore with various CoW improvements, etc. */
+    if ((me_verts.data() == mesh_verts.data()) || (me_edges.data() == mesh_edges.data()) ||
+        (me_polys.data() == mesh_polys.data())) {
       /* We need to duplicate data here, otherwise we'll modify org mesh, see T51701. */
       mesh = reinterpret_cast<Mesh *>(
           BKE_id_copy_ex(nullptr,
@@ -236,7 +265,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 
   return result ? result : mesh;
 #else
-  UNUSED_VARS(ctx, md, generate_bounding_box_mesh);
+  UNUSED_VARS(ctx, md);
   return mesh;
 #endif
 }
@@ -298,7 +327,7 @@ static void panel_draw(const bContext *C, Panel *panel)
   modifier_panel_end(layout, ptr);
 }
 
-static void velocity_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void velocity_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
@@ -315,7 +344,7 @@ static void velocity_panel_draw(const bContext *UNUSED(C), Panel *panel)
   uiItemR(layout, ptr, "velocity_scale", 0, nullptr, ICON_NONE);
 }
 
-static void time_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void time_panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
@@ -384,7 +413,7 @@ static void panelRegister(ARegionType *region_type)
                              panel_type);
 }
 
-static void blendRead(BlendDataReader *UNUSED(reader), ModifierData *md)
+static void blendRead(BlendDataReader * /*reader*/, ModifierData *md)
 {
   MeshSeqCacheModifierData *msmcd = reinterpret_cast<MeshSeqCacheModifierData *>(md);
   msmcd->reader = nullptr;

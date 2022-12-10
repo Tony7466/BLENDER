@@ -417,15 +417,11 @@ ccl_device_inline int floor_to_int(float f)
   return float_to_int(floorf(f));
 }
 
-ccl_device_inline int quick_floor_to_int(float x)
-{
-  return float_to_int(x) - ((x < 0) ? 1 : 0);
-}
-
 ccl_device_inline float floorfrac(float x, ccl_private int *i)
 {
-  *i = quick_floor_to_int(x);
-  return x - *i;
+  float f = floorf(x);
+  *i = float_to_int(f);
+  return x - f;
 }
 
 ccl_device_inline int ceil_to_int(float f)
@@ -536,11 +532,13 @@ CCL_NAMESPACE_END
 #include "util/math_int2.h"
 #include "util/math_int3.h"
 #include "util/math_int4.h"
+#include "util/math_int8.h"
 
 #include "util/math_float2.h"
-#include "util/math_float3.h"
 #include "util/math_float4.h"
 #include "util/math_float8.h"
+
+#include "util/math_float3.h"
 
 #include "util/rect.h"
 
@@ -798,11 +796,11 @@ ccl_device float bits_to_01(uint bits)
 ccl_device_inline uint popcount(uint x)
 {
   /* TODO(Stefan): pop-count intrinsic for Windows with fallback for older CPUs. */
-  uint i = x & 0xaaaaaaaa;
+  uint i = x;
   i = i - ((i >> 1) & 0x55555555);
   i = (i & 0x33333333) + ((i >> 2) & 0x33333333);
   i = (((i + (i >> 4)) & 0xF0F0F0F) * 0x1010101) >> 24;
-  return i & 1;
+  return i;
 }
 #  endif
 #elif defined(__KERNEL_ONEAPI__)
@@ -862,7 +860,7 @@ ccl_device_inline uint find_first_set(uint x)
   return (x != 0) ? ctz(x) + 1 : 0;
 #else
 #  ifdef _MSC_VER
-  return (x != 0) ? (32 - count_leading_zeros(x & (-x))) : 0;
+  return (x != 0) ? (32 - count_leading_zeros(x & (~x + 1))) : 0;
 #  else
   return __builtin_ffs(x);
 #  endif
@@ -886,16 +884,16 @@ ccl_device_inline float2 map_to_tube(const float3 co)
 
 ccl_device_inline float2 map_to_sphere(const float3 co)
 {
-  float l = len(co);
+  float l = dot(co, co);
   float u, v;
   if (l > 0.0f) {
     if (UNLIKELY(co.x == 0.0f && co.y == 0.0f)) {
       u = 0.0f; /* Otherwise domain error. */
     }
     else {
-      u = (1.0f - atan2f(co.x, co.y) / M_PI_F) / 2.0f;
+      u = (0.5f - atan2f(co.x, co.y) * M_1_2PI_F);
     }
-    v = 1.0f - safe_acosf(co.z / l) / M_PI_F;
+    v = 1.0f - safe_acosf(co.z / sqrtf(l)) * M_1_PI_F;
   }
   else {
     u = v = 0.0f;

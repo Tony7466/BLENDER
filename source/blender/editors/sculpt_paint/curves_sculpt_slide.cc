@@ -8,8 +8,6 @@
 #include "BLI_float4x4.hh"
 #include "BLI_vector.hh"
 
-#include "PIL_time.h"
-
 #include "DEG_depsgraph.h"
 
 #include "BKE_attribute_math.hh"
@@ -17,17 +15,13 @@
 #include "BKE_bvhutils.h"
 #include "BKE_context.h"
 #include "BKE_curves.hh"
-#include "BKE_geometry_set.hh"
 #include "BKE_mesh.h"
-#include "BKE_mesh_runtime.h"
 #include "BKE_mesh_sample.hh"
-#include "BKE_modifier.h"
 #include "BKE_object.h"
 #include "BKE_paint.h"
 #include "BKE_report.h"
 
 #include "DNA_brush_enums.h"
-#include "DNA_brush_types.h"
 #include "DNA_curves_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -36,8 +30,6 @@
 
 #include "ED_screen.h"
 #include "ED_view3d.h"
-
-#include "UI_interface.h"
 
 #include "WM_api.h"
 
@@ -112,6 +104,8 @@ struct SlideOperationExecutor {
 
   Object *surface_ob_eval_ = nullptr;
   Mesh *surface_eval_ = nullptr;
+  Span<MVert> surface_verts_eval_;
+  Span<MLoop> surface_loops_eval_;
   Span<MLoopTri> surface_looptris_eval_;
   VArraySpan<float2> surface_uv_map_eval_;
   BVHTreeFromMesh surface_bvh_eval_;
@@ -149,6 +143,12 @@ struct SlideOperationExecutor {
       report_missing_uv_map_on_original_surface(stroke_extension.reports);
       return;
     }
+    if (curves_orig_->surface_uv_coords().is_empty()) {
+      BKE_report(stroke_extension.reports,
+                 RPT_WARNING,
+                 TIP_("Curves do not have surface attachment information"));
+      return;
+    }
     const StringRefNull uv_map_name = curves_id_orig_->surface_uv_map;
 
     curves_sculpt_ = ctx_.scene->toolsettings->curves_sculpt;
@@ -170,10 +170,9 @@ struct SlideOperationExecutor {
       report_empty_original_surface(stroke_extension.reports);
       return;
     }
-    surface_looptris_orig_ = {BKE_mesh_runtime_looptri_ensure(surface_orig_),
-                              BKE_mesh_runtime_looptri_len(surface_orig_)};
-    surface_uv_map_orig_ =
-        bke::mesh_attributes(*surface_orig_).lookup<float2>(uv_map_name, ATTR_DOMAIN_CORNER);
+    surface_looptris_orig_ = surface_orig_->looptris();
+    surface_uv_map_orig_ = surface_orig_->attributes().lookup<float2>(uv_map_name,
+                                                                      ATTR_DOMAIN_CORNER);
     if (surface_uv_map_orig_.is_empty()) {
       report_missing_uv_map_on_original_surface(stroke_extension.reports);
       return;
@@ -197,10 +196,11 @@ struct SlideOperationExecutor {
       report_empty_evaluated_surface(stroke_extension.reports);
       return;
     }
-    surface_looptris_eval_ = {BKE_mesh_runtime_looptri_ensure(surface_eval_),
-                              BKE_mesh_runtime_looptri_len(surface_eval_)};
-    surface_uv_map_eval_ =
-        bke::mesh_attributes(*surface_eval_).lookup<float2>(uv_map_name, ATTR_DOMAIN_CORNER);
+    surface_looptris_eval_ = surface_eval_->looptris();
+    surface_verts_eval_ = surface_eval_->verts();
+    surface_loops_eval_ = surface_eval_->loops();
+    surface_uv_map_eval_ = surface_eval_->attributes().lookup<float2>(uv_map_name,
+                                                                      ATTR_DOMAIN_CORNER);
     if (surface_uv_map_eval_.is_empty()) {
       report_missing_uv_map_on_evaluated_surface(stroke_extension.reports);
       return;
@@ -292,8 +292,9 @@ struct SlideOperationExecutor {
       /* Compute the normal at the initial surface position. */
       const float3 normal_cu = math::normalize(
           transforms_.surface_to_curves_normal *
-          geometry::compute_surface_point_normal(
-              *result.looptri, result.bary_weights, corner_normals_orig_su_));
+          geometry::compute_surface_point_normal(surface_looptris_orig_[result.looptri_index],
+                                                 result.bary_weights,
+                                                 corner_normals_orig_su_));
 
       r_curves_to_slide.append({curve_i, radius_falloff, normal_cu});
     }
@@ -313,8 +314,8 @@ struct SlideOperationExecutor {
   {
     const float4x4 brush_transform_inv = brush_transform.inverted();
 
-    const Span<MVert> verts_orig_su{surface_orig_->mvert, surface_orig_->totvert};
-    const Span<MLoop> loops_orig{surface_orig_->mloop, surface_orig_->totloop};
+    const Span<MVert> verts_orig_su = surface_orig_->verts();
+    const Span<MLoop> loops_orig = surface_orig_->loops();
 
     MutableSpan<float3> positions_orig_cu = curves_orig_->positions_for_write();
     MutableSpan<float2> surface_uv_coords = curves_orig_->surface_uv_coords_for_write();
@@ -377,7 +378,7 @@ struct SlideOperationExecutor {
         /* Compute the uv of the new surface position on the evaluated mesh. */
         const MLoopTri &looptri_eval = surface_looptris_eval_[looptri_index_eval];
         const float3 bary_weights_eval = bke::mesh_surface_sample::compute_bary_coord_in_triangle(
-            *surface_eval_, looptri_eval, hit_pos_eval_su);
+            surface_verts_eval_, surface_loops_eval_, looptri_eval, hit_pos_eval_su);
         const float2 uv = attribute_math::mix3(bary_weights_eval,
                                                surface_uv_map_eval_[looptri_eval.tri[0]],
                                                surface_uv_map_eval_[looptri_eval.tri[1]],
@@ -389,7 +390,7 @@ struct SlideOperationExecutor {
           found_invalid_uv_mapping_.store(true);
           continue;
         }
-        const MLoopTri &looptri_orig = *result.looptri;
+        const MLoopTri &looptri_orig = surface_looptris_orig_[result.looptri_index];
         const float3 &bary_weights_orig = result.bary_weights;
 
         /* Gather old and new surface normal. */
@@ -397,7 +398,7 @@ struct SlideOperationExecutor {
         const float3 new_normal_cu = math::normalize(
             transforms_.surface_to_curves_normal *
             geometry::compute_surface_point_normal(
-                *result.looptri, result.bary_weights, corner_normals_orig_su_));
+                looptri_orig, result.bary_weights, corner_normals_orig_su_));
 
         /* Gather old and new surface position. */
         const float3 old_first_pos_orig_cu = self_->initial_positions_cu_[first_point_i];

@@ -33,8 +33,8 @@ class RGBOperation : public NodeOperation {
     Result &result = get_result("RGBA");
     result.allocate_single_value();
 
-    const bNodeSocket *socket = static_cast<bNodeSocket *>(bnode().outputs.first);
-    float4 color = float4(static_cast<bNodeSocketValueRGBA *>(socket->default_value)->value);
+    const bNodeSocket *socket = static_cast<const bNodeSocket *>(bnode().outputs.first);
+    float4 color = float4(static_cast<const bNodeSocketValueRGBA *>(socket->default_value)->value);
 
     result.set_color_value(color);
   }
@@ -55,7 +55,7 @@ void register_node_type_cmp_rgb()
 
   cmp_node_type_base(&ntype, CMP_NODE_RGB, "RGB", NODE_CLASS_INPUT);
   ntype.declare = file_ns::cmp_node_rgb_declare;
-  node_type_size_preset(&ntype, NODE_SIZE_SMALL);
+  node_type_size_preset(&ntype, NODE_SIZE_DEFAULT);
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
   nodeRegisterType(&ntype);

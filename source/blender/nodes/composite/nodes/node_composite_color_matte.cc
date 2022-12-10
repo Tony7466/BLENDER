@@ -18,6 +18,8 @@
 
 namespace blender::nodes::node_composite_color_matte_cc {
 
+NODE_STORAGE_FUNCS(NodeChroma)
+
 static void cmp_node_color_matte_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Color>(N_("Image"))
@@ -30,7 +32,7 @@ static void cmp_node_color_matte_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Float>(N_("Matte"));
 }
 
-static void node_composit_init_color_matte(bNodeTree *UNUSED(ntree), bNode *node)
+static void node_composit_init_color_matte(bNodeTree * /*ntree*/, bNode *node)
 {
   NodeChroma *c = MEM_cnew<NodeChroma>(__func__);
   node->storage = c;
@@ -41,7 +43,7 @@ static void node_composit_init_color_matte(bNodeTree *UNUSED(ntree), bNode *node
   c->fstrength = 1.0f;
 }
 
-static void node_composit_buts_color_matte(uiLayout *layout, bContext *UNUSED(C), PointerRNA *ptr)
+static void node_composit_buts_color_matte(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiLayout *col;
 
@@ -83,25 +85,20 @@ class ColorMatteShaderNode : public ShaderNode {
                    GPU_uniform(&value_epsilon));
   }
 
-  NodeChroma *get_node_chroma()
-  {
-    return static_cast<NodeChroma *>(bnode().storage);
-  }
-
   float get_hue_epsilon()
   {
     /* Divide by 2 because the hue wraps around. */
-    return get_node_chroma()->t1 / 2.0f;
+    return node_storage(bnode()).t1 / 2.0f;
   }
 
   float get_saturation_epsilon()
   {
-    return get_node_chroma()->t2;
+    return node_storage(bnode()).t2;
   }
 
   float get_value_epsilon()
   {
-    return get_node_chroma()->t3;
+    return node_storage(bnode()).t3;
   }
 };
 
@@ -122,7 +119,7 @@ void register_node_type_cmp_color_matte()
   ntype.declare = file_ns::cmp_node_color_matte_declare;
   ntype.draw_buttons = file_ns::node_composit_buts_color_matte;
   ntype.flag |= NODE_PREVIEW;
-  node_type_init(&ntype, file_ns::node_composit_init_color_matte);
+  ntype.initfunc = file_ns::node_composit_init_color_matte;
   node_type_storage(&ntype, "NodeChroma", node_free_standard_storage, node_copy_standard_storage);
   ntype.get_compositor_shader_node = file_ns::get_compositor_shader_node;
 

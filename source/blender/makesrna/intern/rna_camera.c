@@ -10,6 +10,8 @@
 
 #include "BLI_math.h"
 
+#include "BLT_translation.h"
+
 #include "RNA_access.h"
 #include "RNA_define.h"
 
@@ -345,7 +347,7 @@ static void rna_def_camera_background_image(BlenderRNA *brna)
   prop = RNA_def_property(srna, "show_expanded", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", CAM_BGIMG_FLAG_EXPANDED);
-  RNA_def_property_ui_text(prop, "Show Expanded", "Show the expanded in the user interface");
+  RNA_def_property_ui_text(prop, "Show Expanded", "Show the details in the user interface");
   RNA_def_property_ui_icon(prop, ICON_DISCLOSURE_TRI_RIGHT, 1);
 
   prop = RNA_def_property(srna, "use_camera_clip", PROP_BOOLEAN, PROP_NONE);
@@ -369,6 +371,7 @@ static void rna_def_camera_background_image(BlenderRNA *brna)
   RNA_def_property_enum_bitflag_sdna(prop, NULL, "flag");
   RNA_def_property_enum_items(prop, bgpic_display_depth_items);
   RNA_def_property_ui_text(prop, "Depth", "Display under or over everything");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_CAMERA);
   RNA_def_property_update(prop, NC_CAMERA | ND_DRAW_RENDER_VIEWPORT, NULL);
 
   /* expose 2 flags as a enum of 3 items */
