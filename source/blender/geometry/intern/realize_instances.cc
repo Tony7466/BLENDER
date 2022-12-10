@@ -1457,8 +1457,8 @@ static void propagate_instances_to_keep(const GeometrySet &geometry_set,
   const auto *instances = instances_component->get_for_read();
 
   Vector<int64_t> inverse_selection_indices;
-  IndexMask inverse_selection = selection.invert(IndexRange(instances->instances_num()),
-                                                 inverse_selection_indices);
+  const IndexMask inverse_selection = selection.invert(IndexRange(instances->instances_num()),
+                                                       inverse_selection_indices);
 
   // check not all instances are being realized
   if (inverse_selection.is_empty()) {
