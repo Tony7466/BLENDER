@@ -32,7 +32,7 @@ struct RealizeInstancesOptions {
  * of instances and of the instanced geometry data.
  */
 GeometrySet realize_instances(GeometrySet geometry_set,
-                              const IndexMask &selection,
+                              IndexMask selection,
                               const RealizeInstancesOptions &options);
 
 }  // namespace blender::geometry

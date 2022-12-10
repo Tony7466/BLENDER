@@ -237,7 +237,7 @@ struct GatherTasksInfo {
   bool create_id_attribute_on_any_component = false;
 
   /** Selection for instances to realize. */
-  const IndexMask &selection;
+  IndexMask selection;
   /**
    * Under some circumstances, temporary arrays need to be allocated during the gather operation.
    * For example, when an instance attribute has to be realized as a different data type. This
@@ -1450,17 +1450,16 @@ static void remove_id_attribute_from_instances(GeometrySet &geometry_set)
 /** Propagate instances from the old geometry set to the new geometry set if they are not realized.
  */
 static void propagate_instances_to_keep(const GeometrySet &geometry_set,
-                                        const IndexMask &selection,
+                                        IndexMask selection,
                                         GeometrySet &new_geometry_set)
 {
-  const auto *instances_component = geometry_set.get_component_for_read<InstancesComponent>();
-  const auto *instances = instances_component->get_for_read();
+  const auto *instances = geometry_set.get_instances_for_read();
 
   Vector<int64_t> inverse_selection_indices;
   const IndexMask inverse_selection = selection.invert(IndexRange(instances->instances_num()),
                                                        inverse_selection_indices);
 
-  // check not all instances are being realized
+  /* Check not all instances are being realized. */
   if (inverse_selection.is_empty()) {
     return;
   }
@@ -1472,7 +1471,7 @@ static void propagate_instances_to_keep(const GeometrySet &geometry_set,
 }
 
 GeometrySet realize_instances(GeometrySet geometry_set,
-                              const IndexMask &selection,
+                              IndexMask selection,
                               const RealizeInstancesOptions &options)
 {
   /* The algorithm works in three steps:

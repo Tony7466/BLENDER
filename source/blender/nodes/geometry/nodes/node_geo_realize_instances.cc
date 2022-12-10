@@ -2,6 +2,8 @@
 
 #include "node_geometry_util.hh"
 
+#include "BKE_instances.hh"
+
 #include "GEO_realize_instances.hh"
 
 #include "UI_interface.h"
@@ -40,13 +42,12 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
-  const auto *instances_component = geometry_set.get_component_for_read<InstancesComponent>();
   Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
 
-  bke::GeometryFieldContext field_context{*instances_component, ATTR_DOMAIN_INSTANCE};
-  const int domain_size = instances_component->attribute_domain_size(ATTR_DOMAIN_INSTANCE);
+  const bke::Instances &instances = *geometry_set.get_instances_for_read();
+  const bke::InstancesFieldContext field_context{instances};
 
-  fn::FieldEvaluator evaluator{field_context, domain_size};
+  fn::FieldEvaluator evaluator{field_context, instances.instances_num()};
   evaluator.set_selection(selection_field);
   evaluator.evaluate();
 
