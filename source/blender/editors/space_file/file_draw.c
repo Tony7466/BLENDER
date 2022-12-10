@@ -542,7 +542,7 @@ static void file_draw_preview(const SpaceFile *sfile,
                  0.0,
                  0,
                  0,
-                 NULL);
+                 file->name);
 
   /* Drag-region. */
   if (drag) {
