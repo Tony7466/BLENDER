@@ -177,7 +177,9 @@ static void join_component_type(Span<GeometrySet> src_geometry_sets, GeometrySet
     options.keep_original_ids = true;
     options.realize_instance_attributes = false;
     GeometrySet joined_components = geometry::realize_instances(
-        GeometrySet::create_with_instances(instances.release()), options);
+        GeometrySet::create_with_instances(instances.release()),
+        IndexMask(instances->instances_num()),
+        options);
     result.add(joined_components.get_component_for_write<Component>());
   }
 }

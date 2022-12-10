@@ -12,6 +12,7 @@ namespace blender::nodes::node_geo_realize_instances_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>(N_("Geometry"));
+  b.add_input<decl::Bool>(N_("Selection")).default_value(true).hide_value().supports_field();
   b.add_output<decl::Geometry>(N_("Geometry"));
 }
 
@@ -34,10 +35,27 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Geometry");
+  if (!geometry_set.has_instances()) {
+    params.set_output("Geometry", std::move(geometry_set));
+    return;
+  }
+
+  const auto *instances_component = geometry_set.get_component_for_read<InstancesComponent>();
+  Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
+
+  bke::GeometryFieldContext field_context{*instances_component, ATTR_DOMAIN_INSTANCE};
+  const int domain_size = instances_component->attribute_domain_size(ATTR_DOMAIN_INSTANCE);
+
+  fn::FieldEvaluator evaluator{field_context, domain_size};
+  evaluator.set_selection(selection_field);
+  evaluator.evaluate();
+
+  const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+
   geometry::RealizeInstancesOptions options;
   options.keep_original_ids = legacy_behavior;
   options.realize_instance_attributes = !legacy_behavior;
-  geometry_set = geometry::realize_instances(geometry_set, options);
+  geometry_set = geometry::realize_instances(geometry_set, selection, options);
   params.set_output("Geometry", std::move(geometry_set));
 }
 

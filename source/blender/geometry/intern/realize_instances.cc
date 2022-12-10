@@ -236,6 +236,8 @@ struct GatherTasksInfo {
   const AllCurvesInfo &curves;
   bool create_id_attribute_on_any_component = false;
 
+  /** Selection for instances to realize. */
+  const IndexMask &selection;
   /**
    * Under some circumstances, temporary arrays need to be allocated during the gather operation.
    * For example, when an instance attribute has to be realized as a different data type. This
@@ -480,7 +482,7 @@ static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
   Vector<std::pair<int, GSpan>> curve_attributes_to_override = prepare_attribute_fallbacks(
       gather_info, instances, gather_info.curves.attributes);
 
-  for (const int i : transforms.index_range()) {
+  for (const int i : gather_info.selection) {
     const int handle = handles[i];
     const float4x4 &transform = transforms[i];
     const InstanceReference &reference = references[handle];
@@ -1445,7 +1447,33 @@ static void remove_id_attribute_from_instances(GeometrySet &geometry_set)
   });
 }
 
-GeometrySet realize_instances(GeometrySet geometry_set, const RealizeInstancesOptions &options)
+/** Propagate instances from the old geometry set to the new geometry set if they are not realized.
+ */
+static void propagate_instances_to_keep(const GeometrySet &geometry_set,
+                                        const IndexMask &selection,
+                                        GeometrySet &new_geometry_set)
+{
+  const auto *instances_component = geometry_set.get_component_for_read<InstancesComponent>();
+  const auto *instances = instances_component->get_for_read();
+
+  Vector<int64_t> inverse_selection_indices;
+  IndexMask inverse_selection = selection.invert(IndexRange(instances->instances_num()),
+                                                 inverse_selection_indices);
+
+  // check not all instances are being realized
+  if (inverse_selection.is_empty()) {
+    return;
+  }
+
+  auto &new_instances_components = new_geometry_set.get_component_for_write<InstancesComponent>();
+  auto *new_instances = new Instances(*instances);
+  new_instances->remove(inverse_selection);
+  new_instances_components.replace(new_instances);
+}
+
+GeometrySet realize_instances(GeometrySet geometry_set,
+                              const IndexMask &selection,
+                              const RealizeInstancesOptions &options)
 {
   /* The algorithm works in three steps:
    * 1. Preprocess each unique geometry that is instanced (e.g. each `Mesh`).
@@ -1457,6 +1485,9 @@ GeometrySet realize_instances(GeometrySet geometry_set, const RealizeInstancesOp
   if (!geometry_set.has_instances()) {
     return geometry_set;
   }
+
+  GeometrySet new_geometry_set;
+  propagate_instances_to_keep(geometry_set, selection, new_geometry_set);
 
   if (options.keep_original_ids) {
     remove_id_attribute_from_instances(geometry_set);
@@ -1474,12 +1505,12 @@ GeometrySet realize_instances(GeometrySet geometry_set, const RealizeInstancesOp
                                  all_meshes_info,
                                  all_curves_info,
                                  create_id_attribute,
+                                 selection,
                                  temporary_arrays};
   const float4x4 transform = float4x4::identity();
   InstanceContext attribute_fallbacks(gather_info);
   gather_realize_tasks_recursive(gather_info, geometry_set, transform, attribute_fallbacks);
 
-  GeometrySet new_geometry_set;
   execute_realize_pointcloud_tasks(options,
                                    all_pointclouds_info,
                                    gather_info.r_tasks.pointcloud_tasks,
