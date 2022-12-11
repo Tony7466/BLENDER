@@ -1376,8 +1376,13 @@ BLI_INLINE float voronoi_distance(const float a, const float b)
   return std::abs(b - a);
 }
 
-void voronoi_f1(
-    const float w, const float randomness, float *r_distance, float3 *r_color, float *r_w)
+void voronoi_f1(const float w,
+                const float exponent,
+                const float randomness,
+                const int metric,
+                float *r_distance,
+                float3 *r_color,
+                float *r_w)
 {
   const float cellPosition = floorf(w);
   const float localPosition = w - cellPosition;
@@ -1409,7 +1414,9 @@ void voronoi_f1(
 
 void voronoi_smooth_f1(const float w,
                        const float smoothness,
+                       const float exponent,
                        const float randomness,
+                       const int metric,
                        float *r_distance,
                        float3 *r_color,
                        float *r_w)
@@ -1452,8 +1459,13 @@ void voronoi_smooth_f1(const float w,
   }
 }
 
-void voronoi_f2(
-    const float w, const float randomness, float *r_distance, float3 *r_color, float *r_w)
+void voronoi_f2(const float w,
+                const float exponent,
+                const float randomness,
+                const int metric,
+                float *r_distance,
+                float3 *r_color,
+                float *r_w)
 {
   const float cellPosition = floorf(w);
   const float localPosition = w - cellPosition;
@@ -2336,6 +2348,10 @@ void voronoi_n_sphere_radius(const float4 coord, const float randomness, float *
   }
   *r_radius = math::distance(closestPointToClosestPoint, closestPoint) / 2.0f;
 }
+
+/* **** Fractal Voronoi **** */
+
+/* The Fractal Voronoi template functions are defined in BLI_noise.hh */
 
 /** \} */
 
