@@ -366,6 +366,7 @@ static void create_result_ids(const RealizeInstancesOptions &options,
 
 /* Forward declaration. */
 static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
+                                           int depth,
                                            const GeometrySet &geometry_set,
                                            const float4x4 &base_transform,
                                            const InstanceContext &base_instance_context);
@@ -457,6 +458,7 @@ static void foreach_geometry_in_reference(
 }
 
 static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
+                                               int depth,
                                                const Instances &instances,
                                                const float4x4 &base_transform,
                                                const InstanceContext &base_instance_context)
@@ -482,7 +484,10 @@ static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
   Vector<std::pair<int, GSpan>> curve_attributes_to_override = prepare_attribute_fallbacks(
       gather_info, instances, gather_info.curves.attributes);
 
-  for (const int i : gather_info.selection) {
+  IndexMask indices = depth == 0 ? gather_info.selection :
+                                   IndexMask(IndexRange(instances.instances_num()));
+
+  for (const int i : indices) {
     const int handle = handles[i];
     const float4x4 &transform = transforms[i];
     const InstanceReference &reference = references[handle];
@@ -511,18 +516,17 @@ static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
     const uint32_t instance_id = noise::hash(base_instance_context.id, local_instance_id);
 
     /* Add realize tasks for all referenced geometry sets recursively. */
-    foreach_geometry_in_reference(reference,
-                                  new_base_transform,
-                                  instance_id,
-                                  [&](const GeometrySet &instance_geometry_set,
-                                      const float4x4 &transform,
-                                      const uint32_t id) {
-                                    instance_context.id = id;
-                                    gather_realize_tasks_recursive(gather_info,
-                                                                   instance_geometry_set,
-                                                                   transform,
-                                                                   instance_context);
-                                  });
+    foreach_geometry_in_reference(
+        reference,
+        new_base_transform,
+        instance_id,
+        [&](const GeometrySet &instance_geometry_set,
+            const float4x4 &transform,
+            const uint32_t id) {
+          instance_context.id = id;
+          gather_realize_tasks_recursive(
+              gather_info, depth + 1, instance_geometry_set, transform, instance_context);
+        });
   }
 }
 
@@ -530,6 +534,7 @@ static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
  * Gather tasks for all geometries in the #geometry_set.
  */
 static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
+                                           int depth,
                                            const GeometrySet &geometry_set,
                                            const float4x4 &base_transform,
                                            const InstanceContext &base_instance_context)
@@ -594,7 +599,7 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         const Instances *instances = instances_component.get_for_read();
         if (instances != nullptr && instances->instances_num() > 0) {
           gather_realize_tasks_for_instances(
-              gather_info, *instances, base_transform, base_instance_context);
+              gather_info, depth, *instances, base_transform, base_instance_context);
         }
         break;
       }
@@ -1453,7 +1458,7 @@ static void propagate_instances_to_keep(const GeometrySet &geometry_set,
                                         IndexMask selection,
                                         GeometrySet &new_geometry_set)
 {
-  const auto *instances = geometry_set.get_instances_for_read();
+  const Instances *instances = geometry_set.get_instances_for_read();
 
   Vector<int64_t> inverse_selection_indices;
   const IndexMask inverse_selection = selection.invert(IndexRange(instances->instances_num()),
@@ -1464,10 +1469,11 @@ static void propagate_instances_to_keep(const GeometrySet &geometry_set,
     return;
   }
 
-  auto &new_instances_components = new_geometry_set.get_component_for_write<InstancesComponent>();
-  auto *new_instances = new Instances(*instances);
+  InstancesComponent &new_instances_components =
+      new_geometry_set.get_component_for_write<InstancesComponent>();
+  Instances *new_instances = new Instances(*instances);
   new_instances->remove(inverse_selection);
-  new_instances_components.replace(new_instances);
+  new_instances_components.replace(new_instances, GeometryOwnershipType::Owned);
 }
 
 GeometrySet realize_instances(GeometrySet geometry_set,
@@ -1508,7 +1514,7 @@ GeometrySet realize_instances(GeometrySet geometry_set,
                                  temporary_arrays};
   const float4x4 transform = float4x4::identity();
   InstanceContext attribute_fallbacks(gather_info);
-  gather_realize_tasks_recursive(gather_info, geometry_set, transform, attribute_fallbacks);
+  gather_realize_tasks_recursive(gather_info, 0, geometry_set, transform, attribute_fallbacks);
 
   execute_realize_pointcloud_tasks(options,
                                    all_pointclouds_info,
