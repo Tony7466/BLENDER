@@ -443,8 +443,8 @@ void fractal_voronoi_f1(const T coord,
     voronoi_f1(
         coord * octave_scale, exponent, randomness, metric, &octave_distance, r_color, r_position);
     *max_amplitude += max_distance * octave_amplitude;
-    float lerp_distance = *r_distance + octave_distance * octave_amplitude;
     if (r_distance != nullptr) {
+      float lerp_distance = *r_distance + octave_distance * octave_amplitude;
       *r_distance = (1.0f - remainder) * (*r_distance) + remainder * lerp_distance;
     }
     if (r_position != nullptr) {
@@ -503,8 +503,8 @@ void fractal_voronoi_smooth_f1(const T coord,
                       r_color,
                       r_position);
     *max_amplitude += max_distance * octave_amplitude;
-    float lerp_distance = *r_distance + octave_distance * octave_amplitude;
     if (r_distance != nullptr) {
+      float lerp_distance = *r_distance + octave_distance * octave_amplitude;
       *r_distance = (1.0f - remainder) * (*r_distance) + remainder * lerp_distance;
     }
     if (r_position != nullptr) {
@@ -550,8 +550,8 @@ void fractal_voronoi_f2(const T coord,
     voronoi_f2(
         coord * octave_scale, exponent, randomness, metric, &octave_distance, r_color, r_position);
     *max_amplitude += max_distance * octave_amplitude;
-    float lerp_distance = *r_distance + octave_distance * octave_amplitude;
     if (r_distance != nullptr) {
+      float lerp_distance = *r_distance + octave_distance * octave_amplitude;
       *r_distance = (1.0f - remainder) * (*r_distance) + remainder * lerp_distance;
     }
     if (r_position != nullptr) {
