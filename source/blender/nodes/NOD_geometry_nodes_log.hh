@@ -30,6 +30,7 @@
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_generic_pointer.hh"
 #include "BLI_multi_value_map.hh"
+#include "BLI_function_ref.hh"
 
 #include "BKE_attribute.h"
 #include "BKE_geometry_set.hh"
@@ -288,6 +289,7 @@ class GeoTreeLog {
   void ensure_debug_messages();
 
   ValueLog *find_socket_value_log(const bNodeSocket &query_socket);
+  void socket_logs_callback(const bNodeSocket &query_socket, FunctionRef<void(ValueLog *value_log)> callback);
 };
 
 /**

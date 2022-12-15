@@ -8,6 +8,8 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_viewer_path.h"
 
+#include "BLI_function_ref.hh"
+
 #include "FN_field_cpp_type.hh"
 
 #include "DNA_modifier_types.h"
@@ -350,6 +352,17 @@ void GeoTreeLog::ensure_debug_messages()
     }
   }
   reduced_debug_messages_ = true;
+}
+
+void GeoTreeLog::socket_logs_callback(const bNodeSocket &query_socket, FunctionRef<void(ValueLog *value_log)> callback)
+{
+  if (!query_socket.is_multi_input()){
+    callback(this->find_socket_value_log(query_socket));
+  }else{
+    for (const bNodeSocket *socket : query_socket.directly_linked_sockets()){
+      callback(this->find_socket_value_log(*socket));
+    }
+  }
 }
 
 ValueLog *GeoTreeLog::find_socket_value_log(const bNodeSocket &query_socket)

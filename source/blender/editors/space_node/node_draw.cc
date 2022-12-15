@@ -1039,32 +1039,42 @@ static std::optional<std::string> create_socket_inspection_string(TreeDrawContex
   }
 
   tree_draw_ctx.geo_tree_log->ensure_socket_values();
-  ValueLog *value_log = tree_draw_ctx.geo_tree_log->find_socket_value_log(socket);
-  if (value_log == nullptr) {
-    return std::nullopt;
-  }
+
+  bool newline = false;
   std::stringstream ss;
-  if (const geo_log::GenericValueLog *generic_value_log =
-          dynamic_cast<const geo_log::GenericValueLog *>(value_log)) {
-    create_inspection_string_for_generic_value(socket, generic_value_log->value, ss);
-  }
-  else if (const geo_log::FieldInfoLog *gfield_value_log =
-               dynamic_cast<const geo_log::FieldInfoLog *>(value_log)) {
-    create_inspection_string_for_field_info(socket, *gfield_value_log, ss);
-  }
-  else if (const geo_log::GeometryInfoLog *geo_value_log =
-               dynamic_cast<const geo_log::GeometryInfoLog *>(value_log)) {
-    create_inspection_string_for_geometry_info(
-        *geo_value_log,
-        ss,
-        dynamic_cast<const nodes::decl::Geometry *>(socket.runtime->declaration));
-  }
+  tree_draw_ctx.geo_tree_log->socket_logs_callback(socket, [&](const ValueLog *value_log){
+    if (newline){
+      ss << "\n";
+    }
+    if (value_log == nullptr) {
+      return;
+    }
+    
+    if (const geo_log::GenericValueLog *generic_value_log =
+            dynamic_cast<const geo_log::GenericValueLog *>(value_log)) {
+      create_inspection_string_for_generic_value(socket, generic_value_log->value, ss);
+    }
+    else if (const geo_log::FieldInfoLog *gfield_value_log =
+                 dynamic_cast<const geo_log::FieldInfoLog *>(value_log)) {
+      create_inspection_string_for_field_info(socket, *gfield_value_log, ss);
+    }
+    else if (const geo_log::GeometryInfoLog *geo_value_log =
+                 dynamic_cast<const geo_log::GeometryInfoLog *>(value_log)) {
+      create_inspection_string_for_geometry_info(
+          *geo_value_log,
+          ss,
+          dynamic_cast<const nodes::decl::Geometry *>(socket.runtime->declaration));
+    }
+    newline = true;
+  });
 
   std::string str = ss.str();
-  if (str.empty()) {
-    return std::nullopt;
+
+  if (!str.empty()){
+    return str;
   }
-  return str;
+
+  return std::nullopt;
 }
 
 static bool node_socket_has_tooltip(const bNodeTree &ntree, const bNodeSocket &socket)
