@@ -17,6 +17,7 @@ set(INC
 set(SRC
   intern/add_curves_on_mesh.cc
   intern/fillet_curves.cc
+  intern/join_geometry.cc
   intern/mesh_merge_by_distance.cc
   intern/mesh_primitive_cuboid.cc
   intern/mesh_to_curve_convert.cc
@@ -32,6 +33,7 @@ set(SRC
 
   GEO_add_curves_on_mesh.hh
   GEO_fillet_curves.hh
+  GEO_join_geometry.hh
   GEO_mesh_merge_by_distance.hh
   GEO_mesh_primitive_cuboid.hh
   GEO_mesh_to_curve.hh

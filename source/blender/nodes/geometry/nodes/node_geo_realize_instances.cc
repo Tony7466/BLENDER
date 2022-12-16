@@ -15,6 +15,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>(N_("Geometry"));
   b.add_input<decl::Bool>(N_("Selection")).default_value(true).hide_value().supports_field();
+  b.add_input<decl::Int>(N_("Depth")).default_value(1).supports_field();
   b.add_output<decl::Geometry>(N_("Geometry"));
 }
 
@@ -43,20 +44,22 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
+  Field<int> depth_field = params.extract_input<Field<int>>("Depth");
 
   const bke::Instances &instances = *geometry_set.get_instances_for_read();
   const bke::InstancesFieldContext field_context{instances};
 
   fn::FieldEvaluator evaluator{field_context, instances.instances_num()};
   evaluator.set_selection(selection_field);
+
+  evaluator.add(depth_field);
   evaluator.evaluate();
+  const VArray<int> depths = evaluator.get_evaluated<int>(0);
 
   const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
 
-  geometry::RealizeInstancesOptions options;
-  options.keep_original_ids = legacy_behavior;
-  options.realize_instance_attributes = !legacy_behavior;
-  geometry_set = geometry::realize_instances(geometry_set, selection, options);
+  geometry_set = geometry::realize_instances(
+      geometry_set, {legacy_behavior, !legacy_behavior, selection, depths});
   params.set_output("Geometry", std::move(geometry_set));
 }
 

@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "GEO_join_geometry.hh"
 #include "GEO_realize_instances.hh"
 
 #include "DNA_collection_types.h"
@@ -236,8 +237,12 @@ struct GatherTasksInfo {
   const AllCurvesInfo &curves;
   bool create_id_attribute_on_any_component = false;
 
-  /** Selection for instances to realize. */
+  /** Selection for top-level instances to realize. */
   IndexMask selection;
+
+  /** Depth to realize instances for each selected top-level instance. */
+  const VArray<int> &depths;
+
   /**
    * Under some circumstances, temporary arrays need to be allocated during the gather operation.
    * For example, when an instance attribute has to be realized as a different data type. This
@@ -245,6 +250,11 @@ struct GatherTasksInfo {
    * Use #std::unique_ptr to avoid depending on whether #GArray has an inline buffer or not.
    */
   Vector<std::unique_ptr<GArray<>>> &r_temporary_arrays;
+
+  /** Instance components to merge for output geometry. */
+  Vector<const InstancesComponent *> instances_components_to_merge;
+  /** Base transform for each instance component. */
+  Vector<float4x4> instances_components_transforms;
 
   /** All gathered tasks. */
   GatherTasks r_tasks;
@@ -366,7 +376,8 @@ static void create_result_ids(const RealizeInstancesOptions &options,
 
 /* Forward declaration. */
 static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
-                                           int depth,
+                                           int curr_depth,
+                                           int target_depth,
                                            const GeometrySet &geometry_set,
                                            const float4x4 &base_transform,
                                            const InstanceContext &base_instance_context);
@@ -458,7 +469,8 @@ static void foreach_geometry_in_reference(
 }
 
 static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
-                                               int depth,
+                                               int curr_depth,
+                                               int target_depth,
                                                const Instances &instances,
                                                const float4x4 &base_transform,
                                                const InstanceContext &base_instance_context)
@@ -484,10 +496,13 @@ static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
   Vector<std::pair<int, GSpan>> curve_attributes_to_override = prepare_attribute_fallbacks(
       gather_info, instances, gather_info.curves.attributes);
 
-  IndexMask indices = depth == 0 ? gather_info.selection :
-                                   IndexMask(IndexRange(instances.instances_num()));
+  IndexMask indices = curr_depth == 0 ? gather_info.selection :
+                                        IndexMask(IndexRange(instances.instances_num()));
 
-  for (const int i : indices) {
+  for (const int mask_index : indices.index_range()) {
+    const int i = indices[mask_index];
+    const int targ_depth = curr_depth == 0 ? gather_info.depths[mask_index] : target_depth;
+
     const int handle = handles[i];
     const float4x4 &transform = transforms[i];
     const InstanceReference &reference = references[handle];
@@ -516,17 +531,20 @@ static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
     const uint32_t instance_id = noise::hash(base_instance_context.id, local_instance_id);
 
     /* Add realize tasks for all referenced geometry sets recursively. */
-    foreach_geometry_in_reference(
-        reference,
-        new_base_transform,
-        instance_id,
-        [&](const GeometrySet &instance_geometry_set,
-            const float4x4 &transform,
-            const uint32_t id) {
-          instance_context.id = id;
-          gather_realize_tasks_recursive(
-              gather_info, depth + 1, instance_geometry_set, transform, instance_context);
-        });
+    foreach_geometry_in_reference(reference,
+                                  new_base_transform,
+                                  instance_id,
+                                  [&](const GeometrySet &instance_geometry_set,
+                                      const float4x4 &transform,
+                                      const uint32_t id) {
+                                    instance_context.id = id;
+                                    gather_realize_tasks_recursive(gather_info,
+                                                                   curr_depth + 1,
+                                                                   targ_depth,
+                                                                   instance_geometry_set,
+                                                                   transform,
+                                                                   instance_context);
+                                  });
   }
 }
 
@@ -534,7 +552,8 @@ static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
  * Gather tasks for all geometries in the #geometry_set.
  */
 static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
-                                           int depth,
+                                           int curr_depth,
+                                           int target_depth,
                                            const GeometrySet &geometry_set,
                                            const float4x4 &base_transform,
                                            const InstanceContext &base_instance_context)
@@ -594,12 +613,25 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         break;
       }
       case GEO_COMPONENT_TYPE_INSTANCES: {
-        const InstancesComponent &instances_component = *static_cast<const InstancesComponent *>(
-            component);
-        const Instances *instances = instances_component.get_for_read();
-        if (instances != nullptr && instances->instances_num() > 0) {
-          gather_realize_tasks_for_instances(
-              gather_info, depth, *instances, base_transform, base_instance_context);
+        if (curr_depth == target_depth) {
+          const InstancesComponent *instances_component = static_cast<const InstancesComponent *>(
+              component);
+
+          gather_info.instances_components_to_merge.append(instances_component);
+          gather_info.instances_components_transforms.append(base_transform);
+        }
+        else {
+          const InstancesComponent &instances_component = *static_cast<const InstancesComponent *>(
+              component);
+          const Instances *instances = instances_component.get_for_read();
+          if (instances != nullptr && instances->instances_num() > 0) {
+            gather_realize_tasks_for_instances(gather_info,
+                                               curr_depth,
+                                               target_depth,
+                                               *instances,
+                                               base_transform,
+                                               base_instance_context);
+          }
         }
         break;
       }
@@ -1463,7 +1495,6 @@ static void propagate_instances_to_keep(const GeometrySet &geometry_set,
   Vector<int64_t> inverse_selection_indices;
   const IndexMask inverse_selection = selection.invert(IndexRange(instances->instances_num()),
                                                        inverse_selection_indices);
-
   /* Check not all instances are being realized. */
   if (inverse_selection.is_empty()) {
     return;
@@ -1471,14 +1502,13 @@ static void propagate_instances_to_keep(const GeometrySet &geometry_set,
 
   InstancesComponent &new_instances_components =
       new_geometry_set.get_component_for_write<InstancesComponent>();
-  Instances *new_instances = new Instances(*instances);
+
+  std::unique_ptr<Instances> new_instances = std::make_unique<Instances>(*instances);
   new_instances->remove(inverse_selection);
-  new_instances_components.replace(new_instances, GeometryOwnershipType::Owned);
+  new_instances_components.replace(new_instances.release(), GeometryOwnershipType::Owned);
 }
 
-GeometrySet realize_instances(GeometrySet geometry_set,
-                              IndexMask selection,
-                              const RealizeInstancesOptions &options)
+GeometrySet realize_instances(GeometrySet geometry_set, const RealizeInstancesOptions &options)
 {
   /* The algorithm works in three steps:
    * 1. Preprocess each unique geometry that is instanced (e.g. each `Mesh`).
@@ -1491,8 +1521,8 @@ GeometrySet realize_instances(GeometrySet geometry_set,
     return geometry_set;
   }
 
-  GeometrySet new_geometry_set;
-  propagate_instances_to_keep(geometry_set, selection, new_geometry_set);
+  GeometrySet temp_geometry_set;
+  propagate_instances_to_keep(geometry_set, options.selection, temp_geometry_set);
 
   if (options.keep_original_ids) {
     remove_id_attribute_from_instances(geometry_set);
@@ -1510,12 +1540,26 @@ GeometrySet realize_instances(GeometrySet geometry_set,
                                  all_meshes_info,
                                  all_curves_info,
                                  create_id_attribute,
-                                 selection,
+                                 options.selection,
+                                 options.depths,
                                  temporary_arrays};
+
+  GeometrySet new_geometry_set;
+
   const float4x4 transform = float4x4::identity();
   InstanceContext attribute_fallbacks(gather_info);
-  gather_realize_tasks_recursive(gather_info, 0, geometry_set, transform, attribute_fallbacks);
 
+  if (temp_geometry_set.has_instances()) {
+    gather_info.instances_components_to_merge.append(
+        &temp_geometry_set.get_component_for_write<InstancesComponent>());
+    gather_info.instances_components_transforms.append(float4x4::identity());
+  }
+
+  gather_realize_tasks_recursive(gather_info, 0, -1, geometry_set, transform, attribute_fallbacks);
+
+  GEO_join_transform_instance_components(gather_info.instances_components_to_merge,
+                                         gather_info.instances_components_transforms,
+                                         new_geometry_set);
   execute_realize_pointcloud_tasks(options,
                                    all_pointclouds_info,
                                    gather_info.r_tasks.pointcloud_tasks,
