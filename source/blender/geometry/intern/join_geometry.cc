@@ -99,7 +99,7 @@ static void join_attributes(Span<const GeometryComponent *> src_components,
 }
 
 static void join_components(Span<const InstancesComponent *> src_components,
-                            VArray<blender::float4x4> src_base_transforms,
+                            const VArray<blender::float4x4> &src_base_transforms,
                             GeometrySet &result)
 {
   std::unique_ptr<bke::Instances> dst_instances = std::make_unique<bke::Instances>();
