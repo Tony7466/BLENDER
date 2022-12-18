@@ -920,11 +920,11 @@ ccl_device void fractal_voronoi_f1(T coord,
                                    ccl_private float3 *outColor,
                                    ccl_private T *outPosition)
 {
-  float octave_scale = lacunarity;
-  float octave_amplitude = roughness;
+  float octave_scale = 1.0f;
+  float octave_amplitude = 1.0f;
   float octave_distance = 0.0f;
 
-  for (int i = 0; i < int(detail); ++i) {
+  for (int i = 0; i <= int(detail); ++i) {
     voronoi_f1(coord * octave_scale,
                exponent,
                randomness,
@@ -932,26 +932,27 @@ ccl_device void fractal_voronoi_f1(T coord,
                &octave_distance,
                outColor,
                outPosition);
-    *max_amplitude += max_distance * octave_amplitude;
-    *outDistance += octave_distance * octave_amplitude;
-    octave_scale *= lacunarity;
-    octave_amplitude *= roughness;
-  }
-  *outPosition /= octave_scale / lacunarity;
-
-  float remainder = detail - int(detail);
-  if (remainder != 0.0f) {
-    voronoi_f1(coord * octave_scale,
-               exponent,
-               randomness,
-               metric,
-               &octave_distance,
-               outColor,
-               outPosition);
-    *max_amplitude += max_distance * octave_amplitude;
-    float lerp_distance = *outDistance + octave_distance * octave_amplitude;
-    *outDistance = (1.0f - remainder) * (*outDistance) + remainder * lerp_distance;
-    *outPosition /= octave_scale;
+    if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
+      *max_amplitude = max_distance;
+      *outDistance = octave_distance;
+      return;
+    }
+    else if (i != int(detail)) {
+      *max_amplitude += max_distance * octave_amplitude;
+      *outDistance += octave_distance * octave_amplitude;
+      *outPosition /= octave_scale;
+      octave_scale *= lacunarity;
+      octave_amplitude *= roughness;
+    }
+    else {
+      float remainder = detail - floor(detail);
+      if (remainder != 0.0f) {
+        *max_amplitude += max_distance * octave_amplitude;
+        float lerp_distance = *outDistance + octave_distance * octave_amplitude;
+        *outDistance = (1.0f - remainder) * (*outDistance) + remainder * lerp_distance;
+        *outPosition /= octave_scale;
+      }
+    }
   }
 }
 
@@ -1143,9 +1144,7 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
     case 1: {
       switch (voronoi_feature) {
         case NODE_VORONOI_F1: {
-          voronoi_f1(w, exponent, randomness, voronoi_metric, &distance_out, &color_out, &w_out);
-
-          float max_amplitude = 1.0f;
+          float max_amplitude = 0.0f;
           if (detail != 0.0f && roughness != 0.0f && lacunarity != 0.0f) {
             fractal_voronoi_f1<float>(w,
                                       detail,
@@ -1242,17 +1241,9 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
       float2 position_out_2d = zero_float2();
       switch (voronoi_feature) {
         case NODE_VORONOI_F1: {
-          voronoi_f1(coord_2d,
-                     exponent,
-                     randomness,
-                     voronoi_metric,
-                     &distance_out,
-                     &color_out,
-                     &position_out_2d);
-
           const float max_distance = voronoi_distance_2d(
               make_float2(1.0f, 1.0f), make_float2(0.0f, 0.0f), voronoi_metric, exponent);
-          float max_amplitude = max_distance;
+          float max_amplitude = 0.0f;
           if (detail != 0.0f && roughness != 0.0f && lacunarity != 0.0f) {
             fractal_voronoi_f1<float2>(coord_2d,
                                        detail,
@@ -1360,19 +1351,11 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
     case 3: {
       switch (voronoi_feature) {
         case NODE_VORONOI_F1: {
-          voronoi_f1(coord,
-                     exponent,
-                     randomness,
-                     voronoi_metric,
-                     &distance_out,
-                     &color_out,
-                     &position_out);
-
           const float max_distance = voronoi_distance_3d(make_float3(1.0f, 1.0f, 1.0f),
                                                          make_float3(0.0f, 0.0f, 0.0f),
                                                          voronoi_metric,
                                                          exponent);
-          float max_amplitude = max_distance;
+          float max_amplitude = 0.0f;
           if (detail != 0.0f && roughness != 0.0f && lacunarity != 0.0f) {
             fractal_voronoi_f1<float3>(coord,
                                        detail,
@@ -1490,20 +1473,11 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
         float4 coord_4d = make_float4(coord.x, coord.y, coord.z, w);
         float4 position_out_4d;
         switch (voronoi_feature) {
-          case NODE_VORONOI_F1: {
-            voronoi_f1(coord_4d,
-                       exponent,
-                       randomness,
-                       voronoi_metric,
-                       &distance_out,
-                       &color_out,
-                       &position_out_4d);
-
             const float max_distance = voronoi_distance_4d(make_float4(1.0f, 1.0f, 1.0f, 1.0f),
                                                            make_float4(0.0f, 0.0f, 0.0f, 0.0f),
                                                            voronoi_metric,
                                                            exponent);
-            float max_amplitude = max_distance;
+            float max_amplitude = 0.0f;
             if (detail != 0.0f && roughness != 0.0f && lacunarity != 0.0f) {
               fractal_voronoi_f1<float4>(coord_4d,
                                          detail,
