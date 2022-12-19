@@ -9,6 +9,7 @@
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usd/usdShade/material.h>
 #include <pxr/usd/usdUtils/sparseValueWriter.h>
+#include <pxr/usd/usdGeom/boundable.h>
 
 #include <vector>
 
@@ -67,6 +68,8 @@ class USDAbstractWriter : public AbstractHierarchyWriter {
    * Reference the original data instead of writing a copy.
    */
   virtual bool mark_as_instance(const HierarchyContext &context, const pxr::UsdPrim &prim);
+  
+  virtual void author_extent(const pxr::UsdTimeCode timecode, pxr::UsdGeomBoundable &prim);
 };
 
 }  // namespace blender::io::usd
