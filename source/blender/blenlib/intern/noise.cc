@@ -2395,7 +2395,7 @@ void fractal_voronoi_f1(const T coord,
       octave_amplitude *= roughness;
     }
     else {
-      float remainder = detail - std::floorf(detail);
+      float remainder = detail - floorf(detail);
       if (remainder != 0.0f) {
         if (r_distance != nullptr) {
           *r_max_amplitude += max_distance * octave_amplitude;
@@ -2461,7 +2461,7 @@ void fractal_voronoi_smooth_f1(const T coord,
       octave_amplitude *= roughness;
     }
     else {
-      float remainder = detail - std::floorf(detail);
+      float remainder = detail - floorf(detail);
       if (remainder != 0.0f) {
         if (r_distance != nullptr) {
           *r_max_amplitude += max_distance * octave_amplitude;
@@ -2520,7 +2520,7 @@ void fractal_voronoi_f2(const T coord,
       octave_amplitude *= roughness;
     }
     else {
-      float remainder = detail - std::floorf(detail);
+      float remainder = detail - floorf(detail);
       if (remainder != 0.0f) {
         if (r_distance != nullptr) {
           *r_max_amplitude += max_distance * octave_amplitude;
