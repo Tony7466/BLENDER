@@ -108,8 +108,8 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const Hierarch
       data_writer = new USDMetaballWriter(usd_export_context);
       break;
     case OB_CURVES_LEGACY: {
-      auto legacy_curve = static_cast<Curve *>(context->object->data);
-      auto curves = bke::curve_legacy_to_curves(*legacy_curve);
+      const Curve *legacy_curve = static_cast<Curve *>(context->object->data);
+      Curves *curves = bke::curve_legacy_to_curves(*legacy_curve);
       data_writer = new USDCurvesWriter(usd_export_context, curves);
       break;
     }

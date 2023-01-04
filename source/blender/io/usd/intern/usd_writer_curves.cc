@@ -41,8 +41,8 @@ pxr::UsdGeomCurves USDCurvesWriter::DefineUsdGeomBasisCurves(pxr::VtValue curve_
                                                               usd_export_context_.usd_path);
 
   pxr::UsdGeomBasisCurves basis_curves = pxr::UsdGeomBasisCurves(curves);
-  // Not required to set the basis attribute for linear curves
-  // https://graphics.pixar.com/usd/dev/api/class_usd_geom_basis_curves.html#details
+  /* Not required to set the basis attribute for linear curves
+   * https://graphics.pixar.com/usd/dev/api/class_usd_geom_basis_curves.html#details */
   if (cubic) {
     basis_curves.CreateTypeAttr(pxr::VtValue(pxr::UsdGeomTokens->cubic));
     basis_curves.CreateBasisAttr(curve_basis);
@@ -68,10 +68,6 @@ void populate_curve_widths(const bke::CurvesGeometry &geometry, pxr::VtArray<flo
 
   widths.resize(radii.size());
 
-  if (widths.size() == 0) {
-    return;
-  }
-
   for (const int i : radii.index_range()) {
     widths[i] = radii[i] * 2.0f;
   }
@@ -83,6 +79,10 @@ void set_curve_width_interpolation(const pxr::VtArray<float> &widths,
                                    const bool cyclic,
                                    pxr::TfToken &interpolation)
 {
+  if (widths.size() == 0) {
+    return;
+  }
+
   size_t expectedVaryingSize;
   if (cyclic) {
     expectedVaryingSize = std::accumulate(segments.begin(), segments.end(), 0);
@@ -95,16 +95,15 @@ void set_curve_width_interpolation(const pxr::VtArray<float> &widths,
   size_t accumulatedControlPointCount = std::accumulate(
       control_point_counts.begin(), control_point_counts.end(), 0);
 
-  if (widths.size() == 1)
-    interpolation = pxr::UsdGeomTokens->constant;
-  else if (widths.size() == accumulatedControlPointCount)
+  /* For Blender curves, radii are always stored per point. For linear curves, this should match
+   * with USD's vertex interpolation. For cubic curves, this should match with USD's varying
+   * interpolation. */
+  if (widths.size() == accumulatedControlPointCount)
     interpolation = pxr::UsdGeomTokens->vertex;
-  else if (widths.size() == control_point_counts.size())
-    interpolation = pxr::UsdGeomTokens->uniform;
-  else if (widths.size() == expectedVaryingSize)
+  if (widths.size() == expectedVaryingSize)
     interpolation = pxr::UsdGeomTokens->varying;
   else {
-    WM_reportf(RPT_WARNING, "Curve width size not supported for standard USD interpolation.");
+    WM_reportf(RPT_WARNING, "Curve width size not supported for USD interpolation.");
   }
 }
 
@@ -122,10 +121,10 @@ void populate_curve_props(const bke::CurvesGeometry &geometry,
   pxr::VtArray<int> segments;
   segments.resize(num_curves);
 
-  for (int i_curve = 0; i_curve < num_curves; i_curve++) {
-    auto curve_points = geometry.points_for_curve(i_curve);
+  for (const int i_curve : geometry.curves_range()) {
+    const IndexRange curve_points = geometry.points_for_curve(i_curve);
     long tot_points = 0;
-    for (const auto i_point : curve_points) {
+    for (const long i_point : curve_points) {
       verts.push_back(
           pxr::GfVec3f(positions[i_point][0], positions[i_point][1], positions[i_point][2]));
       tot_points++;
@@ -133,17 +132,12 @@ void populate_curve_props(const bke::CurvesGeometry &geometry,
 
     control_point_counts[i_curve] = tot_points;
 
-    if (cubic) {
-      if (cyclic) {
-        segments[i_curve] = tot_points;
-      }
-      else {
-        segments[i_curve] = (tot_points - 4) + 1;
-      }
+    if (cyclic) {
+      segments[i_curve] = tot_points;
     }
     else {
-      if (cyclic) {
-        segments[i_curve] = tot_points;
+      if (cubic) {
+        segments[i_curve] = (tot_points - 4) + 1;
       }
       else {
         segments[i_curve] = tot_points - 1;
@@ -174,7 +168,7 @@ void populate_curve_props_for_bezier(const bke::CurvesGeometry &geometry,
   segments.resize(num_curves);
 
   for (int i_curve = 0; i_curve < num_curves; i_curve++) {
-    auto curve_points = geometry.points_for_curve(i_curve);
+    const IndexRange curve_points = geometry.points_for_curve(i_curve);
 
     long tot_points = 0;
     for (const long i_point : curve_points) {
@@ -193,7 +187,9 @@ void populate_curve_props_for_bezier(const bke::CurvesGeometry &geometry,
         verts.push_back(
             pxr::GfVec3f(handles_r[i_point][0], handles_r[i_point][1], handles_r[i_point][2]));
 
-        auto start_point = curve_points[0];
+        /* For USD representation of periodic bezier curve, one vertex must be repeated to close
+         * the curve. */
+        const long start_point = curve_points[0];
         verts.push_back(pxr::GfVec3f(
             handles_l[start_point][0], handles_l[start_point][1], handles_l[start_point][2]));
 
@@ -232,10 +228,10 @@ void populate_curve_props_for_nurbs(const bke::CurvesGeometry &geometry,
   VArray<int8_t> geom_orders = geometry.nurbs_orders();
   VArray<int8_t> knots_modes = geometry.nurbs_knots_modes();
 
-  for (int i_curve = 0; i_curve < num_curves; i_curve++) {
-    auto curve_points = geometry.points_for_curve(i_curve);
+  for (const int i_curve : geometry.curves_range()) {
+    const IndexRange curve_points = geometry.points_for_curve(i_curve);
     long tot_points = 0;
-    for (const auto i_point : curve_points) {
+    for (const long i_point : curve_points) {
       verts.push_back(
           pxr::GfVec3f(positions[i_point][0], positions[i_point][1], positions[i_point][2]));
       tot_points++;
@@ -244,7 +240,7 @@ void populate_curve_props_for_nurbs(const bke::CurvesGeometry &geometry,
     control_point_counts[i_curve] = tot_points;
 
     const int8_t order = geom_orders[i_curve];
-    orders[i_curve] = (int)geom_orders[i_curve];
+    orders[i_curve] = int(geom_orders[i_curve]);
 
     const KnotsMode mode = KnotsMode(knots_modes[i_curve]);
 
@@ -254,17 +250,17 @@ void populate_curve_props_for_nurbs(const bke::CurvesGeometry &geometry,
 
     knots.resize(knots_num);
     for (int i_knot = 0; i_knot < knots_num; i_knot++) {
-      knots[i_knot] = (double)temp_knots[i_knot];
+      knots[i_knot] = double(temp_knots[i_knot]);
     }
 
     /* Set end knots according to the USD spec for periodic curves
-       https://graphics.pixar.com/usd/dev/api/class_usd_geom_nurbs_curves.html#details */
+     * https://graphics.pixar.com/usd/dev/api/class_usd_geom_nurbs_curves.html#details */
     if (cyclic) {
       knots[0] = knots[1] - (knots[knots.size() - 2] - knots[knots.size() - 3]);
       knots[knots.size() - 1] = knots[knots.size() - 2] + (knots[2] - knots[1]);
     }
     else {
-      // Set end knots according to the USD spec for non-periodic curves
+      /* Set end knots according to the USD spec for non-periodic curves */
       knots[0] = knots[1];
       knots[knots.size() - 1] = knots[knots.size() - 2];
     }
@@ -287,8 +283,8 @@ void USDCurvesWriter::do_write(HierarchyContext &context)
 
   const std::array<int, CURVE_TYPES_NUM> curve_type_counts = geometry.curve_type_counts();
   const int number_of_curve_types = std::reduce(
-      curve_type_counts.begin(), curve_type_counts.end(), 0, [](int previousResult, int item) {
-        return item > 0 ? ++previousResult : previousResult;
+      curve_type_counts.begin(), curve_type_counts.end(), 0, [](int previous_result, int item) {
+        return item > 0 ? ++previous_result : previous_result;
       });
 
   if (number_of_curve_types > 1) {
