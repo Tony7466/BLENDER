@@ -50,20 +50,19 @@ static void node_geo_exec(GeoNodeExecParams params)
   const bke::InstancesFieldContext field_context{instances};
 
   fn::FieldEvaluator evaluator{field_context, instances.instances_num()};
-  evaluator.set_selection(selection_field);
 
+  evaluator.set_selection(selection_field);
   evaluator.add(depth_field);
   evaluator.evaluate();
-  const VArray<int> depths = evaluator.get_evaluated<int>(0);
 
+  const VArray<int> depths = evaluator.get_evaluated<int>(0);
   const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
 
-  geometry_set = geometry::realize_instances(geometry_set,
-                                             {legacy_behavior,
-                                              !legacy_behavior,
-                                              selection,
-                                              depths,
-                                              params.get_output_propagation_info("Geometry")});
+  bke::AnonymousAttributePropagationInfo propagation_info = params.get_output_propagation_info(
+      "Geometry");
+
+  geometry_set = geometry::realize_instances(
+      geometry_set, {legacy_behavior, !legacy_behavior, selection, depths, propagation_info});
   params.set_output("Geometry", std::move(geometry_set));
 }
 
