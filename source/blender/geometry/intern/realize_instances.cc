@@ -675,8 +675,11 @@ static OrderedAttributes gather_generic_pointcloud_attributes_to_propagate(
   }
 
   Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
-  in_geometry_set.gather_attributes_for_propagation(
-      src_component_types, GEO_COMPONENT_TYPE_POINT_CLOUD, true, attributes_to_propagate);
+  in_geometry_set.gather_attributes_for_propagation(src_component_types,
+                                                    GEO_COMPONENT_TYPE_POINT_CLOUD,
+                                                    true,
+                                                    options.propagation_info,
+                                                    attributes_to_propagate);
   attributes_to_propagate.remove("position");
   r_create_id = attributes_to_propagate.pop_try("id").has_value();
   r_create_radii = attributes_to_propagate.pop_try("radius").has_value();
@@ -868,8 +871,11 @@ static OrderedAttributes gather_generic_mesh_attributes_to_propagate(
   }
 
   Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
-  in_geometry_set.gather_attributes_for_propagation(
-      src_component_types, GEO_COMPONENT_TYPE_MESH, true, attributes_to_propagate);
+  in_geometry_set.gather_attributes_for_propagation(src_component_types,
+                                                    GEO_COMPONENT_TYPE_MESH,
+                                                    true,
+                                                    options.propagation_info,
+                                                    attributes_to_propagate);
   attributes_to_propagate.remove("position");
   attributes_to_propagate.remove("normal");
   attributes_to_propagate.remove("shade_smooth");
@@ -1164,15 +1170,6 @@ static void execute_realize_mesh_tasks(const RealizeInstancesOptions &options,
     }
   });
 
-  if (first_mesh.active_color_attribute) {
-    MEM_SAFE_FREE(dst_mesh->active_color_attribute);
-    dst_mesh->active_color_attribute = BLI_strdup(first_mesh.active_color_attribute);
-  }
-  if (first_mesh.default_color_attribute) {
-    MEM_SAFE_FREE(dst_mesh->default_color_attribute);
-    dst_mesh->default_color_attribute = BLI_strdup(first_mesh.default_color_attribute);
-  }
-
   /* Tag modified attributes. */
   for (GSpanAttributeWriter &dst_attribute : dst_attribute_writers) {
     dst_attribute.finish();
@@ -1197,8 +1194,11 @@ static OrderedAttributes gather_generic_curve_attributes_to_propagate(
   }
 
   Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
-  in_geometry_set.gather_attributes_for_propagation(
-      src_component_types, GEO_COMPONENT_TYPE_CURVE, true, attributes_to_propagate);
+  in_geometry_set.gather_attributes_for_propagation(src_component_types,
+                                                    GEO_COMPONENT_TYPE_CURVE,
+                                                    true,
+                                                    options.propagation_info,
+                                                    attributes_to_propagate);
   attributes_to_propagate.remove("position");
   attributes_to_propagate.remove("radius");
   attributes_to_propagate.remove("resolution");

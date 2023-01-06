@@ -8,7 +8,7 @@ namespace blender::nodes::node_geo_join_geometry_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>(N_("Geometry")).multi_input();
-  b.add_output<decl::Geometry>(N_("Geometry"));
+  b.add_output<decl::Geometry>(N_("Geometry")).propagate_all();
 }
 
 template<typename Component>
@@ -29,20 +29,34 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
   Vector<GeometrySet> geometry_sets = params.extract_input<Vector<GeometrySet>>("Geometry");
 
+  const AnonymousAttributePropagationInfo &propagation_info = params.get_output_propagation_info(
+      "Geometry");
+
   GeometrySet geometry_set_result;
   geometry::GEO_join_component_type<MeshComponent>(
-      get_components_from_geometry_sets<MeshComponent>(geometry_sets), geometry_set_result);
+      get_components_from_geometry_sets<MeshComponent>(geometry_sets),
+      geometry_set_result,
+      propagation_info);
   geometry::GEO_join_component_type<PointCloudComponent>(
-      get_components_from_geometry_sets<PointCloudComponent>(geometry_sets), geometry_set_result);
+      get_components_from_geometry_sets<PointCloudComponent>(geometry_sets),
+      geometry_set_result,
+      propagation_info);
   geometry::GEO_join_component_type<InstancesComponent>(
-      get_components_from_geometry_sets<InstancesComponent>(geometry_sets), geometry_set_result);
+      get_components_from_geometry_sets<InstancesComponent>(geometry_sets),
+      geometry_set_result,
+      propagation_info);
   geometry::GEO_join_component_type<VolumeComponent>(
-      get_components_from_geometry_sets<VolumeComponent>(geometry_sets), geometry_set_result);
+      get_components_from_geometry_sets<VolumeComponent>(geometry_sets),
+      geometry_set_result,
+      propagation_info);
   geometry::GEO_join_component_type<CurveComponent>(
-      get_components_from_geometry_sets<CurveComponent>(geometry_sets), geometry_set_result);
+      get_components_from_geometry_sets<CurveComponent>(geometry_sets),
+      geometry_set_result,
+      propagation_info);
   geometry::GEO_join_component_type<GeometryComponentEditData>(
       get_components_from_geometry_sets<GeometryComponentEditData>(geometry_sets),
-      geometry_set_result);
+      geometry_set_result,
+      propagation_info);
 
   params.set_output("Geometry", std::move(geometry_set_result));
 }

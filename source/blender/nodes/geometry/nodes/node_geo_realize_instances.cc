@@ -16,7 +16,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Geometry>(N_("Geometry"));
   b.add_input<decl::Bool>(N_("Selection")).default_value(true).hide_value().supports_field();
   b.add_input<decl::Int>(N_("Depth")).default_value(1).supports_field();
-  b.add_output<decl::Geometry>(N_("Geometry"));
+  b.add_output<decl::Geometry>(N_("Geometry")).propagate_all();
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -58,8 +58,12 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
 
-  geometry_set = geometry::realize_instances(
-      geometry_set, {legacy_behavior, !legacy_behavior, selection, depths});
+  geometry_set = geometry::realize_instances(geometry_set,
+                                             {legacy_behavior,
+                                              !legacy_behavior,
+                                              selection,
+                                              depths,
+                                              params.get_output_propagation_info("Geometry")});
   params.set_output("Geometry", std::move(geometry_set));
 }
 
