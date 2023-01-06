@@ -1495,9 +1495,11 @@ static void remove_id_attribute_from_instances(GeometrySet &geometry_set)
 
 /** Propagate instances from the old geometry set to the new geometry set if they are not realized.
  */
-static void propagate_instances_to_keep(const GeometrySet &geometry_set,
-                                        IndexMask selection,
-                                        GeometrySet &new_geometry_set)
+static void propagate_instances_to_keep(
+    const GeometrySet &geometry_set,
+    IndexMask selection,
+    GeometrySet &new_geometry_set,
+    const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   const Instances *instances = geometry_set.get_instances_for_read();
 
@@ -1513,7 +1515,7 @@ static void propagate_instances_to_keep(const GeometrySet &geometry_set,
       new_geometry_set.get_component_for_write<InstancesComponent>();
 
   std::unique_ptr<Instances> new_instances = std::make_unique<Instances>(*instances);
-  new_instances->remove(inverse_selection);
+  new_instances->remove(inverse_selection, propagation_info);
   new_instances_components.replace(new_instances.release(), GeometryOwnershipType::Owned);
 }
 
@@ -1531,7 +1533,8 @@ GeometrySet realize_instances(GeometrySet geometry_set, const RealizeInstancesOp
   }
 
   GeometrySet temp_geometry_set;
-  propagate_instances_to_keep(geometry_set, options.selection, temp_geometry_set);
+  propagate_instances_to_keep(
+      geometry_set, options.selection, temp_geometry_set, options.propagation_info);
 
   if (options.keep_original_ids) {
     remove_id_attribute_from_instances(geometry_set);

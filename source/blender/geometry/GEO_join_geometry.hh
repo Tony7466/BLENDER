@@ -10,7 +10,9 @@ namespace blender::geometry {
  * Join all src_components and add the resulting component to result.
  */
 template<typename Component>
-void GEO_join_component_type(Span<const Component *> src_components, GeometrySet &result);
+void GEO_join_component_type(Span<const Component *> src_components,
+                             GeometrySet &result,
+                             const bke::AnonymousAttributePropagationInfo &propagation_info);
 
 /**
  * Join InstancesComponents and apply corresponding transforms for each.

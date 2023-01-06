@@ -26,7 +26,7 @@ static Map<AttributeIDRef, AttributeMetaData> get_final_attribute_info(
   for (const GeometryComponent *component : components) {
     component->attributes()->for_all(
         [&](const bke::AttributeIDRef &attribute_id, const AttributeMetaData &meta_data) {
-          if (attribute_id.is_named() && ignored_attributes.contains(attribute_id.name())) {
+          if (ignored_attributes.contains(attribute_id.name())) {
             return true;
           }
           if (meta_data.data_type == CD_PROP_STRING) {
@@ -146,7 +146,9 @@ static void join_components(Span<const VolumeComponent *> /*src_components*/,
 }
 
 template<typename Component>
-void GEO_join_component_type(Span<const Component *> src_components, GeometrySet &result)
+void GEO_join_component_type(Span<const Component *> src_components,
+                             GeometrySet &result,
+                             const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   if (src_components.size() == 0) {
     return;
@@ -176,7 +178,8 @@ void GEO_join_component_type(Span<const Component *> src_components, GeometrySet
         {true,
          false,
          IndexMask(instances->instances_num()),
-         VArray<int>::ForSingle(-1, instances->instances_num())});
+         VArray<int>::ForSingle(-1, instances->instances_num()),
+         propagation_info});
     result.add(joined_components.get_component_for_write<Component>());
   }
 }
@@ -195,15 +198,23 @@ void GEO_join_transform_instance_components(Span<const InstancesComponent *> src
 }
 
 /** Explicit template instantiation for all GeometryComponent subclasses. */
-template void GEO_join_component_type<MeshComponent>(Span<const MeshComponent *>, GeometrySet &);
-template void GEO_join_component_type<PointCloudComponent>(Span<const PointCloudComponent *>,
-                                                           GeometrySet &);
-template void GEO_join_component_type<InstancesComponent>(Span<const InstancesComponent *>,
-                                                          GeometrySet &);
-template void GEO_join_component_type<VolumeComponent>(Span<const VolumeComponent *>,
-                                                       GeometrySet &);
-template void GEO_join_component_type<CurveComponent>(Span<const CurveComponent *>, GeometrySet &);
+template void GEO_join_component_type<MeshComponent>(
+    Span<const MeshComponent *>, GeometrySet &, const bke::AnonymousAttributePropagationInfo &);
+template void GEO_join_component_type<PointCloudComponent>(
+    Span<const PointCloudComponent *>,
+    GeometrySet &,
+    const bke::AnonymousAttributePropagationInfo &);
+template void GEO_join_component_type<InstancesComponent>(
+    Span<const InstancesComponent *>,
+    GeometrySet &,
+    const bke::AnonymousAttributePropagationInfo &);
+template void GEO_join_component_type<VolumeComponent>(
+    Span<const VolumeComponent *>, GeometrySet &, const bke::AnonymousAttributePropagationInfo &);
+template void GEO_join_component_type<CurveComponent>(
+    Span<const CurveComponent *>, GeometrySet &, const bke::AnonymousAttributePropagationInfo &);
 template void GEO_join_component_type<GeometryComponentEditData>(
-    Span<const GeometryComponentEditData *>, GeometrySet &);
+    Span<const GeometryComponentEditData *>,
+    GeometrySet &,
+    const bke::AnonymousAttributePropagationInfo &);
 
 }  // namespace blender::geometry
