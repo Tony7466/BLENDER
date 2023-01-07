@@ -826,11 +826,7 @@ static void create_inspection_string_for_generic_value(const bNodeSocket &socket
 
   const CPPType &socket_type = *socket.typeinfo->base_cpp_type;
   const bke::DataTypeConversions &convert = bke::get_implicit_type_conversions();
-<<<<<<< HEAD
-  if (&value_type != &socket_type) {
-=======
   if (value_type != socket_type) {
->>>>>>> master
     if (!convert.is_convertible(value_type, socket_type)) {
       return;
     }
@@ -907,11 +903,8 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
                                                        std::stringstream &ss)
 {
   Span<GeometryComponentType> component_types = value_log.component_types;
-
-  ss << TIP_("Geometry:\n");
-
   if (component_types.is_empty()) {
-    ss << TIP_("\u2022 Empty");
+    ss << TIP_("Empty Geometry");
     return;
   }
 
@@ -921,6 +914,7 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
     return std::string(str);
   };
 
+  ss << TIP_("Geometry:\n");
   for (GeometryComponentType type : component_types) {
     switch (type) {
       case GEO_COMPONENT_TYPE_MESH: {
@@ -990,22 +984,21 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
   }
 }
 
-<<<<<<< HEAD
-static void create_inspection_string_for_geometry_socket(const nodes::decl::Geometry &socket_decl,
-                                                         std::stringstream &ss,
-                                                         const char *space)
+static void create_inspection_string_for_geometry_socket(std::stringstream &ss,
+                                                         const nodes::decl::Geometry *socket_decl,
+                                                         const bool after_log)
 {
-  if (socket_decl.in_out() == SOCK_OUT) {
-=======
   /* If the geometry declaration is null, as is the case for input to group output,
    * or it is an output socket don't show supported types. */
   if (socket_decl == nullptr || socket_decl->in_out == SOCK_OUT) {
->>>>>>> master
     return;
   }
 
-  ss << space;
-  Span<GeometryComponentType> supported_types = socket_decl.supported_types();
+  if (after_log) {
+    ss << ".\n\n";
+  }
+
+  Span<GeometryComponentType> supported_types = socket_decl->supported_types();
   if (supported_types.is_empty()) {
     ss << TIP_("Supported: All Types");
     return;
@@ -1038,7 +1031,9 @@ static void create_inspection_string_for_geometry_socket(const nodes::decl::Geom
         break;
       }
     }
-    ss << (type == supported_types.last() ? "" : ", ");
+    if (type != supported_types.last()) {
+      ss << ", ";
+    }
   }
 }
 
@@ -1051,16 +1046,22 @@ static std::optional<std::string> create_socket_inspection_string(TreeDrawContex
     return std::nullopt;
   }
 
-  Vector<const ValueLog *> logs;
   tree_draw_ctx.geo_tree_log->ensure_socket_values();
-  tree_draw_ctx.geo_tree_log->socket_logs_callback(socket, [&](const ValueLog *value_log) {
-    if (value_log) {
-      logs.append(value_log);
-    }
-  });
+  Vector<const ValueLog *, 1> value_logs;
+  if (socket.is_multi_input()){
+    geo_log::multi_input_socket_value_logs(*tree_draw_ctx.geo_tree_log, socket, [&](const ValueLog *value_log) {
+      if (value_log) {
+        value_logs.append(value_log);
+      }
+    });
+  }else{
+    value_logs.append(tree_draw_ctx.geo_tree_log->find_socket_value_log(socket));
+  }
 
   std::stringstream ss;
-  for (const ValueLog *value_log : logs) {
+  for (const int index : value_logs.index_range()) {
+    const ValueLog *value_log = value_logs[index];
+    ss << "Input " << index << ":\n";
     if (const geo_log::GenericValueLog *generic_value_log =
             dynamic_cast<const geo_log::GenericValueLog *>(value_log)) {
       create_inspection_string_for_generic_value(socket, generic_value_log->value, ss);
@@ -1073,15 +1074,12 @@ static std::optional<std::string> create_socket_inspection_string(TreeDrawContex
                  dynamic_cast<const geo_log::GeometryInfoLog *>(value_log)) {
       create_inspection_string_for_geometry_info(*geo_value_log, ss);
     }
-    if (value_log != logs.last()) {
-      ss << ".\n";
-    }
   }
 
   if (const nodes::decl::Geometry *socket_decl = dynamic_cast<const nodes::decl::Geometry *>(
           socket.runtime->declaration)) {
-    const char *space = logs.is_empty() ? "" : ".\n\n";
-    create_inspection_string_for_geometry_socket(*socket_decl, ss, space);
+    const bool after_log = !value_logs.is_empty();
+    create_inspection_string_for_geometry_socket(ss, socket_decl, after_log);
   }
 
   std::string str = ss.str();

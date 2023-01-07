@@ -8,8 +8,6 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_viewer_path.h"
 
-#include "BLI_function_ref.hh"
-
 #include "FN_field_cpp_type.hh"
 
 #include "DNA_modifier_types.h"
@@ -353,17 +351,6 @@ void GeoTreeLog::ensure_debug_messages()
   reduced_debug_messages_ = true;
 }
 
-void GeoTreeLog::socket_logs_callback(const bNodeSocket &query_socket, FunctionRef<void(ValueLog *value_log)> callback)
-{
-  if (!query_socket.is_multi_input()){
-    callback(this->find_socket_value_log(query_socket));
-  }else{
-    for (const bNodeSocket *socket : query_socket.directly_linked_sockets()){
-      callback(this->find_socket_value_log(*socket));
-    }
-  }
-}
-
 ValueLog *GeoTreeLog::find_socket_value_log(const bNodeSocket &query_socket)
 {
   /**
@@ -403,32 +390,28 @@ ValueLog *GeoTreeLog::find_socket_value_log(const bNodeSocket &query_socket)
           sockets_to_check.push(&from_socket);
         }
       }
-    }
-    else {
-      if (node.is_reroute()) {
-        const bNodeSocket &input_socket = node.input_socket(0);
-        if (added_sockets.add(&input_socket)) {
-          sockets_to_check.push(&input_socket);
+    } else if (node.is_reroute()) {
+      const bNodeSocket &input_socket = node.input_socket(0);
+      if (added_sockets.add(&input_socket)) {
+        sockets_to_check.push(&input_socket);
+      }
+      const Span<const bNodeLink *> links = input_socket.directly_linked_links();
+      for (const bNodeLink *link : links) {
+        const bNodeSocket &from_socket = *link->fromsock;
+        if (added_sockets.add(&from_socket)) {
+          sockets_to_check.push(&from_socket);
         }
-        const Span<const bNodeLink *> links = input_socket.directly_linked_links();
+      }
+    } else if (node.is_muted()) {
+      if (const bNodeSocket *input_socket = socket.internal_link_input()) {
+        if (added_sockets.add(input_socket)) {
+          sockets_to_check.push(input_socket);
+        }
+        const Span<const bNodeLink *> links = input_socket->directly_linked_links();
         for (const bNodeLink *link : links) {
           const bNodeSocket &from_socket = *link->fromsock;
           if (added_sockets.add(&from_socket)) {
             sockets_to_check.push(&from_socket);
-          }
-        }
-      }
-      else if (node.is_muted()) {
-        if (const bNodeSocket *input_socket = socket.internal_link_input()) {
-          if (added_sockets.add(input_socket)) {
-            sockets_to_check.push(input_socket);
-          }
-          const Span<const bNodeLink *> links = input_socket->directly_linked_links();
-          for (const bNodeLink *link : links) {
-            const bNodeSocket &from_socket = *link->fromsock;
-            if (added_sockets.add(&from_socket)) {
-              sockets_to_check.push(&from_socket);
-            }
           }
         }
       }

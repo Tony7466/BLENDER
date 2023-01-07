@@ -289,8 +289,15 @@ class GeoTreeLog {
   void ensure_debug_messages();
 
   ValueLog *find_socket_value_log(const bNodeSocket &query_socket);
-  void socket_logs_callback(const bNodeSocket &query_socket, FunctionRef<void(ValueLog *value_log)> callback);
 };
+
+inline void multi_input_socket_value_logs(GeoTreeLog &tree_log, const bNodeSocket &query_socket, const FunctionRef<void(ValueLog *value_log)> callback)
+{
+  BLI_assert(query_socket.is_multi_input());
+  for (const bNodeSocket *socket : query_socket.directly_linked_sockets()){
+    callback(tree_log.find_socket_value_log(*socket));
+  }
+}
 
 /**
  * There is one #GeoModifierLog for every modifier that evaluates geometry nodes. It contains all
