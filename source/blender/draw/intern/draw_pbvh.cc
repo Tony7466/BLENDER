@@ -23,7 +23,7 @@
 #include "BLI_index_range.hh"
 #include "BLI_map.hh"
 #include "BLI_math_color.h"
-#include "BLI_math_vec_types.hh"
+#include "BLI_math_vector_types.hh"
 #include "BLI_string_ref.hh"
 #include "BLI_timeit.hh"
 #include "BLI_utildefines.h"
@@ -984,7 +984,7 @@ struct PBVHBatches {
 
     const blender::Span<MEdge> edges = args->me->edges();
 
-    /* Calculate number of edges*/
+    /* Calculate number of edges. */
     int edge_count = 0;
     for (int i = 0; i < args->totprim; i++) {
       const MLoopTri *lt = args->mlooptri + args->prim_indices[i];

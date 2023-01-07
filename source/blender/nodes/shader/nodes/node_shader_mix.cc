@@ -108,22 +108,23 @@ static void sh_node_mix_update(bNodeTree *ntree, bNode *node)
   const NodeShaderMix &storage = node_storage(*node);
   const eNodeSocketDatatype data_type = static_cast<eNodeSocketDatatype>(storage.data_type);
 
-  LISTBASE_FOREACH (bNodeSocket *, socket, &node->inputs) {
+  bNodeSocket *sock_factor = static_cast<bNodeSocket *>(node->inputs.first);
+  bNodeSocket *sock_factor_vec = static_cast<bNodeSocket *>(sock_factor->next);
+
+  bool use_vector_factor = data_type == SOCK_VECTOR &&
+                           storage.factor_mode != NODE_MIX_MODE_UNIFORM;
+
+  nodeSetSocketAvailability(ntree, sock_factor, !use_vector_factor);
+
+  nodeSetSocketAvailability(ntree, sock_factor_vec, use_vector_factor);
+
+  for (bNodeSocket *socket = sock_factor_vec->next; socket != nullptr; socket = socket->next) {
     nodeSetSocketAvailability(ntree, socket, socket->type == data_type);
   }
 
   LISTBASE_FOREACH (bNodeSocket *, socket, &node->outputs) {
     nodeSetSocketAvailability(ntree, socket, socket->type == data_type);
   }
-
-  bool use_vector_factor = data_type == SOCK_VECTOR &&
-                           storage.factor_mode != NODE_MIX_MODE_UNIFORM;
-
-  bNodeSocket *sock_factor = (bNodeSocket *)BLI_findlink(&node->inputs, 0);
-  nodeSetSocketAvailability(ntree, sock_factor, !use_vector_factor);
-
-  bNodeSocket *sock_factor_vec = (bNodeSocket *)BLI_findlink(&node->inputs, 1);
-  nodeSetSocketAvailability(ntree, sock_factor_vec, use_vector_factor);
 }
 
 class SocketSearchOp {
@@ -258,6 +259,8 @@ static const char *gpu_shader_get_name(eNodeSocketDatatype data_type,
           return "node_mix_div_fallback";
         case MA_RAMP_DIFF:
           return "node_mix_diff";
+        case MA_RAMP_EXCLUSION:
+          return "node_mix_exclusion";
         case MA_RAMP_DARK:
           return "node_mix_dark";
         case MA_RAMP_LIGHT:
