@@ -900,11 +900,15 @@ static void create_inspection_string_for_field_info(const bNodeSocket &socket,
 }
 
 static void create_inspection_string_for_geometry_info(const geo_log::GeometryInfoLog &value_log,
-                                                       std::stringstream &ss)
+                                                       std::stringstream &ss,
+                                                       const std::pair<bool, int> index)
 {
   Span<GeometryComponentType> component_types = value_log.component_types;
   if (component_types.is_empty()) {
     ss << TIP_("Empty Geometry");
+    if (index.first){
+      ss << " " << index.second;
+    }
     return;
   }
 
@@ -914,7 +918,13 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
     return std::string(str);
   };
 
-  ss << TIP_("Geometry:\n");
+  ss << TIP_("Geometry");
+  if (index.first){
+    ss << " " << index.second << ":\n";
+  }else{
+    ss << ":\n";
+  }
+
   for (GeometryComponentType type : component_types) {
     switch (type) {
       case GEO_COMPONENT_TYPE_MESH: {
@@ -1046,22 +1056,11 @@ static std::optional<std::string> create_socket_inspection_string(TreeDrawContex
     return std::nullopt;
   }
 
-  tree_draw_ctx.geo_tree_log->ensure_socket_values();
-  Vector<const ValueLog *, 1> value_logs;
-  if (socket.is_multi_input()){
-    geo_log::multi_input_socket_value_logs(*tree_draw_ctx.geo_tree_log, socket, [&](const ValueLog *value_log) {
-      if (value_log) {
-        value_logs.append(value_log);
-      }
-    });
-  }else{
-    value_logs.append(tree_draw_ctx.geo_tree_log->find_socket_value_log(socket));
-  }
-
   std::stringstream ss;
-  for (const int index : value_logs.index_range()) {
-    const ValueLog *value_log = value_logs[index];
-    ss << "Input " << index << ":\n";
+
+  bool declaration_after_log = false;
+
+  auto log_value_log = [&](const ValueLog *value_log, const std::pair<bool, int> index){
     if (const geo_log::GenericValueLog *generic_value_log =
             dynamic_cast<const geo_log::GenericValueLog *>(value_log)) {
       create_inspection_string_for_generic_value(socket, generic_value_log->value, ss);
@@ -1072,14 +1071,31 @@ static std::optional<std::string> create_socket_inspection_string(TreeDrawContex
     }
     else if (const geo_log::GeometryInfoLog *geo_value_log =
                  dynamic_cast<const geo_log::GeometryInfoLog *>(value_log)) {
-      create_inspection_string_for_geometry_info(*geo_value_log, ss);
+      create_inspection_string_for_geometry_info(*geo_value_log, ss, index);
+      declaration_after_log = true;
     }
+  };
+
+  tree_draw_ctx.geo_tree_log->ensure_socket_values();
+  if (socket.is_multi_input()){
+    int input_index = 1;
+    geo_log::multi_input_socket_value_logs(*tree_draw_ctx.geo_tree_log, socket, [&](const ValueLog *value_log) {
+      if (value_log) {
+        if (input_index != 1) {
+          ss << "\n";
+        }
+        log_value_log(value_log, std::pair<bool, int>{true, input_index});
+      }
+      input_index++;
+    });
+  }else{
+    const ValueLog *value_log = tree_draw_ctx.geo_tree_log->find_socket_value_log(socket);
+    log_value_log(value_log, std::pair<bool, int>{false, 0});
   }
 
   if (const nodes::decl::Geometry *socket_decl = dynamic_cast<const nodes::decl::Geometry *>(
           socket.runtime->declaration)) {
-    const bool after_log = !value_logs.is_empty();
-    create_inspection_string_for_geometry_socket(ss, socket_decl, after_log);
+    create_inspection_string_for_geometry_socket(ss, socket_decl, declaration_after_log);
   }
 
   std::string str = ss.str();
