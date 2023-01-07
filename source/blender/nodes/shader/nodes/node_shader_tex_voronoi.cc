@@ -579,7 +579,7 @@ class VoronoiMetricFunction : public fn::MultiFunction {
             const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &exponent = (metric_ == SHD_VORONOI_MINKOWSKI) ?
                                                 get_exponent(param++) :
-                                                VArray<float>{};
+                                                scale; /* Initialize exponent to reference any other input if metric_ != SHD_VORONOI_MINKOWSKI as it isn't used in that case */
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -634,7 +634,7 @@ class VoronoiMetricFunction : public fn::MultiFunction {
             const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &exponent = (metric_ == SHD_VORONOI_MINKOWSKI) ?
                                                 get_exponent(param++) :
-                                                VArray<float>{};
+                                                scale; /* Initialize exponent to reference any other input if metric_ != SHD_VORONOI_MINKOWSKI as it isn't used in that case */
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -694,7 +694,7 @@ class VoronoiMetricFunction : public fn::MultiFunction {
             const VArray<float> &smoothness = get_smoothness(param++);
             const VArray<float> &exponent = (metric_ == SHD_VORONOI_MINKOWSKI) ?
                                                 get_exponent(param++) :
-                                                VArray<float>{};
+                                                scale; /* Initialize exponent to reference any other input if metric_ != SHD_VORONOI_MINKOWSKI as it isn't used in that case */
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -756,7 +756,7 @@ class VoronoiMetricFunction : public fn::MultiFunction {
             const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &exponent = (metric_ == SHD_VORONOI_MINKOWSKI) ?
                                                 get_exponent(param++) :
-                                                VArray<float>{};
+                                                scale; /* Initialize exponent to reference any other input if metric_ != SHD_VORONOI_MINKOWSKI as it isn't used in that case */
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -809,7 +809,7 @@ class VoronoiMetricFunction : public fn::MultiFunction {
             const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &exponent = (metric_ == SHD_VORONOI_MINKOWSKI) ?
                                                 get_exponent(param++) :
-                                                VArray<float>{};
+                                                scale; /* Initialize exponent to reference any other input if metric_ != SHD_VORONOI_MINKOWSKI as it isn't used in that case */
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -867,7 +867,7 @@ class VoronoiMetricFunction : public fn::MultiFunction {
             const VArray<float> &smoothness = get_smoothness(param++);
             const VArray<float> &exponent = (metric_ == SHD_VORONOI_MINKOWSKI) ?
                                                 get_exponent(param++) :
-                                                VArray<float>{};
+                                                scale; /* Initialize exponent to reference any other input if metric_ != SHD_VORONOI_MINKOWSKI as it isn't used in that case */
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -929,7 +929,7 @@ class VoronoiMetricFunction : public fn::MultiFunction {
             const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &exponent = (metric_ == SHD_VORONOI_MINKOWSKI) ?
                                                 get_exponent(param++) :
-                                                VArray<float>{};
+                                                scale; /* Initialize exponent to reference any other input if metric_ != SHD_VORONOI_MINKOWSKI as it isn't used in that case */
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -993,7 +993,7 @@ class VoronoiMetricFunction : public fn::MultiFunction {
             const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &exponent = (metric_ == SHD_VORONOI_MINKOWSKI) ?
                                                 get_exponent(param++) :
-                                                VArray<float>{};
+                                                scale; /* Initialize exponent to reference any other input if metric_ != SHD_VORONOI_MINKOWSKI as it isn't used in that case */
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -1062,7 +1062,7 @@ class VoronoiMetricFunction : public fn::MultiFunction {
             const VArray<float> &smoothness = get_smoothness(param++);
             const VArray<float> &exponent = (metric_ == SHD_VORONOI_MINKOWSKI) ?
                                                 get_exponent(param++) :
-                                                VArray<float>{};
+                                                scale; /* Initialize exponent to reference any other input if metric_ != SHD_VORONOI_MINKOWSKI as it isn't used in that case */
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
