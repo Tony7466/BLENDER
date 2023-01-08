@@ -1,5 +1,7 @@
 #pragma BLENDER_REQUIRE(gpu_shader_common_hash.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_common_math_utils.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_material_voronoi.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_material_fractal_voronoi.glsl)
 
 /*
  * Original code is under the MIT License, Copyright (c) 2013 Inigo Quilez.
@@ -1150,110 +1152,25 @@ void node_tex_voronoi_f1_3d(vec3 coord,
   detail = clamp(detail, 0.0, 15.0);
   roughness = clamp(roughness, 0.0, 1.0);
   randomness = clamp(randomness, 0.0, 1.0);
-
-  vec3 scaledCoord = coord * scale;
-  vec3 cellPosition = floor(scaledCoord);
-  vec3 localPosition = scaledCoord - cellPosition;
-
-  float minDistance = 8.0;
-  vec3 targetOffset, targetPosition;
-  for (int k = -1; k <= 1; k++) {
-    for (int j = -1; j <= 1; j++) {
-      for (int i = -1; i <= 1; i++) {
-        vec3 cellOffset = vec3(i, j, k);
-        vec3 pointPosition = cellOffset +
-                             hash_vec3_to_vec3(cellPosition + cellOffset) * randomness;
-        float distanceToPoint = voronoi_distance(pointPosition, localPosition, metric, exponent);
-        if (distanceToPoint < minDistance) {
-          targetOffset = cellOffset;
-          minDistance = distanceToPoint;
-          targetPosition = pointPosition;
-        }
-      }
-    }
-  }
-  outDistance = minDistance;
-  outColor.xyz = hash_vec3_to_vec3(cellPosition + targetOffset);
-  outPosition = safe_divide(targetPosition + cellPosition, scale);
-
   const float max_distance = voronoi_distance(
       vec3(1.0, 1.0, 1.0), vec3(0.0, 0.0, 0.0), metric, exponent);
   float max_amplitude = max_distance;
-  if (detail != 0.0 && roughness != 0.0 && lacunarity != 0.0) {
-    float octave_scale = lacunarity;
-    float octave_amplitude = roughness;
-    float octave_distance = 0.0;
 
-    for (int i = 0; i < int(detail); ++i) {
-      scaledCoord = coord * scale * octave_scale;
-      cellPosition = floor(scaledCoord);
-      localPosition = scaledCoord - cellPosition;
+  fractal_voronoi_f1_3d(coord,
+    scale,
+    exponent,
+    randomness,
+    metric,
+    max_distance,
+    max_amplitude,
+    outDistance,
+    outColor,
+    outPosition);
 
-      float minDistance = 8.0;
-      vec3 targetOffset, targetPosition;
-      for (int k = -1; k <= 1; k++) {
-        for (int j = -1; j <= 1; j++) {
-          for (int i = -1; i <= 1; i++) {
-            vec3 cellOffset = vec3(i, j, k);
-            vec3 pointPosition = cellOffset +
-                                 hash_vec3_to_vec3(cellPosition + cellOffset) * randomness;
-            float distanceToPoint = voronoi_distance(
-                pointPosition, localPosition, metric, exponent);
-            if (distanceToPoint < minDistance) {
-              targetOffset = cellOffset;
-              minDistance = distanceToPoint;
-              targetPosition = pointPosition;
-            }
-          }
-        }
-      }
-      octave_distance = minDistance;
-      outColor.xyz = hash_vec3_to_vec3(cellPosition + targetOffset);
-      outPosition = safe_divide(targetPosition + cellPosition, scale);
-
-      max_amplitude += max_distance * octave_amplitude;
-      outDistance += octave_distance * octave_amplitude;
-      octave_scale *= lacunarity;
-      octave_amplitude *= roughness;
-    }
-    outPosition /= octave_scale / lacunarity;
-
-    float remainder = detail - int(detail);
-    if (remainder != 0.0) {
-      scaledCoord = coord * scale * octave_scale;
-      cellPosition = floor(scaledCoord);
-      localPosition = scaledCoord - cellPosition;
-
-      float minDistance = 8.0;
-      vec3 targetOffset, targetPosition;
-      for (int k = -1; k <= 1; k++) {
-        for (int j = -1; j <= 1; j++) {
-          for (int i = -1; i <= 1; i++) {
-            vec3 cellOffset = vec3(i, j, k);
-            vec3 pointPosition = cellOffset +
-                                 hash_vec3_to_vec3(cellPosition + cellOffset) * randomness;
-            float distanceToPoint = voronoi_distance(
-                pointPosition, localPosition, metric, exponent);
-            if (distanceToPoint < minDistance) {
-              targetOffset = cellOffset;
-              minDistance = distanceToPoint;
-              targetPosition = pointPosition;
-            }
-          }
-        }
-      }
-      octave_distance = minDistance;
-      outColor.xyz = hash_vec3_to_vec3(cellPosition + targetOffset);
-      outPosition = safe_divide(targetPosition + cellPosition, scale);
-
-      max_amplitude += max_distance * octave_amplitude;
-      float lerp_distance = outDistance + octave_distance * octave_amplitude;
-      outDistance = (1.0 - remainder) * outDistance + remainder * lerp_distance;
-      outPosition /= octave_scale;
-    }
-  }
-  if (bool_normalize != 0.0) {
-    outDistance /= max_amplitude;
+      if (bool_normalize != 0.0)
+  {
+    outDistance /= (0.5f + 0.5f * randomness) * max_amplitude; /* Optimized lerp(max_amplitude*0.5,
+                                                                  max_amplitude, randomness)  */
   }
 }
 
