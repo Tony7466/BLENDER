@@ -211,7 +211,7 @@ static void node_shader_update_tex_voronoi(bNodeTree *ntree, bNode *node)
   nodeSetSocketAvailability(ntree, outRadiusSock, storage.feature == SHD_VORONOI_N_SPHERE_RADIUS);
 }
 
-static MultiFunction::ExecutionHints voronoi_execution_hints{50, false};
+static mf::MultiFunction::ExecutionHints voronoi_execution_hints{50, false};
 
 BLI_INLINE float voronoi_distance(const float a, const float b)
 {
@@ -291,7 +291,7 @@ static float voronoi_distance(const float4 a,
   return 0.0f;
 }
 
-class VoronoiMetricFunction : public fn::MultiFunction {
+class VoronoiMetricFunction : public mf::MultiFunction {
  private:
   int dimensions_;
   int feature_;
@@ -305,7 +305,7 @@ class VoronoiMetricFunction : public fn::MultiFunction {
     BLI_assert(dimensions >= 1 && dimensions <= 4);
     BLI_assert(feature >= 0 && feature <= 4);
     if (metric_ == SHD_VORONOI_MINKOWSKI) {
-      static std::array<fn::MFSignature, 12> signatures{
+      static std::array<mf::Signature, 12> signatures{
           create_signature(1, SHD_VORONOI_F1, SHD_VORONOI_MINKOWSKI),
           create_signature(2, SHD_VORONOI_F1, SHD_VORONOI_MINKOWSKI),
           create_signature(3, SHD_VORONOI_F1, SHD_VORONOI_MINKOWSKI),
@@ -324,7 +324,7 @@ class VoronoiMetricFunction : public fn::MultiFunction {
       this->set_signature(&signatures[dimensions + feature * 4 - 1]);
     }
     else {
-      static std::array<fn::MFSignature, 12> signatures{
+      static std::array<mf::Signature, 12> signatures{
           create_signature(1, SHD_VORONOI_F1, SHD_VORONOI_EUCLIDEAN),
           create_signature(2, SHD_VORONOI_F1, SHD_VORONOI_EUCLIDEAN),
           create_signature(3, SHD_VORONOI_F1, SHD_VORONOI_EUCLIDEAN),
@@ -344,41 +344,42 @@ class VoronoiMetricFunction : public fn::MultiFunction {
     }
   }
 
-  static fn::MFSignature create_signature(int dimensions, int feature, int metric)
+  static mf::Signature create_signature(int dimensions, int feature, int metric)
   {
-    fn::MFSignatureBuilder signature{"voronoi_metric"};
+    mf::Signature signature;
+    mf::SignatureBuilder builder{"voronoi_metric", signature};
 
     if (ELEM(dimensions, 2, 3, 4)) {
-      signature.single_input<float3>("Vector");
+      builder.single_input<float3>("Vector");
     }
     if (ELEM(dimensions, 1, 4)) {
-      signature.single_input<float>("W");
+      builder.single_input<float>("W");
     }
-    signature.single_input<float>("Scale");
-    signature.single_input<float>("Detail");
-    signature.single_input<float>("Roughness");
-    signature.single_input<float>("Lacunarity");
+    builder.single_input<float>("Scale");
+    builder.single_input<float>("Detail");
+    builder.single_input<float>("Roughness");
+    builder.single_input<float>("Lacunarity");
     if (feature == SHD_VORONOI_SMOOTH_F1) {
-      signature.single_input<float>("Smoothness");
+      builder.single_input<float>("Smoothness");
     }
     if ((dimensions != 1) && (metric == SHD_VORONOI_MINKOWSKI)) {
-      signature.single_input<float>("Exponent");
+      builder.single_input<float>("Exponent");
     }
-    signature.single_input<float>("Randomness");
-    signature.single_output<float>("Distance");
-    signature.single_output<ColorGeometry4f>("Color");
+    builder.single_input<float>("Randomness");
+    builder.single_output<float>("Distance");
+    builder.single_output<ColorGeometry4f>("Color");
 
     if (dimensions != 1) {
-      signature.single_output<float3>("Position");
+      builder.single_output<float3>("Position");
     }
     if (ELEM(dimensions, 1, 4)) {
-      signature.single_output<float>("W");
+      builder.single_output<float>("W");
     }
 
-    return signature.build();
+    return signature;
   }
 
-  void call(IndexMask mask, fn::MFParams params, fn::MFContext /*context*/) const override
+  void call(IndexMask mask, mf::MFParams params, mf::Context /*context*/) const override
   {
     auto get_vector = [&](int param_index) -> VArray<float3> {
       return params.readonly_single_input<float3>(param_index, "Vector");
@@ -577,9 +578,11 @@ class VoronoiMetricFunction : public fn::MultiFunction {
             const VArray<float> &detail = get_detail(param++);
             const VArray<float> &roughness = get_roughness(param++);
             const VArray<float> &lacunarity = get_lacunarity(param++);
-            const VArray<float> &exponent = (metric_ == SHD_VORONOI_MINKOWSKI) ?
-                                                get_exponent(param++) :
-                                                scale; /* Initialize exponent to reference any other input if metric_ != SHD_VORONOI_MINKOWSKI as it isn't used in that case */
+            const VArray<float> &exponent =
+                (metric_ == SHD_VORONOI_MINKOWSKI) ?
+                    get_exponent(param++) :
+                    scale; /* Initialize exponent to reference any other input if metric_ !=
+                              SHD_VORONOI_MINKOWSKI as it isn't used in that case */
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -632,9 +635,11 @@ class VoronoiMetricFunction : public fn::MultiFunction {
             const VArray<float> &detail = get_detail(param++);
             const VArray<float> &roughness = get_roughness(param++);
             const VArray<float> &lacunarity = get_lacunarity(param++);
-            const VArray<float> &exponent = (metric_ == SHD_VORONOI_MINKOWSKI) ?
-                                                get_exponent(param++) :
-                                                scale; /* Initialize exponent to reference any other input if metric_ != SHD_VORONOI_MINKOWSKI as it isn't used in that case */
+            const VArray<float> &exponent =
+                (metric_ == SHD_VORONOI_MINKOWSKI) ?
+                    get_exponent(param++) :
+                    scale; /* Initialize exponent to reference any other input if metric_ !=
+                              SHD_VORONOI_MINKOWSKI as it isn't used in that case */
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -692,9 +697,11 @@ class VoronoiMetricFunction : public fn::MultiFunction {
             const VArray<float> &roughness = get_roughness(param++);
             const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &smoothness = get_smoothness(param++);
-            const VArray<float> &exponent = (metric_ == SHD_VORONOI_MINKOWSKI) ?
-                                                get_exponent(param++) :
-                                                scale; /* Initialize exponent to reference any other input if metric_ != SHD_VORONOI_MINKOWSKI as it isn't used in that case */
+            const VArray<float> &exponent =
+                (metric_ == SHD_VORONOI_MINKOWSKI) ?
+                    get_exponent(param++) :
+                    scale; /* Initialize exponent to reference any other input if metric_ !=
+                              SHD_VORONOI_MINKOWSKI as it isn't used in that case */
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -754,9 +761,11 @@ class VoronoiMetricFunction : public fn::MultiFunction {
             const VArray<float> &detail = get_detail(param++);
             const VArray<float> &roughness = get_roughness(param++);
             const VArray<float> &lacunarity = get_lacunarity(param++);
-            const VArray<float> &exponent = (metric_ == SHD_VORONOI_MINKOWSKI) ?
-                                                get_exponent(param++) :
-                                                scale; /* Initialize exponent to reference any other input if metric_ != SHD_VORONOI_MINKOWSKI as it isn't used in that case */
+            const VArray<float> &exponent =
+                (metric_ == SHD_VORONOI_MINKOWSKI) ?
+                    get_exponent(param++) :
+                    scale; /* Initialize exponent to reference any other input if metric_ !=
+                              SHD_VORONOI_MINKOWSKI as it isn't used in that case */
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -807,9 +816,11 @@ class VoronoiMetricFunction : public fn::MultiFunction {
             const VArray<float> &detail = get_detail(param++);
             const VArray<float> &roughness = get_roughness(param++);
             const VArray<float> &lacunarity = get_lacunarity(param++);
-            const VArray<float> &exponent = (metric_ == SHD_VORONOI_MINKOWSKI) ?
-                                                get_exponent(param++) :
-                                                scale; /* Initialize exponent to reference any other input if metric_ != SHD_VORONOI_MINKOWSKI as it isn't used in that case */
+            const VArray<float> &exponent =
+                (metric_ == SHD_VORONOI_MINKOWSKI) ?
+                    get_exponent(param++) :
+                    scale; /* Initialize exponent to reference any other input if metric_ !=
+                              SHD_VORONOI_MINKOWSKI as it isn't used in that case */
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -865,9 +876,11 @@ class VoronoiMetricFunction : public fn::MultiFunction {
             const VArray<float> &roughness = get_roughness(param++);
             const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &smoothness = get_smoothness(param++);
-            const VArray<float> &exponent = (metric_ == SHD_VORONOI_MINKOWSKI) ?
-                                                get_exponent(param++) :
-                                                scale; /* Initialize exponent to reference any other input if metric_ != SHD_VORONOI_MINKOWSKI as it isn't used in that case */
+            const VArray<float> &exponent =
+                (metric_ == SHD_VORONOI_MINKOWSKI) ?
+                    get_exponent(param++) :
+                    scale; /* Initialize exponent to reference any other input if metric_ !=
+                              SHD_VORONOI_MINKOWSKI as it isn't used in that case */
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -927,9 +940,11 @@ class VoronoiMetricFunction : public fn::MultiFunction {
             const VArray<float> &detail = get_detail(param++);
             const VArray<float> &roughness = get_roughness(param++);
             const VArray<float> &lacunarity = get_lacunarity(param++);
-            const VArray<float> &exponent = (metric_ == SHD_VORONOI_MINKOWSKI) ?
-                                                get_exponent(param++) :
-                                                scale; /* Initialize exponent to reference any other input if metric_ != SHD_VORONOI_MINKOWSKI as it isn't used in that case */
+            const VArray<float> &exponent =
+                (metric_ == SHD_VORONOI_MINKOWSKI) ?
+                    get_exponent(param++) :
+                    scale; /* Initialize exponent to reference any other input if metric_ !=
+                              SHD_VORONOI_MINKOWSKI as it isn't used in that case */
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -991,9 +1006,11 @@ class VoronoiMetricFunction : public fn::MultiFunction {
             const VArray<float> &detail = get_detail(param++);
             const VArray<float> &roughness = get_roughness(param++);
             const VArray<float> &lacunarity = get_lacunarity(param++);
-            const VArray<float> &exponent = (metric_ == SHD_VORONOI_MINKOWSKI) ?
-                                                get_exponent(param++) :
-                                                scale; /* Initialize exponent to reference any other input if metric_ != SHD_VORONOI_MINKOWSKI as it isn't used in that case */
+            const VArray<float> &exponent =
+                (metric_ == SHD_VORONOI_MINKOWSKI) ?
+                    get_exponent(param++) :
+                    scale; /* Initialize exponent to reference any other input if metric_ !=
+                              SHD_VORONOI_MINKOWSKI as it isn't used in that case */
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -1060,9 +1077,11 @@ class VoronoiMetricFunction : public fn::MultiFunction {
             const VArray<float> &roughness = get_roughness(param++);
             const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &smoothness = get_smoothness(param++);
-            const VArray<float> &exponent = (metric_ == SHD_VORONOI_MINKOWSKI) ?
-                                                get_exponent(param++) :
-                                                scale; /* Initialize exponent to reference any other input if metric_ != SHD_VORONOI_MINKOWSKI as it isn't used in that case */
+            const VArray<float> &exponent =
+                (metric_ == SHD_VORONOI_MINKOWSKI) ?
+                    get_exponent(param++) :
+                    scale; /* Initialize exponent to reference any other input if metric_ !=
+                              SHD_VORONOI_MINKOWSKI as it isn't used in that case */
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
             MutableSpan<ColorGeometry4f> r_color = get_r_color(param++);
@@ -1131,7 +1150,7 @@ class VoronoiMetricFunction : public fn::MultiFunction {
   }
 };
 
-class VoronoiEdgeFunction : public fn::MultiFunction {
+class VoronoiEdgeFunction : public mf::MultiFunction {
  private:
   int dimensions_;
   int feature_;
@@ -1143,7 +1162,7 @@ class VoronoiEdgeFunction : public fn::MultiFunction {
   {
     BLI_assert(dimensions >= 1 && dimensions <= 4);
     BLI_assert(feature >= 3 && feature <= 4);
-    static std::array<fn::MFSignature, 8> signatures{
+    static std::array<mf::Signature, 8> signatures{
         create_signature(1, SHD_VORONOI_DISTANCE_TO_EDGE),
         create_signature(2, SHD_VORONOI_DISTANCE_TO_EDGE),
         create_signature(3, SHD_VORONOI_DISTANCE_TO_EDGE),
@@ -1157,34 +1176,34 @@ class VoronoiEdgeFunction : public fn::MultiFunction {
     this->set_signature(&signatures[dimensions + (feature - 3) * 4 - 1]);
   }
 
-  static fn::MFSignature create_signature(int dimensions, int feature)
+  static mf::Signature create_signature(int dimensions, int feature)
   {
-    fn::MFSignatureBuilder signature{"voronoi_edge"};
+    mf::Signature signature;
+    mf::SignatureBuilder builder{"voronoi_edge", signature};
 
     if (ELEM(dimensions, 2, 3, 4)) {
-      signature.single_input<float3>("Vector");
+      builder.single_input<float3>("Vector");
     }
     if (ELEM(dimensions, 1, 4)) {
-      signature.single_input<float>("W");
+      builder.single_input<float>("W");
     }
-    signature.single_input<float>("Scale");
+    builder.single_input<float>("Scale");
     if (feature == SHD_VORONOI_DISTANCE_TO_EDGE) {
-      signature.single_input<float>("Detail");
-      signature.single_input<float>("Lacunarity");
+      builder.single_input<float>("Detail");
+      builder.single_input<float>("Lacunarity");
     }
-    signature.single_input<float>("Randomness");
-
+    builder.single_input<float>("Randomness");
     if (feature == SHD_VORONOI_DISTANCE_TO_EDGE) {
-      signature.single_output<float>("Distance");
+      builder.single_output<float>("Distance");
     }
     if (feature == SHD_VORONOI_N_SPHERE_RADIUS) {
-      signature.single_output<float>("Radius");
+      builder.single_output<float>("Radius");
     }
 
-    return signature.build();
+    return signature;
   }
 
-  void call(IndexMask mask, fn::MFParams params, fn::MFContext /*context*/) const override
+  void call(IndexMask mask, mf::MFParams params, mf::Context /*context*/) const override
   {
     auto get_vector = [&](int param_index) -> VArray<float3> {
       return params.readonly_single_input<float3>(param_index, "Vector");

@@ -16,8 +16,8 @@
 
 #include "BLI_array.hh"
 #include "BLI_index_range.hh"
-#include "BLI_math_vec_types.hh"
 #include "BLI_math_vector.h"
+#include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
 #include "BLI_task.hh"
 
@@ -487,6 +487,16 @@ void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
             }
           });
     }
+  }
+
+  /* Make sure active/default color attribute (names) are brought over. */
+  if (source->active_color_attribute) {
+    MEM_SAFE_FREE(target->active_color_attribute);
+    target->active_color_attribute = BLI_strdup(source->active_color_attribute);
+  }
+  if (source->default_color_attribute) {
+    MEM_SAFE_FREE(target->default_color_attribute);
+    target->default_color_attribute = BLI_strdup(source->default_color_attribute);
   }
 
   MEM_SAFE_FREE(source_lmap);
