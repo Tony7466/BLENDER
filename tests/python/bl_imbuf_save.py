@@ -234,9 +234,8 @@ class ImBufSaveTest(ImBufTest):
     def test_save_cineon(self):
         self.skip_if_format_missing("CINEON")
 
-        # Note: idiff crashes on these files. Fixed with OIIO 2.4.5+
-        # self.check(src="rgba08", ext="cin", settings={"file_format":"CINEON", "color_mode":"RGB"})
-        # self.check(src="rgba32", ext="cin", settings={"file_format":"CINEON", "color_mode":"RGB"})
+        self.check(src="rgba08", ext="cin", settings={"file_format":"CINEON", "color_mode":"RGB"})
+        self.check(src="rgba32", ext="cin", settings={"file_format":"CINEON", "color_mode":"RGB"})
 
     def test_save_webp(self):
         self.skip_if_format_missing("WEBP")
