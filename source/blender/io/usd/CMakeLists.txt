@@ -165,6 +165,7 @@ if(WITH_GTESTS)
     tests/usd_stage_creation_test.cc
     tests/usd_tests_common.cc
     tests/usd_tests_common.h
+    tests/usd_usdz_export_test.cc
   )
   if(USD_IMAGING_HEADERS)
     list(APPEND TEST_SRC tests/usd_imaging_test.cc)
