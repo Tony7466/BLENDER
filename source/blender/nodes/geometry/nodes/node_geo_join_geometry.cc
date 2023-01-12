@@ -33,27 +33,27 @@ static void node_geo_exec(GeoNodeExecParams params)
       "Geometry");
 
   GeometrySet geometry_set_result;
-  geometry::GEO_join_component_type<MeshComponent>(
+  geometry::join_component_type<MeshComponent>(
       get_components_from_geometry_sets<MeshComponent>(geometry_sets),
       geometry_set_result,
       propagation_info);
-  geometry::GEO_join_component_type<PointCloudComponent>(
+  geometry::join_component_type<PointCloudComponent>(
       get_components_from_geometry_sets<PointCloudComponent>(geometry_sets),
       geometry_set_result,
       propagation_info);
-  geometry::GEO_join_component_type<InstancesComponent>(
+  geometry::join_component_type<InstancesComponent>(
       get_components_from_geometry_sets<InstancesComponent>(geometry_sets),
       geometry_set_result,
       propagation_info);
-  geometry::GEO_join_component_type<VolumeComponent>(
+  geometry::join_component_type<VolumeComponent>(
       get_components_from_geometry_sets<VolumeComponent>(geometry_sets),
       geometry_set_result,
       propagation_info);
-  geometry::GEO_join_component_type<CurveComponent>(
+  geometry::join_component_type<CurveComponent>(
       get_components_from_geometry_sets<CurveComponent>(geometry_sets),
       geometry_set_result,
       propagation_info);
-  geometry::GEO_join_component_type<GeometryComponentEditData>(
+  geometry::join_component_type<GeometryComponentEditData>(
       get_components_from_geometry_sets<GeometryComponentEditData>(geometry_sets),
       geometry_set_result,
       propagation_info);

@@ -376,8 +376,8 @@ static void create_result_ids(const RealizeInstancesOptions &options,
 
 /* Forward declaration. */
 static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
-                                           int curr_depth,
-                                           int target_depth,
+                                           const int current_depth,
+                                           const int target_depth,
                                            const GeometrySet &geometry_set,
                                            const float4x4 &base_transform,
                                            const InstanceContext &base_instance_context);
@@ -469,8 +469,8 @@ static void foreach_geometry_in_reference(
 }
 
 static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
-                                               int curr_depth,
-                                               int target_depth,
+                                               const int current_depth,
+                                               const int target_depth,
                                                const Instances &instances,
                                                const float4x4 &base_transform,
                                                const InstanceContext &base_instance_context)
@@ -496,12 +496,15 @@ static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
   Vector<std::pair<int, GSpan>> curve_attributes_to_override = prepare_attribute_fallbacks(
       gather_info, instances, gather_info.curves.attributes);
 
-  IndexMask indices = curr_depth == 0 ? gather_info.selection :
-                                        IndexMask(IndexRange(instances.instances_num()));
+  /* If at top level, get instance indices from selection field, else use all instances. */
+  const IndexMask indices = current_depth == 0 ? gather_info.selection :
+                                                 IndexMask(IndexRange(instances.instances_num()));
 
   for (const int mask_index : indices.index_range()) {
     const int i = indices[mask_index];
-    const int targ_depth = curr_depth == 0 ? gather_info.depths[mask_index] : target_depth;
+
+    /* If at top level, retrieve depth from gather_info, else continue with target_depth. */
+    const int depth_target = current_depth == 0 ? gather_info.depths[mask_index] : target_depth;
 
     const int handle = handles[i];
     const float4x4 &transform = transforms[i];
@@ -539,8 +542,8 @@ static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
                                       const uint32_t id) {
                                     instance_context.id = id;
                                     gather_realize_tasks_recursive(gather_info,
-                                                                   curr_depth + 1,
-                                                                   targ_depth,
+                                                                   current_depth + 1,
+                                                                   depth_target,
                                                                    instance_geometry_set,
                                                                    transform,
                                                                    instance_context);
@@ -552,8 +555,8 @@ static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
  * Gather tasks for all geometries in the #geometry_set.
  */
 static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
-                                           int curr_depth,
-                                           int target_depth,
+                                           const int current_depth,
+                                           const int target_depth,
                                            const GeometrySet &geometry_set,
                                            const float4x4 &base_transform,
                                            const InstanceContext &base_instance_context)
@@ -613,7 +616,7 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         break;
       }
       case GEO_COMPONENT_TYPE_INSTANCES: {
-        if (curr_depth == target_depth) {
+        if (current_depth == target_depth) {
           const InstancesComponent *instances_component = static_cast<const InstancesComponent *>(
               component);
 
@@ -626,7 +629,7 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
           const Instances *instances = instances_component.get_for_read();
           if (instances != nullptr && instances->instances_num() > 0) {
             gather_realize_tasks_for_instances(gather_info,
-                                               curr_depth,
+                                               current_depth,
                                                target_depth,
                                                *instances,
                                                base_transform,
@@ -1569,9 +1572,9 @@ GeometrySet realize_instances(GeometrySet geometry_set, const RealizeInstancesOp
 
   gather_realize_tasks_recursive(gather_info, 0, -1, geometry_set, transform, attribute_fallbacks);
 
-  GEO_join_transform_instance_components(gather_info.instances_components_to_merge,
-                                         gather_info.instances_components_transforms,
-                                         new_geometry_set);
+  geometry::join_transform_instance_components(gather_info.instances_components_to_merge,
+                                               gather_info.instances_components_transforms,
+                                               new_geometry_set);
   execute_realize_pointcloud_tasks(options,
                                    all_pointclouds_info,
                                    gather_info.r_tasks.pointcloud_tasks,
