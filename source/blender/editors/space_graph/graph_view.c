@@ -444,21 +444,25 @@ static int graphkeys_view_channel_exec(bContext *C, wmOperator *op)
   BLI_rctf_pad_y(&bounds, ac.region->winy, pad_bottom, pad_top);
 
   const int smooth_viewtx = WM_operator_smooth_viewtx_get(op);
-  UI_view2d_smooth_view(C, ac.region, &bounds, smooth_viewtx);
+  LISTBASE_FOREACH (ARegion *, region, &ac.area->regionbase) {
+    if (region->regiontype == RGN_TYPE_WINDOW) {
+      UI_view2d_smooth_view(C, region, &bounds, smooth_viewtx);
+    }
+  }
 
   return OPERATOR_FINISHED;
 }
 
-void GRAPH_OT_view_channel(wmOperatorType *ot)
+void GRAPH_OT_view_channels(wmOperatorType *ot)
 {
   /* Identifiers */
-  ot->name = "Frame Channel";
-  ot->idname = "GRAPH_OT_view_channel";
+  ot->name = "Frame Selected Channels";
+  ot->idname = "GRAPH_OT_view_channels";
   ot->description = "Reset viewable area to show the selected channels";
 
   /* API callbacks */
   ot->exec = graphkeys_view_channel_exec;
-  /* ot->poll = ED_operator_graphedit_active; */
+  ot->poll = ED_operator_graphedit_active;
 
   ot->flag = 0;
 
