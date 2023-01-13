@@ -605,13 +605,14 @@ static short get_fcurve_end_keyframes(const FCurve *fcu,
   return found;
 }
 
-bool BKE_fcurve_calc_bounds(const FCurve *fcu,
+bool BKE_fcurve_calc_bounds(FCurve *fcu,
                             float *xmin,
                             float *xmax,
                             float *ymin,
                             float *ymax,
                             const bool do_sel_only,
-                            const bool include_handles)
+                            const bool include_handles,
+                            const float range[2])
 {
   float xminv = 999999999.0f, xmaxv = -999999999.0f;
   float yminv = 999999999.0f, ymaxv = -999999999.0f;
@@ -622,12 +623,27 @@ bool BKE_fcurve_calc_bounds(const FCurve *fcu,
       BezTriple *bezt_first = NULL, *bezt_last = NULL;
 
       if (xmin || xmax) {
-        /* Get endpoint keyframes. */
-        foundvert = get_fcurve_end_keyframes(fcu, &bezt_first, &bezt_last, do_sel_only);
+        if (range == NULL) {
+          /* Get endpoint keyframes. */
+          foundvert = get_fcurve_end_keyframes(fcu, &bezt_first, &bezt_last, do_sel_only);
+        }
+        else {
+          /* If a range is passed in find the first and last keyframe within that range. */
+          bool replace = false;
+          int first_index = BKE_fcurve_bezt_binarysearch_index(
+              fcu->bezt, range[0], fcu->totvert, &replace);
+          int last_index = BKE_fcurve_bezt_binarysearch_index(
+              fcu->bezt, range[1], fcu->totvert, &replace);
 
+          /* If first and last index are the same, no keyframes were found in the range. */
+          if (first_index != last_index) {
+            bezt_first = &fcu->bezt[clamp_i(first_index, 0, fcu->totvert - 1)];
+            bezt_last = &fcu->bezt[clamp_i(last_index - 1, 0, fcu->totvert - 1)];
+          }
+        }
         if (bezt_first) {
           BLI_assert(bezt_last != NULL);
-
+          foundvert = true;
           if (include_handles) {
             xminv = min_fff(xminv, bezt_first->vec[0][0], bezt_first->vec[1][0]);
             xmaxv = max_fff(xmaxv, bezt_last->vec[1][0], bezt_last->vec[2][0]);
@@ -645,6 +661,9 @@ bool BKE_fcurve_calc_bounds(const FCurve *fcu,
 
         int i;
         for (bezt = fcu->bezt, i = 0; i < fcu->totvert; prevbezt = bezt, bezt++, i++) {
+          if (range != NULL && (bezt->vec[1][0] < range[0] || bezt->vec[1][0] > range[1])) {
+            continue;
+          }
           if ((do_sel_only == false) || BEZT_ISSEL_ANY(bezt)) {
             /* Keyframe itself. */
             yminv = min_ff(yminv, bezt->vec[1][1]);
@@ -668,6 +687,13 @@ bool BKE_fcurve_calc_bounds(const FCurve *fcu,
 
             foundvert = true;
           }
+        }
+        if (range != NULL) {
+          /* The end of the range might not have keyframes, but might be an extreme. */
+          float start_y = evaluate_fcurve(fcu, range[0]);
+          float end_y = evaluate_fcurve(fcu, range[1]);
+          yminv = min_fff(yminv, start_y, end_y);
+          ymaxv = max_fff(ymaxv, start_y, end_y);
         }
       }
     }
@@ -717,10 +743,10 @@ bool BKE_fcurve_calc_bounds(const FCurve *fcu,
     }
 
     if (xmin) {
-      *xmin = 0.0f;
+      *xmin = range != NULL ? range[0] : 0.0f;
     }
     if (xmax) {
-      *xmax = 1.0f;
+      *xmax = range != NULL ? range[1] : 1.0f;
     }
 
     if (ymin) {

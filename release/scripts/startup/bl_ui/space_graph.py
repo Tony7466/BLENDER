@@ -204,6 +204,9 @@ class GRAPH_MT_channel(Menu):
     def draw(self, context):
         layout = self.layout
 
+        layout.separator()
+        layout.operator("graph.view_channel")
+
         layout.operator_context = 'INVOKE_REGION_CHANNELS'
 
         layout.operator("anim.channels_delete")
@@ -451,6 +454,9 @@ class GRAPH_MT_channel_context_menu(Menu):
         layout.separator()
         layout.operator("anim.channels_expand")
         layout.operator("anim.channels_collapse")
+
+        layout.separator()
+        layout.operator("graph.view_channel")
 
         layout.separator()
         layout.operator_menu_enum("anim.channels_move", "direction", text="Move...")

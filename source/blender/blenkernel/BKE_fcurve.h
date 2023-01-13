@@ -374,13 +374,14 @@ bool BKE_fcurve_calc_range(
 /**
  * Calculate the extents of F-Curve's data.
  */
-bool BKE_fcurve_calc_bounds(const struct FCurve *fcu,
+bool BKE_fcurve_calc_bounds(struct FCurve *fcu,
                             float *xmin,
                             float *xmax,
                             float *ymin,
                             float *ymax,
                             bool do_sel_only,
-                            bool include_handles);
+                            bool include_handles,
+                            const float range[2]);
 
 /**
  * Return an array of keyed frames, rounded to `interval`.
