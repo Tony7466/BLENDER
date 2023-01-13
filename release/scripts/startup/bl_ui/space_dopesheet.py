@@ -700,7 +700,7 @@ class DOPESHEET_MT_channel_context_menu(Menu):
         layout.operator("anim.channels_ungroup")
 
         layout.separator()
-        layout.operator("graph.view_channels")
+        layout.operator("graph.view_selected_channels")
 
         layout.separator()
         layout.operator("anim.channels_editable_toggle")

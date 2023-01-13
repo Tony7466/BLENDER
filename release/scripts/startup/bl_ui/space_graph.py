@@ -239,7 +239,7 @@ class GRAPH_MT_channel(Menu):
         layout.operator("anim.channels_fcurves_enable")
 
         layout.separator()
-        layout.operator("graph.view_channels")
+        layout.operator("graph.view_selected_channels")
 
 
 class GRAPH_MT_key(Menu):

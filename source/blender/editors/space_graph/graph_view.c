@@ -453,11 +453,11 @@ static int graphkeys_view_channel_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void GRAPH_OT_view_channels(wmOperatorType *ot)
+void GRAPH_OT_view_selected_channels(wmOperatorType *ot)
 {
   /* Identifiers */
   ot->name = "Frame Selected Channels";
-  ot->idname = "GRAPH_OT_view_channels";
+  ot->idname = "GRAPH_OT_view_selected_channels";
   ot->description = "Reset viewable area to show the selected channels";
 
   /* API callbacks */

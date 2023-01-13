@@ -3509,8 +3509,8 @@ def km_animation_channels(params):
         # Menus.
         *_template_items_context_menu("DOPESHEET_MT_channel_context_menu", params.context_menu_event),
         # View
-        ("graph.view_channels", {"type": 'MIDDLEMOUSE', "value": 'PRESS', "alt": True}, None),
-        ("graph.view_channels", {"type": 'NUMPAD_PERIOD', "value": 'PRESS'}, None),
+        ("graph.view_selected_channels", {"type": 'MIDDLEMOUSE', "value": 'PRESS', "alt": True}, None),
+        ("graph.view_selected_channels", {"type": 'NUMPAD_PERIOD', "value": 'PRESS'}, None),
     ])
 
     return keymap

@@ -423,7 +423,7 @@ void graphedit_operatortypes(void)
   WM_operatortype_append(GRAPH_OT_view_all);
   WM_operatortype_append(GRAPH_OT_view_selected);
   WM_operatortype_append(GRAPH_OT_view_frame);
-  WM_operatortype_append(GRAPH_OT_view_channels);
+  WM_operatortype_append(GRAPH_OT_view_selected_channels);
 
   WM_operatortype_append(GRAPH_OT_ghost_curves_create);
   WM_operatortype_append(GRAPH_OT_ghost_curves_clear);
