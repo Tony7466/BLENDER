@@ -1,7 +1,32 @@
 #pragma BLENDER_REQUIRE(gpu_shader_common_hash.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_common_math_utils.glsl)
 
-voronoi_f1_3d(vec3 coord,
+float voronoi_distance(vec3 a, vec3 b, float metric, float exponent)
+{
+  if (metric == 0.0)  // SHD_VORONOI_EUCLIDEAN
+  {
+    return distance(a, b);
+  }
+  else if (metric == 1.0)  // SHD_VORONOI_MANHATTAN
+  {
+    return abs(a.x - b.x) + abs(a.y - b.y) + abs(a.z - b.z);
+  }
+  else if (metric == 2.0)  // SHD_VORONOI_CHEBYCHEV
+  {
+    return max(abs(a.x - b.x), max(abs(a.y - b.y), abs(a.z - b.z)));
+  }
+  else if (metric == 3.0)  // SHD_VORONOI_MINKOWSKI
+  {
+    return pow(pow(abs(a.x - b.x), exponent) + pow(abs(a.y - b.y), exponent) +
+      pow(abs(a.z - b.z), exponent),
+      1.0 / exponent);
+  }
+  else {
+    return 0.0;
+  }
+}
+
+void voronoi_f1_3d(vec3 coord,
     float scale,
     float exponent,
     float randomness,

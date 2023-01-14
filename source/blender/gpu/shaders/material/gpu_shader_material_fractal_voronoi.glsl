@@ -19,6 +19,6 @@ void fractal_voronoi_f1_3d(vec3 coord,
         randomness,
         metric,
         outDistance,
-        vec4 outColor,
-        vec3 outPosition);
+        outColor,
+        outPosition);
 }
