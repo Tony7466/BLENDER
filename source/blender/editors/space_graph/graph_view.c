@@ -430,6 +430,8 @@ static void pad_fcurve_bounds(bContext *C, bAnimContext *ac, rctf *bounds)
 
 static void move_graph_view(bContext *C, bAnimContext *ac, rctf *bounds, const int smooth_viewtx)
 {
+  /* Iterate through regions because the operator might not have been called from the correct
+   * region. */
   LISTBASE_FOREACH (ARegion *, region, &ac->area->regionbase) {
     if (region->regiontype == RGN_TYPE_WINDOW) {
       UI_view2d_smooth_view(C, region, bounds, smooth_viewtx);
@@ -447,7 +449,7 @@ static int graphkeys_view_channel_exec(bContext *C, wmOperator *op)
   }
 
   ListBase anim_data = {NULL, NULL};
-  int filter = (ANIMFILTER_SEL | ANIMFILTER_NODUPLIS | ANIMFILTER_FCURVESONLY);
+  const int filter = (ANIMFILTER_SEL | ANIMFILTER_NODUPLIS | ANIMFILTER_FCURVESONLY);
   ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
 
   float range[2];
@@ -457,7 +459,6 @@ static int graphkeys_view_channel_exec(bContext *C, wmOperator *op)
   rctf bounds = {.xmin = FLT_MAX, .xmax = -FLT_MAX, .ymin = FLT_MAX, .ymax = -FLT_MAX};
 
   bAnimListElem *ale;
-
   const bool include_handles = RNA_boolean_get(op->ptr, "include_handles");
 
   for (ale = anim_data.first; ale; ale = ale->next) {
