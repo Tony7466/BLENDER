@@ -378,6 +378,65 @@ void GRAPH_OT_view_frame(wmOperatorType *ot)
 /** \name View Channel Operator
  * \{ */
 
+static void get_normalized_fcurve_bounds(FCurve *fcu,
+                                         bAnimContext *ac,
+                                         bAnimListElem *ale,
+                                         bool include_handles,
+                                         const float range[2],
+                                         rctf *r_bounds)
+{
+  const bool fcu_selection_only = false;
+  BKE_fcurve_calc_bounds(fcu,
+                         &r_bounds->xmin,
+                         &r_bounds->xmax,
+                         &r_bounds->ymin,
+                         &r_bounds->ymax,
+                         fcu_selection_only,
+                         include_handles,
+                         range);
+
+  float unitFac, offset;
+  short mapping_flag = ANIM_get_normalization_flags(ac);
+  unitFac = ANIM_unit_mapping_get_factor(ac->scene, ale->id, fcu, mapping_flag, &offset);
+  r_bounds->ymin += offset;
+  r_bounds->ymax += offset;
+  r_bounds->ymin *= unitFac;
+  r_bounds->ymax *= unitFac;
+}
+
+static void get_view_range(Scene *scene, const bool use_preview_range, float r_range[2])
+{
+  if (use_preview_range && scene->r.flag & SCER_PRV_RANGE) {
+    r_range[0] = scene->r.psfra;
+    r_range[1] = scene->r.pefra;
+  }
+  else {
+    r_range[0] = -FLT_MAX;
+    r_range[1] = FLT_MAX;
+  }
+}
+
+static void pad_fcurve_bounds(bContext *C, bAnimContext *ac, rctf *bounds)
+{
+  BLI_rctf_scale(bounds, 1.1f);
+
+  /* Take regions into account, that could block the view.
+   * Marker region is supposed to be larger than the scroll-bar, so prioritize it. */
+  float pad_top = UI_TIME_SCRUB_MARGIN_Y;
+  float pad_bottom = BLI_listbase_is_empty(ED_context_get_markers(C)) ? V2D_SCROLL_HANDLE_HEIGHT :
+                                                                        UI_MARKER_MARGIN_Y;
+  BLI_rctf_pad_y(bounds, ac->region->winy, pad_bottom, pad_top);
+}
+
+static void move_graph_view(bContext *C, bAnimContext *ac, rctf *bounds, const int smooth_viewtx)
+{
+  LISTBASE_FOREACH (ARegion *, region, &ac->area->regionbase) {
+    if (region->regiontype == RGN_TYPE_WINDOW) {
+      UI_view2d_smooth_view(C, region, bounds, smooth_viewtx);
+    }
+  }
+}
+
 static int graphkeys_view_channel_exec(bContext *C, wmOperator *op)
 {
   bAnimContext ac;
@@ -393,19 +452,12 @@ static int graphkeys_view_channel_exec(bContext *C, wmOperator *op)
 
   float range[2];
   const bool use_preview_range = RNA_boolean_get(op->ptr, "use_preview_range");
-  if (use_preview_range && ac.scene->r.flag & SCER_PRV_RANGE) {
-    range[0] = ac.scene->r.psfra;
-    range[1] = ac.scene->r.pefra;
-  }
-  else {
-    range[0] = -FLT_MAX;
-    range[1] = FLT_MAX;
-  }
+  get_view_range(ac.scene, use_preview_range, range);
 
   rctf bounds = {.xmin = FLT_MAX, .xmax = -FLT_MAX, .ymin = FLT_MAX, .ymax = -FLT_MAX};
 
   bAnimListElem *ale;
-  const bool fcu_selection_only = false;
+
   const bool include_handles = RNA_boolean_get(op->ptr, "include_handles");
 
   for (ale = anim_data.first; ale; ale = ale->next) {
@@ -414,41 +466,14 @@ static int graphkeys_view_channel_exec(bContext *C, wmOperator *op)
     }
     FCurve *fcu = (FCurve *)ale->key_data;
     rctf fcu_bounds;
-    BKE_fcurve_calc_bounds(fcu,
-                           &fcu_bounds.xmin,
-                           &fcu_bounds.xmax,
-                           &fcu_bounds.ymin,
-                           &fcu_bounds.ymax,
-                           fcu_selection_only,
-                           include_handles,
-                           range);
-
-    float unitFac, offset;
-    short mapping_flag = ANIM_get_normalization_flags(&ac);
-    unitFac = ANIM_unit_mapping_get_factor(ac.scene, ale->id, fcu, mapping_flag, &offset);
-    fcu_bounds.ymin += offset;
-    fcu_bounds.ymax += offset;
-    fcu_bounds.ymin *= unitFac;
-    fcu_bounds.ymax *= unitFac;
-
+    get_normalized_fcurve_bounds(fcu, &ac, ale, include_handles, range, &fcu_bounds);
     BLI_rctf_union(&bounds, &fcu_bounds);
   }
 
-  BLI_rctf_scale(&bounds, 1.1f);
-
-  /* Take regions into account, that could block the view.
-   * Marker region is supposed to be larger than the scroll-bar, so prioritize it. */
-  float pad_top = UI_TIME_SCRUB_MARGIN_Y;
-  float pad_bottom = BLI_listbase_is_empty(ED_context_get_markers(C)) ? V2D_SCROLL_HANDLE_HEIGHT :
-                                                                        UI_MARKER_MARGIN_Y;
-  BLI_rctf_pad_y(&bounds, ac.region->winy, pad_bottom, pad_top);
+  pad_fcurve_bounds(C, &ac, &bounds);
 
   const int smooth_viewtx = WM_operator_smooth_viewtx_get(op);
-  LISTBASE_FOREACH (ARegion *, region, &ac.area->regionbase) {
-    if (region->regiontype == RGN_TYPE_WINDOW) {
-      UI_view2d_smooth_view(C, region, &bounds, smooth_viewtx);
-    }
-  }
+  move_graph_view(C, &ac, &bounds, smooth_viewtx);
 
   return OPERATOR_FINISHED;
 }
@@ -462,6 +487,83 @@ void GRAPH_OT_view_selected_channels(wmOperatorType *ot)
 
   /* API callbacks */
   ot->exec = graphkeys_view_channel_exec;
+  ot->poll = ED_operator_graphedit_active;
+
+  ot->flag = 0;
+
+  ot->prop = RNA_def_boolean(ot->srna,
+                             "include_handles",
+                             true,
+                             "Include Handles",
+                             "Include handles of keyframes when calculating extents");
+
+  ot->prop = RNA_def_boolean(ot->srna,
+                             "use_preview_range",
+                             true,
+                             "Use Preview Range",
+                             "Ignore frames outside of the preview range");
+}
+
+static int graphkeys_view_channel_pick_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  bAnimContext ac;
+
+  if (ANIM_animdata_get_context(C, &ac) == 0) {
+    return OPERATOR_CANCELLED;
+  }
+
+  float x, y;
+  int channel_index;
+  ARegion *region = ac.region;
+  View2D *v2d = &region->v2d;
+
+  UI_view2d_region_to_view(v2d, event->mval[0], event->mval[1], &x, &y);
+  UI_view2d_listview_view_to_cell(ACHANNEL_NAMEWIDTH,
+                                  ACHANNEL_STEP(&ac),
+                                  0,
+                                  ACHANNEL_FIRST_TOP(&ac),
+                                  x,
+                                  y,
+                                  NULL,
+                                  &channel_index);
+
+  ListBase anim_data = {NULL, NULL};
+  int filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_LIST_CHANNELS |
+                ANIMFILTER_FCURVESONLY);
+  ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
+
+  bAnimListElem *ale;
+  ale = BLI_findlink(&anim_data, channel_index);
+  if (ale->datatype != ALE_FCURVE) {
+    return OPERATOR_CANCELLED;
+  }
+
+  float range[2];
+  const bool use_preview_range = RNA_boolean_get(op->ptr, "use_preview_range");
+  get_view_range(ac.scene, use_preview_range, range);
+
+  rctf fcu_bounds;
+  const bool include_handles = RNA_boolean_get(op->ptr, "include_handles");
+  FCurve *fcu = (FCurve *)ale->key_data;
+  get_normalized_fcurve_bounds(fcu, &ac, ale, include_handles, range, &fcu_bounds);
+
+  pad_fcurve_bounds(C, &ac, &fcu_bounds);
+
+  const int smooth_viewtx = WM_operator_smooth_viewtx_get(op);
+  move_graph_view(C, &ac, &fcu_bounds, smooth_viewtx);
+
+  return OPERATOR_FINISHED;
+}
+
+void GRAPH_OT_view_channel_pick(wmOperatorType *ot)
+{
+  /* Identifiers */
+  ot->name = "Frame Channel Under Cursor";
+  ot->idname = "GRAPH_OT_view_channel_pick";
+  ot->description = "Reset viewable area to show the channel under the cursor";
+
+  /* API callbacks */
+  ot->invoke = graphkeys_view_channel_pick_invoke;
   ot->poll = ED_operator_graphedit_active;
 
   ot->flag = 0;
