@@ -1210,10 +1210,11 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                     &w_out);
           if (normalize) {
             if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
-              distance_out /= (1 - randomness) + randomness * max_amplitude;
+              distance_out /= (1.0f - randomness) + randomness * max_amplitude;
             }
             else {
-              distance_out /= (1 - randomness) * ceilf(detail + 1.0f) + randomness * max_amplitude;
+              distance_out /= (1.0f - randomness) * ceilf(detail + 1.0f) +
+                              randomness * max_amplitude;
             }
           }
           break;
@@ -1299,10 +1300,11 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                      &position_out_2d);
           if (normalize) {
             if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
-              distance_out /= (1 - randomness) + randomness * max_amplitude;
+              distance_out /= (1.0f - randomness) + randomness * max_amplitude;
             }
             else {
-              distance_out /= (1 - randomness) * ceilf(detail + 1.0f) + randomness * max_amplitude;
+              distance_out /= (1.0f - randomness) * ceilf(detail + 1.0f) +
+                              randomness * max_amplitude;
             }
           }
           break;
@@ -1387,10 +1389,11 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                      &position_out);
           if (normalize) {
             if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
-              distance_out /= (1 - randomness) + randomness * max_amplitude;
+              distance_out /= (1.0f - randomness) + randomness * max_amplitude;
             }
             else {
-              distance_out /= (1 - randomness) * ceilf(detail + 1.0f) + randomness * max_amplitude;
+              distance_out /= (1.0f - randomness) * ceilf(detail + 1.0f) +
+                              randomness * max_amplitude;
             }
           }
           break;
@@ -1478,10 +1481,10 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                        &position_out_4d);
             if (normalize) {
               if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
-                distance_out /= (1 - randomness) + randomness * max_amplitude;
+                distance_out /= (1.0f - randomness) + randomness * max_amplitude;
               }
               else {
-                distance_out /= (1 - randomness) * ceilf(detail + 1.0f) +
+                distance_out /= (1.0f - randomness) * ceilf(detail + 1.0f) +
                                 randomness * max_amplitude;
               }
             }

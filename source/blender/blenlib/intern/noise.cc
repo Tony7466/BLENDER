@@ -1376,6 +1376,8 @@ BLI_INLINE float voronoi_distance(const float a, const float b)
   return std::abs(b - a);
 }
 
+/* The "const float exponent" and "const int metric" function parameters are unused in the 1D
+ * Voronoi calculations but needed for overload resolution to work */
 void voronoi_f1(const float w,
                 const float exponent,
                 const float randomness,
@@ -1412,6 +1414,8 @@ void voronoi_f1(const float w,
   }
 }
 
+/* The "const float exponent" and "const int metric" function parameters are unused in the 1D
+ * Voronoi calculations but needed for overload resolution to work */
 void voronoi_smooth_f1(const float w,
                        const float smoothness,
                        const float exponent,
@@ -1459,6 +1463,8 @@ void voronoi_smooth_f1(const float w,
   }
 }
 
+/* The "const float exponent" and "const int metric" function parameters are unused in the 1D
+ * Voronoi calculations but needed for overload resolution to work */
 void voronoi_f2(const float w,
                 const float exponent,
                 const float randomness,

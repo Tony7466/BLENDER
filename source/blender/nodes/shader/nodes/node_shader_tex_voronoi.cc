@@ -34,7 +34,6 @@ static void sh_node_tex_voronoi_declare(NodeDeclarationBuilder &b)
       .default_value(0.5f)
       .subtype(PROP_FACTOR)
       .make_available([](bNode &node) { node_storage(node).feature = SHD_VORONOI_F1; });
-  ;
   b.add_input<decl::Float>(N_("Lacunarity"))
       .min(0.0f)
       .max(1000.0f)
@@ -438,7 +437,7 @@ class VoronoiMetricFunction : public mf::MultiFunction {
             const bool calc_distance = !r_distance.is_empty();
             const bool calc_color = !r_color.is_empty();
             const bool calc_w = !r_w.is_empty();
-            float max_amplitude = 1.0f;
+            float max_amplitude = 0.0f;
             for (int64_t i : mask) {
               const float p = w[i] * scale[i];
               const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
@@ -463,9 +462,8 @@ class VoronoiMetricFunction : public mf::MultiFunction {
                 r_w[i] = safe_divide(r_w[i], scale[i]);
               }
               if (normalize_ && calc_distance) {
-                r_distance[i] /= (0.5f + 0.5f * rand) *
-                                 max_amplitude; /* Optimized std::lerp(max_amplitude*0.5,
-                                                   max_amplitude, rand)  */
+                /* Optimized std::lerp(max_amplitude*0.5, max_amplitude, rand)  */
+                r_distance[i] /= (0.5f + 0.5f * rand) * max_amplitude;
               }
             }
             break;
@@ -483,7 +481,7 @@ class VoronoiMetricFunction : public mf::MultiFunction {
             const bool calc_distance = !r_distance.is_empty();
             const bool calc_color = !r_color.is_empty();
             const bool calc_w = !r_w.is_empty();
-            float max_amplitude = 1.0f;
+            float max_amplitude = 0.0f;
             for (int64_t i : mask) {
               const float p = w[i] * scale[i];
               const float rand = std::min(std::max(randomness[i], 0.0f), 1.0f);
@@ -509,10 +507,10 @@ class VoronoiMetricFunction : public mf::MultiFunction {
               }
               if (normalize_ && calc_distance) {
                 if (detail[i] == 0.0f || roughness[i] == 0.0f || lacunarity[i] == 0.0f) {
-                  r_distance[i] /= (1 - rand) + rand * max_amplitude;
+                  r_distance[i] /= (1.0f - rand) + rand * max_amplitude;
                 }
                 else {
-                  r_distance[i] /= (1 - rand) * std::ceilf(detail[i] + 1.0f) +
+                  r_distance[i] /= (1.0f - rand) * std::ceilf(detail[i] + 1.0f) +
                                    rand * max_amplitude;
                 }
               }
@@ -533,7 +531,7 @@ class VoronoiMetricFunction : public mf::MultiFunction {
             const bool calc_distance = !r_distance.is_empty();
             const bool calc_color = !r_color.is_empty();
             const bool calc_w = !r_w.is_empty();
-            float max_amplitude = 1.0f;
+            float max_amplitude = 0.0f;
             for (int64_t i : mask) {
               const float p = w[i] * scale[i];
               const float smth = std::min(std::max(smoothness[i] / 2.0f, 0.0f), 0.5f);
@@ -560,9 +558,8 @@ class VoronoiMetricFunction : public mf::MultiFunction {
                 r_w[i] = safe_divide(r_w[i], scale[i]);
               }
               if (normalize_ && calc_distance) {
-                r_distance[i] /= (0.5f + 0.5f * rand) *
-                                 max_amplitude; /* Optimized std::lerp(max_amplitude*0.5,
-                                                   max_amplitude, rand)  */
+                /* Optimized std::lerp(max_amplitude*0.5, max_amplitude, rand)  */
+                r_distance[i] /= (0.5f + 0.5f * rand) * max_amplitude;
               }
             }
             break;
@@ -622,9 +619,8 @@ class VoronoiMetricFunction : public mf::MultiFunction {
                 r_position[i] = float3(pos.x, pos.y, 0.0f);
               }
               if (normalize_ && calc_distance) {
-                r_distance[i] /= (0.5f + 0.5f * rand) *
-                                 max_amplitude; /* Optimized std::lerp(max_amplitude*0.5,
-                                                   max_amplitude, rand)  */
+                /* Optimized std::lerp(max_amplitude*0.5, max_amplitude, rand)  */
+                r_distance[i] /= (0.5f + 0.5f * rand) * max_amplitude;
               }
             }
             break;
@@ -680,10 +676,10 @@ class VoronoiMetricFunction : public mf::MultiFunction {
               }
               if (normalize_ && calc_distance) {
                 if (detail[i] == 0.0f || roughness[i] == 0.0f || lacunarity[i] == 0.0f) {
-                  r_distance[i] /= (1 - rand) + rand * max_amplitude;
+                  r_distance[i] /= (1.0f - rand) + rand * max_amplitude;
                 }
                 else {
-                  r_distance[i] /= (1 - rand) * std::ceilf(detail[i] + 1.0f) +
+                  r_distance[i] /= (1.0f - rand) * std::ceilf(detail[i] + 1.0f) +
                                    rand * max_amplitude;
                 }
               }
@@ -743,9 +739,8 @@ class VoronoiMetricFunction : public mf::MultiFunction {
                 r_position[i] = float3(pos.x, pos.y, 0.0f);
               }
               if (normalize_ && calc_distance) {
-                r_distance[i] /= (0.5f + 0.5f * rand) *
-                                 max_amplitude; /* Optimized std::lerp(max_amplitude*0.5,
-                                                   max_amplitude, rand)  */
+                /* Optimized std::lerp(max_amplitude*0.5, max_amplitude, rand)  */
+                r_distance[i] /= (0.5f + 0.5f * rand) * max_amplitude;
               }
             }
             break;
@@ -803,9 +798,8 @@ class VoronoiMetricFunction : public mf::MultiFunction {
                 r_position[i] = math::safe_divide(r_position[i], scale[i]);
               }
               if (normalize_ && calc_distance) {
-                r_distance[i] /= (0.5f + 0.5f * rand) *
-                                 max_amplitude; /* Optimized std::lerp(max_amplitude*0.5,
-                                                   max_amplitude, rand)  */
+                /* Optimized std::lerp(max_amplitude*0.5, max_amplitude, rand)  */
+                r_distance[i] /= (0.5f + 0.5f * rand) * max_amplitude;
               }
             }
             break;
@@ -859,10 +853,10 @@ class VoronoiMetricFunction : public mf::MultiFunction {
               }
               if (normalize_ && calc_distance) {
                 if (detail[i] == 0.0f || roughness[i] == 0.0f || lacunarity[i] == 0.0f) {
-                  r_distance[i] /= (1 - rand) + rand * max_amplitude;
+                  r_distance[i] /= (1.0f - rand) + rand * max_amplitude;
                 }
                 else {
-                  r_distance[i] /= (1 - rand) * std::ceilf(detail[i] + 1.0f) +
+                  r_distance[i] /= (1.0f - rand) * std::ceilf(detail[i] + 1.0f) +
                                    rand * max_amplitude;
                 }
               }
@@ -921,9 +915,8 @@ class VoronoiMetricFunction : public mf::MultiFunction {
                 r_position[i] = math::safe_divide(r_position[i], scale[i]);
               }
               if (normalize_ && calc_distance) {
-                r_distance[i] /= (0.5f + 0.5f * rand) *
-                                 max_amplitude; /* Optimized std::lerp(max_amplitude*0.5,
-                                                   max_amplitude, rand)  */
+                /* Optimized std::lerp(max_amplitude*0.5, max_amplitude, rand)  */
+                r_distance[i] /= (0.5f + 0.5f * rand) * max_amplitude;
               }
             }
             break;
@@ -992,9 +985,8 @@ class VoronoiMetricFunction : public mf::MultiFunction {
                 }
               }
               if (normalize_ && calc_distance) {
-                r_distance[i] /= (0.5f + 0.5f * rand) *
-                                 max_amplitude; /* Optimized std::lerp(max_amplitude*0.5,
-                                                   max_amplitude, rand)  */
+                /* Optimized std::lerp(max_amplitude*0.5, max_amplitude, rand)  */
+                r_distance[i] /= (0.5f + 0.5f * rand) * max_amplitude;
               }
             }
             break;
@@ -1059,10 +1051,10 @@ class VoronoiMetricFunction : public mf::MultiFunction {
               }
               if (normalize_ && calc_distance) {
                 if (detail[i] == 0.0f || roughness[i] == 0.0f || lacunarity[i] == 0.0f) {
-                  r_distance[i] /= (1 - rand) + rand * max_amplitude;
+                  r_distance[i] /= (1.0f - rand) + rand * max_amplitude;
                 }
                 else {
-                  r_distance[i] /= (1 - rand) * std::ceilf(detail[i] + 1.0f) +
+                  r_distance[i] /= (1.0f - rand) * std::ceilf(detail[i] + 1.0f) +
                                    rand * max_amplitude;
                 }
               }
@@ -1131,9 +1123,8 @@ class VoronoiMetricFunction : public mf::MultiFunction {
                 }
               }
               if (normalize_ && calc_distance) {
-                r_distance[i] /= (0.5f + 0.5f * rand) *
-                                 max_amplitude; /* Optimized std::lerp(max_amplitude*0.5,
-                                                   max_amplitude, rand)  */
+                /* Optimized std::lerp(max_amplitude*0.5, max_amplitude, rand)  */
+                r_distance[i] /= (0.5f + 0.5f * rand) * max_amplitude;
               }
             }
             break;
