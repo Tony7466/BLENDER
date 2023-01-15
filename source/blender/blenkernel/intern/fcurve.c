@@ -688,13 +688,6 @@ bool BKE_fcurve_calc_bounds(FCurve *fcu,
             foundvert = true;
           }
         }
-        if (range != NULL) {
-          /* The end of the range might not have keyframes, but might be an extreme. */
-          float start_y = evaluate_fcurve(fcu, range[0]);
-          float end_y = evaluate_fcurve(fcu, range[1]);
-          yminv = min_fff(yminv, start_y, end_y);
-          ymaxv = max_fff(ymaxv, start_y, end_y);
-        }
       }
     }
     else if (fcu->fpt) {

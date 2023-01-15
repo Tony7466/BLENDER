@@ -439,7 +439,7 @@ static void move_graph_view(bContext *C, bAnimContext *ac, rctf *bounds, const i
   }
 }
 
-static int graphkeys_view_channel_exec(bContext *C, wmOperator *op)
+static int graphkeys_view_selected_channels_exec(bContext *C, wmOperator *op)
 {
   bAnimContext ac;
 
@@ -487,7 +487,7 @@ void GRAPH_OT_view_selected_channels(wmOperatorType *ot)
   ot->description = "Reset viewable area to show the selected channels";
 
   /* API callbacks */
-  ot->exec = graphkeys_view_channel_exec;
+  ot->exec = graphkeys_view_selected_channels_exec;
   ot->poll = ED_operator_graphedit_active;
 
   ot->flag = 0;
