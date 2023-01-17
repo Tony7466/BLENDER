@@ -154,23 +154,7 @@ bool USDAbstractWriter::mark_as_instance(const HierarchyContext &context, const 
 
 void USDAbstractWriter::author_extent(const pxr::UsdTimeCode timecode, pxr::UsdGeomBoundable &prim)
 {
-  /* Compute the bounds for a boundable prim, and author the result as the extent attribute.
-   *
-   * Although this method works for any boundable prim, it is preferred to use Blender's own
-   * cached bounds when possible.
-   *
-   * This method does not author the extentsHint attribute, which is also important to provide.
-   * Whereas the extent attribute can only be authored on prims inheriting from UsdGeomBoundable,
-   * an extentsHint can be provided on any prim, including scopes.  This extentsHint should be
-   * authored on every prim in a hierarchy being exported.
-   *
-   * Note that this hint is only useful when importing or inspecting layers, and should not be
-   * taken into account when computing extents during export.
-   *
-   * TODO: also provide method for authoring extentsHint on every prim in a hierarchy.
-   */
-  
-  /* do not use any existing extentsHint that may authored, instead recompute the extent when authoring it */
+  /* Do not use any existing `extentsHint` that may be authored, instead recompute the extent when authoring it. */
   const bool useExtentsHint = false;
   const pxr::TfTokenVector includedPurposes{pxr::UsdGeomTokens->default_};
   pxr::UsdGeomBBoxCache bboxCache(timecode, includedPurposes, useExtentsHint);
