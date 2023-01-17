@@ -164,6 +164,10 @@ typedef struct ARegionType {
   void (*init)(struct wmWindowManager *wm, struct ARegion *region);
   /* exit is called when the region is hidden or removed */
   void (*exit)(struct wmWindowManager *wm, struct ARegion *region);
+  /** Optional callback to decide whether the region should be treated as existing given the
+   current context. When returning false, the region will be kept in storage, but is not available
+   to the user in any way. */
+  bool (*poll)(const struct bContext *C);
   /* draw entirely, view changes should be handled here */
   void (*draw)(const struct bContext *C, struct ARegion *region);
   /**

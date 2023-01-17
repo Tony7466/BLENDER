@@ -713,8 +713,56 @@ void ED_screens_init(Main *bmain, wmWindowManager *wm)
   }
 }
 
-void ED_screen_ensure_updated(wmWindowManager *wm, wmWindow *win, bScreen *screen)
+static bool region_poll(const bContext *C, const ARegion *region)
 {
+  if (!region->type || !region->type->poll) {
+    /* Show region by default. */
+    return true;
+  }
+
+  return region->type->poll(C);
+}
+
+static void screen_regions_poll(bContext *C, const wmWindow *win, bScreen *screen)
+{
+  ScrArea *previous_area = CTX_wm_area(C);
+  ARegion *previous_region = CTX_wm_region(C);
+
+  bool changed = false;
+  ED_screen_areas_iter (win, screen, area) {
+    CTX_wm_area_set(C, area);
+
+    LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
+      const int old_region_flag = region->flag;
+
+      region->flag &= ~RGN_FLAG_POLL_FAILED;
+
+      CTX_wm_region_set(C, region);
+      if (region_poll(C, region) == false) {
+        region->flag |= RGN_FLAG_POLL_FAILED;
+      }
+
+      if (old_region_flag != region->flag) {
+        /* Enforce complete re-init. */
+        region->v2d.flag &= ~V2D_IS_INIT;
+        changed = true;
+        ED_region_visibility_change_update(C, area, region);
+      }
+    }
+  }
+
+  if (changed) {
+    screen->do_refresh = true;
+    //    ED_area_tag_redraw();
+  }
+
+  CTX_wm_area_set(C, previous_area);
+  CTX_wm_region_set(C, previous_region);
+}
+
+void ED_screen_ensure_updated(bContext *C, wmWindowManager *wm, wmWindow *win, bScreen *screen)
+{
+  screen_regions_poll(C, win, screen);
   if (screen->do_refresh) {
     ED_screen_refresh(wm, win);
   }
