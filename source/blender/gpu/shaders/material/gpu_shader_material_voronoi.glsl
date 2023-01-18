@@ -111,7 +111,7 @@ void voronoi_f2(
   outW = positionF2 + cellPosition;
 }
 
-void voronoi_n_sphere_radius(float w, float randomness, out float outDistance)
+void voronoi_distance_to_edge(float w, float randomness, out float outDistance)
 {
   float cellPosition = floor(w);
   float localPosition = w - cellPosition;
@@ -126,7 +126,7 @@ void voronoi_n_sphere_radius(float w, float randomness, out float outDistance)
   outDistance = min(distanceToMidLeft, distanceToMidRight);
 }
 
-void voronoi_distance_to_edge(float w, float randomness, out float outRadius)
+void voronoi_n_sphere_radius(float w, float randomness, out float outRadius)
 {
   float cellPosition = floor(w);
   float localPosition = w - cellPosition;

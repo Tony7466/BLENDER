@@ -1386,6 +1386,10 @@ void voronoi_f1(const float w,
                 float3 *r_color,
                 float *r_w)
 {
+  /* Supress compiler warnings */
+  (void)exponent;
+  (void)metric;
+
   const float cellPosition = floorf(w);
   const float localPosition = w - cellPosition;
 
@@ -1425,6 +1429,10 @@ void voronoi_smooth_f1(const float w,
                        float3 *r_color,
                        float *r_w)
 {
+  /* Supress compiler warnings */
+  (void)exponent;
+  (void)metric;
+
   const float cellPosition = floorf(w);
   const float localPosition = w - cellPosition;
   const float smoothness_clamped = max_ff(smoothness, FLT_MIN);
@@ -1473,6 +1481,10 @@ void voronoi_f2(const float w,
                 float3 *r_color,
                 float *r_w)
 {
+  /* Supress compiler warnings */
+  (void)exponent;
+  (void)metric;
+
   const float cellPosition = floorf(w);
   const float localPosition = w - cellPosition;
 

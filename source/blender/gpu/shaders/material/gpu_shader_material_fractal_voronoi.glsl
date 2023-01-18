@@ -9,13 +9,13 @@ void fractal_voronoi_f1(float w,
                         float roughness,
                         float lacunarity,
                         float randomness,
-                        float max_distance,
                         out float max_amplitude,
                         out float outDistance,
                         out vec4 outColor,
                         out float outw)
 {
   voronoi_f1(w, randomness, outDistance, outColor, outw);
+  max_amplitude = 1.0;
 }
 
 void fractal_voronoi_smooth_f1(float w,
@@ -24,12 +24,13 @@ void fractal_voronoi_smooth_f1(float w,
                                float lacunarity,
                                float smoothness,
                                float randomness,
-                               float max_distance,
                                out float max_amplitude,
                                out float outDistance,
                                out vec4 outColor,
                                out float outw)
 {
+  voronoi_smooth_f1(w, smoothness, randomness, outDistance, outColor, outw);
+  max_amplitude = 1.0;
 }
 
 void fractal_voronoi_f2(float w,
@@ -37,12 +38,13 @@ void fractal_voronoi_f2(float w,
                         float roughness,
                         float lacunarity,
                         float randomness,
-                        float max_distance,
                         out float max_amplitude,
                         out float outDistance,
                         out vec4 outColor,
                         out float outw)
 {
+  voronoi_f2(w, randomness, outDistance, outColor, outw);
+  max_amplitude = 1.0;
 }
 
 void fractal_voronoi_distance_to_edge(float w,
@@ -52,6 +54,7 @@ void fractal_voronoi_distance_to_edge(float w,
                                       float bool_normalize,
                                       out float outDistance)
 {
+  voronoi_distance_to_edge(w, randomness, outDistance);
 }
 
 /* **** 2D Fractal Voronoi **** */
@@ -70,6 +73,7 @@ void fractal_voronoi_f1(vec2 coord,
                         out vec2 outPosition)
 {
   voronoi_f1(coord, exponent, randomness, metric, outDistance, outColor, outPosition);
+  max_amplitude = max_distance;
 }
 
 void fractal_voronoi_smooth_f1(vec2 coord,
@@ -86,6 +90,9 @@ void fractal_voronoi_smooth_f1(vec2 coord,
                                out vec4 outColor,
                                out vec2 outPosition)
 {
+  voronoi_smooth_f1(
+      coord, smoothness, exponent, randomness, metric, outDistance, outColor, outPosition);
+  max_amplitude = max_distance;
 }
 
 void fractal_voronoi_f2(vec2 coord,
@@ -101,6 +108,8 @@ void fractal_voronoi_f2(vec2 coord,
                         out vec4 outColor,
                         out vec2 outPosition)
 {
+  voronoi_f2(coord, exponent, randomness, metric, outDistance, outColor, outPosition);
+  max_amplitude = max_distance;
 }
 
 void fractal_voronoi_distance_to_edge(vec2 coord,
@@ -110,6 +119,7 @@ void fractal_voronoi_distance_to_edge(vec2 coord,
                                       float bool_normalize,
                                       out float outDistance)
 {
+  voronoi_distance_to_edge(coord, randomness, outDistance);
 }
 
 /* **** 3D Fractal Voronoi **** */
@@ -128,6 +138,7 @@ void fractal_voronoi_f1(vec3 coord,
                         out vec3 outPosition)
 {
   voronoi_f1(coord, exponent, randomness, metric, outDistance, outColor, outPosition);
+  max_amplitude = max_distance;
 }
 
 void fractal_voronoi_smooth_f1(vec3 coord,
@@ -144,6 +155,9 @@ void fractal_voronoi_smooth_f1(vec3 coord,
                                out vec4 outColor,
                                out vec3 outPosition)
 {
+  voronoi_smooth_f1(
+      coord, smoothness, exponent, randomness, metric, outDistance, outColor, outPosition);
+  max_amplitude = max_distance;
 }
 
 void fractal_voronoi_f2(vec3 coord,
@@ -159,6 +173,8 @@ void fractal_voronoi_f2(vec3 coord,
                         out vec4 outColor,
                         out vec3 outPosition)
 {
+  voronoi_f2(coord, exponent, randomness, metric, outDistance, outColor, outPosition);
+  max_amplitude = max_distance;
 }
 
 void fractal_voronoi_distance_to_edge(vec3 coord,
@@ -168,6 +184,7 @@ void fractal_voronoi_distance_to_edge(vec3 coord,
                                       float bool_normalize,
                                       out float outDistance)
 {
+  voronoi_distance_to_edge(coord, randomness, outDistance);
 }
 
 /* **** 4D Fractal Voronoi **** */
@@ -186,6 +203,7 @@ void fractal_voronoi_f1(vec4 coord,
                         out vec4 outPosition)
 {
   voronoi_f1(coord, exponent, randomness, metric, outDistance, outColor, outPosition);
+  max_amplitude = max_distance;
 }
 
 void fractal_voronoi_smooth_f1(vec4 coord,
@@ -202,6 +220,9 @@ void fractal_voronoi_smooth_f1(vec4 coord,
                                out vec4 outColor,
                                out vec4 outPosition)
 {
+  voronoi_smooth_f1(
+      coord, smoothness, exponent, randomness, metric, outDistance, outColor, outPosition);
+  max_amplitude = max_distance;
 }
 
 void fractal_voronoi_f2(vec4 coord,
@@ -217,6 +238,8 @@ void fractal_voronoi_f2(vec4 coord,
                         out vec4 outColor,
                         out vec4 outPosition)
 {
+  voronoi_f2(coord, exponent, randomness, metric, outDistance, outColor, outPosition);
+  max_amplitude = max_distance;
 }
 
 void fractal_voronoi_distance_to_edge(vec4 coord,
@@ -226,4 +249,5 @@ void fractal_voronoi_distance_to_edge(vec4 coord,
                                       float bool_normalize,
                                       out float outDistance)
 {
+  voronoi_distance_to_edge(coord, randomness, outDistance);
 }

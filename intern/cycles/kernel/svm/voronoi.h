@@ -24,14 +24,22 @@ CCL_NAMESPACE_BEGIN
 
 /* **** 1D Voronoi **** */
 
+/* The "float exponent" and "NodeVoronoiDistanceMetric metric" function parameters are unused in
+ * the 1D Voronoi calculations but needed for overload resolution to work */
 ccl_device float voronoi_distance_1d(float a,
                                      float b,
                                      NodeVoronoiDistanceMetric metric,
                                      float exponent)
 {
+  /* Supress compiler warnings */
+  (void)exponent;
+  (void)metric;
+
   return fabsf(b - a);
 }
 
+/* The "float exponent" and "NodeVoronoiDistanceMetric metric" function parameters are unused in
+ * the 1D Voronoi calculations but needed for overload resolution to work */
 ccl_device void voronoi_f1(float w,
                            float exponent,
                            float randomness,
@@ -40,6 +48,10 @@ ccl_device void voronoi_f1(float w,
                            ccl_private float3 *outColor,
                            ccl_private float *outW)
 {
+  /* Supress compiler warnings */
+  (void)exponent;
+  (void)metric;
+
   float cellPosition = floorf(w);
   float localPosition = w - cellPosition;
 
@@ -61,6 +73,8 @@ ccl_device void voronoi_f1(float w,
   *outW = targetPosition + cellPosition;
 }
 
+/* The "float exponent" and "NodeVoronoiDistanceMetric metric" function parameters are unused in
+ * the 1D Voronoi calculations but needed for overload resolution to work */
 ccl_device void voronoi_smooth_f1(float w,
                                   float smoothness,
                                   float exponent,
@@ -70,6 +84,10 @@ ccl_device void voronoi_smooth_f1(float w,
                                   ccl_private float3 *outColor,
                                   ccl_private float *outW)
 {
+  /* Supress compiler warnings */
+  (void)exponent;
+  (void)metric;
+
   float cellPosition = floorf(w);
   float localPosition = w - cellPosition;
 
@@ -94,6 +112,8 @@ ccl_device void voronoi_smooth_f1(float w,
   *outW = cellPosition + smoothPosition;
 }
 
+/* The "float exponent" and "NodeVoronoiDistanceMetric metric" function parameters are unused in
+ * the 1D Voronoi calculations but needed for overload resolution to work */
 ccl_device void voronoi_f2(float w,
                            float exponent,
                            float randomness,
@@ -102,6 +122,10 @@ ccl_device void voronoi_f2(float w,
                            ccl_private float3 *outColor,
                            ccl_private float *outW)
 {
+  /* Supress compiler warnings */
+  (void)exponent;
+  (void)metric;
+
   float cellPosition = floorf(w);
   float localPosition = w - cellPosition;
 
@@ -1168,9 +1192,8 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                     &color_out,
                                     &w_out);
           if (normalize) {
-            distance_out /= (0.5f + 0.5f * randomness) *
-                            max_amplitude; /* Optimized std::lerp(max_amplitude*0.5, max_amplitude,
-                                              randomness)  */
+            /* Optimized std::lerp(max_amplitude*0.5, max_amplitude, randomness) */
+            distance_out /= (0.5f + 0.5f * randomness) * max_amplitude;
           }
           break;
         }
@@ -1189,9 +1212,8 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                            &color_out,
                                            &w_out);
           if (normalize) {
-            distance_out /= (0.5f + 0.5f * randomness) *
-                            max_amplitude; /* Optimized std::lerp(max_amplitude*0.5, max_amplitude,
-                                              randomness)  */
+            /* Optimized std::lerp(max_amplitude*0.5, max_amplitude, randomness) */
+            distance_out /= (0.5f + 0.5f * randomness) * max_amplitude;
           }
           break;
         }
@@ -1255,9 +1277,8 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                      &color_out,
                                      &position_out_2d);
           if (normalize) {
-            distance_out /= (0.5f + 0.5f * randomness) *
-                            max_amplitude; /* Optimized std::lerp(max_amplitude*0.5, max_amplitude,
-                                              randomness)  */
+            /* Optimized std::lerp(max_amplitude*0.5, max_amplitude, randomness) */
+            distance_out /= (0.5f + 0.5f * randomness) * max_amplitude;
           }
           break;
         }
@@ -1278,9 +1299,8 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                               &color_out,
                                               &position_out_2d);
             if (normalize) {
-              distance_out /= (0.5f + 0.5f * randomness) *
-                              max_amplitude; /* Optimized std::lerp(max_amplitude*0.5,
-                                                max_amplitude, randomness)  */
+              /* Optimized std::lerp(max_amplitude*0.5, max_amplitude, randomness) */
+              distance_out /= (0.5f + 0.5f * randomness) * max_amplitude;
             }
             break;
           }
@@ -1344,9 +1364,8 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                      &color_out,
                                      &position_out);
           if (normalize) {
-            distance_out /= (0.5f + 0.5f * randomness) *
-                            max_amplitude; /* Optimized std::lerp(max_amplitude*0.5, max_amplitude,
-                                              randomness)  */
+            /* Optimized std::lerp(max_amplitude*0.5, max_amplitude, randomness) */
+            distance_out /= (0.5f + 0.5f * randomness) * max_amplitude;
           }
           break;
         }
@@ -1367,9 +1386,8 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                               &color_out,
                                               &position_out);
             if (normalize) {
-              distance_out /= (0.5f + 0.5f * randomness) *
-                              max_amplitude; /* Optimized std::lerp(max_amplitude*0.5,
-                                                max_amplitude, randomness)  */
+              /* Optimized std::lerp(max_amplitude*0.5, max_amplitude, randomness) */
+              distance_out /= (0.5f + 0.5f * randomness) * max_amplitude;
             }
             break;
           }
@@ -1439,9 +1457,8 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                        &color_out,
                                        &position_out_4d);
             if (normalize) {
-              distance_out /= (0.5f + 0.5f * randomness) *
-                              max_amplitude; /* Optimized std::lerp(max_amplitude*0.5,
-                                                max_amplitude, randomness)  */
+              /* Optimized std::lerp(max_amplitude*0.5, max_amplitude, randomness) */
+              distance_out /= (0.5f + 0.5f * randomness) * max_amplitude;
             }
             break;
           }
@@ -1460,9 +1477,8 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                               &color_out,
                                               &position_out_4d);
             if (normalize) {
-              distance_out /= (0.5f + 0.5f * randomness) *
-                              max_amplitude; /* Optimized std::lerp(max_amplitude*0.5,
-                                                max_amplitude, randomness)  */
+              /* Optimized std::lerp(max_amplitude*0.5, max_amplitude, randomness) */
+              distance_out /= (0.5f + 0.5f * randomness) * max_amplitude;
             }
             break;
           }
