@@ -58,7 +58,7 @@ void node_tex_voronoi_f1_1d(vec3 coord,
   outW = safe_divide(outW, scale);
   if (bool_normalize != 0.0) {
     /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness)  */
-    outDistance /= (0.5f + 0.5f * randomness) * max_amplitude;
+    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude;
   }
 }
 
@@ -101,7 +101,7 @@ void node_tex_voronoi_smooth_f1_1d(vec3 coord,
   outW = safe_divide(outW, scale);
   if (bool_normalize != 0.0) {
     /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness)  */
-    outDistance /= (0.5f + 0.5f * randomness) * max_amplitude;
+    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude;
   }
 }
 
@@ -141,7 +141,7 @@ void node_tex_voronoi_f2_1d(vec3 coord,
 
   outW = safe_divide(outW, scale);
   if (bool_normalize != 0.0) {
-    if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
+    if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
       outDistance /= (1.0 - randomness) + randomness * max_amplitude;
     }
     else {
@@ -244,7 +244,7 @@ void node_tex_voronoi_f1_2d(vec3 coord,
   outPosition = vec3(safe_divide(outPosition_2d, scale), 0.0);
   if (bool_normalize != 0.0) {
     /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness)  */
-    outDistance /= (0.5f + 0.5f * randomness) * max_amplitude;
+    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude;
   }
 }
 
@@ -292,7 +292,7 @@ void node_tex_voronoi_smooth_f1_2d(vec3 coord,
   outPosition = vec3(safe_divide(outPosition_2d, scale), 0.0);
   if (bool_normalize != 0.0) {
     /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness)  */
-    outDistance /= (0.5f + 0.5f * randomness) * max_amplitude;
+    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude;
   }
 }
 
@@ -337,7 +337,7 @@ void node_tex_voronoi_f2_2d(vec3 coord,
 
   outPosition = vec3(safe_divide(outPosition_2d, scale), 0.0);
   if (bool_normalize != 0.0) {
-    if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
+    if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
       outDistance /= (1.0 - randomness) + randomness * max_amplitude;
     }
     else {
@@ -440,7 +440,7 @@ void node_tex_voronoi_f1_3d(vec3 coord,
   outPosition = safe_divide(outPosition, scale);
   if (bool_normalize != 0.0) {
     /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness)  */
-    outDistance /= (0.5f + 0.5f * randomness) * max_amplitude;
+    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude;
   }
 }
 
@@ -488,7 +488,7 @@ void node_tex_voronoi_smooth_f1_3d(vec3 coord,
   outPosition = safe_divide(outPosition, scale);
   if (bool_normalize != 0.0) {
     /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness)  */
-    outDistance /= (0.5f + 0.5f * randomness) * max_amplitude;
+    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude;
   }
 }
 
@@ -533,7 +533,7 @@ void node_tex_voronoi_f2_3d(vec3 coord,
 
   outPosition = safe_divide(outPosition, scale);
   if (bool_normalize != 0.0) {
-    if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
+    if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
       outDistance /= (1.0 - randomness) + randomness * max_amplitude;
     }
     else {
@@ -639,7 +639,7 @@ void node_tex_voronoi_f1_4d(vec3 coord,
   outW = outPosition_4d.w;
   if (bool_normalize != 0.0) {
     /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness)  */
-    outDistance /= (0.5f + 0.5f * randomness) * max_amplitude;
+    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude;
   }
 }
 
@@ -690,7 +690,7 @@ void node_tex_voronoi_smooth_f1_4d(vec3 coord,
   outW = outPosition_4d.w;
   if (bool_normalize != 0.0) {
     /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness)  */
-    outDistance /= (0.5f + 0.5f * randomness) * max_amplitude;
+    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude;
   }
 }
 
@@ -738,7 +738,7 @@ void node_tex_voronoi_f2_4d(vec3 coord,
   outPosition = outPosition_4d.xyz;
   outW = outPosition_4d.w;
   if (bool_normalize != 0.0) {
-    if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
+    if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
       outDistance /= (1.0 - randomness) + randomness * max_amplitude;
     }
     else {
