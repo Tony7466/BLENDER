@@ -202,8 +202,13 @@ ccl_device int bsdf_principled_hair_setup(ccl_private ShaderData *sd,
 #endif /* __HAIR__ */
 
 /* Given the Fresnel term and transmittance, generate the attenuation terms for each bounce. */
-ccl_device_inline void hair_attenuation(
-    KernelGlobals kg, float f, Spectrum T, ccl_private Spectrum *Ap, ccl_private float *Ap_energy)
+ccl_device_inline void hair_attenuation(KernelGlobals kg,
+                                        ConstIntegratorState state,
+                                        uint32_t path_flag,
+                                        float f,
+                                        Spectrum T,
+                                        ccl_private Spectrum *Ap,
+                                        ccl_private float *Ap_energy)
 {
   /* Primary specular (R). */
   Ap[0] = make_spectrum(f);
@@ -212,17 +217,17 @@ ccl_device_inline void hair_attenuation(
   /* Transmission (TT). */
   Spectrum col = sqr(1.0f - f) * T;
   Ap[1] = col;
-  Ap_energy[1] = spectrum_to_gray(kg, col);
+  Ap_energy[1] = spectrum_to_gray(kg, state, path_flag, col);
 
   /* Secondary specular (TRT). */
   col *= T * f;
   Ap[2] = col;
-  Ap_energy[2] = spectrum_to_gray(kg, col);
+  Ap_energy[2] = spectrum_to_gray(kg, state, path_flag, col);
 
   /* Residual component (TRRT+). */
   col *= safe_divide(T * f, one_spectrum() - T * f);
   Ap[3] = col;
-  Ap_energy[3] = spectrum_to_gray(kg, col);
+  Ap_energy[3] = spectrum_to_gray(kg, state, path_flag, col);
 
   /* Normalize sampling weights. */
   float totweight = Ap_energy[0] + Ap_energy[1] + Ap_energy[2] + Ap_energy[3];
@@ -257,6 +262,8 @@ ccl_device_inline void hair_alpha_angles(float sin_theta_i,
 
 /* Evaluation function for our shader. */
 ccl_device Spectrum bsdf_principled_hair_eval(KernelGlobals kg,
+                                              ConstIntegratorState state,
+                                              uint32_t path_flag,
                                               ccl_private const ShaderData *sd,
                                               ccl_private const ShaderClosure *sc,
                                               const float3 omega_in,
@@ -292,8 +299,13 @@ ccl_device Spectrum bsdf_principled_hair_eval(KernelGlobals kg,
   const Spectrum T = exp(-bsdf->sigma * (2.0f * cos_gamma_t / cos_theta_t));
   Spectrum Ap[4];
   float Ap_energy[4];
-  hair_attenuation(
-      kg, fresnel_dielectric_cos(cos_theta_o * cos_gamma_o, bsdf->eta), T, Ap, Ap_energy);
+  hair_attenuation(kg,
+                   state,
+                   path_flag,
+                   fresnel_dielectric_cos(cos_theta_o * cos_gamma_o, bsdf->eta),
+                   T,
+                   Ap,
+                   Ap_energy);
 
   const float sin_theta_i = wi.x;
   const float cos_theta_i = cos_from_sin(sin_theta_i);
@@ -337,7 +349,10 @@ ccl_device Spectrum bsdf_principled_hair_eval(KernelGlobals kg,
 }
 
 /* Sampling function for the hair shader. */
+template<typename ConstIntegratorGenericState>
 ccl_device int bsdf_principled_hair_sample(KernelGlobals kg,
+                                           ConstIntegratorGenericState state,
+                                           uint32_t path_flag,
                                            ccl_private const ShaderClosure *sc,
                                            ccl_private ShaderData *sd,
                                            float randu,
@@ -384,8 +399,13 @@ ccl_device int bsdf_principled_hair_sample(KernelGlobals kg,
   const Spectrum T = exp(-bsdf->sigma * (2.0f * cos_gamma_t / cos_theta_t));
   Spectrum Ap[4];
   float Ap_energy[4];
-  hair_attenuation(
-      kg, fresnel_dielectric_cos(cos_theta_o * cos_gamma_o, bsdf->eta), T, Ap, Ap_energy);
+  hair_attenuation(kg,
+                   state,
+                   path_flag,
+                   fresnel_dielectric_cos(cos_theta_o * cos_gamma_o, bsdf->eta),
+                   T,
+                   Ap,
+                   Ap_energy);
 
   int p = 0;
   for (; p < 3; p++) {
@@ -496,14 +516,19 @@ bsdf_principled_hair_sigma_from_reflectance(const Spectrum color, const float az
   return sigma * sigma;
 }
 
-ccl_device_inline Spectrum bsdf_principled_hair_sigma_from_concentration(const float eumelanin,
-                                                                         const float pheomelanin)
+template<typename ConstIntegratorGenericState>
+ccl_device_inline Spectrum
+bsdf_principled_hair_sigma_from_concentration(KernelGlobals kg,
+                                              ConstIntegratorGenericState state,
+                                              uint32_t path_flag,
+                                              const float eumelanin,
+                                              const float pheomelanin)
 {
   const float3 eumelanin_color = make_float3(0.506f, 0.841f, 1.653f);
   const float3 pheomelanin_color = make_float3(0.343f, 0.733f, 1.924f);
 
-  return eumelanin * rgb_to_spectrum(eumelanin_color) +
-         pheomelanin * rgb_to_spectrum(pheomelanin_color);
+  return eumelanin * rgb_to_spectrum(kg, state, path_flag, eumelanin_color) +
+         pheomelanin * rgb_to_spectrum(kg, state, path_flag, pheomelanin_color);
 }
 
 CCL_NAMESPACE_END

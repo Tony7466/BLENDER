@@ -2,6 +2,8 @@
  * Copyright 2011-2022 Blender Foundation */
 
 #include "scene/constant_fold.h"
+#include "scene/integrator.h"
+#include "scene/scene.h"
 #include "scene/shader_graph.h"
 
 #include "util/foreach.h"
@@ -19,6 +21,15 @@ ConstantFolder::ConstantFolder(ShaderGraph *graph,
 
 bool ConstantFolder::all_inputs_constant() const
 {
+  if (scene->integrator->get_use_spectral_rendering()) {
+    /* Do not fold nodes with spectral output socket. */
+    foreach (ShaderOutput *output, node->outputs) {
+      if (output->type() == SocketType::SPECTRUM) {
+        return false;
+      }
+    }
+  }
+
   foreach (ShaderInput *input, node->inputs) {
     if (input->link) {
       return false;

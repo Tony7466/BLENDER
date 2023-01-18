@@ -111,17 +111,26 @@ ccl_device_inline void film_write_data_passes(KernelGlobals kg,
 
   if (flag & PASSMASK(DIFFUSE_COLOR)) {
     const Spectrum throughput = INTEGRATOR_STATE(state, path, throughput);
-    film_write_pass_spectrum(buffer + kernel_data.film.pass_diffuse_color,
+    film_write_pass_spectrum(kg,
+                             state,
+                             path_flag,
+                             buffer + kernel_data.film.pass_diffuse_color,
                              surface_shader_diffuse(kg, sd) * throughput);
   }
   if (flag & PASSMASK(GLOSSY_COLOR)) {
     const Spectrum throughput = INTEGRATOR_STATE(state, path, throughput);
-    film_write_pass_spectrum(buffer + kernel_data.film.pass_glossy_color,
+    film_write_pass_spectrum(kg,
+                             state,
+                             path_flag,
+                             buffer + kernel_data.film.pass_glossy_color,
                              surface_shader_glossy(kg, sd) * throughput);
   }
   if (flag & PASSMASK(TRANSMISSION_COLOR)) {
     const Spectrum throughput = INTEGRATOR_STATE(state, path, throughput);
-    film_write_pass_spectrum(buffer + kernel_data.film.pass_transmission_color,
+    film_write_pass_spectrum(kg,
+                             state,
+                             path_flag,
+                             buffer + kernel_data.film.pass_transmission_color,
                              surface_shader_transmission(kg, sd) * throughput);
   }
   if (flag & PASSMASK(MIST)) {

@@ -105,7 +105,8 @@ ccl_device_forceinline void film_write_denoising_features_surface(KernelGlobals 
           state, path, denoising_feature_throughput);
       const Spectrum denoising_albedo = ensure_finite(denoising_feature_throughput *
                                                       diffuse_albedo);
-      film_write_pass_spectrum(buffer + kernel_data.film.pass_denoising_albedo, denoising_albedo);
+      film_write_pass_spectrum(
+          kg, state, path_flag, buffer + kernel_data.film.pass_denoising_albedo, denoising_albedo);
     }
 
     INTEGRATOR_STATE_WRITE(state, path, flag) &= ~PATH_RAY_DENOISING_FEATURES;
@@ -117,6 +118,7 @@ ccl_device_forceinline void film_write_denoising_features_surface(KernelGlobals 
 
 ccl_device_forceinline void film_write_denoising_features_volume(KernelGlobals kg,
                                                                  IntegratorState state,
+                                                                 uint32_t path_flag,
                                                                  const Spectrum albedo,
                                                                  const bool scatter,
                                                                  ccl_global float *ccl_restrict
@@ -138,7 +140,8 @@ ccl_device_forceinline void film_write_denoising_features_volume(KernelGlobals k
   if (kernel_data.film.pass_denoising_albedo != PASS_UNUSED) {
     /* Write albedo. */
     const Spectrum denoising_albedo = ensure_finite(denoising_feature_throughput * albedo);
-    film_write_pass_spectrum(buffer + kernel_data.film.pass_denoising_albedo, denoising_albedo);
+    film_write_pass_spectrum(
+        kg, state, path_flag, buffer + kernel_data.film.pass_denoising_albedo, denoising_albedo);
   }
 }
 #endif /* __DENOISING_FEATURES__ */

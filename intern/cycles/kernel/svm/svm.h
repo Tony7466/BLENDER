@@ -30,6 +30,26 @@ CCL_NAMESPACE_BEGIN
 
 /* Stack */
 
+ccl_device_inline Spectrum stack_load_spectrum(ccl_private float *stack, uint a)
+{
+  kernel_assert(a + SPECTRUM_CHANNELS - 1 < SVM_STACK_SIZE);
+
+  Spectrum f;
+  FOREACH_SPECTRUM_CHANNEL (i) {
+    GET_SPECTRUM_CHANNEL(f, i) = stack[a + i];
+  }
+  return f;
+}
+
+ccl_device_inline void stack_store_spectrum(ccl_private float *stack, uint a, Spectrum f)
+{
+  kernel_assert(a + SPECTRUM_CHANNELS - 1 < SVM_STACK_SIZE);
+
+  FOREACH_SPECTRUM_CHANNEL (i) {
+    stack[a + i] = GET_SPECTRUM_CHANNEL(f, i);
+  }
+}
+
 ccl_device_inline float3 stack_load_float3(ccl_private float *stack, uint a)
 {
   kernel_assert(a + 2 < SVM_STACK_SIZE);
@@ -181,6 +201,7 @@ CCL_NAMESPACE_END
 #include "kernel/svm/noisetex.h"
 #include "kernel/svm/normal.h"
 #include "kernel/svm/ramp.h"
+#include "kernel/svm/rgb_to_spectrum.h"
 #include "kernel/svm/sepcomb_color.h"
 #include "kernel/svm/sepcomb_hsv.h"
 #include "kernel/svm/sepcomb_vector.h"
@@ -244,7 +265,7 @@ ccl_device void svm_eval_nodes(KernelGlobals kg,
       }
       SVM_CASE(NODE_CLOSURE_BSDF)
       offset = svm_node_closure_bsdf<node_feature_mask, type>(
-          kg, sd, stack, node, path_flag, offset);
+          kg, state, sd, stack, node, path_flag, offset);
       break;
       SVM_CASE(NODE_CLOSURE_EMISSION)
       IF_KERNEL_NODES_FEATURE(EMISSION)
@@ -259,7 +280,7 @@ ccl_device void svm_eval_nodes(KernelGlobals kg,
       }
       break;
       SVM_CASE(NODE_CLOSURE_SET_WEIGHT)
-      svm_node_closure_set_weight(sd, node.y, node.z, node.w);
+      svm_node_closure_set_weight(kg, state, path_flag, sd, node.y, node.z, node.w);
       break;
       SVM_CASE(NODE_CLOSURE_WEIGHT)
       svm_node_closure_weight(sd, stack, node.y);
@@ -322,6 +343,9 @@ ccl_device void svm_eval_nodes(KernelGlobals kg,
       break;
       SVM_CASE(NODE_VECTOR_DISPLACEMENT)
       offset = svm_node_vector_displacement<node_feature_mask>(kg, sd, stack, node, offset);
+      break;
+      SVM_CASE(NODE_RGB_TO_SPECTRUM)
+      svm_node_rgb_to_spectrum(kg, state, path_flag, sd, stack, node.y, node.z);
       break;
       SVM_CASE(NODE_TEX_IMAGE)
       offset = svm_node_tex_image(kg, sd, stack, node, offset);
@@ -410,7 +434,7 @@ ccl_device void svm_eval_nodes(KernelGlobals kg,
       SVM_CASE(NODE_PRINCIPLED_VOLUME)
       IF_KERNEL_NODES_FEATURE(VOLUME)
       {
-        offset = svm_node_principled_volume<type>(kg, sd, stack, node, path_flag, offset);
+        offset = svm_node_principled_volume<type>(kg, state, sd, stack, node, path_flag, offset);
       }
       break;
       SVM_CASE(NODE_MATH)

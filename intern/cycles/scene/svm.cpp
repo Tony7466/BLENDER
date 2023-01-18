@@ -4,6 +4,7 @@
 #include "device/device.h"
 
 #include "scene/background.h"
+#include "scene/integrator.h"
 #include "scene/light.h"
 #include "scene/mesh.h"
 #include "scene/scene.h"
@@ -188,6 +189,9 @@ int SVMCompiler::stack_size(SocketType::Type type)
     case SocketType::POINT:
       size = 3;
       break;
+    case SocketType::SPECTRUM:
+      size = SPECTRUM_CHANNELS;
+      break;
     case SocketType::CLOSURE:
       size = 0;
       break;
@@ -268,7 +272,8 @@ int SVMCompiler::stack_assign(ShaderInput *input)
         add_node(NODE_VALUE_F, node->get_int(input->socket_type), input->stack_offset);
       }
       else if (input->type() == SocketType::VECTOR || input->type() == SocketType::NORMAL ||
-               input->type() == SocketType::POINT || input->type() == SocketType::COLOR) {
+               input->type() == SocketType::POINT || input->type() == SocketType::COLOR ||
+               input->type() == SocketType::SPECTRUM) {
 
         add_node(NODE_VALUE_V, input->stack_offset);
         add_node(NODE_VALUE_V, node->get_float3(input->socket_type));
@@ -310,7 +315,19 @@ void SVMCompiler::stack_link(ShaderInput *input, ShaderOutput *output)
 {
   if (output->stack_offset == SVM_STACK_INVALID) {
     assert(input->link);
-    assert(stack_size(output->type()) == stack_size(input->link->type()));
+
+    auto in_type = input->link->type();
+    auto out_type = output->type();
+    if (!this->scene->integrator->get_use_spectral_rendering()) {
+      if (in_type == SocketType::SPECTRUM) {
+        in_type = SocketType::COLOR;
+      }
+      if (out_type == SocketType::SPECTRUM) {
+        out_type = SocketType::COLOR;
+      }
+    }
+
+    assert(stack_size(out_type) == stack_size(in_type));
 
     output->stack_offset = input->link->stack_offset;
 

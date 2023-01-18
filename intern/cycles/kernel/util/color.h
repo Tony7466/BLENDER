@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "kernel/integrator/state_util.h"
 #include "util/color.h"
 
 CCL_NAMESPACE_BEGIN
@@ -33,19 +34,49 @@ ccl_device float linear_rgb_to_gray(KernelGlobals kg, float3 c)
   return dot(c, float4_to_float3(kernel_data.film.rgb_to_y));
 }
 
-ccl_device_inline Spectrum rgb_to_spectrum(float3 rgb)
+template<typename ConstIntegratorGenericState>
+ccl_device_inline Spectrum
+rgb_to_spectrum(KernelGlobals kg, ConstIntegratorGenericState state, int32_t path_flag, float3 rgb)
 {
   return rgb;
 }
 
-ccl_device_inline float3 spectrum_to_rgb(Spectrum s)
+template<typename ConstIntegratorGenericState>
+ccl_device_inline float3
+spectrum_to_rgb(KernelGlobals kg, ConstIntegratorGenericState state, int32_t path_flag, Spectrum s)
 {
+#ifndef __SPECTRAL_RENDERING__
   return s;
+#else
+  const Spectrum wavelengths = integrator_state_wavelengths(state, path_flag);
+
+  float3 xyz_sum = zero_float3();
+  FOREACH_SPECTRUM_CHANNEL (i) {
+    const float wavelength = GET_SPECTRUM_CHANNEL(wavelengths, i);
+
+    const float wavelength_importance = lookup_table_read(
+        kg,
+        inverse_lerp(MIN_WAVELENGTH, MAX_WAVELENGTH, wavelength),
+        kernel_data.cam.wavelength_importance_table_offset,
+        WAVELENGTH_CDF_TABLE_SIZE);
+
+    xyz_sum += wavelength_to_xyz(kg, wavelength) * GET_SPECTRUM_CHANNEL(s, i) /
+               wavelength_importance;
+  }
+
+  xyz_sum *= 3.0f / SPECTRUM_CHANNELS;
+
+  return xyz_to_rgb(kg, xyz_sum);
+#endif
 }
 
-ccl_device float spectrum_to_gray(KernelGlobals kg, Spectrum c)
+template<typename ConstIntegratorGenericState>
+ccl_device float spectrum_to_gray(KernelGlobals kg,
+                                  ConstIntegratorGenericState state,
+                                  int32_t path_flag,
+                                  Spectrum c)
 {
-  return linear_rgb_to_gray(kg, spectrum_to_rgb(c));
+  return linear_rgb_to_gray(kg, spectrum_to_rgb(kg, state, path_flag, c));
 }
 
 CCL_NAMESPACE_END

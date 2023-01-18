@@ -115,6 +115,7 @@ DEFINE_INTEGRATOR_SHADOW_SHADE_KERNEL(shade_shadow)
  */
 
 void KERNEL_FUNCTION_FULL_NAME(shader_eval_displace)(const KernelGlobalsCPU *kg,
+                                                     IntegratorStateCPU *state,
                                                      const KernelShaderEvalInput *input,
                                                      float *output,
                                                      const int offset)
@@ -127,6 +128,7 @@ void KERNEL_FUNCTION_FULL_NAME(shader_eval_displace)(const KernelGlobalsCPU *kg,
 }
 
 void KERNEL_FUNCTION_FULL_NAME(shader_eval_background)(const KernelGlobalsCPU *kg,
+                                                       IntegratorStateCPU *state,
                                                        const KernelShaderEvalInput *input,
                                                        float *output,
                                                        const int offset)
@@ -134,12 +136,13 @@ void KERNEL_FUNCTION_FULL_NAME(shader_eval_background)(const KernelGlobalsCPU *k
 #ifdef KERNEL_STUB
   STUB_ASSERT(KERNEL_ARCH, shader_eval_background);
 #else
-  kernel_background_evaluate(kg, input, output, offset);
+  kernel_background_evaluate(kg, state, input, output, offset);
 #endif
 }
 
 void KERNEL_FUNCTION_FULL_NAME(shader_eval_curve_shadow_transparency)(
     const KernelGlobalsCPU *kg,
+    IntegratorStateCPU *state,
     const KernelShaderEvalInput *input,
     float *output,
     const int offset)

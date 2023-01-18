@@ -109,6 +109,8 @@ ccl_device_inline bool bsdf_is_transmission(ccl_private const ShaderClosure *sc,
 }
 
 ccl_device_inline int bsdf_sample(KernelGlobals kg,
+                                  ConstIntegratorState state,
+                                  uint32_t path_flag,
                                   ccl_private ShaderData *sd,
                                   ccl_private const ShaderClosure *sc,
                                   float randu,
@@ -138,8 +140,18 @@ ccl_device_inline int bsdf_sample(KernelGlobals kg,
       break;
 #  ifdef __OSL__
     case CLOSURE_BSDF_PHONG_RAMP_ID:
-      label = bsdf_phong_ramp_sample(
-          sc, Ng, sd->I, randu, randv, eval, omega_in, pdf, sampled_roughness);
+      label = bsdf_phong_ramp_sample(kg,
+                                     state,
+                                     path_flag,
+                                     sc,
+                                     Ng,
+                                     sd->I,
+                                     randu,
+                                     randv,
+                                     eval,
+                                     omega_in,
+                                     pdf,
+                                     sampled_roughness);
       *eta = 1.0f;
       break;
     case CLOSURE_BSDF_DIFFUSE_RAMP_ID:
@@ -241,7 +253,7 @@ ccl_device_inline int bsdf_sample(KernelGlobals kg,
       break;
     case CLOSURE_BSDF_HAIR_PRINCIPLED_ID:
       label = bsdf_principled_hair_sample(
-          kg, sc, sd, randu, randv, eval, omega_in, pdf, sampled_roughness, eta);
+          kg, state, path_flag, sc, sd, randu, randv, eval, omega_in, pdf, sampled_roughness, eta);
       break;
     case CLOSURE_BSDF_PRINCIPLED_DIFFUSE_ID:
       label = bsdf_principled_diffuse_sample(sc, Ng, sd->I, randu, randv, eval, omega_in, pdf);
@@ -541,11 +553,14 @@ ccl_device_inline
 #endif
     Spectrum
     bsdf_eval(KernelGlobals kg,
+              ConstIntegratorState state,
               ccl_private ShaderData *sd,
               ccl_private const ShaderClosure *sc,
               const float3 omega_in,
               ccl_private float *pdf)
 {
+  const uint32_t path_flag = INTEGRATOR_STATE(state, path, flag);
+
   Spectrum eval = zero_spectrum();
 
   switch (sc->type) {
@@ -607,7 +622,7 @@ ccl_device_inline
       eval = bsdf_glossy_toon_eval(sc, sd->I, omega_in, pdf);
       break;
     case CLOSURE_BSDF_HAIR_PRINCIPLED_ID:
-      eval = bsdf_principled_hair_eval(kg, sd, sc, omega_in, pdf);
+      eval = bsdf_principled_hair_eval(kg, state, path_flag, sd, sc, omega_in, pdf);
       break;
     case CLOSURE_BSDF_HAIR_REFLECTION_ID:
       eval = bsdf_hair_reflection_eval(sc, sd->I, omega_in, pdf);

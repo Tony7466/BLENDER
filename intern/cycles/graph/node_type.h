@@ -28,6 +28,7 @@ struct SocketType {
     INT,
     UINT,
     COLOR,
+    SPECTRUM,
     VECTOR,
     POINT,
     NORMAL,
@@ -309,6 +310,14 @@ struct NodeType {
                 SocketType::COLOR, \
                 SocketType::LINKABLE, \
                 ##__VA_ARGS__)
+#define SOCKET_IN_SPECTRUM(name, ui_name, default_value, ...) \
+  SOCKET_DEFINE(name, \
+                ui_name, \
+                default_value, \
+                Spectrum, \
+                SocketType::SPECTRUM, \
+                SocketType::LINKABLE, \
+                ##__VA_ARGS__)
 #define SOCKET_IN_VECTOR(name, ui_name, default_value, ...) \
   SOCKET_DEFINE(name, \
                 ui_name, \
@@ -367,6 +376,10 @@ struct NodeType {
 #define SOCKET_OUT_COLOR(name, ui_name) \
   { \
     type->register_output(ustring(#name), ustring(ui_name), SocketType::COLOR); \
+  }
+#define SOCKET_OUT_SPECTRUM(name, ui_name) \
+  { \
+    type->register_output(ustring(#name), ustring(ui_name), SocketType::SPECTRUM); \
   }
 #define SOCKET_OUT_VECTOR(name, ui_name) \
   { \

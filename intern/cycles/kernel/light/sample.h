@@ -29,7 +29,8 @@ light_sample_shader_eval(KernelGlobals kg,
   /* setup shading at emitter */
   Spectrum eval = zero_spectrum();
 
-  if (surface_shader_constant_emission(kg, ls->shader, &eval)) {
+  const uint32_t path_flag = INTEGRATOR_STATE(state, path, flag);
+  if (surface_shader_constant_emission(kg, state, path_flag, ls->shader, &eval)) {
     if ((ls->prim != PRIM_NONE) && dot(ls->Ng, ls->D) > 0.0f) {
       ls->Ng = -ls->Ng;
     }
@@ -80,8 +81,12 @@ light_sample_shader_eval(KernelGlobals kg,
   eval *= ls->eval_fac;
 
   if (ls->lamp != LAMP_NONE) {
+    const uint32_t path_flag = INTEGRATOR_STATE(state, path, flag);
     ccl_global const KernelLight *klight = &kernel_data_fetch(lights, ls->lamp);
     eval *= rgb_to_spectrum(
+        kg,
+        state,
+        path_flag,
         make_float3(klight->strength[0], klight->strength[1], klight->strength[2]));
   }
 

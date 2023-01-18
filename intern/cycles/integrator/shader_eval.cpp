@@ -3,6 +3,8 @@
 
 #include "integrator/shader_eval.h"
 
+#include "kernel/integrator/state.h"
+
 #include "device/device.h"
 #include "device/queue.h"
 
@@ -102,15 +104,18 @@ bool ShaderEval::eval_cpu(Device *device,
       const int thread_index = tbb::this_task_arena::current_thread_index();
       const KernelGlobalsCPU *kg = &kernel_thread_globals[thread_index];
 
+      IntegratorStateCPU state = {0};
+
       switch (type) {
         case SHADER_EVAL_DISPLACE:
-          kernels.shader_eval_displace(kg, input_data, output_data, work_index);
+          kernels.shader_eval_displace(kg, &state, input_data, output_data, work_index);
           break;
         case SHADER_EVAL_BACKGROUND:
-          kernels.shader_eval_background(kg, input_data, output_data, work_index);
+          kernels.shader_eval_background(kg, &state, input_data, output_data, work_index);
           break;
         case SHADER_EVAL_CURVE_SHADOW_TRANSPARENCY:
-          kernels.shader_eval_curve_shadow_transparency(kg, input_data, output_data, work_index);
+          kernels.shader_eval_curve_shadow_transparency(
+              kg, &state, input_data, output_data, work_index);
           break;
       }
     });

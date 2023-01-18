@@ -1619,6 +1619,8 @@ enum KernelFeatureFlag : uint32_t {
 
   /* OSL. */
   KERNEL_FEATURE_OSL = (1U << 26U),
+
+  KERNEL_FEATURE_SPECTRAL_RENDERING = (1U << 27U),
 };
 
 /* Shader node feature mask, to specialize shader evaluation for kernels. */

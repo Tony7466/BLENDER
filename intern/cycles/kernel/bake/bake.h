@@ -48,6 +48,7 @@ ccl_device void kernel_displace_evaluate(KernelGlobals kg,
 }
 
 ccl_device void kernel_background_evaluate(KernelGlobals kg,
+                                           IntegratorState state,
                                            ccl_global const KernelShaderEvalInput *input,
                                            ccl_global float *output,
                                            const int offset)
@@ -62,12 +63,20 @@ ccl_device void kernel_background_evaluate(KernelGlobals kg,
   ShaderData sd;
   shader_setup_from_background(kg, &sd, ray_P, ray_D, ray_time);
 
+  /* Setup RNG and wavelengths in integrator state. */
+  const uint rng_hash = path_rng_hash_init(kg, 0, offset, 0);
+  path_state_init_integrator(kg, state, 0, rng_hash);
+
+#ifdef __SPECTRAL_RENDERING__
+  generate_wavelengths(kg, state);
+#endif
+
   /* Evaluate shader.
    * This is being evaluated for all BSDFs, so path flag does not contain a specific type. */
   const uint32_t path_flag = PATH_RAY_EMISSION;
   surface_shader_eval<KERNEL_FEATURE_NODE_MASK_SURFACE_LIGHT &
                       ~(KERNEL_FEATURE_NODE_RAYTRACE | KERNEL_FEATURE_NODE_LIGHT_PATH)>(
-      kg, INTEGRATOR_STATE_NULL, &sd, NULL, path_flag);
+      kg, state, &sd, NULL, path_flag);
   Spectrum color = surface_shader_background(&sd);
 
 #ifdef __KERNEL_DEBUG_NAN__
@@ -79,7 +88,7 @@ ccl_device void kernel_background_evaluate(KernelGlobals kg,
   /* Ensure finite color, avoiding possible numerical instabilities in the path tracing kernels. */
   color = ensure_finite(color);
 
-  float3 color_rgb = spectrum_to_rgb(color);
+  float3 color_rgb = spectrum_to_rgb(kg, state, path_flag, color);
 
   /* Write output. */
   output[offset * 3 + 0] += color_rgb.x;

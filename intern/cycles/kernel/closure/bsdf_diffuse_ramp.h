@@ -47,7 +47,9 @@ ccl_device void bsdf_diffuse_ramp_blur(ccl_private ShaderClosure *sc, float roug
 {
 }
 
-ccl_device Spectrum bsdf_diffuse_ramp_eval(ccl_private const ShaderClosure *sc,
+ccl_device Spectrum bsdf_diffuse_ramp_eval(KernelGlobals kg,
+                                           ConstIntegratorState state,
+                                           ccl_private const ShaderClosure *sc,
                                            const float3 I,
                                            const float3 omega_in,
                                            ccl_private float *pdf)
@@ -66,7 +68,10 @@ ccl_device Spectrum bsdf_diffuse_ramp_eval(ccl_private const ShaderClosure *sc,
   }
 }
 
-ccl_device int bsdf_diffuse_ramp_sample(ccl_private const ShaderClosure *sc,
+template<typename ConstIntegratorGenericState>
+ccl_device int bsdf_diffuse_ramp_sample(KernelGlobals kg,
+                                        ConstIntegratorGenericState state,
+                                        ccl_private const ShaderClosure *sc,
                                         float3 Ng,
                                         float3 I,
                                         float randu,
@@ -82,7 +87,8 @@ ccl_device int bsdf_diffuse_ramp_sample(ccl_private const ShaderClosure *sc,
   sample_cos_hemisphere(N, randu, randv, omega_in, pdf);
 
   if (dot(Ng, *omega_in) > 0.0f) {
-    *eval = rgb_to_spectrum(bsdf_diffuse_ramp_get_color(bsdf->colors, *pdf * M_PI_F) * M_1_PI_F);
+    *eval = rgb_to_spectrum(
+        kg, state, bsdf_diffuse_ramp_get_color(bsdf->colors, *pdf * M_PI_F) * M_1_PI_F);
   }
   else {
     *pdf = 0.0f;

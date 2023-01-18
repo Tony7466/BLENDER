@@ -75,7 +75,10 @@ ccl_device_inline float phong_ramp_exponent_to_roughness(float exponent)
   return sqrt(1.0f / ((exponent + 2.0f) / 2.0f));
 }
 
-ccl_device int bsdf_phong_ramp_sample(ccl_private const ShaderClosure *sc,
+ccl_device int bsdf_phong_ramp_sample(KernelGlobals kg,
+                                      ConstIntegratorState state,
+                                      uint32_t path_flag,
+                                      ccl_private const ShaderClosure *sc,
                                       float3 Ng,
                                       float3 I,
                                       float randu,
@@ -110,7 +113,8 @@ ccl_device int bsdf_phong_ramp_sample(ccl_private const ShaderClosure *sc,
         float common = 0.5f * M_1_PI_F * cosp;
         *pdf = (m_exponent + 1) * common;
         float out = cosNI * (m_exponent + 2) * common;
-        *eval = rgb_to_spectrum(bsdf_phong_ramp_get_color(bsdf->colors, cosp) * out);
+        *eval = rgb_to_spectrum(
+            kg, state, path_flag, bsdf_phong_ramp_get_color(bsdf->colors, cosp) * out);
       }
     }
   }

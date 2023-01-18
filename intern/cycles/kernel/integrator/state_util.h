@@ -390,6 +390,18 @@ ccl_device_inline int integrator_state_transparent_bounce(ConstIntegratorShadowS
 {
   return INTEGRATOR_STATE(state, shadow_path, transparent_bounce);
 }
+
+ccl_device_inline Spectrum integrator_state_wavelengths(ConstIntegratorState state, const int)
+{
+  return Spectrum(INTEGRATOR_STATE(state, ray, wavelengths));
+}
+
+ccl_device_inline Spectrum integrator_state_wavelengths(ConstIntegratorShadowState state,
+                                                             const int)
+{
+  return Spectrum(INTEGRATOR_STATE(state, shadow_ray, wavelengths));
+}
+
 #else
 ccl_device_inline int integrator_state_bounce(ConstIntegratorShadowState state,
                                               const uint32_t path_flag)
@@ -425,6 +437,13 @@ ccl_device_inline int integrator_state_transparent_bounce(ConstIntegratorShadowS
 {
   return (path_flag & PATH_RAY_SHADOW) ? INTEGRATOR_STATE(state, shadow_path, transparent_bounce) :
                                          INTEGRATOR_STATE(state, path, transparent_bounce);
+}
+
+ccl_device_inline Spectrum integrator_state_wavelengths(ConstIntegratorShadowState state,
+                                                             const uint32_t path_flag)
+{
+  return (path_flag & PATH_RAY_SHADOW) ? INTEGRATOR_STATE(state, shadow_ray, wavelengths) :
+                                         INTEGRATOR_STATE(state, ray, wavelengths);
 }
 #endif
 

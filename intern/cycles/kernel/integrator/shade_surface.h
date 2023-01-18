@@ -343,6 +343,7 @@ ccl_device_forceinline void integrate_surface_direct_light(KernelGlobals kg,
 ccl_device_forceinline int integrate_surface_bsdf_bssrdf_bounce(
     KernelGlobals kg,
     IntegratorState state,
+    uint32_t path_flag,
     ccl_private ShaderData *sd,
     ccl_private const RNGState *rng_state)
 {
@@ -394,6 +395,8 @@ ccl_device_forceinline int integrate_surface_bsdf_bssrdf_bounce(
 #endif
   {
     label = surface_shader_bsdf_sample_closure(kg,
+                                               state,
+                                               path_flag,
                                                sd,
                                                sc,
                                                rand_bsdf,
@@ -680,7 +683,8 @@ ccl_device bool integrate_surface(KernelGlobals kg,
 #endif
 
     PROFILING_EVENT(PROFILING_SHADE_SURFACE_INDIRECT_LIGHT);
-    continue_path_label = integrate_surface_bsdf_bssrdf_bounce(kg, state, &sd, &rng_state);
+    continue_path_label = integrate_surface_bsdf_bssrdf_bounce(
+        kg, state, path_flag, &sd, &rng_state);
 #ifdef __VOLUME__
   }
   else {

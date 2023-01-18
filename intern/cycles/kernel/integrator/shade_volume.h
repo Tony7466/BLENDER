@@ -524,6 +524,7 @@ ccl_device_forceinline void volume_integrate_step_scattering(
 ccl_device_forceinline void volume_integrate_heterogeneous(
     KernelGlobals kg,
     IntegratorState state,
+    uint32_t path_flag,
     ccl_private Ray *ccl_restrict ray,
     ccl_private ShaderData *ccl_restrict sd,
     ccl_private const RNGState *rng_state,
@@ -680,7 +681,7 @@ ccl_device_forceinline void volume_integrate_heterogeneous(
   /* Write denoising features. */
   if (write_denoising_features) {
     film_write_denoising_features_volume(
-        kg, state, accum_albedo, result.indirect_scatter, render_buffer);
+        kg, state, path_flag, accum_albedo, result.indirect_scatter, render_buffer);
   }
 #  endif /* __DENOISING_FEATURES__ */
 }
@@ -1027,18 +1028,21 @@ ccl_device VolumeIntegrateEvent volume_integrate(KernelGlobals kg,
 
 #  if defined(__PATH_GUIDING__) && PATH_GUIDING_LEVEL >= 1
   /* The current path throughput which is used later to calculate per-segment throughput.*/
-  const float3 initial_throughput = INTEGRATOR_STATE(state, path, throughput);
+  const Spectrum initial_throughput = INTEGRATOR_STATE(state, path, throughput);
   /* The path throughput used to calculate the throughput for direct light. */
-  float3 unlit_throughput = initial_throughput;
-  /* If a new path segment is generated at the direct scatter position.*/
+  Spectrum unlit_throughput = initial_throughput;
+  /* If a new path segment is generated at the direct scatter position. */
   bool guiding_generated_new_segment = false;
   float rand_phase_guiding = 0.5f;
 #  endif
+
+  const uint32_t path_flag = INTEGRATOR_STATE(state, path, flag);
 
   /* TODO: expensive to zero closures? */
   VolumeIntegrateResult result = {};
   volume_integrate_heterogeneous(kg,
                                  state,
+                                 path_flag,
                                  ray,
                                  &sd,
                                  &rng_state,
@@ -1051,7 +1055,6 @@ ccl_device VolumeIntegrateEvent volume_integrate(KernelGlobals kg,
   /* Perform path termination. The intersect_closest will have already marked this path
    * to be terminated. That will shading evaluating to leave out any scattering closures,
    * but emission and absorption are still handled for multiple importance sampling. */
-  const uint32_t path_flag = INTEGRATOR_STATE(state, path, flag);
   const float continuation_probability = (path_flag & PATH_RAY_TERMINATE_IN_NEXT_VOLUME) ?
                                              0.0f :
                                              INTEGRATOR_STATE(
@@ -1072,6 +1075,9 @@ ccl_device VolumeIntegrateEvent volume_integrate(KernelGlobals kg,
          * will happen at the same position as the indirect event and the direct light contribution
          * will contribute to the position of the next path segment.*/
         float3 transmittance_weight = spectrum_to_rgb(
+            kg,
+            state,
+            path_flag,
             safe_divide_color(result.indirect_throughput, initial_throughput));
         guiding_record_volume_transmission(kg, state, transmittance_weight);
         guiding_record_volume_segment(kg, state, direct_P, sd.I);
@@ -1123,7 +1129,7 @@ ccl_device VolumeIntegrateEvent volume_integrate(KernelGlobals kg,
 #  if defined(__PATH_GUIDING__) && PATH_GUIDING_LEVEL >= 1
     if (!guiding_generated_new_segment) {
       float3 transmittance_weight = spectrum_to_rgb(
-          safe_divide_color(result.indirect_throughput, initial_throughput));
+          kg, state, path_flag, safe_divide_color(result.indirect_throughput, initial_throughput));
       guiding_record_volume_transmission(kg, state, transmittance_weight);
     }
 #  endif

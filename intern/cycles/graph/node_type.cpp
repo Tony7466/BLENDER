@@ -35,6 +35,8 @@ size_t SocketType::size(Type type)
       return sizeof(uint);
     case COLOR:
       return sizeof(float3);
+    case SPECTRUM:
+      return sizeof(Spectrum);
     case VECTOR:
       return sizeof(float3);
     case POINT:

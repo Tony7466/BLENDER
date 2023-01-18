@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2022 Blender Foundation */
 
-#ifndef __UTIL_TYPES_SPECTRUM_H__
-#define __UTIL_TYPES_SPECTRUM_H__
+#pragma once
 
 #ifndef __UTIL_TYPES_H__
 #  error "Do not include this file directly, include util/types.h instead."
@@ -10,9 +9,15 @@
 
 CCL_NAMESPACE_BEGIN
 
-#define SPECTRUM_CHANNELS 3
-#define SPECTRUM_DATA_TYPE float3
-#define PACKED_SPECTRUM_DATA_TYPE packed_float3
+#ifdef __SPECTRAL_RENDERING__
+#  define SPECTRUM_CHANNELS 8
+#  define SPECTRUM_DATA_TYPE vfloat8
+#  define PACKED_SPECTRUM_DATA_TYPE vfloat8
+#else
+#  define SPECTRUM_CHANNELS 3
+#  define SPECTRUM_DATA_TYPE float3
+#  define PACKED_SPECTRUM_DATA_TYPE packed_float3
+#endif
 
 using Spectrum = SPECTRUM_DATA_TYPE;
 using PackedSpectrum = PACKED_SPECTRUM_DATA_TYPE;
@@ -30,5 +35,3 @@ using PackedSpectrum = PACKED_SPECTRUM_DATA_TYPE;
 #define GET_SPECTRUM_CHANNEL(v, i) (((ccl_private float *)(&(v)))[i])
 
 CCL_NAMESPACE_END
-
-#endif /* __UTIL_TYPES_SPECTRUM_H__ */

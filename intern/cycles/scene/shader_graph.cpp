@@ -4,6 +4,7 @@
 #include "scene/shader_graph.h"
 #include "scene/attribute.h"
 #include "scene/constant_fold.h"
+#include "scene/integrator.h"
 #include "scene/scene.h"
 #include "scene/shader.h"
 #include "scene/shader_nodes.h"
@@ -349,7 +350,8 @@ void ShaderGraph::simplify(Scene *scene)
 {
   if (!simplified) {
     expand();
-    default_inputs(scene->shader_manager->use_osl());
+    default_inputs(scene->shader_manager->use_osl(),
+                   scene->integrator->get_use_spectral_rendering());
     clean(scene);
     refine_bump_nodes();
 
@@ -823,7 +825,7 @@ void ShaderGraph::expand()
   }
 }
 
-void ShaderGraph::default_inputs(bool do_osl)
+void ShaderGraph::default_inputs(bool do_osl, bool use_spectral_rendering)
 {
   /* nodes can specify default texture coordinates, for now we give
    * everything the position by default, except for the sky texture */
@@ -833,6 +835,20 @@ void ShaderGraph::default_inputs(bool do_osl)
 
   foreach (ShaderNode *node, nodes) {
     foreach (ShaderInput *input, node->inputs) {
+      if (use_spectral_rendering) {
+        /* Connect "RGB to Spectrum" node to unconnected spectral sockets to force color to
+         * spectrum conversion. */
+        if (input->type() == SocketType::SPECTRUM && !input->link) {
+          float3 color = input->parent->get_float3(input->socket_type);
+
+          RGBToSpectrumNode *spectrum_node = create_node<RGBToSpectrumNode>();
+          spectrum_node->set_color(color);
+
+          add(spectrum_node);
+          connect(spectrum_node->output("Spectrum"), input);
+        }
+      }
+
       if (!input->link && (!(input->flags() & SocketType::OSL_INTERNAL) || do_osl)) {
         if (input->flags() & SocketType::LINK_TEXTURE_GENERATED) {
           if (!texco)

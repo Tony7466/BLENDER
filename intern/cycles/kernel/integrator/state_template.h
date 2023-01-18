@@ -71,6 +71,7 @@ KERNEL_STRUCT_MEMBER(ray, float, tmax, KERNEL_FEATURE_PATH_TRACING)
 KERNEL_STRUCT_MEMBER(ray, float, time, KERNEL_FEATURE_PATH_TRACING)
 KERNEL_STRUCT_MEMBER(ray, float, dP, KERNEL_FEATURE_PATH_TRACING)
 KERNEL_STRUCT_MEMBER(ray, float, dD, KERNEL_FEATURE_PATH_TRACING)
+KERNEL_STRUCT_MEMBER(ray, PackedSpectrum, wavelengths, KERNEL_FEATURE_SPECTRAL_RENDERING)
 KERNEL_STRUCT_END(ray)
 
 /*************************** Intersection result ******************************/

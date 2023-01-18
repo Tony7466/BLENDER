@@ -136,6 +136,8 @@ NODE_DEFINE(Integrator)
               denoiser_prefilter_enum,
               DENOISER_PREFILTER_ACCURATE);
 
+  SOCKET_BOOLEAN(use_spectral_rendering, "Use Spectral Rendering", false);
+
   return type;
 }
 
@@ -288,6 +290,8 @@ void Integrator::device_update(Device *device, DeviceScene *dscene, Scene *scene
 
   kintegrator->has_shadow_catcher = scene->has_shadow_catcher();
 
+  kintegrator->use_spectral_rendering = use_spectral_rendering;
+
   dscene->sample_pattern_lut.clear_modified();
   clear_modified();
 }
@@ -330,6 +334,10 @@ uint Integrator::get_kernel_features() const
 
   if (ao_additive_factor != 0.0f) {
     kernel_features |= KERNEL_FEATURE_AO_ADDITIVE;
+  }
+
+  if (use_spectral_rendering) {
+    kernel_features |= KERNEL_FEATURE_SPECTRAL_RENDERING;
   }
 
   return kernel_features;

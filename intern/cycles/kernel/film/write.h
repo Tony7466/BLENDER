@@ -50,10 +50,14 @@ ccl_device_inline void film_write_pass_float3(ccl_global float *ccl_restrict buf
 #endif
 }
 
-ccl_device_inline void film_write_pass_spectrum(ccl_global float *ccl_restrict buffer,
+template<typename ConstIntegratorGenericState>
+ccl_device_inline void film_write_pass_spectrum(KernelGlobals kg,
+                                                ConstIntegratorGenericState state,
+                                                uint32_t path_flag,
+                                                ccl_global float *ccl_restrict buffer,
                                                 Spectrum value)
 {
-  film_write_pass_float3(buffer, spectrum_to_rgb(value));
+  film_write_pass_float3(buffer, spectrum_to_rgb(kg, state, path_flag, value));
 }
 
 ccl_device_inline void film_write_pass_float4(ccl_global float *ccl_restrict buffer, float4 value)

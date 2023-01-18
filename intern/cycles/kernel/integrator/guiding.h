@@ -146,7 +146,8 @@ ccl_device_forceinline void guiding_record_bssrdf_weight(KernelGlobals kg,
   }
 
   /* Note albedo left out here, will be included in guiding_record_bssrdf_bounce. */
-  const float3 weight_rgb = spectrum_to_rgb(safe_divide_color(weight, albedo));
+  const float3 weight_rgb = spectrum_to_rgb(
+      kg, state, INTEGRATOR_STATE(state, path, flag), safe_divide_color(weight, albedo));
 
   kernel_assert(state->guiding.path_segment != nullptr);
 

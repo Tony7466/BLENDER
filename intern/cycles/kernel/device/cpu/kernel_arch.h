@@ -75,15 +75,18 @@ KERNEL_FILM_CONVERT_FUNCTION(float4)
  */
 
 void KERNEL_FUNCTION_FULL_NAME(shader_eval_background)(const KernelGlobalsCPU *kg,
+                                                       IntegratorStateCPU *state,
                                                        const KernelShaderEvalInput *input,
                                                        float *output,
                                                        const int offset);
 void KERNEL_FUNCTION_FULL_NAME(shader_eval_displace)(const KernelGlobalsCPU *kg,
+                                                     IntegratorStateCPU *state,
                                                      const KernelShaderEvalInput *input,
                                                      float *output,
                                                      const int offset);
 void KERNEL_FUNCTION_FULL_NAME(shader_eval_curve_shadow_transparency)(
     const KernelGlobalsCPU *kg,
+    IntegratorStateCPU *state,
     const KernelShaderEvalInput *input,
     float *output,
     const int offset);

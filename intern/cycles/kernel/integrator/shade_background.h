@@ -34,7 +34,7 @@ ccl_device Spectrum integrator_eval_background_shader(KernelGlobals kg,
 
   /* Use fast constant background color if available. */
   Spectrum L = zero_spectrum();
-  if (surface_shader_constant_emission(kg, shader, &L)) {
+  if (surface_shader_constant_emission(kg, state, path_flag, shader, &L)) {
     return L;
   }
 

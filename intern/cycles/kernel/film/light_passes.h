@@ -142,7 +142,10 @@ ccl_device_inline int film_write_sample(KernelGlobals kg,
          sample_offset;
 }
 
+template<typename ConstIntegratorGenericState>
 ccl_device void film_write_adaptive_buffer(KernelGlobals kg,
+                                           ConstIntegratorGenericState state,
+                                           uint32_t path_flag,
                                            const int sample,
                                            const Spectrum contribution,
                                            ccl_global float *ccl_restrict buffer)
@@ -157,7 +160,7 @@ ccl_device void film_write_adaptive_buffer(KernelGlobals kg,
   }
 
   if (sample_is_class_A(kernel_data.integrator.sampling_pattern, sample)) {
-    const float3 contribution_rgb = spectrum_to_rgb(contribution);
+    const float3 contribution_rgb = spectrum_to_rgb(kg, state, path_flag, contribution);
 
     film_write_pass_float4(buffer + kernel_data.film.pass_adaptive_aux_buffer,
                            make_float4(contribution_rgb.x * 2.0f,
@@ -177,8 +180,9 @@ ccl_device void film_write_adaptive_buffer(KernelGlobals kg,
  *
  * Returns truth if the contribution is fully handled here and is not to be added to the other
  * passes (like combined, adaptive sampling). */
-
+template<typename ConstIntegratorGenericState>
 ccl_device bool film_write_shadow_catcher(KernelGlobals kg,
+                                          ConstIntegratorGenericState state,
                                           const uint32_t path_flag,
                                           const Spectrum contribution,
                                           ccl_global float *ccl_restrict buffer)
@@ -192,7 +196,8 @@ ccl_device bool film_write_shadow_catcher(KernelGlobals kg,
 
   /* Matte pass. */
   if (kernel_shadow_catcher_is_matte_path(path_flag)) {
-    film_write_pass_spectrum(buffer + kernel_data.film.pass_shadow_catcher_matte, contribution);
+    film_write_pass_spectrum(
+        kg, state, path_flag, buffer + kernel_data.film.pass_shadow_catcher_matte, contribution);
     /* NOTE: Accumulate the combined pass and to the samples count pass, so that the adaptive
      * sampling is based on how noisy the combined pass is as if there were no catchers in the
      * scene. */
@@ -200,7 +205,8 @@ ccl_device bool film_write_shadow_catcher(KernelGlobals kg,
 
   /* Shadow catcher pass. */
   if (kernel_shadow_catcher_is_object_pass(path_flag)) {
-    film_write_pass_spectrum(buffer + kernel_data.film.pass_shadow_catcher, contribution);
+    film_write_pass_spectrum(
+        kg, state, path_flag, buffer + kernel_data.film.pass_shadow_catcher, contribution);
     return true;
   }
 
@@ -208,6 +214,7 @@ ccl_device bool film_write_shadow_catcher(KernelGlobals kg,
 }
 
 ccl_device bool film_write_shadow_catcher_transparent(KernelGlobals kg,
+                                                      ConstIntegratorState state,
                                                       const uint32_t path_flag,
                                                       const Spectrum contribution,
                                                       const float transparent,
@@ -226,7 +233,7 @@ ccl_device bool film_write_shadow_catcher_transparent(KernelGlobals kg,
 
   /* Matte pass. */
   if (kernel_shadow_catcher_is_matte_path(path_flag)) {
-    const float3 contribution_rgb = spectrum_to_rgb(contribution);
+    const float3 contribution_rgb = spectrum_to_rgb(kg, state, path_flag, contribution);
 
     film_write_pass_float4(
         buffer + kernel_data.film.pass_shadow_catcher_matte,
@@ -241,7 +248,8 @@ ccl_device bool film_write_shadow_catcher_transparent(KernelGlobals kg,
     /* NOTE: The transparency of the shadow catcher pass is ignored. It is not needed for the
      * calculation and the alpha channel of the pass contains numbers of samples contributed to a
      * pixel of the pass. */
-    film_write_pass_spectrum(buffer + kernel_data.film.pass_shadow_catcher, contribution);
+    film_write_pass_spectrum(
+        kg, state, path_flag, buffer + kernel_data.film.pass_shadow_catcher, contribution);
     return true;
   }
 
@@ -291,27 +299,31 @@ ccl_device_forceinline void film_write_shadow_catcher_bounce_data(
  */
 
 /* Write combined pass. */
+template<typename ConstIntegratorGenericState>
 ccl_device_inline void film_write_combined_pass(KernelGlobals kg,
+                                                ConstIntegratorGenericState state,
                                                 const uint32_t path_flag,
                                                 const int sample,
                                                 const Spectrum contribution,
                                                 ccl_global float *ccl_restrict buffer)
 {
 #ifdef __SHADOW_CATCHER__
-  if (film_write_shadow_catcher(kg, path_flag, contribution, buffer)) {
+  if (film_write_shadow_catcher(kg, state, path_flag, contribution, buffer)) {
     return;
   }
 #endif
 
   if (kernel_data.film.light_pass_flag & PASSMASK(COMBINED)) {
-    film_write_pass_spectrum(buffer + kernel_data.film.pass_combined, contribution);
+    film_write_pass_spectrum(
+        kg, state, path_flag, buffer + kernel_data.film.pass_combined, contribution);
   }
 
-  film_write_adaptive_buffer(kg, sample, contribution, buffer);
+  film_write_adaptive_buffer(kg, state, path_flag, sample, contribution, buffer);
 }
 
 /* Write combined pass with transparency. */
 ccl_device_inline void film_write_combined_transparent_pass(KernelGlobals kg,
+                                                            ConstIntegratorState state,
                                                             const uint32_t path_flag,
                                                             const int sample,
                                                             const Spectrum contribution,
@@ -319,20 +331,21 @@ ccl_device_inline void film_write_combined_transparent_pass(KernelGlobals kg,
                                                             ccl_global float *ccl_restrict buffer)
 {
 #ifdef __SHADOW_CATCHER__
-  if (film_write_shadow_catcher_transparent(kg, path_flag, contribution, transparent, buffer)) {
+  if (film_write_shadow_catcher_transparent(
+          kg, state, path_flag, contribution, transparent, buffer)) {
     return;
   }
 #endif
 
   if (kernel_data.film.light_pass_flag & PASSMASK(COMBINED)) {
-    const float3 contribution_rgb = spectrum_to_rgb(contribution);
+    const float3 contribution_rgb = spectrum_to_rgb(kg, state, path_flag, contribution);
 
     film_write_pass_float4(
         buffer + kernel_data.film.pass_combined,
         make_float4(contribution_rgb.x, contribution_rgb.y, contribution_rgb.z, transparent));
   }
 
-  film_write_adaptive_buffer(kg, sample, contribution, buffer);
+  film_write_adaptive_buffer(kg, state, path_flag, sample, contribution, buffer);
 }
 
 /* Write background or emission to appropriate pass. */
@@ -359,13 +372,17 @@ ccl_device_inline void film_write_emission_or_background_pass(
       const Spectrum denoising_feature_throughput = INTEGRATOR_STATE(
           state, path, denoising_feature_throughput);
       const Spectrum denoising_albedo = denoising_feature_throughput * contribution;
-      film_write_pass_spectrum(buffer + kernel_data.film.pass_denoising_albedo, denoising_albedo);
+      film_write_pass_spectrum(
+          kg, state, path_flag, buffer + kernel_data.film.pass_denoising_albedo, denoising_albedo);
     }
   }
 #  endif /* __DENOISING_FEATURES__ */
 
   if (lightgroup != LIGHTGROUP_NONE && kernel_data.film.pass_lightgroup != PASS_UNUSED) {
-    film_write_pass_spectrum(buffer + kernel_data.film.pass_lightgroup + 3 * lightgroup,
+    film_write_pass_spectrum(kg,
+                             state,
+                             path_flag,
+                             buffer + kernel_data.film.pass_lightgroup + 3 * lightgroup,
                              contribution);
   }
 
@@ -390,7 +407,8 @@ ccl_device_inline void film_write_emission_or_background_pass(
                                           kernel_data.film.pass_glossy_direct :
                                           kernel_data.film.pass_glossy_indirect);
       if (glossy_pass_offset != PASS_UNUSED) {
-        film_write_pass_spectrum(buffer + glossy_pass_offset, glossy_weight * contribution);
+        film_write_pass_spectrum(
+            kg, state, path_flag, buffer + glossy_pass_offset, glossy_weight * contribution);
       }
 
       /* Transmission */
@@ -402,7 +420,10 @@ ccl_device_inline void film_write_emission_or_background_pass(
         /* Transmission is what remains if not diffuse and glossy, not stored explicitly to save
          * GPU memory. */
         const Spectrum transmission_weight = one_spectrum() - diffuse_weight - glossy_weight;
-        film_write_pass_spectrum(buffer + transmission_pass_offset,
+        film_write_pass_spectrum(kg,
+                                 state,
+                                 path_flag,
+                                 buffer + transmission_pass_offset,
                                  transmission_weight * contribution);
       }
 
@@ -424,7 +445,7 @@ ccl_device_inline void film_write_emission_or_background_pass(
 
   /* Single write call for GPU coherence. */
   if (pass_offset != PASS_UNUSED) {
-    film_write_pass_spectrum(buffer + pass_offset, contribution);
+    film_write_pass_spectrum(kg, state, path_flag, buffer + pass_offset, contribution);
   }
 #endif /* __PASSES__ */
 }
@@ -449,17 +470,18 @@ ccl_device_inline void film_write_direct_light(KernelGlobals kg,
   /* Ambient occlusion. */
   if (path_flag & PATH_RAY_SHADOW_FOR_AO) {
     if ((kernel_data.kernel_features & KERNEL_FEATURE_AO_PASS) && (path_flag & PATH_RAY_CAMERA)) {
-      film_write_pass_spectrum(buffer + kernel_data.film.pass_ao, contribution);
+      film_write_pass_spectrum(
+          kg, state, path_flag, buffer + kernel_data.film.pass_ao, contribution);
     }
     if (kernel_data.kernel_features & KERNEL_FEATURE_AO_ADDITIVE) {
       const Spectrum ao_weight = INTEGRATOR_STATE(state, shadow_path, unshadowed_throughput);
-      film_write_combined_pass(kg, path_flag, sample, contribution * ao_weight, buffer);
+      film_write_combined_pass(kg, state, path_flag, sample, contribution * ao_weight, buffer);
     }
     return;
   }
 
   /* Direct light shadow. */
-  film_write_combined_pass(kg, path_flag, sample, contribution, buffer);
+  film_write_combined_pass(kg, state, path_flag, sample, contribution, buffer);
 
 #ifdef __PASSES__
   if (kernel_data.film.light_pass_flag & PASS_ANY) {
@@ -474,7 +496,10 @@ ccl_device_inline void film_write_direct_light(KernelGlobals kg,
     /* Write lightgroup pass. LIGHTGROUP_NONE is ~0 so decode from unsigned to signed */
     const int lightgroup = (int)(INTEGRATOR_STATE(state, shadow_path, lightgroup)) - 1;
     if (lightgroup != LIGHTGROUP_NONE && kernel_data.film.pass_lightgroup != PASS_UNUSED) {
-      film_write_pass_spectrum(buffer + kernel_data.film.pass_lightgroup + 3 * lightgroup,
+      film_write_pass_spectrum(kg,
+                               state,
+                               path_flag,
+                               buffer + kernel_data.film.pass_lightgroup + 3 * lightgroup,
                                contribution);
     }
 
@@ -491,7 +516,8 @@ ccl_device_inline void film_write_direct_light(KernelGlobals kg,
                                             kernel_data.film.pass_glossy_direct :
                                             kernel_data.film.pass_glossy_indirect);
         if (glossy_pass_offset != PASS_UNUSED) {
-          film_write_pass_spectrum(buffer + glossy_pass_offset, glossy_weight * contribution);
+          film_write_pass_spectrum(
+              kg, state, path_flag, buffer + glossy_pass_offset, glossy_weight * contribution);
         }
 
         /* Transmission */
@@ -503,7 +529,10 @@ ccl_device_inline void film_write_direct_light(KernelGlobals kg,
           /* Transmission is what remains if not diffuse and glossy, not stored explicitly to save
            * GPU memory. */
           const Spectrum transmission_weight = one_spectrum() - diffuse_weight - glossy_weight;
-          film_write_pass_spectrum(buffer + transmission_pass_offset,
+          film_write_pass_spectrum(kg,
+                                   state,
+                                   path_flag,
+                                   buffer + transmission_pass_offset,
                                    transmission_weight * contribution);
         }
 
@@ -524,7 +553,7 @@ ccl_device_inline void film_write_direct_light(KernelGlobals kg,
 
       /* Single write call for GPU coherence. */
       if (pass_offset != PASS_UNUSED) {
-        film_write_pass_spectrum(buffer + pass_offset, contribution);
+        film_write_pass_spectrum(kg, state, path_flag, buffer + pass_offset, contribution);
       }
     }
   }
@@ -581,7 +610,8 @@ ccl_device_inline void film_write_background(KernelGlobals kg,
   }
   else {
     const int sample = INTEGRATOR_STATE(state, path, sample);
-    film_write_combined_transparent_pass(kg, path_flag, sample, contribution, transparent, buffer);
+    film_write_combined_transparent_pass(
+        kg, state, path_flag, sample, contribution, transparent, buffer);
   }
   film_write_emission_or_background_pass(kg,
                                          state,
@@ -605,7 +635,7 @@ ccl_device_inline void film_write_volume_emission(KernelGlobals kg,
   const uint32_t path_flag = INTEGRATOR_STATE(state, path, flag);
   const int sample = INTEGRATOR_STATE(state, path, sample);
 
-  film_write_combined_pass(kg, path_flag, sample, contribution, buffer);
+  film_write_combined_pass(kg, state, path_flag, sample, contribution, buffer);
   film_write_emission_or_background_pass(
       kg, state, contribution, buffer, kernel_data.film.pass_emission, lightgroup);
 }
@@ -624,7 +654,7 @@ ccl_device_inline void film_write_surface_emission(KernelGlobals kg,
   const uint32_t path_flag = INTEGRATOR_STATE(state, path, flag);
   const int sample = INTEGRATOR_STATE(state, path, sample);
 
-  film_write_combined_pass(kg, path_flag, sample, contribution, buffer);
+  film_write_combined_pass(kg, state, path_flag, sample, contribution, buffer);
   film_write_emission_or_background_pass(
       kg, state, contribution, buffer, kernel_data.film.pass_emission, lightgroup);
 }
