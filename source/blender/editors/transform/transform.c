@@ -1573,9 +1573,9 @@ void saveTransform(bContext *C, TransInfo *t, wmOperator *op)
     if ((prop = RNA_struct_find_property(op->ptr, "snap_elements"))) {
       RNA_property_enum_set(op->ptr, prop, t->tsnap.mode);
       RNA_boolean_set(op->ptr, "use_snap_project", t->tsnap.project);
-      RNA_enum_set(op->ptr, "snap_target", t->tsnap.source_select);
+      RNA_enum_set(op->ptr, "snap_target", t->tsnap.source_operation);
 
-      eSnapTargetSelect target = t->tsnap.target_select;
+      eSnapTargetOP target = t->tsnap.target_operation;
       RNA_boolean_set(op->ptr, "use_snap_self", (target & SCE_SNAP_TARGET_NOT_ACTIVE) == 0);
       RNA_boolean_set(op->ptr, "use_snap_edit", (target & SCE_SNAP_TARGET_NOT_EDITED) == 0);
       RNA_boolean_set(op->ptr, "use_snap_nonedit", (target & SCE_SNAP_TARGET_NOT_NONEDITED) == 0);
@@ -1871,25 +1871,26 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
         }
       }
     }
-  }
-  if (t->data_type == &TransConvertType_Node) {
-    /* Set the initial auto-attach flag based on whether the chosen keymap key is pressed at the
-     * start of the operator. */
-    t->modifiers |= MOD_NODE_ATTACH;
-    LISTBASE_FOREACH (const wmKeyMapItem *, kmi, &t->keymap->items) {
-      if (kmi->flag & KMI_INACTIVE) {
-        continue;
-      }
-
-      if (kmi->propvalue == TFM_MODAL_NODE_ATTACH_OFF && kmi->val == KM_PRESS) {
-        if ((ELEM(kmi->type, EVT_LEFTCTRLKEY, EVT_RIGHTCTRLKEY) && (event->modifier & KM_CTRL)) ||
-            (ELEM(kmi->type, EVT_LEFTSHIFTKEY, EVT_RIGHTSHIFTKEY) &&
-             (event->modifier & KM_SHIFT)) ||
-            (ELEM(kmi->type, EVT_LEFTALTKEY, EVT_RIGHTALTKEY) && (event->modifier & KM_ALT)) ||
-            ((kmi->type == EVT_OSKEY) && (event->modifier & KM_OSKEY))) {
-          t->modifiers &= ~MOD_NODE_ATTACH;
+    if (t->data_type == &TransConvertType_Node) {
+      /* Set the initial auto-attach flag based on whether the chosen keymap key is pressed at the
+       * start of the operator. */
+      t->modifiers |= MOD_NODE_ATTACH;
+      LISTBASE_FOREACH (const wmKeyMapItem *, kmi, &t->keymap->items) {
+        if (kmi->flag & KMI_INACTIVE) {
+          continue;
         }
-        break;
+
+        if (kmi->propvalue == TFM_MODAL_NODE_ATTACH_OFF && kmi->val == KM_PRESS) {
+          if ((ELEM(kmi->type, EVT_LEFTCTRLKEY, EVT_RIGHTCTRLKEY) &&
+               (event->modifier & KM_CTRL)) ||
+              (ELEM(kmi->type, EVT_LEFTSHIFTKEY, EVT_RIGHTSHIFTKEY) &&
+               (event->modifier & KM_SHIFT)) ||
+              (ELEM(kmi->type, EVT_LEFTALTKEY, EVT_RIGHTALTKEY) && (event->modifier & KM_ALT)) ||
+              ((kmi->type == EVT_OSKEY) && (event->modifier & KM_OSKEY))) {
+            t->modifiers &= ~MOD_NODE_ATTACH;
+          }
+          break;
+        }
       }
     }
   }

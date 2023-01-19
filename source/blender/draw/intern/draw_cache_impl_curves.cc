@@ -13,8 +13,8 @@
 
 #include "BLI_listbase.h"
 #include "BLI_math_base.h"
-#include "BLI_math_vec_types.hh"
 #include "BLI_math_vector.hh"
+#include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
 #include "BLI_task.hh"
 #include "BLI_utildefines.h"
@@ -238,11 +238,12 @@ static void curves_batch_cache_fill_segments_proc_pos(
   using namespace blender;
   /* TODO: use hair radius layer if available. */
   const bke::CurvesGeometry &curves = bke::CurvesGeometry::wrap(curves_id.geometry);
+  const OffsetIndices points_by_curve = curves.points_by_curve();
   const Span<float3> positions = curves.positions();
 
   threading::parallel_for(curves.curves_range(), 1024, [&](const IndexRange range) {
     for (const int i_curve : range) {
-      const IndexRange points = curves.points_for_curve(i_curve);
+      const IndexRange points = points_by_curve[i_curve];
 
       Span<float3> curve_positions = positions.slice(points);
       MutableSpan<PositionAndParameter> curve_posTime_data = posTime_data.slice(points);
@@ -271,7 +272,7 @@ static void curves_batch_cache_fill_segments_proc_pos(
 
 static void curves_batch_cache_ensure_procedural_pos(const Curves &curves,
                                                      CurvesEvalCache &cache,
-                                                     GPUMaterial *UNUSED(gpu_material))
+                                                     GPUMaterial * /*gpu_material*/)
 {
   if (cache.proc_point_buf == nullptr || DRW_vbo_requested(cache.proc_point_buf)) {
     /* Initialize vertex format. */
@@ -334,20 +335,21 @@ static void curves_batch_cache_ensure_edit_points_data(const Curves &curves_id,
   GPU_vertbuf_init_with_format(cache.edit_points_data, &format_data);
   GPU_vertbuf_data_alloc(cache.edit_points_data, curves.points_num());
 
-  VArray<float> selection;
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+
+  const VArray<bool> selection = curves.attributes().lookup_or_default<bool>(
+      ".selection", eAttrDomain(curves_id.selection_domain), true);
   switch (curves_id.selection_domain) {
     case ATTR_DOMAIN_POINT:
-      selection = curves.selection_point_float();
       for (const int point_i : selection.index_range()) {
-        const float point_selection = (selection[point_i] > 0.0f) ? 1.0f : 0.0f;
+        const float point_selection = selection[point_i] ? 1.0f : 0.0f;
         GPU_vertbuf_attr_set(cache.edit_points_data, color, point_i, &point_selection);
       }
       break;
     case ATTR_DOMAIN_CURVE:
-      selection = curves.selection_curve_float();
       for (const int curve_i : curves.curves_range()) {
-        const float curve_selection = (selection[curve_i] > 0.0f) ? 1.0f : 0.0f;
-        const IndexRange points = curves.points_for_curve(curve_i);
+        const float curve_selection = selection[curve_i] ? 1.0f : 0.0f;
+        const IndexRange points = points_by_curve[curve_i];
         for (const int point_i : points) {
           GPU_vertbuf_attr_set(cache.edit_points_data, color, point_i, &curve_selection);
         }
@@ -368,8 +370,10 @@ static void curves_batch_cache_ensure_edit_lines(const Curves &curves_id, Curves
   GPUIndexBufBuilder elb;
   GPU_indexbuf_init_ex(&elb, GPU_PRIM_LINE_STRIP, index_len, vert_len);
 
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+
   for (const int i : curves.curves_range()) {
-    const IndexRange points = curves.points_for_curve(i);
+    const IndexRange points = points_by_curve[i];
     for (const int i_point : points) {
       GPU_indexbuf_add_generic_vert(&elb, i_point);
     }
@@ -391,7 +395,7 @@ static void curves_batch_cache_ensure_procedural_final_attr(CurvesEvalCache &cac
                                                             const GPUVertFormat *format,
                                                             const int subdiv,
                                                             const int index,
-                                                            const char *UNUSED(name))
+                                                            const char * /*name*/)
 {
   CurvesEvalFinalCache &final_cache = cache.final[subdiv];
   final_cache.attributes_buf[index] = GPU_vertbuf_create_with_format_ex(
@@ -461,9 +465,10 @@ static void curves_batch_cache_fill_strands_data(const Curves &curves_id,
 {
   const blender::bke::CurvesGeometry &curves = blender::bke::CurvesGeometry::wrap(
       curves_id.geometry);
+  const blender::OffsetIndices points_by_curve = curves.points_by_curve();
 
   for (const int i : IndexRange(curves.curves_num())) {
-    const IndexRange points = curves.points_for_curve(i);
+    const IndexRange points = points_by_curve[i];
 
     *(uint *)GPU_vertbuf_raw_step(&data_step) = points.start();
     *(ushort *)GPU_vertbuf_raw_step(&seg_step) = points.size() - 1;

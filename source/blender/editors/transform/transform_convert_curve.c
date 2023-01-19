@@ -419,7 +419,7 @@ static void createTransCurveVerts(bContext *UNUSED(C), TransInfo *t)
 static void recalcData_curve(TransInfo *t)
 {
   if (t->state != TRANS_CANCEL) {
-    applySnappingIndividual(t);
+    transform_snap_project_individual_apply(t);
   }
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
@@ -449,8 +449,8 @@ static void recalcData_curve(TransInfo *t)
 /** \} */
 
 TransConvertTypeInfo TransConvertType_Curve = {
-    /* flags */ (T_EDIT | T_POINTS),
-    /* createTransData */ createTransCurveVerts,
-    /* recalcData */ recalcData_curve,
-    /* special_aftertrans_update */ NULL,
+    /*flags*/ (T_EDIT | T_POINTS),
+    /*createTransData*/ createTransCurveVerts,
+    /*recalcData*/ recalcData_curve,
+    /*special_aftertrans_update*/ NULL,
 };

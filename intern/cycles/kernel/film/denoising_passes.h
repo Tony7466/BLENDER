@@ -12,17 +12,23 @@ CCL_NAMESPACE_BEGIN
 #ifdef __DENOISING_FEATURES__
 ccl_device_forceinline void film_write_denoising_features_surface(KernelGlobals kg,
                                                                   IntegratorState state,
-                                                                  uint32_t path_flag,
                                                                   ccl_private const ShaderData *sd,
                                                                   ccl_global float *ccl_restrict
                                                                       render_buffer)
 {
-  if (!(INTEGRATOR_STATE(state, path, flag) & PATH_RAY_DENOISING_FEATURES)) {
+  const uint32_t path_flag = INTEGRATOR_STATE(state, path, flag);
+  if (!(path_flag & PATH_RAY_DENOISING_FEATURES)) {
     return;
   }
 
   /* Skip implicitly transparent surfaces. */
   if (sd->flag & SD_HAS_ONLY_VOLUME) {
+    return;
+  }
+
+  /* Don't write denoising passes for paths that were split off for shadow catchers
+   * to avoid double-counting. */
+  if (path_flag & PATH_RAY_SHADOW_CATCHER_PASS) {
     return;
   }
 

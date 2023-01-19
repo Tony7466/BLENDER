@@ -64,7 +64,7 @@ set(SRC
   intern/anim_path.c
   intern/anim_sys.c
   intern/anim_visualization.c
-  intern/anonymous_attribute.cc
+  intern/anonymous_attribute_id.cc
   intern/appdir.c
   intern/armature.c
   intern/armature_deform.c
@@ -97,7 +97,7 @@ set(SRC
   intern/colortools.c
   intern/compute_contexts.cc
   intern/constraint.c
-  intern/context.c
+  intern/context.cc
   intern/cpp_types.cc
   intern/crazyspace.cc
   intern/cryptomatte.cc
@@ -229,6 +229,7 @@ set(SRC
   intern/nla.c
   intern/node.cc
   intern/node_runtime.cc
+  intern/node_tree_anonymous_attributes.cc
   intern/node_tree_field_inferencing.cc
   intern/node_tree_update.cc
   intern/object.cc
@@ -243,7 +244,7 @@ set(SRC
   intern/paint.cc
   intern/paint_canvas.cc
   intern/paint_toolslots.c
-  intern/particle.c
+  intern/particle.cc
   intern/particle_child.c
   intern/particle_distribute.c
   intern/particle_system.c
@@ -254,6 +255,7 @@ set(SRC
   intern/pbvh_uv_islands.cc
   intern/pointcache.c
   intern/pointcloud.cc
+  intern/pose_backup.cc
   intern/preferences.c
   intern/report.c
   intern/rigidbody.c
@@ -314,8 +316,7 @@ set(SRC
   BKE_anim_path.h
   BKE_anim_visualization.h
   BKE_animsys.h
-  BKE_anonymous_attribute.h
-  BKE_anonymous_attribute.hh
+  BKE_anonymous_attribute_id.hh
   BKE_appdir.h
   BKE_armature.h
   BKE_armature.hh
@@ -451,6 +452,7 @@ set(SRC
   BKE_pbvh_pixels.hh
   BKE_pointcache.h
   BKE_pointcloud.h
+  BKE_pose_backup.h
   BKE_preferences.h
   BKE_report.h
   BKE_rigidbody.h
@@ -480,7 +482,6 @@ set(SRC
   BKE_type_conversions.hh
   BKE_undo_system.h
   BKE_unit.h
-  BKE_uv_islands.hh
   BKE_vfont.h
   BKE_vfontdata.h
   BKE_viewer_path.h
@@ -558,15 +559,16 @@ if(WIN32)
 endif()
 
 if(WITH_AUDASPACE)
-  add_definitions(-DWITH_AUDASPACE)
-
   list(APPEND INC_SYS
     ${AUDASPACE_C_INCLUDE_DIRS}
   )
-  list(APPEND LIB
-    ${AUDASPACE_C_LIBRARIES}
-    ${AUDASPACE_PY_LIBRARIES}
-  )
+  if(WITH_SYSTEM_AUDASPACE)
+    list(APPEND LIB
+      ${AUDASPACE_C_LIBRARIES}
+      ${AUDASPACE_PY_LIBRARIES}
+    )
+  endif()
+  add_definitions(-DWITH_AUDASPACE)
 endif()
 
 if(WITH_BULLET)
@@ -576,13 +578,6 @@ if(WITH_BULLET)
   list(APPEND INC
     ../../../intern/rigidbody
   )
-
-  if(NOT WITH_SYSTEM_BULLET)
-    list(APPEND LIB
-      extern_bullet
-    )
-  endif()
-
   list(APPEND LIB
     bf_intern_rigidbody
 

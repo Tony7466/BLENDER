@@ -53,10 +53,8 @@ struct bGPdata;
 struct bNodeInstanceHash;
 struct bNodeLink;
 struct bNodePreview;
-struct bNodeTreeExec;
 struct bNodeType;
 struct bNode;
-struct uiBlock;
 
 #define NODE_MAXSTR 64
 
@@ -172,6 +170,7 @@ typedef struct bNodeSocket {
 #ifdef __cplusplus
   bool is_hidden() const;
   bool is_available() const;
+  bool is_visible() const;
   bool is_multi_input() const;
   bool is_input() const;
   bool is_output() const;
@@ -186,6 +185,10 @@ typedef struct bNodeSocket {
   int index() const;
   /** Socket index in the entire node tree. Inputs and outputs share the same index space. */
   int index_in_tree() const;
+  /** Socket index in the entire node tree. All inputs share the same index space. */
+  int index_in_all_inputs() const;
+  /** Socket index in the entire node tree. All outputs share the same index space. */
+  int index_in_all_outputs() const;
   /** Node this socket belongs to. */
   bNode &owner_node();
   const bNode &owner_node() const;
@@ -249,13 +252,14 @@ typedef enum eNodeSocketInOut {
   SOCK_IN = 1 << 0,
   SOCK_OUT = 1 << 1,
 } eNodeSocketInOut;
+ENUM_OPERATORS(eNodeSocketInOut, SOCK_OUT);
 
 /** #bNodeSocket.flag, first bit is selection. */
 typedef enum eNodeSocketFlag {
   /** Hidden is user defined, to hide unused sockets. */
   SOCK_HIDDEN = (1 << 1),
   /** For quick check if socket is linked. */
-  SOCK_IN_USE = (1 << 2),
+  SOCK_IS_LINKED = (1 << 2),
   /** Unavailable is for dynamic sockets. */
   SOCK_UNAVAIL = (1 << 3),
   // /** DEPRECATED  dynamic socket (can be modified by user) */
@@ -369,7 +373,7 @@ typedef struct bNode {
   bool is_group_output() const;
   const blender::nodes::NodeDeclaration *declaration() const;
   /** A span containing all internal links when the node is muted. */
-  blender::Span<const bNodeLink *> internal_links() const;
+  blender::Span<bNodeLink> internal_links() const;
 
   /* The following methods are only available when #bNodeTree.ensure_topology_cache has been
    * called. */
@@ -489,6 +493,8 @@ typedef struct bNodeLink {
 #ifdef __cplusplus
   bool is_muted() const;
   bool is_available() const;
+  /** Both linked sockets are available and the link is not muted. */
+  bool is_used() const;
 #endif
 
 } bNodeLink;
@@ -499,7 +505,6 @@ typedef struct bNodeLink {
 #define NODE_LINK_TEST (1 << 2)           /* free test flag, undefined */
 #define NODE_LINK_TEMP_HIGHLIGHT (1 << 3) /* Link is highlighted for picking. */
 #define NODE_LINK_MUTED (1 << 4)          /* Link is muted. */
-#define NODE_LINK_DRAGGED (1 << 5)        /* Node link is being dragged by the user. */
 
 /* tree->edit_quality/tree->render_quality */
 #define NTREE_QUALITY_HIGH 0
@@ -633,9 +638,13 @@ typedef struct bNodeTree {
    */
   bool has_undefined_nodes_or_sockets() const;
   /** Get the active group output node. */
+  bNode *group_output_node();
   const bNode *group_output_node() const;
   /** Get all input nodes of the node group. */
   blender::Span<const bNode *> group_input_nodes() const;
+  /** Inputs and outputs of the entire node group. */
+  blender::Span<const bNodeSocket *> interface_inputs() const;
+  blender::Span<const bNodeSocket *> interface_outputs() const;
 #endif
 } bNodeTree;
 
@@ -1125,12 +1134,11 @@ typedef struct NodeShaderTexPointDensity {
   short interpolation;
   short color_source;
   short ob_color_source;
-  /** Vertex attribute layer for color source, MAX_CUSTOMDATA_LAYER_NAME. */
-  char vertex_attribute_name[64];
   /* Used at runtime only by sampling RNA API. */
   PointDensity pd;
   int cached_resolution;
-  char _pad2[4];
+  /** Vertex attribute layer for color source, MAX_CUSTOMDATA_LAYER_NAME. */
+  char vertex_attribute_name[68];
 } NodeShaderTexPointDensity;
 
 typedef struct NodeShaderPrincipled {

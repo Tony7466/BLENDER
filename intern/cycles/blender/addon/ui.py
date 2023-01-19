@@ -2112,9 +2112,7 @@ class CYCLES_RENDER_PT_debug(CyclesDebugButtonsPanel, Panel):
 
         row = col.row(align=True)
         row.prop(cscene, "debug_use_cpu_sse2", toggle=True)
-        row.prop(cscene, "debug_use_cpu_sse3", toggle=True)
         row.prop(cscene, "debug_use_cpu_sse41", toggle=True)
-        row.prop(cscene, "debug_use_cpu_avx", toggle=True)
         row.prop(cscene, "debug_use_cpu_avx2", toggle=True)
         col.prop(cscene, "debug_bvh_layout", text="BVH")
 
@@ -2360,7 +2358,6 @@ def draw_pause(self, context):
 
 def get_panels():
     exclude_panels = {
-        'DATA_PT_area',
         'DATA_PT_camera_dof',
         'DATA_PT_falloff_curve',
         'DATA_PT_light',
