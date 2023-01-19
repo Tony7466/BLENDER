@@ -658,7 +658,7 @@ ccl_device bool integrate_surface(KernelGlobals kg,
 #endif
 
 #ifdef __DENOISING_FEATURES__
-      film_write_denoising_features_surface(kg, state, &sd, render_buffer);
+      film_write_denoising_features_surface(kg, state, path_flag, &sd, render_buffer);
 #endif
     }
 

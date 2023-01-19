@@ -230,7 +230,8 @@ static void set_default_value(ShaderInput *input,
       }
       break;
     }
-    case SocketType::COLOR: {
+    case SocketType::COLOR:
+    case SocketType::SPECTRUM: {
       node->set(socket, float4_to_float3(get_float4(b_sock.ptr, "default_value")));
       break;
     }

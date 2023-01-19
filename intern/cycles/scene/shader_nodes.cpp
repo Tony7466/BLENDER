@@ -2303,7 +2303,7 @@ NODE_DEFINE(AnisotropicBsdfNode)
 {
   NodeType *type = NodeType::add("anisotropic_bsdf", create, NodeType::SHADER);
 
-  SOCKET_IN_SPECTRUM(color, "Color", make_float3(0.8f, 0.8f, 0.8f));
+  SOCKET_IN_SPECTRUM(color, "Color", make_float3(0.8f));
   SOCKET_IN_NORMAL(normal, "Normal", zero_float3(), SocketType::LINK_NORMAL);
   SOCKET_IN_FLOAT(surface_mix_weight, "SurfaceMixWeight", 0.0f, SocketType::SVM_INTERNAL);
 
@@ -2365,7 +2365,7 @@ NODE_DEFINE(GlossyBsdfNode)
 {
   NodeType *type = NodeType::add("glossy_bsdf", create, NodeType::SHADER);
 
-  SOCKET_IN_SPECTRUM(color, "Color", make_float3(0.8f, 0.8f, 0.8f));
+  SOCKET_IN_SPECTRUM(color, "Color", make_float3(0.8f));
   SOCKET_IN_NORMAL(normal, "Normal", zero_float3(), SocketType::LINK_NORMAL);
   SOCKET_IN_FLOAT(surface_mix_weight, "SurfaceMixWeight", 0.0f, SocketType::SVM_INTERNAL);
 
@@ -2457,7 +2457,7 @@ NODE_DEFINE(GlassBsdfNode)
 {
   NodeType *type = NodeType::add("glass_bsdf", create, NodeType::SHADER);
 
-  SOCKET_IN_SPECTRUM(color, "Color", make_float3(0.8f, 0.8f, 0.8f));
+  SOCKET_IN_SPECTRUM(color, "Color", make_float3(0.8f));
   SOCKET_IN_NORMAL(normal, "Normal", zero_float3(), SocketType::LINK_NORMAL);
   SOCKET_IN_FLOAT(surface_mix_weight, "SurfaceMixWeight", 0.0f, SocketType::SVM_INTERNAL);
 
@@ -2550,7 +2550,7 @@ NODE_DEFINE(RefractionBsdfNode)
 {
   NodeType *type = NodeType::add("refraction_bsdf", create, NodeType::SHADER);
 
-  SOCKET_IN_SPECTRUM(color, "Color", make_float3(0.8f, 0.8f, 0.8f));
+  SOCKET_IN_SPECTRUM(color, "Color", make_float3(0.8f));
   SOCKET_IN_NORMAL(normal, "Normal", zero_float3(), SocketType::LINK_NORMAL);
   SOCKET_IN_FLOAT(surface_mix_weight, "SurfaceMixWeight", 0.0f, SocketType::SVM_INTERNAL);
 
@@ -2641,7 +2641,7 @@ NODE_DEFINE(ToonBsdfNode)
 {
   NodeType *type = NodeType::add("toon_bsdf", create, NodeType::SHADER);
 
-  SOCKET_IN_SPECTRUM(color, "Color", make_float3(0.8f, 0.8f, 0.8f));
+  SOCKET_IN_SPECTRUM(color, "Color", make_float3(0.8f));
   SOCKET_IN_NORMAL(normal, "Normal", zero_float3(), SocketType::LINK_NORMAL);
   SOCKET_IN_FLOAT(surface_mix_weight, "SurfaceMixWeight", 0.0f, SocketType::SVM_INTERNAL);
 
@@ -2681,7 +2681,7 @@ NODE_DEFINE(VelvetBsdfNode)
 {
   NodeType *type = NodeType::add("velvet_bsdf", create, NodeType::SHADER);
 
-  SOCKET_IN_SPECTRUM(color, "Color", make_float3(0.8f, 0.8f, 0.8f));
+  SOCKET_IN_SPECTRUM(color, "Color", make_float3(0.8f));
   SOCKET_IN_NORMAL(normal, "Normal", zero_float3(), SocketType::LINK_NORMAL);
   SOCKET_IN_FLOAT(surface_mix_weight, "SurfaceMixWeight", 0.0f, SocketType::SVM_INTERNAL);
   SOCKET_IN_FLOAT(sigma, "Sigma", 1.0f);
@@ -2712,7 +2712,7 @@ NODE_DEFINE(DiffuseBsdfNode)
 {
   NodeType *type = NodeType::add("diffuse_bsdf", create, NodeType::SHADER);
 
-  SOCKET_IN_SPECTRUM(color, "Color", make_float3(0.8f, 0.8f, 0.8f));
+  SOCKET_IN_SPECTRUM(color, "Color", make_float3(0.8));
   SOCKET_IN_NORMAL(normal, "Normal", zero_float3(), SocketType::LINK_NORMAL);
   SOCKET_IN_FLOAT(surface_mix_weight, "SurfaceMixWeight", 0.0f, SocketType::SVM_INTERNAL);
   SOCKET_IN_FLOAT(roughness, "Roughness", 0.0f);
@@ -2758,11 +2758,11 @@ NODE_DEFINE(PrincipledBsdfNode)
               subsurface_method_enum,
               CLOSURE_BSSRDF_RANDOM_WALK_ID);
 
-  SOCKET_IN_SPECTRUM(base_color, "Base Color", make_float3(0.8f, 0.8f, 0.8f));
-  SOCKET_IN_SPECTRUM(subsurface_color, "Subsurface Color", make_float3(0.8f, 0.8f, 0.8f));
+  SOCKET_IN_SPECTRUM(base_color, "Base Color", make_float3(0.8f));
+  SOCKET_IN_SPECTRUM(subsurface_color, "Subsurface Color", make_float3(0.8f));
   SOCKET_IN_FLOAT(metallic, "Metallic", 0.0f);
   SOCKET_IN_FLOAT(subsurface, "Subsurface", 0.0f);
-  SOCKET_IN_SPECTRUM(subsurface_radius, "Subsurface Radius", make_float3(0.1f, 0.1f, 0.1f));
+  SOCKET_IN_SPECTRUM(subsurface_radius, "Subsurface Radius", make_float3(0.1f));
   SOCKET_IN_FLOAT(subsurface_ior, "Subsurface IOR", 1.4f);
   SOCKET_IN_FLOAT(subsurface_anisotropy, "Subsurface Anisotropy", 0.0f);
   SOCKET_IN_FLOAT(specular, "Specular", 0.0f);
@@ -3010,7 +3010,7 @@ NODE_DEFINE(TranslucentBsdfNode)
 {
   NodeType *type = NodeType::add("translucent_bsdf", create, NodeType::SHADER);
 
-  SOCKET_IN_SPECTRUM(color, "Color", make_float3(0.8f, 0.8f, 0.8f));
+  SOCKET_IN_SPECTRUM(color, "Color", make_float3(0.8f));
   SOCKET_IN_NORMAL(normal, "Normal", zero_float3(), SocketType::LINK_NORMAL);
   SOCKET_IN_FLOAT(surface_mix_weight, "SurfaceMixWeight", 0.0f, SocketType::SVM_INTERNAL);
 
@@ -7680,7 +7680,7 @@ NODE_DEFINE(RGBToSpectrumNode)
 {
   NodeType *type = NodeType::add("rgb_to_spectrum", create, NodeType::SHADER);
 
-  SOCKET_IN_COLOR(color, "Color", make_float3(0.8f, 0.8f, 0.8f));
+  SOCKET_IN_COLOR(color, "Color", make_float3(0.8f));
 
   SOCKET_OUT_SPECTRUM(spectrum, "Spectrum");
 

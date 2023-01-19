@@ -12,6 +12,7 @@ CCL_NAMESPACE_BEGIN
 #ifdef __DENOISING_FEATURES__
 ccl_device_forceinline void film_write_denoising_features_surface(KernelGlobals kg,
                                                                   IntegratorState state,
+                                                                  uint32_t path_flag,
                                                                   ccl_private const ShaderData *sd,
                                                                   ccl_global float *ccl_restrict
                                                                       render_buffer)
