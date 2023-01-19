@@ -28,9 +28,9 @@
 
 #include "BLI_compute_context.hh"
 #include "BLI_enumerable_thread_specific.hh"
+#include "BLI_function_ref.hh"
 #include "BLI_generic_pointer.hh"
 #include "BLI_multi_value_map.hh"
-#include "BLI_function_ref.hh"
 
 #include "BKE_attribute.h"
 #include "BKE_geometry_set.hh"
@@ -289,12 +289,13 @@ class GeoTreeLog {
   ValueLog *find_socket_value_log(const bNodeSocket &query_socket);
 };
 
-inline Vector<ValueLog *> multi_input_socket_value_logs(GeoTreeLog &tree_log, const bNodeSocket &query_socket)
+inline Vector<ValueLog *> multi_input_socket_value_logs(GeoTreeLog &tree_log,
+                                                        const bNodeSocket &query_socket)
 {
   BLI_assert(query_socket.is_multi_input());
   Vector<ValueLog *> logs;
   logs.reserve(query_socket.directly_linked_sockets().size());
-  for (const bNodeSocket *socket : query_socket.directly_linked_sockets()){
+  for (const bNodeSocket *socket : query_socket.directly_linked_sockets()) {
     logs.append(tree_log.find_socket_value_log(*socket));
   }
   return logs;

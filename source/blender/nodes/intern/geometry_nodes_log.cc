@@ -390,7 +390,8 @@ ValueLog *GeoTreeLog::find_socket_value_log(const bNodeSocket &query_socket)
           sockets_to_check.push(&from_socket);
         }
       }
-    } else if (node.is_reroute()) {
+    }
+    else if (node.is_reroute()) {
       const bNodeSocket &input_socket = node.input_socket(0);
       if (added_sockets.add(&input_socket)) {
         sockets_to_check.push(&input_socket);
@@ -402,7 +403,8 @@ ValueLog *GeoTreeLog::find_socket_value_log(const bNodeSocket &query_socket)
           sockets_to_check.push(&from_socket);
         }
       }
-    } else if (node.is_muted()) {
+    }
+    else if (node.is_muted()) {
       if (const bNodeSocket *input_socket = socket.internal_link_input()) {
         if (added_sockets.add(input_socket)) {
           sockets_to_check.push(input_socket);

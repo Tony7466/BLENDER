@@ -310,7 +310,6 @@ float2 node_from_view(const bNode &node, const float2 &co)
   return result;
 }
 
-
 static char *node_socket_get_tooltip(const SpaceNode *snode,
                                      const bNodeTree &ntree,
                                      const bNodeSocket &socket);
@@ -525,20 +524,33 @@ static void node_update_basis(const bContext &C,
     if (socket->is_multi_input()) {
       const float total_inputs = float(socket->directly_linked_links().size()) * 5;
       UI_block_emboss_set(&block, UI_EMBOSS_NONE);
-      uiBut *but = uiDefBut(&block, UI_BTYPE_BUT, 0, "", loc.x + NODE_DYS - 15, dy - total_inputs / 2 - 10, 10, total_inputs, nullptr, 0, 0, 0, 0, nullptr);
+      uiBut *but = uiDefBut(&block,
+                            UI_BTYPE_BUT,
+                            0,
+                            "",
+                            loc.x + NODE_DYS - 15,
+                            dy - total_inputs / 2 - 10,
+                            10,
+                            total_inputs,
+                            nullptr,
+                            0,
+                            0,
+                            0,
+                            0,
+                            nullptr);
       UI_block_emboss_set(&block, UI_EMBOSS);
-      
+
       UI_but_func_tooltip_set(
-        but,
-        [](bContext *C, void *argN, const char * /*tip*/) {
-          const SpaceNode &snode = *CTX_wm_space_node(C);
-          const bNodeTree &ntree = *snode.edittree;
-          const int index_in_tree = POINTER_AS_INT(argN);
-          ntree.ensure_topology_cache();
-          return node_socket_get_tooltip(&snode, ntree, *ntree.all_sockets()[index_in_tree]);
-        },
-        POINTER_FROM_INT(socket->index_in_tree()),
-        nullptr);
+          but,
+          [](bContext *C, void *argN, const char * /*tip*/) {
+            const SpaceNode &snode = *CTX_wm_space_node(C);
+            const bNodeTree &ntree = *snode.edittree;
+            const int index_in_tree = POINTER_AS_INT(argN);
+            ntree.ensure_topology_cache();
+            return node_socket_get_tooltip(&snode, ntree, *ntree.all_sockets()[index_in_tree]);
+          },
+          POINTER_FROM_INT(socket->index_in_tree()),
+          nullptr);
     }
 
     /* Ensure minimum socket height in case layout is empty. */
@@ -1081,15 +1093,18 @@ static std::optional<std::string> create_socket_inspection_string(TreeDrawContex
   std::stringstream ss;
 
   auto log_socket_value = [&](const ValueLog *value_log, const char *tab_space) -> bool {
-    if (const geo_log::GenericValueLog *generic_value_log = dynamic_cast<const geo_log::GenericValueLog *>(value_log)) {
+    if (const geo_log::GenericValueLog *generic_value_log =
+            dynamic_cast<const geo_log::GenericValueLog *>(value_log)) {
       create_inspection_string_for_generic_value(socket, generic_value_log->value, ss);
       return true;
     }
-    if (const geo_log::FieldInfoLog *gfield_value_log = dynamic_cast<const geo_log::FieldInfoLog *>(value_log)) {
+    if (const geo_log::FieldInfoLog *gfield_value_log =
+            dynamic_cast<const geo_log::FieldInfoLog *>(value_log)) {
       create_inspection_string_for_field_info(socket, *gfield_value_log, ss);
       return true;
     }
-    if (const geo_log::GeometryInfoLog *geo_value_log = dynamic_cast<const geo_log::GeometryInfoLog *>(value_log)) {
+    if (const geo_log::GeometryInfoLog *geo_value_log =
+            dynamic_cast<const geo_log::GeometryInfoLog *>(value_log)) {
       create_inspection_string_for_geometry_info(*geo_value_log, ss, tab_space);
       return true;
     }
@@ -1097,9 +1112,10 @@ static std::optional<std::string> create_socket_inspection_string(TreeDrawContex
   };
 
   bool after_log = false;
-  if (socket.is_multi_input()){
-    const Vector<ValueLog *> value_logs = multi_input_socket_value_logs(*tree_draw_ctx.geo_tree_log, socket);
-    if (!value_logs.is_empty()){
+  if (socket.is_multi_input()) {
+    const Vector<ValueLog *> value_logs = multi_input_socket_value_logs(
+        *tree_draw_ctx.geo_tree_log, socket);
+    if (!value_logs.is_empty()) {
       if (value_logs.size() >= 1) {
         ss << "1. ";
         const bool is_empty_line = !log_socket_value(value_logs.first(), "  ");
@@ -1108,8 +1124,8 @@ static std::optional<std::string> create_socket_inspection_string(TreeDrawContex
         }
         after_log = true;
       }
-      for (const int index : value_logs.index_range().drop_front(1)){
-        ss << ".\n" << index+1 << ". ";
+      for (const int index : value_logs.index_range().drop_front(1)) {
+        ss << ".\n" << index + 1 << ". ";
         const ValueLog *value_log = value_logs[index];
         const bool is_empty_line = !log_socket_value(value_log, "  ");
         if (is_empty_line) {
@@ -1117,13 +1133,15 @@ static std::optional<std::string> create_socket_inspection_string(TreeDrawContex
         }
       }
     }
-  }else{
+  }
+  else {
     after_log = true;
     ValueLog *value_log = tree_draw_ctx.geo_tree_log->find_socket_value_log(socket);
     log_socket_value(value_log, "");
   }
 
-  if (const nodes::decl::Geometry *socket_decl = dynamic_cast<const nodes::decl::Geometry *>(socket.runtime->declaration)) {
+  if (const nodes::decl::Geometry *socket_decl = dynamic_cast<const nodes::decl::Geometry *>(
+          socket.runtime->declaration)) {
     create_inspection_string_for_geometry_socket(ss, socket_decl, after_log);
   }
 
