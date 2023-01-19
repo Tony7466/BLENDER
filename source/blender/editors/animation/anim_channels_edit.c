@@ -3668,6 +3668,52 @@ static void get_normalized_fcurve_bounds(FCurve *fcu,
   r_bounds->ymax *= unitFac;
 }
 
+static void get_gpencil_bounds(bGPDlayer *gpl, const float range[2], rctf *r_bounds)
+{
+  bool found_start = false;
+  int start_frame = 0;
+  int end_frame = 1;
+  LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+    if (gpf->framenum < range[0]) {
+      continue;
+    }
+    if (gpf->framenum > range[1]) {
+      break;
+    }
+    if (!found_start) {
+      start_frame = gpf->framenum;
+      found_start = true;
+    }
+    end_frame = gpf->framenum;
+  }
+  r_bounds->xmin = start_frame;
+  r_bounds->xmax = end_frame;
+  r_bounds->ymin = 0;
+  r_bounds->ymax = 1;
+}
+
+static bool get_channel_bounds(bAnimContext *ac,
+                               bAnimListElem *ale,
+                               const float range[2],
+                               const bool include_handles,
+                               rctf *r_bounds)
+{
+  bool found_bounds = false;
+  switch (ale->datatype) {
+    case ALE_GPFRAME:
+      bGPDlayer *gpl = (bGPDlayer *)ale->data;
+      get_gpencil_bounds(gpl, range, r_bounds);
+      found_bounds = true;
+      break;
+    case ALE_FCURVE:
+      FCurve *fcu = (FCurve *)ale->key_data;
+      get_normalized_fcurve_bounds(fcu, ac, ale, include_handles, range, r_bounds);
+      found_bounds = true;
+      break;
+  }
+  return found_bounds;
+}
+
 static void get_view_range(Scene *scene, const bool use_preview_range, float r_range[2])
 {
   if (use_preview_range && scene->r.flag & SCER_PRV_RANGE) {
@@ -3713,7 +3759,8 @@ static int graphkeys_view_selected_channels_exec(bContext *C, wmOperator *op)
   }
 
   ListBase anim_data = {NULL, NULL};
-  const int filter = (ANIMFILTER_SEL | ANIMFILTER_NODUPLIS | ANIMFILTER_FCURVESONLY);
+  const int filter = (ANIMFILTER_SEL | ANIMFILTER_NODUPLIS | ANIMFILTER_DATA_VISIBLE |
+                      ANIMFILTER_LIST_VISIBLE | ANIMFILTER_LIST_CHANNELS);
   size_t anim_data_length = ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
 
   if (anim_data_length == 0) {
@@ -3729,14 +3776,20 @@ static int graphkeys_view_selected_channels_exec(bContext *C, wmOperator *op)
   bAnimListElem *ale;
   const bool include_handles = RNA_boolean_get(op->ptr, "include_handles");
 
+  bool valid_bounds = false;
   for (ale = anim_data.first; ale; ale = ale->next) {
-    if (ale->datatype != ALE_FCURVE) {
-      continue;
+    rctf channel_bounds;
+    const bool found_bounds = get_channel_bounds(
+        &ac, ale, range, include_handles, &channel_bounds);
+    if (found_bounds) {
+      BLI_rctf_union(&bounds, &channel_bounds);
+      valid_bounds = true;
     }
-    FCurve *fcu = (FCurve *)ale->key_data;
-    rctf fcu_bounds;
-    get_normalized_fcurve_bounds(fcu, &ac, ale, include_handles, range, &fcu_bounds);
-    BLI_rctf_union(&bounds, &fcu_bounds);
+  }
+
+  if (!valid_bounds) {
+    ANIM_animdata_freelist(&anim_data);
+    return OPERATOR_CANCELLED;
   }
 
   add_region_padding(C, &ac, &bounds);
@@ -3778,52 +3831,6 @@ static void ANIM_OT_channels_view_selected(wmOperatorType *ot)
                              true,
                              "Use Preview Range",
                              "Ignore frames outside of the preview range");
-}
-
-static void get_gpencil_bounds(bGPDlayer *gpl, const float range[2], rctf *r_bounds)
-{
-  bool found_start = false;
-  int start_frame = 0;
-  int end_frame = 1;
-  LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
-    if (gpf->framenum < range[0]) {
-      continue;
-    }
-    if (gpf->framenum > range[1]) {
-      break;
-    }
-    if (!found_start) {
-      start_frame = gpf->framenum;
-      found_start = true;
-    }
-    end_frame = gpf->framenum;
-  }
-  r_bounds->xmin = start_frame;
-  r_bounds->xmax = end_frame;
-  r_bounds->ymin = 0;
-  r_bounds->ymax = 1;
-}
-
-static bool get_channel_bounds(bAnimContext *ac,
-                               bAnimListElem *ale,
-                               const float range[2],
-                               const bool include_handles,
-                               rctf *r_bounds)
-{
-  bool found_bounds = false;
-  switch (ale->datatype) {
-    case ALE_GPFRAME:
-      bGPDlayer *gpl = (bGPDlayer *)ale->data;
-      get_gpencil_bounds(gpl, range, r_bounds);
-      found_bounds = true;
-      break;
-    case ALE_FCURVE:
-      FCurve *fcu = (FCurve *)ale->key_data;
-      get_normalized_fcurve_bounds(fcu, ac, ale, include_handles, range, r_bounds);
-      found_bounds = true;
-      break;
-  }
-  return found_bounds;
 }
 
 static int graphkeys_channel_view_pick_invoke(bContext *C, wmOperator *op, const wmEvent *event)
