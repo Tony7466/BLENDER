@@ -450,7 +450,11 @@ static int graphkeys_view_selected_channels_exec(bContext *C, wmOperator *op)
 
   ListBase anim_data = {NULL, NULL};
   const int filter = (ANIMFILTER_SEL | ANIMFILTER_NODUPLIS | ANIMFILTER_FCURVESONLY);
-  ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
+  size_t anim_data_length = ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
+
+  if (anim_data_length == 0) {
+    return OPERATOR_CANCELLED;
+  }
 
   float range[2];
   const bool use_preview_range = RNA_boolean_get(op->ptr, "use_preview_range");
@@ -475,6 +479,8 @@ static int graphkeys_view_selected_channels_exec(bContext *C, wmOperator *op)
 
   const int smooth_viewtx = WM_operator_smooth_viewtx_get(op);
   move_graph_view(C, &ac, &bounds, smooth_viewtx);
+
+  ANIM_animdata_freelist(&anim_data);
 
   return OPERATOR_FINISHED;
 }
