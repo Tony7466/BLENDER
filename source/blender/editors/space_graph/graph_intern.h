@@ -101,8 +101,6 @@ void GRAPH_OT_previewrange_set(struct wmOperatorType *ot);
 void GRAPH_OT_view_all(struct wmOperatorType *ot);
 void GRAPH_OT_view_selected(struct wmOperatorType *ot);
 void GRAPH_OT_view_frame(struct wmOperatorType *ot);
-void GRAPH_OT_view_selected_channels(struct wmOperatorType *ot);
-void GRAPH_OT_view_channel_pick(struct wmOperatorType *ot);
 
 void GRAPH_OT_click_insert(struct wmOperatorType *ot);
 void GRAPH_OT_keyframe_insert(struct wmOperatorType *ot);

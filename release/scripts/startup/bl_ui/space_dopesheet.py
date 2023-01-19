@@ -690,7 +690,7 @@ class DOPESHEET_MT_channel_context_menu(Menu):
         is_graph_editor = context.area.type == 'GRAPH_EDITOR'
 
         layout.separator()
-        layout.operator("graph.view_selected_channels")
+        layout.operator("anim.channels_view_selected")
 
         layout.operator("anim.channels_setting_enable", text="Mute Channels").type = 'MUTE'
         layout.operator("anim.channels_setting_disable", text="Unmute Channels").type = 'MUTE'
