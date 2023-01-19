@@ -535,8 +535,8 @@ static int graphkeys_view_channel_pick_invoke(bContext *C, wmOperator *op, const
                                   &channel_index);
 
   ListBase anim_data = {NULL, NULL};
-  int filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_LIST_CHANNELS |
-                ANIMFILTER_FCURVESONLY);
+  const int filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE |
+                      ANIMFILTER_LIST_CHANNELS | ANIMFILTER_FCURVESONLY);
   ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
 
   bAnimListElem *ale;
