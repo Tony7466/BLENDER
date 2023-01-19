@@ -34,8 +34,6 @@ CCL_NAMESPACE_BEGIN
 
 #define VOLUME_BOUNDS_MAX 1024
 
-#define BECKMANN_TABLE_SIZE 256
-
 #define SHADER_NONE (~0)
 #define OBJECT_NONE (~0)
 #define PRIM_NONE (~0)
@@ -850,8 +848,8 @@ enum ShaderDataObjectFlag {
   SD_OBJECT_MOTION = (1 << 1),
   /* Vertices have transform applied. */
   SD_OBJECT_TRANSFORM_APPLIED = (1 << 2),
-  /* Vertices have negative scale applied. */
-  SD_OBJECT_NEGATIVE_SCALE_APPLIED = (1 << 3),
+  /* The object's transform applies a negative scale. */
+  SD_OBJECT_NEGATIVE_SCALE = (1 << 3),
   /* Object has a volume shader. */
   SD_OBJECT_HAS_VOLUME = (1 << 4),
   /* Object intersects AABB of an object with volume shader. */
@@ -873,7 +871,7 @@ enum ShaderDataObjectFlag {
   SD_OBJECT_CAUSTICS = (SD_OBJECT_CAUSTICS_CASTER | SD_OBJECT_CAUSTICS_RECEIVER),
 
   SD_OBJECT_FLAGS = (SD_OBJECT_HOLDOUT_MASK | SD_OBJECT_MOTION | SD_OBJECT_TRANSFORM_APPLIED |
-                     SD_OBJECT_NEGATIVE_SCALE_APPLIED | SD_OBJECT_HAS_VOLUME |
+                     SD_OBJECT_NEGATIVE_SCALE | SD_OBJECT_HAS_VOLUME |
                      SD_OBJECT_INTERSECTS_VOLUME | SD_OBJECT_SHADOW_CATCHER |
                      SD_OBJECT_HAS_VOLUME_ATTRIBUTES | SD_OBJECT_CAUSTICS |
                      SD_OBJECT_HAS_VOLUME_MOTION)
@@ -888,7 +886,7 @@ typedef struct ccl_align(16) ShaderData
   /* true geometric normal */
   float3 Ng;
   /* view/incoming direction */
-  float3 I;
+  float3 wi;
   /* shader id */
   int shader;
   /* booleans describing shader, see ShaderDataFlag */
@@ -920,7 +918,7 @@ typedef struct ccl_align(16) ShaderData
 #ifdef __RAY_DIFFERENTIALS__
   /* Radius of differential of P. */
   float dP;
-  /* Radius of differential of I. */
+  /* Radius of differential of wi. */
   float dI;
   /* differential of u, v */
   differential du;
@@ -1187,9 +1185,8 @@ typedef enum KernelBVHLayout {
 #include "kernel/data_template.h"
 
 typedef struct KernelTables {
-  int beckmann_offset;
   int filter_table_offset;
-  int pad1, pad2;
+  int pad1, pad2, pad3;
 } KernelTables;
 static_assert_align(KernelTables, 16);
 

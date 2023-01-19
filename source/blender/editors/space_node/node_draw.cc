@@ -310,6 +310,11 @@ float2 node_from_view(const bNode &node, const float2 &co)
   return result;
 }
 
+
+static char *node_socket_get_tooltip(const SpaceNode *snode,
+                                     const bNodeTree &ntree,
+                                     const bNodeSocket &socket);
+
 /**
  * Based on settings and sockets in node, set drawing rect info.
  */
@@ -434,10 +439,10 @@ static void node_update_basis(const bContext &C,
 
     /* Make sure that maximums are bigger or equal to minimums. */
     if (node.runtime->prvr.xmax < node.runtime->prvr.xmin) {
-      SWAP(float, node.runtime->prvr.xmax, node.runtime->prvr.xmin);
+      std::swap(node.runtime->prvr.xmax, node.runtime->prvr.xmin);
     }
     if (node.runtime->prvr.ymax < node.runtime->prvr.ymin) {
-      SWAP(float, node.runtime->prvr.ymax, node.runtime->prvr.ymin);
+      std::swap(node.runtime->prvr.ymax, node.runtime->prvr.ymin);
     }
   }
 
@@ -481,13 +486,13 @@ static void node_update_basis(const bContext &C,
     /* Add the half the height of a multi-input socket to cursor Y
      * to account for the increased height of the taller sockets. */
     float multi_input_socket_offset = 0.0f;
-    if (socket->flag & SOCK_MULTI_INPUT) {
+    if (socket->is_multi_input()) {
       if (socket->runtime->total_inputs > 2) {
-        multi_input_socket_offset = (socket->runtime->total_inputs - 2) *
-                                    NODE_MULTI_INPUT_LINK_GAP;
+        multi_input_socket_offset = socket->runtime->total_inputs - 2;
+        multi_input_socket_offset *= NODE_MULTI_INPUT_LINK_GAP;
+        dy -= multi_input_socket_offset * 0.5f;
       }
     }
-    dy -= multi_input_socket_offset * 0.5f;
 
     uiLayout *layout = UI_block_layout(&block,
                                        UI_LAYOUT_VERTICAL,
@@ -516,6 +521,25 @@ static void node_update_basis(const bContext &C,
 
     UI_block_align_end(&block);
     UI_block_layout_resolve(&block, nullptr, &buty);
+
+    if (socket->is_multi_input()) {
+      const float total_inputs = float(socket->directly_linked_links().size()) * 5;
+      UI_block_emboss_set(&block, UI_EMBOSS_NONE);
+      uiBut *but = uiDefBut(&block, UI_BTYPE_BUT, 0, "", loc.x + NODE_DYS - 15, dy - total_inputs / 2 - 10, 10, total_inputs, nullptr, 0, 0, 0, 0, nullptr);
+      UI_block_emboss_set(&block, UI_EMBOSS);
+      
+      UI_but_func_tooltip_set(
+        but,
+        [](bContext *C, void *argN, const char * /*tip*/) {
+          const SpaceNode &snode = *CTX_wm_space_node(C);
+          const bNodeTree &ntree = *snode.edittree;
+          const int index_in_tree = POINTER_AS_INT(argN);
+          ntree.ensure_topology_cache();
+          return node_socket_get_tooltip(&snode, ntree, *ntree.all_sockets()[index_in_tree]);
+        },
+        POINTER_FROM_INT(socket->index_in_tree()),
+        nullptr);
+    }
 
     /* Ensure minimum socket height in case layout is empty. */
     buty = min_ii(buty, dy - NODE_DY);
@@ -675,9 +699,9 @@ static void node_draw_mute_line(const bContext &C,
 {
   GPU_blend(GPU_BLEND_ALPHA);
 
-  for (const bNodeLink *link : node.internal_links()) {
-    if (!nodeLinkIsHidden(link)) {
-      node_draw_link_bezier(C, v2d, snode, *link, TH_WIRE_INNER, TH_WIRE_INNER, TH_WIRE, false);
+  for (const bNodeLink &link : node.internal_links()) {
+    if (!nodeLinkIsHidden(&link)) {
+      node_draw_link_bezier(C, v2d, snode, link, TH_WIRE_INNER, TH_WIRE_INNER, TH_WIRE, false);
     }
   }
 
@@ -901,30 +925,21 @@ static void create_inspection_string_for_field_info(const bNodeSocket &socket,
 
 static void create_inspection_string_for_geometry_info(const geo_log::GeometryInfoLog &value_log,
                                                        std::stringstream &ss,
-                                                       const std::pair<bool, int> index)
+                                                       const char *tab_space)
 {
   Span<GeometryComponentType> component_types = value_log.component_types;
   if (component_types.is_empty()) {
     ss << TIP_("Empty Geometry");
-    if (index.first){
-      ss << " " << index.second;
-    }
     return;
   }
 
-  auto to_string = [](int value) {
+  auto to_string = [](int value) -> std::string {
     char str[16];
     BLI_str_format_int_grouped(str, value);
     return std::string(str);
   };
 
-  ss << TIP_("Geometry");
-  if (index.first){
-    ss << " " << index.second << ":\n";
-  }else{
-    ss << ":\n";
-  }
-
+  ss << TIP_("Geometry:\n");
   for (GeometryComponentType type : component_types) {
     switch (type) {
       case GEO_COMPONENT_TYPE_MESH: {
@@ -932,7 +947,8 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
         char line[256];
         BLI_snprintf(line,
                      sizeof(line),
-                     TIP_("\u2022 Mesh: %s vertices, %s edges, %s faces"),
+                     TIP_("%s\u2022 Mesh: %s vertices, %s edges, %s faces"),
+                     tab_space,
                      to_string(mesh_info.verts_num).c_str(),
                      to_string(mesh_info.edges_num).c_str(),
                      to_string(mesh_info.faces_num).c_str());
@@ -945,7 +961,8 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
         char line[256];
         BLI_snprintf(line,
                      sizeof(line),
-                     TIP_("\u2022 Point Cloud: %s points"),
+                     TIP_("%s\u2022 Point Cloud: %s points"),
+                     tab_space,
                      to_string(pointcloud_info.points_num).c_str());
         ss << line;
         break;
@@ -955,7 +972,8 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
         char line[256];
         BLI_snprintf(line,
                      sizeof(line),
-                     TIP_("\u2022 Curve: %s splines"),
+                     TIP_("%s\u2022 Curve: %s splines"),
+                     tab_space,
                      to_string(curve_info.splines_num).c_str());
         ss << line;
         break;
@@ -965,7 +983,8 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
         char line[256];
         BLI_snprintf(line,
                      sizeof(line),
-                     TIP_("\u2022 Instances: %s"),
+                     TIP_("%s\u2022 Instances: %s"),
+                     tab_space,
                      to_string(instances_info.instances_num).c_str());
         ss << line;
         break;
@@ -980,7 +999,8 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
           char line[256];
           BLI_snprintf(line,
                        sizeof(line),
-                       TIP_("\u2022 Edit Curves: %s, %s"),
+                       TIP_("%s\u2022 Edit Curves: %s, %s"),
+                       tab_space,
                        edit_info.has_deformed_positions ? TIP_("positions") : TIP_("no positions"),
                        edit_info.has_deform_matrices ? TIP_("matrices") : TIP_("no matrices"));
           ss << line;
@@ -1056,46 +1076,55 @@ static std::optional<std::string> create_socket_inspection_string(TreeDrawContex
     return std::nullopt;
   }
 
+  tree_draw_ctx.geo_tree_log->ensure_socket_values();
+
   std::stringstream ss;
 
-  bool declaration_after_log = false;
-
-  auto log_value_log = [&](const ValueLog *value_log, const std::pair<bool, int> index){
-    if (const geo_log::GenericValueLog *generic_value_log =
-            dynamic_cast<const geo_log::GenericValueLog *>(value_log)) {
+  auto log_socket_value = [&](const ValueLog *value_log, const char *tab_space) -> bool {
+    if (const geo_log::GenericValueLog *generic_value_log = dynamic_cast<const geo_log::GenericValueLog *>(value_log)) {
       create_inspection_string_for_generic_value(socket, generic_value_log->value, ss);
+      return true;
     }
-    else if (const geo_log::FieldInfoLog *gfield_value_log =
-                 dynamic_cast<const geo_log::FieldInfoLog *>(value_log)) {
+    if (const geo_log::FieldInfoLog *gfield_value_log = dynamic_cast<const geo_log::FieldInfoLog *>(value_log)) {
       create_inspection_string_for_field_info(socket, *gfield_value_log, ss);
+      return true;
     }
-    else if (const geo_log::GeometryInfoLog *geo_value_log =
-                 dynamic_cast<const geo_log::GeometryInfoLog *>(value_log)) {
-      create_inspection_string_for_geometry_info(*geo_value_log, ss, index);
-      declaration_after_log = true;
+    if (const geo_log::GeometryInfoLog *geo_value_log = dynamic_cast<const geo_log::GeometryInfoLog *>(value_log)) {
+      create_inspection_string_for_geometry_info(*geo_value_log, ss, tab_space);
+      return true;
     }
+    return false;
   };
 
-  tree_draw_ctx.geo_tree_log->ensure_socket_values();
+  bool after_log = false;
   if (socket.is_multi_input()){
-    int input_index = 1;
-    geo_log::multi_input_socket_value_logs(*tree_draw_ctx.geo_tree_log, socket, [&](const ValueLog *value_log) {
-      if (value_log) {
-        if (input_index != 1) {
-          ss << "\n";
+    const Vector<ValueLog *> value_logs = multi_input_socket_value_logs(*tree_draw_ctx.geo_tree_log, socket);
+    if (!value_logs.is_empty()){
+      if (value_logs.size() >= 1) {
+        ss << "1. ";
+        const bool is_empty_line = !log_socket_value(value_logs.first(), "  ");
+        if (is_empty_line) {
+          ss << "Empty Input";
         }
-        log_value_log(value_log, std::pair<bool, int>{true, input_index});
+        after_log = true;
       }
-      input_index++;
-    });
+      for (const int index : value_logs.index_range().drop_front(1)){
+        ss << ".\n" << index+1 << ". ";
+        const ValueLog *value_log = value_logs[index];
+        const bool is_empty_line = !log_socket_value(value_log, "  ");
+        if (is_empty_line) {
+          ss << "Empty Input";
+        }
+      }
+    }
   }else{
-    const ValueLog *value_log = tree_draw_ctx.geo_tree_log->find_socket_value_log(socket);
-    log_value_log(value_log, std::pair<bool, int>{false, 0});
+    after_log = true;
+    ValueLog *value_log = tree_draw_ctx.geo_tree_log->find_socket_value_log(socket);
+    log_socket_value(value_log, "");
   }
 
-  if (const nodes::decl::Geometry *socket_decl = dynamic_cast<const nodes::decl::Geometry *>(
-          socket.runtime->declaration)) {
-    create_inspection_string_for_geometry_socket(ss, socket_decl, declaration_after_log);
+  if (const nodes::decl::Geometry *socket_decl = dynamic_cast<const nodes::decl::Geometry *>(socket.runtime->declaration)) {
+    create_inspection_string_for_geometry_socket(ss, socket_decl, after_log);
   }
 
   std::string str = ss.str();

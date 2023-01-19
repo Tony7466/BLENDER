@@ -8,7 +8,6 @@
  * Common field utilities and field definitions for geometry components.
  */
 
-#include "BKE_attribute.h"
 #include "BKE_geometry_set.hh"
 
 #include "FN_field.hh"
@@ -268,7 +267,7 @@ class AnonymousAttributeFieldInput : public GeometryFieldInput {
   AnonymousAttributeFieldInput(AutoAnonymousAttributeID anonymous_id,
                                const CPPType &type,
                                std::string producer_name)
-      : GeometryFieldInput(type, anonymous_id->name()),
+      : GeometryFieldInput(type, anonymous_id->user_name()),
         anonymous_id_(std::move(anonymous_id)),
         producer_name_(producer_name)
   {
@@ -313,6 +312,12 @@ class CurveLengthFieldInput final : public CurvesFieldInput {
 bool try_capture_field_on_geometry(GeometryComponent &component,
                                    const AttributeIDRef &attribute_id,
                                    const eAttrDomain domain,
+                                   const fn::GField &field);
+
+bool try_capture_field_on_geometry(GeometryComponent &component,
+                                   const AttributeIDRef &attribute_id,
+                                   const eAttrDomain domain,
+                                   const fn::Field<bool> &selection,
                                    const fn::GField &field);
 
 /**

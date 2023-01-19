@@ -155,7 +155,6 @@ struct DisplaceUserdata {
   float (*tex_co)[3];
   float (*vertexCos)[3];
   float local_mat[4][4];
-  MVert *mvert;
   const float (*vert_normals)[3];
   float (*vert_clnors)[3];
 };
@@ -265,7 +264,6 @@ static void displaceModifier_do(DisplaceModifierData *dmd,
                                 const int verts_num)
 {
   Object *ob = ctx->object;
-  MVert *mvert;
   const MDeformVert *dvert;
   int direction = dmd->direction;
   int defgrp_index;
@@ -282,7 +280,6 @@ static void displaceModifier_do(DisplaceModifierData *dmd,
     return;
   }
 
-  mvert = BKE_mesh_verts_for_write(mesh);
   MOD_get_vgroup(ob, mesh, dmd->defgrp_name, &dvert, &defgrp_index);
 
   if (defgrp_index >= 0 && dvert == nullptr) {
@@ -310,7 +307,8 @@ static void displaceModifier_do(DisplaceModifierData *dmd,
         BKE_mesh_calc_normals_split(mesh);
       }
 
-      float(*clnors)[3] = static_cast<float(*)[3]>(CustomData_get_layer(ldata, CD_NORMAL));
+      float(*clnors)[3] = static_cast<float(*)[3]>(
+          CustomData_get_layer_for_write(ldata, CD_NORMAL, mesh->totloop));
       vert_clnors = static_cast<float(*)[3]>(
           MEM_malloc_arrayN(verts_num, sizeof(*vert_clnors), __func__));
       BKE_mesh_normals_loop_to_vertex(
@@ -337,7 +335,6 @@ static void displaceModifier_do(DisplaceModifierData *dmd,
   data.tex_co = tex_co;
   data.vertexCos = vertexCos;
   copy_m4_m4(data.local_mat, local_mat);
-  data.mvert = mvert;
   if (direction == MOD_DISP_DIR_NOR) {
     data.vert_normals = BKE_mesh_vertex_normals_ensure(mesh);
   }
@@ -470,34 +467,34 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_Displace = {
-    /* name */ N_("Displace"),
-    /* structName */ "DisplaceModifierData",
-    /* structSize */ sizeof(DisplaceModifierData),
-    /* srna */ &RNA_DisplaceModifier,
-    /* type */ eModifierTypeType_OnlyDeform,
-    /* flags */ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsEditmode,
-    /* icon */ ICON_MOD_DISPLACE,
+    /*name*/ N_("Displace"),
+    /*structName*/ "DisplaceModifierData",
+    /*structSize*/ sizeof(DisplaceModifierData),
+    /*srna*/ &RNA_DisplaceModifier,
+    /*type*/ eModifierTypeType_OnlyDeform,
+    /*flags*/ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsEditmode,
+    /*icon*/ ICON_MOD_DISPLACE,
 
-    /* copyData */ BKE_modifier_copydata_generic,
+    /*copyData*/ BKE_modifier_copydata_generic,
 
-    /* deformVerts */ deformVerts,
-    /* deformMatrices */ nullptr,
-    /* deformVertsEM */ deformVertsEM,
-    /* deformMatricesEM */ nullptr,
-    /* modifyMesh */ nullptr,
-    /* modifyGeometrySet */ nullptr,
+    /*deformVerts*/ deformVerts,
+    /*deformMatrices*/ nullptr,
+    /*deformVertsEM*/ deformVertsEM,
+    /*deformMatricesEM*/ nullptr,
+    /*modifyMesh*/ nullptr,
+    /*modifyGeometrySet*/ nullptr,
 
-    /* initData */ initData,
-    /* requiredDataMask */ requiredDataMask,
-    /* freeData */ nullptr,
-    /* isDisabled */ isDisabled,
-    /* updateDepsgraph */ updateDepsgraph,
-    /* dependsOnTime */ dependsOnTime,
-    /* dependsOnNormals */ dependsOnNormals,
-    /* foreachIDLink */ foreachIDLink,
-    /* foreachTexLink */ foreachTexLink,
-    /* freeRuntimeData */ nullptr,
-    /* panelRegister */ panelRegister,
-    /* blendWrite */ nullptr,
-    /* blendRead */ nullptr,
+    /*initData*/ initData,
+    /*requiredDataMask*/ requiredDataMask,
+    /*freeData*/ nullptr,
+    /*isDisabled*/ isDisabled,
+    /*updateDepsgraph*/ updateDepsgraph,
+    /*dependsOnTime*/ dependsOnTime,
+    /*dependsOnNormals*/ dependsOnNormals,
+    /*foreachIDLink*/ foreachIDLink,
+    /*foreachTexLink*/ foreachTexLink,
+    /*freeRuntimeData*/ nullptr,
+    /*panelRegister*/ panelRegister,
+    /*blendWrite*/ nullptr,
+    /*blendRead*/ nullptr,
 };

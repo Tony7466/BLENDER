@@ -5,10 +5,10 @@
 /** \file
  * \ingroup fn
  *
- * This file provides an MFParams and MFParamsBuilder structure.
+ * This file provides an Params and ParamsBuilder structure.
  *
- * `MFParamsBuilder` is used by a function caller to be prepare all parameters that are passed into
- * the function. `MFParams` is then used inside the called function to access the parameters.
+ * `ParamsBuilder` is used by a function caller to be prepare all parameters that are passed into
+ * the function. `Params` is then used inside the called function to access the parameters.
  */
 
 #include <mutex>
@@ -21,39 +21,36 @@
 
 #include "FN_multi_function_signature.hh"
 
-namespace blender::fn {
+namespace blender::fn::multi_function {
 
-class MFParamsBuilder {
+class ParamsBuilder {
  private:
-  ResourceScope scope_;
-  const MFSignature *signature_;
+  std::unique_ptr<ResourceScope> scope_;
+  const Signature *signature_;
   IndexMask mask_;
   int64_t min_array_size_;
   Vector<std::variant<GVArray, GMutableSpan, const GVVectorArray *, GVectorArray *>>
       actual_params_;
 
-  std::mutex mutex_;
-  Vector<std::pair<int, GMutableSpan>> dummy_output_spans_;
+  friend class Params;
 
-  friend class MFParams;
-
-  MFParamsBuilder(const MFSignature &signature, const IndexMask mask)
+  ParamsBuilder(const Signature &signature, const IndexMask mask)
       : signature_(&signature), mask_(mask), min_array_size_(mask.min_array_size())
   {
-    actual_params_.reserve(signature.param_types.size());
+    actual_params_.reserve(signature.params.size());
   }
 
  public:
-  MFParamsBuilder(const class MultiFunction &fn, int64_t size);
+  ParamsBuilder(const class MultiFunction &fn, int64_t size);
   /**
    * The indices referenced by the #mask has to live longer than the params builder. This is
    * because the it might have to destruct elements for all masked indices in the end.
    */
-  MFParamsBuilder(const class MultiFunction &fn, const IndexMask *mask);
+  ParamsBuilder(const class MultiFunction &fn, const IndexMask *mask);
 
   template<typename T> void add_readonly_single_input_value(T value, StringRef expected_name = "")
   {
-    this->assert_current_param_type(MFParamType::ForSingleInput(CPPType::get<T>()), expected_name);
+    this->assert_current_param_type(ParamType::ForSingleInput(CPPType::get<T>()), expected_name);
     actual_params_.append_unchecked_as(std::in_place_type<GVArray>,
                                        varray_tag::single{},
                                        CPPType::get<T>(),
@@ -62,7 +59,7 @@ class MFParamsBuilder {
   }
   template<typename T> void add_readonly_single_input(const T *value, StringRef expected_name = "")
   {
-    this->assert_current_param_type(MFParamType::ForSingleInput(CPPType::get<T>()), expected_name);
+    this->assert_current_param_type(ParamType::ForSingleInput(CPPType::get<T>()), expected_name);
     actual_params_.append_unchecked_as(std::in_place_type<GVArray>,
                                        varray_tag::single_ref{},
                                        CPPType::get<T>(),
@@ -71,13 +68,13 @@ class MFParamsBuilder {
   }
   void add_readonly_single_input(const GSpan span, StringRef expected_name = "")
   {
-    this->assert_current_param_type(MFParamType::ForSingleInput(span.type()), expected_name);
+    this->assert_current_param_type(ParamType::ForSingleInput(span.type()), expected_name);
     BLI_assert(span.size() >= min_array_size_);
     actual_params_.append_unchecked_as(std::in_place_type<GVArray>, varray_tag::span{}, span);
   }
   void add_readonly_single_input(GPointer value, StringRef expected_name = "")
   {
-    this->assert_current_param_type(MFParamType::ForSingleInput(*value.type()), expected_name);
+    this->assert_current_param_type(ParamType::ForSingleInput(*value.type()), expected_name);
     actual_params_.append_unchecked_as(std::in_place_type<GVArray>,
                                        varray_tag::single_ref{},
                                        *value.type(),
@@ -86,25 +83,27 @@ class MFParamsBuilder {
   }
   void add_readonly_single_input(GVArray varray, StringRef expected_name = "")
   {
-    this->assert_current_param_type(MFParamType::ForSingleInput(varray.type()), expected_name);
+    this->assert_current_param_type(ParamType::ForSingleInput(varray.type()), expected_name);
     BLI_assert(varray.size() >= min_array_size_);
     actual_params_.append_unchecked_as(std::in_place_type<GVArray>, std::move(varray));
   }
 
   void add_readonly_vector_input(const GVectorArray &vector_array, StringRef expected_name = "")
   {
-    this->add_readonly_vector_input(scope_.construct<GVVectorArray_For_GVectorArray>(vector_array),
-                                    expected_name);
+    this->add_readonly_vector_input(
+        this->resource_scope().construct<GVVectorArray_For_GVectorArray>(vector_array),
+        expected_name);
   }
   void add_readonly_vector_input(const GSpan single_vector, StringRef expected_name = "")
   {
     this->add_readonly_vector_input(
-        scope_.construct<GVVectorArray_For_SingleGSpan>(single_vector, min_array_size_),
+        this->resource_scope().construct<GVVectorArray_For_SingleGSpan>(single_vector,
+                                                                        min_array_size_),
         expected_name);
   }
   void add_readonly_vector_input(const GVVectorArray &ref, StringRef expected_name = "")
   {
-    this->assert_current_param_type(MFParamType::ForVectorInput(ref.type()), expected_name);
+    this->assert_current_param_type(ParamType::ForVectorInput(ref.type()), expected_name);
     BLI_assert(ref.size() >= min_array_size_);
     actual_params_.append_unchecked_as(std::in_place_type<const GVVectorArray *>, &ref);
   }
@@ -116,7 +115,7 @@ class MFParamsBuilder {
   }
   void add_uninitialized_single_output(GMutableSpan ref, StringRef expected_name = "")
   {
-    this->assert_current_param_type(MFParamType::ForSingleOutput(ref.type()), expected_name);
+    this->assert_current_param_type(ParamType::ForSingleOutput(ref.type()), expected_name);
     BLI_assert(ref.size() >= min_array_size_);
     actual_params_.append_unchecked_as(std::in_place_type<GMutableSpan>, ref);
   }
@@ -124,17 +123,23 @@ class MFParamsBuilder {
   {
     this->assert_current_param_name(expected_name);
     const int param_index = this->current_param_index();
-    const MFParamType &param_type = signature_->param_types[param_index];
-    BLI_assert(param_type.category() == MFParamCategory::SingleOutput);
+    const ParamType &param_type = signature_->params[param_index].type;
+    BLI_assert(param_type.category() == ParamCategory::SingleOutput);
     const CPPType &type = param_type.data_type().single_type();
-    /* An empty span indicates that this is ignored. */
-    const GMutableSpan dummy_span{type};
-    actual_params_.append_unchecked_as(std::in_place_type<GMutableSpan>, dummy_span);
+
+    if (bool(signature_->params[param_index].flag & ParamFlag::SupportsUnusedOutput)) {
+      /* An empty span indicates that this is ignored. */
+      const GMutableSpan dummy_span{type};
+      actual_params_.append_unchecked_as(std::in_place_type<GMutableSpan>, dummy_span);
+    }
+    else {
+      this->add_unused_output_for_unsupporting_function(type);
+    }
   }
 
   void add_vector_output(GVectorArray &vector_array, StringRef expected_name = "")
   {
-    this->assert_current_param_type(MFParamType::ForVectorOutput(vector_array.type()),
+    this->assert_current_param_type(ParamType::ForVectorOutput(vector_array.type()),
                                     expected_name);
     BLI_assert(vector_array.size() >= min_array_size_);
     actual_params_.append_unchecked_as(std::in_place_type<GVectorArray *>, &vector_array);
@@ -142,14 +147,14 @@ class MFParamsBuilder {
 
   void add_single_mutable(GMutableSpan ref, StringRef expected_name = "")
   {
-    this->assert_current_param_type(MFParamType::ForMutableSingle(ref.type()), expected_name);
+    this->assert_current_param_type(ParamType::ForMutableSingle(ref.type()), expected_name);
     BLI_assert(ref.size() >= min_array_size_);
     actual_params_.append_unchecked_as(std::in_place_type<GMutableSpan>, ref);
   }
 
   void add_vector_mutable(GVectorArray &vector_array, StringRef expected_name = "")
   {
-    this->assert_current_param_type(MFParamType::ForMutableVector(vector_array.type()),
+    this->assert_current_param_type(ParamType::ForMutableVector(vector_array.type()),
                                     expected_name);
     BLI_assert(vector_array.size() >= min_array_size_);
     actual_params_.append_unchecked_as(std::in_place_type<GVectorArray *>, &vector_array);
@@ -157,38 +162,33 @@ class MFParamsBuilder {
 
   GMutableSpan computed_array(int param_index)
   {
-    BLI_assert(ELEM(signature_->param_types[param_index].category(),
-                    MFParamCategory::SingleOutput,
-                    MFParamCategory::SingleMutable));
-    return *std::get_if<GMutableSpan>(&actual_params_[param_index]);
+    BLI_assert(ELEM(signature_->params[param_index].type.category(),
+                    ParamCategory::SingleOutput,
+                    ParamCategory::SingleMutable));
+    return std::get<GMutableSpan>(actual_params_[param_index]);
   }
 
   GVectorArray &computed_vector_array(int param_index)
   {
-    BLI_assert(ELEM(signature_->param_types[param_index].category(),
-                    MFParamCategory::VectorOutput,
-                    MFParamCategory::VectorMutable));
-    return **std::get_if<GVectorArray *>(&actual_params_[param_index]);
-  }
-
-  ResourceScope &resource_scope()
-  {
-    return scope_;
+    BLI_assert(ELEM(signature_->params[param_index].type.category(),
+                    ParamCategory::VectorOutput,
+                    ParamCategory::VectorMutable));
+    return *std::get<GVectorArray *>(actual_params_[param_index]);
   }
 
  private:
-  void assert_current_param_type(MFParamType param_type, StringRef expected_name = "")
+  void assert_current_param_type(ParamType param_type, StringRef expected_name = "")
   {
     UNUSED_VARS_NDEBUG(param_type, expected_name);
 #ifdef DEBUG
     int param_index = this->current_param_index();
 
     if (expected_name != "") {
-      StringRef actual_name = signature_->param_names[param_index];
+      StringRef actual_name = signature_->params[param_index].name;
       BLI_assert(actual_name == expected_name);
     }
 
-    MFParamType expected_type = signature_->param_types[param_index];
+    ParamType expected_type = signature_->params[param_index].type;
     BLI_assert(expected_type == param_type);
 #endif
   }
@@ -201,7 +201,7 @@ class MFParamsBuilder {
       return;
     }
     const int param_index = this->current_param_index();
-    StringRef actual_name = signature_->param_names[param_index];
+    StringRef actual_name = signature_->params[param_index].name;
     BLI_assert(actual_name == expected_name);
 #endif
   }
@@ -210,14 +210,24 @@ class MFParamsBuilder {
   {
     return actual_params_.size();
   }
+
+  ResourceScope &resource_scope()
+  {
+    if (!scope_) {
+      scope_ = std::make_unique<ResourceScope>();
+    }
+    return *scope_;
+  }
+
+  void add_unused_output_for_unsupporting_function(const CPPType &type);
 };
 
-class MFParams {
+class Params {
  private:
-  MFParamsBuilder *builder_;
+  ParamsBuilder *builder_;
 
  public:
-  MFParams(MFParamsBuilder &builder) : builder_(&builder)
+  Params(ParamsBuilder &builder) : builder_(&builder)
   {
   }
 
@@ -228,8 +238,8 @@ class MFParams {
   }
   const GVArray &readonly_single_input(int param_index, StringRef name = "")
   {
-    this->assert_correct_param(param_index, name, MFParamCategory::SingleInput);
-    return *std::get_if<GVArray>(&builder_->actual_params_[param_index]);
+    this->assert_correct_param(param_index, name, ParamCategory::SingleInput);
+    return std::get<GVArray>(builder_->actual_params_[param_index]);
   }
 
   /**
@@ -240,8 +250,8 @@ class MFParams {
    */
   bool single_output_is_required(int param_index, StringRef name = "")
   {
-    this->assert_correct_param(param_index, name, MFParamCategory::SingleOutput);
-    return !std::get_if<GMutableSpan>(&builder_->actual_params_[param_index])->is_empty();
+    this->assert_correct_param(param_index, name, ParamCategory::SingleOutput);
+    return !std::get<GMutableSpan>(builder_->actual_params_[param_index]).is_empty();
   }
 
   template<typename T>
@@ -251,14 +261,12 @@ class MFParams {
   }
   GMutableSpan uninitialized_single_output(int param_index, StringRef name = "")
   {
-    this->assert_correct_param(param_index, name, MFParamCategory::SingleOutput);
-    GMutableSpan span = *std::get_if<GMutableSpan>(&builder_->actual_params_[param_index]);
-    if (!span.is_empty()) {
-      return span;
-    }
-    /* The output is ignored by the caller, but the multi-function does not handle this case. So
-     * create a temporary buffer that the multi-function can write to. */
-    return this->ensure_dummy_single_output(param_index);
+    this->assert_correct_param(param_index, name, ParamCategory::SingleOutput);
+    BLI_assert(
+        !bool(builder_->signature_->params[param_index].flag & ParamFlag::SupportsUnusedOutput));
+    GMutableSpan span = std::get<GMutableSpan>(builder_->actual_params_[param_index]);
+    BLI_assert(span.size() >= builder_->min_array_size_);
+    return span;
   }
 
   /**
@@ -272,20 +280,22 @@ class MFParams {
   }
   GMutableSpan uninitialized_single_output_if_required(int param_index, StringRef name = "")
   {
-    this->assert_correct_param(param_index, name, MFParamCategory::SingleOutput);
-    return *std::get_if<GMutableSpan>(&builder_->actual_params_[param_index]);
+    this->assert_correct_param(param_index, name, ParamCategory::SingleOutput);
+    BLI_assert(
+        bool(builder_->signature_->params[param_index].flag & ParamFlag::SupportsUnusedOutput));
+    return std::get<GMutableSpan>(builder_->actual_params_[param_index]);
   }
 
   template<typename T>
   const VVectorArray<T> &readonly_vector_input(int param_index, StringRef name = "")
   {
     const GVVectorArray &vector_array = this->readonly_vector_input(param_index, name);
-    return builder_->scope_.construct<VVectorArray_For_GVVectorArray<T>>(vector_array);
+    return builder_->resource_scope().construct<VVectorArray_For_GVVectorArray<T>>(vector_array);
   }
   const GVVectorArray &readonly_vector_input(int param_index, StringRef name = "")
   {
-    this->assert_correct_param(param_index, name, MFParamCategory::VectorInput);
-    return **std::get_if<const GVVectorArray *>(&builder_->actual_params_[param_index]);
+    this->assert_correct_param(param_index, name, ParamCategory::VectorInput);
+    return *std::get<const GVVectorArray *>(builder_->actual_params_[param_index]);
   }
 
   template<typename T>
@@ -295,8 +305,8 @@ class MFParams {
   }
   GVectorArray &vector_output(int param_index, StringRef name = "")
   {
-    this->assert_correct_param(param_index, name, MFParamCategory::VectorOutput);
-    return **std::get_if<GVectorArray *>(&builder_->actual_params_[param_index]);
+    this->assert_correct_param(param_index, name, ParamCategory::VectorOutput);
+    return *std::get<GVectorArray *>(builder_->actual_params_[param_index]);
   }
 
   template<typename T> MutableSpan<T> single_mutable(int param_index, StringRef name = "")
@@ -305,8 +315,8 @@ class MFParams {
   }
   GMutableSpan single_mutable(int param_index, StringRef name = "")
   {
-    this->assert_correct_param(param_index, name, MFParamCategory::SingleMutable);
-    return *std::get_if<GMutableSpan>(&builder_->actual_params_[param_index]);
+    this->assert_correct_param(param_index, name, ParamCategory::SingleMutable);
+    return std::get<GMutableSpan>(builder_->actual_params_[param_index]);
   }
 
   template<typename T>
@@ -316,34 +326,32 @@ class MFParams {
   }
   GVectorArray &vector_mutable(int param_index, StringRef name = "")
   {
-    this->assert_correct_param(param_index, name, MFParamCategory::VectorMutable);
-    return **std::get_if<GVectorArray *>(&builder_->actual_params_[param_index]);
+    this->assert_correct_param(param_index, name, ParamCategory::VectorMutable);
+    return *std::get<GVectorArray *>(builder_->actual_params_[param_index]);
   }
 
  private:
-  void assert_correct_param(int param_index, StringRef name, MFParamType param_type)
+  void assert_correct_param(int param_index, StringRef name, ParamType param_type)
   {
     UNUSED_VARS_NDEBUG(param_index, name, param_type);
 #ifdef DEBUG
-    BLI_assert(builder_->signature_->param_types[param_index] == param_type);
+    BLI_assert(builder_->signature_->params[param_index].type == param_type);
     if (name.size() > 0) {
-      BLI_assert(builder_->signature_->param_names[param_index] == name);
+      BLI_assert(builder_->signature_->params[param_index].name == name);
     }
 #endif
   }
 
-  void assert_correct_param(int param_index, StringRef name, MFParamCategory category)
+  void assert_correct_param(int param_index, StringRef name, ParamCategory category)
   {
     UNUSED_VARS_NDEBUG(param_index, name, category);
 #ifdef DEBUG
-    BLI_assert(builder_->signature_->param_types[param_index].category() == category);
+    BLI_assert(builder_->signature_->params[param_index].type.category() == category);
     if (name.size() > 0) {
-      BLI_assert(builder_->signature_->param_names[param_index] == name);
+      BLI_assert(builder_->signature_->params[param_index].name == name);
     }
 #endif
   }
-
-  GMutableSpan ensure_dummy_single_output(int param_index);
 };
 
-}  // namespace blender::fn
+}  // namespace blender::fn::multi_function

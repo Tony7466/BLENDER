@@ -327,10 +327,19 @@ void MetalDevice::make_source(MetalPipelineType pso_type, const uint kernel_feat
 #  define KERNEL_STRUCT_BEGIN(name, parent) \
     string_replace_same_length(source, "kernel_data." #parent ".", "kernel_data_" #parent "_");
 
+    bool next_member_is_specialized = true;
+
+#  define KERNEL_STRUCT_MEMBER_DONT_SPECIALIZE next_member_is_specialized = false;
+
     /* Add constants to md5 so that 'get_best_pipeline' is able to return a suitable match. */
 #  define KERNEL_STRUCT_MEMBER(parent, _type, name) \
-    baked_constants += string(#parent "." #name "=") + \
-                       to_string(_type(launch_params.data.parent.name)) + "\n";
+    if (next_member_is_specialized) { \
+      baked_constants += string(#parent "." #name "=") + \
+                        to_string(_type(launch_params.data.parent.name)) + "\n"; \
+    } else { \
+      string_replace(source, "kernel_data_" #parent "_" #name, "kernel_data." #parent ".__unused_" #name); \
+      next_member_is_specialized = true; \
+    }
 
 #  include "kernel/data_template.h"
 
@@ -377,7 +386,8 @@ bool MetalDevice::load_kernels(const uint _kernel_features)
 
   /* Only request generic kernels if they aren't cached in memory. */
   if (make_source_and_check_if_compile_needed(PSO_GENERIC)) {
-    /* If needed, load them asynchronously in order to responsively message progress to the user. */
+    /* If needed, load them asynchronously in order to responsively message progress to the user.
+     */
     int this_device_id = this->device_id;
     auto compile_kernels_fn = ^() {
       compile_and_load(this_device_id, PSO_GENERIC);

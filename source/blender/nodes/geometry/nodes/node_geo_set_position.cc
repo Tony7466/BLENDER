@@ -29,9 +29,16 @@ static void set_computed_position_and_offset(GeometryComponent &component,
                                              const IndexMask selection)
 {
   MutableAttributeAccessor attributes = *component.attributes_for_write();
-  const VArray<float3> positions_read_only = attributes.lookup<float3>("position");
 
-  if (in_positions.is_same(positions_read_only)) {
+  /* Optimize the case when `in_positions` references the original positions array. */
+  const VArray<float3> positions_read_only = attributes.lookup<float3>("position");
+  bool positions_are_original = false;
+  if (positions_read_only.is_span() && in_positions.is_span()) {
+    positions_are_original = positions_read_only.get_internal_span().data() ==
+                             in_positions.get_internal_span().data();
+  }
+
+  if (positions_are_original) {
     if (const std::optional<float3> offset = in_offsets.get_if_single()) {
       if (math::is_zero(*offset)) {
         return;
@@ -41,41 +48,6 @@ static void set_computed_position_and_offset(GeometryComponent &component,
   const int grain_size = 10000;
 
   switch (component.type()) {
-    case GEO_COMPONENT_TYPE_MESH: {
-      Mesh *mesh = static_cast<MeshComponent &>(component).get_for_write();
-      MutableSpan<MVert> verts = mesh->verts_for_write();
-      if (in_positions.is_same(positions_read_only)) {
-        devirtualize_varray(in_offsets, [&](const auto in_offsets) {
-          threading::parallel_for(
-              selection.index_range(), grain_size, [&](const IndexRange range) {
-                for (const int i : selection.slice(range)) {
-                  const float3 offset = in_offsets[i];
-                  add_v3_v3(verts[i].co, offset);
-                }
-              });
-        });
-        if (in_offsets.is_single() && selection.size() == verts.size()) {
-          BKE_mesh_tag_coords_changed_uniformly(mesh);
-        }
-        else {
-          BKE_mesh_tag_coords_changed(mesh);
-        }
-      }
-      else {
-        devirtualize_varray2(
-            in_positions, in_offsets, [&](const auto in_positions, const auto in_offsets) {
-              threading::parallel_for(
-                  selection.index_range(), grain_size, [&](const IndexRange range) {
-                    for (const int i : selection.slice(range)) {
-                      const float3 new_position = in_positions[i] + in_offsets[i];
-                      copy_v3_v3(verts[i].co, new_position);
-                    }
-                  });
-            });
-        BKE_mesh_tag_coords_changed(mesh);
-      }
-      break;
-    }
     case GEO_COMPONENT_TYPE_CURVE: {
       if (attributes.contains("handle_right") && attributes.contains("handle_left")) {
         CurveComponent &curve_component = static_cast<CurveComponent &>(component);
@@ -116,7 +88,7 @@ static void set_computed_position_and_offset(GeometryComponent &component,
     default: {
       AttributeWriter<float3> positions = attributes.lookup_for_write<float3>("position");
       MutableVArraySpan<float3> out_positions_span = positions.varray;
-      if (in_positions.is_same(positions_read_only)) {
+      if (positions_are_original) {
         devirtualize_varray(in_offsets, [&](const auto in_offsets) {
           threading::parallel_for(
               selection.index_range(), grain_size, [&](const IndexRange range) {

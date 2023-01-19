@@ -254,7 +254,7 @@ template<typename T, bool Normalized = false>
 
 /**
  * Extract the absolute 3d scale from a transform matrix.
- * \tparam AllowNegativeScale if true, will compute determinant to know if matrix is negative.
+ * \tparam AllowNegativeScale: if true, will compute determinant to know if matrix is negative.
  * This is a costly operation so it is disabled by default.
  */
 template<bool AllowNegativeScale = false, typename T, int NumCol, int NumRow>
@@ -262,7 +262,7 @@ template<bool AllowNegativeScale = false, typename T, int NumCol, int NumRow>
 
 /**
  * Decompose a matrix into location, rotation, and scale components.
- * \tparam AllowNegativeScale if true, will compute determinant to know if matrix is negative.
+ * \tparam AllowNegativeScale: if true, will compute determinant to know if matrix is negative.
  * Rotation and scale values will be flipped if it is negative.
  * This is a costly operation so it is disabled by default.
  */
@@ -1136,6 +1136,7 @@ MatBase<T, 4, 4> perspective(T left, T right, T bottom, T top, T near_clip, T fa
     mat[2][2] = -(far_clip + near_clip) / z_delta;
     mat[2][3] = -1.0f;
     mat[3][2] = (-2.0f * near_clip * far_clip) / z_delta;
+    mat[3][3] = 0.0f;
   }
   return mat;
 }

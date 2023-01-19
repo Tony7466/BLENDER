@@ -41,8 +41,6 @@
 #include "DNA_node_types.h"
 
 struct SpaceNode;
-struct SpaceSpreadsheet;
-struct NodesModifierData;
 
 namespace blender::nodes::geo_eval_log {
 
@@ -291,12 +289,15 @@ class GeoTreeLog {
   ValueLog *find_socket_value_log(const bNodeSocket &query_socket);
 };
 
-inline void multi_input_socket_value_logs(GeoTreeLog &tree_log, const bNodeSocket &query_socket, const FunctionRef<void(ValueLog *value_log)> callback)
+inline Vector<ValueLog *> multi_input_socket_value_logs(GeoTreeLog &tree_log, const bNodeSocket &query_socket)
 {
   BLI_assert(query_socket.is_multi_input());
+  Vector<ValueLog *> logs;
+  logs.reserve(query_socket.directly_linked_sockets().size());
   for (const bNodeSocket *socket : query_socket.directly_linked_sockets()){
-    callback(tree_log.find_socket_value_log(*socket));
+    logs.append(tree_log.find_socket_value_log(*socket));
   }
+  return logs;
 }
 
 /**
