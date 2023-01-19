@@ -3804,22 +3804,26 @@ static void get_gpencil_bounds(bGPDlayer *gpl, const float range[2], rctf *r_bou
   r_bounds->ymax = 1;
 }
 
-static void get_channel_bounds(bAnimContext *ac,
+static bool get_channel_bounds(bAnimContext *ac,
                                bAnimListElem *ale,
                                const float range[2],
                                const bool include_handles,
                                rctf *r_bounds)
 {
+  bool found_bounds = false;
   switch (ale->datatype) {
     case ALE_GPFRAME:
       bGPDlayer *gpl = (bGPDlayer *)ale->data;
       get_gpencil_bounds(gpl, range, r_bounds);
+      found_bounds = true;
       break;
     case ALE_FCURVE:
       FCurve *fcu = (FCurve *)ale->key_data;
       get_normalized_fcurve_bounds(fcu, ac, ale, include_handles, range, r_bounds);
+      found_bounds = true;
       break;
   }
+  return found_bounds;
 }
 
 static int graphkeys_channel_view_pick_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -3830,26 +3834,13 @@ static int graphkeys_channel_view_pick_invoke(bContext *C, wmOperator *op, const
     return OPERATOR_CANCELLED;
   }
 
-  float x, y;
-  int channel_index;
-  ARegion *region = ac.region;
-  View2D *v2d = &region->v2d;
-
-  UI_view2d_region_to_view(v2d, event->mval[0], event->mval[1], &x, &y);
-  UI_view2d_listview_view_to_cell(ACHANNEL_NAMEWIDTH,
-                                  ACHANNEL_STEP(&ac),
-                                  0,
-                                  ACHANNEL_FIRST_TOP(&ac),
-                                  x,
-                                  y,
-                                  NULL,
-                                  &channel_index);
-
   ListBase anim_data = {NULL, NULL};
-  const int filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_NODUPLIS);
+  const int filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_NODUPLIS |
+                      ANIMFILTER_LIST_CHANNELS);
   ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
 
   bAnimListElem *ale;
+  const int channel_index = animchannels_channel_get(&ac, event->mval);
   ale = BLI_findlink(&anim_data, channel_index);
   if (ale == NULL) {
     ANIM_animdata_freelist(&anim_data);
@@ -3862,7 +3853,12 @@ static int graphkeys_channel_view_pick_invoke(bContext *C, wmOperator *op, const
 
   rctf bounds;
   const bool include_handles = RNA_boolean_get(op->ptr, "include_handles");
-  get_channel_bounds(&ac, ale, range, include_handles, &bounds);
+  const bool found_bounds = get_channel_bounds(&ac, ale, range, include_handles, &bounds);
+
+  if (!found_bounds) {
+    ANIM_animdata_freelist(&anim_data);
+    return OPERATOR_CANCELLED;
+  }
 
   add_region_padding(C, &ac, &bounds);
 
