@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
- #include "node_voronoi.h"
 #include "node_fractal_voronoi.h"
 #include "stdcycles.h"
 #include "vector2.h"
@@ -45,9 +44,9 @@ shader node_voronoi_texture(
 
   if (dimensions == "1D") {
     if (feature == "f1") {
-    float max_amplitude = 1.0;
+      float max_amplitude = 1.0;
 
-          fractal_voronoi_f1(WIn,
+      fractal_voronoi_f1(w,
                          detail,
                          roughness,
                          Lacunarity,
@@ -60,14 +59,14 @@ shader node_voronoi_texture(
                          WOut);
 
       if (normalize != 0.0) {
-        /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness)  */
+        /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness) */
         Distance /= (0.5 + 0.5 * randomness) * max_amplitude;
       }
     }
     else if (feature == "smooth_f1") {
-    float max_amplitude = 1.0;
+      float max_amplitude = 1.0;
 
-                fractal_voronoi_smooth_f1(WIn,
+      fractal_voronoi_smooth_f1(w,
                                 detail,
                                 roughness,
                                 Lacunarity,
@@ -81,14 +80,14 @@ shader node_voronoi_texture(
                                 WOut);
 
       if (normalize != 0.0) {
-        /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness)  */
+        /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness) */
         Distance /= (0.5 + 0.5 * randomness) * max_amplitude;
       }
     }
     else if (feature == "f2") {
-    float max_amplitude = 1.0;
+      float max_amplitude = 1.0;
 
-                fractal_voronoi_f2(WIn,
+      fractal_voronoi_f2(w,
                          detail,
                          roughness,
                          Lacunarity,
@@ -110,7 +109,7 @@ shader node_voronoi_texture(
       }
     }
     else if (feature == "distance_to_edge") {
-        fractal_voronoi_distance_to_edge(WIn, detail, Lacunarity, randomness, normalize, Distance);
+      fractal_voronoi_distance_to_edge(w, detail, Lacunarity, randomness, normalize, Distance);
     }
     else if (feature == "n_sphere_radius") {
       voronoi_n_sphere_radius(w, randomness, Radius);
@@ -124,7 +123,7 @@ shader node_voronoi_texture(
     vector2 coord2D = vector2(coord[0], coord[1]);
     vector2 outPosition2D;
     if (feature == "f1") {
-          float max_distance = voronoi_distance(
+      float max_distance = voronoi_distance(
           vector2(1.0, 1.0), vector2(0.0, 0.0), metric, Exponent);
       float max_amplitude = max_distance;
 
@@ -142,16 +141,16 @@ shader node_voronoi_texture(
                          outPosition2D);
 
       if (normalize != 0.0) {
-        /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness)  */
+        /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness) */
         Distance /= (0.5 + 0.5 * randomness) * max_amplitude;
       }
     }
     else if (feature == "smooth_f1") {
-              float max_distance = voronoi_distance(
+      float max_distance = voronoi_distance(
           vector2(1.0, 1.0), vector2(0.0, 0.0), metric, Exponent);
       float max_amplitude = max_distance;
 
-            fractal_voronoi_smooth_f1(coord2D,
+      fractal_voronoi_smooth_f1(coord2D,
                                 detail,
                                 roughness,
                                 Lacunarity,
@@ -166,16 +165,16 @@ shader node_voronoi_texture(
                                 outPosition2D);
 
       if (normalize != 0.0) {
-        /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness)  */
+        /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness) */
         Distance /= (0.5 + 0.5 * randomness) * max_amplitude;
       }
     }
     else if (feature == "f2") {
-              float max_distance = voronoi_distance(
+      float max_distance = voronoi_distance(
           vector2(1.0, 1.0), vector2(0.0, 0.0), metric, Exponent);
       float max_amplitude = max_distance;
 
-            fractal_voronoi_f2(coord2D,
+      fractal_voronoi_f2(coord2D,
                          detail,
                          roughness,
                          Lacunarity,
@@ -198,7 +197,8 @@ shader node_voronoi_texture(
       }
     }
     else if (feature == "distance_to_edge") {
-    fractal_voronoi_distance_to_edge(coord2D, detail, Lacunarity, randomness, normalize, Distance);
+      fractal_voronoi_distance_to_edge(
+          coord2D, detail, Lacunarity, randomness, normalize, Distance);
     }
     else if (feature == "n_sphere_radius") {
       voronoi_n_sphere_radius(coord2D, randomness, Radius);
@@ -229,7 +229,7 @@ shader node_voronoi_texture(
                          Position);
 
       if (normalize != 0.0) {
-        /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness)  */
+        /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness) */
         Distance /= (0.5 + 0.5 * randomness) * max_amplitude;
       }
     }
@@ -253,7 +253,7 @@ shader node_voronoi_texture(
                                 Position);
 
       if (normalize != 0.0) {
-        /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness)  */
+        /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness) */
         Distance /= (0.5 + 0.5 * randomness) * max_amplitude;
       }
     }
@@ -299,11 +299,11 @@ shader node_voronoi_texture(
     vector4 coord4D = vector4(coord[0], coord[1], coord[2], w);
     vector4 outPosition4D;
     if (feature == "f1") {
-          float max_distance = voronoi_distance(
+      float max_distance = voronoi_distance(
           vector4(1.0, 1.0, 1.0, 1.0), vector4(0.0, 0.0, 0.0, 0.0), metric, Exponent);
       float max_amplitude = max_distance;
 
-            fractal_voronoi_f1(coord4D,
+      fractal_voronoi_f1(coord4D,
                          detail,
                          roughness,
                          Lacunarity,
@@ -317,16 +317,16 @@ shader node_voronoi_texture(
                          outPosition4D);
 
       if (normalize != 0.0) {
-        /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness)  */
+        /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness) */
         Distance /= (0.5 + 0.5 * randomness) * max_amplitude;
       }
     }
     else if (feature == "smooth_f1") {
-              float max_distance = voronoi_distance(
+      float max_distance = voronoi_distance(
           vector4(1.0, 1.0, 1.0, 1.0), vector4(0.0, 0.0, 0.0, 0.0), metric, Exponent);
       float max_amplitude = max_distance;
 
-            fractal_voronoi_smooth_f1(coord4D,
+      fractal_voronoi_smooth_f1(coord4D,
                                 detail,
                                 roughness,
                                 Lacunarity,
@@ -341,16 +341,16 @@ shader node_voronoi_texture(
                                 outPosition4D);
 
       if (normalize != 0.0) {
-        /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness)  */
+        /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness) */
         Distance /= (0.5 + 0.5 * randomness) * max_amplitude;
       }
     }
     else if (feature == "f2") {
-              float max_distance = voronoi_distance(
+      float max_distance = voronoi_distance(
           vector4(1.0, 1.0, 1.0, 1.0), vector4(0.0, 0.0, 0.0, 0.0), metric, Exponent);
       float max_amplitude = max_distance;
 
-            fractal_voronoi_f2(coord4D,
+      fractal_voronoi_f2(coord4D,
                          detail,
                          roughness,
                          Lacunarity,
@@ -373,7 +373,8 @@ shader node_voronoi_texture(
       }
     }
     else if (feature == "distance_to_edge") {
-    fractal_voronoi_distance_to_edge(coord4D, detail, Lacunarity, randomness, normalize, Distance);
+      fractal_voronoi_distance_to_edge(
+          coord4D, detail, Lacunarity, randomness, normalize, Distance);
     }
     else if (feature == "n_sphere_radius") {
       voronoi_n_sphere_radius(coord4D, randomness, Radius);

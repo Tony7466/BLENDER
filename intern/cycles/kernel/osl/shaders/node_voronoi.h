@@ -1,9 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
-#pragma once
-#define NODE_VORONOI_H
-
 #include "node_hash.h"
 #include "stdcycles.h"
 #include "vector2.h"

@@ -2,22 +2,7 @@
  * Copyright 2011-2022 Blender Foundation */
 
 #pragma once
-#include "device/device.h"
 
-#include "scene/background.h"
-#include "scene/light.h"
-#include "scene/mesh.h"
-#include "scene/scene.h"
-#include "scene/shader.h"
-#include "scene/shader_graph.h"
-#include "scene/shader_nodes.h"
-#include "scene/stats.h"
-#include "scene/svm.h"
-
-#include "util/foreach.h"
-#include "util/log.h"
-#include "util/progress.h"
-#include "util/task.h"
 CCL_NAMESPACE_BEGIN
 
 /*
