@@ -485,6 +485,11 @@ static int graphkeys_view_selected_channels_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static bool view_channel_poll(bContext *C)
+{
+  return ED_operator_action_active(C) || ED_operator_graphedit_active(C);
+}
+
 void GRAPH_OT_view_selected_channels(wmOperatorType *ot)
 {
   /* Identifiers */
@@ -494,7 +499,7 @@ void GRAPH_OT_view_selected_channels(wmOperatorType *ot)
 
   /* API callbacks */
   ot->exec = graphkeys_view_selected_channels_exec;
-  ot->poll = ED_operator_graphedit_active;
+  ot->poll = view_channel_poll;
 
   ot->flag = 0;
 
@@ -541,7 +546,7 @@ static int graphkeys_view_channel_pick_invoke(bContext *C, wmOperator *op, const
 
   bAnimListElem *ale;
   ale = BLI_findlink(&anim_data, channel_index);
-  if (ale->datatype != ALE_FCURVE) {
+  if (ale == NULL || ale->datatype != ALE_FCURVE) {
     return OPERATOR_CANCELLED;
   }
 
@@ -571,7 +576,7 @@ void GRAPH_OT_view_channel_pick(wmOperatorType *ot)
 
   /* API callbacks */
   ot->invoke = graphkeys_view_channel_pick_invoke;
-  ot->poll = ED_operator_graphedit_active;
+  ot->poll = view_channel_poll;
 
   ot->flag = 0;
 
