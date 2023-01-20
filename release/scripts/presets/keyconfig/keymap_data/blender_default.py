@@ -3457,10 +3457,10 @@ def km_animation_channels(params):
 
     items.extend([
         # Click select.
-        ("anim.channels_click", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
-        ("anim.channels_click", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+        ("anim.channels_click", {"type": 'LEFTMOUSE', "value": 'CLICK'}, None),
+        ("anim.channels_click", {"type": 'LEFTMOUSE', "value": 'CLICK', "shift": True},
          {"properties": [("extend", True)]}),
-        ("anim.channels_click", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "ctrl": True},
+        ("anim.channels_click", {"type": 'LEFTMOUSE', "value": 'CLICK', "shift": True, "ctrl": True},
          {"properties": [("children_only", True)]}),
         # Rename.
         ("anim.channels_rename", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True}, None),
@@ -3474,7 +3474,8 @@ def km_animation_channels(params):
         # Selection.
         *_template_items_select_actions(params, "anim.channels_select_all"),
         ("anim.channels_select_box", {"type": 'B', "value": 'PRESS'}, None),
-        ("anim.channels_select_box", {"type": 'LEFTMOUSE', "value": 'CLICK_DRAG'}, None),
+        ("anim.channels_select_box", {"type": 'LEFTMOUSE', "value": 'CLICK_DRAG'}, 
+         {"properties": [("extend", False)]}),
         ("anim.channels_select_box", {"type": 'LEFTMOUSE', "value": 'CLICK_DRAG', "shift": True},
          {"properties": [("extend", True)]}),
         ("anim.channels_select_box", {"type": 'LEFTMOUSE', "value": 'CLICK_DRAG', "ctrl": True},
