@@ -203,7 +203,7 @@ static void load_tex_task_cb_ex(void *__restrict userdata,
       if (col) {
         float rgba[4];
 
-        paint_get_tex_pixel_col(mtex, x, y, rgba, pool, thread_id, convert_to_linear, colorspace);
+        paint_get_tex_pixel_srgb_with_clamp(mtex, x, y, rgba, thread_id, pool, convert_to_linear, colorspace);
 
         buffer[index * 4] = rgba[0] * 255;
         buffer[index * 4 + 1] = rgba[1] * 255;
@@ -211,7 +211,9 @@ static void load_tex_task_cb_ex(void *__restrict userdata,
         buffer[index * 4 + 3] = rgba[3] * 255;
       }
       else {
-        float avg = paint_get_tex_pixel(mtex, x, y, pool, thread_id);
+        float avg;
+        float rgba_dummy[4];
+        paint_get_tex_pixel(mtex, x, y, thread_id, pool, &avg, rgba_dummy);
 
         avg += br->texture_sample_bias;
 

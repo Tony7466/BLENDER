@@ -206,7 +206,8 @@ static void do_enhance_details_brush_task_cb_ex(void *__restrict userdata,
 
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
-    const float fade = bstrength * SCULPT_brush_strength_factor(ss,
+    float rgb[3];
+    const float fade = bstrength * SCULPT_brush_factor_with_color(ss,
                                                                 brush,
                                                                 vd.co,
                                                                 sqrtf(test.dist),
@@ -215,7 +216,8 @@ static void do_enhance_details_brush_task_cb_ex(void *__restrict userdata,
                                                                 vd.mask ? *vd.mask : 0.0f,
                                                                 vd.vertex,
                                                                 thread_id,
-                                                                &automask_data);
+                                                                &automask_data,
+                                                                rgb);
 
     float disp[3];
     madd_v3_v3v3fl(disp, vd.co, ss->cache->detail_directions[vd.index], fade);
@@ -296,7 +298,8 @@ static void do_smooth_brush_task_cb_ex(void *__restrict userdata,
 
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
-    const float fade = bstrength * SCULPT_brush_strength_factor(
+    float rgb[3];
+    const float fade = bstrength * SCULPT_brush_factor_with_color(
                                        ss,
                                        brush,
                                        vd.co,
@@ -306,7 +309,8 @@ static void do_smooth_brush_task_cb_ex(void *__restrict userdata,
                                        smooth_mask ? 0.0f : (vd.mask ? *vd.mask : 0.0f),
                                        vd.vertex,
                                        thread_id,
-                                       &automask_data);
+                                       &automask_data,
+                                       rgb);
     if (smooth_mask) {
       float val = SCULPT_neighbor_mask_average(ss, vd.vertex) - *vd.mask;
       val *= fade * bstrength;
@@ -474,7 +478,8 @@ static void SCULPT_do_surface_smooth_brush_laplacian_task_cb_ex(
 
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
-    const float fade = bstrength * SCULPT_brush_strength_factor(ss,
+    float rgb[3];
+    const float fade = bstrength * SCULPT_brush_factor_with_color(ss,
                                                                 brush,
                                                                 vd.co,
                                                                 sqrtf(test.dist),
@@ -483,7 +488,8 @@ static void SCULPT_do_surface_smooth_brush_laplacian_task_cb_ex(
                                                                 vd.mask ? *vd.mask : 0.0f,
                                                                 vd.vertex,
                                                                 thread_id,
-                                                                &automask_data);
+                                                                &automask_data,
+                                                                rgb);
 
     float disp[3];
     SCULPT_surface_smooth_laplacian_step(
@@ -522,7 +528,8 @@ static void SCULPT_do_surface_smooth_brush_displace_task_cb_ex(
 
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
-    const float fade = bstrength * SCULPT_brush_strength_factor(ss,
+    float rgb[3];
+    const float fade = bstrength * SCULPT_brush_factor_with_color(ss,
                                                                 brush,
                                                                 vd.co,
                                                                 sqrtf(test.dist),
@@ -531,7 +538,8 @@ static void SCULPT_do_surface_smooth_brush_displace_task_cb_ex(
                                                                 vd.mask ? *vd.mask : 0.0f,
                                                                 vd.vertex,
                                                                 thread_id,
-                                                                &automask_data);
+                                                                &automask_data,
+                                                                rgb);
     SCULPT_surface_smooth_displace_step(
         ss, vd.co, ss->cache->surface_smooth_laplacian_disp, vd.vertex, beta, fade);
   }

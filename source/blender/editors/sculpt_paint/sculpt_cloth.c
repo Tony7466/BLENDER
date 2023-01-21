@@ -507,8 +507,9 @@ static void do_cloth_brush_apply_forces_task_cb_ex(void *__restrict userdata,
       dist = dist_to_plane_v3(current_vertex_location, deform_plane);
     }
 
+    float rgb[3];
     const float fade = sim_factor * bstrength *
-                       SCULPT_brush_strength_factor(ss,
+                       SCULPT_brush_factor_with_color(ss,
                                                     brush,
                                                     current_vertex_location,
                                                     dist,
@@ -517,7 +518,8 @@ static void do_cloth_brush_apply_forces_task_cb_ex(void *__restrict userdata,
                                                     vd.mask ? *vd.mask : 0.0f,
                                                     vd.vertex,
                                                     thread_id,
-                                                    &automask_data);
+                                                    &automask_data,
+                                                    rgb);
 
     float brush_disp[3];
 

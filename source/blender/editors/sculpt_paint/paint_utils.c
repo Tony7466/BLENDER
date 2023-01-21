@@ -146,32 +146,45 @@ float paint_calc_object_space_radius(ViewContext *vc, const float center[3], flo
   return len_v3(delta) / scale;
 }
 
-float paint_get_tex_pixel(const MTex *mtex, float u, float v, struct ImagePool *pool, int thread)
+bool paint_get_tex_pixel(const MTex *mtex,
+                         float u,
+                         float v,
+                         int thread,
+                         struct ImagePool *pool,
+                         /* Return arguments. */
+                         float *r_intensity,
+                         float r_rgba[4])
 {
-  float intensity;
-  float rgba_dummy[4];
   const float co[3] = {u, v, 0.0f};
+  float intensity;
+  const bool hasRGB = RE_texture_evaluate(mtex, co, thread, pool, false, false, &intensity, r_rgba);
+  *r_intensity = intensity;
 
-  RE_texture_evaluate(mtex, co, thread, pool, false, false, &intensity, rgba_dummy);
+  if (!hasRGB) {
+    r_rgba[0] = intensity;
+    r_rgba[1] = intensity;
+    r_rgba[2] = intensity;
+    r_rgba[3] = 1.0f;
+  }
 
-  return intensity;
+  return hasRGB;
 }
 
-void paint_get_tex_pixel_col(const MTex *mtex,
+void paint_get_tex_pixel_srgb_with_clamp(const MTex *mtex,
                              float u,
                              float v,
                              float rgba[4],
-                             struct ImagePool *pool,
                              int thread,
+                             struct ImagePool *pool,
                              bool convert_to_linear,
                              struct ColorSpace *colorspace)
 {
   const float co[3] = {u, v, 0.0f};
   float intensity;
 
-  const bool hasrgb = RE_texture_evaluate(mtex, co, thread, pool, false, false, &intensity, rgba);
+  const bool hasRGB = RE_texture_evaluate(mtex, co, thread, pool, false, false, &intensity, rgba);
 
-  if (!hasrgb) {
+  if (!hasRGB) {
     rgba[0] = intensity;
     rgba[1] = intensity;
     rgba[2] = intensity;

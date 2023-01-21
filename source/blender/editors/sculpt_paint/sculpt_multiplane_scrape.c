@@ -72,7 +72,8 @@ static void calc_multiplane_scrape_surface_task_cb(void *__restrict userdata,
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
     /* Use the brush falloff to weight the sampled normals. */
-    const float fade = SCULPT_brush_strength_factor(ss,
+    float rgb[3];
+    const float fade = SCULPT_brush_factor_with_color(ss,
                                                     brush,
                                                     vd.co,
                                                     sqrtf(test.dist),
@@ -81,7 +82,8 @@ static void calc_multiplane_scrape_surface_task_cb(void *__restrict userdata,
                                                     vd.mask ? *vd.mask : 0.0f,
                                                     vd.vertex,
                                                     thread_id,
-                                                    &automask_data);
+                                                    &automask_data,
+                                                    rgb);
 
     /* Sample the normal and area of the +X and -X axis individually. */
     if (local_co[0] > 0.0f) {
@@ -187,8 +189,9 @@ static void do_multiplane_scrape_brush_task_cb_ex(void *__restrict userdata,
 
     /* Deform the local space along the Y axis to avoid artifacts on curved strokes. */
     /* This produces a not round brush tip. */
+    float rgb[3];
     local_co[1] *= 2.0f;
-    const float fade = bstrength * SCULPT_brush_strength_factor(ss,
+    const float fade = bstrength * SCULPT_brush_factor_with_color(ss,
                                                                 brush,
                                                                 vd.co,
                                                                 len_v3(local_co),
@@ -197,7 +200,8 @@ static void do_multiplane_scrape_brush_task_cb_ex(void *__restrict userdata,
                                                                 vd.mask ? *vd.mask : 0.0f,
                                                                 vd.vertex,
                                                                 thread_id,
-                                                                &automask_data);
+                                                                &automask_data,
+                                                                rgb);
 
     mul_v3_v3fl(proxy[vd.i], val, fade);
 

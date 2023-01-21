@@ -74,6 +74,8 @@
 #include "RNA_define.h"
 
 #include "bmesh.h"
+#include "IMB_imbuf_types.h"
+#include "RE_texture.h"
 
 using blender::float3;
 using blender::MutableSpan;
@@ -2555,20 +2557,21 @@ static float brush_strength(const Sculpt *sd,
   }
 }
 
-float SCULPT_brush_strength_factor(SculptSession *ss,
-                                   const Brush *br,
-                                   const float brush_point[3],
-                                   float len,
-                                   const float vno[3],
-                                   const float fno[3],
-                                   float mask,
-                                   const PBVHVertRef vertex,
-                                   const int thread_id,
-                                   AutomaskingNodeData *automask_data)
+float SCULPT_brush_factor_with_color(SculptSession *ss,
+                                        const Brush *brush,
+                                        const float brush_point[3],
+                                        float len,
+                                        const float vno[3],
+                                        const float fno[3],
+                                        float mask,
+                                        const PBVHVertRef vertex,
+                                        int thread_id,
+                                        AutomaskingNodeData *automask_data,
+                                        float r_rgb[3])
 {
   StrokeCache *cache = ss->cache;
   const Scene *scene = cache->vc->scene;
-  const MTex *mtex = BKE_brush_mask_texture_get(br, OB_MODE_SCULPT);
+  const MTex *mtex = BKE_brush_mask_texture_get(brush, OB_MODE_SCULPT);
   float avg = 1.0f;
   float rgba[4];
   float point[3];
@@ -2576,16 +2579,16 @@ float SCULPT_brush_strength_factor(SculptSession *ss,
   sub_v3_v3v3(point, brush_point, cache->plane_offset);
 
   if (!mtex->tex) {
-    avg = 1.0f;
+    rgba[0] = 1.0f;
+    rgba[1] = 1.0f;
+    rgba[2] = 1.0f;
   }
   else if (mtex->brush_map_mode == MTEX_MAP_MODE_3D) {
     /* Get strength by feeding the vertex location directly into a texture. */
-    avg = BKE_brush_sample_tex_3d(scene, br, mtex, point, rgba, 0, ss->tex_pool);
+    avg = BKE_brush_sample_tex_3d(scene, brush, mtex, point, rgba, thread_id, ss->tex_pool);
   }
   else {
-    float symm_point[3], point_2d[2];
-    /* Quite warnings. */
-    float x = 0.0f, y = 0.0f;
+    float symm_point[3];
 
     /* If the active area is being applied for symmetry, flip it
      * across the symmetry axis and rotate it back to the original
@@ -2596,8 +2599,6 @@ float SCULPT_brush_strength_factor(SculptSession *ss,
     }
     flip_v3_v3(symm_point, point, cache->mirror_symmetry_pass);
 
-    ED_view3d_project_float_v2_m4(cache->vc->region, symm_point, point_2d, cache->projection_mat);
-
     /* Still no symmetry supported for other paint modes.
      * Sculpt does it DIY. */
     if (mtex->brush_map_mode == MTEX_MAP_MODE_AREA) {
@@ -2606,22 +2607,25 @@ float SCULPT_brush_strength_factor(SculptSession *ss,
 
       mul_m4_v3(cache->brush_local_mat, symm_point);
 
-      x = symm_point[0];
-      y = symm_point[1];
+      float x = symm_point[0];
+      float y = symm_point[1];
 
-      x *= mtex->size[0];
-      y *= mtex->size[1];
+      x *= brush->mtex.size[0];
+      y *= brush->mtex.size[1];
 
-      x += mtex->ofs[0];
-      y += mtex->ofs[1];
+      x += brush->mtex.ofs[0];
+      y += brush->mtex.ofs[1];
 
-      avg = paint_get_tex_pixel(mtex, x, y, ss->tex_pool, thread_id);
+      paint_get_tex_pixel(&brush->mtex, x, y, thread_id, ss->tex_pool, &avg, rgba);
 
-      avg += br->texture_sample_bias;
+      add_v3_fl(rgba, brush->texture_sample_bias); // v3 -> Ignore alpha
+      avg -= brush->texture_sample_bias;
     }
     else {
+      float point_2d[2];
+      ED_view3d_project_float_v2_m4(cache->vc->region, symm_point, point_2d, cache->projection_mat);
       const float point_3d[3] = {point_2d[0], point_2d[1], 0.0f};
-      avg = BKE_brush_sample_tex_3d(scene, br, mtex, point_3d, rgba, 0, ss->tex_pool);
+      avg = BKE_brush_sample_tex_3d(scene, brush, mtex, point_3d, rgba, thread_id, ss->tex_pool);
     }
   }
 
@@ -2641,16 +2645,37 @@ float SCULPT_brush_strength_factor(SculptSession *ss,
   }
 
   /* Falloff curve. */
-  avg *= BKE_brush_curve_strength(br, final_len, cache->radius);
-  avg *= frontface(br, cache->view_normal, vno, fno);
+  const float falloff = BKE_brush_curve_strength(brush, final_len, cache->radius)
+                        * frontface(brush, cache->view_normal, vno, fno);
 
   /* Paint mask. */
-  avg *= 1.0f - mask;
+  const float paint_mask = 1.0f - mask;
 
   /* Auto-masking. */
-  avg *= SCULPT_automasking_factor_get(cache->automasking, ss, vertex, automask_data);
+  const float automasking_factor = SCULPT_automasking_factor_get(cache->automasking, ss, vertex, automask_data);
+
+  /* Apply masks */
+  const float masks_combined = falloff * paint_mask * automasking_factor;
+  mul_v3_fl(rgba, masks_combined);
+  avg *= masks_combined;
+
+  /* Copy rgba for vector displacement */
+  copy_v3_v3(r_rgb, rgba);
 
   return avg;
+}
+
+void SCULPT_calc_vertex_displacement(SculptSession *ss, float rgb[3], float out_offset[3])
+{
+    rgb[2] *= ss->cache->bstrength;
+    float mat[4][4];
+    invert_m4_m4(mat, ss->cache->brush_local_mat);
+    mul_mat3_m4_v3(mat, rgb);
+
+    if (ss->cache->radial_symmetry_pass) {
+      mul_m4_v3(ss->cache->symm_rot_mat, rgb); // TODO: Not working yet
+    }
+    flip_v3_v3(out_offset, rgb, ss->cache->mirror_symmetry_pass);
 }
 
 bool SCULPT_search_sphere_cb(PBVHNode *node, void *data_v)
@@ -3236,7 +3261,9 @@ static void do_gravity_task_cb_ex(void *__restrict userdata,
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
-    const float fade = SCULPT_brush_strength_factor(ss,
+
+    float rgb[3];
+    const float fade = SCULPT_brush_factor_with_color(ss,
                                                     brush,
                                                     vd.co,
                                                     sqrtf(test.dist),
@@ -3245,7 +3272,8 @@ static void do_gravity_task_cb_ex(void *__restrict userdata,
                                                     vd.mask ? *vd.mask : 0.0f,
                                                     vd.vertex,
                                                     thread_id,
-                                                    nullptr);
+                                                    nullptr,
+                                                    rgb);
 
     mul_v3_v3fl(proxy[vd.i], offset, fade);
 

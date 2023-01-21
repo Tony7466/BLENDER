@@ -352,14 +352,14 @@ void paint_calc_redraw_planes(float planes[4][4],
 float paint_calc_object_space_radius(struct ViewContext *vc,
                                      const float center[3],
                                      float pixel_radius);
-float paint_get_tex_pixel(
-    const struct MTex *mtex, float u, float v, struct ImagePool *pool, int thread);
-void paint_get_tex_pixel_col(const struct MTex *mtex,
+bool paint_get_tex_pixel(
+const struct MTex *mtex, float u, float v, int thread, struct ImagePool *pool, float *r_intensity, float r_rgba[4]);
+void paint_get_tex_pixel_srgb_with_clamp(const struct MTex *mtex,
                              float u,
                              float v,
                              float rgba[4],
-                             struct ImagePool *pool,
                              int thread,
+                             struct ImagePool *pool,
                              bool convert,
                              struct ColorSpace *colorspace);
 
