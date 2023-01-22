@@ -2896,7 +2896,7 @@ static void rna_def_brush(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_rgb_as_vector_displacement", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag2", BRUSH_RGB_AS_VECTOR_DISPLACEMENT);
   RNA_def_property_ui_text(prop, "RGB as vector displacement",
-"Handles each pixel as individual vector for displacement instead of an offset in normal direction");
+"Handles each pixel as individual vector for displacement. Works only with area plane mapping");
   RNA_def_property_update(prop, 0, "rna_Brush_update");
 
   prop = RNA_def_property(srna, "normal_weight", PROP_FLOAT, PROP_FACTOR);
