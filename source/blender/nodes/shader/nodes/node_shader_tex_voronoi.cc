@@ -27,18 +27,21 @@ static void sh_node_tex_voronoi_declare(NodeDeclarationBuilder &b)
       .min(0.0f)
       .max(15.0f)
       .default_value(0.0f)
-      .make_available([](bNode &node) { node_storage(node).feature = SHD_VORONOI_F1; });
+      .make_available([](bNode &node) { node_storage(node).feature = SHD_VORONOI_F1; })
+      .description(N_("The number of Voronoi layers to sum"));
   b.add_input<decl::Float>(N_("Roughness"))
       .min(0.0f)
       .max(1.0f)
       .default_value(0.5f)
       .subtype(PROP_FACTOR)
-      .make_available([](bNode &node) { node_storage(node).feature = SHD_VORONOI_F1; });
+      .make_available([](bNode &node) { node_storage(node).feature = SHD_VORONOI_F1; })
+      .description(N_("The influence of a Voronoi layer relative to that of the previous layer"));
   b.add_input<decl::Float>(N_("Lacunarity"))
       .min(0.0f)
       .max(1000.0f)
       .default_value(2.0f)
-      .make_available([](bNode &node) { node_storage(node).feature = SHD_VORONOI_F1; });
+      .make_available([](bNode &node) { node_storage(node).feature = SHD_VORONOI_F1; })
+      .description(N_("The scale of a Voronoi layer relative to that of the previous layer"));
   b.add_input<decl::Float>(N_("Smoothness"))
       .min(0.0f)
       .max(1.0f)
