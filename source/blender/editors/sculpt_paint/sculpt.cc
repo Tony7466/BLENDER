@@ -2585,7 +2585,7 @@ float SCULPT_brush_factor_with_color(SculptSession *ss,
   }
   else if (mtex->brush_map_mode == MTEX_MAP_MODE_3D) {
     /* Get strength by feeding the vertex location directly into a texture. */
-    avg = BKE_brush_sample_tex_3d(scene, brush, mtex, point, rgba, thread_id, ss->tex_pool);
+    avg = BKE_brush_sample_tex_3d(scene, brush, mtex, point, rgba, 0, ss->tex_pool);
   }
   else {
     float symm_point[3];
@@ -2610,13 +2610,13 @@ float SCULPT_brush_factor_with_color(SculptSession *ss,
       float x = symm_point[0];
       float y = symm_point[1];
 
-      x *= brush->mtex.size[0];
-      y *= brush->mtex.size[1];
+      x *= mtex->size[0];
+      y *= mtex->size[1];
 
-      x += brush->mtex.ofs[0];
-      y += brush->mtex.ofs[1];
+      x += mtex->ofs[0];
+      y += mtex->ofs[1];
 
-      paint_get_tex_pixel(&brush->mtex, x, y, thread_id, ss->tex_pool, &avg, rgba);
+      paint_get_tex_pixel(mtex, x, y, thread_id, ss->tex_pool, &avg, rgba);
 
       add_v3_fl(rgba, brush->texture_sample_bias); // v3 -> Ignore alpha
       avg -= brush->texture_sample_bias;
@@ -2625,7 +2625,7 @@ float SCULPT_brush_factor_with_color(SculptSession *ss,
       float point_2d[2];
       ED_view3d_project_float_v2_m4(cache->vc->region, symm_point, point_2d, cache->projection_mat);
       const float point_3d[3] = {point_2d[0], point_2d[1], 0.0f};
-      avg = BKE_brush_sample_tex_3d(scene, brush, mtex, point_3d, rgba, thread_id, ss->tex_pool);
+      avg = BKE_brush_sample_tex_3d(scene, brush, mtex, point_3d, rgba, 0, ss->tex_pool);
     }
   }
 
