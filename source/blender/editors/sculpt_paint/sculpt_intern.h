@@ -583,8 +583,13 @@ typedef struct StrokeCache {
   float sculpt_normal_symm[3];
 
   /* Used for area texture mode, local_mat gets calculated by
-   * calc_brush_local_mat() and used in tex_strength(). */
+   * calc_brush_local_mat() and used in brush_factor_with_color().
+   * Transforms from model-space coords to local area coords.
+   */
   float brush_local_mat[4][4];
+  /* The matrix from local area coords to model-space coords is used to calculate the vector
+   * displacement in area plane mode. */
+  float brush_local_mat_inv[4][4];
 
   float plane_offset[3]; /* used to shift the plane around when doing tiled strokes */
   int tile_pass;

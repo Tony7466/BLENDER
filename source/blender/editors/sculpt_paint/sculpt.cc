@@ -2668,12 +2668,10 @@ float SCULPT_brush_factor_with_color(SculptSession *ss,
 void SCULPT_calc_vertex_displacement(SculptSession *ss, float rgb[3], float out_offset[3])
 {
     rgb[2] *= ss->cache->bstrength;
-    float mat[4][4];
-    invert_m4_m4(mat, ss->cache->brush_local_mat);
-    mul_mat3_m4_v3(mat, rgb);
+    mul_mat3_m4_v3(ss->cache->brush_local_mat_inv, rgb);
 
     if (ss->cache->radial_symmetry_pass) {
-      mul_m4_v3(ss->cache->symm_rot_mat, rgb); // TODO: Not working yet
+      mul_m4_v3(ss->cache->symm_rot_mat, rgb);
     }
     flip_v3_v3(out_offset, rgb, ss->cache->mirror_symmetry_pass);
 }
@@ -2915,7 +2913,7 @@ static void calc_local_y(ViewContext *vc, const float center[3], float y[3])
   mul_m4_v3(ob->world_to_object, y);
 }
 
-static void calc_brush_local_mat(const MTex *mtex, Object *ob, float local_mat[4][4])
+static void calc_brush_local_mat(const MTex *mtex, Object *ob, float local_mat[4][4], float local_mat_inv[4][4])
 {
   const StrokeCache *cache = ob->sculpt->cache;
   float tmat[4][4];
@@ -2961,6 +2959,8 @@ static void calc_brush_local_mat(const MTex *mtex, Object *ob, float local_mat[4
   scale_m4_fl(scale, radius);
   mul_m4_m4m4(tmat, mat, scale);
 
+  /* Return tmat as is (for converting from local area coords to model-space coords). */
+  copy_m4_m4(local_mat_inv, tmat);
   /* Return inverse (for converting from model-space coords to local area coords). */
   invert_m4_m4(local_mat, tmat);
 }
@@ -2995,7 +2995,7 @@ static void update_brush_local_mat(Sculpt *sd, Object *ob)
   if (cache->mirror_symmetry_pass == 0 && cache->radial_symmetry_pass == 0) {
     const Brush *brush = BKE_paint_brush(&sd->paint);
     const MTex *mask_tex = BKE_brush_mask_texture_get(brush, OB_MODE_SCULPT);
-    calc_brush_local_mat(mask_tex, ob, cache->brush_local_mat);
+    calc_brush_local_mat(mask_tex, ob, cache->brush_local_mat, cache->brush_local_mat_inv);
   }
 }
 
