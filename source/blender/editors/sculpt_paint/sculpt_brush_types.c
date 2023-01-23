@@ -280,7 +280,7 @@ static void do_draw_brush_task_cb_ex(void *__restrict userdata,
                                   thread_id,
                                   &automask_data,
                                   r_rgba);
-      SCULPT_calc_vertex_displacement(ss, r_rgba, proxy[vd.i]);
+      SCULPT_calc_vertex_displacement(ss, brush, r_rgba, proxy[vd.i]);
     }
     else {
       float fade = SCULPT_brush_strength_factor(ss,
