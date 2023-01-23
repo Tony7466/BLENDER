@@ -1242,25 +1242,38 @@ const float *SCULPT_brush_frontface_normal_from_falloff_shape(SculptSession *ss,
                                                               char falloff_shape);
 
 /**
- * Return a color and grayscale of a brush texture at a particular vertex multiplied by active masks.
- * The grayscale value is usually multiplied by the offset vector and the color is used for non-linear vertex displacement.
+ * Return a multiplier for brush strength on a particular vertex.
  */
-float SCULPT_brush_factor_with_color(struct SculptSession *ss,
-                                        const struct Brush *brush,
-                                        const float point[3],
-                                        float len,
-                                        const float vno[3],
-                                        const float fno[3],
-                                        float mask,
-                                        const PBVHVertRef vertex,
-                                        int thread_id,
-                                        struct AutomaskingNodeData *automask_data,
-                                        float rgb[3]);
+float SCULPT_brush_strength_factor(struct SculptSession *ss,
+                                   const struct Brush *brush,
+                                   const float point[3],
+                                   float len,
+                                   const float vno[3],
+                                   const float fno[3],
+                                   float mask,
+                                   const PBVHVertRef vertex,
+                                   int thread_id,
+                                   struct AutomaskingNodeData *automask_data);
+
+/**
+ * Return a color of a brush texture on a particular vertex multiplied by active masks.
+ */
+void SCULPT_brush_strength_color(struct SculptSession *ss,
+                                 const struct Brush *brush,
+                                 const float brush_point[3],
+                                 float len,
+                                 const float vno[3],
+                                 const float fno[3],
+                                 float mask,
+                                 const PBVHVertRef vertex,
+                                 int thread_id,
+                                 struct AutomaskingNodeData *automask_data,
+                                 float r_rgba[4]);
 
 /**
  * Calculates the vertex offset for a single vertex depending on the brush setting rgb as vector displacement.
  */
-  void SCULPT_calc_vertex_displacement(SculptSession *ss, float rgb[3], float out_offset[3]);
+  void SCULPT_calc_vertex_displacement(SculptSession *ss, float rgba[3], float out_offset[3]);
 
 /**
  * Tilts a normal by the x and y tilt values using the view axis.

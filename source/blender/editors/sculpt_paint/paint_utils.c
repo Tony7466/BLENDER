@@ -149,8 +149,8 @@ float paint_calc_object_space_radius(ViewContext *vc, const float center[3], flo
 bool paint_get_tex_pixel(const MTex *mtex,
                          float u,
                          float v,
-                         int thread,
                          struct ImagePool *pool,
+                         int thread,
                          /* Return arguments. */
                          float *r_intensity,
                          float r_rgba[4])
@@ -170,12 +170,12 @@ bool paint_get_tex_pixel(const MTex *mtex,
   return hasRGB;
 }
 
-void paint_get_tex_pixel_srgb_with_clamp(const MTex *mtex,
+void paint_get_tex_pixel_color_with_clamp(const MTex *mtex,
                              float u,
                              float v,
                              float rgba[4],
-                             int thread,
                              struct ImagePool *pool,
+                             int thread,
                              bool convert_to_linear,
                              struct ColorSpace *colorspace)
 {

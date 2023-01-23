@@ -144,9 +144,7 @@ static void do_draw_face_sets_brush_task_cb_ex(void *__restrict userdata,
         if (face_hidden) {
           continue;
         }
-
-        float rgb[3];
-        const float fade = bstrength * SCULPT_brush_factor_with_color(ss,
+        const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                     brush,
                                                                     vd.co,
                                                                     sqrtf(test.dist),
@@ -155,8 +153,7 @@ static void do_draw_face_sets_brush_task_cb_ex(void *__restrict userdata,
                                                                     vd.mask ? *vd.mask : 0.0f,
                                                                     vd.vertex,
                                                                     thread_id,
-                                                                    &automask_data,
-                                                                    rgb);
+                                                                    &automask_data);
 
         if (fade > 0.05f) {
           ss->face_sets[vert_map->indices[j]] = ss->cache->paint_face_set;
@@ -168,9 +165,7 @@ static void do_draw_face_sets_brush_task_cb_ex(void *__restrict userdata,
       if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
         continue;
       }
-
-      float rgb[3];
-      const float fade = bstrength * SCULPT_brush_factor_with_color(ss,
+      const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                   brush,
                                                                   vd.co,
                                                                   sqrtf(test.dist),
@@ -179,8 +174,7 @@ static void do_draw_face_sets_brush_task_cb_ex(void *__restrict userdata,
                                                                   vd.mask ? *vd.mask : 0.0f,
                                                                   vd.vertex,
                                                                   thread_id,
-                                                                  &automask_data,
-                                                                  rgb);
+                                                                  &automask_data);
 
       if (fade > 0.05f) {
         SCULPT_vertex_face_set_set(ss, vd.vertex, ss->cache->paint_face_set);
@@ -231,8 +225,7 @@ static void do_relax_face_sets_brush_task_cb_ex(void *__restrict userdata,
       continue;
     }
 
-    float rgb[3];
-    const float fade = bstrength * SCULPT_brush_factor_with_color(ss,
+    const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
                                                                 vd.co,
                                                                 sqrtf(test.dist),
@@ -241,8 +234,7 @@ static void do_relax_face_sets_brush_task_cb_ex(void *__restrict userdata,
                                                                 vd.mask ? *vd.mask : 0.0f,
                                                                 vd.vertex,
                                                                 thread_id,
-                                                                &automask_data,
-                                                                rgb);
+                                                                &automask_data);
 
     SCULPT_relax_vertex(ss, &vd, fade * bstrength, relax_face_sets, vd.co);
     if (vd.is_mesh) {

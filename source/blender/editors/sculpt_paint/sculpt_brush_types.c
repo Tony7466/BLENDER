@@ -266,24 +266,33 @@ static void do_draw_brush_task_cb_ex(void *__restrict userdata,
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
     /* Offset vertex. */
-    float rgb[3];
-    float fade = SCULPT_brush_factor_with_color(ss,
-                                      brush,
-                                      vd.co,
-                                      sqrtf(test.dist),
-                                      vd.no,
-                                      vd.fno,
-                                      vd.mask ? *vd.mask : 0.0f,
-                                      vd.vertex,
-                                      thread_id,
-                                      &automask_data,
-                                      rgb);
-
-    if(ss->cache->brush->flag2 & BRUSH_RGB_AS_VECTOR_DISPLACEMENT
+    if(ss->cache->brush->flag2 & BRUSH_USE_COLOR_AS_DISPLACEMENT
       && (brush->mtex.brush_map_mode == MTEX_MAP_MODE_AREA)) {
-      SCULPT_calc_vertex_displacement(ss, rgb, proxy[vd.i]);
+      float r_rgba[4];
+      SCULPT_brush_strength_color(ss,
+                                  brush,
+                                  vd.co,
+                                  sqrtf(test.dist),
+                                  vd.no,
+                                  vd.fno,
+                                  vd.mask ? *vd.mask : 0.0f,
+                                  vd.vertex,
+                                  thread_id,
+                                  &automask_data,
+                                  r_rgba);
+      SCULPT_calc_vertex_displacement(ss, r_rgba, proxy[vd.i]);
     }
     else {
+      float fade = SCULPT_brush_strength_factor(ss,
+                                                brush,
+                                                vd.co,
+                                                sqrtf(test.dist),
+                                                vd.no,
+                                                vd.fno,
+                                                vd.mask ? *vd.mask : 0.0f,
+                                                vd.vertex,
+                                                thread_id,
+                                                &automask_data);
       mul_v3_v3fl(proxy[vd.i], offset, fade);
     }
 
@@ -311,7 +320,6 @@ void SCULPT_do_draw_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode)
   /* XXX: this shouldn't be necessary, but sculpting crashes in blender2.8 otherwise
    * initialize before threads so they can do curve mapping. */
   BKE_curvemapping_init(brush->curve);
-
 
   /* Threaded loop over nodes. */
   SculptThreadedTaskData data = {
@@ -380,8 +388,7 @@ static void do_fill_brush_task_cb_ex(void *__restrict userdata,
 
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
-    float rgb[3];
-    const float fade = bstrength * SCULPT_brush_factor_with_color(ss,
+    const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
                                                                 vd.co,
                                                                 sqrtf(test.dist),
@@ -390,8 +397,7 @@ static void do_fill_brush_task_cb_ex(void *__restrict userdata,
                                                                 vd.mask ? *vd.mask : 0.0f,
                                                                 vd.vertex,
                                                                 thread_id,
-                                                                &automask_data,
-                                                                rgb);
+                                                                &automask_data);
 
     mul_v3_v3fl(proxy[vd.i], val, fade);
 
@@ -487,8 +493,7 @@ static void do_scrape_brush_task_cb_ex(void *__restrict userdata,
 
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
-    float rgb[3];
-    const float fade = bstrength * SCULPT_brush_factor_with_color(ss,
+    const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
                                                                 vd.co,
                                                                 sqrtf(test.dist),
@@ -497,8 +502,7 @@ static void do_scrape_brush_task_cb_ex(void *__restrict userdata,
                                                                 vd.mask ? *vd.mask : 0.0f,
                                                                 vd.vertex,
                                                                 thread_id,
-                                                                &automask_data,
-                                                                rgb);
+                                                                &automask_data);
 
     mul_v3_v3fl(proxy[vd.i], val, fade);
 
@@ -614,8 +618,7 @@ static void do_clay_thumb_brush_task_cb_ex(void *__restrict userdata,
 
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
-    float rgb[3];
-    const float fade = bstrength * SCULPT_brush_factor_with_color(ss,
+    const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
                                                                 vd.co,
                                                                 sqrtf(test.dist),
@@ -624,8 +627,7 @@ static void do_clay_thumb_brush_task_cb_ex(void *__restrict userdata,
                                                                 vd.mask ? *vd.mask : 0.0f,
                                                                 vd.vertex,
                                                                 thread_id,
-                                                                &automask_data,
-                                                                rgb);
+                                                                &automask_data);
 
     mul_v3_v3fl(proxy[vd.i], val, fade);
 
@@ -778,8 +780,7 @@ static void do_flatten_brush_task_cb_ex(void *__restrict userdata,
     if (SCULPT_plane_trim(ss->cache, brush, val)) {
       SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
-      float rgb[3];
-      const float fade = bstrength * SCULPT_brush_factor_with_color(ss,
+      const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                   brush,
                                                                   vd.co,
                                                                   sqrtf(test.dist),
@@ -788,8 +789,7 @@ static void do_flatten_brush_task_cb_ex(void *__restrict userdata,
                                                                   vd.mask ? *vd.mask : 0.0f,
                                                                   vd.vertex,
                                                                   thread_id,
-                                                                  &automask_data,
-                                                                  rgb);
+                                                                  &automask_data);
 
       mul_v3_v3fl(proxy[vd.i], val, fade);
 
@@ -944,8 +944,7 @@ static void do_clay_brush_task_cb_ex(void *__restrict userdata,
 
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
-    float rgb[3];
-    const float fade = bstrength * SCULPT_brush_factor_with_color(ss,
+    const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
                                                                 vd.co,
                                                                 sqrtf(test.dist),
@@ -954,8 +953,7 @@ static void do_clay_brush_task_cb_ex(void *__restrict userdata,
                                                                 vd.mask ? *vd.mask : 0.0f,
                                                                 vd.vertex,
                                                                 thread_id,
-                                                                &automask_data,
-                                                                rgb);
+                                                                &automask_data);
 
     mul_v3_v3fl(proxy[vd.i], val, fade);
 
@@ -1080,8 +1078,7 @@ static void do_clay_strips_brush_task_cb_ex(void *__restrict userdata,
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
     /* The normal from the vertices is ignored, it causes glitch with planes, see: T44390. */
-    float rgb[3];
-    const float fade = bstrength * SCULPT_brush_factor_with_color(ss,
+    const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
                                                                 vd.co,
                                                                 ss->cache->radius * test.dist,
@@ -1090,8 +1087,7 @@ static void do_clay_strips_brush_task_cb_ex(void *__restrict userdata,
                                                                 vd.mask ? *vd.mask : 0.0f,
                                                                 vd.vertex,
                                                                 thread_id,
-                                                                &automask_data,
-                                                                rgb);
+                                                                &automask_data);
 
     mul_v3_v3fl(proxy[vd.i], val, fade);
 
@@ -1242,8 +1238,7 @@ static void do_snake_hook_brush_task_cb_ex(void *__restrict userdata,
     else {
       SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
-      float rgb[3];
-      fade = bstrength * SCULPT_brush_factor_with_color(ss,
+      fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                       brush,
                                                       vd.co,
                                                       sqrtf(test.dist),
@@ -1252,8 +1247,7 @@ static void do_snake_hook_brush_task_cb_ex(void *__restrict userdata,
                                                       vd.mask ? *vd.mask : 0.0f,
                                                       vd.vertex,
                                                       thread_id,
-                                                      &automask_data,
-                                                      rgb);
+                                                      &automask_data);
     }
 
     mul_v3_v3fl(proxy[vd.i], grab_delta, fade);
@@ -1386,8 +1380,7 @@ static void do_thumb_brush_task_cb_ex(void *__restrict userdata,
     }
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
-    float rgb[3];
-    const float fade = bstrength * SCULPT_brush_factor_with_color(ss,
+    const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
                                                                 orig_data.co,
                                                                 sqrtf(test.dist),
@@ -1396,8 +1389,7 @@ static void do_thumb_brush_task_cb_ex(void *__restrict userdata,
                                                                 vd.mask ? *vd.mask : 0.0f,
                                                                 vd.vertex,
                                                                 thread_id,
-                                                                &automask_data,
-                                                                rgb);
+                                                                &automask_data);
 
     mul_v3_v3fl(proxy[vd.i], cono, fade);
 
@@ -1470,8 +1462,7 @@ static void do_rotate_brush_task_cb_ex(void *__restrict userdata,
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
     float vec[3], rot[3][3];
-    float rgb[3];
-    const float fade = bstrength * SCULPT_brush_factor_with_color(ss,
+    const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
                                                                 orig_data.co,
                                                                 sqrtf(test.dist),
@@ -1480,8 +1471,7 @@ static void do_rotate_brush_task_cb_ex(void *__restrict userdata,
                                                                 vd.mask ? *vd.mask : 0.0f,
                                                                 vd.vertex,
                                                                 thread_id,
-                                                                &automask_data,
-                                                                rgb);
+                                                                &automask_data);
 
     sub_v3_v3v3(vec, orig_data.co, ss->cache->location);
     axis_angle_normalized_to_mat3(rot, ss->cache->sculpt_normal_symm, angle * fade);
@@ -1551,8 +1541,7 @@ static void do_layer_brush_task_cb_ex(void *__restrict userdata,
     }
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
-    float rgb[3];
-    const float fade = SCULPT_brush_factor_with_color(ss,
+    const float fade = SCULPT_brush_strength_factor(ss,
                                                     brush,
                                                     vd.co,
                                                     sqrtf(test.dist),
@@ -1561,8 +1550,7 @@ static void do_layer_brush_task_cb_ex(void *__restrict userdata,
                                                     vd.mask ? *vd.mask : 0.0f,
                                                     vd.vertex,
                                                     thread_id,
-                                                    &automask_data,
-                                                    rgb);
+                                                    &automask_data);
 
     const int vi = vd.index;
     float *disp_factor;
@@ -1673,8 +1661,7 @@ static void do_inflate_brush_task_cb_ex(void *__restrict userdata,
     }
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
-    float rgb[3];
-    const float fade = bstrength * SCULPT_brush_factor_with_color(ss,
+    const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
                                                                 vd.co,
                                                                 sqrtf(test.dist),
@@ -1683,8 +1670,7 @@ static void do_inflate_brush_task_cb_ex(void *__restrict userdata,
                                                                 vd.mask ? *vd.mask : 0.0f,
                                                                 vd.vertex,
                                                                 thread_id,
-                                                                &automask_data,
-                                                                rgb);
+                                                                &automask_data);
     float val[3];
 
     if (vd.fno) {
@@ -1750,8 +1736,7 @@ static void do_nudge_brush_task_cb_ex(void *__restrict userdata,
     }
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
-    float rgb[3];
-    const float fade = bstrength * SCULPT_brush_factor_with_color(ss,
+    const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
                                                                 vd.co,
                                                                 sqrtf(test.dist),
@@ -1760,8 +1745,7 @@ static void do_nudge_brush_task_cb_ex(void *__restrict userdata,
                                                                 vd.mask ? *vd.mask : 0.0f,
                                                                 vd.vertex,
                                                                 thread_id,
-                                                                &automask_data,
-                                                                rgb);
+                                                                &automask_data);
 
     mul_v3_v3fl(proxy[vd.i], cono, fade);
 
@@ -1838,8 +1822,7 @@ static void do_crease_brush_task_cb_ex(void *__restrict userdata,
     /* Offset vertex. */
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
-    float rgb[3];
-    const float fade = SCULPT_brush_factor_with_color(ss,
+    const float fade = SCULPT_brush_strength_factor(ss,
                                                     brush,
                                                     vd.co,
                                                     sqrtf(test.dist),
@@ -1848,8 +1831,7 @@ static void do_crease_brush_task_cb_ex(void *__restrict userdata,
                                                     vd.mask ? *vd.mask : 0.0f,
                                                     vd.vertex,
                                                     thread_id,
-                                                    &automask_data,
-                                                    rgb);
+                                                    &automask_data);
     float val1[3];
     float val2[3];
 
@@ -1963,8 +1945,7 @@ static void do_pinch_brush_task_cb_ex(void *__restrict userdata,
     }
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
-    float rgb[3];
-    const float fade = bstrength * SCULPT_brush_factor_with_color(ss,
+    const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
                                                                 vd.co,
                                                                 sqrtf(test.dist),
@@ -1973,8 +1954,7 @@ static void do_pinch_brush_task_cb_ex(void *__restrict userdata,
                                                                 vd.mask ? *vd.mask : 0.0f,
                                                                 vd.vertex,
                                                                 thread_id,
-                                                                &automask_data,
-                                                                rgb);
+                                                                &automask_data);
     float disp_center[3];
     float x_disp[3];
     float z_disp[3];
@@ -2088,18 +2068,16 @@ static void do_grab_brush_task_cb_ex(void *__restrict userdata,
     }
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
-    float rgb[3];
-    float fade = bstrength * SCULPT_brush_factor_with_color(ss,
-                                      brush,
-                                      orig_data.co,
-                                      sqrtf(test.dist),
-                                      orig_data.no,
-                                      NULL,
-                                      vd.mask ? *vd.mask : 0.0f,
-                                      vd.vertex,
-                                      thread_id,
-                                      &automask_data,
-                                      rgb);
+    float fade = bstrength * SCULPT_brush_strength_factor(ss,
+                                                          brush,
+                                                          orig_data.co,
+                                                          sqrtf(test.dist),
+                                                          orig_data.no,
+                                                          NULL,
+                                                          vd.mask ? *vd.mask : 0.0f,
+                                                          vd.vertex,
+                                                          thread_id,
+                                                          &automask_data);
 
     if (grab_silhouette) {
       float silhouette_test_dir[3];
@@ -2301,8 +2279,7 @@ static void do_draw_sharp_brush_task_cb_ex(void *__restrict userdata,
     /* Offset vertex. */
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
-    float rgb[3];
-    const float fade = SCULPT_brush_factor_with_color(ss,
+    const float fade = SCULPT_brush_strength_factor(ss,
                                                     brush,
                                                     orig_data.co,
                                                     sqrtf(test.dist),
@@ -2311,8 +2288,7 @@ static void do_draw_sharp_brush_task_cb_ex(void *__restrict userdata,
                                                     vd.mask ? *vd.mask : 0.0f,
                                                     vd.vertex,
                                                     thread_id,
-                                                    &automask_data,
-                                                    rgb);
+                                                    &automask_data);
 
     mul_v3_v3fl(proxy[vd.i], offset, fade);
 
@@ -2393,8 +2369,7 @@ static void do_topology_slide_task_cb_ex(void *__restrict userdata,
     }
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
-    float rgb[3];
-    const float fade = SCULPT_brush_factor_with_color(ss,
+    const float fade = SCULPT_brush_strength_factor(ss,
                                                     brush,
                                                     orig_data.co,
                                                     sqrtf(test.dist),
@@ -2403,8 +2378,7 @@ static void do_topology_slide_task_cb_ex(void *__restrict userdata,
                                                     vd.mask ? *vd.mask : 0.0f,
                                                     vd.vertex,
                                                     thread_id,
-                                                    &automask_data,
-                                                    rgb);
+                                                    &automask_data);
     float current_disp[3];
     float current_disp_norm[3];
     float final_disp[3] = {0.0f, 0.0f, 0.0f};
@@ -2559,8 +2533,7 @@ static void do_topology_relax_task_cb_ex(void *__restrict userdata,
     }
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
-    float rgb[3];
-    const float fade = SCULPT_brush_factor_with_color(ss,
+    const float fade = SCULPT_brush_strength_factor(ss,
                                                     brush,
                                                     orig_data.co,
                                                     sqrtf(test.dist),
@@ -2569,8 +2542,7 @@ static void do_topology_relax_task_cb_ex(void *__restrict userdata,
                                                     vd.mask ? *vd.mask : 0.0f,
                                                     vd.vertex,
                                                     thread_id,
-                                                    &automask_data,
-                                                    rgb);
+                                                    &automask_data);
 
     SCULPT_relax_vertex(ss, &vd, fade * bstrength, false, vd.co);
     if (vd.is_mesh) {
@@ -2644,8 +2616,7 @@ static void do_displacement_eraser_brush_task_cb_ex(void *__restrict userdata,
     }
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
-    float rgb[3];
-    const float fade = bstrength * SCULPT_brush_factor_with_color(ss,
+    const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
                                                                 vd.co,
                                                                 sqrtf(test.dist),
@@ -2654,8 +2625,7 @@ static void do_displacement_eraser_brush_task_cb_ex(void *__restrict userdata,
                                                                 vd.mask ? *vd.mask : 0.0f,
                                                                 vd.vertex,
                                                                 thread_id,
-                                                                &automask_data,
-                                                                rgb);
+                                                                &automask_data);
 
     float limit_co[3];
     float disp[3];
@@ -2719,8 +2689,7 @@ static void do_displacement_smear_brush_task_cb_ex(void *__restrict userdata,
     }
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
-    float rgb[3];
-    const float fade = bstrength * SCULPT_brush_factor_with_color(ss,
+    const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                 brush,
                                                                 vd.co,
                                                                 sqrtf(test.dist),
@@ -2729,8 +2698,7 @@ static void do_displacement_smear_brush_task_cb_ex(void *__restrict userdata,
                                                                 vd.mask ? *vd.mask : 0.0f,
                                                                 vd.vertex,
                                                                 thread_id,
-                                                                &automask_data,
-                                                                rgb);
+                                                                &automask_data);
 
     float current_disp[3];
     float current_disp_norm[3];
@@ -2889,9 +2857,8 @@ static void do_topology_rake_bmesh_task_cb_ex(void *__restrict userdata,
     }
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
-    float rgb[3];
     const float fade = bstrength *
-                       SCULPT_brush_factor_with_color(ss,
+                       SCULPT_brush_strength_factor(ss,
                                                     brush,
                                                     vd.co,
                                                     sqrtf(test.dist),
@@ -2900,8 +2867,7 @@ static void do_topology_rake_bmesh_task_cb_ex(void *__restrict userdata,
                                                     *vd.mask,
                                                     vd.vertex,
                                                     thread_id,
-                                                    &automask_data,
-                                                    rgb) *
+                                                    &automask_data) *
                        ss->cache->pressure;
 
     float avg[3], val[3];
@@ -2982,8 +2948,7 @@ static void do_mask_brush_draw_task_cb_ex(void *__restrict userdata,
     }
 
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
-    float rgb[3];
-    const float fade = SCULPT_brush_factor_with_color(ss,
+    const float fade = SCULPT_brush_strength_factor(ss,
                                                     brush,
                                                     vd.co,
                                                     sqrtf(test.dist),
@@ -2992,8 +2957,7 @@ static void do_mask_brush_draw_task_cb_ex(void *__restrict userdata,
                                                     0.0f,
                                                     vd.vertex,
                                                     thread_id,
-                                                    &automask_data,
-                                                    rgb);
+                                                    &automask_data);
 
     if (bstrength > 0.0f) {
       (*vd.mask) += fade * bstrength * (1.0f - *vd.mask);

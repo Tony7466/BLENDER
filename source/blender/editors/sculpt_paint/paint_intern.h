@@ -353,13 +353,13 @@ float paint_calc_object_space_radius(struct ViewContext *vc,
                                      const float center[3],
                                      float pixel_radius);
 bool paint_get_tex_pixel(
-const struct MTex *mtex, float u, float v, int thread, struct ImagePool *pool, float *r_intensity, float r_rgba[4]);
-void paint_get_tex_pixel_srgb_with_clamp(const struct MTex *mtex,
+const struct MTex *mtex, float u, float v, struct ImagePool *pool, int thread, float *r_intensity, float r_rgba[4]);
+void paint_get_tex_pixel_color_with_clamp(const struct MTex *mtex,
                              float u,
                              float v,
                              float rgba[4],
-                             int thread,
                              struct ImagePool *pool,
+                             int thread,
                              bool convert,
                              struct ColorSpace *colorspace);
 

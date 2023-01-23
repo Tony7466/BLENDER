@@ -1141,11 +1141,10 @@ def brush_texture_settings(layout, brush, sculpt):
         # texture_sample_bias
         layout.prop(brush, "texture_sample_bias", slider=True, text="Sample Bias")
 
-        # use_rgb_as_vector_displacement (Only working for draw brush for now)
         if brush.sculpt_tool == 'DRAW':
             col = layout.column()
             col.active = tex_slot.map_mode == 'AREA_PLANE'
-            col.prop(brush, "use_rgb_as_vector_displacement", text="RGB as Vector Displacement")
+            col.prop(brush, "use_color_as_displacement", text="Vector Displacement")
 
 
 
