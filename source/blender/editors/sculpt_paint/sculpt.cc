@@ -74,8 +74,6 @@
 #include "RNA_define.h"
 
 #include "bmesh.h"
-#include "IMB_imbuf_types.h"
-#include "RE_texture.h"
 
 using blender::float3;
 using blender::MutableSpan;
@@ -3320,17 +3318,16 @@ static void do_gravity_task_cb_ex(void *__restrict userdata,
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
-
     const float fade = SCULPT_brush_strength_factor(ss,
-                                                      brush,
-                                                      vd.co,
-                                                      sqrtf(test.dist),
-                                                      vd.no,
-                                                      vd.fno,
-                                                      vd.mask ? *vd.mask : 0.0f,
-                                                      vd.vertex,
-                                                      thread_id,
-                                                      nullptr);
+                                                    brush,
+                                                    vd.co,
+                                                    sqrtf(test.dist),
+                                                    vd.no,
+                                                    vd.fno,
+                                                    vd.mask ? *vd.mask : 0.0f,
+                                                    vd.vertex,
+                                                    thread_id,
+                                                    nullptr);
 
     mul_v3_v3fl(proxy[vd.i], offset, fade);
 
