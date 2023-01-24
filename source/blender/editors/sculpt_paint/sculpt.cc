@@ -2588,10 +2588,7 @@ static void sculpt_apply_texture(const SculptSession *ss,
 
   if (!mtex->tex) {
     *r_value = 1.0f;
-    r_rgba[0] = 1.0f;
-    r_rgba[1] = 1.0f;
-    r_rgba[2] = 1.0f;
-    r_rgba[3] = 1.0f;
+    copy_v4_fl(r_rgba, 1.0f);
     return;
   }
 

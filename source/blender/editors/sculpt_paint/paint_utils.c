@@ -157,47 +157,17 @@ bool paint_get_tex_pixel(const MTex *mtex,
 {
   const float co[3] = {u, v, 0.0f};
   float intensity;
-  const bool hasRGB = RE_texture_evaluate(mtex, co, thread, pool, false, false, &intensity, r_rgba);
+  const bool has_rgb = RE_texture_evaluate(mtex, co, thread, pool, false, false, &intensity, r_rgba);
   *r_intensity = intensity;
 
-  if (!hasRGB) {
+  if (!has_rgb) {
     r_rgba[0] = intensity;
     r_rgba[1] = intensity;
     r_rgba[2] = intensity;
     r_rgba[3] = 1.0f;
   }
 
-  return hasRGB;
-}
-
-void paint_get_tex_pixel_color_with_clamp(const MTex *mtex,
-                             float u,
-                             float v,
-                             float rgba[4],
-                             struct ImagePool *pool,
-                             int thread,
-                             bool convert_to_linear,
-                             struct ColorSpace *colorspace)
-{
-  const float co[3] = {u, v, 0.0f};
-  float intensity;
-
-  const bool hasRGB = RE_texture_evaluate(mtex, co, thread, pool, false, false, &intensity, rgba);
-
-  if (!hasRGB) {
-    rgba[0] = intensity;
-    rgba[1] = intensity;
-    rgba[2] = intensity;
-    rgba[3] = 1.0f;
-  }
-
-  if (convert_to_linear) {
-    IMB_colormanagement_colorspace_to_scene_linear_v3(rgba, colorspace);
-  }
-
-  linearrgb_to_srgb_v3_v3(rgba, rgba);
-
-  clamp_v4(rgba, 0.0f, 1.0f);
+  return has_rgb;
 }
 
 void paint_stroke_operator_properties(wmOperatorType *ot)
