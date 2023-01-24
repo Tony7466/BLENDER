@@ -583,7 +583,7 @@ typedef struct StrokeCache {
   float sculpt_normal_symm[3];
 
   /* Used for area texture mode, local_mat gets calculated by
-   * calc_brush_local_mat() and used in brush_factor_with_color().
+   * calc_brush_local_mat() and used in sculpt_apply_texture().
    * Transforms from model-space coords to local area coords.
    */
   float brush_local_mat[4][4];
