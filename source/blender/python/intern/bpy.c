@@ -33,6 +33,7 @@
 
 #include "bpy.h"
 #include "bpy_app.h"
+#include "bpy_asset_system.h"
 #include "bpy_capi_utils.h"
 #include "bpy_driver.h"
 #include "bpy_library.h"
@@ -653,6 +654,7 @@ void BPy_init_modules(struct bContext *C)
   PyModule_AddObject(mod, "_utils_units", BPY_utils_units());
   PyModule_AddObject(mod, "_utils_previews", BPY_utils_previews_module());
   PyModule_AddObject(mod, "msgbus", BPY_msgbus_module());
+  PyModule_AddObject(mod, "asset_system", BPY_asset_system_module());
 
   RNA_pointer_create(NULL, &RNA_Context, C, &ctx_ptr);
   bpy_context_module = (BPy_StructRNA *)pyrna_struct_CreatePyObject(&ctx_ptr);

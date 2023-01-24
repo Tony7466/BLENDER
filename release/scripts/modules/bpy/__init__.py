@@ -6,6 +6,7 @@ Give access to blender data and utility functions.
 
 __all__ = (
     "app",
+    "asset_system":
     "context",
     "data",
     "ops",
@@ -19,6 +20,7 @@ __all__ = (
 # internal blender C module
 from _bpy import (
     app,
+    asset_system,
     context,
     data,
     msgbus,
