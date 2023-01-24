@@ -55,8 +55,8 @@
 #include "paint_intern.h"
 /* still needed for sculpt_stroke_get_location, should be
  * removed eventually (TODO) */
-#include "IMB_colormanagement.h"
 #include "sculpt_intern.h"
+#include "IMB_colormanagement.h"
 
 /* TODOs:
  *
