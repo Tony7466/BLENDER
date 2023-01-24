@@ -2666,18 +2666,14 @@ float SCULPT_brush_strength_factor(SculptSession *ss,
   const float final_len = sculpt_apply_hardness(ss, len);
 
   /* Falloff curve. */
-  const float falloff = BKE_brush_curve_strength(brush, final_len, cache->radius)
-                        * frontface(brush, cache->view_normal, vno, fno);
+  avg *= BKE_brush_curve_strength(brush, final_len, cache->radius);
+  avg *= frontface(brush, cache->view_normal, vno, fno);
 
   /* Paint mask. */
-  const float paint_mask = 1.0f - mask;
+  avg *= 1.0f - mask;
 
   /* Auto-masking. */
-  const float automasking_factor = SCULPT_automasking_factor_get(cache->automasking, ss, vertex, automask_data);
-
-  const float masks_combined = falloff * paint_mask * automasking_factor;
-
-  avg *= masks_combined;
+  avg *= SCULPT_automasking_factor_get(cache->automasking, ss, vertex, automask_data);
 
   return avg;
 }
