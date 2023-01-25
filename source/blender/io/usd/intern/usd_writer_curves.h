@@ -26,6 +26,18 @@ class USDCurvesWriter : public USDAbstractWriter {
  private:
   std::unique_ptr<Curves> converted_curves_;
   pxr::UsdGeomCurves DefineUsdGeomBasisCurves(pxr::VtValue curve_basis, bool cyclic, bool cubic);
+  
+  void set_writer_attributes(pxr::UsdGeomCurves &usd_curves,
+                             const pxr::VtArray<pxr::GfVec3f> verts,
+                             const pxr::VtIntArray control_point_counts,
+                             const pxr::VtArray<float> widths,
+                             const pxr::UsdTimeCode timecode,
+                             const pxr::TfToken interpolation);
+
+  void set_writer_attributes_for_nurbs(const pxr::UsdGeomCurves usd_curves,
+                                       const pxr::VtArray<double> knots,
+                                       const pxr::VtArray<int> orders,
+                                       const pxr::UsdTimeCode timecode);
 };
 
 }  // namespace blender::io::usd
