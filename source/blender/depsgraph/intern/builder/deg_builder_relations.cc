@@ -1312,6 +1312,7 @@ void DepsgraphRelationBuilder::build_constraints(ID *id,
           add_relation(target_transform_key, constraint_op_key, cti->name);
           add_relation(target_geometry_key, constraint_op_key, cti->name);
           add_customdata_mask(ct->tar, DEGCustomDataMeshMasks::MaskVert(CD_MASK_MDEFORMVERT));
+          add_special_eval_flag(&ct->tar->id, DAG_EVAL_NEED_CPU_EVALUATED_MESH);
         }
         else if (con->type == CONSTRAINT_TYPE_SHRINKWRAP) {
           bShrinkwrapConstraint *scon = (bShrinkwrapConstraint *)con->data;
@@ -1319,6 +1320,7 @@ void DepsgraphRelationBuilder::build_constraints(ID *id,
           /* Constraints which requires the target object surface. */
           ComponentKey target_key(&ct->tar->id, NodeType::GEOMETRY);
           add_relation(target_key, constraint_op_key, cti->name);
+          add_special_eval_flag(&ct->tar->id, DAG_EVAL_NEED_CPU_EVALUATED_MESH);
 
           /* Add dependency on normal layers if necessary. */
           if (ct->tar->type == OB_MESH && scon->shrinkType != MOD_SHRINKWRAP_NEAREST_VERTEX) {
@@ -2019,10 +2021,13 @@ void DepsgraphRelationBuilder::build_rigidbody(Scene *scene)
       add_relation(object_transform_simulation_init_key,
                    rb_simulate_key,
                    "Object Transform -> Rigidbody Sim Eval");
+
       /* Geometry must be known to create the rigid body. RBO_MESH_BASE
        * uses the non-evaluated mesh, so then the evaluation is
        * unnecessary. */
-      if (rigidbody_object_depends_on_evaluated_geometry(object->rigidbody_object)) {
+      eRigidBody_MeshSource mesh_source = rigidbody_object_depends_on_evaluated_geometry(
+          object->rigidbody_object);
+      if (mesh_source != RBO_MESH_BASE) {
         /* NOTE: We prefer this relation to be never killed, to avoid
          * access partially evaluated mesh from solver. */
         ComponentKey object_geometry_key(&object->id, NodeType::GEOMETRY);
@@ -2030,6 +2035,10 @@ void DepsgraphRelationBuilder::build_rigidbody(Scene *scene)
                      rb_simulate_key,
                      "Object Geom Eval -> Rigidbody Sim Eval",
                      RELATION_FLAG_GODMODE);
+        /* Request the CPU mesh when necessary. */
+        if (mesh_source == RBO_MESH_FINAL) {
+          add_special_eval_flag(&object->id, DAG_EVAL_NEED_CPU_EVALUATED_MESH);
+        }
       }
 
       /* Final transform is whatever the solver gave to us. */

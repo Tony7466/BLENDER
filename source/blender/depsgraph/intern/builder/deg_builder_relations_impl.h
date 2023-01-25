@@ -105,17 +105,16 @@ Relation *DepsgraphRelationBuilder::add_node_handle_relation(const KeyType &key_
   return nullptr;
 }
 
-static inline bool rigidbody_object_depends_on_evaluated_geometry(const RigidBodyOb *rbo)
+static inline eRigidBody_MeshSource rigidbody_object_depends_on_evaluated_geometry(
+    const RigidBodyOb *rbo)
 {
   if (rbo == nullptr) {
-    return false;
+    return RBO_MESH_BASE;
   }
   if (ELEM(rbo->shape, RB_SHAPE_CONVEXH, RB_SHAPE_TRIMESH)) {
-    if (rbo->mesh_source != RBO_MESH_BASE) {
-      return true;
-    }
+    return static_cast<eRigidBody_MeshSource>(rbo->mesh_source);
   }
-  return false;
+  return RBO_MESH_BASE;
 }
 
 template<typename KeyTo>

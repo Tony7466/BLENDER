@@ -140,6 +140,10 @@ void DEG_add_forcefield_relations(DepsNodeHandle *handle,
       DEG_add_object_pointcache_relation(handle, relation->ob, DEG_OB_COMP_GEOMETRY, name);
     }
 
+    if (ELEM(relation->pd->shape, PFIELD_SHAPE_POINTS)) {
+      DEG_add_special_eval_flag(handle, &relation->ob->id, DAG_EVAL_NEED_CPU_EVALUATED_MESH);
+    }
+
     /* Smoke flow relations. */
     if (relation->pd->forcefield == PFIELD_FLUIDFLOW && relation->pd->f_source != nullptr) {
       DEG_add_object_pointcache_relation(

@@ -261,6 +261,8 @@ static void add_collection_relation(const ModifierUpdateDepsgraphContext *ctx,
 {
   DEG_add_collection_geometry_relation(ctx->node, &collection, "Nodes Modifier");
   DEG_add_collection_geometry_customdata_mask(ctx->node, &collection, &dependency_data_mask);
+  DEG_add_collection_geometry_special_eval_flag(
+      ctx->node, &collection, DAG_EVAL_NEED_CPU_EVALUATED_MESH);
 }
 
 static void add_object_relation(const ModifierUpdateDepsgraphContext *ctx, Object &object)
@@ -273,6 +275,7 @@ static void add_object_relation(const ModifierUpdateDepsgraphContext *ctx, Objec
     else if (DEG_object_has_geometry_component(&object)) {
       DEG_add_object_relation(ctx->node, &object, DEG_OB_COMP_GEOMETRY, "Nodes Modifier");
       DEG_add_customdata_mask(ctx->node, &object, &dependency_data_mask);
+      DEG_add_special_eval_flag(ctx->node, &object.id, DAG_EVAL_NEED_CPU_EVALUATED_MESH);
     }
   }
 }
