@@ -508,8 +508,7 @@ struct bNode *ntreeFindType(struct bNodeTree *ntree, int type);
 /**
  * Check recursively whether a sub node tree contain in host tree.
  */
-bool ntreeContainsTree(const struct bNodeTree *parent_tree,
-                       const struct bNodeTree *sub_tree);
+bool ntreeContainsTree(const struct bNodeTree *parent_tree, const struct bNodeTree *sub_tree);
 
 void ntreeUpdateAllNew(struct Main *main);
 void ntreeUpdateAllUsers(struct Main *main, struct ID *id);
