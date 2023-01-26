@@ -428,7 +428,7 @@ static void draw_fcurve_handles(SpaceGraph *sipo, FCurve *fcu)
       /* if only selected keyframes can get their handles shown,
        * check that keyframe is selected
        */
-      if (sipo->flag & SIPO_SELVHANDLESONLY) {
+      if (U.animation_flag & USER_ANIM_ONLY_SHOW_SELECTED_KEY_HANDLES) {
         if (BEZT_ISSEL_ANY(bezt) == 0) {
           continue;
         }
@@ -1117,7 +1117,8 @@ static void draw_fcurve(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, bAn
    * - If the option to only show controls if the F-Curve is selected is enabled,
    *   we must obey this.
    */
-  if (!(sipo->flag & SIPO_SELCUVERTSONLY) || (fcu->flag & FCURVE_SELECTED)) {
+  if (!(U.animation_flag & USER_ANIM_ONLY_SHOW_SELECTED_CURVE_KEYS) ||
+      (fcu->flag & FCURVE_SELECTED)) {
     if (!BKE_fcurve_are_keyframes_usable(fcu) && !(fcu->fpt && fcu->totvert)) {
       /* only draw controls if this is the active modifier */
       if ((fcu->flag & FCURVE_ACTIVE) && (fcm)) {
@@ -1151,7 +1152,10 @@ static void draw_fcurve(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, bAn
           draw_fcurve_handles(sipo, fcu);
         }
 
-        draw_fcurve_vertices(region, fcu, do_handles, (sipo->flag & SIPO_SELVHANDLESONLY));
+        draw_fcurve_vertices(region,
+                             fcu,
+                             do_handles,
+                             (U.animation_flag & USER_ANIM_ONLY_SHOW_SELECTED_KEY_HANDLES));
       }
       else {
         /* samples: only draw two indicators at either end as indicators */

@@ -5132,6 +5132,22 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
                            "background of the Graph Editor");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_GRAPH, NULL);
 
+  /* FCurve keyframe visibility. */
+  prop = RNA_def_property(srna, "show_only_selected_curve_keyframes", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, NULL, "animation_flag", USER_ANIM_ONLY_SHOW_SELECTED_CURVE_KEYS);
+  RNA_def_property_ui_text(prop,
+                           "Only Show Selected F-Curve Keyframes",
+                           "Only keyframes of selected F-Curves are visible and editable");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_GRAPH, NULL);
+
+  prop = RNA_def_property(srna, "show_only_selected_keyframe_handles", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "animation_flag", USER_ANIM_ONLY_SHOW_SELECTED_KEY_HANDLES);
+  RNA_def_property_ui_text(prop,
+                           "Only Show Selected Keyframes Handles",
+                           "Only show and edit handles of selected keyframes");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_GRAPH, NULL);
+
   /* grease pencil */
   prop = RNA_def_property(srna, "grease_pencil_manhattan_distance", PROP_INT, PROP_PIXEL);
   RNA_def_property_int_sdna(prop, NULL, "gp_manhattandist");

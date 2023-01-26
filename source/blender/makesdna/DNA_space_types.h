@@ -484,8 +484,6 @@ typedef enum eGraphEdit_Flag {
   /* SIPO_NODRAWCFRANUM = (1 << 3), DEPRECATED */
   /* show timing in seconds instead of frames */
   SIPO_DRAWTIME = (1 << 4),
-  /* only show keyframes for selected F-Curves */
-  SIPO_SELCUVERTSONLY = (1 << 5),
   /* draw names of F-Curves beside the respective curves */
   /* NOTE: currently not used */
   /* SIPO_DRAWNAMES = (1 << 6), */ /* UNUSED */
@@ -493,8 +491,6 @@ typedef enum eGraphEdit_Flag {
   SIPO_SLIDERS = (1 << 7),
   /* don't show the horizontal component of the cursor */
   SIPO_NODRAWCURSOR = (1 << 8),
-  /* only show handles of selected keyframes */
-  SIPO_SELVHANDLESONLY = (1 << 9),
   /* don't perform realtime updates */
   SIPO_NOREALTIMEUPDATES = (1 << 11),
   /* don't draw curves with AA ("beauty-draw") for performance */
