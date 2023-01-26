@@ -304,12 +304,30 @@ float musgrave_hetero_terrain(
 /** \name Voronoi Noise
  * \{ */
 
-void voronoi_f1(float w, float randomness, float *r_distance, float3 *r_color, float *r_w);
-void voronoi_smooth_f1(
-    float w, float smoothness, float randomness, float *r_distance, float3 *r_color, float *r_w);
-void voronoi_f2(float w, float randomness, float *r_distance, float3 *r_color, float *r_w);
-void voronoi_distance_to_edge(float w, float randomness, float *r_distance);
-void voronoi_n_sphere_radius(float w, float randomness, float *r_radius);
+void voronoi_f1(const float w,
+                float exponent,
+                float randomness,
+                int metric,
+                float *r_distance,
+                float3 *r_color,
+                float *r_w);
+void voronoi_smooth_f1(const float w,
+                       float smoothness,
+                       float exponent,
+                       float randomness,
+                       int metric,
+                       float *r_distance,
+                       float3 *r_color,
+                       float *r_w);
+void voronoi_f2(const float w,
+                float exponent,
+                float randomness,
+                int metric,
+                float *r_distance,
+                float3 *r_color,
+                float *r_w);
+void voronoi_distance_to_edge(const float w, float randomness, float *r_distance);
+void voronoi_n_sphere_radius(const float w, float randomness, float *r_radius);
 
 void voronoi_f1(const float2 coord,
                 float exponent,
@@ -385,6 +403,59 @@ void voronoi_f2(const float4 coord,
                 float4 *r_position);
 void voronoi_distance_to_edge(const float4 coord, float randomness, float *r_distance);
 void voronoi_n_sphere_radius(const float4 coord, float randomness, float *r_radius);
+
+/* Fractal Voronoi Noise */
+
+template<typename T>
+void fractal_voronoi_f1(const T coord,
+                        const float detail,
+                        const float roughness,
+                        const float lacunarity,
+                        const float exponent,
+                        const float randomness,
+                        const int metric,
+                        const float max_distance,
+                        float *r_max_amplitude,
+                        float *r_distance,
+                        float3 *r_color,
+                        T *r_position);
+
+template<typename T>
+void fractal_voronoi_smooth_f1(const T coord,
+                               const float detail,
+                               const float roughness,
+                               const float lacunarity,
+                               const float smoothness,
+                               const float exponent,
+                               const float randomness,
+                               const int metric,
+                               const float max_distance,
+                               float *r_max_amplitude,
+                               float *r_distance,
+                               float3 *r_color,
+                               T *r_position);
+
+template<typename T>
+void fractal_voronoi_f2(const T coord,
+                        const float detail,
+                        const float roughness,
+                        const float lacunarity,
+                        const float exponent,
+                        const float randomness,
+                        const int metric,
+                        const float max_distance,
+                        float *r_max_amplitude,
+                        float *r_distance,
+                        float3 *r_color,
+                        T *r_position);
+
+template<typename T>
+void fractal_voronoi_distance_to_edge(const T coord,
+                                      const float detail,
+                                      const float lacunarity,
+                                      const float randomness,
+                                      const bool normalize,
+                                      float *r_distance);
 
 /** \} */
 
