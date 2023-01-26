@@ -72,8 +72,9 @@ ccl_device void kernel_background_evaluate(KernelGlobals kg,
 #endif
 
   /* Evaluate shader.
-   * This is being evaluated for all BSDFs, so path flag does not contain a specific type. */
-  const uint32_t path_flag = PATH_RAY_EMISSION;
+   * This is being evaluated for all BSDFs, so path flag does not contain a specific type.
+   * However, we want to flag the ray visibility to ignore the sun in the background map. */
+  const uint32_t path_flag = PATH_RAY_EMISSION | PATH_RAY_IMPORTANCE_BAKE;
   surface_shader_eval<KERNEL_FEATURE_NODE_MASK_SURFACE_LIGHT &
                       ~(KERNEL_FEATURE_NODE_RAYTRACE | KERNEL_FEATURE_NODE_LIGHT_PATH)>(
       kg, state, &sd, NULL, path_flag);
