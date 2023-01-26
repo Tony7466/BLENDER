@@ -523,27 +523,6 @@ static ShaderNode *add_node(Scene *scene,
   else if (b_node.is_a(&RNA_ShaderNodeHoldout)) {
     node = graph->create_node<HoldoutNode>();
   }
-  else if (b_node.is_a(&RNA_ShaderNodeBsdfAnisotropic)) {
-    BL::ShaderNodeBsdfAnisotropic b_aniso_node(b_node);
-    AnisotropicBsdfNode *aniso = graph->create_node<AnisotropicBsdfNode>();
-
-    switch (b_aniso_node.distribution()) {
-      case BL::ShaderNodeBsdfAnisotropic::distribution_BECKMANN:
-        aniso->set_distribution(CLOSURE_BSDF_MICROFACET_BECKMANN_ID);
-        break;
-      case BL::ShaderNodeBsdfAnisotropic::distribution_GGX:
-        aniso->set_distribution(CLOSURE_BSDF_MICROFACET_GGX_ID);
-        break;
-      case BL::ShaderNodeBsdfAnisotropic::distribution_MULTI_GGX:
-        aniso->set_distribution(CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
-        break;
-      case BL::ShaderNodeBsdfAnisotropic::distribution_ASHIKHMIN_SHIRLEY:
-        aniso->set_distribution(CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID);
-        break;
-    }
-
-    node = aniso;
-  }
   else if (b_node.is_a(&RNA_ShaderNodeBsdfDiffuse)) {
     node = graph->create_node<DiffuseBsdfNode>();
   }
@@ -566,24 +545,24 @@ static ShaderNode *add_node(Scene *scene,
 
     node = subsurface;
   }
-  else if (b_node.is_a(&RNA_ShaderNodeBsdfGlossy)) {
-    BL::ShaderNodeBsdfGlossy b_glossy_node(b_node);
+  else if (b_node.is_a(&RNA_ShaderNodeBsdfAnisotropic)) {
+    BL::ShaderNodeBsdfAnisotropic b_glossy_node(b_node);
     GlossyBsdfNode *glossy = graph->create_node<GlossyBsdfNode>();
 
     switch (b_glossy_node.distribution()) {
-      case BL::ShaderNodeBsdfGlossy::distribution_SHARP:
+      case BL::ShaderNodeBsdfAnisotropic::distribution_SHARP:
         glossy->set_distribution(CLOSURE_BSDF_REFLECTION_ID);
         break;
-      case BL::ShaderNodeBsdfGlossy::distribution_BECKMANN:
+      case BL::ShaderNodeBsdfAnisotropic::distribution_BECKMANN:
         glossy->set_distribution(CLOSURE_BSDF_MICROFACET_BECKMANN_ID);
         break;
-      case BL::ShaderNodeBsdfGlossy::distribution_GGX:
+      case BL::ShaderNodeBsdfAnisotropic::distribution_GGX:
         glossy->set_distribution(CLOSURE_BSDF_MICROFACET_GGX_ID);
         break;
-      case BL::ShaderNodeBsdfGlossy::distribution_ASHIKHMIN_SHIRLEY:
+      case BL::ShaderNodeBsdfAnisotropic::distribution_ASHIKHMIN_SHIRLEY:
         glossy->set_distribution(CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID);
         break;
-      case BL::ShaderNodeBsdfGlossy::distribution_MULTI_GGX:
+      case BL::ShaderNodeBsdfAnisotropic::distribution_MULTI_GGX:
         glossy->set_distribution(CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
         break;
     }
