@@ -468,7 +468,7 @@ static USDPrimReader *get_usd_reader(CacheReader *reader,
 struct Mesh *USD_read_mesh(struct CacheReader *reader,
                            struct Object *ob,
                            struct Mesh *existing_mesh,
-                           const USDMeshReadParams *params,
+                           const USDMeshReadParams params,
                            const char **err_str)
 {
   USDGeomReader *usd_reader = dynamic_cast<USDGeomReader *>(get_usd_reader(reader, ob, err_str));

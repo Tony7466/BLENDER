@@ -66,9 +66,12 @@ struct USDImportParams {
   eUSDMtlNameCollisionMode mtl_name_collision_mode;
 };
 
+/* This struct is in place to store the mesh sequence parameters needed when reading a data from a
+ * usd file for the mesh sequence cache.
+ */
 typedef struct USDMeshReadParams {
-  double time;
-  int read_flags;
+  double motion_sample_time; /* Read USD TimeCode in frames. */
+  int read_flags; /* MOD_MESHSEQ_xxx value that is set from MeshSeqCacheModifierData.read_flag. */
 } USDMeshReadParams;
 
 /* The USD_export takes a as_background_job parameter, and returns a boolean.
@@ -106,7 +109,7 @@ void USD_get_transform(struct CacheReader *reader, float r_mat[4][4], float time
 struct Mesh *USD_read_mesh(struct CacheReader *reader,
                            struct Object *ob,
                            struct Mesh *existing_mesh,
-                           const USDMeshReadParams *params,
+                           const USDMeshReadParams params,
                            const char **err_str);
 
 bool USD_mesh_topology_changed(struct CacheReader *reader,

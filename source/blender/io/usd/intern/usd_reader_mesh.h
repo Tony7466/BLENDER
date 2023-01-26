@@ -49,7 +49,7 @@ class USDMeshReader : public USDGeomReader {
   void read_object_data(Main *bmain, double motionSampleTime) override;
 
   struct Mesh *read_mesh(struct Mesh *existing_mesh,
-                         const USDMeshReadParams *params,
+                         const USDMeshReadParams params,
                          const char **err_str) override;
 
   bool topology_changed(const Mesh *existing_mesh, double motionSampleTime) override;
