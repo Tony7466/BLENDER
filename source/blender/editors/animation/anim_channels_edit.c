@@ -630,6 +630,21 @@ void ANIM_flush_setting_anim_channels(bAnimContext *ac,
   anim_flush_channel_setting_down(ac, setting, mode, match, matchLevel);
 }
 
+void ANIM_frame_graph_y(bContext *C, bAnimContext *ac)
+{
+  SpaceGraph *sipo = (SpaceGraph *)ac->sl;
+  LISTBASE_FOREACH (ARegion *, region, &ac->area->regionbase) {
+    if (region->regiontype == RGN_TYPE_WINDOW) {
+      rctf bounds = region->v2d.cur;
+      if ((sipo->flag & SIPO_NORMALIZE) != 0) {
+        bounds.ymin = -1.5f;
+        bounds.ymax = 1.5f;
+      }
+      UI_view2d_smooth_view(C, region, &bounds, U.smooth_viewtx);
+    }
+  }
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
