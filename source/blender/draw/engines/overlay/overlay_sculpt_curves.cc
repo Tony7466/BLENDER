@@ -11,23 +11,37 @@
 #include "overlay_private.hh"
 
 #include "BKE_attribute.hh"
+#include "BKE_crazyspace.hh"
 #include "BKE_curves.hh"
+
+#include "DEG_depsgraph_query.h"
 
 void OVERLAY_sculpt_curves_cache_init(OVERLAY_Data *vedata)
 {
   OVERLAY_PassList *psl = vedata->psl;
   OVERLAY_PrivateData *pd = vedata->stl->pd;
 
-  const DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL | DRW_STATE_BLEND_ALPHA;
-  DRW_PASS_CREATE(psl->sculpt_curves_selection_ps, state | pd->clipping_state);
+  /* Selection overlay. */
+  {
+    const DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL | DRW_STATE_BLEND_ALPHA;
+    DRW_PASS_CREATE(psl->sculpt_curves_selection_ps, state | pd->clipping_state);
 
-  GPUShader *sh = OVERLAY_shader_sculpt_curves_selection();
-  pd->sculpt_curves_selection_grp = DRW_shgroup_create(sh, psl->sculpt_curves_selection_ps);
-  DRWShadingGroup *grp = pd->sculpt_curves_selection_grp;
+    GPUShader *sh = OVERLAY_shader_sculpt_curves_selection();
+    pd->sculpt_curves_selection_grp = DRW_shgroup_create(sh, psl->sculpt_curves_selection_ps);
+    DRWShadingGroup *grp = pd->sculpt_curves_selection_grp;
 
-  /* Reuse the same mask opacity from sculpt mode, since it wasn't worth it to add a different
-   * property yet. */
-  DRW_shgroup_uniform_float_copy(grp, "selection_opacity", pd->overlay.sculpt_mode_mask_opacity);
+    /* Reuse the same mask opacity from sculpt mode, since it wasn't worth it to add a different
+     * property yet. */
+    DRW_shgroup_uniform_float_copy(grp, "selection_opacity", pd->overlay.sculpt_mode_mask_opacity);
+  }
+  /* Editable curves overlay. */
+  {
+    const DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS | DRW_STATE_BLEND_ALPHA;
+    DRW_PASS_CREATE(psl->sculpt_curves_edit_ps, state | pd->clipping_state);
+
+    GPUShader *sh = OVERLAY_shader_viewer_attribute_curves();
+    pd->sculpt_curves_edit_grp = DRW_shgroup_create(sh, psl->sculpt_curves_edit_ps);
+  }
 }
 
 static bool everything_selected(const Curves &curves_id)
@@ -39,7 +53,7 @@ static bool everything_selected(const Curves &curves_id)
   return selection.is_single() && selection.get_internal_single();
 }
 
-void OVERLAY_sculpt_curves_cache_populate(OVERLAY_Data *vedata, Object *object)
+static void populate_selection_overlay(OVERLAY_Data *vedata, Object *object)
 {
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   Curves *curves = static_cast<Curves *>(object->data);
@@ -68,6 +82,47 @@ void OVERLAY_sculpt_curves_cache_populate(OVERLAY_Data *vedata, Object *object)
   DRW_shgroup_buffer_texture(grp, "selection_tx", *texture);
 }
 
+static void populate_edit_overlay(OVERLAY_Data *vedata, Object *object)
+{
+  using namespace blender;
+  using namespace blender::bke;
+
+  OVERLAY_PrivateData *pd = vedata->stl->pd;
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  const Depsgraph *depsgraph = draw_ctx->depsgraph;
+
+  // float(*cage_positions)[3] = object->runtime.editcurves_eval_cage;
+  // std::cout << cage_positions << "\n";
+  // if (cage_positions == nullptr) {
+  //   return;
+  // }
+
+  draw_ctx->object_edit;
+
+  const Object *object_orig = DEG_get_original_object(object);
+  std::cout << object << " " << object_orig << " " << object->id.name << "\n";
+  if (object_orig == nullptr) {
+    return;
+  }
+  if (object_orig->type != OB_CURVES) {
+    return;
+  }
+
+  const crazyspace::GeometryDeformation deformation = crazyspace::get_evaluated_curves_deformation(
+      *depsgraph, *object);
+
+  // std::cout << deformation.positions.size() << "\n";
+
+  const Curves *curves_id_orig = reinterpret_cast<const Curves *>(object_orig->data);
+  const bke::CurvesGeometry &curves_orig = bke::CurvesGeometry::wrap(curves_id_orig->geometry);
+}
+
+void OVERLAY_sculpt_curves_cache_populate(OVERLAY_Data *vedata, Object *object)
+{
+  populate_selection_overlay(vedata, object);
+  populate_edit_overlay(vedata, object);
+}
+
 void OVERLAY_sculpt_curves_draw(OVERLAY_Data *vedata)
 {
   OVERLAY_PassList *psl = vedata->psl;
@@ -80,4 +135,5 @@ void OVERLAY_sculpt_curves_draw(OVERLAY_Data *vedata)
   }
 
   DRW_draw_pass(psl->sculpt_curves_selection_ps);
+  DRW_draw_pass(psl->sculpt_curves_edit_ps);
 }
