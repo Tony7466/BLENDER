@@ -80,7 +80,7 @@ def node_group_items(context):
         if group.bl_idname != ntree.bl_idname:
             continue
         # filter out recursive groups
-        if ntree.contains_in(group):
+        if group.contains_group(ntree):
             continue
         # filter out hidden nodetrees
         if group.name.startswith('.'):
