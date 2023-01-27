@@ -12723,8 +12723,11 @@ static void rna_def_nodetree(BlenderRNA *brna)
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 
   func = RNA_def_function(srna, "contains_group", "rna_NodeTree_contains_group");
-  RNA_def_function_ui_description(func, "Check if the node tree contains another. Used to avoid creating recursive node groups");
-  parm = RNA_def_pointer(func, "sub_tree", "NodeTree", "Node Group", "Node group for recursive check");
+  RNA_def_function_ui_description(
+      func,
+      "Check if the node tree contains another. Used to avoid creating recursive node groups");
+  parm = RNA_def_pointer(
+      func, "sub_tree", "NodeTree", "Node Group", "Node group for recursive check");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   parm = RNA_def_property(func, "contained", PROP_BOOLEAN, PROP_NONE);
   RNA_def_function_return(func, parm);
