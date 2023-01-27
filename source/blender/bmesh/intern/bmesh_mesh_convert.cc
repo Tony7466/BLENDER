@@ -85,6 +85,7 @@
 #include "BLI_span.hh"
 #include "BLI_string_ref.hh"
 #include "BLI_task.hh"
+#include "BLI_vector.hh"
 
 #include "BKE_attribute.hh"
 #include "BKE_customdata.h"
@@ -110,6 +111,7 @@ using blender::IndexRange;
 using blender::MutableSpan;
 using blender::Span;
 using blender::StringRef;
+using blender::Vector;
 
 /* Static function for alloc (duplicate in modifiers_bmesh.c) */
 static BMFace *bm_face_create_from_mpoly(BMesh &bm,
@@ -126,6 +128,66 @@ static BMFace *bm_face_create_from_mpoly(BMesh &bm,
   }
 
   return BM_face_create(&bm, verts.data(), edges.data(), loops.size(), nullptr, BM_CREATE_SKIP_CD);
+}
+
+struct MeshToBMeshLayerInfo {
+  const void *mesh_data;
+  size_t elem_size;
+  int bmesh_offset;
+  eCustomDataType type;
+};
+
+/**
+ * Get the necessary information to copy every data layer from the Mesh to the BMesh.
+ */
+static Vector<MeshToBMeshLayerInfo> get_mesh_to_bm_copy_info(const CustomData &mesh_data,
+                                                             CustomData &bm_data)
+{
+
+  Vector<MeshToBMeshLayerInfo> infos;
+  std::array<int, CD_NUMTYPES> per_type_index;
+  per_type_index.fill(0);
+  for (const int i : IndexRange(bm_data.totlayer)) {
+    CustomDataLayer &bm_layer = bm_data.layers[i];
+    const eCustomDataType type = eCustomDataType(bm_layer.type);
+    const int mesh_layer_index =
+        bm_layer.name[0] == '\0' ?
+            CustomData_get_layer_index_n(&bm_data, type, per_type_index[type]) :
+            CustomData_get_named_layer_index(&bm_data, type, bm_layer.name);
+    if (mesh_layer_index == -1) {
+      infos.append({});
+      continue;
+    }
+    const CustomDataLayer &mesh_layer = mesh_data.layers[mesh_layer_index];
+
+    MeshToBMeshLayerInfo info{};
+    info.type = type;
+    info.elem_size = CustomData_get_elem_size(&bm_layer);
+    info.mesh_data = mesh_layer.data;
+    info.bmesh_offset = bm_layer.offset;
+    infos.append(info);
+
+    per_type_index[type]++;
+  }
+  return infos;
+}
+
+static void copy_mesh_attributes_to_bmesh_block(CustomData &data,
+                                                const Span<MeshToBMeshLayerInfo> copy_info,
+                                                const int mesh_index,
+                                                BMHeader &header)
+{
+  CustomData_bmesh_alloc_block(&data, &header.data);
+  for (const MeshToBMeshLayerInfo &info : copy_info) {
+    if (info.mesh_data) {
+      CustomData_data_copy_value(info.type,
+                                 POINTER_OFFSET(info.mesh_data, info.elem_size * mesh_index),
+                                 POINTER_OFFSET(header.data, info.bmesh_offset));
+    }
+    else {
+      CustomData_data_set_default_value(info.type, POINTER_OFFSET(header.data, info.bmesh_offset));
+    }
+  }
 }
 
 void BM_mesh_bm_from_me(BMesh *bm, const Mesh *me, const struct BMeshFromMeshParams *params)
@@ -222,6 +284,11 @@ void BM_mesh_bm_from_me(BMesh *bm, const Mesh *me, const struct BMeshFromMeshPar
     CustomData_bmesh_merge(&mesh_pdata, &bm->pdata, mask.pmask, CD_SET_DEFAULT, bm, BM_FACE);
     CustomData_bmesh_merge(&mesh_ldata, &bm->ldata, mask.lmask, CD_SET_DEFAULT, bm, BM_LOOP);
   }
+
+  const Vector<MeshToBMeshLayerInfo> vert_info = get_mesh_to_bm_copy_info(mesh_vdata, bm->vdata);
+  const Vector<MeshToBMeshLayerInfo> edge_info = get_mesh_to_bm_copy_info(mesh_edata, bm->edata);
+  const Vector<MeshToBMeshLayerInfo> poly_info = get_mesh_to_bm_copy_info(mesh_pdata, bm->pdata);
+  const Vector<MeshToBMeshLayerInfo> loop_info = get_mesh_to_bm_copy_info(mesh_ldata, bm->ldata);
 
   /* -------------------------------------------------------------------- */
   /* Shape Key */
@@ -357,8 +424,7 @@ void BM_mesh_bm_from_me(BMesh *bm, const Mesh *me, const struct BMeshFromMeshPar
       copy_v3_v3(v->no, vert_normals[i]);
     }
 
-    /* Copy Custom Data */
-    CustomData_to_bmesh_block(&mesh_vdata, &bm->vdata, i, &v->head.data, true);
+    copy_mesh_attributes_to_bmesh_block(bm->vdata, vert_info, i, v->head);
 
     /* Set shape key original index. */
     if (cd_shape_keyindex_offset != -1) {
@@ -396,8 +462,7 @@ void BM_mesh_bm_from_me(BMesh *bm, const Mesh *me, const struct BMeshFromMeshPar
       BM_elem_flag_enable(e, BM_ELEM_SMOOTH);
     }
 
-    /* Copy Custom Data */
-    CustomData_to_bmesh_block(&mesh_edata, &bm->edata, i, &e->head.data, true);
+    copy_mesh_attributes_to_bmesh_block(bm->edata, edge_info, i, e->head);
   }
   if (is_new) {
     bm->elem_index_dirty &= ~BM_EDGE; /* Added in order, clear dirty flag. */
@@ -455,12 +520,11 @@ void BM_mesh_bm_from_me(BMesh *bm, const Mesh *me, const struct BMeshFromMeshPar
       /* Don't use 'j' since we may have skipped some faces, hence some loops. */
       BM_elem_index_set(l_iter, totloops++); /* set_ok */
 
-      /* Save index of corresponding #MLoop. */
-      CustomData_to_bmesh_block(&mesh_ldata, &bm->ldata, j++, &l_iter->head.data, true);
+      copy_mesh_attributes_to_bmesh_block(bm->ldata, loop_info, j, l_iter->head);
+      j++;
     } while ((l_iter = l_iter->next) != l_first);
 
-    /* Copy Custom Data */
-    CustomData_to_bmesh_block(&mesh_pdata, &bm->pdata, i, &f->head.data, true);
+    copy_mesh_attributes_to_bmesh_block(bm->pdata, poly_info, i, f->head);
 
     if (params->calc_face_normal) {
       BM_face_normal_update(f);
@@ -962,6 +1026,60 @@ static void convert_bmesh_selection_flags_to_mesh_attributes(BMesh &bm,
   }
 }
 
+struct BMToMeshLayerInfo {
+  void *mesh_data;
+  size_t elem_size;
+  int bmesh_offset;
+  eCustomDataType type;
+};
+
+/**
+ * Get the necessary information to copy every data layer from the BMesh to the Mesh.
+ */
+static Vector<BMToMeshLayerInfo> get_bm_to_mesh_copy_info(const CustomData &bm_data,
+                                                          CustomData &mesh_data)
+{
+  Vector<BMToMeshLayerInfo> infos;
+  std::array<int, CD_NUMTYPES> per_type_index;
+  per_type_index.fill(0);
+  for (const int i : IndexRange(mesh_data.totlayer)) {
+    CustomDataLayer &mesh_layer = mesh_data.layers[i];
+    const eCustomDataType type = eCustomDataType(mesh_layer.type);
+    const int bm_layer_index =
+        mesh_layer.name[0] == '\0' ?
+            CustomData_get_layer_index_n(&bm_data, type, per_type_index[type]) :
+            CustomData_get_named_layer_index(&bm_data, type, mesh_layer.name);
+    if (bm_layer_index == -1) {
+      continue;
+    }
+    const CustomDataLayer &bm_layer = bm_data.layers[bm_layer_index];
+    if (bm_layer.flag & CD_FLAG_NOCOPY) {
+      continue;
+    }
+
+    BMToMeshLayerInfo info{};
+    info.type = type;
+    info.elem_size = CustomData_get_elem_size(&mesh_layer);
+    info.mesh_data = mesh_layer.data;
+    info.bmesh_offset = bm_layer.offset;
+    infos.append(info);
+
+    per_type_index[type]++;
+  }
+  return infos;
+}
+
+static void copy_bmesh_block_to_mesh_attributes(const Span<BMToMeshLayerInfo> copy_info,
+                                                const int mesh_index,
+                                                const void *block)
+{
+  for (const BMToMeshLayerInfo &info : copy_info) {
+    CustomData_data_copy_value(info.type,
+                               POINTER_OFFSET(block, info.bmesh_offset),
+                               POINTER_OFFSET(info.mesh_data, info.elem_size * mesh_index));
+  }
+}
+
 void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMeshParams *params)
 {
   using namespace blender;
@@ -1051,6 +1169,11 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMesh
     CustomData_copy(&bm->pdata, &me->pdata, mask.pmask, CD_SET_DEFAULT, me->totpoly);
   }
 
+  const Vector<BMToMeshLayerInfo> vert_info = get_bm_to_mesh_copy_info(bm->vdata, me->vdata);
+  const Vector<BMToMeshLayerInfo> edge_info = get_bm_to_mesh_copy_info(bm->edata, me->edata);
+  const Vector<BMToMeshLayerInfo> poly_info = get_bm_to_mesh_copy_info(bm->pdata, me->pdata);
+  const Vector<BMToMeshLayerInfo> loop_info = get_bm_to_mesh_copy_info(bm->ldata, me->ldata);
+
   CustomData_add_layer_named(
       &me->vdata, CD_PROP_FLOAT3, CD_CONSTRUCT, nullptr, me->totvert, "position");
   CustomData_add_layer(&me->edata, CD_MEDGE, CD_SET_DEFAULT, nullptr, me->totedge);
@@ -1083,8 +1206,7 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMesh
 
     BM_elem_index_set(v, i); /* set_inline */
 
-    /* Copy over custom-data. */
-    CustomData_from_bmesh_block(&bm->vdata, &me->vdata, v->head.data, i);
+    copy_bmesh_block_to_mesh_attributes(vert_info, i, v->head.data);
 
     i++;
 
@@ -1110,8 +1232,7 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMesh
 
     BM_elem_index_set(e, i); /* set_inline */
 
-    /* Copy over custom-data. */
-    CustomData_from_bmesh_block(&bm->edata, &me->edata, e->head.data, i);
+    copy_bmesh_block_to_mesh_attributes(edge_info, i, e->head.data);
 
     i++;
     BM_CHECK_ELEMENT(e);
@@ -1140,8 +1261,7 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMesh
       mloop[j].e = BM_elem_index_get(l_iter->e);
       mloop[j].v = BM_elem_index_get(l_iter->v);
 
-      /* Copy over custom-data. */
-      CustomData_from_bmesh_block(&bm->ldata, &me->ldata, l_iter->head.data, j);
+      copy_bmesh_block_to_mesh_attributes(loop_info, j, l_iter->head.data);
 
       j++;
       BM_CHECK_ELEMENT(l_iter);
@@ -1153,8 +1273,7 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMesh
       me->act_face = i;
     }
 
-    /* Copy over custom-data. */
-    CustomData_from_bmesh_block(&bm->pdata, &me->pdata, f->head.data, i);
+    copy_bmesh_block_to_mesh_attributes(poly_info, i, f->head.data);
 
     i++;
     BM_CHECK_ELEMENT(f);
@@ -1325,6 +1444,11 @@ void BM_mesh_bm_to_me_for_eval(BMesh *bm, Mesh *me, const CustomData_MeshMasks *
   CustomData_merge(&bm->ldata, &me->ldata, mask.lmask, CD_SET_DEFAULT, me->totloop);
   CustomData_merge(&bm->pdata, &me->pdata, mask.pmask, CD_SET_DEFAULT, me->totpoly);
 
+  const Vector<BMToMeshLayerInfo> vert_info = get_bm_to_mesh_copy_info(bm->vdata, me->vdata);
+  const Vector<BMToMeshLayerInfo> edge_info = get_bm_to_mesh_copy_info(bm->edata, me->edata);
+  const Vector<BMToMeshLayerInfo> poly_info = get_bm_to_mesh_copy_info(bm->pdata, me->pdata);
+  const Vector<BMToMeshLayerInfo> loop_info = get_bm_to_mesh_copy_info(bm->ldata, me->ldata);
+
   BMIter iter;
   BMVert *eve;
   BMEdge *eed;
@@ -1362,7 +1486,7 @@ void BM_mesh_bm_to_me_for_eval(BMesh *bm, Mesh *me, const CustomData_MeshMasks *
       select_vert_attribute.span[i] = true;
     }
 
-    CustomData_from_bmesh_block(&bm->vdata, &me->vdata, eve->head.data, i);
+    copy_bmesh_block_to_mesh_attributes(vert_info, i, eve->head.data);
   }
   bm->elem_index_dirty &= ~BM_VERT;
 
@@ -1400,7 +1524,7 @@ void BM_mesh_bm_to_me_for_eval(BMesh *bm, Mesh *me, const CustomData_MeshMasks *
       sharp_edge_attribute.span[i] = true;
     }
 
-    CustomData_from_bmesh_block(&bm->edata, &me->edata, eed->head.data, i);
+    copy_bmesh_block_to_mesh_attributes(edge_info, i, eed->head.data);
   }
   bm->elem_index_dirty &= ~BM_EDGE;
 
@@ -1445,7 +1569,7 @@ void BM_mesh_bm_to_me_for_eval(BMesh *bm, Mesh *me, const CustomData_MeshMasks *
     do {
       mloop->v = BM_elem_index_get(l_iter->v);
       mloop->e = BM_elem_index_get(l_iter->e);
-      CustomData_from_bmesh_block(&bm->ldata, &me->ldata, l_iter->head.data, j);
+      copy_bmesh_block_to_mesh_attributes(loop_info, j, l_iter->head.data);
 
       BM_elem_index_set(l_iter, j); /* set_inline */
 
@@ -1453,7 +1577,7 @@ void BM_mesh_bm_to_me_for_eval(BMesh *bm, Mesh *me, const CustomData_MeshMasks *
       mloop++;
     } while ((l_iter = l_iter->next) != l_first);
 
-    CustomData_from_bmesh_block(&bm->pdata, &me->pdata, efa->head.data, i);
+    copy_bmesh_block_to_mesh_attributes(poly_info, i, efa->head.data);
   }
   bm->elem_index_dirty &= ~(BM_FACE | BM_LOOP);
 
