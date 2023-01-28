@@ -513,8 +513,7 @@ class VoronoiMetricFunction : public mf::MultiFunction {
                   r_distance[i] /= (1.0f - rand) + rand * max_amplitude;
                 }
                 else {
-                  r_distance[i] /= (1.0f - rand) * std::ceilf(detail[i] + 1.0f) +
-                                   rand * max_amplitude;
+                  r_distance[i] /= (1.0f - rand) * ceilf(detail[i] + 1.0f) + rand * max_amplitude;
                 }
               }
             }
@@ -682,8 +681,7 @@ class VoronoiMetricFunction : public mf::MultiFunction {
                   r_distance[i] /= (1.0f - rand) + rand * max_amplitude;
                 }
                 else {
-                  r_distance[i] /= (1.0f - rand) * std::ceilf(detail[i] + 1.0f) +
-                                   rand * max_amplitude;
+                  r_distance[i] /= (1.0f - rand) * ceilf(detail[i] + 1.0f) + rand * max_amplitude;
                 }
               }
             }
@@ -859,8 +857,7 @@ class VoronoiMetricFunction : public mf::MultiFunction {
                   r_distance[i] /= (1.0f - rand) + rand * max_amplitude;
                 }
                 else {
-                  r_distance[i] /= (1.0f - rand) * std::ceilf(detail[i] + 1.0f) +
-                                   rand * max_amplitude;
+                  r_distance[i] /= (1.0f - rand) * ceilf(detail[i] + 1.0f) + rand * max_amplitude;
                 }
               }
             }
@@ -1057,8 +1054,7 @@ class VoronoiMetricFunction : public mf::MultiFunction {
                   r_distance[i] /= (1.0f - rand) + rand * max_amplitude;
                 }
                 else {
-                  r_distance[i] /= (1.0f - rand) * std::ceilf(detail[i] + 1.0f) +
-                                   rand * max_amplitude;
+                  r_distance[i] /= (1.0f - rand) * ceilf(detail[i] + 1.0f) + rand * max_amplitude;
                 }
               }
             }
