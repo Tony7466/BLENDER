@@ -5,7 +5,10 @@ import pprint
 import sys
 import tempfile
 import unittest
+from pxr import Usd
 from pxr import UsdUtils
+from pxr import UsdGeom
+from pxr import Gf
 
 import bpy
 
@@ -74,13 +77,62 @@ class USDExportTest(AbstractUSDTest):
 
         self.assertFalse(collection, pprint.pformat(collection))
 
+    def compareVec3d(self, first, second):
+        places = 5
+        self.assertAlmostEqual(first[0], second[0], places)
+        self.assertAlmostEqual(first[1], second[1], places)
+        self.assertAlmostEqual(first[2], second[2], places)
+
+    def test_export_extents(self):
+        """Test that exported scenes contain have a properly authored extent attribute on each boundable prim"""
+        bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "usd_extent_test.blend"))
+        export_path = self.tempdir / "usd_extent_test.usda"
+        res = bpy.ops.wm.usd_export(
+            filepath=str(export_path),
+            export_materials=True,
+            evaluation_mode="RENDER",
+        )
+        self.assertEqual({Result.finished}, res, f"Unable to export to {export_path}")
+
+        # if prims are missing, the exporter must have skipped some objects
+        stats = UsdUtils.ComputeUsdStageStats(str(export_path))
+        self.assertEqual(stats["totalPrimCount"], 15, "Unexpected number of prims")
+
+        # validate the overall world bounds of the scene
+        stage = Usd.Stage.Open(str(export_path))
+        scenePrim = stage.GetPrimAtPath("/scene")
+        bboxcache = UsdGeom.BBoxCache(Usd.TimeCode.Default(), [UsdGeom.Tokens.default_])
+        bounds = bboxcache.ComputeWorldBound(scenePrim)
+        bound_min = bounds.GetRange().GetMin()
+        bound_max = bounds.GetRange().GetMax()
+        self.compareVec3d(bound_min, Gf.Vec3d(-5.752975881, -1, -2.798513651))
+        self.compareVec3d(bound_max, Gf.Vec3d(1, 2.9515805244, 2.7985136508))
+
+        # validate the locally authored extents
+        prim = stage.GetPrimAtPath("/scene/BigCube/BigCubeMesh")
+        extent = UsdGeom.Boundable(prim).GetExtentAttr().Get()
+        self.compareVec3d(Gf.Vec3d(extent[0]), Gf.Vec3d(-1, -1, -2.7985137))
+        self.compareVec3d(Gf.Vec3d(extent[1]), Gf.Vec3d(1, 1, 2.7985137))
+        prim = stage.GetPrimAtPath("/scene/LittleCube/LittleCubeMesh")
+        extent = UsdGeom.Boundable(prim).GetExtentAttr().Get()
+        self.compareVec3d(Gf.Vec3d(extent[0]), Gf.Vec3d(-1, -1, -1))
+        self.compareVec3d(Gf.Vec3d(extent[1]), Gf.Vec3d(1, 1, 1))
+        prim = stage.GetPrimAtPath("/scene/Volume/Volume")
+        extent = UsdGeom.Boundable(prim).GetExtentAttr().Get()
+        self.compareVec3d(
+            Gf.Vec3d(extent[0]), Gf.Vec3d(-0.7313742, -0.68043584, -0.5801515)
+        )
+        self.compareVec3d(
+            Gf.Vec3d(extent[1]), Gf.Vec3d(0.7515701, 0.5500924, 0.9027928)
+        )
+
 
 def main():
     global args
     import argparse
 
     if "--" in sys.argv:
-        argv = [sys.argv[0]] + sys.argv[sys.argv.index("--") + 1 :]
+        argv = [sys.argv[0]] + sys.argv[sys.argv.index("--") + 1:]
     else:
         argv = sys.argv
 

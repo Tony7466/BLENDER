@@ -154,18 +154,22 @@ bool USDAbstractWriter::mark_as_instance(const HierarchyContext &context, const 
 
 void USDAbstractWriter::author_extent(const pxr::UsdTimeCode timecode, pxr::UsdGeomBoundable &prim)
 {
-  /* Do not use any existing `extentsHint` that may be authored, instead recompute the extent when authoring it. */
+  /* Do not use any existing `extentsHint` that may be authored, instead recompute the extent when
+   * authoring it. */
   const bool useExtentsHint = false;
   const pxr::TfTokenVector includedPurposes{pxr::UsdGeomTokens->default_};
   pxr::UsdGeomBBoxCache bboxCache(timecode, includedPurposes, useExtentsHint);
   pxr::GfBBox3d bounds = bboxCache.ComputeLocalBound(prim.GetPrim());
   if (pxr::GfBBox3d() == bounds) {
     /* This will occur, for example, if a mesh does not have any vertices. */
-    WM_reportf(RPT_ERROR, "USD Export: no bounds could be computed for %s", prim.GetPrim().GetName().GetText());
+    WM_reportf(RPT_ERROR,
+               "USD Export: no bounds could be computed for %s",
+               prim.GetPrim().GetName().GetText());
     return;
   }
-  
-  pxr::VtArray<pxr::GfVec3f> extent{ (pxr::GfVec3f)bounds.GetRange().GetMin(), (pxr::GfVec3f)bounds.GetRange().GetMax() };
+
+  pxr::VtArray<pxr::GfVec3f> extent{(pxr::GfVec3f)bounds.GetRange().GetMin(),
+                                    (pxr::GfVec3f)bounds.GetRange().GetMax()};
   prim.CreateExtentAttr().Set(extent);
 }
 
