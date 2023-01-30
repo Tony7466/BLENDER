@@ -289,7 +289,7 @@ static void curves_sculptmode_enter(bContext *C)
   paint_init_pivot(ob, scene);
 
   /* Necessary to change the object mode on the evaluated object. */
-  DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE | ID_RECALC_GEOMETRY);
   WM_msg_publish_rna_prop(mbus, &ob->id, ob, Object, mode);
   WM_event_add_notifier(C, NC_SCENE | ND_MODE, nullptr);
 }
