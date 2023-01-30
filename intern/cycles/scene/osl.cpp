@@ -1243,6 +1243,7 @@ void OSLCompiler::compile(OSLGlobals *og, Shader *shader)
 
     shader->has_surface = false;
     shader->has_surface_transparent = false;
+    shader->has_surface_raytrace = false;
     shader->has_surface_bssrdf = false;
     shader->has_bump = has_bump;
     shader->has_bssrdf_bump = has_bump;
