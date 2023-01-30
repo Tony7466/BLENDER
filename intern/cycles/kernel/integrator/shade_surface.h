@@ -206,7 +206,7 @@ ccl_device_forceinline void integrate_surface_direct_light(KernelGlobals kg,
     /* Create shadow ray after successful manifold walk:
      * emission_sd contains the last interface intersection and
      * the light sample ls has been updated */
-    light_sample_to_surface_shadow_ray(kg, emission_sd, &ls, &ray);
+    light_sample_to_surface_shadow_ray(kg, state, emission_sd, &ls, &ray);
   }
   else
 #endif /* __MNEE__ */
@@ -232,7 +232,7 @@ ccl_device_forceinline void integrate_surface_direct_light(KernelGlobals kg,
     }
 
     /* Create shadow ray. */
-    light_sample_to_surface_shadow_ray(kg, sd, &ls, &ray);
+    light_sample_to_surface_shadow_ray(kg, state, sd, &ls, &ray);
   }
 
   /* Branch off shadow kernel. */

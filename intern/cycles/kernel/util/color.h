@@ -5,6 +5,7 @@
 
 #include "kernel/integrator/state_util.h"
 #include "util/color.h"
+#include "util/math.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -34,11 +35,88 @@ ccl_device float linear_rgb_to_gray(KernelGlobals kg, float3 c)
   return dot(c, float4_to_float3(kernel_data.film.rgb_to_y));
 }
 
+ccl_device float3 find_position_in_lookup_unit_step(
+    ccl_constant float lookup[][3], float position_to_find, int start, int end, int step)
+{
+  if (UNLIKELY(position_to_find <= start)) {
+    return load_float3(lookup[0]);
+  }
+  if (UNLIKELY(position_to_find >= end)) {
+    int i = (end - start) / step;
+    return load_float3(lookup[i]);
+  }
+
+  float lookup_pos = (position_to_find - start) / (float)step;
+  int lower_bound = floor_to_int(lookup_pos);
+  int upper_bound = min(lower_bound + 1, (end - start) / step);
+  float progress = lookup_pos - int(lookup_pos);
+  return mix(load_float3(lookup[lower_bound]), load_float3(lookup[upper_bound]), progress);
+}
+
+ccl_device float find_position_in_lookup_unit_step(
+    ccl_constant float lookup[], float position_to_find, int start, int end, int step)
+{
+  if (UNLIKELY(position_to_find <= start)) {
+    return lookup[0];
+  }
+  if (UNLIKELY(position_to_find >= end)) {
+    int i = (end - start) / step;
+    return lookup[i];
+  }
+
+  float lookup_pos = (position_to_find - start) / (float)step;
+  int lower_bound = floor_to_int(lookup_pos);
+  int upper_bound = min(lower_bound + 1, (end - start) / step);
+  float progress = lookup_pos - int(lookup_pos);
+  return mix(lookup[lower_bound], lookup[upper_bound], progress);
+}
+
 template<typename ConstIntegratorGenericState>
 ccl_device_inline Spectrum
 rgb_to_spectrum(KernelGlobals kg, ConstIntegratorGenericState state, int32_t path_flag, float3 rgb)
 {
+#ifndef __SPECTRAL_RENDERING__
   return rgb;
+#else
+  const Spectrum wavelengths = integrator_state_wavelengths(state, path_flag);
+
+  Spectrum intensities;
+  FOREACH_SPECTRUM_CHANNEL (i) {
+    /* Find position in the lookup of wavelength. */
+    float3 magnitudes = find_position_in_lookup_unit_step(
+        rec709_wavelength_lookup, GET_SPECTRUM_CHANNEL(wavelengths, i), 360, 830, 1);
+    /* Multiply the lookups by the RGB factors. */
+    float3 contributions = magnitudes * rgb;
+    /* Add the three components. */
+    GET_SPECTRUM_CHANNEL(intensities, i) = reduce_add(contributions);
+  }
+
+  return intensities;
+#endif
+}
+
+ccl_device float3 wavelength_to_xyz(KernelGlobals kg, float wavelength)
+{
+  int table_offset = kernel_data.cam.camera_response_function_offset;
+
+  float position = lerp(0.0f,
+                        WAVELENGTH_CDF_TABLE_SIZE - 1.0f,
+                        inverse_lerp(MIN_WAVELENGTH, MAX_WAVELENGTH, wavelength));
+
+  int lower_bound = floor_to_int(position);
+  int upper_bound = min(lower_bound + 1, WAVELENGTH_CDF_TABLE_SIZE - 1);
+  float progress = position - lower_bound;
+
+  float3 lower_value = make_float3(
+      kernel_data_fetch(lookup_table, table_offset + 3 * lower_bound + 0),
+      kernel_data_fetch(lookup_table, table_offset + 3 * lower_bound + 1),
+      kernel_data_fetch(lookup_table, table_offset + 3 * lower_bound + 2));
+  float3 upper_value = make_float3(
+      kernel_data_fetch(lookup_table, table_offset + 3 * upper_bound + 0),
+      kernel_data_fetch(lookup_table, table_offset + 3 * upper_bound + 1),
+      kernel_data_fetch(lookup_table, table_offset + 3 * upper_bound + 2));
+
+  return lerp(lower_value, upper_value, progress);
 }
 
 template<typename ConstIntegratorGenericState>

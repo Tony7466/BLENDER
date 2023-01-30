@@ -26,6 +26,10 @@ CCL_NAMESPACE_BEGIN
 #define FILTER_TABLE_SIZE 1024
 #define RAMP_TABLE_SIZE 256
 #define SHUTTER_TABLE_SIZE 256
+#define WAVELENGTH_CDF_TABLE_SIZE 256
+
+#define MIN_WAVELENGTH 380.0f
+#define MAX_WAVELENGTH 730.0f
 
 #define BSSRDF_MIN_RADIUS 1e-8f
 #define BSSRDF_MAX_HITS 4
@@ -128,6 +132,9 @@ CCL_NAMESPACE_BEGIN
 #  if !(__KERNEL_FEATURES & KERNEL_FEATURE_DENOISING)
 #    undef __DENOISING_FEATURES__
 #  endif
+#  if !(__KERNEL_FEATURES & KERNEL_FEATURE_SPECTRAL_RENDERING)
+#    undef __SPECTRAL_RENDERING__
+#  endif
 #endif
 
 #ifdef WITH_CYCLES_DEBUG_NAN
@@ -147,6 +154,7 @@ enum PathTraceDimension {
   /* Init bounce */
   PRNG_FILTER = 0,
   PRNG_LENS_TIME = 1,
+  PRNG_WAVELENGTH = 2,
 
   /* Shade bounce */
   PRNG_TERMINATE = 0,
@@ -572,6 +580,10 @@ typedef struct Ray {
 #ifdef __RAY_DIFFERENTIALS__
   float dP;
   float dD;
+#endif
+
+#ifdef __SPECTRAL_RENDERING__
+  Spectrum wavelengths;
 #endif
 } Ray;
 
@@ -1108,6 +1120,15 @@ typedef struct KernelCamera {
   float rolling_shutter_duration;
 
   int motion_position;
+
+  // #ifdef __SPECTRAL_RENDERING__
+  int camera_response_function_offset;
+  int wavelength_importance_table_offset;
+  int wavelength_importance_cdf_table_offset;
+
+  int _pad;
+  // #endif
+
 } KernelCamera;
 static_assert_align(KernelCamera, 16);
 

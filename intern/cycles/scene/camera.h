@@ -168,6 +168,11 @@ class Camera : public Node {
   float3 frustum_left_normal;
   float3 frustum_bottom_normal;
 
+  NODE_SOCKET_API_ARRAY(array<float3>, camera_response_function);
+  size_t camera_response_function_offset;
+  size_t wavelength_importance_table_offset;
+  size_t wavelength_importance_cdf_table_offset;
+
   /* update */
   bool need_device_update;
   bool need_flags_update;

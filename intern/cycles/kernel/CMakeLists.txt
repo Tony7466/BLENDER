@@ -170,6 +170,7 @@ set(SRC_KERNEL_SVM_HEADERS
   svm/normal.h
   svm/ramp.h
   svm/ramp_util.h
+  svm/rgb_to_spectrum.h
   svm/sepcomb_color.h
   svm/sepcomb_hsv.h
   svm/sepcomb_vector.h
@@ -457,6 +458,10 @@ if(WITH_CYCLES_CUDA_BINARIES)
       --use_fast_math
       -o ${CMAKE_CURRENT_BINARY_DIR}/${cuda_file}
       -Wno-deprecated-gpu-targets)
+
+    if(WITH_CYCLES_SPECTRAL_RENDERING)
+      set(cuda_flags ${cuda_flags} -D __SPECTRAL_RENDERING__)
+    endif()
 
     if(CUDA_HOST_COMPILER)
       set(cuda_flags ${cuda_flags}

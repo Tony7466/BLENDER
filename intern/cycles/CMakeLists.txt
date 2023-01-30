@@ -330,6 +330,10 @@ if(WITH_OPENVDB)
   )
 endif()
 
+if(WITH_CYCLES_SPECTRAL_RENDERING)
+  add_definitions(-D__SPECTRAL_RENDERING__)
+endif()
+
 if(WITH_NANOVDB)
   add_definitions(-DWITH_NANOVDB)
   include_directories(

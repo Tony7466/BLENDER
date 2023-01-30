@@ -217,7 +217,8 @@ ccl_device_inline float3 shadow_ray_offset(KernelGlobals kg,
   return P;
 }
 
-ccl_device_inline void shadow_ray_setup(ccl_private const ShaderData *ccl_restrict sd,
+ccl_device_inline void shadow_ray_setup(ConstIntegratorState state,
+                                        ccl_private const ShaderData *ccl_restrict sd,
                                         ccl_private const LightSample *ccl_restrict ls,
                                         const float3 P,
                                         ccl_private Ray *ray,
@@ -255,29 +256,35 @@ ccl_device_inline void shadow_ray_setup(ccl_private const ShaderData *ccl_restri
   ray->self.prim = (skip_self) ? sd->prim : PRIM_NONE;
   ray->self.light_object = ls->object;
   ray->self.light_prim = ls->prim;
+
+#ifdef __SPECTRAL_RENDERING__
+  ray->wavelengths = INTEGRATOR_STATE(state, ray, wavelengths);
+#endif
 }
 
 /* Create shadow ray towards light sample. */
 ccl_device_inline void light_sample_to_surface_shadow_ray(
     KernelGlobals kg,
+    ConstIntegratorState state,
     ccl_private const ShaderData *ccl_restrict sd,
     ccl_private const LightSample *ccl_restrict ls,
     ccl_private Ray *ray)
 {
   bool skip_self = true;
   const float3 P = shadow_ray_offset(kg, sd, ls->D, &skip_self);
-  shadow_ray_setup(sd, ls, P, ray, skip_self);
+  shadow_ray_setup(state, sd, ls, P, ray, skip_self);
 }
 
 /* Create shadow ray towards light sample. */
 ccl_device_inline void light_sample_to_volume_shadow_ray(
     KernelGlobals kg,
+    ConstIntegratorState state,
     ccl_private const ShaderData *ccl_restrict sd,
     ccl_private const LightSample *ccl_restrict ls,
     const float3 P,
     ccl_private Ray *ray)
 {
-  shadow_ray_setup(sd, ls, P, ray, false);
+  shadow_ray_setup(state, sd, ls, P, ray, false);
 }
 
 /* Multiple importance sampling weights. */

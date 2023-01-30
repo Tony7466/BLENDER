@@ -22,6 +22,10 @@ ccl_device_forceinline void integrator_state_write_ray(KernelGlobals kg,
   INTEGRATOR_STATE_WRITE(state, ray, time) = ray->time;
   INTEGRATOR_STATE_WRITE(state, ray, dP) = ray->dP;
   INTEGRATOR_STATE_WRITE(state, ray, dD) = ray->dD;
+
+#ifdef __SPECTRAL_RENDERING__
+  INTEGRATOR_STATE_WRITE(state, ray, wavelengths) = ray->wavelengths;
+#endif
 }
 
 ccl_device_forceinline void integrator_state_read_ray(KernelGlobals kg,
@@ -35,6 +39,10 @@ ccl_device_forceinline void integrator_state_read_ray(KernelGlobals kg,
   ray->time = INTEGRATOR_STATE(state, ray, time);
   ray->dP = INTEGRATOR_STATE(state, ray, dP);
   ray->dD = INTEGRATOR_STATE(state, ray, dD);
+
+#ifdef __SPECTRAL_RENDERING__
+  ray->wavelengths = INTEGRATOR_STATE(state, ray, wavelengths);
+#endif
 }
 
 /* Shadow Ray */
@@ -48,6 +56,10 @@ ccl_device_forceinline void integrator_state_write_shadow_ray(
   INTEGRATOR_STATE_WRITE(state, shadow_ray, tmax) = ray->tmax;
   INTEGRATOR_STATE_WRITE(state, shadow_ray, time) = ray->time;
   INTEGRATOR_STATE_WRITE(state, shadow_ray, dP) = ray->dP;
+
+#ifdef __SPECTRAL_RENDERING__
+  INTEGRATOR_STATE_WRITE(state, shadow_ray, wavelengths) = ray->wavelengths;
+#endif
 }
 
 ccl_device_forceinline void integrator_state_read_shadow_ray(KernelGlobals kg,
@@ -61,6 +73,10 @@ ccl_device_forceinline void integrator_state_read_shadow_ray(KernelGlobals kg,
   ray->time = INTEGRATOR_STATE(state, shadow_ray, time);
   ray->dP = INTEGRATOR_STATE(state, shadow_ray, dP);
   ray->dD = differential_zero_compact();
+
+#ifdef __SPECTRAL_RENDERING__
+  ray->wavelengths = INTEGRATOR_STATE(state, shadow_ray, wavelengths);
+#endif
 }
 
 /* Intersection */
@@ -397,7 +413,7 @@ ccl_device_inline Spectrum integrator_state_wavelengths(ConstIntegratorState sta
 }
 
 ccl_device_inline Spectrum integrator_state_wavelengths(ConstIntegratorShadowState state,
-                                                             const int)
+                                                        const int)
 {
   return Spectrum(INTEGRATOR_STATE(state, shadow_ray, wavelengths));
 }
@@ -440,7 +456,7 @@ ccl_device_inline int integrator_state_transparent_bounce(ConstIntegratorShadowS
 }
 
 ccl_device_inline Spectrum integrator_state_wavelengths(ConstIntegratorShadowState state,
-                                                             const uint32_t path_flag)
+                                                        const uint32_t path_flag)
 {
   return (path_flag & PATH_RAY_SHADOW) ? INTEGRATOR_STATE(state, shadow_ray, wavelengths) :
                                          INTEGRATOR_STATE(state, ray, wavelengths);

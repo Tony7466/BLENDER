@@ -1130,9 +1130,11 @@ ccl_device_noinline int svm_node_principled_volume(KernelGlobals kg,
 
     if (intensity > CLOSURE_WEIGHT_CUTOFF) {
       Spectrum blackbody_tint = stack_load_spectrum(stack, node.w);
-      float3 bb = blackbody_tint * intensity *
-                  rgb_to_spectrum(
-                      kg, state, path_flag, rec709_to_rgb(kg, svm_math_blackbody_color_rec709(T)));
+      Spectrum bb = blackbody_tint * intensity *
+                    rgb_to_spectrum(kg,
+                                    state,
+                                    path_flag,
+                                    rec709_to_rgb(kg, svm_math_blackbody_color_rec709(T)));
       emission_setup(sd, bb);
     }
   }

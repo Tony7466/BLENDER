@@ -314,7 +314,7 @@ struct NodeType {
   SOCKET_DEFINE(name, \
                 ui_name, \
                 default_value, \
-                Spectrum, \
+                float3, \
                 SocketType::SPECTRUM, \
                 SocketType::LINKABLE, \
                 ##__VA_ARGS__)

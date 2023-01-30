@@ -4,6 +4,7 @@
 #pragma once
 
 #include "kernel/sample/pattern.h"
+#include "kernel/util/lookup_table.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -31,64 +32,6 @@ ccl_device_inline void path_state_init(IntegratorState state,
   INTEGRATOR_STATE_WRITE(state, path, render_pixel_index) = render_pixel_index;
 
   path_state_init_queues(state);
-}
-
-/* Initialize the rest of the path state needed to continue the path integration. */
-ccl_device_inline void path_state_init_integrator(KernelGlobals kg,
-                                                  IntegratorState state,
-                                                  const int sample,
-                                                  const uint rng_hash)
-{
-  INTEGRATOR_STATE_WRITE(state, path, sample) = sample;
-  INTEGRATOR_STATE_WRITE(state, path, bounce) = 0;
-  INTEGRATOR_STATE_WRITE(state, path, diffuse_bounce) = 0;
-  INTEGRATOR_STATE_WRITE(state, path, glossy_bounce) = 0;
-  INTEGRATOR_STATE_WRITE(state, path, transmission_bounce) = 0;
-  INTEGRATOR_STATE_WRITE(state, path, transparent_bounce) = 0;
-  INTEGRATOR_STATE_WRITE(state, path, volume_bounce) = 0;
-  INTEGRATOR_STATE_WRITE(state, path, volume_bounds_bounce) = 0;
-  INTEGRATOR_STATE_WRITE(state, path, rng_hash) = rng_hash;
-  INTEGRATOR_STATE_WRITE(state, path, rng_offset) = PRNG_BOUNCE_NUM;
-  INTEGRATOR_STATE_WRITE(state, path, flag) = PATH_RAY_CAMERA | PATH_RAY_MIS_SKIP |
-                                              PATH_RAY_TRANSPARENT_BACKGROUND;
-  INTEGRATOR_STATE_WRITE(state, path, mis_ray_pdf) = 0.0f;
-  INTEGRATOR_STATE_WRITE(state, path, min_ray_pdf) = FLT_MAX;
-  INTEGRATOR_STATE_WRITE(state, path, continuation_probability) = 1.0f;
-  INTEGRATOR_STATE_WRITE(state, path, throughput) = one_spectrum();
-
-#ifdef __PATH_GUIDING__
-  INTEGRATOR_STATE_WRITE(state, path, unguided_throughput) = 1.0f;
-  INTEGRATOR_STATE_WRITE(state, guiding, path_segment) = nullptr;
-  INTEGRATOR_STATE_WRITE(state, guiding, use_surface_guiding) = false;
-  INTEGRATOR_STATE_WRITE(state, guiding, sample_surface_guiding_rand) = 0.5f;
-  INTEGRATOR_STATE_WRITE(state, guiding, surface_guiding_sampling_prob) = 0.0f;
-  INTEGRATOR_STATE_WRITE(state, guiding, bssrdf_sampling_prob) = 0.0f;
-  INTEGRATOR_STATE_WRITE(state, guiding, use_volume_guiding) = false;
-  INTEGRATOR_STATE_WRITE(state, guiding, sample_volume_guiding_rand) = 0.5f;
-  INTEGRATOR_STATE_WRITE(state, guiding, volume_guiding_sampling_prob) = 0.0f;
-#endif
-
-#ifdef __MNEE__
-  INTEGRATOR_STATE_WRITE(state, path, mnee) = 0;
-#endif
-
-  INTEGRATOR_STATE_WRITE(state, isect, object) = OBJECT_NONE;
-  INTEGRATOR_STATE_WRITE(state, isect, prim) = PRIM_NONE;
-
-  if (kernel_data.kernel_features & KERNEL_FEATURE_VOLUME) {
-    INTEGRATOR_STATE_ARRAY_WRITE(state, volume_stack, 0, object) = OBJECT_NONE;
-    INTEGRATOR_STATE_ARRAY_WRITE(
-        state, volume_stack, 0, shader) = kernel_data.background.volume_shader;
-    INTEGRATOR_STATE_ARRAY_WRITE(state, volume_stack, 1, object) = OBJECT_NONE;
-    INTEGRATOR_STATE_ARRAY_WRITE(state, volume_stack, 1, shader) = SHADER_NONE;
-  }
-
-#ifdef __DENOISING_FEATURES__
-  if (kernel_data.kernel_features & KERNEL_FEATURE_DENOISING) {
-    INTEGRATOR_STATE_WRITE(state, path, flag) |= PATH_RAY_DENOISING_FEATURES;
-    INTEGRATOR_STATE_WRITE(state, path, denoising_feature_throughput) = one_spectrum();
-  }
-#endif
 }
 
 ccl_device_inline void path_state_next(KernelGlobals kg,
@@ -390,6 +333,91 @@ ccl_device_inline float path_state_rng_light_termination(KernelGlobals kg,
     return path_state_rng_1D(kg, state, PRNG_LIGHT_TERMINATE);
   }
   return 0.0f;
+}
+
+#ifdef __SPECTRAL_RENDERING__
+ccl_device_inline Spectrum generate_wavelengths(KernelGlobals kg, ConstIntegratorState state)
+{
+  RNGState rng_state;
+  path_state_rng_load(state, &rng_state);
+
+  Spectrum result;
+
+  float initial_offset = lerp(
+      0.0f, 1.0f / SPECTRUM_CHANNELS, path_state_rng_1D(kg, &rng_state, PRNG_WAVELENGTH));
+  FOREACH_SPECTRUM_CHANNEL (i) {
+    float current_channel_offset = initial_offset + 1.0f * i / SPECTRUM_CHANNELS;
+    GET_SPECTRUM_CHANNEL(result, i) = lookup_table_read(
+        kg,
+        current_channel_offset,
+        kernel_data.cam.wavelength_importance_cdf_table_offset,
+        WAVELENGTH_CDF_TABLE_SIZE);
+  }
+
+  return result;
+}
+#endif
+
+/* Initialize the rest of the path state needed to continue the path integration. */
+ccl_device_inline void path_state_init_integrator(KernelGlobals kg,
+                                                  IntegratorState state,
+                                                  const int sample,
+                                                  const uint rng_hash)
+{
+  INTEGRATOR_STATE_WRITE(state, path, sample) = sample;
+  INTEGRATOR_STATE_WRITE(state, path, bounce) = 0;
+  INTEGRATOR_STATE_WRITE(state, path, diffuse_bounce) = 0;
+  INTEGRATOR_STATE_WRITE(state, path, glossy_bounce) = 0;
+  INTEGRATOR_STATE_WRITE(state, path, transmission_bounce) = 0;
+  INTEGRATOR_STATE_WRITE(state, path, transparent_bounce) = 0;
+  INTEGRATOR_STATE_WRITE(state, path, volume_bounce) = 0;
+  INTEGRATOR_STATE_WRITE(state, path, volume_bounds_bounce) = 0;
+  INTEGRATOR_STATE_WRITE(state, path, rng_hash) = rng_hash;
+  INTEGRATOR_STATE_WRITE(state, path, rng_offset) = PRNG_BOUNCE_NUM;
+  INTEGRATOR_STATE_WRITE(state, path, flag) = PATH_RAY_CAMERA | PATH_RAY_MIS_SKIP |
+                                              PATH_RAY_TRANSPARENT_BACKGROUND;
+  INTEGRATOR_STATE_WRITE(state, path, mis_ray_pdf) = 0.0f;
+  INTEGRATOR_STATE_WRITE(state, path, min_ray_pdf) = FLT_MAX;
+  INTEGRATOR_STATE_WRITE(state, path, continuation_probability) = 1.0f;
+  INTEGRATOR_STATE_WRITE(state, path, throughput) = one_spectrum();
+
+#ifdef __PATH_GUIDING__
+  INTEGRATOR_STATE_WRITE(state, path, unguided_throughput) = 1.0f;
+  INTEGRATOR_STATE_WRITE(state, guiding, path_segment) = nullptr;
+  INTEGRATOR_STATE_WRITE(state, guiding, use_surface_guiding) = false;
+  INTEGRATOR_STATE_WRITE(state, guiding, sample_surface_guiding_rand) = 0.5f;
+  INTEGRATOR_STATE_WRITE(state, guiding, surface_guiding_sampling_prob) = 0.0f;
+  INTEGRATOR_STATE_WRITE(state, guiding, bssrdf_sampling_prob) = 0.0f;
+  INTEGRATOR_STATE_WRITE(state, guiding, use_volume_guiding) = false;
+  INTEGRATOR_STATE_WRITE(state, guiding, sample_volume_guiding_rand) = 0.5f;
+  INTEGRATOR_STATE_WRITE(state, guiding, volume_guiding_sampling_prob) = 0.0f;
+#endif
+
+#ifdef __MNEE__
+  INTEGRATOR_STATE_WRITE(state, path, mnee) = 0;
+#endif
+
+  INTEGRATOR_STATE_WRITE(state, isect, object) = OBJECT_NONE;
+  INTEGRATOR_STATE_WRITE(state, isect, prim) = PRIM_NONE;
+
+  if (kernel_data.kernel_features & KERNEL_FEATURE_VOLUME) {
+    INTEGRATOR_STATE_ARRAY_WRITE(state, volume_stack, 0, object) = OBJECT_NONE;
+    INTEGRATOR_STATE_ARRAY_WRITE(
+        state, volume_stack, 0, shader) = kernel_data.background.volume_shader;
+    INTEGRATOR_STATE_ARRAY_WRITE(state, volume_stack, 1, object) = OBJECT_NONE;
+    INTEGRATOR_STATE_ARRAY_WRITE(state, volume_stack, 1, shader) = SHADER_NONE;
+  }
+
+#ifdef __DENOISING_FEATURES__
+  if (kernel_data.kernel_features & KERNEL_FEATURE_DENOISING) {
+    INTEGRATOR_STATE_WRITE(state, path, flag) |= PATH_RAY_DENOISING_FEATURES;
+    INTEGRATOR_STATE_WRITE(state, path, denoising_feature_throughput) = one_spectrum();
+  }
+#endif
+
+#ifdef __SPECTRAL_RENDERING__
+  INTEGRATOR_STATE_WRITE(state, ray, wavelengths) = generate_wavelengths(kg, state);
+#endif
 }
 
 CCL_NAMESPACE_END

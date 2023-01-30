@@ -455,9 +455,9 @@ ccl_device Spectrum bsdf_microfacet_multi_ggx_eval(ccl_private const ShaderClosu
   else
     *pdf = mf_ggx_pdf(local_I, local_O, bsdf->alpha_x);
 
-  if (*pdf <= 0.f) {
-    *pdf = 0.f;
-    return make_float3(0.f, 0.f, 0.f);
+  if (*pdf <= 0.0f) {
+    *pdf = 0.0f;
+    return zero_spectrum();
   }
 
   return mf_eval_glossy(local_I,
