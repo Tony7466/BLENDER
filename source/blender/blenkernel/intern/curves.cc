@@ -336,6 +336,7 @@ void BKE_curves_data_update(struct Depsgraph *depsgraph, struct Scene *scene, Ob
         curves_id_orig);
   }
   curves_evaluate_modifiers(depsgraph, scene, object, geometry_set);
+  Curves *curves_id_eval = const_cast<Curves *>(geometry_set.get_curves_for_read());
 
   /* Create cage curves geometry for drawing. */
   if (generate_cage) {
@@ -350,22 +351,31 @@ void BKE_curves_data_update(struct Depsgraph *depsgraph, struct Scene *scene, Ob
     object->runtime.editcurves_eval_cage = curves_id_cage;
     const blender::bke::CurvesEditHints *curve_edit_hints =
         geometry_set.get_curve_edit_hints_for_read();
-    if (curve_edit_hints && curve_edit_hints->positions.has_value()) {
-      curves_cage.positions_for_write().copy_from(*curve_edit_hints->positions);
+
+    Span<float3> positions;
+    if (curve_edit_hints) {
+      if (curve_edit_hints->positions.has_value()) {
+        positions = *curve_edit_hints->positions;
+      }
+      else if (curves_id_eval && curves_id_eval->geometry.point_num == curves_orig.point_num) {
+        blender::bke::CurvesGeometry &curves_eval = blender::bke::CurvesGeometry::wrap(
+            curves_id_eval->geometry);
+        positions = curves_eval.positions();
+      }
     }
-    else {
-      curves_cage.positions_for_write().copy_from(curves_orig.positions());
+    if (positions.is_empty()) {
+      positions = curves_orig.positions();
     }
+    curves_cage.positions_for_write().copy_from(positions);
   }
 
   /* Assign evaluated object. */
-  Curves *curves_eval = const_cast<Curves *>(geometry_set.get_curves_for_read());
-  if (curves_eval == nullptr) {
-    curves_eval = blender::bke::curves_new_nomain(0, 0);
-    BKE_object_eval_assign_data(object, &curves_eval->id, true);
+  if (curves_id_eval == nullptr) {
+    curves_id_eval = blender::bke::curves_new_nomain(0, 0);
+    BKE_object_eval_assign_data(object, &curves_id_eval->id, true);
   }
   else {
-    BKE_object_eval_assign_data(object, &curves_eval->id, false);
+    BKE_object_eval_assign_data(object, &curves_id_eval->id, false);
   }
   object->runtime.geometry_set_eval = new GeometrySet(std::move(geometry_set));
 }
