@@ -153,7 +153,7 @@ typedef const IntegratorStateCPU *ccl_restrict ConstIntegratorState;
 typedef IntegratorShadowStateCPU *ccl_restrict IntegratorShadowState;
 typedef const IntegratorShadowStateCPU *ccl_restrict ConstIntegratorShadowState;
 
-#  define INTEGRATOR_STATE_NULL nullptr
+#  define INTEGRATOR_STATE_NULL (nullptr_t) nullptr
 
 #  define INTEGRATOR_STATE(state, nested_struct, member) ((state)->nested_struct.member)
 #  define INTEGRATOR_STATE_WRITE(state, nested_struct, member) ((state)->nested_struct.member)

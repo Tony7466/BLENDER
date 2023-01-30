@@ -95,6 +95,14 @@ rgb_to_spectrum(KernelGlobals kg, ConstIntegratorGenericState state, int32_t pat
 #endif
 }
 
+ccl_device_inline Spectrum rgb_to_spectrum(KernelGlobals kg,
+                                           nullptr_t state,
+                                           int32_t path_flag,
+                                           float3 rgb)
+{
+  return zero_spectrum();
+}
+
 ccl_device float3 wavelength_to_xyz(KernelGlobals kg, float wavelength)
 {
   int table_offset = kernel_data.cam.camera_response_function_offset;
@@ -148,13 +156,21 @@ spectrum_to_rgb(KernelGlobals kg, ConstIntegratorGenericState state, int32_t pat
 #endif
 }
 
+ccl_device_inline float3 spectrum_to_rgb(KernelGlobals kg,
+                                         nullptr_t state,
+                                         int32_t path_flag,
+                                         Spectrum s)
+{
+  return zero_float3();
+}
+
 template<typename ConstIntegratorGenericState>
 ccl_device float spectrum_to_gray(KernelGlobals kg,
                                   ConstIntegratorGenericState state,
                                   int32_t path_flag,
-                                  Spectrum c)
+                                  Spectrum s)
 {
-  return linear_rgb_to_gray(kg, spectrum_to_rgb(kg, state, path_flag, c));
+  return linear_rgb_to_gray(kg, spectrum_to_rgb(kg, state, path_flag, s));
 }
 
 CCL_NAMESPACE_END
