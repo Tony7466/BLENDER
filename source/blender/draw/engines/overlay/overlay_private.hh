@@ -288,7 +288,8 @@ typedef struct OVERLAY_PrivateData {
   DRWShadingGroup *pointcloud_dots_grp;
   DRWShadingGroup *sculpt_mask_grp;
   DRWShadingGroup *sculpt_curves_selection_grp;
-  DRWShadingGroup *sculpt_curves_edit_grp;
+  DRWShadingGroup *sculpt_curves_edit_points_grp;
+  DRWShadingGroup *sculpt_curves_edit_lines_grp;
   DRWShadingGroup *viewer_attribute_curve_grp;
   DRWShadingGroup *viewer_attribute_curves_grp;
   DRWShadingGroup *viewer_attribute_mesh_grp;
