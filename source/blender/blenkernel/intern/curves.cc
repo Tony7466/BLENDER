@@ -334,6 +334,7 @@ void BKE_curves_data_update(struct Depsgraph *depsgraph, struct Scene *scene, Ob
   }
   curves_evaluate_modifiers(depsgraph, scene, object, geometry_set);
 
+  /* Create cage curves geometry for drawing. */
   if (const blender::bke::CurvesEditHints *curve_edit_hints =
           geometry_set.get_curve_edit_hints_for_read()) {
     const Curves &curves_id_orig = curve_edit_hints->curves_id_orig;
