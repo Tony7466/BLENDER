@@ -16,8 +16,6 @@
 #include "kernel/closure/bsdf_microfacet.h"
 #include "kernel/closure/bsdf_microfacet_multi.h"
 #include "kernel/closure/bsdf_oren_nayar.h"
-#include "kernel/closure/bsdf_reflection.h"
-#include "kernel/closure/bsdf_refraction.h"
 #include "kernel/closure/bsdf_transparent.h"
 #include "kernel/closure/bsdf_ashikhmin_shirley.h"
 #include "kernel/closure/bsdf_toon.h"
