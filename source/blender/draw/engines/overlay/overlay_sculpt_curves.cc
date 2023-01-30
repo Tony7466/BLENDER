@@ -109,9 +109,9 @@ static void populate_edit_overlay(OVERLAY_Data *vedata, Object *object)
   }
 
   const crazyspace::GeometryDeformation deformation = crazyspace::get_evaluated_curves_deformation(
-      *depsgraph, *object);
+      *depsgraph, *object_orig);
 
-  // std::cout << deformation.positions.size() << "\n";
+  std::cout << deformation.positions.size() << "\n";
 
   const Curves *curves_id_orig = reinterpret_cast<const Curves *>(object_orig->data);
   const bke::CurvesGeometry &curves_orig = bke::CurvesGeometry::wrap(curves_id_orig->geometry);
