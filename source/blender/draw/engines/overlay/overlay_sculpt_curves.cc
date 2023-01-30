@@ -39,8 +39,9 @@ void OVERLAY_sculpt_curves_cache_init(OVERLAY_Data *vedata)
     const DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS | DRW_STATE_BLEND_ALPHA;
     DRW_PASS_CREATE(psl->sculpt_curves_edit_ps, state | pd->clipping_state);
 
-    GPUShader *sh = OVERLAY_shader_viewer_attribute_curves();
+    GPUShader *sh = OVERLAY_shader_edit_particle_point();
     pd->sculpt_curves_edit_grp = DRW_shgroup_create(sh, psl->sculpt_curves_edit_ps);
+    DRW_shgroup_uniform_block(pd->sculpt_curves_edit_grp, "globalsBlock", G_draw.block_ubo);
   }
 }
 
@@ -89,32 +90,14 @@ static void populate_edit_overlay(OVERLAY_Data *vedata, Object *object)
 
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
-  const Depsgraph *depsgraph = draw_ctx->depsgraph;
 
-  // float(*cage_positions)[3] = object->runtime.editcurves_eval_cage;
-  // std::cout << cage_positions << "\n";
-  // if (cage_positions == nullptr) {
-  //   return;
-  // }
-
-  draw_ctx->object_edit;
-
-  const Object *object_orig = DEG_get_original_object(object);
-  std::cout << object << " " << object_orig << " " << object->id.name << "\n";
-  if (object_orig == nullptr) {
-    return;
-  }
-  if (object_orig->type != OB_CURVES) {
+  Curves *curves_id_cage = object->runtime.editcurves_eval_cage;
+  if (curves_id_cage == nullptr) {
     return;
   }
 
-  const crazyspace::GeometryDeformation deformation = crazyspace::get_evaluated_curves_deformation(
-      *depsgraph, *object_orig);
-
-  std::cout << deformation.positions.size() << "\n";
-
-  const Curves *curves_id_orig = reinterpret_cast<const Curves *>(object_orig->data);
-  const bke::CurvesGeometry &curves_orig = bke::CurvesGeometry::wrap(curves_id_orig->geometry);
+  GPUBatch *geom_points = DRW_curves_batch_cache_get_edit_points(curves_id_cage);
+  DRW_shgroup_call_no_cull(pd->sculpt_curves_edit_grp, geom_points, object);
 }
 
 void OVERLAY_sculpt_curves_cache_populate(OVERLAY_Data *vedata, Object *object)

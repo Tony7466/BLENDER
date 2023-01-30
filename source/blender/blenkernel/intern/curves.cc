@@ -334,6 +334,26 @@ void BKE_curves_data_update(struct Depsgraph *depsgraph, struct Scene *scene, Ob
   }
   curves_evaluate_modifiers(depsgraph, scene, object, geometry_set);
 
+  if (const blender::bke::CurvesEditHints *curve_edit_hints =
+          geometry_set.get_curve_edit_hints_for_read()) {
+    const Curves &curves_id_orig = curve_edit_hints->curves_id_orig;
+    const blender::bke::CurvesGeometry &curves_orig = blender::bke::CurvesGeometry::wrap(
+        curves_id_orig.geometry);
+    Curves *curves_id_cage = blender::bke::curves_new_nomain(curves_id_orig.geometry.point_num,
+                                                             curves_id_orig.geometry.curve_num);
+    blender::bke::CurvesGeometry &curves_cage = blender::bke::CurvesGeometry::wrap(
+        curves_id_cage->geometry);
+    if (curve_edit_hints->positions.has_value()) {
+      curves_cage.positions_for_write().copy_from(*curve_edit_hints->positions);
+    }
+    else {
+      curves_cage.positions_for_write().copy_from(curves_orig.positions());
+    }
+    curves_cage.offsets_for_write().copy_from(curves_orig.offsets());
+    curves_cage.fill_curve_types(CURVE_TYPE_POLY);
+    object->runtime.editcurves_eval_cage = curves_id_cage;
+  }
+
   /* Assign evaluated object. */
   Curves *curves_eval = const_cast<Curves *>(geometry_set.get_curves_for_read());
   if (curves_eval == nullptr) {
