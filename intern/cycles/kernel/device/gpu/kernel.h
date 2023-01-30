@@ -738,13 +738,14 @@ ccl_gpu_kernel_postfix
 ccl_gpu_kernel(GPU_KERNEL_BLOCK_NUM_THREADS, GPU_KERNEL_MAX_REGISTERS)
     ccl_gpu_kernel_signature(shader_eval_background,
                              ccl_global KernelShaderEvalInput *input,
+                             ccl_global IntegratorState state,
                              ccl_global float *output,
                              const int offset,
                              const int work_size)
 {
   int i = ccl_gpu_global_id_x();
   if (i < work_size) {
-    ccl_gpu_kernel_call(kernel_background_evaluate(NULL, input, output, offset + i));
+    ccl_gpu_kernel_call(kernel_background_evaluate(NULL, state, input, output, offset + i));
   }
 }
 ccl_gpu_kernel_postfix

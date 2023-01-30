@@ -273,7 +273,8 @@ int SVMCompiler::stack_assign(ShaderInput *input)
       }
       else if (input->type() == SocketType::VECTOR || input->type() == SocketType::NORMAL ||
                input->type() == SocketType::POINT || input->type() == SocketType::COLOR ||
-               input->type() == SocketType::SPECTRUM) {
+               (input->type() == SocketType::SPECTRUM &&
+                !!this->scene->integrator->get_use_spectral_rendering())) {
 
         add_node(NODE_VALUE_V, input->stack_offset);
         add_node(NODE_VALUE_V, node->get_float3(input->socket_type));

@@ -136,7 +136,7 @@ NODE_DEFINE(Integrator)
               denoiser_prefilter_enum,
               DENOISER_PREFILTER_ACCURATE);
 
-  SOCKET_BOOLEAN(use_spectral_rendering, "Use Spectral Rendering", false);
+  SOCKET_BOOLEAN(use_spectral_rendering, "Use Spectral Rendering", true);
 
   return type;
 }

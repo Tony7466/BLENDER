@@ -343,7 +343,7 @@ ccl_device_inline Spectrum generate_wavelengths(KernelGlobals kg, ConstIntegrato
 
   Spectrum result;
 
-  float initial_offset = lerp(
+  float initial_offset = mix(
       0.0f, 1.0f / SPECTRUM_CHANNELS, path_state_rng_1D(kg, &rng_state, PRNG_WAVELENGTH));
   FOREACH_SPECTRUM_CHANNEL (i) {
     float current_channel_offset = initial_offset + 1.0f * i / SPECTRUM_CHANNELS;
