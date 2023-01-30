@@ -55,7 +55,7 @@ struct CurvesBatchCache {
   GPUBatch *edit_points;
   GPUBatch *edit_lines;
 
-  /* Editmode (original) point positions. */
+  /* Positions edited in edit/sculpt mode. */
   GPUVertBuf *edit_points_pos;
 
   /* Editmode data (such as selection). */
@@ -750,15 +750,10 @@ GPUVertBuf **DRW_curves_texture_for_evaluated_attribute(Curves *curves,
 
 void DRW_curves_batch_cache_create_requested(Object *ob)
 {
-  Curves *curves = static_cast<Curves *>(ob->data);
-  Object *orig = DEG_get_original_object(ob);
-  Curves *curves_orig = static_cast<Curves *>(orig->data);
   Curves *curves_cage = ob->runtime.editcurves_eval_cage;
-
-  CurvesBatchCache &cache = curves_batch_cache_get(*curves);
-
   if (curves_cage) {
     CurvesBatchCache &cage_cache = curves_batch_cache_get(*curves_cage);
+
     if (DRW_batch_requested(cage_cache.edit_points, GPU_PRIM_POINTS)) {
       DRW_vbo_request(cage_cache.edit_points, &cage_cache.edit_points_pos);
       DRW_vbo_request(cage_cache.edit_points, &cage_cache.edit_points_data);
@@ -777,24 +772,5 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
     if (DRW_ibo_requested(cage_cache.edit_lines_ibo)) {
       curves_batch_cache_ensure_edit_lines(*curves_cage, cage_cache);
     }
-  }
-
-  if (DRW_batch_requested(cache.edit_points, GPU_PRIM_POINTS)) {
-    DRW_vbo_request(cache.edit_points, &cache.edit_points_pos);
-    DRW_vbo_request(cache.edit_points, &cache.edit_points_data);
-  }
-  if (DRW_batch_requested(cache.edit_lines, GPU_PRIM_LINE_STRIP)) {
-    DRW_ibo_request(cache.edit_lines, &cache.edit_lines_ibo);
-    DRW_vbo_request(cache.edit_lines, &cache.edit_points_pos);
-    DRW_vbo_request(cache.edit_lines, &cache.edit_points_data);
-  }
-  if (DRW_vbo_requested(cache.edit_points_pos)) {
-    curves_batch_cache_ensure_edit_points_pos(*curves_orig, cache);
-  }
-  if (DRW_vbo_requested(cache.edit_points_data)) {
-    curves_batch_cache_ensure_edit_points_data(*curves_orig, cache);
-  }
-  if (DRW_ibo_requested(cache.edit_lines_ibo)) {
-    curves_batch_cache_ensure_edit_lines(*curves_orig, cache);
   }
 }
