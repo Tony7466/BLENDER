@@ -116,7 +116,9 @@ static void populate_edit_overlay(OVERLAY_Data *vedata, Object *object)
 void OVERLAY_sculpt_curves_cache_populate(OVERLAY_Data *vedata, Object *object)
 {
   populate_selection_overlay(vedata, object);
-  populate_edit_overlay(vedata, object);
+  if (vedata->stl->pd->overlay.flag & V3D_OVERLAY_SCULPT_CURVES_CAGE) {
+    populate_edit_overlay(vedata, object);
+  }
 }
 
 void OVERLAY_sculpt_curves_draw(OVERLAY_Data *vedata)
