@@ -620,7 +620,7 @@ struct Fan {
     return result;
   }
 
-  void mark_already_added_segments(const MeshData &mesh_data, const UVVertex &uv_vertex)
+  void mark_already_added_segments(const UVVertex &uv_vertex)
   {
     Vector<int> mesh_primitive_indices = connecting_mesh_primitive_indices(uv_vertex);
 
@@ -908,7 +908,7 @@ static void extend_at_vert(const MeshData &mesh_data,
     return;
   }
   fan.init_uv_coordinates(mesh_data, *uv_vertex);
-  fan.mark_already_added_segments(mesh_data, *uv_vertex);
+  fan.mark_already_added_segments(*uv_vertex);
   int num_to_add = fan.count_edges_not_added();
 
   /* In 3d space everything can connected, but in uv space it may not.
@@ -925,8 +925,7 @@ static void extend_at_vert(const MeshData &mesh_data,
    * triangle when the corner angle is near 180 degrees. In order to fix this we will
    * always add two segments both using the same fill primitive.
    */
-  if ((num_to_add == 0 && winding_solution.size() == 1) ||
-      (corner.angle > 1.0f && winding_solution.size() < 2)) {
+  if (winding_solution.size() < 2 && (num_to_add == 0 || corner.angle > 2.0f)) {
     int fill_primitive_1_i = corner.second->uv_primitive->primitive_i;
     int fill_primitive_2_i = corner.first->uv_primitive->primitive_i;
 
@@ -1460,9 +1459,10 @@ UVIslands::UVIslands(const MeshData &mesh_data)
 {
   islands.reserve(mesh_data.uv_island_len);
 
-  for (int64_t uv_island_id = 0; uv_island_id < mesh_data.uv_island_len; uv_island_id++) {
+  for (const int64_t uv_island_id : IndexRange(mesh_data.uv_island_len)) {
     islands.append_as(UVIsland());
     UVIsland *uv_island = &islands.last();
+    uv_island->id = uv_island_id;
     for (const int primitive_i : mesh_data.looptris.index_range()) {
       if (mesh_data.uv_island_ids[primitive_i] == uv_island_id) {
         add_primitive(mesh_data, *uv_island, primitive_i);
