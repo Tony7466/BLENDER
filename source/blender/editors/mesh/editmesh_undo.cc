@@ -39,7 +39,7 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
-#define USE_ARRAY_STORE
+// #define USE_ARRAY_STORE
 
 #ifdef USE_ARRAY_STORE
 // #  define DEBUG_PRINT
