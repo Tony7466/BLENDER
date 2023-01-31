@@ -598,7 +598,7 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
       case GEO_COMPONENT_TYPE_VOLUME: {
         const VolumeComponent *volume_component = static_cast<const VolumeComponent *>(component);
         if (!gather_info.r_tasks.first_volume) {
-          volume_component->cow().user_add();
+          volume_component->cow().add_user();
           gather_info.r_tasks.first_volume = const_cast<VolumeComponent *>(volume_component);
         }
         break;
@@ -607,7 +607,7 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         const GeometryComponentEditData *edit_component =
             static_cast<const GeometryComponentEditData *>(component);
         if (!gather_info.r_tasks.first_edit_data) {
-          edit_component->cow().user_add();
+          edit_component->cow().add_user();
           gather_info.r_tasks.first_edit_data = edit_component;
         }
         break;

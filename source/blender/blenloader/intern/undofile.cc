@@ -58,7 +58,7 @@ void BLO_memfile_free(MemFile *memfile)
 MemFileCowStorage::~MemFileCowStorage()
 {
   for (auto item : this->map.items()) {
-    item.value->user_remove_and_delete_if_last();
+    item.value->remove_user_and_delete_if_last();
   }
 }
 

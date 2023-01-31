@@ -1698,7 +1698,7 @@ void BLO_write_cow(BlendWriter *writer, const void *data_ptr, const bCopyOnWrite
     memfile.cow_storage = MEM_new<MemFileCowStorage>(__func__);
   }
   if (memfile.cow_storage->map.add(data_ptr, cow)) {
-    cow->user_add();
+    cow->add_user();
   }
 }
 

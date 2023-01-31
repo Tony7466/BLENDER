@@ -188,7 +188,7 @@ void GeometrySet::remove_geometry_during_modify()
 void GeometrySet::add(const GeometryComponent &component)
 {
   BLI_assert(!components_[component.type()]);
-  component.cow().user_add();
+  component.cow().add_user();
   components_[component.type()] = const_cast<GeometryComponent *>(&component);
 }
 

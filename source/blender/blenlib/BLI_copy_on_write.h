@@ -48,12 +48,12 @@ struct bCopyOnWrite : blender::NonCopyable, blender::NonMovable {
     return !this->is_shared();
   }
 
-  void user_add() const
+  void add_user() const
   {
     users_.fetch_add(1, std::memory_order_relaxed);
   }
 
-  void user_remove_and_delete_if_last() const
+  void remove_user_and_delete_if_last() const
   {
     const int old_user_count = users_.fetch_sub(1, std::memory_order_relaxed);
     BLI_assert(old_user_count >= 1);
@@ -82,7 +82,7 @@ template<typename T> class COWUser {
 
   COWUser(const COWUser &other) : data_(other.data_)
   {
-    this->user_add(data_);
+    this->add_user(data_);
   }
 
   COWUser(COWUser &&other) : data_(other.data_)
@@ -92,7 +92,7 @@ template<typename T> class COWUser {
 
   ~COWUser()
   {
-    this->user_remove_and_delete_if_last(data_);
+    this->remove_user_and_delete_if_last(data_);
   }
 
   COWUser &operator=(const COWUser &other)
@@ -101,9 +101,9 @@ template<typename T> class COWUser {
       return *this;
     }
 
-    this->user_remove_and_delete_if_last(data_);
+    this->remove_user_and_delete_if_last(data_);
     data_ = other.data_;
-    this->user_add(data_);
+    this->add_user(data_);
     return *this;
   }
 
@@ -113,7 +113,7 @@ template<typename T> class COWUser {
       return *this;
     }
 
-    this->user_remove_and_delete_if_last(data_);
+    this->remove_user_and_delete_if_last(data_);
     data_ = other.data_;
     other.data_ = nullptr;
     return *this;
@@ -167,7 +167,7 @@ template<typename T> class COWUser {
 
   void reset()
   {
-    this->user_remove_and_delete_if_last(data_);
+    this->remove_user_and_delete_if_last(data_);
     data_ = nullptr;
   }
 
@@ -187,17 +187,17 @@ template<typename T> class COWUser {
   }
 
  private:
-  static void user_add(T *data)
+  static void add_user(T *data)
   {
     if (data != nullptr) {
-      data->cow().user_add();
+      data->cow().add_user();
     }
   }
 
-  static void user_remove_and_delete_if_last(T *data)
+  static void remove_user_and_delete_if_last(T *data)
   {
     if (data != nullptr) {
-      data->cow().user_remove_and_delete_if_last();
+      data->cow().remove_user_and_delete_if_last();
     }
   }
 };

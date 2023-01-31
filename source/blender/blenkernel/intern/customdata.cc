@@ -2297,7 +2297,7 @@ static bool customdata_merge_internal(const CustomData *source,
 
     if (src_layer.anonymous_id != nullptr) {
       new_layer->anonymous_id = src_layer.anonymous_id;
-      new_layer->anonymous_id->cow().user_add();
+      new_layer->anonymous_id->cow().add_user();
     }
   }
 
@@ -2401,7 +2401,7 @@ static void ensure_layer_data_is_mutable(CustomDataLayer &layer, const int totel
     const eCustomDataType type = eCustomDataType(layer.type);
     const void *old_data = layer.data;
     layer.data = copy_layer_data(type, old_data, totelem);
-    layer.cow->user_remove_and_delete_if_last();
+    layer.cow->remove_user_and_delete_if_last();
     layer.cow = make_cow_for_array(type, layer.data, totelem);
   }
 }
@@ -2425,7 +2425,7 @@ void CustomData_realloc(CustomData *data, const int old_size, const int new_size
     }
     /* Remove ownership of old array */
     if (layer->cow) {
-      layer->cow->user_remove_and_delete_if_last();
+      layer->cow->remove_user_and_delete_if_last();
       layer->cow = nullptr;
     }
     /* Take ownership of new array. */
@@ -2473,7 +2473,7 @@ void CustomData_copy_without_data(const struct CustomData *source,
 static void customData_free_layer__internal(CustomDataLayer *layer, const int totelem)
 {
   if (layer->anonymous_id != nullptr) {
-    layer->anonymous_id->cow().user_remove_and_delete_if_last();
+    layer->anonymous_id->cow().remove_user_and_delete_if_last();
     layer->anonymous_id = nullptr;
   }
   const eCustomDataType type = eCustomDataType(layer->type);
@@ -2483,7 +2483,7 @@ static void customData_free_layer__internal(CustomDataLayer *layer, const int to
     }
   }
   else {
-    layer->cow->user_remove_and_delete_if_last();
+    layer->cow->remove_user_and_delete_if_last();
   }
 }
 
@@ -2866,7 +2866,7 @@ static CustomDataLayer *customData_add_layer__internal(CustomData *data,
         new_layer.data = layer_data_to_assign;
         new_layer.cow = cow_to_assign;
         if (new_layer.cow) {
-          new_layer.cow->user_add();
+          new_layer.cow->add_user();
         }
       }
       break;
@@ -2998,7 +2998,7 @@ void *CustomData_add_layer_anonymous(CustomData *data,
     return nullptr;
   }
 
-  anonymous_id->cow().user_add();
+  anonymous_id->cow().add_user();
   layer->anonymous_id = anonymous_id;
   return layer->data;
 }
@@ -3019,7 +3019,7 @@ const void *CustomData_add_layer_anonymous_with_existing_data(
   if (layer == nullptr) {
     return nullptr;
   }
-  anonymous_id->cow().user_add();
+  anonymous_id->cow().add_user();
   layer->anonymous_id = anonymous_id;
   return layer->data;
 }
@@ -5257,7 +5257,7 @@ void CustomData_blend_read(BlendDataReader *reader, CustomData *data, const int 
     if (CustomData_verify_versions(data, i)) {
       if (BLO_read_is_cow_data(reader, layer->data)) {
         BLI_assert(layer->cow != nullptr);
-        layer->cow->user_add();
+        layer->cow->add_user();
         continue;
       }
       BLO_read_data_address(reader, &layer->data);
