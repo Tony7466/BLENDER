@@ -35,12 +35,16 @@ using blender::Vector;
 using blender::bke::InstanceReference;
 using blender::bke::Instances;
 
+void GeometryComponentCOW::delete_self_with_data()
+{
+  delete component_;
+}
+
 /* -------------------------------------------------------------------- */
 /** \name Geometry Component
  * \{ */
 
-GeometryComponent::GeometryComponent(GeometryComponentType type)
-    : type_(type), cow_(1, this, [this](const bCopyOnWrite * /*cow*/) { delete this; })
+GeometryComponent::GeometryComponent(GeometryComponentType type) : type_(type), cow_(this)
 {
 }
 

@@ -10,6 +10,24 @@
 
 namespace blender::bke {
 
+class AnonymousAttributeID;
+
+class AnonymousAttributeIDCOW : public bCopyOnWrite {
+ private:
+  AnonymousAttributeID *id_;
+
+ public:
+  AnonymousAttributeIDCOW(AnonymousAttributeID *id) : bCopyOnWrite(1), id_(id)
+  {
+  }
+
+ private:
+  void delete_self_with_data() override
+  {
+    MEM_delete(id_);
+  }
+};
+
 /**
  * An #AnonymousAttributeID contains information about a specific anonymous attribute.
  * Like normal attributes, anonymous attributes are also identified by their name, so one should
@@ -34,7 +52,7 @@ namespace blender::bke {
  */
 class AnonymousAttributeID {
  private:
-  bCopyOnWrite cow_;
+  AnonymousAttributeIDCOW cow_;
 
  protected:
   std::string name_;

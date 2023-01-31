@@ -186,7 +186,7 @@ void BLO_write_string(BlendWriter *writer, const char *data_ptr);
  * copied. A free-function has to be provided, which is called when the undo step is freed and no
  * one else references the data anymore.
  */
-void BLO_write_cow(BlendWriter *writer, const bCopyOnWrite *cow);
+void BLO_write_cow(BlendWriter *writer, const void *data_ptr, const bCopyOnWrite *cow);
 #endif
 
 /**

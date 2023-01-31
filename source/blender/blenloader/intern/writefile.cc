@@ -1687,14 +1687,17 @@ bool BLO_write_is_undo(BlendWriter *writer)
   return writer->wd->use_memfile;
 }
 
-void BLO_write_cow(BlendWriter *writer, const bCopyOnWrite *cow)
+void BLO_write_cow(BlendWriter *writer, const void *data_ptr, const bCopyOnWrite *cow)
 {
   BLI_assert(writer->wd->use_memfile);
+  if (data_ptr == nullptr) {
+    return;
+  }
   MemFile &memfile = *writer->wd->mem.written_memfile;
   if (memfile.cow_storage == nullptr) {
     memfile.cow_storage = MEM_new<MemFileCowStorage>(__func__);
   }
-  if (memfile.cow_storage->map.add(cow->data(), cow)) {
+  if (memfile.cow_storage->map.add(data_ptr, cow)) {
     cow->user_add();
   }
 }

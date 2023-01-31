@@ -30,23 +30,15 @@ struct bCopyOnWrite : blender::NonCopyable, blender::NonMovable {
   using DeleteFn = std::function<void(const bCopyOnWrite *cow)>;
 
   mutable std::atomic<int> users_;
-  const void *data_;
-  DeleteFn delete_fn_;
 
  public:
-  bCopyOnWrite(const int initial_users, const void *data, DeleteFn delete_fn)
-      : users_(initial_users), data_(data), delete_fn_(std::move(delete_fn))
+  bCopyOnWrite(const int initial_users) : users_(initial_users)
   {
   }
 
   ~bCopyOnWrite()
   {
     BLI_assert(this->is_mutable());
-  }
-
-  const void *data() const
-  {
-    return data_;
   }
 
   bool is_shared() const
@@ -64,16 +56,18 @@ struct bCopyOnWrite : blender::NonCopyable, blender::NonMovable {
     users_.fetch_add(1, std::memory_order_relaxed);
   }
 
-  bool user_remove_and_delete_if_last() const
+  void user_remove_and_delete_if_last() const
   {
     const int old_user_count = users_.fetch_sub(1, std::memory_order_relaxed);
     BLI_assert(old_user_count >= 1);
     const bool was_last_user = old_user_count == 1;
     if (was_last_user) {
-      delete_fn_(this);
+      const_cast<bCopyOnWrite *>(this)->delete_self_with_data();
     }
-    return was_last_user;
   }
+
+ private:
+  virtual void delete_self_with_data() = 0;
 };
 
 namespace blender {

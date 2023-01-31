@@ -2361,14 +2361,31 @@ CustomData CustomData_shallow_copy_remove_non_bmesh_attributes(const CustomData 
   return dst;
 }
 
+class CustomDataLayerCOW : public bCopyOnWrite {
+ private:
+  const void *data_;
+  int totelem_;
+  eCustomDataType type_;
+
+ public:
+  CustomDataLayerCOW(const void *data, const int totelem, const eCustomDataType type)
+      : bCopyOnWrite(1), data_(data), totelem_(totelem), type_(type)
+  {
+  }
+
+ private:
+  void delete_self_with_data() override
+  {
+    free_layer_data(type_, data_, totelem_);
+    MEM_delete(this);
+  }
+};
+
 static bCopyOnWrite *make_cow_for_array(const eCustomDataType type,
                                         const void *data,
                                         const int totelem)
 {
-  return MEM_new<bCopyOnWrite>(__func__, 1, data, [type, totelem](const bCopyOnWrite *cow) {
-    free_layer_data(type, cow->data(), totelem);
-    MEM_delete(cow);
-  });
+  return MEM_new<CustomDataLayerCOW>(__func__, data, totelem, type);
 }
 
 static void ensure_layer_data_is_mutable(CustomDataLayer &layer, const int totelem)
@@ -5119,7 +5136,7 @@ void CustomData_blend_write(BlendWriter *writer,
 
   for (const CustomDataLayer &layer : layers_to_write) {
     if (BLO_write_is_undo(writer) && layer.cow != nullptr) {
-      BLO_write_cow(writer, layer.cow);
+      BLO_write_cow(writer, layer.data, layer.cow);
       continue;
     }
     switch (layer.type) {

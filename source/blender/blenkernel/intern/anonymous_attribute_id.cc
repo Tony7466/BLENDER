@@ -4,8 +4,7 @@
 
 namespace blender::bke {
 
-AnonymousAttributeID::AnonymousAttributeID()
-    : cow_(1, this, [this](const bCopyOnWrite * /*cow*/) { MEM_delete(this); })
+AnonymousAttributeID::AnonymousAttributeID() : cow_(this)
 {
 }
 

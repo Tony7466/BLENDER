@@ -41,6 +41,19 @@ class Instances;
 
 class GeometryComponent;
 
+class GeometryComponentCOW : public bCopyOnWrite {
+ private:
+  GeometryComponent *component_;
+
+ public:
+  GeometryComponentCOW(GeometryComponent *component) : bCopyOnWrite(1), component_(component)
+  {
+  }
+
+ private:
+  void delete_self_with_data() override;
+};
+
 /**
  * This is the base class for specialized geometry component types. A geometry component handles
  * a user count to allow avoiding duplication when it is wrapped with #UserCounter. It also handles
@@ -49,7 +62,7 @@ class GeometryComponent;
 class GeometryComponent {
  private:
   GeometryComponentType type_;
-  bCopyOnWrite cow_;
+  GeometryComponentCOW cow_;
 
  public:
   GeometryComponent(GeometryComponentType type);
