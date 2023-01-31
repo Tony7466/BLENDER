@@ -730,6 +730,19 @@ static void rna_AttributeGroup_active_color_name_set(PointerRNA *ptr, const char
   }
 }
 
+static PointerRNA rna_Attribute_cow_get(PointerRNA *ptr)
+{
+  const CustomDataLayer *layer = ptr->data;
+  PointerRNA ret;
+  RNA_pointer_create(NULL, &RNA_COW, (void *)layer->cow, &ret);
+  return ret;
+}
+
+static int rna_COW_users_get(PointerRNA *ptr)
+{
+  return *(int *)ptr->data;
+}
+
 #else
 
 static void rna_def_attribute_float(BlenderRNA *brna)
@@ -1087,6 +1100,10 @@ static void rna_def_attribute(BlenderRNA *brna)
       prop, "Is Internal", "The attribute is meant for internal use by Blender");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
+  prop = RNA_def_property(srna, "cow", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "COW");
+  RNA_def_property_pointer_funcs(prop, "rna_Attribute_cow_get", NULL, NULL, NULL);
+
   /* types */
   rna_def_attribute_float(brna);
   rna_def_attribute_float_vector(brna);
@@ -1246,8 +1263,22 @@ void rna_def_attributes_common(StructRNA *srna)
   RNA_def_property_srna(prop, "AttributeGroup");
 }
 
+static void rna_def_cow(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "COW", NULL);
+  RNA_def_struct_ui_text(srna, "Cow", "My cow description");
+
+  prop = RNA_def_property(srna, "users", PROP_INT, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_int_funcs(prop, "rna_COW_users_get", NULL, NULL);
+}
+
 void RNA_def_attribute(BlenderRNA *brna)
 {
+  rna_def_cow(brna);
   rna_def_attribute(brna);
   rna_def_attribute_group(brna);
 }
