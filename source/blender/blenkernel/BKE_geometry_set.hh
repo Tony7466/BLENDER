@@ -10,7 +10,6 @@
 #include <iostream>
 #include <mutex>
 
-#include "BLI_copy_on_write.h"
 #include "BLI_function_ref.hh"
 #include "BLI_map.hh"
 #include "BLI_vector_set.hh"

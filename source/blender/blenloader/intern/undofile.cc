@@ -24,6 +24,7 @@
 #include "DNA_listBase.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_copy_on_write.hh"
 #include "BLI_ghash.h"
 
 #include "BLO_readfile.h"

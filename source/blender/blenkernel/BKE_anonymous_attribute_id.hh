@@ -4,7 +4,7 @@
 
 #include <atomic>
 
-#include "BLI_copy_on_write.h"
+#include "BLI_copy_on_write_user.hh"
 #include "BLI_set.hh"
 #include "BLI_string_ref.hh"
 

@@ -85,7 +85,7 @@
 
 #include "BLI_bitmap.h"
 #include "BLI_blenlib.h"
-#include "BLI_copy_on_write.h"
+#include "BLI_copy_on_write.hh"
 #include "BLI_endian_defines.h"
 #include "BLI_endian_switch.h"
 #include "BLI_link_utils.h"
