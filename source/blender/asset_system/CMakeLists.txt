@@ -19,9 +19,11 @@ set(SRC
   intern/asset_catalog_tree.cc
   intern/asset_identifier.cc
   intern/asset_library.cc
+  intern/asset_library_loader.cc
   intern/asset_library_service.cc
   intern/asset_representation.cc
   intern/asset_storage.cc
+  intern/asset_system_registry.cc
   intern/utils.cc
 
   AS_asset_catalog.hh
@@ -29,7 +31,9 @@ set(SRC
   AS_asset_catalog_tree.hh
   AS_asset_identifier.hh
   AS_asset_library.hh
+  AS_asset_library_loader.hh
   AS_asset_representation.hh
+  AS_asset_system_registry.hh
   intern/asset_library_service.hh
   intern/asset_storage.hh
   intern/utils.hh
