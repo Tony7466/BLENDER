@@ -55,11 +55,16 @@ struct CurvesBatchCache {
   GPUBatch *edit_points;
   GPUBatch *edit_lines;
 
+  GPUBatch *cage_lines;
+
   /* Positions edited in edit/sculpt mode. */
   GPUVertBuf *edit_points_pos;
 
   /* Editmode data (such as selection). */
   GPUVertBuf *edit_points_data;
+
+  GPUVertBuf *cage_point_pos;
+  GPUVertBuf *cage_point_color;
 
   GPUIndexBuf *edit_lines_ibo;
 
@@ -117,8 +122,12 @@ static void curves_batch_cache_clear_edit_data(CurvesBatchCache *cache)
   GPU_VERTBUF_DISCARD_SAFE(cache->edit_points_data);
   GPU_INDEXBUF_DISCARD_SAFE(cache->edit_lines_ibo);
 
+  GPU_VERTBUF_DISCARD_SAFE(cache->cage_point_pos);
+  GPU_VERTBUF_DISCARD_SAFE(cache->cage_point_color);
+
   GPU_BATCH_DISCARD_SAFE(cache->edit_points);
   GPU_BATCH_DISCARD_SAFE(cache->edit_lines);
+  GPU_BATCH_DISCARD_SAFE(cache->cage_lines);
 }
 
 static void curves_batch_cache_clear_eval_data(CurvesEvalCache &curves_cache)
@@ -684,6 +693,12 @@ GPUBatch *DRW_curves_batch_cache_get_edit_lines(Curves *curves)
   return DRW_batch_request(&cache.edit_lines);
 }
 
+GPUBatch *DRW_curves_batch_cache_get_cage_lines(struct Curves *curves)
+{
+  CurvesBatchCache &cache = curves_batch_cache_get(*curves);
+  return DRW_batch_request(&cache.cage_lines);
+}
+
 static void request_attribute(Curves &curves, const char *name)
 {
   CurvesBatchCache &cache = curves_batch_cache_get(curves);
@@ -751,7 +766,11 @@ GPUVertBuf **DRW_curves_texture_for_evaluated_attribute(Curves *curves,
 void DRW_curves_batch_cache_create_requested(Object *ob)
 {
   Curves *curves_cage = ob->runtime.editcurves_eval_cage;
+  Object *ob_orig = DEG_get_original_object(ob);
   if (curves_cage) {
+    const Curves *curves_id_orig = static_cast<Curves *>(ob_orig->data);
+    const blender::bke::CurvesGeometry &curves_orig = blender::bke::CurvesGeometry::wrap(
+        curves_id_orig->geometry);
     CurvesBatchCache &cage_cache = curves_batch_cache_get(*curves_cage);
 
     if (DRW_batch_requested(cage_cache.edit_points, GPU_PRIM_POINTS)) {
@@ -763,6 +782,11 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
       DRW_vbo_request(cage_cache.edit_lines, &cage_cache.edit_points_pos);
       DRW_vbo_request(cage_cache.edit_lines, &cage_cache.edit_points_data);
     }
+    if (DRW_batch_requested(cage_cache.cage_lines, GPU_PRIM_LINE_STRIP)) {
+      DRW_ibo_request(cage_cache.cage_lines, &cage_cache.edit_lines_ibo);
+      DRW_vbo_request(cage_cache.cage_lines, &cage_cache.cage_point_pos);
+      DRW_vbo_request(cage_cache.cage_lines, &cage_cache.cage_point_color);
+    }
     if (DRW_vbo_requested(cage_cache.edit_points_pos)) {
       curves_batch_cache_ensure_edit_points_pos(*curves_cage, cage_cache);
     }
@@ -771,6 +795,42 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
     }
     if (DRW_ibo_requested(cage_cache.edit_lines_ibo)) {
       curves_batch_cache_ensure_edit_lines(*curves_cage, cage_cache);
+    }
+    if (DRW_vbo_requested(cage_cache.cage_point_pos)) {
+      static uint pos;
+      static const GPUVertFormat format = [&]() {
+        GPUVertFormat format;
+        pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+        return format;
+      }();
+
+      GPU_vertbuf_init_with_format(cage_cache.cage_point_pos, &format);
+      GPU_vertbuf_data_alloc(cage_cache.cage_point_pos, curves_cage->geometry.point_num);
+
+      const Span<float3> positions =
+          blender::bke::CurvesGeometry::wrap(curves_cage->geometry).positions();
+      GPU_vertbuf_attr_fill(cage_cache.cage_point_pos, pos, positions.data());
+    }
+    if (DRW_vbo_requested(cage_cache.cage_point_color)) {
+      static const GPUVertFormat format = [&]() {
+        GPUVertFormat format;
+        GPU_vertformat_attr_add(&format, "my_color", GPU_COMP_U8, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
+        return format;
+      }();
+
+      GPU_vertbuf_init_with_format(cage_cache.cage_point_color, &format);
+      GPU_vertbuf_data_alloc(cage_cache.cage_point_color, curves_cage->geometry.point_num);
+      blender::uchar4 *data = static_cast<blender::uchar4 *>(
+          GPU_vertbuf_get_data(cage_cache.cage_point_color));
+
+      const blender::VArraySpan<float> selection =
+          curves_orig.attributes().lookup_or_default<float>(".selection", ATTR_DOMAIN_POINT, 1.0f);
+      blender::threading::parallel_for(selection.index_range(), 2048, [&](const IndexRange range) {
+        for (const int i : range) {
+          const float f = std::clamp(selection[i], 0.0f, 1.0f);
+          data[i] = blender::uchar4(f * 255.0f, f * 255.0f, f * 255.0f, 255);
+        }
+      });
     }
   }
 }

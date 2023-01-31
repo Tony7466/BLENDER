@@ -34,16 +34,13 @@ void OVERLAY_sculpt_curves_cache_init(OVERLAY_Data *vedata)
      * property yet. */
     DRW_shgroup_uniform_float_copy(grp, "selection_opacity", pd->overlay.sculpt_mode_mask_opacity);
   }
-  /* Editable curves overlay. */
+  /* Cage overlay. */
   {
-    const DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL |
-                           DRW_STATE_BLEND_ALPHA;
-    DRW_PASS_CREATE(psl->sculpt_curves_edit_ps, state | pd->clipping_state);
+    const DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS | DRW_STATE_BLEND_ALPHA;
+    DRW_PASS_CREATE(psl->sculpt_curves_cage_ps, state | pd->clipping_state);
 
-    GPUShader *sh = OVERLAY_shader_edit_particle_strand();
-    pd->sculpt_curves_edit_lines_grp = DRW_shgroup_create(sh, psl->sculpt_curves_edit_ps);
-    DRW_shgroup_uniform_block(pd->sculpt_curves_edit_lines_grp, "globalsBlock", G_draw.block_ubo);
-    DRW_shgroup_uniform_bool_copy(pd->sculpt_curves_edit_lines_grp, "useWeight", false);
+    GPUShader *sh = OVERLAY_shader_varying_color_wire();
+    pd->sculpt_curves_cage_lines_grp = DRW_shgroup_create(sh, psl->sculpt_curves_cage_ps);
   }
 }
 
@@ -97,8 +94,8 @@ static void populate_edit_overlay(OVERLAY_Data *vedata, Object *object)
     return;
   }
 
-  GPUBatch *geom_lines = DRW_curves_batch_cache_get_edit_lines(curves_id_cage);
-  DRW_shgroup_call_no_cull(pd->sculpt_curves_edit_lines_grp, geom_lines, object);
+  GPUBatch *geom_lines = DRW_curves_batch_cache_get_cage_lines(curves_id_cage);
+  DRW_shgroup_call_no_cull(pd->sculpt_curves_cage_lines_grp, geom_lines, object);
 }
 
 void OVERLAY_sculpt_curves_cache_populate(OVERLAY_Data *vedata, Object *object)
@@ -112,14 +109,13 @@ void OVERLAY_sculpt_curves_cache_populate(OVERLAY_Data *vedata, Object *object)
 void OVERLAY_sculpt_curves_draw(OVERLAY_Data *vedata)
 {
   OVERLAY_PassList *psl = vedata->psl;
-  OVERLAY_PrivateData *pd = vedata->stl->pd;
-  OVERLAY_FramebufferList *fbl = vedata->fbl;
-
-  if (DRW_state_is_fbo()) {
-    GPU_framebuffer_bind(pd->painting.in_front ? fbl->overlay_in_front_fb :
-                                                 fbl->overlay_default_fb);
-  }
 
   DRW_draw_pass(psl->sculpt_curves_selection_ps);
-  DRW_draw_pass(psl->sculpt_curves_edit_ps);
+}
+
+void OVERLAY_sculpt_curves_draw_wires(OVERLAY_Data *vedata)
+{
+  OVERLAY_PassList *psl = vedata->psl;
+
+  DRW_draw_pass(psl->sculpt_curves_cage_ps);
 }
