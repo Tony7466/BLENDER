@@ -7,7 +7,6 @@
  */
 
 #include <atomic>
-#include <functional>
 
 #include "BLI_compiler_attrs.h"
 #include "BLI_utildefines.h"
@@ -27,8 +26,6 @@ typedef struct bCopyOnWrite bCopyOnWrite;
 
 struct bCopyOnWrite : blender::NonCopyable, blender::NonMovable {
  private:
-  using DeleteFn = std::function<void(const bCopyOnWrite *cow)>;
-
   mutable std::atomic<int> users_;
 
  public:
