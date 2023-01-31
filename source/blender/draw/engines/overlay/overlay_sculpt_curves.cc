@@ -36,7 +36,8 @@ void OVERLAY_sculpt_curves_cache_init(OVERLAY_Data *vedata)
   }
   /* Editable curves overlay. */
   {
-    const DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS | DRW_STATE_BLEND_ALPHA;
+    const DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL |
+                           DRW_STATE_BLEND_ALPHA;
     DRW_PASS_CREATE(psl->sculpt_curves_edit_ps, state | pd->clipping_state);
 
     GPUShader *sh = OVERLAY_shader_edit_particle_strand();
@@ -90,7 +91,6 @@ static void populate_edit_overlay(OVERLAY_Data *vedata, Object *object)
   using namespace blender::bke;
 
   OVERLAY_PrivateData *pd = vedata->stl->pd;
-  const DRWContextState *draw_ctx = DRW_context_state_get();
 
   Curves *curves_id_cage = object->runtime.editcurves_eval_cage;
   if (curves_id_cage == nullptr) {
