@@ -521,38 +521,6 @@ static void node_update_basis(const bContext &C,
     UI_block_align_end(&block);
     UI_block_layout_resolve(&block, nullptr, &buty);
 
-    if (socket->is_multi_input()) {
-      const float total_inputs = float(socket->directly_linked_links().size()) * 5;
-      UI_block_emboss_set(&block, UI_EMBOSS_NONE);
-      uiBut *but = uiDefBut(&block,
-                            UI_BTYPE_BUT,
-                            0,
-                            "",
-                            loc.x + NODE_DYS - 15,
-                            dy - total_inputs / 2 - 10,
-                            10,
-                            total_inputs,
-                            nullptr,
-                            0,
-                            0,
-                            0,
-                            0,
-                            nullptr);
-      UI_block_emboss_set(&block, UI_EMBOSS);
-
-      UI_but_func_tooltip_set(
-          but,
-          [](bContext *C, void *argN, const char * /*tip*/) {
-            const SpaceNode &snode = *CTX_wm_space_node(C);
-            const bNodeTree &ntree = *snode.edittree;
-            const int index_in_tree = POINTER_AS_INT(argN);
-            ntree.ensure_topology_cache();
-            return node_socket_get_tooltip(&snode, ntree, *ntree.all_sockets()[index_in_tree]);
-          },
-          POINTER_FROM_INT(socket->index_in_tree()),
-          nullptr);
-    }
-
     /* Ensure minimum socket height in case layout is empty. */
     buty = min_ii(buty, dy - NODE_DY);
 
@@ -765,29 +733,84 @@ static void node_socket_draw(const bNodeSocket &sock,
   immVertex2f(pos_id, locx, locy);
 }
 
-static void node_socket_draw_multi_input(const float color[4],
+/* Ideally sockets themselves should be buttons, but they aren't currently. So add an invisible
+ * button on top of them for the tooltip. */
+static void node_socket_tooltip_set(uiBlock &block,
+                                    const int socket_index_in_tree,
+                                    const float2 location,
+                                    const float2 size)
+{
+  const float2 centre = location - size / 2.0f;
+
+  const eUIEmbossType old_emboss = UI_block_emboss_get(&block);
+  UI_block_emboss_set(&block, UI_EMBOSS_NONE);
+  uiBut *but = uiDefBut(&block,
+                        UI_BTYPE_BUT,
+                        0,
+                        "",
+                        centre.x,
+                        centre.y,
+                        size.x,
+                        size.y,
+                        nullptr,
+                        0,
+                        0,
+                        0,
+                        0,
+                        nullptr);
+
+  UI_but_func_tooltip_set(
+      but,
+      [](bContext *C, void *argN, const char * /*tip*/) {
+        const SpaceNode &snode = *CTX_wm_space_node(C);
+        const bNodeTree &ntree = *snode.edittree;
+        const int index_in_tree = POINTER_AS_INT(argN);
+        ntree.ensure_topology_cache();
+        return node_socket_get_tooltip(&snode, ntree, *ntree.all_sockets()[index_in_tree]);
+      },
+      POINTER_FROM_INT(socket_index_in_tree),
+      nullptr);
+
+  /* Disable the button so that clicks on it are ignored the link operator still works. */
+  UI_but_flag_enable(but, UI_BUT_DISABLED);
+  UI_block_emboss_set(&block, old_emboss);
+}
+
+static void node_socket_draw_multi_input(uiBlock &block,
+                                         const int index_in_tree,
+                                         const float2 location,
+                                         const float2 draw_size,
+                                         const float color[4],
                                          const float color_outline[4],
-                                         const float width,
-                                         const float height,
-                                         const float2 location)
+                                         const float2 tooltip_size,
+                                         const bool has_tooltip)
 {
   /* The other sockets are drawn with the keyframe shader. There, the outline has a base thickness
    * that can be varied but always scales with the size the socket is drawn at. Using `U.dpi_fac`
    * has the same effect here. It scales the outline correctly across different screen DPI's
    * and UI scales without being affected by the 'line-width'. */
-  const float outline_width = NODE_SOCK_OUTLINE_SCALE * U.dpi_fac;
+  const float half_outline_width = NODE_SOCK_OUTLINE_SCALE * U.dpi_fac * 0.5f;
 
   /* UI_draw_roundbox draws the outline on the outer side, so compensate for the outline width. */
   const rctf rect = {
-      location.x - width + outline_width * 0.5f,
-      location.x + width - outline_width * 0.5f,
-      location.y - height + outline_width * 0.5f,
-      location.y + height - outline_width * 0.5f,
+      location.x - draw_size.x + half_outline_width,
+      location.x + draw_size.x - half_outline_width,
+      location.y - draw_size.y + half_outline_width,
+      location.y + draw_size.y - half_outline_width,
   };
 
   UI_draw_roundbox_corner_set(UI_CNR_ALL);
-  UI_draw_roundbox_4fv_ex(
-      &rect, color, nullptr, 1.0f, color_outline, outline_width, width - outline_width * 0.5f);
+  UI_draw_roundbox_4fv_ex(&rect,
+                          color,
+                          nullptr,
+                          1.0f,
+                          color_outline,
+                          half_outline_width * 2.0f,
+                          draw_size.x - half_outline_width);
+
+  if (has_tooltip) {
+    node_socket_tooltip_set(block, index_in_tree, location, tooltip_size);
+  }
 }
 
 static const float virtual_node_socket_outline_color[4] = {0.5, 0.5, 0.5, 1.0};
@@ -1295,39 +1318,7 @@ static void node_socket_draw_nested(const bContext &C,
     return;
   }
 
-  /* Ideally sockets themselves should be buttons, but they aren't currently. So add an invisible
-   * button on top of them for the tooltip. */
-  const eUIEmbossType old_emboss = UI_block_emboss_get(&block);
-  UI_block_emboss_set(&block, UI_EMBOSS_NONE);
-  uiBut *but = uiDefIconBut(&block,
-                            UI_BTYPE_BUT,
-                            0,
-                            ICON_NONE,
-                            location.x - size / 2.0f,
-                            location.y - size / 2.0f,
-                            size,
-                            size,
-                            nullptr,
-                            0,
-                            0,
-                            0,
-                            0,
-                            nullptr);
-
-  UI_but_func_tooltip_set(
-      but,
-      [](bContext *C, void *argN, const char * /*tip*/) {
-        const SpaceNode &snode = *CTX_wm_space_node(C);
-        const bNodeTree &ntree = *snode.edittree;
-        const int index_in_tree = POINTER_AS_INT(argN);
-        ntree.ensure_topology_cache();
-        return node_socket_get_tooltip(&snode, ntree, *ntree.all_sockets()[index_in_tree]);
-      },
-      POINTER_FROM_INT(sock.index_in_tree()),
-      nullptr);
-  /* Disable the button so that clicks on it are ignored the link operator still works. */
-  UI_but_flag_enable(but, UI_BUT_DISABLED);
-  UI_block_emboss_set(&block, old_emboss);
+  node_socket_tooltip_set(block, sock.index_in_tree(), location, float2{size, size});
 }
 
 void node_socket_draw(bNodeSocket *sock, const rcti *rect, const float color[4], float scale)
@@ -1528,7 +1519,7 @@ static void node_draw_sockets(const View2D &v2d,
       continue;
     }
     /* Don't draw multi-input sockets here since they are drawn in a different batch. */
-    if (sock->flag & SOCK_MULTI_INPUT) {
+    if (sock->is_multi_input()) {
       continue;
     }
 
@@ -1661,7 +1652,7 @@ static void node_draw_sockets(const View2D &v2d,
     if (!socket->is_visible()) {
       continue;
     }
-    if (!(socket->flag & SOCK_MULTI_INPUT)) {
+    if (!(socket->is_multi_input())) {
       continue;
     }
 
@@ -1674,8 +1665,19 @@ static void node_draw_sockets(const View2D &v2d,
     node_socket_color_get(C, ntree, node_ptr, *socket, color);
     node_socket_outline_color_get(socket->flag & SELECT, socket->type, outline_color);
 
-    const float2 location = socket_locations[socket->index_in_tree()];
-    node_socket_draw_multi_input(color, outline_color, width, height, location);
+    const int index_in_tree = socket->index_in_tree();
+    const float2 location = socket_locations[index_in_tree];
+    const float2 draw_size{width, height};
+    const float2 tooltip_size{scale, height * 2.0f - socket_draw_size + scale};
+    const bool has_tooltip = node_socket_has_tooltip(ntree, *socket);
+    node_socket_draw_multi_input(block,
+                                 index_in_tree,
+                                 location,
+                                 draw_size,
+                                 color,
+                                 outline_color,
+                                 tooltip_size,
+                                 has_tooltip);
   }
 }
 
