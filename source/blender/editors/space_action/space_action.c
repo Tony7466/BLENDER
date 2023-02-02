@@ -17,6 +17,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_math_base.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
@@ -860,6 +861,28 @@ static void action_blend_write(BlendWriter *writer, SpaceLink *sl)
   BLO_write_struct(writer, SpaceAction, sl);
 }
 
+static void action_main_region_view2d_changed(const bContext *C, ARegion *region)
+{
+  View2D *v2d = &region->v2d;
+
+  bAnimContext ac;
+  if (!ANIM_animdata_get_context(C, &ac)) {
+    return;
+  }
+
+  rcti scrub_rect;
+  ED_time_scrub_region_rect_get(region, &scrub_rect);
+  const int scrub_height = BLI_rcti_size_y(&scrub_rect);
+  const float channel_height = ACHANNEL_HEIGHT(&ac) + ACHANNEL_SKIP;
+  const float pad_y = scrub_height + 2 * channel_height;
+
+  const float cur_range_y = BLI_rctf_size_y(&v2d->cur);
+  if (v2d->cur.ymax < v2d->tot.ymin + pad_y) {
+    v2d->cur.ymax = v2d->tot.ymin + pad_y;
+    v2d->cur.ymin = v2d->cur.ymax - cur_range_y;
+  }
+}
+
 void ED_spacetype_action(void)
 {
   SpaceType *st = MEM_callocN(sizeof(SpaceType), "spacetype action");
@@ -892,6 +915,7 @@ void ED_spacetype_action(void)
   art->draw_overlay = action_main_region_draw_overlay;
   art->listener = action_main_region_listener;
   art->message_subscribe = saction_main_region_message_subscribe;
+  art->on_view2d_changed = action_main_region_view2d_changed;
   art->keymapflag = ED_KEYMAP_GIZMO | ED_KEYMAP_VIEW2D | ED_KEYMAP_ANIMATION | ED_KEYMAP_FRAMES;
 
   BLI_addhead(&st->regiontypes, art);
