@@ -1314,11 +1314,9 @@ static void node_socket_draw_nested(const bContext &C,
                    size_id,
                    outline_col_id);
 
-  if (!node_socket_has_tooltip(ntree, sock)) {
-    return;
+  if (node_socket_has_tooltip(ntree, sock)) {
+    node_socket_tooltip_set(block, sock.index_in_tree(), location, float2{size, size});
   }
-
-  node_socket_tooltip_set(block, sock.index_in_tree(), location, float2{size, size});
 }
 
 void node_socket_draw(bNodeSocket *sock, const rcti *rect, const float color[4], float scale)
