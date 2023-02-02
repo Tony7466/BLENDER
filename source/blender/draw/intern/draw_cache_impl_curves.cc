@@ -766,8 +766,7 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
   Object *ob_orig = DEG_get_original_object(ob);
   if (curves_cage) {
     const Curves *curves_id_orig = static_cast<Curves *>(ob_orig->data);
-    const blender::bke::CurvesGeometry &curves_orig = blender::bke::CurvesGeometry::wrap(
-        curves_id_orig->geometry);
+    const blender::bke::CurvesGeometry &curves_orig = curves_id_orig->geometry.wrap();
     CurvesBatchCache &cage_cache = curves_batch_cache_get(*curves_cage);
 
     if (DRW_batch_requested(cage_cache.edit_points, GPU_PRIM_POINTS)) {
@@ -804,8 +803,7 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
       GPU_vertbuf_init_with_format(cage_cache.cage_point_pos, &format);
       GPU_vertbuf_data_alloc(cage_cache.cage_point_pos, curves_cage->geometry.point_num);
 
-      const Span<float3> positions =
-          blender::bke::CurvesGeometry::wrap(curves_cage->geometry).positions();
+      const Span<float3> positions = curves_cage->geometry.wrap().positions();
       GPU_vertbuf_attr_fill(cage_cache.cage_point_pos, pos, positions.data());
     }
     if (DRW_vbo_requested(cage_cache.cage_point_color)) {

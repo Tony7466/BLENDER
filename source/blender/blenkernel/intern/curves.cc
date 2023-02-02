@@ -339,12 +339,10 @@ void BKE_curves_data_update(struct Depsgraph *depsgraph, struct Scene *scene, Ob
 
   /* Create cage curves geometry for drawing. */
   if (generate_cage) {
-    const blender::bke::CurvesGeometry &curves_orig = blender::bke::CurvesGeometry::wrap(
-        curves_id_orig.geometry);
+    const blender::bke::CurvesGeometry &curves_orig = curves_id_orig.geometry.wrap();
     Curves *curves_id_cage = blender::bke::curves_new_nomain(curves_id_orig.geometry.point_num,
                                                              curves_id_orig.geometry.curve_num);
-    blender::bke::CurvesGeometry &curves_cage = blender::bke::CurvesGeometry::wrap(
-        curves_id_cage->geometry);
+    blender::bke::CurvesGeometry &curves_cage = curves_id_cage->geometry.wrap();
     curves_cage.offsets_for_write().copy_from(curves_orig.offsets());
     curves_cage.fill_curve_types(CURVE_TYPE_POLY);
     object->runtime.editcurves_eval_cage = curves_id_cage;
@@ -357,8 +355,7 @@ void BKE_curves_data_update(struct Depsgraph *depsgraph, struct Scene *scene, Ob
         positions = *curve_edit_hints->positions;
       }
       else if (curves_id_eval && curves_id_eval->geometry.point_num == curves_orig.point_num) {
-        blender::bke::CurvesGeometry &curves_eval = blender::bke::CurvesGeometry::wrap(
-            curves_id_eval->geometry);
+        blender::bke::CurvesGeometry &curves_eval = curves_id_eval->geometry.wrap();
         positions = curves_eval.positions();
       }
     }
