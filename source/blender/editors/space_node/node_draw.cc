@@ -984,8 +984,8 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
         char line[256];
         BLI_snprintf(line,
                      sizeof(line),
-                     TIP_("%s\u2022 Curve: %s splines"),
-                     tab_space,
+                     TIP_("\u2022 Curve: %s points, %s splines"),
+                     to_string(curve_info.points_num).c_str(),
                      to_string(curve_info.splines_num).c_str());
         ss << line;
         break;
@@ -2698,8 +2698,10 @@ int node_get_resize_cursor(NodeResizeDirection directions)
 
 static const bNode *find_node_under_cursor(SpaceNode &snode, const float2 &cursor)
 {
-  /* Check nodes front to back. */
   const Span<bNode *> nodes = snode.edittree->all_nodes();
+  if (nodes.is_empty()) {
+    return nullptr;
+  }
   for (int i = nodes.index_range().last(); i >= 0; i--) {
     if (BLI_rctf_isect_pt(&nodes[i]->runtime->totr, cursor[0], cursor[1])) {
       return nodes[i];

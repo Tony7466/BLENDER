@@ -142,7 +142,7 @@ static void transform_volume(GeoNodeExecParams &params,
         normalize_v3(grid_matrix.values[2]);
       }
     }
-    BKE_volume_grid_transform_matrix_set(volume_grid, grid_matrix.values);
+    BKE_volume_grid_transform_matrix_set(&volume, volume_grid, grid_matrix.values);
   }
   if (found_too_small_scale) {
     params.error_message_add(NodeWarningType::Warning,
@@ -194,7 +194,7 @@ static void translate_geometry_set(GeoNodeExecParams &params,
                                    const Depsgraph &depsgraph)
 {
   if (Curves *curves = geometry.get_curves_for_write()) {
-    bke::CurvesGeometry::wrap(curves->geometry).translate(translation);
+    curves->geometry.wrap().translate(translation);
   }
   if (Mesh *mesh = geometry.get_mesh_for_write()) {
     translate_mesh(*mesh, translation);
@@ -219,7 +219,7 @@ void transform_geometry_set(GeoNodeExecParams &params,
                             const Depsgraph &depsgraph)
 {
   if (Curves *curves = geometry.get_curves_for_write()) {
-    bke::CurvesGeometry::wrap(curves->geometry).transform(transform);
+    curves->geometry.wrap().transform(transform);
   }
   if (Mesh *mesh = geometry.get_mesh_for_write()) {
     transform_mesh(*mesh, transform);
