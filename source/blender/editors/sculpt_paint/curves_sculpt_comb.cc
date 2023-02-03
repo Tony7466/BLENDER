@@ -38,6 +38,8 @@
 #include "ED_screen.h"
 #include "ED_view3d.h"
 
+#include "GEO_constraint_solver.hh"
+
 #include "UI_interface.h"
 
 #include "WM_api.h"
@@ -53,6 +55,7 @@
 namespace blender::ed::sculpt_paint {
 
 using blender::bke::CurvesGeometry;
+using geometry::ConstraintSolver;
 using threading::EnumerableThreadSpecific;
 
 /**
@@ -66,8 +69,8 @@ class CombOperation : public CurvesSculptStrokeOperation {
   /** Only used when a 3D brush is used. */
   CurvesBrush3D brush_3d_;
 
-  /** Length of each segment indexed by the index of the first point in the segment. */
-  Array<float> segment_lengths_cu_;
+  /** Solver for length and contact constraints. */
+  ConstraintSolver constraint_solver_;
 
   friend struct CombOperationExecutor;
 
@@ -98,6 +101,7 @@ struct CombOperationExecutor {
   VArray<float> point_factors_;
   Vector<int64_t> selected_curve_indices_;
   IndexMask curve_selection_;
+  Array<float3> start_positions_;
 
   float2 brush_pos_prev_re_;
   float2 brush_pos_re_;
@@ -144,12 +148,18 @@ struct CombOperationExecutor {
       if (falloff_shape_ == PAINT_FALLOFF_SHAPE_SPHERE) {
         this->initialize_spherical_brush_reference_point();
       }
-      this->initialize_segment_lengths();
+
+      ConstraintSolver::Params params;
+      params.use_collision_constraints = curves_id_orig_->flag & CV_SCULPT_COLLISION_ENABLED;
+      self_->constraint_solver_.initialize(params, *curves_orig_, curve_selection_);
+
       /* Combing does nothing when there is no mouse movement, so return directly. */
       return;
     }
 
-    EnumerableThreadSpecific<Vector<int>> changed_curves;
+    start_positions_ = curves_orig_->positions();
+
+    EnumerableThreadSpecific<Vector<int64_t>> changed_curves;
 
     if (falloff_shape_ == PAINT_FALLOFF_SHAPE_TUBE) {
       this->comb_projected_with_symmetry(changed_curves);
@@ -161,7 +171,25 @@ struct CombOperationExecutor {
       BLI_assert_unreachable();
     }
 
-    this->restore_segment_lengths(changed_curves);
+    const Mesh *surface = curves_id_orig_->surface && curves_id_orig_->surface->type == OB_MESH ?
+                              static_cast<Mesh *>(curves_id_orig_->surface->data) :
+                              nullptr;
+
+    /* Combine TLS curves into a single array for redistributing thread load.
+     * Brush filtering results in TLS lists with potentially very uneven sizes. */
+    int totcurves = 0;
+    for (auto curves : changed_curves) {
+      totcurves += curves.size();
+    }
+    Array<int64_t> all_changed_curves(totcurves);
+    totcurves = 0;
+    for (auto curves : changed_curves) {
+      all_changed_curves.as_mutable_span().slice(totcurves, curves.size()).copy_from(curves);
+      totcurves += curves.size();
+    };
+
+    self_->constraint_solver_.step_curves(
+        *curves_orig_, surface, transforms_, start_positions_, IndexMask(all_changed_curves));
 
     curves_orig_->tag_positions_changed();
     DEG_id_tag_update(&curves_id_orig_->id, ID_RECALC_GEOMETRY);
@@ -172,7 +200,7 @@ struct CombOperationExecutor {
   /**
    * Do combing in screen space.
    */
-  void comb_projected_with_symmetry(EnumerableThreadSpecific<Vector<int>> &r_changed_curves)
+  void comb_projected_with_symmetry(EnumerableThreadSpecific<Vector<int64_t>> &r_changed_curves)
   {
     const Vector<float4x4> symmetry_brush_transforms = get_symmetry_brush_transforms(
         eCurvesSymmetryType(curves_id_orig_->symmetry));
@@ -181,7 +209,7 @@ struct CombOperationExecutor {
     }
   }
 
-  void comb_projected(EnumerableThreadSpecific<Vector<int>> &r_changed_curves,
+  void comb_projected(EnumerableThreadSpecific<Vector<int64_t>> &r_changed_curves,
                       const float4x4 &brush_transform)
   {
     const float4x4 brush_transform_inv = brush_transform.inverted();
@@ -198,7 +226,7 @@ struct CombOperationExecutor {
     const float brush_radius_sq_re = pow2f(brush_radius_re);
 
     threading::parallel_for(curve_selection_.index_range(), 256, [&](const IndexRange range) {
-      Vector<int> &local_changed_curves = r_changed_curves.local();
+      Vector<int64_t> &local_changed_curves = r_changed_curves.local();
       for (const int curve_i : curve_selection_.slice(range)) {
         bool curve_changed = false;
         const IndexRange points = points_by_curve[curve_i];
@@ -254,7 +282,7 @@ struct CombOperationExecutor {
   /**
    * Do combing in 3D space.
    */
-  void comb_spherical_with_symmetry(EnumerableThreadSpecific<Vector<int>> &r_changed_curves)
+  void comb_spherical_with_symmetry(EnumerableThreadSpecific<Vector<int64_t>> &r_changed_curves)
   {
     float4x4 projection;
     ED_view3d_ob_project_mat_get(ctx_.rv3d, curves_ob_orig_, projection.values);
@@ -285,7 +313,7 @@ struct CombOperationExecutor {
     }
   }
 
-  void comb_spherical(EnumerableThreadSpecific<Vector<int>> &r_changed_curves,
+  void comb_spherical(EnumerableThreadSpecific<Vector<int64_t>> &r_changed_curves,
                       const float3 &brush_start_cu,
                       const float3 &brush_end_cu,
                       const float brush_radius_cu)
@@ -299,7 +327,7 @@ struct CombOperationExecutor {
     const OffsetIndices points_by_curve = curves_orig_->points_by_curve();
 
     threading::parallel_for(curve_selection_.index_range(), 256, [&](const IndexRange range) {
-      Vector<int> &local_changed_curves = r_changed_curves.local();
+      Vector<int64_t> &local_changed_curves = r_changed_curves.local();
       for (const int curve_i : curve_selection_.slice(range)) {
         bool curve_changed = false;
         const IndexRange points = points_by_curve[curve_i];
@@ -352,53 +380,6 @@ struct CombOperationExecutor {
     if (brush_3d.has_value()) {
       self_->brush_3d_ = *brush_3d;
     }
-  }
-
-  /**
-   * Remember the initial length of all curve segments. This allows restoring the length after
-   * combing.
-   */
-  void initialize_segment_lengths()
-  {
-    const Span<float3> positions_cu = curves_orig_->positions();
-    const OffsetIndices points_by_curve = curves_orig_->points_by_curve();
-    self_->segment_lengths_cu_.reinitialize(curves_orig_->points_num());
-    threading::parallel_for(curves_orig_->curves_range(), 128, [&](const IndexRange range) {
-      for (const int curve_i : range) {
-        const IndexRange points = points_by_curve[curve_i];
-        for (const int point_i : points.drop_back(1)) {
-          const float3 &p1_cu = positions_cu[point_i];
-          const float3 &p2_cu = positions_cu[point_i + 1];
-          const float length_cu = math::distance(p1_cu, p2_cu);
-          self_->segment_lengths_cu_[point_i] = length_cu;
-        }
-      }
-    });
-  }
-
-  /**
-   * Restore previously stored length for each segment in the changed curves.
-   */
-  void restore_segment_lengths(EnumerableThreadSpecific<Vector<int>> &changed_curves)
-  {
-    const Span<float> expected_lengths_cu = self_->segment_lengths_cu_;
-    const OffsetIndices points_by_curve = curves_orig_->points_by_curve();
-    MutableSpan<float3> positions_cu = curves_orig_->positions_for_write();
-
-    threading::parallel_for_each(changed_curves, [&](const Vector<int> &changed_curves) {
-      threading::parallel_for(changed_curves.index_range(), 256, [&](const IndexRange range) {
-        for (const int curve_i : changed_curves.as_span().slice(range)) {
-          const IndexRange points = points_by_curve[curve_i];
-          for (const int segment_i : points.drop_back(1)) {
-            const float3 &p1_cu = positions_cu[segment_i];
-            float3 &p2_cu = positions_cu[segment_i + 1];
-            const float3 direction = math::normalize(p2_cu - p1_cu);
-            const float expected_length_cu = expected_lengths_cu[segment_i];
-            p2_cu = p1_cu + direction * expected_length_cu;
-          }
-        }
-      });
-    });
   }
 };
 

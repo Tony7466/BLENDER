@@ -22,18 +22,21 @@
 #include "BLI_length_parameterize.hh"
 
 #include "GEO_add_curves_on_mesh.hh"
+#include "GEO_constraint_solver.hh"
 
 #include "curves_sculpt_intern.hh"
 
 namespace blender::ed::sculpt_paint {
+
+using geometry::ConstraintSolver;
 
 class PuffOperation : public CurvesSculptStrokeOperation {
  private:
   /** Only used when a 3D brush is used. */
   CurvesBrush3D brush_3d_;
 
-  /** Length of each segment indexed by the index of the first point in the segment. */
-  Array<float> segment_lengths_cu_;
+  /** Solver for length and contact constraints. */
+  ConstraintSolver constraint_solver_;
 
   friend struct PuffOperationExecutor;
 
@@ -56,6 +59,7 @@ struct PuffOperationExecutor {
   VArray<float> point_factors_;
   Vector<int64_t> selected_curve_indices_;
   IndexMask curve_selection_;
+  Array<float3> start_positions_;
 
   const CurvesSculpt *curves_sculpt_ = nullptr;
   const Brush *brush_ = nullptr;
@@ -128,7 +132,6 @@ struct PuffOperationExecutor {
     BLI_SCOPED_DEFER([&]() { free_bvhtree_from_mesh(&surface_bvh_); });
 
     if (stroke_extension.is_first) {
-      this->initialize_segment_lengths();
       if (falloff_shape_ == PAINT_FALLOFF_SHAPE_SPHERE) {
         self.brush_3d_ = *sample_curves_3d_brush(*ctx_.depsgraph,
                                                  *ctx_.region,
@@ -138,7 +141,13 @@ struct PuffOperationExecutor {
                                                  brush_pos_re_,
                                                  brush_radius_base_re_);
       }
+
+      ConstraintSolver::Params params;
+      params.use_collision_constraints = curves_id_->flag & CV_SCULPT_COLLISION_ENABLED;
+      self_->constraint_solver_.initialize(params, *curves_, curve_selection_);
     }
+
+    start_positions_ = curves_->positions();
 
     Array<float> curve_weights(curve_selection_.size(), 0.0f);
 
@@ -153,7 +162,19 @@ struct PuffOperationExecutor {
     }
 
     this->puff(curve_weights);
-    this->restore_segment_lengths();
+
+    /* XXX Dumb array conversion to pass to the constraint solver.
+     * Should become unnecessary once brushes use the same methods for computing weights */
+    Vector<int64_t> changed_curves_indices;
+    changed_curves_indices.reserve(curve_selection_.size());
+    for (int64_t select_i : curve_selection_.index_range()) {
+      if (curve_weights[select_i] > 0.0f) {
+        changed_curves_indices.append(curve_selection_[select_i]);
+      }
+    }
+
+    self_->constraint_solver_.step_curves(
+        *curves_, surface_, transforms_, start_positions_, IndexMask(changed_curves_indices));
 
     curves_->tag_positions_changed();
     DEG_id_tag_update(&curves_id_->id, ID_RECALC_GEOMETRY);
@@ -333,44 +354,6 @@ struct PuffOperationExecutor {
           }
 
           positions_cu[point_i] = new_pos_cu;
-        }
-      }
-    });
-  }
-
-  void initialize_segment_lengths()
-  {
-    const OffsetIndices points_by_curve = curves_->points_by_curve();
-    const Span<float3> positions_cu = curves_->positions();
-    self_->segment_lengths_cu_.reinitialize(curves_->points_num());
-    threading::parallel_for(curves_->curves_range(), 128, [&](const IndexRange range) {
-      for (const int curve_i : range) {
-        const IndexRange points = points_by_curve[curve_i];
-        for (const int point_i : points.drop_back(1)) {
-          const float3 &p1_cu = positions_cu[point_i];
-          const float3 &p2_cu = positions_cu[point_i + 1];
-          const float length_cu = math::distance(p1_cu, p2_cu);
-          self_->segment_lengths_cu_[point_i] = length_cu;
-        }
-      }
-    });
-  }
-
-  void restore_segment_lengths()
-  {
-    const Span<float> expected_lengths_cu = self_->segment_lengths_cu_;
-    const OffsetIndices points_by_curve = curves_->points_by_curve();
-    MutableSpan<float3> positions_cu = curves_->positions_for_write();
-
-    threading::parallel_for(curves_->curves_range(), 256, [&](const IndexRange range) {
-      for (const int curve_i : range) {
-        const IndexRange points = points_by_curve[curve_i];
-        for (const int segment_i : points.drop_back(1)) {
-          const float3 &p1_cu = positions_cu[segment_i];
-          float3 &p2_cu = positions_cu[segment_i + 1];
-          const float3 direction = math::normalize(p2_cu - p1_cu);
-          const float expected_length_cu = expected_lengths_cu[segment_i];
-          p2_cu = p1_cu + direction * expected_length_cu;
         }
       }
     });
