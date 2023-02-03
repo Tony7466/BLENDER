@@ -348,7 +348,7 @@ void ConstraintSolver::solve_curve_constraints(CurvesGeometry &curves,
     switch (params_.solver_type) {
       /* The sequential solver only moves the 2nd point of each segment. */
       case SolverType::Sequential:
-        return (int)points.size();
+        return params_.use_root_constraints ? 1 : 0;
       /* The PBD solver moves both points, except for the pinned root. */
       case SolverType::PositionBasedDynamics:
         return params_.use_root_constraints ? 1 : 0;
