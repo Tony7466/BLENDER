@@ -341,7 +341,7 @@ void ConstraintSolver::solve_constraints(CurvesGeometry &curves,
 }
 
 void ConstraintSolver::solve_curve_constraints(CurvesGeometry &curves,
-                                               const VArray<float> radius,
+                                               const VArray<float> &radius,
                                                const IndexRange points) const
 {
   const int skipped_root_points = [&]() {
@@ -420,7 +420,7 @@ void ConstraintSolver::compute_error(const CurvesGeometry &curves,
 }
 
 void ConstraintSolver::compute_curve_error(const CurvesGeometry &curves,
-                                           const VArray<float> radius,
+                                           const VArray<float> &radius,
                                            const IndexRange points) const
 {
   Span<float3> positions_cu = curves.positions();

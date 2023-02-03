@@ -143,7 +143,9 @@ class ConstraintSolver {
 
   /* Initialize the solver for a given set of curves.
    * The solver must be reinitialized if the curve set changes. */
-  void initialize(const Params &params, const bke::CurvesGeometry &curves, IndexMask curve_selection);
+  void initialize(const Params &params,
+                  const bke::CurvesGeometry &curves,
+                  IndexMask curve_selection);
 
   /* Solve constraints for an independent subset of curves. */
   void step_curves(bke::CurvesGeometry &curves,
@@ -170,9 +172,7 @@ class ConstraintSolver {
                                       const float3 &point_b,
                                       const float segment_length) const;
 
-  void apply_contact_constraint(float3 &point,
-                                float radius,
-                                const Contact &contact) const;
+  void apply_contact_constraint(float3 &point, float radius, const Contact &contact) const;
 
   float get_contact_constraint_error(const float3 &point,
                                      float radius,
@@ -181,13 +181,13 @@ class ConstraintSolver {
   void solve_constraints(bke::CurvesGeometry &curves, IndexMask changed_curves) const;
 
   void solve_curve_constraints(bke::CurvesGeometry &curves,
-                               const VArray<float> radius,
+                               const VArray<float> &radius,
                                const IndexRange points) const;
 
   void compute_error(const bke::CurvesGeometry &curves, IndexMask changed_curves) const;
 
   void compute_curve_error(const bke::CurvesGeometry &curves,
-                           const VArray<float> radius,
+                           const VArray<float> &radius,
                            const IndexRange points) const;
 };
 
