@@ -111,6 +111,7 @@ void GRAPH_OT_paste(struct wmOperatorType *ot);
 void GRAPH_OT_duplicate(struct wmOperatorType *ot);
 void GRAPH_OT_delete(struct wmOperatorType *ot);
 void GRAPH_OT_clean(struct wmOperatorType *ot);
+void GRAPH_OT_slider_choice(struct wmOperatorType *ot);
 void GRAPH_OT_blend_to_neighbor(struct wmOperatorType *ot);
 void GRAPH_OT_breakdown(struct wmOperatorType *ot);
 void GRAPH_OT_ease(struct wmOperatorType *ot);
