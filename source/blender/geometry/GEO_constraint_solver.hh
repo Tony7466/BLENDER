@@ -24,12 +24,6 @@ class ConstraintSolver {
      * For details see "Fast Simulation of Inextensible Hair and Fur"
      * by Matthias Mueller and Tae Yong Kim. */
     Sequential,
-    /* Position Based Dynamics (PBD) solves constraints based on relative mass.
-     * The solver requires multiple iterations per step. This is generally slower
-     * than the FTL method, but leads to physically correct movement.
-     *
-     * Based on "XPBD: Position-Based Simulation of Compliant Constrained Dynamics" */
-    PositionBasedDynamics,
   };
 
   struct Params {

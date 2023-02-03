@@ -17,6 +17,7 @@ set(INC
 set(SRC
   intern/add_curves_on_mesh.cc
   intern/constraint_solver.cc
+  intern/curve_constraint_solver.cc
   intern/fillet_curves.cc
   intern/mesh_merge_by_distance.cc
   intern/mesh_primitive_cuboid.cc
@@ -34,6 +35,7 @@ set(SRC
 
   GEO_add_curves_on_mesh.hh
   GEO_constraint_solver.hh
+  GEO_curve_constraint_solver.hh
   GEO_fillet_curves.hh
   GEO_mesh_merge_by_distance.hh
   GEO_mesh_primitive_cuboid.hh

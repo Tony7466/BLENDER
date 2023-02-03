@@ -313,8 +313,6 @@ void ConstraintSolver::solve_constraints(CurvesGeometry &curves,
     switch (params_.solver_type) {
       case SolverType::Sequential:
         return 1;
-      case SolverType::PositionBasedDynamics:
-        return params_.max_solver_iterations;
     }
     return 0;
   }();
@@ -348,9 +346,6 @@ void ConstraintSolver::solve_curve_constraints(CurvesGeometry &curves,
     switch (params_.solver_type) {
       /* The sequential solver only moves the 2nd point of each segment. */
       case SolverType::Sequential:
-        return params_.use_root_constraints ? 1 : 0;
-      /* The PBD solver moves both points, except for the pinned root. */
-      case SolverType::PositionBasedDynamics:
         return params_.use_root_constraints ? 1 : 0;
     }
     return 0;
