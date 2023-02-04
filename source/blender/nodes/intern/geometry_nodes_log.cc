@@ -174,14 +174,14 @@ void GeoTreeLogger::log_value(const bNode &node, const bNodeSocket &socket, cons
         store_logged_value(this->allocator->construct<FieldInfoLog>(*field));
       }
       else {
-        BUFFER_FOR_CPP_TYPE_VALUE(base_type, value);
-        fn::evaluate_constant_field(*field, value);
-        log_generic_value(base_type, value);
+        BUFFER_FOR_CPP_TYPE_VALUE(base_type, value_ptr);
+        fn::evaluate_constant_field(*field, value_ptr);
+        log_generic_value(base_type, value_ptr);
       }
     }
     else {
-      const void *value = value_or_field_type->get_value_ptr(value_or_field);
-      log_generic_value(base_type, value);
+      const void *value_ptr = value_or_field_type->get_value_ptr(value_or_field);
+      log_generic_value(base_type, value_ptr);
     }
   }
   else {

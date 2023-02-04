@@ -67,7 +67,7 @@ int Operators::select(UnaryPredicate1D &pred)
   return 0;
 }
 
-int Operators::chain(ViewEdgeInternal::ViewEdgeIterator &it,
+int Operators::chain(ViewEdgeInternal::ViewEdgeIterator &it_edges,
                      UnaryPredicate1D &pred,
                      UnaryFunction1D_void &modifier)
 {
@@ -90,22 +90,22 @@ int Operators::chain(ViewEdgeInternal::ViewEdgeIterator &it,
     }
 
     edge = dynamic_cast<ViewEdge *>(*it_edge);
-    it.setBegin(edge);
-    it.setCurrentEdge(edge);
+    it_edges.setBegin(edge);
+    it_edges.setCurrentEdge(edge);
 
     Chain *new_chain = new Chain(id);
     ++id;
     while (true) {
-      new_chain->push_viewedge_back(*it, it.getOrientation());
-      if (modifier(**it) < 0) {
+      new_chain->push_viewedge_back(*it_edges, it_edges.getOrientation());
+      if (modifier(**it_edges) < 0) {
         delete new_chain;
         goto error;
       }
-      ++it;
-      if (it.isEnd()) {
+      ++it_edges;
+      if (it_edges.isEnd()) {
         break;
       }
-      if (pred(**it) < 0) {
+      if (pred(**it_edges) < 0) {
         delete new_chain;
         goto error;
       }
@@ -133,7 +133,7 @@ error:
   return -1;
 }
 
-int Operators::chain(ViewEdgeInternal::ViewEdgeIterator &it, UnaryPredicate1D &pred)
+int Operators::chain(ViewEdgeInternal::ViewEdgeIterator &it_edges, UnaryPredicate1D &pred)
 {
   if (_current_view_edges_set.empty()) {
     return 0;
@@ -162,26 +162,26 @@ int Operators::chain(ViewEdgeInternal::ViewEdgeIterator &it, UnaryPredicate1D &p
     }
 
     edge = dynamic_cast<ViewEdge *>(*it_edge);
-    it.setBegin(edge);
-    it.setCurrentEdge(edge);
+    it_edges.setBegin(edge);
+    it_edges.setCurrentEdge(edge);
 
     Chain *new_chain = new Chain(id);
     ++id;
     while (true) {
-      new_chain->push_viewedge_back(*it, it.getOrientation());
-      ts(**it);
-      ++it;
-      if (it.isEnd()) {
+      new_chain->push_viewedge_back(*it_edges, it_edges.getOrientation());
+      ts(**it_edges);
+      ++it_edges;
+      if (it_edges.isEnd()) {
         break;
       }
-      if (pred(**it) < 0) {
+      if (pred(**it_edges) < 0) {
         delete new_chain;
         goto error;
       }
       if (pred.result) {
         break;
       }
-      if (pred_ts(**it) < 0) {
+      if (pred_ts(**it_edges) < 0) {
         delete new_chain;
         goto error;
       }
@@ -314,7 +314,7 @@ void Operators::bidirectionalChain(ViewEdgeIterator &it, UnaryPredicate1D &pred)
 }
 #endif
 
-int Operators::bidirectionalChain(ChainingIterator &it, UnaryPredicate1D &pred)
+int Operators::bidirectionalChain(ChainingIterator &it_edges, UnaryPredicate1D &pred)
 {
   if (_current_view_edges_set.empty()) {
     return 0;
@@ -344,10 +344,10 @@ int Operators::bidirectionalChain(ChainingIterator &it, UnaryPredicate1D &pred)
 
     edge = dynamic_cast<ViewEdge *>(*it_edge);
     // re-init iterator
-    it.setBegin(edge);
-    it.setCurrentEdge(edge);
-    it.setOrientation(true);
-    if (it.init() < 0) {
+    it_edges.setBegin(edge);
+    it_edges.setCurrentEdge(edge);
+    it_edges.setOrientation(true);
+    if (it_edges.init() < 0) {
       goto error;
     }
 
@@ -358,16 +358,16 @@ int Operators::bidirectionalChain(ChainingIterator &it, UnaryPredicate1D &pred)
     --it_back;
 #endif
     while (true) {
-      new_chain->push_viewedge_back(*it, it.getOrientation());
-      ts(**it);
-      if (it.increment() < 0) {
+      new_chain->push_viewedge_back(*it_edges, it_edges.getOrientation());
+      ts(**it_edges);
+      if (it_edges.increment() < 0) {
         delete new_chain;
         goto error;
       }
-      if (it.isEnd()) {
+      if (it_edges.isEnd()) {
         break;
       }
-      if (pred(**it) < 0) {
+      if (pred(**it_edges) < 0) {
         delete new_chain;
         goto error;
       }
@@ -375,24 +375,24 @@ int Operators::bidirectionalChain(ChainingIterator &it, UnaryPredicate1D &pred)
         break;
       }
     }
-    it.setBegin(edge);
-    it.setCurrentEdge(edge);
-    it.setOrientation(true);
-    if (it.decrement() < 0) {
+    it_edges.setBegin(edge);
+    it_edges.setCurrentEdge(edge);
+    it_edges.setOrientation(true);
+    if (it_edges.decrement() < 0) {
       delete new_chain;
       goto error;
     }
-    while (!it.isEnd()) {
-      if (pred(**it) < 0) {
+    while (!it_edges.isEnd()) {
+      if (pred(**it_edges) < 0) {
         delete new_chain;
         goto error;
       }
       if (pred.result) {
         break;
       }
-      new_chain->push_viewedge_front(*it, it.getOrientation());
-      ts(**it);
-      if (it.decrement() < 0) {
+      new_chain->push_viewedge_front(*it_edges, it_edges.getOrientation());
+      ts(**it_edges);
+      if (it_edges.decrement() < 0) {
         delete new_chain;
         goto error;
       }
@@ -417,7 +417,7 @@ error:
   return -1;
 }
 
-int Operators::bidirectionalChain(ChainingIterator &it)
+int Operators::bidirectionalChain(ChainingIterator &it_edges)
 {
   if (_current_view_edges_set.empty()) {
     return 0;
@@ -441,10 +441,10 @@ int Operators::bidirectionalChain(ChainingIterator &it)
 
     edge = dynamic_cast<ViewEdge *>(*it_edge);
     // re-init iterator
-    it.setBegin(edge);
-    it.setCurrentEdge(edge);
-    it.setOrientation(true);
-    if (it.init() < 0) {
+    it_edges.setBegin(edge);
+    it_edges.setCurrentEdge(edge);
+    it_edges.setOrientation(true);
+    if (it_edges.init() < 0) {
       goto error;
     }
 
@@ -455,24 +455,24 @@ int Operators::bidirectionalChain(ChainingIterator &it)
     --it_back;
 #endif
     do {
-      new_chain->push_viewedge_back(*it, it.getOrientation());
-      ts(**it);
-      if (it.increment() < 0) {  // FIXME
+      new_chain->push_viewedge_back(*it_edges, it_edges.getOrientation());
+      ts(**it_edges);
+      if (it_edges.increment() < 0) {  // FIXME
         delete new_chain;
         goto error;
       }
-    } while (!it.isEnd());
-    it.setBegin(edge);
-    it.setCurrentEdge(edge);
-    it.setOrientation(true);
-    if (it.decrement() < 0) {  // FIXME
+    } while (!it_edges.isEnd());
+    it_edges.setBegin(edge);
+    it_edges.setCurrentEdge(edge);
+    it_edges.setOrientation(true);
+    if (it_edges.decrement() < 0) {  // FIXME
       delete new_chain;
       goto error;
     }
-    while (!it.isEnd()) {
-      new_chain->push_viewedge_front(*it, it.getOrientation());
-      ts(**it);
-      if (it.decrement() < 0) {  // FIXME
+    while (!it_edges.isEnd()) {
+      new_chain->push_viewedge_front(*it_edges, it_edges.getOrientation());
+      ts(**it_edges);
+      if (it_edges.decrement() < 0) {  // FIXME
         delete new_chain;
         goto error;
       }

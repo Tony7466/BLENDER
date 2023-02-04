@@ -103,8 +103,7 @@ static void geometry_set_collect_recursive_collection(const Collection &collecti
   }
   LISTBASE_FOREACH (const CollectionChild *, collection_child, &collection.children) {
     BLI_assert(collection_child->collection != nullptr);
-    const Collection &collection = *collection_child->collection;
-    geometry_set_collect_recursive_collection(collection, transform, r_sets);
+    geometry_set_collect_recursive_collection(*collection_child->collection, transform, r_sets);
   }
 }
 
@@ -137,8 +136,7 @@ static void geometry_set_collect_recursive(const GeometrySet &geometry_set,
           break;
         }
         case InstanceReference::Type::GeometrySet: {
-          const GeometrySet &geometry_set = reference.geometry_set();
-          geometry_set_collect_recursive(geometry_set, instance_transform, r_sets);
+          geometry_set_collect_recursive(reference.geometry_set(), instance_transform, r_sets);
           break;
         }
         case InstanceReference::Type::None: {

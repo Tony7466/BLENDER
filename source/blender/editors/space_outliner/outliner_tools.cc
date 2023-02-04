@@ -566,7 +566,7 @@ static void outliner_do_libdata_operation_selection_set(bContext *C,
   LISTBASE_FOREACH_MUTABLE (TreeElement *, element, &subtree) {
     /* Get needed data out in case element gets freed. */
     TreeStoreElem *tselem = TREESTORE(element);
-    const ListBase subtree = element->subtree;
+    const ListBase element_subtree = element->subtree;
 
     bool is_selected = tselem->flag & TSE_SELECTED;
     if ((is_selected && do_selected) || (has_parent_selected && do_content)) {
@@ -583,7 +583,7 @@ static void outliner_do_libdata_operation_selection_set(bContext *C,
                                                 reports,
                                                 scene,
                                                 space_outliner,
-                                                subtree,
+                                                element_subtree,
                                                 is_selected || has_parent_selected,
                                                 operation_fn,
                                                 selection_set,

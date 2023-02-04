@@ -62,7 +62,7 @@ class Operators {
    *           processed ViewEdge state (the timestamp incrementation is a typical illustration of
    *           such a modifier)
    */
-  static int chain(ViewEdgeInternal::ViewEdgeIterator &it,
+  static int chain(ViewEdgeInternal::ViewEdgeIterator &it_edges,
                    UnaryPredicate1D &pred,
                    UnaryFunction1D_void &modifier);
 
@@ -79,7 +79,7 @@ class Operators {
    *  \param pred:
    *           The predicate on the ViewEdge that expresses the stopping condition.
    */
-  static int chain(ViewEdgeInternal::ViewEdgeIterator &it, UnaryPredicate1D &pred);
+  static int chain(ViewEdgeInternal::ViewEdgeIterator &it_edges, UnaryPredicate1D &pred);
 
   /** Builds a set of chains from the current set of ViewEdges.
    *  Each ViewEdge of the current list potentially starts a new chain. The chaining operator then
@@ -95,7 +95,7 @@ class Operators {
    *  \param pred:
    *           The predicate on the ViewEdge that expresses the stopping condition.
    */
-  static int bidirectionalChain(ChainingIterator &it, UnaryPredicate1D &pred);
+  static int bidirectionalChain(ChainingIterator &it_edges, UnaryPredicate1D &pred);
 
   /** The only difference with the above bidirectional chaining algorithm is that we don't need to
    *  pass a stopping criterion. This might be desirable when the stopping criterion is already
@@ -111,7 +111,7 @@ class Operators {
    *  \param it:
    *           The ChainingIterator on the ViewEdges of the ViewMap. It contains the chaining rule.
    */
-  static int bidirectionalChain(ChainingIterator &it);
+  static int bidirectionalChain(ChainingIterator &it_edges);
 
   /** Splits each chain of the current set of chains in a sequential way.
    *  The points of each chain are processed (with a specified sampling) sequentially.

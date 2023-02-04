@@ -43,9 +43,9 @@ void copy_point_data(const OffsetIndices<int> src_points_by_curve,
                      GMutableSpan dst)
 {
   threading::parallel_for(curve_ranges.index_range(), 512, [&](IndexRange range) {
-    for (const IndexRange range : curve_ranges.slice(range)) {
-      const IndexRange src_points = src_points_by_curve[range];
-      const IndexRange dst_points = dst_points_by_curve[range];
+    for (const IndexRange range_points : curve_ranges.slice(range)) {
+      const IndexRange src_points = src_points_by_curve[range_points];
+      const IndexRange dst_points = dst_points_by_curve[range_points];
       /* The arrays might be large, so a threaded copy might make sense here too. */
       dst.slice(dst_points).copy_from(src.slice(src_points));
     }
@@ -91,8 +91,8 @@ void fill_points(const OffsetIndices<int> points_by_curve,
   BLI_assert(*value.type() == dst.type());
   const CPPType &type = dst.type();
   threading::parallel_for(curve_ranges.index_range(), 512, [&](IndexRange range) {
-    for (const IndexRange range : curve_ranges.slice(range)) {
-      const IndexRange points = points_by_curve[range];
+    for (const IndexRange range_points : curve_ranges.slice(range)) {
+      const IndexRange points = points_by_curve[range_points];
       type.fill_assign_n(value.get(), dst.slice(points).data(), points.size());
     }
   });

@@ -1610,6 +1610,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
     "/w34100"  # 'identifier' : unreferenced formal parameter
     "/w34115"  # 'type' : named type definition in parentheses
     "/w34189"  # local variable is initialized but not referenced
+    "/w34457"  # declaration of 'identifier' hides function parameter
     # see https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/c5038?view=vs-2017
     "/w35038"  # order of initialization in c++ constructors
     # disable:

@@ -118,7 +118,7 @@ GHOST_WindowWin32::GHOST_WindowWin32(GHOST_SystemWin32 *system,
   m_hDC = ::GetDC(m_hWnd);
 
   if (!setDrawingContextType(type)) {
-    const char *title = "Blender - Unsupported Graphics Card Configuration";
+    const char *message_title = "Blender - Unsupported Graphics Card Configuration";
     const char *text =
         "A graphics card and driver with support for OpenGL 3.3 or higher is "
         "required.\n\nInstalling the latest driver for your graphics card might resolve the "
@@ -129,7 +129,7 @@ GHOST_WindowWin32::GHOST_WindowWin32(GHOST_SystemWin32 *system,
           "required.\n\nPlugging all monitors into your primary graphics card might resolve "
           "this issue. Installing the latest driver for your graphics card could also help.";
     }
-    MessageBox(m_hWnd, text, title, MB_OK | MB_ICONERROR);
+    MessageBox(m_hWnd, text, message_title, MB_OK | MB_ICONERROR);
     ::ReleaseDC(m_hWnd, m_hDC);
     ::DestroyWindow(m_hWnd);
     m_hWnd = NULL;

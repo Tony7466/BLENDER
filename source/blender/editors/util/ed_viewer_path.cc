@@ -58,12 +58,13 @@ static void viewer_path_for_geometry_node(const SpaceNode &snode,
   Vector<const bNodeTreePath *, 16> tree_path = snode.treepath;
   for (const int i : tree_path.index_range().drop_back(1)) {
     /* The tree path contains the name of the node but not its ID. */
-    const bNode *node = nodeFindNodebyName(tree_path[i]->nodetree, tree_path[i + 1]->node_name);
+    const bNode *tree_path_node = nodeFindNodebyName(tree_path[i]->nodetree,
+                                                     tree_path[i + 1]->node_name);
     /* The name in the tree path should match a group node in the tree. */
-    BLI_assert(node != nullptr);
+    BLI_assert(tree_path_node != nullptr);
     NodeViewerPathElem *node_elem = BKE_viewer_path_elem_new_node();
-    node_elem->node_id = node->identifier;
-    node_elem->node_name = BLI_strdup(node->name);
+    node_elem->node_id = tree_path_node->identifier;
+    node_elem->node_name = BLI_strdup(tree_path_node->name);
     BLI_addtail(&r_dst.path, node_elem);
   }
 

@@ -441,9 +441,9 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
       evaluator.set_selection(selection);
       evaluator.evaluate();
 
-      const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+      const IndexMask selection_mask = evaluator.get_evaluated_selection_as_mask();
 
-      array_utils::copy(evaluator.get_evaluated(0), selection, dst_attribute.span);
+      array_utils::copy(evaluator.get_evaluated(0), selection_mask, dst_attribute.span);
 
       dst_attribute.finish();
       return true;
