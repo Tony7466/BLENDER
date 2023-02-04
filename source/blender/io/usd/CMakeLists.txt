@@ -1,6 +1,11 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright 2019 Blender Foundation. All rights reserved.
 
+if(MSVC)
+  # Restore warn C4100 (unreferenced formal parameter) back to w4
+  remove_cc_flag(/w34100)
+endif()
+
 # This suppresses the warning "This file includes at least one deprecated or antiquated
 # header which may be removed without further notice at a future date", which is caused
 # by the USD library including <ext/hash_set> on Linux. This has been reported at:

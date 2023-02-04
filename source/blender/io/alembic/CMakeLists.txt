@@ -1,6 +1,11 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright 2006 Blender Foundation. All rights reserved.
 
+if(MSVC)
+  # Restore warn C4100 (unreferenced formal parameter) back to w4
+  remove_cc_flag(/w34100)
+endif()
+
 set(INC
   .
   ../common
