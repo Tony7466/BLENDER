@@ -254,6 +254,7 @@ void MESH_OT_symmetrize(struct wmOperatorType *ot);
 void MESH_OT_symmetry_snap(struct wmOperatorType *ot);
 void MESH_OT_shape_propagate_to_all(struct wmOperatorType *ot);
 void MESH_OT_blend_from_shape(struct wmOperatorType *ot);
+void MESH_OT_smooth_shape(struct wmOperatorType *ot);
 void MESH_OT_sort_elements(struct wmOperatorType *ot);
 void MESH_OT_uvs_rotate(struct wmOperatorType *ot);
 void MESH_OT_uvs_reverse(struct wmOperatorType *ot);
