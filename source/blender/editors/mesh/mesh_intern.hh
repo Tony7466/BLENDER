@@ -246,6 +246,7 @@ void MESH_OT_symmetrize(wmOperatorType *ot);
 void MESH_OT_symmetry_snap(wmOperatorType *ot);
 void MESH_OT_shape_propagate_to_all(wmOperatorType *ot);
 void MESH_OT_blend_from_shape(wmOperatorType *ot);
+void MESH_OT_smooth_shape(wmOperatorType *ot);
 void MESH_OT_sort_elements(wmOperatorType *ot);
 void MESH_OT_uvs_rotate(wmOperatorType *ot);
 void MESH_OT_uvs_reverse(wmOperatorType *ot);
