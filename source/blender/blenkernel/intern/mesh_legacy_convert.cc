@@ -1225,17 +1225,20 @@ void BKE_mesh_legacy_face_set_from_generic(Mesh *mesh,
 {
   using namespace blender;
   void *faceset_data = nullptr;
+  const bCopyOnWrite *faceset_cow = nullptr;
   for (CustomDataLayer &layer : poly_layers) {
     if (StringRef(layer.name) == ".sculpt_face_set") {
       faceset_data = layer.data;
+      faceset_cow = layer.cow;
       layer.data = nullptr;
+      layer.cow = nullptr;
       CustomData_free_layer_named(&mesh->pdata, ".sculpt_face_set", mesh->totpoly);
       break;
     }
   }
   if (faceset_data != nullptr) {
     CustomData_add_layer_with_existing_data(
-        &mesh->pdata, CD_SCULPT_FACE_SETS, mesh->totpoly, faceset_data, nullptr);
+        &mesh->pdata, CD_SCULPT_FACE_SETS, mesh->totpoly, faceset_data, faceset_cow);
   }
 }
 
@@ -1246,17 +1249,21 @@ void BKE_mesh_legacy_face_set_to_generic(Mesh *mesh)
     return;
   }
   void *faceset_data = nullptr;
+  const bCopyOnWrite *faceset_cow = nullptr;
   for (const int i : IndexRange(mesh->pdata.totlayer)) {
-    if (mesh->pdata.layers[i].type == CD_SCULPT_FACE_SETS) {
-      faceset_data = mesh->pdata.layers[i].data;
-      mesh->pdata.layers[i].data = nullptr;
+    CustomDataLayer &layer = mesh->pdata.layers[i];
+    if (layer.type == CD_SCULPT_FACE_SETS) {
+      faceset_data = layer.data;
+      faceset_cow = layer.cow;
+      layer.data = nullptr;
+      layer.cow = nullptr;
       CustomData_free_layer(&mesh->pdata, CD_SCULPT_FACE_SETS, mesh->totpoly, i);
       break;
     }
   }
   if (faceset_data != nullptr) {
     CustomData_add_layer_named_with_existing_data(
-        &mesh->pdata, CD_PROP_INT32, ".sculpt_face_set", mesh->totpoly, faceset_data, nullptr);
+        &mesh->pdata, CD_PROP_INT32, ".sculpt_face_set", mesh->totpoly, faceset_data, faceset_cow);
   }
 }
 
