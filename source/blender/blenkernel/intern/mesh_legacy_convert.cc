@@ -1220,26 +1220,26 @@ void BKE_mesh_tessface_ensure(struct Mesh *mesh)
 /** \name Face Set Conversion
  * \{ */
 
-void BKE_mesh_legacy_face_set_from_generic(Mesh *mesh,
-                                           blender::MutableSpan<CustomDataLayer> poly_layers)
+void BKE_mesh_legacy_face_set_from_generic(blender::MutableSpan<CustomDataLayer> poly_layers)
 {
   using namespace blender;
-  void *faceset_data = nullptr;
-  const bCopyOnWrite *faceset_cow = nullptr;
+  bool changed = false;
   for (CustomDataLayer &layer : poly_layers) {
     if (StringRef(layer.name) == ".sculpt_face_set") {
-      faceset_data = layer.data;
-      faceset_cow = layer.cow;
-      layer.data = nullptr;
-      layer.cow = nullptr;
-      CustomData_free_layer_named(&mesh->pdata, ".sculpt_face_set", mesh->totpoly);
+      layer.type = CD_SCULPT_FACE_SETS;
+      layer.name[0] = '\0';
+      changed = true;
       break;
     }
   }
-  if (faceset_data != nullptr) {
-    CustomData_add_layer_with_existing_data(
-        &mesh->pdata, CD_SCULPT_FACE_SETS, mesh->totpoly, faceset_data, faceset_cow);
+  if (!changed) {
+    return;
   }
+  /* #CustomData expects the layers to be sorted in increasing order based on type. */
+  std::stable_sort(
+      poly_layers.begin(),
+      poly_layers.end(),
+      [](const CustomDataLayer &a, const CustomDataLayer &b) { return a.type < b.type; });
 }
 
 void BKE_mesh_legacy_face_set_to_generic(Mesh *mesh)
@@ -1264,6 +1264,7 @@ void BKE_mesh_legacy_face_set_to_generic(Mesh *mesh)
   if (faceset_data != nullptr) {
     CustomData_add_layer_named_with_existing_data(
         &mesh->pdata, CD_PROP_INT32, ".sculpt_face_set", mesh->totpoly, faceset_data, faceset_cow);
+    faceset_cow->remove_user_and_delete_if_last();
   }
 }
 
