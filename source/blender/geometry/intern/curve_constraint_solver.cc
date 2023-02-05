@@ -2,7 +2,7 @@
 
 #include "GEO_curve_constraint_solver.hh"
 
-namespace blender::geometry::curve_constraing_solver {
+namespace blender::geometry::curve_constraint_solver {
 
 void compute_segment_lengths(const bke::CurvesGeometry &curves,
                              const IndexMask curve_selection,
@@ -59,4 +59,4 @@ void solve_length_and_collision_constraints(const bke::CurvesGeometry &curves,
       curves, curve_selection, segment_lengths, start_positions, surface, transforms, positions);
 }
 
-}  // namespace blender::geometry::curve_constraing_solver
+}  // namespace blender::geometry::curve_constraint_solver

@@ -38,7 +38,7 @@
 #include "ED_screen.h"
 #include "ED_view3d.h"
 
-#include "GEO_constraint_solver.hh"
+#include "GEO_curve_constraint_solver.hh"
 
 #include "UI_interface.h"
 
@@ -55,8 +55,51 @@
 namespace blender::ed::sculpt_paint {
 
 using blender::bke::CurvesGeometry;
-using geometry::ConstraintSolver;
 using threading::EnumerableThreadSpecific;
+
+struct ConstraintSolver {
+ private:
+  bool use_surface_collision_;
+  Array<float3> start_positions_;
+  Array<float> segment_lengths_;
+
+ public:
+  void initialize(const bke::CurvesGeometry &curves,
+                  const IndexMask curve_selection,
+                  const bool use_surface_collision)
+  {
+    use_surface_collision_ = use_surface_collision;
+    segment_lengths_.reinitialize(curves.points_num());
+    geometry::curve_constraint_solver::compute_segment_lengths(
+        curves, curve_selection, segment_lengths_);
+    if (use_surface_collision_) {
+      start_positions_ = curves.positions();
+    }
+  }
+
+  void solve(bke::CurvesGeometry &curves,
+             const IndexMask curve_selection,
+             const Mesh &surface,
+             const CurvesSurfaceTransforms &transforms)
+  {
+    if (use_surface_collision_) {
+      geometry::curve_constraint_solver::solve_length_and_collision_constraints(
+          curves,
+          curve_selection,
+          segment_lengths_,
+          start_positions_,
+          surface,
+          transforms,
+          curves.positions_for_write());
+      start_positions_ = curves.positions();
+    }
+    else {
+      geometry::curve_constraint_solver::solve_length_constraints(
+          curves, curve_selection, segment_lengths_, curves.positions_for_write());
+    }
+    curves.tag_positions_changed();
+  }
+};
 
 /**
  * Moves individual points under the brush and does a length preservation step afterwards.
@@ -148,11 +191,8 @@ struct CombOperationExecutor {
       if (falloff_shape_ == PAINT_FALLOFF_SHAPE_SPHERE) {
         this->initialize_spherical_brush_reference_point();
       }
-
-      ConstraintSolver::Params params;
-      params.use_collision_constraints = curves_id_orig_->flag & CV_SCULPT_COLLISION_ENABLED;
-      self_->constraint_solver_.initialize(params, *curves_orig_, curve_selection_);
-
+      self_->constraint_solver_.initialize(
+          *curves_orig_, curve_selection_, curves_id_orig_->flag & CV_SCULPT_COLLISION_ENABLED);
       /* Combing does nothing when there is no mouse movement, so return directly. */
       return;
     }
@@ -188,8 +228,8 @@ struct CombOperationExecutor {
       totcurves += curves.size();
     };
 
-    self_->constraint_solver_.step_curves(
-        *curves_orig_, surface, transforms_, start_positions_, IndexMask(all_changed_curves));
+    self_->constraint_solver_.solve(
+        *curves_orig_, IndexMask(all_changed_curves), *surface, transforms_);
 
     curves_orig_->tag_positions_changed();
     DEG_id_tag_update(&curves_id_orig_->id, ID_RECALC_GEOMETRY);
