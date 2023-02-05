@@ -1961,33 +1961,20 @@ static void wm_autosave_location(char filepath[FILE_MAX])
   BLI_path_join(filepath, FILE_MAX, tempdir_base, path);
 }
 
-static void wm_autosave_write(Main *bmain, wmWindowManager *wm)
+static void wm_autosave_write(Main *bmain)
 {
   char filepath[FILE_MAX];
 
   wm_autosave_location(filepath);
 
-  /* Fast save of last undo-buffer, now with UI. */
-  const bool use_memfile = (U.uiflag & USER_GLOBALUNDO) != 0;
-  MemFile *memfile = use_memfile ? ED_undosys_stack_memfile_get_active(wm->undo_stack) : nullptr;
-  if (memfile != nullptr) {
-    BLO_memfile_write_file(memfile, filepath);
-  }
-  else {
-    if (use_memfile) {
-      /* This is very unlikely, alert developers of this unexpected case. */
-      CLOG_WARN(&LOG, "undo-data not found for writing, fallback to regular file write!");
-    }
+  /* Save as regular blend file with recovery information. */
+  const int fileflags = (G.fileflags & ~G_FILE_COMPRESS) | G_FILE_RECOVER_WRITE;
 
-    /* Save as regular blend file with recovery information. */
-    const int fileflags = (G.fileflags & ~G_FILE_COMPRESS) | G_FILE_RECOVER_WRITE;
+  ED_editors_flush_edits(bmain);
 
-    ED_editors_flush_edits(bmain);
-
-    /* Error reporting into console. */
-    BlendFileWriteParams params{};
-    BLO_write_file(bmain, filepath, fileflags, &params, nullptr);
-  }
+  /* Error reporting into console. */
+  BlendFileWriteParams params{};
+  BLO_write_file(bmain, filepath, fileflags, &params, nullptr);
 }
 
 static void wm_autosave_timer_begin_ex(wmWindowManager *wm, double timestep)
@@ -2035,7 +2022,7 @@ void wm_autosave_timer(Main *bmain, wmWindowManager *wm, wmTimer * /*wt*/)
     }
   }
 
-  wm_autosave_write(bmain, wm);
+  wm_autosave_write(bmain);
 
   /* Restart the timer after file write, just in case file write takes a long time. */
   wm_autosave_timer_begin(wm);

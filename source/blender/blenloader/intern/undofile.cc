@@ -211,61 +211,6 @@ struct Main *BLO_memfile_main_get(struct MemFile *memfile,
   return bmain_undo;
 }
 
-bool BLO_memfile_write_file(struct MemFile *memfile, const char *filepath)
-{
-  MemFileChunk *chunk;
-  int file, oflags;
-
-  /* NOTE: This is currently used for autosave and 'quit.blend',
-   * where _not_ following symlinks is OK,
-   * however if this is ever executed explicitly by the user,
-   * we may want to allow writing to symlinks.
-   */
-
-  oflags = O_BINARY | O_WRONLY | O_CREAT | O_TRUNC;
-#ifdef O_NOFOLLOW
-  /* use O_NOFOLLOW to avoid writing to a symlink - use 'O_EXCL' (CVE-2008-1103) */
-  oflags |= O_NOFOLLOW;
-#else
-  /* TODO(sergey): How to deal with symlinks on windows? */
-#  ifndef _MSC_VER
-#    warning "Symbolic links will be followed on undo save, possibly causing CVE-2008-1103"
-#  endif
-#endif
-  file = BLI_open(filepath, oflags, 0666);
-
-  if (file == -1) {
-    fprintf(stderr,
-            "Unable to save '%s': %s\n",
-            filepath,
-            errno ? strerror(errno) : "Unknown error opening file");
-    return false;
-  }
-
-  for (chunk = static_cast<MemFileChunk *>(memfile->chunks.first); chunk;
-       chunk = static_cast<MemFileChunk *>(chunk->next)) {
-#ifdef _WIN32
-    if (size_t(write(file, chunk->buf, uint(chunk->size))) != chunk->size)
-#else
-    if (size_t(write(file, chunk->buf, chunk->size)) != chunk->size)
-#endif
-    {
-      break;
-    }
-  }
-
-  close(file);
-
-  if (chunk) {
-    fprintf(stderr,
-            "Unable to save '%s': %s\n",
-            filepath,
-            errno ? strerror(errno) : "Unknown error writing file");
-    return false;
-  }
-  return true;
-}
-
 static ssize_t undo_read(FileReader *reader, void *buffer, size_t size)
 {
   UndoReader *undo = (UndoReader *)reader;
