@@ -4,9 +4,7 @@
 
 namespace blender::bke {
 
-AnonymousAttributeID::AnonymousAttributeID() : cow_(this)
-{
-}
+AnonymousAttributeID::AnonymousAttributeID() = default;
 
 std::string AnonymousAttributeID::user_name() const
 {

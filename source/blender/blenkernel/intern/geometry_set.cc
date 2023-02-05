@@ -35,16 +35,11 @@ using blender::Vector;
 using blender::bke::InstanceReference;
 using blender::bke::Instances;
 
-void GeometryComponentCOW::delete_self_with_data()
-{
-  delete component_;
-}
-
 /* -------------------------------------------------------------------- */
 /** \name Geometry Component
  * \{ */
 
-GeometryComponent::GeometryComponent(GeometryComponentType type) : type_(type), cow_(this)
+GeometryComponent::GeometryComponent(GeometryComponentType type) : type_(type)
 {
 }
 
@@ -87,11 +82,6 @@ std::optional<blender::bke::AttributeAccessor> GeometryComponent::attributes() c
 std::optional<blender::bke::MutableAttributeAccessor> GeometryComponent::attributes_for_write()
 {
   return std::nullopt;
-}
-
-bool GeometryComponent::is_mutable() const
-{
-  return cow_.is_mutable();
 }
 
 GeometryComponentType GeometryComponent::type() const
@@ -188,7 +178,7 @@ void GeometrySet::remove_geometry_during_modify()
 void GeometrySet::add(const GeometryComponent &component)
 {
   BLI_assert(!components_[component.type()]);
-  component.cow().add_user();
+  component.add_user();
   components_[component.type()] = const_cast<GeometryComponent *>(&component);
 }
 

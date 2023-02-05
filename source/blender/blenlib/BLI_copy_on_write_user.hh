@@ -131,14 +131,14 @@ template<typename T> class COWUser {
   static void add_user(T *data)
   {
     if (data != nullptr) {
-      data->cow().add_user();
+      data->add_user();
     }
   }
 
   static void remove_user_and_delete_if_last(T *data)
   {
     if (data != nullptr) {
-      data->cow().remove_user_and_delete_if_last();
+      data->remove_user_and_delete_if_last();
     }
   }
 };

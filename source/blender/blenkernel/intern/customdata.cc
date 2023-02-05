@@ -2297,7 +2297,7 @@ static bool customdata_merge_internal(const CustomData *source,
 
     if (src_layer.anonymous_id != nullptr) {
       new_layer->anonymous_id = src_layer.anonymous_id;
-      new_layer->anonymous_id->cow().add_user();
+      new_layer->anonymous_id->add_user();
     }
   }
 
@@ -2473,7 +2473,7 @@ void CustomData_copy_without_data(const struct CustomData *source,
 static void customData_free_layer__internal(CustomDataLayer *layer, const int totelem)
 {
   if (layer->anonymous_id != nullptr) {
-    layer->anonymous_id->cow().remove_user_and_delete_if_last();
+    layer->anonymous_id->remove_user_and_delete_if_last();
     layer->anonymous_id = nullptr;
   }
   const eCustomDataType type = eCustomDataType(layer->type);
@@ -2998,7 +2998,7 @@ void *CustomData_add_layer_anonymous(CustomData *data,
     return nullptr;
   }
 
-  anonymous_id->cow().add_user();
+  anonymous_id->add_user();
   layer->anonymous_id = anonymous_id;
   return layer->data;
 }
@@ -3019,7 +3019,7 @@ const void *CustomData_add_layer_anonymous_with_existing_data(
   if (layer == nullptr) {
     return nullptr;
   }
-  anonymous_id->cow().add_user();
+  anonymous_id->add_user();
   layer->anonymous_id = anonymous_id;
   return layer->data;
 }

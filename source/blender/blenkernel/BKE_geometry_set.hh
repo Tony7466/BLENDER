@@ -38,30 +38,14 @@ class CurvesEditHints;
 class Instances;
 }  // namespace blender::bke
 
-class GeometryComponent;
-
-class GeometryComponentCOW : public bCopyOnWrite {
- private:
-  GeometryComponent *component_;
-
- public:
-  GeometryComponentCOW(GeometryComponent *component) : bCopyOnWrite(1), component_(component)
-  {
-  }
-
- private:
-  void delete_self_with_data() override;
-};
-
 /**
  * This is the base class for specialized geometry component types. A geometry component handles
  * a user count to allow avoiding duplication when it is wrapped with #UserCounter. It also handles
  * the attribute API, which generalizes storing and modifying generic information on a geometry.
  */
-class GeometryComponent {
+class GeometryComponent : public bCopyOnWriteMixin<GeometryComponent> {
  private:
   GeometryComponentType type_;
-  GeometryComponentCOW cow_;
 
  public:
   GeometryComponent(GeometryComponentType type);
@@ -80,22 +64,20 @@ class GeometryComponent {
   /* The returned component should be of the same type as the type this is called on. */
   virtual GeometryComponent *copy() const = 0;
 
-  const bCopyOnWrite &cow() const
-  {
-    return cow_;
-  }
-
   /* Direct data is everything except for instances of objects/collections.
    * If this returns true, the geometry set can be cached and is still valid after e.g. modifier
    * evaluation ends. Instances can only be valid as long as the data they instance is valid. */
   virtual bool owns_direct_data() const = 0;
   virtual void ensure_owns_direct_data() = 0;
 
-  bool is_mutable() const;
-
   GeometryComponentType type() const;
 
   virtual bool is_empty() const;
+
+  void delete_self()
+  {
+    delete this;
+  }
 };
 
 template<typename T>

@@ -10,24 +10,6 @@
 
 namespace blender::bke {
 
-class AnonymousAttributeID;
-
-class AnonymousAttributeIDCOW : public bCopyOnWrite {
- private:
-  AnonymousAttributeID *id_;
-
- public:
-  AnonymousAttributeIDCOW(AnonymousAttributeID *id) : bCopyOnWrite(1), id_(id)
-  {
-  }
-
- private:
-  void delete_self_with_data() override
-  {
-    MEM_delete(id_);
-  }
-};
-
 /**
  * An #AnonymousAttributeID contains information about a specific anonymous attribute.
  * Like normal attributes, anonymous attributes are also identified by their name, so one should
@@ -50,10 +32,7 @@ class AnonymousAttributeIDCOW : public bCopyOnWrite {
  * because that is not available in C code. If possible, the #AutoAnonymousAttributeID wrapper
  * should be used to avoid manual reference counting in C++ code.
  */
-class AnonymousAttributeID {
- private:
-  AnonymousAttributeIDCOW cow_;
-
+class AnonymousAttributeID : public bCopyOnWriteMixin<AnonymousAttributeID> {
  protected:
   std::string name_;
 
@@ -68,12 +47,7 @@ class AnonymousAttributeID {
 
   virtual std::string user_name() const;
 
-  const bCopyOnWrite &cow() const
-  {
-    return cow_;
-  }
-
-  void cow_delete_self() const
+  void delete_self() const
   {
     MEM_delete(this);
   }

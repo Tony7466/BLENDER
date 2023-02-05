@@ -82,7 +82,7 @@ static void add_new_edges(Mesh &mesh,
     }
     else {
       anonymous_ids.append(&id.anonymous_id());
-      id.anonymous_id().cow().add_user();
+      id.anonymous_id().add_user();
     }
   }
   Vector<bke::AttributeIDRef> local_edge_ids;

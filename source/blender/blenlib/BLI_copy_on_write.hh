@@ -55,3 +55,18 @@ struct bCopyOnWrite : blender::NonCopyable, blender::NonMovable {
  private:
   virtual void delete_self_with_data() = 0;
 };
+
+template<typename T> struct bCopyOnWriteMixin : public bCopyOnWrite {
+ public:
+  bCopyOnWriteMixin() : bCopyOnWrite(1)
+  {
+  }
+
+ private:
+  void delete_self_with_data() override
+  {
+    static_assert(std::is_base_of_v<bCopyOnWriteMixin<T>, T>);
+    T *data = static_cast<T *>(this);
+    data->delete_self();
+  }
+};
