@@ -1234,8 +1234,8 @@ void BKE_mesh_legacy_face_set_from_generic(Mesh *mesh,
     }
   }
   if (faceset_data != nullptr) {
-    CustomData_add_layer(
-        &mesh->pdata, CD_SCULPT_FACE_SETS, CD_ASSIGN, faceset_data, mesh->totpoly);
+    CustomData_add_layer_with_existing_data(
+        &mesh->pdata, CD_SCULPT_FACE_SETS, mesh->totpoly, faceset_data, nullptr);
   }
 }
 
@@ -1255,8 +1255,8 @@ void BKE_mesh_legacy_face_set_to_generic(Mesh *mesh)
     }
   }
   if (faceset_data != nullptr) {
-    CustomData_add_layer_named(
-        &mesh->pdata, CD_PROP_INT32, CD_ASSIGN, faceset_data, mesh->totpoly, ".sculpt_face_set");
+    CustomData_add_layer_named_with_existing_data(
+        &mesh->pdata, CD_PROP_INT32, ".sculpt_face_set", mesh->totpoly, faceset_data, nullptr);
   }
 }
 
