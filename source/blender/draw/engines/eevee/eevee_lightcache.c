@@ -982,6 +982,18 @@ static void eevee_lightbake_cache_create(EEVEE_Data *vedata, EEVEE_LightBake *lb
   EEVEE_lightprobes_cache_finish(sldata, vedata);
   EEVEE_shadows_update(sldata, vedata);
 
+  /* Print error message if graphics driver could not allocate shadow cubemap/cascade pool */
+  if (!sldata->shadow_cube_pool || !sldata->shadow_cascade_pool) {
+    EEVEE_Data *eevee_data = (EEVEE_Data *)vedata;
+    eevee_data->info[0] = '\0';
+    BLI_snprintf(eevee_data->info,
+                 sizeof(eevee_data->info),
+                 "Error: Could not allocate shadow cubemap or cascade pool (try reducing the "
+                 "resolution of each)");
+    G.is_break = true;
+    return;
+  }
+
   /* Disable volumetrics when baking. */
   stl->effects->enabled_effects &= ~EFFECT_VOLUMETRIC;
 

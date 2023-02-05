@@ -231,6 +231,11 @@ void EEVEE_shadows_update(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
                                                               NULL);
   }
 
+  /* Check to see if the GPU failed to allocate memory for the texture arrays */
+  if (!sldata->shadow_cube_pool || !sldata->shadow_cascade_pool) {
+    return;
+  }
+
   if (sldata->shadow_fb == NULL) {
     sldata->shadow_fb = GPU_framebuffer_create("shadow_fb");
   }

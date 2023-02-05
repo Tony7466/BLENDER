@@ -591,6 +591,19 @@ void EEVEE_render_draw(EEVEE_Data *vedata, RenderEngine *engine, RenderLayer *rl
     /* Refresh Probes
      * Shadows needs to be updated for correct probes */
     EEVEE_shadows_update(sldata, vedata);
+
+    /* Print error message if graphics driver could not allocate shadow cubemap/cascade pool */
+    if (!sldata->shadow_cube_pool || !sldata->shadow_cascade_pool) {
+      EEVEE_Data *eevee_data = (EEVEE_Data *)vedata;
+      eevee_data->info[0] = '\0';
+      RE_engine_set_error_message(
+          engine,
+          "Error: Could not allocate shadow cubemap or cascade pool (try reducing the "
+          "resolution of each)");
+      G.is_break = true;
+      return;
+    }
+
     EEVEE_lightprobes_refresh(sldata, vedata);
     EEVEE_lightprobes_refresh_planar(sldata, vedata);
 

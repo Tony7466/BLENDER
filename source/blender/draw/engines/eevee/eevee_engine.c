@@ -237,6 +237,18 @@ static void eevee_draw_scene(void *vedata)
      * Shadows needs to be updated for correct probes */
     DRW_stats_group_start("Probes Refresh");
     EEVEE_shadows_update(sldata, vedata);
+
+    /* Print error message if graphics driver could not allocate shadow cubemap/cascade pool */
+    if (!sldata->shadow_cube_pool || !sldata->shadow_cascade_pool) {
+      EEVEE_Data *eevee_data = (EEVEE_Data *)vedata;
+      eevee_data->info[0] = '\0';
+      BLI_snprintf(eevee_data->info,
+                   sizeof(eevee_data->info),
+                   "Error: Could not allocate shadow cubemap or cascade pool (try reducing the "
+                   "resolution of each)");
+      return;
+    }
+
     EEVEE_lightprobes_refresh(sldata, vedata);
     EEVEE_lightprobes_refresh_planar(sldata, vedata);
     DRW_stats_group_end();
