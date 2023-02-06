@@ -1095,7 +1095,9 @@ void ShadowModule::set_view(View &view)
   tilemap_projection_ratio_ = tilemap_pixel_radius() /
                               screen_pixel_radius(view, int2(target_size));
 
-  usage_tag_fb.ensure(int2(target_size));
+  /* TODO(Miguel Pozo): Attach a lower-res hiZ copy for improved performance */
+  usage_tag_fb.ensure(GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.depth_tx));
+
   render_fb_.ensure(int2(SHADOW_TILEMAP_RES * shadow_page_size_));
 
   bool tile_update_remains = true;
