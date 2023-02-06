@@ -62,18 +62,23 @@ void solve_length_and_collision_constraints(const OffsetIndices<int> points_by_c
   BLI_SCOPED_DEFER([&]() { free_bvhtree_from_mesh(&surface_bvh); });
 
   const float radius = 0.001f;
-  const int max_collisions = 10;
+  const int max_collisions = 5;
 
   threading::parallel_for(curve_selection.index_range(), 64, [&](const IndexRange range) {
     for (const int curve_i : curve_selection.slice(range)) {
       const IndexRange points = points_by_curve[curve_i];
 
+      /* Sometimes not all collisions can be handled. This happens relatively rarely, but if it
+       * happens it's better to just not to move the curve instead of going into the surface. */
+      bool revert_curve = false;
       for (const int point_i : points.drop_front(1)) {
         const float goal_segment_length_cu = segment_lengths_cu[point_i - 1];
         const float3 &prev_pos_cu = positions_cu[point_i - 1];
         const float3 &start_pos_cu = start_positions_cu[point_i];
 
+        int used_iterations = 0;
         for ([[maybe_unused]] const int iteration : IndexRange(max_collisions)) {
+          used_iterations++;
           const float3 &old_pos_cu = positions_cu[point_i];
           if (start_pos_cu == old_pos_cu) {
             /* The point did not move, done. */
@@ -93,18 +98,22 @@ void solve_length_and_collision_constraints(const OffsetIndices<int> points_by_c
           BLI_bvhtree_ray_cast(surface_bvh.tree,
                                start_pos_su,
                                ray_direction_su,
-                               0.0f,
+                               radius,
                                &hit,
                                surface_bvh.raycast_callback,
                                &surface_bvh);
           if (hit.index == -1) {
             break;
           }
-          /* The point was moved through a surface. Now put it back on the correct side of the
-           * surface and slide it on the surface to keep the length the same. */
-
           const float3 hit_pos_su = hit.co;
           const float3 hit_normal_su = hit.no;
+          if (math::dot(hit_normal_su, ray_direction_su) > 0.0f) {
+            /* Moving from the inside to the outside is ok. */
+            break;
+          }
+
+          /* The point was moved through a surface. Now put it back on the correct side of the
+           * surface and slide it on the surface to keep the length the same. */
 
           const float3 hit_pos_cu = transforms.surface_to_curves * hit_pos_su;
           const float3 hit_normal_cu = math::normalize(transforms.surface_to_curves_normal *
@@ -131,6 +140,13 @@ void solve_length_and_collision_constraints(const OffsetIndices<int> points_by_c
                                           slide_direction_length_cu;
           positions_cu[point_i] = plane_pos_cu + normalized_slide_direction_cu * slide_distance_cu;
         }
+        if (used_iterations == max_collisions) {
+          revert_curve = true;
+          break;
+        }
+      }
+      if (revert_curve) {
+        positions_cu.slice(points).copy_from(start_positions_cu.slice(points));
       }
     }
   });
