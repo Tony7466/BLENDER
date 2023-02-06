@@ -2492,17 +2492,20 @@ void SEQUENCER_OT_copy(wmOperatorType *ot)
 /** \name Paste Operator
  * \{ */
 
-void ED_sequencer_deselect_all(Scene *scene)
+bool ED_sequencer_deselect_all(Scene *scene)
 {
   Editing *ed = SEQ_editing_get(scene);
-
+  bool any_deselected = false;
+    
   if (ed == NULL) {
-    return;
+    return any_deselected;
   }
 
   LISTBASE_FOREACH (Sequence *, seq, SEQ_active_seqbase_get(ed)) {
     seq->flag &= ~SEQ_ALLSEL;
+    any_deselected = true;
   }
+  return any_deselected;
 }
 
 static void sequencer_paste_animation(bContext *C)
