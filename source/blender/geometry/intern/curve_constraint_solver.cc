@@ -4,14 +4,13 @@
 
 namespace blender::geometry::curve_constraint_solver {
 
-void compute_segment_lengths(const bke::CurvesGeometry &curves,
+void compute_segment_lengths(const OffsetIndices<int> points_by_curve,
+                             const Span<float3> positions,
                              const IndexMask curve_selection,
                              MutableSpan<float> r_segment_lengths)
 {
-  BLI_assert(r_segment_lengths.size() == curves.points_num());
+  BLI_assert(r_segment_lengths.size() == points_by_curve.total_size());
 
-  const Span<float3> positions = curves.positions();
-  const OffsetIndices points_by_curve = curves.points_by_curve();
   threading::parallel_for(curve_selection.index_range(), 256, [&](const IndexRange range) {
     for (const int curve_i : curve_selection.slice(range)) {
       const IndexRange points = points_by_curve[curve_i].drop_back(1);
@@ -25,14 +24,13 @@ void compute_segment_lengths(const bke::CurvesGeometry &curves,
   });
 }
 
-void solve_length_constraints(const bke::CurvesGeometry &curves,
+void solve_length_constraints(const OffsetIndices<int> points_by_curve,
                               const IndexMask curve_selection,
                               const Span<float> segment_lenghts,
                               MutableSpan<float3> positions)
 {
-  BLI_assert(segment_lenghts.size() == curves.points_num());
+  BLI_assert(segment_lenghts.size() == points_by_curve.total_size());
 
-  const OffsetIndices points_by_curve = curves.points_by_curve();
   threading::parallel_for(curve_selection.index_range(), 256, [&](const IndexRange range) {
     for (const int curve_i : curve_selection.slice(range)) {
       const IndexRange points = points_by_curve[curve_i].drop_back(1);
@@ -47,7 +45,7 @@ void solve_length_constraints(const bke::CurvesGeometry &curves,
   });
 }
 
-void solve_length_and_collision_constraints(const bke::CurvesGeometry &curves,
+void solve_length_and_collision_constraints(const OffsetIndices<int> points_by_curve,
                                             const IndexMask curve_selection,
                                             const Span<float> segment_lengths,
                                             const Span<float3> start_positions,
@@ -55,8 +53,13 @@ void solve_length_and_collision_constraints(const bke::CurvesGeometry &curves,
                                             const bke::CurvesSurfaceTransforms &transforms,
                                             MutableSpan<float3> positions)
 {
-  UNUSED_VARS(
-      curves, curve_selection, segment_lengths, start_positions, surface, transforms, positions);
+  UNUSED_VARS(points_by_curve,
+              curve_selection,
+              segment_lengths,
+              start_positions,
+              surface,
+              transforms,
+              positions);
 }
 
 }  // namespace blender::geometry::curve_constraint_solver

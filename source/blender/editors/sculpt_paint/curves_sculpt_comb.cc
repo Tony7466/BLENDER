@@ -71,7 +71,7 @@ struct ConstraintSolver {
     use_surface_collision_ = use_surface_collision;
     segment_lengths_.reinitialize(curves.points_num());
     geometry::curve_constraint_solver::compute_segment_lengths(
-        curves, curve_selection, segment_lengths_);
+        curves.points_by_curve(), curves.positions(), curve_selection, segment_lengths_);
     if (use_surface_collision_) {
       start_positions_ = curves.positions();
     }
@@ -84,7 +84,7 @@ struct ConstraintSolver {
   {
     if (use_surface_collision_) {
       geometry::curve_constraint_solver::solve_length_and_collision_constraints(
-          curves,
+          curves.points_by_curve(),
           curve_selection,
           segment_lengths_,
           start_positions_,
@@ -94,8 +94,10 @@ struct ConstraintSolver {
       start_positions_ = curves.positions();
     }
     else {
-      geometry::curve_constraint_solver::solve_length_constraints(
-          curves, curve_selection, segment_lengths_, curves.positions_for_write());
+      geometry::curve_constraint_solver::solve_length_constraints(curves.points_by_curve(),
+                                                                  curve_selection,
+                                                                  segment_lengths_,
+                                                                  curves.positions_for_write());
     }
     curves.tag_positions_changed();
   }
