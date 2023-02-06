@@ -13,9 +13,9 @@ void main()
   ObjectBounds bounds = bounds_buf[drw_ResourceID];
 
   interp.P = bounds.bounding_corners[0].xyz;
-  interp.P += bounds.bounding_corners[1].xyz * pos.x;
-  interp.P += bounds.bounding_corners[2].xyz * pos.y;
-  interp.P += bounds.bounding_corners[3].xyz * pos.z;
+  interp.P += bounds.bounding_corners[1].xyz * max(0, pos.x);
+  interp.P += bounds.bounding_corners[2].xyz * max(0, pos.y);
+  interp.P += bounds.bounding_corners[3].xyz * max(0, pos.z);
   interp.vP = point_world_to_view(interp.P);
 
   gl_Position = point_world_to_ndc(interp.P);
