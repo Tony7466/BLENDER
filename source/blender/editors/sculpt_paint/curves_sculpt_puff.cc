@@ -22,21 +22,18 @@
 #include "BLI_length_parameterize.hh"
 
 #include "GEO_add_curves_on_mesh.hh"
-#include "GEO_constraint_solver.hh"
 
 #include "curves_sculpt_intern.hh"
 
 namespace blender::ed::sculpt_paint {
-
-using geometry::ConstraintSolver;
 
 class PuffOperation : public CurvesSculptStrokeOperation {
  private:
   /** Only used when a 3D brush is used. */
   CurvesBrush3D brush_3d_;
 
-  /** Solver for length and contact constraints. */
-  ConstraintSolver constraint_solver_;
+  /** Solver for length and collision constraints. */
+  CurvesConstraintSolver constraint_solver_;
 
   friend struct PuffOperationExecutor;
 
@@ -142,9 +139,8 @@ struct PuffOperationExecutor {
                                                  brush_radius_base_re_);
       }
 
-      ConstraintSolver::Params params;
-      params.use_collision_constraints = curves_id_->flag & CV_SCULPT_COLLISION_ENABLED;
-      self_->constraint_solver_.initialize(params, *curves_, curve_selection_);
+      self_->constraint_solver_.initialize(
+          *curves_, curve_selection_, curves_id_->flag & CV_SCULPT_COLLISION_ENABLED);
     }
 
     start_positions_ = curves_->positions();
@@ -173,8 +169,8 @@ struct PuffOperationExecutor {
       }
     }
 
-    self_->constraint_solver_.step_curves(
-        *curves_, surface_, transforms_, start_positions_, IndexMask(changed_curves_indices));
+    self_->constraint_solver_.solve_step(
+        *curves_, IndexMask(changed_curves_indices), surface_, transforms_);
 
     curves_->tag_positions_changed();
     DEG_id_tag_update(&curves_id_->id, ID_RECALC_GEOMETRY);

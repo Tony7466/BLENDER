@@ -40,14 +40,12 @@
 
 namespace blender::ed::sculpt_paint {
 
-using geometry::ConstraintSolver;
-
 class PinchOperation : public CurvesSculptStrokeOperation {
  private:
   bool invert_pinch_;
 
-  /** Solver for length and contact constraints. */
-  ConstraintSolver constraint_solver_;
+  /** Solver for length and collision constraints. */
+  CurvesConstraintSolver constraint_solver_;
 
   /** Only used when a 3D brush is used. */
   CurvesBrush3D brush_3d_;
@@ -131,9 +129,8 @@ struct PinchOperationExecutor {
                                                    brush_radius_base_re_);
       }
 
-      ConstraintSolver::Params params;
-      params.use_collision_constraints = curves_id_->flag & CV_SCULPT_COLLISION_ENABLED;
-      self_->constraint_solver_.initialize(params, *curves_, curve_selection_);
+      self_->constraint_solver_.initialize(
+          *curves_, curve_selection_, curves_id_->flag & CV_SCULPT_COLLISION_ENABLED);
     }
 
     start_positions_ = curves_->positions();
@@ -162,8 +159,8 @@ struct PinchOperationExecutor {
     const Mesh *surface = curves_id_->surface && curves_id_->surface->type == OB_MESH ?
                               static_cast<Mesh *>(curves_id_->surface->data) :
                               nullptr;
-    self_->constraint_solver_.step_curves(
-        *curves_, surface, transforms_, start_positions_, IndexMask(changed_curves_indices));
+    self_->constraint_solver_.solve_step(
+        *curves_, IndexMask(changed_curves_indices), surface, transforms_);
 
     curves_->tag_positions_changed();
     DEG_id_tag_update(&curves_id_->id, ID_RECALC_GEOMETRY);
