@@ -2,6 +2,8 @@
 
 #include "GEO_curve_constraint_solver.hh"
 
+#include "BKE_bvhutils.h"
+
 namespace blender::geometry::curve_constraint_solver {
 
 void compute_segment_lengths(const OffsetIndices<int> points_by_curve,
@@ -47,19 +49,91 @@ void solve_length_constraints(const OffsetIndices<int> points_by_curve,
 
 void solve_length_and_collision_constraints(const OffsetIndices<int> points_by_curve,
                                             const IndexMask curve_selection,
-                                            const Span<float> segment_lengths,
-                                            const Span<float3> start_positions,
+                                            const Span<float> segment_lengths_cu,
+                                            const Span<float3> start_positions_cu,
                                             const Mesh &surface,
                                             const bke::CurvesSurfaceTransforms &transforms,
-                                            MutableSpan<float3> positions)
+                                            MutableSpan<float3> positions_cu)
 {
-  UNUSED_VARS(points_by_curve,
-              curve_selection,
-              segment_lengths,
-              start_positions,
-              surface,
-              transforms,
-              positions);
+  solve_length_constraints(points_by_curve, curve_selection, segment_lengths_cu, positions_cu);
+
+  BVHTreeFromMesh surface_bvh;
+  BKE_bvhtree_from_mesh_get(&surface_bvh, &surface, BVHTREE_FROM_LOOPTRI, 2);
+  BLI_SCOPED_DEFER([&]() { free_bvhtree_from_mesh(&surface_bvh); });
+
+  const float radius = 0.001f;
+  const int max_collisions = 10;
+
+  threading::parallel_for(curve_selection.index_range(), 64, [&](const IndexRange range) {
+    for (const int curve_i : curve_selection.slice(range)) {
+      const IndexRange points = points_by_curve[curve_i];
+
+      for (const int point_i : points.drop_front(1)) {
+        const float goal_segment_length_cu = segment_lengths_cu[point_i - 1];
+        const float3 &prev_pos_cu = positions_cu[point_i - 1];
+        const float3 &start_pos_cu = start_positions_cu[point_i];
+
+        for ([[maybe_unused]] const int iteration : IndexRange(max_collisions)) {
+          const float3 &old_pos_cu = positions_cu[point_i];
+          if (start_pos_cu == old_pos_cu) {
+            /* The point did not move, done. */
+            break;
+          }
+
+          /* Check if the point moved through a surface. */
+          const float3 start_pos_su = transforms.curves_to_surface * start_pos_cu;
+          const float3 old_pos_su = transforms.curves_to_surface * old_pos_cu;
+          const float3 pos_diff_su = old_pos_su - start_pos_su;
+          float max_ray_length_su;
+          const float3 ray_direction_su = math::normalize_and_get_length(pos_diff_su,
+                                                                         max_ray_length_su);
+          BVHTreeRayHit hit;
+          hit.index = -1;
+          hit.dist = max_ray_length_su + radius;
+          BLI_bvhtree_ray_cast(surface_bvh.tree,
+                               start_pos_su,
+                               ray_direction_su,
+                               0.0f,
+                               &hit,
+                               surface_bvh.raycast_callback,
+                               &surface_bvh);
+          if (hit.index == -1) {
+            break;
+          }
+          /* The point was moved through a surface. Now put it back on the correct side of the
+           * surface and slide it on the surface to keep the length the same. */
+
+          const float3 hit_pos_su = hit.co;
+          const float3 hit_normal_su = hit.no;
+
+          const float3 hit_pos_cu = transforms.surface_to_curves * hit_pos_su;
+          const float3 hit_normal_cu = math::normalize(transforms.surface_to_curves_normal *
+                                                       hit_normal_su);
+
+          /* Slide on a plane that is slightly above the surface. */
+          const float3 plane_pos_cu = hit_pos_cu + hit_normal_cu * radius;
+          const float3 plane_normal_cu = hit_normal_cu;
+
+          /* Decompose the current segment into the part normal and tangent to the collision
+           * surface. */
+          const float3 collided_segment_cu = plane_pos_cu - prev_pos_cu;
+          const float3 slide_normal_cu = plane_normal_cu *
+                                         math::dot(collided_segment_cu, plane_normal_cu);
+          const float3 slide_direction_cu = collided_segment_cu - slide_normal_cu;
+
+          float slide_direction_length_cu;
+          const float3 normalized_slide_direction_cu = math::normalize_and_get_length(
+              slide_direction_cu, slide_direction_length_cu);
+
+          /* Use pythagorian theory to determine how far to slide. */
+          const float slide_distance_cu = std::sqrt(pow2f(goal_segment_length_cu) -
+                                                    math::length_squared(slide_normal_cu)) -
+                                          slide_direction_length_cu;
+          positions_cu[point_i] = plane_pos_cu + normalized_slide_direction_cu * slide_distance_cu;
+        }
+      }
+    }
+  });
 }
 
 }  // namespace blender::geometry::curve_constraint_solver
