@@ -148,13 +148,8 @@ void BKE_nlastrips_sort_strips(ListBase *strips);
 void BKE_nlastrips_add_strip_unsafe(ListBase *strips, struct NlaStrip *strip);
 
 /**
- * @brief NULL checks incoming strip and verifies no overlap / invalid
+ *  NULL checks incoming strip and verifies no overlap / invalid
  *  configuration against other strips in NLA Track.
- *
- * \param strips:
- * \param strip:
- * \return true
- * \return false
  */
 bool BKE_nlastrips_add_strip(ListBase *strips, struct NlaStrip *strip);
 
@@ -229,8 +224,7 @@ void BKE_nlatrack_sort_strips(struct NlaTrack *nlt);
 bool BKE_nlatrack_add_strip(struct NlaTrack *nlt, struct NlaStrip *strip, bool is_liboverride);
 
 /**
- * Remove the NLA-Strip from the given NLA-Track, // TODO FIX: assuming that it
- * isn't currently attached to another one.
+ * Remove the NLA-Strip from the given NLA-Track.
  */
 void BKE_nlatrack_remove_strip(struct NlaTrack *track, struct NlaStrip *strip);
 

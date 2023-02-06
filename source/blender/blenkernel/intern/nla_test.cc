@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
  * Copyright 2023 Blender Foundation. All rights reserved. */
 
+#include "BLI_listbase.h"
+
 #include "BKE_nla.h"
 
 #include "DNA_anim_types.h"
@@ -64,3 +66,27 @@ TEST(nla_strip, BKE_nlastrips_add_strip)
 }
 
 }  // namespace blender::bke::tests
+
+TEST(nla_track, BKE_nlatrack_remove_strip)
+{
+  NlaTrack track{};
+  ListBase strips{};
+  NlaStrip strip1{};
+  strip1.start = 0;
+  strip1.end = 10;
+
+  NlaStrip strip2{};
+  strip2.start = 11;
+  strip2.end = 20;
+
+  // Add the strips
+  EXPECT_TRUE(BKE_nlastrips_add_strip(&strips, &strip1));
+  EXPECT_TRUE(BKE_nlastrips_add_strip(&strips, &strip2));
+
+  track.strips = strips;
+  // ensure we have 2 strips in the track
+  EXPECT_EQ(2, BLI_listbase_count(&track.strips));
+
+  BKE_nlatrack_remove_strip(&track, &strip2);
+  EXPECT_EQ(1, BLI_listbase_count(&track.strips));
+}
