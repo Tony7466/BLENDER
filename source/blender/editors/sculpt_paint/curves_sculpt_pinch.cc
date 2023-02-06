@@ -23,8 +23,6 @@
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 
-#include "GEO_constraint_solver.hh"
-
 #include "ED_screen.h"
 #include "ED_view3d.h"
 
