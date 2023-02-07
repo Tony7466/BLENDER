@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
  * Copyright 2023 Blender Foundation. All rights reserved. */
 
+#include "BLI_listbase.h"
+
 #include "BKE_nla.h"
 
 #include "DNA_anim_types.h"
@@ -88,3 +90,4 @@ TEST(nla_track, BKE_nlatrack_remove_strip)
 }
 
 }  // namespace blender::bke::tests
+
