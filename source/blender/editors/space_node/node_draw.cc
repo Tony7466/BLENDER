@@ -247,8 +247,24 @@ static bool compare_node_depth(const bNode *a, const bNode *b)
   return false;
 }
 
-void node_sort(bNodeTree &ntree)
+void node_sort(SpaceNode &snode, bNodeTree &ntree)
 {
+  /* A second operation can depend on the socket locations after nodes are reordered. Usually that
+   * is fine, but occasionally there is no redraw in between to recalculate the socket positions
+   * with the new node order. For example, node selection picking and the link drag operator can
+   * happen without a redraw in between. For these cases, we have to reorder the socket positions
+   * as well. */
+  const Span<float2> old_socket_locations = snode.runtime->all_socket_locations;
+  const bool copy_socket_locations = snode.edittree == &ntree && !old_socket_locations.is_empty();
+  Map<const bNodeSocket *, int> old_socket_indices;
+  if (copy_socket_locations) {
+    ntree.ensure_topology_cache();
+    old_socket_indices.reserve(ntree.all_sockets().size());
+    for (const bNodeSocket *socket : ntree.all_sockets()) {
+      old_socket_indices.add_new(socket, socket->index_in_tree());
+    }
+  }
+
   Array<bNode *> sort_nodes = ntree.all_nodes();
   std::stable_sort(sort_nodes.begin(), sort_nodes.end(), compare_node_depth);
 
@@ -266,6 +282,16 @@ void node_sort(bNodeTree &ntree)
     BLI_addtail(&ntree.nodes, sort_nodes[i]);
     ntree.runtime->nodes_by_id.add_new(sort_nodes[i]);
     sort_nodes[i]->runtime->index_in_tree = i;
+  }
+
+  if (copy_socket_locations) {
+    ntree.ensure_topology_cache();
+    Vector<float2> new_socket_locations(ntree.all_sockets().size());
+    for (const bNodeSocket *socket : ntree.all_sockets()) {
+      const float2 old_location = old_socket_locations[old_socket_indices.lookup(socket)];
+      new_socket_locations[socket->index_in_tree()] = old_location;
+    }
+    snode.runtime->all_socket_locations = std::move(new_socket_locations);
   }
 }
 

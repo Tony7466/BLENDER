@@ -173,7 +173,7 @@ void node_socket_add_tooltip(const bNodeTree &ntree, const bNodeSocket &sock, ui
  * Sort nodes by selection: unselected nodes first, then selected,
  * then the active node at the very end. Relative order is kept intact.
  */
-void node_sort(bNodeTree &ntree);
+void node_sort(SpaceNode &snode, bNodeTree &ntree);
 
 void node_set_cursor(wmWindow &win, SpaceNode &snode, const float2 &cursor);
 /* DPI scaled coords */
