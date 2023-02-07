@@ -1619,8 +1619,6 @@ typedef struct NodeShaderMix {
 typedef struct NodeFunctionAxisToEuler {
   int8_t primary_axis;
   int8_t secondary_axis;
-  int8_t legacy_distribute_node_behavior;
-  char _pad;
 } NodeFunctionAxisToEuler;
 
 /* script node mode */

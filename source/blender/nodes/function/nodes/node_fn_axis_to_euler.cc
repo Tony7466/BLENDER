@@ -34,30 +34,12 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   const bNode &node = *static_cast<const bNode *>(ptr->data);
   const NodeFunctionAxisToEuler &storage = node_storage(node);
-  if (storage.legacy_distribute_node_behavior) {
-    uiItemR(layout, ptr, "legacy_distribute_node_behavior", 0, "Legacy Behavior", ICON_NONE);
+  uiItemR(layout, ptr, "primary_axis", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "secondary_axis", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
+
+  if (storage.primary_axis == storage.secondary_axis) {
+    uiItemL(layout, N_("Must not be equal"), ICON_ERROR);
   }
-  else {
-    uiItemR(layout, ptr, "primary_axis", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
-    uiItemR(layout, ptr, "secondary_axis", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
-
-    if (storage.primary_axis == storage.secondary_axis) {
-      uiItemL(layout, N_("Must not be equal"), ICON_ERROR);
-    }
-  }
-}
-
-static void node_layout_ex(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
-{
-  uiItemR(layout, ptr, "legacy_distribute_node_behavior", 0, "Legacy Behavior", ICON_NONE);
-}
-
-static void node_update(bNodeTree *tree, bNode *node)
-{
-  const NodeFunctionAxisToEuler &storage = node_storage(*node);
-  bNodeSocket *primary_axis_socket = static_cast<bNodeSocket *>(node->inputs.first);
-  bNodeSocket *secondary_axis_socket = primary_axis_socket->next;
-  nodeSetSocketAvailability(tree, secondary_axis_socket, !storage.legacy_distribute_node_behavior);
 }
 
 static float3 get_orthogonal_of_non_zero_vector(const float3 &v)
@@ -159,19 +141,6 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
   const bNode &node = builder.node();
   const NodeFunctionAxisToEuler &storage = node_storage(node);
-  if (storage.legacy_distribute_node_behavior) {
-    static const auto fn = mf::build::SI1_SO<float3, float3>(
-        "Axis to Euler (Legacy)", [](const float3 &axis) {
-          float quat[4];
-          vec_to_quat(quat, axis, OB_NEGZ, OB_POSY);
-          float3 rotation;
-          quat_to_eul(rotation, quat);
-          return rotation;
-        });
-    builder.set_matching_fn(fn);
-    return;
-  }
-
   if (storage.primary_axis == storage.secondary_axis) {
     return;
   }
@@ -190,10 +159,8 @@ void register_node_type_fn_axis_to_euler()
   fn_node_type_base(&ntype, FN_NODE_AXIS_TO_EULER, "Axis to Euler", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::node_declare;
   ntype.initfunc = file_ns::node_init;
-  ntype.updatefunc = file_ns::node_update;
   ntype.build_multi_function = file_ns::node_build_multi_function;
   ntype.draw_buttons = file_ns::node_layout;
-  ntype.draw_buttons_ex = file_ns::node_layout_ex;
   node_type_storage(
       &ntype, "NodeFunctionAxisToEuler", node_free_standard_storage, node_copy_standard_storage);
   nodeRegisterType(&ntype);

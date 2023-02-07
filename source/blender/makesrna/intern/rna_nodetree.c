@@ -9924,13 +9924,6 @@ static void def_fn_axis_to_euler(StructRNA *srna)
       "Secondary Axis",
       "Axis that is aligned as good as possible given the alignment of the primary axis");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
-
-  prop = RNA_def_property(srna, "legacy_distribute_node_behavior", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_ui_text(
-      prop,
-      "Legacy Distribute Node Behavior",
-      "Use the exact behavior that the distribute points on faces node used to compute rotations");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 
 static void def_geo_object_info(StructRNA *srna)
