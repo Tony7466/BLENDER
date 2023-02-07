@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_math_matrix.hh"
+
 #include "GEO_curve_constraint_solver.hh"
 
 #include "BKE_bvhutils.h"
@@ -86,8 +88,10 @@ void solve_length_and_collision_constraints(const OffsetIndices<int> points_by_c
           }
 
           /* Check if the point moved through a surface. */
-          const float3 start_pos_su = transforms.curves_to_surface * start_pos_cu;
-          const float3 old_pos_su = transforms.curves_to_surface * old_pos_cu;
+          const float3 start_pos_su = math::transform_point(transforms.curves_to_surface,
+                                                            start_pos_cu);
+          const float3 old_pos_su = math::transform_point(transforms.curves_to_surface,
+                                                          old_pos_cu);
           const float3 pos_diff_su = old_pos_su - start_pos_su;
           float max_ray_length_su;
           const float3 ray_direction_su = math::normalize_and_get_length(pos_diff_su,
@@ -115,9 +119,10 @@ void solve_length_and_collision_constraints(const OffsetIndices<int> points_by_c
           /* The point was moved through a surface. Now put it back on the correct side of the
            * surface and slide it on the surface to keep the length the same. */
 
-          const float3 hit_pos_cu = transforms.surface_to_curves * hit_pos_su;
-          const float3 hit_normal_cu = math::normalize(transforms.surface_to_curves_normal *
-                                                       hit_normal_su);
+          const float3 hit_pos_cu = math::transform_point(transforms.surface_to_curves,
+                                                          hit_pos_su);
+          const float3 hit_normal_cu = math::normalize(
+              math::transform_direction(transforms.surface_to_curves_normal, hit_normal_su));
 
           /* Slide on a plane that is slightly above the surface. */
           const float3 plane_pos_cu = hit_pos_cu + hit_normal_cu * radius;
