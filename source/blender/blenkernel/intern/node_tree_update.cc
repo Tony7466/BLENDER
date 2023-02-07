@@ -46,13 +46,23 @@ enum eNodeTreeChangedFlag {
   NTREE_CHANGED_SOCKET_PROPERTY = (1 << 8),
   NTREE_CHANGED_INTERNAL_LINK = (1 << 9),
   NTREE_CHANGED_PARENT = (1 << 10),
+  NTREE_CHANGED_ADDED_SOCKET = (1 << 11),
+  NTREE_CHANGED_ADDED_NODE = (1 << 12),
   NTREE_CHANGED_ALL = -1,
 };
+ENUM_OPERATORS(eNodeTreeChangedFlag, NTREE_CHANGED_ADDED_NODE);
+
+static bool flag_affects_topology_cache(const eNodeTreeChangedFlag flag)
+{
+  const uint32_t allowed_flags = NTREE_CHANGED_NODE_PROPERTY | NTREE_CHANGED_SOCKET_PROPERTY;
+}
 
 static void add_tree_tag(bNodeTree *ntree, const eNodeTreeChangedFlag flag)
 {
   ntree->runtime->changed_flag |= flag;
-  ntree->runtime->topology_cache_mutex.tag_dirty();
+  if (flag_affects_topology_cache(flag)) {
+    ntree->runtime->topology_cache_mutex.tag_dirty();
+  }
 }
 
 static void add_node_tag(bNodeTree *ntree, bNode *node, const eNodeTreeChangedFlag flag)
@@ -336,8 +346,12 @@ class NodeTreeMainUpdater {
           }
         }
         if (result.interface_changed) {
+          /* When the interface changes, sockets may be added or removed from group nodes that use
+           * this tree. */
           for (const TreeNodePair &pair : dependent_trees) {
-            add_node_tag(pair.first, pair.second, NTREE_CHANGED_NODE_PROPERTY);
+            add_node_tag(pair.first,
+                         pair.second,
+                         NTREE_CHANGED_ADDED_SOCKET | NTREE_CHANGED_REMOVED_SOCKET);
           }
         }
       }
@@ -564,6 +578,9 @@ class NodeTreeMainUpdater {
     if (node.runtime->changed_flag & NTREE_CHANGED_NODE_PROPERTY) {
       return true;
     }
+    if (node.runtime->changed_flag & NTREE_CHANGED_ADDED_NODE) {
+      return true;
+    }
     if (ntree.runtime->changed_flag & NTREE_CHANGED_LINK) {
       /* Currently we have no way to tell if a node needs to be updated when a link changed. */
       return true;
@@ -686,8 +703,8 @@ class NodeTreeMainUpdater {
   {
     /* Don't trigger preview removal when only those flags are set. */
     const uint32_t allowed_flags = NTREE_CHANGED_LINK | NTREE_CHANGED_SOCKET_PROPERTY |
-                                   NTREE_CHANGED_NODE_PROPERTY | NTREE_CHANGED_NODE_OUTPUT |
-                                   NTREE_CHANGED_INTERFACE;
+                                   NTREE_CHANGED_ADDED_SOCKET | NTREE_CHANGED_NODE_PROPERTY |
+                                   NTREE_CHANGED_NODE_OUTPUT | NTREE_CHANGED_INTERFACE;
     if ((ntree.runtime->changed_flag & allowed_flags) == ntree.runtime->changed_flag) {
       return;
     }
@@ -1096,7 +1113,7 @@ void BKE_ntree_update_tag_node_property(bNodeTree *ntree, bNode *node)
 
 void BKE_ntree_update_tag_node_new(bNodeTree *ntree, bNode *node)
 {
-  add_node_tag(ntree, node, NTREE_CHANGED_NODE_PROPERTY);
+  add_node_tag(ntree, node, NTREE_CHANGED_ADDED_NODE);
 }
 
 void BKE_ntree_update_tag_socket_property(bNodeTree *ntree, bNodeSocket *socket)
@@ -1106,7 +1123,7 @@ void BKE_ntree_update_tag_socket_property(bNodeTree *ntree, bNodeSocket *socket)
 
 void BKE_ntree_update_tag_socket_new(bNodeTree *ntree, bNodeSocket *socket)
 {
-  add_socket_tag(ntree, socket, NTREE_CHANGED_SOCKET_PROPERTY);
+  add_socket_tag(ntree, socket, NTREE_CHANGED_ADDED_SOCKET);
 }
 
 void BKE_ntree_update_tag_socket_removed(bNodeTree *ntree)
@@ -1121,7 +1138,7 @@ void BKE_ntree_update_tag_socket_type(bNodeTree *ntree, bNodeSocket *socket)
 
 void BKE_ntree_update_tag_socket_availability(bNodeTree *ntree, bNodeSocket *socket)
 {
-  add_socket_tag(ntree, socket, NTREE_CHANGED_SOCKET_PROPERTY);
+  add_socket_tag(ntree, socket, NTREE_CHANGED_ADDED_SOCKET);
 }
 
 void BKE_ntree_update_tag_node_removed(bNodeTree *ntree)
