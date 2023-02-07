@@ -1504,12 +1504,13 @@ static void bm_to_mesh_verts(const BMesh &bm,
                              MutableSpan<bool> select_vert,
                              MutableSpan<bool> hide_vert)
 {
+  const Vector<BMToMeshLayerInfo> info = get_bm_to_mesh_copy_info(bm.vdata, mesh.vdata);
   MutableSpan<float3> dst_vert_positions = mesh.vert_positions_for_write();
   threading::parallel_for(dst_vert_positions.index_range(), 1024, [&](const IndexRange range) {
     for (const int vert_i : range) {
       const BMVert &src_vert = *bm_verts[vert_i];
       copy_v3_v3(dst_vert_positions[vert_i], src_vert.co);
-      CustomData_from_bmesh_block(&bm.vdata, &mesh.vdata, src_vert.head.data, vert_i);
+      copy_bmesh_block_to_mesh_attributes(info, vert_i, src_vert.head.data);
     }
     if (!select_vert.is_empty()) {
       for (const int vert_i : range) {
@@ -1531,6 +1532,7 @@ static void bm_to_mesh_edges(const BMesh &bm,
                              MutableSpan<bool> hide_edge,
                              MutableSpan<bool> sharp_edge)
 {
+  const Vector<BMToMeshLayerInfo> info = get_bm_to_mesh_copy_info(bm.edata, mesh.edata);
   MutableSpan<MEdge> dst_edges = mesh.edges_for_write();
   threading::parallel_for(dst_edges.index_range(), 512, [&](const IndexRange range) {
     for (const int edge_i : range) {
@@ -1548,7 +1550,7 @@ static void bm_to_mesh_edges(const BMesh &bm,
         }
       }
 
-      CustomData_from_bmesh_block(&bm.edata, &mesh.edata, src_edge.head.data, edge_i);
+      copy_bmesh_block_to_mesh_attributes(info, edge_i, src_edge.head.data);
     }
     if (!select_edge.is_empty()) {
       for (const int edge_i : range) {
@@ -1575,6 +1577,7 @@ static void bm_to_mesh_faces(const BMesh &bm,
                              MutableSpan<bool> hide_poly,
                              MutableSpan<int> material_indices)
 {
+  const Vector<BMToMeshLayerInfo> info = get_bm_to_mesh_copy_info(bm.pdata, mesh.pdata);
   MutableSpan<MPoly> dst_polys = mesh.polys_for_write();
   threading::parallel_for(dst_polys.index_range(), 1024, [&](const IndexRange range) {
     for (const int face_i : range) {
@@ -1583,7 +1586,7 @@ static void bm_to_mesh_faces(const BMesh &bm,
       dst_poly.totloop = src_face.len;
       dst_poly.loopstart = BM_elem_index_get(BM_FACE_FIRST_LOOP(&src_face));
       dst_poly.flag = bm_face_flag_to_mflag(&src_face);
-      CustomData_from_bmesh_block(&bm.pdata, &mesh.pdata, src_face.head.data, face_i);
+      copy_bmesh_block_to_mesh_attributes(info, face_i, src_face.head.data);
     }
     if (!select_poly.is_empty()) {
       for (const int face_i : range) {
@@ -1605,6 +1608,7 @@ static void bm_to_mesh_faces(const BMesh &bm,
 
 static void bm_to_mesh_loops(const BMesh &bm, const Span<const BMLoop *> bm_loops, Mesh &mesh)
 {
+  const Vector<BMToMeshLayerInfo> info = get_bm_to_mesh_copy_info(bm.ldata, mesh.ldata);
   MutableSpan<MLoop> dst_loops = mesh.loops_for_write();
   threading::parallel_for(dst_loops.index_range(), 1024, [&](const IndexRange range) {
     for (const int loop_i : range) {
@@ -1612,7 +1616,7 @@ static void bm_to_mesh_loops(const BMesh &bm, const Span<const BMLoop *> bm_loop
       MLoop &dst_loop = dst_loops[loop_i];
       dst_loop.v = BM_elem_index_get(src_loop.v);
       dst_loop.e = BM_elem_index_get(src_loop.e);
-      CustomData_from_bmesh_block(&bm.ldata, &mesh.ldata, src_loop.head.data, loop_i);
+      copy_bmesh_block_to_mesh_attributes(info, loop_i, src_loop.head.data);
     }
   });
 }
