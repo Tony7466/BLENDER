@@ -142,6 +142,7 @@ typedef void *SocketGetCPPValueFunction;
 typedef struct CPPTypeHandle CPPTypeHandle;
 #endif
 
+
 /**
  * \brief Defines a socket type.
  *
