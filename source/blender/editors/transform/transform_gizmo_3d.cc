@@ -662,7 +662,7 @@ int ED_transform_calc_gizmo_stats(const bContext *C,
   zero_v3(rv3d->tw_axis_min);
   zero_v3(rv3d->tw_axis_max);
 
-  rv3d->twdrawflag = 0xFFFF;
+  rv3d->twdrawflag = short(0xFFFF);
 
   /* global, local or normal orientation?
    * if we could check 'totsel' now, this should be skipped with no selection. */
