@@ -67,11 +67,6 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
   uiItemR(layout, ptr, "distribute_method", 0, "", ICON_NONE);
 }
 
-static void node_layout_ex(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
-{
-  uiItemR(layout, ptr, "use_legacy_normal_and_rotation", 0, nullptr, ICON_NONE);
-}
-
 static void node_point_distribute_points_on_faces_update(bNodeTree *ntree, bNode *node)
 {
   bNodeSocket *sock_distance_min = static_cast<bNodeSocket *>(BLI_findlink(&node->inputs, 2));
@@ -330,132 +325,11 @@ struct AttributeOutputs {
 };
 }  // namespace
 
-static void compute_normal_and_rotation_outputs(const Mesh &mesh,
-                                                const Span<float3> bary_coords,
-                                                const Span<int> looptri_indices,
-                                                MutableSpan<float3> r_normals,
-                                                MutableSpan<float3> r_rotations)
-{
-  const bool use_normals = !r_normals.is_empty();
-  const bool use_rotations = !r_rotations.is_empty();
-
-  Array<float3> corner_normals(mesh.totloop);
-  if (use_normals || use_rotations) {
-    BKE_mesh_calc_normals_split_ex(
-        const_cast<Mesh *>(&mesh), nullptr, reinterpret_cast<float(*)[3]>(corner_normals.data()));
-  }
-
-  const Span<MLoopTri> looptris = mesh.looptris();
-
-  if (use_normals) {
-    threading::parallel_for(bary_coords.index_range(), 512, [&](const IndexRange range) {
-      for (const int i : range) {
-        const int looptri_index = looptri_indices[i];
-        const MLoopTri &looptri = looptris[looptri_index];
-        const float3 &bary_coord = bary_coords[i];
-
-        const float3 &normal0 = corner_normals[looptri.tri[0]];
-        const float3 &normal1 = corner_normals[looptri.tri[1]];
-        const float3 &normal2 = corner_normals[looptri.tri[2]];
-
-        const float3 normal = math::normalize(
-            attribute_math::mix3(bary_coord, normal0, normal1, normal2));
-        r_normals[i] = normal;
-      }
-    });
-  }
-  if (use_rotations) {
-    BLI_assert(use_normals);
-    const Span<float3> positions = mesh.vert_positions();
-    const Span<MPoly> polys = mesh.polys();
-    const Span<MLoop> loops = mesh.loops();
-    threading::parallel_for(bary_coords.index_range(), 256, [&](const IndexRange range) {
-      for (const int i : range) {
-        const int looptri_index = looptri_indices[i];
-        const MLoopTri &looptri = looptris[looptri_index];
-        const MPoly &poly = polys[looptri.poly];
-
-        /* This may not be the true normal, it can also be smoothed or based on custom normals. */
-        const float3 &normal = r_normals[i];
-
-        /* Take the first non-zero-length edge that is not aligned with the normal as tangent
-         * guess. Typically that is just the first edge. Such an edge has to exist if the polygon
-         * area is larger than zero. If it is zero, there won't be any points distributed in the
-         * polygon anyway. */
-        float3 third_axis;
-        for (const int poly_edge_i : IndexRange(poly.totloop)) {
-          const bool is_last = poly_edge_i == poly.totloop - 1;
-          const int v0 = loops[poly.loopstart + poly_edge_i].v;
-          const int v1 = loops[poly.loopstart + (is_last ? 0 : poly_edge_i + 1)].v;
-          const float3 &pos0 = positions[v0];
-          const float3 &pos1 = positions[v1];
-          const float3 tangent_guess = pos1 - pos0;
-          if (math::is_zero(tangent_guess)) {
-            continue;
-          }
-          third_axis = math::normalize(math::cross(normal, tangent_guess));
-          if (math::is_zero(third_axis)) {
-            continue;
-          }
-          break;
-        }
-
-        const float3 tangent = math::cross(third_axis, normal);
-
-        float mat[3][3];
-        copy_v3_v3(mat[0], tangent);
-        copy_v3_v3(mat[1], third_axis);
-        copy_v3_v3(mat[2], normal);
-
-        BLI_assert(is_orthonormal_m3(mat));
-        BLI_assert(std::abs(determinant_m3_array(mat) - 1.0f) < 0.0001f);
-
-        mat3_normalized_to_eul(r_rotations[i], mat);
-      }
-    });
-  }
-}
-
-static void compute_legacy_normal_and_rotation_outputs(const Mesh &mesh,
-                                                       const Span<float3> bary_coords,
-                                                       const Span<int> looptri_indices,
-                                                       MutableSpan<float3> r_normals,
-                                                       MutableSpan<float3> r_rotations)
-{
-  const Span<float3> positions = mesh.vert_positions();
-  const Span<MLoop> loops = mesh.loops();
-  const Span<MLoopTri> looptris = mesh.looptris();
-
-  for (const int i : bary_coords.index_range()) {
-    const int looptri_index = looptri_indices[i];
-    const MLoopTri &looptri = looptris[looptri_index];
-
-    const int v0_index = loops[looptri.tri[0]].v;
-    const int v1_index = loops[looptri.tri[1]].v;
-    const int v2_index = loops[looptri.tri[2]].v;
-    const float3 v0_pos = positions[v0_index];
-    const float3 v1_pos = positions[v1_index];
-    const float3 v2_pos = positions[v2_index];
-
-    float3 normal;
-    if (!r_normals.is_empty() || !r_rotations.is_empty()) {
-      normal_tri_v3(normal, v0_pos, v1_pos, v2_pos);
-    }
-    if (!r_normals.is_empty()) {
-      r_normals[i] = normal;
-    }
-    if (!r_rotations.is_empty()) {
-      r_rotations[i] = normal_to_euler_rotation(normal);
-    }
-  }
-}
-
 BLI_NOINLINE static void compute_attribute_outputs(const Mesh &mesh,
                                                    PointCloud &points,
                                                    const Span<float3> bary_coords,
                                                    const Span<int> looptri_indices,
-                                                   const AttributeOutputs &attribute_outputs,
-                                                   const bool use_legacy_normal_and_rotation)
+                                                   const AttributeOutputs &attribute_outputs)
 {
   MutableAttributeAccessor point_attributes = points.attributes_for_write();
 
@@ -474,21 +348,34 @@ BLI_NOINLINE static void compute_attribute_outputs(const Mesh &mesh,
         attribute_outputs.rotation_id.get(), ATTR_DOMAIN_POINT);
   }
 
-  threading::parallel_for(bary_coords.index_range(), 1024, [&](const IndexRange range) {
-    for (const int i : range) {
-      const int looptri_index = looptri_indices[i];
-      const float3 &bary_coord = bary_coords[i];
-      ids.span[i] = noise::hash(noise::hash_float(bary_coord), looptri_index);
-    }
-  });
+  const Span<float3> positions = mesh.vert_positions();
+  const Span<MLoop> loops = mesh.loops();
+  const Span<MLoopTri> looptris = mesh.looptris();
 
-  if (use_legacy_normal_and_rotation) {
-    compute_legacy_normal_and_rotation_outputs(
-        mesh, bary_coords, looptri_indices, normals.span, rotations.span);
-  }
-  else {
-    compute_normal_and_rotation_outputs(
-        mesh, bary_coords, looptri_indices, normals.span, rotations.span);
+  for (const int i : bary_coords.index_range()) {
+    const int looptri_index = looptri_indices[i];
+    const MLoopTri &looptri = looptris[looptri_index];
+    const float3 &bary_coord = bary_coords[i];
+
+    const int v0_index = loops[looptri.tri[0]].v;
+    const int v1_index = loops[looptri.tri[1]].v;
+    const int v2_index = loops[looptri.tri[2]].v;
+    const float3 v0_pos = positions[v0_index];
+    const float3 v1_pos = positions[v1_index];
+    const float3 v2_pos = positions[v2_index];
+
+    ids.span[i] = noise::hash(noise::hash_float(bary_coord), looptri_index);
+
+    float3 normal;
+    if (!normals.span.is_empty() || !rotations.span.is_empty()) {
+      normal_tri_v3(normal, v0_pos, v1_pos, v2_pos);
+    }
+    if (!normals.span.is_empty()) {
+      normals.span[i] = normal;
+    }
+    if (!rotations.span.is_empty()) {
+      rotations.span[i] = normal_to_euler_rotation(normal);
+    }
   }
 
   ids.finish();
@@ -620,13 +507,7 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
 
   propagate_existing_attributes(mesh, attributes, *pointcloud, bary_coords, looptri_indices);
 
-  const bool use_legacy_normal_and_rotation = params.node().custom2 != 0;
-  compute_attribute_outputs(mesh,
-                            *pointcloud,
-                            bary_coords,
-                            looptri_indices,
-                            attribute_outputs,
-                            use_legacy_normal_and_rotation);
+  compute_attribute_outputs(mesh, *pointcloud, bary_coords, looptri_indices, attribute_outputs);
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -640,9 +521,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   const Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
 
   AttributeOutputs attribute_outputs;
+  attribute_outputs.normal_id = params.get_output_anonymous_attribute_id_if_needed("Normal");
   attribute_outputs.rotation_id = params.get_output_anonymous_attribute_id_if_needed("Rotation");
-  attribute_outputs.normal_id = params.get_output_anonymous_attribute_id_if_needed(
-      "Normal", bool(attribute_outputs.rotation_id));
 
   lazy_threading::send_hint();
 
@@ -687,6 +567,5 @@ void register_node_type_geo_distribute_points_on_faces()
   ntype.declare = file_ns::node_declare;
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   ntype.draw_buttons = file_ns::node_layout;
-  ntype.draw_buttons_ex = file_ns::node_layout_ex;
   nodeRegisterType(&ntype);
 }
