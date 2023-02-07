@@ -112,7 +112,6 @@ class AxisToEulerFunction : public mf::MultiFunction {
     const float tertiary_factor = invert_tertiary ? -1.0f : 1.0f;
 
     for (const int64_t i : mask) {
-      std::cout << i << ": " << primaries[i] << "\n";
       float3 primary = math::normalize(primaries[i]);
       float3 secondary = secondaries[i];
       float3 tertiary;
