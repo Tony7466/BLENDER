@@ -2707,7 +2707,9 @@ static wmGizmoGroup *gizmogroup_xform_find(TransInfo *t)
 
 void transform_gizmo_3d_model_from_constraint_and_mode_init(TransInfo *t)
 {
-  wmGizmo *gizmo_modal_current = t->region ? WM_gizmomap_get_modal(t->region->gizmo_map) : nullptr;
+  wmGizmo *gizmo_modal_current = t->region && t->region->gizmo_map ?
+                                     WM_gizmomap_get_modal(t->region->gizmo_map) :
+                                     nullptr;
   if (!gizmo_modal_current || !ELEM(gizmo_modal_current->parent_gzgroup->type,
                                     g_GGT_xform_gizmo,
                                     g_GGT_xform_gizmo_context)) {
