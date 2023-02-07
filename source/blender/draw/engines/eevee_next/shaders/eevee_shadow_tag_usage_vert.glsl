@@ -10,7 +10,9 @@
 
 void main()
 {
-  ObjectBounds bounds = bounds_buf[drw_ResourceID];
+  PASS_RESOURCE_ID
+
+  ObjectBounds bounds = bounds_buf[resource_id];
 
   interp.P = bounds.bounding_corners[0].xyz;
   interp.P += bounds.bounding_corners[1].xyz * max(0, pos.x);

@@ -90,6 +90,7 @@ void shadow_tag_usage_tilemap(uint l_idx, vec3 P, float dist_to_cam, const bool 
 
 void shadow_tag_usage(vec3 vP, vec3 P, vec2 pixel)
 {
+  /* TODO (Miguel Pozo): Is this correct for orto view? */
   float dist_to_cam = length(vP);
 
   LIGHT_FOREACH_BEGIN_DIRECTIONAL (light_cull_buf, l_idx) {

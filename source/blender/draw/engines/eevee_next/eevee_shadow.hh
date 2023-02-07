@@ -200,6 +200,7 @@ class ShadowModule {
   PassMain::Sub *tilemap_usage_transparent_ps_ = nullptr;
   GPUBatch *box_batch_ = nullptr;
 
+  Texture usage_tag_debug_tx_; /*TODO (Miguel Pozo): Delete this! */
   Framebuffer usage_tag_fb;
 
   /** List of Resource IDs (to get bounds) for tagging passes. */

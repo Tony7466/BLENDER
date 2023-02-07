@@ -722,13 +722,14 @@ void ShadowModule::begin_sync()
       PassMain::Sub &sub = pass.sub("Transparent");
       /* WORKAROUND: The DRW_STATE_WRITE_STENCIL is here only to avoid enabling the rasterizer
        * discard inside draw manager. */
-      sub.state_set(DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_WRITE_STENCIL);
+      sub.state_set(DRW_STATE_CULL_FRONT | DRW_STATE_WRITE_STENCIL | DRW_STATE_WRITE_COLOR);
       sub.state_stencil(0, 0, 0);
       sub.framebuffer_set(&usage_tag_fb);
       sub.shader_set(inst_.shaders.static_shader_get(SHADOW_TILEMAP_TAG_USAGE_TRANSPARENT));
       sub.bind_ssbo("tilemaps_buf", &tilemap_pool.tilemaps_data);
       sub.bind_ssbo("tiles_buf", &tilemap_pool.tiles_data);
       sub.bind_ssbo("bounds_buf", &manager.bounds_buf.current());
+      sub.bind_texture("depth_tx", &render_buffers.depth_tx);
       sub.push_constant("tilemap_projection_ratio", &tilemap_projection_ratio_);
       inst_.lights.bind_resources(&sub);
 
@@ -1095,8 +1096,10 @@ void ShadowModule::set_view(View &view)
   tilemap_projection_ratio_ = tilemap_pixel_radius() /
                               screen_pixel_radius(view, int2(target_size));
 
-  /* TODO(Miguel Pozo): Attach a lower-res hiZ copy for improved performance */
-  usage_tag_fb.ensure(GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.depth_tx));
+  usage_tag_debug_tx_.ensure_2d(GPU_RGB16F, int2(target_size));
+  usage_tag_debug_tx_.clear(float4(0));
+  usage_tag_fb.ensure(GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(usage_tag_debug_tx_));
+  // usage_tag_fb.ensure(int2(target_size));
 
   render_fb_.ensure(int2(SHADOW_TILEMAP_RES * shadow_page_size_));
 
@@ -1146,6 +1149,7 @@ void ShadowModule::set_view(View &view)
 
 void ShadowModule::debug_draw(View &view, GPUFrameBuffer *view_fb)
 {
+  // GPU_texture_copy(inst_.render_buffers.combined_tx, usage_tag_debug_tx_);
   if (!ELEM(inst_.debug_mode,
             eDebugMode::DEBUG_SHADOW_TILEMAPS,
             eDebugMode::DEBUG_SHADOW_VALUES,
