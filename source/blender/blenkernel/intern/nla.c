@@ -1315,14 +1315,12 @@ NlaStrip *BKE_nlastrip_find_active(NlaTrack *nlt)
   return nlastrip_find_active(&nlt->strips);
 }
 
-// TODO add in documentation
 void BKE_nlastrip_remove(ListBase *strips, NlaStrip *strip)
 {
   BLI_assert(strips);
   BLI_remlink(strips, strip);
 }
 
-// TODO add in documentation
 void BKE_nlastrip_remove_and_free(ListBase *strips, NlaStrip *strip, const bool do_id_user)
 {
   BKE_nlastrip_remove(strips, strip);

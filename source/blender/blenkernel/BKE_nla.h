@@ -100,9 +100,14 @@ struct NlaTrack *BKE_nlatrack_add(struct AnimData *adt,
  */
 struct NlaStrip *BKE_nlastrip_new(struct bAction *act);
 
-// TODO add documentation on why
+/*
+ * Removes the given NLA strip from the list of strips provided
+ */
 void BKE_nlastrip_remove(ListBase *strips, struct NlaStrip *strip);
-// TODO add documentation on why
+
+/*
+ * Removes the given NLA strip from the list of strips provided, and frees it's memory
+ */
 void BKE_nlastrip_remove_and_free(ListBase *strips, struct NlaStrip *strip, const bool do_id_user);
 
 /**
