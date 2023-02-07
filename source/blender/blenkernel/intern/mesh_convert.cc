@@ -359,10 +359,10 @@ static Mesh *mesh_nurbs_displist_to_mesh(const Curve *cu, const ListBase *dispba
               (*mloopuv)[1] = (v % dl->nr) / float(orco_sizeu);
 
               /* cyclic correction */
-              if ((ELEM(i, 1, 2)) && (*mloopuv)[0] == 0.0f) {
+              if (ELEM(i, 1, 2) && (*mloopuv)[0] == 0.0f) {
                 (*mloopuv)[0] = 1.0f;
               }
-              if ((ELEM(i, 0, 1)) && (*mloopuv)[1] == 0.0f) {
+              if (ELEM(i, 0, 1) && (*mloopuv)[1] == 0.0f) {
                 (*mloopuv)[1] = 1.0f;
               }
             }
@@ -802,8 +802,7 @@ static Mesh *mesh_new_from_evaluated_curve_type_object(const Object *evaluated_o
   }
   if (const Curves *curves = get_evaluated_curves_from_object(evaluated_object)) {
     const blender::bke::AnonymousAttributePropagationInfo propagation_info;
-    return blender::bke::curve_to_wire_mesh(blender::bke::CurvesGeometry::wrap(curves->geometry),
-                                            propagation_info);
+    return blender::bke::curve_to_wire_mesh(curves->geometry.wrap(), propagation_info);
   }
   return nullptr;
 }
