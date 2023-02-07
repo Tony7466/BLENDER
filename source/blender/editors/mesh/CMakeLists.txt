@@ -12,6 +12,7 @@ set(INC
   ../../draw
   ../../geometry
   ../../gpu
+  ../../functions
   ../../imbuf
   ../../makesdna
   ../../makesrna
