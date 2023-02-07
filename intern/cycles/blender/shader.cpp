@@ -550,9 +550,6 @@ static ShaderNode *add_node(Scene *scene,
     GlossyBsdfNode *glossy = graph->create_node<GlossyBsdfNode>();
 
     switch (b_glossy_node.distribution()) {
-      case BL::ShaderNodeBsdfAnisotropic::distribution_SHARP:
-        glossy->set_distribution(CLOSURE_BSDF_REFLECTION_ID);
-        break;
       case BL::ShaderNodeBsdfAnisotropic::distribution_BECKMANN:
         glossy->set_distribution(CLOSURE_BSDF_MICROFACET_BECKMANN_ID);
         break;
@@ -572,9 +569,6 @@ static ShaderNode *add_node(Scene *scene,
     BL::ShaderNodeBsdfGlass b_glass_node(b_node);
     GlassBsdfNode *glass = graph->create_node<GlassBsdfNode>();
     switch (b_glass_node.distribution()) {
-      case BL::ShaderNodeBsdfGlass::distribution_SHARP:
-        glass->set_distribution(CLOSURE_BSDF_SHARP_GLASS_ID);
-        break;
       case BL::ShaderNodeBsdfGlass::distribution_BECKMANN:
         glass->set_distribution(CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID);
         break;
@@ -591,9 +585,6 @@ static ShaderNode *add_node(Scene *scene,
     BL::ShaderNodeBsdfRefraction b_refraction_node(b_node);
     RefractionBsdfNode *refraction = graph->create_node<RefractionBsdfNode>();
     switch (b_refraction_node.distribution()) {
-      case BL::ShaderNodeBsdfRefraction::distribution_SHARP:
-        refraction->set_distribution(CLOSURE_BSDF_REFRACTION_ID);
-        break;
       case BL::ShaderNodeBsdfRefraction::distribution_BECKMANN:
         refraction->set_distribution(CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID);
         break;
