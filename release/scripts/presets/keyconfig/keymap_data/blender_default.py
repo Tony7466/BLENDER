@@ -3598,7 +3598,7 @@ def _grease_pencil_selection(params, use_select_mouse=True):
         # Select alternate
         ("gpencil.select_alternate", {"type": 'L', "value": 'PRESS', "shift": True}, None),
         # Select grouped
-        ("gpencil.select_grouped", {"type": 'G', "value": 'PRESS', "shift": True}, None),
+        op_menu("VIEW3D_MT_select_gpencil_similar", {"type": 'G', "value": 'PRESS', "shift": True}),
         # Select more/less
         ("gpencil.select_more", {"type": 'NUMPAD_PLUS', "value": 'PRESS', "ctrl": True, "repeat": True}, None),
         ("gpencil.select_less", {"type": 'NUMPAD_MINUS', "value": 'PRESS', "ctrl": True, "repeat": True}, None),

@@ -22,12 +22,14 @@
 
 #include "DNA_gpencil_types.h"
 #include "DNA_material_types.h"
+#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 
 #include "BKE_context.h"
+#include "BKE_deform.h"
 #include "BKE_gpencil.h"
 #include "BKE_gpencil_curve.h"
 #include "BKE_gpencil_geom.h"
@@ -54,6 +56,7 @@
 
 #include "gpencil_intern.h"
 
+#define SELECT_SIMILAR_PRECISION 10000.0f
 /* -------------------------------------------------------------------- */
 /** \name Shared Utilities
  * \{ */
@@ -737,20 +740,164 @@ void GPENCIL_OT_select_random(wmOperatorType *ot)
  * \{ */
 
 typedef enum eGP_SelectGrouped {
-  /* Select strokes in the same layer */
+  /* Select strokes in the same layer. */
   GP_SEL_SAME_LAYER = 0,
-
-  /* Select strokes with the same color */
+  /* Select strokes with the same color. */
   GP_SEL_SAME_MATERIAL = 1,
-
-  /* TODO: All with same prefix -
-   * Useful for isolating all layers for a particular character for instance. */
-  /* TODO: All with same appearance - color/opacity/volumetric/fills ? */
+  /* Select strokes with the same number of points. */
+  GP_SEL_SAME_POINTNUM = 2,
+  /* Select points with the same point opacity. */
+  GP_SEL_SAME_OPACITY = 3,
+  /* Select points with the same point thickness. */
+  GP_SEL_SAME_THICKNESS = 4,
+  /* Select points with the same color attribute (Hue only). */
+  GP_SEL_SAME_COLORATTR = 5,
+  /* Select points with the same vertex weight. */
+  GP_SEL_SAME_VERTEXWEIGHT = 6,
 } eGP_SelectGrouped;
 
 /* ----------------------------------- */
+/* Helpers to set as selected strokes and points. */
+static void gpencil_set_stroke_point(bGPDstroke *gps, bGPDspoint *pt)
+{
+  pt->flag |= GP_SPOINT_SELECT;
+  gps->flag |= GP_STROKE_SELECT;
+}
 
-/* On each visible layer, check for selected strokes - if found, select all others */
+static void gpencil_set_curve_point(bGPDstroke *gps, bGPDcurve_point *gpc_pt)
+{
+  bGPDcurve *gpc = gps->editcurve;
+  gpc_pt->flag |= GP_CURVE_POINT_SELECT;
+  BEZT_SEL_ALL(&gpc_pt->bezt);
+  gpc->flag |= GP_CURVE_SELECT;
+  gps->flag |= GP_STROKE_SELECT;
+}
+
+static void gpencil_select_stroke(bGPdata *gpd, bGPDstroke *gps, const bool is_curve)
+{
+  if (is_curve) {
+    bGPDcurve *gpc = gps->editcurve;
+    for (int i = 0; i < gpc->tot_curve_points; i++) {
+      bGPDcurve_point *gpc_pt = &gpc->curve_points[i];
+      gpencil_set_curve_point(gps, gpc_pt);
+    }
+  }
+  else {
+    bGPDspoint *pt;
+    int i;
+    for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
+      gpencil_set_stroke_point(gps, pt);
+    }
+  }
+  BKE_gpencil_stroke_select_index_set(gpd, gps);
+}
+
+/* Helper to add point data to the selected data.
+ * The values are converted to int with a precision of four digits in order to use
+ * and INT hash. */
+static void gpencil_prepare_point_data(bGPdata *gpd,
+                                       bGPDstroke *gps,
+                                       const eGP_SelectGrouped action,
+                                       GSet *selected)
+{
+  const bool is_curve_edit = (bool)GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd);
+  const int def_nr = gpd->vertex_group_active_index - 1;
+
+  int value = 0;
+  if (is_curve_edit) {
+    bGPDcurve *gpc = gps->editcurve;
+    for (int i = 0; i < gpc->tot_curve_points; i++) {
+      bGPDcurve_point *gpc_pt = &gpc->curve_points[i];
+      if (gpc_pt->flag & GP_CURVE_POINT_SELECT) {
+        switch (action) {
+          case GP_SEL_SAME_OPACITY:
+            value = gpc_pt->strength * SELECT_SIMILAR_PRECISION;
+            break;
+          case GP_SEL_SAME_THICKNESS:
+            value = gps->thickness * gpc_pt->pressure * SELECT_SIMILAR_PRECISION;
+            break;
+          case GP_SEL_SAME_COLORATTR: {
+            float hsv[3];
+            rgb_to_hsv_compat_v(gpc_pt->vert_color, hsv);
+            value = hsv[0] * SELECT_SIMILAR_PRECISION;
+            break;
+          }
+          case GP_SEL_SAME_VERTEXWEIGHT:
+            /* No weight in curve mode. */
+            break;
+          default:
+            break;
+        }
+        BLI_gset_add(selected, POINTER_FROM_INT(value));
+      }
+    }
+  }
+  else {
+    bGPDspoint *pt;
+    int i;
+
+    for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
+      if (pt->flag & GP_SPOINT_SELECT) {
+        switch (action) {
+          case GP_SEL_SAME_OPACITY:
+            value = pt->strength * SELECT_SIMILAR_PRECISION;
+            break;
+          case GP_SEL_SAME_THICKNESS:
+            value = gps->thickness * pt->pressure * SELECT_SIMILAR_PRECISION;
+            break;
+          case GP_SEL_SAME_COLORATTR: {
+            float hsv[3];
+            rgb_to_hsv_compat_v(pt->vert_color, hsv);
+            value = hsv[0] * SELECT_SIMILAR_PRECISION;
+            break;
+          }
+          case GP_SEL_SAME_VERTEXWEIGHT: {
+            if (gps->dvert == NULL) {
+              value = 0;
+            }
+            else {
+              MDeformVert *dvert = &gps->dvert[i];
+              if ((dvert != NULL) && (def_nr != -1)) {
+                MDeformWeight *dw = BKE_defvert_find_index(dvert, def_nr);
+                float weight = dw ? dw->weight : 0.0f;
+                value = weight * SELECT_SIMILAR_PRECISION;
+              }
+            }
+            break;
+          }
+          default:
+            break;
+        }
+        BLI_gset_add(selected, POINTER_FROM_INT(value));
+      }
+    }
+  }
+}
+
+static bool is_point_similar(GSet *selected, int keyvalue, const int threshold)
+{
+  /* If no range, just need check the value in the hash table. */
+  if (threshold == 0) {
+    return BLI_gset_haskey(selected, POINTER_FROM_INT(keyvalue));
+  }
+
+  /* If a threshold is added, need to check all values to verify if some of them is in the range.
+   */
+  const int from_value = max_ii(keyvalue - threshold, 0);
+  const int to_value = keyvalue + threshold;
+
+  GSetIterator gs_iter;
+  GSET_ITER (gs_iter, selected) {
+    int hash_value = POINTER_AS_INT(BLI_gsetIterator_getKey(&gs_iter));
+    if ((hash_value >= from_value) && (hash_value <= to_value)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/* On each visible layer, check for selected strokes - if found, select all others. */
 static bool gpencil_select_same_layer(bContext *C)
 {
   Scene *scene = CTX_data_scene(C);
@@ -767,7 +914,7 @@ static bool gpencil_select_same_layer(bContext *C)
       continue;
     }
 
-    /* Search for a selected stroke */
+    /* Search for a selected stroke. */
     for (gps = gpf->strokes.first; gps; gps = gps->next) {
       if (ED_gpencil_stroke_can_use(C, gps)) {
         if (gps->flag & GP_STROKE_SELECT) {
@@ -777,41 +924,18 @@ static bool gpencil_select_same_layer(bContext *C)
       }
     }
 
-    /* Select all if found */
+    /* Select all other strokes if found. */
     if (found) {
-      if (is_curve_edit) {
-        for (gps = gpf->strokes.first; gps; gps = gps->next) {
-          if (gps->editcurve != NULL && ED_gpencil_stroke_can_use(C, gps)) {
-            bGPDcurve *gpc = gps->editcurve;
-            for (int i = 0; i < gpc->tot_curve_points; i++) {
-              bGPDcurve_point *gpc_pt = &gpc->curve_points[i];
-              gpc_pt->flag |= GP_CURVE_POINT_SELECT;
-              BEZT_SEL_ALL(&gpc_pt->bezt);
-            }
-            gpc->flag |= GP_CURVE_SELECT;
-            gps->flag |= GP_STROKE_SELECT;
-            BKE_gpencil_stroke_select_index_set(gpd, gps);
-
-            changed = true;
-          }
+      for (gps = gpf->strokes.first; gps; gps = gps->next) {
+        if (!ED_gpencil_stroke_can_use(C, gps)) {
+          continue;
         }
-      }
-      else {
-        for (gps = gpf->strokes.first; gps; gps = gps->next) {
-          if (ED_gpencil_stroke_can_use(C, gps)) {
-            bGPDspoint *pt;
-            int i;
-
-            for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-              pt->flag |= GP_SPOINT_SELECT;
-            }
-
-            gps->flag |= GP_STROKE_SELECT;
-            BKE_gpencil_stroke_select_index_set(gpd, gps);
-
-            changed = true;
-          }
+        if (is_curve_edit && gps->editcurve == NULL) {
+          continue;
         }
+        gpencil_select_stroke(gpd, gps, is_curve_edit);
+
+        changed = true;
       }
     }
   }
@@ -820,69 +944,194 @@ static bool gpencil_select_same_layer(bContext *C)
   return changed;
 }
 
-/* Select all strokes with same colors as selected ones */
+/* Select all strokes with same colors as selected ones. */
 static bool gpencil_select_same_material(bContext *C)
 {
   bGPdata *gpd = ED_gpencil_data_get_active(C);
   const bool is_curve_edit = (bool)GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd);
-  /* First, build set containing all the colors of selected strokes */
-  GSet *selected_colors = BLI_gset_int_new("GP Selected Colors");
+  /* First, build set containing all selected data. */
+  GSet *selected = BLI_gset_int_new(__func__);
 
   bool changed = false;
 
   CTX_DATA_BEGIN (C, bGPDstroke *, gps, editable_gpencil_strokes) {
     if (gps->flag & GP_STROKE_SELECT) {
-      /* add instead of insert here, otherwise the uniqueness check gets skipped,
-       * and we get many duplicate entries...
-       */
-      BLI_gset_add(selected_colors, POINTER_FROM_INT(gps->mat_nr));
+      BLI_gset_add(selected, POINTER_FROM_INT(gps->mat_nr));
     }
   }
   CTX_DATA_END;
 
-  /* Second, select any visible stroke that uses these colors */
-  if (is_curve_edit) {
-    CTX_DATA_BEGIN (C, bGPDstroke *, gps, editable_gpencil_strokes) {
-      if (gps->editcurve != NULL &&
-          BLI_gset_haskey(selected_colors, POINTER_FROM_INT(gps->mat_nr))) {
-        bGPDcurve *gpc = gps->editcurve;
-        for (int i = 0; i < gpc->tot_curve_points; i++) {
-          bGPDcurve_point *gpc_pt = &gpc->curve_points[i];
-          gpc_pt->flag |= GP_CURVE_POINT_SELECT;
-          BEZT_SEL_ALL(&gpc_pt->bezt);
-        }
-        gpc->flag |= GP_CURVE_SELECT;
-        gps->flag |= GP_STROKE_SELECT;
-        BKE_gpencil_stroke_select_index_set(gpd, gps);
-
-        changed = true;
-      }
+  /* Second, select any visible stroke that uses these material. */
+  CTX_DATA_BEGIN (C, bGPDstroke *, gps, editable_gpencil_strokes) {
+    if (is_curve_edit && gps->editcurve == NULL) {
+      continue;
     }
-    CTX_DATA_END;
-  }
-  else {
-    CTX_DATA_BEGIN (C, bGPDstroke *, gps, editable_gpencil_strokes) {
-      if (BLI_gset_haskey(selected_colors, POINTER_FROM_INT(gps->mat_nr))) {
-        /* select this stroke */
-        bGPDspoint *pt;
-        int i;
-
-        for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-          pt->flag |= GP_SPOINT_SELECT;
-        }
-
-        gps->flag |= GP_STROKE_SELECT;
-        BKE_gpencil_stroke_select_index_set(gpd, gps);
-
-        changed = true;
-      }
+    if (BLI_gset_haskey(selected, POINTER_FROM_INT(gps->mat_nr))) {
+      gpencil_select_stroke(gpd, gps, is_curve_edit);
+      changed = true;
     }
-    CTX_DATA_END;
   }
+  CTX_DATA_END;
 
   /* Free memory. */
-  if (selected_colors != NULL) {
-    BLI_gset_free(selected_colors, NULL);
+  if (selected != NULL) {
+    BLI_gset_free(selected, NULL);
+  }
+
+  return changed;
+}
+
+/* Select all strokes with same number of points as selected ones. */
+static bool gpencil_select_same_pointnum(bContext *C, wmOperator *op)
+{
+  bGPdata *gpd = ED_gpencil_data_get_active(C);
+  const bool is_curve_edit = (bool)GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd);
+  GSet *selected = BLI_gset_int_new(__func__);
+
+  bool changed = false;
+
+  CTX_DATA_BEGIN (C, bGPDstroke *, gps, editable_gpencil_strokes) {
+    if (gps->flag & GP_STROKE_SELECT) {
+      BLI_gset_add(selected, POINTER_FROM_INT(gps->totpoints));
+    }
+  }
+  CTX_DATA_END;
+
+  const int threshold = RNA_int_get(op->ptr, "threshold");
+  CTX_DATA_BEGIN (C, bGPDstroke *, gps, editable_gpencil_strokes) {
+    if (is_curve_edit && gps->editcurve == NULL) {
+      continue;
+    }
+    if (is_point_similar(selected, gps->totpoints, threshold)) {
+      gpencil_select_stroke(gpd, gps, is_curve_edit);
+      changed = true;
+    }
+  }
+  CTX_DATA_END;
+
+  /* Free memory. */
+  if (selected != NULL) {
+    BLI_gset_free(selected, NULL);
+  }
+
+  return changed;
+}
+
+static bool gpencil_select_same_by_point(bContext *C, wmOperator *op)
+{
+  bGPdata *gpd = ED_gpencil_data_get_active(C);
+  const eGP_SelectGrouped action = RNA_enum_get(op->ptr, "action");
+  const bool is_curve_edit = (bool)GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd);
+  const int def_nr = gpd->vertex_group_active_index - 1;
+
+  GSet *selected = BLI_gset_int_new(__func__);
+  bool changed = false;
+
+  /* Prepare the actual selected data points. */
+  CTX_DATA_BEGIN (C, bGPDstroke *, gps, editable_gpencil_strokes) {
+    if (gps->flag & GP_STROKE_SELECT) {
+      gpencil_prepare_point_data(gpd, gps, action, selected);
+    }
+  }
+  CTX_DATA_END;
+
+  /* Use two different threshold to be used for int or fractional values in the UI. */
+  const int threshold = RNA_int_get(op->ptr, "threshold") * SELECT_SIMILAR_PRECISION;
+  const int threshold_fac = RNA_float_get(op->ptr, "threshold_factor") * SELECT_SIMILAR_PRECISION;
+  int threshold_value = 0;
+
+  int value = 0;
+  CTX_DATA_BEGIN (C, bGPDstroke *, gps, editable_gpencil_strokes) {
+    if (is_curve_edit && gps->editcurve == NULL) {
+      continue;
+    }
+    if (is_curve_edit) {
+      bGPDcurve *gpc = gps->editcurve;
+      for (int i = 0; i < gpc->tot_curve_points; i++) {
+        bGPDcurve_point *gpc_pt = &gpc->curve_points[i];
+
+        switch (action) {
+          case GP_SEL_SAME_OPACITY:
+            value = gpc_pt->strength * SELECT_SIMILAR_PRECISION;
+            threshold_value = threshold_fac;
+            break;
+          case GP_SEL_SAME_THICKNESS:
+            value = gps->thickness * gpc_pt->pressure * SELECT_SIMILAR_PRECISION;
+            threshold_value = threshold;
+            break;
+          case GP_SEL_SAME_COLORATTR: {
+            float hsv[3];
+            rgb_to_hsv_compat_v(gpc_pt->vert_color, hsv);
+            value = hsv[0] * SELECT_SIMILAR_PRECISION;
+            threshold_value = threshold_fac;
+            break;
+          }
+          case GP_SEL_SAME_VERTEXWEIGHT:
+            continue;
+            break;
+          default:
+            continue;
+            break;
+        }
+        if (is_point_similar(selected, value, threshold_value)) {
+          gpencil_set_curve_point(gps, gpc_pt);
+          BKE_gpencil_stroke_select_index_set(gpd, gps);
+          changed = true;
+        }
+      }
+    }
+    else {
+      bGPDspoint *pt;
+      int i;
+      for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
+        switch (action) {
+          case GP_SEL_SAME_OPACITY:
+            value = pt->strength * SELECT_SIMILAR_PRECISION;
+            threshold_value = threshold_fac;
+            break;
+          case GP_SEL_SAME_THICKNESS:
+            value = gps->thickness * pt->pressure * SELECT_SIMILAR_PRECISION;
+            threshold_value = threshold;
+            break;
+          case GP_SEL_SAME_COLORATTR: {
+            float hsv[3];
+            rgb_to_hsv_compat_v(pt->vert_color, hsv);
+            value = hsv[0] * SELECT_SIMILAR_PRECISION;
+            threshold_value = threshold_fac;
+            break;
+          }
+          case GP_SEL_SAME_VERTEXWEIGHT: {
+            if (gps->dvert == NULL) {
+              value = 0;
+            }
+            else {
+              MDeformVert *dvert = &gps->dvert[i];
+              if ((dvert != NULL) && (def_nr != -1)) {
+                MDeformWeight *dw = BKE_defvert_find_index(dvert, def_nr);
+                float weight = dw ? dw->weight : 0.0f;
+                value = weight * SELECT_SIMILAR_PRECISION;
+              }
+            }
+            threshold_value = threshold_fac;
+            break;
+          }
+          default:
+            continue;
+            break;
+        }
+        if (is_point_similar(selected, value, threshold_value)) {
+          gpencil_set_stroke_point(gps, pt);
+          BKE_gpencil_stroke_select_index_set(gpd, gps);
+          changed = true;
+        }
+      }
+    }
+  }
+  CTX_DATA_END;
+
+  /* Free memory. */
+  if (selected != NULL) {
+    BLI_gset_free(selected, NULL);
   }
 
   return changed;
@@ -892,7 +1141,7 @@ static bool gpencil_select_same_material(bContext *C)
 
 static int gpencil_select_grouped_exec(bContext *C, wmOperator *op)
 {
-  eGP_SelectGrouped mode = RNA_enum_get(op->ptr, "type");
+  eGP_SelectGrouped action = RNA_enum_get(op->ptr, "action");
   bGPdata *gpd = ED_gpencil_data_get_active(C);
   /* If not edit/sculpt mode, the event has been caught but not processed. */
   if (GPENCIL_NONE_EDIT_MODE(gpd)) {
@@ -901,12 +1150,21 @@ static int gpencil_select_grouped_exec(bContext *C, wmOperator *op)
 
   bool changed = false;
 
-  switch (mode) {
+  switch (action) {
     case GP_SEL_SAME_LAYER:
       changed = gpencil_select_same_layer(C);
       break;
     case GP_SEL_SAME_MATERIAL:
       changed = gpencil_select_same_material(C);
+      break;
+    case GP_SEL_SAME_POINTNUM:
+      changed = gpencil_select_same_pointnum(C, op);
+      break;
+    case GP_SEL_SAME_OPACITY:
+    case GP_SEL_SAME_THICKNESS:
+    case GP_SEL_SAME_COLORATTR:
+    case GP_SEL_SAME_VERTEXWEIGHT:
+      changed = gpencil_select_same_by_point(C, op);
       break;
 
     default:
@@ -927,16 +1185,44 @@ static int gpencil_select_grouped_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static void gpencil_select_grouped_ui(bContext *UNUSED(C), wmOperator *op)
+{
+  uiLayout *layout = op->layout;
+  uiLayout *row;
+
+  const eGP_SelectGrouped action = RNA_enum_get(op->ptr, "action");
+
+  uiLayoutSetPropSep(layout, true);
+  uiLayoutSetPropDecorate(layout, false);
+  row = uiLayoutRow(layout, true);
+  uiItemR(row, op->ptr, "action", 0, NULL, ICON_NONE);
+
+  if (ELEM(action, GP_SEL_SAME_POINTNUM, GP_SEL_SAME_THICKNESS)) {
+    row = uiLayoutRow(layout, true);
+    uiItemR(row, op->ptr, "threshold", 0, NULL, ICON_NONE);
+  }
+
+  if (ELEM(action, GP_SEL_SAME_OPACITY, GP_SEL_SAME_COLORATTR, GP_SEL_SAME_VERTEXWEIGHT)) {
+    row = uiLayoutRow(layout, true);
+    uiItemR(row, op->ptr, "threshold_factor", 0, NULL, ICON_NONE);
+  }
+}
+
 void GPENCIL_OT_select_grouped(wmOperatorType *ot)
 {
   static const EnumPropertyItem prop_select_grouped_types[] = {
       {GP_SEL_SAME_LAYER, "LAYER", 0, "Layer", "Shared layers"},
       {GP_SEL_SAME_MATERIAL, "MATERIAL", 0, "Material", "Shared materials"},
+      {GP_SEL_SAME_POINTNUM, "POINTNUM", 0, "Number of Points", "Shared same number of points"},
+      {GP_SEL_SAME_OPACITY, "OPACITY", 0, "Opacity", "Shared same opacity"},
+      {GP_SEL_SAME_THICKNESS, "THICKNESS", 0, "Thickness", "Shared same thickness"},
+      {GP_SEL_SAME_COLORATTR, "COLOR", 0, "Color Attribute", "Shared same Hue color attribute"},
+      {GP_SEL_SAME_VERTEXWEIGHT, "VERTEXWEIGHT", 0, "Vertex Weight", "Shared same Vertex Weight"},
       {0, NULL, 0, NULL, NULL},
   };
 
   /* identifiers */
-  ot->name = "Select Grouped";
+  ot->name = "Select Similar";
   ot->idname = "GPENCIL_OT_select_grouped";
   ot->description = "Select all strokes with similar characteristics";
 
@@ -944,13 +1230,32 @@ void GPENCIL_OT_select_grouped(wmOperatorType *ot)
   ot->invoke = WM_menu_invoke;
   ot->exec = gpencil_select_grouped_exec;
   ot->poll = gpencil_select_poll;
+  ot->ui = gpencil_select_grouped_ui;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* props */
   ot->prop = RNA_def_enum(
-      ot->srna, "type", prop_select_grouped_types, GP_SEL_SAME_LAYER, "Type", "");
+      ot->srna, "action", prop_select_grouped_types, GP_SEL_SAME_LAYER, "Action", "");
+  RNA_def_int(ot->srna,
+              "threshold",
+              0,
+              0,
+              100,
+              "Threshold",
+              "Tolerance of the selection. Higher values select a wider range",
+              0,
+              100);
+  RNA_def_float_factor(ot->srna,
+                       "threshold_factor",
+                       0.0f,
+                       0.0f,
+                       1.0f,
+                       "Threshold",
+                       "Tolerance of the selection. Higher values select a wider range",
+                       0.0f,
+                       1.0f);
 }
 
 /** \} */
