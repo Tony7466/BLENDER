@@ -347,12 +347,10 @@ static void compute_normal_outputs(const Mesh &mesh,
       const MLoopTri &looptri = looptris[looptri_index];
       const float3 &bary_coord = bary_coords[i];
 
-      const float3 &normal0 = corner_normals[looptri.tri[0]];
-      const float3 &normal1 = corner_normals[looptri.tri[1]];
-      const float3 &normal2 = corner_normals[looptri.tri[2]];
-
       const float3 normal = math::normalize(
-          attribute_math::mix3(bary_coord, normal0, normal1, normal2));
+          bke::mesh_surface_sample::sample_corner_attrribute_with_bary_coords(
+              bary_coord, looptri, corner_normals.as_span()));
+
       r_normals[i] = normal;
     }
   });
