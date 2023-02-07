@@ -17,7 +17,7 @@
 #include "BKE_ccg.h"
 #include "BKE_pbvh.h"
 
-#include "DRW_pbvh.h"
+#include "DRW_pbvh.hh"
 
 #include "bmesh.h"
 #include "pbvh_intern.hh"
@@ -736,7 +736,7 @@ struct EdgeQueueContext {
   int cd_face_node_offset;
 };
 
-/* only tag'd edges are in the queue */
+/* Only tagged edges are in the queue. */
 #ifdef USE_EDGEQUEUE_TAG
 #  define EDGE_QUEUE_TEST(e) (BM_elem_flag_test((CHECK_TYPE_INLINE(e, BMEdge *), e), BM_ELEM_TAG))
 #  define EDGE_QUEUE_ENABLE(e) \
@@ -1416,8 +1416,8 @@ static void pbvh_bmesh_collapse_edge(PBVH *pbvh,
     add_v3_v3(v_conn->no, v_del->no);
     normalize_v3(v_conn->no);
 
-    /* update boundboxes attached to the connected vertex
-     * note that we can often get-away without this but causes T48779 */
+    /* Update bounding boxes attached to the connected vertex.
+     * Note that we can often get-away without this but causes T48779. */
     BM_LOOPS_OF_VERT_ITER_BEGIN (l, v_conn) {
       PBVHNode *f_node = pbvh_bmesh_node_from_face(pbvh, l->f);
       f_node->flag |= PBVH_UpdateDrawBuffers | PBVH_UpdateNormals | PBVH_UpdateBB;
@@ -1528,7 +1528,7 @@ bool pbvh_bmesh_node_raycast(PBVHNode *node,
             if (j == 0 || len_squared_v3v3(location, cos[j]) <
                               len_squared_v3v3(location, nearest_vertex_co)) {
               copy_v3_v3(nearest_vertex_co, cos[j]);
-              r_active_vertex->i = (intptr_t)node->bm_orvert[node->bm_ortri[i][j]];
+              r_active_vertex->i = intptr_t(node->bm_orvert[node->bm_ortri[i][j]]);
             }
           }
         }
@@ -1560,7 +1560,7 @@ bool pbvh_bmesh_node_raycast(PBVHNode *node,
               if (j == 0 || len_squared_v3v3(location, v_tri[j]->co) <
                                 len_squared_v3v3(location, nearest_vertex_co)) {
                 copy_v3_v3(nearest_vertex_co, v_tri[j]->co);
-                r_active_vertex->i = (intptr_t)v_tri[j];
+                r_active_vertex->i = intptr_t(v_tri[j]);
               }
             }
           }
