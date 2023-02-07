@@ -7,6 +7,7 @@
 #include "BLI_array_utils.hh"
 #include "BLI_index_mask_ops.hh"
 #include "BLI_rand.hh"
+#include "BLI_rect.h"
 
 #include "BKE_attribute.hh"
 #include "BKE_crazyspace.hh"
@@ -419,6 +420,104 @@ bool select_pick(const ViewContext &vc,
   }
 
   return changed || found;
+}
+
+bool select_box(const ViewContext &vc,
+                bke::CurvesGeometry &curves,
+                const eAttrDomain selection_domain,
+                const struct rcti rect,
+                const eSelectOp sel_op)
+{
+  rctf rectf;
+  BLI_rctf_rcti_copy(&rectf, &rect);
+
+  bke::GSpanAttributeWriter selection = ensure_selection_attribute(
+      curves, selection_domain, CD_PROP_BOOL);
+
+  bool changed = false;
+  if (sel_op == SEL_OP_SET) {
+    fill_selection_false(selection.span);
+    changed = true;
+  }
+
+  selection.span.type().to_static_type_tag<bool, float>([&](auto type_tag) {
+    using T = typename decltype(type_tag)::type;
+    if constexpr (std::is_void_v<T>) {
+      BLI_assert_unreachable();
+    }
+    else {
+      MutableSpan<T> selection_typed = selection.span.typed<T>();
+
+      float4x4 projection;
+      ED_view3d_ob_project_mat_get(vc.rv3d, vc.obact, projection.ptr());
+
+      const bke::crazyspace::GeometryDeformation deformation =
+          bke::crazyspace::get_evaluated_curves_deformation(*vc.depsgraph, *vc.obact);
+      const OffsetIndices points_by_curve = curves.points_by_curve();
+      if (selection_domain == ATTR_DOMAIN_POINT) {
+        threading::parallel_for(curves.points_range(), 1024, [&](const IndexRange point_range) {
+          for (const int point_i : point_range) {
+            const float3 pos = deformation.positions[point_i];
+
+            /* Find the position of the point in screen space. */
+            float2 pos_proj;
+            ED_view3d_project_float_v2_m4(vc.region, pos, pos_proj, projection.ptr());
+            if (BLI_rctf_isect_pt_v(&rectf, pos_proj)) {
+              switch (sel_op) {
+                case SEL_OP_ADD:
+                case SEL_OP_SET:
+                  selection_typed[point_i] = T(1);
+                  break;
+                case SEL_OP_SUB:
+                  selection_typed[point_i] = T(0);
+                  break;
+                case SEL_OP_XOR:
+                  selection_typed[point_i] = T(1 - selection_typed[point_i]);
+                  break;
+                default:
+                  break;
+              }
+              changed = true;
+            }
+          }
+        });
+      }
+      else if (selection_domain == ATTR_DOMAIN_CURVE) {
+        threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange curves_range) {
+          for (const int curve_i : curves_range) {
+            for (const int point_i : points_by_curve[curve_i]) {
+              const float3 pos = deformation.positions[point_i];
+
+              /* Find the position of the point in screen space. */
+              float2 pos_proj;
+              ED_view3d_project_float_v2_m4(vc.region, pos, pos_proj, projection.ptr());
+              if (BLI_rctf_isect_pt_v(&rectf, pos_proj)) {
+                switch (sel_op) {
+                  case SEL_OP_ADD:
+                  case SEL_OP_SET:
+                    selection_typed[curve_i] = T(1);
+                    break;
+                  case SEL_OP_SUB:
+                    selection_typed[curve_i] = T(0);
+                    break;
+                  case SEL_OP_XOR:
+                    selection_typed[curve_i] = T(1 - selection_typed[curve_i]);
+                    break;
+                  default:
+                    break;
+                }
+                break;
+                changed = true;
+              }
+            }
+          }
+        });
+      }
+    }
+  });
+
+  selection.finish();
+  return changed;
 }
 
 }  // namespace blender::ed::curves
