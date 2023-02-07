@@ -30,6 +30,7 @@
 #include "DNA_brush_types.h"
 #include "DNA_camera_types.h"
 #include "DNA_collection_types.h"
+#include "DNA_gpencil_types.h"
 #include "DNA_light_types.h"
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
@@ -47,6 +48,7 @@
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
+#include "BKE_gpencil.h"
 #include "BKE_icons.h"
 #include "BKE_idprop.h"
 #include "BKE_image.h"
@@ -366,6 +368,7 @@ static ID *duplicate_ids(ID *id, const bool allow_failure)
     case ID_MA:
     case ID_TE:
     case ID_LA:
+    case ID_GD:
     case ID_WO: {
       BLI_assert(BKE_previewimg_id_supports_jobs(id));
       ID *id_copy = BKE_id_copy_ex(nullptr,
@@ -765,6 +768,8 @@ struct ObjectPreviewData {
   /* Copy of the object to create the preview for. The copy is for thread safety (and to insert
    * it into its own main). */
   Object *object;
+  /* Datablock copy. Can be nullptr. */
+  ID *datablock;
   /* Current frame. */
   int cfra;
   int sizex;
@@ -806,6 +811,11 @@ static Scene *object_preview_scene_create(const struct ObjectPreviewData *previe
                                           Depsgraph **r_depsgraph)
 {
   Scene *scene = BKE_scene_add(preview_data->pr_main, "Object preview scene");
+  const bool is_gpencil = (preview_data->object == nullptr ||
+                           (preview_data->object != nullptr &&
+                            preview_data->object->type == OB_GPENCIL));
+  Object *ob_gpencil_temp = nullptr;
+
   /* Preview need to be in the current frame to get a thumbnail similar of what
    * viewport displays. */
   scene->r.cfra = preview_data->cfra;
@@ -814,13 +824,35 @@ static Scene *object_preview_scene_create(const struct ObjectPreviewData *previe
   Depsgraph *depsgraph = DEG_graph_new(
       preview_data->pr_main, scene, view_layer, DAG_EVAL_VIEWPORT);
 
-  BLI_assert(preview_data->object != nullptr);
-  BLI_addtail(&preview_data->pr_main->objects, preview_data->object);
+  if (!is_gpencil) {
+    BLI_assert(preview_data->object != nullptr);
+    BLI_addtail(&preview_data->pr_main->objects, preview_data->object);
 
-  BKE_collection_object_add(preview_data->pr_main, scene->master_collection, preview_data->object);
+    BKE_collection_object_add(
+        preview_data->pr_main, scene->master_collection, preview_data->object);
+  }
+  else {
+    /* Grease pencil draw engine needs an object to draw the datablock. */
+    ob_gpencil_temp = BKE_object_add_for_data(preview_data->pr_main,
+                                              scene,
+                                              view_layer,
+                                              OB_GPENCIL,
+                                              "preview_object",
+                                              preview_data->datablock,
+                                              true);
+    BLI_assert(ob_gpencil_temp != nullptr);
+    /* Copy the materials to get full color previews. */
+    const short *materials_len_p = BKE_id_material_len_p(preview_data->datablock);
+    if (materials_len_p && *materials_len_p > 0) {
+      BKE_object_materials_test(preview_data->pr_main, ob_gpencil_temp, preview_data->datablock);
+    }
+  }
 
-  Object *camera_object = object_preview_camera_create(
-      preview_data->pr_main, scene, view_layer, preview_data->object);
+  Object *camera_object = object_preview_camera_create(preview_data->pr_main,
+                                                       scene,
+                                                       view_layer,
+                                                       is_gpencil ? ob_gpencil_temp :
+                                                                    preview_data->object);
 
   scene->camera = camera_object;
   scene->r.xsch = preview_data->sizex;
@@ -828,7 +860,8 @@ static Scene *object_preview_scene_create(const struct ObjectPreviewData *previe
   scene->r.size = 100;
 
   BKE_view_layer_synced_ensure(scene, view_layer);
-  Base *preview_base = BKE_view_layer_base_find(view_layer, preview_data->object);
+  Base *preview_base = BKE_view_layer_base_find(
+      view_layer, is_gpencil ? ob_gpencil_temp : preview_data->object);
   /* For 'view selected' below. */
   preview_base->flag |= BASE_SELECTED;
 
@@ -851,13 +884,32 @@ static void object_preview_render(IconPreview *preview, IconPreviewSize *preview
 
   BLI_assert(preview->id_copy && (preview->id_copy != preview->id));
 
+  const bool is_gpencil = GS(preview->id->name) == ID_GD;
+
   struct ObjectPreviewData preview_data = {};
   preview_data.pr_main = preview_main;
   /* Act on a copy. */
-  preview_data.object = (Object *)preview->id_copy;
-  preview_data.cfra = preview->scene->r.cfra;
+  if (!is_gpencil) {
+    preview_data.object = (Object *)preview->id_copy;
+    preview_data.datablock = nullptr;
+  }
+  else {
+    preview_data.object = nullptr;
+    preview_data.datablock = (ID *)preview->id_copy;
+  }
   preview_data.sizex = preview_sized->sizex;
   preview_data.sizey = preview_sized->sizey;
+
+  /* Grease Pencil needs to find the frame number to make preview visible. */
+  if (is_gpencil) {
+    int f_min, f_max;
+    bGPdata *gpd = (bGPdata *)preview->id_copy;
+    BKE_gpencil_frame_min_max(gpd, &f_min, &f_max);
+    const int framenum = ((preview->scene->r.cfra < f_min) || (preview->scene->r.cfra > f_max)) ?
+                             f_min :
+                             preview->scene->r.cfra;
+    preview_data.cfra = framenum;
+  }
 
   Depsgraph *depsgraph;
   Scene *scene = object_preview_scene_create(&preview_data, &depsgraph);
@@ -1034,6 +1086,7 @@ static void action_preview_render(IconPreview *preview, IconPreviewSize *preview
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
 /* -------------------------------------------------------------------- */
 /** \name New Shader Preview System
  * \{ */
@@ -1637,6 +1690,9 @@ static void icon_preview_startjob_all_sizes(void *customdata,
           continue;
         case ID_AC:
           action_preview_render(ip, cur_size);
+          continue;
+        case ID_GD:
+          object_preview_render(ip, cur_size);
           continue;
         default:
           /* Fall through to the same code as the `ip->id == nullptr` case. */

@@ -973,6 +973,7 @@ class VIEW3D_MT_editor_menus(Menu):
                 layout.menu("VIEW3D_MT_edit_gpencil")
                 layout.menu("VIEW3D_MT_edit_gpencil_stroke")
                 layout.menu("VIEW3D_MT_edit_gpencil_point")
+                layout.menu("VIEW3D_MT_edit_gpencil_asset")
             elif obj and obj.mode == 'WEIGHT_GPENCIL':
                 layout.menu("VIEW3D_MT_weight_gpencil")
             if obj and obj.mode == 'VERTEX_GPENCIL':
@@ -5223,6 +5224,26 @@ class VIEW3D_MT_edit_gpencil_point(Menu):
         layout.menu("VIEW3D_MT_gpencil_vertex_group")
 
 
+class VIEW3D_MT_edit_gpencil_asset(Menu):
+    bl_label = "Asset"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator("gpencil.asset_create", text="Active Layer").source = 'LAYER'
+        layout.operator("gpencil.asset_create", text="All Layers").source = 'LAYERS_ALL'
+        layout.operator("gpencil.asset_create", text="All Layers Separated").source = 'LAYERS_SPLIT'
+        layout.separator()
+
+        layout.operator("gpencil.asset_create", text="Active Keyframe (Active Layer)").source = 'KEYFRAME'
+        layout.operator("gpencil.asset_create", text="Active Keyframe (All Layers)").source = 'KEYFRAME_ALL'
+        layout.operator("gpencil.asset_create", text="Selected Keyframes").source = 'KEYFRAME_SELECTED'
+        layout.separator()
+
+        layout.operator("gpencil.asset_create", text="Selected Strokes").source = 'SELECTED'
+        layout.operator("gpencil.asset_create", text="Selected Points").source = 'POINT'
+
+
 class VIEW3D_MT_weight_gpencil(Menu):
     bl_label = "Weights"
 
@@ -7465,6 +7486,10 @@ class VIEW3D_MT_gpencil_edit_context_menu(Menu):
 
             col.operator("gpencil.reproject", text="Reproject")
 
+        # Assets
+        col.separator()
+        col.operator_menu_enum("gpencil.asset_create", "source", text="Create Grease Pencil Asset")
+
 
 def draw_gpencil_layer_active(context, layout):
     gpl = context.active_gpencil_layer
@@ -8104,6 +8129,7 @@ classes = (
     VIEW3D_MT_edit_gpencil,
     VIEW3D_MT_edit_gpencil_stroke,
     VIEW3D_MT_edit_gpencil_point,
+    VIEW3D_MT_edit_gpencil_asset,
     VIEW3D_MT_edit_gpencil_delete,
     VIEW3D_MT_edit_gpencil_showhide,
     VIEW3D_MT_weight_gpencil,
