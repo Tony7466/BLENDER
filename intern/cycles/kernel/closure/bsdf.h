@@ -108,8 +108,7 @@ ccl_device_inline bool bsdf_is_transmission(ccl_private const ShaderClosure *sc,
 ccl_device_inline int bsdf_sample(KernelGlobals kg,
                                   ccl_private ShaderData *sd,
                                   ccl_private const ShaderClosure *sc,
-                                  float randu,
-                                  float randv,
+                                  const float3 rand,
                                   ccl_private Spectrum *eval,
                                   ccl_private float3 *wo,
                                   ccl_private float *pdf,
@@ -123,35 +122,35 @@ ccl_device_inline int bsdf_sample(KernelGlobals kg,
 
   switch (sc->type) {
     case CLOSURE_BSDF_DIFFUSE_ID:
-      label = bsdf_diffuse_sample(sc, Ng, sd->wi, randu, randv, eval, wo, pdf);
+      label = bsdf_diffuse_sample(sc, Ng, sd->wi, rand.x, rand.y, eval, wo, pdf);
       *sampled_roughness = one_float2();
       *eta = 1.0f;
       break;
 #if defined(__SVM__) || defined(__OSL__)
     case CLOSURE_BSDF_OREN_NAYAR_ID:
-      label = bsdf_oren_nayar_sample(sc, Ng, sd->wi, randu, randv, eval, wo, pdf);
+      label = bsdf_oren_nayar_sample(sc, Ng, sd->wi, rand.x, rand.y, eval, wo, pdf);
       *sampled_roughness = one_float2();
       *eta = 1.0f;
       break;
 #  ifdef __OSL__
     case CLOSURE_BSDF_PHONG_RAMP_ID:
       label = bsdf_phong_ramp_sample(
-          sc, Ng, sd->wi, randu, randv, eval, wo, pdf, sampled_roughness);
+          sc, Ng, sd->wi, rand.x, rand.y, eval, wo, pdf, sampled_roughness);
       *eta = 1.0f;
       break;
     case CLOSURE_BSDF_DIFFUSE_RAMP_ID:
-      label = bsdf_diffuse_ramp_sample(sc, Ng, sd->wi, randu, randv, eval, wo, pdf);
+      label = bsdf_diffuse_ramp_sample(sc, Ng, sd->wi, rand.x, rand.y, eval, wo, pdf);
       *sampled_roughness = one_float2();
       *eta = 1.0f;
       break;
 #  endif
     case CLOSURE_BSDF_TRANSLUCENT_ID:
-      label = bsdf_translucent_sample(sc, Ng, sd->wi, randu, randv, eval, wo, pdf);
+      label = bsdf_translucent_sample(sc, Ng, sd->wi, rand.x, rand.y, eval, wo, pdf);
       *sampled_roughness = one_float2();
       *eta = 1.0f;
       break;
     case CLOSURE_BSDF_TRANSPARENT_ID:
-      label = bsdf_transparent_sample(sc, Ng, sd->wi, randu, randv, eval, wo, pdf);
+      label = bsdf_transparent_sample(sc, Ng, sd->wi, rand.x, rand.y, eval, wo, pdf);
       *sampled_roughness = zero_float2();
       *eta = 1.0f;
       break;
@@ -159,7 +158,7 @@ ccl_device_inline int bsdf_sample(KernelGlobals kg,
     case CLOSURE_BSDF_REFRACTION_ID:
     case CLOSURE_BSDF_SHARP_GLASS_ID:
       label = bsdf_microfacet_sharp_sample(
-          sc, Ng, sd->wi, randu, randv, eval, wo, pdf, sampled_roughness, eta);
+          sc, Ng, sd->wi, rand.x, rand.y, rand.z, eval, wo, pdf, sampled_roughness, eta);
       break;
     case CLOSURE_BSDF_MICROFACET_GGX_ID:
     case CLOSURE_BSDF_MICROFACET_GGX_FRESNEL_ID:
@@ -167,66 +166,66 @@ ccl_device_inline int bsdf_sample(KernelGlobals kg,
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
     case CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID:
       label = bsdf_microfacet_ggx_sample(
-          sc, Ng, sd->wi, randu, randv, eval, wo, pdf, sampled_roughness, eta);
+          sc, Ng, sd->wi, rand.x, rand.y, rand.z, eval, wo, pdf, sampled_roughness, eta);
       break;
     case CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID:
     case CLOSURE_BSDF_MICROFACET_MULTI_GGX_FRESNEL_ID:
       label = bsdf_microfacet_multi_ggx_sample(
-          kg, sc, Ng, sd->wi, randu, randv, eval, wo, pdf, &sd->lcg_state, sampled_roughness, eta);
+          kg, sc, Ng, sd->wi, rand.x, rand.y, eval, wo, pdf, &sd->lcg_state, sampled_roughness, eta);
       break;
     case CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID:
     case CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_FRESNEL_ID:
       label = bsdf_microfacet_multi_ggx_glass_sample(
-          kg, sc, Ng, sd->wi, randu, randv, eval, wo, pdf, &sd->lcg_state, sampled_roughness, eta);
+          kg, sc, Ng, sd->wi, rand.x, rand.y, eval, wo, pdf, &sd->lcg_state, sampled_roughness, eta);
       break;
     case CLOSURE_BSDF_MICROFACET_BECKMANN_ID:
     case CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID:
     case CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID:
       label = bsdf_microfacet_beckmann_sample(
-          sc, Ng, sd->wi, randu, randv, eval, wo, pdf, sampled_roughness, eta);
+          sc, Ng, sd->wi, rand.x, rand.y, rand.z, eval, wo, pdf, sampled_roughness, eta);
       break;
     case CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID:
       label = bsdf_ashikhmin_shirley_sample(
-          sc, Ng, sd->wi, randu, randv, eval, wo, pdf, sampled_roughness);
+          sc, Ng, sd->wi, rand.x, rand.y, eval, wo, pdf, sampled_roughness);
       *eta = 1.0f;
       break;
     case CLOSURE_BSDF_ASHIKHMIN_VELVET_ID:
-      label = bsdf_ashikhmin_velvet_sample(sc, Ng, sd->wi, randu, randv, eval, wo, pdf);
+      label = bsdf_ashikhmin_velvet_sample(sc, Ng, sd->wi, rand.x, rand.y, eval, wo, pdf);
       *sampled_roughness = one_float2();
       *eta = 1.0f;
       break;
     case CLOSURE_BSDF_DIFFUSE_TOON_ID:
-      label = bsdf_diffuse_toon_sample(sc, Ng, sd->wi, randu, randv, eval, wo, pdf);
+      label = bsdf_diffuse_toon_sample(sc, Ng, sd->wi, rand.x, rand.y, eval, wo, pdf);
       *sampled_roughness = one_float2();
       *eta = 1.0f;
       break;
     case CLOSURE_BSDF_GLOSSY_TOON_ID:
-      label = bsdf_glossy_toon_sample(sc, Ng, sd->wi, randu, randv, eval, wo, pdf);
+      label = bsdf_glossy_toon_sample(sc, Ng, sd->wi, rand.x, rand.y, eval, wo, pdf);
       // double check if this is valid
       *sampled_roughness = one_float2();
       *eta = 1.0f;
       break;
     case CLOSURE_BSDF_HAIR_REFLECTION_ID:
       label = bsdf_hair_reflection_sample(
-          sc, Ng, sd->wi, randu, randv, eval, wo, pdf, sampled_roughness);
+          sc, Ng, sd->wi, rand.x, rand.y, eval, wo, pdf, sampled_roughness);
       *eta = 1.0f;
       break;
     case CLOSURE_BSDF_HAIR_TRANSMISSION_ID:
       label = bsdf_hair_transmission_sample(
-          sc, Ng, sd->wi, randu, randv, eval, wo, pdf, sampled_roughness);
+          sc, Ng, sd->wi, rand.x, rand.y, eval, wo, pdf, sampled_roughness);
       *eta = 1.0f;
       break;
     case CLOSURE_BSDF_HAIR_PRINCIPLED_ID:
       label = bsdf_principled_hair_sample(
-          kg, sc, sd, randu, randv, eval, wo, pdf, sampled_roughness, eta);
+          kg, sc, sd, rand.x, rand.y, rand.z, eval, wo, pdf, sampled_roughness, eta);
       break;
     case CLOSURE_BSDF_PRINCIPLED_DIFFUSE_ID:
-      label = bsdf_principled_diffuse_sample(sc, Ng, sd->wi, randu, randv, eval, wo, pdf);
+      label = bsdf_principled_diffuse_sample(sc, Ng, sd->wi, rand.x, rand.y, eval, wo, pdf);
       *sampled_roughness = one_float2();
       *eta = 1.0f;
       break;
     case CLOSURE_BSDF_PRINCIPLED_SHEEN_ID:
-      label = bsdf_principled_sheen_sample(sc, Ng, sd->wi, randu, randv, eval, wo, pdf);
+      label = bsdf_principled_sheen_sample(sc, Ng, sd->wi, rand.x, rand.y, eval, wo, pdf);
       *sampled_roughness = one_float2();
       *eta = 1.0f;
       break;
