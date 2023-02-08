@@ -57,14 +57,8 @@ void main()
   vec3 near_plane_os = point_world_to_object(near_plane_ws);
   vec3 view_direction_os = normalize(point_world_to_object(interp.P) - near_plane_os);
 
-  const ObjectBounds bounds = bounds_buf[resource_id];
-
-  vec3 aabb_min_os = point_world_to_object(bounds.bounding_corners[0].xyz);
-  vec3 aabb_max_os = point_world_to_object(
-      bounds.bounding_corners[0].xyz + bounds.bounding_corners[1].xyz +
-      bounds.bounding_corners[2].xyz + bounds.bounding_corners[3].xyz);
-
-  float near_box_t_os = ray_aabb(near_plane_os, view_direction_os, aabb_min_os, aabb_max_os);
+  float near_box_t_os = ray_aabb(
+      near_plane_os, view_direction_os, interp.aabb_min_os, interp.aabb_max_os);
   vec3 near_box_os = near_plane_os + view_direction_os * near_box_t_os;
   vec3 near_box_ws = point_object_to_world(near_box_os);
 

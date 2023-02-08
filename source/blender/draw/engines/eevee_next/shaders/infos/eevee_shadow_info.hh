@@ -54,7 +54,9 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_tag_usage_opaque)
 
 GPU_SHADER_INTERFACE_INFO(eevee_shadow_tag_transparent_iface, "interp")
     .smooth(Type::VEC3, "P")
-    .smooth(Type::VEC3, "vP");
+    .smooth(Type::VEC3, "vP")
+    .flat(Type::VEC3, "aabb_min_os")
+    .flat(Type::VEC3, "aabb_max_os");
 
 GPU_SHADER_CREATE_INFO(eevee_shadow_tag_usage_transparent)
     .do_static_compilation(true)
