@@ -106,6 +106,11 @@ const char *GPU_shader_get_name(GPUShader *shader);
 bool GPU_shader_transform_feedback_enable(GPUShader *shader, struct GPUVertBuf *vertbuf);
 void GPU_shader_transform_feedback_disable(GPUShader *shader);
 
+/* Shader cache warming. Cache can be warmed using PSO descriptors
+ * from a specified parent shader. */
+void GPU_shader_set_parent(GPUShader *shader, GPUShader *parent);
+void GPU_shader_warm_cache(GPUShader *shader, int limit);
+
 /** DEPRECATED: Kept only because of BGL API. */
 int GPU_shader_get_program(GPUShader *shader);
 

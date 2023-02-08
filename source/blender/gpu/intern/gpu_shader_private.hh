@@ -34,6 +34,12 @@ class Shader {
   /** For debugging purpose. */
   char name[64];
 
+  /* Parent shader can be used for shaders which are derived from the same source material.
+   * The child shader can pull information from its parent to prepare additional resources
+   * such as PSOs upfront. This enables asynchronous PSO compilation which mitigates stuttering
+   * when updating new materials. */
+  Shader *parent_shader_ = nullptr;
+
  public:
   Shader(const char *name);
   virtual ~Shader();
@@ -43,6 +49,9 @@ class Shader {
   virtual void fragment_shader_from_glsl(MutableSpan<const char *> sources) = 0;
   virtual void compute_shader_from_glsl(MutableSpan<const char *> sources) = 0;
   virtual bool finalize(const shader::ShaderCreateInfo *info = nullptr) = 0;
+  /* Pre-warms PSOs using parent shader's cached PSO descriptors. Limit specifies maximum PSOs to
+   * warm. If -1, compiles all PSO permutations in parent shader.*/
+  virtual void warm_cache(int limit) = 0;
 
   virtual void transform_feedback_names_set(Span<const char *> name_list,
                                             eGPUShaderTFBType geom_type) = 0;
@@ -69,7 +78,17 @@ class Shader {
   inline const char *const name_get() const
   {
     return name;
-  };
+  }
+
+  inline void parent_set(Shader *parent)
+  {
+    parent_shader_ = parent;
+  }
+
+  inline Shader *parent_get() const
+  {
+    return parent_shader_;
+  }
 
  protected:
   void print_log(
