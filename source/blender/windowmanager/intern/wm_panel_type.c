@@ -11,6 +11,7 @@
  */
 
 #include <stdio.h>
+#include<stdbool.h>
 
 #include "BLI_sys_types.h"
 
@@ -22,6 +23,14 @@
 #include "BKE_screen.h"
 
 #include "WM_api.h"
+
+
+typedef struct PanelType {
+  char idname[64];
+  char label[64];
+  struct PanelType *parent;
+  ListBase children;
+} PanelType;
 
 static GHash *g_paneltypes_hash = NULL;
 
@@ -44,11 +53,22 @@ PanelType *WM_paneltype_find(const char *idname, bool quiet)
 bool WM_paneltype_add(PanelType *pt)
 {
   BLI_ghash_insert(g_paneltypes_hash, pt->idname, pt);
+
+   if (pt->parent) {
+    BLI_addtail(&pt->parent->children, pt);
+  }
+
   return true;
 }
 
 void WM_paneltype_remove(PanelType *pt)
 {
+
+
+  if (pt->parent) {
+    BLI_remlink(&pt->parent->children, pt);
+  }
+
   const bool ok = BLI_ghash_remove(g_paneltypes_hash, pt->idname, NULL, NULL);
 
   BLI_assert(ok);
