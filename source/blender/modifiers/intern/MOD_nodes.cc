@@ -411,6 +411,27 @@ static bool logging_enabled(const ModifierEvalContext *ctx)
 static const std::string use_attribute_suffix = "_use_attribute";
 static const std::string attribute_name_suffix = "_attribute_name";
 
+std::optional<StringRef> MOD_nodes_property_try_get_attribute(const NodesModifierData &nmd,
+                                                              const StringRef identifier)
+{
+  if (!nmd.settings.properties) {
+    return std::nullopt;
+  }
+  const std::string use_attribute_name = identifier + use_attribute_suffix;
+  const IDProperty *use_attribute_prop = IDP_GetPropertyFromGroup(nmd.settings.properties,
+                                                                  use_attribute_name.c_str());
+  if (!use_attribute_prop) {
+    return std::nullopt;
+  }
+  if (IDP_Int(use_attribute_prop) == 0) {
+    return std::nullopt;
+  }
+  const std::string name_prop_name = identifier + attribute_name_suffix;
+  const IDProperty *name_prop = IDP_GetPropertyFromGroup(nmd.settings.properties,
+                                                         name_prop_name.c_str());
+  return IDP_String(name_prop);
+}
+
 /**
  * \return Whether using an attribute to input values of this type is supported.
  */

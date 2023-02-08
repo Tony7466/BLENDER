@@ -352,6 +352,10 @@ void OBJECT_OT_quadriflow_remesh(struct wmOperatorType *ot);
 void OBJECT_OT_data_transfer(struct wmOperatorType *ot);
 void OBJECT_OT_datalayout_transfer(struct wmOperatorType *ot);
 
+/* geometry_nodes_wrapper.c */
+
+void OBJECT_OT_new_geometry_node_group_wrapper(struct wmOperatorType *ot);
+
 #ifdef __cplusplus
 }
 #endif

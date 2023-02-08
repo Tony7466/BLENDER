@@ -6,6 +6,17 @@ struct NodesModifierData;
 struct Object;
 
 #ifdef __cplusplus
+#  include <optional>
+
+#  include "BLI_string_ref.hh"
+#endif
+
+#ifdef __cplusplus
+std::optional<blender::StringRef> MOD_nodes_property_try_get_attribute(
+    const NodesModifierData &nmd, const blender::StringRef identifier);
+#endif
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 

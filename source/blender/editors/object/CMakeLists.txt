@@ -33,6 +33,7 @@ set(INC_SYS
 )
 
 set(SRC
+  geometry_nodes_wrapper.cc
   object_add.cc
   object_bake.cc
   object_bake_api.cc
