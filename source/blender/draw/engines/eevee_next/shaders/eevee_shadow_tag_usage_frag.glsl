@@ -67,7 +67,16 @@ void main()
 
     vec3 P = near_plane_ws + (view_direction_ws * t);
     vec3 vP = near_plane_vs + (view_direction_vs * t);
+    /* TODO (Miguel Pozo): Pass step size to ensure conservative enough LOD selection */
     shadow_tag_usage(vP, P, gl_FragCoord.xy);
+
+    /* Ensure that step_size is as large as possible,
+     * but (hopefully) not larger than the smallest possible page size. */
+    step_size = pixel_world_radius * SHADOW_PAGE_RES * 0.5;
+    bool is_persp = (ProjectionMatrix[3][3] == 0.0);
+    if (is_persp) {
+      step_size *= max(0.01f, t);
+    }
   }
 
   outDebug.rgb = near_plane_ws + (view_direction_ws * near_box_t);

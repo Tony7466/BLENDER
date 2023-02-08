@@ -217,6 +217,7 @@ class ShadowModule {
   int3 dispatch_depth_scan_size_;
   /* Ratio between tile-map pixel world "radius" and film pixel world "radius". */
   float tilemap_projection_ratio_;
+  float pixel_world_radius_;
 
   /* Statistics that are read back to CPU after a few frame (to avoid stall). */
   SwapChain<ShadowStatisticsBuf, 5> statistics_buf_;

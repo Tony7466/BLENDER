@@ -66,6 +66,7 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_tag_usage_transparent)
     .storage_buf(5, Qualifier::READ_WRITE, "ShadowTileMapData", "tilemaps_buf[]")
     .storage_buf(6, Qualifier::READ_WRITE, "ShadowTileDataPacked", "tiles_buf[]")
     .push_constant(Type::FLOAT, "tilemap_projection_ratio")
+    .push_constant(Type::FLOAT, "pixel_world_radius")
     .vertex_out(eevee_shadow_tag_transparent_iface)
     .fragment_out(0, Type::VEC4, "outDebug") /*TODO (Miguel Pozo): Delete this! */
     .additional_info("draw_resource_id_varying",

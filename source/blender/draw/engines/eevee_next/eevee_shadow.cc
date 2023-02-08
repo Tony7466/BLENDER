@@ -731,6 +731,7 @@ void ShadowModule::begin_sync()
       sub.bind_ssbo("bounds_buf", &manager.bounds_buf.current());
       sub.bind_texture("depth_tx", &render_buffers.depth_tx);
       sub.push_constant("tilemap_projection_ratio", &tilemap_projection_ratio_);
+      sub.push_constant("pixel_world_radius", &pixel_world_radius_);
       inst_.lights.bind_resources(&sub);
 
       box_batch_ = DRW_cache_cube_get();
@@ -1093,8 +1094,8 @@ void ShadowModule::set_view(View &view)
   int3 target_size = inst_.render_buffers.depth_tx.size();
   dispatch_depth_scan_size_ = math::divide_ceil(target_size, int3(SHADOW_DEPTH_SCAN_GROUP_SIZE));
 
-  tilemap_projection_ratio_ = tilemap_pixel_radius() /
-                              screen_pixel_radius(view, int2(target_size));
+  pixel_world_radius_ = screen_pixel_radius(view, int2(target_size));
+  tilemap_projection_ratio_ = tilemap_pixel_radius() / pixel_world_radius_;
 
   usage_tag_debug_tx_.ensure_2d(GPU_RGB16F, int2(target_size));
   usage_tag_debug_tx_.clear(float4(0));
