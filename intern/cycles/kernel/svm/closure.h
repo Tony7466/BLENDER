@@ -347,7 +347,6 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
             bsdf->extra->cspec0 = (specular * 0.08f * tmp_col) * (1.0f - metallic) +
                                   base_color * metallic;
             bsdf->extra->color = base_color;
-            bsdf->extra->clearcoat = 0.0f;
 
             /* setup bsdf */
             if (distribution == CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID ||
@@ -397,7 +396,6 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
 
                 bsdf->extra->color = base_color;
                 bsdf->extra->cspec0 = cspec0;
-                bsdf->extra->clearcoat = 0.0f;
 
                 /* setup bsdf */
                 sd->flag |= bsdf_microfacet_ggx_fresnel_setup(bsdf, sd);
@@ -452,7 +450,6 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
 
               bsdf->extra->color = base_color;
               bsdf->extra->cspec0 = cspec0;
-              bsdf->extra->clearcoat = 0.0f;
 
               /* setup bsdf */
               sd->flag |= bsdf_microfacet_multi_ggx_glass_fresnel_setup(bsdf, sd);
@@ -467,30 +464,20 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
 #ifdef __CAUSTICS_TRICKS__
       if (kernel_data.integrator.caustics_reflective || (path_flag & PATH_RAY_DIFFUSE) == 0) {
 #endif
-        if (clearcoat > CLOSURE_WEIGHT_CUTOFF) {
-          ccl_private MicrofacetBsdf *bsdf = (ccl_private MicrofacetBsdf *)bsdf_alloc(
-              sd, sizeof(MicrofacetBsdf), weight);
-          ccl_private MicrofacetExtra *extra =
-              (bsdf != NULL) ?
-                  (ccl_private MicrofacetExtra *)closure_alloc_extra(sd, sizeof(MicrofacetExtra)) :
-                  NULL;
+        Spectrum clearcoat_weight = 0.25f * clearcoat * weight;
+        ccl_private MicrofacetBsdf *bsdf = (ccl_private MicrofacetBsdf *)bsdf_alloc(
+            sd, sizeof(MicrofacetBsdf), clearcoat_weight);
 
-          if (bsdf && extra) {
-            bsdf->N = clearcoat_normal;
-            bsdf->T = zero_float3();
-            bsdf->ior = 1.5f;
-            bsdf->extra = extra;
+        if (bsdf) {
+          bsdf->N = clearcoat_normal;
+          bsdf->T = zero_float3();
+          bsdf->ior = 1.5f;
 
-            bsdf->alpha_x = clearcoat_roughness * clearcoat_roughness;
-            bsdf->alpha_y = clearcoat_roughness * clearcoat_roughness;
+          bsdf->alpha_x = clearcoat_roughness * clearcoat_roughness;
+          bsdf->alpha_y = clearcoat_roughness * clearcoat_roughness;
 
-            bsdf->extra->color = zero_spectrum();
-            bsdf->extra->cspec0 = make_spectrum(0.04f);
-            bsdf->extra->clearcoat = clearcoat;
-
-            /* setup bsdf */
-            sd->flag |= bsdf_microfacet_ggx_clearcoat_setup(bsdf, sd);
-          }
+          /* setup bsdf */
+          sd->flag |= bsdf_microfacet_ggx_clearcoat_setup(bsdf, sd);
         }
 #ifdef __CAUSTICS_TRICKS__
       }
@@ -596,7 +583,6 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
         if (bsdf->extra) {
           bsdf->extra->color = stack_load_spectrum(stack, data_node.w);
           bsdf->extra->cspec0 = zero_spectrum();
-          bsdf->extra->clearcoat = 0.0f;
           sd->flag |= bsdf_microfacet_multi_ggx_setup(bsdf);
         }
       }
@@ -736,7 +722,6 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       kernel_assert(stack_valid(data_node.z));
       bsdf->extra->color = stack_load_spectrum(stack, data_node.z);
       bsdf->extra->cspec0 = zero_spectrum();
-      bsdf->extra->clearcoat = 0.0f;
 
       /* setup bsdf */
       sd->flag |= bsdf_microfacet_multi_ggx_glass_setup(bsdf);
