@@ -36,7 +36,8 @@ void OVERLAY_sculpt_curves_cache_init(OVERLAY_Data *vedata)
   }
   /* Cage overlay. */
   {
-    const DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS | DRW_STATE_BLEND_ALPHA;
+    const DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL |
+                           DRW_STATE_BLEND_ALPHA;
     DRW_PASS_CREATE(psl->sculpt_curves_cage_ps, state | pd->clipping_state);
 
     GPUShader *sh = OVERLAY_shader_varying_color_wire();
