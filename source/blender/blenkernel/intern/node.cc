@@ -3455,21 +3455,32 @@ bNode *ntreeFindType(bNodeTree *ntree, int type)
   return nullptr;
 }
 
-bool ntreeContainsTree(const bNodeTree *parent_tree, const bNodeTree *sub_tree)
+static bool ntree_contains_tree_exec(const bNodeTree *parent_tree,
+                                     const bNodeTree *sub_tree,
+                                     Set<const bNodeTree *> &already_passed)
 {
-  if (parent_tree == sub_tree) {
-    return true;
-  }
-
   parent_tree->ensure_topology_cache();
   for (const bNode *node_group : parent_tree->group_nodes()) {
     const bNodeTree *tree = reinterpret_cast<bNodeTree *>(node_group->id);
-    if (tree && ntreeContainsTree(tree, sub_tree)) {
+    if (!tree) {
+      continue;
+    }
+    if (!already_passed.add(tree)) {
+      continue;
+    }
+    if (ntree_contains_tree_exec(tree, sub_tree, already_passed)) {
       return true;
     }
   }
-
   return false;
+}
+
+bool ntreeContainsTree(const bNodeTree *parent_tree, const bNodeTree *sub_tree)
+{
+  SCOPED_TIMER_AVERAGED("Cache speed");
+  Set<const bNodeTree *> already_passed;
+
+  return ntree_contains_tree_exec(parent_tree, sub_tree, already_passed);
 }
 
 bNodeLink *nodeFindLink(bNodeTree *ntree, const bNodeSocket *from, const bNodeSocket *to)
