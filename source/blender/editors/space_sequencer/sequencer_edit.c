@@ -2495,17 +2495,17 @@ void SEQUENCER_OT_copy(wmOperatorType *ot)
 bool ED_sequencer_deselect_all(Scene *scene)
 {
   Editing *ed = SEQ_editing_get(scene);
-  bool any_deselected = false;
+  bool changed = false;
     
   if (ed == NULL) {
-    return any_deselected;
+    return changed;
   }
 
   LISTBASE_FOREACH (Sequence *, seq, SEQ_active_seqbase_get(ed)) {
     seq->flag &= ~SEQ_ALLSEL;
-    any_deselected = true;
+    changed = true;
   }
-  return any_deselected;
+  return changed;
 }
 
 static void sequencer_paste_animation(bContext *C)
