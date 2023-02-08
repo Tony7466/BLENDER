@@ -238,7 +238,6 @@ static void compute_point_counts_per_child(const bke::CurvesGeometry &guide_curv
 {
   const OffsetIndices guide_points_by_curve = guide_curves.points_by_curve();
   threading::parallel_for(r_points_per_child.index_range(), 512, [&](const IndexRange range) {
-    int points_sum = 0;
     for (const int child_curve_i : range) {
       const int neighbor_count = all_neighbor_counts[child_curve_i];
       if (neighbor_count == 0) {
@@ -250,7 +249,6 @@ static void compute_point_counts_per_child(const bke::CurvesGeometry &guide_curv
       const int points_per_curve_in_group = points_per_curve_by_group.lookup_default(group, -1);
       if (points_per_curve_in_group != -1) {
         r_points_per_child[child_curve_i] = points_per_curve_in_group;
-        points_sum += points_per_curve_in_group;
         r_use_direct_interpolation[child_curve_i] = true;
         continue;
       }
@@ -268,7 +266,6 @@ static void compute_point_counts_per_child(const bke::CurvesGeometry &guide_curv
       const int points_in_child = std::max<int>(1, roundf(neighbor_points_weighted_sum));
       r_points_per_child[child_curve_i] = points_in_child;
       r_use_direct_interpolation[child_curve_i] = false;
-      points_sum += r_points_per_child[child_curve_i];
     }
   });
 }
@@ -663,7 +660,7 @@ static GeometrySet generate_interpolated_curves(
     const AutoAnonymousAttributeID &index_attribute_id,
     const AutoAnonymousAttributeID &weight_attribute_id)
 {
-  const bke::CurvesGeometry &guide_curves = bke::CurvesGeometry::wrap(guide_curves_id.geometry);
+  const bke::CurvesGeometry &guide_curves = guide_curves_id.geometry.wrap();
 
   const MultiValueMap<int, int> guides_by_group = separate_guides_by_group(guide_group_ids);
   const Map<int, int> points_per_curve_by_group = compute_points_per_curve_by_group(
@@ -695,7 +692,7 @@ static GeometrySet generate_interpolated_curves(
                        all_neighbor_counts);
 
   Curves *child_curves_id = bke::curves_new_nomain(0, num_child_curves);
-  bke::CurvesGeometry &child_curves = bke::CurvesGeometry::wrap(child_curves_id->geometry);
+  bke::CurvesGeometry &child_curves = child_curves_id->geometry.wrap();
   MutableSpan<int> children_curve_offsets = child_curves.offsets_for_write();
 
   Array<bool> use_direct_interpolation_per_child(num_child_curves);
@@ -750,6 +747,11 @@ static GeometrySet generate_interpolated_curves(
                           all_neighbor_indices,
                           all_neighbor_weights);
 
+  if (guide_curves_id.mat != nullptr) {
+    child_curves_id->mat = static_cast<Material **>(MEM_dupallocN(guide_curves_id.mat));
+    child_curves_id->totcol = guide_curves_id.totcol;
+  }
+
   return GeometrySet::create_with_curves(child_curves_id);
 }
 
@@ -790,8 +792,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   const Curves &guide_curves_id = *guide_curves_geometry.get_curves_for_read();
 
-  bke::CurvesFieldContext curves_context{bke::CurvesGeometry::wrap(guide_curves_id.geometry),
-                                         ATTR_DOMAIN_CURVE};
+  bke::CurvesFieldContext curves_context{guide_curves_id.geometry.wrap(), ATTR_DOMAIN_CURVE};
   fn::FieldEvaluator curves_evaluator{curves_context, guide_curves_id.geometry.curve_num};
   curves_evaluator.add(guides_up_field);
   curves_evaluator.add(guide_group_field);

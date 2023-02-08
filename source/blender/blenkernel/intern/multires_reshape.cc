@@ -24,7 +24,7 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "multires_reshape.h"
+#include "multires_reshape.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Reshape from object
@@ -84,7 +84,7 @@ bool multiresModifier_reshapeFromDeformModifier(Depsgraph *depsgraph,
                                                 MultiresModifierData *mmd,
                                                 ModifierData *deform_md)
 {
-  MultiresModifierData highest_mmd = *mmd;
+  MultiresModifierData highest_mmd = blender::dna::shallow_copy(*mmd);
   highest_mmd.sculptlvl = highest_mmd.totlvl;
   highest_mmd.lvl = highest_mmd.totlvl;
   highest_mmd.renderlvl = highest_mmd.totlvl;

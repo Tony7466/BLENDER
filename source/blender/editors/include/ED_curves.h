@@ -8,6 +8,9 @@
 
 struct bContext;
 struct Curves;
+struct UndoType;
+struct SelectPick_Params;
+struct ViewContext;
 
 #ifdef __cplusplus
 extern "C" {
@@ -93,6 +96,7 @@ IndexMask retrieve_selected_curves(const Curves &curves_id, Vector<int64_t> &r_i
  * Find points that are selected (a selection factor greater than zero),
  * or points in curves with a selection factor greater than zero).
  */
+IndexMask retrieve_selected_points(const bke::CurvesGeometry &curves, Vector<int64_t> &r_indices);
 IndexMask retrieve_selected_points(const Curves &curves_id, Vector<int64_t> &r_indices);
 
 /**
@@ -132,6 +136,16 @@ void select_random(bke::CurvesGeometry &curves,
                    const eAttrDomain selection_domain,
                    uint32_t random_seed,
                    float probability);
+
+/**
+ * Select point or curve under the cursor.
+ */
+bool select_pick(const ViewContext &vc,
+                 bke::CurvesGeometry &curves,
+                 const eAttrDomain selection_domain,
+                 const SelectPick_Params &params,
+                 const int2 mval);
+
 /** \} */
 
 }  // namespace blender::ed::curves

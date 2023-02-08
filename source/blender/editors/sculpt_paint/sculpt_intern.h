@@ -418,6 +418,8 @@ typedef struct AutomaskingSettings {
 
   float start_normal_limit, start_normal_falloff;
   float view_normal_limit, view_normal_falloff;
+
+  bool topology_use_brush_limit;
 } AutomaskingSettings;
 
 typedef struct AutomaskingCache {
@@ -825,6 +827,7 @@ typedef struct ExpandCache {
   float (*original_colors)[4];
 
   bool check_islands;
+  int normal_falloff_blur_steps;
 } ExpandCache;
 /** \} */
 
@@ -910,7 +913,7 @@ float SCULPT_raycast_init(struct ViewContext *vc,
                           bool original);
 
 /* Symmetry */
-char SCULPT_mesh_symmetry_xyz_get(Object *object);
+ePaintSymmetryFlags SCULPT_mesh_symmetry_xyz_get(Object *object);
 
 /**
  * Returns true when the step belongs to the stroke that is directly performed by the brush and
@@ -1733,7 +1736,7 @@ void SCULPT_OT_dyntopo_detail_size_edit(struct wmOperatorType *ot);
 
 void SCULPT_OT_dynamic_topology_toggle(struct wmOperatorType *ot);
 
-/* sculpt_brush_types.c */
+/* sculpt_brush_types.cc */
 
 /* -------------------------------------------------------------------- */
 /** \name Brushes
@@ -1814,7 +1817,9 @@ void SCULPT_do_paint_brush(struct PaintModeSettings *paint_mode_settings,
                            Sculpt *sd,
                            Object *ob,
                            PBVHNode **nodes,
-                           int totnode) ATTR_NONNULL();
+                           int totnode,
+                           PBVHNode **texnodes,
+                           int texnodes_num) ATTR_NONNULL();
 
 /**
  * \brief Get the image canvas for painting on the given object.
@@ -1830,8 +1835,8 @@ bool SCULPT_paint_image_canvas_get(struct PaintModeSettings *paint_mode_settings
 void SCULPT_do_paint_brush_image(struct PaintModeSettings *paint_mode_settings,
                                  Sculpt *sd,
                                  Object *ob,
-                                 PBVHNode **nodes,
-                                 int totnode) ATTR_NONNULL();
+                                 PBVHNode **texnodes,
+                                 int texnode_num) ATTR_NONNULL();
 bool SCULPT_use_image_paint_brush(struct PaintModeSettings *settings, Object *ob) ATTR_NONNULL();
 
 /* Smear Brush. */
@@ -1938,13 +1943,13 @@ void SCULPT_do_mask_brush(struct Sculpt *sd,
 void SCULPT_bmesh_topology_rake(
     struct Sculpt *sd, struct Object *ob, struct PBVHNode **nodes, int totnode, float bstrength);
 
-/* end sculpt_brush_types.c */
+/* end sculpt_brush_types.cc */
 
-/* sculpt_ops.c */
+/* sculpt_ops.cc */
 
 void SCULPT_OT_brush_stroke(struct wmOperatorType *ot);
 
-/* end sculpt_ops.c */
+/* end sculpt_ops.cc */
 
 BLI_INLINE bool SCULPT_tool_is_paint(int tool)
 {

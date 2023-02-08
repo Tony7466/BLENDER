@@ -5,7 +5,7 @@
  * \ingroup draw
  */
 
-#include "DRW_pbvh.h"
+#include "DRW_pbvh.hh"
 
 #include "draw_attributes.h"
 #include "draw_manager.h"
@@ -1255,7 +1255,7 @@ static void sculpt_draw_cb(DRWSculptCallbackData *scd,
   }
 }
 
-static void sculpt_debug_cb(
+void DRW_sculpt_debug_cb(
     PBVHNode *node, void *user_data, const float bmin[3], const float bmax[3], PBVHNodeFlags flag)
 {
   int *debug_node_nr = (int *)user_data;
@@ -1270,7 +1270,8 @@ static void sculpt_debug_cb(
     DRW_debug_bbox(&bb, (float[4]){0.5f, 0.5f, 0.5f, 0.6f});
   }
 #else /* Color coded leaf bounds. */
-  if (flag & PBVH_Leaf) {
+  if (flag & (PBVH_Leaf | PBVH_TexLeaf)) {
+    DRW_debug_bbox(&bb, SCULPT_DEBUG_COLOR((*debug_node_nr)++));
     int color = (*debug_node_nr)++;
     color += BKE_pbvh_debug_draw_gen_get(node);
 
@@ -1370,7 +1371,7 @@ static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd)
     BKE_pbvh_draw_debug_cb(
         pbvh,
         (void (*)(PBVHNode * n, void *d, const float min[3], const float max[3], PBVHNodeFlags f))
-            sculpt_debug_cb,
+            DRW_sculpt_debug_cb,
         &debug_node_nr);
   }
 }
@@ -2168,14 +2169,14 @@ static void draw_view_matrix_state_update(DRWView *view,
 {
   ViewMatrices *storage = &view->storage;
 
-  copy_m4_m4(storage->viewmat.values, viewmat);
-  invert_m4_m4(storage->viewinv.values, storage->viewmat.values);
+  copy_m4_m4(storage->viewmat.ptr(), viewmat);
+  invert_m4_m4(storage->viewinv.ptr(), storage->viewmat.ptr());
 
-  copy_m4_m4(storage->winmat.values, winmat);
-  invert_m4_m4(storage->wininv.values, storage->winmat.values);
+  copy_m4_m4(storage->winmat.ptr(), winmat);
+  invert_m4_m4(storage->wininv.ptr(), storage->winmat.ptr());
 
-  mul_m4_m4m4(view->persmat.values, winmat, viewmat);
-  invert_m4_m4(view->persinv.values, view->persmat.values);
+  mul_m4_m4m4(view->persmat.ptr(), winmat, viewmat);
+  invert_m4_m4(view->persinv.ptr(), view->persmat.ptr());
 }
 
 DRWView *DRW_view_create(const float viewmat[4][4],
@@ -2279,7 +2280,7 @@ void DRW_view_update(DRWView *view,
     invert_m4_m4(wininv, winmat);
   }
   else {
-    copy_m4_m4(wininv, view->storage.wininv.values);
+    copy_m4_m4(wininv, view->storage.wininv.ptr());
   }
 
   float viewinv[4][4];
@@ -2288,11 +2289,11 @@ void DRW_view_update(DRWView *view,
     invert_m4_m4(viewinv, viewmat);
   }
   else {
-    copy_m4_m4(viewinv, view->storage.viewinv.values);
+    copy_m4_m4(viewinv, view->storage.viewinv.ptr());
   }
 
   draw_frustum_boundbox_calc(viewinv, winmat, &view->frustum_corners);
-  draw_frustum_culling_planes_calc(view->persmat.values, view->frustum_planes);
+  draw_frustum_culling_planes_calc(view->persmat.ptr(), view->frustum_planes);
   draw_frustum_bound_sphere_calc(
       &view->frustum_corners, viewinv, winmat, wininv, &view->frustum_bsphere);
 
@@ -2376,20 +2377,20 @@ void DRW_view_viewmat_get(const DRWView *view, float mat[4][4], bool inverse)
 {
   view = (view) ? view : DST.view_default;
   const ViewMatrices *storage = &view->storage;
-  copy_m4_m4(mat, (inverse) ? storage->viewinv.values : storage->viewmat.values);
+  copy_m4_m4(mat, (inverse) ? storage->viewinv.ptr() : storage->viewmat.ptr());
 }
 
 void DRW_view_winmat_get(const DRWView *view, float mat[4][4], bool inverse)
 {
   view = (view) ? view : DST.view_default;
   const ViewMatrices *storage = &view->storage;
-  copy_m4_m4(mat, (inverse) ? storage->wininv.values : storage->winmat.values);
+  copy_m4_m4(mat, (inverse) ? storage->wininv.ptr() : storage->winmat.ptr());
 }
 
 void DRW_view_persmat_get(const DRWView *view, float mat[4][4], bool inverse)
 {
   view = (view) ? view : DST.view_default;
-  copy_m4_m4(mat, (inverse) ? view->persinv.values : view->persmat.values);
+  copy_m4_m4(mat, (inverse) ? view->persinv.ptr() : view->persmat.ptr());
 }
 
 /** \} */

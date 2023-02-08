@@ -325,10 +325,10 @@ float *SCULPT_brush_deform_target_vertex_co_get(SculptSession *ss,
   return iter->co;
 }
 
-char SCULPT_mesh_symmetry_xyz_get(Object *object)
+ePaintSymmetryFlags SCULPT_mesh_symmetry_xyz_get(Object *object)
 {
   const Mesh *mesh = BKE_mesh_from_object(object);
-  return mesh->symmetry;
+  return ePaintSymmetryFlags(mesh->symmetry);
 }
 
 /* Sculpt Face Sets and Visibility. */
@@ -2848,15 +2848,21 @@ static PBVHNode **sculpt_pbvh_gather_cursor_update(Object *ob,
   return nodes;
 }
 
-static PBVHNode **sculpt_pbvh_gather_generic(Object *ob,
-                                             Sculpt *sd,
-                                             const Brush *brush,
-                                             bool use_original,
-                                             float radius_scale,
-                                             int *r_totnode)
+static PBVHNode **sculpt_pbvh_gather_generic_intern(Object *ob,
+                                                    Sculpt *sd,
+                                                    const Brush *brush,
+                                                    bool use_original,
+                                                    float radius_scale,
+                                                    int *r_totnode,
+                                                    PBVHNodeFlags flag)
 {
   SculptSession *ss = ob->sculpt;
   PBVHNode **nodes = nullptr;
+  PBVHNodeFlags leaf_flag = PBVH_Leaf;
+
+  if (flag & PBVH_TexLeaf) {
+    leaf_flag = PBVH_TexLeaf;
+  }
 
   /* Build a list of all nodes that are potentially within the cursor or brush's area of influence.
    */
@@ -2868,7 +2874,8 @@ static PBVHNode **sculpt_pbvh_gather_generic(Object *ob,
     data.original = use_original;
     data.ignore_fully_ineffective = brush->sculpt_tool != SCULPT_TOOL_MASK;
     data.center = nullptr;
-    BKE_pbvh_search_gather(ss->pbvh, SCULPT_search_sphere_cb, &data, &nodes, r_totnode);
+    BKE_pbvh_search_gather_ex(
+        ss->pbvh, SCULPT_search_sphere_cb, &data, &nodes, r_totnode, leaf_flag);
   }
   else {
     DistRayAABB_Precalc dist_ray_to_aabb_precalc;
@@ -2882,9 +2889,32 @@ static PBVHNode **sculpt_pbvh_gather_generic(Object *ob,
     data.original = use_original;
     data.dist_ray_to_aabb_precalc = &dist_ray_to_aabb_precalc;
     data.ignore_fully_ineffective = brush->sculpt_tool != SCULPT_TOOL_MASK;
-    BKE_pbvh_search_gather(ss->pbvh, SCULPT_search_circle_cb, &data, &nodes, r_totnode);
+    BKE_pbvh_search_gather_ex(
+        ss->pbvh, SCULPT_search_circle_cb, &data, &nodes, r_totnode, leaf_flag);
   }
   return nodes;
+}
+
+static PBVHNode **sculpt_pbvh_gather_generic(Object *ob,
+                                             Sculpt *sd,
+                                             const Brush *brush,
+                                             bool use_original,
+                                             float radius_scale,
+                                             int *r_totnode)
+{
+  return sculpt_pbvh_gather_generic_intern(
+      ob, sd, brush, use_original, radius_scale, r_totnode, PBVH_Leaf);
+}
+
+static PBVHNode **sculpt_pbvh_gather_texpaint(Object *ob,
+                                              Sculpt *sd,
+                                              const Brush *brush,
+                                              bool use_original,
+                                              float radius_scale,
+                                              int *r_totnode)
+{
+  return sculpt_pbvh_gather_generic_intern(
+      ob, sd, brush, use_original, radius_scale, r_totnode, PBVH_TexLeaf);
 }
 
 /* Calculate primary direction of movement for many brushes. */
@@ -3515,8 +3545,8 @@ static void do_brush_action(Sculpt *sd,
                             PaintModeSettings *paint_mode_settings)
 {
   SculptSession *ss = ob->sculpt;
-  int totnode;
-  PBVHNode **nodes;
+  int totnode, texnodes_num = 0;
+  PBVHNode **nodes, **texnodes = nullptr;
 
   /* Check for unsupported features. */
   PBVHType type = BKE_pbvh_type(ss->pbvh);
@@ -3529,6 +3559,20 @@ static void do_brush_action(Sculpt *sd,
     BKE_pbvh_ensure_node_loops(ss->pbvh);
   }
 
+  const bool use_original = sculpt_tool_needs_original(brush->sculpt_tool) ? true :
+                                                                             ss->cache->original;
+  const bool use_pixels = sculpt_needs_pbvh_pixels(paint_mode_settings, brush, ob);
+
+  if (sculpt_needs_pbvh_pixels(paint_mode_settings, brush, ob)) {
+    sculpt_pbvh_update_pixels(paint_mode_settings, ss, ob);
+
+    texnodes = sculpt_pbvh_gather_texpaint(ob, sd, brush, use_original, 1.0f, &texnodes_num);
+
+    if (!texnodes_num) {
+      return;
+    }
+  }
+
   /* Build a list of all nodes that are potentially within the brush's area of influence */
 
   if (SCULPT_tool_needs_all_pbvh_nodes(brush)) {
@@ -3539,8 +3583,6 @@ static void do_brush_action(Sculpt *sd,
     nodes = SCULPT_cloth_brush_affected_nodes_gather(ss, brush, &totnode);
   }
   else {
-    const bool use_original = sculpt_tool_needs_original(brush->sculpt_tool) ? true :
-                                                                               ss->cache->original;
     float radius_scale = 1.0f;
 
     /* Corners of square brushes can go outside the brush radius. */
@@ -3554,10 +3596,6 @@ static void do_brush_action(Sculpt *sd,
       radius_scale = 2.0f;
     }
     nodes = sculpt_pbvh_gather_generic(ob, sd, brush, use_original, radius_scale, &totnode);
-  }
-  const bool use_pixels = sculpt_needs_pbvh_pixels(paint_mode_settings, brush, ob);
-  if (use_pixels) {
-    sculpt_pbvh_update_pixels(paint_mode_settings, ss, ob);
   }
 
   /* Draw Face Sets in draw mode makes a single undo push, in alt-smooth mode deforms the
@@ -3599,6 +3637,7 @@ static void do_brush_action(Sculpt *sd,
 
   /* Only act if some verts are inside the brush area. */
   if (totnode == 0) {
+    MEM_SAFE_FREE(texnodes);
     return;
   }
   float location[3];
@@ -3746,7 +3785,7 @@ static void do_brush_action(Sculpt *sd,
       SCULPT_do_displacement_smear_brush(sd, ob, nodes, totnode);
       break;
     case SCULPT_TOOL_PAINT:
-      SCULPT_do_paint_brush(paint_mode_settings, sd, ob, nodes, totnode);
+      SCULPT_do_paint_brush(paint_mode_settings, sd, ob, nodes, totnode, texnodes, texnodes_num);
       break;
     case SCULPT_TOOL_SMEAR:
       SCULPT_do_smear_brush(sd, ob, nodes, totnode);
@@ -3790,6 +3829,7 @@ static void do_brush_action(Sculpt *sd,
   }
 
   MEM_SAFE_FREE(nodes);
+  MEM_SAFE_FREE(texnodes);
 
   /* Update average stroke position. */
   copy_v3_v3(location, ss->cache->true_location);
