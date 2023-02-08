@@ -17,7 +17,8 @@
 
 CCL_NAMESPACE_BEGIN
 
-ShaderEval::ShaderEval(Device *device, Progress &progress) : device_(device), progress_(progress)
+ShaderEval::ShaderEval(Device *device, Progress &progress, const uint kernel_features)
+    : device_(device), progress_(progress), kernel_features_(kernel_features)
 {
   DCHECK_NE(device_, nullptr);
 }
@@ -124,6 +125,44 @@ bool ShaderEval::eval_cpu(Device *device,
   return success;
 }
 
+static size_t estimate_single_state_size(const uint kernel_features)
+{
+  size_t state_size = 0;
+
+#define KERNEL_STRUCT_BEGIN(name) for (int array_index = 0;; array_index++) {
+#define KERNEL_STRUCT_MEMBER(parent_struct, type, name, feature) \
+  state_size += (kernel_features & (feature)) ? sizeof(type) : 0;
+#define KERNEL_STRUCT_ARRAY_MEMBER(parent_struct, type, name, feature) \
+  state_size += (kernel_features & (feature)) ? sizeof(type) : 0;
+#define KERNEL_STRUCT_END(name) \
+  break; \
+  }
+#define KERNEL_STRUCT_END_ARRAY(name, cpu_array_size, gpu_array_size) \
+  if (array_index >= gpu_array_size - 1) { \
+    break; \
+  } \
+  }
+/* TODO(sergey): Look into better estimation for fields which depend on scene features. Maybe
+ * maximum state calculation should happen as `alloc_work_memory()`, so that we can react to an
+ * updated scene state here.
+ * For until then use common value. Currently this size is only used for logging, but is weak to
+ * rely on this. */
+#define KERNEL_STRUCT_VOLUME_STACK_SIZE 4
+
+#include "kernel/integrator/state_template.h"
+
+#include "kernel/integrator/shadow_state_template.h"
+
+#undef KERNEL_STRUCT_BEGIN
+#undef KERNEL_STRUCT_MEMBER
+#undef KERNEL_STRUCT_ARRAY_MEMBER
+#undef KERNEL_STRUCT_END
+#undef KERNEL_STRUCT_END_ARRAY
+#undef KERNEL_STRUCT_VOLUME_STACK_SIZE
+
+  return state_size;
+}
+
 bool ShaderEval::eval_gpu(Device *device,
                           const ShaderEvalType type,
                           device_vector<KernelShaderEvalInput> &input,
@@ -146,9 +185,65 @@ bool ShaderEval::eval_gpu(Device *device,
 
   /* Create device queue. */
   unique_ptr<DeviceQueue> queue = device->gpu_queue_create();
+
+  const auto kernel_features = kernel_features_;
+  const size_t single_state_size = estimate_single_state_size(kernel_features);
+  const auto max_num_paths = queue->num_concurrent_states(single_state_size);
+
+  IntegratorStateGPU integrator_state_gpu;
+  vector<unique_ptr<device_memory>> integrator_state_soa;
+
+  memset(&integrator_state_gpu, 0, sizeof(integrator_state_gpu));
+
+  /* Allocate a device only memory buffer before for each struct member, and then
+   * write the pointers into a struct that resides in constant memory.
+   *
+   * TODO: store float3 in separate XYZ arrays. */
+#define KERNEL_STRUCT_BEGIN(name) for (int array_index = 0;; array_index++) {
+#define KERNEL_STRUCT_MEMBER(parent_struct, type, name, feature) \
+  if ((kernel_features & (feature)) && (integrator_state_gpu.parent_struct.name == nullptr)) { \
+    device_only_memory<type> *array = new device_only_memory<type>(device, \
+                                                                   "integrator_state_" #name); \
+    array->alloc_to_device(max_num_paths); \
+    integrator_state_soa.emplace_back(array); \
+    integrator_state_gpu.parent_struct.name = (type *)array->device_pointer; \
+  }
+#define KERNEL_STRUCT_ARRAY_MEMBER(parent_struct, type, name, feature) \
+  if ((kernel_features & (feature)) && \
+      (integrator_state_gpu.parent_struct[array_index].name == nullptr)) { \
+    device_only_memory<type> *array = new device_only_memory<type>(device, \
+                                                                   "integrator_state_" #name); \
+    array->alloc_to_device(max_num_paths); \
+    integrator_state_soa.emplace_back(array); \
+    integrator_state_gpu.parent_struct[array_index].name = (type *)array->device_pointer; \
+  }
+#define KERNEL_STRUCT_END(name) \
+  break; \
+  }
+#define KERNEL_STRUCT_END_ARRAY(name, cpu_array_size, gpu_array_size) \
+  if (array_index >= gpu_array_size - 1) { \
+    break; \
+  } \
+  }
+
+#define KERNEL_STRUCT_VOLUME_STACK_SIZE 0
+
+#include "kernel/integrator/state_template.h"
+
+#include "kernel/integrator/shadow_state_template.h"
+
+#undef KERNEL_STRUCT_BEGIN
+#undef KERNEL_STRUCT_MEMBER
+#undef KERNEL_STRUCT_ARRAY_MEMBER
+#undef KERNEL_STRUCT_END
+#undef KERNEL_STRUCT_END_ARRAY
+#undef KERNEL_STRUCT_VOLUME_STACK_SIZE
+
+  device->const_copy_to("integrator_state", &integrator_state_gpu, sizeof(integrator_state_gpu));
+
   queue->init_execution();
 
-  /* Execute work on GPU in chunk, so we can cancel.
+  /* Execute work on GPU in chunks, so we can cancel.
    * TODO: query appropriate size from device. */
   const int32_t chunk_size = 65536;
 

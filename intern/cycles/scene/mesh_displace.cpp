@@ -178,7 +178,7 @@ bool GeometryManager::displace(Device *device, Scene *scene, Mesh *mesh, Progres
   }
 
   /* Evaluate shader on device. */
-  ShaderEval shader_eval(device, progress);
+  ShaderEval shader_eval(device, progress, scene->dscene.data.kernel_features);
   if (!shader_eval.eval(SHADER_EVAL_DISPLACE,
                         num_verts,
                         3,

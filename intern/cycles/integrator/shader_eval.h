@@ -23,7 +23,7 @@ enum ShaderEvalType {
 /* ShaderEval class performs shader evaluation for background light and displacement. */
 class ShaderEval {
  public:
-  ShaderEval(Device *device, Progress &progress);
+  ShaderEval(Device *device, Progress &progress, uint kernel_features);
 
   /* Evaluate shader at points specified by KernelShaderEvalInput and write out
    * RGBA colors to output. */
@@ -47,6 +47,7 @@ class ShaderEval {
 
   Device *device_;
   Progress &progress_;
+  uint kernel_features_;
 };
 
 CCL_NAMESPACE_END

@@ -914,6 +914,10 @@ void CUDADevice::const_copy_to(const char *name, void *host, size_t size)
   KERNEL_DATA_ARRAY(KernelData, data)
   KERNEL_DATA_ARRAY(IntegratorStateGPU, integrator_state)
 #  include "kernel/data_arrays.h"
+  else
+  {
+    assert(0);
+  }
 #  undef KERNEL_DATA_ARRAY
 }
 

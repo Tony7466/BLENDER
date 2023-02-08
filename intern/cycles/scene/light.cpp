@@ -41,7 +41,7 @@ static void shade_background_pixels(Device *device,
   pixels.resize(size);
 
   /* Evaluate shader on device. */
-  ShaderEval shader_eval(device, progress);
+  ShaderEval shader_eval(device, progress, dscene->data.kernel_features);
   shader_eval.eval(
       SHADER_EVAL_BACKGROUND,
       size,

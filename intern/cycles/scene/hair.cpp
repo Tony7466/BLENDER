@@ -600,7 +600,7 @@ bool Hair::update_shadow_transparency(Device *device, Scene *scene, Progress &pr
   }
 
   /* Evaluate shader on device. */
-  ShaderEval shader_eval(device, progress);
+  ShaderEval shader_eval(device, progress, scene->dscene.data.kernel_features);
   bool is_fully_opaque = false;
   shader_eval.eval(SHADER_EVAL_CURVE_SHADOW_TRANSPARENCY,
                    num_keys(),
