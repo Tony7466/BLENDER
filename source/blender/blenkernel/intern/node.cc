@@ -3455,16 +3455,16 @@ bNode *ntreeFindType(bNodeTree *ntree, int type)
   return nullptr;
 }
 
-bool ntreeHasTree(const bNodeTree *ntree, const bNodeTree *lookup)
+bool ntreeContainsTree(const bNodeTree *parent_tree, const bNodeTree *sub_tree)
 {
-  if (ntree == lookup) {
+  if (parent_tree == sub_tree) {
     return true;
   }
-  for (const bNode *node : ntree->all_nodes()) {
-    if (ELEM(node->type, NODE_GROUP, NODE_CUSTOM_GROUP) && node->id) {
-      if (ntreeHasTree((bNodeTree *)node->id, lookup)) {
-        return true;
-      }
+  parent_tree->ensure_topology_cache();
+  for (const bNode *group : parent_tree->group_nodes()) {
+    const bNodeTree *tree = reinterpret_cast<bNodeTree *>(group->id);
+    if (tree && ntreeContainsTree(tree, sub_tree)) {
+      return true;
     }
   }
   return false;
