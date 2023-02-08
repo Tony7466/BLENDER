@@ -3461,8 +3461,8 @@ bool ntreeContainsTree(const bNodeTree *parent_tree, const bNodeTree *sub_tree)
     return true;
   }
   parent_tree->ensure_topology_cache();
-  for (const bNode *group : parent_tree->group_nodes()) {
-    const bNodeTree *tree = reinterpret_cast<bNodeTree *>(group->id);
+  for (const bNode *node_group : parent_tree->group_nodes()) {
+    const bNodeTree *tree = reinterpret_cast<bNodeTree *>(node_group->id);
     if (tree && ntreeContainsTree(tree, sub_tree)) {
       return true;
     }

@@ -1435,7 +1435,7 @@ static void rna_NodeTree_active_output_set(PointerRNA *ptr, int value)
   }
 }
 
-static bool rna_NodeTree_contains_group(bNodeTree *tree, bNodeTree *sub_tree)
+static bool rna_NodeTree_contains_tree(bNodeTree *tree, bNodeTree *sub_tree)
 {
   return ntreeContainsTree(tree, sub_tree);
 }
@@ -12724,12 +12724,12 @@ static void rna_def_nodetree(BlenderRNA *brna)
   parm = RNA_def_pointer(func, "context", "Context", "", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 
-  func = RNA_def_function(srna, "contains_group", "rna_NodeTree_contains_group");
+  func = RNA_def_function(srna, "contains_tree", "rna_NodeTree_contains_tree");
   RNA_def_function_ui_description(
       func,
       "Check if the node tree contains another. Used to avoid creating recursive node groups");
   parm = RNA_def_pointer(
-      func, "sub_tree", "NodeTree", "Node Group", "Node group for recursive check");
+      func, "sub_tree", "NodeTree", "Node Tree", "Node tree for recursive check");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   parm = RNA_def_property(func, "contained", PROP_BOOLEAN, PROP_NONE);
   RNA_def_function_return(func, parm);
