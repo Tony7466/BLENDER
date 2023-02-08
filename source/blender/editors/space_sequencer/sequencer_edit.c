@@ -2502,10 +2502,10 @@ bool ED_sequencer_deselect_all(Scene *scene)
   }
 
   LISTBASE_FOREACH (Sequence *, seq, SEQ_active_seqbase_get(ed)) {
-      if (seq->flag & SEQ_ALLSEL) {
-        seq->flag &= ~SEQ_ALLSEL;
-        changed = true;
-      }
+    if (seq->flag & SEQ_ALLSEL) {
+      seq->flag &= ~SEQ_ALLSEL;
+      changed = true;
+    }
   }
   return changed;
 }
