@@ -231,7 +231,7 @@ class AccumulateFieldInput final : public bke::GeometryFieldInput {
     evaluator.add(input_);
     evaluator.add(group_index_);
     evaluator.evaluate();
-    const GVArraySpan g_values = evaluator.get_evaluated(0);
+    const GVArray g_values = evaluator.get_evaluated(0);
     const VArray<int> group_indices = evaluator.get_evaluated<int>(1);
 
     GVArray g_output;
@@ -240,7 +240,7 @@ class AccumulateFieldInput final : public bke::GeometryFieldInput {
       using T = decltype(dummy);
       if constexpr (is_same_any_v<T, int, float, float3>) {
         Array<T> outputs(domain_size);
-        const Span<T> values = g_values.typed<T>();
+        const VArray<T> values = g_values.typed<T>();
 
         if (group_indices.is_single()) {
           T accumulation = T();
@@ -336,7 +336,7 @@ class TotalFieldInput final : public bke::GeometryFieldInput {
     evaluator.add(input_);
     evaluator.add(group_index_);
     evaluator.evaluate();
-    const GVArraySpan g_values = evaluator.get_evaluated(0);
+    const GVArray g_values = evaluator.get_evaluated(0);
     const VArray<int> group_indices = evaluator.get_evaluated<int>(1);
 
     GVArray g_outputs;
@@ -344,7 +344,7 @@ class TotalFieldInput final : public bke::GeometryFieldInput {
     attribute_math::convert_to_static_type(g_values.type(), [&](auto dummy) {
       using T = decltype(dummy);
       if constexpr (is_same_any_v<T, int, float, float3>) {
-        const Span<T> values = g_values.typed<T>();
+        const VArray<T> values = g_values.typed<T>();
         if (group_indices.is_single()) {
           T accumulation = {};
           for (const int i : values.index_range()) {
