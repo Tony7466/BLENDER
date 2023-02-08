@@ -32,6 +32,7 @@ GPU_SHADER_CREATE_INFO(overlay_varying_color_wire)
     .vertex_out(overlay_varying_color_wire_iface)
     .fragment_out(0, Type::VEC4, "fragColor")
     .fragment_out(1, Type::VEC4, "lineOutput")
+    .push_constant(Type::FLOAT, "opacity")
     .vertex_source("overlay_varying_color_wire_vert.glsl")
     .fragment_source("overlay_extra_frag.glsl")
     .additional_info("draw_modelmat", "draw_view", "draw_globals");

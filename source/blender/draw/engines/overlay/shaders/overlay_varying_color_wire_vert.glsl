@@ -8,6 +8,7 @@ void main()
   gl_Position = point_world_to_ndc(world_pos);
 
   finalColor = my_color;
+  finalColor.a *= opacity;
 
   /* Convert to screen position [0..sizeVp]. */
   edgePos = edgeStart = ((gl_Position.xy / gl_Position.w) * 0.5 + 0.5) * sizeViewport.xy;

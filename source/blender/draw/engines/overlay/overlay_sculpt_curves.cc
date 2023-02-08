@@ -20,6 +20,7 @@ void OVERLAY_sculpt_curves_cache_init(OVERLAY_Data *vedata)
 {
   OVERLAY_PassList *psl = vedata->psl;
   OVERLAY_PrivateData *pd = vedata->stl->pd;
+  const View3DOverlay &overlay = vedata->stl->pd->overlay;
 
   /* Selection overlay. */
   {
@@ -42,6 +43,8 @@ void OVERLAY_sculpt_curves_cache_init(OVERLAY_Data *vedata)
 
     GPUShader *sh = OVERLAY_shader_varying_color_wire();
     pd->sculpt_curves_cage_lines_grp = DRW_shgroup_create(sh, psl->sculpt_curves_cage_ps);
+    DRW_shgroup_uniform_float_copy(
+        pd->sculpt_curves_cage_lines_grp, "opacity", overlay.sculpt_curves_cage_opacity);
   }
 }
 
@@ -102,7 +105,9 @@ static void populate_edit_overlay(OVERLAY_Data *vedata, Object *object)
 void OVERLAY_sculpt_curves_cache_populate(OVERLAY_Data *vedata, Object *object)
 {
   populate_selection_overlay(vedata, object);
-  if (vedata->stl->pd->overlay.flag & V3D_OVERLAY_SCULPT_CURVES_CAGE) {
+  const View3DOverlay &overlay = vedata->stl->pd->overlay;
+  if ((overlay.flag & V3D_OVERLAY_SCULPT_CURVES_CAGE) &&
+      overlay.sculpt_curves_cage_opacity > 0.0f) {
     populate_edit_overlay(vedata, object);
   }
 }
