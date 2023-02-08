@@ -19,18 +19,18 @@ float ray_aabb(vec3 ray_origin, vec3 ray_direction, vec3 aabb_min, vec3 aabb_max
   float t_min = max_v3(min(t_mins, t_maxs));
   float t_max = min_v3(max(t_mins, t_maxs));
 
-  /* AABB is in the opposite direction */
+  /* AABB is in the opposite direction. */
   if (t_max < 0.0f) {
     return -1.0f;
   }
-  /* No intersection */
+  /* No intersection. */
   if (t_min > t_max) {
     return -1.0f;
   }
-  /* The ray origin is inside the aabb */
+  /* The ray origin is inside the aabb. */
   if (t_min < 0.0f) {
     /* For regular ray casting we would return t_max here,
-     * but we want to ray cast against the box volume, not just the surface */
+     * but we want to ray cast against the box volume, not just the surface. */
     return 0.0f;
   }
   return t_min;
@@ -64,8 +64,12 @@ void main()
   for (float t = near_box_t; t <= far_box_t; t += step_size) {
     /* Ensure we don't get past far_box_t. */
     t = min(t, far_box_t);
+
     vec3 P = near_plane_ws + (view_direction_ws * t);
     vec3 vP = near_plane_vs + (view_direction_vs * t);
     shadow_tag_usage(vP, P, gl_FragCoord.xy);
   }
+
+  outDebug.rgb = near_plane_ws + (view_direction_ws * near_box_t);
+  outDebug.a = 1.0f;
 }
