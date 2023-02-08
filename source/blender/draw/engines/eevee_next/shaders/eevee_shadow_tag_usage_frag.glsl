@@ -38,18 +38,11 @@ float ray_aabb(vec3 ray_origin, vec3 ray_direction, vec3 aabb_min, vec3 aabb_max
 
 void main()
 {
-  float opaque_depth = texelFetch(depth_tx, int2(gl_FragCoord.xy), 0).r;
-  float fragment_depth = get_depth_from_view_z(interp.vP.z);
-
-  /*
-  if (fragment_depth > opaque_depth) {
-    return;
-  }
-  */
-
-  shadow_tag_usage(interp.vP, interp.P, gl_FragCoord.xy);
-
   vec2 screen_uv = gl_FragCoord.xy / vec2(textureSize(depth_tx, 0).xy);
+
+  float opaque_depth = texelFetch(depth_tx, int2(gl_FragCoord.xy), 0).r;
+  vec3 opaque_ws = get_world_space_from_depth(screen_uv, opaque_depth);
+
   vec3 near_plane_ws = get_world_space_from_depth(screen_uv, 0);
   vec3 view_direction_ws = normalize(interp.P - near_plane_ws);
   vec3 near_plane_vs = get_view_space_from_depth(screen_uv, 0);
@@ -64,13 +57,13 @@ void main()
 
   float near_box_t = distance(near_plane_ws, near_box_ws);
   float far_box_t = distance(near_plane_ws, interp.P);
-
-  outDebug.rgb = near_plane_ws + (view_direction_ws * near_box_t);
-  outDebug.a = 1.0f;
+  /* Depth test. */
+  far_box_t = min(far_box_t, distance(near_plane_ws, opaque_ws));
 
   float step_size = 0.1f;
   for (float t = near_box_t; t <= far_box_t; t += step_size) {
-    /* TODO (Miguel Pozo): depth test */
+    /* Ensure we don't get past far_box_t. */
+    t = min(t, far_box_t);
     vec3 P = near_plane_ws + (view_direction_ws * t);
     vec3 vP = near_plane_vs + (view_direction_vs * t);
     shadow_tag_usage(vP, P, gl_FragCoord.xy);
