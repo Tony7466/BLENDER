@@ -46,6 +46,7 @@ static const pxr::TfToken primvar_float2("UsdPrimvarReader_float2", pxr::TfToken
 static const pxr::TfToken roughness("roughness", pxr::TfToken::Immortal);
 static const pxr::TfToken specular("specular", pxr::TfToken::Immortal);
 static const pxr::TfToken opacity("opacity", pxr::TfToken::Immortal);
+static const pxr::TfToken emissive_color("emissiveColor", pxr::TfToken::Immortal);
 static const pxr::TfToken surface("surface", pxr::TfToken::Immortal);
 static const pxr::TfToken perspective("perspective", pxr::TfToken::Immortal);
 static const pxr::TfToken orthographic("orthographic", pxr::TfToken::Immortal);
@@ -278,6 +279,7 @@ static InputSpecMap &preview_surface_input_map()
       {"Clearcoat", {usdtokens::clearcoat, pxr::SdfValueTypeNames->Float, usdtokens::r, true}},
       {"Clearcoat Roughness",
        {usdtokens::clearcoatRoughness, pxr::SdfValueTypeNames->Float, usdtokens::r, true}},
+      {"Emission", {usdtokens::emissive_color, pxr::SdfValueTypeNames->Float3, usdtokens::rgb, true}}
   };
 
   return input_map;
