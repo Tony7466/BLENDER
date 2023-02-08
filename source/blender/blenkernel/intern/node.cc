@@ -3477,9 +3477,7 @@ static bool ntree_contains_tree_exec(const bNodeTree *parent_tree,
 
 bool ntreeContainsTree(const bNodeTree *parent_tree, const bNodeTree *sub_tree)
 {
-  SCOPED_TIMER_AVERAGED("Cache speed");
   Set<const bNodeTree *> already_passed;
-
   return ntree_contains_tree_exec(parent_tree, sub_tree, already_passed);
 }
 
