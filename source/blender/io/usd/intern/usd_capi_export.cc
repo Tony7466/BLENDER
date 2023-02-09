@@ -11,7 +11,7 @@
 #include <pxr/usd/usd/primRange.h>
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usd/usdGeom/tokens.h>
-#include <pxr/usd/usdGeom/scope.h>
+#include <pxr/usd/usdGeom/xform.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -113,7 +113,7 @@ static void export_startjob(void *customdata,
   }
 
   if (data->params.add_root) {
-    pxr::UsdGeomScope::Define(usd_stage, pxr::SdfPath("/Root"));
+    pxr::UsdGeomXform::Define(usd_stage, pxr::SdfPath("/Root"));
   }
 
   USDHierarchyIterator iter(data->bmain, data->depsgraph, usd_stage, data->params);
