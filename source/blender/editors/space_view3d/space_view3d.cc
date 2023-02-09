@@ -729,7 +729,7 @@ static bool view3d_geometry_nodes_drop_poll(bContext *C, wmDrag *drag, const wmE
     }
     if (wmDropBox *drop_box = drag->drop_state.active_dropbox) {
       const uint32_t uuid = RNA_int_get(drop_box->ptr, "session_uuid");
-      bNodeTree *node_tree = reinterpret_cast<bNodeTree *>(
+      const bNodeTree *node_tree = reinterpret_cast<const bNodeTree *>(
           BKE_libblock_find_session_uuid(CTX_data_main(C), ID_NT, uuid));
       if (node_tree) {
         return node_tree->type == NTREE_GEOMETRY;

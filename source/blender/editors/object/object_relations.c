@@ -2873,17 +2873,17 @@ void OBJECT_OT_drop_named_material(wmOperatorType *ot)
 /** \name Drop Geometry Nodes on Object Operator
  * \{ */
 
-char *ED_object_ot_drop_geometry_nodes_tooltip(bContext *C,
-                                               PointerRNA *properties,
+char *ED_object_ot_drop_geometry_nodes_tooltip(const bContext *C,
+                                               const PointerRNA *properties,
                                                const int mval[2])
 {
-  Object *ob = ED_view3d_give_object_under_cursor(C, mval);
+  const Object *ob = ED_view3d_give_object_under_cursor(C, mval);
   if (ob == NULL) {
     return BLI_strdup("");
   }
 
-  uint32_t session_uuid = RNA_int_get(properties, "session_uuid");
-  ID *id = BKE_libblock_find_session_uuid(CTX_data_main(C), ID_NT, session_uuid);
+  const uint32_t session_uuid = RNA_int_get(properties, "session_uuid");
+  const ID *id = BKE_libblock_find_session_uuid(CTX_data_main(C), ID_NT, session_uuid);
   if (!id) {
     return BLI_strdup("");
   }
