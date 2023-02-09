@@ -3880,7 +3880,10 @@ void draw_outliner(const bContext *C)
   const bool use_warning_column = outliner_has_element_warnings(*space_outliner);
 
   /* Draw outliner stuff (background, hierarchy lines and names). */
-  const float right_column_width = outliner_right_columns_width(space_outliner);
+  float winx, width;
+  winx = (float)(BLI_rcti_size_x(&v2d->mask) + 1);
+  width = BLI_rctf_size_x(&v2d->cur);
+  const float right_column_width = outliner_right_columns_width(space_outliner, winx / width);
   outliner_back(region);
   block = UI_block_begin(C, region, __func__, UI_EMBOSS);
   outliner_draw_tree((bContext *)C,

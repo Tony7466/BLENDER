@@ -302,7 +302,7 @@ bool outliner_tree_traverse(const SpaceOutliner *space_outliner,
   return true;
 }
 
-float outliner_right_columns_width(const SpaceOutliner *space_outliner)
+float outliner_right_columns_width(const SpaceOutliner *space_outliner, float zoom)
 {
   int num_columns = 0;
 
@@ -350,7 +350,7 @@ float outliner_right_columns_width(const SpaceOutliner *space_outliner)
       }
       break;
   }
-  return (num_columns * UI_UNIT_X + V2D_SCROLL_WIDTH);
+  return (num_columns * UI_UNIT_X * zoom + V2D_SCROLL_WIDTH);
 }
 
 TreeElement *outliner_find_element_with_flag(const ListBase *lb, short flag)
