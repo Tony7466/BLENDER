@@ -298,7 +298,7 @@ typedef struct bNodeType {
                         const struct bNodeTree *nodetree,
                         const char **r_disabled_hint);
 
-  /* optional handling of link insertion. Returns false if the link shouldn't be created. */
+  /* Optional handling of link insertion. Returns false if the link shouldn't be created. */
   bool (*insert_link)(struct bNodeTree *ntree, struct bNode *node, struct bNodeLink *link);
 
   void (*free_self)(struct bNodeType *ntype);
@@ -1534,6 +1534,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define GEO_NODE_BLUR_ATTRIBUTE 1190
 #define GEO_NODE_IMAGE 1191
 #define GEO_NODE_INTERPOLATE_CURVES 1192
+#define GEO_NODE_EDGES_TO_FACE_GROUPS 1193
 
 /** \} */
 

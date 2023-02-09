@@ -29,7 +29,6 @@
 /** \name Mesh Connectivity Mapping
  * \{ */
 
-/* ngon version wip, based on BM_uv_vert_map_create */
 UvVertMap *BKE_mesh_uv_vert_map_create(const MPoly *mpoly,
                                        const bool *hide_poly,
                                        const bool *select_poly,
@@ -41,13 +40,14 @@ UvVertMap *BKE_mesh_uv_vert_map_create(const MPoly *mpoly,
                                        const bool selected,
                                        const bool use_winding)
 {
+  /* NOTE: N-gon version WIP, based on #BM_uv_vert_map_create. */
+
   UvVertMap *vmap;
   UvMapVert *buf;
   const MPoly *mp;
   uint a;
   int i, totuv, nverts;
 
-  bool *winding = nullptr;
   BLI_buffer_declare_static(vec2f, tf_uv_buf, BLI_BUFFER_NOP, 32);
 
   totuv = 0;
@@ -67,13 +67,15 @@ UvVertMap *BKE_mesh_uv_vert_map_create(const MPoly *mpoly,
   vmap = (UvVertMap *)MEM_callocN(sizeof(*vmap), "UvVertMap");
   buf = vmap->buf = (UvMapVert *)MEM_callocN(sizeof(*vmap->buf) * size_t(totuv), "UvMapVert");
   vmap->vert = (UvMapVert **)MEM_callocN(sizeof(*vmap->vert) * totvert, "UvMapVert*");
-  if (use_winding) {
-    winding = static_cast<bool *>(MEM_callocN(sizeof(*winding) * totpoly, "winding"));
-  }
 
   if (!vmap->vert || !vmap->buf) {
     BKE_mesh_uv_vert_map_free(vmap);
     return nullptr;
+  }
+
+  bool *winding = nullptr;
+  if (use_winding) {
+    winding = static_cast<bool *>(MEM_callocN(sizeof(*winding) * totpoly, "winding"));
   }
 
   mp = mpoly;
@@ -604,6 +606,20 @@ Array<Vector<int>> build_edge_to_loop_map(const Span<MLoop> loops, const int edg
   Array<Vector<int>> map(edges_num);
   for (const int64_t i : loops.index_range()) {
     map[loops[i].e].append(int(i));
+  }
+  return map;
+}
+
+Array<Vector<int, 2>> build_edge_to_poly_map(const Span<MPoly> polys,
+                                             const Span<MLoop> loops,
+                                             const int edges_num)
+{
+  Array<Vector<int, 2>> map(edges_num);
+  for (const int64_t i : polys.index_range()) {
+    const MPoly &poly = polys[i];
+    for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
+      map[loop.e].append(int(i));
+    }
   }
   return map;
 }
