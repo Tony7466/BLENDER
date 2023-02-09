@@ -310,7 +310,7 @@ static void curves_batch_cache_ensure_procedural_pos(const Curves &curves,
 }
 
 static void curves_batch_cache_ensure_edit_points_pos(const Curves &curves_id,
-                                                      CurvesBatchCache &cache)
+                                                      GPUVertBuf &point_pos_buf)
 {
   using namespace blender;
   const bke::CurvesGeometry &curves = curves_id.geometry.wrap();
@@ -321,11 +321,11 @@ static void curves_batch_cache_ensure_edit_points_pos(const Curves &curves_id,
     pos = GPU_vertformat_attr_add(&format_pos, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
   }
 
-  GPU_vertbuf_init_with_format(cache.edit_points_pos, &format_pos);
-  GPU_vertbuf_data_alloc(cache.edit_points_pos, curves.points_num());
+  GPU_vertbuf_init_with_format(&point_pos_buf, &format_pos);
+  GPU_vertbuf_data_alloc(&point_pos_buf, curves.points_num());
 
   Span<float3> positions = curves.positions();
-  GPU_vertbuf_attr_fill(cache.edit_points_pos, pos, positions.data());
+  GPU_vertbuf_attr_fill(&point_pos_buf, pos, positions.data());
 }
 
 static void curves_batch_cache_ensure_edit_points_data(const Curves &curves_id,
@@ -777,7 +777,7 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
     DRW_vbo_request(cache.edit_lines, &cache.edit_points_data);
   }
   if (DRW_vbo_requested(cache.edit_points_pos)) {
-    curves_batch_cache_ensure_edit_points_pos(*curves_id_orig, cache);
+    curves_batch_cache_ensure_edit_points_pos(*curves_id_orig, *cache.edit_points_pos);
   }
   if (DRW_vbo_requested(cache.edit_points_data)) {
     curves_batch_cache_ensure_edit_points_data(*curves_id_orig, cache);
@@ -800,18 +800,7 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
       curves_batch_cache_ensure_edit_lines(*curves_cage_id, cage_cache);
     }
     if (DRW_vbo_requested(cage_cache.cage_point_pos)) {
-      static uint pos;
-      static const GPUVertFormat format = [&]() {
-        GPUVertFormat format;
-        pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-        return format;
-      }();
-
-      GPU_vertbuf_init_with_format(cage_cache.cage_point_pos, &format);
-      GPU_vertbuf_data_alloc(cage_cache.cage_point_pos, curves_cage_id->geometry.point_num);
-
-      const Span<float3> positions = curves_cage_id->geometry.wrap().positions();
-      GPU_vertbuf_attr_fill(cage_cache.cage_point_pos, pos, positions.data());
+      curves_batch_cache_ensure_edit_points_pos(*curves_cage_id, *cage_cache.cage_point_pos);
     }
     if (DRW_vbo_requested(cage_cache.cage_point_color)) {
       static const GPUVertFormat format = [&]() {
