@@ -287,7 +287,9 @@ void select_random(bke::CurvesGeometry &curves,
 }
 
 template<typename T>
-static void apply_selection_operation(MutableSpan<T> selection, int index, eSelectOp sel_op)
+static void apply_selection_operation(MutableSpan<T> selection,
+                                      const int index,
+                                      const eSelectOp sel_op)
 {
   switch (sel_op) {
     case SEL_OP_ADD:
