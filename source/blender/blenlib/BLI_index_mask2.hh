@@ -10,6 +10,18 @@ static constexpr int64_t index_mask_chunk_shift = 14;
 static constexpr int64_t index_mask_chunk_lower_mask = (1 << index_mask_chunk_shift) - 1;
 static constexpr int64_t max_index_mask_chunk_size = (1 << index_mask_chunk_shift);
 
+inline const std::array<int16_t, max_index_mask_chunk_size> &get_static_offsets_array()
+{
+  static const std::array<int16_t, max_index_mask_chunk_size> data = []() {
+    static std::array<int16_t, max_index_mask_chunk_size> data;
+    for (int16_t i = 0; i < max_index_mask_chunk_size; i++) {
+      data[i] = i;
+    }
+    return data;
+  }();
+  return data;
+}
+
 class IndexMaskChunk {
  private:
   int64_t start_ = 0;
