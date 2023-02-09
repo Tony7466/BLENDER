@@ -974,8 +974,6 @@ static int sequencer_select_exec(bContext *C, wmOperator *op)
 
   /* Deselect everything */
   if (deselect_all || (seq && (extend == false && deselect == false && toggle == false))) {
-    /* This is done to prevent undo items from being created when an empty sequencer is clicked.
-     * See T94080 for details. */
     changed = ED_sequencer_deselect_all(scene);
   }
 
