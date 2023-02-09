@@ -60,6 +60,16 @@ void main()
   /* Depth test. */
   far_box_t = min(far_box_t, distance(ws_near_plane, ws_opaque));
 
+#ifdef DEBUG_CONSERVATIVE_RASTERIZATION
+  outDebug.rgb = vec3(ls_near_box_t >= 0 ? 0 : 1);
+  if (ls_near_box_t < 0) {
+    return;
+  }
+#else
+  outDebug.rgb = ws_near_plane + (ws_view_direction * near_box_t);
+#endif
+  outDebug.a = 1.0f;
+
   float step_size = 0.1f;
   for (float t = near_box_t; t <= far_box_t; t += step_size) {
     /* Ensure we don't get past far_box_t. */
@@ -78,7 +88,4 @@ void main()
       step_size *= max(0.01f, t);
     }
   }
-
-  outDebug.rgb = ws_near_plane + (ws_view_direction * near_box_t);
-  outDebug.a = 1.0f;
 }
