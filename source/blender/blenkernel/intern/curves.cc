@@ -322,6 +322,7 @@ static void curves_evaluate_modifiers(struct Depsgraph *depsgraph,
   }
 }
 
+/** Get the positions that are edited in sculpt mode. */
 static Span<float3> get_cage_positions(const blender::bke::CurvesGeometry &curves_orig,
                                        const Curves *curves_id_eval,
                                        const blender::bke::CurvesEditHints *curve_edit_hints)
@@ -347,7 +348,7 @@ void BKE_curves_data_update(struct Depsgraph *depsgraph, struct Scene *scene, Ob
   Curves *curves = static_cast<Curves *>(object->data);
   GeometrySet geometry_set = GeometrySet::create_with_curves(curves,
                                                              GeometryOwnershipType::ReadOnly);
-  const bool generate_cage = ELEM(object->mode, OB_MODE_EDIT, OB_MODE_SCULPT_CURVES);
+  const bool generate_cage = object->mode == OB_MODE_SCULPT_CURVES;
   const Curves &curves_id_orig = *static_cast<const Curves *>(
       DEG_get_original_object(object)->data);
   if (generate_cage) {
