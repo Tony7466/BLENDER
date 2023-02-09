@@ -93,8 +93,9 @@ MetalDevice::MetalDevice(const DeviceInfo &info, Stats &stats, Profiler &profile
 
   texture_bindings_2d = [mtlDevice newBufferWithLength:4096 options:default_storage_mode];
   texture_bindings_3d = [mtlDevice newBufferWithLength:4096 options:default_storage_mode];
+  texture_buffers = [mtlDevice newBufferWithLength:4096 options:default_storage_mode];
 
-  stats.mem_alloc(texture_bindings_2d.allocatedSize + texture_bindings_3d.allocatedSize);
+  stats.mem_alloc(texture_bindings_2d.allocatedSize + texture_bindings_3d.allocatedSize + texture_buffers.allocatedSize);
 
   switch (device_vendor) {
     default:
@@ -155,6 +156,11 @@ MetalDevice::MetalDevice(const DeviceInfo &info, Stats &stats, Profiler &profile
   arg_desc_texture.dataType = MTLDataTypeTexture;
   arg_desc_texture.access = MTLArgumentAccessReadOnly;
   mtlTextureArgEncoder = [mtlDevice newArgumentEncoderWithArguments:@[ arg_desc_texture ]];
+  
+  MTLArgumentDescriptor *arg_desc_buffer_texture = [[MTLArgumentDescriptor alloc] init];
+  arg_desc_buffer_texture.dataType = MTLDataTypePointer;
+  arg_desc_buffer_texture.access = MTLArgumentAccessReadOnly;
+  mtlTextureBufferArgEncoder = [mtlDevice newArgumentEncoderWithArguments:@[ arg_desc_buffer_texture ]];
 
   /* command queue for non-tracing work on the GPU */
   mtlGeneralCommandQueue = [mtlDevice newCommandQueue];
@@ -183,6 +189,8 @@ MetalDevice::MetalDevice(const DeviceInfo &info, Stats &stats, Profiler &profile
     [ancillary_desc addObject:[arg_desc_tex copy]]; /* metal_tex_2d */
     arg_desc_tex.index = index++;
     [ancillary_desc addObject:[arg_desc_tex copy]]; /* metal_tex_3d */
+    arg_desc_tex.index = index++;
+    [ancillary_desc addObject:[arg_desc_tex copy]]; /* texture_buffers */
 
     [arg_desc_tex release];
 
@@ -254,15 +262,24 @@ MetalDevice::~MetalDevice()
       tex = nil;
     }
   }
+  for (auto &tex : texture_buffer_slot_map) {
+    if (tex) {
+      [tex release];
+      tex = nil;
+    }
+  }
+
   flush_delayed_free_list();
 
   if (texture_bindings_2d) {
-    stats.mem_free(texture_bindings_2d.allocatedSize + texture_bindings_3d.allocatedSize);
+    stats.mem_free(texture_bindings_2d.allocatedSize + texture_bindings_3d.allocatedSize + texture_buffers.allocatedSize);
 
     [texture_bindings_2d release];
     [texture_bindings_3d release];
+    [texture_buffers release];
   }
   [mtlTextureArgEncoder release];
+  [mtlTextureBufferArgEncoder release];
   [mtlBufferKernelParamsEncoder release];
   [mtlASArgEncoder release];
   [mtlAncillaryArgEncoder release];
@@ -559,6 +576,14 @@ void MetalDevice::load_texture_info()
         [mtlTextureArgEncoder setTexture:nil atIndex:0];
         [mtlTextureArgEncoder setArgumentBuffer:texture_bindings_3d offset:offset];
         [mtlTextureArgEncoder setTexture:nil atIndex:0];
+        
+        [mtlTextureBufferArgEncoder setArgumentBuffer:texture_buffers offset:offset];
+        if (id<MTLBuffer> metal_buffer = texture_buffer_slot_map[tex]) {
+          [mtlTextureBufferArgEncoder setBuffer:metal_buffer offset:0 atIndex:0];
+        }
+        else {
+          [mtlTextureBufferArgEncoder setBuffer:nil offset:0 atIndex:0];
+        }
       }
       else {
         MTLTextureType type = metal_texture.textureType;
@@ -566,11 +591,15 @@ void MetalDevice::load_texture_info()
         [mtlTextureArgEncoder setTexture:type == MTLTextureType2D ? metal_texture : nil atIndex:0];
         [mtlTextureArgEncoder setArgumentBuffer:texture_bindings_3d offset:offset];
         [mtlTextureArgEncoder setTexture:type == MTLTextureType3D ? metal_texture : nil atIndex:0];
+        
+        [mtlTextureBufferArgEncoder setArgumentBuffer:texture_buffers offset:offset];
+        [mtlTextureBufferArgEncoder setBuffer:nil offset:0 atIndex:0];
       }
     }
     if (default_storage_mode == MTLResourceStorageModeManaged) {
       [texture_bindings_2d didModifyRange:NSMakeRange(0, num_textures * sizeof(void *))];
       [texture_bindings_3d didModifyRange:NSMakeRange(0, num_textures * sizeof(void *))];
+      [texture_buffers didModifyRange:NSMakeRange(0, num_textures * sizeof(void *))];
     }
   }
 }
@@ -994,16 +1023,6 @@ void MetalDevice::tex_alloc_as_buffer(device_texture &mem)
 
 void MetalDevice::tex_alloc(device_texture &mem)
 {
-  /* Check that dimensions fit within maximum allowable size.
-   * See: https://developer.apple.com/metal/Metal-Feature-Set-Tables.pdf */
-  if (mem.data_width > 16384 || mem.data_height > 16384) {
-    set_error(string_printf(
-        "Texture exceeds maximum allowed size of 16384 x 16384 (requested: %zu x %zu)",
-        mem.data_width,
-        mem.data_height));
-    return;
-  }
-
   MTLStorageMode storage_mode = MTLStorageModeManaged;
   if (@available(macos 10.15, *)) {
     if ([mtlDevice hasUnifiedMemory] &&
@@ -1077,85 +1096,106 @@ void MetalDevice::tex_alloc(device_texture &mem)
   assert(format != MTLPixelFormatInvalid);
 
   id<MTLTexture> mtlTexture = nil;
+  id<MTLBuffer> mtlBuffer = nil;
   size_t src_pitch = mem.data_width * dsize * mem.data_elements;
 
-  if (mem.data_depth > 1) {
-    /* 3D texture using array */
-    MTLTextureDescriptor *desc;
-
-    desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:format
-                                                              width:mem.data_width
-                                                             height:mem.data_height
-                                                          mipmapped:NO];
-
-    desc.storageMode = storage_mode;
-    desc.usage = MTLTextureUsageShaderRead;
-
-    desc.textureType = MTLTextureType3D;
-    desc.depth = mem.data_depth;
-
-    VLOG_WORK << "Texture 3D allocate: " << mem.name << ", "
-              << string_human_readable_number(mem.memory_size()) << " bytes. ("
-              << string_human_readable_size(mem.memory_size()) << ")";
-
-    mtlTexture = [mtlDevice newTextureWithDescriptor:desc];
-    if (!mtlTexture) {
-      set_error("System is out of GPU memory");
-      return;
-    }
-
-    const size_t imageBytes = src_pitch * mem.data_height;
-    for (size_t d = 0; d < mem.data_depth; d++) {
-      const size_t offset = d * imageBytes;
-      [mtlTexture replaceRegion:MTLRegionMake3D(0, 0, d, mem.data_width, mem.data_height, 1)
-                    mipmapLevel:0
-                          slice:0
-                      withBytes:(uint8_t *)mem.host_pointer + offset
-                    bytesPerRow:src_pitch
-                  bytesPerImage:0];
-    }
+  bool use_tex = true;
+  if (mem.data_width > 16384 || mem.data_height > 16384) {
+    use_tex = false;
   }
-  else if (mem.data_height > 0) {
-    /* 2D texture */
-    MTLTextureDescriptor *desc;
-
-    desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:format
-                                                              width:mem.data_width
-                                                             height:mem.data_height
-                                                          mipmapped:NO];
-
-    desc.storageMode = storage_mode;
-    desc.usage = MTLTextureUsageShaderRead;
-
-    VLOG_WORK << "Texture 2D allocate: " << mem.name << ", "
-              << string_human_readable_number(mem.memory_size()) << " bytes. ("
-              << string_human_readable_size(mem.memory_size()) << ")";
-
-    mtlTexture = [mtlDevice newTextureWithDescriptor:desc];
-    if (!mtlTexture) {
-      set_error("System is out of GPU memory");
-      return;
+  if (auto str = getenv("USE_TEX")) {
+    use_tex = atoi(str);
+  }
+  if (use_tex) {
+    if (mem.data_depth > 1) {
+      /* 3D texture using array */
+      MTLTextureDescriptor *desc;
+      
+      desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:format
+                                                                width:mem.data_width
+                                                               height:mem.data_height
+                                                            mipmapped:NO];
+      
+      desc.storageMode = storage_mode;
+      desc.usage = MTLTextureUsageShaderRead;
+      
+      desc.textureType = MTLTextureType3D;
+      desc.depth = mem.data_depth;
+      
+      VLOG_WORK << "Texture 3D allocate: " << mem.name << ", "
+      << string_human_readable_number(mem.memory_size()) << " bytes. ("
+      << string_human_readable_size(mem.memory_size()) << ")";
+      
+      mtlTexture = [mtlDevice newTextureWithDescriptor:desc];
+      if (!mtlTexture) {
+        set_error("System is out of GPU memory");
+        return;
+      }
+      
+      const size_t imageBytes = src_pitch * mem.data_height;
+      for (size_t d = 0; d < mem.data_depth; d++) {
+        const size_t offset = d * imageBytes;
+        [mtlTexture replaceRegion:MTLRegionMake3D(0, 0, d, mem.data_width, mem.data_height, 1)
+                      mipmapLevel:0
+                            slice:0
+                        withBytes:(uint8_t *)mem.host_pointer + offset
+                      bytesPerRow:src_pitch
+                    bytesPerImage:0];
+      }
     }
+    else if (mem.data_height > 0) {
+      /* 2D texture */
+      MTLTextureDescriptor *desc;
+      
+      desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:format
+                                                                width:mem.data_width
+                                                               height:mem.data_height
+                                                            mipmapped:NO];
+      
+      desc.storageMode = storage_mode;
+      desc.usage = MTLTextureUsageShaderRead;
+      
+      VLOG_WORK << "Texture 2D allocate: " << mem.name << ", "
+      << string_human_readable_number(mem.memory_size()) << " bytes. ("
+      << string_human_readable_size(mem.memory_size()) << ")";
+      
+      mtlTexture = [mtlDevice newTextureWithDescriptor:desc];
+      if (!mtlTexture) {
+        set_error("System is out of GPU memory");
+        return;
+      }
+      
+      [mtlTexture replaceRegion:MTLRegionMake2D(0, 0, mem.data_width, mem.data_height)
+                    mipmapLevel:0
+                      withBytes:mem.host_pointer
+                    bytesPerRow:src_pitch];
+    }
+    else {
+      assert(0);
+      /* 1D texture, using linear memory. */
+    }
+    mem.device_pointer = (device_ptr)mtlTexture;
+  }
+  
+  if (use_tex) {
+    mem.device_size = size;
+    stats.mem_alloc(size);
 
-    [mtlTexture replaceRegion:MTLRegionMake2D(0, 0, mem.data_width, mem.data_height)
-                  mipmapLevel:0
-                    withBytes:mem.host_pointer
-                  bytesPerRow:src_pitch];
+    std::lock_guard<std::recursive_mutex> lock(metal_mem_map_mutex);
+    MetalMem *mmem = new MetalMem;
+    metal_mem_map[&mem] = std::unique_ptr<MetalMem>(mmem);
+    mmem->mem = &mem;
+    mmem->mtlTexture = mtlTexture;
+    mmem->mtlBuffer = mtlBuffer;
   }
   else {
-    assert(0);
-    /* 1D texture, using linear memory. */
+    generic_alloc(mem);
+    
+    std::lock_guard<std::recursive_mutex> lock(metal_mem_map_mutex);
+    mtlBuffer = metal_mem_map[&mem]->mtlBuffer;
+    mem.device_pointer = (device_ptr)mtlBuffer;
+    //mem.host_pointer = 0;
   }
-
-  mem.device_pointer = (device_ptr)mtlTexture;
-  mem.device_size = size;
-  stats.mem_alloc(size);
-
-  std::lock_guard<std::recursive_mutex> lock(metal_mem_map_mutex);
-  MetalMem *mmem = new MetalMem;
-  metal_mem_map[&mem] = std::unique_ptr<MetalMem>(mmem);
-  mmem->mem = &mem;
-  mmem->mtlTexture = mtlTexture;
 
   /* Resize once */
   const uint slot = mem.slot;
@@ -1163,39 +1203,49 @@ void MetalDevice::tex_alloc(device_texture &mem)
     /* Allocate some slots in advance, to reduce amount
      * of re-allocations. */
     texture_info.resize(slot + 128);
-    texture_slot_map.resize(slot + 128);
+    texture_slot_map.resize(slot + 128, nil);
+    texture_buffer_slot_map.resize(slot + 128, nil);
 
     ssize_t min_buffer_length = sizeof(void *) * texture_info.size();
     if (!texture_bindings_2d || (texture_bindings_2d.length < min_buffer_length)) {
       if (texture_bindings_2d) {
         delayed_free_list.push_back(texture_bindings_2d);
         delayed_free_list.push_back(texture_bindings_3d);
+        delayed_free_list.push_back(texture_buffers);
 
-        stats.mem_free(texture_bindings_2d.allocatedSize + texture_bindings_3d.allocatedSize);
+        stats.mem_free(texture_bindings_2d.allocatedSize + texture_bindings_3d.allocatedSize + texture_buffers.allocatedSize);
       }
       texture_bindings_2d = [mtlDevice newBufferWithLength:min_buffer_length
                                                    options:default_storage_mode];
       texture_bindings_3d = [mtlDevice newBufferWithLength:min_buffer_length
                                                    options:default_storage_mode];
-
-      stats.mem_alloc(texture_bindings_2d.allocatedSize + texture_bindings_3d.allocatedSize);
+      texture_buffers = [mtlDevice newBufferWithLength:min_buffer_length
+                                               options:default_storage_mode];
+      
+      stats.mem_alloc(texture_bindings_2d.allocatedSize + texture_bindings_3d.allocatedSize + texture_buffers.allocatedSize);
     }
   }
 
-  if (@available(macos 10.14, *)) {
-    /* Optimize the texture for GPU access. */
-    id<MTLCommandBuffer> commandBuffer = [mtlGeneralCommandQueue commandBuffer];
-    id<MTLBlitCommandEncoder> blitCommandEncoder = [commandBuffer blitCommandEncoder];
-    [blitCommandEncoder optimizeContentsForGPUAccess:mtlTexture];
-    [blitCommandEncoder endEncoding];
-    [commandBuffer commit];
+  if (mtlTexture) {
+    if (@available(macos 10.14, *)) {
+      /* Optimize the texture for GPU access. */
+      id<MTLCommandBuffer> commandBuffer = [mtlGeneralCommandQueue commandBuffer];
+      id<MTLBlitCommandEncoder> blitCommandEncoder = [commandBuffer blitCommandEncoder];
+      [blitCommandEncoder optimizeContentsForGPUAccess:mtlTexture];
+      [blitCommandEncoder endEncoding];
+      [commandBuffer commit];
+    }
   }
 
   /* Set Mapping and tag that we need to (re-)upload to device */
   texture_slot_map[slot] = mtlTexture;
+  texture_buffer_slot_map[slot] = mtlBuffer;
   texture_info[slot] = mem.info;
   need_texture_info = true;
 
+  if (mtlBuffer) {
+    sampler_index = 0xffffffffull;
+  }
   texture_info[slot].data = uint64_t(slot) | (sampler_index << 32);
 
   if (max_working_set_exceeded()) {
@@ -1210,12 +1260,36 @@ void MetalDevice::tex_free(device_texture &mem)
     MetalMem &mmem = *metal_mem_map.at(&mem);
 
     assert(texture_slot_map[mem.slot] == mmem.mtlTexture);
+    assert(texture_buffer_slot_map[mem.slot] == mmem.mtlBuffer);
     texture_slot_map[mem.slot] = nil;
+    texture_buffer_slot_map[mem.slot] = nil;
+    
+    if (mmem.use_UMA) {
+      assert(mem.shared_pointer);
+      if (mem.shared_pointer) {
+        assert(mem.shared_counter > 0);
+        if (--mem.shared_counter == 0) {
+          if (mem.host_pointer && mem.host_pointer == mem.shared_pointer) {
+            /* Safely move the device-side data back to the host before it is freed. */
+            size_t size = mem.memory_size();
+            mem.host_pointer = mem.host_alloc(size);
+            memcpy(mem.host_pointer, mem.shared_pointer, size);
+            mmem.use_UMA = false;
+          }
+          mem.shared_pointer = 0;
+        }
+      }
+    }
 
     if (mmem.mtlTexture) {
       /* Free bindless texture. */
       delayed_free_list.push_back(mmem.mtlTexture);
       mmem.mtlTexture = nil;
+    }
+    if (mmem.mtlBuffer) {
+      /* Free buffer. */
+      delayed_free_list.push_back(mmem.mtlBuffer);
+      mmem.mtlBuffer = nil;
     }
     erase_allocation(mem);
   }

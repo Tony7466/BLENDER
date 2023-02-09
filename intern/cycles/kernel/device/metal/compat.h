@@ -296,6 +296,9 @@ struct Texture2DParamsMetal {
 struct Texture3DParamsMetal {
   texture3d<float, access::sample> tex;
 };
+struct TextureBuffer {
+  device void* data;
+};
 
 #ifdef __METALRT__
 struct MetalRTBlasWrapper {
@@ -306,6 +309,7 @@ struct MetalRTBlasWrapper {
 struct MetalAncillaries {
   device Texture2DParamsMetal *textures_2d;
   device Texture3DParamsMetal *textures_3d;
+  device TextureBuffer *texture_buffers;
 
 #ifdef __METALRT__
   metalrt_as_type accel_struct;

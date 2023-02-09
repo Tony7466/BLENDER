@@ -74,6 +74,10 @@ class MetalDevice : public Device {
   id<MTLBuffer> texture_bindings_3d = nil;
   std::vector<id<MTLTexture>> texture_slot_map;
 
+  id<MTLArgumentEncoder> mtlTextureBufferArgEncoder = nil;
+  id<MTLBuffer> texture_buffers = nil;
+  std::vector<id<MTLBuffer>> texture_buffer_slot_map;
+
   /* BLAS encoding & lookup */
   id<MTLArgumentEncoder> mtlBlasArgEncoder = nil;
   id<MTLBuffer> blas_buffer = nil;
