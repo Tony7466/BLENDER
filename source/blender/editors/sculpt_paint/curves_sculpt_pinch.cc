@@ -6,6 +6,7 @@
 
 #include "BLI_index_mask_ops.hh"
 #include "BLI_math_matrix_types.hh"
+#include "BLI_task.hh"
 #include "BLI_vector.hh"
 
 #include "PIL_time.h"
