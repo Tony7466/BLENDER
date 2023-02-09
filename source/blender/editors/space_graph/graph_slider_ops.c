@@ -43,80 +43,6 @@
 #include "graph_intern.h"
 
 /* -------------------------------------------------------------------- */
-/** \name Enum Operator to call different sliders
- * \{ */
-
-#define DESCRIPTION_BLEND_NEIGHBOR "Blend selected keyframes to their left or right neighbor"
-#define DESCRIPTION_BLEND_DEFAULT \
-  "Blend selected keys to their default value from their current position"
-#define DESCRIPTION_BREAKDOWN \
-  "Move selected keyframes to an inbetween position relative to adjacent keys"
-#define DESCRIPTION_EASE "Align keyframes on a ease-in or ease-out curve"
-
-typedef enum eKeyOperators {
-  KEYOP_BLEND_NEIGHBOR = 0,
-  KEYOP_BLEND_DEFAULT = 1,
-  KEYOP_BREAKDOWN = 2,
-  KEYOP_EASE = 3,
-} eKeyOperators;
-
-const EnumPropertyItem graph_slider_options_enum[] = {
-    {KEYOP_BLEND_NEIGHBOR, "BLEND_NEIGHBOR", 0, "Blend to Neighbor", DESCRIPTION_BLEND_NEIGHBOR},
-    {KEYOP_BLEND_DEFAULT, "BLEND_DEFAULT", 0, "Blend to Default", DESCRIPTION_BLEND_DEFAULT},
-    {KEYOP_BREAKDOWN, "BREAKDOWN", 0, "Breakdown", DESCRIPTION_BREAKDOWN},
-    {KEYOP_EASE, "EASE", 0, "Ease", DESCRIPTION_EASE},
-    {0, NULL, 0, NULL, NULL},
-};
-
-static int graph_slider_choice_exec(bContext *C, wmOperator *op)
-{
-  const int mode = RNA_enum_get(op->ptr, "mode");
-  wmOperatorType *ot;
-
-  switch (mode) {
-    case KEYOP_BLEND_NEIGHBOR:
-      ot = WM_operatortype_find("GRAPH_OT_blend_to_neighbor", false);
-      return WM_operator_name_call_ptr(C, ot, WM_OP_INVOKE_DEFAULT, NULL, NULL);
-      break;
-    case KEYOP_BLEND_DEFAULT:
-      ot = WM_operatortype_find("GRAPH_OT_blend_to_default", false);
-      return WM_operator_name_call_ptr(C, ot, WM_OP_INVOKE_DEFAULT, NULL, NULL);
-      break;
-    case KEYOP_BREAKDOWN:
-      ot = WM_operatortype_find("GRAPH_OT_breakdown", false);
-      return WM_operator_name_call_ptr(C, ot, WM_OP_INVOKE_DEFAULT, NULL, NULL);
-      break;
-    case KEYOP_EASE:
-      ot = WM_operatortype_find("GRAPH_OT_ease", false);
-      return WM_operator_name_call_ptr(C, ot, WM_OP_INVOKE_DEFAULT, NULL, NULL);
-      break;
-  }
-
-  return OPERATOR_CANCELLED;
-}
-
-void GRAPH_OT_slider_choice(wmOperatorType *ot)
-{
-  /* Identifiers */
-  ot->name = "Slider Operators";
-  ot->idname = "GRAPH_OT_slider_choice";
-  ot->description = "Choose a slider operator run";
-
-  /* API callbacks */
-  ot->invoke = WM_menu_invoke;
-  ot->exec = graph_slider_choice_exec;
-  ot->poll = graphop_editable_keyframes_poll;
-
-  /* Flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-
-  /* Id-props */
-  ot->prop = RNA_def_enum(ot->srna, "mode", graph_slider_options_enum, 0, "Mode", "");
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Internal Struct & Defines
  * \{ */
 
@@ -725,7 +651,7 @@ void GRAPH_OT_blend_to_neighbor(wmOperatorType *ot)
   /* Identifiers. */
   ot->name = "Blend to Neighbor";
   ot->idname = "GRAPH_OT_blend_to_neighbor";
-  ot->description = DESCRIPTION_BLEND_NEIGHBOR;
+  ot->description = "Blend selected keyframes to their left or right neighbor";
 
   /* API callbacks. */
   ot->invoke = blend_to_neighbor_invoke;
@@ -850,7 +776,7 @@ void GRAPH_OT_breakdown(wmOperatorType *ot)
   /* Identifiers. */
   ot->name = "Breakdown";
   ot->idname = "GRAPH_OT_breakdown";
-  ot->description = DESCRIPTION_BREAKDOWN;
+  ot->description = "Move selected keyframes to an inbetween position relative to adjacent keys";
 
   /* API callbacks. */
   ot->invoke = breakdown_invoke;
@@ -979,7 +905,7 @@ void GRAPH_OT_blend_to_default(wmOperatorType *ot)
   /* Identifiers. */
   ot->name = "Blend to Default Value";
   ot->idname = "GRAPH_OT_blend_to_default";
-  ot->description = DESCRIPTION_BLEND_DEFAULT;
+  ot->description = "Blend selected keys to their default value from their current position";
 
   /* API callbacks. */
   ot->invoke = blend_to_default_invoke;
@@ -1104,7 +1030,7 @@ void GRAPH_OT_ease(wmOperatorType *ot)
   /* Identifiers. */
   ot->name = "Ease Keyframes";
   ot->idname = "GRAPH_OT_ease";
-  ot->description = DESCRIPTION_EASE;
+  ot->description = "Align keyframes on a ease-in or ease-out curve";
 
   /* API callbacks. */
   ot->invoke = ease_invoke;
