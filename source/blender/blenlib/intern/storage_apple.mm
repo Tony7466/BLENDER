@@ -185,3 +185,27 @@ const char *BLI_expand_tilde(const char *path_with_tilde)
   }
   return path_expanded;
 }
+
+
+const char *BLI_apple_getcwd(const size_t max_length) {
+  static char path_expanded[PATH_MAX];
+  @autoreleasepool {
+    NSString *path = [[NSFileManager defaultManager] currentDirectoryPath];
+    const size_t length = max_length > PATH_MAX ? PATH_MAX : max_length;
+    [path getCString:path_expanded maxLength: length encoding:NSUTF8StringEncoding];
+    return path_expanded;
+  }
+}
+
+
+int BLI_apple_chdir(const char* dir) {
+  @autoreleasepool {
+    NSString* path = [[NSString alloc] initWithUTF8String: dir];
+    if ([[NSFileManager defaultManager] changeCurrentDirectoryPath: path] == YES) {
+      return 0;
+    }
+    else {
+      return -1;
+    }
+  }
+}
