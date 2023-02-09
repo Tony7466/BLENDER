@@ -809,7 +809,7 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
     if (DRW_vbo_requested(cage_cache.cage_point_color)) {
       static const GPUVertFormat format = [&]() {
         GPUVertFormat format;
-        GPU_vertformat_attr_add(&format, "my_color", GPU_COMP_U8, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
+        GPU_vertformat_attr_add(&format, "color", GPU_COMP_U8, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
         return format;
       }();
 
