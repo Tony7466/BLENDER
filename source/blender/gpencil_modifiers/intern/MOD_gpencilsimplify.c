@@ -85,7 +85,8 @@ static void deformStroke(GpencilModifierData *md,
     }
     case GP_SIMPLIFY_ADAPTIVE: {
       /* simplify stroke using Ramer-Douglas-Peucker algorithm */
-      BKE_gpencil_stroke_simplify_adaptive(gpd, gps, mmd->factor);
+      BKE_gpencil_stroke_simplify_adaptive(
+          gpd, gps, mmd->factor, mmd->fac_position, mmd->fac_thickness, mmd->fac_strength);
       break;
     }
     case GP_SIMPLIFY_SAMPLE: {
@@ -133,6 +134,9 @@ static void panel_draw(const bContext *UNUSED(C), Panel *panel)
   }
   else if (mode == GP_SIMPLIFY_ADAPTIVE) {
     uiItemR(layout, ptr, "factor", 0, NULL, ICON_NONE);
+    uiItemR(layout, ptr, "fac_position", 0, NULL, ICON_NONE);
+    uiItemR(layout, ptr, "fac_thickness", 0, NULL, ICON_NONE);
+    uiItemR(layout, ptr, "fac_strength", 0, NULL, ICON_NONE);
   }
   else if (mode == GP_SIMPLIFY_SAMPLE) {
     uiItemR(layout, ptr, "length", 0, NULL, ICON_NONE);

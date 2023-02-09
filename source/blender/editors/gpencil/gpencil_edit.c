@@ -4748,7 +4748,7 @@ static int gpencil_stroke_simplify_exec(bContext *C, wmOperator *op)
     GP_EDITABLE_STROKES_BEGIN (gpstroke_iter, C, gpl, gps) {
       if (gps->flag & GP_STROKE_SELECT) {
         /* simplify stroke using Ramer-Douglas-Peucker algorithm */
-        BKE_gpencil_stroke_simplify_adaptive(gpd, gps, factor);
+        BKE_gpencil_stroke_simplify_adaptive(gpd, gps, factor, 10, 1, 1);
         changed = true;
       }
     }

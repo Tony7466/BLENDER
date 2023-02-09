@@ -82,7 +82,10 @@ void BKE_gpencil_stroke_normal(const struct bGPDstroke *gps, float r_normal[3]);
  */
 void BKE_gpencil_stroke_simplify_adaptive(struct bGPdata *gpd,
                                           struct bGPDstroke *gps,
-                                          float epsilon);
+                                          float epsilon,
+                                          float fac_position,
+                                          float fac_thickness,
+                                          float fac_strength);
 /**
  * Simplify alternate vertex of stroke except extremes.
  * \param gpd: Grease pencil data-block

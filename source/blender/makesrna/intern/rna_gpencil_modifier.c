@@ -1378,6 +1378,27 @@ static void rna_def_modifier_gpencilsimplify(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Factor", "Factor of Simplify");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
+  prop = RNA_def_property(srna, "fac_position", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, NULL, "fac_position");
+  RNA_def_property_range(prop, 0, 100.0);
+  RNA_def_property_ui_range(prop, 0, 20.0f, 1.0f, 1);
+  RNA_def_property_ui_text(prop, "Factor Position", "Factor of Position");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "fac_thickness", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, NULL, "fac_thickness");
+  RNA_def_property_range(prop, 0, 100.0);
+  RNA_def_property_ui_range(prop, 0, 20.0f, 1.0f, 1);
+  RNA_def_property_ui_text(prop, "Factor Thickness", "Factor of Thickness");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "fac_strength", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, NULL, "fac_strength");
+  RNA_def_property_range(prop, 0, 100.0);
+  RNA_def_property_ui_range(prop, 0, 20.0f, 1.0f, 1);
+  RNA_def_property_ui_text(prop, "Factor Strength", "Factor of Strength");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
   prop = RNA_def_property(srna, "pass_index", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, NULL, "pass_index");
   RNA_def_property_range(prop, 0, 100);

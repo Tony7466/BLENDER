@@ -1280,7 +1280,8 @@ static void gpencil_stroke_newfrombuffer(tGPsdata *p)
     /* Simplify adaptive */
     if ((brush->gpencil_settings->flag & GP_BRUSH_GROUP_SETTINGS) &&
         (brush->gpencil_settings->simplify_f > 0.0f)) {
-      BKE_gpencil_stroke_simplify_adaptive(gpd, gps, brush->gpencil_settings->simplify_f);
+      BKE_gpencil_stroke_simplify_adaptive(
+          gpd, gps, brush->gpencil_settings->simplify_f, 10, 0, 0);
     }
 
     /* Set material index. */

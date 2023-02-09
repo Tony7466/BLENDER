@@ -742,6 +742,9 @@ typedef struct SimplifyGpencilModifierData {
   int flag;
   /** Factor of simplify. */
   float factor;
+  float fac_position;
+  float fac_thickness;
+  float fac_strength;
   /** Type of simplify. */
   short mode;
   /** Every n vertex to keep. */
@@ -754,6 +757,7 @@ typedef struct SimplifyGpencilModifierData {
   float sharp_threshold;
   /** Merge distance */
   float distance;
+  char _pad[4];
 } SimplifyGpencilModifierData;
 
 typedef enum eSimplifyGpencil_Flag {

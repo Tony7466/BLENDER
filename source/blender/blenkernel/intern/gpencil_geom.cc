@@ -15,6 +15,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_array.hh"
 #include "BLI_array_utils.h"
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
@@ -24,6 +25,7 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_polyfill_2d.h"
 #include "BLI_span.hh"
+#include "BLI_stack.hh"
 
 #include "DNA_gpencil_modifier_types.h"
 #include "DNA_gpencil_types.h"
@@ -48,8 +50,12 @@
 
 #include "DEG_depsgraph_query.h"
 
+using blender::Array;
+using blender::float2;
 using blender::float3;
+using blender::MutableSpan;
 using blender::Span;
+using blender::Stack;
 
 /* -------------------------------------------------------------------- */
 /** \name Grease Pencil Object: Bound-box Support
@@ -2015,70 +2021,86 @@ void BKE_gpencil_stroke_normal(const bGPDstroke *gps, float r_normal[3])
 
 /** \} */
 
+/**
+ * Iterative implementation of the Ramerâ€“Douglasâ€“Peucker algorithm
+ * (https://en.wikipedia.org/wiki/Ramer%E2%80%93Douglas%E2%80%93Peucker_algorithm)
+ * Note: Assumes \param r_marked_keep has the same size as \param points.
+ */
+static void simplify_point_buffer(Span<bGPDspoint> points,
+                                  int start_idx,
+                                  int end_idx,
+                                  float epsilon,
+                                  float fac_position,
+                                  float fac_thickness,
+                                  float fac_strength,
+                                  MutableSpan<bool> r_marked_keep)
+{
+  Stack<std::pair<int, int>> stack;
+  stack.push({start_idx, end_idx});
+
+  while (!stack.is_empty()) {
+    auto [start, end] = stack.pop();
+
+    float max_dist = 0.0f;
+    int max_index = -1;
+    for (int i = start + 1; i < end; i++) {
+      if (r_marked_keep[i - start_idx]) {
+        float3 point_on_line;
+        float lambda = closest_to_line_segment_v3(
+            point_on_line, &points[i].x, &points[start].x, &points[end].x);
+        float interp_thickness = interpf(points[end].pressure, points[start].pressure, lambda);
+        float interp_strength = interpf(points[end].strength, points[start].strength, lambda);
+
+        float dist_position = len_v3v3(point_on_line, &points[i].x) * fac_position;
+        float dist_thickness = fabsf(points[i].pressure - interp_thickness) * fac_thickness;
+        float dist_strength = fabsf(points[i].strength - interp_strength) * fac_strength;
+
+        float dist = std::max({dist_position, dist_thickness, dist_strength});
+        if (dist > max_dist) {
+          max_dist = dist;
+          max_index = i;
+        }
+      }
+    }
+
+    if (max_dist > epsilon) {
+      stack.push({start, max_index});
+      stack.push({max_index, end});
+    }
+    else {
+      for (int i = start + 1; i < end; i++) {
+        r_marked_keep[i - start_idx] = false;
+      }
+    }
+  }
+}
+
 /* -------------------------------------------------------------------- */
 /** \name Stroke Simplify
  * \{ */
 
-void BKE_gpencil_stroke_simplify_adaptive(bGPdata *gpd, bGPDstroke *gps, float epsilon)
+void BKE_gpencil_stroke_simplify_adaptive(bGPdata *gpd,
+                                          bGPDstroke *gps,
+                                          float epsilon,
+                                          float fac_position,
+                                          float fac_thickness,
+                                          float fac_strength)
 {
   bGPDspoint *old_points = (bGPDspoint *)MEM_dupallocN(gps->points);
+
   int totpoints = gps->totpoints;
-  char *marked = nullptr;
-  char work;
 
-  int start = 0;
-  int end = gps->totpoints - 1;
+  Span<bGPDspoint> points(old_points, totpoints);
 
-  marked = (char *)MEM_callocN(totpoints, "GP marked array");
-  marked[start] = 1;
-  marked[end] = 1;
-
-  work = 1;
-  int totmarked = 0;
-  /* while still reducing */
-  while (work) {
-    int ls, le;
-    work = 0;
-
-    ls = start;
-    le = start + 1;
-
-    /* while not over interval */
-    while (ls < end) {
-      int max_i = 0;
-      /* divided to get more control */
-      float max_dist = epsilon / 10.0f;
-
-      /* find the next marked point */
-      while (marked[le] == 0) {
-        le++;
-      }
-
-      for (int i = ls + 1; i < le; i++) {
-        float point_on_line[3];
-        float dist;
-
-        closest_to_line_segment_v3(
-            point_on_line, &old_points[i].x, &old_points[ls].x, &old_points[le].x);
-
-        dist = len_v3v3(point_on_line, &old_points[i].x);
-
-        if (dist > max_dist) {
-          max_dist = dist;
-          max_i = i;
-        }
-      }
-
-      if (max_i != 0) {
-        work = 1;
-        marked[max_i] = 1;
-        totmarked++;
-      }
-
-      ls = le;
-      le = ls + 1;
-    }
-  }
+  Array<bool> marked_as_keep(totpoints, true);
+  simplify_point_buffer(points,
+                        0,
+                        totpoints - 1,
+                        epsilon,
+                        fac_position,
+                        fac_thickness,
+                        fac_strength,
+                        marked_as_keep);
 
   /* adding points marked */
   MDeformVert *old_dvert = nullptr;
@@ -2088,22 +2110,21 @@ void BKE_gpencil_stroke_simplify_adaptive(bGPdata *gpd, bGPDstroke *gps, float e
     old_dvert = (MDeformVert *)MEM_dupallocN(gps->dvert);
   }
   /* resize gps */
-  int j = 0;
+  int count = 0;
   for (int i = 0; i < totpoints; i++) {
     bGPDspoint *pt_src = &old_points[i];
-    bGPDspoint *pt = &gps->points[j];
-
-    if ((marked[i]) || (i == 0) || (i == totpoints - 1)) {
+    bGPDspoint *pt = &gps->points[count];
+    if (marked_as_keep[i]) {
       *pt = blender::dna::shallow_copy(*pt_src);
       if (gps->dvert != nullptr) {
         dvert_src = &old_dvert[i];
-        MDeformVert *dvert = &gps->dvert[j];
+        MDeformVert *dvert = &gps->dvert[count];
         memcpy(dvert, dvert_src, sizeof(MDeformVert));
         if (dvert_src->dw) {
           memcpy(dvert->dw, dvert_src->dw, sizeof(MDeformWeight));
         }
       }
-      j++;
+      count++;
     }
     else {
       if (gps->dvert != nullptr) {
@@ -2113,14 +2134,13 @@ void BKE_gpencil_stroke_simplify_adaptive(bGPdata *gpd, bGPDstroke *gps, float e
     }
   }
 
-  gps->totpoints = j;
+  gps->totpoints = count;
 
   /* Calc geometry data. */
   BKE_gpencil_stroke_geometry_update(gpd, gps);
 
   MEM_SAFE_FREE(old_points);
   MEM_SAFE_FREE(old_dvert);
-  MEM_SAFE_FREE(marked);
 }
 
 void BKE_gpencil_stroke_simplify_fixed(bGPdata *gpd, bGPDstroke *gps)

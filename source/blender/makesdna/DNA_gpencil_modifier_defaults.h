@@ -198,6 +198,9 @@
     .pass_index = 0, \
     .flag = 0, \
     .factor = 0.0f, \
+    .fac_position = 10.0f, \
+    .fac_thickness = 0.0f, \
+    .fac_strength = 0.0f, \
     .mode = 0, \
     .step = 1, \
     .layer_pass = 0, \
