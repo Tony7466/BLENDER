@@ -63,13 +63,13 @@ struct PaintSample {
   float pressure;
 };
 
-typedef struct PaintStrokePoint {
+struct PaintStrokePoint {
   float mouse_in[2], mouse_out[2];
   float location[3];
   float pressure, x_tilt, y_tilt;
   bool pen_flip;
   float size;
-} PaintStrokePoint;
+};
 
 struct PaintStroke {
   void *mode_data;
