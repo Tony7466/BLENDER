@@ -808,7 +808,7 @@ static uiTooltipData *ui_tooltip_data_from_button_or_extra_icon(bContext *C,
     if ((but->type & UI_BTYPE_ROW) && rnaprop && RNA_property_flag(rnaprop) & PROP_ENUM_FLAG) {
       uiTooltipField *field = text_field_add(
           data, uiTooltipFormat::Style::Normal, uiTooltipFormat::ColorID::Normal);
-      field->text = BLI_strdup(TIP_("(Shift-Click/Drag to select multiple)"));
+      field->text = BLI_strdup(TIP_("(Ctrl-Click to deselect other items)"));
     }
   }
   /* Enum field label & tip. */
