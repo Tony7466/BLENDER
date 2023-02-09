@@ -1073,19 +1073,19 @@ static void rna_def_font(BlenderRNA *UNUSED(brna), StructRNA *srna)
   };
 
   static const EnumPropertyItem prop_align_y_items[] = {
+      {CU_ALIGN_Y_TOP, "TOP", ICON_ALIGN_TOP, "Top", "Align text to the top"},
       {CU_ALIGN_Y_TOP_BASELINE,
        "TOP_BASELINE",
        ICON_ALIGN_TOP,
        "Top Base-Line",
        "Align to top but use the base-line of the text"},
-      {CU_ALIGN_Y_TOP, "TOP", ICON_ALIGN_TOP, "Top", "Align text to the top"},
-      {CU_ALIGN_Y_CENTER, "CENTER", ICON_ALIGN_MIDDLE, "Center", "Align text to the middle"},
-      {CU_ALIGN_Y_BOTTOM, "BOTTOM", ICON_ALIGN_BOTTOM, "Bottom", "Align text to the bottom"},
+      {CU_ALIGN_Y_CENTER, "CENTER", ICON_ALIGN_MIDDLE, "Middle", "Align text to the middle"},
       {CU_ALIGN_Y_BOTTOM_BASELINE,
        "BOTTOM_BASELINE",
        ICON_ALIGN_BOTTOM,
        "Bottom Base-Line",
        "Align text to the bottom but use the base-line of the text"},
+      {CU_ALIGN_Y_BOTTOM, "BOTTOM", ICON_ALIGN_BOTTOM, "Bottom", "Align text to the bottom"},
       {0, NULL, 0, NULL, NULL},
   };
 
