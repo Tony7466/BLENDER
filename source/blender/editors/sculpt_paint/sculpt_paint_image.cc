@@ -26,7 +26,7 @@
 
 #include "bmesh.h"
 
-#include "sculpt_intern.h"
+#include "sculpt_intern.hh"
 
 namespace blender::ed::sculpt_paint::paint::image {
 
