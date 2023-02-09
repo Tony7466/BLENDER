@@ -7,7 +7,8 @@
 namespace blender {
 
 static constexpr int64_t index_mask_chunk_shift = 14;
-static constexpr int64_t index_mask_chunk_lower_mask = (1 << index_mask_chunk_shift) - 1;
+static constexpr int64_t index_mask_chunk_mask_low = (1 << index_mask_chunk_shift) - 1;
+static constexpr int64_t index_mask_chunk_mask_high = ~index_mask_chunk_mask_low;
 static constexpr int64_t max_index_mask_chunk_size = (1 << index_mask_chunk_shift);
 
 inline const std::array<int16_t, max_index_mask_chunk_size> &get_static_offsets_array()
@@ -33,7 +34,7 @@ class IndexMaskChunk {
   IndexMaskChunk(const int64_t start, const Span<int16_t> offsets)
       : start_(start), offsets_(offsets)
   {
-    BLI_assert(start & index_mask_chunk_lower_mask == 0);
+    BLI_assert(start & index_mask_chunk_mask_low == 0);
     BLI_assert(IndexMaskChunk::offsets_are_valid(offsets));
   }
 
@@ -171,6 +172,60 @@ class IndexMask2 {
       size += chunk.size();
     }
     return size;
+  }
+};
+
+class IndexMaskForRange {
+ private:
+  Vector<IndexMaskChunk> chunks_;
+  const int64_t size_;
+
+ public:
+  IndexMaskForRange(const IndexRange range) : size_(range.size())
+  {
+    if (range.is_empty()) {
+      return;
+    }
+    const int64_t global_start = range.start();
+    const int64_t global_last = range.one_after_last();
+
+    const int64_t first_chunk_start = global_start & index_mask_chunk_mask_high;
+    const int64_t last_chunk_start = global_last & index_mask_chunk_mask_high;
+
+    const Span<int16_t> static_offsets = get_static_offsets_array();
+
+    chunks_.reserve(((last_chunk_start - first_chunk_start) >> index_mask_chunk_shift) + 1);
+
+    if (first_chunk_start == last_chunk_start) {
+      /* Only a single chunk is necessary. */
+      const int64_t first_offset = global_start & index_mask_chunk_mask_low;
+      const int64_t offsets_num = range.size();
+      chunks_.append_unchecked_as(first_chunk_start,
+                                  static_offsets.slice(first_offset, offsets_num));
+    }
+    else {
+      {
+        /* Add first chunk. */
+        const int64_t first_offset = global_start & index_mask_chunk_mask_low;
+        chunks_.append_unchecked_as(first_chunk_start, static_offsets.drop_front(first_offset));
+      }
+      /* Add full chunks in the middle. */
+      for (int64_t chunk_start = first_chunk_start + max_index_mask_chunk_size;
+           chunk_start < last_chunk_start;
+           chunk_start += max_index_mask_chunk_size) {
+        chunks_.append_unchecked_as(chunk_start, static_offsets);
+      }
+      {
+        /* Add last chunk. */
+        const int64_t last_chunk_size = (global_last & index_mask_chunk_mask_low) + 1;
+        chunks_.append_unchecked_as(last_chunk_start, static_offsets.take_front(last_chunk_size));
+      }
+    }
+  }
+
+  operator IndexMask2() const
+  {
+    return {chunks_, size_};
   }
 };
 
