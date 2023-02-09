@@ -124,7 +124,7 @@ static short bm_edge_flag_to_mflag(const BMEdge *e)
 {
   const char hflag = e->head.hflag;
 
-  return ((hflag & BM_ELEM_SEAM) ? ME_SEAM : 0);
+  return (hflag & BM_ELEM_SEAM) ? ME_SEAM : 0;
 }
 static char bm_face_flag_to_mflag(const BMFace *f)
 {
