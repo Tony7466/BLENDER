@@ -98,7 +98,6 @@ struct CombOperationExecutor {
   VArray<float> point_factors_;
   Vector<int64_t> selected_curve_indices_;
   IndexMask curve_selection_;
-  Array<float3> start_positions_;
 
   float2 brush_pos_prev_re_;
   float2 brush_pos_re_;
@@ -150,8 +149,6 @@ struct CombOperationExecutor {
       /* Combing does nothing when there is no mouse movement, so return directly. */
       return;
     }
-
-    start_positions_ = curves_orig_->positions();
 
     EnumerableThreadSpecific<Vector<int64_t>> changed_curves;
 

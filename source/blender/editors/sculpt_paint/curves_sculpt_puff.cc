@@ -57,7 +57,6 @@ struct PuffOperationExecutor {
   VArray<float> point_factors_;
   Vector<int64_t> selected_curve_indices_;
   IndexMask curve_selection_;
-  Array<float3> start_positions_;
 
   const CurvesSculpt *curves_sculpt_ = nullptr;
   const Brush *brush_ = nullptr;
@@ -143,8 +142,6 @@ struct PuffOperationExecutor {
       self_->constraint_solver_.initialize(
           *curves_, curve_selection_, curves_id_->flag & CV_SCULPT_COLLISION_ENABLED);
     }
-
-    start_positions_ = curves_->positions();
 
     Array<float> curve_weights(curve_selection_.size(), 0.0f);
 

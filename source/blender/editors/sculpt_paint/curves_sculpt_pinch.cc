@@ -69,7 +69,6 @@ struct PinchOperationExecutor {
   VArray<float> point_factors_;
   Vector<int64_t> selected_curve_indices_;
   IndexMask curve_selection_;
-  Array<float3> start_positions_;
 
   CurvesSurfaceTransforms transforms_;
 
@@ -130,8 +129,6 @@ struct PinchOperationExecutor {
       self_->constraint_solver_.initialize(
           *curves_, curve_selection_, curves_id_->flag & CV_SCULPT_COLLISION_ENABLED);
     }
-
-    start_positions_ = curves_->positions();
 
     Array<bool> changed_curves(curves_->curves_num(), false);
     if (falloff_shape == PAINT_FALLOFF_SHAPE_TUBE) {
