@@ -77,8 +77,15 @@ const pxr::UsdTimeCode &USDHierarchyIterator::get_export_time_code() const
 
 USDExporterContext USDHierarchyIterator::create_usd_export_context(const HierarchyContext *context)
 {
+  pxr::SdfPath path;
+  if (params_.add_root) {
+    path = pxr::SdfPath("/Root" + context->export_path);
+  } else {
+    path = pxr::SdfPath(context->export_path);
+  }
+
   return USDExporterContext{
-      bmain_, depsgraph_, stage_, pxr::SdfPath(context->export_path), this, params_};
+      bmain_, depsgraph_, stage_, path, this, params_};
 }
 
 AbstractHierarchyWriter *USDHierarchyIterator::create_transform_writer(
