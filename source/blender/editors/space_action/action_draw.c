@@ -371,6 +371,8 @@ void draw_channel_strips(bAnimContext *ac, SpaceAction *saction, ARegion *region
 
   struct AnimKeylistDrawList *draw_list = ED_keylist_draw_list_create();
 
+  const float scale_factor = ANIM_get_keyframe_scale_factor();
+
   for (ale = anim_data.first; ale; ale = ale->next, ymax -= channel_step) {
     float ymin = ymax - ANIM_get_channel_height();
     float ycenter = (ymin + ymax) / 2.0f;
@@ -385,32 +387,28 @@ void draw_channel_strips(bAnimContext *ac, SpaceAction *saction, ARegion *region
         /* draw 'keyframes' for each specific datatype */
         switch (ale->datatype) {
           case ALE_ALL:
-            draw_summary_channel(draw_list, ale->data, ycenter, ac->yscale_fac, action_flag);
+            draw_summary_channel(draw_list, ale->data, ycenter, scale_factor, action_flag);
             break;
           case ALE_SCE:
-            draw_scene_channel(
-                draw_list, ads, ale->key_data, ycenter, ac->yscale_fac, action_flag);
+            draw_scene_channel(draw_list, ads, ale->key_data, ycenter, scale_factor, action_flag);
             break;
           case ALE_OB:
-            draw_object_channel(
-                draw_list, ads, ale->key_data, ycenter, ac->yscale_fac, action_flag);
+            draw_object_channel(draw_list, ads, ale->key_data, ycenter, scale_factor, action_flag);
             break;
           case ALE_ACT:
-            draw_action_channel(
-                draw_list, adt, ale->key_data, ycenter, ac->yscale_fac, action_flag);
+            draw_action_channel(draw_list, adt, ale->key_data, ycenter, scale_factor, action_flag);
             break;
           case ALE_GROUP:
-            draw_agroup_channel(draw_list, adt, ale->data, ycenter, ac->yscale_fac, action_flag);
+            draw_agroup_channel(draw_list, adt, ale->data, ycenter, scale_factor, action_flag);
             break;
           case ALE_FCURVE:
-            draw_fcurve_channel(
-                draw_list, adt, ale->key_data, ycenter, ac->yscale_fac, action_flag);
+            draw_fcurve_channel(draw_list, adt, ale->key_data, ycenter, scale_factor, action_flag);
             break;
           case ALE_GPFRAME:
-            draw_gpl_channel(draw_list, ads, ale->data, ycenter, ac->yscale_fac, action_flag);
+            draw_gpl_channel(draw_list, ads, ale->data, ycenter, scale_factor, action_flag);
             break;
           case ALE_MASKLAY:
-            draw_masklay_channel(draw_list, ads, ale->data, ycenter, ac->yscale_fac, action_flag);
+            draw_masklay_channel(draw_list, ads, ale->data, ycenter, scale_factor, action_flag);
             break;
         }
       }

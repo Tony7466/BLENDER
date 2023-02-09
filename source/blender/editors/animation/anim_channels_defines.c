@@ -4373,7 +4373,7 @@ static bool achannel_is_being_renamed(const bAnimContext *ac,
   return false;
 }
 
-static float get_yscale_fac(void)
+float ANIM_get_keyframe_scale_factor(void)
 {
   bTheme *btheme = UI_GetTheme();
   float yscale_fac = btheme->space_action.keyframe_scale_fac;
@@ -4387,7 +4387,7 @@ static float get_yscale_fac(void)
 
 float ANIM_get_channel_height(void)
 {
-  return 0.8f * get_yscale_fac() * U.widget_unit;
+  return 0.8f * ANIM_get_keyframe_scale_factor() * U.widget_unit;
 }
 
 float ANIM_get_channel_skip(void)

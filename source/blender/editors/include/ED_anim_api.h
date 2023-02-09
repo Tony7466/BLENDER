@@ -94,8 +94,6 @@ typedef struct bAnimContext {
   /** pointer to current reports list */
   struct ReportList *reports;
 
-  /** Scale factor for height of channels (i.e. based on the size of keyframes). */
-  float yscale_fac;
 } bAnimContext;
 
 /* Main Data container types */
@@ -595,6 +593,7 @@ typedef struct bAnimChannelType {
 /** \name Channel dimensions API
  * \{ */
 
+float ANIM_get_keyframe_scale_factor(void);
 float ANIM_get_channel_height(void);
 float ANIM_get_channel_skip(void);
 float ANIM_get_first_channel_top(View2D *v2d);
