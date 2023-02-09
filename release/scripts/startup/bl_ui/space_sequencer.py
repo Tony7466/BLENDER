@@ -1872,12 +1872,6 @@ class SEQUENCER_PT_time(SequencerButtonsPanel, Panel):
         split.label(text="Channel")
         split.prop(strip, "channel", text="")
 
-        if not is_effect:
-            split = layout.split(factor=0.5 + max_factor)
-            split.alignment = 'RIGHT'
-            split.label(text="Speed Factor")
-            split.prop(strip, "speed_factor", text="")
-
         sub = layout.column(align=True)
         split = sub.split(factor=0.5 + max_factor, align=True)
         split.alignment = 'RIGHT'
