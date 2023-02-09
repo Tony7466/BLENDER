@@ -1398,17 +1398,17 @@ void graph_draw_channel_names(bContext *C, bAnimContext *ac, ARegion *region)
   /* Update max-extent of channels here (taking into account scrollers):
    * - this is done to allow the channel list to be scrollable, but must be done here
    *   to avoid regenerating the list again and/or also because channels list is drawn first */
-  height = ANIM_get_channels_total_height(v2d, items);
+  height = ANIM_UI_get_channels_total_height(v2d, items);
   v2d->tot.ymin = -height;
-  const float channel_step = ANIM_get_channel_step();
+  const float channel_step = ANIM_UI_get_channel_step();
 
   /* Loop through channels, and set up drawing depending on their type. */
   { /* first pass: just the standard GL-drawing for backdrop + text */
     size_t channel_index = 0;
-    float ymax = ANIM_get_first_channel_top(v2d);
+    float ymax = ANIM_UI_get_first_channel_top(v2d);
 
     for (ale = anim_data.first; ale; ale = ale->next, ymax -= channel_step, channel_index++) {
-      float ymin = ymax - ANIM_get_channel_height();
+      float ymin = ymax - ANIM_UI_get_channel_height();
 
       /* check if visible */
       if (IN_RANGE(ymin, v2d->cur.ymin, v2d->cur.ymax) ||
@@ -1421,13 +1421,13 @@ void graph_draw_channel_names(bContext *C, bAnimContext *ac, ARegion *region)
   { /* second pass: widgets */
     uiBlock *block = UI_block_begin(C, region, __func__, UI_EMBOSS);
     size_t channel_index = 0;
-    float ymax = ANIM_get_first_channel_top(v2d);
+    float ymax = ANIM_UI_get_first_channel_top(v2d);
 
     /* set blending again, as may not be set in previous step */
     GPU_blend(GPU_BLEND_ALPHA);
 
     for (ale = anim_data.first; ale; ale = ale->next, ymax -= channel_step, channel_index++) {
-      float ymin = ymax - ANIM_get_channel_height();
+      float ymin = ymax - ANIM_UI_get_channel_height();
 
       /* check if visible */
       if (IN_RANGE(ymin, v2d->cur.ymin, v2d->cur.ymax) ||

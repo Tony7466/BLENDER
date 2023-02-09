@@ -62,9 +62,9 @@ static bAnimListElem *actkeys_find_list_element_at_position(bAnimContext *ac,
   int channel_index;
   UI_view2d_region_to_view(v2d, region_x, region_y, &view_x, &view_y);
   UI_view2d_listview_view_to_cell(0,
-                                  ANIM_get_channel_step(),
+                                  ANIM_UI_get_channel_step(),
                                   0,
-                                  ANIM_get_first_channel_top(v2d),
+                                  ANIM_UI_get_first_channel_top(v2d),
                                   view_x,
                                   view_y,
                                   NULL,
@@ -158,7 +158,7 @@ static void actkeys_find_key_in_list_element(bAnimContext *ac,
   AnimData *adt = ANIM_nla_mapping_get(ac, ale);
 
   /* standard channel height (to allow for some slop) */
-  float key_hsize = ANIM_get_channel_height() * 0.8f;
+  float key_hsize = ANIM_UI_get_channel_height() * 0.8f;
   /* half-size (for either side), but rounded up to nearest int (for easier targeting) */
   key_hsize = roundf(key_hsize / 2.0f);
 
@@ -468,8 +468,8 @@ static void box_select_action(bAnimContext *ac, const rcti rect, short mode, sho
   /* init editing data */
   memset(&sel_data.ked, 0, sizeof(KeyframeEditData));
 
-  float ymax = ANIM_get_first_channel_top(v2d);
-  const float channel_step = ANIM_get_channel_step();
+  float ymax = ANIM_UI_get_first_channel_top(v2d);
+  const float channel_step = ANIM_UI_get_channel_step();
 
   /* loop over data, doing box select */
   for (ale = anim_data.first; ale; ale = ale->next, ymax -= channel_step) {
@@ -720,8 +720,8 @@ static void region_select_action_keys(
     sel_data.ked.data = &scaled_rectf;
   }
 
-  float ymax = ANIM_get_first_channel_top(v2d);
-  const float channel_step = ANIM_get_channel_step();
+  float ymax = ANIM_UI_get_first_channel_top(v2d);
+  const float channel_step = ANIM_UI_get_channel_step();
 
   /* loop over data, doing region select */
   for (ale = anim_data.first; ale; ale = ale->next, ymax -= channel_step) {
