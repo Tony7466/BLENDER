@@ -50,7 +50,7 @@ struct USDExportParams {
   bool export_textures;
   bool overwrite_textures;
   bool relative_paths;
-  bool add_root;
+  bool add_root_node;
 };
 
 struct USDImportParams {

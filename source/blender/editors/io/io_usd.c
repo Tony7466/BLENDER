@@ -137,7 +137,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const bool export_textures = RNA_boolean_get(op->ptr, "export_textures");
   const bool overwrite_textures = RNA_boolean_get(op->ptr, "overwrite_textures");
   const bool relative_paths = RNA_boolean_get(op->ptr, "relative_paths");
-  const bool add_root = RNA_boolean_get(op->ptr, "add_root");
+  const bool add_root_node = RNA_boolean_get(op->ptr, "add_root_node");
 
   struct USDExportParams params = {
       export_animation,
@@ -153,7 +153,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
       export_textures,
       overwrite_textures,
       relative_paths,
-      add_root,
+      add_root_node,
   };
 
   bool ok = USD_export(C, filename, &params, as_background_job);
@@ -181,7 +181,7 @@ static void wm_usd_export_draw(bContext *UNUSED(C), wmOperator *op)
   uiItemR(col, ptr, "export_uvmaps", 0, NULL, ICON_NONE);
   uiItemR(col, ptr, "export_normals", 0, NULL, ICON_NONE);
   uiItemR(col, ptr, "export_materials", 0, NULL, ICON_NONE);
-  uiItemR(col, ptr, "add_root", 0, NULL, ICON_NONE);
+  uiItemR(col, ptr, "add_root_node", 0, NULL, ICON_NONE);
 
   col = uiLayoutColumn(box, true);
   uiItemR(col, ptr, "evaluation_mode", 0, NULL, ICON_NONE);
@@ -339,10 +339,11 @@ void WM_OT_usd_export(struct wmOperatorType *ot)
                   "USD, otherwise use absolute paths");
 
   RNA_def_boolean(ot->srna,
-                  "add_root",
+                  "add_root_node",
                   false,
-                  "Add Root",
-                  "Add a Root 'Scope' node to the stage.");
+                  "Add Root Node",
+                  "Add a Root 'Xform' node to the stage that can be used in other applications"
+                  "to transform all the primitives in the stage");
 }
 
 /* ====== USD Import ====== */

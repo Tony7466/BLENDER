@@ -78,7 +78,7 @@ const pxr::UsdTimeCode &USDHierarchyIterator::get_export_time_code() const
 USDExporterContext USDHierarchyIterator::create_usd_export_context(const HierarchyContext *context)
 {
   pxr::SdfPath path;
-  if (params_.add_root) {
+  if (params_.add_root_node) {
     path = pxr::SdfPath("/Root" + context->export_path);
   } else {
     path = pxr::SdfPath(context->export_path);

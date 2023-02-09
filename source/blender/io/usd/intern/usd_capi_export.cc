@@ -112,7 +112,7 @@ static void export_startjob(void *customdata,
     usd_stage->SetEndTimeCode(scene->r.efra);
   }
 
-  if (data->params.add_root) {
+  if (data->params.add_root_node) {
     pxr::UsdGeomXform::Define(usd_stage, pxr::SdfPath("/Root"));
   }
 
