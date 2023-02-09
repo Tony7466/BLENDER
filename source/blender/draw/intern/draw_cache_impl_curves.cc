@@ -54,10 +54,9 @@ struct CurvesBatchCache {
 
   GPUBatch *edit_points;
   GPUBatch *edit_lines;
-
   GPUBatch *cage_lines;
 
-  /* Positions edited in edit/sculpt mode. */
+  /* Editmode (original) point positions. */
   GPUVertBuf *edit_points_pos;
 
   /* Editmode data (such as selection). */
