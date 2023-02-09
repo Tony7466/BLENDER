@@ -38,9 +38,9 @@ float ray_aabb(vec3 ray_origin, vec3 ray_direction, vec3 aabb_min, vec3 aabb_max
 
 void main()
 {
-  vec2 screen_uv = gl_FragCoord.xy / vec2(textureSize(hiz_tx, 0).xy);
+  vec2 screen_uv = gl_FragCoord.xy / vec2(fb_resolution);
 
-  float opaque_depth = texelFetch(hiz_tx, int2(gl_FragCoord.xy), 0).r;
+  float opaque_depth = texelFetch(hiz_tx, int2(gl_FragCoord.xy), fb_lod).r;
   vec3 ws_opaque = get_world_space_from_depth(screen_uv, opaque_depth);
 
   vec3 ws_near_plane = get_world_space_from_depth(screen_uv, 0);
@@ -68,7 +68,7 @@ void main()
     vec3 P = ws_near_plane + (ws_view_direction * t);
     vec3 vP = vs_near_plane + (vs_view_direction * t);
     /* TODO (Miguel Pozo): Pass step size to ensure conservative enough LOD selection */
-    shadow_tag_usage(vP, P, gl_FragCoord.xy);
+    shadow_tag_usage(vP, P, gl_FragCoord.xy * pow(2, fb_lod));
 
     /* Ensure that step_size is as large as possible,
      * but (hopefully) not larger than the smallest possible page size. */

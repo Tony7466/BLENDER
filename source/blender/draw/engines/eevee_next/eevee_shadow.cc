@@ -731,6 +731,8 @@ void ShadowModule::begin_sync()
       sub.bind_ssbo("bounds_buf", &manager.bounds_buf.current());
       sub.push_constant("tilemap_projection_ratio", &tilemap_projection_ratio_);
       sub.push_constant("pixel_world_radius", &pixel_world_radius_);
+      sub.push_constant("fb_resolution", &usage_tag_fb_resolution_);
+      sub.push_constant("fb_lod", &usage_tag_fb_lod_);
       inst_.hiz_buffer.bind_resources(&sub);
       inst_.lights.bind_resources(&sub);
 
@@ -1097,10 +1099,12 @@ void ShadowModule::set_view(View &view)
   pixel_world_radius_ = screen_pixel_radius(view, int2(target_size));
   tilemap_projection_ratio_ = tilemap_pixel_radius() / pixel_world_radius_;
 
-  usage_tag_debug_tx_.ensure_2d(GPU_RGB16F, int2(target_size));
+  usage_tag_fb_resolution_ = math::divide_ceil(int2(target_size),
+                                               int2(std::pow(2, usage_tag_fb_lod_)));
+  usage_tag_debug_tx_.ensure_2d(GPU_RGB16F, usage_tag_fb_resolution_);
   usage_tag_debug_tx_.clear(float4(0));
   usage_tag_fb.ensure(GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(usage_tag_debug_tx_));
-  // usage_tag_fb.ensure(int2(target_size));
+  // usage_tag_fb.ensure(usage_tag_fb_resolution_);
 
   render_fb_.ensure(int2(SHADOW_TILEMAP_RES * shadow_page_size_));
 
@@ -1153,6 +1157,7 @@ void ShadowModule::set_view(View &view)
 void ShadowModule::debug_draw(View &view, GPUFrameBuffer *view_fb)
 {
   // GPU_texture_copy(inst_.render_buffers.combined_tx, usage_tag_debug_tx_);
+
   if (!ELEM(inst_.debug_mode,
             eDebugMode::DEBUG_SHADOW_TILEMAPS,
             eDebugMode::DEBUG_SHADOW_VALUES,
