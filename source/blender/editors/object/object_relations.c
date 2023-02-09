@@ -2888,7 +2888,7 @@ char *ED_object_ot_drop_geometry_nodes_tooltip(const bContext *C,
     return BLI_strdup("");
   }
 
-  const char *tooltip = TIP_("Drop node tree %s on object %s");
+  const char *tooltip = TIP_("Add modifier with node group \"%s\" on object \"%s\"");
   return BLI_sprintfN(tooltip, id->name, ob->id.name);
 }
 
