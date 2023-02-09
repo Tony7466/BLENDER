@@ -38,9 +38,9 @@ float ray_aabb(vec3 ray_origin, vec3 ray_direction, vec3 aabb_min, vec3 aabb_max
 
 void main()
 {
-  vec2 screen_uv = gl_FragCoord.xy / vec2(textureSize(depth_tx, 0).xy);
+  vec2 screen_uv = gl_FragCoord.xy / vec2(textureSize(hiz_tx, 0).xy);
 
-  float opaque_depth = texelFetch(depth_tx, int2(gl_FragCoord.xy), 0).r;
+  float opaque_depth = texelFetch(hiz_tx, int2(gl_FragCoord.xy), 0).r;
   vec3 ws_opaque = get_world_space_from_depth(screen_uv, opaque_depth);
 
   vec3 ws_near_plane = get_world_space_from_depth(screen_uv, 0);
