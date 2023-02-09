@@ -405,8 +405,8 @@ static void action_clamp_scroll(ARegion *region)
   rcti scrub_rect;
   ED_time_scrub_region_rect_get(region, &scrub_rect);
   const int scrub_height = BLI_rcti_size_y(&scrub_rect);
-  const float channel_height = ANIM_UI_get_channel_height() + ANIM_UI_get_channel_skip() * 2;
-  const float pad_y = 0;
+  const float channel_height = ANIM_UI_get_channel_height() + ANIM_UI_get_channel_skip();
+  const float pad_y = scrub_height + channel_height * 2;
 
   View2D *v2d = &region->v2d;
   const float cur_range_y = BLI_rctf_size_y(&v2d->cur);
@@ -446,7 +446,6 @@ static void action_main_region_listener(const wmRegionListenerParams *params)
         case ND_BONE_SELECT:
         case ND_KEYS:
           ED_region_tag_redraw(region);
-          /* action_clamp_scroll(region); */
           break;
       }
       break;
