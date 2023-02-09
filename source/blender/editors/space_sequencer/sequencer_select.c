@@ -974,7 +974,7 @@ static int sequencer_select_exec(bContext *C, wmOperator *op)
 
   /* Deselect everything */
   if (deselect_all || (seq && (extend == false && deselect == false && toggle == false))) {
-    changed = ED_sequencer_deselect_all(scene);
+    changed |= ED_sequencer_deselect_all(scene);
   }
 
   /* Nothing to select, but strips could be deselected. */
