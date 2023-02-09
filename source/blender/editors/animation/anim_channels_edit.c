@@ -2719,7 +2719,7 @@ static void box_select_anim_channels(bAnimContext *ac, rcti *rect, short selectm
     ymax = NLACHANNEL_FIRST_TOP(ac);
   }
   else {
-    ymax = ACHANNEL_FIRST_TOP(ac);
+    ymax = ANIM_UI_get_first_channel_top(v2d);
   }
 
   /* loop over data, doing box select */
@@ -2727,7 +2727,7 @@ static void box_select_anim_channels(bAnimContext *ac, rcti *rect, short selectm
     float ymin;
 
     if (ale->type == ANIMTYPE_GPDATABLOCK) {
-      ymax -= ACHANNEL_STEP(ac);
+      ymax -= ANIM_UI_get_channel_step();
       continue;
     }
 
@@ -2735,7 +2735,7 @@ static void box_select_anim_channels(bAnimContext *ac, rcti *rect, short selectm
       ymin = ymax - NLACHANNEL_STEP(snla);
     }
     else {
-      ymin = ymax - ACHANNEL_STEP(ac);
+      ymin = ymax - ANIM_UI_get_channel_step();
     }
 
     /* if channel is within border-select region, alter it */
@@ -2949,10 +2949,10 @@ static int animchannels_channel_get(bAnimContext *ac, const int mval[2])
                                     &channel_index);
   }
   else {
-    UI_view2d_listview_view_to_cell(ACHANNEL_NAMEWIDTH,
-                                    ACHANNEL_STEP(ac),
+    UI_view2d_listview_view_to_cell(ANIM_UI_get_channel_name_width(),
+                                    ANIM_UI_get_channel_step(),
                                     0,
-                                    ACHANNEL_FIRST_TOP(ac),
+                                    ANIM_UI_get_first_channel_top(v2d),
                                     x,
                                     y,
                                     NULL,
@@ -3485,10 +3485,10 @@ static int animchannels_mouseclick_invoke(bContext *C, wmOperator *op, const wmE
 
   /* figure out which channel user clicked in */
   UI_view2d_region_to_view(v2d, event->mval[0], event->mval[1], &x, &y);
-  UI_view2d_listview_view_to_cell(ACHANNEL_NAMEWIDTH,
-                                  ACHANNEL_STEP(&ac),
+  UI_view2d_listview_view_to_cell(ANIM_UI_get_channel_name_width(),
+                                  ANIM_UI_get_channel_step(),
                                   0,
-                                  ACHANNEL_FIRST_TOP(&ac),
+                                  ANIM_UI_get_first_channel_top(v2d),
                                   x,
                                   y,
                                   NULL,

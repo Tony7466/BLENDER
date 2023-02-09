@@ -43,9 +43,15 @@ void Manager::begin_sync()
 
 #ifdef DEBUG
   /* Detect uninitialized data. */
-  memset(matrix_buf.current().data(), 0xF0, resource_len_ * sizeof(*matrix_buf.current().data()));
-  memset(bounds_buf.current().data(), 0xF0, resource_len_ * sizeof(*bounds_buf.current().data()));
-  memset(infos_buf.current().data(), 0xF0, resource_len_ * sizeof(*infos_buf.current().data()));
+  memset(matrix_buf.current().data(),
+         0xF0,
+         matrix_buf.current().size() * sizeof(*matrix_buf.current().data()));
+  memset(bounds_buf.current().data(),
+         0xF0,
+         matrix_buf.current().size() * sizeof(*bounds_buf.current().data()));
+  memset(infos_buf.current().data(),
+         0xF0,
+         matrix_buf.current().size() * sizeof(*infos_buf.current().data()));
 #endif
   resource_len_ = 0;
   attribute_len_ = 0;
@@ -178,7 +184,7 @@ void Manager::submit(PassMain &pass, View &view)
   pass.draw_commands_buf_.bind(state,
                                pass.headers_,
                                pass.commands_,
-                               view.visibility_buf_,
+                               view.get_visibility_buffer(),
                                view.visibility_word_per_draw(),
                                view.view_len_);
 
@@ -221,7 +227,7 @@ Manager::SubmitDebugOutput Manager::submit_debug(PassSimple &pass, View &view)
   output.resource_id = {pass.draw_commands_buf_.resource_id_buf_.data(),
                         pass.draw_commands_buf_.resource_id_count_};
   /* There is no visibility data for PassSimple. */
-  output.visibility = {(uint *)view.visibility_buf_.data(), 0};
+  output.visibility = {(uint *)view.get_visibility_buffer().data(), 0};
   return output;
 }
 
@@ -232,12 +238,13 @@ Manager::SubmitDebugOutput Manager::submit_debug(PassMain &pass, View &view)
   GPU_finish();
 
   pass.draw_commands_buf_.resource_id_buf_.read();
-  view.visibility_buf_.read();
+  view.get_visibility_buffer().read();
 
   Manager::SubmitDebugOutput output;
   output.resource_id = {pass.draw_commands_buf_.resource_id_buf_.data(),
                         pass.draw_commands_buf_.resource_id_count_};
-  output.visibility = {(uint *)view.visibility_buf_.data(), divide_ceil_u(resource_len_, 32)};
+  output.visibility = {(uint *)view.get_visibility_buffer().data(),
+                       divide_ceil_u(resource_len_, 32)};
   return output;
 }
 
