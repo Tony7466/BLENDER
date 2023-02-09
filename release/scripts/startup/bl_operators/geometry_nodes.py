@@ -25,6 +25,15 @@ def geometry_node_group_empty_new(add_link=True):
 
     return group
 
+def get_context_modifier(context):
+    if context.area.type == 'PROPERTIES':
+        modifier = context.modifier
+    else:
+        modifier = context.object.modifiers.active
+    if modifier.type != 'NODES':
+        return None
+    return modifier
+
 
 def geometry_modifier_poll(context):
     ob = context.object
@@ -32,8 +41,145 @@ def geometry_modifier_poll(context):
     # Test object support for geometry node modifier
     if not ob or ob.type not in {'MESH', 'POINTCLOUD', 'VOLUME', 'CURVE', 'FONT', 'CURVES'}:
         return False
+    if not get_context_modifier(context):
+        return False
 
     return True
+
+
+def socket_idname_to_attribute_type(idname):
+    if idname.startswith("NodeSocketInt"):
+        return "INT"
+    elif idname.startswith("NodeSocketColor"):
+        return "FLOAT_COLOR"
+    elif idname.startswith("NodeSocketVector"):
+        return "FLOAT_VECTOR"
+    elif idname.startswith("NodeSocketBool"):
+        return "BOOLEAN"
+    elif idname.startswith("NodeSocketFloat"):
+        return "FLOAT"
+    raise ValueError("Unsupported socket type")
+    return ""
+
+
+def modifier_attribute_name_get(modifier, identifier):
+    try:
+        return modifier[identifier + "_attribute_name"]
+    except KeyError:
+        return None
+
+
+def modifier_input_use_attribute(modifier, identifier):
+    try:
+        return modifier[identifier + "_use_attribute"] != 0
+    except KeyError:
+        return False
+
+
+def get_socket_with_identifier(sockets, identifier):
+    for socket in sockets:
+        if socket.identifier == identifier:
+            return socket
+    return None
+
+
+def get_enabled_socket_with_name(sockets, name):
+    for socket in sockets:
+        if socket.name == name and socket.enabled:
+            return socket
+    return None
+
+
+class CreateModifierWrapperGroup(Operator):
+    """Create a new node group wrapping the modifier's group"""
+
+    bl_idname = "object.new_geometry_node_group_wrapper"
+    bl_label = "Create Wrapper Group"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        return geometry_modifier_poll(context)
+
+    def execute(self, context):
+        modifier = get_context_modifier(context)
+        if not modifier:
+            return {'CANCELLED'}
+        old_group = modifier.node_group
+        if not old_group:
+            return {'CANCELLED'}
+
+        group = geometry_node_group_empty_new(add_link=False)
+        group_node = group.nodes.new("GeometryNodeGroup")
+        group_node.node_tree = old_group
+        group_node.update()
+
+        group_input_node = group.nodes["Group Input"]
+        group_output_node = group.nodes["Group Output"]
+        
+        # Copy default values for inputs and create named attribute input nodes.
+        input_nodes = []
+        first_geometry_input = None
+        for input in old_group.inputs:
+            group_node_input = get_socket_with_identifier(group_node.inputs, input.identifier)
+            if modifier_input_use_attribute(modifier, input.identifier):
+                input_node = group.nodes.new("GeometryNodeInputNamedAttribute")
+                input_nodes.append(input_node)
+                input_node.data_type = socket_idname_to_attribute_type(input.bl_socket_idname)
+                attribute_name = modifier_attribute_name_get(modifier, input.identifier)
+                input_node.inputs["Name"].default_value = attribute_name
+                output_socket = get_enabled_socket_with_name(input_node.outputs, "Attribute")
+                group.links.new(output_socket, group_node_input)
+            elif hasattr(input, "default_value"):
+                group_node_input.default_value = modifier[input.identifier]
+            elif input.bl_socket_idname == 'NodeSocketGeometry':
+                if not first_geometry_input:
+                    first_geometry_input = group_node_input
+        
+        group.links.new(group_input_node.outputs[0], first_geometry_input)
+
+        # Adjust locations of named attribute input nodes and group input node to make some space.
+        if input_nodes:
+            for i, node in enumerate(input_nodes):
+                node.location[0] = -175
+                node.location[1] = i * -50
+            group_input_node.location[0] = -350
+
+        # Connect outputs to store named attribute nodes to replace modifier attribute outputs.
+        store_nodes = []
+        first_geometry_output = None
+        for output in old_group.outputs:
+            group_node_output = get_socket_with_identifier(group_node.outputs, output.identifier)
+            attribute_name = modifier_attribute_name_get(modifier, output.identifier)
+            if attribute_name:
+                store_node = group.nodes.new("GeometryNodeStoreNamedAttribute")
+                store_nodes.append(store_node)
+                store_node.data_type = socket_idname_to_attribute_type(output.bl_socket_idname)
+                store_node.domain = output.attribute_domain
+                store_node.inputs["Name"].default_value = attribute_name
+                input_socket = get_enabled_socket_with_name(store_node.inputs, "Value")
+                group.links.new(group_node_output, input_socket)
+            elif output.bl_socket_idname == 'NodeSocketGeometry':
+                if not first_geometry_output:
+                    first_geometry_output = group_node_output
+
+        # Adjust locations of store named attribute nodes and move group output.
+        if store_nodes:
+            for i, node in enumerate(store_nodes):
+                node.location[0] = (i + 1) * 175
+                node.location[1] = 0
+            group_output_node.location[0] = (len(store_nodes) + 1) * 175
+
+            group.links.new(first_geometry_output, store_nodes[0].inputs["Geometry"])
+            for i in range(len(store_nodes))[:-1]:
+                group.links.new(store_nodes[i].outputs["Geometry"], store_nodes[i + 1].inputs["Geometry"])
+            group.links.new(store_nodes[-1].outputs["Geometry"], group_output_node.inputs["Geometry"])
+        else:
+            group.links.new(first_geometry_output, group_output_node.inputs["Geometry"])
+
+        modifier.node_group = group
+
+        return {'FINISHED'}
 
 
 class NewGeometryNodesModifier(Operator):
@@ -49,7 +195,6 @@ class NewGeometryNodesModifier(Operator):
 
     def execute(self, context):
         modifier = context.object.modifiers.new(data_("GeometryNodes"), "NODES")
-
         if not modifier:
             return {'CANCELLED'}
 
@@ -71,60 +216,11 @@ class NewGeometryNodeTreeAssign(Operator):
         return geometry_modifier_poll(context)
 
     def execute(self, context):
-        if context.area.type == 'PROPERTIES':
-            modifier = context.modifier
-        else:
-            modifier = context.object.modifiers.active
-
+        modifier = get_context_modifier(context)
         if not modifier:
             return {'CANCELLED'}
 
         group = geometry_node_group_empty_new()
-        modifier.node_group = group
-
-        return {'FINISHED'}
-
-
-class CreateModifierWrapperGroup(Operator):
-    """Create a new node group wrapping the modifier's group"""
-
-    bl_idname = "node.new_geometry_node_group_wrapper"
-    bl_label = "Create Wrapper Group"
-    bl_options = {'REGISTER', 'UNDO'}
-
-    @classmethod
-    def poll(cls, context):
-        return geometry_modifier_poll(context)
-
-    def execute(self, context):
-        if context.area.type == 'PROPERTIES':
-            modifier = context.modifier
-        else:
-            modifier = context.object.modifiers.active
-
-        if not modifier:
-            return {'CANCELLED'}
-        old_group = modifier.node_group
-        if not old_group:
-            return {'CANCELLED'}
-
-        group = geometry_node_group_empty_new(add_link=False)
-        new_group_node = group.nodes.new("GeometryNodeGroup")
-        new_group_node.node_tree = old_group
-
-        group_input_node = group.nodes["Group Input"]
-        group_output_node = group.nodes["Group Output"]
-        
-        for input in old_group.inputs:
-            group.inputs.new()
-            if hasattr(input, "default_value"):
-                new_group_node.inputs[input.identifier].default_value = modifier[input.identifier]
-            else:
-                group.links.new(group_input_node.outputs[input.identifier], new_group_node.inputs[input.identifier])
-        
-        for output in old_group.outputs:
-            group.links.new(new_group_node.outputs[input.identifier], group_output_node.inputs[input.identifier])
-
         modifier.node_group = group
 
         return {'FINISHED'}
