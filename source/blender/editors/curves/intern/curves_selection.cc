@@ -286,6 +286,25 @@ void select_random(bke::CurvesGeometry &curves,
   selection.finish();
 }
 
+template<typename T>
+static void apply_selection_operation(MutableSpan<T> selection, int index, eSelectOp sel_op)
+{
+  switch (sel_op) {
+    case SEL_OP_ADD:
+    case SEL_OP_SET:
+      selection[index] = T(1);
+      break;
+    case SEL_OP_SUB:
+      selection[index] = T(0);
+      break;
+    case SEL_OP_XOR:
+      selection[index] = T(1 - selection[index]);
+      break;
+    default:
+      break;
+  }
+}
+
 /**
  * Helper struct for `find_closest_point_to_screen_co`.
  */
@@ -400,20 +419,7 @@ bool select_pick(const ViewContext &vc,
       }
       else {
         MutableSpan<T> selection_typed = selection.span.typed<T>();
-        switch (params.sel_op) {
-          case SEL_OP_ADD:
-          case SEL_OP_SET:
-            selection_typed[elem_index] = T(1);
-            break;
-          case SEL_OP_SUB:
-            selection_typed[elem_index] = T(0);
-            break;
-          case SEL_OP_XOR:
-            selection_typed[elem_index] = T(1 - selection_typed[elem_index]);
-            break;
-          default:
-            break;
-        }
+        apply_selection_operation(selection_typed, elem_index, params.sel_op);
       }
     });
     selection.finish();
@@ -463,20 +469,7 @@ bool select_box(const ViewContext &vc,
             float2 pos_proj;
             ED_view3d_project_float_v2_m4(vc.region, pos, pos_proj, projection.ptr());
             if (BLI_rctf_isect_pt_v(&rectf, pos_proj)) {
-              switch (sel_op) {
-                case SEL_OP_ADD:
-                case SEL_OP_SET:
-                  selection_typed[point_i] = T(1);
-                  break;
-                case SEL_OP_SUB:
-                  selection_typed[point_i] = T(0);
-                  break;
-                case SEL_OP_XOR:
-                  selection_typed[point_i] = T(1 - selection_typed[point_i]);
-                  break;
-                default:
-                  break;
-              }
+              apply_selection_operation(selection_typed, point_i, sel_op);
               changed = true;
             }
           }
@@ -492,22 +485,9 @@ bool select_box(const ViewContext &vc,
               float2 pos_proj;
               ED_view3d_project_float_v2_m4(vc.region, pos, pos_proj, projection.ptr());
               if (BLI_rctf_isect_pt_v(&rectf, pos_proj)) {
-                switch (sel_op) {
-                  case SEL_OP_ADD:
-                  case SEL_OP_SET:
-                    selection_typed[curve_i] = T(1);
-                    break;
-                  case SEL_OP_SUB:
-                    selection_typed[curve_i] = T(0);
-                    break;
-                  case SEL_OP_XOR:
-                    selection_typed[curve_i] = T(1 - selection_typed[curve_i]);
-                    break;
-                  default:
-                    break;
-                }
-                break;
+                apply_selection_operation(selection_typed, curve_i, sel_op);
                 changed = true;
+                break;
               }
             }
           }
