@@ -241,7 +241,7 @@ IndexMask find_indices_from_virtual_array(const IndexMask indices_to_check,
   return detail::find_indices_based_on_predicate__merge(indices_to_check, sub_masks, r_indices);
 }
 
-IndexMask find_indices_from_array(Span<bool> array, Vector<int64_t> &r_indices)
+IndexMask find_indices_from_array(const Span<bool> array, Vector<int64_t> &r_indices)
 {
   return find_indices_based_on_predicate(
       array.index_range(), 2048, r_indices, [array](const int64_t i) { return array[i]; });

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_math_matrix.hh"
+#include "BLI_task.hh"
 
 #include "GEO_curve_constraint_solver.hh"
 
