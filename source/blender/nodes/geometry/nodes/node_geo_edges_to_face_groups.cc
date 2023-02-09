@@ -3,7 +3,7 @@
 #include "BKE_mesh.h"
 #include "BKE_mesh_mapping.h"
 
-#include "BLI_disjoint_set.hh"
+#include "BLI_atomic_disjoint_set.hh"
 
 #include "node_geometry_util.hh"
 
@@ -21,6 +21,16 @@ static void node_declare(NodeDeclarationBuilder &b)
       .description(N_("Index of the face group inside each boundary edge region"));
 }
 
+/* Join all uinque unordered combinations of indices. */
+static void join_indices(AtomicDisjointSet &set, const Span<int> indices)
+{
+  for (const int i : indices.index_range()) {
+    for (int j = i + 1; j < indices.size(); j++) {
+      set.join(indices[i], indices[j]);
+    }
+  }
+}
+
 class FaceSetFromBoundariesInput final : public bke::MeshFieldInput {
  private:
   Field<bool> non_boundary_edge_field_;
@@ -34,7 +44,7 @@ class FaceSetFromBoundariesInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask mask) const final
+                                 const IndexMask /*mask*/) const final
   {
     const bke::MeshFieldContext context{mesh, ATTR_DOMAIN_EDGE};
     fn::FieldEvaluator evaluator{context, mesh.totedge};
@@ -45,31 +55,32 @@ class FaceSetFromBoundariesInput final : public bke::MeshFieldInput {
     const Span<MPoly> polys = mesh.polys();
     const Span<MLoop> loops = mesh.loops();
 
-    /* Create Edge/Face Lookup */
     const Array<Vector<int, 2>> edge_to_face_map = bke::mesh_topology::build_edge_to_poly_map(
         polys, loops, mesh.totedge);
 
-    /* Join faces based on edge values */
-    DisjointSet<int> islands(polys.size());
-    for (const int edge_i : non_boundary_edges) {
-      for (const int a : edge_to_face_map[edge_i]) {
-        for (const int b : edge_to_face_map[edge_i]) {
-          islands.join(a, b);
-        }
-      }
+    AtomicDisjointSet islands(polys.size());
+    for (const int edge : non_boundary_edges) {
+      join_indices(islands, edge_to_face_map[edge]);
     }
 
-    /* Output faces final assigned groups */
-    Array<int> output(domain == ATTR_DOMAIN_FACE ? mask.min_array_size() : polys.size());
-    VectorSet<int> ordered_roots;
-    const IndexMask poly_mask = domain == ATTR_DOMAIN_FACE ? mask : polys.index_range();
-    for (const int poly_i : poly_mask) {
-      const int64_t root = islands.find_root(poly_i);
-      output[poly_i] = ordered_roots.index_of_or_add(root);
-    }
+    Array<int> output(polys.size());
+    islands.calc_reduced_ids(output);
 
     return mesh.attributes().adapt_domain(
         VArray<int>::ForContainer(std::move(output)), ATTR_DOMAIN_FACE, domain);
+  }
+
+  uint64_t hash() const override
+  {
+    return non_boundary_edge_field_.hash();
+  }
+
+  bool is_equal_to(const fn::FieldNode &other) const override
+  {
+    if (const auto *other_field = dynamic_cast<const FaceSetFromBoundariesInput *>(&other)) {
+      return other_field->non_boundary_edge_field_ == non_boundary_edge_field_;
+    }
+    return false;
   }
 
   std::optional<eAttrDomain> preferred_domain(const Mesh & /*mesh*/) const final
@@ -89,7 +100,7 @@ static void geo_node_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_edges_to_face_groups_cc
 
-void register_node_type_geoedges_to_face_groups()
+void register_node_type_geo_edges_to_face_groups()
 {
   namespace file_ns = blender::nodes::node_geo_edges_to_face_groups_cc;
 
