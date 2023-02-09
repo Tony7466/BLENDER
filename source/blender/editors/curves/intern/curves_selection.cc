@@ -286,24 +286,43 @@ void select_random(bke::CurvesGeometry &curves,
   selection.finish();
 }
 
-template<typename T>
-static void apply_selection_operation(MutableSpan<T> selection,
-                                      const int index,
-                                      const eSelectOp sel_op)
+static void apply_selection_operation_at_index(GMutableSpan selection,
+                                               const int index,
+                                               const eSelectOp sel_op)
 {
-  switch (sel_op) {
-    case SEL_OP_ADD:
-    case SEL_OP_SET:
-      selection[index] = T(1);
-      break;
-    case SEL_OP_SUB:
-      selection[index] = T(0);
-      break;
-    case SEL_OP_XOR:
-      selection[index] = T(1 - selection[index]);
-      break;
-    default:
-      break;
+  if (selection.type().is<bool>()) {
+    MutableSpan<bool> selection_typed = selection.typed<bool>();
+    switch (sel_op) {
+      case SEL_OP_ADD:
+      case SEL_OP_SET:
+        selection_typed[index] = true;
+        break;
+      case SEL_OP_SUB:
+        selection_typed[index] = false;
+        break;
+      case SEL_OP_XOR:
+        selection_typed[index] ^= selection_typed[index];
+        break;
+      default:
+        break;
+    }
+  }
+  else if (selection.type().is<float>()) {
+    MutableSpan<float> selection_typed = selection.typed<float>();
+    switch (sel_op) {
+      case SEL_OP_ADD:
+      case SEL_OP_SET:
+        selection_typed[index] = 1.0f;
+        break;
+      case SEL_OP_SUB:
+        selection_typed[index] = 0.0f;
+        break;
+      case SEL_OP_XOR:
+        selection_typed[index] = 1.0f - selection_typed[index];
+        break;
+      default:
+        break;
+    }
   }
 }
 
@@ -414,16 +433,7 @@ bool select_pick(const ViewContext &vc,
       elem_index = std::distance(curves.offsets().begin(), it) - 1;
     }
 
-    selection.span.type().to_static_type_tag<bool, float>([&](auto type_tag) {
-      using T = typename decltype(type_tag)::type;
-      if constexpr (std::is_void_v<T>) {
-        BLI_assert_unreachable();
-      }
-      else {
-        MutableSpan<T> selection_typed = selection.span.typed<T>();
-        apply_selection_operation(selection_typed, elem_index, params.sel_op);
-      }
-    });
+    apply_selection_operation_at_index(selection.span, elem_index, params.sel_op);
     selection.finish();
   }
 
@@ -448,57 +458,43 @@ bool select_box(const ViewContext &vc,
     changed = true;
   }
 
-  selection.span.type().to_static_type_tag<bool, float>([&](auto type_tag) {
-    using T = typename decltype(type_tag)::type;
-    if constexpr (std::is_void_v<T>) {
-      BLI_assert_unreachable();
-    }
-    else {
-      MutableSpan<T> selection_typed = selection.span.typed<T>();
+  float4x4 projection;
+  ED_view3d_ob_project_mat_get(vc.rv3d, vc.obact, projection.ptr());
 
-      float4x4 projection;
-      ED_view3d_ob_project_mat_get(vc.rv3d, vc.obact, projection.ptr());
-
-      const bke::crazyspace::GeometryDeformation deformation =
-          bke::crazyspace::get_evaluated_curves_deformation(*vc.depsgraph, *vc.obact);
-      const OffsetIndices points_by_curve = curves.points_by_curve();
-      if (selection_domain == ATTR_DOMAIN_POINT) {
-        threading::parallel_for(curves.points_range(), 1024, [&](const IndexRange point_range) {
-          for (const int point_i : point_range) {
-            const float3 pos = deformation.positions[point_i];
-
-            /* Find the position of the point in screen space. */
-            float2 pos_proj;
-            ED_view3d_project_float_v2_m4(vc.region, pos, pos_proj, projection.ptr());
-            if (BLI_rctf_isect_pt_v(&rectf, pos_proj)) {
-              apply_selection_operation(selection_typed, point_i, sel_op);
-              changed = true;
-            }
-          }
-        });
+  const bke::crazyspace::GeometryDeformation deformation =
+      bke::crazyspace::get_evaluated_curves_deformation(*vc.depsgraph, *vc.obact);
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  if (selection_domain == ATTR_DOMAIN_POINT) {
+    threading::parallel_for(curves.points_range(), 1024, [&](const IndexRange point_range) {
+      for (const int point_i : point_range) {
+        float2 pos_proj;
+        ED_view3d_project_float_v2_m4(
+            vc.region, deformation.positions[point_i], pos_proj, projection.ptr());
+        if (BLI_rctf_isect_pt_v(&rectf, pos_proj)) {
+          apply_selection_operation_at_index(selection.span, point_i, sel_op);
+          changed = true;
+        }
       }
-      else if (selection_domain == ATTR_DOMAIN_CURVE) {
-        threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange curves_range) {
-          for (const int curve_i : curves_range) {
-            for (const int point_i : points_by_curve[curve_i]) {
-              const float3 pos = deformation.positions[point_i];
-
-              /* Find the position of the point in screen space. */
-              float2 pos_proj;
-              ED_view3d_project_float_v2_m4(vc.region, pos, pos_proj, projection.ptr());
-              if (BLI_rctf_isect_pt_v(&rectf, pos_proj)) {
-                apply_selection_operation(selection_typed, curve_i, sel_op);
-                changed = true;
-                break;
-              }
-            }
+    });
+  }
+  else if (selection_domain == ATTR_DOMAIN_CURVE) {
+    threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange curves_range) {
+      for (const int curve_i : curves_range) {
+        for (const int point_i : points_by_curve[curve_i]) {
+          float2 pos_proj;
+          ED_view3d_project_float_v2_m4(
+              vc.region, deformation.positions[point_i], pos_proj, projection.ptr());
+          if (BLI_rctf_isect_pt_v(&rectf, pos_proj)) {
+            apply_selection_operation_at_index(selection.span, curve_i, sel_op);
+            changed = true;
+            break;
           }
-        });
+        }
       }
-    }
-  });
-
+    });
+  }
   selection.finish();
+
   return changed;
 }
 
