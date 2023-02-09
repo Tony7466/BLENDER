@@ -4,6 +4,7 @@
 
 #include "curves_sculpt_intern.hh"
 
+#include "BLI_index_mask_ops.hh"
 #include "BLI_math_matrix_types.hh"
 #include "BLI_vector.hh"
 
@@ -141,21 +142,13 @@ struct PinchOperationExecutor {
       BLI_assert_unreachable();
     }
 
-    /* XXX Dumb array conversion to pass to the constraint solver.
-     * Should become unnecessary once brushes use the same methods for computing weights */
-    Vector<int64_t> changed_curves_indices;
-    changed_curves_indices.reserve(curves_->curves_num());
-    for (int64_t curve_i : changed_curves.index_range()) {
-      if (changed_curves[curve_i]) {
-        changed_curves_indices.append(curve_i);
-      }
-    }
-
+    Vector<int64_t> indices;
+    const IndexMask changed_curves_mask = index_mask_ops::find_indices_from_array(changed_curves,
+                                                                                  indices);
     const Mesh *surface = curves_id_->surface && curves_id_->surface->type == OB_MESH ?
                               static_cast<Mesh *>(curves_id_->surface->data) :
                               nullptr;
-    self_->constraint_solver_.solve_step(
-        *curves_, IndexMask(changed_curves_indices), surface, transforms_);
+    self_->constraint_solver_.solve_step(*curves_, changed_curves_mask, surface, transforms_);
 
     curves_->tag_positions_changed();
     DEG_id_tag_update(&curves_id_->id, ID_RECALC_GEOMETRY);

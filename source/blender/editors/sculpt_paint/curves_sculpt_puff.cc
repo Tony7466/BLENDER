@@ -19,6 +19,7 @@
 
 #include "WM_api.h"
 
+#include "BLI_index_mask_ops.hh"
 #include "BLI_length_parameterize.hh"
 #include "BLI_math_matrix.hh"
 
@@ -157,8 +158,6 @@ struct PuffOperationExecutor {
 
     this->puff(curve_weights);
 
-    /* XXX Dumb array conversion to pass to the constraint solver.
-     * Should become unnecessary once brushes use the same methods for computing weights */
     Vector<int64_t> changed_curves_indices;
     changed_curves_indices.reserve(curve_selection_.size());
     for (int64_t select_i : curve_selection_.index_range()) {
