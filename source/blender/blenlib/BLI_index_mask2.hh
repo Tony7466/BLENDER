@@ -34,11 +34,11 @@ class IndexMaskChunk {
   IndexMaskChunk(const int64_t start, const Span<int16_t> offsets)
       : start_(start), offsets_(offsets)
   {
-    BLI_assert(start & index_mask_chunk_mask_low == 0);
+    BLI_assert((start & index_mask_chunk_mask_low) == 0);
     BLI_assert(IndexMaskChunk::offsets_are_valid(offsets));
   }
 
-  int64_t size() const
+  constexpr int64_t size() const
   {
     return offsets_.size();
   }
@@ -69,7 +69,7 @@ class IndexMaskChunk {
     return offsets_;
   }
 
-  int64_t operator[](const int64_t i) const
+  constexpr int64_t operator[](const int64_t i) const
   {
     return start_ + offsets_[i];
   }
@@ -111,7 +111,7 @@ class IndexMask2 {
     BLI_assert(size_ == this->sum_chunk_sizes());
 #ifdef DEBUG
     for (int i = 1; i < chunks.size(); i++) {
-      BLI_assert(chunks[i - 1].start < chunks[i].start());
+      BLI_assert(chunks[i - 1].start() < chunks[i].start());
     }
 #endif
   }
@@ -125,18 +125,11 @@ class IndexMask2 {
     IndexMaskChunk current_chunk_;
     int64_t index_in_chunk_;
     int64_t chunk_index_;
-    const IndexMask2 &mask_;
+    const IndexMask2 *mask_;
+
+    friend IndexMask2;
 
    public:
-    Iterator(const IndexMask2 &mask, const int64_t chunk_index, const int64_t index_in_chunk)
-        : current_chunk_(chunk_index < mask.chunks_.size() ? mask.chunks_[chunk_index] :
-                                                             IndexMaskChunk()),
-          index_in_chunk_(index_in_chunk),
-          chunk_index_(chunk_index),
-          mask_(mask)
-    {
-    }
-
     constexpr Iterator &operator++()
     {
       index_in_chunk_++;
@@ -149,7 +142,7 @@ class IndexMask2 {
 
     constexpr friend bool operator!=(const Iterator &a, const Iterator &b)
     {
-      BLI_assert(&a.mask_ == &b.mask_);
+      BLI_assert(a.mask_ == b.mask_);
       return a.chunk_index_ != b.chunk_index_ || a.index_in_chunk_ != b.index_in_chunk_;
     }
 
@@ -163,6 +156,27 @@ class IndexMask2 {
       return current_chunk_[index_in_chunk_];
     }
   };
+
+  Iterator begin() const
+  {
+    Iterator it;
+    it.mask_ = this;
+    it.chunk_index_ = 0;
+    it.index_in_chunk_ = 0;
+    if (!chunks_.is_empty()) {
+      it.current_chunk_ = chunks_[0];
+    }
+    return it;
+  }
+
+  Iterator end() const
+  {
+    Iterator it;
+    it.mask_ = this;
+    it.chunk_index_ = chunks_.size();
+    it.index_in_chunk_ = 0;
+    return it;
+  }
 
  private:
   int64_t sum_chunk_sizes() const
@@ -187,7 +201,7 @@ class IndexMaskForRange {
       return;
     }
     const int64_t global_start = range.start();
-    const int64_t global_last = range.one_after_last();
+    const int64_t global_last = range.last();
 
     const int64_t first_chunk_start = global_start & index_mask_chunk_mask_high;
     const int64_t last_chunk_start = global_last & index_mask_chunk_mask_high;

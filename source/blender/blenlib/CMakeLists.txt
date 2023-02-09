@@ -82,6 +82,7 @@ set(SRC
   intern/hash_mm2a.c
   intern/hash_mm3.c
   intern/index_mask.cc
+  intern/index_mask2.cc
   intern/jitter_2d.c
   intern/kdtree_1d.c
   intern/kdtree_2d.c
@@ -238,6 +239,7 @@ set(SRC
   BLI_heap.h
   BLI_heap_simple.h
   BLI_index_mask.hh
+  BLI_index_mask2.hh
   BLI_index_mask_ops.hh
   BLI_index_range.hh
   BLI_inplace_priority_queue.hh
@@ -476,6 +478,7 @@ if(WITH_GTESTS)
     tests/BLI_heap_simple_test.cc
     tests/BLI_heap_test.cc
     tests/BLI_index_mask_test.cc
+    tests/BLI_index_mask2_test.cc
     tests/BLI_index_range_test.cc
     tests/BLI_inplace_priority_queue_test.cc
     tests/BLI_kdopbvh_test.cc
