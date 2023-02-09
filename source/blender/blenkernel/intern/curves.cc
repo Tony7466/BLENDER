@@ -322,6 +322,22 @@ static void curves_evaluate_modifiers(struct Depsgraph *depsgraph,
   }
 }
 
+static Span<float3> get_cage_positions(const blender::bke::CurvesGeometry &curves_orig,
+                                       const Curves *curves_id_eval,
+                                       const blender::bke::CurvesEditHints *curve_edit_hints)
+{
+  if (curve_edit_hints) {
+    if (curve_edit_hints->positions.has_value()) {
+      return *curve_edit_hints->positions;
+    }
+    else if (curves_id_eval && curves_id_eval->geometry.point_num == curves_orig.point_num) {
+      const blender::bke::CurvesGeometry &curves_eval = curves_id_eval->geometry.wrap();
+      return curves_eval.positions();
+    }
+  }
+  return curves_orig.positions();
+}
+
 void BKE_curves_data_update(struct Depsgraph *depsgraph, struct Scene *scene, Object *object)
 {
   /* Free any evaluated data and restore original data. */
@@ -350,26 +366,14 @@ void BKE_curves_data_update(struct Depsgraph *depsgraph, struct Scene *scene, Ob
     const blender::bke::CurvesGeometry &curves_orig = curves_id_orig.geometry.wrap();
     Curves *curves_id_cage = blender::bke::curves_new_nomain(curves_id_orig.geometry.point_num,
                                                              curves_id_orig.geometry.curve_num);
+    object->runtime.editcurves_eval_cage = curves_id_cage;
+
     blender::bke::CurvesGeometry &curves_cage = curves_id_cage->geometry.wrap();
     curves_cage.offsets_for_write().copy_from(curves_orig.offsets());
     curves_cage.fill_curve_types(CURVE_TYPE_POLY);
-    object->runtime.editcurves_eval_cage = curves_id_cage;
-    const blender::bke::CurvesEditHints *curve_edit_hints =
-        geometry_set.get_curve_edit_hints_for_read();
 
-    Span<float3> positions;
-    if (curve_edit_hints) {
-      if (curve_edit_hints->positions.has_value()) {
-        positions = *curve_edit_hints->positions;
-      }
-      else if (curves_id_eval && curves_id_eval->geometry.point_num == curves_orig.point_num) {
-        blender::bke::CurvesGeometry &curves_eval = curves_id_eval->geometry.wrap();
-        positions = curves_eval.positions();
-      }
-    }
-    if (positions.is_empty()) {
-      positions = curves_orig.positions();
-    }
+    Span<float3> positions = get_cage_positions(
+        curves_orig, curves_id_eval, geometry_set.get_curve_edit_hints_for_read());
     curves_cage.positions_for_write().copy_from(positions);
   }
 
