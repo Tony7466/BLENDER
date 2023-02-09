@@ -20,8 +20,8 @@ void main()
   interp.P += bounds.bounding_corners[3].xyz * max(0, pos.z);
   interp.vP = point_world_to_view(interp.P);
 
-  interp.aabb_min_os = point_world_to_object(bounds.bounding_corners[0].xyz);
-  interp.aabb_max_os = point_world_to_object(
+  interp.ls_aabb_min = point_world_to_object(bounds.bounding_corners[0].xyz);
+  interp.ls_aabb_max = point_world_to_object(
       bounds.bounding_corners[0].xyz + bounds.bounding_corners[1].xyz +
       bounds.bounding_corners[2].xyz + bounds.bounding_corners[3].xyz);
 
