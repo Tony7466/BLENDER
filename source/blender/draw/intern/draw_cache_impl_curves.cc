@@ -366,6 +366,29 @@ static void curves_batch_cache_ensure_edit_points_data(const Curves &curves_id,
   }
 }
 
+static void curves_batch_cache_ensure_cage_color(const blender::bke::CurvesGeometry &curves,
+                                                 GPUVertBuf &point_color_buf)
+{
+  static const GPUVertFormat format = [&]() {
+    GPUVertFormat format;
+    GPU_vertformat_attr_add(&format, "color", GPU_COMP_U8, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
+    return format;
+  }();
+
+  GPU_vertbuf_init_with_format(&point_color_buf, &format);
+  GPU_vertbuf_data_alloc(&point_color_buf, curves.points_num());
+  blender::uchar4 *data = static_cast<blender::uchar4 *>(GPU_vertbuf_get_data(&point_color_buf));
+
+  const blender::VArraySpan<float> selection = curves.attributes().lookup_or_default<float>(
+      ".selection", ATTR_DOMAIN_POINT, 1.0f);
+  blender::threading::parallel_for(selection.index_range(), 2048, [&](const IndexRange range) {
+    for (const int i : range) {
+      const float f = std::clamp(selection[i], 0.0f, 1.0f);
+      data[i] = blender::uchar4(f * 255.0f, f * 255.0f, f * 255.0f, 255);
+    }
+  });
+}
+
 static void curves_batch_cache_ensure_edit_lines(const Curves &curves_id, CurvesBatchCache &cache)
 {
   using namespace blender;
@@ -803,25 +826,7 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
       curves_batch_cache_ensure_edit_points_pos(*curves_cage_id, *cage_cache.cage_point_pos);
     }
     if (DRW_vbo_requested(cage_cache.cage_point_color)) {
-      static const GPUVertFormat format = [&]() {
-        GPUVertFormat format;
-        GPU_vertformat_attr_add(&format, "color", GPU_COMP_U8, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
-        return format;
-      }();
-
-      GPU_vertbuf_init_with_format(cage_cache.cage_point_color, &format);
-      GPU_vertbuf_data_alloc(cage_cache.cage_point_color, curves_cage_id->geometry.point_num);
-      blender::uchar4 *data = static_cast<blender::uchar4 *>(
-          GPU_vertbuf_get_data(cage_cache.cage_point_color));
-
-      const blender::VArraySpan<float> selection =
-          curves_orig.attributes().lookup_or_default<float>(".selection", ATTR_DOMAIN_POINT, 1.0f);
-      blender::threading::parallel_for(selection.index_range(), 2048, [&](const IndexRange range) {
-        for (const int i : range) {
-          const float f = std::clamp(selection[i], 0.0f, 1.0f);
-          data[i] = blender::uchar4(f * 255.0f, f * 255.0f, f * 255.0f, 255);
-        }
-      });
+      curves_batch_cache_ensure_cage_color(curves_orig, *cage_cache.cage_point_color);
     }
   }
 }
