@@ -3719,7 +3719,7 @@ def km_grease_pencil_stroke_edit_mode(params):
         # Active layer
         op_menu("GPENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
         # Keyframe menu
-        op_menu("VIEW3D_MT_gpencil_animation", {"type": 'I', "value": 'PRESS'}),
+        op_menu("GPENCIL_MT_gpencil_draw_insert", {"type": 'I', "value": 'PRESS'}),
         # Context menu
         *_template_items_context_menu("VIEW3D_MT_gpencil_edit_context_menu", params.context_menu_event),
     ])
@@ -3770,7 +3770,7 @@ def km_grease_pencil_stroke_paint_mode(params):
         ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS', "repeat": True},
          {"properties": [("scalar", 1.0 / 0.9)]}),
         # Draw delete menu
-        op_menu("GPENCIL_MT_gpencil_draw_delete", {"type": 'X', "value": 'PRESS'}),
+        op_menu("GPENCIL_MT_gpencil_draw_delete", {"type": 'I', "value": 'PRESS', "alt": True}),
         # Animation menu
         ("gpencil.blank_frame_add", {"type": 'I', "value": 'PRESS', "shift": True}, None),
         ("gpencil.active_frames_delete_all", {"type": 'X', "value": 'PRESS', "shift": True}, None),
@@ -3789,7 +3789,7 @@ def km_grease_pencil_stroke_paint_mode(params):
         # Active material
         op_menu("GPENCIL_MT_material_active", {"type": 'U', "value": 'PRESS'}),
         # Keyframe menu
-        op_menu("VIEW3D_MT_gpencil_animation", {"type": 'I', "value": 'PRESS'}),
+        op_menu("GPENCIL_MT_gpencil_draw_insert", {"type": 'I', "value": 'PRESS'}),
         # Draw context menu
         *_template_items_context_panel("VIEW3D_PT_gpencil_draw_context_menu", params.context_menu_event),
     ])
@@ -3967,7 +3967,7 @@ def km_grease_pencil_stroke_sculpt_mode(params):
         # Merge Layer
         ("gpencil.layer_merge", {"type": 'M', "value": 'PRESS', "shift": True, "ctrl": True}, None),
         # Keyframe menu
-        op_menu("VIEW3D_MT_gpencil_animation", {"type": 'I', "value": 'PRESS'}),
+        op_menu("GPENCIL_MT_gpencil_draw_insert", {"type": 'I', "value": 'PRESS'}),
         # Context menu
         *_template_items_context_panel("VIEW3D_PT_gpencil_sculpt_context_menu", params.context_menu_event),
         # Automasking Pie menu
@@ -4189,7 +4189,7 @@ def km_grease_pencil_stroke_weight_mode(params):
         # Merge Layer
         ("gpencil.layer_merge", {"type": 'M', "value": 'PRESS', "shift": True, "ctrl": True}, None),
         # Keyframe menu
-        op_menu("VIEW3D_MT_gpencil_animation", {"type": 'I', "value": 'PRESS'}),
+        op_menu("GPENCIL_MT_gpencil_draw_insert", {"type": 'I', "value": 'PRESS'}),
         # Context menu
         *_template_items_context_panel("VIEW3D_PT_gpencil_weight_context_menu", params.context_menu_event),
     ])
@@ -4257,7 +4257,7 @@ def km_grease_pencil_stroke_vertex_mode(params):
         # Merge Layer
         ("gpencil.layer_merge", {"type": 'M', "value": 'PRESS', "shift": True, "ctrl": True}, None),
         # Keyframe menu
-        op_menu("VIEW3D_MT_gpencil_animation", {"type": 'I', "value": 'PRESS'}),
+        op_menu("GPENCIL_MT_gpencil_draw_insert", {"type": 'I', "value": 'PRESS'}),
         # Vertex Paint context menu
         op_panel("VIEW3D_PT_gpencil_vertex_context_menu", params.context_menu_event),
     ])

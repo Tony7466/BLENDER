@@ -293,6 +293,26 @@ class GPENCIL_MT_material_active(Menu):
                 layout.operator("gpencil.material_set", text=mat.name, icon_value=icon).slot = mat.name
 
 
+class GPENCIL_MT_gpencil_draw_insert(Menu):
+    bl_label = "Insert"
+
+    @classmethod
+    def poll(cls, context):
+        ob = context.active_object
+        return ob and ob.type == 'GPENCIL' and ob.mode != 'OBJECT'
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator("gpencil.blank_frame_add", text="Insert Blank Keyframe (Active Layer)")
+        layout.operator("gpencil.blank_frame_add", text="Insert Blank Keyframe (All Layers)").all_layers = True
+
+        layout.separator()
+
+        layout.operator("gpencil.frame_duplicate", text="Duplicate Active Keyframe (Active Layer)")
+        layout.operator("gpencil.frame_duplicate", text="Duplicate Active Keyframe (All Layers)").mode = 'ALL'
+
+
 class GPENCIL_MT_gpencil_draw_delete(Menu):
     bl_label = "Delete"
 
@@ -898,6 +918,7 @@ classes = (
     GPENCIL_MT_layer_active,
     GPENCIL_MT_material_active,
 
+    GPENCIL_MT_gpencil_draw_insert,
     GPENCIL_MT_gpencil_draw_delete,
     GPENCIL_MT_layer_mask_menu,
 

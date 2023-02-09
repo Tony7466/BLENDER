@@ -2416,7 +2416,7 @@ def km_grease_pencil_stroke_paint_mode(params):
         # Active layer
         op_menu("GPENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
         # Keyframe menu
-        op_menu("VIEW3D_MT_gpencil_animation", {"type": 'I', "value": 'PRESS'}),
+        op_menu("GPENCIL_MT_gpencil_draw_insert", {"type": 'I', "value": 'PRESS'}),
     ])
 
     return keymap
