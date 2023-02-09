@@ -194,7 +194,7 @@ static void wm_window_match_init(bContext *C, ListBase *wmlist)
       ED_screen_exit(C, win, WM_window_get_active_screen(win));
     }
 
-    /* NOTE(@campbellbarton): Clear the message bus so it's always cleared on file load.
+    /* NOTE(@ideasman42): Clear the message bus so it's always cleared on file load.
      * Otherwise it's cleared when "Load UI" is set (see #USER_FILENOUI & #wm_close_and_free).
      * However it's _not_ cleared when the UI is kept. This complicates use from add-ons
      * which can re-register subscribers on file-load. To support this use case,
@@ -207,6 +207,8 @@ static void wm_window_match_init(bContext *C, ListBase *wmlist)
 
   BLI_listbase_clear(&G_MAIN->wm);
   if (G_MAIN->name_map != nullptr) {
+    /* NOTE: UI IDs are assumed to be only local data-blocks, so no need to call
+     * #BKE_main_namemap_clear here. */
     BKE_main_namemap_destroy(&G_MAIN->name_map);
   }
 
@@ -480,7 +482,7 @@ static void wm_init_userdef(Main *bmain)
     SET_FLAG_FROM_TEST(G.f, (U.flag & USER_SCRIPT_AUTOEXEC_DISABLE) == 0, G_FLAG_SCRIPT_AUTOEXEC);
   }
 
-  MEM_CacheLimiter_set_maximum((size_t(U.memcachelimit)) * 1024 * 1024);
+  MEM_CacheLimiter_set_maximum(size_t(U.memcachelimit) * 1024 * 1024);
   BKE_sound_init(bmain);
 
   /* Update the temporary directory from the preferences or fallback to the system default. */
@@ -1945,7 +1947,7 @@ static void wm_autosave_location(char filepath[FILE_MAX])
   }
 
   const char *tempdir_base = BKE_tempdir_base();
-  /* NOTE(@campbellbarton): It's strange that this is only used on WIN32.
+  /* NOTE(@ideasman42): It's strange that this is only used on WIN32.
    * From reading commits it seems accessing the temporary directory used to be less reliable.
    * If this is still the case on WIN32 - other features such as copy-paste will also fail.
    * We could support #BLENDER_USER_AUTOSAVE on all platforms or remove it entirely. */
@@ -3160,7 +3162,7 @@ static int wm_save_as_mainfile_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  /* NOTE(@campbellbarton): only check this for file-path properties so saving an already
+  /* NOTE(@ideasman42): only check this for file-path properties so saving an already
    * saved file never fails with an error.
    * Even though this should never happen, there may be some corner case where a malformed
    * path is stored in `G.main->filepath`: when the file path is initialized from recovering

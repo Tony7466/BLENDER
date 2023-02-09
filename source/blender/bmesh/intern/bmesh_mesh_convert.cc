@@ -859,7 +859,7 @@ static void bm_to_mesh_shape(BMesh *bm,
             ((keyi = BM_ELEM_CD_GET_INT(eve, cd_shape_keyindex_offset)) != ORIGINDEX_NONE) &&
             (keyi < currkey->totelem)) {
           /* Reconstruct keys via vertices original key indices.
-           * WARNING(@campbellbarton): `currkey->data` is known to be unreliable as the edit-mesh
+           * WARNING(@ideasman42): `currkey->data` is known to be unreliable as the edit-mesh
            * coordinates may be flushed back to the shape-key when exporting or rendering.
            * This is a last resort! If this branch is running as part of regular usage
            * it can be considered a bug. */
@@ -1325,8 +1325,8 @@ static void bm_vert_table_build(BMesh &bm,
     table[i] = vert;
     hflag |= vert->head.hflag;
   }
-  need_select_vert |= (hflag & BM_ELEM_SELECT);
-  need_hide_vert |= (hflag & BM_ELEM_HIDDEN);
+  need_select_vert = (hflag & BM_ELEM_SELECT) != 0;
+  need_hide_vert = (hflag & BM_ELEM_HIDDEN) != 0;
 }
 
 static void bm_edge_table_build(BMesh &bm,
@@ -1344,9 +1344,9 @@ static void bm_edge_table_build(BMesh &bm,
     table[i] = edge;
     hflag |= edge->head.hflag;
   }
-  need_select_edge |= (hflag & BM_ELEM_SELECT);
-  need_hide_edge |= (hflag & BM_ELEM_HIDDEN);
-  need_sharp_edge |= (hflag & BM_ELEM_SMOOTH);
+  need_select_edge = (hflag & BM_ELEM_SELECT) != 0;
+  need_hide_edge = (hflag & BM_ELEM_HIDDEN) != 0;
+  need_sharp_edge = (hflag & BM_ELEM_SMOOTH) != 0;
 }
 
 static void bm_face_loop_table_build(BMesh &bm,
@@ -1375,8 +1375,8 @@ static void bm_face_loop_table_build(BMesh &bm,
       loop_i++;
     }
   }
-  need_select_poly |= (hflag & BM_ELEM_SELECT);
-  need_hide_poly |= (hflag & BM_ELEM_HIDDEN);
+  need_select_poly = (hflag & BM_ELEM_SELECT) != 0;
+  need_hide_poly = (hflag & BM_ELEM_HIDDEN) != 0;
 }
 
 static void bm_to_mesh_verts(const BMesh &bm,
