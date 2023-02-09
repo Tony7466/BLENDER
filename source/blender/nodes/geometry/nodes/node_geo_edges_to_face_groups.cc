@@ -26,7 +26,7 @@ static void join_indices(AtomicDisjointSet &set, const Span<int> indices)
 {
   for (const int i : indices.index_range()) {
     for (int j = i + 1; j < indices.size(); j++) {
-      set.join(i, j);
+      set.join(indices[i], indices[j]);
     }
   }
 }
