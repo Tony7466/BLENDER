@@ -4380,7 +4380,7 @@ float ANIM_get_keyframe_scale_factor(void)
 
   /* clamp to avoid problems with uninitialized values... */
   if (yscale_fac < 0.1f) {
-    yscale_fac = 1.0f;
+    return 1.0f;
   }
   return yscale_fac;
 }
