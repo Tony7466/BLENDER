@@ -2713,6 +2713,10 @@ void SCULPT_brush_strength_color(struct SculptSession *ss,
 void SCULPT_calc_vertex_displacement(SculptSession *ss, const struct Brush *brush, float rgba[4], float out_offset[3])
 {
     mul_v3_fl(rgba, ss->cache->bstrength);
+    if(ss->cache->bstrength < 0) {
+      rgba[0] *= -1;
+      rgba[1] *= -1;
+    }
 
     rgba[0] *= 1.0f / (brush->mtex.size[0] == 0.0f ? 1.0f : brush->mtex.size[0] * brush->mtex.size[0]);
     rgba[1] *= 1.0f / (brush->mtex.size[1] == 0.0f ? 1.0f : brush->mtex.size[1] * brush->mtex.size[1]);

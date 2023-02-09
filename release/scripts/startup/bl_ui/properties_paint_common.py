@@ -1147,7 +1147,6 @@ def brush_texture_settings(layout, brush, sculpt):
             col.prop(brush, "use_color_as_displacement", text="Vector Displacement")
 
 
-
 def brush_mask_texture_settings(layout, brush):
     mask_tex_slot = brush.mask_texture_slot
 
