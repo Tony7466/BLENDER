@@ -42,6 +42,7 @@
 namespace usdtokens {
 /* Materials */
 static const pxr::TfToken st("st", pxr::TfToken::Immortal);
+static const pxr::TfToken perfuv("perfuv", pxr::TfToken::Immortal);
 static const pxr::TfToken UVMap("UVMap", pxr::TfToken::Immortal);
 static const pxr::TfToken Cd("Cd", pxr::TfToken::Immortal);
 static const pxr::TfToken displayColor("displayColor", pxr::TfToken::Immortal);
@@ -804,7 +805,7 @@ Mesh *USDMeshReader::read_mesh(Mesh *existing_mesh,
         is_uv = true;
       }
       /* In some cases, the st primvar is stored as float2 values. */
-      else if (name == usdtokens::st && type == pxr::SdfValueTypeNames->Float2Array) {
+      else if ((name == usdtokens::st || name == usdtokens::perfuv) && type == pxr::SdfValueTypeNames->Float2Array) {
         is_uv = true;
       }
 

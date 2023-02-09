@@ -410,7 +410,7 @@ void USDMaterialReader::import_usd_preview(Material *mtl,
         mtl->alpha_threshold = opacity_threshold;
       }
       else {
-        mtl->blend_method = MA_BM_BLEND;
+        mtl->blend_method = MA_BM_HASHED;
       }
     }
   }
@@ -641,7 +641,13 @@ void USDMaterialReader::convert_usd_uv_texture(const pxr::UsdShadeShader &usd_sh
   /* Get the source socket name. */
   std::string source_socket_name = usd_source_name == usdtokens::a ? "Alpha" : "Color";
 
-  link_nodes(ntree, tex_image, source_socket_name.c_str(), dest_node, dest_socket_name);
+  if (usd_source_name == usdtokens::r) {
+    bNode *seperate_rgb = add_node(nullptr, ntree, SH_NODE_SEPRGB_LEGACY, locx + 150.0, locy);
+    link_nodes(ntree, tex_image, source_socket_name.c_str(), seperate_rgb, "Image");
+    link_nodes(ntree, seperate_rgb, "R", dest_node, dest_socket_name);
+  } else {
+    link_nodes(ntree, tex_image, source_socket_name.c_str(), dest_node, dest_socket_name);
+  }
 
   /* Connect the texture image node "Vector" input. */
   if (pxr::UsdShadeInput st_input = usd_shader.GetInput(usdtokens::st)) {
