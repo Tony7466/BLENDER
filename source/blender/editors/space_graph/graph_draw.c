@@ -1408,7 +1408,7 @@ void graph_draw_channel_names(bContext *C, bAnimContext *ac, ARegion *region)
     float ymax = ANIM_UI_get_first_channel_top(v2d);
 
     for (ale = anim_data.first; ale; ale = ale->next, ymax -= channel_step, channel_index++) {
-      float ymin = ymax - ANIM_UI_get_channel_height();
+      const float ymin = ymax - ANIM_UI_get_channel_height();
 
       /* check if visible */
       if (IN_RANGE(ymin, v2d->cur.ymin, v2d->cur.ymax) ||
@@ -1427,7 +1427,7 @@ void graph_draw_channel_names(bContext *C, bAnimContext *ac, ARegion *region)
     GPU_blend(GPU_BLEND_ALPHA);
 
     for (ale = anim_data.first; ale; ale = ale->next, ymax -= channel_step, channel_index++) {
-      float ymin = ymax - ANIM_UI_get_channel_height();
+      const float ymin = ymax - ANIM_UI_get_channel_height();
 
       /* check if visible */
       if (IN_RANGE(ymin, v2d->cur.ymin, v2d->cur.ymax) ||

@@ -4376,7 +4376,7 @@ static bool achannel_is_being_renamed(const bAnimContext *ac,
 float ANIM_UI_get_keyframe_scale_factor(void)
 {
   bTheme *btheme = UI_GetTheme();
-  float yscale_fac = btheme->space_action.keyframe_scale_fac;
+  const float yscale_fac = btheme->space_action.keyframe_scale_fac;
 
   /* clamp to avoid problems with uninitialized values... */
   if (yscale_fac < 0.1f) {

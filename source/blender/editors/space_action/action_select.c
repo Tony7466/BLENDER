@@ -728,7 +728,7 @@ static void region_select_action_keys(
     AnimData *adt = ANIM_nla_mapping_get(ac, ale);
 
     /* get new vertical minimum extent of channel */
-    float ymin = ymax - channel_step;
+    const float ymin = ymax - channel_step;
 
     /* compute midpoint of channel (used for testing if the key is in the region or not) */
     sel_data.ked.channel_y = (ymin + ymax) / 2.0f;

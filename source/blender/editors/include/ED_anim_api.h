@@ -598,7 +598,7 @@ float ANIM_UI_get_channel_height(void);
 float ANIM_UI_get_channel_skip(void);
 float ANIM_UI_get_first_channel_top(View2D *v2d);
 float ANIM_UI_get_channel_step(void);
-float ANIM_UI_get_channels_total_height(View2D *v2d, const int item_count);
+float ANIM_UI_get_channels_total_height(View2D *v2d, int item_count);
 float ANIM_UI_get_channel_name_width(void);
 float ANIM_UI_get_channel_button_width(void);
 
