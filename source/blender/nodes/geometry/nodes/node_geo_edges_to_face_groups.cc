@@ -72,6 +72,19 @@ class FaceSetFromBoundariesInput final : public bke::MeshFieldInput {
         VArray<int>::ForContainer(std::move(output)), ATTR_DOMAIN_FACE, domain);
   }
 
+  uint64_t hash() const override
+  {
+    return non_boundary_edge_field_.hash();
+  }
+
+  bool is_equal_to(const fn::FieldNode &other) const override
+  {
+    if (const auto *other_field = dynamic_cast<const FaceSetFromBoundariesInput *>(&other)) {
+      return other_field->non_boundary_edge_field_ == non_boundary_edge_field_;
+    }
+    return false;
+  }
+
   std::optional<eAttrDomain> preferred_domain(const Mesh & /*mesh*/) const final
   {
     return ATTR_DOMAIN_FACE;
