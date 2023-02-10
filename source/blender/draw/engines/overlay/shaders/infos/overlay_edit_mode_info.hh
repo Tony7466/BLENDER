@@ -616,7 +616,7 @@ GPU_SHADER_CREATE_INFO(overlay_uniform_color)
     .vertex_in(0, Type::VEC3, "pos")
     .push_constant(Type::VEC4, "ucolor")
     .fragment_out(0, Type::VEC4, "fragColor")
-    .vertex_source("overlay_depth_only_vert.glsl")
+    .vertex_source("overlay_uniform_color_vert.glsl")
     .fragment_source("overlay_uniform_color_frag.glsl")
     .additional_info("draw_mesh");
 
