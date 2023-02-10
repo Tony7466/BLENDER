@@ -94,7 +94,7 @@ class CreateModifierWrapperGroup(Operator):
     """Create a new node group wrapping the modifier's group"""
 
     bl_idname = "object.new_geometry_node_group_wrapper"
-    bl_label = "Create Wrapper Group"
+    bl_label = "Create Wrapper Node Group"
     bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod

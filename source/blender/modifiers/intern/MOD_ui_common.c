@@ -278,7 +278,7 @@ static void modifier_ops_extra_draw(bContext *C, uiLayout *layout, void *md_v)
   if (md->type == eModifierType_Nodes) {
     uiItemFullO(layout,
                 "OBJECT_OT_new_geometry_node_group_wrapper",
-                IFACE_("Create Wrapper Group"),
+                NULL,
                 ICON_NONE,
                 NULL,
                 WM_OP_INVOKE_DEFAULT,
