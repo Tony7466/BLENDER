@@ -148,13 +148,13 @@ void select_random(bke::CurvesGeometry &curves,
                    float probability);
 
 /**
- * Select point or curve under the cursor.
+ * Select point or curve at a (screen-space) point.
  */
 bool select_pick(const ViewContext &vc,
                  bke::CurvesGeometry &curves,
                  const eAttrDomain selection_domain,
                  const SelectPick_Params &params,
-                 const int2 mval);
+                 const int2 coord);
 
 /**
  * Select points or curves in a (screen-space) rectangle.
@@ -174,6 +174,16 @@ bool select_lasso(const ViewContext &vc,
                   const int coords[][2],
                   const int coords_len,
                   const eSelectOp sel_op);
+
+/**
+ * Select points or curves in a (screen-space) circle.
+ */
+bool select_circle(const ViewContext &vc,
+                   bke::CurvesGeometry &curves,
+                   const eAttrDomain selection_domain,
+                   const int2 coord,
+                   const float radius,
+                   const eSelectOp sel_op);
 /** \} */
 
 }  // namespace blender::ed::curves
