@@ -166,7 +166,7 @@ bool select_box(const ViewContext &vc,
                 const eSelectOp sel_op);
 
 /**
- * Select points or curves in a (screen-space) polyshape.
+ * Select points or curves in a (screen-space) poly shape.
  */
 bool select_lasso(const ViewContext &vc,
                   bke::CurvesGeometry &curves,
