@@ -3461,6 +3461,10 @@ static bool ntree_contains_tree_exec(const bNodeTree *parent_tree,
                                      const bNodeTree *sub_tree,
                                      Set<const bNodeTree *> &already_passed)
 {
+  if (parent_tree == sub_tree) {
+    return true;
+  }
+
   parent_tree->ensure_topology_cache();
   for (const bNode *node_group : parent_tree->group_nodes()) {
     const bNodeTree *tree = reinterpret_cast<bNodeTree *>(node_group->id);
@@ -3474,11 +3478,16 @@ static bool ntree_contains_tree_exec(const bNodeTree *parent_tree,
       return true;
     }
   }
+
   return false;
 }
 
 bool ntreeContainsTree(const bNodeTree *parent_tree, const bNodeTree *sub_tree)
 {
+  if (parent_tree == sub_tree) {
+    return true;
+  }
+
   Set<const bNodeTree *> already_passed;
   return ntree_contains_tree_exec(parent_tree, sub_tree, already_passed);
 }
