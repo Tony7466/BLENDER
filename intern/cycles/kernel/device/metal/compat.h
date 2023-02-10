@@ -297,7 +297,7 @@ struct Texture3DParamsMetal {
   texture3d<float, access::sample> tex;
 };
 struct TextureBuffer {
-  device void* data;
+  device void *data;
 };
 
 #ifdef __METALRT__

@@ -95,7 +95,8 @@ MetalDevice::MetalDevice(const DeviceInfo &info, Stats &stats, Profiler &profile
   texture_bindings_3d = [mtlDevice newBufferWithLength:4096 options:default_storage_mode];
   texture_buffers = [mtlDevice newBufferWithLength:4096 options:default_storage_mode];
 
-  stats.mem_alloc(texture_bindings_2d.allocatedSize + texture_bindings_3d.allocatedSize + texture_buffers.allocatedSize);
+  stats.mem_alloc(texture_bindings_2d.allocatedSize + texture_bindings_3d.allocatedSize +
+                  texture_buffers.allocatedSize);
 
   switch (device_vendor) {
     default:
@@ -156,11 +157,12 @@ MetalDevice::MetalDevice(const DeviceInfo &info, Stats &stats, Profiler &profile
   arg_desc_texture.dataType = MTLDataTypeTexture;
   arg_desc_texture.access = MTLArgumentAccessReadOnly;
   mtlTextureArgEncoder = [mtlDevice newArgumentEncoderWithArguments:@[ arg_desc_texture ]];
-  
+
   MTLArgumentDescriptor *arg_desc_buffer_texture = [[MTLArgumentDescriptor alloc] init];
   arg_desc_buffer_texture.dataType = MTLDataTypePointer;
   arg_desc_buffer_texture.access = MTLArgumentAccessReadOnly;
-  mtlTextureBufferArgEncoder = [mtlDevice newArgumentEncoderWithArguments:@[ arg_desc_buffer_texture ]];
+  mtlTextureBufferArgEncoder = [mtlDevice
+      newArgumentEncoderWithArguments:@[ arg_desc_buffer_texture ]];
 
   /* command queue for non-tracing work on the GPU */
   mtlGeneralCommandQueue = [mtlDevice newCommandQueue];
@@ -272,7 +274,8 @@ MetalDevice::~MetalDevice()
   flush_delayed_free_list();
 
   if (texture_bindings_2d) {
-    stats.mem_free(texture_bindings_2d.allocatedSize + texture_bindings_3d.allocatedSize + texture_buffers.allocatedSize);
+    stats.mem_free(texture_bindings_2d.allocatedSize + texture_bindings_3d.allocatedSize +
+                   texture_buffers.allocatedSize);
 
     [texture_bindings_2d release];
     [texture_bindings_3d release];
@@ -323,7 +326,7 @@ void MetalDevice::make_source(MetalPipelineType pso_type, const uint kernel_feat
   }
 
   if (pso_type == PSO_GENERIC || have_mtlbuffer_textures) {
-    /* Only enable MTLBuffer textures if needed as they add a small overhead. */ 
+    /* Only enable MTLBuffer textures if needed as they add a small overhead. */
     global_defines += "#define __KERNEL_METAL_BUFFER_TEXTURES__\n";
   }
 
@@ -581,7 +584,7 @@ void MetalDevice::load_texture_info()
         [mtlTextureArgEncoder setTexture:nil atIndex:0];
         [mtlTextureArgEncoder setArgumentBuffer:texture_bindings_3d offset:offset];
         [mtlTextureArgEncoder setTexture:nil atIndex:0];
-        
+
         [mtlTextureBufferArgEncoder setArgumentBuffer:texture_buffers offset:offset];
         if (id<MTLBuffer> metal_buffer = texture_buffer_slot_map[tex]) {
           [mtlTextureBufferArgEncoder setBuffer:metal_buffer offset:0 atIndex:0];
@@ -596,7 +599,7 @@ void MetalDevice::load_texture_info()
         [mtlTextureArgEncoder setTexture:type == MTLTextureType2D ? metal_texture : nil atIndex:0];
         [mtlTextureArgEncoder setArgumentBuffer:texture_bindings_3d offset:offset];
         [mtlTextureArgEncoder setTexture:type == MTLTextureType3D ? metal_texture : nil atIndex:0];
-        
+
         [mtlTextureBufferArgEncoder setArgumentBuffer:texture_buffers offset:offset];
         [mtlTextureBufferArgEncoder setBuffer:nil offset:0 atIndex:0];
       }
@@ -912,7 +915,7 @@ bool MetalDevice::is_ready(string &status) const
   else if (kernel_specialization_level == PSO_SPECIALIZED_SHADE) {
     status = "Using optimized kernels";
   }
-  
+
   metal_printf("MetalDevice::is_ready(...) --> true\n");
   return true;
 }
@@ -1134,28 +1137,28 @@ void MetalDevice::tex_alloc(device_texture &mem)
     if (mem.data_depth > 1) {
       /* 3D texture using array */
       MTLTextureDescriptor *desc;
-      
+
       desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:format
                                                                 width:mem.data_width
                                                                height:mem.data_height
                                                             mipmapped:NO];
-      
+
       desc.storageMode = storage_mode;
       desc.usage = MTLTextureUsageShaderRead;
-      
+
       desc.textureType = MTLTextureType3D;
       desc.depth = mem.data_depth;
-      
+
       VLOG_WORK << "Texture 3D allocate: " << mem.name << ", "
-      << string_human_readable_number(mem.memory_size()) << " bytes. ("
-      << string_human_readable_size(mem.memory_size()) << ")";
-      
+                << string_human_readable_number(mem.memory_size()) << " bytes. ("
+                << string_human_readable_size(mem.memory_size()) << ")";
+
       mtlTexture = [mtlDevice newTextureWithDescriptor:desc];
       if (!mtlTexture) {
         set_error("System is out of GPU memory");
         return;
       }
-      
+
       const size_t imageBytes = src_pitch * mem.data_height;
       for (size_t d = 0; d < mem.data_depth; d++) {
         const size_t offset = d * imageBytes;
@@ -1170,25 +1173,25 @@ void MetalDevice::tex_alloc(device_texture &mem)
     else if (mem.data_height > 0) {
       /* 2D texture */
       MTLTextureDescriptor *desc;
-      
+
       desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:format
                                                                 width:mem.data_width
                                                                height:mem.data_height
                                                             mipmapped:NO];
-      
+
       desc.storageMode = storage_mode;
       desc.usage = MTLTextureUsageShaderRead;
-      
+
       VLOG_WORK << "Texture 2D allocate: " << mem.name << ", "
-      << string_human_readable_number(mem.memory_size()) << " bytes. ("
-      << string_human_readable_size(mem.memory_size()) << ")";
-      
+                << string_human_readable_number(mem.memory_size()) << " bytes. ("
+                << string_human_readable_size(mem.memory_size()) << ")";
+
       mtlTexture = [mtlDevice newTextureWithDescriptor:desc];
       if (!mtlTexture) {
         set_error("System is out of GPU memory");
         return;
       }
-      
+
       [mtlTexture replaceRegion:MTLRegionMake2D(0, 0, mem.data_width, mem.data_height)
                     mipmapLevel:0
                       withBytes:mem.host_pointer
@@ -1200,7 +1203,7 @@ void MetalDevice::tex_alloc(device_texture &mem)
     }
     mem.device_pointer = (device_ptr)mtlTexture;
   }
-  
+
   if (use_tex) {
     mem.device_size = size;
     stats.mem_alloc(size);
@@ -1215,7 +1218,7 @@ void MetalDevice::tex_alloc(device_texture &mem)
   else {
     have_mtlbuffer_textures = true;
     generic_alloc(mem);
-    
+
     std::lock_guard<std::recursive_mutex> lock(metal_mem_map_mutex);
     mtlBuffer = metal_mem_map[&mem]->mtlBuffer;
     mem.device_pointer = (device_ptr)mtlBuffer;
@@ -1237,7 +1240,8 @@ void MetalDevice::tex_alloc(device_texture &mem)
         delayed_free_list.push_back(texture_bindings_3d);
         delayed_free_list.push_back(texture_buffers);
 
-        stats.mem_free(texture_bindings_2d.allocatedSize + texture_bindings_3d.allocatedSize + texture_buffers.allocatedSize);
+        stats.mem_free(texture_bindings_2d.allocatedSize + texture_bindings_3d.allocatedSize +
+                       texture_buffers.allocatedSize);
       }
       texture_bindings_2d = [mtlDevice newBufferWithLength:min_buffer_length
                                                    options:default_storage_mode];
@@ -1245,8 +1249,9 @@ void MetalDevice::tex_alloc(device_texture &mem)
                                                    options:default_storage_mode];
       texture_buffers = [mtlDevice newBufferWithLength:min_buffer_length
                                                options:default_storage_mode];
-      
-      stats.mem_alloc(texture_bindings_2d.allocatedSize + texture_bindings_3d.allocatedSize + texture_buffers.allocatedSize);
+
+      stats.mem_alloc(texture_bindings_2d.allocatedSize + texture_bindings_3d.allocatedSize +
+                      texture_buffers.allocatedSize);
     }
   }
 
@@ -1287,7 +1292,7 @@ void MetalDevice::tex_free(device_texture &mem)
     assert(texture_buffer_slot_map[mem.slot] == mmem.mtlBuffer);
     texture_slot_map[mem.slot] = nil;
     texture_buffer_slot_map[mem.slot] = nil;
-    
+
     if (mmem.use_UMA) {
       assert(mem.shared_pointer);
       if (mem.shared_pointer) {
