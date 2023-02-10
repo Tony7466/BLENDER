@@ -2713,7 +2713,7 @@ void SCULPT_brush_strength_color(SculptSession *ss,
 }
 
 void SCULPT_calc_vertex_displacement(SculptSession *ss,
-                                     const struct Brush *brush,
+                                     const Brush *brush,
                                      float rgba[4],
                                      float out_offset[3])
 {
