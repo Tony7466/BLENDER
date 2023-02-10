@@ -5379,14 +5379,15 @@ void SCULPT_flush_update_step(bContext *C, SculptUpdateType update_flags)
 
   if ((update_flags & SCULPT_UPDATE_IMAGE) != 0) {
     ED_region_tag_redraw(region);
-    if (update_flags == SCULPT_UPDATE_IMAGE) {
-      /* Early exit when only need to update the images. We don't want to tag any geometry updates
-       * that would rebuilt the PBVH. */
-      return;
-    }
   }
 
   DEG_id_tag_update(&ob->id, ID_RECALC_SHADING);
+
+  if (update_flags == SCULPT_UPDATE_IMAGE) {
+    /* Early exit when only need to update the images. We don't want to tag any geometry updates
+     * that would rebuilt the PBVH. */
+    return;
+  }
 
   /* Only current viewport matters, slower update for all viewports will
    * be done in sculpt_flush_update_done. */
