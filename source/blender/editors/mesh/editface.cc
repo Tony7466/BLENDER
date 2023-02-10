@@ -238,8 +238,6 @@ static void build_poly_connections(blender::AtomicDisjointSet &islands,
       if (hide_poly[poly_index]) {
         continue;
       }
-      /* All edges of the face need to be joined in the DisjointSet.
-       * Unless they are marked as seam. */
       const MPoly &poly = polys[poly_index];
       for (const int outer_loop_index : IndexRange(0, poly.totloop)) {
         const MLoop *outer_mloop = &loops[poly.loopstart + outer_loop_index];
