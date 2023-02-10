@@ -619,7 +619,7 @@ bool select_circle(const ViewContext &vc,
         float2 pos_proj;
         ED_view3d_project_float_v2_m4(
             vc.region, deformation.positions[point_i], pos_proj, projection.ptr());
-        if (len_squared_v2v2(float2(coord), pos_proj) <= radius_sq) {
+        if (math::distance_squared(pos_proj, float2(coord)) <= radius_sq) {
           apply_selection_operation_at_index(selection.span, point_i, sel_op);
           changed = true;
         }
@@ -633,7 +633,7 @@ bool select_circle(const ViewContext &vc,
           float2 pos_proj;
           ED_view3d_project_float_v2_m4(
               vc.region, deformation.positions[point_i], pos_proj, projection.ptr());
-          if (len_squared_v2v2(float2(coord), pos_proj) <= radius_sq) {
+          if (math::distance_squared(pos_proj, float2(coord)) <= radius_sq) {
             apply_selection_operation_at_index(selection.span, curve_i, sel_op);
             changed = true;
             break;
