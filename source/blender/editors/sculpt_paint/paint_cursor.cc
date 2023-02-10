@@ -37,6 +37,7 @@
 #include "WM_api.h"
 #include "wm_cursors.h"
 
+#include "IMB_colormanagement.h"
 #include "IMB_imbuf_types.h"
 
 #include "ED_image.h"
@@ -56,7 +57,6 @@
 /* still needed for sculpt_stroke_get_location, should be
  * removed eventually (TODO) */
 #include "sculpt_intern.h"
-#include "IMB_colormanagement.h"
 
 /* TODOs:
  *

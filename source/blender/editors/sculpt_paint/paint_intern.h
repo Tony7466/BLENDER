@@ -356,8 +356,13 @@ float paint_calc_object_space_radius(struct ViewContext *vc,
 /**
  * Returns true when a color was sampled and false when a value was sampled.
  */
-bool paint_get_tex_pixel(
-const struct MTex *mtex, float u, float v, struct ImagePool *pool, int thread, float *r_intensity, float r_rgba[4]);
+bool paint_get_tex_pixel(const struct MTex *mtex,
+                         float u,
+                         float v,
+                         struct ImagePool *pool,
+                         int thread,
+                         float *r_intensity,
+                         float r_rgba[4]);
 
 /**
  * Used for both 3D view and image window.

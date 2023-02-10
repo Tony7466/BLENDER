@@ -265,8 +265,8 @@ static void do_draw_brush_task_cb_ex(void *__restrict userdata,
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
 
     /* Offset vertex. */
-    if(ss->cache->brush->flag2 & BRUSH_USE_COLOR_AS_DISPLACEMENT
-      && (brush->mtex.brush_map_mode == MTEX_MAP_MODE_AREA)) {
+    if (ss->cache->brush->flag2 & BRUSH_USE_COLOR_AS_DISPLACEMENT &&
+        (brush->mtex.brush_map_mode == MTEX_MAP_MODE_AREA)) {
       float r_rgba[4];
       SCULPT_brush_strength_color(ss,
                                   brush,

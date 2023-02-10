@@ -157,7 +157,8 @@ bool paint_get_tex_pixel(const MTex *mtex,
 {
   const float co[3] = {u, v, 0.0f};
   float intensity;
-  const bool has_rgb = RE_texture_evaluate(mtex, co, thread, pool, false, false, &intensity, r_rgba);
+  const bool has_rgb = RE_texture_evaluate(
+      mtex, co, thread, pool, false, false, &intensity, r_rgba);
   *r_intensity = intensity;
 
   if (!has_rgb) {

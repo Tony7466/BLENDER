@@ -2630,12 +2630,13 @@ static void sculpt_apply_texture(const SculptSession *ss,
 
       paint_get_tex_pixel(mtex, x, y, ss->tex_pool, thread_id, r_value, r_rgba);
 
-      add_v3_fl(r_rgba, brush->texture_sample_bias); // v3 -> Ignore alpha
+      add_v3_fl(r_rgba, brush->texture_sample_bias);  // v3 -> Ignore alpha
       *r_value -= brush->texture_sample_bias;
     }
     else {
       float point_2d[2];
-      ED_view3d_project_float_v2_m4(cache->vc->region, symm_point, point_2d, cache->projection_mat);
+      ED_view3d_project_float_v2_m4(
+          cache->vc->region, symm_point, point_2d, cache->projection_mat);
       const float point_3d[3] = {point_2d[0], point_2d[1], 0.0f};
       *r_value = BKE_brush_sample_tex_3d(scene, brush, mtex, point_3d, r_rgba, 0, ss->tex_pool);
     }
@@ -2696,38 +2697,45 @@ void SCULPT_brush_strength_color(struct SculptSession *ss,
   const float final_len = sculpt_apply_hardness(ss, len);
 
   /* Falloff curve. */
-  const float falloff = BKE_brush_curve_strength(brush, final_len, cache->radius)
-                        * frontface(brush, cache->view_normal, vno, fno);
+  const float falloff = BKE_brush_curve_strength(brush, final_len, cache->radius) *
+                        frontface(brush, cache->view_normal, vno, fno);
 
   /* Paint mask. */
   const float paint_mask = 1.0f - mask;
 
   /* Auto-masking. */
-  const float automasking_factor = SCULPT_automasking_factor_get(cache->automasking, ss, vertex, automask_data);
+  const float automasking_factor = SCULPT_automasking_factor_get(
+      cache->automasking, ss, vertex, automask_data);
 
   const float masks_combined = falloff * paint_mask * automasking_factor;
 
   mul_v4_fl(r_rgba, masks_combined);
 }
 
-void SCULPT_calc_vertex_displacement(SculptSession *ss, const struct Brush *brush, float rgba[4], float out_offset[3])
+void SCULPT_calc_vertex_displacement(SculptSession *ss,
+                                     const struct Brush *brush,
+                                     float rgba[4],
+                                     float out_offset[3])
 {
-    mul_v3_fl(rgba, ss->cache->bstrength);
-    if(ss->cache->bstrength < 0) {
-      rgba[0] *= -1;
-      rgba[1] *= -1;
-    }
+  mul_v3_fl(rgba, ss->cache->bstrength);
+  if (ss->cache->bstrength < 0) {
+    rgba[0] *= -1;
+    rgba[1] *= -1;
+  }
 
-    rgba[0] *= 1.0f / (brush->mtex.size[0] == 0.0f ? 1.0f : brush->mtex.size[0] * brush->mtex.size[0]);
-    rgba[1] *= 1.0f / (brush->mtex.size[1] == 0.0f ? 1.0f : brush->mtex.size[1] * brush->mtex.size[1]);
-    rgba[2] *= 1.0f / (brush->mtex.size[2] == 0.0f ? 1.0f : brush->mtex.size[2] * brush->mtex.size[2]);
+  rgba[0] *= 1.0f /
+             (brush->mtex.size[0] == 0.0f ? 1.0f : brush->mtex.size[0] * brush->mtex.size[0]);
+  rgba[1] *= 1.0f /
+             (brush->mtex.size[1] == 0.0f ? 1.0f : brush->mtex.size[1] * brush->mtex.size[1]);
+  rgba[2] *= 1.0f /
+             (brush->mtex.size[2] == 0.0f ? 1.0f : brush->mtex.size[2] * brush->mtex.size[2]);
 
-    mul_mat3_m4_v3(ss->cache->brush_local_mat_inv, rgba);
+  mul_mat3_m4_v3(ss->cache->brush_local_mat_inv, rgba);
 
-    if (ss->cache->radial_symmetry_pass) {
-      mul_m4_v3(ss->cache->symm_rot_mat, rgba);
-    }
-    flip_v3_v3(out_offset, rgba, ss->cache->mirror_symmetry_pass);
+  if (ss->cache->radial_symmetry_pass) {
+    mul_m4_v3(ss->cache->symm_rot_mat, rgba);
+  }
+  flip_v3_v3(out_offset, rgba, ss->cache->mirror_symmetry_pass);
 }
 
 bool SCULPT_search_sphere_cb(PBVHNode *node, void *data_v)
@@ -2997,7 +3005,10 @@ static void calc_local_y(ViewContext *vc, const float center[3], float y[3])
   mul_m4_v3(ob->world_to_object, y);
 }
 
-static void calc_brush_local_mat(const MTex *mtex, Object *ob, float local_mat[4][4], float local_mat_inv[4][4])
+static void calc_brush_local_mat(const MTex *mtex,
+                                 Object *ob,
+                                 float local_mat[4][4],
+                                 float local_mat_inv[4][4])
 {
   const StrokeCache *cache = ob->sculpt->cache;
   float tmat[4][4];

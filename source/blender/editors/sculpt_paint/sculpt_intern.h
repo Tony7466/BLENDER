@@ -1274,9 +1274,13 @@ void SCULPT_brush_strength_color(struct SculptSession *ss,
                                  float r_rgba[4]);
 
 /**
- * Calculates the vertex offset for a single vertex depending on the brush setting rgb as vector displacement.
+ * Calculates the vertex offset for a single vertex depending on the brush setting rgb as vector
+ * displacement.
  */
-void SCULPT_calc_vertex_displacement(SculptSession *ss, const struct Brush *brush, float rgba[3], float out_offset[3]);
+void SCULPT_calc_vertex_displacement(SculptSession *ss,
+                                     const struct Brush *brush,
+                                     float rgba[3],
+                                     float out_offset[3]);
 
 /**
  * Tilts a normal by the x and y tilt values using the view axis.
