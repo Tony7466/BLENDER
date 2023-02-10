@@ -983,9 +983,9 @@ static void CURVES_OT_select_end(wmOperatorType *ot)
       ot->srna, "amount", 1, 0, INT32_MAX, "Amount", "Number of points to select", 0, INT32_MAX);
 }
 
-static int select_linked_exec(bContext *C, wmOperator */*op*/)
+static int select_linked_exec(bContext *C, wmOperator * /*op*/)
 {
-  VectorSet<Curves *> unique_curves = curves::get_unique_editable_curves(*C);
+  VectorSet<Curves *> unique_curves = get_unique_editable_curves(*C);
   for (Curves *curves_id : unique_curves) {
     CurvesGeometry &curves = curves_id->geometry.wrap();
     select_linked(curves);
