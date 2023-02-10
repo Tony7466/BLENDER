@@ -54,10 +54,13 @@
 #include "BLI_linklist.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
+#include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
-bool BLI_change_working_dir(char *dir)
+bool BLI_change_working_dir(const char *dir)
 {
+  BLI_assert(BLI_thread_is_main());
+
   if (!BLI_is_dir(dir)) {
     return false;
   }
@@ -67,8 +70,14 @@ bool BLI_change_working_dir(char *dir)
     return false;
   }
   return _wchdir(wdir) == 0;
+#elif defined(__APPLE__)
+  return BLI_apple_chdir(dir) == 0;
 #else
-  return chdir(dir) == 0;
+  int result = chdir(dir);
+  if (result == 0) {
+    BLI_setenv("PWD", dir);
+  }
+  return result == 0;
 #endif
 }
 
@@ -82,6 +91,9 @@ char *BLI_current_working_dir(char *dir, const size_t maxncpy)
     }
   }
   return NULL;
+#elif defined(__APPLE__)
+  BLI_strncpy(dir, BLI_apple_getcwd(maxncpy), maxncpy);
+  return dir;
 #else
   const char *pwd = BLI_getenv("PWD");
   if (pwd) {
