@@ -190,13 +190,13 @@ static Vector<MeshToBMeshLayerInfo> mesh_to_bm_copy_info_calc(const CustomData &
     const eCustomDataType type = eCustomDataType(bm_layer.type);
     const int mesh_layer_index =
         bm_layer.name[0] == '\0' ?
-            CustomData_get_layer_index_n(&bm_data, type, per_type_index[type]) :
-            CustomData_get_named_layer_index(&bm_data, type, bm_layer.name);
+            CustomData_get_layer_index_n(&mesh_data, type, per_type_index[type]) :
+            CustomData_get_named_layer_index(&mesh_data, type, bm_layer.name);
 
     MeshToBMeshLayerInfo info{};
     info.type = type;
     info.bmesh_offset = bm_layer.offset;
-    info.mesh_data = mesh_layer_index == -1 ? nullptr : mesh_data.layers[mesh_layer_index].data;
+    info.mesh_data = (mesh_layer_index == -1) ? nullptr : mesh_data.layers[mesh_layer_index].data;
     info.elem_size = CustomData_get_elem_size(&bm_layer);
     infos.append(info);
 
