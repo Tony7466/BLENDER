@@ -111,21 +111,11 @@ using blender::MutableSpan;
 using blender::Span;
 using blender::StringRef;
 
-static char bm_edge_flag_from_mflag(const short mflag)
-{
-  return ((mflag & ME_SEAM) ? BM_ELEM_SEAM : 0) | BM_ELEM_DRAW;
-}
 static char bm_face_flag_from_mflag(const char mflag)
 {
   return ((mflag & ME_SMOOTH) ? BM_ELEM_SMOOTH : 0);
 }
 
-static short bm_edge_flag_to_mflag(const BMEdge *e)
-{
-  const char hflag = e->head.hflag;
-
-  return (hflag & BM_ELEM_SEAM) ? ME_SEAM : 0;
-}
 static char bm_face_flag_to_mflag(const BMFace *f)
 {
   const char hflag = f->head.hflag;
@@ -144,7 +134,8 @@ bool BM_attribute_stored_in_bmesh_builtin(const StringRef name)
               ".select_edge",
               ".select_poly",
               "material_index",
-              "sharp_edge");
+              "sharp_edge",
+              ".uv_seam");
 }
 
 /* Static function for alloc (duplicate in modifiers_bmesh.c) */
@@ -374,6 +365,8 @@ void BM_mesh_bm_from_me(BMesh *bm, const Mesh *me, const struct BMeshFromMeshPar
       &me->pdata, CD_PROP_INT32, "material_index");
   const bool *sharp_edges = (const bool *)CustomData_get_layer_named(
       &me->edata, CD_PROP_BOOL, "sharp_edge");
+  const bool *uv_seams = (const bool *)CustomData_get_layer_named(
+      &me->edata, CD_PROP_BOOL, ".uv_seam");
 
   const Span<float3> positions = me->vert_positions();
   Array<BMVert *> vtable(me->totvert);
@@ -420,8 +413,9 @@ void BM_mesh_bm_from_me(BMesh *bm, const Mesh *me, const struct BMeshFromMeshPar
         bm, vtable[medge[i].v1], vtable[medge[i].v2], nullptr, BM_CREATE_SKIP_CD);
     BM_elem_index_set(e, i); /* set_ok */
 
-    /* Transfer flags. */
-    e->head.hflag = bm_edge_flag_from_mflag(medge[i].flag);
+    if (uv_seams && uv_seams[i]) {
+      BM_elem_flag_enable(e, BM_ELEM_SEAM);
+    }
     if (hide_edge && hide_edge[i]) {
       BM_elem_flag_enable(e, BM_ELEM_HIDDEN);
     }
@@ -1105,6 +1099,7 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMesh
   bool need_hide_poly = false;
   bool need_material_index = false;
   bool need_sharp_edge = false;
+  bool need_uv_seam = false;
 
   i = 0;
   BM_ITER_MESH (v, &iter, bm, BM_VERTS_OF_MESH) {
@@ -1133,7 +1128,9 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMesh
     medge[i].v1 = BM_elem_index_get(e->v1);
     medge[i].v2 = BM_elem_index_get(e->v2);
 
-    medge[i].flag = bm_edge_flag_to_mflag(e);
+    if (BM_elem_flag_test(e, BM_ELEM_SEAM)) {
+      need_uv_seam = true;
+    }
     if (BM_elem_flag_test(e, BM_ELEM_HIDDEN)) {
       need_hide_edge = true;
     }
@@ -1208,6 +1205,13 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMesh
     write_fn_to_attribute<bool>(
         me->attributes_for_write(), "sharp_edge", ATTR_DOMAIN_EDGE, [&](const int i) {
           return !BM_elem_flag_test(BM_edge_at_index(bm, i), BM_ELEM_SMOOTH);
+        });
+  }
+  if (need_uv_seam) {
+    BM_mesh_elem_table_ensure(bm, BM_EDGE);
+    write_fn_to_attribute<bool>(
+        me->attributes_for_write(), ".uv_seam", ATTR_DOMAIN_EDGE, [&](const int i) {
+          return BM_elem_flag_test(BM_edge_at_index(bm, i), BM_ELEM_SEAM);
         });
   }
 
@@ -1347,7 +1351,8 @@ static void bm_edge_table_build(BMesh &bm,
                                 MutableSpan<const BMEdge *> table,
                                 bool &need_select_edge,
                                 bool &need_hide_edge,
-                                bool &need_sharp_edge)
+                                bool &need_sharp_edge,
+                                bool &need_uv_seams)
 {
   char hflag = 0;
   BMIter iter;
@@ -1361,6 +1366,7 @@ static void bm_edge_table_build(BMesh &bm,
   need_select_edge = (hflag & BM_ELEM_SELECT) != 0;
   need_hide_edge = (hflag & BM_ELEM_HIDDEN) != 0;
   need_sharp_edge = (hflag & BM_ELEM_SMOOTH) != 0;
+  need_uv_seams = (hflag & BM_ELEM_SEAM) != 0;
 }
 
 static void bm_face_loop_table_build(BMesh &bm,
@@ -1424,7 +1430,8 @@ static void bm_to_mesh_edges(const BMesh &bm,
                              Mesh &mesh,
                              MutableSpan<bool> select_edge,
                              MutableSpan<bool> hide_edge,
-                             MutableSpan<bool> sharp_edge)
+                             MutableSpan<bool> sharp_edge,
+                             MutableSpan<bool> uv_seams)
 {
   MutableSpan<MEdge> dst_edges = mesh.edges_for_write();
   threading::parallel_for(dst_edges.index_range(), 512, [&](const IndexRange range) {
@@ -1433,7 +1440,6 @@ static void bm_to_mesh_edges(const BMesh &bm,
       MEdge &dst_edge = dst_edges[edge_i];
       dst_edge.v1 = BM_elem_index_get(src_edge.v1);
       dst_edge.v2 = BM_elem_index_get(src_edge.v2);
-      dst_edge.flag = bm_edge_flag_to_mflag(&src_edge);
       CustomData_from_bmesh_block(&bm.edata, &mesh.edata, src_edge.head.data, edge_i);
     }
     if (!select_edge.is_empty()) {
@@ -1449,6 +1455,11 @@ static void bm_to_mesh_edges(const BMesh &bm,
     if (!sharp_edge.is_empty()) {
       for (const int edge_i : range) {
         sharp_edge[edge_i] = !BM_elem_flag_test(bm_edges[edge_i], BM_ELEM_SMOOTH);
+      }
+    }
+    if (!uv_seams.is_empty()) {
+      for (const int edge_i : range) {
+        uv_seams[edge_i] = BM_elem_flag_test(bm_edges[edge_i], BM_ELEM_SEAM);
       }
     }
   });
@@ -1556,6 +1567,7 @@ void BM_mesh_bm_to_me_for_eval(BMesh *bm, Mesh *me, const CustomData_MeshMasks *
   bool need_hide_poly = false;
   bool need_material_index = false;
   bool need_sharp_edge = false;
+  bool need_uv_seams = false;
   Array<const BMVert *> vert_table;
   Array<const BMEdge *> edge_table;
   Array<const BMFace *> face_table;
@@ -1568,7 +1580,8 @@ void BM_mesh_bm_to_me_for_eval(BMesh *bm, Mesh *me, const CustomData_MeshMasks *
       },
       [&]() {
         edge_table.reinitialize(bm->totedge);
-        bm_edge_table_build(*bm, edge_table, need_select_edge, need_hide_edge, need_sharp_edge);
+        bm_edge_table_build(
+            *bm, edge_table, need_select_edge, need_hide_edge, need_sharp_edge, need_uv_seams);
       },
       [&]() {
         face_table.reinitialize(bm->totface);
@@ -1586,6 +1599,7 @@ void BM_mesh_bm_to_me_for_eval(BMesh *bm, Mesh *me, const CustomData_MeshMasks *
   bke::SpanAttributeWriter<bool> select_edge;
   bke::SpanAttributeWriter<bool> hide_edge;
   bke::SpanAttributeWriter<bool> sharp_edge;
+  bke::SpanAttributeWriter<bool> uv_seams;
   bke::SpanAttributeWriter<bool> select_poly;
   bke::SpanAttributeWriter<bool> hide_poly;
   bke::SpanAttributeWriter<int> material_index;
@@ -1600,6 +1614,9 @@ void BM_mesh_bm_to_me_for_eval(BMesh *bm, Mesh *me, const CustomData_MeshMasks *
   }
   if (need_sharp_edge) {
     sharp_edge = attrs.lookup_or_add_for_write_only_span<bool>("sharp_edge", ATTR_DOMAIN_EDGE);
+  }
+  if (need_uv_seams) {
+    uv_seams = attrs.lookup_or_add_for_write_only_span<bool>(".uv_seam", ATTR_DOMAIN_EDGE);
   }
   if (need_hide_edge) {
     hide_edge = attrs.lookup_or_add_for_write_only_span<bool>(".hide_edge", ATTR_DOMAIN_EDGE);
@@ -1620,7 +1637,13 @@ void BM_mesh_bm_to_me_for_eval(BMesh *bm, Mesh *me, const CustomData_MeshMasks *
       me->totvert > 1024,
       [&]() { bm_to_mesh_verts(*bm, vert_table, *me, select_vert.span, hide_vert.span); },
       [&]() {
-        bm_to_mesh_edges(*bm, edge_table, *me, select_edge.span, hide_edge.span, sharp_edge.span);
+        bm_to_mesh_edges(*bm,
+                         edge_table,
+                         *me,
+                         select_edge.span,
+                         hide_edge.span,
+                         sharp_edge.span,
+                         uv_seams.span);
       },
       [&]() {
         bm_to_mesh_faces(
@@ -1633,6 +1656,7 @@ void BM_mesh_bm_to_me_for_eval(BMesh *bm, Mesh *me, const CustomData_MeshMasks *
   select_edge.finish();
   hide_edge.finish();
   sharp_edge.finish();
+  uv_seams.finish();
   select_poly.finish();
   hide_poly.finish();
   material_index.finish();

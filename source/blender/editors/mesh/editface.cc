@@ -223,10 +223,11 @@ static void select_linked_tfaces_with_seams(Mesh *me, const uint index, const bo
   BLI_bitmap *edge_tag = BLI_BITMAP_NEW(me->totedge, __func__);
   BLI_bitmap *poly_tag = BLI_BITMAP_NEW(me->totpoly, __func__);
 
-  const Span<MEdge> edges = me->edges();
   const Span<MPoly> polys = me->polys();
   const Span<MLoop> loops = me->loops();
   bke::MutableAttributeAccessor attributes = me->attributes_for_write();
+  const VArray<bool> uv_seams = attributes.lookup_or_default<bool>(
+      ".uv_seam", ATTR_DOMAIN_EDGE, false);
   const VArray<bool> hide_poly = attributes.lookup_or_default<bool>(
       ".hide_poly", ATTR_DOMAIN_FACE, false);
   bke::SpanAttributeWriter<bool> select_poly = attributes.lookup_or_add_for_write_span<bool>(
@@ -267,7 +268,7 @@ static void select_linked_tfaces_with_seams(Mesh *me, const uint index, const bo
         const MPoly &poly = polys[i];
         const MLoop *ml = &loops[poly.loopstart];
         for (int b = 0; b < poly.totloop; b++, ml++) {
-          if ((edges[ml->e].flag & ME_SEAM) == 0) {
+          if (!uv_seams[ml->e]) {
             if (BLI_BITMAP_TEST(edge_tag, ml->e)) {
               mark = true;
               break;
