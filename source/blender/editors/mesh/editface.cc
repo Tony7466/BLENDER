@@ -289,7 +289,7 @@ static void paintface_select_linked_faces(Mesh &mesh,
 
   threading::parallel_for(select_poly.span.index_range(), 1024, [&](const IndexRange range) {
     for (const int poly_index : range) {
-      MPoly poly = polys[poly_index];
+      const MPoly &poly = polys[poly_index];
       for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
         const int root = islands.find_root(loop.e);
         if (selected_roots.contains(root)) {
