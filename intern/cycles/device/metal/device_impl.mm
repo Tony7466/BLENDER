@@ -1117,11 +1117,19 @@ void MetalDevice::tex_alloc(device_texture &mem)
 
   bool use_tex = true;
   if (mem.data_width > 16384 || mem.data_height > 16384) {
+    /* Use software texture fetch & filter if dimensions exceed MTLTexture limits */
+    use_tex = false;
+  }
+  if (device_vendor == METAL_GPU_INTEL) {
+    /* Use software texture fetch & filter on Intel to workaround sampler indexing driver issue */
     use_tex = false;
   }
   if (auto str = getenv("CYCLES_METAL_FORCE_MTLTEXTURE")) {
+    /* Force use of hardware texture fetch & filter (1 -> always use MTLTexture, 0 -> always use
+     * MTLBuffer with S/W fetch & filter) */
     use_tex = atoi(str);
   }
+
   if (use_tex) {
     if (mem.data_depth > 1) {
       /* 3D texture using array */
