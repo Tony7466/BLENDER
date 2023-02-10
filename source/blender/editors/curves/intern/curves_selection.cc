@@ -528,12 +528,12 @@ bool select_box(const ViewContext &vc,
 bool select_lasso(const ViewContext &vc,
                   bke::CurvesGeometry &curves,
                   const eAttrDomain selection_domain,
-                  const int coords[][2],
-                  const int coords_len,
+                  Span<int2> coords,
                   const eSelectOp sel_op)
 {
   rcti bbox;
-  BLI_lasso_boundbox(&bbox, coords, coords_len);
+  const int(*coord_array)[2] = reinterpret_cast<const int(*)[2]>(coords.data());
+  BLI_lasso_boundbox(&bbox, coord_array, coords.size());
 
   bke::GSpanAttributeWriter selection = ensure_selection_attribute(
       curves, selection_domain, CD_PROP_BOOL);
@@ -559,7 +559,7 @@ bool select_lasso(const ViewContext &vc,
         /* Check the lasso bounding box first as an optimization. */
         if (BLI_rcti_isect_pt_v(&bbox, int2(pos_proj)) &&
             BLI_lasso_is_point_inside(
-                coords, coords_len, int(pos_proj.x), int(pos_proj.y), IS_CLIPPED)) {
+                coord_array, coords.size(), int(pos_proj.x), int(pos_proj.y), IS_CLIPPED)) {
           apply_selection_operation_at_index(selection.span, point_i, sel_op);
           changed = true;
         }
@@ -576,7 +576,7 @@ bool select_lasso(const ViewContext &vc,
           /* Check the lasso bounding box first as an optimization. */
           if (BLI_rcti_isect_pt_v(&bbox, int2(pos_proj)) &&
               BLI_lasso_is_point_inside(
-                  coords, coords_len, int(pos_proj.x), int(pos_proj.y), IS_CLIPPED)) {
+                  coord_array, coords.size(), int(pos_proj.x), int(pos_proj.y), IS_CLIPPED)) {
             apply_selection_operation_at_index(selection.span, curve_i, sel_op);
             changed = true;
             break;

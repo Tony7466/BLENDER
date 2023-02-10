@@ -170,20 +170,19 @@ bool select_box(const ViewContext &vc,
  */
 bool select_lasso(const ViewContext &vc,
                   bke::CurvesGeometry &curves,
-                  const eAttrDomain selection_domain,
-                  const int coords[][2],
-                  const int coords_len,
-                  const eSelectOp sel_op);
+                  eAttrDomain selection_domain,
+                  Span<int2> coords,
+                  eSelectOp sel_op);
 
 /**
  * Select points or curves in a (screen-space) circle.
  */
 bool select_circle(const ViewContext &vc,
                    bke::CurvesGeometry &curves,
-                   const eAttrDomain selection_domain,
-                   const int2 coord,
-                   const float radius,
-                   const eSelectOp sel_op);
+                   eAttrDomain selection_domain,
+                   int2 coord,
+                   float radius,
+                   eSelectOp sel_op);
 /** \} */
 
 }  // namespace blender::ed::curves

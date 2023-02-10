@@ -1367,7 +1367,11 @@ static bool view3d_lasso_select(bContext *C,
           Curves &curves_id = *static_cast<Curves *>(vc->obact->data);
           bke::CurvesGeometry &curves = curves_id.geometry.wrap();
           changed = ed::curves::select_lasso(
-              *vc, curves, eAttrDomain(curves_id.selection_domain), mcoords, mcoords_len, sel_op);
+              *vc,
+              curves,
+              eAttrDomain(curves_id.selection_domain),
+              Span<int2>(reinterpret_cast<const int2 *>(mcoords), mcoords_len),
+              sel_op);
           if (changed) {
             /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a
              * generic attribute for now. */
