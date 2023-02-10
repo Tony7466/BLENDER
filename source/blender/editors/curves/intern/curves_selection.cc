@@ -164,6 +164,21 @@ bool has_anything_selected(const bke::CurvesGeometry &curves)
   return !selection || contains(selection, true);
 }
 
+bool has_any_selected(const GSpan selection)
+{
+  if (selection.type().is<bool>()) {
+    return selection.typed<bool>().contains(true);
+  }
+  else if (selection.type().is<float>()) {
+    for (const float elem : selection.typed<float>()) {
+      if (elem > 0.0f) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 static void invert_selection(MutableSpan<float> selection)
 {
   threading::parallel_for(selection.index_range(), 2048, [&](IndexRange range) {
@@ -240,21 +255,12 @@ void select_linked(bke::CurvesGeometry &curves)
   bke::GSpanAttributeWriter selection = ensure_selection_attribute(
       curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
 
-  selection.span.type().to_static_type_tag<bool, float>([&](auto type_tag) {
-    using T = typename decltype(type_tag)::type;
-    if constexpr (std::is_void_v<T>) {
-      BLI_assert_unreachable();
-    }
-    else {
-      MutableSpan<T> selection_typed = selection.span.typed<T>();
-      threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
-        for (const int curve_i : range) {
-          MutableSpan<T> selection_curve_typed = selection_typed.slice(points_by_curve[curve_i]);
-          if (selection_curve_typed.as_span().contains(T(1))) {
-            selection_curve_typed.fill(T(1));
-          }
-        }
-      });
+  threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
+    for (const int curve_i : range) {
+      GMutableSpan selection_curve = selection.span.slice(points_by_curve[curve_i]);
+      if (has_any_selected(selection_curve)) {
+        fill_selection_true(selection_curve);
+      }
     }
   });
   selection.finish();

@@ -90,6 +90,11 @@ void fill_selection_true(GMutableSpan span);
 bool has_anything_selected(const bke::CurvesGeometry &curves);
 
 /**
+ * Return true if any element in the span is selected, on either domain with either type.
+ */
+bool has_any_selected(const GSpan selection);
+
+/**
  * Find curves that have any point selected (a selection factor greater than zero),
  * or curves that have their own selection factor greater than zero.
  */
