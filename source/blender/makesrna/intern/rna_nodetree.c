@@ -9359,9 +9359,44 @@ static void def_tex_bricks(StructRNA *srna)
 }
 
 /* --------------------------------------------------------------------
- * Geometry Node defines.
+ * Geometry Node common defines.
  */
 
+/* Attribute data type property defin. */
+static void def_geo_data_type(StructRNA *srna,
+                              const int default_value,
+                              const char *sdna_name,
+                              const char *function,
+                              const char *update,
+                              const char *description)
+{
+  PropertyRNA *prop = RNA_def_property(srna, "data_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, sdna_name);
+  RNA_def_property_enum_items(prop, rna_enum_attribute_type_items);
+  RNA_def_property_enum_funcs(prop, NULL, NULL, function);
+  RNA_def_property_enum_default(prop, default_value);
+  RNA_def_property_ui_text(prop, "Data Type", description);
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, update);
+}
+
+/* Attribute domain property defin. */
+static void def_geo_domain(StructRNA *srna,
+                           const int default_value,
+                           const char *sdna_name,
+                           const char *update,
+                           const char *description)
+{
+  PropertyRNA *prop = RNA_def_property(srna, "domain", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, sdna_name);
+  RNA_def_property_enum_items(prop, rna_enum_attribute_domain_items);
+  RNA_def_property_enum_default(prop, default_value);
+  RNA_def_property_ui_text(prop, "Domain", description);
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, update);
+}
+
+/* --------------------------------------------------------------------
+ * Geometry Node defines.
+ */
 static void def_geo_boolean(StructRNA *srna)
 {
   PropertyRNA *prop;
@@ -9457,13 +9492,12 @@ static void def_geo_curve_sample(StructRNA *srna)
                            "using a length inside each selected curve");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 
-  prop = RNA_def_property(srna, "data_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_attribute_type_items);
-  RNA_def_property_enum_funcs(
-      prop, NULL, NULL, "rna_GeometryNodeAttributeType_type_with_socket_itemf");
-  RNA_def_property_enum_default(prop, CD_PROP_FLOAT);
-  RNA_def_property_ui_text(prop, "Data Type", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+  def_geo_data_type(srna,
+                    CD_PROP_FLOAT,
+                    "data_type",
+                    "rna_GeometryNodeAttributeType_type_with_socket_itemf",
+                    "rna_Node_socket_update",
+                    "Type of data stored in attribute");
 }
 
 static void def_geo_triangulate(StructRNA *srna)
@@ -9550,75 +9584,52 @@ static void def_geo_subdivision_surface(StructRNA *srna)
 
 static void def_geo_accumulate_field(StructRNA *srna)
 {
-  PropertyRNA *prop;
-
   RNA_def_struct_sdna_from(srna, "NodeAccumulateField", "storage");
 
-  prop = RNA_def_property(srna, "data_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "data_type");
-  RNA_def_property_enum_items(prop, rna_enum_attribute_type_items);
-  RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_GeoNodeAccumulateField_type_itemf");
-  RNA_def_property_enum_default(prop, CD_PROP_FLOAT);
-  RNA_def_property_ui_text(prop, "Data Type", "Type of data stored in attribute");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+  def_geo_data_type(srna,
+                    CD_PROP_FLOAT,
+                    "data_type",
+                    "rna_GeoNodeAccumulateField_type_itemf",
+                    "rna_GeometryNode_socket_update",
+                    "Type of data stored in attribute");
 
-  prop = RNA_def_property(srna, "domain", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "domain");
-  RNA_def_property_enum_items(prop, rna_enum_attribute_domain_items);
-  RNA_def_property_enum_default(prop, ATTR_DOMAIN_POINT);
-  RNA_def_property_ui_text(prop, "Domain", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  def_geo_domain(
+      srna, ATTR_DOMAIN_POINT, "domain", "rna_Node_update", "Which domain to read the data from");
 }
 
 static void def_geo_blur_attribute(StructRNA *srna)
 {
-  PropertyRNA *prop;
-
-  prop = RNA_def_property(srna, "data_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "custom1");
-  RNA_def_property_enum_items(prop, rna_enum_attribute_type_items);
-  RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_GeometryNodeBlurAttribute_data_type_itemf");
-  RNA_def_property_enum_default(prop, CD_PROP_FLOAT);
-  RNA_def_property_ui_text(prop, "Data Type", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNode_socket_update");
+  def_geo_data_type(srna,
+                    CD_PROP_FLOAT,
+                    "custom1",
+                    "rna_GeometryNodeBlurAttribute_data_type_itemf",
+                    "rna_GeometryNode_socket_update",
+                    "Type of data stored in attribute");
 }
 
 static void def_fn_random_value(StructRNA *srna)
 {
-  PropertyRNA *prop;
-
   RNA_def_struct_sdna_from(srna, "NodeRandomValue", "storage");
 
-  prop = RNA_def_property(srna, "data_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "data_type");
-  RNA_def_property_enum_items(prop, rna_enum_attribute_type_items);
-  RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_FunctionNodeRandomValue_type_itemf");
-  RNA_def_property_enum_default(prop, CD_PROP_FLOAT);
-  RNA_def_property_ui_text(prop, "Data Type", "Type of data stored in attribute");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+  def_geo_data_type(srna,
+                    CD_PROP_FLOAT,
+                    "data_type",
+                    "rna_FunctionNodeRandomValue_type_itemf",
+                    "rna_Node_socket_update",
+                    "Type of data stored in attribute");
 }
 
 static void def_geo_attribute_statistic(StructRNA *srna)
 {
-  PropertyRNA *prop;
+  def_geo_data_type(srna,
+                    CD_PROP_FLOAT,
+                    "custom1",
+                    "rna_GeometryNodeAttributeStatistic_type_itemf",
+                    "rna_GeometryNode_socket_update",
+                    "The data type the attribute is converted to before calculating the results");
 
-  prop = RNA_def_property(srna, "data_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "custom1");
-  RNA_def_property_enum_items(prop, rna_enum_attribute_type_items);
-  RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_GeometryNodeAttributeStatistic_type_itemf");
-  RNA_def_property_enum_default(prop, CD_PROP_FLOAT);
-  RNA_def_property_ui_text(
-      prop,
-      "Data Type",
-      "The data type the attribute is converted to before calculating the results");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNode_socket_update");
-
-  prop = RNA_def_property(srna, "domain", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "custom2");
-  RNA_def_property_enum_items(prop, rna_enum_attribute_domain_items);
-  RNA_def_property_enum_default(prop, ATTR_DOMAIN_POINT);
-  RNA_def_property_ui_text(prop, "Domain", "Which domain to read the data from");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  def_geo_domain(
+      srna, ATTR_DOMAIN_POINT, "custom2", "rna_Node_update", "Which domain to read the data from");
 }
 
 static void def_geo_extrude_mesh(StructRNA *srna)
@@ -10467,25 +10478,20 @@ static void def_geo_curve_trim(StructRNA *srna)
 
 static void def_geo_sample_index(StructRNA *srna)
 {
-  PropertyRNA *prop;
 
   RNA_def_struct_sdna_from(srna, "NodeGeometrySampleIndex", "storage");
 
-  prop = RNA_def_property(srna, "data_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_attribute_type_items);
-  RNA_def_property_enum_funcs(
-      prop, NULL, NULL, "rna_GeometryNodeAttributeType_type_with_socket_itemf");
-  RNA_def_property_enum_default(prop, CD_PROP_FLOAT);
-  RNA_def_property_ui_text(prop, "Data Type", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+  def_geo_data_type(srna,
+                    CD_PROP_FLOAT,
+                    "data_type",
+                    "rna_GeometryNodeAttributeType_type_with_socket_itemf",
+                    "rna_Node_socket_update",
+                    "The data type the attribute is converted to before calculating the results");
 
-  prop = RNA_def_property(srna, "domain", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_attribute_domain_items);
-  RNA_def_property_enum_default(prop, ATTR_DOMAIN_POINT);
-  RNA_def_property_ui_text(prop, "Domain", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  def_geo_domain(
+      srna, ATTR_DOMAIN_POINT, "domain", "rna_Node_update", "Which domain to read the data from");
 
-  prop = RNA_def_property(srna, "clamp", PROP_BOOLEAN, PROP_NONE);
+  PropertyRNA *prop = RNA_def_property(srna, "clamp", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(prop,
                            "Clamp",
                            "Clamp the indices to the size of the attribute domain instead of "
@@ -10495,14 +10501,12 @@ static void def_geo_sample_index(StructRNA *srna)
 
 static void def_geo_sample_nearest_surface(StructRNA *srna)
 {
-  PropertyRNA *prop = RNA_def_property(srna, "data_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "custom1");
-  RNA_def_property_enum_items(prop, rna_enum_attribute_type_items);
-  RNA_def_property_enum_funcs(
-      prop, NULL, NULL, "rna_GeometryNodeAttributeType_type_with_socket_itemf");
-  RNA_def_property_enum_default(prop, CD_PROP_FLOAT);
-  RNA_def_property_ui_text(prop, "Data Type", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+  def_geo_data_type(srna,
+                    CD_PROP_FLOAT,
+                    "custom1",
+                    "rna_GeometryNodeAttributeType_type_with_socket_itemf",
+                    "rna_Node_socket_update",
+                    "The data type the attribute is converted to before calculating the results");
 }
 
 static void def_geo_sample_nearest(StructRNA *srna)
@@ -10517,14 +10521,12 @@ static void def_geo_sample_nearest(StructRNA *srna)
 
 static void def_geo_sample_uv_surface(StructRNA *srna)
 {
-  PropertyRNA *prop = RNA_def_property(srna, "data_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "custom1");
-  RNA_def_property_enum_items(prop, rna_enum_attribute_type_items);
-  RNA_def_property_enum_funcs(
-      prop, NULL, NULL, "rna_GeometryNodeAttributeType_type_with_socket_itemf");
-  RNA_def_property_enum_default(prop, CD_PROP_FLOAT);
-  RNA_def_property_ui_text(prop, "Data Type", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+  def_geo_data_type(srna,
+                    CD_PROP_FLOAT,
+                    "custom1",
+                    "rna_GeometryNodeAttributeType_type_with_socket_itemf",
+                    "rna_Node_socket_update",
+                    "The data type the attribute is converted to before calculating the results");
 }
 
 static void def_geo_input_material(StructRNA *srna)
@@ -10556,22 +10558,19 @@ static void def_geo_raycast(StructRNA *srna)
       {0, NULL, 0, NULL, NULL},
   };
 
-  PropertyRNA *prop;
-
   RNA_def_struct_sdna_from(srna, "NodeGeometryRaycast", "storage");
 
-  prop = RNA_def_property(srna, "mapping", PROP_ENUM, PROP_NONE);
+  PropertyRNA *prop = RNA_def_property(srna, "mapping", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, mapping_items);
   RNA_def_property_ui_text(prop, "Mapping", "Mapping from the target geometry to hit points");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
-  prop = RNA_def_property(srna, "data_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_attribute_type_items);
-  RNA_def_property_enum_funcs(
-      prop, NULL, NULL, "rna_GeometryNodeAttributeType_type_with_socket_itemf");
-  RNA_def_property_enum_default(prop, CD_PROP_FLOAT);
-  RNA_def_property_ui_text(prop, "Data Type", "Type of data stored in attribute");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNode_socket_update");
+  def_geo_data_type(srna,
+                    CD_PROP_FLOAT,
+                    "data_type",
+                    "rna_GeometryNodeAttributeType_type_with_socket_itemf",
+                    "rna_GeometryNode_socket_update",
+                    "Type of data stored in attribute");
 }
 
 static void def_geo_curve_fill(StructRNA *srna)
@@ -10594,58 +10593,44 @@ static void def_geo_curve_fill(StructRNA *srna)
 
 static void def_geo_store_named_attribute(StructRNA *srna)
 {
-  PropertyRNA *prop;
-
   RNA_def_struct_sdna_from(srna, "NodeGeometryStoreNamedAttribute", "storage");
 
-  prop = RNA_def_property(srna, "data_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_attribute_type_items);
-  RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_GeometryNodeAttributeType_type_itemf");
-  RNA_def_property_enum_default(prop, CD_PROP_FLOAT);
-  RNA_def_property_ui_text(prop, "Data Type", "Type of data stored in attribute");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNode_socket_update");
+  def_geo_data_type(srna,
+                    CD_PROP_FLOAT,
+                    "data_type",
+                    "rna_GeometryNodeAttributeType_type_itemf",
+                    "rna_GeometryNode_socket_update",
+                    "Type of data stored in attribute");
 
-  prop = RNA_def_property(srna, "domain", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_attribute_domain_items);
-  RNA_def_property_enum_default(prop, ATTR_DOMAIN_POINT);
-  RNA_def_property_ui_text(prop, "Domain", "Which domain to store the data in");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  def_geo_domain(
+      srna, ATTR_DOMAIN_POINT, "domain", "rna_Node_update", "Which domain to store the data in");
 }
 
 static void def_geo_input_named_attribute(StructRNA *srna)
 {
-  PropertyRNA *prop;
-
   RNA_def_struct_sdna_from(srna, "NodeGeometryInputNamedAttribute", "storage");
 
-  prop = RNA_def_property(srna, "data_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_attribute_type_items);
-  RNA_def_property_enum_funcs(
-      prop, NULL, NULL, "rna_GeometryNodeAttributeType_type_with_socket_itemf");
-  RNA_def_property_enum_default(prop, CD_PROP_FLOAT);
-  RNA_def_property_ui_text(prop, "Data Type", "The data type used to read the attribute values");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNode_socket_update");
+  def_geo_data_type(srna,
+                    CD_PROP_FLOAT,
+                    "data_type",
+                    "rna_GeometryNodeAttributeType_type_with_socket_itemf",
+                    "rna_GeometryNode_socket_update",
+                    "The data type used to read the attribute values");
 }
 
 static void def_geo_attribute_capture(StructRNA *srna)
 {
-  PropertyRNA *prop;
-
   RNA_def_struct_sdna_from(srna, "NodeGeometryAttributeCapture", "storage");
 
-  prop = RNA_def_property(srna, "data_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_attribute_type_items);
-  RNA_def_property_enum_funcs(
-      prop, NULL, NULL, "rna_GeometryNodeAttributeType_type_with_socket_itemf");
-  RNA_def_property_enum_default(prop, CD_PROP_FLOAT);
-  RNA_def_property_ui_text(prop, "Data Type", "Type of data stored in attribute");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNode_socket_update");
+  def_geo_data_type(srna,
+                    CD_PROP_FLOAT,
+                    "data_type",
+                    "rna_GeometryNodeAttributeType_type_with_socket_itemf",
+                    "rna_GeometryNode_socket_update",
+                    "Type of data stored in attribute");
 
-  prop = RNA_def_property(srna, "domain", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_attribute_domain_items);
-  RNA_def_property_enum_default(prop, ATTR_DOMAIN_POINT);
-  RNA_def_property_ui_text(prop, "Domain", "Which domain to store the data in");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  def_geo_domain(
+      srna, ATTR_DOMAIN_POINT, "domain", "rna_Node_update", "Which domain to store the data in");
 }
 
 static void def_geo_image(StructRNA *srna)
@@ -10869,19 +10854,16 @@ static void def_geo_separate_geometry(StructRNA *srna)
 
 static void def_geo_viewer(StructRNA *srna)
 {
-  PropertyRNA *prop;
-
   RNA_def_struct_sdna_from(srna, "NodeGeometryViewer", "storage");
 
-  prop = RNA_def_property(srna, "data_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_attribute_type_items);
-  RNA_def_property_enum_funcs(
-      prop, NULL, NULL, "rna_GeometryNodeAttributeType_type_with_socket_itemf");
-  RNA_def_property_enum_default(prop, CD_PROP_FLOAT);
-  RNA_def_property_ui_text(prop, "Data Type", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNode_socket_update");
+  def_geo_data_type(srna,
+                    CD_PROP_FLOAT,
+                    "data_type",
+                    "rna_GeometryNodeAttributeType_type_with_socket_itemf",
+                    "rna_GeometryNode_socket_update",
+                    "Type of data stored in attribute");
 
-  prop = RNA_def_property(srna, "domain", PROP_ENUM, PROP_NONE);
+  PropertyRNA *prop = RNA_def_property(srna, "domain", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_enum_attribute_domain_with_auto_items);
   RNA_def_property_enum_default(prop, ATTR_DOMAIN_POINT);
   RNA_def_property_ui_text(prop, "Domain", "Domain to evaluate the field on");
@@ -10901,40 +10883,34 @@ static void def_geo_realize_instances(StructRNA *srna)
 
 static void def_geo_evaluate_at_index(StructRNA *srna)
 {
-  PropertyRNA *prop;
+  def_geo_domain(srna,
+                 ATTR_DOMAIN_POINT,
+                 "custom1",
+                 "rna_GeometryNode_socket_update",
+                 "Domain the field is evaluated in");
 
-  prop = RNA_def_property(srna, "domain", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "custom1");
-  RNA_def_property_enum_items(prop, rna_enum_attribute_domain_items);
-  RNA_def_property_ui_text(prop, "Domain", "Domain the field is evaluated in");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNode_socket_update");
-
-  prop = RNA_def_property(srna, "data_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "custom2");
-  RNA_def_property_enum_items(prop, rna_enum_attribute_type_items);
-  RNA_def_property_enum_funcs(
-      prop, NULL, NULL, "rna_GeometryNodeAttributeType_type_with_socket_itemf");
-  RNA_def_property_ui_text(prop, "Data Type", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNode_socket_update");
+  def_geo_data_type(srna,
+                    CD_PROP_FLOAT,
+                    "custom2",
+                    "rna_GeometryNodeAttributeType_type_with_socket_itemf",
+                    "rna_GeometryNode_socket_update",
+                    "Type of data stored in attribute");
 }
 
 static void def_geo_evaluate_on_domain(StructRNA *srna)
 {
-  PropertyRNA *prop;
+  def_geo_domain(srna,
+                 ATTR_DOMAIN_POINT,
+                 "custom1",
+                 "rna_GeometryNode_socket_update",
+                 "Domain the field is evaluated in");
 
-  prop = RNA_def_property(srna, "domain", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "custom1");
-  RNA_def_property_enum_items(prop, rna_enum_attribute_domain_items);
-  RNA_def_property_ui_text(prop, "Domain", "Domain the field is evaluated in");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNode_socket_update");
-
-  prop = RNA_def_property(srna, "data_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, NULL, "custom2");
-  RNA_def_property_enum_items(prop, rna_enum_attribute_type_items);
-  RNA_def_property_enum_funcs(
-      prop, NULL, NULL, "rna_GeometryNodeAttributeType_type_with_socket_itemf");
-  RNA_def_property_ui_text(prop, "Data Type", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNode_socket_update");
+  def_geo_data_type(srna,
+                    CD_PROP_FLOAT,
+                    "custom2",
+                    "rna_GeometryNodeAttributeType_type_with_socket_itemf",
+                    "rna_GeometryNode_socket_update",
+                    "Type of data stored in attribute");
 }
 
 static void def_geo_scale_elements(StructRNA *srna)
