@@ -322,6 +322,11 @@ void MetalDevice::make_source(MetalPipelineType pso_type, const uint kernel_feat
     global_defines += "#define __KERNEL_LOCAL_ATOMIC_SORT__\n";
   }
 
+  if (pso_type == PSO_GENERIC || have_mtlbuffer_textures) {
+    /* Only enable MTLBuffer textures if needed as they add a small overhead. */ 
+    global_defines += "#define __KERNEL_METAL_BUFFER_TEXTURES__\n";
+  }
+
   if (use_metalrt) {
     global_defines += "#define __METALRT__\n";
     if (motion_blur) {
@@ -897,6 +902,17 @@ bool MetalDevice::is_ready(string &status) const
                            DEVICE_KERNEL_NUM);
     return false;
   }
+
+  if (int num_requests = MetalDeviceKernels::num_incomplete_specialization_requests()) {
+    status = string_printf("%d kernels to optimize", num_requests);
+  }
+  else if (kernel_specialization_level == PSO_SPECIALIZED_INTERSECT) {
+    status = "Using optimized intersection kernels";
+  }
+  else if (kernel_specialization_level == PSO_SPECIALIZED_SHADE) {
+    status = "Using optimized kernels";
+  }
+  
   metal_printf("MetalDevice::is_ready(...) --> true\n");
   return true;
 }
@@ -933,7 +949,7 @@ void MetalDevice::optimize_for_scene(Scene *scene)
   }
 
   if (specialize_in_background) {
-    if (!MetalDeviceKernels::any_specialization_happening_now()) {
+    if (MetalDeviceKernels::num_incomplete_specialization_requests() == 0) {
       dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
                      specialize_kernels_fn);
     }
@@ -1103,7 +1119,7 @@ void MetalDevice::tex_alloc(device_texture &mem)
   if (mem.data_width > 16384 || mem.data_height > 16384) {
     use_tex = false;
   }
-  if (auto str = getenv("USE_TEX")) {
+  if (auto str = getenv("CYCLES_METAL_FORCE_MTLTEXTURE")) {
     use_tex = atoi(str);
   }
   if (use_tex) {
@@ -1189,12 +1205,12 @@ void MetalDevice::tex_alloc(device_texture &mem)
     mmem->mtlBuffer = mtlBuffer;
   }
   else {
+    have_mtlbuffer_textures = true;
     generic_alloc(mem);
     
     std::lock_guard<std::recursive_mutex> lock(metal_mem_map_mutex);
     mtlBuffer = metal_mem_map[&mem]->mtlBuffer;
     mem.device_pointer = (device_ptr)mtlBuffer;
-    //mem.host_pointer = 0;
   }
 
   /* Resize once */

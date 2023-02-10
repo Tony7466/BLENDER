@@ -18,10 +18,7 @@ class MetalKernelContext {
     : launch_params_metal(_launch_params_metal)
     {}
 
-    /* texture fetch adapter functions */
-    typedef uint64_t ccl_gpu_tex_object_2D;
-    typedef uint64_t ccl_gpu_tex_object_3D;
-
+#ifdef __KERNEL_METAL_BUFFER_TEXTURES__
     template<typename T> ccl_device_forceinline T tex_fetch(device void* data, int64_t index)
     {
       return reinterpret_cast<ccl_global T *>(data)[index];
@@ -162,13 +159,18 @@ class MetalKernelContext {
         u[3] = (1.0f / 6.0f) * t * t * t; \
       } \
       (void)0
-  
+
+#endif /* __KERNEL_METAL_BUFFER_TEXTURES__ */
+
     ccl_device float4 kernel_tex_image_interp(KernelGlobals kg, int tex_id, float x, float y)
     {
       device const TextureInfo &info = kernel_data_fetch(texture_info, tex_id);
       
       const uint tid(info.data);
       const uint sid(info.data >> 32);
+#ifndef __KERNEL_METAL_BUFFER_TEXTURES__
+      return metal_ancillaries->textures_2d[tid].tex.sample(metal_samplers[sid], make_float2(x,y));
+#else
       if (sid < 256) {
         return metal_ancillaries->textures_2d[tid].tex.sample(metal_samplers[sid], make_float2(x,y));
       }
@@ -217,6 +219,7 @@ class MetalKernelContext {
         return r;
       }
  #endif
+ #endif
     }
     
     ccl_device float4 kernel_tex_image_interp_3d(KernelGlobals kg, int tex_id, float3 P, int interp)
@@ -225,6 +228,10 @@ class MetalKernelContext {
       
       const uint tid(info.data);
       const uint sid(info.data >> 32);
+
+#ifndef __KERNEL_METAL_BUFFER_TEXTURES__
+      return metal_ancillaries->textures_3d[tid].tex.sample(metal_samplers[sid], P);
+#else
       if (sid < 256) {
         return metal_ancillaries->textures_3d[tid].tex.sample(metal_samplers[sid], P);
       }
@@ -322,6 +329,7 @@ class MetalKernelContext {
         }
         return r;
       }
+  #endif
   #endif
   }
 

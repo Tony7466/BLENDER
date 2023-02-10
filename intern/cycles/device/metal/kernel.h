@@ -104,7 +104,7 @@ struct MetalKernelPipeline {
 /* Cache of Metal kernels for each DeviceKernel. */
 namespace MetalDeviceKernels {
 
-bool any_specialization_happening_now();
+int num_incomplete_specialization_requests();
 int get_loaded_kernel_count(MetalDevice const *device, MetalPipelineType pso_type);
 bool should_load_kernels(MetalDevice const *device, MetalPipelineType pso_type);
 bool load(MetalDevice *device, MetalPipelineType pso_type);

@@ -857,16 +857,15 @@ void MetalDeviceKernels::wait_for_all()
   }
 }
 
-bool MetalDeviceKernels::any_specialization_happening_now()
+int MetalDeviceKernels::num_incomplete_specialization_requests()
 {
   /* Return true if any ShaderCaches have ongoing specialization requests (typically there will be
    * only 1). */
+  int total = 0;
   for (int i = 0; i < g_shaderCacheCount; i++) {
-    if (g_shaderCache[i].second->incomplete_specialization_requests > 0) {
-      return true;
-    }
+    total += g_shaderCache[i].second->incomplete_specialization_requests;
   }
-  return false;
+  return total;
 }
 
 int MetalDeviceKernels::get_loaded_kernel_count(MetalDevice const *device,
