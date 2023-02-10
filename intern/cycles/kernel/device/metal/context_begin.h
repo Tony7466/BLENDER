@@ -3,6 +3,9 @@
 
 // clang-format off
 
+/* TODO: solve internal compiler errors occuring when tricubic texture filtering is enabled. */
+#define __KERNEL_METAL_BUFFER_TEXTURES_CUBIC__ 0
+
 /* Open the Metal kernel context class
  * Necessary to access resource bindings */
 class MetalKernelContext {
@@ -184,7 +187,11 @@ class MetalKernelContext {
   
         return svm_image_texture_read_2d(info, data,  ix, iy);
       }
-      else {//if (info.interpolation == INTERPOLATION_LINEAR) {
+#if __KERNEL_METAL_BUFFER_TEXTURES_CUBIC__
+      if (interpolation == INTERPOLATION_LINEAR) {
+#else
+      else {
+#endif
         /* Bilinear interpolation. */
         int ix, iy;
         float tx = svm_image_texture_frac(x * info.width - 0.5f, &ix);
@@ -197,7 +204,7 @@ class MetalKernelContext {
         r += ty * tx * svm_image_texture_read_2d(info, data,  ix + 1, iy + 1);
         return r;
       }
-#if 0
+#if __KERNEL_METAL_BUFFER_TEXTURES_CUBIC__
       else {
         /* Bicubic interpolation. */
         int ix, iy;
@@ -248,7 +255,7 @@ class MetalKernelContext {
   
       uint interpolation = (interp == INTERPOLATION_NONE) ? info.interpolation : interp;
   
-#if 0//#ifdef WITH_NANOVDB
+#ifdef WITH_NANOVDB
       if (info.data_type == IMAGE_DATA_TYPE_NANOVDB_FLOAT) {
         return NanoVDBInterpolator<float>::interp_3d(info, x, y, z, interpolation);
       }
@@ -285,7 +292,11 @@ class MetalKernelContext {
   
         return svm_image_texture_read_3d(info, data,  ix, iy, iz);
       }
-      else {// if (interpolation == INTERPOLATION_LINEAR) {
+#if __KERNEL_METAL_BUFFER_TEXTURES_CUBIC__
+      if (interpolation == INTERPOLATION_LINEAR) {
+#else
+      else {
+#endif
         /* Trilinear interpolation. */
         int ix, iy, iz;
         float tx = svm_image_texture_frac(x - 0.5f, &ix);
@@ -304,7 +315,7 @@ class MetalKernelContext {
         r += tz * ty * tx * svm_image_texture_read_3d(info, data,  ix + 1, iy + 1, iz + 1);
         return r;
       }
-#if 0
+#if __KERNEL_METAL_BUFFER_TEXTURES_CUBIC__
       else {
         /* Tri-cubic interpolation. */
         int ix, iy, iz;
