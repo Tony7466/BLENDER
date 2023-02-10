@@ -219,6 +219,11 @@ static PyObject *pygpu_batch_draw(BPyGPUBatch *self, PyObject *args)
     return NULL;
   }
   if (py_program == NULL) {
+    if (!pygpu_batch_is_program_or_error(self)) {
+      return NULL;
+    }
+  }
+  else if (self->batch->shader != py_program->shader) {
     GPU_batch_set_shader(self->batch, py_program->shader);
   }
 
