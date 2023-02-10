@@ -244,9 +244,7 @@ void USDMeshReader::read_object_data(Main *bmain, const double motionSampleTime)
   Mesh *mesh = (Mesh *)object_->data;
 
   is_initial_load_ = true;
-  USDMeshReadParams params = {};
-  params.motion_sample_time = motionSampleTime;
-  params.read_flags = import_params_.mesh_read_flag;
+  const USDMeshReadParams params = create_mesh_read_params(motionSampleTime, import_params_.mesh_read_flag);
 
   Mesh *read_mesh = this->read_mesh(mesh, params, nullptr);
 
@@ -820,7 +818,7 @@ void USDMeshReader::readFaceSetsSample(Main *bmain, Mesh *mesh, const double mot
 }
 
 Mesh *USDMeshReader::read_mesh(Mesh *existing_mesh,
-                               const USDMeshReadParams params,
+                               USDMeshReadParams params,
                                const char ** /* err_str */)
 {
   if (!mesh_prim_) {

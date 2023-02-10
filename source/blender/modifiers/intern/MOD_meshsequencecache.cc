@@ -247,10 +247,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     }
     case CACHEFILE_TYPE_USD: {
 #  ifdef WITH_USD
-      USDMeshReadParams params = {};
-      params.motion_sample_time = time * FPS;
-      params.read_flags = mcmd->read_flag;
-
+      const USDMeshReadParams params = create_mesh_read_params(time * FPS, mcmd->read_flag);
       result = USD_read_mesh(mcmd->reader, ctx->object, mesh, params, &err_str);
 #  endif
       break;
