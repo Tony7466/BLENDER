@@ -1109,14 +1109,14 @@ static void rna_def_font(BlenderRNA *UNUSED(brna), StructRNA *srna)
   RNA_def_property_enum_sdna(prop, NULL, "spacemode");
   RNA_def_property_enum_items(prop, prop_align_items);
   RNA_def_property_ui_text(
-      prop, "Text Horizontal Align", "Text horizontal align from the object center");
+      prop, "Horizontal Alignment", "Text horizontal alignment from the object center");
   RNA_def_property_update(prop, 0, "rna_Curve_update_data");
 
   prop = RNA_def_property(srna, "align_y", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, NULL, "align_y");
   RNA_def_property_enum_items(prop, prop_align_y_items);
   RNA_def_property_ui_text(
-      prop, "Text Vertical Align", "Text vertical align from the object center");
+      prop, "Vertical Alignment", "Text vertical alignment from the object center");
   RNA_def_property_update(prop, 0, "rna_Curve_update_data");
 
   prop = RNA_def_property(srna, "overflow", PROP_ENUM, PROP_NONE);

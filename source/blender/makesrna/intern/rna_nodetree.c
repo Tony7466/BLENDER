@@ -10785,7 +10785,7 @@ static void def_geo_string_to_curves(StructRNA *srna)
   RNA_def_property_enum_items(prop, rna_node_geometry_string_to_curves_align_x_items);
   RNA_def_property_enum_default(prop, GEO_NODE_STRING_TO_CURVES_ALIGN_X_LEFT);
   RNA_def_property_ui_text(
-      prop, "Text Horizontal Align", "Text horizontal align from the object center");
+      prop, "Horizontal Alignment", "Text horizontal alignment from the object center");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "align_y", PROP_ENUM, PROP_NONE);
@@ -10793,7 +10793,7 @@ static void def_geo_string_to_curves(StructRNA *srna)
   RNA_def_property_enum_items(prop, rna_node_geometry_string_to_curves_align_y_items);
   RNA_def_property_enum_default(prop, GEO_NODE_STRING_TO_CURVES_ALIGN_Y_TOP_BASELINE);
   RNA_def_property_ui_text(
-      prop, "Text Vertical Align", "Text vertical align from the object center");
+      prop, "Vertical Alignment", "Text vertical alignment from the object center");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "pivot_mode", PROP_ENUM, PROP_NONE);
