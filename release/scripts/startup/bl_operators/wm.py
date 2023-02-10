@@ -1250,7 +1250,10 @@ class WM_OT_doc_view_manual(Operator):
         # Adding case into all ID's isn't worth the hassle so force lowercase.
         rna_id = rna_id.lower()
         for pattern, url_suffix in url_mapping:
-            if fnmatchcase(rna_id, pattern):
+            # Check if the pattern without the last character includes a wildcard.
+            # If not, use 'startswith' instead of 'fnmatchcase' to speed it up.
+            if ((not '*' in pattern[:-1] and rna_id.startswith(pattern[:-1]) and fnmatchcase(rna_id, pattern))
+                    or ('*' in pattern[:-1] and fnmatchcase(rna_id, pattern))):
                 if verbose:
                     print("            match found: '%s' --> '%s'" % (pattern, url_suffix))
                 return url_suffix
