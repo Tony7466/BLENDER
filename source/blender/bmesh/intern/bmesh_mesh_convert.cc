@@ -1059,7 +1059,7 @@ static void convert_bmesh_selection_flags_to_mesh_attributes(BMesh &bm,
   }
 }
 
-struct BMToMeshLayerInfo {
+struct BMeshToMeshLayerInfo {
   eCustomDataType type;
   /** The layer's position in the BMesh element's data block. */
   int bmesh_offset;
@@ -1072,10 +1072,10 @@ struct BMToMeshLayerInfo {
 /**
  * Calculate the necessary information to copy every data layer from the BMesh to the Mesh.
  */
-static Vector<BMToMeshLayerInfo> bm_to_mesh_copy_info_calc(const CustomData &bm_data,
-                                                           CustomData &mesh_data)
+static Vector<BMeshToMeshLayerInfo> bm_to_mesh_copy_info_calc(const CustomData &bm_data,
+                                                              CustomData &mesh_data)
 {
-  Vector<BMToMeshLayerInfo> infos;
+  Vector<BMeshToMeshLayerInfo> infos;
   std::array<int, CD_NUMTYPES> per_type_index;
   per_type_index.fill(0);
   for (const int i : IndexRange(mesh_data.totlayer)) {
@@ -1096,7 +1096,7 @@ static Vector<BMToMeshLayerInfo> bm_to_mesh_copy_info_calc(const CustomData &bm_
       continue;
     }
 
-    BMToMeshLayerInfo info{};
+    BMeshToMeshLayerInfo info{};
     info.type = type;
     info.bmesh_offset = bm_layer.offset;
     info.mesh_data = mesh_layer.data;
@@ -1108,11 +1108,11 @@ static Vector<BMToMeshLayerInfo> bm_to_mesh_copy_info_calc(const CustomData &bm_
   return infos;
 }
 
-static void bmesh_block_copy_to_mesh_attributes(const Span<BMToMeshLayerInfo> copy_info,
+static void bmesh_block_copy_to_mesh_attributes(const Span<BMeshToMeshLayerInfo> copy_info,
                                                 const int mesh_index,
                                                 const void *block)
 {
-  for (const BMToMeshLayerInfo &info : copy_info) {
+  for (const BMeshToMeshLayerInfo &info : copy_info) {
     CustomData_data_copy_value(info.type,
                                POINTER_OFFSET(block, info.bmesh_offset),
                                POINTER_OFFSET(info.mesh_data, info.elem_size * mesh_index));
@@ -1208,10 +1208,10 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMesh
     CustomData_copy(&bm->pdata, &me->pdata, mask.pmask, CD_SET_DEFAULT, me->totpoly);
   }
 
-  const Vector<BMToMeshLayerInfo> vert_info = bm_to_mesh_copy_info_calc(bm->vdata, me->vdata);
-  const Vector<BMToMeshLayerInfo> edge_info = bm_to_mesh_copy_info_calc(bm->edata, me->edata);
-  const Vector<BMToMeshLayerInfo> poly_info = bm_to_mesh_copy_info_calc(bm->pdata, me->pdata);
-  const Vector<BMToMeshLayerInfo> loop_info = bm_to_mesh_copy_info_calc(bm->ldata, me->ldata);
+  const Vector<BMeshToMeshLayerInfo> vert_info = bm_to_mesh_copy_info_calc(bm->vdata, me->vdata);
+  const Vector<BMeshToMeshLayerInfo> edge_info = bm_to_mesh_copy_info_calc(bm->edata, me->edata);
+  const Vector<BMeshToMeshLayerInfo> poly_info = bm_to_mesh_copy_info_calc(bm->pdata, me->pdata);
+  const Vector<BMeshToMeshLayerInfo> loop_info = bm_to_mesh_copy_info_calc(bm->ldata, me->ldata);
 
   CustomData_add_layer_named(
       &me->vdata, CD_PROP_FLOAT3, CD_CONSTRUCT, nullptr, me->totvert, "position");
@@ -1521,7 +1521,7 @@ static void bm_to_mesh_verts(const BMesh &bm,
                              MutableSpan<bool> select_vert,
                              MutableSpan<bool> hide_vert)
 {
-  const Vector<BMToMeshLayerInfo> info = bm_to_mesh_copy_info_calc(bm.vdata, mesh.vdata);
+  const Vector<BMeshToMeshLayerInfo> info = bm_to_mesh_copy_info_calc(bm.vdata, mesh.vdata);
   MutableSpan<float3> dst_vert_positions = mesh.vert_positions_for_write();
   threading::parallel_for(dst_vert_positions.index_range(), 1024, [&](const IndexRange range) {
     for (const int vert_i : range) {
@@ -1549,7 +1549,7 @@ static void bm_to_mesh_edges(const BMesh &bm,
                              MutableSpan<bool> hide_edge,
                              MutableSpan<bool> sharp_edge)
 {
-  const Vector<BMToMeshLayerInfo> info = bm_to_mesh_copy_info_calc(bm.edata, mesh.edata);
+  const Vector<BMeshToMeshLayerInfo> info = bm_to_mesh_copy_info_calc(bm.edata, mesh.edata);
   MutableSpan<MEdge> dst_edges = mesh.edges_for_write();
   threading::parallel_for(dst_edges.index_range(), 512, [&](const IndexRange range) {
     for (const int edge_i : range) {
@@ -1585,7 +1585,7 @@ static void bm_to_mesh_faces(const BMesh &bm,
                              MutableSpan<bool> hide_poly,
                              MutableSpan<int> material_indices)
 {
-  const Vector<BMToMeshLayerInfo> info = bm_to_mesh_copy_info_calc(bm.pdata, mesh.pdata);
+  const Vector<BMeshToMeshLayerInfo> info = bm_to_mesh_copy_info_calc(bm.pdata, mesh.pdata);
   MutableSpan<MPoly> dst_polys = mesh.polys_for_write();
   threading::parallel_for(dst_polys.index_range(), 1024, [&](const IndexRange range) {
     for (const int face_i : range) {
@@ -1616,7 +1616,7 @@ static void bm_to_mesh_faces(const BMesh &bm,
 
 static void bm_to_mesh_loops(const BMesh &bm, const Span<const BMLoop *> bm_loops, Mesh &mesh)
 {
-  const Vector<BMToMeshLayerInfo> info = bm_to_mesh_copy_info_calc(bm.ldata, mesh.ldata);
+  const Vector<BMeshToMeshLayerInfo> info = bm_to_mesh_copy_info_calc(bm.ldata, mesh.ldata);
   MutableSpan<MLoop> dst_loops = mesh.loops_for_write();
   threading::parallel_for(dst_loops.index_range(), 1024, [&](const IndexRange range) {
     for (const int loop_i : range) {
