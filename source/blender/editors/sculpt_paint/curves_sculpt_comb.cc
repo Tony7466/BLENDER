@@ -307,6 +307,10 @@ struct CombOperationExecutor {
     const float brush_radius_sq_cu = pow2f(brush_radius_cu);
     const float3 brush_diff_cu = brush_end_cu - brush_start_cu;
 
+    CurveMapping &curve_parameter_falloff_mapping =
+        *brush_->curves_sculpt_settings->curve_parameter_falloff;
+    BKE_curvemapping_init(&curve_parameter_falloff_mapping);
+
     const bke::crazyspace::GeometryDeformation deformation =
         bke::crazyspace::get_evaluated_curves_deformation(*ctx_.depsgraph, *curves_ob_orig_);
     const OffsetIndices points_by_curve = curves_orig_->points_by_curve();
@@ -332,8 +336,12 @@ struct CombOperationExecutor {
           /* A falloff that is based on how far away the point is from the stroke. */
           const float radius_falloff = BKE_brush_curve_strength(
               brush_, distance_to_brush_cu, brush_radius_cu);
+          const float curve_parameter = (point_i - points.first()) / float(points.size() - 1);
+          const float curve_falloff = BKE_curvemapping_evaluateF(
+              &curve_parameter_falloff_mapping, 0, curve_parameter);
           /* Combine the falloff and brush strength. */
-          const float weight = brush_strength_ * radius_falloff * point_factors_[point_i];
+          const float weight = brush_strength_ * curve_falloff * radius_falloff *
+                               point_factors_[point_i];
 
           const float3 translation_eval_cu = weight * brush_diff_cu;
           const float3 translation_orig_cu = deformation.translation_from_deformed_to_original(
