@@ -58,9 +58,12 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
   bool select_face = pd->edit_mesh.select_face = (tsettings->selectmode & SCE_SELECT_FACE) != 0;
   bool select_edge = pd->edit_mesh.select_edge = (tsettings->selectmode & SCE_SELECT_EDGE) != 0;
 
-  bool do_occlude_wire = (v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_OCCLUDE_WIRE) != 0;
   bool show_face_dots = (v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_FACE_DOT) != 0 ||
                         pd->edit_mesh.do_zbufclip;
+
+  float retopology_bias = ((v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_RETOPOLOGY) != 0) ?
+                              (v3d->overlay.retopology_bias * v3d->clip_start) :
+                              0.0;
 
   pd->edit_mesh.do_faces = true;
   pd->edit_mesh.do_edges = true;
@@ -94,7 +97,7 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
   }
 
   float backwire_opacity = (pd->edit_mesh.do_zbufclip) ? v3d->overlay.backwire_opacity : 1.0f;
-  float face_alpha = (do_occlude_wire || !pd->edit_mesh.do_faces) ? 0.0f : 1.0f;
+  float face_alpha = (!pd->edit_mesh.do_faces) ? 0.0f : 1.0f;
   GPUTexture **depth_tex = (pd->edit_mesh.do_zbufclip) ? &dtxl->depth : &txl->dummy_depth_tx;
 
   /* Run Twice for in-front passes. */
@@ -104,7 +107,9 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
     DRW_PASS_CREATE(psl->edit_mesh_depth_ps[i], state | pd->clipping_state);
 
     sh = OVERLAY_shader_depth_only();
-    pd->edit_mesh_depth_grp[i] = DRW_shgroup_create(sh, psl->edit_mesh_depth_ps[i]);
+    grp = pd->edit_mesh_depth_grp[i] = DRW_shgroup_create(sh, psl->edit_mesh_depth_ps[i]);
+    DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
+    DRW_shgroup_uniform_float_copy(grp, "retopologyBias", retopology_bias);
   }
   {
     /* Normals */
@@ -123,6 +128,7 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
                                   (flag & V3D_OVERLAY_EDIT_CONSTANT_SCREEN_SIZE_NORMALS) != 0);
     DRW_shgroup_uniform_float_copy(
         grp, "normalScreenSize", v3d->overlay.normals_constant_screen_size);
+    DRW_shgroup_uniform_float_copy(grp, "retopologyBias", retopology_bias);
   }
   {
     /* Mesh Analysis Pass */
@@ -156,6 +162,7 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
       DRW_shgroup_uniform_ivec4(grp, "dataMask", mask, 1);
       DRW_shgroup_uniform_float_copy(grp, "alpha", face_alpha);
       DRW_shgroup_uniform_bool_copy(grp, "selectFaces", select_face);
+      DRW_shgroup_uniform_float_copy(grp, "retopologyBias", retopology_bias);
     }
 
     if (do_zbufclip) {
@@ -175,6 +182,7 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
     DRW_shgroup_uniform_texture_ref(grp, "depthTex", depth_tex);
     DRW_shgroup_uniform_bool_copy(grp, "selectEdges", pd->edit_mesh.do_edges || select_edge);
     DRW_shgroup_uniform_bool_copy(grp, "do_smooth_wire", do_smooth_wire);
+    DRW_shgroup_uniform_float_copy(grp, "retopologyBias", retopology_bias);
 
     /* Verts */
     state |= DRW_STATE_WRITE_DEPTH;
@@ -188,10 +196,12 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
       DRW_shgroup_uniform_float_copy(grp, "alpha", backwire_opacity);
       DRW_shgroup_uniform_texture_ref(grp, "depthTex", depth_tex);
       DRW_shgroup_uniform_ivec4_copy(grp, "dataMask", vert_mask);
+      DRW_shgroup_uniform_float_copy(grp, "retopologyBias", retopology_bias);
 
       sh = OVERLAY_shader_edit_mesh_skin_root();
       grp = pd->edit_mesh_skin_roots_grp[i] = DRW_shgroup_create(sh, psl->edit_mesh_verts_ps[i]);
       DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
+      DRW_shgroup_uniform_float_copy(grp, "retopologyBias", retopology_bias);
     }
     /* Face-dots */
     if (select_face && show_face_dots) {
@@ -201,6 +211,7 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
       DRW_shgroup_uniform_float_copy(grp, "alpha", backwire_opacity);
       DRW_shgroup_uniform_texture_ref(grp, "depthTex", depth_tex);
       DRW_shgroup_uniform_ivec4_copy(grp, "dataMask", vert_mask);
+      DRW_shgroup_uniform_float_copy(grp, "retopologyBias", retopology_bias);
       DRW_shgroup_state_enable(grp, DRW_STATE_WRITE_DEPTH);
     }
     else {
@@ -263,7 +274,8 @@ void OVERLAY_edit_mesh_cache_populate(OVERLAY_Data *vedata, Object *ob)
 
   bool draw_as_solid = (ob->dt > OB_WIRE);
   bool do_in_front = (ob->dtx & OB_DRAW_IN_FRONT) != 0;
-  bool do_occlude_wire = (pd->edit_mesh.flag & V3D_OVERLAY_EDIT_OCCLUDE_WIRE) != 0;
+  bool show_retopology = (pd->edit_mesh.flag & V3D_OVERLAY_EDIT_RETOPOLOGY) != 0 &&
+                         pd->overlay.retopology_bias != 0.0;
   bool do_show_mesh_analysis = (pd->edit_mesh.flag & V3D_OVERLAY_EDIT_STATVIS) != 0;
   bool fnormals_do = (pd->edit_mesh.flag & V3D_OVERLAY_EDIT_FACE_NORMALS) != 0;
   bool vnormals_do = (pd->edit_mesh.flag & V3D_OVERLAY_EDIT_VERT_NORMALS) != 0;
@@ -276,7 +288,7 @@ void OVERLAY_edit_mesh_cache_populate(OVERLAY_Data *vedata, Object *ob)
     }
   }
 
-  if (do_occlude_wire || (do_in_front && draw_as_solid)) {
+  if (show_retopology || (do_in_front && draw_as_solid)) {
     geom = DRW_cache_mesh_surface_get(ob);
     DRW_shgroup_call_no_cull(pd->edit_mesh_depth_grp[do_in_front], geom, ob);
   }
