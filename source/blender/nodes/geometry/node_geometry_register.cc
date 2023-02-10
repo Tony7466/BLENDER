@@ -133,6 +133,7 @@ void register_geometry_nodes()
   register_node_type_geo_sample_uv_surface();
   register_node_type_geo_scale_elements();
   register_node_type_geo_scale_instances();
+  register_node_type_geo_select_by_component();
   register_node_type_geo_self_object();
   register_node_type_geo_separate_components();
   register_node_type_geo_separate_geometry();

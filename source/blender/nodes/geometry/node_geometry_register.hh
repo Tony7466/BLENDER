@@ -130,6 +130,7 @@ void register_node_type_geo_sample_nearest();
 void register_node_type_geo_sample_uv_surface();
 void register_node_type_geo_scale_elements();
 void register_node_type_geo_scale_instances();
+void register_node_type_geo_select_by_component();
 void register_node_type_geo_select_by_handle_type();
 void register_node_type_geo_self_object();
 void register_node_type_geo_separate_components();
