@@ -3895,8 +3895,8 @@ void CustomData_data_copy_value(int type, const void *source, void *dest)
     return;
   }
 
-  if (typeInfo->copyvalue) {
-    typeInfo->copyvalue(source, dest, CDT_MIX_NOMIX, 0.0f);
+  if (typeInfo->copy) {
+    typeInfo->copy(source, dest, 1);
   }
   else {
     memcpy(dest, source, typeInfo->size);
