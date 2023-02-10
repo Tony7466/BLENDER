@@ -235,6 +235,7 @@ PyDoc_STRVAR(
     pygpu_batch_draw_instanced_doc,
     ".. method:: draw_instanced("
     "program=None, "
+    "instance_start=0, "
     "instance_count=0)\n"
     "\n"
     "   Draw multiple instances of the drawing program with the parameters assigned\n"
@@ -243,6 +244,8 @@ PyDoc_STRVAR(
     "\n"
     "   :arg program: Program that performs the drawing operations.\n"
     "   :type program: :class:`gpu.types.GPUShader`\n"
+    "   :arg instance_start: Number of the first instance to draw.\n"
+    "   :type instance_start: int\n"
     "   :arg instance_count: Number of instances to draw. When not provided or set to 0\n"
     "      the number of instances will be determined by the number of rows in the first\n"
     "      vertex buffer.\n"
@@ -250,24 +253,26 @@ PyDoc_STRVAR(
 static PyObject *pygpu_batch_draw_instanced(BPyGPUBatch *self, PyObject *args, PyObject *kw)
 {
   BPyGPUShader *py_program = NULL;
+  int instance_start = 0;
   int instance_count = 0;
 
-  static const char *_keywords[] = {"program", "instance_count", NULL};
+  static const char *_keywords[] = {"program", "instance_start", "instance_count", NULL};
   static _PyArg_Parser _parser = {
       "O!" /* `program` */
       "|$" /* Optional keyword only arguments. */
+      "i"  /* `instance_start` */
       "i"  /* `instance_count' */
       ":GPUBatch.draw_instanced",
       _keywords,
       0,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(
-          args, kw, &_parser, &BPyGPUShader_Type, &py_program, &instance_count)) {
+          args, kw, &_parser, &BPyGPUShader_Type, &py_program, &instance_start, &instance_count)) {
     return NULL;
   }
 
   GPU_batch_set_shader(self->batch, py_program->shader);
-  GPU_batch_draw_instanced(self->batch, instance_count);
+  GPU_batch_draw_instance_range(self->batch, instance_start, instance_count);
   Py_RETURN_NONE;
 }
 
