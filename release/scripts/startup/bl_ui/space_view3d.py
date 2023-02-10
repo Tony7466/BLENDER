@@ -3198,17 +3198,28 @@ class VIEW3D_MT_sculpt(Menu):
     def draw(self, _context):
         layout = self.layout
 
-        props = layout.operator("paint.hide_show", text="Show All")
-        props.action = 'SHOW'
-        props.area = 'ALL'
+        layout.operator("transform.translate")
+        layout.operator("transform.rotate")
+        layout.operator("transform.resize", text="Scale")
+
+        layout.separator()
+
+        props = layout.operator("paint.hide_show", text="Box Hide")
+        props.action = 'HIDE'
+        props.area = 'INSIDE'
 
         props = layout.operator("paint.hide_show", text="Box Show")
         props.action = 'SHOW'
         props.area = 'INSIDE'
 
-        props = layout.operator("paint.hide_show", text="Box Hide")
-        props.action = 'HIDE'
-        props.area = 'INSIDE'
+        layout.separator()
+
+        # Toggle visibility
+        # Hide active face set
+
+        props = layout.operator("paint.hide_show", text="Show All")
+        props.action = 'SHOW'
+        props.area = 'ALL'
 
         props = layout.operator("paint.hide_show", text="Hide Masked")
         props.action = 'HIDE'
