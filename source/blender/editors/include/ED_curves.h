@@ -164,6 +164,16 @@ bool select_box(const ViewContext &vc,
                 const eAttrDomain selection_domain,
                 const rcti &rect,
                 const eSelectOp sel_op);
+
+/**
+ * Select points or curves in a (screen-space) polyshape.
+ */
+bool select_lasso(const ViewContext &vc,
+                  bke::CurvesGeometry &curves,
+                  const eAttrDomain selection_domain,
+                  const int coords[][2],
+                  const int coords_len,
+                  const eSelectOp sel_op);
 /** \} */
 
 }  // namespace blender::ed::curves

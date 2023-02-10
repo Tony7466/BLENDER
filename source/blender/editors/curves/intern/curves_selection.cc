@@ -6,6 +6,7 @@
 
 #include "BLI_array_utils.hh"
 #include "BLI_index_mask_ops.hh"
+#include "BLI_lasso_2d.h"
 #include "BLI_rand.hh"
 #include "BLI_rect.h"
 
@@ -475,8 +476,64 @@ bool select_box(const ViewContext &vc,
                 const rcti &rect,
                 const eSelectOp sel_op)
 {
-  rctf rectf;
-  BLI_rctf_rcti_copy(&rectf, &rect);
+  bke::GSpanAttributeWriter selection = ensure_selection_attribute(
+      curves, selection_domain, CD_PROP_BOOL);
+
+  bool changed = false;
+  if (sel_op == SEL_OP_SET) {
+    fill_selection_false(selection.span);
+    changed = true;
+  }
+
+  float4x4 projection;
+  ED_view3d_ob_project_mat_get(vc.rv3d, vc.obact, projection.ptr());
+
+  const bke::crazyspace::GeometryDeformation deformation =
+      bke::crazyspace::get_evaluated_curves_deformation(*vc.depsgraph, *vc.obact);
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  if (selection_domain == ATTR_DOMAIN_POINT) {
+    threading::parallel_for(curves.points_range(), 1024, [&](const IndexRange point_range) {
+      for (const int point_i : point_range) {
+        float2 pos_proj;
+        ED_view3d_project_float_v2_m4(
+            vc.region, deformation.positions[point_i], pos_proj, projection.ptr());
+        if (BLI_rcti_isect_pt_v(&rect, int2(pos_proj))) {
+          apply_selection_operation_at_index(selection.span, point_i, sel_op);
+          changed = true;
+        }
+      }
+    });
+  }
+  else if (selection_domain == ATTR_DOMAIN_CURVE) {
+    threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange curves_range) {
+      for (const int curve_i : curves_range) {
+        for (const int point_i : points_by_curve[curve_i]) {
+          float2 pos_proj;
+          ED_view3d_project_float_v2_m4(
+              vc.region, deformation.positions[point_i], pos_proj, projection.ptr());
+          if (BLI_rcti_isect_pt_v(&rect, int2(pos_proj))) {
+            apply_selection_operation_at_index(selection.span, curve_i, sel_op);
+            changed = true;
+            break;
+          }
+        }
+      }
+    });
+  }
+  selection.finish();
+
+  return changed;
+}
+
+bool select_lasso(const ViewContext &vc,
+                  bke::CurvesGeometry &curves,
+                  const eAttrDomain selection_domain,
+                  const int coords[][2],
+                  const int coords_len,
+                  const eSelectOp sel_op)
+{
+  rcti bbox;
+  BLI_lasso_boundbox(&bbox, coords, coords_len);
 
   bke::GSpanAttributeWriter selection = ensure_selection_attribute(
       curves, selection_domain, CD_PROP_BOOL);
@@ -499,7 +556,9 @@ bool select_box(const ViewContext &vc,
         float2 pos_proj;
         ED_view3d_project_float_v2_m4(
             vc.region, deformation.positions[point_i], pos_proj, projection.ptr());
-        if (BLI_rctf_isect_pt_v(&rectf, pos_proj)) {
+        if (BLI_rcti_isect_pt_v(&bbox, int2(pos_proj)) &&
+            BLI_lasso_is_point_inside(
+                coords, coords_len, int(pos_proj.x), int(pos_proj.y), IS_CLIPPED)) {
           apply_selection_operation_at_index(selection.span, point_i, sel_op);
           changed = true;
         }
@@ -513,7 +572,9 @@ bool select_box(const ViewContext &vc,
           float2 pos_proj;
           ED_view3d_project_float_v2_m4(
               vc.region, deformation.positions[point_i], pos_proj, projection.ptr());
-          if (BLI_rctf_isect_pt_v(&rectf, pos_proj)) {
+          if (BLI_rcti_isect_pt_v(&bbox, int2(pos_proj)) &&
+              BLI_lasso_is_point_inside(
+                  coords, coords_len, int(pos_proj.x), int(pos_proj.y), IS_CLIPPED)) {
             apply_selection_operation_at_index(selection.span, curve_i, sel_op);
             changed = true;
             break;

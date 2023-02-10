@@ -1303,6 +1303,7 @@ static bool view3d_lasso_select(bContext *C,
                                 const int mcoords_len,
                                 const eSelectOp sel_op)
 {
+  using namespace blender;
   Object *ob = CTX_data_active_object(C);
   bool changed_multi = false;
 
@@ -1362,6 +1363,19 @@ static bool view3d_lasso_select(bContext *C,
         case OB_MBALL:
           changed = do_lasso_select_meta(vc, mcoords, mcoords_len, sel_op);
           break;
+        case OB_CURVES: {
+          Curves &curves_id = *static_cast<Curves *>(vc->obact->data);
+          bke::CurvesGeometry &curves = curves_id.geometry.wrap();
+          changed = ed::curves::select_lasso(
+              *vc, curves, eAttrDomain(curves_id.selection_domain), mcoords, mcoords_len, sel_op);
+          if (changed) {
+            /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a
+             * generic attribute for now. */
+            DEG_id_tag_update(static_cast<ID *>(vc->obedit->data), ID_RECALC_GEOMETRY);
+            WM_event_add_notifier(C, NC_GEOM | ND_DATA, vc->obedit->data);
+          }
+          break;
+        }
         default:
           BLI_assert_msg(0, "lasso select on incorrect object type");
           break;
@@ -3550,8 +3564,7 @@ static bool do_mesh_box_select(ViewContext *vc,
   }
   if (ts->selectmode & SCE_SELECT_EDGE) {
     /* Does both use_zbuf and non-use_zbuf versions (need screen cos for both) */
-    struct BoxSelectUserData_ForMeshEdge cb_data {
-    };
+    struct BoxSelectUserData_ForMeshEdge cb_data {};
     cb_data.data = &data;
     cb_data.esel = use_zbuf ? esel : nullptr;
     cb_data.backbuf_offset = use_zbuf ? DRW_select_buffer_context_offset_for_object_elem(
