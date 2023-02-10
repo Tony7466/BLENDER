@@ -415,7 +415,7 @@ static void compute_selected_edges_from_vertex_selection(const Mesh &mesh,
   const Span<MEdge> edges = mesh.edges();
 
   int selected_edges_num = 0;
-  for (const int i : edges.index_range()) {
+  for (const int i : IndexRange(mesh.totedge)) {
     const MEdge &edge = edges[i];
 
     /* Only add the edge if both vertices will be in the new mesh. */
