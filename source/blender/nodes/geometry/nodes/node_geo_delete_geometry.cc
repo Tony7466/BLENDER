@@ -41,10 +41,10 @@ static void copy_data_based_on_map(const Span<T> src,
 /**
  * Copies the attributes with a domain in `domains` to `result_component`.
  */
-BLI_NOINLINE static void copy_attributes(const Map<AttributeIDRef, AttributeKind> &attributes,
-                                         const bke::AttributeAccessor src_attributes,
-                                         bke::MutableAttributeAccessor dst_attributes,
-                                         const Span<eAttrDomain> domains)
+static void copy_attributes(const Map<AttributeIDRef, AttributeKind> &attributes,
+                            const bke::AttributeAccessor src_attributes,
+                            bke::MutableAttributeAccessor dst_attributes,
+                            const Span<eAttrDomain> domains)
 {
   for (Map<AttributeIDRef, AttributeKind>::Item entry : attributes.items()) {
     const AttributeIDRef attribute_id = entry.key;
@@ -71,12 +71,11 @@ BLI_NOINLINE static void copy_attributes(const Map<AttributeIDRef, AttributeKind
  * For each attribute with a domain in `domains` it copies the parts of that attribute which lie in
  * the mask to `result_component`.
  */
-BLI_NOINLINE static void copy_attributes_based_on_mask(
-    const Map<AttributeIDRef, AttributeKind> &attributes,
-    const bke::AttributeAccessor src_attributes,
-    bke::MutableAttributeAccessor dst_attributes,
-    const eAttrDomain domain,
-    const IndexMask mask)
+static void copy_attributes_based_on_mask(const Map<AttributeIDRef, AttributeKind> &attributes,
+                                          const bke::AttributeAccessor src_attributes,
+                                          bke::MutableAttributeAccessor dst_attributes,
+                                          const eAttrDomain domain,
+                                          const IndexMask mask)
 {
   for (Map<AttributeIDRef, AttributeKind>::Item entry : attributes.items()) {
     const AttributeIDRef attribute_id = entry.key;
@@ -101,12 +100,11 @@ BLI_NOINLINE static void copy_attributes_based_on_mask(
   }
 }
 
-BLI_NOINLINE static void copy_attributes_based_on_map(
-    const Map<AttributeIDRef, AttributeKind> &attributes,
-    const bke::AttributeAccessor src_attributes,
-    bke::MutableAttributeAccessor dst_attributes,
-    const eAttrDomain domain,
-    const Span<int> index_map)
+static void copy_attributes_based_on_map(const Map<AttributeIDRef, AttributeKind> &attributes,
+                                         const bke::AttributeAccessor src_attributes,
+                                         bke::MutableAttributeAccessor dst_attributes,
+                                         const eAttrDomain domain,
+                                         const Span<int> index_map)
 {
   for (Map<AttributeIDRef, AttributeKind>::Item entry : attributes.items()) {
     const AttributeIDRef attribute_id = entry.key;
@@ -135,13 +133,12 @@ BLI_NOINLINE static void copy_attributes_based_on_map(
   }
 }
 
-BLI_NOINLINE static void copy_face_corner_attributes(
-    const Map<AttributeIDRef, AttributeKind> &attributes,
-    const bke::AttributeAccessor src_attributes,
-    bke::MutableAttributeAccessor dst_attributes,
-    const int selected_loops_num,
-    const Span<int> selected_poly_indices,
-    const Mesh &mesh_in)
+static void copy_face_corner_attributes(const Map<AttributeIDRef, AttributeKind> &attributes,
+                                        const bke::AttributeAccessor src_attributes,
+                                        bke::MutableAttributeAccessor dst_attributes,
+                                        const int selected_loops_num,
+                                        const Span<int> selected_poly_indices,
+                                        const Mesh &mesh_in)
 {
   const Span<MPoly> polys = mesh_in.polys();
   Vector<int64_t> indices;
@@ -158,9 +155,7 @@ BLI_NOINLINE static void copy_face_corner_attributes(
       attributes, src_attributes, dst_attributes, ATTR_DOMAIN_CORNER, IndexMask(indices));
 }
 
-BLI_NOINLINE static void copy_masked_edges_to_new_mesh(const Mesh &src_mesh,
-                                                       Mesh &dst_mesh,
-                                                       Span<int> edge_map)
+static void copy_masked_edges_to_new_mesh(const Mesh &src_mesh, Mesh &dst_mesh, Span<int> edge_map)
 {
   BLI_assert(src_mesh.totedge == edge_map.size());
   const Span<MEdge> src_edges = src_mesh.edges();
@@ -177,10 +172,10 @@ BLI_NOINLINE static void copy_masked_edges_to_new_mesh(const Mesh &src_mesh,
   });
 }
 
-BLI_NOINLINE static void copy_masked_edges_to_new_mesh(const Mesh &src_mesh,
-                                                       Mesh &dst_mesh,
-                                                       Span<int> vertex_map,
-                                                       Span<int> edge_map)
+static void copy_masked_edges_to_new_mesh(const Mesh &src_mesh,
+                                          Mesh &dst_mesh,
+                                          Span<int> vertex_map,
+                                          Span<int> edge_map)
 {
   BLI_assert(src_mesh.totvert == vertex_map.size());
   BLI_assert(src_mesh.totedge == edge_map.size());
@@ -204,11 +199,11 @@ BLI_NOINLINE static void copy_masked_edges_to_new_mesh(const Mesh &src_mesh,
 }
 
 /* Faces and edges changed but vertices are the same. */
-BLI_NOINLINE static void copy_masked_polys_to_new_mesh(const Mesh &src_mesh,
-                                                       Mesh &dst_mesh,
-                                                       Span<int> edge_map,
-                                                       Span<int> masked_poly_indices,
-                                                       Span<int> new_loop_starts)
+static void copy_masked_polys_to_new_mesh(const Mesh &src_mesh,
+                                          Mesh &dst_mesh,
+                                          Span<int> edge_map,
+                                          Span<int> masked_poly_indices,
+                                          Span<int> new_loop_starts)
 {
   const Span<MPoly> src_polys = src_mesh.polys();
   const Span<MLoop> src_loops = src_mesh.loops();
@@ -238,10 +233,10 @@ BLI_NOINLINE static void copy_masked_polys_to_new_mesh(const Mesh &src_mesh,
 }
 
 /* Only faces changed. */
-BLI_NOINLINE static void copy_masked_polys_to_new_mesh(const Mesh &src_mesh,
-                                                       Mesh &dst_mesh,
-                                                       Span<int> masked_poly_indices,
-                                                       Span<int> new_loop_starts)
+static void copy_masked_polys_to_new_mesh(const Mesh &src_mesh,
+                                          Mesh &dst_mesh,
+                                          Span<int> masked_poly_indices,
+                                          Span<int> new_loop_starts)
 {
   const Span<MPoly> src_polys = src_mesh.polys();
   const Span<MLoop> src_loops = src_mesh.loops();
@@ -270,12 +265,12 @@ BLI_NOINLINE static void copy_masked_polys_to_new_mesh(const Mesh &src_mesh,
   });
 }
 
-BLI_NOINLINE static void copy_masked_polys_to_new_mesh(const Mesh &src_mesh,
-                                                       Mesh &dst_mesh,
-                                                       Span<int> vertex_map,
-                                                       Span<int> edge_map,
-                                                       Span<int> masked_poly_indices,
-                                                       Span<int> new_loop_starts)
+static void copy_masked_polys_to_new_mesh(const Mesh &src_mesh,
+                                          Mesh &dst_mesh,
+                                          Span<int> vertex_map,
+                                          Span<int> edge_map,
+                                          Span<int> masked_poly_indices,
+                                          Span<int> new_loop_starts)
 {
   const Span<MPoly> src_polys = src_mesh.polys();
   const Span<MLoop> src_loops = src_mesh.loops();
@@ -436,13 +431,12 @@ static void compute_selected_edges_from_vertex_selection(const Mesh &mesh,
   *r_selected_edges_num = selected_edges_num;
 }
 
-BLI_NOINLINE static void compute_selected_polys_from_vertex_selection(
-    const Mesh &mesh,
-    const Span<bool> vertex_selection,
-    Vector<int> &r_selected_poly_indices,
-    Vector<int> &r_loop_starts,
-    int *r_selected_polys_num,
-    int *r_selected_loops_num)
+static void compute_selected_polys_from_vertex_selection(const Mesh &mesh,
+                                                         const Span<bool> vertex_selection,
+                                                         Vector<int> &r_selected_poly_indices,
+                                                         Vector<int> &r_loop_starts,
+                                                         int *r_selected_polys_num,
+                                                         int *r_selected_loops_num)
 {
   BLI_assert(mesh.totvert == vertex_selection.size());
   const Span<MPoly> polys = mesh.polys();
@@ -542,13 +536,12 @@ static void compute_selected_edges_from_edge_selection(const Mesh &mesh,
  * Checks for every polygon if all the edges are in `edge_selection`. If they are, then that
  * polygon is kept.
  */
-BLI_NOINLINE static void compute_selected_polys_from_edge_selection(
-    const Mesh &mesh,
-    const Span<bool> edge_selection,
-    Vector<int> &r_selected_poly_indices,
-    Vector<int> &r_loop_starts,
-    int *r_selected_polys_num,
-    int *r_selected_loops_num)
+static void compute_selected_polys_from_edge_selection(const Mesh &mesh,
+                                                       const Span<bool> edge_selection,
+                                                       Vector<int> &r_selected_poly_indices,
+                                                       Vector<int> &r_loop_starts,
+                                                       int *r_selected_polys_num,
+                                                       int *r_selected_loops_num)
 {
   const Span<MPoly> polys = mesh.polys();
   const Span<MLoop> loops = mesh.loops();
@@ -583,7 +576,7 @@ BLI_NOINLINE static void compute_selected_polys_from_edge_selection(
 /**
  * Checks for every edge and polygon if all its vertices are in `vertex_selection`.
  */
-BLI_NOINLINE static void compute_selected_mesh_data_from_vertex_selection_edge_face(
+static void compute_selected_mesh_data_from_vertex_selection_edge_face(
     const Mesh &mesh,
     const Span<bool> vertex_selection,
     MutableSpan<int> r_edge_map,
@@ -613,17 +606,16 @@ BLI_NOINLINE static void compute_selected_mesh_data_from_vertex_selection_edge_f
  * Checks for every vertex if it is in `vertex_selection`. The polygons and edges are kept if all
  * vertices of that polygon or edge are in the selection.
  */
-BLI_NOINLINE static void compute_selected_mesh_data_from_vertex_selection(
-    const Mesh &mesh,
-    const Span<bool> vertex_selection,
-    MutableSpan<int> r_vertex_map,
-    MutableSpan<int> r_edge_map,
-    Vector<int> &r_selected_poly_indices,
-    Vector<int> &r_loop_starts,
-    int *r_selected_verts_num,
-    int *r_selected_edges_num,
-    int *r_selected_polys_num,
-    int *r_selected_loops_num)
+static void compute_selected_mesh_data_from_vertex_selection(const Mesh &mesh,
+                                                             const Span<bool> vertex_selection,
+                                                             MutableSpan<int> r_vertex_map,
+                                                             MutableSpan<int> r_edge_map,
+                                                             Vector<int> &r_selected_poly_indices,
+                                                             Vector<int> &r_loop_starts,
+                                                             int *r_selected_verts_num,
+                                                             int *r_selected_edges_num,
+                                                             int *r_selected_polys_num,
+                                                             int *r_selected_loops_num)
 {
   threading::parallel_invoke(
       mesh.totedge > 1000,
@@ -649,7 +641,7 @@ BLI_NOINLINE static void compute_selected_mesh_data_from_vertex_selection(
  * Checks for every edge if it is in `edge_selection`. The polygons are kept if all edges are in
  * the selection.
  */
-BLI_NOINLINE static void compute_selected_mesh_data_from_edge_selection_edge_face(
+static void compute_selected_mesh_data_from_edge_selection_edge_face(
     const Mesh &mesh,
     const Span<bool> edge_selection,
     MutableSpan<int> r_edge_map,
@@ -679,17 +671,16 @@ BLI_NOINLINE static void compute_selected_mesh_data_from_edge_selection_edge_fac
  * Checks for every edge if it is in `edge_selection`. If it is, the vertices belonging to
  * that edge are kept as well. The polys are kept if all edges are in the selection.
  */
-BLI_NOINLINE static void compute_selected_mesh_data_from_edge_selection(
-    const Mesh &mesh,
-    const Span<bool> edge_selection,
-    MutableSpan<int> r_vertex_map,
-    MutableSpan<int> r_edge_map,
-    Vector<int> &r_selected_poly_indices,
-    Vector<int> &r_loop_starts,
-    int *r_selected_verts_num,
-    int *r_selected_edges_num,
-    int *r_selected_polys_num,
-    int *r_selected_loops_num)
+static void compute_selected_mesh_data_from_edge_selection(const Mesh &mesh,
+                                                           const Span<bool> edge_selection,
+                                                           MutableSpan<int> r_vertex_map,
+                                                           MutableSpan<int> r_edge_map,
+                                                           Vector<int> &r_selected_poly_indices,
+                                                           Vector<int> &r_loop_starts,
+                                                           int *r_selected_verts_num,
+                                                           int *r_selected_edges_num,
+                                                           int *r_selected_polys_num,
+                                                           int *r_selected_loops_num)
 {
   threading::parallel_invoke(
       mesh.totedge > 1000,
@@ -715,13 +706,12 @@ BLI_NOINLINE static void compute_selected_mesh_data_from_edge_selection(
 /**
  * Checks for every polygon if it is in `poly_selection`.
  */
-BLI_NOINLINE static void compute_selected_polys_from_poly_selection(
-    const Mesh &mesh,
-    const Span<bool> poly_selection,
-    Vector<int> &r_selected_poly_indices,
-    Vector<int> &r_loop_starts,
-    int *r_selected_polys_num,
-    int *r_selected_loops_num)
+static void compute_selected_polys_from_poly_selection(const Mesh &mesh,
+                                                       const Span<bool> poly_selection,
+                                                       Vector<int> &r_selected_poly_indices,
+                                                       Vector<int> &r_loop_starts,
+                                                       int *r_selected_polys_num,
+                                                       int *r_selected_loops_num)
 {
   BLI_assert(mesh.totpoly == poly_selection.size());
   const Span<MPoly> polys = mesh.polys();
@@ -746,7 +736,7 @@ BLI_NOINLINE static void compute_selected_polys_from_poly_selection(
  * Checks for every polygon if it is in `poly_selection`. If it is, the edges
  * belonging to that polygon are kept as well.
  */
-BLI_NOINLINE static void compute_selected_mesh_data_from_poly_selection_edge_face(
+static void compute_selected_mesh_data_from_poly_selection_edge_face(
     const Mesh &mesh,
     const Span<bool> poly_selection,
     MutableSpan<int> r_edge_map,
@@ -796,17 +786,16 @@ BLI_NOINLINE static void compute_selected_mesh_data_from_poly_selection_edge_fac
  * Checks for every polygon if it is in `poly_selection`. If it is, the edges and vertices
  * belonging to that polygon are kept as well.
  */
-BLI_NOINLINE static void compute_selected_mesh_data_from_poly_selection(
-    const Mesh &mesh,
-    const Span<bool> poly_selection,
-    MutableSpan<int> r_vertex_map,
-    MutableSpan<int> r_edge_map,
-    Vector<int> &r_selected_poly_indices,
-    Vector<int> &r_loop_starts,
-    int *r_selected_verts_num,
-    int *r_selected_edges_num,
-    int *r_selected_polys_num,
-    int *r_selected_loops_num)
+static void compute_selected_mesh_data_from_poly_selection(const Mesh &mesh,
+                                                           const Span<bool> poly_selection,
+                                                           MutableSpan<int> r_vertex_map,
+                                                           MutableSpan<int> r_edge_map,
+                                                           Vector<int> &r_selected_poly_indices,
+                                                           Vector<int> &r_loop_starts,
+                                                           int *r_selected_verts_num,
+                                                           int *r_selected_edges_num,
+                                                           int *r_selected_polys_num,
+                                                           int *r_selected_loops_num)
 {
   BLI_assert(mesh.totpoly == poly_selection.size());
   BLI_assert(mesh.totedge == r_edge_map.size());
