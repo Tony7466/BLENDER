@@ -566,7 +566,7 @@ static const EnumPropertyItem node_tex_dimensions_items[] = {
 #undef ITEM_BOOLEAN
 
 /* -------------------------------------------------------------------- */
-/** \name Marksna runtime enums.
+/** \name Marksna-build time code.
  * \{ */
 
 #ifdef RNA_RUNTIME
@@ -599,6 +599,9 @@ static const EnumPropertyItem node_tex_dimensions_items[] = {
 
 static void rna_Node_socket_update(Main *bmain, Scene *UNUSED(scene), PointerRNA *ptr);
 
+/* --------------------------------------------------------------------
+ * Implementation of marksna general functions, see `RNA_enum_types.h`.
+ */
 int rna_node_tree_type_to_enum(bNodeTreeType *typeinfo)
 {
   int i = 0, result = -1;
@@ -841,6 +844,9 @@ const EnumPropertyItem *rna_node_socket_type_itemf(void *data,
   return item;
 }
 
+/* --------------------------------------------------------------------
+ * Static marksna functions.
+ */
 static const EnumPropertyItem *rna_node_static_type_itemf(bContext *UNUSED(C),
                                                           PointerRNA *ptr,
                                                           PropertyRNA *UNUSED(prop),
@@ -3427,13 +3433,15 @@ static StructRNA *rna_NodeCustomGroup_register(Main *bmain,
   return nt->rna_ext.srna;
 }
 
-static StructRNA *rna_GeometryNodeCustomGroup_register(Main *bmain,
-                                                       ReportList *reports,
-                                                       void *data,
-                                                       const char *identifier,
-                                                       StructValidateFunc validate,
-                                                       StructCallbackFunc call,
-                                                       StructFreeFunc free)
+void register_node_type_geo_custom_group(bNodeType *ntype);
+
+StructRNA *rna_GeometryNodeCustomGroup_register(Main *bmain,
+                                                ReportList *reports,
+                                                void *data,
+                                                const char *identifier,
+                                                StructValidateFunc validate,
+                                                StructCallbackFunc call,
+                                                StructFreeFunc free)
 {
   bNodeType *nt = rna_Node_register_base(
       bmain, reports, &RNA_GeometryNodeCustomGroup, data, identifier, validate, call, free);
@@ -3452,8 +3460,6 @@ static StructRNA *rna_GeometryNodeCustomGroup_register(Main *bmain,
 
   return nt->rna_ext.srna;
 }
-
-void register_node_type_geo_custom_group(bNodeType *ntype);
 
 static StructRNA *rna_ShaderNodeCustomGroup_register(Main *bmain,
                                                      ReportList *reports,
@@ -4395,7 +4401,7 @@ static int point_density_vertex_color_source_from_shader(
   }
 }
 
-void rna_ShaderNodePointDensity_density_cache(bNode *self, Depsgraph *depsgraph)
+static void rna_ShaderNodePointDensity_density_cache(bNode *self, Depsgraph *depsgraph)
 {
   NodeShaderTexPointDensity *shader_point_density = self->storage;
   PointDensity *pd = &shader_point_density->pd;
@@ -4543,9 +4549,12 @@ static const EnumPropertyItem *rna_NodeConvertColorSpace_color_space_itemf(
 #else
 
 /* -------------------------------------------------------------------- */
-/** \name Static declarations.
+/** \name Compile-time code.
  * \{ */
 
+/* --------------------------------------------------------------------
+ * Static enums.
+ */
 static const EnumPropertyItem prop_image_layer_items[] = {
     {0, "PLACEHOLDER", 0, "Placeholder", ""},
     {0, NULL, 0, NULL, NULL},
@@ -4689,7 +4698,7 @@ static const EnumPropertyItem node_script_mode_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
-static EnumPropertyItem node_ies_mode_items[] = {
+static const EnumPropertyItem node_ies_mode_items[] = {
     {NODE_IES_INTERNAL, "INTERNAL", 0, "Internal", "Use internal text data-block"},
     {NODE_IES_EXTERNAL, "EXTERNAL", 0, "External", "Use external .ies file"},
     {0, NULL, 0, NULL, NULL},
@@ -9352,6 +9361,7 @@ static void def_tex_bricks(StructRNA *srna)
 /* --------------------------------------------------------------------
  * Geometry Node defines.
  */
+
 static void def_geo_boolean(StructRNA *srna)
 {
   PropertyRNA *prop;
