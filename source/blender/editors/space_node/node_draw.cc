@@ -2688,13 +2688,21 @@ static void count_multi_input_socket_links(bNodeTree &ntree, SpaceNode &snode)
   }
 }
 
+#define NODE_FRAME_MARGIN (1.5f * U.widget_unit)
+
 /* XXX Does a bounding box update by iterating over all children.
  * Not ideal to do this in every draw call, but doing as transform callback doesn't work,
  * since the child node totr rects are not updated properly at that point. */
 static void frame_node_prepare_for_draw(bNode &node, Span<bNode *> nodes)
 {
-  const float margin = 1.5f * U.widget_unit;
   NodeFrame *data = (NodeFrame *)node.storage;
+  const float font_size = data->label_size;
+
+  const float margin = NODE_FRAME_MARGIN;
+  /* This is a reasonable heuristic for the margin at the top of the frame to avoid the
+   * node label clipping under the frame's child nodes. */
+  const float has_label = node.label[0] != '\0';
+  const float margin_top = margin + (has_label ? (margin * font_size / 24.0f) : 0.0f);
 
   /* Initialize rect from current frame size. */
   rctf rect;
@@ -2715,7 +2723,7 @@ static void frame_node_prepare_for_draw(bNode &node, Span<bNode *> nodes)
     noderect.xmin -= margin;
     noderect.xmax += margin;
     noderect.ymin -= margin;
-    noderect.ymax += margin;
+    noderect.ymax += margin_top;
 
     /* First child initializes frame. */
     if (bbinit) {
@@ -2813,8 +2821,7 @@ static void frame_node_draw_label(TreeDrawContext &tree_draw_ctx,
 
   BLF_enable(fontid, BLF_ASPECT);
   BLF_aspect(fontid, aspect, aspect, 1.0f);
-  /* Clamp. Otherwise it can suck up a LOT of memory. */
-  BLF_size(fontid, MIN2(24.0f, font_size) * U.dpi_fac);
+  BLF_size(fontid, font_size * U.dpi_fac);
 
   /* Title color. */
   int color_id = node_get_colorid(tree_draw_ctx, node);
@@ -2831,7 +2838,7 @@ static void frame_node_draw_label(TreeDrawContext &tree_draw_ctx,
   const rctf &rct = node.runtime->totr;
   /* XXX a bit hacky, should use separate align values for x and y. */
   float x = BLI_rctf_cent_x(&rct) - (0.5f * width);
-  float y = rct.ymax - label_height;
+  float y = rct.ymax - label_height - (0.5f * NODE_FRAME_MARGIN);
 
   /* label */
   const bool has_label = node.label[0] != '\0';
