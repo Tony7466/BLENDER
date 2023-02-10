@@ -1364,7 +1364,7 @@ static bool view3d_lasso_select(bContext *C,
           changed = do_lasso_select_meta(vc, mcoords, mcoords_len, sel_op);
           break;
         case OB_CURVES: {
-          Curves &curves_id = *static_cast<Curves *>(vc->obact->data);
+          Curves &curves_id = *static_cast<Curves *>(vc->obedit->data);
           bke::CurvesGeometry &curves = curves_id.geometry.wrap();
           changed = ed::curves::select_lasso(
               *vc,
@@ -3974,7 +3974,7 @@ static int view3d_box_select_exec(bContext *C, wmOperator *op)
           }
           break;
         case OB_CURVES: {
-          Curves &curves_id = *static_cast<Curves *>(vc.obact->data);
+          Curves &curves_id = *static_cast<Curves *>(vc.obedit->data);
           bke::CurvesGeometry &curves = curves_id.geometry.wrap();
           changed = ed::curves::select_box(
               vc, curves, eAttrDomain(curves_id.selection_domain), rect, sel_op);
@@ -4742,7 +4742,7 @@ static bool obedit_circle_select(bContext *C,
       changed = mball_circle_select(vc, sel_op, mval, rad);
       break;
     case OB_CURVES: {
-      Curves &curves_id = *static_cast<Curves *>(vc->obact->data);
+      Curves &curves_id = *static_cast<Curves *>(vc->obedit->data);
       bke::CurvesGeometry &curves = curves_id.geometry.wrap();
       changed = ed::curves::select_circle(
           *vc, curves, eAttrDomain(curves_id.selection_domain), mval, rad, sel_op);
