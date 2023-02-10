@@ -3189,6 +3189,55 @@ static int click_select_channel_group(bAnimContext *ac,
   return (ND_ANIMCHAN | NA_SELECTED);
 }
 
+static void animchannel_clear_selection(bAnimContext *ac)
+{
+  ListBase anim_data = anim_channels_for_selection(ac);
+
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    if (ale->type != ANIMTYPE_FCURVE) {
+      continue;
+    }
+
+    FCurve *fcu = (FCurve *)ale->data;
+    fcu->flag &= ~FCURVE_SELECTED;
+  }
+
+  ANIM_animdata_freelist(&anim_data);
+}
+
+static void animchannel_select_range(bAnimContext *ac, FCurve *cursor)
+{
+  ListBase anim_data = anim_channels_for_selection(ac);
+  bool selected = false;
+
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+
+    if (ale->type != ANIMTYPE_FCURVE) {
+      continue;
+    }
+
+    FCurve *fcu = (FCurve *)ale->data;
+
+    if (cursor->flag & FCURVE_ACTIVE) {
+      cursor->flag |= FCURVE_SELECTED;
+      return;
+    }
+
+    /* Select first and last element from the range. Reverse selection status on extremes. */
+    if ((fcu->flag & FCURVE_ACTIVE) || fcu == cursor) {
+      fcu->flag |= FCURVE_SELECTED;
+      selected = !selected;
+    }
+
+    /* Select elements between the range. */
+    if (selected) {
+      fcu->flag |= FCURVE_SELECTED;
+    }
+  }
+
+  ANIM_animdata_freelist(&anim_data);
+}
+
 static int click_select_channel_fcurve(bAnimContext *ac,
                                        bAnimListElem *ale,
                                        const short /* eEditKeyframes_Select or -1 */ selectmode,
@@ -3201,14 +3250,19 @@ static int click_select_channel_fcurve(bAnimContext *ac,
     /* inverse selection status of this F-Curve only */
     fcu->flag ^= FCURVE_SELECTED;
   }
+  else if (selectmode == SELECT_EXTEND_RANGE) {
+    animchannel_clear_selection(ac);
+    animchannel_select_range(ac, fcu);
+  }
   else {
     /* select F-Curve by itself */
     ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_CLEAR);
     fcu->flag |= FCURVE_SELECTED;
   }
 
-  /* if F-Curve is selected now, make F-Curve the 'active' one in the visible list */
-  if (fcu->flag & FCURVE_SELECTED) {
+  /* if F-Curve is selected now, make F-Curve the 'active' one in the visible list.
+   * Similar to outliner, do not change active element when selecting elements in range. */
+  if ((fcu->flag & FCURVE_SELECTED) && (selectmode != SELECT_EXTEND_RANGE)) {
     ANIM_set_active_channel(ac, ac->data, ac->datatype, filter, fcu, ale->type);
   }
 
@@ -3473,6 +3527,9 @@ static int animchannels_mouseclick_invoke(bContext *C, wmOperator *op, const wmE
   if (RNA_boolean_get(op->ptr, "extend")) {
     selectmode = SELECT_INVERT;
   }
+  else if (RNA_boolean_get(op->ptr, "extend_range")) {
+    selectmode = SELECT_EXTEND_RANGE;
+  }
   else if (RNA_boolean_get(op->ptr, "children_only")) {
     /* this is a bit of a special case for ActionGroups only...
      * should it be removed or extended to all instead? */
@@ -3524,6 +3581,9 @@ static void ANIM_OT_channels_click(wmOperatorType *ot)
    *
    * Key-map: Enable with `Shift`. */
   prop = RNA_def_boolean(ot->srna, "extend", false, "Extend Select", "");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
+  prop = RNA_def_boolean(ot->srna, "extend_range", false, "Extend Range", "");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
   /* Key-map: Enable with `Ctrl-Shift`. */
