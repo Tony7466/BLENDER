@@ -147,15 +147,7 @@ static void set_fcurve_vertex_color(FCurve *fcu, bool sel)
   float color[4];
   float diff;
 
-  /* Set color of curve vertex based on state of curve (i.e. 'Edit' Mode) */
-  if ((fcu->flag & FCURVE_PROTECTED) == 0) {
-    /* Curve's points ARE BEING edited */
-    UI_GetThemeColor3fv(sel ? TH_VERTEX_SELECT : TH_VERTEX, color);
-  }
-  else {
-    /* Curve's points CANNOT BE edited */
-    UI_GetThemeColor3fv(sel ? TH_TEXT_HI : TH_TEXT, color);
-  }
+  UI_GetThemeColor3fv(sel ? TH_VERTEX_SELECT : TH_VERTEX, color);
 
   /* Fade the 'intensity' of the vertices based on the selection of the curves too
    * - Only fade by 50% the amount the curves were faded by, so that the points
@@ -168,8 +160,7 @@ static void set_fcurve_vertex_color(FCurve *fcu, bool sel)
   immUniformColor4fv(color);
 }
 
-static void draw_fcurve_selected_keyframe_vertices(
-    FCurve *fcu, View2D *v2d, bool edit, bool sel, uint pos)
+static void draw_fcurve_selected_keyframe_vertices(FCurve *fcu, View2D *v2d, bool sel, uint pos)
 {
   const float fac = 0.05f * BLI_rctf_size_x(&v2d->cur);
 
@@ -183,22 +174,17 @@ static void draw_fcurve_selected_keyframe_vertices(
      * - We apply a correction factor to ensure that points
      *   don't pop in/out due to slight twitches of view size.
      */
-    if (IN_RANGE(bezt->vec[1][0], (v2d->cur.xmin - fac), (v2d->cur.xmax + fac))) {
-      if (edit) {
-        /* 'Keyframe' vertex only, as handle lines and handles have already been drawn
-         * - only draw those with correct selection state for the current drawing color
-         * -
-         */
-        if ((bezt->f2 & SELECT) == sel) {
-          immVertex2fv(pos, bezt->vec[1]);
-        }
-      }
-      else {
-        /* no check for selection here, as curve is not editable... */
-        /* XXX perhaps we don't want to even draw points?   maybe add an option for that later */
-        immVertex2fv(pos, bezt->vec[1]);
-      }
+    if (!IN_RANGE(bezt->vec[1][0], (v2d->cur.xmin - fac), (v2d->cur.xmax + fac))) {
+      continue;
     }
+    /* 'Keyframe' vertex only, as handle lines and handles have already been drawn
+     * - only draw those with correct selection state for the current drawing color
+     * -
+     */
+    if (!(bezt->f2 & SELECT) == sel) {
+      continue;
+    }
+    immVertex2fv(pos, bezt->vec[1]);
   }
 
   immEnd();
@@ -231,14 +217,14 @@ static void draw_fcurve_active_vertex(const FCurve *fcu, const View2D *v2d, cons
 }
 
 /* helper func - draw keyframe vertices only for an F-Curve */
-static void draw_fcurve_keyframe_vertices(FCurve *fcu, View2D *v2d, bool edit, uint pos)
+static void draw_fcurve_keyframe_vertices(FCurve *fcu, View2D *v2d, uint pos)
 {
   immBindBuiltinProgram(GPU_SHADER_2D_POINT_UNIFORM_SIZE_UNIFORM_COLOR_AA);
 
   immUniform1f("size", UI_GetThemeValuef(TH_VERTEX_SIZE) * U.dpi_fac);
 
-  draw_fcurve_selected_keyframe_vertices(fcu, v2d, edit, false, pos);
-  draw_fcurve_selected_keyframe_vertices(fcu, v2d, edit, true, pos);
+  draw_fcurve_selected_keyframe_vertices(fcu, v2d, false, pos);
+  draw_fcurve_selected_keyframe_vertices(fcu, v2d, true, pos);
   draw_fcurve_active_vertex(fcu, v2d, pos);
 
   immUnbindProgram();
@@ -367,8 +353,10 @@ static void draw_fcurve_vertices(ARegion *region,
     draw_fcurve_handle_vertices(fcu, v2d, sel_handle_only, pos);
   }
 
-  /* draw keyframes over the handles */
-  draw_fcurve_keyframe_vertices(fcu, v2d, !(fcu->flag & FCURVE_PROTECTED), pos);
+  /* Only draw keyframes of FCurves that are not locked. */
+  if (!BKE_fcurve_is_protected(fcu)) {
+    draw_fcurve_keyframe_vertices(fcu, v2d, pos);
+  }
 
   GPU_program_point_size(false);
   GPU_blend(GPU_BLEND_NONE);
