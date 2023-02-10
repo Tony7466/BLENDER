@@ -28,12 +28,14 @@ static void copy_data_based_on_map(const Span<T> src,
                                    const Span<int> index_map,
                                    MutableSpan<T> dst)
 {
-  for (const int i_src : index_map.index_range()) {
-    const int i_dst = index_map[i_src];
-    if (i_dst != -1) {
-      dst[i_dst] = src[i_src];
+  threading::parallel_for(index_map.index_range(), 1024, [&](const IndexRange range) {
+    for (const int i_src : range) {
+      const int i_dst = index_map[i_src];
+      if (i_dst != -1) {
+        dst[i_dst] = src[i_src];
+      }
     }
-  }
+  });
 }
 
 /**
@@ -402,19 +404,23 @@ static void compute_selected_edges_from_vertex_selection(const Mesh &mesh,
   BLI_assert(mesh.totedge == r_edge_map.size());
   const Span<MEdge> edges = mesh.edges();
 
-  int selected_edges_num = 0;
-  for (const int i : IndexRange(mesh.totedge)) {
-    const MEdge &edge = edges[i];
+  std::atomic<int> selected_edges_num = 0;
+  threading::parallel_for(edges.index_range(), 1024, [&](const IndexRange range) {
+    int local_selected_edges_num = 0;
+    for (const int i : range) {
+      const MEdge &edge = edges[i];
 
-    /* Only add the edge if both vertices will be in the new mesh. */
-    if (vertex_selection[edge.v1] && vertex_selection[edge.v2]) {
-      r_edge_map[i] = selected_edges_num;
-      selected_edges_num++;
+      /* Only add the edge if both vertices will be in the new mesh. */
+      if (vertex_selection[edge.v1] && vertex_selection[edge.v2]) {
+        r_edge_map[i] = selected_edges_num;
+        local_selected_edges_num++;
+      }
+      else {
+        r_edge_map[i] = -1;
+      }
     }
-    else {
-      r_edge_map[i] = -1;
-    }
-  }
+    selected_edges_num.fetch_add(local_selected_edges_num, std::memory_order_relaxed);
+  });
 
   *r_selected_edges_num = selected_edges_num;
 }
