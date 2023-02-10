@@ -212,6 +212,7 @@ void paintface_reveal(bContext *C, Object *ob, const bool select)
   paintface_flush_flags(C, ob, true, true);
 }
 
+/* Select faces connected to the given face_indices. Seams are treated as separation. */
 static void paintface_select_linked_faces(Mesh *mesh,
                                           const blender::Span<int> face_indices,
                                           const bool select)
@@ -232,16 +233,21 @@ static void paintface_select_linked_faces(Mesh *mesh,
    * are not a seam) we can find connected faces. */
   threading::parallel_for(polys.index_range(), 1024, [&](const IndexRange range) {
     for (const MPoly &poly : polys.slice(range)) {
-      const MLoop *prev_loop = &loops[poly.loopstart];
-      /* A Poly cannot be made of only 1 loop. So this should be save. */
-      const MLoop *current_loop = &loops[poly.loopstart + 1];
-
-      for (int b = 1; b < poly.totloop; b++, current_loop++, prev_loop++) {
-        if ((edges[current_loop->e].flag & ME_SEAM) != 0 ||
-            (edges[prev_loop->e].flag & ME_SEAM) != 0) {
+      /* All edges of the face need to be joined in the DisjointSet. Unless the are marked as seam.
+       */
+      for (int outer_loop_index = 0; outer_loop_index < poly.totloop; outer_loop_index++) {
+        const MLoop *outer_mloop = &loops[poly.loopstart + outer_loop_index];
+        if ((edges[outer_mloop->e].flag & ME_SEAM) != 0) {
           continue;
         }
-        islands.join(prev_loop->e, current_loop->e);
+        for (int inner_loop_idx = outer_loop_index + 1; inner_loop_idx < poly.totloop;
+             inner_loop_idx++) {
+          const MLoop *inner_mloop = &loops[poly.loopstart + inner_loop_idx];
+          if ((edges[inner_mloop->e].flag & ME_SEAM) != 0) {
+            continue;
+          }
+          islands.join(inner_mloop->e, outer_mloop->e);
+        }
       }
     }
   });
@@ -251,6 +257,9 @@ static void paintface_select_linked_faces(Mesh *mesh,
     MPoly poly = polys[i];
     const MLoop *loop = &loops[poly.loopstart];
     for (int i = 0; i < poly.totloop; i++, loop++) {
+      if ((edges[loop->e].flag & ME_SEAM) != 0) {
+        continue;
+      }
       const int root = islands.find_root(loop->e);
       selected_roots.add(root);
     }
@@ -283,28 +292,29 @@ void paintface_select_linked(bContext *C, Object *ob, const int mval[2], const b
 
   blender::Vector<int> indices;
 
+  blender::bke::MutableAttributeAccessor attributes = me->attributes_for_write();
+  blender::bke::SpanAttributeWriter<bool> select_poly =
+      attributes.lookup_or_add_for_write_span<bool>(".select_poly", ATTR_DOMAIN_FACE);
+
   if (mval) {
     uint index = uint(-1);
     if (!ED_mesh_pick_face(C, ob, mval, ED_MESH_PICK_DEFAULT_FACE_DIST, &index)) {
       return;
     }
+    select_poly.span[index] = true;
     indices.append(index);
   }
 
   else {
-    blender::bke::MutableAttributeAccessor attributes = me->attributes_for_write();
-    blender::bke::SpanAttributeWriter<bool> select_poly =
-        attributes.lookup_or_add_for_write_span<bool>(".select_poly", ATTR_DOMAIN_FACE);
-
     for (const int i : select_poly.span.index_range()) {
       if (!select_poly.span[i]) {
         continue;
       }
       indices.append(i);
     }
-
-    select_poly.finish();
   }
+
+  select_poly.finish();
 
   paintface_select_linked_faces(me, indices, select);
   paintface_flush_flags(C, ob, true, false);
