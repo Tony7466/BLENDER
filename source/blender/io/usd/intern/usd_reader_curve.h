@@ -36,7 +36,7 @@ class USDCurvesReader : public USDGeomReader {
   void read_curve_sample(Curve *cu, double motionSampleTime);
 
   Mesh *read_mesh(struct Mesh *existing_mesh,
-                  const USDMeshReadParams params,
+                  USDMeshReadParams params,
                   const char **err_str) override;
 };
 
