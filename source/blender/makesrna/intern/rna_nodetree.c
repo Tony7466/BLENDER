@@ -54,84 +54,15 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
+/* -------------------------------------------------------------------- */
+/** \name Static enums.
+ * \{ */
+
+/* --------------------------------------------------------------------
+ * Implementation of compile-time enums, see `RNA_enum_items.h`.
+ */
 const EnumPropertyItem rna_enum_node_socket_in_out_items[] = {
     {SOCK_IN, "IN", 0, "Input", ""}, {SOCK_OUT, "OUT", 0, "Output", ""}, {0, NULL, 0, NULL, NULL}};
-
-static const EnumPropertyItem node_socket_data_type_items[] = {
-    {SOCK_FLOAT, "FLOAT", 0, "Float", ""},
-    {SOCK_INT, "INT", 0, "Integer", ""},
-    {SOCK_BOOLEAN, "BOOLEAN", 0, "Boolean", ""},
-    {SOCK_VECTOR, "VECTOR", 0, "Vector", ""},
-    {SOCK_STRING, "STRING", 0, "String", ""},
-    {SOCK_RGBA, "RGBA", 0, "Color", ""},
-    {SOCK_OBJECT, "OBJECT", 0, "Object", ""},
-    {SOCK_IMAGE, "IMAGE", 0, "Image", ""},
-    {SOCK_GEOMETRY, "GEOMETRY", 0, "Geometry", ""},
-    {SOCK_COLLECTION, "COLLECTION", 0, "Collection", ""},
-    {SOCK_TEXTURE, "TEXTURE", 0, "Texture", ""},
-    {SOCK_MATERIAL, "MATERIAL", 0, "Material", ""},
-    {0, NULL, 0, NULL, NULL},
-};
-
-#ifndef RNA_RUNTIME
-static const EnumPropertyItem rna_enum_node_socket_display_shape_items[] = {
-    {SOCK_DISPLAY_SHAPE_CIRCLE, "CIRCLE", 0, "Circle", ""},
-    {SOCK_DISPLAY_SHAPE_SQUARE, "SQUARE", 0, "Square", ""},
-    {SOCK_DISPLAY_SHAPE_DIAMOND, "DIAMOND", 0, "Diamond", ""},
-    {SOCK_DISPLAY_SHAPE_CIRCLE_DOT, "CIRCLE_DOT", 0, "Circle with inner dot", ""},
-    {SOCK_DISPLAY_SHAPE_SQUARE_DOT, "SQUARE_DOT", 0, "Square with inner dot", ""},
-    {SOCK_DISPLAY_SHAPE_DIAMOND_DOT, "DIAMOND_DOT", 0, "Diamond with inner dot", ""},
-    {0, NULL, 0, NULL, NULL}};
-
-static const EnumPropertyItem node_socket_type_items[] = {
-    {SOCK_CUSTOM, "CUSTOM", 0, "Custom", ""},
-    {SOCK_FLOAT, "VALUE", 0, "Value", ""},
-    {SOCK_INT, "INT", 0, "Integer", ""},
-    {SOCK_BOOLEAN, "BOOLEAN", 0, "Boolean", ""},
-    {SOCK_VECTOR, "VECTOR", 0, "Vector", ""},
-    {SOCK_STRING, "STRING", 0, "String", ""},
-    {SOCK_RGBA, "RGBA", 0, "RGBA", ""},
-    {SOCK_SHADER, "SHADER", 0, "Shader", ""},
-    {SOCK_OBJECT, "OBJECT", 0, "Object", ""},
-    {SOCK_IMAGE, "IMAGE", 0, "Image", ""},
-    {SOCK_GEOMETRY, "GEOMETRY", 0, "Geometry", ""},
-    {SOCK_COLLECTION, "COLLECTION", 0, "Collection", ""},
-    {SOCK_TEXTURE, "TEXTURE", 0, "Texture", ""},
-    {SOCK_MATERIAL, "MATERIAL", 0, "Material", ""},
-    {0, NULL, 0, NULL, NULL},
-};
-
-static const EnumPropertyItem node_quality_items[] = {
-    {NTREE_QUALITY_HIGH, "HIGH", 0, "High", "High quality"},
-    {NTREE_QUALITY_MEDIUM, "MEDIUM", 0, "Medium", "Medium quality"},
-    {NTREE_QUALITY_LOW, "LOW", 0, "Low", "Low quality"},
-    {0, NULL, 0, NULL, NULL},
-};
-
-static const EnumPropertyItem node_chunksize_items[] = {
-    {NTREE_CHUNKSIZE_32, "32", 0, "32x32", "Chunksize of 32x32"},
-    {NTREE_CHUNKSIZE_64, "64", 0, "64x64", "Chunksize of 64x64"},
-    {NTREE_CHUNKSIZE_128, "128", 0, "128x128", "Chunksize of 128x128"},
-    {NTREE_CHUNKSIZE_256, "256", 0, "256x256", "Chunksize of 256x256"},
-    {NTREE_CHUNKSIZE_512, "512", 0, "512x512", "Chunksize of 512x512"},
-    {NTREE_CHUNKSIZE_1024, "1024", 0, "1024x1024", "Chunksize of 1024x1024"},
-    {0, NULL, 0, NULL, NULL},
-};
-#endif
-
-static const EnumPropertyItem rna_enum_execution_mode_items[] = {
-    {NTREE_EXECUTION_MODE_TILED,
-     "TILED",
-     0,
-     "Tiled",
-     "Compositing is tiled, having as priority to display first tiles as fast as possible"},
-    {NTREE_EXECUTION_MODE_FULL_FRAME,
-     "FULL_FRAME",
-     0,
-     "Full Frame",
-     "Composites full image result as fast as possible"},
-    {0, NULL, 0, NULL, NULL},
-};
 
 const EnumPropertyItem rna_enum_mapping_type_items[] = {
     {NODE_MAPPING_TYPE_POINT, "POINT", 0, "Point", "Transform a point"},
@@ -153,7 +84,7 @@ const EnumPropertyItem rna_enum_mapping_type_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
-static const EnumPropertyItem rna_enum_vector_rotate_type_items[] = {
+const EnumPropertyItem rna_enum_vector_rotate_type_items[] = {
     {NODE_VECTOR_ROTATE_TYPE_AXIS,
      "AXIS_ANGLE",
      0,
@@ -444,14 +375,6 @@ const EnumPropertyItem rna_enum_node_clamp_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
-static const EnumPropertyItem rna_enum_node_tex_dimensions_items[] = {
-    {1, "1D", 0, "1D", "Use the scalar value W as input"},
-    {2, "2D", 0, "2D", "Use the 2D vector (X, Y) as input. The Z component is ignored"},
-    {3, "3D", 0, "3D", "Use the 3D vector (X, Y, Z) as input"},
-    {4, "4D", 0, "4D", "Use the 4D vector (X, Y, Z, W) as input"},
-    {0, NULL, 0, NULL, NULL},
-};
-
 const EnumPropertyItem rna_enum_node_filter_items[] = {
     {0, "SOFTEN", 0, "Soften", ""},
     {1, "SHARPEN", 0, "Box Sharpen", "An aggressive sharpening filter"},
@@ -461,6 +384,54 @@ const EnumPropertyItem rna_enum_node_filter_items[] = {
     {4, "PREWITT", 0, "Prewitt", ""},
     {5, "KIRSCH", 0, "Kirsch", ""},
     {6, "SHADOW", 0, "Shadow", ""},
+    {0, NULL, 0, NULL, NULL},
+};
+
+const EnumPropertyItem rna_node_combsep_color_items[] = {
+    {NODE_COMBSEP_COLOR_RGB, "RGB", ICON_NONE, "RGB", "Use RGB color processing"},
+    {NODE_COMBSEP_COLOR_HSV, "HSV", ICON_NONE, "HSV", "Use HSV color processing"},
+    {NODE_COMBSEP_COLOR_HSL, "HSL", ICON_NONE, "HSL", "Use HSL color processing"},
+    {0, NULL, 0, NULL, NULL},
+};
+
+/* --------------------------------------------------------------------
+ * Implementation of statics enums.
+ */
+static const EnumPropertyItem node_socket_data_type_items[] = {
+    {SOCK_FLOAT, "FLOAT", 0, "Float", ""},
+    {SOCK_INT, "INT", 0, "Integer", ""},
+    {SOCK_BOOLEAN, "BOOLEAN", 0, "Boolean", ""},
+    {SOCK_VECTOR, "VECTOR", 0, "Vector", ""},
+    {SOCK_STRING, "STRING", 0, "String", ""},
+    {SOCK_RGBA, "RGBA", 0, "Color", ""},
+    {SOCK_OBJECT, "OBJECT", 0, "Object", ""},
+    {SOCK_IMAGE, "IMAGE", 0, "Image", ""},
+    {SOCK_GEOMETRY, "GEOMETRY", 0, "Geometry", ""},
+    {SOCK_COLLECTION, "COLLECTION", 0, "Collection", ""},
+    {SOCK_TEXTURE, "TEXTURE", 0, "Texture", ""},
+    {SOCK_MATERIAL, "MATERIAL", 0, "Material", ""},
+    {0, NULL, 0, NULL, NULL},
+};
+
+static const EnumPropertyItem rna_enum_execution_mode_items[] = {
+    {NTREE_EXECUTION_MODE_TILED,
+     "TILED",
+     0,
+     "Tiled",
+     "Compositing is tiled, having as priority to display first tiles as fast as possible"},
+    {NTREE_EXECUTION_MODE_FULL_FRAME,
+     "FULL_FRAME",
+     0,
+     "Full Frame",
+     "Composites full image result as fast as possible"},
+    {0, NULL, 0, NULL, NULL},
+};
+
+static const EnumPropertyItem rna_enum_node_tex_dimensions_items[] = {
+    {1, "1D", 0, "1D", "Use the scalar value W as input"},
+    {2, "2D", 0, "2D", "Use the 2D vector (X, Y) as input. The Z component is ignored"},
+    {3, "3D", 0, "3D", "Use the 3D vector (X, Y, Z) as input"},
+    {4, "4D", 0, "4D", "Use the 4D vector (X, Y, Z, W) as input"},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -492,14 +463,50 @@ static const EnumPropertyItem rna_node_geometry_curve_handle_side_items[] = {
     {GEO_NODE_CURVE_HANDLE_RIGHT, "RIGHT", ICON_NONE, "Right", "Use the right handles"},
     {0, NULL, 0, NULL, NULL}};
 
-static const EnumPropertyItem rna_node_combsep_color_items[] = {
-    {NODE_COMBSEP_COLOR_RGB, "RGB", ICON_NONE, "RGB", "Use RGB color processing"},
-    {NODE_COMBSEP_COLOR_HSV, "HSV", ICON_NONE, "HSV", "Use HSV color processing"},
-    {NODE_COMBSEP_COLOR_HSL, "HSL", ICON_NONE, "HSL", "Use HSL color processing"},
+static const EnumPropertyItem rna_enum_node_socket_display_shape_items[] = {
+    {SOCK_DISPLAY_SHAPE_CIRCLE, "CIRCLE", 0, "Circle", ""},
+    {SOCK_DISPLAY_SHAPE_SQUARE, "SQUARE", 0, "Square", ""},
+    {SOCK_DISPLAY_SHAPE_DIAMOND, "DIAMOND", 0, "Diamond", ""},
+    {SOCK_DISPLAY_SHAPE_CIRCLE_DOT, "CIRCLE_DOT", 0, "Circle with inner dot", ""},
+    {SOCK_DISPLAY_SHAPE_SQUARE_DOT, "SQUARE_DOT", 0, "Square with inner dot", ""},
+    {SOCK_DISPLAY_SHAPE_DIAMOND_DOT, "DIAMOND_DOT", 0, "Diamond with inner dot", ""},
+    {0, NULL, 0, NULL, NULL}};
+
+static const EnumPropertyItem node_socket_type_items[] = {
+    {SOCK_CUSTOM, "CUSTOM", 0, "Custom", ""},
+    {SOCK_FLOAT, "VALUE", 0, "Value", ""},
+    {SOCK_INT, "INT", 0, "Integer", ""},
+    {SOCK_BOOLEAN, "BOOLEAN", 0, "Boolean", ""},
+    {SOCK_VECTOR, "VECTOR", 0, "Vector", ""},
+    {SOCK_STRING, "STRING", 0, "String", ""},
+    {SOCK_RGBA, "RGBA", 0, "RGBA", ""},
+    {SOCK_SHADER, "SHADER", 0, "Shader", ""},
+    {SOCK_OBJECT, "OBJECT", 0, "Object", ""},
+    {SOCK_IMAGE, "IMAGE", 0, "Image", ""},
+    {SOCK_GEOMETRY, "GEOMETRY", 0, "Geometry", ""},
+    {SOCK_COLLECTION, "COLLECTION", 0, "Collection", ""},
+    {SOCK_TEXTURE, "TEXTURE", 0, "Texture", ""},
+    {SOCK_MATERIAL, "MATERIAL", 0, "Material", ""},
     {0, NULL, 0, NULL, NULL},
 };
 
-#ifndef RNA_RUNTIME
+static const EnumPropertyItem node_quality_items[] = {
+    {NTREE_QUALITY_HIGH, "HIGH", 0, "High", "High quality"},
+    {NTREE_QUALITY_MEDIUM, "MEDIUM", 0, "Medium", "Medium quality"},
+    {NTREE_QUALITY_LOW, "LOW", 0, "Low", "Low quality"},
+    {0, NULL, 0, NULL, NULL},
+};
+
+static const EnumPropertyItem node_chunksize_items[] = {
+    {NTREE_CHUNKSIZE_32, "32", 0, "32x32", "Chunksize of 32x32"},
+    {NTREE_CHUNKSIZE_64, "64", 0, "64x64", "Chunksize of 64x64"},
+    {NTREE_CHUNKSIZE_128, "128", 0, "128x128", "Chunksize of 128x128"},
+    {NTREE_CHUNKSIZE_256, "256", 0, "256x256", "Chunksize of 256x256"},
+    {NTREE_CHUNKSIZE_512, "512", 0, "512x512", "Chunksize of 512x512"},
+    {NTREE_CHUNKSIZE_1024, "1024", 0, "1024x1024", "Chunksize of 1024x1024"},
+    {0, NULL, 0, NULL, NULL},
+};
+
 static const EnumPropertyItem node_sampler_type_items[] = {
     {0, "NEAREST", 0, "Nearest", ""},
     {1, "BILINEAR", 0, "Bilinear", ""},
@@ -525,23 +532,24 @@ static const EnumPropertyItem node_cryptomatte_layer_name_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
-static EnumPropertyItem rna_node_geometry_mesh_circle_fill_type_items[] = {
+static const EnumPropertyItem rna_node_geometry_mesh_circle_fill_type_items[] = {
     {GEO_NODE_MESH_CIRCLE_FILL_NONE, "NONE", 0, "None", ""},
     {GEO_NODE_MESH_CIRCLE_FILL_NGON, "NGON", 0, "N-Gon", ""},
     {GEO_NODE_MESH_CIRCLE_FILL_TRIANGLE_FAN, "TRIANGLE_FAN", 0, "Triangles", ""},
     {0, NULL, 0, NULL, NULL},
 };
-#endif
 
-#ifndef RNA_RUNTIME
-
-#endif
+/** \} */
 
 #undef ITEM_ATTRIBUTE
 #undef ITEM_FLOAT
 #undef ITEM_VECTOR
 #undef ITEM_COLOR
 #undef ITEM_BOOLEAN
+
+/* -------------------------------------------------------------------- */
+/** \name Marksna runtime enums.
+ * \{ */
 
 #ifdef RNA_RUNTIME
 
@@ -937,8 +945,9 @@ static const EnumPropertyItem *rna_node_static_type_itemf(bContext *UNUSED(C),
   return item;
 }
 
-/* ******** Node Tree ******** */
-
+/* --------------------------------------------------------------------
+ * Node Tree callbacks.
+ */
 static StructRNA *rna_NodeTree_refine(struct PointerRNA *ptr)
 {
   bNodeTree *ntree = (bNodeTree *)ptr->data;
@@ -1593,16 +1602,18 @@ static void rna_NodeTree_interface_update(bNodeTree *ntree, bContext *C)
   ED_node_tree_propagate_change(NULL, bmain, ntree);
 }
 
-/* ******** NodeLink ******** */
-
+/* --------------------------------------------------------------------
+ * Node Link callbacks.
+ */
 static bool rna_NodeLink_is_hidden_get(PointerRNA *ptr)
 {
   bNodeLink *link = ptr->data;
   return nodeLinkIsHidden(link);
 }
 
-/* ******** Node ******** */
-
+/* --------------------------------------------------------------------
+ * Node callbacks.
+ */
 static StructRNA *rna_Node_refine(struct PointerRNA *ptr)
 {
   bNode *node = (bNode *)ptr->data;
@@ -2672,8 +2683,9 @@ static void rna_Node_dimensions_get(PointerRNA *ptr, float *value)
   nodeDimensionsGet(node, &value[0], &value[1]);
 }
 
-/* ******** Node Socket ******** */
-
+/* --------------------------------------------------------------------
+ * Node Socket callbacks.
+ */
 static void rna_NodeSocket_draw(
     bContext *C, struct uiLayout *layout, PointerRNA *ptr, PointerRNA *node_ptr, const char *text)
 {
@@ -3141,8 +3153,9 @@ static void rna_NodeSocketInterface_update(Main *bmain, Scene *UNUSED(scene), Po
   ED_node_tree_propagate_change(NULL, bmain, ntree);
 }
 
-/* ******** Standard Node Socket Base Types ******** */
-
+/* --------------------------------------------------------------------
+ * Standard Node Socket Base Type callbacks.
+ */
 static void rna_NodeSocketStandard_draw(ID *id,
                                         bNodeSocket *sock,
                                         struct bContext *C,
@@ -3247,8 +3260,9 @@ static void rna_NodeSocketStandard_value_and_relation_update(struct bContext *C,
   DEG_relations_tag_update(bmain);
 }
 
-/* ******** Node Types ******** */
-
+/* --------------------------------------------------------------------
+ * Standard Node callbacks.
+ */
 static void rna_NodeInternalSocketTemplate_name_get(PointerRNA *ptr, char *value)
 {
   bNodeSocketTemplate *stemp = ptr->data;
@@ -4057,8 +4071,9 @@ static void rna_NodeCryptomatte_update_remove(Main *bmain, Scene *scene, Pointer
   rna_Node_update(bmain, scene, ptr);
 }
 
-/* ******** Node Socket Types ******** */
-
+/* --------------------------------------------------------------------
+ * Standard Node Socket callbacks.
+ */
 static PointerRNA rna_NodeOutputFile_slot_layer_get(CollectionPropertyIterator *iter)
 {
   PointerRNA ptr;
@@ -4505,7 +4520,13 @@ static const EnumPropertyItem *rna_NodeConvertColorSpace_color_space_itemf(
   return items;
 }
 
+/** \} */
+
 #else
+
+/* -------------------------------------------------------------------- */
+/** \name Static declarations.
+ * \{ */
 
 static const EnumPropertyItem prop_image_layer_items[] = {
     {0, "PLACEHOLDER", 0, "Placeholder", ""},
@@ -4711,8 +4732,9 @@ static const EnumPropertyItem prop_image_extension[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
-/* -- Common nodes ---------------------------------------------------------- */
-
+/* --------------------------------------------------------------------
+ * Common Node defines.
+ */
 static void def_group_input(StructRNA *UNUSED(srna))
 {
 }
@@ -5163,8 +5185,9 @@ static void def_fn_combsep_color(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 
-/* -- Shader Nodes ---------------------------------------------------------- */
-
+/* --------------------------------------------------------------------
+ * Shader Nodes defines.
+ */
 static void def_sh_output(StructRNA *srna)
 {
   PropertyRNA *prop;
@@ -6513,8 +6536,9 @@ static void def_sh_script(StructRNA *srna)
 #  endif
 }
 
-/* -- Compositor Nodes ------------------------------------------------------ */
-
+/* --------------------------------------------------------------------
+ * Compositor Node defines.
+ */
 static void def_cmp_alpha_over(StructRNA *srna)
 {
   PropertyRNA *prop;
@@ -8352,8 +8376,6 @@ static void dev_cmd_transform(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
-/* -- Compositor Nodes ------------------------------------------------------ */
-
 static const EnumPropertyItem node_masktype_items[] = {
     {0, "ADD", 0, "Add", ""},
     {1, "SUBTRACT", 0, "Subtract", ""},
@@ -9245,8 +9267,9 @@ static void def_cmp_antialiasing(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
-/* -- Texture Nodes --------------------------------------------------------- */
-
+/* --------------------------------------------------------------------
+ * Texture Node defines.
+ */
 static void def_tex_output(StructRNA *srna)
 {
   PropertyRNA *prop;
@@ -9308,8 +9331,9 @@ static void def_tex_bricks(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
-/* -- Geometry Nodes --------------------------------------------------------- */
-
+/* --------------------------------------------------------------------
+ * Geometry Node defines.
+ */
 static void def_geo_boolean(StructRNA *srna)
 {
   PropertyRNA *prop;
@@ -10932,8 +10956,9 @@ static void def_geo_scale_elements(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNode_socket_update");
 }
 
-/* -------------------------------------------------------------------------- */
-
+/* --------------------------------------------------------------------
+ * Base Node defines.
+ */
 static void rna_def_shader_node(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -10991,8 +11016,9 @@ static void rna_def_function_node(BlenderRNA *brna)
   RNA_def_struct_register_funcs(srna, "rna_FunctionNode_register", "rna_Node_unregister", NULL);
 }
 
-/* -------------------------------------------------------------------------- */
-
+/* --------------------------------------------------------------------
+ * Base Node Socket defines.
+ */
 static void rna_def_node_socket(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -11269,6 +11295,9 @@ static void rna_def_node_socket_interface(BlenderRNA *brna)
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
 }
 
+/* --------------------------------------------------------------------
+ * Node Socket defines.
+ */
 static void rna_def_node_socket_float(BlenderRNA *brna,
                                       const char *idname,
                                       const char *interface_idname,
@@ -11971,6 +12000,9 @@ static void rna_def_node_socket_standard_types(BlenderRNA *brna)
   rna_def_node_socket_material(brna, "NodeSocketMaterial", "NodeSocketInterfaceMaterial");
 }
 
+/* --------------------------------------------------------------------
+ * Base define.
+ */
 static void rna_def_internal_node(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -13039,3 +13071,5 @@ void RNA_def_nodetree(BlenderRNA *brna)
 #  undef NODE_DEFINE_SUBTYPES
 
 #endif
+
+/** \} */
