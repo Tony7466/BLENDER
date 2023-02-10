@@ -3457,24 +3457,24 @@ bNode *ntreeFindType(bNodeTree *ntree, int type)
   return nullptr;
 }
 
-static bool ntree_contains_tree_exec(const bNodeTree *parent_tree,
-                                     const bNodeTree *sub_tree,
+static bool ntree_contains_tree_exec(const bNodeTree *tree_to_search_in,
+                                     const bNodeTree *tree_to_search_for,
                                      Set<const bNodeTree *> &already_passed)
 {
-  if (parent_tree == sub_tree) {
+  if (tree_to_search_in == tree_to_search_for) {
     return true;
   }
 
-  parent_tree->ensure_topology_cache();
-  for (const bNode *node_group : parent_tree->group_nodes()) {
-    const bNodeTree *tree = reinterpret_cast<bNodeTree *>(node_group->id);
-    if (!tree) {
+  tree_to_search_in->ensure_topology_cache();
+  for (const bNode *node_group : tree_to_search_in->group_nodes()) {
+    const bNodeTree *sub_tree_search_in = reinterpret_cast<const bNodeTree *>(node_group->id);
+    if (!sub_tree_search_in) {
       continue;
     }
-    if (!already_passed.add(tree)) {
+    if (!already_passed.add(sub_tree_search_in)) {
       continue;
     }
-    if (ntree_contains_tree_exec(tree, sub_tree, already_passed)) {
+    if (ntree_contains_tree_exec(sub_tree_search_in, tree_to_search_for, already_passed)) {
       return true;
     }
   }
@@ -3482,14 +3482,14 @@ static bool ntree_contains_tree_exec(const bNodeTree *parent_tree,
   return false;
 }
 
-bool ntreeContainsTree(const bNodeTree *parent_tree, const bNodeTree *sub_tree)
+bool ntreeContainsTree(const bNodeTree *tree_to_search_in, const bNodeTree *tree_to_search_for)
 {
-  if (parent_tree == sub_tree) {
+  if (tree_to_search_in == tree_to_search_for) {
     return true;
   }
 
   Set<const bNodeTree *> already_passed;
-  return ntree_contains_tree_exec(parent_tree, sub_tree, already_passed);
+  return ntree_contains_tree_exec(tree_to_search_in, tree_to_search_for, already_passed);
 }
 
 bNodeLink *nodeFindLink(bNodeTree *ntree, const bNodeSocket *from, const bNodeSocket *to)

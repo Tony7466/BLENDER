@@ -506,9 +506,10 @@ void ntreeFreeLocalTree(struct bNodeTree *ntree);
 struct bNode *ntreeFindType(struct bNodeTree *ntree, int type);
 
 /**
- * Check recursively whether a sub node tree contain in host tree.
+ * Check recursively if a node tree contains another.
  */
-bool ntreeContainsTree(const struct bNodeTree *parent_tree, const struct bNodeTree *sub_tree);
+bool ntreeContainsTree(const struct bNodeTree *tree_to_search_in,
+                       const struct bNodeTree *tree_to_search_for);
 
 void ntreeUpdateAllNew(struct Main *main);
 void ntreeUpdateAllUsers(struct Main *main, struct ID *id);
