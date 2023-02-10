@@ -22,19 +22,19 @@ TEST(nla_strip, BKE_nlastrip_recalculate_blend)
   strip.start = 1;
   strip.end = 10;
 
-  /* Scaling a strip up doesn't affect the blend in/out value */
+  /* Scaling a strip up doesn't affect the blend in/out value. */
   strip.end = 20;
   BKE_nlastrip_recalculate_blend(&strip);
   EXPECT_FLOAT_EQ(strip.blendin, 4.0);
   EXPECT_FLOAT_EQ(strip.blendout, 5.0);
 
-  /* Scaling a strip down affects the blend-in value before the blend-out value  */
+  /* Scaling a strip down affects the blend-in value before the blend-out value.  */
   strip.end = 7;
   BKE_nlastrip_recalculate_blend(&strip);
   EXPECT_FLOAT_EQ(strip.blendin, 1.0);
   EXPECT_FLOAT_EQ(strip.blendout, 5.0);
 
-  /* Scaling a strip down to nothing updates the blend in/out values accordingly  */
+  /* Scaling a strip down to nothing updates the blend in/out values accordingly.  */
   strip.end = 1.1;
   BKE_nlastrip_recalculate_blend(&strip);
   EXPECT_FLOAT_EQ(strip.blendin, 0.0);
@@ -77,16 +77,18 @@ TEST(nla_track, BKE_nlatrack_remove_strip)
   strip2.start = 11;
   strip2.end = 20;
 
-  // Add NLA strips to the NLATrack
+  // Add NLA strips to the NLATrack.
   BKE_nlastrips_add_strip(&strips, &strip1);
   BKE_nlastrips_add_strip(&strips, &strip2);
   track.strips = strips;
 
-  // ensure we have 2 strips in the track
+  // ensure we have 2 strips in the track.
   EXPECT_EQ(2, BLI_listbase_count(&track.strips));
 
   BKE_nlatrack_remove_strip(&track, &strip2);
   EXPECT_EQ(1, BLI_listbase_count(&track.strips));
+  // ensure the correct strip was removed.
+  EXPECT_EQ(BLI_findindex(&track.strips, &strip2));
 }
 
 }  // namespace blender::bke::tests
