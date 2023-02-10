@@ -83,7 +83,7 @@ enum_use_layer_samples = (
 
 enum_sampling_pattern = (
     ('SOBOL_BURLEY', "Sobol-Burley", "Use on-the-fly computed Owen-scrambled Sobol for random sampling", 0),
-    ('TABULATED_SOBOL', "Tabulated Sobol", "Use precomputed tables of Owen-scrambled Sobol for random sampling", 1),
+    ('TABULATED_SOBOL', "Tabulated Sobol", "Use pre-computed tables of Owen-scrambled Sobol for random sampling", 1),
 )
 
 enum_emission_sampling = (
@@ -905,7 +905,8 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
 
     use_fast_gi: BoolProperty(
         name="Fast GI Approximation",
-        description="Approximate diffuse indirect light with background tinted ambient occlusion. This provides fast alternative to full global illumination, for interactive viewport rendering or final renders with reduced quality",
+        description="Approximate diffuse indirect light with background tinted ambient occlusion. "
+                    "This provides fast alternative to full global illumination, for interactive viewport rendering or final renders with reduced quality",
         default=False,
     )
 
@@ -950,9 +951,7 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         return _cycles.debug_flags_update(scene)
 
     debug_use_cpu_avx2: BoolProperty(name="AVX2", default=True)
-    debug_use_cpu_avx: BoolProperty(name="AVX", default=True)
     debug_use_cpu_sse41: BoolProperty(name="SSE41", default=True)
-    debug_use_cpu_sse3: BoolProperty(name="SSE3", default=True)
     debug_use_cpu_sse2: BoolProperty(name="SSE2", default=True)
     debug_bvh_layout: EnumProperty(
         name="BVH Layout",
@@ -1539,13 +1538,16 @@ class CyclesPreferences(bpy.types.AddonPreferences):
 
     use_metalrt: BoolProperty(
         name="MetalRT (Experimental)",
-        description="MetalRT for ray tracing uses less memory for scenes which use curves extensively, and can give better performance in specific cases. However this support is experimental and some scenes may render incorrectly",
+        description="MetalRT for ray tracing uses less memory for scenes which use curves extensively, and can give better "
+                    "performance in specific cases. However this support is experimental and some scenes may render incorrectly",
         default=False,
     )
 
     kernel_optimization_level: EnumProperty(
         name="Kernel Optimization",
-        description="Kernels can be optimized based on scene content. Optimized kernels are requested at the start of a render. If optimized kernels are not available, rendering will proceed using generic kernels until the optimized set is available in the cache. This can result in additional CPU usage for a brief time (tens of seconds).",
+        description="Kernels can be optimized based on scene content. Optimized kernels are requested at the start of a render. "
+                    "If optimized kernels are not available, rendering will proceed using generic kernels until the optimized set "
+                    "is available in the cache. This can result in additional CPU usage for a brief time (tens of seconds)",
         default='FULL',
         items=(
             ('OFF', "Off", "Disable kernel optimization. Slowest rendering, no extra background CPU usage"),
@@ -1669,19 +1671,19 @@ class CyclesPreferences(bpy.types.AddonPreferences):
             elif device_type == 'HIP':
                 import sys
                 if sys.platform[:3] == "win":
-                    col.label(text="Requires AMD GPU with Vega or RDNA architecture", icon='BLANK1')
+                    col.label(text="Requires AMD GPU with RDNA architecture", icon='BLANK1')
                     col.label(text="and AMD Radeon Pro 21.Q4 driver or newer", icon='BLANK1')
                 elif sys.platform.startswith("linux"):
-                    col.label(text="Requires AMD GPU with Vega or RDNA architecture", icon='BLANK1')
+                    col.label(text="Requires AMD GPU with RDNA architecture", icon='BLANK1')
                     col.label(text="and AMD driver version 22.10 or newer", icon='BLANK1')
             elif device_type == 'ONEAPI':
                 import sys
                 if sys.platform.startswith("win"):
                     col.label(text="Requires Intel GPU with Xe-HPG architecture", icon='BLANK1')
-                    col.label(text="and Windows driver version 101.3430 or newer", icon='BLANK1')
+                    col.label(text="and Windows driver version 101.4032 or newer", icon='BLANK1')
                 elif sys.platform.startswith("linux"):
                     col.label(text="Requires Intel GPU with Xe-HPG architecture and", icon='BLANK1')
-                    col.label(text="  - intel-level-zero-gpu version 1.3.23904 or newer", icon='BLANK1')
+                    col.label(text="  - intel-level-zero-gpu version 1.3.24931 or newer", icon='BLANK1')
                     col.label(text="  - oneAPI Level-Zero Loader", icon='BLANK1')
             elif device_type == 'METAL':
                 col.label(text="Requires Apple Silicon with macOS 12.2 or newer", icon='BLANK1')
@@ -1721,12 +1723,21 @@ class CyclesPreferences(bpy.types.AddonPreferences):
 
         if compute_device_type == 'METAL':
             import platform
-            # MetalRT only works on Apple Silicon at present, pending argument encoding fixes on AMD
-            # Kernel specialization is only viable on Apple Silicon at present due to relative compilation speed
-            if platform.machine() == 'arm64':
+            import re
+            is_navi_2 = False
+            for device in devices:
+                if re.search(r"((RX)|(Pro)|(PRO))\s+W?6\d00X", device.name):
+                    is_navi_2 = True
+                    break
+
+            # MetalRT only works on Apple Silicon and Navi2.
+            is_arm64 = platform.machine() == 'arm64'
+            if is_arm64 or is_navi_2:
                 col = layout.column()
                 col.use_property_split = True
-                col.prop(self, "kernel_optimization_level")
+                # Kernel specialization is only supported on Apple Silicon
+                if is_arm64:
+                    col.prop(self, "kernel_optimization_level")
                 col.prop(self, "use_metalrt")
 
     def draw(self, context):

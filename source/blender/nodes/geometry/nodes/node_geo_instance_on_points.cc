@@ -4,6 +4,7 @@
 
 #include "BLI_array_utils.hh"
 #include "BLI_hash.h"
+#include "BLI_math_matrix.hh"
 #include "BLI_task.hh"
 
 #include "UI_interface.h"
@@ -114,7 +115,8 @@ static void add_instances_from_component(
 
       /* Compute base transform for every instances. */
       float4x4 &dst_transform = dst_transforms[range_i];
-      dst_transform = float4x4::from_loc_eul_scale(positions[i], rotations[i], scales[i]);
+      dst_transform = math::from_loc_rot_scale<float4x4>(
+          positions[i], math::EulerXYZ(rotations[i]), scales[i]);
 
       /* Reference that will be used by this new instance. */
       int dst_handle = empty_reference_handle;
@@ -133,7 +135,7 @@ static void add_instances_from_component(
             dst_handle = handle_mapping[src_handle];
 
             /* Take transforms of the source instance into account. */
-            mul_m4_m4_post(dst_transform.values, src_instances->transforms()[index].values);
+            mul_m4_m4_post(dst_transform.ptr(), src_instances->transforms()[index].ptr());
           }
         }
       }
@@ -198,8 +200,11 @@ static void node_geo_exec(GeoNodeExecParams params)
         GEO_COMPONENT_TYPE_MESH, GEO_COMPONENT_TYPE_POINT_CLOUD, GEO_COMPONENT_TYPE_CURVE};
 
     Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
-    geometry_set.gather_attributes_for_propagation(
-        types, GEO_COMPONENT_TYPE_INSTANCES, false, attributes_to_propagate);
+    geometry_set.gather_attributes_for_propagation(types,
+                                                   GEO_COMPONENT_TYPE_INSTANCES,
+                                                   false,
+                                                   params.get_output_propagation_info("Instances"),
+                                                   attributes_to_propagate);
     attributes_to_propagate.remove("position");
 
     for (const GeometryComponentType type : types) {

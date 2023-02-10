@@ -622,7 +622,7 @@ class USERPREF_PT_system_gpu_backend(SystemPanel, CenterAlignMixIn, Panel):
         col.prop(system, "gpu_backend")
 
         if system.gpu_backend != gpu.platform.backend_type_get():
-            layout.label(text="Requires a restart of Blender to take effect.", icon='INFO')
+            layout.label(text="Requires a restart of Blender to take effect", icon='INFO')
 
 
 class USERPREF_PT_system_os_settings(SystemPanel, CenterAlignMixIn, Panel):
@@ -1286,7 +1286,7 @@ class ThemeGenericClassGenerator:
     def generate_panel_classes_from_theme_areas():
         from bpy.types import Theme
 
-        for theme_area in Theme.bl_rna.properties['theme_area'].enum_items_static:
+        for theme_area in Theme.bl_rna.properties["theme_area"].enum_items_static:
             if theme_area.identifier in {'USER_INTERFACE', 'STYLE', 'BONE_COLOR_SETS'}:
                 continue
 
@@ -2267,7 +2267,7 @@ class ExperimentalPanel:
     bl_region_type = 'WINDOW'
     bl_context = "experimental"
 
-    url_prefix = "https://developer.blender.org/"
+    url_prefix = "https://projects.blender.org/"
 
     @classmethod
     def poll(cls, _context):
@@ -2308,8 +2308,8 @@ class USERPREF_PT_experimental_virtual_reality(ExperimentalPanel, Panel):
     def draw(self, context):
         self._draw_items(
             context, (
-                ({"property": "use_virtual_reality_scene_inspection"}, "T71347"),
-                ({"property": "use_virtual_reality_immersive_drawing"}, "T71348"),
+                ({"property": "use_virtual_reality_scene_inspection"}, ("blender/blender/issues/71347", "#71347")),
+                ({"property": "use_virtual_reality_immersive_drawing"}, ("blender/blender/issues/71348", "#71348")),
             ),
         )
 """
@@ -2319,14 +2319,18 @@ class USERPREF_PT_experimental_new_features(ExperimentalPanel, Panel):
     bl_label = "New Features"
 
     def draw(self, context):
-        self._draw_items(
-            context, (
-                ({"property": "use_sculpt_tools_tilt"}, "T82877"),
-                ({"property": "use_extended_asset_browser"}, ("project/view/130/", "Project Page")),
-                ({"property": "use_override_templates"}, ("T73318", "Milestone 4")),
-                ({"property": "use_realtime_compositor"}, "T99210"),
-            ),
-        )
+        self._draw_items(context,
+                         (({"property": "use_sculpt_tools_tilt"},
+                           ("blender/blender/issues/82877",
+                            "#82877")),
+                             ({"property": "use_extended_asset_browser"},
+                              ("blender/blender/projects/10",
+                                 "Pipeline, Assets & IO Project Page")),
+                             ({"property": "use_override_templates"},
+                              ("blender/blender/issues/73318",
+                                 "Milestone 4")),
+                          ),
+                         )
 
 
 class USERPREF_PT_experimental_prototypes(ExperimentalPanel, Panel):
@@ -2335,11 +2339,12 @@ class USERPREF_PT_experimental_prototypes(ExperimentalPanel, Panel):
     def draw(self, context):
         self._draw_items(
             context, (
-                ({"property": "use_new_curves_tools"}, "T68981"),
-                ({"property": "use_new_point_cloud_type"}, "T75717"),
-                ({"property": "use_sculpt_texture_paint"}, "T96225"),
-                ({"property": "use_full_frame_compositor"}, "T88150"),
-                ({"property": "enable_eevee_next"}, "T93220"),
+                ({"property": "use_new_curves_tools"}, ("blender/blender/issues/68981", "#68981")),
+                ({"property": "use_new_point_cloud_type"}, ("blender/blender/issues/75717", "#75717")),
+                ({"property": "use_sculpt_texture_paint"}, ("blender/blender/issues/96225", "#96225")),
+                ({"property": "use_full_frame_compositor"}, ("blender/blender/issues/88150", "#88150")),
+                ({"property": "enable_eevee_next"}, ("blender/blender/issues/93220", "#93220")),
+                ({"property": "enable_workbench_next"}, ("blender/blender/issues/101619", "#101619")),
             ),
         )
 
@@ -2352,7 +2357,7 @@ class USERPREF_PT_experimental_tweaks(ExperimentalPanel, Panel):
     def draw(self, context):
         self._draw_items(
             context, (
-                ({"property": "use_select_nearest_on_first_click"}, "T96752"),
+                ({"property": "use_select_nearest_on_first_click"}, ("blender/blender/issues/96752", "#96752")),
             ),
         )
 
@@ -2371,8 +2376,8 @@ class USERPREF_PT_experimental_debugging(ExperimentalPanel, Panel):
     def draw(self, context):
         self._draw_items(
             context, (
-                ({"property": "use_undo_legacy"}, "T60695"),
-                ({"property": "override_auto_resync"}, "T83811"),
+                ({"property": "use_undo_legacy"}, ("blender/blender/issues/60695", "#60695")),
+                ({"property": "override_auto_resync"}, ("blender/blender/issues/83811", "#83811")),
                 ({"property": "use_cycles_debug"}, None),
                 ({"property": "show_asset_debug_info"}, None),
                 ({"property": "use_asset_indexing"}, None),

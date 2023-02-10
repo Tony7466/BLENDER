@@ -550,7 +550,7 @@ class DOPESHEET_PT_custom_props_action(PropertyPanel, Panel):
     bl_space_type = 'DOPESHEET_EDITOR'
     bl_category = "Action"
     bl_region_type = 'UI'
-    bl_context = 'data'
+    bl_context = "data"
     _context_path = "active_action"
     _property_type = bpy.types.Action
 
@@ -707,6 +707,9 @@ class DOPESHEET_MT_channel_context_menu(Menu):
         else:
             operator = "action.extrapolation_type"
         layout.operator_menu_enum(operator, "type", text="Extrapolation Mode")
+
+        if is_graph_editor:
+            layout.operator_menu_enum("graph.fmodifier_add", "type", text="Add F-Curve Modifier").only_active = False
 
         layout.separator()
         layout.operator("anim.channels_expand")

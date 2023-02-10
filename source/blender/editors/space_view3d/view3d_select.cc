@@ -69,6 +69,7 @@
 
 #include "ED_armature.h"
 #include "ED_curve.h"
+#include "ED_curves.h"
 #include "ED_gpencil.h"
 #include "ED_lattice.h"
 #include "ED_mball.h"
@@ -1170,7 +1171,6 @@ struct LassoSelectUserData_ForMeshVert {
   blender::MutableSpan<bool> select_vert;
 };
 static void do_lasso_select_meshobject__doSelectVert(void *userData,
-                                                     MVert * /*mv*/,
                                                      const float screen_co[2],
                                                      int index)
 {
@@ -2969,9 +2969,14 @@ static bool ed_wpaint_vertex_select_pick(bContext *C,
 
 static int view3d_select_exec(bContext *C, wmOperator *op)
 {
+  using namespace blender;
   Scene *scene = CTX_data_scene(C);
   Object *obedit = CTX_data_edit_object(C);
   Object *obact = CTX_data_active_object(C);
+
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+  ViewContext vc;
+  ED_view3d_viewcontext_init(C, &vc, depsgraph);
 
   SelectPick_Params params{};
   ED_select_pick_params_from_operator(op->ptr, &params);
@@ -3022,10 +3027,6 @@ static int view3d_select_exec(bContext *C, wmOperator *op)
     }
     else if (obedit->type == OB_ARMATURE) {
       if (enumerate) {
-        Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-        ViewContext vc;
-        ED_view3d_viewcontext_init(C, &vc, depsgraph);
-
         GPUSelectResult buffer[MAXPICKELEMS];
         const int hits = mixed_bones_object_selectbuffer(
             &vc, buffer, ARRAY_SIZE(buffer), mval, VIEW3D_SELECT_FILTER_NOP, false, true, false);
@@ -3047,6 +3048,19 @@ static int view3d_select_exec(bContext *C, wmOperator *op)
     }
     else if (obedit->type == OB_FONT) {
       changed = ED_curve_editfont_select_pick(C, mval, &params);
+    }
+    else if (obedit->type == OB_CURVES) {
+      Curves &curves_id = *static_cast<Curves *>(obact->data);
+      bke::CurvesGeometry &curves = curves_id.geometry.wrap();
+      changed = ed::curves::select_pick(
+          vc, curves, eAttrDomain(curves_id.selection_domain), params, mval);
+      if (changed) {
+        /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a
+         * generic attribute for now. */
+        DEG_id_tag_update(&curves_id.id, ID_RECALC_GEOMETRY);
+        WM_event_add_notifier(C, NC_GEOM | ND_DATA, &curves_id);
+        return true;
+      }
     }
   }
   else if (obact && obact->mode & OB_MODE_PARTICLE_EDIT) {
@@ -3196,7 +3210,6 @@ struct BoxSelectUserData_ForMeshVert {
   blender::MutableSpan<bool> select_vert;
 };
 static void do_paintvert_box_select__doSelectVert(void *userData,
-                                                  MVert * /*mv*/,
                                                   const float screen_co[2],
                                                   int index)
 {
@@ -4216,7 +4229,6 @@ struct CircleSelectUserData_ForMeshVert {
   blender::MutableSpan<bool> select_vert;
 };
 static void paint_vertsel_circle_select_doSelectVert(void *userData,
-                                                     MVert * /*mv*/,
                                                      const float screen_co[2],
                                                      int index)
 {
@@ -4751,14 +4763,13 @@ static bool object_circle_select(ViewContext *vc,
 static void view3d_circle_select_recalc(void *user_data)
 {
   bContext *C = static_cast<bContext *>(user_data);
-  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  ViewContext vc;
-  ED_view3d_viewcontext_init(C, &vc, depsgraph);
-  em_setup_viewcontext(C, &vc);
+  Object *obedit_active = CTX_data_edit_object(C);
 
-  if (vc.obedit) {
-    switch (vc.obedit->type) {
+  if (obedit_active) {
+    switch (obedit_active->type) {
       case OB_MESH: {
+        ViewContext vc;
+        em_setup_viewcontext(C, &vc);
         FOREACH_OBJECT_IN_MODE_BEGIN (
             vc.scene, vc.view_layer, vc.v3d, vc.obact->type, vc.obact->mode, ob_iter) {
           ED_view3d_viewcontext_init_object(&vc, ob_iter);
@@ -4769,8 +4780,11 @@ static void view3d_circle_select_recalc(void *user_data)
         break;
       }
 
-      default:
+      default: {
+        /* TODO: investigate if this is needed for other object types. */
+        CTX_data_ensure_evaluated_depsgraph(C);
         break;
+      }
     }
   }
 }

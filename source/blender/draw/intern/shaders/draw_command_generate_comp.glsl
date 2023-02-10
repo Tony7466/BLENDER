@@ -13,7 +13,8 @@ void write_draw_call(DrawGroup group, uint group_id)
   DrawCommand cmd;
   cmd.vertex_len = group.vertex_len;
   cmd.vertex_first = group.vertex_first;
-  if (group.base_index != -1) {
+  bool indexed_draw = group.base_index != -1;
+  if (indexed_draw) {
     cmd.base_index = group.base_index;
     cmd.instance_first_indexed = group.start;
   }
@@ -23,7 +24,15 @@ void write_draw_call(DrawGroup group, uint group_id)
   /* Back-facing command. */
   cmd.instance_len = group_buf[group_id].back_facing_counter;
   command_buf[group_id * 2 + 0] = cmd;
+
   /* Front-facing command. */
+  uint front_facing_start = group.start + (group.len - group.front_facing_len);
+  if (indexed_draw) {
+    cmd.instance_first_indexed = front_facing_start;
+  }
+  else {
+    cmd._instance_first_array = front_facing_start;
+  }
   cmd.instance_len = group_buf[group_id].front_facing_counter;
   command_buf[group_id * 2 + 1] = cmd;
 
@@ -51,7 +60,7 @@ void main()
   if (visibility_word_per_draw > 0) {
     uint visibility_word = resource_index * visibility_word_per_draw;
     for (uint i = 0; i < visibility_word_per_draw; i++, visibility_word++) {
-      /* \note: This assumes proto.instance_len is 1. */
+      /* NOTE: This assumes `proto.instance_len` is 1. */
       /* TODO: Assert. */
       visible_instance_len += bitCount(visibility_buf[visibility_word]);
     }

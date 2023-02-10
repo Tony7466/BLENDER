@@ -82,6 +82,8 @@
 #include "CLG_log.h"
 
 #ifdef USE_EVENT_BACKGROUND_THREAD
+#  include "GHOST_TimerTask.h"
+
 #  include <pthread.h>
 #endif
 
@@ -215,13 +217,15 @@ static bool use_gnome_confine_hack = false;
 /**
  * The event codes are used to differentiate from which mouse button an event comes from.
  */
-#define BTN_LEFT 0x110
-#define BTN_RIGHT 0x111
-#define BTN_MIDDLE 0x112
-#define BTN_SIDE 0x113
-#define BTN_EXTRA 0x114
-#define BTN_FORWARD 0x115
-#define BTN_BACK 0x116
+enum {
+  BTN_LEFT = 0x110,
+  BTN_RIGHT = 0x111,
+  BTN_MIDDLE = 0x112,
+  BTN_SIDE = 0x113,
+  BTN_EXTRA = 0x114,
+  BTN_FORWARD = 0x115,
+  BTN_BACK = 0x116
+};
 // #define BTN_TASK 0x117 /* UNUSED. */
 
 /**
@@ -232,28 +236,34 @@ static bool use_gnome_confine_hack = false;
  * at the Blender studio, having the button closest to the nib be MMB is preferable,
  * so use this as a default. If needs be - swapping these could be a preference.
  */
-#define BTN_STYLUS 0x14b  /* Use as middle-mouse. */
-#define BTN_STYLUS2 0x14c /* Use as right-mouse. */
-/* NOTE(@campbellbarton): Map to an additional button (not sure which hardware uses this). */
-#define BTN_STYLUS3 0x149
+enum {
+  /** Use as middle-mouse. */
+  BTN_STYLUS = 0x14b,
+  /** Use as right-mouse. */
+  BTN_STYLUS2 = 0x14c,
+  /** NOTE(@campbellbarton): Map to an additional button (not sure which hardware uses this). */
+  BTN_STYLUS3 = 0x149,
+};
 
 /**
  * Keyboard scan-codes.
  */
-#define KEY_GRAVE 41
+enum {
+  KEY_GRAVE = 41,
 
 #ifdef USE_NON_LATIN_KB_WORKAROUND
-#  define KEY_1 2
-#  define KEY_2 3
-#  define KEY_3 4
-#  define KEY_4 5
-#  define KEY_5 6
-#  define KEY_6 7
-#  define KEY_7 8
-#  define KEY_8 9
-#  define KEY_9 10
-#  define KEY_0 11
+  KEY_1 = 2,
+  KEY_2 = 3,
+  KEY_3 = 4,
+  KEY_4 = 5,
+  KEY_5 = 6,
+  KEY_6 = 7,
+  KEY_7 = 8,
+  KEY_8 = 9,
+  KEY_9 = 10,
+  KEY_0 = 11,
 #endif
+};
 
 /** \} */
 
@@ -280,41 +290,41 @@ struct GWL_ModifierInfo {
 };
 
 static const GWL_ModifierInfo g_modifier_info_table[MOD_INDEX_NUM] = {
-    /* MOD_INDEX_SHIFT */
+    /*MOD_INDEX_SHIFT*/
     {
-        /* display_name */ "Shift",
-        /* xkb_id */ XKB_MOD_NAME_SHIFT,
-        /* key_l */ GHOST_kKeyLeftShift,
-        /* key_r */ GHOST_kKeyRightShift,
-        /* mod_l */ GHOST_kModifierKeyLeftShift,
-        /* mod_r */ GHOST_kModifierKeyRightShift,
+        /*display_name*/ "Shift",
+        /*xkb_id*/ XKB_MOD_NAME_SHIFT,
+        /*key_l*/ GHOST_kKeyLeftShift,
+        /*key_r*/ GHOST_kKeyRightShift,
+        /*mod_l*/ GHOST_kModifierKeyLeftShift,
+        /*mod_r*/ GHOST_kModifierKeyRightShift,
     },
-    /* MOD_INDEX_ALT */
+    /*MOD_INDEX_ALT*/
     {
-        /* display_name */ "Alt",
-        /* xkb_id */ XKB_MOD_NAME_ALT,
-        /* key_l */ GHOST_kKeyLeftAlt,
-        /* key_r */ GHOST_kKeyRightAlt,
-        /* mod_l */ GHOST_kModifierKeyLeftAlt,
-        /* mod_r */ GHOST_kModifierKeyRightAlt,
+        /*display_name*/ "Alt",
+        /*xkb_id*/ XKB_MOD_NAME_ALT,
+        /*key_l*/ GHOST_kKeyLeftAlt,
+        /*key_r*/ GHOST_kKeyRightAlt,
+        /*mod_l*/ GHOST_kModifierKeyLeftAlt,
+        /*mod_r*/ GHOST_kModifierKeyRightAlt,
     },
-    /* MOD_INDEX_CTRL */
+    /*MOD_INDEX_CTRL*/
     {
-        /* display_name */ "Control",
-        /* xkb_id */ XKB_MOD_NAME_CTRL,
-        /* key_l */ GHOST_kKeyLeftControl,
-        /* key_r */ GHOST_kKeyRightControl,
-        /* mod_l */ GHOST_kModifierKeyLeftControl,
-        /* mod_r */ GHOST_kModifierKeyRightControl,
+        /*display_name*/ "Control",
+        /*xkb_id*/ XKB_MOD_NAME_CTRL,
+        /*key_l*/ GHOST_kKeyLeftControl,
+        /*key_r*/ GHOST_kKeyRightControl,
+        /*mod_l*/ GHOST_kModifierKeyLeftControl,
+        /*mod_r*/ GHOST_kModifierKeyRightControl,
     },
-    /* MOD_INDEX_OS */
+    /*MOD_INDEX_OS*/
     {
-        /* display_name */ "OS",
-        /* xkb_id */ XKB_MOD_NAME_LOGO,
-        /* key_l */ GHOST_kKeyLeftOS,
-        /* key_r */ GHOST_kKeyRightOS,
-        /* mod_l */ GHOST_kModifierKeyLeftOS,
-        /* mod_r */ GHOST_kModifierKeyRightOS,
+        /*display_name*/ "OS",
+        /*xkb_id*/ XKB_MOD_NAME_LOGO,
+        /*key_l*/ GHOST_kKeyLeftOS,
+        /*key_r*/ GHOST_kKeyRightOS,
+        /*mod_l*/ GHOST_kModifierKeyLeftOS,
+        /*mod_r*/ GHOST_kModifierKeyRightOS,
     },
 };
 
@@ -760,7 +770,12 @@ struct GWL_Seat {
     int32_t rate = 0;
     /** Time (milliseconds) after which to start repeating keys. */
     int32_t delay = 0;
-    /** Timer for key repeats. */
+    /**
+     * Timer for key repeats.
+     *
+     * \note For as long as #USE_EVENT_BACKGROUND_THREAD is defined, any access to this
+     * (including null checks, must lock `timer_mutex` first.
+     */
     GHOST_ITimerTask *timer = nullptr;
   } key_repeat;
 
@@ -822,6 +837,42 @@ static bool gwl_seat_key_depressed_suppress_warning(const GWL_Seat *seat)
 #endif
 
   return suppress_warning;
+}
+
+/**
+ * \note Caller must lock `timer_mutex`.
+ */
+static void gwl_seat_key_repeat_timer_add(GWL_Seat *seat,
+                                          GHOST_TimerProcPtr key_repeat_fn,
+                                          GHOST_TUserDataPtr payload,
+                                          const bool use_delay)
+{
+  GHOST_SystemWayland *system = seat->system;
+  const uint64_t time_step = 1000 / seat->key_repeat.rate;
+  const uint64_t time_start = use_delay ? seat->key_repeat.delay : time_step;
+#ifdef USE_EVENT_BACKGROUND_THREAD
+  GHOST_TimerTask *timer = new GHOST_TimerTask(
+      system->getMilliSeconds() + time_start, time_step, key_repeat_fn, payload);
+  seat->key_repeat.timer = timer;
+  system->ghost_timer_manager()->addTimer(timer);
+#else
+  seat->key_repeat.timer = system->installTimer(time_start, time_step, key_repeat_fn, payload);
+#endif
+}
+
+/**
+ * \note The caller must lock `timer_mutex`.
+ */
+static void gwl_seat_key_repeat_timer_remove(GWL_Seat *seat)
+{
+  GHOST_SystemWayland *system = seat->system;
+#ifdef USE_EVENT_BACKGROUND_THREAD
+  system->ghost_timer_manager()->removeTimer(
+      static_cast<GHOST_TimerTask *>(seat->key_repeat.timer));
+#else
+  system->removeTimer(seat->key_repeat.timer);
+#endif
+  seat->key_repeat.timer = nullptr;
 }
 
 /** \} */
@@ -898,6 +949,16 @@ struct GWL_Display {
   /** Guard against multiple threads accessing `events_pending` at once. */
   std::mutex events_pending_mutex;
 
+  /**
+   * A separate timer queue, needed so the WAYLAND thread can lock access.
+   * Using the system's #GHOST_Sysem::getTimerManager is not thread safe because
+   * access to the timer outside of WAYLAND specific logic will not lock.
+   *
+   * Needed because #GHOST_System::dispatchEvents fires timers
+   * outside of WAYLAND (without locking the `timer_mutex`).
+   */
+  GHOST_TimerManager *ghost_timer_manager;
+
 #endif /* USE_EVENT_BACKGROUND_THREAD */
 };
 
@@ -951,6 +1012,11 @@ static void gwl_display_destroy(GWL_Display *display)
     gwl_display_event_thread_destroy(display);
     display->system->server_mutex->unlock();
   }
+
+  /* Important to remove after the seats which may have key repeat timers active. */
+  delete display->ghost_timer_manager;
+  display->ghost_timer_manager = nullptr;
+
 #endif /* USE_EVENT_BACKGROUND_THREAD */
 
   if (display->wl_display) {
@@ -1662,31 +1728,39 @@ static int ghost_wl_display_event_pump_from_thread(struct wl_display *wl_display
   server_mutex->lock();
   int err = 0;
   if (wl_display_prepare_read(wl_display) == 0) {
+    bool wait_on_fd = false;
     /* Use #GWL_IOR_NO_RETRY to ensure #SIGINT will break us out of our wait. */
     if (file_descriptor_is_io_ready(fd, GWL_IOR_READ | GWL_IOR_NO_RETRY, 0) > 0) {
       err = wl_display_read_events(wl_display);
     }
     else {
       wl_display_cancel_read(wl_display);
+      /* Without this, the thread will loop continuously, 100% CPU. */
+      wait_on_fd = true;
+    }
+
+    server_mutex->unlock();
+
+    if (wait_on_fd) {
+      /* Important this runs after unlocking. */
+      file_descriptor_is_io_ready(fd, GWL_IOR_READ | GWL_IOR_NO_RETRY, INT32_MAX);
     }
   }
   else {
-    int state;
-    do {
-      server_mutex->unlock();
-      /* Wait for input (unlocked, so as not to block other threads). */
-      state = file_descriptor_is_io_ready(fd, GWL_IOR_READ | GWL_IOR_NO_RETRY, INT32_MAX);
+    server_mutex->unlock();
+
+    /* Wait for input (unlocked, so as not to block other threads). */
+    int state = file_descriptor_is_io_ready(fd, GWL_IOR_READ | GWL_IOR_NO_RETRY, INT32_MAX);
+    /* Re-check `state` with a lock held, needed to avoid holding the lock. */
+    if (state > 0) {
       server_mutex->lock();
-      /* Re-check `state` with a lock held, needed to avoid holding the lock. */
+      state = file_descriptor_is_io_ready(fd, GWL_IOR_READ | GWL_IOR_NO_RETRY, 0);
       if (state > 0) {
-        state = file_descriptor_is_io_ready(fd, GWL_IOR_READ | GWL_IOR_NO_RETRY, 0);
-        if (state > 0) {
-          err = wl_display_dispatch_pending(wl_display);
-        }
+        err = wl_display_dispatch_pending(wl_display);
       }
-    } while (state > 0);
+      server_mutex->unlock();
+    }
   }
-  server_mutex->unlock();
 
   return err;
 }
@@ -2578,8 +2652,6 @@ static void pointer_handle_enter(void *data,
 
   GHOST_WindowWayland *win = ghost_wl_surface_user_data(wl_surface);
 
-  win->activate();
-
   GWL_Seat *seat = static_cast<GWL_Seat *>(data);
   seat->cursor_source_serial = serial;
   seat->pointer.serial = serial;
@@ -2619,8 +2691,6 @@ static void pointer_handle_leave(void *data,
   static_cast<GWL_Seat *>(data)->pointer.wl_surface_window = nullptr;
   if (wl_surface && ghost_wl_surface_own(wl_surface)) {
     CLOG_INFO(LOG, 2, "leave");
-    GHOST_WindowWayland *win = ghost_wl_surface_user_data(wl_surface);
-    win->deactivate();
   }
   else {
     CLOG_INFO(LOG, 2, "leave (skipped)");
@@ -3706,9 +3776,14 @@ static void keyboard_handle_leave(void *data,
   GWL_Seat *seat = static_cast<GWL_Seat *>(data);
   seat->keyboard.wl_surface_window = nullptr;
 
-  /* Losing focus must stop repeating text. */
-  if (seat->key_repeat.timer) {
-    keyboard_handle_key_repeat_cancel(seat);
+  {
+#ifdef USE_EVENT_BACKGROUND_THREAD
+    std::lock_guard lock_timer_guard{*seat->system->timer_mutex};
+#endif
+    /* Losing focus must stop repeating text. */
+    if (seat->key_repeat.timer) {
+      keyboard_handle_key_repeat_cancel(seat);
+    }
   }
 
 #ifdef USE_GNOME_KEYBOARD_SUPPRESS_WARNING
@@ -3768,36 +3843,32 @@ static xkb_keysym_t xkb_state_key_get_one_sym_without_modifiers(
   return sym;
 }
 
+/**
+ * \note Caller must lock `timer_mutex`.
+ */
 static void keyboard_handle_key_repeat_cancel(GWL_Seat *seat)
 {
-#ifdef USE_EVENT_BACKGROUND_THREAD
-  std::lock_guard lock_timer_guard{*seat->system->timer_mutex};
-#endif
   GHOST_ASSERT(seat->key_repeat.timer != nullptr, "Caller much check for timer");
   delete static_cast<GWL_KeyRepeatPlayload *>(seat->key_repeat.timer->getUserData());
-  seat->system->removeTimer(seat->key_repeat.timer);
-  seat->key_repeat.timer = nullptr;
+
+  gwl_seat_key_repeat_timer_remove(seat);
 }
 
 /**
  * Restart the key-repeat timer.
  * \param use_delay: When false, use the interval
  * (prevents pause when the setting changes while the key is held).
+ *
+ * \note Caller must lock `timer_mutex`.
  */
 static void keyboard_handle_key_repeat_reset(GWL_Seat *seat, const bool use_delay)
 {
-#ifdef USE_EVENT_BACKGROUND_THREAD
-  std::lock_guard lock_timer_guard{*seat->system->timer_mutex};
-#endif
   GHOST_ASSERT(seat->key_repeat.timer != nullptr, "Caller much check for timer");
-  GHOST_SystemWayland *system = seat->system;
-  GHOST_ITimerTask *timer = seat->key_repeat.timer;
-  GHOST_TimerProcPtr key_repeat_fn = timer->getTimerProc();
+  GHOST_TimerProcPtr key_repeat_fn = seat->key_repeat.timer->getTimerProc();
   GHOST_TUserDataPtr payload = seat->key_repeat.timer->getUserData();
-  seat->system->removeTimer(seat->key_repeat.timer);
-  const uint64_t time_step = 1000 / seat->key_repeat.rate;
-  const uint64_t time_start = use_delay ? seat->key_repeat.delay : time_step;
-  seat->key_repeat.timer = system->installTimer(time_start, time_step, key_repeat_fn, payload);
+
+  gwl_seat_key_repeat_timer_remove(seat);
+  gwl_seat_key_repeat_timer_add(seat, key_repeat_fn, payload, use_delay);
 }
 
 static void keyboard_handle_key(void *data,
@@ -3835,6 +3906,11 @@ static void keyboard_handle_key(void *data,
       etype = GHOST_kEventKeyDown;
       break;
   }
+
+#ifdef USE_EVENT_BACKGROUND_THREAD
+  /* Any access to `seat->key_repeat.timer` must lock. */
+  std::lock_guard lock_timer_guard{*seat->system->timer_mutex};
+#endif
 
   struct GWL_KeyRepeatPlayload *key_repeat_payload = nullptr;
 
@@ -3874,23 +3950,14 @@ static void keyboard_handle_key(void *data,
         break;
       }
       case RESET: {
-#ifdef USE_EVENT_BACKGROUND_THREAD
-        std::lock_guard lock_timer_guard{*seat->system->timer_mutex};
-#endif
         /* The payload will be added again. */
-        seat->system->removeTimer(seat->key_repeat.timer);
-        seat->key_repeat.timer = nullptr;
+        gwl_seat_key_repeat_timer_remove(seat);
         break;
       }
       case CANCEL: {
-#ifdef USE_EVENT_BACKGROUND_THREAD
-        std::lock_guard lock_timer_guard{*seat->system->timer_mutex};
-#endif
         delete key_repeat_payload;
         key_repeat_payload = nullptr;
-
-        seat->system->removeTimer(seat->key_repeat.timer);
-        seat->key_repeat.timer = nullptr;
+        gwl_seat_key_repeat_timer_remove(seat);
         break;
       }
     }
@@ -3944,8 +4011,8 @@ static void keyboard_handle_key(void *data,
                                                            utf8_buf));
       }
     };
-    seat->key_repeat.timer = seat->system->installTimer(
-        seat->key_repeat.delay, 1000 / seat->key_repeat.rate, key_repeat_fn, key_repeat_payload);
+
+    gwl_seat_key_repeat_timer_add(seat, key_repeat_fn, key_repeat_payload, true);
   }
 }
 
@@ -3970,8 +4037,13 @@ static void keyboard_handle_modifiers(void *data,
 
   /* A modifier changed so reset the timer,
    * see comment in #keyboard_handle_key regarding this behavior. */
-  if (seat->key_repeat.timer) {
-    keyboard_handle_key_repeat_reset(seat, true);
+  {
+#ifdef USE_EVENT_BACKGROUND_THREAD
+    std::lock_guard lock_timer_guard{*seat->system->timer_mutex};
+#endif
+    if (seat->key_repeat.timer) {
+      keyboard_handle_key_repeat_reset(seat, true);
+    }
   }
 
 #ifdef USE_GNOME_KEYBOARD_SUPPRESS_WARNING
@@ -3990,9 +4062,14 @@ static void keyboard_repeat_handle_info(void *data,
   seat->key_repeat.rate = rate;
   seat->key_repeat.delay = delay;
 
-  /* Unlikely possible this setting changes while repeating. */
-  if (seat->key_repeat.timer) {
-    keyboard_handle_key_repeat_reset(seat, false);
+  {
+#ifdef USE_EVENT_BACKGROUND_THREAD
+    std::lock_guard lock_timer_guard{*seat->system->timer_mutex};
+#endif
+    /* Unlikely possible this setting changes while repeating. */
+    if (seat->key_repeat.timer) {
+      keyboard_handle_key_repeat_reset(seat, false);
+    }
   }
 }
 
@@ -4263,8 +4340,14 @@ static void gwl_seat_capability_keyboard_disable(GWL_Seat *seat)
   if (!seat->wl_keyboard) {
     return;
   }
-  if (seat->key_repeat.timer) {
-    keyboard_handle_key_repeat_cancel(seat);
+
+  {
+#ifdef USE_EVENT_BACKGROUND_THREAD
+    std::lock_guard lock_timer_guard{*seat->system->timer_mutex};
+#endif
+    if (seat->key_repeat.timer) {
+      keyboard_handle_key_repeat_cancel(seat);
+    }
   }
   wl_keyboard_destroy(seat->wl_keyboard);
   seat->wl_keyboard = nullptr;
@@ -4534,7 +4617,7 @@ static void output_handle_scale(void *data, struct wl_output * /*wl_output*/, co
   CLOG_INFO(LOG, 2, "scale");
   GWL_Output *output = static_cast<GWL_Output *>(data);
   output->scale = factor;
-  output->system->output_scale_update_maybe_leave(output, false);
+  output->system->output_scale_update(output);
 }
 
 static const struct wl_output_listener output_listener = {
@@ -4736,7 +4819,11 @@ static void gwl_registry_wl_output_remove(GWL_Display *display,
 
   if (!on_exit) {
     /* Needed for WLROOTS, does nothing if surface leave callbacks have already run. */
-    output->system->output_scale_update_maybe_leave(output, true);
+    if (output->system->output_unref(output->wl_output)) {
+      CLOG_WARN(LOG,
+                "mis-behaving compositor failed to call \"surface_listener.leave\" "
+                "window scale may be invalid!");
+    }
   }
 
   if (output->xdg_output) {
@@ -5316,7 +5403,7 @@ GHOST_SystemWayland::GHOST_SystemWayland(bool background)
   /* Connect to the Wayland server. */
   display_->wl_display = wl_display_connect(nullptr);
   if (!display_->wl_display) {
-    this->~GHOST_SystemWayland();
+    display_destroy_and_free_all();
     throw std::runtime_error("Wayland: unable to connect to display!");
   }
 
@@ -5360,7 +5447,7 @@ GHOST_SystemWayland::GHOST_SystemWayland(bool background)
               "WAYLAND found but libdecor was not, install libdecor for Wayland support, "
               "falling back to X11\n");
 #  endif
-      this->~GHOST_SystemWayland();
+      display_destroy_and_free_all();
       throw std::runtime_error("Wayland: unable to find libdecor!");
 
       use_libdecor = true;
@@ -5377,7 +5464,7 @@ GHOST_SystemWayland::GHOST_SystemWayland(bool background)
     GWL_LibDecor_System &decor = *display_->libdecor;
     decor.context = libdecor_new(display_->wl_display, &libdecor_interface);
     if (!decor.context) {
-      this->~GHOST_SystemWayland();
+      display_destroy_and_free_all();
       throw std::runtime_error("Wayland: unable to create window decorations!");
     }
   }
@@ -5388,17 +5475,19 @@ GHOST_SystemWayland::GHOST_SystemWayland(bool background)
   {
     GWL_XDG_Decor_System &decor = *display_->xdg_decor;
     if (!decor.shell) {
-      this->~GHOST_SystemWayland();
+      display_destroy_and_free_all();
       throw std::runtime_error("Wayland: unable to access xdg_shell!");
     }
   }
 
 #ifdef USE_EVENT_BACKGROUND_THREAD
   gwl_display_event_thread_create(display_);
+
+  display_->ghost_timer_manager = new GHOST_TimerManager();
 #endif
 }
 
-GHOST_SystemWayland::~GHOST_SystemWayland()
+void GHOST_SystemWayland::display_destroy_and_free_all()
 {
   gwl_display_destroy(display_);
 
@@ -5406,6 +5495,11 @@ GHOST_SystemWayland::~GHOST_SystemWayland()
   delete server_mutex;
   delete timer_mutex;
 #endif
+}
+
+GHOST_SystemWayland::~GHOST_SystemWayland()
+{
+  display_destroy_and_free_all();
 }
 
 GHOST_TSuccess GHOST_SystemWayland::init()
@@ -5470,10 +5564,16 @@ bool GHOST_SystemWayland::processEvents(bool waitForEvent)
 #endif /* USE_EVENT_BACKGROUND_THREAD */
 
   {
+    const uint64_t now = getMilliSeconds();
 #ifdef USE_EVENT_BACKGROUND_THREAD
-    std::lock_guard lock_timer_guard{*display_->system->timer_mutex};
+    {
+      std::lock_guard lock_timer_guard{*display_->system->timer_mutex};
+      if (ghost_timer_manager()->fireTimers(now)) {
+        any_processed = true;
+      }
+    }
 #endif
-    if (getTimerManager()->fireTimers(getMilliSeconds())) {
+    if (getTimerManager()->fireTimers(now)) {
       any_processed = true;
     }
   }
@@ -6696,6 +6796,13 @@ struct wl_shm *GHOST_SystemWayland::wl_shm() const
   return display_->wl_shm;
 }
 
+#ifdef USE_EVENT_BACKGROUND_THREAD
+GHOST_TimerManager *GHOST_SystemWayland::ghost_timer_manager()
+{
+  return display_->ghost_timer_manager;
+}
+#endif
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -6744,11 +6851,13 @@ void GHOST_SystemWayland::seat_active_set(const struct GWL_Seat *seat)
   gwl_display_seat_active_set(display_, seat);
 }
 
-void GHOST_SystemWayland::window_surface_unref(const wl_surface *wl_surface)
+bool GHOST_SystemWayland::window_surface_unref(const wl_surface *wl_surface)
 {
+  bool changed = false;
 #define SURFACE_CLEAR_PTR(surface_test) \
   if (surface_test == wl_surface) { \
     surface_test = nullptr; \
+    changed = true; \
   } \
   ((void)0);
 
@@ -6760,37 +6869,62 @@ void GHOST_SystemWayland::window_surface_unref(const wl_surface *wl_surface)
     SURFACE_CLEAR_PTR(seat->wl_surface_window_focus_dnd);
   }
 #undef SURFACE_CLEAR_PTR
+
+  return changed;
 }
 
-void GHOST_SystemWayland::output_scale_update_maybe_leave(GWL_Output *output, bool leave)
+bool GHOST_SystemWayland::output_unref(wl_output *wl_output)
 {
-  /* Update scale, optionally leaving the outputs beforehand. */
-  GHOST_WindowManager *window_manager = output->system->getWindowManager();
+  bool changed = false;
+  if (!ghost_wl_output_own(wl_output)) {
+    return changed;
+  }
+
+  /* NOTE: keep in sync with `output_scale_update`. */
+  GWL_Output *output = ghost_wl_output_user_data(wl_output);
+  GHOST_WindowManager *window_manager = getWindowManager();
+  if (window_manager) {
+    for (GHOST_IWindow *iwin : window_manager->getWindows()) {
+      GHOST_WindowWayland *win = static_cast<GHOST_WindowWayland *>(iwin);
+      if (win->outputs_leave(output)) {
+        changed = true;
+      }
+    }
+  }
+  for (GWL_Seat *seat : display_->seats) {
+    if (seat->pointer.outputs.erase(output)) {
+      changed = true;
+    }
+    if (seat->tablet.outputs.erase(output)) {
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+void GHOST_SystemWayland::output_scale_update(GWL_Output *output)
+{
+  /* NOTE: keep in sync with `output_unref`. */
+  GHOST_WindowManager *window_manager = getWindowManager();
   if (window_manager) {
     for (GHOST_IWindow *iwin : window_manager->getWindows()) {
       GHOST_WindowWayland *win = static_cast<GHOST_WindowWayland *>(iwin);
       const std::vector<GWL_Output *> &outputs = win->outputs();
-      bool found = leave ? win->outputs_leave(output) :
-                           !(std::find(outputs.begin(), outputs.end(), output) == outputs.cend());
-      if (found) {
+      if (!(std::find(outputs.begin(), outputs.end(), output) == outputs.cend())) {
         win->outputs_changed_update_scale();
       }
     }
   }
 
   for (GWL_Seat *seat : display_->seats) {
-    bool found;
-
-    found = leave ? seat->pointer.outputs.erase(output) : seat->pointer.outputs.count(output);
-    if (found) {
+    if (seat->pointer.outputs.count(output)) {
       if (seat->cursor.wl_surface_cursor != nullptr) {
         update_cursor_scale(
             seat->cursor, seat->system->wl_shm(), &seat->pointer, seat->cursor.wl_surface_cursor);
       }
     }
 
-    found = leave ? seat->tablet.outputs.erase(output) : seat->tablet.outputs.count(output);
-    if (found) {
+    if (seat->tablet.outputs.count(output)) {
       for (struct zwp_tablet_tool_v2 *zwp_tablet_tool_v2 : seat->tablet_tools) {
         GWL_TabletTool *tablet_tool = static_cast<GWL_TabletTool *>(
             zwp_tablet_tool_v2_get_user_data(zwp_tablet_tool_v2));

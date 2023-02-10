@@ -53,10 +53,8 @@ struct bGPdata;
 struct bNodeInstanceHash;
 struct bNodeLink;
 struct bNodePreview;
-struct bNodeTreeExec;
 struct bNodeType;
 struct bNode;
-struct uiBlock;
 
 #define NODE_MAXSTR 64
 
@@ -79,7 +77,7 @@ typedef struct bNodeStack {
   char _pad[4];
 } bNodeStack;
 
-/* ns->datatype, shadetree only */
+/** #bNodeStack.datatype (shade-tree only). */
 #define NS_OSA_VECTORS 1
 #define NS_OSA_VALUES 2
 
@@ -375,7 +373,7 @@ typedef struct bNode {
   bool is_group_output() const;
   const blender::nodes::NodeDeclaration *declaration() const;
   /** A span containing all internal links when the node is muted. */
-  blender::Span<const bNodeLink *> internal_links() const;
+  blender::Span<bNodeLink> internal_links() const;
 
   /* The following methods are only available when #bNodeTree.ensure_topology_cache has been
    * called. */
@@ -661,9 +659,9 @@ typedef struct bNodeTree {
 
 /** #NodeTree.flag */
 #define NTREE_DS_EXPAND (1 << 0)            /* for animation editors */
-#define NTREE_COM_OPENCL (1 << 1)           /* use opencl */
+#define NTREE_COM_OPENCL (1 << 1)           /* Use OPENCL. */
 #define NTREE_TWO_PASS (1 << 2)             /* two pass */
-#define NTREE_COM_GROUPNODE_BUFFER (1 << 3) /* use groupnode buffers */
+#define NTREE_COM_GROUPNODE_BUFFER (1 << 3) /* Use group-node buffers. */
 #define NTREE_VIEWER_BORDER (1 << 4)        /* use a border for viewer nodes */
 /* NOTE: DEPRECATED, use (id->tag & LIB_TAG_LOCALIZED) instead. */
 
@@ -1136,12 +1134,11 @@ typedef struct NodeShaderTexPointDensity {
   short interpolation;
   short color_source;
   short ob_color_source;
-  /** Vertex attribute layer for color source, MAX_CUSTOMDATA_LAYER_NAME. */
-  char vertex_attribute_name[64];
   /* Used at runtime only by sampling RNA API. */
   PointDensity pd;
   int cached_resolution;
-  char _pad2[4];
+  /** Vertex attribute layer for color source, MAX_CUSTOMDATA_LAYER_NAME. */
+  char vertex_attribute_name[68];
 } NodeShaderTexPointDensity;
 
 typedef struct NodeShaderPrincipled {
