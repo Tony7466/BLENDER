@@ -212,22 +212,20 @@ void paintface_reveal(bContext *C, Object *ob, const bool select)
   paintface_flush_flags(C, ob, true, true);
 }
 
-/* Select faces connected to the given face_indices. Seams are treated as separation. */
-static void paintface_select_linked_faces(Mesh *mesh,
-                                          const blender::Span<int> face_indices,
-                                          const bool select)
+/**
+ * Join all edges of each poly in the AtomicDisjointSet. This can be used to find out which polys
+ * are connected to each other.
+ * @param islands Is expected to be of length mesh->totedge.
+ * @param skip_seams Polys separated by a seam will be treated as not connected.
+ */
+static void build_poly_connections(blender::AtomicDisjointSet *islands,
+                                   Mesh *mesh,
+                                   const bool skip_seams = true)
 {
   using namespace blender;
-
-  AtomicDisjointSet islands(mesh->totedge);
-
   const Span<MPoly> polys = mesh->polys();
   const Span<MEdge> edges = mesh->edges();
   const Span<MLoop> loops = mesh->loops();
-
-  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
-  bke::SpanAttributeWriter<bool> select_poly = attributes.lookup_or_add_for_write_span<bool>(
-      ".select_poly", ATTR_DOMAIN_FACE);
 
   /* Polys are connected if they share edges. By connecting all edges of a loop (as long as they
    * are not a seam) we can find connected faces. */
@@ -237,20 +235,39 @@ static void paintface_select_linked_faces(Mesh *mesh,
        */
       for (int outer_loop_index = 0; outer_loop_index < poly.totloop; outer_loop_index++) {
         const MLoop *outer_mloop = &loops[poly.loopstart + outer_loop_index];
-        if ((edges[outer_mloop->e].flag & ME_SEAM) != 0) {
+        if (skip_seams && (edges[outer_mloop->e].flag & ME_SEAM) != 0) {
           continue;
         }
         for (int inner_loop_idx = outer_loop_index + 1; inner_loop_idx < poly.totloop;
              inner_loop_idx++) {
           const MLoop *inner_mloop = &loops[poly.loopstart + inner_loop_idx];
-          if ((edges[inner_mloop->e].flag & ME_SEAM) != 0) {
+          if (skip_seams && (edges[inner_mloop->e].flag & ME_SEAM) != 0) {
             continue;
           }
-          islands.join(inner_mloop->e, outer_mloop->e);
+          islands->join(inner_mloop->e, outer_mloop->e);
         }
       }
     }
   });
+}
+
+/* Select faces connected to the given face_indices. Seams are treated as separation. */
+static void paintface_select_linked_faces(Mesh *mesh,
+                                          const blender::Span<int> face_indices,
+                                          const bool select)
+{
+  using namespace blender;
+
+  AtomicDisjointSet islands(mesh->totedge);
+  build_poly_connections(&islands, mesh);
+
+  const Span<MPoly> polys = mesh->polys();
+  const Span<MEdge> edges = mesh->edges();
+  const Span<MLoop> loops = mesh->loops();
+
+  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
+  bke::SpanAttributeWriter<bool> select_poly = attributes.lookup_or_add_for_write_span<bool>(
+      ".select_poly", ATTR_DOMAIN_FACE);
 
   Set<int> selected_roots;
   for (const int i : face_indices) {
@@ -301,6 +318,8 @@ void paintface_select_linked(bContext *C, Object *ob, const int mval[2], const b
     if (!ED_mesh_pick_face(C, ob, mval, ED_MESH_PICK_DEFAULT_FACE_DIST, &index)) {
       return;
     }
+    /* Since paintface_select_linked_faces might not select the face under the cursor, select it
+     * here. */
     select_poly.span[index] = true;
     indices.append(index);
   }
