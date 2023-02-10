@@ -528,7 +528,7 @@ bool select_box(const ViewContext &vc,
 bool select_lasso(const ViewContext &vc,
                   bke::CurvesGeometry &curves,
                   const eAttrDomain selection_domain,
-                  Span<int2> coords,
+                  const Span<int2> coords,
                   const eSelectOp sel_op)
 {
   rcti bbox;
