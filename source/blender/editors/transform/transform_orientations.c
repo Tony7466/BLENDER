@@ -514,6 +514,32 @@ short ED_transform_calc_orientation_from_type_ex(const Scene *scene,
       /* If not gimbal, fall through to normal. */
       ATTR_FALLTHROUGH;
     }
+    case V3D_ORIENT_PARENT: {
+      if (ob) {
+        if (ob->mode & OB_MODE_POSE) {
+          bPoseChannel *active_pchan = BKE_pose_channel_active(ob, false);
+          // switch for parent if it exists
+          bPoseChannel *space_pchan = active_pchan->parent ? active_pchan->parent : active_pchan;
+          if (space_pchan) {
+            // store off the original active bone for a moment, run this, then restore
+            bArmature *armature = ob->data;
+            armature->act_bone = space_pchan->bone;
+            ED_getTransformOrientationMatrix(view_layer, v3d, ob, obedit, pivot_point, r_mat);
+            armature->act_bone = active_pchan->bone;
+            break;
+          }
+        }
+        else {
+          // handle the parent check at object level
+          ED_getTransformOrientationMatrix(view_layer, v3d,
+                                           ob->parent ? ob->parent : ob,
+                                           obedit, pivot_point, r_mat);
+          break;
+        }
+      }
+      /* No break; we define 'parent' as 'normal' otherwise. */
+      ATTR_FALLTHROUGH;
+    }
     case V3D_ORIENT_NORMAL: {
       if (obedit || (ob && ob->mode & OB_MODE_POSE)) {
         ED_getTransformOrientationMatrix(scene, view_layer, v3d, ob, obedit, pivot_point, r_mat);
@@ -526,7 +552,7 @@ short ED_transform_calc_orientation_from_type_ex(const Scene *scene,
       if (ob) {
         if (ob->mode & OB_MODE_POSE) {
           /* Each bone moves on its own local axis, but to avoid confusion,
-           * use the active pones axis for display T33575, this works as expected on a single
+           * use the active bone's axis for display T33575, this works as expected on a single
            * bone and users who select many bones will understand what's going on and what local
            * means when they start transforming. */
           ED_getTransformOrientationMatrix(scene, view_layer, v3d, ob, obedit, pivot_point, r_mat);
@@ -646,6 +672,8 @@ const char *transform_orientations_spacename_get(TransInfo *t, const short orien
       return TIP_("view");
     case V3D_ORIENT_CURSOR:
       return TIP_("cursor");
+    case V3D_ORIENT_PARENT:
+      return TIP_("parent");
     case V3D_ORIENT_CUSTOM_MATRIX:
       return TIP_("custom");
     case V3D_ORIENT_CUSTOM:
