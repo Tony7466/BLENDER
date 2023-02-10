@@ -49,3 +49,7 @@ waveletNoiseTile.bin
 
 # testing environment
 /Testing
+
+# CLion cmake folders
+cmake-*
+
