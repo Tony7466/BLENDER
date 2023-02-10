@@ -2676,8 +2676,8 @@ float SCULPT_brush_strength_factor(SculptSession *ss,
   return avg;
 }
 
-void SCULPT_brush_strength_color(struct SculptSession *ss,
-                                 const struct Brush *brush,
+void SCULPT_brush_strength_color(SculptSession *ss,
+                                 const Brush *brush,
                                  const float brush_point[3],
                                  float len,
                                  const float vno[3],
@@ -2685,7 +2685,7 @@ void SCULPT_brush_strength_color(struct SculptSession *ss,
                                  float mask,
                                  const PBVHVertRef vertex,
                                  int thread_id,
-                                 struct AutomaskingNodeData *automask_data,
+                                 AutomaskingNodeData *automask_data,
                                  float r_rgba[4])
 {
   StrokeCache *cache = ss->cache;
