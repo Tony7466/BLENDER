@@ -5366,6 +5366,7 @@ void SCULPT_flush_update_step(bContext *C, SculptUpdateType update_flags)
   ARegion *region = CTX_wm_region(C);
   MultiresModifierData *mmd = ss->multires.modifier;
   RegionView3D *rv3d = CTX_wm_region_view3d(C);
+  View3D *v3d = CTX_wm_view3d(C);
   Mesh *mesh = static_cast<Mesh *>(ob->data);
 
   if (rv3d) {
@@ -5379,15 +5380,18 @@ void SCULPT_flush_update_step(bContext *C, SculptUpdateType update_flags)
 
   if ((update_flags & SCULPT_UPDATE_IMAGE) != 0) {
     ED_region_tag_redraw(region);
+    if (update_flags == SCULPT_UPDATE_IMAGE) {
+      if (ELEM(v3d->shading.type, OB_MATERIAL, OB_TEXTURE, OB_RENDER)) {
+        /* When multisampling is activated, this should prevent from ghosting */
+        DEG_id_tag_update(&ob->id, ID_RECALC_SHADING);
+      }
+      /* Early exit when only need to update the images. We don't want to tag any geometry updates
+       * that would rebuilt the PBVH. */
+      return;
+    }
   }
 
   DEG_id_tag_update(&ob->id, ID_RECALC_SHADING);
-
-  if (update_flags == SCULPT_UPDATE_IMAGE) {
-    /* Early exit when only need to update the images. We don't want to tag any geometry updates
-     * that would rebuilt the PBVH. */
-    return;
-  }
 
   /* Only current viewport matters, slower update for all viewports will
    * be done in sculpt_flush_update_done. */
