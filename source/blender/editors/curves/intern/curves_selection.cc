@@ -164,7 +164,7 @@ bool has_anything_selected(const bke::CurvesGeometry &curves)
   return !selection || contains(selection, true);
 }
 
-bool has_any_selected(const GSpan selection)
+bool has_anything_selected(const GSpan selection)
 {
   if (selection.type().is<bool>()) {
     return selection.typed<bool>().contains(true);
@@ -258,7 +258,7 @@ void select_linked(bke::CurvesGeometry &curves)
   threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
     for (const int curve_i : range) {
       GMutableSpan selection_curve = selection.span.slice(points_by_curve[curve_i]);
-      if (has_any_selected(selection_curve)) {
+      if (has_anything_selected(selection_curve)) {
         fill_selection_true(selection_curve);
       }
     }

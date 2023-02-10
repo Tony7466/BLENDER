@@ -92,7 +92,7 @@ bool has_anything_selected(const bke::CurvesGeometry &curves);
 /**
  * Return true if any element in the span is selected, on either domain with either type.
  */
-bool has_any_selected(const GSpan selection);
+bool has_anything_selected(GSpan selection);
 
 /**
  * Find curves that have any point selected (a selection factor greater than zero),
