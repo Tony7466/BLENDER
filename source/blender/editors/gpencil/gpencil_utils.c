@@ -3332,8 +3332,7 @@ void ED_gpencil_layer_merge(bGPdata *gpd,
      * that are keyframes in destination layer and not in source layer
      * to keep the image equals.
      */
-    while (gpf_dst->next &&
-           (!gpf_src->next || (gpf_dst->next->framenum < gpf_src->next->framenum))) {
+    if (gpf_dst->next && (!gpf_src->next || (gpf_dst->next->framenum < gpf_src->next->framenum))) {
       gpf_dst = gpf_dst->next;
       BKE_gpencil_layer_frame_get(gpl_src, gpf_dst->framenum, GP_GETFRAME_ADD_COPY);
     }
