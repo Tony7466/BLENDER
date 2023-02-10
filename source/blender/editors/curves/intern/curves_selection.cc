@@ -203,14 +203,12 @@ void select_all(bke::CurvesGeometry &curves, const eAttrDomain selection_domain,
   }
 }
 
-void select_ends(bke::CurvesGeometry &curves,
-                 const eAttrDomain selection_domain,
-                 int amount,
-                 bool end_points)
+void select_ends(bke::CurvesGeometry &curves, int amount, bool end_points)
 {
   const bool was_anything_selected = has_anything_selected(curves);
+  const OffsetIndices points_by_curve = curves.points_by_curve();
   bke::GSpanAttributeWriter selection = ensure_selection_attribute(
-      curves, selection_domain, CD_PROP_BOOL);
+      curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
   if (!was_anything_selected) {
     fill_selection_true(selection.span);
   }
@@ -223,12 +221,37 @@ void select_ends(bke::CurvesGeometry &curves,
       MutableSpan<T> selection_typed = selection.span.typed<T>();
       threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
         for (const int curve_i : range) {
-          const OffsetIndices points_by_curve = curves.points_by_curve();
           if (end_points) {
             selection_typed.slice(points_by_curve[curve_i].drop_back(amount)).fill(T(0));
           }
           else {
             selection_typed.slice(points_by_curve[curve_i].drop_front(amount)).fill(T(0));
+          }
+        }
+      });
+    }
+  });
+  selection.finish();
+}
+
+void select_linked(bke::CurvesGeometry &curves)
+{
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  bke::GSpanAttributeWriter selection = ensure_selection_attribute(
+      curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
+
+  selection.span.type().to_static_type_tag<bool, float>([&](auto type_tag) {
+    using T = typename decltype(type_tag)::type;
+    if constexpr (std::is_void_v<T>) {
+      BLI_assert_unreachable();
+    }
+    else {
+      MutableSpan<T> selection_typed = selection.span.typed<T>();
+      threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
+        for (const int curve_i : range) {
+          MutableSpan<T> selection_curve_typed = selection_typed.slice(points_by_curve[curve_i]);
+          if (selection_curve_typed.as_span().contains(T(1))) {
+            selection_curve_typed.fill(T(1));
           }
         }
       });
