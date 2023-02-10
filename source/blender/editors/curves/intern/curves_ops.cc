@@ -1002,7 +1002,7 @@ static void CURVES_OT_select_linked(wmOperatorType *ot)
 {
   ot->name = "Select Linked";
   ot->idname = __func__;
-  ot->description = "Select linked points of curves";
+  ot->description = "Select all points in curves with any point selection";
 
   ot->exec = select_linked_exec;
   ot->poll = editable_curves_point_domain_poll;
