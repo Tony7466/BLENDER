@@ -88,7 +88,7 @@ TEST(nla_track, BKE_nlatrack_remove_strip)
   BKE_nlatrack_remove_strip(&track, &strip2);
   EXPECT_EQ(1, BLI_listbase_count(&track.strips));
   // ensure the correct strip was removed.
-  EXPECT_EQ(BLI_findindex(&track.strips, &strip2));
+  EXPECT_EQ(-1, BLI_findindex(&track.strips, &strip2));
 }
 
 }  // namespace blender::bke::tests
