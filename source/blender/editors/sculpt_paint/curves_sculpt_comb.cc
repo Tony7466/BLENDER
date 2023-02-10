@@ -18,6 +18,7 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_brush.h"
 #include "BKE_bvhutils.h"
+#include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_crazyspace.hh"
 #include "BKE_curves.hh"
@@ -197,6 +198,10 @@ struct CombOperationExecutor {
     const float brush_radius_re = brush_radius_base_re_ * brush_radius_factor_;
     const float brush_radius_sq_re = pow2f(brush_radius_re);
 
+    CurveMapping &curve_parameter_falloff_mapping =
+        *brush_->curves_sculpt_settings->curve_parameter_falloff;
+    BKE_curvemapping_init(&curve_parameter_falloff_mapping);
+
     threading::parallel_for(curve_selection_.index_range(), 256, [&](const IndexRange range) {
       Vector<int> &local_changed_curves = r_changed_curves.local();
       for (const int curve_i : curve_selection_.slice(range)) {
@@ -222,8 +227,12 @@ struct CombOperationExecutor {
           /* A falloff that is based on how far away the point is from the stroke. */
           const float radius_falloff = BKE_brush_curve_strength(
               brush_, distance_to_brush_re, brush_radius_re);
+          const float curve_parameter = (point_i - points.first()) / float(points.size() - 1);
+          const float curve_falloff = BKE_curvemapping_evaluateF(
+              &curve_parameter_falloff_mapping, 0, curve_parameter);
           /* Combine the falloff and brush strength. */
-          const float weight = brush_strength_ * radius_falloff * point_factors_[point_i];
+          const float weight = brush_strength_ * curve_falloff * radius_falloff *
+                               point_factors_[point_i];
 
           /* Offset the old point position in screen space and transform it back into 3D space.
            */

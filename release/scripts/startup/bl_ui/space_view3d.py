@@ -521,6 +521,7 @@ class _draw_tool_settings_context_mode:
         if curves_tool == 'COMB':
             layout.prop(brush, "falloff_shape", expand=True)
             layout.popover("VIEW3D_PT_tools_brush_falloff")
+            layout.popover("VIEW3D_PT_curves_sculpt_parameter_falloff", text="Curve Falloff")
         elif curves_tool == 'ADD':
             layout.prop(brush, "falloff_shape", expand=True)
             layout.prop(brush.curves_sculpt_settings, "add_amount")
@@ -7934,6 +7935,21 @@ class VIEW3D_PT_curves_sculpt_add_shape(Panel):
         col.prop(brush.curves_sculpt_settings, "points_per_curve", text="Points")
 
 
+class VIEW3D_PT_curves_sculpt_parameter_falloff(Panel):
+    # Only for popover, these are dummy values.
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'WINDOW'
+    bl_label = "Curves Sculpt Parameter Falloff"
+
+    def draw(self, context):
+        layout = self.layout
+
+        settings = UnifiedPaintPanel.paint_settings(context)
+        brush = settings.brush
+
+        layout.template_curve_mapping(brush.curves_sculpt_settings, "curve_parameter_falloff")
+
+
 class VIEW3D_PT_curves_sculpt_grow_shrink_scaling(Panel):
     # Only for popover, these are dummy values.
     bl_space_type = 'VIEW_3D'
@@ -8211,6 +8227,7 @@ classes = (
     TOPBAR_PT_gpencil_vertexcolor,
     TOPBAR_PT_annotation_layers,
     VIEW3D_PT_curves_sculpt_add_shape,
+    VIEW3D_PT_curves_sculpt_parameter_falloff,
     VIEW3D_PT_curves_sculpt_grow_shrink_scaling,
     VIEW3D_PT_viewport_debug,
 )
