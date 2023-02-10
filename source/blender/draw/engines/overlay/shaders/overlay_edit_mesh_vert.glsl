@@ -95,5 +95,8 @@ void main()
   finalColor.rgb = non_linear_blend_color(colorEditMeshMiddle.rgb, finalColor.rgb, facing);
 #endif
 
+  /* Offset Z position for retopology overlay. */
+  gl_Position.z -= retopologyBias / gl_Position.z;
+
   view_clipping_distances(world_pos);
 }

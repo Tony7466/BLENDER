@@ -143,6 +143,10 @@ void main()
       colorEditMeshMiddle.rgb, out_finalColor[1].rgb, facing1);
 #endif
 
+  /* Offset Z position for retopology overlay. */
+  out_pos0.z -= retopologyBias / out_pos0.z;
+  out_pos1.z -= retopologyBias / out_pos1.z;
+
   // -------- GEOM SHADER ALTERNATIVE ----------- //
   vec2 ss_pos[2];
 
