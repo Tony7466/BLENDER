@@ -325,6 +325,7 @@ DefNode(GeometryNode, GEO_NODE_GEOMETRY_TO_INSTANCE, 0, "GEOMETRY_TO_INSTANCE", 
 DefNode(GeometryNode, GEO_NODE_IMAGE_INFO, 0, "IMAGE_INFO", ImageInfo, "Image Info", "Retrieve information about an image")
 DefNode(GeometryNode, GEO_NODE_IMAGE_TEXTURE, def_geo_image_texture, "IMAGE_TEXTURE", ImageTexture, "Image Texture", "Sample values from an image texture")
 DefNode(GeometryNode, GEO_NODE_IMAGE, def_geo_image, "IMAGE", InputImage, "Image", "Input image")
+DefNode(GeometryNode, GEO_NODE_INDEX_MAP, def_geo_index_map, "INDEX_AMP", IndexMap, "Index Map", "")
 DefNode(GeometryNode, GEO_NODE_INPUT_CURVE_HANDLES, 0, "INPUT_CURVE_HANDLES", InputCurveHandlePositions,"Curve Handle Positions", "Retrieve the position of each Bézier control point's handles")
 DefNode(GeometryNode, GEO_NODE_INPUT_CURVE_TILT, 0, "INPUT_CURVE_TILT", InputCurveTilt, "Curve Tilt", "Retrieve the angle at each control point used to twist the curve's normal around its tangent")
 DefNode(GeometryNode, GEO_NODE_INPUT_ID, 0, "INPUT_ID", InputID, "ID", "Retrieve a stable random identifier value from the \"id\" attribute on the point domain, or the index if the attribute does not exist")

@@ -167,6 +167,12 @@ class VectorSet {
   {
   }
 
+  VectorSet(Hash hash, IsEqual is_equal) : VectorSet()
+  {
+    hash_ = std::move(hash);
+    is_equal_ = std::move(is_equal);
+  }
+
   VectorSet(Span<Key> keys, Allocator allocator = {}) : VectorSet(NoExceptConstructor(), allocator)
   {
     this->add_multiple(keys);
@@ -292,6 +298,11 @@ class VectorSet {
     return this->add__impl(std::forward<ForwardKey>(key), hash_(key));
   }
 
+  void add(const Key &key, const int64_t hash)
+  {
+    this->add__impl(key, hash);
+  }
+
   /**
    * Convenience function to add many keys to the vector set at once. Duplicates are removed
    * automatically.
@@ -400,6 +411,11 @@ class VectorSet {
   template<typename ForwardKey> int64_t index_of_try_as(const ForwardKey &key) const
   {
     return this->index_of_try__impl(key, hash_(key));
+  }
+
+  int64_t index_of_try_as(const Key &key, const int64_t hash) const
+  {
+    return this->index_of_try__impl(key, hash);
   }
 
   /**

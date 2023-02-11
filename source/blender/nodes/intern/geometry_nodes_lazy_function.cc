@@ -234,21 +234,22 @@ class LazyFunctionForMultiInput : public LazyFunction {
   {
     /* Currently we only have multi-inputs for geometry and string sockets. This could be
      * generalized in the future. */
-    base_type_->to_static_type_tag<GeometrySet, ValueOrField<std::string>>([&](auto type_tag) {
-      using T = typename decltype(type_tag)::type;
-      if constexpr (std::is_void_v<T>) {
-        /* This type is not supported in this node for now. */
-        BLI_assert_unreachable();
-      }
-      else {
-        void *output_ptr = params.get_output_data_ptr(0);
-        Vector<T> &values = *new (output_ptr) Vector<T>();
-        for (const int i : inputs_.index_range()) {
-          values.append(params.extract_input<T>(i));
-        }
-        params.output_set(0);
-      }
-    });
+    base_type_->to_static_type_tag<GeometrySet, ValueOrField<std::string>, ValueOrField<int>>(
+        [&](auto type_tag) {
+          using T = typename decltype(type_tag)::type;
+          if constexpr (std::is_void_v<T>) {
+            /* This type is not supported in this node for now. */
+            BLI_assert_unreachable();
+          }
+          else {
+            void *output_ptr = params.get_output_data_ptr(0);
+            Vector<T> &values = *new (output_ptr) Vector<T>();
+            for (const int i : inputs_.index_range()) {
+              values.append(params.extract_input<T>(i));
+            }
+            params.output_set(0);
+          }
+        });
   }
 };
 

@@ -20,6 +20,7 @@ FN_FIELD_CPP_TYPE_MAKE(int32_t);
 FN_FIELD_CPP_TYPE_MAKE(std::string);
 
 BLI_VECTOR_CPP_TYPE_MAKE(blender::fn::ValueOrField<std::string>);
+BLI_VECTOR_CPP_TYPE_MAKE(blender::fn::ValueOrField<int32_t>);
 
 void FN_register_cpp_types()
 {
@@ -34,4 +35,5 @@ void FN_register_cpp_types()
   FN_FIELD_CPP_TYPE_REGISTER(std::string);
 
   BLI_VECTOR_CPP_TYPE_REGISTER(blender::fn::ValueOrField<std::string>);
+  BLI_VECTOR_CPP_TYPE_REGISTER(blender::fn::ValueOrField<int32_t>);
 }
