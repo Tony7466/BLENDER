@@ -3220,7 +3220,7 @@ static void animchannel_select_range(bAnimContext *ac, FCurve *cursor)
 
     if (cursor->flag & FCURVE_ACTIVE) {
       cursor->flag |= FCURVE_SELECTED;
-      return;
+      break;
     }
 
     /* Select first and last element from the range. Reverse selection status on extremes. */
