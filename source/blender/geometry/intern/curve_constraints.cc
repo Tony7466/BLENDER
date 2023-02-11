@@ -7,6 +7,13 @@
 
 #include "BKE_bvhutils.h"
 
+/**
+ * The code below uses a prefix naming convention to indicate the coordinate space:
+ * `cu`: Local space of the curves object that is being edited.
+ * `su`: Local space of the surface object.
+ * `wo`: World space.
+ */
+
 namespace blender::geometry::curve_constraints {
 
 void compute_segment_lengths(const OffsetIndices<int> points_by_curve,
