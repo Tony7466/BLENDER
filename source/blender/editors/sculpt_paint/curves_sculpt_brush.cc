@@ -22,7 +22,7 @@
 
 #include "BLT_translation.h"
 
-#include "GEO_curve_constraint_solver.hh"
+#include "GEO_curve_constraints.hh"
 
 /**
  * The code below uses a prefix naming convention to indicate the coordinate space:
@@ -439,7 +439,7 @@ void CurvesConstraintSolver::initialize(const bke::CurvesGeometry &curves,
 {
   use_surface_collision_ = use_surface_collision;
   segment_lengths_.reinitialize(curves.points_num());
-  geometry::curve_constraint_solver::compute_segment_lengths(
+  geometry::curve_constraints::compute_segment_lengths(
       curves.points_by_curve(), curves.positions(), curve_selection, segment_lengths_);
   if (use_surface_collision_) {
     start_positions_ = curves.positions();
@@ -452,7 +452,7 @@ void CurvesConstraintSolver::solve_step(bke::CurvesGeometry &curves,
                                         const CurvesSurfaceTransforms &transforms)
 {
   if (use_surface_collision_ && surface != nullptr) {
-    geometry::curve_constraint_solver::solve_length_and_collision_constraints(
+    geometry::curve_constraints::solve_length_and_collision_constraints(
         curves.points_by_curve(),
         curve_selection,
         segment_lengths_,
@@ -463,7 +463,7 @@ void CurvesConstraintSolver::solve_step(bke::CurvesGeometry &curves,
     start_positions_ = curves.positions();
   }
   else {
-    geometry::curve_constraint_solver::solve_length_constraints(
+    geometry::curve_constraints::solve_length_constraints(
         curves.points_by_curve(), curve_selection, segment_lengths_, curves.positions_for_write());
   }
   curves.tag_positions_changed();

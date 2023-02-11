@@ -4,7 +4,7 @@
 
 #include "BKE_curves.hh"
 
-namespace blender::geometry::curve_constraint_solver {
+namespace blender::geometry::curve_constraints {
 
 void compute_segment_lengths(OffsetIndices<int> points_by_curve,
                              Span<float3> positions,
@@ -24,4 +24,4 @@ void solve_length_and_collision_constraints(OffsetIndices<int> points_by_curve,
                                             const bke::CurvesSurfaceTransforms &transforms,
                                             MutableSpan<float3> positions);
 
-}  // namespace blender::geometry::curve_constraint_solver
+}  // namespace blender::geometry::curve_constraints

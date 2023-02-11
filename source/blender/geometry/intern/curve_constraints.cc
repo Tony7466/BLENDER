@@ -3,11 +3,11 @@
 #include "BLI_math_matrix.hh"
 #include "BLI_task.hh"
 
-#include "GEO_curve_constraint_solver.hh"
+#include "GEO_curve_constraints.hh"
 
 #include "BKE_bvhutils.h"
 
-namespace blender::geometry::curve_constraint_solver {
+namespace blender::geometry::curve_constraints {
 
 void compute_segment_lengths(const OffsetIndices<int> points_by_curve,
                              const Span<float3> positions,
@@ -158,4 +158,4 @@ void solve_length_and_collision_constraints(const OffsetIndices<int> points_by_c
   });
 }
 
-}  // namespace blender::geometry::curve_constraint_solver
+}  // namespace blender::geometry::curve_constraints
