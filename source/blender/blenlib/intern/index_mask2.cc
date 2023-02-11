@@ -66,10 +66,12 @@ const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size)
   return static_mask;
 }
 
+namespace unique_sorted_indices {
+
 template<typename T>
-static void split_sorted_indices_by_chunk_recursive(const Span<T> indices,
-                                                    const int64_t offset,
-                                                    Vector<IndexRange> &r_chunks)
+static void split_by_chunk_recursive(const Span<T> indices,
+                                     const int64_t offset,
+                                     Vector<IndexRange> &r_chunks)
 {
   if (indices.is_empty()) {
     return;
@@ -86,29 +88,83 @@ static void split_sorted_indices_by_chunk_recursive(const Span<T> indices,
   const int64_t split_value = middle_chunk_index * max_chunk_size - 1;
   const int64_t left_split_size = std::upper_bound(indices.begin(), indices.end(), split_value) -
                                   indices.begin();
-  split_sorted_indices_by_chunk_recursive(indices.take_front(left_split_size), offset, r_chunks);
-  split_sorted_indices_by_chunk_recursive(
+  split_by_chunk_recursive(indices.take_front(left_split_size), offset, r_chunks);
+  split_by_chunk_recursive(
       indices.drop_front(left_split_size), offset + left_split_size, r_chunks);
 }
 
-template<typename T> Vector<IndexRange> split_sorted_indices_by_chunk(const Span<T> indices)
+template<typename T> Vector<IndexRange> split_by_chunk(const Span<T> indices)
 {
   BLI_assert(std::is_sorted(indices.begin(), indices.end()));
   SCOPED_TIMER_AVERAGED(__func__);
   Vector<IndexRange> chunks;
   /* This can be too low in some cases, but it's never too large. */
   chunks.reserve(size_to_chunk_num(indices.size()));
-  split_sorted_indices_by_chunk_recursive(indices, 0, chunks);
+  split_by_chunk_recursive(indices, 0, chunks);
   return chunks;
 }
 
 template<typename T>
-IndexMask from_unique_sorted_indices(const Span<T> indices, LinearAllocator<> & /*allocator*/)
+void split_to_ranges_and_spans(const Span<T> indices,
+                               const T range_threshold,
+                               Vector<std::variant<IndexRange, Span<T>>> &r_parts)
 {
-  const Vector<IndexRange> split_ranges = split_sorted_indices_by_chunk(indices);
+  BLI_assert(range_threshold >= 1);
+  Span<T> remaining_indices = indices;
+  while (!remaining_indices.is_empty()) {
+    if (non_empty_is_range(remaining_indices)) {
+      /* All remaining indices are range. */
+      r_parts.append(non_empty_as_range(remaining_indices));
+      break;
+    }
+    if (non_empty_is_range(remaining_indices.take_front(range_threshold))) {
+      /* Next segment is a range. Now find the place where the range ends. */
+      const int64_t segment_size = find_size_of_next_range(remaining_indices);
+      r_parts.append(IndexRange(remaining_indices[0], segment_size));
+      remaining_indices = remaining_indices.drop_front(segment_size);
+      continue;
+    }
+    /* Next segment is just indices. Now find the place where the next range starts. */
+    const int64_t segment_size = find_size_until_next_range(remaining_indices, range_threshold);
+    r_parts.append(remaining_indices.take_front(segment_size));
+    remaining_indices = remaining_indices.drop_back(segment_size);
+  }
+}
+
+template<typename T>
+IndexMask to_index_mask(const Span<T> indices, LinearAllocator<> & /*allocator*/)
+{
+  if (indices.is_empty()) {
+    return {};
+  }
+  // if (auto full_range = try_convert_unique_sorted_indices_as_range(indices)) {
+  //   return IndexMask(*full_range);
+  // }
+  const Vector<IndexRange> split_ranges = split_by_chunk(indices);
+  // const int64_t chunks_num = split_ranges.size();
+  // MutableSpan<Chunk> chunks = allocator.allocate_array<Chunk>(chunks_num);
+  // MutableSpan<int64_t> chunk_offsets = allocator.allocate_array<int64_t>(chunks_num);
+  // MutableSpan<int64_t> chunk_sizes_cumulative = allocator.allocate_array<int64_t>(chunks_num +
+  // 1);
+
+  // static const int16_t *static_offsets = get_static_indices_array().data();
+
+  // threading::parallel_for(split_ranges.index_range(), 128, [&](const IndexRange slice) {
+  //   for (const int64_t i : slice) {
+  //     const IndexRange range_for_chunk = split_ranges[i];
+  //     const Span<T> indices_in_chunk = indices.slice(range_for_chunk);
+  //     BLI_assert(!indices_in_chunk.is_empty());
+  //     const int64_t chunk_i = index_to_chunk_index(int64_t(indices_in_chunk[0]));
+  //     BLI_assert(chunk_i == index_to_chunk_index(int64_t(indices_in_chunk.last())));
+  //     Chunk &chunk = chunks[chunk_i];
+  //   }
+  // });
+
   return {};
 }
 
-template IndexMask from_unique_sorted_indices(const Span<int>, LinearAllocator<> &);
+template IndexMask to_index_mask(const Span<int>, LinearAllocator<> &);
+
+}  // namespace unique_sorted_indices
 
 }  // namespace blender::index_mask

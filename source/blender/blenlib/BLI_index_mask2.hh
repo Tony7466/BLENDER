@@ -3,6 +3,8 @@
 #pragma once
 
 #include <array>
+#include <optional>
+#include <variant>
 
 #include "BLI_index_range.hh"
 #include "BLI_linear_allocator.hh"
@@ -87,10 +89,67 @@ class IndexMask {
   IndexMaskData &data_for_inplace_construction();
 };
 
-template<typename T> Vector<IndexRange> split_sorted_indices_by_chunk(Span<T> indices);
+namespace unique_sorted_indices {
+
+template<typename T> Vector<IndexRange> split_by_chunk(Span<T> indices);
+
+template<typename T> IndexMask to_index_mask(Span<T> indices, LinearAllocator<> &allocator);
 
 template<typename T>
-IndexMask from_unique_sorted_indices(Span<T> indices, LinearAllocator<> &allocator);
+void split_to_ranges_and_spans(Span<T> indices,
+                               T range_threshold,
+                               Vector<std::variant<IndexRange, Span<T>>> &r_parts);
+
+template<typename T> inline bool non_empty_is_range(const Span<T> indices)
+{
+  BLI_assert(!indices.is_empty());
+  return indices.last() - indices.first() == indices.size() - 1;
+}
+
+template<typename T> inline IndexRange non_empty_as_range(const Span<T> indices)
+{
+  BLI_assert(!indices.is_empty());
+  BLI_assert(non_empty_is_range(indices));
+  return IndexRange(indices.first(), indices.size());
+}
+
+template<typename T> inline int64_t find_size_of_next_range(const Span<T> indices)
+{
+  BLI_assert(!indices.is_empty());
+  return std::lower_bound(
+             indices.begin(),
+             indices.end(),
+             0,
+             [indices, offset = indices[0]](const T &element, const int64_t /*dummy*/) {
+               const int64_t element_index = &element - indices.begin();
+               return element - offset == element_index;
+             }) -
+         indices.begin();
+}
+
+template<typename T>
+inline int64_t find_size_until_next_range(const Span<T> indices, const int64_t min_range_size)
+{
+  BLI_assert(!indices.is_empty());
+  int64_t current_range_size = 1;
+  int64_t last_value = indices[0];
+  for (const int64_t i : indices.index_range().drop_front(1)) {
+    const T current_value = indices[i];
+    if (current_value == last_value + 1) {
+      current_range_size++;
+      if (current_range_size >= min_range_size) {
+        return i - min_range_size + 1;
+      }
+    }
+    else {
+      current_range_size = 1;
+    }
+    last_value = current_value;
+  }
+  return indices.size();
+}
+
+}  // namespace unique_sorted_indices
 
 /* -------------------------------------------------------------------- */
 /** \name Inline Utilities
