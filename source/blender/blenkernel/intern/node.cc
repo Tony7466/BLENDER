@@ -2458,11 +2458,11 @@ bool nodeLinkIsSelected(const bNodeLink *link)
 
 /* Adjust the indices of links connected to the given multi input socket after deleting the link at
  * `deleted_index`. This function also works if the link has not yet been deleted. */
-static void adjust_multi_input_indices_after_removed_link(bNodeTree *ntree,
-                                                          bNodeSocket *sock,
-                                                          int deleted_index)
+static void adjust_multi_input_indices_after_removed_link(bNodeTree &ntree,
+                                                          const bNodeSocket *sock,
+                                                          const int deleted_index)
 {
-  LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
+  LISTBASE_FOREACH (bNodeLink *, link, &ntree.links) {
     /* We only need to adjust those with a greater index, because the others will have the same
      * index. */
     if (link->tosock != sock || link->multi_input_socket_index <= deleted_index) {
@@ -2474,63 +2474,59 @@ static void adjust_multi_input_indices_after_removed_link(bNodeTree *ntree,
 
 void nodeInternalRelink(bNodeTree *ntree, bNode *node)
 {
-  /* store link pointers in output sockets, for efficient lookup */
+  /* Store link pointers in output sockets, for efficient lookup. */
   for (bNodeLink &link : node->runtime->internal_links) {
     link.tosock->link = &link;
   }
 
-  /* redirect downstream links */
+  bool topology_changed = false;
+
+  /* Redirect downstream links. */
   LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, &ntree->links) {
-    /* do we have internal link? */
-    if (link->fromnode == node) {
-      if (link->fromsock->link) {
-        /* get the upstream input link */
-        bNodeLink *fromlink = link->fromsock->link->fromsock->link;
-        /* skip the node */
-        if (fromlink) {
-          if (link->tosock->flag & SOCK_MULTI_INPUT) {
-            /* remove the link that would be the same as the relinked one */
-            LISTBASE_FOREACH_MUTABLE (bNodeLink *, link_to_compare, &ntree->links) {
-              if (link_to_compare->fromsock == fromlink->fromsock &&
-                  link_to_compare->tosock == link->tosock) {
-                adjust_multi_input_indices_after_removed_link(
-                    ntree, link_to_compare->tosock, link_to_compare->multi_input_socket_index);
-                nodeRemLink(ntree, link_to_compare);
-              }
-            }
-          }
-          link->fromnode = fromlink->fromnode;
-          link->fromsock = fromlink->fromsock;
+    /* Trying to reconnect links from current node on previous. */
+    if (link->fromnode != node) {
+      continue;
+    }
 
-          /* if the up- or downstream link is invalid,
-           * the replacement link will be invalid too.
-           */
-          if (!(fromlink->flag & NODE_LINK_VALID)) {
-            link->flag &= ~NODE_LINK_VALID;
-          }
+    const bNodeLink *internal_link = link->fromsock->link;
+    /* Link, that joined with current link due to connected by internal link. */
+    const bNodeLink *from_link = internal_link ? internal_link->fromsock->link : nullptr;
 
-          if (fromlink->flag & NODE_LINK_MUTED) {
-            link->flag |= NODE_LINK_MUTED;
-          }
-
-          BKE_ntree_update_tag_link_changed(ntree);
-        }
-        else {
-          if (link->tosock->flag & SOCK_MULTI_INPUT) {
-            adjust_multi_input_indices_after_removed_link(
-                ntree, link->tosock, link->multi_input_socket_index);
-          }
-          nodeRemLink(ntree, link);
-        }
+    if (!from_link) {
+      if (link->tosock->is_multi_input()) {
+        adjust_multi_input_indices_after_removed_link(*ntree, link->tosock, link->multi_input_socket_index);
       }
-      else {
-        if (link->tosock->flag & SOCK_MULTI_INPUT) {
-          adjust_multi_input_indices_after_removed_link(
-              ntree, link->tosock, link->multi_input_socket_index);
-        };
-        nodeRemLink(ntree, link);
+      nodeRemLink(ntree, link);
+      continue;
+    }
+
+    if (link->tosock->is_multi_input()) {
+      /* Remove the link that would be the same as the relinked one. */
+      LISTBASE_FOREACH_MUTABLE (bNodeLink *, link_to_compare, &ntree->links) {
+        if (link_to_compare->fromsock != from_link->fromsock ||link_to_compare->tosock != link->tosock) {
+          continue;
+        }
+        adjust_multi_input_indices_after_removed_link(*ntree, link_to_compare->tosock, link_to_compare->multi_input_socket_index);
+        nodeRemLink(ntree, link_to_compare);
       }
     }
+
+    link->fromnode = from_link->fromnode;
+    link->fromsock = from_link->fromsock;
+
+    /* Invalid and muted flags should be obtained from both links. */
+    if (!(from_link->flag & NODE_LINK_VALID)) {
+      link->flag &= ~NODE_LINK_VALID;
+    }
+    if (from_link->flag & NODE_LINK_MUTED) {
+      link->flag |= NODE_LINK_MUTED;
+    }
+
+    topology_changed = true;
+  }
+
+  if (topology_changed) {
+    BKE_ntree_update_tag_link_changed(ntree);
   }
 
   /* remove remaining upstream links */
@@ -2924,7 +2920,7 @@ void nodeUnlinkNode(bNodeTree *ntree, bNode *node)
       /* Only bother adjusting if the socket is not on the node we're deleting. */
       if (link->tonode != node && link->tosock->flag & SOCK_MULTI_INPUT) {
         adjust_multi_input_indices_after_removed_link(
-            ntree, link->tosock, link->multi_input_socket_index);
+            *ntree, link->tosock, link->multi_input_socket_index);
       }
       LISTBASE_FOREACH (bNodeSocket *, sock, lb) {
         if (link->fromsock == sock || link->tosock == sock) {
