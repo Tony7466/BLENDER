@@ -349,7 +349,7 @@ void select_adjacent(bke::CurvesGeometry &curves, const bool deselect)
       }
     }
   });
-  
+
   if (deselect) {
     invert_selection(selection.span);
   }
