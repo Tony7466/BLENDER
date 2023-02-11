@@ -70,6 +70,7 @@ class IndexMask {
   IndexMask(int64_t size);
   IndexMask(IndexRange range);
 
+  int64_t size() const;
   OffsetIndices<int64_t> chunk_offsets() const;
 
   IndexMaskIteratorData index_to_iterator(const int64_t index) const;
@@ -77,21 +78,24 @@ class IndexMask {
 
   IndexMask slice(IndexRange range) const;
 
-  template<typename Fn> void foreach_chunk(const Fn &fn);
-  template<typename Fn> void foreach_index_range(const Fn &fn);
-  template<typename Fn> void foreach_index_span(const Fn &fn);
-  template<typename Fn> void foreach_index(const Fn &fn);
-  template<typename Fn> void foreach_index_range_or_span(const Fn &fn);
+  template<typename Fn> void foreach_chunk(Fn &&fn) const;
+  template<typename Fn> void foreach_index_range(Fn &&fn) const;
+  template<typename Fn> void foreach_index_span(Fn &&fn) const;
+  template<typename Fn> void foreach_index(Fn &&fn) const;
+  template<typename Fn> void foreach_index_range_or_span(Fn &&fn) const;
 
   const IndexMaskData &data() const;
   IndexMaskData &data_for_inplace_construction();
 };
+
+std::ostream &operator<<(std::ostream &stream, const IndexMask &mask);
 
 namespace unique_sorted_indices {
 
 template<typename T> Vector<IndexRange> split_by_chunk(Span<T> indices);
 
 template<typename T> IndexMask to_index_mask(Span<T> indices, ResourceScope &scope);
+template<typename T> void from_index_mask(const IndexMask &mask, MutableSpan<T> r_indices);
 
 template<typename T> using RangeOrSpanVariant = std::variant<IndexRange, Span<T>>;
 
@@ -263,6 +267,11 @@ inline IndexMask::IndexMask(const IndexRange range)
   data_.end_it.index_in_segment = range.one_after_last() & chunk_mask_low;
 }
 
+inline int64_t IndexMask::size() const
+{
+  return data_.indices_num;
+}
+
 inline OffsetIndices<int64_t> IndexMask::chunk_offsets() const
 {
   return Span<int64_t>(data_.chunk_sizes_cumulative, data_.chunks_num + 1);
@@ -345,7 +354,7 @@ inline int16_t Chunk::size() const
          this->segment_sizes_cumulative[0];
 }
 
-template<typename Fn> inline void IndexMask::foreach_chunk(const Fn &fn)
+template<typename Fn> inline void IndexMask::foreach_chunk(Fn &&fn) const
 {
   if (data_.chunks_num == 0) {
     return;
@@ -372,7 +381,7 @@ template<typename Fn> inline void IndexMask::foreach_chunk(const Fn &fn)
   }
 }
 
-template<typename Fn> inline void IndexMask::foreach_index_span(const Fn &fn)
+template<typename Fn> inline void IndexMask::foreach_index_span(Fn &&fn) const
 {
   this->foreach_chunk([&](const int64_t chunk_i,
                           const ChunkIteratorData begin_it,
@@ -396,7 +405,7 @@ template<typename Fn> inline void IndexMask::foreach_index_span(const Fn &fn)
   });
 }
 
-template<typename Fn> inline void IndexMask::foreach_index(const Fn &fn)
+template<typename Fn> inline void IndexMask::foreach_index(Fn &&fn) const
 {
   this->foreach_index_span([&](const int64_t offset, const Span<int16_t> indices) {
     for (const int16_t index : indices) {

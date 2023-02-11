@@ -64,6 +64,32 @@ const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size)
   return static_mask;
 }
 
+std::ostream &operator<<(std::ostream &stream, const IndexMask &mask)
+{
+  Array<int64_t> indices(mask.size());
+  unique_sorted_indices::from_index_mask<int64_t>(mask, indices);
+  Vector<unique_sorted_indices::RangeOrSpanVariant<int64_t>> segments;
+  unique_sorted_indices::split_to_ranges_and_spans<int64_t>(indices, 16, segments);
+  std::cout << "(Size: " << mask.size() << " | ";
+  for (const unique_sorted_indices::RangeOrSpanVariant<int64_t> &segment : segments) {
+    if (std::holds_alternative<IndexRange>(segment)) {
+      const IndexRange range = std::get<IndexRange>(segment);
+      std::cout << range;
+    }
+    else {
+      const Span<int64_t> segment_indices = std::get<Span<int64_t>>(segment);
+      std::cout << "[";
+      for (const int64_t index : segment_indices) {
+        std::cout << index << ",";
+      }
+      std::cout << "]";
+    }
+    std::cout << ", ";
+  }
+  std::cout << ")";
+  return stream;
+}
+
 namespace unique_sorted_indices {
 
 template<typename T>
@@ -234,8 +260,19 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, ResourceScop
   return {};
 }
 
+template<typename T> void from_index_mask(const IndexMask &mask, MutableSpan<T> r_indices)
+{
+  BLI_assert(mask.size() == r_indices.size());
+  int64_t current_i = 0;
+  mask.foreach_index([&](const int64_t index) mutable {
+    r_indices[current_i] = T(index);
+    current_i++;
+  });
+}
+
 template Vector<IndexRange> split_by_chunk(const Span<int> indices);
 template IndexMask to_index_mask(const Span<int>, ResourceScope &);
+template void from_index_mask(const IndexMask &mask, MutableSpan<int> r_indices);
 template void split_to_ranges_and_spans(const Span<int> indices,
                                         const int64_t range_threshold,
                                         Vector<std::variant<IndexRange, Span<int>>> &r_parts);
