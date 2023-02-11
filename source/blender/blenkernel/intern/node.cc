@@ -2494,7 +2494,8 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node)
 
     if (!from_link) {
       if (link->tosock->is_multi_input()) {
-        adjust_multi_input_indices_after_removed_link(*ntree, link->tosock, link->multi_input_socket_index);
+        adjust_multi_input_indices_after_removed_link(
+            *ntree, link->tosock, link->multi_input_socket_index);
       }
       nodeRemLink(ntree, link);
       continue;
@@ -2503,10 +2504,12 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node)
     if (link->tosock->is_multi_input()) {
       /* Remove the link that would be the same as the relinked one. */
       LISTBASE_FOREACH_MUTABLE (bNodeLink *, link_to_compare, &ntree->links) {
-        if (link_to_compare->fromsock != from_link->fromsock ||link_to_compare->tosock != link->tosock) {
+        if (link_to_compare->fromsock != from_link->fromsock ||
+            link_to_compare->tosock != link->tosock) {
           continue;
         }
-        adjust_multi_input_indices_after_removed_link(*ntree, link_to_compare->tosock, link_to_compare->multi_input_socket_index);
+        adjust_multi_input_indices_after_removed_link(
+            *ntree, link_to_compare->tosock, link_to_compare->multi_input_socket_index);
         nodeRemLink(ntree, link_to_compare);
       }
     }
