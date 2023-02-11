@@ -1249,11 +1249,22 @@ class WM_OT_doc_view_manual(Operator):
         # XXX, for some reason all RNA ID's are stored lowercase
         # Adding case into all ID's isn't worth the hassle so force lowercase.
         rna_id = rna_id.lower()
+
+        import re
+        # Match characters that have a special meaning to `fnmatch`.
+        # If any of these characters are used we must let `fnmatch` run its own matching logic.
+        # However, in most cases a literal prefix is used making it considerably faster to do a
+        # simple `startswith` check before performing a full match, see #104581.
+        re_match_non_special = re.compile("^[^?*\\[]+").match
+
         for pattern, url_suffix in url_mapping:
-            # Check if the pattern without the last character includes a wildcard.
-            # If not, use 'startswith' instead of 'fnmatchcase' to speed it up.
-            if ((not '*' in pattern[:-1] and rna_id.startswith(pattern[:-1]) and fnmatchcase(rna_id, pattern))
-                    or ('*' in pattern[:-1] and fnmatchcase(rna_id, pattern))):
+            # Simple optimization, makes a big difference (over 50x speedup).
+            non_special = re_match_non_special(pattern)
+            if (non_special is not None and non_special.end() > 0 and
+                    (not rna_id.startswith(pattern[:non_special.end()]))):
+                continue
+
+            if fnmatchcase(rna_id, pattern):
                 if verbose:
                     print("            match found: '%s' --> '%s'" % (pattern, url_suffix))
                 return url_suffix
