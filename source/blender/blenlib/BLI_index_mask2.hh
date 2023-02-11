@@ -7,20 +7,16 @@
 namespace blender::index_mask {
 
 /* Chunks contain up to 2^14 = 16384 indices. */
-static constexpr int64_t index_mask_chunk_shift = 14;
-static constexpr int64_t index_mask_chunk_mask_low = (1 << index_mask_chunk_shift) - 1;
-static constexpr int64_t index_mask_chunk_mask_high = ~index_mask_chunk_mask_low;
-static constexpr int64_t max_index_mask_chunk_size = (1 << index_mask_chunk_shift);
+static constexpr int64_t chunk_size_shift = 14;
+static constexpr int64_t chunk_mask_low = (1 << chunk_size_shift) - 1;
+static constexpr int64_t chunk_mask_high = ~chunk_mask_low;
+static constexpr int64_t max_chunk_size = (1 << chunk_size_shift);
 
-inline const std::array<int16_t, max_index_mask_chunk_size> &get_static_offsets_array()
+std::array<int16_t, max_chunk_size> build_static_offsets_array();
+
+inline const std::array<int16_t, max_chunk_size> &get_static_offsets_array()
 {
-  static const std::array<int16_t, max_index_mask_chunk_size> data = []() {
-    static std::array<int16_t, max_index_mask_chunk_size> data;
-    for (int16_t i = 0; i < max_index_mask_chunk_size; i++) {
-      data[i] = i;
-    }
-    return data;
-  }();
+  alignas(64) static const std::array<int16_t, max_chunk_size> data = build_static_offsets_array();
   return data;
 }
 
