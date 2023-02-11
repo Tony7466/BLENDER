@@ -11,7 +11,7 @@ namespace blender::nodes::node_geo_select_by_component_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_output<decl::Bool>(N_("Is Mesh")).field_source_reference_all();
-  b.add_output<decl::Bool>(N_("Is Curve")).field_source_reference_all();
+  b.add_output<decl::Bool>(N_("Is Curves")).field_source_reference_all();
   b.add_output<decl::Bool>(N_("Is Point Cloud")).field_source_reference_all();
   b.add_output<decl::Bool>(N_("Is Instances")).field_source_reference_all();
 }
@@ -35,7 +35,7 @@ class SelectByComponentFieldInput final : public bke::GeometryFieldInput {
 
   uint64_t hash() const override
   {
-    return type_;
+    return uint64_t(type_);
   }
 
   bool is_equal_to(const fn::FieldNode &other) const override
@@ -55,9 +55,9 @@ static void node_geo_exec(GeoNodeExecParams params)
         "Is Mesh",
         Field<bool>{std::make_shared<SelectByComponentFieldInput>(GEO_COMPONENT_TYPE_MESH)});
   }
-  if (params.output_is_required("Is Curve")) {
+  if (params.output_is_required("Is Curves")) {
     params.set_output(
-        "Is Curve",
+        "Is Curves",
         Field<bool>{std::make_shared<SelectByComponentFieldInput>(GEO_COMPONENT_TYPE_CURVE)});
   }
   if (params.output_is_required("Is Point Cloud")) {
