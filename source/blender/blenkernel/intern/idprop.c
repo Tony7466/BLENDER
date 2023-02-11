@@ -39,19 +39,19 @@
 
 static CLG_LogRef LOG = {"bke.idprop"};
 
-/* Local size table. */
+/** Local size table, aligned with #eIDPropertyType. */
 static size_t idp_size_table[] = {
-    1, /*strings*/
-    sizeof(int),
-    sizeof(float),
-    sizeof(float[3]),  /* Vector type, deprecated. */
-    sizeof(float[16]), /* Matrix type, deprecated. */
-    0,                 /* Arrays don't have a fixed size. */
-    sizeof(ListBase),  /* Group type. */
-    sizeof(void *),
-    sizeof(double),
-    0,
-    sizeof(int8_t), /* Boolean type. */
+    1,                 /* #IDP_STRING */
+    sizeof(int),       /* #IDP_INT */
+    sizeof(float),     /* #IDP_FLOAT */
+    sizeof(float[3]),  /* DEPRECATED (was vector). */
+    sizeof(float[16]), /* DEPRECATED (was matrix). */
+    0,                 /* #IDP_ARRAY (no fixed size). */
+    sizeof(ListBase),  /* #IDP_GROUP */
+    sizeof(void *),    /* #IDP_ID */
+    sizeof(double),    /* #IDP_DOUBLE */
+    0,                 /* #IDP_IDPARRAY (no fixed size). */
+    sizeof(int8_t),    /* #IDP_BOOLEAN */
 };
 
 /* -------------------------------------------------------------------- */
@@ -797,7 +797,7 @@ IDProperty *IDP_GetProperties(ID *id, const bool create_if_needed)
   if (create_if_needed) {
     id->properties = MEM_callocN(sizeof(IDProperty), "IDProperty");
     id->properties->type = IDP_GROUP;
-    /* NOTE(@campbellbarton): Don't overwrite the data's name and type
+    /* NOTE(@ideasman42): Don't overwrite the data's name and type
      * some functions might need this if they
      * don't have a real ID, should be named elsewhere. */
     // strcpy(id->name, "top_level_group");

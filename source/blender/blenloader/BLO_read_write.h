@@ -42,7 +42,6 @@ typedef struct BlendWriter BlendWriter;
 
 struct BlendFileReadReport;
 struct Main;
-struct ReportList;
 
 /* -------------------------------------------------------------------- */
 /** \name Blend Write API
@@ -289,7 +288,7 @@ void BLO_expand_id(BlendExpander *expander, struct ID *id);
  * This function ensures that reports are printed,
  * in the case of library linking errors this is important!
  *
- * NOTE(@campbellbarton) a kludge but better than doubling up on prints,
+ * NOTE(@ideasman42) a kludge but better than doubling up on prints,
  * we could alternatively have a versions of a report function which forces printing.
  */
 void BLO_reportf_wrap(struct BlendFileReadReport *reports,

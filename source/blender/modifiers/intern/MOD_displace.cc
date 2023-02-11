@@ -386,7 +386,7 @@ static void deformVertsEM(ModifierData *md,
   Mesh *mesh_src = MOD_deform_mesh_eval_get(
       ctx->object, editData, mesh, nullptr, verts_num, false);
 
-  /* TODO(@campbellbarton): use edit-mode data only (remove this line). */
+  /* TODO(@ideasman42): use edit-mode data only (remove this line). */
   if (mesh_src != nullptr) {
     BKE_mesh_wrapper_ensure_mdata(mesh_src);
   }
@@ -467,34 +467,34 @@ static void panelRegister(ARegionType *region_type)
 }
 
 ModifierTypeInfo modifierType_Displace = {
-    /* name */ N_("Displace"),
-    /* structName */ "DisplaceModifierData",
-    /* structSize */ sizeof(DisplaceModifierData),
-    /* srna */ &RNA_DisplaceModifier,
-    /* type */ eModifierTypeType_OnlyDeform,
-    /* flags */ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsEditmode,
-    /* icon */ ICON_MOD_DISPLACE,
+    /*name*/ N_("Displace"),
+    /*structName*/ "DisplaceModifierData",
+    /*structSize*/ sizeof(DisplaceModifierData),
+    /*srna*/ &RNA_DisplaceModifier,
+    /*type*/ eModifierTypeType_OnlyDeform,
+    /*flags*/ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsEditmode,
+    /*icon*/ ICON_MOD_DISPLACE,
 
-    /* copyData */ BKE_modifier_copydata_generic,
+    /*copyData*/ BKE_modifier_copydata_generic,
 
-    /* deformVerts */ deformVerts,
-    /* deformMatrices */ nullptr,
-    /* deformVertsEM */ deformVertsEM,
-    /* deformMatricesEM */ nullptr,
-    /* modifyMesh */ nullptr,
-    /* modifyGeometrySet */ nullptr,
+    /*deformVerts*/ deformVerts,
+    /*deformMatrices*/ nullptr,
+    /*deformVertsEM*/ deformVertsEM,
+    /*deformMatricesEM*/ nullptr,
+    /*modifyMesh*/ nullptr,
+    /*modifyGeometrySet*/ nullptr,
 
-    /* initData */ initData,
-    /* requiredDataMask */ requiredDataMask,
-    /* freeData */ nullptr,
-    /* isDisabled */ isDisabled,
-    /* updateDepsgraph */ updateDepsgraph,
-    /* dependsOnTime */ dependsOnTime,
-    /* dependsOnNormals */ dependsOnNormals,
-    /* foreachIDLink */ foreachIDLink,
-    /* foreachTexLink */ foreachTexLink,
-    /* freeRuntimeData */ nullptr,
-    /* panelRegister */ panelRegister,
-    /* blendWrite */ nullptr,
-    /* blendRead */ nullptr,
+    /*initData*/ initData,
+    /*requiredDataMask*/ requiredDataMask,
+    /*freeData*/ nullptr,
+    /*isDisabled*/ isDisabled,
+    /*updateDepsgraph*/ updateDepsgraph,
+    /*dependsOnTime*/ dependsOnTime,
+    /*dependsOnNormals*/ dependsOnNormals,
+    /*foreachIDLink*/ foreachIDLink,
+    /*foreachTexLink*/ foreachTexLink,
+    /*freeRuntimeData*/ nullptr,
+    /*panelRegister*/ panelRegister,
+    /*blendWrite*/ nullptr,
+    /*blendRead*/ nullptr,
 };

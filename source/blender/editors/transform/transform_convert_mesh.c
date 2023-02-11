@@ -1321,7 +1321,7 @@ void transform_convert_mesh_crazyspace_detect(TransInfo *t,
      * correction with \a quats, relative to the coordinates after
      * the modifiers that support deform matrices \a defcos. */
 
-#if 0 /* TODO(@campbellbarton): fix crazy-space & extrude so it can be enabled for general use. \
+#if 0 /* TODO(@ideasman42): fix crazy-space & extrude so it can be enabled for general use. \
        */
       if ((totleft > 0) || (totleft == -1))
 #else
@@ -1563,7 +1563,7 @@ static void createTransEditVerts(bContext *UNUSED(C), TransInfo *t)
 
       if (mirror_data.vert_map) {
         tc->data_mirror_len = mirror_data.mirror_elem_len;
-        tc->data_mirror = MEM_mallocN(mirror_data.mirror_elem_len * sizeof(*tc->data_mirror),
+        tc->data_mirror = MEM_callocN(mirror_data.mirror_elem_len * sizeof(*tc->data_mirror),
                                       __func__);
 
         BM_ITER_MESH_INDEX (eve, &iter, bm, BM_VERTS_OF_MESH, a) {
@@ -2131,7 +2131,7 @@ static void special_aftertrans_update__mesh(bContext *UNUSED(C), TransInfo *t)
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
     /* table needs to be created for each edit command, since vertices can move etc */
     ED_mesh_mirror_spatial_table_end(tc->obedit);
-    /* TODO(@campbellbarton): xform: We need support for many mirror objects at once! */
+    /* TODO(@ideasman42): xform: We need support for many mirror objects at once! */
     break;
   }
 }
@@ -2139,8 +2139,8 @@ static void special_aftertrans_update__mesh(bContext *UNUSED(C), TransInfo *t)
 /** \} */
 
 TransConvertTypeInfo TransConvertType_Mesh = {
-    /* flags */ (T_EDIT | T_POINTS),
-    /* createTransData */ createTransEditVerts,
-    /* recalcData */ recalcData_mesh,
-    /* special_aftertrans_update */ special_aftertrans_update__mesh,
+    /*flags*/ (T_EDIT | T_POINTS),
+    /*createTransData*/ createTransEditVerts,
+    /*recalcData*/ recalcData_mesh,
+    /*special_aftertrans_update*/ special_aftertrans_update__mesh,
 };

@@ -118,6 +118,7 @@ set(SRC
   intern/mesh_intersect.cc
   intern/noise.c
   intern/noise.cc
+  intern/offset_indices.cc
   intern/path_util.c
   intern/polyfill_2d.c
   intern/polyfill_2d_beautify.c
@@ -218,8 +219,6 @@ set(SRC
   BLI_fileops.hh
   BLI_fileops_types.h
   BLI_filereader.h
-  BLI_float3x3.hh
-  BLI_float4x4.hh
   BLI_fnmatch.h
   BLI_function_ref.hh
   BLI_generic_array.hh
@@ -274,9 +273,13 @@ set(SRC
   BLI_math_inline.h
   BLI_math_interp.h
   BLI_math_matrix.h
+  BLI_math_matrix.hh
+  BLI_math_matrix_types.hh
   BLI_math_mpq.hh
   BLI_math_rotation.h
+  BLI_math_rotation.hh
   BLI_math_rotation_legacy.hh
+  BLI_math_rotation_types.hh
   BLI_math_solvers.h
   BLI_math_statistics.h
   BLI_math_time.h
@@ -296,6 +299,7 @@ set(SRC
   BLI_multi_value_map.hh
   BLI_noise.h
   BLI_noise.hh
+  BLI_offset_indices.hh
   BLI_parameter_pack_utils.hh
   BLI_path_util.h
   BLI_polyfill_2d.h
@@ -465,7 +469,6 @@ if(WITH_GTESTS)
     tests/BLI_edgehash_test.cc
     tests/BLI_expr_pylike_eval_test.cc
     tests/BLI_fileops_test.cc
-    tests/BLI_float3x3_test.cc
     tests/BLI_function_ref_test.cc
     tests/BLI_generic_array_test.cc
     tests/BLI_generic_span_test.cc

@@ -1157,7 +1157,7 @@ void UI_widgetbase_draw_cache_flush()
                                 MAX_WIDGET_PARAMETERS * MAX_WIDGET_BASE_BATCH,
                                 (float(*)[4])g_widget_base_batch.params);
     GPU_batch_uniform_3fv(batch, "checkerColorAndSize", checker_params);
-    GPU_batch_draw_instanced(batch, g_widget_base_batch.count);
+    GPU_batch_draw_instance_range(batch, 0, g_widget_base_batch.count);
   }
   g_widget_base_batch.count = 0;
 }
@@ -3152,7 +3152,7 @@ void ui_hsvcube_pos_from_vals(
     case UI_GRAD_V_ALT:
       x = 0.5f;
       /* exception only for value strip - use the range set in but->min/max */
-      y = (hsv[2] - hsv_but->but.softmin) / (hsv_but->but.softmax - hsv_but->but.softmin);
+      y = (hsv[2] - hsv_but->softmin) / (hsv_but->softmax - hsv_but->softmin);
       break;
   }
 
@@ -5022,7 +5022,7 @@ static void ui_draw_popover_back_impl(const uiWidgetColors *wcol,
                                       const float unit_size,
                                       const float mval_origin[2])
 {
-  /* tsk, this isn't nice. */
+  /* Alas, this isn't nice. */
   const float unit_half = unit_size / 2;
   const float cent_x = mval_origin ? CLAMPIS(mval_origin[0],
                                              rect->xmin + unit_size,

@@ -89,7 +89,6 @@ static void mesh_calc_edges_mdata(const MVert * /*allvert*/,
                                   int totface,
                                   int /*totloop*/,
                                   int totpoly,
-                                  const bool use_old,
                                   MEdge **r_medge,
                                   int *r_totedge)
 {
@@ -156,9 +155,6 @@ static void mesh_calc_edges_mdata(const MVert * /*allvert*/,
     if (ed->v1 != (ed + 1)->v1 || ed->v2 != (ed + 1)->v2) {
       med->v1 = ed->v1;
       med->v2 = ed->v2;
-      if (use_old == false || ed->is_draw) {
-        med->flag = ME_EDGEDRAW;
-      }
 
       /* order is swapped so extruding this edge as a surface won't flip face normals
        * with cyclic curves */
@@ -175,7 +171,6 @@ static void mesh_calc_edges_mdata(const MVert * /*allvert*/,
   /* last edge */
   med->v1 = ed->v1;
   med->v2 = ed->v2;
-  med->flag = ME_EDGEDRAW;
 
   MEM_freeN(edsort);
 
@@ -206,7 +201,7 @@ static void mesh_calc_edges_mdata(const MVert * /*allvert*/,
   *r_totedge = totedge_final;
 }
 
-void BKE_mesh_calc_edges_legacy(Mesh *me, const bool use_old)
+void BKE_mesh_calc_edges_legacy(Mesh *me)
 {
   using namespace blender;
   MEdge *medge;
@@ -224,7 +219,6 @@ void BKE_mesh_calc_edges_legacy(Mesh *me, const bool use_old)
                         me->totface,
                         loops.size(),
                         polys.size(),
-                        use_old,
                         &medge,
                         &totedge);
 
@@ -1163,17 +1157,17 @@ static int mesh_tessface_calc(Mesh &mesh,
   CustomData_add_layer(fdata, CD_ORIGINDEX, CD_ASSIGN, mface_to_poly_map, totface);
   add_mface_layers(mesh, fdata, ldata, totface);
 
-  /* NOTE: quad detection issue - fourth vertidx vs fourth loopidx:
+  /* NOTE: quad detection issue - fourth vertex-index vs fourth loop-index:
    * Polygons take care of their loops ordering, hence not of their vertices ordering.
    * Currently, our tfaces' fourth vertex index might be 0 even for a quad.
    * However, we know our fourth loop index is never 0 for quads
    * (because they are sorted for polygons, and our quads are still mere copies of their polygons).
-   * So we pass nullptr as MFace pointer, and #mesh_loops_to_tessdata
+   * So we pass nullptr as #MFace pointer, and #mesh_loops_to_tessdata
    * will use the fourth loop index as quad test. */
   mesh_loops_to_tessdata(fdata, ldata, nullptr, mface_to_poly_map, lindices, totface);
 
-  /* NOTE: quad detection issue - fourth vertidx vs fourth loopidx:
-   * ...However, most TFace code uses 'MFace->v4 == 0' test to check whether it is a tri or quad.
+  /* NOTE: quad detection issue - fourth vert-index vs fourth loop-index:
+   * ...However, most #TFace code uses `MFace->v4 == 0` test to check whether it is a tri or quad.
    * BKE_mesh_mface_index_validate() will check this and rotate the tessellated face if needed.
    */
 #ifdef USE_TESSFACE_QUADS
@@ -1224,28 +1218,47 @@ void BKE_mesh_tessface_ensure(struct Mesh *mesh)
 /** \name Face Set Conversion
  * \{ */
 
-void BKE_mesh_legacy_face_set_from_generic(Mesh *mesh,
-                                           blender::MutableSpan<CustomDataLayer> poly_layers)
+void BKE_mesh_legacy_face_set_from_generic(blender::MutableSpan<CustomDataLayer> poly_layers)
 {
   using namespace blender;
+  bool changed = false;
   for (CustomDataLayer &layer : poly_layers) {
     if (StringRef(layer.name) == ".sculpt_face_set") {
       layer.type = CD_SCULPT_FACE_SETS;
+      layer.name[0] = '\0';
+      changed = true;
+      break;
     }
   }
-  CustomData_update_typemap(&mesh->pdata);
+  if (!changed) {
+    return;
+  }
+  /* #CustomData expects the layers to be sorted in increasing order based on type. */
+  std::stable_sort(
+      poly_layers.begin(),
+      poly_layers.end(),
+      [](const CustomDataLayer &a, const CustomDataLayer &b) { return a.type < b.type; });
 }
 
 void BKE_mesh_legacy_face_set_to_generic(Mesh *mesh)
 {
   using namespace blender;
-  for (CustomDataLayer &layer : MutableSpan(mesh->pdata.layers, mesh->pdata.totlayer)) {
-    if (layer.type == CD_SCULPT_FACE_SETS) {
-      BLI_strncpy(layer.name, ".sculpt_face_set", sizeof(layer.name));
-      layer.type = CD_PROP_INT32;
+  if (mesh->attributes().contains(".sculpt_face_set")) {
+    return;
+  }
+  void *faceset_data = nullptr;
+  for (const int i : IndexRange(mesh->pdata.totlayer)) {
+    if (mesh->pdata.layers[i].type == CD_SCULPT_FACE_SETS) {
+      faceset_data = mesh->pdata.layers[i].data;
+      mesh->pdata.layers[i].data = nullptr;
+      CustomData_free_layer(&mesh->pdata, CD_SCULPT_FACE_SETS, mesh->totpoly, i);
+      break;
     }
   }
-  CustomData_update_typemap(&mesh->pdata);
+  if (faceset_data != nullptr) {
+    CustomData_add_layer_named(
+        &mesh->pdata, CD_PROP_INT32, CD_ASSIGN, faceset_data, mesh->totpoly, ".sculpt_face_set");
+  }
 }
 
 /** \} */
@@ -1290,21 +1303,25 @@ void BKE_mesh_legacy_bevel_weight_from_layers(Mesh *mesh)
 void BKE_mesh_legacy_bevel_weight_to_layers(Mesh *mesh)
 {
   using namespace blender;
-  const Span<MVert> verts(mesh->mvert, mesh->totvert);
-  if (mesh->cd_flag & ME_CDFLAG_VERT_BWEIGHT) {
-    float *weights = static_cast<float *>(
-        CustomData_add_layer(&mesh->vdata, CD_BWEIGHT, CD_CONSTRUCT, nullptr, verts.size()));
-    for (const int i : verts.index_range()) {
-      weights[i] = verts[i].bweight_legacy / 255.0f;
+  if (mesh->mvert && !CustomData_has_layer(&mesh->vdata, CD_BWEIGHT)) {
+    const Span<MVert> verts(mesh->mvert, mesh->totvert);
+    if (mesh->cd_flag & ME_CDFLAG_VERT_BWEIGHT) {
+      float *weights = static_cast<float *>(
+          CustomData_add_layer(&mesh->vdata, CD_BWEIGHT, CD_CONSTRUCT, nullptr, verts.size()));
+      for (const int i : verts.index_range()) {
+        weights[i] = verts[i].bweight_legacy / 255.0f;
+      }
     }
   }
 
   const Span<MEdge> edges = mesh->edges();
-  if (mesh->cd_flag & ME_CDFLAG_EDGE_BWEIGHT) {
-    float *weights = static_cast<float *>(
-        CustomData_add_layer(&mesh->edata, CD_BWEIGHT, CD_CONSTRUCT, nullptr, edges.size()));
-    for (const int i : edges.index_range()) {
-      weights[i] = edges[i].bweight_legacy / 255.0f;
+  if (!CustomData_has_layer(&mesh->edata, CD_BWEIGHT)) {
+    if (mesh->cd_flag & ME_CDFLAG_EDGE_BWEIGHT) {
+      float *weights = static_cast<float *>(
+          CustomData_add_layer(&mesh->edata, CD_BWEIGHT, CD_CONSTRUCT, nullptr, edges.size()));
+      for (const int i : edges.index_range()) {
+        weights[i] = edges[i].bweight_legacy / 255.0f;
+      }
     }
   }
 }
@@ -1337,6 +1354,9 @@ void BKE_mesh_legacy_edge_crease_from_layers(Mesh *mesh)
 void BKE_mesh_legacy_edge_crease_to_layers(Mesh *mesh)
 {
   using namespace blender;
+  if (CustomData_has_layer(&mesh->edata, CD_CREASE)) {
+    return;
+  }
   const Span<MEdge> edges = mesh->edges();
   if (mesh->cd_flag & ME_CDFLAG_EDGE_CREASE) {
     float *creases = static_cast<float *>(
@@ -1376,6 +1396,9 @@ void BKE_mesh_legacy_sharp_edges_from_flags(Mesh *mesh)
   using namespace blender::bke;
   const Span<MEdge> edges = mesh->edges();
   MutableAttributeAccessor attributes = mesh->attributes_for_write();
+  if (attributes.contains("sharp_edge")) {
+    return;
+  }
   if (std::any_of(
           edges.begin(), edges.end(), [](const MEdge &edge) { return edge.flag & ME_SHARP; })) {
     SpanAttributeWriter<bool> sharp_edges = attributes.lookup_or_add_for_write_only_span<bool>(
@@ -1434,7 +1457,10 @@ void BKE_mesh_legacy_convert_flags_to_hide_layers(Mesh *mesh)
   using namespace blender;
   using namespace blender::bke;
   MutableAttributeAccessor attributes = mesh->attributes_for_write();
-
+  if (!mesh->mvert || attributes.contains(".hide_vert") || attributes.contains(".hide_edge") ||
+      attributes.contains(".hide_poly")) {
+    return;
+  }
   const Span<MVert> verts(mesh->mvert, mesh->totvert);
   if (std::any_of(verts.begin(), verts.end(), [](const MVert &vert) {
         return vert.flag_legacy & ME_HIDE;
@@ -1502,6 +1528,9 @@ void BKE_mesh_legacy_convert_mpoly_to_material_indices(Mesh *mesh)
   using namespace blender;
   using namespace blender::bke;
   MutableAttributeAccessor attributes = mesh->attributes_for_write();
+  if (attributes.contains("material_index")) {
+    return;
+  }
   const Span<MPoly> polys = mesh->polys();
   if (std::any_of(
           polys.begin(), polys.end(), [](const MPoly &poly) { return poly.mat_nr_legacy != 0; })) {
@@ -1589,6 +1618,9 @@ void BKE_mesh_legacy_convert_uvs_to_generic(Mesh *mesh)
 {
   using namespace blender;
   using namespace blender::bke;
+  if (!CustomData_has_layer(&mesh->ldata, CD_MLOOPUV)) {
+    return;
+  }
 
   /* Store layer names since they will be removed, used to set the active status of new layers.
    * Use intermediate #StringRef because the names can be null. */
@@ -1597,9 +1629,9 @@ void BKE_mesh_legacy_convert_uvs_to_generic(Mesh *mesh)
   const std::string default_uv = StringRef(
       CustomData_get_render_layer_name(&mesh->ldata, CD_MLOOPUV));
 
-  Set<std::string> uv_layers_to_convert;
+  Vector<std::string> uv_layers_to_convert;
   for (const int uv_layer_i : IndexRange(CustomData_number_of_layers(&mesh->ldata, CD_MLOOPUV))) {
-    uv_layers_to_convert.add_as(CustomData_get_layer_name(&mesh->ldata, CD_MLOOPUV, uv_layer_i));
+    uv_layers_to_convert.append(CustomData_get_layer_name(&mesh->ldata, CD_MLOOPUV, uv_layer_i));
   }
 
   for (const StringRefNull name : uv_layers_to_convert) {
@@ -1737,6 +1769,10 @@ void BKE_mesh_legacy_convert_flags_to_selection_layers(Mesh *mesh)
   using namespace blender;
   using namespace blender::bke;
   MutableAttributeAccessor attributes = mesh->attributes_for_write();
+  if (!mesh->mvert || attributes.contains(".select_vert") || attributes.contains(".select_edge") ||
+      attributes.contains(".select_poly")) {
+    return;
+  }
 
   const Span<MVert> verts(mesh->mvert, mesh->totvert);
   if (std::any_of(verts.begin(), verts.end(), [](const MVert &vert) {
@@ -1840,6 +1876,9 @@ void BKE_mesh_legacy_convert_verts_to_positions(Mesh *mesh)
 {
   using namespace blender;
   using namespace blender::bke;
+  if (!mesh->mvert || CustomData_get_layer_named(&mesh->vdata, CD_PROP_FLOAT3, "position")) {
+    return;
+  }
 
   const Span<MVert> verts(static_cast<const MVert *>(CustomData_get_layer(&mesh->vdata, CD_MVERT)),
                           mesh->totvert);
