@@ -199,6 +199,46 @@ static void invert_selection(GMutableSpan selection)
   }
 }
 
+static void apply_selection_operation_at_index(GMutableSpan selection,
+                                               const int index,
+                                               const eSelectOp sel_op)
+{
+  if (selection.type().is<bool>()) {
+    MutableSpan<bool> selection_typed = selection.typed<bool>();
+    switch (sel_op) {
+      case SEL_OP_ADD:
+      case SEL_OP_SET:
+        selection_typed[index] = true;
+        break;
+      case SEL_OP_SUB:
+        selection_typed[index] = false;
+        break;
+      case SEL_OP_XOR:
+        selection_typed[index] = !selection_typed[index];
+        break;
+      default:
+        break;
+    }
+  }
+  else if (selection.type().is<float>()) {
+    MutableSpan<float> selection_typed = selection.typed<float>();
+    switch (sel_op) {
+      case SEL_OP_ADD:
+      case SEL_OP_SET:
+        selection_typed[index] = 1.0f;
+        break;
+      case SEL_OP_SUB:
+        selection_typed[index] = 0.0f;
+        break;
+      case SEL_OP_XOR:
+        selection_typed[index] = 1.0f - selection_typed[index];
+        break;
+      default:
+        break;
+    }
+  }
+}
+
 void select_all(bke::CurvesGeometry &curves, const eAttrDomain selection_domain, int action)
 {
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
@@ -267,6 +307,56 @@ void select_linked(bke::CurvesGeometry &curves)
   selection.finish();
 }
 
+static bool check_adjacent_selection(GMutableSpan selection, const int current, const int next)
+{
+  if (selection.type().is<bool>()) {
+    MutableSpan<bool> selection_typed = selection.typed<bool>();
+    return !selection_typed[current] && selection_typed[next];
+  }
+  else if (selection.type().is<float>()) {
+    MutableSpan<float> selection_typed = selection.typed<float>();
+    return (selection_typed[current] == 0.0f) && (selection_typed[next] > 0.0f);
+  }
+  return false;
+}
+
+void select_adjacent(bke::CurvesGeometry &curves, const bool deselect)
+{
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  bke::GSpanAttributeWriter selection = ensure_selection_attribute(
+      curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
+
+  if (deselect) {
+    invert_selection(selection.span);
+  }
+
+  threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
+    for (const int curve_i : range) {
+      GMutableSpan selection_curve = selection.span.slice(points_by_curve[curve_i]);
+
+      /* Handle all cases in the forward direction. */
+      for (int point_i = 0; point_i < points_by_curve.size(curve_i) - 1; point_i++) {
+        if (check_adjacent_selection(selection_curve, point_i, point_i + 1)) {
+          apply_selection_operation_at_index(selection_curve, point_i, SEL_OP_ADD);
+        }
+      }
+
+      /* Handle all cases in the backwards direction. */
+      for (int point_i = points_by_curve.size(curve_i) - 1; point_i > 0; point_i--) {
+        if (check_adjacent_selection(selection_curve, point_i, point_i - 1)) {
+          apply_selection_operation_at_index(selection_curve, point_i, SEL_OP_ADD);
+        }
+      }
+    }
+  });
+  
+  if (deselect) {
+    invert_selection(selection.span);
+  }
+
+  selection.finish();
+}
+
 void select_random(bke::CurvesGeometry &curves,
                    const eAttrDomain selection_domain,
                    uint32_t random_seed,
@@ -314,46 +404,6 @@ void select_random(bke::CurvesGeometry &curves,
     }
   });
   selection.finish();
-}
-
-static void apply_selection_operation_at_index(GMutableSpan selection,
-                                               const int index,
-                                               const eSelectOp sel_op)
-{
-  if (selection.type().is<bool>()) {
-    MutableSpan<bool> selection_typed = selection.typed<bool>();
-    switch (sel_op) {
-      case SEL_OP_ADD:
-      case SEL_OP_SET:
-        selection_typed[index] = true;
-        break;
-      case SEL_OP_SUB:
-        selection_typed[index] = false;
-        break;
-      case SEL_OP_XOR:
-        selection_typed[index] = !selection_typed[index];
-        break;
-      default:
-        break;
-    }
-  }
-  else if (selection.type().is<float>()) {
-    MutableSpan<float> selection_typed = selection.typed<float>();
-    switch (sel_op) {
-      case SEL_OP_ADD:
-      case SEL_OP_SET:
-        selection_typed[index] = 1.0f;
-        break;
-      case SEL_OP_SUB:
-        selection_typed[index] = 0.0f;
-        break;
-      case SEL_OP_XOR:
-        selection_typed[index] = 1.0f - selection_typed[index];
-        break;
-      default:
-        break;
-    }
-  }
 }
 
 /**
