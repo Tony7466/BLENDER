@@ -88,6 +88,7 @@ set(SRC
   nodes/node_geo_input_material.cc
   nodes/node_geo_input_mesh_edge_angle.cc
   nodes/node_geo_input_mesh_edge_neighbors.cc
+  nodes/node_geo_input_mesh_edge_rings.cc
   nodes/node_geo_input_mesh_edge_vertices.cc
   nodes/node_geo_input_mesh_face_area.cc
   nodes/node_geo_input_mesh_face_is_planar.cc

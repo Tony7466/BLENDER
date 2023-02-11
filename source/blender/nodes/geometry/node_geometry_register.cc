@@ -72,6 +72,7 @@ void register_geometry_nodes()
   register_node_type_geo_input_material();
   register_node_type_geo_input_mesh_edge_angle();
   register_node_type_geo_input_mesh_edge_neighbors();
+  register_node_type_geo_input_mesh_edge_rings();
   register_node_type_geo_input_mesh_edge_vertices();
   register_node_type_geo_input_mesh_face_area();
   register_node_type_geo_input_mesh_face_is_planar();

@@ -73,6 +73,7 @@ void register_node_type_geo_input_mesh_edge_vertices();
 void register_node_type_geo_input_mesh_face_area();
 void register_node_type_geo_input_mesh_face_is_planar();
 void register_node_type_geo_input_mesh_face_neighbors();
+void register_node_type_geo_input_mesh_edge_rings();
 void register_node_type_geo_input_mesh_island();
 void register_node_type_geo_input_mesh_vertex_neighbors();
 void register_node_type_geo_input_named_attribute();

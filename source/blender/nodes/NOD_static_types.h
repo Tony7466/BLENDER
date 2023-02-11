@@ -335,6 +335,7 @@ DefNode(GeometryNode, GEO_NODE_INPUT_MATERIAL_INDEX, 0, "INPUT_MATERIAL_INDEX", 
 DefNode(GeometryNode, GEO_NODE_INPUT_MATERIAL, def_geo_input_material, "INPUT_MATERIAL", InputMaterial, "Material", "Output a single material")
 DefNode(GeometryNode, GEO_NODE_INPUT_MESH_EDGE_ANGLE, 0, "MESH_EDGE_ANGLE", InputMeshEdgeAngle, "Edge Angle", "Calculate the surface area of each face in a mesh")
 DefNode(GeometryNode, GEO_NODE_INPUT_MESH_EDGE_NEIGHBORS, 0, "MESH_EDGE_NEIGHBORS",InputMeshEdgeNeighbors, "Edge Neighbors", "Retrieve the number of faces that use each edge as one of their sides")
+DefNode(GeometryNode, GEO_NODE_INPUT_MESH_EDGE_RINGS, 0, "INPUT_MESH_EDGE_RINGS", InputMeshEdgeRings, "Edge Rings", "")
 DefNode(GeometryNode, GEO_NODE_INPUT_MESH_EDGE_VERTICES, 0, "MESH_EDGE_VERTICES", InputMeshEdgeVertices, "Edge Vertices", "Retrieve topology information relating to each edge of a mesh")
 DefNode(GeometryNode, GEO_NODE_INPUT_MESH_FACE_AREA, 0, "MESH_FACE_AREA", InputMeshFaceArea, "Face Area", "Calculate the surface area of a mesh's faces")
 DefNode(GeometryNode, GEO_NODE_INPUT_MESH_FACE_IS_PLANAR, 0, "MESH_FACE_IS_PLANAR",InputMeshFaceIsPlanar, "Is Face Planar", "Retrieve whether all triangles in a face are on the same plane, i.e. whether have the same normal")
