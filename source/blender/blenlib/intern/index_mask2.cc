@@ -96,6 +96,8 @@ template<typename T> Vector<IndexRange> split_sorted_indices_by_chunk(const Span
   BLI_assert(std::is_sorted(indices.begin(), indices.end()));
   SCOPED_TIMER_AVERAGED(__func__);
   Vector<IndexRange> chunks;
+  /* This can be too low in some cases, but it's never too large. */
+  chunks.reserve(size_to_chunk_num(indices.size()));
   split_sorted_indices_by_chunk_recursive(indices, 0, chunks);
   return chunks;
 }
@@ -103,7 +105,7 @@ template<typename T> Vector<IndexRange> split_sorted_indices_by_chunk(const Span
 template<typename T>
 IndexMask from_unique_sorted_indices(const Span<T> indices, LinearAllocator<> & /*allocator*/)
 {
-  Vector<IndexRange> split_ranges = split_sorted_indices_by_chunk(indices);
+  const Vector<IndexRange> split_ranges = split_sorted_indices_by_chunk(indices);
   return {};
 }
 
