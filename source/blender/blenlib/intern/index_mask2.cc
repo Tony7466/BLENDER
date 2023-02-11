@@ -164,6 +164,7 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, ResourceScop
       const int64_t chunk_i = index_to_chunk_index(int64_t(indices_in_chunk[0]));
       BLI_assert(chunk_i == index_to_chunk_index(int64_t(indices_in_chunk.last())));
       Chunk &chunk = chunks[chunk_i];
+      const int64_t chunk_offset = max_chunk_size * chunk_i;
 
       if (indices_in_chunk.size() == max_chunk_size) {
         chunk = full_chunk_template;
@@ -179,6 +180,31 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, ResourceScop
           allocator.allocate_array<const int16_t *>(segments_num);
       MutableSpan<int16_t> segment_sizes_cumulative = allocator.allocate_array<int16_t>(
           segments_num + 1);
+
+      int64_t cumulative_size = 0;
+      for (const int64_t segment_i : segments.index_range()) {
+        const RangeOrSpanVariant<T> &segment = segments[segment_i];
+        segment_sizes_cumulative[segment_i] = int16_t(cumulative_size);
+        if (std::holds_alternative<IndexRange>(segment)) {
+          const IndexRange range_in_segment = std::get<IndexRange>(segment);
+          segment_indices_pointers[segment_i] = static_offsets +
+                                                (range_in_segment.first() - chunk_offset);
+          cumulative_size += range_in_segment.size();
+        }
+        else {
+          const Span<T> indices_in_segment = std::get<Span<T>>(segment);
+          MutableSpan<int16_t> new_indices = allocator.allocate_array<int16_t>(
+              indices_in_segment.size());
+          for (const int64_t index_in_segment : new_indices.index_range()) {
+            new_indices[index_in_segment] = int16_t(indices_in_segment[index_in_segment] -
+                                                    chunk_offset);
+          }
+          segment_indices_pointers[segment_i] = new_indices.data();
+          cumulative_size += indices_in_segment.size();
+        }
+      }
+
+      segment_sizes_cumulative[segments_num] = int16_t(cumulative_size);
 
       chunk.segments_num = segments_num;
       chunk.segment_indices = segment_indices_pointers.data();
