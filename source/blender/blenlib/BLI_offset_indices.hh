@@ -79,6 +79,13 @@ template<typename T> class OffsetIndices {
     BLI_assert(offsets_.index_range().drop_back(1).contains(range.last()));
     return OffsetIndices(offsets_.slice(range.start(), range.one_after_last()));
   }
+
+  T find_range_index(const T index) const
+  {
+    BLI_assert(index >= offsets_.first());
+    BLI_assert(index < offsets_.last());
+    return std::upper_bound(offsets_.begin(), offsets_.end(), index) - offsets_.begin() - 1;
+  }
 };
 
 /**

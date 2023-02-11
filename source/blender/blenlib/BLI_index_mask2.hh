@@ -5,6 +5,7 @@
 #include <array>
 
 #include "BLI_index_range.hh"
+#include "BLI_offset_indices.hh"
 #include "BLI_span.hh"
 
 namespace blender {
@@ -19,6 +20,75 @@ static constexpr int64_t chunk_mask_high = ~chunk_mask_low;
 static constexpr int64_t max_chunk_size = (1 << chunk_size_shift);
 
 std::array<int16_t, max_chunk_size> build_static_indices_array();
+const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size);
+
+struct ChunkIteratorData {
+  int16_t segment_index;
+  int16_t index_in_segment;
+};
+
+struct IndexMaskIteratorData {
+  int64_t chunk_index;
+  ChunkIteratorData chunk_it;
+};
+
+/**
+ * A #Chunk contains an ordered list of segments. Each segment is an array of 16-bit integers.
+ */
+struct Chunk {
+  int16_t segments_num;
+  int16_t indices_num;
+  const int16_t **segment_indices;
+  const int16_t *segment_sizes;
+  const int16_t *segment_sizes_cumulative;
+
+  ChunkIteratorData end_data() const;
+  OffsetIndices<int16_t> segment_offsets() const;
+  ChunkIteratorData index_to_iterator(const int16_t index) const;
+  int16_t iterator_to_index(const ChunkIteratorData &it) const;
+};
+
+struct IndexMaskData {
+  int64_t chunks_num;
+  int64_t indices_num;
+  const Chunk *chunks;
+  const int64_t *chunk_offsets;
+  const int64_t *chunk_sizes_cumulative;
+  ChunkIteratorData begin_it;
+  ChunkIteratorData end_it;
+};
+
+class IndexMask {
+ private:
+  IndexMaskData data_;
+
+ public:
+  IndexMask();
+  IndexMask(int64_t size);
+  IndexMask(IndexRange range);
+
+  OffsetIndices<int64_t> chunk_offsets() const;
+
+  IndexMaskIteratorData index_to_iterator(const int64_t index) const;
+  int64_t iterator_to_index(const IndexMaskIteratorData &it) const;
+
+  IndexMask slice(IndexRange range) const;
+  // IndexMask slice(const IndexMaskIteratorData &first,
+  //                 const IndexMaskIteratorData &one_after_last) const;
+
+  template<typename Fn> void foreach_chunk(const Fn &fn);
+  template<typename Fn> void foreach_index_range(const Fn &fn);
+  template<typename Fn> void foreach_index_span(const Fn &fn);
+  template<typename Fn> void foreach_index(const Fn &fn);
+  template<typename Fn> void foreach_index_range_or_span(const Fn &fn);
+
+  const IndexMaskData &data() const;
+  IndexMaskData &data_for_inplace_construction();
+};
+
+/* -------------------------------------------------------------------- */
+/** \name Inline Utilities
+ * \{ */
 
 inline const std::array<int16_t, max_chunk_size> &get_static_indices_array()
 {
@@ -36,61 +106,28 @@ inline int64_t size_to_chunk_num(const int64_t size)
   return (size + max_chunk_size - 1) >> chunk_size_shift;
 }
 
-const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size);
+/* -------------------------------------------------------------------- */
+/** \name #Chunk Inline Methods
+ * \{ */
 
-struct ChunkIteratorData {
-  int16_t segment_index;
-  int16_t index_in_segment;
-};
+inline ChunkIteratorData Chunk::index_to_iterator(const int16_t index) const
+{
+  BLI_assert(index >= 0);
+  BLI_assert(index < this->indices_num);
+  ChunkIteratorData it;
+  it.segment_index = this->segment_offsets().find_range_index(index);
+  it.index_in_segment = index - this->segment_sizes_cumulative[it.segment_index];
+  return it;
+}
 
-/**
- * A #Chunk contains an ordered list of segments. Each segment is an array of 16-bit integers.
- */
-struct Chunk {
-  int16_t segments_num;
-  int16_t indices_num;
-  const int16_t **segment_indices;
-  const int16_t *segment_sizes;
-  const int16_t *segment_sizes_cumulative;
-
-  ChunkIteratorData end_data() const;
-};
-
-struct IndexMaskData {
-  int64_t chunks_num;
-  int64_t indices_num;
-  const Chunk *chunks;
-  const int64_t *chunk_offsets;
-  const int64_t *chunk_sizes_cumulative;
-  ChunkIteratorData begin_it;
-  ChunkIteratorData end_it;
-};
-
-struct IndexMaskIteratorData {
-  int64_t chunk_index;
-  ChunkIteratorData chunk_it;
-};
-
-class IndexMask {
- private:
-  IndexMaskData data_;
-
- public:
-  IndexMask();
-  IndexMask(int64_t size);
-  IndexMask(IndexRange range);
-
-  IndexMask slice(IndexRange range) const;
-
-  template<typename Fn> void foreach_chunk(const Fn &fn);
-  template<typename Fn> void foreach_index_range(const Fn &fn);
-  template<typename Fn> void foreach_index_span(const Fn &fn);
-  template<typename Fn> void foreach_index(const Fn &fn);
-  template<typename Fn> void foreach_index_range_or_span(const Fn &fn);
-
-  const IndexMaskData &data() const;
-  IndexMaskData &data_for_inplace_construction();
-};
+inline int16_t Chunk::iterator_to_index(const ChunkIteratorData &it) const
+{
+  BLI_assert(it.segment_index >= 0);
+  BLI_assert(it.segment_index < this->segments_num);
+  BLI_assert(it.index_in_segment >= 0);
+  BLI_assert(it.index_in_segment < this->segment_sizes[it.segment_index]);
+  return this->segment_sizes_cumulative[it.segment_index] + it.index_in_segment;
+}
 
 /* -------------------------------------------------------------------- */
 /** \name #ChunkIteratorData Inline Methods
@@ -161,6 +198,53 @@ inline IndexMask::IndexMask(const IndexRange range)
   data_.end_it.index_in_segment = range.one_after_last() & chunk_mask_low;
 }
 
+inline OffsetIndices<int64_t> IndexMask::chunk_offsets() const
+{
+  return Span<int64_t>(data_.chunk_sizes_cumulative, data_.chunks_num + 1);
+}
+
+inline IndexMaskIteratorData IndexMask::index_to_iterator(const int64_t index) const
+{
+  BLI_assert(index >= 0);
+  BLI_assert(index < data_.indices_num);
+  IndexMaskIteratorData it;
+  const int16_t begin_index = data_.chunks[0].iterator_to_index(data_.begin_it);
+  it.chunk_index = this->chunk_offsets().find_range_index(index + begin_index +
+                                                          data_.chunk_sizes_cumulative[0]);
+  const Chunk &chunk = data_.chunks[it.chunk_index];
+  it.chunk_it = chunk.index_to_iterator((index + begin_index) & chunk_mask_low);
+  return it;
+}
+
+inline int64_t IndexMask::iterator_to_index(const IndexMaskIteratorData &it) const
+{
+  BLI_assert(it.chunk_index >= 0);
+  BLI_assert(it.chunk_index < data_.chunks_num);
+  const int16_t begin_index = data_.chunks[0].iterator_to_index(data_.begin_it);
+  return data_.chunk_sizes_cumulative[it.chunk_index] - data_.chunk_sizes_cumulative[0] -
+         begin_index;
+}
+
+inline IndexMask IndexMask::slice(const IndexRange range) const
+{
+  if (range.is_empty()) {
+    return {};
+  }
+  const IndexMaskIteratorData first_it = this->index_to_iterator(range.first());
+  const IndexMaskIteratorData last_it = this->index_to_iterator(range.last());
+
+  IndexMask sliced;
+  sliced.data_.chunks_num = last_it.chunk_index - first_it.chunk_index + 1;
+  sliced.data_.indices_num = range.size();
+  sliced.data_.chunks = data_.chunks - first_it.chunk_index;
+  sliced.data_.chunk_offsets = data_.chunk_offsets - first_it.chunk_index;
+  sliced.data_.chunk_sizes_cumulative = data_.chunk_sizes_cumulative - first_it.chunk_index;
+  sliced.data_.begin_it = first_it.chunk_it;
+  sliced.data_.end_it.segment_index = last_it.chunk_it.segment_index;
+  sliced.data_.end_it.index_in_segment = last_it.chunk_it.index_in_segment + 1;
+  return sliced;
+}
+
 inline const IndexMaskData &IndexMask::data() const
 {
   return data_;
@@ -183,6 +267,11 @@ inline ChunkIteratorData Chunk::end_data() const
     data.index_in_segment = 0;
   }
   return data;
+}
+
+inline OffsetIndices<int16_t> Chunk::segment_offsets() const
+{
+  return Span<int16_t>(this->segment_sizes_cumulative, this->segments_num + 1);
 }
 
 template<typename Fn> inline void IndexMask::foreach_chunk(const Fn &fn)
