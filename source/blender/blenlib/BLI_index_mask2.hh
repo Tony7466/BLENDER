@@ -48,6 +48,7 @@ struct Chunk {
   OffsetIndices<int16_t> segment_offsets() const;
   ChunkIteratorData index_to_iterator(const int16_t index) const;
   int16_t iterator_to_index(const ChunkIteratorData &it) const;
+  int16_t size() const;
 };
 
 struct IndexMaskData {
@@ -336,6 +337,12 @@ inline ChunkIteratorData Chunk::end_data() const
 inline OffsetIndices<int16_t> Chunk::segment_offsets() const
 {
   return Span<int16_t>(this->segment_sizes_cumulative, this->segments_num + 1);
+}
+
+inline int16_t Chunk::size() const
+{
+  return this->segment_sizes_cumulative[this->segments_num + 1] -
+         this->segment_sizes_cumulative[0];
 }
 
 template<typename Fn> inline void IndexMask::foreach_chunk(const Fn &fn)
