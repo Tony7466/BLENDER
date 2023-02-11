@@ -41,7 +41,6 @@ struct IndexMaskIteratorData {
  */
 struct Chunk {
   int16_t segments_num;
-  int16_t indices_num;
   const int16_t **segment_indices;
   const int16_t *segment_sizes_cumulative;
 
@@ -180,7 +179,7 @@ inline int64_t size_to_chunk_num(const int64_t size)
 inline ChunkIteratorData Chunk::index_to_iterator(const int16_t index) const
 {
   BLI_assert(index >= 0);
-  BLI_assert(index < this->indices_num);
+  BLI_assert(index < this->segment_offsets().total_size());
   ChunkIteratorData it;
   it.segment_index = this->segment_offsets().find_range_index(index);
   it.index_in_segment = index - this->segment_sizes_cumulative[it.segment_index];

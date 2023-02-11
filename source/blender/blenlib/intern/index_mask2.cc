@@ -39,7 +39,6 @@ const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size)
       for (const int64_t i : range) {
         Chunk &chunk = chunks_array[i];
         chunk.segments_num = 1;
-        chunk.indices_num = max_chunk_size;
         chunk.segment_indices = &static_offsets;
         chunk.segment_sizes_cumulative = static_segment_sizes_cumulative;
 
@@ -182,7 +181,6 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, ResourceScop
           segments_num + 1);
 
       chunk.segments_num = segments_num;
-      chunk.indices_num = int16_t(indices.size());
       chunk.segment_indices = segment_indices_pointers.data();
       chunk.segment_sizes_cumulative = segment_sizes_cumulative.data();
     }
