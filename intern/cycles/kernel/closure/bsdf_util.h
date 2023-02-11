@@ -81,6 +81,11 @@ ccl_device float ior_from_F0(Spectrum f0)
   return (1.0f + sqrt_f0) / (1.0f - sqrt_f0);
 }
 
+ccl_device float F0_from_ior(float ior)
+{
+  return sqr((ior - 1.0f) / (ior + 1.0f));
+}
+
 ccl_device float schlick_fresnel(float u)
 {
   float m = clamp(1.0f - u, 0.0f, 1.0f);

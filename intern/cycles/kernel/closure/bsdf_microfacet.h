@@ -28,18 +28,7 @@ enum MicrofacetFresnel {
   DIELECTRIC_TINT, /* used by the OSL MaterialX closures */
   CONDUCTOR,
   GENERALIZED_SCHLICK,
-  CONSTANT, /* only needed by MultiGGX */
-  PRINCIPLED_V1,
 };
-
-typedef struct FresnelPrincipledV1 {
-  Spectrum color; /* only needed by MultiGGX */
-  Spectrum cspec0;
-} FresnelPrincipledV1;
-
-typedef struct FresnelConstant {
-  Spectrum color;
-} FresnelConstant;
 
 typedef struct FresnelDielectricTint {
   Spectrum reflection_tint;
@@ -53,7 +42,9 @@ typedef struct FresnelConductor {
 typedef struct FresnelGeneralizedSchlick {
   Spectrum reflection_tint;
   Spectrum transmission_tint;
+  /* Reflectivity at perpendicular (F0) and glancing (F90) angles. */
   Spectrum f0, f90;
+  /* Negative exponent signals a special case where the real Fresnel is remapped to F0...F90. */
   float exponent;
 } FresnelGeneralizedSchlick;
 
@@ -218,12 +209,7 @@ ccl_device_forceinline Spectrum microfacet_fresnel(ccl_private const MicrofacetB
                                                    const float3 H,
                                                    const bool refraction)
 {
-  if (bsdf->fresnel_type == MicrofacetFresnel::PRINCIPLED_V1) {
-    kernel_assert(!refraction);
-    ccl_private FresnelPrincipledV1 *fresnel = (ccl_private FresnelPrincipledV1 *)bsdf->fresnel;
-    return interpolate_fresnel_color(wi, H, bsdf->ior, fresnel->cspec0);
-  }
-  else if (bsdf->fresnel_type == MicrofacetFresnel::DIELECTRIC) {
+  if (bsdf->fresnel_type == MicrofacetFresnel::DIELECTRIC) {
     const float F = fresnel_dielectric_cos(dot(wi, H), bsdf->ior);
     return make_spectrum(refraction ? 1.0f - F : F);
   }
@@ -241,18 +227,29 @@ ccl_device_forceinline Spectrum microfacet_fresnel(ccl_private const MicrofacetB
   else if (bsdf->fresnel_type == MicrofacetFresnel::GENERALIZED_SCHLICK) {
     ccl_private FresnelGeneralizedSchlick *fresnel = (ccl_private FresnelGeneralizedSchlick *)
                                                          bsdf->fresnel;
-    float cosI = dot(wi, H);
-    if (bsdf->ior < 1.0f) {
-      /* When going from a higher to a lower IOR, we must use the transmitted angle. */
-      float sinT2 = (1.0f - sqr(cosI)) / sqr(bsdf->ior);
-      if (sinT2 >= 1.0f) {
-        /* Total internal reflection */
-        return refraction ? zero_spectrum() : fresnel->reflection_tint;
-      }
-      cosI = safe_sqrtf(1.0f - sinT2);
+    float s;
+    if (fresnel->exponent < 0.0f) {
+      /* Special case: Use real Fresnel curve to determine the interpolation between F0 and F90.
+       * Used by Principled v1. */
+      const float F_real = fresnel_dielectric_cos(dot(wi, H), bsdf->ior);
+      const float F0_real = F0_from_ior(bsdf->ior);
+      s = inverse_lerp(F0_real, 1.0f, F_real);
     }
-    /* TODO(lukas): Is a special case for exponent==5 worth it? */
-    const float s = powf(1.0f - cosI, fresnel->exponent);
+    else {
+      /* Regular case: Generalized Schlick term. */
+      float cosI = dot(wi, H);
+      if (bsdf->ior < 1.0f) {
+        /* When going from a higher to a lower IOR, we must use the transmitted angle. */
+        float sinT2 = (1.0f - sqr(cosI)) / sqr(bsdf->ior);
+        if (sinT2 >= 1.0f) {
+          /* Total internal reflection */
+          return refraction ? zero_spectrum() : fresnel->reflection_tint;
+        }
+        cosI = safe_sqrtf(1.0f - sinT2);
+      }
+      /* TODO(lukas): Is a special case for exponent==5 worth it? */
+      s = powf(1.0f - cosI, fresnel->exponent);
+    }
     const Spectrum F = mix(fresnel->f0, fresnel->f90, s);
     if (refraction) {
       return (one_spectrum() - F) * fresnel->transmission_tint;
@@ -260,12 +257,6 @@ ccl_device_forceinline Spectrum microfacet_fresnel(ccl_private const MicrofacetB
     else {
       return F * fresnel->reflection_tint;
     }
-  }
-  else if (bsdf->fresnel_type == MicrofacetFresnel::CONSTANT) {
-    /* CONSTANT is only used my MultiGGX, which doesn't call this function.
-     * Therefore, this case only happens when determining the albedo of a MultiGGX closure.
-     * In that case, return 1.0 since the constant color is already baked into the weight. */
-    return one_spectrum();
   }
   else {
     return one_spectrum();
@@ -657,18 +648,6 @@ ccl_device int bsdf_microfacet_sample(ccl_private const ShaderClosure *sc,
 
 /* Fresnel term setup functions. These get called after the distribution-specific setup functions
  * like bsdf_microfacet_ggx_setup. */
-
-ccl_device void bsdf_microfacet_setup_fresnel_principledv1(
-    ccl_private MicrofacetBsdf *bsdf,
-    ccl_private const ShaderData *sd,
-    ccl_private FresnelPrincipledV1 *fresnel)
-{
-  fresnel->cspec0 = saturate(fresnel->cspec0);
-
-  bsdf->fresnel_type = MicrofacetFresnel::PRINCIPLED_V1;
-  bsdf->fresnel = fresnel;
-  bsdf->sample_weight *= average(bsdf_microfacet_estimate_fresnel(sd, bsdf));
-}
 
 ccl_device void bsdf_microfacet_setup_fresnel_conductor(ccl_private MicrofacetBsdf *bsdf,
                                                         ccl_private const ShaderData *sd,

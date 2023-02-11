@@ -14,7 +14,6 @@
 #include "kernel/closure/bsdf_ashikhmin_velvet.h"
 #include "kernel/closure/bsdf_diffuse.h"
 #include "kernel/closure/bsdf_microfacet.h"
-#include "kernel/closure/bsdf_microfacet_multi.h"
 #include "kernel/closure/bsdf_oren_nayar.h"
 #include "kernel/closure/bsdf_transparent.h"
 #include "kernel/closure/bsdf_ashikhmin_shirley.h"
