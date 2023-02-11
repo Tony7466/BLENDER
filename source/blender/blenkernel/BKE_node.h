@@ -1541,6 +1541,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define GEO_NODE_IMAGE 1191
 #define GEO_NODE_INTERPOLATE_CURVES 1192
 #define GEO_NODE_EDGES_TO_FACE_GROUPS 1193
+#define GEO_NODE_COMPARE 1194
 
 /** \} */
 
@@ -1549,7 +1550,6 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
  * \{ */
 
 #define FN_NODE_BOOLEAN_MATH 1200
-#define FN_NODE_COMPARE 1202
 #define FN_NODE_LEGACY_RANDOM_FLOAT 1206
 #define FN_NODE_INPUT_VECTOR 1207
 #define FN_NODE_INPUT_STRING 1208

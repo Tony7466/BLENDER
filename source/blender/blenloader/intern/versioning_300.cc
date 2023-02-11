@@ -2742,7 +2742,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
       if (ntree->type != NTREE_GEOMETRY) {
         continue;
       }
-      version_node_id(ntree, FN_NODE_COMPARE, "FunctionNodeCompareFloats");
+      version_node_id(ntree, GEO_NODE_COMPARE, "FunctionNodeCompareFloats");
       version_node_id(ntree, GEO_NODE_CAPTURE_ATTRIBUTE, "GeometryNodeCaptureAttribute");
       version_node_id(ntree, GEO_NODE_MESH_BOOLEAN, "GeometryNodeMeshBoolean");
       version_node_id(ntree, GEO_NODE_FILL_CURVE, "GeometryNodeFillCurve");
@@ -2946,7 +2946,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
         }
 
         /* Convert float compare into a more general compare node. */
-        if (node->type == FN_NODE_COMPARE) {
+        if (node->type == GEO_NODE_COMPARE) {
           if (node->storage == nullptr) {
             NodeFunctionCompare *data = (NodeFunctionCompare *)MEM_callocN(
                 sizeof(NodeFunctionCompare), __func__);
@@ -3903,6 +3903,14 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
           continue;
         }
         node->custom2 = true;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 305, 9)) {
+    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
+      if (ntree->type == NTREE_GEOMETRY) {
+        version_node_name(ntree, "FunctionNodeCompare", "GeometryNodeCompare");
       }
     }
   }

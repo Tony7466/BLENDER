@@ -74,6 +74,8 @@ void version_node_socket_index_animdata(
  */
 void version_node_id(struct bNodeTree *ntree, int node_type, const char *new_name);
 
+void version_node_name(struct bNodeTree *ntree, const char *old_name, const char *new_name);
+
 /**
  * Convert `SocketName.001` unique name format to `SocketName_001`. Previously both were used.
  */

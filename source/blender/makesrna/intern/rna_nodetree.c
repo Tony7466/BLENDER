@@ -2065,7 +2065,7 @@ static const EnumPropertyItem *rna_GeometryNodeSwitch_type_itemf(bContext *UNUSE
 
 static bool compare_type_supported(const EnumPropertyItem *item)
 {
-  return ELEM(item->value, SOCK_FLOAT, SOCK_INT, SOCK_VECTOR, SOCK_STRING, SOCK_RGBA);
+  return !ELEM(item->value, SOCK_BOOLEAN, SOCK_GEOMETRY, SOCK_TEXTURE);
 }
 
 static bool compare_main_operation_supported(const EnumPropertyItem *item)
@@ -2082,7 +2082,7 @@ static bool compare_rgba_operation_supported(const EnumPropertyItem *item)
               NODE_COMPARE_COLOR_DARKER);
 }
 
-static bool compare_string_operation_supported(const EnumPropertyItem *item)
+static bool compare_equal_operation_supported(const EnumPropertyItem *item)
 {
   return ELEM(item->value, NODE_COMPARE_EQUAL, NODE_COMPARE_NOT_EQUAL);
 }
@@ -2092,7 +2092,7 @@ static bool compare_other_operation_supported(const EnumPropertyItem *UNUSED(ite
   return false;
 }
 
-static const EnumPropertyItem *rna_FunctionNodeCompare_type_itemf(bContext *UNUSED(C),
+static const EnumPropertyItem *rna_GeometryNodeCompare_type_itemf(bContext *UNUSED(C),
                                                                   PointerRNA *UNUSED(ptr),
                                                                   PropertyRNA *UNUSED(prop),
                                                                   bool *r_free)
@@ -2101,7 +2101,7 @@ static const EnumPropertyItem *rna_FunctionNodeCompare_type_itemf(bContext *UNUS
   return itemf_function_check(node_socket_data_type_items, compare_type_supported);
 }
 
-static const EnumPropertyItem *rna_FunctionNodeCompare_operation_itemf(bContext *UNUSED(C),
+static const EnumPropertyItem *rna_GeometryNodeCompare_operation_itemf(bContext *UNUSED(C),
                                                                        PointerRNA *ptr,
                                                                        PropertyRNA *UNUSED(prop),
                                                                        bool *r_free)
@@ -2114,13 +2114,18 @@ static const EnumPropertyItem *rna_FunctionNodeCompare_operation_itemf(bContext 
     return itemf_function_check(rna_enum_node_compare_operation_items,
                                 compare_main_operation_supported);
   }
-  else if (data->data_type == SOCK_STRING) {
-    return itemf_function_check(rna_enum_node_compare_operation_items,
-                                compare_string_operation_supported);
-  }
   else if (data->data_type == SOCK_RGBA) {
     return itemf_function_check(rna_enum_node_compare_operation_items,
                                 compare_rgba_operation_supported);
+  }
+  else if (ELEM(data->data_type,
+                SOCK_STRING,
+                SOCK_MATERIAL,
+                SOCK_IMAGE,
+                SOCK_OBJECT,
+                SOCK_COLLECTION)) {
+    return itemf_function_check(rna_enum_node_compare_operation_items,
+                                compare_equal_operation_supported);
   }
   else {
     return itemf_function_check(rna_enum_node_compare_operation_items,
@@ -2167,7 +2172,12 @@ static void rna_GeometryNodeCompare_data_type_update(Main *bmain, Scene *scene, 
                                                     NODE_COMPARE_COLOR_DARKER)) {
     node_storage->operation = NODE_COMPARE_EQUAL;
   }
-  else if (node_storage->data_type == SOCK_STRING &&
+  else if (ELEM(node_storage->data_type,
+                SOCK_STRING,
+                SOCK_OBJECT,
+                SOCK_COLLECTION,
+                SOCK_MATERIAL,
+                SOCK_IMAGE) &&
            !ELEM(node_storage->operation, NODE_COMPARE_EQUAL, NODE_COMPARE_NOT_EQUAL)) {
     node_storage->operation = NODE_COMPARE_EQUAL;
   }
@@ -4860,59 +4870,6 @@ static void def_boolean_math(StructRNA *srna)
   RNA_def_property_enum_sdna(prop, NULL, "custom1");
   RNA_def_property_enum_items(prop, rna_enum_node_boolean_math_items);
   RNA_def_property_ui_text(prop, "Operation", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
-}
-
-static void def_compare(StructRNA *srna)
-{
-
-  static const EnumPropertyItem mode_items[] = {
-      {NODE_COMPARE_MODE_ELEMENT,
-       "ELEMENT",
-       0,
-       "Element-Wise",
-       "Compare each element of the input vectors"},
-      {NODE_COMPARE_MODE_LENGTH, "LENGTH", 0, "Length", "Compare the length of the input vectors"},
-      {NODE_COMPARE_MODE_AVERAGE,
-       "AVERAGE",
-       0,
-       "Average",
-       "Compare the average of the input vectors elements"},
-      {NODE_COMPARE_MODE_DOT_PRODUCT,
-       "DOT_PRODUCT",
-       0,
-       "Dot Product",
-       "Compare the dot products of the input vectors"},
-      {NODE_COMPARE_MODE_DIRECTION,
-       "DIRECTION",
-       0,
-       "Direction",
-       "Compare the direction of the input vectors"},
-      {0, NULL, 0, NULL, NULL},
-  };
-
-  PropertyRNA *prop;
-
-  RNA_def_struct_sdna_from(srna, "NodeFunctionCompare", "storage");
-
-  prop = RNA_def_property(srna, "operation", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_FunctionNodeCompare_operation_itemf");
-  RNA_def_property_enum_items(prop, rna_enum_node_compare_operation_items);
-  RNA_def_property_enum_default(prop, NODE_COMPARE_EQUAL);
-  RNA_def_property_ui_text(prop, "Operation", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
-
-  prop = RNA_def_property(srna, "data_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_FunctionNodeCompare_type_itemf");
-  RNA_def_property_enum_items(prop, node_socket_data_type_items);
-  RNA_def_property_enum_default(prop, SOCK_FLOAT);
-  RNA_def_property_ui_text(prop, "Input Type", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNodeCompare_data_type_update");
-
-  prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, mode_items);
-  RNA_def_property_enum_default(prop, NODE_COMPARE_MODE_ELEMENT);
-  RNA_def_property_ui_text(prop, "Mode", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 
@@ -10485,6 +10442,59 @@ static void def_geo_sample_uv_surface(StructRNA *srna)
       prop, NULL, NULL, "rna_GeometryNodeAttributeType_type_with_socket_itemf");
   RNA_def_property_enum_default(prop, CD_PROP_FLOAT);
   RNA_def_property_ui_text(prop, "Data Type", "");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+}
+
+static void def_geo_compare(StructRNA *srna)
+{
+
+  static const EnumPropertyItem mode_items[] = {
+      {NODE_COMPARE_MODE_ELEMENT,
+       "ELEMENT",
+       0,
+       "Element-Wise",
+       "Compare each element of the input vectors"},
+      {NODE_COMPARE_MODE_LENGTH, "LENGTH", 0, "Length", "Compare the length of the input vectors"},
+      {NODE_COMPARE_MODE_AVERAGE,
+       "AVERAGE",
+       0,
+       "Average",
+       "Compare the average of the input vectors elements"},
+      {NODE_COMPARE_MODE_DOT_PRODUCT,
+       "DOT_PRODUCT",
+       0,
+       "Dot Product",
+       "Compare the dot products of the input vectors"},
+      {NODE_COMPARE_MODE_DIRECTION,
+       "DIRECTION",
+       0,
+       "Direction",
+       "Compare the direction of the input vectors"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  PropertyRNA *prop;
+
+  RNA_def_struct_sdna_from(srna, "NodeFunctionCompare", "storage");
+
+  prop = RNA_def_property(srna, "operation", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_GeometryNodeCompare_operation_itemf");
+  RNA_def_property_enum_items(prop, rna_enum_node_compare_operation_items);
+  RNA_def_property_enum_default(prop, NODE_COMPARE_EQUAL);
+  RNA_def_property_ui_text(prop, "Operation", "");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+
+  prop = RNA_def_property(srna, "data_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_funcs(prop, NULL, NULL, "rna_GeometryNodeCompare_type_itemf");
+  RNA_def_property_enum_items(prop, node_socket_data_type_items);
+  RNA_def_property_enum_default(prop, SOCK_FLOAT);
+  RNA_def_property_ui_text(prop, "Input Type", "");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNodeCompare_data_type_update");
+
+  prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, mode_items);
+  RNA_def_property_enum_default(prop, NODE_COMPARE_MODE_ELEMENT);
+  RNA_def_property_ui_text(prop, "Mode", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 

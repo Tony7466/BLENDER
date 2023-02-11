@@ -506,6 +506,7 @@ class NODE_MT_category_GEO_UTILITIES(Menu):
         layout.menu("NODE_MT_category_GEO_UTILITIES_MATH")
         layout.menu("NODE_MT_category_GEO_UTILITIES_ROTATION")
         layout.separator()
+        node_add_menu.add_node_type(layout, "GeometryNodeCompare")
         node_add_menu.add_node_type(layout, "FunctionNodeRandomValue")
         node_add_menu.add_node_type(layout, "GeometryNodeSwitch")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
@@ -542,7 +543,6 @@ class NODE_MT_category_GEO_UTILITIES_MATH(Menu):
         layout = self.layout
         node_add_menu.add_node_type(layout, "FunctionNodeBooleanMath")
         node_add_menu.add_node_type(layout, "ShaderNodeClamp")
-        node_add_menu.add_node_type(layout, "FunctionNodeCompare")
         node_add_menu.add_node_type(layout, "ShaderNodeFloatCurve")
         node_add_menu.add_node_type(layout, "FunctionNodeFloatToInt")
         node_add_menu.add_node_type(layout, "ShaderNodeMapRange")

@@ -23,7 +23,6 @@ set(SRC
   nodes/node_fn_align_euler_to_vector.cc
   nodes/node_fn_boolean_math.cc
   nodes/node_fn_combine_color.cc
-  nodes/node_fn_compare.cc
   nodes/node_fn_float_to_int.cc
   nodes/node_fn_input_bool.cc
   nodes/node_fn_input_color.cc

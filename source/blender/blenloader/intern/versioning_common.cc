@@ -174,6 +174,15 @@ void version_node_id(bNodeTree *ntree, const int node_type, const char *new_name
   }
 }
 
+void version_node_name(struct bNodeTree *ntree, const char *old_name, const char *new_name)
+{
+  for (bNode *node : ntree->all_nodes()) {
+    if (STREQ(node->idname, old_name)) {
+      strcpy(node->idname, new_name);
+    }
+  }
+}
+
 void version_node_socket_index_animdata(Main *bmain,
                                         const int node_tree_type,
                                         const int node_type,
