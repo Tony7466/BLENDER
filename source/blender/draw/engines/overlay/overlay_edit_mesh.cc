@@ -66,7 +66,7 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
                               ((rv3d->is_persp) ?
                                    (v3d->overlay.retopology_bias * v3d->clip_start) :
                                    (v3d->overlay.retopology_bias / v3d->clip_end)) :
-                              0.0f;
+                              -1.0f; /* Negative value disables the effect. */
 
   pd->edit_mesh.do_faces = true;
   pd->edit_mesh.do_edges = true;
@@ -277,8 +277,7 @@ void OVERLAY_edit_mesh_cache_populate(OVERLAY_Data *vedata, Object *ob)
 
   bool draw_as_solid = (ob->dt > OB_WIRE);
   bool do_in_front = (ob->dtx & OB_DRAW_IN_FRONT) != 0;
-  bool show_retopology = (pd->edit_mesh.flag & V3D_OVERLAY_EDIT_RETOPOLOGY) != 0 &&
-                         pd->overlay.retopology_bias != 0.0;
+  bool show_retopology = (pd->edit_mesh.flag & V3D_OVERLAY_EDIT_RETOPOLOGY) != 0;
   bool do_show_mesh_analysis = (pd->edit_mesh.flag & V3D_OVERLAY_EDIT_STATVIS) != 0;
   bool fnormals_do = (pd->edit_mesh.flag & V3D_OVERLAY_EDIT_FACE_NORMALS) != 0;
   bool vnormals_do = (pd->edit_mesh.flag & V3D_OVERLAY_EDIT_VERT_NORMALS) != 0;
