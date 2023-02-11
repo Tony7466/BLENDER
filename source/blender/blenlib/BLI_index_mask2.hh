@@ -75,8 +75,6 @@ class IndexMask {
   int64_t iterator_to_index(const IndexMaskIteratorData &it) const;
 
   IndexMask slice(IndexRange range) const;
-  // IndexMask slice(const IndexMaskIteratorData &first,
-  //                 const IndexMaskIteratorData &one_after_last) const;
 
   template<typename Fn> void foreach_chunk(const Fn &fn);
   template<typename Fn> void foreach_index_range(const Fn &fn);
