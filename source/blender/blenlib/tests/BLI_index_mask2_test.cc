@@ -11,9 +11,11 @@ namespace blender::index_mask::tests {
 TEST(index_mask2, Test)
 {
   IndexMask mask(3);
-  for (const int64_t i : mask) {
-    std::cout << i << "\n";
-  }
+  mask.foreach_index_span([&](const int64_t offset, const Span<int16_t> indices) {
+    for (const int64_t i : indices) {
+      std::cout << (i + offset) << "\n";
+    }
+  });
 }
 
 }  // namespace blender::index_mask::tests
