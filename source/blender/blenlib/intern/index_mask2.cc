@@ -161,7 +161,7 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, ResourceScop
 
       const int64_t chunk_i = index_to_chunk_index(int64_t(indices_in_chunk[0]));
       BLI_assert(chunk_i == index_to_chunk_index(int64_t(indices_in_chunk.last())));
-      Chunk &chunk = chunks[chunk_i];
+      Chunk &chunk = chunks[i];
       const int64_t chunk_offset = max_chunk_size * chunk_i;
       chunk_offsets[i] = chunk_offset;
 

@@ -396,6 +396,15 @@ template<typename Fn> inline void IndexMask::foreach_index_span(const Fn &fn)
   });
 }
 
+template<typename Fn> inline void IndexMask::foreach_index(const Fn &fn)
+{
+  this->foreach_index_span([&](const int64_t offset, const Span<int16_t> indices) {
+    for (const int16_t index : indices) {
+      fn(index + offset);
+    }
+  });
+}
+
 }  // namespace index_mask
 
 using index_mask::IndexMask;
