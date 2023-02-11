@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
+#include "BLI_array.hh"
 #include "BLI_index_mask2.hh"
 #include "BLI_strict_flags.h"
 #include "BLI_timeit.hh"
@@ -70,6 +71,29 @@ TEST(index_mask2, FindStartOfNextRange)
   EXPECT_EQ(unique_sorted_indices::find_size_until_next_range<int>({4, 5, 6, 7}, 3), 0);
   EXPECT_EQ(
       unique_sorted_indices::find_size_until_next_range<int>({0, 1, 3, 5, 10, 11, 12, 20}, 3), 4);
+}
+
+TEST(index_mask2, SplitToRangesAndSpans)
+{
+  Array<int> data = {1, 2, 3, 4, 7, 9, 10, 13, 14, 15, 20, 21, 22, 23, 24};
+  Vector<unique_sorted_indices::RangeOrSpanVariant<int>> parts;
+  unique_sorted_indices::split_to_ranges_and_spans<int>(data, 3, parts);
+
+  EXPECT_EQ(parts.size(), 4);
+  EXPECT_EQ(std::get<IndexRange>(parts[0]), IndexRange(1, 4));
+  EXPECT_EQ(std::get<Span<int>>(parts[1]), Span<int>({7, 9, 10}));
+  EXPECT_EQ(std::get<IndexRange>(parts[2]), IndexRange(13, 3));
+  EXPECT_EQ(std::get<IndexRange>(parts[3]), IndexRange(20, 5));
+}
+
+TEST(index_mask2, SplitByChunk)
+{
+  Array<int> data = {5, 100, 16383, 16384, 16385, 20000, 20001, 100000, 101000};
+  Vector<IndexRange> ranges = unique_sorted_indices::split_by_chunk<int>(data);
+  EXPECT_EQ(ranges.size(), 3);
+  EXPECT_EQ(data.as_span().slice(ranges[0]), Span<int>({5, 100, 16383}));
+  EXPECT_EQ(data.as_span().slice(ranges[1]), Span<int>({16384, 16385, 20000, 20001}));
+  EXPECT_EQ(data.as_span().slice(ranges[2]), Span<int>({100000, 101000}));
 }
 
 }  // namespace blender::index_mask::tests

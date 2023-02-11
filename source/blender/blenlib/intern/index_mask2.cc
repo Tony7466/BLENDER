@@ -96,7 +96,6 @@ static void split_by_chunk_recursive(const Span<T> indices,
 template<typename T> Vector<IndexRange> split_by_chunk(const Span<T> indices)
 {
   BLI_assert(std::is_sorted(indices.begin(), indices.end()));
-  SCOPED_TIMER_AVERAGED(__func__);
   Vector<IndexRange> chunks;
   /* This can be too low in some cases, but it's never too large. */
   chunks.reserve(size_to_chunk_num(indices.size()));
@@ -106,8 +105,8 @@ template<typename T> Vector<IndexRange> split_by_chunk(const Span<T> indices)
 
 template<typename T>
 void split_to_ranges_and_spans(const Span<T> indices,
-                               const T range_threshold,
-                               Vector<std::variant<IndexRange, Span<T>>> &r_parts)
+                               const int64_t range_threshold,
+                               Vector<RangeOrSpanVariant<T>> &r_parts)
 {
   BLI_assert(range_threshold >= 1);
   Span<T> remaining_indices = indices;
@@ -127,7 +126,7 @@ void split_to_ranges_and_spans(const Span<T> indices,
     /* Next segment is just indices. Now find the place where the next range starts. */
     const int64_t segment_size = find_size_until_next_range(remaining_indices, range_threshold);
     r_parts.append(remaining_indices.take_front(segment_size));
-    remaining_indices = remaining_indices.drop_back(segment_size);
+    remaining_indices = remaining_indices.drop_front(segment_size);
   }
 }
 
@@ -164,6 +163,9 @@ IndexMask to_index_mask(const Span<T> indices, LinearAllocator<> & /*allocator*/
 }
 
 template IndexMask to_index_mask(const Span<int>, LinearAllocator<> &);
+template void split_to_ranges_and_spans(const Span<int> indices,
+                                        const int64_t range_threshold,
+                                        Vector<std::variant<IndexRange, Span<int>>> &r_parts);
 
 }  // namespace unique_sorted_indices
 

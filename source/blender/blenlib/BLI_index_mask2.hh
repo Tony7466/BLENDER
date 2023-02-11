@@ -95,10 +95,12 @@ template<typename T> Vector<IndexRange> split_by_chunk(Span<T> indices);
 
 template<typename T> IndexMask to_index_mask(Span<T> indices, LinearAllocator<> &allocator);
 
+template<typename T> using RangeOrSpanVariant = std::variant<IndexRange, Span<T>>;
+
 template<typename T>
 void split_to_ranges_and_spans(Span<T> indices,
-                               T range_threshold,
-                               Vector<std::variant<IndexRange, Span<T>>> &r_parts);
+                               int64_t range_threshold,
+                               Vector<RangeOrSpanVariant<T>> &r_parts);
 
 template<typename T> inline bool non_empty_is_range(const Span<T> indices)
 {
