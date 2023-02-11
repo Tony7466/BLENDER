@@ -9,6 +9,7 @@
 #include "BLI_index_range.hh"
 #include "BLI_linear_allocator.hh"
 #include "BLI_offset_indices.hh"
+#include "BLI_resource_scope.hh"
 #include "BLI_span.hh"
 
 namespace blender {
@@ -42,7 +43,6 @@ struct Chunk {
   int16_t segments_num;
   int16_t indices_num;
   const int16_t **segment_indices;
-  const int16_t *segment_sizes;
   const int16_t *segment_sizes_cumulative;
 
   ChunkIteratorData end_data() const;
@@ -93,7 +93,7 @@ namespace unique_sorted_indices {
 
 template<typename T> Vector<IndexRange> split_by_chunk(Span<T> indices);
 
-template<typename T> IndexMask to_index_mask(Span<T> indices, LinearAllocator<> &allocator);
+template<typename T> IndexMask to_index_mask(Span<T> indices, ResourceScope &scope);
 
 template<typename T> using RangeOrSpanVariant = std::variant<IndexRange, Span<T>>;
 
@@ -192,7 +192,7 @@ inline int16_t Chunk::iterator_to_index(const ChunkIteratorData &it) const
   BLI_assert(it.segment_index >= 0);
   BLI_assert(it.segment_index < this->segments_num);
   BLI_assert(it.index_in_segment >= 0);
-  BLI_assert(it.index_in_segment < this->segment_sizes[it.segment_index]);
+  BLI_assert(it.index_in_segment < this->segment_offsets().size(it.segment_index));
   return this->segment_sizes_cumulative[it.segment_index] + it.index_in_segment;
 }
 
@@ -327,7 +327,7 @@ inline ChunkIteratorData Chunk::end_data() const
   ChunkIteratorData data;
   if (this->segments_num > 0) {
     data.segment_index = this->segments_num - 1;
-    data.index_in_segment = this->segment_sizes[0];
+    data.index_in_segment = this->segment_offsets().size(this->segments_num - 1);
   }
   else {
     data.segment_index = 0;
@@ -375,6 +375,7 @@ template<typename Fn> inline void IndexMask::foreach_index_span(const Fn &fn)
                           const ChunkIteratorData end_it) {
     const int64_t offset = data_.chunk_offsets[chunk_i];
     const Chunk &chunk = data_.chunks[chunk_i];
+    const OffsetIndices segment_offsets = chunk.segment_offsets();
     for (int16_t segment_i = begin_it.segment_index; segment_i <= end_it.segment_index;
          segment_i++) {
       const int16_t segment_start_i = (segment_i == begin_it.segment_index) ?
@@ -382,7 +383,7 @@ template<typename Fn> inline void IndexMask::foreach_index_span(const Fn &fn)
                                           0;
       const int16_t segment_end_i = (segment_i == end_it.segment_index) ?
                                         end_it.index_in_segment :
-                                        chunk.segment_sizes[segment_i];
+                                        segment_offsets.size(segment_i);
       const int16_t segment_size = segment_end_i - segment_start_i;
       const Span<int16_t> indices{chunk.segment_indices[segment_i] + segment_start_i,
                                   segment_size};

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array.hh"
+#include "BLI_enumerable_thread_specific.hh"
 #include "BLI_index_mask2.hh"
 #include "BLI_strict_flags.h"
 #include "BLI_task.hh"
@@ -32,7 +33,6 @@ const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size)
     static Array<int64_t> chunk_sizes_cumulative(chunks_num + 1);
 
     static const int16_t *static_offsets = get_static_indices_array().data();
-    static const int16_t static_segment_sizes[1] = {max_chunk_size};
     static const int16_t static_segment_sizes_cumulative[2] = {0, max_chunk_size};
 
     threading::parallel_for(IndexRange(chunks_num), 1024, [&](const IndexRange range) {
@@ -41,7 +41,6 @@ const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size)
         chunk.segments_num = 1;
         chunk.indices_num = max_chunk_size;
         chunk.segment_indices = &static_offsets;
-        chunk.segment_sizes = static_segment_sizes;
         chunk.segment_sizes_cumulative = static_segment_sizes_cumulative;
 
         chunk_offsets_array[i] = i * max_chunk_size;
@@ -130,39 +129,70 @@ void split_to_ranges_and_spans(const Span<T> indices,
   }
 }
 
-template<typename T>
-IndexMask to_index_mask(const Span<T> indices, LinearAllocator<> & /*allocator*/)
+template<typename T> IndexMask to_index_mask(const Span<T> indices, ResourceScope &scope)
 {
   if (indices.is_empty()) {
     return {};
   }
-  // if (auto full_range = try_convert_unique_sorted_indices_as_range(indices)) {
-  //   return IndexMask(*full_range);
-  // }
+  if (non_empty_is_range(indices)) {
+    return non_empty_as_range(indices);
+  }
   const Vector<IndexRange> split_ranges = split_by_chunk(indices);
-  // const int64_t chunks_num = split_ranges.size();
-  // MutableSpan<Chunk> chunks = allocator.allocate_array<Chunk>(chunks_num);
-  // MutableSpan<int64_t> chunk_offsets = allocator.allocate_array<int64_t>(chunks_num);
-  // MutableSpan<int64_t> chunk_sizes_cumulative = allocator.allocate_array<int64_t>(chunks_num +
-  // 1);
+  const int64_t chunks_num = split_ranges.size();
 
-  // static const int16_t *static_offsets = get_static_indices_array().data();
+  LinearAllocator<> &main_allocator = scope.linear_allocator();
+  auto &allocator_by_thread =
+      scope.construct<threading::EnumerableThreadSpecific<LinearAllocator<>>>();
 
-  // threading::parallel_for(split_ranges.index_range(), 128, [&](const IndexRange slice) {
-  //   for (const int64_t i : slice) {
-  //     const IndexRange range_for_chunk = split_ranges[i];
-  //     const Span<T> indices_in_chunk = indices.slice(range_for_chunk);
-  //     BLI_assert(!indices_in_chunk.is_empty());
-  //     const int64_t chunk_i = index_to_chunk_index(int64_t(indices_in_chunk[0]));
-  //     BLI_assert(chunk_i == index_to_chunk_index(int64_t(indices_in_chunk.last())));
-  //     Chunk &chunk = chunks[chunk_i];
-  //   }
-  // });
+  MutableSpan<Chunk> chunks = main_allocator.allocate_array<Chunk>(chunks_num);
+  MutableSpan<int64_t> chunk_offsets = main_allocator.allocate_array<int64_t>(chunks_num);
+  MutableSpan<int64_t> chunk_sizes_cumulative = main_allocator.allocate_array<int64_t>(chunks_num +
+                                                                                       1);
+
+  static const int16_t *static_offsets = get_static_indices_array().data();
+
+  const Chunk full_chunk_template = IndexMask(max_chunk_size).data().chunks[0];
+
+  threading::parallel_for(split_ranges.index_range(), 32, [&](const IndexRange slice) {
+    LinearAllocator<> &allocator = allocator_by_thread.local();
+    Vector<RangeOrSpanVariant<T>> segments;
+
+    for (const int64_t i : IndexRange(slice.size())) {
+      const IndexRange range_for_chunk = split_ranges[slice[i]];
+      const Span<T> indices_in_chunk = indices.slice(range_for_chunk);
+      BLI_assert(!indices_in_chunk.is_empty());
+
+      const int64_t chunk_i = index_to_chunk_index(int64_t(indices_in_chunk[0]));
+      BLI_assert(chunk_i == index_to_chunk_index(int64_t(indices_in_chunk.last())));
+      Chunk &chunk = chunks[chunk_i];
+
+      if (indices_in_chunk.size() == max_chunk_size) {
+        chunk = full_chunk_template;
+        continue;
+      }
+
+      segments.clear();
+      split_to_ranges_and_spans(indices_in_chunk, 16, segments);
+      BLI_assert(!segments.is_empty());
+
+      const int16_t segments_num = int16_t(segments.size());
+      MutableSpan<const int16_t *> segment_indices_pointers =
+          allocator.allocate_array<const int16_t *>(segments_num);
+      MutableSpan<int16_t> segment_sizes_cumulative = allocator.allocate_array<int16_t>(
+          segments_num + 1);
+
+      chunk.segments_num = segments_num;
+      chunk.indices_num = int16_t(indices.size());
+      chunk.segment_indices = segment_indices_pointers.data();
+      chunk.segment_sizes_cumulative = segment_sizes_cumulative.data();
+    }
+  });
 
   return {};
 }
 
-template IndexMask to_index_mask(const Span<int>, LinearAllocator<> &);
+template Vector<IndexRange> split_by_chunk(const Span<int> indices);
+template IndexMask to_index_mask(const Span<int>, ResourceScope &);
 template void split_to_ranges_and_spans(const Span<int> indices,
                                         const int64_t range_threshold,
                                         Vector<std::variant<IndexRange, Span<int>>> &r_parts);
