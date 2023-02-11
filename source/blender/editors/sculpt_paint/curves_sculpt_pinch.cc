@@ -147,7 +147,7 @@ struct PinchOperationExecutor {
     const IndexMask changed_curves_mask = index_mask_ops::find_indices_from_array(changed_curves,
                                                                                   indices);
     const Mesh *surface = curves_id_->surface && curves_id_->surface->type == OB_MESH ?
-                              static_cast<Mesh *>(curves_id_->surface->data) :
+                              static_cast<const Mesh *>(curves_id_->surface->data) :
                               nullptr;
     self_->constraint_solver_.solve_step(*curves_, changed_curves_mask, surface, transforms_);
 
