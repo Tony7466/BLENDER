@@ -147,7 +147,7 @@ void solve_length_and_collision_constraints(const OffsetIndices<int> points_by_c
           const float3 normalized_slide_direction_cu = math::normalize_and_get_length(
               slide_direction_cu, slide_direction_length_cu);
 
-          /* Use pythagorian theory to determine how far to slide. */
+          /* Use pythagorian theorem to determine how far to slide. */
           const float slide_distance_cu = std::sqrt(pow2f(goal_segment_length_cu) -
                                                     math::length_squared(slide_normal_cu)) -
                                           slide_direction_length_cu;
