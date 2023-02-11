@@ -4,6 +4,7 @@
 #include "BLI_index_mask2.hh"
 #include "BLI_strict_flags.h"
 #include "BLI_task.hh"
+#include "BLI_timeit.hh"
 
 namespace blender::index_mask {
 
@@ -64,5 +65,48 @@ const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size)
   }();
   return static_mask;
 }
+
+template<typename T>
+static void split_sorted_indices_by_chunk_recursive(const Span<T> indices,
+                                                    const int64_t offset,
+                                                    Vector<IndexRange> &r_chunks)
+{
+  if (indices.is_empty()) {
+    return;
+  }
+  const T first_index = indices.first();
+  const T last_index = indices.last();
+  const int64_t first_chunk_index = index_to_chunk_index(first_index);
+  const int64_t last_chunk_index = index_to_chunk_index(last_index);
+  if (first_chunk_index == last_chunk_index) {
+    r_chunks.append_as(offset, indices.size());
+    return;
+  }
+  const int64_t middle_chunk_index = (first_chunk_index + last_chunk_index + 1) / 2;
+  const int64_t split_value = middle_chunk_index * max_chunk_size - 1;
+  const int64_t left_split_size = std::upper_bound(indices.begin(), indices.end(), split_value) -
+                                  indices.begin();
+  split_sorted_indices_by_chunk_recursive(indices.take_front(left_split_size), offset, r_chunks);
+  split_sorted_indices_by_chunk_recursive(
+      indices.drop_front(left_split_size), offset + left_split_size, r_chunks);
+}
+
+template<typename T> Vector<IndexRange> split_sorted_indices_by_chunk(const Span<T> indices)
+{
+  BLI_assert(std::is_sorted(indices.begin(), indices.end()));
+  SCOPED_TIMER_AVERAGED(__func__);
+  Vector<IndexRange> chunks;
+  split_sorted_indices_by_chunk_recursive(indices, 0, chunks);
+  return chunks;
+}
+
+template<typename T>
+IndexMask from_unique_sorted_indices(const Span<T> indices, LinearAllocator<> & /*allocator*/)
+{
+  Vector<IndexRange> split_ranges = split_sorted_indices_by_chunk(indices);
+  return {};
+}
+
+template IndexMask from_unique_sorted_indices(const Span<int>, LinearAllocator<> &);
 
 }  // namespace blender::index_mask

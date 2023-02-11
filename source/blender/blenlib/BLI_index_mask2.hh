@@ -5,6 +5,7 @@
 #include <array>
 
 #include "BLI_index_range.hh"
+#include "BLI_linear_allocator.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_span.hh"
 
@@ -85,6 +86,11 @@ class IndexMask {
   const IndexMaskData &data() const;
   IndexMaskData &data_for_inplace_construction();
 };
+
+template<typename T> Vector<IndexRange> split_sorted_indices_by_chunk(Span<T> indices);
+
+template<typename T>
+IndexMask from_unique_sorted_indices(Span<T> indices, LinearAllocator<> &allocator);
 
 /* -------------------------------------------------------------------- */
 /** \name Inline Utilities
