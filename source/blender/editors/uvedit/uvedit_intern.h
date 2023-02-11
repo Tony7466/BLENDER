@@ -80,34 +80,11 @@ bool uv_find_nearest_edge_multi(struct Scene *scene,
                                 float penalty,
                                 struct UvNearestHit *hit);
 
-/**
- * \param only_in_face: when true, only hit faces which `co` is inside.
- * This gives users a result they might expect, especially when zoomed in.
- *
- * \note Concave faces can cause odd behavior, although in practice this isn't often an issue.
- * The center can be outside the face, in this case the distance to the center
- * could cause the face to be considered too far away.
- * If this becomes an issue we could track the distance to the faces closest edge.
- */
-bool uv_find_nearest_face_ex(struct Scene *scene,
-                             struct Object *obedit,
-                             const float co[2],
-                             struct UvNearestHit *hit,
-                             bool only_in_face);
-bool uv_find_nearest_face(struct Scene *scene,
-                          struct Object *obedit,
-                          const float co[2],
-                          struct UvNearestHit *hit);
-bool uv_find_nearest_face_multi_ex(struct Scene *scene,
-                                   struct Object **objects,
-                                   uint objects_len,
-                                   const float co[2],
-                                   struct UvNearestHit *hit,
-                                   bool only_in_face);
 bool uv_find_nearest_face_multi(struct Scene *scene,
                                 struct Object **objects,
                                 uint objects_len,
                                 const float co[2],
+                                float penalty,
                                 struct UvNearestHit *hit);
 
 BMLoop *uv_find_nearest_loop_from_vert(struct Scene *scene,

@@ -876,8 +876,8 @@ bool uv_find_nearest_edge_multi(Scene *scene,
   return found;
 }
 
-bool uv_find_nearest_face_ex(
-    Scene *scene, Object *obedit, const float co[2], UvNearestHit *hit, const bool only_in_face)
+static bool uv_find_nearest_face(
+    Scene *scene, Object *obedit, const float co[2], const float penalty, UvNearestHit *hit)
 {
   BLI_assert((hit->scale[0] > 0.0f) && (hit->scale[1] > 0.0f));
   BMEditMesh *em = BKE_editmesh_from_object(obedit);
@@ -893,58 +893,61 @@ bool uv_find_nearest_face_ex(
       continue;
     }
 
-    float cent[2];
-    BM_face_uv_calc_center_median(efa, cd_loop_uv_offset, cent);
-
-    float delta[2];
-    sub_v2_v2v2(delta, co, cent);
-    mul_v2_v2(delta, hit->scale);
-
-    const float dist_test_sq = len_squared_v2(delta);
-
-    if (dist_test_sq < hit->dist_sq) {
-
-      if (only_in_face) {
-        if (!BM_face_uv_point_inside_test(efa, co, cd_loop_uv_offset)) {
-          continue;
-        }
-      }
-
+    if (BM_face_uv_point_inside_test(efa, co, cd_loop_uv_offset)) {
       hit->ob = obedit;
       hit->efa = efa;
-      hit->dist_sq = dist_test_sq;
-      found = true;
+      hit->dist_sq = 0;
+      return true;
+    }
+
+    const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
+
+    BMLoop *l;
+    BMIter liter;
+    int i;
+    BM_ITER_ELEM_INDEX (l, &liter, efa, BM_LOOPS_OF_FACE, i) {
+      float *luv = BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
+      float *luv_next = BM_ELEM_CD_GET_VOID_P(l->next, cd_loop_uv_offset);
+
+      float delta[2];
+      closest_to_line_segment_v2(delta, co, luv, luv_next);
+
+      sub_v2_v2(delta, co);
+      mul_v2_v2(delta, hit->scale);
+
+      float dist_test_sq = len_squared_v2(delta);
+
+      /* Ensures that successive selection attempts will select other edges sharing the same
+       * UV coordinates as the previous selection. */
+      if ((penalty != 0.0f) && uvedit_edge_select_test(scene, l, offsets)) {
+        dist_test_sq = square_f(sqrtf(dist_test_sq) + penalty);
+      }
+      if (dist_test_sq < hit->dist_sq) {
+        hit->ob = obedit;
+        hit->efa = efa;
+
+        hit->l = l;
+
+        hit->dist_sq = dist_test_sq;
+        found = true;
+      }
     }
   }
   return found;
 }
 
-bool uv_find_nearest_face(Scene *scene, Object *obedit, const float co[2], UvNearestHit *hit)
-{
-  return uv_find_nearest_face_ex(scene, obedit, co, hit, false);
-}
-
-bool uv_find_nearest_face_multi_ex(Scene *scene,
-                                   Object **objects,
-                                   const uint objects_len,
-                                   const float co[2],
-                                   UvNearestHit *hit,
-                                   const bool only_in_face)
+bool uv_find_nearest_face_multi(Scene *scene,
+                                Object **objects,
+                                uint objects_len,
+                                const float co[2],
+                                const float penalty,
+                                UvNearestHit *hit)
 {
   bool found = false;
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
-    if (uv_find_nearest_face_ex(scene, obedit, co, hit, only_in_face)) {
-      found = true;
-    }
+  for (int ob_index = 0; ob_index < objects_len; ob_index++) {
+    found |= uv_find_nearest_face(scene, objects[ob_index], co, penalty, hit);
   }
   return found;
-}
-
-bool uv_find_nearest_face_multi(
-    Scene *scene, Object **objects, const uint objects_len, const float co[2], UvNearestHit *hit)
-{
-  return uv_find_nearest_face_multi_ex(scene, objects, objects_len, co, hit, false);
 }
 
 static bool uv_nearest_between(const BMLoop *l, const float co[2], const int cd_loop_uv_offset)
@@ -2484,30 +2487,14 @@ static bool uv_mouse_select_multi(bContext *C,
   }
   else if (selectmode == UV_SELECT_FACE) {
     /* find face */
-    found_item = uv_find_nearest_face_multi(scene, objects, objects_len, co, &hit);
-
-    if (!found_item) {
-      /* Fallback, perform a second pass without a limited threshold,
-       * which succeeds as long as the cursor is inside the UV face.
-       * Useful when zoomed in, to select faces with distant screen-space face centers. */
-      hit.dist_sq = FLT_MAX;
-      found_item = uv_find_nearest_face_multi_ex(scene, objects, objects_len, co, &hit, true);
-    }
-
+    found_item = uv_find_nearest_face_multi(scene, objects, objects_len, co, penalty_dist, &hit);
     if (found_item) {
       BMesh *bm = BKE_editmesh_from_object(hit.ob)->bm;
       BM_mesh_active_face_set(bm, hit.efa);
     }
   }
   else if (selectmode == UV_SELECT_ISLAND) {
-    found_item = uv_find_nearest_edge_multi(scene, objects, objects_len, co, 0.0f, &hit);
-
-    if (!found_item) {
-      /* Without this, we can be within the face of an island but too far from an edge,
-       * see face selection comment for details. */
-      hit.dist_sq = FLT_MAX;
-      found_item = uv_find_nearest_face_multi_ex(scene, objects, objects_len, co, &hit, true);
-    }
+    found_item = uv_find_nearest_face_multi(scene, objects, objects_len, co, penalty_dist, &hit);
   }
 
   bool found = found_item;
@@ -2528,9 +2515,8 @@ static bool uv_mouse_select_multi(bContext *C,
       is_selected = uvedit_edge_select_test(scene, hit.l, offsets);
     }
     else {
-      /* Vertex or island. For island (if we were using #uv_find_nearest_face_multi_ex, see above),
-       * `hit.l` is NULL, use `hit.efa` instead. */
-      if (hit.l != NULL) {
+      /* Vertex or island. */
+      if (hit.l) {
         is_selected = uvedit_uv_select_test(scene, hit.l, offsets);
       }
       else {
