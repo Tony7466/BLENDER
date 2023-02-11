@@ -2052,6 +2052,7 @@ class VIEW3D_MT_select_edit_curves(Menu):
         layout.operator("curves.select_all", text="Invert").action = 'INVERT'
         layout.operator("curves.select_random", text="Random")
         layout.operator("curves.select_end", text="Endpoints")
+        layout.operator("curves.select_linked", text="Linked")
 
 
 class VIEW3D_MT_select_sculpt_curves(Menu):
@@ -6706,13 +6707,12 @@ class VIEW3D_PT_overlay_sculpt(Panel):
     def poll(cls, context):
         return (
             context.mode == 'SCULPT' and
-            (context.sculpt_object and context.tool_settings.sculpt)
+            context.sculpt_object
         )
 
     def draw(self, context):
         layout = self.layout
         tool_settings = context.tool_settings
-        sculpt = tool_settings.sculpt
 
         view = context.space_data
         overlay = view.overlay

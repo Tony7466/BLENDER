@@ -46,7 +46,7 @@
 
 #include "ED_sculpt.h"
 
-#include "sculpt_intern.h"
+#include "sculpt_intern.hh"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -548,7 +548,6 @@ static void sculpt_face_sets_init_flood_fill(Object *ob, const FaceSetsFloodFill
   if (!ss->epmap) {
     BKE_mesh_edge_poly_map_create(&ss->epmap,
                                   &ss->epmap_mem,
-                                  edges.data(),
                                   edges.size(),
                                   polys.data(),
                                   polys.size(),
