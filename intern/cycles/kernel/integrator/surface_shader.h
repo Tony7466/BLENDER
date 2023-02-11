@@ -483,7 +483,7 @@ ccl_device int surface_shader_bsdf_guided_sample_closure(KernelGlobals kg,
   else {
     /* Sample BSDF. */
     *bsdf_pdf = 0.0f;
-    label = bsdf_sample(kg, sd, sc, rand_bsdf, &eval, wo, unguided_bsdf_pdf, sampled_rougness, eta);
+    label = bsdf_sample(kg, sd, sc, INTEGRATOR_STATE(state, path, flag), rand_bsdf, &eval, wo, unguided_bsdf_pdf, sampled_rougness, eta);
 #  if 0
     if (*unguided_bsdf_pdf > 0.0f) {
       surface_shader_validate_bsdf_sample(kg, sc, *wo, label, sampled_roughness, eta);
@@ -522,6 +522,7 @@ ccl_device int surface_shader_bsdf_guided_sample_closure(KernelGlobals kg,
 ccl_device int surface_shader_bsdf_sample_closure(KernelGlobals kg,
                                                   ccl_private ShaderData *sd,
                                                   ccl_private const ShaderClosure *sc,
+                                                  const int path_flag,
                                                   const float3 rand_bsdf,
                                                   ccl_private BsdfEval *bsdf_eval,
                                                   ccl_private float3 *wo,
@@ -536,7 +537,7 @@ ccl_device int surface_shader_bsdf_sample_closure(KernelGlobals kg,
   Spectrum eval = zero_spectrum();
 
   *pdf = 0.0f;
-  label = bsdf_sample(kg, sd, sc, rand_bsdf, &eval, wo, pdf, sampled_roughness, eta);
+  label = bsdf_sample(kg, sd, sc, path_flag, rand_bsdf, &eval, wo, pdf, sampled_roughness, eta);
 
   if (*pdf != 0.0f) {
     bsdf_eval_init(bsdf_eval, sc->type, eval * sc->weight);

@@ -392,6 +392,7 @@ ccl_device Spectrum bsdf_microfacet_eval(ccl_private const ShaderClosure *sc,
 
 template<MicrofacetType m_type>
 ccl_device int bsdf_microfacet_sample(ccl_private const ShaderClosure *sc,
+                                      const int path_flag,
                                       float3 Ng,
                                       float3 wi,
                                       float randu,
@@ -470,7 +471,7 @@ ccl_device int bsdf_microfacet_sample(ccl_private const ShaderClosure *sc,
       else {
         /* Decide between reflection and refraction, using defensive sampling to avoid
          * excessive noise for reflection highlights. */
-        float reflect_pdf = clamp(fresnel, 0.125f, 0.875f);
+        float reflect_pdf = (path_flag & PATH_RAY_CAMERA)? clamp(fresnel, 0.125f, 0.875f): fresnel;
         do_refract = (randw >= reflect_pdf);
         lobe_pdf = do_refract ? (1.0f - reflect_pdf) : reflect_pdf;
       }
@@ -660,6 +661,7 @@ ccl_device Spectrum bsdf_microfacet_ggx_eval(ccl_private const ShaderClosure *sc
 }
 
 ccl_device int bsdf_microfacet_ggx_sample(ccl_private const ShaderClosure *sc,
+                                          const int path_flag,
                                           float3 Ng,
                                           float3 wi,
                                           float randu,
@@ -672,7 +674,7 @@ ccl_device int bsdf_microfacet_ggx_sample(ccl_private const ShaderClosure *sc,
                                           ccl_private float *eta)
 {
   return bsdf_microfacet_sample<MicrofacetType::GGX>(
-      sc, Ng, wi, randu, randv, randw, eval, wo, pdf, sampled_roughness, eta);
+      sc, path_flag, Ng, wi, randu, randv, randw, eval, wo, pdf, sampled_roughness, eta);
 }
 
 /* Beckmann microfacet with Smith shadow-masking from:
@@ -725,6 +727,7 @@ ccl_device Spectrum bsdf_microfacet_beckmann_eval(ccl_private const ShaderClosur
 }
 
 ccl_device int bsdf_microfacet_beckmann_sample(ccl_private const ShaderClosure *sc,
+                                               const int path_flag,
                                                float3 Ng,
                                                float3 wi,
                                                float randu,
@@ -737,7 +740,7 @@ ccl_device int bsdf_microfacet_beckmann_sample(ccl_private const ShaderClosure *
                                                ccl_private float *eta)
 {
   return bsdf_microfacet_sample<MicrofacetType::BECKMANN>(
-      sc, Ng, wi, randu, randv, randw, eval, wo, pdf, sampled_roughness, eta);
+      sc, path_flag, Ng, wi, randu, randv, randw, eval, wo, pdf, sampled_roughness, eta);
 }
 
 /* Specular interface, not really a microfacet model but close enough that sharing code makes
@@ -777,6 +780,7 @@ ccl_device Spectrum bsdf_microfacet_sharp_eval(ccl_private const ShaderClosure *
 }
 
 ccl_device int bsdf_microfacet_sharp_sample(ccl_private const ShaderClosure *sc,
+                                            const int path_flag,
                                             float3 Ng,
                                             float3 wi,
                                             float randu,
@@ -789,7 +793,7 @@ ccl_device int bsdf_microfacet_sharp_sample(ccl_private const ShaderClosure *sc,
                                             ccl_private float *eta)
 {
   return bsdf_microfacet_sample<MicrofacetType::SHARP>(
-      sc, Ng, wi, randu, randv, randw, eval, wo, pdf, sampled_roughness, eta);
+      sc, path_flag, Ng, wi, randu, randv, randw, eval, wo, pdf, sampled_roughness, eta);
 }
 
 CCL_NAMESPACE_END
