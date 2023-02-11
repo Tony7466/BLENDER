@@ -61,9 +61,12 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
   bool show_face_dots = (v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_FACE_DOT) != 0 ||
                         pd->edit_mesh.do_zbufclip;
 
+  RegionView3D *rv3d = draw_ctx->rv3d;
   float retopology_bias = ((v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_RETOPOLOGY) != 0) ?
-                              (v3d->overlay.retopology_bias * v3d->clip_start) :
-                              0.0;
+                              ((rv3d->is_persp) ?
+                                   (v3d->overlay.retopology_bias * v3d->clip_start) :
+                                   (v3d->overlay.retopology_bias / v3d->clip_end)) :
+                              0.0f;
 
   pd->edit_mesh.do_faces = true;
   pd->edit_mesh.do_edges = true;

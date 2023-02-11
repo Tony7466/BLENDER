@@ -10,7 +10,7 @@ void main()
   gl_Position = point_world_to_ndc(world_pos);
 
   /* Offset Z position for retopology overlay. */
-  gl_Position.z -= retopologyBias / gl_Position.z;
+  gl_Position.z -= retopologyBias / abs(gl_Position.w);
 
   view_clipping_distances(world_pos);
 }
