@@ -26,6 +26,16 @@ inline const std::array<int16_t, max_chunk_size> &get_static_indices_array()
   return data;
 }
 
+inline int64_t index_to_chunk_index(const int64_t i)
+{
+  return i >> chunk_size_shift;
+}
+
+inline int64_t size_to_chunk_num(const int64_t size)
+{
+  return (size + max_chunk_size - 1) >> chunk_size_shift;
+}
+
 const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size);
 
 struct ChunkIteratorData {
@@ -126,14 +136,29 @@ inline IndexMask::IndexMask()
 inline IndexMask::IndexMask(const int64_t size)
 {
   *this = get_static_index_mask_for_min_size(size);
-  data_.chunks_num = (size + max_chunk_size - 1) >> chunk_size_shift;
+  data_.chunks_num = size_to_chunk_num(size);
   data_.end_it.index_in_segment = size & chunk_mask_low;
 }
 
-inline IndexMask IndexMask::slice(const IndexRange range) const
+inline IndexMask::IndexMask(const IndexRange range)
 {
-  IndexMask sliced_mask = *this;
-  return sliced_mask;
+  if (range.is_empty()) {
+    return;
+  }
+  *this = get_static_index_mask_for_min_size(range.one_after_last());
+
+  const int64_t first_chunk_i = index_to_chunk_index(range.first());
+  const int64_t last_chunk_i = index_to_chunk_index(range.last());
+
+  data_.chunks_num = last_chunk_i - first_chunk_i + 1;
+  data_.indices_num = range.size();
+  data_.chunks -= first_chunk_i;
+  data_.chunk_offsets -= first_chunk_i;
+  data_.chunk_sizes_cumulative -= first_chunk_i;
+  data_.begin_it.segment_index = 0;
+  data_.begin_it.index_in_segment = range.first() & chunk_mask_low;
+  data_.end_it.segment_index = 0;
+  data_.end_it.index_in_segment = range.one_after_last() & chunk_mask_low;
 }
 
 inline const IndexMaskData &IndexMask::data() const
