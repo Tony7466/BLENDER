@@ -62,11 +62,16 @@ class IndexMaskIterator {
  private:
   IndexMaskIteratorData data_;
   const IndexMask *mask_;
+  ChunkIteratorData current_chunk_begin_;
+  ChunkIteratorData current_chunk_end_;
+  int16_t current_segment_begin_;
+  int16_t current_segment_end_;
 
   friend IndexMask;
 
  public:
   IndexMaskIterator &operator++();
+  int64_t operator*() const;
 
   friend bool operator!=(const IndexMaskIterator &a, const IndexMaskIterator &b);
   friend bool operator==(const IndexMaskIterator &a, const IndexMaskIterator &b);
@@ -85,6 +90,8 @@ class IndexMask {
 
   IndexMaskIterator begin() const;
   IndexMaskIterator end() const;
+
+  IndexMask slice(IndexRange range) const;
 
   const IndexMaskData &data() const;
   IndexMaskData &data_for_inplace_construction();
@@ -119,14 +126,49 @@ inline bool operator==(const IndexMaskIteratorData &a, const IndexMaskIteratorDa
 
 inline IndexMaskIterator &IndexMaskIterator::operator++()
 {
-  const Chunk &current_chunk = mask_->data_.chunks[data_.chunk_index];
-  const int16_t current_segment_size = current_chunk.segment_sizes[data_.chunk_it.segment_index];
   data_.chunk_it.index_in_segment++;
-  if (data_.chunk_it.index_in_segment == current_segment_size) {
-    data_.chunk_it.segment_index++;
+  if (data_.chunk_it.index_in_segment == current_segment_end_) {
     data_.chunk_it.index_in_segment = 0;
+    data_.chunk_it.segment_index++;
+    current_segment_begin_ = 0;
+    if (data_.chunk_it.segment_index < current_chunk_end_.segment_index) {
+      current_segment_end_ =
+          mask_->data_.chunks[data_.chunk_index].segment_sizes[data_.chunk_it.segment_index];
+    }
+    else if (current_chunk_end_.index_in_segment > 0) {
+      current_segment_end_ = current_chunk_end_.index_in_segment;
+    }
+    else {
+      data_.chunk_it.segment_index = 0;
+      data_.chunk_index++;
+      current_chunk_begin_.segment_index = 0;
+      current_chunk_begin_.index_in_segment = 0;
+      if (data_.chunk_index < mask_->data_.chunks_num - 1) {
+        const Chunk &chunk = mask_->data_.chunks[data_.chunk_index];
+        if (chunk.segments_num == 0) {
+        }
+        else {
+          current_chunk_end_.segment_index = std::max(chunk.segments_num - 1, 0);
+          current_chunk_end_.index_in_segment
+        }
+      }
+      else if (data_.chunk_index == mask_->data_.chunks_num - 1) {
+      }
+      else {
+      }
+    }
   }
+
   return *this;
+}
+
+inline int64_t IndexMaskIterator::operator*() const
+{
+  const Chunk &current_chunk = mask_->data_.chunks[data_.chunk_index];
+  const int64_t offset = mask_->data_.chunk_offsets[data_.chunk_index];
+  const int16_t index =
+      current_chunk.segment_indices[data_.chunk_it.segment_index][data_.chunk_it.index_in_segment];
+  return offset + index;
 }
 
 inline bool operator!=(const IndexMaskIterator &a, const IndexMaskIterator &b)
@@ -136,7 +178,7 @@ inline bool operator!=(const IndexMaskIterator &a, const IndexMaskIterator &b)
 
 inline bool operator==(const IndexMaskIterator &a, const IndexMaskIterator &b)
 {
-  return a.data_ != b.data_;
+  return a.data_ == b.data_;
 }
 
 /* -------------------------------------------------------------------- */
@@ -157,12 +199,40 @@ inline IndexMask::IndexMask()
   data_.end_it.index_in_segment = 0;
 }
 
+inline IndexMask::IndexMask(const int64_t size)
+{
+  *this = get_static_index_mask_for_min_size(size);
+  data_.chunks_num = (size + max_chunk_size - 1) >> chunk_size_shift;
+  data_.end_it.index_in_segment = size & chunk_mask_low;
+}
+
 inline IndexMaskIterator IndexMask::begin() const
 {
   IndexMaskIterator it;
   it.data_.chunk_index = 0;
   it.data_.chunk_it = data_.begin_it;
   it.mask_ = this;
+  it.current_chunk_begin_ = data_.begin_it;
+  it.current_segment_begin_ = data_.begin_it.segment_index;
+  if (data_.chunks_num == 0) {
+    it.current_chunk_end_ = data_.end_it;
+    it.current_segment_end_ = 0;
+  }
+  if (data_.chunks_num == 1) {
+    it.current_chunk_end_ = data_.end_it;
+    if (data_.begin_it.segment_index == data_.end_it.segment_index) {
+      it.current_segment_end_ = data_.end_it.segment_index;
+    }
+    else {
+      const Chunk &first_chunk = data_.chunks[0];
+      it.current_segment_end_ = first_chunk.segment_sizes[data_.begin_it.segment_index];
+    }
+  }
+  else {
+    const Chunk &first_chunk = data_.chunks[0];
+    it.current_chunk_end_.segment_index = first_chunk.segments_num;
+    it.current_chunk_end_.index_in_segment = 0;
+  }
   return it;
 }
 
@@ -173,7 +243,17 @@ inline IndexMaskIterator IndexMask::end() const
   it.data_.chunk_it.segment_index = 0;
   it.data_.chunk_it.index_in_segment = 0;
   it.mask_ = this;
+  it.current_chunk_begin_ = it.data_.chunk_it;
+  it.current_chunk_end_ = it.data_.chunk_it;
+  it.current_segment_begin_ = 0;
+  it.current_segment_end_ = 0;
   return it;
+}
+
+inline IndexMask IndexMask::slice(const IndexRange range) const
+{
+  IndexMask sliced_mask = *this;
+  return sliced_mask;
 }
 
 inline const IndexMaskData &IndexMask::data() const

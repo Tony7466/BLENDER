@@ -10,6 +10,10 @@ namespace blender::index_mask::tests {
 
 TEST(index_mask2, Test)
 {
+  IndexMask mask(3);
+  for (const int64_t i : mask) {
+    std::cout << i << "\n";
+  }
 }
 
 }  // namespace blender::index_mask::tests
