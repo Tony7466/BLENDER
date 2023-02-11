@@ -3779,15 +3779,6 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_ATLEAST(bmain, 305, 1)) {
-    /* Reset edge visibility flag, since the base is meant to be "true" for original meshes. */
-    LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
-      for (MEdge &edge : mesh->edges_for_write()) {
-        edge.flag |= ME_EDGEDRAW;
-      }
-    }
-  }
-
   if (!MAIN_VERSION_ATLEAST(bmain, 305, 2)) {
     LISTBASE_FOREACH (MovieClip *, clip, &bmain->movieclips) {
       MovieTracking *tracking = &clip->tracking;
@@ -3897,6 +3888,21 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
         else {
           after_armature = false;
         }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_ATLEAST(bmain, 305, 9)) {
+    /* Enable legacy normal and rotation outputs in Distribute Points on Faces node. */
+    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
+      if (ntree->type != NTREE_GEOMETRY) {
+        continue;
+      }
+      LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+        if (node->type != GEO_NODE_DISTRIBUTE_POINTS_ON_FACES) {
+          continue;
+        }
+        node->custom2 = true;
       }
     }
   }

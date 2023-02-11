@@ -928,7 +928,6 @@ static void ccgDM_copyFinalEdgeArray(DerivedMesh *dm, MEdge *medge)
   int edgeSize = ccgSubSurf_getEdgeSize(ss);
   uint i = 0;
   short *edgeFlags = ccgdm->edgeFlags;
-  const short ed_interior_flag = ccgdm->drawInteriorEdges ? ME_EDGEDRAW : 0;
 
   totface = ccgSubSurf_getNumFaces(ss);
   for (index = 0; index < totface; index++) {
@@ -940,7 +939,7 @@ static void ccgDM_copyFinalEdgeArray(DerivedMesh *dm, MEdge *medge)
         ccgDM_to_MEdge(&medge[i++],
                        getFaceIndex(ss, f, S, x, 0, edgeSize, gridSize),
                        getFaceIndex(ss, f, S, x + 1, 0, edgeSize, gridSize),
-                       ed_interior_flag);
+                       0);
       }
 
       for (x = 1; x < gridSize - 1; x++) {
@@ -948,11 +947,11 @@ static void ccgDM_copyFinalEdgeArray(DerivedMesh *dm, MEdge *medge)
           ccgDM_to_MEdge(&medge[i++],
                          getFaceIndex(ss, f, S, x, y, edgeSize, gridSize),
                          getFaceIndex(ss, f, S, x, y + 1, edgeSize, gridSize),
-                         ed_interior_flag);
+                         0);
           ccgDM_to_MEdge(&medge[i++],
                          getFaceIndex(ss, f, S, y, x, edgeSize, gridSize),
                          getFaceIndex(ss, f, S, y + 1, x, edgeSize, gridSize),
-                         ed_interior_flag);
+                         0);
         }
       }
     }
@@ -967,11 +966,8 @@ static void ccgDM_copyFinalEdgeArray(DerivedMesh *dm, MEdge *medge)
 
     if (edgeFlags) {
       if (edgeIdx != -1) {
-        ed_flag |= ((edgeFlags[index] & ME_SEAM) | ME_EDGEDRAW);
+        ed_flag |= (edgeFlags[index] & ME_SEAM);
       }
-    }
-    else {
-      ed_flag |= ME_EDGEDRAW;
     }
 
     for (x = 0; x < edgeSize - 1; x++) {
@@ -1367,7 +1363,7 @@ static void ccgdm_create_grids(DerivedMesh *dm)
   gridFlagMats = static_cast<DMFlagMat *>(
       MEM_mallocN(sizeof(DMFlagMat) * numGrids, "ccgdm.gridFlagMats"));
 
-  ccgdm->gridHidden = static_cast<unsigned int **>(
+  ccgdm->gridHidden = static_cast<uint **>(
       MEM_callocN(sizeof(*ccgdm->gridHidden) * numGrids, "ccgdm.gridHidden"));
 
   for (gIndex = 0, index = 0; index < numFaces; index++) {

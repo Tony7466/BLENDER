@@ -6,7 +6,9 @@
 
 #include "BLI_array_utils.hh"
 #include "BLI_index_mask_ops.hh"
+#include "BLI_lasso_2d.h"
 #include "BLI_rand.hh"
+#include "BLI_rect.h"
 
 #include "BKE_attribute.hh"
 #include "BKE_crazyspace.hh"
@@ -163,6 +165,21 @@ bool has_anything_selected(const bke::CurvesGeometry &curves)
   return !selection || contains(selection, true);
 }
 
+bool has_anything_selected(const GSpan selection)
+{
+  if (selection.type().is<bool>()) {
+    return selection.typed<bool>().contains(true);
+  }
+  else if (selection.type().is<float>()) {
+    for (const float elem : selection.typed<float>()) {
+      if (elem > 0.0f) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 static void invert_selection(MutableSpan<float> selection)
 {
   threading::parallel_for(selection.index_range(), 2048, [&](IndexRange range) {
@@ -202,14 +219,12 @@ void select_all(bke::CurvesGeometry &curves, const eAttrDomain selection_domain,
   }
 }
 
-void select_ends(bke::CurvesGeometry &curves,
-                 const eAttrDomain selection_domain,
-                 int amount,
-                 bool end_points)
+void select_ends(bke::CurvesGeometry &curves, int amount, bool end_points)
 {
   const bool was_anything_selected = has_anything_selected(curves);
+  const OffsetIndices points_by_curve = curves.points_by_curve();
   bke::GSpanAttributeWriter selection = ensure_selection_attribute(
-      curves, selection_domain, CD_PROP_BOOL);
+      curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
   if (!was_anything_selected) {
     fill_selection_true(selection.span);
   }
@@ -222,7 +237,6 @@ void select_ends(bke::CurvesGeometry &curves,
       MutableSpan<T> selection_typed = selection.span.typed<T>();
       threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
         for (const int curve_i : range) {
-          const OffsetIndices points_by_curve = curves.points_by_curve();
           if (end_points) {
             selection_typed.slice(points_by_curve[curve_i].drop_back(amount)).fill(T(0));
           }
@@ -231,6 +245,23 @@ void select_ends(bke::CurvesGeometry &curves,
           }
         }
       });
+    }
+  });
+  selection.finish();
+}
+
+void select_linked(bke::CurvesGeometry &curves)
+{
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  bke::GSpanAttributeWriter selection = ensure_selection_attribute(
+      curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
+
+  threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
+    for (const int curve_i : range) {
+      GMutableSpan selection_curve = selection.span.slice(points_by_curve[curve_i]);
+      if (has_anything_selected(selection_curve)) {
+        fill_selection_true(selection_curve);
+      }
     }
   });
   selection.finish();
@@ -283,6 +314,46 @@ void select_random(bke::CurvesGeometry &curves,
     }
   });
   selection.finish();
+}
+
+static void apply_selection_operation_at_index(GMutableSpan selection,
+                                               const int index,
+                                               const eSelectOp sel_op)
+{
+  if (selection.type().is<bool>()) {
+    MutableSpan<bool> selection_typed = selection.typed<bool>();
+    switch (sel_op) {
+      case SEL_OP_ADD:
+      case SEL_OP_SET:
+        selection_typed[index] = true;
+        break;
+      case SEL_OP_SUB:
+        selection_typed[index] = false;
+        break;
+      case SEL_OP_XOR:
+        selection_typed[index] ^= selection_typed[index];
+        break;
+      default:
+        break;
+    }
+  }
+  else if (selection.type().is<float>()) {
+    MutableSpan<float> selection_typed = selection.typed<float>();
+    switch (sel_op) {
+      case SEL_OP_ADD:
+      case SEL_OP_SET:
+        selection_typed[index] = 1.0f;
+        break;
+      case SEL_OP_SUB:
+        selection_typed[index] = 0.0f;
+        break;
+      case SEL_OP_XOR:
+        selection_typed[index] = 1.0f - selection_typed[index];
+        break;
+      default:
+        break;
+    }
+  }
 }
 
 /**
@@ -356,7 +427,7 @@ bool select_pick(const ViewContext &vc,
                  bke::CurvesGeometry &curves,
                  const eAttrDomain selection_domain,
                  const SelectPick_Params &params,
-                 const int2 mval)
+                 const int2 coord)
 {
   FindClosestPointData closest_point;
   bool found = find_closest_point_to_screen_co(*vc.depsgraph,
@@ -364,7 +435,7 @@ bool select_pick(const ViewContext &vc,
                                                vc.rv3d,
                                                *vc.obact,
                                                curves,
-                                               float2(mval),
+                                               float2(coord),
                                                ED_view3d_select_dist_px(),
                                                closest_point);
 
@@ -392,33 +463,188 @@ bool select_pick(const ViewContext &vc,
       elem_index = std::distance(curves.offsets().begin(), it) - 1;
     }
 
-    selection.span.type().to_static_type_tag<bool, float>([&](auto type_tag) {
-      using T = typename decltype(type_tag)::type;
-      if constexpr (std::is_void_v<T>) {
-        BLI_assert_unreachable();
-      }
-      else {
-        MutableSpan<T> selection_typed = selection.span.typed<T>();
-        switch (params.sel_op) {
-          case SEL_OP_ADD:
-          case SEL_OP_SET:
-            selection_typed[elem_index] = T(1);
-            break;
-          case SEL_OP_SUB:
-            selection_typed[elem_index] = T(0);
-            break;
-          case SEL_OP_XOR:
-            selection_typed[elem_index] = T(1 - selection_typed[elem_index]);
-            break;
-          default:
-            break;
-        }
-      }
-    });
+    apply_selection_operation_at_index(selection.span, elem_index, params.sel_op);
     selection.finish();
   }
 
   return changed || found;
+}
+
+bool select_box(const ViewContext &vc,
+                bke::CurvesGeometry &curves,
+                const eAttrDomain selection_domain,
+                const rcti &rect,
+                const eSelectOp sel_op)
+{
+  bke::GSpanAttributeWriter selection = ensure_selection_attribute(
+      curves, selection_domain, CD_PROP_BOOL);
+
+  bool changed = false;
+  if (sel_op == SEL_OP_SET) {
+    fill_selection_false(selection.span);
+    changed = true;
+  }
+
+  float4x4 projection;
+  ED_view3d_ob_project_mat_get(vc.rv3d, vc.obact, projection.ptr());
+
+  const bke::crazyspace::GeometryDeformation deformation =
+      bke::crazyspace::get_evaluated_curves_deformation(*vc.depsgraph, *vc.obact);
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  if (selection_domain == ATTR_DOMAIN_POINT) {
+    threading::parallel_for(curves.points_range(), 1024, [&](const IndexRange point_range) {
+      for (const int point_i : point_range) {
+        float2 pos_proj;
+        ED_view3d_project_float_v2_m4(
+            vc.region, deformation.positions[point_i], pos_proj, projection.ptr());
+        if (BLI_rcti_isect_pt_v(&rect, int2(pos_proj))) {
+          apply_selection_operation_at_index(selection.span, point_i, sel_op);
+          changed = true;
+        }
+      }
+    });
+  }
+  else if (selection_domain == ATTR_DOMAIN_CURVE) {
+    threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange curves_range) {
+      for (const int curve_i : curves_range) {
+        for (const int point_i : points_by_curve[curve_i]) {
+          float2 pos_proj;
+          ED_view3d_project_float_v2_m4(
+              vc.region, deformation.positions[point_i], pos_proj, projection.ptr());
+          if (BLI_rcti_isect_pt_v(&rect, int2(pos_proj))) {
+            apply_selection_operation_at_index(selection.span, curve_i, sel_op);
+            changed = true;
+            break;
+          }
+        }
+      }
+    });
+  }
+  selection.finish();
+
+  return changed;
+}
+
+bool select_lasso(const ViewContext &vc,
+                  bke::CurvesGeometry &curves,
+                  const eAttrDomain selection_domain,
+                  const Span<int2> coords,
+                  const eSelectOp sel_op)
+{
+  rcti bbox;
+  const int(*coord_array)[2] = reinterpret_cast<const int(*)[2]>(coords.data());
+  BLI_lasso_boundbox(&bbox, coord_array, coords.size());
+
+  bke::GSpanAttributeWriter selection = ensure_selection_attribute(
+      curves, selection_domain, CD_PROP_BOOL);
+
+  bool changed = false;
+  if (sel_op == SEL_OP_SET) {
+    fill_selection_false(selection.span);
+    changed = true;
+  }
+
+  float4x4 projection;
+  ED_view3d_ob_project_mat_get(vc.rv3d, vc.obact, projection.ptr());
+
+  const bke::crazyspace::GeometryDeformation deformation =
+      bke::crazyspace::get_evaluated_curves_deformation(*vc.depsgraph, *vc.obact);
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  if (selection_domain == ATTR_DOMAIN_POINT) {
+    threading::parallel_for(curves.points_range(), 1024, [&](const IndexRange point_range) {
+      for (const int point_i : point_range) {
+        float2 pos_proj;
+        ED_view3d_project_float_v2_m4(
+            vc.region, deformation.positions[point_i], pos_proj, projection.ptr());
+        /* Check the lasso bounding box first as an optimization. */
+        if (BLI_rcti_isect_pt_v(&bbox, int2(pos_proj)) &&
+            BLI_lasso_is_point_inside(
+                coord_array, coords.size(), int(pos_proj.x), int(pos_proj.y), IS_CLIPPED)) {
+          apply_selection_operation_at_index(selection.span, point_i, sel_op);
+          changed = true;
+        }
+      }
+    });
+  }
+  else if (selection_domain == ATTR_DOMAIN_CURVE) {
+    threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange curves_range) {
+      for (const int curve_i : curves_range) {
+        for (const int point_i : points_by_curve[curve_i]) {
+          float2 pos_proj;
+          ED_view3d_project_float_v2_m4(
+              vc.region, deformation.positions[point_i], pos_proj, projection.ptr());
+          /* Check the lasso bounding box first as an optimization. */
+          if (BLI_rcti_isect_pt_v(&bbox, int2(pos_proj)) &&
+              BLI_lasso_is_point_inside(
+                  coord_array, coords.size(), int(pos_proj.x), int(pos_proj.y), IS_CLIPPED)) {
+            apply_selection_operation_at_index(selection.span, curve_i, sel_op);
+            changed = true;
+            break;
+          }
+        }
+      }
+    });
+  }
+  selection.finish();
+
+  return changed;
+}
+
+bool select_circle(const ViewContext &vc,
+                   bke::CurvesGeometry &curves,
+                   const eAttrDomain selection_domain,
+                   const int2 coord,
+                   const float radius,
+                   const eSelectOp sel_op)
+{
+  const float radius_sq = pow2f(radius);
+  bke::GSpanAttributeWriter selection = ensure_selection_attribute(
+      curves, selection_domain, CD_PROP_BOOL);
+
+  bool changed = false;
+  if (sel_op == SEL_OP_SET) {
+    fill_selection_false(selection.span);
+    changed = true;
+  }
+
+  float4x4 projection;
+  ED_view3d_ob_project_mat_get(vc.rv3d, vc.obact, projection.ptr());
+
+  const bke::crazyspace::GeometryDeformation deformation =
+      bke::crazyspace::get_evaluated_curves_deformation(*vc.depsgraph, *vc.obact);
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  if (selection_domain == ATTR_DOMAIN_POINT) {
+    threading::parallel_for(curves.points_range(), 1024, [&](const IndexRange point_range) {
+      for (const int point_i : point_range) {
+        float2 pos_proj;
+        ED_view3d_project_float_v2_m4(
+            vc.region, deformation.positions[point_i], pos_proj, projection.ptr());
+        if (math::distance_squared(pos_proj, float2(coord)) <= radius_sq) {
+          apply_selection_operation_at_index(selection.span, point_i, sel_op);
+          changed = true;
+        }
+      }
+    });
+  }
+  else if (selection_domain == ATTR_DOMAIN_CURVE) {
+    threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange curves_range) {
+      for (const int curve_i : curves_range) {
+        for (const int point_i : points_by_curve[curve_i]) {
+          float2 pos_proj;
+          ED_view3d_project_float_v2_m4(
+              vc.region, deformation.positions[point_i], pos_proj, projection.ptr());
+          if (math::distance_squared(pos_proj, float2(coord)) <= radius_sq) {
+            apply_selection_operation_at_index(selection.span, curve_i, sel_op);
+            changed = true;
+            break;
+          }
+        }
+      }
+    });
+  }
+  selection.finish();
+
+  return changed;
 }
 
 }  // namespace blender::ed::curves
