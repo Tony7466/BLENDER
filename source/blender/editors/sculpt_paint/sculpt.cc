@@ -5366,7 +5366,6 @@ void SCULPT_flush_update_step(bContext *C, SculptUpdateType update_flags)
   ARegion *region = CTX_wm_region(C);
   MultiresModifierData *mmd = ss->multires.modifier;
   RegionView3D *rv3d = CTX_wm_region_view3d(C);
-  View3D *v3d = CTX_wm_view3d(C);
   Mesh *mesh = static_cast<Mesh *>(ob->data);
 
   if (rv3d) {
