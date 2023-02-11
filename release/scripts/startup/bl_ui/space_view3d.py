@@ -3214,16 +3214,55 @@ class VIEW3D_MT_sculpt(Menu):
 
         layout.separator()
 
-        # Toggle visibility
-        # Hide active face set
+        op = layout.operator("sculpt.face_set_change_visibility", text="Toggle Visibility")
+        op.mode = 'TOGGLE'
+
+        op = layout.operator("sculpt.face_set_change_visibility", text="Hide Active Face Set")
+        op.mode = 'HIDE_ACTIVE'
 
         props = layout.operator("paint.hide_show", text="Show All")
         props.action = 'SHOW'
         props.area = 'ALL'
 
+        op = layout.operator("sculpt.face_set_change_visibility", text="Invert Visible")
+        op.mode = 'INVERT'
+
         props = layout.operator("paint.hide_show", text="Hide Masked")
         props.action = 'HIDE'
         props.area = 'MASKED'
+
+        layout.separator()
+
+        layout.operator("sculpt.trim_box_gesture", text="Box Trim")
+
+        layout.operator("sculpt.trim_lasso_gesture", text="Lasso Trim")
+
+        # Box Add
+        # Lasso Add
+
+        layout.operator("sculpt.project_line_gesture", text="Line Project")
+
+        layout.separator()
+
+        # Fair Positions
+        props = layout.operator("sculpt.face_set_edit", text="Fair Positions")
+        props.mode = "FAIR_POSITIONS"
+
+        # Fair Tangency
+        props = layout.operator("sculpt.face_set_edit", text="Fair Tangency")
+        props.mode = "FAIR_TANGENCY"
+
+        layout.separator()
+
+        # Smooth
+        # Surface Smooth
+        # Inflate
+        # Relax Topology
+        # Relax Face Sets
+        # Sharpen
+        # Enhance Details
+        # Erase Multires Displacement
+        # Randomize
 
         layout.separator()
 
