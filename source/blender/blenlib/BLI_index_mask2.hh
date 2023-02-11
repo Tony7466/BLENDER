@@ -17,22 +17,25 @@ static constexpr int64_t chunk_mask_low = (1 << chunk_size_shift) - 1;
 static constexpr int64_t chunk_mask_high = ~chunk_mask_low;
 static constexpr int64_t max_chunk_size = (1 << chunk_size_shift);
 
-std::array<int16_t, max_chunk_size> build_static_offsets_array();
+std::array<int16_t, max_chunk_size> build_static_indices_array();
 
-inline const std::array<int16_t, max_chunk_size> &get_static_offsets_array()
+inline const std::array<int16_t, max_chunk_size> &get_static_indices_array()
 {
-  alignas(64) static const std::array<int16_t, max_chunk_size> data = build_static_offsets_array();
+  alignas(64) static const std::array<int16_t, max_chunk_size> data = build_static_indices_array();
   return data;
 }
+
+const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size);
 
 /**
  * A #Chunk contains an ordered list of segments. Each segment is an array of 16-bit integers.
  */
 struct Chunk {
   int16_t segments_num;
+  int16_t indices_num;
   const int16_t **segment_indices;
   const int16_t *segment_sizes;
-  const int16_t *accumulated_sizes;
+  const int16_t *segment_sizes_cumulative;
 };
 
 struct ChunkIteratorData {
@@ -42,9 +45,10 @@ struct ChunkIteratorData {
 
 struct IndexMaskData {
   int64_t chunks_num;
+  int64_t indices_num;
   const Chunk *chunks;
   const int64_t *chunk_offsets;
-  const int64_t *accumulated_sizes;
+  const int64_t *chunk_sizes_cumulative;
   ChunkIteratorData begin_it;
   ChunkIteratorData end_it;
 };
@@ -83,6 +87,7 @@ class IndexMask {
   IndexMaskIterator end() const;
 
   const IndexMaskData &data() const;
+  IndexMaskData &data_for_inplace_construction();
 };
 
 /* -------------------------------------------------------------------- */
@@ -140,12 +145,12 @@ inline bool operator==(const IndexMaskIterator &a, const IndexMaskIterator &b)
 
 inline IndexMask::IndexMask()
 {
-  static constexpr int64_t accumulated_sizes_for_empty[1] = {0};
+  static constexpr int64_t cumulative_sizes_for_empty_mask[1] = {0};
 
   data_.chunks_num = 0;
   data_.chunks = nullptr;
   data_.chunk_offsets = nullptr;
-  data_.accumulated_sizes = accumulated_sizes_for_empty;
+  data_.chunk_sizes_cumulative = cumulative_sizes_for_empty_mask;
   data_.begin_it.segment_index = 0;
   data_.begin_it.index_in_segment = 0;
   data_.end_it.segment_index = 0;
@@ -174,6 +179,11 @@ inline IndexMaskIterator IndexMask::end() const
 inline const IndexMaskData &IndexMask::data() const
 {
   return data_;
+}
+
+inline IndexMaskData &IndexMask::data_for_inplace_construction()
+{
+  return const_cast<IndexMaskData &>(data_);
 }
 
 }  // namespace index_mask

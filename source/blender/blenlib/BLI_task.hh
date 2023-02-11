@@ -59,9 +59,9 @@ void parallel_for(IndexRange range, int64_t grain_size, const Function &function
   if (range.size() >= grain_size) {
     lazy_threading::send_hint();
     tbb::parallel_for(
-        tbb::blocked_range<int64_t>(range.first(), range.one_after_last(), grain_size),
+        tbb::blocked_range<int64_t>(range.first(), range.one_after_last(), size_t(grain_size)),
         [&](const tbb::blocked_range<int64_t> &subrange) {
-          function(IndexRange(subrange.begin(), subrange.size()));
+          function(IndexRange(subrange.begin(), int64_t(subrange.size())));
         });
     return;
   }
