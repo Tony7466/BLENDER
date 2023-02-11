@@ -142,6 +142,7 @@ set(SRC
   nodes/node_geo_raycast.cc
   nodes/node_geo_realize_instances.cc
   nodes/node_geo_remove_attribute.cc
+  nodes/node_geo_resample_topology.cc
   nodes/node_geo_rotate_instances.cc
   nodes/node_geo_sample_index.cc
   nodes/node_geo_sample_nearest_surface.cc

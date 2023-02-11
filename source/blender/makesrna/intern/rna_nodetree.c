@@ -10306,6 +10306,24 @@ static void def_geo_curve_resample(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 
+static void def_geo_resample_topology(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  static EnumPropertyItem fill_mode_items[] = {
+      {0, "FILL_GRID", 0, "Grid", ""},
+      {1, "FILL_NGONE", 0, "N-Gone", ""},
+      {2, "FILL_DELONE", 0, "Delone", ""},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  prop = RNA_def_property(srna, "fill_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "custom1");
+  RNA_def_property_enum_items(prop, fill_mode_items);
+  RNA_def_property_ui_text(prop, "Fill Mode", "How to fill faces");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
 static void def_geo_curve_fillet(StructRNA *srna)
 {
   PropertyRNA *prop;
