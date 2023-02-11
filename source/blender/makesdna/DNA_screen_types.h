@@ -742,6 +742,9 @@ enum {
 
   /* Only editor overlays (currently gizmos only!) should be redrawn. */
   RGN_DRAW_EDITOR_OVERLAYS = 32,
+
+  /* Force single sample for some specific cases (sculpt paint tool stroke). */
+  RGN_DRAW_SINGLE_SAMPLE = 64,
 };
 
 #ifdef __cplusplus

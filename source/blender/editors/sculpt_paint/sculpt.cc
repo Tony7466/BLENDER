@@ -5379,12 +5379,8 @@ void SCULPT_flush_update_step(bContext *C, SculptUpdateType update_flags)
   }
 
   if ((update_flags & SCULPT_UPDATE_IMAGE) != 0) {
-    ED_region_tag_redraw(region);
+    ED_region_tag_redraw_force_single_sample(region);
     if (update_flags == SCULPT_UPDATE_IMAGE) {
-      if (ELEM(v3d->shading.type, OB_MATERIAL, OB_TEXTURE, OB_RENDER)) {
-        /* When multisampling is activated, this should prevent from ghosting */
-        DEG_id_tag_update(&ob->id, ID_RECALC_SHADING);
-      }
       /* Early exit when only need to update the images. We don't want to tag any geometry updates
        * that would rebuilt the PBVH. */
       return;

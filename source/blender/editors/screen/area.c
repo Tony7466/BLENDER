@@ -658,9 +658,18 @@ void ED_region_tag_redraw(ARegion *region)
    * but python scripts can cause this to happen indirectly */
   if (region && !(region->do_draw & RGN_DRAWING)) {
     /* zero region means full region redraw */
-    region->do_draw &= ~(RGN_DRAW_PARTIAL | RGN_DRAW_NO_REBUILD | RGN_DRAW_EDITOR_OVERLAYS);
+    region->do_draw &= ~(RGN_DRAW_PARTIAL | RGN_DRAW_NO_REBUILD | RGN_DRAW_EDITOR_OVERLAYS |
+                         RGN_DRAW_SINGLE_SAMPLE);
     region->do_draw |= RGN_DRAW;
     memset(&region->drawrct, 0, sizeof(region->drawrct));
+  }
+}
+
+void ED_region_tag_redraw_force_single_sample(ARegion *region)
+{
+  if (region && !(region->do_draw & RGN_DRAWING)) {
+    ED_region_tag_redraw(region);
+    region->do_draw |= RGN_DRAW_SINGLE_SAMPLE;
   }
 }
 
@@ -674,7 +683,7 @@ void ED_region_tag_redraw_cursor(ARegion *region)
 void ED_region_tag_redraw_no_rebuild(ARegion *region)
 {
   if (region && !(region->do_draw & (RGN_DRAWING | RGN_DRAW))) {
-    region->do_draw &= ~(RGN_DRAW_PARTIAL | RGN_DRAW_EDITOR_OVERLAYS);
+    region->do_draw &= ~(RGN_DRAW_PARTIAL | RGN_DRAW_EDITOR_OVERLAYS | RGN_DRAW_SINGLE_SAMPLE);
     region->do_draw |= RGN_DRAW_NO_REBUILD;
     memset(&region->drawrct, 0, sizeof(region->drawrct));
   }

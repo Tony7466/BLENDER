@@ -71,6 +71,7 @@ void ED_region_update_rect(struct ARegion *region);
  */
 void ED_region_floating_init(struct ARegion *region);
 void ED_region_tag_redraw(struct ARegion *region);
+void ED_region_tag_redraw_force_single_sample(struct ARegion *region);
 void ED_region_tag_redraw_partial(struct ARegion *region, const struct rcti *rct, bool rebuild);
 void ED_region_tag_redraw_cursor(struct ARegion *region);
 void ED_region_tag_redraw_no_rebuild(struct ARegion *region);

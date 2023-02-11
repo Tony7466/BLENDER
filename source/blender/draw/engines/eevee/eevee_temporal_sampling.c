@@ -254,7 +254,8 @@ int EEVEE_temporal_sampling_init(EEVEE_ViewLayerData *UNUSED(sldata), EEVEE_Data
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const Scene *scene_eval = DEG_get_evaluated_scene(draw_ctx->depsgraph);
 
-  if ((scene_eval->eevee.taa_samples != 1) || DRW_state_is_image_render()) {
+  if (((scene_eval->eevee.taa_samples != 1) || DRW_state_is_image_render()) &&
+      !(draw_ctx->region->do_draw & RGN_DRAW_SINGLE_SAMPLE)) {
     float persmat[4][4];
 
     if (!DRW_state_is_image_render() && (scene_eval->eevee.flag & SCE_EEVEE_TAA_REPROJECTION)) {
