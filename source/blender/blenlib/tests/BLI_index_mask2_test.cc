@@ -7,10 +7,16 @@
 
 #include "testing/testing.h"
 
+namespace blender::index_mask {
+void do_benchmark(const int64_t total);
+}
+
 namespace blender::index_mask::tests {
 
 TEST(index_mask2, Test)
 {
+  const int64_t total = 1e8;
+  do_benchmark(total);
 
   // Vector<int> data;
   // for (const int64_t i : IndexRange(100000)) {

@@ -279,4 +279,46 @@ template void split_to_ranges_and_spans(const Span<int> indices,
 
 }  // namespace unique_sorted_indices
 
+void do_benchmark(const int64_t total);
+void do_benchmark(const int64_t total)
+{
+  const IndexRange range(total);
+  IndexMask mask(total);
+
+  Array<int8_t> data(total, 0);
+
+  for ([[maybe_unused]] const int64_t iteration : IndexRange(5)) {
+    {
+      SCOPED_TIMER_AVERAGED("mask ");
+      threading::parallel_for(range, 1e4, [&](const IndexRange subrange) {
+        const IndexMask submask = mask.slice(subrange);
+        submask.foreach_span_or_range([&](const auto indices) {
+          int8_t *data_ = data.data();
+          for (const int64_t i : indices) {
+            data_[i]++;
+          }
+        });
+      });
+    }
+    {
+      SCOPED_TIMER_AVERAGED("range");
+      threading::parallel_for(range, 1e4, [&](const IndexRange subrange) {
+        int8_t *data_ = data.data();
+        for (const int64_t i : subrange) {
+          data_[i]++;
+        }
+      });
+    }
+    // {
+    //   SCOPED_TIMER_AVERAGED("mask span");
+    //   mask.foreach_span([&](const OffsetSpan<int64_t, int16_t> span) {
+    //     int *data_ = data.data();
+    //     for (const int64_t i : span) {
+    //       data_[i]++;
+    //     }
+    //   });
+    // }
+  }
+}
+
 }  // namespace blender::index_mask
