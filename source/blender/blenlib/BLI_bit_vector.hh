@@ -52,6 +52,32 @@ static constexpr int64_t BitsPerInt = int64_t(sizeof(IntType) * 8);
 static constexpr int64_t BitToIntIndexShift = 3 + (sizeof(IntType) >= 2) + (sizeof(IntType) >= 4) +
                                               (sizeof(IntType) >= 8);
 static constexpr IntType BitIndexMask = (IntType(1) << BitToIntIndexShift) - 1;
+static constexpr IntType MostSignificantBit = IntType(1) << (sizeof(IntType) * 8 - 1);
+
+inline IntType mask_for_first_n_bits(const int64_t n)
+{
+  return (IntType(1) << n) - 1;
+}
+
+inline IntType mask_for_last_n_bits(const int64_t n)
+{
+  return ~((IntType(1) << (BitsPerInt - n)) - 1);
+}
+
+inline IntType mask_for_bit(const int64_t bit_index)
+{
+  return IntType(1) << bit_index;
+}
+
+inline IntType *int_containing_bit(IntType *data, const int64_t bit_index)
+{
+  return data + (bit_index >> BitToIntIndexShift);
+}
+
+inline const IntType *int_containing_bit(const IntType *data, const int64_t bit_index)
+{
+  return data + (bit_index >> BitToIntIndexShift);
+}
 
 /**
  * This is a read-only pointer to a specific bit. The value of the bit can be retrieved, but
@@ -75,8 +101,8 @@ class BitRef {
    */
   BitRef(const IntType *ptr, const int64_t bit_index)
   {
-    ptr_ = ptr + (bit_index >> BitToIntIndexShift);
-    mask_ = IntType(1) << (bit_index & BitIndexMask);
+    ptr_ = int_containing_bit(ptr, bit_index);
+    mask_ = mask_for_bit(bit_index & BitIndexMask);
   }
 
   /**
@@ -114,8 +140,8 @@ class MutableBitRef {
    */
   MutableBitRef(IntType *ptr, const int64_t bit_index)
   {
-    ptr_ = ptr + (bit_index >> BitToIntIndexShift);
-    mask_ = IntType(1) << IntType(bit_index & BitIndexMask);
+    ptr_ = int_containing_bit(ptr, bit_index);
+    mask_ = mask_for_bit(bit_index & BitIndexMask);
   }
 
   /**
@@ -343,6 +369,58 @@ class MutableBitSpan {
   {
     return {data_, bit_range_};
   }
+
+  void set()
+  {
+    const AlignedIndexRanges ranges = split_index_range_by_alignment(bit_range_, BitsPerInt);
+    {
+      IntType &first_int = *int_containing_bit(data_, bit_range_.start());
+      const IntType first_int_mask = mask_for_last_n_bits(ranges.prefix.size());
+      first_int |= first_int_mask;
+    }
+    {
+      IntType *start = int_containing_bit(data_, ranges.aligned.start());
+      const int64_t ints_to_fill = ranges.aligned.size() / BitsPerInt;
+      constexpr IntType fill_value = IntType(-1);
+      initialized_fill_n(start, ints_to_fill, fill_value);
+    }
+    {
+      IntType &last_int = *int_containing_bit(data_, bit_range_.one_after_last() - 1);
+      const IntType last_int_mask = mask_for_first_n_bits(ranges.suffix.size());
+      last_int |= last_int_mask;
+    }
+  }
+
+  void reset()
+  {
+    const AlignedIndexRanges ranges = split_index_range_by_alignment(bit_range_, BitsPerInt);
+    {
+      IntType &first_int = *int_containing_bit(data_, bit_range_.start());
+      const IntType first_int_mask = mask_for_first_n_bits(ranges.prefix.size());
+      first_int &= first_int_mask;
+    }
+    {
+      IntType *start = int_containing_bit(data_, ranges.aligned.start());
+      const int64_t ints_to_fill = ranges.aligned.size() / BitsPerInt;
+      constexpr IntType fill_value = 0;
+      initialized_fill_n(start, ints_to_fill, fill_value);
+    }
+    {
+      IntType &last_int = *int_containing_bit(data_, bit_range_.one_after_last() - 1);
+      const IntType last_int_mask = mask_for_last_n_bits(ranges.suffix.size());
+      last_int &= last_int_mask;
+    }
+  }
+
+  void set(const bool value)
+  {
+    if (value) {
+      this->set();
+    }
+    else {
+      this->reset();
+    }
+  }
 };
 
 template<
@@ -566,31 +644,8 @@ class BitVector {
     }
     size_in_bits_ = new_size_in_bits;
     if (old_size_in_bits < new_size_in_bits) {
-      this->fill_range(IndexRange(old_size_in_bits, new_size_in_bits - old_size_in_bits), value);
-    }
-  }
-
-  /**
-   * Set #value for every element in #range.
-   */
-  void fill_range(const IndexRange range, const bool value)
-  {
-    const AlignedIndexRanges aligned_ranges = split_index_range_by_alignment(range, BitsPerInt);
-
-    /* Fill first few bits. */
-    for (const int64_t i : aligned_ranges.prefix) {
-      (*this)[i].set(value);
-    }
-
-    /* Fill entire ints at once. */
-    const int64_t start_fill_int_index = aligned_ranges.aligned.start() / BitsPerInt;
-    const int64_t ints_to_fill = aligned_ranges.aligned.size() / BitsPerInt;
-    const IntType fill_value = value ? IntType(-1) : IntType(0);
-    initialized_fill_n(data_ + start_fill_int_index, ints_to_fill, fill_value);
-
-    /* Fill bits in the end that don't cover a full int. */
-    for (const int64_t i : aligned_ranges.suffix) {
-      (*this)[i].set(value);
+      MutableBitSpan(data_, IndexRange(old_size_in_bits, new_size_in_bits - old_size_in_bits))
+          .set(value);
     }
   }
 
@@ -599,7 +654,7 @@ class BitVector {
    */
   void fill(const bool value)
   {
-    this->fill_range(IndexRange(0, size_in_bits_), value);
+    MutableBitSpan(data_, size_in_bits_).set(value);
   }
 
   /**
@@ -642,7 +697,7 @@ class BitVector {
   }
 
   BLI_NOINLINE void realloc_to_at_least(const int64_t min_capacity_in_bits,
-                                        const IntType initial_value_for_new_ints = 0x00)
+                                        const IntType initial_value_for_new_ints = 0)
   {
     if (capacity_in_bits_ >= min_capacity_in_bits) {
       return;
