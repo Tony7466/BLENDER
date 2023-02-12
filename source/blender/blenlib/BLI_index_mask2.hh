@@ -165,7 +165,7 @@ inline const std::array<int16_t, max_chunk_size> &get_static_indices_array()
   return data;
 }
 
-inline int64_t index_to_chunk_index(const int64_t i)
+inline int64_t index_to_chunk_id(const int64_t i)
 {
   return i >> chunk_size_shift;
 }
@@ -253,14 +253,14 @@ inline IndexMask::IndexMask(const IndexRange range)
   }
   *this = get_static_index_mask_for_min_size(range.one_after_last());
 
-  const int64_t first_chunk_i = index_to_chunk_index(range.first());
-  const int64_t last_chunk_i = index_to_chunk_index(range.last());
+  const int64_t first_chunk_id = index_to_chunk_id(range.first());
+  const int64_t last_chunk_id = index_to_chunk_id(range.last());
 
-  data_.chunks_num = last_chunk_i - first_chunk_i + 1;
+  data_.chunks_num = last_chunk_id - first_chunk_id + 1;
   data_.indices_num = range.size();
-  data_.chunks -= first_chunk_i;
-  data_.chunk_offsets -= first_chunk_i;
-  data_.chunk_sizes_cumulative -= first_chunk_i;
+  data_.chunks -= first_chunk_id;
+  data_.chunk_offsets -= first_chunk_id;
+  data_.chunk_sizes_cumulative -= first_chunk_id;
   data_.begin_it.segment_index = 0;
   data_.begin_it.index_in_segment = range.first() & chunk_mask_low;
   data_.end_it.segment_index = 0;

@@ -102,13 +102,13 @@ static void split_by_chunk_recursive(const Span<T> indices,
   }
   const T first_index = indices.first();
   const T last_index = indices.last();
-  const int64_t first_chunk_index = index_to_chunk_index(first_index);
-  const int64_t last_chunk_index = index_to_chunk_index(last_index);
-  if (first_chunk_index == last_chunk_index) {
+  const int64_t first_chunk_id = index_to_chunk_id(first_index);
+  const int64_t last_chunk_id = index_to_chunk_id(last_index);
+  if (first_chunk_id == last_chunk_id) {
     r_chunks.append_as(offset, indices.size());
     return;
   }
-  const int64_t middle_chunk_index = (first_chunk_index + last_chunk_index + 1) / 2;
+  const int64_t middle_chunk_index = (first_chunk_id + last_chunk_id + 1) / 2;
   const int64_t split_value = middle_chunk_index * max_chunk_size - 1;
   const int64_t left_split_size = std::upper_bound(indices.begin(), indices.end(), split_value) -
                                   indices.begin();
@@ -185,10 +185,10 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, ResourceScop
       const Span<T> indices_in_chunk = indices.slice(range_for_chunk);
       BLI_assert(!indices_in_chunk.is_empty());
 
-      const int64_t chunk_i = index_to_chunk_index(int64_t(indices_in_chunk[0]));
-      BLI_assert(chunk_i == index_to_chunk_index(int64_t(indices_in_chunk.last())));
+      const int64_t chunk_id = index_to_chunk_id(int64_t(indices_in_chunk[0]));
+      BLI_assert(chunk_id == index_to_chunk_id(int64_t(indices_in_chunk.last())));
       Chunk &chunk = chunks[i];
-      const int64_t chunk_offset = max_chunk_size * chunk_i;
+      const int64_t chunk_offset = max_chunk_size * chunk_id;
       chunk_offsets[i] = chunk_offset;
 
       if (indices_in_chunk.size() == max_chunk_size) {
