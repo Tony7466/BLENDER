@@ -100,6 +100,11 @@ template<typename T, typename BaseT> class OffsetSpan {
   {
   }
 
+  int64_t size() const
+  {
+    return data_.size();
+  }
+
   T operator[](const int64_t i) const
   {
     return T(data_[i]) + offset_;
@@ -326,6 +331,7 @@ inline IndexMask::IndexMask(const int64_t size)
 {
   *this = get_static_index_mask_for_min_size(size);
   data_.chunks_num = size_to_chunk_num(size);
+  data_.indices_num = size;
   data_.end_it.index_in_segment = size & chunk_mask_low;
 }
 
@@ -392,9 +398,9 @@ inline IndexMask IndexMask::slice(const IndexRange range) const
   IndexMask sliced;
   sliced.data_.chunks_num = last_it.chunk_i - first_it.chunk_i + 1;
   sliced.data_.indices_num = range.size();
-  sliced.data_.chunks = data_.chunks - first_it.chunk_i;
-  sliced.data_.chunk_offsets = data_.chunk_offsets - first_it.chunk_i;
-  sliced.data_.chunk_sizes_cumulative = data_.chunk_sizes_cumulative - first_it.chunk_i;
+  sliced.data_.chunks = data_.chunks + first_it.chunk_i;
+  sliced.data_.chunk_offsets = data_.chunk_offsets + first_it.chunk_i;
+  sliced.data_.chunk_sizes_cumulative = data_.chunk_sizes_cumulative + first_it.chunk_i;
   sliced.data_.begin_it = first_it.chunk_it;
   sliced.data_.end_it.segment_i = last_it.chunk_it.segment_i;
   sliced.data_.end_it.index_in_segment = last_it.chunk_it.index_in_segment + 1;
