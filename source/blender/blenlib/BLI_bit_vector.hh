@@ -48,7 +48,7 @@ using IntType = uint64_t;
 static constexpr int64_t BitsPerInt = int64_t(sizeof(IntType) * 8);
 static constexpr int64_t BitToIntIndexShift = 3 + (sizeof(IntType) >= 2) + (sizeof(IntType) >= 4) +
                                               (sizeof(IntType) >= 8);
-static constexpr IntType BitIndexMask = (1 << BitToIntIndexShift) - 1;
+static constexpr IntType BitIndexMask = (IntType(1) << BitToIntIndexShift) - 1;
 
 /**
  * This is a read-only pointer to a specific bit. The value of the bit can be retrieved, but
@@ -73,7 +73,7 @@ class BitRef {
   BitRef(const IntType *ptr, const int64_t bit_index)
   {
     ptr_ = ptr + (bit_index >> BitToIntIndexShift);
-    mask_ = 1 << (bit_index & BitIndexMask);
+    mask_ = IntType(1) << (bit_index & BitIndexMask);
   }
 
   /**
@@ -112,7 +112,7 @@ class MutableBitRef {
   MutableBitRef(IntType *ptr, const int64_t bit_index)
   {
     ptr_ = ptr + (bit_index >> BitToIntIndexShift);
-    mask_ = 1 << IntType(bit_index & BitIndexMask);
+    mask_ = IntType(1) << IntType(bit_index & BitIndexMask);
   }
 
   /**
