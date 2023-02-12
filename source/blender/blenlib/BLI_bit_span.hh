@@ -191,7 +191,7 @@ class MutableBitSpan {
     const AlignedIndexRanges ranges = split_index_range_by_alignment(bit_range_, BitsPerInt);
     {
       IntType &first_int = *int_containing_bit(data_, bit_range_.start());
-      const IntType first_int_mask = mask_for_last_n_bits(ranges.prefix.size());
+      const IntType first_int_mask = mask_last_n_bits(ranges.prefix.size());
       first_int |= first_int_mask;
     }
     {
@@ -202,7 +202,7 @@ class MutableBitSpan {
     }
     {
       IntType &last_int = *int_containing_bit(data_, bit_range_.one_after_last() - 1);
-      const IntType last_int_mask = mask_for_first_n_bits(ranges.suffix.size());
+      const IntType last_int_mask = mask_first_n_bits(ranges.suffix.size());
       last_int |= last_int_mask;
     }
   }
@@ -212,7 +212,7 @@ class MutableBitSpan {
     const AlignedIndexRanges ranges = split_index_range_by_alignment(bit_range_, BitsPerInt);
     {
       IntType &first_int = *int_containing_bit(data_, bit_range_.start());
-      const IntType first_int_mask = mask_for_first_n_bits(ranges.prefix.size());
+      const IntType first_int_mask = mask_first_n_bits(ranges.prefix.size());
       first_int &= first_int_mask;
     }
     {
@@ -223,7 +223,7 @@ class MutableBitSpan {
     }
     {
       IntType &last_int = *int_containing_bit(data_, bit_range_.one_after_last() - 1);
-      const IntType last_int_mask = mask_for_last_n_bits(ranges.suffix.size());
+      const IntType last_int_mask = mask_last_n_bits(ranges.suffix.size());
       last_int &= last_int_mask;
     }
   }

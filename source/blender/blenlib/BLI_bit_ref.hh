@@ -16,18 +16,24 @@ static constexpr int64_t BitToIntIndexShift = 3 + (sizeof(IntType) >= 2) + (size
 static constexpr IntType BitIndexMask = (IntType(1) << BitToIntIndexShift) - 1;
 static constexpr IntType MostSignificantBit = IntType(1) << (sizeof(IntType) * 8 - 1);
 
-inline IntType mask_for_first_n_bits(const int64_t n)
+inline IntType mask_first_n_bits(const int64_t n)
 {
+  BLI_assert(n >= 0);
+  BLI_assert(n < BitsPerInt);
   return (IntType(1) << n) - 1;
 }
 
-inline IntType mask_for_last_n_bits(const int64_t n)
+inline IntType mask_last_n_bits(const int64_t n)
 {
-  return ~((IntType(1) << (BitsPerInt - n)) - 1);
+  BLI_assert(n > 0);
+  BLI_assert(n <= BitsPerInt);
+  return ~mask_first_n_bits(BitsPerInt - n);
 }
 
-inline IntType mask_for_bit(const int64_t bit_index)
+inline IntType mask_single_bit(const int64_t bit_index)
 {
+  BLI_assert(bit_index >= 0);
+  BLI_assert(bit_index < BitsPerInt);
   return IntType(1) << bit_index;
 }
 
@@ -64,7 +70,7 @@ class BitRef {
   BitRef(const IntType *ptr, const int64_t bit_index)
   {
     ptr_ = int_containing_bit(ptr, bit_index);
-    mask_ = mask_for_bit(bit_index & BitIndexMask);
+    mask_ = mask_single_bit(bit_index & BitIndexMask);
   }
 
   /**
@@ -103,7 +109,7 @@ class MutableBitRef {
   MutableBitRef(IntType *ptr, const int64_t bit_index)
   {
     ptr_ = int_containing_bit(ptr, bit_index);
-    mask_ = mask_for_bit(bit_index & BitIndexMask);
+    mask_ = mask_single_bit(bit_index & BitIndexMask);
   }
 
   /**
