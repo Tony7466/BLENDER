@@ -1252,16 +1252,16 @@ class WM_OT_doc_view_manual(Operator):
 
         import re
         # Match characters that have a special meaning to `fnmatch`.
-        # If any of these characters are used we must let `fnmatch` run its own matching logic.
-        # However, in most cases a literal prefix is used making it considerably faster to do a
-        # simple `startswith` check before performing a full match, see #104581.
-        re_match_non_special = re.compile("^[^?*\\[]+").match
+        # The characters that can occur as the first special character are `*?[`.
+        # If any of these are used we must let `fnmatch` run its own matching logic.
+        # However, in most cases a literal prefix is used making it considerably faster
+        # to do a simple `startswith` check before performing a full match, see #104581.
+        re_match_non_special = re.compile(r"^[^?\*\[]+").match
 
         for pattern, url_suffix in url_mapping:
             # Simple optimization, makes a big difference (over 50x speedup).
             non_special = re_match_non_special(pattern)
-            if (non_special is not None and non_special.end() > 0 and
-                    (not rna_id.startswith(pattern[:non_special.end()]))):
+            if non_special is None or not rna_id.startswith(pattern[:non_special.end()]):
                 continue
 
             if fnmatchcase(rna_id, pattern):
