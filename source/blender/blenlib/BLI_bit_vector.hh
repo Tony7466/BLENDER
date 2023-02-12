@@ -44,6 +44,9 @@
 
 namespace blender::bits {
 
+/**
+ * Using a large integer type is better because then it's easier to process many bits at once.
+ */
 using IntType = uint64_t;
 static constexpr int64_t BitsPerInt = int64_t(sizeof(IntType) * 8);
 static constexpr int64_t BitToIntIndexShift = 3 + (sizeof(IntType) >= 2) + (sizeof(IntType) >= 4) +
