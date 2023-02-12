@@ -474,6 +474,16 @@ class BitVector {
     return move_assign_container(*this, std::move(other));
   }
 
+  operator BitSpan() const
+  {
+    return {data_, IndexRange(size_in_bits_)};
+  }
+
+  operator MutableBitSpan()
+  {
+    return {data_, IndexRange(size_in_bits_)};
+  }
+
   /**
    * Number of bits in the bit vector.
    */
