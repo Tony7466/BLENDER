@@ -62,7 +62,8 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
                         pd->edit_mesh.do_zbufclip;
 
   RegionView3D *rv3d = draw_ctx->rv3d;
-  float retopology_bias = ((v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_RETOPOLOGY) != 0) ?
+  bool show_retopology = (v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_RETOPOLOGY) != 0;
+  float retopology_bias = (show_retopology) ?
                               ((rv3d->is_persp) ?
                                    (v3d->overlay.retopology_bias * v3d->clip_start) :
                                    (v3d->overlay.retopology_bias / v3d->clip_end)) :
@@ -106,12 +107,12 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
   /* Run Twice for in-front passes. */
   for (int i = 0; i < 2; i++) {
     /* Complementary Depth Pass */
-    state = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_CULL_BACK;
+    state = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
+            ((show_retopology) ? DRWState(0) : DRW_STATE_CULL_BACK);
     DRW_PASS_CREATE(psl->edit_mesh_depth_ps[i], state | pd->clipping_state);
 
     sh = OVERLAY_shader_depth_only();
     grp = pd->edit_mesh_depth_grp[i] = DRW_shgroup_create(sh, psl->edit_mesh_depth_ps[i]);
-    DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
     DRW_shgroup_uniform_float_copy(grp, "retopologyBias", retopology_bias);
   }
   {
@@ -290,7 +291,12 @@ void OVERLAY_edit_mesh_cache_populate(OVERLAY_Data *vedata, Object *ob)
     }
   }
 
-  if (show_retopology || (do_in_front && draw_as_solid)) {
+  if (show_retopology) {
+    Mesh *me = (Mesh *)ob->data;
+    geom = DRW_mesh_batch_cache_get_edit_triangles(me);
+    DRW_shgroup_call_no_cull(pd->edit_mesh_depth_grp[do_in_front], geom, ob);
+  }
+  else if (do_in_front && draw_as_solid) {
     geom = DRW_cache_mesh_surface_get(ob);
     DRW_shgroup_call_no_cull(pd->edit_mesh_depth_grp[do_in_front], geom, ob);
   }
