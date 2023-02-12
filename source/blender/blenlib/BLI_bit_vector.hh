@@ -174,6 +174,172 @@ class MutableBitRef {
   }
 };
 
+class BitIterator {
+ private:
+  const IntType *data_;
+  int64_t bit_index_;
+
+ public:
+  BitIterator(const IntType *data, const int64_t bit_index) : data_(data), bit_index_(bit_index)
+  {
+  }
+
+  BitIterator &operator++()
+  {
+    bit_index_++;
+    return *this;
+  }
+
+  BitRef operator*() const
+  {
+    return BitRef(data_, bit_index_);
+  }
+
+  friend bool operator!=(const BitIterator &a, const BitIterator &b)
+  {
+    BLI_assert(a.data_ == b.data_);
+    return a.bit_index_ != b.bit_index_;
+  }
+};
+
+class MutableBitIterator {
+ private:
+  IntType *data_;
+  int64_t bit_index_;
+
+ public:
+  MutableBitIterator(IntType *data, const int64_t bit_index) : data_(data), bit_index_(bit_index)
+  {
+  }
+
+  MutableBitIterator &operator++()
+  {
+    bit_index_++;
+    return *this;
+  }
+
+  MutableBitRef operator*() const
+  {
+    return MutableBitRef(data_, bit_index_);
+  }
+
+  friend bool operator!=(const MutableBitIterator &a, const MutableBitIterator &b)
+  {
+    BLI_assert(a.data_ == b.data_);
+    return a.bit_index_ != b.bit_index_;
+  }
+};
+
+class BitSpan {
+ private:
+  const IntType *data_ = nullptr;
+  IndexRange bit_range_ = {0, 0};
+
+ public:
+  BitSpan() = default;
+
+  BitSpan(const IntType *data, const IndexRange bit_range) : data_(data), bit_range_(bit_range)
+  {
+  }
+
+  int64_t size() const
+  {
+    return bit_range_.size();
+  }
+
+  bool is_empty() const
+  {
+    return bit_range_.is_empty();
+  }
+
+  BitRef operator[](const int64_t index) const
+  {
+    BLI_assert(index >= 0);
+    BLI_assert(index < bit_range_.size());
+    return BitRef(data_, bit_range_.start() + index);
+  }
+
+  BitSpan slice(const IndexRange range) const
+  {
+    return BitSpan(data_, bit_range_.slice(range));
+  }
+
+  const IntType *data() const
+  {
+    return data_;
+  }
+
+  const IndexRange &bit_range() const
+  {
+    return bit_range_;
+  }
+
+  BitIterator begin() const
+  {
+    return {data_, bit_range_.start()};
+  }
+
+  BitIterator end() const
+  {
+    return {data_, bit_range_.one_after_last()};
+  }
+};
+
+class MutableBitSpan {
+ private:
+  IntType *data_ = nullptr;
+  IndexRange bit_range_ = {0, 0};
+
+ public:
+  MutableBitSpan() = default;
+
+  MutableBitSpan(IntType *data, const IndexRange bit_range) : data_(data), bit_range_(bit_range)
+  {
+  }
+
+  int64_t size() const
+  {
+    return bit_range_.size();
+  }
+
+  bool is_empty() const
+  {
+    return bit_range_.is_empty();
+  }
+
+  MutableBitRef operator[](const int64_t index) const
+  {
+    BLI_assert(index >= 0);
+    BLI_assert(index < bit_range_.size());
+    return MutableBitRef(data_, bit_range_.start() + index);
+  }
+
+  MutableBitSpan slice(const IndexRange range) const
+  {
+    return MutableBitSpan(data_, bit_range_.slice(range));
+  }
+
+  IntType *data() const
+  {
+    return data_;
+  }
+
+  const IndexRange &bit_range() const
+  {
+    return bit_range_;
+  }
+
+  MutableBitIterator begin() const
+  {
+    return {data_, bit_range_.start()};
+  }
+
+  MutableBitIterator end() const
+  {
+    return {data_, bit_range_.one_after_last()};
+  }
+};
+
 template<
     /**
      * Number of bits that can be stored in the vector without doing an allocation.
@@ -352,80 +518,24 @@ class BitVector {
     size_in_bits_++;
   }
 
-  class Iterator {
-   private:
-    const BitVector *vector_;
-    int64_t index_;
-
-   public:
-    Iterator(const BitVector &vector, const int64_t index) : vector_(&vector), index_(index)
-    {
-    }
-
-    Iterator &operator++()
-    {
-      index_++;
-      return *this;
-    }
-
-    friend bool operator!=(const Iterator &a, const Iterator &b)
-    {
-      BLI_assert(a.vector_ == b.vector_);
-      return a.index_ != b.index_;
-    }
-
-    BitRef operator*() const
-    {
-      return (*vector_)[index_];
-    }
-  };
-
-  class MutableIterator {
-   private:
-    BitVector *vector_;
-    int64_t index_;
-
-   public:
-    MutableIterator(BitVector &vector, const int64_t index) : vector_(&vector), index_(index)
-    {
-    }
-
-    MutableIterator &operator++()
-    {
-      index_++;
-      return *this;
-    }
-
-    friend bool operator!=(const MutableIterator &a, const MutableIterator &b)
-    {
-      BLI_assert(a.vector_ == b.vector_);
-      return a.index_ != b.index_;
-    }
-
-    MutableBitRef operator*() const
-    {
-      return (*vector_)[index_];
-    }
-  };
-
-  Iterator begin() const
+  BitIterator begin() const
   {
-    return {*this, 0};
+    return {data_, 0};
   }
 
-  Iterator end() const
+  BitIterator end() const
   {
-    return {*this, size_in_bits_};
+    return {data_, size_in_bits_};
   }
 
-  MutableIterator begin()
+  MutableBitIterator begin()
   {
-    return {*this, 0};
+    return {data_, 0};
   }
 
-  MutableIterator end()
+  MutableBitIterator end()
   {
-    return {*this, size_in_bits_};
+    return {data_, size_in_bits_};
   }
 
   /**
