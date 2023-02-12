@@ -126,6 +126,12 @@ TEST(bit_span, SetSliced)
   for (const int64_t i : IndexRange(640)) {
     EXPECT_EQ(span[i], i >= 5 && i < 505);
   }
+
+  span.slice(IndexRange(10, 190)).set(false);
+
+  for (const int64_t i : IndexRange(640)) {
+    EXPECT_EQ(span[i], (i >= 5 && i < 10) || (i >= 200 && i < 505));
+  }
 }
 
 }  // namespace blender::bits::tests
