@@ -256,12 +256,12 @@ class BitSpan {
   {
     BLI_assert(index >= 0);
     BLI_assert(index < bit_range_.size());
-    return BitRef(data_, bit_range_.start() + index);
+    return {data_, bit_range_.start() + index};
   }
 
   BitSpan slice(const IndexRange range) const
   {
-    return BitSpan(data_, bit_range_.slice(range));
+    return {data_, bit_range_.slice(range)};
   }
 
   const IntType *data() const
@@ -311,12 +311,12 @@ class MutableBitSpan {
   {
     BLI_assert(index >= 0);
     BLI_assert(index < bit_range_.size());
-    return MutableBitRef(data_, bit_range_.start() + index);
+    return {data_, bit_range_.start() + index};
   }
 
   MutableBitSpan slice(const IndexRange range) const
   {
-    return MutableBitSpan(data_, bit_range_.slice(range));
+    return {data_, bit_range_.slice(range)};
   }
 
   IntType *data() const
@@ -337,6 +337,11 @@ class MutableBitSpan {
   MutableBitIterator end() const
   {
     return {data_, bit_range_.one_after_last()};
+  }
+
+  operator BitSpan() const
+  {
+    return {data_, bit_range_};
   }
 };
 
