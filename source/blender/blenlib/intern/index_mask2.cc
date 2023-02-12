@@ -55,9 +55,9 @@ const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size)
     mask_data.chunks = chunks_array.data();
     mask_data.chunk_offsets = chunk_offsets_array.data();
     mask_data.chunk_sizes_cumulative = chunk_sizes_cumulative.data();
-    mask_data.begin_it.segment_index = 0;
+    mask_data.begin_it.segment_i = 0;
     mask_data.begin_it.index_in_segment = 0;
-    mask_data.end_it.segment_index = 0;
+    mask_data.end_it.segment_i = 0;
     mask_data.end_it.index_in_segment = max_chunk_size;
     return mask;
   }();

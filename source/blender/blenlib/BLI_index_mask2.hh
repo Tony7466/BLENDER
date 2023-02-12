@@ -27,12 +27,12 @@ std::array<int16_t, max_chunk_size> build_static_indices_array();
 const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size);
 
 struct RawChunkIterator {
-  int16_t segment_index;
+  int16_t segment_i;
   int16_t index_in_segment;
 };
 
 struct RawMaskIterator {
-  int64_t chunk_index;
+  int64_t chunk_i;
   RawChunkIterator chunk_it;
 };
 
@@ -186,18 +186,18 @@ inline RawChunkIterator Chunk::index_to_iterator(const int16_t index) const
   BLI_assert(index >= 0);
   BLI_assert(index < this->segment_offsets().total_size());
   RawChunkIterator it;
-  it.segment_index = this->segment_offsets().find_range_index(index);
-  it.index_in_segment = index - this->segment_sizes_cumulative[it.segment_index];
+  it.segment_i = this->segment_offsets().find_range_index(index);
+  it.index_in_segment = index - this->segment_sizes_cumulative[it.segment_i];
   return it;
 }
 
 inline int16_t Chunk::iterator_to_index(const RawChunkIterator &it) const
 {
-  BLI_assert(it.segment_index >= 0);
-  BLI_assert(it.segment_index < this->segments_num);
+  BLI_assert(it.segment_i >= 0);
+  BLI_assert(it.segment_i < this->segments_num);
   BLI_assert(it.index_in_segment >= 0);
-  BLI_assert(it.index_in_segment < this->segment_offsets().size(it.segment_index));
-  return this->segment_sizes_cumulative[it.segment_index] + it.index_in_segment;
+  BLI_assert(it.index_in_segment < this->segment_offsets().size(it.segment_i));
+  return this->segment_sizes_cumulative[it.segment_i] + it.index_in_segment;
 }
 
 /* -------------------------------------------------------------------- */
@@ -206,7 +206,7 @@ inline int16_t Chunk::iterator_to_index(const RawChunkIterator &it) const
 
 inline bool operator!=(const RawChunkIterator &a, const RawChunkIterator &b)
 {
-  return a.index_in_segment != b.index_in_segment || a.segment_index != b.segment_index;
+  return a.index_in_segment != b.index_in_segment || a.segment_i != b.segment_i;
 }
 
 /* -------------------------------------------------------------------- */
@@ -215,7 +215,7 @@ inline bool operator!=(const RawChunkIterator &a, const RawChunkIterator &b)
 
 inline bool operator!=(const RawMaskIterator &a, const RawMaskIterator &b)
 {
-  return a.chunk_it != b.chunk_it || a.chunk_index != b.chunk_index;
+  return a.chunk_it != b.chunk_it || a.chunk_i != b.chunk_i;
 }
 
 inline bool operator==(const RawMaskIterator &a, const RawMaskIterator &b)
@@ -235,9 +235,9 @@ inline IndexMask::IndexMask()
   data_.chunks = nullptr;
   data_.chunk_offsets = nullptr;
   data_.chunk_sizes_cumulative = cumulative_sizes_for_empty_mask;
-  data_.begin_it.segment_index = 0;
+  data_.begin_it.segment_i = 0;
   data_.begin_it.index_in_segment = 0;
-  data_.end_it.segment_index = 0;
+  data_.end_it.segment_i = 0;
   data_.end_it.index_in_segment = 0;
 }
 
@@ -263,9 +263,9 @@ inline IndexMask::IndexMask(const IndexRange range)
   data_.chunks -= first_chunk_id;
   data_.chunk_offsets -= first_chunk_id;
   data_.chunk_sizes_cumulative -= first_chunk_id;
-  data_.begin_it.segment_index = 0;
+  data_.begin_it.segment_i = 0;
   data_.begin_it.index_in_segment = range.first() & chunk_mask_low;
-  data_.end_it.segment_index = 0;
+  data_.end_it.segment_i = 0;
   data_.end_it.index_in_segment = range.one_after_last() & chunk_mask_low;
 }
 
@@ -285,20 +285,19 @@ inline RawMaskIterator IndexMask::index_to_iterator(const int64_t index) const
   BLI_assert(index < data_.indices_num);
   RawMaskIterator it;
   const int16_t begin_index = data_.chunks[0].iterator_to_index(data_.begin_it);
-  it.chunk_index = this->chunk_offsets().find_range_index(index + begin_index +
-                                                          data_.chunk_sizes_cumulative[0]);
-  const Chunk &chunk = data_.chunks[it.chunk_index];
+  it.chunk_i = this->chunk_offsets().find_range_index(index + begin_index +
+                                                      data_.chunk_sizes_cumulative[0]);
+  const Chunk &chunk = data_.chunks[it.chunk_i];
   it.chunk_it = chunk.index_to_iterator((index + begin_index) & chunk_mask_low);
   return it;
 }
 
 inline int64_t IndexMask::iterator_to_index(const RawMaskIterator &it) const
 {
-  BLI_assert(it.chunk_index >= 0);
-  BLI_assert(it.chunk_index < data_.chunks_num);
+  BLI_assert(it.chunk_i >= 0);
+  BLI_assert(it.chunk_i < data_.chunks_num);
   const int16_t begin_index = data_.chunks[0].iterator_to_index(data_.begin_it);
-  return data_.chunk_sizes_cumulative[it.chunk_index] - data_.chunk_sizes_cumulative[0] -
-         begin_index;
+  return data_.chunk_sizes_cumulative[it.chunk_i] - data_.chunk_sizes_cumulative[0] - begin_index;
 }
 
 inline IndexMask IndexMask::slice(const IndexRange range) const
@@ -310,13 +309,13 @@ inline IndexMask IndexMask::slice(const IndexRange range) const
   const RawMaskIterator last_it = this->index_to_iterator(range.last());
 
   IndexMask sliced;
-  sliced.data_.chunks_num = last_it.chunk_index - first_it.chunk_index + 1;
+  sliced.data_.chunks_num = last_it.chunk_i - first_it.chunk_i + 1;
   sliced.data_.indices_num = range.size();
-  sliced.data_.chunks = data_.chunks - first_it.chunk_index;
-  sliced.data_.chunk_offsets = data_.chunk_offsets - first_it.chunk_index;
-  sliced.data_.chunk_sizes_cumulative = data_.chunk_sizes_cumulative - first_it.chunk_index;
+  sliced.data_.chunks = data_.chunks - first_it.chunk_i;
+  sliced.data_.chunk_offsets = data_.chunk_offsets - first_it.chunk_i;
+  sliced.data_.chunk_sizes_cumulative = data_.chunk_sizes_cumulative - first_it.chunk_i;
   sliced.data_.begin_it = first_it.chunk_it;
-  sliced.data_.end_it.segment_index = last_it.chunk_it.segment_index;
+  sliced.data_.end_it.segment_i = last_it.chunk_it.segment_i;
   sliced.data_.end_it.index_in_segment = last_it.chunk_it.index_in_segment + 1;
   return sliced;
 }
@@ -335,11 +334,11 @@ inline RawChunkIterator Chunk::end_iterator() const
 {
   RawChunkIterator data;
   if (this->segments_num > 0) {
-    data.segment_index = this->segments_num - 1;
+    data.segment_i = this->segments_num - 1;
     data.index_in_segment = this->segment_offsets().size(this->segments_num - 1);
   }
   else {
-    data.segment_index = 0;
+    data.segment_i = 0;
     data.index_in_segment = 0;
   }
   return data;
@@ -406,19 +405,18 @@ template<typename Fn> void IndexMask::foreach_segment(Fn &&fn) const
   }
 
   int64_t chunk_i = 0;
-  int64_t segment_i = data_.begin_it.segment_index;
+  int64_t segment_i = data_.begin_it.segment_i;
   int16_t segment_drop_front = data_.begin_it.index_in_segment;
 
   int64_t counter = 0;
   while (chunk_i < data_.chunks_num) {
     const Chunk &chunk = data_.chunks[chunk_i];
     const bool is_last_chunk = (chunk_i == data_.chunks_num - 1);
-    const int16_t segments_num = is_last_chunk ? data_.end_it.segment_index + 1 :
-                                                 chunk.segments_num;
+    const int16_t segments_num = is_last_chunk ? data_.end_it.segment_i + 1 : chunk.segments_num;
     const int64_t offset = data_.chunk_offsets[chunk_i];
     while (segment_i < segments_num) {
       const int16_t stored_segment_size = chunk.segment_size(segment_i);
-      const bool is_last_segment = is_last_chunk && (segment_i == data_.end_it.segment_index);
+      const bool is_last_segment = is_last_chunk && (segment_i == data_.end_it.segment_i);
       const int16_t segment_drop_back = is_last_segment ?
                                             stored_segment_size - data_.end_it.index_in_segment :
                                             0;
@@ -446,12 +444,11 @@ template<typename Fn> inline void IndexMask::foreach_index_span(Fn &&fn) const
     const int64_t offset = data_.chunk_offsets[chunk_i];
     const Chunk &chunk = data_.chunks[chunk_i];
     const OffsetIndices segment_offsets = chunk.segment_offsets();
-    for (int16_t segment_i = begin_it.segment_index; segment_i <= end_it.segment_index;
-         segment_i++) {
-      const int16_t segment_start_i = (segment_i == begin_it.segment_index) ?
+    for (int16_t segment_i = begin_it.segment_i; segment_i <= end_it.segment_i; segment_i++) {
+      const int16_t segment_start_i = (segment_i == begin_it.segment_i) ?
                                           begin_it.index_in_segment :
                                           0;
-      const int16_t segment_end_i = (segment_i == end_it.segment_index) ?
+      const int16_t segment_end_i = (segment_i == end_it.segment_i) ?
                                         end_it.index_in_segment :
                                         segment_offsets.size(segment_i);
       const int16_t segment_size = segment_end_i - segment_start_i;
