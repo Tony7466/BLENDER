@@ -102,9 +102,9 @@ TEST(index_mask2, IndicesToMask)
   Array<int> data = {5, 100, 16383, 16384, 16385, 20000, 20001, 100000, 101000};
   IndexMask mask = unique_sorted_indices::to_index_mask<int>(data, scope);
 
-  mask.foreach_segment([&](const int64_t mask_index_offset,
-                           const int64_t index_offset,
-                           const Span<int16_t> indices) {
+  mask.foreach_raw_segment([&](const int64_t mask_index_offset,
+                               const int64_t index_offset,
+                               const Span<int16_t> indices) {
     std::cout << mask_index_offset << ", " << index_offset << ", (";
     for (const int16_t i : indices) {
       std::cout << i << ", ";

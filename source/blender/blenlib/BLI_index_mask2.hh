@@ -79,7 +79,7 @@ class IndexMask {
 
   IndexMask slice(IndexRange range) const;
 
-  template<typename Fn> void foreach_segment(Fn &&fn) const;
+  template<typename Fn> void foreach_raw_segment(Fn &&fn) const;
   template<typename Fn> void foreach_index(Fn &&fn) const;
   template<typename Fn> void foreach_index_range_or_span(Fn &&fn) const;
 
@@ -88,6 +88,60 @@ class IndexMask {
 };
 
 std::ostream &operator<<(std::ostream &stream, const IndexMask &mask);
+
+template<typename T, typename BaseT> class OffsetSpan {
+ private:
+  T offset_ = 0;
+  Span<BaseT> data_;
+
+ public:
+  OffsetSpan(const T offset, const Span<BaseT> data) : offset_(offset), data_(data)
+  {
+  }
+
+  T operator[](const int64_t i) const
+  {
+    return T(data_[i]) + offset_;
+  }
+
+  class Iterator {
+   private:
+    T offset_;
+    const BaseT *data_;
+
+   public:
+    Iterator(const T offset, const BaseT *data) : offset_(offset), data_(data)
+    {
+    }
+
+    Iterator &operator++()
+    {
+      offset_++;
+      return *this;
+    }
+
+    T operator*() const
+    {
+      return T(*data_) + offset_;
+    }
+
+    friend bool operator!=(const Iterator &a, const Iterator &b)
+    {
+      BLI_assert(a.offset_ == b.offset_);
+      return a.data_ == b.data_;
+    }
+  };
+
+  Iterator begin() const
+  {
+    return {offset_, data_.begin()};
+  }
+
+  Iterator end() const
+  {
+    return {offset_, data_.end()};
+  }
+};
 
 namespace unique_sorted_indices {
 
@@ -386,7 +440,7 @@ inline int16_t Chunk::segment_size(const int16_t segment_i) const
   return this->segment_sizes_cumulative[segment_i + 1] - this->segment_sizes_cumulative[segment_i];
 }
 
-template<typename Fn> inline void IndexMask::foreach_segment(Fn &&fn) const
+template<typename Fn> inline void IndexMask::foreach_raw_segment(Fn &&fn) const
 {
   if (data_.indices_num == 0) {
     return;
@@ -431,9 +485,9 @@ template<typename Fn> inline void IndexMask::foreach_segment(Fn &&fn) const
 
 template<typename Fn> inline void IndexMask::foreach_index(Fn &&fn) const
 {
-  this->foreach_segment([&](const int64_t /*mask_index_offset*/,
-                            const int64_t index_offset,
-                            const Span<int16_t> indices) {
+  this->foreach_raw_segment([&](const int64_t /*mask_index_offset*/,
+                                const int64_t index_offset,
+                                const Span<int16_t> indices) {
     for (const int16_t index : indices) {
       fn(index + index_offset);
     }
