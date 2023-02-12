@@ -80,9 +80,9 @@ class IndexMask {
   IndexMask slice(IndexRange range) const;
 
   template<typename Fn> void foreach_raw_segment(Fn &&fn) const;
-  template<typename Fn> void foreach_segment(Fn &&fn) const;
+  template<typename Fn> void foreach_span(Fn &&fn) const;
   template<typename Fn> void foreach_index(Fn &&fn) const;
-  template<typename Fn> void foreach_index_range_or_span(Fn &&fn) const;
+  template<typename Fn> void foreach_span_or_range(Fn &&fn) const;
 
   const IndexMaskData &data() const;
   IndexMaskData &data_for_inplace_construction();
@@ -484,7 +484,7 @@ template<typename Fn> inline void IndexMask::foreach_raw_segment(Fn &&fn) const
   }
 }
 
-template<typename Fn> inline void IndexMask::foreach_segment(Fn &&fn) const
+template<typename Fn> inline void IndexMask::foreach_span(Fn &&fn) const
 {
   this->foreach_raw_segment([&](const int64_t /*mask_index_offset*/,
                                 const int64_t index_offset,
@@ -500,6 +500,23 @@ template<typename Fn> inline void IndexMask::foreach_index(Fn &&fn) const
                                 const Span<int16_t> indices) {
     for (const int16_t index : indices) {
       fn(index + index_offset);
+    }
+  });
+}
+
+template<typename Fn> inline void IndexMask::foreach_span_or_range(Fn &&fn) const
+{
+  IndexRangeChecker is_index_mask;
+  this->foreach_raw_segment([&, is_index_mask](const int64_t /*mask_index_offset*/,
+                                               const int64_t index_offset,
+                                               const Span<int16_t> indices) {
+    if (is_index_mask.check(indices)) {
+      const int64_t start = indices.first() + index_offset;
+      const int64_t size = indices.size();
+      fn(IndexRange(start, size));
+    }
+    else {
+      fn(OffsetSpan<int64_t, int16_t>(index_offset, indices));
     }
   });
 }
