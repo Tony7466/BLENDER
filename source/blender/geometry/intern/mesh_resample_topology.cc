@@ -224,37 +224,65 @@ void polys_have_created_new_verts(const OffsetIndices<int> offsets,
                                   const Span<T> src,
                                   MutableSpan<T> dst)
 {
-  return;
   for (const int poly_i : polys.index_range()) {
     const MPoly src_poly = polys[poly_i];
     const Span<MLoop> src_loops = loops.slice(src_poly.loopstart, src_poly.totloop);
     const IndexRange poly_vertices = offsets[poly_i];
 
-    if (src_loops.size() == 4) {
+    if (src_loops.size() == 3) {
+      return;
+    }
+    else if (src_loops.size() == 4) {
+      const int &points_a = src_loops[0].v;
+      const int &points_b = src_loops[1].v;
+      const int &points_c = src_loops[2].v;
+      const int &points_d = src_loops[3].v;
 
-      const int horizontal = math::max(resample_edge_num[src_loops[0].e],
-                                       resample_edge_num[src_loops[2].e]);
-      const int vertical = math::max(resample_edge_num[src_loops[1].e],
-                                     resample_edge_num[src_loops[3].e]);
+      const int &points_num_edge_a = resample_edge_num[src_loops[0].e];
+      const int &points_num_edge_b = resample_edge_num[src_loops[1].e];
+      const int &points_num_edge_c = resample_edge_num[src_loops[2].e];
+      const int &points_num_edge_d = resample_edge_num[src_loops[3].e];
 
-      const int vert_index_a = src_loops[0].v;
-      const int vert_index_b = src_loops[1].v;
-      const int vert_index_c = src_loops[2].v;
-      const int vert_index_d = src_loops[3].v;
+      const int horizontal_connections = math::max(points_num_edge_a, points_num_edge_c);
+      const int horizontal_other_side = math::min(points_num_edge_a, points_num_edge_c);
 
-      for (const int horizontal_i : IndexRange(horizontal)) {
-        for (const int vertical_i : IndexRange(vertical)) {
-          const int offset_index = vertical * horizontal_i + vertical_i;
+      const int vertical_connections = math::max(points_num_edge_b, points_num_edge_d);
+      const int vertical_other_side = math::min(points_num_edge_b, points_num_edge_d);
 
-          const float horizontal_factor = float(horizontal_i + 1) / float(horizontal + 1);
-          const float vertical_factor = float(vertical_i + 1) / float(vertical + 1);
+      const auto find_nearest_one = [](const int max, const int min, const int i) -> int {
+        return i * min / max;
+      };
 
-          const T aa = attribute_math::mix2<T>(
-              horizontal_factor, src[vert_index_a], src[vert_index_b]);
-          const T bb = attribute_math::mix2<T>(
-              horizontal_factor, src[vert_index_d], src[vert_index_c]);
+      const auto intersection =
+          [](const float2 p1, const float2 p2, const float2 p3, const float2 p4) -> float2 {
+        printf(">\n");
+        printf(" - x1: %f, y1: %f;\n", p1.x, p1.y);
+        printf(" - x2: %f, y2: %f;\n", p2.x, p2.y);
+        printf(" - x3: %f, y3: %f;\n", p3.x, p3.y);
+        printf(" - x4: %f, y4: %f;\n", p4.x, p4.y);
+        return {};
+      };
 
-          dst[poly_vertices[offset_index]] = attribute_math::mix2<T>(vertical_factor, aa, bb);
+      for (const int x : IndexRange(horizontal_connections)) {
+        const int x_other = find_nearest_one(horizontal_connections, horizontal_other_side, x);
+
+        const float x_p_left = float(x * horizontal_other_side);
+        const float x_p_right = float(x_other * horizontal_connections);
+
+        for (const int y : IndexRange(vertical_connections)) {
+          const int y_other = find_nearest_one(vertical_connections, vertical_other_side, y);
+
+          const float y_p_top = float(y * vertical_other_side);
+          const float y_p_bottom = float(y_other * vertical_connections);
+
+          const float2 uv = intersection(float2{0.0f, x_p_left},
+                                         float2{1.0f, x_p_right},
+                                         float2{y_p_top, 0.0f},
+                                         float2{y_p_bottom, 1.0f});
+
+          attribute_math::mix2(uv.x,
+                               attribute_math::mix2(uv.y, src[points_a], src[points_b]),
+                               attribute_math::mix2(uv.y, src[points_c], src[points_d]));
         }
       }
     }
