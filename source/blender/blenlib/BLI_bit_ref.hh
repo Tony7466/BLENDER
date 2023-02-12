@@ -2,7 +2,10 @@
 
 #pragma once
 
+#include "BLI_index_range.hh"
 #include "BLI_utildefines.h"
+
+#include <ostream>
 
 namespace blender::bits {
 
@@ -19,15 +22,28 @@ static constexpr IntType MostSignificantBit = IntType(1) << (sizeof(IntType) * 8
 inline IntType mask_first_n_bits(const int64_t n)
 {
   BLI_assert(n >= 0);
-  BLI_assert(n < BitsPerInt);
+  BLI_assert(n <= BitsPerInt);
+  if (n == BitsPerInt) {
+    return IntType(-1);
+  }
   return (IntType(1) << n) - 1;
 }
 
 inline IntType mask_last_n_bits(const int64_t n)
 {
-  BLI_assert(n > 0);
-  BLI_assert(n <= BitsPerInt);
   return ~mask_first_n_bits(BitsPerInt - n);
+}
+
+inline IntType mask_range_bits(const IndexRange range)
+{
+  const int64_t size = range.size();
+  const int64_t start = range.start() & BitIndexMask;
+  const int64_t end = start + size;
+  BLI_assert(end <= BitsPerInt);
+  if (end == BitsPerInt) {
+    return mask_last_n_bits(size);
+  }
+  return ((IntType(1) << end) - 1) & ~((IntType(1) << start) - 1);
 }
 
 inline IntType mask_single_bit(const int64_t bit_index)
@@ -167,6 +183,16 @@ class MutableBitRef {
     }
   }
 };
+
+inline std::ostream &operator<<(std::ostream &stream, const BitRef &bit)
+{
+  return stream << (bit ? "1" : "0");
+}
+
+inline std::ostream &operator<<(std::ostream &stream, const MutableBitRef &bit)
+{
+  return stream << BitRef(bit);
+}
 
 }  // namespace blender::bits
 

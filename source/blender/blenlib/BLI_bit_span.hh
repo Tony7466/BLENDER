@@ -90,6 +90,11 @@ class BitSpan {
     return bit_range_.is_empty();
   }
 
+  IndexRange index_range() const
+  {
+    return IndexRange(bit_range_.size());
+  }
+
   BitRef operator[](const int64_t index) const
   {
     BLI_assert(index >= 0);
@@ -149,6 +154,11 @@ class MutableBitSpan {
     return bit_range_.is_empty();
   }
 
+  IndexRange index_range() const
+  {
+    return IndexRange(bit_range_.size());
+  }
+
   MutableBitRef operator[](const int64_t index) const
   {
     BLI_assert(index >= 0);
@@ -191,7 +201,7 @@ class MutableBitSpan {
     const AlignedIndexRanges ranges = split_index_range_by_alignment(bit_range_, BitsPerInt);
     {
       IntType &first_int = *int_containing_bit(data_, bit_range_.start());
-      const IntType first_int_mask = mask_last_n_bits(ranges.prefix.size());
+      const IntType first_int_mask = mask_range_bits(ranges.prefix);
       first_int |= first_int_mask;
     }
     {
@@ -212,8 +222,8 @@ class MutableBitSpan {
     const AlignedIndexRanges ranges = split_index_range_by_alignment(bit_range_, BitsPerInt);
     {
       IntType &first_int = *int_containing_bit(data_, bit_range_.start());
-      const IntType first_int_mask = mask_first_n_bits(ranges.prefix.size());
-      first_int &= first_int_mask;
+      const IntType first_int_mask = mask_range_bits(ranges.prefix);
+      first_int &= ~first_int_mask;
     }
     {
       IntType *start = int_containing_bit(data_, ranges.aligned.start());
@@ -223,8 +233,8 @@ class MutableBitSpan {
     }
     {
       IntType &last_int = *int_containing_bit(data_, bit_range_.one_after_last() - 1);
-      const IntType last_int_mask = mask_last_n_bits(ranges.suffix.size());
-      last_int &= last_int_mask;
+      const IntType last_int_mask = mask_first_n_bits(ranges.suffix.size());
+      last_int &= ~last_int_mask;
     }
   }
 
@@ -239,4 +249,24 @@ class MutableBitSpan {
   }
 };
 
+inline std::ostream &operator<<(std::ostream &stream, const BitSpan &span)
+{
+  stream << "(Size: " << span.size() << ", ";
+  for (const BitRef bit : span) {
+    stream << bit;
+  }
+  stream << ")";
+  return stream;
+}
+
+inline std::ostream &operator<<(std::ostream &stream, const MutableBitSpan &span)
+{
+  return stream << BitSpan(span);
+}
+
 }  // namespace blender::bits
+
+namespace blender {
+using bits::BitSpan;
+using bits::MutableBitSpan;
+}  // namespace blender
