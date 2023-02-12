@@ -398,7 +398,7 @@ template<typename Fn> inline void IndexMask::foreach_chunk(Fn &&fn) const
   }
 }
 
-template<typename Fn> void IndexMask::foreach_segment(Fn &&fn) const
+template<typename Fn> inline void IndexMask::foreach_segment(Fn &&fn) const
 {
   if (data_.indices_num == 0) {
     return;
@@ -407,19 +407,25 @@ template<typename Fn> void IndexMask::foreach_segment(Fn &&fn) const
   int64_t chunk_i = 0;
   int64_t segment_i = data_.begin_it.segment_i;
   int16_t segment_drop_front = data_.begin_it.index_in_segment;
+  const int16_t final_drop_back = data_.chunks[data_.chunks_num - 1].segment_size(
+                                      data_.end_it.segment_i) -
+                                  data_.end_it.index_in_segment;
+  const int16_t final_segment_i = data_.end_it.segment_i;
+  const int16_t final_segments_num = data_.end_it.segment_i + 1;
 
   int64_t counter = 0;
   while (chunk_i < data_.chunks_num) {
     const Chunk &chunk = data_.chunks[chunk_i];
     const bool is_last_chunk = (chunk_i == data_.chunks_num - 1);
-    const int16_t segments_num = is_last_chunk ? data_.end_it.segment_i + 1 : chunk.segments_num;
+    const int16_t segments_num = is_last_chunk ? final_segments_num : chunk.segments_num;
     const int64_t offset = data_.chunk_offsets[chunk_i];
+    int16_t prev_cumulative_segment_size = chunk.segment_sizes_cumulative[segment_i];
     while (segment_i < segments_num) {
-      const int16_t stored_segment_size = chunk.segment_size(segment_i);
-      const bool is_last_segment = is_last_chunk && (segment_i == data_.end_it.segment_i);
-      const int16_t segment_drop_back = is_last_segment ?
-                                            stored_segment_size - data_.end_it.index_in_segment :
-                                            0;
+      const int16_t next_segment_i = segment_i + 1;
+      const int16_t cumulative_segment_size = chunk.segment_sizes_cumulative[next_segment_i];
+      const int16_t stored_segment_size = cumulative_segment_size - prev_cumulative_segment_size;
+      const bool is_last_segment = is_last_chunk & (segment_i == final_segment_i);
+      const int16_t segment_drop_back = is_last_segment * final_drop_back;
       const int16_t *indices_in_segment = chunk.segment_indices[segment_i] + segment_drop_front;
       const int16_t segment_size = stored_segment_size - segment_drop_front - segment_drop_back;
       const Span<int16_t> indices_span{indices_in_segment, segment_size};
@@ -428,7 +434,7 @@ template<typename Fn> void IndexMask::foreach_segment(Fn &&fn) const
 
       counter += segment_size;
       segment_drop_front = 0;
-      segment_i++;
+      segment_i = next_segment_i;
     }
     segment_i = 0;
     chunk_i++;
