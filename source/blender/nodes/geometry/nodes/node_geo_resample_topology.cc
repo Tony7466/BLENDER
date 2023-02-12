@@ -29,7 +29,7 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
-  node->custom1 = int(static_cast<int8_t>(geometry::ResampleTopologyMode::FILL_NGONE));
+  node->custom1 = int(static_cast<int8_t>(geometry::ResampleTopologyMode::FILL_NGON));
 }
 
 static void node_geo_exec(GeoNodeExecParams params)

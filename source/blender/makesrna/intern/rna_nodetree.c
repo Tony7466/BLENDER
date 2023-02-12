@@ -10312,8 +10312,8 @@ static void def_geo_resample_topology(StructRNA *srna)
 
   static EnumPropertyItem fill_mode_items[] = {
       {0, "FILL_GRID", 0, "Grid", ""},
-      {1, "FILL_NGONE", 0, "N-Gone", ""},
-      {2, "FILL_DELONE", 0, "Delone", ""},
+      {1, "FILL_NGON", 0, "N-Gon", ""},
+      {2, "FILL_DELAUNAY", 0, "Delaunay", ""},
       {0, NULL, 0, NULL, NULL},
   };
 

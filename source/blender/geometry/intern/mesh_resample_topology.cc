@@ -595,7 +595,7 @@ static void propagate_attributes_on_new_mesh(
                             dst_attribute_value);
         break;
       }
-      case FILL_NGONE: {
+      case FILL_NGON: {
         using namespace propagation_for_ngone;
         attribute_on_domain(attribute.domain,
                             mesh_builder,
@@ -605,7 +605,7 @@ static void propagate_attributes_on_new_mesh(
                             dst_attribute_value);
         break;
       }
-      case FILL_DELONE: {
+      case FILL_DELAUNAY: {
         break;
       }
       default: {
@@ -650,15 +650,16 @@ void compute_new_mesh(const Mesh &mesh,
               const MPoly face = src_polys[index];
               const IndexRange loop_range(face.loopstart, face.totloop);
               const Span<MLoop> loops = src_loops.slice(loop_range);
-              
+
               if (loops.size() == 3) {
                 return 0;
-              }else if (loops.size() == 4){
+              }
+              else if (loops.size() == 4) {
                 const int &points_num_edge_a = resample_edge_num[loops[0].e];
                 const int &points_num_edge_b = resample_edge_num[loops[1].e];
                 const int &points_num_edge_c = resample_edge_num[loops[2].e];
                 const int &points_num_edge_d = resample_edge_num[loops[3].e];
-                
+
                 const bool horizontal_equal = points_num_edge_a == points_num_edge_c;
                 const bool vertical_equal = points_num_edge_b == points_num_edge_d;
                 if (horizontal_equal && vertical_equal) {
@@ -667,45 +668,55 @@ void compute_new_mesh(const Mesh &mesh,
 
                 const int horizontal_connections = math::max(points_num_edge_a, points_num_edge_c);
                 const int vertical_connections = math::max(points_num_edge_b, points_num_edge_d);
-printf("- horizontal_connections: %d, vertical_connections: %d;\n", horizontal_connections, vertical_connections);
+
                 const int edges_num_edge_a = points_num_edge_a + 1;
                 const int edges_num_edge_b = points_num_edge_b + 1;
                 const int edges_num_edge_c = points_num_edge_c + 1;
                 const int edges_num_edge_d = points_num_edge_d + 1;
-                
-                const int max_horizontal_edge_num = math::max<int>(edges_num_edge_a, edges_num_edge_c);
-                const int min_horizontal_edge_num = math::min<int>(edges_num_edge_a, edges_num_edge_c);
-                const int horizontal_corner_connected_edges = (min_horizontal_edge_num * 2) / max_horizontal_edge_num; // * 2 X!
-                
-printf("- max_horizontal_edge_num: %d, min_horizontal_edge_num: %d, horizontal_corner_connected_edges: %d;\n",
-    max_horizontal_edge_num, min_horizontal_edge_num, horizontal_corner_connected_edges);
-                //const bool left_righr_side_corners = points_num_edge_a < points_num_edge_c;
-                
-                const int max_vertical_edge_num = math::max<int>(edges_num_edge_b, edges_num_edge_d);
-                const int min_vertical_edge_num = math::min<int>(edges_num_edge_b, edges_num_edge_d);
-                const int vertical_corner_connected_edges = (min_vertical_edge_num * 2) / max_vertical_edge_num; // * 2 X!
-                
-printf("- max_vertical_edge_num: %d, min_vertical_edge_num: %d, vertical_corner_connected_edges: %d;\n",
-    max_vertical_edge_num, min_vertical_edge_num, vertical_corner_connected_edges);
-                //const bool top_down_side_corners = points_num_edge_b < points_num_edge_d;
-                
-                
-                const int horizontal_body_count = horizontal_connections - horizontal_corner_connected_edges * 2;
-                const int vertical_body_count = vertical_connections - vertical_corner_connected_edges * 2;
-                
-printf("- horizontal_body_count: %d, vertical_body_count: %d;\n",
-    horizontal_body_count, vertical_body_count);
-    
+
+                const int max_horizontal_edge_num = math::max<int>(edges_num_edge_a,
+                                                                   edges_num_edge_c);
+                const int min_horizontal_edge_num = math::min<int>(edges_num_edge_a,
+                                                                   edges_num_edge_c);
+                // printf("\n");
+                /* Horizontal side length = max_horizontal_edge_num * min_horizontal_edge_num * 2.
+                 * For step size = min_horizontal_edge_num (on side with max edge num),
+                 * number of edges, nearest to first half of first edge (on side with min edge
+                 * num), is:
+                 */
+                const int horizontal_corner_connected_edges = max_horizontal_edge_num /
+                                                              (min_horizontal_edge_num * 2);
+                // printf("Hor: min_edge: %d, max_edge: %d, corner_num: %d;\n",
+                // max_horizontal_edge_num, min_horizontal_edge_num,
+                // horizontal_corner_connected_edges); const bool left_righr_side_corners =
+                // points_num_edge_a < points_num_edge_c;
+
+                const int max_vertical_edge_num = math::max<int>(edges_num_edge_b,
+                                                                 edges_num_edge_d);
+                const int min_vertical_edge_num = math::min<int>(edges_num_edge_b,
+                                                                 edges_num_edge_d);
+
+                /* vertical side length = max_vertical_edge_num * min_vertical_edge_num * 2. */
+                const int vertical_corner_connected_edges = max_vertical_edge_num /
+                                                            (min_vertical_edge_num * 2);
+                // printf("Vert: min_edge: %d, max_edge: %d, corner_num: %d;\n",
+                // max_vertical_edge_num, min_vertical_edge_num, vertical_corner_connected_edges);
+                // const bool top_down_side_corners = points_num_edge_b < points_num_edge_d;
+
+                const int horizontal_body_count = horizontal_connections -
+                                                  horizontal_corner_connected_edges * 2;
+                const int vertical_body_count = vertical_connections -
+                                                vertical_corner_connected_edges * 2;
+                // printf("Hor: body: %d;\n", horizontal_body_count);
+                // printf("Vert: body: %d;\n", vertical_body_count);
                 const int result = horizontal_body_count * vertical_body_count +
                                    horizontal_body_count * vertical_corner_connected_edges +
                                    vertical_body_count * horizontal_corner_connected_edges +
                                    horizontal_connections * vertical_corner_connected_edges +
-                                   vertical_connections * horizontal_corner_connected_edges;
+                                   vertical_connections * horizontal_corner_connected_edges -
+                                   horizontal_corner_connected_edges *
+                                       vertical_corner_connected_edges;
 
-                
-printf("- result: %d;\n",
-    result);
-    
                 return math::max(result, 0);
               }
 
@@ -719,7 +730,7 @@ printf("- result: %d;\n",
       }
       break;
     }
-    case FILL_NGONE: {
+    case FILL_NGON: {
       /* New loops for original loops. */
       {
         const Span<MLoop> src_loops = mesh.loops();
@@ -738,7 +749,7 @@ printf("- result: %d;\n",
       r_mesh_builder.add_custom(0, 0, 0, mesh.totpoly);
       break;
     }
-    case FILL_DELONE: {
+    case FILL_DELAUNAY: {
       break;
     }
     default: {
@@ -763,7 +774,7 @@ void build_new_mesh_topology(const Mesh &mesh,
     case FILL_GRID: {
       break;
     }
-    case FILL_NGONE: {
+    case FILL_NGON: {
       using namespace ngone_fill;
       build_faces_loops(mesh.edges(),
                         mesh.loops(),
@@ -774,7 +785,7 @@ void build_new_mesh_topology(const Mesh &mesh,
       build_faces(mesh.polys(), mesh_builder.get_loop_offsets_in(2), r_new_mesh.polys_for_write());
       break;
     }
-    case FILL_DELONE: {
+    case FILL_DELAUNAY: {
       break;
     }
     default: {

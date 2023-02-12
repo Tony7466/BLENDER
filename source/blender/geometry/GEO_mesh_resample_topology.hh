@@ -12,8 +12,8 @@ namespace blender::geometry {
 
 enum ResampleTopologyMode : int8_t {
   FILL_GRID = 0,
-  FILL_NGONE = 1,
-  FILL_DELONE = 2,
+  FILL_NGON = 1,
+  FILL_DELAUNAY = 2,
 };
 
 Mesh *resample_topology(const Mesh &mesh,
