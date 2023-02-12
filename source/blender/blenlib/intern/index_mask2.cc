@@ -254,7 +254,7 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, ResourceScop
   mask_data.chunk_offsets = chunk_offsets.data();
   mask_data.chunk_sizes_cumulative = chunk_sizes_cumulative.data();
   mask_data.begin_it = {0, 0};
-  mask_data.end_it = chunks.last().end_data();
+  mask_data.end_it = chunks.last().end_iterator();
   return mask;
 
   return {};
