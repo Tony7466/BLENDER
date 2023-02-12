@@ -70,7 +70,7 @@ inline const IntType *int_containing_bit(const IntType *data, const int64_t bit_
 class BitRef {
  private:
   /** Points to the integer that the bit is in. */
-  const IntType *ptr_;
+  const IntType *data_;
   /** All zeros except for a single one at the bit that is referenced. */
   IntType mask_;
 
@@ -80,12 +80,12 @@ class BitRef {
   BitRef() = default;
 
   /**
-   * Reference a specific bit in an array. Note that #ptr does *not* have to point to the
+   * Reference a specific bit in an array. Note that #data does *not* have to point to the
    * exact integer the bit is in.
    */
-  BitRef(const IntType *ptr, const int64_t bit_index)
+  BitRef(const IntType *data, const int64_t bit_index)
   {
-    ptr_ = int_containing_bit(ptr, bit_index);
+    data_ = int_containing_bit(data, bit_index);
     mask_ = mask_single_bit(bit_index & BitIndexMask);
   }
 
@@ -94,7 +94,7 @@ class BitRef {
    */
   bool test() const
   {
-    const IntType value = *ptr_;
+    const IntType value = *data_;
     const IntType masked_value = value & mask_;
     return masked_value != 0;
   }
@@ -111,7 +111,7 @@ class BitRef {
 class MutableBitRef {
  private:
   /** Points to the integer that the bit is in. */
-  IntType *ptr_;
+  IntType *data_;
   /** All zeros except for a single one at the bit that is referenced. */
   IntType mask_;
 
@@ -119,12 +119,12 @@ class MutableBitRef {
   MutableBitRef() = default;
 
   /**
-   * Reference a specific bit in an array. Note that #ptr does *not* have to point to the
+   * Reference a specific bit in an array. Note that #data does *not* have to point to the
    * exact int the bit is in.
    */
-  MutableBitRef(IntType *ptr, const int64_t bit_index)
+  MutableBitRef(IntType *data, const int64_t bit_index)
   {
-    ptr_ = int_containing_bit(ptr, bit_index);
+    data_ = int_containing_bit(data, bit_index);
     mask_ = mask_single_bit(bit_index & BitIndexMask);
   }
 
@@ -134,7 +134,7 @@ class MutableBitRef {
   operator BitRef() const
   {
     BitRef bit_ref;
-    bit_ref.ptr_ = ptr_;
+    bit_ref.data_ = data_;
     bit_ref.mask_ = mask_;
     return bit_ref;
   }
@@ -144,7 +144,7 @@ class MutableBitRef {
    */
   bool test() const
   {
-    const IntType value = *ptr_;
+    const IntType value = *data_;
     const IntType masked_value = value & mask_;
     return masked_value != 0;
   }
@@ -159,7 +159,7 @@ class MutableBitRef {
    */
   void set()
   {
-    *ptr_ |= mask_;
+    *data_ |= mask_;
   }
 
   /**
@@ -167,7 +167,7 @@ class MutableBitRef {
    */
   void reset()
   {
-    *ptr_ &= ~mask_;
+    *data_ &= ~mask_;
   }
 
   /**
