@@ -42,7 +42,7 @@
 #include "BLI_memory_utils.hh"
 #include "BLI_span.hh"
 
-namespace blender {
+namespace blender::bits {
 
 /**
  * This is a read-only pointer to a specific bit. The value of the bit can be retrieved, but not
@@ -553,4 +553,10 @@ class BitVector {
   }
 };
 
+}  // namespace blender::bits
+
+namespace blender {
+using bits::BitRef;
+using bits::BitVector;
+using bits::MutableBitRef;
 }  // namespace blender
