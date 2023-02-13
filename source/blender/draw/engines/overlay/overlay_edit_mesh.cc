@@ -158,7 +158,7 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
                                           &psl->edit_mesh_faces_cage_ps[i];
       DRWShadingGroup **shgrp = (j == 0) ? &pd->edit_mesh_faces_grp[i] :
                                            &pd->edit_mesh_faces_cage_grp[i];
-      state = state_common;
+      state = state_common | ((show_retopology) ? DRW_STATE_CULL_BACK : DRWState(0));
       DRW_PASS_CREATE(*edit_face_ps, state | pd->clipping_state);
 
       grp = *shgrp = DRW_shgroup_create(face_sh, *edit_face_ps);
