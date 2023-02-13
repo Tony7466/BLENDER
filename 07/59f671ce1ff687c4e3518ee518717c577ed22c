@@ -1,2 +1,3 @@
 Referenced by issue #104055, Action Editor: Animations no longer work after renaming bones.
 Referenced by issue #102713, save is not hash safe.
+Referenced by issue #102679, Copy Rotation Constraint unexpectedly have numerical instability
