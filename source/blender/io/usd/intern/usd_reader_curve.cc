@@ -162,7 +162,7 @@ void USDCurvesReader::read_curve_sample(Curve *cu, const double motionSampleTime
 }
 
 Mesh *USDCurvesReader::read_mesh(struct Mesh *existing_mesh,
-                                 USDMeshReadParams params,
+                                 const USDMeshReadParams params,
                                  const char ** /* err_str */)
 {
   if (!curve_prim_) {

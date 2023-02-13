@@ -165,7 +165,7 @@ void USDNurbsReader::read_curve_sample(Curve *cu, const double motionSampleTime)
 }
 
 Mesh *USDNurbsReader::read_mesh(struct Mesh * /* existing_mesh */,
-                                USDMeshReadParams params,
+                                const USDMeshReadParams params,
                                 const char ** /* err_str */)
 {
   pxr::UsdGeomCurves curve_prim_(prim_);
