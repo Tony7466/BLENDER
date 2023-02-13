@@ -3,3 +3,4 @@ Referenced by issue #104191, 5.1 Audio Renders in order of audio loaded rather t
 Referenced by issue #103030, crash when pressing shift +z
 Referenced by issue #102978, Renderer window gets stuck in 3.x - 2.9 is ok
 Referenced by issue #102950, Blender 3.3.1 crashes when opening preferences or autosave
+Referenced by issue #102925, RDNA2 HIP LINUX crashes GPU when rendering default cube
