@@ -2188,6 +2188,10 @@ void ConvertNode::constant_fold(const ConstantFolder &folder)
     ShaderInput *in = inputs[0];
     ShaderNode *prev = in->link->parent;
 
+    if (!in->link || !in->link->parent) {
+      return;
+    }
+
     /* no-op conversion of A to B to A */
     if (prev->type == node_types[to][from]) {
       ShaderInput *prev_in = prev->inputs[0];
