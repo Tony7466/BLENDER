@@ -1,1 +1,2 @@
 Referenced by commit 62e32e7c2e0, Fix VSE: Effect strip flickers when moving left handle
+Referenced by commit 5925b1821a5, Fix T102328: Incorrect strip state after copying
