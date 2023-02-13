@@ -13,3 +13,4 @@ Referenced by issue #99037, bpy.ops.transform.rotate doesn't work in blender in 
 Referenced by issue #98939, API: bpy.props getter function returns KeyError instead of default value
 Referenced by issue #98884, Regression: Crash when switched to vertex paint mode
 Referenced by issue #98830, blender quits when switched to edit mode
+Referenced by issue #98834, Broken material assigment after changing mesh-linking to object-linking
