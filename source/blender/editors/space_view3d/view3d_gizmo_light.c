@@ -468,8 +468,7 @@ static void WIDGETGROUP_light_area_refresh(const bContext *C, wmGizmoGroup *gzgr
   copy_m4_m4(gz->matrix_basis, ob->object_to_world);
 
   int flag = ED_GIZMO_CAGE_XFORM_FLAG_SCALE;
-  const wmEvent *event = CTX_wm_window(C)->eventstate;
-  if (ELEM(la->area_shape, LA_AREA_SQUARE, LA_AREA_DISK) || (event->modifier & KM_SHIFT)) {
+  if (ELEM(la->area_shape, LA_AREA_SQUARE, LA_AREA_DISK)) {
     flag |= ED_GIZMO_CAGE_XFORM_FLAG_SCALE_UNIFORM;
   }
   RNA_enum_set(gz->ptr, "transform", flag);
