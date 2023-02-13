@@ -1,2 +1,3 @@
 Referenced by issue #91894, Baking normal maps for transformed objects is broken (3.0)
 Referenced by issue #91729, Cycles Illegal address on CUDA/OptiX GPU when overclocking GPU Core Clock
+Referenced by issue #91614, Blender 3.00 Alpha after Cycles X merge: AO node no longer affects volumes
