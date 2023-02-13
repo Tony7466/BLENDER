@@ -3,3 +3,4 @@ Referenced by commit cf985180551, Nodes: Add node group assets in add menu
 Referenced by commit 7e980f2b8cb, Fix T101249: Node groups don't show in node search
 Referenced by issue #103108, Regression: NODE_OT_add_search ignores NodeItems entries
 Referenced by issue #103047, Mix Color is not searchable
+Referenced by issue #102555, Regression: Node editor Add menu - nodes gets created offset when adding from the Search operator
