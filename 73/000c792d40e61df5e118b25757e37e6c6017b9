@@ -1,1 +1,2 @@
 Referenced by issue #104586, Regression: Blender 3.5: Hair: Cycles render passes GlossDir, GlossInd, GlossCol, TransDir, TransInd, and TransCol
+Referenced by issue #104041, Baked diffuse color is too bright with sheen.
