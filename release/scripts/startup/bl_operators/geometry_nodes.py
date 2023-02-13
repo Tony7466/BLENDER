@@ -6,7 +6,7 @@ from bpy.types import Operator
 from bpy.app.translations import pgettext_data as data_
 
 
-def geometry_node_group_empty_new(name=data_("Geometry Nodes"), add_link=True):
+def build_default_empty_geometry_node_group(name, add_link):
     group = bpy.data.node_groups.new(name, 'GeometryNodeTree')
     group.inputs.new('NodeSocketGeometry', data_("Geometry"))
     group.outputs.new('NodeSocketGeometry', data_("Geometry"))
@@ -24,6 +24,11 @@ def geometry_node_group_empty_new(name=data_("Geometry Nodes"), add_link=True):
         group.links.new(output_node.inputs[0], input_node.outputs[0])
 
     return group
+
+
+def geometry_node_group_empty_new():
+    build_default_empty_geometry_node_group(data_("Geometry Nodes"), True)
+
 
 def get_context_modifier(context):
     if context.area.type == 'PROPERTIES':
@@ -110,7 +115,7 @@ class CreateModifierWrapperGroup(Operator):
             return {'CANCELLED'}
 
         wrapper_name = old_group.name + ".wrapper"
-        group = geometry_node_group_empty_new(name=wrapper_name, add_link=False)
+        group = build_default_empty_geometry_node_group(wrapper_name, False)
         group_node = group.nodes.new("GeometryNodeGroup")
         group_node.node_tree = old_group
         group_node.update()
