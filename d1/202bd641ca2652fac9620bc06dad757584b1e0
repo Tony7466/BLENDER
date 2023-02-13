@@ -1,1 +1,2 @@
 Referenced by issue #95728, Previous render slots get overwritten with the latest render
+Referenced by issue #95725, Changing render slot doesn't update displayed image
