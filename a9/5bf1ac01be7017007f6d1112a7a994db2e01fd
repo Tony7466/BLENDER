@@ -1,2 +1,3 @@
 Referenced by issue #103338, Blender reported "CommandBuffer Failed: cycles_metal_integrator_queued_shadow_paths_array"
 Referenced by issue #103260, Cycles missing HIP support for gfx1036 devices
+Referenced by issue #103217, Freezing up in Geometry Nodes!
