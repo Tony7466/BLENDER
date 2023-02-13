@@ -1,1 +1,2 @@
 Referenced by issue #77853, Error reloading linked library
+Referenced by issue #73630, Remove ID refcounting handling from readfile.c
