@@ -524,16 +524,17 @@ short ED_transform_calc_orientation_from_type_ex(const Scene *scene,
             // store off the original active bone for a moment, run this, then restore
             bArmature *armature = ob->data;
             armature->act_bone = space_pchan->bone;
-            ED_getTransformOrientationMatrix(view_layer, v3d, ob, obedit, pivot_point, r_mat);
+
+            ED_getTransformOrientationMatrix(
+                scene, view_layer, v3d, ob, obedit, pivot_point, r_mat);
             armature->act_bone = active_pchan->bone;
             break;
           }
         }
         else {
           // handle the parent check at object level
-          ED_getTransformOrientationMatrix(view_layer, v3d,
-                                           ob->parent ? ob->parent : ob,
-                                           obedit, pivot_point, r_mat);
+          ED_getTransformOrientationMatrix(
+              scene, view_layer, v3d, ob->parent ? ob->parent : ob, obedit, pivot_point, r_mat);
           break;
         }
       }
