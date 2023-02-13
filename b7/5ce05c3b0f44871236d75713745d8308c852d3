@@ -1,2 +1,3 @@
 Referenced by issue #76972, Heap-use-after-free when closing Save File editor in full screen mode
 Referenced by issue #75292, Blender File View looses buttons and input field
+Referenced by issue #73579, Opening file over brush preview.
