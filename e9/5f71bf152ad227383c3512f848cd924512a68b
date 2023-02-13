@@ -1,1 +1,2 @@
 Referenced by issue #90272, Voxel Remesh Modifier - No Minimum Cap on Voxel Size?  Crash on 0 value.
+Referenced by issue #88634, No guard against voxel size of 0.
