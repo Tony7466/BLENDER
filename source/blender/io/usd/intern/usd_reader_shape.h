@@ -47,7 +47,7 @@ class USDShapeReader : public USDGeomReader {
 
   void create_object(Main *bmain, double /*motionSampleTime*/) override;
   void read_object_data(Main *bmain, double motionSampleTime) override;
-  Mesh *read_mesh(struct Mesh *existing_mesh,
+  Mesh *read_mesh(Mesh *existing_mesh,
                   double motionSampleTime,
                   int /*read_flag*/,
                   const char ** /*err_str*/) override;

@@ -137,31 +137,32 @@ Mesh *USDShapeReader::read_mesh(struct Mesh *existing_mesh,
 
   /* Should have a good set of data by this point-- copy over. */
   Mesh *active_mesh = mesh_from_prim(existing_mesh, motionSampleTime, face_indices, face_counts);
+  if (active_mesh == existing_mesh) {
+    return existing_mesh;
+  }
 
   MutableSpan<MPoly> polys = active_mesh->polys_for_write();
   MutableSpan<MLoop> loops = active_mesh->loops_for_write();
 
   const char should_smooth = prim_.IsA<pxr::UsdGeomCube>() ? 0 : ME_SMOOTH;
 
-  if (active_mesh != existing_mesh) {
-    int loop_index = 0;
-    for (int i = 0; i < face_counts.size(); i++) {
-      const int face_size = face_counts[i];
+  int loop_index = 0;
+  for (int i = 0; i < face_counts.size(); i++) {
+    const int face_size = face_counts[i];
 
-      MPoly &poly = polys[i];
-      poly.loopstart = loop_index;
-      poly.totloop = face_size;
+    MPoly &poly = polys[i];
+    poly.loopstart = loop_index;
+    poly.totloop = face_size;
 
-      /* Don't smooth-shade cubes; we're not worrying about sharpness for Gprims. */
-      poly.flag |= should_smooth;
+    /* Don't smooth-shade cubes; we're not worrying about sharpness for Gprims. */
+    poly.flag |= should_smooth;
 
-      for (int f = 0; f < face_size; ++f, ++loop_index) {
-        loops[loop_index].v = face_indices[loop_index];
-      }
+    for (int f = 0; f < face_size; ++f, ++loop_index) {
+      loops[loop_index].v = face_indices[loop_index];
     }
-    BKE_mesh_calc_edges(active_mesh, false, false);
   }
 
+  BKE_mesh_calc_edges(active_mesh, false, false);
   return active_mesh;
 }
 
