@@ -1,2 +1,3 @@
 Referenced by commit 8c8c1029806, Fix T40059: Switching windows ignores held modifier keys
 Referenced by issue #101086, ALT does not work the first time when switching multiple windows. (Addition to T40059)
+Referenced by issue #100681, Geometry Nodes: Capture Attribute node returns 'Zero' for an attribute. (relates to Volume Cube node)
