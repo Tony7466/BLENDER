@@ -179,7 +179,7 @@ class CreateModifierWrapperGroup(Operator):
             group_output_node.location.x = (len(store_nodes) + 1) * 175
 
             group.links.new(first_geometry_output, store_nodes[0].inputs["Geometry"])
-            for i in range(len(store_nodes))[:-1]:
+            for i in range(len(store_nodes) - 1):
                 group.links.new(store_nodes[i].outputs["Geometry"], store_nodes[i + 1].inputs["Geometry"])
             group.links.new(store_nodes[-1].outputs["Geometry"], group_output_node.inputs["Geometry"])
         else:
