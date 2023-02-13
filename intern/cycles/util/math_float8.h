@@ -115,27 +115,27 @@ ccl_device_inline vfloat8 operator/(const float f, const vfloat8 a)
   return make_vfloat8(f) / a;
 }
 
-ccl_device_inline vfloat8 operator+=(vfloat8 a, const vfloat8 b)
+ccl_device_inline vfloat8 operator+=(vfloat8 &a, const vfloat8 b)
 {
   return a = a + b;
 }
 
-ccl_device_inline vfloat8 operator-=(vfloat8 a, const vfloat8 b)
+ccl_device_inline vfloat8 operator-=(vfloat8 &a, const vfloat8 b)
 {
   return a = a - b;
 }
 
-ccl_device_inline vfloat8 operator*=(vfloat8 a, const vfloat8 b)
+ccl_device_inline vfloat8 operator*=(vfloat8 &a, const vfloat8 b)
 {
   return a = a * b;
 }
 
-ccl_device_inline vfloat8 operator*=(vfloat8 a, float f)
+ccl_device_inline vfloat8 operator*=(vfloat8 &a, float f)
 {
   return a = a * f;
 }
 
-ccl_device_inline vfloat8 operator/=(vfloat8 a, float f)
+ccl_device_inline vfloat8 operator/=(vfloat8 &a, float f)
 {
   return a = a / f;
 }
