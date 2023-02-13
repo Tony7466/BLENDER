@@ -1,2 +1,3 @@
 Referenced by commit 4130cad4891, Fix T101607: Changing Image source inadvertently clears file path
 Referenced by issue #101607, Regression: Blender 3.4 can't find missing files
+Referenced by issue #97251, Generated UDIM tiles do not store any info about their parameter
