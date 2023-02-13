@@ -151,8 +151,8 @@ static void test_gpu_shader_compute_vbo()
   GPU_memory_barrier(GPU_BARRIER_SHADER_STORAGE);
 
   /* Download the vertex buffer. */
-  const float *data = static_cast<const float *>(GPU_vertbuf_read(vbo));
-  ASSERT_NE(data, nullptr);
+  float data[SIZE * 4];
+  GPU_vertbuf_read(vbo, data);
   for (int index = 0; index < SIZE; index++) {
     float expected_value = index;
     EXPECT_FLOAT_EQ(data[index * 4 + 0], expected_value);
@@ -195,8 +195,8 @@ static void test_gpu_shader_compute_ibo()
   GPU_memory_barrier(GPU_BARRIER_SHADER_STORAGE);
 
   /* Download the index buffer. */
-  const uint32_t *data = GPU_indexbuf_read(ibo);
-  ASSERT_NE(data, nullptr);
+  uint32_t data[SIZE];
+  GPU_indexbuf_read(ibo, data);
   for (int index = 0; index < SIZE; index++) {
     uint32_t expected = index;
     EXPECT_EQ(data[index], expected);
@@ -402,7 +402,7 @@ static StringRef print_test_line(StringRefNull test_src, int64_t test_line)
   return "";
 }
 
-static void gpu_shader_lib_test(const char *test_src_name)
+static void gpu_shader_lib_test(const char *test_src_name, const char *additional_info = nullptr)
 {
   using namespace shader;
 
@@ -411,6 +411,9 @@ static void gpu_shader_lib_test(const char *test_src_name)
   ShaderCreateInfo create_info(test_src_name);
   create_info.fragment_source(test_src_name);
   create_info.additional_info("gpu_shader_test");
+  if (additional_info) {
+    create_info.additional_info(additional_info);
+  }
 
   StringRefNull test_src = gpu_shader_dependency_get_source(test_src_name);
 
@@ -483,5 +486,11 @@ static void test_gpu_math_lib()
   gpu_shader_lib_test("gpu_math_test.glsl");
 }
 GPU_TEST(gpu_math_lib)
+
+static void test_eevee_lib()
+{
+  gpu_shader_lib_test("eevee_shadow_test.glsl", "eevee_shared");
+}
+GPU_TEST(eevee_lib)
 
 }  // namespace blender::gpu::tests

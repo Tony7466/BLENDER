@@ -195,6 +195,7 @@ set(VULKAN_SRC
   vulkan/vk_fence.cc
   vulkan/vk_framebuffer.cc
   vulkan/vk_index_buffer.cc
+  vulkan/vk_memory.cc
   vulkan/vk_pixel_buffer.cc
   vulkan/vk_query.cc
   vulkan/vk_shader.cc
@@ -211,6 +212,7 @@ set(VULKAN_SRC
   vulkan/vk_fence.hh
   vulkan/vk_framebuffer.hh
   vulkan/vk_index_buffer.hh
+  vulkan/vk_memory.hh
   vulkan/vk_pixel_buffer.hh
   vulkan/vk_query.hh
   vulkan/vk_shader.hh
@@ -301,6 +303,10 @@ if(WITH_VULKAN_BACKEND)
     extern_vulkan_memory_allocator
   )
   add_definitions(-DWITH_VULKAN_BACKEND)
+endif()
+
+if(WITH_VULKAN_GUARDEDALLOC)
+  add_definitions(-DWITH_VULKAN_GUARDEDALLOC)
 endif()
 
 set(MSL_SRC
@@ -577,6 +583,7 @@ set(SRC_SHADER_CREATE_INFOS
   ../draw/engines/eevee_next/shaders/infos/eevee_light_culling_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_material_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_motion_blur_info.hh
+  ../draw/engines/eevee_next/shaders/infos/eevee_shadow_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_velocity_info.hh
   ../draw/engines/gpencil/shaders/infos/gpencil_info.hh
   ../draw/engines/gpencil/shaders/infos/gpencil_vfx_info.hh
