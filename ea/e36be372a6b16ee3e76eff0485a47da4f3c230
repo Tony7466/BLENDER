@@ -3,3 +3,4 @@ Referenced by commit 177bc807480, Fix: add attribute with empty string name cras
 Referenced by commit b9799dfb8a7, Geometry Nodes: better support for byte color attributes
 Referenced by issue #104475, Regression: Data transfer modifier no longer respects vertex group for transfers of vertex color
 Referenced by issue #103400, Regression: Not possible to transfer Color Attributs Layer with "Transfer Mesh Data Layout"
+Referenced by issue #99719, Vertex Color Node no longer showing in Shader Editor
