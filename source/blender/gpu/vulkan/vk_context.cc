@@ -8,6 +8,7 @@
 #include "vk_context.hh"
 
 #include "vk_backend.hh"
+#include "vk_state_manager.hh"
 
 #include "GHOST_C-api.h"
 
@@ -19,21 +20,28 @@ VKContext::VKContext(void *ghost_window, void *ghost_context)
   if (ghost_window) {
     ghost_context = GHOST_GetDrawingContext((GHOST_WindowHandle)ghost_window);
   }
+  ghost_context_ = ghost_context;
 
   GHOST_GetVulkanHandles((GHOST_ContextHandle)ghost_context,
-                         &instance_,
-                         &physical_device_,
-                         &device_,
-                         &graphic_queue_family_);
+                         &vk_instance_,
+                         &vk_physical_device_,
+                         &vk_device_,
+                         &vk_queue_family_,
+                         &vk_queue_);
 
   /* Initialize the memory allocator. */
   VmaAllocatorCreateInfo info = {};
-  /* Should use same vulkan version as GHOST. */
-  info.vulkanApiVersion = VK_API_VERSION_1_2;
-  info.physicalDevice = physical_device_;
-  info.device = device_;
-  info.instance = instance_;
+  /* Should use same vulkan version as GHOST, but set to 1.0 for now. Raising it to 1.2 requires
+   * correct extensions and functions to be found, which doesn't out-of-the-box. We should fix
+   * this, but to continue the development at hand we lower the API to 1.0.*/
+  info.vulkanApiVersion = VK_API_VERSION_1_0;
+  info.physicalDevice = vk_physical_device_;
+  info.device = vk_device_;
+  info.instance = vk_instance_;
   vmaCreateAllocator(&info, &mem_allocator_);
+  descriptor_pools_.init(vk_device_);
+
+  state_manager = new VKStateManager();
 
   VKBackend::capabilities_init(*this);
 }
@@ -53,10 +61,17 @@ void VKContext::deactivate()
 
 void VKContext::begin_frame()
 {
+  VkCommandBuffer command_buffer = VK_NULL_HANDLE;
+  GHOST_GetVulkanCommandBuffer(static_cast<GHOST_ContextHandle>(ghost_context_), &command_buffer);
+  command_buffer_.init(vk_device_, vk_queue_, command_buffer);
+  command_buffer_.begin_recording();
+
+  descriptor_pools_.reset();
 }
 
 void VKContext::end_frame()
 {
+  command_buffer_.end_recording();
 }
 
 void VKContext::flush()

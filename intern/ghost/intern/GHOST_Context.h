@@ -142,7 +142,13 @@ class GHOST_Context : public GHOST_IContext {
   virtual GHOST_TSuccess getVulkanHandles(void * /*r_instance*/,
                                           void * /*r_physical_device*/,
                                           void * /*r_device*/,
-                                          uint32_t * /*r_graphic_queue_family*/) override
+                                          uint32_t * /*r_graphic_queue_family*/,
+                                          void * /*r_queue*/) override
+  {
+    return GHOST_kFailure;
+  };
+
+  virtual GHOST_TSuccess getVulkanCommandBuffer(void * /*r_command_buffer*/) override
   {
     return GHOST_kFailure;
   };
@@ -154,7 +160,6 @@ class GHOST_Context : public GHOST_IContext {
    */
   virtual GHOST_TSuccess getVulkanBackbuffer(void * /*image*/,
                                              void * /*framebuffer*/,
-                                             void * /*command_buffer*/,
                                              void * /*render_pass*/,
                                              void * /*extent*/,
                                              uint32_t * /*fb_id*/) override
