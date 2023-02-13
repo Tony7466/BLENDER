@@ -3,3 +3,4 @@ Referenced by commit 0240b895994, Fix T102346: Mouse escapes window during walk 
 Referenced by issue #100749, Blender LTS: Maintenance Task 3.3
 Referenced by issue #103596, Blender 3.5: Cursor warping usable on windows remote desktop (RDP)
 Referenced by issue #102792, Regression: Sculpt cursor jumps to random place
+Referenced by issue #102346, Regression: Viewport Walk Navigation : mouse escapes window if it moves too fast
