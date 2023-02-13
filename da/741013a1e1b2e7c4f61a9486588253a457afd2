@@ -1,2 +1,3 @@
 Referenced by commit f5eae902777, Fix T79493: EEVEE LightProbe Display
 Referenced by issue #81105, Eevee SSR quality regression in 2.91 alpha
+Referenced by issue #80141, Crash when adding a Volume Object or Quick Smoke
