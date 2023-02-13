@@ -1,0 +1,1 @@
+Referenced by issue #95836, Viewport performance slows down when using OptiX Denoiser on Windows machine with dual GPUs.
