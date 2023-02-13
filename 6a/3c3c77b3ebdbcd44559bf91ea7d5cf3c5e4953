@@ -1,2 +1,3 @@
 Referenced by commit d83a418c456, Fix T98727: Dynamic Paint does not update normals
 Referenced by commit fe43c170831, Fix: Assert failure with certain screw modifier settings
+Referenced by issue #98727, Regression: Dynamic Paint displacement do not update normals in 3.2
