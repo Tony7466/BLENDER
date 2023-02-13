@@ -1,1 +1,2 @@
 Referenced by issue #79557, EEVEE normalize node gives infinity for a zero length vector, EMIT pass color is (NaN, NaN, NaN)
+Referenced by issue #77910, Sometimes the Viewport is damaged.
