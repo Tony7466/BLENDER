@@ -18,3 +18,4 @@ Referenced by issue #93611, Crash on edit mesh with a curve modifier with both a
 Referenced by issue #92912, vertex groups get lost when opening a 3.0 file in Blender 2.93
 Referenced by issue #92083, Crash when renaming bone if parented to curve
 Referenced by issue #90746, Vertex Group Missing When opening blend file saved in 3.0, on a lower blender version
+Referenced by issue #90441, File that was saved in 3.0 and after opened in 2.93.X will lose his vertex group data
