@@ -1,1 +1,2 @@
 Referenced by commit 72b4f919146, Fix T103526: crash when subsurface connects to Shader to RGB
+Referenced by issue #103526, Regression: Crash when subsurface (sss) connects to Shader to RGB
