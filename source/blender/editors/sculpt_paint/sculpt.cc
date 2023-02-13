@@ -54,6 +54,7 @@
 #include "BKE_scene.h"
 #include "BKE_subdiv_ccg.h"
 #include "BKE_subsurf.h"
+#include "BLI_math_vector.hh"
 
 #include "NOD_texture.h"
 
@@ -2718,20 +2719,21 @@ void SCULPT_calc_vertex_displacement(SculptSession *ss,
                                      float out_offset[3])
 {
   mul_v3_fl(rgba, ss->cache->bstrength);
+  /* Handle brush inversion */
   if (ss->cache->bstrength < 0) {
     rgba[0] *= -1;
     rgba[1] *= -1;
   }
 
-  rgba[0] *= 1.0f /
-             (brush->mtex.size[0] == 0.0f ? 1.0f : brush->mtex.size[0] * brush->mtex.size[0]);
-  rgba[1] *= 1.0f /
-             (brush->mtex.size[1] == 0.0f ? 1.0f : brush->mtex.size[1] * brush->mtex.size[1]);
-  rgba[2] *= 1.0f /
-             (brush->mtex.size[2] == 0.0f ? 1.0f : brush->mtex.size[2] * brush->mtex.size[2]);
+  /* Apply texture size */
+  for (int i = 0; i < 3; ++i) {
+    rgba[i] *= blender::math::safe_divide(1.0f, pow2f(brush->mtex.size[i]));
+  }
 
+  /* Transform vector to object space */
   mul_mat3_m4_v3(ss->cache->brush_local_mat_inv, rgba);
 
+  /* Handle symmetry */
   if (ss->cache->radial_symmetry_pass) {
     mul_m4_v3(ss->cache->symm_rot_mat, rgba);
   }
