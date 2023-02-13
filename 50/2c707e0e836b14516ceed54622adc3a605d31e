@@ -1,1 +1,2 @@
 Referenced by issue #97894, Crash adding Curve-To-Mesh on hair curves
+Referenced by issue #97859, bpy.data,library didn't return right material when running in background
