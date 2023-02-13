@@ -1,2 +1,3 @@
 Referenced by issue #100846, Problems with materials nodes in Alpha Trees
 Referenced by issue #100797, C++ exporters (OBJ/Collada/USD/Alembic) do not remember the path/filename on subsequent exports
+Referenced by issue #92588, Mix Node
