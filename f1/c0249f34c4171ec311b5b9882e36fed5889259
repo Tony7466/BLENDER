@@ -6,3 +6,4 @@ Referenced by commit ecf3287533c, Fix T100822: Merging objects does not assign m
 Referenced by commit 6ee34319147, Fix: Use of deprecated field in legacy MFace conversion
 Referenced by issue #88449: Blender LTS: Maintenance Task 2.93
 Referenced by issue #88449, Blender LTS: Maintenance Task 2.93
+Referenced by issue #100749, Blender LTS: Maintenance Task 3.3
