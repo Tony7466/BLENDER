@@ -1,2 +1,3 @@
 Referenced by issue #96698, GPencil: Depth of grease pencil object changes in render
 Referenced by issue #96545, greasepencil It doesn't render properly
+Referenced by issue #91469, GPencil: Enable Z Pass not possible in workbench render engine
