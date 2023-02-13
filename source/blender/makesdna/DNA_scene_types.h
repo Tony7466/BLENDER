@@ -9,12 +9,12 @@
 
 #include "DNA_defs.h"
 
-/* XXX(@campbellbarton): temp feature. */
+/* XXX(@ideasman42): temp feature. */
 #define DURIAN_CAMERA_SWITCH
 
 /**
  * Check for cyclic set-scene.
- * Libraries can cause this case which is normally prevented, see (T42009).
+ * Libraries can cause this case which is normally prevented, see (#42009).
  */
 #define USE_SETSCENE_CHECK
 
@@ -2161,7 +2161,7 @@ extern const char *RE_engine_id_CYCLES;
 /** \name Scene Defines
  * \{ */
 
-/* Note that much higher max-frames give imprecise sub-frames, see: T46859. */
+/* Note that much higher max-frames give imprecise sub-frames, see: #46859. */
 /* Current precision is 16 for the sub-frames closer to MAXFRAME. */
 
 /* For general use. */
@@ -2706,6 +2706,7 @@ enum {
   SCE_EEVEE_OVERSCAN = (1 << 21),
   SCE_EEVEE_DOF_HQ_SLIGHT_FOCUS = (1 << 22),
   SCE_EEVEE_DOF_JITTER = (1 << 23),
+  SCE_EEVEE_SHADOW_ENABLED = (1 << 24),
 };
 
 /** #SceneEEVEE.shadow_method */
