@@ -1,1 +1,2 @@
 Referenced by commit fd110291a5f, Fix T81794: ColorRampElement step regression
+Referenced by commit 3cafaf0fa86, Fix possible use-after-free for number slider buttons
