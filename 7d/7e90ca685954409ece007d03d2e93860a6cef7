@@ -1,2 +1,3 @@
 Referenced by commit 15c433d7d56, Fix: Missing UI context members after recent refactor
 Referenced by issue #103417, Regression: Submenus in toolbar are empty
+Referenced by issue #103405, Regression: Some modifiers not working
