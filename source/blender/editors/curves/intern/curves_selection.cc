@@ -357,7 +357,7 @@ static void apply_selection_operation_at_index(GMutableSpan selection,
 }
 
 /**
- * Helper struct for `find_closest_point_to_screen_co`.
+ * Helper struct for `find_closest_element_to_screen_co`.
  */
 struct FindClosestData {
   int index = -1;
@@ -426,6 +426,29 @@ static bool find_closest_element_to_screen_co(const Depsgraph &depsgraph,
         [&](const IndexRange curves_range, const FindClosestData &init) {
           FindClosestData best_match = init;
           for (const int curve_i : curves_range) {
+            if (points_by_curve.size(curve_i) == 1) {
+              const float3 pos = deformation.positions[points_by_curve[curve_i].first()];
+
+              /* Find the position of the point in screen space. */
+              float2 pos_proj;
+              ED_view3d_project_float_v2_m4(region, pos, pos_proj, projection.ptr());
+
+              const float distance_proj_sq = math::distance_squared(pos_proj, mouse_pos);
+              if (distance_proj_sq > radius_sq ||
+                  distance_proj_sq > best_match.distance * best_match.distance) {
+                /* Ignore the point because it's too far away or there is already a better point.
+                 */
+                continue;
+              }
+
+              FindClosestData better_candidate;
+              better_candidate.index = curve_i;
+              better_candidate.distance = std::sqrt(distance_proj_sq);
+
+              best_match = better_candidate;
+              continue;
+            }
+
             for (const int segment_i : points_by_curve[curve_i].drop_back(1)) {
               const float3 pos1 = deformation.positions[segment_i];
               const float3 pos2 = deformation.positions[segment_i + 1];
@@ -542,6 +565,18 @@ bool select_box(const ViewContext &vc,
   else if (selection_domain == ATTR_DOMAIN_CURVE) {
     threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange curves_range) {
       for (const int curve_i : curves_range) {
+        if (points_by_curve.size(curve_i) == 1) {
+          float2 pos_proj;
+          ED_view3d_project_float_v2_m4(vc.region,
+                                        deformation.positions[points_by_curve[curve_i].first()],
+                                        pos_proj,
+                                        projection.ptr());
+          if (BLI_rcti_isect_pt_v(&rect, int2(pos_proj))) {
+            apply_selection_operation_at_index(selection.span, curve_i, sel_op);
+            changed = true;
+          }
+          continue;
+        }
         for (const int segment_i : points_by_curve[curve_i].drop_back(1)) {
           const float3 pos1 = deformation.positions[segment_i];
           const float3 pos2 = deformation.positions[segment_i + 1];
@@ -608,6 +643,21 @@ bool select_lasso(const ViewContext &vc,
   else if (selection_domain == ATTR_DOMAIN_CURVE) {
     threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange curves_range) {
       for (const int curve_i : curves_range) {
+        if (points_by_curve.size(curve_i) == 1) {
+          float2 pos_proj;
+          ED_view3d_project_float_v2_m4(vc.region,
+                                        deformation.positions[points_by_curve[curve_i].first()],
+                                        pos_proj,
+                                        projection.ptr());
+          /* Check the lasso bounding box first as an optimization. */
+          if (BLI_rcti_isect_pt_v(&bbox, int2(pos_proj)) &&
+              BLI_lasso_is_point_inside(
+                  coord_array, coords.size(), int(pos_proj.x), int(pos_proj.y), IS_CLIPPED)) {
+            apply_selection_operation_at_index(selection.span, curve_i, sel_op);
+            changed = true;
+          }
+          continue;
+        }
         for (const int segment_i : points_by_curve[curve_i].drop_back(1)) {
           const float3 pos1 = deformation.positions[segment_i];
           const float3 pos2 = deformation.positions[segment_i + 1];
@@ -677,6 +727,18 @@ bool select_circle(const ViewContext &vc,
   else if (selection_domain == ATTR_DOMAIN_CURVE) {
     threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange curves_range) {
       for (const int curve_i : curves_range) {
+        if (points_by_curve.size(curve_i) == 1) {
+          float2 pos_proj;
+          ED_view3d_project_float_v2_m4(vc.region,
+                                        deformation.positions[points_by_curve[curve_i].first()],
+                                        pos_proj,
+                                        projection.ptr());
+          if (math::distance_squared(pos_proj, float2(coord)) <= radius_sq) {
+            apply_selection_operation_at_index(selection.span, curve_i, sel_op);
+            changed = true;
+          }
+          continue;
+        }
         for (const int segment_i : points_by_curve[curve_i].drop_back(1)) {
           const float3 pos1 = deformation.positions[segment_i];
           const float3 pos2 = deformation.positions[segment_i + 1];
