@@ -1,1 +1,2 @@
 Referenced by commit 8fa8cea8e01, Fix PyGPU: return NULL instead of PyNone on error
+Referenced by issue #102845, GPU: Python crash in background mode
