@@ -1,1 +1,2 @@
 Referenced by commit fb8778a28c9, Fix T103394: default/active color status lost after remeshing
+Referenced by commit 9e94135f179, Fix: Crash after mesh color attribute name commit
