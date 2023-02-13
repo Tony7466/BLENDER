@@ -1,1 +1,2 @@
 Referenced by issue #104588, Regression: Face Sets from Edit Mode Selection no longer working
+Referenced by commit 0dfc102531cd1959425f48bc62bee837e7d94cdd, Fix #104588: Initialize Face Sets from edit mode selection broken
