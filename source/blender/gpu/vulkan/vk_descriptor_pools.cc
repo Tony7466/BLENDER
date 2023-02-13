@@ -6,6 +6,7 @@
  */
 
 #include "vk_descriptor_pools.hh"
+#include "vk_memory.hh"
 
 namespace blender::gpu {
 VKDescriptorPools::VKDescriptorPools()
@@ -14,9 +15,10 @@ VKDescriptorPools::VKDescriptorPools()
 
 VKDescriptorPools::~VKDescriptorPools()
 {
+  VK_ALLOCATION_CALLBACKS
   for (const VkDescriptorPool vk_descriptor_pool : pools_) {
     BLI_assert(vk_device_ != VK_NULL_HANDLE);
-    vkDestroyDescriptorPool(vk_device_, vk_descriptor_pool, nullptr);
+    vkDestroyDescriptorPool(vk_device_, vk_descriptor_pool, vk_allocation_callbacks);
   }
   vk_device_ = VK_NULL_HANDLE;
 }
@@ -35,6 +37,7 @@ void VKDescriptorPools::reset()
 
 void VKDescriptorPools::add_new_pool()
 {
+  VK_ALLOCATION_CALLBACKS
   Vector<VkDescriptorPoolSize> pool_sizes = {
       {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, POOL_SIZE_UNIFORM_BUFFER},
       {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, POOL_SIZE_STORAGE_BUFFER},
@@ -46,7 +49,8 @@ void VKDescriptorPools::add_new_pool()
   pool_info.poolSizeCount = pool_sizes.size();
   pool_info.pPoolSizes = pool_sizes.data();
   VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
-  VkResult result = vkCreateDescriptorPool(vk_device_, &pool_info, nullptr, &descriptor_pool);
+  VkResult result = vkCreateDescriptorPool(
+      vk_device_, &pool_info, vk_allocation_callbacks, &descriptor_pool);
   UNUSED_VARS(result);
   pools_.append(descriptor_pool);
 }

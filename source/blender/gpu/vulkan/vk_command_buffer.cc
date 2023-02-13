@@ -7,6 +7,7 @@
 
 #include "vk_command_buffer.hh"
 #include "vk_context.hh"
+#include "vk_memory.hh"
 
 #include "BLI_assert.h"
 
@@ -15,7 +16,8 @@ namespace blender::gpu {
 VKCommandBuffer::~VKCommandBuffer()
 {
   if (vk_device_ != VK_NULL_HANDLE) {
-    vkDestroyFence(vk_device_, vk_fence_, nullptr);
+    VK_ALLOCATION_CALLBACKS;
+    vkDestroyFence(vk_device_, vk_fence_, vk_allocation_callbacks);
     vk_fence_ = VK_NULL_HANDLE;
   }
 }
@@ -29,10 +31,11 @@ void VKCommandBuffer::init(const VkDevice vk_device,
   vk_command_buffer_ = vk_command_buffer;
 
   if (vk_fence_ == VK_NULL_HANDLE) {
+    VK_ALLOCATION_CALLBACKS;
     VkFenceCreateInfo fenceInfo{};
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-    vkCreateFence(vk_device_, &fenceInfo, nullptr, &vk_fence_);
+    vkCreateFence(vk_device_, &fenceInfo, vk_allocation_callbacks, &vk_fence_);
   }
 }
 

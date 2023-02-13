@@ -605,11 +605,11 @@ VKShader::~VKShader()
     compute_module_ = VK_NULL_HANDLE;
   }
   if (pipeline_layout_ != VK_NULL_HANDLE) {
-    vkDestroyPipelineLayout(device, pipeline_layout_, nullptr);
+    vkDestroyPipelineLayout(device, pipeline_layout_, vk_allocation_callbacks);
     pipeline_layout_ = VK_NULL_HANDLE;
   }
   if (layout_ != VK_NULL_HANDLE) {
-    vkDestroyDescriptorSetLayout(device, layout_, nullptr);
+    vkDestroyDescriptorSetLayout(device, layout_, vk_allocation_callbacks);
     layout_ = VK_NULL_HANDLE;
   }
 }
@@ -723,14 +723,15 @@ bool VKShader::finalize_graphics_pipeline(VkDevice /*vk_device */)
 bool VKShader::finalize_pipeline_layout(VkDevice vk_device,
                                         const shader::ShaderCreateInfo & /*info*/)
 {
+  VK_ALLOCATION_CALLBACKS
   VkPipelineLayoutCreateInfo pipeline_info = {};
   pipeline_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
   pipeline_info.flags = 0;
   pipeline_info.setLayoutCount = 1;
   pipeline_info.pSetLayouts = &layout_;
 
-  if (vkCreatePipelineLayout(vk_device, &pipeline_info, nullptr, &pipeline_layout_) !=
-      VK_SUCCESS) {
+  if (vkCreatePipelineLayout(
+          vk_device, &pipeline_info, vk_allocation_callbacks, &pipeline_layout_) != VK_SUCCESS) {
     return false;
   };
 
@@ -797,6 +798,8 @@ bool VKShader::finalize_descriptor_set_layouts(VkDevice vk_device,
     return true;
   }
 
+  VK_ALLOCATION_CALLBACKS
+
   /* Currently we create a single descriptor set. The goal would be to create one descriptor set
    * for Frequency::PASS/BATCH. This isn't possible as areas expect that the binding location is
    * static and predictable (eevee-next) or the binding location can be mapped to a single number
@@ -808,7 +811,8 @@ bool VKShader::finalize_descriptor_set_layouts(VkDevice vk_device,
   Vector<VkDescriptorSetLayoutBinding> bindings;
   VkDescriptorSetLayoutCreateInfo layout_info = create_descriptor_set_layout(all_resources,
                                                                              bindings);
-  if (vkCreateDescriptorSetLayout(vk_device, &layout_info, nullptr, &layout_) != VK_SUCCESS) {
+  if (vkCreateDescriptorSetLayout(vk_device, &layout_info, vk_allocation_callbacks, &layout_) !=
+      VK_SUCCESS) {
     return false;
   };
 

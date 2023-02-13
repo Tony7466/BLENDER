@@ -8,6 +8,7 @@
 #include "vk_context.hh"
 
 #include "vk_backend.hh"
+#include "vk_memory.hh"
 #include "vk_state_manager.hh"
 
 #include "GHOST_C-api.h"
@@ -16,6 +17,7 @@ namespace blender::gpu {
 
 VKContext::VKContext(void *ghost_window, void *ghost_context)
 {
+  VK_ALLOCATION_CALLBACKS;
   ghost_window_ = ghost_window;
   if (ghost_window) {
     ghost_context = GHOST_GetDrawingContext((GHOST_WindowHandle)ghost_window);
@@ -38,6 +40,7 @@ VKContext::VKContext(void *ghost_window, void *ghost_context)
   info.physicalDevice = vk_physical_device_;
   info.device = vk_device_;
   info.instance = vk_instance_;
+  info.pAllocationCallbacks = vk_allocation_callbacks;
   vmaCreateAllocator(&info, &mem_allocator_);
   descriptor_pools_.init(vk_device_);
 

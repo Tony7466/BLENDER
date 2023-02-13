@@ -7,6 +7,7 @@
 
 #include "vk_pipeline.hh"
 #include "vk_context.hh"
+#include "vk_memory.hh"
 
 namespace blender::gpu {
 
@@ -18,9 +19,10 @@ VKPipeline::VKPipeline(VkPipeline vk_pipeline, VKDescriptorSet &&vk_descriptor_s
 
 VKPipeline::~VKPipeline()
 {
+  VK_ALLOCATION_CALLBACKS
   VkDevice vk_device = VKContext::get()->device_get();
   if (vk_pipeline_ != VK_NULL_HANDLE) {
-    vkDestroyPipeline(vk_device, vk_pipeline_, nullptr);
+    vkDestroyPipeline(vk_device, vk_pipeline_, vk_allocation_callbacks);
   }
 }
 
@@ -29,6 +31,7 @@ VKPipeline VKPipeline::create_compute_pipeline(VKContext &context,
                                                VkDescriptorSetLayout &descriptor_set_layout,
                                                VkPipelineLayout &pipeline_layout)
 {
+  VK_ALLOCATION_CALLBACKS
   VkDevice vk_device = context.device_get();
   VkComputePipelineCreateInfo pipeline_info = {};
   pipeline_info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
@@ -42,7 +45,8 @@ VKPipeline VKPipeline::create_compute_pipeline(VKContext &context,
   pipeline_info.stage.pName = "main";
 
   VkPipeline pipeline;
-  if (vkCreateComputePipelines(vk_device, nullptr, 1, &pipeline_info, nullptr, &pipeline) !=
+  if (vkCreateComputePipelines(
+          vk_device, nullptr, 1, &pipeline_info, vk_allocation_callbacks, &pipeline) !=
       VK_SUCCESS) {
     return VKPipeline();
   }
