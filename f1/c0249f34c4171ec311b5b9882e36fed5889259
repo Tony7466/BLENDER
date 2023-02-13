@@ -8,3 +8,4 @@ Referenced by issue #88449: Blender LTS: Maintenance Task 2.93
 Referenced by issue #88449, Blender LTS: Maintenance Task 2.93
 Referenced by issue #100749, Blender LTS: Maintenance Task 3.3
 Referenced by issue #103051, Regression: Deleting a material slot in 3.4 assigns faces to the material below instead of the material above
+Referenced by issue #102522, GN: Boolean doesent respect material index
