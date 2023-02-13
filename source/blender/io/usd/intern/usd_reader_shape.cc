@@ -141,10 +141,10 @@ Mesh *USDShapeReader::read_mesh(struct Mesh *existing_mesh,
   MutableSpan<MPoly> polys = active_mesh->polys_for_write();
   MutableSpan<MLoop> loops = active_mesh->loops_for_write();
 
-  int loop_index = 0;
   const char should_smooth = prim_.IsA<pxr::UsdGeomCube>() ? 0 : ME_SMOOTH;
 
   if (active_mesh != existing_mesh) {
+    int loop_index = 0;
     for (int i = 0; i < face_counts.size(); i++) {
       const int face_size = face_counts[i];
 
