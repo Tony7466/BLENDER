@@ -46,7 +46,7 @@ def geometry_modifier_poll(context):
     # Test object support for geometry node modifier
     if not ob or ob.type not in {'MESH', 'POINTCLOUD', 'VOLUME', 'CURVE', 'FONT', 'CURVES'}:
         return False
-    if not get_context_modifier(context):
+    if get_context_modifier(context) is None:
         return False
 
     return True
