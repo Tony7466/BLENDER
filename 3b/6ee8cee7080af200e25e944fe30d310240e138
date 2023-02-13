@@ -14,3 +14,4 @@ Referenced by issue #94128, Vertex groups of fake user mesh data go missing when
 Referenced by issue #93892, Change bone name cause vertex group not working until select another vertex group
 Referenced by issue #93728, When seperating a grease pencil stroke to its own object it will lose all vertex groups
 Referenced by issue #93704, gltf2 not exporting animations in 3.0
+Referenced by issue #93611, Crash on edit mesh with a curve modifier with both a vertex group assigned and the edit mode display option enabled
