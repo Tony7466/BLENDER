@@ -1,2 +1,3 @@
 Referenced by issue #98538, Geometry input node breaks after adding Displacement Texture in Shader Editor
 Referenced by issue #97881, Regression: Specular highlights are missing in Glossy BSDF(Eevee).
+Referenced by issue #97369, Blender crashes when Windows file viewer is opened
