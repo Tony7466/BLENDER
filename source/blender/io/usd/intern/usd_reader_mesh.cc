@@ -818,7 +818,7 @@ void USDMeshReader::readFaceSetsSample(Main *bmain, Mesh *mesh, const double mot
 }
 
 Mesh *USDMeshReader::read_mesh(Mesh *existing_mesh,
-                               USDMeshReadParams params,
+                               const USDMeshReadParams params,
                                const char ** /* err_str */)
 {
   if (!mesh_prim_) {

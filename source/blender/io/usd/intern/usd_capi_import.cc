@@ -465,7 +465,7 @@ static USDPrimReader *get_usd_reader(CacheReader *reader,
   return usd_reader;
 }
 
-USDMeshReadParams create_mesh_read_params(double motion_sample_time, int read_flags)
+USDMeshReadParams create_mesh_read_params(const double motion_sample_time, const int read_flags)
 {
   USDMeshReadParams params = {};
   params.motion_sample_time = motion_sample_time;
@@ -476,7 +476,7 @@ USDMeshReadParams create_mesh_read_params(double motion_sample_time, int read_fl
 struct Mesh *USD_read_mesh(struct CacheReader *reader,
                            struct Object *ob,
                            struct Mesh *existing_mesh,
-                           USDMeshReadParams params,
+                           const USDMeshReadParams params,
                            const char **err_str)
 {
   USDGeomReader *usd_reader = dynamic_cast<USDGeomReader *>(get_usd_reader(reader, ob, err_str));

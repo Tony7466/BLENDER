@@ -70,7 +70,7 @@ struct USDImportParams {
  * usd file for the mesh sequence cache.
  */
 typedef struct USDMeshReadParams {
-  double motion_sample_time; /* Read USD TimeCode in frames. */
+  double motion_sample_time; /* USD TimeCode in frames. */
   int read_flags; /* MOD_MESHSEQ_xxx value that is set from MeshSeqCacheModifierData.read_flag. */
 } USDMeshReadParams;
 
