@@ -589,6 +589,8 @@ class NODE_MT_category_GEO_VOLUME(Menu):
         layout = self.layout
         node_add_menu.add_node_type(layout, "GeometryNodeVolumeCube")
         node_add_menu.add_node_type(layout, "GeometryNodeVolumeToMesh")
+        if _context.preferences.experimental.use_new_volume_nodes:
+            node_add_menu.add_node_type(layout, "GeometryNodeSdfVolumeSphere")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 

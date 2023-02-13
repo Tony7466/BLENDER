@@ -398,6 +398,7 @@ DefNode(GeometryNode, GEO_NODE_SAMPLE_NEAREST, def_geo_sample_nearest, "SAMPLE_N
 DefNode(GeometryNode, GEO_NODE_SAMPLE_UV_SURFACE, def_geo_sample_uv_surface, "SAMPLE_UV_SURFACE", SampleUVSurface, "Sample UV Surface", "Calculate the interpolated values of a mesh attribute at a UV coordinate")
 DefNode(GeometryNode, GEO_NODE_SCALE_ELEMENTS, def_geo_scale_elements, "SCALE_ELEMENTS", ScaleElements, "Scale Elements", "Scale groups of connected edges and faces")
 DefNode(GeometryNode, GEO_NODE_SCALE_INSTANCES, 0, "SCALE_INSTANCES", ScaleInstances, "Scale Instances", "Scale geometry instances in local or global space")
+DefNode(GeometryNode, GEO_NODE_SDF_VOLUME_SPHERE, 0, "SDF_VOLUME_SPHERE", SdfVolumeSphere, "SDF Volume Sphere", "Generate an SDF Volume Sphere")
 DefNode(GeometryNode, GEO_NODE_SELF_OBJECT, 0, "SELF_OBJECT", SelfObject, "Self Object", "Retrieve the object that contains the geometry nodes modifier currently being executed")
 DefNode(GeometryNode, GEO_NODE_SEPARATE_COMPONENTS, 0, "SEPARATE_COMPONENTS",SeparateComponents, "Separate Components","Split a geometry into a separate output for each type of data in the geometry")
 DefNode(GeometryNode, GEO_NODE_SEPARATE_GEOMETRY, def_geo_separate_geometry,"SEPARATE_GEOMETRY", SeparateGeometry, "Separate Geometry", "Split a geometry into two geometry outputs based on a selection")
