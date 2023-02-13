@@ -6,6 +6,7 @@
  */
 
 #include "vk_descriptor_set.hh"
+#include "vk_index_buffer.hh"
 #include "vk_storage_buffer.hh"
 #include "vk_vertex_buffer.hh"
 
@@ -42,6 +43,14 @@ void VKDescriptorSet::bind_as_ssbo(VKVertexBuffer &buffer, int location)
   binding.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
   binding.vk_buffer = buffer.vk_handle();
   binding.buffer_size = buffer.size_used_get();
+}
+
+void VKDescriptorSet::bind_as_ssbo(VKIndexBuffer &buffer, int location)
+{
+  Binding &binding = ensure_location(location);
+  binding.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  binding.vk_buffer = buffer.vk_handle();
+  binding.buffer_size = buffer.size_get();
 }
 
 VKDescriptorSet::Binding &VKDescriptorSet::ensure_location(int location)

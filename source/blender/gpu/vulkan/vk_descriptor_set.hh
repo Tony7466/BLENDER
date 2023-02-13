@@ -19,6 +19,7 @@
 namespace blender::gpu {
 class VKStorageBuffer;
 class VKVertexBuffer;
+class VKIndexBuffer;
 
 class VKDescriptorSet : NonCopyable {
   struct Binding {
@@ -60,6 +61,7 @@ class VKDescriptorSet : NonCopyable {
   }
 
   void bind_as_ssbo(VKVertexBuffer &buffer, int location);
+  void bind_as_ssbo(VKIndexBuffer &buffer, int location);
   void bind(VKStorageBuffer &buffer, int location);
 
   /**
