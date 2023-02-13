@@ -162,7 +162,7 @@ void USDAbstractWriter::author_extent(const pxr::UsdTimeCode timecode, pxr::UsdG
   pxr::GfBBox3d bounds = bboxCache.ComputeLocalBound(prim.GetPrim());
   if (pxr::GfBBox3d() == bounds) {
     /* This will occur, for example, if a mesh does not have any vertices. */
-    WM_reportf(RPT_ERROR,
+    WM_reportf(RPT_WARNING,
                "USD Export: no bounds could be computed for %s",
                prim.GetPrim().GetName().GetText());
     return;

@@ -14,12 +14,6 @@ import bpy
 
 args = None
 
-
-class Result(str, enum.Enum):
-    finished = "FINISHED"
-    cancelled = "CANCELLED"
-
-
 class AbstractUSDTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -50,7 +44,7 @@ class USDExportTest(AbstractUSDTest):
             export_materials=True,
             evaluation_mode="RENDER",
         )
-        self.assertEqual({Result.finished}, res, f"Unable to export to {export_path}")
+        self.assertEqual({'FINISHED'}, res, f"Unable to export to {export_path}")
 
         checker = UsdUtils.ComplianceChecker(
             arkit=False,
@@ -61,8 +55,11 @@ class USDExportTest(AbstractUSDTest):
         )
         checker.CheckCompliance(str(export_path))
 
-        collection = {}
+        failed_checks = {}
 
+        # The ComplianceChecker does not know how to resolve <UDIM> tags, so
+        # it will flag "textures/test_grid_<UDIM>.png" as a missing reference.
+        # That reference is in fact OK, so we skip the rule for this test.
         to_skip = ("MissingReferenceChecker",)
         for rule in checker._rules:
             name = rule.__class__.__name__
@@ -73,9 +70,9 @@ class USDExportTest(AbstractUSDTest):
             if not issues:
                 continue
 
-            collection[name] = issues
+            failed_checks[name] = issues
 
-        self.assertFalse(collection, pprint.pformat(collection))
+        self.assertFalse(failed_checks, pprint.pformat(failed_checks))
 
     def compareVec3d(self, first, second):
         places = 5
@@ -92,7 +89,7 @@ class USDExportTest(AbstractUSDTest):
             export_materials=True,
             evaluation_mode="RENDER",
         )
-        self.assertEqual({Result.finished}, res, f"Unable to export to {export_path}")
+        self.assertEqual({'FINISHED'}, res, f"Unable to export to {export_path}")
 
         # if prims are missing, the exporter must have skipped some objects
         stats = UsdUtils.ComputeUsdStageStats(str(export_path))
