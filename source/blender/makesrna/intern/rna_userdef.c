@@ -373,7 +373,7 @@ static void rna_userdef_undo_steps_set(PointerRNA *ptr, int value)
 {
   UserDef *userdef = (UserDef *)ptr->data;
 
-  /* Do not allow 1 undo steps, useless and breaks undo/redo process (see T42531). */
+  /* Do not allow 1 undo steps, useless and breaks undo/redo process (see #42531). */
   userdef->undosteps = (value == 1) ? 2 : value;
 }
 
@@ -605,7 +605,7 @@ static void rna_UserDef_weight_color_update(Main *bmain, Scene *scene, PointerRN
 
 static void rna_UserDef_viewport_lights_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
-  /* If all lights are off gpu_draw resets them all, see: T27627,
+  /* If all lights are off gpu_draw resets them all, see: #27627,
    * so disallow them all to be disabled. */
   if (U.light_param[0].flag == 0 && U.light_param[1].flag == 0 && U.light_param[2].flag == 0 &&
       U.light_param[3].flag == 0) {
@@ -6456,6 +6456,10 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
       "All Linked Data Direct",
       "Forces all linked data to be considered as directly linked. Workaround for current "
       "issues/limitations in BAT (Blender studio pipeline tool)");
+
+  prop = RNA_def_property(srna, "use_new_volume_nodes", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_ui_text(
+      prop, "New Volume Nodes", "Enables visibility of the new Volume nodes in the UI");
 }
 
 static void rna_def_userdef_addon_collection(BlenderRNA *brna, PropertyRNA *cprop)
