@@ -150,6 +150,8 @@
 /** \name Local Prototypes
  * \{ */
 
+struct uiBlockInteraction_Handle;
+
 static int ui_do_but_EXIT(bContext *C, uiBut *but, uiHandleButtonData *data, const wmEvent *event);
 static bool ui_but_find_select_in_enum__cmp(const uiBut *but_a, const uiBut *but_b);
 static void ui_textedit_string_set(uiBut *but, uiHandleButtonData *data, const char *str);
@@ -739,7 +741,7 @@ static void ui_color_snap_hue(const enum eSnapType snap, float *r_hue)
 
 static ListBase UIAfterFuncs = {nullptr, nullptr};
 
-static uiAfterFunc *ui_afterfunc_new(void)
+static uiAfterFunc *ui_afterfunc_new()
 {
   uiAfterFunc *after = MEM_cnew<uiAfterFunc>(__func__);
 
@@ -995,7 +997,7 @@ static void ui_apply_but_funcs_after(bContext *C)
   BLI_listbase_clear(&UIAfterFuncs);
 
   LISTBASE_FOREACH_MUTABLE (uiAfterFunc *, afterf, &funcs) {
-    uiAfterFunc after = *afterf; /* copy to avoid memleak on exit() */
+    uiAfterFunc after = *afterf; /* Copy to avoid memory leak on exit(). */
     BLI_freelinkN(&funcs, afterf);
 
     if (after.context) {
@@ -2795,7 +2797,7 @@ static void ui_but_copy(bContext *C, uiBut *but, const bool copy_array)
   }
 
   if (is_buf_set) {
-    WM_clipboard_text_set(buf, 0);
+    WM_clipboard_text_set(buf, false);
   }
 }
 
@@ -2864,7 +2866,7 @@ static void ui_but_paste(bContext *C, uiBut *but, uiHandleButtonData *data, cons
   MEM_freeN((void *)buf_paste);
 }
 
-void ui_but_clipboard_free(void)
+void ui_but_clipboard_free()
 {
   BKE_curvemapping_free_data(&but_copypaste_curve);
   BKE_curveprofile_free_data(&but_copypaste_profile);
@@ -3087,7 +3089,7 @@ static void ui_textedit_set_cursor_select(uiBut *but, uiHandleButtonData *data, 
   but->selsta = but->pos;
   but->selend = data->sel_pos_init;
   if (but->selend < but->selsta) {
-    SWAP(short, but->selsta, but->selend);
+    std::swap(but->selsta, but->selend);
   }
 
   ui_but_update(but);
@@ -3190,7 +3192,7 @@ static void ui_textedit_move(uiBut *but,
       but->selend = data->sel_pos_init;
     }
     if (but->selend < but->selsta) {
-      SWAP(short, but->selsta, but->selend);
+      std::swap(but->selsta, but->selend);
     }
   }
 }
@@ -3301,7 +3303,7 @@ static bool ui_textedit_copypaste(uiBut *but, uiHandleButtonData *data, const in
         MEM_mallocN(sizeof(char) * (sellen + 1), "ui_textedit_copypaste"));
 
     BLI_strncpy(buf, data->str + but->selsta, sellen + 1);
-    WM_clipboard_text_set(buf, 0);
+    WM_clipboard_text_set(buf, false);
     MEM_freeN(buf);
 
     /* for cut only, delete the selection afterwards */
@@ -4750,7 +4752,7 @@ static int ui_do_but_VIEW_ITEM(bContext *C,
                                const wmEvent *event)
 {
   uiButViewItem *view_item_but = (uiButViewItem *)but;
-  BLI_assert(view_item_but->but.type == UI_BTYPE_VIEW_ITEM);
+  BLI_assert(view_item_but->type == UI_BTYPE_VIEW_ITEM);
 
   if (data->state == BUTTON_STATE_HIGHLIGHT) {
     if (event->type == LEFTMOUSE) {
@@ -4959,14 +4961,13 @@ static float ui_numedit_apply_snap(int temp,
   return temp;
 }
 
-static bool ui_numedit_but_NUM(uiButNumber *number_but,
+static bool ui_numedit_but_NUM(uiButNumber *but,
                                uiHandleButtonData *data,
                                int mx,
                                const bool is_motion,
                                const enum eSnapType snap,
                                float fac)
 {
-  uiBut *but = &number_but->but;
   float deler, tempf;
   int lvalue, temp;
   bool changed = false;
@@ -4988,13 +4989,13 @@ static bool ui_numedit_but_NUM(uiButNumber *number_but,
 
     const float log_min = (scale_type == PROP_SCALE_LOG) ?
                               max_ff(max_ff(softmin, UI_PROP_SCALE_LOG_MIN),
-                                     powf(10, -number_but->precision) * 0.5f) :
+                                     powf(10, -but->precision) * 0.5f) :
                               0;
 
     /* Mouse location isn't screen clamped to the screen so use a linear mapping
      * 2px == 1-int, or 1px == 1-ClickStep */
     if (is_float) {
-      fac *= 0.01f * number_but->step_size;
+      fac *= 0.01f * but->step_size;
       switch (scale_type) {
         case PROP_SCALE_LINEAR: {
           tempf = float(data->startvalue) + float(mx - data->dragstartx) * fac;
@@ -5168,7 +5169,7 @@ static bool ui_numedit_but_NUM(uiButNumber *number_but,
       }
       case PROP_SCALE_LOG: {
         const float log_min = max_ff(max_ff(softmin, UI_PROP_SCALE_LOG_MIN),
-                                     powf(10.0f, -number_but->precision) * 0.5f);
+                                     powf(10.0f, -but->precision) * 0.5f);
         const float base = softmax / log_min;
         tempf = powf(base, data->dragf) * log_min;
         if (tempf <= log_min) {
@@ -6146,8 +6147,8 @@ static bool ui_numedit_but_UNITVEC(
 static void ui_palette_set_active(uiButColor *color_but)
 {
   if (color_but->is_pallete_color) {
-    Palette *palette = (Palette *)color_but->but.rnapoin.owner_id;
-    PaletteColor *color = static_cast<PaletteColor *>(color_but->but.rnapoin.data);
+    Palette *palette = (Palette *)color_but->rnapoin.owner_id;
+    PaletteColor *color = static_cast<PaletteColor *>(color_but->rnapoin.data);
     palette->active_color = BLI_findindex(&palette->colors, color);
   }
 }
@@ -6530,14 +6531,14 @@ static void ui_ndofedit_but_HSVCUBE(uiButHSVCube *hsv_but,
                                     const enum eSnapType snap,
                                     const bool shift)
 {
-  ColorPicker *cpicker = static_cast<ColorPicker *>(hsv_but->but.custom_data);
+  ColorPicker *cpicker = static_cast<ColorPicker *>(hsv_but->custom_data);
   float *hsv = cpicker->hsv_perceptual;
-  const float hsv_v_max = max_ff(hsv[2], hsv_but->but.softmax);
+  const float hsv_v_max = max_ff(hsv[2], hsv_but->softmax);
   float rgb[3];
   const float sensitivity = (shift ? 0.15f : 0.3f) * ndof->dt;
 
-  ui_but_v3_get(&hsv_but->but, rgb);
-  ui_scene_linear_to_perceptual_space(&hsv_but->but, rgb);
+  ui_but_v3_get(hsv_but, rgb);
+  ui_scene_linear_to_perceptual_space(hsv_but, rgb);
   ui_rgb_to_color_picker_HSVCUBE_compat_v(hsv_but, rgb, hsv);
 
   switch (hsv_but->gradient_type) {
@@ -6569,7 +6570,7 @@ static void ui_ndofedit_but_HSVCUBE(uiButHSVCube *hsv_but,
       /* exception only for value strip - use the range set in but->min/max */
       hsv[2] += ndof->rvec[0] * sensitivity;
 
-      CLAMP(hsv[2], hsv_but->but.softmin, hsv_but->but.softmax);
+      CLAMP(hsv[2], hsv_but->softmin, hsv_but->softmax);
       break;
     default:
       BLI_assert_msg(0, "invalid hsv type");
@@ -6586,10 +6587,10 @@ static void ui_ndofedit_but_HSVCUBE(uiButHSVCube *hsv_but,
   hsv_clamp_v(hsv, hsv_v_max);
 
   ui_color_picker_to_rgb_HSVCUBE_v(hsv_but, hsv, rgb);
-  ui_perceptual_to_scene_linear_space(&hsv_but->but, rgb);
+  ui_perceptual_to_scene_linear_space(hsv_but, rgb);
 
   copy_v3_v3(data->vec, rgb);
-  ui_but_v3_set(&hsv_but->but, data->vec);
+  ui_but_v3_set(hsv_but, data->vec);
 }
 #endif /* WITH_INPUT_NDOF */
 
@@ -8306,7 +8307,7 @@ static void button_activate_state(bContext *C, uiBut *but, uiHandleButtonState s
   /* number editing */
   if (state == BUTTON_STATE_NUM_EDITING) {
     if (ui_but_is_cursor_warp(but)) {
-      WM_cursor_grab_enable(CTX_wm_window(C), WM_CURSOR_WRAP_XY, true, nullptr);
+      WM_cursor_grab_enable(CTX_wm_window(C), WM_CURSOR_WRAP_XY, nullptr, true);
     }
     ui_numedit_begin(but, data);
   }
@@ -8792,7 +8793,7 @@ void UI_context_active_but_prop_handle(bContext *C, const bool handle_undo)
 {
   uiBut *activebut = ui_context_rna_button_active(C);
   if (activebut) {
-    /* TODO(@campbellbarton): look into a better way to handle the button change
+    /* TODO(@ideasman42): look into a better way to handle the button change
      * currently this is mainly so reset defaults works for the
      * operator redo panel. */
     uiBlock *block = activebut->block;
@@ -9448,10 +9449,10 @@ static int ui_list_handle_click_drag(bContext *C,
                                      const wmEvent *event)
 {
   if (event->type != LEFTMOUSE) {
-    return WM_HANDLER_CONTINUE;
+    return WM_UI_HANDLER_CONTINUE;
   }
 
-  int retval = WM_HANDLER_CONTINUE;
+  int retval = WM_UI_HANDLER_CONTINUE;
 
   const bool is_draggable = ui_list_is_hovering_draggable_but(C, ui_list, region, event);
   bool activate = false;
@@ -9684,14 +9685,20 @@ static int ui_handle_view_items_hover(const wmEvent *event, const ARegion *regio
 
 static int ui_handle_view_item_event(bContext *C,
                                      const wmEvent *event,
-                                     ARegion *region,
-                                     uiBut *view_but)
+                                     uiBut *active_but,
+                                     ARegion *region)
 {
-  BLI_assert(view_but->type == UI_BTYPE_VIEW_ITEM);
   if (event->type == LEFTMOUSE) {
+    /* Only bother finding the active view item button if the active button isn't already a view
+     * item. */
+    uiBut *view_but = (active_but && active_but->type == UI_BTYPE_VIEW_ITEM) ?
+                          active_but :
+                          ui_view_item_find_mouse_over(region, event->xy);
     /* Will free active button if there already is one. */
-    ui_handle_button_activate(C, region, view_but, BUTTON_ACTIVATE_OVER);
-    return ui_do_button(C, view_but->block, view_but, event);
+    if (view_but) {
+      ui_handle_button_activate(C, region, view_but, BUTTON_ACTIVATE_OVER);
+      return ui_do_button(C, view_but->block, view_but, event);
+    }
   }
 
   return WM_UI_HANDLER_CONTINUE;
@@ -11302,10 +11309,7 @@ static int ui_region_handler(bContext *C, const wmEvent *event, void * /*userdat
    * nested in the item (it's an overlapping layout). */
   ui_handle_view_items_hover(event, region);
   if (retval == WM_UI_HANDLER_CONTINUE) {
-    uiBut *view_item = ui_view_item_find_mouse_over(region, event->xy);
-    if (view_item) {
-      retval = ui_handle_view_item_event(C, event, region, view_item);
-    }
+    retval = ui_handle_view_item_event(C, event, but, region);
   }
 
   /* delayed apply callbacks */

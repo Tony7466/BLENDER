@@ -240,7 +240,7 @@ static void select_pchan_for_action_group(bAnimContext *ac, bActionGroup *agrp, 
   }
 }
 
-static ListBase /* bAnimListElem */ anim_channels_for_selection(bAnimContext *ac)
+static ListBase /*bAnimListElem*/ anim_channels_for_selection(bAnimContext *ac)
 {
   ListBase anim_data = {NULL, NULL};
 
@@ -2718,7 +2718,7 @@ static void box_select_anim_channels(bAnimContext *ac, rcti *rect, short selectm
     ymax = NLACHANNEL_FIRST_TOP(ac);
   }
   else {
-    ymax = ACHANNEL_FIRST_TOP(ac);
+    ymax = ANIM_UI_get_first_channel_top(v2d);
   }
 
   /* loop over data, doing box select */
@@ -2726,7 +2726,7 @@ static void box_select_anim_channels(bAnimContext *ac, rcti *rect, short selectm
     float ymin;
 
     if (ale->type == ANIMTYPE_GPDATABLOCK) {
-      ymax -= ACHANNEL_STEP(ac);
+      ymax -= ANIM_UI_get_channel_step();
       continue;
     }
 
@@ -2734,7 +2734,7 @@ static void box_select_anim_channels(bAnimContext *ac, rcti *rect, short selectm
       ymin = ymax - NLACHANNEL_STEP(snla);
     }
     else {
-      ymin = ymax - ACHANNEL_STEP(ac);
+      ymin = ymax - ANIM_UI_get_channel_step();
     }
 
     /* if channel is within border-select region, alter it */
@@ -2845,12 +2845,15 @@ static bool rename_anim_channels(bAnimContext *ac, int channel_index)
   int filter;
   bool success = false;
 
-  /* get the channel that was clicked on */
-  /* filter channels */
+  /* Filter relevant channels (note that grease-pencil/annotations are not displayed in Graph
+   * Editor). */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_LIST_CHANNELS);
+  if (ELEM(ac->datatype, ANIMCONT_FCURVES, ANIMCONT_NLA)) {
+    filter |= ANIMFILTER_FCURVESONLY;
+  }
   ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
 
-  /* get channel from index */
+  /* Get channel that was clicked on from index. */
   ale = BLI_findlink(&anim_data, channel_index);
   if (ale == NULL) {
     /* channel not found */
@@ -2945,10 +2948,10 @@ static int animchannels_channel_get(bAnimContext *ac, const int mval[2])
                                     &channel_index);
   }
   else {
-    UI_view2d_listview_view_to_cell(ACHANNEL_NAMEWIDTH,
-                                    ACHANNEL_STEP(ac),
+    UI_view2d_listview_view_to_cell(ANIM_UI_get_channel_name_width(),
+                                    ANIM_UI_get_channel_step(),
                                     0,
-                                    ACHANNEL_FIRST_TOP(ac),
+                                    ANIM_UI_get_first_channel_top(v2d),
                                     x,
                                     y,
                                     NULL,
@@ -3481,10 +3484,10 @@ static int animchannels_mouseclick_invoke(bContext *C, wmOperator *op, const wmE
 
   /* figure out which channel user clicked in */
   UI_view2d_region_to_view(v2d, event->mval[0], event->mval[1], &x, &y);
-  UI_view2d_listview_view_to_cell(ACHANNEL_NAMEWIDTH,
-                                  ACHANNEL_STEP(&ac),
+  UI_view2d_listview_view_to_cell(ANIM_UI_get_channel_name_width(),
+                                  ANIM_UI_get_channel_step(),
                                   0,
-                                  ACHANNEL_FIRST_TOP(&ac),
+                                  ANIM_UI_get_first_channel_top(v2d),
                                   x,
                                   y,
                                   NULL,
@@ -3496,7 +3499,8 @@ static int animchannels_mouseclick_invoke(bContext *C, wmOperator *op, const wmE
   /* set notifier that things have changed */
   WM_event_add_notifier(C, NC_ANIMATION | notifierFlags, NULL);
 
-  return OPERATOR_FINISHED;
+  return WM_operator_flag_only_pass_through_on_press(OPERATOR_FINISHED | OPERATOR_PASS_THROUGH,
+                                                     event);
 }
 
 static void ANIM_OT_channels_click(wmOperatorType *ot)
