@@ -1,1 +1,2 @@
 Referenced by issue #86823, Regression: Eevee SSR refraction depth works only for 1st refractive material and inherited by others
+Referenced by issue #77269, Array Modifier Crashes by changing Constant Offset value to negative
