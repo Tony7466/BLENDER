@@ -2,3 +2,4 @@ Referenced by commit fb27a9bb983, Gizmo: show groups flagged with SHOW_MODAL_ALL
 Referenced by issue #93606, drawing of (addon defined) gizmos, while a modal operator runs
 Referenced by issue #92954, Loop Cut Tool: Yellow preview line visible during operation
 Referenced by issue #91533, Regression: Visual bug when using the object gizmos
+Referenced by issue #73684, "3D Viewport Axis" disappears when an action is performed
