@@ -144,6 +144,7 @@ set(SRC_KERNEL_SVM_HEADERS
   svm/color_util.h
   svm/brick.h
   svm/displace.h
+  svm/float_to_spectrum.h
   svm/fresnel.h
   svm/wireframe.h
   svm/wavelength.h
