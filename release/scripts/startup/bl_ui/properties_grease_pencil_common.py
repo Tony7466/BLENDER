@@ -294,7 +294,7 @@ class GPENCIL_MT_material_active(Menu):
 
 
 class GPENCIL_MT_gpencil_draw_insert(Menu):
-    bl_label = "Insert"
+    bl_label = "Insert Keyframe"
 
     @classmethod
     def poll(cls, context):
@@ -314,7 +314,7 @@ class GPENCIL_MT_gpencil_draw_insert(Menu):
 
 
 class GPENCIL_MT_gpencil_draw_delete(Menu):
-    bl_label = "Delete"
+    bl_label = "Delete Keyframe"
 
     def draw(self, _context):
         layout = self.layout
