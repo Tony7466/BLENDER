@@ -1,2 +1,3 @@
 Referenced by issue #103033, Hard crash while resizing packed multichannel EXR
 Referenced by issue #99332, Regression: Resize video in image editor does not update correctly
+Referenced by issue #98580, Image operators only affect first UDIM tile
