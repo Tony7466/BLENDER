@@ -1,2 +1,3 @@
 Referenced by commit 2ea47e0def6, Geometry Nodes: Use checkbox for exposed boolean sockets
 Referenced by issue #103911, Issues with boolean custom property
+Referenced by issue #85306, Use boolean in the modifier for exposed boolean node group inputs
