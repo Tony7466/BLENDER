@@ -1,1 +1,2 @@
 Referenced by commit 44aa9e40ffe, Cleanup: Remove unused sculpt and vertex color operators
+Referenced by commit 9f634a195d1, Fix crash drawing non-mesh objects with vertex color
