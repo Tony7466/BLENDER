@@ -1,2 +1,3 @@
 Referenced by issue #98803, Regression: Vertex colors are now broken in hair strands
 Referenced by issue #97468, Update Attribute Conversion operator after recent color attribute changes.
+Referenced by issue #94428, Geometry Nodes - Vertex Color Issues
