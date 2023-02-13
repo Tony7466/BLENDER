@@ -422,6 +422,10 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
   const bool validate_meshes = false;
   const bool use_instancing = false;
 
+  if (import_materials) {
+    mesh_read_flag |= MOD_MESHSEQ_READ_MAT_FACE_SETS;
+  }
+
   const eUSDTexImportMode import_textures_mode = RNA_enum_get(op->ptr, "import_textures_mode");
 
   char import_textures_dir[FILE_MAXDIR];

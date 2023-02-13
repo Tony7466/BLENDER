@@ -401,7 +401,8 @@
     .cache_file = NULL, \
     .object_path = "", \
     .read_flag = MOD_MESHSEQ_READ_VERT | MOD_MESHSEQ_READ_POLY | MOD_MESHSEQ_READ_UV | \
-                 MOD_MESHSEQ_READ_COLOR | MOD_MESHSEQ_INTERPOLATE_VERTICES, \
+                 MOD_MESHSEQ_READ_COLOR | MOD_MESHSEQ_INTERPOLATE_VERTICES | \
+                 MOD_MESHSEQ_READ_MAT_FACE_SETS, \
     .velocity_scale = 1.0f, \
     .reader = NULL, \
     .reader_object_path = "", \

@@ -6179,6 +6179,13 @@ static void rna_def_modifier_meshseqcache(BlenderRNA *brna)
       prop, "Vertex Interpolation", "Allow interpolation of vertex positions");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
+  prop = RNA_def_property(srna, "read_mat_face_sets", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "read_flag", MOD_MESHSEQ_READ_MAT_FACE_SETS);
+  RNA_def_property_ui_text(prop,
+                           "Read Material Face Sets",
+                           "Allow reading of material face sets (applies to USD files only)");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
   prop = RNA_def_property(srna, "velocity_scale", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, NULL, "velocity_scale");
   RNA_def_property_range(prop, 0.0f, FLT_MAX);

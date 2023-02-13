@@ -857,7 +857,7 @@ Mesh *USDMeshReader::read_mesh(Mesh *existing_mesh,
      * the material slots that were created when the object was loaded from
      * USD are still valid now. */
     MutableSpan<MPoly> polys = active_mesh->polys_for_write();
-    if (!polys.is_empty() && import_params_.import_materials) {
+    if (!polys.is_empty() && read_flag & MOD_MESHSEQ_READ_MAT_FACE_SETS) {
       std::map<pxr::SdfPath, int> mat_map;
       bke::MutableAttributeAccessor attributes = active_mesh->attributes_for_write();
       bke::SpanAttributeWriter<int> material_indices =

@@ -2215,6 +2215,10 @@ enum {
    * the mesh topology changes, but this heuristic sometimes fails. In these cases, users can
    * disable interpolation with this flag. */
   MOD_MESHSEQ_INTERPOLATE_VERTICES = (1 << 4),
+
+  /* Whether or not to read material face sets.  This flag currently applies when loading USD
+   * files only, since the Alembic mesh importer always reads material face sets by default. */
+  MOD_MESHSEQ_READ_MAT_FACE_SETS = (1 << 5),
 };
 
 typedef struct SDefBind {
