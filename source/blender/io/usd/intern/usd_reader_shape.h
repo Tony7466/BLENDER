@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2023 Nvidia. All rights reserved. */
 
 #pragma once
 
@@ -33,23 +35,25 @@ class USDShapeReader : public USDGeomReader {
 
   /* Read the pxr:UsdGeomMesh values and convert them to a Blender Mesh,
    * also returning face_indices and counts for further loop processing. */
-  Mesh *mesh_from_prim(Mesh *existing_mesh, double motionSampleTime,
-                       pxr::VtIntArray& face_indices, pxr::VtIntArray& face_counts) const;
+  Mesh *mesh_from_prim(Mesh *existing_mesh,
+                       double motionSampleTime,
+                       pxr::VtIntArray &face_indices,
+                       pxr::VtIntArray &face_counts) const;
 
  public:
   USDShapeReader(const pxr::UsdPrim &prim,
                  const USDImportParams &import_params,
                  const ImportSettings &settings);
 
-  void create_object(Main *bmain, double motionSampleTime) override;
+  void create_object(Main *bmain, double /*motionSampleTime*/) override;
   void read_object_data(Main *bmain, double motionSampleTime) override;
-  struct Mesh *read_mesh(struct Mesh *existing_mesh,
-                         double motionSampleTime,
-                         int read_flag,
-                         const char **err_str) override;
+  Mesh *read_mesh(struct Mesh *existing_mesh,
+                  double motionSampleTime,
+                  int /*read_flag*/,
+                  const char ** /*err_str*/) override;
   bool is_time_varying();
 
-  virtual bool topology_changed(const Mesh * /* existing_mesh */, double /* motionSampleTime */)
+  virtual bool topology_changed(const Mesh * /*existing_mesh*/, double /*motionSampleTime*/)
   {
     return false;
   };
