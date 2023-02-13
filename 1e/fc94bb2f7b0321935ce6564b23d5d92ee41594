@@ -4,3 +4,4 @@ Referenced by commit 32757b2429a, Fix uninitialized variable use in asset metada
 Referenced by commit 95077549c1f, Fix failure in recently added asset library tests
 Referenced by issue #102778, Crash - Blender crashes if an assetbrowser editor has no asset library ref.
 Referenced by issue #102610, Regression: Asset disappearing on refresh
+Referenced by issue #102481, GN: Crash with Shift+A when using asset files with node groups in them
