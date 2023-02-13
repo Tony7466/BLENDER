@@ -1,1 +1,2 @@
 Referenced by commit 1bacd09abb6, Fix: Mishandled creases in Cycles adaptive subdivision
+Referenced by commit ed28ba4e999, Fix T101393: Vertex Crease operator does not create vertex crease layer
