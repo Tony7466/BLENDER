@@ -1,1 +1,2 @@
 Referenced by issue #101227, Blender 3.3 crashes on importing external .exr file on compositor
+Referenced by issue #72246, changing the file format of the file output node in the compositor loses all the input names :(
