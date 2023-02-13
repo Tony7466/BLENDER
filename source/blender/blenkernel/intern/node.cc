@@ -2479,10 +2479,17 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node)
     link.tosock->link = &link;
   }
 
-  bool topology_changed = false;
+  Vector<bNodeLink *, 16> unrequereds;
+
+  /* Remove all link, what input in node. It will be replaced by other links if possible. */
+  LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
+    if (link->tonode == node) {
+      unrequereds.append(link);
+    }
+  }
 
   /* Redirect downstream links. */
-  LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, &ntree->links) {
+  LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
     /* Trying to reconnect links from current node on previous. */
     if (link->fromnode != node) {
       continue;
@@ -2497,23 +2504,28 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node)
         adjust_multi_input_indices_after_removed_link(
             *ntree, link->tosock, link->multi_input_socket_index);
       }
-      nodeRemLink(ntree, link);
+
+      unrequereds.append(link);
       continue;
     }
 
     if (link->tosock->is_multi_input()) {
       /* Remove the link that would be the same as the relinked one. */
-      LISTBASE_FOREACH_MUTABLE (bNodeLink *, link_to_compare, &ntree->links) {
+      LISTBASE_FOREACH (bNodeLink *, link_to_compare, &ntree->links) {
         if (link_to_compare->fromsock != from_link->fromsock ||
             link_to_compare->tosock != link->tosock) {
           continue;
         }
+
         adjust_multi_input_indices_after_removed_link(
             *ntree, link_to_compare->tosock, link_to_compare->multi_input_socket_index);
-        nodeRemLink(ntree, link_to_compare);
+
+        unrequereds.append(link_to_compare);
       }
     }
 
+    /* That can be happen only in case what from link is there.
+     * That mean, that tree is changed by deleting this. */
     link->fromnode = from_link->fromnode;
     link->fromsock = from_link->fromsock;
 
@@ -2524,19 +2536,15 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node)
     if (from_link->flag & NODE_LINK_MUTED) {
       link->flag |= NODE_LINK_MUTED;
     }
-
-    topology_changed = true;
   }
 
-  if (topology_changed) {
-    BKE_ntree_update_tag_link_changed(ntree);
+  /* If nothing is changed in tree. */
+  if (unrequereds.is_empty()) {
+    return;
   }
 
-  /* remove remaining upstream links */
-  LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, &ntree->links) {
-    if (link->tonode == node) {
-      nodeRemLink(ntree, link);
-    }
+  for (bNodeLink *link : unrequereds) {
+    nodeRemLink(ntree, link);
   }
 }
 
