@@ -322,6 +322,8 @@ enum {
  * - bit  9-15: button type (now 6 bits, 64 types)
  */
 typedef enum {
+  UI_BUT_POIN_NONE = 0,
+
   UI_BUT_POIN_CHAR = 32,
   UI_BUT_POIN_SHORT = 64,
   UI_BUT_POIN_INT = 96,
@@ -901,7 +903,7 @@ bool UI_but_active_only(const struct bContext *C,
                         uiBut *but);
 /**
  * \warning This must run after other handlers have been added,
- * otherwise the handler won't be removed, see: T71112.
+ * otherwise the handler won't be removed, see: #71112.
  */
 bool UI_block_active_only_flagged_buttons(const struct bContext *C,
                                           struct ARegion *region,
@@ -3059,7 +3061,7 @@ int UI_fontstyle_string_width(const struct uiFontStyle *fs,
  * only applying scale when drawing. This causes problems for fonts since kerning at
  * smaller sizes often makes them wider than a scaled down version of the larger text.
  * Resolve this by calculating the text at the on-screen size,
- * returning the result scaled back to 1:1. See T92361.
+ * returning the result scaled back to 1:1. See #92361.
  */
 int UI_fontstyle_string_width_with_block_aspect(const struct uiFontStyle *fs,
                                                 const char *str,

@@ -55,7 +55,7 @@
 #include "paint_intern.h"
 /* still needed for sculpt_stroke_get_location, should be
  * removed eventually (TODO) */
-#include "sculpt_intern.h"
+#include "sculpt_intern.hh"
 
 /* TODOs:
  *
@@ -1403,7 +1403,7 @@ static void paint_update_mouse_cursor(PaintCursorContext *pcontext)
 {
   if (pcontext->win->grabcursor != 0) {
     /* Don't set the cursor while it's grabbed, since this will show the cursor when interacting
-     * with the UI (dragging a number button for e.g.), see: T102792. */
+     * with the UI (dragging a number button for e.g.), see: #102792. */
     return;
   }
   WM_cursor_set(pcontext->win, WM_CURSOR_PAINT);

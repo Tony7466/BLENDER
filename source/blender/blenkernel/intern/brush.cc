@@ -151,7 +151,8 @@ static void brush_make_local(Main *bmain, ID *id, const int flags)
   BKE_lib_id_make_local_generic_action_define(bmain, id, flags, &force_local, &force_copy);
 
   if (brush->clone.image) {
-    /* Special case: ima always local immediately. Clone image should only have one user anyway. */
+    /* Special case: `ima` always local immediately.
+     * Clone image should only have one user anyway. */
     /* FIXME: Recursive calls affecting other non-embedded IDs are really bad and should be avoided
      * in IDType callbacks. Higher-level ID management code usually does not expect such things and
      * does not deal properly with it. */
@@ -1597,7 +1598,7 @@ struct Brush *BKE_brush_first_search(struct Main *bmain, const eObjectMode ob_mo
 void BKE_brush_debug_print_state(Brush *br)
 {
   /* create a fake brush and set it to the defaults */
-  Brush def = {{nullptr}};
+  Brush def = blender::dna::shallow_zero_initialize();
   brush_defaults(&def);
 
 #define BR_TEST(field, t) \

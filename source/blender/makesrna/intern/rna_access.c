@@ -1415,6 +1415,16 @@ int RNA_property_string_maxlength(PropertyRNA *prop)
 
 StructRNA *RNA_property_pointer_type(PointerRNA *ptr, PropertyRNA *prop)
 {
+  if (prop->magic != RNA_MAGIC) {
+    const IDProperty *idprop = (IDProperty *)prop;
+    if (idprop->type == IDP_ID) {
+      const IDPropertyUIDataID *ui_data = (const IDPropertyUIDataID *)idprop->ui_data;
+      if (ui_data) {
+        return ID_code_to_RNA_type(ui_data->id_type);
+      }
+    }
+  }
+
   prop = rna_ensure_property(prop);
 
   if (prop->type == PROP_POINTER) {
@@ -2084,7 +2094,7 @@ static void rna_property_update(
     }
 
 #if 1
-    /* TODO(@campbellbarton): Should eventually be replaced entirely by message bus (below)
+    /* TODO(@ideasman42): Should eventually be replaced entirely by message bus (below)
      * for now keep since COW, bugs are hard to track when we have other missing updates. */
     if (prop->noteflag) {
       WM_main_add_notifier(prop->noteflag, ptr->owner_id);
@@ -2120,7 +2130,7 @@ static void rna_property_update(
      *
      * So editing custom properties only causes updates in the UI,
      * keep this exception because it happens to be useful for driving settings.
-     * Python developers on the other hand will need to manually 'update_tag', see: T74000. */
+     * Python developers on the other hand will need to manually 'update_tag', see: #74000. */
     DEG_id_tag_update(ptr->owner_id,
                       ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_PARAMETERS);
 
@@ -5932,7 +5942,7 @@ ParameterList *RNA_parameter_list_create(ParameterList *parms,
         case PROP_STRING: {
           const char *defvalue = ((StringPropertyRNA *)parm)->defaultvalue;
           if (defvalue && defvalue[0]) {
-            /* causes bug T29988, possibly this is only correct for thick wrapped
+            /* Causes bug #29988, possibly this is only correct for thick wrapped
              * need to look further into it - campbell */
 #if 0
             BLI_strncpy(data, defvalue, size);

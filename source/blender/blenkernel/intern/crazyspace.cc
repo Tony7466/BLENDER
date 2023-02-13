@@ -398,7 +398,7 @@ int BKE_sculpt_get_first_deform_matrices(struct Depsgraph *depsgraph,
       }
       else {
         /* More complex handling will continue in BKE_crazyspace_build_sculpt.
-         * Exiting the loop on a non-deform modifier causes issues - T71213. */
+         * Exiting the loop on a non-deform modifier causes issues - #71213. */
         BLI_assert(crazyspace_modifier_supports_deform(md));
         break;
       }
@@ -601,7 +601,7 @@ GeometryDeformation get_evaluated_curves_deformation(const Depsgraph &depsgraph,
 {
   BLI_assert(ob_orig.type == OB_CURVES);
   const Curves &curves_id_orig = *static_cast<const Curves *>(ob_orig.data);
-  const CurvesGeometry &curves_orig = CurvesGeometry::wrap(curves_id_orig.geometry);
+  const CurvesGeometry &curves_orig = curves_id_orig.geometry.wrap();
   const int points_num = curves_orig.points_num();
 
   GeometryDeformation deformation;
@@ -643,7 +643,7 @@ GeometryDeformation get_evaluated_curves_deformation(const Depsgraph &depsgraph,
     if (curves_component_eval != nullptr) {
       const Curves *curves_id_eval = curves_component_eval->get_for_read();
       if (curves_id_eval != nullptr) {
-        const CurvesGeometry &curves_eval = CurvesGeometry::wrap(curves_id_eval->geometry);
+        const CurvesGeometry &curves_eval = curves_id_eval->geometry.wrap();
         if (curves_eval.points_num() == points_num) {
           deformation.positions = curves_eval.positions();
         }

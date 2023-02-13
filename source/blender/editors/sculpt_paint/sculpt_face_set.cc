@@ -46,7 +46,7 @@
 
 #include "ED_sculpt.h"
 
-#include "sculpt_intern.h"
+#include "sculpt_intern.hh"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -548,7 +548,6 @@ static void sculpt_face_sets_init_flood_fill(Object *ob, const FaceSetsFloodFill
   if (!ss->epmap) {
     BKE_mesh_edge_poly_map_create(&ss->epmap,
                                   &ss->epmap_mem,
-                                  edges.data(),
                                   edges.size(),
                                   polys.data(),
                                   polys.size(),
@@ -1303,8 +1302,8 @@ static bool sculpt_face_set_edit_is_operation_valid(SculptSession *ss,
 
   if (mode == SCULPT_FACE_SET_EDIT_DELETE_GEOMETRY) {
     if (BKE_pbvh_type(ss->pbvh) == PBVH_GRIDS) {
-      /* Modification of base mesh geometry requires special remapping of multires displacement,
-       * which does not happen here.
+      /* Modification of base mesh geometry requires special remapping of multi-resolution
+       * displacement, which does not happen here.
        * Disable delete operation. It can be supported in the future by doing similar displacement
        * data remapping as what happens in the mesh edit mode. */
       return false;
@@ -1318,9 +1317,9 @@ static bool sculpt_face_set_edit_is_operation_valid(SculptSession *ss,
 
   if (ELEM(mode, SCULPT_FACE_SET_EDIT_FAIR_POSITIONS, SCULPT_FACE_SET_EDIT_FAIR_TANGENCY)) {
     if (BKE_pbvh_type(ss->pbvh) == PBVH_GRIDS) {
-      /* TODO: Multires topology representation using grids and duplicates can't be used directly
-       * by the fair algorithm. Multires topology needs to be exposed in a different way or
-       * converted to a mesh for this operation. */
+      /* TODO: Multi-resolution topology representation using grids and duplicates can't be used
+       * directly by the fair algorithm. Multi-resolution topology needs to be exposed in a
+       * different way or converted to a mesh for this operation. */
       return false;
     }
   }
