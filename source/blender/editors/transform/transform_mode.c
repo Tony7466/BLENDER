@@ -1029,8 +1029,9 @@ void ElementResize(const TransInfo *t,
       applyNumInput(&num_evil, values_final_evil);
 
       float ratio = values_final_evil[0];
-      *td->val = td->ival * fabs(ratio) * gps->runtime.multi_frame_falloff;
-      CLAMP_MIN(*td->val, 0.001f);
+      float transformed_value = td->ival * fabs(ratio);
+      *td->val = max_ff(interpf(transformed_value, td->ival, gps->runtime.multi_frame_falloff),
+                        0.001f);
     }
   }
   else {
@@ -1213,6 +1214,8 @@ void transform_mode_init(TransInfo *t, wmOperator *op, const int mode)
      * Ideally this should be called when creating the TransData. */
     transform_convert_mesh_customdatacorrect_init(t);
   }
+
+  transform_gizmo_3d_model_from_constraint_and_mode_set(t);
 
   /* TODO(@germano): Some of these operations change the `t->mode`.
    * This can be bad for Redo. */
