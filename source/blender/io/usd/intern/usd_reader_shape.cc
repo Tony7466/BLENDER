@@ -144,7 +144,7 @@ Mesh *USDShapeReader::read_mesh(struct Mesh *existing_mesh,
   const char should_smooth = prim_.IsA<pxr::UsdGeomCube>() ? 0 : ME_SMOOTH;
 
   if (active_mesh != existing_mesh) {
-    int loop_index = 0;
+      int loop_index = 0;
     for (int i = 0; i < face_counts.size(); i++) {
       const int face_size = face_counts[i];
 
@@ -172,19 +172,22 @@ Mesh *USDShapeReader::mesh_from_prim(Mesh *existing_mesh,
 {
   pxr::VtVec3fArray positions;
 
-  Mesh *active_mesh = existing_mesh;
-
   if (!read_mesh_values(motionSampleTime, positions, face_indices, face_counts)) {
-    return active_mesh;
+    return existing_mesh;
   }
 
   const bool poly_counts_match = existing_mesh ? face_counts.size() == existing_mesh->totpoly :
                                                  false;
   const bool position_counts_match = existing_mesh ? positions.size() == existing_mesh->totvert :
                                                      false;
+
+  Mesh *active_mesh = nullptr;
   if (!position_counts_match || !poly_counts_match) {
     active_mesh = BKE_mesh_new_nomain_from_template(
         existing_mesh, positions.size(), 0, 0, face_indices.size(), face_counts.size());
+  }
+  else {
+    active_mesh = existing_mesh;
   }
 
   MutableSpan<float3> vert_positions = active_mesh->vert_positions_for_write();
