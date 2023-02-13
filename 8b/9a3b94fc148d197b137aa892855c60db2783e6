@@ -1,2 +1,3 @@
 Referenced by commit 276a862ebc5, Fix failing alembic test after IDProperty UI data refactor
 Referenced by issue #92532, Python: calling id_properties_ui(key).update() without arguments, crashes blender
+Referenced by issue #91084, Object pose IDProperty UI data is not versioned
