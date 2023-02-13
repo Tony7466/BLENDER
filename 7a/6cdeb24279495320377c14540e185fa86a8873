@@ -1,2 +1,3 @@
 Referenced by issue #102700, Regression: Viewer node crash on empty by non-null mesh after join geometry with attribute output on viewer
 Referenced by issue #102662, NLA-Strip Corrupted aufter opening file again in case of library override
+Referenced by issue #102653, `insert_keyframe` takes too long, appears to run in linear time over the number of existing keyframes
