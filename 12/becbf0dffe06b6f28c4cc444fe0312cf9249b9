@@ -1,2 +1,3 @@
 Referenced by commit 2d8eadacf9f, Fix: Missing DNA rename for recent mesh refactor
 Referenced by issue #103610, Some meshes causing crash on file opening since Blender 3.4
+Referenced by issue #103520, Regression: Using Bright/Contrast option on selected faces (paintmask) in Vertex Paint mode broken
