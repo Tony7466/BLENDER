@@ -1,2 +1,3 @@
 Referenced by issue #104348, Regression: Geometry Nodes triangulate node incorrectly alters point attributes
 Referenced by issue #104334, Regression: Baking Bevel Shader does not work
+Referenced by issue #103818, VSE: frozen frames after simple edit/cut in final render
