@@ -122,7 +122,7 @@ class CreateModifierWrapperGroup(Operator):
 
         group_input_node = group.nodes["Group Input"]
         group_output_node = group.nodes["Group Output"]
-        
+
         # Copy default values for inputs and create named attribute input nodes.
         input_nodes = []
         first_geometry_input = None
@@ -142,15 +142,15 @@ class CreateModifierWrapperGroup(Operator):
             elif input_socket.bl_socket_idname == 'NodeSocketGeometry':
                 if not first_geometry_input:
                     first_geometry_input = group_node_input
-        
+
         group.links.new(group_input_node.outputs[0], first_geometry_input)
 
         # Adjust locations of named attribute input nodes and group input node to make some space.
         if input_nodes:
             for i, node in enumerate(input_nodes):
-                node.location[0] = -175
-                node.location[1] = i * -50
-            group_input_node.location[0] = -350
+                node.location.x = -175
+                node.location.y = i * -50
+            group_input_node.location.x = -350
 
         # Connect outputs to store named attribute nodes to replace modifier attribute outputs.
         store_nodes = []
@@ -174,9 +174,9 @@ class CreateModifierWrapperGroup(Operator):
         # Adjust locations of store named attribute nodes and move group output.
         if store_nodes:
             for i, node in enumerate(store_nodes):
-                node.location[0] = (i + 1) * 175
-                node.location[1] = 0
-            group_output_node.location[0] = (len(store_nodes) + 1) * 175
+                node.location.x = (i + 1) * 175
+                node.location.y = 0
+            group_output_node.location.x = (len(store_nodes) + 1) * 175
 
             group.links.new(first_geometry_output, store_nodes[0].inputs["Geometry"])
             for i in range(len(store_nodes))[:-1]:
