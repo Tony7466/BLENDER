@@ -1,0 +1,1 @@
+Referenced by issue #98029, Handle 'isolated islands' of cyclic dependencies of effectively unused data-blocks in 'Recursive cleanup' code
