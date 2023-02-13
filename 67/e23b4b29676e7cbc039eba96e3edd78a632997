@@ -3,3 +3,4 @@ Referenced by commit edc00429e8d, Fix T102257: Crash when making an Object as Ef
 Referenced by commit 715c86d9e58, Fix T101231: Console flooded with warnings when fluid type is Domain
 Referenced by issue #102257, Regression: Crash when making an Object as Effector set to Guide and trying to scrub the timeline.
 Referenced by issue #101231, Regression: Console flooded with warnings when fluid type is Domain
+Referenced by issue #84369, Fluid: Missing cache invalidation when properties on non-domain objects change.
