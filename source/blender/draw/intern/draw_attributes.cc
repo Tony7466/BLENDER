@@ -71,6 +71,14 @@ DRW_AttributeRequest *drw_attributes_add_request(DRW_Attributes *attrs,
     return nullptr;
   }
 
+  for (int i : blender::IndexRange(attrs->num_requests)) {
+    /* Check first if it has been requested already. */
+    DRW_AttributeRequest *req = &attrs->requests[i];
+    if (req->cd_type == type && req->layer_index == layer_index && req->domain == domain) {
+      return req;
+    }
+  }
+
   DRW_AttributeRequest *req = &attrs->requests[attrs->num_requests];
   req->cd_type = type;
   BLI_strncpy(req->attribute_name, name, sizeof(req->attribute_name));
