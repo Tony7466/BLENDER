@@ -13,6 +13,7 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
 {
   using namespace blender::gpu::shader;
 
+  uniform_len_ = 0;
   ssbo_len_ = 0;
 
   Vector<ShaderCreateInfo::Resource> all_resources;
@@ -22,6 +23,8 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
   for (ShaderCreateInfo::Resource &res : all_resources) {
     switch (res.bind_type) {
       case ShaderCreateInfo::Resource::BindType::IMAGE:
+        uniform_len_++;
+        break;
       case ShaderCreateInfo::Resource::BindType::SAMPLER:
       case ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER:
         // BLI_assert_msg(false, "not implemented yet");
@@ -32,14 +35,25 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
     }
   }
 
-  int32_t input_tot_len = ssbo_len_;
+  int32_t input_tot_len = ssbo_len_ + uniform_len_;
   inputs_ = static_cast<ShaderInput *>(
       MEM_calloc_arrayN(input_tot_len, sizeof(ShaderInput), __func__));
   ShaderInput *input = inputs_;
 
   name_buffer_ = (char *)MEM_mallocN(info.interface_names_size_, "name_buffer");
   uint32_t name_buffer_offset = 0;
+  /* Images */
+  /* NOTE: should be extended with uniforms and samplers.*/
+  for (const ShaderCreateInfo::Resource &res : all_resources) {
+    if (res.bind_type == ShaderCreateInfo::Resource::BindType::IMAGE) {
+      copy_input_name(input, res.image.name, name_buffer_, name_buffer_offset);
+      input->location = input->binding = res.slot;
+      enabled_ima_mask_ |= (1 << input->binding);
+      input++;
+    }
+  }
 
+  /* Storage buffers */
   for (const ShaderCreateInfo::Resource &res : all_resources) {
     if (res.bind_type == ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER) {
       copy_input_name(input, res.storagebuf.name, name_buffer_, name_buffer_offset);

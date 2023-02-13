@@ -20,6 +20,7 @@ namespace blender::gpu {
 class VKStorageBuffer;
 class VKVertexBuffer;
 class VKIndexBuffer;
+class VKTexture;
 
 class VKDescriptorSet : NonCopyable {
   struct Binding {
@@ -63,6 +64,7 @@ class VKDescriptorSet : NonCopyable {
   void bind_as_ssbo(VKVertexBuffer &buffer, int location);
   void bind_as_ssbo(VKIndexBuffer &buffer, int location);
   void bind(VKStorageBuffer &buffer, int location);
+  void image_bind(VKTexture &texture, int location);
 
   /**
    * Update the descriptor set on the device.

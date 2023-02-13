@@ -36,9 +36,9 @@ class VKDescriptorPools {
    *
    * Better defaults should be set later on, when we know more about our resource usage.
    */
-  static constexpr uint32_t POOL_SIZE_UNIFORM_BUFFER = 1000;
   static constexpr uint32_t POOL_SIZE_STORAGE_BUFFER = 1000;
   static constexpr uint32_t POOL_SIZE_DESCRIPTOR_SETS = 1000;
+  static constexpr uint32_t POOL_SIZE_STORAGE_IMAGE = 1000;
 
   VkDevice vk_device_ = VK_NULL_HANDLE;
   Vector<VkDescriptorPool> pools_;

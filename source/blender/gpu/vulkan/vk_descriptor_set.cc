@@ -8,6 +8,7 @@
 #include "vk_descriptor_set.hh"
 #include "vk_index_buffer.hh"
 #include "vk_storage_buffer.hh"
+#include "vk_texture.hh"
 #include "vk_vertex_buffer.hh"
 
 #include "BLI_assert.h"
@@ -51,6 +52,10 @@ void VKDescriptorSet::bind_as_ssbo(VKIndexBuffer &buffer, int location)
   binding.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
   binding.vk_buffer = buffer.vk_handle();
   binding.buffer_size = buffer.size_get();
+}
+
+void VKDescriptorSet::image_bind(VKTexture &texture, int location)
+{
 }
 
 VKDescriptorSet::Binding &VKDescriptorSet::ensure_location(int location)

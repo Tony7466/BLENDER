@@ -6,6 +6,7 @@
  */
 
 #include "vk_state_manager.hh"
+#include "vk_texture.hh"
 
 namespace blender::gpu {
 void VKStateManager::apply_state()
@@ -32,8 +33,10 @@ void VKStateManager::texture_unbind_all()
 {
 }
 
-void VKStateManager::image_bind(Texture * /*tex*/, int /*unit*/)
+void VKStateManager::image_bind(Texture *tex, int binding)
 {
+  VKTexture *texture = unwrap(tex);
+  texture->image_bind(binding);
 }
 
 void VKStateManager::image_unbind(Texture * /*tex*/)

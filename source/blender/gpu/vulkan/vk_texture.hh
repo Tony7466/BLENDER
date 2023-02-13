@@ -8,14 +8,19 @@
 #pragma once
 
 #include "gpu_texture_private.hh"
+#include "vk_context.hh"
 
 namespace blender::gpu {
 
 class VKTexture : public Texture {
+  VkImage vk_image_ = VK_NULL_HANDLE;
+  VmaAllocation allocation_ = VK_NULL_HANDLE;
+
  public:
   VKTexture(const char *name) : Texture(name)
   {
   }
+  virtual ~VKTexture() override;
 
   void generate_mipmap() override;
   void copy_to(Texture *tex) override;
@@ -34,10 +39,26 @@ class VKTexture : public Texture {
   /* TODO(fclem): Legacy. Should be removed at some point. */
   uint gl_bindcode_get() const override;
 
+  void image_bind(int location);
+
  protected:
   bool init_internal() override;
   bool init_internal(GPUVertBuf *vbo) override;
   bool init_internal(const GPUTexture *src, int mip_offset, int layer_offset) override;
+
+ private:
+  /** Is this texture already allocated on device.*/
+  bool is_allocated();
+  /**
+   * Allocate the texture of the device. Result is `true` when texture is successfully allocated
+   * on the device.
+   */
+  bool allocate();
 };
+
+static inline VKTexture *unwrap(Texture *tex)
+{
+  return static_cast<VKTexture *>(tex);
+}
 
 }  // namespace blender::gpu

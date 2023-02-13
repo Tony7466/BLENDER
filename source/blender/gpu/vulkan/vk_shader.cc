@@ -743,7 +743,7 @@ static VkDescriptorType descriptor_type(
 {
   switch (bind_type) {
     case shader::ShaderCreateInfo::Resource::BindType::IMAGE:
-      return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+      return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     case shader::ShaderCreateInfo::Resource::BindType::SAMPLER:
       return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     case shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER:
