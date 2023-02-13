@@ -1,0 +1,1 @@
+Referenced by issue #97698, Custom Normals: some operations that alter topology (bisect, loopcut, subdivide, knife, triangulate modifier) destroy them while other operations (e.g. Connect Vertex Path, triangulate operator) preserve them
