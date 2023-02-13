@@ -316,14 +316,6 @@ static void curves_batch_cache_ensure_edit_lines(const bke::CurvesGeometry &curv
   GPU_indexbuf_build_in_place(&elb, cache.edit_lines_ibo);
 }
 
-void drw_curves_get_attribute_sampler_name(const char *layer_name, char r_sampler_name[32])
-{
-  char attr_safe_name[GPU_MAX_SAFE_ATTR_NAME];
-  GPU_vertformat_safe_attr_name(layer_name, attr_safe_name, GPU_MAX_SAFE_ATTR_NAME);
-  /* Attributes use auto-name. */
-  BLI_snprintf(r_sampler_name, 32, "a%s", attr_safe_name);
-}
-
 static void curves_batch_cache_ensure_procedural_final_attr(CurvesEvalCache &cache,
                                                             const GPUVertFormat *format,
                                                             const int subdiv,
@@ -552,48 +544,6 @@ static bool curves_ensure_attributes(const Curves &curves,
   return need_tf_update;
 }
 
-bool curves_ensure_procedural_data(Curves *curves_id,
-                                   CurvesEvalCache **r_hair_cache,
-                                   GPUMaterial *gpu_material,
-                                   const int subdiv,
-                                   const int thickness_res)
-{
-  bke::CurvesGeometry &curves = curves_id->geometry.wrap();
-  bool need_ft_update = false;
-
-  CurvesBatchCache &cache = curves_batch_cache_get(*curves_id);
-  *r_hair_cache = &cache.curves_cache;
-
-  const int steps = 3; /* TODO: don't hard-code? */
-  (*r_hair_cache)->final[subdiv].strands_res = 1 << (steps + subdiv);
-
-  /* Refreshed on combing and simulation. */
-  if ((*r_hair_cache)->proc_point_buf == nullptr) {
-    ensure_seg_pt_count(*curves_id, cache.curves_cache);
-    curves_batch_cache_ensure_procedural_pos(curves, cache.curves_cache, gpu_material);
-    need_ft_update = true;
-  }
-
-  /* Refreshed if active layer or custom data changes. */
-  if ((*r_hair_cache)->proc_strand_buf == nullptr) {
-    curves_batch_cache_ensure_procedural_strand_data(curves, cache.curves_cache);
-  }
-
-  /* Refreshed only on subdiv count change. */
-  if ((*r_hair_cache)->final[subdiv].proc_buf == nullptr) {
-    curves_batch_cache_ensure_procedural_final_points(cache.curves_cache, subdiv);
-    need_ft_update = true;
-  }
-  if ((*r_hair_cache)->final[subdiv].proc_hairs[thickness_res - 1] == nullptr) {
-    curves_batch_cache_ensure_procedural_indices(
-        curves, cache.curves_cache, thickness_res, subdiv);
-  }
-
-  need_ft_update |= curves_ensure_attributes(*curves_id, cache, gpu_material, subdiv);
-
-  return need_ft_update;
-}
-
 static void request_attribute(Curves &curves, const char *name)
 {
   CurvesBatchCache &cache = curves_batch_cache_get(curves);
@@ -622,6 +572,57 @@ static void request_attribute(Curves &curves, const char *name)
 }
 
 }  // namespace blender::draw
+
+void drw_curves_get_attribute_sampler_name(const char *layer_name, char r_sampler_name[32])
+{
+  char attr_safe_name[GPU_MAX_SAFE_ATTR_NAME];
+  GPU_vertformat_safe_attr_name(layer_name, attr_safe_name, GPU_MAX_SAFE_ATTR_NAME);
+  /* Attributes use auto-name. */
+  BLI_snprintf(r_sampler_name, 32, "a%s", attr_safe_name);
+}
+
+bool curves_ensure_procedural_data(Curves *curves_id,
+                                   CurvesEvalCache **r_hair_cache,
+                                   GPUMaterial *gpu_material,
+                                   const int subdiv,
+                                   const int thickness_res)
+{
+  using namespace blender;
+  bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+  bool need_ft_update = false;
+
+  draw::CurvesBatchCache &cache = draw::curves_batch_cache_get(*curves_id);
+  *r_hair_cache = &cache.curves_cache;
+
+  const int steps = 3; /* TODO: don't hard-code? */
+  (*r_hair_cache)->final[subdiv].strands_res = 1 << (steps + subdiv);
+
+  /* Refreshed on combing and simulation. */
+  if ((*r_hair_cache)->proc_point_buf == nullptr) {
+    draw::ensure_seg_pt_count(*curves_id, cache.curves_cache);
+    draw::curves_batch_cache_ensure_procedural_pos(curves, cache.curves_cache, gpu_material);
+    need_ft_update = true;
+  }
+
+  /* Refreshed if active layer or custom data changes. */
+  if ((*r_hair_cache)->proc_strand_buf == nullptr) {
+    draw::curves_batch_cache_ensure_procedural_strand_data(curves, cache.curves_cache);
+  }
+
+  /* Refreshed only on subdiv count change. */
+  if ((*r_hair_cache)->final[subdiv].proc_buf == nullptr) {
+    draw::curves_batch_cache_ensure_procedural_final_points(cache.curves_cache, subdiv);
+    need_ft_update = true;
+  }
+  if ((*r_hair_cache)->final[subdiv].proc_hairs[thickness_res - 1] == nullptr) {
+    draw::curves_batch_cache_ensure_procedural_indices(
+        curves, cache.curves_cache, thickness_res, subdiv);
+  }
+
+  need_ft_update |= draw::curves_ensure_attributes(*curves_id, cache, gpu_material, subdiv);
+
+  return need_ft_update;
+}
 
 void DRW_curves_batch_cache_dirty_tag(Curves *curves, int mode)
 {
