@@ -1,2 +1,3 @@
 Referenced by issue #102144, Regression: Specific Geometry Nodes tree (involving curve nodes) crashes with specific input mesh
 Referenced by issue #97790, Regression: Crash when setting Outliner to "Blender File" with old files (IPO IDs)
+Referenced by issue #95499, Regression. Nurbs path: Active point do not show proper (active) color after adding path
