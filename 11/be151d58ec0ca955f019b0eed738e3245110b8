@@ -1,1 +1,2 @@
 Referenced by commit 543ea415690, Cleanup: Remove unused node "add and link node" operator
+Referenced by commit 36a830b4d36, Fix: Compare node missing from link drag search
