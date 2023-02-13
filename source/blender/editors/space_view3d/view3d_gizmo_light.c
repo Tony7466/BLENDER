@@ -106,10 +106,10 @@ static void gizmo_light_radius_prop_matrix_get(const wmGizmo *UNUSED(gz),
   const bContext *C = gz_prop->custom_func.user_data;
   ViewLayer *view_layer = CTX_data_view_layer(C);
   BKE_view_layer_synced_ensure(CTX_data_scene(C), view_layer);
-  Light *la = BKE_view_layer_active_object_get(view_layer)->data;
+  const Light *la = BKE_view_layer_active_object_get(view_layer)->data;
 
   /* Draw gizmo even when radius is zero. */
-  float diameter = fmaxf(2.0f * la->radius, 1e-2f);
+  const float diameter = fmaxf(2.0f * la->radius, 1e-2f);
   matrix[0][0] = diameter;
   matrix[1][1] = diameter;
 }
@@ -127,7 +127,7 @@ static void gizmo_light_radius_prop_matrix_set(const wmGizmo *UNUSED(gz),
   BKE_view_layer_synced_ensure(scene, view_layer);
   Light *la = BKE_view_layer_active_object_get(view_layer)->data;
 
-  float radius = 0.5f * len_v3(matrix[0]);
+  const float radius = 0.5f * len_v3(matrix[0]);
 
   PointerRNA light_ptr;
   RNA_pointer_create(&la->id, &RNA_Light, la, &light_ptr);
@@ -298,7 +298,7 @@ void VIEW3D_GGT_light_spot(wmGizmoGroupType *gzgt)
 
 static bool WIDGETGROUP_light_point_poll(const bContext *C, wmGizmoGroupType *UNUSED(gzgt))
 {
-  View3D *v3d = CTX_wm_view3d(C);
+  const View3D *v3d = CTX_wm_view3d(C);
   if (v3d->gizmo_flag & (V3D_GIZMO_HIDE | V3D_GIZMO_HIDE_CONTEXT)) {
     return false;
   }
@@ -309,11 +309,11 @@ static bool WIDGETGROUP_light_point_poll(const bContext *C, wmGizmoGroupType *UN
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   BKE_view_layer_synced_ensure(scene, view_layer);
-  Base *base = BKE_view_layer_active_base_get(view_layer);
+  const Base *base = BKE_view_layer_active_base_get(view_layer);
   if (base && BASE_SELECTABLE(v3d, base)) {
-    Object *ob = base->object;
+    const Object *ob = base->object;
     if (ob->type == OB_LAMP) {
-      Light *la = ob->data;
+      const Light *la = ob->data;
       return (la->type == LA_LOCAL);
     }
   }
@@ -351,13 +351,13 @@ static void WIDGETGROUP_light_point_draw_prepare(const bContext *C, wmGizmoGroup
   wmGizmoWrapper *wwrapper = gzgroup->customdata;
   ViewLayer *view_layer = CTX_data_view_layer(C);
   BKE_view_layer_synced_ensure(CTX_data_scene(C), view_layer);
-  Object *ob = BKE_view_layer_active_object_get(view_layer);
+  const Object *ob = BKE_view_layer_active_object_get(view_layer);
 
   /* Point radius gizmo. */
   wmGizmo *gz = wwrapper->gizmo;
 
   /* Draw circle in the screen space. */
-  RegionView3D *rv3d = CTX_wm_region(C)->regiondata;
+  const RegionView3D *rv3d = CTX_wm_region(C)->regiondata;
   WM_gizmo_set_matrix_rotation_from_z_axis(gz, rv3d->viewinv[2]);
 
   WM_gizmo_set_matrix_location(gz, ob->object_to_world[3]);
