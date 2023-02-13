@@ -1,2 +1,3 @@
 Referenced by issue #76612, [Interface] Blender crashes when trying to split areas
 Referenced by issue #76558, Decreasing Viewport Anti-Aliasing levels makes cube whiter
+Referenced by issue #76564, Material not displays properly on curved mesh [no default CD_ORCO tex coordinate]
