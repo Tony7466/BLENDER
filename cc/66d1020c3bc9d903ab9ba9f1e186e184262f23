@@ -2,3 +2,4 @@ Referenced by issue #98740, Quick Liquid Causes access violation
 Referenced by issue #98453, crash Render Cycles GPU computing with NVIDIA GeForce RTX 2060
 Referenced by issue #98427, Adding quick effects smoke with python raises segmentation fault
 Referenced by issue #97904, command line blender render
+Referenced by issue #97829, Optix not available after Manjaro Update
