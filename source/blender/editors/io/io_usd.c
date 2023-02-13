@@ -75,7 +75,7 @@ const EnumPropertyItem rna_enum_usd_mtl_name_collision_mode_items[] = {
 const EnumPropertyItem rna_enum_usd_tex_import_mode_items[] = {
     {USD_TEX_IMPORT_NONE, "IMPORT_NONE", 0, "None", "Don't import textures"},
     {USD_TEX_IMPORT_PACK, "IMPORT_PACK", 0, "Packed", "Import textures as packed data"},
-    {USD_TEX_IMPORT_COPY, "IMPORT_COPY", 0, "Copy", "Copy files to Textures Directory"},
+    {USD_TEX_IMPORT_COPY, "IMPORT_COPY", 0, "Copy", "Copy files to textures directory"},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -413,7 +413,7 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
   int offset = 0;
   int sequence_len = 1;
 
-  /* Switch out of edit mode to avoid being stuck in it (T54326). */
+  /* Switch out of edit mode to avoid being stuck in it (#54326). */
   Object *obedit = CTX_data_edit_object(C);
   if (obedit) {
     ED_object_mode_set(C, OB_MODE_EDIT);
@@ -675,7 +675,7 @@ void WM_OT_usd_import(struct wmOperatorType *ot)
                  "//textures/",
                  FILE_MAXDIR,
                  "Textures Directory",
-                 "Path to the directory where imported textures will be copied ");
+                 "Path to the directory where imported textures will be copied");
 
   RNA_def_enum(
       ot->srna,
