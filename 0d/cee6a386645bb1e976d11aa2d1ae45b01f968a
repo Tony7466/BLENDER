@@ -1,1 +1,2 @@
 Referenced by commit 4dd409a185e, Fix T99976: Animated visibility not rendering properly in viewport
+Referenced by issue #99976, Regression: curve with animated visibility not rendering properly in viewport
