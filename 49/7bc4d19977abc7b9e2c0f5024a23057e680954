@@ -1,1 +1,2 @@
 Referenced by commit 6293cf61312, Fix T90630: Crash loading certain user preferences
+Referenced by issue #90630, Crash with certain startup/user preferences configurations after recent changes to WM init (rB497bc4d19977)
