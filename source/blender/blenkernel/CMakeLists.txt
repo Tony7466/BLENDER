@@ -833,6 +833,7 @@ if(WITH_GTESTS)
     intern/lib_id_test.cc
     intern/lib_remap_test.cc
     intern/nla_test.cc
+    intern/node_test.cc
     intern/tracking_test.cc
   )
   set(TEST_INC
