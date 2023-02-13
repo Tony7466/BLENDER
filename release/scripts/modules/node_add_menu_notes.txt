@@ -1,0 +1,24 @@
+To draw node add menu:
+
+Call NODE_MT_add.
+This calls operator to add the search.
+A seperator is then added.
+Finally, nodeitems_utils.draw_node_categories_menu
+What does that do?
+Well, before this,
+
+for, say, geo nodes.
+Geo nodes are registered, with a list of categories (submenus).
+Then, for each category, if the category fits the context, use 
+dynamic layout.menu("NODE_MT_category_<<CAT_NAME>>>").
+This then calls draw_node_item, which calls item.draw for every item
+in the category
+
+draw_node_catgoeries_menu
+-> For each node category: draw_add_menu()
+-> poll context for suitability: poll()
+-> layout.menu("NODE_MT_category_%s" % category)
+-> This MT operator draws each item in its category: draw_node_item()
+-> For each item in category: item.draw(item, col, context)
+-> item.draw = layout.operator("node.add_node")
+-> node type determined by nodeitem type, surely this can be decoupled?
