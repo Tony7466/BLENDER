@@ -6,3 +6,4 @@ Referenced by issue #85897, Slow viewport framerate (e.g. tumbling the camera, n
 Referenced by issue #85897, Slow viewport framerate (e.g. tumbling the camera, not scrubbing) due to commit 0812949bbc3d7acfd1f20a47087ff973110aa177
 Referenced by issue #85897, Slow viewport framerate (e.g. tumbling the camera, not scrubbing) due to commit 0812949bbc3d7acfd1f20a47087ff973110aa177
 Referenced by issue #85897, Slow viewport framerate (e.g. tumbling the camera, not scrubbing) due to commit 0812949bbc3d7acfd1f20a47087ff973110aa177
+Referenced by issue #72302, Shift+h turns off visibility of objects in hidden collections.
