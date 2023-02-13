@@ -2,3 +2,4 @@ Referenced by commit 1019df81ffb, Fix T82251: Outliner Material Drag&Drop missin
 Referenced by commit 5ee60c98157, Fix (unreported): Walk expansion on scene collection
 Referenced by commit 53d1f893228, Fix T79987: Crash when joining objects
 Referenced by issue #82251, Outliner Material Drag&Drop GUI issue
+Referenced by issue #81675, renaming a collection in outliner triggers renaming mode for all meshes inside
