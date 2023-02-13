@@ -104,7 +104,7 @@ static void fileselect_ensure_updated_asset_params(SpaceFile *sfile)
     asset_params->base_params.details_flags = U_default.file_space_data.details_flags;
     asset_params->asset_library_ref.type = ASSET_LIBRARY_LOCAL;
     asset_params->asset_library_ref.custom_library_index = -1;
-    asset_params->import_type = FILE_ASSET_IMPORT_APPEND_REUSE;
+    asset_params->import_type = FILE_ASSET_IMPORT_FOLLOW_PREFS;
   }
 
   FileSelectParams *base_params = &asset_params->base_params;
@@ -493,6 +493,41 @@ void ED_fileselect_activate_asset_catalog(const SpaceFile *sfile, const bUUID ca
   params->asset_catalog_visibility = FILE_SHOW_ASSETS_FROM_CATALOG;
   params->catalog_id = catalog_id;
   WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, nullptr);
+}
+
+int ED_fileselect_asset_import_method_get(const SpaceFile *sfile)
+{
+  if (!ED_fileselect_is_asset_browser(sfile)) {
+    return -1;
+  }
+
+  const FileAssetSelectParams *params = ED_fileselect_get_asset_params(sfile);
+
+  if (params->import_type == FILE_ASSET_IMPORT_FOLLOW_PREFS) {
+    const bUserAssetLibrary *library_definition = BKE_preferences_asset_library_find_from_index(
+        &U, params->asset_library_ref.custom_library_index);
+    if (!library_definition) {
+      return -1;
+    }
+
+    return library_definition->import_method;
+  }
+
+  switch (eFileAssetImportType(params->import_type)) {
+    case FILE_ASSET_IMPORT_LINK:
+      return ASSET_IMPORT_LINK;
+    case FILE_ASSET_IMPORT_APPEND:
+      return ASSET_IMPORT_APPEND;
+    case FILE_ASSET_IMPORT_APPEND_REUSE:
+      return ASSET_IMPORT_APPEND_REUSE;
+
+      /* Should be handled above already. Break and fail below. */
+    case FILE_ASSET_IMPORT_FOLLOW_PREFS:
+      break;
+  }
+
+  BLI_assert_unreachable();
+  return -1;
 }
 
 static void on_reload_activate_by_id(SpaceFile *sfile, onReloadFnData custom_data)

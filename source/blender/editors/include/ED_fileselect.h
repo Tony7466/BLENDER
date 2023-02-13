@@ -151,6 +151,14 @@ struct ID *ED_fileselect_active_asset_get(const struct SpaceFile *sfile);
 void ED_fileselect_activate_asset_catalog(const struct SpaceFile *sfile, bUUID catalog_id);
 
 /**
+ * Resolve this space's #eFileAssetImportMethod to the #eAssetImportMethod (note the different
+ * type) to be used for the actual import.
+ * \return -1 on error, like when #FILE_ASSET_IMPORT_FOLLOW_PREFS was requested but the active
+ *         asset library reference couldn't be found in the preferences.
+ */
+int /* #eAssetImportMethod */ ED_fileselect_asset_import_method_get(const struct SpaceFile *sfile);
+
+/**
  * Activate and select the file that corresponds to the given ID.
  * Pass deferred=true to wait for the next refresh before activating.
  */

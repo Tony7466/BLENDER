@@ -168,10 +168,13 @@ static void file_draw_icon(const SpaceFile *sfile,
         const FileAssetSelectParams *asset_params = ED_fileselect_get_asset_params(sfile);
         BLI_assert(asset_params != NULL);
 
+        const int import_method = ED_fileselect_asset_import_method_get(sfile);
+        BLI_assert(import_method > -1);
+
         UI_but_drag_set_asset(but,
                               &(AssetHandle){.file_data = file},
                               BLI_strdup(blend_path),
-                              asset_params->import_type,
+                              import_method,
                               icon,
                               preview_image,
                               UI_DPI_FAC);
@@ -561,10 +564,13 @@ static void file_draw_preview(const SpaceFile *sfile,
         const FileAssetSelectParams *asset_params = ED_fileselect_get_asset_params(sfile);
         BLI_assert(asset_params != NULL);
 
+        const int import_method = ED_fileselect_asset_import_method_get(sfile);
+        BLI_assert(import_method > -1);
+
         UI_but_drag_set_asset(but,
                               &(AssetHandle){.file_data = file},
                               BLI_strdup(blend_path),
-                              asset_params->import_type,
+                              import_method,
                               icon,
                               imb,
                               scale);

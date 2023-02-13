@@ -54,7 +54,8 @@ static void asset_view_item_but_drag_set(uiBut *but, AssetHandle *asset_handle)
     UI_but_drag_set_asset(but,
                           asset_handle,
                           BLI_strdup(blend_path),
-                          FILE_ASSET_IMPORT_APPEND,
+                          /* TODO follow preferences setting for this library. */
+                          ASSET_IMPORT_APPEND,
                           ED_asset_handle_get_preview_icon_id(asset_handle),
                           imbuf,
                           1.0f);

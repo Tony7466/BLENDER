@@ -3907,6 +3907,28 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_ATLEAST(bmain, 305, 10)) {
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          if (sl->spacetype != SPACE_FILE) {
+            continue;
+          }
+          SpaceFile *sfile = reinterpret_cast<SpaceFile *>(sl);
+          if (!sfile->asset_params) {
+            continue;
+          }
+
+          /* When an asset browser uses the default import method, make it follow the new
+           * preference setting. This means no effective default behavior change. */
+          if (sfile->asset_params->import_type == FILE_ASSET_IMPORT_APPEND_REUSE) {
+            sfile->asset_params->import_type = FILE_ASSET_IMPORT_FOLLOW_PREFS;
+          }
+        }
+      }
+    }
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
