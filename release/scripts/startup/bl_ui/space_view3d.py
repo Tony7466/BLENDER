@@ -3234,7 +3234,6 @@ class VIEW3D_MT_sculpt(Menu):
         layout.separator()
 
         layout.operator("sculpt.trim_box_gesture", text="Box Trim")
-
         layout.operator("sculpt.trim_lasso_gesture", text="Lasso Trim")
 
         # Box Add
@@ -3246,23 +3245,31 @@ class VIEW3D_MT_sculpt(Menu):
 
         # Fair Positions
         props = layout.operator("sculpt.face_set_edit", text="Fair Positions")
-        props.mode = "FAIR_POSITIONS"
+        props.mode = 'FAIR_POSITIONS'
 
         # Fair Tangency
         props = layout.operator("sculpt.face_set_edit", text="Fair Tangency")
-        props.mode = "FAIR_TANGENCY"
+        props.mode = 'FAIR_TANGENCY'
 
         layout.separator()
 
-        # Smooth
-        # Surface Smooth
-        # Inflate
-        # Relax Topology
-        # Relax Face Sets
-        # Sharpen
-        # Enhance Details
-        # Erase Multires Displacement
-        # Randomize
+        sculpt_filters_types = [
+            ('SMOOTH', "Smooth"),
+            ('SURFACE_SMOOTH', "Surface Smooth"),
+            ('INFLATE', "Inflate"),
+            ('RELAX', "Relax Topology"),
+            ('RELAX_FACE_SETS', "Relax Face Sets"),
+            ('SHARPEN', "Sharpen"),
+            ('ENHANCE_DETAILS', "Enhance Details"),
+            ('ERASE_DISCPLACEMENT', "Erase Multires Displacement"),
+            ('RANDOM', "Randomize")
+        ]
+
+        for filter_type, ui_name in sculpt_filters_types:
+            props = layout.operator("sculpt.mesh_filter", text=ui_name)
+            props.type = filter_type
+            props.deform_axis = {'X'}
+            props.orientation = 'LOCAL'
 
         layout.separator()
 
@@ -3270,6 +3277,7 @@ class VIEW3D_MT_sculpt(Menu):
 
         layout.separator()
 
+        # Rebuild BVH
         layout.operator("sculpt.optimize")
 
         layout.separator()
