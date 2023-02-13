@@ -1,2 +1,3 @@
 Referenced by issue #73464,  EXCEPTION_ACCESS_VIOLATION error prevents me from seeing rendered view port in cycles on my GPU (among other things)
 Referenced by issue #72221, [GPU] Intel HD 4000 driver does not handle multiple glcontext right. Crash.
+Referenced by issue #72098, Crash on startup with 2.82 and Intel HD + Windows
