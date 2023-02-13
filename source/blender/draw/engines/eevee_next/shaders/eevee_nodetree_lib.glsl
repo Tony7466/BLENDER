@@ -92,6 +92,12 @@ Closure closure_eval(ClosureReflection reflection)
   return Closure(0);
 }
 
+Closure closure_eval_always(ClosureReflection reflection)
+{
+  SELECT_CLOSURE(g_reflection_data, g_reflection_rand, reflection);
+  return Closure(0);
+}
+
 Closure closure_eval(ClosureRefraction refraction)
 {
   SELECT_CLOSURE(g_refraction_data, g_refraction_rand, refraction);

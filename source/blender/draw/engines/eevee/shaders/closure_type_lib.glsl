@@ -53,6 +53,7 @@ vec3 coordinate_incoming(vec3 P);
 Closure closure_eval(ClosureDiffuse diffuse);
 Closure closure_eval(ClosureTranslucent translucent);
 Closure closure_eval(ClosureReflection reflection);
+Closure closure_eval_always(ClosureReflection reflection);
 Closure closure_eval(ClosureRefraction refraction);
 Closure closure_eval(ClosureEmission emission);
 Closure closure_eval(ClosureTransparency transparency);

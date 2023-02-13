@@ -17,6 +17,10 @@ Closure closure_eval(ClosureReflection reflection)
 {
   return CLOSURE_DEFAULT;
 }
+Closure closure_eval_always(ClosureReflection reflection)
+{
+  return CLOSURE_DEFAULT;
+}
 Closure closure_eval(ClosureRefraction refraction)
 {
   return CLOSURE_DEFAULT;
