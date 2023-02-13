@@ -1,1 +1,2 @@
 Referenced by issue #81915, FaceSets drawing not working on mesh with shapekeys
+Referenced by issue #81814, Scaled Rigid Body causes issue (moving origin or mesh breaks collision, double transforms on negative scale)
