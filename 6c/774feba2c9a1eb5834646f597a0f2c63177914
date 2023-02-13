@@ -1,2 +1,3 @@
 Referenced by commit f5c081dafc7, Fix T104033: UV edges not selecting when selecting faces
 Referenced by commit 16fc9280689, Fix: uninitialized UVs when painting in sculpt mode
+Referenced by issue #104501, Regression: Blender crashes after using Inset Faces
