@@ -1,2 +1,3 @@
 Referenced by issue #97894, Crash adding Curve-To-Mesh on hair curves
 Referenced by issue #97859, bpy.data,library didn't return right material when running in background
+Referenced by issue #97812, Blender 3.2 Beta Area & Spot Light gizmos not working as expected
