@@ -1,2 +1,3 @@
 Referenced by issue #103824, output_node.inputs.new() crash blender
 Referenced by issue #96705, Regression: Crash when pressing F3 outside a Blender window if Developer extras is on
+Referenced by issue #96665, Subdivision modifier is broken in this AMD card
