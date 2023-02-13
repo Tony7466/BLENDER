@@ -1,1 +1,2 @@
 Referenced by issue #99254, Blender artifacts when rendering overlapping objects with CUDA
+Referenced by issue #98764, Regression: Hair Rendering Tranparency Issue with Cycles
