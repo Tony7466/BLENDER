@@ -1,1 +1,2 @@
 Referenced by commit 56ee96349dc, Fix snap cursor not active even if gizmo is available
+Referenced by commit c0fbbc53e8f, Fix T92605: Snapping not aligning to face extension
