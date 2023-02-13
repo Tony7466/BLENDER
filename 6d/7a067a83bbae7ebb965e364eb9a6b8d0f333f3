@@ -1,2 +1,3 @@
 Referenced by commit f8d6bbeb63e, Fix compilation error.
 Referenced by issue #102965, Regression: Blender 3.4 release candidate crashes upon loading blend file
+Referenced by issue #100904, SSS effect disappears when Mix Shader Node includes Shader To RGB Node
