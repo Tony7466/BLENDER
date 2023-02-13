@@ -3,3 +3,4 @@ Referenced by commit 2d3a62fe165, Fix invalid NULL check in GPU_viewport_unbind_
 Referenced by commit 6774cae3f25, Fix T94728: Auto Depth problem with Cliping Region
 Referenced by issue #88449: Blender LTS: Maintenance Task 2.93
 Referenced by issue #88449, Blender LTS: Maintenance Task 2.93
+Referenced by issue #92609, Default Compositing tab shows red overlay when stereoscopy is turned on
