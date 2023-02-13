@@ -1,1 +1,2 @@
 Referenced by commit 3e81d177ea0, Fix Grease Pencil materials added by Python missing
+Referenced by issue #89284, Grease pencil: top bar draw tool settings don't appear until material properties tab is clicked
