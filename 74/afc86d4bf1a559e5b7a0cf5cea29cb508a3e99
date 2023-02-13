@@ -1,2 +1,3 @@
 Referenced by issue #99254, Blender artifacts when rendering overlapping objects with CUDA
 Referenced by issue #98764, Regression: Hair Rendering Tranparency Issue with Cycles
+Referenced by issue #97736, Transparent objects are visible inside volumetric materials (Cycles)
