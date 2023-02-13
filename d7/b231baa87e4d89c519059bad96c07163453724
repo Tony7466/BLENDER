@@ -1,2 +1,3 @@
 Referenced by issue #92807, Blender 3.0 - Planar Track - Only half of the image appears in the MovieClip Editor
 Referenced by issue #92561, Mesh Sequence Cache (ABC) an hair interpolated children distribution issue (triangulate modifier seem to fix it)
+Referenced by issue #92514, Bone snapping to cursor in edit mode snaps to middle of the bone instead of the head (regression)
