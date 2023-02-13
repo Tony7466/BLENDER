@@ -144,7 +144,7 @@ Mesh *USDShapeReader::read_mesh(struct Mesh *existing_mesh,
   const char should_smooth = prim_.IsA<pxr::UsdGeomCube>() ? 0 : ME_SMOOTH;
 
   if (active_mesh != existing_mesh) {
-      int loop_index = 0;
+    int loop_index = 0;
     for (int i = 0; i < face_counts.size(); i++) {
       const int face_size = face_counts[i];
 
@@ -159,9 +159,9 @@ Mesh *USDShapeReader::read_mesh(struct Mesh *existing_mesh,
         loops[loop_index].v = face_indices[loop_index];
       }
     }
+    BKE_mesh_calc_edges(active_mesh, false, false);
   }
 
-  BKE_mesh_calc_edges(active_mesh, false, false);
   return active_mesh;
 }
 
