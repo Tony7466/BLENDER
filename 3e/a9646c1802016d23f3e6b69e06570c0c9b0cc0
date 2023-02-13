@@ -1,0 +1,1 @@
+Referenced by issue #89781, Geometry Nodes crash when using Material Assign node on instanced Bezier object during render.
