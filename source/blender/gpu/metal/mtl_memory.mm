@@ -410,12 +410,27 @@ void MTLSafeFreeList::insert_buffer(gpu::MTLBuffer *buffer)
    * insert the buffer into the next available chunk. */
   if (insert_index >= MTLSafeFreeList::MAX_NUM_BUFFERS_) {
 
-    /* Check if first caller to generate next pool. */
+    /* Check if first caller to generate next pool in chain.
+     * Otherwise, ensure pool exists or wait for first caller to create next pool. */
+    MTLSafeFreeList *next_list = nullptr;
     int has_next = has_next_pool_++;
     if (has_next == 0) {
+      lock_.lock();
       next_ = new MTLSafeFreeList();
+      next_list = next_;
+      lock_.unlock();
     }
-    MTLSafeFreeList *next_list = next_.load();
+    else {
+      /* Wait until next pool in chain exists.
+       * Another thread will be creating the next link in the chain and will hold the lock
+       * so if the resource is not ready, we can hold until it is available. */
+      while ((next_list = next_.load()) == nullptr) {
+        /* Apply local lock to efficiently stall waiting thread on new safelist block link creaton.
+         * This lock and loop will complete quickly. */
+        lock_.lock();
+        lock_.unlock();
+      }
+    }
     BLI_assert(next_list);
     next_list->insert_buffer(buffer);
 
