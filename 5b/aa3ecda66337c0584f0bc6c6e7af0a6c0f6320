@@ -1,2 +1,3 @@
 Referenced by issue #101329, Regression: EXR 'JPG Preview' doesn't use color space anymore
 Referenced by issue #101331, Image "Save As" and changing colorspace: invalid colorspace change
+Referenced by issue #99750, Crash with 'File Output' node
