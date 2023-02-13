@@ -1,2 +1,3 @@
 Referenced by commit 5bad311f4ce, Fix: Multires crash after recent face set refactor
 Referenced by issue #103724, Regression: Disappearing mesh with cloth brush fresh multires modifier
+Referenced by issue #102940, Regression: Blender 3.4.0 Release Candidate crash on 'Mask by Color'
