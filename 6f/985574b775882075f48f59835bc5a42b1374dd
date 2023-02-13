@@ -1,2 +1,3 @@
 Referenced by issue #77115, Mesh Cache Is Evaluated When Display Type Is Bounds or Outline Display Flag Is Off
 Referenced by issue #76602, Blender 2.8 Crashes on Startup
+Referenced by issue #76563, Attempting to rotate curve points with Automatic handle type doesn't switch them to Aligned handle type
