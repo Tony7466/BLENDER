@@ -1,1 +1,2 @@
 Referenced by commit 424df9ea871, Fix T101610: UV Sphere missing from geometry nodes menu
+Referenced by commit 0084b8635f7, Fix T101398: Transfer Attribute node still defined in menu
