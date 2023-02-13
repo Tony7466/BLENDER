@@ -5,3 +5,4 @@ Referenced by commit 06780aa4e6e, Fix T98797: VSE Slip Strip Contents doesn't wo
 Referenced by commit 9c029a3eb0f, Fix T98621: Image does not update when tweaking strip properties
 Referenced by issue #99494, Regression: Wipe Transition not working
 Referenced by issue #99216, VSE: invalid sequence.frame_final_end
+Referenced by issue #99133, Regression: VSE Speed control - animating multiply factor on video strips crashe blender
