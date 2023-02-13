@@ -3206,26 +3206,24 @@ class VIEW3D_MT_sculpt(Menu):
 
         props = layout.operator("paint.hide_show", text="Box Hide")
         props.action = 'HIDE'
-        props.area = 'INSIDE'
 
         props = layout.operator("paint.hide_show", text="Box Show")
         props.action = 'SHOW'
-        props.area = 'INSIDE'
 
         layout.separator()
 
-        op = layout.operator("sculpt.face_set_change_visibility", text="Toggle Visibility")
-        op.mode = 'TOGGLE'
+        props = layout.operator("sculpt.face_set_change_visibility", text="Toggle Visibility")
+        props.mode = 'TOGGLE'
 
-        op = layout.operator("sculpt.face_set_change_visibility", text="Hide Active Face Set")
-        op.mode = 'HIDE_ACTIVE'
+        props = layout.operator("sculpt.face_set_change_visibility", text="Hide Active Face Set")
+        props.mode = 'HIDE_ACTIVE'
 
         props = layout.operator("paint.hide_show", text="Show All")
         props.action = 'SHOW'
         props.area = 'ALL'
 
-        op = layout.operator("sculpt.face_set_change_visibility", text="Invert Visible")
-        op.mode = 'INVERT'
+        props = layout.operator("sculpt.face_set_change_visibility", text="Invert Visible")
+        props.mode = 'INVERT'
 
         props = layout.operator("paint.hide_show", text="Hide Masked")
         props.action = 'HIDE'
@@ -3233,11 +3231,17 @@ class VIEW3D_MT_sculpt(Menu):
 
         layout.separator()
 
-        layout.operator("sculpt.trim_box_gesture", text="Box Trim")
-        layout.operator("sculpt.trim_lasso_gesture", text="Lasso Trim")
+        props = layout.operator("sculpt.trim_box_gesture", text="Box Trim")
+        props.trim_mode = 'DIFFERENCE'
 
-        # Box Add
-        # Lasso Add
+        layout.operator("sculpt.trim_lasso_gesture", text="Lasso Trim")
+        props.trim_mode = 'DIFFERENCE'
+
+        props = layout.operator("sculpt.trim_box_gesture", text="Box Add")
+        props.trim_mode = 'JOIN'
+
+        layout.operator("sculpt.trim_lasso_gesture", text="Lasso Add")
+        props.trim_mode = 'JOIN'
 
         layout.operator("sculpt.project_line_gesture", text="Line Project")
 
@@ -3268,8 +3272,6 @@ class VIEW3D_MT_sculpt(Menu):
         for filter_type, ui_name in sculpt_filters_types:
             props = layout.operator("sculpt.mesh_filter", text=ui_name)
             props.type = filter_type
-            props.deform_axis = {'X'}
-            props.orientation = 'LOCAL'
 
         layout.separator()
 
