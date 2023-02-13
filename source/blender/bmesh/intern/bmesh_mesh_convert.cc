@@ -662,7 +662,7 @@ static BMVert **bm_to_mesh_vertex_map(BMesh *bm, int ototvert)
  * =====================
  *
  * Key blocks locations must *not* be used. This was done from v2.67 to 3.0,
- * causing bugs T35170 & T44415.
+ * causing bugs #35170 & #44415.
  *
  * Shape key synchronizing could work under the assumption that the key-block is
  * fixed-in-place when entering edit-mode allowing them to be used as a reference when exiting.
@@ -837,7 +837,7 @@ static void bm_to_mesh_shape(BMesh *bm,
 
   /* Without this, the real mesh coordinates (uneditable) as soon as you create the Basis shape.
    * while users might not notice since the shape-key is applied in the viewport,
-   * exporters for example may still use the underlying coordinates, see: T30771 & T96135.
+   * exporters for example may still use the underlying coordinates, see: #30771 & #96135.
    *
    * Needed when editing any shape that isn't the (`key->refkey`), the vertices in mesh positions
    * currently have vertex coordinates set from the current-shape (initialized from #BMVert.co).
@@ -907,7 +907,7 @@ static void bm_to_mesh_shape(BMesh *bm,
         /* Apply back new coordinates shape-keys that have offset into #BMesh.
          * Otherwise, in case we call again #BM_mesh_bm_to_me on same #BMesh,
          * we'll apply diff from previous call to #BM_mesh_bm_to_me,
-         * to shape-key values from original creation of the #BMesh. See T50524. */
+         * to shape-key values from original creation of the #BMesh. See #50524. */
         copy_v3_v3(co_orig, currkey_data[i]);
       }
     }
@@ -1132,6 +1132,8 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMesh
 
   const int ototvert = me->totvert;
 
+  blender::Vector<int> ldata_layers_marked_nocopy;
+
   /* Free custom data. */
   CustomData_free(&me->vdata, me->totvert);
   CustomData_free(&me->edata, me->totedge);
@@ -1147,7 +1149,7 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMesh
   me->totloop = bm->totloop;
   me->totpoly = bm->totface;
   /* Will be overwritten with a valid value if 'dotess' is set, otherwise we
-   * end up with 'me->totface' and `me->mface == nullptr` which can crash T28625. */
+   * end up with 'me->totface' and `me->mface == nullptr` which can crash #28625. */
   me->totface = 0;
   me->act_face = -1;
 
@@ -1162,9 +1164,17 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMesh
         &bm->ldata, CD_PROP_BOOL, BKE_uv_map_edge_select_name_get(layer_name, sub_layer_name));
     int pin_layer_index = CustomData_get_named_layer_index(
         &bm->ldata, CD_PROP_BOOL, BKE_uv_map_pin_name_get(layer_name, sub_layer_name));
-    int vertsel_offset = bm->ldata.layers[vertsel_layer_index].offset;
-    int edgesel_offset = bm->ldata.layers[edgesel_layer_index].offset;
-    int pin_offset = bm->ldata.layers[pin_layer_index].offset;
+
+    /* If ever the uv map associated bool layers become optional in BMesh as well (like in Mesh)
+     * this assert needs to be removed. For now it is a bug if they doin't exist. */
+    BLI_assert(vertsel_layer_index >= 0 && edgesel_layer_index >= 0 && pin_layer_index >= 0);
+
+    int vertsel_offset = vertsel_layer_index >= 0 ? bm->ldata.layers[vertsel_layer_index].offset :
+                                                    -1;
+    int edgesel_offset = edgesel_layer_index >= 0 ? bm->ldata.layers[edgesel_layer_index].offset :
+                                                    -1;
+    int pin_offset = pin_layer_index >= 0 ? bm->ldata.layers[pin_layer_index].offset : -1;
+
     bool need_vertsel = false;
     bool need_edgesel = false;
     bool need_pin = false;
@@ -1172,10 +1182,20 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMesh
     BM_ITER_MESH (f, &iter, bm, BM_FACES_OF_MESH) {
       BMIter liter;
       BMLoop *l;
-      BM_ITER_ELEM (l, &liter, f, BM_LOOPS_OF_FACE) {
-        need_vertsel |= BM_ELEM_CD_GET_BOOL(l, vertsel_offset);
-        need_edgesel |= BM_ELEM_CD_GET_BOOL(l, edgesel_offset);
-        need_pin |= BM_ELEM_CD_GET_BOOL(l, pin_offset);
+      if (vertsel_layer_index >= 0) {
+        BM_ITER_ELEM (l, &liter, f, BM_LOOPS_OF_FACE) {
+          need_vertsel |= BM_ELEM_CD_GET_BOOL(l, vertsel_offset);
+        }
+      }
+      if (edgesel_layer_index >= 0) {
+        BM_ITER_ELEM (l, &liter, f, BM_LOOPS_OF_FACE) {
+          need_edgesel |= BM_ELEM_CD_GET_BOOL(l, edgesel_offset);
+        }
+      }
+      if (pin_layer_index) {
+        BM_ITER_ELEM (l, &liter, f, BM_LOOPS_OF_FACE) {
+          need_pin |= BM_ELEM_CD_GET_BOOL(l, pin_offset);
+        }
       }
     }
 
@@ -1184,18 +1204,21 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMesh
     }
     else {
       bm->ldata.layers[vertsel_layer_index].flag |= CD_FLAG_NOCOPY;
+      ldata_layers_marked_nocopy.append(vertsel_layer_index);
     }
     if (need_edgesel) {
       bm->ldata.layers[edgesel_layer_index].flag &= ~CD_FLAG_NOCOPY;
     }
     else {
       bm->ldata.layers[edgesel_layer_index].flag |= CD_FLAG_NOCOPY;
+      ldata_layers_marked_nocopy.append(edgesel_layer_index);
     }
     if (need_pin) {
       bm->ldata.layers[pin_layer_index].flag &= ~CD_FLAG_NOCOPY;
     }
     else {
       bm->ldata.layers[pin_layer_index].flag |= CD_FLAG_NOCOPY;
+      ldata_layers_marked_nocopy.append(pin_layer_index);
     }
   }
 
@@ -1212,6 +1235,11 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMesh
   const Vector<BMeshToMeshLayerInfo> edge_info = bm_to_mesh_copy_info_calc(bm->edata, me->edata);
   const Vector<BMeshToMeshLayerInfo> poly_info = bm_to_mesh_copy_info_calc(bm->pdata, me->pdata);
   const Vector<BMeshToMeshLayerInfo> loop_info = bm_to_mesh_copy_info_calc(bm->ldata, me->ldata);
+
+  /* Clear the CD_FLAG_NOCOPY flags for the layers they were temporarily set on */
+  for (const int i : ldata_layers_marked_nocopy) {
+    bm->ldata.layers[i].flag &= ~CD_FLAG_NOCOPY;
+  }
 
   CustomData_add_layer_named(
       &me->vdata, CD_PROP_FLOAT3, CD_CONSTRUCT, nullptr, me->totvert, "position");
