@@ -1,1 +1,2 @@
 Referenced by commit 834e87af7bb, Alembic: remove non-functional "Renderable Objects" only option
+Referenced by commit 71363dd79c4, Cleanup: Alembic, replace `ABC_INLINE` with `BLI_INLINE`
