@@ -11,6 +11,8 @@
 
 #include "ED_view3d.h"
 
+#include "DEG_depsgraph_query.h"
+
 #include "draw_cache_impl.h"
 
 #include "overlay_private.hh"
@@ -19,8 +21,9 @@ void OVERLAY_edit_curves_init(OVERLAY_Data *vedata)
 {
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
+  const Object *obact_orig = DEG_get_original_object(draw_ctx->obact);
 
-  Curves &curves_id = *static_cast<Curves *>(draw_ctx->obact->data);
+  const Curves &curves_id = *static_cast<const Curves *>(obact_orig->data);
   pd->edit_curves.do_points = curves_id.selection_domain == ATTR_DOMAIN_POINT;
   pd->edit_curves.do_zbufclip = XRAY_FLAG_ENABLED(draw_ctx->v3d);
 
