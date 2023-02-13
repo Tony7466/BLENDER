@@ -1,1 +1,2 @@
 Referenced by commit 81b3933abbb, Fix T94357: Node Ungroup operator copies current node tree
+Referenced by issue #94357, Unable to Ungroup group nodes
