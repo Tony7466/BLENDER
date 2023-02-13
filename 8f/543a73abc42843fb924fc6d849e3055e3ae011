@@ -1,1 +1,2 @@
 Referenced by issue #100075, OBJ import: images loaded multiple times instead of being reused
+Referenced by issue #100076, OBJ import: new importer doesn't use //relative/image/paths
