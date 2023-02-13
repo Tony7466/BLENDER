@@ -1,1 +1,2 @@
 Referenced by issue #75567, Paint Mask Selection wireframe is broken when the mesh is subdivided by either `Subdivision` or `Multires` modifiers
+Referenced by issue #74657, Grease Pencil - Proportional Editing Doesn't Work if "Transform Pivot Point" is Set to "Individual Origins"
