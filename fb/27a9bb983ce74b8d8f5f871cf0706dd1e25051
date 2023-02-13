@@ -2,3 +2,4 @@ Referenced by commit 08c4f134d29, Fix T92783: Light size controller doesn't upda
 Referenced by commit 5c6cc931b22, Gizmo: add flag to hide the gizmo group during interaction
 Referenced by issue #94857, Regression: 'Gizmo Operator' from python templates is spining in accumulative way, when dragged.
 Referenced by issue #93594, Regression: Header transform options hide on modal operation
+Referenced by issue #92783, light size controller not update position
