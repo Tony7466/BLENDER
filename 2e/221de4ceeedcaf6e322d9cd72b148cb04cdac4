@@ -1,2 +1,3 @@
 Referenced by commit da1b6c4c02d, Outliner: Port sequencer elements to new tree-element design
 Referenced by commit 9bce134e56c, Outliner: Port RNA elements to new tree-element design
+Referenced by commit f59ff9e03a6, Fix crash when showing NLA actions in the Outliner
