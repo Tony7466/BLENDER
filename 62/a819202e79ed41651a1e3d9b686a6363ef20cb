@@ -1,2 +1,3 @@
 Referenced by issue #79626, 2.91 Mantaflow crash when adaptive domain + noise are enabled
 Referenced by issue #79009, Mantaflow instant crash if noise baked with adaptive domain
+Referenced by issue #74559, Adaptive Domain creates lines in smoke
