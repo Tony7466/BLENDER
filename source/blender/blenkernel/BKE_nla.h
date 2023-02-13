@@ -147,8 +147,6 @@ void BKE_nlastrips_sort_strips(ListBase *strips);
  * Add the given NLA-Strip to the given list of strips, assuming that it
  * isn't currently a member of another list, NULL, or conflicting with existing
  * strips position.
- * isn't currently a member of another list, NULL, or conflicting with existing
- * strips position.
  */
 void BKE_nlastrips_add_strip_unsafe(ListBase *strips, struct NlaStrip *strip);
 
