@@ -1,0 +1,1 @@
+Referenced by commit 69327137c02, Fix T47367: Segfault in BIF_draw_manipulator() with "around active" and the active object hidden
