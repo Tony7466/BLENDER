@@ -126,19 +126,20 @@ class CreateModifierWrapperGroup(Operator):
         # Copy default values for inputs and create named attribute input nodes.
         input_nodes = []
         first_geometry_input = None
-        for input in old_group.inputs:
-            group_node_input = get_socket_with_identifier(group_node.inputs, input.identifier)
-            if modifier_input_use_attribute(modifier, input.identifier):
+        for input_socket in old_group.inputs:
+            identifier = input_socket.identifier
+            group_node_input = get_socket_with_identifier(group_node.inputs, identifier)
+            if modifier_input_use_attribute(modifier, identifier):
                 input_node = group.nodes.new("GeometryNodeInputNamedAttribute")
                 input_nodes.append(input_node)
-                input_node.data_type = socket_idname_to_attribute_type(input.bl_socket_idname)
-                attribute_name = modifier_attribute_name_get(modifier, input.identifier)
+                input_node.data_type = socket_idname_to_attribute_type(input_socket.bl_socket_idname)
+                attribute_name = modifier_attribute_name_get(modifier, identifier)
                 input_node.inputs["Name"].default_value = attribute_name
                 output_socket = get_enabled_socket_with_name(input_node.outputs, "Attribute")
                 group.links.new(output_socket, group_node_input)
-            elif hasattr(input, "default_value"):
-                group_node_input.default_value = modifier[input.identifier]
-            elif input.bl_socket_idname == 'NodeSocketGeometry':
+            elif hasattr(input_socket, "default_value"):
+                group_node_input.default_value = modifier[identifier]
+            elif input_socket.bl_socket_idname == 'NodeSocketGeometry':
                 if not first_geometry_input:
                     first_geometry_input = group_node_input
         
@@ -154,18 +155,19 @@ class CreateModifierWrapperGroup(Operator):
         # Connect outputs to store named attribute nodes to replace modifier attribute outputs.
         store_nodes = []
         first_geometry_output = None
-        for output in old_group.outputs:
-            group_node_output = get_socket_with_identifier(group_node.outputs, output.identifier)
-            attribute_name = modifier_attribute_name_get(modifier, output.identifier)
+        for output_socket in old_group.outputs:
+            identifier = output_socket.identifier
+            group_node_output = get_socket_with_identifier(group_node.outputs, identifier)
+            attribute_name = modifier_attribute_name_get(modifier, identifier)
             if attribute_name:
                 store_node = group.nodes.new("GeometryNodeStoreNamedAttribute")
                 store_nodes.append(store_node)
-                store_node.data_type = socket_idname_to_attribute_type(output.bl_socket_idname)
-                store_node.domain = output.attribute_domain
+                store_node.data_type = socket_idname_to_attribute_type(output_socket.bl_socket_idname)
+                store_node.domain = output_socket.attribute_domain
                 store_node.inputs["Name"].default_value = attribute_name
                 input_socket = get_enabled_socket_with_name(store_node.inputs, "Value")
                 group.links.new(group_node_output, input_socket)
-            elif output.bl_socket_idname == 'NodeSocketGeometry':
+            elif output_socket.bl_socket_idname == 'NodeSocketGeometry':
                 if not first_geometry_output:
                     first_geometry_output = group_node_output
 
