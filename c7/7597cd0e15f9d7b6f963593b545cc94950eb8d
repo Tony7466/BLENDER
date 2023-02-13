@@ -15,3 +15,4 @@ Referenced by issue #96449, Edge creasing is randomly adding crease to another u
 Referenced by issue #96379, Crashes when rendering in viewport with GPU complier
 Referenced by issue #96356, vertex paint face selction display bug gpu subdivision
 Referenced by issue #96344, GPU subdivision: Crash on select in Edit Mode with X-Ray on and Mirror Modifier
+Referenced by issue #96328, Cannot load video/movie files into Blender
