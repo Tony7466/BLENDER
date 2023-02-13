@@ -1,1 +1,2 @@
 Referenced by commit 9c279723da7, Fix Data Transfer Projected Face/Edge Interpolated mode is wrong
+Referenced by commit 44b0c70919e, Fix T92288, T96041: instancing of shared mesh objects without modifiers broken
