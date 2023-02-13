@@ -19,6 +19,7 @@
 #include "BKE_callbacks.h"
 
 struct AssetLibrary;
+class bUserAssetLibrary;
 struct IDRemapper;
 struct Main;
 
@@ -58,6 +59,10 @@ class AssetLibrary {
 
   std::function<void(AssetLibrary &self)> on_refresh_;
 
+  /** If this is a custom asset library (registered in the Preferences), this gives access to its
+   * definition/settings. */
+  bUserAssetLibrary *custom_library_definition_;
+
   bCallbackFuncStore on_save_callback_store_{};
 
  public:
@@ -68,6 +73,7 @@ class AssetLibrary {
   std::unique_ptr<AssetCatalogService> catalog_service;
 
   friend class AssetLibraryService;
+  friend class AssetRepresentation;
 
  public:
   /**

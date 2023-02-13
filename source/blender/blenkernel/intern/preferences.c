@@ -46,7 +46,6 @@ bUserAssetLibrary *BKE_preferences_asset_library_add(UserDef *userdef,
   if (path) {
     BLI_strncpy(library->path, path, sizeof(library->path));
   }
-  /* Default. */
   library->import_method = ASSET_IMPORT_APPEND_REUSE;
 
   return library;

@@ -168,7 +168,7 @@ static void file_draw_icon(const SpaceFile *sfile,
         const FileAssetSelectParams *asset_params = ED_fileselect_get_asset_params(sfile);
         BLI_assert(asset_params != NULL);
 
-        const int import_method = ED_fileselect_asset_import_method_get(sfile);
+        const int import_method = ED_fileselect_asset_import_method_get(sfile, file);
         BLI_assert(import_method > -1);
 
         UI_but_drag_set_asset(but,
@@ -564,7 +564,7 @@ static void file_draw_preview(const SpaceFile *sfile,
         const FileAssetSelectParams *asset_params = ED_fileselect_get_asset_params(sfile);
         BLI_assert(asset_params != NULL);
 
-        const int import_method = ED_fileselect_asset_import_method_get(sfile);
+        const int import_method = ED_fileselect_asset_import_method_get(sfile, file);
         BLI_assert(import_method > -1);
 
         UI_but_drag_set_asset(but,

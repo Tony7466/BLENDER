@@ -8,8 +8,10 @@
 
 #include "DNA_ID.h"
 #include "DNA_asset_types.h"
+#include "DNA_userdef_types.h"
 
 #include "AS_asset_identifier.hh"
+#include "AS_asset_library.hh"
 #include "AS_asset_representation.h"
 #include "AS_asset_representation.hh"
 
@@ -79,6 +81,15 @@ AssetMetaData &AssetRepresentation::get_metadata() const
   return is_local_id_ ? *local_asset_id_->asset_data : *external_asset_.metadata_;
 }
 
+std::optional<eAssetImportMethod> AssetRepresentation::get_default_import_method() const
+{
+  if (!owner_asset_library_ || !owner_asset_library_->custom_library_definition_) {
+    return {};
+  }
+
+  return eAssetImportMethod(owner_asset_library_->custom_library_definition_->import_method);
+}
+
 bool AssetRepresentation::is_local_id() const
 {
   return is_local_id_;
@@ -99,6 +110,14 @@ const std::string AS_asset_representation_full_path_get(const AssetRepresentatio
       reinterpret_cast<const asset_system::AssetRepresentation *>(asset_handle);
   const asset_system::AssetIdentifier &identifier = asset->get_identifier();
   return identifier.full_path();
+}
+
+std::optional<eAssetImportMethod> AS_asset_representation_default_import_method_get(
+    const AssetRepresentation *asset_handle)
+{
+  const asset_system::AssetRepresentation *asset =
+      reinterpret_cast<const asset_system::AssetRepresentation *>(asset_handle);
+  return asset->get_default_import_method();
 }
 
 /* ---------------------------------------------------------------------- */

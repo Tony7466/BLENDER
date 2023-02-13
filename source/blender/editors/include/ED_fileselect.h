@@ -152,11 +152,15 @@ void ED_fileselect_activate_asset_catalog(const struct SpaceFile *sfile, bUUID c
 
 /**
  * Resolve this space's #eFileAssetImportMethod to the #eAssetImportMethod (note the different
- * type) to be used for the actual import.
- * \return -1 on error, like when #FILE_ASSET_IMPORT_FOLLOW_PREFS was requested but the active
- *         asset library reference couldn't be found in the preferences.
+ * type) to be used for the actual import of a specific asset. This will either be the asset
+ * browser override for the import method, or it will use the asset library default, as defined in
+ * the Preferences.
+ *
+ * \return -1 on error, for example when #FILE_ASSET_IMPORT_FOLLOW_PREFS was requested but the
+ *         active asset library reference couldn't be found in the preferences.
  */
-int /* #eAssetImportMethod */ ED_fileselect_asset_import_method_get(const struct SpaceFile *sfile);
+int /* #eAssetImportMethod */ ED_fileselect_asset_import_method_get(
+    const struct SpaceFile *sfile, const struct FileDirEntry *file);
 
 /**
  * Activate and select the file that corresponds to the given ID.

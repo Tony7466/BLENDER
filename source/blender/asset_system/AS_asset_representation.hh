@@ -12,9 +12,12 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "BLI_string_ref.hh"
+
+#include "DNA_asset_types.h"
 
 #include "AS_asset_identifier.hh"
 
@@ -70,6 +73,7 @@ class AssetRepresentation {
 
   StringRefNull get_name() const;
   AssetMetaData &get_metadata() const;
+  std::optional<eAssetImportMethod> get_default_import_method() const;
   /** Returns if this asset is stored inside this current file, and as such fully editable. */
   bool is_local_id() const;
   const AssetLibrary &owner_asset_library() const;
@@ -81,3 +85,5 @@ class AssetRepresentation {
 struct AssetRepresentation;
 
 const std::string AS_asset_representation_full_path_get(const ::AssetRepresentation *asset);
+std::optional<eAssetImportMethod> AS_asset_representation_default_import_method_get(
+    const AssetRepresentation *asset_handle);

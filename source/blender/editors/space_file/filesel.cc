@@ -23,6 +23,8 @@
 #  include <unistd.h>
 #endif
 
+#include "AS_asset_representation.hh"
+
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 #include "DNA_userdef_types.h"
@@ -495,22 +497,17 @@ void ED_fileselect_activate_asset_catalog(const SpaceFile *sfile, const bUUID ca
   WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, nullptr);
 }
 
-int ED_fileselect_asset_import_method_get(const SpaceFile *sfile)
+int ED_fileselect_asset_import_method_get(const SpaceFile *sfile, const FileDirEntry *file)
 {
-  if (!ED_fileselect_is_asset_browser(sfile)) {
+  if (!ED_fileselect_is_asset_browser(sfile) || !file->asset) {
     return -1;
   }
 
   const FileAssetSelectParams *params = ED_fileselect_get_asset_params(sfile);
 
   if (params->import_type == FILE_ASSET_IMPORT_FOLLOW_PREFS) {
-    const bUserAssetLibrary *library_definition = BKE_preferences_asset_library_find_from_index(
-        &U, params->asset_library_ref.custom_library_index);
-    if (!library_definition) {
-      return -1;
-    }
-
-    return library_definition->import_method;
+    std::optional import_method = AS_asset_representation_default_import_method_get(file->asset);
+    return import_method ? *import_method : -1;
   }
 
   switch (eFileAssetImportType(params->import_type)) {
