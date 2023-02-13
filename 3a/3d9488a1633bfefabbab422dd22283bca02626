@@ -1,1 +1,2 @@
 Referenced by commit 5a97b282e99, Fix (unreported) crash when importing data with custom normals.
+Referenced by issue #95842, Prepare custom data API for attribute sharing.
