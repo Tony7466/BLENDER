@@ -1,2 +1,3 @@
 Referenced by issue #75471, Crash, outliner: when I try to select curve in modifier, when curve is excluded in another collection
 Referenced by issue #75283, GPencil: Stroke created by `Merge points` can't have fill meterial
+Referenced by issue #75276, Increasing density in volume shader causes strange artifacts on smoke
