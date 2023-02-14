@@ -9,3 +9,4 @@ Referenced by issue #51644, Crash upon Startup
 Referenced by issue #51214, Dynamic Paint Works Only in Viewport Render
 Referenced by issue #51153, VSE Interlaced Video FPS not being honored
 Referenced by issue #50936, Crash
+Referenced by issue #50911, Broken user interface in render result window when image size matches screen resolution
