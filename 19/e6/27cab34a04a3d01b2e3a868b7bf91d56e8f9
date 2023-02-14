@@ -84,3 +84,4 @@ Referenced by issue #39395, Switching to "Textured solid" and "GLSL" view will c
 Referenced by issue #39397, Auto Perspective does not work the same in all quad view panels
 Referenced by issue #39398, Lamp cannot be seen by camera
 Referenced by issue #39382, BGE startGame Memory Leak
+Referenced by issue #39384, Activation of "Mesh Analysis" crashes blender
