@@ -2706,6 +2706,24 @@ static bool customData_resize(CustomData *data, const int amount)
   return true;
 }
 
+static bool customData_has_visible_layer(const CustomData *data, const int type)
+{
+  int layer = data->typemap[type];
+
+  if (layer <= 0) {
+    return false;
+  }
+
+  while (data->layers[layer].type == type) {
+    if (data->layers[layer].name[0] && data->layers[layer].name[0] != '.') {
+      return true;
+    }
+    layer++;
+  }
+
+  return false;
+}
+
 static CustomDataLayer *customData_add_layer__internal(CustomData *data,
                                                        const int type,
                                                        const eCDAllocType alloctype,
@@ -2715,6 +2733,11 @@ static CustomDataLayer *customData_add_layer__internal(CustomData *data,
 {
   const LayerTypeInfo *typeInfo = layerType_getInfo(type);
   int flag = 0;
+
+  bool isfirstvisible = false;
+  if (name && name[0] != '.') {
+    isfirstvisible = !customData_has_visible_layer(data, type);
+  }
 
   /* Some layer types only support a single layer. */
   if (!typeInfo->defaultname && CustomData_has_layer(data, type)) {
@@ -2833,6 +2856,13 @@ static CustomDataLayer *customData_add_layer__internal(CustomData *data,
   }
 
   customData_update_offsets(data);
+
+  if (isfirstvisible) {
+    CustomData_set_layer_active_index(data, type, index);
+    CustomData_set_layer_render_index(data, type, index);
+    CustomData_set_layer_clone_index(data, type, index);
+    CustomData_set_layer_stencil_index(data, type, index);
+  }
 
   return &data->layers[index];
 }
