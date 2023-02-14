@@ -61,3 +61,4 @@ Referenced by issue #41346, No Snap During Vertex Slide
 Referenced by issue #41316, FBX exporter in Blender cause artifacts to appear on meshes with Shape Keys
 Referenced by issue #41307, FBX exporter writes malformed 'Current' section
 Referenced by issue #41295, Rigid bodyfield weights not working.??
+Referenced by issue #41302, Blender Crashes after changing user settings and then panning/zooming
