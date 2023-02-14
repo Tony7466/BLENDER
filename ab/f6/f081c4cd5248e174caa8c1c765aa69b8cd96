@@ -97,3 +97,4 @@ Referenced by issue #48570, Boolean Union modifier with 3 aligned face problem
 Referenced by issue #48556, Bitmap transparency issue with GPU supported rendering mode
 Referenced by issue #48542, OSL crash on 32bit
 Referenced by issue #48546, Blender OOM at startup
+Referenced by issue #48547, Shrinkwrap not taking auxiliary target into account properly
