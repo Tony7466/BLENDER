@@ -2073,7 +2073,7 @@ static const EnumPropertyItem graphkeys_prop_select_grouped_types[] = {
      "MODIFIERS",
      0,
      "Modifiers",
-     "All keyframes on each channel that has the same modifiers"},
+     "All keyframes on each channel that have all of the same types of modifiers"},
     {GRAPHKEYS_SELECT_GROUP_DATABLOCK,
      "DATABLOCK",
      0,
@@ -2116,6 +2116,33 @@ static short select_grouped_active_channel_type_strict(KeyframeEditData *ked,
   char *name = MEM_mallocN(256, __func__);
   BLI_snprintf(name, 256, "%s[%d]", ked->fcu->rna_path, ked->fcu->array_index);
   BLI_gset_add(ked->data, name);
+  return 0;
+}
+
+/* GRAPHKEYS_SELECT_GROUP_MODIFIERS */
+
+static int convert_modifiers_to_bitmask(ListBase modifiers)
+{
+  int bitmask = 0;
+  FModifier *modifier;
+  for (modifier = modifiers.first; modifier; modifier = modifier->next) {
+    bitmask |= 1 << modifier->type;
+  }
+  return bitmask;
+}
+
+static short select_grouped_modifiers(KeyframeEditData *ked, struct BezTriple *bezt)
+{
+  if (BLI_gset_haskey(ked->data,
+                      POINTER_FROM_INT(convert_modifiers_to_bitmask(ked->fcu->modifiers)))) {
+    return KEYFRAME_OK_ALL;
+  }
+  return 0;
+}
+
+static short select_grouped_active_modifiers(KeyframeEditData *ked, struct BezTriple *bezt)
+{
+  BLI_gset_add(ked->data, POINTER_FROM_INT(convert_modifiers_to_bitmask(ked->fcu->modifiers)));
   return 0;
 }
 
@@ -2314,8 +2341,11 @@ static KeyframeEditFunc select_grouped_get_filter_callback(ListBase *anim_data,
         break;
       }
       case GRAPHKEYS_SELECT_GROUP_MODIFIERS: {
-        /* TODO(redmser): Modifier types. */
-        BLI_assert(0);
+        if (ale == NULL) {
+          return select_grouped_modifiers;
+        }
+
+        ANIM_fcurve_keyframes_loop(ked, fcu, ok_cb, select_grouped_active_modifiers, NULL);
         break;
       }
       case GRAPHKEYS_SELECT_GROUP_DATABLOCK: {
