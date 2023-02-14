@@ -13,3 +13,4 @@ Referenced by issue #52605, FBX Exporter not scaling properly
 Referenced by issue #52571, NLA Tracks cause lower performance with Armature Ghost
 Referenced by issue #52580, principled BSDF Reflected Roughness bug.
 Referenced by issue #52562, Opacity slider of scene strip or image strip not reacting
+Referenced by issue #52567, Limit to selection to visible function (problem)
