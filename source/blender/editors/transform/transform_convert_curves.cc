@@ -29,15 +29,15 @@ static void calculate_curve_point_distances_for_proportional_editing(
 {
   Array<bool> visited(positions.size(), false);
 
-  InplacePriorityQueue<float> queue(r_distances);
+  InplacePriorityQueue<float, std::less<float>> queue(r_distances);
   while (!queue.is_empty()) {
     int64_t idx = queue.pop_index();
-    if (!visited[idx]) {
+    if (visited[idx]) {
       continue;
     }
     visited[idx] = true;
 
-    if (idx > 0) {
+    if (idx > 0 && !visited[idx - 1]) {
       int adj = idx - 1;
       float dist = r_distances[idx] + math::distance(positions[idx], positions[adj]);
       if (dist < r_distances[adj]) {
@@ -45,7 +45,7 @@ static void calculate_curve_point_distances_for_proportional_editing(
         queue.priority_changed(adj);
       }
     }
-    if (idx < positions.size() - 1) {
+    if (idx < positions.size() - 1 && !visited[idx + 1]) {
       int adj = idx + 1;
       float dist = r_distances[idx] + math::distance(positions[idx], positions[adj]);
       if (dist < r_distances[adj]) {
@@ -106,41 +106,46 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
       threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange range) {
         for (const int curve_i : range) {
           bool has_any_selected = false;
+
+          const IndexRange points = points_by_curve[curve_i];
           Span<float3> positions_curve = positions_read.slice(points_by_curve[curve_i]);
           Array<float> closest_distances(positions_curve.size(), FLT_MAX);
 
-          for (const int point_i : points_by_curve[curve_i]) {
-            TransData *td = &tc.data[point_i];
+          for (const int i : IndexRange(points.size())) {
+            const int point_i = points[i];
+            TransData &td = tc.data[point_i];
             float *elem = reinterpret_cast<float *>(&positions[point_i]);
-            copy_v3_v3(td->iloc, elem);
-            copy_v3_v3(td->center, td->iloc);
-            td->loc = elem;
+            copy_v3_v3(td.iloc, elem);
+            copy_v3_v3(td.center, td.iloc);
+            td.loc = elem;
 
+            td.flag = 0;
             if (selection[point_i]) {
               has_any_selected = true;
-              closest_distances[point_i - points_by_curve[curve_i].start()] = 0.0f;
+              closest_distances[i] = 0.0f;
+              td.flag = TD_SELECTED;
             }
 
-            td->flag = (selection[point_i]) ? TD_SELECTED : 0;
-            td->ext = nullptr;
+            td.ext = nullptr;
 
-            copy_m3_m3(td->smtx, smtx);
-            copy_m3_m3(td->mtx, mtx);
+            copy_m3_m3(td.smtx, smtx);
+            copy_m3_m3(td.mtx, mtx);
           }
 
-          if (is_prop_connected) {
+          if (is_prop_connected && has_any_selected) {
             calculate_curve_point_distances_for_proportional_editing(
                 positions_curve, closest_distances.as_mutable_span());
-            for (const int point_i : points_by_curve[curve_i]) {
-              TransData *td = &tc.data[point_i];
-              td->dist = closest_distances[point_i - points_by_curve[curve_i].start()];
+            for (const int i : IndexRange(points.size())) {
+              TransData &td = tc.data[points[i]];
+              td.dist = closest_distances[i];
             }
           }
 
           if (!has_any_selected) {
             for (const int point_i : points_by_curve[curve_i]) {
-              TransData *td = &tc.data[point_i];
-              td->flag |= TD_NOTCONNECTED;
+              TransData &td = tc.data[point_i];
+              td.flag |= TD_NOTCONNECTED;
+              td.dist = FLT_MAX;
             }
           }
         }
