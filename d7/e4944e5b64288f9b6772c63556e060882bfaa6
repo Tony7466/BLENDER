@@ -2,3 +2,4 @@ Referenced by issue #43229, Knife Project fails to cut circles into a mesh
 Referenced by issue #43094, Invalid Collada file crash blender
 Referenced by issue #42989, Viewing normal map in viewport causes weird colours in UI
 Referenced by issue #42974, "Not Yet Implemented" Warning in Outliner
+Referenced by issue #42977, Weights failed to display in Wireframe mode when using Face Select
