@@ -48,3 +48,4 @@ Referenced by issue #51702, shortcuts stop working when switching to non-latin k
 Referenced by issue #51705, Filter and Texture Nodes in Compositor crash Blender
 Referenced by issue #51666, Result from using curve taper/bevel objects not scaled properly when used in scene with 0.01 metric scene scale
 Referenced by issue #51628, Blender freezes after window was minimized
+Referenced by issue #51617, Logic Bricks: Actions based on Properties refuse to play with a Dynamic physics parent
