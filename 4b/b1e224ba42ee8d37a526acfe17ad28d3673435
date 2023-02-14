@@ -37,3 +37,4 @@ Referenced by issue #49744, Blender freezing under certain conditions
 Referenced by issue #49723, Wrong subdiv result with semisharp creases
 Referenced by issue #49656, Crash when starting playback while using JACK audio with A/V sync
 Referenced by issue #49706, Material Render mode viewport not updating with changes in image texture node
+Referenced by issue #49719, VSE MetaStrip instant crash
