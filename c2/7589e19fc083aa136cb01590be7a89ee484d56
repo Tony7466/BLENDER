@@ -31,3 +31,4 @@ Referenced by issue #46044, Cycles: Material is rendered completely black withou
 Referenced by issue #46026, Brush Select ( " C "  ) bug - additionaly selects random vertices on any given mesh
 Referenced by issue #46033, MultiLayer exr
 Referenced by issue #46018, Inset and scale problems with faces
+Referenced by issue #46005, Incorrect output with "Display: Keep UI"
