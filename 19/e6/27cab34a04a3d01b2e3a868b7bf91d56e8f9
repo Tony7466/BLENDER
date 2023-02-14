@@ -94,3 +94,4 @@ Referenced by issue #39353, Make Single User menu entries do not work correctly.
 Referenced by issue #39354, link object, undo x2, crash to desktop
 Referenced by issue #39356, unsatisfied with uv pin unpin button, small bug
 Referenced by issue #39337, 2.70 Increased AMD OpenCL render time by 50%
+Referenced by issue #39338, Blender painting not precise,with maximum bleeding 8 pixels
