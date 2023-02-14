@@ -1,3 +1,4 @@
 Referenced by issue #56053, Crash at each render with GPU
 Referenced by issue #55564, Error: Split kernel error: failed to load kernel_path_init Windows 10 64
 Referenced by issue #54455, Failed to load kernel path init on Linux
+Referenced by issue blender/blender-addons#56078, Saving images with python causes Blender to hang
