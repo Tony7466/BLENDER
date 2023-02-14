@@ -96,7 +96,7 @@ void rgb_to_hsl(vec4 rgb, out vec4 outcol)
 
   cmax = max(rgb[0], max(rgb[1], rgb[2]));
   cmin = min(rgb[0], min(rgb[1], rgb[2]));
-  l = min(1.0, (cmax + cmin) / 2.0);
+  l = (cmax + cmin) / 2.0;
 
   if (cmax == cmin) {
     h = s = 0.0; /* achromatic */
