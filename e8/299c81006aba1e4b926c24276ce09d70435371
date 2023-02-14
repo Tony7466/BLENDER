@@ -25,3 +25,4 @@ Referenced by issue #50633, Keyboard & Mouse stop working correctly on Ubuntu 16
 Referenced by issue #50610, Cycles black render with adaptive subdivision and normal map tangent
 Referenced by issue #50615, Node Editor> Compositor > Texture Node : Crashes Blender
 Referenced by issue #50597, Gizmo position is wrong for meshes with modifiers
+Referenced by issue #50565, Transform: Planar constraints don't work properly with non-Blender key configurations
