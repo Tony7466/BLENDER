@@ -41,3 +41,4 @@ Referenced by issue #43622, bpy Vectors comparison
 Referenced by issue #43624, Freestyle uses wrong colour on second Line Set with textured lines in Cycles
 Referenced by issue #43617, "Make Local" button ignores dependencies between linked objects
 Referenced by issue #43594, Some modifier keys fail on X11
+Referenced by issue #43577, Blender exits using RightMouseButton on a SfM PLY
