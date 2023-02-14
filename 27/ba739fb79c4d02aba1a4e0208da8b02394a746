@@ -5,3 +5,4 @@ Referenced by issue #69790, Blender 2.80 always crash when choosing material
 Referenced by issue #68025, Blender crash clicking on the Materials button in the Property panel
 Referenced by issue #67466, Material button crash bug
 Referenced by issue #67183, Autosaves cause crashes on Windows 10 almost every session
+Referenced by issue #65273, Blender 2.8 Crash while connecting Shader (Eevee)
