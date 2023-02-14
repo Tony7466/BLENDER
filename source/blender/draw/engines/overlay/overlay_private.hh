@@ -779,7 +779,7 @@ GPUShader *OVERLAY_shader_particle_dot(void);
 GPUShader *OVERLAY_shader_particle_shape(void);
 GPUShader *OVERLAY_shader_sculpt_mask(void);
 GPUShader *OVERLAY_shader_sculpt_curves_selection(void);
-GPUShader *OVERLAY_shader_varying_color_wire(void);
+GPUShader *OVERLAY_shader_sculpt_curves_cage(void);
 GPUShader *OVERLAY_shader_viewer_attribute_curve(void);
 GPUShader *OVERLAY_shader_viewer_attribute_curves(void);
 GPUShader *OVERLAY_shader_viewer_attribute_mesh(void);

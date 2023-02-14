@@ -20,23 +20,23 @@ GPU_SHADER_CREATE_INFO(overlay_sculpt_curves_selection_clipped)
     .do_static_compilation(true)
     .additional_info("overlay_sculpt_curves_selection", "drw_clipped");
 
-GPU_SHADER_INTERFACE_INFO(overlay_varying_color_wire_iface, "")
+GPU_SHADER_INTERFACE_INFO(overlay_sculpt_curves_cage_iface, "")
     .no_perspective(Type::VEC2, "edgePos")
     .flat(Type::VEC2, "edgeStart")
     .smooth(Type::VEC4, "finalColor");
 
-GPU_SHADER_CREATE_INFO(overlay_varying_color_wire)
+GPU_SHADER_CREATE_INFO(overlay_sculpt_curves_cage)
     .do_static_compilation(true)
     .vertex_in(0, Type::VEC3, "pos")
     .vertex_in(1, Type::FLOAT, "selection")
-    .vertex_out(overlay_varying_color_wire_iface)
+    .vertex_out(overlay_sculpt_curves_cage_iface)
     .fragment_out(0, Type::VEC4, "fragColor")
     .fragment_out(1, Type::VEC4, "lineOutput")
     .push_constant(Type::FLOAT, "opacity")
-    .vertex_source("overlay_varying_color_wire_vert.glsl")
+    .vertex_source("overlay_sculpt_curves_cage_vert.glsl")
     .fragment_source("overlay_extra_frag.glsl")
     .additional_info("draw_modelmat", "draw_view", "draw_globals");
 
-GPU_SHADER_CREATE_INFO(overlay_varying_color_wire_clipped)
+GPU_SHADER_CREATE_INFO(overlay_sculpt_curves_cage_clipped)
     .do_static_compilation(true)
-    .additional_info("overlay_varying_color_wire", "drw_clipped");
+    .additional_info("overlay_sculpt_curves_cage", "drw_clipped");

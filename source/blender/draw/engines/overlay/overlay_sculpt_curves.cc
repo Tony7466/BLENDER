@@ -41,7 +41,7 @@ void OVERLAY_sculpt_curves_cache_init(OVERLAY_Data *vedata)
                            DRW_STATE_BLEND_ALPHA;
     DRW_PASS_CREATE(psl->sculpt_curves_cage_ps, state | pd->clipping_state);
 
-    GPUShader *sh = OVERLAY_shader_varying_color_wire();
+    GPUShader *sh = OVERLAY_shader_sculpt_curves_cage();
     pd->sculpt_curves_cage_lines_grp = DRW_shgroup_create(sh, psl->sculpt_curves_cage_ps);
     DRW_shgroup_uniform_float_copy(
         pd->sculpt_curves_cage_lines_grp, "opacity", overlay.sculpt_curves_cage_opacity);
