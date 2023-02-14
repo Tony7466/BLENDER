@@ -50,3 +50,4 @@ Referenced by issue #42533, iPhone 5s iOS8.1 - 120fps video incorrect video stri
 Referenced by issue #42534, blender crash switching to texture paint
 Referenced by issue #42523, image has numerous users when only 1 material actually is using it
 Referenced by issue #42524, Unwrap crashes blender
+Referenced by issue #42509, Cycles GPU hair render - Cuda error: invalid value. with a "work around" descritption
