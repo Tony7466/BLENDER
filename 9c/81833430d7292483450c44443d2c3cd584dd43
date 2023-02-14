@@ -1,1 +1,2 @@
 Referenced by issue #42894, Strange wrong selection behavior
+Referenced by issue #42885, mathutils.Matrix.Identity(4).zero() returns None
