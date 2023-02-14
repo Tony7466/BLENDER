@@ -80,3 +80,4 @@ Referenced by issue #39431, Possible Cycles render artifact
 Referenced by issue #39417, Problem with render hair with cycles - core dump
 Referenced by issue #39419, Crash when solving camera motion
 Referenced by issue #39422, Stencil maps ignore normal maps
+Referenced by issue #39395, Switching to "Textured solid" and "GLSL" view will cause the FPS drop to 0 (was fine in 2.69)
