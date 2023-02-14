@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#49797, Cycles Motion Blur + python bpy.context leads to error and VRAM overload
