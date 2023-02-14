@@ -63,3 +63,4 @@ Referenced by issue #44621, Convert Hair Particules (Whole Group) doesn't respec
 Referenced by issue #44622, Offsetting image sequence with driver on displace modifier texture does not work.
 Referenced by issue #44626, Windows crash when CLOSING User Preferences window with ATI graphics card
 Referenced by issue #44591, ShortCut for Bone Group Index doesnt work
+Referenced by issue #44589, Assigning mesh data to object with skin modifier doesn't update skin_vertices data layer
