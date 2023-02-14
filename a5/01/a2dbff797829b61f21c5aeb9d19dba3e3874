@@ -1,1 +1,2 @@
 Referenced by commit 8afcecdf1fd, Cycles: update Intel Graphics compiler to 101.4032 on Windows
+Referenced by issue blender/blender-addons#103359, Images as Planes: texture extension setting does not work
