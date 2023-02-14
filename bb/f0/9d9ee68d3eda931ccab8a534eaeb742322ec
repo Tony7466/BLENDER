@@ -49,3 +49,4 @@ Referenced by issue #43556, Brush radius getting stuck when 8 pixels or smaller 
 Referenced by issue #43558, Brush fails in some perspectives and in certain distances from the object.
 Referenced by issue #43529, Blender 2.73a crashes on startup on Ubuntu 14.04.1 x86_64
 Referenced by issue #43517, Mark Sharp information ignored on Export
+Referenced by issue #43494, Mark Sharp information lost after Join
