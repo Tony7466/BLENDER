@@ -1,1 +1,2 @@
 Referenced by issue #69246, Outliner - Objects Filter Selected, Hidden and Active not working properly when parenting is involved
+Referenced by issue #65263, Outliner doesn't display selected object if its parented to something else
