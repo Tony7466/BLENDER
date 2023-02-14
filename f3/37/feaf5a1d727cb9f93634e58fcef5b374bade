@@ -79,3 +79,4 @@ Referenced by issue #47294, Particle hair textures do not work properly when "Em
 Referenced by issue #47281, Blender crashes randomly on freshly installed windows 10 (OpenGL)
 Referenced by issue #47273, Cycles GPU performance regression on Nvidia's Maxwell cards
 Referenced by issue #47225, Blender Crashes in Sculpt Mode with dyntopo while pressing `esc` key
+Referenced by issue #47234, Excessive BVH build time for dupligroup instances of hair-covered objects
