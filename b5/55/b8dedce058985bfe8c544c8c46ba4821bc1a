@@ -1,1 +1,2 @@
 Referenced by commit bae1c243cec, Build: hide USD symbols, make Blender symbols visible again
+Referenced by issue blender/blender-addons#75223, Blender 2.82+ crash on MacOS when enabling BlendLuxCore LuxCoreRender addon.
