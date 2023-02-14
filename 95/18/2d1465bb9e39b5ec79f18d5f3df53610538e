@@ -37,3 +37,4 @@ Referenced by issue #42115, Constraint motor Y axis broken
 Referenced by issue #42098, AVI Raw export produces broken files if the image width is not a multiple of 4
 Referenced by issue #42101, new fill and mask tools disapear in files created in older versions
 Referenced by issue #42079, Tooltips are blank!
+Referenced by issue #42082, Smooth Shading not working with Cycles
