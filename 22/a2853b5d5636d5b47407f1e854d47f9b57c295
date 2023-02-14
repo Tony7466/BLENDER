@@ -36,3 +36,4 @@ Referenced by issue #47977, Multiple change of dimensions doesn't work properly
 Referenced by issue #47954, Mesh selection shutdown
 Referenced by issue #47963, Weird blur over icons ? ? ?
 Referenced by issue #47965, Panoramic Camera Dropdown doesn't change when selecting Panoramic type.
+Referenced by issue #47940, bones with custom shapes not selectable in pose mode when using opensource gpu drivers
