@@ -1,2 +1,3 @@
 Referenced by issue #88449, Blender LTS: Maintenance Task 2.93
 Referenced by issue #89416, NodeTree.links.new() can connect one output to a multi-input many times; access violation occurs when disconnecting
+Referenced by issue blender/blender-addons#88807, Node Wrangler: Lazy connect to Multi-input multiple times duplicates noodle
