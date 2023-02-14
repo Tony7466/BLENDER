@@ -96,7 +96,7 @@ void main()
 #endif
 
   /* Offset Z position for retopology overlay. */
-  gl_Position.z -= max(0.0, retopologyBias) / abs(gl_Position.w);
+  gl_Position.z -= retopologyBias / abs(gl_Position.w);
 
   view_clipping_distances(world_pos);
 }

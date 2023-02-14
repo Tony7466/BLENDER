@@ -144,8 +144,8 @@ void main()
 #endif
 
   /* Offset Z position for retopology overlay. */
-  out_pos0.z -= max(0.0, retopologyBias) / abs(out_pos0.w);
-  out_pos1.z -= max(0.0, retopologyBias) / abs(out_pos1.w);
+  out_pos0.z -= retopologyBias / abs(out_pos0.w);
+  out_pos1.z -= retopologyBias / abs(out_pos1.w);
 
   // -------- GEOM SHADER ALTERNATIVE ----------- //
   vec2 ss_pos[2];
