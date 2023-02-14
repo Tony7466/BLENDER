@@ -44,3 +44,4 @@ Referenced by issue #47741, OpenGL render always renders against transparent bac
 Referenced by issue #47742, Blender cannot remember last used name and path while saving rendered image
 Referenced by issue #47722, FBX export interpolation is not accurate
 Referenced by issue #47677, Text Object Outline fails to daplay
+Referenced by issue #47667, Uneven width of colors in ColorRamp with constant selected
