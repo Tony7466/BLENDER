@@ -15,3 +15,4 @@ Referenced by issue #50846, Blender crashes when adding inverse kinematics
 Referenced by issue #50805, "Light path"-"is Singular Ray" node Affects material visibility trough a glass material different way in two Blender versions
 Referenced by issue #50757, Alembic material import bug
 Referenced by issue #50734, Blender crash without error message
+Referenced by issue #50745, Shape key editing on bezier objects broken with Rendered Viewport Shading
