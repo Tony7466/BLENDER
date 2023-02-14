@@ -14,3 +14,4 @@ Referenced by issue #42063, UV layout face orientation adversely effects how the
 Referenced by issue #42024, Material choices in PROPERTIES BAR > MATERIALS > SURFACE > Surface: are not in alphabetical order
 Referenced by issue #41962, command-line without specified filename doesn't renders
 Referenced by issue #41924, Cycles ID pass (Objekt and Material) Bug.
+Referenced by issue #41903, cycles renders slow with viewport multi-sampling
