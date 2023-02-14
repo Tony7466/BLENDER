@@ -93,3 +93,4 @@ Referenced by issue #56448, Computer freeze/blender crash when rendering or baki
 Referenced by issue #56346, Rigify FBX export active  "Only Defrom Bones" still export not defrom bone(OIG_).
 Referenced by issue #56257, Possible memory leak in Freestyle
 Referenced by issue #56243, Mesh Problem
+Referenced by issue #56210, Blender 2.79, latest build - undo doesn't work in certain cases
