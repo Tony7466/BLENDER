@@ -1,3 +1,4 @@
 Referenced by issue #39159, When adding primitives in Object mode, parameters are not editable
 Referenced by issue #39014, Modifiers/Deform/Curve and Constraints/Simulate/Follow Path
 The orientation of these two are not consistent.
+Referenced by issue #39005, Crash when baking Fluid sim with particle sys. as obstacle
