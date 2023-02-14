@@ -89,3 +89,4 @@ Referenced by issue #49874, FirePro GPU Render No Longer Working
 Referenced by issue #49877, Gizmo rotation (manipulator)
 Referenced by issue #49869, lost maps projection (cube, cilinder etc) in viewport "material view"
 Referenced by issue #49857, blender crashes after adding texture node to compositing tree
+Referenced by issue #48544, PASCAL GPUs can't perform renders (Cuda binary kernel 6.1 not found)
