@@ -645,7 +645,6 @@ void MTLShader::warm_cache(int limit)
     for (int i : IndexRange(min_ii(descriptors.size(), limit))) {
       const MTLRenderPipelineStateDescriptor &pso_descriptor = descriptors[i];
       const MTLPrimitiveTopologyClass &prim_class = prim_classes[i];
-      printf("%s -> Can warm PSO cache with PSO: %llu\n", this->name_get(), pso_descriptor.hash());
       bake_pipeline_state(ctx, prim_class, pso_descriptor);
     }
   }
@@ -1140,7 +1139,7 @@ MTLRenderPipelineStateInstance *MTLShader::bake_pipeline_state(
       return nullptr;
     }
     else {
-#ifndef NDEBUG
+#if 0
       NSLog(@"Successfully compiled PSO for shader: %s (Metal Context: %p)\n", this->name, ctx);
 #endif
     }
@@ -1311,7 +1310,7 @@ bool MTLShader::bake_compute_pipeline_state(MTLContext *ctx)
       return false;
     }
     else {
-#ifndef NDEBUG
+#if 0
       NSLog(@"Successfully compiled compute PSO for shader: %s (Metal Context: %p)\n",
             this->name,
             ctx);

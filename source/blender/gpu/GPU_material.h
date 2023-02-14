@@ -286,7 +286,20 @@ void GPU_material_optimization_status_set(GPUMaterial *mat, eGPUMaterialOptimiza
 bool GPU_material_optimization_ready(GPUMaterial *mat);
 
 /**
- * Store reference to default material for async PSO cache warming.
+ * Store reference to a similar default material for async PSO cache warming.
+ *
+ * This function expects `material` to have not yet been compiled and for `default_material` to be
+ * ready. When compiling `material` as part of an async shader compilation job, use existing PSO
+ * descriptors from `default_material`'s shader to also compile PSOs for this new material
+ * asynchronously, rather than at runtime.
+ *
+ * The default_material `options` should match this new materials options in order
+ * for PSO descriptors to match those needed by the new `material`.
+ *
+ * NOTE: `default_material` must exist when `GPU_material_compile(..)` is called for
+ * `material`.
+ *
+ * See `GPU_shader_warm_cache(..)` for more information.
  */
 void GPU_material_set_default(GPUMaterial *material, GPUMaterial *default_material);
 

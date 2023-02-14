@@ -560,7 +560,7 @@ const char *GPU_shader_get_name(GPUShader *shader)
 
 void GPU_shader_set_parent(GPUShader *shader, GPUShader *parent)
 {
-  BLI_assert(shader != nullptr && parent != nullptr);
+  BLI_assert(shader != nullptr);
   BLI_assert(shader != parent);
   if (shader != parent) {
     Shader *shd_child = unwrap(shader);

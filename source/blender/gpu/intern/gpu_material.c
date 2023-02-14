@@ -51,9 +51,9 @@
  * compilation, though this option exists in case any potential scenarios for material graph
  * optimization cause a slow down on the main thread.
  *
- * NOTE: The actual shader program for the optimized pass will alwaysbe compiled asynchronously,
+ * NOTE: The actual shader program for the optimized pass will always be compiled asynchronously,
  * this flag controls whether shader node graph source serialization happens on the compilation
- * worker thread. */
+ * worker thread as well. */
 #define ASYNC_OPTIMIZED_PASS_CREATION 0
 
 typedef struct GPUColorBandBuilder {
@@ -973,7 +973,6 @@ void GPU_material_compile(GPUMaterial *mat)
         if (mat->default_mat->pass != NULL) {
           GPUShader *parent_sh = GPU_pass_shader_get(mat->default_mat->pass);
           if (parent_sh) {
-            printf("Async compilation complete. Begin PSO warm USING DEFAULT MATERIAL.\n");
             GPU_shader_set_parent(sh, parent_sh);
             GPU_shader_warm_cache(sh, 1);
           }

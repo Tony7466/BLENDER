@@ -50,7 +50,9 @@ class Shader {
   virtual void compute_shader_from_glsl(MutableSpan<const char *> sources) = 0;
   virtual bool finalize(const shader::ShaderCreateInfo *info = nullptr) = 0;
   /* Pre-warms PSOs using parent shader's cached PSO descriptors. Limit specifies maximum PSOs to
-   * warm. If -1, compiles all PSO permutations in parent shader.*/
+   * warm. If -1, compiles all PSO permutations in parent shader.
+   *
+   * See `GPU_shader_warm_cache(..)` in `GPU_shader.h` for more information. */
   virtual void warm_cache(int limit) = 0;
 
   virtual void transform_feedback_names_set(Span<const char *> name_list,

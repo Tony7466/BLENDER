@@ -1391,7 +1391,7 @@ struct GPUMaterial *EEVEE_material_get(
   }
   switch (status) {
     case GPU_MAT_SUCCESS: {
-      /* Detemrine optimization status. */
+      /* Determine optimization status for remaining compilations counter. */
       int optimization_status = GPU_material_optimization_status(mat);
       if (optimization_status == GPU_MAT_OPTIMIZATION_QUEUED) {
         vedata->stl->g_data->queued_optimise_shaders_count++;
