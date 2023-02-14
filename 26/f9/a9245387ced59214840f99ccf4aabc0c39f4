@@ -1,1 +1,2 @@
 Referenced by issue #43785, crash with border select (many objects)
+Referenced by issue #43511, Major slow down with many instanced objects in cycles GPU
