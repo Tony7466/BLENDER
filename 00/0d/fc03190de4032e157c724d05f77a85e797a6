@@ -88,3 +88,4 @@ Referenced by issue #44427, Value input issue with unit scale factors != 1 (Metr
 Referenced by issue #44420, segfault on startup
 Referenced by issue #44425, Ambient Occlusion bug (View/Shading) on mobile ATI/AMD Radeon cards
 Referenced by issue #44396, Compositing Render Slots don't Work
+Referenced by issue #44398, Compositing displace node
