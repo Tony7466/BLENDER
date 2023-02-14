@@ -78,3 +78,4 @@ Referenced by issue #56892, Crash on Collada .dae import
 Referenced by issue #56900, Boolean modifier does not work
 Referenced by issue #56846, Random Crash
 Referenced by issue #56830, The liquid is not baked
+Referenced by issue #56781, Box selection fails for more than 12 000 Objects
