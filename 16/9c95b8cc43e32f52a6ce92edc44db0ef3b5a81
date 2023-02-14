@@ -17,3 +17,4 @@ Referenced by issue #40671, two linked 'Child of - constraint' causes object to 
 Referenced by issue #40676, Crash when editing Armature in Edit Mode
 Referenced by issue #40661, BGE soft body physics with unexpected behavior (game engine only)
 Referenced by issue #40638, Crash in Particle System, Connect Hair
+Referenced by issue #40627, Tiles (image game property) not working in BGE and GLSL 3D view
