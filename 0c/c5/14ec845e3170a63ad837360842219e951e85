@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#50308, RenderEngine - use of python threads with sleep(0)/wait(0) crash
