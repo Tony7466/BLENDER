@@ -1,1 +1,2 @@
 Referenced by issue #47125, Standalone player segfaults, but embedded player works fine
+Referenced by issue #47129, new Bmesh boolean is deleting some of edges data, (Creases and Bweigh)
