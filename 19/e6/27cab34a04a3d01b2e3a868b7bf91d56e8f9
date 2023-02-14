@@ -41,3 +41,4 @@ Referenced by issue #39668, Shapekey explode in edit mode
 Referenced by issue #39655, GPU support
 Referenced by issue #39640, Crash on maximizing/minimizing UV/Image Editor
 Referenced by issue #39641, jittery red outline and clusters of yellow noise in rendered preview
+Referenced by issue #39629, Teapot creates corrupt mesh
