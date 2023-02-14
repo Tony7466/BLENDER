@@ -1,2 +1,3 @@
 Referenced by issue #45045, Decimate does not work with ngons
 Referenced by issue #44930, Loading an image with bpy.data.images.load(path) Freezes the add-on panel in the 3D tool shelf
+Referenced by issue #44830, Sample number display while rendering Cycles AMD might work incorrect
