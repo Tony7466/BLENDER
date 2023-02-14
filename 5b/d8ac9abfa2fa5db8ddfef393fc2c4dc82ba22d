@@ -93,3 +93,4 @@ Referenced by issue #53590, Bend tool "bend angle" gets reset in some situations
 Referenced by issue #53573, Object Duplication with ParticleSystem render false (Cycles)
 Referenced by issue #53576, Texture World Nodes are displayed
 Referenced by issue #53567, denoising artifacts with normal mapping in diffuse
+Referenced by issue #53542, MaterialID / ObjectID random format
