@@ -23,3 +23,4 @@ Referenced by issue #46223, Open EXR multiview image sequences crash Blender 2.7
 Referenced by issue #46133, Units change to none after editing an added cylinder
 Referenced by issue #46110, Cycles: rays miss triangles
 Referenced by issue #46097, Can't save bckgrnd imgs
+Referenced by issue #46075, Problem with textures in combination with using min and max on the mapping node
