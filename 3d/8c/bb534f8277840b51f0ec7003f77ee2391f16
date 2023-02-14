@@ -18,3 +18,4 @@ Referenced by issue #60892, Corrective Shape Key on Mesh Deform
 Referenced by issue #60870, Overlay mismatch
 Referenced by issue #60851, EEVEE DOF blur abrupt/stepped changes
 Referenced by issue #60777, grid fill bug on repeat last operation
+Referenced by issue blender/blender-addons#65824, The span keyword in mesh.fill_grid is not working in 2.80
