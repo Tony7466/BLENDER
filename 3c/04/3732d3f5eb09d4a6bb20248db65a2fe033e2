@@ -14,3 +14,4 @@ Referenced by issue #50760, Blender does not find any CUDA device with latest NV
 Referenced by issue #50716, Blender Addon tab has no addons anymore and refreshing causes an error
 Referenced by issue #50697, crashes on load (2.78b) (EXCEPTION_ACCESS_VIOLATION)
 Referenced by issue #50699, Gpu Cycles error with MacOs and Gtx580 - Render viewport and No glossy materials (render in black)
+Referenced by issue #50701, Scale mismatch across scenes
