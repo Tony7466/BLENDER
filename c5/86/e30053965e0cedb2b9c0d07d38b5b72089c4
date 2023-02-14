@@ -14,3 +14,4 @@ Referenced by issue #46183, Object with OpenSubdiv has 0Verts 0Edges 0Poly
 Referenced by issue #46185, Bone will not roll in Blender 2.76 RC
 Referenced by issue #46175, Screen not slide in File Browser with Arrow-key navigation
 Referenced by issue #46179, Volumetric light in cycles render doesn't work with amd graphic cards
+Referenced by issue #46157, Using arrow keys to navigate in file browser does not scroll
