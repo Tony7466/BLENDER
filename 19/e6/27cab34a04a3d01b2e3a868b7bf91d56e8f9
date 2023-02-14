@@ -88,3 +88,4 @@ Referenced by issue #39384, Activation of "Mesh Analysis" crashes blender
 Referenced by issue #39389, Can't load PSD file as texture
 Referenced by issue #39377, Properties panel not toggling properly
 Referenced by issue #39360, Cycles Rendering in 2.70 official with MacBook Pro
+Referenced by issue #39366, Cycles edge shadow artefacts
