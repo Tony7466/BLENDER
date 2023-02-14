@@ -21,3 +21,4 @@ Referenced by issue #52526, Alembic importing broken
 Referenced by issue #52489, Oculus Legacy VR Flashing and 2d burnin
 Referenced by issue #52490, NDOF device does not lock into orthogonal view (top, front, right, etc) in 2.79RC2 as in prev versions
 Referenced by issue #52436, Importing keyconfig mess up blender configuration SHIFT + A opens ADD menu and at the same time popups new external 3D window
+Referenced by issue #52417, Cannot seem to export Vertex Color with Alembic for Maya nor Houdini
