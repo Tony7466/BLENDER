@@ -944,10 +944,10 @@ int ED_transform_calc_gizmo_stats(const bContext *C,
 
         Vector<int64_t> indices;
         IndexMask selected_points = ed::curves::retrieve_selected_points(curves, indices);
+        Span<float3> positions = curves.positions();
         totsel += selected_points.size();
         for (const int point_i : selected_points) {
-          calc_tw_center_with_matrix(
-              tbounds, curves.positions()[point_i], use_mat_local, mat_local.ptr());
+          calc_tw_center_with_matrix(tbounds, positions[point_i], use_mat_local, mat_local.ptr());
         }
       }
       FOREACH_EDIT_OBJECT_END();
