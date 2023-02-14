@@ -62,3 +62,4 @@ Referenced by issue #50254, Blender 2.78a crash when making Single User copy
 Referenced by issue #50261, App crashes adding Inverse Kinematics
 Referenced by issue #50242, Random crash to desktop in Edit Mode when try to select multiple face.
 Referenced by issue #50210, Blender 2.78A crashes opening files created in previous versions
+Referenced by issue #50215, Blender crashes, when I add Input/Texture node
