@@ -4,3 +4,4 @@ Referenced by issue #62280, Driver expressions that use functions injected by an
 Referenced by issue #62283, UV Sphere Crash - 2.8b
 Referenced by issue #62288, Bug when scaling an object in the Sculpt workspace
 Referenced by issue #62272, Scene custom properties crash
+Referenced by issue #62257, Remove double vertices crash
