@@ -88,3 +88,4 @@ Referenced by issue #53596, Keyboard Language Mapping on [User Preference > Inpu
 Referenced by issue #53602, Mesh - Proportional Editing (Connected) Bug
 Referenced by issue #53582, Blender render freezes
 Referenced by issue #53585, Exterior world exposure of scene, rendered with HDRI, changes, gets darker and flat, when points lights are rendered inside building model.
+Referenced by issue #53586, Collapse of surface Curves when CTRL+J
