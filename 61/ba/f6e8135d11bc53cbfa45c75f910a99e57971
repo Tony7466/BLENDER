@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#41902, viewvectors (returned by view3d_utils.region_2d_to_vector_3d) for persp/ortho views are pointing in opposite directions
