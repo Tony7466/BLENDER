@@ -1,2 +1,3 @@
 Referenced by issue #41772, Focal Length motion blur missed in cycles
 Referenced by issue #41541, Cuda renders objects in black with MIS enabled in world setting
+Referenced by issue #41517, Bug with new intersect tool in latest build on win 64
