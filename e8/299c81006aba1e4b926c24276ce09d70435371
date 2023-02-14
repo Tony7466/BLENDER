@@ -41,3 +41,4 @@ Referenced by issue #50450, Breakdowner doesn't work in Tweak Mode on translated
 Referenced by issue #50465, Blender crashes while inserting texture node into compositor
 Referenced by issue #50432, Crash with texture node
 Referenced by issue #50399, Imported FBX Animation (coming from Unreal Engine) makes Blender switch to 25 FPS
+Referenced by issue #50406, Blender shutdown when use scale with shrinkwrapped objects
