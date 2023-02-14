@@ -500,7 +500,7 @@ check_spelling_py: .FORCE
 	@cd "$(BUILD_DIR)" ; \
 	PYTHONIOENCODING=utf_8 $(PYTHON) \
 	    "$(BLENDER_DIR)/source/tools/check_source/check_spelling.py" \
-	    "$(BLENDER_DIR)/release/scripts"
+	    "$(BLENDER_DIR)/scripts"
 
 check_spelling_c: .FORCE
 	@cd "$(BUILD_DIR)" ; \

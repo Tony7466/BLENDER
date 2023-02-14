@@ -7,13 +7,13 @@ update-code:
         submodules:
         -   branch: blender-v3.5-release
             commit_id: HEAD
-            path: release/scripts/addons
+            path: scripts/addons
         -   branch: blender-v3.5-release
             commit_id: HEAD
-            path: release/scripts/addons_contrib
+            path: scripts/addons_contrib
         -   branch: blender-v3.5-release
             commit_id: HEAD
-            path: release/datafiles/locale
+            path: datafiles/locale
         -   branch: blender-v3.5-release
             commit_id: HEAD
             path: source/tools

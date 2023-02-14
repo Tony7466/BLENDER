@@ -33,14 +33,14 @@ aggressive = 2
 
 # Exclude:
 # - `./extern/` because it's maintained separately.
-# - `./release/scripts/addons*` & `./source/tools/` because they are external repositories
+# - `./scripts/addons*` & `./source/tools/` because they are external repositories
 #   which can contain their own configuration and be handled separately.
-# - `./release/scripts/modules/rna_manual_reference.py` because it's a generated data-file.
+# - `./scripts/modules/rna_manual_reference.py` because it's a generated data-file.
 exclude = """
 ./extern/*,
-./release/scripts/addons/*,
-./release/scripts/addons_contrib/*,
-./release/scripts/modules/rna_manual_reference.py,
+./scripts/addons/*,
+./scripts/addons_contrib/*,
+./scripts/modules/rna_manual_reference.py,
 ./source/tools/*,
 """
 
