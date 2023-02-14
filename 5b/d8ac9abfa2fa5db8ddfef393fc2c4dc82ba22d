@@ -90,3 +90,4 @@ Referenced by issue #53582, Blender render freezes
 Referenced by issue #53585, Exterior world exposure of scene, rendered with HDRI, changes, gets darker and flat, when points lights are rendered inside building model.
 Referenced by issue #53586, Collapse of surface Curves when CTRL+J
 Referenced by issue #53590, Bend tool "bend angle" gets reset in some situations meaning the tool is not zeroed properly
+Referenced by issue #53573, Object Duplication with ParticleSystem render false (Cycles)
