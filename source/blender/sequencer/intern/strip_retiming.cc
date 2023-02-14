@@ -133,6 +133,7 @@ float seq_retiming_evaluate(const Sequence *seq, const int frame_index)
   const int previous_handle_index = previous_handle - seq->retiming_handles;
 
   BLI_assert(previous_handle_index < seq->retiming_handle_num);
+  UNUSED_VARS_NDEBUG(previous_handle_index);
 
   if (next_handle == nullptr) {
     return 1.0f;
