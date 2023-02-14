@@ -48,7 +48,7 @@ static bool retiming_poll(bContext *C)
   const Editing *ed = SEQ_editing_get(CTX_data_scene(C));
   Sequence *seq = ed->act_seq;
 
-  if (!SEQ_retiming_is_allowed(seq)) {
+  if (seq != nullptr && !SEQ_retiming_is_allowed(seq)) {
     CTX_wm_operator_poll_msg_set(C, "This strip type can not be retimed");
     return false;
   }
