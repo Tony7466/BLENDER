@@ -86,3 +86,4 @@ Referenced by issue #39873, Blender 2.7x OSL crash
 Referenced by issue #39849, It's possible to create blank node sockets in node groups by connecting the group input directly to an output
 Referenced by issue #39850, Graph editor, mirror over first selected marker.
 Referenced by issue #39853, Hair Strands are not render correctly when using UV map coordinate for texture
+Referenced by issue #39856, Crash on Blender Engine compositing (end)
