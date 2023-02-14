@@ -70,3 +70,4 @@ Referenced by issue #39454, Cuda error on Branched Path Tracing mode.
 Referenced by issue #39458, Switching physics type from Character to Dynamic enables ghost flag silently
 Referenced by issue #39460, Mark seams display problem
 Referenced by issue #39445, Async LibLoad Crash
+Referenced by issue #39446, Blender Crashes when Camera Tracking
