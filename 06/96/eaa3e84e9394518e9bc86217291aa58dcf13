@@ -1,2 +1,3 @@
 Referenced by issue blender/blender-addons#83749, Obj Material transparencies not automatically connected correctly when using jpeg
 Referenced by issue blender/blender-addons#83749, Obj Material transparencies not automatically connected correctly when using jpeg
+Referenced by issue blender/blender-addons#80684, obj file import automatically connects the colour output of all png's into the principled's alpha input, needs to be the alpha output.
