@@ -84,3 +84,4 @@ Referenced by issue #53627, Possible motion tracker bug?
 Referenced by issue #53631, Crash.  Open this specific .blend file, select 'Render' in the properties tab, then click 'Render'.
 Referenced by issue #53632, Active Object Menu showing objects outside current scene
 Referenced by issue #53608, Switching screen layouts switches the active scene
+Referenced by issue #53596, Keyboard Language Mapping on [User Preference > Input > search term]
