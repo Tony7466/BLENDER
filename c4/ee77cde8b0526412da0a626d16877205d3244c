@@ -1,1 +1,2 @@
 Referenced by issue #59748, Edge loop select/deselect in UV mode won't work with left click select and 3 button emulation on
+Referenced by issue #59649, Eevee in command-line batch mode is slow with particles/duplis
