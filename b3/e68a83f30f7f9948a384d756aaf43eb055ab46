@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#58734, bvhtree.fromObject - error ( returned NULL without setting an error)  in blender 2.8
