@@ -1,1 +1,2 @@
 Referenced by issue #50491, Cycles UI breaks when pushing F8
+Referenced by issue blender/blender-addons#50052, bpy.utils.unregister_module doesn't unregister classes of submodules
