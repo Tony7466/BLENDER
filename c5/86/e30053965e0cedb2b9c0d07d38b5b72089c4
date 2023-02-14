@@ -8,3 +8,4 @@ Referenced by issue #46271, switching between texture maps doesn't update the pr
 Referenced by issue #46221, Mixed shader Glass and Transparent displayed as solid in render, prerender as wished.
 Referenced by issue #46223, Open EXR multiview image sequences crash Blender 2.75a and 2.76rc
 Referenced by issue #46206, Unable to UNDO, moving to layers require manual clicking on the OK button, which isn't what it used to be
+Referenced by issue #46192, Incorrect transparency display in 3D window
