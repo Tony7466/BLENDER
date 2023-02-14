@@ -1,3 +1,4 @@
 Referenced by issue #41840, bpy.context.object.collision.thickness_inner has no effect.
 Referenced by issue #41714, Maya and 3DS keymaps throw error when
 Referenced by issue #41716, image mode crash
+Referenced by issue #41718, mask bug
