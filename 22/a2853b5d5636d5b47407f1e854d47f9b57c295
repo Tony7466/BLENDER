@@ -30,3 +30,4 @@ Referenced by issue #48000, Color Picker, sample merged.
 Referenced by issue #47978, Remesh modifier causes splitting wrongly
 Referenced by issue #47967, Select next active does not work with some ngons
 Referenced by issue #47971, Blender 2.77 Crash When Rigid Body Cache 'Bake' Clicked
+Referenced by issue #47974, Global Material Override does not work in Cycles viewport
