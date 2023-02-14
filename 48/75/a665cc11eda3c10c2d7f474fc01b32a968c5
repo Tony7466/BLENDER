@@ -1,2 +1,3 @@
 Referenced by issue #40181, Problem with scons to compile -> ‘BLI_ASSERT_UNIT_EPSILON’ in 'math_geom.c'
 Referenced by issue blender/blender-addons#40176, Curve Functions broken in several addons.
+Referenced by issue blender/blender-addons#40124, SVG import incorrect
