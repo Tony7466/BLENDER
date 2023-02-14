@@ -7,3 +7,4 @@ Referenced by issue #46431, blender-softwaregl crashes in 2.76RC3
 Referenced by issue #46421, Blender close when I try to launch "User preferences" option
 Referenced by issue #46403, Motion tracking on Blender 2.76 rc3 on mac osx
 Referenced by issue #46404, Motion blur acting up.
+Referenced by issue #46407, Enabling OSL breaks Vector Transform node
