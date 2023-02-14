@@ -57,3 +57,4 @@ Referenced by issue #51550, R+R rotation and snapping dont work
 Referenced by issue #51524, Instantiated Hair Object which has dupligroup children and hidden orig objects of group crash at render
 Referenced by issue #51452, EnumProperty fill dynamically using callback
 Referenced by issue #51438, Texture ignores object coord in viewport
+Referenced by issue #51404, Wrong behaviour of property name used in a sensor
