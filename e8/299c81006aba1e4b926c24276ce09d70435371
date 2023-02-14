@@ -36,3 +36,4 @@ Referenced by issue #50529, Invalid curves from exported alembic cache
 Referenced by issue #50504, Blender's renderer provides partially blackened images on this .blend file
 Referenced by issue #50506, blender windows 10 build 15014white screen
 Referenced by issue #50493, GLSL Shading with Textured shading caused UI freezing
+Referenced by issue #50477, File Explorer opens extremely slowly (sometimes Blendes itself opens very slowly)
