@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#45782, bpy.ops.object.select_by_layer match='SHARED' option is not working
