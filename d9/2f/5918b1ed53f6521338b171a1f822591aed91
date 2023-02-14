@@ -1,3 +1,4 @@
 Referenced by issue #43695, Link/Append crashes Blender
 Referenced by issue #43619, Fullscreen doesn't activate if the 3d Viewport is maximized
 Referenced by issue #43449, Node texture render issue
+Referenced by issue #43450, Texture node tree failed to clamp
