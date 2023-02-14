@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#63892, Tools cannot be registered into some contexts (e.g. PAINT_TEXTURE).
