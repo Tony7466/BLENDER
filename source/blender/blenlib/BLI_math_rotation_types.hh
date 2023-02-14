@@ -217,7 +217,7 @@ template<typename T> struct AxisAngle {
 
   friend bool operator==(const AxisAngle &a, const AxisAngle &b)
   {
-    return (a.axis == b.axis) && (a.angle == b.angle);
+    return (a.axis() == b.axis()) && (a.angle() == b.angle());
   }
 
   friend bool operator!=(const AxisAngle &a, const AxisAngle &b)
@@ -227,7 +227,7 @@ template<typename T> struct AxisAngle {
 
   friend std::ostream &operator<<(std::ostream &stream, const AxisAngle &rot)
   {
-    return stream << "AxisAngle(axis=" << rot.axis << ", angle=" << rot.angle << ")";
+    return stream << "AxisAngle(axis=" << rot.axis() << ", angle=" << rot.angle() << ")";
   }
 };
 
