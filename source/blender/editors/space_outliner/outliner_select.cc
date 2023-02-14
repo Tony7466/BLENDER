@@ -357,6 +357,9 @@ static void tree_element_object_activate(bContext *C,
         }
       }
     }
+    else if (recursive) {
+      /* Pass */
+    }
     else {
       /* De-select all. */
 
@@ -1483,9 +1486,10 @@ void outliner_item_select(bContext *C,
   const bool activate = select_flag & OL_ITEM_ACTIVATE;
   const bool extend = select_flag & OL_ITEM_EXTEND;
   const bool activate_data = select_flag & OL_ITEM_SELECT_DATA;
+  const bool recursive = select_flag & OL_ITEM_RECURSIVE;
 
   /* Clear previous active when activating and clear selection when not extending selection */
-  const short clear_flag = (activate ? TSE_ACTIVE : 0) | (extend ? 0 : TSE_SELECTED);
+  const short clear_flag = (activate ? TSE_ACTIVE : 0) | ((extend || recursive) ? 0 : TSE_SELECTED);
   if (clear_flag) {
     outliner_flag_set(*space_outliner, clear_flag, false);
   }
@@ -1501,7 +1505,10 @@ void outliner_item_select(bContext *C,
     TreeViewContext tvc;
     outliner_viewcontext_init(C, &tvc);
 
-    tselem->flag |= TSE_ACTIVE;
+    if (!recursive) {
+      tselem->flag |= TSE_ACTIVE;
+    }
+
     do_outliner_item_activate_tree_element(C,
                                            &tvc,
                                            space_outliner,
