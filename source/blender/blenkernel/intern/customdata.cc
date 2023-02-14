@@ -2166,7 +2166,8 @@ static CustomDataLayer *customData_add_layer__internal(CustomData *data,
                                                        eCDAllocType alloctype,
                                                        void *layerdata,
                                                        int totelem,
-                                                       const char *name);
+                                                       const char *name,
+                                                       bool isanonymous);
 
 void CustomData_update_typemap(CustomData *data)
 {
@@ -2254,10 +2255,10 @@ bool CustomData_merge(const CustomData *source,
 
     if ((alloctype == CD_ASSIGN) && (flag & CD_FLAG_NOFREE)) {
       newlayer = customData_add_layer__internal(
-          dest, type, CD_REFERENCE, data, totelem, layer->name);
+          dest, type, CD_REFERENCE, data, totelem, layer->name, layer->anonymous_id != nullptr);
     }
     else {
-      newlayer = customData_add_layer__internal(dest, type, alloctype, data, totelem, layer->name);
+      newlayer = customData_add_layer__internal(dest, type, alloctype, data, totelem, layer->name, layer->anonymous_id != nullptr);
     }
 
     if (newlayer) {
@@ -2706,7 +2707,7 @@ static bool customData_resize(CustomData *data, const int amount)
   return true;
 }
 
-static bool customData_has_visible_layer(const CustomData *data, const int type)
+static bool customData_has_nonanonymous_layer(const CustomData *data, const int type)
 {
   int layer = data->typemap[type];
 
@@ -2715,7 +2716,7 @@ static bool customData_has_visible_layer(const CustomData *data, const int type)
   }
 
   while (data->layers[layer].type == type) {
-    if (data->layers[layer].name[0] && data->layers[layer].name[0] != '.') {
+    if (data->layers[layer].name[0] && data->layers[layer].anonymous_id == nullptr) {
       return true;
     }
     layer++;
@@ -2729,14 +2730,15 @@ static CustomDataLayer *customData_add_layer__internal(CustomData *data,
                                                        const eCDAllocType alloctype,
                                                        void *layerdata,
                                                        const int totelem,
-                                                       const char *name)
+                                                       const char *name,
+                                                       bool isanonymous)
 {
   const LayerTypeInfo *typeInfo = layerType_getInfo(type);
   int flag = 0;
 
   bool isfirstvisible = false;
-  if (name && name[0] != '.') {
-    isfirstvisible = !customData_has_visible_layer(data, type);
+  if (!isanonymous) {
+    isfirstvisible = !customData_has_nonanonymous_layer(data, type);
   }
 
   /* Some layer types only support a single layer. */
@@ -2873,7 +2875,7 @@ void *CustomData_add_layer(
   const LayerTypeInfo *typeInfo = layerType_getInfo(type);
 
   CustomDataLayer *layer = customData_add_layer__internal(
-      data, type, alloctype, layerdata, totelem, typeInfo->defaultname);
+      data, type, alloctype, layerdata, totelem, typeInfo->defaultname, false);
   CustomData_update_typemap(data);
 
   if (layer) {
@@ -2891,7 +2893,7 @@ void *CustomData_add_layer_named(CustomData *data,
                                  const char *name)
 {
   CustomDataLayer *layer = customData_add_layer__internal(
-      data, type, alloctype, layerdata, totelem, name);
+      data, type, alloctype, layerdata, totelem, name, false);
   CustomData_update_typemap(data);
 
   if (layer) {
@@ -2910,7 +2912,7 @@ void *CustomData_add_layer_anonymous(CustomData *data,
 {
   const char *name = anonymous_id->name().c_str();
   CustomDataLayer *layer = customData_add_layer__internal(
-      data, type, alloctype, layerdata, totelem, name);
+      data, type, alloctype, layerdata, totelem, name, true);
   CustomData_update_typemap(data);
 
   if (layer == nullptr) {
