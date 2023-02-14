@@ -91,3 +91,4 @@ Referenced by issue #50887, fluid simulation: generate mesh bug
 Referenced by issue #50881, BGE: Skinned object is culled out of camera frustum based on original geometry
 Referenced by issue #50850, Blender crash with cycles rendered viewport shading when changing settings of material with external jpg texture
 Referenced by issue #50817, "Sampling" panel from Properties->Render window not displaying contents
+Referenced by issue #50565, Transform: Planar constraints don't work properly with non-Blender key configurations
