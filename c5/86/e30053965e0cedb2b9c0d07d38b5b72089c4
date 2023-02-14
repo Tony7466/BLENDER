@@ -12,3 +12,4 @@ Referenced by issue #46192, Incorrect transparency display in 3D window
 Referenced by issue #46201, Popup menus on post_load handlers crash blender.
 Referenced by issue #46183, Object with OpenSubdiv has 0Verts 0Edges 0Poly
 Referenced by issue #46185, Bone will not roll in Blender 2.76 RC
+Referenced by issue #46175, Screen not slide in File Browser with Arrow-key navigation
