@@ -17,3 +17,4 @@ Referenced by issue #38818, crashed when adding new image in UV editor
 Referenced by issue #38776, Mr.
 Referenced by issue #38766, Material transparency problems in solid viewport
 Referenced by issue #38768, new "audio" button in 2.70 release does not 'mixdown' audio
+Referenced by issue #38770, Vertex slide does not work on Blender 2.7 test build or newer versions
