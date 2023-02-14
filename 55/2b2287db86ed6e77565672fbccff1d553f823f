@@ -1,3 +1,4 @@
 Referenced by issue #69017, Edge split modifier generating an error in background in Sculpt Mode
 Referenced by issue #61765, Thread-unsafe logging used
 Referenced by issue #61682, Selecting Collections on Outliner doesn't automatically select all the objects
+Referenced by issue #61111, Mapping node values get stuck after setting a keyframe
