@@ -1,1 +1,2 @@
 Referenced by issue #88152, Regression when accessing python prop defined in AddonPreferences
+Referenced by issue blender/blender-addons#89910, Rigify UI throws an error ('thigh_fk' cannot be found)
