@@ -30,7 +30,9 @@
 #include "BKE_action.h"
 #include "BKE_armature.h"
 #include "BKE_context.h"
+#include "BKE_crazyspace.hh"
 #include "BKE_curve.h"
+#include "BKE_curves.hh"
 #include "BKE_editmesh.h"
 #include "BKE_global.h"
 #include "BKE_gpencil.h"
@@ -47,6 +49,7 @@
 #include "WM_types.h"
 
 #include "ED_armature.h"
+#include "ED_curves.h"
 #include "ED_gizmo_library.h"
 #include "ED_gizmo_utils.h"
 #include "ED_gpencil.h"
@@ -623,6 +626,7 @@ int ED_transform_calc_gizmo_stats(const bContext *C,
                                   const TransformCalcParams *params,
                                   TransformBounds *tbounds)
 {
+  using namespace blender;
   ScrArea *area = CTX_wm_area(C);
   ARegion *region = CTX_wm_region(C);
   Scene *scene = CTX_data_scene(C);
@@ -925,6 +929,28 @@ int ED_transform_calc_gizmo_stats(const bContext *C,
             totsel++;
           }
           bp++;
+        }
+      }
+      FOREACH_EDIT_OBJECT_END();
+    }
+    else if (obedit->type == OB_CURVES) {
+      FOREACH_EDIT_OBJECT_BEGIN (ob_iter, use_mat_local) {
+        const Curves &curves_id = *static_cast<Curves *>(ob_iter->data);
+        const bke::CurvesGeometry &curves = curves_id.geometry.wrap();
+        const bke::crazyspace::GeometryDeformation deformation =
+            bke::crazyspace::get_evaluated_curves_deformation(*depsgraph, *ob);
+
+        float4x4 mat_local;
+        if (use_mat_local) {
+          mat_local = float4x4(obedit->world_to_object) * float4x4(ob_iter->object_to_world);
+        }
+
+        Vector<int64_t> indices;
+        const IndexMask selected_points = ed::curves::retrieve_selected_points(curves, indices);
+        const Span<float3> positions = deformation.positions;
+        totsel += selected_points.size();
+        for (const int point_i : selected_points) {
+          calc_tw_center_with_matrix(tbounds, positions[point_i], use_mat_local, mat_local.ptr());
         }
       }
       FOREACH_EDIT_OBJECT_END();
@@ -1376,7 +1402,7 @@ static void gizmo_3d_setup_draw_default(wmGizmo *axis, const int axis_idx)
       WM_gizmo_set_flag(axis, WM_GIZMO_DRAW_MODAL, true);
       WM_gizmo_set_scale(axis, 0.2f);
 
-      /* Prevent axis gizmos overlapping the center point, see: T63744. */
+      /* Prevent axis gizmos overlapping the center point, see: #63744. */
       axis->select_bias = 2.0f;
       break;
     case MAN_AXIS_SCALE_C:
@@ -1386,7 +1412,7 @@ static void gizmo_3d_setup_draw_default(wmGizmo *axis, const int axis_idx)
       RNA_float_set(axis->ptr, "arc_inner_factor", 1.0 / 6.0);
       WM_gizmo_set_scale(axis, 1.2f);
 
-      /* Prevent axis gizmos overlapping the center point, see: T63744. */
+      /* Prevent axis gizmos overlapping the center point, see: #63744. */
       axis->select_bias = -2.0f;
       break;
 
@@ -1577,7 +1603,7 @@ static int gizmo_modal(bContext *C,
                        const wmEvent *event,
                        eWM_GizmoFlagTweak /*tweak_flag*/)
 {
-  /* Avoid unnecessary updates, partially address: T55458. */
+  /* Avoid unnecessary updates, partially address: #55458. */
   if (ELEM(event->type, TIMER, INBETWEEN_MOUSEMOVE)) {
     return OPERATOR_RUNNING_MODAL;
   }
@@ -2730,7 +2756,7 @@ void transform_gizmo_3d_model_from_constraint_and_mode_set(TransInfo *t)
 
   int axis_idx = -1;
   if (t->mode == TFM_TRACKBALL) {
-    axis_idx = MAN_AXIS_ROT_T;
+    /* Pass. Do not display gizmo. */
   }
   else if (ELEM(t->mode, TFM_TRANSLATION, TFM_ROTATION, TFM_RESIZE)) {
     const int axis_map[3][7] = {
@@ -2776,15 +2802,17 @@ void transform_gizmo_3d_model_from_constraint_and_mode_set(TransInfo *t)
   wmGizmo *gizmo_modal_current = WM_gizmomap_get_modal(t->region->gizmo_map);
   if (axis_idx != -1) {
     RegionView3D *rv3d = static_cast<RegionView3D *>(t->region->regiondata);
-    bool update_orientation = !(equals_v3v3(rv3d->twmat[0], t->spacemtx[0]) &&
-                                equals_v3v3(rv3d->twmat[1], t->spacemtx[1]) &&
-                                equals_v3v3(rv3d->twmat[2], t->spacemtx[2]));
+    float(*mat_cmp)[3] = t->orient[t->orient_curr != O_DEFAULT ? t->orient_curr : O_SCENE].matrix;
+
+    bool update_orientation = !(equals_v3v3(rv3d->twmat[0], mat_cmp[0]) &&
+                                equals_v3v3(rv3d->twmat[1], mat_cmp[1]) &&
+                                equals_v3v3(rv3d->twmat[2], mat_cmp[2]));
 
     GizmoGroup *ggd = static_cast<GizmoGroup *>(gzgroup_xform->customdata);
     wmGizmo *gizmo_expected = ggd->gizmos[axis_idx];
     if (update_orientation || gizmo_modal_current != gizmo_expected) {
       if (update_orientation) {
-        copy_m4_m3(rv3d->twmat, t->spacemtx);
+        copy_m4_m3(rv3d->twmat, mat_cmp);
         copy_v3_v3(rv3d->twmat[3], t->center_global);
       }
 

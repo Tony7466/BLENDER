@@ -735,7 +735,7 @@ static void gpencil_create_extensions_radius(tGPDfill *tgpf)
     float tan2[3];
     float d1;
     float d2;
-    float total_length = 0.f;
+    float total_length = 0.0f;
     for (int i = 1; i < gps->totpoints; i++) {
       if (i > 1) {
         copy_v3_v3(tan1, tan2);
@@ -751,7 +751,7 @@ static void gpencil_create_extensions_radius(tGPDfill *tgpf)
         sub_v3_v3v3(curvature, tan2, tan1);
         float k = normalize_v3(curvature);
         k /= min_ff(d1, d2);
-        float radius = 1.f / k;
+        float radius = 1.0f / k;
         /*
          * The smaller the radius of curvature, the sharper the corner.
          * The thicker the line, the larger the radius of curvature it
@@ -993,23 +993,25 @@ static void draw_mouse_position(tGPDfill *tgpf)
   if (tgpf->gps_mouse == NULL) {
     return;
   }
-  uchar mouse_color[4] = {0, 0, 255, 255};
 
   bGPDspoint *pt = &tgpf->gps_mouse->points[0];
   float point_size = (tgpf->zoom == 1.0f) ? 4.0f * tgpf->fill_factor :
                                             (0.5f * tgpf->zoom) + tgpf->fill_factor;
   GPUVertFormat *format = immVertexFormat();
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-  uint col = GPU_vertformat_attr_add(format, "color", GPU_COMP_U8, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
+  uint size = GPU_vertformat_attr_add(format, "size", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
+  uint color = GPU_vertformat_attr_add(format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
 
   /* Draw mouse click position in Blue. */
-  immBindBuiltinProgram(GPU_SHADER_3D_POINT_FIXED_SIZE_VARYING_COLOR);
-  GPU_point_size(point_size);
+  GPU_program_point_size(true);
+  immBindBuiltinProgram(GPU_SHADER_3D_POINT_VARYING_SIZE_VARYING_COLOR);
   immBegin(GPU_PRIM_POINTS, 1);
-  immAttr4ubv(col, mouse_color);
+  immAttr1f(size, point_size * M_SQRT2);
+  immAttr4f(color, 0.0f, 0.0f, 1.0f, 1.0f);
   immVertex3fv(pos, &pt->x);
   immEnd();
   immUnbindProgram();
+  GPU_program_point_size(false);
 }
 
 /* Helper: Check if must skip the layer */

@@ -524,7 +524,7 @@ endif()
 if(NOT APPLE)
   option(WITH_CYCLES_DEVICE_HIP        "Enable Cycles AMD HIP support" ON)
   option(WITH_CYCLES_HIP_BINARIES      "Build Cycles AMD HIP binaries" OFF)
-  set(CYCLES_HIP_BINARIES_ARCH gfx1010 gfx1011 gfx1012 gfx1030 gfx1031 gfx1032 gfx1034 gfx1035 gfx1100 gfx1101 gfx1102 CACHE STRING "AMD HIP architectures to build binaries for")
+  set(CYCLES_HIP_BINARIES_ARCH gfx900 gfx906 gfx90c gfx902 gfx1010 gfx1011 gfx1012 gfx1030 gfx1031 gfx1032 gfx1034 gfx1035 gfx1100 gfx1101 gfx1102 CACHE STRING "AMD HIP architectures to build binaries for")
   mark_as_advanced(WITH_CYCLES_DEVICE_HIP)
   mark_as_advanced(CYCLES_HIP_BINARIES_ARCH)
 endif()
@@ -625,8 +625,10 @@ mark_as_advanced(
 
 # Vulkan
 option(WITH_VULKAN_BACKEND "Enable Vulkan as graphics backend (only for development)" OFF)
+option(WITH_VULKAN_GUARDEDALLOC "Use guardedalloc for host allocations done inside Vulkan (development option)" OFF)
 mark_as_advanced(
   WITH_VULKAN_BACKEND
+  WITH_VULKAN_GUARDEDALLOC
 )
 
 # Metal
@@ -1629,6 +1631,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
     # warning level:
     "/W3"
     "/w34062"  # switch statement contains 'default' but no 'case' labels
+    "/w34100"  # 'identifier' : unreferenced formal parameter
     "/w34115"  # 'type' : named type definition in parentheses
     "/w34189"  # local variable is initialized but not referenced
     # see https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/c5038?view=vs-2017

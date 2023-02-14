@@ -389,7 +389,7 @@ void GPUCodegen::generate_resources()
 {
   GPUCodegenCreateInfo &info = *create_info;
 
-  /* Ref. T98190: Defines are optimizations for old compilers.
+  /* Ref. #98190: Defines are optimizations for old compilers.
    * Might become unnecessary with EEVEE-Next. */
   if (GPU_material_flag_get(&mat, GPU_MATFLAG_PRINCIPLED_CLEARCOAT)) {
     info.define("PRINCIPLED_CLEARCOAT");
@@ -957,7 +957,6 @@ void gpu_codegen_init(void)
 
 void gpu_codegen_exit(void)
 {
-  // BKE_world_defaults_free_gpu();
   BKE_material_defaults_free_gpu();
   GPU_shader_free_builtin_shaders();
 }

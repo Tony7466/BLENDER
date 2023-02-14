@@ -217,7 +217,7 @@ GHOST_IWindow *GHOST_SystemWin32::createWindow(const char *title,
                                                uint32_t height,
                                                GHOST_TWindowState state,
                                                GHOST_GLSettings glSettings,
-                                               const bool exclusive,
+                                               const bool /*exclusive*/,
                                                const bool is_dialog,
                                                const GHOST_IWindow *parentWindow)
 {
@@ -424,10 +424,9 @@ bool GHOST_SystemWin32::processEvents(bool waitForEvent)
 
     processTrackpad();
 
-    /* PeekMessage above is allowed to dispatch messages to the wndproc without us
+    /* `PeekMessage` above is allowed to dispatch messages to the `wndproc` without us
      * noticing, so we need to check the event manager here to see if there are
-     * events waiting in the queue.
-     */
+     * events waiting in the queue. */
     hasEventHandled |= this->m_eventManager->getNumEvents() > 0;
 
   } while (waitForEvent && !hasEventHandled);
@@ -566,10 +565,10 @@ GHOST_TKey GHOST_SystemWin32::hardKey(RAWINPUT const &raw, bool *r_key_down)
 /**
  * \note this function can be extended to include other exotic cases as they arise.
  *
- * This function was added in response to bug T25715.
- * This is going to be a long list T42426.
+ * This function was added in response to bug #25715.
+ * This is going to be a long list #42426.
  */
-GHOST_TKey GHOST_SystemWin32::processSpecialKey(short vKey, short scanCode) const
+GHOST_TKey GHOST_SystemWin32::processSpecialKey(short vKey, short /*scanCode*/) const
 {
   GHOST_TKey key = GHOST_kKeyUnknown;
   if (vKey == 0xFF) {
@@ -1080,11 +1079,11 @@ GHOST_EventCursor *GHOST_SystemWin32::processCursorEvent(GHOST_WindowWin32 *wind
       if (window->getCursorGrabMode() == GHOST_kGrabHide) {
         window->getClientBounds(bounds);
 
-        /* WARNING(@campbellbarton): The current warping logic fails to warp on every event,
+        /* WARNING(@ideasman42): The current warping logic fails to warp on every event,
          * so the box needs to small enough not to let the cursor escape the window but large
          * enough that the cursor isn't being warped every time.
          * If this was not the case it would be less trouble to simply warp the cursor to the
-         * center of the screen on every motion, see: D16558 (alternative fix for T102346). */
+         * center of the screen on every motion, see: D16558 (alternative fix for #102346). */
         const int32_t subregion_div = 4; /* One quarter of the region. */
         const int32_t size[2] = {bounds.getWidth(), bounds.getHeight()};
         const int32_t center[2] = {(bounds.m_l + bounds.m_r) / 2, (bounds.m_t + bounds.m_b) / 2};
@@ -1149,7 +1148,9 @@ GHOST_EventCursor *GHOST_SystemWin32::processCursorEvent(GHOST_WindowWin32 *wind
                                GHOST_TABLET_DATA_NONE);
 }
 
-void GHOST_SystemWin32::processWheelEvent(GHOST_WindowWin32 *window, WPARAM wParam, LPARAM lParam)
+void GHOST_SystemWin32::processWheelEvent(GHOST_WindowWin32 *window,
+                                          WPARAM wParam,
+                                          LPARAM /*lParam*/)
 {
   GHOST_SystemWin32 *system = (GHOST_SystemWin32 *)getSystem();
 
@@ -1179,7 +1180,7 @@ GHOST_EventKey *GHOST_SystemWin32::processKeyEvent(GHOST_WindowWin32 *window, RA
   GHOST_TKey key = system->hardKey(raw, &key_down);
   GHOST_EventKey *event;
 
-  /* NOTE(@campbellbarton): key repeat in WIN32 also applies to modifier-keys.
+  /* NOTE(@ideasman42): key repeat in WIN32 also applies to modifier-keys.
    * Check for this case and filter out modifier-repeat.
    * Typically keyboard events are *not* filtered as part of GHOST's event handling.
    * As other GHOST back-ends don't have the behavior, it's simplest not to send them through.
@@ -1210,7 +1211,7 @@ GHOST_EventKey *GHOST_SystemWin32::processKeyEvent(GHOST_WindowWin32 *window, RA
     const bool ctrl_pressed = has_state && state[VK_CONTROL] & 0x80;
     const bool alt_pressed = has_state && state[VK_MENU] & 0x80;
 
-    /* We can be here with !key_down if processing dead keys (diacritics). See T103119. */
+    /* We can be here with !key_down if processing dead keys (diacritics). See #103119. */
 
     /* No text with control key pressed (Alt can be used to insert special characters though!). */
     if (ctrl_pressed && !alt_pressed) {
@@ -2182,7 +2183,7 @@ LRESULT WINAPI GHOST_SystemWin32::s_wndProc(HWND hwnd, uint msg, WPARAM wParam, 
   return lResult;
 }
 
-char *GHOST_SystemWin32::getClipboard(bool selection) const
+char *GHOST_SystemWin32::getClipboard(bool /*selection*/) const
 {
   if (IsClipboardFormatAvailable(CF_UNICODETEXT) && OpenClipboard(NULL)) {
     wchar_t *buffer;
