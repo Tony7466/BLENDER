@@ -2028,6 +2028,7 @@ void GRAPH_OT_clickselect(wmOperatorType *ot)
 
 enum {
   GRAPHKEYS_SELECT_GROUP_CHANNEL_TYPE,
+  GRAPHKEYS_SELECT_GROUP_CHANNEL_TYPE_STRICT,
   GRAPHKEYS_SELECT_GROUP_KEY_TYPE,
   GRAPHKEYS_SELECT_GROUP_HANDLE_SIDE,
   GRAPHKEYS_SELECT_GROUP_INTERPOLATION_TYPE,
@@ -2042,7 +2043,12 @@ static const EnumPropertyItem graphkeys_prop_select_grouped_types[] = {
      "CHANNEL_TYPE",
      0,
      "Channel Type",
-     "All keyframes of same type of channel (X Location, etc.)"},
+     "All keyframes with the same RNA path (Location, etc.)"},
+    {GRAPHKEYS_SELECT_GROUP_CHANNEL_TYPE_STRICT,
+     "CHANNEL_TYPE_STRICT",
+     0,
+     "Channel Type (Strict)",
+     "All keyframes with the same RNA path, including array index (X Location, etc.)"},
     {GRAPHKEYS_SELECT_GROUP_KEY_TYPE,
      "KEY_TYPE",
      0,
@@ -2075,6 +2081,43 @@ static const EnumPropertyItem graphkeys_prop_select_grouped_types[] = {
      "All keyframes that are part of the same datablock"},
     {0, NULL, 0, NULL, NULL},
 };
+
+/* GRAPHKEYS_SELECT_GROUP_CHANNEL_TYPE */
+
+static short select_grouped_channel_type(KeyframeEditData *ked, struct BezTriple *bezt)
+{
+  if (BLI_gset_haskey(ked->data, ked->fcu->rna_path)) {
+    return KEYFRAME_OK_ALL;
+  }
+  return 0;
+}
+
+static short select_grouped_active_channel_type(KeyframeEditData *ked, struct BezTriple *bezt)
+{
+  BLI_gset_add(ked->data, BLI_strdup(ked->fcu->rna_path));
+  return 0;
+}
+
+/* GRAPHKEYS_SELECT_GROUP_CHANNEL_TYPE_STRICT */
+
+static short select_grouped_channel_type_strict(KeyframeEditData *ked, struct BezTriple *bezt)
+{
+  char name[256];
+  BLI_snprintf(name, 256, "%s[%d]", ked->fcu->rna_path, ked->fcu->array_index);
+  if (BLI_gset_haskey(ked->data, name)) {
+    return KEYFRAME_OK_ALL;
+  }
+  return 0;
+}
+
+static short select_grouped_active_channel_type_strict(KeyframeEditData *ked,
+                                                       struct BezTriple *bezt)
+{
+  char *name = MEM_mallocN(256, __func__);
+  BLI_snprintf(name, 256, "%s[%d]", ked->fcu->rna_path, ked->fcu->array_index);
+  BLI_gset_add(ked->data, name);
+  return 0;
+}
 
 /* GRAPHKEYS_SELECT_GROUP_DATABLOCK */
 
@@ -2191,6 +2234,10 @@ static KeyframeEditFunc select_grouped_get_filter_callback(ListBase *anim_data,
   if (type == GRAPHKEYS_SELECT_GROUP_DATABLOCK) {
     comp_set = BLI_gset_ptr_new(__func__);
   }
+  else if (type == GRAPHKEYS_SELECT_GROUP_CHANNEL_TYPE ||
+           type == GRAPHKEYS_SELECT_GROUP_CHANNEL_TYPE_STRICT) {
+    comp_set = BLI_gset_str_new(__func__);
+  }
   else {
     comp_set = BLI_gset_int_new(__func__);
   }
@@ -2217,8 +2264,20 @@ static KeyframeEditFunc select_grouped_get_filter_callback(ListBase *anim_data,
     /* Find first selected keyframe for context info. */
     switch (type) {
       case GRAPHKEYS_SELECT_GROUP_CHANNEL_TYPE: {
-        /* TODO(redmser): Channel type (by name?). */
-        BLI_assert(0);
+        if (ale == NULL) {
+          return select_grouped_channel_type;
+        }
+
+        ANIM_fcurve_keyframes_loop(ked, fcu, ok_cb, select_grouped_active_channel_type, NULL);
+        break;
+      }
+      case GRAPHKEYS_SELECT_GROUP_CHANNEL_TYPE_STRICT: {
+        if (ale == NULL) {
+          return select_grouped_channel_type_strict;
+        }
+
+        ANIM_fcurve_keyframes_loop(
+            ked, fcu, ok_cb, select_grouped_active_channel_type_strict, NULL);
         break;
       }
       case GRAPHKEYS_SELECT_GROUP_HANDLE_TYPE: {
@@ -2346,7 +2405,13 @@ static int graphkeys_select_grouped_exec(bContext *C, wmOperator *op)
   }
 
   ANIM_animdata_freelist(&anim_data);
-  BLI_gset_free(ked.data, NULL);
+  if (type == GRAPHKEYS_SELECT_GROUP_CHANNEL_TYPE ||
+      type == GRAPHKEYS_SELECT_GROUP_CHANNEL_TYPE_STRICT) {
+    BLI_gset_free(ked.data, MEM_freeN);
+  }
+  else {
+    BLI_gset_free(ked.data, NULL);
+  }
 
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
   return OPERATOR_FINISHED;
