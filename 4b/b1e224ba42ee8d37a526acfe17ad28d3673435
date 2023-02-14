@@ -51,3 +51,4 @@ Referenced by issue #49604, Cycles Render Engine - inconsistent Math Node values
 Referenced by issue #49590, 2.78 crash on image datablock removal
 Referenced by issue #49591, Mouse over logic sensor
 Referenced by issue #49548, Entering Cycles Rendered Viewport Unlinks Material from Objects
+Referenced by issue #49556, noise, voronoi and musgrave textures not working 3d viewport in blender 2.78
