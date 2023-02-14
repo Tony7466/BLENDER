@@ -1,2 +1,3 @@
 Referenced by issue #85750, Camera background movieclips are not visible if "Viewport Shading" is set to "Rendered"
 Referenced by issue #85750, Camera background movieclips are not visible if "Viewport Shading" is set to "Rendered"
+Referenced by issue #67832, Background images ignore View transform
