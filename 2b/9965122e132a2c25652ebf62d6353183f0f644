@@ -1,0 +1,1 @@
+Referenced by issue #64228, insert_keyframe and bpy.ops from bpy.app.timers, now causes Blender to crash
