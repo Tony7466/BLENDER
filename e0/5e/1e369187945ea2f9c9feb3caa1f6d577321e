@@ -19,3 +19,4 @@ Referenced by issue #98795, Regression: Crash after moving NLA action strips
 Referenced by issue #98739, Blender 3.2.0 crashes at startup (BUT not with "blender-softwaregl")
 Referenced by issue #98719, Choosing HIP as Render Device Option causes immediate crash on Linux
 Referenced by issue #98708, Blender 3.2.0 crashes on start on Ubuntu 22.04
+Referenced by issue blender/blender-addons#100113, Rigify Error
