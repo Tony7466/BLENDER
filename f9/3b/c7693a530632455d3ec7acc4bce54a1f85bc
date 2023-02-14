@@ -63,3 +63,4 @@ Referenced by issue #40120, OpenCL kernel compilation error when __CAMERA_MOTION
 Referenced by issue #40121, Smoke not masking objects
 Referenced by issue #40113, Armatured object with shape key causes segfault in BGE
 Referenced by issue #40072, Blender requires libSDL 1.2 but it is not installed by default in Ubuntu 14.04
+Referenced by issue #40076, Group Instance problem (base objects visible on render)
