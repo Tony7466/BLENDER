@@ -54,3 +54,4 @@ Referenced by issue #41453, Blender Render | Area lamp | Ray shadow artifacts
 Referenced by issue #41455, info panel incorrect.   bpy.context.object has no .key
 Referenced by issue #41443, Seperate bug with Curves & Hooks
 Referenced by issue #41360, Crash on Boolean Modifier
+Referenced by issue #41361, Video Sequencer Editor freeze in preview.
