@@ -77,3 +77,4 @@ Referenced by issue #47319, The "Disconnect/Connect Hair" feature for particle h
 Referenced by issue #47320, Cycles baking: Some operations do not "take" until edit mode is exited
 Referenced by issue #47294, Particle hair textures do not work properly when "Emit From" option is set to "Verts"
 Referenced by issue #47281, Blender crashes randomly on freshly installed windows 10 (OpenGL)
+Referenced by issue #47273, Cycles GPU performance regression on Nvidia's Maxwell cards
