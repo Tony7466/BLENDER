@@ -64,3 +64,4 @@ Referenced by issue #57538, Windows 10 Pen input
 Referenced by issue #57533, Output file name: frame number error
 Referenced by issue #57534, NLA editor can subtlely influence keyframes when automatic keyframes are enabled
 Referenced by issue #57514, Bug when exporting after Blender has been running a few hours.
+Referenced by issue #57376, 2.79 -> 2.8 Maintain Volume constraint unexpected behaviour.
