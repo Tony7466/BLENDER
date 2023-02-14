@@ -1,1 +1,2 @@
 Referenced by issue #42843, Cycles CUDA render slows waaay down after ~5 frames (from ~2s to ~40s per frame).
+Referenced by issue #42845, Gooseberry SSAO and SSDoF do not show up in viewport renders.
