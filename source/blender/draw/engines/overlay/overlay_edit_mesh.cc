@@ -112,7 +112,7 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
             ((show_retopology) ? DRWState(0) : DRW_STATE_CULL_BACK);
     DRW_PASS_CREATE(psl->edit_mesh_depth_ps[i], state | pd->clipping_state);
 
-    sh = OVERLAY_shader_depth_only();
+    sh = OVERLAY_shader_edit_mesh_depth();
     grp = pd->edit_mesh_depth_grp[i] = DRW_shgroup_create(sh, psl->edit_mesh_depth_ps[i]);
     DRW_shgroup_uniform_float_copy(grp, "retopologyBias", retopology_bias);
   }

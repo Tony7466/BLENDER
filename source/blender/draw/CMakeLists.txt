@@ -638,6 +638,7 @@ set(GLSL_SRC
   engines/overlay/shaders/overlay_edit_mesh_analysis_frag.glsl
   engines/overlay/shaders/overlay_edit_mesh_analysis_vert.glsl
   engines/overlay/shaders/overlay_edit_mesh_common_lib.glsl
+  engines/overlay/shaders/overlay_edit_mesh_depth_vert.glsl
   engines/overlay/shaders/overlay_edit_mesh_frag.glsl
   engines/overlay/shaders/overlay_edit_mesh_geom.glsl
   engines/overlay/shaders/overlay_edit_mesh_normal_vert.glsl
@@ -708,7 +709,6 @@ set(GLSL_SRC
   engines/overlay/shaders/overlay_sculpt_mask_frag.glsl
   engines/overlay/shaders/overlay_sculpt_mask_vert.glsl
   engines/overlay/shaders/overlay_uniform_color_frag.glsl
-  engines/overlay/shaders/overlay_uniform_color_vert.glsl
   engines/overlay/shaders/overlay_varying_color.glsl
   engines/overlay/shaders/overlay_viewer_attribute_curve_vert.glsl
   engines/overlay/shaders/overlay_viewer_attribute_curves_vert.glsl

@@ -38,6 +38,18 @@ GPU_SHADER_CREATE_INFO(overlay_edit_mesh_common_no_geom)
     .additional_info("draw_modelmat", "draw_globals");
 #endif
 
+GPU_SHADER_CREATE_INFO(overlay_edit_mesh_depth)
+    .do_static_compilation(true)
+    .vertex_in(0, Type::VEC3, "pos")
+    .push_constant(Type::FLOAT, "retopologyBias")
+    .vertex_source("overlay_edit_mesh_depth_vert.glsl")
+    .fragment_source("overlay_depth_only_frag.glsl")
+    .additional_info("draw_mesh");
+
+GPU_SHADER_CREATE_INFO(overlay_edit_mesh_depth_clipped)
+    .do_static_compilation(true)
+    .additional_info("overlay_edit_mesh_depth", "drw_clipped");
+
 GPU_SHADER_INTERFACE_INFO(overlay_edit_mesh_vert_iface, "")
     .smooth(Type::VEC4, "finalColor")
     .smooth(Type::FLOAT, "vertexCrease");
@@ -599,7 +611,6 @@ GPU_SHADER_CREATE_INFO(overlay_edit_gpencil_guide_point_clipped)
 GPU_SHADER_CREATE_INFO(overlay_depth_only)
     .do_static_compilation(true)
     .vertex_in(0, Type::VEC3, "pos")
-    .push_constant(Type::FLOAT, "retopologyBias")
     .vertex_source("overlay_depth_only_vert.glsl")
     .fragment_source("overlay_depth_only_frag.glsl")
     .additional_info("draw_mesh");
@@ -619,7 +630,7 @@ GPU_SHADER_CREATE_INFO(overlay_uniform_color)
     .vertex_in(0, Type::VEC3, "pos")
     .push_constant(Type::VEC4, "ucolor")
     .fragment_out(0, Type::VEC4, "fragColor")
-    .vertex_source("overlay_uniform_color_vert.glsl")
+    .vertex_source("overlay_depth_only_vert.glsl")
     .fragment_source("overlay_uniform_color_frag.glsl")
     .additional_info("draw_mesh");
 
