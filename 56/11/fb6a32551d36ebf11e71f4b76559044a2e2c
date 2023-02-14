@@ -5,3 +5,4 @@ Referenced by issue #38243, Blender crashes while GPU Cycles viewport and usual 
 Referenced by issue #38250, Bevel function
 Referenced by issue #38229, Shadeless option has no effect when GLSL is enabled
 Referenced by issue #38232, Crash when trying to open the blend file
+Referenced by issue #38234, change smooth/flat of a linked mesh
