@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#62732, Bpy/Python is letting create inputs at the node level for node groups that make blend file unsaveable
