@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#38924, wm.link_append() never appends despite link=False
