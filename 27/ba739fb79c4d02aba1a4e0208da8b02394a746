@@ -6,3 +6,4 @@ Referenced by issue #68025, Blender crash clicking on the Materials button in th
 Referenced by issue #67466, Material button crash bug
 Referenced by issue #67183, Autosaves cause crashes on Windows 10 almost every session
 Referenced by issue #65273, Blender 2.8 Crash while connecting Shader (Eevee)
+Referenced by issue #63993, Material tab crash with Intel HD 4x00 on Windows 7/8
