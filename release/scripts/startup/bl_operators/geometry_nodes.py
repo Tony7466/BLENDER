@@ -6,7 +6,7 @@ from bpy.types import Operator
 from bpy.app.translations import pgettext_data as data_
 
 
-def build_default_empty_geometry_node_group(name, add_link):
+def build_default_empty_geometry_node_group(name):
     group = bpy.data.node_groups.new(name, 'GeometryNodeTree')
     group.inputs.new('NodeSocketGeometry', data_("Geometry"))
     group.outputs.new('NodeSocketGeometry', data_("Geometry"))
@@ -20,14 +20,13 @@ def build_default_empty_geometry_node_group(name, add_link):
     input_node.location.x = -200 - input_node.width
     output_node.location.x = 200
 
-    if add_link:
-        group.links.new(output_node.inputs[0], input_node.outputs[0])
-
     return group
 
 
 def geometry_node_group_empty_new():
-    return build_default_empty_geometry_node_group(data_("Geometry Nodes"), True)
+    group = build_default_empty_geometry_node_group(data_("Geometry Nodes"))
+    group.links.new(group.nodes["Group Input"].outputs[0], group.nodes["Group Output"].inputs[0])
+    return group
 
 
 def geometry_modifier_poll(context):
@@ -117,7 +116,7 @@ class MoveModifierToNodes(Operator):
             return {'CANCELLED'}
 
         wrapper_name = old_group.name + ".wrapper"
-        group = build_default_empty_geometry_node_group(wrapper_name, False)
+        group = build_default_empty_geometry_node_group(wrapper_name)
         group_node = group.nodes.new("GeometryNodeGroup")
         group_node.node_tree = old_group
         group_node.update()
