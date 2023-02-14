@@ -56,3 +56,4 @@ Referenced by issue #45686, freeze sculpt
 Referenced by issue #45669, Skin modifier root exploit
 Referenced by issue #45680, vertex weight modifier texture params doesn't accept driver input
 Referenced by issue #45658, linked library object loses particle settings
+Referenced by issue #45644, bpy.utils.smpte_from_frame drops frames
