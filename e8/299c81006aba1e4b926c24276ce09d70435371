@@ -87,3 +87,4 @@ Referenced by issue #49899, blender crashes when add a inverse kineatics constra
 Referenced by issue #49887, Middle Mouse button for Rotate 3D view does not work (Mouse: Logitech MX Anywhere 2)
 Referenced by issue #49874, FirePro GPU Render No Longer Working
 Referenced by issue #49877, Gizmo rotation (manipulator)
+Referenced by issue #49869, lost maps projection (cube, cilinder etc) in viewport "material view"
