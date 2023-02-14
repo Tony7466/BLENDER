@@ -51,3 +51,4 @@ Referenced by issue #44800, This .blend crashes immediately on 32bit Windows 7
 Referenced by issue #44782, Parent actuator causes blender to crash
 Referenced by issue #44784, Snapping while duplicating a clip in video editor causes a crash
 Referenced by issue #44751, ambient update bug
+Referenced by issue #44704, Blender Game Engine import error
