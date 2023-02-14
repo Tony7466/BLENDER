@@ -1,2 +1,3 @@
 Referenced by issue #67045, Crash undo/redo in the text editor
 Referenced by issue #66695, Text editor becomes out of sync in object mode
+Referenced by issue blender/blender-addons#65909, Python API calling: bpy.ops.text.cut +bpy.ops.text.paste will fail when undo.
