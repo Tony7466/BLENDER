@@ -45,3 +45,4 @@ Referenced by issue #47742, Blender cannot remember last used name and path whil
 Referenced by issue #47722, FBX export interpolation is not accurate
 Referenced by issue #47677, Text Object Outline fails to daplay
 Referenced by issue #47667, Uneven width of colors in ColorRamp with constant selected
+Referenced by issue #47635, Slowdown of texture painting
