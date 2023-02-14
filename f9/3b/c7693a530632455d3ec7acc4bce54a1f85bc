@@ -93,3 +93,4 @@ Referenced by issue #39811, Polygon and ruler tool bug
 Referenced by issue #39795, Crash when duplicate f-curve keyframe, individual origins.
 Referenced by issue #39770, circle select only on object origin
 Referenced by issue #39767, crash when click [Parent] on Mask mode in UV/Image Editor.
+Referenced by issue #39750, Bones disappearing with strange transforms
