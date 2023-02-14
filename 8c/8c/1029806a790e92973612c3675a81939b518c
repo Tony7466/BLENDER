@@ -1,0 +1,1 @@
+Referenced by issue #40059, Switching open windows by shift or ctrl-click bypasses the modifier key and registers as a simple click instead
