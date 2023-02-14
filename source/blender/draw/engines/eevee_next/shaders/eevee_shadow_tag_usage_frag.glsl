@@ -20,18 +20,18 @@ float ray_aabb(vec3 ray_origin, vec3 ray_direction, vec3 aabb_min, vec3 aabb_max
   float t_max = min_v3(max(t_mins, t_maxs));
 
   /* AABB is in the opposite direction. */
-  if (t_max < 0.0f) {
-    return -1.0f;
+  if (t_max < 0.0) {
+    return -1.0;
   }
   /* No intersection. */
   if (t_min > t_max) {
-    return -1.0f;
+    return -1.0;
   }
   /* The ray origin is inside the aabb. */
-  if (t_min < 0.0f) {
+  if (t_min < 0.0) {
     /* For regular ray casting we would return t_max here,
      * but we want to ray cast against the box volume, not just the surface. */
-    return 0.0f;
+    return 0.0;
   }
   return t_min;
 }
@@ -68,9 +68,9 @@ void main()
 #else
   outDebug.rgb = ws_near_plane + (ws_view_direction * near_box_t);
 #endif
-  outDebug.a = 1.0f;
+  outDebug.a = 1.0;
 
-  float step_size = 0.1f;
+  float step_size = 0.1;
   for (float t = near_box_t; t <= far_box_t; t += step_size) {
     /* Ensure we don't get past far_box_t. */
     t = min(t, far_box_t);
@@ -78,14 +78,14 @@ void main()
     vec3 P = ws_near_plane + (ws_view_direction * t);
     vec3 vP = vs_near_plane + (vs_view_direction * t);
     /* TODO (Miguel Pozo): Pass step size to ensure conservative enough LOD selection */
-    shadow_tag_usage(vP, P, gl_FragCoord.xy * pow(2, fb_lod));
+    shadow_tag_usage(vP, P, gl_FragCoord.xy * exp2(fb_lod));
 
     /* Ensure that step_size is as large as possible,
      * but (hopefully) not larger than the smallest possible page size. */
     step_size = pixel_world_radius * SHADOW_PAGE_RES * 0.5;
     bool is_persp = (ProjectionMatrix[3][3] == 0.0);
     if (is_persp) {
-      step_size *= max(0.01f, t);
+      step_size *= max(0.01, t);
     }
   }
 }

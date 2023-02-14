@@ -1100,7 +1100,7 @@ void ShadowModule::set_view(View &view)
   tilemap_projection_ratio_ = tilemap_pixel_radius() / pixel_world_radius_;
 
   usage_tag_fb_resolution_ = math::divide_ceil(int2(target_size),
-                                               int2(std::pow(2, usage_tag_fb_lod_)));
+                                               int2(std::exp2(usage_tag_fb_lod_)));
   usage_tag_debug_tx_.ensure_2d(GPU_RGB16F, usage_tag_fb_resolution_);
   usage_tag_debug_tx_.clear(float4(0));
   usage_tag_fb.ensure(GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(usage_tag_debug_tx_));
@@ -1156,7 +1156,7 @@ void ShadowModule::set_view(View &view)
 
 void ShadowModule::debug_draw(View &view, GPUFrameBuffer *view_fb)
 {
-  GPU_texture_copy(inst_.render_buffers.combined_tx, usage_tag_debug_tx_);
+  // GPU_texture_copy(inst_.render_buffers.combined_tx, usage_tag_debug_tx_);
 
   if (!ELEM(inst_.debug_mode,
             eDebugMode::DEBUG_SHADOW_TILEMAPS,

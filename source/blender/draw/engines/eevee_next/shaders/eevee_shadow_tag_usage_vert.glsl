@@ -14,16 +14,17 @@ void inflate_bounds(vec3 ls_center, inout vec3 P, inout vec3 lP)
 {
   vec3 vP = point_world_to_view(P);
 
-  float inflate_scale = pixel_world_radius * pow(2, fb_lod);
+  float inflate_scale = pixel_world_radius * exp2(fb_lod);
   bool is_persp = (ProjectionMatrix[3][3] == 0.0);
   if (is_persp) {
     inflate_scale *= -vP.z;
   }
-  inflate_scale *= 0.5f; /* Half pixel. */
+  inflate_scale *= 0.5; /* Half pixel. */
 
   vec3 vs_inflate_vector = normal_object_to_view(sign(lP - ls_center));
   vs_inflate_vector.z = 0;
-  vs_inflate_vector /= max_v2(abs(vs_inflate_vector));
+  /* Scale the vector so the largest axis length is 1 */
+  vs_inflate_vector /= max_v2(abs(vs_inflate_vector.xy));
   vs_inflate_vector *= inflate_scale;
 
   vP += vs_inflate_vector;
@@ -48,7 +49,7 @@ void main()
   vec3 ws_aabb_max = bounds.bounding_corners[0].xyz + bounds.bounding_corners[1].xyz +
                      bounds.bounding_corners[2].xyz + bounds.bounding_corners[3].xyz;
 
-  vec3 ls_center = point_world_to_object((ws_aabb_min + ws_aabb_max) / 2.0f);
+  vec3 ls_center = point_world_to_object((ws_aabb_min + ws_aabb_max) / 2.0);
 
   vec3 ls_conservative_min = vec3(FLT_MAX);
   vec3 ls_conservative_max = vec3(-FLT_MAX);
