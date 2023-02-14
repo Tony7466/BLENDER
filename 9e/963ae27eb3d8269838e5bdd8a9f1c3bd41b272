@@ -32,3 +32,4 @@ Referenced by issue #42768, Crash on 2013 Macbook Air 13 inch running OS X 10.10
 Referenced by issue #42756, texture paint crash
 Referenced by issue #42744, Sapling:Add Tree
 Referenced by issue #42745, Cross Effect Strip
+Referenced by issue #42749, Blender crashes on high poly count while rendering with cycles (even in viewport)
