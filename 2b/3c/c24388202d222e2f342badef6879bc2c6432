@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#50920, Crash when passing geom and context to bmesh.ops.delete when all is selected
