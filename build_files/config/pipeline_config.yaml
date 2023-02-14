@@ -7,13 +7,13 @@ update-code:
         submodules:
         -   branch: main
             commit_id: HEAD
-            path: release/scripts/addons
+            path: scripts/addons
         -   branch: main
             commit_id: HEAD
-            path: release/scripts/addons_contrib
+            path: scripts/addons_contrib
         -   branch: main
             commit_id: HEAD
-            path: release/datafiles/locale
+            path: datafiles/locale
         -   branch: main
             commit_id: HEAD
             path: source/tools

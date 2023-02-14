@@ -49,3 +49,10 @@ waveletNoiseTile.bin
 
 # testing environment
 /Testing
+
+# Translations.
+/locale/user-config.py
+
+# External repositories.
+/scripts/addons
+/scripts/addons-contrib

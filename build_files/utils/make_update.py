@@ -276,7 +276,7 @@ def external_script_copy_old_submodule_over(args: argparse.Namespace, directory_
     (external_dir / ".git").unlink()
 
     bare_repo_relative_dir = Path(".git") / "modules" / "release" / "scripts" / directory_name
-    print(f"Copying release/scripts/{directory_name} to scripts/{directory_name} ...")
+    print(f"Copying {bare_repo_relative_dir} to scripts/{directory_name}/.git ...")
     bare_repo_dir = blender_git_root / bare_repo_relative_dir
     shutil.copytree(bare_repo_dir, external_dir / ".git")
 
