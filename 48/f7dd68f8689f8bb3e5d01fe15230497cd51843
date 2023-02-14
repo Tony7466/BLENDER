@@ -31,3 +31,4 @@ Referenced by issue #46684, As of 2.76 Cycles matcap materials no longer work
 Referenced by issue #46668, CUDA out of Memory / Invalid value in ptr
 Referenced by issue #46670, Volume Emission doesn't render when background is transparent
 Referenced by issue #46657, VSE: Strip length jumps to a negative number
+Referenced by issue #46651, select linked (L) crashes Blender when used on isolated edges, marked as seams
