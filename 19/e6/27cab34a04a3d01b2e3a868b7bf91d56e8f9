@@ -22,3 +22,4 @@ Referenced by issue #40166, Dupligroup made out of a linked file object do not r
 Referenced by issue #40168, A big crash
 Referenced by issue #40052, Grid Particles Crash
 Referenced by issue #40029, Apply hook location returns it to 0,0,0
+Referenced by issue #39872, COLLADA Export Doesn't Support Bezier Interpolation
