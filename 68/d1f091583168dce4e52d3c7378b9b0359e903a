@@ -1,2 +1,3 @@
 Referenced by issue #69481, Alpha blend mode settings missing in look dev when using cycles
 Referenced by issue #68312, LookDev & Eevee Preview
+Referenced by issue blender/blender-addons#69579, External Render Engines and storing 3D View dependent data
