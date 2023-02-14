@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#46002, mathutils.geometry.intersect_line_line_2d doesn't operate on lines, but on line segments
