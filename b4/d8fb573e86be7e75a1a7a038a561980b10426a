@@ -4,3 +4,4 @@ Referenced by issue #44293, Crash on group re-name
 Referenced by issue #44134, Weight paint colourization scheme not being displayed in  "Weight Paint" mode
 Referenced by issue #44078, Little to no pressure sensitivity on tablet while drawing vertically
 Referenced by issue #43931, bevel only vertex doesn't subdivide
+Referenced by issue #43846, Compositor memory allocation bug
