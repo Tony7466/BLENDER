@@ -21,3 +21,4 @@ Referenced by issue #49607, Missing passes in .exr when imported
 Referenced by issue #49576, Cycles hangs with normal map node
 Referenced by issue #49468, Crash when trying to make a mask
 Referenced by issue #49449, Neither world nor local position is displayed on panel
+Referenced by issue #49458, FBX and Alembic export does not support instances anymore
