@@ -94,3 +94,4 @@ Referenced by issue #40981, Matcap with Clipping Border
 Referenced by issue #40982, particle emitter disappear in viewport with "only render mode"
 Referenced by issue #40986, compositor: crash on using the viewer node inside of group nodes
 Referenced by issue #40946, Cycles High Resolution Render Crash
+Referenced by issue #40951, switching camera don't  work in viewport
