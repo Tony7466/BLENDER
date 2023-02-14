@@ -9,7 +9,7 @@
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(common_intersect_lib.glsl)
 
-/* Inflate bounds by half a pixel as a conservative rasterization alternative */
+/* Inflate bounds by 1 pixel to ensure the tilemaps needed by all LOD0 pixels get tagged */
 void inflate_bounds(vec3 ls_center, inout vec3 P, inout vec3 lP)
 {
   vec3 vP = point_world_to_view(P);
@@ -19,7 +19,6 @@ void inflate_bounds(vec3 ls_center, inout vec3 P, inout vec3 lP)
   if (is_persp) {
     inflate_scale *= -vP.z;
   }
-  inflate_scale *= 0.5; /* Half pixel. */
 
   vec3 vs_inflate_vector = normal_object_to_view(sign(lP - ls_center));
   vs_inflate_vector.z = 0;
