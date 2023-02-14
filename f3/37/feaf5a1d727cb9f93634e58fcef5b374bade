@@ -95,3 +95,4 @@ Referenced by issue #47085, World background window-projected image green channe
 Referenced by issue #47068, Weird deformations on linked meshes modified by a curve
 Referenced by issue #47050, Changing operator settings of first inserted object removes linked background images added via drag and drop
 Referenced by issue #47055, generated navmesh has manifolds/overlapping triangles
+Referenced by issue #47035, NLA - Quaternion blending in "Add" mode should use quaternion math instead
