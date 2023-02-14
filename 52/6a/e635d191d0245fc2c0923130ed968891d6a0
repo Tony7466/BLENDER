@@ -1,1 +1,2 @@
 Referenced by issue #41629, Won't open blend files with non-Latin charasters in the name
+Referenced by issue #34851, "UnitSettings.scale_length" not beeing calculated the same way for all objects *AFTER 2.67*
