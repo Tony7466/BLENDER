@@ -35,3 +35,4 @@ Referenced by issue #46651, select linked (L) crashes Blender when used on isola
 Referenced by issue #46654, Blender Game Engine Physics : Convex Hull and Triangle Mesh Collision Bounds error.
 Referenced by issue #46636, Saving image from texture paint destroys the resolution
 Referenced by issue #46628, Strips overlapping in VSE
+Referenced by issue #46632, Play animation not working when cursor over F-curves n panel
