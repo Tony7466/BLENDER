@@ -85,3 +85,4 @@ Referenced by issue #44464, Viewport mipmaps no longer toggle off
 Referenced by issue #44443, Invalid selection logic
 Referenced by issue #44455, program Crashes when i remove the bursh
 Referenced by issue #44427, Value input issue with unit scale factors != 1 (Metric / Imperial)
+Referenced by issue #44420, segfault on startup
