@@ -49,3 +49,4 @@ Referenced by issue #39595, Blender 2.7 startup crash when pcie audio card is in
 Referenced by issue #39602, BGE crashes when "fliping trough" physics for object with actuaors
 Referenced by issue #39604, using SetParent disables timeOffset
 Referenced by issue #39582, Blender executable not running in Linux Mint 13
+Referenced by issue #39584, Effects strips render black
