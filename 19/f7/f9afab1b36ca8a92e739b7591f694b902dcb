@@ -15,3 +15,4 @@ Referenced by issue #39111, 2.70 RC1 Windows 64, Boolean stress test.
 Referenced by issue #39094, jittery display when using mouse drag with Continuous Drag ON
 Referenced by issue #39064, Discoloration of UV Texture at seams
 Referenced by issue #39052, Fonts fall apart over AirPlay
+Referenced by issue #39026, 2.7 BGE: No collisions detected with parented rigid body object
