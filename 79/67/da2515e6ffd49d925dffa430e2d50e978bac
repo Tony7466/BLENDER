@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#46263, bpy api - assigning to object.matrix_basis with AXIS_ANGLE rotation mode does not work correctly
