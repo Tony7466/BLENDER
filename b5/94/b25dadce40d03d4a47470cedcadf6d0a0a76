@@ -9,3 +9,4 @@ Referenced by issue #47648, Emission material not working.
 Referenced by issue #47649, Point light not working properly inside a volume while rendering with GPU
 Referenced by issue #47655, OpenVDB cache files have extra "_00" at end.
 Referenced by issue #47626, Blender 2.77 RC  OPEN VDB import Failure
+Referenced by issue #47610, Texture node in compositing nodes does not update
