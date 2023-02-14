@@ -86,3 +86,4 @@ Referenced by issue #41037, Dynamic texture refresh cpu performance problem
 Referenced by issue #41043, Problem with rotation: Shift + Z don't lock z axis
 Referenced by issue #41046, BGE Compound bug
 Referenced by issue #41013, OSL and Crash
+Referenced by issue #41014, artifact with texture and weird error message when trying to remove doubles.
