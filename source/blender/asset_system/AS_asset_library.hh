@@ -61,7 +61,7 @@ class AssetLibrary {
 
   /** If this is a custom asset library (registered in the Preferences), this gives access to its
    * definition/settings. */
-  bUserAssetLibrary *custom_library_definition_;
+  bUserAssetLibrary *custom_library_definition_ = nullptr;
 
   bCallbackFuncStore on_save_callback_store_{};
 
