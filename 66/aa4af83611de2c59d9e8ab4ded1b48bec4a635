@@ -1,2 +1,3 @@
 Referenced by commit 579631819f0, Fix T55503: File browser filter not working correctly.
 Referenced by issue #55503, File browser filter not working correctly
+Referenced by issue blender/blender-addons#47252, ImportHelper class gives unicode errors when using a long string for filter_glob (file filters)
