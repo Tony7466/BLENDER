@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#57366, Python mesh.from_pydata() without faces won't show mesh until in/out edit mode
