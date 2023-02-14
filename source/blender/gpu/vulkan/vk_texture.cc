@@ -256,6 +256,30 @@ bool VKTexture::is_allocated()
   return vk_image_ != VK_NULL_HANDLE && allocation_ != VK_NULL_HANDLE;
 }
 
+static VkImageType to_vk_image_type(const eGPUTextureType type)
+{
+  switch (type) {
+    case GPU_TEXTURE_1D:
+    case GPU_TEXTURE_BUFFER:
+    case GPU_TEXTURE_1D_ARRAY:
+      return VK_IMAGE_TYPE_1D;
+    case GPU_TEXTURE_2D:
+    case GPU_TEXTURE_2D_ARRAY:
+      return VK_IMAGE_TYPE_2D;
+    case GPU_TEXTURE_3D:
+    case GPU_TEXTURE_CUBE:
+    case GPU_TEXTURE_CUBE_ARRAY:
+      return VK_IMAGE_TYPE_3D;
+
+    case GPU_TEXTURE_ARRAY:
+      /* GPU_TEXTURE_ARRAY should always be used together with 1D, 2D, or CUBE*/
+      BLI_assert_unreachable();
+      break;
+  }
+
+  return VK_IMAGE_TYPE_1D;
+}
+
 static VkImageViewType to_vk_image_view_type(const eGPUTextureType type)
 {
   switch (type) {
@@ -299,13 +323,16 @@ bool VKTexture::allocate()
 {
   BLI_assert(!is_allocated());
 
+  int extent[3] = {1, 1, 1};
+  mip_size_get(0, extent);
+
   VKContext &context = *VKContext::get();
   VkImageCreateInfo image_info = {};
   image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-  image_info.imageType = VK_IMAGE_TYPE_1D;
-  image_info.extent.width = width_get();
-  image_info.extent.height = 1;
-  image_info.extent.depth = 1;
+  image_info.imageType = to_vk_image_type(type_);
+  image_info.extent.width = extent[0];
+  image_info.extent.height = extent[1];
+  image_info.extent.depth = extent[2];
   image_info.mipLevels = 1;
   image_info.arrayLayers = 1;
   image_info.format = to_vk_format(format_);
