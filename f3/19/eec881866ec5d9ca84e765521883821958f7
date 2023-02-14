@@ -1,3 +1,4 @@
 Referenced by issue #78931, "Apply All" command button on Modifier Properties Tab not working
 Referenced by issue #74763, Mantaflow: Animating smoke color affects existing smoke
 Referenced by issue #74078,  Mantaflow: Flame not working correctly when animating a Fuel value.
+Referenced by issue blender/blender-addons#78655, Import planes as image not clickable giving me an arror
