@@ -321,22 +321,4 @@ TEST(math_rotation, AxisAngleConstructors)
   EXPECT_NEAR(d.angle(), M_PI_2, 1e-4);
 }
 
-TEST(math_rotation, TypeConversion)
-{
-  EulerXYZ euler(0, 0, M_PI_2);
-  Quaternion quat(M_SQRT1_2, 0.0f, 0.0f, M_SQRT1_2);
-  AxisAngle axis_angle({0.0f, 0.0f, 2.0f}, M_PI_2);
-
-  EXPECT_V4_NEAR(float4(Quaternion(euler)), float4(quat), 1e-4);
-  EXPECT_V3_NEAR(AxisAngle(euler).axis(), axis_angle.axis(), 1e-4);
-  EXPECT_NEAR(AxisAngle(euler).angle(), axis_angle.angle(), 1e-4);
-
-  EXPECT_V3_NEAR(float3(EulerXYZ(quat)), float3(euler), 1e-4);
-  EXPECT_V3_NEAR(AxisAngle(quat).axis(), axis_angle.axis(), 1e-4);
-  EXPECT_NEAR(AxisAngle(quat).angle(), axis_angle.angle(), 1e-4);
-
-  EXPECT_V3_NEAR(float3(EulerXYZ(axis_angle)), float3(euler), 1e-4);
-  EXPECT_V4_NEAR(float4(Quaternion(axis_angle)), float4(quat), 1e-4);
-}
-
 }  // namespace blender::math::tests

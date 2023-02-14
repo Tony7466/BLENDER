@@ -493,6 +493,7 @@ if(WITH_GTESTS)
     tests/BLI_math_matrix_test.cc
     tests/BLI_math_matrix_types_test.cc
     tests/BLI_math_rotation_test.cc
+    tests/BLI_math_rotation_types_test.cc
     tests/BLI_math_solvers_test.cc
     tests/BLI_math_time_test.cc
     tests/BLI_math_vector_test.cc

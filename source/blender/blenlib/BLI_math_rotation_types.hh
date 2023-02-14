@@ -11,6 +11,16 @@
 
 namespace blender::math {
 
+template<typename T> static inline T deg_to_rad(T degrees)
+{
+  return degrees * T(M_PI / 180.0);
+}
+
+template<typename T> static inline T rad_to_deg(T radians)
+{
+  return radians * T(180.0 / M_PI);
+}
+
 namespace detail {
 
 /**
@@ -94,18 +104,19 @@ template<typename T> struct EulerXYZ {
 };
 
 template<typename T = float> struct Quaternion {
-  T x, y, z, w;
+  T w, x, y, z;
 
   Quaternion() = default;
 
-  Quaternion(const T &x, const T &y, const T &z, const T &w)
+  Quaternion(const T &w, const T &x, const T &y, const T &z)
   {
+    this->w = w;
     this->x = x;
     this->y = y;
     this->z = z;
-    this->w = w;
   }
 
+  /** \note: W component is supposed to be first. */
   Quaternion(const VecBase<T, 4> &vec) : Quaternion(UNPACK4(vec)){};
 
   /** Static functions. */
@@ -119,7 +130,7 @@ template<typename T = float> struct Quaternion {
 
   explicit operator VecBase<T, 4>() const
   {
-    return {this->x, this->y, this->z, this->w};
+    return {this->w, this->x, this->y, this->z};
   }
 
   explicit operator EulerXYZ<T>() const;
@@ -127,12 +138,6 @@ template<typename T = float> struct Quaternion {
   explicit operator AxisAngle<T>() const;
 
   /** Operators. */
-
-  const T &operator[](int i) const
-  {
-    BLI_assert(i >= 0 && i < 4);
-    return (&this->x)[i];
-  }
 
   friend std::ostream &operator<<(std::ostream &stream, const Quaternion &rot)
   {

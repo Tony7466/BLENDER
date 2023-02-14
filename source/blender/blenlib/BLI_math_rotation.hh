@@ -160,10 +160,10 @@ template<typename T> EulerXYZ<T>::operator Quaternion<T>() const
   const T ss = si * sh;
 
   Quaternion<T> quat;
-  quat.x = cj * cc + sj * ss;
-  quat.y = cj * sc - sj * cs;
-  quat.z = cj * ss + sj * cc;
-  quat.w = cj * cs - sj * sc;
+  quat.w = cj * cc + sj * ss;
+  quat.x = cj * sc - sj * cs;
+  quat.y = cj * ss + sj * cc;
+  quat.z = cj * cs - sj * sc;
   return quat;
 }
 
@@ -173,7 +173,7 @@ template<typename T> Quaternion<T>::operator AxisAngle<T>() const
   BLI_ASSERT_UNIT_QUATERNION(quat)
 
   /* Calculate angle/2, and sin(angle/2). */
-  T ha = math::acos(quat.x);
+  T ha = math::acos(quat.w);
   T si = math::sin(ha);
 
   /* From half-angle to angle. */
@@ -183,7 +183,7 @@ template<typename T> Quaternion<T>::operator AxisAngle<T>() const
     si = 1.0f;
   }
 
-  VecBase<T, 3> axis = VecBase<T, 3>(quat.y, quat.z, quat.w) / si;
+  VecBase<T, 3> axis = VecBase<T, 3>(quat.x, quat.y, quat.z) / si;
   if (math::is_zero(axis)) {
     axis[1] = 1.0f;
   }
@@ -203,10 +203,10 @@ template<typename T> AxisAngle<T>::operator Quaternion<T>() const
   }
 
   Quaternion<T> quat;
-  quat.x = cosine;
-  quat.y = axis_.x * sine;
-  quat.z = axis_.y * sine;
-  quat.w = axis_.z * sine;
+  quat.w = cosine;
+  quat.x = axis_.x * sine;
+  quat.y = axis_.y * sine;
+  quat.z = axis_.z * sine;
   return quat;
 }
 

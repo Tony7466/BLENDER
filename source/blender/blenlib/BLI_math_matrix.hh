@@ -710,14 +710,14 @@ template<typename T> detail::Quaternion<T> normalized_to_quat_fast(const MatBase
         /* Ensure W is non-negative for a canonical result. */
         s = -s;
       }
-      q.y = 0.25f * s;
+      q.x = 0.25f * s;
       s = 1.0f / s;
-      q.x = (mat[1][2] - mat[2][1]) * s;
-      q.z = (mat[0][1] + mat[1][0]) * s;
-      q.w = (mat[2][0] + mat[0][2]) * s;
-      if (UNLIKELY((trace == 1.0f) && (q.x == 0.0f && q.z == 0.0f && q.w == 0.0f))) {
+      q.w = (mat[1][2] - mat[2][1]) * s;
+      q.y = (mat[0][1] + mat[1][0]) * s;
+      q.z = (mat[2][0] + mat[0][2]) * s;
+      if (UNLIKELY((trace == 1.0f) && (q.w == 0.0f && q.y == 0.0f && q.z == 0.0f))) {
         /* Avoids the need to normalize the degenerate case. */
-        q.y = 1.0f;
+        q.x = 1.0f;
       }
     }
     else {
@@ -727,14 +727,14 @@ template<typename T> detail::Quaternion<T> normalized_to_quat_fast(const MatBase
         /* Ensure W is non-negative for a canonical result. */
         s = -s;
       }
-      q.z = 0.25f * s;
+      q.y = 0.25f * s;
       s = 1.0f / s;
-      q.x = (mat[2][0] - mat[0][2]) * s;
-      q.y = (mat[0][1] + mat[1][0]) * s;
-      q.w = (mat[1][2] + mat[2][1]) * s;
-      if (UNLIKELY((trace == 1.0f) && (q.x == 0.0f && q.y == 0.0f && q.w == 0.0f))) {
+      q.w = (mat[2][0] - mat[0][2]) * s;
+      q.x = (mat[0][1] + mat[1][0]) * s;
+      q.z = (mat[1][2] + mat[2][1]) * s;
+      if (UNLIKELY((trace == 1.0f) && (q.w == 0.0f && q.x == 0.0f && q.z == 0.0f))) {
         /* Avoids the need to normalize the degenerate case. */
-        q.z = 1.0f;
+        q.y = 1.0f;
       }
     }
   }
@@ -746,14 +746,14 @@ template<typename T> detail::Quaternion<T> normalized_to_quat_fast(const MatBase
         /* Ensure W is non-negative for a canonical result. */
         s = -s;
       }
-      q.w = 0.25f * s;
+      q.z = 0.25f * s;
       s = 1.0f / s;
-      q.x = (mat[0][1] - mat[1][0]) * s;
-      q.y = (mat[2][0] + mat[0][2]) * s;
-      q.z = (mat[1][2] + mat[2][1]) * s;
-      if (UNLIKELY((trace == 1.0f) && (q.x == 0.0f && q.y == 0.0f && q.z == 0.0f))) {
+      q.w = (mat[0][1] - mat[1][0]) * s;
+      q.x = (mat[2][0] + mat[0][2]) * s;
+      q.y = (mat[1][2] + mat[2][1]) * s;
+      if (UNLIKELY((trace == 1.0f) && (q.w == 0.0f && q.x == 0.0f && q.y == 0.0f))) {
         /* Avoids the need to normalize the degenerate case. */
-        q.w = 1.0f;
+        q.z = 1.0f;
       }
     }
     else {
@@ -762,19 +762,19 @@ template<typename T> detail::Quaternion<T> normalized_to_quat_fast(const MatBase
        */
       const T trace = 1.0f + mat[0][0] + mat[1][1] + mat[2][2];
       T s = 2.0f * math::sqrt(trace);
-      q.x = 0.25f * s;
+      q.w = 0.25f * s;
       s = 1.0f / s;
-      q.y = (mat[1][2] - mat[2][1]) * s;
-      q.z = (mat[2][0] - mat[0][2]) * s;
-      q.w = (mat[0][1] - mat[1][0]) * s;
-      if (UNLIKELY((trace == 1.0f) && (q.y == 0.0f && q.z == 0.0f && q.w == 0.0f))) {
+      q.x = (mat[1][2] - mat[2][1]) * s;
+      q.y = (mat[2][0] - mat[0][2]) * s;
+      q.z = (mat[0][1] - mat[1][0]) * s;
+      if (UNLIKELY((trace == 1.0f) && (q.x == 0.0f && q.y == 0.0f && q.z == 0.0f))) {
         /* Avoids the need to normalize the degenerate case. */
-        q.x = 1.0f;
+        q.w = 1.0f;
       }
     }
   }
 
-  BLI_assert(!(q.x < 0.0f));
+  BLI_assert(!(q.w < 0.0f));
   BLI_assert(math::is_unit_scale(VecBase<T, 4>(q)));
   return q;
 }
@@ -832,10 +832,10 @@ MatBase<T, NumCol, NumRow> from_rotation(const Quaternion<T> &rotation)
 {
   using MatT = MatBase<T, NumCol, NumRow>;
   using DoublePrecision = typename TypeTraits<T>::DoublePrecision;
-  DoublePrecision q0 = M_SQRT2 * DoublePrecision(rotation.x);
-  DoublePrecision q1 = M_SQRT2 * DoublePrecision(rotation.y);
-  DoublePrecision q2 = M_SQRT2 * DoublePrecision(rotation.z);
-  DoublePrecision q3 = M_SQRT2 * DoublePrecision(rotation.w);
+  DoublePrecision q0 = M_SQRT2 * DoublePrecision(rotation.w);
+  DoublePrecision q1 = M_SQRT2 * DoublePrecision(rotation.x);
+  DoublePrecision q2 = M_SQRT2 * DoublePrecision(rotation.y);
+  DoublePrecision q3 = M_SQRT2 * DoublePrecision(rotation.z);
 
   DoublePrecision qda = q0 * q1;
   DoublePrecision qdb = q0 * q2;
