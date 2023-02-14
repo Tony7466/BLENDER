@@ -1,1 +1,2 @@
 Referenced by issue #66946, NLA strip unexpectedly auto-switching from Hold to Hold Forward
+Referenced by issue #60498, AutoIK doesn't start correctly (requires double running)
