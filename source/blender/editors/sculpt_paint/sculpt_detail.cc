@@ -32,7 +32,7 @@
 #include "ED_screen.h"
 #include "ED_space_api.h"
 #include "ED_view3d.h"
-#include "sculpt_intern.h"
+#include "sculpt_intern.hh"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -495,7 +495,7 @@ static void dyntopo_detail_size_parallel_lines_draw(uint pos3d,
   rotate_v2_v2fl(line_disp, spacing_disp, DEG2RAD(angle));
   mul_v3_fl(spacing_disp, total_len / tot_lines_fl);
 
-  immBegin(GPU_PRIM_LINES, (uint)tot_lines * 2);
+  immBegin(GPU_PRIM_LINES, uint(tot_lines) * 2);
   for (int i = 0; i < tot_lines; i++) {
     float line_length;
     if (flip) {
