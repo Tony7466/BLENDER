@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#38104, mathutils.cell_vector() always returns (0,0,0)
