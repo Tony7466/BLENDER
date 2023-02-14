@@ -84,3 +84,4 @@ Referenced by issue #39915, Cycles - Change view in viewport fail
 Referenced by issue #39893, ID mask does not match the rendered samples
 Referenced by issue #39873, Blender 2.7x OSL crash
 Referenced by issue #39849, It's possible to create blank node sockets in node groups by connecting the group input directly to an output
+Referenced by issue #39850, Graph editor, mirror over first selected marker.
