@@ -53,3 +53,4 @@ Referenced by issue #46517, Smoke Cycle - forgets settings when moving between D
 Referenced by issue #46478, 3D Stereo Render Gui Bug
 Referenced by issue #46482, Crash when undoing
 Referenced by issue #46483, Sliding vertex/edges makes vertices pinned in UV editor
+Referenced by issue #46467, Clean Keyframes removes the channels.
