@@ -24,3 +24,4 @@ Referenced by issue #45311, Bug Physics Controller [ Game Engine ]
 Referenced by issue #45314, UV unwrapping no longer does a correct "project from view" on subsurfed obects.
 Referenced by issue #45318, BGE_character physics type_CRASH_blender_2.75
 Referenced by issue #45284, selection of face and edges selecting in unpredictable, random locations
+Referenced by issue #45279, "Set Stereo 3D" doesn't work properly
