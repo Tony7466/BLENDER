@@ -41,3 +41,4 @@ Referenced by issue #47942, Sequence Editor: Crash after switching imported png 
 Referenced by issue #47917, Edit Mode Boolean Fails completely in some situations
 Referenced by issue #47918, Array and Curve modifiers cause graphic card to crash
 Referenced by issue #47920, cycles video textures do not update in textured viewport with alt + a playback
+Referenced by issue #47921, Blender crashes when trying to select an object
