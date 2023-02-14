@@ -48,3 +48,4 @@ Referenced by issue #49059, CUDA error: Launch failed in cuCtxSynchronize()
 Referenced by issue #49064, Crash on Graphics Driver issue, macOS with Intel HD Graphics 515 GPU
 Referenced by issue #49019, Hair particle system and OpenCL issue on AMD 7870 (possible driver related)
 Referenced by issue #49005, Boolean operations, parenting, interface and documentation issues.
+Referenced by issue #49007, Image Empties Crashing Blender
