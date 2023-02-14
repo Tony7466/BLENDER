@@ -1,2 +1,3 @@
 Referenced by issue #50925, AO bounce simplification diffences between GPU and CPU
 Referenced by issue #50927, intersect (knife) sometime crashes blender.
+Referenced by issue #50888, Master Broken, Cuda kernel compat errors compile, OpenCL GPU just sits there on one tile never rendering anything.
