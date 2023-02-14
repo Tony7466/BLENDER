@@ -8,3 +8,4 @@ Referenced by issue #49353, Noise texture incorrectly displayed in the viewport 
 Referenced by issue #49336, The Outline Editor problem for the linked object
 Referenced by issue #49322, Export UV Layout not working
 Referenced by issue #49304, Incorrect Custom Float Property Value Readout
+Referenced by issue #49300, Displacement fail with image texture
