@@ -84,3 +84,4 @@ Referenced by issue #41052, Transparent Shadows using Cycles may cause shadows i
 Referenced by issue #41053, Unity Import Bug
 Referenced by issue #41037, Dynamic texture refresh cpu performance problem
 Referenced by issue #41043, Problem with rotation: Shift + Z don't lock z axis
+Referenced by issue #41046, BGE Compound bug
