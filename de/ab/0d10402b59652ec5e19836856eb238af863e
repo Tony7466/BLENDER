@@ -1,1 +1,2 @@
 Referenced by issue #38381, Python API: Modal Operator passing through all events swallows certain key strokes
+Referenced by issue blender/blender-addons#38184, Keyboard input in python console is dropping while running modal timer operator
