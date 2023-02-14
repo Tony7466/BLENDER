@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#55991, When switching scenes using "-S" argument in command line, scripts called by "--python-text" do not get correct scene context
