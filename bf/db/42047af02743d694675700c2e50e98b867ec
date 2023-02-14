@@ -1,1 +1,2 @@
 Referenced by issue #46536, Viewport: Selecting many objects causes constant CPU usage
+Referenced by issue #46520, mathutils.bvhtree crashes with distance input
