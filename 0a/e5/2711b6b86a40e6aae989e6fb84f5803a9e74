@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#67857, Segmentation fault on assigning None to the data of an empty object using python.
