@@ -73,3 +73,4 @@ Referenced by issue #51249, Snap to any mesh element in NURBS surface editing do
 Referenced by issue #51227, Blender v2.78c Weight Paint fails when Mirror Modifier is active on Mesh
 Referenced by issue #51174, "Cycles Hair Rendering" panel has disappeared. Where are "ribbons" and "triangle" shapes of the particle system "hair"?
 Referenced by issue #51159, Brightness/Lightness changes (lowers) for the whole scene when doing some unrelated activity
+Referenced by issue #51153, VSE Interlaced Video FPS not being honored
