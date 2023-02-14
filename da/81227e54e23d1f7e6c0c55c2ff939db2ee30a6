@@ -4,3 +4,4 @@ Referenced by issue #47557, Several issues with constraints in a negative scaled
 Referenced by issue #47559, Crash when scrubbing in time on a OpenVDB Smoke
 Referenced by issue #47510, GPU Smoke crashes NVIDIA Driver
 Referenced by issue #47506, Crash when right click (selection) - intel driver
+Referenced by issue #47507, Blender crashes when OpenSubdiv is enabled upon deselect+reselect of subdivided object
