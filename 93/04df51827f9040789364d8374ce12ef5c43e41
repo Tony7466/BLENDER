@@ -1,1 +1,2 @@
 Referenced by issue #51072, bmesh.types.Bmesh.faces.sort() crashes blender on windows only
+Referenced by issue blender/blender-addons#45939, bm.*.sort() leads to strange bytes object and crashes occasionally
