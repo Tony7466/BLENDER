@@ -1,1 +1,2 @@
 Referenced by issue blender/blender-addons#75488, Crash after calling to_mesh_clear
+Referenced by issue blender/blender-addons#75371, calling evaluated_depsgraph_get()  while active object in EDIT mode can crash Blender
