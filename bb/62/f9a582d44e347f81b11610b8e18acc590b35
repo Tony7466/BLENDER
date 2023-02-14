@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#38778, Custom Properties Edit popup clears bpy.types properties if value is set to different type (string / int / float / list)
