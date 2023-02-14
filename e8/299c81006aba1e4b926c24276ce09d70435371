@@ -71,3 +71,4 @@ Referenced by issue #50157, IK Disallow movement failure when add pole target
 Referenced by issue #50161, Crash when loading huge OpenEXR files
 Referenced by issue #50136, Blender crashes as soon as I open the file
 Referenced by issue #50115, sequencer render to stereoscopic video file memory leak
+Referenced by issue #50117, Hard crash when adding texture input node to compositor.
