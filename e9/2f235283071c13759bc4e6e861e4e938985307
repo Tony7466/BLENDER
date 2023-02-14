@@ -72,3 +72,4 @@ Referenced by issue #51252, Menu flickering under wayland unless "Window Draw Me
 Referenced by issue #51249, Snap to any mesh element in NURBS surface editing does not work properly
 Referenced by issue #51227, Blender v2.78c Weight Paint fails when Mirror Modifier is active on Mesh
 Referenced by issue #51174, "Cycles Hair Rendering" panel has disappeared. Where are "ribbons" and "triangle" shapes of the particle system "hair"?
+Referenced by issue #51159, Brightness/Lightness changes (lowers) for the whole scene when doing some unrelated activity
