@@ -7,3 +7,4 @@ Referenced by issue #55068, Wireframe bones with custom shapes not working in ob
 Referenced by issue #55069, 3D Manipulator not refreshing when switching pivot
 Referenced by issue #55070, Bones relationship lines are offsetted when armature origin is not 0,0,0.
 Referenced by issue #55071, Toolbar: Brush preview not working
+Referenced by issue #55073, Copy-on-write crash when painting after toggling edit mesh mode
