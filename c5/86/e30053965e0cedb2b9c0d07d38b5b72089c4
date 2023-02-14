@@ -17,3 +17,4 @@ Referenced by issue #46179, Volumetric light in cycles render doesn't work with 
 Referenced by issue #46157, Using arrow keys to navigate in file browser does not scroll
 Referenced by issue #46158, opening user preferences ... crashes blender
 Referenced by issue #46163, NLA properties with drivers aren't displayed as having drivers
+Referenced by issue #46151, New dependency graph Spline IK with curve control dependency cycles.
