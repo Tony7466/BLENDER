@@ -23,3 +23,4 @@ Referenced by issue #49962, Switch to Camera Perspective Misaligned
 Referenced by issue #49935, Mesh deform modifier binding took forever
 Referenced by issue #49941, UV/Image editor unloads image when modifying a new mesh's parameters
 Referenced by issue #49834, 3D drawing does not update after parenting objects
+Referenced by issue #49839, Importing Images as Planes only shows part of the image
