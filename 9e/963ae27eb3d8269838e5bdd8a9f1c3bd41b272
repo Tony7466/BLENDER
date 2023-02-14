@@ -36,3 +36,4 @@ Referenced by issue #42749, Blender crashes on high poly count while rendering w
 Referenced by issue #42754, UI Bug with Full Window mode
 Referenced by issue #42740, result of pressing CTRL+Z while the subdivision modifier over the cube object
 Referenced by issue #42741, VSE Gaussian Blur on 2 axes Full Load CPU
+Referenced by issue #42712, Baking an object's texture is effected by the 'Exclude' option for the first render layer in the Render Layers menu.
