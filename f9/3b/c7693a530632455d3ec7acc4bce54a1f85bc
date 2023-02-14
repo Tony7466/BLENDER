@@ -97,3 +97,4 @@ Referenced by issue #39750, Bones disappearing with strange transforms
 Referenced by issue #39722, baking: warning messages are unclear
 Referenced by issue #39700, Motion Tracking
 Referenced by issue #39467, Adding dither to a rendered image becomes black on render view, on Mac.
+Referenced by issue #33519, Systematic crash on the same frame number whatever rendering options chosen
