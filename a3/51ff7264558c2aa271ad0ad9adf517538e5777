@@ -1,2 +1,3 @@
 Referenced by issue #40560, Crash when subsurf applies
 Referenced by issue #40082, Regression: Moving NLA strip causes bones to scale to 0, 0, 0
+Referenced by issue #40056, Can't save file after saving externally
