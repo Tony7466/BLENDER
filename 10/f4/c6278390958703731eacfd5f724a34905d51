@@ -16,3 +16,4 @@ Referenced by issue #38798, Can get stuck in world nodes when switching from Cyc
 Referenced by issue #38773, Blender Internal: Inverting alpha looks odd in material node setting.
 Referenced by issue #38762, The render view title text characters are not of uniform sizes (win64-vc2013)
 Referenced by issue #38753, James Kinne
+Referenced by issue #38733, Knife fails to work when used between single mesh geometry.
