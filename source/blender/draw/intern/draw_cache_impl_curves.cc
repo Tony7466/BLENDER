@@ -53,16 +53,12 @@ struct CurvesBatchCache {
 
   GPUBatch *edit_points;
   GPUBatch *edit_lines;
-  GPUBatch *cage_lines;
 
-  /* Editmode (original) point positions. */
+  /* Crazy-space point positions for original points. */
   GPUVertBuf *edit_points_pos;
 
-  /* Editmode data (such as selection). */
+  /* Selection of original points. */
   GPUVertBuf *edit_points_data;
-
-  GPUVertBuf *cage_point_pos;
-  GPUVertBuf *cage_point_color;
 
   GPUIndexBuf *edit_lines_ibo;
 
@@ -120,12 +116,8 @@ static void curves_batch_cache_clear_edit_data(CurvesBatchCache *cache)
   GPU_VERTBUF_DISCARD_SAFE(cache->edit_points_data);
   GPU_INDEXBUF_DISCARD_SAFE(cache->edit_lines_ibo);
 
-  GPU_VERTBUF_DISCARD_SAFE(cache->cage_point_pos);
-  GPU_VERTBUF_DISCARD_SAFE(cache->cage_point_color);
-
   GPU_BATCH_DISCARD_SAFE(cache->edit_points);
   GPU_BATCH_DISCARD_SAFE(cache->edit_lines);
-  GPU_BATCH_DISCARD_SAFE(cache->cage_lines);
 }
 
 static void curves_batch_cache_clear_eval_data(CurvesEvalCache &curves_cache)
@@ -268,9 +260,10 @@ static void curves_batch_cache_ensure_edit_points_data(const bke::CurvesGeometry
                                                        CurvesBatchCache &cache)
 {
   static GPUVertFormat format_data = {0};
-  static uint color;
+  static uint selection_id;
   if (format_data.attr_len == 0) {
-    color = GPU_vertformat_attr_add(&format_data, "color", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
+    selection_id = GPU_vertformat_attr_add(
+        &format_data, "selection", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
   }
 
   GPU_vertbuf_init_with_format(cache.edit_points_data, &format_data);
@@ -284,7 +277,7 @@ static void curves_batch_cache_ensure_edit_points_data(const bke::CurvesGeometry
     case ATTR_DOMAIN_POINT:
       for (const int point_i : selection.index_range()) {
         const float point_selection = selection[point_i] ? 1.0f : 0.0f;
-        GPU_vertbuf_attr_set(cache.edit_points_data, color, point_i, &point_selection);
+        GPU_vertbuf_attr_set(cache.edit_points_data, selection_id, point_i, &point_selection);
       }
       break;
     case ATTR_DOMAIN_CURVE:
@@ -292,7 +285,7 @@ static void curves_batch_cache_ensure_edit_points_data(const bke::CurvesGeometry
         const float curve_selection = selection[curve_i] ? 1.0f : 0.0f;
         const IndexRange points = points_by_curve[curve_i];
         for (const int point_i : points) {
-          GPU_vertbuf_attr_set(cache.edit_points_data, color, point_i, &curve_selection);
+          GPU_vertbuf_attr_set(cache.edit_points_data, selection_id, point_i, &curve_selection);
         }
       }
       break;

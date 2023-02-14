@@ -135,7 +135,6 @@ struct GPUVertBuf **DRW_curves_texture_for_evaluated_attribute(struct Curves *cu
 
 struct GPUBatch *DRW_curves_batch_cache_get_edit_points(struct Curves *curves);
 struct GPUBatch *DRW_curves_batch_cache_get_edit_lines(struct Curves *curves);
-struct GPUBatch *DRW_curves_batch_cache_get_cage_lines(struct Curves *curves);
 
 void DRW_curves_batch_cache_create_requested(struct Object *ob);
 
