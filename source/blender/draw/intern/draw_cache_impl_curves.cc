@@ -747,6 +747,9 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
   using namespace blender;
   Curves *curves_id = static_cast<Curves *>(ob->data);
   Object *ob_orig = DEG_get_original_object(ob);
+  if (ob_orig == nullptr) {
+    return;
+  }
   Curves *curves_orig_id = static_cast<Curves *>(ob_orig->data);
 
   draw::CurvesBatchCache &cache = draw::curves_batch_cache_get(*curves_id);
