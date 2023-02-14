@@ -96,3 +96,4 @@ Referenced by issue #44330, Bad mask selection paint display
 Referenced by issue #44323, driver error
 Referenced by issue #44302, Smoke Cache not cleared when user clicks Smoke Cache -> Free Bake or Free All Bakes
 Referenced by issue #44308, Texture paint has 1px offset from mouse center
+Referenced by issue #44309, Linked groups and naming problems
