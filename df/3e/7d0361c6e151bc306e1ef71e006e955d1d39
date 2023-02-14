@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#60093, Cycles bake (bpy.ops.object.bake) unstable when using `uv_layer` parameter
