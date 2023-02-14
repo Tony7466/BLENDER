@@ -1,0 +1,1 @@
+Referenced by issue #46159, OpenSubdiv does not always give same results as Blender own subsurf code with crease edges.
