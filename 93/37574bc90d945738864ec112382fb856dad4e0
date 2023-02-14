@@ -59,3 +59,4 @@ Referenced by issue #41354, UV-sculpting brush cursor disappears after second ti
 Referenced by issue #41341, Sort Elements& Build modifier no work.
 Referenced by issue #41346, No Snap During Vertex Slide
 Referenced by issue #41316, FBX exporter in Blender cause artifacts to appear on meshes with Shape Keys
+Referenced by issue #41307, FBX exporter writes malformed 'Current' section
