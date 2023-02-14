@@ -80,3 +80,4 @@ Referenced by issue #41102, Random switch of keyboard layout
 Referenced by issue #41085, Blender crashes when using "spline" or "segments" for bevel curve factor.
 Referenced by issue #41086, VSE separate images increases file size abnormally
 Referenced by issue #41047, Textobjects - flipped letters ä and ü
+Referenced by issue #41052, Transparent Shadows using Cycles may cause shadows in some condition
