@@ -79,3 +79,4 @@ Referenced by issue #39937, User Preferences Crash
 Referenced by issue #39922, Collada export doesn't handle multiple materials with UV maps
 Referenced by issue #39926, Axes for hair particle objects are inconsistent
 Referenced by issue #39907, Image texture node's bug
+Referenced by issue #39911, Graph editor, active keyframe panel, handle update coordinates.
