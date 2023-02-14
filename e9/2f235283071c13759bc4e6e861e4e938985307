@@ -78,3 +78,4 @@ Referenced by issue #51117, Triangulation Modifier breaks split normals
 Referenced by issue #51074, Boolean modifier inverts Difference and Union (sometimes + strange behavior)
 Referenced by issue #51056, exception access violation after browsing for an image texture and connecting it to a node
 Referenced by issue #51017, Spline IK stretching bone (without Y stretching selected)
+Referenced by issue #51018, Appending a rigged character crash Blender since 2.78a
