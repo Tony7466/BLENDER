@@ -40,3 +40,4 @@ Referenced by issue #46620, Using 'correct uvs' option in edge or vertex slide c
 Referenced by issue #46621, Undo doesn't work on unparenting an object in armature-edit-mode.
 Referenced by issue #46570, Blender crashes when clicking back and forth in VSE timeline
 Referenced by issue #46571, Driver updated mapping node fields do not propagate to viewport when used with Material render mode
+Referenced by issue #46572, Appending objects via Python API does not work under Linux
