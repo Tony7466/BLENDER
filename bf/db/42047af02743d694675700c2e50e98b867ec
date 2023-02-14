@@ -1,2 +1,3 @@
 Referenced by issue #46536, Viewport: Selecting many objects causes constant CPU usage
 Referenced by issue #46520, mathutils.bvhtree crashes with distance input
+Referenced by issue #46521, Python: bvh.ray_cast doesn't find a plane facing in the other direction under certain circumstances
