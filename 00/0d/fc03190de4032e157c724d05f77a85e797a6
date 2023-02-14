@@ -89,3 +89,4 @@ Referenced by issue #44420, segfault on startup
 Referenced by issue #44425, Ambient Occlusion bug (View/Shading) on mobile ATI/AMD Radeon cards
 Referenced by issue #44396, Compositing Render Slots don't Work
 Referenced by issue #44398, Compositing displace node
+Referenced by issue #44380, Auto Smooth angle entry greyed out.
