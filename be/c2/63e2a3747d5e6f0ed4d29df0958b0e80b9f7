@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#38367, Operators no longer save / restore their last-used properties when invoked.
