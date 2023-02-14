@@ -2,3 +2,4 @@ Referenced by issue #52262, 2.79-rc1 "dri2 connection failed"
 Referenced by issue #52189, Principled shader does not interoperate nicely with texture alpha transparency
 Referenced by issue #52171, conversion of text objects to mesh generate improper mesh for letter T (even with default text font)
 Referenced by issue #52149, Crash on entering Edit Mode of high poly mesh used by Shrink Wrap
+Referenced by issue #52106, Render window don't close from Windows taskbar thumbnail
