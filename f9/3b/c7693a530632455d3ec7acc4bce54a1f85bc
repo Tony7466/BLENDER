@@ -74,3 +74,4 @@ Referenced by issue #40002, crushed blend file
 Referenced by issue #39983, UI - Region Overlap isn't working under Ubuntu
 Referenced by issue #39949, Linking path problem
 Referenced by issue #39940, Keyframe on renderlayer enable toggle does not evaluate during animation render
+Referenced by issue #39945, Transparent image empties are not always transparent
