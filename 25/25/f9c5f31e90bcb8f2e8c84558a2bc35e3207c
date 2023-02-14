@@ -15,3 +15,4 @@ Referenced by issue #39196, Dynamic Topology Undo Applied to Wrong Mesh
 Referenced by issue #39197, Blender 2.70 RC2 crash with simple cycles render
 Referenced by issue #39181, CUDA - cannot render
 Referenced by issue #39189, Node editor Map Uv requires an scale node to work
+Referenced by issue #39172, CUDA not working
