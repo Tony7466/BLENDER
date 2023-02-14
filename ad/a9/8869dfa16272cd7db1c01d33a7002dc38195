@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#79657, Changing keymap with a script doesn't trigger the "is_user_modified" flag
