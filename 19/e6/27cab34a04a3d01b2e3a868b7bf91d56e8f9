@@ -48,3 +48,4 @@ Referenced by issue #39614, Ping Pong Action doesn't work correct.
 Referenced by issue #39595, Blender 2.7 startup crash when pcie audio card is installed in the pcie 2.0 16x slot instead of a pcie 2.0 1x slot
 Referenced by issue #39602, BGE crashes when "fliping trough" physics for object with actuaors
 Referenced by issue #39604, using SetParent disables timeOffset
+Referenced by issue #39582, Blender executable not running in Linux Mint 13
