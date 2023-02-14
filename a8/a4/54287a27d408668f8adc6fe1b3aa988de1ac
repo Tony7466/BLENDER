@@ -7,3 +7,4 @@ Referenced by issue #101393, Regression: Vertex Crease operator does not create 
 Referenced by issue #101373, Regression with Crease Attribute
 Referenced by issue #101340, Regression: Crease values are lost after some modifiers
 Referenced by issue #95966, Struct of Arrays Refactor for Mesh Edges
+Referenced by issue blender/blender-addons#102420, Regression: FBX Import error: AttributeError: 'Mesh' object has no attribute 'use_customdata_edge_crease'
