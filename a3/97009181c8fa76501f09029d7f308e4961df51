@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#38541, When built as a Python module, Blender overwrites sys.exit() codes with its own exit code
