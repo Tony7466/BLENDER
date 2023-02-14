@@ -14,67 +14,6 @@
 
 namespace blender::gpu {
 
-static VkImageAspectFlagBits to_vk_image_aspect_flag_bits(const eGPUTextureFormat format)
-{
-  switch (format) {
-    case GPU_RGBA32F:
-    case GPU_RGBA8UI:
-    case GPU_RGBA8I:
-    case GPU_RGBA8:
-    case GPU_RGBA32UI:
-    case GPU_RGBA32I:
-    case GPU_RGBA16UI:
-    case GPU_RGBA16I:
-    case GPU_RGBA16F:
-    case GPU_RGBA16:
-    case GPU_RG8UI:
-    case GPU_RG8I:
-    case GPU_RG8:
-    case GPU_RG32UI:
-    case GPU_RG32I:
-    case GPU_RG32F:
-    case GPU_RG16UI:
-    case GPU_RG16I:
-    case GPU_RG16F:
-    case GPU_RG16:
-    case GPU_R8UI:
-    case GPU_R8I:
-    case GPU_R8:
-    case GPU_R32UI:
-    case GPU_R32I:
-    case GPU_R32F:
-    case GPU_R16UI:
-    case GPU_R16I:
-    case GPU_R16F:
-    case GPU_R16:
-    case GPU_RGB10_A2:
-    case GPU_R11F_G11F_B10F:
-    case GPU_SRGB8_A8:
-    case GPU_RGB16F:
-    case GPU_SRGB8_A8_DXT1:
-    case GPU_SRGB8_A8_DXT3:
-    case GPU_SRGB8_A8_DXT5:
-    case GPU_RGBA8_DXT1:
-    case GPU_RGBA8_DXT3:
-    case GPU_RGBA8_DXT5:
-      return VK_IMAGE_ASPECT_COLOR_BIT;
-
-    case GPU_DEPTH32F_STENCIL8:
-    case GPU_DEPTH24_STENCIL8:
-      return static_cast<VkImageAspectFlagBits>(VK_IMAGE_ASPECT_DEPTH_BIT |
-                                                VK_IMAGE_ASPECT_STENCIL_BIT);
-
-    case GPU_DEPTH_COMPONENT24:
-    case GPU_DEPTH_COMPONENT16:
-      return VK_IMAGE_ASPECT_DEPTH_BIT;
-
-    case GPU_DEPTH_COMPONENT32F:
-      /* Not supported by Vulkan*/
-      BLI_assert_unreachable();
-  }
-  return static_cast<VkImageAspectFlagBits>(0);
-}
-
 VKTexture::~VKTexture()
 {
   VK_ALLOCATION_CALLBACKS
@@ -174,70 +113,11 @@ uint VKTexture::gl_bindcode_get() const
   return 0;
 }
 
-static VkFormat to_vk_format(const eGPUTextureFormat format)
-{
-  switch (format) {
-    case GPU_RGBA32F:
-      return VK_FORMAT_R32G32B32A32_SFLOAT;
-    case GPU_RGBA8UI:
-    case GPU_RGBA8I:
-    case GPU_RGBA8:
-    case GPU_RGBA32UI:
-    case GPU_RGBA32I:
-    case GPU_RGBA16UI:
-    case GPU_RGBA16I:
-    case GPU_RGBA16F:
-    case GPU_RGBA16:
-    case GPU_RG8UI:
-    case GPU_RG8I:
-    case GPU_RG8:
-    case GPU_RG32UI:
-    case GPU_RG32I:
-    case GPU_RG32F:
-    case GPU_RG16UI:
-    case GPU_RG16I:
-    case GPU_RG16F:
-    case GPU_RG16:
-    case GPU_R8UI:
-    case GPU_R8I:
-    case GPU_R8:
-    case GPU_R32UI:
-    case GPU_R32I:
-    case GPU_R32F:
-    case GPU_R16UI:
-    case GPU_R16I:
-    case GPU_R16F:
-    case GPU_R16:
-
-    case GPU_RGB10_A2:
-    case GPU_R11F_G11F_B10F:
-    case GPU_DEPTH32F_STENCIL8:
-    case GPU_DEPTH24_STENCIL8:
-    case GPU_SRGB8_A8:
-
-    /* Texture only format */
-    case GPU_RGB16F:
-
-    /* Special formats texture only */
-    case GPU_SRGB8_A8_DXT1:
-    case GPU_SRGB8_A8_DXT3:
-    case GPU_SRGB8_A8_DXT5:
-    case GPU_RGBA8_DXT1:
-    case GPU_RGBA8_DXT3:
-    case GPU_RGBA8_DXT5:
-
-      /* Depth Formats */
-    case GPU_DEPTH_COMPONENT32F:
-    case GPU_DEPTH_COMPONENT24:
-    case GPU_DEPTH_COMPONENT16:
-      BLI_assert_unreachable();
-  }
-  return VK_FORMAT_UNDEFINED;
-}
-
 bool VKTexture::init_internal()
 {
-  /* TODO: add some pre-initialization to reduce some work later on.*/
+  /* Initialization can only happen after the usage is known. By the current API this isn't set
+   * at this moment, so we cannot initialize here. The initialization is postponed until the
+   * allocation of the texture on the device.*/
   return true;
 }
 
@@ -254,69 +134,6 @@ bool VKTexture::init_internal(const GPUTexture * /*src*/, int /*mip_offset*/, in
 bool VKTexture::is_allocated()
 {
   return vk_image_ != VK_NULL_HANDLE && allocation_ != VK_NULL_HANDLE;
-}
-
-static VkImageType to_vk_image_type(const eGPUTextureType type)
-{
-  switch (type) {
-    case GPU_TEXTURE_1D:
-    case GPU_TEXTURE_BUFFER:
-    case GPU_TEXTURE_1D_ARRAY:
-      return VK_IMAGE_TYPE_1D;
-    case GPU_TEXTURE_2D:
-    case GPU_TEXTURE_2D_ARRAY:
-      return VK_IMAGE_TYPE_2D;
-    case GPU_TEXTURE_3D:
-    case GPU_TEXTURE_CUBE:
-    case GPU_TEXTURE_CUBE_ARRAY:
-      return VK_IMAGE_TYPE_3D;
-
-    case GPU_TEXTURE_ARRAY:
-      /* GPU_TEXTURE_ARRAY should always be used together with 1D, 2D, or CUBE*/
-      BLI_assert_unreachable();
-      break;
-  }
-
-  return VK_IMAGE_TYPE_1D;
-}
-
-static VkImageViewType to_vk_image_view_type(const eGPUTextureType type)
-{
-  switch (type) {
-    case GPU_TEXTURE_1D:
-    case GPU_TEXTURE_BUFFER:
-      return VK_IMAGE_VIEW_TYPE_1D;
-    case GPU_TEXTURE_2D:
-      return VK_IMAGE_VIEW_TYPE_2D;
-    case GPU_TEXTURE_3D:
-      return VK_IMAGE_VIEW_TYPE_3D;
-    case GPU_TEXTURE_CUBE:
-      return VK_IMAGE_VIEW_TYPE_CUBE;
-    case GPU_TEXTURE_1D_ARRAY:
-      return VK_IMAGE_VIEW_TYPE_1D_ARRAY;
-    case GPU_TEXTURE_2D_ARRAY:
-      return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-    case GPU_TEXTURE_CUBE_ARRAY:
-      return VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
-
-    case GPU_TEXTURE_ARRAY:
-      /* GPU_TEXTURE_ARRAY should always be used together with 1D, 2D, or CUBE*/
-      BLI_assert_unreachable();
-      break;
-  }
-
-  return VK_IMAGE_VIEW_TYPE_1D;
-}
-
-static VkComponentMapping to_vk_component_mapping(const eGPUTextureFormat /*format*/)
-{
-  /* TODO: this should map to OpenGL defaults based on the eGPUTextureFormat*/
-  VkComponentMapping component_mapping;
-  component_mapping.r = VK_COMPONENT_SWIZZLE_R;
-  component_mapping.g = VK_COMPONENT_SWIZZLE_G;
-  component_mapping.b = VK_COMPONENT_SWIZZLE_B;
-  component_mapping.a = VK_COMPONENT_SWIZZLE_A;
-  return component_mapping;
 }
 
 bool VKTexture::allocate()
@@ -337,8 +154,6 @@ bool VKTexture::allocate()
   image_info.arrayLayers = 1;
   image_info.format = to_vk_format(format_);
   image_info.tiling = VK_IMAGE_TILING_LINEAR;
-  /* TODO: PREINITIALIZED should be for device only textures. Others should use
-   * VK_IMAGE_LAYOUT_UNDEFINED and upload its content.*/
   image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   image_info.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
                      VK_IMAGE_USAGE_STORAGE_BIT;
