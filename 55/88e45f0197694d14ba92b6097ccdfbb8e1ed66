@@ -1,2 +1,3 @@
 Referenced by issue #41113, Hide doesn't work on particle systems
 Referenced by issue #40884, Blender crashes on render when OSL script uses more than two textures
+Referenced by issue #40581, Wrong texture mapping in render preview
