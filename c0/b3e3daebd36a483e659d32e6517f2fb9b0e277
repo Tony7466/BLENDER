@@ -1,2 +1,3 @@
 Referenced by issue #57533, Output file name: frame number error
 Referenced by issue #57490, Bevel can pull mesh through itself on concave corners.
+Referenced by issue #57393, Cycles OSL: Bevel and AO nodes not working anymore
