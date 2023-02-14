@@ -30,6 +30,7 @@
 #include "BKE_action.h"
 #include "BKE_armature.h"
 #include "BKE_context.h"
+#include "BKE_crazyspace.hh"
 #include "BKE_curve.h"
 #include "BKE_curves.hh"
 #include "BKE_editmesh.h"
@@ -936,6 +937,8 @@ int ED_transform_calc_gizmo_stats(const bContext *C,
       FOREACH_EDIT_OBJECT_BEGIN (ob_iter, use_mat_local) {
         Curves &curves_id = *static_cast<Curves *>(ob_iter->data);
         bke::CurvesGeometry &curves = curves_id.geometry.wrap();
+        bke::crazyspace::GeometryDeformation deformation =
+            bke::crazyspace::get_evaluated_curves_deformation(*depsgraph, *ob);
 
         float4x4 mat_local;
         if (use_mat_local) {
@@ -944,7 +947,7 @@ int ED_transform_calc_gizmo_stats(const bContext *C,
 
         Vector<int64_t> indices;
         IndexMask selected_points = ed::curves::retrieve_selected_points(curves, indices);
-        Span<float3> positions = curves.positions();
+        Span<float3> positions = deformation.positions;
         totsel += selected_points.size();
         for (const int point_i : selected_points) {
           calc_tw_center_with_matrix(tbounds, positions[point_i], use_mat_local, mat_local.ptr());
