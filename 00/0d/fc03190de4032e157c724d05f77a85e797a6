@@ -42,3 +42,4 @@ Referenced by issue #44930, Loading an image with bpy.data.images.load(path) Fre
 Referenced by issue #44917, blender crash on selecting the high density mesh
 Referenced by issue #44919, KX_GameObject pyattr getters leak memory
 Referenced by issue #44909, Video editor import large image import
+Referenced by issue #44871, Blender hangs when using masking, dilate-erode and soften node
