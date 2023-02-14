@@ -61,3 +61,4 @@ Referenced by issue #39524, Backface culling is always on in Textured view in BI
 Referenced by issue #39506, Moving the origin is messing up Undo
 Referenced by issue #39497, Save as/Save copy loses textures from linked assets
 Referenced by issue #39499, Bevel on screw is growing
+Referenced by issue #39504, mac mouse problem
