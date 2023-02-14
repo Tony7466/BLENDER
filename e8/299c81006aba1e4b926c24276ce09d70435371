@@ -74,3 +74,4 @@ Referenced by issue #50115, sequencer render to stereoscopic video file memory l
 Referenced by issue #50117, Hard crash when adding texture input node to compositor.
 Referenced by issue #50096, Maybe grease pencil's bug I guess?
 Referenced by issue #50076, Blender Cycles crashes
+Referenced by issue #50068, error while opening a file using dependency graph
