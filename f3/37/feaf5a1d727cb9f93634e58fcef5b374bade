@@ -34,3 +34,4 @@ Referenced by issue #47830, Selecting multiple Shape Keys values doesn't highlig
 Referenced by issue #47835, Solid Black smoke domain
 Referenced by issue #47838, Walk Navigation fails to use gravity with intersecting objects
 Referenced by issue #47825, backgrond images bug
+Referenced by issue #47802, bake does not accept DIFFUSE_COLOR as parameter in 2.77 rc2
