@@ -12,3 +12,4 @@ Referenced by issue #40700, Tab to change edit-mode not working after switching 
 Referenced by issue #40709, Cycles Baking result does not show up
 Referenced by issue #40682, BGE local space character movement is funky when add is checked
 Referenced by issue #40683, noncube meshes bounces when rotated
+Referenced by issue #40684, Triangle mesh BGE character mode crash
