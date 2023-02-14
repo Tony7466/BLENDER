@@ -4,3 +4,4 @@ Referenced by issue #55971, [2.8] Crash when switching refraction on LookDev dis
 Referenced by issue #55972, crash when extruding armature
 Referenced by issue #55973, [2.8] Crash when 'apply pose as rest pose' when bone scale is 0,0,0
 Referenced by issue #55974, Crash when using Surface Force Field Type on UV Sphere
+Referenced by issue #55970, Metaball editing crashes Blender
