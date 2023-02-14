@@ -4,3 +4,4 @@ Referenced by issue #38158, Region overlap does not work in the node editor
 Referenced by issue #38159, Switch node missing for material and texture nodes
 Referenced by issue #38160, N and T hot keys for opening the side panels are reversed in the image editor
 Referenced by issue #38139, Drivers in Armature layer or in Bone Layers lock linked armature
+Referenced by issue #38141, OSX Retina: Add Reroute node wrong placement
