@@ -1,2 +1,3 @@
 Referenced by issue #44983, Crash
 Referenced by issue #44241, Floating-point Tangent Normal Baking Not Working
+Referenced by issue #44063, Unchecking Load UI setting crashes Blender when opening a file
