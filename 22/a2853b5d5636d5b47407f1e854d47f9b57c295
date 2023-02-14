@@ -51,3 +51,4 @@ Referenced by issue #47912, Particles (Hair) sets displayed hair count to 100% a
 Referenced by issue #47890, Masking vertices in weight paint doesn't work with subsurf
 Referenced by issue #47897, Segfault when selecting mesh object in blender 2.77 in ubuntu
 Referenced by issue #47879, Drivers not working on cycles sky texture node
+Referenced by issue #47880, Move to layer still crash
