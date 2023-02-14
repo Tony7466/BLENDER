@@ -1,1 +1,2 @@
 Referenced by commit bbbc079a6c0, Cycles: Correct maximum number of textures on pre-Kepler CUDA cards
+Referenced by issue blender/blender-addons#49003, Cloud add-on wrong render and 3D View Rendered display
