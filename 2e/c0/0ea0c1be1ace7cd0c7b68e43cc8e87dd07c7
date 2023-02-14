@@ -4,3 +4,4 @@ Referenced by issue #46305, The viewport artifacts associated with the use of no
 Referenced by issue #46226, bake normals from multiresolution crash
 Referenced by issue #46217, Baked normal artifacts
 Referenced by issue #45491, Material view broken in recent build
+Referenced by issue #45474, Deprecate legacy MFace data storage
