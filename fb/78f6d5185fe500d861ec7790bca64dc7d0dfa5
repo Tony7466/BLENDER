@@ -1,2 +1,3 @@
 Referenced by issue #46684, As of 2.76 Cycles matcap materials no longer work
 Referenced by issue #46437, obj export ZeroDivisionError
+Referenced by issue #46439, Difference between viewport and render, caused by transparent background.
