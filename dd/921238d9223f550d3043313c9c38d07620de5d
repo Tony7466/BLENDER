@@ -1,2 +1,3 @@
 Referenced by issue #50001, Time required for rendering in cycle increased in the latest build.
 Referenced by issue #49133, Add-on preferences panel should open on activation
+Referenced by issue blender/blender-addons#49959, Recent changes to Cycles device selection broke Auto Tile Size add-on
