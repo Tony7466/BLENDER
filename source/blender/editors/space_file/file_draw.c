@@ -55,6 +55,8 @@
 #include "GPU_immediate_util.h"
 #include "GPU_state.h"
 
+#include "AS_asset_representation.h"
+
 #include "filelist.h"
 
 #include "file_intern.h" /* own include */
@@ -124,6 +126,19 @@ static void draw_tile_background(const rcti *draw_rect, int colorid, int shade)
   UI_GetThemeColorShade4fv(colorid, shade, color);
   UI_draw_roundbox_corner_set(UI_CNR_ALL);
   UI_draw_roundbox_aa(&draw_rect_fl, true, 5.0f, color);
+}
+
+static eFileAssetImportType get_asset_import_type(const SpaceFile *sfile, const FileDirEntry *file)
+{
+  const FileAssetSelectParams *asset_params = ED_fileselect_get_asset_params(sfile);
+  BLI_assert(asset_params != NULL);
+  if (asset_params->import_type != FILE_ASSET_IMPORT_LINK) {
+    return asset_params->import_type;
+  }
+  if (AS_asset_representation_is_never_link(file->asset)) {
+    return FILE_ASSET_IMPORT_APPEND_REUSE;
+  }
+  return FILE_ASSET_IMPORT_LINK;
 }
 
 static void file_draw_icon(const SpaceFile *sfile,
@@ -992,7 +1007,7 @@ void file_draw_list(const bContext *C, ARegion *region)
   UI_GetThemeColor4ubv(TH_TEXT, text_col);
 
   for (i = offset; (i < numfiles) && (i < offset + numfiles_layout); i++) {
-    uint file_selflag;
+    eDirEntry_SelectFlag file_selflag;
     const int padx = 0.1f * UI_UNIT_X;
     int icon_ofs = 0;
 
