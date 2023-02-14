@@ -578,6 +578,9 @@ static const EnumPropertyItem rna_enum_curve_display_handle_items[] = {
 #  include "UI_interface.h"
 #  include "UI_view2d.h"
 
+#  include "gizmo/WM_gizmo_api.h"
+#  include "gizmo/WM_gizmo_types.h"
+
 static StructRNA *rna_Space_refine(struct PointerRNA *ptr)
 {
   SpaceLink *space = (SpaceLink *)ptr->data;
@@ -961,6 +964,21 @@ static void rna_SpaceView3D_use_local_camera_set(PointerRNA *ptr, bool value)
     if (scene != NULL) {
       v3d->camera = scene->camera;
     }
+  }
+}
+
+static void rna_SpaceView3D_gizmo_context_update(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+  View3D *v3d = (View3D *)(ptr->data);
+  const bool show_gizmo = (v3d->gizmo_show_object &
+                           (V3D_GIZMO_SHOW_OBJECT_TRANSLATE | V3D_GIZMO_SHOW_OBJECT_ROTATE |
+                            V3D_GIZMO_SHOW_OBJECT_SCALE)) != 0;
+
+  if (show_gizmo) {
+    struct wmGizmoMapType_Params params = {SPACE_VIEW3D, RGN_TYPE_WINDOW};
+    wmGizmoMapType *gzmap_type = WM_gizmomaptype_find(&params);
+    wmGizmoGroupType *gzgt = WM_gizmogrouptype_find("VIEW3D_GGT_xform_gizmo_context", false);
+    WM_gizmo_group_type_ensure_ptr_ex(gzgt, gzmap_type);
   }
 }
 
@@ -4993,17 +5011,20 @@ static void rna_def_space_view3d(BlenderRNA *brna)
   prop = RNA_def_property(srna, "show_gizmo_object_translate", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "gizmo_show_object", V3D_GIZMO_SHOW_OBJECT_TRANSLATE);
   RNA_def_property_ui_text(prop, "Show Object Location", "Gizmo to adjust location");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
+  RNA_def_property_update(
+      prop, NC_SPACE | ND_SPACE_VIEW3D, "rna_SpaceView3D_gizmo_context_update");
 
   prop = RNA_def_property(srna, "show_gizmo_object_rotate", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "gizmo_show_object", V3D_GIZMO_SHOW_OBJECT_ROTATE);
   RNA_def_property_ui_text(prop, "Show Object Rotation", "Gizmo to adjust rotation");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
+  RNA_def_property_update(
+      prop, NC_SPACE | ND_SPACE_VIEW3D, "rna_SpaceView3D_gizmo_context_update");
 
   prop = RNA_def_property(srna, "show_gizmo_object_scale", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "gizmo_show_object", V3D_GIZMO_SHOW_OBJECT_SCALE);
   RNA_def_property_ui_text(prop, "Show Object Scale", "Gizmo to adjust scale");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
+  RNA_def_property_update(
+      prop, NC_SPACE | ND_SPACE_VIEW3D, "rna_SpaceView3D_gizmo_context_update");
 
   /* Empty Object Data. */
   prop = RNA_def_property(srna, "show_gizmo_empty_image", PROP_BOOLEAN, PROP_NONE);

@@ -70,7 +70,6 @@
 
 #include "GPU_state.h"
 
-static wmGizmoGroupType *g_GGT_xform_gizmo = nullptr;
 static wmGizmoGroupType *g_GGT_xform_gizmo_context = nullptr;
 
 static void gizmogroup_refresh_from_matrix(wmGizmoGroup *gzgroup,
@@ -1724,7 +1723,7 @@ static void gizmogroup_init_properties_from_twtype(wmGizmoGroup *gzgroup)
   MAN_ITER_AXES_END;
 }
 
-static void WIDGETGROUP_gizmo_setup(const bContext *C, wmGizmoGroup *gzgroup)
+static void WIDGETGROUP_gizmo_setup_context(const bContext *C, wmGizmoGroup *gzgroup)
 {
   GizmoGroup *ggd = gizmogroup_init(gzgroup);
 
@@ -2146,7 +2145,7 @@ static bool WIDGETGROUP_gizmo_poll_generic(View3D *v3d)
   return true;
 }
 
-static bool WIDGETGROUP_gizmo_poll_context(const bContext *C, wmGizmoGroupType * /*gzgt*/)
+static bool WIDGETGROUP_gizmo_poll_context(const bContext *C, wmGizmoGroupType *gzgt)
 {
   ScrArea *area = CTX_wm_area(C);
   View3D *v3d = static_cast<View3D *>(area->spacedata.first);
@@ -2155,61 +2154,62 @@ static bool WIDGETGROUP_gizmo_poll_context(const bContext *C, wmGizmoGroupType *
   }
 
   const bToolRef *tref = area->runtime.tool;
-  if (v3d->gizmo_flag & V3D_GIZMO_HIDE_CONTEXT) {
-    return false;
-  }
-  if ((v3d->gizmo_show_object & (V3D_GIZMO_SHOW_OBJECT_TRANSLATE | V3D_GIZMO_SHOW_OBJECT_ROTATE |
-                                 V3D_GIZMO_SHOW_OBJECT_SCALE)) == 0) {
-    return false;
-  }
-
-  /* Don't show if the tool has a gizmo. */
   if (tref && tref->runtime && tref->runtime->gizmo_group[0]) {
-    return false;
+    if (v3d->gizmo_flag & V3D_GIZMO_HIDE_TOOL) {
+      return false;
+    }
   }
+  else {
+    if (v3d->gizmo_flag & V3D_GIZMO_HIDE_CONTEXT) {
+      return false;
+    }
+
+    if ((v3d->gizmo_show_object & (V3D_GIZMO_SHOW_OBJECT_TRANSLATE | V3D_GIZMO_SHOW_OBJECT_ROTATE |
+                                   V3D_GIZMO_SHOW_OBJECT_SCALE)) == 0) {
+      /* Unlink the Gizmo Group. It is not being used. */
+      wmGizmoMapType *gzmap_type = WM_gizmomaptype_ensure(&gzgt->gzmap_params);
+      WM_gizmo_group_unlink_delayed_ptr_from_space(gzgt, gzmap_type, area);
+      if (gzgt->users == 0) {
+        WM_gizmo_group_type_unlink_delayed_ptr(gzgt);
+      }
+    }
+  }
+
   return true;
 }
 
-static bool WIDGETGROUP_gizmo_poll_tool(const bContext *C, wmGizmoGroupType *gzgt)
+static void gizmogroup_customdata_free_fn(void * /*customdata*/)
 {
-  if (!ED_gizmo_poll_or_unlink_delayed_from_tool(C, gzgt)) {
-    return false;
-  }
-
-  ScrArea *area = CTX_wm_area(C);
-  View3D *v3d = static_cast<View3D *>(area->spacedata.first);
-  if (!WIDGETGROUP_gizmo_poll_generic(v3d)) {
-    return false;
-  }
-
-  if (v3d->gizmo_flag & V3D_GIZMO_HIDE_TOOL) {
-    return false;
-  }
-
-  return true;
+  /* Make sure you update the context's gizmo group. */
+  wmGizmoMapType_Params params{SPACE_VIEW3D, RGN_TYPE_WINDOW};
+  wmGizmoMapType *gzmap_type = WM_gizmomaptype_find(&params);
+  WM_gizmoconfig_update_tag_group_type_init(gzmap_type, g_GGT_xform_gizmo_context);
 }
 
-/* Expose as multiple gizmos so tools use one, persistent context another.
- * Needed because they use different options which isn't so simple to dynamically update. */
+static void WIDGETGROUP_gizmo_setup(const bContext *C, wmGizmoGroup *gzgroup)
+{
+  gzgroup->customdata_free = gizmogroup_customdata_free_fn;
 
+  wmGizmoMapType_Params params{SPACE_VIEW3D, RGN_TYPE_WINDOW};
+  wmGizmoMapType *gzmap_type = WM_gizmomaptype_find(&params);
+  WM_gizmo_group_type_ensure_ptr_ex(g_GGT_xform_gizmo_context, gzmap_type);
+
+  /* Ensure update. */
+  WM_gizmoconfig_update_tag_group_type_init(gzmap_type, g_GGT_xform_gizmo_context);
+}
+
+/* WORKAROUND: This gizmo is only used to link the "VIEW3D_GGT_xform_gizmo_context".
+ * This is done like this to bypass the gizmo release by the tool. */
 void VIEW3D_GGT_xform_gizmo(wmGizmoGroupType *gzgt)
 {
   gzgt->name = "3D View: Transform Gizmo";
   gzgt->idname = "VIEW3D_GGT_xform_gizmo";
 
-  gzgt->flag = WM_GIZMOGROUPTYPE_3D | WM_GIZMOGROUPTYPE_TOOL_FALLBACK_KEYMAP |
-               WM_GIZMOGROUPTYPE_DELAY_REFRESH_FOR_TWEAK;
-
   gzgt->gzmap_params.spaceid = SPACE_VIEW3D;
   gzgt->gzmap_params.regionid = RGN_TYPE_WINDOW;
 
-  gzgt->poll = WIDGETGROUP_gizmo_poll_tool;
+  gzgt->poll = ED_gizmo_poll_or_unlink_delayed_from_tool;
   gzgt->setup = WIDGETGROUP_gizmo_setup;
-  gzgt->setup_keymap = WM_gizmogroup_setup_keymap_generic_maybe_drag;
-  gzgt->refresh = WIDGETGROUP_gizmo_refresh;
-  gzgt->message_subscribe = WIDGETGROUP_gizmo_message_subscribe;
-  gzgt->draw_prepare = WIDGETGROUP_gizmo_draw_prepare;
-  gzgt->invoke_prepare = WIDGETGROUP_gizmo_invoke_prepare;
 
   static const EnumPropertyItem rna_enum_gizmo_items[] = {
       {V3D_GIZMO_SHOW_OBJECT_TRANSLATE, "TRANSLATE", 0, "Move", ""},
@@ -2224,8 +2224,6 @@ void VIEW3D_GGT_xform_gizmo(wmGizmoGroupType *gzgt)
                V3D_GIZMO_SHOW_OBJECT_TRANSLATE,
                "Drag Action",
                "");
-
-  g_GGT_xform_gizmo = gzgt;
 }
 
 void VIEW3D_GGT_xform_gizmo_context(wmGizmoGroupType *gzgt)
@@ -2233,11 +2231,14 @@ void VIEW3D_GGT_xform_gizmo_context(wmGizmoGroupType *gzgt)
   gzgt->name = "3D View: Transform Gizmo Context";
   gzgt->idname = "VIEW3D_GGT_xform_gizmo_context";
 
-  gzgt->flag = WM_GIZMOGROUPTYPE_3D | WM_GIZMOGROUPTYPE_PERSISTENT |
-               WM_GIZMOGROUPTYPE_TOOL_FALLBACK_KEYMAP | WM_GIZMOGROUPTYPE_DELAY_REFRESH_FOR_TWEAK;
+  gzgt->flag = WM_GIZMOGROUPTYPE_3D | WM_GIZMOGROUPTYPE_TOOL_FALLBACK_KEYMAP |
+               WM_GIZMOGROUPTYPE_DELAY_REFRESH_FOR_TWEAK;
+
+  gzgt->gzmap_params.spaceid = SPACE_VIEW3D;
+  gzgt->gzmap_params.regionid = RGN_TYPE_WINDOW;
 
   gzgt->poll = WIDGETGROUP_gizmo_poll_context;
-  gzgt->setup = WIDGETGROUP_gizmo_setup;
+  gzgt->setup = WIDGETGROUP_gizmo_setup_context;
   gzgt->setup_keymap = WM_gizmogroup_setup_keymap_generic_maybe_drag;
   gzgt->refresh = WIDGETGROUP_gizmo_refresh;
   gzgt->message_subscribe = WIDGETGROUP_gizmo_message_subscribe;
@@ -2686,14 +2687,14 @@ static wmGizmoGroup *gizmogroup_xform_find(TransInfo *t)
   if (gizmo_modal_current) {
     wmGizmoGroup *gzgroup = gizmo_modal_current->parent_gzgroup;
     /* Check #wmGizmoGroup::customdata to make sure the GizmoGroup has been initialized. */
-    if (gzgroup->customdata && ELEM(gzgroup->type, g_GGT_xform_gizmo, g_GGT_xform_gizmo_context)) {
+    if (gzgroup->customdata && gzgroup->type == g_GGT_xform_gizmo_context) {
       return gzgroup;
     }
   }
   else {
     /* See #WM_gizmomap_group_find_ptr. */
     LISTBASE_FOREACH (wmGizmoGroup *, gzgroup, WM_gizmomap_group_list(t->region->gizmo_map)) {
-      if (ELEM(gzgroup->type, g_GGT_xform_gizmo, g_GGT_xform_gizmo_context)) {
+      if (gzgroup->type == g_GGT_xform_gizmo_context) {
         /* Choose the one that has been initialized. */
         if (gzgroup->customdata) {
           return gzgroup;
@@ -2710,9 +2711,8 @@ void transform_gizmo_3d_model_from_constraint_and_mode_init(TransInfo *t)
   wmGizmo *gizmo_modal_current = t->region && t->region->gizmo_map ?
                                      WM_gizmomap_get_modal(t->region->gizmo_map) :
                                      nullptr;
-  if (!gizmo_modal_current || !ELEM(gizmo_modal_current->parent_gzgroup->type,
-                                    g_GGT_xform_gizmo,
-                                    g_GGT_xform_gizmo_context)) {
+  if (!gizmo_modal_current ||
+      !(gizmo_modal_current->parent_gzgroup->type == g_GGT_xform_gizmo_context)) {
     t->flag |= T_NO_GIZMO;
   }
 }
