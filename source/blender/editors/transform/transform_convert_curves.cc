@@ -37,6 +37,7 @@ static void calculate_curve_point_distances_for_proportional_editing(
     }
     visited[idx] = true;
 
+    /* TODO (Falk): Handle cyclic curves here. */
     if (idx > 0 && !visited[idx - 1]) {
       int adj = idx - 1;
       float dist = r_distances[idx] + math::distance(positions[idx], positions[adj]);
@@ -99,8 +100,8 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
 
     MutableSpan<float3> positions = curves.positions_for_write();
     if (is_prop_edit) {
-      Span<float3> positions_read = curves.positions();
-      OffsetIndices<int> points_by_curve = curves.points_by_curve();
+      const Span<float3> positions_read = curves.positions();
+      const OffsetIndices<int> points_by_curve = curves.points_by_curve();
       VArray<bool> selection = curves.attributes().lookup_or_default<bool>(
           ".selection", ATTR_DOMAIN_POINT, true);
       threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange range) {
@@ -108,7 +109,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
           bool has_any_selected = false;
 
           const IndexRange points = points_by_curve[curve_i];
-          Span<float3> positions_curve = positions_read.slice(points_by_curve[curve_i]);
+          const Span<float3> positions_curve = positions_read.slice(points_by_curve[curve_i]);
           Array<float> closest_distances(positions_curve.size(), FLT_MAX);
 
           for (const int i : IndexRange(points.size())) {
