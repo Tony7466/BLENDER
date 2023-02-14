@@ -87,3 +87,4 @@ Referenced by issue #39849, It's possible to create blank node sockets in node g
 Referenced by issue #39850, Graph editor, mirror over first selected marker.
 Referenced by issue #39853, Hair Strands are not render correctly when using UV map coordinate for texture
 Referenced by issue #39856, Crash on Blender Engine compositing (end)
+Referenced by issue #39819, F-Curve Auto Snap problems
