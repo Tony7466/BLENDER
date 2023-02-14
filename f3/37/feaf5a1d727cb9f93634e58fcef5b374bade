@@ -52,3 +52,4 @@ Referenced by issue #47575, OSX Blender causes display failure
 Referenced by issue #47557, Several issues with constraints in a negative scaled armature
 Referenced by issue #47549, Texture properties tab empty
 Referenced by issue #47532, F6-menu drops mouseclicks
+Referenced by issue #47534, Crash attempting to use 'bpy.ops.paint.image_paint()'
