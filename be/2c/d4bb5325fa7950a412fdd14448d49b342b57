@@ -1,1 +1,2 @@
 Referenced by commit 7dea0585468, UI: Move all Selected NLA-Strips when Dragging
+Referenced by issue blender/blender-addons#70581, Ctrl+Shift+Click on a node does't work if the node is already selected (Link Viewer, Node Wrangler)
