@@ -2,3 +2,4 @@ Referenced by issue #79321, Large or better vissible cursor in all modes
 Referenced by issue #75509, Glowing Alpha Shading
 Referenced by issue #74206, Crashes when selecting Material Properties tab.
 Referenced by issue #73978, Interface - Large Cursors
+Referenced by issue blender/blender-addons#74325, Export UV Layout option only exports UDIM tile 1001
