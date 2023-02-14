@@ -94,3 +94,4 @@ Referenced by issue #53573, Object Duplication with ParticleSystem render false 
 Referenced by issue #53576, Texture World Nodes are displayed
 Referenced by issue #53567, denoising artifacts with normal mapping in diffuse
 Referenced by issue #53542, MaterialID / ObjectID random format
+Referenced by issue #53543, VSE does not Premultiply alpha when you select ffmpeg output
