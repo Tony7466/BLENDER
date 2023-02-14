@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#70850, bpy.context.scene.frame_set() doesn't update marker cameras in viewports
