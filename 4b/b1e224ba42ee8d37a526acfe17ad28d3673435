@@ -42,3 +42,4 @@ Referenced by issue #49649, Goal Strength parameter in “Soft Body Goal” work
 Referenced by issue #49652, Blender crashes when using ocean modifier and dynamic paintbrush and ocean not re-baked
 Referenced by issue #49653, Quicktime render error
 Referenced by issue #49638, Changing multiple object dimensions doesn't work
+Referenced by issue #49639, Crash when disconnecting joystick while game engine is running
