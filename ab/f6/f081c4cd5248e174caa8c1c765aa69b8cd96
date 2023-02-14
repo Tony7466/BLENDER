@@ -94,3 +94,4 @@ Referenced by issue #48577, Lib: Object Lost from scene: 'Scene'
 Referenced by issue #48578, Incorrect animation when key framing object Dimensions
 Referenced by issue #48580, Can't edit the settings for "branched path tracing"
 Referenced by issue #48570, Boolean Union modifier with 3 aligned face problem
+Referenced by issue #48556, Bitmap transparency issue with GPU supported rendering mode
