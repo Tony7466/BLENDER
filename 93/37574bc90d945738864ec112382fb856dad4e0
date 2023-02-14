@@ -90,3 +90,4 @@ Referenced by issue #41014, artifact with texture and weird error message when t
 Referenced by issue #41003, Object Info's Random socket produces erratic results when material is applied to multiple Dupli instances of an object.
 Referenced by issue #40992, rotation bug
 Referenced by issue #40999, "View as render" button in Background image settings, no purpose
+Referenced by issue #40981, Matcap with Clipping Border
