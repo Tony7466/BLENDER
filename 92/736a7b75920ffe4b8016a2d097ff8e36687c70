@@ -1,2 +1,3 @@
 Referenced by issue #97069, Crash deleting a scene after moving object between collections (from a collection that is hidden in the Outliner, but visible in a viewport)
 Referenced by issue #69859, Crash when switching the 3D View to Rendered with EEVEE.
+Referenced by issue #61327, Per-Viewport Collection Visibility
