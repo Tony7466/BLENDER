@@ -1,2 +1,3 @@
 Referenced by commit fc259d4c30c, Fix gpu.types.GPUTexture not passing data buffer to 3D textures
 Referenced by issue blender/blender-addons#80730, BGL deprecation
+Referenced by issue blender/blender-addons#80481, Incorrect behaviour of Snap Utilities Line Addon
