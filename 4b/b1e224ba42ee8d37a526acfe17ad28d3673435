@@ -30,3 +30,4 @@ Referenced by issue #49829, [2.77a - 2.78] Removal of custom icon previews durin
 Referenced by issue #49808, blender is crashing when rendering with hair particals
 Referenced by issue #49794, Compositor image sequence node multiple bug with exr
 Referenced by issue #49798, No shadows cast/shown in viewport Material View for Blender Cycles
+Referenced by issue #49775, Appending armatures with Action constraints from .blend file
