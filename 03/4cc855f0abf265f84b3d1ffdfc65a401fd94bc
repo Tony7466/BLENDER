@@ -3,3 +3,4 @@ Referenced by issue #46226, bake normals from multiresolution crash
 Referenced by issue #46229, File browser window closes after hitting esc after render
 Referenced by issue #46224, Particle objects that are emitted are ignored in cycles for baking normal maps.
 Referenced by issue #46202, Fullscreen crashes Blender on Mac OS X
+Referenced by issue #46186, Brush Panel Doesn't Update Until Drawing Stroke When Selecting Brush With Numkey
