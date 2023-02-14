@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#62957, camera.view_frame() returns zero vectors (crashes Verge3D addon)
