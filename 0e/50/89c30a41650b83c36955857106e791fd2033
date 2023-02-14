@@ -4,3 +4,4 @@ Referenced by issue #49388, Mesh Deform bind locks Mesh Deform target object
 Referenced by issue #49370, Cuda cuMemFree error
 Referenced by issue #49354, Voronoi texture incorrectly displayed in the viewport Cycles
 Referenced by issue #49355, Musgrave texture incorrectly displayed in the viewport Cycles
+Referenced by issue #49353, Noise texture incorrectly displayed in the viewport Cycles
