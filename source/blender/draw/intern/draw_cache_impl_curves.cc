@@ -812,21 +812,20 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
   Curves *curves_cage_id = ob->runtime.editcurves_eval_cage;
   if (curves_cage_id) {
     const blender::bke::CurvesGeometry &curves_orig = curves_id_orig->geometry.wrap();
-    CurvesBatchCache &cage_cache = curves_batch_cache_get(*curves_cage_id);
 
-    if (DRW_batch_requested(cage_cache.cage_lines, GPU_PRIM_LINE_STRIP)) {
-      DRW_ibo_request(cage_cache.cage_lines, &cage_cache.edit_lines_ibo);
-      DRW_vbo_request(cage_cache.cage_lines, &cage_cache.cage_point_pos);
-      DRW_vbo_request(cage_cache.cage_lines, &cage_cache.cage_point_color);
+    if (DRW_batch_requested(cache.cage_lines, GPU_PRIM_LINE_STRIP)) {
+      DRW_ibo_request(cache.cage_lines, &cache.edit_lines_ibo);
+      DRW_vbo_request(cache.cage_lines, &cache.cage_point_pos);
+      DRW_vbo_request(cache.cage_lines, &cache.cage_point_color);
     }
-    if (DRW_ibo_requested(cage_cache.edit_lines_ibo)) {
-      curves_batch_cache_ensure_edit_lines(*curves_cage_id, cage_cache);
+    if (DRW_ibo_requested(cache.edit_lines_ibo)) {
+      curves_batch_cache_ensure_edit_lines(*curves_cage_id, cache);
     }
-    if (DRW_vbo_requested(cage_cache.cage_point_pos)) {
-      curves_batch_cache_ensure_edit_points_pos(*curves_cage_id, *cage_cache.cage_point_pos);
+    if (DRW_vbo_requested(cache.cage_point_pos)) {
+      curves_batch_cache_ensure_edit_points_pos(*curves_cage_id, *cache.cage_point_pos);
     }
-    if (DRW_vbo_requested(cage_cache.cage_point_color)) {
-      curves_batch_cache_ensure_cage_color(curves_orig, *cage_cache.cage_point_color);
+    if (DRW_vbo_requested(cache.cage_point_color)) {
+      curves_batch_cache_ensure_cage_color(curves_orig, *cache.cage_point_color);
     }
   }
 }
