@@ -15,3 +15,4 @@ Referenced by issue #43032, Text editor arbitrarily adds/deletes characters and 
 Referenced by issue #43033, VideoTexture module repeated loading of images causes memory leak
 Referenced by issue #43004, Spot light scale and rendering problem
 Referenced by issue #42989, Viewing normal map in viewport causes weird colours in UI
+Referenced by issue #42963, One pixel errors when baking displacement map
