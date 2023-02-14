@@ -42,3 +42,4 @@ Referenced by issue #41644, Cycles Motion Blur takes exponential time to render 
 Referenced by issue #41611, Skin modifier - Slow process with deactivated deform modifiers
 Referenced by issue #41613, Closing crash
 Referenced by issue #41580, Cast modifier - Edit Cache problems
+Referenced by issue #41556, Joystick Button Sensor dosn't listen on overlayed Scene
