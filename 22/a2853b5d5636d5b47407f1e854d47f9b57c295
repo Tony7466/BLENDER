@@ -32,3 +32,4 @@ Referenced by issue #47967, Select next active does not work with some ngons
 Referenced by issue #47971, Blender 2.77 Crash When Rigid Body Cache 'Bake' Clicked
 Referenced by issue #47974, Global Material Override does not work in Cycles viewport
 Referenced by issue #47975, Memory usage problem in 2.77
+Referenced by issue #47977, Multiple change of dimensions doesn't work properly
