@@ -44,3 +44,4 @@ Referenced by issue #46572, Appending objects via Python API does not work under
 Referenced by issue #46556, [BUG] BGE Segmentation fault (core dumped)
 Referenced by issue #46557, [BUG] BGE steering
 Referenced by issue #46565, Segfault when rendering AVI animation to /tmp
+Referenced by issue #46550, Cycles bake black
