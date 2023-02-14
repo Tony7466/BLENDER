@@ -1,2 +1,3 @@
 Referenced by issue #98731, Vertex Paint mode can edit only 8 color attributes
 Referenced by issue #92318, Add Vertex Color doesn't notify user when limit has been hit
+Referenced by issue blender/blender-addons#93541, Blender 3.0 cannot import FBX (containing more than 8 UV layers)
