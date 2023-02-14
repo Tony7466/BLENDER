@@ -34,3 +34,4 @@ Referenced by issue #41753, sculpting performance in viewport
 Referenced by issue #41707, Select Linked behavior inconsistent. Sometimes doesn't work. Sometimes overflows.
 Referenced by issue #41713, Lattice - Influence vertexgroup in curve modifier gets ignored
 Referenced by issue #41681, in pose mode a .pose.bones.tail vector may suffer from an error due to floating point precision
+Referenced by issue #41684, Auto Smooth produce shadow (shading) problems
