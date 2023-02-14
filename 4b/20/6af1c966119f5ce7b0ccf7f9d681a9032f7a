@@ -19,3 +19,4 @@ Referenced by issue #37913, Cycles transparent shader behaving differently with 
 Referenced by issue #37916, Mirror+Bevel modifiers produce incorrect result.
 Referenced by issue #37885, Gravity feature with Dynamic topology enabled sculpt crashes blender
 Referenced by issue #37847, Tracking > Track to highlight
+Referenced by issue blender/blender-addons#53136, Paint palletes import robustness
