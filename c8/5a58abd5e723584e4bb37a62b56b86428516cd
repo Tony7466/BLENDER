@@ -4,3 +4,4 @@ Referenced by issue #45215, New Material Creation causes Error: EXCEPTION_ACCESS
 Referenced by issue #45224, Exporting screencast to H.264/MPEG-4 crashes
 Referenced by issue #45193, Image Node
 Referenced by issue #45197, long scrolled areas do not revert when switching objects
+Referenced by issue #45133, Crash when clicking materials tab in properties panel
