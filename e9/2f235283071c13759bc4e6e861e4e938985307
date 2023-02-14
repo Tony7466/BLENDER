@@ -34,3 +34,4 @@ Referenced by issue #52080, File Permissions Bug in Windows  - Blender ignores W
 Referenced by issue #52050, Empty VSE preview for scene strips with OpenGL preview + Rendered settings
 Referenced by issue #51996, Point Density casts wrong shadows
 Referenced by issue #51993, Blender crashes when I switch Window
+Referenced by issue #51994, Front View Mislabelled
