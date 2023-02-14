@@ -12,3 +12,4 @@ Referenced by issue #39120, Timeline locker don't work with arrows keys
 Referenced by issue #39126, Convert To: Mesh from Curve/Meta/Surface does not respect "Keep Original"
 Referenced by issue #39108, Bevel vertex tool deletes edges.
 Referenced by issue #39111, 2.70 RC1 Windows 64, Boolean stress test.
+Referenced by issue #39094, jittery display when using mouse drag with Continuous Drag ON
