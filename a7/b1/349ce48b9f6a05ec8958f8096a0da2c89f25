@@ -2,3 +2,4 @@ Referenced by issue #38553, Crash: load new level; array modifier using curve le
 Referenced by issue #38432, Knife tool is not working
 Referenced by issue #38419, Text on Sliders are broken
 Referenced by issue #38420, Segfault when curve deform modifier and curve itself is parented to mesh object
+Referenced by issue #38423, Shortcuts hotkey problem
