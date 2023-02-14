@@ -1,1 +1,2 @@
 Referenced by issue #61460, Crash: Stereoscopy + Desnoising + GPU crashes
+Referenced by issue blender/blender-addons#61455, Import any add-on broken on Windows 7 64-bit - module_filesystem_remove is not defined
