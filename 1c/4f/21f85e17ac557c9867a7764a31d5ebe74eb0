@@ -1,1 +1,2 @@
 Referenced by issue #47426, GPU render fails with 'illegal address in cuCtxSynchronize' when using 2nd GPU
+Referenced by issue #45093, Cycles: NVidia GTX 980 Ti rendering at 1/3rd  speed of NVidia GTX 980 the same machine?
