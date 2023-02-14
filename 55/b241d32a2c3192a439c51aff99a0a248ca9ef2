@@ -2,3 +2,4 @@ Referenced by issue #55074, Copy-on-write crash when rendering with Cycles
 Referenced by issue #55076, Proxy bones not moving
 Referenced by issue #55078, Crash when using bone selection overlay
 Referenced by issue #55080, Banding artifacts on workbench
+Referenced by issue #55082, Add Paint Slots for texture painting not working.
