@@ -1,2 +1,3 @@
 Referenced by issue #42807, Blender Game renderer Variance Shadow Maps (VSMs) broken.
 Referenced by issue #42728, "add texture paint slot" Alpha incomplete set up
+Referenced by issue #42689, GPU rendering won't render two point lamps at once
