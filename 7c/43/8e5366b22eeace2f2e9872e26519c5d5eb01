@@ -15,3 +15,4 @@ Referenced by issue #59960, Blender shuts down
 Referenced by issue #59945, Redundant whitespace in prop_search()
 Referenced by issue #59946, Multiple quit dialogs possible
 Referenced by issue #59953, Particles not beeing rendered
+Referenced by issue #59943, Color banding present in Workbench render but not in viewport.
