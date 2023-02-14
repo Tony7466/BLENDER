@@ -96,3 +96,4 @@ Referenced by issue #39356, unsatisfied with uv pin unpin button, small bug
 Referenced by issue #39337, 2.70 Increased AMD OpenCL render time by 50%
 Referenced by issue #39338, Blender painting not precise,with maximum bleeding 8 pixels
 Referenced by issue #39343, Strange mask issue, sculpt mode and multires
+Referenced by issue #39324, Graph Editor - Smooth Keys function not working correctly
