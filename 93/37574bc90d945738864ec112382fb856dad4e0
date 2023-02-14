@@ -92,3 +92,4 @@ Referenced by issue #40992, rotation bug
 Referenced by issue #40999, "View as render" button in Background image settings, no purpose
 Referenced by issue #40981, Matcap with Clipping Border
 Referenced by issue #40982, particle emitter disappear in viewport with "only render mode"
+Referenced by issue #40986, compositor: crash on using the viewer node inside of group nodes
