@@ -85,3 +85,4 @@ Referenced by issue #49946, Blender crash when you add a node texture in composi
 Referenced by issue #49956, Cuda error illegal address when rendering more than 5-10 frames of an animation
 Referenced by issue #49899, blender crashes when add a inverse kineatics constraint to bone
 Referenced by issue #49887, Middle Mouse button for Rotate 3D view does not work (Mouse: Logitech MX Anywhere 2)
+Referenced by issue #49874, FirePro GPU Render No Longer Working
