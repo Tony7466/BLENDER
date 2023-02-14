@@ -27,7 +27,17 @@ def build_default_empty_geometry_node_group(name, add_link):
 
 
 def geometry_node_group_empty_new():
-    build_default_empty_geometry_node_group(data_("Geometry Nodes"), True)
+    return build_default_empty_geometry_node_group(data_("Geometry Nodes"), True)
+
+
+def geometry_modifier_poll(context):
+    ob = context.object
+
+    # Test object support for geometry node modifier
+    if not ob or ob.type not in {'MESH', 'POINTCLOUD', 'VOLUME', 'CURVE', 'FONT', 'CURVES'}:
+        return False
+
+    return True
 
 
 def get_context_modifier(context):
@@ -40,16 +50,8 @@ def get_context_modifier(context):
     return modifier
 
 
-def geometry_modifier_poll(context):
-    ob = context.object
-
-    # Test object support for geometry node modifier
-    if not ob or ob.type not in {'MESH', 'POINTCLOUD', 'VOLUME', 'CURVE', 'FONT', 'CURVES'}:
-        return False
-    if get_context_modifier(context) is None:
-        return False
-
-    return True
+def edit_geometry_nodes_modifier_poll(context):
+    return get_context_modifier(context) is not None
 
 
 def socket_idname_to_attribute_type(idname):
@@ -104,7 +106,7 @@ class CreateModifierWrapperGroup(Operator):
 
     @classmethod
     def poll(cls, context):
-        return geometry_modifier_poll(context)
+        return edit_geometry_nodes_modifier_poll(context)
 
     def execute(self, context):
         modifier = get_context_modifier(context)
