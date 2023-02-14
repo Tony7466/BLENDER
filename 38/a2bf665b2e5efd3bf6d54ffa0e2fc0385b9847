@@ -1,1 +1,2 @@
 Referenced by issue #51606, Immediate crash when switching to rendered viewport shading, Cycles, Mac
+Referenced by issue #51581, If a thin mesh has world background around it then the denoiser is not denoising that mesh
