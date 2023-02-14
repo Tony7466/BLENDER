@@ -3,3 +3,4 @@ Referenced by issue #45167, Holding Ctrl right after trackpad scrolling makes un
 Referenced by issue #45165, Quickime/OSX: render output path with diacritic signs produces no video file
 Referenced by issue #45131, CUDA memory leak
 Referenced by issue #45058, Cycles hair shader reflects incorrectly for meshes
+Referenced by issue #45037, Cycles doesn't work at all
