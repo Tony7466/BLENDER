@@ -95,3 +95,4 @@ Referenced by issue #40982, particle emitter disappear in viewport with "only re
 Referenced by issue #40986, compositor: crash on using the viewer node inside of group nodes
 Referenced by issue #40946, Cycles High Resolution Render Crash
 Referenced by issue #40951, switching camera don't  work in viewport
+Referenced by issue #40954, Object using hair particles to emit other objects disappear
