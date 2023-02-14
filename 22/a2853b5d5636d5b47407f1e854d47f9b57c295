@@ -49,3 +49,4 @@ Referenced by issue #47908, Loop End action does not complete (behaves as Loop S
 Referenced by issue #47911, Bug while sculpt edit finalize step.
 Referenced by issue #47912, Particles (Hair) sets displayed hair count to 100% after render
 Referenced by issue #47890, Masking vertices in weight paint doesn't work with subsurf
+Referenced by issue #47897, Segfault when selecting mesh object in blender 2.77 in ubuntu
