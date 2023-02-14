@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#38493, Templates: Raycast Modal Op does not catch RuntimeError caused by Object.ray_cast for meshes with no faces
