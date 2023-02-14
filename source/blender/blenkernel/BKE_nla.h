@@ -100,7 +100,7 @@ struct NlaTrack *BKE_nlatrack_add(struct AnimData *adt,
 void BKE_nlatrack_remove(ListBase *tracks, struct NlaTrack *nlt);
 
 /**
- * Remove the given NLA track from the list  of NLA tracks, free the track's data,
+ * Remove the given NLA track from the list of NLA tracks, free the track's data,
  * and the track itself.
  */
 void BKE_nlatrack_remove_and_free(ListBase *tracks, struct NlaTrack *nlt, bool do_id_user);
