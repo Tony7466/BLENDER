@@ -1,1 +1,2 @@
 Referenced by issue #42680, Curve modifiers not respected by other objects/cannot be applied correctly
+Referenced by issue #42614, Laplacian Smooth modifier calculated even if object visibility is turned off
