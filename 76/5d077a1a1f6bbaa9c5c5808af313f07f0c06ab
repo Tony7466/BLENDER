@@ -1,1 +1,2 @@
 Referenced by issue #39463, Segmentation fault on render
+Referenced by issue #39415, OSL Attribute node only works when SVM Attribute node is present
