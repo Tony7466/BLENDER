@@ -7,3 +7,4 @@ Referenced by issue #52185, Material ID aliasing artifacts
 Referenced by issue #51880, blender error: "File format is not supported in file"
 Referenced by issue #51644, Crash upon Startup
 Referenced by issue #51214, Dynamic Paint Works Only in Viewport Render
+Referenced by issue #51153, VSE Interlaced Video FPS not being honored
