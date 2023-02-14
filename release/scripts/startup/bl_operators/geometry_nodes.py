@@ -97,10 +97,10 @@ def get_enabled_socket_with_name(sockets, name):
     return None
 
 
-class CreateModifierWrapperGroup(Operator):
+class MoveModifierToNodes(Operator):
     """Move inputs and outputs from in the modifier to a new node group"""
 
-    bl_idname = "object.new_geometry_node_group_wrapper"
+    bl_idname = "object.geometry_nodes_move_to_nodes"
     bl_label = "Move to Nodes"
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -239,5 +239,5 @@ class NewGeometryNodeTreeAssign(Operator):
 classes = (
     NewGeometryNodesModifier,
     NewGeometryNodeTreeAssign,
-    CreateModifierWrapperGroup,
+    MoveModifierToNodes,
 )
