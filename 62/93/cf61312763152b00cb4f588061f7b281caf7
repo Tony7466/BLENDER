@@ -1,2 +1,3 @@
 Referenced by issue #90639, Blender crashes upon opening video file.
 Referenced by issue #90630, Crash with certain startup/user preferences configurations after recent changes to WM init (rB497bc4d19977)
+Referenced by issue blender/blender-addons#90623, Crash on startup with Copy Attributes Menu enabled
