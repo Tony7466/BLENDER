@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#65836, PythonAPI: BMLoopUV.select_edge never returns True and doesn't update uv select state when set manually.
