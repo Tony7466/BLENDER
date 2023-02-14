@@ -1,1 +1,2 @@
 Referenced by issue #50900, Text-Blocks created from "Edit Source" have zero users.
+Referenced by issue blender/blender-addons#55260, load Text File with Python from GUI Button results in 0 User
