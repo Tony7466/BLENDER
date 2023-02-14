@@ -1898,7 +1898,13 @@ void lineart_sort_adjacent_items(LineartAdjacentEdge *ai, int length)
         /* parallel_sort() requires cmp() to return true when the first element needs to appear
          * before the second element in the sorted array, false otherwise (strict weak ordering),
          * see https://en.cppreference.com/w/cpp/named_req/Compare. */
-        return a < 0 ? true : (a == 0 ? b < 0 : false);
+        if (a < 0) {
+          return true;
+        }
+        if (a > 0) {
+          return false;
+        }
+        return b < 0;
       });
 }
 
