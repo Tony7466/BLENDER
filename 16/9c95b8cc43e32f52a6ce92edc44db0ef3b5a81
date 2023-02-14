@@ -12,3 +12,4 @@ Referenced by issue #40689, Armature edit crash
 Referenced by issue #40698, Using the Lattice Modifier on a cube (with subdivision surface) in Blender 2.71. Blender turns down. Work fine in version 2.69.
 Referenced by issue #40688, Blender crashes while rendering
 Referenced by issue #40668, Node editor has gone
+Referenced by issue #40669, BHV cache is not freed, and Copy Previous Settings try to duplicate it.
