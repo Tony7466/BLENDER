@@ -45,3 +45,4 @@ Referenced by issue #41580, Cast modifier - Edit Cache problems
 Referenced by issue #41556, Joystick Button Sensor dosn't listen on overlayed Scene
 Referenced by issue #41560, Multiple loop subdivide
 Referenced by issue #41546, Rendering to PNG sequences only does zero padding up to 9999 (four digits)
+Referenced by issue #41513, Collada import: segfault
