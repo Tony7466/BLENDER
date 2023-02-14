@@ -33,3 +33,4 @@ Referenced by issue #52076, Boolean. Change BMesh to Carve = crush
 Referenced by issue #52080, File Permissions Bug in Windows  - Blender ignores Windows folder permissions and fails to write in valid folders with proper permissions.
 Referenced by issue #52050, Empty VSE preview for scene strips with OpenGL preview + Rendered settings
 Referenced by issue #51996, Point Density casts wrong shadows
+Referenced by issue #51993, Blender crashes when I switch Window
