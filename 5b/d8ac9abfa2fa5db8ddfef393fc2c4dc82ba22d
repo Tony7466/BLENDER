@@ -73,3 +73,4 @@ Referenced by issue #53816, Denoiser produces artefacts depending on radius
 Referenced by issue #53819, Compressed Splash Screen
 Referenced by issue #53771, Full Sample AA breaks stereo renderings in Blender Render
 Referenced by issue #53732, "Segmentation fault (Core dumped)" on startup.
+Referenced by issue #53744, Bfont doesn't support russian characters in text object, while UI does show Russian characters
