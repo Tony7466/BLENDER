@@ -58,7 +58,7 @@ struct CurvesBatchCache {
   GPUVertBuf *edit_points_pos;
 
   /* Selection of original points. */
-  GPUVertBuf *edit_points_data;
+  GPUVertBuf *edit_points_selection;
 
   GPUIndexBuf *edit_lines_ibo;
 
@@ -113,7 +113,7 @@ static void curves_batch_cache_clear_edit_data(CurvesBatchCache *cache)
 {
   /* TODO: more granular update tagging. */
   GPU_VERTBUF_DISCARD_SAFE(cache->edit_points_pos);
-  GPU_VERTBUF_DISCARD_SAFE(cache->edit_points_data);
+  GPU_VERTBUF_DISCARD_SAFE(cache->edit_points_selection);
   GPU_INDEXBUF_DISCARD_SAFE(cache->edit_lines_ibo);
 
   GPU_BATCH_DISCARD_SAFE(cache->edit_points);
@@ -255,9 +255,9 @@ static void curves_batch_cache_ensure_edit_points_pos(const bke::CurvesGeometry 
   GPU_vertbuf_attr_fill(cache.edit_points_pos, pos, deformed_positions.data());
 }
 
-static void curves_batch_cache_ensure_edit_points_data(const bke::CurvesGeometry &curves,
-                                                       const eAttrDomain selection_domain,
-                                                       CurvesBatchCache &cache)
+static void curves_batch_cache_ensure_edit_points_selection(const bke::CurvesGeometry &curves,
+                                                            const eAttrDomain selection_domain,
+                                                            CurvesBatchCache &cache)
 {
   static GPUVertFormat format_data = {0};
   static uint selection_id;
@@ -266,8 +266,8 @@ static void curves_batch_cache_ensure_edit_points_data(const bke::CurvesGeometry
         &format_data, "selection", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
   }
 
-  GPU_vertbuf_init_with_format(cache.edit_points_data, &format_data);
-  GPU_vertbuf_data_alloc(cache.edit_points_data, curves.points_num());
+  GPU_vertbuf_init_with_format(cache.edit_points_selection, &format_data);
+  GPU_vertbuf_data_alloc(cache.edit_points_selection, curves.points_num());
 
   const OffsetIndices points_by_curve = curves.points_by_curve();
 
@@ -277,7 +277,7 @@ static void curves_batch_cache_ensure_edit_points_data(const bke::CurvesGeometry
     case ATTR_DOMAIN_POINT:
       for (const int point_i : selection.index_range()) {
         const float point_selection = selection[point_i] ? 1.0f : 0.0f;
-        GPU_vertbuf_attr_set(cache.edit_points_data, selection_id, point_i, &point_selection);
+        GPU_vertbuf_attr_set(cache.edit_points_selection, selection_id, point_i, &point_selection);
       }
       break;
     case ATTR_DOMAIN_CURVE:
@@ -285,7 +285,8 @@ static void curves_batch_cache_ensure_edit_points_data(const bke::CurvesGeometry
         const float curve_selection = selection[curve_i] ? 1.0f : 0.0f;
         const IndexRange points = points_by_curve[curve_i];
         for (const int point_i : points) {
-          GPU_vertbuf_attr_set(cache.edit_points_data, selection_id, point_i, &curve_selection);
+          GPU_vertbuf_attr_set(
+              cache.edit_points_selection, selection_id, point_i, &curve_selection);
         }
       }
       break;
@@ -761,18 +762,18 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
 
   if (DRW_batch_requested(cache.edit_points, GPU_PRIM_POINTS)) {
     DRW_vbo_request(cache.edit_points, &cache.edit_points_pos);
-    DRW_vbo_request(cache.edit_points, &cache.edit_points_data);
+    DRW_vbo_request(cache.edit_points, &cache.edit_points_selection);
   }
   if (DRW_batch_requested(cache.edit_lines, GPU_PRIM_LINE_STRIP)) {
     DRW_ibo_request(cache.edit_lines, &cache.edit_lines_ibo);
     DRW_vbo_request(cache.edit_lines, &cache.edit_points_pos);
-    DRW_vbo_request(cache.edit_lines, &cache.edit_points_data);
+    DRW_vbo_request(cache.edit_lines, &cache.edit_points_selection);
   }
   if (DRW_vbo_requested(cache.edit_points_pos)) {
     curves_batch_cache_ensure_edit_points_pos(curves_orig, deformation.positions, cache);
   }
-  if (DRW_vbo_requested(cache.edit_points_data)) {
-    curves_batch_cache_ensure_edit_points_data(
+  if (DRW_vbo_requested(cache.edit_points_selection)) {
+    curves_batch_cache_ensure_edit_points_selection(
         curves_orig, eAttrDomain(curves_id->selection_domain), cache);
   }
   if (DRW_ibo_requested(cache.edit_lines_ibo)) {
