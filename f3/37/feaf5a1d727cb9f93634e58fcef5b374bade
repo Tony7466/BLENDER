@@ -83,3 +83,4 @@ Referenced by issue #47234, Excessive BVH build time for dupligroup instances of
 Referenced by issue #47201, Cycles+OSL keeps image files open until Blender exits
 Referenced by issue #47209, Crashes when adding remesh modifier to the mesh that is far from object origin and has been translated to world origin
 Referenced by issue #47187, Blender 2.7x crashes
+Referenced by issue #47168, bpy.ops.paint.project_image(image=image_name) degrades high dynamic range to ~8bit
