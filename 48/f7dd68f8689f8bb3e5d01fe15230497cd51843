@@ -51,3 +51,4 @@ NVIDIA 780 Ti 3GB
 Referenced by issue #46511, Subdivision surface modifler（Pixar Open Subdivision) bug
 Referenced by issue #46517, Smoke Cycle - forgets settings when moving between Domain and Flow tabs
 Referenced by issue #46478, 3D Stereo Render Gui Bug
+Referenced by issue #46482, Crash when undoing
