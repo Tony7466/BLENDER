@@ -11,3 +11,4 @@ Referenced by issue #88941, Hiding an element in a collection, where that collec
 Referenced by issue #88945, Constantly crashes in sculpting mode
 Referenced by issue #88893, Blender freeze while working on mesh with texture
 Referenced by issue #88811, Render crash when using Python API to modify object Attribute data in frame_change_pre handler
+Referenced by issue blender/blender-addons#89117, meshes
