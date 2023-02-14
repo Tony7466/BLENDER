@@ -1,3 +1,4 @@
 Referenced by issue #66254, NLA Strip's Extrapolation set to 'Hold' often reverts to 'Hold Forward'
 Referenced by issue #66089, "i" hotkey to insert keyframe doesn't work in color picker
 Referenced by issue #66079, All graphics corrupted as colourful gradients
+Referenced by issue #66083, Hair Info -> Tangent Normal still not working properly in Eevee
