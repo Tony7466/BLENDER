@@ -1,1 +1,2 @@
 Referenced by issue #43980, MouseLook (actuator) triggers MouseMovement (sensor) on other objects permanently
+Referenced by issue #43974, Alpha output of movie clip node crashes blender when connected to viewer node with backdrop enabled
