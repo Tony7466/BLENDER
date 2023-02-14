@@ -2,3 +2,4 @@ Referenced by issue #73464,  EXCEPTION_ACCESS_VIOLATION error prevents me from s
 Referenced by issue #72221, [GPU] Intel HD 4000 driver does not handle multiple glcontext right. Crash.
 Referenced by issue #72098, Crash on startup with 2.82 and Intel HD + Windows
 Referenced by issue #69790, Blender 2.80 always crash when choosing material
+Referenced by issue #68025, Blender crash clicking on the Materials button in the Property panel
