@@ -52,3 +52,4 @@ Referenced by issue #46511, Subdivision surface modifler（Pixar Open Subdivisio
 Referenced by issue #46517, Smoke Cycle - forgets settings when moving between Domain and Flow tabs
 Referenced by issue #46478, 3D Stereo Render Gui Bug
 Referenced by issue #46482, Crash when undoing
+Referenced by issue #46483, Sliding vertex/edges makes vertices pinned in UV editor
