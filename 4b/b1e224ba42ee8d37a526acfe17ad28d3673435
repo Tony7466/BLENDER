@@ -44,3 +44,4 @@ Referenced by issue #49653, Quicktime render error
 Referenced by issue #49638, Changing multiple object dimensions doesn't work
 Referenced by issue #49639, Crash when disconnecting joystick while game engine is running
 Referenced by issue #49622, Grease pencil not rendering out of VSE
+Referenced by issue #49629, Graph editor normalize function doesn't work on f-curves with a constant key value
