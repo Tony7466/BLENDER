@@ -55,3 +55,4 @@ Referenced by issue #46482, Crash when undoing
 Referenced by issue #46483, Sliding vertex/edges makes vertices pinned in UV editor
 Referenced by issue #46467, Clean Keyframes removes the channels.
 Referenced by issue #46473, Can't save to a file path with a space in it
+Referenced by issue #46456, quitting while using dynotopo (dynamic topography) if you press ESC
