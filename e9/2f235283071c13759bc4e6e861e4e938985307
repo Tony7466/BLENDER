@@ -92,3 +92,4 @@ Referenced by issue #50881, BGE: Skinned object is culled out of camera frustum 
 Referenced by issue #50850, Blender crash with cycles rendered viewport shading when changing settings of material with external jpg texture
 Referenced by issue #50817, "Sampling" panel from Properties->Render window not displaying contents
 Referenced by issue #50565, Transform: Planar constraints don't work properly with non-Blender key configurations
+Referenced by issue #50097, Blender Crashes when zooming in the node editor
