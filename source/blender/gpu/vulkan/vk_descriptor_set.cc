@@ -56,6 +56,9 @@ void VKDescriptorSet::bind_as_ssbo(VKIndexBuffer &buffer, int location)
 
 void VKDescriptorSet::image_bind(VKTexture &texture, int location)
 {
+  Binding &binding = ensure_location(location);
+  binding.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+  binding.vk_image_view = texture.vk_image_view_handle();
 }
 
 VKDescriptorSet::Binding &VKDescriptorSet::ensure_location(int location)
@@ -66,9 +69,7 @@ VKDescriptorSet::Binding &VKDescriptorSet::ensure_location(int location)
     }
   }
 
-  Binding binding;
-  binding.vk_buffer = VK_NULL_HANDLE;
-  binding.buffer_size = 0;
+  Binding binding = {};
   binding.location = location;
   bindings_.append(binding);
   return bindings_.last();
@@ -78,7 +79,11 @@ void VKDescriptorSet::update(VkDevice vk_device)
 {
   Vector<VkDescriptorBufferInfo> buffer_infos;
   Vector<VkWriteDescriptorSet> descriptor_writes;
+
   for (const Binding &binding : bindings_) {
+    if (!binding.is_buffer()) {
+      continue;
+    }
     VkDescriptorBufferInfo buffer_info = {};
     buffer_info.buffer = binding.vk_buffer;
     buffer_info.range = binding.buffer_size;
@@ -91,7 +96,26 @@ void VKDescriptorSet::update(VkDevice vk_device)
     write_descriptor.descriptorCount = 1;
     write_descriptor.descriptorType = binding.type;
     write_descriptor.pBufferInfo = &buffer_infos.last();
+    descriptor_writes.append(write_descriptor);
+  }
 
+  Vector<VkDescriptorImageInfo> image_infos;
+  for (const Binding &binding : bindings_) {
+    if (!binding.is_image()) {
+      continue;
+    }
+    VkDescriptorImageInfo image_info = {};
+    image_info.imageView = binding.vk_image_view;
+    image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+    image_infos.append(image_info);
+
+    VkWriteDescriptorSet write_descriptor = {};
+    write_descriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    write_descriptor.dstSet = vk_descriptor_set_;
+    write_descriptor.dstBinding = binding.location;
+    write_descriptor.descriptorCount = 1;
+    write_descriptor.descriptorType = binding.type;
+    write_descriptor.pImageInfo = &image_infos.last();
     descriptor_writes.append(write_descriptor);
   }
 

@@ -24,10 +24,23 @@ class VKTexture;
 
 class VKDescriptorSet : NonCopyable {
   struct Binding {
-    int location;
+    int location = -1;
     VkDescriptorType type;
+
     VkBuffer vk_buffer = VK_NULL_HANDLE;
-    VkDeviceSize buffer_size;
+    VkDeviceSize buffer_size = 0;
+
+    VkImageView vk_image_view = VK_NULL_HANDLE;
+
+    bool is_buffer() const
+    {
+      return ELEM(type, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+    }
+
+    bool is_image() const
+    {
+      return ELEM(type, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+    }
   };
 
   VkDescriptorPool vk_descriptor_pool_ = VK_NULL_HANDLE;

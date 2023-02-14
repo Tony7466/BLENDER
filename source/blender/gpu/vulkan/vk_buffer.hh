@@ -16,6 +16,8 @@
 #  include <vulkan/vulkan.h>
 #endif
 
+#include "vk_mem_alloc.h"
+
 namespace blender::gpu {
 
 /**
@@ -40,8 +42,8 @@ class VKBuffer {
   bool update(VKContext &context, const void *data);
   // TODO: add partial_update (update_sub)
   bool free(VKContext &context);
-  bool map(VKContext &context, void **r_mapped_memory)const;
-  void unmap(VKContext &context)const ;
+  bool map(VKContext &context, void **r_mapped_memory) const;
+  void unmap(VKContext &context) const;
 
   int64_t size_in_bytes() const
   {

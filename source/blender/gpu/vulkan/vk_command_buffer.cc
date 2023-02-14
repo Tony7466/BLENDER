@@ -6,8 +6,10 @@
  */
 
 #include "vk_command_buffer.hh"
+#include "vk_buffer.hh"
 #include "vk_context.hh"
 #include "vk_memory.hh"
+#include "vk_texture.hh"
 
 #include "BLI_assert.h"
 
@@ -66,6 +68,47 @@ void VKCommandBuffer::bind(const VKDescriptorSet &descriptor_set,
   VkDescriptorSet vk_descriptor_set = descriptor_set.vk_handle();
   vkCmdBindDescriptorSets(
       vk_command_buffer_, bind_point, vk_pipeline_layout, 0, 1, &vk_descriptor_set, 0, 0);
+}
+
+void VKCommandBuffer::copy(VKBuffer &dst_buffer,
+                           VKTexture &src_texture,
+                           Span<VkBufferImageCopy> regions)
+{
+  vkCmdCopyImageToBuffer(vk_command_buffer_,
+                         src_texture.vk_image_handle(),
+                         VK_IMAGE_LAYOUT_GENERAL,
+                         dst_buffer.vk_handle(),
+                         regions.size(),
+                         regions.data());
+}
+
+void VKCommandBuffer::pipeline_barrier(VkPipelineStageFlags source_stages,
+                                       VkPipelineStageFlags destination_stages)
+{
+  vkCmdPipelineBarrier(vk_command_buffer_,
+                       source_stages,
+                       destination_stages,
+                       0,
+                       0,
+                       nullptr,
+                       0,
+                       nullptr,
+                       0,
+                       nullptr);
+}
+
+void VKCommandBuffer::pipeline_barrier(Span<VkImageMemoryBarrier> image_memory_barriers)
+{
+  vkCmdPipelineBarrier(vk_command_buffer_,
+                       VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                       VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                       VK_DEPENDENCY_BY_REGION_BIT,
+                       0,
+                       nullptr,
+                       0,
+                       nullptr,
+                       image_memory_barriers.size(),
+                       image_memory_barriers.data());
 }
 
 void VKCommandBuffer::dispatch(int groups_x_len, int groups_y_len, int groups_z_len)

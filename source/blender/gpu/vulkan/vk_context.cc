@@ -79,10 +79,12 @@ void VKContext::end_frame()
 
 void VKContext::flush()
 {
+  command_buffer_.submit();
 }
 
 void VKContext::finish()
 {
+  command_buffer_.submit();
 }
 
 void VKContext::memory_statistics_get(int * /*total_mem*/, int * /*free_mem*/)
