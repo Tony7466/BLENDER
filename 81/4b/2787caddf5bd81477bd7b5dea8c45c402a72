@@ -1,1 +1,2 @@
 Referenced by issue #83196, Matrix multiplications/ to_quat/ to_euler outputs incorrect rotation in some cases
+Referenced by issue blender/blender-addons#77811, Animation jitter on FBX export
