@@ -95,3 +95,4 @@ Referenced by issue #39770, circle select only on object origin
 Referenced by issue #39767, crash when click [Parent] on Mask mode in UV/Image Editor.
 Referenced by issue #39750, Bones disappearing with strange transforms
 Referenced by issue #39722, baking: warning messages are unclear
+Referenced by issue #39700, Motion Tracking
