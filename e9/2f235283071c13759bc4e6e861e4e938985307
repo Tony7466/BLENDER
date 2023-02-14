@@ -88,3 +88,4 @@ Referenced by issue #50944, Blender2xplane export
 Referenced by issue #50905, camera rotation problem
 Referenced by issue #50911, Broken user interface in render result window when image size matches screen resolution
 Referenced by issue #50887, fluid simulation: generate mesh bug
+Referenced by issue #50881, BGE: Skinned object is culled out of camera frustum based on original geometry
