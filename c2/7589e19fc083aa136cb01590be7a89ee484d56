@@ -21,3 +21,4 @@ Referenced by issue #46296, Rigify: Bone Heat Weighting: failed to find solution
 Referenced by issue #46221, Mixed shader Glass and Transparent displayed as solid in render, prerender as wished.
 Referenced by issue #46223, Open EXR multiview image sequences crash Blender 2.75a and 2.76rc
 Referenced by issue #46133, Units change to none after editing an added cylinder
+Referenced by issue #46110, Cycles: rays miss triangles
