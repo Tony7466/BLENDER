@@ -37,3 +37,4 @@ Referenced by issue #47825, backgrond images bug
 Referenced by issue #47802, bake does not accept DIFFUSE_COLOR as parameter in 2.77 rc2
 Referenced by issue #47782, Crash on MacBook Pro 2015 Retina when start to render on 2nd non retina display
 Referenced by issue #47751, Blender 2.77+2.77~rc1~1456489967
+Referenced by issue #47756, RGB Curves node kills HDR values?
