@@ -1,2 +1,3 @@
 Referenced by issue #38176, z transform
 Referenced by issue #38177, knife cut fails
+Referenced by issue blender/blender-addons#38150, implementation mismatch in bmesh python
