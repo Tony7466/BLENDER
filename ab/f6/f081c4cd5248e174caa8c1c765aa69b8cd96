@@ -87,3 +87,4 @@ Referenced by issue #48655, Issues selecting vertices in 3DsMax interface mode
 Referenced by issue #48637, Viewport Ambient Occlusion Inverted
 Referenced by issue #48646, GPU rendering (CUDA) sometimes doesn't load images from image sequence textures.
 Referenced by issue #48616, Transform operations, on consecutive edge loops, alter selection when auto merged
+Referenced by issue #48617, use backdrop option is missing in some VSE modes
