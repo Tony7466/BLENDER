@@ -1,2 +1,3 @@
 Referenced by issue #46309, Cycles reflection and bump artifacts
 Referenced by issue #46226, bake normals from multiresolution crash
+Referenced by issue #46229, File browser window closes after hitting esc after render
