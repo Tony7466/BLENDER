@@ -29,3 +29,4 @@ Referenced by issue #43233, OpenGL speed regression
 Referenced by issue #43227, Select with seam limit is not working
 Referenced by issue #43207, Painting texture with fill
 Referenced by issue #43196, Object/Edit mode Solid Shading Lighting Bug
+Referenced by issue #43197, Transforms entered in properties panel do not apply to GROUP - only to individual object
