@@ -51,3 +51,4 @@ Referenced by issue #51628, Blender freezes after window was minimized
 Referenced by issue #51617, Logic Bricks: Actions based on Properties refuse to play with a Dynamic physics parent
 Referenced by issue #51620, Segmentation fault trying to make single copy from linked object
 Referenced by issue #51621, Boolean modifier is completely broken
+Referenced by issue #51595, Snap to edge does not work with high zoom level
