@@ -1,2 +1,3 @@
 Referenced by issue #47096, Video Sequence Editor does not update driver values when rendering
 Referenced by issue #47089, ViewRotate fails w/ AutoDepth & Cursor Depth
+Referenced by issue #47068, Weird deformations on linked meshes modified by a curve
