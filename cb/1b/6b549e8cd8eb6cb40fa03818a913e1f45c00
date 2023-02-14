@@ -1,1 +1,2 @@
 Referenced by issue #38780, Crash when adding image in uv/image editor.
+Referenced by issue blender/blender-addons#38769, material_index inaccessible via python for Text objects
