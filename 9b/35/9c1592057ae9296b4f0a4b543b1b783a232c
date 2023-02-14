@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#44363, 'location_3d_to_region_2d' returns None if the coordinates refer to a point behind to the camera
