@@ -15,3 +15,4 @@ Referenced by issue #37987, Blender goes into an infinite loop when opening a fi
 Referenced by issue #37956, Lightdistance
 Referenced by issue #37934, Solidify Modifier Problem
 Referenced by issue #37940, Curve Render bug in Blender Internal Render.
+Referenced by issue #37913, Cycles transparent shader behaving differently with same image but different setup
