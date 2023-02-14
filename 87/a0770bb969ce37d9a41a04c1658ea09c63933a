@@ -1,2 +1,3 @@
 Referenced by issue #96361, Regression: Texture Mapping properties of texture nodes are not updated in 3D Viewport
 Referenced by issue #96241, 3.1: Potential candidates for corrective releases
+Referenced by issue blender/blender-addons#96654, Sun Position Addon not working with HDRI maps
