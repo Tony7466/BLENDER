@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#71596, Fbx export writes the embedded textures paths with a .fbm extension after playing with 'pack/unpack textures into blend files'
