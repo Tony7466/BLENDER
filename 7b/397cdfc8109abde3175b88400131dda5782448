@@ -16,3 +16,4 @@ Referenced by issue #52562, Opacity slider of scene strip or image strip not rea
 Referenced by issue #52567, Limit to selection to visible function (problem)
 Referenced by issue #52544, Blender crash. Problem with ShrinkWrap or Subsurf Lvl 2
 Referenced by issue #52551, undo causes crash after enabling a new rigid body when scene uses a referenced rigid body world
+Referenced by issue #52533, Blender Shuts down when rendering duplicated smoke domain.
