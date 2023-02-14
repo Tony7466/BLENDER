@@ -90,3 +90,4 @@ Referenced by issue #47121, Image node on linked and localized material loses im
 Referenced by issue #47106, Proportional Edit will not disable
 Referenced by issue #47109, Change duplicate sound strip path change original stip path too
 Referenced by issue #47096, Video Sequence Editor does not update driver values when rendering
+Referenced by issue #47098, Hibernate halts render and bake
