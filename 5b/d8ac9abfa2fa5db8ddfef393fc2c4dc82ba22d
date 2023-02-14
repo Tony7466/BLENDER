@@ -85,3 +85,4 @@ Referenced by issue #53631, Crash.  Open this specific .blend file, select 'Rend
 Referenced by issue #53632, Active Object Menu showing objects outside current scene
 Referenced by issue #53608, Switching screen layouts switches the active scene
 Referenced by issue #53596, Keyboard Language Mapping on [User Preference > Input > search term]
+Referenced by issue #53602, Mesh - Proportional Editing (Connected) Bug
