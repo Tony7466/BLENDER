@@ -132,12 +132,12 @@ bool BM_attribute_stored_in_bmesh_builtin(const StringRef name)
               ".hide_vert",
               ".hide_edge",
               ".hide_poly",
+              ".uv_seam",
               ".select_vert",
               ".select_edge",
               ".select_poly",
               "material_index",
-              "sharp_edge",
-              ".uv_seam");
+              "sharp_edge");
 }
 
 /* Static function for alloc (duplicate in modifiers_bmesh.c) */
@@ -476,6 +476,7 @@ void BM_mesh_bm_from_me(BMesh *bm, const Mesh *me, const struct BMeshFromMeshPar
         bm, vtable[medge[i].v1], vtable[medge[i].v2], nullptr, BM_CREATE_SKIP_CD);
     BM_elem_index_set(e, i); /* set_ok */
 
+    e->head.hflag = 0;
     if (uv_seams && uv_seams[i]) {
       BM_elem_flag_enable(e, BM_ELEM_SEAM);
     }
