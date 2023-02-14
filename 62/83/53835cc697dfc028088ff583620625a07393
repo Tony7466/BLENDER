@@ -1,1 +1,2 @@
 Referenced by issue #40290, False (or malfunctioning) dependency-cycle warning when adding dupligroup objects to another group.
+Referenced by issue blender/blender-addons#40267, Addon's bug tracker urls not respected
