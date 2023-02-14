@@ -37,6 +37,33 @@ TEST(math_rotation_types, QuaternionVectorConstructor)
   EXPECT_EQ(q.z, 4.0f);
 }
 
+TEST(math_rotation_types, QuaternionProduct)
+{
+  Quaternion q1{1.0f, 2.0f, 3.0f, 4.0f};
+  Quaternion q2{3.0f, 4.0f, 5.0f, 6.0f};
+  Quaternion result = q1 * q2;
+  EXPECT_EQ(result.w, -44.0f);
+  EXPECT_EQ(result.x, 8.0f);
+  EXPECT_EQ(result.y, 18.0f);
+  EXPECT_EQ(result.z, 16.0f);
+
+  Quaternion result2 = q1 * 4.0f;
+  EXPECT_EQ(result2.w, 4.0f);
+  EXPECT_EQ(result2.x, 8.0f);
+  EXPECT_EQ(result2.y, 12.0f);
+  EXPECT_EQ(result2.z, 16.0f);
+}
+
+TEST(math_rotation_types, QuaternionUnaryMinus)
+{
+  Quaternion q{1.0f, 2.0f, 3.0f, 4.0f};
+  Quaternion result = -q;
+  EXPECT_EQ(result.w, -1.0f);
+  EXPECT_EQ(result.x, -2.0f);
+  EXPECT_EQ(result.y, -3.0f);
+  EXPECT_EQ(result.z, -4.0f);
+}
+
 TEST(math_rotation_types, TypeConversion)
 {
   /* All the same rotation. */

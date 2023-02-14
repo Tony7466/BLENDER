@@ -139,6 +139,26 @@ template<typename T = float> struct Quaternion {
 
   /** Operators. */
 
+  friend Quaternion operator*(const Quaternion &a, const Quaternion &b)
+  {
+    return {a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z,
+            a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
+            a.w * b.y + a.y * b.w + a.z * b.x - a.x * b.z,
+            a.w * b.z + a.z * b.w + a.x * b.y - a.y * b.x};
+  }
+
+  /* Scalar product. */
+  friend Quaternion operator*(const Quaternion &a, const T &b)
+  {
+    return {a.w * b, a.x * b, a.y * b, a.z * b};
+  }
+
+  /* Negate the quaternion. */
+  friend Quaternion operator-(const Quaternion &a)
+  {
+    return {-a.w, -a.x, -a.y, -a.z};
+  }
+
   friend std::ostream &operator<<(std::ostream &stream, const Quaternion &rot)
   {
     return stream << "Quaternion" << static_cast<VecBase<T, 4>>(rot);
