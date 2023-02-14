@@ -64,3 +64,4 @@ Referenced by issue #45588, Wrong URL link to Blender 2.75 Python API in both Sp
 Referenced by issue #45570, Memory leakage in Sequencer
 Referenced by issue #45562, Loading old .blend file that has grid subdivisions set to 0 crashes Blender
 Referenced by issue #45547, Crash when go to File-User Preferences-System or choose Cycles renderer
+Referenced by issue #45554, Impossible to remove Actions from Action Editor
