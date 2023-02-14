@@ -46,3 +46,4 @@ Referenced by issue #44871, Blender hangs when using masking, dilate-erode and s
 Referenced by issue #44844, Crease Factor user setting doesnt work properly
 Referenced by issue #44818, Particle animation render contains erratic errant particles not seen in viewport or OpenGL render.
 Referenced by issue #44795, same menu item for different command in node editor
+Referenced by issue #44798, Force fields still affect rigid bodies after force fields have been deleted and rigid body cache is cleared.
