@@ -82,3 +82,4 @@ Referenced by issue #39419, Crash when solving camera motion
 Referenced by issue #39422, Stencil maps ignore normal maps
 Referenced by issue #39395, Switching to "Textured solid" and "GLSL" view will cause the FPS drop to 0 (was fine in 2.69)
 Referenced by issue #39397, Auto Perspective does not work the same in all quad view panels
+Referenced by issue #39398, Lamp cannot be seen by camera
