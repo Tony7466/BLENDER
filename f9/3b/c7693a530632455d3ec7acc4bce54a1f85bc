@@ -67,3 +67,4 @@ Referenced by issue #40076, Group Instance problem (base objects visible on rend
 Referenced by issue #40059, Switching open windows by shift or ctrl-click bypasses the modifier key and registers as a simple click instead
 Referenced by issue #40052, Grid Particles Crash
 Referenced by issue #40034, Cycles bug - too many alpha textures not working
+Referenced by issue #40043, Blender network render GPU
