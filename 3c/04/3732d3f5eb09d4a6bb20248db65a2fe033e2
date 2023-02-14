@@ -13,3 +13,4 @@ Referenced by issue #50806, Parent/child transformation is incorrect when the pa
 Referenced by issue #50760, Blender does not find any CUDA device with latest NVidia driver (378.66), works OK with 376.33 (GTX1080)
 Referenced by issue #50716, Blender Addon tab has no addons anymore and refreshing causes an error
 Referenced by issue #50697, crashes on load (2.78b) (EXCEPTION_ACCESS_VIOLATION)
+Referenced by issue #50699, Gpu Cycles error with MacOs and Gtx580 - Render viewport and No glossy materials (render in black)
