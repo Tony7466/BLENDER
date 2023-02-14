@@ -1,1 +1,2 @@
 Referenced by commit a9bb96e6593, Fix transparency issues in 3d viewport
+Referenced by issue #39306, Backface culling in Multitexture is on permanently
