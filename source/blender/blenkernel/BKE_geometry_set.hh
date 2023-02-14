@@ -639,3 +639,10 @@ class GeometryComponentEditData final : public GeometryComponent {
 
   static constexpr inline GeometryComponentType static_type = GEO_COMPONENT_TYPE_EDIT;
 };
+
+namespace blender::bke {
+
+const GeometryComponent *find_source_component(const GeometrySet &geometry,
+                                               const eAttrDomain domain);
+
+}  // namespace blender::bke

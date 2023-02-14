@@ -103,35 +103,6 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   }
 }
 
-static bool component_is_available(const GeometrySet &geometry,
-                                   const GeometryComponentType type,
-                                   const eAttrDomain domain)
-{
-  if (!geometry.has(type)) {
-    return false;
-  }
-  const GeometryComponent &component = *geometry.get_component_for_read(type);
-  return component.attribute_domain_size(domain) != 0;
-}
-
-static const GeometryComponent *find_source_component(const GeometrySet &geometry,
-                                                      const eAttrDomain domain)
-{
-  /* Choose the other component based on a consistent order, rather than some more complicated
-   * heuristic. This is the same order visible in the spreadsheet and used in the ray-cast node. */
-  static const Array<GeometryComponentType> supported_types = {GEO_COMPONENT_TYPE_MESH,
-                                                               GEO_COMPONENT_TYPE_POINT_CLOUD,
-                                                               GEO_COMPONENT_TYPE_CURVE,
-                                                               GEO_COMPONENT_TYPE_INSTANCES};
-  for (const GeometryComponentType src_type : supported_types) {
-    if (component_is_available(geometry, src_type, domain)) {
-      return geometry.get_component_for_read(src_type);
-    }
-  }
-
-  return nullptr;
-}
-
 template<typename T>
 void copy_with_indices(const VArray<T> &src,
                        const VArray<int> &indices,
@@ -210,7 +181,7 @@ class SampleIndexFunction : public mf::MultiFunction {
 
   void evaluate_field()
   {
-    const GeometryComponent *component = find_source_component(src_geometry_, domain_);
+    const GeometryComponent *component = bke::find_source_component(src_geometry_, domain_);
     if (component == nullptr) {
       return;
     }
@@ -312,7 +283,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     auto op = FieldOperation::Create(std::move(fn), {index_value_or_field.as_field()});
     output_field = GField(std::move(op));
   }
-  else if (const GeometryComponent *component = find_source_component(geometry, domain)) {
+  else if (const GeometryComponent *component = bke::find_source_component(geometry, domain)) {
     /* Optimization for the case when the index is a single value. Here only that one index has to
      * be evaluated. */
     const int domain_size = component->attribute_domain_size(domain);

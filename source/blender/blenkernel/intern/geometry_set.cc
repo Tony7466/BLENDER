@@ -698,6 +698,39 @@ void GeometrySet::modify_geometry_sets(ForeachSubGeometryCallback callback)
   }
 }
 
+namespace blender::bke {
+
+static bool component_is_available(const GeometrySet &geometry,
+                                   const GeometryComponentType type,
+                                   const eAttrDomain domain)
+{
+  if (!geometry.has(type)) {
+    return false;
+  }
+  const GeometryComponent &component = *geometry.get_component_for_read(type);
+  return component.attribute_domain_size(domain) != 0;
+}
+
+const GeometryComponent *find_source_component(const GeometrySet &geometry,
+                                               const eAttrDomain domain)
+{
+  /* Choose the other component based on a consistent order, rather than some more complicated
+   * heuristic. This is the same order visible in the spreadsheet. */
+  static const Array<GeometryComponentType> supported_types = {GEO_COMPONENT_TYPE_MESH,
+                                                               GEO_COMPONENT_TYPE_POINT_CLOUD,
+                                                               GEO_COMPONENT_TYPE_CURVE,
+                                                               GEO_COMPONENT_TYPE_INSTANCES};
+  for (const GeometryComponentType src_type : supported_types) {
+    if (component_is_available(geometry, src_type, domain)) {
+      return geometry.get_component_for_read(src_type);
+    }
+  }
+
+  return nullptr;
+}
+
+}  // namespace blender::bke
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

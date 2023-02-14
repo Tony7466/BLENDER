@@ -15,11 +15,11 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>(N_("Source"));
 
-  b.add_input<decl::Int>(N_("Keys")).supports_field().multi_input();
-  b.add_input<decl::Int>(N_("Search Keys")).supports_field().multi_input();
+  b.add_input<decl::Int>(N_("Keys")).field_on_all().multi_input();
+  b.add_input<decl::Int>(N_("Search Keys")).field_on_all().multi_input();
 
-  b.add_output<decl::Int>(N_("Index")).field_source().dependent_field({2});
-  b.add_output<decl::Bool>(N_("Is Valid")).field_source().dependent_field({2});
+  b.add_output<decl::Int>(N_("Index")).field_on_all().dependent_field({2});
+  b.add_output<decl::Bool>(N_("Is Valid")).field_on_all().dependent_field({2});
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -59,8 +59,6 @@ struct IndexMapEquality {
   }
 };
 
-using Set = VectorSet<const int *, DefaultProbingStrategy, IndexMapHash, IndexMapEquality>;
-
 static void build_generic_keys(const Span<VArraySpan<int>> keys,
                                const IndexMask mask,
                                const int total_key,
@@ -88,33 +86,6 @@ static void build_generic_keys(const Span<VArraySpan<int>> keys,
   });
 }
 
-static bool component_is_available(const GeometrySet &geometry,
-                                   const GeometryComponentType type,
-                                   const eAttrDomain domain)
-{
-  if (!geometry.has(type)) {
-    return false;
-  }
-  const GeometryComponent &component = *geometry.get_component_for_read(type);
-  return component.attribute_domain_size(domain) != 0;
-}
-
-static const GeometryComponent *find_source_component(const GeometrySet &geometry,
-                                                      const eAttrDomain domain)
-{
-  static const Array<GeometryComponentType> supported_types = {GEO_COMPONENT_TYPE_MESH,
-                                                               GEO_COMPONENT_TYPE_POINT_CLOUD,
-                                                               GEO_COMPONENT_TYPE_CURVE,
-                                                               GEO_COMPONENT_TYPE_INSTANCES};
-  for (const GeometryComponentType src_type : supported_types) {
-    if (component_is_available(geometry, src_type, domain)) {
-      return geometry.get_component_for_read(src_type);
-    }
-  }
-
-  return nullptr;
-}
-
 class IndexMapFunction : public mf::MultiFunction {
  private:
   const GeometrySet geometry_;
@@ -124,7 +95,8 @@ class IndexMapFunction : public mf::MultiFunction {
 
   Array<std::string> signature_input_names_;
 
-  Set set_;
+  using Set = VectorSet<const int *, DefaultProbingStrategy, IndexMapHash, IndexMapEquality>;
+  Set set_map_;
   Array<int> keys_;
 
   std::optional<bke::GeometryFieldContext> geometry_context_;
@@ -138,9 +110,9 @@ class IndexMapFunction : public mf::MultiFunction {
         source_domain_(source_domain),
         total_key_(store_keys.size()),
         signature_input_names_(total_key_),
-        set_(IndexMapHash{total_key_}, IndexMapEquality{total_key_})
+        set_map_(IndexMapHash{total_key_}, IndexMapEquality{total_key_})
   {
-    const GeometryComponent *component = find_source_component(geometry_, source_domain_);
+    const GeometryComponent *component = bke::find_source_component(geometry_, source_domain_);
     if (!component) {
       throw std::runtime_error("cannot find component");
     }
@@ -151,9 +123,7 @@ class IndexMapFunction : public mf::MultiFunction {
 
     this->create_map(std::move(store_keys), IndexRange(domain_size));
 
-    
     mf::SignatureBuilder signature{"Index Map", signature_};
-
     for (const int i : signature_input_names_.index_range()) {
       std::stringstream name;
       name << "Key " << i;
@@ -166,6 +136,8 @@ class IndexMapFunction : public mf::MultiFunction {
 
     signature.single_output<int>("Index");
     signature.single_output<bool>("Is Valid");
+
+    this->set_signature(&signature_);
   }
 
   void call(IndexMask mask, mf::Params params, mf::Context /*context*/) const override
@@ -179,7 +151,6 @@ class IndexMapFunction : public mf::MultiFunction {
     MutableSpan<int> indices = params.uninitialized_single_output<int>(total_key_, "Index");
     MutableSpan<bool> is_valid = params.uninitialized_single_output<bool>(total_key_ + 1,
                                                                           "Is Valid");
-
     const int min_size = mask.min_array_size();
 
     Array<int> to_search_keys(min_size * total_key_);
@@ -191,8 +162,8 @@ class IndexMapFunction : public mf::MultiFunction {
                        to_search_hashs.as_mutable_span());
 
     for (const int index : mask) {
-      indices[index] = set_.index_of_try_as(&to_search_keys[index * total_key_],
-                                            to_search_hashs[index]);
+      indices[index] = set_map_.index_of_try_as(&to_search_keys[index * total_key_],
+                                                to_search_hashs[index]);
       if (indices[index] == -1) {
         indices[index] = 0;
         is_valid[index] = false;
@@ -225,10 +196,10 @@ class IndexMapFunction : public mf::MultiFunction {
                        keys_.as_mutable_span(),
                        hashs.as_mutable_span());
 
-    set_.clear();
-    set_.reserve(range.size());
+    set_map_.clear();
+    set_map_.reserve(range.size());
     for (const int index : range) {
-      set_.add(&keys_[index * total_key_], hashs[index]);
+      set_map_.add(&keys_[index * total_key_], hashs[index]);
     }
   }
 };
@@ -237,7 +208,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Source");
 
-  const eAttrDomain domain = static_cast<eAttrDomain>(params.node().custom1);
+  const eAttrDomain domain = eAttrDomain(params.node().custom1);
 
   Vector<ValueOrField<int>> store_keys = params.extract_input<Vector<fn::ValueOrField<int>>>(
       "Keys");
@@ -247,6 +218,11 @@ static void node_geo_exec(GeoNodeExecParams params)
   if (store_keys.size() != search_keys.size()) {
     params.error_message_add(NodeWarningType::Info,
                              TIP_("Number of inputs search and store keys non equal"));
+    params.set_default_remaining_outputs();
+    return;
+  }
+
+  if (store_keys.is_empty()) {
     params.set_default_remaining_outputs();
     return;
   }
@@ -272,6 +248,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     params.set_default_remaining_outputs();
     return;
   }
+
   auto op = FieldOperation::Create(std::move(fn), std::move(search_key_fields));
 
   params.set_output("Index", Field<int>(op, 0));
