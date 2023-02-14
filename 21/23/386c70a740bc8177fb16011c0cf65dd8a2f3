@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#37249, Blender crashes at start when calling wm.progress_update(value) from load_post
