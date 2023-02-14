@@ -1,1 +1,2 @@
 Referenced by commit 5b6cb2de9af, RNA: revert recent rename 'updated' -> 'dirty'
+Referenced by issue blender/blender-addons#59090, Confusing DepsgraphUpdate fields
