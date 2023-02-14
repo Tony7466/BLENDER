@@ -23,3 +23,4 @@ Referenced by issue #54294, Problem in Duplicate for Alembic object
 Referenced by issue #54262, C and B selection on edit mode selects not only inside of circle (or rectangle) but several outside spots also selected.
 Referenced by issue #54236, The button "Clear Custom Split Normals Data" not work for multiple object with alt key
 Referenced by issue #54241, Boolean modifier, snapping doesn't work
+Referenced by issue #54231, The marker menu has disappeared in 2.79a
