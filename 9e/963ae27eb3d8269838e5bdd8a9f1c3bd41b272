@@ -34,3 +34,4 @@ Referenced by issue #42744, Sapling:Add Tree
 Referenced by issue #42745, Cross Effect Strip
 Referenced by issue #42749, Blender crashes on high poly count while rendering with cycles (even in viewport)
 Referenced by issue #42754, UI Bug with Full Window mode
+Referenced by issue #42740, result of pressing CTRL+Z while the subdivision modifier over the cube object
