@@ -64,3 +64,4 @@ Referenced by issue #48865, Bone custom shaping allows for semi-orphaning
 Referenced by issue #48860, Christensen-Burley SSS glitch with Spatial Splits.
 Referenced by issue #48831, Icon Preview generation for textures and images
 Referenced by issue #48818, Objects with alpha maps cast wrong ray shadows in BI
+Referenced by issue #48821, Fly-through mode when in camera view moves 3D objects parented to the same object
