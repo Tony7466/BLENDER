@@ -1796,10 +1796,12 @@ static CCGDerivedMesh *getCCGDerivedMesh(CCGSubSurf *ss,
                                          int useSubsurfUv,
                                          DerivedMesh *dm)
 {
+  const int totedge = ccgSubSurf_getNumEdges(ss);
   const int totface = ccgSubSurf_getNumFaces(ss);
   CCGDerivedMesh *ccgdm = MEM_cnew<CCGDerivedMesh>(__func__);
 
   BLI_assert(totedge == ccgSubSurf_getNumEdges(ss));
+  UNUSED_VARS_NDEBUG(totedge);
   BLI_assert(totface == ccgSubSurf_getNumFaces(ss));
   DM_from_template(&ccgdm->dm,
                    dm,
