@@ -12,3 +12,4 @@ Referenced by issue #50829, Bake cache files gone
 Referenced by issue #50806, Parent/child transformation is incorrect when the parent's scaling is changed
 Referenced by issue #50760, Blender does not find any CUDA device with latest NVidia driver (378.66), works OK with 376.33 (GTX1080)
 Referenced by issue #50716, Blender Addon tab has no addons anymore and refreshing causes an error
+Referenced by issue #50697, crashes on load (2.78b) (EXCEPTION_ACCESS_VIOLATION)
