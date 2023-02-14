@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#61309, mesh_utils.triangle_random_points fails with a TypeError.
