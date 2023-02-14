@@ -6990,7 +6990,10 @@ class VIEW3D_PT_proportional_edit(Panel):
                       else tool_settings.use_proportional_edit)
 
         if context.mode != 'OBJECT':
-            col.prop(tool_settings, "use_proportional_connected")
+            sub = col.column()
+            sub.prop(tool_settings, "use_proportional_connected")
+            # TODO: Implement connected mode for curves object
+            sub.active = context.active_object.type != 'CURVES'
             sub = col.column()
             sub.active = not tool_settings.use_proportional_connected
             sub.prop(tool_settings, "use_proportional_projected")
