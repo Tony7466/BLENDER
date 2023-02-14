@@ -2,3 +2,4 @@ Referenced by issue #54542, Fly Mode Motion Speed Too Fast When Scene Unit Scale
 Referenced by issue #52630, Denoising uses too much Vram
 Referenced by issue #52484, Linking Materials ignores Object or Data preference of source
 Referenced by issue #52418, Principled BSDF Shader node - Input number 16 does not exist
+Referenced by issue #52419, OpenCL missing from Cycles Compute Device System option
