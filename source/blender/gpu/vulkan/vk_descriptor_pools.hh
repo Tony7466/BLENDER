@@ -9,12 +9,6 @@
 
 #include "BLI_vector.hh"
 
-#ifdef __APPLE__
-#  include <MoltenVK/vk_mvk_moltenvk.h>
-#else
-#  include <vulkan/vulkan.h>
-#endif
-
 #include "vk_descriptor_set.hh"
 
 namespace blender::gpu {

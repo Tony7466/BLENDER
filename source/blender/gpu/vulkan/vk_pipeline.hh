@@ -7,15 +7,10 @@
 
 #pragma once
 
-#ifdef __APPLE__
-#  include <MoltenVK/vk_mvk_moltenvk.h>
-#else
-#  include <vulkan/vulkan.h>
-#endif
-
 #include "BLI_utility_mixins.hh"
 #include "BLI_vector.hh"
 
+#include "vk_common.hh"
 #include "vk_descriptor_set.hh"
 
 namespace blender::gpu {

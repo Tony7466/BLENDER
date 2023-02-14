@@ -8,13 +8,9 @@
 #pragma once
 
 #include "gpu_context_private.hh"
-#include "vk_context.hh"
 
-#ifdef __APPLE__
-#  include <MoltenVK/vk_mvk_moltenvk.h>
-#else
-#  include <vulkan/vulkan.h>
-#endif
+#include "vk_common.hh"
+#include "vk_context.hh"
 
 #include "vk_mem_alloc.h"
 

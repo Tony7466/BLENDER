@@ -14,12 +14,6 @@
 
 #include "vk_mem_alloc.h"
 
-#ifdef __APPLE__
-#  include <MoltenVK/vk_mvk_moltenvk.h>
-#else
-#  include <vulkan/vulkan.h>
-#endif
-
 namespace blender::gpu {
 
 class VKContext : public Context {
