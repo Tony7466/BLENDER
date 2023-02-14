@@ -31,3 +31,4 @@ Referenced by issue #43207, Painting texture with fill
 Referenced by issue #43196, Object/Edit mode Solid Shading Lighting Bug
 Referenced by issue #43197, Transforms entered in properties panel do not apply to GROUP - only to individual object
 Referenced by issue #43200, GPU Cycles experimental feature set out of memory error on default cube
+Referenced by issue #43203, Continuous zoom fails to work in camera view
