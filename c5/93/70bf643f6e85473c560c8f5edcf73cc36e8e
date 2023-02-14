@@ -6,3 +6,4 @@ Referenced by issue #60687, First vertex group not selecting properly
 Referenced by issue #60651, Adding new workspaces from old startup files fails
 Referenced by issue #60642, Cannot animate "Disable object in renders" property
 Referenced by issue #60180, Can't select plane objects after changing Display As setting to Wire.
+Referenced by issue #58793, Volumetric Clouds in Eevee not working | MacOs
