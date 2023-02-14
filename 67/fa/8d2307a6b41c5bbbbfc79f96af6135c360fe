@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#71645, 'make full' fails on Mac OS X because of using 'min' in namespace 'std'
