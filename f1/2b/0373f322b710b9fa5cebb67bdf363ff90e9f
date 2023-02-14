@@ -3,3 +3,4 @@ Referenced by issue #81784, 2D Gizmo glitch when using glEnable/glDisable (Blend
 Referenced by issue #81289, Python gpu bgl image drawing alpha problem
 Referenced by issue #81003, First image drawn with the Python gpu module may be black
 Referenced by issue #80169, Node wrangler highlighting artifacts
+Referenced by issue blender/blender-addons#80730, BGL deprecation
