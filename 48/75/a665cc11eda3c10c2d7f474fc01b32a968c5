@@ -2,3 +2,4 @@ Referenced by issue #40181, Problem with scons to compile -> ‘BLI_ASSERT_UNIT_
 Referenced by issue blender/blender-addons#40176, Curve Functions broken in several addons.
 Referenced by issue blender/blender-addons#40124, SVG import incorrect
 Referenced by issue blender/blender-addons#40011, Sapling addon doesn't generate a proper tree structure when instanced
+Referenced by issue blender/blender-addons#40028, SVG Import broken on latest SVN version provided by ppa
