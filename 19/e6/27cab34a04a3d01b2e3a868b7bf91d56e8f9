@@ -50,3 +50,4 @@ Referenced by issue #39602, BGE crashes when "fliping trough" physics for object
 Referenced by issue #39604, using SetParent disables timeOffset
 Referenced by issue #39582, Blender executable not running in Linux Mint 13
 Referenced by issue #39584, Effects strips render black
+Referenced by issue #39591, Blender crashes when playing back rendered Animation in version 2.7
