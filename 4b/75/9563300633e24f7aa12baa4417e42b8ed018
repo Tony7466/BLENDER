@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#39974, Popups lead to crash if operator has 'UNDO' options not set and properties are manipulated
