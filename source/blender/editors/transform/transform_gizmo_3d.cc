@@ -935,9 +935,9 @@ int ED_transform_calc_gizmo_stats(const bContext *C,
     }
     else if (obedit->type == OB_CURVES) {
       FOREACH_EDIT_OBJECT_BEGIN (ob_iter, use_mat_local) {
-        Curves &curves_id = *static_cast<Curves *>(ob_iter->data);
-        bke::CurvesGeometry &curves = curves_id.geometry.wrap();
-        bke::crazyspace::GeometryDeformation deformation =
+        const Curves &curves_id = *static_cast<Curves *>(ob_iter->data);
+        const bke::CurvesGeometry &curves = curves_id.geometry.wrap();
+        const bke::crazyspace::GeometryDeformation deformation =
             bke::crazyspace::get_evaluated_curves_deformation(*depsgraph, *ob);
 
         float4x4 mat_local;
@@ -946,8 +946,8 @@ int ED_transform_calc_gizmo_stats(const bContext *C,
         }
 
         Vector<int64_t> indices;
-        IndexMask selected_points = ed::curves::retrieve_selected_points(curves, indices);
-        Span<float3> positions = deformation.positions;
+        const IndexMask selected_points = ed::curves::retrieve_selected_points(curves, indices);
+        const Span<float3> positions = deformation.positions;
         totsel += selected_points.size();
         for (const int point_i : selected_points) {
           calc_tw_center_with_matrix(tbounds, positions[point_i], use_mat_local, mat_local.ptr());
