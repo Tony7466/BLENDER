@@ -1,1 +1,2 @@
 Referenced by issue #51717, Denoise + File Output nodes: freezing at 99% of render
+Referenced by issue blender/blender-addons#51633, FBX: Exported rigged geometry weirdly distorted, looks eaten away at bone positions
