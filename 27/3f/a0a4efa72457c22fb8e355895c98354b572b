@@ -5,3 +5,4 @@ Referenced by issue #43139, Calling bpy.ops.screen.screen_full_area() multiple t
 Referenced by issue #43076, Knife tool problem with Maya Preset - Blender 2.73
 Referenced by issue #43063, CUDA error: Launch failed in cuMemcpy2D(&param)
 Referenced by issue #43065, Dissolve edge delete vertices.
+Referenced by issue #43026, HDRI in viewport   not working
