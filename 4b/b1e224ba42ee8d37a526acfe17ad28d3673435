@@ -50,3 +50,4 @@ Referenced by issue #49616, Blender chrashes after Cuda 8.0 update
 Referenced by issue #49604, Cycles Render Engine - inconsistent Math Node values
 Referenced by issue #49590, 2.78 crash on image datablock removal
 Referenced by issue #49591, Mouse over logic sensor
+Referenced by issue #49548, Entering Cycles Rendered Viewport Unlinks Material from Objects
