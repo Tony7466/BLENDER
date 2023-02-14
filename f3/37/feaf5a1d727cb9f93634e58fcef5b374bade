@@ -72,3 +72,4 @@ Referenced by issue #47352, Crash in sculpting mode with dynamic topology
 Referenced by issue #47354, accented characteres
 Referenced by issue #47330, problem when 2 gamepads use in same time logitech  (button dont work but axix work) logic editor
 Referenced by issue #47314, Misaligned DataBlock Previews for groups with custom center coordinates
+Referenced by issue #47318, Seed option does not work for interpolated children on particle hair systems without "Random" checked
