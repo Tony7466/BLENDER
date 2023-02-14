@@ -1,3 +1,4 @@
 Referenced by issue #61574, Eevee dynamic paint auto refresh
 Referenced by issue #60840, Multires modifier memory leak
 Referenced by issue #60690, Cycles GPU render carsh with RX 580
+Referenced by issue #60699, EEVEE Diffuse ignores world material
