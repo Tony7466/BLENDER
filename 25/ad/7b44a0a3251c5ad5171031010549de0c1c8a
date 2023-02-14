@@ -2,3 +2,4 @@ Referenced by issue #46801, Smart UV Project scales in one dimension to pack the
 Referenced by issue #40363, Cycles: CUDA renderings are approximately 30% slower in 2.71-testbuild1
 Referenced by issue #39977, Hotkey Inconsistancy for cycles nodes
 Referenced by issue #39117, Using operator and redo panel triggers 'undo' in text editor
+Referenced by issue #39101, Can not select object on backface by clicking when Matcap is on
