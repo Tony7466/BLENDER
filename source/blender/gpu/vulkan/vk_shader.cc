@@ -677,8 +677,8 @@ bool VKShader::finalize(const shader::ShaderCreateInfo *info)
     BLI_assert(geometry_module_ == VK_NULL_HANDLE);
     BLI_assert(fragment_module_ == VK_NULL_HANDLE);
     BLI_assert(compute_module_ != VK_NULL_HANDLE);
-    compute_pipeline_ = std::move(VKPipeline::create_compute_pipeline(
-        *context_, compute_module_, layout_, pipeline_layout_));
+    compute_pipeline_ = VKPipeline::create_compute_pipeline(
+        *context_, compute_module_, layout_, pipeline_layout_);
     result = compute_pipeline_.is_valid();
   }
 
