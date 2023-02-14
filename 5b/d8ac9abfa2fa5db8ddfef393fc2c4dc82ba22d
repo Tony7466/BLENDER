@@ -64,3 +64,4 @@ Referenced by issue #53934, Crash on right click
 Referenced by issue #53891, Performance issue: Active Object (with a group) drops viewport fps
 Referenced by issue #53892, Vertex groups selection in Edit mode is not working as expected
 Referenced by issue #53882, Video Sound Crash 2.78c and 2.79
+Referenced by issue #53858, Cycles Crash when changing Transparency
