@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#41550, Python: frame_set skips frame -1; frame_set(n) sets to frame n-1 for (only) negative number n, and sets to frame n for non-negative number n.
