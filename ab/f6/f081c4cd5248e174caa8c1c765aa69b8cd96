@@ -93,3 +93,4 @@ Referenced by issue #48605, blender crash coredump after start, simply right cli
 Referenced by issue #48577, Lib: Object Lost from scene: 'Scene'
 Referenced by issue #48578, Incorrect animation when key framing object Dimensions
 Referenced by issue #48580, Can't edit the settings for "branched path tracing"
+Referenced by issue #48570, Boolean Union modifier with 3 aligned face problem
