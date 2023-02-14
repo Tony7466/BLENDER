@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#66924, bpy.ops.preferences.addon_enable() only checks for changes in __init__.py; Problem for multi-file add-ons
