@@ -6,6 +6,7 @@
 
 #include "BLI_array.hh"
 #include "BLI_index_mask_ops.hh"
+#include "BLI_inplace_priority_queue.hh"
 #include "BLI_span.hh"
 
 #include "BKE_curves.hh"
@@ -23,12 +24,45 @@
 
 namespace blender::ed::transform::curves {
 
+static void calculate_curve_point_distances_for_proportional_editing(
+    Span<float3> positions, MutableSpan<float> r_distances)
+{
+  Array<bool> visited(positions.size(), false);
+
+  InplacePriorityQueue<float> queue(r_distances);
+  while (!queue.is_empty()) {
+    int64_t idx = queue.pop_index();
+    if (!visited[idx]) {
+      continue;
+    }
+    visited[idx] = true;
+
+    if (idx > 0) {
+      int adj = idx - 1;
+      float dist = r_distances[idx] + math::distance(positions[idx], positions[adj]);
+      if (dist < r_distances[adj]) {
+        r_distances[adj] = dist;
+        queue.priority_changed(adj);
+      }
+    }
+    if (idx < positions.size() - 1) {
+      int adj = idx + 1;
+      float dist = r_distances[idx] + math::distance(positions[idx], positions[adj]);
+      if (dist < r_distances[adj]) {
+        r_distances[adj] = dist;
+        queue.priority_changed(adj);
+      }
+    }
+  }
+}
+
 static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
 {
   MutableSpan<TransDataContainer> trans_data_contrainers(t->data_container, t->data_container_len);
   Array<Vector<int64_t>> selected_indices_per_object(t->data_container_len);
   Array<IndexMask> selection_per_object(t->data_container_len);
-  const bool is_prop_edit = (t->flag & T_PROP_EDIT) != 0;
+  const bool is_prop_edit = (t->flag & T_PROP_EDIT_ALL) != 0;
+  const bool is_prop_connected = (t->flag & T_PROP_CONNECTED) != 0;
 
   /* Count selected elements per object and create TransData structs. */
   for (const int i : trans_data_contrainers.index_range()) {
@@ -65,12 +99,16 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
 
     MutableSpan<float3> positions = curves.positions_for_write();
     if (is_prop_edit) {
+      Span<float3> positions_read = curves.positions();
       OffsetIndices<int> points_by_curve = curves.points_by_curve();
       VArray<bool> selection = curves.attributes().lookup_or_default<bool>(
           ".selection", ATTR_DOMAIN_POINT, true);
-      threading::parallel_for(curves.curves_range(), 1024, [&](const IndexRange range) {
+      threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange range) {
         for (const int curve_i : range) {
           bool has_any_selected = false;
+          Span<float3> positions_curve = positions_read.slice(points_by_curve[curve_i]);
+          Array<float> closest_distances(positions_curve.size(), FLT_MAX);
+
           for (const int point_i : points_by_curve[curve_i]) {
             TransData *td = &tc.data[point_i];
             float *elem = reinterpret_cast<float *>(&positions[point_i]);
@@ -80,6 +118,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
 
             if (selection[point_i]) {
               has_any_selected = true;
+              closest_distances[point_i - points_by_curve[curve_i].start()] = 0.0f;
             }
 
             td->flag = (selection[point_i]) ? TD_SELECTED : 0;
@@ -87,6 +126,15 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
 
             copy_m3_m3(td->smtx, smtx);
             copy_m3_m3(td->mtx, mtx);
+          }
+
+          if (is_prop_connected) {
+            calculate_curve_point_distances_for_proportional_editing(
+                positions_curve, closest_distances.as_mutable_span());
+            for (const int point_i : points_by_curve[curve_i]) {
+              TransData *td = &tc.data[point_i];
+              td->dist = closest_distances[point_i - points_by_curve[curve_i].start()];
+            }
           }
 
           if (!has_any_selected) {
