@@ -92,3 +92,4 @@ Referenced by issue #48625, Blender cannot interpret Right Click for Wacom Table
 Referenced by issue #48605, blender crash coredump after start, simply right clic on the cube
 Referenced by issue #48577, Lib: Object Lost from scene: 'Scene'
 Referenced by issue #48578, Incorrect animation when key framing object Dimensions
+Referenced by issue #48580, Can't edit the settings for "branched path tracing"
