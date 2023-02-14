@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#40467, Redo broken for transform.edge_crease(), and doesn't do anything if called from Python script
