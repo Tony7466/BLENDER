@@ -11,3 +11,4 @@ Referenced by issue #38220, Crash when rendering in Cycles on GPU
 Referenced by issue #38226, critical 3d view transform and manipulator issues.
 Referenced by issue #38228, Grease Pencil curve creation issue
 Referenced by issue #38201, Blender Crash when rendering with CUDA / Cycles with old drivers
+Referenced by issue #38186, Mesh Insert-Function' important improve quest.
