@@ -73,3 +73,4 @@ Referenced by issue #39445, Async LibLoad Crash
 Referenced by issue #39446, Blender Crashes when Camera Tracking
 Referenced by issue #39448, Background Image as a Video is missing options from previous versions like frame offset...
 Referenced by issue #39453, Bug in "Explode" effect
+Referenced by issue #39436, Volume emission with displace modifier causes a great amount of fireflies
