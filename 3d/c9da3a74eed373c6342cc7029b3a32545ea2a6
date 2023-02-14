@@ -1,2 +1,3 @@
 Referenced by issue #65221, armature selection bug
 Referenced by issue #64424, Mesh sequence cache modifier not rendering properly
+Referenced by issue #64405, Eevee: Screen Space Reflections break with rotated dupli instances
