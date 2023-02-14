@@ -30,3 +30,4 @@ Referenced by issue #50567, Blender 2.78a crashes when using environment texture
 Referenced by issue #50578, Image Preview for Scene strips in the Video Sequence Editor doesn't update accurately when Scenes use Linked Libraries
 Referenced by issue #50543, Entering a 0 infront any number gives an error
 Referenced by issue #50550, GPUShader: compile error - Background image not showing in viewport
+Referenced by issue #50531, Blender closes when reduced to icon, Windows 10
