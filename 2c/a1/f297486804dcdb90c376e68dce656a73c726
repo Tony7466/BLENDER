@@ -1,2 +1,3 @@
 Referenced by issue #52625, CPU render will look different to GPU render and fails randomly
 Referenced by issue #52626, Scene too complex to fit in available memory. (allocating buffer Denoising XtWY failed.)
+Referenced by issue blender/blender-addons#52536, object_skinify.py generates different results between Operating Systems Platforms
