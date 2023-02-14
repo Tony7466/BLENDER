@@ -1,2 +1,3 @@
 Referenced by issue #49060, crashes during render with no apparent reason..
 Referenced by issue #49048, Microdisplacement; adaptive dicing introduces interpolation errors in the rendered view
+Referenced by issue #49049, Microdisplacement; stitching between two faces of different material indices does not exist (when dicing is used)
