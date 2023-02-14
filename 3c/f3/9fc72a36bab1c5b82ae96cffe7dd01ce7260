@@ -1,0 +1,1 @@
+Referenced by issue #39749, Holdout shader and Transparent shader don't use the background's alpha channel when used with Light Path node.
