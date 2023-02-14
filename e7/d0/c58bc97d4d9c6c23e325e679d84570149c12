@@ -1,0 +1,1 @@
+Referenced by issue #42843, Cycles CUDA render slows waaay down after ~5 frames (from ~2s to ~40s per frame).
