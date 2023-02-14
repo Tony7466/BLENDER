@@ -5,3 +5,4 @@ Referenced by issue #71236, Cloth and Mask Mesh Keyframed resets cloth simulatio
 Referenced by issue #70599, IK/FK Switch Causes Mesh and Heirarchy Misbehaviour
 Referenced by issue #68079, Viewport 2.80 shows broken grid floor after opening 2.79 version file without Load UI
 Referenced by issue #67720, Smoke Cache deleted when hiding the smoke domain
+Referenced by issue #67590, (Render error (Permission denied) cannot save: '0002.png')
