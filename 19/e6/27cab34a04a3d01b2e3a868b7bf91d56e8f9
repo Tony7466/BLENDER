@@ -75,3 +75,4 @@ Referenced by issue #39448, Background Image as a Video is missing options from 
 Referenced by issue #39453, Bug in "Explode" effect
 Referenced by issue #39436, Volume emission with displace modifier causes a great amount of fireflies
 Referenced by issue #39423, Blender crashes on iv41 encoded videos in thumbnail display mode (file browser)
+Referenced by issue #39428, Branched Path disabled on GPU
