@@ -97,3 +97,4 @@ Referenced by issue #53542, MaterialID / ObjectID random format
 Referenced by issue #53543, VSE does not Premultiply alpha when you select ffmpeg output
 Referenced by issue #53517, Cycles lamp "strength" ignores scene's "unit scale", producing inconsistent renders in scenes with consistent scaling
 Referenced by issue #53476, File Browser: Selection Issue
+Referenced by issue #53463, Rotation numerical imput shows instable behaviour
