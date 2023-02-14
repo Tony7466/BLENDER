@@ -70,3 +70,4 @@ Referenced by issue #51310, bpy.ops.select_pattern() returns {FINISHED} even if 
 Referenced by issue #51295, Blender cant find folders with ~ at the end
 Referenced by issue #51252, Menu flickering under wayland unless "Window Draw Method" is set to "Full"
 Referenced by issue #51249, Snap to any mesh element in NURBS surface editing does not work properly
+Referenced by issue #51227, Blender v2.78c Weight Paint fails when Mirror Modifier is active on Mesh
