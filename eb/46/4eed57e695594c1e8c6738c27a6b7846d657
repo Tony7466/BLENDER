@@ -5,3 +5,4 @@ Referenced by issue #42020, BGE crashes when LibLoading multiple files asynchron
 Referenced by issue #42021, Cycles OSL renders a black image
 Referenced by issue #42026, Unit scale affects camera focal length
 Referenced by issue #42013, 2.72rc eb464ee Clipping border/object mode: deterioration of mesh representation on zoom in 3d view.
+Referenced by issue #41997, segmentation fault on selection of a selected object
