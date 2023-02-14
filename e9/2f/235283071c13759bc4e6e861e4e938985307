@@ -93,3 +93,4 @@ Referenced by issue #50850, Blender crash with cycles rendered viewport shading 
 Referenced by issue #50817, "Sampling" panel from Properties->Render window not displaying contents
 Referenced by issue #50565, Transform: Planar constraints don't work properly with non-Blender key configurations
 Referenced by issue #50097, Blender Crashes when zooming in the node editor
+Referenced by issue #35100, Dynamic Sculpting: Inflate Brush artifacts --- could freeze blender
