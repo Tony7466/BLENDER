@@ -38,3 +38,4 @@ Referenced by issue #42098, AVI Raw export produces broken files if the image wi
 Referenced by issue #42101, new fill and mask tools disapear in files created in older versions
 Referenced by issue #42079, Tooltips are blank!
 Referenced by issue #42082, Smooth Shading not working with Cycles
+Referenced by issue #41964, 2.72 Freestyle renders two times longer on Linux
