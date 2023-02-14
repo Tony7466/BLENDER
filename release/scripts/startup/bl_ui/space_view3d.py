@@ -7957,6 +7957,13 @@ class VIEW3D_PT_curves_sculpt_parameter_falloff(Panel):
         brush = settings.brush
 
         layout.template_curve_mapping(brush.curves_sculpt_settings, "curve_parameter_falloff")
+        row = layout.row(align=True)
+        row.operator("brush.sculpt_curves_falloff_preset", icon='SMOOTHCURVE', text="").shape = 'SMOOTH'
+        row.operator("brush.sculpt_curves_falloff_preset", icon='SPHERECURVE', text="").shape = 'ROUND'
+        row.operator("brush.sculpt_curves_falloff_preset", icon='ROOTCURVE', text="").shape = 'ROOT'
+        row.operator("brush.sculpt_curves_falloff_preset", icon='SHARPCURVE', text="").shape = 'SHARP'
+        row.operator("brush.sculpt_curves_falloff_preset", icon='LINCURVE', text="").shape = 'LINE'
+        row.operator("brush.sculpt_curves_falloff_preset", icon='NOCURVE', text="").shape = 'MAX'
 
 
 class VIEW3D_PT_curves_sculpt_grow_shrink_scaling(Panel):
