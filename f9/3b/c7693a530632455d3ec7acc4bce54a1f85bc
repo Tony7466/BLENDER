@@ -62,3 +62,4 @@ Referenced by issue #40126, Le "Textured Shading" ne fonctionne pas.
 Referenced by issue #40120, OpenCL kernel compilation error when __CAMERA_MOTION__ is enabled
 Referenced by issue #40121, Smoke not masking objects
 Referenced by issue #40113, Armatured object with shape key causes segfault in BGE
+Referenced by issue #40072, Blender requires libSDL 1.2 but it is not installed by default in Ubuntu 14.04
