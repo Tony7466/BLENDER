@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#47993, python 'seed_set(x)' seems to be not doing nothing for noise generating function.
