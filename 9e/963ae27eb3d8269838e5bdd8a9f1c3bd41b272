@@ -46,3 +46,4 @@ Referenced by issue #42634, Transparent shader leave traces
 Referenced by issue #42624, Transparent shader leave some traces when objects are overlapping
 Referenced by issue #42600, sequencer is sourcing wrong frame
 Referenced by issue #42540, save_pre not called when saving startup.blend file
+Referenced by issue #42533, iPhone 5s iOS8.1 - 120fps video incorrect video strip length in VSE
