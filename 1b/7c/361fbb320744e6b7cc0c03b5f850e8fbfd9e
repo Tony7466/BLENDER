@@ -1,1 +1,2 @@
 Referenced by issue #90972, Crash calling Mesh.clear_geometry in edit-mode
+Referenced by issue blender/blender-addons#60934, Undo crashes when calling bpy.ops.ed.undo_history(index=0) from Python in background mode
