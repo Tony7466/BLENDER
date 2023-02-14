@@ -1,2 +1,3 @@
 Referenced by issue #48826, Crash while rendering in viewport (Cycles)
 Referenced by issue #48829, Memory leak on Blender Exit (possibly related to mixing BI and Cycles nodes and material data )
+Referenced by issue #48822, Crash when I try to use "Join" (Ctrl Key + J) with two meshes
