@@ -39,3 +39,4 @@ Referenced by issue #39676, Blender 2.70a - Python API Reference links missing o
 Referenced by issue #39660, Blender objects on non visible layer do not update location when parented
 Referenced by issue #39668, Shapekey explode in edit mode
 Referenced by issue #39655, GPU support
+Referenced by issue #39640, Crash on maximizing/minimizing UV/Image Editor
