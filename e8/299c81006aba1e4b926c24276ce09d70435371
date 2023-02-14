@@ -56,3 +56,4 @@ Referenced by issue #50285, Sculpt mode, matcap, multires
 Referenced by issue #50275, numpy arctan2 gives incorrect angles
 Referenced by issue #50266, Blender crashes after multiple right clicks
 Referenced by issue #50269, OpenCL kernels compilation error with AMDGPU-PRO
+Referenced by issue #50274, Crash opening User Preferences window while in Fullscreen mode and Unable to use Alt+Tab
