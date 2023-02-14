@@ -56,3 +56,4 @@ Referenced by issue #47534, Crash attempting to use 'bpy.ops.paint.image_paint()
 Referenced by issue #47523, Painting depth of field effect in viewport
 Referenced by issue #47515, Blender freezes for a moment when clicking RMB in Sculpt mode
 Referenced by issue #47484, Crash on exporting collada file from menu
+Referenced by issue #47485, Blender crash
