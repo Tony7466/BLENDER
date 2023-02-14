@@ -1,1 +1,2 @@
 Referenced by issue #93835, Animation editors won't display active object if its active but not selected
+Referenced by issue blender/blender-addons#68597, Grease Pencil Dope Sheet can fail to display active GP object
