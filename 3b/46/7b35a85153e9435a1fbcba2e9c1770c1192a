@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#50029, mathutils.bvhtree.BVHTree.FromPolygons Huge Memory Leak
