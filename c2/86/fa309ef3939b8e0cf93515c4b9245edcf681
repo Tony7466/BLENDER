@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#74899, "Draw Face Sets"-brush not in bpy.data.brushes until it has been the active tool once
