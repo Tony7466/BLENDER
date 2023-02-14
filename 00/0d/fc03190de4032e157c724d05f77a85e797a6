@@ -80,3 +80,4 @@ Referenced by issue #44496, VSE: Pressing Ctrl key just after duplicating a stri
 Referenced by issue #44484, Tris to quad crash blender with non manifold edge in model.
 Referenced by issue #44485, Wrong Border, CTRL+LMB or RMB+Drag vertex selection in mesh edit mode
 Referenced by issue #44477, Color tool tip covering right click menu for the grease pencil in the outliner
+Referenced by issue #44459, Stretched hair if root is moved
