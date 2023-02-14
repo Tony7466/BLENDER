@@ -19,3 +19,4 @@ Referenced by issue #48095, Animating sequencer speed affects itself
 Referenced by issue #48056, OBJ exports arbitrary number of normals
 Referenced by issue #48058, 2.77|Grease Pencil Sculpt buggy if strokes placed on "View"
 Referenced by issue #48039, 3DConnexion-5Axis
+Referenced by issue #48050, No antialiasing in Direct/Indirect passes
