@@ -9,3 +9,4 @@ Referenced by issue #67590, (Render error (Permission denied) cannot save: '0002
 Referenced by issue #67283, Lens Distortion compositing effect doesn't work as intended when using an image or texture as the Dispersion input parameter.
 Referenced by issue #67280, Blender 2.79 does not recognize my graphics card for GPU render in Cycles (and it should).
 Referenced by issue #66444, Blender 2.7 rigged model crash
+Referenced by issue #66390, VSE: B2.8, B2.79: Update missing when moving strips with effect strips via Shft+S and all strips are selected
