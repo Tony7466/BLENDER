@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#41328, Running save_as_mainfile breaks relative texture paths from textures linked from a library
