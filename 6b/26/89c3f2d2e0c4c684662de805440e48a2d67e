@@ -1,0 +1,1 @@
+Referenced by issue blender/blender-addons#40191, Misleading TypeError message when registering CollectionProperty wtihout kwarg "type"
