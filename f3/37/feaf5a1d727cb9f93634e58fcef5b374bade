@@ -93,3 +93,4 @@ Referenced by issue #47096, Video Sequence Editor does not update driver values 
 Referenced by issue #47098, Hibernate halts render and bake
 Referenced by issue #47085, World background window-projected image green channel missing on CPU rendering
 Referenced by issue #47068, Weird deformations on linked meshes modified by a curve
+Referenced by issue #47050, Changing operator settings of first inserted object removes linked background images added via drag and drop
