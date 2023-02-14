@@ -82,3 +82,4 @@ Referenced by issue #53621, Surface Book 2 pen pressure sensitivity issue
 Referenced by issue #53622, Generated Texture Coordinate works not as expected when used with curve and boolean modifier
 Referenced by issue #53627, Possible motion tracker bug?
 Referenced by issue #53631, Crash.  Open this specific .blend file, select 'Render' in the properties tab, then click 'Render'.
+Referenced by issue #53632, Active Object Menu showing objects outside current scene
