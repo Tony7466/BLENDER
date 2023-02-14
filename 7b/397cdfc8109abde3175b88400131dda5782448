@@ -5,3 +5,4 @@ Referenced by issue #52678, Blender crashes rotating grease pencil strokes when 
 Referenced by issue #52660, CUDA error: Not found in cuModuleGetTexRef(&texref, cuModule, bind_name.c_str()). line 710
 Referenced by issue #52671, Flipped names don't weight properly with Mirror Modifier
 Referenced by issue #52652, Cycles 3/6 textures reversed on cube with generated co-ordinates and box mapping
+Referenced by issue #52653, Render output of linked scenes conflicts with other scenes with the same name
