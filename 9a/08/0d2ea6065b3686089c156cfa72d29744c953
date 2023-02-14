@@ -1,1 +1,2 @@
 Referenced by issue #56247, Blender crashes with attached tiled EXR loaded (generated from attached PNG)
+Referenced by issue blender/blender-addons#56092, OSX: Command line switch -- disables ability to use python arguments beginning with -h
