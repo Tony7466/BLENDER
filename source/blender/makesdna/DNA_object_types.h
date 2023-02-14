@@ -171,9 +171,6 @@ typedef struct Object_Runtime {
   /* Evaluated mesh cage in edit mode. */
   struct Mesh *editmesh_eval_cage;
 
-  /** Evaluated curve cage in edit and sculpt mode. */
-  struct Curves *editcurves_eval_cage;
-
   /** Cached cage bounding box of `editmesh_eval_cage` for selection. */
   struct BoundBox *editmesh_bb_cage;
 
@@ -211,6 +208,7 @@ typedef struct Object_Runtime {
 
   /** Runtime evaluated curve-specific data, not stored in the file. */
   struct CurveCache *curve_cache;
+  void *_pad4;
 
   unsigned short local_collections_bits;
   short _pad2[3];

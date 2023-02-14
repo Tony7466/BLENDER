@@ -1790,11 +1790,6 @@ void BKE_object_free_derived_caches(Object *ob)
   }
   ob->runtime.editmesh_eval_cage = nullptr;
 
-  if (ob->runtime.editcurves_eval_cage) {
-    BKE_id_free(nullptr, ob->runtime.editcurves_eval_cage);
-  }
-  ob->runtime.editcurves_eval_cage = nullptr;
-
   if (ob->runtime.data_eval != nullptr) {
     if (ob->runtime.is_data_eval_owned) {
       ID *data_eval = ob->runtime.data_eval;

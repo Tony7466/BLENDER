@@ -322,23 +322,6 @@ static void curves_evaluate_modifiers(struct Depsgraph *depsgraph,
   }
 }
 
-/** Get the positions that are edited in sculpt mode. */
-static Span<float3> get_cage_positions(const blender::bke::CurvesGeometry &curves_orig,
-                                       const Curves *curves_id_eval,
-                                       const blender::bke::CurvesEditHints *curve_edit_hints)
-{
-  if (curve_edit_hints) {
-    if (curve_edit_hints->positions.has_value()) {
-      return *curve_edit_hints->positions;
-    }
-    else if (curves_id_eval && curves_id_eval->geometry.point_num == curves_orig.point_num) {
-      const blender::bke::CurvesGeometry &curves_eval = curves_id_eval->geometry.wrap();
-      return curves_eval.positions();
-    }
-  }
-  return curves_orig.positions();
-}
-
 void BKE_curves_data_update(struct Depsgraph *depsgraph, struct Scene *scene, Object *object)
 {
   /* Free any evaluated data and restore original data. */
@@ -348,43 +331,24 @@ void BKE_curves_data_update(struct Depsgraph *depsgraph, struct Scene *scene, Ob
   Curves *curves = static_cast<Curves *>(object->data);
   GeometrySet geometry_set = GeometrySet::create_with_curves(curves,
                                                              GeometryOwnershipType::ReadOnly);
-  const bool generate_cage = object->mode == OB_MODE_SCULPT_CURVES;
-  const Curves &curves_id_orig = *static_cast<const Curves *>(
-      DEG_get_original_object(object)->data);
-  if (generate_cage) {
+  if (object->mode == OB_MODE_SCULPT_CURVES) {
     /* Try to propagate deformation data through modifier evaluation, so that sculpt mode can work
      * on evaluated curves. */
     GeometryComponentEditData &edit_component =
         geometry_set.get_component_for_write<GeometryComponentEditData>();
     edit_component.curves_edit_hints_ = std::make_unique<blender::bke::CurvesEditHints>(
-        curves_id_orig);
+        *static_cast<const Curves *>(DEG_get_original_object(object)->data));
   }
   curves_evaluate_modifiers(depsgraph, scene, object, geometry_set);
-  Curves *curves_id_eval = const_cast<Curves *>(geometry_set.get_curves_for_read());
-
-  /* Create cage curves geometry for drawing. */
-  if (generate_cage) {
-    const blender::bke::CurvesGeometry &curves_orig = curves_id_orig.geometry.wrap();
-    Curves *curves_id_cage = blender::bke::curves_new_nomain(curves_id_orig.geometry.point_num,
-                                                             curves_id_orig.geometry.curve_num);
-    object->runtime.editcurves_eval_cage = curves_id_cage;
-
-    blender::bke::CurvesGeometry &curves_cage = curves_id_cage->geometry.wrap();
-    curves_cage.offsets_for_write().copy_from(curves_orig.offsets());
-    curves_cage.fill_curve_types(CURVE_TYPE_POLY);
-
-    Span<float3> positions = get_cage_positions(
-        curves_orig, curves_id_eval, geometry_set.get_curve_edit_hints_for_read());
-    curves_cage.positions_for_write().copy_from(positions);
-  }
 
   /* Assign evaluated object. */
-  if (curves_id_eval == nullptr) {
-    curves_id_eval = blender::bke::curves_new_nomain(0, 0);
-    BKE_object_eval_assign_data(object, &curves_id_eval->id, true);
+  Curves *curves_eval = const_cast<Curves *>(geometry_set.get_curves_for_read());
+  if (curves_eval == nullptr) {
+    curves_eval = blender::bke::curves_new_nomain(0, 0);
+    BKE_object_eval_assign_data(object, &curves_eval->id, true);
   }
   else {
-    BKE_object_eval_assign_data(object, &curves_id_eval->id, false);
+    BKE_object_eval_assign_data(object, &curves_eval->id, false);
   }
   object->runtime.geometry_set_eval = new GeometrySet(std::move(geometry_set));
 }

@@ -91,10 +91,6 @@ static void populate_edit_overlay(OVERLAY_Data *vedata, Object *object)
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   Curves *curves = static_cast<Curves *>(object->data);
 
-  if (object->runtime.editcurves_eval_cage == nullptr) {
-    return;
-  }
-
   GPUBatch *geom_lines = DRW_curves_batch_cache_get_edit_lines(curves);
   DRW_shgroup_call_no_cull(pd->sculpt_curves_cage_lines_grp, geom_lines, object);
 }
