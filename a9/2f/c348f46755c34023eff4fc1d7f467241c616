@@ -1,1 +1,2 @@
 Referenced by issue #48898, shaders are remove from metaballs on cycles render
+Referenced by issue #48815, Translate node's 'Relative' checkbox has the same tooltip as blur node's 'Relative' checkbox
