@@ -57,8 +57,8 @@ bool VKBuffer::create(VKContext &context,
   create_info.flags = 0;
   create_info.size = size_in_bytes;
   create_info.usage = buffer_usage;
-  /* For now the compute and graphics command queues are the same, so we can safely assume
-   * exclusive mode.*/
+  /* We use the same command queue for the compute and graphics pipeline, so it is safe to use
+   * exclusive resource handling. */
   create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
   create_info.queueFamilyIndexCount = 1;
   create_info.pQueueFamilyIndices = context.queue_family_ptr_get();

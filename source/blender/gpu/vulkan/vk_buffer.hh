@@ -36,7 +36,6 @@ class VKBuffer {
               GPUUsageType usage,
               VkBufferUsageFlagBits buffer_usage);
   bool update(VKContext &context, const void *data);
-  // TODO: add partial_update (update_sub)
   bool free(VKContext &context);
   bool map(VKContext &context, void **r_mapped_memory) const;
   void unmap(VKContext &context) const;

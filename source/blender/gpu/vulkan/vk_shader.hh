@@ -60,7 +60,6 @@ class VKShader : public Shader {
   int program_handle_get() const override;
 
   VKPipeline &pipeline_get();
-  /* TODO: should be part of VKPipeline.*/
   VkPipelineLayout vk_pipeline_layout_get() const
   {
     return pipeline_layout_;

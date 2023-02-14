@@ -126,9 +126,9 @@ void VKCommandBuffer::submit()
 
 void VKCommandBuffer::encode_recorded_commands()
 {
-  /* TODO: Intentionally not implemented. For the graphics pipeline we want to extract the
-   * resources and its usages so we can encode multiple commands in the same command buffer. This
-   * will also require to change the begin/end recording to be only inside this function. */
+  /* Intentionally not implemented. For the graphics pipeline we want to extract the
+   * resources and its usages so we can encode multiple commands in the same command buffer with
+   * the correct synchorinzations. */
 }
 
 void VKCommandBuffer::submit_encoded_commands()
