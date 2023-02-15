@@ -85,7 +85,8 @@ class BitSpan {
   {
   }
 
-  int64_t size_in_bits() const
+  /** Number of bits referenced by the span. */
+  int64_t size() const
   {
     return bit_range_.size();
   }
