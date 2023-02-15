@@ -72,7 +72,7 @@ class QuickFur(ObjectModeOperator, Operator):
     )
     apply_hair_guides: BoolProperty(
         name="Apply Hair Guides",
-        default=False,
+        default=True,
     )
     use_noise: BoolProperty(
         name="Noise",
