@@ -152,6 +152,7 @@ class QuickFur(ObjectModeOperator, Operator):
             interpolate_modifier["Input_18_attribute_name"] = curves.surface_uv_map
             interpolate_modifier["Input_15"] = density
             interpolate_modifier["Input_17"] = self.view_percentage
+            interpolate_modifier["Input_24"] = True
 
             if noise_group:
                 noise_modifier = curves_object.modifiers.new(name="Hair Curves Noise", type='NODES')
