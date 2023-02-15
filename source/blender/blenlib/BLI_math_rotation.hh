@@ -12,6 +12,20 @@
 
 namespace blender::math {
 
+#ifdef DEBUG
+#  define BLI_ASSERT_UNIT_QUATERNION(_q) \
+    { \
+      auto rot_vec = static_cast<VecBase<T, 4>>(_q); \
+      T quat_length = math::length_squared(rot_vec); \
+      if (!(quat_length == 0 || (math::abs(quat_length - 1) < 0.0001))) { \
+        std::cout << "Warning! " << __func__ << " called with non-normalized quaternion: size " \
+                  << quat_length << " *** report a bug ***\n"; \
+      } \
+    }
+#else
+#  define BLI_ASSERT_UNIT_QUATERNION(_q)
+#endif
+
 /**
  * Generic function for implementing slerp
  * (quaternions and spherical vector coords).
@@ -20,7 +34,8 @@ namespace blender::math {
  * \param cosom: dot product from normalized vectors/quats.
  * \param r_w: calculated weights.
  */
-template<typename T> inline VecBase<T, 2> interpolate_dot_slerp(const T t, const T cosom)
+template<typename T>
+[[nodiscard]] inline VecBase<T, 2> interpolate_dot_slerp(const T t, const T cosom)
 {
   const T eps = T(1e-4);
 
@@ -44,9 +59,9 @@ template<typename T> inline VecBase<T, 2> interpolate_dot_slerp(const T t, const
 }
 
 template<typename T>
-inline detail::Quaternion<T> interpolate(const detail::Quaternion<T> &a,
-                                         const detail::Quaternion<T> &b,
-                                         T t)
+[[nodiscard]] inline detail::Quaternion<T> interpolate(const detail::Quaternion<T> &a,
+                                                       const detail::Quaternion<T> &b,
+                                                       T t)
 {
   using Vec4T = VecBase<T, 4>;
   BLI_assert(is_unit_scale(Vec4T(a)));
@@ -65,6 +80,108 @@ inline detail::Quaternion<T> interpolate(const detail::Quaternion<T> &a,
   return detail::Quaternion<T>(w[0] * quat + w[1] * Vec4T(b));
 }
 
+/**
+ * Dot product between two quaternions.
+ * Equivalent to vector dot product.
+ * Equivalent to component wise multiplication followed by summation of the result.
+ */
+template<typename T>
+[[nodiscard]] inline T dot(const detail::Quaternion<T> &a, const detail::Quaternion<T> &b)
+{
+  return a.w * b.w + a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+/**
+ * Return the conjugate of the given quaternion.
+ * If the quaternion \a q represent the rotation from A to B,
+ * then the conjugate of \a q represents the rotation from B to A.
+ */
+template<typename T>
+[[nodiscard]] inline detail::Quaternion<T> conjugate(const detail::Quaternion<T> &a)
+{
+  return {a.w, -a.x, -a.y, -a.z};
+}
+
+/**
+ * Return invert of \a q or identity if \a q is ill-formed.
+ * The invert allows quaternion division.
+ * \note The inverse of \a q isn't the opposite rotation. This would be the conjugate.
+ */
+template<typename T>
+[[nodiscard]] inline detail::Quaternion<T> invert(const detail::Quaternion<T> &q)
+{
+  const T length_squared = dot(q, q);
+  if (length_squared == 0.0f) {
+    return detail::Quaternion<T>::identity();
+  }
+  return conjugate(q) * (1.0f / length_squared);
+}
+/**
+ * Return invert of \a q assuming it is a unit quaternion.
+ * In this case, the inverse is just the conjugate. `conjugate(q)` could be use directly,
+ * but this function shows the intent better, and asserts if \a q ever becomes non-unit-length.
+ */
+template<typename T>
+[[nodiscard]] inline detail::Quaternion<T> invert_normalized(const detail::Quaternion<T> &q)
+{
+  BLI_ASSERT_UNIT_QUATERNION(q);
+  return conjugate(q);
+}
+
+/**
+ * Return a unit quaternion representing the same rotation as \a q or
+ * the identity quaternion if \a q is ill-formed.
+ */
+template<typename T>
+[[nodiscard]] inline detail::Quaternion<T> normalize_and_get_length(const detail::Quaternion<T> &q,
+                                                                    T &out_length)
+{
+  out_length = math::sqrt(dot(q, q));
+  return (out_length != T(0)) ? (q * (T(1) / out_length)) : detail::Quaternion<T>::identity();
+}
+
+template<typename T>
+[[nodiscard]] inline detail::Quaternion<T> normalize(const detail::Quaternion<T> &q)
+{
+  T len;
+  return normalize_and_get_length(q, len);
+}
+
+/**
+ * Returns true if all components are exactly equal to 0.
+ */
+template<typename T> [[nodiscard]] inline bool is_zero(const detail::Quaternion<T> &q)
+{
+  return q.w == T(0) && q.x == T(0) && q.y == T(0) && q.z == T(0);
+}
+
+/**
+ * Transform \a p by rotation using the quaternion \a q .
+ */
+template<typename T>
+[[nodiscard]] inline VecBase<T, 3> rotate(const detail::Quaternion<T> &q, const VecBase<T, 3> &v)
+{
+#if 0 /* Reference. */
+  detail::Quaternion<T> V(T(0), UNPACK3(v));
+  detail::Quaternion<T> R = q * V * conjugate(q);
+  return {R.x, R.y, R.z};
+#else
+  /* `S = q * V` */
+  detail::Quaternion<T> S;
+  S.w = /* q.w * 0.0  */ -q.x * v.x - q.y * v.y - q.z * v.z;
+  S.x = q.w * v.x /* + q.x * 0.0 */ + q.y * v.z - q.z * v.y;
+  S.y = q.w * v.y /* + q.y * 0.0 */ + q.z * v.x - q.x * v.z;
+  S.z = q.w * v.z /* + q.z * 0.0 */ + q.x * v.y - q.y * v.x;
+  /* `R = S * conjugate(q)` */
+  VecBase<T, 3> R;
+  /* R.w = S.w * q.w + S.x * q.x + S.y * q.y + S.z * q.z = 0.0; */
+  R.x = S.w * -q.x + S.x * q.w - S.y * q.z + S.z * q.y;
+  R.y = S.w * -q.y + S.y * q.w - S.z * q.x + S.x * q.z;
+  R.z = S.w * -q.z + S.z * q.w - S.x * q.y + S.y * q.x;
+  return R;
+#endif
+}
+
 }  // namespace blender::math
 
 /* -------------------------------------------------------------------- */
@@ -72,20 +189,6 @@ inline detail::Quaternion<T> interpolate(const detail::Quaternion<T> &a,
  * \{ */
 
 namespace blender::math::detail {
-
-#ifdef DEBUG
-#  define BLI_ASSERT_UNIT_QUATERNION(_q) \
-    { \
-      auto rot_vec = static_cast<VecBase<T, 4>>(_q); \
-      T quat_length = math::length_squared(rot_vec); \
-      if (!(quat_length == 0 || (math::abs(quat_length - 1) < 0.0001))) { \
-        std::cout << "Warning! " << __func__ << " called with non-normalized quaternion: size " \
-                  << quat_length << " *** report a bug ***\n"; \
-      } \
-    }
-#else
-#  define BLI_ASSERT_UNIT_QUATERNION(_q)
-#endif
 
 template<typename T> AxisAngle<T>::AxisAngle(const VecBase<T, 3> &axis, T angle)
 {
