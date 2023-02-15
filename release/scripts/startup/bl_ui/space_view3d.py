@@ -5311,6 +5311,7 @@ class VIEW3D_MT_edit_curves(Menu):
 
         layout.menu("VIEW3D_MT_transform")
         layout.separator()
+        layout.operator("curves.attribute_set")
 
 
 class VIEW3D_MT_object_mode_pie(Menu):

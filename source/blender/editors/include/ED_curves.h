@@ -69,6 +69,14 @@ bool curves_poll(bContext *C);
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Operators
+ * \{ */
+
+void CURVES_OT_attribute_set(wmOperatorType *ot);
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Selection
  *
  * Selection on curves can be stored on either attribute domain: either per-curve or per-point. It

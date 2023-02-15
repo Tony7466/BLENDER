@@ -1096,6 +1096,7 @@ static void CURVES_OT_surface_set(wmOperatorType *ot)
 void ED_operatortypes_curves()
 {
   using namespace blender::ed::curves;
+  WM_operatortype_append(CURVES_OT_attribute_set);
   WM_operatortype_append(CURVES_OT_convert_to_particle_system);
   WM_operatortype_append(CURVES_OT_convert_from_particle_system);
   WM_operatortype_append(CURVES_OT_snap_curves_to_surface);

@@ -11,6 +11,24 @@
 #include "DNA_customdata_types.h"
 
 #ifdef __cplusplus
+
+#  include "BLI_generic_pointer.hh"
+#  include "BLI_string_ref.hh"
+
+namespace blender::ed::geometry {
+
+StringRefNull rna_property_name_for_type(eCustomDataType type);
+void register_rna_properties_for_attribute_types(StructRNA &srna);
+GPointer rna_property_for_attribute_type_retrieve_value(PointerRNA &ptr,
+                                                        const eCustomDataType type,
+                                                        void *buffer);
+void rna_property_for_attribute_type_set_value(PointerRNA &ptr, PropertyRNA &prop, GPointer value);
+
+}  // namespace blender::ed::geometry
+
+#endif
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 
