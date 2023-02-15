@@ -811,9 +811,8 @@ static Scene *object_preview_scene_create(const struct ObjectPreviewData *previe
                                           Depsgraph **r_depsgraph)
 {
   Scene *scene = BKE_scene_add(preview_data->pr_main, "Object preview scene");
-  const bool is_gpencil = (preview_data->object == nullptr ||
-                           (preview_data->object != nullptr &&
-                            preview_data->object->type == OB_GPENCIL));
+  const bool is_gpencil = (preview_data->datablock != nullptr) &&
+                          (GS(preview_data->datablock->name) == ID_GD);
   Object *ob_gpencil_temp = nullptr;
 
   /* Preview need to be in the current frame to get a thumbnail similar of what
@@ -841,11 +840,13 @@ static Scene *object_preview_scene_create(const struct ObjectPreviewData *previe
                                               preview_data->datablock,
                                               true);
     BLI_assert(ob_gpencil_temp != nullptr);
-    /* Copy the materials to get full color previews. */
-    const short *materials_len_p = BKE_id_material_len_p(preview_data->datablock);
-    if (materials_len_p && *materials_len_p > 0) {
-      BKE_object_materials_test(preview_data->pr_main, ob_gpencil_temp, preview_data->datablock);
-    }
+  }
+  /* Copy the materials to get full color previews. */
+  const short *materials_len_p = BKE_id_material_len_p(preview_data->datablock);
+  if (materials_len_p && *materials_len_p > 0) {
+    BKE_object_materials_test(preview_data->pr_main,
+                              !is_gpencil ? preview_data->object : ob_gpencil_temp,
+                              preview_data->datablock);
   }
 
   Object *camera_object = object_preview_camera_create(preview_data->pr_main,
@@ -896,6 +897,7 @@ static void object_preview_render(IconPreview *preview, IconPreviewSize *preview
   else {
     preview_data.object = nullptr;
     preview_data.datablock = (ID *)preview->id_copy;
+    preview_data.cfra = preview->scene->r.cfra;
   }
   preview_data.sizex = preview_sized->sizex;
   preview_data.sizey = preview_sized->sizey;
@@ -1085,7 +1087,6 @@ static void action_preview_render(IconPreview *preview, IconPreviewSize *preview
 }
 
 /** \} */
-
 /* -------------------------------------------------------------------- */
 /* -------------------------------------------------------------------- */
 /** \name New Shader Preview System
