@@ -70,8 +70,8 @@ class QuickFur(ObjectModeOperator, Operator):
         default=1.0,
         subtype='FACTOR'
     )
-    keep_hair_guides: BoolProperty(
-        name="Keep Hair Guides",
+    apply_hair_guides: BoolProperty(
+        name="Apply Hair Guides",
         default=False,
     )
     use_noise: BoolProperty(
@@ -161,7 +161,7 @@ class QuickFur(ObjectModeOperator, Operator):
                 frizz_modifier = curves_object.modifiers.new(name="Frizz Hair Curves", type='NODES')
                 frizz_modifier.node_group = frizz_group
 
-            if not self.keep_hair_guides:
+            if self.apply_hair_guides:
                 with context.temp_override(object=curves_object):
                     bpy.ops.object.modifier_apply(modifier=generate_modifier.name)
 
