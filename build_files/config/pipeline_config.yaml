@@ -11,12 +11,6 @@ update-code:
         -   branch: blender-v3.5-release
             commit_id: HEAD
             path: scripts/addons_contrib
-        -   branch: blender-v3.5-release
-            commit_id: HEAD
-            path: datafiles/locale
-        -   branch: blender-v3.5-release
-            commit_id: HEAD
-            path: source/tools
     svn:
         libraries:
             darwin-arm64:
