@@ -4,6 +4,15 @@
 
 /** \file
  * \ingroup bli
+ *
+ * This file provides the basis for processing "indexed bits" (i.e. every bit has an index).
+ * The main purpose of this file is to define how bits are indexed within a memory buffer.
+ * This is necessary, because there are many different ways to do it. For example, is the first bit
+ * the least or most significant bit and how does endianness affect the bit order.
+ *
+ * The order is defined as follows:
+ * - Every indexed bit is part of an #IntType. These ints are ordered by their address as usual.
+ * - Within each #IntType, the bits are ordered from least to most significant.
  */
 
 #include "BLI_index_range.hh"
