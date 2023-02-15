@@ -378,6 +378,19 @@ TEST(math_rotation, QuaternionAngleBetween)
   EXPECT_NEAR(float(angle_between_signed(q1, q2)), 3.95259f - 2 * M_PI, 1e-4f);
 }
 
+TEST(math_rotation, QuaternionFromTriangle)
+{
+  float3 v1(0.927091f, 0.211322f, -0.124857f);
+  float3 v2(-0.051681f, 0.498261f, -0.86146f);
+  float3 v3(0.211322f, -0.124857f, 0.283295f);
+  EXPECT_V4_NEAR(float4(from_triangle(v1, v2, v3)),
+                 float4(0.255566f, -0.213799f, 0.454253f, 0.826214f),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_triangle(v1, v3, v2)),
+                 float4(0.103802f, 0.295067f, -0.812945f, 0.491204f),
+                 1e-5f);
+}
+
 TEST(math_rotation, QuaternionWrappedAround)
 {
   Quaternion q1 = normalize(Quaternion(0.927091f, 0.211322f, -0.124857f, 0.283295f));

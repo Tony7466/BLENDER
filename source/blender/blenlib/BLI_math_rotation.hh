@@ -249,6 +249,57 @@ detail::AngleRadian<T> angle_between_signed(const detail::Quaternion<T> &a,
   return angle_of_signed(rotation_between(a, b));
 }
 
+/**
+ * Create a rotation from a triangle geometry.
+ * Takes pre-computed \a normal from the triangle.
+ * Used for Ngons when we know their normal.
+ */
+template<typename T>
+detail::Quaternion<T> from_triangle(const VecBase<T, 3> &v1,
+                                    const VecBase<T, 3> &v2,
+                                    const VecBase<T, 3> &v3,
+                                    const VecBase<T, 3> &normal)
+{
+  /* Force to used an unused var to avoid the same function signature as the version without
+   * `normal` argument. */
+  UNUSED_VARS(v3);
+
+  using Vec3T = VecBase<T, 3>;
+  using Mat3x3T = MatBase<T, 3, 3>;
+
+  /* Move z-axis to face-normal. */
+  Vec3T z_axis = normal;
+  Vec3T n = normalize(Vec3T(z_axis.y, -z_axis.x, T(0)));
+  if (is_zero(n.xy())) {
+    n.x = T(1);
+  }
+
+  T angle = T(-0.5) * math::safe_acos(z_axis.z);
+  T si = math::sin(angle);
+  detail::Quaternion<T> q1(math::cos(angle), n.x * si, n.y * si, T(0));
+
+  /* Rotate back line v1-v2. */
+  Vec3T line = invert(from_rotation<Mat3x3T>(q1)) * (v2 - v1);
+  /* What angle has this line with x-axis? */
+  line = normalize(Vec3T(line.xy()));
+
+  angle = T(0.5) * atan2f(line.y, line.x);
+  detail::Quaternion<T> q2(math::cos(angle), 0.0, 0.0, math::sin(angle));
+
+  return q1 * q2;
+}
+
+/**
+ * Create a rotation from a triangle geometry.
+ */
+template<typename T>
+detail::Quaternion<T> from_triangle(const VecBase<T, 3> &v1,
+                                    const VecBase<T, 3> &v2,
+                                    const VecBase<T, 3> &v3)
+{
+  return from_triangle(v1, v2, v3, normal_tri(v1, v2, v3));
+}
+
 }  // namespace blender::math
 
 /* -------------------------------------------------------------------- */
