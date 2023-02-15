@@ -2982,8 +2982,8 @@ int CustomData_number_of_layers(const CustomData *data, const int type)
 {
   int number = 0;
 
-  for (const CustomDataLayer &layer : Span(data->layers, data->totlayer)) {
-    if (layer.type == type) {
+  for (int i = 0; i < data->totlayer; i++) {
+    if (data->layers[i].type == type) {
       number++;
     }
   }
@@ -2995,8 +2995,8 @@ int CustomData_number_of_anonymous_layers(const CustomData *data, const int type
 {
   int number = 0;
 
-  for (const CustomDataLayer &layer : Span(data->layers, data->totlayer)) {
-    if (layer.type == type && layer.anonymous_id != nullptr) {
+  for (int i = 0; i < data->totlayer; i++) {
+    if (data->layers[i].type == type && data->layers[i].anonymous_id != nullptr) {
       number++;
     }
   }
@@ -3009,8 +3009,8 @@ int CustomData_number_of_layers_typemask(const CustomData *data, const eCustomDa
 {
   int number = 0;
 
-  for (const CustomDataLayer &layer : Span(data->layers, data->totlayer)) {
-    if (mask & CD_TYPE_AS_MASK(layer.type)) {
+  for (int i = 0; i < data->totlayer; i++) {
+    if (mask & CD_TYPE_AS_MASK(data->layers[i].type)) {
       number++;
     }
   }
