@@ -77,6 +77,7 @@ set(LIB
   bf_intern_guardedalloc
   bf_intern_memutil
   bf_intern_opencolorio
+  bf_imbuf_openimageio
 
   ${PNG_LIBRARIES}
   ${JPEG_LIBRARIES}
@@ -104,14 +105,6 @@ if(WITH_IMAGE_TIFF)
     ${TIFF_LIBRARY}
   )
   add_definitions(-DWITH_TIFF)
-endif()
-
-
-if(WITH_OPENIMAGEIO)
-  list(APPEND LIB
-    bf_imbuf_openimageio
-  )
-  add_definitions(-DWITH_OPENIMAGEIO)
 endif()
 
 if(WITH_IMAGE_OPENJPEG)
