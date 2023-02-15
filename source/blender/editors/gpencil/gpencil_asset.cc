@@ -287,7 +287,7 @@ static bool gpencil_asset_create(const bContext *C,
   }
   /* Nothing to export. */
   if (!do_export) {
-    BKE_report(op->reports, RPT_ERROR, "No strokes were found to create the asset.");
+    BKE_report(op->reports, RPT_ERROR, "No strokes were found to create the asset");
     return false;
   }
 
@@ -389,7 +389,7 @@ static int gpencil_asset_create_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports,
                RPT_WARNING,
                "Object has layer parenting, masking, modifiers or effects not supported in this "
-               "asset type. These features have been omitted in the asset.");
+               "asset type. These features have been omitted in the asset");
   }
 
   WM_main_add_notifier(NC_ID | NA_EDITED, nullptr);
@@ -400,49 +400,49 @@ static int gpencil_asset_create_exec(bContext *C, wmOperator *op)
 
 void GPENCIL_OT_asset_create(wmOperatorType *ot)
 {
-  static const EnumPropertyItem mode_types[] = {
+  static const EnumPropertyItem source_types[] = {
       {GP_ASSET_SOURCE_ACTIVE_LAYER,
        "LAYER",
        0,
        "Active Layer",
-       "Copy the strokes of the active layer into a new grease pencil asset."},
+       "Create an asset using strokes of the active layer"},
       {GP_ASSET_SOURCE_ALL_LAYERS,
        "LAYERS_ALL",
        0,
        "All Layers",
-       "Copy the strokes of all layers into a new grease pencil asset."},
+       "Create an asset using strokes from all layers"},
       {GP_ASSET_SOURCE_ALL_LAYERS_SPLIT,
        "LAYERS_SPLIT",
        0,
        "All Layers Separated",
-       "Create an asset by layer."},
+       "Create multiple grease pencil assets, one for each layer"},
       RNA_ENUM_ITEM_SEPR,
       {GP_ASSET_SOURCE_ACTIVE_KEYFRAME,
        "KEYFRAME",
        0,
        "Active Keyframe (Active Layer)",
-       "Create asset using active keyframe for active layer"},
+       "Create an asset using active keyframe for active layer"},
       {GP_ASSET_SOURCE_ACTIVE_KEYFRAME_ALL_LAYERS,
        "KEYFRAME_ALL",
        0,
        "Active Keyframe (All Layers)",
-       "Create asset using active keyframe for all layers"},
+       "Create an asset using active keyframe for all layers"},
       {GP_ASSET_SOURCE_SELECTED_KEYFRAMES,
        "KEYFRAME_SELECTED",
        0,
        "Selected Keyframes",
-       "Create asset using selected keyframes"},
+       "Create an asset using selected keyframes"},
       RNA_ENUM_ITEM_SEPR,
       {GP_ASSET_SOURCE_SELECTED_STROKES,
        "SELECTED",
        0,
        "Selected Strokes",
-       "Create asset using all selected strokes"},
+       "Create an asset using all selected strokes"},
       {GP_ASSET_SOURCE_SELECTED_POINTS,
        "POINT",
        0,
        "Selected Points",
-       "Create asset using all selected points"},
+       "Create an asset using all selected points"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -461,7 +461,7 @@ void GPENCIL_OT_asset_create(wmOperatorType *ot)
 
   /* properties */
   ot->prop = RNA_def_enum(
-      ot->srna, "source", mode_types, GP_ASSET_SOURCE_SELECTED_STROKES, "Create From", "");
+      ot->srna, "source", source_types, GP_ASSET_SOURCE_SELECTED_STROKES, "Create From", "");
   RNA_def_boolean(ot->srna,
                   "reset_origin",
                   true,
@@ -741,21 +741,14 @@ static tGPDasset *gpencil_session_init_asset_import(bContext *C, wmOperator *op)
   /* Asset GP data block. */
   tgpa->gpd_asset = (bGPdata *)id;
 
-  tgpa->asset_strokes.clear();
-
   return tgpa;
 }
 
 /* Init: Allocate memory and set init values */
 static bool gpencil_asset_import_init(bContext *C, wmOperator *op)
 {
-  tGPDasset *tgpa;
-
-  /* check context */
-  op->customdata = tgpa = static_cast<tGPDasset *>(gpencil_session_init_asset_import(C, op));
-  op->customdata = tgpa;
-  if (tgpa == nullptr) {
-    /* something wasn't set correctly in context */
+  op->customdata = static_cast<tGPDasset *>(gpencil_session_init_asset_import(C, op));
+  if (op->customdata == nullptr) {
     gpencil_asset_import_exit(C, op);
     return false;
   }
@@ -772,7 +765,7 @@ static int gpencil_asset_import_invoke(bContext *C, wmOperator *op, const wmEven
   /* Try to initialize context data needed. */
   if (!gpencil_asset_import_init(C, op)) {
     if (op->customdata) {
-      MEM_delete(op->customdata);
+      MEM_delete(static_cast<tGPDasset *>(op->customdata));
     }
     return OPERATOR_CANCELLED;
   }
@@ -785,7 +778,8 @@ static int gpencil_asset_import_invoke(bContext *C, wmOperator *op, const wmEven
   /* Load of the strokes in the target data block. */
   if (!gpencil_asset_append_strokes(tgpa)) {
     gpencil_asset_import_exit(C, op);
-    return OPERATOR_CANCELLED;
+    BKE_report(op->reports, RPT_WARNING, "No strokes to append");
+    return OPERATOR_FINISHED;
   }
 
   /* Select imported strokes. */
@@ -804,7 +798,7 @@ void GPENCIL_OT_asset_import(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Grease Pencil Import Asset";
   ot->idname = "GPENCIL_OT_asset_import";
-  ot->description = "Import Asset into existing grease pencil object";
+  ot->description = "Add strokes from a grease pencil asset to an existing grease pencil object";
 
   /* callbacks */
   ot->invoke = gpencil_asset_import_invoke;
@@ -817,5 +811,6 @@ void GPENCIL_OT_asset_import(wmOperatorType *ot)
   WM_operator_properties_id_lookup(ot, true);
   PropertyRNA *prop = RNA_def_enum(ot->srna, "type", rna_enum_id_type_items, 0, "Type", "");
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_ID);
+  RNA_def_property_flag(prop, static_cast<PropertyFlag>(PROP_SKIP_SAVE | PROP_HIDDEN));
 }
 /** \} */
