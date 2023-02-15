@@ -1132,7 +1132,7 @@ static void CURVES_OT_delete(wmOperatorType *ot)
   ot->description = "Remove selected control points or curves";
 
   ot->exec = curves_delete::delete_exec;
-  ot->poll = editable_curves_poll;
+  ot->poll = editable_curves_in_edit_mode_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
