@@ -55,7 +55,76 @@ template<typename T> struct AngleRadian {
     return value;
   }
 
+  /** Methods. */
+
+  /**
+   * Return the angle wrapped inside [-pi..pi] range.
+   */
+  AngleRadian wrapped() const
+  {
+    return math::mod(value + T(M_PI), T(2 * M_PI)) - T(M_PI);
+  }
+
+  /**
+   * Return the angle wrapped inside [-pi..pi] range around a \a reference.
+   * This mean the interpolation between the returned value and \a reference will always take the
+   * shortest path.
+   */
+  AngleRadian wrapped_around(AngleRadian reference) const
+  {
+    return reference + (*this - reference).wrapped();
+  }
+
   /** Operators. */
+
+  friend AngleRadian operator+(const AngleRadian &a, const AngleRadian &b)
+  {
+    return a.value + b.value;
+  }
+
+  friend AngleRadian operator-(const AngleRadian &a, const AngleRadian &b)
+  {
+    return a.value - b.value;
+  }
+
+  friend AngleRadian operator*(const AngleRadian &a, const AngleRadian &b)
+  {
+    return a.value * b.value;
+  }
+
+  friend AngleRadian operator/(const AngleRadian &a, const AngleRadian &b)
+  {
+    return a.value / b.value;
+  }
+
+  friend AngleRadian operator-(const AngleRadian &a)
+  {
+    return -a.value;
+  }
+
+  AngleRadian &operator+=(const AngleRadian &b)
+  {
+    value += b.value;
+    return *this;
+  }
+
+  AngleRadian &operator-=(const AngleRadian &b)
+  {
+    value -= b.value;
+    return *this;
+  }
+
+  AngleRadian &operator*=(const AngleRadian &b)
+  {
+    value *= b.value;
+    return *this;
+  }
+
+  AngleRadian &operator/=(const AngleRadian &b)
+  {
+    value /= b.value;
+    return *this;
+  }
 
   friend std::ostream &operator<<(std::ostream &stream, const AngleRadian &rot)
   {

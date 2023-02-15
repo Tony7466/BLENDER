@@ -64,6 +64,16 @@ TEST(math_rotation_types, QuaternionUnaryMinus)
   EXPECT_EQ(result.z, -4.0f);
 }
 
+TEST(math_rotation_types, AngleMethods)
+{
+  EXPECT_NEAR(float(AngleRadian(M_PI * 0.5).wrapped()), M_PI * 0.5, 1e-4f);
+  EXPECT_NEAR(float(AngleRadian(M_PI * 2.0).wrapped()), 0.0, 1e-4f);
+  EXPECT_NEAR(float(AngleRadian(M_PI * 2.5).wrapped()), M_PI * 0.5, 1e-4f);
+  EXPECT_NEAR(float(AngleRadian(M_PI * 1.5).wrapped()), M_PI * -0.5, 1e-4f);
+  EXPECT_NEAR(float(AngleRadian(M_PI * 0.5).wrapped_around(-M_PI)), -M_PI * 1.5, 1e-4f);
+  EXPECT_NEAR(float(AngleRadian(M_PI * 1.0).wrapped_around(M_PI * 0.5)), M_PI, 1e-4f);
+}
+
 TEST(math_rotation_types, TypeConversion)
 {
   /* All the same rotation. */
