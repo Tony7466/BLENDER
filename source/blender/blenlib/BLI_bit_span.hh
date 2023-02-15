@@ -8,6 +8,7 @@
 
 namespace blender::bits {
 
+/** Base class for a const and non-const bit-iterator. */
 class BitIteratorBase {
  protected:
   const BitInt *data_;
@@ -31,6 +32,7 @@ class BitIteratorBase {
   }
 };
 
+/** Allows iterating over the bits in a memory buffer. */
 class BitIterator : public BitIteratorBase {
  public:
   BitIterator(const BitInt *data, const int64_t bit_index) : BitIteratorBase(data, bit_index)
@@ -43,6 +45,7 @@ class BitIterator : public BitIteratorBase {
   }
 };
 
+/** Allows iterating over the bits in a memory buffer. */
 class MutableBitIterator : public BitIteratorBase {
  public:
   MutableBitIterator(BitInt *data, const int64_t bit_index) : BitIteratorBase(data, bit_index)
@@ -55,15 +58,26 @@ class MutableBitIterator : public BitIteratorBase {
   }
 };
 
+/**
+ * Similar to #Span, but references a range of bits instead of normal C++ types (which are at least
+ * one byte large). Use #MutableBitSpan if the values are supposed to be modified.
+ *
+ * The beginning and end of a #BitSpan does *not* have to be at byte/int boundaries. It can start
+ * and end at any bit.
+ */
 class BitSpan {
  private:
+  /** Base pointer to the integers containing the bits. The actual bit span might start at a much
+   * higher address when `bit_range_.start()` is large. */
   const BitInt *data_ = nullptr;
+  /** The range of referenced bits. */
   IndexRange bit_range_ = {0, 0};
 
  public:
+  /** Construct an empty span. */
   BitSpan() = default;
 
-  BitSpan(const BitInt *data, const int64_t size) : data_(data), bit_range_(size)
+  BitSpan(const BitInt *data, const int64_t size_in_bits) : data_(data), bit_range_(size_in_bits)
   {
   }
 
@@ -71,7 +85,7 @@ class BitSpan {
   {
   }
 
-  int64_t size() const
+  int64_t size_in_bits() const
   {
     return bit_range_.size();
   }
@@ -119,6 +133,7 @@ class BitSpan {
   }
 };
 
+/** Same as #BitSpan, but also allows modifying the referenced bits. */
 class MutableBitSpan {
  private:
   BitInt *data_ = nullptr;
@@ -187,6 +202,7 @@ class MutableBitSpan {
     return {data_, bit_range_};
   }
 
+  /** Sets all referenced bits to 1. */
   void set()
   {
     const AlignedIndexRanges ranges = split_index_range_by_alignment(bit_range_, BitsPerInt);
@@ -209,6 +225,7 @@ class MutableBitSpan {
     }
   }
 
+  /** Sets all referenced bits to 0. */
   void reset()
   {
     const AlignedIndexRanges ranges = split_index_range_by_alignment(bit_range_, BitsPerInt);
@@ -231,6 +248,7 @@ class MutableBitSpan {
     }
   }
 
+  /** Sets all referenced bits to either 0 or 1. */
   void set(const bool value)
   {
     if (value) {
