@@ -298,13 +298,8 @@ typedef struct wmGizmoProperty {
   int index;
 
   /* Optional functions for converting to/from RNA. */
-  struct {
-    wmGizmoPropertyFnGet value_get_fn;
-    wmGizmoPropertyFnSet value_set_fn;
-    wmGizmoPropertyFnRangeGet range_get_fn;
-    wmGizmoPropertyFnFree free_fn;
-    void *user_data;
-  } custom_func;
+  wmGizmoPropertyFnParams custom_func;
+
 } wmGizmoProperty;
 
 typedef struct wmGizmoPropertyType {

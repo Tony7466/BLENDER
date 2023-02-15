@@ -103,12 +103,7 @@ void WM_gizmo_target_property_def_func_ptr(wmGizmo *gz,
   BLI_assert(gz->op_data == NULL);
 
   gz_prop->type = gz_prop_type;
-
-  gz_prop->custom_func.value_get_fn = params->value_get_fn;
-  gz_prop->custom_func.value_set_fn = params->value_set_fn;
-  gz_prop->custom_func.range_get_fn = params->range_get_fn;
-  gz_prop->custom_func.free_fn = params->free_fn;
-  gz_prop->custom_func.user_data = params->user_data;
+  gz_prop->custom_func = *params;
 
   if (gz->type->property_update) {
     gz->type->property_update(gz, gz_prop);
