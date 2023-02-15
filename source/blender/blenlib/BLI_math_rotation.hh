@@ -265,7 +265,6 @@ detail::Quaternion<T> from_triangle(const VecBase<T, 3> &v1,
   UNUSED_VARS(v3);
 
   using Vec3T = VecBase<T, 3>;
-  using Mat3x3T = MatBase<T, 3, 3>;
 
   /* Move z-axis to face-normal. */
   Vec3T z_axis = normal;
@@ -279,7 +278,7 @@ detail::Quaternion<T> from_triangle(const VecBase<T, 3> &v1,
   detail::Quaternion<T> q1(math::cos(angle), n.x * si, n.y * si, T(0));
 
   /* Rotate back line v1-v2. */
-  Vec3T line = invert(from_rotation<Mat3x3T>(q1)) * (v2 - v1);
+  Vec3T line = rotate(conjugate(q1), (v2 - v1));
   /* What angle has this line with x-axis? */
   line = normalize(Vec3T(line.xy()));
 
