@@ -16,6 +16,7 @@
 
 #include "AS_asset_catalog_tree.hh"
 #include "AS_asset_library.hh"
+#include "AS_essentials_library.hh"
 #include "asset_library_service.hh"
 #include "utils.hh"
 
@@ -60,6 +61,14 @@ AssetLibrary *AssetLibraryService::get_asset_library(
   const eAssetLibraryType type = eAssetLibraryType(library_reference.type);
 
   switch (type) {
+    case ASSET_LIBRARY_ESSENTIALS: {
+      const StringRefNull root_path = essentials_directory_path();
+
+      AssetLibrary *library = get_asset_library_on_disk(root_path);
+      library->import_method_ = ASSET_IMPORT_APPEND_REUSE;
+
+      return library;
+    }
     case ASSET_LIBRARY_LOCAL: {
       /* For the "Current File" library  we get the asset library root path based on main. */
       std::string root_path = bmain ? AS_asset_library_find_suitable_root_path_from_main(bmain) :
@@ -86,7 +95,9 @@ AssetLibrary *AssetLibraryService::get_asset_library(
       }
 
       AssetLibrary *library = get_asset_library_on_disk(root_path);
-      library->custom_library_definition_ = custom_library;
+      library->import_method_ = eAssetImportMethod(custom_library->import_method);
+      library->may_override_import_method_ = true;
+
       return library;
     }
   }

@@ -55,6 +55,8 @@
 #include "GPU_immediate_util.h"
 #include "GPU_state.h"
 
+#include "AS_asset_representation.h"
+
 #include "filelist.h"
 
 #include "file_intern.h" /* own include */

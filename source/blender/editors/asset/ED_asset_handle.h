@@ -42,7 +42,7 @@ void ED_asset_handle_get_full_library_path(
 
 /** The asset library may have an import method (e.g. append vs. link) defined to use. If so, this
  * returns it. Otherwise a reasonable method should be used, usually "Append (Reuse Data)". */
-std::optional<eAssetImportMethod> ED_asset_handle_get_default_import_method(
+std::optional<eAssetImportMethod> ED_asset_handle_get_import_method(
     const struct AssetHandle *asset);
 
 namespace blender::ed::asset {

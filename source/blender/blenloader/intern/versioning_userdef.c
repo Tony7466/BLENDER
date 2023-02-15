@@ -775,9 +775,7 @@ void blo_do_versions_userdef(UserDef *userdef)
 
   if (!USER_VERSION_ATLEAST(305, 10)) {
     LISTBASE_FOREACH (bUserAssetLibrary *, asset_library, &userdef->asset_libraries) {
-      if (asset_library->import_method == 0) {
-        asset_library->import_method = ASSET_IMPORT_APPEND_REUSE;
-      }
+      asset_library->import_method = ASSET_IMPORT_APPEND_REUSE;
     }
   }
 
