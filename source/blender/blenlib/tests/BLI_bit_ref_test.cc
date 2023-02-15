@@ -110,6 +110,21 @@ TEST(bit_ref, Reset)
   EXPECT_EQ(data, uint64_t(-1) & ~(1 << 0) & ~(1 << 2));
 }
 
+TEST(bit_ref, SetBranchless)
+{
+  uint64_t data = 0;
+  MutableBitRef(&data, 0).set_branchless(true);
+  EXPECT_EQ(data, 1);
+  MutableBitRef(&data, 0).set_branchless(false);
+  EXPECT_EQ(data, 0);
+  MutableBitRef(&data, 3).set_branchless(false);
+  MutableBitRef(&data, 4).set_branchless(true);
+  EXPECT_EQ(data, 16);
+  MutableBitRef(&data, 3).set_branchless(true);
+  MutableBitRef(&data, 4).set_branchless(true);
+  EXPECT_EQ(data, 24);
+}
+
 TEST(bit_ref, Cast)
 {
   uint64_t data = 0;

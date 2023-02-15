@@ -184,7 +184,8 @@ class MutableBitRef {
   }
 
   /**
-   * Change the bit to a 1 if #value is true and 0 otherwise.
+   * Change the bit to a 1 if #value is true and 0 otherwise. If the value is highly unpredictable
+   * by the CPU branch predictor, it can be faster to use #set_branchless instead.
    */
   void set(const bool value)
   {
@@ -194,6 +195,24 @@ class MutableBitRef {
     else {
       this->reset();
     }
+  }
+
+  /**
+   * Does the same as #set, but does not use a branch. This is faster when the input value is
+   * unpredictable for the CPU branch predictor (worst case is a uniform random distribution with
+   * 50% probability for true and false). If the value is predictable, this is likely slower than
+   * #set.
+   */
+  void set_branchless(const bool value)
+  {
+    const BitInt value_int = BitInt(value);
+    BLI_assert(ELEM(value_int, 0, 1));
+    const BitInt old = *data_;
+    *data_ =
+        /* Unset bit. */
+        (~mask_ & old)
+        /* Optionally set it again. The -1 turns a 1 into `0x00...` and a 0 into `0xff...`. */
+        | (mask_ & ~(value_int - 1));
   }
 };
 
