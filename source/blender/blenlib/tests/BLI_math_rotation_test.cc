@@ -352,6 +352,16 @@ TEST(math_rotation, QuaternionInvert)
   EXPECT_V4_NEAR(float4(result), float4(0.927091f, -0.211322f, 0.124857f, -0.283295f), 1e-4f);
 }
 
+TEST(math_rotation, QuaternionCanonicalize)
+{
+  EXPECT_V4_NEAR(float4(canonicalize(Quaternion(0.5f, 2.0f, 3.0f, 4.0f))),
+                 float4(0.5f, 2.0f, 3.0f, 4.0f),
+                 1e-4f);
+  EXPECT_V4_NEAR(float4(canonicalize(Quaternion(-0.5f, 2.0f, 3.0f, 4.0f))),
+                 float4(0.5f, -2.0f, -3.0f, -4.0f),
+                 1e-4f);
+}
+
 TEST(math_rotation, QuaternionAngleBetween)
 {
   Quaternion q1 = normalize(Quaternion(0.927091f, 0.211322f, -0.124857f, 0.283295f));

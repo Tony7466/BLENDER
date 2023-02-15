@@ -147,6 +147,12 @@ template<typename T>
   return normalize_and_get_length(q, len);
 }
 
+template<typename T>
+[[nodiscard]] inline detail::Quaternion<T> canonicalize(const detail::Quaternion<T> &q)
+{
+  return (q.w < 0.0) ? -q : q;
+}
+
 /**
  * Returns true if all components are exactly equal to 0.
  */
