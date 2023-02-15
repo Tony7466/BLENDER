@@ -269,6 +269,23 @@ template<typename T> VecBase<T, 3> Quaternion<T>::expmap() const
   return axis_angle.axis() * axis_angle.angle();
 }
 
+template<typename T> Quaternion<T> Quaternion<T>::wrapped_around(const Quaternion &reference) const
+{
+  const Quaternion<T> &input = *this;
+  BLI_ASSERT_UNIT_QUATERNION(input);
+  T len;
+  Quaternion<T> reference_normalized = normalize_and_get_length(reference, len);
+  /* Skips cases case too. */
+  if (len < 1e-4f) {
+    return input;
+  }
+  Quaternion<T> result = reference * rotation_between(reference_normalized, input);
+  return (distance_squared(float4(-result), float4(reference)) <
+          distance_squared(float4(result), float4(reference))) ?
+             -result :
+             result;
+}
+
 template<typename T> AxisAngle<T>::AxisAngle(const VecBase<T, 3> &axis, T angle)
 {
   T length;

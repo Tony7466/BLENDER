@@ -368,6 +368,16 @@ TEST(math_rotation, QuaternionAngleBetween)
   EXPECT_NEAR(float(angle_between_signed(q1, q2)), 3.95259f - 2 * M_PI, 1e-4f);
 }
 
+TEST(math_rotation, QuaternionWrappedAround)
+{
+  Quaternion q1 = normalize(Quaternion(0.927091f, 0.211322f, -0.124857f, 0.283295f));
+  Quaternion q2 = normalize(Quaternion(-0.083377f, -0.051681f, 0.498261f, -0.86146f));
+  Quaternion q_malformed = Quaternion(0.0f, 0.0f, 0.0f, 0.0f);
+  EXPECT_V4_NEAR(float4(q1.wrapped_around(q2)), float4(-q1), 1e-4f);
+  EXPECT_V4_NEAR(float4(q1.wrapped_around(-q2)), float4(q1), 1e-4f);
+  EXPECT_V4_NEAR(float4(q1.wrapped_around(q_malformed)), float4(q1), 1e-4f);
+}
+
 TEST(math_rotation, Rotate)
 {
   Quaternion q(0.927091f, 0.211322f, -0.124857f, 0.283295f);

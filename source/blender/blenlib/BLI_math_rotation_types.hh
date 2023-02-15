@@ -70,7 +70,7 @@ template<typename T> struct AngleRadian {
    * This mean the interpolation between the returned value and \a reference will always take the
    * shortest path.
    */
-  AngleRadian wrapped_around(AngleRadian reference) const
+  AngleRadian wrapped_around(const AngleRadian &reference) const
   {
     return reference + (*this - reference).wrapped();
   }
@@ -217,6 +217,19 @@ template<typename T = float> struct Quaternion {
    * An exponential map is basically the rotation axis multiplied by the rotation angle.
    */
   VecBase<T, 3> expmap() const;
+
+  /** Methods. */
+
+  /**
+   * Return this quaternions orientation but wrapped around \a reference.
+   *
+   * This mean the interpolation between the returned value and \a reference will always take the
+   * shortest path. The angle between them will not be more than pi.
+   *
+   * \note This quaternion is expected to be a unit quaternion.
+   * \note Works even if \a reference is *not* a unit quaternion.
+   */
+  Quaternion wrapped_around(const Quaternion &reference) const;
 
   /** Operators. */
 
