@@ -201,7 +201,8 @@ class MutableBitSpan {
     const AlignedIndexRanges ranges = split_index_range_by_alignment(bit_range_, BitsPerInt);
     {
       BitInt &first_int = *int_containing_bit(data_, bit_range_.start());
-      const BitInt first_int_mask = mask_range_bits(ranges.prefix);
+      const BitInt first_int_mask = mask_range_bits(ranges.prefix.start() & BitIndexMask,
+                                                    ranges.prefix.size());
       first_int |= first_int_mask;
     }
     {
@@ -222,7 +223,8 @@ class MutableBitSpan {
     const AlignedIndexRanges ranges = split_index_range_by_alignment(bit_range_, BitsPerInt);
     {
       BitInt &first_int = *int_containing_bit(data_, bit_range_.start());
-      const BitInt first_int_mask = mask_range_bits(ranges.prefix);
+      const BitInt first_int_mask = mask_range_bits(ranges.prefix.start() & BitIndexMask,
+                                                    ranges.prefix.size());
       first_int &= ~first_int_mask;
     }
     {

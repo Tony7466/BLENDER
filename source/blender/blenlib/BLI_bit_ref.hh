@@ -47,10 +47,10 @@ inline BitInt mask_last_n_bits(const int64_t n)
   return ~mask_first_n_bits(BitsPerInt - n);
 }
 
-inline BitInt mask_range_bits(const IndexRange range)
+inline BitInt mask_range_bits(const int64_t start, const int64_t size)
 {
-  const int64_t size = range.size();
-  const int64_t start = range.start() & BitIndexMask;
+  BLI_assert(start >= 0);
+  BLI_assert(size >= 0);
   const int64_t end = start + size;
   BLI_assert(end <= BitsPerInt);
   if (end == BitsPerInt) {

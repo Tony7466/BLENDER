@@ -122,23 +122,21 @@ TEST(bit_ref, Cast)
 
 TEST(bit_ref, MaskRangeBits)
 {
-  EXPECT_EQ(mask_range_bits(IndexRange(0)),
+  EXPECT_EQ(mask_range_bits(0, 0),
             0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000);
-  EXPECT_EQ(mask_range_bits(IndexRange(1)),
+  EXPECT_EQ(mask_range_bits(0, 1),
             0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0001);
-  EXPECT_EQ(mask_range_bits(IndexRange(5)),
+  EXPECT_EQ(mask_range_bits(0, 5),
             0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0001'1111);
-  EXPECT_EQ(mask_range_bits(IndexRange(64).take_back(0)),
+  EXPECT_EQ(mask_range_bits(64, 0),
             0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000);
-  EXPECT_EQ(mask_range_bits(IndexRange(64).take_back(1)),
+  EXPECT_EQ(mask_range_bits(63, 1),
             0b1000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000);
-  EXPECT_EQ(mask_range_bits(IndexRange(64).take_back(5)),
+  EXPECT_EQ(mask_range_bits(59, 5),
             0b1111'1000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000);
-  EXPECT_EQ(mask_range_bits(IndexRange(8, 3)),
+  EXPECT_EQ(mask_range_bits(8, 3),
             0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0111'0000'0000);
-  EXPECT_EQ(mask_range_bits(IndexRange(8 + 64, 3)),
-            0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0111'0000'0000);
-  EXPECT_EQ(mask_range_bits(IndexRange(64)),
+  EXPECT_EQ(mask_range_bits(0, 64),
             0b1111'1111'1111'1111'1111'1111'1111'1111'1111'1111'1111'1111'1111'1111'1111'1111);
 }
 
