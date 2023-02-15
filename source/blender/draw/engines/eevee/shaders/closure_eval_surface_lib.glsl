@@ -102,7 +102,7 @@ Closure closure_eval(ClosureTranslucent translucent)
 }
 
 CLOSURE_EVAL_FUNCTION_DECLARE_1(GlossyBSDF, Glossy)
-Closure closure_eval(ClosureReflection reflection)
+Closure closure_eval(ClosureReflection reflection, const bool do_output_ssr)
 {
   /* Glue with the old system. */
   CLOSURE_VARS_DECLARE_1(Glossy);
@@ -113,26 +113,20 @@ Closure closure_eval(ClosureReflection reflection)
   CLOSURE_EVAL_FUNCTION_1(GlossyBSDF, Glossy);
 
   Closure closure = CLOSURE_DEFAULT;
-  if (!output_ssr(reflection)) {
+
+  bool output_radiance = true;
+  if(do_output_ssr){
+    output_radiance = !output_ssr(reflection);
+  }
+  if (output_radiance) {
     closure.radiance += out_Glossy_0.radiance * reflection.color * reflection.weight;
   }
   return closure;
 }
 
-CLOSURE_EVAL_FUNCTION_DECLARE_1(GlossyBSDFAlways, Glossy)
-Closure closure_eval_always(ClosureReflection reflection)
+Closure closure_eval(ClosureReflection reflection)
 {
-  /* Glue with the old system. */
-  CLOSURE_VARS_DECLARE_1(Glossy);
-
-  in_Glossy_0.N = reflection.N;
-  in_Glossy_0.roughness = reflection.roughness;
-
-  CLOSURE_EVAL_FUNCTION_1(GlossyBSDF, Glossy);
-
-  Closure closure = CLOSURE_DEFAULT;
-  closure.radiance += out_Glossy_0.radiance * reflection.color * reflection.weight;
-  return closure;
+  return closure_eval(reflection, true);
 }
 
 CLOSURE_EVAL_FUNCTION_DECLARE_1(RefractionBSDF, Refraction)
@@ -240,7 +234,7 @@ Closure closure_eval(ClosureDiffuse diffuse,
 #if defined(DO_SPLIT_CLOSURE_EVAL)
   Closure closure = closure_eval(diffuse);
   Closure closure_reflection = closure_eval(reflection);
-  Closure closure_clearcoat = closure_eval_always(clearcoat);
+  Closure closure_clearcoat = closure_eval(clearcoat, false);
   closure.radiance += closure_reflection.radiance + closure_clearcoat.radiance;
   return closure;
 #else
@@ -280,7 +274,7 @@ Closure closure_eval(ClosureDiffuse diffuse,
 #if defined(DO_SPLIT_CLOSURE_EVAL)
   Closure closure = closure_eval(diffuse);
   Closure closure_reflection = closure_eval(reflection);
-  Closure closure_clearcoat = closure_eval_always(clearcoat);
+  Closure closure_clearcoat = closure_eval(clearcoat, false);
   Closure closure_refraction = closure_eval(refraction);
   closure.radiance += closure_reflection.radiance + closure_clearcoat.radiance +
                       closure_refraction.radiance;
