@@ -65,7 +65,7 @@ static char domain_to_htype(const eAttrDomain domain)
   }
 }
 
-static bool active_attribute_poll(bContext *C)
+static bool mesh_active_attribute_poll(bContext *C)
 {
   if (!ED_operator_editmesh(C)) {
     return false;
@@ -163,7 +163,7 @@ static void bmesh_loop_layer_selected_values_set(BMEditMesh &em,
   }
 }
 
-static int set_attribute_exec(bContext *C, wmOperator *op)
+static int mesh_set_attribute_exec(bContext *C, wmOperator *op)
 {
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
@@ -270,7 +270,7 @@ static int set_attribute_exec(bContext *C, wmOperator *op)
   return changed ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
-static int set_attribute_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+static int mesh_set_attribute_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   Mesh *mesh = ED_mesh_context(C);
   BMesh *bm = mesh->edit_mesh->bm;
@@ -328,7 +328,7 @@ static int set_attribute_invoke(bContext *C, wmOperator *op, const wmEvent *even
   return WM_operator_props_popup(C, op, event);
 }
 
-static void set_attribute_ui(bContext *C, wmOperator *op)
+static void mesh_set_attribute_ui(bContext *C, wmOperator *op)
 {
   uiLayout *layout = uiLayoutColumn(op->layout, true);
   uiLayoutSetPropSep(layout, true);
@@ -354,10 +354,10 @@ void MESH_OT_attribute_set(wmOperatorType *ot)
   ot->description = "Set values of the active attribute for selected elements";
   ot->idname = "MESH_OT_attribute_set";
 
-  ot->exec = set_attribute_exec;
-  ot->invoke = set_attribute_invoke;
-  ot->poll = active_attribute_poll;
-  ot->ui = set_attribute_ui;
+  ot->exec = mesh_set_attribute_exec;
+  ot->invoke = mesh_set_attribute_invoke;
+  ot->poll = mesh_active_attribute_poll;
+  ot->ui = mesh_set_attribute_ui;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
