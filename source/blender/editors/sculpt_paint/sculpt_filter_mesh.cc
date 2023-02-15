@@ -11,6 +11,8 @@
 #include "BLI_math.h"
 #include "BLI_task.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_meshdata_types.h"
 
 #include "BKE_brush.h"
@@ -24,6 +26,7 @@
 #include "WM_types.h"
 
 #include "ED_view3d.h"
+#include "ED_screen.h"
 
 #include "paint_intern.h"
 #include "sculpt_intern.hh"
@@ -681,6 +684,7 @@ static void mesh_filter_surface_smooth_displace_task_cb(void *__restrict userdat
   BKE_pbvh_vertex_iter_end;
 }
 
+
 static int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   Object *ob = CTX_data_active_object(C);
@@ -690,10 +694,19 @@ static int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *
   eSculptMeshFilterType filter_type = eSculptMeshFilterType(RNA_enum_get(op->ptr, "type"));
   float filter_strength = RNA_float_get(op->ptr, "strength");
 
+
+  WM_cursor_modal_set(CTX_wm_window(C), WM_CURSOR_EW_SCROLL);
+  ED_workspace_status_text(C, TIP_("LMB: Confirm"));
+
+
   if (event->type == LEFTMOUSE && event->val == KM_RELEASE) {
     SCULPT_filter_cache_free(ss);
     SCULPT_undo_push_end(ob);
     SCULPT_flush_update_done(C, ob, SCULPT_UPDATE_COORDS);
+
+    ED_workspace_status_text(C, NULL);         // Clear status bar
+    WM_cursor_modal_restore(CTX_wm_window(C));
+
     return OPERATOR_FINISHED;
   }
 
@@ -857,8 +870,9 @@ void SCULPT_OT_mesh_filter(wmOperatorType *ot)
   ot->invoke = sculpt_mesh_filter_invoke;
   ot->modal = sculpt_mesh_filter_modal;
   ot->poll = SCULPT_mode_poll;
+   
 
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_GRAB_CURSOR_X | OPTYPE_BLOCKING;
 
   /* RNA. */
   SCULPT_mesh_filter_properties(ot);
