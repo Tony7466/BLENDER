@@ -278,10 +278,10 @@ def external_script_copy_old_submodule_over(args: argparse.Namespace, directory_
     external_dir = scripts_dir / directory_name
 
     old_submodule_relative_dir = Path("release") / "scripts" / directory_name
-    print(f"Copying {old_submodule_relative_dir} to scripts/{directory_name} ...")
+    print(f"Moving {old_submodule_relative_dir} to scripts/{directory_name} ...")
 
     old_submodule_dir = blender_git_root / old_submodule_relative_dir
-    shutil.copytree(old_submodule_dir, external_dir)
+    shutil.move(old_submodule_dir, external_dir)
 
     # Remove old ".git" which is a file with path to a submodule bare repo inside of main
     # repo .git/modules directory.
@@ -302,6 +302,7 @@ def external_script_initialize_if_needed(args: argparse.Namespace,
     """Initialize checkout of an external repository scripts directory"""
 
     blender_git_root = Path(get_blender_git_root())
+    blender_dot_git = blender_git_root / ".git"
     scripts_dir = blender_git_root / "scripts"
     external_dir = scripts_dir / directory_name
 
@@ -311,7 +312,7 @@ def external_script_initialize_if_needed(args: argparse.Namespace,
     print(f"Initializing scripts/{directory_name} ...")
 
     old_submodule_dot_git = blender_git_root / "release" / "scripts" / directory_name / ".git"
-    if old_submodule_dot_git.exists():
+    if old_submodule_dot_git.exists() and blender_dot_git.is_dir():
         external_script_copy_old_submodule_over(args, directory_name)
         return
 
