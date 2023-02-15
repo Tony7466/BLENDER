@@ -72,6 +72,20 @@ TEST(math_rotation_types, QuaternionExpmap)
   EXPECT_V4_NEAR(float4(Quaternion::expmap(expmap)), float4(q), 1e-4f);
 }
 
+TEST(math_rotation_types, QuaternionTwistSwing)
+{
+  Quaternion q(0.927091f, 0.211322f, -0.124857f, 0.283295f);
+  EXPECT_NEAR(float(q.twist_angle(eAxis::X)), 0.448224, 1e-4);
+  EXPECT_NEAR(float(q.twist_angle(eAxis::Y)), -0.267741, 1e-4);
+  EXPECT_NEAR(float(q.twist_angle(eAxis::Z)), 0.593126, 1e-4);
+  EXPECT_V4_NEAR(float4(q.twist(eAxis::X)), float4(0.950871, 0, -0.184694, 0.248462), 1e-4);
+  EXPECT_V4_NEAR(float4(q.twist(eAxis::Y)), float4(0.935461, 0.17162, 0, 0.308966), 1e-4);
+  EXPECT_V4_NEAR(float4(q.twist(eAxis::Z)), float4(0.969409, 0.238585, -0.0576509, 0), 1e-4);
+  EXPECT_V4_NEAR(float4(q.swing(eAxis::X)), float4(0.974992, 0.222241, 0, 0), 1e-4);
+  EXPECT_V4_NEAR(float4(q.swing(eAxis::Y)), float4(0.991053, 0, -0.133471, 0), 1e-4);
+  EXPECT_V4_NEAR(float4(q.swing(eAxis::Z)), float4(0.956347, 0, 0, 0.292235), 1e-4);
+}
+
 TEST(math_rotation_types, AngleMethods)
 {
   EXPECT_NEAR(float(AngleRadian(M_PI * 0.5).wrapped()), M_PI * 0.5, 1e-4f);

@@ -21,6 +21,12 @@ template<typename T> static inline T rad_to_deg(T radians)
   return radians * T(180.0 / M_PI);
 }
 
+enum eAxis {
+  X = 0,
+  Y,
+  Z,
+};
+
 namespace detail {
 
 /**
@@ -217,6 +223,23 @@ template<typename T = float> struct Quaternion {
    * An exponential map is basically the rotation axis multiplied by the rotation angle.
    */
   VecBase<T, 3> expmap() const;
+
+  /**
+   * Returns the full twist angle for a given basis \a axis .
+   */
+  AngleRadian<T> twist_angle(const eAxis axis) const;
+
+  /**
+   * Returns the twist part of this quaternion for the basis \a axis .
+   */
+  Quaternion twist(const eAxis axis, AngleRadian<T> &r_twist_angle) const;
+  Quaternion twist(const eAxis axis) const;
+
+  /**
+   * Returns the swing part of this quaternion for the basis \a axis .
+   */
+  Quaternion swing(const eAxis axis, AngleRadian<T> &r_twist_angle) const;
+  Quaternion swing(const eAxis axis) const;
 
   /** Methods. */
 

@@ -286,10 +286,65 @@ template<typename T> Quaternion<T> Quaternion<T>::wrapped_around(const Quaternio
     return input;
   }
   Quaternion<T> result = reference * rotation_between(reference_normalized, input);
-  return (distance_squared(float4(-result), float4(reference)) <
-          distance_squared(float4(result), float4(reference))) ?
+  return (distance_squared(VecBase<T, 4>(-result), VecBase<T, 4>(reference)) <
+          distance_squared(VecBase<T, 4>(result), VecBase<T, 4>(reference))) ?
              -result :
              result;
+}
+
+template<typename T> AngleRadian<T> Quaternion<T>::twist_angle(const eAxis axis) const
+{
+  BLI_assert(axis >= 0 && axis <= 2);
+  /* The calculation requires a canonical quaternion. */
+  const VecBase<T, 4> input_vec(canonicalize(*this));
+  return AngleRadian<T>(T(2) * atan2f(input_vec[axis + 1], input_vec[0]));
+}
+
+template<typename T>
+Quaternion<T> Quaternion<T>::twist(const eAxis axis, AngleRadian<T> &r_twist_angle) const
+{
+  BLI_assert(axis >= 0 && axis <= 2);
+  /* The calculation requires a canonical quaternion. */
+  const Quaternion<T> input = canonicalize(*this);
+  const VecBase<T, 4> input_vec(input);
+
+  T half_twist_angle = atan2f(input_vec[axis + 1], input_vec[0]);
+  r_twist_angle = T(2) * half_twist_angle;
+
+  /* Compute swing by multiplying the original quaternion by inverted twist. */
+  VecBase<T, 4> twist_inv(math::cos(half_twist_angle), T(0), T(0), T(0));
+  twist_inv[axis + 1] = -math::sin(half_twist_angle);
+  Quaternion<T> result = input * Quaternion<T>(twist_inv);
+
+  BLI_assert(math::abs(VecBase<T, 4>(result)[axis + 1]) < BLI_ASSERT_UNIT_EPSILON);
+  return result;
+}
+
+template<typename T> Quaternion<T> Quaternion<T>::twist(const eAxis axis) const
+{
+  AngleRadian<T> twist_angle;
+  return twist(axis, twist_angle);
+}
+
+template<typename T>
+Quaternion<T> Quaternion<T>::swing(const eAxis axis, AngleRadian<T> &r_twist_angle) const
+{
+  BLI_assert(axis >= 0 && axis <= 2);
+  /* The calculation requires a canonical quaternion. */
+  const VecBase<T, 4> input_vec(canonicalize(*this));
+
+  T half_twist_angle = atan2f(input_vec[axis + 1], input_vec[0]);
+  r_twist_angle = T(2) * half_twist_angle;
+
+  VecBase<T, 4> twist(math::cos(half_twist_angle), T(0), T(0), T(0));
+  twist[axis + 1] = math::sin(half_twist_angle);
+  return Quaternion<T>(twist);
+}
+
+template<typename T> Quaternion<T> Quaternion<T>::swing(const eAxis axis) const
+{
+  AngleRadian<T> twist_angle;
+  return swing(axis, twist_angle);
 }
 
 template<typename T> AxisAngle<T>::AxisAngle(const VecBase<T, 3> &axis, T angle)
