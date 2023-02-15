@@ -2,6 +2,10 @@
 
 #pragma once
 
+/** \file
+ * \ingroup bli
+ */
+
 #include "BLI_index_range.hh"
 #include "BLI_utildefines.h"
 
