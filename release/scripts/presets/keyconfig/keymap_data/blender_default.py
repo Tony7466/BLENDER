@@ -37,7 +37,7 @@ class Params:
         # instead be bound to a binding that doesn't de-select all, this way:
         # - Click-drag moves the current selection.
         # - Click selects only the item at the cursor position.
-        # See: T97032.
+        # See: #97032.
         "use_tweak_select_passthrough",
         "use_tweak_tool_lmb_interaction",
         "use_mouse_emulate_3_button",
@@ -465,7 +465,7 @@ def _template_items_tool_select(
         fallback=False,
 ):
     if not params.legacy and not fallback:
-        # Experimental support for LMB interaction for the tweak tool. see: T96544.
+        # Experimental support for LMB interaction for the tweak tool. see: #96544.
         # NOTE: For RMB-select this is a much bigger change as it disables 3D cursor placement on LMB.
         # For LMB-select this means an LMB -drag will not first de-select all (similar to node/graph editor).
         select_passthrough = False
@@ -498,7 +498,7 @@ def _template_items_tool_select(
              {"properties": [("toggle", True), *operator_props]}),
 
             # Fallback key-map must transform as the primary tool is expected
-            # to be accessed via gizmos in this case. See: T96885.
+            # to be accessed via gizmos in this case. See: #96885.
             *(() if not fallback else (
                 ("transform.translate", {"type": 'LEFTMOUSE', "value": 'CLICK_DRAG'},
                  {"properties": [("release_confirm", True)]}),
@@ -1299,6 +1299,8 @@ def km_uv_editor(params):
          {"properties": [("data_path", 'tool_settings.snap_uv_element')]}),
         ("wm.context_toggle", {"type": 'ACCENT_GRAVE', "value": 'PRESS', "ctrl": True},
          {"properties": [("data_path", 'space_data.show_gizmo')]}),
+        ("wm.context_toggle", {"type": 'Z', "value": 'PRESS', "alt": True, "shift": True},
+         {"properties": [("data_path", "space_data.overlay.show_overlays")]}),
         *_template_items_context_menu("IMAGE_MT_uvs_context_menu", params.context_menu_event),
     ])
 
@@ -1968,6 +1970,8 @@ def km_image(params):
         ("image.clear_render_border", {"type": 'B', "value": 'PRESS', "ctrl": True, "alt": True}, None),
         ("wm.context_toggle", {"type": 'ACCENT_GRAVE', "value": 'PRESS', "ctrl": True},
          {"properties": [("data_path", 'space_data.show_gizmo')]}),
+        ("wm.context_toggle", {"type": 'Z', "value": 'PRESS', "alt": True, "shift": True},
+         {"properties": [("data_path", "space_data.overlay.show_overlays")]}),
         *_template_items_context_menu("IMAGE_MT_mask_context_menu", params.context_menu_event),
     ])
 
@@ -2914,6 +2918,8 @@ def km_sequencer(params):
          {"properties": [("side", 'RIGHT')]}),
         ("wm.context_toggle", {"type": 'TAB', "value": 'PRESS', "shift": True},
          {"properties": [("data_path", 'tool_settings.use_snap_sequencer')]}),
+        ("wm.context_toggle", {"type": 'Z', "value": 'PRESS', "alt": True, "shift": True},
+         {"properties": [("data_path", "space_data.show_overlays")]}),
         *_template_items_context_menu("SEQUENCER_MT_context_menu", params.context_menu_event),
     ])
 
@@ -3472,7 +3478,8 @@ def km_animation_channels(params):
         # Selection.
         *_template_items_select_actions(params, "anim.channels_select_all"),
         ("anim.channels_select_box", {"type": 'B', "value": 'PRESS'}, None),
-        ("anim.channels_select_box", {"type": 'LEFTMOUSE', "value": 'CLICK_DRAG'}, None),
+        ("anim.channels_select_box", {"type": 'LEFTMOUSE', "value": 'CLICK_DRAG'},
+         {"properties": [("extend", False)]}),
         ("anim.channels_select_box", {"type": 'LEFTMOUSE', "value": 'CLICK_DRAG', "shift": True},
          {"properties": [("extend", True)]}),
         ("anim.channels_select_box", {"type": 'LEFTMOUSE', "value": 'CLICK_DRAG', "ctrl": True},
@@ -4421,6 +4428,11 @@ def km_weight_paint_vertex_selection(params):
         ("view3d.select_lasso", {"type": params.action_mouse, "value": 'CLICK_DRAG', "shift": True, "ctrl": True},
          {"properties": [("mode", 'SUB')]}),
         ("view3d.select_circle", {"type": 'C', "value": 'PRESS'}, None),
+        ("paint.vert_select_linked", {"type": 'L', "value": 'PRESS', "ctrl": True}, None),
+        ("paint.vert_select_linked_pick", {"type": 'L', "value": 'PRESS'},
+         {"properties": [("select", True)]}),
+        ("paint.vert_select_linked_pick", {"type": 'L', "value": 'PRESS', "shift": True},
+         {"properties": [("select", False)]}),
     ])
 
     return keymap
@@ -4718,7 +4730,7 @@ def _template_paint_radial_control(paint, rotation=False, secondary_rotation=Fal
 
 def _template_view3d_select(*, type, value, legacy, select_passthrough, exclude_mod=None):
     # NOTE: `exclude_mod` is needed since we don't want this tool to exclude Control-RMB actions when this is used
-    # as a tool key-map with RMB-select and `use_fallback_tool` is enabled with RMB select. See T92467.
+    # as a tool key-map with RMB-select and `use_fallback_tool` is enabled with RMB select. See #92467.
 
     props_vert_without_handles = ()
     if select_passthrough:
@@ -5048,7 +5060,7 @@ def km_sculpt(params):
          {"properties": [
              ("target", "MASK"),
              ("falloff_type", "GEODESIC"),
-             ("invert", True),
+             ("invert", False),
              ("use_auto_mask", False),
              ("use_mask_preserve", True),
          ]}),
@@ -5616,6 +5628,9 @@ def km_curves(params):
         ("curves.disable_selection", {"type": 'ONE', "value": 'PRESS', "alt": True}, None),
         ("curves.disable_selection", {"type": 'TWO', "value": 'PRESS', "alt": True}, None),
         *_template_items_select_actions(params, "curves.select_all"),
+        ("curves.select_linked", {"type": 'L', "value": 'PRESS', "ctrl": True}, None),
+        ("curves.delete", {"type": 'X', "value": 'PRESS'}, None),
+        ("curves.delete", {"type": 'DEL', "value": 'PRESS'}, None),
     ])
 
     return keymap
@@ -5670,7 +5685,7 @@ def km_object_non_modal(params):
         ])
     else:
         items.extend([
-            # NOTE: this shortcut (while not temporary) is not ideal, see: T89757.
+            # NOTE: this shortcut (while not temporary) is not ideal, see: #89757.
             ("object.transfer_mode", {"type": 'Q', "value": 'PRESS', "alt": True}, None),
         ])
 
@@ -6281,7 +6296,7 @@ def km_sculpt_expand_modal(_params):
         ("MOVE_TOGGLE", {"type": 'SPACE', "value": 'ANY', "any": True}, None),
         *((e, {"type": NUMBERS_1[i], "value": 'PRESS', "any": True}, None) for i, e in enumerate(
             ("FALLOFF_GEODESICS", "FALLOFF_TOPOLOGY", "FALLOFF_TOPOLOGY_DIAGONALS", "FALLOFF_SPHERICAL"))),
-        *((e, {"type": "NUMPAD_%i" % (i+1), "value": 'PRESS', "any": True}, None) for i, e in enumerate(
+        *((e, {"type": "NUMPAD_%i" % (i + 1), "value": 'PRESS', "any": True}, None) for i, e in enumerate(
             ("FALLOFF_GEODESICS", "FALLOFF_TOPOLOGY", "FALLOFF_TOPOLOGY_DIAGONALS", "FALLOFF_SPHERICAL"))),
         ("SNAP_TOGGLE", {"type": 'LEFT_CTRL', "value": 'ANY'}, None),
         ("SNAP_TOGGLE", {"type": 'RIGHT_CTRL', "value": 'ANY'}, None),
@@ -6308,6 +6323,26 @@ def km_curve_pen_modal_map(_params):
         ("MOVE_ENTIRE", {"type": 'SPACE', "value": 'ANY', "any": True}, None),
         ("LOCK_ANGLE", {"type": 'LEFT_ALT', "value": 'ANY', "any": True}, None),
         ("LINK_HANDLES", {"type": 'RIGHT_CTRL', "value": 'PRESS', "any": True}, None),
+    ])
+
+    return keymap
+
+
+def km_node_link_modal_map(_params):
+    items = []
+    keymap = (
+        "Node Link Modal Map",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW', "modal": True},
+        {"items": items},
+    )
+
+    items.extend([
+        ("BEGIN", {"type": 'LEFTMOUSE', "value": 'PRESS', "any": True}, None),
+        ("CONFIRM", {"type": 'LEFTMOUSE', "value": 'RELEASE', "any": True}, None),
+        ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'PRESS', "any": True}, None),
+        ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
+        ("SWAP", {"type": 'LEFT_ALT', "value": 'ANY', "any": True}, None),
+        ("SWAP", {"type": 'RIGHT_ALT', "value": 'ANY', "any": True}, None),
     ])
 
     return keymap
@@ -8082,6 +8117,7 @@ def generate_keymaps(params=None):
         km_paint_stroke_modal(params),
         km_sculpt_expand_modal(params),
         km_curve_pen_modal_map(params),
+        km_node_link_modal_map(params),
 
         # Gizmos.
         km_generic_gizmo(params),

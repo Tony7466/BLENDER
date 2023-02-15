@@ -1373,6 +1373,13 @@ elseif(APPLE)
     )
   endif()
 
+  if(WITH_VULKAN_BACKEND)
+    install(
+      FILES ${VULKAN_LIBRARY} ${MOLTENVK_LIBRARY}
+      DESTINATION ${TARGETDIR_LIB}
+    )
+  endif()
+
   # Python.
   if(WITH_PYTHON AND NOT WITH_PYTHON_MODULE AND NOT WITH_PYTHON_FRAMEWORK)
     # Copy the python libraries into the install directory.
@@ -1472,6 +1479,20 @@ install(
   DIRECTORY ${CMAKE_SOURCE_DIR}/release/datafiles/studiolights
   DESTINATION ${TARGETDIR_VER}/datafiles
 )
+
+
+# -----------------------------------------------------------------------------
+# Bundle assets
+
+set(ASSET_BUNDLE_DIR ${CMAKE_SOURCE_DIR}/../lib/assets/publish/)
+
+if(EXISTS "${ASSET_BUNDLE_DIR}")
+  install(
+    DIRECTORY ${ASSET_BUNDLE_DIR}
+    DESTINATION ${TARGETDIR_VER}/datafiles/assets
+    PATTERN ".svn" EXCLUDE
+  )
+endif()
 
 
 # -----------------------------------------------------------------------------
