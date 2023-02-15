@@ -961,7 +961,7 @@ if(WITH_INTERNATIONAL)
     message(
       WARNING
       "Translation path '${CMAKE_SOURCE_DIR}/locale' is missing. "
-      "This is an external repository which needs to be checked out. Use `make update` to do do. "
+      "This is an external repository which needs to be checked out. Use `make update` to do so. "
       "* CONTINUING WITHOUT TRANSLATIONS *"
     )
     set(TRANSLATIONS_FOUND OFF)
@@ -990,7 +990,7 @@ if(WITH_PYTHON)
     message(
       WARNING
       "Addons path '${CMAKE_SOURCE_DIR}/cripts/addons' is missing. "
-      "This is an external repository which needs to be checked out. Use `make update` to do do. "
+      "This is an external repository which needs to be checked out. Use `make update` to do so. "
       "* CONTINUING WITHOUT ADDONS *"
     )
   endif()
