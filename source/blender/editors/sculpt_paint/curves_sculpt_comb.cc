@@ -150,7 +150,7 @@ struct CombOperationExecutor {
       self_->constraint_solver_.initialize(
           *curves_orig_, curve_selection_, curves_id_orig_->flag & CV_SCULPT_COLLISION_ENABLED);
 
-      self_->curve_lengths_.reinitialize(curves_orig_->points_num());
+      self_->curve_lengths_.reinitialize(curves_orig_->curves_num());
       const Span<float> segment_lengths = self_->constraint_solver_.segment_lengths();
       const OffsetIndices points_by_curve = curves_orig_->points_by_curve();
       threading::parallel_for(curve_selection_.index_range(), 512, [&](const IndexRange range) {
