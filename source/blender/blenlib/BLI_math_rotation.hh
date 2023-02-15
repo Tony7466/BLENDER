@@ -192,8 +192,8 @@ template<typename T>
  * Return rotation from orientation \a a  to orientation \a b into another quaternion.
  */
 template<typename T>
-detail::Quaternion<T> rotation_between(const detail::Quaternion<T> &a,
-                                       const detail::Quaternion<T> &b)
+[[nodiscard]] detail::Quaternion<T> rotation_between(const detail::Quaternion<T> &a,
+                                                     const detail::Quaternion<T> &b)
 {
   return invert(a) * b;
 }
@@ -205,7 +205,7 @@ detail::Quaternion<T> rotation_between(const detail::Quaternion<T> &a,
  * Unlike the angle between vectors, this does *NOT* return the shortest angle.
  * See `angle_of_signed` below for this.
  */
-template<typename T> detail::AngleRadian<T> angle_of(const detail::Quaternion<T> &q)
+template<typename T> [[nodiscard]] detail::AngleRadian<T> angle_of(const detail::Quaternion<T> &q)
 {
   BLI_ASSERT_UNIT_QUATERNION(q);
   return T(2) * math::safe_acos(q.w);
@@ -219,7 +219,8 @@ template<typename T> detail::AngleRadian<T> angle_of(const detail::Quaternion<T>
  * allows to use 'abs(angle_of_signed(...))' to get the shortest angle between quaternions with
  * higher precision than subtracting 2pi afterwards.
  */
-template<typename T> detail::AngleRadian<T> angle_of_signed(const detail::Quaternion<T> &q)
+template<typename T>
+[[nodiscard]] detail::AngleRadian<T> angle_of_signed(const detail::Quaternion<T> &q)
 {
   BLI_ASSERT_UNIT_QUATERNION(q);
   return T(2) * ((q.w >= 0.0f) ? math::safe_acos(q.w) : -math::safe_acos(-q.w));
@@ -231,8 +232,8 @@ template<typename T> detail::AngleRadian<T> angle_of_signed(const detail::Quater
  * See `angle_of` for more detail.
  */
 template<typename T>
-detail::AngleRadian<T> angle_between(const detail::Quaternion<T> &a,
-                                     const detail::Quaternion<T> &b)
+[[nodiscard]] detail::AngleRadian<T> angle_between(const detail::Quaternion<T> &a,
+                                                   const detail::Quaternion<T> &b)
 {
   return angle_of(rotation_between(a, b));
 }
@@ -243,8 +244,8 @@ detail::AngleRadian<T> angle_between(const detail::Quaternion<T> &a,
  * See `angle_of_signed` for more detail.
  */
 template<typename T>
-detail::AngleRadian<T> angle_between_signed(const detail::Quaternion<T> &a,
-                                            const detail::Quaternion<T> &b)
+[[nodiscard]] detail::AngleRadian<T> angle_between_signed(const detail::Quaternion<T> &a,
+                                                          const detail::Quaternion<T> &b)
 {
   return angle_of_signed(rotation_between(a, b));
 }
@@ -255,10 +256,10 @@ detail::AngleRadian<T> angle_between_signed(const detail::Quaternion<T> &a,
  * Used for Ngons when we know their normal.
  */
 template<typename T>
-detail::Quaternion<T> from_triangle(const VecBase<T, 3> &v1,
-                                    const VecBase<T, 3> &v2,
-                                    const VecBase<T, 3> &v3,
-                                    const VecBase<T, 3> &normal)
+[[nodiscard]] detail::Quaternion<T> from_triangle(const VecBase<T, 3> &v1,
+                                                  const VecBase<T, 3> &v2,
+                                                  const VecBase<T, 3> &v3,
+                                                  const VecBase<T, 3> &normal)
 {
   /* Force to used an unused var to avoid the same function signature as the version without
    * `normal` argument. */
@@ -292,9 +293,9 @@ detail::Quaternion<T> from_triangle(const VecBase<T, 3> &v1,
  * Create a rotation from a triangle geometry.
  */
 template<typename T>
-detail::Quaternion<T> from_triangle(const VecBase<T, 3> &v1,
-                                    const VecBase<T, 3> &v2,
-                                    const VecBase<T, 3> &v3)
+[[nodiscard]] detail::Quaternion<T> from_triangle(const VecBase<T, 3> &v1,
+                                                  const VecBase<T, 3> &v2,
+                                                  const VecBase<T, 3> &v3)
 {
   return from_triangle(v1, v2, v3, normal_tri(v1, v2, v3));
 }
