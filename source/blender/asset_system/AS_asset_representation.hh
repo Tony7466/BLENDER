@@ -73,7 +73,15 @@ class AssetRepresentation {
 
   StringRefNull get_name() const;
   AssetMetaData &get_metadata() const;
-  std::optional<eAssetImportMethod> get_default_import_method() const;
+  /** Get the import method to use for this asset. A different one may be used if
+   * #may_override_import_method() returns true, otherwise, the returned value must be used. If
+   * there is no import method predefined for this asset no value is returned.
+   */
+  std::optional<eAssetImportMethod> get_import_method() const;
+  /** Returns if this asset may be imported with an import method other than the one returned by
+   * #get_import_method(). Also returns true if there is no predefined import method
+   * (when #get_import_method() returns no value). */
+  bool may_override_import_method() const;
   /** Returns if this asset is stored inside this current file, and as such fully editable. */
   bool is_local_id() const;
   const AssetLibrary &owner_asset_library() const;
@@ -86,4 +94,5 @@ struct AssetRepresentation;
 
 const std::string AS_asset_representation_full_path_get(const ::AssetRepresentation *asset);
 std::optional<eAssetImportMethod> AS_asset_representation_default_import_method_get(
-    const AssetRepresentation *asset_handle);
+    const ::AssetRepresentation *asset_handle);
+bool AS_asset_representation_may_override_import_method(const ::AssetRepresentation *asset_handle);

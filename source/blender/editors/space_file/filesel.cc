@@ -60,6 +60,7 @@
 #include "UI_interface_icons.h"
 #include "UI_view2d.h"
 
+#include "AS_asset_representation.h"
 #include "AS_essentials_library.hh"
 
 #include "file_intern.h"
@@ -509,6 +510,13 @@ int ED_fileselect_asset_import_method_get(const SpaceFile *sfile, const FileDirE
 {
   if (!ED_fileselect_is_asset_browser(sfile) || !file->asset) {
     return -1;
+  }
+
+  /* First handle the case where the asset system dictates a certain import method. */
+  if (AS_asset_representation_may_override_import_method(file->asset) == false) {
+    BLI_assert(AS_asset_representation_default_import_method_get(file->asset).has_value());
+
+    return *AS_asset_representation_default_import_method_get(file->asset);
   }
 
   const FileAssetSelectParams *params = ED_fileselect_get_asset_params(sfile);

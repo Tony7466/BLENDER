@@ -63,9 +63,11 @@ AssetLibrary *AssetLibraryService::get_asset_library(
   switch (type) {
     case ASSET_LIBRARY_ESSENTIALS: {
       const StringRefNull root_path = essentials_directory_path();
-      AssetLibrary *asset_library = get_asset_library_on_disk(root_path);
-      asset_library->never_link = true;
-      return asset_library;
+
+      AssetLibrary *library = get_asset_library_on_disk(root_path);
+      library->import_method_ = ASSET_IMPORT_APPEND_REUSE;
+
+      return library;
     }
     case ASSET_LIBRARY_LOCAL: {
       /* For the "Current File" library  we get the asset library root path based on main. */
@@ -93,7 +95,9 @@ AssetLibrary *AssetLibraryService::get_asset_library(
       }
 
       AssetLibrary *library = get_asset_library_on_disk(root_path);
-      library->custom_library_definition_ = custom_library;
+      library->import_method_ = eAssetImportMethod(custom_library->import_method);
+      library->may_override_import_method_ = true;
+
       return library;
     }
   }

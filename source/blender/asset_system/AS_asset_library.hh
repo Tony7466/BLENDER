@@ -59,9 +59,10 @@ class AssetLibrary {
 
   std::function<void(AssetLibrary &self)> on_refresh_;
 
-  /** If this is a custom asset library (registered in the Preferences), this gives access to its
-   * definition/settings. */
-  bUserAssetLibrary *custom_library_definition_ = nullptr;
+  std::optional<eAssetImportMethod> import_method_;
+  /** Assets owned by this library may be imported with a different method than set in
+   * #import_method_ above, it's just a default. */
+  bool may_override_import_method_ = false;
 
   bCallbackFuncStore on_save_callback_store_{};
 
@@ -71,9 +72,6 @@ class AssetLibrary {
   static bool save_catalogs_when_file_is_saved;
 
   std::unique_ptr<AssetCatalogService> catalog_service;
-
-  /** Assets owned by this library should never be linked. */
-  bool never_link = false;
 
   friend class AssetLibraryService;
   friend class AssetRepresentation;

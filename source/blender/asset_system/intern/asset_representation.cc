@@ -81,13 +81,20 @@ AssetMetaData &AssetRepresentation::get_metadata() const
   return is_local_id_ ? *local_asset_id_->asset_data : *external_asset_.metadata_;
 }
 
-std::optional<eAssetImportMethod> AssetRepresentation::get_default_import_method() const
+std::optional<eAssetImportMethod> AssetRepresentation::get_import_method() const
 {
-  if (!owner_asset_library_ || !owner_asset_library_->custom_library_definition_) {
+  if (!owner_asset_library_) {
     return {};
   }
+  return owner_asset_library_->import_method_;
+}
 
-  return eAssetImportMethod(owner_asset_library_->custom_library_definition_->import_method);
+bool AssetRepresentation::may_override_import_method() const
+{
+  if (!owner_asset_library_ || !owner_asset_library_->import_method_) {
+    return true;
+  }
+  return owner_asset_library_->may_override_import_method_;
 }
 
 bool AssetRepresentation::is_local_id() const
@@ -117,7 +124,14 @@ std::optional<eAssetImportMethod> AS_asset_representation_default_import_method_
 {
   const asset_system::AssetRepresentation *asset =
       reinterpret_cast<const asset_system::AssetRepresentation *>(asset_handle);
-  return asset->get_default_import_method();
+  return asset->get_import_method();
+}
+
+bool AS_asset_representation_may_override_import_method(const AssetRepresentation *asset_handle)
+{
+  const asset_system::AssetRepresentation *asset =
+      reinterpret_cast<const asset_system::AssetRepresentation *>(asset_handle);
+  return asset->may_override_import_method();
 }
 
 /* ---------------------------------------------------------------------- */
@@ -143,13 +157,6 @@ bool AS_asset_representation_is_local_id(const AssetRepresentation *asset_handle
   const asset_system::AssetRepresentation *asset =
       reinterpret_cast<const asset_system::AssetRepresentation *>(asset_handle);
   return asset->is_local_id();
-}
-
-bool AS_asset_representation_is_never_link(const AssetRepresentation *asset_handle)
-{
-  const asset_system::AssetRepresentation *asset =
-      reinterpret_cast<const asset_system::AssetRepresentation *>(asset_handle);
-  return asset->owner_asset_library().never_link;
 }
 
 /** \} */

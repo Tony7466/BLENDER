@@ -152,9 +152,13 @@ void ED_fileselect_activate_asset_catalog(const struct SpaceFile *sfile, bUUID c
 
 /**
  * Resolve this space's #eFileAssetImportMethod to the #eAssetImportMethod (note the different
- * type) to be used for the actual import of a specific asset. This will either be the asset
- * browser override for the import method, or it will use the asset library default, as defined in
- * the Preferences.
+ * type) to be used for the actual import of a specific asset.
+ * - If the asset system dictates a certain import method, this will be returned.
+ * - If the Asset Browser is set to follow the Preferences (#FILE_ASSET_IMPORT_FOLLOW_PREFS), the
+ *   asset system determines the import method (which is the default from the Preferences). -1 is
+ *   returned if the asset system doesn't specify a method (e.g. because the asset library doesn't
+ *   come from the Preferences).
+ * - Otherwise, the Asset Browser determines (possibly overrides) the import method.
  *
  * \return -1 on error, for example when #FILE_ASSET_IMPORT_FOLLOW_PREFS was requested but the
  *         active asset library reference couldn't be found in the preferences.
