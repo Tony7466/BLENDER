@@ -517,24 +517,40 @@ short ED_transform_calc_orientation_from_type_ex(const Scene *scene,
     case V3D_ORIENT_PARENT: {
       if (ob) {
         if (ob->mode & OB_MODE_POSE) {
+          printf("I'm in pose mode \n");
           bPoseChannel *active_pchan = BKE_pose_channel_active(ob, false);
-          // switch for parent if it exists
-          bPoseChannel *space_pchan = active_pchan->parent ? active_pchan->parent : active_pchan;
-          if (space_pchan) {
-            // store off the original active bone for a moment, run this, then restore
-            bArmature *armature = ob->data;
-            armature->act_bone = space_pchan->bone;
+          if (active_pchan->parent) {
+            if (active_pchan->parent->bone->flag & BONE_NO_LOCAL_LOCATION) {
+              bArmature *armature = ob->data;
+              armature->act_bone = active_pchan->parent->bone;
 
-            ED_getTransformOrientationMatrix(
-                scene, view_layer, v3d, ob, obedit, pivot_point, r_mat);
-            armature->act_bone = active_pchan->bone;
+              ED_getTransformOrientationMatrix(
+                  scene, view_layer, v3d, ob, obedit, pivot_point, r_mat);
+              armature->act_bone = active_pchan->bone;
+            }
+          }
+          else {
+            if (active_pchan->bone->flag & BONE_NO_LOCAL_LOCATION) {
+              unit_m3(r_mat);
+            }
+            else {
+              ED_getTransformOrientationMatrix(
+                  scene, view_layer, v3d, ob, obedit, pivot_point, r_mat);
+            }
             break;
           }
         }
         else {
           // handle the parent check at object level
-          ED_getTransformOrientationMatrix(
-              scene, view_layer, v3d, ob->parent ? ob->parent : ob, obedit, pivot_point, r_mat);
+          // TODO if object doesn't have parent, we default to local coordinates
+          printf("I'm not in pose mode \n");
+          if (ob->parent) {
+            ED_getTransformOrientationMatrix(
+                scene, view_layer, v3d, ob->parent, obedit, pivot_point, r_mat);
+          }
+          else {
+            unit_m3(r_mat);
+          }
           break;
         }
       }
