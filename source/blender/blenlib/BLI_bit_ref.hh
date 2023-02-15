@@ -9,15 +9,15 @@
 
 namespace blender::bits {
 
-/**
- * Using a large integer type is better because then it's easier to process many bits at once.
- */
+/** Using a large integer type is better because then it's easier to process many bits at once. */
 using IntType = uint64_t;
+/** Number of bits that fit into #IntType. */
 static constexpr int64_t BitsPerInt = int64_t(sizeof(IntType) * 8);
+/** Shift amount to get from a bit index to an int index. Equivalent to `log(BitsPerInt, 2)`. */
 static constexpr int64_t BitToIntIndexShift = 3 + (sizeof(IntType) >= 2) + (sizeof(IntType) >= 4) +
                                               (sizeof(IntType) >= 8);
+/** Bit mask containing a 1 for the last few bits that index a bit inside of an #IntType. */
 static constexpr IntType BitIndexMask = (IntType(1) << BitToIntIndexShift) - 1;
-static constexpr IntType MostSignificantBit = IntType(1) << (sizeof(IntType) * 8 - 1);
 
 inline IntType mask_first_n_bits(const int64_t n)
 {
