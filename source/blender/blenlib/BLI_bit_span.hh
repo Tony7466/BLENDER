@@ -10,11 +10,11 @@ namespace blender::bits {
 
 class BitIterator {
  private:
-  const IntType *data_;
+  const BitInt *data_;
   int64_t bit_index_;
 
  public:
-  BitIterator(const IntType *data, const int64_t bit_index) : data_(data), bit_index_(bit_index)
+  BitIterator(const BitInt *data, const int64_t bit_index) : data_(data), bit_index_(bit_index)
   {
   }
 
@@ -38,11 +38,11 @@ class BitIterator {
 
 class MutableBitIterator {
  private:
-  IntType *data_;
+  BitInt *data_;
   int64_t bit_index_;
 
  public:
-  MutableBitIterator(IntType *data, const int64_t bit_index) : data_(data), bit_index_(bit_index)
+  MutableBitIterator(BitInt *data, const int64_t bit_index) : data_(data), bit_index_(bit_index)
   {
   }
 
@@ -66,17 +66,17 @@ class MutableBitIterator {
 
 class BitSpan {
  private:
-  const IntType *data_ = nullptr;
+  const BitInt *data_ = nullptr;
   IndexRange bit_range_ = {0, 0};
 
  public:
   BitSpan() = default;
 
-  BitSpan(const IntType *data, const int64_t size) : data_(data), bit_range_(size)
+  BitSpan(const BitInt *data, const int64_t size) : data_(data), bit_range_(size)
   {
   }
 
-  BitSpan(const IntType *data, const IndexRange bit_range) : data_(data), bit_range_(bit_range)
+  BitSpan(const BitInt *data, const IndexRange bit_range) : data_(data), bit_range_(bit_range)
   {
   }
 
@@ -107,7 +107,7 @@ class BitSpan {
     return {data_, bit_range_.slice(range)};
   }
 
-  const IntType *data() const
+  const BitInt *data() const
   {
     return data_;
   }
@@ -130,17 +130,17 @@ class BitSpan {
 
 class MutableBitSpan {
  private:
-  IntType *data_ = nullptr;
+  BitInt *data_ = nullptr;
   IndexRange bit_range_ = {0, 0};
 
  public:
   MutableBitSpan() = default;
 
-  MutableBitSpan(IntType *data, const int64_t size) : data_(data), bit_range_(size)
+  MutableBitSpan(BitInt *data, const int64_t size) : data_(data), bit_range_(size)
   {
   }
 
-  MutableBitSpan(IntType *data, const IndexRange bit_range) : data_(data), bit_range_(bit_range)
+  MutableBitSpan(BitInt *data, const IndexRange bit_range) : data_(data), bit_range_(bit_range)
   {
   }
 
@@ -171,7 +171,7 @@ class MutableBitSpan {
     return {data_, bit_range_.slice(range)};
   }
 
-  IntType *data() const
+  BitInt *data() const
   {
     return data_;
   }
@@ -200,19 +200,19 @@ class MutableBitSpan {
   {
     const AlignedIndexRanges ranges = split_index_range_by_alignment(bit_range_, BitsPerInt);
     {
-      IntType &first_int = *int_containing_bit(data_, bit_range_.start());
-      const IntType first_int_mask = mask_range_bits(ranges.prefix);
+      BitInt &first_int = *int_containing_bit(data_, bit_range_.start());
+      const BitInt first_int_mask = mask_range_bits(ranges.prefix);
       first_int |= first_int_mask;
     }
     {
-      IntType *start = int_containing_bit(data_, ranges.aligned.start());
+      BitInt *start = int_containing_bit(data_, ranges.aligned.start());
       const int64_t ints_to_fill = ranges.aligned.size() / BitsPerInt;
-      constexpr IntType fill_value = IntType(-1);
+      constexpr BitInt fill_value = BitInt(-1);
       initialized_fill_n(start, ints_to_fill, fill_value);
     }
     {
-      IntType &last_int = *int_containing_bit(data_, bit_range_.one_after_last() - 1);
-      const IntType last_int_mask = mask_first_n_bits(ranges.suffix.size());
+      BitInt &last_int = *int_containing_bit(data_, bit_range_.one_after_last() - 1);
+      const BitInt last_int_mask = mask_first_n_bits(ranges.suffix.size());
       last_int |= last_int_mask;
     }
   }
@@ -221,19 +221,19 @@ class MutableBitSpan {
   {
     const AlignedIndexRanges ranges = split_index_range_by_alignment(bit_range_, BitsPerInt);
     {
-      IntType &first_int = *int_containing_bit(data_, bit_range_.start());
-      const IntType first_int_mask = mask_range_bits(ranges.prefix);
+      BitInt &first_int = *int_containing_bit(data_, bit_range_.start());
+      const BitInt first_int_mask = mask_range_bits(ranges.prefix);
       first_int &= ~first_int_mask;
     }
     {
-      IntType *start = int_containing_bit(data_, ranges.aligned.start());
+      BitInt *start = int_containing_bit(data_, ranges.aligned.start());
       const int64_t ints_to_fill = ranges.aligned.size() / BitsPerInt;
-      constexpr IntType fill_value = 0;
+      constexpr BitInt fill_value = 0;
       initialized_fill_n(start, ints_to_fill, fill_value);
     }
     {
-      IntType &last_int = *int_containing_bit(data_, bit_range_.one_after_last() - 1);
-      const IntType last_int_mask = mask_first_n_bits(ranges.suffix.size());
+      BitInt &last_int = *int_containing_bit(data_, bit_range_.one_after_last() - 1);
+      const BitInt last_int_mask = mask_first_n_bits(ranges.suffix.size());
       last_int &= ~last_int_mask;
     }
   }

@@ -11,8 +11,8 @@
  * the least or most significant bit and how does endianness affect the bit order.
  *
  * The order is defined as follows:
- * - Every indexed bit is part of an #IntType. These ints are ordered by their address as usual.
- * - Within each #IntType, the bits are ordered from least to most significant.
+ * - Every indexed bit is part of an #BitInt. These ints are ordered by their address as usual.
+ * - Within each #BitInt, the bits are ordered from least to most significant.
  */
 
 #include "BLI_index_range.hh"
@@ -23,31 +23,31 @@
 namespace blender::bits {
 
 /** Using a large integer type is better because then it's easier to process many bits at once. */
-using IntType = uint64_t;
-/** Number of bits that fit into #IntType. */
-static constexpr int64_t BitsPerInt = int64_t(sizeof(IntType) * 8);
+using BitInt = uint64_t;
+/** Number of bits that fit into #BitInt. */
+static constexpr int64_t BitsPerInt = int64_t(sizeof(BitInt) * 8);
 /** Shift amount to get from a bit index to an int index. Equivalent to `log(BitsPerInt, 2)`. */
-static constexpr int64_t BitToIntIndexShift = 3 + (sizeof(IntType) >= 2) + (sizeof(IntType) >= 4) +
-                                              (sizeof(IntType) >= 8);
-/** Bit mask containing a 1 for the last few bits that index a bit inside of an #IntType. */
-static constexpr IntType BitIndexMask = (IntType(1) << BitToIntIndexShift) - 1;
+static constexpr int64_t BitToIntIndexShift = 3 + (sizeof(BitInt) >= 2) + (sizeof(BitInt) >= 4) +
+                                              (sizeof(BitInt) >= 8);
+/** Bit mask containing a 1 for the last few bits that index a bit inside of an #BitInt. */
+static constexpr BitInt BitIndexMask = (BitInt(1) << BitToIntIndexShift) - 1;
 
-inline IntType mask_first_n_bits(const int64_t n)
+inline BitInt mask_first_n_bits(const int64_t n)
 {
   BLI_assert(n >= 0);
   BLI_assert(n <= BitsPerInt);
   if (n == BitsPerInt) {
-    return IntType(-1);
+    return BitInt(-1);
   }
-  return (IntType(1) << n) - 1;
+  return (BitInt(1) << n) - 1;
 }
 
-inline IntType mask_last_n_bits(const int64_t n)
+inline BitInt mask_last_n_bits(const int64_t n)
 {
   return ~mask_first_n_bits(BitsPerInt - n);
 }
 
-inline IntType mask_range_bits(const IndexRange range)
+inline BitInt mask_range_bits(const IndexRange range)
 {
   const int64_t size = range.size();
   const int64_t start = range.start() & BitIndexMask;
@@ -56,22 +56,22 @@ inline IntType mask_range_bits(const IndexRange range)
   if (end == BitsPerInt) {
     return mask_last_n_bits(size);
   }
-  return ((IntType(1) << end) - 1) & ~((IntType(1) << start) - 1);
+  return ((BitInt(1) << end) - 1) & ~((BitInt(1) << start) - 1);
 }
 
-inline IntType mask_single_bit(const int64_t bit_index)
+inline BitInt mask_single_bit(const int64_t bit_index)
 {
   BLI_assert(bit_index >= 0);
   BLI_assert(bit_index < BitsPerInt);
-  return IntType(1) << bit_index;
+  return BitInt(1) << bit_index;
 }
 
-inline IntType *int_containing_bit(IntType *data, const int64_t bit_index)
+inline BitInt *int_containing_bit(BitInt *data, const int64_t bit_index)
 {
   return data + (bit_index >> BitToIntIndexShift);
 }
 
-inline const IntType *int_containing_bit(const IntType *data, const int64_t bit_index)
+inline const BitInt *int_containing_bit(const BitInt *data, const int64_t bit_index)
 {
   return data + (bit_index >> BitToIntIndexShift);
 }
@@ -83,9 +83,9 @@ inline const IntType *int_containing_bit(const IntType *data, const int64_t bit_
 class BitRef {
  private:
   /** Points to the integer that the bit is in. */
-  const IntType *data_;
+  const BitInt *data_;
   /** All zeros except for a single one at the bit that is referenced. */
-  IntType mask_;
+  BitInt mask_;
 
   friend class MutableBitRef;
 
@@ -96,7 +96,7 @@ class BitRef {
    * Reference a specific bit in an array. Note that #data does *not* have to point to the
    * exact integer the bit is in.
    */
-  BitRef(const IntType *data, const int64_t bit_index)
+  BitRef(const BitInt *data, const int64_t bit_index)
   {
     data_ = int_containing_bit(data, bit_index);
     mask_ = mask_single_bit(bit_index & BitIndexMask);
@@ -107,8 +107,8 @@ class BitRef {
    */
   bool test() const
   {
-    const IntType value = *data_;
-    const IntType masked_value = value & mask_;
+    const BitInt value = *data_;
+    const BitInt masked_value = value & mask_;
     return masked_value != 0;
   }
 
@@ -124,9 +124,9 @@ class BitRef {
 class MutableBitRef {
  private:
   /** Points to the integer that the bit is in. */
-  IntType *data_;
+  BitInt *data_;
   /** All zeros except for a single one at the bit that is referenced. */
-  IntType mask_;
+  BitInt mask_;
 
  public:
   MutableBitRef() = default;
@@ -135,7 +135,7 @@ class MutableBitRef {
    * Reference a specific bit in an array. Note that #data does *not* have to point to the
    * exact int the bit is in.
    */
-  MutableBitRef(IntType *data, const int64_t bit_index)
+  MutableBitRef(BitInt *data, const int64_t bit_index)
   {
     data_ = int_containing_bit(data, bit_index);
     mask_ = mask_single_bit(bit_index & BitIndexMask);
@@ -157,8 +157,8 @@ class MutableBitRef {
    */
   bool test() const
   {
-    const IntType value = *data_;
-    const IntType masked_value = value & mask_;
+    const BitInt value = *data_;
+    const BitInt masked_value = value & mask_;
     return masked_value != 0;
   }
 

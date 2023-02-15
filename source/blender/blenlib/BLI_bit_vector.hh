@@ -62,13 +62,13 @@ class BitVector {
 
   static constexpr int64_t IntsInInlineBuffer = required_ints_for_bits(InlineBufferCapacity);
   static constexpr int64_t BitsInInlineBuffer = IntsInInlineBuffer * BitsPerInt;
-  static constexpr int64_t AllocationAlignment = alignof(IntType);
+  static constexpr int64_t AllocationAlignment = alignof(BitInt);
 
   /**
    * Points to the first integer used by the vector. It might point to the memory in the inline
    * buffer.
    */
-  IntType *data_;
+  BitInt *data_;
 
   /** Current size of the vector in bits. */
   int64_t size_in_bits_;
@@ -80,7 +80,7 @@ class BitVector {
   BLI_NO_UNIQUE_ADDRESS Allocator allocator_;
 
   /** Contains the bits as long as the vector is small enough. */
-  BLI_NO_UNIQUE_ADDRESS TypedBuffer<IntType, IntsInInlineBuffer> inline_buffer_;
+  BLI_NO_UNIQUE_ADDRESS TypedBuffer<BitInt, IntsInInlineBuffer> inline_buffer_;
 
  public:
   BitVector(Allocator allocator = {}) noexcept : allocator_(allocator)
@@ -88,7 +88,7 @@ class BitVector {
     data_ = inline_buffer_;
     size_in_bits_ = 0;
     capacity_in_bits_ = BitsInInlineBuffer;
-    uninitialized_fill_n(data_, IntsInInlineBuffer, IntType(0));
+    uninitialized_fill_n(data_, IntsInInlineBuffer, BitInt(0));
   }
 
   BitVector(NoExceptConstructor, Allocator allocator = {}) noexcept : BitVector(allocator)
@@ -105,8 +105,8 @@ class BitVector {
     }
     else {
       /* Allocate a new array because the inline buffer is too small. */
-      data_ = static_cast<IntType *>(
-          allocator_.allocate(ints_to_copy * sizeof(IntType), AllocationAlignment, __func__));
+      data_ = static_cast<BitInt *>(
+          allocator_.allocate(ints_to_copy * sizeof(BitInt), AllocationAlignment, __func__));
       capacity_in_bits_ = ints_to_copy * BitsPerInt;
     }
     size_in_bits_ = other.size_in_bits_;
@@ -317,7 +317,7 @@ class BitVector {
   }
 
   BLI_NOINLINE void realloc_to_at_least(const int64_t min_capacity_in_bits,
-                                        const IntType initial_value_for_new_ints = 0)
+                                        const BitInt initial_value_for_new_ints = 0)
   {
     if (capacity_in_bits_ >= min_capacity_in_bits) {
       return;
@@ -331,8 +331,8 @@ class BitVector {
     const int64_t new_capacity_in_ints = std::max(min_capacity_in_ints, min_new_capacity_in_ints);
     const int64_t ints_to_copy = this->used_ints_amount();
 
-    IntType *new_data = static_cast<IntType *>(allocator_.allocate(
-        new_capacity_in_ints * sizeof(IntType), AllocationAlignment, __func__));
+    BitInt *new_data = static_cast<BitInt *>(
+        allocator_.allocate(new_capacity_in_ints * sizeof(BitInt), AllocationAlignment, __func__));
     uninitialized_copy_n(data_, ints_to_copy, new_data);
     /* Always initialize new capacity even if it isn't used yet. That's necessary to avoid warnings
      * caused by using uninitialized memory. This happens when e.g. setting a clearing a bit in an
