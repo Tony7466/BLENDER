@@ -3,7 +3,7 @@
 
 """
 Example:
-  ./source/tools/utils/code_clean.py /src/cmake_debug --match ".*/editmesh_.*" --fix=use_const_vars
+  ./tools/utils/code_clean.py /src/cmake_debug --match ".*/editmesh_.*" --fix=use_const_vars
 
 Note: currently this is limited to paths in "source/" and "intern/",
 we could change this if it's needed.

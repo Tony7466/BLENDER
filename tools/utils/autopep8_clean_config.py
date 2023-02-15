@@ -20,7 +20,7 @@ PATHS: Tuple[str, ...] = (
     "release/scripts/startup",
     "release/scripts/templates_py",
     "source/blender",
-    "source/tools",
+    "tools",
     "tests",
 )
 
@@ -36,9 +36,9 @@ PATHS_EXCLUDE: Set[str] = set(
     os.path.join(SOURCE_DIR, p.replace("/", os.sep))
     for p in
     (
-        "source/tools/svn_rev_map/sha1_to_rev.py",
-        "source/tools/svn_rev_map/rev_to_sha1.py",
-        "source/tools/svn_rev_map/rev_to_sha1.py",
+        "tools/svn_rev_map/sha1_to_rev.py",
+        "tools/svn_rev_map/rev_to_sha1.py",
+        "tools/svn_rev_map/rev_to_sha1.py",
         "release/scripts/modules/rna_manual_reference.py",
     )
 )

@@ -7,7 +7,7 @@
 """
 Example usage:
 
-  python3 source/tools/utils_api/bpy_introspect_ui.py
+  python3 tools/utils_api/bpy_introspect_ui.py
 """
 
 import sys

@@ -9,7 +9,7 @@ While it can be called directly, you may prefer to run this from Blender's root 
 
 Otherwise you may call this script directly, for example:
 
-   ./source/tools/utils_maintenance/autopep8_format_paths.py --changed-only tests/python
+   ./tools/utils_maintenance/autopep8_format_paths.py --changed-only tests/python
 """
 
 import os

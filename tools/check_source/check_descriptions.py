@@ -4,7 +4,7 @@
 """
 this script updates XML themes once new settings are added
 
-  ./blender.bin --background -noaudio --python source/tools/check_source/check_descriptions.py
+  ./blender.bin --background -noaudio --python tools/check_source/check_descriptions.py
 """
 
 import bpy
@@ -114,7 +114,7 @@ def check_duplicates():
             if len(v) > 1:
                 if v not in DUPLICATE_WHITELIST:
                     print("found %d: %r, \"%s\"" % (len(v), v, k))
-                    #print("%r," % (v,))
+                    # print("%r," % (v,))
                 else:
                     DUPLICATE_WHITELIST_FOUND.add(v)
 

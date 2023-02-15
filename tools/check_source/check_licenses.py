@@ -397,8 +397,8 @@ def main() -> None:
             source_paths_exclude=(
                 # Directories:
                 "./extern",
-                "./release/scripts/addons_contrib",
-                "./source/tools",
+                "./scripts/addons_contrib",
+                "./tools",
                 # Needs manual handling as it mixes two licenses.
                 "./intern/atomic",
                 # Practically an "extern" within an "intern" module, leave as-is.

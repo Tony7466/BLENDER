@@ -13,7 +13,7 @@ __all__ = (
 # - Supporting some combinations of options is becoming increasingly complex,
 #   especially `Params.select_mouse` & `Params.use_fallback_tool`.
 #   To ensure changes don't unintentionally break other configurations, see:
-#   `source/tools/utils/blender_keyconfig_export_permutations.py --help`
+#   `tools/utils/blender_keyconfig_export_permutations.py --help`
 #
 
 # ------------------------------------------------------------------------------
