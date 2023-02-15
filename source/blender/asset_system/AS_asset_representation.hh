@@ -93,6 +93,6 @@ class AssetRepresentation {
 struct AssetRepresentation;
 
 const std::string AS_asset_representation_full_path_get(const ::AssetRepresentation *asset);
-std::optional<eAssetImportMethod> AS_asset_representation_default_import_method_get(
+std::optional<eAssetImportMethod> AS_asset_representation_import_method_get(
     const ::AssetRepresentation *asset_handle);
 bool AS_asset_representation_may_override_import_method(const ::AssetRepresentation *asset_handle);

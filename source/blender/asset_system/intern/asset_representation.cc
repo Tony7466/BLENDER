@@ -119,7 +119,7 @@ const std::string AS_asset_representation_full_path_get(const AssetRepresentatio
   return identifier.full_path();
 }
 
-std::optional<eAssetImportMethod> AS_asset_representation_default_import_method_get(
+std::optional<eAssetImportMethod> AS_asset_representation_import_method_get(
     const AssetRepresentation *asset_handle)
 {
   const asset_system::AssetRepresentation *asset =
