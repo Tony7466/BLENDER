@@ -352,6 +352,22 @@ TEST(math_rotation, QuaternionInvert)
   EXPECT_V4_NEAR(float4(result), float4(0.927091f, -0.211322f, 0.124857f, -0.283295f), 1e-4f);
 }
 
+TEST(math_rotation, QuaternionAngleBetween)
+{
+  Quaternion q1 = normalize(Quaternion(0.927091f, 0.211322f, -0.124857f, 0.283295f));
+  Quaternion q2 = normalize(Quaternion(-0.083377f, -0.051681f, 0.498261f, -0.86146f));
+  Quaternion q3 = rotation_between(q1, q2);
+  EXPECT_V4_NEAR(float4(q3), float4(-0.394478f, 0.00330195f, 0.284119f, -0.873872f), 1e-4f);
+  EXPECT_NEAR(float(angle_of(q1)), 0.76844f, 1e-4f);
+  EXPECT_NEAR(float(angle_of(q2)), 3.30854f, 1e-4f);
+  EXPECT_NEAR(float(angle_of(q3)), 3.95259f, 1e-4f);
+  EXPECT_NEAR(float(angle_of_signed(q1)), 0.76844f, 1e-4f);
+  EXPECT_NEAR(float(angle_of_signed(q2)), 3.30854f - 2 * M_PI, 1e-4f);
+  EXPECT_NEAR(float(angle_of_signed(q3)), 3.95259f - 2 * M_PI, 1e-4f);
+  EXPECT_NEAR(float(angle_between(q1, q2)), 3.95259f, 1e-4f);
+  EXPECT_NEAR(float(angle_between_signed(q1, q2)), 3.95259f - 2 * M_PI, 1e-4f);
+}
+
 TEST(math_rotation, Rotate)
 {
   Quaternion q(0.927091f, 0.211322f, -0.124857f, 0.283295f);
@@ -360,5 +376,4 @@ TEST(math_rotation, Rotate)
   p = rotate(q, p);
   EXPECT_V3_NEAR(p, float3(-4.33722f, -21.661f, 40.7608f), 1e-4f);
 }
-
 }  // namespace blender::math::tests

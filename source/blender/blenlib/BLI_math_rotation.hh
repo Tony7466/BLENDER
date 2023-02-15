@@ -182,6 +182,67 @@ template<typename T>
 #endif
 }
 
+/**
+ * Return rotation from orientation \a a  to orientation \a b into another quaternion.
+ */
+template<typename T>
+detail::Quaternion<T> rotation_between(const detail::Quaternion<T> &a,
+                                       const detail::Quaternion<T> &b)
+{
+  return invert(a) * b;
+}
+
+/**
+ * Extract rotation angle from a unit quaternion.
+ * Returned angle is in [0..2pi] range.
+ *
+ * Unlike the angle between vectors, this does *NOT* return the shortest angle.
+ * See `angle_of_signed` below for this.
+ */
+template<typename T> detail::AngleRadian<T> angle_of(const detail::Quaternion<T> &q)
+{
+  BLI_ASSERT_UNIT_QUATERNION(q);
+  return T(2) * math::safe_acos(q.w);
+}
+
+/**
+ * Extract rotation angle from a unit quaternion. Always return the shortest angle.
+ * Returned angle is in [-pi..pi] range.
+ *
+ * `angle_of` with quaternion can exceed PI radians. Having signed versions of these functions
+ * allows to use 'abs(angle_of_signed(...))' to get the shortest angle between quaternions with
+ * higher precision than subtracting 2pi afterwards.
+ */
+template<typename T> detail::AngleRadian<T> angle_of_signed(const detail::Quaternion<T> &q)
+{
+  BLI_ASSERT_UNIT_QUATERNION(q);
+  return T(2) * ((q.w >= 0.0f) ? math::safe_acos(q.w) : -math::safe_acos(-q.w));
+}
+
+/**
+ * Extract angle between 2 orientations.
+ * Returned angle is in [0..2pi] range.
+ * See `angle_of` for more detail.
+ */
+template<typename T>
+detail::AngleRadian<T> angle_between(const detail::Quaternion<T> &a,
+                                     const detail::Quaternion<T> &b)
+{
+  return angle_of(rotation_between(a, b));
+}
+
+/**
+ * Extract angle between 2 orientations.
+ * Returned angle is in [-pi..pi] range.
+ * See `angle_of_signed` for more detail.
+ */
+template<typename T>
+detail::AngleRadian<T> angle_between_signed(const detail::Quaternion<T> &a,
+                                            const detail::Quaternion<T> &b)
+{
+  return angle_of_signed(rotation_between(a, b));
+}
+
 }  // namespace blender::math
 
 /* -------------------------------------------------------------------- */

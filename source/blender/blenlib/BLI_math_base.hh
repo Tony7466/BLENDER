@@ -130,6 +130,17 @@ template<typename T> inline T acos(const T &a)
   return std::acos(a);
 }
 
+template<typename T> inline T safe_acos(const T &a)
+{
+  if (UNLIKELY(a <= T(-1))) {
+    return T(M_PI);
+  }
+  else if (UNLIKELY(a >= T(1))) {
+    return T(0);
+  }
+  return math::acos((a));
+}
+
 template<typename T> inline T asin(const T &a)
 {
   return std::asin(a);
