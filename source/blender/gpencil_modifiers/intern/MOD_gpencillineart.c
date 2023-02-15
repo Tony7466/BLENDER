@@ -344,6 +344,7 @@ static void edge_types_panel_draw(const bContext *UNUSED(C), Panel *panel)
   const bool use_cache = RNA_boolean_get(ptr, "use_cache");
   const bool is_first = BKE_gpencil_is_first_lineart_in_stack(ob_ptr.data, ptr->data);
   const bool has_light = RNA_pointer_get(ptr, "light_contour_object").data != NULL;
+  const bool use_intersection = RNA_boolean_get(ptr, "use_intersection");
 
   uiLayoutSetEnabled(layout, !is_baked);
 
@@ -382,6 +383,12 @@ static void edge_types_panel_draw(const bContext *UNUSED(C), Panel *panel)
   }
 
   uiItemR(col, ptr, "use_intersection", 0, IFACE_("Intersections"), ICON_NONE);
+
+  if (use_intersection) {
+    uiItemL(col, "Intersection will not follow source selection.", ICON_INFO);
+    uiItemL(col, "Use intersection mask to filter instead.", 0);
+  }
+
   uiItemR(col, ptr, "use_material", 0, IFACE_("Material Borders"), ICON_NONE);
   uiItemR(col, ptr, "use_edge_mark", 0, IFACE_("Edge Marks"), ICON_NONE);
   uiItemR(col, ptr, "use_loose", 0, IFACE_("Loose"), ICON_NONE);
