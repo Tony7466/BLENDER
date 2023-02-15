@@ -1,5 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
+#include <array>
+
 #include "BLI_bit_ref.hh"
 
 #include "testing/testing.h"
