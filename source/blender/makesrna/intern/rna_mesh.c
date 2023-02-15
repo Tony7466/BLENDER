@@ -964,7 +964,7 @@ static void rna_MPoly_freestyle_face_mark_set(PointerRNA *ptr, bool value)
 
 /* uv_layers */
 
-DEFINE_CUSTOMDATA_LAYER_COLLECTION(uv_layer, ldata, CD_PROP_FLOAT2)
+DEFINE_CUSTOMDATA_LAYER_COLLECTION_SKIP_ANONYMOUS(uv_layer, ldata, CD_PROP_FLOAT2)
 DEFINE_CUSTOMDATA_LAYER_COLLECTION_ACTIVEITEM(
     uv_layer, ldata, CD_PROP_FLOAT2, active, MeshUVLoopLayer)
 DEFINE_CUSTOMDATA_LAYER_COLLECTION_ACTIVEITEM(
