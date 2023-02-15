@@ -8,59 +8,50 @@
 
 namespace blender::bits {
 
-class BitIterator {
- private:
+class BitIteratorBase {
+ protected:
   const BitInt *data_;
   int64_t bit_index_;
 
  public:
-  BitIterator(const BitInt *data, const int64_t bit_index) : data_(data), bit_index_(bit_index)
+  BitIteratorBase(const BitInt *data, const int64_t bit_index) : data_(data), bit_index_(bit_index)
   {
   }
 
-  BitIterator &operator++()
+  BitIteratorBase &operator++()
   {
     bit_index_++;
     return *this;
   }
 
-  BitRef operator*() const
-  {
-    return BitRef(data_, bit_index_);
-  }
-
-  friend bool operator!=(const BitIterator &a, const BitIterator &b)
+  friend bool operator!=(const BitIteratorBase &a, const BitIteratorBase &b)
   {
     BLI_assert(a.data_ == b.data_);
     return a.bit_index_ != b.bit_index_;
   }
 };
 
-class MutableBitIterator {
- private:
-  BitInt *data_;
-  int64_t bit_index_;
-
+class BitIterator : public BitIteratorBase {
  public:
-  MutableBitIterator(BitInt *data, const int64_t bit_index) : data_(data), bit_index_(bit_index)
+  BitIterator(const BitInt *data, const int64_t bit_index) : BitIteratorBase(data, bit_index)
   {
   }
 
-  MutableBitIterator &operator++()
+  BitRef operator*() const
   {
-    bit_index_++;
-    return *this;
+    return BitRef(data_, bit_index_);
+  }
+};
+
+class MutableBitIterator : public BitIteratorBase {
+ public:
+  MutableBitIterator(BitInt *data, const int64_t bit_index) : BitIteratorBase(data, bit_index)
+  {
   }
 
   MutableBitRef operator*() const
   {
-    return MutableBitRef(data_, bit_index_);
-  }
-
-  friend bool operator!=(const MutableBitIterator &a, const MutableBitIterator &b)
-  {
-    BLI_assert(a.data_ == b.data_);
-    return a.bit_index_ != b.bit_index_;
+    return MutableBitRef(const_cast<BitInt *>(data_), bit_index_);
   }
 };
 
