@@ -57,6 +57,7 @@
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
+#if !defined (__APPLE__)
 bool BLI_change_working_dir(const char *dir)
 {
   BLI_assert(BLI_thread_is_main());
@@ -70,8 +71,6 @@ bool BLI_change_working_dir(const char *dir)
     return false;
   }
   return _wchdir(wdir) == 0;
-#elif defined(__APPLE__)
-  return BLI_apple_chdir(dir) == 0;
 #else
   int result = chdir(dir);
   if (result == 0) {
@@ -91,9 +90,6 @@ char *BLI_current_working_dir(char *dir, const size_t maxncpy)
     }
   }
   return NULL;
-#elif defined(__APPLE__)
-  BLI_strncpy(dir, BLI_apple_getcwd(maxncpy), maxncpy);
-  return dir;
 #else
   const char *pwd = BLI_getenv("PWD");
   if (pwd) {
@@ -107,6 +103,7 @@ char *BLI_current_working_dir(char *dir, const size_t maxncpy)
   return getcwd(dir, maxncpy);
 #endif
 }
+#endif
 
 double BLI_dir_free_space(const char *dir)
 {

@@ -13,6 +13,8 @@
 
 #include "BLI_fileops.h"
 #include "BLI_path_util.h"
+#include "BLI_string.h"
+
 
 /* Extended file attribute used by OneDrive to mark placeholder files. */
 static const char *ONEDRIVE_RECALLONOPEN_ATTRIBUTE = "com.microsoft.OneDrive.RecallOnOpen";
@@ -186,26 +188,26 @@ const char *BLI_expand_tilde(const char *path_with_tilde)
   return path_expanded;
 }
 
-
-const char *BLI_apple_getcwd(const size_t max_length) {
+char *BLI_current_working_dir(char *dir, const size_t maxncpy) {
+  /* Can't just copy to the *dir pointer, as [path getCString gets grumpy.*/
   static char path_expanded[PATH_MAX];
   @autoreleasepool {
     NSString *path = [[NSFileManager defaultManager] currentDirectoryPath];
-    const size_t length = max_length > PATH_MAX ? PATH_MAX : max_length;
-    [path getCString:path_expanded maxLength: length encoding:NSUTF8StringEncoding];
+    const size_t length = maxncpy > PATH_MAX ? PATH_MAX : maxncpy;
+    [path getCString:path_expanded maxLength:length encoding:NSUTF8StringEncoding];
+    BLI_strncpy(dir, path_expanded, maxncpy);
     return path_expanded;
   }
 }
 
-
-int BLI_apple_chdir(const char* dir) {
+bool BLI_change_working_dir(const char* dir) {
   @autoreleasepool {
     NSString* path = [[NSString alloc] initWithUTF8String: dir];
     if ([[NSFileManager defaultManager] changeCurrentDirectoryPath: path] == YES) {
-      return 0;
+      return false;
     }
     else {
-      return -1;
+      return true;
     }
   }
 }
