@@ -461,6 +461,30 @@ template<typename T> [[nodiscard]] inline VecBase<T, 3> cross_poly(Span<VecBase<
 }
 
 /**
+ * Return normal vector to a triangle.
+ * The result is not normalized and can be degenerate.
+ */
+template<typename T>
+[[nodiscard]] inline VecBase<T, 3> cross_tri(const VecBase<T, 3> &v1,
+                                             const VecBase<T, 3> &v2,
+                                             const VecBase<T, 3> &v3)
+{
+  return cross(v1 - v2, v2 - v3);
+}
+
+/**
+ * Return normal vector to a triangle.
+ * The result is normalized but can still be degenerate.
+ */
+template<typename T>
+[[nodiscard]] inline VecBase<T, 3> normal_tri(const VecBase<T, 3> &v1,
+                                              const VecBase<T, 3> &v2,
+                                              const VecBase<T, 3> &v3)
+{
+  return normalize(cross_tri(v1, v2, v3));
+}
+
+/**
  * Per component linear interpolation.
  * \param t: interpolation factor. Return \a a if equal 0. Return \a b if equal 1.
  * Outside of [0..1] range, use linear extrapolation.
