@@ -627,7 +627,10 @@ static bool view3d_world_drop_poll(bContext *C, wmDrag *drag, const wmEvent *eve
 static bool view3d_object_data_drop_poll(bContext *C, wmDrag *drag, const wmEvent *event)
 {
   ID_Type id_type = view3d_drop_id_in_main_region_poll_get_id_type(C, drag, event);
-  if (id_type && OB_DATA_SUPPORT_ID(id_type) && (id_type != ID_GD)) {
+  if (id_type && id_type == ID_GD) {
+    return false;
+  }
+  if (id_type && OB_DATA_SUPPORT_ID(id_type)) {
     return true;
   }
   return false;
