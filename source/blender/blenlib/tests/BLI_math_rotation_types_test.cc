@@ -64,6 +64,14 @@ TEST(math_rotation_types, QuaternionUnaryMinus)
   EXPECT_EQ(result.z, -4.0f);
 }
 
+TEST(math_rotation_types, QuaternionExpmap)
+{
+  Quaternion q(0.927091f, 0.211322f, -0.124857f, 0.283295f);
+  float3 expmap = normalize(q).expmap();
+  EXPECT_V3_NEAR(expmap, float3(0.433225f, -0.255966f, 0.580774f), 1e-4f);
+  EXPECT_V4_NEAR(float4(Quaternion::expmap(expmap)), float4(q), 1e-4f);
+}
+
 TEST(math_rotation_types, AngleMethods)
 {
   EXPECT_NEAR(float(AngleRadian(M_PI * 0.5).wrapped()), M_PI * 0.5, 1e-4f);

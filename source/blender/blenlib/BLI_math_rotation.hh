@@ -251,6 +251,24 @@ detail::AngleRadian<T> angle_between_signed(const detail::Quaternion<T> &a,
 
 namespace blender::math::detail {
 
+template<typename T> Quaternion<T> Quaternion<T>::expmap(const VecBase<T, 3> &expmap)
+{
+  /* Obtain axis/angle representation. */
+  T angle;
+  VecBase<T, 3> axis = normalize_and_get_length(expmap, angle);
+  if (LIKELY(angle != 0.0f)) {
+    return Quaternion<T>(AxisAngle(axis, angle_wrap_rad(angle)));
+  }
+  return Quaternion<T>::identity();
+}
+
+template<typename T> VecBase<T, 3> Quaternion<T>::expmap() const
+{
+  BLI_ASSERT_UNIT_QUATERNION(*this);
+  AxisAngle<T> axis_angle(*this);
+  return axis_angle.axis() * axis_angle.angle();
+}
+
 template<typename T> AxisAngle<T>::AxisAngle(const VecBase<T, 3> &axis, T angle)
 {
   T length;

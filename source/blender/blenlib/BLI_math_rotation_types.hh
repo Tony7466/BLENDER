@@ -195,6 +195,12 @@ template<typename T = float> struct Quaternion {
     return {1, 0, 0, 0};
   }
 
+  /**
+   * Create a quaternion from an exponential map representation.
+   * An exponential map is basically the rotation axis multiplied by the rotation angle.
+   */
+  static Quaternion expmap(const VecBase<T, 3> &expmap);
+
   /** Conversions. */
 
   explicit operator VecBase<T, 4>() const
@@ -205,6 +211,12 @@ template<typename T = float> struct Quaternion {
   explicit operator EulerXYZ<T>() const;
 
   explicit operator AxisAngle<T>() const;
+
+  /**
+   * Create an exponential map representation of this quaternion.
+   * An exponential map is basically the rotation axis multiplied by the rotation angle.
+   */
+  VecBase<T, 3> expmap() const;
 
   /** Operators. */
 
