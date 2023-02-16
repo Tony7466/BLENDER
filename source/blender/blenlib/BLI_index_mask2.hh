@@ -41,7 +41,7 @@ struct RawMaskIterator {
  */
 struct Chunk {
   int16_t segments_num;
-  const int16_t **segment_indices;
+  const int16_t **indices_by_segment;
   const int16_t *segment_sizes_cumulative;
 
   RawChunkIterator end_iterator() const;
@@ -476,7 +476,7 @@ template<typename Fn> inline void IndexMask::foreach_raw_segment(Fn &&fn) const
       const int16_t stored_segment_size = cumulative_segment_size - prev_cumulative_segment_size;
       const bool is_last_segment = is_last_chunk & (segment_i == final_segment_i);
       const int16_t segment_drop_back = is_last_segment * final_drop_back;
-      const int16_t *indices_in_segment = chunk.segment_indices[segment_i] + segment_drop_front;
+      const int16_t *indices_in_segment = chunk.indices_by_segment[segment_i] + segment_drop_front;
       const int16_t segment_size = stored_segment_size - segment_drop_front - segment_drop_back;
       const Span<int16_t> indices_span{indices_in_segment, segment_size};
 
