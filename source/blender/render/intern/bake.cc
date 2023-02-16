@@ -716,11 +716,12 @@ void RE_bake_pixels_populate(Mesh *me,
 {
   const float(*mloopuv)[2];
   if ((uv_layer == nullptr) || (uv_layer[0] == '\0')) {
-    mloopuv = static_cast<float(*)[2]>(CustomData_get_layer(&me->ldata, CD_PROP_FLOAT2));
+    mloopuv = static_cast<const float(*)[2]>(CustomData_get_layer(&me->ldata, CD_PROP_FLOAT2));
   }
   else {
     int uv_id = CustomData_get_named_layer(&me->ldata, CD_PROP_FLOAT2, uv_layer);
-    mloopuv = static_cast<float(*)[2]>(CustomData_get_layer_n(&me->ldata, CD_PROP_FLOAT2, uv_id));
+    mloopuv = static_cast<const float(*)[2]>(
+        CustomData_get_layer_n(&me->ldata, CD_PROP_FLOAT2, uv_id));
   }
 
   if (mloopuv == nullptr) {
@@ -773,7 +774,7 @@ void RE_bake_pixels_populate(Mesh *me,
       for (int a = 0; a < 3; a++) {
         const float *uv = mloopuv[lt->tri[a]];
 
-        /* NOTE(@campbellbarton): workaround for pixel aligned UVs which are common and can screw
+        /* NOTE(@ideasman42): workaround for pixel aligned UVs which are common and can screw
          * up our intersection tests where a pixel gets in between 2 faces or the middle of a quad,
          * camera aligned quads also have this problem but they are less common.
          * Add a small offset to the UVs, fixes bug T18685. */

@@ -43,6 +43,8 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
+  GeometryComponentEditData::remember_deformed_curve_positions_if_necessary(geometry_set);
+
   Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
   Field<int> depth_field = params.extract_input<Field<int>>("Depth");
 
@@ -63,6 +65,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   geometry_set = geometry::realize_instances(
       geometry_set, {legacy_behavior, !legacy_behavior, selection, depths, propagation_info});
+
   params.set_output("Geometry", std::move(geometry_set));
 }
 

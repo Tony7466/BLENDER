@@ -288,8 +288,7 @@ static void add_stroke_extension(bGPDframe *gpf, bGPDstroke *gps, float p1[3], f
   pt->pressure = 1.0f;
 }
 
-static void add_endpoint_radius_help(tGPDfill *tgpf,
-                                     bGPDframe *gpf,
+static void add_endpoint_radius_help(bGPDframe *gpf,
                                      bGPDstroke *gps,
                                      const float endpoint[3],
                                      const float radius,
@@ -314,11 +313,6 @@ static void add_endpoint_radius_help(tGPDfill *tgpf,
     pt->z = endpoint[2] + radius * sinf(angle);
     pt->strength = 1.0f;
     pt->pressure = 1.0f;
-
-    /* Rotate to object rotation. */
-    sub_v3_v3(&pt->x, endpoint);
-    mul_mat3_m4_v3(tgpf->ob->object_to_world, &pt->x);
-    add_v3_v3(&pt->x, endpoint);
   }
 }
 
@@ -741,7 +735,7 @@ static void gpencil_create_extensions_radius(tGPDfill *tgpf)
     float tan2[3];
     float d1;
     float d2;
-    float total_length = 0.f;
+    float total_length = 0.0f;
     for (int i = 1; i < gps->totpoints; i++) {
       if (i > 1) {
         copy_v3_v3(tan1, tan2);
@@ -757,7 +751,7 @@ static void gpencil_create_extensions_radius(tGPDfill *tgpf)
         sub_v3_v3v3(curvature, tan2, tan1);
         float k = normalize_v3(curvature);
         k /= min_ff(d1, d2);
-        float radius = 1.f / k;
+        float radius = 1.0f / k;
         /*
          * The smaller the radius of curvature, the sharper the corner.
          * The thicker the line, the larger the radius of curvature it
@@ -839,8 +833,8 @@ static void gpencil_create_extensions_radius(tGPDfill *tgpf)
 
     bool start_connected = BLI_gset_haskey(connected_endpoints, stroke1_start);
     bool end_connected = BLI_gset_haskey(connected_endpoints, stroke1_end);
-    add_endpoint_radius_help(tgpf, gpf, gps, stroke1_start, connection_dist, start_connected);
-    add_endpoint_radius_help(tgpf, gpf, gps, stroke1_end, connection_dist, end_connected);
+    add_endpoint_radius_help(gpf, gps, stroke1_start, connection_dist, start_connected);
+    add_endpoint_radius_help(gpf, gps, stroke1_end, connection_dist, end_connected);
   }
 
   BLI_gset_free(connected_endpoints, NULL);
@@ -2919,6 +2913,7 @@ static int gpencil_fill_modal(bContext *C, wmOperator *op, const wmEvent *event)
               }
 
               if (extend_lines) {
+                stroke_array_free(tgpf);
                 gpencil_delete_temp_stroke_extension(tgpf, true);
               }
 

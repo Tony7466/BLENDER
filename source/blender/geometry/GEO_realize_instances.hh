@@ -28,7 +28,8 @@ struct RealizeInstancesOptions {
   /**
    * Depth of realize instances for each selected top-level instance.
    */
-  const VArray<int> &depths;
+  VArray<int> depths;
+
   bke::AnonymousAttributePropagationInfo propagation_info;
 };
 

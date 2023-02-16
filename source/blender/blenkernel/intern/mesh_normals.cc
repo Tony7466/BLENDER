@@ -919,7 +919,7 @@ static void loop_manifold_fan_around_vert_next(const Span<MLoop> loops,
   const uint vert_fan_next = loops[*r_mlfan_curr_index].v;
   const MPoly &mpfan_next = polys[*r_mpfan_curr_index];
   if ((vert_fan_orig == vert_fan_next && vert_fan_orig == mv_pivot_index) ||
-      (!ELEM(vert_fan_orig, vert_fan_next, mv_pivot_index))) {
+      !ELEM(vert_fan_orig, vert_fan_next, mv_pivot_index)) {
     /* We need the previous loop, but current one is our vertex's loop. */
     *r_mlfan_vert_index = *r_mlfan_curr_index;
     if (--(*r_mlfan_curr_index) < mpfan_next.loopstart) {
@@ -1913,7 +1913,8 @@ static void mesh_set_custom_normals(Mesh *mesh, float (*r_custom_nors)[3], const
   short(*clnors)[2];
   const int numloops = mesh->totloop;
 
-  clnors = (short(*)[2])CustomData_get_layer(&mesh->ldata, CD_CUSTOMLOOPNORMAL);
+  clnors = (short(*)[2])CustomData_get_layer_for_write(
+      &mesh->ldata, CD_CUSTOMLOOPNORMAL, mesh->totloop);
   if (clnors != nullptr) {
     memset(clnors, 0, sizeof(*clnors) * size_t(numloops));
   }

@@ -504,7 +504,7 @@ static const char *wm_context_member_from_ptr(const bContext *C,
       }
       case ID_MA: {
 #  define ID_CAST_OBMATACT(id_pt) \
-    (BKE_object_material_get(((Object *)id_pt), ((Object *)id_pt)->actcol))
+    BKE_object_material_get(((Object *)id_pt), ((Object *)id_pt)->actcol)
         CTX_TEST_PTR_ID_CAST(
             C, "object", "object.active_material", ID_CAST_OBMATACT, ptr->owner_id);
         break;
@@ -3327,7 +3327,7 @@ static void redraw_timer_step(bContext *C,
 static bool redraw_timer_poll(bContext *C)
 {
   /* Check background mode as many of these actions use redrawing.
-   * NOTE(@campbellbarton): if it's useful to support undo or animation step this could
+   * NOTE(@ideasman42): if it's useful to support undo or animation step this could
    * be allowed at the moment this seems like a corner case that isn't needed. */
   return !G.background && WM_operator_winactive(C);
 }

@@ -6391,7 +6391,7 @@ static void rna_def_modifier_datatransfer(BlenderRNA *brna)
 #  endif
     {DT_TYPE_BWEIGHT_VERT, "BEVEL_WEIGHT_VERT", 0, "Bevel Weight", "Transfer bevel weights"},
     {DT_TYPE_MPROPCOL_VERT | DT_TYPE_MLOOPCOL_VERT,
-     "VCOL",
+     "COLOR_VERTEX",
      0,
      "Colors",
      "Transfer color attributes"},
@@ -6410,7 +6410,7 @@ static void rna_def_modifier_datatransfer(BlenderRNA *brna)
   static const EnumPropertyItem DT_layer_loop_items[] = {
       {DT_TYPE_LNOR, "CUSTOM_NORMAL", 0, "Custom Normals", "Transfer custom normals"},
       {DT_TYPE_MPROPCOL_LOOP | DT_TYPE_MLOOPCOL_LOOP,
-       "VCOL",
+       "COLOR_CORNER",
        0,
        "Colors",
        "Transfer color attributes"},
@@ -6826,7 +6826,7 @@ static void rna_def_modifier_normaledit(BlenderRNA *brna)
   prop = RNA_def_property(srna, "mix_factor", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_range(prop, 0.0, 1.0);
   RNA_def_property_ui_text(
-      prop, "Mix Factor", "How much of generated normals to mix with exiting ones");
+      prop, "Mix Factor", "How much of generated normals to mix with existing ones");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "mix_limit", PROP_FLOAT, PROP_ANGLE);
@@ -7354,6 +7354,14 @@ void RNA_def_modifier(BlenderRNA *brna)
       "on filled curve/surface");
   RNA_def_property_ui_icon(prop, ICON_SURFACE_DATA, 0);
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "execution_time", PROP_FLOAT, PROP_TIME_ABSOLUTE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(
+      prop,
+      "Execution Time",
+      "Time in seconds that the modifier took to evaluate. This is only set on evaluated objects. "
+      "If multiple modifiers run in parallel, execution time is not a reliable metric");
 
   /* types */
   rna_def_modifier_subsurf(brna);

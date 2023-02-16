@@ -16,6 +16,7 @@ set(INC
 
 set(SRC
   intern/add_curves_on_mesh.cc
+  intern/curve_constraints.cc
   intern/fillet_curves.cc
   intern/join_geometry.cc
   intern/mesh_merge_by_distance.cc
@@ -33,6 +34,7 @@ set(SRC
   intern/uv_parametrizer.cc
 
   GEO_add_curves_on_mesh.hh
+  GEO_curve_constraints.hh
   GEO_fillet_curves.hh
   GEO_join_geometry.hh
   GEO_mesh_merge_by_distance.hh

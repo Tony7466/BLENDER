@@ -862,6 +862,9 @@ static bool transform_event_modal_constraint(TransInfo *t, short modal_type)
     else {
       setUserConstraint(t, constraint_new, msg_3d);
     }
+
+    /* Take the opportunity to update the gizmo. */
+    transform_gizmo_3d_model_from_constraint_and_mode_set(t);
   }
   t->redraw |= TREDRAW_HARD;
   return true;
@@ -1481,6 +1484,12 @@ static void drawTransformPixel(const struct bContext *C, ARegion *region, void *
 
 void saveTransform(bContext *C, TransInfo *t, wmOperator *op)
 {
+  if (t->state == TRANS_CANCEL) {
+    /* No need to edit operator properties or tool settings if we are canceling the operation.
+     * These properties must match the original ones. */
+    return;
+  }
+
   ToolSettings *ts = CTX_data_tool_settings(C);
   PropertyRNA *prop;
 
@@ -1573,9 +1582,9 @@ void saveTransform(bContext *C, TransInfo *t, wmOperator *op)
     if ((prop = RNA_struct_find_property(op->ptr, "snap_elements"))) {
       RNA_property_enum_set(op->ptr, prop, t->tsnap.mode);
       RNA_boolean_set(op->ptr, "use_snap_project", t->tsnap.project);
-      RNA_enum_set(op->ptr, "snap_target", t->tsnap.source_select);
+      RNA_enum_set(op->ptr, "snap_target", t->tsnap.source_operation);
 
-      eSnapTargetSelect target = t->tsnap.target_select;
+      eSnapTargetOP target = t->tsnap.target_operation;
       RNA_boolean_set(op->ptr, "use_snap_self", (target & SCE_SNAP_TARGET_NOT_ACTIVE) == 0);
       RNA_boolean_set(op->ptr, "use_snap_edit", (target & SCE_SNAP_TARGET_NOT_EDITED) == 0);
       RNA_boolean_set(op->ptr, "use_snap_nonedit", (target & SCE_SNAP_TARGET_NOT_NONEDITED) == 0);
@@ -1586,7 +1595,7 @@ void saveTransform(bContext *C, TransInfo *t, wmOperator *op)
     /* Update `ToolSettings` for properties that change during modal. */
     if (t->flag & T_MODAL) {
       /* Do we check for parameter? */
-      if (transformModeUseSnap(t)) {
+      if (transformModeUseSnap(t) && !(t->modifiers & MOD_SNAP_FORCED)) {
         if (!(t->modifiers & MOD_SNAP) != !(t->tsnap.flag & SCE_SNAP)) {
           /* Type is #eSnapFlag, but type must match various snap attributes in #ToolSettings. */
           short *snap_flag_ptr;
@@ -2057,6 +2066,8 @@ int transformEnd(bContext *C, TransInfo *t)
     viewRedrawPost(C, t);
 
     viewRedrawForce(C, t);
+
+    transform_gizmo_3d_model_from_constraint_and_mode_restore(t);
   }
 
   t->context = NULL;
