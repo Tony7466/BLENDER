@@ -199,46 +199,6 @@ static void invert_selection(GMutableSpan selection)
   }
 }
 
-static void apply_selection_operation_at_index(GMutableSpan selection,
-                                               const int index,
-                                               const eSelectOp sel_op)
-{
-  if (selection.type().is<bool>()) {
-    MutableSpan<bool> selection_typed = selection.typed<bool>();
-    switch (sel_op) {
-      case SEL_OP_ADD:
-      case SEL_OP_SET:
-        selection_typed[index] = true;
-        break;
-      case SEL_OP_SUB:
-        selection_typed[index] = false;
-        break;
-      case SEL_OP_XOR:
-        selection_typed[index] = !selection_typed[index];
-        break;
-      default:
-        break;
-    }
-  }
-  else if (selection.type().is<float>()) {
-    MutableSpan<float> selection_typed = selection.typed<float>();
-    switch (sel_op) {
-      case SEL_OP_ADD:
-      case SEL_OP_SET:
-        selection_typed[index] = 1.0f;
-        break;
-      case SEL_OP_SUB:
-        selection_typed[index] = 0.0f;
-        break;
-      case SEL_OP_XOR:
-        selection_typed[index] = 1.0f - selection_typed[index];
-        break;
-      default:
-        break;
-    }
-  }
-}
-
 void select_all(bke::CurvesGeometry &curves, const eAttrDomain selection_domain, int action)
 {
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
@@ -322,28 +282,27 @@ void select_adjacent(bke::CurvesGeometry &curves, const bool deselect)
     MutableSpan<bool> selection_typed = selection.span.typed<bool>();
     threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
       for (const int curve_i : range) {
-        MutableSpan<bool> selection_curve = selection_typed.slice(points_by_curve[curve_i]);
-        const int last_i = points_by_curve.size(curve_i) - 1;
+        const IndexRange points = points_by_curve[curve_i];
 
         /* Handle all cases in the forward direction. */
-        for (int point_i = 0; point_i < last_i; point_i++) {
-          if (!selection_curve[point_i] && selection_curve[point_i + 1]) {
-            selection_curve[point_i] = true;
+        for (int point_i = points.first(); point_i < points.last(); point_i++) {
+          if (!selection_typed[point_i] && selection_typed[point_i + 1]) {
+            selection_typed[point_i] = true;
           }
         }
 
         /* Handle all cases in the backwards direction. */
-        for (int point_i = last_i; point_i > 0; point_i--) {
-          if (!selection_curve[point_i] && selection_curve[point_i - 1]) {
-            selection_curve[point_i] = true;
+        for (int point_i = points.last(); point_i > points.first(); point_i--) {
+          if (!selection_typed[point_i] && selection_typed[point_i - 1]) {
+            selection_typed[point_i] = true;
           }
         }
 
         /* Handle cyclic curve case. */
         if (cyclic[curve_i]) {
-          if (selection_curve[0] != selection_curve[last_i]) {
-            selection_curve[0] = true;
-            selection_curve[last_i] = true;
+          if (selection_typed[points.first()] != selection_typed[points.last()]) {
+            selection_typed[points.first()] = true;
+            selection_typed[points.last()] = true;
           }
         }
       }
@@ -353,28 +312,27 @@ void select_adjacent(bke::CurvesGeometry &curves, const bool deselect)
     MutableSpan<float> selection_typed = selection.span.typed<float>();
     threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
       for (const int curve_i : range) {
-        MutableSpan<float> selection_curve = selection_typed.slice(points_by_curve[curve_i]);
-        const int last_i = points_by_curve.size(curve_i) - 1;
+        const IndexRange points = points_by_curve[curve_i];
 
         /* Handle all cases in the forward direction. */
-        for (int point_i = 0; point_i < last_i; point_i++) {
+        for (int point_i = points.first(); point_i < points.last(); point_i++) {
           if ((selection_typed[point_i] == 0.0f) && (selection_typed[point_i + 1] > 0.0f)) {
-            selection_curve[point_i] = 1.0f;
+            selection_typed[point_i] = 1.0f;
           }
         }
 
         /* Handle all cases in the backwards direction. */
-        for (int point_i = last_i; point_i > 0; point_i--) {
+        for (int point_i = points.last(); point_i > points.first(); point_i--) {
           if ((selection_typed[point_i] == 0.0f) && (selection_typed[point_i - 1] > 0.0f)) {
-            selection_curve[point_i] = 1.0f;
+            selection_typed[point_i] = 1.0f;
           }
         }
 
         /* Handle cyclic curve case. */
         if (cyclic[curve_i]) {
-          if (selection_curve[0] != selection_curve[last_i]) {
-            selection_curve[0] = 1.0f;
-            selection_curve[last_i] = 1.0f;
+          if (selection_typed[points.first()] != selection_typed[points.last()]) {
+            selection_typed[points.first()] = 1.0f;
+            selection_typed[points.last()] = 1.0f;
           }
         }
       }
@@ -435,6 +393,46 @@ void select_random(bke::CurvesGeometry &curves,
     }
   });
   selection.finish();
+}
+
+static void apply_selection_operation_at_index(GMutableSpan selection,
+                                               const int index,
+                                               const eSelectOp sel_op)
+{
+  if (selection.type().is<bool>()) {
+    MutableSpan<bool> selection_typed = selection.typed<bool>();
+    switch (sel_op) {
+      case SEL_OP_ADD:
+      case SEL_OP_SET:
+        selection_typed[index] = true;
+        break;
+      case SEL_OP_SUB:
+        selection_typed[index] = false;
+        break;
+      case SEL_OP_XOR:
+        selection_typed[index] = !selection_typed[index];
+        break;
+      default:
+        break;
+    }
+  }
+  else if (selection.type().is<float>()) {
+    MutableSpan<float> selection_typed = selection.typed<float>();
+    switch (sel_op) {
+      case SEL_OP_ADD:
+      case SEL_OP_SET:
+        selection_typed[index] = 1.0f;
+        break;
+      case SEL_OP_SUB:
+        selection_typed[index] = 0.0f;
+        break;
+      case SEL_OP_XOR:
+        selection_typed[index] = 1.0f - selection_typed[index];
+        break;
+      default:
+        break;
+    }
+  }
 }
 
 /**
