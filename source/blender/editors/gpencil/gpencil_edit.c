@@ -2741,7 +2741,7 @@ void GPENCIL_OT_delete(wmOperatorType *ot)
   /* callbacks */
   ot->invoke = WM_menu_invoke;
   ot->exec = gpencil_delete_exec;
-  ot->poll = gpencil_stroke_edit_poll;
+  ot->poll = gpencil_active_layer_poll;
 
   /* flags */
   ot->flag = OPTYPE_UNDO | OPTYPE_REGISTER;
