@@ -9,10 +9,10 @@
 
 namespace blender::index_mask {
 
-std::array<int16_t, max_chunk_size> build_static_indices_array()
+std::array<int16_t, chunk_capacity> build_static_indices_array()
 {
-  std::array<int16_t, max_chunk_size> data;
-  for (int16_t i = 0; i < max_chunk_size; i++) {
+  std::array<int16_t, chunk_capacity> data;
+  for (int16_t i = 0; i < chunk_capacity; i++) {
     data[size_t(i)] = i;
   }
   return data;
@@ -22,7 +22,7 @@ const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size)
 {
   static constexpr int64_t size_shift = 30;
   static constexpr int64_t max_size = (1 << size_shift);
-  static constexpr int64_t chunks_num = max_size / max_chunk_size;
+  static constexpr int64_t chunks_num = max_size / chunk_capacity;
 
   BLI_assert(min_size <= max_size);
   UNUSED_VARS_NDEBUG(min_size);
@@ -33,7 +33,7 @@ const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size)
     static Array<int64_t> chunk_sizes_cumulative(chunks_num + 1);
 
     static const int16_t *static_offsets = get_static_indices_array().data();
-    static const int16_t static_segment_sizes_cumulative[2] = {0, max_chunk_size};
+    static const int16_t static_segment_sizes_cumulative[2] = {0, chunk_capacity};
 
     threading::parallel_for(IndexRange(chunks_num), 1024, [&](const IndexRange range) {
       for (const int64_t i : range) {
@@ -43,7 +43,7 @@ const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size)
         chunk.segment_sizes_cumulative = static_segment_sizes_cumulative;
 
         chunk_ids_array[i] = i;
-        chunk_sizes_cumulative[i] = i * max_chunk_size;
+        chunk_sizes_cumulative[i] = i * chunk_capacity;
       }
     });
     chunk_sizes_cumulative.last() = max_size;
@@ -58,7 +58,7 @@ const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size)
     mask_data.begin_it.segment_i = 0;
     mask_data.begin_it.index_in_segment = 0;
     mask_data.end_it.segment_i = 0;
-    mask_data.end_it.index_in_segment = max_chunk_size;
+    mask_data.end_it.index_in_segment = chunk_capacity;
     return mask;
   }();
   return static_mask;
@@ -109,7 +109,7 @@ static void split_by_chunk_recursive(const Span<T> indices,
     return;
   }
   const int64_t middle_chunk_index = (first_chunk_id + last_chunk_id + 1) / 2;
-  const int64_t split_value = middle_chunk_index * max_chunk_size - 1;
+  const int64_t split_value = middle_chunk_index * chunk_capacity - 1;
   const int64_t left_split_size = std::upper_bound(indices.begin(), indices.end(), split_value) -
                                   indices.begin();
   split_by_chunk_recursive(indices.take_front(left_split_size), offset, r_chunks);
@@ -177,7 +177,7 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, ResourceScop
   static const int16_t *static_offsets = get_static_indices_array().data();
 
   /* TODO: Use that again to avoid some allocations. */
-  [[maybe_unused]] const Chunk full_chunk_template = IndexMask(max_chunk_size).data().chunks[0];
+  [[maybe_unused]] const Chunk full_chunk_template = IndexMask(chunk_capacity).data().chunks[0];
 
   threading::parallel_for(split_ranges.index_range(), 32, [&](const IndexRange slice) {
     Vector<RangeOrSpanVariant<T>> segments_in_chunks;
@@ -238,7 +238,7 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, ResourceScop
       const IndexRange segments_in_chunk = segments_by_chunk[i];
       const int16_t segments_num = int16_t(segments_in_chunk.size());
       Chunk &chunk = chunks[slice[i]];
-      const int64_t chunk_offset = chunk_ids[slice[i]] * max_chunk_size;
+      const int64_t chunk_offset = chunk_ids[slice[i]] * chunk_capacity;
 
       MutableSpan<const int16_t *> segment_indices = take_front_and_drop(
           remaining_segment_indices_pointers, segments_num);

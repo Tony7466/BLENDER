@@ -21,9 +21,9 @@ class IndexMask;
 static constexpr int64_t chunk_size_shift = 14;
 static constexpr int64_t chunk_mask_low = (1 << chunk_size_shift) - 1;
 static constexpr int64_t chunk_mask_high = ~chunk_mask_low;
-static constexpr int64_t max_chunk_size = (1 << chunk_size_shift);
+static constexpr int64_t chunk_capacity = (1 << chunk_size_shift);
 
-std::array<int16_t, max_chunk_size> build_static_indices_array();
+std::array<int16_t, chunk_capacity> build_static_indices_array();
 const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size);
 
 struct RawChunkIterator {
@@ -218,9 +218,9 @@ inline int64_t find_size_until_next_range(const Span<T> indices, const int64_t m
 /** \name Inline Utilities
  * \{ */
 
-inline const std::array<int16_t, max_chunk_size> &get_static_indices_array()
+inline const std::array<int16_t, chunk_capacity> &get_static_indices_array()
 {
-  alignas(64) static const std::array<int16_t, max_chunk_size> data = build_static_indices_array();
+  alignas(64) static const std::array<int16_t, chunk_capacity> data = build_static_indices_array();
   return data;
 }
 
@@ -231,7 +231,7 @@ inline int64_t index_to_chunk_id(const int64_t i)
 
 inline int64_t size_to_chunk_num(const int64_t size)
 {
-  return (size + max_chunk_size - 1) >> chunk_size_shift;
+  return (size + chunk_capacity - 1) >> chunk_size_shift;
 }
 
 class IndexRangeChecker {
@@ -243,7 +243,7 @@ class IndexRangeChecker {
   IndexRangeChecker() : data_(get_static_indices_array().data())
   {
     adder_ = std::numeric_limits<uintptr_t>::max() -
-             uintptr_t(get_static_indices_array().data() + max_chunk_size);
+             uintptr_t(get_static_indices_array().data() + chunk_capacity);
   }
 
   bool check(const Span<int16_t> indices) const;
@@ -260,7 +260,7 @@ inline bool IndexRangeChecker::check_static(const Span<int16_t> indices) const
 {
   const uintptr_t indices_ptr = uintptr_t(indices.data());
   return indices_ptr + adder_ >
-         std::numeric_limits<uintptr_t>::max() - max_chunk_size * sizeof(int16_t);
+         std::numeric_limits<uintptr_t>::max() - chunk_capacity * sizeof(int16_t);
 }
 
 /* -------------------------------------------------------------------- */
@@ -468,7 +468,7 @@ template<typename Fn> inline void IndexMask::foreach_raw_segment(Fn &&fn) const
     const int64_t chunk_id = data_.chunk_ids[chunk_i];
     const bool is_last_chunk = (chunk_i == data_.chunks_num - 1);
     const int16_t segments_num = is_last_chunk ? final_segments_num : chunk.segments_num;
-    const int64_t offset = max_chunk_size + chunk_id;
+    const int64_t offset = chunk_capacity + chunk_id;
     int16_t prev_cumulative_segment_size = chunk.segment_sizes_cumulative[segment_i];
     while (segment_i < segments_num) {
       const int16_t next_segment_i = segment_i + 1;
