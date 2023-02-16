@@ -516,6 +516,39 @@ TEST(math_rotation, QuaternionWrappedAround)
   EXPECT_V4_NEAR(float4(q1.wrapped_around(q_malformed)), float4(q1), 1e-4f);
 }
 
+TEST(math_rotation, Euler3ToGimbal)
+{
+  using eOrder = Euler3::eOrder;
+  /* All the same rotation. */
+  float3 ijk{0.350041, -0.358896, 0.528994};
+  Euler3 euler3_xyz(ijk, eOrder::XYZ);
+  Euler3 euler3_xzy(ijk, eOrder::XZY);
+  Euler3 euler3_yxz(ijk, eOrder::YXZ);
+  Euler3 euler3_yzx(ijk, eOrder::YZX);
+  Euler3 euler3_zxy(ijk, eOrder::ZXY);
+  Euler3 euler3_zyx(ijk, eOrder::ZYX);
+
+  float3x3 mat_xyz = transpose(
+      float3x3({0.808309, -0.504665, 0}, {0.47251, 0.863315, 0}, {0.351241, 0, 1}));
+  float3x3 mat_xzy = transpose(
+      float3x3({0.808309, 0, -0.351241}, {0.504665, 1, -0}, {0.303232, 0, 0.936285}));
+  float3x3 mat_yxz = transpose(
+      float3x3({0.863315, -0.474062, 0}, {0.504665, 0.810963, 0}, {-0, 0.342936, 1}));
+  float3x3 mat_yzx = transpose(
+      float3x3({1, -0.504665, 0}, {0, 0.810963, -0.342936}, {0, 0.296062, 0.939359}));
+  float3x3 mat_zxy = transpose(
+      float3x3({0.936285, 0, -0.329941}, {0, 1, -0.342936}, {0.351241, 0, 0.879508}));
+  float3x3 mat_zyx = transpose(
+      float3x3({1, -0, -0.351241}, {0, 0.939359, -0.321086}, {0, 0.342936, 0.879508}));
+
+  EXPECT_M3_NEAR(to_gimbal_axis(euler3_xyz), mat_xyz, 1e-4);
+  EXPECT_M3_NEAR(to_gimbal_axis(euler3_xzy), mat_xzy, 1e-4);
+  EXPECT_M3_NEAR(to_gimbal_axis(euler3_yxz), mat_yxz, 1e-4);
+  EXPECT_M3_NEAR(to_gimbal_axis(euler3_yzx), mat_yzx, 1e-4);
+  EXPECT_M3_NEAR(to_gimbal_axis(euler3_zxy), mat_zxy, 1e-4);
+  EXPECT_M3_NEAR(to_gimbal_axis(euler3_zyx), mat_zyx, 1e-4);
+}
+
 TEST(math_rotation, Rotate)
 {
   Quaternion q(0.927091f, 0.211322f, -0.124857f, 0.283295f);

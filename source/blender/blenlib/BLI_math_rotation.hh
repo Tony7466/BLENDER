@@ -392,6 +392,29 @@ template<typename T>
   return q2 * q1;
 }
 
+template<typename T>
+[[nodiscard]] MatBase<T, 3, 3> to_gimbal_axis(const detail::Euler3<T> &rotation)
+{
+  using Mat3T = MatBase<T, 3, 3>;
+  using Vec3T = VecBase<T, 3>;
+  int i = rotation.x_index();
+  int j = rotation.y_index();
+  int k = rotation.z_index();
+
+  Mat3T result;
+  /* First axis is local. */
+  result[i] = from_rotation<Mat3T>(rotation)[i];
+  /* Second axis is local minus first rotation. */
+  detail::Euler3<T> tmp_rot = rotation;
+  tmp_rot.x() = T(0);
+  result[j] = from_rotation<Mat3T>(tmp_rot)[j];
+  /* Last axis is global. */
+  result[k] = Vec3T(0);
+  result[k][k] = 1;
+
+  return result;
+}
+
 }  // namespace blender::math
 
 /* -------------------------------------------------------------------- */
