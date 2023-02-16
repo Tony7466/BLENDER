@@ -722,7 +722,7 @@ void ShadowModule::begin_sync()
       PassMain::Sub &sub = pass.sub("Transparent");
       /* WORKAROUND: The DRW_STATE_WRITE_STENCIL is here only to avoid enabling the rasterizer
        * discard inside draw manager. */
-      sub.state_set(DRW_STATE_CULL_FRONT | DRW_STATE_WRITE_STENCIL | DRW_STATE_WRITE_COLOR);
+      sub.state_set(DRW_STATE_CULL_FRONT | DRW_STATE_WRITE_STENCIL);
       sub.state_stencil(0, 0, 0);
       sub.framebuffer_set(&usage_tag_fb);
       sub.shader_set(inst_.shaders.static_shader_get(SHADOW_TILEMAP_TAG_USAGE_TRANSPARENT));
@@ -1101,10 +1101,7 @@ void ShadowModule::set_view(View &view)
 
   usage_tag_fb_resolution_ = math::divide_ceil(int2(target_size),
                                                int2(std::exp2(usage_tag_fb_lod_)));
-  usage_tag_debug_tx_.ensure_2d(GPU_RGB16F, usage_tag_fb_resolution_);
-  usage_tag_debug_tx_.clear(float4(0));
-  usage_tag_fb.ensure(GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(usage_tag_debug_tx_));
-  // usage_tag_fb.ensure(usage_tag_fb_resolution_);
+  usage_tag_fb.ensure(usage_tag_fb_resolution_);
 
   render_fb_.ensure(int2(SHADOW_TILEMAP_RES * shadow_page_size_));
 

@@ -69,8 +69,6 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_tag_usage_transparent)
     .push_constant(Type::IVEC2, "fb_resolution")
     .push_constant(Type::INT, "fb_lod")
     .vertex_out(eevee_shadow_tag_transparent_iface)
-    //.define("DEBUG_CONSERVATIVE_RASTERIZATION")
-    .fragment_out(0, Type::VEC4, "outDebug")
     .additional_info("eevee_shared",
                      "draw_resource_id_varying",
                      "draw_view",

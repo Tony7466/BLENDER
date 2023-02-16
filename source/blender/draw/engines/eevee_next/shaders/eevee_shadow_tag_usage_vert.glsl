@@ -64,7 +64,17 @@ void main()
     ls_conservative_max = max(ls_conservative_max, lP);
   }
 
-  /*
+  interp.ls_aabb_min = ls_conservative_min;
+  interp.ls_aabb_max = ls_conservative_max;
+
+  vec3 lP = mix(ls_conservative_min, ls_conservative_max, max(vec3(0), pos));
+
+  interp.P = point_object_to_world(lP);
+  interp.vP = point_world_to_view(interp.P);
+
+  gl_Position = point_world_to_ndc(interp.P);
+
+#if 0
   if (gl_VertexID == 0) {
     Box debug_box = shape_box(
         ls_conservative_min,
@@ -76,20 +86,5 @@ void main()
     }
     drw_debug(debug_box);
   }
-  //*/
-
-#ifdef DEBUG_CONSERVATIVE_RASTERIZATION
-  interp.ls_aabb_min = point_world_to_object(ws_aabb_min);
-  interp.ls_aabb_max = point_world_to_object(ws_aabb_max);
-#else
-  interp.ls_aabb_min = ls_conservative_min;
-  interp.ls_aabb_max = ls_conservative_max;
 #endif
-
-  vec3 lP = mix(ls_conservative_min, ls_conservative_max, max(vec3(0), pos));
-
-  interp.P = point_object_to_world(lP);
-  interp.vP = point_world_to_view(interp.P);
-
-  gl_Position = point_world_to_ndc(interp.P);
 }
