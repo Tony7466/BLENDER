@@ -231,7 +231,7 @@ TEST(math_rotation_types, Euler3Conversion)
 {
   using eOrder = Euler3::eOrder;
   /* All the same rotation. */
-  float3 ijk{deg_to_rad(20.0559f), deg_to_rad(-20.5632f), deg_to_rad(30.3091f)};
+  float3 ijk{0.350041, -0.358896, 0.528994};
   Euler3 euler3_xyz(ijk, eOrder::XYZ);
   Euler3 euler3_xzy(ijk, eOrder::XZY);
   Euler3 euler3_yxz(ijk, eOrder::YXZ);
@@ -292,6 +292,34 @@ TEST(math_rotation_types, Euler3Conversion)
   EXPECT_V3_NEAR(to_euler(mat_yzx, eOrder::YZX).ijk(), float3(-0.54134, 0.546759, -0.32932), 1e-4);
   EXPECT_V3_NEAR(to_euler(mat_zxy, eOrder::ZXY).ijk(), float3(-0.100108, 0.48659, -0.61799), 1e-4);
   EXPECT_V3_NEAR(to_euler(mat_zyx, eOrder::ZYX).ijk(), float3(-0.14625, 0.475644, -0.42935), 1e-4);
+
+  AxisAngle axis_angle_xyz = AxisAngle({0.563771, -0.333098, 0.755783}, 0.76844f);
+  AxisAngle axis_angle_xzy = AxisAngle({0.359907, -0.376274, 0.853747}, 0.676476f);
+  AxisAngle axis_angle_yxz = AxisAngle({0.636846, -0.376274, 0.672937}, 0.676476f);
+  AxisAngle axis_angle_yzx = AxisAngle({0.563771, -0.572084, 0.59572}, 0.76844f);
+  AxisAngle axis_angle_zxy = AxisAngle({0.318609, -0.572084, 0.755783}, 0.76844f);
+  AxisAngle axis_angle_zyx = AxisAngle({0.359907, -0.646237, 0.672937}, 0.676476f);
+
+  EXPECT_V3_NEAR(AxisAngle(euler3_xyz).axis(), axis_angle_xyz.axis(), 1e-4);
+  EXPECT_V3_NEAR(AxisAngle(euler3_xzy).axis(), axis_angle_xzy.axis(), 1e-4);
+  EXPECT_V3_NEAR(AxisAngle(euler3_yxz).axis(), axis_angle_yxz.axis(), 1e-4);
+  EXPECT_V3_NEAR(AxisAngle(euler3_yzx).axis(), axis_angle_yzx.axis(), 1e-4);
+  EXPECT_V3_NEAR(AxisAngle(euler3_zxy).axis(), axis_angle_zxy.axis(), 1e-4);
+  EXPECT_V3_NEAR(AxisAngle(euler3_zyx).axis(), axis_angle_zyx.axis(), 1e-4);
+
+  EXPECT_NEAR(AxisAngle(euler3_xyz).angle(), axis_angle_xyz.angle(), 1e-4);
+  EXPECT_NEAR(AxisAngle(euler3_xzy).angle(), axis_angle_xzy.angle(), 1e-4);
+  EXPECT_NEAR(AxisAngle(euler3_yxz).angle(), axis_angle_yxz.angle(), 1e-4);
+  EXPECT_NEAR(AxisAngle(euler3_yzx).angle(), axis_angle_yzx.angle(), 1e-4);
+  EXPECT_NEAR(AxisAngle(euler3_zxy).angle(), axis_angle_zxy.angle(), 1e-4);
+  EXPECT_NEAR(AxisAngle(euler3_zyx).angle(), axis_angle_zyx.angle(), 1e-4);
+
+  EXPECT_V3_NEAR((Euler3(eOrder::XYZ) = axis_angle_xyz).ijk(), ijk, 1e-4);
+  EXPECT_V3_NEAR((Euler3(eOrder::XZY) = axis_angle_xzy).ijk(), ijk, 1e-4);
+  EXPECT_V3_NEAR((Euler3(eOrder::YXZ) = axis_angle_yxz).ijk(), ijk, 1e-4);
+  EXPECT_V3_NEAR((Euler3(eOrder::YZX) = axis_angle_yzx).ijk(), ijk, 1e-4);
+  EXPECT_V3_NEAR((Euler3(eOrder::ZXY) = axis_angle_zxy).ijk(), ijk, 1e-4);
+  EXPECT_V3_NEAR((Euler3(eOrder::ZYX) = axis_angle_zyx).ijk(), ijk, 1e-4);
 }
 
 }  // namespace blender::tests

@@ -650,6 +650,18 @@ template<typename T> AxisAngle<T>::operator EulerXYZ<T>() const
   return EulerXYZ<T>(Quaternion<T>(*this));
 }
 
+template<typename T> Euler3<T>::operator AxisAngle<T>() const
+{
+  /* Use quaternions as intermediate representation for now... */
+  return AxisAngle<T>(Quaternion<T>(*this));
+}
+
+template<typename T> Euler3<T> &Euler3<T>::operator=(const AxisAngle<T> &axis_angle)
+{
+  /* Use quaternions as intermediate representation for now... */
+  return (*this = Quaternion<T>(axis_angle));
+}
+
 /* Using explicit template instantiations in order to reduce compilation time. */
 extern template AxisAngle<float>::operator EulerXYZ<float>() const;
 extern template AxisAngle<float>::operator Quaternion<float>() const;
