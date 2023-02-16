@@ -1354,13 +1354,11 @@ static void moveCloserToDistanceFromPlane(Depsgraph *depsgraph,
 {
   Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
   Object *object_eval = DEG_get_evaluated_object(depsgraph, ob);
-  Mesh *mesh_eval = (Mesh *)object_eval->data;
 
   Mesh *me_deform;
-  MDeformWeight *dw, *dw_eval;
+  MDeformWeight *dw;
   float3 m;
   MDeformVert *dvert = me->deform_verts_for_write().data() + index;
-  MDeformVert *dvert_eval = mesh_eval->deform_verts_for_write().data() + index;
   int totweight = dvert->totweight;
   float oldw = 0;
   float oldPos[3] = {0};
@@ -1393,7 +1391,6 @@ static void moveCloserToDistanceFromPlane(Depsgraph *depsgraph,
     for (i = 0; i < totweight; i++) {
       dwIndices[i] = i;
       dw = (dvert->dw + i);
-      dw_eval = (dvert_eval->dw + i);
       vc = hc = 0;
       if (!dw->weight) {
         changes[i][0] = 0;
@@ -1423,12 +1420,10 @@ static void moveCloserToDistanceFromPlane(Depsgraph *depsgraph,
         if (dw->weight > 1) {
           dw->weight = 1;
         }
-        dw_eval->weight = dw->weight;
         me_deform = mesh_get_eval_deform(depsgraph, scene_eval, object_eval, &CD_MASK_BAREMESH);
         m = me_deform->vert_positions()[index];
         getVerticalAndHorizontalChange(norm, d, coord, oldPos, distToStart, m, changes, dists, i);
         dw->weight = oldw;
-        dw_eval->weight = oldw;
         if (!k) {
           vc = changes[i][0];
           hc = changes[i][1];
