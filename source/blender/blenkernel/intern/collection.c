@@ -67,10 +67,8 @@ static bool collection_child_remove(Collection *parent, Collection *collection);
 static bool collection_object_add(
     Main *bmain, Collection *collection, Object *ob, int flag, const bool add_us);
 
-static void collection_object_remove_no_gobject_hash(Main *bmain,
-                                                     Collection *collection,
-                                                     CollectionObject *cob,
-                                                     const bool free_us);
+static void collection_object_remove_no_gobject_hash(
+    Main *bmain, Collection *collection, Object *ob, CollectionObject *cob, const bool free_us);
 static bool collection_object_remove(Main *bmain,
                                      Collection *collection,
                                      Object *ob,
@@ -567,7 +565,7 @@ bool BKE_collection_delete(Main *bmain, Collection *collection, bool hierarchy)
     /* Remove child objects. */
     CollectionObject *cob = collection->gobject.first;
     while (cob != NULL) {
-      collection_object_remove_no_gobject_hash(bmain, collection, cob, true);
+      collection_object_remove_no_gobject_hash(bmain, collection, cob->ob, cob, true);
       cob = collection->gobject.first;
     }
 
@@ -596,7 +594,7 @@ bool BKE_collection_delete(Main *bmain, Collection *collection, bool hierarchy)
       }
 
       /* Remove child object. */
-      collection_object_remove_no_gobject_hash(bmain, collection, cob, true);
+      collection_object_remove_no_gobject_hash(bmain, collection, cob->ob, cob, true);
       cob = collection->gobject.first;
     }
   }
@@ -1146,20 +1144,20 @@ static bool collection_object_add(
 /**
  * A version of #collection_object_remove that does not handle `collection->runtime.gobject_hash`,
  * Either the caller must have removed the object from the hash or the hash may be NULL.
+ *
+ * \note in rare cases `cob->ob != ob`, so both arguments need to be passed in.
  */
-static void collection_object_remove_no_gobject_hash(Main *bmain,
-                                                     Collection *collection,
-                                                     CollectionObject *cob,
-                                                     const bool free_us)
+static void collection_object_remove_no_gobject_hash(
+    Main *bmain, Collection *collection, Object *ob, CollectionObject *cob, const bool free_us)
 {
   BLI_freelinkN(&collection->gobject, cob);
   BKE_collection_object_cache_free(collection);
 
   if (free_us) {
-    BKE_id_free_us(bmain, cob->ob);
+    BKE_id_free_us(bmain, ob);
   }
   else {
-    id_us_min(&cob->ob->id);
+    id_us_min(&ob->id);
   }
 
   collection_tag_update_parent_recursive(
@@ -1176,7 +1174,7 @@ static bool collection_object_remove(Main *bmain,
   if (cob == NULL) {
     return false;
   }
-  collection_object_remove_no_gobject_hash(bmain, collection, cob, free_us);
+  collection_object_remove_no_gobject_hash(bmain, collection, ob, cob, free_us);
   return true;
 }
 
