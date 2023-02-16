@@ -283,7 +283,7 @@ template<typename T>
   /* What angle has this line with x-axis? */
   line = normalize(Vec3T(line.xy()));
 
-  angle = T(0.5) * atan2f(line.y, line.x);
+  angle = T(0.5) * math::atan2(line.y, line.x);
   detail::Quaternion<T> q2(math::cos(angle), 0.0, 0.0, math::sin(angle));
 
   return q1 * q2;
@@ -348,7 +348,7 @@ template<typename T> AngleRadian<T> Quaternion<T>::twist_angle(const eAxis axis)
   BLI_assert(axis >= 0 && axis <= 2);
   /* The calculation requires a canonical quaternion. */
   const VecBase<T, 4> input_vec(canonicalize(*this));
-  return AngleRadian<T>(T(2) * atan2f(input_vec[axis + 1], input_vec[0]));
+  return AngleRadian<T>(T(2) * math::atan2(input_vec[axis + 1], input_vec[0]));
 }
 
 template<typename T>
@@ -359,7 +359,7 @@ Quaternion<T> Quaternion<T>::twist(const eAxis axis, AngleRadian<T> &r_twist_ang
   const Quaternion<T> input = canonicalize(*this);
   const VecBase<T, 4> input_vec(input);
 
-  T half_twist_angle = atan2f(input_vec[axis + 1], input_vec[0]);
+  T half_twist_angle = math::atan2(input_vec[axis + 1], input_vec[0]);
   r_twist_angle = T(2) * half_twist_angle;
 
   /* Compute swing by multiplying the original quaternion by inverted twist. */
@@ -384,7 +384,7 @@ Quaternion<T> Quaternion<T>::swing(const eAxis axis, AngleRadian<T> &r_twist_ang
   /* The calculation requires a canonical quaternion. */
   const VecBase<T, 4> input_vec(canonicalize(*this));
 
-  T half_twist_angle = atan2f(input_vec[axis + 1], input_vec[0]);
+  T half_twist_angle = math::atan2(input_vec[axis + 1], input_vec[0]);
   r_twist_angle = T(2) * half_twist_angle;
 
   VecBase<T, 4> twist(math::cos(half_twist_angle), T(0), T(0), T(0));
