@@ -516,6 +516,14 @@ TEST(math_rotation, QuaternionWrappedAround)
   EXPECT_V4_NEAR(float4(q1.wrapped_around(q_malformed)), float4(q1), 1e-4f);
 }
 
+TEST(math_rotation, EulerWrappedAround)
+{
+  EulerXYZ eul1 = EulerXYZ(2.08542, -1.12485, -1.23738);
+  EulerXYZ eul2 = EulerXYZ(4.06112, 0.561928, -18.9063);
+  EXPECT_V3_NEAR(float3(eul1.wrapped_around(eul2)), float3(2.08542, -1.12485, -20.0869), 1e-4f);
+  EXPECT_V3_NEAR(float3(eul2.wrapped_around(eul1)), float3(4.06112, 0.561928, -0.0567436), 1e-4f);
+}
+
 TEST(math_rotation, Euler3ToGimbal)
 {
   using eOrder = Euler3::eOrder;

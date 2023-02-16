@@ -319,6 +319,37 @@ template<typename T> struct EulerXYZ {
 
   /** Operators. */
 
+  EulerXYZ wrapped_around(const EulerXYZ &reference) const
+  {
+    using Vec3T = VecBase<T, 3>;
+
+    constexpr float m_2pi = 2 * M_PI;
+    Vec3T result(*this);
+    Vec3T delta = result - Vec3T(reference);
+    unroll<3>([&](auto i) {
+      /* NOTE(campbell) We could use M_PI as pi_threshold: which is correct but 5.1 gives better
+       * results. Checked with baking actions to fcurves. */
+      constexpr float pi_threshold = 5.1f;
+      if (abs(delta[i]) > pi_threshold) {
+        /* Correct differences of about 360 degrees first. */
+        result[i] += sign(-delta[i]) * floor((abs(delta[i]) / m_2pi) + 0.5f) * m_2pi;
+      }
+    });
+    delta = result - Vec3T(reference);
+
+    /* Is 1 of the axis rotations larger than 180 degrees and the other small? NO ELSE IF!! */
+    if (abs(delta.x) > 3.2f && abs(delta.y) < 1.6f && abs(delta.z) < 1.6f) {
+      result.x -= sign(delta.x) * m_2pi;
+    }
+    if (abs(delta.y) > 3.2f && abs(delta.z) < 1.6f && abs(delta.x) < 1.6f) {
+      result.y -= sign(delta.y) * m_2pi;
+    }
+    if (abs(delta.z) > 3.2f && abs(delta.x) < 1.6f && abs(delta.y) < 1.6f) {
+      result.z -= sign(delta.z) * m_2pi;
+    }
+    return result;
+  }
+
   friend std::ostream &operator<<(std::ostream &stream, const EulerXYZ &rot)
   {
     return stream << "EulerXYZ" << static_cast<VecBase<T, 3>>(rot);
@@ -418,6 +449,11 @@ template<typename T> struct Euler3 {
   T &z()
   {
     return ijk_[z_index()];
+  }
+
+  Euler3 wrapped_around(const Euler3 &reference) const
+  {
+    return {EulerXYZ(ijk_).wrapped_around(reference.ijk_)};
   }
 
   /** Operators. */
