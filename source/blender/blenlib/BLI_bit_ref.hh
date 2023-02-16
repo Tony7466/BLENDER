@@ -7,8 +7,8 @@
  *
  * This file provides the basis for processing "indexed bits" (i.e. every bit has an index).
  * The main purpose of this file is to define how bits are indexed within a memory buffer.
- * This is necessary, because there are many different ways to do it. For example, is the first bit
- * the least or most significant bit and how does endianness affect the bit order.
+ * For example, one has to define whether the first bit is the least or most significant bit and
+ * how endianness affect the bit order.
  *
  * The order is defined as follows:
  * - Every indexed bit is part of an #BitInt. These ints are ordered by their address as usual.
@@ -82,8 +82,8 @@ inline const BitInt *int_containing_bit(const BitInt *data, const int64_t bit_in
  */
 class BitRef {
  private:
-  /** Points to the integer that the bit is in. */
-  const BitInt *data_;
+  /** Points to the exact integer that the bit is in. */
+  const BitInt *int_;
   /** All zeros except for a single one at the bit that is referenced. */
   BitInt mask_;
 
@@ -98,7 +98,7 @@ class BitRef {
    */
   BitRef(const BitInt *data, const int64_t bit_index)
   {
-    data_ = int_containing_bit(data, bit_index);
+    int_ = int_containing_bit(data, bit_index);
     mask_ = mask_single_bit(bit_index & BitIndexMask);
   }
 
@@ -107,7 +107,7 @@ class BitRef {
    */
   bool test() const
   {
-    const BitInt value = *data_;
+    const BitInt value = *int_;
     const BitInt masked_value = value & mask_;
     return masked_value != 0;
   }
@@ -124,7 +124,7 @@ class BitRef {
 class MutableBitRef {
  private:
   /** Points to the integer that the bit is in. */
-  BitInt *data_;
+  BitInt *int_;
   /** All zeros except for a single one at the bit that is referenced. */
   BitInt mask_;
 
@@ -137,7 +137,7 @@ class MutableBitRef {
    */
   MutableBitRef(BitInt *data, const int64_t bit_index)
   {
-    data_ = int_containing_bit(data, bit_index);
+    int_ = int_containing_bit(data, bit_index);
     mask_ = mask_single_bit(bit_index & BitIndexMask);
   }
 
@@ -147,7 +147,7 @@ class MutableBitRef {
   operator BitRef() const
   {
     BitRef bit_ref;
-    bit_ref.data_ = data_;
+    bit_ref.int_ = int_;
     bit_ref.mask_ = mask_;
     return bit_ref;
   }
@@ -157,7 +157,7 @@ class MutableBitRef {
    */
   bool test() const
   {
-    const BitInt value = *data_;
+    const BitInt value = *int_;
     const BitInt masked_value = value & mask_;
     return masked_value != 0;
   }
@@ -172,7 +172,7 @@ class MutableBitRef {
    */
   void set()
   {
-    *data_ |= mask_;
+    *int_ |= mask_;
   }
 
   /**
@@ -180,7 +180,7 @@ class MutableBitRef {
    */
   void reset()
   {
-    *data_ &= ~mask_;
+    *int_ &= ~mask_;
   }
 
   /**
@@ -199,16 +199,16 @@ class MutableBitRef {
 
   /**
    * Does the same as #set, but does not use a branch. This is faster when the input value is
-   * unpredictable for the CPU branch predictor (worst case is a uniform random distribution with
-   * 50% probability for true and false). If the value is predictable, this is likely slower than
-   * #set.
+   * unpredictable for the CPU branch predictor (best case for this function is a uniform random
+   * distribution with 50% probability for true and false). If the value is predictable, this is
+   * likely slower than #set.
    */
   void set_branchless(const bool value)
   {
     const BitInt value_int = BitInt(value);
     BLI_assert(ELEM(value_int, 0, 1));
-    const BitInt old = *data_;
-    *data_ =
+    const BitInt old = *int_;
+    *int_ =
         /* Unset bit. */
         (~mask_ & old)
         /* Optionally set it again. The -1 turns a 1 into `0x00...` and a 0 into `0xff...`. */

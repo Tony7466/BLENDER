@@ -59,8 +59,8 @@ class MutableBitIterator : public BitIteratorBase {
 };
 
 /**
- * Similar to #Span, but references a range of bits instead of normal C++ types (which are at least
- * one byte large). Use #MutableBitSpan if the values are supposed to be modified.
+ * Similar to #Span, but references a range of bits instead of normal C++ types (which must be at
+ * least one byte large). Use #MutableBitSpan if the values are supposed to be modified.
  *
  * The beginning and end of a #BitSpan does *not* have to be at byte/int boundaries. It can start
  * and end at any bit.
