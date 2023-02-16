@@ -3643,10 +3643,10 @@ static void ANIM_OT_channel_select_keys(wmOperatorType *ot)
 /** \name View Channel Operator
  * \{ */
 
-static void get_normalized_fcurve_bounds(FCurve *fcu,
-                                         bAnimContext *ac,
-                                         bAnimListElem *ale,
-                                         bool include_handles,
+static void get_normalized_fcurve_bounds(const FCurve *fcu,
+                                         const bAnimContext *ac,
+                                         const bAnimListElem *ale,
+                                         const bool include_handles,
                                          const float range[2],
                                          rctf *r_bounds)
 {
@@ -3659,14 +3659,14 @@ static void get_normalized_fcurve_bounds(FCurve *fcu,
                          fcu_selection_only,
                          include_handles,
                          range);
+  const short mapping_flag = ANIM_get_normalization_flags(ac);
 
-  float unitFac, offset;
-  short mapping_flag = ANIM_get_normalization_flags(ac);
-  unitFac = ANIM_unit_mapping_get_factor(ac->scene, ale->id, fcu, mapping_flag, &offset);
-  r_bounds->ymin += offset;
-  r_bounds->ymax += offset;
-  r_bounds->ymin *= unitFac;
-  r_bounds->ymax *= unitFac;
+  float offset;
+  const float unit_fac = ANIM_unit_mapping_get_factor(
+      ac->scene, ale->id, fcu, mapping_flag, &offset);
+
+  r_bounds->ymin = (r_bounds->ymin + offset) * unit_fac;
+  r_bounds->ymax = (r_bounds->ymax + offset) * unit_fac;
 }
 
 static void get_gpencil_bounds(bGPDlayer *gpl, const float range[2], rctf *r_bounds)
@@ -3727,20 +3727,20 @@ static void get_view_range(Scene *scene, const bool use_preview_range, float r_r
   }
 }
 
-/* Take regions into account, that could block the view.
- * Marker region is supposed to be larger than the scroll-bar, so prioritize it. */
+/* Pad the given rctf with regions that could block the view.
+ * For example Markers and Time Scrubbing. */
 static void add_region_padding(bContext *C, bAnimContext *ac, rctf *bounds)
 {
   BLI_rctf_scale(bounds, 1.1f);
 
-  float pad_top = UI_TIME_SCRUB_MARGIN_Y;
-  float pad_bottom = BLI_listbase_is_empty(ED_context_get_markers(C)) ? V2D_SCROLL_HANDLE_HEIGHT :
-                                                                        UI_MARKER_MARGIN_Y;
+  const float pad_top = UI_TIME_SCRUB_MARGIN_Y;
+  const float pad_bottom = BLI_listbase_is_empty(ED_context_get_markers(C)) ?
+                               V2D_SCROLL_HANDLE_HEIGHT :
+                               UI_MARKER_MARGIN_Y;
   BLI_rctf_pad_y(bounds, ac->region->winy, pad_bottom, pad_top);
 }
 
-/* Iterates through regions because the operator might not have been called from the correct
- * region. */
+/* Find the window region in the bAnimContext area and move it to bounds. */
 static void move_graph_view(bContext *C, bAnimContext *ac, rctf *bounds, const int smooth_viewtx)
 {
   LISTBASE_FOREACH (ARegion *, region, &ac->area->regionbase) {
@@ -3765,6 +3765,7 @@ static int graphkeys_view_selected_channels_exec(bContext *C, wmOperator *op)
   size_t anim_data_length = ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
 
   if (anim_data_length == 0) {
+    WM_report(RPT_WARNING, "No channels to operate on");
     return OPERATOR_CANCELLED;
   }
 
