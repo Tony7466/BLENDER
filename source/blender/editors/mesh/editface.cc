@@ -215,8 +215,8 @@ void paintface_reveal(bContext *C, Object *ob, const bool select)
 /**
  * Join all edges of each poly in the AtomicDisjointSet. This can be used to find out which polys
  * are connected to each other.
- * @param islands Is expected to be of length mesh->totedge.
- * @param skip_seams Polys separated by a seam will be treated as not connected.
+ * \param islands Is expected to be of length mesh->totedge.
+ * \param skip_seams Polys separated by a seam will be treated as not connected.
  */
 static void build_poly_connections(blender::AtomicDisjointSet &islands,
                                    Mesh &mesh,
@@ -240,17 +240,17 @@ static void build_poly_connections(blender::AtomicDisjointSet &islands,
       }
       const MPoly &poly = polys[poly_index];
       for (const int outer_loop_index : IndexRange(0, poly.totloop)) {
-        const MLoop *outer_mloop = &loops[poly.loopstart + outer_loop_index];
-        if (skip_seams && (edges[outer_mloop->e].flag & ME_SEAM) != 0) {
+        const MLoop &outer_mloop = loops[poly.loopstart + outer_loop_index];
+        if (skip_seams && (edges[outer_mloop.e].flag & ME_SEAM) != 0) {
           continue;
         }
         for (int inner_loop_index = outer_loop_index + 1; inner_loop_index < poly.totloop;
              inner_loop_index++) {
-          const MLoop *inner_mloop = &loops[poly.loopstart + inner_loop_index];
-          if (skip_seams && (edges[inner_mloop->e].flag & ME_SEAM) != 0) {
+          const MLoop &inner_mloop = loops[poly.loopstart + inner_loop_index];
+          if (skip_seams && (edges[inner_mloop.e].flag & ME_SEAM) != 0) {
             continue;
           }
-          islands.join(inner_mloop->e, outer_mloop->e);
+          islands.join(inner_mloop.e, outer_mloop.e);
         }
       }
     }
@@ -311,12 +311,11 @@ void paintface_select_linked(bContext *C, Object *ob, const int mval[2], const b
     return;
   }
 
-  Vector<int> indices;
-
   bke::MutableAttributeAccessor attributes = me->attributes_for_write();
   bke::SpanAttributeWriter<bool> select_poly = attributes.lookup_or_add_for_write_span<bool>(
       ".select_poly", ATTR_DOMAIN_FACE);
 
+  Vector<int> indices;
   if (mval) {
     uint index = uint(-1);
     if (!ED_mesh_pick_face(C, ob, mval, ED_MESH_PICK_DEFAULT_FACE_DIST, &index)) {
