@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
+
 #include "GEO_join_geometry.hh"
 
 #include "node_geometry_util.hh"

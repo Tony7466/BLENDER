@@ -14,8 +14,16 @@ namespace blender::nodes::node_geo_realize_instances_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>(N_("Geometry"));
-  b.add_input<decl::Bool>(N_("Selection")).default_value(true).hide_value().supports_field();
-  b.add_input<decl::Int>(N_("Depth")).default_value(0).supports_field();
+  b.add_input<decl::Bool>(N_("Selection"))
+      .default_value(true)
+      .hide_value()
+      .supports_field()
+      .description(N_("Which top-level instances to realize"));
+  b.add_input<decl::Int>(N_("Depth"))
+      .default_value(0)
+      .supports_field()
+      .description(
+          N_("Number of levels of nested instances to realize for each top-level instance"));
   b.add_output<decl::Geometry>(N_("Geometry")).propagate_all();
 }
 
@@ -50,13 +58,10 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   const bke::Instances &instances = *geometry_set.get_instances_for_read();
   const bke::InstancesFieldContext field_context{instances};
-
   fn::FieldEvaluator evaluator{field_context, instances.instances_num()};
-
   evaluator.set_selection(selection_field);
   evaluator.add(depth_field);
   evaluator.evaluate();
-
   const VArray<int> depths = evaluator.get_evaluated<int>(0);
   const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
 

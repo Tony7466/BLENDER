@@ -1502,10 +1502,10 @@ static void propagate_instances_to_keep(
     GeometrySet &new_geometry_set,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
-  const Instances *instances = geometry_set.get_instances_for_read();
+  const Instances &instances = *geometry_set.get_instances_for_read();
 
   Vector<int64_t> inverse_selection_indices;
-  const IndexMask inverse_selection = selection.invert(IndexRange(instances->instances_num()),
+  const IndexMask inverse_selection = selection.invert(IndexRange(instances.instances_num()),
                                                        inverse_selection_indices);
   /* Check not all instances are being realized. */
   if (inverse_selection.is_empty()) {
@@ -1515,7 +1515,7 @@ static void propagate_instances_to_keep(
   InstancesComponent &new_instances_components =
       new_geometry_set.get_component_for_write<InstancesComponent>();
 
-  std::unique_ptr<Instances> new_instances = std::make_unique<Instances>(*instances);
+  std::unique_ptr<Instances> new_instances = std::make_unique<Instances>(instances);
   new_instances->remove(inverse_selection, propagation_info);
   new_instances_components.replace(new_instances.release(), GeometryOwnershipType::Owned);
 }
