@@ -1807,8 +1807,8 @@ static int mouse_graph_keys(bAnimContext *ac,
   }
 
   /* Set active F-Curve when something was actually selected (so not on a deselect), except when
-   * dragging the selected keys. Needs to be called with (U.animation_flag  &
-   * USER_ANIM_ONLY_SHOW_SELECTED_CURVE_KEYS), otherwise the active flag won't be set T26452. */
+   * dragging the selected keys. Needs to be called with (sipo->flag & SIPO_SELCUVERTSONLY),
+   * otherwise the active flag won't be set #26452. */
   if (!run_modal && (nvi->fcu->flag & FCURVE_SELECTED) && something_was_selected) {
     /* NOTE: Sync the filter flags with findnearest_fcurve_vert. */
     int filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_FCURVESONLY |
