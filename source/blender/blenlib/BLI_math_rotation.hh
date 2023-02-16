@@ -281,7 +281,7 @@ template<typename T>
   /* Rotate back line v1-v2. */
   Vec3T line = rotate(conjugate(q1), (v2 - v1));
   /* What angle has this line with x-axis? */
-  line = normalize(Vec3T(line.xy()));
+  line = normalize(Vec3T(line.x, line.y, T(0)));
 
   angle = T(0.5) * math::atan2(line.y, line.x);
   detail::Quaternion<T> q2(math::cos(angle), 0.0, 0.0, math::sin(angle));
