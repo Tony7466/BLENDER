@@ -9,6 +9,8 @@
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(common_intersect_lib.glsl)
 
+#pragma BLENDER_REQUIRE(common_debug_shape_lib.glsl)
+
 /* Inflate bounds by 1 pixel to ensure the tilemaps needed by all LOD0 pixels get tagged */
 void inflate_bounds(vec3 ls_center, inout vec3 P, inout vec3 lP)
 {
@@ -61,6 +63,20 @@ void main()
     ls_conservative_min = min(ls_conservative_min, lP);
     ls_conservative_max = max(ls_conservative_max, lP);
   }
+
+  /*
+  if (gl_VertexID == 0) {
+    Box debug_box = shape_box(
+        ls_conservative_min,
+        ls_conservative_min + (ls_conservative_max - ls_conservative_min) * vec3(1, 0, 0),
+        ls_conservative_min + (ls_conservative_max - ls_conservative_min) * vec3(0, 1, 0),
+        ls_conservative_min + (ls_conservative_max - ls_conservative_min) * vec3(0, 0, 1));
+    for (int i = 0; i < 8; i++) {
+      debug_box.corners[i] = point_object_to_world(debug_box.corners[i]);
+    }
+    drw_debug(debug_box);
+  }
+  //*/
 
 #ifdef DEBUG_CONSERVATIVE_RASTERIZATION
   interp.ls_aabb_min = point_world_to_object(ws_aabb_min);

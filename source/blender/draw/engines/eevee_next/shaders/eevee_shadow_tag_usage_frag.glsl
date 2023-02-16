@@ -10,6 +10,8 @@
 #pragma BLENDER_REQUIRE(eevee_shadow_tag_usage_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 
+#pragma BLENDER_REQUIRE(common_debug_shape_lib.glsl)
+
 float ray_aabb(vec3 ray_origin, vec3 ray_direction, vec3 aabb_min, vec3 aabb_max)
 {
   /* https://gdbooks.gitbooks.io/3dcollisions/content/Chapter3/raycast_aabb.html */
@@ -34,6 +36,55 @@ float ray_aabb(vec3 ray_origin, vec3 ray_direction, vec3 aabb_min, vec3 aabb_max
     return 0.0;
   }
   return t_min;
+}
+
+float pixel_size_at(float linear_depth)
+{
+  float pixel_size = pixel_world_radius;
+  bool is_persp = (ProjectionMatrix[3][3] == 0.0);
+  if (is_persp) {
+    pixel_size *= max(0.01, linear_depth);
+  }
+  return pixel_size;
+}
+
+float step_size_at(float linear_depth)
+{
+  /* Ensure that step_size is as large as possible,
+   * but not larger than the smallest possible page size. */
+  return pixel_size_at(linear_depth) * SHADOW_PAGE_RES * 0.5;
+}
+
+void step_bounding_sphere(vec3 vs_near_plane,
+                          vec3 vs_view_direction,
+                          float near_t,
+                          float far_t,
+                          out vec3 sphere_center,
+                          out float sphere_radius)
+{
+  float near_pixel_size = pixel_size_at(near_t);
+  vec3 near_center = vs_near_plane + vs_view_direction * near_t;
+
+  float far_pixel_size = pixel_size_at(far_t);
+  vec3 far_center = vs_near_plane + vs_view_direction * far_t;
+
+  /* TODO (Miguel Pozo): Use an actual algorithm. */
+  sphere_center = mix(near_center, far_center, 0.5);
+  sphere_center = mix(sphere_center, far_center, 1.0 - near_pixel_size / far_pixel_size);
+  sphere_radius = 0;
+
+  for (int x = -1; x <= 1; x += 2) {
+    for (int y = -1; y <= 1; y += 2) {
+      vec3 near_corner = near_center + (near_pixel_size * vec3(x, y, 0));
+      sphere_radius = max(sphere_radius, len_squared(near_corner - sphere_center));
+
+      vec3 far_corner = far_center + (far_pixel_size * vec3(x, y, 0));
+      sphere_radius = max(sphere_radius, len_squared(far_corner - sphere_center));
+    }
+  }
+
+  sphere_center = point_view_to_world(sphere_center);
+  sphere_radius = sqrt(sphere_radius);
 }
 
 void main()
@@ -70,22 +121,22 @@ void main()
 #endif
   outDebug.a = 1.0;
 
-  float step_size = 0.1;
+  float step_size;
   for (float t = near_box_t; t <= far_box_t; t += step_size) {
     /* Ensure we don't get past far_box_t. */
     t = min(t, far_box_t);
 
     vec3 P = ws_near_plane + (ws_view_direction * t);
     vec3 vP = vs_near_plane + (vs_view_direction * t);
+    step_size = step_size_at(t);
+
+    /*
+    float step_radius;
+    step_bounding_sphere(vs_near_plane, vs_view_direction, t, t + step_size, P, step_radius);
+    vP = point_world_to_view(vP);
+    */
+
     /* TODO (Miguel Pozo): Pass step size to ensure conservative enough LOD selection */
     shadow_tag_usage(vP, P, gl_FragCoord.xy * exp2(fb_lod));
-
-    /* Ensure that step_size is as large as possible,
-     * but (hopefully) not larger than the smallest possible page size. */
-    step_size = pixel_world_radius * SHADOW_PAGE_RES * 0.5;
-    bool is_persp = (ProjectionMatrix[3][3] == 0.0);
-    if (is_persp) {
-      step_size *= max(0.01, t);
-    }
   }
 }

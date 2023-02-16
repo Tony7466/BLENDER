@@ -219,7 +219,7 @@ class ShadowModule {
   float tilemap_projection_ratio_;
   float pixel_world_radius_;
   int2 usage_tag_fb_resolution_;
-  int usage_tag_fb_lod_ = 2;
+  int usage_tag_fb_lod_ = 5;
 
   /* Statistics that are read back to CPU after a few frame (to avoid stall). */
   SwapChain<ShadowStatisticsBuf, 5> statistics_buf_;
