@@ -159,9 +159,9 @@ template<typename T> void from_index_mask(const IndexMask &mask, MutableSpan<T> 
 template<typename T> using RangeOrSpanVariant = std::variant<IndexRange, Span<T>>;
 
 template<typename T>
-void split_to_ranges_and_spans(Span<T> indices,
-                               int64_t range_threshold,
-                               Vector<RangeOrSpanVariant<T>> &r_parts);
+int64_t split_to_ranges_and_spans(Span<T> indices,
+                                  int64_t range_threshold,
+                                  Vector<RangeOrSpanVariant<T>> &r_parts);
 
 template<typename T> inline bool non_empty_is_range(const Span<T> indices)
 {
