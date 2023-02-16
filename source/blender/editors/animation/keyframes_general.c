@@ -1134,13 +1134,9 @@ static void paste_animedit_keys_fcurve(
       do_curve_mirror_flippping(aci, bezt);
     }
 
-    bezt->vec[0][0] += offset[0];
-    bezt->vec[1][0] += offset[0];
-    bezt->vec[2][0] += offset[0];
-
-    bezt->vec[0][1] += offset[1];
-    bezt->vec[1][1] += offset[1];
-    bezt->vec[2][1] += offset[1];
+    add_v2_v2(bezt->vec[0], offset);
+    add_v2_v2(bezt->vec[1], offset);
+    add_v2_v2(bezt->vec[2], offset);
 
     /* insert the keyframe
      * NOTE: we do not want to inherit handles from existing keyframes in this case!
@@ -1149,13 +1145,9 @@ static void paste_animedit_keys_fcurve(
     insert_bezt_fcurve(fcu, bezt, INSERTKEY_OVERWRITE_FULL);
 
     /* un-apply offset from src beztriple after copying */
-    bezt->vec[0][0] -= offset[0];
-    bezt->vec[1][0] -= offset[0];
-    bezt->vec[2][0] -= offset[0];
-
-    bezt->vec[0][1] -= offset[1];
-    bezt->vec[1][1] -= offset[1];
-    bezt->vec[2][1] -= offset[1];
+    sub_v2_v2(bezt->vec[0], offset);
+    sub_v2_v2(bezt->vec[1], offset);
+    sub_v2_v2(bezt->vec[2], offset);
 
     if (flip) {
       do_curve_mirror_flippping(aci, bezt);
@@ -1239,33 +1231,37 @@ static float paste_get_y_offset(bAnimContext *ac,
     case KEYFRAME_PASTE_VALUE_OFFSET_CURSOR:
       SpaceGraph *sipo = (SpaceGraph *)ac->sl;
       offset = sipo->cursorVal - aci->bezt[0].vec[1][1];
-      break;
+      return offset;
+
     case KEYFRAME_PASTE_VALUE_OFFSET_CFRA:
       const float cfra_y = evaluate_fcurve(fcu, cfra);
       offset = cfra_y - aci->bezt[0].vec[1][1];
-      break;
+      return offset;
+
     case KEYFRAME_PASTE_VALUE_OFFSET_LEFT_KEY: {
       bool replace;
       const int fcu_index = BKE_fcurve_bezt_binarysearch_index(
           fcu->bezt, cfra, fcu->totvert, &replace);
       BezTriple left_key = fcu->bezt[max_ii(fcu_index - 1, 0)];
       offset = left_key.vec[1][1] - aci->bezt[0].vec[1][1];
-      break;
+      return offset;
     }
+
     case KEYFRAME_PASTE_VALUE_OFFSET_RIGHT_KEY: {
       bool replace;
       const int fcu_index = BKE_fcurve_bezt_binarysearch_index(
           fcu->bezt, cfra, fcu->totvert, &replace);
       BezTriple right_key = fcu->bezt[min_ii(fcu_index, fcu->totvert - 1)];
       offset = right_key.vec[1][1] - aci->bezt[aci->totvert - 1].vec[1][1];
-      break;
+      return offset;
     }
+
     case KEYFRAME_PASTE_VALUE_OFFSET_NONE:
     default:
-      offset = 0.0f;
+      break;
   }
 
-  return offset;
+  return 0.0f;
 }
 
 eKeyPasteError paste_animedit_keys(bAnimContext *ac,
