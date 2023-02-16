@@ -239,14 +239,19 @@ static void build_poly_connections(blender::AtomicDisjointSet &islands,
         continue;
       }
       const MPoly &poly = polys[poly_index];
-      for (const int outer_loop_index : IndexRange(0, poly.totloop)) {
-        const MLoop &outer_mloop = loops[poly.loopstart + outer_loop_index];
+      const Span<MLoop> poly_loops = loops.slice(poly.loopstart, poly.totloop);
+
+      for (const int poly_loop_index : poly_loops.index_range()) {
+        const MLoop &outer_mloop = poly_loops[poly_loop_index];
         if (skip_seams && (edges[outer_mloop.e].flag & ME_SEAM) != 0) {
           continue;
         }
-        for (int inner_loop_index = outer_loop_index + 1; inner_loop_index < poly.totloop;
-             inner_loop_index++) {
-          const MLoop &inner_mloop = loops[poly.loopstart + inner_loop_index];
+
+        for (const MLoop &inner_mloop :
+             poly_loops.slice(poly_loop_index, poly_loops.size() - poly_loop_index)) {
+          if (&outer_mloop == &inner_mloop) {
+            continue;
+          }
           if (skip_seams && (edges[inner_mloop.e].flag & ME_SEAM) != 0) {
             continue;
           }
