@@ -373,8 +373,10 @@ bool BKE_fcurve_calc_range(
 
 /**
  * Calculate the extents of F-Curve's data.
+ * \param range Only calculate the bounds of the FCurve in the given range.
+ * Does the full range if NULL.
  */
-bool BKE_fcurve_calc_bounds(struct FCurve *fcu,
+bool BKE_fcurve_calc_bounds(const struct FCurve *fcu,
                             float *xmin,
                             float *xmax,
                             float *ymin,
