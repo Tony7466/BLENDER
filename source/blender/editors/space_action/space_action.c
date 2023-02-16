@@ -402,17 +402,18 @@ static void saction_channel_region_message_subscribe(const wmRegionMessageSubscr
 
 static void action_clamp_scroll(ARegion *region)
 {
-  rcti scrub_rect;
-  ED_time_scrub_region_rect_get(region, &scrub_rect);
-  const int scrub_height = BLI_rcti_size_y(&scrub_rect);
-  const float channel_height = ANIM_UI_get_channel_height() + ANIM_UI_get_channel_skip();
-  const float pad_y = scrub_height + channel_height * 2;
-
   View2D *v2d = &region->v2d;
-  const float cur_range_y = BLI_rctf_size_y(&v2d->cur);
-  if (v2d->cur.ymax < v2d->tot.ymin + pad_y) {
-    v2d->cur.ymax = v2d->tot.ymin + pad_y;
-    v2d->cur.ymin = v2d->cur.ymax - cur_range_y;
+  const float cur_height_y = BLI_rctf_size_y(&v2d->cur);
+
+  if (BLI_rctf_size_y(&v2d->cur) > BLI_rctf_size_y(&v2d->tot)) {
+    v2d->cur.ymin = -cur_height_y;
+    v2d->cur.ymax = 0;
+  }
+  else {
+    if (v2d->cur.ymin < v2d->tot.ymin) {
+      v2d->cur.ymin = v2d->tot.ymin;
+      v2d->cur.ymax = v2d->cur.ymin + cur_height_y;
+    }
   }
 }
 
@@ -878,6 +879,8 @@ static void action_blend_write(BlendWriter *writer, SpaceLink *sl)
 
 static void action_main_region_view2d_changed(const bContext *UNUSED(C), ARegion *region)
 {
+  /* V2D_KEEPTOT_STRICT cannot be used to clamp scrolling
+   * because it also clamps the x-axis to 0. */
   action_clamp_scroll(region);
 }
 
