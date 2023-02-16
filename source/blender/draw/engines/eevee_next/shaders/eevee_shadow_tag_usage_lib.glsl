@@ -25,7 +25,8 @@ void shadow_tag_usage_tile(LightData light, ivec2 tile_co, int lod, int tilemap_
   atomicOr(tiles_buf[tile_index], SHADOW_IS_USED);
 }
 
-void shadow_tag_usage_tilemap_directional(uint l_idx, vec3 P, float dist_to_cam)
+void shadow_tag_usage_tilemap_directional(
+    uint l_idx, vec3 P, vec3 V, float dist_to_cam, float radius)
 {
   LightData light = light_buf[l_idx];
 
@@ -35,12 +36,32 @@ void shadow_tag_usage_tilemap_directional(uint l_idx, vec3 P, float dist_to_cam)
 
   vec3 lP = shadow_world_to_local(light, P);
 
-  ShadowCoordinates coord = shadow_directional_coordinates(light, lP);
+  if (radius == 0) {
+    ShadowCoordinates coord = shadow_directional_coordinates(light, lP);
+    shadow_tag_usage_tile(light, coord.tile_coord, 0, coord.tilemap_index);
+  }
+  else {
+    vec3 start_lP = shadow_world_to_local(light, P - V * radius);
+    vec3 end_lP = shadow_world_to_local(light, P + V * radius);
+    int min_level = shadow_directional_level(light, start_lP - light._position);
+    int max_level = shadow_directional_level(light, end_lP - light._position);
 
-  shadow_tag_usage_tile(light, coord.tile_coord, 0, coord.tilemap_index);
+    for (int level = min_level; level <= max_level; level++) {
+      ShadowCoordinates coord_min = shadow_directional_coordinates_at_level(
+          light, lP - vec3(radius, radius, 0), level);
+      ShadowCoordinates coord_max = shadow_directional_coordinates_at_level(
+          light, lP + vec3(radius, radius, 0), level);
+
+      for (int x = coord_min.tile_coord.x; x <= coord_max.tile_coord.x; x++) {
+        for (int y = coord_min.tile_coord.y; y <= coord_max.tile_coord.y; y++) {
+          shadow_tag_usage_tile(light, ivec2(x, y), 0, coord_min.tilemap_index);
+        }
+      }
+    }
+  }
 }
 
-void shadow_tag_usage_tilemap_punctual(uint l_idx, vec3 P, float dist_to_cam)
+void shadow_tag_usage_tilemap_punctual(uint l_idx, vec3 P, vec3 V, float dist_to_cam, float radius)
 {
   LightData light = light_buf[l_idx];
 
@@ -99,12 +120,25 @@ void shadow_tag_usage(vec3 vP, vec3 P, vec2 pixel)
   float dist_to_cam = length(vP);
 
   LIGHT_FOREACH_BEGIN_DIRECTIONAL (light_cull_buf, l_idx) {
-    shadow_tag_usage_tilemap_directional(l_idx, P, dist_to_cam);
+    shadow_tag_usage_tilemap_directional(l_idx, P, vec3(0), dist_to_cam, 0);
   }
   LIGHT_FOREACH_END
 
   LIGHT_FOREACH_BEGIN_LOCAL (light_cull_buf, light_zbin_buf, light_tile_buf, pixel, vP.z, l_idx) {
-    shadow_tag_usage_tilemap_punctual(l_idx, P, dist_to_cam);
+    shadow_tag_usage_tilemap_punctual(l_idx, P, vec3(0), dist_to_cam, 0);
+  }
+  LIGHT_FOREACH_END
+}
+
+void shadow_tag_usage(vec3 vP, vec3 P, vec3 V, float radius, float dist_to_cam, vec2 pixel)
+{
+  LIGHT_FOREACH_BEGIN_DIRECTIONAL (light_cull_buf, l_idx) {
+    shadow_tag_usage_tilemap_directional(l_idx, P, V, dist_to_cam, radius);
+  }
+  LIGHT_FOREACH_END
+
+  LIGHT_FOREACH_BEGIN_LOCAL (light_cull_buf, light_zbin_buf, light_tile_buf, pixel, vP.z, l_idx) {
+    shadow_tag_usage_tilemap_punctual(l_idx, P, V, dist_to_cam, radius);
   }
   LIGHT_FOREACH_END
 }

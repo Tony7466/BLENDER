@@ -52,7 +52,7 @@ float step_size_at(float linear_depth)
 {
   /* Ensure that step_size is as large as possible,
    * but not larger than the smallest possible page size. */
-  return pixel_size_at(linear_depth) * SHADOW_PAGE_RES * 0.5;
+  return pixel_size_at(linear_depth) * SHADOW_PAGE_RES;
 }
 
 void step_bounding_sphere(vec3 vs_near_plane,
@@ -120,13 +120,10 @@ void main()
     vec3 vP = vs_near_plane + (vs_view_direction * t);
     step_size = step_size_at(t);
 
-    /*
     float step_radius;
     step_bounding_sphere(vs_near_plane, vs_view_direction, t, t + step_size, P, step_radius);
     vP = point_world_to_view(vP);
-    */
 
-    /* TODO (Miguel Pozo): Pass step size to ensure conservative enough LOD selection */
-    shadow_tag_usage(vP, P, gl_FragCoord.xy * exp2(fb_lod));
+    shadow_tag_usage(vP, P, ws_view_direction, step_radius, t, gl_FragCoord.xy * exp2(fb_lod));
   }
 }
