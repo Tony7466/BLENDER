@@ -5252,19 +5252,8 @@ class VIEW3D_MT_gpencil_animation(Menu):
 
     def draw(self, _context):
         layout = self.layout
-
-        layout.operator("gpencil.blank_frame_add", text="Insert Blank Keyframe (Active Layer)")
-        layout.operator("gpencil.blank_frame_add", text="Insert Blank Keyframe (All Layers)").all_layers = True
-
-        layout.separator()
-
-        layout.operator("gpencil.frame_duplicate", text="Duplicate Active Keyframe (Active Layer)")
-        layout.operator("gpencil.frame_duplicate", text="Duplicate Active Keyframe (All Layers)").mode = 'ALL'
-
-        layout.separator()
-
-        layout.operator("gpencil.delete", text="Delete Active Keyframe (Active Layer)").type = 'FRAME'
-        layout.operator("gpencil.active_frames_delete_all", text="Delete Active Keyframes (All Layers)")
+        layout.menu("GPENCIL_MT_gpencil_draw_insert", text="Insert Keyframe...")
+        layout.menu("GPENCIL_MT_gpencil_draw_delete", text="Delete Keyframe...")
 
 
 class VIEW3D_MT_edit_gpencil_transform(Menu):
