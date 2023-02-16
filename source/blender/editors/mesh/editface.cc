@@ -234,6 +234,7 @@ static void build_poly_connections(blender::AtomicDisjointSet &islands,
   /* Polys are connected if they share edges. By connecting all edges of a loop (as long as they
    * are not a seam) we can find connected faces. */
   threading::parallel_for(polys.index_range(), 1024, [&](const IndexRange range) {
+
     for (const int poly_index : range) {
       if (hide_poly[poly_index]) {
         continue;
@@ -258,7 +259,9 @@ static void build_poly_connections(blender::AtomicDisjointSet &islands,
           islands.join(inner_mloop.e, outer_mloop.e);
         }
       }
+      
     }
+
   });
 }
 
