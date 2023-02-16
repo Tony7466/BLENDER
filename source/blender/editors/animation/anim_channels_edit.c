@@ -3643,8 +3643,8 @@ static void ANIM_OT_channel_select_keys(wmOperatorType *ot)
 /** \name View Channel Operator
  * \{ */
 
-static void get_normalized_fcurve_bounds(const FCurve *fcu,
-                                         const bAnimContext *ac,
+static void get_normalized_fcurve_bounds(FCurve *fcu,
+                                         bAnimContext *ac,
                                          const bAnimListElem *ale,
                                          const bool include_handles,
                                          const float range[2],
