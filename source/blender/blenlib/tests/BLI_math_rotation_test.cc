@@ -391,6 +391,121 @@ TEST(math_rotation, QuaternionFromTriangle)
                  1e-5f);
 }
 
+TEST(math_rotation, QuaternionFromVector)
+{
+  float3 v1(0.927091f, 0.211322f, -0.124857f);
+  float3 v2(-0.051681f, 0.498261f, -0.86146f);
+  EXPECT_V4_NEAR(float4(from_vector(v1, eAxisSigned::X_POS, eAxis::X)),
+                 float4(0.129047, 0, -0.50443, -0.853755),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v1, eAxisSigned::X_POS, eAxis::Y)),
+                 float4(0.12474, 0.0330631, -0.706333, -0.696017),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v1, eAxisSigned::X_POS, eAxis::Z)),
+                 float4(0.111583, -0.0648251, -0.00729451, -0.991612),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v1, eAxisSigned::Y_POS, eAxis::X)),
+                 float4(0.476074, 0.580363, -0.403954, 0.522832),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v1, eAxisSigned::Y_POS, eAxis::Y)),
+                 float4(0.62436, 0.104259, 0, 0.774148),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v1, eAxisSigned::Y_POS, eAxis::Z)),
+                 float4(0.622274, 0.0406802, 0.0509963, 0.780077),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v1, eAxisSigned::Z_POS, eAxis::X)),
+                 float4(0.747014, 0.0737433, -0.655337, 0.0840594),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v1, eAxisSigned::Z_POS, eAxis::Z)),
+                 float4(0.751728, 0.146562, -0.642981, 0),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v1, eAxisSigned::Z_POS, eAxis::Z)),
+                 float4(0.751728, 0.146562, -0.642981, 0),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v1, eAxisSigned::X_NEG, eAxis::X)),
+                 float4(0.991638, 0, 0.0656442, 0.111104),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v1, eAxisSigned::X_NEG, eAxis::Y)),
+                 float4(0.706333, 0.696017, 0.12474, 0.0330631),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v1, eAxisSigned::X_NEG, eAxis::Z)),
+                 float4(0.991612, -0.0072946, 0.0648251, 0.111583),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v1, eAxisSigned::Y_NEG, eAxis::X)),
+                 float4(0.580363, -0.476074, -0.522832, -0.403954),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v1, eAxisSigned::Y_NEG, eAxis::Y)),
+                 float4(0.781137, -0.083334, 0, -0.618774),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v1, eAxisSigned::Y_NEG, eAxis::Z)),
+                 float4(0.780077, -0.0509963, 0.0406802, -0.622274),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v1, eAxisSigned::Z_NEG, eAxis::X)),
+                 float4(0.0737433, -0.747014, -0.0840594, -0.655337),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v1, eAxisSigned::Z_NEG, eAxis::Z)),
+                 float4(0.659473, -0.167065, 0.732929, 0),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v1, eAxisSigned::Z_NEG, eAxis::Z)),
+                 float4(0.659473, -0.167065, 0.732929, 0),
+                 1e-5f);
+
+  EXPECT_V4_NEAR(float4(from_vector(v2, eAxisSigned::X_POS, eAxis::X)),
+                 float4(0.725211, 0, -0.596013, -0.344729),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v2, eAxisSigned::X_POS, eAxis::Y)),
+                 float4(0.691325, 0.219092, -0.672309, -0.148561),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v2, eAxisSigned::X_POS, eAxis::Z)),
+                 float4(0.643761, -0.333919, -0.370346, -0.580442),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v2, eAxisSigned::Y_POS, eAxis::X)),
+                 float4(0.320473, 0.593889, 0.383792, 0.630315),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v2, eAxisSigned::Y_POS, eAxis::Y)),
+                 float4(0.499999, 0.864472, 0, -0.0518617),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v2, eAxisSigned::Y_POS, eAxis::Z)),
+                 float4(0.0447733, 0.0257574, -0.49799, -0.865643),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v2, eAxisSigned::Z_POS, eAxis::X)),
+                 float4(0.646551, 0.193334, -0.174318, 0.717082),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v2, eAxisSigned::Z_POS, eAxis::Z)),
+                 float4(0.965523, 0.258928, 0.0268567, 0),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v2, eAxisSigned::Z_POS, eAxis::Z)),
+                 float4(0.965523, 0.258928, 0.0268567, 0),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v2, eAxisSigned::X_NEG, eAxis::X)),
+                 float4(0.688527, 0, 0.627768, 0.363095),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v2, eAxisSigned::X_NEG, eAxis::Y)),
+                 float4(0.672309, 0.148561, 0.691325, 0.219092),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v2, eAxisSigned::X_NEG, eAxis::Z)),
+                 float4(0.580442, -0.370345, 0.333919, 0.643761),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v2, eAxisSigned::Y_NEG, eAxis::X)),
+                 float4(0.593889, -0.320473, -0.630315, 0.383792),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v2, eAxisSigned::Y_NEG, eAxis::Y)),
+                 float4(0.866026, -0.499102, 0, 0.0299423),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v2, eAxisSigned::Y_NEG, eAxis::Z)),
+                 float4(0.865643, -0.49799, -0.0257574, 0.0447733),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v2, eAxisSigned::Z_NEG, eAxis::X)),
+                 float4(0.193334, -0.646551, -0.717082, -0.174318),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v2, eAxisSigned::Z_NEG, eAxis::Z)),
+                 float4(0.260317, -0.960371, -0.0996123, 0),
+                 1e-5f);
+  EXPECT_V4_NEAR(float4(from_vector(v2, eAxisSigned::Z_NEG, eAxis::Z)),
+                 float4(0.260317, -0.960371, -0.0996123, 0),
+                 1e-5f);
+}
+
 TEST(math_rotation, QuaternionWrappedAround)
 {
   Quaternion q1 = normalize(Quaternion(0.927091f, 0.211322f, -0.124857f, 0.283295f));

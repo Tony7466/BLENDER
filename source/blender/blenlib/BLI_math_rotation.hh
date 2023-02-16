@@ -300,6 +300,98 @@ template<typename T>
   return from_triangle(v1, v2, v3, normal_tri(v1, v2, v3));
 }
 
+template<typename T>
+[[nodiscard]] detail::Quaternion<T> from_vector(const VecBase<T, 3> &vector,
+                                                /* #Object.trackflag / #Object.upflag (short) */
+                                                const eAxisSigned track_flag,
+                                                const eAxis up_flag)
+{
+  using Vec2T = VecBase<T, 2>;
+  using Vec3T = VecBase<T, 3>;
+  using Vec4T = VecBase<T, 4>;
+
+  BLI_assert(track_flag >= 0 && track_flag <= 5);
+  BLI_assert(up_flag >= 0 && up_flag <= 2);
+
+  T vec_len = length(vector);
+
+  if (UNLIKELY(vec_len == 0.0f)) {
+    return detail::Quaternion<T>::identity();
+  }
+
+  eAxis axis = axis_unsigned(track_flag);
+  const Vec3T vec = is_negative(track_flag) ? vector : -vector;
+
+  Vec3T rotation_axis;
+  constexpr T eps = T(1e-4);
+  T axis_len;
+  switch (axis) {
+    case eAxis::X:
+      rotation_axis = normalize_and_get_length(Vec3T(T(0), -vec.z, vec.y), axis_len);
+      if (axis_len < eps) {
+        rotation_axis = Vec3T(0, 1, 0);
+      }
+      break;
+    case eAxis::Y:
+      rotation_axis = normalize_and_get_length(Vec3T(vec.z, T(0), -vec.x), axis_len);
+      if (axis_len < eps) {
+        rotation_axis = Vec3T(0, 0, 1);
+      }
+      break;
+    default:
+    case eAxis::Z:
+      rotation_axis = normalize_and_get_length(Vec3T(-vec.y, vec.x, T(0)), axis_len);
+      if (axis_len < eps) {
+        rotation_axis = Vec3T(1, 0, 0);
+      }
+      break;
+  }
+  /* TODO(fclem): Can optimize here by initializing AxisAngle using the cos an sin directly.
+   * Avoiding the need for safe_acos and deriving sin from cos. */
+  T rotation_angle = math::safe_acos(vec[axis] / vec_len);
+
+  detail::Quaternion<T> q1(detail::AxisAngle<T>(rotation_axis, rotation_angle));
+
+  if (axis == up_flag) {
+    /* Nothing else to do. */
+    return q1;
+  }
+
+  /* Extract rotation between the up axis of the rotated space and the up axis. */
+  /* There might be an easier way to get this angle directly from the quaternion representation. */
+  Vec3T rotated_up = rotate(q1, Vec3T(0, 0, 1));
+
+  /* Project using axes index instead of arithmetic. It's much faster and more precise. */
+  eAxisSigned y_axis_signed = cross(eAxisSigned(axis), eAxisSigned(up_flag));
+  eAxis x_axis = up_flag;
+  eAxis y_axis = axis_unsigned(y_axis_signed);
+
+  Vec2T projected = normalize(Vec2T(rotated_up[x_axis], rotated_up[y_axis]));
+  /* Flip sign for flipped axis. */
+  if (is_negative(y_axis_signed)) {
+    projected.y = -projected.y;
+  }
+  /* Not sure if this was a bug or not in the previous implementation.
+   * Carry over this weird behavior to avoid regressions. */
+  if (axis == eAxis::Z) {
+    projected = -projected;
+  }
+  /* Some trigonometry identity to dodge `atan`.
+   * https://en.wikipedia.org/wiki/List_of_trigonometric_identities#Half-angle_formulae */
+  T cos_angle = projected.x;
+  T cos_half_angle = math::sqrt((T(1) + cos_angle) / T(2));
+  T sin_half_angle = math::sqrt((T(1) - cos_angle) / T(2));
+  /* Recover sign for sine. Cosine of half angle is given to be positive or 0. */
+  /* TODO(fclem): Could use copysign here. */
+  if (projected.y < T(0)) {
+    sin_half_angle = -sin_half_angle;
+  }
+
+  detail::Quaternion<T> q2(Vec4T(cos_half_angle, vec * (sin_half_angle / vec_len)));
+
+  return q2 * q1;
+}
+
 }  // namespace blender::math
 
 /* -------------------------------------------------------------------- */
