@@ -185,5 +185,13 @@ bool select_circle(const ViewContext &vc,
                    eSelectOp sel_op);
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Editing
+ * \{ */
+
+bool remove_selection(bke::CurvesGeometry &curves, eAttrDomain selection_domain);
+
+/** \} */
+
 }  // namespace blender::ed::curves
 #endif
