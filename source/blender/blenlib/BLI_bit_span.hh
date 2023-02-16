@@ -260,7 +260,7 @@ class MutableBitSpan {
     }
   }
 
-  /** Same as set_all to mirror #MutableSpan. */
+  /** Same as #set_all to mirror #MutableSpan. */
   void fill(const bool value)
   {
     this->set_all(value);
