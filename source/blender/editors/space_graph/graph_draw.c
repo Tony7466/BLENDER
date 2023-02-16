@@ -425,7 +425,7 @@ static void draw_fcurve_handles(SpaceGraph *sipo, FCurve *fcu)
       /* if only selected keyframes can get their handles shown,
        * check that keyframe is selected
        */
-      if (U.animation_flag & USER_ANIM_ONLY_SHOW_SELECTED_KEY_HANDLES) {
+      if (sipo->flag & SIPO_SELVHANDLESONLY) {
         if (BEZT_ISSEL_ANY(bezt) == 0) {
           continue;
         }
@@ -1150,10 +1150,7 @@ static void draw_fcurve(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, bAn
           draw_fcurve_handles(sipo, fcu);
         }
 
-        draw_fcurve_vertices(region,
-                             fcu,
-                             do_handles,
-                             (U.animation_flag & USER_ANIM_ONLY_SHOW_SELECTED_KEY_HANDLES));
+        draw_fcurve_vertices(region, fcu, do_handles, (sipo->flag & SIPO_SELVHANDLESONLY));
       }
       else {
         /* samples: only draw two indicators at either end as indicators */

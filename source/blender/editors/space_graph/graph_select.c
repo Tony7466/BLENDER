@@ -83,7 +83,7 @@ static bool fcurve_handle_sel_check(SpaceGraph *sipo, BezTriple *bezt)
   if (sipo->flag & SIPO_NOHANDLES) {
     return false;
   }
-  if ((U.animation_flag & USER_ANIM_ONLY_SHOW_SELECTED_KEY_HANDLES) && BEZT_ISSEL_ANY(bezt) == 0) {
+  if ((sipo->flag & SIPO_SELVHANDLESONLY) && BEZT_ISSEL_ANY(bezt) == 0) {
     return false;
   }
   return true;
@@ -541,8 +541,8 @@ static void initialize_box_select_key_editing_data(const bool incl_handles,
       r_ked->data = scaled_rectf;
       break;
   }
-
-  if (U.animation_flag & USER_ANIM_ONLY_SHOW_SELECTED_KEY_HANDLES) {
+  SpaceGraph *sipo = (SpaceGraph *)ac->sl;
+  if (sipo->flag & SIPO_SELVHANDLESONLY) {
     r_ked->iterflags |= KEYFRAME_ITER_HANDLES_DEFAULT_INVISIBLE;
   }
 
@@ -952,8 +952,7 @@ static int graphkeys_lassoselect_exec(bContext *C, wmOperator *op)
   {
     SpaceGraph *sipo = (SpaceGraph *)ac.sl;
     if (selectmode == SELECT_ADD) {
-      incl_handles = ((U.animation_flag & USER_ANIM_ONLY_SHOW_SELECTED_KEY_HANDLES) ||
-                      (sipo->flag & SIPO_NOHANDLES)) == 0;
+      incl_handles = ((sipo->flag & SIPO_SELVHANDLESONLY) || (sipo->flag & SIPO_NOHANDLES)) == 0;
     }
     else {
       incl_handles = (sipo->flag & SIPO_NOHANDLES) == 0;
@@ -1049,8 +1048,7 @@ static int graph_circle_select_exec(bContext *C, wmOperator *op)
   {
     SpaceGraph *sipo = (SpaceGraph *)ac.sl;
     if (selectmode == SELECT_ADD) {
-      incl_handles = ((U.animation_flag & USER_ANIM_ONLY_SHOW_SELECTED_KEY_HANDLES) ||
-                      (sipo->flag & SIPO_NOHANDLES)) == 0;
+      incl_handles = ((sipo->flag & SIPO_SELVHANDLESONLY) || (sipo->flag & SIPO_NOHANDLES)) == 0;
     }
     else {
       incl_handles = (sipo->flag & SIPO_NOHANDLES) == 0;

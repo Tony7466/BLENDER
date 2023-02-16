@@ -492,6 +492,8 @@ typedef enum eGraphEdit_Flag {
   SIPO_SLIDERS = (1 << 7),
   /* don't show the horizontal component of the cursor */
   SIPO_NODRAWCURSOR = (1 << 8),
+  /* only show handles of selected keyframes */
+  SIPO_SELVHANDLESONLY = (1 << 9),
   /* don't perform realtime updates */
   SIPO_NOREALTIMEUPDATES = (1 << 11),
   /* don't draw curves with AA ("beauty-draw") for performance */
