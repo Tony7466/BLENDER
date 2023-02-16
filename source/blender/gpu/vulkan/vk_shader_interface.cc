@@ -15,6 +15,7 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
 
   uniform_len_ = 0;
   ssbo_len_ = 0;
+  ubo_len_ = 0;
 
   Vector<ShaderCreateInfo::Resource> all_resources;
   all_resources.extend(info.pass_resources_);
@@ -26,8 +27,10 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
         uniform_len_++;
         break;
       case ShaderCreateInfo::Resource::BindType::SAMPLER:
+        uniform_len_++;
+        break;
       case ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER:
-        // BLI_assert_msg(false, "not implemented yet");
+        ubo_len_++;
         break;
       case ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER:
         ssbo_len_++;
@@ -35,16 +38,32 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
     }
   }
 
-  int32_t input_tot_len = ssbo_len_ + uniform_len_;
+  int32_t input_tot_len = ubo_len_ + uniform_len_ + ssbo_len_;
   inputs_ = static_cast<ShaderInput *>(
       MEM_calloc_arrayN(input_tot_len, sizeof(ShaderInput), __func__));
   ShaderInput *input = inputs_;
 
   name_buffer_ = (char *)MEM_mallocN(info.interface_names_size_, "name_buffer");
   uint32_t name_buffer_offset = 0;
-  /* Images */
-  /* NOTE: should be extended with uniforms and samplers.*/
+
+  /* Uniform blocks */
   for (const ShaderCreateInfo::Resource &res : all_resources) {
+    if (res.bind_type == ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER) {
+      copy_input_name(input, res.image.name, name_buffer_, name_buffer_offset);
+      input->location = input->binding = res.slot;
+      enabled_ubo_mask_ |= (1 << input->binding);
+      input++;
+    }
+  }
+
+  /* Images, Samplers and buffers. */
+  for (const ShaderCreateInfo::Resource &res : all_resources) {
+    if (res.bind_type == ShaderCreateInfo::Resource::BindType::SAMPLER) {
+      copy_input_name(input, res.sampler.name, name_buffer_, name_buffer_offset);
+      input->location = input->binding = res.slot;
+      enabled_tex_mask_ |= (1 << input->binding);
+      input++;
+    }
     if (res.bind_type == ShaderCreateInfo::Resource::BindType::IMAGE) {
       copy_input_name(input, res.image.name, name_buffer_, name_buffer_offset);
       input->location = input->binding = res.slot;
