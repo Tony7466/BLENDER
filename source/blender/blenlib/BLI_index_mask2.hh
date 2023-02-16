@@ -56,7 +56,7 @@ struct IndexMaskData {
   int64_t chunks_num;
   int64_t indices_num;
   const Chunk *chunks;
-  const int64_t *chunk_offsets;
+  const int64_t *chunk_ids;
   const int64_t *chunk_sizes_cumulative;
   RawChunkIterator begin_it;
   RawChunkIterator end_it;
@@ -319,7 +319,7 @@ inline IndexMask::IndexMask()
 
   data_.chunks_num = 0;
   data_.chunks = nullptr;
-  data_.chunk_offsets = nullptr;
+  data_.chunk_ids = nullptr;
   data_.chunk_sizes_cumulative = cumulative_sizes_for_empty_mask;
   data_.begin_it.segment_i = 0;
   data_.begin_it.index_in_segment = 0;
@@ -348,7 +348,7 @@ inline IndexMask::IndexMask(const IndexRange range)
   data_.chunks_num = last_chunk_id - first_chunk_id + 1;
   data_.indices_num = range.size();
   data_.chunks -= first_chunk_id;
-  data_.chunk_offsets -= first_chunk_id;
+  data_.chunk_ids -= first_chunk_id;
   data_.chunk_sizes_cumulative -= first_chunk_id;
   data_.begin_it.segment_i = 0;
   data_.begin_it.index_in_segment = range.first() & chunk_mask_low;
@@ -399,7 +399,7 @@ inline IndexMask IndexMask::slice(const IndexRange range) const
   sliced.data_.chunks_num = last_it.chunk_i - first_it.chunk_i + 1;
   sliced.data_.indices_num = range.size();
   sliced.data_.chunks = data_.chunks + first_it.chunk_i;
-  sliced.data_.chunk_offsets = data_.chunk_offsets + first_it.chunk_i;
+  sliced.data_.chunk_ids = data_.chunk_ids + first_it.chunk_i;
   sliced.data_.chunk_sizes_cumulative = data_.chunk_sizes_cumulative + first_it.chunk_i;
   sliced.data_.begin_it = first_it.chunk_it;
   sliced.data_.end_it.segment_i = last_it.chunk_it.segment_i;
@@ -465,9 +465,10 @@ template<typename Fn> inline void IndexMask::foreach_raw_segment(Fn &&fn) const
   int64_t counter = 0;
   while (chunk_i < data_.chunks_num) {
     const Chunk &chunk = data_.chunks[chunk_i];
+    const int64_t chunk_id = data_.chunk_ids[chunk_i];
     const bool is_last_chunk = (chunk_i == data_.chunks_num - 1);
     const int16_t segments_num = is_last_chunk ? final_segments_num : chunk.segments_num;
-    const int64_t offset = data_.chunk_offsets[chunk_i];
+    const int64_t offset = max_chunk_size + chunk_id;
     int16_t prev_cumulative_segment_size = chunk.segment_sizes_cumulative[segment_i];
     while (segment_i < segments_num) {
       const int16_t next_segment_i = segment_i + 1;

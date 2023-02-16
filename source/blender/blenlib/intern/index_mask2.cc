@@ -29,7 +29,7 @@ const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size)
 
   static IndexMask static_mask = []() {
     static Array<Chunk> chunks_array(chunks_num);
-    static Array<int64_t> chunk_offsets_array(chunks_num);
+    static Array<int64_t> chunk_ids_array(chunks_num);
     static Array<int64_t> chunk_sizes_cumulative(chunks_num + 1);
 
     static const int16_t *static_offsets = get_static_indices_array().data();
@@ -42,7 +42,7 @@ const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size)
         chunk.segment_indices = &static_offsets;
         chunk.segment_sizes_cumulative = static_segment_sizes_cumulative;
 
-        chunk_offsets_array[i] = i * max_chunk_size;
+        chunk_ids_array[i] = i;
         chunk_sizes_cumulative[i] = i * max_chunk_size;
       }
     });
@@ -53,7 +53,7 @@ const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size)
     mask_data.chunks_num = chunks_num;
     mask_data.indices_num = max_size;
     mask_data.chunks = chunks_array.data();
-    mask_data.chunk_offsets = chunk_offsets_array.data();
+    mask_data.chunk_ids = chunk_ids_array.data();
     mask_data.chunk_sizes_cumulative = chunk_sizes_cumulative.data();
     mask_data.begin_it.segment_i = 0;
     mask_data.begin_it.index_in_segment = 0;
@@ -172,7 +172,7 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, ResourceScop
       scope.construct<threading::EnumerableThreadSpecific<LinearAllocator<>>>();
 
   MutableSpan<Chunk> chunks = main_allocator.allocate_array<Chunk>(chunks_num);
-  MutableSpan<int64_t> chunk_offsets = main_allocator.allocate_array<int64_t>(chunks_num);
+  MutableSpan<int64_t> chunk_ids = main_allocator.allocate_array<int64_t>(chunks_num);
 
   static const int16_t *static_offsets = get_static_indices_array().data();
 
@@ -194,8 +194,7 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, ResourceScop
       const int64_t chunk_id = index_to_chunk_id(int64_t(indices_in_chunk[0]));
       BLI_assert(chunk_id == index_to_chunk_id(int64_t(indices_in_chunk.last())));
       Chunk &chunk = chunks[i];
-      const int64_t chunk_offset = max_chunk_size * chunk_id;
-      chunk_offsets[i] = chunk_offset;
+      chunk_ids[i] = chunk_id;
 
       const int16_t segments_in_chunk_num = int16_t(
           split_to_ranges_and_spans(indices_in_chunk, 16, segments_in_chunks));
@@ -239,7 +238,7 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, ResourceScop
       const IndexRange segments_in_chunk = segments_by_chunk[i];
       const int16_t segments_num = int16_t(segments_in_chunk.size());
       Chunk &chunk = chunks[slice[i]];
-      const int64_t chunk_offset = chunk_offsets[slice[i]];
+      const int64_t chunk_offset = chunk_ids[slice[i]] * max_chunk_size;
 
       MutableSpan<const int16_t *> segment_indices = take_front_and_drop(
           remaining_segment_indices_pointers, segments_num);
@@ -289,7 +288,7 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, ResourceScop
   mask_data.chunks_num = chunks_num;
   mask_data.indices_num = indices.size();
   mask_data.chunks = chunks.data();
-  mask_data.chunk_offsets = chunk_offsets.data();
+  mask_data.chunk_ids = chunk_ids.data();
   mask_data.chunk_sizes_cumulative = chunk_sizes_cumulative.data();
   mask_data.begin_it = {0, 0};
   mask_data.end_it = chunks.last().end_iterator();
