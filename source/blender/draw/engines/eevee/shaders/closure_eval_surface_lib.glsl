@@ -115,7 +115,7 @@ Closure closure_eval(ClosureReflection reflection, const bool do_output_ssr)
   Closure closure = CLOSURE_DEFAULT;
 
   bool output_radiance = true;
-  if(do_output_ssr){
+  if (do_output_ssr) {
     output_radiance = !output_ssr(reflection);
   }
   if (output_radiance) {
