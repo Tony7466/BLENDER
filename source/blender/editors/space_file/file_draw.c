@@ -905,7 +905,7 @@ void file_draw_list(const bContext *C, ARegion *region)
   int numfiles;
   int numfiles_layout;
   int offset;
-  int textwidth, textheight;
+  int column_width, textheight;
   int i;
   bool is_icon;
   eFontStyle_Align align;
@@ -939,9 +939,9 @@ void file_draw_list(const bContext *C, ARegion *region)
 
   filelist_file_cache_slidingwindow_set(files, numfiles_layout);
 
-  textwidth = (FILE_IMGDISPLAY == params->display) ?
-                  layout->tile_w :
-                  round_fl_to_int(layout->attribute_columns[COLUMN_NAME].width);
+  column_width = (FILE_IMGDISPLAY == params->display) ?
+                     layout->tile_w :
+                     round_fl_to_int(layout->attribute_columns[COLUMN_NAME].width);
   textheight = (int)(layout->textheight * 3.0 / 2.0 + 0.5);
 
   align = (FILE_IMGDISPLAY == params->display) ? UI_STYLE_TEXT_CENTER : UI_STYLE_TEXT_LEFT;
@@ -1040,6 +1040,33 @@ void file_draw_list(const bContext *C, ARegion *region)
     }
     else {
       const int icon = filelist_geticon(files, i, true);
+
+      icon_ofs += ICON_DEFAULT_WIDTH_SCALE + 0.2f * UI_UNIT_X;
+
+      /* Add dummy draggable button covering the icon and the label. */
+      if (do_drag) {
+        const uiStyle *style = UI_style_get();
+        const int str_width = UI_fontstyle_string_width(&style->widget, file->name);
+        const int drag_width = MIN2(str_width + icon_ofs, column_width - ATTRIBUTE_COLUMN_PADDING);
+        uiBut *drag_but = uiDefBut(block,
+                                   UI_BTYPE_LABEL,
+                                   0,
+                                   "",
+                                   tile_draw_rect.xmin,
+                                   tile_draw_rect.ymin,
+                                   drag_width,
+                                   textheight,
+                                   NULL,
+                                   0,
+                                   0,
+                                   0,
+                                   0,
+                                   0);
+        UI_but_dragflag_enable(drag_but, UI_BUT_DRAG_FULL_BUT);
+        file_but_enable_drag(drag_but, sfile, file, path, NULL, icon, UI_DPI_FAC);
+      }
+
+      /* Add this after the fake draggable button, so the icon button tooltip is displayed. */
       uiBut *icon_but = file_add_icon_but(sfile,
                                           block,
                                           path,
@@ -1048,15 +1075,12 @@ void file_draw_list(const bContext *C, ARegion *region)
                                           ICON_DEFAULT_WIDTH_SCALE,
                                           ICON_DEFAULT_HEIGHT_SCALE,
                                           is_hidden);
-      if (do_drag) {
-        file_but_enable_drag(icon_but, sfile, file, path, NULL, icon, UI_DPI_FAC);
-      }
-      icon_ofs += ICON_DEFAULT_WIDTH_SCALE + 0.2f * UI_UNIT_X;
+      file_but_enable_drag(icon_but, sfile, file, path, NULL, icon, UI_DPI_FAC);
     }
 
     if (file_selflag & FILE_SEL_EDITING) {
       const short width = (params->display == FILE_IMGDISPLAY) ?
-                              textwidth :
+                              column_width :
                               layout->attribute_columns[COLUMN_NAME].width -
                                   ATTRIBUTE_COLUMN_PADDING;
 
@@ -1102,8 +1126,8 @@ void file_draw_list(const bContext *C, ARegion *region)
                             tile_draw_rect.ymin + layout->tile_border_y + layout->textheight :
                             tile_draw_rect.ymax - layout->tile_border_y;
       const int twidth = (params->display == FILE_IMGDISPLAY) ?
-                             textwidth :
-                             textwidth - 1 - icon_ofs - padx - layout->tile_border_x;
+                             column_width :
+                             column_width - 1 - icon_ofs - padx - layout->tile_border_x;
       file_draw_string(txpos, typos, file->name, (float)twidth, textheight, align, text_col);
     }
 
