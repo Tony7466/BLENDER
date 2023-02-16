@@ -189,6 +189,10 @@ bool select_circle(const ViewContext &vc,
 /** \name Editing
  * \{ */
 
+/**
+ * Remove (dissolve) selected curves or points based on the ".selection" attribute.
+ * \returns true if any point or curve was removed.
+ */
 bool remove_selection(bke::CurvesGeometry &curves, eAttrDomain selection_domain);
 
 /** \} */
