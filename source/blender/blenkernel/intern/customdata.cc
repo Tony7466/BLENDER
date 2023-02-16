@@ -2851,10 +2851,10 @@ static CustomDataLayer *customData_add_layer__internal(CustomData *data,
     new_layer.active_mask = data->layers[index - 1].active_mask;
   }
   else {
-    new_layer.active = 0;
-    new_layer.active_rnd = 0;
-    new_layer.active_clone = 0;
-    new_layer.active_mask = 0;
+    new_layer.active = isanonymous ? -1 : 0;
+    new_layer.active_rnd = isanonymous ? -1 : 0;
+    new_layer.active_clone = isanonymous ? -1 : 0;
+    new_layer.active_mask = isanonymous ? -1 : 0;
   }
 
   customData_update_offsets(data);
