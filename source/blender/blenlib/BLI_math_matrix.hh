@@ -888,13 +888,13 @@ MatBase<T, NumCol, NumRow> from_rotation(const Euler3<T> &rotation)
   MatT mat = from_rotation<T, NumCol, NumRow>(EulerXYZ<T>(ijk));
   MatT result = MatT::identity();
   result[i][i] = mat[0][0];
-  result[i][j] = mat[1][0];
-  result[i][k] = mat[2][0];
-  result[j][i] = mat[0][1];
+  result[j][i] = mat[1][0];
+  result[k][i] = mat[2][0];
+  result[i][j] = mat[0][1];
   result[j][j] = mat[1][1];
-  result[j][k] = mat[2][1];
-  result[k][i] = mat[0][2];
-  result[k][j] = mat[1][2];
+  result[k][j] = mat[2][1];
+  result[i][k] = mat[0][2];
+  result[j][k] = mat[1][2];
   result[k][k] = mat[2][2];
 #else
   /* TODO(fclem): Manually inline and check performance difference. */
