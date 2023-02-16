@@ -517,7 +517,6 @@ short ED_transform_calc_orientation_from_type_ex(const Scene *scene,
     case V3D_ORIENT_PARENT: {
       if (ob) {
         if (ob->mode & OB_MODE_POSE) {
-          printf("I'm in pose mode \n");
           bPoseChannel *active_pchan = BKE_pose_channel_active(ob, false);
           if (active_pchan->parent) {
             if (active_pchan->parent->bone->flag & BONE_NO_LOCAL_LOCATION) {
@@ -531,9 +530,11 @@ short ED_transform_calc_orientation_from_type_ex(const Scene *scene,
           }
           else {
             if (active_pchan->bone->flag & BONE_NO_LOCAL_LOCATION) {
-              unit_m3(r_mat);
+              // if root, and BONE_NO_LOCAL_LOCATION isn't set local transform of parent
+              transform_orientations_create_from_axis(r_mat, UNPACK3(ob->object_to_world));
             }
             else {
+              // else, if root and BONE_LOCAL_LOCATION is set, use bone local
               ED_getTransformOrientationMatrix(
                   scene, view_layer, v3d, ob, obedit, pivot_point, r_mat);
             }
@@ -542,8 +543,6 @@ short ED_transform_calc_orientation_from_type_ex(const Scene *scene,
         }
         else {
           // handle the parent check at object level
-          // TODO if object doesn't have parent, we default to local coordinates
-          printf("I'm not in pose mode \n");
           if (ob->parent) {
             ED_getTransformOrientationMatrix(
                 scene, view_layer, v3d, ob->parent, obedit, pivot_point, r_mat);
@@ -569,7 +568,7 @@ short ED_transform_calc_orientation_from_type_ex(const Scene *scene,
       if (ob) {
         if (ob->mode & OB_MODE_POSE) {
           /* Each bone moves on its own local axis, but to avoid confusion,
-           * use the active bone'ss axis for display #33575, this works as expected on a single
+           * use the active bone's axis for display #33575, this works as expected on a single
            * bone and users who select many bones will understand what's going on and what local
            * means when they start transforming. */
           ED_getTransformOrientationMatrix(scene, view_layer, v3d, ob, obedit, pivot_point, r_mat);
