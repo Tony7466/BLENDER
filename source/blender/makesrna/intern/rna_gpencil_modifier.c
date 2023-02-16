@@ -3809,7 +3809,7 @@ static void rna_def_modifier_gpencillineart(BlenderRNA *brna)
       prop,
       "Use Intersection",
       "Enables the intersections detected between all objects contained in the scene to be drawn "
-      "in this lineart (Use collection intersection mask combinations to filter).");
+      "in this lineart (Use collection intersection mask combinations to filter)");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "use_light_contour", PROP_BOOLEAN, PROP_NONE);
