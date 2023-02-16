@@ -330,25 +330,50 @@ void select_adjacent(bke::CurvesGeometry &curves, const bool deselect)
     invert_selection(selection.span);
   }
 
-  threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
-    for (const int curve_i : range) {
-      GMutableSpan selection_curve = selection.span.slice(points_by_curve[curve_i]);
+  if (selection.span.type().is<bool>()) {
+    MutableSpan<bool> selection_typed = selection.span.typed<bool>();
+    threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
+      for (const int curve_i : range) {
+        MutableSpan<bool> selection_curve = selection_typed.slice(points_by_curve[curve_i]);
 
-      /* Handle all cases in the forward direction. */
-      for (int point_i = 0; point_i < points_by_curve.size(curve_i) - 1; point_i++) {
-        if (check_adjacent_selection(selection_curve, point_i, point_i + 1)) {
-          apply_selection_operation_at_index(selection_curve, point_i, SEL_OP_ADD);
+        /* Handle all cases in the forward direction. */
+        for (int point_i = 0; point_i < points_by_curve.size(curve_i) - 1; point_i++) {
+          if (!selection_curve[point_i] && selection_curve[point_i + 1]) {
+            selection_curve[point_i] = true;
+          }
+        }
+
+        /* Handle all cases in the backwards direction. */
+        for (int point_i = points_by_curve.size(curve_i) - 1; point_i > 0; point_i--) {
+          if (!selection_curve[point_i] && selection_curve[point_i - 1]) {
+            selection_curve[point_i] = true;
+          }
         }
       }
+    });
+  }
+  else if (selection.span.type().is<float>()) {
+    MutableSpan<float> selection_typed = selection.span.typed<float>();
+    threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
+      for (const int curve_i : range) {
+        MutableSpan<float> selection_curve = selection_typed.slice(points_by_curve[curve_i]);
 
-      /* Handle all cases in the backwards direction. */
-      for (int point_i = points_by_curve.size(curve_i) - 1; point_i > 0; point_i--) {
-        if (check_adjacent_selection(selection_curve, point_i, point_i - 1)) {
-          apply_selection_operation_at_index(selection_curve, point_i, SEL_OP_ADD);
+        /* Handle all cases in the forward direction. */
+        for (int point_i = 0; point_i < points_by_curve.size(curve_i) - 1; point_i++) {
+          if ((selection_typed[point_i] == 0.0f) && (selection_typed[point_i + 1] > 0.0f)) {
+            selection_curve[point_i] = 1.0f;
+          }
+        }
+
+        /* Handle all cases in the backwards direction. */
+        for (int point_i = points_by_curve.size(curve_i) - 1; point_i > 0; point_i--) {
+          if ((selection_typed[point_i] == 0.0f) && (selection_typed[point_i - 1] > 0.0f)) {
+            selection_curve[point_i] = 1.0f;
+          }
         }
       }
-    }
-  });
+    });
+  }
 
   if (deselect) {
     invert_selection(selection.span);
