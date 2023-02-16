@@ -436,8 +436,12 @@ static void particle_settings_blend_read_lib(BlendLibReader *reader, ID *id)
 static void particle_settings_blend_read_expand(BlendExpander *expander, ID *id)
 {
   ParticleSettings *part = (ParticleSettings *)id;
-  BLO_expand(expander, part->instance_object);
-  BLO_expand(expander, part->instance_collection);
+  if (part->ren_as == PART_DRAW_OB) {
+    BLO_expand(expander, part->instance_object);
+  }
+  else if (part->ren_as == PART_DRAW_GR) {
+    BLO_expand(expander, part->instance_collection);
+  }
   BLO_expand(expander, part->force_group);
   BLO_expand(expander, part->bb_ob);
   BLO_expand(expander, part->collision_group);
