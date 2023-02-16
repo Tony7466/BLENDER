@@ -3805,7 +3805,11 @@ static void rna_def_modifier_gpencillineart(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_intersection", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "edge_types", LRT_EDGE_FLAG_INTERSECTION);
-  RNA_def_property_ui_text(prop, "Use Intersection", "Generate strokes from intersections");
+  RNA_def_property_ui_text(
+      prop,
+      "Use Intersection",
+      "Enables the intersections detected between all objects contained in the scene to be drawn "
+      "in this lineart (Use collection intersection mask combinations to filter).");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "use_light_contour", PROP_BOOLEAN, PROP_NONE);
