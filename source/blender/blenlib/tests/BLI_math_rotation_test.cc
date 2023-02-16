@@ -557,6 +557,49 @@ TEST(math_rotation, Euler3ToGimbal)
   EXPECT_M3_NEAR(to_gimbal_axis(euler3_zyx), mat_zyx, 1e-4);
 }
 
+TEST(math_rotation, AxisConversion)
+{
+  for (int i : IndexRange(6)) {
+    for (int j : IndexRange(6)) {
+      for (int k : IndexRange(6)) {
+        for (int l : IndexRange(6)) {
+          eAxisSigned src_forward = eAxisSigned(i);
+          eAxisSigned src_up = eAxisSigned(j);
+          eAxisSigned dst_forward = eAxisSigned(k);
+          eAxisSigned dst_up = eAxisSigned(l);
+
+          float3x3 expect;
+          if (src_forward == dst_forward && src_up == dst_up) {
+            expect = float3x3::identity();
+          }
+          else if ((axis_unsigned(src_forward) == axis_unsigned(src_up)) ||
+                   (axis_unsigned(dst_forward) == axis_unsigned(dst_up))) {
+            /* We could assert here! */
+            expect = float3x3::identity();
+          }
+          else {
+            /* TODO: Find a way to test without resorting to old C API. */
+            mat3_from_axis_conversion(src_forward, src_up, dst_forward, dst_up, expect.ptr());
+          }
+
+          EXPECT_EQ(from_axis_conversion<float3x3>(src_forward, src_up, dst_forward, dst_up),
+                    expect);
+
+          if (src_forward == dst_forward) {
+            expect = float3x3::identity();
+          }
+          else {
+            /* TODO: Find a way to test without resorting to old C API. */
+            mat3_from_axis_conversion_single(src_forward, dst_forward, expect.ptr());
+          }
+
+          EXPECT_EQ(from_axis_conversion<float3x3>(src_forward, dst_forward), expect);
+        }
+      }
+    }
+  }
+}
+
 TEST(math_rotation, Rotate)
 {
   Quaternion q(0.927091f, 0.211322f, -0.124857f, 0.283295f);

@@ -415,6 +415,36 @@ template<typename T>
   return result;
 }
 
+template<typename MatT>
+[[nodiscard]] MatT from_axis_conversion(const eAxisSigned src_forward,
+                                        const eAxisSigned src_up,
+                                        const eAxisSigned dst_forward,
+                                        const eAxisSigned dst_up)
+{
+  return MatT(from_axis_conversion<float3x3>(src_forward, src_up, dst_forward, dst_up));
+}
+
+template<>
+float3x3 from_axis_conversion(const eAxisSigned src_forward,
+                              const eAxisSigned src_up,
+                              const eAxisSigned dst_forward,
+                              const eAxisSigned dst_up);
+
+template<typename MatT>
+[[nodiscard]] MatT from_axis_conversion(const eAxisSigned src_axis, const eAxisSigned dst_axis)
+{
+  /* Pick predictable next axis. */
+  eAxisSigned src_axis_next = eAxisSigned((src_axis + 1) % 3);
+  eAxisSigned dst_axis_next = eAxisSigned((dst_axis + 1) % 3);
+
+  if (is_negative(src_axis) != is_negative(dst_axis)) {
+    /* Flip both axis so matrix sign remains positive. */
+    dst_axis_next = eAxisSigned(dst_axis_next + 3);
+  }
+
+  return from_axis_conversion<MatT>(src_axis, src_axis_next, dst_axis, dst_axis_next);
+}
+
 }  // namespace blender::math
 
 /* -------------------------------------------------------------------- */
@@ -690,6 +720,8 @@ extern template AxisAngle<float>::operator EulerXYZ<float>() const;
 extern template AxisAngle<float>::operator Quaternion<float>() const;
 extern template EulerXYZ<float>::operator AxisAngle<float>() const;
 extern template EulerXYZ<float>::operator Quaternion<float>() const;
+extern template Euler3<float>::operator AxisAngle<float>() const;
+extern template Euler3<float>::operator Quaternion<float>() const;
 extern template Quaternion<float>::operator AxisAngle<float>() const;
 extern template Quaternion<float>::operator EulerXYZ<float>() const;
 
