@@ -251,6 +251,12 @@ template<typename T, bool Normalized = false>
 [[nodiscard]] inline detail::EulerXYZ<T> to_euler(const MatBase<T, 3, 3> &mat);
 template<typename T, bool Normalized = false>
 [[nodiscard]] inline detail::EulerXYZ<T> to_euler(const MatBase<T, 4, 4> &mat);
+template<typename T, bool Normalized = false>
+[[nodiscard]] inline detail::Euler3<T> to_euler(const MatBase<T, 3, 3> &mat,
+                                                const typename detail::Euler3<T>::eOrder order);
+template<typename T, bool Normalized = false>
+[[nodiscard]] inline detail::Euler3<T> to_euler(const MatBase<T, 4, 4> &mat,
+                                                const typename detail::Euler3<T>::eOrder order);
 
 /**
  * Extract quaternion rotation from transform matrix.
@@ -481,6 +487,9 @@ template<typename T, int NumCol, int NumRow>
 [[nodiscard]] MatBase<T, NumCol, NumRow> from_rotation(const EulerXYZ<T> &rotation);
 
 template<typename T, int NumCol, int NumRow>
+[[nodiscard]] MatBase<T, NumCol, NumRow> from_rotation(const Euler3<T> &rotation);
+
+template<typename T, int NumCol, int NumRow>
 [[nodiscard]] MatBase<T, NumCol, NumRow> from_rotation(const Quaternion<T> &rotation);
 
 template<typename T, int NumCol, int NumRow>
@@ -681,8 +690,47 @@ void normalized_to_eul2(const MatBase<T, 3, 3> &mat,
     eul2 = eul1;
   }
 }
+template<typename T>
+void normalized_to_eul2(const MatBase<T, 3, 3> &mat,
+                        detail::Euler3<T> &eul1,
+                        detail::Euler3<T> &eul2)
+{
+  BLI_assert(math::is_unit_scale(mat));
+  int i = eul1.x_index();
+  int j = eul1.y_index();
+  int k = eul1.z_index();
+
+  VecBase<T, 3> rot1, rot2;
+  const T cy = math::hypot(mat[i][i], mat[i][j]);
+  if (cy > T(16) * FLT_EPSILON) {
+    rot1[i] = math::atan2(mat[j][k], mat[k][k]);
+    rot1[j] = math::atan2(-mat[i][k], cy);
+    rot1[k] = math::atan2(mat[i][j], mat[i][i]);
+
+    rot2[i] = math::atan2(-mat[j][k], -mat[k][k]);
+    rot2[j] = math::atan2(-mat[i][k], -cy);
+    rot2[k] = math::atan2(-mat[i][j], -mat[i][i]);
+  }
+  else {
+    rot1[i] = math::atan2(-mat[k][j], mat[j][j]);
+    rot1[j] = math::atan2(-mat[i][k], cy);
+    rot1[k] = 0.0f;
+
+    rot2 = rot1;
+  }
+
+  if (eul1.parity()) {
+    rot1 = -rot1;
+    rot2 = -rot2;
+  }
+  eul1.ijk() = rot1;
+  eul2.ijk() = rot2;
+}
 
 /* Using explicit template instantiations in order to reduce compilation time. */
+extern template void normalized_to_eul2(const float3x3 &mat,
+                                        detail::Euler3<float> &eul1,
+                                        detail::Euler3<float> &eul2);
 extern template void normalized_to_eul2(const float3x3 &mat,
                                         detail::EulerXYZ<float> &eul1,
                                         detail::EulerXYZ<float> &eul2);
@@ -801,12 +849,12 @@ MatBase<T, NumCol, NumRow> from_rotation(const EulerXYZ<T> &rotation)
 {
   using MatT = MatBase<T, NumCol, NumRow>;
   using DoublePrecision = typename TypeTraits<T>::DoublePrecision;
-  DoublePrecision ci = math::cos(rotation.x);
-  DoublePrecision cj = math::cos(rotation.y);
-  DoublePrecision ch = math::cos(rotation.z);
-  DoublePrecision si = math::sin(rotation.x);
-  DoublePrecision sj = math::sin(rotation.y);
-  DoublePrecision sh = math::sin(rotation.z);
+  DoublePrecision ci = math::cos(DoublePrecision(rotation.x));
+  DoublePrecision cj = math::cos(DoublePrecision(rotation.y));
+  DoublePrecision ch = math::cos(DoublePrecision(rotation.z));
+  DoublePrecision si = math::sin(DoublePrecision(rotation.x));
+  DoublePrecision sj = math::sin(DoublePrecision(rotation.y));
+  DoublePrecision sh = math::sin(DoublePrecision(rotation.z));
   DoublePrecision cc = ci * ch;
   DoublePrecision cs = ci * sh;
   DoublePrecision sc = si * ch;
@@ -825,6 +873,33 @@ MatBase<T, NumCol, NumRow> from_rotation(const EulerXYZ<T> &rotation)
   mat[1][2] = T(cj * si);
   mat[2][2] = T(cj * ci);
   return mat;
+}
+
+template<typename T, int NumCol, int NumRow>
+MatBase<T, NumCol, NumRow> from_rotation(const Euler3<T> &rotation)
+{
+  using MatT = MatBase<T, NumCol, NumRow>;
+  int i = rotation.x_index();
+  int j = rotation.y_index();
+  int k = rotation.z_index();
+#if 1 /* Reference. */
+  VecBase<T, 3> eul_xyz{EulerXYZ<T>(rotation)};
+  VecBase<T, 3> ijk = rotation.parity() ? -eul_xyz : eul_xyz;
+  MatT mat = from_rotation<T, NumCol, NumRow>(EulerXYZ<T>(ijk));
+  MatT result = MatT::identity();
+  result[i][i] = mat[0][0];
+  result[i][j] = mat[1][0];
+  result[i][k] = mat[2][0];
+  result[j][i] = mat[0][1];
+  result[j][j] = mat[1][1];
+  result[j][k] = mat[2][1];
+  result[k][i] = mat[0][2];
+  result[k][j] = mat[1][2];
+  result[k][k] = mat[2][2];
+#else
+  /* TODO(fclem): Manually inline and check performance difference. */
+#endif
+  return result;
 }
 
 template<typename T, int NumCol, int NumRow>
@@ -912,12 +987,30 @@ extern template MatBase<float, 2, 2> from_rotation(const AngleRadian<float> &rot
 extern template MatBase<float, 3, 3> from_rotation(const AngleRadian<float> &rotation);
 extern template MatBase<float, 3, 3> from_rotation(const EulerXYZ<float> &rotation);
 extern template MatBase<float, 4, 4> from_rotation(const EulerXYZ<float> &rotation);
+extern template MatBase<float, 3, 3> from_rotation(const Euler3<float> &rotation);
+extern template MatBase<float, 4, 4> from_rotation(const Euler3<float> &rotation);
 extern template MatBase<float, 3, 3> from_rotation(const Quaternion<float> &rotation);
 extern template MatBase<float, 4, 4> from_rotation(const Quaternion<float> &rotation);
 extern template MatBase<float, 3, 3> from_rotation(const AxisAngle<float> &rotation);
 extern template MatBase<float, 4, 4> from_rotation(const AxisAngle<float> &rotation);
 
 }  // namespace detail
+
+template<typename T, bool Normalized>
+[[nodiscard]] inline detail::Euler3<T> to_euler(const MatBase<T, 3, 3> &mat,
+                                                const typename detail::Euler3<T>::eOrder order)
+{
+  detail::Euler3<T> eul1(order), eul2(order);
+  if constexpr (Normalized) {
+    detail::normalized_to_eul2(mat, eul1, eul2);
+  }
+  else {
+    detail::normalized_to_eul2(normalize(mat), eul1, eul2);
+  }
+  /* Return best, which is just the one with lowest values it in. */
+  return (length_manhattan(VecBase<T, 3>(eul1)) > length_manhattan(VecBase<T, 3>(eul2))) ? eul2 :
+                                                                                           eul1;
+}
 
 template<typename T, bool Normalized>
 [[nodiscard]] inline detail::EulerXYZ<T> to_euler(const MatBase<T, 3, 3> &mat)
@@ -936,6 +1029,14 @@ template<typename T, bool Normalized>
 
 template<typename T, bool Normalized>
 [[nodiscard]] inline detail::EulerXYZ<T> to_euler(const MatBase<T, 4, 4> &mat)
+{
+  /* TODO(fclem): Avoid the copy with 3x3 ref. */
+  return to_euler<T, Normalized>(MatBase<T, 3, 3>(mat));
+}
+
+template<typename T, bool Normalized>
+[[nodiscard]] inline detail::EulerXYZ<T> to_euler(const MatBase<T, 4, 4> &mat,
+                                                  const typename detail::Euler3<T>::eOrder order)
 {
   /* TODO(fclem): Avoid the copy with 3x3 ref. */
   return to_euler<T, Normalized>(MatBase<T, 3, 3>(mat));

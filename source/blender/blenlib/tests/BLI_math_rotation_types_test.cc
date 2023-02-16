@@ -227,4 +227,71 @@ TEST(math_rotation_types, TypeConversion)
   EXPECT_V4_NEAR(float4(Quaternion(axis_angle)), float4(quaternion), 1e-4);
 }
 
+TEST(math_rotation_types, Euler3Conversion)
+{
+  using eOrder = Euler3::eOrder;
+  /* All the same rotation. */
+  float3 ijk{deg_to_rad(20.0559f), deg_to_rad(-20.5632f), deg_to_rad(30.3091f)};
+  Euler3 euler3_xyz(ijk, eOrder::XYZ);
+  Euler3 euler3_xzy(ijk, eOrder::XZY);
+  Euler3 euler3_yxz(ijk, eOrder::YXZ);
+  Euler3 euler3_yzx(ijk, eOrder::YZX);
+  Euler3 euler3_zxy(ijk, eOrder::ZXY);
+  Euler3 euler3_zyx(ijk, eOrder::ZYX);
+
+  Quaternion quat_xyz(0.927091f, 0.211322f, -0.124857f, 0.283295f);
+  Quaternion quat_xzy(0.943341f, 0.119427f, -0.124857f, 0.283295f);
+  Quaternion quat_yxz(0.943341f, 0.211322f, -0.124857f, 0.223297f);
+  Quaternion quat_yzx(0.927091f, 0.211322f, -0.214438f, 0.223297f);
+  Quaternion quat_zxy(0.927091f, 0.119427f, -0.214438f, 0.283295f);
+  Quaternion quat_zyx(0.943341f, 0.119427f, -0.214438f, 0.223297f);
+
+  float3x3 mat_xyz{{0.80831, -0.57805, -0.111775},
+                   {0.47251, 0.750174, -0.462572},
+                   {0.35124, 0.321087, 0.879508}};
+  float3x3 mat_xzy{{0.80831, -0.56431, -0.167899},
+                   {0.504665, 0.810963, -0.296063},
+                   {0.303231, 0.154577, 0.940296}};
+  float3x3 mat_yxz{{0.869098, -0.474061, -0.14119},
+                   {0.368521, 0.810963, -0.454458},
+                   {0.329941, 0.342937, 0.879508}};
+  float3x3 mat_yzx{{0.80831, -0.504665, -0.303231},
+                   {0.323403, 0.810963, -0.487596},
+                   {0.491982, 0.296063, 0.818719}};
+  float3x3 mat_zxy{{0.747521, -0.576499, -0.329941},
+                   {0.474061, 0.810963, -0.342937},
+                   {0.465272, 0.0999405, 0.879508}};
+  float3x3 mat_zyx{{0.80831, -0.47251, -0.35124},
+                   {0.370072, 0.871751, -0.321087},
+                   {0.457911, 0.129553, 0.879508}};
+
+  EXPECT_V4_NEAR(float4(Quaternion(euler3_xyz)), float4(quat_xyz), 1e-4);
+  EXPECT_V4_NEAR(float4(Quaternion(euler3_xzy)), float4(quat_xzy), 1e-4);
+  EXPECT_V4_NEAR(float4(Quaternion(euler3_yxz)), float4(quat_yxz), 1e-4);
+  EXPECT_V4_NEAR(float4(Quaternion(euler3_yzx)), float4(quat_yzx), 1e-4);
+  EXPECT_V4_NEAR(float4(Quaternion(euler3_zxy)), float4(quat_zxy), 1e-4);
+  EXPECT_V4_NEAR(float4(Quaternion(euler3_zyx)), float4(quat_zyx), 1e-4);
+
+  EXPECT_V3_NEAR(float3((Euler3(eOrder::XYZ) = quat_xyz)), ijk, 1e-4);
+  EXPECT_V3_NEAR(float3((Euler3(eOrder::XZY) = quat_xzy)), ijk, 1e-4);
+  EXPECT_V3_NEAR(float3((Euler3(eOrder::YXZ) = quat_yxz)), ijk, 1e-4);
+  EXPECT_V3_NEAR(float3((Euler3(eOrder::YZX) = quat_yzx)), ijk, 1e-4);
+  EXPECT_V3_NEAR(float3((Euler3(eOrder::ZXY) = quat_zxy)), ijk, 1e-4);
+  EXPECT_V3_NEAR(float3((Euler3(eOrder::ZYX) = quat_zyx)), ijk, 1e-4);
+
+  EXPECT_M3_NEAR(from_rotation<float3x3>(euler3_xyz), mat_xyz, 1e-4);
+  EXPECT_M3_NEAR(from_rotation<float3x3>(euler3_xzy), mat_xzy, 1e-4);
+  EXPECT_M3_NEAR(from_rotation<float3x3>(euler3_yxz), mat_yxz, 1e-4);
+  EXPECT_M3_NEAR(from_rotation<float3x3>(euler3_yzx), mat_yzx, 1e-4);
+  EXPECT_M3_NEAR(from_rotation<float3x3>(euler3_zxy), mat_zxy, 1e-4);
+  EXPECT_M3_NEAR(from_rotation<float3x3>(euler3_zyx), mat_zyx, 1e-4);
+
+  EXPECT_V3_NEAR(to_euler(mat_xyz, eOrder::XYZ).ijk(), float3(-0.48418, 0.112009, -0.62081), 1e-4);
+  EXPECT_V3_NEAR(to_euler(mat_xzy, eOrder::XZY).ijk(), float3(-0.18835, 0.20480, -0.599597), 1e-4);
+  EXPECT_V3_NEAR(to_euler(mat_yxz, eOrder::YXZ).ijk(), float3(-0.47176, 0.15917, -0.426527), 1e-4);
+  EXPECT_V3_NEAR(to_euler(mat_yzx, eOrder::YZX).ijk(), float3(-0.54134, 0.546759, -0.32932), 1e-4);
+  EXPECT_V3_NEAR(to_euler(mat_zxy, eOrder::ZXY).ijk(), float3(-0.100108, 0.48659, -0.61799), 1e-4);
+  EXPECT_V3_NEAR(to_euler(mat_zyx, eOrder::ZYX).ijk(), float3(-0.14625, 0.475644, -0.42935), 1e-4);
+}
+
 }  // namespace blender::tests

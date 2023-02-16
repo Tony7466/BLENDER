@@ -418,6 +418,9 @@ template double4x4 interpolate_fast(const double4x4 &a, const double4x4 &b, doub
 namespace detail {
 
 template void normalized_to_eul2(const float3x3 &mat,
+                                 detail::Euler3<float> &eul1,
+                                 detail::Euler3<float> &eul2);
+template void normalized_to_eul2(const float3x3 &mat,
                                  detail::EulerXYZ<float> &eul1,
                                  detail::EulerXYZ<float> &eul2);
 template void normalized_to_eul2(const double3x3 &mat,
@@ -431,6 +434,8 @@ template MatBase<float, 2, 2> from_rotation(const detail::AngleRadian<float> &ro
 template MatBase<float, 3, 3> from_rotation(const detail::AngleRadian<float> &rotation);
 template MatBase<float, 3, 3> from_rotation(const detail::EulerXYZ<float> &rotation);
 template MatBase<float, 4, 4> from_rotation(const detail::EulerXYZ<float> &rotation);
+template MatBase<float, 3, 3> from_rotation(const detail::Euler3<float> &rotation);
+template MatBase<float, 4, 4> from_rotation(const detail::Euler3<float> &rotation);
 template MatBase<float, 3, 3> from_rotation(const detail::Quaternion<float> &rotation);
 template MatBase<float, 4, 4> from_rotation(const detail::Quaternion<float> &rotation);
 template MatBase<float, 3, 3> from_rotation(const detail::AxisAngle<float> &rotation);

@@ -545,6 +545,15 @@ template<typename T> Quaternion<T>::operator EulerXYZ<T>() const
   return math::to_euler<T, true>(unit_mat);
 }
 
+template<typename T> Euler3<T> &Euler3<T>::operator=(const Quaternion<T> &quat)
+{
+  using Mat3T = MatBase<T, 3, 3>;
+  BLI_ASSERT_UNIT_QUATERNION(quat)
+  Mat3T unit_mat = math::from_rotation<Mat3T>(quat);
+  *this = math::to_euler<T, true>(unit_mat, this->order_);
+  return *this;
+}
+
 template<typename T> EulerXYZ<T>::operator Quaternion<T>() const
 {
   const EulerXYZ<T> &eul = *this;
@@ -568,6 +577,22 @@ template<typename T> EulerXYZ<T>::operator Quaternion<T>() const
   quat.y = cj * ss + sj * cc;
   quat.z = cj * cs - sj * sc;
   return quat;
+}
+
+template<typename T> Euler3<T>::operator Quaternion<T>() const
+{
+  const Euler3<T> &eulO = *this;
+  /* Swizzle to XYZ. */
+  EulerXYZ<T> eul_xyz{eulO.x(), eulO.parity() ? -eulO.y() : eulO.y(), eulO.z()};
+  /* Quaternion conversion. */
+  Quaternion<T> quat{eul_xyz};
+  /* Swizzle back from XYZ. */
+  VecBase<T, 3> quat_xyz;
+  quat_xyz[eulO.x_index()] = quat.x;
+  quat_xyz[eulO.y_index()] = eulO.parity() ? -quat.y : quat.y;
+  quat_xyz[eulO.z_index()] = quat.z;
+
+  return {quat.w, UNPACK3(quat_xyz)};
 }
 
 template<typename T> Quaternion<T>::operator AxisAngle<T>() const

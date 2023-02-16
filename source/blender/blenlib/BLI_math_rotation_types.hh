@@ -341,13 +341,13 @@ template<typename T> struct Euler3 {
  private:
   /** Raw rotation values (in radian) as passed by the constructor. */
   VecBase<T, 3> ijk_;
-  /** Axes order inside `ijk_`. */
+  /** Axes order inside `ijk_`. Immutable. */
   eOrder order_;
 
  public:
   Euler3() = delete;
 
-  Euler3(const VecBase<T, 3> &angles, eOrder order = eOrder::XYZ) : ijk_(angles), order_(order){};
+  Euler3(const VecBase<T, 3> &angles, eOrder order) : ijk_(angles), order_(order){};
 
   /**
    * Defines rotation order but not the rotation values.
@@ -362,6 +362,10 @@ template<typename T> struct Euler3 {
     return ijk_;
   }
 
+  /**
+   * This isn't a conversion, but a reinterpretation shuffling the axes around.
+   * Doesn't take into account the parity.
+   */
   explicit operator EulerXYZ<T>() const
   {
     return {x(), y(), z()};
