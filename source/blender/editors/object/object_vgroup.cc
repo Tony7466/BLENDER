@@ -1383,8 +1383,7 @@ static void moveCloserToDistanceFromPlane(Depsgraph *depsgraph,
   do {
     wasChange = false;
     me_deform = mesh_get_eval_deform(depsgraph, scene_eval, object_eval, &CD_MASK_BAREMESH);
-    const Span<float3> positions = me_deform->vert_positions();
-    m = positions[index];
+    m = me_deform->vert_positions()[index];
     copy_v3_v3(oldPos, m);
     distToStart = dot_v3v3(norm, oldPos) + d;
 
@@ -1426,7 +1425,7 @@ static void moveCloserToDistanceFromPlane(Depsgraph *depsgraph,
         }
         dw_eval->weight = dw->weight;
         me_deform = mesh_get_eval_deform(depsgraph, scene_eval, object_eval, &CD_MASK_BAREMESH);
-        m = positions[index];
+        m = me_deform->vert_positions()[index];
         getVerticalAndHorizontalChange(norm, d, coord, oldPos, distToStart, m, changes, dists, i);
         dw->weight = oldw;
         dw_eval->weight = oldw;
