@@ -325,6 +325,7 @@ void select_adjacent(bke::CurvesGeometry &curves, const bool deselect)
   const OffsetIndices points_by_curve = curves.points_by_curve();
   bke::GSpanAttributeWriter selection = ensure_selection_attribute(
       curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
+  VArray<bool> cyclic = curves.cyclic();
 
   if (deselect) {
     invert_selection(selection.span);
@@ -335,18 +336,27 @@ void select_adjacent(bke::CurvesGeometry &curves, const bool deselect)
     threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
       for (const int curve_i : range) {
         MutableSpan<bool> selection_curve = selection_typed.slice(points_by_curve[curve_i]);
+        const int last_i = points_by_curve.size(curve_i) - 1;
 
         /* Handle all cases in the forward direction. */
-        for (int point_i = 0; point_i < points_by_curve.size(curve_i) - 1; point_i++) {
+        for (int point_i = 0; point_i < last_i; point_i++) {
           if (!selection_curve[point_i] && selection_curve[point_i + 1]) {
             selection_curve[point_i] = true;
           }
         }
 
         /* Handle all cases in the backwards direction. */
-        for (int point_i = points_by_curve.size(curve_i) - 1; point_i > 0; point_i--) {
+        for (int point_i = last_i; point_i > 0; point_i--) {
           if (!selection_curve[point_i] && selection_curve[point_i - 1]) {
             selection_curve[point_i] = true;
+          }
+        }
+
+        /* Handle cyclic curve case. */
+        if (cyclic[curve_i]) {
+          if (selection_curve[0] != selection_curve[last_i]) {
+            selection_curve[0] = true;
+            selection_curve[last_i] = true;
           }
         }
       }
@@ -357,18 +367,27 @@ void select_adjacent(bke::CurvesGeometry &curves, const bool deselect)
     threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
       for (const int curve_i : range) {
         MutableSpan<float> selection_curve = selection_typed.slice(points_by_curve[curve_i]);
+        const int last_i = points_by_curve.size(curve_i) - 1;
 
         /* Handle all cases in the forward direction. */
-        for (int point_i = 0; point_i < points_by_curve.size(curve_i) - 1; point_i++) {
+        for (int point_i = 0; point_i < last_i; point_i++) {
           if ((selection_typed[point_i] == 0.0f) && (selection_typed[point_i + 1] > 0.0f)) {
             selection_curve[point_i] = 1.0f;
           }
         }
 
         /* Handle all cases in the backwards direction. */
-        for (int point_i = points_by_curve.size(curve_i) - 1; point_i > 0; point_i--) {
+        for (int point_i = last_i; point_i > 0; point_i--) {
           if ((selection_typed[point_i] == 0.0f) && (selection_typed[point_i - 1] > 0.0f)) {
             selection_curve[point_i] = 1.0f;
+          }
+        }
+
+        /* Handle cyclic curve case. */
+        if (cyclic[curve_i]) {
+          if (selection_curve[0] != selection_curve[last_i]) {
+            selection_curve[0] = 1.0f;
+            selection_curve[last_i] = 1.0f;
           }
         }
       }
