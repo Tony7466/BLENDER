@@ -54,6 +54,11 @@ class VKContext : public Context {
     return static_cast<VKContext *>(Context::get());
   }
 
+  VkPhysicalDevice physical_device_get() const
+  {
+    return vk_physical_device_;
+  }
+
   VkDevice device_get() const
   {
     return vk_device_;

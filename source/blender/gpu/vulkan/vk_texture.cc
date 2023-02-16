@@ -165,12 +165,24 @@ bool VKTexture::allocate()
       VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
   allocCreateInfo.priority = 1.0f;
 
-  VkResult result = vmaCreateImage(context.mem_allocator_get(),
-                                   &image_info,
-                                   &allocCreateInfo,
-                                   &vk_image_,
-                                   &allocation_,
-                                   nullptr);
+  VkImageFormatProperties image_format = {};
+  VkResult result = vkGetPhysicalDeviceImageFormatProperties(context.physical_device_get(),
+                                                             image_info.format,
+                                                             image_info.imageType,
+                                                             image_info.tiling,
+                                                             image_info.usage,
+                                                             image_info.flags,
+                                                             &image_format);
+  if (result != VK_SUCCESS) {
+    return false;
+  }
+
+  result = vmaCreateImage(context.mem_allocator_get(),
+                          &image_info,
+                          &allocCreateInfo,
+                          &vk_image_,
+                          &allocation_,
+                          nullptr);
   if (result != VK_SUCCESS) {
     return false;
   }
