@@ -86,7 +86,6 @@ bool ED_uvedit_test(struct Object *obedit);
 
 /* Visibility and selection tests. */
 
-bool uvedit_face_visible_test_ex(const struct ToolSettings *ts, struct BMFace *efa);
 bool uvedit_face_select_test_ex(const struct ToolSettings *ts,
                                 struct BMFace *efa,
                                 BMUVOffsets offsets);
@@ -194,30 +193,6 @@ void uvedit_uv_select_set_with_sticky(const struct Scene *scene,
                                       bool do_history,
                                       BMUVOffsets offsets);
 
-/* Low level functions for sticky element selection (sticky mode independent). Type of sticky
- * selection is specified explicitly (using sticky_flag, except for face selection). */
-
-void uvedit_face_select_shared_vert(const struct Scene *scene,
-                                    struct BMEditMesh *em,
-                                    struct BMFace *efa,
-                                    const bool select,
-                                    const bool do_history,
-                                    BMUVOffsets offsets);
-void uvedit_edge_select_shared_vert(const struct Scene *scene,
-                                    struct BMEditMesh *em,
-                                    struct BMLoop *l,
-                                    const bool select,
-                                    const int sticky_flag,
-                                    const bool do_history,
-                                    BMUVOffsets offsets);
-void uvedit_uv_select_shared_vert(const struct Scene *scene,
-                                  struct BMEditMesh *em,
-                                  struct BMLoop *l,
-                                  const bool select,
-                                  const int sticky_flag,
-                                  const bool do_history,
-                                  BMUVOffsets offsets);
-
 /* Sets required UV edge flags as specified by the sticky_flag. */
 void uvedit_edge_select_set_noflush(const struct Scene *scene,
                                     struct BMLoop *l,
@@ -258,19 +233,6 @@ bool ED_uvedit_nearest_uv_multi(const struct View2D *v2d,
                                 const bool ignore_selected,
                                 float *dist_sq,
                                 float r_uv[2]);
-
-struct BMFace **ED_uvedit_selected_faces(const struct Scene *scene,
-                                         struct BMesh *bm,
-                                         int len_max,
-                                         int *r_faces_len);
-struct BMLoop **ED_uvedit_selected_edges(const struct Scene *scene,
-                                         struct BMesh *bm,
-                                         int len_max,
-                                         int *r_edges_len);
-struct BMLoop **ED_uvedit_selected_verts(const struct Scene *scene,
-                                         struct BMesh *bm,
-                                         int len_max,
-                                         int *r_verts_len);
 
 void ED_uvedit_get_aspect(struct Object *obedit, float *r_aspx, float *r_aspy);
 

@@ -5,43 +5,22 @@
  * \ingroup eduv
  */
 
-#include <math.h>
-#include <stdlib.h>
-#include <string.h>
+#include "BKE_context.h"
+#include "BKE_editmesh.h"
+#include "BKE_layer.h"
+#include "BKE_mesh.h"
+#include "BKE_mesh_mapping.h"
+#include "BKE_report.h"
 
-#include "MEM_guardedalloc.h"
-
-#include "DNA_image_types.h"
-#include "DNA_material_types.h"
-#include "DNA_meshdata_types.h"
-#include "DNA_node_types.h"
-#include "DNA_object_types.h"
-#include "DNA_scene_types.h"
-#include "DNA_space_types.h"
-
-#include "BLI_alloca.h"
-#include "BLI_blenlib.h"
 #include "BLI_hash.h"
 #include "BLI_heap.h"
 #include "BLI_kdopbvh.h"
 #include "BLI_kdtree.h"
 #include "BLI_lasso_2d.h"
-#include "BLI_math.h"
 #include "BLI_memarena.h"
 #include "BLI_polyfill_2d.h"
 #include "BLI_polyfill_2d_beautify.h"
-#include "BLI_utildefines.h"
 
-#include "BKE_context.h"
-#include "BKE_customdata.h"
-#include "BKE_editmesh.h"
-#include "BKE_layer.h"
-#include "BKE_material.h"
-#include "BKE_mesh.h"
-#include "BKE_mesh_mapping.h"
-#include "BKE_report.h"
-
-#include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
 #include "ED_image.h"
@@ -50,28 +29,19 @@
 #include "ED_select_utils.h"
 #include "ED_uvedit.h"
 
+#include "MEM_guardedalloc.h"
+
 #include "RNA_access.h"
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
-
-#include "WM_api.h"
-#include "WM_types.h"
 
 #include "UI_view2d.h"
 
 #include "uvedit_intern.h"
 
-static void uv_select_all_perform(const Scene *scene, Object *obedit, int action);
+#include "WM_api.h"
 
-static void uv_select_all_perform_multi_ex(const Scene *scene,
-                                           Object **objects,
-                                           const uint objects_len,
-                                           int action,
-                                           const Object *ob_exclude);
-static void uv_select_all_perform_multi(const Scene *scene,
-                                        Object **objects,
-                                        const uint objects_len,
-                                        int action);
+static void uv_select_all_perform(const Scene *scene, Object *obedit, int action);
 
 static void uv_select_flush_from_tag_face(const Scene *scene, Object *obedit, const bool select);
 static void uv_select_flush_from_tag_loop(const Scene *scene, Object *obedit, const bool select);
@@ -80,6 +50,30 @@ static void uv_select_flush_from_loop_edge_flag(const Scene *scene, BMEditMesh *
 static void uv_select_tag_update_for_object(Depsgraph *depsgraph,
                                             const ToolSettings *ts,
                                             Object *obedit);
+
+/* Low level functions for sticky element selection (sticky mode independent). Type of sticky
+ * selection is specified explicitly (using sticky_flag, except for face selection). */
+
+static void uvedit_face_select_shared_vert(const struct Scene *scene,
+                                           struct BMEditMesh *em,
+                                           struct BMFace *efa,
+                                           const bool select,
+                                           const bool do_history,
+                                           BMUVOffsets offsets);
+static void uvedit_edge_select_shared_vert(const struct Scene *scene,
+                                           struct BMEditMesh *em,
+                                           struct BMLoop *l,
+                                           const bool select,
+                                           const int sticky_flag,
+                                           const bool do_history,
+                                           BMUVOffsets offsets);
+static void uvedit_uv_select_shared_vert(const struct Scene *scene,
+                                         struct BMEditMesh *em,
+                                         struct BMLoop *l,
+                                         const bool select,
+                                         const int sticky_flag,
+                                         const bool do_history,
+                                         BMUVOffsets offsets);
 
 typedef enum {
   UV_SSIM_AREA_UV = 1000,
@@ -153,32 +147,47 @@ BMLoop *ED_uvedit_active_edge_loop_get(BMesh *bm)
 
 char ED_uvedit_select_mode_get(const Scene *scene)
 {
+  /* Returns a single element selection mode (Vertex, Edge or Face) based on
+   * Sync Selection, and potentially multiple selected modes in the UI. */
   const ToolSettings *ts = scene->toolsettings;
-  char uv_selectmode = UV_SELECT_VERTEX;
+  char uv_select_mode = ts->uv_selectmode; /* i.e. Default from UV Editor. */
 
   if (ts->uv_flag & UV_SYNC_SELECTION) {
+    /* We're in Sync-Selection mode.
+     * Convert the selection mode options from the 3D Viewport
+     * into their closest UV Editor equivalents. */
+
+    uv_select_mode = 0;
     if (ts->selectmode & SCE_SELECT_VERTEX) {
-      uv_selectmode = UV_SELECT_VERTEX;
+      uv_select_mode |= UV_SELECT_VERTEX;
     }
-    else if (ts->selectmode & SCE_SELECT_EDGE) {
-      uv_selectmode = UV_SELECT_EDGE;
+    if (ts->selectmode & SCE_SELECT_EDGE) {
+      uv_select_mode |= UV_SELECT_EDGE;
     }
-    else if (ts->selectmode & SCE_SELECT_FACE) {
-      uv_selectmode = UV_SELECT_FACE;
-    }
-  }
-  else {
-    if (ts->uv_selectmode & UV_SELECT_VERTEX) {
-      uv_selectmode = UV_SELECT_VERTEX;
-    }
-    else if (ts->uv_selectmode & UV_SELECT_EDGE) {
-      uv_selectmode = UV_SELECT_EDGE;
-    }
-    else if (ts->uv_selectmode & UV_SELECT_FACE) {
-      uv_selectmode = UV_SELECT_FACE;
+    if (ts->selectmode & SCE_SELECT_FACE) {
+      uv_select_mode |= UV_SELECT_FACE;
     }
   }
-  return uv_selectmode;
+
+  /* Order is important here, as more than one type of selection element could be enabled. */
+  if (uv_select_mode & UV_SELECT_VERTEX) {
+    return UV_SELECT_VERTEX; /* Vertex selection is enabled, use Vertex mode. */
+  }
+  if (uv_select_mode & UV_SELECT_EDGE) {
+    return UV_SELECT_EDGE; /* Edge selection is enabled, use Edge mode. */
+  }
+  if (uv_select_mode & UV_SELECT_FACE) {
+    return UV_SELECT_FACE; /* Face selection is enabled, use Face mode. */
+  }
+
+  if (uv_select_mode & UV_SELECT_ISLAND) {
+    /* Island selection is stored as Vertex selection internally. */
+    return UV_SELECT_VERTEX; /* Not UV_SELECT_ISLAND ! */
+  }
+
+  BLI_assert_unreachable();
+
+  return UV_SELECT_VERTEX; /* Should never happen. */
 }
 
 void ED_uvedit_select_sync_flush(const ToolSettings *ts, BMEditMesh *em, const bool select)
@@ -202,7 +211,7 @@ void ED_uvedit_select_sync_flush(const ToolSettings *ts, BMEditMesh *em, const b
 
 static void uvedit_vertex_select_tagged(BMEditMesh *em,
                                         Scene *scene,
-                                        bool select,
+                                        const bool select,
                                         const BMUVOffsets offsets)
 {
   BMFace *efa;
@@ -218,16 +227,18 @@ static void uvedit_vertex_select_tagged(BMEditMesh *em,
   }
 }
 
-bool uvedit_face_visible_test_ex(const ToolSettings *ts, BMFace *efa)
-{
-  if (ts->uv_flag & UV_SYNC_SELECTION) {
-    return (BM_elem_flag_test(efa, BM_ELEM_HIDDEN) == 0);
-  }
-  return (BM_elem_flag_test(efa, BM_ELEM_HIDDEN) == 0 && BM_elem_flag_test(efa, BM_ELEM_SELECT));
-}
 bool uvedit_face_visible_test(const Scene *scene, BMFace *efa)
 {
-  return uvedit_face_visible_test_ex(scene->toolsettings, efa);
+  if (BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
+    /* Face Hidden flag always applies to both 3D viewport *and* UV Editor. */
+    return false;
+  }
+  if (scene->toolsettings->uv_flag & UV_SYNC_SELECTION) {
+    /* UV Sync Selection mode, ignore 3D Viewport selection for visibility in UV Editor. */
+    return true;
+  }
+  /* No sync-selection, only *selected* faces in 3D Viewport are visible in UV Editor. */
+  return BM_elem_flag_test(efa, BM_ELEM_SELECT);
 }
 
 bool uvedit_face_select_test_ex(const ToolSettings *ts, BMFace *efa, const BMUVOffsets offsets)
@@ -807,6 +818,33 @@ static BMLoop *uvedit_loop_find_other_boundary_loop_with_visible_face(const Scen
 /** \name Find Nearest Elements
  * \{ */
 
+static bool uv_nearest_was_updated(const UvNearestHit *hit)
+{
+  return hit->efa;
+}
+
+static void uv_nearest_hit_update(
+    UvNearestHit *hit, Object *ob, BMFace *efa, BMLoop *l, const float dist)
+{
+  BLI_assert(ob != NULL);
+  BLI_assert(efa != NULL);
+  BLI_assert(dist >= 0.0f);
+  if (dist < hit->dist) {
+    hit->ob = ob;
+    hit->efa = efa;
+    hit->l = l; /* Can be NULL. */
+    hit->dist = dist;
+  }
+}
+
+static float uv_nearest_calc_dist(const UvNearestHit *hit, const float co[2], const float uv[2])
+{
+  float delta[2];
+  sub_v2_v2v2(delta, co, uv);
+  mul_v2_v2(delta, hit->scale);
+  return len_v2(delta);
+}
+
 bool uv_find_nearest_edge(
     Scene *scene, Object *obedit, const float co[2], const float penalty, UvNearestHit *hit)
 {
@@ -817,7 +855,6 @@ bool uv_find_nearest_edge(
   BMIter iter, liter;
   float *luv, *luv_next;
   int i;
-  bool found = false;
 
   const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
   BLI_assert(offsets.uv >= 0);
@@ -834,29 +871,17 @@ bool uv_find_nearest_edge(
 
       float delta[2];
       closest_to_line_segment_v2(delta, co, luv, luv_next);
-
-      sub_v2_v2(delta, co);
-      mul_v2_v2(delta, hit->scale);
-
-      float dist_test_sq = len_squared_v2(delta);
+      float dist_test = uv_nearest_calc_dist(hit, co, delta);
 
       /* Ensures that successive selection attempts will select other edges sharing the same
        * UV coordinates as the previous selection. */
       if ((penalty != 0.0f) && uvedit_edge_select_test(scene, l, offsets)) {
-        dist_test_sq = square_f(sqrtf(dist_test_sq) + penalty);
+        dist_test += penalty;
       }
-      if (dist_test_sq < hit->dist_sq) {
-        hit->ob = obedit;
-        hit->efa = efa;
-
-        hit->l = l;
-
-        hit->dist_sq = dist_test_sq;
-        found = true;
-      }
+      uv_nearest_hit_update(hit, obedit, efa, l, dist_test);
     }
   }
-  return found;
+  return uv_nearest_was_updated(hit);
 }
 
 bool uv_find_nearest_edge_multi(Scene *scene,
@@ -866,88 +891,64 @@ bool uv_find_nearest_edge_multi(Scene *scene,
                                 const float penalty,
                                 UvNearestHit *hit)
 {
-  bool found = false;
   for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
-    if (uv_find_nearest_edge(scene, obedit, co, penalty, hit)) {
-      found = true;
-    }
+    uv_find_nearest_edge(scene, objects[ob_index], co, penalty, hit);
   }
-  return found;
+  return uv_nearest_was_updated(hit);
 }
 
 static bool uv_find_nearest_face(
-    Scene *scene, Object *obedit, const float co[2], const float penalty, UvNearestHit *hit)
+    Scene *scene, Object *obedit, const float co[2], const float penalty_dist, UvNearestHit *hit)
 {
   BLI_assert((hit->scale[0] > 0.0f) && (hit->scale[1] > 0.0f));
   BMEditMesh *em = BKE_editmesh_from_object(obedit);
-  bool found = false;
 
-  const int cd_loop_uv_offset = CustomData_get_offset(&em->bm->ldata, CD_PROP_FLOAT2);
+  const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
 
   BMIter iter;
   BMFace *efa;
-
   BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
     if (!uvedit_face_visible_test(scene, efa)) {
       continue;
     }
 
-    if (BM_face_uv_point_inside_test(efa, co, cd_loop_uv_offset)) {
-      hit->ob = obedit;
-      hit->efa = efa;
-      hit->dist_sq = 0;
-      return true;
-    }
+    /* Ensures that successive selection attempts will select other edges sharing the same
+     * UV coordinates as the previous selection. */
+    const float face_penalty_dist = uvedit_face_select_test(scene, efa, offsets) ? penalty_dist :
+                                                                                   0.0f;
 
-    const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
+    if (BM_face_uv_point_inside_test(efa, co, offsets.uv)) {
+      uv_nearest_hit_update(hit, obedit, efa, NULL, face_penalty_dist);
+      continue;
+    }
 
     BMLoop *l;
     BMIter liter;
-    int i;
-    BM_ITER_ELEM_INDEX (l, &liter, efa, BM_LOOPS_OF_FACE, i) {
-      float *luv = BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
-      float *luv_next = BM_ELEM_CD_GET_VOID_P(l->next, cd_loop_uv_offset);
+    BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
+      float *luv = BM_ELEM_CD_GET_VOID_P(l, offsets.uv);
+      float *luv_next = BM_ELEM_CD_GET_VOID_P(l->next, offsets.uv);
 
       float delta[2];
       closest_to_line_segment_v2(delta, co, luv, luv_next);
-
       sub_v2_v2(delta, co);
       mul_v2_v2(delta, hit->scale);
-
-      float dist_test_sq = len_squared_v2(delta);
-
-      /* Ensures that successive selection attempts will select other edges sharing the same
-       * UV coordinates as the previous selection. */
-      if ((penalty != 0.0f) && uvedit_edge_select_test(scene, l, offsets)) {
-        dist_test_sq = square_f(sqrtf(dist_test_sq) + penalty);
-      }
-      if (dist_test_sq < hit->dist_sq) {
-        hit->ob = obedit;
-        hit->efa = efa;
-
-        hit->l = l;
-
-        hit->dist_sq = dist_test_sq;
-        found = true;
-      }
+      uv_nearest_hit_update(hit, obedit, efa, NULL, len_v2(delta) + face_penalty_dist);
     }
   }
-  return found;
+  return uv_nearest_was_updated(hit);
 }
 
 bool uv_find_nearest_face_multi(Scene *scene,
                                 Object **objects,
                                 uint objects_len,
                                 const float co[2],
-                                const float penalty,
+                                const float penalty_dist,
                                 UvNearestHit *hit)
 {
-  bool found = false;
   for (int ob_index = 0; ob_index < objects_len; ob_index++) {
-    found |= uv_find_nearest_face(scene, objects[ob_index], co, penalty, hit);
+    uv_find_nearest_face(scene, objects[ob_index], co, penalty_dist, hit);
   }
-  return found;
+  return uv_nearest_was_updated(hit);
 }
 
 static bool uv_nearest_between(const BMLoop *l, const float co[2], const int cd_loop_uv_offset)
@@ -964,7 +965,6 @@ bool uv_find_nearest_vert(
     Scene *scene, Object *obedit, float const co[2], const float penalty_dist, UvNearestHit *hit)
 {
   BLI_assert((hit->scale[0] > 0.0f) && (hit->scale[1] > 0.0f));
-  bool found = false;
 
   BMEditMesh *em = BKE_editmesh_from_object(obedit);
   BMFace *efa;
@@ -984,39 +984,30 @@ bool uv_find_nearest_vert(
     BMLoop *l;
     int i;
     BM_ITER_ELEM_INDEX (l, &liter, efa, BM_LOOPS_OF_FACE, i) {
-      float *luv = BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv);
-
-      float delta[2];
-
-      sub_v2_v2v2(delta, co, luv);
-      mul_v2_v2(delta, hit->scale);
-
-      float dist_test_sq = len_squared_v2(delta);
+      const float *luv = BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv);
+      float dist_test = uv_nearest_calc_dist(hit, co, luv);
 
       /* Ensures that successive selection attempts will select other vertices sharing the same
        * UV coordinates */
       if ((penalty_dist != 0.0f) && uvedit_uv_select_test(scene, l, offsets)) {
-        dist_test_sq = square_f(sqrtf(dist_test_sq) + penalty_dist);
+        dist_test += penalty_dist;
       }
 
-      if (dist_test_sq <= hit->dist_sq) {
-        if (dist_test_sq == hit->dist_sq) {
-          if (!uv_nearest_between(l, co, offsets.uv)) {
-            continue;
-          }
+      if (dist_test == hit->dist) {
+        /* Special case to break ties. */
+        if (uv_nearest_between(l, co, offsets.uv)) {
+          hit->ob = obedit;
+          hit->efa = efa;
+          hit->l = l;
         }
-
-        hit->dist_sq = dist_test_sq;
-
-        hit->ob = obedit;
-        hit->efa = efa;
-        hit->l = l;
-        found = true;
+        continue;
       }
+
+      uv_nearest_hit_update(hit, obedit, efa, l, dist_test);
     }
   }
 
-  return found;
+  return uv_nearest_was_updated(hit);
 }
 
 bool uv_find_nearest_vert_multi(Scene *scene,
@@ -2436,8 +2427,8 @@ static bool uv_mouse_select_multi(bContext *C,
   Scene *scene = CTX_data_scene(C);
   const ToolSettings *ts = scene->toolsettings;
   UvNearestHit hit = UV_NEAREST_HIT_INIT_DIST_PX(&region->v2d, 75.0f);
-  int selectmode, sticky;
-  bool found_item = false;
+  int selectmode = ts->uv_selectmode;
+  int sticky = ts->uv_sticky;
   /* 0 == don't flush, 1 == sel, -1 == deselect;  only use when selection sync is enabled. */
   int flush = 0;
 
@@ -2459,16 +2450,11 @@ static bool uv_mouse_select_multi(bContext *C,
 
     sticky = SI_STICKY_DISABLE;
   }
-  else {
-    selectmode = ts->uv_selectmode;
-    sticky = ts->uv_sticky;
-  }
 
   /* find nearest element */
   if (selectmode == UV_SELECT_VERTEX) {
     /* find vertex */
-    found_item = uv_find_nearest_vert_multi(scene, objects, objects_len, co, penalty_dist, &hit);
-    if (found_item) {
+    if (uv_find_nearest_vert_multi(scene, objects, objects_len, co, penalty_dist, &hit)) {
       if ((ts->uv_flag & UV_SYNC_SELECTION) == 0) {
         BMesh *bm = BKE_editmesh_from_object(hit.ob)->bm;
         ED_uvedit_active_vert_loop_set(bm, hit.l);
@@ -2477,8 +2463,7 @@ static bool uv_mouse_select_multi(bContext *C,
   }
   else if (selectmode == UV_SELECT_EDGE) {
     /* find edge */
-    found_item = uv_find_nearest_edge_multi(scene, objects, objects_len, co, penalty_dist, &hit);
-    if (found_item) {
+    if (uv_find_nearest_edge_multi(scene, objects, objects_len, co, penalty_dist, &hit)) {
       if ((ts->uv_flag & UV_SYNC_SELECTION) == 0) {
         BMesh *bm = BKE_editmesh_from_object(hit.ob)->bm;
         ED_uvedit_active_edge_loop_set(bm, hit.l);
@@ -2487,17 +2472,18 @@ static bool uv_mouse_select_multi(bContext *C,
   }
   else if (selectmode == UV_SELECT_FACE) {
     /* find face */
-    found_item = uv_find_nearest_face_multi(scene, objects, objects_len, co, penalty_dist, &hit);
+    const bool found_item = uv_find_nearest_face_multi(
+        scene, objects, objects_len, co, penalty_dist, &hit);
     if (found_item) {
       BMesh *bm = BKE_editmesh_from_object(hit.ob)->bm;
       BM_mesh_active_face_set(bm, hit.efa);
     }
   }
   else if (selectmode == UV_SELECT_ISLAND) {
-    found_item = uv_find_nearest_face_multi(scene, objects, objects_len, co, penalty_dist, &hit);
+    uv_find_nearest_face_multi(scene, objects, objects_len, co, penalty_dist, &hit);
   }
 
-  bool found = found_item;
+  bool found = uv_nearest_was_updated(&hit);
   bool changed = false;
 
   bool is_selected = false;
@@ -3480,6 +3466,32 @@ static void uv_select_flush_from_loop_edge_flag(const Scene *scene, BMEditMesh *
 /** \name Box Select Operator
  * \{ */
 
+static bool uv_box_select_is_face_touching(Scene *scene,
+                                           BMFace *efa,
+                                           rctf rectf,
+                                           const int cd_loop_uv_offset)
+{
+  /* First, are we visible? */
+  if (!uvedit_face_visible_test(scene, efa)) {
+    return false;
+  }
+
+  /* Next, are any of the edges inside the rectangle? */
+  BMLoop *l;
+  BMIter iter;
+  BM_ITER_ELEM (l, &iter, efa, BM_LOOPS_OF_FACE) {
+    float *luv = BM_ELEM_CD_GET_FLOAT_P(l, cd_loop_uv_offset);
+    float *luv_next = BM_ELEM_CD_GET_FLOAT_P(l->next, cd_loop_uv_offset);
+    if (BLI_rctf_isect_segment(&rectf, luv_next, luv)) {
+      return true;
+    }
+  }
+
+  /* Last, is an arbitrary point of the rectangle in the interior of the face? */
+  float rectangle_corner[2] = {rectf.xmin, rectf.ymin};
+  return BM_face_uv_point_inside_test(efa, rectangle_corner, cd_loop_uv_offset);
+}
+
 static int uv_box_select_exec(bContext *C, wmOperator *op)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
@@ -3492,10 +3504,9 @@ static int uv_box_select_exec(bContext *C, wmOperator *op)
   BMIter iter, liter;
   float *luv;
   rctf rectf;
-  bool pinned;
-  const bool use_face_center = ((ts->uv_flag & UV_SYNC_SELECTION) ?
-                                    (ts->selectmode == SCE_SELECT_FACE) :
-                                    (ts->uv_selectmode == UV_SELECT_FACE));
+  const bool use_face_touch = ((ts->uv_flag & UV_SYNC_SELECTION) ?
+                                   (ts->selectmode == SCE_SELECT_FACE) :
+                                   (ts->uv_selectmode == UV_SELECT_FACE));
   const bool use_edge = ((ts->uv_flag & UV_SYNC_SELECTION) ?
                              (ts->selectmode == SCE_SELECT_EDGE) :
                              (ts->uv_selectmode == UV_SELECT_EDGE));
@@ -3510,7 +3521,7 @@ static int uv_box_select_exec(bContext *C, wmOperator *op)
   const bool select = (sel_op != SEL_OP_SUB);
   const bool use_pre_deselect = SEL_OP_USE_PRE_DESELECT(sel_op);
 
-  pinned = RNA_boolean_get(op->ptr, "pinned");
+  const bool pinned = RNA_boolean_get(op->ptr, "pinned");
 
   bool changed_multi = false;
 
@@ -3522,7 +3533,6 @@ static int uv_box_select_exec(bContext *C, wmOperator *op)
     uv_select_all_perform_multi(scene, objects, objects_len, SEL_DESELECT);
   }
 
-  /* don't indent to avoid diff noise! */
   for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
     Object *obedit = objects[ob_index];
     BMEditMesh *em = BKE_editmesh_from_object(obedit);
@@ -3535,22 +3545,13 @@ static int uv_box_select_exec(bContext *C, wmOperator *op)
     BM_uv_map_ensure_pin_attr(em->bm, active_uv_name);
     const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
 
-    /* do actual selection */
-    if (use_face_center && !pinned) {
-      /* handle face selection mode */
-      float cent[2];
-
+    /* Do actual selection. */
+    if (use_face_touch && !pinned) {
+      /* Handle face selection mode. */
       BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
-        /* assume not touched */
-        BM_elem_flag_disable(efa, BM_ELEM_TAG);
-
-        if (uvedit_face_visible_test(scene, efa)) {
-          BM_face_uv_calc_center_median(efa, offsets.uv, cent);
-          if (BLI_rctf_isect_pt_v(&rectf, cent)) {
-            BM_elem_flag_enable(efa, BM_ELEM_TAG);
-            changed = true;
-          }
-        }
+        const bool touched = uv_box_select_is_face_touching(scene, efa, rectf, offsets.uv);
+        BM_elem_flag_set(efa, BM_ELEM_TAG, touched);
+        changed |= touched;
       }
 
       /* (de)selects all tagged faces and deals with sticky modes */
@@ -3721,6 +3722,26 @@ static bool uv_circle_select_is_edge_inside(const float uv_a[2],
   return dist_squared_to_line_segment_v2((const float[2]){0.0f, 0.0f}, co_a, co_b) < 1.0f;
 }
 
+static bool uv_circle_select_is_face_touching(BMFace *efa,
+                                              const float offset[2],
+                                              const float ellipse[2],
+                                              const int cd_loop_uv_offset)
+{
+  /* First, are any of the edges inside the solid ellipse? */
+  BMLoop *l;
+  BMIter iter;
+  BM_ITER_ELEM (l, &iter, efa, BM_LOOPS_OF_FACE) {
+    float *luv = BM_ELEM_CD_GET_FLOAT_P(l, cd_loop_uv_offset);
+    float *luv_next = BM_ELEM_CD_GET_FLOAT_P(l->next, cd_loop_uv_offset);
+    if (uv_circle_select_is_edge_inside(luv, luv_next, offset, ellipse)) {
+      return true;
+    }
+  }
+
+  /* Also, is the center of the ellipse in the interior of the face? */
+  return BM_face_uv_point_inside_test(efa, offset, cd_loop_uv_offset);
+}
+
 static int uv_circle_select_exec(bContext *C, wmOperator *op)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
@@ -3737,9 +3758,6 @@ static int uv_circle_select_exec(bContext *C, wmOperator *op)
   float zoomx, zoomy;
   float offset[2], ellipse[2];
 
-  const bool use_face_center = ((ts->uv_flag & UV_SYNC_SELECTION) ?
-                                    (ts->selectmode == SCE_SELECT_FACE) :
-                                    (ts->uv_selectmode == UV_SELECT_FACE));
   const bool use_edge = ((ts->uv_flag & UV_SYNC_SELECTION) ?
                              (ts->selectmode == SCE_SELECT_EDGE) :
                              (ts->uv_selectmode == UV_SELECT_EDGE));
@@ -3787,19 +3805,13 @@ static int uv_circle_select_exec(bContext *C, wmOperator *op)
     BM_uv_map_ensure_edge_select_attr(em->bm, active_uv_name);
     const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
 
-    /* do selection */
-    if (use_face_center) {
+    /* Do selection. */
+    if (ED_uvedit_select_mode_get(scene) == UV_SELECT_FACE) {
       BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
-        BM_elem_flag_disable(efa, BM_ELEM_TAG);
-        /* assume not touched */
-        if (select != uvedit_face_select_test(scene, efa, offsets)) {
-          float cent[2];
-          BM_face_uv_calc_center_median(efa, offsets.uv, cent);
-          if (uv_circle_select_is_point_inside(cent, offset, ellipse)) {
-            BM_elem_flag_enable(efa, BM_ELEM_TAG);
-            changed = true;
-          }
-        }
+        const bool touched = select != uvedit_face_select_test(scene, efa, offsets) &&
+                             uv_circle_select_is_face_touching(efa, offset, ellipse, offsets.uv);
+        BM_elem_flag_set(efa, BM_ELEM_TAG, touched);
+        changed |= touched;
       }
 
       /* (de)selects all tagged faces and deals with sticky modes */
@@ -3930,14 +3942,35 @@ static bool do_lasso_select_mesh_uv_is_edge_inside(const ARegion *region,
                                                    const float co_test_b[2])
 {
   int co_screen_a[2], co_screen_b[2];
-  if (UI_view2d_view_to_region_segment_clip(
-          &region->v2d, co_test_a, co_test_b, co_screen_a, co_screen_b) &&
-      BLI_rcti_isect_segment(clip_rect, co_screen_a, co_screen_b) &&
-      BLI_lasso_is_edge_inside(
-          mcoords, mcoords_len, UNPACK2(co_screen_a), UNPACK2(co_screen_b), V2D_IS_CLIPPED)) {
-    return true;
+  return UI_view2d_view_to_region_segment_clip(
+             &region->v2d, co_test_a, co_test_b, co_screen_a, co_screen_b) &&
+         BLI_rcti_isect_segment(clip_rect, co_screen_a, co_screen_b) &&
+         BLI_lasso_is_edge_inside(
+             mcoords, mcoords_len, UNPACK2(co_screen_a), UNPACK2(co_screen_b), V2D_IS_CLIPPED);
+}
+
+static bool uv_lasso_select_is_face_touching(BMFace *efa,
+                                             const ARegion *region,
+                                             const rcti *clip_rect,
+                                             const int mcoords[][2],
+                                             const int mcoords_len,
+                                             const int cd_loop_uv_offset)
+{
+  /* First, are any of the face edges inside the lasso? */
+  BMLoop *l;
+  BMIter iter;
+  BM_ITER_ELEM (l, &iter, efa, BM_LOOPS_OF_FACE) {
+    float *luv = BM_ELEM_CD_GET_FLOAT_P(l, cd_loop_uv_offset);
+    float *luv_next = BM_ELEM_CD_GET_FLOAT_P(l->next, cd_loop_uv_offset);
+    if (do_lasso_select_mesh_uv_is_edge_inside(
+            region, clip_rect, mcoords, mcoords_len, luv, luv_next)) {
+      return true;
+    }
   }
-  return false;
+
+  /* Also, is an arbitrary point of the lasso in the interior of the face? */
+  float lasso_corner[2] = {mcoords[0][0], mcoords[0][1]};
+  return BM_face_uv_point_inside_test(efa, lasso_corner, cd_loop_uv_offset);
 }
 
 static bool do_lasso_select_mesh_uv(bContext *C,
@@ -3950,9 +3983,6 @@ static bool do_lasso_select_mesh_uv(bContext *C,
   Scene *scene = CTX_data_scene(C);
   const ToolSettings *ts = scene->toolsettings;
   ViewLayer *view_layer = CTX_data_view_layer(C);
-  const bool use_face_center = ((ts->uv_flag & UV_SYNC_SELECTION) ?
-                                    (ts->selectmode == SCE_SELECT_FACE) :
-                                    (ts->uv_selectmode == UV_SELECT_FACE));
   const bool use_edge = ((ts->uv_flag & UV_SYNC_SELECTION) ?
                              (ts->selectmode == SCE_SELECT_EDGE) :
                              (ts->uv_selectmode == UV_SELECT_EDGE));
@@ -3991,18 +4021,13 @@ static bool do_lasso_select_mesh_uv(bContext *C,
     BM_uv_map_ensure_edge_select_attr(em->bm, active_uv_name);
     const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
 
-    if (use_face_center) { /* Face Center Select. */
+    if (ED_uvedit_select_mode_get(scene) == UV_SELECT_FACE) { /* Face Touch Select. */
       BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
-        BM_elem_flag_disable(efa, BM_ELEM_TAG);
-        /* assume not touched */
-        if (select != uvedit_face_select_test(scene, efa, offsets)) {
-          float cent[2];
-          BM_face_uv_calc_center_median(efa, offsets.uv, cent);
-          if (do_lasso_select_mesh_uv_is_point_inside(region, &rect, mcoords, mcoords_len, cent)) {
-            BM_elem_flag_enable(efa, BM_ELEM_TAG);
-            changed = true;
-          }
-        }
+        const bool touched = select != uvedit_face_select_test(scene, efa, offsets) &&
+                             uv_lasso_select_is_face_touching(
+                                 efa, region, &rect, mcoords, mcoords_len, offsets.uv);
+        BM_elem_flag_set(efa, BM_ELEM_TAG, touched);
+        changed |= touched;
       }
 
       /* (de)selects all tagged faces and deals with sticky modes */
@@ -4327,7 +4352,7 @@ static int uv_select_overlap(bContext *C, const bool extend)
     BMIter iter;
     BMFace *efa;
     BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
-      if (!uvedit_face_visible_test_ex(scene->toolsettings, efa)) {
+      if (!uvedit_face_visible_test(scene, efa)) {
         continue;
       }
       uv_tri_len += efa->len - 2;
@@ -4361,7 +4386,7 @@ static int uv_select_overlap(bContext *C, const bool extend)
     int face_index;
     BM_ITER_MESH_INDEX (efa, &iter, em->bm, BM_FACES_OF_MESH, face_index) {
 
-      if (!uvedit_face_visible_test_ex(scene->toolsettings, efa)) {
+      if (!uvedit_face_visible_test(scene, efa)) {
         continue;
       }
 
@@ -5227,160 +5252,6 @@ void UV_OT_select_similar(wmOperatorType *ot)
   RNA_def_enum_funcs(prop, uv_select_similar_type_itemf);
   RNA_def_enum(ot->srna, "compare", prop_similar_compare_types, SIM_CMP_EQ, "Compare", "");
   RNA_def_float(ot->srna, "threshold", 0.0f, 0.0f, 1.0f, "Threshold", "", 0.0f, 1.0f);
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Selected Elements as Arrays (Vertex, Edge & Faces)
- *
- * These functions return single elements per connected vertex/edge.
- * So an edge that has two connected edge loops only assigns one loop in the array.
- * \{ */
-
-BMFace **ED_uvedit_selected_faces(const Scene *scene, BMesh *bm, int len_max, int *r_faces_len)
-{
-  const BMUVOffsets offsets = BM_uv_map_get_offsets(bm);
-
-  CLAMP_MAX(len_max, bm->totface);
-  int faces_len = 0;
-  BMFace **faces = MEM_mallocN(sizeof(*faces) * len_max, __func__);
-
-  BMIter iter;
-  BMFace *f;
-  BM_ITER_MESH (f, &iter, bm, BM_FACES_OF_MESH) {
-    if (uvedit_face_visible_test(scene, f)) {
-      if (uvedit_face_select_test(scene, f, offsets)) {
-        faces[faces_len++] = f;
-        if (faces_len == len_max) {
-          goto finally;
-        }
-      }
-    }
-  }
-
-finally:
-  *r_faces_len = faces_len;
-  if (faces_len != len_max) {
-    faces = MEM_reallocN(faces, sizeof(*faces) * faces_len);
-  }
-  return faces;
-}
-
-BMLoop **ED_uvedit_selected_edges(const Scene *scene, BMesh *bm, int len_max, int *r_edges_len)
-{
-  const BMUVOffsets offsets = BM_uv_map_get_offsets(bm);
-  BLI_assert(offsets.uv >= 0);
-
-  CLAMP_MAX(len_max, bm->totloop);
-  int edges_len = 0;
-  BMLoop **edges = MEM_mallocN(sizeof(*edges) * len_max, __func__);
-
-  BMIter iter;
-  BMFace *f;
-
-  /* Clear tag. */
-  BM_ITER_MESH (f, &iter, bm, BM_FACES_OF_MESH) {
-    BMIter liter;
-    BMLoop *l_iter;
-    BM_ITER_ELEM (l_iter, &liter, f, BM_LOOPS_OF_FACE) {
-      BM_elem_flag_disable(l_iter, BM_ELEM_TAG);
-    }
-  }
-
-  BM_ITER_MESH (f, &iter, bm, BM_FACES_OF_MESH) {
-    if (uvedit_face_visible_test(scene, f)) {
-      BMIter liter;
-      BMLoop *l_iter;
-      BM_ITER_ELEM (l_iter, &liter, f, BM_LOOPS_OF_FACE) {
-        if (!BM_elem_flag_test(l_iter, BM_ELEM_TAG)) {
-          if (uvedit_edge_select_test(scene, l_iter, offsets)) {
-            BM_elem_flag_enable(l_iter, BM_ELEM_TAG);
-
-            edges[edges_len++] = l_iter;
-            if (edges_len == len_max) {
-              goto finally;
-            }
-
-            /* Tag other connected loops so we don't consider them separate edges. */
-            if (l_iter != l_iter->radial_next) {
-              BMLoop *l_radial_iter = l_iter->radial_next;
-              do {
-                if (BM_loop_uv_share_edge_check(l_iter, l_radial_iter, offsets.uv)) {
-                  BM_elem_flag_enable(l_radial_iter, BM_ELEM_TAG);
-                }
-              } while ((l_radial_iter = l_radial_iter->radial_next) != l_iter);
-            }
-          }
-        }
-      }
-    }
-  }
-
-finally:
-  *r_edges_len = edges_len;
-  if (edges_len != len_max) {
-    edges = MEM_reallocN(edges, sizeof(*edges) * edges_len);
-  }
-  return edges;
-}
-
-BMLoop **ED_uvedit_selected_verts(const Scene *scene, BMesh *bm, int len_max, int *r_verts_len)
-{
-  const BMUVOffsets offsets = BM_uv_map_get_offsets(bm);
-  BLI_assert(offsets.select_vert >= 0);
-  BLI_assert(offsets.uv >= 0);
-
-  CLAMP_MAX(len_max, bm->totloop);
-  int verts_len = 0;
-  BMLoop **verts = MEM_mallocN(sizeof(*verts) * len_max, __func__);
-
-  BMIter iter;
-  BMFace *f;
-
-  /* Clear tag. */
-  BM_ITER_MESH (f, &iter, bm, BM_FACES_OF_MESH) {
-    BMIter liter;
-    BMLoop *l_iter;
-    BM_ITER_ELEM (l_iter, &liter, f, BM_LOOPS_OF_FACE) {
-      BM_elem_flag_disable(l_iter, BM_ELEM_TAG);
-    }
-  }
-
-  BM_ITER_MESH (f, &iter, bm, BM_FACES_OF_MESH) {
-    if (uvedit_face_visible_test(scene, f)) {
-      BMIter liter;
-      BMLoop *l_iter;
-      BM_ITER_ELEM (l_iter, &liter, f, BM_LOOPS_OF_FACE) {
-        if (!BM_elem_flag_test(l_iter, BM_ELEM_TAG)) {
-          if (BM_ELEM_CD_GET_BOOL(l_iter, offsets.select_vert)) {
-            BM_elem_flag_enable(l_iter->v, BM_ELEM_TAG);
-
-            verts[verts_len++] = l_iter;
-            if (verts_len == len_max) {
-              goto finally;
-            }
-
-            /* Tag other connected loops so we don't consider them separate vertices. */
-            BMIter liter_disk;
-            BMLoop *l_disk_iter;
-            BM_ITER_ELEM (l_disk_iter, &liter_disk, l_iter->v, BM_LOOPS_OF_VERT) {
-              if (BM_loop_uv_share_vert_check(l_iter, l_disk_iter, offsets.uv)) {
-                BM_elem_flag_enable(l_disk_iter, BM_ELEM_TAG);
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-finally:
-  *r_verts_len = verts_len;
-  if (verts_len != len_max) {
-    verts = MEM_reallocN(verts, sizeof(*verts) * verts_len);
-  }
-  return verts;
 }
 
 /** \} */

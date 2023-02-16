@@ -787,6 +787,156 @@ void UV_OT_shortest_path_pick(wmOperatorType *ot)
 /** \name Select Path Between Existing Selection
  * \{ */
 
+/* -------------------------------------------------------------------- */
+/** \name Selected Elements as Arrays (Vertex, Edge & Faces)
+ *
+ * These functions return single elements per connected vertex/edge.
+ * So an edge that has two connected edge loops only assigns one loop in the array.
+ * \{ */
+
+static BMFace **ED_uvedit_selected_faces(const Scene *scene,
+                                         BMesh *bm,
+                                         int len_max,
+                                         int *r_faces_len)
+{
+  const BMUVOffsets offsets = BM_uv_map_get_offsets(bm);
+
+  int faces_len = 0;
+  BMFace **faces = MEM_mallocN(sizeof(*faces) * len_max, __func__);
+
+  BMIter iter;
+  BMFace *f;
+  BM_ITER_MESH (f, &iter, bm, BM_FACES_OF_MESH) {
+    if (uvedit_face_visible_test(scene, f) && uvedit_face_select_test(scene, f, offsets)) {
+      faces[faces_len++] = f;
+      if (faces_len == len_max) {
+        break;
+      }
+    }
+  }
+
+  *r_faces_len = faces_len;
+  return faces;
+}
+
+static BMLoop **ED_uvedit_selected_edges(const Scene *scene,
+                                         BMesh *bm,
+                                         int len_max,
+                                         int *r_edges_len)
+{
+  const BMUVOffsets offsets = BM_uv_map_get_offsets(bm);
+  BLI_assert(offsets.uv >= 0);
+
+  CLAMP_MAX(len_max, bm->totloop);
+  int edges_len = 0;
+  BMLoop **edges = MEM_mallocN(sizeof(*edges) * len_max, __func__);
+
+  BMIter iter;
+  BMFace *f;
+
+  /* Clear tag. */
+  BM_ITER_MESH (f, &iter, bm, BM_FACES_OF_MESH) {
+    BMIter liter;
+    BMLoop *l_iter;
+    BM_ITER_ELEM (l_iter, &liter, f, BM_LOOPS_OF_FACE) {
+      BM_elem_flag_disable(l_iter, BM_ELEM_TAG);
+    }
+  }
+
+  BM_ITER_MESH (f, &iter, bm, BM_FACES_OF_MESH) {
+    if (uvedit_face_visible_test(scene, f)) {
+      BMIter liter;
+      BMLoop *l_iter;
+      BM_ITER_ELEM (l_iter, &liter, f, BM_LOOPS_OF_FACE) {
+        if (!BM_elem_flag_test(l_iter, BM_ELEM_TAG)) {
+          if (uvedit_edge_select_test(scene, l_iter, offsets)) {
+            BM_elem_flag_enable(l_iter, BM_ELEM_TAG);
+
+            edges[edges_len++] = l_iter;
+            if (edges_len == len_max) {
+              goto finally;
+            }
+
+            /* Tag other connected loops so we don't consider them separate edges. */
+            if (l_iter != l_iter->radial_next) {
+              BMLoop *l_radial_iter = l_iter->radial_next;
+              do {
+                if (BM_loop_uv_share_edge_check(l_iter, l_radial_iter, offsets.uv)) {
+                  BM_elem_flag_enable(l_radial_iter, BM_ELEM_TAG);
+                }
+              } while ((l_radial_iter = l_radial_iter->radial_next) != l_iter);
+            }
+          }
+        }
+      }
+    }
+  }
+
+finally:
+  *r_edges_len = edges_len;
+  return edges;
+}
+
+static BMLoop **ED_uvedit_selected_verts(const Scene *scene,
+                                         BMesh *bm,
+                                         int len_max,
+                                         int *r_verts_len)
+{
+  const BMUVOffsets offsets = BM_uv_map_get_offsets(bm);
+  BLI_assert(offsets.select_vert >= 0);
+  BLI_assert(offsets.uv >= 0);
+
+  CLAMP_MAX(len_max, bm->totloop);
+  int verts_len = 0;
+  BMLoop **verts = MEM_mallocN(sizeof(*verts) * len_max, __func__);
+
+  BMIter iter;
+  BMFace *f;
+
+  /* Clear tag. */
+  BM_ITER_MESH (f, &iter, bm, BM_FACES_OF_MESH) {
+    BMIter liter;
+    BMLoop *l_iter;
+    BM_ITER_ELEM (l_iter, &liter, f, BM_LOOPS_OF_FACE) {
+      BM_elem_flag_disable(l_iter, BM_ELEM_TAG);
+    }
+  }
+
+  BM_ITER_MESH (f, &iter, bm, BM_FACES_OF_MESH) {
+    if (uvedit_face_visible_test(scene, f)) {
+      BMIter liter;
+      BMLoop *l_iter;
+      BM_ITER_ELEM (l_iter, &liter, f, BM_LOOPS_OF_FACE) {
+        if (!BM_elem_flag_test(l_iter, BM_ELEM_TAG)) {
+          if (BM_ELEM_CD_GET_BOOL(l_iter, offsets.select_vert)) {
+            BM_elem_flag_enable(l_iter->v, BM_ELEM_TAG);
+
+            verts[verts_len++] = l_iter;
+            if (verts_len == len_max) {
+              goto finally;
+            }
+
+            /* Tag other connected loops so we don't consider them separate vertices. */
+            BMIter liter_disk;
+            BMLoop *l_disk_iter;
+            BM_ITER_ELEM (l_disk_iter, &liter_disk, l_iter->v, BM_LOOPS_OF_VERT) {
+              if (BM_loop_uv_share_vert_check(l_iter, l_disk_iter, offsets.uv)) {
+                BM_elem_flag_enable(l_disk_iter, BM_ELEM_TAG);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+finally:
+  *r_verts_len = verts_len;
+  return verts;
+}
+
+/** \} */
+
 static int uv_shortest_path_select_exec(bContext *C, wmOperator *op)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);

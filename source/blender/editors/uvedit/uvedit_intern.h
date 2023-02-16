@@ -18,7 +18,7 @@ struct Scene;
 struct SpaceImage;
 struct wmOperatorType;
 
-/* find nearest */
+/* UV Find Nearest */
 
 typedef struct UvNearestHit {
   /** Only for `*_multi(..)` versions of functions. */
@@ -30,9 +30,9 @@ typedef struct UvNearestHit {
    * Needs to be set before calling nearest functions.
    *
    * \note When #UV_NEAREST_HIT_INIT_DIST_PX or #UV_NEAREST_HIT_INIT_MAX are used,
-   * this value is pixels squared.
+   * Units are pixels.
    */
-  float dist_sq;
+  float dist;
 
   /** Scale the UVs to account for aspect ratio from the image view. */
   float scale[2];
@@ -40,7 +40,7 @@ typedef struct UvNearestHit {
 
 #define UV_NEAREST_HIT_INIT_DIST_PX(v2d, dist_px) \
   { \
-    .dist_sq = square_f(U.pixelsize * dist_px), \
+    .dist = U.pixelsize * dist_px, \
     .scale = { \
         UI_view2d_scale_get_x(v2d), \
         UI_view2d_scale_get_y(v2d), \
@@ -49,7 +49,7 @@ typedef struct UvNearestHit {
 
 #define UV_NEAREST_HIT_INIT_MAX(v2d) \
   { \
-    .dist_sq = FLT_MAX, \
+    .dist = FLT_MAX, \
     .scale = { \
         UI_view2d_scale_get_x(v2d), \
         UI_view2d_scale_get_y(v2d), \
