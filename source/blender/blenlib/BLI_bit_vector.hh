@@ -265,7 +265,7 @@ class BitVector {
     size_in_bits_ = new_size_in_bits;
     if (old_size_in_bits < new_size_in_bits) {
       MutableBitSpan(data_, IndexRange(old_size_in_bits, new_size_in_bits - old_size_in_bits))
-          .set(value);
+          .set_all(value);
     }
   }
 
@@ -274,7 +274,7 @@ class BitVector {
    */
   void fill(const bool value)
   {
-    MutableBitSpan(data_, size_in_bits_).set(value);
+    MutableBitSpan(data_, size_in_bits_).set_all(value);
   }
 
   /**

@@ -204,7 +204,7 @@ class MutableBitSpan {
   }
 
   /** Sets all referenced bits to 1. */
-  void set()
+  void set_all()
   {
     const AlignedIndexRanges ranges = split_index_range_by_alignment(bit_range_, BitsPerInt);
     {
@@ -227,7 +227,7 @@ class MutableBitSpan {
   }
 
   /** Sets all referenced bits to 0. */
-  void reset()
+  void reset_all()
   {
     const AlignedIndexRanges ranges = split_index_range_by_alignment(bit_range_, BitsPerInt);
     {
@@ -250,14 +250,20 @@ class MutableBitSpan {
   }
 
   /** Sets all referenced bits to either 0 or 1. */
-  void set(const bool value)
+  void set_all(const bool value)
   {
     if (value) {
-      this->set();
+      this->set_all();
     }
     else {
-      this->reset();
+      this->reset_all();
     }
+  }
+
+  /** Same as set_all to mirror #MutableSpan. */
+  void fill(const bool value)
+  {
+    this->set_all(value);
   }
 };
 

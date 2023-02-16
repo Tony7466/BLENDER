@@ -104,15 +104,15 @@ TEST(bit_span, RangeConstructor)
 TEST(bit_span, Set)
 {
   uint64_t data = 0;
-  MutableBitSpan(&data, 64).set(true);
+  MutableBitSpan(&data, 64).set_all(true);
   EXPECT_EQ(data, uint64_t(-1));
-  MutableBitSpan(&data, 64).set(false);
+  MutableBitSpan(&data, 64).set_all(false);
   EXPECT_EQ(data, uint64_t(0));
 
-  MutableBitSpan(&data, IndexRange(4, 8)).set(true);
+  MutableBitSpan(&data, IndexRange(4, 8)).set_all(true);
   EXPECT_EQ(data,
             0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'1111'1111'0000);
-  MutableBitSpan(&data, IndexRange(8, 30)).set(false);
+  MutableBitSpan(&data, IndexRange(8, 30)).set_all(false);
 
   EXPECT_EQ(data,
             0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'1111'0000);
@@ -123,13 +123,13 @@ TEST(bit_span, SetSliced)
   std::array<uint64_t, 10> data;
   memset(data.data(), 0, sizeof(data));
   MutableBitSpan span{data.data(), 640};
-  span.slice(IndexRange(5, 500)).set(true);
+  span.slice(IndexRange(5, 500)).set_all(true);
 
   for (const int64_t i : IndexRange(640)) {
     EXPECT_EQ(span[i], i >= 5 && i < 505);
   }
 
-  span.slice(IndexRange(10, 190)).set(false);
+  span.slice(IndexRange(10, 190)).set_all(false);
 
   for (const int64_t i : IndexRange(640)) {
     EXPECT_EQ(span[i], (i >= 5 && i < 10) || (i >= 200 && i < 505));
