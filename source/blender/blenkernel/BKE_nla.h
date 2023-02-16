@@ -41,7 +41,8 @@ struct PropertyRNA;
  */
 void BKE_nlastrip_free(struct NlaStrip *strip, bool do_id_user);
 /**
- * Remove all NLA strips from the given NLA track, then free the track itself.
+ * Remove & Frees all NLA strips from the given NLA track,
+ * then frees (doesn't remove) the track itself.
  */
 void BKE_nlatrack_free(struct NlaTrack *nlt, bool do_id_user);
 /**
