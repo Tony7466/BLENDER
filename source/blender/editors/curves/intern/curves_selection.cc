@@ -307,19 +307,6 @@ void select_linked(bke::CurvesGeometry &curves)
   selection.finish();
 }
 
-static bool check_adjacent_selection(GMutableSpan selection, const int current, const int next)
-{
-  if (selection.type().is<bool>()) {
-    MutableSpan<bool> selection_typed = selection.typed<bool>();
-    return !selection_typed[current] && selection_typed[next];
-  }
-  else if (selection.type().is<float>()) {
-    MutableSpan<float> selection_typed = selection.typed<float>();
-    return (selection_typed[current] == 0.0f) && (selection_typed[next] > 0.0f);
-  }
-  return false;
-}
-
 void select_adjacent(bke::CurvesGeometry &curves, const bool deselect)
 {
   const OffsetIndices points_by_curve = curves.points_by_curve();
