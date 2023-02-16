@@ -272,7 +272,7 @@ void select_adjacent(bke::CurvesGeometry &curves, const bool deselect)
   const OffsetIndices points_by_curve = curves.points_by_curve();
   bke::GSpanAttributeWriter selection = ensure_selection_attribute(
       curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
-  VArray<bool> cyclic = curves.cyclic();
+  const VArray<bool> cyclic = curves.cyclic();
 
   if (deselect) {
     invert_selection(selection.span);
