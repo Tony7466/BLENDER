@@ -2,6 +2,8 @@
 
 #include "testing/testing.h"
 
+#include "DNA_action_types.h"
+
 #include "BLI_math_rotation.h"
 #include "BLI_math_rotation.hh"
 #include "BLI_math_rotation_types.hh"
@@ -84,6 +86,40 @@ TEST(math_rotation_types, AxisSignedCross)
   EXPECT_EQ(
       basis_vector<float>(cross(eAxisSigned::Z_NEG, eAxisSigned::Y_NEG)),
       cross(basis_vector<float>(eAxisSigned::Z_NEG), basis_vector<float>(eAxisSigned::Y_NEG)));
+}
+
+TEST(math_rotation_types, Euler3Order)
+{
+  using eOrder = Euler3::eOrder;
+  /* Asserts those match.
+   * Do not do it in the header to avoid including the DNA header everywhere.
+   */
+  BLI_STATIC_ASSERT(
+      static_cast<int>(eOrder::XYZ) == static_cast<int>(eRotationModes::ROT_MODE_XYZ), "");
+  BLI_STATIC_ASSERT(
+      static_cast<int>(eOrder::XZY) == static_cast<int>(eRotationModes::ROT_MODE_XZY), "");
+  BLI_STATIC_ASSERT(
+      static_cast<int>(eOrder::YXZ) == static_cast<int>(eRotationModes::ROT_MODE_YXZ), "");
+  BLI_STATIC_ASSERT(
+      static_cast<int>(eOrder::YZX) == static_cast<int>(eRotationModes::ROT_MODE_YZX), "");
+  BLI_STATIC_ASSERT(
+      static_cast<int>(eOrder::ZXY) == static_cast<int>(eRotationModes::ROT_MODE_ZXY), "");
+  BLI_STATIC_ASSERT(
+      static_cast<int>(eOrder::ZYX) == static_cast<int>(eRotationModes::ROT_MODE_ZYX), "");
+
+  EXPECT_EQ(float3(Euler3({0, 1, 2}, eOrder::XYZ)), float3(0, 1, 2));
+  EXPECT_EQ(float3(Euler3({0, 1, 2}, eOrder::XZY)), float3(0, 1, 2));
+  EXPECT_EQ(float3(Euler3({0, 1, 2}, eOrder::YXZ)), float3(0, 1, 2));
+  EXPECT_EQ(float3(Euler3({0, 1, 2}, eOrder::YZX)), float3(0, 1, 2));
+  EXPECT_EQ(float3(Euler3({0, 1, 2}, eOrder::ZXY)), float3(0, 1, 2));
+  EXPECT_EQ(float3(Euler3({0, 1, 2}, eOrder::ZYX)), float3(0, 1, 2));
+
+  EXPECT_EQ(float3(EulerXYZ(Euler3({0, 1, 2}, eOrder::XYZ))), float3(0, 1, 2));
+  EXPECT_EQ(float3(EulerXYZ(Euler3({0, 1, 2}, eOrder::XZY))), float3(0, 2, 1));
+  EXPECT_EQ(float3(EulerXYZ(Euler3({0, 1, 2}, eOrder::YXZ))), float3(1, 0, 2));
+  EXPECT_EQ(float3(EulerXYZ(Euler3({0, 1, 2}, eOrder::YZX))), float3(1, 2, 0));
+  EXPECT_EQ(float3(EulerXYZ(Euler3({0, 1, 2}, eOrder::ZXY))), float3(2, 0, 1));
+  EXPECT_EQ(float3(EulerXYZ(Euler3({0, 1, 2}, eOrder::ZYX))), float3(2, 1, 0));
 }
 
 TEST(math_rotation_types, QuaternionDefaultConstructor)

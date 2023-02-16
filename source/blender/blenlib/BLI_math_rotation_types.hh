@@ -325,6 +325,210 @@ template<typename T> struct EulerXYZ {
   }
 };
 
+template<typename T> struct Euler3 {
+ public:
+  /* WARNING: must match the #eRotationModes in `DNA_action_types.h`
+   * order matters - types are saved to file. */
+  enum eOrder {
+    XYZ = 1,
+    XZY,
+    YXZ,
+    YZX,
+    ZXY,
+    ZYX,
+  };
+
+ private:
+  /** Raw rotation values (in radian) as passed by the constructor. */
+  VecBase<T, 3> ijk_;
+  /** Axes order inside `ijk_`. */
+  eOrder order_;
+
+ public:
+  Euler3() = delete;
+
+  Euler3(const VecBase<T, 3> &angles, eOrder order = eOrder::XYZ) : ijk_(angles), order_(order){};
+
+  /**
+   * Defines rotation order but not the rotation values.
+   * Used for conversion from other rotation types.
+   */
+  Euler3(eOrder order) : order_(order){};
+
+  /** Conversions. */
+
+  explicit operator VecBase<T, 3>() const
+  {
+    return ijk_;
+  }
+
+  explicit operator EulerXYZ<T>() const
+  {
+    return {x(), y(), z()};
+  }
+
+  explicit operator AxisAngle<T>() const;
+  explicit operator Quaternion<T>() const;
+
+  /* Conversion to Euler3 needs to be from assignment in order to choose the order type. */
+  Euler3 &operator=(const AxisAngle<T> &axis_angle);
+  Euler3 &operator=(const Quaternion<T> &quat);
+
+  /** Methods. */
+
+  const VecBase<T, 3> &ijk() const
+  {
+    return ijk_;
+  }
+
+  const T &x() const
+  {
+    return ijk_[x_index()];
+  }
+
+  const T &y() const
+  {
+    return ijk_[y_index()];
+  }
+
+  const T &z() const
+  {
+    return ijk_[z_index()];
+  }
+
+  VecBase<T, 3> &ijk()
+  {
+    return ijk_;
+  }
+
+  T &x()
+  {
+    return ijk_[x_index()];
+  }
+
+  T &y()
+  {
+    return ijk_[y_index()];
+  }
+
+  T &z()
+  {
+    return ijk_[z_index()];
+  }
+
+  /** Operators. */
+
+  friend Euler3 operator-(const Euler3 &a)
+  {
+    return {-a.ijk_, a.order_};
+  }
+
+  friend std::ostream &operator<<(std::ostream &stream, const Euler3 &rot)
+  {
+    const char *order_str;
+    switch (rot.order_) {
+      default:
+      case XYZ:
+        order_str = "XYZ";
+        break;
+      case XZY:
+        order_str = "XZY";
+        break;
+      case YXZ:
+        order_str = "YXZ";
+        break;
+      case YZX:
+        order_str = "YZX";
+        break;
+      case ZXY:
+        order_str = "ZXY";
+        break;
+      case ZYX:
+        order_str = "ZYX";
+        break;
+    }
+    return stream << "Euler3_" << order_str << rot.ijk_;
+  }
+
+  /* Utilities for conversions and functions operating on Euler3.
+   * This should be private in theory. */
+
+  /**
+   * Parity of axis permutation (even=0, odd=1) - 'n' in original code.
+   */
+  bool parity() const
+  {
+    switch (order_) {
+      default:
+      case XYZ:
+      case YZX:
+      case ZXY:
+        return false;
+      case XZY:
+      case YXZ:
+      case ZYX:
+        return true;
+    }
+  }
+
+  /**
+   * Source index of the 1st axis rotation.
+   */
+  int x_index() const
+  {
+    switch (order_) {
+      default:
+      case XYZ:
+      case XZY:
+        return 0;
+      case YXZ:
+      case YZX:
+        return 1;
+      case ZXY:
+      case ZYX:
+        return 2;
+    }
+  }
+
+  /**
+   * Source index of the 2nd axis rotation.
+   */
+  int y_index() const
+  {
+    switch (order_) {
+      default:
+      case YXZ:
+      case ZXY:
+        return 0;
+      case XYZ:
+      case ZYX:
+        return 1;
+      case XZY:
+      case YZX:
+        return 2;
+    }
+  }
+
+  /**
+   * Source index of the 3rd axis rotation.
+   */
+  int z_index() const
+  {
+    switch (order_) {
+      default:
+      case XYZ:
+      case YXZ:
+        return 2;
+      case XZY:
+      case ZXY:
+        return 1;
+      case YZX:
+      case ZYX:
+        return 0;
+    }
+  }
+};
+
 template<typename T = float> struct Quaternion {
   T w, x, y, z;
 
@@ -554,6 +758,7 @@ template<typename U> struct AssertUnitEpsilon<detail::Quaternion<U>> {
 /* Most common used types. */
 using AngleRadian = math::detail::AngleRadian<float>;
 using EulerXYZ = math::detail::EulerXYZ<float>;
+using Euler3 = math::detail::Euler3<float>;
 using Quaternion = math::detail::Quaternion<float>;
 using AxisAngle = math::detail::AxisAngle<float>;
 using AxisAngleNormalized = math::detail::AxisAngleNormalized<float>;
