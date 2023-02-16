@@ -2716,7 +2716,7 @@ static bool customData_has_nonanonymous_layer(const CustomData *data, const int 
   }
 
   while (data->layers[layer].type == type) {
-    if (data->layers[layer].name[0] && data->layers[layer].anonymous_id == nullptr) {
+    if (data->layers[layer].anonymous_id != nullptr) {
       return true;
     }
     layer++;
