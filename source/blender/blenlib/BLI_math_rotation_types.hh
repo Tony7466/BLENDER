@@ -27,6 +27,153 @@ enum eAxis {
   Z,
 };
 
+enum eAxisSigned {
+  X_POS = 0,
+  Y_POS = 1,
+  Z_POS = 2,
+  X_NEG = 3,
+  Y_NEG = 4,
+  Z_NEG = 5,
+};
+
+/**
+ * Axes utilities.
+ */
+
+template<typename T> [[nodiscard]] VecBase<T, 3> basis_vector(const eAxis axis)
+{
+  BLI_assert(axis >= eAxis::X && axis <= eAxis::Z);
+  VecBase<T, 3> vec{};
+  vec[axis] = T(1);
+  return vec;
+}
+
+template<typename T> [[nodiscard]] VecBase<T, 3> basis_vector(const eAxisSigned axis)
+{
+  BLI_assert(axis >= eAxisSigned::X_POS && axis <= eAxisSigned::Z_NEG);
+  VecBase<T, 3> vec{};
+  vec[axis % 3] = (axis > 2) ? T(-1) : T(1);
+  return vec;
+}
+
+static inline eAxis axis_unsigned(const eAxisSigned axis)
+{
+  return eAxis(axis - ((axis <= 2) ? 0 : 3));
+}
+
+static inline bool is_negative(const eAxisSigned axis)
+{
+  return axis > Z_POS;
+}
+
+/**
+ * Returns the cross direction from two basis direction.
+ * Way faster than true cross product if you vectors are basis vectors.
+ * Any ill-formed case will return positive X.
+ */
+static inline eAxisSigned cross(const eAxisSigned a, const eAxisSigned b)
+{
+  switch (a) {
+    case eAxisSigned::X_POS:
+      switch (b) {
+        case eAxisSigned::X_POS:
+          break; /* Ill-defined. */
+        case eAxisSigned::Y_POS:
+          return eAxisSigned::Z_POS;
+        case eAxisSigned::Z_POS:
+          return eAxisSigned::Y_NEG;
+        case eAxisSigned::X_NEG:
+          break; /* Ill-defined. */
+        case eAxisSigned::Y_NEG:
+          return eAxisSigned::Z_NEG;
+        case eAxisSigned::Z_NEG:
+          return eAxisSigned::Y_POS;
+      }
+      break;
+    case eAxisSigned::Y_POS:
+      switch (b) {
+        case eAxisSigned::X_POS:
+          return eAxisSigned::Z_NEG;
+        case eAxisSigned::Y_POS:
+          break; /* Ill-defined. */
+        case eAxisSigned::Z_POS:
+          return eAxisSigned::X_POS;
+        case eAxisSigned::X_NEG:
+          return eAxisSigned::Z_POS;
+        case eAxisSigned::Y_NEG:
+          break; /* Ill-defined. */
+        case eAxisSigned::Z_NEG:
+          return eAxisSigned::X_NEG;
+      }
+      break;
+    case eAxisSigned::Z_POS:
+      switch (b) {
+        case eAxisSigned::X_POS:
+          return eAxisSigned::Y_POS;
+        case eAxisSigned::Y_POS:
+          return eAxisSigned::X_NEG;
+        case eAxisSigned::Z_POS:
+          break; /* Ill-defined. */
+        case eAxisSigned::X_NEG:
+          return eAxisSigned::Y_NEG;
+        case eAxisSigned::Y_NEG:
+          return eAxisSigned::X_POS;
+        case eAxisSigned::Z_NEG:
+          break; /* Ill-defined. */
+      }
+      break;
+    case eAxisSigned::X_NEG:
+      switch (b) {
+        case eAxisSigned::X_POS:
+          break; /* Ill-defined. */
+        case eAxisSigned::Y_POS:
+          return eAxisSigned::Z_NEG;
+        case eAxisSigned::Z_POS:
+          return eAxisSigned::Y_POS;
+        case eAxisSigned::X_NEG:
+          break; /* Ill-defined. */
+        case eAxisSigned::Y_NEG:
+          return eAxisSigned::Z_POS;
+        case eAxisSigned::Z_NEG:
+          return eAxisSigned::Y_NEG;
+      }
+      break;
+    case eAxisSigned::Y_NEG:
+      switch (b) {
+        case eAxisSigned::X_POS:
+          return eAxisSigned::Z_POS;
+        case eAxisSigned::Y_POS:
+          break; /* Ill-defined. */
+        case eAxisSigned::Z_POS:
+          return eAxisSigned::X_NEG;
+        case eAxisSigned::X_NEG:
+          return eAxisSigned::Z_NEG;
+        case eAxisSigned::Y_NEG:
+          break; /* Ill-defined. */
+        case eAxisSigned::Z_NEG:
+          return eAxisSigned::X_POS;
+      }
+      break;
+    case eAxisSigned::Z_NEG:
+      switch (b) {
+        case eAxisSigned::X_POS:
+          return eAxisSigned::Y_NEG;
+        case eAxisSigned::Y_POS:
+          return eAxisSigned::X_POS;
+        case eAxisSigned::Z_POS:
+          break; /* Ill-defined. */
+        case eAxisSigned::X_NEG:
+          return eAxisSigned::Y_POS;
+        case eAxisSigned::Y_NEG:
+          return eAxisSigned::X_NEG;
+        case eAxisSigned::Z_NEG:
+          break; /* Ill-defined. */
+      }
+      break;
+  }
+  return eAxisSigned::X_POS;
+}
+
 namespace detail {
 
 /**
