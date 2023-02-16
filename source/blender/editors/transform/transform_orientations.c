@@ -544,8 +544,7 @@ short ED_transform_calc_orientation_from_type_ex(const Scene *scene,
         else {
           // handle the parent check at object level
           if (ob->parent) {
-            ED_getTransformOrientationMatrix(
-                scene, view_layer, v3d, ob->parent, obedit, pivot_point, r_mat);
+            transform_orientations_create_from_axis(r_mat, UNPACK3(ob->parent->object_to_world));
           }
           else {
             unit_m3(r_mat);
