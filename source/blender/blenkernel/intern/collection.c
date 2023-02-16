@@ -79,10 +79,9 @@ static bool collection_find_child_recursive(const Collection *parent,
 
 static void collection_gobject_hash_ensure(Collection *collection);
 static void collection_gobject_hash_remove_object(Collection *collection, const Object *ob);
-static void collection_gobject_hash_replace_object_pair(Collection *collection,
-                                                        Object *ob_old,
-                                                        Object *ob_new,
-                                                        CollectionObject *cob);
+static void collection_gobject_hash_update_object(Collection *collection,
+                                                  Object *ob_old,
+                                                  CollectionObject *cob);
 
 /** Does nothing unless #USE_DEBUG_EXTRA_GOBJECT_ASSERT is defined. */
 static void collection_gobject_hash_assert_internal_consistency(Collection *collection);
@@ -179,7 +178,7 @@ static void collection_foreach_id(ID *id, LibraryForeachIDData *data)
     BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, cob->ob, IDWALK_CB_USER);
 
     if (collection->runtime.gobject_hash && (cob_ob_old != cob->ob)) {
-      collection_gobject_hash_replace_object_pair(collection, cob_ob_old, cob->ob, cob);
+      collection_gobject_hash_update_object(collection, cob_ob_old, cob);
     }
   }
   LISTBASE_FOREACH (CollectionChild *, child, &collection->children) {
@@ -1117,7 +1116,6 @@ static bool collection_object_add(
   }
 
   collection_gobject_hash_ensure(collection);
-  BLI_ASSERT_COLLECION_GOBJECT_HASH_IS_VALID(collection);
   CollectionObject *cob = BLI_ghash_lookup(collection->runtime.gobject_hash, ob);
   BLI_assert(cob == BLI_findptr(&collection->gobject, ob, offsetof(CollectionObject, ob)));
   if (cob) {
@@ -1153,14 +1151,11 @@ static bool collection_object_remove(Main *bmain,
   BLI_ASSERT_COLLECION_GOBJECT_HASH_IS_VALID(collection);
 
   collection_gobject_hash_ensure(collection);
-  CollectionObject *cob = BLI_ghash_lookup(collection->runtime.gobject_hash, ob);
-  BLI_assert(cob == BLI_findptr(&collection->gobject, ob, offsetof(CollectionObject, ob)));
-
+  CollectionObject *cob = BLI_ghash_popkey(collection->runtime.gobject_hash, ob, NULL);
   if (cob == NULL) {
     return false;
   }
 
-  collection_gobject_hash_remove_object(collection, ob);
   BLI_freelinkN(&collection->gobject, cob);
   BKE_collection_object_cache_free(collection);
 
@@ -1660,6 +1655,8 @@ static void collection_gobject_hash_ensure(Collection *collection)
     BLI_ghash_insert(gobject_hash, cob->ob, cob);
   }
   collection->runtime.gobject_hash = gobject_hash;
+
+  BLI_ASSERT_COLLECION_GOBJECT_HASH_IS_VALID(collection);
 }
 
 static void collection_gobject_hash_remove_object(Collection *collection, const Object *ob)
@@ -1670,23 +1667,23 @@ static void collection_gobject_hash_remove_object(Collection *collection, const 
 }
 
 /**
- * Update the collections object hash the old reference to `ob_old` uses `cob->ob` as the key.
+ * Update the collections object hash, removing `ob_old`, inserting `cob->ob` as the new key.
  *
  * \param ob_old: The existing key to `cob` in the hash, not removed when NULL.
- * \param ob_new: The new key to `cob` in the hash, ignored when NULL.
+ * \param cob: The `cob->ob` is to be used as the new key,
+ * when NULL it's not added back into the hash.
  */
-static void collection_gobject_hash_replace_object_pair(Collection *collection,
-                                                        Object *ob_old,
-                                                        Object *ob_new,
-                                                        CollectionObject *cob)
+static void collection_gobject_hash_update_object(Collection *collection,
+                                                  Object *ob_old,
+                                                  CollectionObject *cob)
 {
   BLI_ASSERT_COLLECION_GOBJECT_HASH_IS_VALID(collection);
   if (ob_old) {
     collection_gobject_hash_remove_object(collection, ob_old);
   }
   /* This may be set to NULL. */
-  if (ob_new) {
-    BLI_ghash_insert(collection->runtime.gobject_hash, ob_new, cob);
+  if (cob->ob) {
+    BLI_ghash_insert(collection->runtime.gobject_hash, cob->ob, cob);
   }
 }
 
