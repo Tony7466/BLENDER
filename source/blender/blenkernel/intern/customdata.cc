@@ -2991,6 +2991,19 @@ int CustomData_number_of_layers(const CustomData *data, const int type)
   return number;
 }
 
+int CustomData_number_of_anonymous_layers(const CustomData *data, const int type)
+{
+  int number = 0;
+
+  for (int i = 0; i < data->totlayer; i++) {
+    if (data->layers[i].type == type && data->layers[i].anonymous_id != nullptr) {
+      number++;
+    }
+  }
+
+  return number;
+}
+
 int CustomData_number_of_layers_typemask(const CustomData *data, const eCustomDataMask mask)
 {
   int number = 0;
@@ -5203,7 +5216,7 @@ eCustomDataType cpp_type_to_custom_data_type(const blender::CPPType &type)
 
 }  // namespace blender::bke
 
-size_t CustomData_get_elem_size(CustomDataLayer *layer)
+size_t CustomData_get_elem_size(const CustomDataLayer *layer)
 {
   return LAYERTYPEINFO[layer->type].size;
 }
