@@ -906,11 +906,6 @@ std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) co
   interface.init(info);
   std::stringstream ss;
 
-  if (info.name_ == "gpu_shader_keyframe_shape") {
-    printf("%s\n", __func__);
-    interface.debug_print();
-  }
-
   ss << "\n/* Pass Resources. */\n";
   for (const ShaderCreateInfo::Resource &res : info.pass_resources_) {
     print_resource(ss, interface, res);
