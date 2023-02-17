@@ -11,6 +11,7 @@
 
 #include "vk_backend.hh"
 #include "vk_context.hh"
+#include "vk_push_constants.hh"
 
 #include "BLI_string_ref.hh"
 
@@ -27,6 +28,7 @@ class VKShader : public Shader {
   bool compilation_failed_ = false;
   VkDescriptorSetLayout layout_ = VK_NULL_HANDLE;
   VkPipelineLayout pipeline_layout_ = VK_NULL_HANDLE;
+  VKPushConstantsLayout push_constants_layout_;
   VKPipeline compute_pipeline_;
 
  public:
