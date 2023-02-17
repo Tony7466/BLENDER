@@ -17,7 +17,7 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
   uniform_len_ = 0;
   ssbo_len_ = 0;
   ubo_len_ = 0;
-  image_offset_ = 0;
+  image_offset_ = -1;
 
   Vector<ShaderCreateInfo::Resource> all_resources;
   all_resources.extend(info.pass_resources_);
@@ -29,7 +29,7 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
         uniform_len_++;
         break;
       case ShaderCreateInfo::Resource::BindType::SAMPLER:
-        image_offset_++;
+        image_offset_ = max_ii(image_offset_, res.slot);
         uniform_len_++;
         break;
       case ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER:
@@ -40,6 +40,8 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
         break;
     }
   }
+  /* Make sure that the image slots don't overlap with the sampler slots.*/
+  image_offset_ += 1;
 
   int32_t input_tot_len = ubo_len_ + uniform_len_ + ssbo_len_;
   inputs_ = static_cast<ShaderInput *>(
@@ -57,7 +59,6 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
       copy_input_name(input, res.image.name, name_buffer_, name_buffer_offset);
       input->location = location++;
       input->binding = res.slot;
-      enabled_ubo_mask_ |= (1 << input->binding);
       input++;
     }
   }
@@ -68,14 +69,12 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
       copy_input_name(input, res.sampler.name, name_buffer_, name_buffer_offset);
       input->location = location++;
       input->binding = res.slot;
-      enabled_tex_mask_ |= (1 << input->binding);
       input++;
     }
     else if (res.bind_type == ShaderCreateInfo::Resource::BindType::IMAGE) {
       copy_input_name(input, res.image.name, name_buffer_, name_buffer_offset);
       input->location = location++;
       input->binding = res.slot + image_offset_;
-      enabled_ima_mask_ |= (1 << input->binding);
       input++;
     }
   }
@@ -86,7 +85,6 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
       copy_input_name(input, res.storagebuf.name, name_buffer_, name_buffer_offset);
       input->location = location++;
       input->binding = res.slot;
-      enabled_ssbo_mask_ |= (1 << input->binding);
       input++;
     }
   }
