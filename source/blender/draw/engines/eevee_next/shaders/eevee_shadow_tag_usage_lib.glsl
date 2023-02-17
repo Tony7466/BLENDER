@@ -70,7 +70,7 @@ void shadow_tag_usage_tilemap_punctual(uint l_idx, vec3 P, vec3 V, float dist_to
   }
 
   vec3 lP = light_world_to_local(light, P - light._position);
-  float dist_to_light = length(lP);
+  float dist_to_light = length(lP) - radius;
   if (dist_to_light > light.influence_radius_max) {
     return;
   }
@@ -83,7 +83,7 @@ void shadow_tag_usage_tilemap_punctual(uint l_idx, vec3 P, vec3 V, float dist_to
   }
   else if (is_area_light(light.type)) {
     /* Early out if on the wrong side. */
-    if (lP.z > 0.0) {
+    if (lP.z - radius > 0.0) {
       return;
     }
   }
@@ -103,15 +103,53 @@ void shadow_tag_usage_tilemap_punctual(uint l_idx, vec3 P, vec3 V, float dist_to
   /* Apply resolution ratio. */
   footprint_ratio *= tilemap_projection_ratio;
 
-  int face_id = shadow_punctual_face_index_get(lP);
-  lP = shadow_punctual_local_position_to_face_local(face_id, lP);
+  if (radius == 0) {
+    int face_id = shadow_punctual_face_index_get(lP);
+    lP = shadow_punctual_local_position_to_face_local(face_id, lP);
+    ShadowCoordinates coord = shadow_punctual_coordinates(light, lP, face_id);
 
-  ShadowCoordinates coord = shadow_punctual_coordinates(light, lP, face_id);
+    int lod = int(ceil(-log2(footprint_ratio) + tilemaps_buf[coord.tilemap_index].lod_bias));
+    lod = clamp(lod, 0, SHADOW_TILEMAP_LOD);
 
-  int lod = int(ceil(-log2(footprint_ratio) + tilemaps_buf[coord.tilemap_index].lod_bias));
-  lod = clamp(lod, 0, SHADOW_TILEMAP_LOD);
+    shadow_tag_usage_tile(light, coord.tile_coord, lod, coord.tilemap_index);
+  }
+  else {
+    uint faces = 0u;
+    /* TODO (Miguel Pozo): This is terrible.
+     * Test sphere against frustums instead ? */
+    for (int x = -1; x <= 1; x++) {
+      for (int y = -1; y <= 1; y++) {
+        for (int z = -1; z <= 1; z++) {
+          vec3 _lP = lP + vec3(x, y, z) * radius;
+          faces |= 1u << shadow_punctual_face_index_get(_lP);
+        }
+      }
+    }
 
-  shadow_tag_usage_tile(light, coord.tile_coord, lod, coord.tilemap_index);
+    for (int face_id = 0; face_id < 6; face_id++) {
+      if ((faces & (1u << uint(face_id))) == 0u) {
+        continue;
+      }
+
+      int tilemap_index = light.tilemap_index + face_id;
+      int lod = int(ceil(-log2(footprint_ratio) + tilemaps_buf[tilemap_index].lod_bias));
+      lod = clamp(lod, 0, SHADOW_TILEMAP_LOD);
+
+      vec3 _lP = shadow_punctual_local_position_to_face_local(face_id, lP);
+      /* Compute min/max based on the plane nearest to the light origin. */
+      _lP.z += radius;
+
+      vec3 offset = vec3(radius, radius, 0);
+      ShadowCoordinates coord_min = shadow_punctual_coordinates(light, _lP - offset, face_id);
+      ShadowCoordinates coord_max = shadow_punctual_coordinates(light, _lP + offset, face_id);
+
+      for (int x = coord_min.tile_coord.x; x <= coord_max.tile_coord.x; x++) {
+        for (int y = coord_min.tile_coord.y; y <= coord_max.tile_coord.y; y++) {
+          shadow_tag_usage_tile(light, ivec2(x, y), lod, tilemap_index);
+        }
+      }
+    }
+  }
 }
 
 void shadow_tag_usage(vec3 vP, vec3 P, vec2 pixel)
