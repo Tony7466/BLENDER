@@ -576,7 +576,7 @@ class NODE_MT_context_menu(Menu):
 
         if active_node:
             layout.separator()
-            props = layout.operator("wm.doc_view_manual", text="View Online Manual", icon='URL')
+            props = layout.operator("wm.doc_view_manual", text="Online Manual", icon='URL')
             props.doc_id = active_node.bl_idname
 
 
