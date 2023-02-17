@@ -1153,8 +1153,6 @@ void ShadowModule::set_view(View &view)
 
 void ShadowModule::debug_draw(View &view, GPUFrameBuffer *view_fb)
 {
-  // GPU_texture_copy(inst_.render_buffers.combined_tx, usage_tag_debug_tx_);
-
   if (!ELEM(inst_.debug_mode,
             eDebugMode::DEBUG_SHADOW_TILEMAPS,
             eDebugMode::DEBUG_SHADOW_VALUES,

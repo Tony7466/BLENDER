@@ -3,8 +3,7 @@
  * Virtual shadowmapping: Usage tagging
  *
  * Shadow pages are only allocated if they are visible.
- * This pass scan the depth buffer and tag all tiles that are needed for light shadowing as
- * needed.
+ * This contains the common logic used for tagging shadows for opaque and transparent receivers.
  */
 
 #pragma BLENDER_REQUIRE(common_intersect_lib.glsl)
@@ -152,22 +151,6 @@ void shadow_tag_usage_tilemap_punctual(uint l_idx, vec3 P, vec3 V, float dist_to
   }
 }
 
-void shadow_tag_usage(vec3 vP, vec3 P, vec2 pixel)
-{
-  /* TODO (Miguel Pozo): Is this correct for orto view? */
-  float dist_to_cam = length(vP);
-
-  LIGHT_FOREACH_BEGIN_DIRECTIONAL (light_cull_buf, l_idx) {
-    shadow_tag_usage_tilemap_directional(l_idx, P, vec3(0), dist_to_cam, 0);
-  }
-  LIGHT_FOREACH_END
-
-  LIGHT_FOREACH_BEGIN_LOCAL (light_cull_buf, light_zbin_buf, light_tile_buf, pixel, vP.z, l_idx) {
-    shadow_tag_usage_tilemap_punctual(l_idx, P, vec3(0), dist_to_cam, 0);
-  }
-  LIGHT_FOREACH_END
-}
-
 void shadow_tag_usage(vec3 vP, vec3 P, vec3 V, float radius, float dist_to_cam, vec2 pixel)
 {
   LIGHT_FOREACH_BEGIN_DIRECTIONAL (light_cull_buf, l_idx) {
@@ -179,4 +162,12 @@ void shadow_tag_usage(vec3 vP, vec3 P, vec3 V, float radius, float dist_to_cam, 
     shadow_tag_usage_tilemap_punctual(l_idx, P, V, dist_to_cam, radius);
   }
   LIGHT_FOREACH_END
+}
+
+void shadow_tag_usage(vec3 vP, vec3 P, vec2 pixel)
+{
+  /* TODO (Miguel Pozo): Is this correct for orto view? */
+  float dist_to_cam = length(vP);
+
+  shadow_tag_usage(vP, P, vec3(0), 0, dist_to_cam, pixel);
 }

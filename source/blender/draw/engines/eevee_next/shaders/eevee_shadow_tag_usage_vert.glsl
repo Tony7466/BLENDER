@@ -3,7 +3,7 @@
  * Virtual shadowmapping: Usage tagging
  *
  * Shadow pages are only allocated if they are visible.
- * This renders bounding boxes for transparent objects in order to tag the correct shadows.
+ * This renders the bounding boxes for transparent objects in order to tag the correct shadows.
  */
 
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)

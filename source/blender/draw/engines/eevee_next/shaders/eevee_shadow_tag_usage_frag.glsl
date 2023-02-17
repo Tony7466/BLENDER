@@ -3,8 +3,7 @@
  * Virtual shadowmapping: Usage tagging
  *
  * Shadow pages are only allocated if they are visible.
- * This pass scan the depth buffer and tag all tiles that are needed for light shadowing as
- * needed.
+ * This ray-marches the object bounds and tags all tiles that are needed for light shadowing.
  */
 
 #pragma BLENDER_REQUIRE(eevee_shadow_tag_usage_lib.glsl)
@@ -43,14 +42,9 @@ float pixel_size_at(float linear_depth)
   float pixel_size = pixel_world_radius;
   bool is_persp = (ProjectionMatrix[3][3] == 0.0);
   if (is_persp) {
-    pixel_size *= linear_depth;
+    pixel_size *= max(0.01, linear_depth);
   }
   return pixel_size * exp2(fb_lod);
-}
-
-float step_size_at(float linear_depth)
-{
-  return max(0.01, pixel_size_at(linear_depth));
 }
 
 void step_bounding_sphere(vec3 vs_near_plane,
@@ -97,6 +91,9 @@ void main()
   vec3 ls_near_plane = point_world_to_object(ws_near_plane);
   vec3 ls_view_direction = normalize(point_world_to_object(interp.P) - ls_near_plane);
 
+  /* TODO (Miguel Pozo): We could try to ray-cast against the non-inflated bounds first,
+   * and fallback to the inflated ones if theres no hit.
+   * The inflated bounds can cause unnecesary extra steps. */
   float ls_near_box_t = ray_aabb(
       ls_near_plane, ls_view_direction, interp.ls_aabb_min, interp.ls_aabb_max);
   vec3 ls_near_box = ls_near_plane + ls_view_direction * ls_near_box_t;
@@ -107,15 +104,14 @@ void main()
   /* Depth test. */
   far_box_t = min(far_box_t, distance(ws_near_plane, ws_opaque));
 
+  /* Ray march from the front to the back of the bbox, and tag shadow usage along the way. */
   float step_size;
   for (float t = near_box_t; t <= far_box_t; t += step_size) {
     /* Ensure we don't get past far_box_t. */
     t = min(t, far_box_t);
+    step_size = pixel_size_at(t);
 
     vec3 P = ws_near_plane + (ws_view_direction * t);
-    vec3 vP = vs_near_plane + (vs_view_direction * t);
-    step_size = step_size_at(t);
-
     float step_radius;
     step_bounding_sphere(vs_near_plane, vs_view_direction, t, t + step_size, P, step_radius);
     vP = point_world_to_view(vP);
