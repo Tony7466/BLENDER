@@ -1035,11 +1035,11 @@ template<typename T, bool Normalized>
 }
 
 template<typename T, bool Normalized>
-[[nodiscard]] inline detail::EulerXYZ<T> to_euler(const MatBase<T, 4, 4> &mat,
-                                                  const typename detail::Euler3<T>::eOrder order)
+[[nodiscard]] inline detail::Euler3<T> to_euler(const MatBase<T, 4, 4> &mat,
+                                                const typename detail::Euler3<T>::eOrder order)
 {
   /* TODO(fclem): Avoid the copy with 3x3 ref. */
-  return to_euler<T, Normalized>(MatBase<T, 3, 3>(mat));
+  return to_euler<T, Normalized>(MatBase<T, 3, 3>(mat), order);
 }
 
 template<typename T, bool Normalized>
@@ -1098,6 +1098,12 @@ template<typename T, bool Normalized>
 inline void to_rotation(const MatBase<T, 3, 3> &mat, detail::EulerXYZ<T> &r_rotation)
 {
   r_rotation = to_euler<T, Normalized>(mat);
+}
+
+template<typename T, bool Normalized>
+inline void to_rotation(const MatBase<T, 3, 3> &mat, detail::Euler3<T> &r_rotation)
+{
+  r_rotation = to_euler<T, Normalized>(mat, r_rotation.order());
 }
 
 }  // namespace detail

@@ -436,6 +436,11 @@ template<typename T> struct Euler3 {
 
   /** Methods. */
 
+  const T &order() const
+  {
+    return order_;
+  }
+
   const VecBase<T, 3> &ijk() const
   {
     return ijk_;
