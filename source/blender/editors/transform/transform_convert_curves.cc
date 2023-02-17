@@ -122,7 +122,9 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
               td.flag |= TD_NOTCONNECTED;
               td.dist = FLT_MAX;
             }
-            continue;
+            if (is_prop_connected) {
+              continue;
+            }
           }
 
           const Span<float3> positions_curve = positions_read.slice(points_by_curve[curve_i]);
