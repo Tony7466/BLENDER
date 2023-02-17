@@ -63,6 +63,11 @@ struct IndexMaskData {
   RawChunkIterator end_it;
 };
 
+struct IndexMaskSegment {
+  int64_t start_index;
+  OffsetSpan<int64_t, int16_t> indices;
+};
+
 class IndexMask {
  private:
   IndexMaskData data_;
@@ -80,7 +85,7 @@ class IndexMask {
 
   IndexMask slice(IndexRange range) const;
 
-  template<typename Fn> void foreach_raw_segment(Fn &&fn) const;
+  template<typename Fn> void foreach_segment(Fn &&fn) const;
   template<typename Fn> void foreach_span(Fn &&fn) const;
   template<typename Fn> void foreach_index(Fn &&fn) const;
   template<typename Fn> void foreach_span_or_range(Fn &&fn) const;
@@ -389,7 +394,7 @@ inline int16_t Chunk::segment_size(const int16_t segment_i) const
   return this->cumulative_segment_sizes[segment_i + 1] - this->cumulative_segment_sizes[segment_i];
 }
 
-template<typename Fn> inline void IndexMask::foreach_raw_segment(Fn &&fn) const
+template<typename Fn> inline void IndexMask::foreach_segment(Fn &&fn) const
 {
   if (data_.indices_num == 0) {
     return;
@@ -422,7 +427,8 @@ template<typename Fn> inline void IndexMask::foreach_raw_segment(Fn &&fn) const
       const int16_t segment_size = stored_segment_size - segment_drop_front - segment_drop_back;
       const Span<int16_t> indices_span{indices_in_segment, segment_size};
 
-      fn(counter, offset, indices_span);
+      const IndexMaskSegment segment{counter, {offset, indices_span}};
+      fn(segment);
 
       counter += segment_size;
       segment_drop_front = 0;
@@ -435,20 +441,14 @@ template<typename Fn> inline void IndexMask::foreach_raw_segment(Fn &&fn) const
 
 template<typename Fn> inline void IndexMask::foreach_span(Fn &&fn) const
 {
-  this->foreach_raw_segment([&](const int64_t /*mask_index_offset*/,
-                                const int64_t indices_in_segment_offset,
-                                const Span<int16_t> indices_in_segment) {
-    fn(OffsetSpan<int64_t, int16_t>(indices_in_segment_offset, indices_in_segment));
-  });
+  this->foreach_segment([&](const IndexMaskSegment &segment) { fn(segment.indices); });
 }
 
 template<typename Fn> inline void IndexMask::foreach_index(Fn &&fn) const
 {
-  this->foreach_raw_segment([&](const int64_t /*mask_index_offset*/,
-                                const int64_t indices_in_segment_offset,
-                                const Span<int16_t> indices_in_segment) {
-    for (const int16_t index : indices_in_segment) {
-      fn(index + indices_in_segment_offset);
+  this->foreach_segment([&](const IndexMaskSegment &segment) {
+    for (const int64_t index : segment.indices) {
+      fn(index);
     }
   });
 }
@@ -456,16 +456,13 @@ template<typename Fn> inline void IndexMask::foreach_index(Fn &&fn) const
 template<typename Fn> inline void IndexMask::foreach_span_or_range(Fn &&fn) const
 {
   IndexRangeChecker is_index_mask;
-  this->foreach_raw_segment([&, is_index_mask](const int64_t /*mask_index_offset*/,
-                                               const int64_t indices_in_segment_offset,
-                                               const Span<int16_t> indices_in_segment) {
-    if (is_index_mask.check(indices_in_segment)) {
-      const int64_t start = indices_in_segment.first() + indices_in_segment_offset;
-      const int64_t size = indices_in_segment.size();
-      fn(IndexRange(start, size));
+  this->foreach_segment([&, is_index_mask](const IndexMaskSegment &segment) {
+    const OffsetSpan<int64_t, int16_t> indices = segment.indices;
+    if (is_index_mask.check(indices.base_span())) {
+      fn(IndexRange(indices[0], indices.size()));
     }
     else {
-      fn(OffsetSpan<int64_t, int16_t>(indices_in_segment_offset, indices_in_segment));
+      fn(indices);
     }
   });
 }

@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "BLI_span.hh"
+
 namespace blender {
 
 template<typename T, typename BaseT> class OffsetSpan {
@@ -12,6 +14,11 @@ template<typename T, typename BaseT> class OffsetSpan {
  public:
   OffsetSpan(const T offset, const Span<BaseT> data) : offset_(offset), data_(data)
   {
+  }
+
+  Span<BaseT> base_span() const
+  {
+    return data_;
   }
 
   int64_t size() const
