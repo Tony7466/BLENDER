@@ -547,6 +547,15 @@ template<typename T> AxisAngle<T>::AxisAngle(const VecBase<T, 3> &axis, T angle)
 {
   T length;
   axis_ = math::normalize_and_get_length(axis, length);
+  angle_cos_ = math::cos(angle);
+  angle_sin_ = math::sin(angle);
+  angle_ = angle;
+}
+
+template<typename T> AxisAngle<T>::AxisAngle(const eAxisSigned axis, T angle)
+{
+  T length;
+  axis_ = basis_vector<T>(axis);
   if (length > 0.0f) {
     angle_cos_ = math::cos(angle);
     angle_sin_ = math::sin(angle);
@@ -699,6 +708,16 @@ template<typename T> EulerXYZ<T>::operator AxisAngle<T>() const
 
 template<typename T> AxisAngle<T>::operator EulerXYZ<T>() const
 {
+  /* Check easy and exact conversions first. */
+  if (axis_.x == T(1)) {
+    return EulerXYZ<T>(angle(), T(0), T(0));
+  }
+  else if (axis_.y == T(1)) {
+    return EulerXYZ<T>(T(0), angle(), T(0));
+  }
+  else if (axis_.z == T(1)) {
+    return EulerXYZ<T>(T(0), T(0), angle());
+  }
   /* Use quaternions as intermediate representation for now... */
   return EulerXYZ<T>(Quaternion<T>(*this));
 }

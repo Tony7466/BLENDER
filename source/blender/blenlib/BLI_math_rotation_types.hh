@@ -22,12 +22,14 @@ template<typename T> static inline T rad_to_deg(T radians)
 }
 
 enum eAxis {
+  /* Must start at 0. Used as indices in tables and vectors. */
   X = 0,
   Y,
   Z,
 };
 
 enum eAxisSigned {
+  /* Must start at 0. Used as indices in tables and vectors. */
   X_POS = 0,
   Y_POS = 1,
   Z_POS = 2,
@@ -59,6 +61,12 @@ template<typename T> [[nodiscard]] VecBase<T, 3> basis_vector(const eAxisSigned 
 static inline eAxis axis_unsigned(const eAxisSigned axis)
 {
   return eAxis(axis - ((axis <= 2) ? 0 : 3));
+}
+
+static inline eAxis axis_from_char(const char axis)
+{
+  BLI_assert(axis >= 'X' && axis <= 'Z');
+  return eAxis(axis - 'X');
 }
 
 static inline bool is_negative(const eAxisSigned axis)
@@ -299,6 +307,15 @@ template<typename T> struct EulerXYZ {
 
   EulerXYZ(const VecBase<T, 3> &vec) : EulerXYZ(UNPACK3(vec)){};
 
+  /**
+   * Create a rotation from an basis axis and an angle.
+   */
+  EulerXYZ(const eAxis axis, T angle)
+  {
+    BLI_assert(axis >= 0 && axis <= 2);
+    (&x)[axis] = angle;
+  }
+
   /** Static functions. */
 
   static EulerXYZ identity()
@@ -385,6 +402,14 @@ template<typename T> struct Euler3 {
    * Used for conversion from other rotation types.
    */
   Euler3(eOrder order) : order_(order){};
+
+  /**
+   * Create a rotation from an basis axis and an angle.
+   */
+  Euler3(const eAxis axis, T angle, eOrder order) : ijk_(0), order_(order)
+  {
+    ijk_[axis] = angle;
+  }
 
   /** Conversions. */
 
@@ -694,6 +719,11 @@ template<typename T> struct AxisAngle {
   explicit AxisAngle(){};
 
  public:
+  /**
+   * Create a rotation from an basis axis and an angle.
+   */
+  AxisAngle(const eAxisSigned axis, T angle);
+
   /**
    * Create a rotation from an axis and an angle.
    * \note `axis` does not have to be normalized.
