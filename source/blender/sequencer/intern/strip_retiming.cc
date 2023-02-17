@@ -118,6 +118,7 @@ bool SEQ_retiming_is_active(const Sequence *seq)
 bool SEQ_retiming_is_allowed(const Sequence *seq)
 {
   return ELEM(seq->type,
+              SEQ_TYPE_SOUND_RAM,
               SEQ_TYPE_IMAGE,
               SEQ_TYPE_META,
               SEQ_TYPE_SCENE,
@@ -126,7 +127,7 @@ bool SEQ_retiming_is_allowed(const Sequence *seq)
               SEQ_TYPE_MASK);
 }
 
-float seq_retiming_evaluate(const Sequence *seq, const int frame_index)
+float seq_retiming_evaluate(const Sequence *seq, const float frame_index)
 {
   const SeqRetimingHandle *previous_handle = retiming_find_segment_start_handle(seq, frame_index);
   const SeqRetimingHandle *next_handle = previous_handle + 1;
@@ -140,7 +141,7 @@ float seq_retiming_evaluate(const Sequence *seq, const int frame_index)
   }
 
   const int segment_length = next_handle->strip_frame_index - previous_handle->strip_frame_index;
-  const int segment_frame_index = frame_index - previous_handle->strip_frame_index;
+  const float segment_frame_index = frame_index - previous_handle->strip_frame_index;
   const float segment_fac = segment_frame_index / (float)segment_length;
 
   const float target_diff = next_handle->retiming_factor - previous_handle->retiming_factor;
@@ -244,4 +245,132 @@ float SEQ_retiming_handle_speed_get(const Scene *scene,
 
   const float speed = (float)fragment_length_retimed / (float)fragment_length_original;
   return speed;
+}
+
+using std::vector;
+
+class RetimingRange {
+ public:
+  int start, end;
+  float speed;
+
+  enum eIntersectType {
+    FULL,
+    PARTIAL_START,
+    PARTIAL_END,
+    INSIDE,
+    NONE,
+  };
+
+  RetimingRange(int start_frame, int end_frame, float speed)
+      : start(start_frame), end(end_frame), speed(speed)
+  {
+  }
+
+  const eIntersectType intersect_type(const RetimingRange &other) const
+  {
+    if (other.start <= start && other.end >= end) {
+      return FULL;
+    }
+    if (other.start > start && other.start < end && other.end > start && other.end < end) {
+      return INSIDE;
+    }
+    if (other.start > start && other.start < end) {
+      return PARTIAL_END;
+    }
+    if (other.end > start && other.end < end) {
+      return PARTIAL_START;
+    }
+    return NONE;
+  }
+};
+
+class RetimingRangeData {
+ public:
+  vector<RetimingRange> ranges;
+  RetimingRangeData(const Scene *scene, const Sequence *seq)
+  {
+    MutableSpan handles = SEQ_retiming_handles_get(seq);
+    for (const SeqRetimingHandle &handle : handles) {
+      if (handle.strip_frame_index == 0) {
+        continue;
+      }
+      const SeqRetimingHandle *handle_prev = &handle - 1;
+      float speed = SEQ_retiming_handle_speed_get(scene, seq, &handle);
+      int frame_start = SEQ_time_start_frame_get(seq) + handle_prev->strip_frame_index;
+      int frame_end = SEQ_time_start_frame_get(seq) + handle.strip_frame_index;
+
+      RetimingRange range = RetimingRange(frame_start, frame_end, speed);
+      ranges.push_back(range);
+    }
+  }
+
+  RetimingRangeData &operator*=(const RetimingRangeData rhs)
+  {
+    if (ranges.size() == 0) {
+      for (const RetimingRange &rhs_range : rhs.ranges) {
+        RetimingRange range = RetimingRange(rhs_range.start, rhs_range.end, rhs_range.speed);
+        ranges.push_back(range);
+      }
+    }
+    else {
+      for (int i = 0; i < ranges.size(); i++) {
+        RetimingRange &range = ranges[i];
+        for (const RetimingRange &rhs_range : rhs.ranges) {
+          if (range.intersect_type(rhs_range) == range.NONE) {
+            continue;
+          }
+          else if (range.intersect_type(rhs_range) == range.FULL) {
+            range.speed *= rhs_range.speed;
+          }
+          else if (range.intersect_type(rhs_range) == range.PARTIAL_START) {
+            RetimingRange range_left = RetimingRange(
+                range.start, rhs_range.end, range.speed * rhs_range.speed);
+            range.start = rhs_range.end + 1;
+            ranges.insert(ranges.begin() + i, range_left);
+          }
+          else if (range.intersect_type(rhs_range) == range.PARTIAL_END) {
+            RetimingRange range_left = RetimingRange(
+                range.start, rhs_range.start - 1, range.speed);
+            range.start = rhs_range.start;
+            ranges.insert(ranges.begin() + i, range_left);
+          }
+          else if (range.intersect_type(rhs_range) == range.INSIDE) {
+            RetimingRange range_left = RetimingRange(
+                range.start, rhs_range.start - 1, range.speed);
+            RetimingRange range_mid = RetimingRange(
+                rhs_range.start, rhs_range.start, rhs_range.speed * range.speed);
+            range.start = rhs_range.end + 1;
+            ranges.insert(ranges.begin() + i, range_left);
+            ranges.insert(ranges.begin() + i, range_mid);
+            break;
+          }
+        }
+      }
+    }
+    return *this;
+  }
+};
+
+static RetimingRangeData seq_retiming_range_data_get(const Scene *scene, const Sequence *seq)
+{
+  RetimingRangeData strip_retiming_data = RetimingRangeData(scene, seq);
+
+  const Sequence *meta_parent = seq_sequence_lookup_meta_by_seq(scene, seq);
+  if (meta_parent == nullptr) {
+    return strip_retiming_data;
+  }
+
+  RetimingRangeData meta_retiming_data = RetimingRangeData(scene, meta_parent);
+  strip_retiming_data *= meta_retiming_data;
+  return strip_retiming_data;
+}
+
+void SEQ_retiming_sound_animation_data_set(const Scene *scene, const Sequence *seq)
+{
+  RetimingRangeData retiming_data = seq_retiming_range_data_get(scene, seq);
+  for (const RetimingRange &range : retiming_data.ranges) {
+    BKE_sound_set_scene_sound_pitch_constant_range(
+        seq->scene_sound, range.start, range.end, range.speed);
+  }
 }
