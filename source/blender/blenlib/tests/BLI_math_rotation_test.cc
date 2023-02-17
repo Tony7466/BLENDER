@@ -631,4 +631,5 @@ TEST(math_rotation, Rotate)
   p = rotate(q, p);
   EXPECT_V3_NEAR(p, float3(-4.33722f, -21.661f, 40.7608f), 1e-4f);
 }
+
 }  // namespace blender::math::tests

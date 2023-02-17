@@ -4,6 +4,7 @@
 
 #include "BLI_math_matrix.h"
 #include "BLI_math_matrix.hh"
+#include "BLI_math_rotation.h"
 #include "BLI_math_rotation.hh"
 
 TEST(math_matrix, interp_m4_m4m4_regular)
@@ -281,6 +282,19 @@ TEST(math_matrix, MatrixCompareTest)
   EXPECT_TRUE(is_negative(m4));
   EXPECT_FALSE(is_negative(m5));
   EXPECT_FALSE(is_negative(m6));
+}
+
+TEST(math_matrix, MatrixToNearestEuler)
+{
+  EulerXYZ eul1 = EulerXYZ(225.08542, -1.12485, -121.23738);
+  Euler3 eul2 = Euler3({4.06112, 100.561928, -18.9063}, Euler3::eOrder::ZXY);
+
+  float3x3 mat = {{0.808309, -0.578051, -0.111775},
+                  {0.47251, 0.750174, -0.462572},
+                  {0.351241, 0.321087, 0.879507}};
+
+  EXPECT_V3_NEAR(float3(to_nearest_euler(mat, eul1)), float3(225.71, 0.112009, -120.001), 1e-3);
+  EXPECT_V3_NEAR(float3(to_nearest_euler(mat, eul2)), float3(5.95631, 100.911, -19.5061), 1e-3);
 }
 
 TEST(math_matrix, MatrixMethods)

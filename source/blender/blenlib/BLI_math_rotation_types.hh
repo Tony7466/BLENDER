@@ -436,7 +436,7 @@ template<typename T> struct Euler3 {
 
   /** Methods. */
 
-  const T &order() const
+  const eOrder &order() const
   {
     return order_;
   }
@@ -483,7 +483,7 @@ template<typename T> struct Euler3 {
 
   Euler3 wrapped_around(const Euler3 &reference) const
   {
-    return {EulerXYZ(ijk_).wrapped_around(reference.ijk_)};
+    return {VecBase<T, 3>(EulerXYZ(ijk_).wrapped_around(reference.ijk_)), order_};
   }
 
   /** Operators. */

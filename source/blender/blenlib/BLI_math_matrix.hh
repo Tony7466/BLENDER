@@ -259,6 +259,26 @@ template<typename T, bool Normalized = false>
                                                 const typename detail::Euler3<T>::eOrder order);
 
 /**
+ * Extract euler rotation from transform matrix.
+ * The returned euler triple is given to be the closest from the \a reference.
+ * It avoids axis flipping for animated f-curves for eg.
+ * \return the rotation with the smallest values from the potential candidates.
+ * \note this correspond to the C API "to_compatible" functions.
+ */
+template<typename T, bool Normalized = false>
+[[nodiscard]] inline detail::EulerXYZ<T> to_nearest_euler(const MatBase<T, 3, 3> &mat,
+                                                          const detail::EulerXYZ<T> &reference);
+template<typename T, bool Normalized = false>
+[[nodiscard]] inline detail::EulerXYZ<T> to_nearest_euler(const MatBase<T, 4, 4> &mat,
+                                                          const detail::EulerXYZ<T> &reference);
+template<typename T, bool Normalized = false>
+[[nodiscard]] inline detail::Euler3<T> to_nearest_euler(const MatBase<T, 3, 3> &mat,
+                                                        const detail::Euler3<T> &reference);
+template<typename T, bool Normalized = false>
+[[nodiscard]] inline detail::Euler3<T> to_nearest_euler(const MatBase<T, 4, 4> &mat,
+                                                        const detail::Euler3<T> &reference);
+
+/**
  * Extract quaternion rotation from transform matrix.
  */
 template<typename T, bool Normalized = false>
@@ -1028,6 +1048,14 @@ template<typename T, bool Normalized>
 }
 
 template<typename T, bool Normalized>
+[[nodiscard]] inline detail::Euler3<T> to_euler(const MatBase<T, 4, 4> &mat,
+                                                const typename detail::Euler3<T>::eOrder order)
+{
+  /* TODO(fclem): Avoid the copy with 3x3 ref. */
+  return to_euler<T, Normalized>(MatBase<T, 3, 3>(mat), order);
+}
+
+template<typename T, bool Normalized>
 [[nodiscard]] inline detail::EulerXYZ<T> to_euler(const MatBase<T, 4, 4> &mat)
 {
   /* TODO(fclem): Avoid the copy with 3x3 ref. */
@@ -1035,11 +1063,59 @@ template<typename T, bool Normalized>
 }
 
 template<typename T, bool Normalized>
-[[nodiscard]] inline detail::Euler3<T> to_euler(const MatBase<T, 4, 4> &mat,
-                                                const typename detail::Euler3<T>::eOrder order)
+[[nodiscard]] inline detail::Euler3<T> to_nearest_euler(const MatBase<T, 3, 3> &mat,
+                                                        const detail::Euler3<T> &reference)
+{
+  detail::Euler3<T> eul1(reference.order()), eul2(reference.order());
+  if constexpr (Normalized) {
+    detail::normalized_to_eul2(mat, eul1, eul2);
+  }
+  else {
+    detail::normalized_to_eul2(normalize(mat), eul1, eul2);
+  }
+  eul1 = eul1.wrapped_around(reference);
+  eul2 = eul2.wrapped_around(reference);
+  /* Return best, which is just the one with lowest values it in. */
+  return (length_manhattan(VecBase<T, 3>(eul1) - VecBase<T, 3>(reference)) >
+          length_manhattan(VecBase<T, 3>(eul2) - VecBase<T, 3>(reference))) ?
+             eul2 :
+             eul1;
+}
+
+template<typename T, bool Normalized>
+[[nodiscard]] inline detail::EulerXYZ<T> to_nearest_euler(const MatBase<T, 3, 3> &mat,
+                                                          const detail::EulerXYZ<T> &reference)
+{
+  detail::EulerXYZ<T> eul1, eul2;
+  if constexpr (Normalized) {
+    detail::normalized_to_eul2(mat, eul1, eul2);
+  }
+  else {
+    detail::normalized_to_eul2(normalize(mat), eul1, eul2);
+  }
+  eul1 = eul1.wrapped_around(reference);
+  eul2 = eul2.wrapped_around(reference);
+  /* Return best, which is just the one with lowest values it in. */
+  return (length_manhattan(VecBase<T, 3>(eul1) - VecBase<T, 3>(reference)) >
+          length_manhattan(VecBase<T, 3>(eul2) - VecBase<T, 3>(reference))) ?
+             eul2 :
+             eul1;
+}
+
+template<typename T, bool Normalized>
+[[nodiscard]] inline detail::Euler3<T> to_nearest_euler(const MatBase<T, 4, 4> &mat,
+                                                        const detail::Euler3<T> &reference)
 {
   /* TODO(fclem): Avoid the copy with 3x3 ref. */
-  return to_euler<T, Normalized>(MatBase<T, 3, 3>(mat), order);
+  return to_euler<T, Normalized>(MatBase<T, 3, 3>(mat), reference);
+}
+
+template<typename T, bool Normalized>
+[[nodiscard]] inline detail::EulerXYZ<T> to_nearest_euler(const MatBase<T, 4, 4> &mat,
+                                                          const detail::EulerXYZ<T> &reference)
+{
+  /* TODO(fclem): Avoid the copy with 3x3 ref. */
+  return to_euler<T, Normalized>(MatBase<T, 3, 3>(mat), reference);
 }
 
 template<typename T, bool Normalized>
