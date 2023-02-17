@@ -8,6 +8,20 @@
 
 namespace blender::tests {
 
+class ChangeWorkingDirectoryTest : public testing::Test {
+ public:
+  std::string test_temp_dir;
+
+  void TearDown() override
+  {
+    if (!test_temp_dir.empty()) {
+      BLI_delete(test_temp_dir.c_str(), true, false);
+    }
+
+    BLI_threadapi_exit();
+  }
+};
+
 TEST(fileops, fstream_open_string_filename)
 {
   const std::string test_files_dir = blender::tests::flags_test_asset_dir();
@@ -39,7 +53,7 @@ TEST(fileops, fstream_open_charptr_filename)
   /* Reading the file not tested here. That's deferred to `std::fstream` anyway. */
 }
 
-TEST(fileops, change_working_directory)
+TEST_F(ChangeWorkingDirectoryTest, change_working_directory)
 {
   /* Must use because BLI_change_working_dir() checks that we are on the main thread. */
   BLI_threadapi_init();
@@ -50,7 +64,7 @@ TEST(fileops, change_working_directory)
   }
 
   const std::string temp_file_name(std::tmpnam(nullptr));
-  const std::string test_temp_dir = temp_file_name + "_новый";
+  test_temp_dir = temp_file_name + "_новый";
 
   if (BLI_exists(test_temp_dir.c_str())) {
     BLI_delete(test_temp_dir.c_str(), true, false);
@@ -61,8 +75,7 @@ TEST(fileops, change_working_directory)
 
   BLI_dir_create_recursive(test_temp_dir.c_str());
 
-  result = BLI_change_working_dir(test_temp_dir.c_str());
-  ASSERT_TRUE(result)
+  ASSERT_TRUE(BLI_change_working_dir(test_temp_dir.c_str()))
       << "temporary directory should have been created and should succeed changing directory.";
 
   char cwd[FILE_MAX];
@@ -74,13 +87,8 @@ TEST(fileops, change_working_directory)
       << "the path of the current working directory should equal the path of the temporary "
          "directory that was created.";
 
-  result = BLI_change_working_dir(original_wd);
-  ASSERT_TRUE(result)
+  ASSERT_TRUE(BLI_change_working_dir(original_wd))
       << "changing directory back to the original working directory should succeed.";
-
-  BLI_delete(test_temp_dir.c_str(), true, false);
-
-  BLI_threadapi_exit();
 }
 
 }  // namespace blender::tests

@@ -58,6 +58,7 @@
 #include "BLI_utildefines.h"
 
 #if !defined(__APPLE__)
+/* The implementation for Apple lives in storage_apple.mm.*/
 bool BLI_change_working_dir(const char *dir)
 {
   BLI_assert(BLI_thread_is_main());
