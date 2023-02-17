@@ -494,19 +494,19 @@ template<typename Fn> inline void IndexMask::foreach_raw_segment(Fn &&fn) const
 template<typename Fn> inline void IndexMask::foreach_span(Fn &&fn) const
 {
   this->foreach_raw_segment([&](const int64_t /*mask_index_offset*/,
-                                const int64_t index_offset,
-                                const Span<int16_t> indices) {
-    fn(OffsetSpan<int64_t, int16_t>(index_offset, indices));
+                                const int64_t indices_in_segment_offset,
+                                const Span<int16_t> indices_in_segment) {
+    fn(OffsetSpan<int64_t, int16_t>(indices_in_segment_offset, indices_in_segment));
   });
 }
 
 template<typename Fn> inline void IndexMask::foreach_index(Fn &&fn) const
 {
   this->foreach_raw_segment([&](const int64_t /*mask_index_offset*/,
-                                const int64_t index_offset,
-                                const Span<int16_t> indices) {
-    for (const int16_t index : indices) {
-      fn(index + index_offset);
+                                const int64_t indices_in_segment_offset,
+                                const Span<int16_t> indices_in_segment) {
+    for (const int16_t index : indices_in_segment) {
+      fn(index + indices_in_segment_offset);
     }
   });
 }
@@ -515,15 +515,15 @@ template<typename Fn> inline void IndexMask::foreach_span_or_range(Fn &&fn) cons
 {
   IndexRangeChecker is_index_mask;
   this->foreach_raw_segment([&, is_index_mask](const int64_t /*mask_index_offset*/,
-                                               const int64_t index_offset,
-                                               const Span<int16_t> indices) {
-    if (is_index_mask.check(indices)) {
-      const int64_t start = indices.first() + index_offset;
-      const int64_t size = indices.size();
+                                               const int64_t indices_in_segment_offset,
+                                               const Span<int16_t> indices_in_segment) {
+    if (is_index_mask.check(indices_in_segment)) {
+      const int64_t start = indices_in_segment.first() + indices_in_segment_offset;
+      const int64_t size = indices_in_segment.size();
       fn(IndexRange(start, size));
     }
     else {
-      fn(OffsetSpan<int64_t, int16_t>(index_offset, indices));
+      fn(OffsetSpan<int64_t, int16_t>(indices_in_segment_offset, indices_in_segment));
     }
   });
 }
