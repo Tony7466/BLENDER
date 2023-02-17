@@ -1223,27 +1223,28 @@ static float paste_get_y_offset(bAnimContext *ac,
                                 bAnimListElem *ale,
                                 const eKeyPasteValueOffset value_offset_mode)
 {
-  float offset;
   FCurve *fcu = (FCurve *)ale->data;
   const float cfra = BKE_scene_frame_get(ac->scene);
 
   switch (value_offset_mode) {
-    case KEYFRAME_PASTE_VALUE_OFFSET_CURSOR:
+    case KEYFRAME_PASTE_VALUE_OFFSET_CURSOR: {
       SpaceGraph *sipo = (SpaceGraph *)ac->sl;
-      offset = sipo->cursorVal - aci->bezt[0].vec[1][1];
+      const float offset = sipo->cursorVal - aci->bezt[0].vec[1][1];
       return offset;
+    }
 
-    case KEYFRAME_PASTE_VALUE_OFFSET_CFRA:
+    case KEYFRAME_PASTE_VALUE_OFFSET_CFRA: {
       const float cfra_y = evaluate_fcurve(fcu, cfra);
-      offset = cfra_y - aci->bezt[0].vec[1][1];
+      const float offset = cfra_y - aci->bezt[0].vec[1][1];
       return offset;
+    }
 
     case KEYFRAME_PASTE_VALUE_OFFSET_LEFT_KEY: {
       bool replace;
       const int fcu_index = BKE_fcurve_bezt_binarysearch_index(
           fcu->bezt, cfra, fcu->totvert, &replace);
       BezTriple left_key = fcu->bezt[max_ii(fcu_index - 1, 0)];
-      offset = left_key.vec[1][1] - aci->bezt[0].vec[1][1];
+      const float offset = left_key.vec[1][1] - aci->bezt[0].vec[1][1];
       return offset;
     }
 
@@ -1252,12 +1253,11 @@ static float paste_get_y_offset(bAnimContext *ac,
       const int fcu_index = BKE_fcurve_bezt_binarysearch_index(
           fcu->bezt, cfra, fcu->totvert, &replace);
       BezTriple right_key = fcu->bezt[min_ii(fcu_index, fcu->totvert - 1)];
-      offset = right_key.vec[1][1] - aci->bezt[aci->totvert - 1].vec[1][1];
+      const float offset = right_key.vec[1][1] - aci->bezt[aci->totvert - 1].vec[1][1];
       return offset;
     }
 
     case KEYFRAME_PASTE_VALUE_OFFSET_NONE:
-    default:
       break;
   }
 
