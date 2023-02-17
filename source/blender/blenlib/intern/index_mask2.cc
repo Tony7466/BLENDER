@@ -228,9 +228,9 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, LinearAlloca
 
     {
       std::lock_guard lock{scope_mutex};
-      remaining_indices = allocator.allocate_array<int16_t>(index_allocations_num);
       remaining_indices_by_segment = allocator.allocate_array<const int16_t *>(
           segments_in_chunks.size());
+      remaining_indices = allocator.allocate_array<int16_t>(index_allocations_num);
       remaining_cumulative_segment_sizes = allocator.allocate_array<int16_t>(
           segments_in_chunks.size() + slice.size());
     }
