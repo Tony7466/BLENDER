@@ -188,6 +188,55 @@ static inline eAxisSigned cross(const eAxisSigned a, const eAxisSigned b)
   return eAxisSigned::X_POS;
 }
 
+/**
+ * Returns an axis triple for converting from \a src orientation to \a dst orientation.
+ * This axis triple can then be converted to a rotation.
+ * The third axis is chosen by right hand rule to follow blender coordinate system.
+ * Returns identity if rotation is ill-defined (eg. same forward and up).
+ * \a forward is Y axis in blender coordinate system.
+ * \a up is Z axis in blender coordinate system.
+ */
+static inline VecBase<eAxisSigned, 3> axis_conversion(const eAxisSigned src_forward,
+                                                      const eAxisSigned src_up,
+                                                      const eAxisSigned dst_forward,
+                                                      const eAxisSigned dst_up)
+{
+  /* Start with identity for failure cases. */
+  VecBase<eAxisSigned, 3> axes(eAxisSigned::X_POS, eAxisSigned::Y_POS, eAxisSigned::Z_POS);
+
+  if (src_forward == dst_forward && src_up == dst_up) {
+    return axes;
+  }
+
+  if ((axis_unsigned(src_forward) == axis_unsigned(src_up)) ||
+      (axis_unsigned(dst_forward) == axis_unsigned(dst_up))) {
+    /* We could assert here! */
+    return axes;
+  }
+  /* Reminder that blender uses right hand rule. */
+  const eAxisSigned src_right = cross(src_forward, src_up);
+  const eAxisSigned dst_right = cross(dst_forward, dst_up);
+
+  eAxisSigned src_x = eAxisSigned(axis_unsigned(src_right));
+  eAxisSigned src_y = eAxisSigned(axis_unsigned(src_forward));
+  eAxisSigned src_z = eAxisSigned(axis_unsigned(src_up));
+
+  /* Correct axis sign. */
+  src_x = (is_negative(dst_right) != is_negative(src_right)) ? negate(src_x) : src_x;
+  src_y = (is_negative(dst_forward) != is_negative(src_forward)) ? negate(src_y) : src_y;
+  src_z = (is_negative(dst_up) != is_negative(src_up)) ? negate(src_z) : src_z;
+
+  eAxis dst_x = axis_unsigned(dst_right);
+  eAxis dst_y = axis_unsigned(dst_forward);
+  eAxis dst_z = axis_unsigned(dst_up);
+
+  /* Shuffle axes. */
+  axes[dst_x] = src_x;
+  axes[dst_y] = src_y;
+  axes[dst_z] = src_z;
+  return axes;
+}
+
 namespace detail {
 
 /**

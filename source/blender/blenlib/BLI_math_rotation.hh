@@ -452,14 +452,14 @@ template<typename MatT>
                                         const eAxisSigned dst_forward,
                                         const eAxisSigned dst_up)
 {
-  return MatT(from_axis_conversion<float3x3>(src_forward, src_up, dst_forward, dst_up));
+  using T = typename MatT::base_type;
+  const VecBase<eAxisSigned, 3> axes = axis_conversion(src_forward, src_up, dst_forward, dst_up);
+  MatT result;
+  result.x_axis() = basis_vector<T>(axes.x);
+  result.y_axis() = basis_vector<T>(axes.y);
+  result.z_axis() = basis_vector<T>(axes.z);
+  return result;
 }
-
-template<>
-float3x3 from_axis_conversion(const eAxisSigned src_forward,
-                              const eAxisSigned src_up,
-                              const eAxisSigned dst_forward,
-                              const eAxisSigned dst_up);
 
 /**
  * Returns rotation matrix for converting from \a src orientation to \a dst orientation.
