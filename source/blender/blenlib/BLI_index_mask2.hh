@@ -42,7 +42,7 @@ struct RawMaskIterator {
 struct Chunk {
   int16_t segments_num;
   const int16_t **indices_by_segment;
-  const int16_t *segment_sizes_cumulative;
+  const int16_t *cumulative_segment_sizes;
 
   RawChunkIterator end_iterator() const;
   OffsetIndices<int16_t> segment_offsets() const;
@@ -273,7 +273,7 @@ inline RawChunkIterator Chunk::index_to_iterator(const int16_t index) const
   BLI_assert(index < this->segment_offsets().total_size());
   RawChunkIterator it;
   it.segment_i = this->segment_offsets().find_range_index(index);
-  it.index_in_segment = index - this->segment_sizes_cumulative[it.segment_i];
+  it.index_in_segment = index - this->cumulative_segment_sizes[it.segment_i];
   return it;
 }
 
@@ -283,7 +283,7 @@ inline int16_t Chunk::iterator_to_index(const RawChunkIterator &it) const
   BLI_assert(it.segment_i < this->segments_num);
   BLI_assert(it.index_in_segment >= 0);
   BLI_assert(it.index_in_segment < this->segment_offsets().size(it.segment_i));
-  return this->segment_sizes_cumulative[it.segment_i] + it.index_in_segment;
+  return this->cumulative_segment_sizes[it.segment_i] + it.index_in_segment;
 }
 
 /* -------------------------------------------------------------------- */
@@ -433,18 +433,18 @@ inline RawChunkIterator Chunk::end_iterator() const
 
 inline OffsetIndices<int16_t> Chunk::segment_offsets() const
 {
-  return Span<int16_t>(this->segment_sizes_cumulative, this->segments_num + 1);
+  return Span<int16_t>(this->cumulative_segment_sizes, this->segments_num + 1);
 }
 
 inline int16_t Chunk::size() const
 {
-  return this->segment_sizes_cumulative[this->segments_num + 1] -
-         this->segment_sizes_cumulative[0];
+  return this->cumulative_segment_sizes[this->segments_num + 1] -
+         this->cumulative_segment_sizes[0];
 }
 
 inline int16_t Chunk::segment_size(const int16_t segment_i) const
 {
-  return this->segment_sizes_cumulative[segment_i + 1] - this->segment_sizes_cumulative[segment_i];
+  return this->cumulative_segment_sizes[segment_i + 1] - this->cumulative_segment_sizes[segment_i];
 }
 
 template<typename Fn> inline void IndexMask::foreach_raw_segment(Fn &&fn) const
@@ -469,10 +469,10 @@ template<typename Fn> inline void IndexMask::foreach_raw_segment(Fn &&fn) const
     const bool is_last_chunk = (chunk_i == data_.chunks_num - 1);
     const int16_t segments_num = is_last_chunk ? final_segments_num : chunk.segments_num;
     const int64_t offset = chunk_capacity + chunk_id;
-    int16_t prev_cumulative_segment_size = chunk.segment_sizes_cumulative[segment_i];
+    int16_t prev_cumulative_segment_size = chunk.cumulative_segment_sizes[segment_i];
     while (segment_i < segments_num) {
       const int16_t next_segment_i = segment_i + 1;
-      const int16_t cumulative_segment_size = chunk.segment_sizes_cumulative[next_segment_i];
+      const int16_t cumulative_segment_size = chunk.cumulative_segment_sizes[next_segment_i];
       const int16_t stored_segment_size = cumulative_segment_size - prev_cumulative_segment_size;
       const bool is_last_segment = is_last_chunk & (segment_i == final_segment_i);
       const int16_t segment_drop_back = is_last_segment * final_drop_back;

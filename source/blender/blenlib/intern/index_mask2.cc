@@ -33,14 +33,14 @@ const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size)
     static Array<int64_t> chunk_sizes_cumulative(chunks_num + 1);
 
     static const int16_t *static_offsets = get_static_indices_array().data();
-    static const int16_t static_segment_sizes_cumulative[2] = {0, chunk_capacity};
+    static const int16_t static_cumulative_segment_sizes[2] = {0, chunk_capacity};
 
     threading::parallel_for(IndexRange(chunks_num), 1024, [&](const IndexRange range) {
       for (const int64_t i : range) {
         Chunk &chunk = chunks_array[i];
         chunk.segments_num = 1;
         chunk.indices_by_segment = &static_offsets;
-        chunk.segment_sizes_cumulative = static_segment_sizes_cumulative;
+        chunk.cumulative_segment_sizes = static_cumulative_segment_sizes;
 
         chunk_ids_array[i] = i;
         chunk_sizes_cumulative[i] = i * chunk_capacity;
@@ -229,7 +229,7 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, ResourceScop
         index_allocations_num);
     MutableSpan<const int16_t *> remaining_indices_by_segment =
         allocator.allocate_array<const int16_t *>(segments_in_chunks.size());
-    MutableSpan<int16_t> remaining_segment_sizes_cumulative = allocator.allocate_array<int16_t>(
+    MutableSpan<int16_t> remaining_cumulative_segment_sizes = allocator.allocate_array<int16_t>(
         segments_in_chunks.size() + slice.size());
 
     const OffsetIndices<int64_t> segments_by_chunk = segments_per_chunk_cumulative.as_span();
@@ -242,13 +242,13 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, ResourceScop
 
       MutableSpan<const int16_t *> indices_by_segment = take_front_and_drop(
           remaining_indices_by_segment, segments_num);
-      MutableSpan<int16_t> segment_sizes_cumulative = take_front_and_drop(
-          remaining_segment_sizes_cumulative, segments_num + 1);
+      MutableSpan<int16_t> cumulative_segment_sizes = take_front_and_drop(
+          remaining_cumulative_segment_sizes, segments_num + 1);
 
       int64_t cumulative_size = 0;
       for (const int64_t segment_i : IndexRange(segments_num)) {
         const RangeOrSpanVariant<T> &segment = segments_in_chunks[segments_in_chunk[segment_i]];
-        segment_sizes_cumulative[segment_i] = int16_t(cumulative_size);
+        cumulative_segment_sizes[segment_i] = int16_t(cumulative_size);
 
         if (std::holds_alternative<IndexRange>(segment)) {
           const IndexRange range_in_segment = std::get<IndexRange>(segment);
@@ -268,10 +268,10 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, ResourceScop
           cumulative_size += indices_in_segment.size();
         }
       }
-      segment_sizes_cumulative[segments_num] = int16_t(cumulative_size);
+      cumulative_segment_sizes[segments_num] = int16_t(cumulative_size);
 
       chunk.indices_by_segment = indices_by_segment.data();
-      chunk.segment_sizes_cumulative = segment_sizes_cumulative.data();
+      chunk.cumulative_segment_sizes = cumulative_segment_sizes.data();
     }
   });
 
