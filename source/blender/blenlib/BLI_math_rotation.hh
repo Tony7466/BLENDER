@@ -189,6 +189,32 @@ template<typename T>
 }
 
 /**
+ * Rotate \a a by \a b. In other word, insert the \a b rotation before \a a.
+ */
+template<typename T, typename RotT>
+[[nodiscard]] detail::Quaternion<T> rotate(const detail::Quaternion<T> &a, const RotT &b)
+{
+  return a * detail::Quaternion<T>(b);
+}
+template<typename T, typename RotT>
+[[nodiscard]] detail::AxisAngle<T> rotate(const detail::AxisAngle<T> &a, const RotT &b)
+{
+  return detail::AxisAngle<T>(detail::Quaternion<T>(a) * detail::Quaternion<T>(b));
+}
+template<typename T, typename RotT>
+[[nodiscard]] detail::EulerXYZ<T> rotate(const detail::EulerXYZ<T> &a, const RotT &b)
+{
+  MatBase<T, 3, 3> tmp = from_rotation<MatBase<T, 3, 3>>(a) * from_rotation<MatBase<T, 3, 3>>(b);
+  return to_euler(tmp);
+}
+template<typename T, typename RotT>
+[[nodiscard]] detail::Euler3<T> rotate(const detail::Euler3<T> &a, const RotT &b)
+{
+  MatBase<T, 3, 3> tmp = from_rotation<MatBase<T, 3, 3>>(a) * from_rotation<MatBase<T, 3, 3>>(b);
+  return to_euler(tmp, a.order());
+}
+
+/**
  * Return rotation from orientation \a a  to orientation \a b into another quaternion.
  */
 template<typename T>
@@ -588,6 +614,7 @@ template<typename T> AxisAngle<T>::AxisAngle(const VecBase<T, 3> &from, const Ve
     }
   }
 }
+
 template<typename T>
 AxisAngleNormalized<T>::AxisAngleNormalized(const VecBase<T, 3> &axis, T angle) : AxisAngle<T>()
 {
