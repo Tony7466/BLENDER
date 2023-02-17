@@ -3,6 +3,7 @@
 
 #include <pxr/imaging/hd/light.h>
 #include <pxr/imaging/hd/material.h>
+#include <pxr/imaging/hd/renderDelegate.h>
 #include <pxr/usd/usdLux/tokens.h>
 #include <pxr/imaging/hdSt/tokens.h>
 
@@ -11,11 +12,14 @@
 #include "blenderSceneDelegate.h"
 #include "object.h"
 
+using namespace std;
+
 namespace blender::render::hydra {
 
 BlenderSceneDelegate::BlenderSceneDelegate(HdRenderIndex* parentIndex, SdfPath const& delegateID)
   : HdSceneDelegate(parentIndex, delegateID),
     b_depsgraph(nullptr),
+    b_context(nullptr),
     view3d(nullptr),
     is_populated(false)
 {
@@ -50,10 +54,38 @@ void BlenderSceneDelegate::update_material(Material *material)
   }
 }
 
+void BlenderSceneDelegate::add_update_world(World *world)
+{
+  SdfPath world_light_id = world_id();
+
+  LOG(INFO) << "Add world: " << world_light_id;
+
+  if (!world) {
+    world_data = nullptr;
+    GetRenderIndex().RemoveSprim(HdPrimTypeTokens->domeLight, world_light_id);
+    return;
+  }
+
+  if (!world_data) {
+    world_data = make_unique<WorldData>(world, (bContext *)b_context->ptr.data);
+    GetRenderIndex().InsertSprim(HdPrimTypeTokens->domeLight, this, world_light_id);
+  }
+  else {
+    world_data = make_unique<WorldData>(world, (bContext *)b_context->ptr.data);
+    GetRenderIndex().GetChangeTracker().MarkSprimDirty(world_light_id, HdLight::AllDirty);
+  }
+}
+
 bool BlenderSceneDelegate::GetVisible(SdfPath const &id)
 {
   ObjectData *obj_data = object_data(id);
-  LOG(INFO) << "GetVisible: " << id.GetAsString() << " " << obj_data->is_visible();
+  LOG(INFO) << "GetVisible: " << id.GetAsString();
+
+  HdRenderIndex &index = GetRenderIndex();
+
+  if (id == world_id()) {
+    return world_data->is_visible();
+  }
 
   return obj_data->is_visible();
 }
@@ -207,6 +239,11 @@ SdfPath BlenderSceneDelegate::material_id(Material *material)
   return GetDelegateID().AppendElementString(str);
 }
 
+SdfPath BlenderSceneDelegate::world_id()
+{
+  return GetDelegateID().AppendElementString("World");
+}
+
 bool BlenderSceneDelegate::supported_object(Object *object)
 {
   return object->type == OB_MESH ||
@@ -218,16 +255,20 @@ bool BlenderSceneDelegate::supported_object(Object *object)
          object->type == OB_MBALL;
 }
 
-void BlenderSceneDelegate::Populate(BL::Depsgraph &b_deps, View3D *v3d)
+void BlenderSceneDelegate::Populate(BL::Depsgraph &b_deps, BL::Context &b_cont)
 {
   LOG(INFO) << "Populate " << is_populated;
 
-  view3d = v3d;
+  view3d = (View3D *)b_cont.space_data().ptr.data;
   b_depsgraph = &b_deps;
+  b_context = &b_cont;
 
   if (!is_populated) {
     /* Export initial objects */
     update_collection();
+
+    World *world = (World *)b_depsgraph->scene().world().ptr.data;
+    add_update_world(world);
 
     is_populated = true;
     return;
@@ -272,9 +313,23 @@ void BlenderSceneDelegate::Populate(BL::Depsgraph &b_deps, View3D *v3d)
     }
 
     if (id.is_a(&RNA_Scene)) {
+      World *world = (World *)b_depsgraph->scene().world().ptr.data;
+      add_update_world(world);
       if (!update.is_updated_geometry() && !update.is_updated_transform() && !update.is_updated_shading()) {
         do_update_visibility = true;
       }
+      continue;
+    }
+
+    if (id.is_a(&RNA_World)) {
+      World *world = (World *)b_depsgraph->scene().world().ptr.data;
+      add_update_world(world);
+      continue;
+    }
+
+    if (id.is_a(&RNA_ShaderNodeTree)) {
+      World *world = (World *)b_depsgraph->scene().world().ptr.data;
+      add_update_world(world);
       continue;
     }
   }
@@ -397,6 +452,12 @@ GfMatrix4d BlenderSceneDelegate::GetTransform(SdfPath const& id)
 {
   LOG(INFO) << "GetTransform: " << id.GetAsString();
 
+  HdRenderIndex &index = GetRenderIndex();
+
+  if (id == world_id()) {
+    return world_data->transform(index.GetRenderDelegate()->GetRendererDisplayName());
+  }
+
   return objects[id].transform();
 }
 
@@ -404,6 +465,9 @@ VtValue BlenderSceneDelegate::GetLightParamValue(SdfPath const& id, TfToken cons
 {
   LOG(INFO) << "GetLightParamValue: " << id.GetAsString() << " [" << key.GetString() << "]";
   VtValue ret;
+
+  HdRenderIndex &index = GetRenderIndex();
+
   ObjectData *obj_data = object_data(id);
   if (obj_data) {
     if (obj_data->has_data(key)) {
@@ -414,6 +478,12 @@ VtValue BlenderSceneDelegate::GetLightParamValue(SdfPath const& id, TfToken cons
       ret = 1.0f;
     }
   }
+  else if (id == world_id()) {
+    if (world_data->has_data(key)) {
+      ret = world_data->get_data(key);
+    }
+  }
+
   return ret;
 }
 

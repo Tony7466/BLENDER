@@ -15,6 +15,7 @@
 #include "RNA_blender_cpp.h"
 
 #include "object.h"
+#include "world.h"
 
 using namespace pxr;
 
@@ -25,7 +26,7 @@ public:
   BlenderSceneDelegate(HdRenderIndex* renderIndex, SdfPath const &delegateId);
   ~BlenderSceneDelegate() override = default;
 
-  void Populate(BL::Depsgraph &b_deps, View3D *v3d = nullptr);
+  void Populate(BL::Depsgraph &b_deps, BL::Context &b_context);
 
   // delegate methods
   HdMeshTopology GetMeshTopology(SdfPath const& id) override;
@@ -42,20 +43,24 @@ private:
   MaterialData *material_data(SdfPath const &id);
   SdfPath object_id(Object *object);
   SdfPath material_id(Material *material);
+  SdfPath world_id();
   bool supported_object(Object *object);
 
   void add_update_object(Object *object, bool geometry, bool transform, bool shading);
   void set_material(ObjectData &obj_data);
   void update_material(Material *material);
+  void add_update_world(World *world);
   void update_collection();
   void update_visibility();
 
 private:  
   BL::Depsgraph *b_depsgraph;
+  BL::Context *b_context;
   View3D *view3d;
   bool is_populated;
   ObjectDataMap objects;
   MaterialDataMap materials;
+  std::unique_ptr<WorldData> world_data;
 };
 
 } // namespace blender::render::hydra

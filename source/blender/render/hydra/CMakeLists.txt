@@ -20,6 +20,7 @@ set(INC
   ../../../../intern/guardedalloc
   ../../makesdna
   ../../makesrna
+  ../../nodes
   ../../blenlib
   ../../depsgraph
   ../../blenkernel
@@ -65,6 +66,8 @@ set(SRC
   sceneDelegate/object.cc
   sceneDelegate/material.h
   sceneDelegate/material.cc
+  sceneDelegate/world.h
+  sceneDelegate/world.cc
 )
 
 set(LIB

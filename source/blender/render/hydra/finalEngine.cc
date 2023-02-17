@@ -23,7 +23,7 @@ void FinalEngine::sync(BL::Depsgraph &b_depsgraph, BL::Context &b_context, pxr::
 {
   sceneDelegate = std::make_unique<BlenderSceneDelegate>(renderIndex.get(), 
     SdfPath::AbsoluteRootPath().AppendElementString("scene"));
-  sceneDelegate->Populate(b_depsgraph);
+  sceneDelegate->Populate(b_depsgraph, b_context);
 
   for (auto const& setting : renderSettings) {
     renderDelegate->SetRenderSetting(setting.first, setting.second);
