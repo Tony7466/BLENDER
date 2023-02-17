@@ -165,4 +165,24 @@ TEST(index_mask2, DefaultConstructor)
   EXPECT_EQ(mask.min_array_size(), 0);
 }
 
+TEST(index_mask2, IndicesToRanges)
+{
+  LinearAllocator<> allocator;
+  const IndexMask mask = unique_sorted_indices::to_index_mask<int>({0, 1, 5}, allocator);
+  const IndexMask new_mask = grow_indices_to_ranges(
+      mask, [&](const int64_t i) { return IndexRange(i * 10, 3); }, allocator);
+  Vector<int64_t> indices(new_mask.size());
+  unique_sorted_indices::from_index_mask<int64_t>(new_mask, indices);
+  EXPECT_EQ(indices.size(), 9);
+  EXPECT_EQ(indices[0], 0);
+  EXPECT_EQ(indices[1], 1);
+  EXPECT_EQ(indices[2], 2);
+  EXPECT_EQ(indices[3], 10);
+  EXPECT_EQ(indices[4], 11);
+  EXPECT_EQ(indices[5], 12);
+  EXPECT_EQ(indices[6], 50);
+  EXPECT_EQ(indices[7], 51);
+  EXPECT_EQ(indices[8], 52);
+}
+
 }  // namespace blender::index_mask::tests
