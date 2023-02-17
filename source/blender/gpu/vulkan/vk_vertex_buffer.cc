@@ -8,6 +8,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "vk_shader.hh"
+#include "vk_shader_interface.hh"
 #include "vk_vertex_buffer.hh"
 
 namespace blender::gpu {
@@ -25,7 +26,10 @@ void VKVertexBuffer::bind_as_ssbo(uint binding)
   }
 
   VKShader *shader = static_cast<VKShader *>(context.shader);
-  shader->pipeline_get().descriptor_set_get().bind_as_ssbo(*this, binding);
+  const VKShaderInterface &shader_interface = shader->interface_get();
+  const ShaderInput *shader_input = shader_interface.shader_input_get(
+      shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER, binding);
+  shader->pipeline_get().descriptor_set_get().bind_as_ssbo(*this, shader_input);
 }
 
 void VKVertexBuffer::bind_as_texture(uint /*binding*/)

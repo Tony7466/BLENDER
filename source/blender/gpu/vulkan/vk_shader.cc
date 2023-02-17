@@ -325,9 +325,11 @@ static std::ostream &print_qualifier(std::ostream &os, const Qualifier &qualifie
   return os;
 }
 
-static void print_resource(std::ostream &os, const ShaderCreateInfo::Resource &res)
+static void print_resource(std::ostream &os,
+                           const ShaderInput &shader_input,
+                           const ShaderCreateInfo::Resource &res)
 {
-  os << "layout(binding = " << res.slot;
+  os << "layout(binding = " << shader_input.location;
   if (res.bind_type == ShaderCreateInfo::Resource::BindType::IMAGE) {
     os << ", " << to_string(res.image.format);
   }
@@ -371,6 +373,18 @@ static void print_resource(std::ostream &os, const ShaderCreateInfo::Resource &r
          << "; };\n";
       break;
   }
+}
+
+static void print_resource(std::ostream &os,
+                           const VKShaderInterface &shader_interface,
+                           const ShaderCreateInfo::Resource &res)
+{
+  const ShaderInput *shader_input = shader_interface.shader_input_get(res);
+  if (shader_input == nullptr) {
+    BLI_assert_msg(shader_input, "Cannot find shader input for resource");
+    return;
+  }
+  print_resource(os, *shader_input, res);
 }
 
 static void print_resource_alias(std::ostream &os, const ShaderCreateInfo::Resource &res)
@@ -655,8 +669,11 @@ bool VKShader::finalize(const shader::ShaderCreateInfo *info)
     return false;
   }
 
+  VKShaderInterface *vk_interface = new VKShaderInterface();
+  vk_interface->init(*info);
+
   VkDevice vk_device = context_->device_get();
-  if (!finalize_descriptor_set_layouts(vk_device, *info)) {
+  if (!finalize_descriptor_set_layouts(vk_device, *vk_interface, *info)) {
     return false;
   }
   if (!finalize_pipeline_layout(vk_device, *info)) {
@@ -683,9 +700,10 @@ bool VKShader::finalize(const shader::ShaderCreateInfo *info)
   }
 
   if (result) {
-    VKShaderInterface *vk_interface = new VKShaderInterface();
-    vk_interface->init(*info);
     interface = vk_interface;
+  }
+  else {
+    delete vk_interface;
   }
   return result;
 }
@@ -756,10 +774,10 @@ static VkDescriptorType descriptor_type(
 }
 
 static VkDescriptorSetLayoutBinding create_descriptor_set_layout_binding(
-    const shader::ShaderCreateInfo::Resource &resource)
+    const ShaderInput &shader_input, const shader::ShaderCreateInfo::Resource &resource)
 {
   VkDescriptorSetLayoutBinding binding = {};
-  binding.binding = resource.slot;
+  binding.binding = shader_input.location;
   binding.descriptorType = descriptor_type(resource.bind_type);
   binding.descriptorCount = 1;
   binding.stageFlags = VK_SHADER_STAGE_ALL;
@@ -769,19 +787,27 @@ static VkDescriptorSetLayoutBinding create_descriptor_set_layout_binding(
 }
 
 static void add_descriptor_set_layout_bindings(
+    const VKShaderInterface &interface,
     const Vector<shader::ShaderCreateInfo::Resource> &resources,
     Vector<VkDescriptorSetLayoutBinding> &r_bindings)
 {
   for (const shader::ShaderCreateInfo::Resource &resource : resources) {
-    r_bindings.append(create_descriptor_set_layout_binding(resource));
+    const ShaderInput *shader_input = interface.shader_input_get(resource);
+    if (shader_input == nullptr) {
+      BLI_assert_msg(shader_input, "Cannot find shader input for resource.");
+      continue;
+    }
+
+    r_bindings.append(create_descriptor_set_layout_binding(*shader_input, resource));
   }
 }
 
 static VkDescriptorSetLayoutCreateInfo create_descriptor_set_layout(
+    const VKShaderInterface &interface,
     const Vector<shader::ShaderCreateInfo::Resource> &resources,
     Vector<VkDescriptorSetLayoutBinding> &r_bindings)
 {
-  add_descriptor_set_layout_bindings(resources, r_bindings);
+  add_descriptor_set_layout_bindings(interface, resources, r_bindings);
   VkDescriptorSetLayoutCreateInfo set_info = {};
   set_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
   set_info.flags = 0;
@@ -792,6 +818,7 @@ static VkDescriptorSetLayoutCreateInfo create_descriptor_set_layout(
 }
 
 bool VKShader::finalize_descriptor_set_layouts(VkDevice vk_device,
+                                               const VKShaderInterface &shader_interface,
                                                const shader::ShaderCreateInfo &info)
 {
   if (info.pass_resources_.is_empty() && info.batch_resources_.is_empty()) {
@@ -809,8 +836,8 @@ bool VKShader::finalize_descriptor_set_layouts(VkDevice vk_device,
   all_resources.extend(info.batch_resources_);
 
   Vector<VkDescriptorSetLayoutBinding> bindings;
-  VkDescriptorSetLayoutCreateInfo layout_info = create_descriptor_set_layout(all_resources,
-                                                                             bindings);
+  VkDescriptorSetLayoutCreateInfo layout_info = create_descriptor_set_layout(
+      shader_interface, all_resources, bindings);
   if (vkCreateDescriptorSetLayout(vk_device, &layout_info, vk_allocation_callbacks, &layout_) !=
       VK_SUCCESS) {
     return false;
@@ -869,11 +896,13 @@ void VKShader::uniform_int(int /*location*/,
 
 std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) const
 {
+  VKShaderInterface interface;
+  interface.init(info);
   std::stringstream ss;
 
   ss << "\n/* Pass Resources. */\n";
   for (const ShaderCreateInfo::Resource &res : info.pass_resources_) {
-    print_resource(ss, res);
+    print_resource(ss, interface, res);
   }
   for (const ShaderCreateInfo::Resource &res : info.pass_resources_) {
     print_resource_alias(ss, res);
@@ -881,7 +910,7 @@ std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) co
 
   ss << "\n/* Batch Resources. */\n";
   for (const ShaderCreateInfo::Resource &res : info.batch_resources_) {
-    print_resource(ss, res);
+    print_resource(ss, interface, res);
   }
   for (const ShaderCreateInfo::Resource &res : info.batch_resources_) {
     print_resource_alias(ss, res);
@@ -1093,6 +1122,11 @@ int VKShader::program_handle_get() const
 VKPipeline &VKShader::pipeline_get()
 {
   return compute_pipeline_;
+}
+
+const VKShaderInterface &VKShader::interface_get() const
+{
+  return *static_cast<const VKShaderInterface *>(interface);
 }
 
 }  // namespace blender::gpu

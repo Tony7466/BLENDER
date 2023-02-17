@@ -15,6 +15,7 @@
 #include "BLI_string_ref.hh"
 
 namespace blender::gpu {
+class VKShaderInterface;
 
 class VKShader : public Shader {
  private:
@@ -65,13 +66,17 @@ class VKShader : public Shader {
     return pipeline_layout_;
   }
 
+  const VKShaderInterface &interface_get() const;
+
  private:
   Vector<uint32_t> compile_glsl_to_spirv(Span<const char *> sources, shaderc_shader_kind kind);
   void build_shader_module(Span<uint32_t> spirv_module, VkShaderModule *r_shader_module);
   void build_shader_module(MutableSpan<const char *> sources,
                            shaderc_shader_kind stage,
                            VkShaderModule *r_shader_module);
-  bool finalize_descriptor_set_layouts(VkDevice vk_device, const shader::ShaderCreateInfo &info);
+  bool finalize_descriptor_set_layouts(VkDevice vk_device,
+                                       const VKShaderInterface &shader_interface,
+                                       const shader::ShaderCreateInfo &info);
   bool finalize_pipeline_layout(VkDevice vk_device, const shader::ShaderCreateInfo &info);
   bool finalize_graphics_pipeline(VkDevice vk_device);
 

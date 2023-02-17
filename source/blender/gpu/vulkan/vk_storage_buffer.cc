@@ -5,6 +5,7 @@
  * \ingroup gpu
  */
 #include "vk_shader.hh"
+#include "vk_shader_interface.hh"
 #include "vk_vertex_buffer.hh"
 
 #include "vk_storage_buffer.hh"
@@ -32,7 +33,10 @@ void VKStorageBuffer::bind(int slot)
     allocate(context);
   }
   VKShader *shader = static_cast<VKShader *>(context.shader);
-  shader->pipeline_get().descriptor_set_get().bind(*this, slot);
+  const VKShaderInterface &shader_interface = shader->interface_get();
+  const ShaderInput *shader_input = shader_interface.shader_input_get(
+      shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER, slot);
+  shader->pipeline_get().descriptor_set_get().bind(*this, shader_input);
 }
 
 void VKStorageBuffer::unbind()

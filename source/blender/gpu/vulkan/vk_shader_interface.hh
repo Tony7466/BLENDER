@@ -16,5 +16,14 @@ class VKShaderInterface : public ShaderInterface {
   VKShaderInterface() = default;
 
   void init(const shader::ShaderCreateInfo &info);
+  /**
+   * Retrieve the shader input for the given resource.
+   *
+   * nullptr is returned when resource could not be found.
+   * Should only happen when still developing the Vulkan shader.
+   */
+  const ShaderInput *shader_input_get(const shader::ShaderCreateInfo::Resource &resource) const;
+  const ShaderInput *shader_input_get(
+      const shader::ShaderCreateInfo::Resource::BindType &bind_type, int binding) const;
 };
 }  // namespace blender::gpu

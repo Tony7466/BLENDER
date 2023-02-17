@@ -11,6 +11,9 @@
 #include "vk_context.hh"
 #include "vk_memory.hh"
 #include "vk_shader.hh"
+#include "vk_shader_interface.hh"
+
+#include "BKE_global.h"
 
 namespace blender::gpu {
 
@@ -159,24 +162,27 @@ bool VKTexture::allocate()
                      VK_IMAGE_USAGE_STORAGE_BIT;
   image_info.samples = VK_SAMPLE_COUNT_1_BIT;
 
+  VkResult result;
+  if (G.debug &= G_DEBUG_GPU) {
+    VkImageFormatProperties image_format = {};
+    result = vkGetPhysicalDeviceImageFormatProperties(context.physical_device_get(),
+                                                      image_info.format,
+                                                      image_info.imageType,
+                                                      image_info.tiling,
+                                                      image_info.usage,
+                                                      image_info.flags,
+                                                      &image_format);
+    if (result != VK_SUCCESS) {
+      printf("Image type not supported on device.\n");
+      return false;
+    }
+  }
+
   VmaAllocationCreateInfo allocCreateInfo = {};
   allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
   allocCreateInfo.flags = static_cast<VmaAllocationCreateFlagBits>(
       VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
   allocCreateInfo.priority = 1.0f;
-
-  VkImageFormatProperties image_format = {};
-  VkResult result = vkGetPhysicalDeviceImageFormatProperties(context.physical_device_get(),
-                                                             image_info.format,
-                                                             image_info.imageType,
-                                                             image_info.tiling,
-                                                             image_info.usage,
-                                                             image_info.flags,
-                                                             &image_format);
-  if (result != VK_SUCCESS) {
-    return false;
-  }
-
   result = vmaCreateImage(context.mem_allocator_get(),
                           &image_info,
                           &allocCreateInfo,
@@ -214,13 +220,15 @@ bool VKTexture::allocate()
   return result == VK_SUCCESS;
 }
 
-void VKTexture::image_bind(int location)
+void VKTexture::image_bind(int binding)
 {
   if (!is_allocated()) {
     allocate();
   }
   VKContext &context = *VKContext::get();
   VKShader *shader = static_cast<VKShader *>(context.shader);
+  VKDescriptorSet::Location location(shader->interface_get().shader_input_get(
+      shader::ShaderCreateInfo::Resource::BindType::IMAGE, binding));
   shader->pipeline_get().descriptor_set_get().image_bind(*this, location);
 }
 

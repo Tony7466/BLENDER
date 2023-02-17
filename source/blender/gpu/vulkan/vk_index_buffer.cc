@@ -7,6 +7,7 @@
 
 #include "vk_index_buffer.hh"
 #include "vk_shader.hh"
+#include "vk_shader_interface.hh"
 
 namespace blender::gpu {
 
@@ -22,7 +23,10 @@ void VKIndexBuffer::bind_as_ssbo(uint binding)
   }
 
   VKShader *shader = static_cast<VKShader *>(context.shader);
-  shader->pipeline_get().descriptor_set_get().bind_as_ssbo(*this, binding);
+  const VKShaderInterface &shader_interface = shader->interface_get();
+  const ShaderInput *shader_input = shader_interface.shader_input_get(
+      shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER, binding);
+  shader->pipeline_get().descriptor_set_get().bind_as_ssbo(*this, shader_input);
 }
 
 void VKIndexBuffer::read(uint32_t *data) const

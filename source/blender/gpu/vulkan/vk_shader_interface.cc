@@ -13,6 +13,7 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
 {
   using namespace blender::gpu::shader;
 
+  attr_len_ = 0;
   uniform_len_ = 0;
   ssbo_len_ = 0;
   ubo_len_ = 0;
@@ -46,11 +47,14 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
   name_buffer_ = (char *)MEM_mallocN(info.interface_names_size_, "name_buffer");
   uint32_t name_buffer_offset = 0;
 
+  int location = 0;
+
   /* Uniform blocks */
   for (const ShaderCreateInfo::Resource &res : all_resources) {
     if (res.bind_type == ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER) {
       copy_input_name(input, res.image.name, name_buffer_, name_buffer_offset);
-      input->location = input->binding = res.slot;
+      input->location = location++;
+      input->binding = res.slot;
       enabled_ubo_mask_ |= (1 << input->binding);
       input++;
     }
@@ -60,13 +64,15 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
   for (const ShaderCreateInfo::Resource &res : all_resources) {
     if (res.bind_type == ShaderCreateInfo::Resource::BindType::SAMPLER) {
       copy_input_name(input, res.sampler.name, name_buffer_, name_buffer_offset);
-      input->location = input->binding = res.slot;
+      input->location = location++;
+      input->binding = res.slot;
       enabled_tex_mask_ |= (1 << input->binding);
       input++;
     }
     if (res.bind_type == ShaderCreateInfo::Resource::BindType::IMAGE) {
       copy_input_name(input, res.image.name, name_buffer_, name_buffer_offset);
-      input->location = input->binding = res.slot;
+      input->location = location++;
+      input->binding = res.slot;
       enabled_ima_mask_ |= (1 << input->binding);
       input++;
     }
@@ -76,13 +82,36 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
   for (const ShaderCreateInfo::Resource &res : all_resources) {
     if (res.bind_type == ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER) {
       copy_input_name(input, res.storagebuf.name, name_buffer_, name_buffer_offset);
-      input->location = input->binding = res.slot;
+      input->location = location++;
+      input->binding = res.slot;
       enabled_ssbo_mask_ |= (1 << input->binding);
       input++;
     }
   }
 
   sort_inputs();
+}
+
+const ShaderInput *VKShaderInterface::shader_input_get(
+    const shader::ShaderCreateInfo::Resource &resource) const
+{
+  return shader_input_get(resource.bind_type, resource.slot);
+}
+
+const ShaderInput *VKShaderInterface::shader_input_get(
+    const shader::ShaderCreateInfo::Resource::BindType &bind_type, int binding) const
+{
+  switch (bind_type) {
+    case shader::ShaderCreateInfo::Resource::BindType::IMAGE:
+      return texture_get(binding);
+    case shader::ShaderCreateInfo::Resource::BindType::SAMPLER:
+      return texture_get(binding);
+    case shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER:
+      return ssbo_get(binding);
+    case shader::ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER:
+      return ubo_get(binding);
+  }
+  return nullptr;
 }
 
 }  // namespace blender::gpu

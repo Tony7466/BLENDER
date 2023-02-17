@@ -30,7 +30,7 @@ void VKDescriptorSet::mark_freed()
   vk_descriptor_pool_ = VK_NULL_HANDLE;
 }
 
-void VKDescriptorSet::bind(VKStorageBuffer &buffer, int location)
+void VKDescriptorSet::bind(VKStorageBuffer &buffer, const Location location)
 {
   Binding &binding = ensure_location(location);
   binding.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -38,7 +38,7 @@ void VKDescriptorSet::bind(VKStorageBuffer &buffer, int location)
   binding.buffer_size = buffer.size_in_bytes();
 }
 
-void VKDescriptorSet::bind_as_ssbo(VKVertexBuffer &buffer, int location)
+void VKDescriptorSet::bind_as_ssbo(VKVertexBuffer &buffer, const Location location)
 {
   Binding &binding = ensure_location(location);
   binding.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -46,7 +46,7 @@ void VKDescriptorSet::bind_as_ssbo(VKVertexBuffer &buffer, int location)
   binding.buffer_size = buffer.size_used_get();
 }
 
-void VKDescriptorSet::bind_as_ssbo(VKIndexBuffer &buffer, int location)
+void VKDescriptorSet::bind_as_ssbo(VKIndexBuffer &buffer, const Location location)
 {
   Binding &binding = ensure_location(location);
   binding.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -54,14 +54,14 @@ void VKDescriptorSet::bind_as_ssbo(VKIndexBuffer &buffer, int location)
   binding.buffer_size = buffer.size_get();
 }
 
-void VKDescriptorSet::image_bind(VKTexture &texture, int location)
+void VKDescriptorSet::image_bind(VKTexture &texture, const Location location)
 {
   Binding &binding = ensure_location(location);
   binding.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
   binding.vk_image_view = texture.vk_image_view_handle();
 }
 
-VKDescriptorSet::Binding &VKDescriptorSet::ensure_location(int location)
+VKDescriptorSet::Binding &VKDescriptorSet::ensure_location(const Location location)
 {
   for (Binding &binding : bindings_) {
     if (binding.location == location) {
@@ -121,6 +121,8 @@ void VKDescriptorSet::update(VkDevice vk_device)
 
   vkUpdateDescriptorSets(
       vk_device, descriptor_writes.size(), descriptor_writes.data(), 0, nullptr);
+
+  bindings_.clear();
 }
 
 }  // namespace blender::gpu
