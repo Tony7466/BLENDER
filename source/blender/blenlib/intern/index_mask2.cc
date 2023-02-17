@@ -215,13 +215,6 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, LinearAlloca
       chunk.segments_num = segments_in_chunk_num;
     }
 
-    auto take_front_and_drop = [](auto &span, const int64_t n) {
-      auto front = span.take_front(n);
-      BLI_assert(front.size() == n);
-      span = span.drop_front(n);
-      return front;
-    };
-
     MutableSpan<int16_t> remaining_indices;
     MutableSpan<const int16_t *> remaining_indices_by_segment;
     MutableSpan<int16_t> remaining_cumulative_segment_sizes;
@@ -236,6 +229,13 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, LinearAlloca
     }
 
     const OffsetIndices<int64_t> segments_by_chunk = segments_per_chunk_cumulative.as_span();
+
+    const auto take_front_and_drop = [](auto &span, const int64_t n) {
+      auto front = span.take_front(n);
+      BLI_assert(front.size() == n);
+      span = span.drop_front(n);
+      return front;
+    };
 
     for (const int64_t i : IndexRange(slice.size())) {
       const IndexRange segments_in_chunk = segments_by_chunk[i];
