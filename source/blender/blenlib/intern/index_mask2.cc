@@ -348,6 +348,13 @@ IndexMask bits_to_index_mask(const BitSpan bits, const int64_t start, LinearAllo
   return unique_sorted_indices::to_index_mask<int64_t>(indices, allocator);
 }
 
+void index_mask_to_bits(const IndexMask &mask, const int64_t start, MutableBitSpan r_bits)
+{
+  BLI_assert(r_bits.size() >= mask.min_array_size() - start);
+  r_bits.reset_all();
+  mask.foreach_index([&](const int64_t i) { r_bits[i - start].set(); });
+}
+
 void do_benchmark(const int64_t total);
 void do_benchmark(const int64_t total)
 {

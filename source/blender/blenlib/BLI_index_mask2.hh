@@ -101,6 +101,7 @@ class IndexMask {
 std::ostream &operator<<(std::ostream &stream, const IndexMask &mask);
 
 IndexMask bits_to_index_mask(BitSpan bits, int64_t start, LinearAllocator<> &allocator);
+void index_mask_to_bits(const IndexMask &mask, int64_t offset, MutableBitSpan r_bits);
 
 namespace unique_sorted_indices {
 

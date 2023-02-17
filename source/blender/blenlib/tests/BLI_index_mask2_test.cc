@@ -120,14 +120,18 @@ TEST(index_mask2, FromBits)
   LinearAllocator<> allocator;
   const uint64_t bits =
       0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'1111'0010'0000;
-  const IndexMask mask = bits_to_index_mask(BitSpan(&bits, 64), 100, allocator);
+  const IndexMask mask = bits_to_index_mask(BitSpan(&bits, IndexRange(2, 40)), 100, allocator);
   Array<int> indices(5);
   unique_sorted_indices::from_index_mask<int>(mask, indices);
-  EXPECT_EQ(indices[0], 105);
-  EXPECT_EQ(indices[1], 108);
-  EXPECT_EQ(indices[2], 109);
-  EXPECT_EQ(indices[3], 110);
-  EXPECT_EQ(indices[4], 111);
+  EXPECT_EQ(indices[0], 103);
+  EXPECT_EQ(indices[1], 106);
+  EXPECT_EQ(indices[2], 107);
+  EXPECT_EQ(indices[3], 108);
+  EXPECT_EQ(indices[4], 109);
+
+  uint64_t new_bits = 0;
+  index_mask_to_bits(mask, 100, MutableBitSpan(&new_bits, IndexRange(5, 40)));
+  EXPECT_EQ(new_bits, bits << 3);
 }
 
 TEST(index_mask2, FromSize)
