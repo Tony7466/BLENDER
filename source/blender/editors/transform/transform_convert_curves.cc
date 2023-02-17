@@ -25,33 +25,33 @@
 namespace blender::ed::transform::curves {
 
 static void calculate_curve_point_distances_for_proportional_editing(
-    Span<float3> positions, MutableSpan<float> r_distances)
+    const Span<float3> positions, MutableSpan<float> r_distances)
 {
   Array<bool> visited(positions.size(), false);
 
   InplacePriorityQueue<float, std::less<float>> queue(r_distances);
   while (!queue.is_empty()) {
-    int64_t idx = queue.pop_index();
-    if (visited[idx]) {
+    int64_t index = queue.pop_index();
+    if (visited[index]) {
       continue;
     }
-    visited[idx] = true;
+    visited[index] = true;
 
     /* TODO (Falk): Handle cyclic curves here. */
-    if (idx > 0 && !visited[idx - 1]) {
-      int adj = idx - 1;
-      float dist = r_distances[idx] + math::distance(positions[idx], positions[adj]);
-      if (dist < r_distances[adj]) {
-        r_distances[adj] = dist;
-        queue.priority_changed(adj);
+    if (index > 0 && !visited[index - 1]) {
+      int adjacent = index - 1;
+      float dist = r_distances[index] + math::distance(positions[index], positions[adjacent]);
+      if (dist < r_distances[adjacent]) {
+        r_distances[adjacent] = dist;
+        queue.priority_changed(adjacent);
       }
     }
-    if (idx < positions.size() - 1 && !visited[idx + 1]) {
-      int adj = idx + 1;
-      float dist = r_distances[idx] + math::distance(positions[idx], positions[adj]);
-      if (dist < r_distances[adj]) {
-        r_distances[adj] = dist;
-        queue.priority_changed(adj);
+    if (index < positions.size() - 1 && !visited[index + 1]) {
+      int adjacent = index + 1;
+      float dist = r_distances[index] + math::distance(positions[index], positions[adjacent]);
+      if (dist < r_distances[adjacent]) {
+        r_distances[adjacent] = dist;
+        queue.priority_changed(adjacent);
       }
     }
   }
@@ -98,7 +98,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
     copy_m3_m4(mtx, tc.obedit->object_to_world);
     pseudoinverse_m3_m3(smtx, mtx, PSEUDOINVERSE_EPSILON);
 
-    MutableSpan<float3> positions = curves.positions_for_write();
+    float3 *positions_ptr = curves.positions_for_write().data();
     if (is_prop_edit) {
       const Span<float3> positions_read = curves.positions();
       const OffsetIndices<int> points_by_curve = curves.points_by_curve();
@@ -107,22 +107,38 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
       threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange range) {
         for (const int curve_i : range) {
           bool has_any_selected = false;
-
           const IndexRange points = points_by_curve[curve_i];
+          for (const int i : IndexRange(points.size())) {
+            const int point_i = points[i];
+            if (selection[point_i]) {
+              has_any_selected = true;
+              break;
+            }
+          }
+
+          if (!has_any_selected) {
+            for (const int point_i : points_by_curve[curve_i]) {
+              TransData &td = tc.data[point_i];
+              td.flag |= TD_NOTCONNECTED;
+              td.dist = FLT_MAX;
+            }
+            continue;
+          }
+
           const Span<float3> positions_curve = positions_read.slice(points_by_curve[curve_i]);
           Array<float> closest_distances(positions_curve.size(), FLT_MAX);
 
           for (const int i : IndexRange(points.size())) {
             const int point_i = points[i];
             TransData &td = tc.data[point_i];
-            float *elem = reinterpret_cast<float *>(&positions[point_i]);
-            copy_v3_v3(td.iloc, elem);
+            float3 *elem = &positions_ptr[point_i];
+
+            copy_v3_v3(td.iloc, *elem);
             copy_v3_v3(td.center, td.iloc);
-            td.loc = elem;
+            td.loc = *elem;
 
             td.flag = 0;
             if (selection[point_i]) {
-              has_any_selected = true;
               closest_distances[i] = 0.0f;
               td.flag = TD_SELECTED;
             }
@@ -133,20 +149,12 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
             copy_m3_m3(td.mtx, mtx);
           }
 
-          if (is_prop_connected && has_any_selected) {
+          if (is_prop_connected) {
             calculate_curve_point_distances_for_proportional_editing(
                 positions_curve, closest_distances.as_mutable_span());
             for (const int i : IndexRange(points.size())) {
               TransData &td = tc.data[points[i]];
               td.dist = closest_distances[i];
-            }
-          }
-
-          if (!has_any_selected) {
-            for (const int point_i : points_by_curve[curve_i]) {
-              TransData &td = tc.data[point_i];
-              td.flag |= TD_NOTCONNECTED;
-              td.dist = FLT_MAX;
             }
           }
         }
@@ -157,10 +165,11 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
       threading::parallel_for(selected_indices.index_range(), 1024, [&](const IndexRange range) {
         for (const int selection_i : range) {
           TransData *td = &tc.data[selection_i];
-          float *elem = reinterpret_cast<float *>(&positions[selected_indices[selection_i]]);
-          copy_v3_v3(td->iloc, elem);
+          float3 *elem = &positions_ptr[selected_indices[selection_i]];
+
+          copy_v3_v3(td->iloc, *elem);
           copy_v3_v3(td->center, td->iloc);
-          td->loc = elem;
+          td->loc = *elem;
 
           td->flag = TD_SELECTED;
           td->ext = nullptr;
