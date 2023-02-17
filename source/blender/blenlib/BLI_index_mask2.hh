@@ -57,7 +57,7 @@ struct IndexMaskData {
   int64_t indices_num;
   const Chunk *chunks;
   const int64_t *chunk_ids;
-  const int64_t *chunk_sizes_cumulative;
+  const int64_t *cumulative_chunk_sizes;
   RawChunkIterator begin_it;
   RawChunkIterator end_it;
 };
@@ -320,7 +320,7 @@ inline IndexMask::IndexMask()
   data_.chunks_num = 0;
   data_.chunks = nullptr;
   data_.chunk_ids = nullptr;
-  data_.chunk_sizes_cumulative = cumulative_sizes_for_empty_mask;
+  data_.cumulative_chunk_sizes = cumulative_sizes_for_empty_mask;
   data_.begin_it.segment_i = 0;
   data_.begin_it.index_in_segment = 0;
   data_.end_it.segment_i = 0;
@@ -349,7 +349,7 @@ inline IndexMask::IndexMask(const IndexRange range)
   data_.indices_num = range.size();
   data_.chunks -= first_chunk_id;
   data_.chunk_ids -= first_chunk_id;
-  data_.chunk_sizes_cumulative -= first_chunk_id;
+  data_.cumulative_chunk_sizes -= first_chunk_id;
   data_.begin_it.segment_i = 0;
   data_.begin_it.index_in_segment = range.first() & chunk_mask_low;
   data_.end_it.segment_i = 0;
@@ -363,7 +363,7 @@ inline int64_t IndexMask::size() const
 
 inline OffsetIndices<int64_t> IndexMask::chunk_offsets() const
 {
-  return Span<int64_t>(data_.chunk_sizes_cumulative, data_.chunks_num + 1);
+  return Span<int64_t>(data_.cumulative_chunk_sizes, data_.chunks_num + 1);
 }
 
 inline RawMaskIterator IndexMask::index_to_iterator(const int64_t index) const
@@ -373,7 +373,7 @@ inline RawMaskIterator IndexMask::index_to_iterator(const int64_t index) const
   RawMaskIterator it;
   const int16_t begin_index = data_.chunks[0].iterator_to_index(data_.begin_it);
   it.chunk_i = this->chunk_offsets().find_range_index(index + begin_index +
-                                                      data_.chunk_sizes_cumulative[0]);
+                                                      data_.cumulative_chunk_sizes[0]);
   const Chunk &chunk = data_.chunks[it.chunk_i];
   it.chunk_it = chunk.index_to_iterator((index + begin_index) & chunk_mask_low);
   return it;
@@ -384,7 +384,7 @@ inline int64_t IndexMask::iterator_to_index(const RawMaskIterator &it) const
   BLI_assert(it.chunk_i >= 0);
   BLI_assert(it.chunk_i < data_.chunks_num);
   const int16_t begin_index = data_.chunks[0].iterator_to_index(data_.begin_it);
-  return data_.chunk_sizes_cumulative[it.chunk_i] - data_.chunk_sizes_cumulative[0] - begin_index;
+  return data_.cumulative_chunk_sizes[it.chunk_i] - data_.cumulative_chunk_sizes[0] - begin_index;
 }
 
 inline IndexMask IndexMask::slice(const IndexRange range) const
@@ -400,7 +400,7 @@ inline IndexMask IndexMask::slice(const IndexRange range) const
   sliced.data_.indices_num = range.size();
   sliced.data_.chunks = data_.chunks + first_it.chunk_i;
   sliced.data_.chunk_ids = data_.chunk_ids + first_it.chunk_i;
-  sliced.data_.chunk_sizes_cumulative = data_.chunk_sizes_cumulative + first_it.chunk_i;
+  sliced.data_.cumulative_chunk_sizes = data_.cumulative_chunk_sizes + first_it.chunk_i;
   sliced.data_.begin_it = first_it.chunk_it;
   sliced.data_.end_it.segment_i = last_it.chunk_it.segment_i;
   sliced.data_.end_it.index_in_segment = last_it.chunk_it.index_in_segment + 1;

@@ -30,7 +30,7 @@ const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size)
   static IndexMask static_mask = []() {
     static Array<Chunk> chunks_array(chunks_num);
     static Array<int64_t> chunk_ids_array(chunks_num);
-    static Array<int64_t> chunk_sizes_cumulative(chunks_num + 1);
+    static Array<int64_t> cumulative_chunk_sizes(chunks_num + 1);
 
     static const int16_t *static_offsets = get_static_indices_array().data();
     static const int16_t static_cumulative_segment_sizes[2] = {0, chunk_capacity};
@@ -43,10 +43,10 @@ const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size)
         chunk.cumulative_segment_sizes = static_cumulative_segment_sizes;
 
         chunk_ids_array[i] = i;
-        chunk_sizes_cumulative[i] = i * chunk_capacity;
+        cumulative_chunk_sizes[i] = i * chunk_capacity;
       }
     });
-    chunk_sizes_cumulative.last() = max_size;
+    cumulative_chunk_sizes.last() = max_size;
 
     IndexMask mask;
     IndexMaskData &mask_data = mask.data_for_inplace_construction();
@@ -54,7 +54,7 @@ const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size)
     mask_data.indices_num = max_size;
     mask_data.chunks = chunks_array.data();
     mask_data.chunk_ids = chunk_ids_array.data();
-    mask_data.chunk_sizes_cumulative = chunk_sizes_cumulative.data();
+    mask_data.cumulative_chunk_sizes = cumulative_chunk_sizes.data();
     mask_data.begin_it.segment_i = 0;
     mask_data.begin_it.index_in_segment = 0;
     mask_data.end_it.segment_i = 0;
@@ -275,14 +275,14 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, ResourceScop
     }
   });
 
-  MutableSpan<int64_t> chunk_sizes_cumulative = main_allocator.allocate_array<int64_t>(chunks_num +
+  MutableSpan<int64_t> cumulative_chunk_sizes = main_allocator.allocate_array<int64_t>(chunks_num +
                                                                                        1);
   int64_t cumulative_size = 0;
   for (const int64_t i : chunks.index_range()) {
-    chunk_sizes_cumulative[i] = cumulative_size;
+    cumulative_chunk_sizes[i] = cumulative_size;
     cumulative_size += chunks[i].size();
   }
-  chunk_sizes_cumulative.last() = cumulative_size;
+  cumulative_chunk_sizes.last() = cumulative_size;
 
   IndexMask mask;
   IndexMaskData &mask_data = mask.data_for_inplace_construction();
@@ -290,7 +290,7 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, ResourceScop
   mask_data.indices_num = indices.size();
   mask_data.chunks = chunks.data();
   mask_data.chunk_ids = chunk_ids.data();
-  mask_data.chunk_sizes_cumulative = chunk_sizes_cumulative.data();
+  mask_data.cumulative_chunk_sizes = cumulative_chunk_sizes.data();
   mask_data.begin_it = {0, 0};
   mask_data.end_it = chunks.last().end_iterator();
   return mask;
