@@ -79,6 +79,9 @@ class IndexMask {
 
   int64_t size() const;
   OffsetIndices<int64_t> chunk_offsets() const;
+  int64_t first() const;
+  int64_t last() const;
+  int64_t min_array_size() const;
 
   RawMaskIterator index_to_iterator(const int64_t index) const;
   int64_t iterator_to_index(const RawMaskIterator &it) const;
@@ -265,6 +268,7 @@ inline IndexMask::IndexMask()
   static constexpr int64_t cumulative_sizes_for_empty_mask[1] = {0};
 
   data_.chunks_num = 0;
+  data_.indices_num = 0;
   data_.chunks = nullptr;
   data_.chunk_ids = nullptr;
   data_.cumulative_chunk_sizes = cumulative_sizes_for_empty_mask;
@@ -279,7 +283,8 @@ inline IndexMask::IndexMask(const int64_t size)
   *this = get_static_index_mask_for_min_size(size);
   data_.chunks_num = size_to_chunk_num(size);
   data_.indices_num = size;
-  data_.end_it.index_in_segment = size & chunk_mask_low;
+  data_.end_it.index_in_segment = (size == chunk_capacity) ? chunk_capacity :
+                                                             size & chunk_mask_low;
 }
 
 inline IndexMask::IndexMask(const IndexRange range)
@@ -311,6 +316,31 @@ inline int64_t IndexMask::size() const
 inline OffsetIndices<int64_t> IndexMask::chunk_offsets() const
 {
   return Span<int64_t>(data_.cumulative_chunk_sizes, data_.chunks_num + 1);
+}
+
+inline int64_t IndexMask::first() const
+{
+  BLI_assert(data_.indices_num > 0);
+  return chunk_capacity * data_.chunk_ids[0] +
+         data_.chunks[0]
+             .indices_by_segment[data_.begin_it.segment_i][data_.begin_it.index_in_segment];
+}
+
+inline int64_t IndexMask::last() const
+{
+  BLI_assert(data_.indices_num > 0);
+  const int64_t chunk_i = data_.chunks_num - 1;
+  return chunk_capacity * data_.chunk_ids[chunk_i] +
+         data_.chunks[chunk_i]
+             .indices_by_segment[data_.end_it.segment_i][data_.end_it.index_in_segment - 1];
+}
+
+inline int64_t IndexMask::min_array_size() const
+{
+  if (data_.indices_num == 0) {
+    return 0;
+  }
+  return this->last() + 1;
 }
 
 inline RawMaskIterator IndexMask::index_to_iterator(const int64_t index) const

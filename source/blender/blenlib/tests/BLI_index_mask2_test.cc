@@ -110,12 +110,40 @@ TEST(index_mask2, IndicesToMask)
       5, 100, 16383, 16384, 16385, 20000, 20001, 50000, 50001, 50002, 100000, 101000};
   IndexMask mask = unique_sorted_indices::to_index_mask<int>(data, scope);
 
-  mask.foreach_span_or_range([&](auto segment) {
-    for (const int64_t i : segment) {
-      std::cout << i << ", ";
-    }
-    std::cout << "\n";
-  });
+  EXPECT_EQ(mask.first(), 5);
+  EXPECT_EQ(mask.last(), 101000);
+  EXPECT_EQ(mask.min_array_size(), 101001);
+}
+
+TEST(index_mask2, FromSize)
+{
+  {
+    IndexMask mask(5);
+    Vector<IndexMaskSegment> segments;
+    mask.foreach_segment([&](const IndexMaskSegment &segment) { segments.append(segment); });
+    EXPECT_EQ(segments.size(), 1);
+    EXPECT_EQ(segments[0].indices.size(), 5);
+    EXPECT_EQ(mask.first(), 0);
+    EXPECT_EQ(mask.last(), 4);
+    EXPECT_EQ(mask.min_array_size(), 5);
+  }
+  {
+    IndexMask mask(chunk_capacity);
+    Vector<IndexMaskSegment> segments;
+    mask.foreach_segment([&](const IndexMaskSegment &segment) { segments.append(segment); });
+    EXPECT_EQ(segments.size(), 1);
+    EXPECT_EQ(segments[0].indices.size(), chunk_capacity);
+    EXPECT_EQ(mask.first(), 0);
+    EXPECT_EQ(mask.last(), chunk_capacity - 1);
+    EXPECT_EQ(mask.min_array_size(), chunk_capacity);
+  }
+}
+
+TEST(index_mask2, DefaultConstructor)
+{
+  IndexMask mask;
+  EXPECT_EQ(mask.size(), 0);
+  EXPECT_EQ(mask.min_array_size(), 0);
 }
 
 }  // namespace blender::index_mask::tests
