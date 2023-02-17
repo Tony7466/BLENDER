@@ -43,16 +43,14 @@ float pixel_size_at(float linear_depth)
   float pixel_size = pixel_world_radius;
   bool is_persp = (ProjectionMatrix[3][3] == 0.0);
   if (is_persp) {
-    pixel_size *= max(0.01, linear_depth);
+    pixel_size *= linear_depth;
   }
-  return pixel_size;
+  return pixel_size * exp2(fb_lod);
 }
 
 float step_size_at(float linear_depth)
 {
-  /* Ensure that step_size is as large as possible,
-   * but not larger than the smallest possible page size. */
-  return pixel_size_at(linear_depth) * SHADOW_PAGE_RES;
+  return max(0.01, pixel_size_at(linear_depth));
 }
 
 void step_bounding_sphere(vec3 vs_near_plane,
@@ -68,17 +66,15 @@ void step_bounding_sphere(vec3 vs_near_plane,
   float far_pixel_size = pixel_size_at(far_t);
   vec3 far_center = vs_near_plane + vs_view_direction * far_t;
 
-  /* TODO (Miguel Pozo): Use an actual algorithm. */
   sphere_center = mix(near_center, far_center, 0.5);
-  sphere_center = mix(sphere_center, far_center, 1.0 - near_pixel_size / far_pixel_size);
   sphere_radius = 0;
 
   for (int x = -1; x <= 1; x += 2) {
     for (int y = -1; y <= 1; y += 2) {
-      vec3 near_corner = near_center + (near_pixel_size * vec3(x, y, 0));
+      vec3 near_corner = near_center + (near_pixel_size * 0.5 * vec3(x, y, 0));
       sphere_radius = max(sphere_radius, len_squared(near_corner - sphere_center));
 
-      vec3 far_corner = far_center + (far_pixel_size * vec3(x, y, 0));
+      vec3 far_corner = far_center + (far_pixel_size * 0.5 * vec3(x, y, 0));
       sphere_radius = max(sphere_radius, len_squared(far_corner - sphere_center));
     }
   }
