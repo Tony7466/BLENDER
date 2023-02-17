@@ -346,7 +346,8 @@ def script_path_pref():
     first valid of these script paths for now, for compatibility.
     """
     # TODO how to handle deprecation of this?
-    return script_paths_pref()[0]
+    script_paths = script_paths_pref()
+    return script_paths[0] if len(script_paths) > 0 else ""
 
 
 def script_paths_pref():
