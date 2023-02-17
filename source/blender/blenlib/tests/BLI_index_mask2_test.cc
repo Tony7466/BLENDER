@@ -105,14 +105,29 @@ TEST(index_mask2, SplitByChunk)
 
 TEST(index_mask2, IndicesToMask)
 {
-  LinearAllocator<> scope;
+  LinearAllocator<> allocator;
   Array<int> data = {
       5, 100, 16383, 16384, 16385, 20000, 20001, 50000, 50001, 50002, 100000, 101000};
-  IndexMask mask = unique_sorted_indices::to_index_mask<int>(data, scope);
+  IndexMask mask = unique_sorted_indices::to_index_mask<int>(data, allocator);
 
   EXPECT_EQ(mask.first(), 5);
   EXPECT_EQ(mask.last(), 101000);
   EXPECT_EQ(mask.min_array_size(), 101001);
+}
+
+TEST(index_mask2, FromBits)
+{
+  LinearAllocator<> allocator;
+  const uint64_t bits =
+      0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'1111'0010'0000;
+  const IndexMask mask = bits_to_index_mask(BitSpan(&bits, 64), 100, allocator);
+  Array<int> indices(5);
+  unique_sorted_indices::from_index_mask<int>(mask, indices);
+  EXPECT_EQ(indices[0], 105);
+  EXPECT_EQ(indices[1], 108);
+  EXPECT_EQ(indices[2], 109);
+  EXPECT_EQ(indices[3], 110);
+  EXPECT_EQ(indices[4], 111);
 }
 
 TEST(index_mask2, FromSize)

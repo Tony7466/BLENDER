@@ -337,6 +337,17 @@ template int64_t split_to_ranges_and_spans(const Span<int> indices,
 
 }  // namespace unique_sorted_indices
 
+IndexMask bits_to_index_mask(const BitSpan bits, const int64_t start, LinearAllocator<> &allocator)
+{
+  Vector<int64_t> indices;
+  for (const int64_t i : bits.index_range()) {
+    if (bits[i]) {
+      indices.append(i + start);
+    }
+  }
+  return unique_sorted_indices::to_index_mask<int64_t>(indices, allocator);
+}
+
 void do_benchmark(const int64_t total);
 void do_benchmark(const int64_t total)
 {

@@ -6,6 +6,7 @@
 #include <optional>
 #include <variant>
 
+#include "BLI_bit_span.hh"
 #include "BLI_index_range.hh"
 #include "BLI_linear_allocator.hh"
 #include "BLI_offset_indices.hh"
@@ -98,6 +99,8 @@ class IndexMask {
 };
 
 std::ostream &operator<<(std::ostream &stream, const IndexMask &mask);
+
+IndexMask bits_to_index_mask(BitSpan bits, int64_t start, LinearAllocator<> &allocator);
 
 namespace unique_sorted_indices {
 
