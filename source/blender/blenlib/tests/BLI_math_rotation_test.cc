@@ -539,6 +539,21 @@ TEST(math_rotation, QuaternionWrappedAround)
   EXPECT_V4_NEAR(float4(q1.wrapped_around(q_malformed)), float4(q1), 1e-4f);
 }
 
+TEST(math_rotation, QuaternionFromTracking)
+{
+  for (int i : IndexRange(6)) {
+    for (int j : IndexRange(3)) {
+      eAxisSigned forward_axis = eAxisSigned(i);
+      eAxis up_axis = eAxis(j);
+
+      Quaternion expect = Quaternion::identity();
+      quat_apply_track(&expect.w, forward_axis, up_axis);
+
+      EXPECT_V4_NEAR(float4(from_tracking<float>(forward_axis, up_axis)), float4(expect), 1e-5f);
+    }
+  }
+}
+
 TEST(math_rotation, EulerWrappedAround)
 {
   EulerXYZ eul1 = EulerXYZ(2.08542, -1.12485, -1.23738);

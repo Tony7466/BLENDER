@@ -29,6 +29,7 @@ enum eAxis {
 };
 
 enum eAxisSigned {
+  /* Match #eTrackToAxis_Modes */
   /* Must start at 0. Used as indices in tables and vectors. */
   X_POS = 0,
   Y_POS = 1,
@@ -72,6 +73,11 @@ static inline eAxis axis_from_char(const char axis)
 static inline bool is_negative(const eAxisSigned axis)
 {
   return axis > Z_POS;
+}
+
+static inline eAxisSigned negate(const eAxisSigned axis)
+{
+  return eAxisSigned((axis + 3) % 6);
 }
 
 /**
@@ -701,6 +707,12 @@ template<typename T = float> struct Quaternion {
             a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
             a.w * b.y + a.y * b.w + a.z * b.x - a.x * b.z,
             a.w * b.z + a.z * b.w + a.x * b.y - a.y * b.x};
+  }
+
+  Quaternion &operator*=(const Quaternion &b)
+  {
+    *this = *this * b;
+    return *this;
   }
 
   /* Scalar product. */
