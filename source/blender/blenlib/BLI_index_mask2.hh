@@ -9,6 +9,7 @@
 #include "BLI_index_range.hh"
 #include "BLI_linear_allocator.hh"
 #include "BLI_offset_indices.hh"
+#include "BLI_offset_span.hh"
 #include "BLI_resource_scope.hh"
 #include "BLI_span.hh"
 
@@ -89,65 +90,6 @@ class IndexMask {
 };
 
 std::ostream &operator<<(std::ostream &stream, const IndexMask &mask);
-
-template<typename T, typename BaseT> class OffsetSpan {
- private:
-  T offset_ = 0;
-  Span<BaseT> data_;
-
- public:
-  OffsetSpan(const T offset, const Span<BaseT> data) : offset_(offset), data_(data)
-  {
-  }
-
-  int64_t size() const
-  {
-    return data_.size();
-  }
-
-  T operator[](const int64_t i) const
-  {
-    return T(data_[i]) + offset_;
-  }
-
-  class Iterator {
-   private:
-    T offset_;
-    const BaseT *data_;
-
-   public:
-    Iterator(const T offset, const BaseT *data) : offset_(offset), data_(data)
-    {
-    }
-
-    Iterator &operator++()
-    {
-      data_++;
-      return *this;
-    }
-
-    T operator*() const
-    {
-      return T(*data_) + offset_;
-    }
-
-    friend bool operator!=(const Iterator &a, const Iterator &b)
-    {
-      BLI_assert(a.offset_ == b.offset_);
-      return a.data_ != b.data_;
-    }
-  };
-
-  Iterator begin() const
-  {
-    return {offset_, data_.begin()};
-  }
-
-  Iterator end() const
-  {
-    return {offset_, data_.end()};
-  }
-};
 
 namespace unique_sorted_indices {
 
