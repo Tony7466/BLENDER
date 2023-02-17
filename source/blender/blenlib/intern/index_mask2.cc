@@ -183,16 +183,24 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, LinearAlloca
     segments_per_chunk_cumulative.reserve(slice.size() + 1);
     segments_per_chunk_cumulative.append(0);
     int64_t index_allocations_num = 0;
+    Vector<int64_t> chunks_to_postprocess;
 
-    for (const int64_t i : slice) {
-      const IndexRange range_for_chunk = split_ranges[i];
+    for (const int64_t index_in_slice : IndexRange(slice.size())) {
+      const int64_t chunk_i = slice[index_in_slice];
+      const IndexRange range_for_chunk = split_ranges[chunk_i];
       const Span<T> indices_in_chunk = indices.slice(range_for_chunk);
       BLI_assert(!indices_in_chunk.is_empty());
 
       const int64_t chunk_id = index_to_chunk_id(int64_t(indices_in_chunk[0]));
       BLI_assert(chunk_id == index_to_chunk_id(int64_t(indices_in_chunk.last())));
-      Chunk &chunk = chunks[i];
-      chunk_ids[i] = chunk_id;
+      Chunk &chunk = chunks[chunk_i];
+      chunk_ids[chunk_i] = chunk_id;
+
+      if (indices_in_chunk.size() == chunk_capacity) {
+        chunk = full_chunk_template;
+        continue;
+      }
+      chunks_to_postprocess.append(index_in_slice);
 
       const int16_t segments_in_chunk_num = int16_t(
           split_to_ranges_and_spans(indices_in_chunk, 16, segments_in_chunks));
@@ -225,7 +233,7 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, LinearAlloca
           segments_in_chunks.size());
       remaining_indices = allocator.allocate_array<int16_t>(index_allocations_num);
       remaining_cumulative_segment_sizes = allocator.allocate_array<int16_t>(
-          segments_in_chunks.size() + slice.size());
+          segments_in_chunks.size() + chunks_to_postprocess.size());
     }
 
     const OffsetIndices<int64_t> segments_by_chunk = segments_per_chunk_cumulative.as_span();
@@ -237,11 +245,13 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, LinearAlloca
       return front;
     };
 
-    for (const int64_t i : IndexRange(slice.size())) {
+    for (const int64_t i : chunks_to_postprocess.index_range()) {
+      const int64_t index_in_slice = chunks_to_postprocess[i];
+      const int64_t chunk_i = slice[index_in_slice];
       const IndexRange segments_in_chunk = segments_by_chunk[i];
       const int16_t segments_num = int16_t(segments_in_chunk.size());
-      Chunk &chunk = chunks[slice[i]];
-      const int64_t chunk_offset = chunk_ids[slice[i]] * chunk_capacity;
+      Chunk &chunk = chunks[chunk_i];
+      const int64_t chunk_offset = chunk_ids[chunk_i] * chunk_capacity;
 
       MutableSpan<const int16_t *> indices_by_segment = take_front_and_drop(
           remaining_indices_by_segment, segments_num);
