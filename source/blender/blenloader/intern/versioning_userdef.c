@@ -33,6 +33,8 @@
 
 #include "GPU_platform.h"
 
+#include "MEM_guardedalloc.h"
+
 #include "readfile.h" /* Own include. */
 
 #include "WM_types.h"
@@ -776,6 +778,15 @@ void blo_do_versions_userdef(UserDef *userdef)
   if (!USER_VERSION_ATLEAST(305, 10)) {
     LISTBASE_FOREACH (bUserAssetLibrary *, asset_library, &userdef->asset_libraries) {
       asset_library->import_method = ASSET_IMPORT_APPEND_REUSE;
+    }
+  }
+
+  if (!USER_VERSION_ATLEAST(306, 1)) {
+    if (userdef->pythondir[0]) {
+      NamedDirectoryPathEntry *script_path = MEM_callocN(sizeof(*script_path),
+                                                         "Versioning user script path");
+      STRNCPY(script_path->dir_path, userdef->pythondir);
+      BLI_addhead(&userdef->script_directories, script_path);
     }
   }
 

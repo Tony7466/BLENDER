@@ -1033,7 +1033,14 @@ void fsmenu_read_system(struct FSMenu *fsmenu, int read_bookmarks)
 
   FS_UDIR_PATH(U.fontdir, ICON_FILE_FONT)
   FS_UDIR_PATH(U.textudir, ICON_FILE_IMAGE)
-  FS_UDIR_PATH(U.pythondir, ICON_FILE_SCRIPT)
+  LISTBASE_FOREACH (NamedDirectoryPathEntry *, pythondir, &U.script_directories) {
+    fsmenu_insert_entry(fsmenu,
+                        FS_CATEGORY_OTHER,
+                        pythondir->dir_path,
+                        pythondir->name,
+                        ICON_FILE_SCRIPT,
+                        FS_INSERT_LAST);
+  }
   FS_UDIR_PATH(U.sounddir, ICON_FILE_SOUND)
   FS_UDIR_PATH(U.tempdir, ICON_TEMP)
 

@@ -341,9 +341,21 @@ def script_path_user():
 
 
 def script_path_pref():
-    """returns the user preference or None"""
-    path = _preferences.filepaths.script_directory
-    return _os.path.normpath(path) if path else None
+    """
+    DEPRECATED. Use `script_paths_pref` which supports multiple script paths now. Returns the
+    first valid of these script paths for now, for compatibility.
+    """
+    # TODO how to handle deprecation of this?
+    return script_paths_pref()[0]
+
+
+def script_paths_pref():
+    """returns the user preference script directory paths or None"""
+    paths = []
+    for script_directory in _preferences.filepaths.script_directories:
+        if script_directory.path:
+            paths.append(_os.path.normpath(script_directory.path))
+    return paths
 
 
 def script_paths(*, subdir=None, user_pref=True, check_all=False, use_user=True):
