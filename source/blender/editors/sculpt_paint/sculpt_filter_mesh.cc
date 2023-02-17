@@ -13,6 +13,8 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_task.h"
 
+#include "BLT_translation.h"
+
 #include "DNA_meshdata_types.h"
 
 #include "BKE_brush.h"
@@ -803,6 +805,9 @@ static int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *
   SculptSession *ss = ob->sculpt;
   const eSculptMeshFilterType filter_type = eSculptMeshFilterType(RNA_enum_get(op->ptr, "type"));
 
+  WM_cursor_modal_set(CTX_wm_window(C), WM_CURSOR_EW_SCROLL);
+  ED_workspace_status_text(C, TIP_("LMB: Confirm"));
+
   if (event->type == LEFTMOUSE && event->val == KM_RELEASE) {
     float initial_strength = ss->filter_cache->start_filter_strength;
     sculpt_mesh_filter_end(C, op);
@@ -812,6 +817,8 @@ static int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *
       RNA_float_set(op->ptr, "strength", initial_strength);
     }
 
+    ED_workspace_status_text(C, NULL);  // Clear status bar
+    WM_cursor_modal_restore(CTX_wm_window(C));
     return OPERATOR_FINISHED;
   }
 
@@ -1049,7 +1056,7 @@ void SCULPT_OT_mesh_filter(wmOperatorType *ot)
   ot->exec = sculpt_mesh_filter_exec;
   ot->ui = sculpt_mesh_ui_exec;
 
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_GRAB_CURSOR_X | OPTYPE_BLOCKING;
 
   /* RNA. */
   SCULPT_mesh_filter_properties(ot);
