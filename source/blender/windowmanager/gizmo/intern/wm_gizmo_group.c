@@ -35,6 +35,8 @@
 #include "ED_screen.h"
 #include "ED_undo.h"
 
+#include "BLT_translation.h"
+
 /* own includes */
 #include "wm_gizmo_intern.h"
 #include "wm_gizmo_wmapi.h"
@@ -451,8 +453,25 @@ static bool gizmo_tweak_start_and_finish(
 static void gizmo_tweak_finish(bContext *C, wmOperator *op, const bool cancel, bool clear_modal)
 {
   GizmoTweakData *mtweak = op->customdata;
-  if (mtweak->gz_modal->type->exit) {
-    mtweak->gz_modal->type->exit(C, mtweak->gz_modal, cancel);
+  wmGizmo *gz = mtweak->gz_modal;
+  if (gz->type->exit) {
+    /* Push undo if needed. */
+    if ((gz->flag & WM_GIZMO_UNDO) && !cancel) {
+      const wmGizmoProperty *gz_prop = WM_gizmo_target_property_get_unique(gz);
+      if (!gz_prop || RNA_struct_undo_check(gz_prop->ptr.type)) {
+        /* Use the name of `wmGizmoGroupType` if we don't know which RNA property this gizmo is
+         * editting. */
+        const char *prop_name = gz_prop ? RNA_property_ui_name(gz_prop->prop) :
+                                          N_(gz->parent_gzgroup->type->name);
+        char *undo_str = (gz->name && gz->name[0]) ?
+                             BLI_sprintfN("%s: %s", TIP_(gz->name), prop_name) :
+                             BLI_strdup(prop_name);
+
+        ED_undo_push(C, undo_str);
+        MEM_freeN(undo_str);
+      }
+    }
+    gz->type->exit(C, mtweak->gz_modal, cancel);
   }
   if (clear_modal) {
     /* The gizmo may have been removed. */
@@ -606,12 +625,6 @@ void GIZMOGROUP_OT_gizmo_tweak(wmOperatorType *ot)
   /* api callbacks */
   ot->invoke = gizmo_tweak_invoke;
   ot->modal = gizmo_tweak_modal;
-
-  /* TODO(@ideasman42): This causes problems tweaking settings for operators,
-   * need to find a way to support this. */
-#if 0
-  ot->flag = OPTYPE_UNDO;
-#endif
 }
 
 wmKeyMap *wm_gizmogroup_tweak_modal_keymap(wmKeyConfig *keyconf)

@@ -82,6 +82,9 @@ typedef enum eWM_GizmoFlag {
 
   /** Don't use tool-tips for this gizmo (can be distracting). */
   WM_GIZMO_NO_TOOLTIP = (1 << 12),
+
+  /** Do an undo push after gizmo tweaking is finished.*/
+  WM_GIZMO_UNDO = (1 << 13),
 } eWM_GizmoFlag;
 
 ENUM_OPERATORS(eWM_GizmoFlag, WM_GIZMO_NO_TOOLTIP);
@@ -205,6 +208,9 @@ typedef struct wmGizmoOpElem {
 /* gizmos are set per region by registering them on gizmo-maps */
 struct wmGizmo {
   struct wmGizmo *next, *prev;
+
+  /** Text for tooltip, undo. */
+  const char *name;
 
   /** While we don't have a real type, use this to put type-like vars. */
   const struct wmGizmoType *type;

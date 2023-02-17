@@ -738,4 +738,13 @@ bool WM_gizmo_context_check_drawstep(const struct bContext *C, eWM_GizmoFlagMapD
   return true;
 }
 
+void WM_gizmo_enable_undo(wmGizmo *gz, const char *name)
+{
+  /* Operators handle undo themselves. */
+  BLI_assert(gz->op_data == NULL);
+
+  WM_gizmo_set_flag(gz, WM_GIZMO_UNDO, true);
+  gz->name = name;
+}
+
 /** \} */

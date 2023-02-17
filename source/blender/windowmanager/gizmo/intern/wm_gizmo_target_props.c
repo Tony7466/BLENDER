@@ -156,6 +156,28 @@ bool WM_gizmo_target_property_is_valid_any(wmGizmo *gz)
   return false;
 }
 
+/* Get the `*wmGizmoProperty` with valid `PropertyRNA`. If there is none or multiple, returns
+ * `NULL`. */
+wmGizmoProperty *WM_gizmo_target_property_get_unique(wmGizmo *gz)
+{
+  int count = 0;
+  wmGizmoProperty *gz_unique_prop;
+
+  wmGizmoProperty *gz_prop_array = wm_gizmo_target_property_array(gz);
+  for (int i = 0; i < gz->type->target_property_defs_len; i++) {
+    wmGizmoProperty *gz_prop = &gz_prop_array[i];
+    if (gz_prop->prop != NULL) {
+      count++;
+      gz_unique_prop = gz_prop;
+    }
+  }
+
+  if (count == 1) {
+    return gz_unique_prop;
+  }
+  return NULL;
+}
+
 bool WM_gizmo_target_property_is_valid(const wmGizmoProperty *gz_prop)
 {
   return ((gz_prop->prop != NULL) ||

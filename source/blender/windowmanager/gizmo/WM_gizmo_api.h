@@ -269,6 +269,7 @@ void WM_gizmo_target_property_clear_rna(struct wmGizmo *gz, const char *idname);
 
 bool WM_gizmo_target_property_is_valid_any(struct wmGizmo *gz);
 bool WM_gizmo_target_property_is_valid(const struct wmGizmoProperty *gz_prop);
+struct wmGizmoProperty *WM_gizmo_target_property_get_unique(struct wmGizmo *gz);
 float WM_gizmo_target_property_float_get(const struct wmGizmo *gz,
                                          struct wmGizmoProperty *gz_prop);
 void WM_gizmo_target_property_float_set(struct bContext *C,
@@ -507,6 +508,8 @@ void WM_gizmo_group_remove_by_tool(struct bContext *C,
                                    const struct bToolRef *tref);
 
 void WM_gizmo_group_tag_remove(struct wmGizmoGroup *gzgroup);
+
+void WM_gizmo_enable_undo(struct wmGizmo *gz, const char *name);
 
 /* Wrap Group Type Callbacks. */
 

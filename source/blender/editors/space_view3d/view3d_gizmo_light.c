@@ -173,6 +173,8 @@ static void WIDGETGROUP_light_spot_setup(const bContext *C, wmGizmoGroup *gzgrou
     RNA_enum_set(gz->ptr, "transform", ED_GIZMO_ARROW_XFORM_FLAG_INVERTED);
     ED_gizmo_arrow3d_set_range_fac(gz, 4.0f);
     UI_GetThemeColor3fv(TH_GIZMO_SECONDARY, gz->color);
+
+    WM_gizmo_enable_undo(gz, "Adjust");
   }
 
   /* Spot blend gizmo. */
@@ -187,6 +189,10 @@ static void WIDGETGROUP_light_spot_setup(const bContext *C, wmGizmoGroup *gzgrou
     UI_GetThemeColor3fv(TH_GIZMO_PRIMARY, gz->color);
     UI_GetThemeColor3fv(TH_GIZMO_HI, gz->color_hi);
 
+    /* FIXME: this should ideally use RNA with a way to intercept the value and transform it based
+     * on the context (3D scene, viewport... etc), instead of using custom getter/setter and call
+     * `WM_gizmo_target_property_def_rna()` separately. The same comment applies to spot radius
+     * gizmo, light point gizmo and possibly light area gizmo. */
     WM_gizmo_target_property_def_func(gz,
                                       "matrix",
                                       &(const struct wmGizmoPropertyFnParams){
@@ -195,6 +201,8 @@ static void WIDGETGROUP_light_spot_setup(const bContext *C, wmGizmoGroup *gzgrou
                                           .range_get_fn = NULL,
                                           .user_data = (void *)C,
                                       });
+
+    WM_gizmo_enable_undo(gz, "Adjust");
   }
 
   /* Spot radius gizmo. */
@@ -217,6 +225,8 @@ static void WIDGETGROUP_light_spot_setup(const bContext *C, wmGizmoGroup *gzgrou
                                           .range_get_fn = NULL,
                                           .user_data = (void *)C,
                                       });
+
+    WM_gizmo_enable_undo(gz, "Adjust");
   }
 }
 
@@ -229,11 +239,11 @@ static void WIDGETGROUP_light_spot_refresh(const bContext *C, wmGizmoGroup *gzgr
   Object *ob = BKE_view_layer_active_object_get(view_layer);
   Light *la = ob->data;
 
+  PointerRNA lamp_ptr;
+  RNA_pointer_create(&la->id, &RNA_Light, la, &lamp_ptr);
+
   /* Spot angle gizmo. */
   {
-    PointerRNA lamp_ptr;
-    RNA_pointer_create(&la->id, &RNA_Light, la, &lamp_ptr);
-
     wmGizmo *gz = ls_gzgroup->spot_angle;
     float dir[3];
     negate_v3_v3(dir, ob->object_to_world[2]);
@@ -255,6 +265,14 @@ static void WIDGETGROUP_light_spot_refresh(const bContext *C, wmGizmoGroup *gzgr
     negate_v3_v3(dir, ob->object_to_world[2]);
     mul_v3_fl(dir, CONE_SCALE * cosf(0.5f * la->spotsize));
     add_v3_v3(gz->matrix_basis[3], dir);
+
+    WM_gizmo_target_property_def_rna(gz, "matrix", &lamp_ptr, "spot_blend", -1);
+  }
+
+  /* Spot radius gizmo. */
+  {
+    WM_gizmo_target_property_def_rna(
+        ls_gzgroup->spot_radius, "matrix", &lamp_ptr, "shadow_soft_size", -1);
   }
 }
 
@@ -343,6 +361,8 @@ static void WIDGETGROUP_light_point_setup(const bContext *C, wmGizmoGroup *gzgro
                                         .range_get_fn = NULL,
                                         .user_data = (void *)C,
                                     });
+
+  WM_gizmo_enable_undo(gz, "Adjust");
 }
 
 static void WIDGETGROUP_light_point_draw_prepare(const bContext *C, wmGizmoGroup *gzgroup)
@@ -362,6 +382,20 @@ static void WIDGETGROUP_light_point_draw_prepare(const bContext *C, wmGizmoGroup
   WM_gizmo_set_matrix_location(gz, ob->object_to_world[3]);
 }
 
+static void WIDGETGROUP_light_point_refresh(const bContext *C, wmGizmoGroup *gzgroup)
+{
+  wmGizmoWrapper *wwrapper = gzgroup->customdata;
+
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  BKE_view_layer_synced_ensure(CTX_data_scene(C), view_layer);
+  Light *la = BKE_view_layer_active_object_get(view_layer)->data;
+
+  PointerRNA lamp_ptr;
+  RNA_pointer_create(&la->id, &RNA_Light, la, &lamp_ptr);
+
+  WM_gizmo_target_property_def_rna(wwrapper->gizmo, "matrix", &lamp_ptr, "shadow_soft_size", -1);
+}
+
 void VIEW3D_GGT_light_point(wmGizmoGroupType *gzgt)
 {
   gzgt->name = "Point Light Widgets";
@@ -372,6 +406,7 @@ void VIEW3D_GGT_light_point(wmGizmoGroupType *gzgt)
   gzgt->poll = WIDGETGROUP_light_point_poll;
   gzgt->setup = WIDGETGROUP_light_point_setup;
   gzgt->setup_keymap = WM_gizmogroup_setup_keymap_generic_maybe_drag;
+  gzgt->refresh = WIDGETGROUP_light_point_refresh;
   gzgt->draw_prepare = WIDGETGROUP_light_point_draw_prepare;
 }
 
@@ -452,6 +487,8 @@ static void WIDGETGROUP_light_area_setup(const bContext *UNUSED(C), wmGizmoGroup
 
   UI_GetThemeColor3fv(TH_GIZMO_PRIMARY, gz->color);
   UI_GetThemeColor3fv(TH_GIZMO_HI, gz->color_hi);
+
+  WM_gizmo_enable_undo(gz, "Resize");
 }
 
 static void WIDGETGROUP_light_area_refresh(const bContext *C, wmGizmoGroup *gzgroup)
@@ -472,7 +509,7 @@ static void WIDGETGROUP_light_area_refresh(const bContext *C, wmGizmoGroup *gzgr
   }
   RNA_enum_set(gz->ptr, "transform", flag);
 
-  /* need to set property here for undo. TODO: would prefer to do this in _init. */
+  /* Need to set property here for `la`. TODO: would prefer to do this in _init. */
   WM_gizmo_target_property_def_func(gz,
                                     "matrix",
                                     &(const struct wmGizmoPropertyFnParams){
