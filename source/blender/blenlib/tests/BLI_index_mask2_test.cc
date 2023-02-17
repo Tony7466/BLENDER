@@ -105,7 +105,7 @@ TEST(index_mask2, SplitByChunk)
 
 TEST(index_mask2, IndicesToMask)
 {
-  ResourceScope scope;
+  LinearAllocator<> scope;
   Array<int> data = {
       5, 100, 16383, 16384, 16385, 20000, 20001, 50000, 50001, 50002, 100000, 101000};
   IndexMask mask = unique_sorted_indices::to_index_mask<int>(data, scope);

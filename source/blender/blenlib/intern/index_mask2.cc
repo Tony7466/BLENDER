@@ -156,7 +156,7 @@ int64_t split_to_ranges_and_spans(const Span<T> indices,
   return r_parts.size() - old_parts_num;
 }
 
-template<typename T> IndexMask to_index_mask(const Span<T> indices, ResourceScope &scope)
+template<typename T> IndexMask to_index_mask(const Span<T> indices, LinearAllocator<> &allocator)
 {
   if (indices.is_empty()) {
     return {};
@@ -167,17 +167,15 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, ResourceScop
   const Vector<IndexRange> split_ranges = split_by_chunk(indices);
   const int64_t chunks_num = split_ranges.size();
 
-  LinearAllocator<> &main_allocator = scope.linear_allocator();
-  auto &allocator_by_thread =
-      scope.construct<threading::EnumerableThreadSpecific<LinearAllocator<>>>();
-
-  MutableSpan<Chunk> chunks = main_allocator.allocate_array<Chunk>(chunks_num);
-  MutableSpan<int64_t> chunk_ids = main_allocator.allocate_array<int64_t>(chunks_num);
+  MutableSpan<Chunk> chunks = allocator.allocate_array<Chunk>(chunks_num);
+  MutableSpan<int64_t> chunk_ids = allocator.allocate_array<int64_t>(chunks_num);
 
   static const int16_t *static_offsets = get_static_indices_array().data();
 
   /* TODO: Use that again to avoid some allocations. */
   [[maybe_unused]] const Chunk full_chunk_template = IndexMask(chunk_capacity).data().chunks[0];
+
+  std::mutex scope_mutex;
 
   threading::parallel_for(split_ranges.index_range(), 32, [&](const IndexRange slice) {
     Vector<RangeOrSpanVariant<T>> segments_in_chunks;
@@ -224,13 +222,18 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, ResourceScop
       return front;
     };
 
-    LinearAllocator<> &allocator = allocator_by_thread.local();
-    MutableSpan<int16_t> remaining_indices = allocator.allocate_array<int16_t>(
-        index_allocations_num);
-    MutableSpan<const int16_t *> remaining_indices_by_segment =
-        allocator.allocate_array<const int16_t *>(segments_in_chunks.size());
-    MutableSpan<int16_t> remaining_cumulative_segment_sizes = allocator.allocate_array<int16_t>(
-        segments_in_chunks.size() + slice.size());
+    MutableSpan<int16_t> remaining_indices;
+    MutableSpan<const int16_t *> remaining_indices_by_segment;
+    MutableSpan<int16_t> remaining_cumulative_segment_sizes;
+
+    {
+      std::lock_guard lock{scope_mutex};
+      remaining_indices = allocator.allocate_array<int16_t>(index_allocations_num);
+      remaining_indices_by_segment = allocator.allocate_array<const int16_t *>(
+          segments_in_chunks.size());
+      remaining_cumulative_segment_sizes = allocator.allocate_array<int16_t>(
+          segments_in_chunks.size() + slice.size());
+    }
 
     const OffsetIndices<int64_t> segments_by_chunk = segments_per_chunk_cumulative.as_span();
 
@@ -273,10 +276,13 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, ResourceScop
       chunk.indices_by_segment = indices_by_segment.data();
       chunk.cumulative_segment_sizes = cumulative_segment_sizes.data();
     }
+
+    BLI_assert(remaining_indices.is_empty());
+    BLI_assert(remaining_indices_by_segment.is_empty());
+    BLI_assert(remaining_cumulative_segment_sizes.is_empty());
   });
 
-  MutableSpan<int64_t> cumulative_chunk_sizes = main_allocator.allocate_array<int64_t>(chunks_num +
-                                                                                       1);
+  MutableSpan<int64_t> cumulative_chunk_sizes = allocator.allocate_array<int64_t>(chunks_num + 1);
   int64_t cumulative_size = 0;
   for (const int64_t i : chunks.index_range()) {
     cumulative_chunk_sizes[i] = cumulative_size;
@@ -309,7 +315,7 @@ template<typename T> void from_index_mask(const IndexMask &mask, MutableSpan<T> 
 }
 
 template Vector<IndexRange> split_by_chunk(const Span<int> indices);
-template IndexMask to_index_mask(const Span<int>, ResourceScope &);
+template IndexMask to_index_mask(const Span<int>, LinearAllocator<> &);
 template void from_index_mask(const IndexMask &mask, MutableSpan<int> r_indices);
 template int64_t split_to_ranges_and_spans(const Span<int> indices,
                                            const int64_t range_threshold,

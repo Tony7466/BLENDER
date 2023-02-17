@@ -10,8 +10,8 @@
 #include "BLI_linear_allocator.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_offset_span.hh"
-#include "BLI_resource_scope.hh"
 #include "BLI_span.hh"
+#include "BLI_vector.hh"
 
 namespace blender {
 namespace index_mask {
@@ -103,7 +103,7 @@ namespace unique_sorted_indices {
 
 template<typename T> Vector<IndexRange> split_by_chunk(Span<T> indices);
 
-template<typename T> IndexMask to_index_mask(Span<T> indices, ResourceScope &scope);
+template<typename T> IndexMask to_index_mask(Span<T> indices, LinearAllocator<> &allocator);
 template<typename T> void from_index_mask(const IndexMask &mask, MutableSpan<T> r_indices);
 
 template<typename T> using RangeOrSpanVariant = std::variant<IndexRange, Span<T>>;
