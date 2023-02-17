@@ -114,7 +114,7 @@ void main()
     vec3 P = ws_near_plane + (ws_view_direction * t);
     float step_radius;
     step_bounding_sphere(vs_near_plane, vs_view_direction, t, t + step_size, P, step_radius);
-    vP = point_world_to_view(vP);
+    vec3 vP = point_world_to_view(P);
 
     shadow_tag_usage(vP, P, ws_view_direction, step_radius, t, gl_FragCoord.xy * exp2(fb_lod));
   }
