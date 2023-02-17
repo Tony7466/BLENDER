@@ -212,7 +212,7 @@ void BKE_mesh_to_curve(struct Main *bmain,
                        struct Depsgraph *depsgraph,
                        struct Scene *scene,
                        struct Object *ob);
-void BKE_pointcloud_from_mesh(struct Mesh *me, struct PointCloud *pointcloud);
+void BKE_pointcloud_from_mesh(const struct Mesh *me, struct PointCloud *pointcloud);
 void BKE_mesh_to_pointcloud(struct Main *bmain,
                             struct Depsgraph *depsgraph,
                             struct Scene *scene,
@@ -228,11 +228,6 @@ void BKE_mesh_material_index_clear(struct Mesh *me);
 void BKE_mesh_material_remap(struct Mesh *me, const unsigned int *remap, unsigned int remap_len);
 void BKE_mesh_smooth_flag_set(struct Mesh *me, bool use_smooth);
 void BKE_mesh_auto_smooth_flag_set(struct Mesh *me, bool use_auto_smooth, float auto_smooth_angle);
-
-/**
- * Needed after converting a mesh with subsurf optimal display to mesh.
- */
-void BKE_mesh_edges_set_draw_render(struct Mesh *me);
 
 /**
  * Used for unit testing; compares two meshes, checking only
@@ -817,7 +812,7 @@ struct Mesh *BKE_mesh_merge_verts(struct Mesh *mesh,
  * Account for custom-data such as UVs becoming detached because of imprecision
  * in custom-data interpolation.
  * Without running this operation subdivision surface can cause UVs to be disconnected,
- * see: T81065.
+ * see: #81065.
  */
 void BKE_mesh_merge_customdata_for_apply_modifier(struct Mesh *me);
 

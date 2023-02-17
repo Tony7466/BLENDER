@@ -581,7 +581,7 @@ static void rna_MeshLoop_normal_set(PointerRNA *ptr, const float *values)
   float(*layer)[3] = CustomData_get_layer_for_write(&me->ldata, CD_NORMAL, me->totloop);
 
   if (layer) {
-    normalize_v3_v3(*layer, values + index);
+    normalize_v3_v3(layer[index], values);
   }
 }
 
@@ -2385,8 +2385,9 @@ static PointerRNA rna_Mesh_uv_layers_new(struct Mesh *me,
 
 static void rna_Mesh_uv_layers_remove(struct Mesh *me, ReportList *reports, CustomDataLayer *layer)
 {
-  if (!BKE_id_attribute_find(&me->id, layer->name, CD_PROP_FLOAT, ATTR_DOMAIN_CORNER)) {
+  if (!BKE_id_attribute_find(&me->id, layer->name, CD_PROP_FLOAT2, ATTR_DOMAIN_CORNER)) {
     BKE_reportf(reports, RPT_ERROR, "UV map '%s' not found", layer->name);
+    return;
   }
   BKE_id_attribute_remove(&me->id, layer->name, reports);
 }

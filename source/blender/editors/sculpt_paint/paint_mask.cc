@@ -52,7 +52,7 @@
 #include "paint_intern.h"
 
 /* For undo push. */
-#include "sculpt_intern.h"
+#include "sculpt_intern.hh"
 
 static const EnumPropertyItem mode_items[] = {
     {PAINT_MASK_FLOOD_VALUE,
@@ -1109,7 +1109,7 @@ static void sculpt_gesture_trim_calculate_depth(SculptGestureContext *sgcontext)
     else {
       /* ss->cursor_radius is only valid if the stroke started
        * over the sculpt mesh.  If it's not we must
-       * compute the radius ourselves.  See T81452.
+       * compute the radius ourselves.  See #81452.
        */
 
       Sculpt *sd = CTX_data_tool_settings(vc->C)->sculpt;
@@ -1148,13 +1148,16 @@ static void sculpt_gesture_trim_geometry_generate(SculptGestureContext *sgcontex
 
   float depth_front = trim_operation->depth_front;
   float depth_back = trim_operation->depth_back;
+  float pad_factor = 0.0f;
 
   if (!trim_operation->use_cursor_depth) {
+    pad_factor = (depth_back - depth_front) * 0.01f + 0.001f;
+
     /* When using cursor depth, don't modify the depth set by the cursor radius. If full depth is
      * used, adding a little padding to the trimming shape can help avoiding booleans with coplanar
      * faces. */
-    depth_front -= 0.1f;
-    depth_back += 0.1f;
+    depth_front -= pad_factor;
+    depth_back += pad_factor;
   }
 
   float shape_origin[3];
@@ -1198,7 +1201,9 @@ static void sculpt_gesture_trim_geometry_generate(SculptGestureContext *sgcontex
     }
     else {
       copy_v3_v3(new_point, positions[i]);
-      madd_v3_v3fl(new_point, shape_normal, depth_back);
+      float dist = dist_signed_to_plane_v3(new_point, shape_plane);
+
+      madd_v3_v3fl(new_point, shape_normal, depth_back - dist);
     }
 
     copy_v3_v3(positions[i + tot_screen_points], new_point);
