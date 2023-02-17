@@ -471,6 +471,31 @@ template<typename MatT>
   return from_axis_conversion<MatT>(src_axis, src_axis_next, dst_axis, dst_axis_next);
 }
 
+/**
+ * Raise a unit #Quaternion \a q to the real \a y exponent.
+ * \note This only works on unit quaternions.
+ * \note This is not a per component power.
+ */
+template<typename T>
+[[nodiscard]] detail::Quaternion<T> pow(const detail::Quaternion<T> &q, const T &y)
+{
+  BLI_ASSERT_UNIT_QUATERNION(q);
+  /* Reference material:
+   * https://en.wikipedia.org/wiki/Quaternion
+   *
+   * The power of a quaternion raised to an arbitrary (real) exponent y is given by:
+   * `q^x = ||q||^y * (cos(y * angle * 0.5) + n * sin(y * angle * 0.5))`
+   * where `n` is the unit vector from the imaginary part of the quaternion and
+   * where `angle` is the angle of the rotation given by `angle = 2 * acos(q.w)`.
+   *
+   * q being a unit quaternion, ||q||^y becomes 1 and is canceled out.
+   *
+   * `y * angle * 0.5` expands to `y * 2 * acos(q.w) * 0.5` which simplifies to `y * acos(q.w)`.
+   */
+  const T ha = y * math::safe_acos(q.w);
+  return {math::cos(ha), math::sin(ha) * normalize(q.imaginary_part())};
+}
+
 }  // namespace blender::math
 
 /* -------------------------------------------------------------------- */

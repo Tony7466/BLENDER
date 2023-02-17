@@ -378,6 +378,29 @@ TEST(math_rotation, QuaternionAngleBetween)
   EXPECT_NEAR(float(angle_between_signed(q1, q2)), 3.95259f - 2 * M_PI, 1e-4f);
 }
 
+TEST(math_rotation, QuaternionPower)
+{
+  Quaternion q1 = normalize(Quaternion(0.927091f, 0.211322f, -0.124857f, 0.283295f));
+  Quaternion q2 = normalize(Quaternion(-0.083377f, -0.051681f, 0.498261f, -0.86146f));
+
+  EXPECT_V4_NEAR(
+      float4(math::pow(q1, -2.5f)), float4(0.573069, -0.462015, 0.272976, -0.61937), 1e-4);
+  EXPECT_V4_NEAR(
+      float4(math::pow(q1, -0.5f)), float4(0.981604, -0.107641, 0.0635985, -0.144302), 1e-4);
+  EXPECT_V4_NEAR(
+      float4(math::pow(q1, 0.5f)), float4(0.981604, 0.107641, -0.0635985, 0.144302), 1e-4);
+  EXPECT_V4_NEAR(
+      float4(math::pow(q1, 2.5f)), float4(0.573069, 0.462015, -0.272976, 0.61937), 1e-4);
+  EXPECT_V4_NEAR(
+      float4(math::pow(q2, -2.5f)), float4(-0.545272, -0.0434735, 0.419131, -0.72465), 1e-4);
+  EXPECT_V4_NEAR(
+      float4(math::pow(q2, -0.5f)), float4(0.676987, 0.0381699, -0.367999, 0.636246), 1e-4);
+  EXPECT_V4_NEAR(
+      float4(math::pow(q2, 0.5f)), float4(0.676987, -0.0381699, 0.367999, -0.636246), 1e-4);
+  EXPECT_V4_NEAR(
+      float4(math::pow(q2, 2.5f)), float4(-0.545272, 0.0434735, -0.419131, 0.72465), 1e-4);
+}
+
 TEST(math_rotation, QuaternionFromTriangle)
 {
   float3 v1(0.927091f, 0.211322f, -0.124857f);

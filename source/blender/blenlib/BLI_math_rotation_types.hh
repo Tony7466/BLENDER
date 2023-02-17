@@ -613,7 +613,13 @@ template<typename T = float> struct Quaternion {
   }
 
   /** \note: W component is supposed to be first. */
-  Quaternion(const VecBase<T, 4> &vec) : Quaternion(UNPACK4(vec)){};
+  explicit Quaternion(const VecBase<T, 4> &vec) : Quaternion(UNPACK4(vec)){};
+
+  /**
+   * Creates a quaternion from real (w) and imaginary parts (x, y, z).
+   */
+  Quaternion(const T &real, const VecBase<T, 3> &imaginary)
+      : Quaternion(real, UNPACK3(imaginary)){};
 
   /** Static functions. */
 
@@ -661,6 +667,18 @@ template<typename T = float> struct Quaternion {
    */
   Quaternion swing(const eAxis axis, AngleRadian<T> &r_twist_angle) const;
   Quaternion swing(const eAxis axis) const;
+
+  /**
+   * Returns the imaginary part of this quaternion (x, y, z).
+   */
+  const VecBase<T, 3> &imaginary_part() const
+  {
+    return *reinterpret_cast<const VecBase<T, 3> *>(&x);
+  }
+  VecBase<T, 3> &imaginary_part()
+  {
+    return *reinterpret_cast<VecBase<T, 3> *>(&x);
+  }
 
   /** Methods. */
 

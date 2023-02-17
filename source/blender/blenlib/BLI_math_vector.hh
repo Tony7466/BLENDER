@@ -178,6 +178,34 @@ template<typename T, int Size>
 }
 
 /**
+ * Return the value of x raised to the y power.
+ * The result is undefined if x < 0 or if x = 0 and y ≤ 0.
+ */
+template<typename T, int Size>
+[[nodiscard]] inline VecBase<T, Size> pow(const VecBase<T, Size> &x, const T &y)
+{
+  VecBase<T, Size> result;
+  for (int i = 0; i < Size; i++) {
+    result[i] = std::pow(x[i], y);
+  }
+  return result;
+}
+
+/**
+ * Return the value of x raised to the y power.
+ * The result is undefined if x < 0 or if x = 0 and y ≤ 0.
+ */
+template<typename T, int Size>
+[[nodiscard]] inline VecBase<T, Size> pow(const VecBase<T, Size> &x, const VecBase<T, Size> &y)
+{
+  VecBase<T, Size> result;
+  for (int i = 0; i < Size; i++) {
+    result[i] = std::pow(x[i], y[i]);
+  }
+  return result;
+}
+
+/**
  * Returns \a a if it is a multiple of \a b or the next multiple or \a b after \b a .
  * In other words, it is equivalent to `divide_ceil(a, b) * b`.
  * It is undefined if \a a is negative or \b b is not strictly positive.
