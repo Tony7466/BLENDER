@@ -1831,7 +1831,7 @@ static int collection_drop_exec(bContext *C, wmOperator *op)
     ob->transflag |= OB_DUPLICOLLECTION;
     id_us_plus(&add_info->collection->id);
   }
-  else {
+  else if (!ID_IS_LINKED(&add_info->collection->id)) {
     ViewLayer *view_layer = CTX_data_view_layer(C);
     float delta_mat[4][4];
     unit_m4(delta_mat);
@@ -1857,6 +1857,26 @@ static int collection_drop_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+/* Disable location and rotation controls for the user when the collection
+ * is linked and not instantiated */
+static bool collection_drop_poll_property(const bContext *C, wmOperator *op, const PropertyRNA *prop)
+{
+  if (RNA_boolean_get(op->ptr, "use_instance"))
+    return true;
+
+  const char *prop_name = RNA_property_ui_name(prop);
+  
+  if (STR_ELEM(prop_name, "Location", "Rotation")) {
+    Collection *collection = static_cast<Collection *>(
+      BLI_findlink(&CTX_data_main(C)->collections, RNA_enum_get(op->ptr, "collection")));
+    if (!ID_IS_LINKED(&collection->id))
+      return true;
+    return false;
+  }
+
+  return true;
+}
+
 void OBJECT_OT_collection_external_asset_drop(wmOperatorType *ot)
 {
   PropertyRNA *prop;
@@ -1871,6 +1891,7 @@ void OBJECT_OT_collection_external_asset_drop(wmOperatorType *ot)
   ot->invoke = object_instance_add_invoke;
   ot->exec = collection_drop_exec;
   ot->poll = ED_operator_objectmode;
+  ot->poll_property = collection_drop_poll_property;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
