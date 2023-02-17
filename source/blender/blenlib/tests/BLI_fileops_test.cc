@@ -70,13 +70,14 @@ TEST_F(ChangeWorkingDirectoryTest, change_working_directory)
     BLI_delete(test_temp_dir.c_str(), true, false);
   }
 
-  bool result = BLI_change_working_dir(test_temp_dir.c_str());
-  ASSERT_FALSE(result) << "changing directory to a non-existent directory is expected to fail.";
+  ASSERT_FALSE(BLI_change_working_dir(test_temp_dir.c_str()))
+      << "changing directory to a non-existent directory is expected to fail.";
 
-  BLI_dir_create_recursive(test_temp_dir.c_str());
+  ASSERT_TRUE(BLI_dir_create_recursive(test_temp_dir.c_str()))
+      << "temporary directory should have been created successfully.";
 
   ASSERT_TRUE(BLI_change_working_dir(test_temp_dir.c_str()))
-      << "temporary directory should have been created and should succeed changing directory.";
+      << "temporary directory should succeed changing directory.";
 
   char cwd[FILE_MAX];
   if (!BLI_current_working_dir(cwd, FILE_MAX)) {
