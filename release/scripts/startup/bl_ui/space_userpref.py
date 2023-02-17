@@ -1336,16 +1336,16 @@ class USERPREF_PT_file_paths_data(FilePathsPanel, Panel):
 
 class USERPREF_PT_file_paths_script_directories(FilePathsPanel, Panel):
     bl_label = "Script Directories"
-				
+
     def draw(self, context):
         layout = self.layout
-				
+
         paths = context.preferences.filepaths
-				
+
         if len(paths.script_directories) == 0:
             layout.operator("preferences.script_directory_add", text="Add", icon='ADD')
             return
-				
+
         layout.use_property_split = False
         layout.use_property_decorate = False
 
@@ -1353,26 +1353,26 @@ class USERPREF_PT_file_paths_script_directories(FilePathsPanel, Panel):
         split = box.split(factor=0.35)
         name_col = split.column()
         path_col = split.column()
-				
+
         row = name_col.row(align=True)  # Padding
         row.separator()
         row.label(text="Name")
-				
+
         row = path_col.row(align=True)  # Padding
         row.separator()
         row.label(text="Path")
-				
+
         row.operator("preferences.script_directory_add", text="", icon='ADD', emboss=False)
-				
+
         for i, script_directory in enumerate(paths.script_directories):
             row = name_col.row()
             row.alert = not script_directory.name
             row.prop(script_directory, "name", text="")
-				
+
             row = path_col.row()
             subrow = row.row()
-            subrow.alert = not script_directory.path
-            subrow.prop(script_directory, "path", text="")
+            subrow.alert = not script_directory.directory
+            subrow.prop(script_directory, "directory", text="")
             row.operator("preferences.script_directory_remove", text="", icon='X', emboss=False).index = i
 
 

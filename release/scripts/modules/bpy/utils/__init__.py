@@ -354,8 +354,8 @@ def script_paths_pref():
     """returns the user preference script directory paths or None"""
     paths = []
     for script_directory in _preferences.filepaths.script_directories:
-        if script_directory.path:
-            paths.append(_os.path.normpath(script_directory.path))
+        if script_directory.directory:
+            paths.append(_os.path.normpath(script_directory.directory))
     return paths
 
 

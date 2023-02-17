@@ -593,7 +593,7 @@ class PREFERENCES_OT_addon_install(Operator):
         return (
             ('DEFAULT', "Default", ""),
             None,
-            *[(item.name, item.name, "") for index, item in enumerate(paths.script_directories) if item.path],
+            *[(item.name, item.name, "") for index, item in enumerate(paths.script_directories) if item.directory],
         )
 
     target: EnumProperty(
@@ -635,7 +635,7 @@ class PREFERENCES_OT_addon_install(Operator):
             paths = context.preferences.filepaths
             for script_directory in paths.script_directories:
                 if script_directory.name == self.target:
-                    path_addons = os.path.join(script_directory.path, "addons")
+                    path_addons = os.path.join(script_directory.directory, "addons")
                     break
 
         if not path_addons:
@@ -1161,14 +1161,14 @@ class PREFERENCES_OT_script_directory_new(Operator):
     )
 
     def execute(self, context):
-        from pathlib import Path
+        import os
 
         script_directories = context.preferences.filepaths.script_directories
 
         new_dir = script_directories.new()
         # Assign path selected via file browser.
-        new_dir.path = self.directory
-        new_dir.name = Path(self.directory).name
+        new_dir.directory = self.directory
+        new_dir.name = os.path.basename(self.directory.rstrip(os.sep))
 
         assert(context.preferences.is_dirty == True)
 

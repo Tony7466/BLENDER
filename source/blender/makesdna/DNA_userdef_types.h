@@ -700,7 +700,7 @@ typedef struct UserDef {
   char render_cachedir[768];
   char textudir[768];
   /* Deprecated, use #UserDef.script_directories instead. */
-  char pythondir[768] DNA_DEPRECATED;
+  char pythondir_legacy[768] DNA_DEPRECATED;
   char sounddir[768];
   char i18ndir[768];
   /** 1024 = FILE_MAX. */

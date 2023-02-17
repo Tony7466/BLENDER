@@ -349,6 +349,11 @@ static void rna_userdef_script_directory_name_set(PointerRNA *ptr, const char *v
 {
   NamedDirectoryPathEntry *script_dir = ptr->data;
 
+  if (STREQ(value, "DEFAULT")) {
+    BKE_report(NULL, RPT_ERROR, "Name 'DEFAULT' is reserved for internal use and cannot be used");
+    return;
+  }
+
   BLI_strncpy_utf8(script_dir->name, value, sizeof(script_dir->name));
   BLI_uniquename(&U.script_directories,
                  script_dir,
@@ -6211,7 +6216,7 @@ static void rna_def_userdef_script_directory(BlenderRNA *brna)
   RNA_def_struct_name_property(srna, prop);
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 
-  prop = RNA_def_property(srna, "path", PROP_STRING, PROP_DIRPATH);
+  prop = RNA_def_property(srna, "directory", PROP_STRING, PROP_DIRPATH);
   RNA_def_property_string_sdna(prop, NULL, "dir_path");
   RNA_def_property_ui_text(
       prop,
