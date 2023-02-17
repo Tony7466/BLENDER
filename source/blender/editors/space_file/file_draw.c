@@ -1072,7 +1072,11 @@ void file_draw_list(const bContext *C, ARegion *region)
                                           ICON_DEFAULT_WIDTH_SCALE,
                                           ICON_DEFAULT_HEIGHT_SCALE,
                                           is_hidden);
-      file_but_enable_drag(icon_but, sfile, file, path, NULL, icon, UI_DPI_FAC);
+      if (do_drag) {
+        /* For some reason the dragging is unreliable for the icon button if we don't explicitly
+         * enable dragging, even though the dummy drag button above covers the same area. */
+        file_but_enable_drag(icon_but, sfile, file, path, NULL, icon, UI_DPI_FAC);
+      }
     }
 
     if (file_selflag & FILE_SEL_EDITING) {
