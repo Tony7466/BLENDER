@@ -56,12 +56,11 @@ def get_effective_architecture(args: argparse.Namespace):
     if args.architecture:
         return args.architecture
 
-    machine_lower = platform.machine().lower()
-
+    # Check platform.version to detect arm64 with x86_64 python binary.
     if "ARM64" in platform.version():
         return "arm64"
 
-    return machine_lower
+    return platform.machine().lower()
 
 
 def svn_update(args: argparse.Namespace, release_version: Optional[str]) -> None:
@@ -73,7 +72,6 @@ def svn_update(args: argparse.Namespace, release_version: Optional[str]) -> None
     # Checkout precompiled libraries
     architecture = get_effective_architecture(args)
     if sys.platform == 'darwin':
-        # Check platform.version to detect arm64 with x86_64 python binary.
         if architecture == 'arm64':
             lib_platform = "darwin_arm64"
         elif architecture == 'x86_64':
