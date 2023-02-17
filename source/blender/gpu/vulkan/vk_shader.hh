@@ -25,7 +25,7 @@ class VKShader : public Shader {
   VkShaderModule fragment_module_ = VK_NULL_HANDLE;
   VkShaderModule compute_module_ = VK_NULL_HANDLE;
   bool compilation_failed_ = false;
-  VkDescriptorSetLayout layout_;
+  VkDescriptorSetLayout layout_ = VK_NULL_HANDLE;
   VkPipelineLayout pipeline_layout_ = VK_NULL_HANDLE;
   VKPipeline compute_pipeline_;
 

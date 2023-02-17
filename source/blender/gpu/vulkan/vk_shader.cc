@@ -746,10 +746,12 @@ bool VKShader::finalize_pipeline_layout(VkDevice vk_device,
                                         const shader::ShaderCreateInfo & /*info*/)
 {
   VK_ALLOCATION_CALLBACKS
+
+  const uint32_t layout_count = layout_ == VK_NULL_HANDLE ? 0 : 1;
   VkPipelineLayoutCreateInfo pipeline_info = {};
   pipeline_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
   pipeline_info.flags = 0;
-  pipeline_info.setLayoutCount = 1;
+  pipeline_info.setLayoutCount = layout_count;
   pipeline_info.pSetLayouts = &layout_;
 
   if (vkCreatePipelineLayout(
@@ -903,6 +905,11 @@ std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) co
   VKShaderInterface interface;
   interface.init(info);
   std::stringstream ss;
+
+  if (info.name_ == "gpu_shader_keyframe_shape") {
+    printf("%s\n", __func__);
+    interface.debug_print();
+  }
 
   ss << "\n/* Pass Resources. */\n";
   for (const ShaderCreateInfo::Resource &res : info.pass_resources_) {
