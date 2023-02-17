@@ -2479,6 +2479,8 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node)
     link.tosock->link = &link;
   }
 
+  Vector<bNodeLink *> redurand_multi_input_links;
+
   /* redirect downstream links */
   LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, &ntree->links) {
     /* do we have internal link? */
@@ -2495,7 +2497,7 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node)
                   link_to_compare->tosock == link->tosock) {
                 adjust_multi_input_indices_after_removed_link(
                     ntree, link_to_compare->tosock, link_to_compare->multi_input_socket_index);
-                nodeRemLink(ntree, link_to_compare);
+                redurand_multi_input_links.append_non_duplicates(link_to_compare);
               }
             }
           }
@@ -2531,6 +2533,10 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node)
         nodeRemLink(ntree, link);
       }
     }
+  }
+
+  for (bNodeLink *link : redurand_multi_input_links){
+    nodeRemLink(ntree, link);
   }
 
   /* remove remaining upstream links */
