@@ -3,10 +3,7 @@
 #include "DNA_mesh_types.h"
 
 #include "BKE_attribute_math.hh"
-#include "BKE_bvhutils.h"
 #include "BKE_mesh_sample.hh"
-
-#include "BLI_bvh.hh"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -14,6 +11,9 @@
 #include "NOD_socket_search_link.hh"
 
 #include "node_geometry_util.hh"
+
+#include "BKE_bvh.hh"
+#include "BKE_bvhutils.h"
 
 namespace blender::nodes::node_geo_raycast_cc {
 
@@ -129,7 +129,10 @@ static eAttributeMapMode get_map_mode(GeometryNodeRaycastMapMode map_mode)
   }
 }
 
-static void raycast_to_mesh(IndexMask mask,
+enum BVHType { Classic, Embree };
+
+static void raycast_to_mesh(BVHType bvh_type,
+                            IndexMask mask,
                             const Mesh &mesh,
                             const VArray<float3> &ray_origins,
                             const VArray<float3> &ray_directions,
@@ -141,75 +144,136 @@ static void raycast_to_mesh(IndexMask mask,
                             const MutableSpan<float> r_hit_distances,
                             int &hit_count)
 {
-#define USE_BVH_EMBREE 0
-#if USE_BVH_EMBREE
-#else
-  BVHTreeFromMesh tree_data;
-  BKE_bvhtree_from_mesh_get(&tree_data, &mesh, BVHTREE_FROM_LOOPTRI, 4);
-  BLI_SCOPED_DEFER([&]() { free_bvhtree_from_mesh(&tree_data); });
+  switch (bvh_type) {
+    case BVHType::Classic: {
+      BVHTreeFromMesh tree_data;
+      BKE_bvhtree_from_mesh_get(&tree_data, &mesh, BVHTREE_FROM_LOOPTRI, 4);
+      BLI_SCOPED_DEFER([&]() { free_bvhtree_from_mesh(&tree_data); });
 
-  if (tree_data.tree == nullptr) {
-    return;
-  }
-  /* We shouldn't be rebuilding the BVH tree when calling this function in parallel. */
-  BLI_assert(tree_data.cached);
+      if (tree_data.tree == nullptr) {
+        return;
+      }
+      /* We shouldn't be rebuilding the BVH tree when calling this function in parallel. */
+      BLI_assert(tree_data.cached);
 
-  for (const int i : mask) {
-    const float ray_length = ray_lengths[i];
-    const float3 ray_origin = ray_origins[i];
-    const float3 ray_direction = math::normalize(ray_directions[i]);
+      for (const int i : mask) {
+        const float ray_length = ray_lengths[i];
+        const float3 ray_origin = ray_origins[i];
+        const float3 ray_direction = math::normalize(ray_directions[i]);
 
-    BVHTreeRayHit hit;
-    hit.index = -1;
-    hit.dist = ray_length;
-    if (BLI_bvhtree_ray_cast(tree_data.tree,
-                             ray_origin,
-                             ray_direction,
-                             0.0f,
-                             &hit,
-                             tree_data.raycast_callback,
-                             &tree_data) != -1) {
-      hit_count++;
-      if (!r_hit.is_empty()) {
-        r_hit[i] = hit.index >= 0;
-      }
-      if (!r_hit_indices.is_empty()) {
-        /* The caller must be able to handle invalid indices anyway, so don't clamp this value. */
-        r_hit_indices[i] = hit.index;
-      }
-      if (!r_hit_positions.is_empty()) {
-        r_hit_positions[i] = hit.co;
-      }
-      if (!r_hit_normals.is_empty()) {
-        r_hit_normals[i] = hit.no;
-      }
-      if (!r_hit_distances.is_empty()) {
-        r_hit_distances[i] = hit.dist;
+        BVHTreeRayHit hit;
+        hit.index = -1;
+        hit.dist = ray_length;
+        if (BLI_bvhtree_ray_cast(tree_data.tree,
+                                 ray_origin,
+                                 ray_direction,
+                                 0.0f,
+                                 &hit,
+                                 tree_data.raycast_callback,
+                                 &tree_data) != -1) {
+          hit_count++;
+          if (!r_hit.is_empty()) {
+            r_hit[i] = hit.index >= 0;
+          }
+          if (!r_hit_indices.is_empty()) {
+            /* The caller must be able to handle invalid indices anyway, so don't clamp this value.
+             */
+            r_hit_indices[i] = hit.index;
+          }
+          if (!r_hit_positions.is_empty()) {
+            r_hit_positions[i] = hit.co;
+          }
+          if (!r_hit_normals.is_empty()) {
+            r_hit_normals[i] = hit.no;
+          }
+          if (!r_hit_distances.is_empty()) {
+            r_hit_distances[i] = hit.dist;
+          }
+        }
+        else {
+          if (!r_hit.is_empty()) {
+            r_hit[i] = false;
+          }
+          if (!r_hit_indices.is_empty()) {
+            r_hit_indices[i] = -1;
+          }
+          if (!r_hit_positions.is_empty()) {
+            r_hit_positions[i] = float3(0.0f, 0.0f, 0.0f);
+          }
+          if (!r_hit_normals.is_empty()) {
+            r_hit_normals[i] = float3(0.0f, 0.0f, 0.0f);
+          }
+          if (!r_hit_distances.is_empty()) {
+            r_hit_distances[i] = ray_length;
+          }
+        }
       }
     }
-    else {
-      if (!r_hit.is_empty()) {
-        r_hit[i] = false;
-      }
-      if (!r_hit_indices.is_empty()) {
-        r_hit_indices[i] = -1;
-      }
-      if (!r_hit_positions.is_empty()) {
-        r_hit_positions[i] = float3(0.0f, 0.0f, 0.0f);
-      }
-      if (!r_hit_normals.is_empty()) {
-        r_hit_normals[i] = float3(0.0f, 0.0f, 0.0f);
-      }
-      if (!r_hit_distances.is_empty()) {
-        r_hit_distances[i] = ray_length;
+    break;
+
+    case BVHType::Embree: {
+      BVHTree tree;
+
+      tree.build_single_mesh(mesh);
+
+      for (const int i : mask) {
+        BVHRay ray;
+        ray.origin = ray_origins[i];
+        ray.direction = math::normalize(ray_directions[i]);
+        ray.dist_min = 0.0f;
+        ray.dist_max = ray_lengths[i];
+        ray.time = 0.0f;
+        ray.mask = BVHRay::MASK_FULL;
+        ray.id = 0;
+        ray.flags = BVHRay::FLAGS_NONE;
+
+        BVHRayHit hit;
+        if (tree.ray_intersect1(ray, hit)) {
+          hit_count++;
+          if (!r_hit.is_empty()) {
+            r_hit[i] = true;
+          }
+          if (!r_hit_indices.is_empty()) {
+            /* The caller must be able to handle invalid indices anyway, so don't clamp this value.
+             */
+            r_hit_indices[i] = hit.hit.primitive_id;
+          }
+          if (!r_hit_positions.is_empty()) {
+            r_hit_positions[i] = hit.ray.origin + hit.ray.direction * hit.ray.dist_max;
+          }
+          if (!r_hit_normals.is_empty()) {
+            r_hit_normals[i] = hit.hit.normal;
+          }
+          if (!r_hit_distances.is_empty()) {
+            r_hit_distances[i] = math::length(hit.ray.direction * hit.ray.dist_max);
+          }
+        }
+        else {
+          if (!r_hit.is_empty()) {
+            r_hit[i] = false;
+          }
+          if (!r_hit_indices.is_empty()) {
+            r_hit_indices[i] = -1;
+          }
+          if (!r_hit_positions.is_empty()) {
+            r_hit_positions[i] = float3(0.0f, 0.0f, 0.0f);
+          }
+          if (!r_hit_normals.is_empty()) {
+            r_hit_normals[i] = float3(0.0f, 0.0f, 0.0f);
+          }
+          if (!r_hit_distances.is_empty()) {
+            r_hit_distances[i] = ray_lengths[i];
+          }
+        }
       }
     }
+    break;
   }
-#endif
 }
 
 class RaycastFunction : public mf::MultiFunction {
  private:
+  BVHType bvh_type_;
   GeometrySet target_;
   GeometryNodeRaycastMapMode mapping_;
 
@@ -226,8 +290,13 @@ class RaycastFunction : public mf::MultiFunction {
   mf::Signature signature_;
 
  public:
-  RaycastFunction(GeometrySet target, GField src_field, GeometryNodeRaycastMapMode mapping)
-      : target_(std::move(target)), mapping_((GeometryNodeRaycastMapMode)mapping)
+  RaycastFunction(BVHType bvh_type,
+                  GeometrySet target,
+                  GField src_field,
+                  GeometryNodeRaycastMapMode mapping)
+      : bvh_type_(bvh_type),
+        target_(std::move(target)),
+        mapping_((GeometryNodeRaycastMapMode)mapping)
   {
     target_.ensure_owns_direct_data();
     this->evaluate_target_field(std::move(src_field));
@@ -264,7 +333,8 @@ class RaycastFunction : public mf::MultiFunction {
     const Mesh &mesh = *target_.get_mesh_for_read();
 
     int hit_count = 0;
-    raycast_to_mesh(mask,
+    raycast_to_mesh(bvh_type_,
+                    mask,
                     mesh,
                     params.readonly_single_input<float3>(0, "Source Position"),
                     params.readonly_single_input<float3>(1, "Ray Direction"),
@@ -383,7 +453,7 @@ static void output_attribute_field(GeoNodeExecParams &params, GField field)
   }
 }
 
-static void node_geo_exec(GeoNodeExecParams params)
+static void node_geo_exec(GeoNodeExecParams params, BVHType bvh_type)
 {
   GeometrySet target = params.extract_input<GeometrySet>("Target Geometry");
   const NodeGeometryRaycast &storage = node_storage(params.node());
@@ -412,7 +482,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   Field<float3> direction_field = params.extract_input<Field<float3>>("Ray Direction");
   Field<float> length_field = params.extract_input<Field<float>>("Ray Length");
 
-  auto fn = std::make_unique<RaycastFunction>(std::move(target), std::move(field), mapping);
+  auto fn = std::make_unique<RaycastFunction>(
+      bvh_type, std::move(target), std::move(field), mapping);
   auto op = std::make_shared<FieldOperation>(FieldOperation(
       std::move(fn),
       {std::move(position_field), std::move(direction_field), std::move(length_field)}));
@@ -424,6 +495,16 @@ static void node_geo_exec(GeoNodeExecParams params)
   if (do_attribute_transfer) {
     output_attribute_field(params, GField(op, 4));
   }
+}
+
+static void node_geo_exec_classic(GeoNodeExecParams params)
+{
+  node_geo_exec(params, BVHType::Classic);
+}
+
+static void node_geo_exec_embree(GeoNodeExecParams params)
+{
+  node_geo_exec(params, BVHType::Embree);
 }
 
 }  // namespace blender::nodes::node_geo_raycast_cc
@@ -441,7 +522,26 @@ void register_node_type_geo_raycast()
   node_type_storage(
       &ntype, "NodeGeometryRaycast", node_free_standard_storage, node_copy_standard_storage);
   ntype.declare = file_ns::node_declare;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
+  ntype.geometry_node_execute = file_ns::node_geo_exec_classic;
+  ntype.draw_buttons = file_ns::node_layout;
+  ntype.gather_link_search_ops = file_ns::node_gather_link_searches;
+  nodeRegisterType(&ntype);
+}
+
+void register_node_type_geo_raycast_embree()
+{
+  namespace file_ns = blender::nodes::node_geo_raycast_cc;
+
+  static bNodeType ntype;
+
+  geo_node_type_base(&ntype, GEO_NODE_RAYCAST_EMBREE, "Raycast (Embree)", NODE_CLASS_GEOMETRY);
+  node_type_size_preset(&ntype, NODE_SIZE_MIDDLE);
+  ntype.initfunc = file_ns::node_init;
+  ntype.updatefunc = file_ns::node_update;
+  node_type_storage(
+      &ntype, "NodeGeometryRaycast", node_free_standard_storage, node_copy_standard_storage);
+  ntype.declare = file_ns::node_declare;
+  ntype.geometry_node_execute = file_ns::node_geo_exec_embree;
   ntype.draw_buttons = file_ns::node_layout;
   ntype.gather_link_search_ops = file_ns::node_gather_link_searches;
   nodeRegisterType(&ntype);

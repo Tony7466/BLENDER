@@ -56,7 +56,6 @@ set(SRC
   intern/bitmap_draw_2d.c
   intern/boxpack_2d.c
   intern/buffer.c
-  intern/bvh.cc
   intern/cache_mutex.cc
   intern/compute_context.cc
   intern/convexhull_2d.c
@@ -186,7 +185,6 @@ set(SRC
   BLI_bounds_types.hh
   BLI_boxpack_2d.h
   BLI_buffer.h
-  BLI_bvh.hh
   BLI_cache_mutex.hh
   BLI_color.hh
   BLI_color_mix.hh
@@ -407,14 +405,6 @@ if(WITH_GMP)
 
   list(APPEND LIB
     ${GMP_LIBRARIES}
-  )
-endif()
-
-if(WITH_BVH_EMBREE)
-  add_definitions(-DWITH_BVH_EMBREE)
-
-  list(APPEND LIB
-    ${EMBREE_LIBRARIES}
   )
 endif()
 

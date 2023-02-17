@@ -385,6 +385,7 @@ DefNode(GeometryNode, GEO_NODE_POINTS_TO_VOLUME, def_geo_points_to_volume, "POIN
 DefNode(GeometryNode, GEO_NODE_POINTS, 0, "POINTS", Points, "Points", "Generate a point cloud with positions and radii defined by fields")
 DefNode(GeometryNode, GEO_NODE_PROXIMITY, def_geo_proximity, "PROXIMITY", Proximity, "Geometry Proximity", "Compute the closest location on the target geometry")
 DefNode(GeometryNode, GEO_NODE_RAYCAST, def_geo_raycast, "RAYCAST", Raycast, "Raycast", "Cast rays from the context geometry onto a target geometry, and retrieve information from each hit point")
+DefNode(GeometryNode, GEO_NODE_RAYCAST_EMBREE, def_geo_raycast, "RAYCAST_EMBREE", RaycastEmbree, "Raycast (Embree)", "Cast rays from the context geometry onto a target geometry, and retrieve information from each hit point")
 DefNode(GeometryNode, GEO_NODE_REALIZE_INSTANCES, def_geo_realize_instances,"REALIZE_INSTANCES", RealizeInstances, "Realize Instances", "Convert instances into real geometry data")
 DefNode(GeometryNode, GEO_NODE_REMOVE_ATTRIBUTE, 0, "REMOVE_ATTRIBUTE", RemoveAttribute, "Remove Named Attribute", "Delete an attribute with a specified name from a geometry. Typically used to optimize performance")
 DefNode(GeometryNode, GEO_NODE_REPLACE_MATERIAL, 0, "REPLACE_MATERIAL", ReplaceMaterial, "Replace Material", "Swap one material with another")

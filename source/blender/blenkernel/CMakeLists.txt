@@ -85,6 +85,7 @@ set(SRC
   intern/boids.c
   intern/bpath.c
   intern/brush.cc
+  intern/bvh.cc
   intern/bvhutils.cc
   intern/cachefile.c
   intern/callbacks.c
@@ -335,6 +336,7 @@ set(SRC
   BKE_boids.h
   BKE_bpath.h
   BKE_brush.h
+  BKE_bvh.hh
   BKE_bvhutils.h
   BKE_cachefile.h
   BKE_callbacks.h
@@ -785,6 +787,14 @@ endif()
 
 if(WITH_XR_OPENXR)
   add_definitions(-DWITH_XR_OPENXR)
+endif()
+
+if(WITH_BVH_EMBREE)
+  add_definitions(-DWITH_BVH_EMBREE)
+
+  list(APPEND LIB
+    ${EMBREE_LIBRARIES}
+  )
 endif()
 
 if(WITH_TBB)

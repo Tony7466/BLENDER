@@ -121,6 +121,7 @@ void register_node_type_geo_points_to_volume();
 void register_node_type_geo_points();
 void register_node_type_geo_proximity();
 void register_node_type_geo_raycast();
+void register_node_type_geo_raycast_embree();
 void register_node_type_geo_realize_instances();
 void register_node_type_geo_remove_attribute();
 void register_node_type_geo_rotate_instances();

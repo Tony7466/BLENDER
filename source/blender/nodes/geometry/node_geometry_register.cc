@@ -124,6 +124,7 @@ void register_geometry_nodes()
   register_node_type_geo_points();
   register_node_type_geo_proximity();
   register_node_type_geo_raycast();
+  register_node_type_geo_raycast_embree();
   register_node_type_geo_realize_instances();
   register_node_type_geo_remove_attribute();
   register_node_type_geo_rotate_instances();
