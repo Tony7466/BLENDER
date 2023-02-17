@@ -223,6 +223,10 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, LinearAlloca
       chunk.segments_num = segments_in_chunk_num;
     }
 
+    if (chunks_to_postprocess.is_empty()) {
+      return;
+    }
+
     MutableSpan<int16_t> remaining_indices;
     MutableSpan<const int16_t *> remaining_indices_by_segment;
     MutableSpan<int16_t> remaining_cumulative_segment_sizes;
