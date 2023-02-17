@@ -17,6 +17,7 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
   uniform_len_ = 0;
   ssbo_len_ = 0;
   ubo_len_ = 0;
+  image_offset_ = 0;
 
   Vector<ShaderCreateInfo::Resource> all_resources;
   all_resources.extend(info.pass_resources_);
@@ -28,6 +29,7 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
         uniform_len_++;
         break;
       case ShaderCreateInfo::Resource::BindType::SAMPLER:
+        image_offset_++;
         uniform_len_++;
         break;
       case ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER:
@@ -69,10 +71,10 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
       enabled_tex_mask_ |= (1 << input->binding);
       input++;
     }
-    if (res.bind_type == ShaderCreateInfo::Resource::BindType::IMAGE) {
+    else if (res.bind_type == ShaderCreateInfo::Resource::BindType::IMAGE) {
       copy_input_name(input, res.image.name, name_buffer_, name_buffer_offset);
       input->location = location++;
-      input->binding = res.slot;
+      input->binding = res.slot + image_offset_;
       enabled_ima_mask_ |= (1 << input->binding);
       input++;
     }
@@ -103,7 +105,7 @@ const ShaderInput *VKShaderInterface::shader_input_get(
 {
   switch (bind_type) {
     case shader::ShaderCreateInfo::Resource::BindType::IMAGE:
-      return texture_get(binding);
+      return texture_get(binding + image_offset_);
     case shader::ShaderCreateInfo::Resource::BindType::SAMPLER:
       return texture_get(binding);
     case shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER:

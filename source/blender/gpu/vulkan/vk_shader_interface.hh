@@ -12,6 +12,16 @@
 
 namespace blender::gpu {
 class VKShaderInterface : public ShaderInterface {
+ private:
+  /**
+   * Offset when searching for a shader input based on a binding number.
+   *
+   * When shaders combine images and samplers, the images have to be offset to find the correct
+   * shader input. Both textures and images are stored in the uniform list and their ID can be
+   * overlapping.
+   */
+  uint32_t image_offset_ = 0;
+
  public:
   VKShaderInterface() = default;
 
