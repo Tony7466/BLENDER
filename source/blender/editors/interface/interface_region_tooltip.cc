@@ -996,8 +996,6 @@ static uiTooltipData *ui_tooltip_data_from_gizmo(bContext *C, wmGizmo *gz)
 {
   uiTooltipData *data = MEM_cnew<uiTooltipData>(__func__);
 
-  /* TODO(@ideasman42): a way for gizmos to have their own descriptions (low priority). */
-
   /* Operator Actions */
   {
     const bool use_drag = gz->drag_part != -1 && gz->highlight_part != gz->drag_part;
@@ -1052,6 +1050,13 @@ static uiTooltipData *ui_tooltip_data_from_gizmo(bContext *C, wmGizmo *gz)
         }
       }
     }
+  }
+
+  /* Gizmo description. */
+  if (gz->name && gz->name[0]) {
+    uiTooltipField *field = text_field_add(
+        data, uiTooltipFormat::Style::Header, uiTooltipFormat::ColorID::Value, true);
+    field->text = BLI_strdup(TIP_(gz->name));
   }
 
   /* Property Actions */
