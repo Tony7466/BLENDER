@@ -586,6 +586,7 @@ endif()
 
 option(WITH_BOOST "Enable features depending on boost" ON)
 option(WITH_TBB   "Enable multithreading. TBB is also required for features such as Cycles, OpenVDB and USD" ON)
+option(WITH_BVH_EMBREE "Enable Embree support for BVH trees" OFF)
 
 # TBB malloc is only supported on for windows currently
 if(WIN32)

@@ -6,6 +6,8 @@
 #include "BKE_bvhutils.h"
 #include "BKE_mesh_sample.hh"
 
+#include "BLI_bvh.hh"
+
 #include "UI_interface.h"
 #include "UI_resources.h"
 
@@ -139,6 +141,9 @@ static void raycast_to_mesh(IndexMask mask,
                             const MutableSpan<float> r_hit_distances,
                             int &hit_count)
 {
+#define USE_BVH_EMBREE 0
+#if USE_BVH_EMBREE
+#else
   BVHTreeFromMesh tree_data;
   BKE_bvhtree_from_mesh_get(&tree_data, &mesh, BVHTREE_FROM_LOOPTRI, 4);
   BLI_SCOPED_DEFER([&]() { free_bvhtree_from_mesh(&tree_data); });
@@ -200,6 +205,7 @@ static void raycast_to_mesh(IndexMask mask,
       }
     }
   }
+#endif
 }
 
 class RaycastFunction : public mf::MultiFunction {
