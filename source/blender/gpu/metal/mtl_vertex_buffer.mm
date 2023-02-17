@@ -5,6 +5,7 @@
  */
 #include "mtl_vertex_buffer.hh"
 #include "mtl_debug.hh"
+#include "mtl_storage_buffer.hh"
 
 namespace blender::gpu {
 
@@ -50,6 +51,11 @@ void MTLVertBuf::release_data()
   GPU_TEXTURE_FREE_SAFE(buffer_texture_);
 
   MEM_SAFE_FREE(data);
+
+  if (ssbo_wrapper_) {
+    delete ssbo_wrapper_;
+    ssbo_wrapper_ = nullptr;
+  }
 }
 
 void MTLVertBuf::duplicate_data(VertBuf *dst_)
@@ -294,10 +300,16 @@ void MTLVertBuf::update_sub(uint start, uint len, const void *data)
 
 void MTLVertBuf::bind_as_ssbo(uint binding)
 {
-  /* TODO(Metal): Support binding of buffers as SSBOs.
-   * Pending overall compute support for Metal backend. */
-  MTL_LOG_WARNING("MTLVertBuf::bind_as_ssbo not yet implemented!\n");
   this->flag_used();
+
+  /* Ensure resource is initialized. */
+  this->bind();
+
+  /* Create MTLStorageBuffer to wrap this resource and use conventional binding. */
+  if (ssbo_wrapper_ == nullptr) {
+    ssbo_wrapper_ = new MTLStorageBuf(this, alloc_size_);
+  }
+  ssbo_wrapper_->bind(binding);
 }
 
 void MTLVertBuf::bind_as_texture(uint binding)

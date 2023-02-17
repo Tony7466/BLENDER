@@ -709,8 +709,30 @@ static void print_resource(std::ostream &os, const ShaderCreateInfo::Resource &r
       }
       break;
     }
-    case ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER:
+    case ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER: {
+      int64_t array_offset = res.storagebuf.name.find_first_of("[");
+      bool writeable = (res.storagebuf.qualifiers & shader::Qualifier::WRITE) ==
+                       shader::Qualifier::WRITE;
+      const char *memory_scope = ((writeable) ? "device " : "constant ");
+      if (array_offset == -1) {
+        /* Create local class member as device pointer reference to bound SSBO.
+         * Given usage within a shader follows ssbo_name.ubo_element syntax, we can
+         * dereference the pointer as the compiler will optimize this data fetch.
+         * To do this, we also give the UBO name a post-fix of `_local` to avoid
+         * macro accessor collisions. */
+
+        os << memory_scope << res.storagebuf.type_name << " *" << res.storagebuf.name
+           << "_local;\n";
+        os << "#define " << res.storagebuf.name << " (*" << res.storagebuf.name << "_local)\n";
+      }
+      else {
+        /* For arrays, we can directly provide the constant access pointer, as the array
+         * syntax will de-reference this at the correct fetch index. */
+        StringRef name_no_array = StringRef(res.storagebuf.name.c_str(), array_offset);
+        os << memory_scope << res.storagebuf.type_name << " *" << name_no_array << ";\n";
+      }
       break;
+    }
   }
 }
 
@@ -999,7 +1021,7 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
   if (msl_iface.use_argument_buffer_for_samplers()) {
     ss_vertex << "#define USE_ARGUMENT_BUFFER_FOR_SAMPLERS 1" << std::endl;
     ss_vertex << "#define ARGUMENT_BUFFER_NUM_SAMPLERS "
-              << msl_iface.num_samplers_for_stage(ShaderStage::VERTEX) << std::endl;
+              << msl_iface.max_sampler_index_for_stage(ShaderStage::VERTEX) + 1 << std::endl;
   }
   if (msl_iface.uses_ssbo_vertex_fetch_mode) {
     ss_vertex << "#define MTL_SSBO_VERTEX_FETCH 1" << std::endl;
@@ -1190,7 +1212,7 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
     if (msl_iface.use_argument_buffer_for_samplers()) {
       ss_fragment << "#define USE_ARGUMENT_BUFFER_FOR_SAMPLERS 1" << std::endl;
       ss_fragment << "#define ARGUMENT_BUFFER_NUM_SAMPLERS "
-                  << msl_iface.num_samplers_for_stage(ShaderStage::FRAGMENT) << std::endl;
+                  << msl_iface.max_sampler_index_for_stage(ShaderStage::FRAGMENT) + 1 << std::endl;
     }
 
     /* Inject common Metal header. */
@@ -1437,7 +1459,7 @@ bool MTLShader::generate_msl_from_glsl_compute(const shader::ShaderCreateInfo *i
   if (msl_iface.use_argument_buffer_for_samplers()) {
     ss_compute << "#define USE_ARGUMENT_BUFFER_FOR_SAMPLERS 1" << std::endl;
     ss_compute << "#define ARGUMENT_BUFFER_NUM_SAMPLERS "
-               << msl_iface.num_samplers_for_stage(ShaderStage::COMPUTE) << std::endl;
+               << msl_iface.max_sampler_index_for_stage(ShaderStage::COMPUTE) + 1 << std::endl;
   }
 
   /* Inject static workgroup sizes. */
@@ -1553,6 +1575,31 @@ bool MTLShader::generate_msl_from_glsl_compute(const shader::ShaderCreateInfo *i
       [[NSString stringWithFormat:@"compute_function_entry_%s", this->name] retain]);
 #else
   this->set_compute_function_name(@"compute_function_entry");
+#endif
+
+  /* DEBUG: Export source to file for manual verification. */
+#if MTL_SHADER_DEBUG_EXPORT_SOURCE
+  NSFileManager *sharedFM = [NSFileManager defaultManager];
+  NSURL *app_bundle_url = [[NSBundle mainBundle] bundleURL];
+  NSURL *shader_dir = [[app_bundle_url URLByDeletingLastPathComponent]
+      URLByAppendingPathComponent:@"Shaders/"
+                      isDirectory:YES];
+  [sharedFM createDirectoryAtURL:shader_dir
+      withIntermediateDirectories:YES
+                       attributes:nil
+                            error:nil];
+  const char *path_cstr = [shader_dir fileSystemRepresentation];
+
+  std::ofstream compute_fs;
+  compute_fs.open(
+      (std::string(path_cstr) + "/" + std::string(this->name) + "_GeneratedComputeShader.msl")
+          .c_str());
+  compute_fs << ss_compute.str();
+  compute_fs.close();
+
+  shader_debug_printf(
+      "Compute Shader Saved to: %s\n",
+      (std::string(path_cstr) + std::string(this->name) + "_GeneratedComputeShader.msl").c_str());
 #endif
 
   NSString *msl_final_compute = [NSString stringWithUTF8String:ss_compute.str().c_str()];
@@ -1738,6 +1785,7 @@ void MSLGeneratorInterface::prepare_from_createinfo(const shader::ShaderCreateIn
           MSLTextureSampler msl_tex(
               ShaderStage::ANY, res.sampler.type, res.sampler.name, access, used_slot);
           texture_samplers.append(msl_tex);
+          max_tex_bind_index = max_ii(used_slot, max_tex_bind_index);
         } break;
 
         case shader::ShaderCreateInfo::Resource::BindType::IMAGE: {
@@ -1771,14 +1819,16 @@ void MSLGeneratorInterface::prepare_from_createinfo(const shader::ShaderCreateIn
                                     access,
                                     used_slot);
           texture_samplers.append(msl_tex);
+          max_tex_bind_index = max_ii(used_slot, max_tex_bind_index);
         } break;
 
         case shader::ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER: {
-          MSLUniformBlock ubo;
+          MSLBufferBlock ubo;
           BLI_assert(res.uniformbuf.type_name.size() > 0);
           BLI_assert(res.uniformbuf.name.size() > 0);
           int64_t array_offset = res.uniformbuf.name.find_first_of("[");
 
+          ubo.qualifiers = shader::Qualifier::READ;
           ubo.type_name = res.uniformbuf.type_name;
           ubo.is_array = (array_offset > -1);
           if (ubo.is_array) {
@@ -1794,8 +1844,24 @@ void MSLGeneratorInterface::prepare_from_createinfo(const shader::ShaderCreateIn
         } break;
 
         case shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER: {
-          /* TODO(Metal): Support shader storage buffer in Metal.
-           * Pending compute support. */
+          MSLBufferBlock ssbo;
+          BLI_assert(res.storagebuf.type_name.size() > 0);
+          BLI_assert(res.storagebuf.name.size() > 0);
+          int64_t array_offset = res.storagebuf.name.find_first_of("[");
+
+          ssbo.qualifiers = res.storagebuf.qualifiers;
+          ssbo.type_name = res.storagebuf.type_name;
+          ssbo.is_array = (array_offset > -1);
+          if (ssbo.is_array) {
+            /* If is array UBO, strip out array tag from name. */
+            StringRef name_no_array = StringRef(res.storagebuf.name.c_str(), array_offset);
+            ssbo.name = name_no_array;
+          }
+          else {
+            ssbo.name = res.storagebuf.name;
+          }
+          ssbo.stage = ShaderStage::FRAGMENT | ShaderStage::COMPUTE;
+          storage_blocks.append(ssbo);
         } break;
       }
     }
@@ -1850,10 +1916,28 @@ void MSLGeneratorInterface::prepare_from_createinfo(const shader::ShaderCreateIn
 
 bool MSLGeneratorInterface::use_argument_buffer_for_samplers() const
 {
-  /* We can only use argument buffers IF sampler count exceeds static limit of 16,
-   * AND we can support more samplers with an argument buffer.
-   * NOTE: We reserve one constant sampler within the shader for fast read via point-sampling. */
-  return texture_samplers.size() >= 15 && GPU_max_samplers() > 16;
+  /* We can only use argument buffers IF highest sampler index exceeds static limit of 16,
+   * AND we can support more samplers with an argument buffer. */
+  bool use_argument_buffer = (texture_samplers.size() >= 15 || max_tex_bind_index >= 14) &&
+                             GPU_max_samplers() > 15;
+
+#ifndef NDEBUG
+  /* Due to explicit bind location support, we may be below the sampler limit, but forced to offset
+   * bindings due to the range being high. Introduce debug check here to issue warning. In these
+   * cases, if explicit bind location support is not required, best to use auto_resource_location
+   * to optimize bind point packing. */
+  if (use_argument_buffer && texture_samplers.size() < 15) {
+    MTL_LOG_WARNING(
+        "Compiled Shader '%s' is falling back to bindless via argument buffers due to having a "
+        "texture sampler of Index: %u Which exceeds the limit of 15+1. However shader only uses "
+        "%d textures. Consider optimising bind points with .auto_resource_location(true).\n",
+        parent_shader_.name_get(),
+        max_tex_bind_index,
+        (int)texture_samplers.size());
+  }
+#endif
+
+  return use_argument_buffer;
 }
 
 uint32_t MSLGeneratorInterface::num_samplers_for_stage(ShaderStage stage) const
@@ -1861,6 +1945,13 @@ uint32_t MSLGeneratorInterface::num_samplers_for_stage(ShaderStage stage) const
   /* NOTE: Sampler bindings and argument buffer shared across stages,
    * in case stages share texture/sampler bindings. */
   return texture_samplers.size();
+}
+
+uint32_t MSLGeneratorInterface::max_sampler_index_for_stage(ShaderStage stage) const
+{
+  /* NOTE: Sampler bindings and argument buffer shared across stages,
+   * in case stages share texture/sampler bindings. */
+  return max_tex_bind_index;
 }
 
 uint32_t MSLGeneratorInterface::get_sampler_argument_buffer_bind_index(ShaderStage stage)
@@ -1873,7 +1964,7 @@ uint32_t MSLGeneratorInterface::get_sampler_argument_buffer_bind_index(ShaderSta
     return sampler_argument_buffer_bind_index[get_shader_stage_index(stage)];
   }
   sampler_argument_buffer_bind_index[get_shader_stage_index(stage)] =
-      (this->uniform_blocks.size() + 1);
+      (this->uniform_blocks.size() + this->storage_blocks.size() + 1);
   return sampler_argument_buffer_bind_index[get_shader_stage_index(stage)];
 }
 
@@ -2148,7 +2239,6 @@ std::string MSLGeneratorInterface::generate_msl_compute_entry_stub()
   out << this->generate_msl_texture_vars(ShaderStage::COMPUTE);
   out << this->generate_msl_global_uniform_population(ShaderStage::COMPUTE);
   out << this->generate_msl_uniform_block_population(ShaderStage::COMPUTE);
-  /* TODO(Metal): SSBO Population. */
 
   /* Execute original 'main' function within class scope. */
   out << "\t/* Execute Compute main function */\t" << std::endl
@@ -2205,8 +2295,9 @@ void MSLGeneratorInterface::generate_msl_textures_input_string(std::stringstream
 void MSLGeneratorInterface::generate_msl_uniforms_input_string(std::stringstream &out,
                                                                ShaderStage stage)
 {
+  /* Uniform buffers. */
   int ubo_index = 0;
-  for (const MSLUniformBlock &ubo : this->uniform_blocks) {
+  for (const MSLBufferBlock &ubo : this->uniform_blocks) {
     if (bool(ubo.stage & stage)) {
       /* For literal/existing global types, we do not need the class name-space accessor. */
       out << ",\n\tconstant ";
@@ -2221,6 +2312,28 @@ void MSLGeneratorInterface::generate_msl_uniforms_input_string(std::stringstream
           << (ubo_index + 1) << ")]]";
     }
     ubo_index++;
+  }
+
+  /* Storage buffers. */
+  int ssbo_index = 0;
+  for (const MSLBufferBlock &ssbo : this->storage_blocks) {
+    if (bool(ssbo.stage & stage)) {
+      /* For literal/existing global types, we do not need the class name-space accessor. */
+      bool writeable = (ssbo.qualifiers & shader::Qualifier::WRITE) == shader::Qualifier::WRITE;
+      const char *memory_scope = ((writeable) ? "device " : "constant ");
+      out << ",\n\t" << memory_scope;
+      if (!is_builtin_type(ssbo.type_name)) {
+        out << get_stage_class_name(stage) << "::";
+      }
+      /* #StorageBuffer bind indices start at `MTL_storage_buffer_base_index`.
+       * MTL_storage_buffer_base_index follows immediately after all uniform blocks.
+       * such that MTL_storage_buffer_base_index = MTL_uniform_buffer_base_index +
+       * uniform_blocks.size() + 1. Where the additional buffer is reserved for the
+       * #PushConstantBlock (push constants). */
+      out << ssbo.type_name << "* " << ssbo.name << "[[buffer(MTL_storage_buffer_base_index+"
+          << (ssbo_index) << ")]]";
+    }
+    ssbo_index++;
   }
 }
 
@@ -2372,8 +2485,12 @@ std::string MSLGeneratorInterface::generate_msl_uniform_undefs(ShaderStage shade
     out << "#undef " << uniform.name << std::endl;
   }
   /* UBO block undef. */
-  for (const MSLUniformBlock &ubo : this->uniform_blocks) {
+  for (const MSLBufferBlock &ubo : this->uniform_blocks) {
     out << "#undef " << ubo.name << std::endl;
+  }
+  /* SSBO block undef. */
+  for (const MSLBufferBlock &ssbo : this->storage_blocks) {
+    out << "#undef " << ssbo.name << std::endl;
   }
   return out.str();
 }
@@ -2656,7 +2773,7 @@ std::string MSLGeneratorInterface::generate_msl_uniform_block_population(ShaderS
   /* Populate Global Uniforms. */
   std::stringstream out;
   out << "\t/* Copy UBO block references into local class variables */" << std::endl;
-  for (const MSLUniformBlock &ubo : this->uniform_blocks) {
+  for (const MSLBufferBlock &ubo : this->uniform_blocks) {
 
     /* Only include blocks which are used within this stage. */
     if (bool(ubo.stage & stage)) {
@@ -2672,6 +2789,26 @@ std::string MSLGeneratorInterface::generate_msl_uniform_block_population(ShaderS
       out << " = " << ubo.name << ";" << std::endl;
     }
   }
+
+  /* Populate storage buffer references. */
+  out << "\t/* Copy SSBO block references into local class variables */" << std::endl;
+  for (const MSLBufferBlock &ssbo : this->storage_blocks) {
+
+    /* Only include blocks which are used within this stage. */
+    if (bool(ssbo.stage & stage)) {
+      /* Generate UBO reference assignment.
+       * NOTE(Metal): We append `_local` post-fix onto the class member name
+       * for the ubo to avoid name collision with the UBO accessor macro.
+       * We only need to add this post-fix for the non-array access variant,
+       * as the array is indexed directly, rather than requiring a dereference. */
+      out << "\t" << get_shader_stage_instance_name(stage) << "." << ssbo.name;
+      if (!ssbo.is_array) {
+        out << "_local";
+      }
+      out << " = " << ssbo.name << ";" << std::endl;
+    }
+  }
+
   out << std::endl;
   return out.str();
 }
@@ -3259,6 +3396,18 @@ MTLShaderInterface *MSLGeneratorInterface::bake_shader_interface(const char *nam
         uniform_block,
         0,
         this->uniform_blocks[uniform_block].stage);
+  }
+
+  /* Prepare Interface Storage Blocks. */
+  for (int storage_block = 0; storage_block < this->storage_blocks.size(); storage_block++) {
+    interface->add_storage_block(
+        name_buffer_copystr(&interface->name_buffer_,
+                            this->storage_blocks[storage_block].name.c_str(),
+                            name_buffer_size,
+                            name_buffer_offset),
+        storage_block,
+        0,
+        this->storage_blocks[storage_block].stage);
   }
 
   /* Texture/sampler bindings to interface. */

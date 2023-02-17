@@ -329,6 +329,14 @@ struct DRWDebugVert {
   uint pos2;
   /* Named vert_color to avoid global namespace collision with uniform color. */
   uint vert_color;
+
+#ifdef GPU_METAL
+  inline DRWDebugVert() = default;
+  inline DRWDebugVert(uint in_pos0, uint in_pos1, uint in_pos2, uint in_vert_color)
+      : pos0(in_pos0), pos1(in_pos1), pos2(in_pos2), vert_color(in_vert_color)
+  {
+  }
+#endif
 };
 BLI_STATIC_ASSERT_ALIGN(DRWDebugVert, 16)
 

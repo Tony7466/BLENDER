@@ -386,7 +386,7 @@ bool MTLShader::finalize(const shader::ShaderCreateInfo *info)
     valid_ = true;
 
     /* Prepare backing data storage for local uniforms. */
-    const MTLShaderUniformBlock &push_constant_block = mtl_interface->get_push_constant_block();
+    const MTLShaderBufferBlock &push_constant_block = mtl_interface->get_push_constant_block();
     if (push_constant_block.size > 0) {
       push_constant_data_ = MEM_callocN(push_constant_block.size, __func__);
       this->push_constant_bindstate_mark_dirty(true);
@@ -987,12 +987,26 @@ MTLRenderPipelineStateInstance *MTLShader::bake_pipeline_state(
                         type:MTLDataTypeInt
                     withName:@"MTL_uniform_buffer_base_index"];
 
+    /* Storage buffer bind index.
+     * This is always relative to MTL_uniform_buffer_base_index, plus the number of active buffers,
+     * and an additional space for the push constant block.
+     * If the shader does not have any uniform blocks, then we can place directly after the push
+     * constant block. As we do not need an extra spot for the UBO at index '0'. */
+    int MTL_storage_buffer_base_index = MTL_uniform_buffer_base_index +
+                                        ((mtl_interface->get_total_uniform_blocks() > 0) ?
+                                             (mtl_interface->get_max_ubo_index() + 2) :
+                                             (MTL_uniform_buffer_base_index + 1));
+    [values setConstantValue:&MTL_storage_buffer_base_index
+                        type:MTLDataTypeInt
+                    withName:@"MTL_storage_buffer_base_index"];
+
     /* Transform feedback constant.
-     * Ensure buffer is placed after existing buffers, including default buffers. */
+     * Ensure buffer is placed after existing buffers, including default buffers, UBOs and SSBOs.
+     */
     int MTL_transform_feedback_buffer_index = (this->transform_feedback_type_ !=
                                                GPU_SHADER_TFB_NONE) ?
-                                                  MTL_uniform_buffer_base_index +
-                                                      mtl_interface->get_max_ubo_index() + 2 :
+                                                  MTL_storage_buffer_base_index +
+                                                      mtl_interface->get_max_ssbo_index() + 2 :
                                                   -1;
 
     if (this->transform_feedback_type_ != GPU_SHADER_TFB_NONE) {
@@ -1150,6 +1164,7 @@ MTLRenderPipelineStateInstance *MTLShader::bake_pipeline_state(
     pso_inst->frag = desc.fragmentFunction;
     pso_inst->pso = pso;
     pso_inst->base_uniform_buffer_index = MTL_uniform_buffer_base_index;
+    pso_inst->base_storage_buffer_index = MTL_storage_buffer_base_index;
     pso_inst->null_attribute_buffer_index = (using_null_buffer) ? null_buffer_index : -1;
     pso_inst->transform_feedback_buffer_index = MTL_transform_feedback_buffer_index;
     pso_inst->prim_type = prim_type;
@@ -1254,6 +1269,8 @@ bool MTLShader::bake_compute_pipeline_state(MTLContext *ctx)
 {
   /* NOTE(Metal): Bakes and caches a PSO for compute. */
   BLI_assert(this);
+  MTLShaderInterface *mtl_interface = this->get_interface();
+  BLI_assert(mtl_interface);
   BLI_assert(this->is_valid());
   BLI_assert(shader_library_compute_ != nil);
 
@@ -1275,7 +1292,19 @@ bool MTLShader::bake_compute_pipeline_state(MTLContext *ctx)
                         type:MTLDataTypeInt
                     withName:@"MTL_uniform_buffer_base_index"];
 
-    /* TODO: SSBO binding base index. */
+    /* Storage buffer bind index.
+     * This is always relative to MTL_uniform_buffer_base_index, plus the number of active buffers,
+     * and an additional space for the push constant block.
+     * If the shader does not have any uniform blocks, then we can place directly after the push
+     * constant block. As we do not need an extra spot for the UBO at index '0'. */
+    int MTL_storage_buffer_base_index = MTL_uniform_buffer_base_index +
+                                        ((mtl_interface->get_total_uniform_blocks() > 0) ?
+                                             (mtl_interface->get_max_ubo_index() + 2) :
+                                             (MTL_uniform_buffer_base_index + 1));
+
+    [values setConstantValue:&MTL_storage_buffer_base_index
+                        type:MTLDataTypeInt
+                    withName:@"MTL_storage_buffer_base_index"];
 
     /* Compile compute function. */
     NSError *error = nullptr;
@@ -1321,8 +1350,7 @@ bool MTLShader::bake_compute_pipeline_state(MTLContext *ctx)
     compute_pso_instance_.compute = [compute_function retain];
     compute_pso_instance_.pso = [pso retain];
     compute_pso_instance_.base_uniform_buffer_index = MTL_uniform_buffer_base_index;
-    /* TODO: Add SSBO base buffer index support. */
-    compute_pso_instance_.base_ssbo_buffer_index = -1;
+    compute_pso_instance_.base_storage_buffer_index = MTL_storage_buffer_base_index;
   }
   return true;
 }

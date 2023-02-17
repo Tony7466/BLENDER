@@ -13,10 +13,14 @@
 
 namespace blender::gpu {
 
+class MTLStorageBuf;
+
 /**
  * Implementation of Uniform Buffers using Metal.
  **/
 class MTLUniformBuf : public UniformBuf {
+  friend class MTLStorageBuf; /* For bind as SSBO resource access. */
+
  private:
   /* Allocation Handle. */
   gpu::MTLBuffer *metal_buffer_ = nullptr;
@@ -28,6 +32,9 @@ class MTLUniformBuf : public UniformBuf {
   /* Bind-state tracking. */
   int bind_slot_ = -1;
   MTLContext *bound_ctx_ = nullptr;
+
+  /* SSBO wrapper for bind_as_ssbo support. */
+  MTLStorageBuf *ssbo_wrapper_ = nullptr;
 
  public:
   MTLUniformBuf(size_t size, const char *name);

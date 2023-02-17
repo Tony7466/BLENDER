@@ -18,7 +18,12 @@ namespace gpu {
 #define MTL_MAX_DEFAULT_SAMPLERS 16
 /* Total maximum buffers which can be bound to an encoder, for use within a shader.
  * MTL_MAX_UNIFORM_BUFFER_BINDINGS + MTL_MAX_STORAGE_BUFFER_BINDINGS must be <=
- * than MTL_MAX_BUFFER_BINDINGS. */
+ * than MTL_MAX_BUFFER_BINDINGS.
+ * We also require an additional 3 core buffers for:
+ * - Argument buffer for bindless resources (e.g. samplers)
+ * - Transform feedback buffer
+ * - Default push constant block
+ * Along with up to 6+1 buffers for vertex data, and index data. */
 #define MTL_MAX_BUFFER_BINDINGS 31
 #define MTL_MAX_UNIFORM_BUFFER_BINDINGS 16
 #define MTL_MAX_STORAGE_BUFFER_BINDINGS 12

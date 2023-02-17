@@ -105,6 +105,22 @@
  * }
  * \endcode
  *
+ * -- Metal buffer bindings structure --
+ *
+ * Metal shader contains several different binding types. All buffers are bound using the buffer(N)
+ * binding attribute tag. However, different ranges serve different purposes. The structure of the
+ * bindings always happen as follows:
+ *
+ * Vertex Buffers (N)                       <-- 0
+ * Index buffer
+ * Default Push constant block for uniforms <-- MTL_uniform_buffer_base_index
+ * Uniform buffers                          <-- MTL_uniform_buffer_base_index+1
+ * Storage buffers                          <-- MTL_storage_buffer_base_index
+ * Samplers/argument buffer table           <-- last buffer + 1
+ * Transform feedback buffer                <-- last_buffer + 2
+ *
+ * Up to a maximum of 31 bindings.
+ *
  * -- SSBO-vertex-fetchmode --
  *
  * SSBO-vertex-fetchmode is a special option wherein vertex buffers are bound directly
@@ -200,13 +216,14 @@ struct MSLUniform {
   }
 };
 
-struct MSLUniformBlock {
+struct MSLBufferBlock {
   std::string type_name;
   std::string name;
   ShaderStage stage;
   bool is_array;
+  shader::Qualifier qualifiers;
 
-  bool operator==(const MSLUniformBlock &right) const
+  bool operator==(const MSLBufferBlock &right) const
   {
     return (type_name == right.type_name && name == right.name);
   }
@@ -369,7 +386,8 @@ class MSLGeneratorInterface {
  public:
   /** Shader stage input/output binding information.
    * Derived from shader source reflection or GPUShaderCreateInfo. */
-  blender::Vector<MSLUniformBlock> uniform_blocks;
+  blender::Vector<MSLBufferBlock> uniform_blocks;
+  blender::Vector<MSLBufferBlock> storage_blocks;
   blender::Vector<MSLUniform> uniforms;
   blender::Vector<MSLTextureSampler> texture_samplers;
   blender::Vector<MSLVertexInputAttribute> vertex_input_attributes;
@@ -385,7 +403,8 @@ class MSLGeneratorInterface {
   blender::Vector<char> clip_distances;
   /* Shared Memory Blocks. */
   blender::Vector<MSLSharedMemoryBlock> shared_memory_blocks;
-
+  /* Max bind IDs. */
+  int max_tex_bind_index = 0;
   /** GL Global usage. */
   /* Whether GL position is used, or an alternative vertex output should be the default. */
   bool uses_gl_Position;
@@ -459,8 +478,10 @@ class MSLGeneratorInterface {
   /* Samplers. */
   bool use_argument_buffer_for_samplers() const;
   uint32_t num_samplers_for_stage(ShaderStage stage) const;
+  uint32_t max_sampler_index_for_stage(ShaderStage stage) const;
 
-  /* Returns the bind index, relative to MTL_uniform_buffer_base_index. */
+  /* Returns the bind index, relative to
+   * MTL_uniform_buffer_base_index+MTL_storage_buffer_base_index. */
   uint32_t get_sampler_argument_buffer_bind_index(ShaderStage stage);
 
   /* Code generation utility functions. */
@@ -476,7 +497,7 @@ class MSLGeneratorInterface {
   std::string generate_msl_fragment_entry_stub();
   std::string generate_msl_compute_entry_stub();
   std::string generate_msl_global_uniform_population(ShaderStage stage);
-  std::string generate_ubo_block_macro_chain(MSLUniformBlock block);
+  std::string generate_ubo_block_macro_chain(MSLBufferBlock block);
   std::string generate_msl_uniform_block_population(ShaderStage stage);
   std::string generate_msl_vertex_attribute_input_population();
   std::string generate_msl_vertex_output_population();
@@ -538,7 +559,9 @@ inline bool is_builtin_type(std::string type)
 {
   /* Add Types as needed. */
   /* TODO(Metal): Consider replacing this with a switch and `constexpr` hash and switch.
-   * Though most efficient and maintainable approach to be determined. */
+   * Though most efficient and maintainable approach to be determined.
+   * NOTE: Some duplicate types exit for Metal and GLSL representations, as generated typenames
+   * from createinfo may use GLSL signature. */
   static std::map<std::string, eMTLDataType> glsl_builtin_types = {
       {"float", MTL_DATATYPE_FLOAT},
       {"vec2", MTL_DATATYPE_FLOAT2},
@@ -548,10 +571,17 @@ inline bool is_builtin_type(std::string type)
       {"ivec2", MTL_DATATYPE_INT2},
       {"ivec3", MTL_DATATYPE_INT3},
       {"ivec4", MTL_DATATYPE_INT4},
+      {"int2", MTL_DATATYPE_INT2},
+      {"int3", MTL_DATATYPE_INT3},
+      {"int4", MTL_DATATYPE_INT4},
       {"uint32_t", MTL_DATATYPE_UINT},
       {"uvec2", MTL_DATATYPE_UINT2},
       {"uvec3", MTL_DATATYPE_UINT3},
       {"uvec4", MTL_DATATYPE_UINT4},
+      {"uint", MTL_DATATYPE_UINT},
+      {"uint2", MTL_DATATYPE_UINT2},
+      {"uint3", MTL_DATATYPE_UINT3},
+      {"uint4", MTL_DATATYPE_UINT4},
       {"mat3", MTL_DATATYPE_FLOAT3x3},
       {"mat4", MTL_DATATYPE_FLOAT4x4},
       {"bool", MTL_DATATYPE_INT},

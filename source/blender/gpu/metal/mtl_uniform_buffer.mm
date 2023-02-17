@@ -14,6 +14,7 @@
 #include "mtl_backend.hh"
 #include "mtl_context.hh"
 #include "mtl_debug.hh"
+#include "mtl_storage_buffer.hh"
 #include "mtl_uniform_buffer.hh"
 
 namespace blender::gpu {
@@ -42,6 +43,11 @@ MTLUniformBuf::~MTLUniformBuf()
         slot.ubo = nullptr;
       }
     }
+  }
+
+  if (ssbo_wrapper_) {
+    delete ssbo_wrapper_;
+    ssbo_wrapper_ = nullptr;
   }
 }
 
@@ -128,7 +134,25 @@ void MTLUniformBuf::bind_as_ssbo(int slot)
     return;
   }
 
-  BLI_assert_msg(0, "Not implemented yet");
+  /* We need to ensure data is actually allocated if using as an SSBO, as resource may be written
+   * to. */
+  if (metal_buffer_ == nullptr) {
+    /* Check if we have any deferred data to upload. */
+    if (data_ != nullptr) {
+      this->update(data_);
+      MEM_SAFE_FREE(data_);
+    }
+    else {
+      this->clear_to_zero();
+    }
+  }
+
+  /* Create MTLStorageBuffer to wrap this resource and use conventional binding. */
+  if (ssbo_wrapper_ == nullptr) {
+    ssbo_wrapper_ = new MTLStorageBuf(this, size_in_bytes_);
+  }
+
+  ssbo_wrapper_->bind(slot);
 }
 
 void MTLUniformBuf::unbind()

@@ -46,6 +46,7 @@ namespace blender::gpu {
 class MTLContext;
 class MTLCommandBufferManager;
 class MTLUniformBuf;
+class MTLStorageBuf;
 
 /* Structs containing information on current binding state for textures and samplers. */
 struct MTLTextureBinding {
@@ -436,6 +437,11 @@ struct MTLUniformBufferBinding {
   MTLUniformBuf *ubo;
 };
 
+struct MTLStorageBufferBinding {
+  bool bound;
+  MTLStorageBuf *ssbo;
+};
+
 struct MTLContextGlobalShaderPipelineState {
   bool initialised;
 
@@ -456,6 +462,9 @@ struct MTLContextGlobalShaderPipelineState {
 
   /* Global Uniform Buffers. */
   MTLUniformBufferBinding ubo_bindings[MTL_MAX_UNIFORM_BUFFER_BINDINGS];
+
+  /* Storage buffer. */
+  MTLStorageBufferBinding ssbo_bindings[MTL_MAX_STORAGE_BUFFER_BINDINGS];
 
   /* Context Texture bindings. */
   MTLTextureBinding texture_bindings[MTL_MAX_TEXTURE_SLOTS];

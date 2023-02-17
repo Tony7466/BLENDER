@@ -12,6 +12,7 @@
 #include "mtl_shader.hh"
 #include "mtl_shader_interface.hh"
 #include "mtl_state.hh"
+#include "mtl_storage_buffer.hh"
 #include "mtl_uniform_buffer.hh"
 #include "mtl_vertex_buffer.hh"
 
@@ -20,6 +21,7 @@
 #include "GPU_capabilities.h"
 #include "GPU_matrix.h"
 #include "GPU_shader.h"
+#include "GPU_storage_buffer.h"
 #include "GPU_texture.h"
 #include "GPU_uniform_buffer.h"
 #include "GPU_vertex_buffer.h"
@@ -272,6 +274,16 @@ MTLContext::~MTLContext()
     }
   }
 
+  /* Unbind SSBOs. */
+  for (int i = 0; i < MTL_MAX_STORAGE_BUFFER_BINDINGS; i++) {
+    if (this->pipeline_state.ssbo_bindings[i].bound &&
+        this->pipeline_state.ssbo_bindings[i].ssbo != nullptr) {
+      GPUStorageBuf *ssbo = wrap(
+          static_cast<StorageBuf *>(this->pipeline_state.ssbo_bindings[i].ssbo));
+      GPU_storagebuf_unbind(ssbo);
+    }
+  }
+
   /* Release Dummy resources */
   this->free_dummy_resources();
 
@@ -357,6 +369,15 @@ void MTLContext::activate()
         this->pipeline_state.ubo_bindings[i].ubo != nullptr) {
       this->pipeline_state.ubo_bindings[i].bound = false;
       this->pipeline_state.ubo_bindings[i].ubo = nullptr;
+    }
+  }
+
+  /* Reset SSBO bind state. */
+  for (int i = 0; i < MTL_MAX_STORAGE_BUFFER_BINDINGS; i++) {
+    if (this->pipeline_state.ssbo_bindings[i].bound &&
+        this->pipeline_state.ssbo_bindings[i].ssbo != nullptr) {
+      this->pipeline_state.ssbo_bindings[i].bound = false;
+      this->pipeline_state.ssbo_bindings[i].ssbo = nullptr;
     }
   }
 
@@ -657,6 +678,10 @@ void MTLContext::pipeline_state_init()
     for (int u = 0; u < MTL_MAX_UNIFORM_BUFFER_BINDINGS; u++) {
       this->pipeline_state.ubo_bindings[u].bound = false;
       this->pipeline_state.ubo_bindings[u].ubo = nullptr;
+    }
+    for (int u = 0; u < MTL_MAX_STORAGE_BUFFER_BINDINGS; u++) {
+      this->pipeline_state.ssbo_bindings[u].bound = false;
+      this->pipeline_state.ssbo_bindings[u].ssbo = nullptr;
     }
   }
 
@@ -1026,7 +1051,7 @@ bool MTLContext::ensure_uniform_buffer_bindings(
                                 rps.last_bound_shader_state.pso_index_ !=
                                     pipeline_state_instance->shader_pso_index);
 
-  const MTLShaderUniformBlock &push_constant_block = shader_interface->get_push_constant_block();
+  const MTLShaderBufferBlock &push_constant_block = shader_interface->get_push_constant_block();
   if (push_constant_block.size > 0) {
 
     /* Fetch uniform buffer base binding index from pipeline_state_instance - There buffer index
@@ -1061,7 +1086,7 @@ bool MTLContext::ensure_uniform_buffer_bindings(
    * match. This is used to support the gpu_uniformbuffer module, where the uniform data is global,
    * and not owned by the shader instance. */
   for (const uint ubo_index : IndexRange(shader_interface->get_total_uniform_blocks())) {
-    const MTLShaderUniformBlock &ubo = shader_interface->get_uniform_block(ubo_index);
+    const MTLShaderBufferBlock &ubo = shader_interface->get_uniform_block(ubo_index);
 
     if (ubo.buffer_index >= 0) {
 
@@ -1177,6 +1202,58 @@ bool MTLContext::ensure_uniform_buffer_bindings(
       }
     }
   }
+
+  /* Bind Global GPUStorageBuf's */
+  /* Iterate through expected SSBOs in the shader interface, and check if the globally bound ones
+   * match. This is used to support the gpu_uniformbuffer module, where the uniform data is global,
+   * and not owned by the shader instance. */
+  for (const uint ssbo_index : IndexRange(shader_interface->get_total_storage_blocks())) {
+    const MTLShaderBufferBlock &ssbo = shader_interface->get_storage_block(ssbo_index);
+
+    if (ssbo.buffer_index >= 0) {
+      id<MTLBuffer> ssbo_buffer = nil;
+      int ssbo_size = 0;
+      UNUSED_VARS_NDEBUG(ssbo_size);
+
+      if (this->pipeline_state.ssbo_bindings[ssbo_index].bound) {
+
+        /* Fetch UBO global-binding properties from slot. */
+        ssbo_buffer = this->pipeline_state.ssbo_bindings[ssbo_index].ssbo->get_metal_buffer();
+        ssbo_size = this->pipeline_state.ssbo_bindings[ssbo_index].ssbo->get_size();
+
+        /* For SSBOs, we always need to ensure the buffer exists, as it may be written to. */
+        BLI_assert(ssbo_buffer != nil);
+        BLI_assert(ssbo_size > 0);
+      }
+      else {
+        MTL_LOG_INFO(
+            "[Warning][SSBO] Shader '%s' expected SSBO '%s' to be bound at buffer index: %d -- "
+            "but "
+            "nothing was bound.\n",
+            shader_interface->get_name(),
+            shader_interface->get_name_at_offset(ssbo.name_offset),
+            ssbo.buffer_index);
+      }
+
+      if (ssbo_buffer != nil) {
+        uint32_t buffer_bind_index = pipeline_state_instance->base_storage_buffer_index +
+                                     ssbo.buffer_index;
+
+        /* Bind Vertex UBO. */
+        if (bool(ssbo.stage_mask & ShaderStage::VERTEX)) {
+          BLI_assert(buffer_bind_index >= 0 && buffer_bind_index < MTL_MAX_BUFFER_BINDINGS);
+          rps.bind_vertex_buffer(ssbo_buffer, 0, buffer_bind_index);
+        }
+
+        /* Bind Fragment UBOs. */
+        if (bool(ssbo.stage_mask & ShaderStage::FRAGMENT)) {
+          BLI_assert(buffer_bind_index >= 0 && buffer_bind_index < MTL_MAX_BUFFER_BINDINGS);
+          rps.bind_fragment_buffer(ssbo_buffer, 0, buffer_bind_index);
+        }
+      }
+    }
+  }
+
   return true;
 }
 
@@ -1191,7 +1268,7 @@ bool MTLContext::ensure_uniform_buffer_bindings(
   MTLComputeState &cs = this->main_command_buffer.get_compute_state();
 
   /* Fetch push constant block and bind. */
-  const MTLShaderUniformBlock &push_constant_block = shader_interface->get_push_constant_block();
+  const MTLShaderBufferBlock &push_constant_block = shader_interface->get_push_constant_block();
   if (push_constant_block.size > 0) {
 
     /* Fetch uniform buffer base binding index from pipeline_state_instance - There buffer index
@@ -1218,7 +1295,7 @@ bool MTLContext::ensure_uniform_buffer_bindings(
    * match. This is used to support the gpu_uniformbuffer module, where the uniform data is global,
    * and not owned by the shader instance. */
   for (const uint ubo_index : IndexRange(shader_interface->get_total_uniform_blocks())) {
-    const MTLShaderUniformBlock &ubo = shader_interface->get_uniform_block(ubo_index);
+    const MTLShaderBufferBlock &ubo = shader_interface->get_uniform_block(ubo_index);
 
     if (ubo.buffer_index >= 0) {
 
@@ -1270,7 +1347,7 @@ bool MTLContext::ensure_uniform_buffer_bindings(
         uint32_t buffer_bind_index = pipeline_state_instance.base_uniform_buffer_index +
                                      buffer_index;
 
-        /* Bind Vertex UBO. */
+        /* Bind Compute UBO. */
         if (bool(ubo.stage_mask & ShaderStage::COMPUTE)) {
           BLI_assert(buffer_bind_index >= 0 && buffer_bind_index < MTL_MAX_BUFFER_BINDINGS);
           cs.bind_compute_buffer(ubo_buffer, ubo_offset, buffer_bind_index);
@@ -1286,6 +1363,52 @@ bool MTLContext::ensure_uniform_buffer_bindings(
       }
     }
   }
+
+  /* Bind Global GPUStorageBuffers */
+  /* Iterate through expected SSBOs in the shader interface, and check if the globally bound ones
+   * match. */
+  for (const uint ssbo_index : IndexRange(shader_interface->get_total_storage_blocks())) {
+    const MTLShaderBufferBlock &ssbo = shader_interface->get_storage_block(ssbo_index);
+
+    if (ssbo.buffer_index >= 0) {
+      id<MTLBuffer> ssbo_buffer = nil;
+      int ssbo_size = 0;
+
+      if (this->pipeline_state.ssbo_bindings[ssbo_index].bound) {
+
+        /* Fetch UBO global-binding properties from slot. */
+        ssbo_buffer = this->pipeline_state.ssbo_bindings[ssbo_index].ssbo->get_metal_buffer();
+        ssbo_size = this->pipeline_state.ssbo_bindings[ssbo_index].ssbo->get_size();
+        UNUSED_VARS_NDEBUG(ssbo_size);
+
+        /* For SSBOs, we always need to ensure the buffer exists, as it may be written to. */
+        BLI_assert(ssbo_buffer != nil);
+        BLI_assert(ssbo_size > 0);
+      }
+      else {
+        MTL_LOG_ERROR(
+            "[Error][SSBO] Shader '%s' expected SSBO '%s' to be bound at SSBO index: %d (buffer "
+            "%d) -- but "
+            "nothing was bound.\n",
+            shader_interface->get_name(),
+            shader_interface->get_name_at_offset(ssbo.name_offset),
+            ssbo.buffer_index,
+            pipeline_state_instance.base_storage_buffer_index + ssbo.buffer_index);
+      }
+
+      if (ssbo_buffer != nil) {
+        uint32_t buffer_bind_index = pipeline_state_instance.base_storage_buffer_index +
+                                     ssbo.buffer_index;
+
+        /* Bind Vertex UBO. */
+        if (bool(ssbo.stage_mask & ShaderStage::COMPUTE)) {
+          BLI_assert(buffer_bind_index >= 0 && buffer_bind_index < MTL_MAX_BUFFER_BINDINGS);
+          cs.bind_compute_buffer(ssbo_buffer, 0, buffer_bind_index);
+        }
+      }
+    }
+  }
+
   return true;
 }
 
