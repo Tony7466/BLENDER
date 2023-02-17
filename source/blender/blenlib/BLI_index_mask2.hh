@@ -468,7 +468,7 @@ template<typename Fn> inline void IndexMask::foreach_raw_segment(Fn &&fn) const
     const int64_t chunk_id = data_.chunk_ids[chunk_i];
     const bool is_last_chunk = (chunk_i == data_.chunks_num - 1);
     const int16_t segments_num = is_last_chunk ? final_segments_num : chunk.segments_num;
-    const int64_t offset = chunk_capacity + chunk_id;
+    const int64_t offset = chunk_capacity * chunk_id;
     int16_t prev_cumulative_segment_size = chunk.cumulative_segment_sizes[segment_i];
     while (segment_i < segments_num) {
       const int16_t next_segment_i = segment_i + 1;
