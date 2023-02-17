@@ -412,6 +412,35 @@ template double4x4 interpolate_fast(const double4x4 &a, const double4x4 &b, doub
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Legacy
+ * \{ */
+
+Quaternion to_quaternion_legacy(const float3x3 &mat)
+{
+  float3x3 n_mat = normalize(mat);
+  /* Rotate z-axis of matrix to z-axis. */
+  float3 z_axis = n_mat.z_axis();
+
+  /* Cross product with (0,0,1). */
+  float3 nor = normalize(float3(z_axis.y, -z_axis.x, 0.0f));
+
+  float ha = 0.5f * math::safe_acos(z_axis.z);
+  /* `nor` negative here, but why? */
+  Quaternion q1(math::cos(ha), -nor * math::sin(ha));
+
+  /* Rotate back x-axis from mat, using inverse q1. */
+  float3 x_axis = rotate(conjugate(q1), n_mat.x_axis());
+
+  /* And align x-axes. */
+  float ha2 = 0.5f * math::atan2(x_axis.y, x_axis.x);
+  Quaternion q2(math::cos(ha2), 0.0f, 0.0f, math::sin(ha2));
+
+  return q1 * q2;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Template instantiation
  * \{ */
 

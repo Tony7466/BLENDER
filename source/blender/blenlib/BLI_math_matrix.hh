@@ -287,6 +287,14 @@ template<typename T, bool Normalized = false>
 [[nodiscard]] inline detail::Quaternion<T> to_quaternion(const MatBase<T, 4, 4> &mat);
 
 /**
+ * Extract quaternion rotation from transform matrix.
+ * Legacy version of #to_quaternion which has slightly different behavior.
+ * Keep for particle-system & boids since replacing this will make subtle changes
+ * that impact hair in existing files. See: D15772.
+ */
+[[nodiscard]] Quaternion to_quaternion_legacy(const float3x3 &mat);
+
+/**
  * Extract the absolute 3d scale from a transform matrix.
  * \tparam AllowNegativeScale: if true, will compute determinant to know if matrix is negative.
  * This is a costly operation so it is disabled by default.

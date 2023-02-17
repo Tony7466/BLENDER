@@ -336,6 +336,17 @@ TEST(math_matrix, MatrixMethods)
   EXPECT_V3_NEAR(float3(eul), float3(expect_eul), 0.0002f);
 }
 
+TEST(math_matrix, MatrixToQuaternionLegacy)
+{
+  float3x3 mat = {{0.808309, -0.578051, -0.111775},
+                  {0.47251, 0.750174, -0.462572},
+                  {0.351241, 0.321087, 0.879507}};
+
+  EXPECT_V4_NEAR(float4(to_quaternion_legacy(mat)),
+                 float4(0.927091f, -0.211322f, 0.124857f, -0.283295f),
+                 1e-5f);
+}
+
 TEST(math_matrix, MatrixTranspose)
 {
   float4x4 m({1, 2, 3, 4}, {5, 6, 7, 8}, {9, 1, 2, 3}, {2, 5, 6, 7});
