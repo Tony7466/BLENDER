@@ -409,11 +409,9 @@ static void action_clamp_scroll(ARegion *region)
     v2d->cur.ymin = -cur_height_y;
     v2d->cur.ymax = 0;
   }
-  else {
-    if (v2d->cur.ymin < v2d->tot.ymin) {
-      v2d->cur.ymin = v2d->tot.ymin;
-      v2d->cur.ymax = v2d->cur.ymin + cur_height_y;
-    }
+  else if (v2d->cur.ymin < v2d->tot.ymin) {
+    v2d->cur.ymin = v2d->tot.ymin;
+    v2d->cur.ymax = v2d->cur.ymin + cur_height_y;
   }
 }
 
