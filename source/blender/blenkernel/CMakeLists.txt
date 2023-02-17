@@ -791,7 +791,9 @@ endif()
 
 if(WITH_BVH_EMBREE)
   add_definitions(-DWITH_BVH_EMBREE)
-
+  list(APPEND INC_SYS
+    ${EMBREE_INCLUDE_DIRS}
+  )
   list(APPEND LIB
     ${EMBREE_LIBRARIES}
   )
