@@ -909,6 +909,58 @@ void BKE_gpencil_modifier_blend_write(BlendWriter *writer, ListBase *modbase)
       BLO_write_struct_array(
           writer, TimeGpencilModifierSegment, gpmd->segments_len, gpmd->segments);
     }
+    else if (md->type == eGpencilModifierType_SurDeform) {
+      SurDeformGpencilModifierData *smd = (SurDeformGpencilModifierData *)md;
+      const bool is_undo = BLO_write_is_undo(writer);
+
+      // if (BKE_gpencil_modifier_is_nonlocal_in_liboverride(md->, md) &&
+      //    !is_undo) {
+      /* Modifier coming from linked data cannot be bound from an override, so we can remove
+       * all binding data, can save a significant amount of memory. */
+      //    smd->strokes_num = 0;
+      //    smd->strokes = NULL;
+      // }
+
+    //  BLO_write_struct_at_address(writer, SurDeformGpencilModifierData, md, &smd);
+     
+      if (smd->strokes != NULL) {
+        uint starting_idx = smd->strokes->stroke_idx;
+        for (int idx = 0; idx < starting_idx; idx++) {
+          (smd->strokes)--;
+        } /* Rewind stroke array */
+        for (int k = 0; k < smd->strokes_num; k++) {
+
+          if (smd->strokes[k].verts != NULL) {
+            SDefGPVert *bind_verts = smd->strokes[k].verts;
+            BLO_write_struct_array(
+                writer, SDefGPVert, smd->strokes[k].stroke_verts_num, bind_verts);
+
+            for (int i = 0; i < smd->strokes[k].stroke_verts_num; i++) {
+              BLO_write_struct_array(
+                  writer, SDefGPBind, bind_verts[i].binds_num, bind_verts[i].binds);
+
+              if (bind_verts[i].binds) {
+                for (int j = 0; j < bind_verts[i].binds_num; j++) {
+                  BLO_write_uint32_array(
+                      writer, bind_verts[i].binds[j].verts_num, bind_verts[i].binds[j].vert_inds);
+
+                  if (ELEM(bind_verts[i].binds[j].mode,
+                           MOD_SDEF_MODE_CENTROID,
+                           MOD_SDEF_MODE_LOOPTRI)) {
+                    BLO_write_float3_array(writer, 1, bind_verts[i].binds[j].vert_weights);
+                  }
+                  else {
+                    BLO_write_float_array(writer,
+                                          bind_verts[i].binds[j].verts_num,
+                                          bind_verts[i].binds[j].vert_weights);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }
 
@@ -1000,6 +1052,44 @@ void BKE_gpencil_modifier_blend_read_data(BlendDataReader *reader, ListBase *lb)
       BLO_read_data_address(reader, &gpmd->segments);
       for (int i = 0; i < gpmd->segments_len; i++) {
         gpmd->segments[i].gpmd = gpmd;
+      }
+    }
+    else if (md->type == eGpencilModifierType_SurDeform) {
+      SurDeformGpencilModifierData *smd = (SurDeformGpencilModifierData *)md;
+      
+
+      BLO_read_data_address(reader, &smd->strokes);
+
+      if (smd->strokes != NULL) {
+
+        for (int k = 0; k < smd->strokes_num; k++) {
+
+          if (smd->strokes[k].verts != NULL) {
+            SDefGPVert *bind_verts = smd->strokes[k].verts;
+            BLO_read_data_address(reader, &bind_verts);
+
+            for (int i = 0; i < smd->strokes[k].stroke_verts_num; i++) {
+
+              if (bind_verts[i].binds) {
+                for (int j = 0; j < bind_verts[i].binds_num; j++) {
+                  BLO_read_uint32_array(
+                      reader, bind_verts[i].binds[j].verts_num, bind_verts[i].binds[j].vert_inds);
+
+                  if (ELEM(bind_verts[i].binds[j].mode,
+                           MOD_SDEF_MODE_CENTROID,
+                           MOD_SDEF_MODE_LOOPTRI)) {
+                    BLO_read_float3_array(reader, 1, bind_verts[i].binds[j].vert_weights);
+                  }
+                  else {
+                    BLO_read_float_array(reader,
+                                          bind_verts[i].binds[j].verts_num,
+                                          bind_verts[i].binds[j].vert_weights);
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     }
     if (md->type == eGpencilModifierType_Shrinkwrap) {

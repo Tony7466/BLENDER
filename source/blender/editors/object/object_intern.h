@@ -225,6 +225,7 @@ void OBJECT_OT_gpencil_modifier_copy_to_selected(struct wmOperatorType *ot);
 void GPENCIL_OT_segment_add(struct wmOperatorType *ot);
 void GPENCIL_OT_segment_remove(struct wmOperatorType *ot);
 void GPENCIL_OT_segment_move(struct wmOperatorType *ot);
+void GPENCIL_OT_gpencilsurdeform_bind(struct wmOperatorType *ot);
 
 void GPENCIL_OT_time_segment_add(struct wmOperatorType *ot);
 void GPENCIL_OT_time_segment_remove(struct wmOperatorType *ot);

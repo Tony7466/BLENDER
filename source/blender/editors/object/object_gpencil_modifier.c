@@ -1414,3 +1414,115 @@ void GPENCIL_OT_segment_move(wmOperatorType *ot)
 
   ot->prop = RNA_def_enum(ot->srna, "type", segment_move, 0, "Type", "");
 }
+
+
+/* ------------------------------------------------------------------- */
+/** \name Surface Deform Bind Operator
+ * \{ */
+
+static void gp_object_force_modifier_update_for_bind(Depsgraph *depsgraph, Object *ob)
+{
+  Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
+  Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
+  BKE_object_eval_reset(ob_eval);
+
+  BKE_gpencil_modifiers_calc(depsgraph, scene_eval, ob_eval);
+
+}
+
+static bool gpencil_surfacedeform_bind_poll(bContext *C)
+{
+  return gpencil_edit_modifier_poll_generic(C, &RNA_SurDeformGpencilModifier, 0, true);
+}
+
+static int gpencil_surfacedeform_bind_exec(bContext *C, wmOperator *op)
+{
+  Object *ob = ED_object_active_context(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+  SurDeformGpencilModifierData *smd = (SurDeformGpencilModifierData *)gpencil_edit_modifier_property_get(
+      op, ob, eGpencilModifierType_SurDeform);
+  GpencilModifierData *md = &(smd->modifier);
+  GpencilModifierData *md_eval;
+
+  Object *object_eval = DEG_get_evaluated_object(depsgraph, ob);
+
+
+  if (smd == NULL) {
+    return OPERATOR_CANCELLED;
+  }
+
+  if (smd->flags & GP_MOD_SDEF_BIND) {
+    smd->flags &= ~GP_MOD_SDEF_BIND;
+
+  }
+  else if (smd->target) {
+    smd->flags |= GP_MOD_SDEF_BIND;
+  }
+
+  /*SurDeformGpencilModifierData *smd_eval = (SurDeformGpencilModifierData *)BKE_modifier_get_evaluated(
+      depsgraph, ob, &smd->modifier);
+  smd_eval->flags = smd->flags;*/
+
+/* Update flags to evaluated modifier */
+  SurDeformGpencilModifierData *smd_eval;
+  
+
+  if (object_eval == ob) {
+    smd_eval = smd;
+    md_eval = md;
+
+
+  }
+  else {
+ 
+  md_eval = BKE_gpencil_modifiers_findby_name(object_eval, md->name);
+  smd_eval = (SurDeformGpencilModifierData *)md_eval;}
+
+
+  smd_eval->flags = smd->flags;
+
+
+  /* Force modifier to run, it will call binding routine
+   * (this has to happen outside of depsgraph evaluation). */
+  const int mode = md_eval->mode;
+  md_eval->mode |= eGpencilModifierMode_Realtime;
+  gp_object_force_modifier_update_for_bind(depsgraph, ob);
+  md_eval->mode = mode;
+  //smd_eval->binding_progression = 0;
+
+
+  DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
+
+
+  /*printf("smd flag 3 %i\n", smd->flags);
+  printf("smd_eval flag 3 %i\n", smd_eval->flags);*/
+  return OPERATOR_FINISHED;
+}
+
+static int gpencil_surfacedeform_bind_invoke(bContext *C, wmOperator *op, const wmEvent *UNUSED(event))
+{
+  if (gpencil_edit_modifier_invoke_properties(C, op, NULL, NULL)) {
+    return gpencil_surfacedeform_bind_exec(C, op);
+  }
+  return OPERATOR_CANCELLED;
+}
+
+void GPENCIL_OT_gpencilsurdeform_bind(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Surface Deform Bind";
+  ot->description = "Bind grease pencil points to mesh target in surface deform modifier";
+  ot->idname = "GPENCIL_OT_gpencilsurdeform_bind";
+
+  /* api callbacks */
+  ot->poll = gpencil_surfacedeform_bind_poll;
+  ot->invoke = gpencil_surfacedeform_bind_invoke;
+  ot->exec = gpencil_surfacedeform_bind_exec;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
+  gpencil_edit_modifier_properties(ot);
+}
+
+/** \} */

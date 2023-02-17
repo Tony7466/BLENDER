@@ -48,6 +48,7 @@ typedef enum GpencilModifierType {
   eGpencilModifierType_Shrinkwrap = 24,
   eGpencilModifierType_Envelope = 25,
   eGpencilModifierType_Outline = 26,
+  eGpencilModifierType_SurDeform = 27,
   /* Keep last. */
   NUM_GREASEPENCIL_MODIFIER_TYPES,
 } GpencilModifierType;
@@ -1311,6 +1312,84 @@ typedef enum eEnvelopeGpencil_Mode {
   GP_ENVELOPE_SEGMENTS = 1,
   GP_ENVELOPE_FILLS = 2,
 } eEnvelopeGpencil_Mode;
+
+
+/* SURFACE DEFORM MODIFIER START */
+
+typedef struct SDefGPBind {
+  unsigned int *vert_inds;
+  unsigned int verts_num;
+  int mode;
+  float *vert_weights;
+  float normal_dist;
+  float influence;
+} SDefGPBind;
+
+typedef struct SDefGPVert {/* 83771 - For each vertex there ca be more than one bind.*/
+  SDefGPBind *binds;
+  unsigned int binds_num;
+  unsigned int vertex_idx;
+} SDefGPVert;
+
+typedef struct SDefGPStroke {
+  SDefGPVert *verts;
+  unsigned int stroke_idx;
+  /* Number of of vertices on the deformed stroke upon the bind process. former bind_verts_num */
+  unsigned int stroke_verts_num;
+} SDefGPStroke;
+
+typedef struct SurDeformGpencilModifierData {
+  GpencilModifierData modifier;
+
+  struct Depsgraph *depsgraph;
+  /** Bind target object. */
+  struct Object *target;
+  /** Vertex bind data. */
+  SDefGPStroke *strokes;
+
+  /* increases for every stroke processed during bind. 
+  uint current_stroke_index; */
+
+  void *_pad1;
+  float falloff;
+
+  /* Number of strokes in the `strokes` array of this modifier. */
+  unsigned int strokes_num;
+  /* Number of vertices and polygons on the target mesh upon bind process. */
+  unsigned int target_verts_num, target_polys_num;
+  int flags;
+
+  float mat[4][4];
+  float strength;
+  char defgrp_name[64];
+  //int _pad2;
+} SurDeformGpencilModifierData;
+
+
+/** Surface Deform modifier flags. */
+enum {
+  /* This indicates "do bind on next modifier evaluation" as well as "is bound". */
+  GP_MOD_SDEF_BIND = (1 << 0),
+  GP_MOD_SDEF_INVERT_VGROUP = (1 << 1),
+  /* Only store bind data for nonzero vgroup weights at the time of bind. */
+  GP_MOD_SDEF_SPARSE_BIND = (1 << 2),
+   /** Binding progression: at the start and end of the binding process,
+ * the value is 0. Only changes during the binding process.
+ * The value is 1 if the process has started, but not finished.
+ * The value is set to 0 again by the GPENCIL_OT_gpencilsurdeform_bind operator after it has bound.""
+ */
+  GP_MOD_SDEF_BINDING_PROGRESSION = (1 << 3),
+
+};
+
+/** Surface Deform vertex bind modes. */
+enum {
+  GP_MOD_SDEF_MODE_LOOPTRI = 0,
+  GP_MOD_SDEF_MODE_NGON = 1,
+  GP_MOD_SDEF_MODE_CENTROID = 2,
+};
+
+
 
 #ifdef __cplusplus
 }
