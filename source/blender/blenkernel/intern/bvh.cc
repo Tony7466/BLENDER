@@ -25,6 +25,7 @@ BVHTree::BVHTree()
 
 BVHTree::~BVHTree()
 {
+  free();
 }
 
 static void rtc_error_func(void *, enum RTCError, const char *str)
@@ -45,6 +46,8 @@ void BVHTree::free()
 {
   rtcReleaseScene(rtc_scene);
   rtc_scene = nullptr;
+  rtcReleaseDevice(rtc_device);
+  rtc_device = nullptr;
 }
 
 namespace {
@@ -169,7 +172,7 @@ void add_mesh(BvhBuildContext ctx, int id, const Mesh &mesh)
 
 void BVHTree::build_single_mesh(const Mesh &mesh)
 {
-  RTCDevice rtc_device = rtcNewDevice("verbose=0");
+  rtc_device = rtcNewDevice("verbose=0");
   BLI_assert(rtc_device);
 
   rtcSetDeviceErrorFunction(rtc_device, rtc_error_func, nullptr);

@@ -5,6 +5,7 @@
 #include "BLI_math_vector_types.hh"
 
 struct Mesh;
+struct RTCDeviceTy;
 struct RTCSceneTy;
 
 namespace blender {
@@ -59,6 +60,7 @@ struct BVHRayHit {
 
 class BVHTree {
  private:
+  RTCDeviceTy *rtc_device = nullptr;
   RTCSceneTy *rtc_scene = nullptr;
 
  public:
