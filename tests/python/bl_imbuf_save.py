@@ -7,10 +7,9 @@ import unittest
 import bpy
 
 sys.path.append(str(pathlib.Path(__file__).parent.absolute()))
-from modules.imbuf_test import (
-    print_message,
-    AbstractImBufTest
-)
+from modules.colored_print import print_message
+from modules.imbuf_test import AbstractImBufTest
+
 
 args = None
 

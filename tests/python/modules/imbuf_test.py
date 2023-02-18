@@ -4,47 +4,10 @@ import os
 import pathlib
 import shutil
 import subprocess
-import sys
 import unittest
 
-args = None
+from .colored_print import (print_message, use_message_colors)
 
-class COLORS_ANSI:
-    RED = '\033[00;31m'
-    GREEN = '\033[00;32m'
-    ENDC = '\033[0m'
-
-
-class COLORS_DUMMY:
-    RED = ''
-    GREEN = ''
-    ENDC = ''
-
-
-COLORS = COLORS_DUMMY
-
-
-def print_message(message, type=None, status=''):
-    if type == 'SUCCESS':
-        print(COLORS.GREEN, end="")
-    elif type == 'FAILURE':
-        print(COLORS.RED, end="")
-    status_text = ...
-    if status == 'RUN':
-        status_text = " RUN      "
-    elif status == 'OK':
-        status_text = "       OK "
-    elif status == 'PASSED':
-        status_text = "  PASSED  "
-    elif status == 'FAILED':
-        status_text = "  FAILED  "
-    else:
-        status_text = status
-    if status_text:
-        print("[{}]" . format(status_text), end="")
-    print(COLORS.ENDC, end="")
-    print(" {}" . format(message))
-    sys.stdout.flush()
 
 class AbstractImBufTest(unittest.TestCase):
     @classmethod
@@ -65,8 +28,7 @@ class AbstractImBufTest(unittest.TestCase):
         cls.verbose = os.environ.get("BLENDER_VERBOSE") is not None
         cls.update = os.getenv('BLENDER_TEST_UPDATE') is not None
         if os.environ.get("BLENDER_TEST_COLOR") is not None:
-            global COLORS, COLORS_ANSI
-            COLORS = COLORS_ANSI
+            use_message_colors()
 
     def setUp(self):
         self.errors = 0
