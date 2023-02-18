@@ -787,6 +787,12 @@ template<typename T = float> struct Quaternion {
     return {1, 0, 0, 0};
   }
 
+  /** This is just for convenience. Does not represent a rotation as it is degenerate. */
+  static Quaternion zero()
+  {
+    return {0, 0, 0, 0};
+  }
+
   /**
    * Create a quaternion from an exponential map representation.
    * An exponential map is basically the rotation axis multiplied by the rotation angle.
@@ -880,9 +886,126 @@ template<typename T = float> struct Quaternion {
     return {-a.w, -a.x, -a.y, -a.z};
   }
 
+  friend bool operator==(const Quaternion &a, const Quaternion &b)
+  {
+    return (a.w == b.w) && (a.x == b.x) && (a.y == b.y) && (a.z == b.z);
+  }
+
   friend std::ostream &operator<<(std::ostream &stream, const Quaternion &rot)
   {
     return stream << "Quaternion" << static_cast<VecBase<T, 4>>(rot);
+  }
+};
+
+template<typename T = float> struct DualQuaternion {
+  /** Non-dual part. */
+  Quaternion<T> quat;
+  /** Dual part. */
+  Quaternion<T> trans;
+
+  /**
+   * Scaling is saved separately to handle cases of non orthonormal axes, non uniform scale and
+   * flipped axes.
+   */
+  /* TODO(fclem): Can this be replaced by a Mat3x3 ?
+   * It currently holds some translation in some cases. Is this wanted?
+   * This would save some flops all along the way. */
+  MatBase<T, 4, 4> scale;
+  /** The weight of #DualQuaternion.scale. Set to 0 if uniformly scaled to skip `scale` sum. */
+  T scale_weight;
+  /**
+   * The weight of this dual-quaternion. Used for and summation & normalizing.
+   * A weight of 0 means the quaternion is not valid.
+   */
+  T quat_weight;
+
+  DualQuaternion() = delete;
+
+  /**
+   * Dual quaternion without scaling.
+   */
+  DualQuaternion(const Quaternion<T> &non_dual, const Quaternion<T> &dual)
+      : quat(non_dual), trans(dual), scale_weight(0), quat_weight(1)
+  {
+    /* TODO assert. */
+    // BLI_ASSERT_UNIT_QUATERNION(non_dual);
+  }
+
+  /**
+   * Dual quaternion with scaling.
+   */
+  DualQuaternion(const Quaternion<T> &non_dual,
+                 const Quaternion<T> &dual,
+                 const MatBase<T, 4, 4> &scale_mat)
+      : quat(non_dual), trans(dual), scale(scale_mat), scale_weight(1), quat_weight(1)
+  {
+    /* TODO assert. */
+    // BLI_ASSERT_UNIT_QUATERNION(non_dual);
+  }
+
+  /** Static functions. */
+
+  static DualQuaternion identity()
+  {
+    return DualQuaternion(Quaternion<T>::identity(), Quaternion<T>::zero());
+  }
+
+  /** Methods. */
+
+  bool is_normalized() const
+  {
+    return quat_weight == T(1);
+  }
+
+  /** Operators. */
+
+  /** Apply a scalar weight to a dual quaternion. */
+  DualQuaternion &operator*=(const T &t);
+
+  /** Add two weighted dual-quaternions rotations. */
+  DualQuaternion &operator+=(const DualQuaternion &b);
+
+  /** Apply a scalar weight to a dual quaternion. */
+  friend DualQuaternion operator*(const DualQuaternion &a, const T &t)
+  {
+    DualQuaternion dq = a;
+    dq *= t;
+    return dq;
+  }
+
+  /** Apply a scalar weight to a dual quaternion. */
+  friend DualQuaternion operator*(const T &t, const DualQuaternion &a)
+  {
+    DualQuaternion dq = a;
+    dq *= t;
+    return dq;
+  }
+
+  /** Add two weighted dual-quaternions rotations. */
+  friend DualQuaternion operator+(const DualQuaternion &a, const DualQuaternion &b)
+  {
+    DualQuaternion dq = a;
+    dq += b;
+    return dq;
+  }
+
+  friend bool operator==(const DualQuaternion &a, const DualQuaternion &b)
+  {
+    return (a.quat == b.quat) && (a.trans == b.trans) && (a.quat_weight == b.quat_weight) &&
+           (a.scale_weight == b.scale_weight) && (a.scale == b.scale);
+  }
+
+  friend std::ostream &operator<<(std::ostream &stream, const DualQuaternion &rot)
+  {
+    stream << "DualQuaternion(\n";
+    stream << "  .quat  = " << rot.quat << "\n";
+    stream << "  .trans = " << rot.trans << "\n";
+    if (rot.scale_weight != T(0)) {
+      stream << "  .scale = " << rot.scale;
+      stream << "  .scale_weight = " << rot.scale_weight << "\n)\n";
+    }
+    stream << "  .quat_weight = " << rot.quat_weight << "\n";
+    return stream;
   }
 };
 
@@ -1018,6 +1141,7 @@ using AngleRadian = math::detail::AngleRadian<float>;
 using EulerXYZ = math::detail::EulerXYZ<float>;
 using Euler3 = math::detail::Euler3<float>;
 using Quaternion = math::detail::Quaternion<float>;
+using DualQuaternion = math::detail::DualQuaternion<float>;
 using AxisAngle = math::detail::AxisAngle<float>;
 using AxisAngleNormalized = math::detail::AxisAngleNormalized<float>;
 

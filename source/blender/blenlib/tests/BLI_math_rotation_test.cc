@@ -647,13 +647,174 @@ TEST(math_rotation, AxisConversion)
   }
 }
 
-TEST(math_rotation, Rotate)
+TEST(math_rotation, Transform)
 {
   Quaternion q(0.927091f, 0.211322f, -0.124857f, 0.283295f);
 
   float3 p(0.576f, -0.6546f, 46.354f);
   p = rotate(q, p);
   EXPECT_V3_NEAR(p, float3(-4.33722f, -21.661f, 40.7608f), 1e-4f);
+}
+
+TEST(math_rotation, DualQuaternionNormalize)
+{
+  DualQuaternion sum = DualQuaternion(Quaternion(0, 0, 1, 0), Quaternion(0, 1, 0, 1)) * 2.0f;
+  sum += DualQuaternion(Quaternion(1, 0, 0, 0), Quaternion(1, 1, 1, 1), float4x4::identity()) *
+         4.0f;
+  sum += DualQuaternion(Quaternion(1, 0, 0, 0), Quaternion(1, 0, 0, 0), float4x4::identity()) *
+         3.0f;
+
+  sum = normalize(sum);
+
+  /* The difference with the C API. */
+  float len = length(float4(0.777778, 0, 0.222222, 0));
+
+  EXPECT_V4_NEAR(float4(sum.quat), (float4(0.777778, 0, 0.222222, 0) / len), 1e-4f);
+  EXPECT_V4_NEAR(float4(sum.trans), (float4(0.777778, 0.666667, 0.444444, 0.666667) / len), 1e-4f);
+  EXPECT_EQ(sum.scale, float4x4::identity());
+  EXPECT_EQ(sum.scale_weight, 1.0f);
+  EXPECT_EQ(sum.quat_weight, 1.0f);
+}
+
+TEST(math_rotation, DualQuaternionFromMatrix)
+{
+  {
+    float4x4 mat{transpose(float4x4({-2.14123, -0.478481, -1.38296, -2.26029},
+                                    {-1.28264, 2.87361, 0.0230992, 12.8871},
+                                    {3.27343, 0.812993, -0.895575, -13.5216},
+                                    {0, 0, 0, 1}))};
+    float4x4 basemat{transpose(float4x4({0.0988318, 0.91328, 0.39516, 7.73971},
+                                        {0.16104, -0.406549, 0.899324, 22.8871},
+                                        {0.981987, -0.0252451, -0.187255, -3.52155},
+                                        {0, 0, 0, 1}))};
+    float4x4 expected_scale_mat{transpose(float4x4({4.08974, 0.306437, -0.0853435, -31.2277},
+                                                   {-0.445021, 2.97151, -0.250095, -42.5586},
+                                                   {0.146173, 0.473002, 1.62645, -9.75092},
+                                                   {0, 0, 0, 1}))};
+
+    DualQuaternion dq = to_dual_quaternion(mat, basemat);
+    EXPECT_V4_NEAR(float4(dq.quat), float4(0.502368, 0.0543716, -0.854483, -0.120535), 1e-4f);
+    EXPECT_V4_NEAR(float4(dq.trans), float4(22.674, -0.878616, 11.2762, 14.167), 1e-4f);
+    EXPECT_M4_NEAR(dq.scale, expected_scale_mat, 1e-4f);
+    EXPECT_EQ(dq.scale_weight, 1.0f);
+    EXPECT_EQ(dq.quat_weight, 1.0f);
+  }
+  {
+    float4x4 mat{transpose(float4x4({-0.0806635, -1.60529, 2.44763, 26.823},
+                                    {-1.04583, -0.150756, -0.385074, -22.2225},
+                                    {-0.123402, 2.32698, 1.66357, 5.397},
+                                    {0, 0, 0, 1}))};
+    float4x4 basemat{transpose(float4x4({0.0603774, 0.904674, 0.421806, 36.823},
+                                        {-0.271734, 0.421514, -0.865151, -12.2225},
+                                        {-0.960477, -0.0623834, 0.27128, 15.397},
+                                        {0, 0, 0, 1}))};
+    float4x4 expected_scale_mat{transpose(float4x4({0.248852, 2.66363, -0.726295, 71.3985},
+                                                   {0.971507, -0.382422, 1.09917, -69.5943},
+                                                   {-0.331274, 0.8794, 2.67787, -2.88715},
+                                                   {0, 0, 0, 1}))};
+
+    DualQuaternion dq = to_dual_quaternion(mat, basemat);
+    EXPECT_V4_NEAR(float4(dq.quat), float4(0.149898, -0.319339, -0.0441496, -0.934668), 1e-4f);
+    EXPECT_V4_NEAR(float4(dq.trans), float4(-2.20019, 39.6236, 49.052, -16.2077), 1e-4f);
+    EXPECT_M4_NEAR(dq.scale, expected_scale_mat, 1e-4f);
+    EXPECT_EQ(dq.scale_weight, 1.0f);
+    EXPECT_EQ(dq.quat_weight, 1.0f);
+  }
+
+#if 0 /* Generate random matrices. */
+  for (int i = 0; i < 1000; i++) {
+    auto frand = []() { return (std::rand() - RAND_MAX / 2) / float(RAND_MAX); };
+    float4x4 mat = from_loc_rot_scale<float4x4>(
+        float3{frand(), frand(), frand()} * 100.0f,
+        EulerXYZ{frand() * 10.0f, frand() * 10.0f, frand() * 10.0f},
+        float3{frand(), frand(), frand()} * 10.0f);
+    float4x4 basemat = from_loc_rot<float4x4>(
+        mat.location() + 10, EulerXYZ{frand() * 10.0f, frand() * 10.0f, frand() * 10.0f});
+
+    DualQuaternion expect;
+    mat4_to_dquat((DualQuat *)&expect.quat.w, basemat.ptr(), mat.ptr());
+
+    DualQuaternion dq = to_dual_quaternion(mat, basemat);
+    EXPECT_V4_NEAR(float4(dq.quat), float4(expect.quat), 1e-4f);
+    EXPECT_V4_NEAR(float4(dq.trans), float4(expect.trans), 1e-4f);
+    EXPECT_M4_NEAR(dq.scale, expect.scale, 2e-4f);
+    EXPECT_EQ(dq.scale_weight, expect.scale_weight);
+  }
+#endif
+}
+
+TEST(math_rotation, DualQuaternionTransform)
+{
+  {
+    float4x4 scale_mat{transpose(float4x4({4.08974, 0.306437, -0.0853435, -31.2277},
+                                          {-0.445021, 2.97151, -0.250095, -42.5586},
+                                          {0.146173, 0.473002, 1.62645, -9.75092},
+                                          {0, 0, 0, 1}))};
+
+    DualQuaternion dq({0.502368, 0.0543716, -0.854483, -0.120535},
+                      {22.674, -0.878616, 11.2762, 14.167},
+                      scale_mat);
+
+    float3 p0{51.0f, 1647.0f, 12.0f};
+    float3 p1{58.0f, 0.0054f, 10.0f};
+    float3 p2{0.0f, 7854.0f, 111.0f};
+
+    float3x3 crazy_space_mat;
+    float3 p0_expect = p0;
+    float3 p1_expect = p1;
+    float3 p2_expect = p2;
+    mul_v3m3_dq(p0_expect, crazy_space_mat.ptr(), (DualQuat *)&dq);
+    mul_v3m3_dq(p1_expect, crazy_space_mat.ptr(), (DualQuat *)&dq);
+    mul_v3m3_dq(p2_expect, crazy_space_mat.ptr(), (DualQuat *)&dq);
+
+    float3 p0_result = transform_point(dq, p0);
+    float3 p1_result = transform_point(dq, p1);
+    float3 p2_result = transform_point(dq, p2, &crazy_space_mat);
+
+    float4x4 expected_crazy_space_mat{transpose(float3x3({-2.14123, -0.478481, -1.38296},
+                                                         {-1.28264, 2.87361, 0.0230978},
+                                                         {3.27343, 0.812991, -0.895574}))};
+
+    EXPECT_V3_NEAR(p0_result, p0_expect, 1e-2f);
+    EXPECT_V3_NEAR(p1_result, p1_expect, 1e-2f);
+    EXPECT_V3_NEAR(p2_result, p2_expect, 1e-2f);
+    EXPECT_M3_NEAR(crazy_space_mat, expected_crazy_space_mat, 1e-4f);
+  }
+  {
+    float4x4 scale_mat{transpose(float4x4({0.248852, 2.66363, -0.726295, 71.3985},
+                                          {0.971507, -0.382422, 1.09917, -69.5943},
+                                          {-0.331274, 0.8794, 2.67787, -2.88715},
+                                          {0, 0, 0, 1}))};
+
+    DualQuaternion dq({0.149898, -0.319339, -0.0441496, -0.934668},
+                      {-2.20019, 39.6236, 49.052, -16.207},
+                      scale_mat);
+
+    float3 p0{51.0f, 1647.0f, 12.0f};
+    float3 p1{58.0f, 0.0054f, 10.0f};
+    float3 p2{0.0f, 7854.0f, 111.0f};
+
+    float3x3 crazy_space_mat;
+    float3 p0_expect = p0;
+    float3 p1_expect = p1;
+    float3 p2_expect = p2;
+    mul_v3m3_dq(p0_expect, crazy_space_mat.ptr(), (DualQuat *)&dq);
+    mul_v3m3_dq(p1_expect, crazy_space_mat.ptr(), (DualQuat *)&dq);
+    mul_v3m3_dq(p2_expect, crazy_space_mat.ptr(), (DualQuat *)&dq);
+
+    float3 p0_result = transform_point(dq, p0);
+    float3 p1_result = transform_point(dq, p1);
+    float3 p2_result = transform_point(dq, p2, &crazy_space_mat);
+
+    float4x4 expected_crazy_space_mat{transpose(float3x3({-0.0806647, -1.60529, 2.44763},
+                                                         {-1.04583, -0.150754, -0.385079},
+                                                         {-0.123401, 2.32698, 1.66357}))};
+
+    EXPECT_V3_NEAR(p0_result, float3(-2591.83, -328.472, 3851.6), 1e-2f);
+    EXPECT_V3_NEAR(p1_result, float3(46.6121, -86.7318, 14.8882), 1e-2f);
+    EXPECT_V3_NEAR(p2_result, float3(-12309.5, -1248.99, 18466.1), 6e-2f);
+    EXPECT_M3_NEAR(crazy_space_mat, expected_crazy_space_mat, 1e-4f);
+  }
 }
 
 }  // namespace blender::math::tests

@@ -205,6 +205,14 @@ TEST(math_matrix, MatrixInit)
   m = from_rotation<float4x4>(axis_angle);
   EXPECT_M3_NEAR(m, expect, 1e-5);
 
+  expect = transpose(float4x4({0.823964, -1.66748, -0.735261, 3.28334},
+                              {-0.117453, -0.853835, 1.80476, 5.44925},
+                              {-1.81859, -0.700351, -0.44969, -0.330972},
+                              {0, 0, 0, 1}));
+  DualQuaternion dual_quat(quat, Quaternion(0.5f, 0.5f, 0.5f, 1.5f), float4x4::diagonal(2.0f));
+  m = from_rotation<float4x4>(dual_quat);
+  EXPECT_M3_NEAR(m, expect, 1e-5);
+
   m = from_scale<float4x4>(float4(1, 2, 3, 4));
   expect = float4x4({1, 0, 0, 0}, {0, 2, 0, 0}, {0, 0, 3, 0}, {0, 0, 0, 4});
   EXPECT_TRUE(is_equal(m, expect, 0.00001f));

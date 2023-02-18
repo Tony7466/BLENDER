@@ -230,6 +230,15 @@ template<typename MatT, typename VectorT>
                                          const VectorT up);
 
 /**
+ * This return a version \a mat with orthonormal basis axes.
+ * This leaves the given \a axis untouched.
+ *
+ * In other words this removes the shear of the matrix. However this doesn't properly account for
+ * volume preservation, and so, the axes keep their respective length.
+ */
+template<typename MatT> [[nodiscard]] MatT orthogonalize(const MatT &mat, const eAxis axis);
+
+/**
  * Construct a transformation that is pivoted around the given origin point. So for instance,
  * from_origin_transform<MatT>(from_rotation(M_PI_2), float2(0.0f, 2.0f))
  * will construct a transformation representing a 90 degree rotation around the point (0, 2).
@@ -519,6 +528,9 @@ template<typename T, int NumCol, int NumRow>
 
 template<typename T, int NumCol, int NumRow>
 [[nodiscard]] MatBase<T, NumCol, NumRow> from_rotation(const Quaternion<T> &rotation);
+
+template<typename T, int NumCol, int NumRow>
+[[nodiscard]] MatBase<T, NumCol, NumRow> from_rotation(const DualQuaternion<T> &rotation);
 
 template<typename T, int NumCol, int NumRow>
 [[nodiscard]] MatBase<T, NumCol, NumRow> from_rotation(const AxisAngle<T> &rotation);
@@ -965,6 +977,36 @@ MatBase<T, NumCol, NumRow> from_rotation(const Quaternion<T> &rotation)
   return mat;
 }
 
+/* Not technically speaking a simple rotation, but a whole transform. */
+template<typename T, int NumCol, int NumRow>
+[[nodiscard]] MatBase<T, NumCol, NumRow> from_rotation(const DualQuaternion<T> &rotation)
+{
+  using MatT = MatBase<T, NumCol, NumRow>;
+  BLI_assert(rotation.is_normalized());
+  /**
+   * From:
+   * "Skinning with Dual Quaternions"
+   * Ladislav Kavan, Steven Collins, Jiri Zara, Carol O’Sullivan
+   * Trinity College Dublin, Czech Technical University in Prague
+   */
+  /* Follow the paper notation. */
+  const Quaternion<T> &c0 = rotation.quat;
+  const Quaternion<T> &ce = rotation.trans;
+  const T &w0 = c0.w, &x0 = c0.x, &y0 = c0.y, &z0 = c0.z;
+  const T &we = ce.w, &xe = ce.x, &ye = ce.y, &ze = ce.z;
+  /* Rotation. */
+  MatT mat = from_rotation<T, NumCol, NumRow>(c0);
+  /* Translation. */
+  mat[3][0] = T(2) * (-we * x0 + xe * w0 - ye * z0 + ze * y0);
+  mat[3][1] = T(2) * (-we * y0 + xe * z0 + ye * w0 - ze * x0);
+  mat[3][2] = T(2) * (-we * z0 - xe * y0 + ye * x0 + ze * w0);
+  /* Scale. */
+  if (rotation.scale_weight != T(0)) {
+    mat.template view<4, 4>() = mat * rotation.scale;
+  }
+  return mat;
+}
+
 template<typename T, int NumCol, int NumRow>
 MatBase<T, NumCol, NumRow> from_rotation(const AxisAngle<T> &rotation)
 {
@@ -1293,6 +1335,100 @@ template<typename MatT, typename VectorT>
   MatT matrix = MatT(from_orthonormal_axes<Mat3x3>(forward, up));
   matrix.location() = location;
   return matrix;
+}
+
+template<typename MatT> [[nodiscard]] MatT orthogonalize(const MatT &mat, const eAxis axis)
+{
+  using T = typename MatT::base_type;
+  using Vec3T = VecBase<T, 3>;
+  Vec3T scale;
+  MatBase<T, 3, 3> R;
+  R.x = normalize_and_get_length(mat.x_axis(), scale.x);
+  R.y = normalize_and_get_length(mat.y_axis(), scale.y);
+  R.z = normalize_and_get_length(mat.z_axis(), scale.z);
+  /* NOTE(fclem) This is a direct port from `orthogonalize_m4()`.
+   * To select the secondary axis, it checks if the candidate axis is not colinear.
+   * The issue is that the candidate axes are not normalized so this dot product
+   * check is kind of pointless.
+   * Because of this, the target axis could still be colinear but pass the check. */
+#if 1 /* Reproduce old behavior. Do not normalize other axes. */
+  switch (axis) {
+    case X:
+      R.y = mat.y_axis();
+      R.z = mat.z_axis();
+      break;
+    case Y:
+      R.x = mat.x_axis();
+      R.z = mat.z_axis();
+      break;
+    case Z:
+      R.x = mat.x_axis();
+      R.y = mat.y_axis();
+      break;
+  }
+#endif
+
+  /**
+   * The secondary axis is chosen as follow (X->Y, Y->X, Z->X).
+   * If this axis is coplanar try the third axis.
+   * If also coplanar, make up an axis by shuffling the primary axis coordinates (xyz > yzx).
+   */
+  switch (axis) {
+    case X:
+      if (dot(R.x, R.y) < T(1)) {
+        R.z = normalize(cross(R.x, R.y));
+        R.y = cross(R.z, R.x);
+      }
+      else if (dot(R.x, R.z) < T(1)) {
+        R.y = normalize(cross(R.z, R.x));
+        R.z = cross(R.x, R.y);
+      }
+      else {
+        R.z = normalize(cross(R.x, Vec3T(R.x.y, R.x.z, R.x.x)));
+        R.y = cross(R.z, R.x);
+      }
+      break;
+    case Y:
+      if (dot(R.y, R.x) < T(1)) {
+        R.z = normalize(cross(R.x, R.y));
+        R.x = cross(R.y, R.z);
+      }
+      /* FIXME(fclem): THIS IS WRONG. Should be dot(R.y, R.z). Following C code for now... */
+      else if (dot(R.x, R.z) < T(1)) {
+        R.x = normalize(cross(R.y, R.z));
+        R.z = cross(R.x, R.y);
+      }
+      else {
+        R.x = normalize(cross(R.y, Vec3T(R.y.y, R.y.z, R.y.x)));
+        R.z = cross(R.x, R.y);
+      }
+      break;
+    case Z:
+      if (dot(R.z, R.x) < T(1)) {
+        R.y = normalize(cross(R.z, R.x));
+        R.x = cross(R.y, R.z);
+      }
+      else if (dot(R.z, R.y) < T(1)) {
+        R.x = normalize(cross(R.y, R.z));
+        R.y = cross(R.z, R.x);
+      }
+      else {
+        R.x = normalize(cross(Vec3T(R.z.y, R.z.z, R.z.x), R.z));
+        R.y = cross(R.z, R.x);
+      }
+      break;
+    default:
+      BLI_assert_unreachable();
+      break;
+  }
+  /* Reapply the lost scale. */
+  R.x *= scale.x;
+  R.y *= scale.y;
+  R.z *= scale.z;
+
+  MatT result(R);
+  result.location() = mat.location();
+  return result;
 }
 
 template<typename MatT, typename VectorT>

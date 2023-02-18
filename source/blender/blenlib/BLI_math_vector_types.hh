@@ -176,12 +176,12 @@ template<typename T, int Size> struct VecBase : public vec_struct_base<T, Size> 
 
   /** Swizzling. */
 
-  template<BLI_ENABLE_IF_VEC(Size, >= 3)> VecBase<T, 2> xy() const
+  template<BLI_ENABLE_IF_VEC(Size, >= 2)> VecBase<T, 2> xy() const
   {
     return *reinterpret_cast<const VecBase<T, 2> *>(this);
   }
 
-  template<BLI_ENABLE_IF_VEC(Size, >= 4)> VecBase<T, 3> xyz() const
+  template<BLI_ENABLE_IF_VEC(Size, >= 3)> VecBase<T, 3> xyz() const
   {
     return *reinterpret_cast<const VecBase<T, 3> *>(this);
   }

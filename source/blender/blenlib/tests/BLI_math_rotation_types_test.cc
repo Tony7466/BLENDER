@@ -122,6 +122,53 @@ TEST(math_rotation_types, Euler3Order)
   EXPECT_EQ(float3(EulerXYZ(Euler3({0, 1, 2}, eOrder::ZYX))), float3(2, 1, 0));
 }
 
+TEST(math_rotation_types, DualQuaternionUniformScaleConstructor)
+{
+  DualQuaternion q = {Quaternion::identity(), Quaternion::zero()};
+  EXPECT_EQ(q.quat, Quaternion::identity());
+  EXPECT_EQ(q.trans, Quaternion::zero());
+  EXPECT_EQ(q.scale_weight, 0.0f);
+  EXPECT_EQ(q.quat_weight, 1.0f);
+}
+
+TEST(math_rotation_types, DualQuaternionNonUniformScaleConstructor)
+{
+  DualQuaternion q = {Quaternion::identity(), Quaternion::zero(), float4x4::identity()};
+  EXPECT_EQ(q.quat, Quaternion::identity());
+  EXPECT_EQ(q.trans, Quaternion::zero());
+  EXPECT_EQ(q.scale, float4x4::identity());
+  EXPECT_EQ(q.scale_weight, 1.0f);
+  EXPECT_EQ(q.quat_weight, 1.0f);
+}
+
+TEST(math_rotation_types, DualQuaternionOperators)
+{
+  DualQuaternion sum = DualQuaternion(Quaternion(0, 0, 1, 0), Quaternion(0, 1, 0, 1)) * 2.0f;
+
+  EXPECT_EQ(sum.quat, Quaternion(0, 0, 2, 0));
+  EXPECT_EQ(sum.trans, Quaternion(0, 2, 0, 2));
+  EXPECT_EQ(sum.scale_weight, 0.0f);
+  EXPECT_EQ(sum.quat_weight, 2.0f);
+
+  sum += DualQuaternion(Quaternion(1, 0, 0, 0), Quaternion(1, 1, 1, 1), float4x4::identity()) *
+         4.0f;
+
+  EXPECT_EQ(sum.quat, Quaternion(4, 0, 2, 0));
+  EXPECT_EQ(sum.trans, Quaternion(4, 6, 4, 6));
+  EXPECT_EQ(sum.scale, float4x4::identity() * 4.0f);
+  EXPECT_EQ(sum.scale_weight, 4.0f);
+  EXPECT_EQ(sum.quat_weight, 6.0f);
+
+  sum += 3.0f *
+         DualQuaternion(Quaternion(1, 0, 0, 0), Quaternion(1, 0, 0, 0), float4x4::identity());
+
+  EXPECT_EQ(sum.quat, Quaternion(7, 0, 2, 0));
+  EXPECT_EQ(sum.trans, Quaternion(7, 6, 4, 6));
+  EXPECT_EQ(sum.scale, float4x4::identity() * 7.0f);
+  EXPECT_EQ(sum.scale_weight, 7.0f);
+  EXPECT_EQ(sum.quat_weight, 9.0f);
+}
+
 TEST(math_rotation_types, QuaternionDefaultConstructor)
 {
   Quaternion q{};

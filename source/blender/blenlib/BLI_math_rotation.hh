@@ -521,6 +521,169 @@ template<typename T>
       axis_conversion(eAxisSigned::Z_POS, eAxisSigned::Y_POS, forward_axis, eAxisSigned(up_axis)));
 }
 
+/**
+ * Apply all accumulated weights to the dual-quaternions.
+ * Also make sure the rotation quaternions is normalized.
+ * \note The C version of this function does not normalize the quaternion. This makes other
+ * operations like transform and matrix conversion more complex.
+ * \note Returns identity #DualQuaternion if degenerate.
+ */
+template<typename T>
+[[nodiscard]] detail::DualQuaternion<T> normalize(const detail::DualQuaternion<T> &dual_quat)
+{
+  const T norm_weighted = math::sqrt(dot(dual_quat.quat, dual_quat.quat));
+  /* NOTE(fclem): Should this be an epsilon? */
+  if (norm_weighted == T(0)) {
+    /* The dual-quaternion was zero initialized or is degenerate. Return identity. */
+    return detail::DualQuaternion<T>::identity();
+  }
+
+  const T inv_norm_weighted = T(1) / norm_weighted;
+
+  detail::DualQuaternion<T> dq = dual_quat;
+  dq.quat = dq.quat * inv_norm_weighted;
+  dq.trans = dq.trans * inv_norm_weighted;
+
+  /* Handle scale if needed. */
+  if (dq.scale_weight > T(0)) {
+    /* Compensate for any dual quaternions added without scale.
+     * This is an optimization so that we can skip the scale part when not needed. */
+    float missing_uniform_scale = dq.quat_weight - dq.scale_weight;
+
+    if (missing_uniform_scale > T(0)) {
+      dq.scale[0][0] += missing_uniform_scale;
+      dq.scale[1][1] += missing_uniform_scale;
+      dq.scale[2][2] += missing_uniform_scale;
+      dq.scale[3][3] += missing_uniform_scale;
+    }
+    /* Per component scalar product. */
+    dq.scale *= T(1) / dq.quat_weight;
+    dq.scale_weight = T(1);
+  }
+  dq.quat_weight = T(1);
+  return dq;
+}
+
+/**
+ * Transform \a point using the dual-quaternion \a dq .
+ * Applying the #DuatQuat transform can only happen if the #DualQuaternion is normalized first.
+ * Optionally outputs crazy space matrix.
+ */
+template<typename T>
+[[nodiscard]] VecBase<T, 3> transform_point(const detail::DualQuaternion<T> &dq,
+                                            VecBase<T, 3> &point,
+                                            MatBase<T, 3, 3> *r_crazy_space_mat = nullptr)
+{
+  BLI_assert(dq.is_normalized());
+  BLI_ASSERT_UNIT_QUATERNION(dq.quat);
+  /**
+   * From:
+   * "Skinning with Dual Quaternions"
+   * Ladislav Kavan, Steven Collins, Jiri Zara, Carol O’Sullivan
+   * Trinity College Dublin, Czech Technical University in Prague
+   */
+  /* Follow the paper notation. */
+  const T &w0 = dq.quat.w, &x0 = dq.quat.x, &y0 = dq.quat.y, &z0 = dq.quat.z;
+  const T &we = dq.trans.w, &xe = dq.trans.x, &ye = dq.trans.y, &ze = dq.trans.z;
+  /* Part 3.4 - The Final Algorithm. */
+  VecBase<T, 3> t;
+  t[0] = T(2) * (-we * x0 + xe * w0 - ye * z0 + ze * y0);
+  t[1] = T(2) * (-we * y0 + xe * z0 + ye * w0 - ze * x0);
+  t[2] = T(2) * (-we * z0 - xe * y0 + ye * x0 + ze * w0);
+  /* Isolate rotation matrix to easily output crazy-space mat. */
+  MatBase<T, 3, 3> M;
+  M[0][0] = (w0 * w0) + (x0 * x0) - (y0 * y0) - (z0 * z0); /* Same as `1 - 2y0^2 - 2z0^2`. */
+  M[0][1] = T(2) * ((x0 * y0) + (w0 * z0));
+  M[0][2] = T(2) * ((x0 * z0) - (w0 * y0));
+
+  M[1][0] = T(2) * ((x0 * y0) - (w0 * z0));
+  M[1][1] = (w0 * w0) + (y0 * y0) - (x0 * x0) - (z0 * z0); /* Same as `1 - 2x0^2 - 2z0^2`. */
+  M[1][2] = T(2) * ((y0 * z0) + (w0 * x0));
+
+  M[2][1] = T(2) * ((y0 * z0) - (w0 * x0));
+  M[2][2] = (w0 * w0) + (z0 * z0) - (x0 * x0) - (y0 * y0); /* Same as `1 - 2x0^2 - 2y0^2`. */
+  M[2][0] = T(2) * ((x0 * z0) + (w0 * y0));
+
+  /* Apply scaling. */
+  if (dq.scale_weight != T(0)) {
+    /* NOTE(fclem): This is weird that this is also adding translation even if it is marked as
+     * scale matrix. Follows the old C implementation for now... */
+    point = transform_point(dq.scale, point);
+  }
+  /* Apply rotation and translation. */
+  point = transform_point(M, point) + t;
+  /* Compute crazy-space correction matrix. */
+  if (r_crazy_space_mat != nullptr) {
+    if (dq.scale_weight) {
+      *r_crazy_space_mat = M * dq.scale.template view<3, 3>();
+    }
+    else {
+      *r_crazy_space_mat = M;
+    }
+  }
+  return point;
+}
+
+/**
+ * Convert transformation \a mat with parent transform \a basemat into a dual-quaternion
+ * representation.
+ *
+ * This allows volume preserving deformation for skinning.
+ */
+template<typename T>
+[[nodiscard]] detail::DualQuaternion<T> to_dual_quaternion(const MatBase<T, 4, 4> &mat,
+                                                           const MatBase<T, 4, 4> &basemat)
+{
+  using Mat4T = MatBase<T, 4, 4>;
+  using Vec3T = VecBase<T, 3>;
+
+  /* Split scaling and rotation.
+   * There is probably a faster way to do this. It is currently done like this to correctly get
+   * negative scaling. */
+  Mat4T baseRS = mat * basemat;
+
+  Mat4T R, scale;
+  const bool has_scale = !is_orthonormal(mat) || is_negative(mat) ||
+                         length_squared(to_scale(baseRS) - T(1)) > square_f(1e-4f);
+  if (has_scale) {
+    /* Extract Rotation and Scale. */
+    Mat4T baseinv = invert(basemat);
+
+    /* Extra orthogonalize, to avoid flipping with stretched bones. */
+    detail::Quaternion<T> basequat = to_quaternion(orthogonalize(baseRS, eAxis::Y));
+
+    Mat4T baseR = from_rotation<Mat4T>(basequat);
+    baseR.location() = baseRS.location();
+
+    R = baseR * baseinv;
+
+    Mat4T S = invert(baseR) * baseRS;
+    /* Set scaling part. */
+    scale = basemat * S * baseinv;
+  }
+  else {
+    /* Input matrix does not contain scaling. */
+    R = mat;
+  }
+
+  /* Non-dual part. */
+  detail::Quaternion<T> q = to_quaternion(R);
+
+  /* Dual part. */
+  const Vec3T &t = R.location().xyz();
+  detail::Quaternion<T> d;
+  d.w = T(-0.5) * (+t.x * q.x + t.y * q.y + t.z * q.z);
+  d.x = T(+0.5) * (+t.x * q.w + t.y * q.z - t.z * q.y);
+  d.y = T(+0.5) * (-t.x * q.z + t.y * q.w + t.z * q.x);
+  d.z = T(+0.5) * (+t.x * q.y - t.y * q.x + t.z * q.w);
+
+  if (has_scale) {
+    return detail::DualQuaternion<T>(q, d, scale);
+  }
+
+  return detail::DualQuaternion<T>(q, d);
+}
+
 }  // namespace blender::math
 
 /* -------------------------------------------------------------------- */
@@ -528,6 +691,76 @@ template<typename T>
  * \{ */
 
 namespace blender::math::detail {
+
+template<typename T> DualQuaternion<T> &DualQuaternion<T>::operator+=(const DualQuaternion<T> &b)
+{
+  DualQuaternion<T> &a = *this;
+  /* Sum rotation and translation. */
+
+  /* Make sure we interpolate quaternions in the right direction. */
+  if (dot(a.quat, b.quat) < 0) {
+    a.quat.w -= b.quat.w;
+    a.quat.x -= b.quat.x;
+    a.quat.y -= b.quat.y;
+    a.quat.z -= b.quat.z;
+
+    a.trans.w -= b.trans.w;
+    a.trans.x -= b.trans.x;
+    a.trans.y -= b.trans.y;
+    a.trans.z -= b.trans.z;
+  }
+  else {
+    a.quat.w += b.quat.w;
+    a.quat.x += b.quat.x;
+    a.quat.y += b.quat.y;
+    a.quat.z += b.quat.z;
+
+    a.trans.w += b.trans.w;
+    a.trans.x += b.trans.x;
+    a.trans.y += b.trans.y;
+    a.trans.z += b.trans.z;
+  }
+
+  a.quat_weight += b.quat_weight;
+
+  if (b.scale_weight > T(0)) {
+    if (a.scale_weight > T(0)) {
+      /* Weighted sum of scale matrices (sum of components). */
+      a.scale += b.scale;
+      a.scale_weight += b.scale_weight;
+    }
+    else {
+      /* No existing scale. Replace. */
+      a.scale = b.scale;
+      a.scale_weight = b.scale_weight;
+    }
+  }
+  return *this;
+}
+
+template<typename T> DualQuaternion<T> &DualQuaternion<T>::operator*=(const T &t)
+{
+  BLI_assert(t >= 0);
+  DualQuaternion<T> &q = *this;
+
+  q.quat.w *= t;
+  q.quat.x *= t;
+  q.quat.y *= t;
+  q.quat.z *= t;
+
+  q.trans.w *= t;
+  q.trans.x *= t;
+  q.trans.y *= t;
+  q.trans.z *= t;
+
+  q.quat_weight *= t;
+
+  if (q.scale_weight > T(0)) {
+    q.scale *= t;
+    q.scale_weight *= t;
+  }
+  return *this;
+}
 
 template<typename T> Quaternion<T> Quaternion<T>::expmap(const VecBase<T, 3> &expmap)
 {
