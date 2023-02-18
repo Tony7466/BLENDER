@@ -58,6 +58,9 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
   bool select_face = pd->edit_mesh.select_face = (tsettings->selectmode & SCE_SELECT_FACE) != 0;
   bool select_edge = pd->edit_mesh.select_edge = (tsettings->selectmode & SCE_SELECT_EDGE) != 0;
 
+  RegionView3D *rv3d = draw_ctx->rv3d;
+  float offset_scale = (rv3d->is_persp) ? (v3d->clip_start) : (1.0f / v3d->clip_end);
+
   bool do_occlude_wire = (v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_OCCLUDE_WIRE) != 0;
   bool show_face_dots = (v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_FACE_DOT) != 0 ||
                         pd->edit_mesh.do_zbufclip;
@@ -175,6 +178,7 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
     DRW_shgroup_uniform_texture_ref(grp, "depthTex", depth_tex);
     DRW_shgroup_uniform_bool_copy(grp, "selectEdges", pd->edit_mesh.do_edges || select_edge);
     DRW_shgroup_uniform_bool_copy(grp, "do_smooth_wire", do_smooth_wire);
+    DRW_shgroup_uniform_float_copy(grp, "offsetScale", offset_scale);
 
     /* Verts */
     state |= DRW_STATE_WRITE_DEPTH;
@@ -188,6 +192,7 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
       DRW_shgroup_uniform_float_copy(grp, "alpha", backwire_opacity);
       DRW_shgroup_uniform_texture_ref(grp, "depthTex", depth_tex);
       DRW_shgroup_uniform_ivec4_copy(grp, "dataMask", vert_mask);
+      DRW_shgroup_uniform_float_copy(grp, "offsetScale", offset_scale);
 
       sh = OVERLAY_shader_edit_mesh_skin_root();
       grp = pd->edit_mesh_skin_roots_grp[i] = DRW_shgroup_create(sh, psl->edit_mesh_verts_ps[i]);
@@ -201,6 +206,7 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
       DRW_shgroup_uniform_float_copy(grp, "alpha", backwire_opacity);
       DRW_shgroup_uniform_texture_ref(grp, "depthTex", depth_tex);
       DRW_shgroup_uniform_ivec4_copy(grp, "dataMask", vert_mask);
+      DRW_shgroup_uniform_float_copy(grp, "offsetScale", offset_scale);
       DRW_shgroup_state_enable(grp, DRW_STATE_WRITE_DEPTH);
     }
     else {

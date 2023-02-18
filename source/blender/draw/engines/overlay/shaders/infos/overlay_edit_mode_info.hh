@@ -19,6 +19,7 @@ GPU_SHADER_CREATE_INFO(overlay_edit_mesh_common)
     .push_constant(Type::BOOL, "selectEdges")
     .push_constant(Type::FLOAT, "alpha")
     .push_constant(Type::IVEC4, "dataMask")
+    .push_constant(Type::FLOAT, "offsetScale")
     .vertex_source("overlay_edit_mesh_vert.glsl")
     .additional_info("draw_modelmat", "draw_globals");
 
@@ -32,6 +33,7 @@ GPU_SHADER_CREATE_INFO(overlay_edit_mesh_common_no_geom)
     .push_constant(Type::BOOL, "selectEdges")
     .push_constant(Type::FLOAT, "alpha")
     .push_constant(Type::IVEC4, "dataMask")
+    .push_constant(Type::FLOAT, "offsetScale")
     .vertex_source("overlay_edit_mesh_vert_no_geom.glsl")
     .additional_info("draw_modelmat", "draw_globals");
 #endif

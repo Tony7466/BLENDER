@@ -108,10 +108,10 @@ void main()
   out_finalColorOuter[1] = EDIT_MESH_edge_color_outer(m_data1.y, m_data1.x, crease1, bweight1);
 
   if (out_finalColorOuter[0].a > 0.0) {
-    out_pos0.z -= 5e-7 * abs(out_pos0.w);
+    out_pos0.z -= 5e-5 * offsetScale / abs(out_pos0.w);
   }
   if (out_finalColorOuter[1].a > 0.0) {
-    out_pos1.z -= 5e-7 * abs(out_pos1.w);
+    out_pos1.z -= 5e-5 * offsetScale / abs(out_pos1.w);
   }
 
   /* Occlusion done in fragment shader. */
