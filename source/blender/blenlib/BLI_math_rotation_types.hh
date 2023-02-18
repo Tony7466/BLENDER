@@ -667,7 +667,10 @@ template<typename T = float> struct Quaternion {
     this->z = z;
   }
 
-  /** \note: W component is supposed to be first. */
+  /**
+   * Creates a quaternion from an vector without reordering the components.
+   * \note Component order must follow the scalar constructor (w, x, y, z).
+   */
   explicit Quaternion(const VecBase<T, 4> &vec) : Quaternion(UNPACK4(vec)){};
 
   /**
@@ -675,6 +678,93 @@ template<typename T = float> struct Quaternion {
    */
   Quaternion(const T &real, const VecBase<T, 3> &imaginary)
       : Quaternion(real, UNPACK3(imaginary)){};
+
+  /**
+   * Creates a quaternion from an axis triple.
+   * This is faster and more precise than converting from another representation.
+   */
+  Quaternion(const VecBase<eAxisSigned, 3> &axes)
+  {
+    /**
+     * There is only 6 * 4 = 24 possible valid orthonormal orientations.
+     * We precompute them and store them inside this switch using a key.
+     * Generated using `generate_axes_to_quaternion_switch_cases()`.
+     */
+    switch (axes.x << 16 | axes.y << 8 | axes.z) {
+      default:
+        *this = identity();
+        break;
+      case eAxisSigned::Z_POS << 16 | eAxisSigned::X_POS << 8 | eAxisSigned::Y_POS:
+        *this = {T(0.5), T(-0.5), T(-0.5), T(-0.5)};
+        break;
+      case eAxisSigned::Y_NEG << 16 | eAxisSigned::X_POS << 8 | eAxisSigned::Z_POS:
+        *this = {T(M_SQRT1_2), T(0), T(0), T(-M_SQRT1_2)};
+        break;
+      case eAxisSigned::Z_NEG << 16 | eAxisSigned::X_POS << 8 | eAxisSigned::Y_NEG:
+        *this = {T(0.5), T(0.5), T(0.5), T(-0.5)};
+        break;
+      case eAxisSigned::Y_POS << 16 | eAxisSigned::X_POS << 8 | eAxisSigned::Z_NEG:
+        *this = {T(0), T(M_SQRT1_2), T(M_SQRT1_2), T(0)};
+        break;
+      case eAxisSigned::Z_NEG << 16 | eAxisSigned::Y_POS << 8 | eAxisSigned::X_POS:
+        *this = {T(M_SQRT1_2), T(0), T(M_SQRT1_2), T(0)};
+        break;
+      case eAxisSigned::Z_POS << 16 | eAxisSigned::Y_POS << 8 | eAxisSigned::X_NEG:
+        *this = {T(M_SQRT1_2), T(0), T(-M_SQRT1_2), T(0)};
+        break;
+      case eAxisSigned::X_NEG << 16 | eAxisSigned::Y_POS << 8 | eAxisSigned::Z_NEG:
+        *this = {T(0), T(0), T(1), T(0)};
+        break;
+      case eAxisSigned::Y_POS << 16 | eAxisSigned::Z_POS << 8 | eAxisSigned::X_POS:
+        *this = {T(0.5), T(0.5), T(0.5), T(0.5)};
+        break;
+      case eAxisSigned::X_NEG << 16 | eAxisSigned::Z_POS << 8 | eAxisSigned::Y_POS:
+        *this = {T(0), T(0), T(M_SQRT1_2), T(M_SQRT1_2)};
+        break;
+      case eAxisSigned::Y_NEG << 16 | eAxisSigned::Z_POS << 8 | eAxisSigned::X_NEG:
+        *this = {T(0.5), T(0.5), T(-0.5), T(-0.5)};
+        break;
+      case eAxisSigned::X_POS << 16 | eAxisSigned::Z_POS << 8 | eAxisSigned::Y_NEG:
+        *this = {T(M_SQRT1_2), T(M_SQRT1_2), T(0), T(0)};
+        break;
+      case eAxisSigned::Z_NEG << 16 | eAxisSigned::X_NEG << 8 | eAxisSigned::Y_POS:
+        *this = {T(0.5), T(-0.5), T(0.5), T(0.5)};
+        break;
+      case eAxisSigned::Y_POS << 16 | eAxisSigned::X_NEG << 8 | eAxisSigned::Z_POS:
+        *this = {T(M_SQRT1_2), T(0), T(0), T(M_SQRT1_2)};
+        break;
+      case eAxisSigned::Z_POS << 16 | eAxisSigned::X_NEG << 8 | eAxisSigned::Y_NEG:
+        *this = {T(0.5), T(0.5), T(-0.5), T(0.5)};
+        break;
+      case eAxisSigned::Y_NEG << 16 | eAxisSigned::X_NEG << 8 | eAxisSigned::Z_NEG:
+        *this = {T(0), T(-M_SQRT1_2), T(M_SQRT1_2), T(0)};
+        break;
+      case eAxisSigned::Z_POS << 16 | eAxisSigned::Y_NEG << 8 | eAxisSigned::X_POS:
+        *this = {T(0), T(M_SQRT1_2), T(0), T(M_SQRT1_2)};
+        break;
+      case eAxisSigned::X_NEG << 16 | eAxisSigned::Y_NEG << 8 | eAxisSigned::Z_POS:
+        *this = {T(0), T(0), T(0), T(1)};
+        break;
+      case eAxisSigned::Z_NEG << 16 | eAxisSigned::Y_NEG << 8 | eAxisSigned::X_NEG:
+        *this = {T(0), T(-M_SQRT1_2), T(0), T(M_SQRT1_2)};
+        break;
+      case eAxisSigned::X_POS << 16 | eAxisSigned::Y_NEG << 8 | eAxisSigned::Z_NEG:
+        *this = {T(0), T(1), T(0), T(0)};
+        break;
+      case eAxisSigned::Y_NEG << 16 | eAxisSigned::Z_NEG << 8 | eAxisSigned::X_POS:
+        *this = {T(0.5), T(-0.5), T(0.5), T(-0.5)};
+        break;
+      case eAxisSigned::X_POS << 16 | eAxisSigned::Z_NEG << 8 | eAxisSigned::Y_POS:
+        *this = {T(M_SQRT1_2), T(-M_SQRT1_2), T(0), T(0)};
+        break;
+      case eAxisSigned::Y_POS << 16 | eAxisSigned::Z_NEG << 8 | eAxisSigned::X_NEG:
+        *this = {T(0.5), T(-0.5), T(-0.5), T(0.5)};
+        break;
+      case eAxisSigned::X_NEG << 16 | eAxisSigned::Z_NEG << 8 | eAxisSigned::Y_NEG:
+        *this = {T(0), T(0), T(-M_SQRT1_2), T(M_SQRT1_2)};
+        break;
+    }
+  }
 
   /** Static functions. */
 
