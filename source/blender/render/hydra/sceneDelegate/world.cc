@@ -8,6 +8,7 @@
 #include <pxr/base/gf/rotation.h>
 #include <pxr/imaging/hd/light.h>
 #include <pxr/imaging/hd/tokens.h>
+#include <pxr/imaging/hd/renderDelegate.h>
 #include <pxr/usd/usdLux/tokens.h>
 
 #include "BKE_context.h"
@@ -19,31 +20,36 @@
 #include "BKE_image.h"
 #include "NOD_shader.h"
 
+#include "glog/logging.h"
+
 #include "world.h"
 #include "../utils.h"
 
 /* TODO : add custom tftoken "transparency"? */
 
 using namespace pxr;
-using namespace std;
 
 namespace blender::render::hydra {
 
-WorldData::WorldData()
-  : b_context(nullptr),
-    world(nullptr)    
+std::unique_ptr<WorldData> WorldData::init(pxr::HdSceneDelegate *scene_delegate,
+                                           World *world, bContext *context)
 {
+  return std::make_unique<WorldData>(scene_delegate, world, context);
 }
 
-WorldData::WorldData(World *world, bContext *b_context)
-  : b_context(b_context),
-    world(world)    
+SdfPath WorldData::prim_id(HdSceneDelegate *scene_delegate)
 {
-  data.clear();
+  return scene_delegate->GetDelegateID().AppendElementString("World");
+}
 
+WorldData::WorldData(pxr::HdSceneDelegate *scene_delegate, World *world, bContext *context)
+  : IdData(scene_delegate, (ID *)world)
+{
   data[UsdLuxTokens->orientToStageUpAxis] = true;
 
   if (world->use_nodes) {
+    /* TODO: Create nodes parsing system */
+
     bNode *output_node = ntreeShaderOutputNode(world->nodetree, SHD_OUTPUT_ALL);
     bNodeSocket input_socket = output_node->input_by_identifier("Surface");
     bNodeLink const *link = input_socket.directly_linked_links()[0];
@@ -69,16 +75,16 @@ WorldData::WorldData(World *world, bContext *b_context)
         Image *image = (Image *)color_input_node->id;
 
         if (image) {
-          Main *bmain = CTX_data_main(b_context);
-          Scene *scene = CTX_data_scene(b_context);
+          Main *bmain = CTX_data_main(context);
+          Scene *scene = CTX_data_scene(context);
 
           ReportList reports;
           ImageSaveOptions opts;
           opts.im_format.imtype = R_IMF_IMTYPE_PNG;
 
-          string cached_image_path = cache_image(bmain, scene, image, &tex->iuser, &opts, &reports);
-          if (!cached_image_path.empty()) {
-            data[HdLightTokens->textureFile] = SdfAssetPath(cached_image_path, cached_image_path);
+          std::string image_path = cache_image(bmain, scene, image, &tex->iuser, &opts, &reports);
+          if (!image_path.empty()) {
+            data[HdLightTokens->textureFile] = SdfAssetPath(image_path, image_path);
           }
         }
       }
@@ -91,35 +97,55 @@ WorldData::WorldData(World *world, bContext *b_context)
   }
 }
 
-GfMatrix4d WorldData::transform(string const &renderer_name)
+GfMatrix4d WorldData::transform()
 {
-  GfMatrix4d transform = GfMatrix4d().SetIdentity();
+  GfMatrix4d transform = GfMatrix4d(GfRotation(GfVec3d(1.0, 0.0, 0.0), -90), GfVec3d());
 
-  if (has_data(UsdLuxTokens->orientToStageUpAxis)) {
-    transform *= GfMatrix4d(GfRotation(GfVec3d(1.0, 0.0, 0.0), -90), GfVec3d());
-  }
   /* TODO : do this check via RenderSettings*/ 
-  if (renderer_name == "RPR") {
+  if (scene_delegate->GetRenderIndex().GetRenderDelegate()->GetRendererDisplayName() == "RPR") {
     transform *= GfMatrix4d(GfRotation(GfVec3d(1.0, 0.0, 0.0), -180), GfVec3d());
     transform *= GfMatrix4d(GfRotation(GfVec3d(0.0, 0.0, 1.0), 90.0), GfVec3d());
   }
-
   return transform;
 }
 
-VtValue &WorldData::get_data(TfToken const &key)
+VtValue WorldData::get_data(TfToken const &key)
 {
-  return data[key];
+  VtValue ret;
+  auto it = data.find(key);
+  if (it != data.end()) {
+    ret = it->second;
+  }
+  return ret;
 }
 
-bool WorldData::has_data(TfToken const &key)
+void WorldData::insert_prim()
 {
-  return data.find(key) != data.end();
+  SdfPath p_id = prim_id(scene_delegate);
+  scene_delegate->GetRenderIndex().InsertSprim(HdPrimTypeTokens->domeLight, scene_delegate, p_id);
+  LOG(INFO) << "Add World: id=" << p_id.GetAsString();
 }
 
-bool WorldData::is_visible()
+void WorldData::remove_prim()
 {
-  return true;
+  SdfPath p_id = prim_id(scene_delegate);
+  scene_delegate->GetRenderIndex().RemoveSprim(HdPrimTypeTokens->domeLight, p_id);
+  LOG(INFO) << "Remove World";
+}
+
+void WorldData::mark_prim_dirty(DirtyBits dirty_bits)
+{
+  HdDirtyBits bits = HdLight::Clean;
+  switch (dirty_bits) {
+    case DirtyBits::AllDirty:
+      bits = HdLight::AllDirty;
+      break;
+    default:
+      break;
+  }
+  SdfPath p_id = prim_id(scene_delegate);
+  scene_delegate->GetRenderIndex().GetChangeTracker().MarkSprimDirty(p_id, bits);
+  LOG(INFO) << "Update World";
 }
 
 }  // namespace blender::render::hydra

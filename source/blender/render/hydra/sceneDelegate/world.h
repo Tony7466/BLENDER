@@ -14,33 +14,26 @@
 #include "DNA_view3d_types.h"
 #include "DNA_world_types.h"
 
+#include "id.h"
+
 namespace blender::render::hydra {
 
-class WorldData {
+class WorldData: public IdData {
 public:
-  WorldData();
-  WorldData(World *world, bContext *b_context);
+  static std::unique_ptr<WorldData> init(pxr::HdSceneDelegate *scene_delegate, World *world, bContext *context);
+  static pxr::SdfPath prim_id(pxr::HdSceneDelegate *scene_delegate);
 
-  pxr::TfToken prim_type();
-  pxr::GfMatrix4d transform(std::string const &renderer_name);
+  WorldData(pxr::HdSceneDelegate *scene_delegate, World *world, bContext *context);
 
-  pxr::VtValue &get_data(pxr::TfToken const &key);
-  template<class T>
-  const T &get_data(pxr::TfToken const &key);
-  bool has_data(pxr::TfToken const &key);
-  bool is_visible();
+  pxr::GfMatrix4d transform();
 
-  bContext *b_context;
-  World *world;
-  
+  pxr::VtValue get_data(pxr::TfToken const &key) override;
+  void insert_prim() override;
+  void remove_prim() override;
+  void mark_prim_dirty(DirtyBits dirty_bits) override;
+
  private:
   std::map<pxr::TfToken, pxr::VtValue> data;
 };
-
-template<class T>
-const T &WorldData::get_data(pxr::TfToken const &key)
-{
-  return get_data(key).Get<T>();
-}
 
 } // namespace blender::render::hydra

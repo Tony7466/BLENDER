@@ -15,6 +15,8 @@
 #include "RNA_blender_cpp.h"
 
 #include "object.h"
+#include "mesh.h"
+#include "light.h"
 #include "world.h"
 
 using namespace pxr;
@@ -40,16 +42,15 @@ public:
 
 private:
   ObjectData *object_data(SdfPath const &id);
+  MeshData *mesh_data(SdfPath const &id);
+  LightData *light_data(SdfPath const &id);
   MaterialData *material_data(SdfPath const &id);
-  SdfPath object_id(Object *object);
-  SdfPath material_id(Material *material);
-  SdfPath world_id();
   bool supported_object(Object *object);
 
   void add_update_object(Object *object, bool geometry, bool transform, bool shading);
-  void set_material(ObjectData &obj_data);
+  void set_material(MeshData &mesh_data);
   void update_material(Material *material);
-  void add_update_world(World *world);
+  void update_world();
   void update_collection();
   void update_visibility();
 
