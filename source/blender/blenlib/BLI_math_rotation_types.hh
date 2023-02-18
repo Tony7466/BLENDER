@@ -237,6 +237,20 @@ static inline VecBase<eAxisSigned, 3> axis_conversion(const eAxisSigned src_forw
   return axes;
 }
 
+static inline VecBase<eAxisSigned, 3> axis_conversion(const eAxisSigned src_forward,
+                                                      const eAxisSigned dst_forward)
+{
+  /* Pick predictable next axis. */
+  eAxisSigned src_up = eAxisSigned((src_forward + 1) % 3);
+  eAxisSigned dst_up = eAxisSigned((dst_forward + 1) % 3);
+
+  if (is_negative(src_forward) != is_negative(dst_forward)) {
+    /* Flip both axis (up and right) so resulting rotation matrix sign remains positive. */
+    dst_up = negate(dst_up);
+  }
+  return axis_conversion(src_forward, src_up, dst_forward, dst_up);
+}
+
 namespace detail {
 
 /**

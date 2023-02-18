@@ -546,10 +546,19 @@ TEST(math_rotation, QuaternionFromTracking)
       eAxisSigned forward_axis = eAxisSigned(i);
       eAxis up_axis = eAxis(j);
 
+      if (axis_unsigned(forward_axis) == up_axis) {
+        continue;
+      }
+
       Quaternion expect = Quaternion::identity();
       quat_apply_track(&expect.w, forward_axis, up_axis);
 
-      EXPECT_V4_NEAR(float4(from_tracking<float>(forward_axis, up_axis)), float4(expect), 1e-5f);
+      /* This is the expected axis conversion for curve tangent space to tracked object space. */
+      auto axes = axis_conversion(
+          eAxisSigned::Z_POS, eAxisSigned::Y_POS, forward_axis, eAxisSigned(up_axis));
+      Quaternion result = Quaternion(axes);
+
+      EXPECT_V4_NEAR(float4(result), float4(expect), 1e-5f);
     }
   }
 }

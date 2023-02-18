@@ -471,15 +471,13 @@ template<typename MatT>
 [[nodiscard]] MatT from_axis_conversion(const eAxisSigned src_forward,
                                         const eAxisSigned dst_forward)
 {
-  /* Pick predictable next axis. */
-  eAxisSigned src_up = eAxisSigned((src_forward + 1) % 3);
-  eAxisSigned dst_up = eAxisSigned((dst_forward + 1) % 3);
-
-  if (is_negative(src_forward) != is_negative(dst_forward)) {
-    /* Flip both axis (up and right) so resulting rotation matrix sign remains positive. */
-    dst_up = negate(dst_up);
-  }
-  return from_axis_conversion<MatT>(src_forward, src_up, dst_forward, dst_up);
+  using T = typename MatT::base_type;
+  const VecBase<eAxisSigned, 3> axes = axis_conversion(src_forward, dst_forward);
+  MatT result;
+  result.x_axis() = basis_vector<T>(axes.x);
+  result.y_axis() = basis_vector<T>(axes.y);
+  result.z_axis() = basis_vector<T>(axes.z);
+  return result;
 }
 
 /**
@@ -516,49 +514,11 @@ template<typename T>
 {
   BLI_assert(forward_axis >= eAxisSigned::X_POS && forward_axis <= eAxisSigned::Z_NEG);
   BLI_assert(up_axis >= eAxis::X && up_axis <= eAxis::Z);
+  BLI_assert(axis_unsigned(forward_axis) != up_axis);
 
-  detail::Quaternion<T> result;
-  /* Rotations are hard coded to match `apply_track(VecBase<T, 3>)`. */
-  switch (forward_axis) {
-    case eAxisSigned::X_POS:
-      /* Pos-Y 90. */
-      result = detail::Quaternion<T>{T(M_SQRT1_2), T(0.0), T(-M_SQRT1_2), T(0.0)};
-      break;
-    case eAxisSigned::Y_POS:
-      /* Quaternion((1,0,0), radians(90)) * Quaternion((0,1,0), radians(90)). */
-      result = detail::Quaternion<T>{T(0.5), T(0.5), T(0.5), T(0.5)};
-      break;
-    case eAxisSigned::Z_POS:
-      /* Pos-Z 90. */
-      result = detail::Quaternion<T>{T(M_SQRT1_2), T(0.0), T(0.0), T(M_SQRT1_2)};
-      break;
-    case eAxisSigned::X_NEG:
-      /* Neg-Y 90. */
-      result = detail::Quaternion<T>{T(M_SQRT1_2), T(0.0), T(M_SQRT1_2), T(0.0)};
-      break;
-    case eAxisSigned::Y_NEG:
-      /* Quaternion((1,0,0), radians(-90)) * Quaternion((0,1,0), radians(-90)). */
-      result = detail::Quaternion<T>{T(0.5), T(-0.5), T(-0.5), T(0.5)};
-      break;
-    case eAxisSigned::Z_NEG:
-      /* No rotation. */
-      result = detail::Quaternion<T>{T(0.0), T(M_SQRT1_2), T(M_SQRT1_2), T(0.0)};
-      break;
-  }
-
-  eAxis axis = axis_unsigned(forward_axis);
-  /* The strange bit shift below just find the low axis {X:Y, Y:X, Z:X}. */
-  eAxis low_axis = eAxis((2 - axis) >> 1);
-  /* There are 2 possible up-axis for each axis used, the 'quat_track' applies so the first
-   * up axis is used X->Y, Y->X, Z->X, if this first up axis isn't used then rotate 90d. */
-  if (up_axis != low_axis) {
-    /* Flip non Y axis. */
-    result *= detail::Quaternion<T>{T(M_SQRT1_2),
-                                    (axis == eAxis::X) ? T(-M_SQRT1_2) : T(0),
-                                    (axis == eAxis::Y) ? T(+M_SQRT1_2) : T(0),
-                                    (axis == eAxis::Z) ? T(-M_SQRT1_2) : T(0)};
-  }
-  return result;
+  /* Curve have Z forward, Y up, X left. */
+  return detail::Quaternion<T>(
+      axis_conversion(eAxisSigned::Z_POS, eAxisSigned::Y_POS, forward_axis, eAxisSigned(up_axis)));
 }
 
 }  // namespace blender::math
