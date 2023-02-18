@@ -5138,6 +5138,11 @@ class VIEW3D_MT_edit_gpencil(Menu):
 
         layout.separator()
 
+        # Assets
+        layout.menu("VIEW3D_MT_edit_gpencil_asset", text="Create Asset")
+
+        layout.separator()
+
         # Cut, Copy, Paste
         layout.operator("gpencil.duplicate_move", text="Duplicate")
         layout.operator("gpencil.stroke_split", text="Split")
@@ -5160,8 +5165,6 @@ class VIEW3D_MT_edit_gpencil(Menu):
 
         # Remove
         layout.menu("VIEW3D_MT_edit_gpencil_delete")
-        # Assets
-        layout.menu("VIEW3D_MT_edit_gpencil_asset", text="Create Asset")
 
 
 class VIEW3D_MT_edit_gpencil_stroke(Menu):
@@ -7410,6 +7413,11 @@ class VIEW3D_MT_gpencil_edit_context_menu(Menu):
 
             col.menu("VIEW3D_MT_mirror", text="Mirror")
             col.menu("GPENCIL_MT_snap", text="Snap")
+
+            # Assets
+            col.separator()
+
+            col.operator_menu_enum("gpencil.asset_create", "source", text="Create Asset")
 
             col.separator()
 
