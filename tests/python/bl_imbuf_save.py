@@ -16,6 +16,7 @@ args = None
 TEMPLATE_RGBA08 = "template-rgba08.png"
 TEMPLATE_RGBA32 = "template-rgba32.exr"
 
+
 class ImBufTest(AbstractImBufTest):
     @classmethod
     def setUpClass(cls):
@@ -87,163 +88,165 @@ class ImBufTest(AbstractImBufTest):
             print_message(ref_image_path.name, 'SUCCESS', 'OK')
 
 
+# autopep8: off
 class ImBufSaveTest(ImBufTest):
     def test_save_bmp(self):
-        self.check(src="rgba08", ext="bmp", settings={"file_format":"BMP", "color_mode":"BW"})
-        self.check(src="rgba08", ext="bmp", settings={"file_format":"BMP", "color_mode":"RGB"})
+        self.check(src="rgba08", ext="bmp", settings={"file_format": "BMP", "color_mode": "BW"})
+        self.check(src="rgba08", ext="bmp", settings={"file_format": "BMP", "color_mode": "RGB"})
 
-        self.check(src="rgba32", ext="bmp", settings={"file_format":"BMP", "color_mode":"BW"})
-        self.check(src="rgba32", ext="bmp", settings={"file_format":"BMP", "color_mode":"RGB"})
+        self.check(src="rgba32", ext="bmp", settings={"file_format": "BMP", "color_mode": "BW"})
+        self.check(src="rgba32", ext="bmp", settings={"file_format": "BMP", "color_mode": "RGB"})
 
     def test_save_png(self):
-        self.check(src="rgba08", ext="png", settings={"file_format":"PNG", "color_mode":"BW", "color_depth":"8", "compression":15})
-        self.check(src="rgba08", ext="png", settings={"file_format":"PNG", "color_mode":"RGB", "color_depth":"8", "compression":15})
-        self.check(src="rgba08", ext="png", settings={"file_format":"PNG", "color_mode":"RGBA", "color_depth":"8", "compression":15})
-        self.check(src="rgba08", ext="png", settings={"file_format":"PNG", "color_mode":"BW", "color_depth":"16", "compression":25})
-        self.check(src="rgba08", ext="png", settings={"file_format":"PNG", "color_mode":"RGB", "color_depth":"16", "compression":25})
-        self.check(src="rgba08", ext="png", settings={"file_format":"PNG", "color_mode":"RGBA", "color_depth":"16", "compression":25})
+        self.check(src="rgba08", ext="png", settings={"file_format": "PNG", "color_mode": "BW", "color_depth": "8", "compression": 15})
+        self.check(src="rgba08", ext="png", settings={"file_format": "PNG", "color_mode": "RGB", "color_depth": "8", "compression": 15})
+        self.check(src="rgba08", ext="png", settings={"file_format": "PNG", "color_mode": "RGBA", "color_depth": "8", "compression": 15})
+        self.check(src="rgba08", ext="png", settings={"file_format": "PNG", "color_mode": "BW", "color_depth": "16", "compression": 25})
+        self.check(src="rgba08", ext="png", settings={"file_format": "PNG", "color_mode": "RGB", "color_depth": "16", "compression": 25})
+        self.check(src="rgba08", ext="png", settings={"file_format": "PNG", "color_mode": "RGBA", "color_depth": "16", "compression": 25})
 
-        self.check(src="rgba32", ext="png", settings={"file_format":"PNG", "color_mode":"BW", "color_depth":"8", "compression":15})
-        self.check(src="rgba32", ext="png", settings={"file_format":"PNG", "color_mode":"RGB", "color_depth":"8", "compression":15})
-        self.check(src="rgba32", ext="png", settings={"file_format":"PNG", "color_mode":"RGBA", "color_depth":"8", "compression":15})
-        self.check(src="rgba32", ext="png", settings={"file_format":"PNG", "color_mode":"BW", "color_depth":"16", "compression":25})
-        self.check(src="rgba32", ext="png", settings={"file_format":"PNG", "color_mode":"RGB", "color_depth":"16", "compression":25})
-        self.check(src="rgba32", ext="png", settings={"file_format":"PNG", "color_mode":"RGBA", "color_depth":"16", "compression":25})
+        self.check(src="rgba32", ext="png", settings={"file_format": "PNG", "color_mode": "BW", "color_depth": "8", "compression": 15})
+        self.check(src="rgba32", ext="png", settings={"file_format": "PNG", "color_mode": "RGB", "color_depth": "8", "compression": 15})
+        self.check(src="rgba32", ext="png", settings={"file_format": "PNG", "color_mode": "RGBA", "color_depth": "8", "compression": 15})
+        self.check(src="rgba32", ext="png", settings={"file_format": "PNG", "color_mode": "BW", "color_depth": "16", "compression": 25})
+        self.check(src="rgba32", ext="png", settings={"file_format": "PNG", "color_mode": "RGB", "color_depth": "16", "compression": 25})
+        self.check(src="rgba32", ext="png", settings={"file_format": "PNG", "color_mode": "RGBA", "color_depth": "16", "compression": 25})
 
     def test_save_exr(self):
         self.skip_if_format_missing("OPENEXR")
 
-        self.check(src="rgba08", ext="exr", settings={"file_format":"OPEN_EXR", "color_mode":"BW", "color_depth":"16", "exr_codec":"ZIP"})
-        self.check(src="rgba08", ext="exr", settings={"file_format":"OPEN_EXR", "color_mode":"RGB", "color_depth":"16", "exr_codec":"DWAA"})
-        self.check(src="rgba08", ext="exr", settings={"file_format":"OPEN_EXR", "color_mode":"RGBA", "color_depth":"16", "exr_codec":"DWAB"})
-        self.check(src="rgba08", ext="exr", settings={"file_format":"OPEN_EXR", "color_mode":"BW", "color_depth":"32", "exr_codec":"DWAB"})
-        self.check(src="rgba08", ext="exr", settings={"file_format":"OPEN_EXR", "color_mode":"RGB", "color_depth":"32", "exr_codec":"DWAA"})
-        self.check(src="rgba08", ext="exr", settings={"file_format":"OPEN_EXR", "color_mode":"RGBA", "color_depth":"32", "exr_codec":"ZIP"})
+        self.check(src="rgba08", ext="exr", settings={"file_format": "OPEN_EXR", "color_mode": "BW", "color_depth": "16", "exr_codec": "ZIP"})
+        self.check(src="rgba08", ext="exr", settings={"file_format": "OPEN_EXR", "color_mode": "RGB", "color_depth": "16", "exr_codec": "DWAA"})
+        self.check(src="rgba08", ext="exr", settings={"file_format": "OPEN_EXR", "color_mode": "RGBA", "color_depth": "16", "exr_codec": "DWAB"})
+        self.check(src="rgba08", ext="exr", settings={"file_format": "OPEN_EXR", "color_mode": "BW", "color_depth": "32", "exr_codec": "DWAB"})
+        self.check(src="rgba08", ext="exr", settings={"file_format": "OPEN_EXR", "color_mode": "RGB", "color_depth": "32", "exr_codec": "DWAA"})
+        self.check(src="rgba08", ext="exr", settings={"file_format": "OPEN_EXR", "color_mode": "RGBA", "color_depth": "32", "exr_codec": "ZIP"})
 
-        self.check(src="rgba32", ext="exr", settings={"file_format":"OPEN_EXR", "color_mode":"BW", "color_depth":"16", "exr_codec":"ZIP"})
-        self.check(src="rgba32", ext="exr", settings={"file_format":"OPEN_EXR", "color_mode":"RGB", "color_depth":"16", "exr_codec":"DWAA"})
-        self.check(src="rgba32", ext="exr", settings={"file_format":"OPEN_EXR", "color_mode":"RGBA", "color_depth":"16", "exr_codec":"DWAB"})
-        self.check(src="rgba32", ext="exr", settings={"file_format":"OPEN_EXR", "color_mode":"BW", "color_depth":"32", "exr_codec":"DWAB"})
-        self.check(src="rgba32", ext="exr", settings={"file_format":"OPEN_EXR", "color_mode":"RGB", "color_depth":"32", "exr_codec":"DWAA"})
-        self.check(src="rgba32", ext="exr", settings={"file_format":"OPEN_EXR", "color_mode":"RGBA", "color_depth":"32", "exr_codec":"ZIP"})
+        self.check(src="rgba32", ext="exr", settings={"file_format": "OPEN_EXR", "color_mode": "BW", "color_depth": "16", "exr_codec": "ZIP"})
+        self.check(src="rgba32", ext="exr", settings={"file_format": "OPEN_EXR", "color_mode": "RGB", "color_depth": "16", "exr_codec": "DWAA"})
+        self.check(src="rgba32", ext="exr", settings={"file_format": "OPEN_EXR", "color_mode": "RGBA", "color_depth": "16", "exr_codec": "DWAB"})
+        self.check(src="rgba32", ext="exr", settings={"file_format": "OPEN_EXR", "color_mode": "BW", "color_depth": "32", "exr_codec": "DWAB"})
+        self.check(src="rgba32", ext="exr", settings={"file_format": "OPEN_EXR", "color_mode": "RGB", "color_depth": "32", "exr_codec": "DWAA"})
+        self.check(src="rgba32", ext="exr", settings={"file_format": "OPEN_EXR", "color_mode": "RGBA", "color_depth": "32", "exr_codec": "ZIP"})
 
     def test_save_hdr(self):
         self.skip_if_format_missing("HDR")
 
-        self.check(src="rgba08", ext="hdr", settings={"file_format":"HDR", "color_mode":"BW"})
-        self.check(src="rgba08", ext="hdr", settings={"file_format":"HDR", "color_mode":"RGB"})
+        self.check(src="rgba08", ext="hdr", settings={"file_format": "HDR", "color_mode": "BW"})
+        self.check(src="rgba08", ext="hdr", settings={"file_format": "HDR", "color_mode": "RGB"})
 
-        self.check(src="rgba32", ext="hdr", settings={"file_format":"HDR", "color_mode":"BW"})
-        self.check(src="rgba32", ext="hdr", settings={"file_format":"HDR", "color_mode":"RGB"})
+        self.check(src="rgba32", ext="hdr", settings={"file_format": "HDR", "color_mode": "BW"})
+        self.check(src="rgba32", ext="hdr", settings={"file_format": "HDR", "color_mode": "RGB"})
 
     def test_save_targa(self):
-        self.check(src="rgba08", ext="tga", settings={"file_format":"TARGA", "color_mode":"BW"})
-        self.check(src="rgba08", ext="tga", settings={"file_format":"TARGA", "color_mode":"RGB"})
-        self.check(src="rgba08", ext="tga", settings={"file_format":"TARGA", "color_mode":"RGBA"})
+        self.check(src="rgba08", ext="tga", settings={"file_format": "TARGA", "color_mode": "BW"})
+        self.check(src="rgba08", ext="tga", settings={"file_format": "TARGA", "color_mode": "RGB"})
+        self.check(src="rgba08", ext="tga", settings={"file_format": "TARGA", "color_mode": "RGBA"})
 
-        self.check(src="rgba32", ext="tga", settings={"file_format":"TARGA", "color_mode":"BW"})
-        self.check(src="rgba32", ext="tga", settings={"file_format":"TARGA", "color_mode":"RGB"})
-        self.check(src="rgba32", ext="tga", settings={"file_format":"TARGA", "color_mode":"RGBA"})
+        self.check(src="rgba32", ext="tga", settings={"file_format": "TARGA", "color_mode": "BW"})
+        self.check(src="rgba32", ext="tga", settings={"file_format": "TARGA", "color_mode": "RGB"})
+        self.check(src="rgba32", ext="tga", settings={"file_format": "TARGA", "color_mode": "RGBA"})
 
     def test_save_targa_raw(self):
-        self.check(src="rgba08", ext="tga", settings={"file_format":"TARGA_RAW", "color_mode":"BW"})
-        self.check(src="rgba08", ext="tga", settings={"file_format":"TARGA_RAW", "color_mode":"RGB"})
-        self.check(src="rgba08", ext="tga", settings={"file_format":"TARGA_RAW", "color_mode":"RGBA"})
+        self.check(src="rgba08", ext="tga", settings={"file_format": "TARGA_RAW", "color_mode": "BW"})
+        self.check(src="rgba08", ext="tga", settings={"file_format": "TARGA_RAW", "color_mode": "RGB"})
+        self.check(src="rgba08", ext="tga", settings={"file_format": "TARGA_RAW", "color_mode": "RGBA"})
 
-        self.check(src="rgba32", ext="tga", settings={"file_format":"TARGA_RAW", "color_mode":"BW"})
-        self.check(src="rgba32", ext="tga", settings={"file_format":"TARGA_RAW", "color_mode":"RGB"})
-        self.check(src="rgba32", ext="tga", settings={"file_format":"TARGA_RAW", "color_mode":"RGBA"})
+        self.check(src="rgba32", ext="tga", settings={"file_format": "TARGA_RAW", "color_mode": "BW"})
+        self.check(src="rgba32", ext="tga", settings={"file_format": "TARGA_RAW", "color_mode": "RGB"})
+        self.check(src="rgba32", ext="tga", settings={"file_format": "TARGA_RAW", "color_mode": "RGBA"})
 
     def test_save_tiff(self):
         self.skip_if_format_missing("TIFF")
 
-        self.check(src="rgba08", ext="tif", settings={"file_format":"TIFF", "color_mode":"BW", "color_depth":"8", "tiff_codec":"DEFLATE"})
-        self.check(src="rgba08", ext="tif", settings={"file_format":"TIFF", "color_mode":"RGB", "color_depth":"8", "tiff_codec":"LZW"})
-        self.check(src="rgba08", ext="tif", settings={"file_format":"TIFF", "color_mode":"RGBA", "color_depth":"8", "tiff_codec":"PACKBITS"})
-        self.check(src="rgba08", ext="tif", settings={"file_format":"TIFF", "color_mode":"BW", "color_depth":"16", "tiff_codec":"PACKBITS"})
-        self.check(src="rgba08", ext="tif", settings={"file_format":"TIFF", "color_mode":"RGB", "color_depth":"16", "tiff_codec":"LZW"})
-        self.check(src="rgba08", ext="tif", settings={"file_format":"TIFF", "color_mode":"RGBA", "color_depth":"16", "tiff_codec":"DEFLATE"})
+        self.check(src="rgba08", ext="tif", settings={"file_format": "TIFF", "color_mode": "BW", "color_depth": "8", "tiff_codec": "DEFLATE"})
+        self.check(src="rgba08", ext="tif", settings={"file_format": "TIFF", "color_mode": "RGB", "color_depth": "8", "tiff_codec": "LZW"})
+        self.check(src="rgba08", ext="tif", settings={"file_format": "TIFF", "color_mode": "RGBA", "color_depth": "8", "tiff_codec": "PACKBITS"})
+        self.check(src="rgba08", ext="tif", settings={"file_format": "TIFF", "color_mode": "BW", "color_depth": "16", "tiff_codec": "PACKBITS"})
+        self.check(src="rgba08", ext="tif", settings={"file_format": "TIFF", "color_mode": "RGB", "color_depth": "16", "tiff_codec": "LZW"})
+        self.check(src="rgba08", ext="tif", settings={"file_format": "TIFF", "color_mode": "RGBA", "color_depth": "16", "tiff_codec": "DEFLATE"})
 
-        self.check(src="rgba32", ext="tif", settings={"file_format":"TIFF", "color_mode":"BW", "color_depth":"8", "tiff_codec":"DEFLATE"})
-        self.check(src="rgba32", ext="tif", settings={"file_format":"TIFF", "color_mode":"RGB", "color_depth":"8", "tiff_codec":"LZW"})
-        self.check(src="rgba32", ext="tif", settings={"file_format":"TIFF", "color_mode":"RGBA", "color_depth":"8", "tiff_codec":"PACKBITS"})
-        self.check(src="rgba32", ext="tif", settings={"file_format":"TIFF", "color_mode":"BW", "color_depth":"16", "tiff_codec":"PACKBITS"})
-        self.check(src="rgba32", ext="tif", settings={"file_format":"TIFF", "color_mode":"RGB", "color_depth":"16", "tiff_codec":"LZW"})
-        self.check(src="rgba32", ext="tif", settings={"file_format":"TIFF", "color_mode":"RGBA", "color_depth":"16", "tiff_codec":"DEFLATE"})
+        self.check(src="rgba32", ext="tif", settings={"file_format": "TIFF", "color_mode": "BW", "color_depth": "8", "tiff_codec": "DEFLATE"})
+        self.check(src="rgba32", ext="tif", settings={"file_format": "TIFF", "color_mode": "RGB", "color_depth": "8", "tiff_codec": "LZW"})
+        self.check(src="rgba32", ext="tif", settings={"file_format": "TIFF", "color_mode": "RGBA", "color_depth": "8", "tiff_codec": "PACKBITS"})
+        self.check(src="rgba32", ext="tif", settings={"file_format": "TIFF", "color_mode": "BW", "color_depth": "16", "tiff_codec": "PACKBITS"})
+        self.check(src="rgba32", ext="tif", settings={"file_format": "TIFF", "color_mode": "RGB", "color_depth": "16", "tiff_codec": "LZW"})
+        self.check(src="rgba32", ext="tif", settings={"file_format": "TIFF", "color_mode": "RGBA", "color_depth": "16", "tiff_codec": "DEFLATE"})
 
     def test_save_jpeg(self):
-        self.check(src="rgba08", ext="jpg", settings={"file_format":"JPEG", "color_mode":"BW", "quality":90})
-        self.check(src="rgba08", ext="jpg", settings={"file_format":"JPEG", "color_mode":"RGB", "quality":90})
+        self.check(src="rgba08", ext="jpg", settings={"file_format": "JPEG", "color_mode": "BW", "quality": 90})
+        self.check(src="rgba08", ext="jpg", settings={"file_format": "JPEG", "color_mode": "RGB", "quality": 90})
 
-        self.check(src="rgba32", ext="jpg", settings={"file_format":"JPEG", "color_mode":"BW", "quality":70})
-        self.check(src="rgba32", ext="jpg", settings={"file_format":"JPEG", "color_mode":"RGB", "quality":70})
+        self.check(src="rgba32", ext="jpg", settings={"file_format": "JPEG", "color_mode": "BW", "quality": 70})
+        self.check(src="rgba32", ext="jpg", settings={"file_format": "JPEG", "color_mode": "RGB", "quality": 70})
 
     def test_save_jpeg2000(self):
         self.skip_if_format_missing("OPENJPEG")
 
         # Is there a better combination of settings we can use so there's not so many?
         # Is this a good mix?
-        self.check(src="rgba08", ext="jp2", settings={"file_format":"JPEG2000", "color_mode":"BW", "color_depth":"8", "jpeg2k_codec":"JP2", "quality":90})
-        self.check(src="rgba08", ext="jp2", settings={"file_format":"JPEG2000", "color_mode":"BW", "color_depth":"12", "jpeg2k_codec":"JP2", "quality":90})
-        self.check(src="rgba08", ext="j2c", settings={"file_format":"JPEG2000", "color_mode":"BW", "color_depth":"16", "jpeg2k_codec":"J2K", "quality":90})
-        self.check(src="rgba08", ext="jp2", settings={"file_format":"JPEG2000", "color_mode":"RGB", "color_depth":"8", "jpeg2k_codec":"JP2", "quality":90})
-        self.check(src="rgba08", ext="jp2", settings={"file_format":"JPEG2000", "color_mode":"RGB", "color_depth":"12", "jpeg2k_codec":"JP2", "quality":90})
-        self.check(src="rgba08", ext="j2c", settings={"file_format":"JPEG2000", "color_mode":"RGB", "color_depth":"16", "jpeg2k_codec":"J2K", "quality":90})
-        self.check(src="rgba08", ext="jp2", settings={"file_format":"JPEG2000", "color_mode":"RGBA", "color_depth":"8", "jpeg2k_codec":"JP2", "quality":90})
-        self.check(src="rgba08", ext="jp2", settings={"file_format":"JPEG2000", "color_mode":"RGBA", "color_depth":"12", "jpeg2k_codec":"JP2", "quality":90})
-        self.check(src="rgba08", ext="j2c", settings={"file_format":"JPEG2000", "color_mode":"RGBA", "color_depth":"16", "jpeg2k_codec":"J2K", "quality":90})
+        self.check(src="rgba08", ext="jp2", settings={"file_format": "JPEG2000", "color_mode": "BW", "color_depth": "8", "jpeg2k_codec": "JP2", "quality": 90})
+        self.check(src="rgba08", ext="jp2", settings={"file_format": "JPEG2000", "color_mode": "BW", "color_depth": "12", "jpeg2k_codec": "JP2", "quality": 90})
+        self.check(src="rgba08", ext="j2c", settings={"file_format": "JPEG2000", "color_mode": "BW", "color_depth": "16", "jpeg2k_codec": "J2K", "quality": 90})
+        self.check(src="rgba08", ext="jp2", settings={"file_format": "JPEG2000", "color_mode": "RGB", "color_depth": "8", "jpeg2k_codec": "JP2", "quality": 90})
+        self.check(src="rgba08", ext="jp2", settings={"file_format": "JPEG2000", "color_mode": "RGB", "color_depth": "12", "jpeg2k_codec": "JP2", "quality": 90})
+        self.check(src="rgba08", ext="j2c", settings={"file_format": "JPEG2000", "color_mode": "RGB", "color_depth": "16", "jpeg2k_codec": "J2K", "quality": 90})
+        self.check(src="rgba08", ext="jp2", settings={"file_format": "JPEG2000", "color_mode": "RGBA", "color_depth": "8", "jpeg2k_codec": "JP2", "quality": 90})
+        self.check(src="rgba08", ext="jp2", settings={"file_format": "JPEG2000", "color_mode": "RGBA", "color_depth": "12", "jpeg2k_codec": "JP2", "quality": 90})
+        self.check(src="rgba08", ext="j2c", settings={"file_format": "JPEG2000", "color_mode": "RGBA", "color_depth": "16", "jpeg2k_codec": "J2K", "quality": 90})
 
-        self.check(src="rgba32", ext="jp2", settings={"file_format":"JPEG2000", "color_mode":"BW", "color_depth":"8", "jpeg2k_codec":"JP2", "quality":70})
-        self.check(src="rgba32", ext="jp2", settings={"file_format":"JPEG2000", "color_mode":"BW", "color_depth":"12", "jpeg2k_codec":"JP2", "quality":70})
-        self.check(src="rgba32", ext="j2c", settings={"file_format":"JPEG2000", "color_mode":"BW", "color_depth":"16", "jpeg2k_codec":"J2K", "quality":70})
-        self.check(src="rgba32", ext="jp2", settings={"file_format":"JPEG2000", "color_mode":"RGB", "color_depth":"8", "jpeg2k_codec":"JP2", "quality":70})
-        self.check(src="rgba32", ext="jp2", settings={"file_format":"JPEG2000", "color_mode":"RGB", "color_depth":"12", "jpeg2k_codec":"JP2", "quality":70})
-        self.check(src="rgba32", ext="j2c", settings={"file_format":"JPEG2000", "color_mode":"RGB", "color_depth":"16", "jpeg2k_codec":"J2K", "quality":70})
-        self.check(src="rgba32", ext="jp2", settings={"file_format":"JPEG2000", "color_mode":"RGBA", "color_depth":"8", "jpeg2k_codec":"JP2", "quality":70})
-        self.check(src="rgba32", ext="jp2", settings={"file_format":"JPEG2000", "color_mode":"RGBA", "color_depth":"12", "jpeg2k_codec":"JP2", "quality":70})
-        self.check(src="rgba32", ext="j2c", settings={"file_format":"JPEG2000", "color_mode":"RGBA", "color_depth":"16", "jpeg2k_codec":"J2K", "quality":70})
+        self.check(src="rgba32", ext="jp2", settings={"file_format": "JPEG2000", "color_mode": "BW", "color_depth": "8", "jpeg2k_codec": "JP2", "quality": 70})
+        self.check(src="rgba32", ext="jp2", settings={"file_format": "JPEG2000", "color_mode": "BW", "color_depth": "12", "jpeg2k_codec": "JP2", "quality": 70})
+        self.check(src="rgba32", ext="j2c", settings={"file_format": "JPEG2000", "color_mode": "BW", "color_depth": "16", "jpeg2k_codec": "J2K", "quality": 70})
+        self.check(src="rgba32", ext="jp2", settings={"file_format": "JPEG2000", "color_mode": "RGB", "color_depth": "8", "jpeg2k_codec": "JP2", "quality": 70})
+        self.check(src="rgba32", ext="jp2", settings={"file_format": "JPEG2000", "color_mode": "RGB", "color_depth": "12", "jpeg2k_codec": "JP2", "quality": 70})
+        self.check(src="rgba32", ext="j2c", settings={"file_format": "JPEG2000", "color_mode": "RGB", "color_depth": "16", "jpeg2k_codec": "J2K", "quality": 70})
+        self.check(src="rgba32", ext="jp2", settings={"file_format": "JPEG2000", "color_mode": "RGBA", "color_depth": "8", "jpeg2k_codec": "JP2", "quality": 70})
+        self.check(src="rgba32", ext="jp2", settings={"file_format": "JPEG2000", "color_mode": "RGBA", "color_depth": "12", "jpeg2k_codec": "JP2", "quality": 70})
+        self.check(src="rgba32", ext="j2c", settings={"file_format": "JPEG2000", "color_mode": "RGBA", "color_depth": "16", "jpeg2k_codec": "J2K", "quality": 70})
 
         # Note: The 'use_jpeg2k_cinema_preset' option mandates very large images
         # self.check(src="rgba08", ext="jpg", settings={"file_format":"JPEG2000", "color_mode":"RGBA", "color_depth":"8", "jpeg2k_codec":"JP2", "use_jpeg2k_cinema_preset":True, "use_jpeg2k_cinema_48":False, "use_jpeg2k_ycc":False, "quality":70})
         # self.check(src="rgba32", ext="jpg", settings={"file_format":"JPEG2000", "color_mode":"RGBA", "color_depth":"8", "jpeg2k_codec":"JP2", "use_jpeg2k_cinema_preset":True, "use_jpeg2k_cinema_48":False, "use_jpeg2k_ycc":False, "quality":70})
 
-        self.check(src="rgba08", ext="jp2", settings={"file_format":"JPEG2000", "color_mode":"RGBA", "color_depth":"12", "jpeg2k_codec":"JP2", "use_jpeg2k_cinema_preset":False, "use_jpeg2k_cinema_48":True, "use_jpeg2k_ycc":False, "quality":70})
-        self.check(src="rgba32", ext="jp2", settings={"file_format":"JPEG2000", "color_mode":"RGBA", "color_depth":"12", "jpeg2k_codec":"JP2", "use_jpeg2k_cinema_preset":False, "use_jpeg2k_cinema_48":True, "use_jpeg2k_ycc":False, "quality":70})
+        self.check(src="rgba08", ext="jp2", settings={"file_format": "JPEG2000", "color_mode": "RGBA", "color_depth": "12", "jpeg2k_codec": "JP2", "use_jpeg2k_cinema_preset": False, "use_jpeg2k_cinema_48": True, "use_jpeg2k_ycc": False, "quality": 70})
+        self.check(src="rgba32", ext="jp2", settings={"file_format": "JPEG2000", "color_mode": "RGBA", "color_depth": "12", "jpeg2k_codec": "JP2", "use_jpeg2k_cinema_preset": False, "use_jpeg2k_cinema_48": True, "use_jpeg2k_ycc": False, "quality": 70})
 
-        self.check(src="rgba08", ext="jp2", settings={"file_format":"JPEG2000", "color_mode":"RGBA", "color_depth":"16", "jpeg2k_codec":"JP2", "use_jpeg2k_cinema_preset":False, "use_jpeg2k_cinema_48":False, "use_jpeg2k_ycc":True, "quality":70})
-        self.check(src="rgba32", ext="jp2", settings={"file_format":"JPEG2000", "color_mode":"RGBA", "color_depth":"16", "jpeg2k_codec":"JP2", "use_jpeg2k_cinema_preset":False, "use_jpeg2k_cinema_48":False, "use_jpeg2k_ycc":True, "quality":70})
+        self.check(src="rgba08", ext="jp2", settings={"file_format": "JPEG2000", "color_mode": "RGBA", "color_depth": "16", "jpeg2k_codec": "JP2", "use_jpeg2k_cinema_preset": False, "use_jpeg2k_cinema_48": False, "use_jpeg2k_ycc": True, "quality": 70})
+        self.check(src="rgba32", ext="jp2", settings={"file_format": "JPEG2000", "color_mode": "RGBA", "color_depth": "16", "jpeg2k_codec": "JP2", "use_jpeg2k_cinema_preset": False, "use_jpeg2k_cinema_48": False, "use_jpeg2k_ycc": True, "quality": 70})
 
     def test_save_dpx(self):
         self.skip_if_format_missing("CINEON")
 
-        self.check(src="rgba08", ext="dpx", settings={"file_format":"DPX", "color_mode":"RGB", "color_depth":"8", "use_cineon_log":False})
-        self.check(src="rgba08", ext="dpx", settings={"file_format":"DPX", "color_mode":"RGB", "color_depth":"12", "use_cineon_log":False})
-        self.check(src="rgba08", ext="dpx", settings={"file_format":"DPX", "color_mode":"RGB", "color_depth":"16", "use_cineon_log":False})
-        self.check(src="rgba08", ext="dpx", settings={"file_format":"DPX", "color_mode":"RGBA", "color_depth":"10", "use_cineon_log":True})
-        self.check(src="rgba08", ext="dpx", settings={"file_format":"DPX", "color_mode":"RGBA", "color_depth":"12", "use_cineon_log":True})
-        self.check(src="rgba08", ext="dpx", settings={"file_format":"DPX", "color_mode":"RGBA", "color_depth":"16", "use_cineon_log":True})
+        self.check(src="rgba08", ext="dpx", settings={"file_format": "DPX", "color_mode": "RGB", "color_depth": "8", "use_cineon_log": False})
+        self.check(src="rgba08", ext="dpx", settings={"file_format": "DPX", "color_mode": "RGB", "color_depth": "12", "use_cineon_log": False})
+        self.check(src="rgba08", ext="dpx", settings={"file_format": "DPX", "color_mode": "RGB", "color_depth": "16", "use_cineon_log": False})
+        self.check(src="rgba08", ext="dpx", settings={"file_format": "DPX", "color_mode": "RGBA", "color_depth": "10", "use_cineon_log": True})
+        self.check(src="rgba08", ext="dpx", settings={"file_format": "DPX", "color_mode": "RGBA", "color_depth": "12", "use_cineon_log": True})
+        self.check(src="rgba08", ext="dpx", settings={"file_format": "DPX", "color_mode": "RGBA", "color_depth": "16", "use_cineon_log": True})
 
-        self.check(src="rgba32", ext="dpx", settings={"file_format":"DPX", "color_mode":"RGB", "color_depth":"8", "use_cineon_log":False})
-        self.check(src="rgba32", ext="dpx", settings={"file_format":"DPX", "color_mode":"RGB", "color_depth":"12", "use_cineon_log":False})
-        self.check(src="rgba32", ext="dpx", settings={"file_format":"DPX", "color_mode":"RGB", "color_depth":"16", "use_cineon_log":False})
-        self.check(src="rgba32", ext="dpx", settings={"file_format":"DPX", "color_mode":"RGBA", "color_depth":"10", "use_cineon_log":True})
-        self.check(src="rgba32", ext="dpx", settings={"file_format":"DPX", "color_mode":"RGBA", "color_depth":"12", "use_cineon_log":True})
-        self.check(src="rgba32", ext="dpx", settings={"file_format":"DPX", "color_mode":"RGBA", "color_depth":"16", "use_cineon_log":True})
+        self.check(src="rgba32", ext="dpx", settings={"file_format": "DPX", "color_mode": "RGB", "color_depth": "8", "use_cineon_log": False})
+        self.check(src="rgba32", ext="dpx", settings={"file_format": "DPX", "color_mode": "RGB", "color_depth": "12", "use_cineon_log": False})
+        self.check(src="rgba32", ext="dpx", settings={"file_format": "DPX", "color_mode": "RGB", "color_depth": "16", "use_cineon_log": False})
+        self.check(src="rgba32", ext="dpx", settings={"file_format": "DPX", "color_mode": "RGBA", "color_depth": "10", "use_cineon_log": True})
+        self.check(src="rgba32", ext="dpx", settings={"file_format": "DPX", "color_mode": "RGBA", "color_depth": "12", "use_cineon_log": True})
+        self.check(src="rgba32", ext="dpx", settings={"file_format": "DPX", "color_mode": "RGBA", "color_depth": "16", "use_cineon_log": True})
 
     def test_save_cineon(self):
         self.skip_if_format_missing("CINEON")
 
-        self.check(src="rgba08", ext="cin", settings={"file_format":"CINEON", "color_mode":"RGB"})
-        self.check(src="rgba32", ext="cin", settings={"file_format":"CINEON", "color_mode":"RGB"})
+        self.check(src="rgba08", ext="cin", settings={"file_format": "CINEON", "color_mode": "RGB"})
+        self.check(src="rgba32", ext="cin", settings={"file_format": "CINEON", "color_mode": "RGB"})
 
     def test_save_webp(self):
         self.skip_if_format_missing("WEBP")
 
-        self.check(src="rgba08", ext="webp", settings={"file_format":"WEBP", "color_mode":"RGB", "quality":90})
-        self.check(src="rgba08", ext="webp", settings={"file_format":"WEBP", "color_mode":"RGBA", "quality":90})
+        self.check(src="rgba08", ext="webp", settings={"file_format": "WEBP", "color_mode": "RGB", "quality": 90})
+        self.check(src="rgba08", ext="webp", settings={"file_format": "WEBP", "color_mode": "RGBA", "quality": 90})
 
-        self.check(src="rgba32", ext="webp", settings={"file_format":"WEBP", "color_mode":"RGB", "quality":70})
-        self.check(src="rgba32", ext="webp", settings={"file_format":"WEBP", "color_mode":"RGBA", "quality":70})
+        self.check(src="rgba32", ext="webp", settings={"file_format": "WEBP", "color_mode": "RGB", "quality": 70})
+        self.check(src="rgba32", ext="webp", settings={"file_format": "WEBP", "color_mode": "RGBA", "quality": 70})
+# autopep8: on
 
 
 def main():
@@ -263,6 +266,7 @@ def main():
     args, remaining = parser.parse_known_args(argv)
 
     unittest.main(argv=remaining)
+
 
 if __name__ == '__main__':
     main()

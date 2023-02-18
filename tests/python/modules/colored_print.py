@@ -2,6 +2,7 @@
 
 import sys
 
+
 class COLORS_ANSI:
     RED = '\033[00;31m'
     GREEN = '\033[00;32m'
@@ -20,6 +21,7 @@ COLORS = COLORS_NONE
 def use_message_colors():
     global COLORS, COLORS_ANSI
     COLORS = COLORS_ANSI
+
 
 def print_message(message, type=None, status=''):
     if type == 'SUCCESS':

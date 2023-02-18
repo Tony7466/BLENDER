@@ -14,6 +14,7 @@ from modules.imbuf_test import AbstractImBufTest
 
 args = None
 
+
 class ImBufTest(AbstractImBufTest):
     @classmethod
     def setUpClass(cls):
@@ -100,6 +101,7 @@ class ImBufTest(AbstractImBufTest):
             else:
                 print_message(image_path.name, 'SUCCESS', 'OK')
 
+
 class ImBufLoadTest(ImBufTest):
     def test_load_bmp(self):
         self.check("*.bmp")
@@ -167,6 +169,7 @@ def main():
     args, remaining = parser.parse_known_args(argv)
 
     unittest.main(argv=remaining)
+
 
 if __name__ == '__main__':
     main()
