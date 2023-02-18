@@ -71,175 +71,191 @@ static inline eAxisSigned negate(const eAxisSigned axis)
 }
 
 /**
- * Returns the cross direction from two basis direction.
- * Way faster than true cross product if you vectors are basis vectors.
- * Any ill-formed case will return positive X.
- */
-static inline eAxisSigned cross(const eAxisSigned a, const eAxisSigned b)
-{
-  switch (a) {
-    case eAxisSigned::X_POS:
-      switch (b) {
-        case eAxisSigned::X_POS:
-          break; /* Ill-defined. */
-        case eAxisSigned::Y_POS:
-          return eAxisSigned::Z_POS;
-        case eAxisSigned::Z_POS:
-          return eAxisSigned::Y_NEG;
-        case eAxisSigned::X_NEG:
-          break; /* Ill-defined. */
-        case eAxisSigned::Y_NEG:
-          return eAxisSigned::Z_NEG;
-        case eAxisSigned::Z_NEG:
-          return eAxisSigned::Y_POS;
-      }
-      break;
-    case eAxisSigned::Y_POS:
-      switch (b) {
-        case eAxisSigned::X_POS:
-          return eAxisSigned::Z_NEG;
-        case eAxisSigned::Y_POS:
-          break; /* Ill-defined. */
-        case eAxisSigned::Z_POS:
-          return eAxisSigned::X_POS;
-        case eAxisSigned::X_NEG:
-          return eAxisSigned::Z_POS;
-        case eAxisSigned::Y_NEG:
-          break; /* Ill-defined. */
-        case eAxisSigned::Z_NEG:
-          return eAxisSigned::X_NEG;
-      }
-      break;
-    case eAxisSigned::Z_POS:
-      switch (b) {
-        case eAxisSigned::X_POS:
-          return eAxisSigned::Y_POS;
-        case eAxisSigned::Y_POS:
-          return eAxisSigned::X_NEG;
-        case eAxisSigned::Z_POS:
-          break; /* Ill-defined. */
-        case eAxisSigned::X_NEG:
-          return eAxisSigned::Y_NEG;
-        case eAxisSigned::Y_NEG:
-          return eAxisSigned::X_POS;
-        case eAxisSigned::Z_NEG:
-          break; /* Ill-defined. */
-      }
-      break;
-    case eAxisSigned::X_NEG:
-      switch (b) {
-        case eAxisSigned::X_POS:
-          break; /* Ill-defined. */
-        case eAxisSigned::Y_POS:
-          return eAxisSigned::Z_NEG;
-        case eAxisSigned::Z_POS:
-          return eAxisSigned::Y_POS;
-        case eAxisSigned::X_NEG:
-          break; /* Ill-defined. */
-        case eAxisSigned::Y_NEG:
-          return eAxisSigned::Z_POS;
-        case eAxisSigned::Z_NEG:
-          return eAxisSigned::Y_NEG;
-      }
-      break;
-    case eAxisSigned::Y_NEG:
-      switch (b) {
-        case eAxisSigned::X_POS:
-          return eAxisSigned::Z_POS;
-        case eAxisSigned::Y_POS:
-          break; /* Ill-defined. */
-        case eAxisSigned::Z_POS:
-          return eAxisSigned::X_NEG;
-        case eAxisSigned::X_NEG:
-          return eAxisSigned::Z_NEG;
-        case eAxisSigned::Y_NEG:
-          break; /* Ill-defined. */
-        case eAxisSigned::Z_NEG:
-          return eAxisSigned::X_POS;
-      }
-      break;
-    case eAxisSigned::Z_NEG:
-      switch (b) {
-        case eAxisSigned::X_POS:
-          return eAxisSigned::Y_NEG;
-        case eAxisSigned::Y_POS:
-          return eAxisSigned::X_POS;
-        case eAxisSigned::Z_POS:
-          break; /* Ill-defined. */
-        case eAxisSigned::X_NEG:
-          return eAxisSigned::Y_POS;
-        case eAxisSigned::Y_NEG:
-          return eAxisSigned::X_NEG;
-        case eAxisSigned::Z_NEG:
-          break; /* Ill-defined. */
-      }
-      break;
-  }
-  return eAxisSigned::X_POS;
-}
-
-/**
- * Returns an axis triple for converting from \a src orientation to \a dst orientation.
  * This axis triple can then be converted to a rotation.
- * The third axis is chosen by right hand rule to follow blender coordinate system.
- * Returns identity if rotation is ill-defined (eg. same forward and up).
- * \a forward is Y axis in blender coordinate system.
- * \a up is Z axis in blender coordinate system.
  */
-static inline VecBase<eAxisSigned, 3> axis_conversion(const eAxisSigned src_forward,
-                                                      const eAxisSigned src_up,
-                                                      const eAxisSigned dst_forward,
-                                                      const eAxisSigned dst_up)
-{
-  /* Start with identity for failure cases. */
-  VecBase<eAxisSigned, 3> axes(eAxisSigned::X_POS, eAxisSigned::Y_POS, eAxisSigned::Z_POS);
+struct AxisConversion {
+  VecBase<eAxisSigned, 3> axes;
 
-  if (src_forward == dst_forward && src_up == dst_up) {
+  AxisConversion() = delete;
+
+  /**
+   * Create an AxisConversion for converting from \a src orientation to \a dst orientation.
+   * The third axis is chosen by right hand rule to follow blender coordinate system.
+   * Returns identity if rotation is ill-defined (eg. same forward and up).
+   * \a forward is Y axis in blender coordinate system.
+   * \a up is Z axis in blender coordinate system.
+   */
+  AxisConversion(const eAxisSigned src_forward,
+                 const eAxisSigned src_up,
+                 const eAxisSigned dst_forward,
+                 const eAxisSigned dst_up)
+      : axes(axis_conversion(src_forward, src_up, dst_forward, dst_up))
+  {
+  }
+
+  AxisConversion(const eAxisSigned src_forward, const eAxisSigned dst_forward)
+  {
+    /* Pick predictable next axis. */
+    eAxisSigned src_up = eAxisSigned((src_forward + 1) % 3);
+    eAxisSigned dst_up = eAxisSigned((dst_forward + 1) % 3);
+
+    if (is_negative(src_forward) != is_negative(dst_forward)) {
+      /* Flip both axis (up and right) so resulting rotation matrix sign remains positive. */
+      dst_up = negate(dst_up);
+    }
+    axes = axis_conversion(src_forward, src_up, dst_forward, dst_up);
+  }
+
+  /**
+   * Returns the cross direction from two basis direction.
+   * Way faster than true cross product if the vectors are basis vectors.
+   * Any ill-formed case will return positive X.
+   */
+  static eAxisSigned cross(const eAxisSigned a, const eAxisSigned b)
+  {
+    switch (a) {
+      case eAxisSigned::X_POS:
+        switch (b) {
+          case eAxisSigned::X_POS:
+            break; /* Ill-defined. */
+          case eAxisSigned::Y_POS:
+            return eAxisSigned::Z_POS;
+          case eAxisSigned::Z_POS:
+            return eAxisSigned::Y_NEG;
+          case eAxisSigned::X_NEG:
+            break; /* Ill-defined. */
+          case eAxisSigned::Y_NEG:
+            return eAxisSigned::Z_NEG;
+          case eAxisSigned::Z_NEG:
+            return eAxisSigned::Y_POS;
+        }
+        break;
+      case eAxisSigned::Y_POS:
+        switch (b) {
+          case eAxisSigned::X_POS:
+            return eAxisSigned::Z_NEG;
+          case eAxisSigned::Y_POS:
+            break; /* Ill-defined. */
+          case eAxisSigned::Z_POS:
+            return eAxisSigned::X_POS;
+          case eAxisSigned::X_NEG:
+            return eAxisSigned::Z_POS;
+          case eAxisSigned::Y_NEG:
+            break; /* Ill-defined. */
+          case eAxisSigned::Z_NEG:
+            return eAxisSigned::X_NEG;
+        }
+        break;
+      case eAxisSigned::Z_POS:
+        switch (b) {
+          case eAxisSigned::X_POS:
+            return eAxisSigned::Y_POS;
+          case eAxisSigned::Y_POS:
+            return eAxisSigned::X_NEG;
+          case eAxisSigned::Z_POS:
+            break; /* Ill-defined. */
+          case eAxisSigned::X_NEG:
+            return eAxisSigned::Y_NEG;
+          case eAxisSigned::Y_NEG:
+            return eAxisSigned::X_POS;
+          case eAxisSigned::Z_NEG:
+            break; /* Ill-defined. */
+        }
+        break;
+      case eAxisSigned::X_NEG:
+        switch (b) {
+          case eAxisSigned::X_POS:
+            break; /* Ill-defined. */
+          case eAxisSigned::Y_POS:
+            return eAxisSigned::Z_NEG;
+          case eAxisSigned::Z_POS:
+            return eAxisSigned::Y_POS;
+          case eAxisSigned::X_NEG:
+            break; /* Ill-defined. */
+          case eAxisSigned::Y_NEG:
+            return eAxisSigned::Z_POS;
+          case eAxisSigned::Z_NEG:
+            return eAxisSigned::Y_NEG;
+        }
+        break;
+      case eAxisSigned::Y_NEG:
+        switch (b) {
+          case eAxisSigned::X_POS:
+            return eAxisSigned::Z_POS;
+          case eAxisSigned::Y_POS:
+            break; /* Ill-defined. */
+          case eAxisSigned::Z_POS:
+            return eAxisSigned::X_NEG;
+          case eAxisSigned::X_NEG:
+            return eAxisSigned::Z_NEG;
+          case eAxisSigned::Y_NEG:
+            break; /* Ill-defined. */
+          case eAxisSigned::Z_NEG:
+            return eAxisSigned::X_POS;
+        }
+        break;
+      case eAxisSigned::Z_NEG:
+        switch (b) {
+          case eAxisSigned::X_POS:
+            return eAxisSigned::Y_NEG;
+          case eAxisSigned::Y_POS:
+            return eAxisSigned::X_POS;
+          case eAxisSigned::Z_POS:
+            break; /* Ill-defined. */
+          case eAxisSigned::X_NEG:
+            return eAxisSigned::Y_POS;
+          case eAxisSigned::Y_NEG:
+            return eAxisSigned::X_NEG;
+          case eAxisSigned::Z_NEG:
+            break; /* Ill-defined. */
+        }
+        break;
+    }
+    return eAxisSigned::X_POS;
+  }
+
+ private:
+  static VecBase<eAxisSigned, 3> axis_conversion(const eAxisSigned src_forward,
+                                                 const eAxisSigned src_up,
+                                                 const eAxisSigned dst_forward,
+                                                 const eAxisSigned dst_up)
+  {
+    /* Start with identity for failure cases. */
+    VecBase<eAxisSigned, 3> axes(eAxisSigned::X_POS, eAxisSigned::Y_POS, eAxisSigned::Z_POS);
+
+    if (src_forward == dst_forward && src_up == dst_up) {
+      return axes;
+    }
+
+    if ((axis_unsigned(src_forward) == axis_unsigned(src_up)) ||
+        (axis_unsigned(dst_forward) == axis_unsigned(dst_up))) {
+      /* We could assert here! */
+      return axes;
+    }
+    /* Reminder that blender uses right hand rule. */
+    const eAxisSigned src_right = cross(src_forward, src_up);
+    const eAxisSigned dst_right = cross(dst_forward, dst_up);
+
+    eAxisSigned src_x = eAxisSigned(axis_unsigned(src_right));
+    eAxisSigned src_y = eAxisSigned(axis_unsigned(src_forward));
+    eAxisSigned src_z = eAxisSigned(axis_unsigned(src_up));
+
+    /* Correct axis sign. */
+    src_x = (is_negative(dst_right) != is_negative(src_right)) ? negate(src_x) : src_x;
+    src_y = (is_negative(dst_forward) != is_negative(src_forward)) ? negate(src_y) : src_y;
+    src_z = (is_negative(dst_up) != is_negative(src_up)) ? negate(src_z) : src_z;
+
+    eAxis dst_x = axis_unsigned(dst_right);
+    eAxis dst_y = axis_unsigned(dst_forward);
+    eAxis dst_z = axis_unsigned(dst_up);
+
+    /* Shuffle axes. */
+    axes[dst_x] = src_x;
+    axes[dst_y] = src_y;
+    axes[dst_z] = src_z;
     return axes;
   }
-
-  if ((axis_unsigned(src_forward) == axis_unsigned(src_up)) ||
-      (axis_unsigned(dst_forward) == axis_unsigned(dst_up))) {
-    /* We could assert here! */
-    return axes;
-  }
-  /* Reminder that blender uses right hand rule. */
-  const eAxisSigned src_right = cross(src_forward, src_up);
-  const eAxisSigned dst_right = cross(dst_forward, dst_up);
-
-  eAxisSigned src_x = eAxisSigned(axis_unsigned(src_right));
-  eAxisSigned src_y = eAxisSigned(axis_unsigned(src_forward));
-  eAxisSigned src_z = eAxisSigned(axis_unsigned(src_up));
-
-  /* Correct axis sign. */
-  src_x = (is_negative(dst_right) != is_negative(src_right)) ? negate(src_x) : src_x;
-  src_y = (is_negative(dst_forward) != is_negative(src_forward)) ? negate(src_y) : src_y;
-  src_z = (is_negative(dst_up) != is_negative(src_up)) ? negate(src_z) : src_z;
-
-  eAxis dst_x = axis_unsigned(dst_right);
-  eAxis dst_y = axis_unsigned(dst_forward);
-  eAxis dst_z = axis_unsigned(dst_up);
-
-  /* Shuffle axes. */
-  axes[dst_x] = src_x;
-  axes[dst_y] = src_y;
-  axes[dst_z] = src_z;
-  return axes;
-}
-
-static inline VecBase<eAxisSigned, 3> axis_conversion(const eAxisSigned src_forward,
-                                                      const eAxisSigned dst_forward)
-{
-  /* Pick predictable next axis. */
-  eAxisSigned src_up = eAxisSigned((src_forward + 1) % 3);
-  eAxisSigned dst_up = eAxisSigned((dst_forward + 1) % 3);
-
-  if (is_negative(src_forward) != is_negative(dst_forward)) {
-    /* Flip both axis (up and right) so resulting rotation matrix sign remains positive. */
-    dst_up = negate(dst_up);
-  }
-  return axis_conversion(src_forward, src_up, dst_forward, dst_up);
-}
+};
 
 }  // namespace blender::math
 

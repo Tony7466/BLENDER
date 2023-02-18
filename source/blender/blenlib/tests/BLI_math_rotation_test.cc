@@ -554,7 +554,7 @@ TEST(math_rotation, QuaternionFromTracking)
       quat_apply_track(&expect.w, forward_axis, up_axis);
 
       /* This is the expected axis conversion for curve tangent space to tracked object space. */
-      auto axes = axis_conversion(
+      AxisConversion axes(
           eAxisSigned::Z_POS, eAxisSigned::Y_POS, forward_axis, eAxisSigned(up_axis));
       Quaternion result = Quaternion(axes);
 
@@ -629,8 +629,9 @@ TEST(math_rotation, AxisConversion)
             mat3_from_axis_conversion(src_forward, src_up, dst_forward, dst_up, expect.ptr());
           }
 
-          EXPECT_EQ(from_axis_conversion<float3x3>(src_forward, src_up, dst_forward, dst_up),
-                    expect);
+          EXPECT_EQ(
+              from_rotation<float3x3>(AxisConversion(src_forward, src_up, dst_forward, dst_up)),
+              expect);
 
           if (src_forward == dst_forward) {
             expect = float3x3::identity();
@@ -640,7 +641,7 @@ TEST(math_rotation, AxisConversion)
             mat3_from_axis_conversion_single(src_forward, dst_forward, expect.ptr());
           }
 
-          EXPECT_EQ(from_axis_conversion<float3x3>(src_forward, dst_forward), expect);
+          EXPECT_EQ(from_rotation<float3x3>(AxisConversion(src_forward, dst_forward)), expect);
         }
       }
     }

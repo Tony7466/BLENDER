@@ -7,6 +7,7 @@
  */
 
 #include "BLI_math_angle_types.hh"
+#include "BLI_math_axis_convert_types.hh"
 #include "BLI_math_base.hh"
 #include "BLI_math_vector_types.hh"
 
@@ -47,14 +48,14 @@ template<typename T = float> struct Quaternion {
    * Creates a quaternion from an axis triple.
    * This is faster and more precise than converting from another representation.
    */
-  Quaternion(const VecBase<eAxisSigned, 3> &axes)
+  Quaternion(const AxisConversion &rotation)
   {
     /**
      * There is only 6 * 4 = 24 possible valid orthonormal orientations.
      * We precompute them and store them inside this switch using a key.
      * Generated using `generate_axes_to_quaternion_switch_cases()`.
      */
-    switch (axes.x << 16 | axes.y << 8 | axes.z) {
+    switch (rotation.axes.x << 16 | rotation.axes.y << 8 | rotation.axes.z) {
       default:
         *this = identity();
         break;

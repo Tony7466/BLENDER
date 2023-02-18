@@ -388,7 +388,7 @@ template<typename T>
   Vec3T rotated_up = rotate(q1, Vec3T(0, 0, 1));
 
   /* Project using axes index instead of arithmetic. It's much faster and more precise. */
-  eAxisSigned y_axis_signed = cross(eAxisSigned(axis), eAxisSigned(up_flag));
+  eAxisSigned y_axis_signed = AxisConversion::cross(eAxisSigned(axis), eAxisSigned(up_flag));
   eAxis x_axis = up_flag;
   eAxis y_axis = axis_unsigned(y_axis_signed);
 
@@ -442,45 +442,6 @@ template<typename T>
 }
 
 /**
- * Returns rotation matrix for converting from \a src orientation to \a dst orientation.
- * The third axis is chosen by right hand rule.
- * Returns identity if rotation is ill-defined.
- */
-template<typename MatT>
-[[nodiscard]] MatT from_axis_conversion(const eAxisSigned src_forward,
-                                        const eAxisSigned src_up,
-                                        const eAxisSigned dst_forward,
-                                        const eAxisSigned dst_up)
-{
-  using T = typename MatT::base_type;
-  const VecBase<eAxisSigned, 3> axes = axis_conversion(src_forward, src_up, dst_forward, dst_up);
-  MatT result;
-  result.x_axis() = basis_vector<T>(axes.x);
-  result.y_axis() = basis_vector<T>(axes.y);
-  result.z_axis() = basis_vector<T>(axes.z);
-  return result;
-}
-
-/**
- * Returns rotation matrix for converting from \a src orientation to \a dst orientation.
- * The second axis is chosen as the next axis (X -> Y, Y -> Z, Z -> X).
- * The third axis is chosen by right hand rule.
- * Returns identity if rotation is ill-defined.
- */
-template<typename MatT>
-[[nodiscard]] MatT from_axis_conversion(const eAxisSigned src_forward,
-                                        const eAxisSigned dst_forward)
-{
-  using T = typename MatT::base_type;
-  const VecBase<eAxisSigned, 3> axes = axis_conversion(src_forward, dst_forward);
-  MatT result;
-  result.x_axis() = basis_vector<T>(axes.x);
-  result.y_axis() = basis_vector<T>(axes.y);
-  result.z_axis() = basis_vector<T>(axes.z);
-  return result;
-}
-
-/**
  * Raise a unit #Quaternion \a q to the real \a y exponent.
  * \note This only works on unit quaternions and y != 0.
  * \note This is not a per component power.
@@ -518,7 +479,7 @@ template<typename T>
 
   /* Curve have Z forward, Y up, X left. */
   return detail::Quaternion<T>(
-      axis_conversion(eAxisSigned::Z_POS, eAxisSigned::Y_POS, forward_axis, eAxisSigned(up_axis)));
+      AxisConversion(eAxisSigned::Z_POS, eAxisSigned::Y_POS, forward_axis, eAxisSigned(up_axis)));
 }
 
 /**

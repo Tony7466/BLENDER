@@ -533,6 +533,9 @@ template<typename T, int NumCol, int NumRow>
 [[nodiscard]] MatBase<T, NumCol, NumRow> from_rotation(const DualQuaternion<T> &rotation);
 
 template<typename T, int NumCol, int NumRow>
+[[nodiscard]] MatBase<T, NumCol, NumRow> from_rotation(const AxisConversion &rotation);
+
+template<typename T, int NumCol, int NumRow>
 [[nodiscard]] MatBase<T, NumCol, NumRow> from_rotation(const AxisAngle<T> &rotation);
 
 }  // namespace detail
@@ -1004,6 +1007,17 @@ template<typename T, int NumCol, int NumRow>
   if (rotation.scale_weight != T(0)) {
     mat.template view<4, 4>() = mat * rotation.scale;
   }
+  return mat;
+}
+
+template<typename T, int NumCol, int NumRow>
+MatBase<T, NumCol, NumRow> from_rotation(const AxisConversion &rotation)
+{
+  using MatT = MatBase<T, NumCol, NumRow>;
+  MatT mat = MatT::identity();
+  mat.x_axis() = basis_vector<T>(rotation.axes.x);
+  mat.y_axis() = basis_vector<T>(rotation.axes.y);
+  mat.z_axis() = basis_vector<T>(rotation.axes.z);
   return mat;
 }
 
