@@ -653,7 +653,7 @@ TEST(math_rotation, Transform)
   Quaternion q(0.927091f, 0.211322f, -0.124857f, 0.283295f);
 
   float3 p(0.576f, -0.6546f, 46.354f);
-  p = rotate(q, p);
+  p = transform_point(q, p);
   EXPECT_V3_NEAR(p, float3(-4.33722f, -21.661f, 40.7608f), 1e-4f);
 }
 

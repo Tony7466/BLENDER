@@ -429,7 +429,7 @@ Quaternion to_quaternion_legacy(const float3x3 &mat)
   Quaternion q1(math::cos(ha), -nor * math::sin(ha));
 
   /* Rotate back x-axis from mat, using inverse q1. */
-  float3 x_axis = rotate(conjugate(q1), n_mat.x_axis());
+  float3 x_axis = transform_point(conjugate(q1), n_mat.x_axis());
 
   /* And align x-axes. */
   float ha2 = 0.5f * math::atan2(x_axis.y, x_axis.x);

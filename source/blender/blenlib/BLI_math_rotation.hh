@@ -165,7 +165,8 @@ template<typename T> [[nodiscard]] inline bool is_zero(const detail::Quaternion<
  * Transform \a p by rotation using the quaternion \a q .
  */
 template<typename T>
-[[nodiscard]] inline VecBase<T, 3> rotate(const detail::Quaternion<T> &q, const VecBase<T, 3> &v)
+[[nodiscard]] inline VecBase<T, 3> transform_point(const detail::Quaternion<T> &q,
+                                                   const VecBase<T, 3> &v)
 {
 #if 0 /* Reference. */
   detail::Quaternion<T> V(T(0), UNPACK3(v));
@@ -305,7 +306,7 @@ template<typename T>
   detail::Quaternion<T> q1(math::cos(angle), n.x * si, n.y * si, T(0));
 
   /* Rotate back line v1-v2. */
-  Vec3T line = rotate(conjugate(q1), (v2 - v1));
+  Vec3T line = transform_point(conjugate(q1), (v2 - v1));
   /* What angle has this line with x-axis? */
   line = normalize(Vec3T(line.x, line.y, T(0)));
 
@@ -385,7 +386,7 @@ template<typename T>
 
   /* Extract rotation between the up axis of the rotated space and the up axis. */
   /* There might be an easier way to get this angle directly from the quaternion representation. */
-  Vec3T rotated_up = rotate(q1, Vec3T(0, 0, 1));
+  Vec3T rotated_up = transform_point(q1, Vec3T(0, 0, 1));
 
   /* Project using axes index instead of arithmetic. It's much faster and more precise. */
   eAxisSigned y_axis_signed = AxisConversion::cross(eAxisSigned(axis), eAxisSigned(up_flag));
