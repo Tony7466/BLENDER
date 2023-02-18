@@ -3513,6 +3513,9 @@ def km_animation_channels(params):
         ("anim.channels_ungroup", {"type": 'G', "value": 'PRESS', "ctrl": True, "alt": True}, None),
         # Menus.
         *_template_items_context_menu("DOPESHEET_MT_channel_context_menu", params.context_menu_event),
+        # View
+        ("anim.channel_view_pick", {"type": 'MIDDLEMOUSE', "value": 'PRESS', "alt": True}, None),
+        ("anim.channels_view_selected", {"type": 'NUMPAD_PERIOD', "value": 'PRESS'}, None),
     ])
 
     return keymap
@@ -5629,6 +5632,10 @@ def km_curves(params):
         ("curves.disable_selection", {"type": 'TWO', "value": 'PRESS', "alt": True}, None),
         *_template_items_select_actions(params, "curves.select_all"),
         ("curves.select_linked", {"type": 'L', "value": 'PRESS', "ctrl": True}, None),
+        ("curves.delete", {"type": 'X', "value": 'PRESS'}, None),
+        ("curves.delete", {"type": 'DEL', "value": 'PRESS'}, None),
+        ("curves.select_more", {"type": 'NUMPAD_PLUS', "value": 'PRESS', "ctrl": True, "repeat": True}, None),
+        ("curves.select_less", {"type": 'NUMPAD_MINUS', "value": 'PRESS', "ctrl": True, "repeat": True}, None),
     ])
 
     return keymap
@@ -6345,9 +6352,8 @@ def km_node_link_modal_map(_params):
 
     return keymap
 
+
 # Fallback for gizmos that don't have custom a custom key-map.
-
-
 def km_generic_gizmo(_params):
     keymap = (
         "Generic Gizmo",
