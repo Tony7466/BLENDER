@@ -439,7 +439,7 @@ typedef struct bNodeTreeType {
 struct bNodeTreeType *ntreeTypeFind(const char *idname);
 void ntreeTypeAdd(struct bNodeTreeType *nt);
 void ntreeTypeFreeLink(const struct bNodeTreeType *nt);
-bool ntreeIsRegistered(struct bNodeTree *ntree);
+bool ntreeIsRegistered(const struct bNodeTree *ntree);
 struct GHashIterator *ntreeTypeGetIterator(void);
 
 /* Helper macros for iterating over tree types. */
@@ -503,7 +503,7 @@ struct bNodeTree *ntreeFromID(struct ID *id);
 
 void ntreeFreeLocalNode(struct bNodeTree *ntree, struct bNode *node);
 void ntreeFreeLocalTree(struct bNodeTree *ntree);
-struct bNode *ntreeFindType(struct bNodeTree *ntree, int type);
+struct bNode *ntreeFindType(struct bNodeTree *ntree, const int type);
 
 /**
  * Check recursively if a node tree contains another.
@@ -553,14 +553,14 @@ void ntreeBlendReadExpand(struct BlendExpander *expander, struct bNodeTree *ntre
  * \{ */
 
 struct bNodeSocket *ntreeFindSocketInterface(struct bNodeTree *ntree,
-                                             eNodeSocketInOut in_out,
+                                             const eNodeSocketInOut in_out,
                                              const char *identifier);
 struct bNodeSocket *ntreeAddSocketInterface(struct bNodeTree *ntree,
-                                            eNodeSocketInOut in_out,
+                                            const eNodeSocketInOut in_out,
                                             const char *idname,
                                             const char *name);
 struct bNodeSocket *ntreeInsertSocketInterface(struct bNodeTree *ntree,
-                                               eNodeSocketInOut in_out,
+                                               const eNodeSocketInOut in_out,
                                                const char *idname,
                                                struct bNodeSocket *next_sock,
                                                const char *name);
@@ -607,14 +607,14 @@ struct GHashIterator *nodeTypeGetIterator(void);
 struct bNodeSocketType *nodeSocketTypeFind(const char *idname);
 void nodeRegisterSocketType(struct bNodeSocketType *stype);
 void nodeUnregisterSocketType(struct bNodeSocketType *stype);
-bool nodeSocketIsRegistered(struct bNodeSocket *sock);
+bool nodeSocketIsRegistered(const struct bNodeSocket *sock);
 struct GHashIterator *nodeSocketTypeGetIterator(void);
 const char *nodeSocketTypeLabel(const bNodeSocketType *stype);
 
 bool nodeIsStaticSocketType(const struct bNodeSocketType *stype);
-const char *nodeStaticSocketType(int type, int subtype);
-const char *nodeStaticSocketInterfaceType(int type, int subtype);
-const char *nodeStaticSocketLabel(int type, int subtype);
+const char *nodeStaticSocketType(const int type, const int subtype);
+const char *nodeStaticSocketInterfaceType(const int type, const int subtype);
+const char *nodeStaticSocketLabel(const int type, const int subtype);
 
 /* Helper macros for iterating over node types. */
 #define NODE_SOCKET_TYPES_BEGIN(stype) \
@@ -631,12 +631,12 @@ const char *nodeStaticSocketLabel(int type, int subtype);
   } \
   ((void)0)
 
-struct bNodeSocket *nodeFindSocket(struct bNode *node,
-                                   eNodeSocketInOut in_out,
+struct bNodeSocket *nodeFindSocket(const struct bNode *node,
+                                   const eNodeSocketInOut in_out,
                                    const char *identifier);
 struct bNodeSocket *nodeAddSocket(struct bNodeTree *ntree,
                                   struct bNode *node,
-                                  eNodeSocketInOut in_out,
+                                  const eNodeSocketInOut in_out,
                                   const char *idname,
                                   const char *identifier,
                                   const char *name);
@@ -651,21 +651,24 @@ void nodeRemoveSocket(struct bNodeTree *ntree, struct bNode *node, struct bNodeS
 void nodeRemoveSocketEx(struct bNodeTree *ntree,
                         struct bNode *node,
                         struct bNodeSocket *sock,
-                        bool do_id_user);
+                        const bool do_id_user);
 void nodeRemoveAllSockets(struct bNodeTree *ntree, struct bNode *node);
 void nodeModifySocketType(struct bNodeTree *ntree,
                           struct bNode *node,
                           struct bNodeSocket *sock,
                           const char *idname);
-void nodeModifySocketTypeStatic(
-    struct bNodeTree *ntree, struct bNode *node, struct bNodeSocket *sock, int type, int subtype);
+void nodeModifySocketTypeStatic(struct bNodeTree *ntree,
+                                struct bNode *node,
+                                struct bNodeSocket *sock,
+                                const int type,
+                                const int subtype);
 
 struct bNode *nodeAddNode(const struct bContext *C, struct bNodeTree *ntree, const char *idname);
-struct bNode *nodeAddStaticNode(const struct bContext *C, struct bNodeTree *ntree, int type);
+struct bNode *nodeAddStaticNode(const struct bContext *C, struct bNodeTree *ntree, const int type);
 /**
  * \note Goes over entire tree.
  */
-void nodeUnlinkNode(struct bNodeTree *ntree, struct bNode *node);
+void nodeUnlinkNode(struct bNodeTree *ntree, const struct bNode *node);
 /**
  * Find the first available, non-duplicate name for a given node.
  */
@@ -689,7 +692,7 @@ void nodeRebuildIDVector(struct bNodeTree *node_tree);
 void nodeRemoveNode(struct Main *bmain,
                     struct bNodeTree *ntree,
                     struct bNode *node,
-                    bool do_id_user);
+                    const bool do_id_user);
 
 void nodeDimensionsGet(const struct bNode *node, float *r_width, float *r_height);
 void nodeTagUpdateID(struct bNode *node);
@@ -742,16 +745,16 @@ bool nodeLinkIsHidden(const struct bNodeLink *link);
 bool nodeLinkIsSelected(const struct bNodeLink *link);
 void nodeInternalRelink(struct bNodeTree *ntree, struct bNode *node);
 
-void nodeToView(const struct bNode *node, float x, float y, float *rx, float *ry);
-void nodeFromView(const struct bNode *node, float x, float y, float *rx, float *ry);
+void nodeToView(const struct bNode *node, const float x, const float y, float *rx, float *ry);
+void nodeFromView(const struct bNode *node, const float x, const float y, float *rx, float *ry);
 bool nodeAttachNodeCheck(const struct bNode *node, const struct bNode *parent);
 void nodeAttachNode(struct bNodeTree *ntree, struct bNode *node, struct bNode *parent);
 void nodeDetachNode(struct bNodeTree *ntree, struct bNode *node);
 
 void nodePositionRelative(struct bNode *from_node,
-                          struct bNode *to_node,
-                          struct bNodeSocket *from_sock,
-                          struct bNodeSocket *to_sock);
+                          const struct bNode *to_node,
+                          const struct bNodeSocket *from_sock,
+                          const struct bNodeSocket *to_sock);
 void nodePositionPropagate(struct bNode *node);
 
 /**
@@ -810,7 +813,7 @@ void nodeChainIterBackwards(const bNodeTree *ntree,
                             const bNode *node_start,
                             bool (*callback)(bNode *, bNode *, void *),
                             void *userdata,
-                            int recursion_lvl);
+                            const int recursion_lvl);
 /**
  * Iterate over all parents of \a node, executing \a callback for each parent
  * (which can return false to end iterator)
@@ -852,7 +855,7 @@ bool nodeSupportsActiveFlag(const struct bNode *node, int sub_active);
 
 void nodeSetSocketAvailability(struct bNodeTree *ntree,
                                struct bNodeSocket *sock,
-                               bool is_available);
+                               const bool is_available);
 
 int nodeSocketLinkLimit(const struct bNodeSocket *sock);
 
@@ -970,7 +973,10 @@ void BKE_node_preview_merge_tree(struct bNodeTree *to_ntree,
 /** \name Node Type Access
  * \{ */
 
-void nodeLabel(const struct bNodeTree *ntree, const struct bNode *node, char *label, int maxlen);
+void nodeLabel(const struct bNodeTree *ntree,
+               const struct bNode *node,
+               char *label,
+               const int maxlen);
 /**
  * Get node socket label if it is set.
  */
@@ -983,16 +989,19 @@ bool nodeGroupPoll(const struct bNodeTree *nodetree,
 /**
  * Initialize a new node type struct with default values and callbacks.
  */
-void node_type_base(struct bNodeType *ntype, int type, const char *name, short nclass);
+void node_type_base(struct bNodeType *ntype, const int type, const char *name, const short nclass);
 void node_type_base_custom(struct bNodeType *ntype,
                            const char *idname,
                            const char *name,
-                           short nclass);
+                           const short nclass);
 void node_type_socket_templates(struct bNodeType *ntype,
                                 struct bNodeSocketTemplate *inputs,
                                 struct bNodeSocketTemplate *outputs);
-void node_type_size(struct bNodeType *ntype, int width, int minwidth, int maxwidth);
-void node_type_size_preset(struct bNodeType *ntype, eNodeSizePreset size);
+void node_type_size(struct bNodeType *ntype,
+                    const int width,
+                    const int minwidth,
+                    const int maxwidth);
+void node_type_size_preset(struct bNodeType *ntype, const eNodeSizePreset size);
 /**
  * \warning Nodes defining a storage type _must_ allocate this for new nodes.
  * Otherwise nodes will reload as undefined (#46619).
@@ -1585,9 +1594,11 @@ extern struct bNodeSocketType NodeSocketTypeUndefined;
 
 namespace blender::bke {
 
-bNodeSocket *node_find_enabled_socket(bNode &node, eNodeSocketInOut in_out, StringRef name);
-bNodeSocket *node_find_enabled_input_socket(bNode &node, StringRef name);
-bNodeSocket *node_find_enabled_output_socket(bNode &node, StringRef name);
+bNodeSocket *node_find_enabled_socket(bNode &node,
+                                      const eNodeSocketInOut in_out,
+                                      const StringRef name);
+bNodeSocket *node_find_enabled_input_socket(bNode &node, const StringRef name);
+bNodeSocket *node_find_enabled_output_socket(bNode &node, const StringRef name);
 
 }  // namespace blender::bke
 
