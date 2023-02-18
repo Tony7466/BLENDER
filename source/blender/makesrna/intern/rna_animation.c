@@ -573,7 +573,15 @@ static void rna_KeyingSet_paths_clear(KeyingSet *keyingset, ReportList *reports)
 /* needs wrapper function to push notifier */
 static NlaTrack *rna_NlaTrack_new(ID *id, AnimData *adt, Main *bmain, bContext *C, NlaTrack *track)
 {
-  NlaTrack *new_track = BKE_nlatrack_add(adt, track, ID_IS_OVERRIDE_LIBRARY(id));
+  NlaTrack *new_track;
+
+  if (track != NULL) {
+    new_track = BKE_nlatrack_new_after_and_set_active(
+        &adt->nla_tracks, track, ID_IS_OVERRIDE_LIBRARY(id));
+  }
+  else {
+    new_track = BKE_nlatrack_new_tail_and_set_active(&adt->nla_tracks, ID_IS_OVERRIDE_LIBRARY(id));
+  }
 
   WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_ADDED, NULL);
 
