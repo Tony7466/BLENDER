@@ -627,9 +627,6 @@ static bool view3d_world_drop_poll(bContext *C, wmDrag *drag, const wmEvent *eve
 static bool view3d_object_data_drop_poll(bContext *C, wmDrag *drag, const wmEvent *event)
 {
   ID_Type id_type = view3d_drop_id_in_main_region_poll_get_id_type(C, drag, event);
-  if (id_type && id_type == ID_GD) {
-    return false;
-  }
   if (id_type && OB_DATA_SUPPORT_ID(id_type)) {
     return true;
   }
@@ -1018,6 +1015,12 @@ static void view3d_dropboxes()
                  WM_drag_free_imported_drag_ID,
                  nullptr);
   WM_dropbox_add(lb,
+                 "GPENCIL_OT_asset_import",
+                 view3d_gpencil_drop_poll,
+                 view3d_id_drop_copy_with_type,
+                 WM_drag_free_imported_drag_ID,
+                 view3d_gpencil_data_drop_tooltip);
+  WM_dropbox_add(lb,
                  "OBJECT_OT_data_instance_add",
                  view3d_object_data_drop_poll,
                  view3d_id_drop_copy_with_type,
@@ -1029,13 +1032,6 @@ static void view3d_dropboxes()
                  view3d_id_drop_copy,
                  WM_drag_free_imported_drag_ID,
                  NULL);
-
-  WM_dropbox_add(lb,
-                 "GPENCIL_OT_asset_import",
-                 view3d_gpencil_drop_poll,
-                 view3d_id_drop_copy_with_type,
-                 WM_drag_free_imported_drag_ID,
-                 view3d_gpencil_data_drop_tooltip);
 }
 
 static void view3d_widgets()
