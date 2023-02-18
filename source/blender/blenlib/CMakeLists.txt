@@ -259,6 +259,9 @@ set(SRC
   BLI_map.hh
   BLI_map_slots.hh
   BLI_math.h
+  BLI_math_angle_types.hh
+  BLI_math_axis_angle_types.hh
+  BLI_math_axis_convert_types.hh
   BLI_math_base.h
   BLI_math_base.hh
   BLI_math_base_safe.h
@@ -274,6 +277,7 @@ set(SRC
   BLI_math_matrix.hh
   BLI_math_matrix_types.hh
   BLI_math_mpq.hh
+  BLI_math_quaternion_types.hh
   BLI_math_rotation.h
   BLI_math_rotation.hh
   BLI_math_rotation_legacy.hh
