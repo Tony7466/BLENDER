@@ -75,7 +75,11 @@ class ImBufTest(AbstractImBufTest):
         return self.call_idiff(ref_exr_path, out_exr_path)
 
     def check(self, file_pattern):
-        for image_path in self._get_image_files(file_pattern):
+        image_files = self._get_image_files(file_pattern)
+        if len(image_files) == 0:
+            self.fail(f"No images found for pattern {file_pattern}")
+
+        for image_path in image_files:
             print_message(image_path.name, 'SUCCESS', 'RUN')
 
             # Load the image under test
