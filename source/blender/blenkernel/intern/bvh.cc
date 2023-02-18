@@ -93,7 +93,7 @@ void set_tri_vertex_buffer(RTCGeometry geom_id, Span<float3> positions, const bo
                                                                      t,
                                                                      RTC_FORMAT_FLOAT3,
                                                                      sizeof(float) * 3,
-                                                                     num_verts + 1);
+                                                                     num_verts);
 
     BLI_assert(rtc_verts);
     if (rtc_verts) {
@@ -111,7 +111,7 @@ void set_tri_vertex_buffer(RTCGeometry geom_id, Span<float3> positions, const bo
   }
 }
 
-void add_triangles(BvhBuildContext ctx, int id, Span<float3> positions, Span<MLoopTri> looptris)
+void add_triangles(BvhBuildContext ctx, int id, Span<float3> positions, Span<MLoop> loops, Span<MLoopTri> looptris)
 {
   // size_t prim_offset = mesh->prim_offset;
 
@@ -140,9 +140,10 @@ void add_triangles(BvhBuildContext ctx, int id, Span<float3> positions, Span<MLo
   //  return;
   //}
   for (size_t j = 0; j < looptris.size(); ++j) {
-    rtc_indices[j * 3] = looptris[j].tri[0];
-    rtc_indices[j * 3 + 1] = looptris[j].tri[1];
-    rtc_indices[j * 3 + 2] = looptris[j].tri[2];
+    rtc_indices[0] = loops[looptris[j].tri[0]].v;
+    rtc_indices[1] = loops[looptris[j].tri[1]].v;
+    rtc_indices[2] = loops[looptris[j].tri[2]].v;
+    rtc_indices += 3;
   }
 
   set_tri_vertex_buffer(geom_id, positions, false);
@@ -165,7 +166,8 @@ void add_mesh(BvhBuildContext ctx, int id, const Mesh &mesh)
     return;
   }
 
-  add_triangles(ctx, id, mesh.vert_positions(), Span<MLoopTri>(looptri, looptri_len));
+  add_triangles(
+      ctx, id, mesh.vert_positions(), mesh.loops(), Span<MLoopTri>(looptri, looptri_len));
 }
 
 }
