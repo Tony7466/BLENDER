@@ -7,7 +7,7 @@ import unittest
 
 import bpy
 
-sys.path.append(os.path.dirname(os.path.realpath(__file__)))
+sys.path.append(str(pathlib.Path(__file__).parent.absolute()))
 from modules.imbuf_test import (
     print_message,
     AbstractImBufTest
@@ -34,15 +34,12 @@ class ImBufTest(AbstractImBufTest):
         actual_metadata = f"{channels=} {is_float=} {colorspace=} {alpha_mode=}"
 
         # Save actual metadata
-        with open(out_metadata_path, "w+") as meta:
-            meta.write(actual_metadata)
+        out_metadata_path.write_text(actual_metadata, encoding="utf-8")
 
-        if os.path.exists(ref_metadata_path):
-            # Diff the metadata
-            expected_metadata = ""
+        if ref_metadata_path.exists():
+            # Compare with expected
             try:
-                with open(ref_metadata_path, "r") as meta:
-                    expected_metadata = meta.read()
+                expected_metadata = ref_metadata_path.read_text(encoding="utf-8")
 
                 failed = not (actual_metadata == expected_metadata)
             except BaseException as e:
@@ -56,9 +53,8 @@ class ImBufTest(AbstractImBufTest):
             failed = True
 
         if failed and self.update:
-            # Update reference metadata if requested.
-            with open(ref_metadata_path, "w+") as meta:
-                meta.write(actual_metadata)
+            # Update reference if requested.
+            ref_metadata_path.write_text(actual_metadata, encoding="utf-8")
             failed = False
 
         return not failed

@@ -6,7 +6,7 @@ import unittest
 
 import bpy
 
-sys.path.append(os.path.dirname(os.path.realpath(__file__)))
+sys.path.append(str(pathlib.Path(__file__).parent.absolute()))
 from modules.imbuf_test import (
     print_message,
     AbstractImBufTest
