@@ -191,6 +191,12 @@ template<typename T>
 
 /**
  * Rotate \a a by \a b. In other word, insert the \a b rotation before \a a.
+ *
+ * Some internal casting will happen except if \a a and \a b are both #Quaternion.
+ * This might introduce some precision loss.
+ * \note If \a a is a #Quaternion it will cast \a b to a #Quaternion.
+ * \note If \a a is an #AxisAngle it will cast both \a a and \a b to #Quaternion.
+ * \note If \a a is an #EulerXYZ or #Euler3 it will cast both \a a and \a b to #MatBase<T, 3, 3>.
  */
 template<typename T, typename RotT>
 [[nodiscard]] detail::Quaternion<T> rotate(const detail::Quaternion<T> &a, const RotT &b)
@@ -810,7 +816,7 @@ template<typename T> Quaternion<T> Quaternion<T>::swing(const eAxis axis) const
 }
 
 template<typename T, typename AngleT>
-AxisAngle<T, AngleT>::AxisAngle(const VecBase<T, 3> &axis, AngleT angle)
+AxisAngle<T, AngleT>::AxisAngle(const VecBase<T, 3> &axis, const AngleT &angle)
 {
   /* TODO: After merge to limit side effects. */
   // BLI_assert(is_unit_scale(axis));
@@ -821,7 +827,7 @@ AxisAngle<T, AngleT>::AxisAngle(const VecBase<T, 3> &axis, AngleT angle)
 }
 
 template<typename T, typename AngleT>
-AxisAngle<T, AngleT>::AxisAngle(const eAxisSigned axis, AngleT angle)
+AxisAngle<T, AngleT>::AxisAngle(const eAxisSigned axis, const AngleT &angle)
 {
   this->axis_ = basis_vector<T>(axis);
   this->angle_ = angle;
@@ -939,15 +945,9 @@ template<typename T, typename AngleT> AxisAngle<T, AngleT>::operator Quaternion<
 {
   BLI_assert(math::is_unit_scale(axis_));
 
-  T cos = angle().cos();
-  T sin = angle().sin();
-  /** Using half angle identities: sin(angle / 2) = sqrt((1 - angle_cos) / 2) */
-  T hs = math::sqrt(T(0.5) - cos * T(0.5));
-  const T hc = math::sqrt(T(0.5) + cos * T(0.5));
-
-  if (sin < 0.0) {
-    hs = -hs;
-  }
+  AngleT half_angle = angle() / T(2);
+  T hs = half_angle.sin();
+  T hc = half_angle.cos();
 
   Quaternion<T> quat;
   quat.w = hc;

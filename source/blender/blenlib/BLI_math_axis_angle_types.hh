@@ -4,6 +4,20 @@
 
 /** \file
  * \ingroup bli
+ *
+ * A `blender::math::AxisAngle<T>` represent a rotation around a unit axis.
+ *
+ * It is mainly useful for rotating a point around a given axis or quickly getting the rotation
+ * between 2 vectors. It is cheaper to create than a #Quaternion or a matrix rotation.
+ *
+ * If the rotation axis is one of the basis axes (eg: {1,0,0}), then most operations are reduced to
+ * 2D operations and thus faster.
+ *
+ * Interpolation isn't possible between two `blender::math::AxisAngle<T>` and they needs to be
+ * converted to other rotation types for that.
+ *
+ * Converting to `blender::math::Quaternion<T>` is the fastest and more correct option. Other
+ * conversions still use quaternion as intermediate representation.
  */
 
 #include "BLI_math_angle_types.hh"
@@ -23,27 +37,23 @@ template<typename T> struct Quaternion;
 template<typename T, typename AngleT> struct AxisAngle {
   using vec3_type = VecBase<T, 3>;
 
- protected:
-  VecBase<T, 3> axis_ = {0, 1, 0};
+ private:
+  vec3_type axis_ = {0, 1, 0};
   AngleT angle_ = AngleT::identity();
 
-  /**
-   * A defaulted constructor would cause zero initialization instead of default initialization,
-   * and not call the default member initializers.
-   */
-  explicit AxisAngle(){};
-
  public:
+  AxisAngle() = default;
+
   /**
    * Create a rotation from a basis axis and an angle.
    */
-  AxisAngle(const eAxisSigned axis, AngleT angle);
+  AxisAngle(const eAxisSigned axis, const AngleT &angle);
 
   /**
    * Create a rotation from an axis and an angle.
    * \note `axis` have to be normalized.
    */
-  AxisAngle(const vec3_type &axis, AngleT angle);
+  AxisAngle(const vec3_type &axis, const AngleT &angle);
 
   /**
    * Create a rotation from 2 normalized vectors.
@@ -56,12 +66,12 @@ template<typename T, typename AngleT> struct AxisAngle {
 
   static AxisAngle identity()
   {
-    return AxisAngle();
+    return {};
   }
 
   /** Methods. */
 
-  const VecBase<T, 3> &axis() const
+  const vec3_type &axis() const
   {
     return axis_;
   }
