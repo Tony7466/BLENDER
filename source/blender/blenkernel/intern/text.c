@@ -2146,27 +2146,34 @@ const char *get_comment_prefix(struct TextFormatType *format)
       return "--";
     }
   }
-  return "";
+  return NULL;
 }
 
 void txt_comment(Text *text)
 {
   struct TextFormatType *format = ED_text_format_get(text);
-
   if (ELEM(NULL, format, text->curl, text->sell)) {
     return;
   }
 
   const char *prefix = get_comment_prefix(format);
+  if (prefix == NULL) {
+    return;
+  }
+
   const bool skip_blank_lines = txt_has_sel(text);
   txt_select_prefix(text, prefix, skip_blank_lines);
 }
 
 bool txt_uncomment(Text *text)
 {
-  const char *prefix = "#";
+  struct TextFormatType *format = ED_text_format_get(text);
+  if (ELEM(NULL, format, text->curl, text->sell)) {
+    return false;
+  }
 
-  if (ELEM(NULL, text->curl, text->sell)) {
+  const char *prefix = get_comment_prefix(format);
+  if (prefix == NULL) {
     return false;
   }
 
