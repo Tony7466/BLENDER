@@ -306,19 +306,19 @@ TEST(math_rotation, AxisAngleConstructors)
 {
   AxisAngle a({0.0f, 0.0f, 2.0f}, M_PI_2);
   EXPECT_V3_NEAR(a.axis(), float3(0, 0, 1), 1e-4);
-  EXPECT_NEAR(a.angle(), M_PI_2, 1e-4);
+  EXPECT_NEAR(float(a.angle()), M_PI_2, 1e-4);
 
-  AxisAngleNormalized b({0.0f, 0.0f, 1.0f}, M_PI_2);
+  AxisSinCos b({0.0f, 0.0f, 1.0f}, M_PI_2);
   EXPECT_V3_NEAR(b.axis(), float3(0, 0, 1), 1e-4);
-  EXPECT_NEAR(b.angle(), M_PI_2, 1e-4);
+  EXPECT_NEAR(float(b.angle()), M_PI_2, 1e-4);
 
   AxisAngle c({1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f});
   EXPECT_V3_NEAR(c.axis(), float3(0, 0, 1), 1e-4);
-  EXPECT_NEAR(c.angle(), M_PI_2, 1e-4);
+  EXPECT_NEAR(float(c.angle()), M_PI_2, 1e-4);
 
   AxisAngle d({1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f});
   EXPECT_V3_NEAR(d.axis(), float3(0, 0, -1), 1e-4);
-  EXPECT_NEAR(d.angle(), M_PI_2, 1e-4);
+  EXPECT_NEAR(float(d.angle()), M_PI_2, 1e-4);
 }
 
 TEST(math_rotation, QuaternionDot)

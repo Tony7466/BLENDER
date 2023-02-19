@@ -264,11 +264,11 @@ TEST(math_rotation_types, TypeConversion)
 
   EXPECT_V4_NEAR(float4(Quaternion(euler_xyz)), float4(quaternion), 1e-4);
   EXPECT_V3_NEAR(AxisAngle(euler_xyz).axis(), axis_angle.axis(), 1e-4);
-  EXPECT_NEAR(AxisAngle(euler_xyz).angle(), axis_angle.angle(), 1e-4);
+  EXPECT_NEAR(float(AxisAngle(euler_xyz).angle()), float(axis_angle.angle()), 1e-4);
 
   EXPECT_V3_NEAR(float3(EulerXYZ(quaternion)), float3(euler_xyz), 1e-4);
   EXPECT_V3_NEAR(AxisAngle(quaternion).axis(), axis_angle.axis(), 1e-4);
-  EXPECT_NEAR(AxisAngle(quaternion).angle(), axis_angle.angle(), 1e-4);
+  EXPECT_NEAR(float(AxisAngle(quaternion).angle()), float(axis_angle.angle()), 1e-4);
 
   EXPECT_V3_NEAR(float3(EulerXYZ(axis_angle)), float3(euler_xyz), 1e-4);
   EXPECT_V4_NEAR(float4(Quaternion(axis_angle)), float4(quaternion), 1e-4);
@@ -354,12 +354,12 @@ TEST(math_rotation_types, Euler3Conversion)
   EXPECT_V3_NEAR(AxisAngle(euler3_zxy).axis(), axis_angle_zxy.axis(), 1e-4);
   EXPECT_V3_NEAR(AxisAngle(euler3_zyx).axis(), axis_angle_zyx.axis(), 1e-4);
 
-  EXPECT_NEAR(AxisAngle(euler3_xyz).angle(), axis_angle_xyz.angle(), 1e-4);
-  EXPECT_NEAR(AxisAngle(euler3_xzy).angle(), axis_angle_xzy.angle(), 1e-4);
-  EXPECT_NEAR(AxisAngle(euler3_yxz).angle(), axis_angle_yxz.angle(), 1e-4);
-  EXPECT_NEAR(AxisAngle(euler3_yzx).angle(), axis_angle_yzx.angle(), 1e-4);
-  EXPECT_NEAR(AxisAngle(euler3_zxy).angle(), axis_angle_zxy.angle(), 1e-4);
-  EXPECT_NEAR(AxisAngle(euler3_zyx).angle(), axis_angle_zyx.angle(), 1e-4);
+  EXPECT_NEAR(float(AxisAngle(euler3_xyz).angle()), float(axis_angle_xyz.angle()), 1e-4);
+  EXPECT_NEAR(float(AxisAngle(euler3_xzy).angle()), float(axis_angle_xzy.angle()), 1e-4);
+  EXPECT_NEAR(float(AxisAngle(euler3_yxz).angle()), float(axis_angle_yxz.angle()), 1e-4);
+  EXPECT_NEAR(float(AxisAngle(euler3_yzx).angle()), float(axis_angle_yzx.angle()), 1e-4);
+  EXPECT_NEAR(float(AxisAngle(euler3_zxy).angle()), float(axis_angle_zxy.angle()), 1e-4);
+  EXPECT_NEAR(float(AxisAngle(euler3_zyx).angle()), float(axis_angle_zyx.angle()), 1e-4);
 
   EXPECT_V3_NEAR((Euler3(eOrder::XYZ) = axis_angle_xyz).ijk(), ijk, 1e-4);
   EXPECT_V3_NEAR((Euler3(eOrder::XZY) = axis_angle_xzy).ijk(), ijk, 1e-4);

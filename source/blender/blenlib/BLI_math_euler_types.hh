@@ -6,6 +6,7 @@
  * \ingroup bli
  */
 
+#include "BLI_math_angle_types.hh"
 #include "BLI_math_axis_convert_types.hh"
 #include "BLI_math_base.hh"
 
@@ -14,7 +15,7 @@ namespace blender::math {
 namespace detail {
 
 /* Forward declaration for casting operators. */
-template<typename T> struct AxisAngle;
+template<typename T, typename AngleT> struct AxisAngle;
 template<typename T> struct Quaternion;
 
 template<typename T> struct EulerXYZ {
@@ -53,8 +54,6 @@ template<typename T> struct EulerXYZ {
   {
     return {this->x, this->y, this->z};
   }
-
-  explicit operator AxisAngle<T>() const;
 
   explicit operator Quaternion<T>() const;
 
@@ -151,11 +150,10 @@ template<typename T> struct Euler3 {
     return {x(), y(), z()};
   }
 
-  explicit operator AxisAngle<T>() const;
   explicit operator Quaternion<T>() const;
 
   /* Conversion to Euler3 needs to be from assignment in order to choose the order type. */
-  Euler3 &operator=(const AxisAngle<T> &axis_angle);
+  Euler3 &operator=(const AxisAngle<T, AngleRadian<T>> &axis_angle);
   Euler3 &operator=(const Quaternion<T> &quat);
 
   /** Methods. */

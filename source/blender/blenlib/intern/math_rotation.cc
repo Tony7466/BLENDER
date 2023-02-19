@@ -13,21 +13,13 @@
 
 namespace blender::math::detail {
 
-template AxisAngle<float>::operator EulerXYZ<float>() const;
-template AxisAngle<float>::operator Quaternion<float>() const;
-template EulerXYZ<float>::operator AxisAngle<float>() const;
+template AxisAngle<float, AngleRadian<float>>::operator EulerXYZ<float>() const;
+template AxisAngle<float, AngleSinCos<float>>::operator EulerXYZ<float>() const;
+template AxisAngle<float, AngleRadian<float>>::operator Quaternion<float>() const;
+template AxisAngle<float, AngleSinCos<float>>::operator Quaternion<float>() const;
 template EulerXYZ<float>::operator Quaternion<float>() const;
-template Euler3<float>::operator AxisAngle<float>() const;
 template Euler3<float>::operator Quaternion<float>() const;
-template Quaternion<float>::operator AxisAngle<float>() const;
 template Quaternion<float>::operator EulerXYZ<float>() const;
-
-template AxisAngle<double>::operator EulerXYZ<double>() const;
-template AxisAngle<double>::operator Quaternion<double>() const;
-template EulerXYZ<double>::operator AxisAngle<double>() const;
-template EulerXYZ<double>::operator Quaternion<double>() const;
-template Quaternion<double>::operator AxisAngle<double>() const;
-template Quaternion<double>::operator EulerXYZ<double>() const;
 
 #if 0 /* Only for reference. */
 void generate_axes_to_quaternion_switch_cases()

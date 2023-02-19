@@ -28,6 +28,7 @@ template<typename T> struct AngleRadian {
   AngleRadian() = default;
 
   AngleRadian(const T &radian) : value(radian){};
+  AngleRadian(const T &cos, const T &sin) : value(math::atan2(sin, cos)){};
 
   /** Static functions. */
 
@@ -61,6 +62,16 @@ template<typename T> struct AngleRadian {
   AngleRadian wrapped_around(const AngleRadian &reference) const
   {
     return reference + (*this - reference).wrapped();
+  }
+
+  T cos() const
+  {
+    return math::cos(value);
+  }
+
+  T sin() const
+  {
+    return math::sin(value);
   }
 
   /** Operators. */
@@ -120,9 +131,52 @@ template<typename T> struct AngleRadian {
   }
 };
 
+/**
+ * Stores angle as cosine + sine tuple.
+ * Way less flexible. Used mostly for intermediate representation.
+ */
+template<typename T> struct AngleSinCos {
+ private:
+  T cos_;
+  T sin_;
+
+ public:
+  AngleSinCos() = default;
+
+  AngleSinCos(const T &cos, const T &sin) : cos_(cos), sin_(sin){};
+  AngleSinCos(const T &radian) : cos_(math::cos(radian)), sin_(math::sin(radian)){};
+
+  /** Static functions. */
+
+  static AngleSinCos identity()
+  {
+    return {1, 0};
+  }
+
+  /** Conversions. */
+
+  explicit operator T() const
+  {
+    return math::atan2(sin_, cos_);
+  }
+
+  /** Methods. */
+
+  T cos() const
+  {
+    return cos_;
+  }
+
+  T sin() const
+  {
+    return sin_;
+  }
+};
+
 }  // namespace detail
 
 using AngleRadian = math::detail::AngleRadian<float>;
+using AngleSinCos = math::detail::AngleSinCos<float>;
 
 }  // namespace blender::math
 

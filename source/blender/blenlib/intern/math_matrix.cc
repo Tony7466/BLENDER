@@ -467,8 +467,10 @@ template MatBase<float, 3, 3> from_rotation(const detail::Euler3<float> &rotatio
 template MatBase<float, 4, 4> from_rotation(const detail::Euler3<float> &rotation);
 template MatBase<float, 3, 3> from_rotation(const detail::Quaternion<float> &rotation);
 template MatBase<float, 4, 4> from_rotation(const detail::Quaternion<float> &rotation);
-template MatBase<float, 3, 3> from_rotation(const detail::AxisAngle<float> &rotation);
-template MatBase<float, 4, 4> from_rotation(const detail::AxisAngle<float> &rotation);
+template MatBase<float, 3, 3> from_rotation(const math::AxisAngle &rotation);
+template MatBase<float, 4, 4> from_rotation(const math::AxisAngle &rotation);
+template MatBase<float, 3, 3> from_rotation(const math::AxisSinCos &rotation);
+template MatBase<float, 4, 4> from_rotation(const math::AxisSinCos &rotation);
 
 }  // namespace detail
 

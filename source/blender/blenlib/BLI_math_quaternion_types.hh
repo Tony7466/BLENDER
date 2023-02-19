@@ -17,7 +17,6 @@ namespace detail {
 
 /* Forward declaration for casting operators. */
 template<typename T> struct EulerXYZ;
-template<typename T> struct AxisAngle;
 
 template<typename T = float> struct Quaternion {
   T w, x, y, z;
@@ -158,8 +157,6 @@ template<typename T = float> struct Quaternion {
   }
 
   explicit operator EulerXYZ<T>() const;
-
-  explicit operator AxisAngle<T>() const;
 
   /**
    * Create an exponential map representation of this quaternion.

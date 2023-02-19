@@ -197,10 +197,11 @@ template<typename T, typename RotT>
 {
   return a * detail::Quaternion<T>(b);
 }
-template<typename T, typename RotT>
-[[nodiscard]] detail::AxisAngle<T> rotate(const detail::AxisAngle<T> &a, const RotT &b)
+template<typename T, typename RotT, typename AngleT>
+[[nodiscard]] detail::AxisAngle<T, AngleT> rotate(const detail::AxisAngle<T, AngleT> &a,
+                                                  const RotT &b)
 {
-  return detail::AxisAngle<T>(detail::Quaternion<T>(a) * detail::Quaternion<T>(b));
+  return detail::AxisAngle<T, AngleT>(detail::Quaternion<T>(a) * detail::Quaternion<T>(b));
 }
 template<typename T, typename RotT>
 [[nodiscard]] detail::EulerXYZ<T> rotate(const detail::EulerXYZ<T> &a, const RotT &b)
@@ -377,7 +378,8 @@ template<typename T>
    * Avoiding the need for safe_acos and deriving sin from cos. */
   T rotation_angle = math::safe_acos(vec[axis] / vec_len);
 
-  detail::Quaternion<T> q1(detail::AxisAngle<T>(rotation_axis, rotation_angle));
+  detail::Quaternion<T> q1(
+      detail::AxisAngle<T, detail::AngleRadian<T>>(rotation_axis, rotation_angle));
 
   if (axis == up_flag) {
     /* Nothing else to do. */
@@ -730,7 +732,7 @@ template<typename T> Quaternion<T> Quaternion<T>::expmap(const VecBase<T, 3> &ex
   T angle;
   VecBase<T, 3> axis = normalize_and_get_length(expmap, angle);
   if (LIKELY(angle != 0.0f)) {
-    return Quaternion<T>(AxisAngle(axis, angle_wrap_rad(angle)));
+    return Quaternion<T>(detail::AxisAngle<T, AngleRadian<T>>(axis, angle_wrap_rad(angle)));
   }
   return Quaternion<T>::identity();
 }
@@ -738,8 +740,8 @@ template<typename T> Quaternion<T> Quaternion<T>::expmap(const VecBase<T, 3> &ex
 template<typename T> VecBase<T, 3> Quaternion<T>::expmap() const
 {
   BLI_ASSERT_UNIT_QUATERNION(*this);
-  AxisAngle<T> axis_angle(*this);
-  return axis_angle.axis() * axis_angle.angle();
+  AxisAngle<T, AngleRadian<T>> axis_angle(*this);
+  return axis_angle.axis() * T(axis_angle.angle());
 }
 
 template<typename T> Quaternion<T> Quaternion<T>::wrapped_around(const Quaternion &reference) const
@@ -814,60 +816,49 @@ template<typename T> Quaternion<T> Quaternion<T>::swing(const eAxis axis) const
   return swing(axis, twist_angle);
 }
 
-template<typename T> AxisAngle<T>::AxisAngle(const VecBase<T, 3> &axis, T angle)
+template<typename T, typename AngleT>
+AxisAngle<T, AngleT>::AxisAngle(const VecBase<T, 3> &axis, T angle)
 {
+  /* TODO: After merge to limit side effects. */
+  // BLI_assert(is_unit_scale(axis));
+  // axis_ = axis;
   T length;
-  axis_ = math::normalize_and_get_length(axis, length);
-  angle_cos_ = math::cos(angle);
-  angle_sin_ = math::sin(angle);
-  angle_ = angle;
+  this->axis_ = math::normalize_and_get_length(axis, length);
+  this->angle_ = angle;
 }
 
-template<typename T> AxisAngle<T>::AxisAngle(const eAxisSigned axis, T angle)
+template<typename T, typename AngleT>
+AxisAngle<T, AngleT>::AxisAngle(const eAxisSigned axis, T angle)
 {
-  T length;
-  axis_ = basis_vector<T>(axis);
-  if (length > 0.0f) {
-    angle_cos_ = math::cos(angle);
-    angle_sin_ = math::sin(angle);
-    angle_ = angle;
-  }
-  else {
-    *this = identity();
-  }
+  this->axis_ = basis_vector<T>(axis);
+  this->angle_ = angle;
 }
 
-template<typename T> AxisAngle<T>::AxisAngle(const VecBase<T, 3> &from, const VecBase<T, 3> &to)
+template<typename T, typename AngleT>
+AxisAngle<T, AngleT>::AxisAngle(const VecBase<T, 3> &from, const VecBase<T, 3> &to)
 {
   BLI_assert(is_unit_scale(from));
   BLI_assert(is_unit_scale(to));
 
-  /* Avoid calculating the angle. */
-  angle_cos_ = dot(from, to);
-  axis_ = normalize_and_get_length(cross(from, to), angle_sin_);
+  T sin;
+  T cos = dot(from, to);
+  this->axis_ = normalize_and_get_length(cross(from, to), sin);
 
-  if (angle_sin_ <= FLT_EPSILON) {
-    if (angle_cos_ > T(0)) {
+  if (sin <= FLT_EPSILON) {
+    if (cos > T(0)) {
       /* Same vectors, zero rotation... */
       *this = identity();
+      return;
     }
     else {
       /* Colinear but opposed vectors, 180 rotation... */
       axis_ = normalize(orthogonal(from));
-      angle_sin_ = T(0);
-      angle_cos_ = T(-1);
+      sin = T(0);
+      cos = T(-1);
     }
   }
-}
-
-template<typename T>
-AxisAngleNormalized<T>::AxisAngleNormalized(const VecBase<T, 3> &axis, T angle) : AxisAngle<T>()
-{
-  BLI_assert(is_unit_scale(axis));
-  this->axis_ = axis;
-  this->angle_ = angle;
-  this->angle_cos_ = math::cos(angle);
-  this->angle_sin_ = math::sin(angle);
+  /* Avoid calculating the angle if possible. */
+  this->angle_ = AngleT(cos, sin);
 }
 
 template<typename T> Quaternion<T>::operator EulerXYZ<T>() const
@@ -929,9 +920,8 @@ template<typename T> Euler3<T>::operator Quaternion<T>() const
   return {quat.w, UNPACK3(quat_xyz)};
 }
 
-template<typename T> Quaternion<T>::operator AxisAngle<T>() const
+template<typename T, typename AngleT> AxisAngle<T, AngleT>::AxisAngle(const Quaternion<T> &quat)
 {
-  const Quaternion<T> &quat = *this;
   BLI_ASSERT_UNIT_QUATERNION(quat)
 
   /* Calculate angle/2, and sin(angle/2). */
@@ -949,79 +939,82 @@ template<typename T> Quaternion<T>::operator AxisAngle<T>() const
   if (math::is_zero(axis)) {
     axis[1] = 1.0f;
   }
-  return AxisAngleNormalized<T>(axis, angle);
+  *this = AxisAngle<T, AngleT>(axis, angle);
 }
 
-template<typename T> AxisAngle<T>::operator Quaternion<T>() const
+template<typename T, typename AngleT> AxisAngle<T, AngleT>::operator Quaternion<T>() const
 {
   BLI_assert(math::is_unit_scale(axis_));
 
+  T cos = angle().cos();
+  T sin = angle().sin();
   /** Using half angle identities: sin(angle / 2) = sqrt((1 - angle_cos) / 2) */
-  T sine = math::sqrt(T(0.5) - angle_cos_ * T(0.5));
-  const T cosine = math::sqrt(T(0.5) + angle_cos_ * T(0.5));
+  T hs = math::sqrt(T(0.5) - cos * T(0.5));
+  const T hc = math::sqrt(T(0.5) + cos * T(0.5));
 
-  if (angle_sin_ < 0.0) {
-    sine = -sine;
+  if (sin < 0.0) {
+    hs = -hs;
   }
 
   Quaternion<T> quat;
-  quat.w = cosine;
-  quat.x = axis_.x * sine;
-  quat.y = axis_.y * sine;
-  quat.z = axis_.z * sine;
+  quat.w = hc;
+  quat.x = axis_.x * hs;
+  quat.y = axis_.y * hs;
+  quat.z = axis_.z * hs;
   return quat;
 }
 
-template<typename T> EulerXYZ<T>::operator AxisAngle<T>() const
+template<typename T, typename AngleT> AxisAngle<T, AngleT>::AxisAngle(const EulerXYZ<T> &euler)
 {
   /* Use quaternions as intermediate representation for now... */
-  return AxisAngle<T>(Quaternion<T>(*this));
+  *this = AxisAngle<T, AngleT>(Quaternion<T>(euler));
 }
 
-template<typename T> AxisAngle<T>::operator EulerXYZ<T>() const
+template<typename T, typename AngleT> AxisAngle<T, AngleT>::AxisAngle(const Euler3<T> &euler)
+{
+  /* Use quaternions as intermediate representation for now... */
+  *this = AxisAngle<T, AngleT>(Quaternion<T>(euler));
+}
+
+template<typename T, typename AngleT> AxisAngle<T, AngleT>::operator EulerXYZ<T>() const
 {
   /* Check easy and exact conversions first. */
   if (axis_.x == T(1)) {
-    return EulerXYZ<T>(angle(), T(0), T(0));
+    return EulerXYZ<T>(T(angle()), T(0), T(0));
   }
   else if (axis_.y == T(1)) {
-    return EulerXYZ<T>(T(0), angle(), T(0));
+    return EulerXYZ<T>(T(0), T(angle()), T(0));
   }
   else if (axis_.z == T(1)) {
-    return EulerXYZ<T>(T(0), T(0), angle());
+    return EulerXYZ<T>(T(0), T(0), T(angle()));
   }
   /* Use quaternions as intermediate representation for now... */
   return EulerXYZ<T>(Quaternion<T>(*this));
 }
 
-template<typename T> Euler3<T>::operator AxisAngle<T>() const
-{
-  /* Use quaternions as intermediate representation for now... */
-  return AxisAngle<T>(Quaternion<T>(*this));
-}
-
-template<typename T> Euler3<T> &Euler3<T>::operator=(const AxisAngle<T> &axis_angle)
+template<typename T>
+Euler3<T> &Euler3<T>::operator=(const AxisAngle<T, AngleRadian<T>> &axis_angle)
 {
   /* Use quaternions as intermediate representation for now... */
   return (*this = Quaternion<T>(axis_angle));
 }
 
 /* Using explicit template instantiations in order to reduce compilation time. */
-extern template AxisAngle<float>::operator EulerXYZ<float>() const;
-extern template AxisAngle<float>::operator Quaternion<float>() const;
-extern template EulerXYZ<float>::operator AxisAngle<float>() const;
+extern template AxisAngle<float, AngleRadian<float>>::operator EulerXYZ<float>() const;
+extern template AxisAngle<float, AngleSinCos<float>>::operator EulerXYZ<float>() const;
+extern template AxisAngle<float, AngleRadian<float>>::operator Quaternion<float>() const;
+extern template AxisAngle<float, AngleSinCos<float>>::operator Quaternion<float>() const;
+#if 0 /* TODO: Make it compile. */
+extern template AxisAngle<float, AngleRadian<float>>::AxisAngle(const EulerXYZ<float> &) const;
+extern template AxisAngle<float, AngleSinCos<float>>::AxisAngle(const EulerXYZ<float> &) const;
+extern template AxisAngle<float, AngleRadian<float>>::AxisAngle(const Euler3<float> &) const;
+extern template AxisAngle<float, AngleSinCos<float>>::AxisAngle(const Euler3<float> &) const;
+extern template AxisAngle<float, AngleRadian<float>>::AxisAngle(const Quaternion<float> &) const;
+extern template AxisAngle<float, AngleSinCos<float>>::AxisAngle(const Quaternion<float> &) const;
+#endif
 extern template EulerXYZ<float>::operator Quaternion<float>() const;
-extern template Euler3<float>::operator AxisAngle<float>() const;
 extern template Euler3<float>::operator Quaternion<float>() const;
-extern template Quaternion<float>::operator AxisAngle<float>() const;
 extern template Quaternion<float>::operator EulerXYZ<float>() const;
-
-extern template AxisAngle<double>::operator EulerXYZ<double>() const;
-extern template AxisAngle<double>::operator Quaternion<double>() const;
-extern template EulerXYZ<double>::operator AxisAngle<double>() const;
-extern template EulerXYZ<double>::operator Quaternion<double>() const;
-extern template Quaternion<double>::operator AxisAngle<double>() const;
-extern template Quaternion<double>::operator EulerXYZ<double>() const;
 
 }  // namespace blender::math::detail
 

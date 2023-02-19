@@ -535,8 +535,8 @@ template<typename T, int NumCol, int NumRow>
 template<typename T, int NumCol, int NumRow>
 [[nodiscard]] MatBase<T, NumCol, NumRow> from_rotation(const AxisConversion &rotation);
 
-template<typename T, int NumCol, int NumRow>
-[[nodiscard]] MatBase<T, NumCol, NumRow> from_rotation(const AxisAngle<T> &rotation);
+template<typename T, int NumCol, int NumRow, typename AngleT>
+[[nodiscard]] MatBase<T, NumCol, NumRow> from_rotation(const AxisAngle<T, AngleT> &rotation);
 
 }  // namespace detail
 
@@ -591,14 +591,14 @@ template<typename T, int NumCol, int NumRow, typename VectorT>
   return result;
 }
 
-template<typename T, int NumCol, int NumRow>
+template<typename T, int NumCol, int NumRow, typename AngleT>
 [[nodiscard]] MatBase<T, NumCol, NumRow> rotate(const MatBase<T, NumCol, NumRow> &mat,
-                                                const detail::AxisAngle<T> &rotation)
+                                                const detail::AxisAngle<T, AngleT> &rotation)
 {
   using MatT = MatBase<T, NumCol, NumRow>;
   using Vec3T = typename MatT::vec3_type;
-  const T &angle_sin = rotation.angle_sin();
-  const T &angle_cos = rotation.angle_cos();
+  const T angle_sin = rotation.angle().sin();
+  const T angle_cos = rotation.angle().cos();
   const Vec3T &axis_vec = rotation.axis();
 
   MatT result = mat;
@@ -1021,13 +1021,13 @@ MatBase<T, NumCol, NumRow> from_rotation(const AxisConversion &rotation)
   return mat;
 }
 
-template<typename T, int NumCol, int NumRow>
-MatBase<T, NumCol, NumRow> from_rotation(const AxisAngle<T> &rotation)
+template<typename T, int NumCol, int NumRow, typename AngleT>
+MatBase<T, NumCol, NumRow> from_rotation(const AxisAngle<T, AngleT> &rotation)
 {
   using MatT = MatBase<T, NumCol, NumRow>;
   using Vec3T = typename MatT::vec3_type;
-  const T angle_sin = rotation.angle_sin();
-  const T angle_cos = rotation.angle_cos();
+  const T angle_sin = rotation.angle().sin();
+  const T angle_cos = rotation.angle().cos();
   const Vec3T &axis = rotation.axis();
 
   BLI_assert(is_unit_scale(axis));
@@ -1075,8 +1075,10 @@ extern template MatBase<float, 3, 3> from_rotation(const Euler3<float> &rotation
 extern template MatBase<float, 4, 4> from_rotation(const Euler3<float> &rotation);
 extern template MatBase<float, 3, 3> from_rotation(const Quaternion<float> &rotation);
 extern template MatBase<float, 4, 4> from_rotation(const Quaternion<float> &rotation);
-extern template MatBase<float, 3, 3> from_rotation(const AxisAngle<float> &rotation);
-extern template MatBase<float, 4, 4> from_rotation(const AxisAngle<float> &rotation);
+extern template MatBase<float, 3, 3> from_rotation(const math::AxisAngle &rotation);
+extern template MatBase<float, 4, 4> from_rotation(const math::AxisAngle &rotation);
+extern template MatBase<float, 3, 3> from_rotation(const math::AxisSinCos &rotation);
+extern template MatBase<float, 4, 4> from_rotation(const math::AxisSinCos &rotation);
 
 }  // namespace detail
 

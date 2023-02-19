@@ -6,6 +6,7 @@
  * \ingroup bli
  */
 
+#include "BLI_math_angle_types.hh"
 #include "BLI_math_axis_convert_types.hh"
 #include "BLI_math_base.hh"
 #include "BLI_math_vector_types.hh"
@@ -15,22 +16,16 @@ namespace blender::math {
 namespace detail {
 
 /* Forward declaration for casting operators. */
+template<typename T> struct Euler3;
 template<typename T> struct EulerXYZ;
 template<typename T> struct Quaternion;
 
-template<typename T = float> struct AxisAngle {
+template<typename T, typename AngleT> struct AxisAngle {
   using vec3_type = VecBase<T, 3>;
 
  protected:
-  vec3_type axis_ = {0, 1, 0};
-  /** Store cosine and sine so rotation is cheaper and doesn't require atan2. */
-  T angle_cos_ = 1;
-  T angle_sin_ = 0;
-  /**
-   * Source angle for interpolation.
-   * It might not be computed on creation, so the getter ensures it is updated.
-   */
-  T angle_ = 0;
+  VecBase<T, 3> axis_ = {0, 1, 0};
+  AngleT angle_ = AngleT::identity();
 
   /**
    * A defaulted constructor would cause zero initialization instead of default initialization,
@@ -40,61 +35,50 @@ template<typename T = float> struct AxisAngle {
 
  public:
   /**
-   * Create a rotation from an basis axis and an angle.
+   * Create a rotation from a basis axis and an angle.
    */
   AxisAngle(const eAxisSigned axis, T angle);
 
   /**
    * Create a rotation from an axis and an angle.
-   * \note `axis` does not have to be normalized.
-   * Use `AxisAngleNormalized` instead to skip normalization cost.
+   * \note `axis` have to be normalized.
    */
   AxisAngle(const vec3_type &axis, T angle);
 
   /**
    * Create a rotation from 2 normalized vectors.
    * \note `from` and `to` must be normalized.
+   * \note Consider using `AxisSinCos` for faster conversion to other rotation.
    */
   AxisAngle(const vec3_type &from, const vec3_type &to);
 
   /** Static functions. */
 
-  static AxisAngle<T> identity()
+  static AxisAngle identity()
   {
-    return AxisAngle<T>();
+    return AxisAngle();
   }
 
-  /** Getters. */
+  /** Methods. */
 
-  const vec3_type &axis() const
+  const VecBase<T, 3> &axis() const
   {
     return axis_;
   }
 
-  const T &angle() const
+  const AngleT &angle() const
   {
-    if (UNLIKELY(angle_ == T(0) && angle_cos_ != T(1))) {
-      /* Angle wasn't computed by constructor. */
-      const_cast<AxisAngle *>(this)->angle_ = math::atan2(angle_sin_, angle_cos_);
-    }
     return angle_;
-  }
-
-  const T &angle_cos() const
-  {
-    return angle_cos_;
-  }
-
-  const T &angle_sin() const
-  {
-    return angle_sin_;
   }
 
   /** Conversions. */
 
   explicit operator Quaternion<T>() const;
-
   explicit operator EulerXYZ<T>() const;
+
+  explicit AxisAngle(const Quaternion<T> &quat);
+  explicit AxisAngle(const EulerXYZ<T> &euler);
+  explicit AxisAngle(const Euler3<T> &euler);
 
   /** Operators. */
 
@@ -114,22 +98,10 @@ template<typename T = float> struct AxisAngle {
   }
 };
 
-/**
- * A version of AxisAngle that expects axis to be already normalized.
- * Implicitly cast back to AxisAngle.
- */
-template<typename T = float> struct AxisAngleNormalized : public AxisAngle<T> {
-  AxisAngleNormalized(const VecBase<T, 3> &axis, T angle);
-
-  operator AxisAngle<T>() const
-  {
-    return *this;
-  }
-};
 };  // namespace detail
 
-using AxisAngle = math::detail::AxisAngle<float>;
-using AxisAngleNormalized = math::detail::AxisAngleNormalized<float>;
+using AxisAngle = math::detail::AxisAngle<float, detail::AngleRadian<float>>;
+using AxisSinCos = math::detail::AxisAngle<float, detail::AngleSinCos<float>>;
 
 }  // namespace blender::math
 
