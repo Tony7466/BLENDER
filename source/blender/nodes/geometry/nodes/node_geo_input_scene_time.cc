@@ -12,6 +12,8 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_output<decl::Float>(N_("Seconds"));
   b.add_output<decl::Float>(N_("Frame"));
+  b.add_output<decl::Float>(N_("Start Frame"));
+  b.add_output<decl::Float>(N_("End Frame"));
 }
 
 static void node_exec(GeoNodeExecParams params)
@@ -21,6 +23,8 @@ static void node_exec(GeoNodeExecParams params)
   const double frame_rate = (double(scene->r.frs_sec) / double(scene->r.frs_sec_base));
   params.set_output("Seconds", float(scene_ctime / frame_rate));
   params.set_output("Frame", scene_ctime);
+  params.set_output("Start Frame", BKE_scene_frame_to_ctime(scene, scene->r.sfra));
+  params.set_output("End Frame", BKE_scene_frame_to_ctime(scene, scene->r.efra));
 }
 
 }  // namespace blender::nodes::node_geo_input_scene_time_cc
