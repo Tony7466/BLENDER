@@ -4,6 +4,26 @@
 
 /** \file
  * \ingroup bli
+ *
+ * A `blender::math::EulerXYZ` represent a typical (X, Y, Z) euler 3D rotation.
+ *
+ * It is prone to gimbal lock and is not suited for many application. However it is much intuitive
+ * than other rotation types. Its main use it for converting user facing rotation values to other
+ * rotation types. The angle values are stored as radian and expected as such by the constructors.
+ *
+ *
+ * A `blender::math::Euler3` represent a euler 3D rotation with runtime axis order.
+ *
+ * It shares the same limitations as `EulerXYZ`.
+ * The rotation order is set at creation and is immutable. This avoids accidentally changing the
+ * meaning of what the variable holds.
+ *
+ * The rotation values can still be reinterpreted like this:
+ * `Euler3(float3(my_euler3_zyx_rot), Euler3::eOrder::XYZ)`
+ * This will swap the X and Z rotation order and will likely not produce the same rotation matrix.
+ *
+ * If the goal is to convert (keep the same orientation) to `Euler3` then you have to do an
+ * asignment.
  */
 
 #include "BLI_math_angle_types.hh"
@@ -13,6 +33,10 @@
 namespace blender::math {
 
 namespace detail {
+
+/* -------------------------------------------------------------------- */
+/** \name EulerXYZ
+ * \{ */
 
 /* Forward declaration for casting operators. */
 template<typename T, typename AngleT> struct AxisAngle;
@@ -30,6 +54,9 @@ template<typename T> struct EulerXYZ {
     this->z = T(z);
   }
 
+  /**
+   * Create an euler x,y,z rotation from a triple of radian angle.
+   */
   EulerXYZ(const VecBase<T, 3> &vec) : EulerXYZ(UNPACK3(vec)){};
 
   /**
@@ -59,42 +86,25 @@ template<typename T> struct EulerXYZ {
 
   /** Operators. */
 
-  EulerXYZ wrapped_around(const EulerXYZ &reference) const
-  {
-    using Vec3T = VecBase<T, 3>;
-
-    constexpr float m_2pi = 2 * M_PI;
-    Vec3T result(*this);
-    Vec3T delta = result - Vec3T(reference);
-    unroll<3>([&](auto i) {
-      /* NOTE(campbell) We could use M_PI as pi_threshold: which is correct but 5.1 gives better
-       * results. Checked with baking actions to fcurves. */
-      constexpr float pi_threshold = 5.1f;
-      if (abs(delta[i]) > pi_threshold) {
-        /* Correct differences of about 360 degrees first. */
-        result[i] += sign(-delta[i]) * floor((abs(delta[i]) / m_2pi) + 0.5f) * m_2pi;
-      }
-    });
-    delta = result - Vec3T(reference);
-
-    /* Is 1 of the axis rotations larger than 180 degrees and the other small? NO ELSE IF!! */
-    if (abs(delta.x) > 3.2f && abs(delta.y) < 1.6f && abs(delta.z) < 1.6f) {
-      result.x -= sign(delta.x) * m_2pi;
-    }
-    if (abs(delta.y) > 3.2f && abs(delta.z) < 1.6f && abs(delta.x) < 1.6f) {
-      result.y -= sign(delta.y) * m_2pi;
-    }
-    if (abs(delta.z) > 3.2f && abs(delta.x) < 1.6f && abs(delta.y) < 1.6f) {
-      result.z -= sign(delta.z) * m_2pi;
-    }
-    return result;
-  }
+  /**
+   * Return this euler orientation but wrapped around \a reference.
+   *
+   * This mean the interpolation between the returned value and \a reference will always take the
+   * shortest path. The angle between them will not be more than pi.
+   */
+  EulerXYZ wrapped_around(const EulerXYZ &reference) const;
 
   friend std::ostream &operator<<(std::ostream &stream, const EulerXYZ &rot)
   {
     return stream << "EulerXYZ" << static_cast<VecBase<T, 3>>(rot);
   }
 };
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Euler3
+ * \{ */
 
 template<typename T> struct Euler3 {
  public:
@@ -121,18 +131,18 @@ template<typename T> struct Euler3 {
   Euler3(const VecBase<T, 3> &angles, eOrder order) : ijk_(angles), order_(order){};
 
   /**
-   * Defines rotation order but not the rotation values.
-   * Used for conversion from other rotation types.
-   */
-  Euler3(eOrder order) : order_(order){};
-
-  /**
    * Create a rotation from an basis axis and an angle.
    */
   Euler3(const eAxis axis, T angle, eOrder order) : ijk_(0), order_(order)
   {
     ijk_[axis] = angle;
   }
+
+  /**
+   * Defines rotation order but not the rotation values.
+   * Used for conversion from other rotation types.
+   */
+  Euler3(eOrder order) : order_(order){};
 
   /** Conversions. */
 
@@ -152,9 +162,11 @@ template<typename T> struct Euler3 {
 
   explicit operator Quaternion<T>() const;
 
-  /* Conversion to Euler3 needs to be from assignment in order to choose the order type. */
-  Euler3 &operator=(const AxisAngle<T, AngleRadian<T>> &axis_angle);
-  Euler3 &operator=(const Quaternion<T> &quat);
+  /**
+   * Conversion to Euler3 needs to be constructors because of the additional order.
+   */
+  explicit Euler3(const AxisAngle<T, AngleRadian<T>> &axis_angle, eOrder order);
+  explicit Euler3(const Quaternion<T> &quat, eOrder order);
 
   /** Methods. */
 
@@ -203,6 +215,12 @@ template<typename T> struct Euler3 {
     return ijk_[z_index()];
   }
 
+  /**
+   * Return this euler orientation but wrapped around \a reference.
+   *
+   * This mean the interpolation between the returned value and \a reference will always take the
+   * shortest path. The angle between them will not be more than pi.
+   */
   Euler3 wrapped_around(const Euler3 &reference) const
   {
     return {VecBase<T, 3>(EulerXYZ(ijk_).wrapped_around(reference.ijk_)), order_};
@@ -246,15 +264,17 @@ template<typename T> struct Euler3 {
    * This should be private in theory. */
 
   /**
-   * Parity of axis permutation (even=0, odd=1) - 'n' in original code.
+   * Parity of axis permutation.
+   * It is considered even if axes are not shuffled (X followed by Y which in turn followed by Z).
+   * Return `true` if odd (shuffled) and `false` if even (non-shuffled).
    */
   bool parity() const
   {
     switch (order_) {
       default:
       case XYZ:
-      case YZX:
       case ZXY:
+      case YZX:
         return false;
       case XZY:
       case YXZ:
@@ -320,6 +340,8 @@ template<typename T> struct Euler3 {
     }
   }
 };
+
+/** \} */
 
 }  // namespace detail
 

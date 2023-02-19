@@ -8,7 +8,7 @@
 
 #include "BLI_math_rotation_types.hh"
 
-#include "BLI_math_axis_angle.hh"
+#include "BLI_math_euler.hh"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_quaternion.hh"
 #include "BLI_math_vector.hh"
@@ -425,56 +425,6 @@ AxisAngle<T, AngleT>::AxisAngle(const VecBase<T, 3> &from, const VecBase<T, 3> &
   this->angle_ = AngleT(cos, sin);
 }
 
-template<typename T> Euler3<T> &Euler3<T>::operator=(const Quaternion<T> &quat)
-{
-  using Mat3T = MatBase<T, 3, 3>;
-  BLI_assert(is_unit_scale(quat));
-  Mat3T unit_mat = math::from_rotation<Mat3T>(quat);
-  *this = math::to_euler<T, true>(unit_mat, this->order_);
-  return *this;
-}
-
-template<typename T> EulerXYZ<T>::operator Quaternion<T>() const
-{
-  const EulerXYZ<T> &eul = *this;
-  const T ti = eul.x * T(0.5);
-  const T tj = eul.y * T(0.5);
-  const T th = eul.z * T(0.5);
-  const T ci = math::cos(ti);
-  const T cj = math::cos(tj);
-  const T ch = math::cos(th);
-  const T si = math::sin(ti);
-  const T sj = math::sin(tj);
-  const T sh = math::sin(th);
-  const T cc = ci * ch;
-  const T cs = ci * sh;
-  const T sc = si * ch;
-  const T ss = si * sh;
-
-  Quaternion<T> quat;
-  quat.w = cj * cc + sj * ss;
-  quat.x = cj * sc - sj * cs;
-  quat.y = cj * ss + sj * cc;
-  quat.z = cj * cs - sj * sc;
-  return quat;
-}
-
-template<typename T> Euler3<T>::operator Quaternion<T>() const
-{
-  const Euler3<T> &eulO = *this;
-  /* Swizzle to XYZ. */
-  EulerXYZ<T> eul_xyz{eulO.x(), eulO.parity() ? -eulO.y() : eulO.y(), eulO.z()};
-  /* Quaternion conversion. */
-  Quaternion<T> quat{eul_xyz};
-  /* Swizzle back from XYZ. */
-  VecBase<T, 3> quat_xyz;
-  quat_xyz[eulO.x_index()] = quat.x;
-  quat_xyz[eulO.y_index()] = eulO.parity() ? -quat.y : quat.y;
-  quat_xyz[eulO.z_index()] = quat.z;
-
-  return {quat.w, UNPACK3(quat_xyz)};
-}
-
 template<typename T, typename AngleT> AxisAngle<T, AngleT>::AxisAngle(const Quaternion<T> &quat)
 {
   BLI_assert(is_unit_scale(quat));
@@ -539,13 +489,6 @@ template<typename T, typename AngleT> AxisAngle<T, AngleT>::operator EulerXYZ<T>
   }
   /* Use quaternions as intermediate representation for now... */
   return EulerXYZ<T>(Quaternion<T>(*this));
-}
-
-template<typename T>
-Euler3<T> &Euler3<T>::operator=(const AxisAngle<T, AngleRadian<T>> &axis_angle)
-{
-  /* Use quaternions as intermediate representation for now... */
-  return (*this = Quaternion<T>(axis_angle));
 }
 
 /* Using explicit template instantiations in order to reduce compilation time. */

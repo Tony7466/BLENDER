@@ -323,12 +323,12 @@ TEST(math_rotation_types, Euler3Conversion)
   EXPECT_V4_NEAR(float4(Quaternion(euler3_zxy)), float4(quat_zxy), 1e-4);
   EXPECT_V4_NEAR(float4(Quaternion(euler3_zyx)), float4(quat_zyx), 1e-4);
 
-  EXPECT_V3_NEAR(float3((Euler3(eOrder::XYZ) = quat_xyz)), ijk, 1e-4);
-  EXPECT_V3_NEAR(float3((Euler3(eOrder::XZY) = quat_xzy)), ijk, 1e-4);
-  EXPECT_V3_NEAR(float3((Euler3(eOrder::YXZ) = quat_yxz)), ijk, 1e-4);
-  EXPECT_V3_NEAR(float3((Euler3(eOrder::YZX) = quat_yzx)), ijk, 1e-4);
-  EXPECT_V3_NEAR(float3((Euler3(eOrder::ZXY) = quat_zxy)), ijk, 1e-4);
-  EXPECT_V3_NEAR(float3((Euler3(eOrder::ZYX) = quat_zyx)), ijk, 1e-4);
+  EXPECT_V3_NEAR(Euler3(quat_xyz, eOrder::XYZ).ijk(), ijk, 1e-4);
+  EXPECT_V3_NEAR(Euler3(quat_xzy, eOrder::XZY).ijk(), ijk, 1e-4);
+  EXPECT_V3_NEAR(Euler3(quat_yxz, eOrder::YXZ).ijk(), ijk, 1e-4);
+  EXPECT_V3_NEAR(Euler3(quat_yzx, eOrder::YZX).ijk(), ijk, 1e-4);
+  EXPECT_V3_NEAR(Euler3(quat_zxy, eOrder::ZXY).ijk(), ijk, 1e-4);
+  EXPECT_V3_NEAR(Euler3(quat_zyx, eOrder::ZYX).ijk(), ijk, 1e-4);
 
   EXPECT_M3_NEAR(from_rotation<float3x3>(euler3_xyz), mat_xyz, 1e-4);
   EXPECT_M3_NEAR(from_rotation<float3x3>(euler3_xzy), mat_xzy, 1e-4);
@@ -365,12 +365,12 @@ TEST(math_rotation_types, Euler3Conversion)
   EXPECT_NEAR(float(AxisAngle(euler3_zxy).angle()), float(axis_angle_zxy.angle()), 1e-4);
   EXPECT_NEAR(float(AxisAngle(euler3_zyx).angle()), float(axis_angle_zyx.angle()), 1e-4);
 
-  EXPECT_V3_NEAR((Euler3(eOrder::XYZ) = axis_angle_xyz).ijk(), ijk, 1e-4);
-  EXPECT_V3_NEAR((Euler3(eOrder::XZY) = axis_angle_xzy).ijk(), ijk, 1e-4);
-  EXPECT_V3_NEAR((Euler3(eOrder::YXZ) = axis_angle_yxz).ijk(), ijk, 1e-4);
-  EXPECT_V3_NEAR((Euler3(eOrder::YZX) = axis_angle_yzx).ijk(), ijk, 1e-4);
-  EXPECT_V3_NEAR((Euler3(eOrder::ZXY) = axis_angle_zxy).ijk(), ijk, 1e-4);
-  EXPECT_V3_NEAR((Euler3(eOrder::ZYX) = axis_angle_zyx).ijk(), ijk, 1e-4);
+  EXPECT_V3_NEAR(Euler3(axis_angle_xyz, eOrder::XYZ).ijk(), ijk, 1e-4);
+  EXPECT_V3_NEAR(Euler3(axis_angle_xzy, eOrder::XZY).ijk(), ijk, 1e-4);
+  EXPECT_V3_NEAR(Euler3(axis_angle_yxz, eOrder::YXZ).ijk(), ijk, 1e-4);
+  EXPECT_V3_NEAR(Euler3(axis_angle_yzx, eOrder::YZX).ijk(), ijk, 1e-4);
+  EXPECT_V3_NEAR(Euler3(axis_angle_zxy, eOrder::ZXY).ijk(), ijk, 1e-4);
+  EXPECT_V3_NEAR(Euler3(axis_angle_zyx, eOrder::ZYX).ijk(), ijk, 1e-4);
 }
 
 TEST(math_rotation_types, AngleSinCosOperators)
