@@ -62,8 +62,8 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
   MutableSpan<TransDataContainer> trans_data_contrainers(t->data_container, t->data_container_len);
   Array<Vector<int64_t>> selected_indices_per_object(t->data_container_len);
   Array<IndexMask> selection_per_object(t->data_container_len);
-  const bool is_prop_edit = (t->flag & T_PROP_EDIT_ALL) != 0;
-  const bool is_prop_connected = (t->flag & T_PROP_CONNECTED) != 0;
+  const bool use_proportional_edit = (t->flag & T_PROP_EDIT_ALL) != 0;
+  const bool use_connected_only = (t->flag & T_PROP_CONNECTED) != 0;
 
   /* Count selected elements per object and create TransData structs. */
   for (const int i : trans_data_contrainers.index_range()) {
@@ -71,7 +71,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
     Curves *curves_id = static_cast<Curves *>(tc.obedit->data);
     bke::CurvesGeometry &curves = curves_id->geometry.wrap();
 
-    if (is_prop_edit) {
+    if (use_proportional_edit) {
       tc.data_len = curves.point_num;
     }
     else {
@@ -99,8 +99,8 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
     pseudoinverse_m3_m3(smtx, mtx, PSEUDOINVERSE_EPSILON);
 
     float3 *positions_ptr = curves.positions_for_write().data();
-    if (is_prop_edit) {
-      const Span<float3> positions_read = curves.positions();
+    if (use_proportional_edit) {
+      const Span<float3> positions = curves.positions();
       const OffsetIndices<int> points_by_curve = curves.points_by_curve();
       VArray<bool> selection = curves.attributes().lookup_or_default<bool>(
           ".selection", ATTR_DOMAIN_POINT, true);
@@ -117,17 +117,17 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
           }
 
           if (!has_any_selected) {
-            for (const int point_i : points_by_curve[curve_i]) {
+            for (const int point_i : points) {
               TransData &td = tc.data[point_i];
               td.flag |= TD_NOTCONNECTED;
               td.dist = FLT_MAX;
             }
-            if (is_prop_connected) {
+            if (use_connected_only) {
               continue;
             }
           }
 
-          const Span<float3> positions_curve = positions_read.slice(points_by_curve[curve_i]);
+          const Span<float3> positions_curve = positions.slice(points);
           Array<float> closest_distances(positions_curve.size(), FLT_MAX);
 
           for (const int i : IndexRange(points.size())) {
@@ -151,7 +151,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
             copy_m3_m3(td.mtx, mtx);
           }
 
-          if (is_prop_connected) {
+          if (use_connected_only) {
             calculate_curve_point_distances_for_proportional_editing(
                 positions_curve, closest_distances.as_mutable_span());
             for (const int i : IndexRange(points.size())) {
