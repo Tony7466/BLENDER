@@ -111,8 +111,8 @@ IndexMask retrieve_selected_points(const Curves &curves_id, Vector<int64_t> &r_i
  * If the ".selection" attribute doesn't exist, create it with the requested type (bool or float).
  */
 bke::GSpanAttributeWriter ensure_selection_attribute(bke::CurvesGeometry &curves,
-                                                     const eAttrDomain selection_domain,
-                                                     const eCustomDataType create_type);
+                                                     eAttrDomain selection_domain,
+                                                     eCustomDataType create_type);
 
 /**
  * (De)select all the curves.
@@ -120,7 +120,7 @@ bke::GSpanAttributeWriter ensure_selection_attribute(bke::CurvesGeometry &curves
  * \param action: One of SEL_TOGGLE, SEL_SELECT, SEL_DESELECT, or SEL_INVERT. See
  * "ED_select_utils.h".
  */
-void select_all(bke::CurvesGeometry &curves, const eAttrDomain selection_domain, int action);
+void select_all(bke::CurvesGeometry &curves, eAttrDomain selection_domain, int action);
 
 /**
  * Select the ends (front or back) of all the curves.
@@ -136,6 +136,11 @@ void select_ends(bke::CurvesGeometry &curves, int amount, bool end_points);
 void select_linked(bke::CurvesGeometry &curves);
 
 /**
+ * (De)select all the adjacent points of the current selected points.
+ */
+void select_adjacent(bke::CurvesGeometry &curves, bool deselect);
+
+/**
  * Select random points or curves.
  *
  * \param random_seed: The seed for the \a RandomNumberGenerator.
@@ -143,7 +148,7 @@ void select_linked(bke::CurvesGeometry &curves);
  * will be selected, if set to 1.0 everything will be selected.
  */
 void select_random(bke::CurvesGeometry &curves,
-                   const eAttrDomain selection_domain,
+                   eAttrDomain selection_domain,
                    uint32_t random_seed,
                    float probability);
 
@@ -152,18 +157,18 @@ void select_random(bke::CurvesGeometry &curves,
  */
 bool select_pick(const ViewContext &vc,
                  bke::CurvesGeometry &curves,
-                 const eAttrDomain selection_domain,
+                 eAttrDomain selection_domain,
                  const SelectPick_Params &params,
-                 const int2 coord);
+                 int2 coord);
 
 /**
  * Select points or curves in a (screen-space) rectangle.
  */
 bool select_box(const ViewContext &vc,
                 bke::CurvesGeometry &curves,
-                const eAttrDomain selection_domain,
+                eAttrDomain selection_domain,
                 const rcti &rect,
-                const eSelectOp sel_op);
+                eSelectOp sel_op);
 
 /**
  * Select points or curves in a (screen-space) poly shape.
@@ -183,6 +188,18 @@ bool select_circle(const ViewContext &vc,
                    int2 coord,
                    float radius,
                    eSelectOp sel_op);
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Editing
+ * \{ */
+
+/**
+ * Remove (dissolve) selected curves or points based on the ".selection" attribute.
+ * \returns true if any point or curve was removed.
+ */
+bool remove_selection(bke::CurvesGeometry &curves, eAttrDomain selection_domain);
+
 /** \} */
 
 }  // namespace blender::ed::curves
