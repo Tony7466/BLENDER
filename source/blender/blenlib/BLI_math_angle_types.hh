@@ -75,6 +75,12 @@ template<typename T> struct AngleRadian {
     return value_ * T(180.0 / M_PI);
   }
 
+  /* Return angle value in radian. */
+  T radian() const
+  {
+    return value_;
+  }
+
   /** Methods. */
 
   /**
@@ -175,9 +181,16 @@ template<typename T> struct AngleSinCos {
  public:
   AngleSinCos() = default;
 
-  AngleSinCos(const T &cos, const T &sin) : cos_(cos), sin_(sin){};
-  explicit AngleSinCos(const T &radian) : cos_(math::cos(radian)), sin_(math::sin(radian)){};
-  explicit AngleSinCos(const AngleRadian<T> &angle) : cos_(angle.cos()), sin_(angle.sin()){};
+  /**
+   * Create an angle from an (x, y) position on the unit circle.
+   */
+  AngleSinCos(const T &x, const T &y) : cos_(x), sin_(y)
+  {
+    BLI_assert(math::abs(x * x + y * y - T(1)) < T(1e-4));
+  }
+
+  explicit AngleSinCos(const T &radian) : AngleSinCos(math::cos(radian), math::sin(radian)){};
+  explicit AngleSinCos(const AngleRadian<T> &angle) : AngleSinCos(angle.cos(), angle.sin()){};
 
   /** Static functions. */
 
@@ -199,6 +212,18 @@ template<typename T> struct AngleSinCos {
     return math::atan2(sin_, cos_);
   }
 
+  /* Return angle value in degree. */
+  T degree() const
+  {
+    return T(*this) * T(180.0 / M_PI);
+  }
+
+  /* Return angle value in radian. */
+  T radian() const
+  {
+    return T(*this);
+  }
+
   /** Methods. */
 
   T cos() const
@@ -214,6 +239,97 @@ template<typename T> struct AngleSinCos {
   T tan() const
   {
     return sin_ / cos_;
+  }
+
+  /** Operators. */
+
+  /**
+   * NOTE: These use the trigonometric identities:
+   * https://en.wikipedia.org/wiki/List_of_trigonometric_identities
+   * (see Angle_sum_and_difference_identities, Multiple-angle_formulae and Half-angle_formulae)
+   *
+   * There is no identities for (arbitrary) product or quotient of angles.
+   * Better leave these unimplemented to avoid accidentally using `atan` everywhere (which is the
+   * purpose of this class).
+   */
+
+  friend AngleSinCos operator+(const AngleSinCos &a, const AngleSinCos &b)
+  {
+    return {a.cos_ * b.cos_ - a.sin_ * b.sin_, a.sin_ * b.cos_ + a.cos_ * b.sin_};
+  }
+
+  friend AngleSinCos operator-(const AngleSinCos &a, const AngleSinCos &b)
+  {
+    return {a.cos_ * b.cos_ + a.sin_ * b.sin_, a.sin_ * b.cos_ - a.cos_ * b.sin_};
+  }
+
+  friend AngleSinCos operator*(const AngleSinCos &a, const T &b)
+  {
+    if (b == T(2)) {
+      return {a.cos_ * a.cos_ - a.sin_ * a.sin_, T(2) * a.sin_ * a.cos_};
+    }
+    if (b == T(3)) {
+      return {T(4) * (a.cos_ * a.cos_ * a.cos_) - T(3) * a.cos_,
+              T(3) * a.sin_ - T(4) * (a.sin_ * a.sin_ * a.sin_)};
+    }
+    BLI_assert_msg(0,
+                   "Arbitrary angle product isn't supported with AngleSinCos<T> for "
+                   "performance reason. Use AngleRadian<T> instead.");
+    return identity();
+  }
+
+  friend AngleSinCos operator*(const T &b, const AngleSinCos &a)
+  {
+    return a * b;
+  }
+
+  friend AngleSinCos operator/(const AngleSinCos &a, const T &b)
+  {
+    if (b == T(2)) {
+      /* Still costly but less than using `atan()`. */
+      AngleSinCos result = {math::sqrt((T(1) + a.cos_) / T(2)),
+                            math::sqrt((T(1) - a.cos_) / T(2))};
+      /* Recover sign only for sine. Cosine of half angle is given to be positive or 0 since the
+       * angle stored in #AngleSinCos is range of [-pi..pi]. */
+      /* TODO(fclem): Could use copysign here. */
+      if (a.sin_ < T(0)) {
+        result.sin_ = -result.sin_;
+      }
+      return result;
+    }
+    BLI_assert_msg(0,
+                   "Arbitrary angle quotient isn't supported with AngleSinCos<T> for "
+                   "performance reason. Use AngleRadian<T> instead.");
+    return identity();
+  }
+
+  friend AngleSinCos operator-(const AngleSinCos &a)
+  {
+    return {a.cos_, -a.sin_};
+  }
+
+  AngleSinCos &operator+=(const AngleSinCos &b)
+  {
+    *this = *this + b;
+    return *this;
+  }
+
+  AngleSinCos &operator*=(const T &b)
+  {
+    *this = *this * b;
+    return *this;
+  }
+
+  AngleSinCos &operator-=(const AngleSinCos &b)
+  {
+    *this = *this - b;
+    return *this;
+  }
+
+  AngleSinCos &operator/=(const T &b)
+  {
+    *this = *this / b;
+    return *this;
   }
 
   friend std::ostream &operator<<(std::ostream &stream, const AngleSinCos &rot)

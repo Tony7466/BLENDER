@@ -405,18 +405,11 @@ template<typename T>
   if (axis == eAxis::Z) {
     projected = -projected;
   }
-  /* Some trigonometry identity to dodge `atan`.
-   * https://en.wikipedia.org/wiki/List_of_trigonometric_identities#Half-angle_formulae */
-  T cos_angle = projected.x;
-  T cos_half_angle = math::sqrt((T(1) + cos_angle) / T(2));
-  T sin_half_angle = math::sqrt((T(1) - cos_angle) / T(2));
-  /* Recover sign for sine. Cosine of half angle is given to be positive or 0. */
-  /* TODO(fclem): Could use copysign here. */
-  if (projected.y < T(0)) {
-    sin_half_angle = -sin_half_angle;
-  }
 
-  detail::Quaternion<T> q2(Vec4T(cos_half_angle, vec * (sin_half_angle / vec_len)));
+  detail::AngleSinCos<T> angle(projected.x, projected.y);
+  detail::AngleSinCos<T> half_angle = angle / T(2);
+
+  detail::Quaternion<T> q2(Vec4T(half_angle.cos(), vec * (half_angle.sin() / vec_len)));
 
   return q2 * q1;
 }
