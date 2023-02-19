@@ -81,7 +81,8 @@ template<typename T> EulerXYZ<T> EulerXYZ<T>::wrapped_around(const EulerXYZ &ref
 /** \name Euler3
  * \{ */
 
-template<typename T> Euler3<T>::Euler3(const Quaternion<T> &quat, eOrder order) : order_(order)
+template<typename T>
+Euler3<T>::Euler3(const Quaternion<T> &quat, eEulerOrder order) : order_(order)
 {
   using Mat3T = MatBase<T, 3, 3>;
   BLI_assert(is_unit_scale(quat));
@@ -90,7 +91,7 @@ template<typename T> Euler3<T>::Euler3(const Quaternion<T> &quat, eOrder order) 
 }
 
 template<typename T>
-Euler3<T>::Euler3(const AxisAngle<T, AngleRadian<T>> &axis_angle, eOrder order)
+Euler3<T>::Euler3(const AxisAngle<T, AngleRadian<T>> &axis_angle, eEulerOrder order)
 {
   /* Use quaternions as intermediate representation for now... */
   *this = Euler3(Quaternion<T>(axis_angle), order);

@@ -19,7 +19,7 @@
  * meaning of what the variable holds.
  *
  * The rotation values can still be reinterpreted like this:
- * `Euler3(float3(my_euler3_zyx_rot), Euler3::eOrder::XYZ)`
+ * `Euler3(float3(my_euler3_zyx_rot), Euler3::eEulerOrder::XYZ)`
  * This will swap the X and Z rotation order and will likely not produce the same rotation matrix.
  *
  * If the goal is to convert (keep the same orientation) to `Euler3` then you have to do an
@@ -100,40 +100,63 @@ template<typename T> struct EulerXYZ {
   }
 };
 
+}  // namespace detail
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Euler3
  * \{ */
 
+/* WARNING: must match the #eRotationModes in `DNA_action_types.h`
+ * order matters - types are saved to file. */
+enum eEulerOrder {
+  XYZ = 1,
+  XZY,
+  YXZ,
+  YZX,
+  ZXY,
+  ZYX,
+};
+
+inline std::ostream &operator<<(std::ostream &stream, eEulerOrder order)
+{
+  switch (order) {
+    default:
+    case XYZ:
+      return stream << "XYZ";
+    case XZY:
+      return stream << "XZY";
+    case YXZ:
+      return stream << "YXZ";
+    case YZX:
+      return stream << "YZX";
+    case ZXY:
+      return stream << "ZXY";
+    case ZYX:
+      return stream << "ZYX";
+  }
+}
+
+namespace detail {
+
 template<typename T> struct Euler3 {
  public:
-  /* WARNING: must match the #eRotationModes in `DNA_action_types.h`
-   * order matters - types are saved to file. */
-  enum eOrder {
-    XYZ = 1,
-    XZY,
-    YXZ,
-    YZX,
-    ZXY,
-    ZYX,
-  };
-
  private:
   /** Raw rotation values (in radian) as passed by the constructor. */
   VecBase<T, 3> ijk_;
   /** Axes order inside `ijk_`. Immutable. */
-  eOrder order_;
+  eEulerOrder order_;
 
  public:
   Euler3() = delete;
 
-  Euler3(const VecBase<T, 3> &angles, eOrder order) : ijk_(angles), order_(order){};
+  Euler3(const VecBase<T, 3> &angles, eEulerOrder order) : ijk_(angles), order_(order){};
 
   /**
    * Create a rotation from an basis axis and an angle.
    */
-  Euler3(const eAxis axis, T angle, eOrder order) : ijk_(0), order_(order)
+  Euler3(const eAxis axis, T angle, eEulerOrder order) : ijk_(0), order_(order)
   {
     ijk_[axis] = angle;
   }
@@ -142,7 +165,7 @@ template<typename T> struct Euler3 {
    * Defines rotation order but not the rotation values.
    * Used for conversion from other rotation types.
    */
-  Euler3(eOrder order) : order_(order){};
+  Euler3(eEulerOrder order) : order_(order){};
 
   /** Conversions. */
 
@@ -165,12 +188,12 @@ template<typename T> struct Euler3 {
   /**
    * Conversion to Euler3 needs to be constructors because of the additional order.
    */
-  explicit Euler3(const AxisAngle<T, AngleRadian<T>> &axis_angle, eOrder order);
-  explicit Euler3(const Quaternion<T> &quat, eOrder order);
+  explicit Euler3(const AxisAngle<T, AngleRadian<T>> &axis_angle, eEulerOrder order);
+  explicit Euler3(const Quaternion<T> &quat, eEulerOrder order);
 
   /** Methods. */
 
-  const eOrder &order() const
+  const eEulerOrder &order() const
   {
     return order_;
   }
@@ -235,29 +258,7 @@ template<typename T> struct Euler3 {
 
   friend std::ostream &operator<<(std::ostream &stream, const Euler3 &rot)
   {
-    const char *order_str;
-    switch (rot.order_) {
-      default:
-      case XYZ:
-        order_str = "XYZ";
-        break;
-      case XZY:
-        order_str = "XZY";
-        break;
-      case YXZ:
-        order_str = "YXZ";
-        break;
-      case YZX:
-        order_str = "YZX";
-        break;
-      case ZXY:
-        order_str = "ZXY";
-        break;
-      case ZYX:
-        order_str = "ZYX";
-        break;
-    }
-    return stream << "Euler3_" << order_str << rot.ijk_;
+    return stream << "Euler3_" << rot.order_ << rot.ijk_;
   }
 
   /* Utilities for conversions and functions operating on Euler3.

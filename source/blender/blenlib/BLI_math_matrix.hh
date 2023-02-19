@@ -262,10 +262,10 @@ template<typename T, bool Normalized = false>
 [[nodiscard]] inline detail::EulerXYZ<T> to_euler(const MatBase<T, 4, 4> &mat);
 template<typename T, bool Normalized = false>
 [[nodiscard]] inline detail::Euler3<T> to_euler(const MatBase<T, 3, 3> &mat,
-                                                const typename detail::Euler3<T>::eOrder order);
+                                                const eEulerOrder order);
 template<typename T, bool Normalized = false>
 [[nodiscard]] inline detail::Euler3<T> to_euler(const MatBase<T, 4, 4> &mat,
-                                                const typename detail::Euler3<T>::eOrder order);
+                                                const eEulerOrder order);
 
 /**
  * Extract euler rotation from transform matrix.
@@ -1084,7 +1084,7 @@ extern template MatBase<float, 4, 4> from_rotation(const math::AxisSinCos &rotat
 
 template<typename T, bool Normalized>
 [[nodiscard]] inline detail::Euler3<T> to_euler(const MatBase<T, 3, 3> &mat,
-                                                const typename detail::Euler3<T>::eOrder order)
+                                                const eEulerOrder order)
 {
   detail::Euler3<T> eul1(order), eul2(order);
   if constexpr (Normalized) {
@@ -1115,7 +1115,7 @@ template<typename T, bool Normalized>
 
 template<typename T, bool Normalized>
 [[nodiscard]] inline detail::Euler3<T> to_euler(const MatBase<T, 4, 4> &mat,
-                                                const typename detail::Euler3<T>::eOrder order)
+                                                const eEulerOrder order)
 {
   /* TODO(fclem): Avoid the copy with 3x3 ref. */
   return to_euler<T, Normalized>(MatBase<T, 3, 3>(mat), order);

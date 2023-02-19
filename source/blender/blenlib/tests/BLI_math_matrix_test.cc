@@ -295,7 +295,7 @@ TEST(math_matrix, MatrixCompareTest)
 TEST(math_matrix, MatrixToNearestEuler)
 {
   EulerXYZ eul1 = EulerXYZ(225.08542, -1.12485, -121.23738);
-  Euler3 eul2 = Euler3({4.06112, 100.561928, -18.9063}, Euler3::eOrder::ZXY);
+  Euler3 eul2 = Euler3({4.06112, 100.561928, -18.9063}, eEulerOrder::ZXY);
 
   float3x3 mat = {{0.808309, -0.578051, -0.111775},
                   {0.47251, 0.750174, -0.462572},

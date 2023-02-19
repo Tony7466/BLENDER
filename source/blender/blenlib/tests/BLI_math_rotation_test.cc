@@ -577,15 +577,16 @@ TEST(math_rotation, EulerWrappedAround)
 
 TEST(math_rotation, Euler3ToGimbal)
 {
-  using eOrder = Euler3::eOrder;
   /* All the same rotation. */
   float3 ijk{0.350041, -0.358896, 0.528994};
-  Euler3 euler3_xyz(ijk, eOrder::XYZ);
-  Euler3 euler3_xzy(ijk, eOrder::XZY);
-  Euler3 euler3_yxz(ijk, eOrder::YXZ);
-  Euler3 euler3_yzx(ijk, eOrder::YZX);
-  Euler3 euler3_zxy(ijk, eOrder::ZXY);
-  Euler3 euler3_zyx(ijk, eOrder::ZYX);
+  Euler3 euler3_xyz(ijk, eEulerOrder::XYZ);
+  Euler3 euler3_xzy(ijk, eEulerOrder::XZY);
+  Euler3 euler3_yxz(ijk, eEulerOrder::YXZ);
+  Euler3 euler3_yzx(ijk, eEulerOrder::YZX);
+  Euler3 euler3_zxy(ijk, eEulerOrder::ZXY);
+  Euler3 euler3_zyx(ijk, eEulerOrder::ZYX);
+
+  std::cout << euler3_zyx << std::endl;
 
   float3x3 mat_xyz = transpose(
       float3x3({0.808309, -0.504665, 0}, {0.47251, 0.863315, 0}, {0.351241, 0, 1}));
