@@ -23,6 +23,8 @@
 #  include "DNA_customdata_types.h"
 #  include "DNA_meshdata_types.h"
 
+#  include "BKE_bvh.hh"
+
 struct BVHCache;
 struct EditMeshData;
 struct Mesh;
@@ -115,6 +117,9 @@ struct MeshRuntime {
 
   /** Cache for BVH trees generated for the mesh. Defined in 'BKE_bvhutil.c' */
   BVHCache *bvh_cache = nullptr;
+
+  /** Cache for derived triangulation of the mesh, accessed with #Mesh::looptris(). */
+  SharedCache<blender::bvh::BVHTree> bvh_embree_cache;
 
   /** Cache of non-manifold boundary data for Shrink-wrap Target Project. */
   ShrinkwrapBoundaryData *shrinkwrap_data = nullptr;

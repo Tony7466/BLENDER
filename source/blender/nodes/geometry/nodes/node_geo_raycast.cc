@@ -212,22 +212,20 @@ static void raycast_to_mesh(BVHType bvh_type,
     break;
 
     case BVHType::Embree: {
-      BVHTree tree;
-
-      tree.build_single_mesh(mesh);
+      const bvh::BVHTree &tree = mesh.bvh_tree();
 
       for (const int i : mask) {
-        BVHRay ray;
+        bvh::BVHRay ray;
         ray.origin = ray_origins[i];
         ray.direction = math::normalize(ray_directions[i]);
         ray.dist_min = 0.0f;
         ray.dist_max = ray_lengths[i];
         ray.time = 0.0f;
-        ray.mask = BVHRay::MASK_FULL;
+        ray.mask = bvh::BVHRay::MASK_FULL;
         ray.id = 0;
-        ray.flags = BVHRay::FLAGS_NONE;
+        ray.flags = bvh::BVHRay::FLAGS_NONE;
 
-        BVHRayHit hit;
+        bvh::BVHRayHit hit;
         if (tree.ray_intersect1(ray, hit)) {
           hit_count++;
           if (!r_hit.is_empty()) {

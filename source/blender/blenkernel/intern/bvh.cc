@@ -17,7 +17,7 @@
 #  include <embree3/rtcore_ray.h>
 #  include <embree3/rtcore_scene.h>
 
-namespace blender {
+namespace blender::bvh {
 
 BVHTree::BVHTree()
 {
@@ -194,7 +194,7 @@ void BVHTree::build_single_mesh(const Mesh &mesh)
   rtcCommitScene(rtc_scene);
 }
 
-bool BVHTree::ray_intersect1(const BVHRay &ray, BVHRayHit &r_hit)
+bool BVHTree::ray_intersect1(const BVHRay &ray, BVHRayHit &r_hit) const
 {
   RTCIntersectContext rtc_ctx;
   rtcInitIntersectContext(&rtc_ctx);

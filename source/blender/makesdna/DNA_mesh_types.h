@@ -27,6 +27,9 @@ class AttributeAccessor;
 class MutableAttributeAccessor;
 struct LooseEdgeCache;
 }  // namespace bke
+namespace bvh {
+class BVHTree;
+}  // namespace bvh
 }  // namespace blender
 using MeshRuntimeHandle = blender::bke::MeshRuntime;
 #else
@@ -284,6 +287,8 @@ typedef struct Mesh {
    * faces.
    */
   blender::Span<blender::float3> vertex_normals() const;
+
+  const blender::bvh::BVHTree &bvh_tree() const;
 #endif
 } Mesh;
 

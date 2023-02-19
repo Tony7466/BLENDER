@@ -17,6 +17,7 @@
 #include "BLI_task.hh"
 #include "BLI_timeit.hh"
 
+#include "BKE_bvh.hh"
 #include "BKE_bvhutils.h"
 #include "BKE_editmesh_cache.h"
 #include "BKE_lib_id.h"
@@ -76,6 +77,7 @@ static void free_bvh_cache(MeshRuntime &mesh_runtime)
     bvhcache_free(mesh_runtime.bvh_cache);
     mesh_runtime.bvh_cache = nullptr;
   }
+  mesh_runtime.bvh_embree_cache.tag_dirty();
 }
 
 static void free_normals(MeshRuntime &mesh_runtime)
@@ -169,6 +171,15 @@ blender::Span<MLoopTri> Mesh::looptris() const
   });
 
   return this->runtime->looptris_cache.data();
+}
+
+const blender::bvh::BVHTree &Mesh::bvh_tree() const
+{
+  this->runtime->bvh_embree_cache.ensure([&](blender::bvh::BVHTree &r_data) {
+    r_data.build_single_mesh(*this);
+  });
+
+  return this->runtime->bvh_embree_cache.data();
 }
 
 int BKE_mesh_runtime_looptri_len(const Mesh *mesh)

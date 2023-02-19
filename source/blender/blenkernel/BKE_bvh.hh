@@ -8,7 +8,7 @@ struct Mesh;
 struct RTCDeviceTy;
 struct RTCSceneTy;
 
-namespace blender {
+namespace blender::bvh {
 
 struct BVHRay {
   static constexpr unsigned int MASK_FULL = 0xffffffff;
@@ -74,7 +74,7 @@ class BVHTree {
 
   void build_single_mesh(const Mesh &mesh);
 
-  bool ray_intersect1(const BVHRay &ray, BVHRayHit &r_hit);
+  bool ray_intersect1(const BVHRay &ray, BVHRayHit &r_hit) const;
 };
 
 }  // namespace blender
