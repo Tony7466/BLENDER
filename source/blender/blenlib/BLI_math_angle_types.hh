@@ -182,7 +182,7 @@ template<typename T> struct AngleSinCos {
   AngleSinCos() = default;
 
   /**
-   * Create an angle from an (x, y) position on the unit circle.
+   * Create an angle from a (x, y) position on the unit circle.
    */
   AngleSinCos(const T &x, const T &y) : cos_(x), sin_(y)
   {
@@ -202,6 +202,16 @@ template<typename T> struct AngleSinCos {
   static AngleSinCos from_degree(const T &degrees)
   {
     return AngleSinCos(degrees * T(M_PI / 180.0));
+  }
+
+  /**
+   * Create an angle from a (x, y) position on the 2D plane.
+   * Fallback to identity if (x, y) is origin (0, 0).
+   */
+  static AngleSinCos from_point(const T &x, const T &y)
+  {
+    T norm = math::sqrt(x * x + y * y);
+    return AngleSinCos(x / norm, y / norm);
   }
 
   /** Conversions. */

@@ -985,7 +985,7 @@ template<typename T, int NumCol, int NumRow>
 [[nodiscard]] MatBase<T, NumCol, NumRow> from_rotation(const DualQuaternion<T> &rotation)
 {
   using MatT = MatBase<T, NumCol, NumRow>;
-  BLI_assert(rotation.is_normalized());
+  BLI_assert(is_normalized(rotation));
   /**
    * From:
    * "Skinning with Dual Quaternions"

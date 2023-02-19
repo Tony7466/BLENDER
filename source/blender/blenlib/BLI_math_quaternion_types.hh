@@ -4,14 +4,37 @@
 
 /** \file
  * \ingroup bli
+ *
+ * A `blender::math::Quaternion<T>` represents either an orientation or a rotation.
+ *
+ * Mainly used for rigging and armature deformations as they have nice mathematical properties
+ * (eg: smooth shortest path interpolation). A `blender::math::Quaternion<T>` is cheaper to combine
+ * than `MatBase<T, 3, 3>`. However, transforming points is not. Consider converting to a rotation
+ * matrix if you are rotating many points.
+ *
+ * See this for more information :
+ * https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation#Performance_comparisons
+ *
+ *
+ * A `blender::math::DualQuaternion<T>` implements dual-quaternion skinning with scale aware
+ * transformation. It allows volume preserving deformation for skinning.
+ *
+ * The type is implemented so that multiple weighted `blender::math::DualQuaternion<T>`
+ * can be aggregated into a final rotation. Calling `normalize(dual_quat)` is mandatory before
+ * trying to transform points with it.
  */
 
 #include "BLI_math_angle_types.hh"
 #include "BLI_math_axis_convert_types.hh"
 #include "BLI_math_base.hh"
+#include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
 
 namespace blender::math {
+
+/* -------------------------------------------------------------------- */
+/** \name Quaternion
+ * \{ */
 
 namespace detail {
 
@@ -47,88 +70,7 @@ template<typename T = float> struct Quaternion {
    * Creates a quaternion from an axis triple.
    * This is faster and more precise than converting from another representation.
    */
-  Quaternion(const AxisConversion &rotation)
-  {
-    /**
-     * There is only 6 * 4 = 24 possible valid orthonormal orientations.
-     * We precompute them and store them inside this switch using a key.
-     * Generated using `generate_axes_to_quaternion_switch_cases()`.
-     */
-    switch (rotation.axes.x << 16 | rotation.axes.y << 8 | rotation.axes.z) {
-      default:
-        *this = identity();
-        break;
-      case eAxisSigned::Z_POS << 16 | eAxisSigned::X_POS << 8 | eAxisSigned::Y_POS:
-        *this = {T(0.5), T(-0.5), T(-0.5), T(-0.5)};
-        break;
-      case eAxisSigned::Y_NEG << 16 | eAxisSigned::X_POS << 8 | eAxisSigned::Z_POS:
-        *this = {T(M_SQRT1_2), T(0), T(0), T(-M_SQRT1_2)};
-        break;
-      case eAxisSigned::Z_NEG << 16 | eAxisSigned::X_POS << 8 | eAxisSigned::Y_NEG:
-        *this = {T(0.5), T(0.5), T(0.5), T(-0.5)};
-        break;
-      case eAxisSigned::Y_POS << 16 | eAxisSigned::X_POS << 8 | eAxisSigned::Z_NEG:
-        *this = {T(0), T(M_SQRT1_2), T(M_SQRT1_2), T(0)};
-        break;
-      case eAxisSigned::Z_NEG << 16 | eAxisSigned::Y_POS << 8 | eAxisSigned::X_POS:
-        *this = {T(M_SQRT1_2), T(0), T(M_SQRT1_2), T(0)};
-        break;
-      case eAxisSigned::Z_POS << 16 | eAxisSigned::Y_POS << 8 | eAxisSigned::X_NEG:
-        *this = {T(M_SQRT1_2), T(0), T(-M_SQRT1_2), T(0)};
-        break;
-      case eAxisSigned::X_NEG << 16 | eAxisSigned::Y_POS << 8 | eAxisSigned::Z_NEG:
-        *this = {T(0), T(0), T(1), T(0)};
-        break;
-      case eAxisSigned::Y_POS << 16 | eAxisSigned::Z_POS << 8 | eAxisSigned::X_POS:
-        *this = {T(0.5), T(0.5), T(0.5), T(0.5)};
-        break;
-      case eAxisSigned::X_NEG << 16 | eAxisSigned::Z_POS << 8 | eAxisSigned::Y_POS:
-        *this = {T(0), T(0), T(M_SQRT1_2), T(M_SQRT1_2)};
-        break;
-      case eAxisSigned::Y_NEG << 16 | eAxisSigned::Z_POS << 8 | eAxisSigned::X_NEG:
-        *this = {T(0.5), T(0.5), T(-0.5), T(-0.5)};
-        break;
-      case eAxisSigned::X_POS << 16 | eAxisSigned::Z_POS << 8 | eAxisSigned::Y_NEG:
-        *this = {T(M_SQRT1_2), T(M_SQRT1_2), T(0), T(0)};
-        break;
-      case eAxisSigned::Z_NEG << 16 | eAxisSigned::X_NEG << 8 | eAxisSigned::Y_POS:
-        *this = {T(0.5), T(-0.5), T(0.5), T(0.5)};
-        break;
-      case eAxisSigned::Y_POS << 16 | eAxisSigned::X_NEG << 8 | eAxisSigned::Z_POS:
-        *this = {T(M_SQRT1_2), T(0), T(0), T(M_SQRT1_2)};
-        break;
-      case eAxisSigned::Z_POS << 16 | eAxisSigned::X_NEG << 8 | eAxisSigned::Y_NEG:
-        *this = {T(0.5), T(0.5), T(-0.5), T(0.5)};
-        break;
-      case eAxisSigned::Y_NEG << 16 | eAxisSigned::X_NEG << 8 | eAxisSigned::Z_NEG:
-        *this = {T(0), T(-M_SQRT1_2), T(M_SQRT1_2), T(0)};
-        break;
-      case eAxisSigned::Z_POS << 16 | eAxisSigned::Y_NEG << 8 | eAxisSigned::X_POS:
-        *this = {T(0), T(M_SQRT1_2), T(0), T(M_SQRT1_2)};
-        break;
-      case eAxisSigned::X_NEG << 16 | eAxisSigned::Y_NEG << 8 | eAxisSigned::Z_POS:
-        *this = {T(0), T(0), T(0), T(1)};
-        break;
-      case eAxisSigned::Z_NEG << 16 | eAxisSigned::Y_NEG << 8 | eAxisSigned::X_NEG:
-        *this = {T(0), T(-M_SQRT1_2), T(0), T(M_SQRT1_2)};
-        break;
-      case eAxisSigned::X_POS << 16 | eAxisSigned::Y_NEG << 8 | eAxisSigned::Z_NEG:
-        *this = {T(0), T(1), T(0), T(0)};
-        break;
-      case eAxisSigned::Y_NEG << 16 | eAxisSigned::Z_NEG << 8 | eAxisSigned::X_POS:
-        *this = {T(0.5), T(-0.5), T(0.5), T(-0.5)};
-        break;
-      case eAxisSigned::X_POS << 16 | eAxisSigned::Z_NEG << 8 | eAxisSigned::Y_POS:
-        *this = {T(M_SQRT1_2), T(-M_SQRT1_2), T(0), T(0)};
-        break;
-      case eAxisSigned::Y_POS << 16 | eAxisSigned::Z_NEG << 8 | eAxisSigned::X_NEG:
-        *this = {T(0.5), T(-0.5), T(-0.5), T(0.5)};
-        break;
-      case eAxisSigned::X_NEG << 16 | eAxisSigned::Z_NEG << 8 | eAxisSigned::Y_NEG:
-        *this = {T(0), T(0), T(-M_SQRT1_2), T(M_SQRT1_2)};
-        break;
-    }
-  }
+  Quaternion(const AxisConversion &rotation);
 
   /** Static functions. */
 
@@ -165,20 +107,22 @@ template<typename T = float> struct Quaternion {
   VecBase<T, 3> expmap() const;
 
   /**
-   * Returns the full twist angle for a given basis \a axis .
+   * Returns the full twist angle for a given \a axis direction.
+   * The twist is the isolated rotation in the plane whose \a axis is normal to.
    */
   AngleRadian<T> twist_angle(const eAxis axis) const;
 
   /**
-   * Returns the twist part of this quaternion for the basis \a axis .
+   * Returns the twist part of this quaternion for the \a axis direction.
+   * The twist is the isolated rotation in the plane whose \a axis is normal to.
    */
-  Quaternion twist(const eAxis axis, AngleRadian<T> &r_twist_angle) const;
   Quaternion twist(const eAxis axis) const;
 
   /**
-   * Returns the swing part of this quaternion for the basis \a axis .
+   * Returns the swing part of this quaternion for the basis \a axis direction.
+   * The swing is the original quaternion minus the twist around \a axis.
+   * So we have the following identity : `q = q.swing(axis) * q.twist(axis)`
    */
-  Quaternion swing(const eAxis axis, AngleRadian<T> &r_twist_angle) const;
   Quaternion swing(const eAxis axis) const;
 
   /**
@@ -245,6 +189,16 @@ template<typename T = float> struct Quaternion {
   }
 };
 
+}  // namespace detail
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Dual-Quaternion
+ * \{ */
+
+namespace detail {
+
 template<typename T = float> struct DualQuaternion {
   /** Non-dual part. */
   Quaternion<T> quat;
@@ -272,24 +226,14 @@ template<typename T = float> struct DualQuaternion {
   /**
    * Dual quaternion without scaling.
    */
-  DualQuaternion(const Quaternion<T> &non_dual, const Quaternion<T> &dual)
-      : quat(non_dual), trans(dual), scale_weight(0), quat_weight(1)
-  {
-    /* TODO assert. */
-    // BLI_ASSERT_UNIT_QUATERNION(non_dual);
-  }
+  DualQuaternion(const Quaternion<T> &non_dual, const Quaternion<T> &dual);
 
   /**
    * Dual quaternion with scaling.
    */
   DualQuaternion(const Quaternion<T> &non_dual,
                  const Quaternion<T> &dual,
-                 const MatBase<T, 4, 4> &scale_mat)
-      : quat(non_dual), trans(dual), scale(scale_mat), scale_weight(1), quat_weight(1)
-  {
-    /* TODO assert. */
-    // BLI_ASSERT_UNIT_QUATERNION(non_dual);
-  }
+                 const MatBase<T, 4, 4> &scale_mat);
 
   /** Static functions. */
 
@@ -299,11 +243,6 @@ template<typename T = float> struct DualQuaternion {
   }
 
   /** Methods. */
-
-  bool is_normalized() const
-  {
-    return quat_weight == T(1);
-  }
 
   /** Operators. */
 
@@ -350,14 +289,25 @@ template<typename T = float> struct DualQuaternion {
     stream << "  .trans = " << rot.trans << "\n";
     if (rot.scale_weight != T(0)) {
       stream << "  .scale = " << rot.scale;
-      stream << "  .scale_weight = " << rot.scale_weight << "\n)\n";
+      stream << "  .scale_weight = " << rot.scale_weight << "\n";
     }
-    stream << "  .quat_weight = " << rot.quat_weight << "\n";
+    stream << "  .quat_weight = " << rot.quat_weight << "\n)\n";
     return stream;
   }
 };
 
 }  // namespace detail
+
+/**
+ * Returns true if the #DualQuaternion has not been mixed with other #DualQuaternion and needs no
+ * normalization.
+ */
+template<typename T> [[nodiscard]] inline bool is_normalized(const detail::DualQuaternion<T> &dq)
+{
+  return dq.quat_weight == T(1);
+}
+
+/** \} */
 
 template<typename U> struct AssertUnitEpsilon<detail::Quaternion<U>> {
   static constexpr U value = AssertUnitEpsilon<U>::value * 10;

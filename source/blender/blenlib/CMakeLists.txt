@@ -277,6 +277,7 @@ set(SRC
   BLI_math_matrix.hh
   BLI_math_matrix_types.hh
   BLI_math_mpq.hh
+  BLI_math_quaternion.hh
   BLI_math_quaternion_types.hh
   BLI_math_rotation.h
   BLI_math_rotation.hh

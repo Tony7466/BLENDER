@@ -6,231 +6,111 @@
  * \ingroup bli
  */
 
-#include "BLI_math_matrix.hh"
 #include "BLI_math_rotation_types.hh"
+
+#include "BLI_math_axis_angle.hh"
+#include "BLI_math_matrix.hh"
+#include "BLI_math_quaternion.hh"
 #include "BLI_math_vector.hh"
 
 namespace blender::math {
 
-#ifdef DEBUG
-#  define BLI_ASSERT_UNIT_QUATERNION(_q) \
-    { \
-      auto rot_vec = static_cast<VecBase<T, 4>>(_q); \
-      T quat_length = math::length_squared(rot_vec); \
-      if (!(quat_length == 0 || (math::abs(quat_length - 1) < 0.0001))) { \
-        std::cout << "Warning! " << __func__ << " called with non-normalized quaternion: size " \
-                  << quat_length << " *** report a bug ***\n"; \
-      } \
-    }
-#else
-#  define BLI_ASSERT_UNIT_QUATERNION(_q)
-#endif
-
-/**
- * Generic function for implementing slerp
- * (quaternions and spherical vector coords).
- *
- * \param t: factor in [0..1]
- * \param cosom: dot product from normalized vectors/quats.
- * \param r_w: calculated weights.
- */
-template<typename T>
-[[nodiscard]] inline VecBase<T, 2> interpolate_dot_slerp(const T t, const T cosom)
-{
-  const T eps = T(1e-4);
-
-  BLI_assert(IN_RANGE_INCL(cosom, T(-1.0001), T(1.0001)));
-
-  VecBase<T, 2> w;
-  /* Within [-1..1] range, avoid aligned axis. */
-  if (LIKELY(math::abs(cosom) < (T(1) - eps))) {
-    const T omega = math::acos(cosom);
-    const T sinom = math::sin(omega);
-
-    w[0] = math::sin((T(1) - t) * omega) / sinom;
-    w[1] = math::sin(t * omega) / sinom;
-  }
-  else {
-    /* Fallback to lerp */
-    w[0] = T(1) - t;
-    w[1] = t;
-  }
-  return w;
-}
-
-template<typename T>
-[[nodiscard]] inline detail::Quaternion<T> interpolate(const detail::Quaternion<T> &a,
-                                                       const detail::Quaternion<T> &b,
-                                                       T t)
-{
-  using Vec4T = VecBase<T, 4>;
-  BLI_assert(is_unit_scale(Vec4T(a)));
-  BLI_assert(is_unit_scale(Vec4T(b)));
-
-  Vec4T quat = Vec4T(a);
-  T cosom = dot(Vec4T(a), Vec4T(b));
-  /* Rotate around shortest angle. */
-  if (cosom < T(0)) {
-    cosom = -cosom;
-    quat = -quat;
-  }
-
-  VecBase<T, 2> w = interpolate_dot_slerp(t, cosom);
-
-  return detail::Quaternion<T>(w[0] * quat + w[1] * Vec4T(b));
-}
-
-/**
- * Dot product between two quaternions.
- * Equivalent to vector dot product.
- * Equivalent to component wise multiplication followed by summation of the result.
- */
-template<typename T>
-[[nodiscard]] inline T dot(const detail::Quaternion<T> &a, const detail::Quaternion<T> &b)
-{
-  return a.w * b.w + a.x * b.x + a.y * b.y + a.z * b.z;
-}
-
-/**
- * Return the conjugate of the given quaternion.
- * If the quaternion \a q represent the rotation from A to B,
- * then the conjugate of \a q represents the rotation from B to A.
- */
-template<typename T>
-[[nodiscard]] inline detail::Quaternion<T> conjugate(const detail::Quaternion<T> &a)
-{
-  return {a.w, -a.x, -a.y, -a.z};
-}
-
-/**
- * Return invert of \a q or identity if \a q is ill-formed.
- * The invert allows quaternion division.
- * \note The inverse of \a q isn't the opposite rotation. This would be the conjugate.
- */
-template<typename T>
-[[nodiscard]] inline detail::Quaternion<T> invert(const detail::Quaternion<T> &q)
-{
-  const T length_squared = dot(q, q);
-  if (length_squared == 0.0f) {
-    return detail::Quaternion<T>::identity();
-  }
-  return conjugate(q) * (1.0f / length_squared);
-}
-/**
- * Return invert of \a q assuming it is a unit quaternion.
- * In this case, the inverse is just the conjugate. `conjugate(q)` could be use directly,
- * but this function shows the intent better, and asserts if \a q ever becomes non-unit-length.
- */
-template<typename T>
-[[nodiscard]] inline detail::Quaternion<T> invert_normalized(const detail::Quaternion<T> &q)
-{
-  BLI_ASSERT_UNIT_QUATERNION(q);
-  return conjugate(q);
-}
-
-/**
- * Return a unit quaternion representing the same rotation as \a q or
- * the identity quaternion if \a q is ill-formed.
- */
-template<typename T>
-[[nodiscard]] inline detail::Quaternion<T> normalize_and_get_length(const detail::Quaternion<T> &q,
-                                                                    T &out_length)
-{
-  out_length = math::sqrt(dot(q, q));
-  return (out_length != T(0)) ? (q * (T(1) / out_length)) : detail::Quaternion<T>::identity();
-}
-
-template<typename T>
-[[nodiscard]] inline detail::Quaternion<T> normalize(const detail::Quaternion<T> &q)
-{
-  T len;
-  return normalize_and_get_length(q, len);
-}
-
-template<typename T>
-[[nodiscard]] inline detail::Quaternion<T> canonicalize(const detail::Quaternion<T> &q)
-{
-  return (q.w < 0.0) ? -q : q;
-}
-
-/**
- * Returns true if all components are exactly equal to 0.
- */
-template<typename T> [[nodiscard]] inline bool is_zero(const detail::Quaternion<T> &q)
-{
-  return q.w == T(0) && q.x == T(0) && q.y == T(0) && q.z == T(0);
-}
-
-/**
- * Transform \a p by rotation using the quaternion \a q .
- */
-template<typename T>
-[[nodiscard]] inline VecBase<T, 3> transform_point(const detail::Quaternion<T> &q,
-                                                   const VecBase<T, 3> &v)
-{
-#if 0 /* Reference. */
-  detail::Quaternion<T> V(T(0), UNPACK3(v));
-  detail::Quaternion<T> R = q * V * conjugate(q);
-  return {R.x, R.y, R.z};
-#else
-  /* `S = q * V` */
-  detail::Quaternion<T> S;
-  S.w = /* q.w * 0.0  */ -q.x * v.x - q.y * v.y - q.z * v.z;
-  S.x = q.w * v.x /* + q.x * 0.0 */ + q.y * v.z - q.z * v.y;
-  S.y = q.w * v.y /* + q.y * 0.0 */ + q.z * v.x - q.x * v.z;
-  S.z = q.w * v.z /* + q.z * 0.0 */ + q.x * v.y - q.y * v.x;
-  /* `R = S * conjugate(q)` */
-  VecBase<T, 3> R;
-  /* R.w = S.w * q.w + S.x * q.x + S.y * q.y + S.z * q.z = 0.0; */
-  R.x = S.w * -q.x + S.x * q.w - S.y * q.z + S.z * q.y;
-  R.y = S.w * -q.y + S.y * q.w - S.z * q.x + S.x * q.z;
-  R.z = S.w * -q.z + S.z * q.w - S.x * q.y + S.y * q.x;
-  return R;
-#endif
-}
+/* -------------------------------------------------------------------- */
+/** \name Rotation helpers
+ * \{ */
 
 /**
  * Rotate \a a by \a b. In other word, insert the \a b rotation before \a a.
  *
- * Some internal casting will happen except if \a a and \a b are both #Quaternion.
- * This might introduce some precision loss.
- * \note If \a a is a #Quaternion it will cast \a b to a #Quaternion.
- * \note If \a a is an #AxisAngle it will cast both \a a and \a b to #Quaternion.
- * \note If \a a is an #EulerXYZ or #Euler3 it will cast both \a a and \a b to #MatBase<T, 3, 3>.
+ * \note Since \a a is a #Quaternion it will cast \a b to a #Quaternion.
+ * This might introduce some precision loss and have performance implication.
  */
 template<typename T, typename RotT>
-[[nodiscard]] detail::Quaternion<T> rotate(const detail::Quaternion<T> &a, const RotT &b)
-{
-  return a * detail::Quaternion<T>(b);
-}
+[[nodiscard]] detail::Quaternion<T> rotate(const detail::Quaternion<T> &a, const RotT &b);
+
+/**
+ * Rotate \a a by \a b. In other word, insert the \a b rotation before \a a.
+ *
+ * \note Since \a a is an #AxisAngle it will cast both \a a and \a b to #Quaternion.
+ * This might introduce some precision loss and have performance implication.
+ */
 template<typename T, typename RotT, typename AngleT>
 [[nodiscard]] detail::AxisAngle<T, AngleT> rotate(const detail::AxisAngle<T, AngleT> &a,
-                                                  const RotT &b)
-{
-  return detail::AxisAngle<T, AngleT>(detail::Quaternion<T>(a) * detail::Quaternion<T>(b));
-}
+                                                  const RotT &b);
+
+/**
+ * Rotate \a a by \a b. In other word, insert the \a b rotation before \a a.
+ *
+ * \note Since \a a is an #EulerXYZ it will cast both \a a and \a b to #MatBase<T, 3, 3>.
+ * This might introduce some precision loss and have performance implication.
+ */
 template<typename T, typename RotT>
-[[nodiscard]] detail::EulerXYZ<T> rotate(const detail::EulerXYZ<T> &a, const RotT &b)
-{
-  MatBase<T, 3, 3> tmp = from_rotation<MatBase<T, 3, 3>>(a) * from_rotation<MatBase<T, 3, 3>>(b);
-  return to_euler(tmp);
-}
+[[nodiscard]] detail::EulerXYZ<T> rotate(const detail::EulerXYZ<T> &a, const RotT &b);
+
+/**
+ * Rotate \a a by \a b. In other word, insert the \a b rotation before \a a.
+ *
+ * \note Since \a a is an #Euler3 it will cast both \a a and \a b to #MatBase<T, 3, 3>.
+ * This might introduce some precision loss and have performance implication.
+ */
 template<typename T, typename RotT>
-[[nodiscard]] detail::Euler3<T> rotate(const detail::Euler3<T> &a, const RotT &b)
-{
-  MatBase<T, 3, 3> tmp = from_rotation<MatBase<T, 3, 3>>(a) * from_rotation<MatBase<T, 3, 3>>(b);
-  return to_euler(tmp, a.order());
-}
+[[nodiscard]] detail::Euler3<T> rotate(const detail::Euler3<T> &a, const RotT &b);
 
 /**
  * Return rotation from orientation \a a  to orientation \a b into another quaternion.
  */
 template<typename T>
 [[nodiscard]] detail::Quaternion<T> rotation_between(const detail::Quaternion<T> &a,
-                                                     const detail::Quaternion<T> &b)
-{
-  return invert(a) * b;
-}
+                                                     const detail::Quaternion<T> &b);
+
+/**
+ * Create a orientation from a triangle plane and the axis formed by the segment(v1, v2).
+ * Takes pre-computed \a normal from the triangle.
+ * Used for Ngons when their normal is known.
+ */
+template<typename T>
+[[nodiscard]] detail::Quaternion<T> from_triangle(const VecBase<T, 3> &v1,
+                                                  const VecBase<T, 3> &v2,
+                                                  const VecBase<T, 3> &v3,
+                                                  const VecBase<T, 3> &normal);
+
+/**
+ * Create a orientation from a triangle plane and the axis formed by the segment(v1, v2).
+ */
+template<typename T>
+[[nodiscard]] detail::Quaternion<T> from_triangle(const VecBase<T, 3> &v1,
+                                                  const VecBase<T, 3> &v2,
+                                                  const VecBase<T, 3> &v3);
+
+/**
+ * Create a rotation from a vector and a basis rotation.
+ * Used for tracking.
+ * \a track_flag is supposed to be #Object.trackflag
+ * \a up_flag is supposed to be #Object.upflag
+ */
+template<typename T>
+[[nodiscard]] detail::Quaternion<T> from_vector(const VecBase<T, 3> &vector,
+                                                const eAxisSigned track_flag,
+                                                const eAxis up_flag);
+
+/**
+ * Returns a quaternion for converting local space to tracking space.
+ * This is slightly different than from_axis_conversion for legacy reasons.
+ */
+template<typename T>
+[[nodiscard]] detail::Quaternion<T> from_tracking(eAxisSigned forward_axis, eAxis up_axis);
+
+/**
+ * Convert euler rotation to gimbal rotation matrix.
+ */
+template<typename T>
+[[nodiscard]] MatBase<T, 3, 3> to_gimbal_axis(const detail::Euler3<T> &rotation);
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Angles
+ * \{ */
 
 /**
  * Extract rotation angle from a unit quaternion.
@@ -241,7 +121,7 @@ template<typename T>
  */
 template<typename T> [[nodiscard]] detail::AngleRadian<T> angle_of(const detail::Quaternion<T> &q)
 {
-  BLI_ASSERT_UNIT_QUATERNION(q);
+  BLI_assert(is_unit_scale(q));
   return T(2) * math::safe_acos(q.w);
 }
 
@@ -256,13 +136,14 @@ template<typename T> [[nodiscard]] detail::AngleRadian<T> angle_of(const detail:
 template<typename T>
 [[nodiscard]] detail::AngleRadian<T> angle_of_signed(const detail::Quaternion<T> &q)
 {
-  BLI_ASSERT_UNIT_QUATERNION(q);
+  BLI_assert(is_unit_scale(q));
   return T(2) * ((q.w >= 0.0f) ? math::safe_acos(q.w) : -math::safe_acos(-q.w));
 }
 
 /**
  * Extract angle between 2 orientations.
- * Returned angle is in [0..2pi] range.
+ * For #Quaternion, the returned angle is in [0..2pi] range.
+ * For other types, the returned angle is in [0..pi] range.
  * See `angle_of` for more detail.
  */
 template<typename T>
@@ -270,6 +151,13 @@ template<typename T>
                                                    const detail::Quaternion<T> &b)
 {
   return angle_of(rotation_between(a, b));
+}
+template<typename T>
+[[nodiscard]] detail::AngleRadian<T> angle_between(const VecBase<T, 3> &a, const VecBase<T, 3> &b)
+{
+  BLI_assert(is_unit_scale(a));
+  BLI_assert(is_unit_scale(b));
+  return math::safe_acos(dot(a, b));
 }
 
 /**
@@ -284,11 +172,46 @@ template<typename T>
   return angle_of_signed(rotation_between(a, b));
 }
 
-/**
- * Create a rotation from a triangle geometry.
- * Takes pre-computed \a normal from the triangle.
- * Used for Ngons when we know their normal.
- */
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Template implementations
+ * \{ */
+
+template<typename T, typename RotT>
+[[nodiscard]] detail::Quaternion<T> rotate(const detail::Quaternion<T> &a, const RotT &b)
+{
+  return a * detail::Quaternion<T>(b);
+}
+
+template<typename T, typename RotT, typename AngleT>
+[[nodiscard]] detail::AxisAngle<T, AngleT> rotate(const detail::AxisAngle<T, AngleT> &a,
+                                                  const RotT &b)
+{
+  return detail::AxisAngle<T, AngleT>(detail::Quaternion<T>(a) * detail::Quaternion<T>(b));
+}
+
+template<typename T, typename RotT>
+[[nodiscard]] detail::EulerXYZ<T> rotate(const detail::EulerXYZ<T> &a, const RotT &b)
+{
+  MatBase<T, 3, 3> tmp = from_rotation<MatBase<T, 3, 3>>(a) * from_rotation<MatBase<T, 3, 3>>(b);
+  return to_euler(tmp);
+}
+
+template<typename T, typename RotT>
+[[nodiscard]] detail::Euler3<T> rotate(const detail::Euler3<T> &a, const RotT &b)
+{
+  MatBase<T, 3, 3> tmp = from_rotation<MatBase<T, 3, 3>>(a) * from_rotation<MatBase<T, 3, 3>>(b);
+  return to_euler(tmp, a.order());
+}
+
+template<typename T>
+[[nodiscard]] detail::Quaternion<T> rotation_between(const detail::Quaternion<T> &a,
+                                                     const detail::Quaternion<T> &b)
+{
+  return invert(a) * b;
+}
+
 template<typename T>
 [[nodiscard]] detail::Quaternion<T> from_triangle(const VecBase<T, 3> &v1,
                                                   const VecBase<T, 3> &v2,
@@ -323,9 +246,6 @@ template<typename T>
   return q1 * q2;
 }
 
-/**
- * Create a rotation from a triangle geometry.
- */
 template<typename T>
 [[nodiscard]] detail::Quaternion<T> from_triangle(const VecBase<T, 3> &v1,
                                                   const VecBase<T, 3> &v2,
@@ -336,7 +256,6 @@ template<typename T>
 
 template<typename T>
 [[nodiscard]] detail::Quaternion<T> from_vector(const VecBase<T, 3> &vector,
-                                                /* #Object.trackflag / #Object.upflag (short) */
                                                 const eAxisSigned track_flag,
                                                 const eAxis up_flag)
 {
@@ -421,6 +340,18 @@ template<typename T>
 }
 
 template<typename T>
+[[nodiscard]] detail::Quaternion<T> from_tracking(eAxisSigned forward_axis, eAxis up_axis)
+{
+  BLI_assert(forward_axis >= eAxisSigned::X_POS && forward_axis <= eAxisSigned::Z_NEG);
+  BLI_assert(up_axis >= eAxis::X && up_axis <= eAxis::Z);
+  BLI_assert(axis_unsigned(forward_axis) != up_axis);
+
+  /* Curve have Z forward, Y up, X left. */
+  return detail::Quaternion<T>(
+      AxisConversion(eAxisSigned::Z_POS, eAxisSigned::Y_POS, forward_axis, eAxisSigned(up_axis)));
+}
+
+template<typename T>
 [[nodiscard]] MatBase<T, 3, 3> to_gimbal_axis(const detail::Euler3<T> &rotation)
 {
   using Mat3T = MatBase<T, 3, 3>;
@@ -443,377 +374,11 @@ template<typename T>
   return result;
 }
 
-/**
- * Raise a unit #Quaternion \a q to the real \a y exponent.
- * \note This only works on unit quaternions and y != 0.
- * \note This is not a per component power.
- */
-template<typename T>
-[[nodiscard]] detail::Quaternion<T> pow(const detail::Quaternion<T> &q, const T &y)
-{
-  BLI_ASSERT_UNIT_QUATERNION(q);
-  /* Reference material:
-   * https://en.wikipedia.org/wiki/Quaternion
-   *
-   * The power of a quaternion raised to an arbitrary (real) exponent y is given by:
-   * `q^x = ||q||^y * (cos(y * angle * 0.5) + n * sin(y * angle * 0.5))`
-   * where `n` is the unit vector from the imaginary part of the quaternion and
-   * where `angle` is the angle of the rotation given by `angle = 2 * acos(q.w)`.
-   *
-   * q being a unit quaternion, ||q||^y becomes 1 and is canceled out.
-   *
-   * `y * angle * 0.5` expands to `y * 2 * acos(q.w) * 0.5` which simplifies to `y * acos(q.w)`.
-   */
-  const T ha = y * math::safe_acos(q.w);
-  return {math::cos(ha), math::sin(ha) * normalize(q.imaginary_part())};
-}
-
-/**
- * Returns a quaternion for converting local space to tracking space.
- * This is slightly different than from_axis_conversion for legacy reasons.
- */
-template<typename T>
-[[nodiscard]] detail::Quaternion<T> from_tracking(eAxisSigned forward_axis, eAxis up_axis)
-{
-  BLI_assert(forward_axis >= eAxisSigned::X_POS && forward_axis <= eAxisSigned::Z_NEG);
-  BLI_assert(up_axis >= eAxis::X && up_axis <= eAxis::Z);
-  BLI_assert(axis_unsigned(forward_axis) != up_axis);
-
-  /* Curve have Z forward, Y up, X left. */
-  return detail::Quaternion<T>(
-      AxisConversion(eAxisSigned::Z_POS, eAxisSigned::Y_POS, forward_axis, eAxisSigned(up_axis)));
-}
-
-/**
- * Apply all accumulated weights to the dual-quaternions.
- * Also make sure the rotation quaternions is normalized.
- * \note The C version of this function does not normalize the quaternion. This makes other
- * operations like transform and matrix conversion more complex.
- * \note Returns identity #DualQuaternion if degenerate.
- */
-template<typename T>
-[[nodiscard]] detail::DualQuaternion<T> normalize(const detail::DualQuaternion<T> &dual_quat)
-{
-  const T norm_weighted = math::sqrt(dot(dual_quat.quat, dual_quat.quat));
-  /* NOTE(fclem): Should this be an epsilon? */
-  if (norm_weighted == T(0)) {
-    /* The dual-quaternion was zero initialized or is degenerate. Return identity. */
-    return detail::DualQuaternion<T>::identity();
-  }
-
-  const T inv_norm_weighted = T(1) / norm_weighted;
-
-  detail::DualQuaternion<T> dq = dual_quat;
-  dq.quat = dq.quat * inv_norm_weighted;
-  dq.trans = dq.trans * inv_norm_weighted;
-
-  /* Handle scale if needed. */
-  if (dq.scale_weight > T(0)) {
-    /* Compensate for any dual quaternions added without scale.
-     * This is an optimization so that we can skip the scale part when not needed. */
-    float missing_uniform_scale = dq.quat_weight - dq.scale_weight;
-
-    if (missing_uniform_scale > T(0)) {
-      dq.scale[0][0] += missing_uniform_scale;
-      dq.scale[1][1] += missing_uniform_scale;
-      dq.scale[2][2] += missing_uniform_scale;
-      dq.scale[3][3] += missing_uniform_scale;
-    }
-    /* Per component scalar product. */
-    dq.scale *= T(1) / dq.quat_weight;
-    dq.scale_weight = T(1);
-  }
-  dq.quat_weight = T(1);
-  return dq;
-}
-
-/**
- * Transform \a point using the dual-quaternion \a dq .
- * Applying the #DuatQuat transform can only happen if the #DualQuaternion is normalized first.
- * Optionally outputs crazy space matrix.
- */
-template<typename T>
-[[nodiscard]] VecBase<T, 3> transform_point(const detail::DualQuaternion<T> &dq,
-                                            VecBase<T, 3> &point,
-                                            MatBase<T, 3, 3> *r_crazy_space_mat = nullptr)
-{
-  BLI_assert(dq.is_normalized());
-  BLI_ASSERT_UNIT_QUATERNION(dq.quat);
-  /**
-   * From:
-   * "Skinning with Dual Quaternions"
-   * Ladislav Kavan, Steven Collins, Jiri Zara, Carol O’Sullivan
-   * Trinity College Dublin, Czech Technical University in Prague
-   */
-  /* Follow the paper notation. */
-  const T &w0 = dq.quat.w, &x0 = dq.quat.x, &y0 = dq.quat.y, &z0 = dq.quat.z;
-  const T &we = dq.trans.w, &xe = dq.trans.x, &ye = dq.trans.y, &ze = dq.trans.z;
-  /* Part 3.4 - The Final Algorithm. */
-  VecBase<T, 3> t;
-  t[0] = T(2) * (-we * x0 + xe * w0 - ye * z0 + ze * y0);
-  t[1] = T(2) * (-we * y0 + xe * z0 + ye * w0 - ze * x0);
-  t[2] = T(2) * (-we * z0 - xe * y0 + ye * x0 + ze * w0);
-  /* Isolate rotation matrix to easily output crazy-space mat. */
-  MatBase<T, 3, 3> M;
-  M[0][0] = (w0 * w0) + (x0 * x0) - (y0 * y0) - (z0 * z0); /* Same as `1 - 2y0^2 - 2z0^2`. */
-  M[0][1] = T(2) * ((x0 * y0) + (w0 * z0));
-  M[0][2] = T(2) * ((x0 * z0) - (w0 * y0));
-
-  M[1][0] = T(2) * ((x0 * y0) - (w0 * z0));
-  M[1][1] = (w0 * w0) + (y0 * y0) - (x0 * x0) - (z0 * z0); /* Same as `1 - 2x0^2 - 2z0^2`. */
-  M[1][2] = T(2) * ((y0 * z0) + (w0 * x0));
-
-  M[2][1] = T(2) * ((y0 * z0) - (w0 * x0));
-  M[2][2] = (w0 * w0) + (z0 * z0) - (x0 * x0) - (y0 * y0); /* Same as `1 - 2x0^2 - 2y0^2`. */
-  M[2][0] = T(2) * ((x0 * z0) + (w0 * y0));
-
-  /* Apply scaling. */
-  if (dq.scale_weight != T(0)) {
-    /* NOTE(fclem): This is weird that this is also adding translation even if it is marked as
-     * scale matrix. Follows the old C implementation for now... */
-    point = transform_point(dq.scale, point);
-  }
-  /* Apply rotation and translation. */
-  point = transform_point(M, point) + t;
-  /* Compute crazy-space correction matrix. */
-  if (r_crazy_space_mat != nullptr) {
-    if (dq.scale_weight) {
-      *r_crazy_space_mat = M * dq.scale.template view<3, 3>();
-    }
-    else {
-      *r_crazy_space_mat = M;
-    }
-  }
-  return point;
-}
-
-/**
- * Convert transformation \a mat with parent transform \a basemat into a dual-quaternion
- * representation.
- *
- * This allows volume preserving deformation for skinning.
- */
-template<typename T>
-[[nodiscard]] detail::DualQuaternion<T> to_dual_quaternion(const MatBase<T, 4, 4> &mat,
-                                                           const MatBase<T, 4, 4> &basemat)
-{
-  using Mat4T = MatBase<T, 4, 4>;
-  using Vec3T = VecBase<T, 3>;
-
-  /* Split scaling and rotation.
-   * There is probably a faster way to do this. It is currently done like this to correctly get
-   * negative scaling. */
-  Mat4T baseRS = mat * basemat;
-
-  Mat4T R, scale;
-  const bool has_scale = !is_orthonormal(mat) || is_negative(mat) ||
-                         length_squared(to_scale(baseRS) - T(1)) > square_f(1e-4f);
-  if (has_scale) {
-    /* Extract Rotation and Scale. */
-    Mat4T baseinv = invert(basemat);
-
-    /* Extra orthogonalize, to avoid flipping with stretched bones. */
-    detail::Quaternion<T> basequat = to_quaternion(orthogonalize(baseRS, eAxis::Y));
-
-    Mat4T baseR = from_rotation<Mat4T>(basequat);
-    baseR.location() = baseRS.location();
-
-    R = baseR * baseinv;
-
-    Mat4T S = invert(baseR) * baseRS;
-    /* Set scaling part. */
-    scale = basemat * S * baseinv;
-  }
-  else {
-    /* Input matrix does not contain scaling. */
-    R = mat;
-  }
-
-  /* Non-dual part. */
-  detail::Quaternion<T> q = to_quaternion(R);
-
-  /* Dual part. */
-  const Vec3T &t = R.location().xyz();
-  detail::Quaternion<T> d;
-  d.w = T(-0.5) * (+t.x * q.x + t.y * q.y + t.z * q.z);
-  d.x = T(+0.5) * (+t.x * q.w + t.y * q.z - t.z * q.y);
-  d.y = T(+0.5) * (-t.x * q.z + t.y * q.w + t.z * q.x);
-  d.z = T(+0.5) * (+t.x * q.y - t.y * q.x + t.z * q.w);
-
-  if (has_scale) {
-    return detail::DualQuaternion<T>(q, d, scale);
-  }
-
-  return detail::DualQuaternion<T>(q, d);
-}
+/** \} */
 
 }  // namespace blender::math
 
-/* -------------------------------------------------------------------- */
-/** \name Template implementations
- * \{ */
-
 namespace blender::math::detail {
-
-template<typename T> DualQuaternion<T> &DualQuaternion<T>::operator+=(const DualQuaternion<T> &b)
-{
-  DualQuaternion<T> &a = *this;
-  /* Sum rotation and translation. */
-
-  /* Make sure we interpolate quaternions in the right direction. */
-  if (dot(a.quat, b.quat) < 0) {
-    a.quat.w -= b.quat.w;
-    a.quat.x -= b.quat.x;
-    a.quat.y -= b.quat.y;
-    a.quat.z -= b.quat.z;
-
-    a.trans.w -= b.trans.w;
-    a.trans.x -= b.trans.x;
-    a.trans.y -= b.trans.y;
-    a.trans.z -= b.trans.z;
-  }
-  else {
-    a.quat.w += b.quat.w;
-    a.quat.x += b.quat.x;
-    a.quat.y += b.quat.y;
-    a.quat.z += b.quat.z;
-
-    a.trans.w += b.trans.w;
-    a.trans.x += b.trans.x;
-    a.trans.y += b.trans.y;
-    a.trans.z += b.trans.z;
-  }
-
-  a.quat_weight += b.quat_weight;
-
-  if (b.scale_weight > T(0)) {
-    if (a.scale_weight > T(0)) {
-      /* Weighted sum of scale matrices (sum of components). */
-      a.scale += b.scale;
-      a.scale_weight += b.scale_weight;
-    }
-    else {
-      /* No existing scale. Replace. */
-      a.scale = b.scale;
-      a.scale_weight = b.scale_weight;
-    }
-  }
-  return *this;
-}
-
-template<typename T> DualQuaternion<T> &DualQuaternion<T>::operator*=(const T &t)
-{
-  BLI_assert(t >= 0);
-  DualQuaternion<T> &q = *this;
-
-  q.quat.w *= t;
-  q.quat.x *= t;
-  q.quat.y *= t;
-  q.quat.z *= t;
-
-  q.trans.w *= t;
-  q.trans.x *= t;
-  q.trans.y *= t;
-  q.trans.z *= t;
-
-  q.quat_weight *= t;
-
-  if (q.scale_weight > T(0)) {
-    q.scale *= t;
-    q.scale_weight *= t;
-  }
-  return *this;
-}
-
-template<typename T> Quaternion<T> Quaternion<T>::expmap(const VecBase<T, 3> &expmap)
-{
-  /* Obtain axis/angle representation. */
-  T angle;
-  VecBase<T, 3> axis = normalize_and_get_length(expmap, angle);
-  if (LIKELY(angle != 0.0f)) {
-    return Quaternion<T>(detail::AxisAngle<T, AngleRadian<T>>(axis, angle_wrap_rad(angle)));
-  }
-  return Quaternion<T>::identity();
-}
-
-template<typename T> VecBase<T, 3> Quaternion<T>::expmap() const
-{
-  BLI_ASSERT_UNIT_QUATERNION(*this);
-  AxisAngle<T, AngleRadian<T>> axis_angle(*this);
-  return axis_angle.axis() * T(axis_angle.angle());
-}
-
-template<typename T> Quaternion<T> Quaternion<T>::wrapped_around(const Quaternion &reference) const
-{
-  const Quaternion<T> &input = *this;
-  BLI_ASSERT_UNIT_QUATERNION(input);
-  T len;
-  Quaternion<T> reference_normalized = normalize_and_get_length(reference, len);
-  /* Skips cases case too. */
-  if (len < 1e-4f) {
-    return input;
-  }
-  Quaternion<T> result = reference * rotation_between(reference_normalized, input);
-  return (distance_squared(VecBase<T, 4>(-result), VecBase<T, 4>(reference)) <
-          distance_squared(VecBase<T, 4>(result), VecBase<T, 4>(reference))) ?
-             -result :
-             result;
-}
-
-template<typename T> AngleRadian<T> Quaternion<T>::twist_angle(const eAxis axis) const
-{
-  BLI_assert(axis >= 0 && axis <= 2);
-  /* The calculation requires a canonical quaternion. */
-  const VecBase<T, 4> input_vec(canonicalize(*this));
-  return AngleRadian<T>(T(2) * math::atan2(input_vec[axis + 1], input_vec[0]));
-}
-
-template<typename T>
-Quaternion<T> Quaternion<T>::twist(const eAxis axis, AngleRadian<T> &r_twist_angle) const
-{
-  BLI_assert(axis >= 0 && axis <= 2);
-  /* The calculation requires a canonical quaternion. */
-  const Quaternion<T> input = canonicalize(*this);
-  const VecBase<T, 4> input_vec(input);
-
-  T half_twist_angle = math::atan2(input_vec[axis + 1], input_vec[0]);
-  r_twist_angle = T(2) * half_twist_angle;
-
-  /* Compute swing by multiplying the original quaternion by inverted twist. */
-  VecBase<T, 4> twist_inv(math::cos(half_twist_angle), T(0), T(0), T(0));
-  twist_inv[axis + 1] = -math::sin(half_twist_angle);
-  Quaternion<T> result = input * Quaternion<T>(twist_inv);
-
-  BLI_assert(math::abs(VecBase<T, 4>(result)[axis + 1]) < BLI_ASSERT_UNIT_EPSILON);
-  return result;
-}
-
-template<typename T> Quaternion<T> Quaternion<T>::twist(const eAxis axis) const
-{
-  AngleRadian<T> twist_angle;
-  return twist(axis, twist_angle);
-}
-
-template<typename T>
-Quaternion<T> Quaternion<T>::swing(const eAxis axis, AngleRadian<T> &r_twist_angle) const
-{
-  BLI_assert(axis >= 0 && axis <= 2);
-  /* The calculation requires a canonical quaternion. */
-  const VecBase<T, 4> input_vec(canonicalize(*this));
-
-  T half_twist_angle = math::atan2(input_vec[axis + 1], input_vec[0]);
-  r_twist_angle = T(2) * half_twist_angle;
-
-  VecBase<T, 4> twist(math::cos(half_twist_angle), T(0), T(0), T(0));
-  twist[axis + 1] = math::sin(half_twist_angle);
-  return Quaternion<T>(twist);
-}
-
-template<typename T> Quaternion<T> Quaternion<T>::swing(const eAxis axis) const
-{
-  AngleRadian<T> twist_angle;
-  return swing(axis, twist_angle);
-}
 
 template<typename T, typename AngleT>
 AxisAngle<T, AngleT>::AxisAngle(const VecBase<T, 3> &axis, const AngleT &angle)
@@ -860,19 +425,10 @@ AxisAngle<T, AngleT>::AxisAngle(const VecBase<T, 3> &from, const VecBase<T, 3> &
   this->angle_ = AngleT(cos, sin);
 }
 
-template<typename T> Quaternion<T>::operator EulerXYZ<T>() const
-{
-  using Mat3T = MatBase<T, 3, 3>;
-  const Quaternion<T> &quat = *this;
-  BLI_ASSERT_UNIT_QUATERNION(quat)
-  Mat3T unit_mat = math::from_rotation<Mat3T>(quat);
-  return math::to_euler<T, true>(unit_mat);
-}
-
 template<typename T> Euler3<T> &Euler3<T>::operator=(const Quaternion<T> &quat)
 {
   using Mat3T = MatBase<T, 3, 3>;
-  BLI_ASSERT_UNIT_QUATERNION(quat)
+  BLI_assert(is_unit_scale(quat));
   Mat3T unit_mat = math::from_rotation<Mat3T>(quat);
   *this = math::to_euler<T, true>(unit_mat, this->order_);
   return *this;
@@ -921,7 +477,7 @@ template<typename T> Euler3<T>::operator Quaternion<T>() const
 
 template<typename T, typename AngleT> AxisAngle<T, AngleT>::AxisAngle(const Quaternion<T> &quat)
 {
-  BLI_ASSERT_UNIT_QUATERNION(quat)
+  BLI_assert(is_unit_scale(quat));
 
   /* Calculate angle/2, and sin(angle/2). */
   T ha = math::acos(quat.w);
