@@ -1859,16 +1859,18 @@ static int collection_drop_exec(bContext *C, wmOperator *op)
 
 /* Disable location and rotation controls for the user when the collection
  * is linked and not instantiated */
-static bool collection_drop_poll_property(const bContext *C, wmOperator *op, const PropertyRNA *prop)
+static bool collection_drop_poll_property(const bContext *C,
+                                          wmOperator *op,
+                                          const PropertyRNA *prop)
 {
   if (RNA_boolean_get(op->ptr, "use_instance"))
     return true;
 
   const char *prop_name = RNA_property_ui_name(prop);
-  
+
   if (STR_ELEM(prop_name, "Location", "Rotation")) {
     Collection *collection = static_cast<Collection *>(
-      BLI_findlink(&CTX_data_main(C)->collections, RNA_enum_get(op->ptr, "collection")));
+        BLI_findlink(&CTX_data_main(C)->collections, RNA_enum_get(op->ptr, "collection")));
     if (!ID_IS_LINKED(&collection->id))
       return true;
     return false;
