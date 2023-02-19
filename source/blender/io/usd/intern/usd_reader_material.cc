@@ -791,11 +791,19 @@ void USDMaterialReader::convert_usd_primvar_reader_float2(
   }
 
   /* Set the texmap name. */
-  pxr::UsdShadeInput varname_input = usd_shader.GetInput(usdtokens::varname);
-  if (varname_input) {
+  if (pxr::UsdShadeInput varname_input = usd_shader.GetInput(usdtokens::varname)) {
+    /* According to the current USD Preview Surface specification, the 'varname' input
+     * is a string.  However, for backward compatibility with previous USD versions, we
+     * also handle TfToken values for this input. */
     pxr::VtValue varname_val;
-    if (varname_input.Get(&varname_val) && varname_val.IsHolding<std::string>()) {
-      std::string varname = varname_val.Get<std::string>();
+    if (varname_input.Get(&varname_val)) {
+      std::string varname;
+      if (varname_val.IsHolding<std::string>()) {
+        varname = varname_val.Get<std::string>();
+      }
+      else if (varname_val.IsHolding<pxr::TfToken>()) {
+        varname = varname_val.Get<pxr::TfToken>().GetString();
+      }
       if (!varname.empty()) {
         NodeShaderUVMap *storage = (NodeShaderUVMap *)uv_map->storage;
         BLI_strncpy(storage->uv_map, varname.c_str(), sizeof(storage->uv_map));
