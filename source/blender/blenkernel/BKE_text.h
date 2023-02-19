@@ -16,6 +16,12 @@ struct TextLine;
 
 #include "BLI_compiler_attrs.h"
 
+struct TextFormatType;
+
+struct TextFormatType *ED_text_format_get(struct Text *text);
+
+const char **ED_text_format_ext_get(struct TextFormatType *format);
+
 /**
  * \note caller must handle `compiled` member.
  */

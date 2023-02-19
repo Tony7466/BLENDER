@@ -101,6 +101,7 @@ enum {
 };
 
 TextFormatType *ED_text_format_get(Text *text);
+
 void ED_text_format_register(TextFormatType *tft);
 
 /* formatters */

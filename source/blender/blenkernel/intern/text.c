@@ -2124,14 +2124,40 @@ static bool txt_select_unprefix(Text *text, const char *remove, const bool requi
   return changed_any;
 }
 
+const char *get_comment_prefix(struct TextFormatType *format)
+{
+  for (char **ext = ED_text_format_ext_get(format); *ext != NULL; ext++) {
+    if (BLI_strcaseeq(*ext, "osl")) {
+      return "//";
+    }
+    if (BLI_strcaseeq(*ext, "ini")) {
+      return "//";
+    }
+    if (BLI_strcaseeq(*ext, "mcr")) {
+      return "//";
+    }
+    if (BLI_strcaseeq(*ext, "mac")) {
+      return "//";
+    }
+    if (BLI_strcaseeq(*ext, "py")) {
+      return "#";
+    }
+    if (BLI_strcaseeq(*ext, "lua")) {
+      return "--";
+    }
+  }
+  return "";
+}
+
 void txt_comment(Text *text)
 {
-  const char *prefix = "#";
+  struct TextFormatType *format = ED_text_format_get(text);
 
-  if (ELEM(NULL, text->curl, text->sell)) {
+  if (ELEM(NULL, format, text->curl, text->sell)) {
     return;
   }
 
+  const char *prefix = get_comment_prefix(format);
   const bool skip_blank_lines = txt_has_sel(text);
   txt_select_prefix(text, prefix, skip_blank_lines);
 }

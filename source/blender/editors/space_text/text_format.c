@@ -199,6 +199,11 @@ TextFormatType *ED_text_format_get(Text *text)
   return tft_lb.first;
 }
 
+const char **ED_text_format_ext_get(TextFormatType *format)
+{
+  return format->ext;
+}
+
 bool ED_text_is_syntax_highlight_supported(Text *text)
 {
   if (text == NULL) {
