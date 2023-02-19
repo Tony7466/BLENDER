@@ -23,11 +23,11 @@ template<typename T> struct EulerXYZ {
 
   EulerXYZ() = default;
 
-  EulerXYZ(const T &x, const T &y, const T &z)
+  EulerXYZ(const AngleRadian<T> &x, const AngleRadian<T> &y, const AngleRadian<T> &z)
   {
-    this->x = x;
-    this->y = y;
-    this->z = z;
+    this->x = T(x);
+    this->y = T(y);
+    this->z = T(z);
   }
 
   EulerXYZ(const VecBase<T, 3> &vec) : EulerXYZ(UNPACK3(vec)){};

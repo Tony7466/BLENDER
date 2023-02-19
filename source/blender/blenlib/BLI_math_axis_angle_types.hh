@@ -37,13 +37,13 @@ template<typename T, typename AngleT> struct AxisAngle {
   /**
    * Create a rotation from a basis axis and an angle.
    */
-  AxisAngle(const eAxisSigned axis, T angle);
+  AxisAngle(const eAxisSigned axis, AngleT angle);
 
   /**
    * Create a rotation from an axis and an angle.
    * \note `axis` have to be normalized.
    */
-  AxisAngle(const vec3_type &axis, T angle);
+  AxisAngle(const vec3_type &axis, AngleT angle);
 
   /**
    * Create a rotation from 2 normalized vectors.

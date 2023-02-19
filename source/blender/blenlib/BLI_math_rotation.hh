@@ -817,7 +817,7 @@ template<typename T> Quaternion<T> Quaternion<T>::swing(const eAxis axis) const
 }
 
 template<typename T, typename AngleT>
-AxisAngle<T, AngleT>::AxisAngle(const VecBase<T, 3> &axis, T angle)
+AxisAngle<T, AngleT>::AxisAngle(const VecBase<T, 3> &axis, AngleT angle)
 {
   /* TODO: After merge to limit side effects. */
   // BLI_assert(is_unit_scale(axis));
@@ -828,7 +828,7 @@ AxisAngle<T, AngleT>::AxisAngle(const VecBase<T, 3> &axis, T angle)
 }
 
 template<typename T, typename AngleT>
-AxisAngle<T, AngleT>::AxisAngle(const eAxisSigned axis, T angle)
+AxisAngle<T, AngleT>::AxisAngle(const eAxisSigned axis, AngleT angle)
 {
   this->axis_ = basis_vector<T>(axis);
   this->angle_ = angle;

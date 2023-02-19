@@ -259,8 +259,10 @@ TEST(math_rotation_types, TypeConversion)
 {
   /* All the same rotation. */
   Quaternion quaternion(0.927091f, 0.211322f, -0.124857f, 0.283295f);
-  EulerXYZ euler_xyz(deg_to_rad(20.0559), deg_to_rad(-20.5632f), deg_to_rad(30.3091f));
-  AxisAngle axis_angle({0.563771, -0.333098, 0.755783}, deg_to_rad(44.0284f));
+  EulerXYZ euler_xyz(AngleRadian::from_degree(20.0559),
+                     AngleRadian::from_degree(-20.5632f),
+                     AngleRadian::from_degree(30.3091f));
+  AxisAngle axis_angle({0.563771, -0.333098, 0.755783}, AngleRadian::from_degree(44.0284f));
 
   EXPECT_V4_NEAR(float4(Quaternion(euler_xyz)), float4(quaternion), 1e-4);
   EXPECT_V3_NEAR(AxisAngle(euler_xyz).axis(), axis_angle.axis(), 1e-4);

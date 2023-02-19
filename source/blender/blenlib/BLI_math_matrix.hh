@@ -1054,8 +1054,8 @@ template<typename T, int NumCol, int NumRow>
 MatBase<T, NumCol, NumRow> from_rotation(const AngleRadian<T> &rotation)
 {
   using MatT = MatBase<T, NumCol, NumRow>;
-  T ci = math::cos(rotation.value);
-  T si = math::sin(rotation.value);
+  T ci = rotation.cos();
+  T si = rotation.sin();
 
   MatT mat = MatT::identity();
   mat[0][0] = ci;
