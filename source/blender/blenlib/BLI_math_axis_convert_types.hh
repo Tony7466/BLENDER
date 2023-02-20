@@ -4,12 +4,34 @@
 
 /** \file
  * \ingroup bli
+ *
+ * TODO(fclem) Rename the type to something better.
+ *
+ * An `blender::math::AxisConversion` represents an orientation that is aligned with the basis
+ * axes. This type of rotation is fast, precise and adds more meaning to the code that uses it.
+ *
+ * A practical reminder:
+ * - Forward is typically the positive Y direction in blender.
+ * - Up is typically the positive Z direction in blender.
+ * - Right is typically the positive X direction in blender.
+ * - Blender uses right handedness.
+ * - For cross product forward is your thumb, up is your index, right is your middle finger.
+ *
+ * The basis changes for each space:
+ * - Object: X-right, Y-forward, Z-up
+ * - World: X-right, Y-forward, Z-up
+ * - Curve Tangent-Space: X-left, Y-up, Z-forward
+ * - Armature Bone: (todo)
  */
 
 #include "BLI_math_base.hh"
 #include "BLI_math_vector_types.hh"
 
 namespace blender::math {
+
+/* -------------------------------------------------------------------- */
+/** \name Conversion
+ * \{ */
 
 enum eAxis {
   /* Must start at 0. Used as indices in tables and vectors. */
@@ -29,19 +51,18 @@ enum eAxisSigned {
   Z_NEG = 5,
 };
 
-/**
- * Axes utilities.
- */
+/** \} */
 
-template<typename T> [[nodiscard]] VecBase<T, 3> basis_vector(const eAxis axis)
+/* -------------------------------------------------------------------- */
+/** \name Axes utilities.
+ * \{ */
+
+inline eAxis axis_unsigned(const eAxisSigned axis)
 {
-  BLI_assert(axis >= eAxis::X && axis <= eAxis::Z);
-  VecBase<T, 3> vec{};
-  vec[axis] = T(1);
-  return vec;
+  return eAxis(axis - ((axis <= 2) ? 0 : 3));
 }
 
-template<typename T> [[nodiscard]] VecBase<T, 3> basis_vector(const eAxisSigned axis)
+template<typename T> [[nodiscard]] inline VecBase<T, 3> basis_vector(const eAxisSigned axis)
 {
   BLI_assert(axis >= eAxisSigned::X_POS && axis <= eAxisSigned::Z_NEG);
   VecBase<T, 3> vec{};
@@ -49,9 +70,10 @@ template<typename T> [[nodiscard]] VecBase<T, 3> basis_vector(const eAxisSigned 
   return vec;
 }
 
-inline eAxis axis_unsigned(const eAxisSigned axis)
+template<typename T> [[nodiscard]] inline VecBase<T, 3> basis_vector(const eAxis axis)
 {
-  return eAxis(axis - ((axis <= 2) ? 0 : 3));
+  BLI_assert(axis >= eAxis::X && axis <= eAxis::Z);
+  return basis_vector<T>(eAxisSigned(axis));
 }
 
 inline eAxis axis_from_char(const char axis)
@@ -70,6 +92,12 @@ inline eAxisSigned negate(const eAxisSigned axis)
   return eAxisSigned((axis + 3) % 6);
 }
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name AxisConversion
+ * \{ */
+
 /**
  * This axis triple can then be converted to a rotation.
  */
@@ -77,6 +105,39 @@ struct AxisConversion {
   VecBase<eAxisSigned, 3> axes;
 
   AxisConversion() = delete;
+
+#if 0 /* TODO */
+  /**
+   * Create an orthonormal basis orientation from the given two directions.
+   * Reminder, with typical blender object/world space: forward = Y+, up = Z+.
+   */
+  AxisConversion(const eAxisSigned /* forward */, const eAxisSigned /* up */)
+  {
+    /* TODO */
+  }
+
+  /**
+   * Create an arbitrary basis orientation from the given two directions.
+   * Handedness can be flipped.
+   * Reminder, with typical blender object/world space: forward = Y+, up = Z+, right = X+.
+   */
+  AxisConversion(const eAxisSigned /* forward */,
+                 const eAxisSigned /* up */,
+                 const eAxisSigned /* right */)
+  {
+    /* TODO */
+  }
+
+  /**
+   * Create an arbitrary basis orientation from the given two directions.
+   * Handedness can be flipped.
+   */
+  static AxisConversion from_axes(const eAxisSigned x, const eAxisSigned y, const eAxisSigned z)
+  {
+    /* TODO */
+    return AxisConversion(x, y, z);
+  }
+#endif
 
   /**
    * Create an AxisConversion for converting from \a src orientation to \a dst orientation.
@@ -256,6 +317,16 @@ struct AxisConversion {
     return axes;
   }
 };
+
+/* TODO(fclem): This should become the axis conversion. */
+inline AxisConversion rotation_between(const AxisConversion &basis_a,
+                                       const AxisConversion & /* basis_b */)
+{
+  /* TODO */
+  return basis_a;
+}
+
+/** \} */
 
 }  // namespace blender::math
 
