@@ -101,7 +101,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
     MutableSpan<float3> positions = curves.positions_for_write();
     if (use_proportional_edit) {
       const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-      VArray<bool> selection = curves.attributes().lookup_or_default<bool>(
+      const VArray<bool> selection = curves.attributes().lookup_or_default<bool>(
           ".selection", ATTR_DOMAIN_POINT, true);
       threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange range) {
         for (const int curve_i : range) {
@@ -161,7 +161,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
       });
     }
     else {
-      IndexMask selected_indices = selection_per_object[i];
+      const IndexMask selected_indices = selection_per_object[i];
       threading::parallel_for(selected_indices.index_range(), 1024, [&](const IndexRange range) {
         for (const int selection_i : range) {
           TransData *td = &tc.data[selection_i];
@@ -184,7 +184,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
 
 static void recalcData_curves(TransInfo *t)
 {
-  Span<TransDataContainer> trans_data_contrainers(t->data_container, t->data_container_len);
+  const Span<TransDataContainer> trans_data_contrainers(t->data_container, t->data_container_len);
   for (const TransDataContainer &tc : trans_data_contrainers) {
     Curves *curves_id = static_cast<Curves *>(tc.obedit->data);
     bke::CurvesGeometry &curves = curves_id->geometry.wrap();
