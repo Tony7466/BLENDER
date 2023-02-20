@@ -98,9 +98,8 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
     copy_m3_m4(mtx, tc.obedit->object_to_world);
     pseudoinverse_m3_m3(smtx, mtx, PSEUDOINVERSE_EPSILON);
 
-    float3 *positions_ptr = curves.positions_for_write().data();
+    MutableSpan<float3> positions = curves.positions_for_write();
     if (use_proportional_edit) {
-      const Span<float3> positions = curves.positions();
       const OffsetIndices<int> points_by_curve = curves.points_by_curve();
       VArray<bool> selection = curves.attributes().lookup_or_default<bool>(
           ".selection", ATTR_DOMAIN_POINT, true);
@@ -132,7 +131,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
           for (const int i : IndexRange(points.size())) {
             const int point_i = points[i];
             TransData &td = tc.data[point_i];
-            float3 *elem = &positions_ptr[point_i];
+            float3 *elem = &positions[point_i];
 
             copy_v3_v3(td.iloc, *elem);
             copy_v3_v3(td.center, td.iloc);
@@ -166,7 +165,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
       threading::parallel_for(selected_indices.index_range(), 1024, [&](const IndexRange range) {
         for (const int selection_i : range) {
           TransData *td = &tc.data[selection_i];
-          float3 *elem = &positions_ptr[selected_indices[selection_i]];
+          float3 *elem = &positions[selected_indices[selection_i]];
 
           copy_v3_v3(td->iloc, *elem);
           copy_v3_v3(td->center, td->iloc);
