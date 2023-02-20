@@ -45,17 +45,11 @@ typedef struct LightSpotWidgetGroup {
   wmGizmo *spot_radius;
 } LightSpotWidgetGroup;
 
-static void gizmo_spot_blend_prop_matrix_get(const wmGizmo *UNUSED(gz),
-                                             wmGizmoProperty *gz_prop,
-                                             void *value_p)
+static void gizmo_spot_blend_prop_size_get(wmGizmoProperty *gz_prop, void *value)
 {
-  BLI_assert(gz_prop->type->array_length == 16);
-  float(*matrix)[4] = value_p;
+  float *blend = value;
 
-  const bContext *C = gz_prop->custom_func.user_data;
-  ViewLayer *view_layer = CTX_data_view_layer(C);
-  BKE_view_layer_synced_ensure(CTX_data_scene(C), view_layer);
-  Light *la = BKE_view_layer_active_object_get(view_layer)->data;
+  Light *la = gz_prop->ptr.data;
 
   float a = cosf(la->spotsize * 0.5f);
   float b = la->spotblend;
@@ -64,76 +58,33 @@ static void gizmo_spot_blend_prop_matrix_get(const wmGizmo *UNUSED(gz),
   /* Tangent. */
   float t = sqrtf(1.0f - c * c) / c;
 
-  matrix[0][0] = 2.0f * CONE_SCALE * t * a;
-  matrix[1][1] = 2.0f * CONE_SCALE * t * a;
+  *blend = 2.0f * CONE_SCALE * t * a;
 }
 
-static void gizmo_spot_blend_prop_matrix_set(const wmGizmo *UNUSED(gz),
-                                             wmGizmoProperty *gz_prop,
-                                             const void *value_p)
+static void gizmo_spot_blend_prop_size_set(wmGizmoProperty *gz_prop, void *value)
 {
-  const float(*matrix)[4] = value_p;
-  BLI_assert(gz_prop->type->array_length == 16);
+  float *blend = value;
 
-  const bContext *C = gz_prop->custom_func.user_data;
-  Scene *scene = CTX_data_scene(C);
-  ViewLayer *view_layer = CTX_data_view_layer(C);
-  BKE_view_layer_synced_ensure(scene, view_layer);
-  Light *la = BKE_view_layer_active_object_get(view_layer)->data;
+  Light *la = gz_prop->ptr.data;
 
   float a = cosf(la->spotsize * 0.5f);
-  float t = matrix[0][0] * 0.5f * INV_CONE_SCALE / a;
+  float t = *blend * 0.5f * INV_CONE_SCALE / a;
   float c = 1.0f / sqrt(t * t + 1.0f);
 
-  float spot_blend = safe_divide(clamp_f(c - a, 0.0f, 1.0f - a), 1.0f - a);
-
-  PointerRNA light_ptr;
-  RNA_pointer_create(&la->id, &RNA_Light, la, &light_ptr);
-  PropertyRNA *spot_blend_prop = RNA_struct_find_property(&light_ptr, "spot_blend");
-  RNA_property_float_set(&light_ptr, spot_blend_prop, spot_blend);
-
-  RNA_property_update_main(CTX_data_main(C), scene, &light_ptr, spot_blend_prop);
+  *blend = safe_divide(clamp_f(c - a, 0.0f, 1.0f - a), 1.0f - a);
 }
 
 /* Used by spot light and point light. */
-static void gizmo_light_radius_prop_matrix_get(const wmGizmo *UNUSED(gz),
-                                               wmGizmoProperty *gz_prop,
-                                               void *value_p)
+static void gizmo_light_radius_prop_size_get(wmGizmoProperty *UNUSED(gz_prop), void *radius)
 {
-  BLI_assert(gz_prop->type->array_length == 16);
-  float(*matrix)[4] = value_p;
-
-  const bContext *C = gz_prop->custom_func.user_data;
-  ViewLayer *view_layer = CTX_data_view_layer(C);
-  BKE_view_layer_synced_ensure(CTX_data_scene(C), view_layer);
-  const Light *la = BKE_view_layer_active_object_get(view_layer)->data;
-
-  const float diameter = 2.0f * la->radius;
-  matrix[0][0] = diameter;
-  matrix[1][1] = diameter;
+  float *diameter = radius;
+  *diameter = 2.0f * (*(float *)radius);
 }
 
-static void gizmo_light_radius_prop_matrix_set(const wmGizmo *UNUSED(gz),
-                                               wmGizmoProperty *gz_prop,
-                                               const void *value_p)
+static void gizmo_light_radius_prop_size_set(wmGizmoProperty *UNUSED(gz_prop), void *diameter)
 {
-  const float(*matrix)[4] = value_p;
-  BLI_assert(gz_prop->type->array_length == 16);
-
-  const bContext *C = gz_prop->custom_func.user_data;
-  Scene *scene = CTX_data_scene(C);
-  ViewLayer *view_layer = CTX_data_view_layer(C);
-  BKE_view_layer_synced_ensure(scene, view_layer);
-  Light *la = BKE_view_layer_active_object_get(view_layer)->data;
-
-  const float radius = 0.5f * len_v3(matrix[0]);
-
-  PointerRNA light_ptr;
-  RNA_pointer_create(&la->id, &RNA_Light, la, &light_ptr);
-  PropertyRNA *radius_prop = RNA_struct_find_property(&light_ptr, "shadow_soft_size");
-  RNA_property_float_set(&light_ptr, radius_prop, radius);
-
-  RNA_property_update_main(CTX_data_main(C), scene, &light_ptr, radius_prop);
+  float *radius = diameter;
+  *radius = 0.5f * (*(float *)diameter);
 }
 
 static bool WIDGETGROUP_light_spot_poll(const bContext *C, wmGizmoGroupType *UNUSED(gzgt))
@@ -160,7 +111,7 @@ static bool WIDGETGROUP_light_spot_poll(const bContext *C, wmGizmoGroupType *UNU
   return false;
 }
 
-static void WIDGETGROUP_light_spot_setup(const bContext *C, wmGizmoGroup *gzgroup)
+static void WIDGETGROUP_light_spot_setup(const bContext *UNUSED(C), wmGizmoGroup *gzgroup)
 {
   LightSpotWidgetGroup *ls_gzgroup = MEM_mallocN(sizeof(LightSpotWidgetGroup), __func__);
 
@@ -189,19 +140,6 @@ static void WIDGETGROUP_light_spot_setup(const bContext *C, wmGizmoGroup *gzgrou
     UI_GetThemeColor3fv(TH_GIZMO_PRIMARY, gz->color);
     UI_GetThemeColor3fv(TH_GIZMO_HI, gz->color_hi);
 
-    /* FIXME: this should ideally use RNA with a way to intercept the value and transform it based
-     * on the context (3D scene, viewport... etc), instead of using custom getter/setter and call
-     * `WM_gizmo_target_property_def_rna()` separately. The same comment applies to spot radius
-     * gizmo and light point gizmo. */
-    WM_gizmo_target_property_def_func(gz,
-                                      "matrix",
-                                      &(const struct wmGizmoPropertyFnParams){
-                                          .value_get_fn = gizmo_spot_blend_prop_matrix_get,
-                                          .value_set_fn = gizmo_spot_blend_prop_matrix_set,
-                                          .range_get_fn = NULL,
-                                          .user_data = (void *)C,
-                                      });
-
     WM_gizmo_enable_undo(gz, "Adjust");
   }
 
@@ -216,15 +154,6 @@ static void WIDGETGROUP_light_spot_setup(const bContext *C, wmGizmoGroup *gzgrou
     WM_gizmo_set_flag(gz, WM_GIZMO_DRAW_HOVER, true);
     UI_GetThemeColor3fv(TH_GIZMO_PRIMARY, gz->color);
     UI_GetThemeColor3fv(TH_GIZMO_HI, gz->color_hi);
-
-    WM_gizmo_target_property_def_func(gz,
-                                      "matrix",
-                                      &(const struct wmGizmoPropertyFnParams){
-                                          .value_get_fn = gizmo_light_radius_prop_matrix_get,
-                                          .value_set_fn = gizmo_light_radius_prop_matrix_set,
-                                          .range_get_fn = NULL,
-                                          .user_data = (void *)C,
-                                      });
 
     WM_gizmo_enable_undo(gz, "Adjust");
   }
@@ -241,6 +170,8 @@ static void WIDGETGROUP_light_spot_refresh(const bContext *C, wmGizmoGroup *gzgr
 
   PointerRNA lamp_ptr;
   RNA_pointer_create(&la->id, &RNA_Light, la, &lamp_ptr);
+
+  /* Need to set property here for `lamp_ptr`. TODO: would prefer to do this in _init. */
 
   /* Spot angle gizmo. */
   {
@@ -266,13 +197,29 @@ static void WIDGETGROUP_light_spot_refresh(const bContext *C, wmGizmoGroup *gzgr
     mul_v3_fl(dir, CONE_SCALE * cosf(0.5f * la->spotsize));
     add_v3_v3(gz->matrix_basis[3], dir);
 
-    WM_gizmo_target_property_def_rna(gz, "matrix", &lamp_ptr, "spot_blend", -1);
+    WM_gizmo_target_property_def_rna_func(gz,
+                                          "size",
+                                          &lamp_ptr,
+                                          "spot_blend",
+                                          -1,
+                                          &(const struct wmGizmoPropertyFnParams){
+                                              .transform_get_fn = gizmo_spot_blend_prop_size_get,
+                                              .transform_set_fn = gizmo_spot_blend_prop_size_set,
+                                          });
   }
 
   /* Spot radius gizmo. */
   {
-    WM_gizmo_target_property_def_rna(
-        ls_gzgroup->spot_radius, "matrix", &lamp_ptr, "shadow_soft_size", -1);
+    wmGizmo *gz = ls_gzgroup->spot_radius;
+    WM_gizmo_target_property_def_rna_func(gz,
+                                          "size",
+                                          &lamp_ptr,
+                                          "shadow_soft_size",
+                                          -1,
+                                          &(const struct wmGizmoPropertyFnParams){
+                                              .transform_get_fn = gizmo_light_radius_prop_size_get,
+                                              .transform_set_fn = gizmo_light_radius_prop_size_set,
+                                          });
   }
 }
 
@@ -337,7 +284,7 @@ static bool WIDGETGROUP_light_point_poll(const bContext *C, wmGizmoGroupType *UN
   return false;
 }
 
-static void WIDGETGROUP_light_point_setup(const bContext *C, wmGizmoGroup *gzgroup)
+static void WIDGETGROUP_light_point_setup(const bContext *UNUSED(C), wmGizmoGroup *gzgroup)
 {
   wmGizmoWrapper *wwrapper = MEM_mallocN(sizeof(wmGizmoWrapper), __func__);
   wwrapper->gizmo = WM_gizmo_new("GIZMO_GT_cage_2d", gzgroup, NULL);
@@ -352,15 +299,6 @@ static void WIDGETGROUP_light_point_setup(const bContext *C, wmGizmoGroup *gzgro
   WM_gizmo_set_flag(gz, WM_GIZMO_DRAW_HOVER, true);
   UI_GetThemeColor3fv(TH_GIZMO_PRIMARY, gz->color);
   UI_GetThemeColor3fv(TH_GIZMO_HI, gz->color_hi);
-
-  WM_gizmo_target_property_def_func(gz,
-                                    "matrix",
-                                    &(const struct wmGizmoPropertyFnParams){
-                                        .value_get_fn = gizmo_light_radius_prop_matrix_get,
-                                        .value_set_fn = gizmo_light_radius_prop_matrix_set,
-                                        .range_get_fn = NULL,
-                                        .user_data = (void *)C,
-                                    });
 
   WM_gizmo_enable_undo(gz, "Adjust");
 }
@@ -393,7 +331,16 @@ static void WIDGETGROUP_light_point_refresh(const bContext *C, wmGizmoGroup *gzg
   PointerRNA lamp_ptr;
   RNA_pointer_create(&la->id, &RNA_Light, la, &lamp_ptr);
 
-  WM_gizmo_target_property_def_rna(wwrapper->gizmo, "matrix", &lamp_ptr, "shadow_soft_size", -1);
+  /* Need to set property here for `lamp_ptr`. TODO: would prefer to do this in _init. */
+  WM_gizmo_target_property_def_rna_func(wwrapper->gizmo,
+                                        "size",
+                                        &lamp_ptr,
+                                        "shadow_soft_size",
+                                        -1,
+                                        &(const struct wmGizmoPropertyFnParams){
+                                            .transform_get_fn = gizmo_light_radius_prop_size_get,
+                                            .transform_set_fn = gizmo_light_radius_prop_size_set,
+                                        });
 }
 
 void VIEW3D_GGT_light_point(wmGizmoGroupType *gzgt)

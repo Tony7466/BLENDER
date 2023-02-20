@@ -266,6 +266,12 @@ void WM_gizmo_target_property_def_func(struct wmGizmo *gz,
 void WM_gizmo_target_property_clear_rna_ptr(struct wmGizmo *gz,
                                             const struct wmGizmoPropertyType *gz_prop_type);
 void WM_gizmo_target_property_clear_rna(struct wmGizmo *gz, const char *idname);
+void WM_gizmo_target_property_def_rna_func(struct wmGizmo *gz,
+                                           const char *idname,
+                                           struct PointerRNA *ptr,
+                                           const char *propname,
+                                           int index,
+                                           const wmGizmoPropertyFnParams *params);
 
 bool WM_gizmo_target_property_is_valid_any(struct wmGizmo *gz);
 bool WM_gizmo_target_property_is_valid(const struct wmGizmoProperty *gz_prop);

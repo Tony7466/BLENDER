@@ -1078,20 +1078,29 @@ static int gizmo_cage2d_modal(bContext *C,
     }
   }
 
-  wmGizmoProperty *gz_prop;
+  /* Get properties. */
+  {
+    wmGizmoProperty *gz_prop;
 
-  gz_prop = WM_gizmo_target_property_find(gz, "size");
-  if (gz_prop->type != NULL) {
-    float size[2];
-    WM_gizmo_target_property_float_get_array(gz, gz_prop, size);
-    gz->matrix_offset[0][0] = size[0];
-    gz->matrix_offset[1][1] = size[1];
-  }
+    gz_prop = WM_gizmo_target_property_find(gz, "size");
+    if (gz_prop->type != NULL) {
+      float size[2];
+      if (WM_gizmo_target_property_array_length(gz, gz_prop) == 2) {
+        WM_gizmo_target_property_float_get_array(gz, gz_prop, size);
+        gz->matrix_offset[0][0] = size[0];
+        gz->matrix_offset[1][1] = size[1];
+      }
+      else {
+        gz->matrix_offset[0][0] = gz->matrix_offset[1][1] = WM_gizmo_target_property_float_get(
+            gz, gz_prop);
+      }
+    }
 
-  /* Overwrite if other properties exist. */
-  gz_prop = WM_gizmo_target_property_find(gz, "matrix");
-  if (gz_prop->type != NULL) {
-    WM_gizmo_target_property_float_get_array(gz, gz_prop, &gz->matrix_offset[0][0]);
+    /* Overwrite if other properties exist. */
+    gz_prop = WM_gizmo_target_property_find(gz, "matrix");
+    if (gz_prop->type != NULL) {
+      WM_gizmo_target_property_float_get_array(gz, gz_prop, &gz->matrix_offset[0][0]);
+    }
   }
 
   if (gz->highlight_part == ED_GIZMO_CAGE2D_PART_TRANSLATE) {
@@ -1224,17 +1233,27 @@ static int gizmo_cage2d_modal(bContext *C,
     mul_m4_m4_post(gz->matrix_offset, matrix_scale);
   }
 
-  gz_prop = WM_gizmo_target_property_find(gz, "size");
-  if (gz_prop->type != NULL) {
-    float size[2];
-    size[0] = gz->matrix_offset[0][0];
-    size[1] = gz->matrix_offset[1][1];
-    WM_gizmo_target_property_float_set_array(C, gz, gz_prop, size);
-  }
+  /* Set properties. */
+  {
+    wmGizmoProperty *gz_prop;
 
-  gz_prop = WM_gizmo_target_property_find(gz, "matrix");
-  if (gz_prop->type != NULL) {
-    WM_gizmo_target_property_float_set_array(C, gz, gz_prop, &gz->matrix_offset[0][0]);
+    gz_prop = WM_gizmo_target_property_find(gz, "size");
+    if (gz_prop->type != NULL) {
+      float size[2];
+      size[0] = gz->matrix_offset[0][0];
+      if (WM_gizmo_target_property_array_length(gz, gz_prop) == 2) {
+        size[1] = gz->matrix_offset[1][1];
+        WM_gizmo_target_property_float_set_array(C, gz, gz_prop, size);
+      }
+      else {
+        WM_gizmo_target_property_float_set(C, gz, gz_prop, size[0]);
+      }
+    }
+
+    gz_prop = WM_gizmo_target_property_find(gz, "matrix");
+    if (gz_prop->type != NULL) {
+      WM_gizmo_target_property_float_set_array(C, gz, gz_prop, &gz->matrix_offset[0][0]);
+    }
   }
 
   /* tag the region for redraw */
@@ -1268,7 +1287,8 @@ static void gizmo_cage2d_property_update(wmGizmo *gz, wmGizmoProperty *gz_prop)
       }
     }
     else {
-      BLI_assert(0);
+      gz->matrix_offset[0][0] = gz->matrix_offset[1][1] = WM_gizmo_target_property_float_get(
+          gz, gz_prop);
     }
   }
   else {

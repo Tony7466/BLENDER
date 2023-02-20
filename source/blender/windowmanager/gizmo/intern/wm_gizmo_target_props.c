@@ -118,6 +118,17 @@ void WM_gizmo_target_property_def_func(wmGizmo *gz,
   WM_gizmo_target_property_def_func_ptr(gz, gz_prop_type, params);
 }
 
+void WM_gizmo_target_property_def_rna_func(wmGizmo *gz,
+                                           const char *idname,
+                                           PointerRNA *ptr,
+                                           const char *propname,
+                                           int index,
+                                           const wmGizmoPropertyFnParams *params)
+{
+  WM_gizmo_target_property_def_rna(gz, idname, ptr, propname, index);
+  WM_gizmo_target_property_def_func(gz, idname, params);
+}
+
 void WM_gizmo_target_property_clear_rna_ptr(wmGizmo *gz, const wmGizmoPropertyType *gz_prop_type)
 {
   wmGizmoProperty *gz_prop = WM_gizmo_target_property_at_index(gz, gz_prop_type->index_in_type);
@@ -186,23 +197,32 @@ bool WM_gizmo_target_property_is_valid(const wmGizmoProperty *gz_prop)
 
 float WM_gizmo_target_property_float_get(const wmGizmo *gz, wmGizmoProperty *gz_prop)
 {
+  float value = 0.0f;
+
   if (gz_prop->custom_func.value_get_fn) {
-    float value = 0.0f;
     BLI_assert(gz_prop->type->array_length == 1);
     gz_prop->custom_func.value_get_fn(gz, gz_prop, &value);
     return value;
   }
 
   if (gz_prop->index == -1) {
-    return RNA_property_float_get(&gz_prop->ptr, gz_prop->prop);
+    value = RNA_property_float_get(&gz_prop->ptr, gz_prop->prop);
   }
-  return RNA_property_float_get_index(&gz_prop->ptr, gz_prop->prop, gz_prop->index);
+  else {
+    value = RNA_property_float_get_index(&gz_prop->ptr, gz_prop->prop, gz_prop->index);
+  }
+
+  if (gz_prop->custom_func.transform_get_fn) {
+    gz_prop->custom_func.transform_get_fn(gz_prop, &value);
+  }
+
+  return value;
 }
 
 void WM_gizmo_target_property_float_set(bContext *C,
                                         const wmGizmo *gz,
                                         wmGizmoProperty *gz_prop,
-                                        const float value)
+                                        float value)
 {
   if (gz_prop->custom_func.value_set_fn) {
     BLI_assert(gz_prop->type->array_length == 1);
@@ -210,7 +230,11 @@ void WM_gizmo_target_property_float_set(bContext *C,
     return;
   }
 
-  /* reset property */
+  if (gz_prop->custom_func.transform_set_fn) {
+    gz_prop->custom_func.transform_set_fn(gz_prop, &value);
+  }
+
+  /* Set property. */
   if (gz_prop->index == -1) {
     RNA_property_float_set(&gz_prop->ptr, gz_prop->prop, value);
   }
@@ -229,6 +253,10 @@ void WM_gizmo_target_property_float_get_array(const wmGizmo *gz,
     return;
   }
   RNA_property_float_get_array(&gz_prop->ptr, gz_prop->prop, value);
+
+  if (gz_prop->custom_func.transform_get_fn) {
+    gz_prop->custom_func.transform_get_fn(gz_prop, value);
+  }
 }
 
 void WM_gizmo_target_property_float_set_array(bContext *C,
@@ -240,7 +268,21 @@ void WM_gizmo_target_property_float_set_array(bContext *C,
     gz_prop->custom_func.value_set_fn(gz, gz_prop, value);
     return;
   }
-  RNA_property_float_set_array(&gz_prop->ptr, gz_prop->prop, value);
+
+  if (gz_prop->custom_func.transform_set_fn) {
+    /* Copy array. */
+    int length = WM_gizmo_target_property_array_length(gz, gz_prop);
+    float *transformed = MEM_malloc_arrayN(length, sizeof(float), __func__);
+    memcpy(transformed, value, sizeof(float) * length);
+
+    gz_prop->custom_func.transform_set_fn(gz_prop, transformed);
+    RNA_property_float_set_array(&gz_prop->ptr, gz_prop->prop, transformed);
+
+    MEM_freeN(transformed);
+  }
+  else {
+    RNA_property_float_set_array(&gz_prop->ptr, gz_prop->prop, value);
+  }
 
   RNA_property_update(C, &gz_prop->ptr, gz_prop->prop);
 }

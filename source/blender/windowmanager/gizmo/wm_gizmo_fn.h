@@ -63,6 +63,15 @@ typedef void (*wmGizmoPropertyFnSet)(const struct wmGizmo *,
                                      struct wmGizmoProperty *,
                                      /* typically 'const float *' */
                                      const void *value);
+
+/* Used for transforming the RNA properties. */
+typedef void (*wmGizmoPropertyFnTransformGet)(struct wmGizmoProperty *,
+                                              /* typically 'float *' */
+                                              void *value);
+typedef void (*wmGizmoPropertyFnTransformSet)(struct wmGizmoProperty *,
+                                              /* typically 'float *' */
+                                              void *value);
+
 typedef void (*wmGizmoPropertyFnRangeGet)(const struct wmGizmo *,
                                           struct wmGizmoProperty *,
                                           /* typically 'float[2]' */
@@ -72,6 +81,8 @@ typedef void (*wmGizmoPropertyFnFree)(const struct wmGizmo *, struct wmGizmoProp
 typedef struct wmGizmoPropertyFnParams {
   wmGizmoPropertyFnGet value_get_fn;
   wmGizmoPropertyFnSet value_set_fn;
+  wmGizmoPropertyFnTransformGet transform_get_fn;
+  wmGizmoPropertyFnTransformSet transform_set_fn;
   wmGizmoPropertyFnRangeGet range_get_fn;
   wmGizmoPropertyFnFree free_fn;
   void *user_data;
