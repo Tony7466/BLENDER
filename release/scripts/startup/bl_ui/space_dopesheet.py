@@ -731,11 +731,6 @@ class DOPESHEET_MT_channel_context_menu(Menu):
 
         layout.operator("anim.channels_delete")
 
-        st = context.space_data
-
-        # Layer management
-        if st.mode == 'GPENCIL':       
-            layout.menu("GPENCIL_MT_layer_context_menu", text="Grease Pencil", icon="GREASEPENCIL")
 
 class DOPESHEET_MT_snap_pie(Menu):
     bl_label = "Snap"
