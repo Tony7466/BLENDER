@@ -88,6 +88,20 @@ static void rna_Light_use_nodes_update(bContext *C, PointerRNA *ptr)
   rna_Light_update(CTX_data_main(C), CTX_data_scene(C), ptr);
 }
 
+static void rna_area_light_size_get(PointerRNA *ptr, float *values)
+{
+  Light *la = (Light *)ptr->data;
+  values[0] = la->area_size;
+  values[1] = la->area_sizey;
+}
+
+static void rna_area_light_size_set(PointerRNA *ptr, const float *values)
+{
+  Light *la = (Light *)ptr->data;
+  la->area_size = values[0];
+  la->area_sizey = values[1];
+}
+
 #else
 /* Don't define icons here, so they don't show up in the Light UI (properties Editor) - DingTo */
 const EnumPropertyItem rna_enum_light_type_items[] = {
@@ -452,6 +466,7 @@ static void rna_def_area_light(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Shape", "Shape of the area Light");
   RNA_def_property_update(prop, 0, "rna_Light_draw_update");
 
+  /* TODO: deprecate `size` and `size_y`, rename `size_xy` to `size`. */
   prop = RNA_def_property(srna, "size", PROP_FLOAT, PROP_DISTANCE);
   RNA_def_property_float_sdna(prop, NULL, "area_size");
   RNA_def_property_range(prop, 0.0f, FLT_MAX);
@@ -468,6 +483,14 @@ static void rna_def_area_light(BlenderRNA *brna)
       prop,
       "Size Y",
       "Size of the area of the area light in the Y direction for rectangle shapes");
+  RNA_def_property_update(prop, 0, "rna_Light_draw_update");
+
+  prop = RNA_def_property(srna, "size_xy", PROP_FLOAT, PROP_DISTANCE);
+  RNA_def_property_array(prop, 2);
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0, 100, 0.1, 3);
+  RNA_def_property_float_funcs(prop, "rna_area_light_size_get", "rna_area_light_size_set", NULL);
+  RNA_def_property_ui_text(prop, "Area Size", "Size of the area light");
   RNA_def_property_update(prop, 0, "rna_Light_draw_update");
 
   prop = RNA_def_property(srna, "spread", PROP_FLOAT, PROP_ANGLE);

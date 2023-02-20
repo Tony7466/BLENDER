@@ -192,7 +192,7 @@ static void WIDGETGROUP_light_spot_setup(const bContext *C, wmGizmoGroup *gzgrou
     /* FIXME: this should ideally use RNA with a way to intercept the value and transform it based
      * on the context (3D scene, viewport... etc), instead of using custom getter/setter and call
      * `WM_gizmo_target_property_def_rna()` separately. The same comment applies to spot radius
-     * gizmo, light point gizmo and possibly light area gizmo. */
+     * gizmo and light point gizmo. */
     WM_gizmo_target_property_def_func(gz,
                                       "matrix",
                                       &(const struct wmGizmoPropertyFnParams){
@@ -416,40 +416,6 @@ void VIEW3D_GGT_light_point(wmGizmoGroupType *gzgt)
 /** \name Area Light Gizmos
  * \{ */
 
-/* scale callbacks */
-static void gizmo_area_light_prop_matrix_get(const wmGizmo *UNUSED(gz),
-                                             wmGizmoProperty *gz_prop,
-                                             void *value_p)
-{
-  BLI_assert(gz_prop->type->array_length == 16);
-  float(*matrix)[4] = value_p;
-  const Light *la = gz_prop->custom_func.user_data;
-
-  matrix[0][0] = la->area_size;
-  matrix[1][1] = ELEM(la->area_shape, LA_AREA_RECT, LA_AREA_ELLIPSE) ? la->area_sizey :
-                                                                       la->area_size;
-}
-
-static void gizmo_area_light_prop_matrix_set(const wmGizmo *UNUSED(gz),
-                                             wmGizmoProperty *gz_prop,
-                                             const void *value_p)
-{
-  const float(*matrix)[4] = value_p;
-  BLI_assert(gz_prop->type->array_length == 16);
-  Light *la = gz_prop->custom_func.user_data;
-
-  if (ELEM(la->area_shape, LA_AREA_RECT, LA_AREA_ELLIPSE)) {
-    la->area_size = len_v3(matrix[0]);
-    la->area_sizey = len_v3(matrix[1]);
-  }
-  else {
-    la->area_size = len_v3(matrix[0]);
-  }
-
-  DEG_id_tag_update(&la->id, ID_RECALC_COPY_ON_WRITE);
-  WM_main_add_notifier(NC_LAMP | ND_LIGHTING_DRAW, la);
-}
-
 static bool WIDGETGROUP_light_area_poll(const bContext *C, wmGizmoGroupType *UNUSED(gzgt))
 {
   View3D *v3d = CTX_wm_view3d(C);
@@ -506,18 +472,15 @@ static void WIDGETGROUP_light_area_refresh(const bContext *C, wmGizmoGroup *gzgr
   int flag = ED_GIZMO_CAGE_XFORM_FLAG_SCALE;
   if (ELEM(la->area_shape, LA_AREA_SQUARE, LA_AREA_DISK)) {
     flag |= ED_GIZMO_CAGE_XFORM_FLAG_SCALE_UNIFORM;
+    flag |= ED_GIZMO_CAGE_XFORM_FLAG_SHAPE_UNIFORM;
   }
   RNA_enum_set(gz->ptr, "transform", flag);
 
-  /* Need to set property here for `la`. TODO: would prefer to do this in _init. */
-  WM_gizmo_target_property_def_func(gz,
-                                    "matrix",
-                                    &(const struct wmGizmoPropertyFnParams){
-                                        .value_get_fn = gizmo_area_light_prop_matrix_get,
-                                        .value_set_fn = gizmo_area_light_prop_matrix_set,
-                                        .range_get_fn = NULL,
-                                        .user_data = la,
-                                    });
+  PointerRNA lamp_ptr;
+  RNA_pointer_create(&la->id, &RNA_Light, la, &lamp_ptr);
+
+  /* Need to set property here for `lamp_ptr`. TODO: would prefer to do this in _init. */
+  WM_gizmo_target_property_def_rna(gz, "size", &lamp_ptr, "size_xy", -1);
 }
 
 void VIEW3D_GGT_light_area(wmGizmoGroupType *gzgt)

@@ -102,6 +102,7 @@ enum {
   ED_GIZMO_CAGE_XFORM_FLAG_SCALE = (1 << 2),         /* Scales */
   ED_GIZMO_CAGE_XFORM_FLAG_SCALE_UNIFORM = (1 << 3), /* Scales uniformly */
   ED_GIZMO_CAGE_XFORM_FLAG_SCALE_SIGNED = (1 << 4),  /* Negative scale allowed */
+  ED_GIZMO_CAGE_XFORM_FLAG_SHAPE_UNIFORM = (1 << 5), /* Equal size along all axes */
 };
 
 /* draw_style */
