@@ -2917,22 +2917,25 @@ void BKE_node_preview_merge_tree(bNodeTree *to_ntree, bNodeTree *from_ntree, boo
 void nodeUnlinkNode(bNodeTree *ntree, const bNode *node)
 {
   LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, &ntree->links) {
-    if (!ELEM(node, link->fromnode, link->tonode)) {
-      continue;
+    ListBase const *lb = nullptr;
+    if (link->fromnode == node) {
+      lb = &node->outputs;
+    }
+    else if (link->tonode == node) {
+      lb = &node->inputs;
     }
 
-    /* Only bother adjusting if the socket is not on the node we're deleting. */
-    if (link->tonode != node && link->tosock->flag & SOCK_MULTI_INPUT) {
-      adjust_multi_input_indices_after_removed_link(
-          ntree, link->tosock, link->multi_input_socket_index);
-    }
-
-    const bool validate_outputs = node == link->fromnode;
-    const ListBase *sockets = validate_outputs ? &node->outputs : &node->inputs;
-    LISTBASE_FOREACH (const bNodeSocket *, sock, sockets) {
-      if (link->fromsock == sock || link->tosock == sock) {
-        nodeRemLink(ntree, link);
-        break;
+    if (lb) {
+      /* Only bother adjusting if the socket is not on the node we're deleting. */
+      if (link->tonode != node && link->tosock->flag & SOCK_MULTI_INPUT) {
+        adjust_multi_input_indices_after_removed_link(
+            ntree, link->tosock, link->multi_input_socket_index);
+      }
+      LISTBASE_FOREACH (const bNodeSocket *, sock, lb) {
+        if (link->fromsock == sock || link->tosock == sock) {
+          nodeRemLink(ntree, link);
+          break;
+        }
       }
     }
   }
