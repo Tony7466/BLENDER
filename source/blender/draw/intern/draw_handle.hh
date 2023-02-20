@@ -47,6 +47,19 @@ struct ResourceHandle {
   }
 };
 
+struct ResourceThinHandle {
+  ResourceHandle object_handle;
+  uint raw;
+
+  ResourceThinHandle(const ResourceHandle object_handle, uint thin_index)
+      : object_handle(object_handle), raw(thin_index) {};
+
+  uint resource_index() const
+  {
+    return raw;
+  }
+};
+
 /* TODO(fclem): Move to somewhere more appropriated after cleaning up the header dependencies. */
 struct ObjectRef {
   Object *object;

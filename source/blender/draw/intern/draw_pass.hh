@@ -254,6 +254,16 @@ class PassBase {
                                 ResourceHandle handle = {0});
 
   /**
+   * Thin variants.
+   */
+  void draw(GPUBatch *batch,
+            uint instance_len = -1,
+            uint vertex_len = -1,
+            uint vertex_first = -1,
+            ResourceThinHandle handle = {0});
+  void draw(GPUBatch *batch, ResourceThinHandle handle);
+
+  /**
    * Record a compute dispatch call.
    */
   void dispatch(int2 group_len);
@@ -702,6 +712,32 @@ inline void PassBase<T>::draw_procedural_indirect(
     ResourceHandle handle)
 {
   this->draw_indirect(procedural_batch_get(primitive), indirect_buffer, handle);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Thin Handle draw calls
+ * \{ */
+
+template<class T>
+inline void PassBase<T>::draw(GPUBatch *batch,
+                              uint instance_len,
+                              uint vertex_len,
+                              uint vertex_first,
+                              ResourceThinHandle handle)
+{
+  if (instance_len == 0 || vertex_len == 0) {
+    return;
+  }
+  BLI_assert(shader_);
+  draw_commands_buf_.append_draw(
+      headers_, commands_, batch, instance_len, vertex_len, vertex_first, handle);
+}
+
+template<class T> inline void PassBase<T>::draw(GPUBatch *batch, ResourceThinHandle handle)
+{
+  this->draw(batch, -1, -1, -1, handle);
 }
 
 /** \} */

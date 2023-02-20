@@ -43,6 +43,7 @@ class Manager {
   using ObjectMatricesBuf = StorageArrayBuffer<ObjectMatrices, 128>;
   using ObjectBoundsBuf = StorageArrayBuffer<ObjectBounds, 128>;
   using ObjectInfosBuf = StorageArrayBuffer<ObjectInfos, 128>;
+  using ThinMapBuf = StorageArrayBuffer<uint, 128>;
   using ObjectAttributeBuf = StorageArrayBuffer<ObjectAttribute, 128>;
   using LayerAttributeBuf = UniformArrayBuffer<LayerAttribute, 512>;
   /**
@@ -76,6 +77,8 @@ class Manager {
   SwapChain<ObjectBoundsBuf, 2> bounds_buf;
   SwapChain<ObjectInfosBuf, 2> infos_buf;
 
+  SwapChain<ThinMapBuf, 2> thin_map_buf;
+
   /**
    * Object Attributes are reference by indirection data inside ObjectInfos.
    * This is because attribute list is arbitrary.
@@ -106,6 +109,8 @@ class Manager {
  private:
   /** Number of resource handle recorded. */
   uint resource_len_ = 0;
+  /** Number of resource thin handle recorded. */
+  uint resource_thin_len_ = 0;
   /** Number of object attribute recorded. */
   uint attribute_len_ = 0;
 
@@ -133,6 +138,8 @@ class Manager {
   ResourceHandle resource_handle(const float4x4 &model_matrix,
                                  const float3 &bounds_center,
                                  const float3 &bounds_half_extent);
+
+  ResourceThinHandle resource_thin_handle(const ResourceHandle object_handle);
 
   /**
    * Populate additional per resource data on demand.
@@ -215,6 +222,12 @@ inline ResourceHandle Manager::resource_handle(const float4x4 &model_matrix,
   bounds_buf.current().get_or_resize(resource_len_).sync(bounds_center, bounds_half_extent);
   infos_buf.current().get_or_resize(resource_len_).sync();
   return ResourceHandle(resource_len_++, false);
+}
+
+inline ResourceThinHandle Manager::resource_thin_handle(const ResourceHandle object_handle)
+{
+  thin_map_buf.current().get_or_resize(resource_thin_len_) = object_handle.raw;
+  return ResourceThinHandle(object_handle, resource_thin_len_++);
 }
 
 inline void Manager::extract_object_attributes(ResourceHandle handle,

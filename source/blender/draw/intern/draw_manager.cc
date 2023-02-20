@@ -30,6 +30,7 @@ void Manager::begin_sync()
   matrix_buf.swap();
   bounds_buf.swap();
   infos_buf.swap();
+  thin_map_buf.swap();
 
   /* TODO: This means the reference is kept until further redraw or manager tear-down. Instead,
    * they should be released after each draw loop. But for now, mimics old DRW behavior. */
@@ -52,8 +53,12 @@ void Manager::begin_sync()
   memset(infos_buf.current().data(),
          0xF0,
          matrix_buf.current().size() * sizeof(*infos_buf.current().data()));
+  memset(thin_map_buf.current().data(),
+         0xF0,
+         thin_map_buf.current().size() * sizeof(*thin_map_buf.current().data()));
 #endif
   resource_len_ = 0;
+  resource_thin_len_ = 0;
   attribute_len_ = 0;
   /* TODO(fclem): Resize buffers if too big, but with an hysteresis threshold. */
 
@@ -101,6 +106,7 @@ void Manager::end_sync()
   matrix_buf.current().push_update();
   bounds_buf.current().push_update();
   infos_buf.current().push_update();
+  thin_map_buf.current().push_update();
   attributes_buf.push_update();
   layer_attributes_buf.push_update();
   attributes_buf_legacy.push_update();
@@ -253,6 +259,7 @@ Manager::DataDebugOutput Manager::data_debug()
   matrix_buf.current().read();
   bounds_buf.current().read();
   infos_buf.current().read();
+  /* TODO (Miguel Pozo): thin_map_buf.current().read(); */
 
   Manager::DataDebugOutput output;
   output.matrices = {matrix_buf.current().data(), resource_len_};
