@@ -684,7 +684,7 @@ bGPDlayer *BKE_gpencil_layer_addnew(bGPdata *gpd,
                  sizeof(gpl->info));
 
   /* Enable always affected by scene lights. */
-  gpl->flag = 0;
+  gpl->flag |= GP_LAYER_USE_LIGHTS;
 
   /* Init transform. */
   zero_v3(gpl->location);

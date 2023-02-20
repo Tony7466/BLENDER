@@ -4822,7 +4822,7 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
         gpd->zdepth_offset = 0.150f;
 
         LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-          gpl->flag = 0;
+          gpl->flag |= GP_LAYER_USE_LIGHTS;
           srgb_to_linearrgb_v4(gpl->tintcolor, gpl->tintcolor);
           gpl->vertex_paint_opacity = 1.0f;
 
