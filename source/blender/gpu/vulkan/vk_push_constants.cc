@@ -71,9 +71,12 @@ static uint32_t to_alignment(const shader::Type type)
 }
 
 static VKPushConstantsLayout::PushConstantLayout init_constant(
-    const shader::ShaderCreateInfo::PushConst &push_constant, uint32_t *r_offset)
+    const shader::ShaderCreateInfo::PushConst &push_constant,
+    const ShaderInput &shader_input,
+    uint32_t *r_offset)
 {
   VKPushConstantsLayout::PushConstantLayout layout;
+  layout.location = shader_input.location;
   layout.type = push_constant.type;
   layout.array_size = push_constant.array_size;
   layout.offset = *r_offset;
@@ -101,9 +104,50 @@ void VKPushConstantsLayout::init(const shader::ShaderCreateInfo &info,
   BLI_assert(push_constants.is_empty());
   uint32_t offset = 0;
   for (const shader::ShaderCreateInfo::PushConst &push_constant : info.push_constants_) {
-    push_constants.append(init_constant(push_constant, &offset));
+    const ShaderInput *shader_input = interface.uniform_get(push_constant.name.c_str());
+    BLI_assert(shader_input);
+    push_constants.append(init_constant(push_constant, *shader_input, &offset));
   }
   size_in_bytes_ = offset;
+}
+
+const VKPushConstantsLayout::PushConstantLayout *VKPushConstantsLayout::find(
+    int32_t location) const
+{
+  for (const PushConstantLayout &push_constant : push_constants) {
+    if (push_constant.location == location) {
+      return &push_constant;
+    }
+  }
+  return nullptr;
+}
+
+VKPushConstants::VKPushConstants(VKPushConstantsLayout &layout) : layout_(layout)
+{
+  data_ = MEM_mallocN(layout.size_in_bytes(), __func__);
+}
+
+VKPushConstants::VKPushConstants(VKPushConstants &&other) : layout_(other.layout_)
+{
+  data_ = other.data_;
+  other.data_ = nullptr;
+}
+
+VKPushConstants::~VKPushConstants()
+{
+  if (data_ != nullptr) {
+    MEM_freeN(data_);
+    data_ = nullptr;
+  }
+}
+
+VKPushConstants &VKPushConstants::operator=(VKPushConstants &&other)
+{
+  layout_ = other.layout_;
+  data_ = other.data_;
+  other.data_ = nullptr;
+
+  return *this;
 }
 
 }  // namespace blender::gpu

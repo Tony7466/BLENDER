@@ -700,7 +700,7 @@ bool VKShader::finalize(const shader::ShaderCreateInfo *info)
     BLI_assert(fragment_module_ == VK_NULL_HANDLE);
     BLI_assert(compute_module_ != VK_NULL_HANDLE);
     compute_pipeline_ = VKPipeline::create_compute_pipeline(
-        *context_, compute_module_, layout_, pipeline_layout_);
+        *context_, compute_module_, layout_, pipeline_layout_, push_constants_layout_);
     result = compute_pipeline_.is_valid();
   }
 
@@ -976,12 +976,11 @@ void VKShader::unbind()
   }
 }
 
-void VKShader::uniform_float(int /*location*/,
-                             int /*comp_len*/,
-                             int /*array_size*/,
-                             const float * /*data*/)
+void VKShader::uniform_float(int location, int comp_len, int array_size, const float *data)
 {
+  pipeline_get().push_constants_get().push_constant_set(location, comp_len, array_size, data);
 }
+
 void VKShader::uniform_int(int /*location*/,
                            int /*comp_len*/,
                            int /*array_size*/,
@@ -991,6 +990,9 @@ void VKShader::uniform_int(int /*location*/,
 
 std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) const
 {
+  if (info.name_ == "workbench_next_prepass_ptcloud_opaque_flat_texture_clip") {
+    printf("%s\n", info.name_.c_str());
+  }
   VKShaderInterface interface;
   interface.init(info);
   std::stringstream ss;

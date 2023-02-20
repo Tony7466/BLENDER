@@ -531,6 +531,7 @@ set(GLSL_SRC_TEST
   tests/shaders/gpu_compute_ssbo_test.glsl
   tests/shaders/gpu_compute_vbo_test.glsl
   tests/shaders/gpu_compute_dummy_test.glsl
+  tests/shaders/gpu_push_constants_test.glsl
 )
 
 set(MTL_BACKEND_GLSL_SRC

@@ -55,6 +55,19 @@ GPU_SHADER_CREATE_INFO(gpu_compute_ssbo_binding_test)
     .compute_source("gpu_compute_dummy_test.glsl")
     .do_static_compilation(true);
 
+GPU_SHADER_CREATE_INFO(gpu_push_constants_base_test)
+    .local_group_size(1)
+    .storage_buf(0, Qualifier::WRITE, "float", "data_out[]")
+    .compute_source("gpu_push_constants_test.glsl");
+
+GPU_SHADER_CREATE_INFO(gpu_push_constants_packed_test)
+    .additional_info("gpu_push_constants_base_test")
+    .push_constant(Type::FLOAT, "float_in")
+    .push_constant(Type::VEC2, "vec2_in")
+    .push_constant(Type::VEC3, "vec3_in")
+    .push_constant(Type::VEC4, "vec4_in")
+    .do_static_compilation(true);
+
 GPU_SHADER_CREATE_INFO(eevee_shadow_test)
     .fragment_source("eevee_shadow_test.glsl")
     .additional_info("gpu_shader_test")

@@ -14,7 +14,7 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
   using namespace blender::gpu::shader;
 
   attr_len_ = 0;
-  uniform_len_ = 0;
+  uniform_len_ = info.push_constants_.size();
   ssbo_len_ = 0;
   ubo_len_ = 0;
   image_offset_ = -1;
@@ -51,7 +51,7 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
   name_buffer_ = (char *)MEM_mallocN(info.interface_names_size_, "name_buffer");
   uint32_t name_buffer_offset = 0;
 
-  int location = 0;
+  int32_t location = 0;
 
   /* Uniform blocks */
   for (const ShaderCreateInfo::Resource &res : all_resources) {
@@ -77,6 +77,18 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
       input->binding = res.slot + image_offset_;
       input++;
     }
+  }
+
+  /* Push constants. */
+  /* NOTE: Push constants must be added after other uniform resources as resources have strict
+   * rules for their 'location' due to descriptor sets. Push constants only need an unique location
+   * as it is only used by the GPU module internally.*/
+  int32_t push_constant_location = location + 1024;
+  for (const ShaderCreateInfo::PushConst &push_constant : info.push_constants_) {
+    copy_input_name(input, push_constant.name, name_buffer_, name_buffer_offset);
+    input->location = push_constant_location++;
+    input->binding = -1;
+    input++;
   }
 
   /* Storage buffers */

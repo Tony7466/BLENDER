@@ -11,10 +11,13 @@
 
 namespace blender::gpu {
 
-VKPipeline::VKPipeline(VkPipeline vk_pipeline, VKDescriptorSet &&vk_descriptor_set)
-    : vk_pipeline_(vk_pipeline)
+VKPipeline::VKPipeline(VkPipeline vk_pipeline,
+                       VKDescriptorSet &&descriptor_set,
+                       VKPushConstants &&push_constants)
+    : vk_pipeline_(vk_pipeline),
+      descriptor_set_(std::move(descriptor_set)),
+      push_constants_(std::move(push_constants))
 {
-  descriptor_set_ = std::move(vk_descriptor_set);
 }
 
 VKPipeline::~VKPipeline()
@@ -29,7 +32,8 @@ VKPipeline::~VKPipeline()
 VKPipeline VKPipeline::create_compute_pipeline(VKContext &context,
                                                VkShaderModule compute_module,
                                                VkDescriptorSetLayout &descriptor_set_layout,
-                                               VkPipelineLayout &pipeline_layout)
+                                               VkPipelineLayout &pipeline_layout,
+                                               VKPushConstantsLayout &push_constants_layout)
 {
   VK_ALLOCATION_CALLBACKS
   VkDevice vk_device = context.device_get();
@@ -44,15 +48,17 @@ VKPipeline VKPipeline::create_compute_pipeline(VKContext &context,
   pipeline_info.layout = pipeline_layout;
   pipeline_info.stage.pName = "main";
 
-  VkPipeline pipeline;
+  VkPipeline vk_pipeline;
   if (vkCreateComputePipelines(
-          vk_device, nullptr, 1, &pipeline_info, vk_allocation_callbacks, &pipeline) !=
+          vk_device, nullptr, 1, &pipeline_info, vk_allocation_callbacks, &vk_pipeline) !=
       VK_SUCCESS) {
     return VKPipeline();
   }
 
   VKDescriptorSet descriptor_set = context.descriptor_pools_get().allocate(descriptor_set_layout);
-  return VKPipeline(pipeline, std::move(descriptor_set));
+  VKPushConstants push_constants(push_constants_layout);
+  return VKPipeline(
+      vk_pipeline, std::move(descriptor_set), std::move(push_constants));
 }
 
 VkPipeline VKPipeline::vk_handle() const

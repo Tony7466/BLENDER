@@ -61,6 +61,7 @@ void VKCommandBuffer::bind(const VKPipeline &pipeline, VkPipelineBindPoint bind_
 {
   vkCmdBindPipeline(vk_command_buffer_, bind_point, pipeline.vk_handle());
 }
+
 void VKCommandBuffer::bind(const VKDescriptorSet &descriptor_set,
                            const VkPipelineLayout vk_pipeline_layout,
                            VkPipelineBindPoint bind_point)
@@ -68,6 +69,21 @@ void VKCommandBuffer::bind(const VKDescriptorSet &descriptor_set,
   VkDescriptorSet vk_descriptor_set = descriptor_set.vk_handle();
   vkCmdBindDescriptorSets(
       vk_command_buffer_, bind_point, vk_pipeline_layout, 0, 1, &vk_descriptor_set, 0, 0);
+}
+
+void VKCommandBuffer::push_constants(const VKPushConstants &push_constants,
+                                     const VkPipelineLayout vk_pipeline_layout,
+                                     const VkShaderStageFlags vk_shader_stages)
+{
+  if (push_constants.size_in_bytes() == 0) {
+    return;
+  }
+  vkCmdPushConstants(vk_command_buffer_,
+                     vk_pipeline_layout,
+                     vk_shader_stages,
+                     push_constants.offset(),
+                     push_constants.size_in_bytes(),
+                     push_constants.data());
 }
 
 void VKCommandBuffer::copy(VKBuffer &dst_buffer,
