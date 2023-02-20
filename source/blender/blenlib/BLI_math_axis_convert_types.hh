@@ -49,23 +49,23 @@ template<typename T> [[nodiscard]] VecBase<T, 3> basis_vector(const eAxisSigned 
   return vec;
 }
 
-static inline eAxis axis_unsigned(const eAxisSigned axis)
+inline eAxis axis_unsigned(const eAxisSigned axis)
 {
   return eAxis(axis - ((axis <= 2) ? 0 : 3));
 }
 
-static inline eAxis axis_from_char(const char axis)
+inline eAxis axis_from_char(const char axis)
 {
   BLI_assert(axis >= 'X' && axis <= 'Z');
   return eAxis(axis - 'X');
 }
 
-static inline bool is_negative(const eAxisSigned axis)
+inline bool is_negative(const eAxisSigned axis)
 {
   return axis > Z_POS;
 }
 
-static inline eAxisSigned negate(const eAxisSigned axis)
+inline eAxisSigned negate(const eAxisSigned axis)
 {
   return eAxisSigned((axis + 3) % 6);
 }
