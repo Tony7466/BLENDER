@@ -70,7 +70,7 @@ template<typename T = float> struct Quaternion {
    * Creates a quaternion from an axis triple.
    * This is faster and more precise than converting from another representation.
    */
-  Quaternion(const AxisConversion &rotation);
+  Quaternion(const CartesianBasis &rotation);
 
   /** Static functions. */
 

@@ -139,7 +139,7 @@ namespace detail {
 
 /* -------------- Constructors -------------- */
 
-template<typename T> Quaternion<T>::Quaternion(const AxisConversion &rotation)
+template<typename T> Quaternion<T>::Quaternion(const CartesianBasis &rotation)
 {
   /**
    * There is only 6 * 4 = 24 possible valid orthonormal orientations.

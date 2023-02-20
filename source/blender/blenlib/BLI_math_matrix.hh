@@ -533,7 +533,7 @@ template<typename T, int NumCol, int NumRow>
 [[nodiscard]] MatBase<T, NumCol, NumRow> from_rotation(const DualQuaternion<T> &rotation);
 
 template<typename T, int NumCol, int NumRow>
-[[nodiscard]] MatBase<T, NumCol, NumRow> from_rotation(const AxisConversion &rotation);
+[[nodiscard]] MatBase<T, NumCol, NumRow> from_rotation(const CartesianBasis &rotation);
 
 template<typename T, int NumCol, int NumRow, typename AngleT>
 [[nodiscard]] MatBase<T, NumCol, NumRow> from_rotation(const AxisAngle<T, AngleT> &rotation);
@@ -1009,7 +1009,7 @@ template<typename T, int NumCol, int NumRow>
 }
 
 template<typename T, int NumCol, int NumRow>
-MatBase<T, NumCol, NumRow> from_rotation(const AxisConversion &rotation)
+MatBase<T, NumCol, NumRow> from_rotation(const CartesianBasis &rotation)
 {
   using MatT = MatBase<T, NumCol, NumRow>;
   MatT mat = MatT::identity();
@@ -1331,6 +1331,7 @@ template<typename MatT, typename VectorT>
   BLI_assert(is_unit_scale(forward));
   BLI_assert(is_unit_scale(up));
 
+  /* TODO(fclem): This is wrong. Forward is Y. */
   MatT matrix;
   matrix.x_axis() = forward;
   /* Beware of handedness! Blender uses right-handedness.

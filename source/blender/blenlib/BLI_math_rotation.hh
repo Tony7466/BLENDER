@@ -317,7 +317,7 @@ template<typename T>
   Vec3T rotated_up = transform_point(q1, Vec3T(0, 0, 1));
 
   /* Project using axes index instead of arithmetic. It's much faster and more precise. */
-  eAxisSigned y_axis_signed = AxisConversion::cross(eAxisSigned(axis), eAxisSigned(up_flag));
+  eAxisSigned y_axis_signed = math::cross(eAxisSigned(axis), eAxisSigned(up_flag));
   eAxis x_axis = up_flag;
   eAxis y_axis = axis_unsigned(y_axis_signed);
 
@@ -349,7 +349,8 @@ template<typename T>
 
   /* Curve have Z forward, Y up, X left. */
   return detail::Quaternion<T>(
-      AxisConversion(eAxisSigned::Z_POS, eAxisSigned::Y_POS, forward_axis, eAxisSigned(up_axis)));
+      rotation_between(from_orthonormal_axes(eAxisSigned::Z_POS, eAxisSigned::Y_POS),
+                       from_orthonormal_axes(forward_axis, eAxisSigned(up_axis))));
 }
 
 template<typename T>

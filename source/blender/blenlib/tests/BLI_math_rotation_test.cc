@@ -558,8 +558,9 @@ TEST(math_rotation, QuaternionFromTracking)
       quat_apply_track(&expect.w, forward_axis, up_axis);
 
       /* This is the expected axis conversion for curve tangent space to tracked object space. */
-      AxisConversion axes(
-          eAxisSigned::Z_POS, eAxisSigned::Y_POS, forward_axis, eAxisSigned(up_axis));
+      CartesianBasis axes = rotation_between(
+          from_orthonormal_axes(eAxisSigned::Z_POS, eAxisSigned::Y_POS),
+          from_orthonormal_axes(forward_axis, eAxisSigned(up_axis)));
       Quaternion result = Quaternion(axes);
 
       EXPECT_V4_NEAR(float4(result), float4(expect), 1e-5f);
@@ -586,8 +587,6 @@ TEST(math_rotation, Euler3ToGimbal)
   Euler3 euler3_zxy(ijk, eEulerOrder::ZXY);
   Euler3 euler3_zyx(ijk, eEulerOrder::ZYX);
 
-  std::cout << euler3_zyx << std::endl;
-
   float3x3 mat_xyz = transpose(
       float3x3({0.808309, -0.504665, 0}, {0.47251, 0.863315, 0}, {0.351241, 0, 1}));
   float3x3 mat_xzy = transpose(
@@ -609,7 +608,7 @@ TEST(math_rotation, Euler3ToGimbal)
   EXPECT_M3_NEAR(to_gimbal_axis(euler3_zyx), mat_zyx, 1e-4);
 }
 
-TEST(math_rotation, AxisConversion)
+TEST(math_rotation, CartesianBasis)
 {
   for (int i : IndexRange(6)) {
     for (int j : IndexRange(6)) {
@@ -620,13 +619,14 @@ TEST(math_rotation, AxisConversion)
           eAxisSigned dst_forward = eAxisSigned(k);
           eAxisSigned dst_up = eAxisSigned(l);
 
+          if ((axis_unsigned(src_forward) == axis_unsigned(src_up)) ||
+              (axis_unsigned(dst_forward) == axis_unsigned(dst_up))) {
+            /* Assertion expected. */
+            continue;
+          }
+
           float3x3 expect;
           if (src_forward == dst_forward && src_up == dst_up) {
-            expect = float3x3::identity();
-          }
-          else if ((axis_unsigned(src_forward) == axis_unsigned(src_up)) ||
-                   (axis_unsigned(dst_forward) == axis_unsigned(dst_up))) {
-            /* We could assert here! */
             expect = float3x3::identity();
           }
           else {
@@ -634,9 +634,10 @@ TEST(math_rotation, AxisConversion)
             mat3_from_axis_conversion(src_forward, src_up, dst_forward, dst_up, expect.ptr());
           }
 
-          EXPECT_EQ(
-              from_rotation<float3x3>(AxisConversion(src_forward, src_up, dst_forward, dst_up)),
-              expect);
+          EXPECT_EQ(from_rotation<float3x3>(
+                        rotation_between(from_orthonormal_axes(src_forward, src_up),
+                                         from_orthonormal_axes(dst_forward, dst_up))),
+                    expect);
 
           if (src_forward == dst_forward) {
             expect = float3x3::identity();
@@ -646,7 +647,7 @@ TEST(math_rotation, AxisConversion)
             mat3_from_axis_conversion_single(src_forward, dst_forward, expect.ptr());
           }
 
-          EXPECT_EQ(from_rotation<float3x3>(AxisConversion(src_forward, dst_forward)), expect);
+          EXPECT_EQ(from_rotation<float3x3>(rotation_between(src_forward, dst_forward)), expect);
         }
       }
     }
