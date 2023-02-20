@@ -114,11 +114,9 @@ void shadow_tag_usage_tilemap_punctual(uint l_idx, vec3 P, vec3 V, float dist_to
   }
   else {
     uint faces = 0u;
-    /* TODO (Miguel Pozo): This is terrible.
-     * Test sphere against frustums instead ? */
-    for (int x = -1; x <= 1; x++) {
-      for (int y = -1; y <= 1; y++) {
-        for (int z = -1; z <= 1; z++) {
+    for (int x = -1; x <= 1; x += 2) {
+      for (int y = -1; y <= 1; y += 2) {
+        for (int z = -1; z <= 1; z += 2) {
           vec3 _lP = lP + vec3(x, y, z) * radius;
           faces |= 1u << shadow_punctual_face_index_get(_lP);
         }
