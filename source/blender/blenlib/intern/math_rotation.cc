@@ -14,9 +14,9 @@
 namespace blender::math::detail {
 
 template AxisAngle<float, AngleRadian<float>>::operator EulerXYZ<float>() const;
-template AxisAngle<float, AngleSinCos<float>>::operator EulerXYZ<float>() const;
+template AxisAngle<float, AngleCartesian<float>>::operator EulerXYZ<float>() const;
 template AxisAngle<float, AngleRadian<float>>::operator Quaternion<float>() const;
-template AxisAngle<float, AngleSinCos<float>>::operator Quaternion<float>() const;
+template AxisAngle<float, AngleCartesian<float>>::operator Quaternion<float>() const;
 template EulerXYZ<float>::operator Quaternion<float>() const;
 template Euler3<float>::operator Quaternion<float>() const;
 template Quaternion<float>::operator EulerXYZ<float>() const;

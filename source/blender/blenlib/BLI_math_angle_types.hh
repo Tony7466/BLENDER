@@ -21,10 +21,10 @@
  * - Slow : `cos()`, `sin()`, `tan()`, `AngleRadian(cos, sin)`
  *
  *
- * A `blender::math::AngleSinCos<T>` stores the angle as cosine + sine tuple.
+ * A `blender::math::AngleCartesian<T>` stores the angle as cosine + sine tuple.
  * - Storage : `2 * sizeof(T)`
  * - Range : [-pi..pi]
- * - Fast : `cos()`, `sin()`, `tan()`, `AngleSinCos(cos, sin)`
+ * - Fast : `cos()`, `sin()`, `tan()`, `AngleCartesian(cos, sin)`
  * - Slow : Everything not fast.
  * It is only useful for intermediate representation when converting to other rotation types (eg:
  * AxisAngle > Quaternion) and for creating rotation from 2d points. In general it is offers an
@@ -173,45 +173,47 @@ template<typename T> struct AngleRadian {
   }
 };
 
-template<typename T> struct AngleSinCos {
+template<typename T> struct AngleCartesian {
  private:
   T cos_;
   T sin_;
 
  public:
-  AngleSinCos() = default;
+  AngleCartesian() = default;
 
   /**
    * Create an angle from a (x, y) position on the unit circle.
    */
-  AngleSinCos(const T &x, const T &y) : cos_(x), sin_(y)
+  AngleCartesian(const T &x, const T &y) : cos_(x), sin_(y)
   {
     BLI_assert(math::abs(x * x + y * y - T(1)) < T(1e-4));
   }
 
-  explicit AngleSinCos(const T &radian) : AngleSinCos(math::cos(radian), math::sin(radian)){};
-  explicit AngleSinCos(const AngleRadian<T> &angle) : AngleSinCos(angle.cos(), angle.sin()){};
+  explicit AngleCartesian(const T &radian)
+      : AngleCartesian(math::cos(radian), math::sin(radian)){};
+  explicit AngleCartesian(const AngleRadian<T> &angle)
+      : AngleCartesian(angle.cos(), angle.sin()){};
 
   /** Static functions. */
 
-  static AngleSinCos identity()
+  static AngleCartesian identity()
   {
     return {1, 0};
   }
 
-  static AngleSinCos from_degree(const T &degrees)
+  static AngleCartesian from_degree(const T &degrees)
   {
-    return AngleSinCos(degrees * T(M_PI / 180.0));
+    return AngleCartesian(degrees * T(M_PI / 180.0));
   }
 
   /**
    * Create an angle from a (x, y) position on the 2D plane.
    * Fallback to identity if (x, y) is origin (0, 0).
    */
-  static AngleSinCos from_point(const T &x, const T &y)
+  static AngleCartesian from_point(const T &x, const T &y)
   {
     T norm = math::sqrt(x * x + y * y);
-    return AngleSinCos(x / norm, y / norm);
+    return AngleCartesian(x / norm, y / norm);
   }
 
   /** Conversions. */
@@ -263,17 +265,17 @@ template<typename T> struct AngleSinCos {
    * purpose of this class).
    */
 
-  friend AngleSinCos operator+(const AngleSinCos &a, const AngleSinCos &b)
+  friend AngleCartesian operator+(const AngleCartesian &a, const AngleCartesian &b)
   {
     return {a.cos_ * b.cos_ - a.sin_ * b.sin_, a.sin_ * b.cos_ + a.cos_ * b.sin_};
   }
 
-  friend AngleSinCos operator-(const AngleSinCos &a, const AngleSinCos &b)
+  friend AngleCartesian operator-(const AngleCartesian &a, const AngleCartesian &b)
   {
     return {a.cos_ * b.cos_ + a.sin_ * b.sin_, a.sin_ * b.cos_ - a.cos_ * b.sin_};
   }
 
-  friend AngleSinCos operator*(const AngleSinCos &a, const T &b)
+  friend AngleCartesian operator*(const AngleCartesian &a, const T &b)
   {
     if (b == T(2)) {
       return {a.cos_ * a.cos_ - a.sin_ * a.sin_, T(2) * a.sin_ * a.cos_};
@@ -283,24 +285,24 @@ template<typename T> struct AngleSinCos {
               T(3) * a.sin_ - T(4) * (a.sin_ * a.sin_ * a.sin_)};
     }
     BLI_assert_msg(0,
-                   "Arbitrary angle product isn't supported with AngleSinCos<T> for "
+                   "Arbitrary angle product isn't supported with AngleCartesian<T> for "
                    "performance reason. Use AngleRadian<T> instead.");
     return identity();
   }
 
-  friend AngleSinCos operator*(const T &b, const AngleSinCos &a)
+  friend AngleCartesian operator*(const T &b, const AngleCartesian &a)
   {
     return a * b;
   }
 
-  friend AngleSinCos operator/(const AngleSinCos &a, const T &b)
+  friend AngleCartesian operator/(const AngleCartesian &a, const T &b)
   {
     if (b == T(2)) {
       /* Still costly but less than using `atan()`. */
-      AngleSinCos result = {math::sqrt((T(1) + a.cos_) / T(2)),
-                            math::sqrt((T(1) - a.cos_) / T(2))};
+      AngleCartesian result = {math::sqrt((T(1) + a.cos_) / T(2)),
+                               math::sqrt((T(1) - a.cos_) / T(2))};
       /* Recover sign only for sine. Cosine of half angle is given to be positive or 0 since the
-       * angle stored in #AngleSinCos is range of [-pi..pi]. */
+       * angle stored in #AngleCartesian is range of [-pi..pi]. */
       /* TODO(fclem): Could use copysign here. */
       if (a.sin_ < T(0)) {
         result.sin_ = -result.sin_;
@@ -308,50 +310,50 @@ template<typename T> struct AngleSinCos {
       return result;
     }
     BLI_assert_msg(0,
-                   "Arbitrary angle quotient isn't supported with AngleSinCos<T> for "
+                   "Arbitrary angle quotient isn't supported with AngleCartesian<T> for "
                    "performance reason. Use AngleRadian<T> instead.");
     return identity();
   }
 
-  friend AngleSinCos operator-(const AngleSinCos &a)
+  friend AngleCartesian operator-(const AngleCartesian &a)
   {
     return {a.cos_, -a.sin_};
   }
 
-  AngleSinCos &operator+=(const AngleSinCos &b)
+  AngleCartesian &operator+=(const AngleCartesian &b)
   {
     *this = *this + b;
     return *this;
   }
 
-  AngleSinCos &operator*=(const T &b)
+  AngleCartesian &operator*=(const T &b)
   {
     *this = *this * b;
     return *this;
   }
 
-  AngleSinCos &operator-=(const AngleSinCos &b)
+  AngleCartesian &operator-=(const AngleCartesian &b)
   {
     *this = *this - b;
     return *this;
   }
 
-  AngleSinCos &operator/=(const T &b)
+  AngleCartesian &operator/=(const T &b)
   {
     *this = *this / b;
     return *this;
   }
 
-  friend std::ostream &operator<<(std::ostream &stream, const AngleSinCos &rot)
+  friend std::ostream &operator<<(std::ostream &stream, const AngleCartesian &rot)
   {
-    return stream << "AngleSinCos(x=" << rot.cos_ << ", y=" << rot.sin_ << ")";
+    return stream << "AngleCartesian(x=" << rot.cos_ << ", y=" << rot.sin_ << ")";
   }
 };
 
 }  // namespace detail
 
 using AngleRadian = math::detail::AngleRadian<float>;
-using AngleSinCos = math::detail::AngleSinCos<float>;
+using AngleCartesian = math::detail::AngleCartesian<float>;
 
 }  // namespace blender::math
 

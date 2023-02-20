@@ -58,7 +58,7 @@ template<typename T, typename AngleT> struct AxisAngle {
   /**
    * Create a rotation from 2 normalized vectors.
    * \note `from` and `to` must be normalized.
-   * \note Consider using `AxisSinCos` for faster conversion to other rotation.
+   * \note Consider using `AxisAngleCartesian` for faster conversion to other rotation.
    */
   AxisAngle(const vec3_type &from, const vec3_type &to);
 
@@ -85,6 +85,7 @@ template<typename T, typename AngleT> struct AxisAngle {
 
   explicit operator Quaternion<T>() const;
   explicit operator EulerXYZ<T>() const;
+  // explicit operator Euler3<T>() const; /* In Euler3 class because of order. */
 
   explicit AxisAngle(const Quaternion<T> &quat);
   explicit AxisAngle(const EulerXYZ<T> &euler);
@@ -111,7 +112,7 @@ template<typename T, typename AngleT> struct AxisAngle {
 };  // namespace detail
 
 using AxisAngle = math::detail::AxisAngle<float, detail::AngleRadian<float>>;
-using AxisSinCos = math::detail::AxisAngle<float, detail::AngleSinCos<float>>;
+using AxisAngleCartesian = math::detail::AxisAngle<float, detail::AngleCartesian<float>>;
 
 }  // namespace blender::math
 

@@ -1075,8 +1075,8 @@ extern template MatBase<float, 3, 3> from_rotation(const Quaternion<float> &rota
 extern template MatBase<float, 4, 4> from_rotation(const Quaternion<float> &rotation);
 extern template MatBase<float, 3, 3> from_rotation(const math::AxisAngle &rotation);
 extern template MatBase<float, 4, 4> from_rotation(const math::AxisAngle &rotation);
-extern template MatBase<float, 3, 3> from_rotation(const math::AxisSinCos &rotation);
-extern template MatBase<float, 4, 4> from_rotation(const math::AxisSinCos &rotation);
+extern template MatBase<float, 3, 3> from_rotation(const math::AxisAngleCartesian &rotation);
+extern template MatBase<float, 4, 4> from_rotation(const math::AxisAngleCartesian &rotation);
 
 }  // namespace detail
 

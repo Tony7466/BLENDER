@@ -310,7 +310,7 @@ TEST(math_rotation, AxisAngleConstructors)
   EXPECT_NEAR(a.angle().sin(), 1.0f, 1e-4);
   EXPECT_NEAR(a.angle().cos(), 0.0f, 1e-4);
 
-  AxisSinCos b({0.0f, 0.0f, 1.0f}, AngleSinCos(AngleRadian(M_PI_2)));
+  AxisAngleCartesian b({0.0f, 0.0f, 1.0f}, AngleCartesian(AngleRadian(M_PI_2)));
   EXPECT_V3_NEAR(b.axis(), float3(0, 0, 1), 1e-4);
   EXPECT_NEAR(float(b.angle()), M_PI_2, 1e-4);
   EXPECT_NEAR(b.angle().sin(), 1.0f, 1e-4);

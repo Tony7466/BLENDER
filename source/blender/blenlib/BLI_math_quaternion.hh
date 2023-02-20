@@ -280,7 +280,7 @@ template<typename T> Quaternion<T> Quaternion<T>::twist(const eAxis axis) const
   /* The calculation requires a canonical quaternion. */
   const VecBase<T, 4> input_vec(canonicalize(*this));
 
-  AngleSinCos<T> half_angle = AngleSinCos<T>::from_point(input_vec[0], input_vec[axis + 1]);
+  AngleCartesian<T> half_angle = AngleCartesian<T>::from_point(input_vec[0], input_vec[axis + 1]);
 
   VecBase<T, 4> twist(half_angle.cos(), T(0), T(0), T(0));
   twist[axis + 1] = half_angle.sin();

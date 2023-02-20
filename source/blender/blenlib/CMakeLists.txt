@@ -260,6 +260,7 @@ set(SRC
   BLI_map_slots.hh
   BLI_math.h
   BLI_math_angle_types.hh
+  BLI_math_axis_angle.hh
   BLI_math_axis_angle_types.hh
   BLI_math_axis_convert_types.hh
   BLI_math_base.h

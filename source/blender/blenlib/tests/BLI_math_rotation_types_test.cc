@@ -373,20 +373,20 @@ TEST(math_rotation_types, Euler3Conversion)
 
 TEST(math_rotation_types, AngleSinCosOperators)
 {
-  AngleSinCos(M_PI_2);
-  EXPECT_NEAR((AngleSinCos(M_PI_2) + AngleSinCos(M_PI)).radian(),
+  AngleCartesian(M_PI_2);
+  EXPECT_NEAR((AngleCartesian(M_PI_2) + AngleCartesian(M_PI)).radian(),
               AngleRadian(M_PI_2 + M_PI).wrapped().radian(),
               1e-4);
-  EXPECT_NEAR((AngleSinCos(M_PI_2) - AngleSinCos(M_PI)).radian(),
+  EXPECT_NEAR((AngleCartesian(M_PI_2) - AngleCartesian(M_PI)).radian(),
               AngleRadian(M_PI_2 - M_PI).wrapped().radian(),
               1e-4);
-  EXPECT_NEAR((-AngleSinCos(M_PI_2)).radian(), AngleRadian(-M_PI_2).radian(), 1e-4);
-  EXPECT_NEAR((AngleSinCos(M_PI_4) * 2).radian(), AngleRadian(M_PI_4 * 2).radian(), 1e-4);
-  EXPECT_NEAR((AngleSinCos(M_PI_4) * 3).radian(), AngleRadian(M_PI_4 * 3).radian(), 1e-4);
-  EXPECT_NEAR((AngleSinCos(-M_PI_4) * 2).radian(), AngleRadian(-M_PI_4 * 2).radian(), 1e-4);
-  EXPECT_NEAR((AngleSinCos(-M_PI_4) * 3).radian(), AngleRadian(-M_PI_4 * 3).radian(), 1e-4);
-  EXPECT_NEAR((AngleSinCos(M_PI_4) / 2).radian(), AngleRadian(M_PI_4 / 2).radian(), 1e-4);
-  EXPECT_NEAR((AngleSinCos(-M_PI_4) / 2).radian(), AngleRadian(-M_PI_4 / 2).radian(), 1e-4);
+  EXPECT_NEAR((-AngleCartesian(M_PI_2)).radian(), AngleRadian(-M_PI_2).radian(), 1e-4);
+  EXPECT_NEAR((AngleCartesian(M_PI_4) * 2).radian(), AngleRadian(M_PI_4 * 2).radian(), 1e-4);
+  EXPECT_NEAR((AngleCartesian(M_PI_4) * 3).radian(), AngleRadian(M_PI_4 * 3).radian(), 1e-4);
+  EXPECT_NEAR((AngleCartesian(-M_PI_4) * 2).radian(), AngleRadian(-M_PI_4 * 2).radian(), 1e-4);
+  EXPECT_NEAR((AngleCartesian(-M_PI_4) * 3).radian(), AngleRadian(-M_PI_4 * 3).radian(), 1e-4);
+  EXPECT_NEAR((AngleCartesian(M_PI_4) / 2).radian(), AngleRadian(M_PI_4 / 2).radian(), 1e-4);
+  EXPECT_NEAR((AngleCartesian(-M_PI_4) / 2).radian(), AngleRadian(-M_PI_4 / 2).radian(), 1e-4);
 }
 
 }  // namespace blender::tests
