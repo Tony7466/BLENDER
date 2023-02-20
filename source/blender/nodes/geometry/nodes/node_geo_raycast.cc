@@ -218,12 +218,7 @@ static void raycast_to_mesh(BVHType bvh_type,
         bvh::BVHRay ray;
         ray.origin = ray_origins[i];
         ray.direction = math::normalize(ray_directions[i]);
-        ray.dist_min = 0.0f;
         ray.dist_max = ray_lengths[i];
-        ray.time = 0.0f;
-        ray.mask = bvh::BVHRay::MASK_FULL;
-        ray.id = 0;
-        ray.flags = bvh::BVHRay::FLAGS_NONE;
 
         bvh::BVHRayHit hit;
         if (tree.ray_intersect1(ray, hit)) {

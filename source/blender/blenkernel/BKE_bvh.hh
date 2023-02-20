@@ -15,25 +15,25 @@ struct BVHRay {
   static constexpr unsigned int FLAGS_NONE = 0;
 
   /* Coordinate of ray origin */
-  float3 origin;
+  float3 origin = float3(0.0f);
   /* Start of ray segment relative to ray length */
-  float dist_min;
+  float dist_min = 0.0f;
 
   /* Ray direction */
-  float3 direction;
+  float3 direction = float3(1.0f, 0.0f, 0.0f);
 
   /* Time of this ray for motion blur */
-  float time;
+  float time = 0.0f;
 
   /* End of ray segment relative to ray length (set to hit distance) */
-  float dist_max;
+  float dist_max = 1.0f;
 
   /* Ray mask */
-  unsigned int mask;
+  unsigned int mask = MASK_FULL;
   /* Ray ID */
-  unsigned int id;
+  unsigned int id = 0;
   /* Ray flags */
-  unsigned int flags;
+  unsigned int flags = FLAGS_NONE;
 };
 
 struct BVHHit {
