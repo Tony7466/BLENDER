@@ -127,8 +127,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
             }
           }
 
-          const Span<float3> positions_curve = positions.slice(points);
-          Array<float> closest_distances(positions_curve.size(), FLT_MAX);
+          Array<float> closest_distances(points.size(), FLT_MAX);
 
           for (const int i : IndexRange(points.size())) {
             const int point_i = points[i];
@@ -153,7 +152,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
 
           if (use_connected_only) {
             calculate_curve_point_distances_for_proportional_editing(
-                positions_curve, closest_distances.as_mutable_span());
+                positions.slice(points), closest_distances.as_mutable_span());
             for (const int i : IndexRange(points.size())) {
               TransData &td = tc.data[points[i]];
               td.dist = closest_distances[i];
