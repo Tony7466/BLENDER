@@ -24,6 +24,7 @@
 #include "BKE_node.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
+#include "BKE_report.h"
 #include "BKE_workspace.h"
 
 #include "ED_node.h"  /* own include */
@@ -1239,6 +1240,12 @@ static int node_select_same_type_step_exec(bContext *C, wmOperator *op)
 {
   SpaceNode *snode = CTX_wm_space_node(C);
   ARegion *region = CTX_wm_region(C);
+
+  if (region == nullptr) {
+    BKE_report(op->reports, RPT_ERROR_INVALID_CONTEXT, "Missing 'region' in context");
+    return OPERATOR_CANCELLED;
+  }
+
   const bool prev = RNA_boolean_get(op->ptr, "prev");
   bNode &active_node = *nodeGetActive(snode->edittree);
 

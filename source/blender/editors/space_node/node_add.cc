@@ -136,6 +136,12 @@ struct RerouteCutsForSocket {
 static int add_reroute_exec(bContext *C, wmOperator *op)
 {
   const ARegion &region = *CTX_wm_region(C);
+
+  if (&region == nullptr) {
+    BKE_report(op->reports, RPT_ERROR_INVALID_CONTEXT, "Missing 'region' in context");
+    return OPERATOR_CANCELLED;
+  }
+
   SpaceNode &snode = *CTX_wm_space_node(C);
   bNodeTree &ntree = *snode.edittree;
   const Span<float2> socket_locations = snode.runtime->all_socket_locations;
@@ -341,6 +347,11 @@ static int node_add_group_invoke(bContext *C, wmOperator *op, const wmEvent *eve
   ARegion *region = CTX_wm_region(C);
   SpaceNode *snode = CTX_wm_space_node(C);
 
+  if (region == nullptr) {
+    BKE_report(op->reports, RPT_ERROR_INVALID_CONTEXT, "Missing 'region' in context");
+    return OPERATOR_CANCELLED;
+  }
+
   /* Convert mouse coordinates to v2d space. */
   UI_view2d_region_to_view(&region->v2d,
                            event->mval[0],
@@ -422,6 +433,11 @@ static int node_add_group_asset_invoke(bContext *C, wmOperator *op, const wmEven
 {
   ARegion &region = *CTX_wm_region(C);
   SpaceNode &snode = *CTX_wm_space_node(C);
+
+  if (&region == nullptr) {
+    BKE_report(op->reports, RPT_ERROR_INVALID_CONTEXT, "Missing 'region' in context");
+    return OPERATOR_CANCELLED;
+  }
 
   const AssetLibraryReference *library_ref = CTX_wm_asset_library_ref(C);
   if (!library_ref) {
@@ -516,6 +532,11 @@ static int node_add_object_invoke(bContext *C, wmOperator *op, const wmEvent *ev
 {
   ARegion *region = CTX_wm_region(C);
   SpaceNode *snode = CTX_wm_space_node(C);
+
+  if (region == nullptr) {
+    BKE_report(op->reports, RPT_ERROR_INVALID_CONTEXT, "Missing 'region' in context");
+    return OPERATOR_CANCELLED;
+  }
 
   /* Convert mouse coordinates to v2d space. */
   UI_view2d_region_to_view(&region->v2d,
@@ -718,6 +739,11 @@ static int node_add_file_invoke(bContext *C, wmOperator *op, const wmEvent *even
 {
   ARegion *region = CTX_wm_region(C);
   SpaceNode *snode = CTX_wm_space_node(C);
+
+  if (region == nullptr) {
+    BKE_report(op->reports, RPT_ERROR_INVALID_CONTEXT, "Missing 'region' in context");
+    return OPERATOR_CANCELLED;
+  }
 
   /* Convert mouse coordinates to `v2d` space. */
   UI_view2d_region_to_view(&region->v2d,
@@ -923,6 +949,11 @@ void NODE_OT_new_node_tree(wmOperatorType *ot)
 static int node_add_search_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   const ARegion &region = *CTX_wm_region(C);
+
+  if (&region == nullptr) {
+    BKE_report(op->reports, RPT_ERROR_INVALID_CONTEXT, "Missing 'region' in context");
+    return OPERATOR_CANCELLED;
+  }
 
   float2 cursor;
   UI_view2d_region_to_view(&region.v2d, event->mval[0], event->mval[1], &cursor.x, &cursor.y);

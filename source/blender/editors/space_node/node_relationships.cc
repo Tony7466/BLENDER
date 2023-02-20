@@ -21,6 +21,7 @@
 #include "BKE_node.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
+#include "BKE_report.h"
 #include "BKE_screen.h"
 
 #include "ED_node.hh" /* own include */
@@ -1329,6 +1330,11 @@ static int node_link_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   SpaceNode &snode = *CTX_wm_space_node(C);
   ARegion &region = *CTX_wm_region(C);
 
+  if (&region == nullptr) {
+    BKE_report(op->reports, RPT_ERROR_INVALID_CONTEXT, "Missing 'region' in context");
+    return OPERATOR_CANCELLED;
+  }
+
   bool detach = RNA_boolean_get(op->ptr, "detach");
 
   int2 mval;
@@ -1454,6 +1460,11 @@ static int cut_links_exec(bContext *C, wmOperator *op)
   SpaceNode &snode = *CTX_wm_space_node(C);
   const ARegion &region = *CTX_wm_region(C);
 
+  if (&region == nullptr) {
+    BKE_report(op->reports, RPT_ERROR_INVALID_CONTEXT, "Missing 'region' in context");
+    return OPERATOR_CANCELLED;
+  }
+
   Vector<float2> path;
   RNA_BEGIN (op->ptr, itemptr, "path") {
     float2 loc_region;
@@ -1562,6 +1573,12 @@ static int mute_links_exec(bContext *C, wmOperator *op)
   Main &bmain = *CTX_data_main(C);
   SpaceNode &snode = *CTX_wm_space_node(C);
   const ARegion &region = *CTX_wm_region(C);
+
+  if (&region == nullptr) {
+    BKE_report(op->reports, RPT_ERROR_INVALID_CONTEXT, "Missing 'region' in context");
+    return OPERATOR_CANCELLED;
+  }
+
   bNodeTree &ntree = *snode.edittree;
   const Span<float2> socket_locations = snode.runtime->all_socket_locations;
 
@@ -1866,9 +1883,15 @@ static bNode *node_find_frame_to_attach(ARegion &region,
   return nullptr;
 }
 
-static int node_attach_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *event)
+static int node_attach_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   ARegion &region = *CTX_wm_region(C);
+
+  if (&region == nullptr) {
+    BKE_report(op->reports, RPT_ERROR_INVALID_CONTEXT, "Missing 'region' in context");
+    return OPERATOR_CANCELLED;
+  }
+
   SpaceNode &snode = *CTX_wm_space_node(C);
   bNodeTree &ntree = *snode.edittree;
   bNode *frame = node_find_frame_to_attach(region, ntree, event->mval);
@@ -2562,13 +2585,20 @@ static int node_insert_offset_invoke(bContext *C, wmOperator *op, const wmEvent 
     return OPERATOR_CANCELLED;
   }
 
+  ARegion *region = CTX_wm_region(C);
+
+  if (region == nullptr) {
+    BKE_report(op->reports, RPT_ERROR_INVALID_CONTEXT, "Missing 'region' in context");
+    return OPERATOR_CANCELLED;
+  }
+
   BLI_assert((snode->flag & SNODE_SKIP_INSOFFSET) == 0);
 
   iofsd->ntree = snode->edittree;
   iofsd->anim_timer = WM_event_add_timer(CTX_wm_manager(C), CTX_wm_window(C), TIMER, 0.02);
 
   node_link_insert_offset_ntree(
-      iofsd, CTX_wm_region(C), event->mval, (snode->insert_ofs_dir == SNODE_INSERTOFS_DIR_RIGHT));
+      iofsd, region, event->mval, (snode->insert_ofs_dir == SNODE_INSERTOFS_DIR_RIGHT));
 
   /* add temp handler */
   WM_event_add_modal_handler(C, op);

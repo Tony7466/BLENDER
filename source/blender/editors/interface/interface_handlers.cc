@@ -11692,6 +11692,9 @@ void UI_screen_free_active_but_highlight(const bContext *C, bScreen *screen)
 uiBut *UI_but_active_drop_name_button(const bContext *C)
 {
   ARegion *region = CTX_wm_region(C);
+  if (region == nullptr) {
+    return nullptr;
+  }
   uiBut *but = ui_region_find_active_but(region);
 
   if (but) {

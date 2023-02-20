@@ -907,6 +907,12 @@ static int node_resize_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   SpaceNode *snode = CTX_wm_space_node(C);
   ARegion *region = CTX_wm_region(C);
+
+  if (region == nullptr) {
+    BKE_report(op->reports, RPT_ERROR_INVALID_CONTEXT, "Missing 'region' in context");
+    return OPERATOR_CANCELLED;
+  }
+
   bNode *node = nodeGetActive(snode->edittree);
   NodeSizeWidget *nsw = (NodeSizeWidget *)op->customdata;
 
@@ -1011,6 +1017,12 @@ static int node_resize_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   SpaceNode *snode = CTX_wm_space_node(C);
   ARegion *region = CTX_wm_region(C);
+
+  if (region == nullptr) {
+    BKE_report(op->reports, RPT_ERROR_INVALID_CONTEXT, "Missing 'region' in context");
+    return OPERATOR_CANCELLED;
+  }
+
   const bNode *node = nodeGetActive(snode->edittree);
 
   if (node == nullptr) {

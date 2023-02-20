@@ -17,6 +17,7 @@
 #include "BKE_main.h"
 #include "BKE_node.h"
 #include "BKE_node_runtime.hh"
+#include "BKE_report.h"
 #include "BKE_screen.h"
 
 #include "ED_image.h"
@@ -110,6 +111,12 @@ bool space_node_view_flag(
 static int node_view_all_exec(bContext *C, wmOperator *op)
 {
   ARegion *region = CTX_wm_region(C);
+
+  if (region == nullptr) {
+    BKE_report(op->reports, RPT_ERROR_INVALID_CONTEXT, "Missing 'region' in context");
+    return OPERATOR_CANCELLED;
+  }
+
   SpaceNode *snode = CTX_wm_space_node(C);
   const int smooth_viewtx = WM_operator_smooth_viewtx_get(op);
 
@@ -147,6 +154,12 @@ void NODE_OT_view_all(wmOperatorType *ot)
 static int node_view_selected_exec(bContext *C, wmOperator *op)
 {
   ARegion *region = CTX_wm_region(C);
+
+  if (region == nullptr) {
+    BKE_report(op->reports, RPT_ERROR_INVALID_CONTEXT, "Missing 'region' in context");
+    return OPERATOR_CANCELLED;
+  }
+
   SpaceNode *snode = CTX_wm_space_node(C);
   const int smooth_viewtx = WM_operator_smooth_viewtx_get(op);
 
@@ -238,6 +251,12 @@ static int snode_bg_viewmove_invoke(bContext *C, wmOperator *op, const wmEvent *
   Main *bmain = CTX_data_main(C);
   SpaceNode *snode = CTX_wm_space_node(C);
   ARegion *region = CTX_wm_region(C);
+
+  if (region == nullptr) {
+    BKE_report(op->reports, RPT_ERROR_INVALID_CONTEXT, "Missing 'region' in context");
+    return OPERATOR_CANCELLED;
+  }
+
   NodeViewMove *nvm;
   Image *ima;
   ImBuf *ibuf;
@@ -307,6 +326,12 @@ static int backimage_zoom_exec(bContext *C, wmOperator *op)
 {
   SpaceNode *snode = CTX_wm_space_node(C);
   ARegion *region = CTX_wm_region(C);
+
+  if (region == nullptr) {
+    BKE_report(op->reports, RPT_ERROR_INVALID_CONTEXT, "Missing 'region' in context");
+    return OPERATOR_CANCELLED;
+  }
+
   float fac = RNA_float_get(op->ptr, "factor");
 
   snode->zoom *= fac;
@@ -342,11 +367,16 @@ void NODE_OT_backimage_zoom(wmOperatorType *ot)
 /** \name Background Image Fit
  * \{ */
 
-static int backimage_fit_exec(bContext *C, wmOperator * /*op*/)
+static int backimage_fit_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   SpaceNode *snode = CTX_wm_space_node(C);
   ARegion *region = CTX_wm_region(C);
+
+  if (region == nullptr) {
+    BKE_report(op->reports, RPT_ERROR_INVALID_CONTEXT, "Missing 'region' in context");
+    return OPERATOR_CANCELLED;
+  }
 
   Image *ima;
   ImBuf *ibuf;
@@ -643,6 +673,11 @@ static int sample_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   SpaceNode *snode = CTX_wm_space_node(C);
   ARegion *region = CTX_wm_region(C);
   ImageSampleInfo *info;
+
+  if (region == nullptr) {
+    BKE_report(op->reports, RPT_ERROR_INVALID_CONTEXT, "Missing 'region' in context");
+    return OPERATOR_CANCELLED;
+  }
 
   /* Don't handle events intended for nodes (which rely on click/drag distinction).
    * which this operator would use since sampling is normally activated on press, see: #98191. */

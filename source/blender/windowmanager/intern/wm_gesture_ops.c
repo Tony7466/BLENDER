@@ -19,6 +19,7 @@
 #include "BLI_rect.h"
 
 #include "BKE_context.h"
+#include "BKE_report.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -164,6 +165,12 @@ int WM_gesture_box_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   wmWindow *win = CTX_wm_window(C);
   const ARegion *region = CTX_wm_region(C);
+
+  if (region == NULL) {
+    BKE_report(op->reports, RPT_ERROR_INVALID_CONTEXT, "Missing 'region' in context");
+    return OPERATOR_CANCELLED;
+  }
+
   const bool wait_for_input = !WM_event_is_mouse_drag_or_press(event) &&
                               RNA_boolean_get(op->ptr, "wait_for_input");
 
@@ -286,10 +293,17 @@ static void gesture_circle_apply(bContext *C, wmOperator *op);
 int WM_gesture_circle_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   wmWindow *win = CTX_wm_window(C);
+  const ARegion *region = CTX_wm_region(C);
+
+  if (region == NULL) {
+    BKE_report(op->reports, RPT_ERROR_INVALID_CONTEXT, "Missing 'region' in context");
+    return OPERATOR_CANCELLED;
+  }
+
   const bool wait_for_input = !WM_event_is_mouse_drag_or_press(event) &&
                               RNA_boolean_get(op->ptr, "wait_for_input");
 
-  op->customdata = WM_gesture_new(win, CTX_wm_region(C), event, WM_GESTURE_CIRCLE);
+  op->customdata = WM_gesture_new(win, region, event, WM_GESTURE_CIRCLE);
   wmGesture *gesture = op->customdata;
   rcti *rect = gesture->customdata;
 
@@ -477,9 +491,15 @@ void WM_OT_circle_gesture(wmOperatorType *ot)
 int WM_gesture_lasso_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   wmWindow *win = CTX_wm_window(C);
+  ARegion *region = CTX_wm_region(C);
   PropertyRNA *prop;
 
-  op->customdata = WM_gesture_new(win, CTX_wm_region(C), event, WM_GESTURE_LASSO);
+  if (region == NULL) {
+    BKE_report(op->reports, RPT_ERROR_INVALID_CONTEXT, "Missing 'region' in context");
+    return OPERATOR_CANCELLED;
+  }
+
+  op->customdata = WM_gesture_new(win, region, event, WM_GESTURE_LASSO);
 
   /* add modal handler */
   WM_event_add_modal_handler(C, op);
@@ -496,9 +516,15 @@ int WM_gesture_lasso_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 int WM_gesture_lines_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   wmWindow *win = CTX_wm_window(C);
+  ARegion *region = CTX_wm_region(C);
   PropertyRNA *prop;
 
-  op->customdata = WM_gesture_new(win, CTX_wm_region(C), event, WM_GESTURE_LINES);
+  if (region == NULL) {
+    BKE_report(op->reports, RPT_ERROR_INVALID_CONTEXT, "Missing 'region' in context");
+    return OPERATOR_CANCELLED;
+  }
+
+  op->customdata = WM_gesture_new(win, region, event, WM_GESTURE_LINES);
 
   /* add modal handler */
   WM_event_add_modal_handler(C, op);
@@ -736,9 +762,15 @@ static bool gesture_straightline_apply(bContext *C, wmOperator *op)
 int WM_gesture_straightline_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   wmWindow *win = CTX_wm_window(C);
+  ARegion *region = CTX_wm_region(C);
   PropertyRNA *prop;
 
-  op->customdata = WM_gesture_new(win, CTX_wm_region(C), event, WM_GESTURE_STRAIGHTLINE);
+  if (region == NULL) {
+    BKE_report(op->reports, RPT_ERROR_INVALID_CONTEXT, "Missing 'region' in context");
+    return OPERATOR_CANCELLED;
+  }
+
+  op->customdata = WM_gesture_new(win, region, event, WM_GESTURE_STRAIGHTLINE);
 
   if (WM_event_is_mouse_drag_or_press(event)) {
     wmGesture *gesture = op->customdata;
