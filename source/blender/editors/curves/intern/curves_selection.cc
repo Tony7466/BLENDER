@@ -21,8 +21,7 @@
 
 namespace blender::ed::curves {
 
-static IndexMask retrieve_selected_curves(const bke::CurvesGeometry &curves,
-                                          Vector<int64_t> &r_indices)
+IndexMask retrieve_selected_curves(const bke::CurvesGeometry &curves, Vector<int64_t> &r_indices)
 {
   const IndexRange curves_range = curves.curves_range();
   const bke::AttributeAccessor attributes = curves.attributes();

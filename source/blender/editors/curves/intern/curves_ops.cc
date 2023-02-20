@@ -1174,6 +1174,35 @@ static void CURVES_OT_delete(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
+namespace curves_extend {
+
+static int extend_exec(bContext *C, wmOperator * /*op*/)
+{
+  for (Curves *curves_id : get_unique_editable_curves(*C)) {
+    bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+    curves = extend(curves, eAttrDomain(curves_id->selection_domain));
+
+    DEG_id_tag_update(&curves_id->id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, curves_id);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+}  // namespace curves_extend
+
+static void CURVES_OT_extend(wmOperatorType *ot)
+{
+  ot->name = "Extend";
+  ot->idname = __func__;
+  ot->description = "Extend selected curves";
+
+  ot->exec = curves_extend::extend_exec;
+  ot->poll = editable_curves_in_edit_mode_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
 }  // namespace blender::ed::curves
 
 void ED_operatortypes_curves()
@@ -1191,6 +1220,7 @@ void ED_operatortypes_curves()
   WM_operatortype_append(CURVES_OT_select_less);
   WM_operatortype_append(CURVES_OT_surface_set);
   WM_operatortype_append(CURVES_OT_delete);
+  WM_operatortype_append(CURVES_OT_extend);
 }
 
 void ED_keymap_curves(wmKeyConfig *keyconf)

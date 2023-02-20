@@ -112,6 +112,7 @@ bool has_anything_selected(const VArray<bool> &varray, IndexRange range_to_check
  * Find curves that have any point selected (a selection factor greater than zero),
  * or curves that have their own selection factor greater than zero.
  */
+IndexMask retrieve_selected_curves(const bke::CurvesGeometry &curves, Vector<int64_t> &r_indices);
 IndexMask retrieve_selected_curves(const Curves &curves_id, Vector<int64_t> &r_indices);
 
 /**
@@ -213,6 +214,11 @@ bool select_circle(const ViewContext &vc,
  * \returns true if any point or curve was removed.
  */
 bool remove_selection(bke::CurvesGeometry &curves, eAttrDomain selection_domain);
+
+/**
+ * Extend the selected curves by one point.
+ */
+bke::CurvesGeometry extend(bke::CurvesGeometry &curves, eAttrDomain selection_domain);
 
 /** \} */
 
