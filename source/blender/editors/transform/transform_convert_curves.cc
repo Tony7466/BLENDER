@@ -105,16 +105,8 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
           ".selection", ATTR_DOMAIN_POINT, true);
       threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange range) {
         for (const int curve_i : range) {
-          bool has_any_selected = false;
           const IndexRange points = points_by_curve[curve_i];
-          for (const int i : IndexRange(points.size())) {
-            const int point_i = points[i];
-            if (selection[point_i]) {
-              has_any_selected = true;
-              break;
-            }
-          }
-
+          const bool has_any_selected = ed::curves::has_anything_selected(selection, points);
           if (!has_any_selected) {
             for (const int point_i : points) {
               TransData &td = tc.data[point_i];
