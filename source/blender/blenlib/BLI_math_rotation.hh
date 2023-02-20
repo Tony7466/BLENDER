@@ -491,6 +491,7 @@ template<typename T, typename AngleT> AxisAngle<T, AngleT>::operator EulerXYZ<T>
   return EulerXYZ<T>(Quaternion<T>(*this));
 }
 
+
 /* Using explicit template instantiations in order to reduce compilation time. */
 extern template AxisAngle<float, AngleRadian<float>>::operator EulerXYZ<float>() const;
 extern template AxisAngle<float, AngleSinCos<float>>::operator EulerXYZ<float>() const;

@@ -717,18 +717,18 @@ void normalized_to_eul2(const MatBase<T, 3, 3> &mat,
 
   const T cy = math::hypot(mat[0][0], mat[0][1]);
   if (cy > T(16) * FLT_EPSILON) {
-    eul1.x = math::atan2(mat[1][2], mat[2][2]);
-    eul1.y = math::atan2(-mat[0][2], cy);
-    eul1.z = math::atan2(mat[0][1], mat[0][0]);
+    eul1.x() = math::atan2(mat[1][2], mat[2][2]);
+    eul1.y() = math::atan2(-mat[0][2], cy);
+    eul1.z() = math::atan2(mat[0][1], mat[0][0]);
 
-    eul2.x = math::atan2(-mat[1][2], -mat[2][2]);
-    eul2.y = math::atan2(-mat[0][2], -cy);
-    eul2.z = math::atan2(-mat[0][1], -mat[0][0]);
+    eul2.x() = math::atan2(-mat[1][2], -mat[2][2]);
+    eul2.y() = math::atan2(-mat[0][2], -cy);
+    eul2.z() = math::atan2(-mat[0][1], -mat[0][0]);
   }
   else {
-    eul1.x = math::atan2(-mat[2][1], mat[1][1]);
-    eul1.y = math::atan2(-mat[0][2], cy);
-    eul1.z = 0.0f;
+    eul1.x() = math::atan2(-mat[2][1], mat[1][1]);
+    eul1.y() = math::atan2(-mat[0][2], cy);
+    eul1.z() = 0.0f;
 
     eul2 = eul1;
   }
@@ -892,12 +892,12 @@ MatBase<T, NumCol, NumRow> from_rotation(const EulerXYZ<T> &rotation)
 {
   using MatT = MatBase<T, NumCol, NumRow>;
   using DoublePrecision = typename TypeTraits<T>::DoublePrecision;
-  DoublePrecision ci = math::cos(DoublePrecision(rotation.x));
-  DoublePrecision cj = math::cos(DoublePrecision(rotation.y));
-  DoublePrecision ch = math::cos(DoublePrecision(rotation.z));
-  DoublePrecision si = math::sin(DoublePrecision(rotation.x));
-  DoublePrecision sj = math::sin(DoublePrecision(rotation.y));
-  DoublePrecision sh = math::sin(DoublePrecision(rotation.z));
+  DoublePrecision ci = math::cos(DoublePrecision(rotation.x()));
+  DoublePrecision cj = math::cos(DoublePrecision(rotation.y()));
+  DoublePrecision ch = math::cos(DoublePrecision(rotation.z()));
+  DoublePrecision si = math::sin(DoublePrecision(rotation.x()));
+  DoublePrecision sj = math::sin(DoublePrecision(rotation.y()));
+  DoublePrecision sh = math::sin(DoublePrecision(rotation.z()));
   DoublePrecision cc = ci * ch;
   DoublePrecision cs = ci * sh;
   DoublePrecision sc = si * ch;
@@ -926,9 +926,7 @@ MatBase<T, NumCol, NumRow> from_rotation(const Euler3<T> &rotation)
   int j = rotation.y_index();
   int k = rotation.z_index();
 #if 1 /* Reference. */
-  VecBase<T, 3> eul_xyz{EulerXYZ<T>(rotation)};
-  VecBase<T, 3> ijk = rotation.parity() ? -eul_xyz : eul_xyz;
-  MatT mat = from_rotation<T, NumCol, NumRow>(EulerXYZ<T>(ijk));
+  MatT mat = from_rotation<T, NumCol, NumRow>(EulerXYZ<T>(rotation.xyz()));
   MatT result = MatT::identity();
   result[i][i] = mat[0][0];
   result[j][i] = mat[1][0];

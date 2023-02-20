@@ -106,19 +106,19 @@ TEST(math_rotation_types, Euler3Order)
   BLI_STATIC_ASSERT(
       static_cast<int>(eEulerOrder::ZYX) == static_cast<int>(eRotationModes::ROT_MODE_ZYX), "");
 
-  EXPECT_EQ(float3(Euler3({0, 1, 2}, eEulerOrder::XYZ)), float3(0, 1, 2));
-  EXPECT_EQ(float3(Euler3({0, 1, 2}, eEulerOrder::XZY)), float3(0, 1, 2));
-  EXPECT_EQ(float3(Euler3({0, 1, 2}, eEulerOrder::YXZ)), float3(0, 1, 2));
-  EXPECT_EQ(float3(Euler3({0, 1, 2}, eEulerOrder::YZX)), float3(0, 1, 2));
-  EXPECT_EQ(float3(Euler3({0, 1, 2}, eEulerOrder::ZXY)), float3(0, 1, 2));
-  EXPECT_EQ(float3(Euler3({0, 1, 2}, eEulerOrder::ZYX)), float3(0, 1, 2));
+  EXPECT_EQ(Euler3({0, 1, 2}, eEulerOrder::XYZ).ijk(), float3(0, 1, 2));
+  EXPECT_EQ(Euler3({0, 1, 2}, eEulerOrder::XZY).ijk(), float3(0, 1, 2));
+  EXPECT_EQ(Euler3({0, 1, 2}, eEulerOrder::YXZ).ijk(), float3(0, 1, 2));
+  EXPECT_EQ(Euler3({0, 1, 2}, eEulerOrder::YZX).ijk(), float3(0, 1, 2));
+  EXPECT_EQ(Euler3({0, 1, 2}, eEulerOrder::ZXY).ijk(), float3(0, 1, 2));
+  EXPECT_EQ(Euler3({0, 1, 2}, eEulerOrder::ZYX).ijk(), float3(0, 1, 2));
 
-  EXPECT_EQ(float3(EulerXYZ(Euler3({0, 1, 2}, eEulerOrder::XYZ))), float3(0, 1, 2));
-  EXPECT_EQ(float3(EulerXYZ(Euler3({0, 1, 2}, eEulerOrder::XZY))), float3(0, 2, 1));
-  EXPECT_EQ(float3(EulerXYZ(Euler3({0, 1, 2}, eEulerOrder::YXZ))), float3(1, 0, 2));
-  EXPECT_EQ(float3(EulerXYZ(Euler3({0, 1, 2}, eEulerOrder::YZX))), float3(1, 2, 0));
-  EXPECT_EQ(float3(EulerXYZ(Euler3({0, 1, 2}, eEulerOrder::ZXY))), float3(2, 0, 1));
-  EXPECT_EQ(float3(EulerXYZ(Euler3({0, 1, 2}, eEulerOrder::ZYX))), float3(2, 1, 0));
+  EXPECT_EQ(Euler3({0, 1, 2}, eEulerOrder::XYZ).xyz(), float3(0, 1, 2));
+  EXPECT_EQ(Euler3({0, 1, 2}, eEulerOrder::XZY).xyz(), -float3(0, 2, 1));
+  EXPECT_EQ(Euler3({0, 1, 2}, eEulerOrder::YXZ).xyz(), -float3(1, 0, 2));
+  EXPECT_EQ(Euler3({0, 1, 2}, eEulerOrder::YZX).xyz(), float3(1, 2, 0));
+  EXPECT_EQ(Euler3({0, 1, 2}, eEulerOrder::ZXY).xyz(), float3(2, 0, 1));
+  EXPECT_EQ(Euler3({0, 1, 2}, eEulerOrder::ZYX).xyz(), -float3(2, 1, 0));
 }
 
 TEST(math_rotation_types, DualQuaternionUniformScaleConstructor)

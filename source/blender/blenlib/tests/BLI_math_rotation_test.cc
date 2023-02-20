@@ -281,9 +281,9 @@ TEST(math_rotation, DefaultConstructor)
   EXPECT_EQ(quat.w, 0.0f);
 
   EulerXYZ eul{};
-  EXPECT_EQ(eul.x, 0.0f);
-  EXPECT_EQ(eul.y, 0.0f);
-  EXPECT_EQ(eul.z, 0.0f);
+  EXPECT_EQ(eul.x(), 0.0f);
+  EXPECT_EQ(eul.y(), 0.0f);
+  EXPECT_EQ(eul.z(), 0.0f);
 }
 
 TEST(math_rotation, RotateDirectionAroundAxis)

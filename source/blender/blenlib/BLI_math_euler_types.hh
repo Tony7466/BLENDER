@@ -6,15 +6,18 @@
  * \ingroup bli
  *
  * A `blender::math::EulerXYZ` represent a typical (X, Y, Z) euler 3D rotation.
- *
- * It is prone to gimbal lock and is not suited for many application. However it is much intuitive
- * than other rotation types. Its main use it for converting user facing rotation values to other
- * rotation types. The angle values are stored as radian and expected as such by the constructors.
- *
- *
  * A `blender::math::Euler3` represent a euler 3D rotation with runtime axis order.
  *
- * It shares the same limitations as `EulerXYZ`.
+ * They both share the same interface functions.
+ * For both types `ijk()` represent the rotation values in the order given to the constructor.
+ * Whereas `xyz()` is the order after shuffling and flipping axes signs but cannot be assigned.
+ *
+ * They are prone to gimbal lock and is not suited for many application. However they are more
+ * intuitive than other rotation types. Their main use is for converting user facing rotation
+ * values to other rotation types. The angle values are stored as radian and expected as such by
+ * the constructors.
+ *
+ * `blender::math::Euler3` shares the same limitations as `blender::math::EulerXYZ`.
  * The rotation order is set at creation and is immutable. This avoids accidentally changing the
  * meaning of what the variable holds.
  *
@@ -43,21 +46,19 @@ template<typename T, typename AngleT> struct AxisAngle;
 template<typename T> struct Quaternion;
 
 template<typename T> struct EulerXYZ {
-  T x, y, z;
+ private:
+  VecBase<T, 3> xyz_;
 
+ public:
   EulerXYZ() = default;
 
   EulerXYZ(const AngleRadian<T> &x, const AngleRadian<T> &y, const AngleRadian<T> &z)
-  {
-    this->x = T(x);
-    this->y = T(y);
-    this->z = T(z);
-  }
+      : xyz_(T(x), T(y), T(z)){};
 
   /**
    * Create an euler x,y,z rotation from a triple of radian angle.
    */
-  EulerXYZ(const VecBase<T, 3> &vec) : EulerXYZ(UNPACK3(vec)){};
+  EulerXYZ(const VecBase<T, 3> &vec) : xyz_(vec){};
 
   /**
    * Create a rotation from an basis axis and an angle.
@@ -75,16 +76,58 @@ template<typename T> struct EulerXYZ {
     return {0, 0, 0};
   }
 
-  /** Conversions. */
+  /** Methods. */
 
-  explicit operator VecBase<T, 3>() const
+  /**
+   * Components in the order this rotation is set to (the default XYZ).
+   * Equivalent to `ijk()` but not assignable to follow interface of #Euler3.
+   */
+  VecBase<T, 3> xyz() const
   {
-    return {this->x, this->y, this->z};
+    return xyz_;
   }
 
-  explicit operator Quaternion<T>() const;
+  /**
+   * Components in storage order. Match the order of the constructor order.
+   */
+  const VecBase<T, 3> &ijk() const
+  {
+    return xyz_;
+  }
+  VecBase<T, 3> &ijk()
+  {
+    return xyz_;
+  }
 
-  /** Operators. */
+  const T &x() const
+  {
+    return xyz_.x;
+  }
+
+  const T &y() const
+  {
+    return xyz_.y;
+  }
+
+  const T &z() const
+  {
+    return xyz_.z;
+  }
+
+  T &x()
+  {
+    return xyz_.x;
+  }
+
+  T &y()
+  {
+    return xyz_.y;
+  }
+
+  T &z()
+  {
+    return xyz_.z;
+  }
 
   /**
    * Return this euler orientation but wrapped around \a reference.
@@ -93,6 +136,22 @@ template<typename T> struct EulerXYZ {
    * shortest path. The angle between them will not be more than pi.
    */
   EulerXYZ wrapped_around(const EulerXYZ &reference) const;
+
+  /** Conversions. */
+
+  explicit operator VecBase<T, 3>() const
+  {
+    return xyz_;
+  }
+
+  explicit operator Quaternion<T>() const;
+
+  /** Operators. */
+
+  friend EulerXYZ operator-(const EulerXYZ &a)
+  {
+    return {-a.ijk_, a.order_};
+  }
 
   friend std::ostream &operator<<(std::ostream &stream, const EulerXYZ &rot)
   {
@@ -174,15 +233,6 @@ template<typename T> struct Euler3 {
     return ijk_;
   }
 
-  /**
-   * This isn't a conversion, but a reinterpretation shuffling the axes around.
-   * Doesn't take into account the parity.
-   */
-  explicit operator EulerXYZ<T>() const
-  {
-    return {x(), y(), z()};
-  }
-
   explicit operator Quaternion<T>() const;
 
   /**
@@ -198,7 +248,24 @@ template<typename T> struct Euler3 {
     return order_;
   }
 
+  /**
+   * Components in the order this rotation is set to by the `order` flag in the constructor.
+   * Flip the axes if parity is odd.
+   */
+  VecBase<T, 3> xyz() const
+  {
+    VecBase<T, 3> result{x(), y(), z()};
+    return parity() ? -result : result;
+  }
+
+  /**
+   * Components in storage order. Match the order of the constructor arguments.
+   */
   const VecBase<T, 3> &ijk() const
+  {
+    return ijk_;
+  }
+  VecBase<T, 3> &ijk()
   {
     return ijk_;
   }
@@ -216,11 +283,6 @@ template<typename T> struct Euler3 {
   const T &z() const
   {
     return ijk_[z_index()];
-  }
-
-  VecBase<T, 3> &ijk()
-  {
-    return ijk_;
   }
 
   T &x()
