@@ -133,8 +133,6 @@ void shadow_tag_usage_tilemap_punctual(uint l_idx, vec3 P, vec3 V, float dist_to
       lod = clamp(lod, 0, SHADOW_TILEMAP_LOD);
 
       vec3 _lP = shadow_punctual_local_position_to_face_local(face_id, lP);
-      /* Compute min/max based on the plane nearest to the light origin. */
-      _lP.z += radius;
 
       vec3 offset = vec3(radius, radius, 0);
       ShadowCoordinates coord_min = shadow_punctual_coordinates(light, _lP - offset, face_id);
