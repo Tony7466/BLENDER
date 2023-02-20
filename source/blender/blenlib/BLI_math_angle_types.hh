@@ -27,9 +27,23 @@
  * - Fast : `cos()`, `sin()`, `tan()`, `AngleCartesian(cos, sin)`
  * - Slow : Everything not fast.
  * It is only useful for intermediate representation when converting to other rotation types (eg:
- * AxisAngle > Quaternion) and for creating rotation from 2d points. In general it is offers an
+ * AxisAngle > Quaternion) and for creating rotation from 2d points. In general it offers an
  * advantage when needing trigonometric values of an angle and not directly the angle itself.
  * It is also a nice shortcut for using the trigonometric identities.
+ *
+ *
+ * A `blender::math::AngleFraction<T>` stores the radian angle as quotient.
+ * - Storage : `2 * sizeof(int64_t)`
+ * - Range : [-INT64_MAX..INT64_MAX] but angle must be expressed as fraction (be in Q subset).
+ * - Fast : Everything not slow.
+ * - Slow : `cos()`, `sin()`, `tan()` for angles not optimized.
+ * It offers the best accuracy fo fractions of Pi radian angles. For instance
+ * `sin(AngleFraction::tau() * n - AngleFraction::pi() / 2)` will exactly return `-1` for any `n`
+ * within [-INT64_MAX..INT64_MAX]. This holds true even with really high radian values.
+ * The `T` template parameter only serves as type for the computed values like `cos()` or
+ * `radian()`. Any operation becomes undefined if either the numerator or the denominator
+ * overflows. Arithmetic operators are relatively cheap (4 operations for addition, 2 for
+ * multiplication) but not as cheap as a `AngleRadian`.
  *
  */
 
@@ -83,12 +97,18 @@ template<typename T> struct AngleRadian {
 
   /** Methods. */
 
+  /* 'mod_inline(-3, 4)= 1', 'fmod(-3, 4)= -3' */
+  static float mod_inline(float a, float b)
+  {
+    return a - (b * floorf(a / b));
+  }
+
   /**
    * Return the angle wrapped inside [-pi..pi] range.
    */
   AngleRadian wrapped() const
   {
-    return math::mod(value_ + T(M_PI), T(2 * M_PI)) - T(M_PI);
+    return math::mod_periodic(value_ + T(M_PI), T(2 * M_PI)) - T(M_PI);
   }
 
   /**
@@ -351,6 +371,239 @@ template<typename T> struct AngleCartesian {
 };
 
 }  // namespace detail
+
+template<typename T = float> struct AngleFraction {
+ private:
+  /**
+   * The angle is stored as a fraction of pi.
+   */
+  int64_t numerator_;
+  int64_t denominator_;
+
+  AngleFraction(int64_t numerator, int64_t denominator = 1)
+      : numerator_(numerator), denominator_(denominator){};
+
+ public:
+  /** Static functions. */
+
+  static AngleFraction identity()
+  {
+    return {0};
+  }
+
+  static AngleFraction pi()
+  {
+    return {1};
+  }
+
+  static AngleFraction tau()
+  {
+    return {2};
+  }
+
+  /** Conversions. */
+
+  /* Return angle value in degree. */
+  T degree() const
+  {
+    return T(numerator_ * 180) / T(denominator_);
+  }
+
+  /* Return angle value in radian. */
+  T radian() const
+  {
+    /* This can be refined at will. This tries to reduce the error to a maximum. */
+    bool is_negative = numerator_ < 0;
+    /* TODO jump table. */
+    if (abs(numerator_) == denominator_ * 2) {
+      return is_negative ? T(-M_PI * 2) : T(M_PI * 2);
+    }
+    if (abs(numerator_) == denominator_) {
+      return is_negative ? T(-M_PI) : T(M_PI);
+    }
+    if (numerator_ == 0) {
+      return T(0);
+    }
+    if (abs(numerator_) * 2 == denominator_) {
+      return is_negative ? T(-M_PI_2) : T(M_PI_2);
+    }
+    if (abs(numerator_) * 4 == denominator_) {
+      return is_negative ? T(-M_PI_4) : T(M_PI_4);
+    }
+    /* TODO(fclem): No idea if this is precise or not. Just doing something for now. */
+    int64_t number_of_pi = numerator_ / denominator_;
+    int64_t slice_numerator = numerator_ - number_of_pi * denominator_;
+    T slice_of_pi;
+    /* Avoid integer overflow. */
+    /* TODO(fclem): This is conservative. Could find a better threshold. */
+    if (slice_numerator > 0xFFFFFFFF || denominator_ > 0xFFFFFFFF) {
+      /* Certainly loose precision. */
+      slice_of_pi = T(M_PI) * slice_numerator / T(denominator_);
+    }
+    else {
+      /* Pi as a fraction can be expressed as 80143857 / 25510582 with 15th digit of precision. */
+      slice_of_pi = T(slice_numerator * 80143857) / T(denominator_ * 25510582);
+    }
+    /* If angle is inside [-pi..pi] range, `number_of_pi` is 0 and has no effect on precision. */
+    return slice_of_pi + T(M_PI) * number_of_pi;
+  }
+
+  /** Methods. */
+
+  /**
+   * Return the angle wrapped inside [-pi..pi] range.
+   */
+  AngleFraction wrapped() const
+  {
+    if (abs(numerator_) <= denominator_) {
+      return *this;
+    }
+    return {mod_periodic(numerator_ + denominator_, denominator_ * 2) - denominator_,
+            denominator_};
+  }
+
+  /**
+   * Return the angle wrapped inside [-pi..pi] range around a \a reference.
+   * This mean the interpolation between the returned value and \a reference will always take the
+   * shortest path.
+   * In case of ambiguity (-pi vs. pi), the sign of the angle is preserved.
+   */
+  AngleFraction wrapped_around(const AngleFraction &reference) const
+  {
+    return reference + (*this - reference).wrapped();
+  }
+
+  T cos() const
+  {
+    /* TODO Speedup remarkable angles. */
+    return math::cos(wrapped().radian());
+  }
+
+  T sin() const
+  {
+    /* TODO Speedup remarkable angles. */
+    return math::sin(wrapped().radian());
+  }
+
+  T tan() const
+  {
+    /* TODO Speedup remarkable angles. */
+    return math::tan(wrapped().radian());
+  }
+
+  /** Operators. */
+
+  /**
+   * We only allow operations on fractions of pi.
+   * So we cannot implement things like `AngleFraction::pi() + 1` or `AngleFraction::pi() * 0.5`.
+   */
+
+  friend AngleFraction operator+(const AngleFraction &a, const AngleFraction &b)
+  {
+    if (a.denominator_ == b.denominator_) {
+      return {a.numerator_ + b.numerator_, a.denominator_};
+    }
+    return {(a.numerator_ * b.denominator_) + (b.numerator_ * a.denominator_),
+            a.denominator_ * b.denominator_};
+  }
+
+  friend AngleFraction operator-(const AngleFraction &a, const AngleFraction &b)
+  {
+    return a + (-b);
+  }
+
+  friend AngleFraction operator*(const AngleFraction &a, const AngleFraction &b)
+  {
+    return {a.numerator_ * b.numerator_, a.denominator_ * b.denominator_};
+  }
+
+  friend AngleFraction operator/(const AngleFraction &a, const AngleFraction &b)
+  {
+    return a * AngleFraction(b.denominator_, b.numerator_);
+  }
+
+  friend AngleFraction operator*(const AngleFraction &a, const int64_t &b)
+  {
+    return a * AngleFraction(b);
+  }
+
+  friend AngleFraction operator/(const AngleFraction &a, const int64_t &b)
+  {
+    return a / AngleFraction(b);
+  }
+
+  friend AngleFraction operator*(const int64_t &a, const AngleFraction &b)
+  {
+    return AngleFraction(a) * b;
+  }
+
+  friend AngleFraction operator/(const int64_t &a, const AngleFraction &b)
+  {
+    return AngleFraction(a) / b;
+  }
+
+  friend AngleFraction operator+(const AngleFraction &a)
+  {
+    return a;
+  }
+
+  friend AngleFraction operator-(const AngleFraction &a)
+  {
+    return {-a.numerator_, a.denominator_};
+  }
+
+  AngleFraction &operator+=(const AngleFraction &b)
+  {
+    return *this = *this + b;
+  }
+
+  AngleFraction &operator-=(const AngleFraction &b)
+  {
+    return *this = *this - b;
+  }
+
+  AngleFraction &operator*=(const AngleFraction &b)
+  {
+    return *this = *this * b;
+  }
+
+  AngleFraction &operator/=(const AngleFraction &b)
+  {
+    return *this = *this / b;
+  }
+
+  AngleFraction &operator*=(const int64_t &b)
+  {
+    return *this = *this * b;
+  }
+
+  AngleFraction &operator/=(const int64_t &b)
+  {
+    return *this = *this / b;
+  }
+
+  friend bool operator==(const AngleFraction &a, const AngleFraction &b)
+  {
+    if (a.numerator_ == 0 && b.numerator_ == 0) {
+      return true;
+    }
+    if (a.denominator_ == b.denominator_) {
+      return a.numerator_ == b.numerator_;
+    }
+    return a.numerator_ * b.denominator_ == b.numerator_ * a.denominator_;
+  }
+
+  friend bool operator!=(const AngleFraction &a, const AngleFraction &b)
+  {
+    return !(a == b);
+  }
+
+  friend std::ostream &operator<<(std::ostream &stream, const AngleFraction &rot)
+  {
+    return stream << "AngleFraction(num=" << rot.numerator_ << ", denom=" << rot.denominator_
+                  << ")";
+  }
+};
 
 using AngleRadian = math::detail::AngleRadian<float>;
 using AngleCartesian = math::detail::AngleCartesian<float>;

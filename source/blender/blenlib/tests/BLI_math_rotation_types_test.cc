@@ -248,6 +248,9 @@ TEST(math_rotation_types, QuaternionTwistSwing)
 
 TEST(math_rotation_types, AngleMethods)
 {
+  EXPECT_NEAR(float(AngleRadian(M_PI * -2.5).wrapped()), -M_PI * 0.5, 1e-4f);
+  EXPECT_NEAR(float(AngleRadian(M_PI * -1.5).wrapped()), M_PI * 0.5, 1e-4f);
+  EXPECT_NEAR(float(AngleRadian(M_PI * -0.5).wrapped()), -M_PI * 0.5, 1e-4f);
   EXPECT_NEAR(float(AngleRadian(M_PI * 0.5).wrapped()), M_PI * 0.5, 1e-4f);
   EXPECT_NEAR(float(AngleRadian(M_PI * 2.0).wrapped()), 0.0, 1e-4f);
   EXPECT_NEAR(float(AngleRadian(M_PI * 2.5).wrapped()), M_PI * 0.5, 1e-4f);
@@ -256,6 +259,36 @@ TEST(math_rotation_types, AngleMethods)
   EXPECT_NEAR(float(AngleRadian(M_PI * 1.0).wrapped_around(M_PI * 0.5)), M_PI, 1e-4f);
 }
 
+TEST(math_rotation_types, AngleFraction)
+{
+  using T = float;
+  using AngleFraction = AngleFraction<T>;
+  auto pi = AngleFraction::pi();
+  auto tau = AngleFraction::tau();
+  EXPECT_EQ(AngleFraction::identity().radian(), 0);
+  EXPECT_EQ(pi.radian(), T(M_PI));
+  EXPECT_EQ(tau.radian(), T(M_PI * 2));
+  /* Doesn't work with standard float angles. */
+  EXPECT_EQ((pi / 5 + pi * 4 / 5).radian(), T(M_PI));
+  EXPECT_EQ((pi * 2 / 3).radian(), T(M_PI * 2 / 3));
+  EXPECT_EQ((pi * 2 / 3).cos(), (2 * pi + pi * 2 / 3).cos());
+  EXPECT_EQ((pi * 3 / 2).sin(), T(-1));
+  EXPECT_EQ((pi * 1574051 / 2).sin(), T(-1));
+  EXPECT_EQ((-pi * 4 / 2).wrapped(), (+pi * 0 / 2));
+  EXPECT_EQ((-pi * 3 / 2).wrapped(), (+pi * 1 / 2));
+  EXPECT_EQ((-pi * 2 / 2).wrapped(), (-pi * 2 / 2));
+  EXPECT_EQ((-pi * 1 / 2).wrapped(), (-pi * 1 / 2));
+  EXPECT_EQ((+pi * 0 / 2).wrapped(), (+pi * 0 / 2));
+  EXPECT_EQ((+pi * 1 / 2).wrapped(), (+pi * 1 / 2));
+  EXPECT_EQ((+pi * 2 / 2).wrapped(), (+pi * 2 / 2));
+  EXPECT_EQ((+pi * 3 / 2).wrapped(), (-pi * 1 / 2));
+  EXPECT_EQ((+pi * 4 / 2).wrapped(), (-pi * 0 / 2));
+  EXPECT_EQ((+pi * 0 / 2).wrapped_around(pi), (+pi * 0 / 2));
+  EXPECT_EQ((+pi * 1 / 2).wrapped_around(pi), (+pi * 1 / 2));
+  EXPECT_EQ((+pi * 2 / 2).wrapped_around(pi), (+pi * 2 / 2));
+  EXPECT_EQ((+pi * 3 / 2).wrapped_around(pi), (+pi * 3 / 2));
+  EXPECT_EQ((+pi * 4 / 2).wrapped_around(pi), (+pi * 4 / 2));
+}
 TEST(math_rotation_types, TypeConversion)
 {
   /* All the same rotation. */
