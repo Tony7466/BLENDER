@@ -27,7 +27,7 @@ namespace blender::ed::transform::curves {
 static void calculate_curve_point_distances_for_proportional_editing(
     const Span<float3> positions, MutableSpan<float> r_distances)
 {
-  Array<bool> visited(positions.size(), false);
+  Array<bool, 32> visited(positions.size(), false);
 
   InplacePriorityQueue<float, std::less<float>> queue(r_distances);
   while (!queue.is_empty()) {
@@ -104,6 +104,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
       const VArray<bool> selection = curves.attributes().lookup_or_default<bool>(
           ".selection", ATTR_DOMAIN_POINT, true);
       threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange range) {
+        Vector<float> closest_distances;
         for (const int curve_i : range) {
           const IndexRange points = points_by_curve[curve_i];
           const bool has_any_selected = ed::curves::has_anything_selected(selection, points);
@@ -118,7 +119,8 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
             }
           }
 
-          Array<float> closest_distances(points.size(), FLT_MAX);
+          closest_distances.reinitialize(points.size());
+          closest_distances.fill(std::numeric_limits<float>::max());
 
           for (const int i : IndexRange(points.size())) {
             const int point_i = points[i];
