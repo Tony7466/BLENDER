@@ -887,12 +887,12 @@ MatBase<T, NumCol, NumRow> from_rotation(const EulerXYZ<T> &rotation)
 {
   using MatT = MatBase<T, NumCol, NumRow>;
   using DoublePrecision = typename TypeTraits<T>::DoublePrecision;
-  DoublePrecision cos_i = math::cos(DoublePrecision(rotation.x()));
-  DoublePrecision cos_j = math::cos(DoublePrecision(rotation.y()));
-  DoublePrecision cos_k = math::cos(DoublePrecision(rotation.z()));
-  DoublePrecision sin_i = math::sin(DoublePrecision(rotation.x()));
-  DoublePrecision sin_j = math::sin(DoublePrecision(rotation.y()));
-  DoublePrecision sin_k = math::sin(DoublePrecision(rotation.z()));
+  DoublePrecision cos_i = math::cos(DoublePrecision(rotation.x().radian()));
+  DoublePrecision cos_j = math::cos(DoublePrecision(rotation.y().radian()));
+  DoublePrecision cos_k = math::cos(DoublePrecision(rotation.z().radian()));
+  DoublePrecision sin_i = math::sin(DoublePrecision(rotation.x().radian()));
+  DoublePrecision sin_j = math::sin(DoublePrecision(rotation.y().radian()));
+  DoublePrecision sin_k = math::sin(DoublePrecision(rotation.z().radian()));
   DoublePrecision cos_i_cos_k = cos_i * cos_k;
   DoublePrecision cos_i_sin_k = cos_i * sin_k;
   DoublePrecision sin_i_cos_k = sin_i * cos_k;

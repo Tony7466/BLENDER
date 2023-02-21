@@ -22,9 +22,9 @@ namespace blender::math::detail {
 template<typename T> EulerXYZ<T>::operator Quaternion<T>() const
 {
   const EulerXYZ<T> &eul = *this;
-  const T h_angle_i = eul.x() / 2;
-  const T h_angle_j = eul.y() / 2;
-  const T h_angle_k = eul.z() / 2;
+  const AngleT h_angle_i = eul.x() / 2;
+  const AngleT h_angle_j = eul.y() / 2;
+  const AngleT h_angle_k = eul.z() / 2;
   const T cos_i = math::cos(h_angle_i);
   const T cos_j = math::cos(h_angle_j);
   const T cos_k = math::cos(h_angle_k);

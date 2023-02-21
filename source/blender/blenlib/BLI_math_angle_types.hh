@@ -147,6 +147,16 @@ template<typename T> struct AngleRadian {
     return *this;
   }
 
+  friend bool operator==(const AngleRadian &a, const AngleRadian &b)
+  {
+    return a.value_ == b.value_;
+  }
+
+  friend bool operator!=(const AngleRadian &a, const AngleRadian &b)
+  {
+    return !(a == b);
+  }
+
   friend std::ostream &operator<<(std::ostream &stream, const AngleRadian &rot)
   {
     return stream << "AngleRadian(" << rot.value_ << ")";
@@ -336,6 +346,16 @@ template<typename T> struct AngleCartesian {
   {
     *this = *this / b;
     return *this;
+  }
+
+  friend bool operator==(const AngleCartesian &a, const AngleCartesian &b)
+  {
+    return a.cos_ == b.cos_ && a.sin_ == b.sin_;
+  }
+
+  friend bool operator!=(const AngleCartesian &a, const AngleCartesian &b)
+  {
+    return !(a == b);
   }
 
   friend std::ostream &operator<<(std::ostream &stream, const AngleCartesian &rot)

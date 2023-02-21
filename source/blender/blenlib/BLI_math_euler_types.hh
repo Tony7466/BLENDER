@@ -67,67 +67,75 @@ namespace detail {
  * \{ */
 
 template<typename T> struct EulerBase {
+  using AngleT = AngleRadian<T>;
+
  protected:
   /**
    * Container for the rotation values. They are always stored as XYZ order.
    * Rotation values are stored without parity flipping.
    */
-  VecBase<T, 3> xyz_;
+  VecBase<AngleT, 3> xyz_;
 
   EulerBase() = default;
 
-  EulerBase(const AngleRadian<T> &x, const AngleRadian<T> &y, const AngleRadian<T> &z)
-      : xyz_(T(x), T(y), T(z)){};
+  EulerBase(const AngleT &x, const AngleT &y, const AngleT &z) : xyz_(x, y, z){};
 
-  EulerBase(const VecBase<T, 3> &vec) : xyz_(vec){};
+  EulerBase(const VecBase<AngleT, 3> &vec) : xyz_(vec){};
+
+  EulerBase(const VecBase<T, 3> &vec) : xyz_(vec.x, vec.y, vec.z){};
 
  public:
   /** Static functions. */
 
   /** Conversions. */
 
-  explicit operator VecBase<T, 3>() const
+  explicit operator VecBase<AngleT, 3>() const
   {
     return this->xyz_;
+  }
+
+  explicit operator VecBase<T, 3>() const
+  {
+    return {T(x()), T(y()), T(z())};
   }
 
   /** Methods. */
 
-  VecBase<T, 3> &xyz()
+  VecBase<AngleT, 3> &xyz()
   {
     return this->xyz_;
   }
-  const VecBase<T, 3> &xyz() const
+  const VecBase<AngleT, 3> &xyz() const
   {
     return this->xyz_;
   }
 
-  const T &x() const
+  const AngleT &x() const
   {
     return this->xyz_.x;
   }
 
-  const T &y() const
+  const AngleT &y() const
   {
     return this->xyz_.y;
   }
 
-  const T &z() const
+  const AngleT &z() const
   {
     return this->xyz_.z;
   }
 
-  T &x()
+  AngleT &x()
   {
     return this->xyz_.x;
   }
 
-  T &y()
+  AngleT &y()
   {
     return this->xyz_.y;
   }
 
-  T &z()
+  AngleT &z()
   {
     return this->xyz_.z;
   }
@@ -144,22 +152,23 @@ template<typename T, typename AngleT> struct AxisAngle;
 template<typename T> struct Quaternion;
 
 template<typename T> struct EulerXYZ : public EulerBase<T> {
+  using AngleT = AngleRadian<T>;
+
  public:
   EulerXYZ() = default;
-
-  EulerXYZ(const AngleRadian<T> &x, const AngleRadian<T> &y, const AngleRadian<T> &z)
-      : EulerBase<T>(x, y, z){};
 
   /**
    * Create an euler x,y,z rotation from a triple of radian angle.
    */
-  EulerXYZ(const VecBase<T, 3> &vec) : EulerBase<T>(vec){};
+  template<typename AngleU> EulerXYZ(const VecBase<AngleU, 3> &vec) : EulerBase<T>(vec){};
+
+  EulerXYZ(const AngleT &x, const AngleT &y, const AngleT &z) : EulerBase<T>(x, y, z){};
 
   /**
    * Create a rotation from an basis axis and an angle.
    * This sets a single component of the euler triple, the others are left to 0.
    */
-  EulerXYZ(const Axis axis, T angle)
+  EulerXYZ(const Axis axis, const AngleT &angle)
   {
     BLI_assert(axis >= 0 && axis <= 2);
     *static_cast<EulerBase<T> *>(this) = identity();
@@ -196,7 +205,7 @@ template<typename T> struct EulerXYZ : public EulerBase<T> {
 
   friend EulerXYZ operator-(const EulerXYZ &a)
   {
-    return {-a.xyz_};
+    return {-a.xyz_.x, -a.xyz_.y, -a.xyz_.z};
   }
 
   friend bool operator==(const EulerXYZ &a, const EulerXYZ &b)
@@ -217,6 +226,8 @@ template<typename T> struct EulerXYZ : public EulerBase<T> {
  * \{ */
 
 template<typename T> struct Euler3 : public EulerBase<T> {
+  using AngleT = AngleRadian<T>;
+
  private:
   /** Axes order from applying the rotation. */
   eEulerOrder order_;
@@ -231,7 +242,7 @@ template<typename T> struct Euler3 : public EulerBase<T> {
    public:
     Swizzle(Euler3 &eul) : eul_(eul){};
 
-    Euler3 &operator=(const VecBase<T, 3> &angles)
+    Euler3 &operator=(const VecBase<AngleT, 3> &angles)
     {
       eul_.xyz_.x = angles[eul_.i_index()];
       eul_.xyz_.y = angles[eul_.j_index()];
@@ -239,9 +250,14 @@ template<typename T> struct Euler3 : public EulerBase<T> {
       return eul_;
     }
 
-    operator VecBase<T, 3>() const
+    operator VecBase<AngleT, 3>() const
     {
       return {eul_.i(), eul_.j(), eul_.k()};
+    }
+
+    explicit operator VecBase<T, 3>() const
+    {
+      return {T(eul_.i()), T(eul_.j()), T(eul_.k())};
     }
   };
 
@@ -253,13 +269,17 @@ template<typename T> struct Euler3 : public EulerBase<T> {
    * from a triple of radian angles in XYZ order.
    * eg: If \a order is `eEulerOrder::ZXY` then `angles.z` will be the angle of the first rotation.
    */
-  Euler3(const VecBase<T, 3> &angles_xyz, eEulerOrder order)
+  template<typename AngleU>
+  Euler3(const VecBase<AngleU, 3> &angles_xyz, eEulerOrder order)
       : EulerBase<T>(angles_xyz), order_(order){};
+
+  Euler3(const AngleT &x, const AngleT &y, const AngleT &z, eEulerOrder order)
+      : EulerBase<T>(x, y, z), order_(order){};
 
   /**
    * Create a rotation around a single euler axis and an angle.
    */
-  Euler3(const Axis axis, T angle, eEulerOrder order) : EulerBase<T>(), order_(order)
+  Euler3(const Axis axis, AngleT angle, eEulerOrder order) : EulerBase<T>(), order_(order)
   {
     this->xyz_[axis] = angle;
   }
@@ -277,7 +297,7 @@ template<typename T> struct Euler3 : public EulerBase<T> {
   /**
    * Conversion to Euler3 needs to be constructors because of the additional order.
    */
-  explicit Euler3(const AxisAngle<T, AngleRadian<T>> &axis_angle, eEulerOrder order);
+  explicit Euler3(const AxisAngle<T, AngleT> &axis_angle, eEulerOrder order);
   explicit Euler3(const Quaternion<T> &quat, eEulerOrder order);
 
   /** Methods. */
@@ -295,7 +315,7 @@ template<typename T> struct Euler3 : public EulerBase<T> {
   {
     return {*this};
   }
-  const VecBase<T, 3> ijk() const
+  const VecBase<AngleT, 3> ijk() const
   {
     return {i(), j(), k()};
   }
@@ -304,27 +324,27 @@ template<typename T> struct Euler3 : public EulerBase<T> {
    * Returns the rotations angle in rotation order.
    * eg: if rotation `order` is `YZX` then `i` is the `Y` rotation.
    */
-  const T &i() const
+  const AngleT &i() const
   {
     return this->xyz_[i_index()];
   }
-  const T &j() const
+  const AngleT &j() const
   {
     return this->xyz_[j_index()];
   }
-  const T &k() const
+  const AngleT &k() const
   {
     return this->xyz_[k_index()];
   }
-  T &i()
+  AngleT &i()
   {
     return this->xyz_[i_index()];
   }
-  T &j()
+  AngleT &j()
   {
     return this->xyz_[j_index()];
   }
-  T &k()
+  AngleT &k()
   {
     return this->xyz_[k_index()];
   }
@@ -337,7 +357,7 @@ template<typename T> struct Euler3 : public EulerBase<T> {
    */
   Euler3 wrapped_around(const Euler3 &reference) const
   {
-    return {VecBase<T, 3>(EulerXYZ(this->xyz_).wrapped_around(reference.xyz_)), order_};
+    return {VecBase<AngleT, 3>(EulerXYZ<T>(this->xyz_).wrapped_around(reference.xyz_)), order_};
   }
 
   /** Operators. */
