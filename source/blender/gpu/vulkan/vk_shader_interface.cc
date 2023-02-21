@@ -51,6 +51,10 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
     ssbo_len_++;
     names_size += PUSH_CONSTANTS_FALLBACK_NAME_LEN + 1;
   }
+  else if (push_constants_storage_type == VKPushConstantsLayout::StorageType::UNIFORM_BUFFER) {
+    ubo_len_++;
+    names_size += PUSH_CONSTANTS_FALLBACK_NAME_LEN + 1;
+  }
 
   /* Make sure that the image slots don't overlap with the sampler slots.*/
   image_offset_++;
@@ -73,6 +77,16 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
       input->binding = res.slot;
       input++;
     }
+  }
+  /* Add push constant when using uniform buffer as fallback. */
+  int32_t push_constants_fallback_location = -1;
+  ShaderInput *push_constants_fallback_input = nullptr;
+  if (push_constants_storage_type == VKPushConstantsLayout::StorageType::UNIFORM_BUFFER) {
+    copy_input_name(input, PUSH_CONSTANTS_FALLBACK_NAME, name_buffer_, name_buffer_offset);
+    input->location = push_constants_fallback_location = location++;
+    input->binding = -1;
+    push_constants_fallback_input = input;
+    input++;
   }
 
   /* Images, Samplers and buffers. */
@@ -118,8 +132,6 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
    * When using storage buffer storage type we need to add it to the the name list here.
    * Also determine the location as this is used inside the descriptor set as its binding number.
    */
-  int32_t push_constants_fallback_location = -1;
-  ShaderInput *push_constants_fallback_input = nullptr;
   if (push_constants_storage_type == VKPushConstantsLayout::StorageType::STORAGE_BUFFER) {
     copy_input_name(input, PUSH_CONSTANTS_FALLBACK_NAME, name_buffer_, name_buffer_offset);
     input->location = push_constants_fallback_location = location++;

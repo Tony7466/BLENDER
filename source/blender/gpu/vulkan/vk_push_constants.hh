@@ -24,12 +24,12 @@
 #include "gpu_shader_create_info.hh"
 
 #include "vk_common.hh"
-//#include "vk_context.hh"
 #include "vk_descriptor_set.hh"
-#include "vk_storage_buffer.hh"
 
 namespace blender::gpu {
 class VKShaderInterface;
+class VKUniformBuffer;
+class VKStorageBuffer;
 
 /**
  * Describe the layout of the push constants and the storage type that should be used.
@@ -40,6 +40,7 @@ struct VKPushConstantsLayout {
     NONE,
     PUSH_CONSTANTS,
     STORAGE_BUFFER,
+    UNIFORM_BUFFER,
   };
 
   struct PushConstantLayout {
@@ -98,6 +99,7 @@ class VKPushConstants : NonCopyable {
   const VKPushConstantsLayout *layout_ = nullptr;
   void *data_ = nullptr;
   VKStorageBuffer *storage_buffer_ = nullptr;
+  VKUniformBuffer *uniform_buffer_ = nullptr;
 
  public:
   VKPushConstants();
@@ -129,6 +131,9 @@ class VKPushConstants : NonCopyable {
 
   void update_storage_buffer(VkDevice vk_device);
   VKStorageBuffer &storage_buffer_get();
+
+  void update_uniform_buffer(VkDevice vk_device);
+  VKUniformBuffer &uniform_buffer_get();
 
   const void *data() const
   {

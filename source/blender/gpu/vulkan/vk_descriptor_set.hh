@@ -16,6 +16,7 @@
 
 namespace blender::gpu {
 class VKStorageBuffer;
+class VKUniformBuffer;
 class VKVertexBuffer;
 class VKIndexBuffer;
 class VKTexture;
@@ -131,6 +132,7 @@ class VKDescriptorSet : NonCopyable {
   void bind_as_ssbo(VKVertexBuffer &buffer, Location location);
   void bind_as_ssbo(VKIndexBuffer &buffer, Location location);
   void bind(VKStorageBuffer &buffer, Location location);
+  void bind(VKUniformBuffer &buffer, Location location);
   void image_bind(VKTexture &texture, Location location);
 
   /**

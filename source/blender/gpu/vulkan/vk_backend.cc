@@ -84,6 +84,12 @@ void VKBackend::compute_dispatch(int groups_x_len, int groups_y_len, int groups_
       descriptor_set.bind(push_constants.storage_buffer_get(),
                           push_constants.storage_buffer_binding_get());
       break;
+
+    case VKPushConstantsLayout::StorageType::UNIFORM_BUFFER:
+      push_constants.update_uniform_buffer(context.device_get());
+      descriptor_set.bind(push_constants.uniform_buffer_get(),
+                          push_constants.storage_buffer_binding_get());
+      break;
   }
   descriptor_set.update(context.device_get());
   command_buffer.bind(

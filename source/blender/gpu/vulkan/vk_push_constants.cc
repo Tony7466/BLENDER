@@ -9,13 +9,14 @@
 #include "vk_backend.hh"
 #include "vk_memory.hh"
 #include "vk_shader_interface.hh"
+#include "vk_storage_buffer.hh"
+#include "vk_uniform_buffer.hh"
 
 namespace blender::gpu {
 
-template<typename Layout>
-static void align(const shader::ShaderCreateInfo::PushConst &push_constant, uint32_t *r_offset)
+template<typename Layout> static void align(const shader::Type &type, uint32_t *r_offset)
 {
-  uint32_t alignment = Layout::element_alignment(push_constant.type);
+  uint32_t alignment = Layout::element_alignment(type);
   uint32_t alignment_mask = alignment - 1;
   uint32_t offset = *r_offset;
   if ((offset & alignment_mask) != 0) {
@@ -42,7 +43,7 @@ static VKPushConstantsLayout::PushConstantLayout init_constant(
     const ShaderInput &shader_input,
     uint32_t *r_offset)
 {
-  align<Layout>(push_constant, r_offset);
+  align<Layout>(push_constant.type, r_offset);
 
   VKPushConstantsLayout::PushConstantLayout layout;
   layout.location = shader_input.location;
@@ -54,6 +55,21 @@ static VKPushConstantsLayout::PushConstantLayout init_constant(
   return layout;
 }
 
+template<typename Layout>
+uint32_t struct_size(Span<shader::ShaderCreateInfo::PushConst> push_constants)
+{
+  uint32_t offset = 0;
+  for (const shader::ShaderCreateInfo::PushConst &push_constant : push_constants) {
+    align<Layout>(push_constant.type, &offset);
+    reserve<Layout>(push_constant, &offset);
+  }
+
+  /* Make sure result is aligned to 64 bytes.*/
+  align<Layout>(shader::Type::VEC4, &offset);
+
+  return offset;
+}
+
 VKPushConstantsLayout::StorageType VKPushConstantsLayout::determine_storage_type(
     const shader::ShaderCreateInfo &info, const VkPhysicalDeviceLimits &vk_physical_device_limits)
 {
@@ -61,13 +77,9 @@ VKPushConstantsLayout::StorageType VKPushConstantsLayout::determine_storage_type
     return StorageType::NONE;
   }
 
-  uint32_t offset = 0;
-  for (const shader::ShaderCreateInfo::PushConst &push_constant : info.push_constants_) {
-    align<Std430>(push_constant, &offset);
-    reserve<Std430>(push_constant, &offset);
-  }
-  return offset <= vk_physical_device_limits.maxPushConstantsSize ? StorageType::PUSH_CONSTANTS :
-                                                                    StorageType::STORAGE_BUFFER;
+  uint32_t size = struct_size<Std430>(info.push_constants_);
+  return size <= vk_physical_device_limits.maxPushConstantsSize ? StorageType::PUSH_CONSTANTS :
+                                                                  StorageType::STORAGE_BUFFER;
 }
 
 void VKPushConstantsLayout::init(const shader::ShaderCreateInfo &info,
@@ -77,7 +89,7 @@ void VKPushConstantsLayout::init(const shader::ShaderCreateInfo &info,
 {
   BLI_assert(push_constants.is_empty());
   storage_type_ = storage_type;
-  if (storage_type == StorageType::STORAGE_BUFFER) {
+  if (ELEM(storage_type, StorageType::STORAGE_BUFFER, StorageType::UNIFORM_BUFFER)) {
     BLI_assert(shader_input);
     storage_buffer_binding_ = VKDescriptorSet::Location(shader_input);
   }
@@ -85,7 +97,12 @@ void VKPushConstantsLayout::init(const shader::ShaderCreateInfo &info,
   for (const shader::ShaderCreateInfo::PushConst &push_constant : info.push_constants_) {
     const ShaderInput *shader_input = interface.uniform_get(push_constant.name.c_str());
     BLI_assert(shader_input);
-    push_constants.append(init_constant<Std430>(push_constant, *shader_input, &offset));
+    if (storage_type == StorageType::UNIFORM_BUFFER) {
+      push_constants.append(init_constant<Std140>(push_constant, *shader_input, &offset));
+    }
+    else {
+      push_constants.append(init_constant<Std430>(push_constant, *shader_input, &offset));
+    }
   }
   size_in_bytes_ = offset;
 }
@@ -100,12 +117,23 @@ const VKPushConstantsLayout::PushConstantLayout *VKPushConstantsLayout::find(
   }
   return nullptr;
 }
+
 VKPushConstants::VKPushConstants() = default;
 VKPushConstants::VKPushConstants(const VKPushConstantsLayout *layout) : layout_(layout)
 {
   data_ = MEM_mallocN(layout->size_in_bytes(), __func__);
-  if (storage_type_get() == VKPushConstantsLayout::StorageType::STORAGE_BUFFER) {
-    storage_buffer_ = new VKStorageBuffer(size_in_bytes(), GPU_USAGE_DYNAMIC, __func__);
+  switch (storage_type_get()) {
+    case VKPushConstantsLayout::StorageType::STORAGE_BUFFER:
+      storage_buffer_ = new VKStorageBuffer(size_in_bytes(), GPU_USAGE_DYNAMIC, __func__);
+      break;
+
+    case VKPushConstantsLayout::StorageType::UNIFORM_BUFFER:
+      uniform_buffer_ = new VKUniformBuffer(size_in_bytes(), __func__);
+      break;
+
+    case VKPushConstantsLayout::StorageType::PUSH_CONSTANTS:
+    case VKPushConstantsLayout::StorageType::NONE:
+      break;
   }
 }
 
@@ -116,6 +144,9 @@ VKPushConstants::VKPushConstants(VKPushConstants &&other) : layout_(other.layout
 
   storage_buffer_ = other.storage_buffer_;
   other.storage_buffer_ = nullptr;
+
+  uniform_buffer_ = other.uniform_buffer_;
+  other.uniform_buffer_ = nullptr;
 }
 
 VKPushConstants::~VKPushConstants()
@@ -127,6 +158,9 @@ VKPushConstants::~VKPushConstants()
 
   delete storage_buffer_;
   storage_buffer_ = nullptr;
+
+  delete uniform_buffer_;
+  uniform_buffer_ = nullptr;
 }
 
 VKPushConstants &VKPushConstants::operator=(VKPushConstants &&other)
@@ -155,6 +189,21 @@ VKStorageBuffer &VKPushConstants::storage_buffer_get()
   BLI_assert(storage_type_get() == VKPushConstantsLayout::StorageType::STORAGE_BUFFER);
   BLI_assert(storage_buffer_ != nullptr);
   return *storage_buffer_;
+}
+
+void VKPushConstants::update_uniform_buffer(VkDevice /*vk_device*/)
+{
+  BLI_assert(storage_type_get() == VKPushConstantsLayout::StorageType::UNIFORM_BUFFER);
+  BLI_assert(uniform_buffer_ != nullptr);
+  BLI_assert(data_ != nullptr);
+  uniform_buffer_->update(data_);
+}
+
+VKUniformBuffer &VKPushConstants::uniform_buffer_get()
+{
+  BLI_assert(storage_type_get() == VKPushConstantsLayout::StorageType::UNIFORM_BUFFER);
+  BLI_assert(uniform_buffer_ != nullptr);
+  return *uniform_buffer_;
 }
 
 }  // namespace blender::gpu

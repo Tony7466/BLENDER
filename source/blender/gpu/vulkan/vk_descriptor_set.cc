@@ -9,6 +9,7 @@
 #include "vk_index_buffer.hh"
 #include "vk_storage_buffer.hh"
 #include "vk_texture.hh"
+#include "vk_uniform_buffer.hh"
 #include "vk_vertex_buffer.hh"
 
 #include "BLI_assert.h"
@@ -43,6 +44,14 @@ void VKDescriptorSet::bind(VKStorageBuffer &buffer, const Location location)
 {
   Binding &binding = ensure_location(location);
   binding.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  binding.vk_buffer = buffer.vk_handle();
+  binding.buffer_size = buffer.size_in_bytes();
+}
+
+void VKDescriptorSet::bind(VKUniformBuffer &buffer, const Location location)
+{
+  Binding &binding = ensure_location(location);
+  binding.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
   binding.vk_buffer = buffer.vk_handle();
   binding.buffer_size = buffer.size_in_bytes();
 }
