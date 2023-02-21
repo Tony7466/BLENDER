@@ -160,6 +160,17 @@ template<typename T>
   BLI_assert(is_unit_scale(b));
   return math::safe_acos(dot(a, b));
 }
+template<typename T>
+[[nodiscard]] AngleFraction<T> angle_between(const eAxisSigned a, const eAxisSigned b)
+{
+  if (a == b) {
+    return AngleFraction<T>::identity();
+  }
+  if (abs(a) == abs(b)) {
+    return AngleFraction<T>::pi();
+  }
+  return AngleFraction<T>::pi() / 2;
+}
 
 /**
  * Extract angle between 2 orientations.

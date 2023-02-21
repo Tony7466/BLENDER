@@ -335,17 +335,6 @@ struct CartesianBasis {
                           from_orthonormal_axes(b_forward, b_up));
 }
 
-[[nodiscard]] inline AngleFraction angle_between(const eAxisSigned a, const eAxisSigned b)
-{
-  if (a == b) {
-    return AngleFraction::identity();
-  }
-  if (abs(a) == abs(b)) {
-    return AngleFraction::pi();
-  }
-  return AngleFraction::pi() / 2;
-}
-
 /** \} */
 
 }  // namespace blender::math
