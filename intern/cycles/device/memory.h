@@ -108,9 +108,9 @@ template<> struct device_type_traits<uint2> {
 };
 
 template<> struct device_type_traits<uint3> {
-  static const DataType data_type = TYPE_UINT;
-  static const size_t num_elements = 3;
-  static_assert(sizeof(uint3) == num_elements * datatype_size(data_type));
+  // static const DataType data_type = TYPE_UINT;
+  // static const size_t num_elements = 3;
+  // static_assert(sizeof(uint3) == num_elements * datatype_size(data_type));
 };
 
 template<> struct device_type_traits<uint4> {
@@ -132,9 +132,9 @@ template<> struct device_type_traits<int2> {
 };
 
 template<> struct device_type_traits<int3> {
-  static const DataType data_type = TYPE_INT;
-  static const size_t num_elements = 4;
-  static_assert(sizeof(int3) == num_elements * datatype_size(data_type));
+  // static const DataType data_type = TYPE_INT;
+  // static const size_t num_elements = 4;
+  // static_assert(sizeof(int3) == num_elements * datatype_size(data_type));
 };
 
 template<> struct device_type_traits<int4> {

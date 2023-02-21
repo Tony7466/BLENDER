@@ -262,9 +262,14 @@ class OsdData {
         }
         else if (attr.same_storage(attr.type, TypeFloat2)) {
           primvar_refiner.Interpolate(i + 1, (OsdValue<float2> *)src, (OsdValue<float2> *&)dest);
+          // WL: float3 is not interchangeable with float4 and so needs to be handled
+          // separately
+        }
+        else if (attr.same_storage(attr.type, TypeFloat4)) {
+          primvar_refiner.Interpolate(i + 1, (OsdValue<float4> *)src, (OsdValue<float4> *&)dest);
         }
         else {
-          primvar_refiner.Interpolate(i + 1, (OsdValue<float4> *)src, (OsdValue<float4> *&)dest);
+          primvar_refiner.Interpolate(i + 1, (OsdValue<float3> *)src, (OsdValue<float3> *&)dest);
         }
 
         src = dest;
@@ -280,11 +285,18 @@ class OsdData {
           patch_table->ComputeLocalPointValues(
               (OsdValue<float2> *)&attr.buffer[0],
               (OsdValue<float2> *)&attr.buffer[num_refiner_verts * attr.data_sizeof()]);
+          // WL: float3 is not interchangeable with float4 and so needs to be handled
+          // separately
         }
-        else {
+        else if (attr.same_storage(attr.type, TypeFloat4)) {
           patch_table->ComputeLocalPointValues(
               (OsdValue<float4> *)&attr.buffer[0],
               (OsdValue<float4> *)&attr.buffer[num_refiner_verts * attr.data_sizeof()]);
+        }
+        else {
+          patch_table->ComputeLocalPointValues(
+              (OsdValue<float3> *)&attr.buffer[0],
+              (OsdValue<float3> *)&attr.buffer[num_refiner_verts * attr.data_sizeof()]);
         }
       }
     }
