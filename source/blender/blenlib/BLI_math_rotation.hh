@@ -369,20 +369,20 @@ template<typename T>
 {
   using Mat3T = MatBase<T, 3, 3>;
   using Vec3T = VecBase<T, 3>;
-  int i = rotation.x_index();
-  int j = rotation.y_index();
-  int k = rotation.z_index();
+  int i = rotation.i_index();
+  int j = rotation.j_index();
+  int k = rotation.k_index();
 
   Mat3T result;
   /* First axis is local. */
   result[i] = from_rotation<Mat3T>(rotation)[i];
   /* Second axis is local minus first rotation. */
   detail::Euler3<T> tmp_rot = rotation;
-  tmp_rot.x() = T(0);
+  tmp_rot.i() = T(0);
   result[j] = from_rotation<Mat3T>(tmp_rot)[j];
   /* Last axis is global. */
   result[k] = Vec3T(0);
-  result[k][k] = 1;
+  result[k][k] = T(1);
 
   return result;
 }

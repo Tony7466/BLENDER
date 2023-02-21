@@ -88,14 +88,16 @@ template<typename T> Euler3<T>::operator Quaternion<T>() const
 {
   const Euler3<T> &eulO = *this;
   /* Swizzle to XYZ. */
-  EulerXYZ<T> eul_xyz{eulO.x(), eulO.parity() ? -eulO.y() : eulO.y(), eulO.z()};
+  EulerXYZ<T> eul_xyz{eulO.ijk()};
+  /* Flip with parity. */
+  eul_xyz.y() = eulO.parity() ? -eul_xyz.y() : eul_xyz.y();
   /* Quaternion conversion. */
   Quaternion<T> quat{eul_xyz};
   /* Swizzle back from XYZ. */
   VecBase<T, 3> quat_xyz;
-  quat_xyz[eulO.x_index()] = quat.x;
-  quat_xyz[eulO.y_index()] = eulO.parity() ? -quat.y : quat.y;
-  quat_xyz[eulO.z_index()] = quat.z;
+  quat_xyz[eulO.i_index()] = quat.x;
+  quat_xyz[eulO.j_index()] = eulO.parity() ? -quat.y : quat.y;
+  quat_xyz[eulO.k_index()] = quat.z;
 
   return {quat.w, UNPACK3(quat_xyz)};
 }

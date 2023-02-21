@@ -739,35 +739,32 @@ void normalized_to_eul2(const MatBase<T, 3, 3> &mat,
                         detail::Euler3<T> &eul2)
 {
   BLI_assert(math::is_unit_scale(mat));
-  int i = eul1.x_index();
-  int j = eul1.y_index();
-  int k = eul1.z_index();
+  int i = eul1.i_index();
+  int j = eul1.j_index();
+  int k = eul1.k_index();
 
-  VecBase<T, 3> rot1, rot2;
   const T cy = math::hypot(mat[i][i], mat[i][j]);
   if (cy > T(16) * FLT_EPSILON) {
-    rot1[i] = math::atan2(mat[j][k], mat[k][k]);
-    rot1[j] = math::atan2(-mat[i][k], cy);
-    rot1[k] = math::atan2(mat[i][j], mat[i][i]);
+    eul1.i() = math::atan2(mat[j][k], mat[k][k]);
+    eul1.j() = math::atan2(-mat[i][k], cy);
+    eul1.k() = math::atan2(mat[i][j], mat[i][i]);
 
-    rot2[i] = math::atan2(-mat[j][k], -mat[k][k]);
-    rot2[j] = math::atan2(-mat[i][k], -cy);
-    rot2[k] = math::atan2(-mat[i][j], -mat[i][i]);
+    eul2.i() = math::atan2(-mat[j][k], -mat[k][k]);
+    eul2.j() = math::atan2(-mat[i][k], -cy);
+    eul2.k() = math::atan2(-mat[i][j], -mat[i][i]);
   }
   else {
-    rot1[i] = math::atan2(-mat[k][j], mat[j][j]);
-    rot1[j] = math::atan2(-mat[i][k], cy);
-    rot1[k] = 0.0f;
+    eul1.i() = math::atan2(-mat[k][j], mat[j][j]);
+    eul1.j() = math::atan2(-mat[i][k], cy);
+    eul1.k() = 0.0f;
 
-    rot2 = rot1;
+    eul2 = eul1;
   }
 
   if (eul1.parity()) {
-    rot1 = -rot1;
-    rot2 = -rot2;
+    eul1 = -eul1;
+    eul2 = -eul2;
   }
-  eul1.ijk() = rot1;
-  eul2.ijk() = rot2;
 }
 
 /* Using explicit template instantiations in order to reduce compilation time. */
@@ -922,11 +919,12 @@ template<typename T, int NumCol, int NumRow>
 MatBase<T, NumCol, NumRow> from_rotation(const Euler3<T> &rotation)
 {
   using MatT = MatBase<T, NumCol, NumRow>;
-  int i = rotation.x_index();
-  int j = rotation.y_index();
-  int k = rotation.z_index();
+  int i = rotation.i_index();
+  int j = rotation.j_index();
+  int k = rotation.k_index();
 #if 1 /* Reference. */
-  MatT mat = from_rotation<T, NumCol, NumRow>(EulerXYZ<T>(rotation.xyz()));
+  EulerXYZ<T> euler_xyz(rotation.ijk());
+  MatT mat = from_rotation<T, NumCol, NumRow>(rotation.parity() ? -euler_xyz : euler_xyz);
   MatT result = MatT::identity();
   result[i][i] = mat[0][0];
   result[j][i] = mat[1][0];
