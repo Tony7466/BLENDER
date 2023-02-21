@@ -8,10 +8,10 @@
  * Euler rotations are represented as a triple of angle representing a rotation around each basis
  * vector. The order in which the three rotations are applied changes the resulting orientation.
  *
- * A `blender::math::EulerXYZ` represent an euler triple with fixed axis order (XYZ).
- * A `blender::math::Euler3` represent a euler triple with arbitrary axis order.
+ * A `blender::math::EulerXYZ` represent an Euler triple with fixed axis order (XYZ).
+ * A `blender::math::Euler3` represents an Euler triple with arbitrary axis order.
  *
- * They are prone to gimbal lock and is not suited for many application. However they are more
+ * They are prone to gimbal lock and are not suited for many applications. However they are more
  * intuitive than other rotation types. Their main use is for converting user facing rotation
  * values to other rotation types.
  *
@@ -20,7 +20,7 @@
  * This will swap the X and Z rotation order and will likely not produce the same rotation matrix.
  *
  * If the goal is to convert (keep the same orientation) to `Euler3` then you have to do an
- * asignment.
+ * assignment.
  * eg: `Euler3 my_euler(Euler3::eEulerOrder::XYZ); my_euler = my_quaternion:`
  */
 
@@ -69,7 +69,7 @@ namespace detail {
 template<typename T> struct EulerBase {
  protected:
   /**
-   * Container for the rotation values. They are always stored as XYZ
+   * Container for the rotation values. They are always stored as XYZ order.
    * Rotation values are stored without parity flipping.
    */
   VecBase<T, 3> xyz_;
@@ -159,7 +159,7 @@ template<typename T> struct EulerXYZ : public EulerBase<T> {
    * Create a rotation from an basis axis and an angle.
    * This sets a single component of the euler triple, the others are left to 0.
    */
-  EulerXYZ(const eAxis axis, T angle)
+  EulerXYZ(const Axis axis, T angle)
   {
     BLI_assert(axis >= 0 && axis <= 2);
     *static_cast<EulerBase<T> *>(this) = identity();
@@ -183,7 +183,7 @@ template<typename T> struct EulerXYZ : public EulerBase<T> {
   /**
    * Return this euler orientation but wrapped around \a reference.
    *
-   * This mean the interpolation between the returned value and \a reference will always take the
+   * This means the interpolation between the returned value and \a reference will always take the
    * shortest path. The angle between them will not be more than pi.
    */
   EulerXYZ wrapped_around(const EulerXYZ &reference) const;
@@ -259,7 +259,7 @@ template<typename T> struct Euler3 : public EulerBase<T> {
   /**
    * Create a rotation around a single euler axis and an angle.
    */
-  Euler3(const eAxis axis, T angle, eEulerOrder order) : EulerBase<T>(), order_(order)
+  Euler3(const Axis axis, T angle, eEulerOrder order) : EulerBase<T>(), order_(order)
   {
     this->xyz_[axis] = angle;
   }
@@ -332,7 +332,7 @@ template<typename T> struct Euler3 : public EulerBase<T> {
   /**
    * Return this euler orientation but wrapped around \a reference.
    *
-   * This mean the interpolation between the returned value and \a reference will always take the
+   * This means the interpolation between the returned value and \a reference will always take the
    * shortest path. The angle between them will not be more than pi.
    */
   Euler3 wrapped_around(const Euler3 &reference) const
@@ -369,6 +369,8 @@ template<typename T> struct Euler3 : public EulerBase<T> {
   {
     switch (order_) {
       default:
+        BLI_assert_unreachable();
+        return false;
       case XYZ:
       case ZXY:
       case YZX:
@@ -387,6 +389,8 @@ template<typename T> struct Euler3 : public EulerBase<T> {
   {
     switch (order_) {
       default:
+        BLI_assert_unreachable();
+        return 0;
       case XYZ:
       case XZY:
         return 0;
@@ -406,6 +410,8 @@ template<typename T> struct Euler3 : public EulerBase<T> {
   {
     switch (order_) {
       default:
+        BLI_assert_unreachable();
+        return 0;
       case YXZ:
       case ZXY:
         return 0;
@@ -425,15 +431,17 @@ template<typename T> struct Euler3 : public EulerBase<T> {
   {
     switch (order_) {
       default:
-      case XYZ:
-      case YXZ:
-        return 2;
-      case XZY:
-      case ZXY:
-        return 1;
+        BLI_assert_unreachable();
+        return 0;
       case YZX:
       case ZYX:
         return 0;
+      case XZY:
+      case ZXY:
+        return 1;
+      case XYZ:
+      case YXZ:
+        return 2;
     }
   }
 };

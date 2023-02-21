@@ -7,7 +7,7 @@
  *
  * Rotation Types
  *
- * They give more semantic informations and allow overloaded functions based on rotation type.
+ * They give more semantic information and allow overloaded functions based on rotation type.
  * They also prevent implicit cast from rotation to vector types.
  */
 

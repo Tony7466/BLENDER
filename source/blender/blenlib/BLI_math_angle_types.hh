@@ -8,46 +8,11 @@
  * Classes to represent rotation angles. They can be used as 2D rotation or as building blocks for
  * other rotation types.
  *
- * Each `blender::math::Angle***<T>` implement the same interface and can be swapped easily.
- * However, they differ in operations efficiency, storage size and the range or group of angle
- * that can be stored.
+ * Each `blender::math::Angle***<T>` implements the same interface and can be swapped easily.
+ * However, they differ in each operation's efficiency, storage size and the range or group of
+ * angles that can be stored.
  *
- * This design allows some function overload to be more efficient with certain types.
- *
- * A `blender::math::AngleRadian<T>` is your typical radian angle.
- * - Storage : `1 * sizeof(T)`
- * - Range : [-inf..inf]
- * - Fast : Everything not slow.
- * - Slow : `cos()`, `sin()`, `tan()`, `AngleRadian(cos, sin)`
- *
- *
- * A `blender::math::AngleCartesian<T>` stores the angle as cosine + sine tuple.
- * - Storage : `2 * sizeof(T)`
- * - Range : [-pi..pi]
- * - Fast : `cos()`, `sin()`, `tan()`, `AngleCartesian(cos, sin)`
- * - Slow : Everything not fast.
- * It is only useful for intermediate representation when converting to other rotation types (eg:
- * AxisAngle > Quaternion) and for creating rotation from 2d points. In general it offers an
- * advantage when needing trigonometric values of an angle and not directly the angle itself.
- * It is also a nice shortcut for using the trigonometric identities.
- *
- *
- * A `blender::math::AngleFraction<T>` stores the radian angle as quotient.
- * - Storage : `2 * sizeof(int64_t)`
- * - Range : [-INT64_MAX..INT64_MAX] but angle must be expressed as fraction (be in Q subset).
- * - Fast : Everything not slow.
- * - Slow : `cos()`, `sin()`, `tan()` for angles not optimized.
- * It offers the best accuracy fo fractions of Pi radian angles. For instance
- * `sin(AngleFraction::tau() * n - AngleFraction::pi() / 2)` will exactly return `-1` for any `n`
- * within [-INT_MAX..INT_MAX]. This holds true even with really high radian values.
- * The `T` template parameter only serves as type for the computed values like `cos()` or
- * `radian()`. Any operation becomes undefined if either the numerator or the denominator
- * overflows. Arithmetic operators are relatively cheap (4 operations for addition, 2 for
- * multiplication) but not as cheap as a `AngleRadian`.
- * Another nice property is that the `cos()` and `sin()` functions give symetric results around the
- * circle. Prefer converting to `blender::math::AngleCartesian<T>` if both `cos()` and `sin()` are
- * needed. This will save some computation.
- *
+ * This design allows some function overloads to be more efficient with certain types.
  */
 
 #include "BLI_math_base.hh"
@@ -56,6 +21,13 @@ namespace blender::math {
 
 namespace detail {
 
+/**
+ * A `blender::math::AngleRadian<T>` is a typical radian angle.
+ * - Storage : `1 * sizeof(T)`
+ * - Range : [-inf..inf]
+ * - Fast : Everything not slow.
+ * - Slow : `cos()`, `sin()`, `tan()`, `AngleRadian(cos, sin)`
+ */
 template<typename T> struct AngleRadian {
  private:
   T value_;
@@ -116,7 +88,7 @@ template<typename T> struct AngleRadian {
 
   /**
    * Return the angle wrapped inside [-pi..pi] range around a \a reference.
-   * This mean the interpolation between the returned value and \a reference will always take the
+   * This means the interpolation between the returned value and \a reference will always take the
    * shortest path.
    */
   AngleRadian wrapped_around(const AngleRadian &reference) const
@@ -181,6 +153,17 @@ template<typename T> struct AngleRadian {
   }
 };
 
+/**
+ * A `blender::math::AngleCartesian<T>` stores the angle as cosine + sine tuple.
+ * - Storage : `2 * sizeof(T)`
+ * - Range : [-pi..pi]
+ * - Fast : `cos()`, `sin()`, `tan()`, `AngleCartesian(cos, sin)`
+ * - Slow : Everything not fast.
+ * It is only useful for intermediate representation when converting to other rotation types (eg:
+ * AxisAngle > Quaternion) and for creating rotations from 2D points. In general it offers an
+ * advantage when trigonometric values of an angle are required but not directly the angle itself.
+ * It is also a nice shortcut for using the trigonometric identities.
+ */
 template<typename T> struct AngleCartesian {
  private:
   T cos_;
@@ -309,11 +292,11 @@ template<typename T> struct AngleCartesian {
   friend AngleCartesian operator/(const AngleCartesian &a, const T &b)
   {
     if (b == T(2)) {
-      /* Still costly but less than using `atan()`. */
+      /* Still costly but faster than using `atan()`. */
       AngleCartesian result = {math::sqrt((T(1) + a.cos_) / T(2)),
                                math::sqrt((T(1) - a.cos_) / T(2))};
       /* Recover sign only for sine. Cosine of half angle is given to be positive or 0 since the
-       * angle stored in #AngleCartesian is range of [-pi..pi]. */
+       * angle stored in #AngleCartesian is in the range [-pi..pi]. */
       /* TODO(fclem): Could use copysign here. */
       if (a.sin_ < T(0)) {
         result.sin_ = -result.sin_;
@@ -363,6 +346,29 @@ template<typename T> struct AngleCartesian {
 
 }  // namespace detail
 
+/**
+ * A `blender::math::AngleFraction<T>` stores the radian angle as quotient.
+ * - Storage : `2 * sizeof(int64_t)`
+ * - Range : [-INT64_MAX..INT64_MAX] but angle must be expressed as fraction (be in Q subset).
+ * - Fast : Everything not slow.
+ * - Slow : `cos()`, `sin()`, `tan()` for angles not optimized.
+ *
+ * It offers the best accuracy fo fractions of Pi radian angles. For instance
+ * `sin(AngleFraction::tau() * n - AngleFraction::pi() / 2)` will exactly return `-1` for any `n`
+ * within [-INT_MAX..INT_MAX]. This holds true even with really high radian values.
+ *
+ * Arithmetic operators are relatively cheap (4 operations for addition, 2 for multiplication) but
+ * not as cheap as a `AngleRadian`. Another nice property is that the `cos()` and `sin()` functions
+ * give symetric results around the circle.
+ *
+ * NOTE: Prefer converting to `blender::math::AngleCartesian<T>` if both `cos()` and `sin()`
+ * are needed. This will save some computation.
+ *
+ * Any operation becomes undefined if either the numerator or the denominator overflows.
+ *
+ * The `T` template parameter only serves as type for the computed values like `cos()` or
+ * `radian()`.
+ */
 template<typename T = float> struct AngleFraction {
  private:
   /**
@@ -459,7 +465,7 @@ template<typename T = float> struct AngleFraction {
 
   /**
    * Return the angle wrapped inside [-pi..pi] range around a \a reference.
-   * This mean the interpolation between the returned value and \a reference will always take the
+   * This means the interpolation between the returned value and \a reference will always take the
    * shortest path.
    * In case of ambiguity (-pi vs. pi), the sign of the angle is preserved.
    */
@@ -587,11 +593,10 @@ template<typename T = float> struct AngleFraction {
     BLI_assert(abs(a.numerator_) <= a.denominator_);
     BLI_assert(a.denominator_ > 0);
 
-    /* By default, creating a circle from an integer: calling #sinf & #cosf on the fraction doesn't
-     * create symmetrical values (because floats can't represent Pi exactly).
-     * Resolve this when the rotation is calculated from a fraction by mapping the `numerator`
-     * to lower values so X/Y values for points around a circle are exactly symmetrical, see
-     * #87779.
+    /* By default, creating a circle from an integer: calling #sinf & #cosf on the fraction
+     * doesn't create symmetrical values (because floats can't represent Pi exactly). Resolve this
+     * when the rotation is calculated from a fraction by mapping the `numerator` to lower values
+     * so X/Y values for points around a circle are exactly symmetrical, see #87779.
      *
      * Multiply both the `numerator` and `denominator` by 4 to ensure we can divide the circle
      * into 8 octants. For each octant, we then use symmetry and negation to bring the `numerator`

@@ -87,7 +87,7 @@ template<typename T>
  * \{ */
 
 /**
- * Transform \a p by rotation using the quaternion \a q .
+ * Transform \a v by rotation using the quaternion \a q .
  */
 template<typename T>
 [[nodiscard]] inline VecBase<T, 3> transform_point(const detail::Quaternion<T> &q,
@@ -150,73 +150,73 @@ template<typename T> Quaternion<T>::Quaternion(const CartesianBasis &rotation)
     default:
       *this = identity();
       break;
-    case eAxisSigned::Z_POS << 16 | eAxisSigned::X_POS << 8 | eAxisSigned::Y_POS:
+    case AxisSigned::Z_POS << 16 | AxisSigned::X_POS << 8 | AxisSigned::Y_POS:
       *this = {T(0.5), T(-0.5), T(-0.5), T(-0.5)};
       break;
-    case eAxisSigned::Y_NEG << 16 | eAxisSigned::X_POS << 8 | eAxisSigned::Z_POS:
+    case AxisSigned::Y_NEG << 16 | AxisSigned::X_POS << 8 | AxisSigned::Z_POS:
       *this = {T(M_SQRT1_2), T(0), T(0), T(-M_SQRT1_2)};
       break;
-    case eAxisSigned::Z_NEG << 16 | eAxisSigned::X_POS << 8 | eAxisSigned::Y_NEG:
+    case AxisSigned::Z_NEG << 16 | AxisSigned::X_POS << 8 | AxisSigned::Y_NEG:
       *this = {T(0.5), T(0.5), T(0.5), T(-0.5)};
       break;
-    case eAxisSigned::Y_POS << 16 | eAxisSigned::X_POS << 8 | eAxisSigned::Z_NEG:
+    case AxisSigned::Y_POS << 16 | AxisSigned::X_POS << 8 | AxisSigned::Z_NEG:
       *this = {T(0), T(M_SQRT1_2), T(M_SQRT1_2), T(0)};
       break;
-    case eAxisSigned::Z_NEG << 16 | eAxisSigned::Y_POS << 8 | eAxisSigned::X_POS:
+    case AxisSigned::Z_NEG << 16 | AxisSigned::Y_POS << 8 | AxisSigned::X_POS:
       *this = {T(M_SQRT1_2), T(0), T(M_SQRT1_2), T(0)};
       break;
-    case eAxisSigned::Z_POS << 16 | eAxisSigned::Y_POS << 8 | eAxisSigned::X_NEG:
+    case AxisSigned::Z_POS << 16 | AxisSigned::Y_POS << 8 | AxisSigned::X_NEG:
       *this = {T(M_SQRT1_2), T(0), T(-M_SQRT1_2), T(0)};
       break;
-    case eAxisSigned::X_NEG << 16 | eAxisSigned::Y_POS << 8 | eAxisSigned::Z_NEG:
+    case AxisSigned::X_NEG << 16 | AxisSigned::Y_POS << 8 | AxisSigned::Z_NEG:
       *this = {T(0), T(0), T(1), T(0)};
       break;
-    case eAxisSigned::Y_POS << 16 | eAxisSigned::Z_POS << 8 | eAxisSigned::X_POS:
+    case AxisSigned::Y_POS << 16 | AxisSigned::Z_POS << 8 | AxisSigned::X_POS:
       *this = {T(0.5), T(0.5), T(0.5), T(0.5)};
       break;
-    case eAxisSigned::X_NEG << 16 | eAxisSigned::Z_POS << 8 | eAxisSigned::Y_POS:
+    case AxisSigned::X_NEG << 16 | AxisSigned::Z_POS << 8 | AxisSigned::Y_POS:
       *this = {T(0), T(0), T(M_SQRT1_2), T(M_SQRT1_2)};
       break;
-    case eAxisSigned::Y_NEG << 16 | eAxisSigned::Z_POS << 8 | eAxisSigned::X_NEG:
+    case AxisSigned::Y_NEG << 16 | AxisSigned::Z_POS << 8 | AxisSigned::X_NEG:
       *this = {T(0.5), T(0.5), T(-0.5), T(-0.5)};
       break;
-    case eAxisSigned::X_POS << 16 | eAxisSigned::Z_POS << 8 | eAxisSigned::Y_NEG:
+    case AxisSigned::X_POS << 16 | AxisSigned::Z_POS << 8 | AxisSigned::Y_NEG:
       *this = {T(M_SQRT1_2), T(M_SQRT1_2), T(0), T(0)};
       break;
-    case eAxisSigned::Z_NEG << 16 | eAxisSigned::X_NEG << 8 | eAxisSigned::Y_POS:
+    case AxisSigned::Z_NEG << 16 | AxisSigned::X_NEG << 8 | AxisSigned::Y_POS:
       *this = {T(0.5), T(-0.5), T(0.5), T(0.5)};
       break;
-    case eAxisSigned::Y_POS << 16 | eAxisSigned::X_NEG << 8 | eAxisSigned::Z_POS:
+    case AxisSigned::Y_POS << 16 | AxisSigned::X_NEG << 8 | AxisSigned::Z_POS:
       *this = {T(M_SQRT1_2), T(0), T(0), T(M_SQRT1_2)};
       break;
-    case eAxisSigned::Z_POS << 16 | eAxisSigned::X_NEG << 8 | eAxisSigned::Y_NEG:
+    case AxisSigned::Z_POS << 16 | AxisSigned::X_NEG << 8 | AxisSigned::Y_NEG:
       *this = {T(0.5), T(0.5), T(-0.5), T(0.5)};
       break;
-    case eAxisSigned::Y_NEG << 16 | eAxisSigned::X_NEG << 8 | eAxisSigned::Z_NEG:
+    case AxisSigned::Y_NEG << 16 | AxisSigned::X_NEG << 8 | AxisSigned::Z_NEG:
       *this = {T(0), T(-M_SQRT1_2), T(M_SQRT1_2), T(0)};
       break;
-    case eAxisSigned::Z_POS << 16 | eAxisSigned::Y_NEG << 8 | eAxisSigned::X_POS:
+    case AxisSigned::Z_POS << 16 | AxisSigned::Y_NEG << 8 | AxisSigned::X_POS:
       *this = {T(0), T(M_SQRT1_2), T(0), T(M_SQRT1_2)};
       break;
-    case eAxisSigned::X_NEG << 16 | eAxisSigned::Y_NEG << 8 | eAxisSigned::Z_POS:
+    case AxisSigned::X_NEG << 16 | AxisSigned::Y_NEG << 8 | AxisSigned::Z_POS:
       *this = {T(0), T(0), T(0), T(1)};
       break;
-    case eAxisSigned::Z_NEG << 16 | eAxisSigned::Y_NEG << 8 | eAxisSigned::X_NEG:
+    case AxisSigned::Z_NEG << 16 | AxisSigned::Y_NEG << 8 | AxisSigned::X_NEG:
       *this = {T(0), T(-M_SQRT1_2), T(0), T(M_SQRT1_2)};
       break;
-    case eAxisSigned::X_POS << 16 | eAxisSigned::Y_NEG << 8 | eAxisSigned::Z_NEG:
+    case AxisSigned::X_POS << 16 | AxisSigned::Y_NEG << 8 | AxisSigned::Z_NEG:
       *this = {T(0), T(1), T(0), T(0)};
       break;
-    case eAxisSigned::Y_NEG << 16 | eAxisSigned::Z_NEG << 8 | eAxisSigned::X_POS:
+    case AxisSigned::Y_NEG << 16 | AxisSigned::Z_NEG << 8 | AxisSigned::X_POS:
       *this = {T(0.5), T(-0.5), T(0.5), T(-0.5)};
       break;
-    case eAxisSigned::X_POS << 16 | eAxisSigned::Z_NEG << 8 | eAxisSigned::Y_POS:
+    case AxisSigned::X_POS << 16 | AxisSigned::Z_NEG << 8 | AxisSigned::Y_POS:
       *this = {T(M_SQRT1_2), T(-M_SQRT1_2), T(0), T(0)};
       break;
-    case eAxisSigned::Y_POS << 16 | eAxisSigned::Z_NEG << 8 | eAxisSigned::X_NEG:
+    case AxisSigned::Y_POS << 16 | AxisSigned::Z_NEG << 8 | AxisSigned::X_NEG:
       *this = {T(0.5), T(-0.5), T(-0.5), T(0.5)};
       break;
-    case eAxisSigned::X_NEG << 16 | eAxisSigned::Z_NEG << 8 | eAxisSigned::Y_NEG:
+    case AxisSigned::X_NEG << 16 | AxisSigned::Z_NEG << 8 | AxisSigned::Y_NEG:
       *this = {T(0), T(0), T(-M_SQRT1_2), T(M_SQRT1_2)};
       break;
   }
@@ -253,7 +253,7 @@ template<typename T> VecBase<T, 3> Quaternion<T>::expmap() const
   return axis_angle.axis() * T(axis_angle.angle());
 }
 
-template<typename T> AngleRadian<T> Quaternion<T>::twist_angle(const eAxis axis) const
+template<typename T> AngleRadian<T> Quaternion<T>::twist_angle(const Axis axis) const
 {
   BLI_assert(axis >= 0 && axis <= 2);
   /* The calculation requires a canonical quaternion. */
@@ -262,7 +262,7 @@ template<typename T> AngleRadian<T> Quaternion<T>::twist_angle(const eAxis axis)
   return T(2) * AngleRadian<T>(input_vec[0], input_vec[axis + 1]);
 }
 
-template<typename T> Quaternion<T> Quaternion<T>::swing(const eAxis axis) const
+template<typename T> Quaternion<T> Quaternion<T>::swing(const Axis axis) const
 {
   BLI_assert(axis >= 0 && axis <= 2);
   /* The calculation requires a canonical quaternion. */
@@ -274,7 +274,7 @@ template<typename T> Quaternion<T> Quaternion<T>::swing(const eAxis axis) const
   return swing;
 }
 
-template<typename T> Quaternion<T> Quaternion<T>::twist(const eAxis axis) const
+template<typename T> Quaternion<T> Quaternion<T>::twist(const Axis axis) const
 {
   BLI_assert(axis >= 0 && axis <= 2);
   /* The calculation requires a canonical quaternion. */
@@ -607,7 +607,7 @@ template<typename T>
  */
 template<typename T>
 [[nodiscard]] VecBase<T, 3> transform_point(const detail::DualQuaternion<T> &dq,
-                                            VecBase<T, 3> &point,
+                                            const VecBase<T, 3> &point,
                                             MatBase<T, 3, 3> *r_crazy_space_mat = nullptr)
 {
   BLI_assert(is_normalized(dq));
@@ -640,14 +640,15 @@ template<typename T>
   M[2][2] = (w0 * w0) + (z0 * z0) - (x0 * x0) - (y0 * y0); /* Same as `1 - 2x0^2 - 2y0^2`. */
   M[2][0] = T(2) * ((x0 * z0) + (w0 * y0));
 
+  VecBase<T, 3> result = point;
   /* Apply scaling. */
   if (dq.scale_weight != T(0)) {
     /* NOTE(fclem): This is weird that this is also adding translation even if it is marked as
      * scale matrix. Follows the old C implementation for now... */
-    point = transform_point(dq.scale, point);
+    result = transform_point(dq.scale, result);
   }
   /* Apply rotation and translation. */
-  point = transform_point(M, point) + t;
+  result = transform_point(M, result) + t;
   /* Compute crazy-space correction matrix. */
   if (r_crazy_space_mat != nullptr) {
     if (dq.scale_weight) {
@@ -657,7 +658,7 @@ template<typename T>
       *r_crazy_space_mat = M;
     }
   }
-  return point;
+  return result;
 }
 
 /**
@@ -698,7 +699,7 @@ template<typename T>
     Mat4T baseinv = invert(basemat);
 
     /* Extra orthogonalize, to avoid flipping with stretched bones. */
-    detail::Quaternion<T> basequat = to_quaternion(orthogonalize(baseRS, eAxis::Y));
+    detail::Quaternion<T> basequat = to_quaternion(orthogonalize(baseRS, Axis::Y));
 
     Mat4T baseR = from_rotation<Mat4T>(basequat);
     baseR.location() = baseRS.location();

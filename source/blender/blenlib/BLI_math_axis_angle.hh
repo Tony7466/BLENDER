@@ -30,7 +30,7 @@ AxisAngle<T, AngleT>::AxisAngle(const VecBase<T, 3> &axis, const AngleT &angle)
 }
 
 template<typename T, typename AngleT>
-AxisAngle<T, AngleT>::AxisAngle(const eAxisSigned axis, const AngleT &angle)
+AxisAngle<T, AngleT>::AxisAngle(const AxisSigned axis, const AngleT &angle)
 {
   this->axis_ = basis_vector<T>(axis);
   this->angle_ = angle;
@@ -52,12 +52,10 @@ AxisAngle<T, AngleT>::AxisAngle(const VecBase<T, 3> &from, const VecBase<T, 3> &
       *this = identity();
       return;
     }
-    else {
-      /* Colinear but opposed vectors, 180 rotation... */
-      axis_ = normalize(orthogonal(from));
-      sin = T(0);
-      cos = T(-1);
-    }
+    /* Colinear but opposed vectors, 180 rotation... */
+    axis_ = normalize(orthogonal(from));
+    sin = T(0);
+    cos = T(-1);
   }
   /* Avoid calculating the angle if possible. */
   this->angle_ = AngleT(cos, sin);

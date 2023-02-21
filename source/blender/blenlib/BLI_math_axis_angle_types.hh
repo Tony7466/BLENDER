@@ -5,19 +5,17 @@
 /** \file
  * \ingroup bli
  *
- * A `blender::math::AxisAngle<T>` represent a rotation around a unit axis.
+ * A `blender::math::AxisAngle<T>` represents a rotation around a unit axis.
  *
  * It is mainly useful for rotating a point around a given axis or quickly getting the rotation
  * between 2 vectors. It is cheaper to create than a #Quaternion or a matrix rotation.
  *
  * If the rotation axis is one of the basis axes (eg: {1,0,0}), then most operations are reduced to
- * 2D operations and thus faster.
+ * 2D operations and are thus faster.
  *
- * Interpolation isn't possible between two `blender::math::AxisAngle<T>` and they needs to be
- * converted to other rotation types for that.
- *
- * Converting to `blender::math::Quaternion<T>` is the fastest and more correct option. Other
- * conversions still use quaternion as intermediate representation.
+ * Interpolation isn't possible between two `blender::math::AxisAngle<T>`; they must be
+ * converted to other rotation types for that. Converting to `blender::math::Quaternion<T>` is the
+ * fastest and more correct option.
  */
 
 #include "BLI_math_angle_types.hh"
@@ -47,7 +45,7 @@ template<typename T, typename AngleT> struct AxisAngle {
   /**
    * Create a rotation from a basis axis and an angle.
    */
-  AxisAngle(const eAxisSigned axis, const AngleT &angle);
+  AxisAngle(const AxisSigned axis, const AngleT &angle);
 
   /**
    * Create a rotation from an axis and an angle.

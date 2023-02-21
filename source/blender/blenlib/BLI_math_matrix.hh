@@ -236,7 +236,7 @@ template<typename MatT, typename VectorT>
  * In other words this removes the shear of the matrix. However this doesn't properly account for
  * volume preservation, and so, the axes keep their respective length.
  */
-template<typename MatT> [[nodiscard]] MatT orthogonalize(const MatT &mat, const eAxis axis);
+template<typename MatT> [[nodiscard]] MatT orthogonalize(const MatT &mat, const Axis axis);
 
 /**
  * Construct a transformation that is pivoted around the given origin point. So for instance,
@@ -261,11 +261,9 @@ template<typename T, bool Normalized = false>
 template<typename T, bool Normalized = false>
 [[nodiscard]] inline detail::EulerXYZ<T> to_euler(const MatBase<T, 4, 4> &mat);
 template<typename T, bool Normalized = false>
-[[nodiscard]] inline detail::Euler3<T> to_euler(const MatBase<T, 3, 3> &mat,
-                                                const eEulerOrder order);
+[[nodiscard]] inline detail::Euler3<T> to_euler(const MatBase<T, 3, 3> &mat, eEulerOrder order);
 template<typename T, bool Normalized = false>
-[[nodiscard]] inline detail::Euler3<T> to_euler(const MatBase<T, 4, 4> &mat,
-                                                const eEulerOrder order);
+[[nodiscard]] inline detail::Euler3<T> to_euler(const MatBase<T, 4, 4> &mat, eEulerOrder order);
 
 /**
  * Extract euler rotation from transform matrix.
@@ -1079,8 +1077,7 @@ extern template MatBase<float, 4, 4> from_rotation(const math::AxisAngleCartesia
 }  // namespace detail
 
 template<typename T, bool Normalized>
-[[nodiscard]] inline detail::Euler3<T> to_euler(const MatBase<T, 3, 3> &mat,
-                                                const eEulerOrder order)
+[[nodiscard]] inline detail::Euler3<T> to_euler(const MatBase<T, 3, 3> &mat, eEulerOrder order)
 {
   detail::Euler3<T> eul1(order), eul2(order);
   if constexpr (Normalized) {
@@ -1089,7 +1086,7 @@ template<typename T, bool Normalized>
   else {
     detail::normalized_to_eul2(normalize(mat), eul1, eul2);
   }
-  /* Return best, which is just the one with lowest values it in. */
+  /* Return best, which is just the one with lowest values in it. */
   return (length_manhattan(VecBase<T, 3>(eul1)) > length_manhattan(VecBase<T, 3>(eul2))) ? eul2 :
                                                                                            eul1;
 }
@@ -1104,14 +1101,13 @@ template<typename T, bool Normalized>
   else {
     detail::normalized_to_eul2(normalize(mat), eul1, eul2);
   }
-  /* Return best, which is just the one with lowest values it in. */
+  /* Return best, which is just the one with lowest values in it. */
   return (length_manhattan(VecBase<T, 3>(eul1)) > length_manhattan(VecBase<T, 3>(eul2))) ? eul2 :
                                                                                            eul1;
 }
 
 template<typename T, bool Normalized>
-[[nodiscard]] inline detail::Euler3<T> to_euler(const MatBase<T, 4, 4> &mat,
-                                                const eEulerOrder order)
+[[nodiscard]] inline detail::Euler3<T> to_euler(const MatBase<T, 4, 4> &mat, eEulerOrder order)
 {
   /* TODO(fclem): Avoid the copy with 3x3 ref. */
   return to_euler<T, Normalized>(MatBase<T, 3, 3>(mat), order);
@@ -1350,7 +1346,7 @@ template<typename MatT, typename VectorT>
   return matrix;
 }
 
-template<typename MatT> [[nodiscard]] MatT orthogonalize(const MatT &mat, const eAxis axis)
+template<typename MatT> [[nodiscard]] MatT orthogonalize(const MatT &mat, const Axis axis)
 {
   using T = typename MatT::base_type;
   using Vec3T = VecBase<T, 3>;

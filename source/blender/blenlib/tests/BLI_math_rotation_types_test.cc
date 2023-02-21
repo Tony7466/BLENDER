@@ -14,78 +14,54 @@ using namespace blender::math;
 
 TEST(math_rotation_types, AxisSignedCross)
 {
-  EXPECT_EQ(
-      basis_vector<float>(math::cross(eAxisSigned::X_POS, eAxisSigned::Y_POS)),
-      cross(basis_vector<float>(eAxisSigned::X_POS), basis_vector<float>(eAxisSigned::Y_POS)));
-  EXPECT_EQ(
-      basis_vector<float>(math::cross(eAxisSigned::X_POS, eAxisSigned::Z_POS)),
-      cross(basis_vector<float>(eAxisSigned::X_POS), basis_vector<float>(eAxisSigned::Z_POS)));
-  EXPECT_EQ(
-      basis_vector<float>(math::cross(eAxisSigned::X_POS, eAxisSigned::Y_NEG)),
-      cross(basis_vector<float>(eAxisSigned::X_POS), basis_vector<float>(eAxisSigned::Y_NEG)));
-  EXPECT_EQ(
-      basis_vector<float>(math::cross(eAxisSigned::X_POS, eAxisSigned::Z_NEG)),
-      cross(basis_vector<float>(eAxisSigned::X_POS), basis_vector<float>(eAxisSigned::Z_NEG)));
-  EXPECT_EQ(
-      basis_vector<float>(math::cross(eAxisSigned::Y_POS, eAxisSigned::X_POS)),
-      cross(basis_vector<float>(eAxisSigned::Y_POS), basis_vector<float>(eAxisSigned::X_POS)));
-  EXPECT_EQ(
-      basis_vector<float>(math::cross(eAxisSigned::Y_POS, eAxisSigned::Z_POS)),
-      cross(basis_vector<float>(eAxisSigned::Y_POS), basis_vector<float>(eAxisSigned::Z_POS)));
-  EXPECT_EQ(
-      basis_vector<float>(math::cross(eAxisSigned::Y_POS, eAxisSigned::X_NEG)),
-      cross(basis_vector<float>(eAxisSigned::Y_POS), basis_vector<float>(eAxisSigned::X_NEG)));
-  EXPECT_EQ(
-      basis_vector<float>(math::cross(eAxisSigned::Y_POS, eAxisSigned::Z_NEG)),
-      cross(basis_vector<float>(eAxisSigned::Y_POS), basis_vector<float>(eAxisSigned::Z_NEG)));
-  EXPECT_EQ(
-      basis_vector<float>(math::cross(eAxisSigned::Z_POS, eAxisSigned::X_POS)),
-      cross(basis_vector<float>(eAxisSigned::Z_POS), basis_vector<float>(eAxisSigned::X_POS)));
-  EXPECT_EQ(
-      basis_vector<float>(math::cross(eAxisSigned::Z_POS, eAxisSigned::Y_POS)),
-      cross(basis_vector<float>(eAxisSigned::Z_POS), basis_vector<float>(eAxisSigned::Y_POS)));
-  EXPECT_EQ(
-      basis_vector<float>(math::cross(eAxisSigned::Z_POS, eAxisSigned::X_NEG)),
-      cross(basis_vector<float>(eAxisSigned::Z_POS), basis_vector<float>(eAxisSigned::X_NEG)));
-  EXPECT_EQ(
-      basis_vector<float>(math::cross(eAxisSigned::Z_POS, eAxisSigned::Y_NEG)),
-      cross(basis_vector<float>(eAxisSigned::Z_POS), basis_vector<float>(eAxisSigned::Y_NEG)));
-  EXPECT_EQ(
-      basis_vector<float>(math::cross(eAxisSigned::X_NEG, eAxisSigned::Y_POS)),
-      cross(basis_vector<float>(eAxisSigned::X_NEG), basis_vector<float>(eAxisSigned::Y_POS)));
-  EXPECT_EQ(
-      basis_vector<float>(math::cross(eAxisSigned::X_NEG, eAxisSigned::Z_POS)),
-      cross(basis_vector<float>(eAxisSigned::X_NEG), basis_vector<float>(eAxisSigned::Z_POS)));
-  EXPECT_EQ(
-      basis_vector<float>(math::cross(eAxisSigned::X_NEG, eAxisSigned::Y_NEG)),
-      cross(basis_vector<float>(eAxisSigned::X_NEG), basis_vector<float>(eAxisSigned::Y_NEG)));
-  EXPECT_EQ(
-      basis_vector<float>(math::cross(eAxisSigned::X_NEG, eAxisSigned::Z_NEG)),
-      cross(basis_vector<float>(eAxisSigned::X_NEG), basis_vector<float>(eAxisSigned::Z_NEG)));
-  EXPECT_EQ(
-      basis_vector<float>(math::cross(eAxisSigned::Y_NEG, eAxisSigned::X_POS)),
-      cross(basis_vector<float>(eAxisSigned::Y_NEG), basis_vector<float>(eAxisSigned::X_POS)));
-  EXPECT_EQ(
-      basis_vector<float>(math::cross(eAxisSigned::Y_NEG, eAxisSigned::Z_POS)),
-      cross(basis_vector<float>(eAxisSigned::Y_NEG), basis_vector<float>(eAxisSigned::Z_POS)));
-  EXPECT_EQ(
-      basis_vector<float>(math::cross(eAxisSigned::Y_NEG, eAxisSigned::X_NEG)),
-      cross(basis_vector<float>(eAxisSigned::Y_NEG), basis_vector<float>(eAxisSigned::X_NEG)));
-  EXPECT_EQ(
-      basis_vector<float>(math::cross(eAxisSigned::Y_NEG, eAxisSigned::Z_NEG)),
-      cross(basis_vector<float>(eAxisSigned::Y_NEG), basis_vector<float>(eAxisSigned::Z_NEG)));
-  EXPECT_EQ(
-      basis_vector<float>(math::cross(eAxisSigned::Z_NEG, eAxisSigned::X_POS)),
-      cross(basis_vector<float>(eAxisSigned::Z_NEG), basis_vector<float>(eAxisSigned::X_POS)));
-  EXPECT_EQ(
-      basis_vector<float>(math::cross(eAxisSigned::Z_NEG, eAxisSigned::Y_POS)),
-      cross(basis_vector<float>(eAxisSigned::Z_NEG), basis_vector<float>(eAxisSigned::Y_POS)));
-  EXPECT_EQ(
-      basis_vector<float>(math::cross(eAxisSigned::Z_NEG, eAxisSigned::X_NEG)),
-      cross(basis_vector<float>(eAxisSigned::Z_NEG), basis_vector<float>(eAxisSigned::X_NEG)));
-  EXPECT_EQ(
-      basis_vector<float>(math::cross(eAxisSigned::Z_NEG, eAxisSigned::Y_NEG)),
-      cross(basis_vector<float>(eAxisSigned::Z_NEG), basis_vector<float>(eAxisSigned::Y_NEG)));
+  EXPECT_EQ(basis_vector<float>(math::cross(AxisSigned::X_POS, AxisSigned::Y_POS)),
+            cross(basis_vector<float>(AxisSigned::X_POS), basis_vector<float>(AxisSigned::Y_POS)));
+  EXPECT_EQ(basis_vector<float>(math::cross(AxisSigned::X_POS, AxisSigned::Z_POS)),
+            cross(basis_vector<float>(AxisSigned::X_POS), basis_vector<float>(AxisSigned::Z_POS)));
+  EXPECT_EQ(basis_vector<float>(math::cross(AxisSigned::X_POS, AxisSigned::Y_NEG)),
+            cross(basis_vector<float>(AxisSigned::X_POS), basis_vector<float>(AxisSigned::Y_NEG)));
+  EXPECT_EQ(basis_vector<float>(math::cross(AxisSigned::X_POS, AxisSigned::Z_NEG)),
+            cross(basis_vector<float>(AxisSigned::X_POS), basis_vector<float>(AxisSigned::Z_NEG)));
+  EXPECT_EQ(basis_vector<float>(math::cross(AxisSigned::Y_POS, AxisSigned::X_POS)),
+            cross(basis_vector<float>(AxisSigned::Y_POS), basis_vector<float>(AxisSigned::X_POS)));
+  EXPECT_EQ(basis_vector<float>(math::cross(AxisSigned::Y_POS, AxisSigned::Z_POS)),
+            cross(basis_vector<float>(AxisSigned::Y_POS), basis_vector<float>(AxisSigned::Z_POS)));
+  EXPECT_EQ(basis_vector<float>(math::cross(AxisSigned::Y_POS, AxisSigned::X_NEG)),
+            cross(basis_vector<float>(AxisSigned::Y_POS), basis_vector<float>(AxisSigned::X_NEG)));
+  EXPECT_EQ(basis_vector<float>(math::cross(AxisSigned::Y_POS, AxisSigned::Z_NEG)),
+            cross(basis_vector<float>(AxisSigned::Y_POS), basis_vector<float>(AxisSigned::Z_NEG)));
+  EXPECT_EQ(basis_vector<float>(math::cross(AxisSigned::Z_POS, AxisSigned::X_POS)),
+            cross(basis_vector<float>(AxisSigned::Z_POS), basis_vector<float>(AxisSigned::X_POS)));
+  EXPECT_EQ(basis_vector<float>(math::cross(AxisSigned::Z_POS, AxisSigned::Y_POS)),
+            cross(basis_vector<float>(AxisSigned::Z_POS), basis_vector<float>(AxisSigned::Y_POS)));
+  EXPECT_EQ(basis_vector<float>(math::cross(AxisSigned::Z_POS, AxisSigned::X_NEG)),
+            cross(basis_vector<float>(AxisSigned::Z_POS), basis_vector<float>(AxisSigned::X_NEG)));
+  EXPECT_EQ(basis_vector<float>(math::cross(AxisSigned::Z_POS, AxisSigned::Y_NEG)),
+            cross(basis_vector<float>(AxisSigned::Z_POS), basis_vector<float>(AxisSigned::Y_NEG)));
+  EXPECT_EQ(basis_vector<float>(math::cross(AxisSigned::X_NEG, AxisSigned::Y_POS)),
+            cross(basis_vector<float>(AxisSigned::X_NEG), basis_vector<float>(AxisSigned::Y_POS)));
+  EXPECT_EQ(basis_vector<float>(math::cross(AxisSigned::X_NEG, AxisSigned::Z_POS)),
+            cross(basis_vector<float>(AxisSigned::X_NEG), basis_vector<float>(AxisSigned::Z_POS)));
+  EXPECT_EQ(basis_vector<float>(math::cross(AxisSigned::X_NEG, AxisSigned::Y_NEG)),
+            cross(basis_vector<float>(AxisSigned::X_NEG), basis_vector<float>(AxisSigned::Y_NEG)));
+  EXPECT_EQ(basis_vector<float>(math::cross(AxisSigned::X_NEG, AxisSigned::Z_NEG)),
+            cross(basis_vector<float>(AxisSigned::X_NEG), basis_vector<float>(AxisSigned::Z_NEG)));
+  EXPECT_EQ(basis_vector<float>(math::cross(AxisSigned::Y_NEG, AxisSigned::X_POS)),
+            cross(basis_vector<float>(AxisSigned::Y_NEG), basis_vector<float>(AxisSigned::X_POS)));
+  EXPECT_EQ(basis_vector<float>(math::cross(AxisSigned::Y_NEG, AxisSigned::Z_POS)),
+            cross(basis_vector<float>(AxisSigned::Y_NEG), basis_vector<float>(AxisSigned::Z_POS)));
+  EXPECT_EQ(basis_vector<float>(math::cross(AxisSigned::Y_NEG, AxisSigned::X_NEG)),
+            cross(basis_vector<float>(AxisSigned::Y_NEG), basis_vector<float>(AxisSigned::X_NEG)));
+  EXPECT_EQ(basis_vector<float>(math::cross(AxisSigned::Y_NEG, AxisSigned::Z_NEG)),
+            cross(basis_vector<float>(AxisSigned::Y_NEG), basis_vector<float>(AxisSigned::Z_NEG)));
+  EXPECT_EQ(basis_vector<float>(math::cross(AxisSigned::Z_NEG, AxisSigned::X_POS)),
+            cross(basis_vector<float>(AxisSigned::Z_NEG), basis_vector<float>(AxisSigned::X_POS)));
+  EXPECT_EQ(basis_vector<float>(math::cross(AxisSigned::Z_NEG, AxisSigned::Y_POS)),
+            cross(basis_vector<float>(AxisSigned::Z_NEG), basis_vector<float>(AxisSigned::Y_POS)));
+  EXPECT_EQ(basis_vector<float>(math::cross(AxisSigned::Z_NEG, AxisSigned::X_NEG)),
+            cross(basis_vector<float>(AxisSigned::Z_NEG), basis_vector<float>(AxisSigned::X_NEG)));
+  EXPECT_EQ(basis_vector<float>(math::cross(AxisSigned::Z_NEG, AxisSigned::Y_NEG)),
+            cross(basis_vector<float>(AxisSigned::Z_NEG), basis_vector<float>(AxisSigned::Y_NEG)));
 }
 
 TEST(math_rotation_types, Euler3Order)
@@ -240,17 +216,17 @@ TEST(math_rotation_types, QuaternionExpmap)
 TEST(math_rotation_types, QuaternionTwistSwing)
 {
   Quaternion q(0.927091f, 0.211322f, -0.124857f, 0.283295f);
-  EXPECT_NEAR(float(q.twist_angle(eAxis::X)), 0.448224, 1e-4);
-  EXPECT_NEAR(float(q.twist_angle(eAxis::Y)), -0.267741, 1e-4);
-  EXPECT_NEAR(float(q.twist_angle(eAxis::Z)), 0.593126, 1e-4);
+  EXPECT_NEAR(float(q.twist_angle(Axis::X)), 0.448224, 1e-4);
+  EXPECT_NEAR(float(q.twist_angle(Axis::Y)), -0.267741, 1e-4);
+  EXPECT_NEAR(float(q.twist_angle(Axis::Z)), 0.593126, 1e-4);
 
-  EXPECT_V4_NEAR(float4(q.twist(eAxis::X)), float4(0.974992, 0.222241, 0, 0), 1e-4);
-  EXPECT_V4_NEAR(float4(q.twist(eAxis::Y)), float4(0.991053, 0, -0.133471, 0), 1e-4);
-  EXPECT_V4_NEAR(float4(q.twist(eAxis::Z)), float4(0.956347, 0, 0, 0.292235), 1e-4);
-  EXPECT_V4_NEAR(float4(q.swing(eAxis::X)), float4(0.950871, 0, -0.184694, 0.248462), 1e-4);
-  EXPECT_V4_NEAR(float4(q.swing(eAxis::Y)), float4(0.935461, 0.17162, 0, 0.308966), 1e-4);
-  EXPECT_V4_NEAR(float4(q.swing(eAxis::Z)), float4(0.969409, 0.238585, -0.0576509, 0), 1e-4);
-  EXPECT_V4_NEAR(float4(q.swing(eAxis::Z) * q.twist(eAxis::Z)), float4(q), 1e-4);
+  EXPECT_V4_NEAR(float4(q.twist(Axis::X)), float4(0.974992, 0.222241, 0, 0), 1e-4);
+  EXPECT_V4_NEAR(float4(q.twist(Axis::Y)), float4(0.991053, 0, -0.133471, 0), 1e-4);
+  EXPECT_V4_NEAR(float4(q.twist(Axis::Z)), float4(0.956347, 0, 0, 0.292235), 1e-4);
+  EXPECT_V4_NEAR(float4(q.swing(Axis::X)), float4(0.950871, 0, -0.184694, 0.248462), 1e-4);
+  EXPECT_V4_NEAR(float4(q.swing(Axis::Y)), float4(0.935461, 0.17162, 0, 0.308966), 1e-4);
+  EXPECT_V4_NEAR(float4(q.swing(Axis::Z)), float4(0.969409, 0.238585, -0.0576509, 0), 1e-4);
+  EXPECT_V4_NEAR(float4(q.swing(Axis::Z) * q.twist(Axis::Z)), float4(q), 1e-4);
 }
 
 TEST(math_rotation_types, AngleMethods)

@@ -9,9 +9,9 @@
  * axes. This type of rotation is fast, precise and adds more meaning to the code that uses it.
  *
  * A practical reminder:
- * - Forward is typically the positive Y direction in blender.
- * - Up is typically the positive Z direction in blender.
- * - Right is typically the positive X direction in blender.
+ * - Forward is typically the positive Y direction in Blender.
+ * - Up is typically the positive Z direction in Blender.
+ * - Right is typically the positive X direction in Blender.
  * - Blender uses right handedness.
  * - For cross product, forward = thumb, up = index, right = middle finger.
  *
@@ -31,14 +31,14 @@ namespace blender::math {
 /** \name Conversion
  * \{ */
 
-enum eAxis {
+enum Axis {
   /* Must start at 0. Used as indices in tables and vectors. */
   X = 0,
   Y,
   Z,
 };
 
-enum eAxisSigned {
+enum AxisSigned {
   /* Match #eTrackToAxis_Modes */
   /* Must start at 0. Used as indices in tables and vectors. */
   X_POS = 0,
@@ -55,52 +55,52 @@ enum eAxisSigned {
 /** \name Axes utilities.
  * \{ */
 
-[[nodiscard]] inline eAxis axis_unsigned(const eAxisSigned axis)
+[[nodiscard]] inline Axis axis_unsigned(const AxisSigned axis)
 {
-  return eAxis(axis - ((axis <= 2) ? 0 : 3));
+  return Axis(axis - ((axis <= 2) ? 0 : 3));
 }
 
-template<typename T> [[nodiscard]] inline VecBase<T, 3> basis_vector(const eAxisSigned axis)
+template<typename T> [[nodiscard]] inline VecBase<T, 3> basis_vector(const AxisSigned axis)
 {
-  BLI_assert(axis >= eAxisSigned::X_POS && axis <= eAxisSigned::Z_NEG);
+  BLI_assert(axis >= AxisSigned::X_POS && axis <= AxisSigned::Z_NEG);
   VecBase<T, 3> vec{};
   vec[axis % 3] = (axis > 2) ? T(-1) : T(1);
   return vec;
 }
 
-template<typename T> [[nodiscard]] inline VecBase<T, 3> basis_vector(const eAxis axis)
+template<typename T> [[nodiscard]] inline VecBase<T, 3> basis_vector(const Axis axis)
 {
-  BLI_assert(axis >= eAxis::X && axis <= eAxis::Z);
-  return basis_vector<T>(eAxisSigned(axis));
+  BLI_assert(axis >= Axis::X && axis <= Axis::Z);
+  return basis_vector<T>(AxisSigned(axis));
 }
 
-[[nodiscard]] inline eAxis axis_from_char(const char axis)
+[[nodiscard]] inline Axis axis_from_char(const char axis)
 {
   BLI_assert(axis >= 'X' && axis <= 'Z');
-  return eAxis(axis - 'X');
+  return Axis(axis - 'X');
 }
 
-[[nodiscard]] inline bool is_negative(const eAxisSigned axis)
+[[nodiscard]] inline bool is_negative(const AxisSigned axis)
 {
   return axis > Z_POS;
 }
 
-[[nodiscard]] inline eAxisSigned negate(const eAxisSigned axis)
+[[nodiscard]] inline AxisSigned negate(const AxisSigned axis)
 {
-  return eAxisSigned((axis + 3) % 6);
+  return AxisSigned((axis + 3) % 6);
 }
 
-template<> inline eAxisSigned abs(const eAxisSigned &axis)
+template<> inline AxisSigned abs(const AxisSigned &axis)
 {
-  return eAxisSigned(axis_unsigned(axis));
+  return AxisSigned(axis_unsigned(axis));
 }
 
-[[nodiscard]] inline int sign(const eAxisSigned &axis)
+[[nodiscard]] inline int sign(const AxisSigned &axis)
 {
   return is_negative(axis) ? -1 : 1;
 }
 
-inline std::ostream &operator<<(std::ostream &stream, eAxisSigned axis)
+inline std::ostream &operator<<(std::ostream &stream, AxisSigned axis)
 {
   switch (axis) {
     default:
@@ -126,107 +126,107 @@ inline std::ostream &operator<<(std::ostream &stream, eAxisSigned axis)
  * Way faster than true cross product if the vectors are basis vectors.
  * Any ill-formed case will return positive X.
  */
-[[nodiscard]] inline eAxisSigned cross(const eAxisSigned a, const eAxisSigned b)
+[[nodiscard]] inline AxisSigned cross(const AxisSigned a, const AxisSigned b)
 {
   switch (a) {
-    case eAxisSigned::X_POS:
+    case AxisSigned::X_POS:
       switch (b) {
-        case eAxisSigned::X_POS:
+        case AxisSigned::X_POS:
           break; /* Ill-defined. */
-        case eAxisSigned::Y_POS:
-          return eAxisSigned::Z_POS;
-        case eAxisSigned::Z_POS:
-          return eAxisSigned::Y_NEG;
-        case eAxisSigned::X_NEG:
+        case AxisSigned::Y_POS:
+          return AxisSigned::Z_POS;
+        case AxisSigned::Z_POS:
+          return AxisSigned::Y_NEG;
+        case AxisSigned::X_NEG:
           break; /* Ill-defined. */
-        case eAxisSigned::Y_NEG:
-          return eAxisSigned::Z_NEG;
-        case eAxisSigned::Z_NEG:
-          return eAxisSigned::Y_POS;
+        case AxisSigned::Y_NEG:
+          return AxisSigned::Z_NEG;
+        case AxisSigned::Z_NEG:
+          return AxisSigned::Y_POS;
       }
       break;
-    case eAxisSigned::Y_POS:
+    case AxisSigned::Y_POS:
       switch (b) {
-        case eAxisSigned::X_POS:
-          return eAxisSigned::Z_NEG;
-        case eAxisSigned::Y_POS:
+        case AxisSigned::X_POS:
+          return AxisSigned::Z_NEG;
+        case AxisSigned::Y_POS:
           break; /* Ill-defined. */
-        case eAxisSigned::Z_POS:
-          return eAxisSigned::X_POS;
-        case eAxisSigned::X_NEG:
-          return eAxisSigned::Z_POS;
-        case eAxisSigned::Y_NEG:
+        case AxisSigned::Z_POS:
+          return AxisSigned::X_POS;
+        case AxisSigned::X_NEG:
+          return AxisSigned::Z_POS;
+        case AxisSigned::Y_NEG:
           break; /* Ill-defined. */
-        case eAxisSigned::Z_NEG:
-          return eAxisSigned::X_NEG;
+        case AxisSigned::Z_NEG:
+          return AxisSigned::X_NEG;
       }
       break;
-    case eAxisSigned::Z_POS:
+    case AxisSigned::Z_POS:
       switch (b) {
-        case eAxisSigned::X_POS:
-          return eAxisSigned::Y_POS;
-        case eAxisSigned::Y_POS:
-          return eAxisSigned::X_NEG;
-        case eAxisSigned::Z_POS:
+        case AxisSigned::X_POS:
+          return AxisSigned::Y_POS;
+        case AxisSigned::Y_POS:
+          return AxisSigned::X_NEG;
+        case AxisSigned::Z_POS:
           break; /* Ill-defined. */
-        case eAxisSigned::X_NEG:
-          return eAxisSigned::Y_NEG;
-        case eAxisSigned::Y_NEG:
-          return eAxisSigned::X_POS;
-        case eAxisSigned::Z_NEG:
+        case AxisSigned::X_NEG:
+          return AxisSigned::Y_NEG;
+        case AxisSigned::Y_NEG:
+          return AxisSigned::X_POS;
+        case AxisSigned::Z_NEG:
           break; /* Ill-defined. */
       }
       break;
-    case eAxisSigned::X_NEG:
+    case AxisSigned::X_NEG:
       switch (b) {
-        case eAxisSigned::X_POS:
+        case AxisSigned::X_POS:
           break; /* Ill-defined. */
-        case eAxisSigned::Y_POS:
-          return eAxisSigned::Z_NEG;
-        case eAxisSigned::Z_POS:
-          return eAxisSigned::Y_POS;
-        case eAxisSigned::X_NEG:
+        case AxisSigned::Y_POS:
+          return AxisSigned::Z_NEG;
+        case AxisSigned::Z_POS:
+          return AxisSigned::Y_POS;
+        case AxisSigned::X_NEG:
           break; /* Ill-defined. */
-        case eAxisSigned::Y_NEG:
-          return eAxisSigned::Z_POS;
-        case eAxisSigned::Z_NEG:
-          return eAxisSigned::Y_NEG;
+        case AxisSigned::Y_NEG:
+          return AxisSigned::Z_POS;
+        case AxisSigned::Z_NEG:
+          return AxisSigned::Y_NEG;
       }
       break;
-    case eAxisSigned::Y_NEG:
+    case AxisSigned::Y_NEG:
       switch (b) {
-        case eAxisSigned::X_POS:
-          return eAxisSigned::Z_POS;
-        case eAxisSigned::Y_POS:
+        case AxisSigned::X_POS:
+          return AxisSigned::Z_POS;
+        case AxisSigned::Y_POS:
           break; /* Ill-defined. */
-        case eAxisSigned::Z_POS:
-          return eAxisSigned::X_NEG;
-        case eAxisSigned::X_NEG:
-          return eAxisSigned::Z_NEG;
-        case eAxisSigned::Y_NEG:
+        case AxisSigned::Z_POS:
+          return AxisSigned::X_NEG;
+        case AxisSigned::X_NEG:
+          return AxisSigned::Z_NEG;
+        case AxisSigned::Y_NEG:
           break; /* Ill-defined. */
-        case eAxisSigned::Z_NEG:
-          return eAxisSigned::X_POS;
+        case AxisSigned::Z_NEG:
+          return AxisSigned::X_POS;
       }
       break;
-    case eAxisSigned::Z_NEG:
+    case AxisSigned::Z_NEG:
       switch (b) {
-        case eAxisSigned::X_POS:
-          return eAxisSigned::Y_NEG;
-        case eAxisSigned::Y_POS:
-          return eAxisSigned::X_POS;
-        case eAxisSigned::Z_POS:
+        case AxisSigned::X_POS:
+          return AxisSigned::Y_NEG;
+        case AxisSigned::Y_POS:
+          return AxisSigned::X_POS;
+        case AxisSigned::Z_POS:
           break; /* Ill-defined. */
-        case eAxisSigned::X_NEG:
-          return eAxisSigned::Y_POS;
-        case eAxisSigned::Y_NEG:
-          return eAxisSigned::X_NEG;
-        case eAxisSigned::Z_NEG:
+        case AxisSigned::X_NEG:
+          return AxisSigned::Y_POS;
+        case AxisSigned::Y_NEG:
+          return AxisSigned::X_NEG;
+        case AxisSigned::Z_NEG:
           break; /* Ill-defined. */
       }
       break;
   }
-  return eAxisSigned::X_POS;
+  return AxisSigned::X_POS;
 }
 
 /** \} */
@@ -236,7 +236,7 @@ inline std::ostream &operator<<(std::ostream &stream, eAxisSigned axis)
  * \{ */
 
 struct CartesianBasis {
-  VecBase<eAxisSigned, 3> axes = {eAxisSigned::X_POS, eAxisSigned::Y_POS, eAxisSigned::Z_POS};
+  VecBase<AxisSigned, 3> axes = {AxisSigned::X_POS, AxisSigned::Y_POS, AxisSigned::Z_POS};
 
   CartesianBasis() = default;
 
@@ -244,39 +244,39 @@ struct CartesianBasis {
    * Create an arbitrary basis orientation.
    * Handedness can be flipped but an axis cannot be present twice.
    */
-  CartesianBasis(const eAxisSigned x, const eAxisSigned y, const eAxisSigned z) : axes(x, y, z)
+  CartesianBasis(const AxisSigned x, const AxisSigned y, const AxisSigned z) : axes(x, y, z)
   {
     BLI_assert(abs(x) != abs(y));
     BLI_assert(abs(y) != abs(z));
     BLI_assert(abs(z) != abs(x));
   }
 
-  const eAxisSigned &x() const
+  const AxisSigned &x() const
   {
     return axes.x;
   }
 
-  const eAxisSigned &y() const
+  const AxisSigned &y() const
   {
     return axes.y;
   }
 
-  const eAxisSigned &z() const
+  const AxisSigned &z() const
   {
     return axes.z;
   }
 
-  eAxisSigned &x()
+  AxisSigned &x()
   {
     return axes.x;
   }
 
-  eAxisSigned &y()
+  AxisSigned &y()
   {
     return axes.y;
   }
 
-  eAxisSigned &z()
+  AxisSigned &z()
   {
     return axes.z;
   }
@@ -294,8 +294,8 @@ struct CartesianBasis {
  * \a up is Z axis in blender coordinate system.
  * \note \a forward and \a up must be different axes.
  */
-[[nodiscard]] inline CartesianBasis from_orthonormal_axes(const eAxisSigned forward,
-                                                          const eAxisSigned up)
+[[nodiscard]] inline CartesianBasis from_orthonormal_axes(const AxisSigned forward,
+                                                          const AxisSigned up)
 {
   BLI_assert(math::abs(forward) != math::abs(up));
   return {cross(forward, up), forward, up};
@@ -320,12 +320,12 @@ struct CartesianBasis {
  * vector to a \a b orientation defined only by its forward vector.
  * Rotation is given to be non flipped and deterministic.
  */
-[[nodiscard]] inline CartesianBasis rotation_between(const eAxisSigned a_forward,
-                                                     const eAxisSigned b_forward)
+[[nodiscard]] inline CartesianBasis rotation_between(const AxisSigned a_forward,
+                                                     const AxisSigned b_forward)
 {
   /* Pick predictable next axis. */
-  eAxisSigned a_up = eAxisSigned((a_forward + 1) % 3);
-  eAxisSigned b_up = eAxisSigned((b_forward + 1) % 3);
+  AxisSigned a_up = AxisSigned((a_forward + 1) % 3);
+  AxisSigned b_up = AxisSigned((b_forward + 1) % 3);
 
   if (is_negative(a_forward) != is_negative(b_forward)) {
     /* Flip both axis (up and right) so resulting rotation matrix sign remains positive. */

@@ -91,15 +91,15 @@ template<typename T>
  */
 template<typename T>
 [[nodiscard]] detail::Quaternion<T> from_vector(const VecBase<T, 3> &vector,
-                                                const eAxisSigned track_flag,
-                                                const eAxis up_flag);
+                                                const AxisSigned track_flag,
+                                                const Axis up_flag);
 
 /**
  * Returns a quaternion for converting local space to tracking space.
  * This is slightly different than from_axis_conversion for legacy reasons.
  */
 template<typename T>
-[[nodiscard]] detail::Quaternion<T> from_tracking(eAxisSigned forward_axis, eAxis up_axis);
+[[nodiscard]] detail::Quaternion<T> from_tracking(AxisSigned forward_axis, Axis up_axis);
 
 /**
  * Convert euler rotation to gimbal rotation matrix.
@@ -161,7 +161,7 @@ template<typename T>
   return math::safe_acos(dot(a, b));
 }
 template<typename T>
-[[nodiscard]] AngleFraction<T> angle_between(const eAxisSigned a, const eAxisSigned b)
+[[nodiscard]] AngleFraction<T> angle_between(const AxisSigned a, const AxisSigned b)
 {
   if (a == b) {
     return AngleFraction<T>::identity();
@@ -268,8 +268,8 @@ template<typename T>
 
 template<typename T>
 [[nodiscard]] detail::Quaternion<T> from_vector(const VecBase<T, 3> &vector,
-                                                const eAxisSigned track_flag,
-                                                const eAxis up_flag)
+                                                const AxisSigned track_flag,
+                                                const Axis up_flag)
 {
   using Vec2T = VecBase<T, 2>;
   using Vec3T = VecBase<T, 3>;
@@ -284,27 +284,27 @@ template<typename T>
     return detail::Quaternion<T>::identity();
   }
 
-  eAxis axis = axis_unsigned(track_flag);
+  Axis axis = axis_unsigned(track_flag);
   const Vec3T vec = is_negative(track_flag) ? vector : -vector;
 
   Vec3T rotation_axis;
   constexpr T eps = T(1e-4);
   T axis_len;
   switch (axis) {
-    case eAxis::X:
+    case Axis::X:
       rotation_axis = normalize_and_get_length(Vec3T(T(0), -vec.z, vec.y), axis_len);
       if (axis_len < eps) {
         rotation_axis = Vec3T(0, 1, 0);
       }
       break;
-    case eAxis::Y:
+    case Axis::Y:
       rotation_axis = normalize_and_get_length(Vec3T(vec.z, T(0), -vec.x), axis_len);
       if (axis_len < eps) {
         rotation_axis = Vec3T(0, 0, 1);
       }
       break;
     default:
-    case eAxis::Z:
+    case Axis::Z:
       rotation_axis = normalize_and_get_length(Vec3T(-vec.y, vec.x, T(0)), axis_len);
       if (axis_len < eps) {
         rotation_axis = Vec3T(1, 0, 0);
@@ -328,9 +328,9 @@ template<typename T>
   Vec3T rotated_up = transform_point(q1, Vec3T(0, 0, 1));
 
   /* Project using axes index instead of arithmetic. It's much faster and more precise. */
-  eAxisSigned y_axis_signed = math::cross(eAxisSigned(axis), eAxisSigned(up_flag));
-  eAxis x_axis = up_flag;
-  eAxis y_axis = axis_unsigned(y_axis_signed);
+  AxisSigned y_axis_signed = math::cross(AxisSigned(axis), AxisSigned(up_flag));
+  Axis x_axis = up_flag;
+  Axis y_axis = axis_unsigned(y_axis_signed);
 
   Vec2T projected = normalize(Vec2T(rotated_up[x_axis], rotated_up[y_axis]));
   /* Flip sign for flipped axis. */
@@ -339,7 +339,7 @@ template<typename T>
   }
   /* Not sure if this was a bug or not in the previous implementation.
    * Carry over this weird behavior to avoid regressions. */
-  if (axis == eAxis::Z) {
+  if (axis == Axis::Z) {
     projected = -projected;
   }
 
@@ -352,16 +352,16 @@ template<typename T>
 }
 
 template<typename T>
-[[nodiscard]] detail::Quaternion<T> from_tracking(eAxisSigned forward_axis, eAxis up_axis)
+[[nodiscard]] detail::Quaternion<T> from_tracking(AxisSigned forward_axis, Axis up_axis)
 {
-  BLI_assert(forward_axis >= eAxisSigned::X_POS && forward_axis <= eAxisSigned::Z_NEG);
-  BLI_assert(up_axis >= eAxis::X && up_axis <= eAxis::Z);
+  BLI_assert(forward_axis >= AxisSigned::X_POS && forward_axis <= AxisSigned::Z_NEG);
+  BLI_assert(up_axis >= Axis::X && up_axis <= Axis::Z);
   BLI_assert(axis_unsigned(forward_axis) != up_axis);
 
   /* Curve have Z forward, Y up, X left. */
   return detail::Quaternion<T>(
-      rotation_between(from_orthonormal_axes(eAxisSigned::Z_POS, eAxisSigned::Y_POS),
-                       from_orthonormal_axes(forward_axis, eAxisSigned(up_axis))));
+      rotation_between(from_orthonormal_axes(AxisSigned::Z_POS, AxisSigned::Y_POS),
+                       from_orthonormal_axes(forward_axis, AxisSigned(up_axis))));
 }
 
 template<typename T>

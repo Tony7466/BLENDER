@@ -9,10 +9,10 @@
  *
  * Mainly used for rigging and armature deformations as they have nice mathematical properties
  * (eg: smooth shortest path interpolation). A `blender::math::Quaternion<T>` is cheaper to combine
- * than `MatBase<T, 3, 3>`. However, transforming points is not. Consider converting to a rotation
- * matrix if you are rotating many points.
+ * than `MatBase<T, 3, 3>`. However, transforming points is slower. Consider converting to a
+ * rotation matrix if you are rotating many points.
  *
- * See this for more information :
+ * See this for more information:
  * https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation#Performance_comparisons
  *
  *
@@ -110,20 +110,20 @@ template<typename T = float> struct Quaternion {
    * Returns the full twist angle for a given \a axis direction.
    * The twist is the isolated rotation in the plane whose \a axis is normal to.
    */
-  AngleRadian<T> twist_angle(const eAxis axis) const;
+  AngleRadian<T> twist_angle(const Axis axis) const;
 
   /**
    * Returns the twist part of this quaternion for the \a axis direction.
    * The twist is the isolated rotation in the plane whose \a axis is normal to.
    */
-  Quaternion twist(const eAxis axis) const;
+  Quaternion twist(const Axis axis) const;
 
   /**
    * Returns the swing part of this quaternion for the basis \a axis direction.
    * The swing is the original quaternion minus the twist around \a axis.
    * So we have the following identity : `q = q.swing(axis) * q.twist(axis)`
    */
-  Quaternion swing(const eAxis axis) const;
+  Quaternion swing(const Axis axis) const;
 
   /**
    * Returns the imaginary part of this quaternion (x, y, z).
@@ -142,7 +142,7 @@ template<typename T = float> struct Quaternion {
   /**
    * Return this quaternions orientation but wrapped around \a reference.
    *
-   * This mean the interpolation between the returned value and \a reference will always take the
+   * This means the interpolation between the returned value and \a reference will always take the
    * shortest path. The angle between them will not be more than pi.
    *
    * \note This quaternion is expected to be a unit quaternion.

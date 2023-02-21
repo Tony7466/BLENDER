@@ -28,18 +28,18 @@ void generate_axes_to_quaternion_switch_cases()
   /* Go through all 32 cases. Only 23 valid and 1 is identity. */
   for (int i : IndexRange(6)) {
     for (int j : IndexRange(6)) {
-      const eAxisSigned forward = eAxisSigned(i);
-      const eAxisSigned up = eAxisSigned(j);
+      const AxisSigned forward = AxisSigned(i);
+      const AxisSigned up = AxisSigned(j);
       /* Filter the 12 invalid cases. Fall inside the default case. */
       if (axis_unsigned(forward) == axis_unsigned(up)) {
         continue;
       }
       /* Filter the identity case. Fall inside the default case. */
-      if (forward == eAxisSigned::Y_POS && up == eAxisSigned::Z_POS) {
+      if (forward == AxisSigned::Y_POS && up == AxisSigned::Z_POS) {
         continue;
       }
 
-      VecBase<eAxisSigned, 3> axes{cross(forward, up), forward, up};
+      VecBase<AxisSigned, 3> axes{cross(forward, up), forward, up};
 
       float3x3 mat;
       mat.x_axis() = basis_vector<float>(axes.x);
@@ -63,21 +63,21 @@ void generate_axes_to_quaternion_switch_cases()
             return (value > 0) ? "T(1)" : "T(-1)";
         }
       };
-      auto format_axis = [](eAxisSigned axis) {
+      auto format_axis = [](AxisSigned axis) {
         switch (axis) {
           default:
-          case eAxisSigned::X_POS:
-            return "eAxisSigned::X_POS";
-          case eAxisSigned::Y_POS:
-            return "eAxisSigned::Y_POS";
-          case eAxisSigned::Z_POS:
-            return "eAxisSigned::Z_POS";
-          case eAxisSigned::X_NEG:
-            return "eAxisSigned::X_NEG";
-          case eAxisSigned::Y_NEG:
-            return "eAxisSigned::Y_NEG";
-          case eAxisSigned::Z_NEG:
-            return "eAxisSigned::Z_NEG";
+          case AxisSigned::X_POS:
+            return "AxisSigned::X_POS";
+          case AxisSigned::Y_POS:
+            return "AxisSigned::Y_POS";
+          case AxisSigned::Z_POS:
+            return "AxisSigned::Z_POS";
+          case AxisSigned::X_NEG:
+            return "AxisSigned::X_NEG";
+          case AxisSigned::Y_NEG:
+            return "AxisSigned::Y_NEG";
+          case AxisSigned::Z_NEG:
+            return "AxisSigned::Z_NEG";
         }
       };
       /* Use same code function as in the switch case. */
