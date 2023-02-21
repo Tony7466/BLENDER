@@ -67,7 +67,7 @@ bool RenderTaskDelegate::IsConverged()
 void RenderTaskDelegate::SetRendererAov(TfToken const &aov)
 {
   HdAovDescriptor aovDesc = GetRenderIndex().GetRenderDelegate()->GetDefaultAovDescriptor(aov);
-  HdRenderBufferDescriptor desc(GfVec3i(taskParams.viewport[2] - taskParams.viewport[0], taskParams.viewport[3] - taskParams.viewport[1], 1),
+  HdRenderBufferDescriptor desc(GfVec3i(taskParams.viewport[2], taskParams.viewport[3], 1),
     aovDesc.format, aovDesc.multiSampled);
   SdfPath bufferId = GetAovID(aov);
 
