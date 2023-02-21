@@ -22,25 +22,25 @@ namespace blender::math::detail {
 template<typename T> EulerXYZ<T>::operator Quaternion<T>() const
 {
   const EulerXYZ<T> &eul = *this;
-  const T ti = eul.x() * T(0.5);
-  const T tj = eul.y() * T(0.5);
-  const T th = eul.z() * T(0.5);
-  const T ci = math::cos(ti);
-  const T cj = math::cos(tj);
-  const T ch = math::cos(th);
-  const T si = math::sin(ti);
-  const T sj = math::sin(tj);
-  const T sh = math::sin(th);
-  const T cc = ci * ch;
-  const T cs = ci * sh;
-  const T sc = si * ch;
-  const T ss = si * sh;
+  const T h_angle_i = eul.x() / 2;
+  const T h_angle_j = eul.y() / 2;
+  const T h_angle_k = eul.z() / 2;
+  const T cos_i = math::cos(h_angle_i);
+  const T cos_j = math::cos(h_angle_j);
+  const T cos_k = math::cos(h_angle_k);
+  const T sin_i = math::sin(h_angle_i);
+  const T sin_j = math::sin(h_angle_j);
+  const T sin_k = math::sin(h_angle_k);
+  const T cos_cos = cos_i * cos_k;
+  const T cos_sin = cos_i * sin_k;
+  const T sin_cos = sin_i * cos_k;
+  const T sin_sin = sin_i * sin_k;
 
   Quaternion<T> quat;
-  quat.w = cj * cc + sj * ss;
-  quat.x = cj * sc - sj * cs;
-  quat.y = cj * ss + sj * cc;
-  quat.z = cj * cs - sj * sc;
+  quat.w = cos_j * cos_cos + sin_j * sin_sin;
+  quat.x = cos_j * sin_cos - sin_j * cos_sin;
+  quat.y = cos_j * sin_sin + sin_j * cos_cos;
+  quat.z = cos_j * cos_sin - sin_j * sin_cos;
   return quat;
 }
 

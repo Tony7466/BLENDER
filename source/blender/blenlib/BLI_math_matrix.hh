@@ -889,29 +889,29 @@ MatBase<T, NumCol, NumRow> from_rotation(const EulerXYZ<T> &rotation)
 {
   using MatT = MatBase<T, NumCol, NumRow>;
   using DoublePrecision = typename TypeTraits<T>::DoublePrecision;
-  DoublePrecision ci = math::cos(DoublePrecision(rotation.x()));
-  DoublePrecision cj = math::cos(DoublePrecision(rotation.y()));
-  DoublePrecision ch = math::cos(DoublePrecision(rotation.z()));
-  DoublePrecision si = math::sin(DoublePrecision(rotation.x()));
-  DoublePrecision sj = math::sin(DoublePrecision(rotation.y()));
-  DoublePrecision sh = math::sin(DoublePrecision(rotation.z()));
-  DoublePrecision cc = ci * ch;
-  DoublePrecision cs = ci * sh;
-  DoublePrecision sc = si * ch;
-  DoublePrecision ss = si * sh;
+  DoublePrecision cos_i = math::cos(DoublePrecision(rotation.x()));
+  DoublePrecision cos_j = math::cos(DoublePrecision(rotation.y()));
+  DoublePrecision cos_k = math::cos(DoublePrecision(rotation.z()));
+  DoublePrecision sin_i = math::sin(DoublePrecision(rotation.x()));
+  DoublePrecision sin_j = math::sin(DoublePrecision(rotation.y()));
+  DoublePrecision sin_k = math::sin(DoublePrecision(rotation.z()));
+  DoublePrecision cos_i_cos_k = cos_i * cos_k;
+  DoublePrecision cos_i_sin_k = cos_i * sin_k;
+  DoublePrecision sin_i_cos_k = sin_i * cos_k;
+  DoublePrecision sin_i_sin_k = sin_i * sin_k;
 
   MatT mat = MatT::identity();
-  mat[0][0] = T(cj * ch);
-  mat[1][0] = T(sj * sc - cs);
-  mat[2][0] = T(sj * cc + ss);
+  mat[0][0] = T(cos_j * cos_k);
+  mat[1][0] = T(sin_j * sin_i_cos_k - cos_i_sin_k);
+  mat[2][0] = T(sin_j * cos_i_cos_k + sin_i_sin_k);
 
-  mat[0][1] = T(cj * sh);
-  mat[1][1] = T(sj * ss + cc);
-  mat[2][1] = T(sj * cs - sc);
+  mat[0][1] = T(cos_j * sin_k);
+  mat[1][1] = T(sin_j * sin_i_sin_k + cos_i_cos_k);
+  mat[2][1] = T(sin_j * cos_i_sin_k - sin_i_cos_k);
 
-  mat[0][2] = T(-sj);
-  mat[1][2] = T(cj * si);
-  mat[2][2] = T(cj * ci);
+  mat[0][2] = T(-sin_j);
+  mat[1][2] = T(cos_j * sin_i);
+  mat[2][2] = T(cos_j * cos_i);
   return mat;
 }
 
