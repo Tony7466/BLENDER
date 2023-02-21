@@ -615,7 +615,7 @@ template<typename T>
   /**
    * From:
    * "Skinning with Dual Quaternions"
-   * Ladislav Kavan, Steven Collins, Jiri Zara, Carol O’Sullivan
+   * Ladislav Kavan, Steven Collins, Jiri Zara, Carol O'Sullivan
    * Trinity College Dublin, Czech Technical University in Prague
    */
   /* Follow the paper notation. */
