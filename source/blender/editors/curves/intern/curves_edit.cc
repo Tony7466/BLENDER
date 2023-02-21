@@ -45,7 +45,7 @@ bke::CurvesGeometry extend(bke::CurvesGeometry &curves, eAttrDomain selection_do
   /* Get the selection and the unselected ranges. */
   Vector<int64_t> indices;
   IndexMask selection = retrieve_selected_curves(curves, indices);
-  Vector<IndexRange> unselected_ranges = selection.extract_ranges_invert(curves.points_range());
+  Vector<IndexRange> unselected_ranges = selection.extract_ranges_invert(curves.curves_range());
 
   bke::CurvesGeometry dst_curves = bke::curves::copy_only_curve_domain(curves);
   /* Use the offsets as sizes and convert back to offsets later. */
