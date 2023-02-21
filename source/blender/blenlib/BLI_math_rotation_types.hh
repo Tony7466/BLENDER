@@ -13,7 +13,7 @@
 
 #include "BLI_math_angle_types.hh"
 #include "BLI_math_axis_angle_types.hh"
-#include "BLI_math_axis_convert_types.hh"
+#include "BLI_math_basis_types.hh"
 #include "BLI_math_euler_types.hh"
 #include "BLI_math_quaternion_types.hh"
 
