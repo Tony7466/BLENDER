@@ -343,8 +343,8 @@ class UniformAreaTrianglesGenerator {
       const float side_scale = math::sqrt(2.0f * triangle_area() / math::sqrt(1.0f - dot_uv * dot_uv));
       const float r = min_side_length + (1.0f - min_side_length) * rng.get_float();
       const float s = 1.0f / r;
-      float3 p1 = side_scale * r * u;
-      float3 p2 = side_scale * s * v;
+      float3 p1 = p0 + side_scale * r * u;
+      float3 p2 = p0 + side_scale * s * v;
 
       positions[i * 3 + 0] = p0;
       positions[i * 3 + 1] = p1;
