@@ -1223,6 +1223,17 @@ void ED_operatortypes_curves()
   WM_operatortype_append(CURVES_OT_extend);
 }
 
+void ED_operatormacros_curves()
+{
+  using namespace blender::ed::curves;
+  wmOperatorType *ot = WM_operatortype_append_macro("CURVES_OT_extend_move",
+                                                    "Extend",
+                                                    "Extend curves and move last point",
+                                                    OPTYPE_UNDO | OPTYPE_REGISTER);
+  WM_operatortype_macro_define(ot, "CURVES_OT_extend");
+  WM_operatortype_macro_define(ot, "TRANSFORM_OT_translate");
+}
+
 void ED_keymap_curves(wmKeyConfig *keyconf)
 {
   using namespace blender::ed::curves;

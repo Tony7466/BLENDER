@@ -23,6 +23,7 @@ extern "C" {
  * \{ */
 
 void ED_operatortypes_curves(void);
+void ED_operatormacros_curves(void);
 void ED_curves_undosys_type(struct UndoType *ut);
 void ED_keymap_curves(struct wmKeyConfig *keyconf);
 

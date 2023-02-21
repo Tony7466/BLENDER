@@ -5636,6 +5636,7 @@ def km_curves(params):
         ("curves.delete", {"type": 'DEL', "value": 'PRESS'}, None),
         ("curves.select_more", {"type": 'NUMPAD_PLUS', "value": 'PRESS', "ctrl": True, "repeat": True}, None),
         ("curves.select_less", {"type": 'NUMPAD_MINUS', "value": 'PRESS', "ctrl": True, "repeat": True}, None),
+        ("curves.extend_move", {"type": 'E', "value": 'PRESS'}, None),
     ])
 
     return keymap
