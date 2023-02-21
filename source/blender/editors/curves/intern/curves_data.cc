@@ -5,6 +5,8 @@
 
 #include "BLI_task.hh"
 
+#include "DNA_object_types.h"
+
 #include "ED_curves.h"
 #include "ED_transverts.h"
 
@@ -23,8 +25,8 @@ void transverts_from_curves_positions_create(bke::CurvesGeometry &curves, TransV
   threading::parallel_for(selection.index_range(), 1024, [&](const IndexRange selection_range) {
     for (const int point_i : selection_range) {
       TransVert &tv = tvs->transverts[point_i];
-      tv.loc = reinterpret_cast<float *>(&positions[selection[point_i]]);
-      tv.flag = true;
+      tv.loc = positions[selection[point_i]];
+      tv.flag = SELECT;
       copy_v3_v3(tv.oldloc, tv.loc);
     }
   });
