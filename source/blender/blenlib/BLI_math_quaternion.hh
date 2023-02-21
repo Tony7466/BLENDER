@@ -238,7 +238,7 @@ template<typename T> Quaternion<T> Quaternion<T>::expmap(const VecBase<T, 3> &ex
   /* Obtain axis/angle representation. */
   T angle;
   VecBase<T, 3> axis = normalize_and_get_length(expmap, angle);
-  if (LIKELY(angle != 0.0f)) {
+  if (LIKELY(angle != T(0))) {
     return Quaternion<T>(detail::AxisAngle<T, AngleRadian<T>>(axis, angle_wrap_rad(angle)));
   }
   return Quaternion<T>::identity();
@@ -345,17 +345,17 @@ template<typename T>
 template<typename T>
 [[nodiscard]] inline detail::Quaternion<T> canonicalize(const detail::Quaternion<T> &q)
 {
-  return (q.w < 0.0) ? -q : q;
+  return (q.w < T(0)) ? -q : q;
 }
 
 template<typename T>
 [[nodiscard]] inline detail::Quaternion<T> invert(const detail::Quaternion<T> &q)
 {
   const T length_squared = dot(q, q);
-  if (length_squared == 0.0f) {
+  if (length_squared == T(0)) {
     return detail::Quaternion<T>::identity();
   }
-  return conjugate(q) * (1.0f / length_squared);
+  return conjugate(q) * (T(1) / length_squared);
 }
 
 template<typename T>

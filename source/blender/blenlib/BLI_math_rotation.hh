@@ -138,7 +138,7 @@ template<typename T>
 [[nodiscard]] detail::AngleRadian<T> angle_of_signed(const detail::Quaternion<T> &q)
 {
   BLI_assert(is_unit_scale(q));
-  return T(2) * ((q.w >= 0.0f) ? math::safe_acos(q.w) : -math::safe_acos(-q.w));
+  return T(2) * ((q.w >= T(0)) ? math::safe_acos(q.w) : -math::safe_acos(-q.w));
 }
 
 /**

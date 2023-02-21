@@ -73,20 +73,18 @@ template<typename T, typename AngleT> AxisAngle<T, AngleT>::AxisAngle(const Quat
 {
   BLI_assert(is_unit_scale(quat));
 
-  /* Calculate angle/2, and sin(angle/2). */
-  T ha = math::acos(quat.w);
-  T si = math::sin(ha);
+  AngleT half_angle = math::safe_acos(quat.w);
+  AngleT angle = half_angle * 2;
+  T sin_half_angle = math::sin(half_angle);
 
-  /* From half-angle to angle. */
-  T angle = ha * 2;
   /* Prevent division by zero for axis conversion. */
-  if (math::abs(si) < 0.0005) {
-    si = 1.0f;
+  if (math::abs(sin_half_angle) < T(0.0005)) {
+    sin_half_angle = T(1);
   }
 
-  VecBase<T, 3> axis = VecBase<T, 3>(quat.x, quat.y, quat.z) / si;
+  VecBase<T, 3> axis = VecBase<T, 3>(quat.x, quat.y, quat.z) / sin_half_angle;
   if (math::is_zero(axis)) {
-    axis[1] = 1.0f;
+    axis[1] = T(1);
   }
   *this = AxisAngle<T, AngleT>(axis, angle);
 }
@@ -95,9 +93,9 @@ template<typename T, typename AngleT> AxisAngle<T, AngleT>::operator Quaternion<
 {
   BLI_assert(math::is_unit_scale(axis_));
 
-  AngleT half_angle = angle() / T(2);
-  T hs = sin(half_angle);
-  T hc = cos(half_angle);
+  AngleT half_angle = angle() / 2;
+  T hs = math::sin(half_angle);
+  T hc = math::cos(half_angle);
 
   Quaternion<T> quat;
   quat.w = hc;
