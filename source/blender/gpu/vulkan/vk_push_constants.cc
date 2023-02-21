@@ -7,74 +7,15 @@
 
 #include "vk_push_constants.hh"
 #include "vk_backend.hh"
+#include "vk_memory.hh"
 #include "vk_shader_interface.hh"
 
 namespace blender::gpu {
 
-constexpr uint32_t to_component_size(const shader::Type /*type*/)
-{
-  return 4;
-}
-
-constexpr uint32_t to_num_components(const shader::Type type)
-{
-  switch (type) {
-    case shader::Type::FLOAT:
-    case shader::Type::UINT:
-    case shader::Type::INT:
-    case shader::Type::BOOL:
-      return 1;
-    case shader::Type::VEC2:
-    case shader::Type::UVEC2:
-    case shader::Type::IVEC2:
-      return 2;
-    case shader::Type::VEC3:
-    case shader::Type::UVEC3:
-    case shader::Type::IVEC3:
-    case shader::Type::VEC4:
-    case shader::Type::UVEC4:
-    case shader::Type::IVEC4:
-      return 4;
-    case shader::Type::MAT3:
-      return 12;
-    case shader::Type::MAT4:
-      return 16;
-    default:
-      BLI_assert_msg(false, "Type not supported as push constant");
-  }
-  return 0;
-}
-
-constexpr uint32_t to_alignment(const shader::Type type)
-{
-  switch (type) {
-    case shader::Type::FLOAT:
-    case shader::Type::UINT:
-    case shader::Type::INT:
-    case shader::Type::BOOL:
-      return 4;
-    case shader::Type::VEC2:
-    case shader::Type::UVEC2:
-    case shader::Type::IVEC2:
-      return 8;
-    case shader::Type::VEC3:
-    case shader::Type::UVEC3:
-    case shader::Type::IVEC3:
-    case shader::Type::VEC4:
-    case shader::Type::UVEC4:
-    case shader::Type::IVEC4:
-    case shader::Type::MAT3:
-    case shader::Type::MAT4:
-      return 16;
-    default:
-      BLI_assert_msg(false, "Type not supported as push constant");
-  }
-  return 0;
-}
-
+template<typename Layout>
 static void align(const shader::ShaderCreateInfo::PushConst &push_constant, uint32_t *r_offset)
 {
-  uint32_t alignment = to_alignment(push_constant.type);
+  uint32_t alignment = Layout::element_alignment(push_constant.type);
   uint32_t alignment_mask = alignment - 1;
   uint32_t offset = *r_offset;
   if ((offset & alignment_mask) != 0) {
@@ -84,21 +25,24 @@ static void align(const shader::ShaderCreateInfo::PushConst &push_constant, uint
   }
 }
 
+template<typename Layout>
 static void reserve(const shader::ShaderCreateInfo::PushConst &push_constant, uint32_t *r_offset)
 {
-  uint32_t size = to_num_components(push_constant.type) * to_component_size(push_constant.type);
+  uint32_t size = Layout::element_components_len(push_constant.type) *
+                  Layout::component_mem_size(push_constant.type);
   if (push_constant.array_size != 0) {
     size *= push_constant.array_size;
   }
   *r_offset += size;
 }
 
+template<typename Layout>
 static VKPushConstantsLayout::PushConstantLayout init_constant(
     const shader::ShaderCreateInfo::PushConst &push_constant,
     const ShaderInput &shader_input,
     uint32_t *r_offset)
 {
-  align(push_constant, r_offset);
+  align<Layout>(push_constant, r_offset);
 
   VKPushConstantsLayout::PushConstantLayout layout;
   layout.location = shader_input.location;
@@ -106,7 +50,7 @@ static VKPushConstantsLayout::PushConstantLayout init_constant(
   layout.array_size = push_constant.array_size;
   layout.offset = *r_offset;
 
-  reserve(push_constant, r_offset);
+  reserve<Layout>(push_constant, r_offset);
   return layout;
 }
 
@@ -119,8 +63,8 @@ VKPushConstantsLayout::StorageType VKPushConstantsLayout::determine_storage_type
 
   uint32_t offset = 0;
   for (const shader::ShaderCreateInfo::PushConst &push_constant : info.push_constants_) {
-    align(push_constant, &offset);
-    reserve(push_constant, &offset);
+    align<Std430>(push_constant, &offset);
+    reserve<Std430>(push_constant, &offset);
   }
   return offset <= vk_physical_device_limits.maxPushConstantsSize ? StorageType::PUSH_CONSTANTS :
                                                                     StorageType::STORAGE_BUFFER;
@@ -141,7 +85,7 @@ void VKPushConstantsLayout::init(const shader::ShaderCreateInfo &info,
   for (const shader::ShaderCreateInfo::PushConst &push_constant : info.push_constants_) {
     const ShaderInput *shader_input = interface.uniform_get(push_constant.name.c_str());
     BLI_assert(shader_input);
-    push_constants.append(init_constant(push_constant, *shader_input, &offset));
+    push_constants.append(init_constant<Std430>(push_constant, *shader_input, &offset));
   }
   size_in_bytes_ = offset;
 }

@@ -9,6 +9,8 @@
 
 #include "vk_common.hh"
 
+#include "gpu_shader_create_info.hh"
+
 namespace blender::gpu {
 
 /**
@@ -57,5 +59,17 @@ constexpr VkAllocationCallbacks vk_allocation_callbacks_init(const char *name)
 #  define VK_ALLOCATION_CALLBACKS \
     static constexpr const VkAllocationCallbacks *vk_allocation_callbacks = nullptr;
 #endif
+
+/**
+ * Information about alignment/components and memory size for types when using std430 layout.
+ */
+struct Std430 {
+  /** Get the memory size in bytes of a single component using by the given type.*/
+  static uint32_t component_mem_size(const shader::Type type);
+  /** Get to alignment of the given type in bytes.*/
+  static uint32_t element_alignment(const shader::Type type);
+  /** Get the number of components that should be allocated for the given type.*/
+  static uint32_t element_components_len(const shader::Type type);
+};
 
 }  // namespace blender::gpu
