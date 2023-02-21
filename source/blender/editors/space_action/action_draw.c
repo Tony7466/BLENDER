@@ -232,7 +232,11 @@ void draw_channel_strips(bAnimContext *ac, SpaceAction *saction, ARegion *region
           sel = ANIM_channel_setting_get(ac, ale, ACHANNEL_SETTING_SELECT);
         }
 
-        if (ELEM(ac->datatype, ANIMCONT_ACTION, ANIMCONT_DOPESHEET, ANIMCONT_SHAPEKEY)) {
+        if (ELEM(ac->datatype,
+                 ANIMCONT_ACTION,
+                 ANIMCONT_DOPESHEET,
+                 ANIMCONT_SHAPEKEY,
+                 ANIMCONT_TIMELINE)) {
           switch (ale->type) {
             case ANIMTYPE_SUMMARY: {
               /* reddish color from NLA */
