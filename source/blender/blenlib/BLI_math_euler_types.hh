@@ -13,12 +13,7 @@
  *
  * They are prone to gimbal lock and is not suited for many application. However they are more
  * intuitive than other rotation types. Their main use is for converting user facing rotation
- * values to other rotation types. The angle values are stored as radian and expected as such by
- * the constructors.
- *
- * `blender::math::Euler3` shares the same limitations as `blender::math::EulerXYZ`.
- * The rotation order is set at creation and is immutable. This avoids accidentally changing the
- * meaning of what the variable holds.
+ * values to other rotation types.
  *
  * The rotation values can still be reinterpreted like this:
  * `Euler3(float3(my_euler3_zyx_rot), Euler3::eEulerOrder::XYZ)`
@@ -26,6 +21,7 @@
  *
  * If the goal is to convert (keep the same orientation) to `Euler3` then you have to do an
  * asignment.
+ * eg: `Euler3 my_euler(Euler3::eEulerOrder::XYZ); my_euler = my_quaternion:`
  */
 
 #include "BLI_math_angle_types.hh"
@@ -226,7 +222,7 @@ template<typename T> struct Euler3 : public EulerBase<T> {
   eEulerOrder order_;
 
   /**
-   * Swizzle structure allowing to shuffled assignement.
+   * Swizzle structure allowing to rotation ordered assignement.
    */
   class Swizzle {
    private:
@@ -261,7 +257,7 @@ template<typename T> struct Euler3 : public EulerBase<T> {
       : EulerBase<T>(angles_xyz), order_(order){};
 
   /**
-   * Create a rotation from an basis axis and an angle.
+   * Create a rotation around a single euler axis and an angle.
    */
   Euler3(const eAxis axis, T angle, eEulerOrder order) : EulerBase<T>(), order_(order)
   {
