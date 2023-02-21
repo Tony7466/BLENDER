@@ -14,11 +14,9 @@
 
 namespace blender::render::hydra {
 
-class ObjectData;
-using ObjectDataMap = pxr::TfHashMap<pxr::SdfPath, std::unique_ptr<ObjectData>, pxr::SdfPath::Hash>;
-
 class ObjectData: public IdData {
 public:
+  static bool supported(Object *object);
   static std::unique_ptr<ObjectData> init(pxr::HdSceneDelegate *scene_delegate, Object *object);
   static pxr::SdfPath prim_id(pxr::HdSceneDelegate *scene_delegate, Object *object);
 
@@ -31,6 +29,6 @@ public:
   bool visible;
 };
 
-
+using ObjectDataMap = pxr::TfHashMap<pxr::SdfPath, std::unique_ptr<ObjectData>, pxr::SdfPath::Hash>;
 
 } // namespace blender::render::hydra

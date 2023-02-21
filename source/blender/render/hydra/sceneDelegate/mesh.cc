@@ -160,6 +160,14 @@ void MeshData::mark_prim_dirty(DirtyBits dirty_bits)
 {
   SdfPath p_id = prim_id(scene_delegate, (Object *)id);
   if (!scene_delegate->GetRenderIndex().HasRprim(p_id)) {
+    /* Trying to insert prim */
+    insert_prim();
+    return;
+  }
+
+  if (face_vertex_counts.empty()) {
+    /* Remove prim without faces */
+    remove_prim();
     return;
   }
 

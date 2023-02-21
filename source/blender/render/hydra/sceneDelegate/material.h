@@ -13,9 +13,6 @@
 
 namespace blender::render::hydra {
 
-class MaterialData;
-using MaterialDataMap = pxr::TfHashMap<pxr::SdfPath, std::unique_ptr<MaterialData>, pxr::SdfPath::Hash>;
-
 class MaterialData: IdData {
  public:
   static std::unique_ptr<MaterialData> init(pxr::HdSceneDelegate *scene_delegate, Material *material);
@@ -34,5 +31,7 @@ class MaterialData: IdData {
 private:
   pxr::SdfAssetPath mtlx_path;
 };
+
+using MaterialDataMap = pxr::TfHashMap<pxr::SdfPath, std::unique_ptr<MaterialData>, pxr::SdfPath::Hash>;
 
 } // namespace blender::render::hydra

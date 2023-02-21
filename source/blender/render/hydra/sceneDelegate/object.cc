@@ -12,6 +12,24 @@ using namespace pxr;
 
 namespace blender::render::hydra {
 
+bool ObjectData::supported(Object *object)
+{
+  switch (object->type) {
+    case OB_MESH:
+    case OB_SURF:
+    case OB_FONT:
+    case OB_CURVES:
+    case OB_CURVES_LEGACY:
+    case OB_MBALL:
+    case OB_LAMP:
+      return true;
+
+    default:
+      break;
+  }
+  return false;
+}
+
 std::unique_ptr<ObjectData> ObjectData::init(pxr::HdSceneDelegate *scene_delegate, Object *object)
 {
   switch (object->type) {

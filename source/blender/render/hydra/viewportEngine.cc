@@ -246,7 +246,7 @@ void ViewportEngine::sync(BL::Depsgraph &b_depsgraph, BL::Context &b_context, Hd
     sceneDelegate = std::make_unique<BlenderSceneDelegate>(renderIndex.get(), 
       SdfPath::AbsoluteRootPath().AppendElementString("scene"));
   }
-  sceneDelegate->Populate(b_depsgraph, b_context);
+  sceneDelegate->populate((Depsgraph *)b_depsgraph.ptr.data, (bContext *)b_context.ptr.data);
 
   for (auto const& setting : renderSettings) {
     renderDelegate->SetRenderSetting(setting.first, setting.second);

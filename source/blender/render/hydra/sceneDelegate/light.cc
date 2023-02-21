@@ -151,6 +151,8 @@ void LightData::remove_prim()
 
 void LightData::mark_prim_dirty(DirtyBits dirty_bits)
 {
+  /* TODO: prim_type was changed we have to do remove..add light */
+
   HdDirtyBits bits = HdLight::Clean;
   switch (dirty_bits) {
     case DirtyBits::DirtyTransform:
