@@ -275,17 +275,14 @@ template<typename T>
   using Vec3T = VecBase<T, 3>;
   using Vec4T = VecBase<T, 4>;
 
-  BLI_assert(track_flag >= 0 && track_flag <= 5);
-  BLI_assert(up_flag >= 0 && up_flag <= 2);
-
   T vec_len = length(vector);
 
   if (UNLIKELY(vec_len == 0.0f)) {
     return detail::Quaternion<T>::identity();
   }
 
-  Axis axis = axis_unsigned(track_flag);
-  const Vec3T vec = is_negative(track_flag) ? vector : -vector;
+  Axis axis(track_flag);
+  const Vec3T vec = track_flag.is_negative() ? vector : -vector;
 
   Vec3T rotation_axis;
   constexpr T eps = T(1e-4);
@@ -330,11 +327,11 @@ template<typename T>
   /* Project using axes index instead of arithmetic. It's much faster and more precise. */
   AxisSigned y_axis_signed = math::cross(AxisSigned(axis), AxisSigned(up_flag));
   Axis x_axis = up_flag;
-  Axis y_axis = axis_unsigned(y_axis_signed);
+  Axis y_axis = Axis(y_axis_signed);
 
   Vec2T projected = normalize(Vec2T(rotated_up[x_axis], rotated_up[y_axis]));
   /* Flip sign for flipped axis. */
-  if (is_negative(y_axis_signed)) {
+  if (y_axis_signed.is_negative()) {
     projected.y = -projected.y;
   }
   /* Not sure if this was a bug or not in the previous implementation.
@@ -354,9 +351,7 @@ template<typename T>
 template<typename T>
 [[nodiscard]] detail::Quaternion<T> from_tracking(AxisSigned forward_axis, Axis up_axis)
 {
-  BLI_assert(forward_axis >= AxisSigned::X_POS && forward_axis <= AxisSigned::Z_NEG);
-  BLI_assert(up_axis >= Axis::X && up_axis <= Axis::Z);
-  BLI_assert(axis_unsigned(forward_axis) != up_axis);
+  BLI_assert(Axis(forward_axis) != up_axis);
 
   /* Curve have Z forward, Y up, X left. */
   return detail::Quaternion<T>(

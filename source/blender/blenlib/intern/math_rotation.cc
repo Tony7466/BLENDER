@@ -31,7 +31,7 @@ void generate_axes_to_quaternion_switch_cases()
       const AxisSigned forward = AxisSigned(i);
       const AxisSigned up = AxisSigned(j);
       /* Filter the 12 invalid cases. Fall inside the default case. */
-      if (axis_unsigned(forward) == axis_unsigned(up)) {
+      if (Axis(forward) == Axis(up)) {
         continue;
       }
       /* Filter the identity case. Fall inside the default case. */
@@ -42,9 +42,9 @@ void generate_axes_to_quaternion_switch_cases()
       VecBase<AxisSigned, 3> axes{cross(forward, up), forward, up};
 
       float3x3 mat;
-      mat.x_axis() = basis_vector<float>(axes.x);
-      mat.y_axis() = basis_vector<float>(axes.y);
-      mat.z_axis() = basis_vector<float>(axes.z);
+      mat.x_axis() = float3(axes.x);
+      mat.y_axis() = float3(axes.y);
+      mat.z_axis() = float3(axes.z);
 
       math::Quaternion q = to_quaternion(mat);
       /* Create a integer value out of the 4 possible component values (+sign). */

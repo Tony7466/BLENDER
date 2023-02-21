@@ -1009,9 +1009,9 @@ MatBase<T, NumCol, NumRow> from_rotation(const CartesianBasis &rotation)
 {
   using MatT = MatBase<T, NumCol, NumRow>;
   MatT mat = MatT::identity();
-  mat.x_axis() = basis_vector<T>(rotation.axes.x);
-  mat.y_axis() = basis_vector<T>(rotation.axes.y);
-  mat.z_axis() = basis_vector<T>(rotation.axes.z);
+  mat.x_axis() = VecBase<T, 3>(rotation.axes.x);
+  mat.y_axis() = VecBase<T, 3>(rotation.axes.y);
+  mat.z_axis() = VecBase<T, 3>(rotation.axes.z);
   return mat;
 }
 
@@ -1362,15 +1362,15 @@ template<typename MatT> [[nodiscard]] MatT orthogonalize(const MatT &mat, const 
    * Because of this, the target axis could still be colinear but pass the check. */
 #if 1 /* Reproduce old behavior. Do not normalize other axes. */
   switch (axis) {
-    case X:
+    case Axis::X:
       R.y = mat.y_axis();
       R.z = mat.z_axis();
       break;
-    case Y:
+    case Axis::Y:
       R.x = mat.x_axis();
       R.z = mat.z_axis();
       break;
-    case Z:
+    case Axis::Z:
       R.x = mat.x_axis();
       R.y = mat.y_axis();
       break;
@@ -1383,7 +1383,7 @@ template<typename MatT> [[nodiscard]] MatT orthogonalize(const MatT &mat, const 
    * If also coplanar, make up an axis by shuffling the primary axis coordinates (xyz > yzx).
    */
   switch (axis) {
-    case X:
+    case Axis::X:
       if (dot(R.x, R.y) < T(1)) {
         R.z = normalize(cross(R.x, R.y));
         R.y = cross(R.z, R.x);
@@ -1397,7 +1397,7 @@ template<typename MatT> [[nodiscard]] MatT orthogonalize(const MatT &mat, const 
         R.y = cross(R.z, R.x);
       }
       break;
-    case Y:
+    case Axis::Y:
       if (dot(R.y, R.x) < T(1)) {
         R.z = normalize(cross(R.x, R.y));
         R.x = cross(R.y, R.z);
@@ -1412,7 +1412,7 @@ template<typename MatT> [[nodiscard]] MatT orthogonalize(const MatT &mat, const 
         R.z = cross(R.x, R.y);
       }
       break;
-    case Z:
+    case Axis::Z:
       if (dot(R.z, R.x) < T(1)) {
         R.y = normalize(cross(R.z, R.x));
         R.x = cross(R.y, R.z);

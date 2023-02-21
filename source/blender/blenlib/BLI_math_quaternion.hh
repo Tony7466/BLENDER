@@ -255,7 +255,6 @@ template<typename T> VecBase<T, 3> Quaternion<T>::expmap() const
 
 template<typename T> AngleRadian<T> Quaternion<T>::twist_angle(const Axis axis) const
 {
-  BLI_assert(axis >= 0 && axis <= 2);
   /* The calculation requires a canonical quaternion. */
   const VecBase<T, 4> input_vec(canonicalize(*this));
 
@@ -264,7 +263,6 @@ template<typename T> AngleRadian<T> Quaternion<T>::twist_angle(const Axis axis) 
 
 template<typename T> Quaternion<T> Quaternion<T>::swing(const Axis axis) const
 {
-  BLI_assert(axis >= 0 && axis <= 2);
   /* The calculation requires a canonical quaternion. */
   const Quaternion<T> input = canonicalize(*this);
   /* Compute swing by multiplying the original quaternion by inverted twist. */
@@ -276,7 +274,6 @@ template<typename T> Quaternion<T> Quaternion<T>::swing(const Axis axis) const
 
 template<typename T> Quaternion<T> Quaternion<T>::twist(const Axis axis) const
 {
-  BLI_assert(axis >= 0 && axis <= 2);
   /* The calculation requires a canonical quaternion. */
   const VecBase<T, 4> input_vec(canonicalize(*this));
 

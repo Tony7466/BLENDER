@@ -32,7 +32,7 @@ AxisAngle<T, AngleT>::AxisAngle(const VecBase<T, 3> &axis, const AngleT &angle)
 template<typename T, typename AngleT>
 AxisAngle<T, AngleT>::AxisAngle(const AxisSigned axis, const AngleT &angle)
 {
-  this->axis_ = basis_vector<T>(axis);
+  this->axis_ = VecBase<T, 3>(axis);
   this->angle_ = angle;
 }
 

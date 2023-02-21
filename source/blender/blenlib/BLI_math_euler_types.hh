@@ -170,7 +170,6 @@ template<typename T> struct EulerXYZ : public EulerBase<T> {
    */
   EulerXYZ(const Axis axis, const AngleT &angle)
   {
-    BLI_assert(axis >= 0 && axis <= 2);
     *static_cast<EulerBase<T> *>(this) = identity();
     this->xyz_[axis] = angle;
   }
