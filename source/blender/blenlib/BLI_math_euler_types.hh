@@ -130,6 +130,11 @@ template<typename T> struct EulerXYZ {
   }
 
   /**
+   * Return this euler orientation but with angles wrapped inside [-pi..pi] range.
+   */
+  EulerXYZ wrapped() const;
+
+  /**
    * Return this euler orientation but wrapped around \a reference.
    *
    * This mean the interpolation between the returned value and \a reference will always take the

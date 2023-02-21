@@ -44,34 +44,21 @@ template<typename T> EulerXYZ<T>::operator Quaternion<T>() const
   return quat;
 }
 
+template<typename T> EulerXYZ<T> EulerXYZ<T>::wrapped() const
+{
+  EulerXYZ<T> result(*this);
+  result.x() = AngleRadian<T>(result.x()).wrapped().radian();
+  result.y() = AngleRadian<T>(result.y()).wrapped().radian();
+  result.z() = AngleRadian<T>(result.z()).wrapped().radian();
+  return result;
+}
+
 template<typename T> EulerXYZ<T> EulerXYZ<T>::wrapped_around(const EulerXYZ &reference) const
 {
-  using Vec3T = VecBase<T, 3>;
-
-  constexpr T m_2pi = T(2 * M_PI);
-  Vec3T result(*this);
-  Vec3T delta = result - Vec3T(reference);
-  unroll<3>([&](auto i) {
-    /* NOTE(campbell) We could use M_PI as pi_threshold: which is correct but 5.1 gives better
-     * results. Checked with baking actions to fcurves. */
-    constexpr T pi_threshold = T(5.1);
-    if (abs(delta[i]) > pi_threshold) {
-      /* Correct differences of about 360 degrees first. */
-      result[i] += sign(-delta[i]) * floor((abs(delta[i]) / m_2pi) + T(0.5)) * m_2pi;
-    }
-  });
-  delta = result - Vec3T(reference);
-
-  /* Is 1 of the axis rotations larger than 180 degrees and the other small? NO ELSE IF!! */
-  if (abs(delta.x) > T(3.2) && abs(delta.y) < T(1.6) && abs(delta.z) < T(1.6)) {
-    result.x -= sign(delta.x) * m_2pi;
-  }
-  if (abs(delta.y) > T(3.2) && abs(delta.z) < T(1.6) && abs(delta.x) < T(1.6)) {
-    result.y -= sign(delta.y) * m_2pi;
-  }
-  if (abs(delta.z) > T(3.2) && abs(delta.x) < T(1.6) && abs(delta.y) < T(1.6)) {
-    result.z -= sign(delta.z) * m_2pi;
-  }
+  EulerXYZ<T> result(*this);
+  result.x() = AngleRadian<T>(result.x()).wrapped_around(reference.x()).radian();
+  result.y() = AngleRadian<T>(result.y()).wrapped_around(reference.y()).radian();
+  result.z() = AngleRadian<T>(result.z()).wrapped_around(reference.z()).radian();
   return result;
 }
 
