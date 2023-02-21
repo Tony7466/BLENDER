@@ -112,7 +112,7 @@ float *BlurBaseOperation::make_dist_fac_inverse(float rad, int size, int falloff
     /* keep in sync with rna_enum_proportional_falloff_curve_only_items */
     switch (falloff) {
       case PROP_SMOOTH:
-        /* ease - gives less hard lines for dilate/erode feather */
+        /* ease - gives less hard lines for dilate erode feather */
         val = (3.0f * val * val - 2.0f * val * val * val);
         break;
       case PROP_SPHERE:

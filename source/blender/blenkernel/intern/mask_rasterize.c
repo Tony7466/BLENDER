@@ -1334,7 +1334,7 @@ float BKE_maskrasterize_handle_sample(MaskRasterHandle *mr_handle, const float x
 
       switch (layer->falloff) {
         case PROP_SMOOTH:
-          /* ease - gives less hard lines for dilate/erode feather */
+          /* ease - gives less hard lines for dilate erode feather */
           value_layer = (3.0f * value_layer * value_layer -
                          2.0f * value_layer * value_layer * value_layer);
           break;

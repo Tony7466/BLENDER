@@ -578,7 +578,7 @@ void *DilateStepOperation::initialize_tile_data(rcti *rect)
                                     "dilate erode buf");
 
   /* The following is based on the van Herk/Gil-Werman algorithm for morphology operations.
-   * first pass, horizontal dilate/erode. */
+   * first pass, horizontal dilate erode. */
   for (y = ymin; y < ymax; y++) {
     for (x = 0; x < bwidth + 5 * half_window; x++) {
       buf[x] = -FLT_MAX;
@@ -603,7 +603,7 @@ void *DilateStepOperation::initialize_tile_data(rcti *rect)
     }
   }
 
-  /* Second pass, vertical dilate/erode. */
+  /* Second pass, vertical dilate erode. */
   for (x = 0; x < bwidth; x++) {
     for (y = 0; y < bheight + 5 * half_window; y++) {
       buf[y] = -FLT_MAX;
@@ -719,7 +719,7 @@ static void step_update_memory_buffer(MemoryBuffer *output,
                                     "dilate erode buf");
 
   /* The following is based on the van Herk/Gil-Werman algorithm for morphology operations. */
-  /* First pass, horizontal dilate/erode. */
+  /* First pass, horizontal dilate erode. */
   for (int y = ymin; y < ymax; y++) {
     for (int x = 0; x < bwidth + 5 * half_window; x++) {
       buf[x] = compare_min_value;
@@ -744,7 +744,7 @@ static void step_update_memory_buffer(MemoryBuffer *output,
     }
   }
 
-  /* Second pass, vertical dilate/erode. */
+  /* Second pass, vertical dilate erode. */
   for (int x = 0; x < bwidth; x++) {
     for (int y = 0; y < bheight + 5 * half_window; y++) {
       buf[y] = compare_min_value;
@@ -828,7 +828,7 @@ void *ErodeStepOperation::initialize_tile_data(rcti *rect)
                                     "dilate erode buf");
 
   /* The following is based on the van Herk/Gil-Werman algorithm for morphology operations.
-   * first pass, horizontal dilate/erode */
+   * first pass, horizontal dilate erode */
   for (y = ymin; y < ymax; y++) {
     for (x = 0; x < bwidth + 5 * half_window; x++) {
       buf[x] = FLT_MAX;
@@ -853,7 +853,7 @@ void *ErodeStepOperation::initialize_tile_data(rcti *rect)
     }
   }
 
-  /* Second pass, vertical dilate/erode. */
+  /* Second pass, vertical dilate erode. */
   for (x = 0; x < bwidth; x++) {
     for (y = 0; y < bheight + 5 * half_window; y++) {
       buf[y] = FLT_MAX;

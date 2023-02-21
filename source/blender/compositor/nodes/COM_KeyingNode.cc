@@ -296,7 +296,7 @@ void KeyingNode::convert_to_operations(NodeConverter &converter,
     postprocessed_matte = setup_post_blur(converter, postprocessed_matte, keying_data->blur_post);
   }
 
-  /* matte dilate/erode */
+  /* matte dilate erode */
   if (keying_data->dilate_distance != 0) {
     postprocessed_matte = setup_dilate_erode(
         converter, postprocessed_matte, keying_data->dilate_distance);

@@ -30,7 +30,7 @@ class GaussianAlphaBlurBaseOperation : public BlurBaseOperation {
                                     Span<MemoryBuffer *> inputs) final;
 
   /**
-   * Set subtract for Dilate/Erode functionality
+   * Set subtract for Dilate Erode functionality
    */
   void set_subtract(bool subtract)
   {

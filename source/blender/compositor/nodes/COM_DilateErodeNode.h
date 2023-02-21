@@ -12,7 +12,7 @@ namespace blender::compositor {
  * \ingroup Node
  */
 class DilateErodeNode : public Node {
-  /** only used for blurring alpha, since the dilate/erode node doesn't have this. */
+  /** only used for blurring alpha, since the dilate erode node doesn't have this. */
   NodeBlurData alpha_blur_;
 
  public:
