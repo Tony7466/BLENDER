@@ -50,9 +50,8 @@ class VKDescriptorSet : NonCopyable {
      */
     uint32_t binding;
 
-    Location() = default;
-
    public:
+    Location() = default;
     Location(const ShaderInput *shader_input) : binding(shader_input->location)
     {
     }

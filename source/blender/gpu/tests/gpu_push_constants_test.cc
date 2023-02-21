@@ -77,4 +77,22 @@ static void test_push_constants_packed()
 }
 GPU_TEST(push_constants_packed)
 
+static void test_push_constants_128bytes()
+{
+  push_constants("gpu_push_constants_128bytes_test");
+}
+GPU_TEST(push_constants_128bytes)
+
+static void test_push_constants_256bytes()
+{
+  push_constants("gpu_push_constants_256bytes_test");
+}
+GPU_TEST(push_constants_256bytes)
+
+static void test_push_constants_512bytes()
+{
+  push_constants("gpu_push_constants_512bytes_test");
+}
+GPU_TEST(push_constants_512bytes)
+
 }  // namespace blender::gpu::tests

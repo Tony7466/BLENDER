@@ -33,7 +33,7 @@ VKPipeline VKPipeline::create_compute_pipeline(VKContext &context,
                                                VkShaderModule compute_module,
                                                VkDescriptorSetLayout &descriptor_set_layout,
                                                VkPipelineLayout &pipeline_layout,
-                                               VKPushConstantsLayout &push_constants_layout)
+                                               const VKPushConstantsLayout &push_constants_layout)
 {
   VK_ALLOCATION_CALLBACKS
   VkDevice vk_device = context.device_get();
@@ -52,13 +52,12 @@ VKPipeline VKPipeline::create_compute_pipeline(VKContext &context,
   if (vkCreateComputePipelines(
           vk_device, nullptr, 1, &pipeline_info, vk_allocation_callbacks, &vk_pipeline) !=
       VK_SUCCESS) {
-    return VKPipeline();
+    //return VKPipeline();
   }
 
   VKDescriptorSet descriptor_set = context.descriptor_pools_get().allocate(descriptor_set_layout);
-  VKPushConstants push_constants(push_constants_layout);
-  return VKPipeline(
-      vk_pipeline, std::move(descriptor_set), std::move(push_constants));
+  VKPushConstants push_constants(&push_constants_layout);
+  return VKPipeline(vk_pipeline, std::move(descriptor_set), std::move(push_constants));
 }
 
 VkPipeline VKPipeline::vk_handle() const

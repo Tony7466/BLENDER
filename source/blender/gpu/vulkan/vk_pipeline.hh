@@ -44,7 +44,7 @@ class VKPipeline : NonCopyable {
                                             VkShaderModule compute_module,
                                             VkDescriptorSetLayout &descriptor_set_layout,
                                             VkPipelineLayout &pipeline_layouts,
-                                            VKPushConstantsLayout &push_constants_layout);
+                                            const VKPushConstantsLayout &push_constants_layout);
 
   VKDescriptorSet &descriptor_set_get()
   {

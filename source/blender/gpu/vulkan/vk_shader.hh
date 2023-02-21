@@ -11,7 +11,7 @@
 
 #include "vk_backend.hh"
 #include "vk_context.hh"
-#include "vk_push_constants.hh"
+#include "vk_pipeline.hh"
 
 #include "BLI_string_ref.hh"
 
@@ -28,7 +28,6 @@ class VKShader : public Shader {
   bool compilation_failed_ = false;
   VkDescriptorSetLayout layout_ = VK_NULL_HANDLE;
   VkPipelineLayout pipeline_layout_ = VK_NULL_HANDLE;
-  VKPushConstantsLayout push_constants_layout_;
   VKPipeline compute_pipeline_;
 
  public:
@@ -80,7 +79,7 @@ class VKShader : public Shader {
   bool finalize_descriptor_set_layouts(VkDevice vk_device,
                                        const VKShaderInterface &shader_interface,
                                        const shader::ShaderCreateInfo &info);
-  bool finalize_pipeline_layout(VkDevice vk_device, const shader::ShaderCreateInfo &info);
+  bool finalize_pipeline_layout(VkDevice vk_device, const VKShaderInterface &shader_interface);
   bool finalize_graphics_pipeline(VkDevice vk_device);
 
   bool is_graphics_shader() const

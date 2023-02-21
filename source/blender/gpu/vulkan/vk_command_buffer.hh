@@ -8,12 +8,15 @@
 #pragma once
 
 #include "vk_common.hh"
-#include "vk_pipeline.hh"
+
+#include "BLI_utility_mixins.hh"
 
 namespace blender::gpu {
 class VKBuffer;
 class VKTexture;
 class VKPushConstants;
+class VKPipeline;
+class VKDescriptorSet;
 
 /** Command buffer to keep track of the life-time of a command buffer.*/
 class VKCommandBuffer : NonCopyable, NonMovable {

@@ -6,6 +6,7 @@
  */
 
 #include "vk_shader_interface.hh"
+#include "vk_context.hh"
 
 namespace blender::gpu {
 
@@ -40,15 +41,26 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
         break;
     }
   }
+
+  /* Reserve 1 storage buffer for push constants fallback. */
+  size_t names_size = info.interface_names_size_;
+  VKContext &context = *VKContext::get();
+  const VKPushConstantsLayout::StorageType push_constants_storage_type =
+      VKPushConstantsLayout::determine_storage_type(info, context.physical_device_limits_get());
+  if (push_constants_storage_type == VKPushConstantsLayout::StorageType::STORAGE_BUFFER) {
+    ssbo_len_++;
+    names_size += PUSH_CONSTANTS_FALLBACK_NAME_LEN + 1;
+  }
+
   /* Make sure that the image slots don't overlap with the sampler slots.*/
-  image_offset_ += 1;
+  image_offset_++;
 
   int32_t input_tot_len = ubo_len_ + uniform_len_ + ssbo_len_;
   inputs_ = static_cast<ShaderInput *>(
       MEM_calloc_arrayN(input_tot_len, sizeof(ShaderInput), __func__));
   ShaderInput *input = inputs_;
 
-  name_buffer_ = (char *)MEM_mallocN(info.interface_names_size_, "name_buffer");
+  name_buffer_ = (char *)MEM_mallocN(names_size, "name_buffer");
   uint32_t name_buffer_offset = 0;
 
   int32_t location = 0;
@@ -100,6 +112,23 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
       input++;
     }
   }
+
+  /* Push constant post initialization.*/
+  /*
+   * When using storage buffer storage type we need to add it to the the name list here.
+   * Also determine the location as this is used inside the descriptor set as its binding number.
+   */
+  int32_t push_constants_fallback_location = -1;
+  ShaderInput *push_constants_fallback_input = nullptr;
+  if (push_constants_storage_type == VKPushConstantsLayout::StorageType::STORAGE_BUFFER) {
+    copy_input_name(input, PUSH_CONSTANTS_FALLBACK_NAME, name_buffer_, name_buffer_offset);
+    input->location = push_constants_fallback_location = location++;
+    input->binding = -1;
+    push_constants_fallback_input = input;
+    input++;
+  }
+  push_constants_layout_.init(
+      info, *this, push_constants_storage_type, push_constants_fallback_input);
 
   sort_inputs();
 }

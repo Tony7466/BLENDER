@@ -10,6 +10,8 @@
 #include "gpu_shader_create_info.hh"
 #include "gpu_shader_interface.hh"
 
+#include "vk_push_constants.hh"
+
 namespace blender::gpu {
 class VKShaderInterface : public ShaderInterface {
  private:
@@ -21,6 +23,13 @@ class VKShaderInterface : public ShaderInterface {
    * overlapping.
    */
   uint32_t image_offset_ = 0;
+
+  VKPushConstantsLayout push_constants_layout_;
+
+ public:
+  static constexpr StringRefNull PUSH_CONSTANTS_FALLBACK_NAME = StringRefNull(
+      "push_constants_fallback", 23);
+  static constexpr size_t PUSH_CONSTANTS_FALLBACK_NAME_LEN = PUSH_CONSTANTS_FALLBACK_NAME.size();
 
  public:
   VKShaderInterface() = default;
@@ -35,5 +44,10 @@ class VKShaderInterface : public ShaderInterface {
   const ShaderInput *shader_input_get(const shader::ShaderCreateInfo::Resource &resource) const;
   const ShaderInput *shader_input_get(
       const shader::ShaderCreateInfo::Resource::BindType &bind_type, int binding) const;
+
+  const VKPushConstantsLayout &push_constants_layout_get() const
+  {
+    return push_constants_layout_;
+  }
 };
 }  // namespace blender::gpu

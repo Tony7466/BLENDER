@@ -10,6 +10,7 @@
 #include "vk_context.hh"
 #include "vk_memory.hh"
 #include "vk_texture.hh"
+#include "vk_pipeline.hh"
 
 #include "BLI_assert.h"
 
@@ -75,7 +76,7 @@ void VKCommandBuffer::push_constants(const VKPushConstants &push_constants,
                                      const VkPipelineLayout vk_pipeline_layout,
                                      const VkShaderStageFlags vk_shader_stages)
 {
-  if (push_constants.size_in_bytes() == 0) {
+  if (push_constants.storage_type_get() != VKPushConstantsLayout::StorageType::PUSH_CONSTANTS) {
     return;
   }
   vkCmdPushConstants(vk_command_buffer_,
