@@ -9,7 +9,8 @@ this script updates XML themes once new settings are added
 
 import bpy
 
-DUPLICATE_WHITELIST = (
+# These are known duplicates which do not warn.
+DUPLICATE_ACCEPT = (
     # operators
     ('ACTION_OT_clean', 'GRAPH_OT_clean'),
     ('ACTION_OT_clickselect', 'GRAPH_OT_clickselect'),
@@ -89,7 +90,7 @@ def check_duplicates():
     import rna_info
 
     DUPLICATE_IGNORE_FOUND = set()
-    DUPLICATE_WHITELIST_FOUND = set()
+    DUPLICATE_ACCEPT_FOUND = set()
 
     structs, funcs, ops, props = rna_info.BuildRNAInfo()
 
@@ -112,18 +113,18 @@ def check_duplicates():
 
         for v, k in sort_ls:
             if len(v) > 1:
-                if v not in DUPLICATE_WHITELIST:
+                if v not in DUPLICATE_ACCEPT:
                     print("found %d: %r, \"%s\"" % (len(v), v, k))
                     # print("%r," % (v,))
                 else:
-                    DUPLICATE_WHITELIST_FOUND.add(v)
+                    DUPLICATE_ACCEPT_FOUND.add(v)
 
     test = (DUPLICATE_IGNORE - DUPLICATE_IGNORE_FOUND)
     if test:
         print("Invalid 'DUPLICATE_IGNORE': %r" % test)
-    test = (set(DUPLICATE_WHITELIST) - DUPLICATE_WHITELIST_FOUND)
+    test = (set(DUPLICATE_ACCEPT) - DUPLICATE_ACCEPT_FOUND)
     if test:
-        print("Invalid 'DUPLICATE_WHITELIST': %r" % test)
+        print("Invalid 'DUPLICATE_ACCEPT': %r" % test)
 
 
 def main():

@@ -130,6 +130,7 @@ dict_custom = {
     "homogenous",
     "ideographic",
     "illuminant",
+    "impactful",
     "incrementation",
     "initializer",
     "initializers",
