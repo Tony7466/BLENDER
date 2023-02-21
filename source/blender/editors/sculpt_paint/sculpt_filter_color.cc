@@ -25,7 +25,7 @@
 #include "WM_types.h"
 
 #include "ED_paint.h"
-#include "sculpt_intern.h"
+#include "sculpt_intern.hh"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -347,8 +347,13 @@ static int sculpt_color_filter_invoke(bContext *C, wmOperator *op, const wmEvent
     return OPERATOR_CANCELLED;
   }
 
-  SCULPT_filter_cache_init(
-      C, ob, sd, SCULPT_UNDO_COLOR, event->mval, RNA_float_get(op->ptr, "area_normal_radius"));
+  SCULPT_filter_cache_init(C,
+                           ob,
+                           sd,
+                           SCULPT_UNDO_COLOR,
+                           event->mval,
+                           RNA_float_get(op->ptr, "area_normal_radius"),
+                           RNA_float_get(op->ptr, "strength"));
   FilterCache *filter_cache = ss->filter_cache;
   filter_cache->active_face_set = SCULPT_FACE_SET_NONE;
   filter_cache->automasking = SCULPT_automasking_cache_init(sd, nullptr, ob);

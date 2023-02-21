@@ -148,8 +148,8 @@ eFileAttributes BLI_file_attributes(const char *path);
  * Usage of this function is strongly discouraged as it is not thread safe. It will likely cause
  * issues if there is an operation on another thread that does not expect the current working
  * directory to change. This has been added to support USDZ export, which has a problematic
- * "feature" described in this task https://developer.blender.org/D15623. It will be removed if it
- * is possible to resolve that issue upstream in the USD library.
+ * "feature" described in this issue https://projects.blender.org/blender/blender/issues/99807. It
+ * will be removed if it is possible to resolve that issue upstream in the USD library.
  *
  * \return true on success, false otherwise.
  */
@@ -325,8 +325,6 @@ void BLI_file_free_lines(struct LinkNode *lines);
  * Giving a path without leading `~` is not an error.
  */
 const char *BLI_expand_tilde(const char *path_with_tilde);
-const char *BLI_apple_getcwd(const size_t max_length);
-int BLI_apple_chdir(const char *dir);
 #endif
 /* This weirdo pops up in two places. */
 #if !defined(WIN32)

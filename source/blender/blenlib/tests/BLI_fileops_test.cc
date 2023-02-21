@@ -1,7 +1,4 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-
-#include "BLI_path_util.h"
-#include "BLI_string.h"
 #include "testing/testing.h"
 
 #include "BLI_fileops.hh"
@@ -10,6 +7,20 @@
 #include "BLI_threads.h"
 
 namespace blender::tests {
+
+class ChangeWorkingDirectoryTest : public testing::Test {
+ public:
+  std::string test_temp_dir;
+
+  void TearDown() override
+  {
+    if (!test_temp_dir.empty()) {
+      BLI_delete(test_temp_dir.c_str(), true, false);
+    }
+
+    BLI_threadapi_exit();
+  }
+};
 
 TEST(fileops, fstream_open_string_filename)
 {
@@ -42,39 +53,43 @@ TEST(fileops, fstream_open_charptr_filename)
   /* Reading the file not tested here. That's deferred to `std::fstream` anyway. */
 }
 
-TEST(fileops, change_working_directory)
+TEST_F(ChangeWorkingDirectoryTest, change_working_directory)
 {
+  /* Must use because BLI_change_working_dir() checks that we are on the main thread. */
   BLI_threadapi_init();
 
   char original_wd[FILE_MAX];
-  BLI_current_working_dir(original_wd, FILE_MAX);
+  if (!BLI_current_working_dir(original_wd, FILE_MAX)) {
+    FAIL() << "unable to get the current working directory";
+  }
 
-  const std::string test_temp_dir = blender::tests::flags_test_asset_dir() + "/" +
-                                    "fileops_test_temp_новый";
+  const std::string temp_file_name(std::tmpnam(nullptr));
+  test_temp_dir = temp_file_name + "_новый";
 
   if (BLI_exists(test_temp_dir.c_str())) {
     BLI_delete(test_temp_dir.c_str(), true, false);
   }
 
-  bool result = BLI_change_working_dir(test_temp_dir.c_str());
-  ASSERT_FALSE(result);
+  ASSERT_FALSE(BLI_change_working_dir(test_temp_dir.c_str()))
+      << "changing directory to a non-existent directory is expected to fail.";
 
-  BLI_dir_create_recursive(test_temp_dir.c_str());
+  ASSERT_TRUE(BLI_dir_create_recursive(test_temp_dir.c_str()))
+      << "temporary directory should have been created successfully.";
 
-  result = BLI_change_working_dir(test_temp_dir.c_str());
-  ASSERT_TRUE(result);
+  ASSERT_TRUE(BLI_change_working_dir(test_temp_dir.c_str()))
+      << "temporary directory should succeed changing directory.";
 
   char cwd[FILE_MAX];
-  BLI_current_working_dir(cwd, FILE_MAX);
+  if (!BLI_current_working_dir(cwd, FILE_MAX)) {
+    FAIL() << "unable to get the current working directory";
+  }
 
-  ASSERT_TRUE(BLI_path_cmp_normalized(cwd, test_temp_dir.c_str()) == 0);
+  ASSERT_EQ(BLI_path_cmp_normalized(cwd, test_temp_dir.c_str()), 0)
+      << "the path of the current working directory should equal the path of the temporary "
+         "directory that was created.";
 
-  result = BLI_change_working_dir(original_wd);
-  ASSERT_TRUE(result);
-
-  BLI_delete(test_temp_dir.c_str(), true, false);
-
-  BLI_threadapi_exit();
+  ASSERT_TRUE(BLI_change_working_dir(original_wd))
+      << "changing directory back to the original working directory should succeed.";
 }
 
 }  // namespace blender::tests

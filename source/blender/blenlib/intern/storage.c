@@ -57,6 +57,8 @@
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
+#if !defined(__APPLE__)
+/* The implementation for Apple lives in storage_apple.mm.*/
 bool BLI_change_working_dir(const char *dir)
 {
   BLI_assert(BLI_thread_is_main());
@@ -64,26 +66,24 @@ bool BLI_change_working_dir(const char *dir)
   if (!BLI_is_dir(dir)) {
     return false;
   }
-#if defined(WIN32)
+#  if defined(WIN32)
   wchar_t wdir[FILE_MAX];
   if (conv_utf_8_to_16(dir, wdir, ARRAY_SIZE(wdir)) != 0) {
     return false;
   }
   return _wchdir(wdir) == 0;
-#elif defined(__APPLE__)
-  return BLI_apple_chdir(dir) == 0;
-#else
+#  else
   int result = chdir(dir);
   if (result == 0) {
     BLI_setenv("PWD", dir);
   }
   return result == 0;
-#endif
+#  endif
 }
 
 char *BLI_current_working_dir(char *dir, const size_t maxncpy)
 {
-#if defined(WIN32)
+#  if defined(WIN32)
   wchar_t path[MAX_PATH];
   if (_wgetcwd(path, MAX_PATH)) {
     if (BLI_strncpy_wchar_as_utf8(dir, path, maxncpy) != maxncpy) {
@@ -91,10 +91,7 @@ char *BLI_current_working_dir(char *dir, const size_t maxncpy)
     }
   }
   return NULL;
-#elif defined(__APPLE__)
-  BLI_strncpy(dir, BLI_apple_getcwd(maxncpy), maxncpy);
-  return dir;
-#else
+#  else
   const char *pwd = BLI_getenv("PWD");
   if (pwd) {
     size_t srclen = BLI_strnlen(pwd, maxncpy);
@@ -105,8 +102,9 @@ char *BLI_current_working_dir(char *dir, const size_t maxncpy)
     return NULL;
   }
   return getcwd(dir, maxncpy);
-#endif
+#  endif
 }
+#endif /* !defined (__APPLE__) */
 
 double BLI_dir_free_space(const char *dir)
 {
