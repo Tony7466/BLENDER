@@ -37,7 +37,7 @@ static void calculate_curve_point_distances_for_proportional_editing(
     }
     visited[index] = true;
 
-    /* TODO (Falk): Handle cyclic curves here. */
+    /* TODO(Falk): Handle cyclic curves here. */
     if (index > 0 && !visited[index - 1]) {
       int adjacent = index - 1;
       float dist = r_distances[index] + math::distance(positions[index], positions[adjacent]);
