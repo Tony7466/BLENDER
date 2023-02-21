@@ -70,7 +70,7 @@ void VKBackend::compute_dispatch(int groups_x_len, int groups_y_len, int groups_
   VKPushConstants &push_constants = pipeline.push_constants_get();
 
   /* Update push constants based on their storage type.*/
-  switch (push_constants.storage_type_get()) {
+  switch (push_constants.layout_get().storage_type_get()) {
     case VKPushConstantsLayout::StorageType::NONE:
       break;
 
@@ -82,13 +82,13 @@ void VKBackend::compute_dispatch(int groups_x_len, int groups_y_len, int groups_
     case VKPushConstantsLayout::StorageType::STORAGE_BUFFER:
       push_constants.update_storage_buffer(context.device_get());
       descriptor_set.bind(push_constants.storage_buffer_get(),
-                          push_constants.storage_buffer_binding_get());
+                          push_constants.layout_get().storage_buffer_binding_get());
       break;
 
     case VKPushConstantsLayout::StorageType::UNIFORM_BUFFER:
       push_constants.update_uniform_buffer(context.device_get());
       descriptor_set.bind(push_constants.uniform_buffer_get(),
-                          push_constants.storage_buffer_binding_get());
+                          push_constants.layout_get().storage_buffer_binding_get());
       break;
   }
   descriptor_set.update(context.device_get());

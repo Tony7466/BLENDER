@@ -143,6 +143,7 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
       info, *this, push_constants_storage_type, push_constants_fallback_input);
 
   sort_inputs();
+  debug_print();
 }
 
 const ShaderInput *VKShaderInterface::shader_input_get(

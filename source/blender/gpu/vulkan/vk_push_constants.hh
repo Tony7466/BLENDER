@@ -35,13 +35,28 @@ class VKStorageBuffer;
  * Describe the layout of the push constants and the storage type that should be used.
  */
 struct VKPushConstantsLayout {
-  /* Should the push constant use regular push constants or a buffer.*/
+  /* Different methods to store push constants.*/
   enum class StorageType {
+    /** Push constants aren't in use.*/
     NONE,
+
+    /** Store push constants as regular vulkan push constants.*/
     PUSH_CONSTANTS,
+
+    /**
+     * Fallback when push constants doesn't meet the device requirements. This fallback uses a
+     * storage buffer.
+     */
     STORAGE_BUFFER,
+
+    /**
+     * Fallback when push constants doesn't meet the device requirements. This fallback uses an
+     * uniform buffer.
+     */
     UNIFORM_BUFFER,
   };
+  static constexpr StorageType STORAGE_TYPE_DEFAULT = StorageType::PUSH_CONSTANTS;
+  static constexpr StorageType STORAGE_TYPE_FALLBACK = StorageType::UNIFORM_BUFFER;
 
   struct PushConstantLayout {
     /* TODO: location requires sequential lookups, we should make the location index based for
@@ -114,19 +129,9 @@ class VKPushConstants : NonCopyable {
     return 0;
   }
 
-  size_t size_in_bytes() const
+  const VKPushConstantsLayout &layout_get() const
   {
-    return layout_->size_in_bytes();
-  }
-
-  VKPushConstantsLayout::StorageType storage_type_get() const
-  {
-    return layout_->storage_type_get();
-  }
-
-  VKDescriptorSet::Location storage_buffer_binding_get() const
-  {
-    return layout_->storage_buffer_binding_get();
+    return *layout_;
   }
 
   void update_storage_buffer(VkDevice vk_device);

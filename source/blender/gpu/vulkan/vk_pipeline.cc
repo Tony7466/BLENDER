@@ -52,7 +52,7 @@ VKPipeline VKPipeline::create_compute_pipeline(VKContext &context,
   if (vkCreateComputePipelines(
           vk_device, nullptr, 1, &pipeline_info, vk_allocation_callbacks, &vk_pipeline) !=
       VK_SUCCESS) {
-    //return VKPipeline();
+    return VKPipeline();
   }
 
   VKDescriptorSet descriptor_set = context.descriptor_pools_get().allocate(descriptor_set_layout);
