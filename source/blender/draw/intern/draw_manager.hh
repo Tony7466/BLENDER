@@ -33,10 +33,12 @@ template<typename T> class Pass;
 namespace command {
 class DrawCommandBuf;
 class DrawMultiBuf;
+class DrawMultiThinBuf;
 }  // namespace command
 
 using PassSimple = detail::Pass<command::DrawCommandBuf>;
 using PassMain = detail::Pass<command::DrawMultiBuf>;
+using PassMainThin = detail::Pass<command::DrawMultiThinBuf>;
 class PassSortable;
 
 class Manager {
@@ -159,6 +161,7 @@ class Manager {
    */
   void submit(PassSimple &pass, View &view);
   void submit(PassMain &pass, View &view);
+  void submit(PassMainThin &pass, View &view);
   void submit(PassSortable &pass, View &view);
   /**
    * Variant without any view. Must not contain any shader using `draw_view` create info.

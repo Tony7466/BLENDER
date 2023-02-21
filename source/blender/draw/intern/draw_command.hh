@@ -32,6 +32,8 @@ namespace blender::draw::command {
 class DrawCommandBuf;
 class DrawMultiBufBase;
 
+using ThinMapBuf = StorageArrayBuffer<uint, 128>;
+
 /* -------------------------------------------------------------------- */
 /** \name Recording State
  * \{ */
@@ -579,9 +581,7 @@ class DrawMultiBufBase {
     }
   }
 
-  virtual void generate_commands(VisibilityBuf &visibility_buf,
-                                 int visibility_word_per_draw,
-                                 int view_len) = 0;
+  void bind_base(RecordingState &state, int view_len, std::function<void()> generate_commands);
 
  public:
   void clear()
@@ -591,21 +591,9 @@ class DrawMultiBufBase {
     prototype_count_ = 0;
     group_ids_.clear();
   }
-
-  void bind(RecordingState &state,
-            Vector<Header, 0> &headers,
-            Vector<Undetermined, 0> &commands,
-            VisibilityBuf &visibility_buf,
-            int visibility_word_per_draw,
-            int view_len);
 };
 
 class DrawMultiBuf : public DrawMultiBufBase {
-
-  virtual void generate_commands(VisibilityBuf &visibility_buf,
-                                 int visibility_word_per_draw,
-                                 int view_len) override;
-
  public:
   void append_draw(Vector<Header, 0> &headers,
                    Vector<Undetermined, 0> &commands,
@@ -624,14 +612,16 @@ class DrawMultiBuf : public DrawMultiBufBase {
                      handle.raw,
                      handle.has_inverted_handedness());
   }
+
+  void bind(RecordingState &state,
+            Vector<Header, 0> &headers,
+            Vector<Undetermined, 0> &commands,
+            VisibilityBuf &visibility_buf,
+            int visibility_word_per_draw,
+            int view_len);
 };
 
 class DrawMultiThinBuf : public DrawMultiBufBase {
-
-  virtual void generate_commands(VisibilityBuf &visibility_buf,
-                                 int visibility_word_per_draw,
-                                 int view_len) override;
-
  public:
   void append_draw(Vector<Header, 0> &headers,
                    Vector<Undetermined, 0> &commands,
@@ -650,6 +640,14 @@ class DrawMultiThinBuf : public DrawMultiBufBase {
                      handle.raw,
                      handle.object_handle.has_inverted_handedness());
   }
+
+  void bind(RecordingState &state,
+            Vector<Header, 0> &headers,
+            Vector<Undetermined, 0> &commands,
+            VisibilityBuf &visibility_buf,
+            int visibility_word_per_draw,
+            int view_len,
+            ThinMapBuf &thin_map_buf);
 };
 
 /** \} */

@@ -191,6 +191,14 @@ GPU_SHADER_CREATE_INFO(draw_command_generate)
     .push_constant(Type::INT, "view_shift")
     .compute_source("draw_command_generate_comp.glsl");
 
+GPU_SHADER_CREATE_INFO(with_thin_handles)
+    .define("WITH_THIN_HANDLES")
+    .storage_buf(DRW_RESOURCE_THIN_MAP_SLOT, Qualifier::READ, "uint", "thin_map_buf[]");
+
+GPU_SHADER_CREATE_INFO(draw_command_with_thin_generate)
+    .do_static_compilation(true)
+    .additional_info("draw_command_generate", "with_thin_handles");
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

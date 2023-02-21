@@ -27,6 +27,7 @@ static struct {
   struct GPUShader *draw_view_finalize_sh;
   struct GPUShader *draw_resource_finalize_sh;
   struct GPUShader *draw_command_generate_sh;
+  struct GPUShader *draw_command_with_thin_generate_sh;
 } e_data = {{nullptr}};
 
 /* -------------------------------------------------------------------- */
@@ -146,6 +147,15 @@ GPUShader *DRW_shader_draw_command_generate_get()
   return e_data.draw_command_generate_sh;
 }
 
+GPUShader *DRW_shader_draw_command_with_thin_generate_get()
+{
+  if (e_data.draw_command_with_thin_generate_sh == nullptr) {
+    e_data.draw_command_with_thin_generate_sh = GPU_shader_create_from_info_name(
+        "draw_command_with_thin_generate");
+  }
+  return e_data.draw_command_with_thin_generate_sh;
+}
+
 /** \} */
 
 void DRW_shaders_free()
@@ -159,4 +169,5 @@ void DRW_shaders_free()
   DRW_SHADER_FREE_SAFE(e_data.draw_view_finalize_sh);
   DRW_SHADER_FREE_SAFE(e_data.draw_resource_finalize_sh);
   DRW_SHADER_FREE_SAFE(e_data.draw_command_generate_sh);
+  DRW_SHADER_FREE_SAFE(e_data.draw_command_with_thin_generate_sh);
 }

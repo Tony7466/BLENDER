@@ -201,6 +201,35 @@ void Manager::submit(PassMain &pass, View &view)
   state.cleanup();
 }
 
+void Manager::submit(PassMainThin &pass, View &view)
+{
+  view.bind();
+
+  debug_bind();
+
+  bool freeze_culling = (U.experimental.use_viewport_debug && DST.draw_ctx.v3d &&
+                         (DST.draw_ctx.v3d->debug_flag & V3D_DEBUG_FREEZE_CULLING) != 0);
+
+  view.compute_visibility(bounds_buf.current(), resource_len_, freeze_culling);
+
+  command::RecordingState state;
+  state.inverted_view = view.is_inverted();
+
+  pass.draw_commands_buf_.bind(state,
+                               pass.headers_,
+                               pass.commands_,
+                               view.get_visibility_buffer(),
+                               view.visibility_word_per_draw(),
+                               view.view_len_,
+                               thin_map_buf.current());
+
+  resource_bind();
+
+  pass.submit(state);
+
+  state.cleanup();
+}
+
 void Manager::submit(PassSortable &pass, View &view)
 {
   pass.sort();
