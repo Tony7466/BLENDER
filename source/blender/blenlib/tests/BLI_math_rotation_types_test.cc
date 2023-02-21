@@ -288,6 +288,48 @@ TEST(math_rotation_types, AngleFraction)
   EXPECT_EQ((+pi * 2 / 2).wrapped_around(pi), (+pi * 2 / 2));
   EXPECT_EQ((+pi * 3 / 2).wrapped_around(pi), (+pi * 3 / 2));
   EXPECT_EQ((+pi * 4 / 2).wrapped_around(pi), (+pi * 4 / 2));
+
+  for (int i = 0; i < 32; i++) {
+    AngleCartesian angle(+pi * i / 16);
+    EXPECT_NEAR(angle.cos(), cos((T(M_PI) * i) / 16), 1e-6f);
+    EXPECT_NEAR(angle.sin(), sin((T(M_PI) * i) / 16), 1e-6f);
+
+    /* Ensure symetry. */
+    AngleCartesian angle_opposite(pi + pi * i / 16);
+    EXPECT_EQ(angle.cos(), -angle_opposite.cos());
+    EXPECT_EQ(angle.sin(), -angle_opposite.sin());
+
+    AngleCartesian angle_phase(pi / 2 + pi * i / 16);
+    EXPECT_EQ(angle.cos(), angle_phase.sin());
+    EXPECT_EQ(angle.sin(), -angle_phase.cos());
+
+    /* Ensure Periodicity. */
+    AngleCartesian angle_per(tau + pi * i / 16);
+    EXPECT_EQ(angle.cos(), angle_per.cos());
+    EXPECT_EQ(angle.sin(), angle_per.sin());
+  }
+  /* Ensure exact values. */
+  EXPECT_EQ(AngleCartesian(+pi * 0 / 2).cos(), +1.0f);
+  EXPECT_EQ(AngleCartesian(+pi * 1 / 2).cos(), +0.0f);
+  EXPECT_EQ(AngleCartesian(+pi * 2 / 2).cos(), -1.0f);
+  EXPECT_EQ(AngleCartesian(+pi * 3 / 2).cos(), +0.0f);
+  EXPECT_EQ(AngleCartesian(+pi * 4 / 2).cos(), +1.0f);
+
+  EXPECT_EQ(AngleCartesian(+pi * 0 / 2).sin(), +0.0f);
+  EXPECT_EQ(AngleCartesian(+pi * 1 / 2).sin(), +1.0f);
+  EXPECT_EQ(AngleCartesian(+pi * 2 / 2).sin(), +0.0f);
+  EXPECT_EQ(AngleCartesian(+pi * 3 / 2).sin(), -1.0f);
+  EXPECT_EQ(AngleCartesian(+pi * 4 / 2).sin(), +0.0f);
+
+  EXPECT_EQ(AngleCartesian(+pi * 1 / 4).cos(), T(M_SQRT1_2));
+  EXPECT_EQ(AngleCartesian(+pi * 3 / 4).cos(), T(-M_SQRT1_2));
+  EXPECT_EQ(AngleCartesian(-pi * 1 / 4).cos(), T(M_SQRT1_2));
+  EXPECT_EQ(AngleCartesian(-pi * 3 / 4).cos(), T(-M_SQRT1_2));
+
+  EXPECT_EQ(AngleCartesian(+pi * 1 / 4).sin(), T(M_SQRT1_2));
+  EXPECT_EQ(AngleCartesian(+pi * 3 / 4).sin(), T(M_SQRT1_2));
+  EXPECT_EQ(AngleCartesian(-pi * 1 / 4).sin(), T(-M_SQRT1_2));
+  EXPECT_EQ(AngleCartesian(-pi * 3 / 4).sin(), T(-M_SQRT1_2));
 }
 TEST(math_rotation_types, TypeConversion)
 {

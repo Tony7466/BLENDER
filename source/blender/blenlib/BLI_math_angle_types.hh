@@ -39,11 +39,14 @@
  * - Slow : `cos()`, `sin()`, `tan()` for angles not optimized.
  * It offers the best accuracy fo fractions of Pi radian angles. For instance
  * `sin(AngleFraction::tau() * n - AngleFraction::pi() / 2)` will exactly return `-1` for any `n`
- * within [-INT64_MAX..INT64_MAX]. This holds true even with really high radian values.
+ * within [-INT_MAX..INT_MAX]. This holds true even with really high radian values.
  * The `T` template parameter only serves as type for the computed values like `cos()` or
  * `radian()`. Any operation becomes undefined if either the numerator or the denominator
  * overflows. Arithmetic operators are relatively cheap (4 operations for addition, 2 for
  * multiplication) but not as cheap as a `AngleRadian`.
+ * Another nice property is that the `cos()` and `sin()` functions give symetric results around the
+ * circle. Prefer converting to `blender::math::AngleCartesian<T>` if both `cos()` and `sin()` are
+ * needed. This will save some computation.
  *
  */
 
@@ -602,6 +605,97 @@ template<typename T = float> struct AngleFraction {
   {
     return stream << "AngleFraction(num=" << rot.numerator_ << ", denom=" << rot.denominator_
                   << ")";
+  }
+
+  operator detail::AngleCartesian<T>() const
+  {
+    AngleFraction a = this->wrapped();
+    BLI_assert(abs(a.numerator_) <= a.denominator_);
+    BLI_assert(a.denominator_ > 0);
+
+    /* By default, creating a circle from an integer: calling #sinf & #cosf on the fraction doesn't
+     * create symmetrical values (because floats can't represent Pi exactly).
+     * Resolve this when the rotation is calculated from a fraction by mapping the `numerator`
+     * to lower values so X/Y values for points around a circle are exactly symmetrical, see
+     * #87779.
+     *
+     * Multiply both the `numerator` and `denominator` by 4 to ensure we can divide the circle
+     * into 8 octants. For each octant, we then use symmetry and negation to bring the `numerator`
+     * closer to the origin where precision is highest.
+     */
+    /* Save negative sign so we cane assume unsigned angle for the rest of the computation.. */
+    bool is_negative = a.numerator_ < 0;
+    /* Multiply numerator the same as denominator. */
+    a.numerator_ = abs(a.numerator_) * 4;
+    /* Determine the octant. */
+    const int64_t octant = a.numerator_ / a.denominator_;
+    const int64_t rest = a.numerator_ - octant * a.denominator_;
+    /* Ensure denominator is a multiple of 4. */
+    a.denominator_ *= 4;
+
+    /* TODO jump table. */
+    T x, y;
+    /* If rest is 0, the angle is an angle with precise value. */
+    if (rest == 0) {
+      switch (octant) {
+        case 0:
+        case 4:
+          x = T(1);
+          y = T(0);
+          break;
+        case 2:
+          x = T(0);
+          y = T(1);
+          break;
+        case 1:
+        case 3:
+          x = y = T(M_SQRT1_2);
+          break;
+        default:
+          BLI_assert_unreachable();
+      }
+    }
+    else {
+      switch (octant) {
+        case 4:
+          /* -Pi or Pi case. */
+        case 0:
+          /* Primary octant, nothing to do. */
+          break;
+        case 1:
+          /* Pi / 2 - angle. */
+          a.numerator_ = a.denominator_ / 2 - a.numerator_;
+          break;
+        case 2:
+          /* Angle - Pi / 2. */
+          a.numerator_ = a.numerator_ - a.denominator_ / 2;
+          break;
+        case 3:
+          /* Pi - angle. */
+          a.numerator_ = a.denominator_ - a.numerator_;
+          break;
+        default:
+          BLI_assert_unreachable();
+      }
+      /* Resulting angle should be oscilating in [0..pi/4] range. */
+      BLI_assert(a.numerator_ >= 0 && a.numerator_ <= a.denominator_ / 4);
+      T angle = T(M_PI) * (T(a.numerator_) / T(a.denominator_));
+      x = math::cos(angle);
+      y = math::sin(angle);
+      /* Diagonal symetry "unfolding". */
+      if (ELEM(octant, 1, 2)) {
+        std::swap(x, y);
+      }
+    }
+    /* Y axis symetry. */
+    if (octant >= 2) {
+      x = -x;
+    }
+    /* X axis symetry. */
+    if (is_negative) {
+      y = -y;
+    }
+    return detail::AngleCartesian<T>(x, y);
   }
 };
 
