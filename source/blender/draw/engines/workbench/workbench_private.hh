@@ -159,13 +159,13 @@ struct SceneResources {
   void load_jitter_tx(int total_samples);
 };
 
-class MeshPass : public PassMain {
+class MeshPass : public PassMainThin {
  private:
   using TextureSubPassKey = std::pair<GPUTexture *, eGeometryType>;
 
-  Map<TextureSubPassKey, PassMain::Sub *> texture_subpass_map_ = {};
+  Map<TextureSubPassKey, PassMainThin::Sub *> texture_subpass_map_ = {};
 
-  PassMain::Sub *passes_[geometry_type_len][shader_type_len] = {{nullptr}};
+  PassMainThin::Sub *passes_[geometry_type_len][shader_type_len] = {{nullptr}};
 
   bool is_empty_ = false;
 
@@ -183,7 +183,7 @@ class MeshPass : public PassMain {
 
   void draw(ObjectRef &ref,
             GPUBatch *batch,
-            ResourceHandle handle,
+            ResourceThinHandle handle,
             ::Image *image = nullptr,
             eGPUSamplerState sampler_state = eGPUSamplerState::GPU_SAMPLER_DEFAULT,
             ImageUser *iuser = nullptr);

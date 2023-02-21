@@ -202,10 +202,8 @@ class Instance {
             if (batches[i] == nullptr) {
               continue;
             }
-            /* TODO(fclem): This create a cull-able instance for each sub-object. This is done
-             * for simplicity to reduce complexity. But this increase the overhead per object.
-             * Instead, we should use an indirection buffer to the material buffer. */
-            ResourceHandle _handle = i == 0 ? handle : manager.resource_handle(ob_ref);
+
+            ResourceThinHandle _handle = manager.resource_thin_handle(handle);
 
             Material &mat = resources.material_buf.get_or_resize(_handle.resource_index());
 
@@ -247,7 +245,8 @@ class Instance {
         }
 
         if (batch) {
-          Material &mat = resources.material_buf.get_or_resize(handle.resource_index());
+          ResourceThinHandle _handle = manager.resource_thin_handle(handle);
+          Material &mat = resources.material_buf.get_or_resize(_handle.resource_index());
 
           if (object_state.color_type == V3D_SHADING_OBJECT_COLOR) {
             mat = Material(*ob_ref.object);
@@ -270,7 +269,7 @@ class Instance {
           draw_mesh(ob_ref,
                     mat,
                     batch,
-                    handle,
+                    _handle,
                     object_state.image_paint_override,
                     object_state.override_sampler_state);
         }
@@ -285,7 +284,7 @@ class Instance {
   void draw_mesh(ObjectRef &ob_ref,
                  Material &material,
                  GPUBatch *batch,
-                 ResourceHandle handle,
+                 ResourceThinHandle handle,
                  ::Image *image = nullptr,
                  eGPUSamplerState sampler_state = GPU_SAMPLER_DEFAULT,
                  ImageUser *iuser = nullptr)
