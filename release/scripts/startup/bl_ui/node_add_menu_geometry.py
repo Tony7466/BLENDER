@@ -109,6 +109,7 @@ class NODE_MT_geometry_node_GEO_CURVE_OPERATIONS(Menu):
         layout = self.layout
         node_add_menu.add_node_type(layout, "GeometryNodeCurveToMesh")
         node_add_menu.add_node_type(layout, "GeometryNodeCurveToPoints")
+        layout.separator()
         node_add_menu.add_node_type(layout, "GeometryNodeDeformCurvesOnSurface")
         node_add_menu.add_node_type(layout, "GeometryNodeFillCurve")
         node_add_menu.add_node_type(layout, "GeometryNodeFilletCurve")
@@ -377,15 +378,16 @@ class NODE_MT_geometry_node_GEO_MESH_OPERATIONS(Menu):
 
     def draw(self, _context):
         layout = self.layout
+        node_add_menu.add_node_type(layout, "GeometryNodeMeshToCurve")
+        node_add_menu.add_node_type(layout, "GeometryNodeMeshToPoints")
+        node_add_menu.add_node_type(layout, "GeometryNodeMeshToVolume")
+        layout.separator()
         node_add_menu.add_node_type(layout, "GeometryNodeDualMesh")
         node_add_menu.add_node_type(layout, "GeometryNodeEdgePathsToCurves")
         node_add_menu.add_node_type(layout, "GeometryNodeEdgePathsToSelection")
         node_add_menu.add_node_type(layout, "GeometryNodeExtrudeMesh")
         node_add_menu.add_node_type(layout, "GeometryNodeFlipFaces")
         node_add_menu.add_node_type(layout, "GeometryNodeMeshBoolean")
-        node_add_menu.add_node_type(layout, "GeometryNodeMeshToCurve")
-        node_add_menu.add_node_type(layout, "GeometryNodeMeshToPoints")
-        node_add_menu.add_node_type(layout, "GeometryNodeMeshToVolume")
         node_add_menu.add_node_type(layout, "GeometryNodeScaleElements")
         node_add_menu.add_node_type(layout, "GeometryNodeSplitEdges")
         node_add_menu.add_node_type(layout, "GeometryNodeSubdivideMesh")
@@ -444,12 +446,13 @@ class NODE_MT_category_GEO_POINT(Menu):
 
     def draw(self, _context):
         layout = self.layout
+        node_add_menu.add_node_type(layout, "GeometryNodePointsToVertices")
+        node_add_menu.add_node_type(layout, "GeometryNodePointsToVolume")
+        layout.separator()
         node_add_menu.add_node_type(layout, "GeometryNodeDistributePointsInVolume")
         node_add_menu.add_node_type(layout, "GeometryNodeDistributePointsOnFaces")
         layout.separator()
         node_add_menu.add_node_type(layout, "GeometryNodePoints")
-        node_add_menu.add_node_type(layout, "GeometryNodePointsToVertices")
-        node_add_menu.add_node_type(layout, "GeometryNodePointsToVolume")
         layout.separator()
         node_add_menu.add_node_type(layout, "GeometryNodeSetPointRadius")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
