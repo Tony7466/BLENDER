@@ -1198,7 +1198,7 @@ static void CURVES_OT_extend(wmOperatorType *ot)
   ot->description = "Extend selected curves";
 
   ot->exec = curves_extend::extend_exec;
-  ot->poll = editable_curves_in_edit_mode_poll;
+  ot->poll = editable_curves_point_domain_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
