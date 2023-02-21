@@ -133,11 +133,19 @@ static void delete_customdata_layer(Mesh *me, CustomDataLayer *layer)
   n = (layer - &data->layers[layer_index]);
   BLI_assert(n >= 0 && (n + layer_index) < data->totlayer);
 
-  if (me->edit_mesh) {
-    BM_data_layer_free_n(me->edit_mesh->bm, data, type, n);
+  /* Delete UVs using the attribute api,because that handles the associated bool
+   * layers as well. */
+  if (htype == BM_LOOP && type == CD_PROP_FLOAT2) {
+    ReportList reports;
+    BKE_id_attribute_remove(&me->id, layer->name, &reports);
   }
   else {
-    CustomData_free_layer(data, type, tot, layer_index + n);
+    if (me->edit_mesh) {
+      BM_data_layer_free_n(me->edit_mesh->bm, data, type, n);
+    }
+    else {
+      CustomData_free_layer(data, type, tot, layer_index + n);
+    }
   }
 }
 
@@ -633,9 +641,7 @@ static int mesh_uv_texture_remove_exec(bContext *C, wmOperator *op)
   Object *ob = ED_object_context(C);
   Mesh *me = static_cast<Mesh *>(ob->data);
 
-  CustomData *ldata = GET_CD_DATA(me, ldata);
-  const char *name = CustomData_get_active_layer_name(ldata, CD_PROP_FLOAT2);
-  if (!BKE_id_attribute_remove(&me->id, name, op->reports)) {
+  if (!ED_mesh_uv_remove_active(me)) {
     return OPERATOR_CANCELLED;
   }
 
