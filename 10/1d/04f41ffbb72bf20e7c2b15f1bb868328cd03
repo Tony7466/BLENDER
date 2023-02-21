@@ -1,2 +1,3 @@
 Referenced by issue #103761, Regression: Creating the first vertex color on a mesh does not always make it active/default
 Referenced by issue #103564, Scripting: creating a corner-domain color attribute doesn't make it active
+Referenced by pull request #105020, Fix #103761: creating a color attribute doesn't make it active
