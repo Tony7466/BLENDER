@@ -271,9 +271,9 @@ TEST(math_rotation_types, AngleFraction)
   /* Doesn't work with standard float angles. */
   EXPECT_EQ((pi / 5 + pi * 4 / 5).radian(), T(M_PI));
   EXPECT_EQ((pi * 2 / 3).radian(), T(M_PI * 2 / 3));
-  EXPECT_EQ((pi * 2 / 3).cos(), (2 * pi + pi * 2 / 3).cos());
-  EXPECT_EQ((pi * 3 / 2).sin(), T(-1));
-  EXPECT_EQ((pi * 1574051 / 2).sin(), T(-1));
+  EXPECT_EQ(cos(pi * 2 / 3), cos(2 * pi + pi * 2 / 3));
+  EXPECT_EQ(sin(pi * 3 / 2), T(-1));
+  EXPECT_EQ(sin(pi * 1574051 / 2), T(-1));
   EXPECT_EQ((-pi * 4 / 2).wrapped(), (+pi * 0 / 2));
   EXPECT_EQ((-pi * 3 / 2).wrapped(), (+pi * 1 / 2));
   EXPECT_EQ((-pi * 2 / 2).wrapped(), (-pi * 2 / 2));

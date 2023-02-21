@@ -98,8 +98,8 @@ template<typename T, typename AngleT> AxisAngle<T, AngleT>::operator Quaternion<
   BLI_assert(math::is_unit_scale(axis_));
 
   AngleT half_angle = angle() / T(2);
-  T hs = half_angle.sin();
-  T hc = half_angle.cos();
+  T hs = sin(half_angle);
+  T hc = cos(half_angle);
 
   Quaternion<T> quat;
   quat.w = hc;

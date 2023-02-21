@@ -124,21 +124,6 @@ template<typename T> struct AngleRadian {
     return reference + (*this - reference).wrapped();
   }
 
-  T cos() const
-  {
-    return math::cos(value_);
-  }
-
-  T sin() const
-  {
-    return math::sin(value_);
-  }
-
-  T tan() const
-  {
-    return math::tan(value_);
-  }
-
   /** Operators. */
 
   friend AngleRadian operator+(const AngleRadian &a, const AngleRadian &b)
@@ -212,10 +197,13 @@ template<typename T> struct AngleCartesian {
     BLI_assert(math::abs(x * x + y * y - T(1)) < T(1e-4));
   }
 
+  /**
+   * Create an angle from a radian value.
+   */
   explicit AngleCartesian(const T &radian)
       : AngleCartesian(math::cos(radian), math::sin(radian)){};
   explicit AngleCartesian(const AngleRadian<T> &angle)
-      : AngleCartesian(angle.cos(), angle.sin()){};
+      : AngleCartesian(math::cos(angle.radian()), math::sin(angle.radian())){};
 
   /** Static functions. */
 
@@ -383,6 +371,10 @@ template<typename T = float> struct AngleFraction {
   int64_t numerator_;
   int64_t denominator_;
 
+  /**
+   * Constructor is left private as we do not want the user of this class to create invalid
+   * fractions.
+   */
   AngleFraction(int64_t numerator, int64_t denominator = 1)
       : numerator_(numerator), denominator_(denominator){};
 
@@ -474,24 +466,6 @@ template<typename T = float> struct AngleFraction {
   AngleFraction wrapped_around(const AngleFraction &reference) const
   {
     return reference + (*this - reference).wrapped();
-  }
-
-  T cos() const
-  {
-    /* TODO Speedup remarkable angles. */
-    return math::cos(wrapped().radian());
-  }
-
-  T sin() const
-  {
-    /* TODO Speedup remarkable angles. */
-    return math::sin(wrapped().radian());
-  }
-
-  T tan() const
-  {
-    /* TODO Speedup remarkable angles. */
-    return math::tan(wrapped().radian());
   }
 
   /** Operators. */
@@ -698,6 +672,45 @@ template<typename T = float> struct AngleFraction {
     return detail::AngleCartesian<T>(x, y);
   }
 };
+
+template<typename T> T cos(const detail::AngleRadian<T> &a)
+{
+  return cos(a.radian());
+}
+template<typename T> T sin(const detail::AngleRadian<T> &a)
+{
+  return sin(a.radian());
+}
+template<typename T> T tan(const detail::AngleRadian<T> &a)
+{
+  return tan(a.radian());
+}
+
+template<typename T> T cos(const detail::AngleCartesian<T> &a)
+{
+  return a.cos();
+}
+template<typename T> T sin(const detail::AngleCartesian<T> &a)
+{
+  return a.sin();
+}
+template<typename T> T tan(const detail::AngleCartesian<T> &a)
+{
+  return a.tan();
+}
+
+template<typename T> T cos(const AngleFraction<T> &a)
+{
+  return cos(detail::AngleCartesian<T>(a));
+}
+template<typename T> T sin(const AngleFraction<T> &a)
+{
+  return sin(detail::AngleCartesian<T>(a));
+}
+template<typename T> T tan(const AngleFraction<T> &a)
+{
+  return tan(detail::AngleCartesian<T>(a));
+}
 
 using AngleRadian = math::detail::AngleRadian<float>;
 using AngleCartesian = math::detail::AngleCartesian<float>;

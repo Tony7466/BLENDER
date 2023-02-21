@@ -597,8 +597,8 @@ template<typename T, int NumCol, int NumRow, typename AngleT>
 {
   using MatT = MatBase<T, NumCol, NumRow>;
   using Vec3T = typename MatT::vec3_type;
-  const T angle_sin = rotation.angle().sin();
-  const T angle_cos = rotation.angle().cos();
+  const T angle_sin = sin(rotation.angle());
+  const T angle_cos = cos(rotation.angle());
   const Vec3T &axis_vec = rotation.axis();
 
   MatT result = mat;
@@ -1024,8 +1024,8 @@ MatBase<T, NumCol, NumRow> from_rotation(const AxisAngle<T, AngleT> &rotation)
 {
   using MatT = MatBase<T, NumCol, NumRow>;
   using Vec3T = typename MatT::vec3_type;
-  const T angle_sin = rotation.angle().sin();
-  const T angle_cos = rotation.angle().cos();
+  const T angle_sin = sin(rotation.angle());
+  const T angle_cos = cos(rotation.angle());
   const Vec3T &axis = rotation.axis();
 
   BLI_assert(is_unit_scale(axis));
@@ -1052,8 +1052,8 @@ template<typename T, int NumCol, int NumRow>
 MatBase<T, NumCol, NumRow> from_rotation(const AngleRadian<T> &rotation)
 {
   using MatT = MatBase<T, NumCol, NumRow>;
-  T ci = rotation.cos();
-  T si = rotation.sin();
+  T ci = cos(rotation);
+  T si = sin(rotation);
 
   MatT mat = MatT::identity();
   mat[0][0] = ci;
