@@ -1567,7 +1567,8 @@ static void property_enum_translate(PropertyRNA *prop,
         }
       }
 
-      nitem = MEM_mallocN(sizeof(EnumPropertyItem) * (tot + 1), "enum_items_gettexted");
+      nitem = static_cast<EnumPropertyItem *>(
+          MEM_mallocN(sizeof(EnumPropertyItem) * (tot + 1), __func__));
       memcpy(nitem, item, sizeof(EnumPropertyItem) * (tot + 1));
 
       *r_free = true;
