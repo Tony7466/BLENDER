@@ -49,9 +49,18 @@ struct ExportJobData {
   bool export_ok;
   timeit::TimePoint start_time;
 
+  const bool targets_usdz() const
+  {
+    if (usdz_filepath) {
+      return usdz_filepath[0];
+    }
+
+    return false;
+  }
+
   const char *export_filepath() const
   {
-    if (strlen(usdz_filepath) > 0) {
+    if (targets_usdz()) {
       return usdz_filepath;
     }
     return unarchived_filepath;
@@ -90,8 +99,8 @@ static bool perform_usdz_conversion(const ExportJobData *data)
   pxr::UsdUtilsCreateNewUsdzPackage(pxr::SdfAssetPath(usdc_file), usdz_file);
   BLI_change_working_dir(original_working_dir);
 
-  char usdz_temp_dirfile[FILE_MAX];
-  BLI_path_join(usdz_temp_dirfile, FILE_MAX, usdc_temp_dir, usdz_file);
+  char usdz_temp_full_path[FILE_MAX];
+  BLI_path_join(usdz_temp_full_path, FILE_MAX, usdc_temp_dir, usdz_file);
 
   int result = 0;
   if (BLI_exists(data->usdz_filepath)) {
@@ -102,11 +111,11 @@ static bool perform_usdz_conversion(const ExportJobData *data)
       return false;
     }
   }
-  result = BLI_rename(usdz_temp_dirfile, data->usdz_filepath);
+  result = BLI_path_move(usdz_temp_full_path, data->usdz_filepath);
   if (result != 0) {
     WM_reportf(RPT_ERROR,
                "USD Export: Couldn't move new usdz file from temporary location %s to %s",
-               usdz_temp_dirfile,
+               usdz_temp_full_path,
                data->usdz_filepath);
     return false;
   }
@@ -218,8 +227,9 @@ static void export_startjob(void *customdata,
     BKE_scene_graph_update_for_newframe(data->depsgraph);
   }
 
-  if (strlen(data->usdz_filepath) > 0) {
-    if (!perform_usdz_conversion(data)) {
+  if (data->targets_usdz()) {
+    bool usd_conversion_success = perform_usdz_conversion(data);
+    if (!usd_conversion_success) {
       data->export_ok = false;
       *progress = 1.0f;
       *do_update = true;
@@ -256,7 +266,7 @@ static void export_endjob(void *customdata)
 
   DEG_graph_free(data->depsgraph);
 
-  if (strlen(data->usdz_filepath) > 0) {
+  if (data->targets_usdz()) {
     export_endjob_usdz_cleanup(data);
   }
 
@@ -275,7 +285,7 @@ static void export_endjob(void *customdata)
 
 /* To create a usdz file, we must first create a .usd/a/c file and then covert it to .usdz. The
  * temporary files will be created in Blender's temporary session storage. The .usdz file will then
- * copied to job->usdz_filepath. */
+ * be moved to job->usdz_filepath. */
 static void create_temp_path_for_usdz_export(const char *filepath,
                                              blender::io::usd::ExportJobData *job)
 {
@@ -292,7 +302,7 @@ static void create_temp_path_for_usdz_export(const char *filepath,
   MEM_freeN(usdc_file);
 }
 
-static void set_job_filepath(const char *filepath, blender::io::usd::ExportJobData *job)
+static void set_job_filepath(blender::io::usd::ExportJobData *job, const char *filepath)
 {
   if (BLI_path_extension_check_n(filepath, ".usdz", NULL)) {
     create_temp_path_for_usdz_export(filepath, job);
@@ -317,7 +327,7 @@ bool USD_export(bContext *C,
   job->bmain = CTX_data_main(C);
   job->wm = CTX_wm_manager(C);
   job->export_ok = false;
-  set_job_filepath(filepath, job);
+  set_job_filepath(job, filepath);
 
   job->depsgraph = DEG_graph_new(job->bmain, scene, view_layer, params->evaluation_mode);
   job->params = *params;
