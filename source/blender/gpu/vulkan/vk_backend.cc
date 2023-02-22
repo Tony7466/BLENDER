@@ -79,14 +79,8 @@ void VKBackend::compute_dispatch(int groups_x_len, int groups_y_len, int groups_
           push_constants, shader->vk_pipeline_layout_get(), VK_SHADER_STAGE_ALL);
       break;
 
-    case VKPushConstantsLayout::StorageType::STORAGE_BUFFER:
-      push_constants.update_storage_buffer(context.device_get());
-      descriptor_set.bind(push_constants.storage_buffer_get(),
-                          push_constants.layout_get().storage_buffer_binding_get());
-      break;
-
     case VKPushConstantsLayout::StorageType::UNIFORM_BUFFER:
-      push_constants.update_uniform_buffer(context.device_get());
+      push_constants.update_uniform_buffer();
       descriptor_set.bind(push_constants.uniform_buffer_get(),
                           push_constants.layout_get().storage_buffer_binding_get());
       break;

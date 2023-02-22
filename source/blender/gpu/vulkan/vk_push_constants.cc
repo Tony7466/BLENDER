@@ -64,10 +64,11 @@ void VKPushConstantsLayout::init(const shader::ShaderCreateInfo &info,
 {
   BLI_assert(push_constants.is_empty());
   storage_type_ = storage_type;
-  if (ELEM(storage_type, StorageType::STORAGE_BUFFER, StorageType::UNIFORM_BUFFER)) {
+  if (storage_type == StorageType::UNIFORM_BUFFER) {
     storage_buffer_binding_ = location;
   }
   uint32_t offset = 0;
+  /* TODO: add template for readability.*/
   for (const shader::ShaderCreateInfo::PushConst &push_constant : info.push_constants_) {
     const ShaderInput *shader_input = interface.uniform_get(push_constant.name.c_str());
     BLI_assert(shader_input);
@@ -81,7 +82,7 @@ void VKPushConstantsLayout::init(const shader::ShaderCreateInfo &info,
 
   /* Align end of struct. */
   if (storage_type == StorageType::UNIFORM_BUFFER) {
-    align<Std140>(shader::Type::VEC4, &offset);
+    align_end_of_struct<Std140>(&offset);
   }
   else {
     align_end_of_struct<Std430>(&offset);
@@ -105,10 +106,6 @@ VKPushConstants::VKPushConstants(const VKPushConstantsLayout *layout) : layout_(
 {
   data_ = MEM_mallocN(layout->size_in_bytes(), __func__);
   switch (layout_->storage_type_get()) {
-    case VKPushConstantsLayout::StorageType::STORAGE_BUFFER:
-      storage_buffer_ = new VKStorageBuffer(layout_->size_in_bytes(), GPU_USAGE_DYNAMIC, __func__);
-      break;
-
     case VKPushConstantsLayout::StorageType::UNIFORM_BUFFER:
       uniform_buffer_ = new VKUniformBuffer(layout_->size_in_bytes(), __func__);
       break;
@@ -124,9 +121,6 @@ VKPushConstants::VKPushConstants(VKPushConstants &&other) : layout_(other.layout
   data_ = other.data_;
   other.data_ = nullptr;
 
-  storage_buffer_ = other.storage_buffer_;
-  other.storage_buffer_ = nullptr;
-
   uniform_buffer_ = other.uniform_buffer_;
   other.uniform_buffer_ = nullptr;
 }
@@ -137,9 +131,6 @@ VKPushConstants::~VKPushConstants()
     MEM_freeN(data_);
     data_ = nullptr;
   }
-
-  delete storage_buffer_;
-  storage_buffer_ = nullptr;
 
   delete uniform_buffer_;
   uniform_buffer_ = nullptr;
@@ -152,31 +143,13 @@ VKPushConstants &VKPushConstants::operator=(VKPushConstants &&other)
   data_ = other.data_;
   other.data_ = nullptr;
 
-  storage_buffer_ = other.storage_buffer_;
-  other.storage_buffer_ = nullptr;
-
   uniform_buffer_ = other.uniform_buffer_;
   other.uniform_buffer_ = nullptr;
 
   return *this;
 }
 
-void VKPushConstants::update_storage_buffer(VkDevice /*vk_device*/)
-{
-  BLI_assert(layout_->storage_type_get() == VKPushConstantsLayout::StorageType::STORAGE_BUFFER);
-  BLI_assert(storage_buffer_ != nullptr);
-  BLI_assert(data_ != nullptr);
-  storage_buffer_->update(data_);
-}
-
-VKStorageBuffer &VKPushConstants::storage_buffer_get()
-{
-  BLI_assert(layout_->storage_type_get() == VKPushConstantsLayout::StorageType::STORAGE_BUFFER);
-  BLI_assert(storage_buffer_ != nullptr);
-  return *storage_buffer_;
-}
-
-void VKPushConstants::update_uniform_buffer(VkDevice /*vk_device*/)
+void VKPushConstants::update_uniform_buffer()
 {
   BLI_assert(layout_->storage_type_get() == VKPushConstantsLayout::StorageType::UNIFORM_BUFFER);
   BLI_assert(uniform_buffer_ != nullptr);

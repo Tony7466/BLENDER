@@ -29,7 +29,6 @@
 namespace blender::gpu {
 class VKShaderInterface;
 class VKUniformBuffer;
-class VKStorageBuffer;
 
 /**
  * Describe the layout of the push constants and the storage type that should be used.
@@ -44,18 +43,11 @@ struct VKPushConstantsLayout {
     PUSH_CONSTANTS,
 
     /**
-     * Fallback when push constants doesn't meet the device requirements. This fallback uses a
-     * storage buffer.
-     */
-    STORAGE_BUFFER,
-
-    /**
-     * Fallback when push constants doesn't meet the device requirements. This fallback uses an
-     * uniform buffer.
+     * Fallback when push constants doesn't meet the device requirements.
      */
     UNIFORM_BUFFER,
   };
-  static constexpr StorageType STORAGE_TYPE_DEFAULT = StorageType::UNIFORM_BUFFER;
+  static constexpr StorageType STORAGE_TYPE_DEFAULT = StorageType::PUSH_CONSTANTS;
   static constexpr StorageType STORAGE_TYPE_FALLBACK = StorageType::UNIFORM_BUFFER;
 
   struct PushConstantLayout {
@@ -113,7 +105,6 @@ class VKPushConstants : NonCopyable {
  private:
   const VKPushConstantsLayout *layout_ = nullptr;
   void *data_ = nullptr;
-  VKStorageBuffer *storage_buffer_ = nullptr;
   VKUniformBuffer *uniform_buffer_ = nullptr;
 
  public:
@@ -134,10 +125,7 @@ class VKPushConstants : NonCopyable {
     return *layout_;
   }
 
-  void update_storage_buffer(VkDevice vk_device);
-  VKStorageBuffer &storage_buffer_get();
-
-  void update_uniform_buffer(VkDevice vk_device);
+  void update_uniform_buffer();
   VKUniformBuffer &uniform_buffer_get();
 
   const void *data() const

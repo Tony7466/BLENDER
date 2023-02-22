@@ -47,11 +47,7 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
   VKContext &context = *VKContext::get();
   const VKPushConstantsLayout::StorageType push_constants_storage_type =
       VKPushConstantsLayout::determine_storage_type(info, context.physical_device_limits_get());
-  if (push_constants_storage_type == VKPushConstantsLayout::StorageType::STORAGE_BUFFER) {
-    ssbo_len_++;
-    names_size += PUSH_CONSTANTS_FALLBACK_NAME_LEN + 1;
-  }
-  else if (push_constants_storage_type == VKPushConstantsLayout::StorageType::UNIFORM_BUFFER) {
+  if (push_constants_storage_type == VKPushConstantsLayout::StorageType::UNIFORM_BUFFER) {
     ubo_len_++;
     names_size += PUSH_CONSTANTS_FALLBACK_NAME_LEN + 1;
   }
@@ -118,17 +114,6 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
     }
   }
 
-  /* Push constant post initialization.*/
-  /*
-   * When using storage buffer storage type we need to add it to the the name list here.
-   * Also determine the location as this is used inside the descriptor set as its binding number.
-   */
-  if (push_constants_storage_type == VKPushConstantsLayout::StorageType::STORAGE_BUFFER) {
-    copy_input_name(input, PUSH_CONSTANTS_FALLBACK_NAME, name_buffer_, name_buffer_offset);
-    input->location = input->binding = -1;
-    input++;
-  }
-
   sort_inputs();
 
   /* Determine the descriptor set locations after the inputs have been sorted.*/
@@ -146,13 +131,6 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
     case VKPushConstantsLayout::StorageType::NONE:
     case VKPushConstantsLayout::StorageType::PUSH_CONSTANTS:
       break;
-
-    case VKPushConstantsLayout::StorageType::STORAGE_BUFFER: {
-      push_constant_descriptor_set_location = descriptor_set_location++;
-      const ShaderInput *push_constant_input = ssbo_get(PUSH_CONSTANTS_FALLBACK_NAME.c_str());
-      descriptor_set_location_update(push_constant_input, push_constants_fallback_location);
-      break;
-    }
 
     case VKPushConstantsLayout::StorageType::UNIFORM_BUFFER: {
       push_constant_descriptor_set_location = descriptor_set_location++;

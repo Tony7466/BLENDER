@@ -888,15 +888,11 @@ static VkDescriptorSetLayoutBinding create_descriptor_set_layout_binding(
 static VkDescriptorSetLayoutBinding create_descriptor_set_layout_binding(
     const VKPushConstantsLayout &push_constants_layout)
 {
-  BLI_assert(ELEM(push_constants_layout.storage_type_get(),
-                  VKPushConstantsLayout::StorageType::STORAGE_BUFFER,
-                  VKPushConstantsLayout::StorageType::UNIFORM_BUFFER));
+  BLI_assert(push_constants_layout.storage_type_get() ==
+             VKPushConstantsLayout::StorageType::UNIFORM_BUFFER);
   VkDescriptorSetLayoutBinding binding = {};
   binding.binding = push_constants_layout.storage_buffer_binding_get();
-  binding.descriptorType = push_constants_layout.storage_type_get() ==
-                                   VKPushConstantsLayout::StorageType::STORAGE_BUFFER ?
-                               VK_DESCRIPTOR_TYPE_STORAGE_BUFFER :
-                               VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
   binding.descriptorCount = 1;
   binding.stageFlags = VK_SHADER_STAGE_ALL;
   binding.pImmutableSamplers = nullptr;
@@ -916,9 +912,8 @@ static void add_descriptor_set_layout_bindings(
 
   /* Add push constants to the descriptor when push constants are stored in a storage buffer.*/
   const VKPushConstantsLayout &push_constants_layout = interface.push_constants_layout_get();
-  if (ELEM(push_constants_layout.storage_type_get(),
-           VKPushConstantsLayout::StorageType::UNIFORM_BUFFER,
-           VKPushConstantsLayout::StorageType::STORAGE_BUFFER)) {
+  if (push_constants_layout.storage_type_get() ==
+      VKPushConstantsLayout::StorageType::UNIFORM_BUFFER) {
     r_bindings.append(create_descriptor_set_layout_binding(push_constants_layout));
   }
 }
@@ -942,9 +937,8 @@ static bool descriptor_sets_needed(const VKShaderInterface &shader_interface,
                                    const shader::ShaderCreateInfo &info)
 {
   return !info.pass_resources_.is_empty() || !info.batch_resources_.is_empty() ||
-         ELEM(shader_interface.push_constants_layout_get().storage_type_get(),
-              VKPushConstantsLayout::StorageType::STORAGE_BUFFER,
-              VKPushConstantsLayout::StorageType::UNIFORM_BUFFER);
+         shader_interface.push_constants_layout_get().storage_type_get() ==
+             VKPushConstantsLayout::StorageType::UNIFORM_BUFFER;
 }
 
 bool VKShader::finalize_descriptor_set_layouts(VkDevice vk_device,
