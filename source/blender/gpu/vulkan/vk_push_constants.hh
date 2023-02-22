@@ -55,7 +55,7 @@ struct VKPushConstantsLayout {
      */
     UNIFORM_BUFFER,
   };
-  static constexpr StorageType STORAGE_TYPE_DEFAULT = StorageType::PUSH_CONSTANTS;
+  static constexpr StorageType STORAGE_TYPE_DEFAULT = StorageType::UNIFORM_BUFFER;
   static constexpr StorageType STORAGE_TYPE_FALLBACK = StorageType::UNIFORM_BUFFER;
 
   struct PushConstantLayout {

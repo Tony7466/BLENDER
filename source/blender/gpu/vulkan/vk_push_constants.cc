@@ -7,35 +7,12 @@
 
 #include "vk_push_constants.hh"
 #include "vk_backend.hh"
-#include "vk_memory.hh"
+#include "vk_memory_layout.hh"
 #include "vk_shader_interface.hh"
 #include "vk_storage_buffer.hh"
 #include "vk_uniform_buffer.hh"
 
 namespace blender::gpu {
-
-template<typename Layout> static void align(const shader::Type &type, uint32_t *r_offset)
-{
-  uint32_t alignment = Layout::element_alignment(type);
-  uint32_t alignment_mask = alignment - 1;
-  uint32_t offset = *r_offset;
-  if ((offset & alignment_mask) != 0) {
-    offset &= ~alignment_mask;
-    offset += alignment;
-    *r_offset = offset;
-  }
-}
-
-template<typename Layout>
-static void reserve(const shader::ShaderCreateInfo::PushConst &push_constant, uint32_t *r_offset)
-{
-  uint32_t size = Layout::element_components_len(push_constant.type) *
-                  Layout::component_mem_size(push_constant.type);
-  if (push_constant.array_size != 0) {
-    size *= push_constant.array_size;
-  }
-  *r_offset += size;
-}
 
 template<typename Layout>
 static VKPushConstantsLayout::PushConstantLayout init_constant(
@@ -64,9 +41,7 @@ uint32_t struct_size(Span<shader::ShaderCreateInfo::PushConst> push_constants)
     reserve<Layout>(push_constant, &offset);
   }
 
-  /* Make sure result is aligned to 64 bytes.*/
-  align<Layout>(shader::Type::VEC4, &offset);
-
+  align_end_of_struct<Layout>(&offset);
   return offset;
 }
 
@@ -102,6 +77,14 @@ void VKPushConstantsLayout::init(const shader::ShaderCreateInfo &info,
     else {
       push_constants.append(init_constant<Std430>(push_constant, *shader_input, &offset));
     }
+  }
+
+  /* Align end of struct. */
+  if (storage_type == StorageType::UNIFORM_BUFFER) {
+    align<Std140>(shader::Type::VEC4, &offset);
+  }
+  else {
+    align_end_of_struct<Std430>(&offset);
   }
   size_in_bytes_ = offset;
 }
