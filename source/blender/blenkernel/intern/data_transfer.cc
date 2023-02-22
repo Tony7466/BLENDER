@@ -250,45 +250,13 @@ int BKE_object_data_transfer_dttype_to_srcdst_index(const int dtdata_type)
 
 /* ********** */
 
-/* Helpers to match active color attributes
- * The special distinction of domain and type does not fit the general attribute API well and is
- * only really needed here (since the data transfer can go over multiple of these "at once" while
- * internally this still goes sequentially one after the other, so special care needs to be taken
- * to not set wrong attributes active). */
-
-static CustomDataLayer *data_transfer_attributes_color_float_find(const ID *id, const char *name)
-{
-  if (!name) {
-    return nullptr;
-  }
-  CustomDataLayer *layer = BKE_id_attribute_find(id, name, CD_PROP_COLOR, ATTR_DOMAIN_POINT);
-  if (layer == nullptr) {
-    layer = BKE_id_attribute_find(id, name, CD_PROP_COLOR, ATTR_DOMAIN_CORNER);
-  }
-
-  return layer;
-}
-
-static CustomDataLayer *data_transfer_attributes_color_byte_find(const ID *id, const char *name)
-{
-  if (!name) {
-    return nullptr;
-  }
-  CustomDataLayer *layer = BKE_id_attribute_find(id, name, CD_PROP_BYTE_COLOR, ATTR_DOMAIN_POINT);
-  if (layer == nullptr) {
-    layer = BKE_id_attribute_find(id, name, CD_PROP_BYTE_COLOR, ATTR_DOMAIN_CORNER);
-  }
-
-  return layer;
-}
-
 /**
  * When transfering color attributes, also transfer the active color attribute string.
- * If a match cant be found, use the first color layer that can be found (to ensure a valid string
+ * If a match can't be found, use the first color layer that can be found (to ensure a valid string
  * is set).
  */
 static void data_transfer_mesh_attributes_transfer_active_color_string(
-    Mesh *mesh_dst, const Mesh *mesh_src, const eAttrDomainMask mask_domain, const int data_type)
+    Mesh *mesh_dst, Mesh *mesh_src, const eAttrDomainMask mask_domain, const int data_type)
 {
   if (mesh_dst->active_color_attribute) {
     return;
@@ -297,20 +265,20 @@ static void data_transfer_mesh_attributes_transfer_active_color_string(
   const char *active_color_src = BKE_id_attributes_active_color_name(&mesh_src->id);
 
   if ((data_type == CD_PROP_COLOR) &&
-      !data_transfer_attributes_color_float_find(&mesh_src->id, active_color_src)) {
+      !BKE_id_attribute_search(&mesh_src->id, active_color_src, CD_MASK_PROP_COLOR, ATTR_DOMAIN_MASK_COLOR)) {
     return;
   }
   else if ((data_type == CD_PROP_BYTE_COLOR) &&
-           !data_transfer_attributes_color_byte_find(&mesh_src->id, active_color_src)) {
+           !BKE_id_attribute_search(&mesh_src->id, active_color_src, CD_MASK_PROP_BYTE_COLOR, ATTR_DOMAIN_MASK_COLOR)) {
     return;
   }
 
   if ((data_type == CD_PROP_COLOR) &&
-      data_transfer_attributes_color_float_find(&mesh_dst->id, active_color_src)) {
+      BKE_id_attribute_search(&mesh_dst->id, active_color_src, CD_MASK_PROP_COLOR, ATTR_DOMAIN_MASK_COLOR)) {
     mesh_dst->active_color_attribute = BLI_strdup(active_color_src);
   }
   else if ((data_type == CD_PROP_BYTE_COLOR) &&
-           data_transfer_attributes_color_byte_find(&mesh_dst->id, active_color_src)) {
+           BKE_id_attribute_search(&mesh_dst->id, active_color_src, CD_MASK_PROP_BYTE_COLOR, ATTR_DOMAIN_MASK_COLOR)) {
     mesh_dst->active_color_attribute = BLI_strdup(active_color_src);
   }
   else {
@@ -328,7 +296,7 @@ static void data_transfer_mesh_attributes_transfer_active_color_string(
  * is set).
  */
 static void data_transfer_mesh_attributes_transfer_default_color_string(
-    Mesh *mesh_dst, const Mesh *mesh_src, const eAttrDomainMask mask_domain, const int data_type)
+    Mesh *mesh_dst, Mesh *mesh_src, const eAttrDomainMask mask_domain, const int data_type)
 {
   if (mesh_dst->default_color_attribute) {
     return;
@@ -337,20 +305,20 @@ static void data_transfer_mesh_attributes_transfer_default_color_string(
   const char *default_color_src = BKE_id_attributes_default_color_name(&mesh_src->id);
 
   if ((data_type == CD_PROP_COLOR) &&
-      !data_transfer_attributes_color_float_find(&mesh_src->id, default_color_src)) {
+      !BKE_id_attribute_search(&mesh_src->id, default_color_src, CD_MASK_PROP_COLOR, ATTR_DOMAIN_MASK_COLOR)) {
     return;
   }
   else if ((data_type == CD_PROP_BYTE_COLOR) &&
-           !data_transfer_attributes_color_byte_find(&mesh_src->id, default_color_src)) {
+           !BKE_id_attribute_search(&mesh_src->id, default_color_src, CD_MASK_PROP_BYTE_COLOR, ATTR_DOMAIN_MASK_COLOR)) {
     return;
   }
 
   if ((data_type == CD_PROP_COLOR) &&
-      data_transfer_attributes_color_float_find(&mesh_dst->id, default_color_src)) {
+      BKE_id_attribute_search(&mesh_dst->id, default_color_src, CD_MASK_PROP_COLOR, ATTR_DOMAIN_MASK_COLOR)) {
     mesh_dst->default_color_attribute = BLI_strdup(default_color_src);
   }
   else if ((data_type == CD_PROP_BYTE_COLOR) &&
-           data_transfer_attributes_color_byte_find(&mesh_dst->id, default_color_src)) {
+           BKE_id_attribute_search(&mesh_dst->id, default_color_src, CD_MASK_PROP_BYTE_COLOR, ATTR_DOMAIN_MASK_COLOR)) {
     mesh_dst->default_color_attribute = BLI_strdup(default_color_src);
   }
   else {
