@@ -360,8 +360,7 @@ typedef struct bNode {
 
   /** Custom user-defined color. */
   float color[3];
-
-  char _pad2[4];
+  float color_header[3];
 
   bNodeRuntimeHandle *runtime;
 

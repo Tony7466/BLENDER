@@ -624,6 +624,7 @@ class NODE_PT_active_node_color(Panel):
         layout.enabled = node.use_custom_color
 
         row = layout.row()
+        row.prop(node, "color_header", text="")
         row.prop(node, "color", text="")
         row.menu("NODE_MT_node_color_context_menu", text="", icon='DOWNARROW_HLT')
 

@@ -2086,6 +2086,7 @@ static int node_copy_color_exec(bContext *C, wmOperator * /*op*/)
       if (active_node->flag & NODE_CUSTOM_COLOR) {
         node->flag |= NODE_CUSTOM_COLOR;
         copy_v3_v3(node->color, active_node->color);
+        copy_v3_v3(node->color_header, active_node->color_header);
       }
       else {
         node->flag &= ~NODE_CUSTOM_COLOR;

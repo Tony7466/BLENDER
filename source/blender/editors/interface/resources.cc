@@ -1134,6 +1134,17 @@ void UI_GetThemeColorBlend4f(int colorid1, int colorid2, float fac, float r_col[
   r_col[3] = ((1.0f - fac) * cp1[3] + fac * cp2[3]) / 255.0f;
 }
 
+void UI_GetThemeColorBlend4f_4f(int colorid, float fac, float r_col[4])
+{
+  const uchar *cp = UI_ThemeGetColorPtr(g_theme_state.theme, g_theme_state.spacetype, colorid);
+
+  CLAMP(fac, 0.0f, 1.0f);
+  r_col[0] = ((1.0f - fac) * cp[0] + fac * r_col[0]) / 255.0f;
+  r_col[1] = ((1.0f - fac) * cp[1] + fac * r_col[1]) / 255.0f;
+  r_col[2] = ((1.0f - fac) * cp[2] + fac * r_col[2]) / 255.0f;
+  r_col[3] = ((1.0f - fac) * cp[3] + fac * r_col[3]) / 255.0f;
+}
+
 void UI_FontThemeColor(int fontid, int colorid)
 {
   uchar color[4];

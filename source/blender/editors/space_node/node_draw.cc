@@ -2142,11 +2142,20 @@ static void node_draw_basis(const bContext &C,
     float color_header[4];
 
     /* Muted nodes get a mix of the background with the node color. */
-    if (node.flag & NODE_MUTED) {
-      UI_GetThemeColorBlend4f(TH_BACK, color_id, 0.1f, color_header);
+    if (node.flag & NODE_CUSTOM_COLOR) {
+      rgba_float_args_set(color_header, node.color_header[0], node.color_header[1], node.color_header[2], 1.0f);
+      if (node.flag & NODE_MUTED) {
+        UI_GetThemeColorBlend4f_4f(TH_BACK, 0.1f, color_header);
+        color_header[3] -= 0.2f;
+      }
     }
     else {
-      UI_GetThemeColorBlend4f(TH_NODE, color_id, 0.4f, color_header);
+      if (node.flag & NODE_MUTED) {
+        UI_GetThemeColorBlend4f(TH_BACK, color_id, 0.1f, color_header);
+      }
+      else {
+        UI_GetThemeColorBlend4f(TH_NODE, color_id, 0.4f, color_header);
+      }
     }
 
     UI_draw_roundbox_corner_set(UI_CNR_TOP_LEFT | UI_CNR_TOP_RIGHT);
@@ -2461,12 +2470,15 @@ static void node_draw_hidden(const bContext &C,
       /* Use warning color to indicate undefined types. */
       UI_GetThemeColorBlend4f(TH_REDALERT, TH_NODE, 0.4f, color);
     }
+    else if (node.flag & NODE_CUSTOM_COLOR) {
+      rgba_float_args_set(color, node.color_header[0], node.color_header[1], node.color_header[2], 1.0f);
+      if (node.flag & NODE_MUTED) {
+        UI_GetThemeColorBlend4f_4f(TH_BACK, 0.1f, color);
+      }
+    }
     else if (node.flag & NODE_MUTED) {
       /* Muted nodes get a mix of the background with the node color. */
       UI_GetThemeColorBlendShade4fv(TH_BACK, color_id, 0.1f, 0, color);
-    }
-    else if (node.flag & NODE_CUSTOM_COLOR) {
-      rgba_float_args_set(color, node.color[0], node.color[1], node.color[2], 1.0f);
     }
     else {
       UI_GetThemeColorBlend4f(TH_NODE, color_id, 0.4f, color);
