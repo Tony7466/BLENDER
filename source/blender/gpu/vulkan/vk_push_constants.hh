@@ -205,8 +205,6 @@ class VKPushConstants : NonCopyable {
    *
    * TODO: this function still needs to convert the input_data layout to that
    * what the storage type is expected.
-   * TODO: Current implementation has a work around for missing implementation
-   * of builtin uniforms. Builtin uniforms should eventually also be supported.
    */
   template<typename T>
   void push_constant_set(int32_t location,
@@ -216,11 +214,7 @@ class VKPushConstants : NonCopyable {
   {
     const VKPushConstantsLayout::PushConstantLayout *push_constant_layout = layout_->find(
         location);
-    if (push_constant_layout == nullptr) {
-      /* TODO: Currently the builtin uniforms are set using a predefined location each time a
-       * shader is bound. This needs to be fixed in the VKShaderInterface.*/
-      return;
-    }
+    BLI_assert(push_constant_layout);
     BLI_assert_msg(push_constant_layout->offset + comp_len * array_size * sizeof(T) <=
                        layout_->size_in_bytes(),
                    "Tried to write outside the push constant allocated memory.");
