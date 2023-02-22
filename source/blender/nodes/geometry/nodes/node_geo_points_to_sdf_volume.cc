@@ -116,6 +116,8 @@ static openvdb::FloatGrid::Ptr generate_volume_from_points(const Span<float3> po
   op.rasterizeSpheres(particles);
   op.finalize();
 
+  new_grid->setGridClass(openvdb::GRID_LEVEL_SET);
+
   return new_grid;
 }
 
