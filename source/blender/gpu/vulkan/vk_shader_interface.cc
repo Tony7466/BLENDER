@@ -62,19 +62,16 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
   int32_t input_tot_len = ubo_len_ + uniform_len_ + ssbo_len_;
   inputs_ = static_cast<ShaderInput *>(
       MEM_calloc_arrayN(input_tot_len, sizeof(ShaderInput), __func__));
-  descriptor_set_locations_ = Array<VKDescriptorSet::Location>(input_tot_len);
   ShaderInput *input = inputs_;
 
   name_buffer_ = (char *)MEM_mallocN(names_size, "name_buffer");
   uint32_t name_buffer_offset = 0;
-  uint32_t descriptor_set_location = 0;
 
   /* Uniform blocks */
   for (const ShaderCreateInfo::Resource &res : all_resources) {
     if (res.bind_type == ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER) {
       copy_input_name(input, res.image.name, name_buffer_, name_buffer_offset);
       input->location = input->binding = res.slot;
-      descriptor_set_location_update(input, descriptor_set_location++);
       input++;
     }
   }
@@ -83,8 +80,6 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
   if (push_constants_storage_type == VKPushConstantsLayout::StorageType::UNIFORM_BUFFER) {
     copy_input_name(input, PUSH_CONSTANTS_FALLBACK_NAME, name_buffer_, name_buffer_offset);
     input->location = input->binding = -1;
-    push_constants_fallback_location = descriptor_set_location++;
-    descriptor_set_location_update(input, push_constants_fallback_location);
     input++;
   }
 
@@ -93,13 +88,11 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
     if (res.bind_type == ShaderCreateInfo::Resource::BindType::SAMPLER) {
       copy_input_name(input, res.sampler.name, name_buffer_, name_buffer_offset);
       input->location = input->binding = res.slot;
-      descriptor_set_location_update(input, descriptor_set_location++);
       input++;
     }
     else if (res.bind_type == ShaderCreateInfo::Resource::BindType::IMAGE) {
       copy_input_name(input, res.image.name, name_buffer_, name_buffer_offset);
       input->location = input->binding = res.slot + image_offset_;
-      descriptor_set_location_update(input, descriptor_set_location++);
       input++;
     }
   }
@@ -121,7 +114,6 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
     if (res.bind_type == ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER) {
       copy_input_name(input, res.storagebuf.name, name_buffer_, name_buffer_offset);
       input->location = input->binding = res.slot;
-      descriptor_set_location_update(input, descriptor_set_location++);
       input++;
     }
   }
@@ -134,28 +126,63 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
   if (push_constants_storage_type == VKPushConstantsLayout::StorageType::STORAGE_BUFFER) {
     copy_input_name(input, PUSH_CONSTANTS_FALLBACK_NAME, name_buffer_, name_buffer_offset);
     input->location = input->binding = -1;
-    push_constants_fallback_location = descriptor_set_location++;
-    descriptor_set_location_update(input, push_constants_fallback_location);
     input++;
   }
-  push_constants_layout_.init(
-      info, *this, push_constants_storage_type, push_constants_fallback_location);
 
   sort_inputs();
-  // debug_print();
+
+  /* Determine the descriptor set locations after the inputs have been sorted.*/
+  descriptor_set_locations_ = Array<VKDescriptorSet::Location>(input_tot_len);
+  uint32_t descriptor_set_location = 0;
+  for (ShaderCreateInfo::Resource &res : all_resources) {
+    const ShaderInput *input = shader_input_get(res);
+    descriptor_set_location_update(input, descriptor_set_location++);
+  }
+
+  /* Post initializing push constants.*/
+  /* Determine the binding location of push constants fallback buffer.*/
+  int32_t push_constant_descriptor_set_location = -1;
+  switch (push_constants_storage_type) {
+    case VKPushConstantsLayout::StorageType::NONE:
+    case VKPushConstantsLayout::StorageType::PUSH_CONSTANTS:
+      break;
+
+    case VKPushConstantsLayout::StorageType::STORAGE_BUFFER: {
+      push_constant_descriptor_set_location = descriptor_set_location++;
+      const ShaderInput *push_constant_input = ssbo_get(PUSH_CONSTANTS_FALLBACK_NAME.c_str());
+      descriptor_set_location_update(push_constant_input, push_constants_fallback_location);
+      break;
+    }
+
+    case VKPushConstantsLayout::StorageType::UNIFORM_BUFFER: {
+      push_constant_descriptor_set_location = descriptor_set_location++;
+      const ShaderInput *push_constant_input = ubo_get(PUSH_CONSTANTS_FALLBACK_NAME.c_str());
+      descriptor_set_location_update(push_constant_input, push_constants_fallback_location);
+      break;
+    }
+  }
+  push_constants_layout_.init(
+      info, *this, push_constants_storage_type, push_constant_descriptor_set_location);
+}
+
+static int32_t shader_input_index(const ShaderInput *shader_inputs,
+                                  const ShaderInput *shader_input)
+{
+  int32_t index = (shader_input - shader_inputs);
+  return index;
 }
 
 void VKShaderInterface::descriptor_set_location_update(const ShaderInput *shader_input,
                                                        const VKDescriptorSet::Location location)
 {
-  int32_t index = (shader_input - inputs_) / sizeof(ShaderInput);
+  int32_t index = shader_input_index(inputs_, shader_input);
   descriptor_set_locations_[index] = location;
 }
 
 const VKDescriptorSet::Location VKShaderInterface::descriptor_set_location(
     const ShaderInput *shader_input) const
 {
-  int32_t index = (shader_input - inputs_) / sizeof(ShaderInput);
+  int32_t index = shader_input_index(inputs_, shader_input);
   return descriptor_set_locations_[index];
 }
 
