@@ -70,9 +70,30 @@ struct VKPushConstantsLayout {
   VKDescriptorSet::Location storage_buffer_binding_;
 
  public:
+  /**
+   * Return the desired storage type that can fit the push constants of the given shader create
+   * info, matching the device limits.
+   *
+   * Returns:
+   * - StorageType::NONE: No push constants are needed.
+   * - StorageType::PUSH_CONSTANTS: Regular vulkan push constants can be used.
+   * - StorageType::UNIFORM_BUFFER: The push constants don't fit in the limits of the given device.
+   *   A uniform buffer should be used as a fallback method.
+   */
   static StorageType determine_storage_type(
       const shader::ShaderCreateInfo &info,
       const VkPhysicalDeviceLimits &vk_physical_device_limits);
+
+  /**
+   * Initialize the push constants of the given shader create info with the
+   * binding location.
+   *
+   * interface: Uniform locations of the interface are used as lookup key.
+   * storage_type: The type of storage for push constants to use.
+   * location: When storage_type=StorageType::UNIFORM_BUFFER this contains
+   *    the location in the descriptor set where the uniform buffer can be
+   *    bound.
+   */
   void init(const shader::ShaderCreateInfo &info,
             const VKShaderInterface &interface,
             StorageType storage_type,
@@ -86,21 +107,44 @@ struct VKPushConstantsLayout {
     return storage_type_;
   }
 
+  /**
+   * Get the binding location for the uniform buffer.
+   *
+   * Only valid when storage_type=StorageType::UNIFORM_BUFFER.
+   */
   VKDescriptorSet::Location storage_buffer_binding_get() const
   {
     return storage_buffer_binding_;
   }
 
+  /**
+   * Get the size needed to store the push constants.
+   */
   uint32_t size_in_bytes() const
   {
     return size_in_bytes_;
   }
 
+  /**
+   * Find the push constant layout for the given location.
+   * Location = ShaderInput.location.
+   */
   const PushConstantLayout *find(int32_t location) const;
 };
 
+/**
+ * Container to store push constants in a buffer.
+ *
+ * Can handle buffers with different memory layouts (std140/std430)
+ * Which memory layout is used is based on the storage type.
+ *
+ * VKPushConstantsLayout only describes the buffer, an instance of this
+ * class can handle setting/modifying/duplicating push constants.
+ *
+ * It should also keep track of the submissions in order to reuse the allocated
+ * data.
+ */
 class VKPushConstants : NonCopyable {
-
  private:
   const VKPushConstantsLayout *layout_ = nullptr;
   void *data_ = nullptr;
@@ -124,14 +168,46 @@ class VKPushConstants : NonCopyable {
     return *layout_;
   }
 
+  /**
+   * When storage type = StorageType::UNIFORM_BUFFER use this method to update the uniform
+   * buffer.
+   *
+   * It must be called just before adding a draw/compute command to the command queue.
+   */
   void update_uniform_buffer();
+
+  /**
+   * Get a reference to the uniform buffer.
+   *
+   * Only valid when storage type = StorageType::UNIFORM_BUFFER.
+   */
   VKUniformBuffer &uniform_buffer_get();
 
+  /**
+   * Get the reference to the active data.
+   *
+   * Data can get inactive when push constants are modified, after being added to the command
+   * queue. We still keep track of the old data for reuse and make sure we don't overwrite data
+   * that is still not on the GPU.
+   */
   const void *data() const
   {
     return data_;
   }
 
+  /**
+   * Modify a push constant.
+   *
+   * location: ShaderInput.location of the push constant to update.
+   * comp_len: number of components has the data type that is being updated.
+   * array_size: number of elements when an array to update. (0=no array)
+   * input_data: packed source data to use.
+   *
+   * TODO: this function still needs to convert the input_data layout to that
+   * what the storage type is expected.
+   * TODO: Current implementation has a work around for missing implementation
+   * of builtin uniforms. Builtin uniforms should eventually also be supported.
+   */
   template<typename T>
   void push_constant_set(int32_t location,
                          int32_t comp_len,

@@ -32,6 +32,9 @@ class VKShaderInterface : public ShaderInterface {
   VKPushConstantsLayout push_constants_layout_;
 
  public:
+  /**
+   * When the push constants fallback is used, this name will be used in the GLSL source.
+   */
   static constexpr StringRefNull PUSH_CONSTANTS_FALLBACK_NAME = StringRefNull(
       "push_constants_fallback", 23);
   static constexpr size_t PUSH_CONSTANTS_FALLBACK_NAME_LEN = PUSH_CONSTANTS_FALLBACK_NAME.size();
@@ -46,6 +49,7 @@ class VKShaderInterface : public ShaderInterface {
   const VKDescriptorSet::Location descriptor_set_location(
       const shader::ShaderCreateInfo::Resource::BindType &bind_type, int binding) const;
 
+  /** Get the VKPushConstantsLayout of the shader.*/
   const VKPushConstantsLayout &push_constants_layout_get() const
   {
     return push_constants_layout_;
