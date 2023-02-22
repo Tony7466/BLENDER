@@ -2192,6 +2192,30 @@ void BKE_gpencil_stats_update(bGPdata *gpd)
   }
 }
 
+uint64_t BKE_gpencil_selected_stroke_count_get(bGPdata *gpd)
+{
+  uint64_t selected_count = 0;
+
+  LISTBASE_FOREACH (const bGPDlayer *, gpl, &gpd->layers) {
+    /* FIXME: For now, we just skip parented layers.
+     * Otherwise, we have to update each frame to find
+     * the current parent position/effects.
+     */
+    if (gpl->parent) {
+      continue;
+    }
+
+    LISTBASE_FOREACH (const bGPDframe *, gpf, &gpl->frames) {
+      LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
+        if (gps->flag & GP_STROKE_SELECT) {
+          selected_count++;
+        }
+      }
+    }
+  }
+  return selected_count;
+}
+
 uint64_t BKE_gpencil_selected_stroke_point_count_get(bGPdata *gpd)
 {
   uint64_t selected_count = 0;
