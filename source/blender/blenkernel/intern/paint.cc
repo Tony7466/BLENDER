@@ -234,6 +234,7 @@ const uchar PAINT_CURSOR_SCULPT[3] = {255, 100, 100};
 const uchar PAINT_CURSOR_VERTEX_PAINT[3] = {255, 255, 255};
 const uchar PAINT_CURSOR_WEIGHT_PAINT[3] = {200, 200, 255};
 const uchar PAINT_CURSOR_TEXTURE_PAINT[3] = {255, 255, 255};
+const uchar PAINT_CURSOR_SCULPT_CURVES[3] = {255, 100, 100};
 
 static ePaintOverlayControlFlags overlay_flags = (ePaintOverlayControlFlags)0;
 
@@ -2265,6 +2266,8 @@ PBVH *BKE_sculpt_object_pbvh_ensure(Depsgraph *depsgraph, Object *ob)
 
     return pbvh;
   }
+
+  ob->sculpt->islands_valid = false;
 
   if (ob->sculpt->bm != nullptr) {
     /* Sculpting on a BMesh (dynamic-topology) gets a special PBVH. */
