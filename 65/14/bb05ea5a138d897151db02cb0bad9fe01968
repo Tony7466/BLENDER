@@ -6,3 +6,4 @@ Referenced by issue #103551, Regression: Stored Attributes appear black in the v
 Referenced by issue #103394, Sculpt: Color attribute lose selected status after remesh
 Referenced by issue #98366, Active Attributes
 Referenced by pull request #105020, Fix #103761: creating a color attribute doesn't make it active
+Referenced by commit acfafeed88ee5439519ad6b60b56dc2bac9a6202, Fix #103761: creating a color attribute doesn't make it active
