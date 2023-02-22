@@ -24,6 +24,7 @@ set(SRC
   intern/attribute_set.cc
   intern/curves_add.cc
   intern/curves_data.cc
+  intern/curves_edit.cc
   intern/curves_ops.cc
   intern/curves_selection.cc
   intern/curves_undo.cc
