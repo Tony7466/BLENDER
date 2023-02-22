@@ -215,12 +215,28 @@ class VKPushConstants : NonCopyable {
     const VKPushConstantsLayout::PushConstantLayout *push_constant_layout = layout_->find(
         location);
     BLI_assert(push_constant_layout);
-    BLI_assert_msg(push_constant_layout->offset + comp_len * array_size * sizeof(T) <=
-                       layout_->size_in_bytes(),
-                   "Tried to write outside the push constant allocated memory.");
+
     uint8_t *bytes = static_cast<uint8_t *>(data_);
     T *dst = static_cast<T *>(static_cast<void *>(&bytes[push_constant_layout->offset]));
-    memcpy(dst, input_data, comp_len * array_size * sizeof(T));
+    if (layout_->storage_type_get() == VKPushConstantsLayout::StorageType::PUSH_CONSTANTS ||
+        array_size == 0) {
+      BLI_assert_msg(push_constant_layout->offset + comp_len * array_size * sizeof(T) <=
+                         layout_->size_in_bytes(),
+                     "Tried to write outside the push constant allocated memory.");
+      memcpy(dst, input_data, comp_len * array_size * sizeof(T));
+      return;
+    }
+
+    /* Store elements in uniform buffer as array. In Std140 arrays have an element stride of 16
+     * bytes.*/
+    BLI_assert(sizeof(T) == 4);
+    const T *src = input_data;
+    for (const int i : IndexRange(array_size)) {
+      UNUSED_VARS(i);
+      memcpy(dst, src, comp_len * sizeof(T));
+      src += comp_len;
+      dst += 4;
+    }
   }
 };
 
