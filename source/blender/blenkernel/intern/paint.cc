@@ -1424,7 +1424,7 @@ void BKE_sculptsession_bm_to_me(Object *ob, bool reorder)
     sculptsession_bm_to_me_update_data_only(ob, reorder);
 
     /* Ensure the objects evaluated mesh doesn't hold onto arrays
-     * now realloc'd in the mesh T34473. */
+     * now realloc'd in the mesh #34473. */
     DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
   }
 }
@@ -1454,7 +1454,6 @@ static void sculptsession_free_pbvh(Object *object)
   MEM_SAFE_FREE(ss->preview_vert_list);
   ss->preview_vert_count = 0;
 
-  MEM_SAFE_FREE(ss->vertex_info.connected_component);
   MEM_SAFE_FREE(ss->vertex_info.boundary);
 
   MEM_SAFE_FREE(ss->fake_neighbors.fake_neighbor_index);
@@ -2267,6 +2266,8 @@ PBVH *BKE_sculpt_object_pbvh_ensure(Depsgraph *depsgraph, Object *ob)
     return pbvh;
   }
 
+  ob->sculpt->islands_valid = false;
+
   if (ob->sculpt->bm != nullptr) {
     /* Sculpting on a BMesh (dynamic-topology) gets a special PBVH. */
     pbvh = build_pbvh_for_dynamic_topology(ob);
@@ -2629,8 +2630,6 @@ bool BKE_sculpt_attribute_exists(Object *ob,
 
   CustomData *cdata = sculpt_get_cdata(ob, domain);
   return CustomData_get_named_layer_index(cdata, proptype, name) != -1;
-
-  return false;
 }
 
 static SculptAttribute *sculpt_alloc_attr(SculptSession *ss)

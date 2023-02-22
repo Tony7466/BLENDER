@@ -100,6 +100,40 @@ TEST(math_matrix, interp_m3_m3m3_singularity)
   EXPECT_M3_NEAR(result, expect, 1e-5);
 }
 
+TEST(math_matrix, mul_m3_series)
+{
+  float matrix[3][3] = {
+      {2.0f, 0.0f, 0.0f},
+      {0.0f, 3.0f, 0.0f},
+      {0.0f, 0.0f, 5.0f},
+  };
+  mul_m3_series(matrix, matrix, matrix, matrix);
+  float expect[3][3] = {
+      {8.0f, 0.0f, 0.0f},
+      {0.0f, 27.0f, 0.0f},
+      {0.0f, 0.0f, 125.0f},
+  };
+  EXPECT_M3_NEAR(matrix, expect, 1e-5);
+}
+
+TEST(math_matrix, mul_m4_series)
+{
+  float matrix[4][4] = {
+      {2.0f, 0.0f, 0.0f, 0.0f},
+      {0.0f, 3.0f, 0.0f, 0.0f},
+      {0.0f, 0.0f, 5.0f, 0.0f},
+      {0.0f, 0.0f, 0.0f, 7.0f},
+  };
+  mul_m4_series(matrix, matrix, matrix, matrix);
+  float expect[4][4] = {
+      {8.0f, 0.0f, 0.0f, 0.0f},
+      {0.0f, 27.0f, 0.0f, 0.0f},
+      {0.0f, 0.0f, 125.0f, 0.0f},
+      {0.0f, 0.0f, 0.0f, 343.0f},
+  };
+  EXPECT_M4_NEAR(matrix, expect, 1e-5);
+}
+
 namespace blender::tests {
 
 using namespace blender::math;
@@ -430,7 +464,7 @@ TEST(math_matrix, MatrixTransform)
   result = transform_direction(m3, p);
   EXPECT_V3_NEAR(result, expect, 1e-5);
 
-  expect = {-0.5, -1, -1.7222222};
+  expect = {-0.333333, -0.666666, -1.14814};
   result = project_point(pers4, p);
   EXPECT_V3_NEAR(result, expect, 1e-5);
 
@@ -457,13 +491,13 @@ TEST(math_matrix, MatrixProjection)
   expect = transpose(float4x4({-0.8f, 0.0f, 0.2f, 0.0f},
                               {0.0f, -0.666667f, 0.333333f, 0.0f},
                               {0.0f, 0.0f, -2.33333f, 0.666667f},
-                              {0.0f, 0.0f, -1.0f, 1.0f}));
+                              {0.0f, 0.0f, -1.0f, 0.0f}));
   EXPECT_M4_NEAR(pers1, expect, 1e-5);
 
   expect = transpose(float4x4({4.0f, 0.0f, 0.2f, 0.0f},
                               {0.0f, 3.33333f, 0.333333f, 0.0f},
                               {0.0f, 0.0f, -2.33333f, 0.666667f},
-                              {0.0f, 0.0f, -1.0f, 1.0f}));
+                              {0.0f, 0.0f, -1.0f, 0.0f}));
   EXPECT_M4_NEAR(pers2, expect, 1e-5);
 }
 

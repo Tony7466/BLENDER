@@ -62,7 +62,7 @@ class NODE_HT_header(Header):
 
                 types_that_support_material = {'MESH', 'CURVE', 'SURFACE', 'FONT', 'META',
                                                'GPENCIL', 'VOLUME', 'CURVES', 'POINTCLOUD'}
-                # disable material slot buttons when pinned, cannot find correct slot within id_from (T36589)
+                # disable material slot buttons when pinned, cannot find correct slot within id_from (#36589)
                 # disable also when the selected object does not support materials
                 has_material_slots = not snode.pin and ob_type in types_that_support_material
 
@@ -574,6 +574,11 @@ class NODE_MT_context_menu(Menu):
         layout.menu("NODE_MT_context_menu_select_menu")
         layout.menu("NODE_MT_context_menu_show_hide_menu")
 
+        if active_node:
+            layout.separator()
+            props = layout.operator("wm.doc_view_manual", text="Online Manual", icon='URL')
+            props.doc_id = active_node.bl_idname
+
 
 class NODE_PT_active_node_generic(Panel):
     bl_space_type = 'NODE_EDITOR'
@@ -670,7 +675,7 @@ class NODE_PT_texture_mapping(Panel):
     bl_category = "Node"
     bl_label = "Texture Mapping"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'BLENDER_WORKBENCH_NEXT'}
 
     @classmethod
     def poll(cls, context):

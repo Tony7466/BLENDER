@@ -67,12 +67,20 @@ class MetalDevice : public Device {
   std::recursive_mutex metal_mem_map_mutex;
 
   /* Bindless Textures */
+  bool is_texture(const TextureInfo &tex);
   device_vector<TextureInfo> texture_info;
   bool need_texture_info;
   id<MTLArgumentEncoder> mtlTextureArgEncoder = nil;
+  id<MTLArgumentEncoder> mtlBufferArgEncoder = nil;
+  id<MTLBuffer> buffer_bindings_1d = nil;
   id<MTLBuffer> texture_bindings_2d = nil;
   id<MTLBuffer> texture_bindings_3d = nil;
   std::vector<id<MTLTexture>> texture_slot_map;
+
+  /* BLAS encoding & lookup */
+  id<MTLArgumentEncoder> mtlBlasArgEncoder = nil;
+  id<MTLBuffer> blas_buffer = nil;
+  id<MTLBuffer> blas_lookup_buffer = nil;
 
   bool use_metalrt = false;
   MetalPipelineType kernel_specialization_level = PSO_GENERIC;
@@ -104,6 +112,8 @@ class MetalDevice : public Device {
   bool check_peer_access(Device *peer_device) override;
 
   bool use_adaptive_compilation();
+
+  bool use_local_atomic_sort() const;
 
   bool make_source_and_check_if_compile_needed(MetalPipelineType pso_type);
 

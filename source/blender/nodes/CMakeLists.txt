@@ -39,6 +39,7 @@ set(INC
 
 
 set(SRC
+  intern/add_node_search.cc
   intern/derived_node_tree.cc
   intern/geometry_nodes_lazy_function.cc
   intern/geometry_nodes_log.cc
@@ -54,6 +55,7 @@ set(SRC
   intern/node_util.cc
   intern/socket_search_link.cc
 
+  NOD_add_node_search.hh
   NOD_common.h
   NOD_composite.h
   NOD_derived_node_tree.hh
@@ -92,12 +94,6 @@ if(WITH_BULLET)
     ${BULLET_INCLUDE_DIRS}
     ../../../intern/rigidbody
   )
-  if(NOT WITH_SYSTEM_BULLET)
-  list(APPEND LIB
-    extern_bullet
-  )
-  endif()
-
   list(APPEND LIB
     ${BULLET_LIBRARIES}
   )

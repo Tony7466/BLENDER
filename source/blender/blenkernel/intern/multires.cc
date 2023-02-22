@@ -41,7 +41,7 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "multires_reshape.h"
+#include "multires_reshape.hh"
 
 #include <cmath>
 #include <cstring>
@@ -751,7 +751,7 @@ static DerivedMesh *multires_dm_create_local(Scene *scene,
                                              bool alloc_paint_mask,
                                              MultiresFlags flags)
 {
-  MultiresModifierData mmd = {{nullptr}};
+  MultiresModifierData mmd{};
 
   mmd.lvl = lvl;
   mmd.sculptlvl = lvl;

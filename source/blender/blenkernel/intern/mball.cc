@@ -85,9 +85,6 @@ static void metaball_free_data(ID *id)
   MEM_SAFE_FREE(metaball->mat);
 
   BLI_freelistN(&metaball->elems);
-  if (metaball->disp.first) {
-    BKE_displist_free(&metaball->disp);
-  }
 }
 
 static void metaball_foreach_id(ID *id, LibraryForeachIDData *data)
@@ -103,7 +100,6 @@ static void metaball_blend_write(BlendWriter *writer, ID *id, const void *id_add
   MetaBall *mb = (MetaBall *)id;
 
   /* Clean up, important in undo case to reduce false detection of changed datablocks. */
-  BLI_listbase_clear(&mb->disp);
   mb->editelems = nullptr;
   /* Must always be cleared (meta's don't have their own edit-data). */
   mb->needs_flush_to_id = 0;
@@ -134,7 +130,6 @@ static void metaball_blend_read_data(BlendDataReader *reader, ID *id)
 
   BLO_read_list(reader, &(mb->elems));
 
-  BLI_listbase_clear(&mb->disp);
   mb->editelems = nullptr;
   /* Must always be cleared (meta's don't have their own edit-data). */
   mb->needs_flush_to_id = 0;
@@ -282,7 +277,7 @@ bool BKE_mball_is_basis(const Object *ob)
   /* Meta-Ball Basis Notes from Blender-2.5x
    * =======================================
    *
-   * NOTE(@campbellbarton): This is a can of worms.
+   * NOTE(@ideasman42): This is a can of worms.
    *
    * This really needs a rewrite/refactor its totally broken in anything other than basic cases
    * Multiple Scenes + Set Scenes & mixing meta-ball basis _should_ work but fails to update the
@@ -490,7 +485,7 @@ bool BKE_mball_minmax_ex(
         copy_v3_v3(centroid, &ml->x);
       }
 
-      /* TODO(@campbellbarton): non circle shapes cubes etc, probably nobody notices. */
+      /* TODO(@ideasman42): non circle shapes cubes etc, probably nobody notices. */
       for (int i = -1; i != 3; i += 2) {
         copy_v3_v3(vec, centroid);
         add_v3_fl(vec, scale_mb * i);

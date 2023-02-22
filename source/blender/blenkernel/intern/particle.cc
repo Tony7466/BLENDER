@@ -847,7 +847,7 @@ void psys_find_group_weights(ParticleSettings *part)
 {
   /* Find object pointers based on index. If the collection is linked from
    * another library linking may not have the object pointers available on
-   * file load, so we have to retrieve them later. See T49273. */
+   * file load, so we have to retrieve them later. See #49273. */
   ListBase instance_collection_objects = {nullptr, nullptr};
 
   if (part->instance_collection) {
@@ -3035,7 +3035,7 @@ static void psys_thread_create_path(ParticleTask *task,
      */
     cpa_num = ELEM(pa->num_dmcache, DMCACHE_ISCHILD, DMCACHE_NOTFOUND) ? pa->num : pa->num_dmcache;
 
-    /* XXX hack to avoid messed up particle num and subsequent crash (T40733) */
+    /* XXX hack to avoid messed up particle num and subsequent crash (#40733) */
     if (cpa_num > ctx->sim.psmd->mesh_final->totface) {
       cpa_num = 0;
     }
@@ -3513,7 +3513,8 @@ void psys_cache_paths(ParticleSimulationData *sim, float cfra, const bool use_re
         }
       }
 
-      /* lattices have to be calculated separately to avoid mixups between effector calculations */
+      /* Lattices have to be calculated separately to avoid mix-ups between effector calculations.
+       */
       if (psys->lattice_deform_data) {
         for (k = 0, ca = cache[p]; k <= segments; k++, ca++) {
           BKE_lattice_deform_data_eval_co(
@@ -4215,7 +4216,9 @@ static int get_particle_uv(Mesh *mesh,
   int i;
 
   tf = static_cast<const MTFace *>(CustomData_get_layer_named(&mesh->fdata, CD_MTFACE, name));
-
+  if (tf == nullptr) {
+    tf = static_cast<const MTFace *>(CustomData_get_layer(&mesh->fdata, CD_MTFACE));
+  }
   if (tf == nullptr) {
     return 0;
   }
@@ -4451,15 +4454,15 @@ void psys_get_texture(
                                    texvec);
 
           BKE_mesh_texspace_ensure(me);
-          sub_v3_v3(texvec, me->loc);
-          if (me->size[0] != 0.0f) {
-            texvec[0] /= me->size[0];
+          sub_v3_v3(texvec, me->texspace_location);
+          if (me->texspace_size[0] != 0.0f) {
+            texvec[0] /= me->texspace_size[0];
           }
-          if (me->size[1] != 0.0f) {
-            texvec[1] /= me->size[1];
+          if (me->texspace_size[1] != 0.0f) {
+            texvec[1] /= me->texspace_size[1];
           }
-          if (me->size[2] != 0.0f) {
-            texvec[2] /= me->size[2];
+          if (me->texspace_size[2] != 0.0f) {
+            texvec[2] /= me->texspace_size[2];
           }
           break;
         case TEXCO_PARTICLE:
@@ -5096,7 +5099,7 @@ void psys_get_dupli_texture(ParticleSystem *psys,
    * the entire scenes dupli's are scanned, which also looks into uncalculated data.
    *
    * For now just include this workaround as an alternative to crashing,
-   * but longer term meta-balls should behave in a more manageable way, see: T46622. */
+   * but longer term meta-balls should behave in a more manageable way, see: #46622. */
 
   uv[0] = uv[1] = 0.0f;
 
@@ -5467,7 +5470,7 @@ void BKE_particle_system_blend_read_lib(BlendLibReader *reader,
       BLO_read_id_address(reader, id->lib, &psys->target_ob);
 
       if (psys->clmd) {
-        /* XXX(@campbellbarton): from reading existing code this seems correct but intended usage
+        /* XXX(@ideasman42): from reading existing code this seems correct but intended usage
          * of point-cache with cloth should be added in #ParticleSystem. */
         psys->clmd->point_cache = psys->pointcache;
         psys->clmd->ptcaches.first = psys->clmd->ptcaches.last = nullptr;

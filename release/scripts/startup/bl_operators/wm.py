@@ -556,7 +556,7 @@ class WM_OT_context_toggle_enum(Operator):
 
 class WM_OT_context_cycle_int(Operator):
     """Set a context value (useful for cycling active material, """ \
-        """vertex keys, groups, etc.)"""
+        """shape keys, groups, etc.)"""
     bl_idname = "wm.context_cycle_int"
     bl_label = "Context Int Cycle"
     bl_options = {'UNDO', 'INTERNAL'}
@@ -1056,7 +1056,7 @@ class WM_OT_url_open_preset(Operator):
         return "https://www.blender.org/download/releases/%d-%d/" % bpy.app.version[:2]
 
     def _url_from_manual(self, _context):
-        return "https://docs.blender.org/manual/en/%d.%d/" % bpy.app.version[:2]
+        return "https://docs.blender.org/manual/%s/%d.%d/" % (bpy.utils.manual_language_code(), *bpy.app.version[:2])
 
     def _url_from_api(self, _context):
         return "https://docs.blender.org/api/%d.%d/" % bpy.app.version[:2]
@@ -1249,7 +1249,31 @@ class WM_OT_doc_view_manual(Operator):
         # XXX, for some reason all RNA ID's are stored lowercase
         # Adding case into all ID's isn't worth the hassle so force lowercase.
         rna_id = rna_id.lower()
+
+        # NOTE: `fnmatch` in Python is slow as it translate the string to a regular-expression
+        # which needs to be compiled (as of Python 3.11), this is slow enough to cause a noticeable
+        # delay when opening manual links (approaching half a second).
+        #
+        # Resolve by matching characters that have a special meaning to `fnmatch`.
+        # The characters that can occur as the first special character are `*?[`.
+        # If any of these are used we must let `fnmatch` run its own matching logic.
+        # However, in most cases a literal prefix is used making it considerably faster
+        # to do a simple `startswith` check before performing a full match.
+        # An alternative solution could be to use `fnmatch` from C which is significantly
+        # faster than Python's, see !104581 for details.
+        import re
+        re_match_non_special = re.compile(r"^[^?\*\[]+").match
+
         for pattern, url_suffix in url_mapping:
+
+            # Simple optimization, makes a big difference (over 50x speedup).
+            # Even when `non_special.end()` is zero (resulting in an empty-string),
+            # the `startswith` check succeeds so there is no need to check for an empty match.
+            non_special = re_match_non_special(pattern)
+            if non_special is None or not rna_id.startswith(pattern[:non_special.end()]):
+                continue
+            # End simple optimization.
+
             if fnmatchcase(rna_id, pattern):
                 if verbose:
                     print("            match found: '%s' --> '%s'" % (pattern, url_suffix))
@@ -1587,7 +1611,7 @@ class WM_OT_properties_edit(Operator):
         elif self.property_type == 'STRING':
             self.default_string = rna_data["default"]
         elif self.property_type in {'BOOL', 'BOOL_ARRAY'}:
-            self.default_int = self._convert_new_value_array(rna_data["default"], bool, 32)
+            self.default_bool = self._convert_new_value_array(rna_data["default"], bool, 32)
 
         if self.property_type in {'FLOAT_ARRAY', 'INT_ARRAY', 'BOOL_ARRAY'}:
             self.array_length = len(item[name])
@@ -1604,33 +1628,26 @@ class WM_OT_properties_edit(Operator):
     def _get_converted_value(self, item, name_old, prop_type_new):
         if prop_type_new == 'INT':
             return self._convert_new_value_single(item[name_old], int)
-
-        if prop_type_new == 'FLOAT':
+        elif prop_type_new == 'FLOAT':
             return self._convert_new_value_single(item[name_old], float)
-
-        if prop_type_new == 'BOOL':
+        elif prop_type_new == 'BOOL':
             return self._convert_new_value_single(item[name_old], bool)
-
-        if prop_type_new == 'INT_ARRAY':
+        elif prop_type_new == 'INT_ARRAY':
             prop_type_old = self.get_property_type(item, name_old)
             if prop_type_old in {'INT', 'FLOAT', 'INT_ARRAY', 'FLOAT_ARRAY', 'BOOL_ARRAY'}:
                 return self._convert_new_value_array(item[name_old], int, self.array_length)
-
-        if prop_type_new == 'FLOAT_ARRAY':
+        elif prop_type_new == 'FLOAT_ARRAY':
             prop_type_old = self.get_property_type(item, name_old)
             if prop_type_old in {'INT', 'FLOAT', 'FLOAT_ARRAY', 'INT_ARRAY', 'BOOL_ARRAY'}:
                 return self._convert_new_value_array(item[name_old], float, self.array_length)
-
-        if prop_type_new == 'BOOL_ARRAY':
+        elif prop_type_new == 'BOOL_ARRAY':
             prop_type_old = self.get_property_type(item, name_old)
-            if prop_type_old in {'INT', 'FLOAT', 'FLOAT_ARRAY', 'INT_ARRAY'}:
+            if prop_type_old in {'INT', 'FLOAT', 'FLOAT_ARRAY', 'INT_ARRAY', 'BOOL_ARRAY'}:
                 return self._convert_new_value_array(item[name_old], bool, self.array_length)
             else:
                 return [False] * self.array_length
-
-        if prop_type_new == 'STRING':
+        elif prop_type_new == 'STRING':
             return self.convert_custom_property_to_string(item, name_old)
-
         # If all else fails, create an empty string property. That should avoid errors later on anyway.
         return ""
 
@@ -1667,7 +1684,7 @@ class WM_OT_properties_edit(Operator):
                 default=self.default_int[0] if prop_type_new == 'INT' else self.default_int[:self.array_length],
                 description=self.description,
             )
-        if prop_type_new in {'BOOL', 'BOOL_ARRAY'}:
+        elif prop_type_new in {'BOOL', 'BOOL_ARRAY'}:
             ui_data = item.id_properties_ui(name)
             ui_data.update(
                 default=self.default_bool[0] if prop_type_new == 'BOOL' else self.default_bool[:self.array_length],
@@ -1732,7 +1749,7 @@ class WM_OT_properties_edit(Operator):
                     for nt in adt.nla_tracks:
                         _update_strips(nt.strips)
 
-        # Otherwise existing buttons which reference freed memory may crash Blender (T26510).
+        # Otherwise existing buttons which reference freed memory may crash Blender (#26510).
         for win in context.window_manager.windows:
             for area in win.screen.areas:
                 area.tag_redraw()

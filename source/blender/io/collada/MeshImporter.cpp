@@ -562,15 +562,6 @@ void MeshImporter::mesh_add_edges(Mesh *mesh, int len)
 
   CustomData_free(&mesh->edata, mesh->totedge);
   mesh->edata = edata;
-
-  MutableSpan<MEdge> edges = mesh->edges_for_write();
-
-  /* set default flags */
-  medge = &edges[mesh->totedge];
-  for (int i = 0; i < len; i++, medge++) {
-    medge->flag = ME_EDGEDRAW;
-  }
-
   mesh->totedge = totedge;
 }
 
@@ -717,7 +708,6 @@ void MeshImporter::read_polys(COLLADAFW::Mesh *collada_mesh,
 
         for (uint uvset_index = 0; uvset_index < index_list_array_uvcoord.getCount();
              uvset_index++) {
-          /* get mtface by face index and uv set index */
           COLLADAFW::IndexList &index_list = *index_list_array_uvcoord[uvset_index];
           blender::float2 *mloopuv = static_cast<blender::float2 *>(
               CustomData_get_layer_named_for_write(

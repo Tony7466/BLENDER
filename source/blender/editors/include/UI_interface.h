@@ -22,10 +22,8 @@ extern "C" {
 struct ARegion;
 struct AssetFilterSettings;
 struct AssetHandle;
-struct AssetMetaData;
 struct AutoComplete;
 struct EnumPropertyItem;
-struct FileDirEntry;
 struct FileSelectParams;
 struct ID;
 struct IDProperty;
@@ -48,7 +46,6 @@ struct bNodeTree;
 struct bScreen;
 struct rctf;
 struct rcti;
-struct uiBlockInteraction_Handle;
 struct uiButSearch;
 struct uiFontStyle;
 struct uiList;
@@ -242,6 +239,17 @@ enum {
   UI_BUT_OVERRIDDEN = 1u << 31u,
 };
 
+/** #uiBut.dragflag */
+enum {
+  /** By default only the left part of a button triggers dragging. A questionable design to make
+   * the icon but not other parts of the button draggable. Set this flag so the entire button can
+   * be dragged. */
+  UI_BUT_DRAG_FULL_BUT = (1 << 0),
+
+  /* --- Internal flags. --- */
+  UI_BUT_DRAGPOIN_FREE = (1 << 1),
+};
+
 /* Default font size for normal text. */
 #define UI_DEFAULT_TEXT_POINTS 11.0f
 
@@ -325,6 +333,8 @@ enum {
  * - bit  9-15: button type (now 6 bits, 64 types)
  */
 typedef enum {
+  UI_BUT_POIN_NONE = 0,
+
   UI_BUT_POIN_CHAR = 32,
   UI_BUT_POIN_SHORT = 64,
   UI_BUT_POIN_INT = 96,
@@ -397,7 +407,7 @@ typedef enum {
   UI_BTYPE_SEPR_LINE = 55 << 9,
   /** Dynamically fill available space. */
   UI_BTYPE_SEPR_SPACER = 56 << 9,
-  /** Resize handle (resize uilist). */
+  /** Resize handle (resize UI-list). */
   UI_BTYPE_GRIP = 57 << 9,
   UI_BTYPE_DECORATOR = 58 << 9,
   /* An item a view (see #ui::AbstractViewItem). */
@@ -462,7 +472,7 @@ void UI_draw_safe_areas(uint pos,
                         const float title_aspect[2],
                         const float action_aspect[2]);
 
-/** State for scrolldrawing. */
+/** State for scroll-drawing. */
 enum {
   UI_SCROLL_PRESSED = 1 << 0,
   UI_SCROLL_ARROWS = 1 << 1,
@@ -882,6 +892,9 @@ bool UI_but_flag_is_set(uiBut *but, int flag);
 void UI_but_drawflag_enable(uiBut *but, int flag);
 void UI_but_drawflag_disable(uiBut *but, int flag);
 
+void UI_but_dragflag_enable(uiBut *but, int flag);
+void UI_but_dragflag_disable(uiBut *but, int flag);
+
 void UI_but_disable(uiBut *but, const char *disabled_hint);
 
 void UI_but_type_set_menu_from_pulldown(uiBut *but);
@@ -904,7 +917,7 @@ bool UI_but_active_only(const struct bContext *C,
                         uiBut *but);
 /**
  * \warning This must run after other handlers have been added,
- * otherwise the handler won't be removed, see: T71112.
+ * otherwise the handler won't be removed, see: #71112.
  */
 bool UI_block_active_only_flagged_buttons(const struct bContext *C,
                                           struct ARegion *region,
@@ -1790,15 +1803,18 @@ void UI_but_drag_set_id(uiBut *but, struct ID *id);
 /**
  * Set an image to display while dragging. This works for any drag type (`WM_DRAG_XXX`).
  * Not to be confused with #UI_but_drag_set_image(), which sets up dragging of an image.
+ *
+ * Sets #UI_BUT_DRAG_FULL_BUT so the full button can be dragged.
  */
 void UI_but_drag_attach_image(uiBut *but, struct ImBuf *imb, float scale);
 /**
+ * Sets #UI_BUT_DRAG_FULL_BUT so the full button can be dragged.
  * \param asset: May be passed from a temporary variable, drag data only stores a copy of this.
  */
 void UI_but_drag_set_asset(uiBut *but,
                            const struct AssetHandle *asset,
                            const char *path,
-                           int import_type, /* eFileAssetImportType */
+                           int import_type, /* eAssetImportType */
                            int icon,
                            struct ImBuf *imb,
                            float scale);
@@ -1809,6 +1825,8 @@ void UI_but_drag_set_name(uiBut *but, const char *name);
  * Value from button itself.
  */
 void UI_but_drag_set_value(uiBut *but);
+
+/** Sets #UI_BUT_DRAG_FULL_BUT so the full button can be dragged. */
 void UI_but_drag_set_image(
     uiBut *but, const char *path, int icon, struct ImBuf *imb, float scale, bool use_free);
 
@@ -2039,7 +2057,7 @@ enum {
   UI_TEMPLATE_OP_PROPS_NO_SPLIT_LAYOUT = 1 << 4,
 };
 
-/* used for transp checkers */
+/* Used for transparent checkers shown under color buttons that have an alpha component. */
 #define UI_ALPHA_CHECKER_DARK 100
 #define UI_ALPHA_CHECKER_LIGHT 160
 
@@ -3062,7 +3080,7 @@ int UI_fontstyle_string_width(const struct uiFontStyle *fs,
  * only applying scale when drawing. This causes problems for fonts since kerning at
  * smaller sizes often makes them wider than a scaled down version of the larger text.
  * Resolve this by calculating the text at the on-screen size,
- * returning the result scaled back to 1:1. See T92361.
+ * returning the result scaled back to 1:1. See #92361.
  */
 int UI_fontstyle_string_width_with_block_aspect(const struct uiFontStyle *fs,
                                                 const char *str,

@@ -156,15 +156,6 @@ template<typename T> class VArrayImpl {
   {
     return false;
   }
-
-  /**
-   * Return true when the other virtual array should be considered to be the same, e.g. because it
-   * shares the same underlying memory.
-   */
-  virtual bool is_same(const VArrayImpl<T> & /*other*/) const
-  {
-    return false;
-  }
 };
 
 /** Similar to #VArrayImpl, but adds methods that allow modifying the referenced elements. */
@@ -236,18 +227,6 @@ template<typename T> class VArrayImpl_For_Span : public VMutableArrayImpl<T> {
   CommonVArrayInfo common_info() const override
   {
     return CommonVArrayInfo(CommonVArrayInfo::Type::Span, true, data_);
-  }
-
-  bool is_same(const VArrayImpl<T> &other) const final
-  {
-    if (other.size() != this->size_) {
-      return false;
-    }
-    const CommonVArrayInfo other_info = other.common_info();
-    if (other_info.type != CommonVArrayInfo::Type::Span) {
-      return false;
-    }
-    return data_ == static_cast<const T *>(other_info.data);
   }
 
   void materialize(IndexMask mask, T *dst) const override
@@ -482,23 +461,6 @@ class VArrayImpl_For_DerivedSpan final : public VMutableArrayImpl<ElemT> {
       }
     });
   }
-
-  bool is_same(const VArrayImpl<ElemT> &other) const override
-  {
-    if (other.size() != this->size_) {
-      return false;
-    }
-    if (const VArrayImpl_For_DerivedSpan<StructT, ElemT, GetFunc> *other_typed =
-            dynamic_cast<const VArrayImpl_For_DerivedSpan<StructT, ElemT, GetFunc> *>(&other)) {
-      return other_typed->data_ == data_;
-    }
-    if (const VArrayImpl_For_DerivedSpan<StructT, ElemT, GetFunc, SetFunc> *other_typed =
-            dynamic_cast<const VArrayImpl_For_DerivedSpan<StructT, ElemT, GetFunc, SetFunc> *>(
-                &other)) {
-      return other_typed->data_ == data_;
-    }
-    return false;
-  }
 };
 
 template<typename StructT,
@@ -565,7 +527,7 @@ template<typename T> class VArrayCommon {
    * Other virtual array implementations are typically stored as #std::shared_ptr. That works even
    * when the implementation itself is not copyable and makes copying #VArrayCommon cheaper.
    */
-  using Storage = Any<detail::VArrayAnyExtraInfo<T>, 24, 8>;
+  using Storage = Any<blender::detail::VArrayAnyExtraInfo<T>, 24, 8>;
 
   /**
    * Pointer to the currently contained virtual array implementation. This is allowed to be null.
@@ -776,25 +738,6 @@ template<typename T> class VArrayCommon {
       return std::nullopt;
     }
     return *static_cast<const T *>(info.data);
-  }
-
-  /**
-   * Return true when the other virtual references the same underlying memory.
-   */
-  bool is_same(const VArrayCommon<T> &other) const
-  {
-    if (!*this || !other) {
-      return false;
-    }
-    /* Check in both directions in case one does not know how to compare to the other
-     * implementation. */
-    if (impl_->is_same(*other.impl_)) {
-      return true;
-    }
-    if (other.impl_->is_same(*impl_)) {
-      return true;
-    }
-    return false;
   }
 
   /** Copy the entire virtual array into a span. */
