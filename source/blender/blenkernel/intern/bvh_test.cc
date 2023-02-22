@@ -45,8 +45,8 @@
 
 #include "CLG_log.h"
 
-#define DO_PERF_TESTS 0
-#define WRITE_DEBUG_MESH_FILES 1
+#define DO_PERF_TESTS 1
+#define WRITE_DEBUG_MESH_FILES 0
 
 namespace blender::bke::tests {
 
@@ -286,43 +286,59 @@ class BVHBlendFileTest : public testing::Test {
   }
 
   /* Warning: takes ownership of the mesh and frees it at the end! */
-  void write_debug_mesh_file(Mesh *mesh)
+  void write_debug_mesh_file(Mesh *mesh, const char *filename)
   {
     Main *bmain = BKE_main_new();
 
     Mesh *main_mesh = BKE_mesh_add(bmain, "BVHTest");
     BKE_mesh_nomain_to_mesh(mesh, main_mesh, nullptr);
 
-    char filename[FILE_MAX];
-    BLI_strncpy(filename, create_persistent_temp_path().c_str(), sizeof(filename));
-    BLI_path_append(filename, sizeof(filename), "bvh_test.blend");
+    char filepath[FILE_MAX];
+    BLI_strncpy(filepath, create_persistent_temp_path().c_str(), sizeof(filepath));
+    BLI_path_append(filepath, sizeof(filepath), filename);
 
     BlendFileWriteParams write_params{};
     write_params.use_save_versions = 0;
-    BLO_write_file(bmain, filename, 0, &write_params, nullptr);
-    std::cout << "BVH mesh file written to " << filename << std::endl;
+    BLO_write_file(bmain, filepath, 0, &write_params, nullptr);
+    std::cout << "BVH mesh file written to " << filepath << std::endl;
 
     BKE_main_free(bmain);
   }
 };
 
-class UniformAreaTrianglesGenerator {
+class MeshGenerator {
+ public:
+  int num_triangles_ = 100;
+  float size_ = 10.0f;
+  float scale_ = 1.0f;
+
+  MeshGenerator(int num_triangles) : num_triangles_(num_triangles)
+  {
+    scale_ = size_ / powf(num_triangles_, 0.333333f);
+  }
+};
+
+class UniformAreaTrianglesGenerator : public MeshGenerator {
  public:
   unsigned int mesh_seed_ = 12345;
-  float avg_side_length = 0.2f;
   float triangle_area() const
   {
+    const float avg_side_length = 0.5f * scale_;
     return 0.5f * avg_side_length * avg_side_length;
   }
   /* Note: don't make this too large, or the rng filter below
    * might reject a large proportion of candidate triangles and take a lot of time.
    */
   float min_angle_ = DEG2RAD(20.0f);
-  float min_side_length = 0.333f;
+  float min_side_factor = 0.333f;
 
-  Mesh *create_mesh(int param) const
+  UniformAreaTrianglesGenerator(int num_triangles) : MeshGenerator(num_triangles)
   {
-    const int num_tris = param;
+  }
+
+  Mesh *create_mesh() const
+  {
+    const int num_tris = num_triangles_;
     const int num_verts = num_tris * 3;
     const int num_loops = num_tris * 3;
     Mesh *mesh = BKE_mesh_new_nomain(num_verts, 0, 0, num_loops, num_tris);
@@ -332,7 +348,8 @@ class UniformAreaTrianglesGenerator {
 
     RandomNumberGenerator rng(mesh_seed_);
     for (int i = 0; i < num_tris; ++i) {
-      float3 p0 = float3(rng.get_float(), rng.get_float(), rng.get_float()) * 10.0f - float3(5.0f);
+      float3 p0 = (float3(rng.get_float(), rng.get_float(), rng.get_float()) - float3(0.5f)) *
+                  size_;
       float3 u, v;
       float dot_uv;
       do {
@@ -341,7 +358,7 @@ class UniformAreaTrianglesGenerator {
         dot_uv = math::dot(u, v);
       } while (math::abs(dot_uv) >= math::cos(min_angle_));
       const float side_scale = math::sqrt(2.0f * triangle_area() / math::sqrt(1.0f - dot_uv * dot_uv));
-      const float r = min_side_length + (1.0f - min_side_length) * rng.get_float();
+      const float r = min_side_factor + (1.0f - min_side_factor) * rng.get_float();
       const float s = 1.0f / r;
       float3 p1 = p0 + side_scale * r * u;
       float3 p2 = p0 + side_scale * s * v;
@@ -363,69 +380,175 @@ class UniformAreaTrianglesGenerator {
   }
 };
 
-//class DonutCloudTest {
-// public:
-//  unsigned int mesh_seed_ = 12345;
-//  float avg_side_length = 0.2f;
-//  float triangle_area() const
-//  {
-//    return 0.5f * avg_side_length * avg_side_length;
-//  }
-//  /* Note: don't make this too large, or the rng filter below
-//   * might reject a large proportion of candidate triangles and take a lot of time.
-//   */
-//  float min_angle_ = DEG2RAD(20.0f);
-//  float min_side_length = 0.333f;
-//
-//  Mesh *create_mesh(int param) const
-//  {
-//    const int num_tris = param;
-//    const int num_verts = num_tris * 3;
-//    const int num_loops = num_tris * 3;
-//    Mesh *mesh = BKE_mesh_new_nomain(num_verts, 0, 0, num_loops, num_tris);
-//    MutableSpan<float3> positions = mesh->vert_positions_for_write();
-//    MutableSpan<MPoly> polys = mesh->polys_for_write();
-//    MutableSpan<MLoop> loops = mesh->loops_for_write();
-//
-//    RandomNumberGenerator rng(mesh_seed_);
-//    for (int i = 0; i < num_tris; ++i) {
-//      float3 p0 = float3(rng.get_float(), rng.get_float(), rng.get_float()) * 10.0f - float3(5.0f);
-//      float3 u, v;
-//      float dot_uv;
-//      do {
-//        u = rng.get_unit_float3();
-//        v = rng.get_unit_float3();
-//        dot_uv = math::dot(u, v);
-//      } while (math::abs(dot_uv) >= math::cos(min_angle_));
-//      const float side_scale = math::sqrt(2.0f * triangle_area() /
-//                                          math::sqrt(1.0f - dot_uv * dot_uv));
-//      const float r = min_side_length + (1.0f - min_side_length) * rng.get_float();
-//      const float s = 1.0f / r;
-//      float3 p1 = side_scale * r * u;
-//      float3 p2 = side_scale * s * v;
-//
-//      positions[i * 3 + 0] = p0;
-//      positions[i * 3 + 1] = p1;
-//      positions[i * 3 + 2] = p2;
-//
-//      polys[i].loopstart = i * 3;
-//      polys[i].totloop = 3;
-//
-//      loops[i * 3 + 0].v = i * 3 + 0;
-//      loops[i * 3 + 1].v = i * 3 + 1;
-//      loops[i * 3 + 2].v = i * 3 + 2;
-//    }
-//    BKE_mesh_calc_edges(mesh, false, false);
-//
-//    return mesh;
-//  }
-//};
+class DonutCloudGenerator : MeshGenerator {
+ public:
+  unsigned int mesh_seed_ = 12345;
+  int min_segments_ = 4;
+  int max_segments_ = 128;
+
+  DonutCloudGenerator(int num_triangles) : MeshGenerator(num_triangles)
+  {
+  }
+
+  void get_donut_params(RandomNumberGenerator &rng,
+                        int &r_major_segments,
+                        int &r_minor_segments,
+                        float &r_major_radius,
+                        float &r_minor_radius,
+                        float3 &r_center,
+                        math::Quaternion &r_rotation) const
+  {
+    const float avg_major_radius_ = 4.0f;
+    r_major_radius = scale_ * avg_major_radius_ * (0.5f + 1.0f * rng.get_float());
+    r_minor_radius = r_major_radius * (0.25f + 0.5f * rng.get_float());
+    r_major_segments = min_segments_ + rng.get_int32(max_segments_ - min_segments_ + 1);
+    r_minor_segments = math::max((int)(r_major_segments * r_minor_radius / r_major_radius),
+                                 min_segments_);
+    r_center = (float3(rng.get_float(), rng.get_float(), rng.get_float()) - float3(0.5f)) * size_;
+    const float a0 = rng.get_float() * 2.0f * M_PI;
+    const float a1 = rng.get_float() * 2.0f * M_PI;
+    const float a2 = rng.get_float() * 2.0f * M_PI;
+    mul_qt_qtqt((float4 &)r_rotation,
+                float4(math::sin(a0), 0.0f, 0.0f, math::cos(a0)),
+                float4(0.0f, math::sin(a1), 0.0f, math::cos(a1)));
+    mul_qt_qtqt(
+        (float4 &)r_rotation, (float4)r_rotation, float4(0.0f, 0.0f, math::sin(a2), math::cos(a2)));
+  }
+
+  void generate_donut(MutableSpan<MPoly> polys,
+                      MutableSpan<MLoop> loops,
+                      MutableSpan<float3> positions,
+                      int poly_start,
+                      int loop_start,
+                      int major_segments,
+                      int minor_segments,
+                      float major_radius,
+                      float minor_radius,
+                      const float3 &center,
+                      const math::Quaternion &rotation) const
+  {
+    BLI_assert(polys.size() == major_segments * minor_segments);
+    BLI_assert(loops.size() == 4 * major_segments * minor_segments);
+    BLI_assert(positions.size() == major_segments * minor_segments);
+
+    const float major_delta = M_PI * 2.0f / (float)major_segments;
+    const float minor_delta = M_PI * 2.0f / (float)minor_segments;
+    for (const int i : IndexRange(major_segments)) {
+      for (const int j : IndexRange(minor_segments)) {
+        const int index = i * minor_segments + j;
+
+        polys[index].loopstart = loop_start + index * 4;
+        //BLI_assert(polys[index].loopstart < loop_start + loops.size());
+        polys[index].totloop = 4;
+
+        const int vert00 = poly_start + index;
+        const int vert10 = j + 1 < minor_segments ? vert00 + 1 : vert00 - j;
+        const int vert01 = i + 1 < major_segments ? vert00 + minor_segments :
+                                                    vert00 - i * minor_segments;
+        const int vert11 = j + 1 < minor_segments ? vert01 + 1 : vert01 - j;
+        //BLI_assert(vert00 < poly_start + polys.size());
+        //BLI_assert(vert10 < poly_start + polys.size());
+        //BLI_assert(vert01 < poly_start + polys.size());
+        //BLI_assert(vert11 < poly_start + polys.size());
+        loops[index * 4 + 0].v = vert00;
+        loops[index * 4 + 1].v = vert10;
+        loops[index * 4 + 2].v = vert11;
+        loops[index * 4 + 3].v = vert01;
+
+        const float major_angle = i * major_delta;
+        const float minor_angle = j * minor_delta;
+        const float3 minor_pos = float3(math::cos(minor_angle), 0.0f, math::sin(minor_angle)) *
+                                     minor_radius +
+                                 float3(major_radius, 0.0f, 0.0f);
+        const float3 major_pos(minor_pos.x * math::cos(major_angle),
+                               minor_pos.x * math::sin(major_angle),
+                               minor_pos.z);
+        float3 pos = major_pos;
+        mul_qt_v3((float4)rotation, pos);
+        pos += center;
+        positions[index] = pos;
+      }
+    }
+  }
+
+  Mesh *create_mesh() const
+  {
+    /* Dry run for counting triangles */
+    RandomNumberGenerator rng(mesh_seed_);
+    int num_donuts = 0;
+    int num_polys = 0;
+    const int max_polys = num_triangles_ / 2;
+    while (true) {
+      float r_maj, r_min;
+      int seg_maj, seg_min;
+      float3 center;
+      math::Quaternion rotation;
+      get_donut_params(rng, seg_maj, seg_min, r_maj, r_min, center, rotation);
+      const int donut_polys = seg_min * seg_maj;
+
+      if (num_polys + donut_polys >= max_polys) {
+        break;
+      }
+      ++num_donuts;
+      num_polys += donut_polys;
+    }
+
+    /* Torus has same number of verts as polys, 4 loops per poly */
+    Mesh *mesh = BKE_mesh_new_nomain(num_polys, 0, 0, num_polys * 4, num_polys);
+    MutableSpan<float3> positions = mesh->vert_positions_for_write();
+    MutableSpan<MPoly> polys = mesh->polys_for_write();
+    MutableSpan<MLoop> loops = mesh->loops_for_write();
+
+    /* Reset RNG */
+    rng.seed(mesh_seed_);
+    int poly_start = 0;
+    int loop_start = 0;
+    for (const int idonut : IndexRange(num_donuts)) {
+      float r_maj, r_min;
+      int seg_maj, seg_min;
+      float3 center;
+      math::Quaternion rotation;
+      get_donut_params(rng, seg_maj, seg_min, r_maj, r_min, center, rotation);
+      const int donut_polys = seg_min * seg_maj;
+
+      generate_donut(polys.slice(poly_start, donut_polys),
+                     loops.slice(loop_start, donut_polys * 4),
+                     positions.slice(poly_start, donut_polys),
+                     poly_start,
+                     loop_start,
+                     seg_maj,
+                     seg_min,
+                     r_maj,
+                     r_min,
+                     center,
+                     rotation);
+
+      poly_start += donut_polys;
+      loop_start += donut_polys * 4;
+    }
+    BKE_mesh_calc_edges(mesh, false, false);
+
+    //BKE_mesh_validate(mesh, true, true);
+
+    return mesh;
+  }
+};
 
 #if DO_PERF_TESTS
 TEST_P(BVHPerfParamTest, raycast_uniform_area_triangles)
 {
-  UniformAreaTrianglesGenerator gen;
-  Mesh *mesh = gen.create_mesh(GetParam());
+  UniformAreaTrianglesGenerator gen(GetParam());
+  Mesh *mesh = gen.create_mesh();
+
+  test_raycasts(*mesh);
+
+  BKE_id_free(nullptr, mesh);
+}
+
+TEST_P(BVHPerfParamTest, raycast_donut_cloud)
+{
+  DonutCloudGenerator gen(GetParam());
+  Mesh *mesh = gen.create_mesh();
 
   test_raycasts(*mesh);
 
@@ -443,9 +566,14 @@ INSTANTIATE_TEST_SUITE_P(
 TEST_F(BVHBlendFileTest, write_mesh_debug_files)
 {
   {
-    UniformAreaTrianglesGenerator gen;
-    Mesh *mesh = gen.create_mesh(10000);
-    write_debug_mesh_file(mesh);
+    UniformAreaTrianglesGenerator gen(10000);
+    Mesh *mesh = gen.create_mesh();
+    write_debug_mesh_file(mesh, "triangle_soup.blend");
+  }
+  {
+    DonutCloudGenerator gen(1000000);
+    Mesh *mesh = gen.create_mesh();
+    write_debug_mesh_file(mesh, "donut_cloud.blend");
   }
 }
 #endif
