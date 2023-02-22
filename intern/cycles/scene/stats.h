@@ -149,6 +149,21 @@ class MeshStats {
   NamedSizeStats geometry;
 };
 
+/* Statistics about device data in the render database. */
+class DeviceSceneStats {
+ public:
+  DeviceSceneStats();
+
+  /* Generate full human-readable report. */
+  string full_report(int indent_level = 0);
+
+  /* Input geometry statistics, this is what is coming as an input to render
+   * from. say, Blender. This does not include runtime or engine specific
+   * memory like BVH.
+   */
+  NamedSizeStats buffers;
+};
+
 /* Statistics about images held in memory. */
 class ImageStats {
  public:
@@ -192,6 +207,8 @@ class SceneUpdateStats {
  public:
   SceneUpdateStats();
 
+  DeviceSceneStats device;
+  
   UpdateTimeStats geometry;
   UpdateTimeStats image;
   UpdateTimeStats light;
