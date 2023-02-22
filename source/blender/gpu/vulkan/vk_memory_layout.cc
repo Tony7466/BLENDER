@@ -39,7 +39,7 @@ uint32_t Std430::element_alignment(const shader::Type type, const bool is_array)
     case shader::Type::MAT4:
       return 16;
     default:
-      BLI_assert_msg(false, "Type not supported as push constant");
+      BLI_assert_msg(false, "Type not supported in dynamic structs.");
   }
   return 0;
 }
@@ -68,7 +68,7 @@ uint32_t Std430::element_components_len(const shader::Type type)
     case shader::Type::MAT4:
       return 16;
     default:
-      BLI_assert_msg(false, "Type not supported as push constant");
+      BLI_assert_msg(false, "Type not supported in dynamic structs.");
   }
   return 0;
 }
@@ -108,7 +108,7 @@ uint32_t Std140::element_alignment(const shader::Type type, const bool is_array)
     case shader::Type::MAT4:
       return 16;
     default:
-      BLI_assert_msg(false, "Type not supported as push constant");
+      BLI_assert_msg(false, "Type not supported in dynamic structs.");
   }
   return 0;
 }
@@ -137,7 +137,7 @@ uint32_t Std140::element_components_len(const shader::Type type)
     case shader::Type::MAT4:
       return 16;
     default:
-      BLI_assert_msg(false, "Type not supported as push constant");
+      BLI_assert_msg(false, "Type not supported in dynamic structs.");
   }
   return 0;
 }
@@ -164,7 +164,7 @@ uint32_t Std140::array_components_len(const shader::Type type)
     case shader::Type::MAT4:
       return 16;
     default:
-      BLI_assert_msg(false, "Type not supported as push constant");
+      BLI_assert_msg(false, "Type not supported in dynamic structs.");
   }
   return 0;
 }
