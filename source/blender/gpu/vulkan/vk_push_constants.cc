@@ -20,7 +20,7 @@ static VKPushConstantsLayout::PushConstantLayout init_constant(
     const ShaderInput &shader_input,
     uint32_t *r_offset)
 {
-  align<Layout>(push_constant.type, r_offset);
+  align<Layout>(push_constant.type, push_constant.array_size, r_offset);
 
   VKPushConstantsLayout::PushConstantLayout layout;
   layout.location = shader_input.location;
@@ -28,7 +28,7 @@ static VKPushConstantsLayout::PushConstantLayout init_constant(
   layout.array_size = push_constant.array_size;
   layout.offset = *r_offset;
 
-  reserve<Layout>(push_constant, r_offset);
+  reserve<Layout>(push_constant.type, push_constant.array_size, r_offset);
   return layout;
 }
 
@@ -37,8 +37,8 @@ uint32_t struct_size(Span<shader::ShaderCreateInfo::PushConst> push_constants)
 {
   uint32_t offset = 0;
   for (const shader::ShaderCreateInfo::PushConst &push_constant : push_constants) {
-    align<Layout>(push_constant.type, &offset);
-    reserve<Layout>(push_constant, &offset);
+    align<Layout>(push_constant.type, push_constant.array_size, &offset);
+    reserve<Layout>(push_constant.type, push_constant.array_size, &offset);
   }
 
   align_end_of_struct<Layout>(&offset);

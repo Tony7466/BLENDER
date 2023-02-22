@@ -18,7 +18,7 @@ struct Std430 {
   /** Get the memory size in bytes of a single component using by the given type.*/
   static uint32_t component_mem_size(const shader::Type type);
   /** Get to alignment of the given type in bytes.*/
-  static uint32_t element_alignment(const shader::Type type);
+  static uint32_t element_alignment(const shader::Type type, bool is_array);
   /** Get the number of components that should be allocated for the given type.*/
   static uint32_t element_components_len(const shader::Type type);
   /** Get the number of components of the given type when used in an array.*/
@@ -32,16 +32,17 @@ struct Std140 {
   /** Get the memory size in bytes of a single component using by the given type.*/
   static uint32_t component_mem_size(const shader::Type type);
   /** Get to alignment of the given type in bytes.*/
-  static uint32_t element_alignment(const shader::Type type);
+  static uint32_t element_alignment(const shader::Type type, bool is_array);
   /** Get the number of components that should be allocated for the given type.*/
   static uint32_t element_components_len(const shader::Type type);
   /** Get the number of components of the given type when used in an array.*/
   static uint32_t array_components_len(const shader::Type type);
 };
 
-template<typename Layout> static void align(const shader::Type &type, uint32_t *r_offset)
+template<typename Layout>
+static void align(const shader::Type &type, const int32_t array_size, uint32_t *r_offset)
 {
-  uint32_t alignment = Layout::element_alignment(type);
+  uint32_t alignment = Layout::element_alignment(type, array_size != 0);
   uint32_t alignment_mask = alignment - 1;
   uint32_t offset = *r_offset;
   if ((offset & alignment_mask) != 0) {
@@ -69,15 +70,9 @@ static void reserve(const shader::Type type, int32_t array_size, uint32_t *r_off
   *r_offset += size;
 }
 
-template<typename Layout>
-static void reserve(const shader::ShaderCreateInfo::PushConst &push_constant, uint32_t *r_offset)
-{
-  reserve<Layout>(push_constant.type, push_constant.array_size, r_offset);
-}
-
 template<typename Layout> static void align_end_of_struct(uint32_t *r_offset)
 {
-  align<Layout>(shader::Type::VEC4, r_offset);
+  align<Layout>(shader::Type::VEC4, 0, r_offset);
 }
 
 }  // namespace blender::gpu

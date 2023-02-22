@@ -814,6 +814,12 @@ if(WITH_GTESTS)
 
       tests/gpu_testing.hh
     )
+    if(WITH_VULKAN_BACKEND)
+      list(APPEND TEST_SRC
+        tests/memory_layout_test.cc
+      )
+    endif()
+
     set(TEST_INC
     )
     set(TEST_LIB

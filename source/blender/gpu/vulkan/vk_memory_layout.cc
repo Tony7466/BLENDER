@@ -14,8 +14,11 @@ uint32_t Std430::component_mem_size(const shader::Type /*type*/)
   return 4;
 }
 
-uint32_t Std430::element_alignment(const shader::Type type)
+uint32_t Std430::element_alignment(const shader::Type type, const bool is_array)
 {
+  if (is_array) {
+    return 16;
+  }
   switch (type) {
     case shader::Type::FLOAT:
     case shader::Type::UINT:
@@ -80,8 +83,11 @@ uint32_t Std140::component_mem_size(const shader::Type /*type*/)
   return 4;
 }
 
-uint32_t Std140::element_alignment(const shader::Type type)
+uint32_t Std140::element_alignment(const shader::Type type, const bool is_array)
 {
+  if (is_array) {
+    return 16;
+  }
   switch (type) {
     case shader::Type::FLOAT:
     case shader::Type::UINT:
