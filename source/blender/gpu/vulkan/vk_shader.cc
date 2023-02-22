@@ -329,7 +329,7 @@ static void print_resource(std::ostream &os,
                            const VKDescriptorSet::Location location,
                            const ShaderCreateInfo::Resource &res)
 {
-  os << "layout(binding = " << (uint32_t)location;
+  os << "layout(binding = " << static_cast<uint32_t>(location);
   if (res.bind_type == ShaderCreateInfo::Resource::BindType::IMAGE) {
     os << ", " << to_string(res.image.format);
   }
@@ -910,7 +910,7 @@ static void add_descriptor_set_layout_bindings(
     r_bindings.append(create_descriptor_set_layout_binding(location, resource));
   }
 
-  /* Add push constants to the descriptor when push constants are stored in a storage buffer.*/
+  /* Add push constants to the descriptor when push constants are stored in an uniform buffer.*/
   const VKPushConstantsLayout &push_constants_layout = interface.push_constants_layout_get();
   if (push_constants_layout.storage_type_get() ==
       VKPushConstantsLayout::StorageType::UNIFORM_BUFFER) {

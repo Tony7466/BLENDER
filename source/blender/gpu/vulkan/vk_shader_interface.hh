@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include "BLI_array.hh"
+
 #include "gpu_shader_create_info.hh"
 #include "gpu_shader_interface.hh"
 
@@ -25,9 +27,9 @@ class VKShaderInterface : public ShaderInterface {
    * overlapping.
    */
   uint32_t image_offset_ = 0;
+  Array<VKDescriptorSet::Location> descriptor_set_locations_;
 
   VKPushConstantsLayout push_constants_layout_;
-  Array<VKDescriptorSet::Location> descriptor_set_locations_;
 
  public:
   static constexpr StringRefNull PUSH_CONSTANTS_FALLBACK_NAME = StringRefNull(
@@ -63,4 +65,5 @@ class VKShaderInterface : public ShaderInterface {
   void descriptor_set_location_update(const ShaderInput *shader_input,
                                       const VKDescriptorSet::Location location);
 };
+
 }  // namespace blender::gpu
