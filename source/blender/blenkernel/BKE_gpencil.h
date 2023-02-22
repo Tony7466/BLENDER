@@ -279,7 +279,7 @@ bool BKE_gpencil_merge_materials(struct Object *ob,
  * \param gpd: Grease pencil data-block
  */
 void BKE_gpencil_stats_update(struct bGPdata *gpd);
-
+uint64_t BKE_gpencil_selected_stroke_point_count_get(struct bGPdata *gpd);
 /**
  * Create a new stroke, with pre-allocated data buffers.
  * \param mat_idx: Index of the material

@@ -2192,6 +2192,35 @@ void BKE_gpencil_stats_update(bGPdata *gpd)
   }
 }
 
+uint64_t BKE_gpencil_selected_stroke_point_count_get(const bGPdata *gpd)
+{
+  uint64_t selected_count = 0;
+
+  LISTBASE_FOREACH (const bGPDlayer *, gpl, &gpd->layers) {
+    /* FIXME: For now, we just skip parented layers.
+     * Otherwise, we have to update each frame to find
+     * the current parent position/effects.
+     */
+    if (gpl->parent) {
+      continue;
+    }
+
+    LISTBASE_FOREACH (const bGPDframe *, gpf, &gpl->frames) {
+      LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
+        bGPDspoint *pt;
+        int i;
+
+        for (pt = gps->points, i = 0; i < gps->totpoints; pt++, i++) {
+          if (pt->flag & GP_SPOINT_SELECT) {
+            selected_count++;
+          }
+        }
+      }
+    }
+  }
+  return selected_count;
+}
+
 int BKE_gpencil_object_material_index_get(Object *ob, Material *ma)
 {
   short *totcol = BKE_object_material_len_p(ob);
