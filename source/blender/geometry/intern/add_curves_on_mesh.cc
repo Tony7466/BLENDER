@@ -380,8 +380,15 @@ AddCurvesOnMeshOutputs add_curves_on_mesh(CurvesGeometry &curves,
 
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
 
+  if (bke::SpanAttributeWriter<int> resolution = attributes.lookup_for_write_span<int>(
+          "resulution")) {
+    resolution.span.take_back(new_curves_num).fill(12);
+    resolution.finish();
+  }
+
   /* Explicitly set all other attributes besides those processed above to default values. */
-  Set<std::string> attributes_to_skip{{"position", "curve_type", "surface_uv_coordinate"}};
+  Set<std::string> attributes_to_skip{
+      {"position", "curve_type", "surface_uv_coordinate", "resolution"}};
   attributes.for_all(
       [&](const bke::AttributeIDRef &id, const bke::AttributeMetaData /*meta_data*/) {
         if (attributes_to_skip.contains(id.name())) {
