@@ -109,6 +109,7 @@ void register_geometry_nodes()
   register_node_type_geo_mesh_subdivide();
   register_node_type_geo_mesh_to_curve();
   register_node_type_geo_mesh_to_points();
+  register_node_type_geo_mesh_to_sdf_volume();
   register_node_type_geo_mesh_to_volume();
   register_node_type_geo_mesh_topology_corners_of_face();
   register_node_type_geo_mesh_topology_corners_of_vertex();
@@ -120,6 +121,7 @@ void register_geometry_nodes()
   register_node_type_geo_object_info();
   register_node_type_geo_offset_point_in_curve();
   register_node_type_geo_points_to_vertices();
+  register_node_type_geo_points_to_sdf_volume();
   register_node_type_geo_points_to_volume();
   register_node_type_geo_points();
   register_node_type_geo_proximity();
@@ -133,6 +135,7 @@ void register_geometry_nodes()
   register_node_type_geo_sample_uv_surface();
   register_node_type_geo_scale_elements();
   register_node_type_geo_scale_instances();
+  register_node_type_geo_sdf_volume_filter();
   register_node_type_geo_sdf_volume_sphere();
   register_node_type_geo_self_object();
   register_node_type_geo_separate_components();

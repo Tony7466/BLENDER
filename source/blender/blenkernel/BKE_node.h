@@ -1555,6 +1555,9 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define GEO_NODE_INTERPOLATE_CURVES 1192
 #define GEO_NODE_EDGES_TO_FACE_GROUPS 1193
 #define GEO_NODE_SDF_VOLUME_SPHERE 1194
+#define GEO_NODE_SDF_VOLUME_FILTER 1195
+#define GEO_NODE_POINTS_TO_SDF_VOLUME 1196
+#define GEO_NODE_MESH_TO_SDF_VOLUME 1197
 
 /** \} */
 
