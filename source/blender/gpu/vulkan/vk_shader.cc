@@ -1050,10 +1050,6 @@ std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) co
       ss << "layout(binding = " << push_constants_layout.storage_buffer_binding_get()
          << ", std140) uniform constants\n";
     }
-    else /* VKPushConstantsLayout::StorageType::STORAGE_BUFFER*/ {
-      ss << "layout(binding = " << push_constants_layout.storage_buffer_binding_get()
-         << ", std430) buffer constants\n";
-    }
     ss << "{\n";
     for (const ShaderCreateInfo::PushConst &uniform : info.push_constants_) {
       ss << "  " << to_string(uniform.type) << " pc_" << uniform.name;
