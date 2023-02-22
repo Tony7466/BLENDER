@@ -213,7 +213,7 @@ template<> struct device_type_traits<uint64_t> {
 
 class device_memory {
  public:
-  size_t memory_size()
+  size_t memory_size() const
   {
     return data_size * data_elements * datatype_size(data_type);
   }
