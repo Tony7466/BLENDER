@@ -2192,7 +2192,7 @@ void BKE_gpencil_stats_update(bGPdata *gpd)
   }
 }
 
-uint64_t BKE_gpencil_selected_stroke_point_count_get(const bGPdata *gpd)
+uint64_t BKE_gpencil_selected_stroke_point_count_get(bGPdata *gpd)
 {
   uint64_t selected_count = 0;
 
