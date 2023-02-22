@@ -59,9 +59,11 @@ static bool active_attribute_poll(bContext *C)
   return true;
 }
 
-static IndexMask retrieve_selected_elements(const Curves &curves_id, Vector<int64_t> &r_indices)
+static IndexMask retrieve_selected_elements(const Curves &curves_id,
+                                            const eAttrDomain domain,
+                                            Vector<int64_t> &r_indices)
 {
-  switch (eAttrDomain(curves_id.selection_domain)) {
+  switch (domain) {
     case ATTR_DOMAIN_POINT:
       return retrieve_selected_points(curves_id, r_indices);
     case ATTR_DOMAIN_CURVE:
@@ -70,6 +72,27 @@ static IndexMask retrieve_selected_elements(const Curves &curves_id, Vector<int6
       BLI_assert_unreachable();
       return {};
   }
+}
+
+static void validate_value(const bke::AttributeAccessor attributes,
+                           const StringRef name,
+                           const CPPType &type,
+                           void *buffer)
+{
+  const bke::AttributeValidator validator = attributes.lookup_validator(name);
+  if (!validator) {
+    return;
+  }
+  BUFFER_FOR_CPP_TYPE_VALUE(type, validated_buffer);
+  BLI_SCOPED_DEFER([&]() { type.destruct(validated_buffer); });
+
+  mf::ParamsBuilder params(*validator.function, 1);
+  params.add_readonly_single_input(GPointer(type, buffer));
+  params.add_uninitialized_single_output({type, validated_buffer, 1});
+  mf::ContextBuilder context;
+  validator.function->call(IndexMask(1), params, context);
+
+  type.copy_assign(validated_buffer, buffer);
 }
 
 static int set_attribute_exec(bContext *C, wmOperator *op)
@@ -106,13 +129,12 @@ static int set_attribute_exec(bContext *C, wmOperator *op)
     BUFFER_FOR_CPP_TYPE_VALUE(dst_type, dst_buffer);
     BLI_SCOPED_DEFER([&]() { dst_type.destruct(dst_buffer); });
     conversions.convert_to_uninitialized(type, dst_type, value.get(), dst_buffer);
-    const GPointer dst_value(dst_type, dst_buffer);
 
-    const bke::AttributeValidator validator = attributes.lookup_validator(layer->name);
-    // validator.function->call()
+    validate_value(attributes, layer->name, dst_type, dst_buffer);
+    const GPointer dst_value(type, dst_buffer);
 
     Vector<int64_t> indices;
-    const IndexMask selection = retrieve_selected_elements(*curves_id, indices);
+    const IndexMask selection = retrieve_selected_elements(*curves_id, attribute.domain, indices);
     if (selection.is_empty()) {
       continue;
     }
@@ -139,9 +161,8 @@ static int set_attribute_invoke(bContext *C, wmOperator *op, const wmEvent *even
   const VArray<bool> selection = attributes.lookup_or_default<bool>(".selection", domain, true);
   const CPPType &type = attribute.varray.type();
 
-  const StringRefNull prop_name = geometry::rna_property_name_for_type(
-      bke::cpp_type_to_custom_data_type(type));
-  PropertyRNA *prop = RNA_struct_find_property(op->ptr, prop_name.c_str());
+  PropertyRNA *prop = geometry::rna_property_for_type(*op->ptr,
+                                                      bke::cpp_type_to_custom_data_type(type));
   if (RNA_property_is_set(op->ptr, prop)) {
     return WM_operator_props_popup(C, op, event);
   }

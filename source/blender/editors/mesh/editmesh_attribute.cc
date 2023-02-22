@@ -237,11 +237,10 @@ static int mesh_set_attribute_invoke(bContext *C, wmOperator *op, const wmEvent 
     return WM_operator_props_popup(C, op, event);
   }
 
-  const StringRefNull prop_name = geometry::rna_property_name_for_type(data_type);
   const CPPType &type = *bke::custom_data_type_to_cpp_type(data_type);
   const GPointer active_value(type, POINTER_OFFSET(active_elem->head.data, layer->offset));
 
-  PropertyRNA *prop = RNA_struct_find_property(op->ptr, prop_name.c_str());
+  PropertyRNA *prop = geometry::rna_property_for_type(*op->ptr, data_type);
   if (!RNA_property_is_set(op->ptr, prop)) {
     geometry::rna_property_for_attribute_type_set_value(*op->ptr, *prop, active_value);
   }

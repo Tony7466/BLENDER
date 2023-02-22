@@ -64,6 +64,11 @@ StringRefNull rna_property_name_for_type(const eCustomDataType type)
   }
 }
 
+PropertyRNA *rna_property_for_type(PointerRNA &ptr, const eCustomDataType type)
+{
+  return RNA_struct_find_property(&ptr, rna_property_name_for_type(type).c_str());
+}
+
 void register_rna_properties_for_attribute_types(StructRNA &srna)
 {
   static blender::float4 color_default(1);
