@@ -11,6 +11,118 @@
 
 #include "GEO_mesh_resample_topology.hh"
 
+class ResampleQuad {
+ private:
+  /*
+  struct EdgePair {
+    const int splittings;
+    const int edges_a;
+    const int edges_b;
+    const int max_edges;
+    const int min_edges;
+    const int corner;
+    const int body;
+  };
+  */
+  const int hor_conections_;
+  const int ver_conections_;
+
+  const int left_edges_;
+  const int right_edges_;
+  const int top_edges_;
+  const int bottom_edges_;
+
+  const int hor_max_;
+  const int ver_max_;
+
+  const int hor_min_;
+  const int ver_min_;
+
+  const int hor_corner_total_;
+  const int ver_corner_total_;
+
+  const int hor_body_total_;
+  const int ver_body_total_;
+
+ public:
+  ResampleQuad(const int left_added_points,
+               const int right_added_points,
+               const int top_added_points,
+               const int bottom_added_points)
+      : hor_conections_(split_lines_between(top_added_points, bottom_added_points)),
+        ver_conections_(split_lines_between(left_added_points, right_added_points)),
+        left_edges_(left_added_points + 1),
+        right_edges_(right_added_points + 1),
+        top_edges_(top_added_points + 1),
+        bottom_edges_(bottom_added_points + 1),
+        hor_max_(std::max(top_edges_, bottom_edges_)),
+        ver_max_(std::max(left_edges_, right_edges_)),
+        hor_min_(std::min(top_edges_, bottom_edges_)),
+        ver_min_(std::min(left_edges_, right_edges_)),
+        hor_corner_total_(corner_for_size(hor_max_, hor_min_)),
+        ver_corner_total_(corner_for_size(ver_max_, ver_min_)),
+        hor_body_total_(body_of_side_without_corners(hor_conections_, hor_corner_total_)),
+        ver_body_total_(body_of_side_without_corners(ver_conections_, ver_corner_total_))
+  {
+  }
+
+  int total_points() const
+  {
+    const int body_body_points = hor_body_total_ * ver_body_total_;
+
+    const int body_corner_points_hor = hor_body_total_ * ver_corner_total_;
+    const int body_corner_points_ver = ver_body_total_ * hor_corner_total_;
+
+    const int side_corner_points_hor = hor_conections_ * ver_corner_total_;
+    const int side_corner_points_ver = ver_conections_ * hor_corner_total_;
+
+    const int corner_corner_duply_sub = hor_corner_total_ * ver_corner_total_;
+
+    const int total_points = body_body_points + body_corner_points_hor + body_corner_points_ver +
+                             side_corner_points_hor + side_corner_points_ver -
+                             corner_corner_duply_sub;
+
+    BLI_assert(total_points >= 0);
+    return total_points;
+  }
+
+ protected:
+  /*
+   * A     -     -     B
+   * |\  / | \ / | \ / | <-|
+   * C - - - - - - - - D
+   * Is number of edge-lines for side pair without bounding pair.
+   */
+  int split_lines_between(const int &tot_points_a, const int &tot_points_b) const
+  {
+    return std::max(tot_points_a, tot_points_b);
+  }
+
+  /*
+   * A     -     -     B
+   * |\  / | \ / | \ / |
+   * C - - - - - - - - D
+   *   ^             ^
+   * Is points of side corner.
+   */
+  int corner_for_size(const int &edge_max, const int &edge_min) const
+  {
+    return edge_max / (edge_min * 2);
+  }
+
+  /*
+   * A     -     -     B
+   * |\  / | \ / | \ / |
+   * C - - - - - - - - D
+   *     ^ ^ ^ ^ ^ ^
+   * Is points of side body.
+   */
+  int body_of_side_without_corners(const int &side, const int &corner) const
+  {
+    return side - corner * 2;
+  }
+};
+
 namespace blender::detail {
 
 class MeshMarket {
@@ -274,7 +386,7 @@ void polys_have_created_new_verts(const OffsetIndices<int> offsets,
 
           const float y_p_top = float(y * vertical_other_side);
           const float y_p_bottom = float(y_other * vertical_connections);
-
+          return;
           const float2 uv = intersection(float2{0.0f, x_p_left},
                                          float2{1.0f, x_p_right},
                                          float2{y_p_top, 0.0f},
@@ -679,76 +791,27 @@ void compute_new_mesh(const Mesh &mesh,
               const IndexRange loop_range(face.loopstart, face.totloop);
               const Span<MLoop> loops = src_loops.slice(loop_range);
 
-              if (loops.size() == 3) {
+              if (loops.size() != 4) {
                 return 0;
               }
-              else if (loops.size() == 4) {
-                const int &points_num_edge_a = resample_edge_num[loops[0].e];
-                const int &points_num_edge_b = resample_edge_num[loops[1].e];
-                const int &points_num_edge_c = resample_edge_num[loops[2].e];
-                const int &points_num_edge_d = resample_edge_num[loops[3].e];
 
+              const int &points_num_edge_a = resample_edge_num[loops[0].e];
+              const int &points_num_edge_b = resample_edge_num[loops[1].e];
+              const int &points_num_edge_c = resample_edge_num[loops[2].e];
+              const int &points_num_edge_d = resample_edge_num[loops[3].e];
+
+              {
                 const bool horizontal_equal = points_num_edge_a == points_num_edge_c;
                 const bool vertical_equal = points_num_edge_b == points_num_edge_d;
                 if (horizontal_equal && vertical_equal) {
                   return points_num_edge_a * points_num_edge_b;
                 }
-
-                const int horizontal_connections = math::max(points_num_edge_a, points_num_edge_c);
-                const int vertical_connections = math::max(points_num_edge_b, points_num_edge_d);
-
-                const int edges_num_edge_a = points_num_edge_a + 1;
-                const int edges_num_edge_b = points_num_edge_b + 1;
-                const int edges_num_edge_c = points_num_edge_c + 1;
-                const int edges_num_edge_d = points_num_edge_d + 1;
-
-                const int max_horizontal_edge_num = math::max<int>(edges_num_edge_a,
-                                                                   edges_num_edge_c);
-                const int min_horizontal_edge_num = math::min<int>(edges_num_edge_a,
-                                                                   edges_num_edge_c);
-                // printf("\n");
-                /* Horizontal side length = max_horizontal_edge_num * min_horizontal_edge_num * 2.
-                 * For step size = min_horizontal_edge_num (on side with max edge num),
-                 * number of edges, nearest to first half of first edge (on side with min edge
-                 * num), is:
-                 */
-                const int horizontal_corner_connected_edges = max_horizontal_edge_num /
-                                                              (min_horizontal_edge_num * 2);
-                // printf("Hor: min_edge: %d, max_edge: %d, corner_num: %d;\n",
-                // max_horizontal_edge_num, min_horizontal_edge_num,
-                // horizontal_corner_connected_edges); const bool left_righr_side_corners =
-                // points_num_edge_a < points_num_edge_c;
-
-                const int max_vertical_edge_num = math::max<int>(edges_num_edge_b,
-                                                                 edges_num_edge_d);
-                const int min_vertical_edge_num = math::min<int>(edges_num_edge_b,
-                                                                 edges_num_edge_d);
-
-                /* vertical side length = max_vertical_edge_num * min_vertical_edge_num * 2. */
-                const int vertical_corner_connected_edges = max_vertical_edge_num /
-                                                            (min_vertical_edge_num * 2);
-                // printf("Vert: min_edge: %d, max_edge: %d, corner_num: %d;\n",
-                // max_vertical_edge_num, min_vertical_edge_num, vertical_corner_connected_edges);
-                // const bool top_down_side_corners = points_num_edge_b < points_num_edge_d;
-
-                const int horizontal_body_count = horizontal_connections -
-                                                  horizontal_corner_connected_edges * 2;
-                const int vertical_body_count = vertical_connections -
-                                                vertical_corner_connected_edges * 2;
-                // printf("Hor: body: %d;\n", horizontal_body_count);
-                // printf("Vert: body: %d;\n", vertical_body_count);
-                const int result = horizontal_body_count * vertical_body_count +
-                                   horizontal_body_count * vertical_corner_connected_edges +
-                                   vertical_body_count * horizontal_corner_connected_edges +
-                                   horizontal_connections * vertical_corner_connected_edges +
-                                   vertical_connections * horizontal_corner_connected_edges -
-                                   horizontal_corner_connected_edges *
-                                       vertical_corner_connected_edges;
-
-                return math::max(result, 0);
               }
 
-              return 0;
+              ResampleQuad resample(
+                  points_num_edge_a, points_num_edge_c, points_num_edge_b, points_num_edge_d);
+
+              return resample.total_points();
             });
 
         r_mesh_builder.add_custom(std::move(new_verts_for_original_faces),
