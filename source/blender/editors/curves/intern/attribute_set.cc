@@ -179,6 +179,7 @@ static int set_attribute_invoke(bContext *C, wmOperator *op, const wmEvent *even
         mixer.mix_in(0, values_typed[i]);
       }
     }
+    mixer.finalize();
   });
 
   geometry::rna_property_for_attribute_type_set_value(*op->ptr, *prop, GPointer(type, buffer));
