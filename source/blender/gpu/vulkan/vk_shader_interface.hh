@@ -10,6 +10,8 @@
 #include "gpu_shader_create_info.hh"
 #include "gpu_shader_interface.hh"
 
+#include "BLI_array.hh"
+
 #include "vk_push_constants.hh"
 
 namespace blender::gpu {
@@ -25,6 +27,7 @@ class VKShaderInterface : public ShaderInterface {
   uint32_t image_offset_ = 0;
 
   VKPushConstantsLayout push_constants_layout_;
+  Array<VKDescriptorSet::Location> descriptor_set_locations_;
 
  public:
   static constexpr StringRefNull PUSH_CONSTANTS_FALLBACK_NAME = StringRefNull(
@@ -35,6 +38,18 @@ class VKShaderInterface : public ShaderInterface {
   VKShaderInterface() = default;
 
   void init(const shader::ShaderCreateInfo &info);
+
+  const VKDescriptorSet::Location descriptor_set_location(
+      const shader::ShaderCreateInfo::Resource &resource) const;
+  const VKDescriptorSet::Location descriptor_set_location(
+      const shader::ShaderCreateInfo::Resource::BindType &bind_type, int binding) const;
+
+  const VKPushConstantsLayout &push_constants_layout_get() const
+  {
+    return push_constants_layout_;
+  }
+
+ private:
   /**
    * Retrieve the shader input for the given resource.
    *
@@ -44,10 +59,8 @@ class VKShaderInterface : public ShaderInterface {
   const ShaderInput *shader_input_get(const shader::ShaderCreateInfo::Resource &resource) const;
   const ShaderInput *shader_input_get(
       const shader::ShaderCreateInfo::Resource::BindType &bind_type, int binding) const;
-
-  const VKPushConstantsLayout &push_constants_layout_get() const
-  {
-    return push_constants_layout_;
-  }
+  const VKDescriptorSet::Location descriptor_set_location(const ShaderInput *shader_input) const;
+  void descriptor_set_location_update(const ShaderInput *shader_input,
+                                      const VKDescriptorSet::Location location);
 };
 }  // namespace blender::gpu

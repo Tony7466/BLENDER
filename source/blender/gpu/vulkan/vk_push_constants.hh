@@ -85,7 +85,7 @@ struct VKPushConstantsLayout {
   void init(const shader::ShaderCreateInfo &info,
             const VKShaderInterface &interface,
             StorageType storage_type,
-            const ShaderInput *shader_input);
+            VKDescriptorSet::Location location);
 
   /**
    * Return the storage type that is used.

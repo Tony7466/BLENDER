@@ -85,13 +85,12 @@ VKPushConstantsLayout::StorageType VKPushConstantsLayout::determine_storage_type
 void VKPushConstantsLayout::init(const shader::ShaderCreateInfo &info,
                                  const VKShaderInterface &interface,
                                  const StorageType storage_type,
-                                 const ShaderInput *shader_input)
+                                 const VKDescriptorSet::Location location)
 {
   BLI_assert(push_constants.is_empty());
   storage_type_ = storage_type;
   if (ELEM(storage_type, StorageType::STORAGE_BUFFER, StorageType::UNIFORM_BUFFER)) {
-    BLI_assert(shader_input);
-    storage_buffer_binding_ = VKDescriptorSet::Location(shader_input);
+    storage_buffer_binding_ = location;
   }
   uint32_t offset = 0;
   for (const shader::ShaderCreateInfo::PushConst &push_constant : info.push_constants_) {
@@ -172,6 +171,9 @@ VKPushConstants &VKPushConstants::operator=(VKPushConstants &&other)
 
   storage_buffer_ = other.storage_buffer_;
   other.storage_buffer_ = nullptr;
+
+  uniform_buffer_ = other.uniform_buffer_;
+  other.uniform_buffer_ = nullptr;
 
   return *this;
 }

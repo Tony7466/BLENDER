@@ -20,6 +20,7 @@ class VKUniformBuffer;
 class VKVertexBuffer;
 class VKIndexBuffer;
 class VKTexture;
+class VKShaderInterface;
 
 /**
  * In vulkan shader resources (images and buffers) are grouped in descriptor sets.
@@ -51,11 +52,12 @@ class VKDescriptorSet : NonCopyable {
      */
     uint32_t binding;
 
-   public:
-    Location() = default;
-    Location(const ShaderInput *shader_input) : binding(shader_input->location)
+    Location(uint32_t binding) : binding(binding)
     {
     }
+
+   public:
+    Location() = default;
 
     bool operator==(const Location &other) const
     {
@@ -68,6 +70,7 @@ class VKDescriptorSet : NonCopyable {
     }
 
     friend struct Binding;
+    friend class VKShaderInterface;
   };
 
  private:
