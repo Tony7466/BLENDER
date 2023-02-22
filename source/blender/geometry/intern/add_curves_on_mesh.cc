@@ -243,7 +243,7 @@ AddCurvesOnMeshOutputs add_curves_on_mesh(CurvesGeometry &curves,
   AddCurvesOnMeshOutputs outputs;
 
   const bool use_interpolation = inputs.interpolate_length || inputs.interpolate_point_count ||
-                                 inputs.interpolate_shape;
+                                 inputs.interpolate_shape || inputs.interpolate_resolution;
 
   Vector<float3> root_positions_cu;
   Vector<float3> bary_coords;
@@ -381,9 +381,18 @@ AddCurvesOnMeshOutputs add_curves_on_mesh(CurvesGeometry &curves,
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
 
   if (bke::SpanAttributeWriter<int> resolution = attributes.lookup_for_write_span<int>(
-          "resulution")) {
-    resolution.span.take_back(new_curves_num).fill(12);
-    resolution.finish();
+          "resolution")) {
+    if (inputs.interpolate_resolution) {
+      interpolate_from_neighbors(
+          neighbors_per_curve,
+          12,
+          [&](const int curve_i) { return resolution.span[curve_i]; },
+          resolution.span.take_back(added_curves_num));
+      resolution.finish();
+    }
+    else {
+      resolution.span.take_back(added_curves_num).fill(12);
+    }
   }
 
   /* Explicitly set all other attributes besides those processed above to default values. */
