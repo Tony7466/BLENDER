@@ -82,7 +82,7 @@ static Array<float> calculate_curve_parameters(const bke::CurvesGeometry &curves
  */
 static Array<float> calculate_point_lengths(
     const bke::CurvesGeometry &curves,
-    FunctionRef<void(MutableSpan<float> lengths, float total)> postprocess_fn)
+    const FunctionRef<void(MutableSpan<float>, float)> postprocess_lengths_for_curve)
 {
   curves.ensure_evaluated_lengths();
   const OffsetIndices points_by_curve = curves.points_by_curve();
@@ -137,34 +137,37 @@ static Array<float> calculate_point_lengths(
           break;
         }
       }
-      postprocess_fn(lengths, total);
+      postprocess_lengths_for_curve(lengths, total);
     }
   });
   return result;
 }
 
+static void convert_lengths_to_factors(MutableSpan<float> lengths, const float total_curve_length)
+{
+  if (total_curve_length > 0.0f) {
+    const float factor = 1.0f / total_curve_length;
+    for (float &value : lengths.drop_front(1)) {
+      value *= factor;
+    }
+  }
+  else if (lengths.size() == 1) {
+    /* The curve is a single point. */
+    lengths[0] = 0.0f;
+  }
+  else {
+    /* It is arbitrary what to do in those rare cases when all the
+     * points are in the same position. In this case we are just
+     * arbitrarily giving a valid
+     * value in the range based on the point index. */
+    for (const int i : lengths.index_range()) {
+      lengths[i] = i / (lengths.size() - 1.0f);
+    }
+  }
+}
 static Array<float> calculate_point_parameters(const bke::CurvesGeometry &curves)
 {
-  return calculate_point_lengths(curves, [](MutableSpan<float> lengths, const float total) {
-    if (total > 0.0f) {
-      const float factor = 1.0f / total;
-      for (float &value : lengths.drop_front(1)) {
-        value *= factor;
-      }
-    }
-    else if (lengths.size() == 1) {
-      /* The curve is a single point. */
-      lengths[0] = 0.0f;
-    }
-    else {
-      /* It is arbitrary what to do in those rare cases when all the points are
-       * in the same position. In this case we are just arbitrarily giving a valid
-       * value in the range based on the point index. */
-      for (const int i : lengths.index_range()) {
-        lengths[i] = i / (lengths.size() - 1.0f);
-      }
-    }
-  });
+  return calculate_point_lengths(curves, convert_lengths_to_factors);
 }
 
 class CurveParameterFieldInput final : public bke::CurvesFieldInput {
