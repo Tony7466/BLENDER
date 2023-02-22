@@ -69,10 +69,10 @@ TEST(std140, fl2)
 {
   uint32_t offset = 0;
 
-  def_attr<Std140>(shader::Type::FLOAT, 2, 0, 16, &offset);
+  def_attr<Std140>(shader::Type::FLOAT, 2, 0, 32, &offset);
 
   align_end_of_struct<Std140>(&offset);
-  EXPECT_EQ(offset, 16);
+  EXPECT_EQ(offset, 32);
 }
 
 TEST(std140, fl_fl2)
