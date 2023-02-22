@@ -80,7 +80,6 @@ GPU_SHADER_CREATE_INFO(gpu_push_constants_256bytes_test)
     .push_constant(Type::FLOAT, "filler2", 32)
     .do_static_compilation(true);
 
-/* It is expected that this shader will use uniform buffers and not push constants.*/
 GPU_SHADER_CREATE_INFO(gpu_push_constants_512bytes_test)
     .additional_info("gpu_push_constants_256bytes_test")
     .push_constant(Type::FLOAT, "filler3", 64)

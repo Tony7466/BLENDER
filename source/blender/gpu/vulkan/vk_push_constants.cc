@@ -57,6 +57,19 @@ VKPushConstantsLayout::StorageType VKPushConstantsLayout::determine_storage_type
                                                                   STORAGE_TYPE_FALLBACK;
 }
 
+template<typename Layout>
+void init_struct(const shader::ShaderCreateInfo &info,
+                 const VKShaderInterface &interface,
+                 Vector<VKPushConstantsLayout::PushConstantLayout> &r_struct,
+                 uint32_t *r_offset)
+{
+  for (const shader::ShaderCreateInfo::PushConst &push_constant : info.push_constants_) {
+    const ShaderInput *shader_input = interface.uniform_get(push_constant.name.c_str());
+    r_struct.append(init_constant<Layout>(push_constant, *shader_input, r_offset));
+  }
+  align_end_of_struct<Std140>(r_offset);
+}
+
 void VKPushConstantsLayout::init(const shader::ShaderCreateInfo &info,
                                  const VKShaderInterface &interface,
                                  const StorageType storage_type,
@@ -64,30 +77,15 @@ void VKPushConstantsLayout::init(const shader::ShaderCreateInfo &info,
 {
   BLI_assert(push_constants.is_empty());
   storage_type_ = storage_type;
+
+  size_in_bytes_ = 0;
   if (storage_type == StorageType::UNIFORM_BUFFER) {
     storage_buffer_binding_ = location;
-  }
-  uint32_t offset = 0;
-  /* TODO: add template for readability.*/
-  for (const shader::ShaderCreateInfo::PushConst &push_constant : info.push_constants_) {
-    const ShaderInput *shader_input = interface.uniform_get(push_constant.name.c_str());
-    BLI_assert(shader_input);
-    if (storage_type == StorageType::UNIFORM_BUFFER) {
-      push_constants.append(init_constant<Std140>(push_constant, *shader_input, &offset));
-    }
-    else {
-      push_constants.append(init_constant<Std430>(push_constant, *shader_input, &offset));
-    }
-  }
-
-  /* Align end of struct. */
-  if (storage_type == StorageType::UNIFORM_BUFFER) {
-    align_end_of_struct<Std140>(&offset);
+    init_struct<Std140>(info, interface, push_constants, &size_in_bytes_);
   }
   else {
-    align_end_of_struct<Std430>(&offset);
+    init_struct<Std430>(info, interface, push_constants, &size_in_bytes_);
   }
-  size_in_bytes_ = offset;
 }
 
 const VKPushConstantsLayout::PushConstantLayout *VKPushConstantsLayout::find(

@@ -51,8 +51,7 @@ struct VKPushConstantsLayout {
   static constexpr StorageType STORAGE_TYPE_FALLBACK = StorageType::UNIFORM_BUFFER;
 
   struct PushConstantLayout {
-    /* TODO: location requires sequential lookups, we should make the location index based for
-     * quicker access. */
+    /* Used as lookup based on ShaderInput.*/
     int32_t location;
 
     /** Offset in the push constant data (in bytes). */

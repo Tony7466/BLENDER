@@ -127,17 +127,10 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
   /* Post initializing push constants.*/
   /* Determine the binding location of push constants fallback buffer.*/
   int32_t push_constant_descriptor_set_location = -1;
-  switch (push_constants_storage_type) {
-    case VKPushConstantsLayout::StorageType::NONE:
-    case VKPushConstantsLayout::StorageType::PUSH_CONSTANTS:
-      break;
-
-    case VKPushConstantsLayout::StorageType::UNIFORM_BUFFER: {
-      push_constant_descriptor_set_location = descriptor_set_location++;
-      const ShaderInput *push_constant_input = ubo_get(PUSH_CONSTANTS_FALLBACK_NAME.c_str());
-      descriptor_set_location_update(push_constant_input, push_constants_fallback_location);
-      break;
-    }
+  if (push_constants_storage_type == VKPushConstantsLayout::StorageType::UNIFORM_BUFFER) {
+    push_constant_descriptor_set_location = descriptor_set_location++;
+    const ShaderInput *push_constant_input = ubo_get(PUSH_CONSTANTS_FALLBACK_NAME.c_str());
+    descriptor_set_location_update(push_constant_input, push_constants_fallback_location);
   }
   push_constants_layout_.init(
       info, *this, push_constants_storage_type, push_constant_descriptor_set_location);
