@@ -5155,6 +5155,15 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
                            "Only keyframes of selected F-Curves are visible and editable");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_GRAPH, NULL);
 
+  /* Graph Editor line drawing quality. */
+  prop = RNA_def_property(srna, "fcurve_high_quality_drawing", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "animation_flag", USER_ANIM_HIGH_QUALITY_DRAWING);
+  RNA_def_property_ui_text(prop,
+                           "FCurve High Quality Display",
+                           "Display F-Curves using Anti-Aliasing and other fancy effects "
+                           "(disable for better performance)");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_GRAPH, NULL);
+
   /* grease pencil */
   prop = RNA_def_property(srna, "grease_pencil_manhattan_distance", PROP_INT, PROP_PIXEL);
   RNA_def_property_int_sdna(prop, NULL, "gp_manhattandist");

@@ -496,8 +496,6 @@ typedef enum eGraphEdit_Flag {
   SIPO_SELVHANDLESONLY = (1 << 9),
   /* don't perform realtime updates */
   SIPO_NOREALTIMEUPDATES = (1 << 11),
-  /* don't draw curves with AA ("beauty-draw") for performance */
-  SIPO_BEAUTYDRAW_OFF = (1 << 12),
   /* draw grouped channels with colors set in group */
   /* SIPO_NODRAWGCOLORS = (1 << 13), DEPRECATED */
   /* normalize curves on display */
