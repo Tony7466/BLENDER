@@ -500,6 +500,13 @@ static void handle_armature_parent_orientation(const Scene *scene,
       transform_orientations_create_from_axis(r_mat, UNPACK3(active_pchan->parent->bone->arm_mat));
       return;
     }
+    else {
+      bArmature *armature = ob->data;
+      armature->act_bone = active_pchan->parent->bone;
+      ED_getTransformOrientationMatrix(scene, view_layer, v3d, ob, obedit, pivot_point, r_mat);
+      armature->act_bone = active_pchan->bone;
+      return;
+    }
   }
   // if root, and "Local Location", isn't set local transform of armature object.
   if (active_pchan->bone->flag & BONE_NO_LOCAL_LOCATION) {
