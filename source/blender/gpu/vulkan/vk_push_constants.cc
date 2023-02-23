@@ -80,7 +80,7 @@ void VKPushConstants::Layout::init(const shader::ShaderCreateInfo &info,
 
   size_in_bytes_ = 0;
   if (storage_type == StorageType::UNIFORM_BUFFER) {
-    storage_buffer_binding_ = location;
+    descriptor_set_location_ = location;
     init_struct<Std140>(info, interface, push_constants, &size_in_bytes_);
   }
   else {

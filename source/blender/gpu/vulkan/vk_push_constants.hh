@@ -82,7 +82,7 @@ class VKPushConstants : NonCopyable {
     /**
      * Binding index in the descriptor set when the push constants use an uniform buffer.
      */
-    VKDescriptorSet::Location storage_buffer_binding_;
+    VKDescriptorSet::Location descriptor_set_location_;
 
    public:
     /**
@@ -127,9 +127,9 @@ class VKPushConstants : NonCopyable {
      *
      * Only valid when storage_type=StorageType::UNIFORM_BUFFER.
      */
-    VKDescriptorSet::Location storage_buffer_binding_get() const
+    VKDescriptorSet::Location descriptor_set_location_get() const
     {
-      return storage_buffer_binding_;
+      return descriptor_set_location_;
     }
 
     /**
@@ -204,9 +204,6 @@ class VKPushConstants : NonCopyable {
    * comp_len: number of components has the data type that is being updated.
    * array_size: number of elements when an array to update. (0=no array)
    * input_data: packed source data to use.
-   *
-   * TODO: this function still needs to convert the input_data layout to that
-   * what the storage type is expected.
    */
   template<typename T>
   void push_constant_set(int32_t location,

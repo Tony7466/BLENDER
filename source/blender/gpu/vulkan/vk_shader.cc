@@ -890,7 +890,7 @@ static VkDescriptorSetLayoutBinding create_descriptor_set_layout_binding(
   BLI_assert(push_constants_layout.storage_type_get() ==
              VKPushConstants::StorageType::UNIFORM_BUFFER);
   VkDescriptorSetLayoutBinding binding = {};
-  binding.binding = push_constants_layout.storage_buffer_binding_get();
+  binding.binding = push_constants_layout.descriptor_set_location_get();
   binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
   binding.descriptorCount = 1;
   binding.stageFlags = VK_SHADER_STAGE_ALL;
@@ -1045,7 +1045,7 @@ std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) co
       ss << "layout(push_constant) uniform constants\n";
     }
     else if (push_constants_storage == VKPushConstants::StorageType::UNIFORM_BUFFER) {
-      ss << "layout(binding = " << push_constants_layout.storage_buffer_binding_get()
+      ss << "layout(binding = " << push_constants_layout.descriptor_set_location_get()
          << ", std140) uniform constants\n";
     }
     ss << "{\n";
