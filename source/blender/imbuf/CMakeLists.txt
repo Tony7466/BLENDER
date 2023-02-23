@@ -74,10 +74,10 @@ set(LIB
   bf_blenkernel
   bf_blenlib
   bf_blenloader
+  bf_imbuf_openimageio
   bf_intern_guardedalloc
   bf_intern_memutil
   bf_intern_opencolorio
-  bf_imbuf_openimageio
 
   ${PNG_LIBRARIES}
   ${JPEG_LIBRARIES}
