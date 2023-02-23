@@ -234,6 +234,7 @@ const uchar PAINT_CURSOR_SCULPT[3] = {255, 100, 100};
 const uchar PAINT_CURSOR_VERTEX_PAINT[3] = {255, 255, 255};
 const uchar PAINT_CURSOR_WEIGHT_PAINT[3] = {200, 200, 255};
 const uchar PAINT_CURSOR_TEXTURE_PAINT[3] = {255, 255, 255};
+const uchar PAINT_CURSOR_SCULPT_CURVES[3] = {255, 100, 100};
 
 static ePaintOverlayControlFlags overlay_flags = (ePaintOverlayControlFlags)0;
 
@@ -2717,6 +2718,11 @@ static SculptAttribute *sculpt_attribute_ensure_ex(Object *ob,
 
   if (attr) {
     sculpt_attr_update(ob, attr);
+
+    /* Since "stroke_only" is not a CustomData flag we have
+     * to sync its parameter setting manually. Fixes #104618.
+     */
+    attr->params.stroke_only = params->stroke_only;
 
     return attr;
   }
