@@ -568,7 +568,9 @@ void MetalDevice::compile_and_load(int device_id, MetalPipelineType pso_type)
       }
       else {
         NSString *err = [error localizedDescription];
-        instance->set_error(string_printf("Failed to compile library:\n%s", [err UTF8String]));
+        fprintf(stderr, "Cycles MSL->AIR compilation failed:\n%s\n", [err UTF8String]);
+        fflush(stderr);
+        exit(3);
       }
     }
   }
