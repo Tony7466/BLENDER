@@ -37,6 +37,11 @@ class VKCommandBuffer : NonCopyable, NonMovable {
   void bind(const VKDescriptorSet &descriptor_set,
             const VkPipelineLayout vk_pipeline_layout,
             VkPipelineBindPoint bind_point);
+  /**
+   * Add a push constant command to the command buffer.
+   *
+   * Only valid when the storage type of push_constants is StorageType::PUSH_CONSTANTS.
+   */
   void push_constants(const VKPushConstants &push_constants,
                       const VkPipelineLayout vk_pipeline_layout,
                       const VkShaderStageFlags vk_shader_stages);

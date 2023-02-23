@@ -76,10 +76,8 @@ void VKCommandBuffer::push_constants(const VKPushConstants &push_constants,
                                      const VkPipelineLayout vk_pipeline_layout,
                                      const VkShaderStageFlags vk_shader_stages)
 {
-  if (push_constants.layout_get().storage_type_get() !=
-      VKPushConstantsLayout::StorageType::PUSH_CONSTANTS) {
-    return;
-  }
+  BLI_assert(push_constants.layout_get().storage_type_get() ==
+             VKPushConstantsLayout::StorageType::PUSH_CONSTANTS);
   vkCmdPushConstants(vk_command_buffer_,
                      vk_pipeline_layout,
                      vk_shader_stages,
