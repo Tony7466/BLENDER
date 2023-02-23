@@ -588,13 +588,14 @@ static NlaTrack *rna_NlaTrack_new(ID *id, AnimData *adt, Main *bmain, bContext *
 {
   NlaTrack *new_track;
 
-  if (track != NULL) {
-    new_track = BKE_nlatrack_new_after_and_set_active(
-        &adt->nla_tracks, track, ID_IS_OVERRIDE_LIBRARY(id));
+  if (track == NULL) {
+    new_track = BKE_nlatrack_new_tail(&adt->nla_tracks, ID_IS_OVERRIDE_LIBRARY(id));
   }
   else {
-    new_track = BKE_nlatrack_new_tail_and_set_active(&adt->nla_tracks, ID_IS_OVERRIDE_LIBRARY(id));
+    new_track = BKE_nlatrack_new_after(&adt->nla_tracks, track, ID_IS_OVERRIDE_LIBRARY(id));
   }
+
+  BKE_nlatrack_set_active(&adt->nla_tracks, new_track);
 
   WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_ADDED, NULL);
 

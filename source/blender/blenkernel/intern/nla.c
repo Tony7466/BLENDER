@@ -336,31 +336,35 @@ void BKE_nla_tracks_copy_from_adt(Main *bmain,
 
 /* Adding ------------------------------------------- */
 
-NlaTrack *BKE_nlatrack_new(void)
+NlaTrack *BKE_nlatrack_new(bool is_liboverride)
 {
   /* allocate new track */
   NlaTrack *nlt = MEM_callocN(sizeof(NlaTrack), "NlaTrack");
 
   /* set settings requiring the track to not be part of the stack yet */
-  nlt->flag = NLATRACK_SELECTED | NLATRACK_OVERRIDELIBRARY_LOCAL;
+  nlt->flag = is_liboverride ? NLATRACK_OVERRIDELIBRARY_LOCAL : NLATRACK_SELECTED;
 
   return nlt;
 }
 
 void BKE_nlatrack_insert_before(ListBase *nla_tracks,
                                 struct NlaTrack *next,
-                                struct NlaTrack *new_track,
-                                bool is_liboverride)
+                                struct NlaTrack *new_track)
 {
-  if (is_liboverride) {
 
-    /** Currently, all library override tracks are assumed to be grouped together at the start of
-     * the list. So we can only add the new track after the last library track. */
-    if (next != NULL && (next->flag & NLATRACK_OVERRIDELIBRARY_LOCAL) == 0) {
-      BKE_nlatrack_insert_after(nla_tracks, next, new_track, is_liboverride);
+  /* Currently, all library override tracks are assumed to be grouped together at the start of
+   * the list. Non overridden must be placed after last library track. */
+
+  // If the new track isn't library overriden, but the next track is, insert it after the next
+  // track
+  if (BKE_nlatrack_is_liboverride(new_track)) {
+    if (next != NULL && !BKE_nlatrack_is_liboverride(next)) {
+      BKE_nlatrack_insert_after(nla_tracks, next, new_track);
       return;
     }
   }
+
+  printf("Adding in the NLA track before target \n");
 
   BLI_insertlinkbefore(nla_tracks, next, new_track);
   new_track->index = BLI_findindex(nla_tracks, new_track);
@@ -374,29 +378,35 @@ void BKE_nlatrack_insert_before(ListBase *nla_tracks,
                  '.',
                  offsetof(NlaTrack, name),
                  sizeof(new_track->name));
+  printf("insert_before: This created %s \n", new_track->name);
+  printf("new track index is: %d \n\n", new_track->index);
 }
 
 void BKE_nlatrack_insert_after(ListBase *nla_tracks,
                                struct NlaTrack *prev,
-                               struct NlaTrack *new_track,
-                               bool is_liboverride)
+                               struct NlaTrack *new_track)
 {
-  BLI_assert(!ELEM(NULL, nla_tracks, new_track));
+  BLI_assert(nla_tracks);
+  BLI_assert(new_track);
 
   /** If NULL, then caller intends to insert a new head. But, tracks are not allowed to be placed
    * before library overrides. So it must inserted after the last override. */
   if (prev == NULL) {
+    printf("Previous is Null \n");
     NlaTrack *first_track = (NlaTrack *)nla_tracks->first;
-    if (first_track != NULL && (first_track->flag & NLATRACK_OVERRIDELIBRARY_LOCAL) == 0) {
+    if (first_track != NULL && !BKE_nlatrack_is_liboverride(first_track)) {
+      printf("First track in list has override. Setting Prev to first track \n");
       prev = first_track;
     }
   }
 
   /* In liboverride case, we only add local tracks after all those coming from the linked data,
    * so we need to find the first local track. */
-  if (is_liboverride && prev != NULL && (prev->flag & NLATRACK_OVERRIDELIBRARY_LOCAL) == 0) {
+  if (BKE_nlatrack_is_liboverride(new_track) && prev != NULL &&
+      !BKE_nlatrack_is_liboverride(prev)) {
+    printf("new_track and Prev are liboverride \n");
     NlaTrack *first_local = prev->next;
-    for (; first_local != NULL && (first_local->flag & NLATRACK_OVERRIDELIBRARY_LOCAL) == 0;
+    for (; first_local != NULL && BKE_nlatrack_is_liboverride(first_local);
          first_local = first_local->next) {
     }
     prev = first_local != NULL ? first_local->prev : NULL;
@@ -413,42 +423,37 @@ void BKE_nlatrack_insert_after(ListBase *nla_tracks,
                  '.',
                  offsetof(NlaTrack, name),
                  sizeof(new_track->name));
+
+  printf("insert_after: This created %s \n", new_track->name);
+  printf("new track index is: %d \n\n", new_track->index);
 }
 
-NlaTrack *BKE_nlatrack_new_before_and_set_active(ListBase *nla_tracks,
-                                                 struct NlaTrack *next,
-                                                 bool is_liboverride)
+NlaTrack *BKE_nlatrack_new_before(ListBase *nla_tracks, struct NlaTrack *next, bool is_liboverride)
 {
-  NlaTrack *new_track = BKE_nlatrack_new();
+  NlaTrack *new_track = BKE_nlatrack_new(is_liboverride);
 
-  BKE_nlatrack_insert_before(nla_tracks, next, new_track, is_liboverride);
-  BKE_nlatrack_set_active(nla_tracks, new_track);
+  BKE_nlatrack_insert_before(nla_tracks, next, new_track);
 
   return new_track;
 }
 
-NlaTrack *BKE_nlatrack_new_after_and_set_active(ListBase *nla_tracks,
-                                                struct NlaTrack *prev,
-                                                bool is_liboverride)
+NlaTrack *BKE_nlatrack_new_after(ListBase *nla_tracks, struct NlaTrack *prev, bool is_liboverride)
 {
-  NlaTrack *new_track = BKE_nlatrack_new();
+  NlaTrack *new_track = BKE_nlatrack_new(is_liboverride);
 
-  BKE_nlatrack_insert_after(nla_tracks, prev, new_track, is_liboverride);
-  BKE_nlatrack_set_active(nla_tracks, new_track);
+  BKE_nlatrack_insert_after(nla_tracks, prev, new_track);
 
   return new_track;
 }
 
-NlaTrack *BKE_nlatrack_new_head_and_set_active(ListBase *nla_tracks, bool is_liboverride)
+NlaTrack *BKE_nlatrack_new_head(ListBase *nla_tracks, bool is_liboverride)
 {
-  return BKE_nlatrack_new_before_and_set_active(
-      nla_tracks, (NlaTrack *)nla_tracks->first, is_liboverride);
+  return BKE_nlatrack_new_before(nla_tracks, (NlaTrack *)nla_tracks->first, is_liboverride);
 }
 
-NlaTrack *BKE_nlatrack_new_tail_and_set_active(ListBase *nla_tracks, const bool is_liboverride)
+NlaTrack *BKE_nlatrack_new_tail(ListBase *nla_tracks, const bool is_liboverride)
 {
-  return BKE_nlatrack_new_after_and_set_active(
-      nla_tracks, (NlaTrack *)nla_tracks->last, is_liboverride);
+  return BKE_nlatrack_new_after(nla_tracks, (NlaTrack *)nla_tracks->last, is_liboverride);
 }
 
 NlaStrip *BKE_nlastrip_new(bAction *act)
@@ -520,7 +525,8 @@ NlaStrip *BKE_nlastack_add_strip(AnimData *adt, bAction *act, const bool is_libo
     /* trying to add to the last track failed (no track or no space),
      * so add a new track to the stack, and add to that...
      */
-    nlt = BKE_nlatrack_new_tail_and_set_active(&adt->nla_tracks, is_liboverride);
+    nlt = BKE_nlatrack_new_tail(&adt->nla_tracks, is_liboverride);
+    BKE_nlatrack_set_active(&adt->nla_tracks, nlt);
     BKE_nlatrack_add_strip(nlt, strip, is_liboverride);
     BLI_strncpy(nlt->name, act->id.name + 2, sizeof(nlt->name));
   }
@@ -1305,6 +1311,11 @@ bool BKE_nlatrack_is_nonlocal_in_liboverride(const ID *id, const NlaTrack *nlt)
           (nlt == NULL || (nlt->flag & NLATRACK_OVERRIDELIBRARY_LOCAL) == 0));
 }
 
+bool BKE_nlatrack_is_liboverride(const struct NlaTrack *nla_track)
+{
+  return (nla_track->flag & NLATRACK_OVERRIDELIBRARY_LOCAL) != 0;
+}
+
 /* NLA Strips -------------------------------------- */
 
 static NlaStrip *nlastrip_find_active(ListBase /* NlaStrip */ *strips)
@@ -2026,7 +2037,8 @@ bool BKE_nla_action_stash(AnimData *adt, const bool is_liboverride)
     }
   }
 
-  nlt = BKE_nlatrack_new_after_and_set_active(&adt->nla_tracks, prev_track, is_liboverride);
+  nlt = BKE_nlatrack_new_after(&adt->nla_tracks, prev_track, is_liboverride);
+  BKE_nlatrack_set_active(&adt->nla_tracks, nlt);
   BLI_assert(nlt != NULL);
 
   /* We need to ensure that if there wasn't any previous instance,

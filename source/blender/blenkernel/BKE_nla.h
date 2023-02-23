@@ -37,8 +37,10 @@ struct PropertyRNA;
 
 /**
  * Create new NLA Track.
+ *
+ * The returned pointer is owned by the caller.
  */
-struct NlaTrack *BKE_nlatrack_new(void);
+struct NlaTrack *BKE_nlatrack_new(bool is_liboverride);
 
 /**
  * Frees the given NLA strip, and calls #BKE_nlastrip_remove_and_free to
@@ -98,8 +100,7 @@ void BKE_nla_tracks_copy_from_adt(struct Main *bmain,
  */
 void BKE_nlatrack_insert_before(ListBase *nla_tracks,
                                 struct NlaTrack *next,
-                                struct NlaTrack *new_track,
-                                bool is_liboverride);
+                                struct NlaTrack *new_track);
 
 /**
  * Inserts a given NLA track after a specified NLA track within the
@@ -107,37 +108,35 @@ void BKE_nlatrack_insert_before(ListBase *nla_tracks,
  */
 void BKE_nlatrack_insert_after(ListBase *nla_tracks,
                                struct NlaTrack *prev,
-                               struct NlaTrack *new_track,
-                               bool is_liboverride);
+                               struct NlaTrack *new_track);
 
 /**
  * Calls #BKE_nlatrack_new to create a new NLA track, inserts it before the
  * given NLA track with #BKE_nlatrack_insert_before, and sets it as active.
  */
-struct NlaTrack *BKE_nlatrack_new_before_and_set_active(ListBase *nla_tracks,
-                                                        struct NlaTrack *next,
-                                                        bool is_liboverride);
+struct NlaTrack *BKE_nlatrack_new_before(ListBase *nla_tracks,
+                                         struct NlaTrack *next,
+                                         bool is_liboverride);
 
 /**
  * Calls #BKE_nlatrack_new to create a new NLA track, inserts it after the
- * given NLA track with #BKE_nlatrack_insert_after, and sets it as active.
+ * given NLA track with #BKE_nlatrack_insert_after.
  */
-struct NlaTrack *BKE_nlatrack_new_after_and_set_active(ListBase *nla_tracks,
-                                                       struct NlaTrack *prev,
-                                                       bool is_liboverride);
+struct NlaTrack *BKE_nlatrack_new_after(ListBase *nla_tracks,
+                                        struct NlaTrack *prev,
+                                        bool is_liboverride);
 
 /**
  * Calls #BKE_nlatrack_new to create a new NLA track, inserts it as the head of the
- * NLA track list with #BKE_nlatrack_new_before_and_set_active, and sets it as active.
+ * NLA track list with #BKE_nlatrack_new_before.
  */
-struct NlaTrack *BKE_nlatrack_new_head_and_set_active(ListBase *nla_tracks, bool is_liboverride);
+struct NlaTrack *BKE_nlatrack_new_head(ListBase *nla_tracks, bool is_liboverride);
 
 /**
  * Calls #BKE_nlatrack_new to create a new NLA track, inserts it as the tail of the
- * NLA track list with #BKE_nlatrack_new_after_and_set_active, and sets it as active.
+ * NLA track list with #BKE_nlatrack_new_after.
  */
-struct NlaTrack *BKE_nlatrack_new_tail_and_set_active(ListBase *nla_tracks,
-                                                      const bool is_liboverride);
+struct NlaTrack *BKE_nlatrack_new_tail(ListBase *nla_tracks, const bool is_liboverride);
 
 /**
  * Removes the given NLA track from the list of tracks provided.
@@ -300,6 +299,11 @@ bool BKE_nlatrack_get_bounds(struct NlaTrack *nlt, float bounds[2]);
  * \param nlt: May be NULL, in which case we consider it as a non-local track case.
  */
 bool BKE_nlatrack_is_nonlocal_in_liboverride(const struct ID *id, const struct NlaTrack *nlt);
+
+/**
+ * Check if the given NLA-Track has a library override.
+ */
+bool BKE_nlatrack_is_liboverride(const struct NlaTrack *nla_track);
 
 /* ............ */
 

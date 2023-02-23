@@ -96,8 +96,8 @@ TEST(nla_track, BKE_nlatrack_remove_and_free)
   AnimData adt{};
 
   /* Add NLA tracks to the Animation Data. */
-  NlaTrack *track1 = BKE_nlatrack_new_tail_and_set_active(&adt.nla_tracks, false);
-  NlaTrack *track2 = BKE_nlatrack_new_tail_and_set_active(&adt.nla_tracks, false);
+  NlaTrack *track1 = BKE_nlatrack_new_tail(&adt.nla_tracks, false);
+  NlaTrack *track2 = BKE_nlatrack_new_tail(&adt.nla_tracks, false);
 
   /* Ensure we have 2 tracks in the track. */
   EXPECT_EQ(2, BLI_listbase_count(&adt.nla_tracks));
@@ -114,11 +114,11 @@ TEST(nla_track, BKE_nlatrack_remove_and_free)
   EXPECT_EQ(-1, BLI_findindex(&adt.nla_tracks, track1));
 }
 
-TEST(nla_track, BKE_nlatrack_new_tail_and_set_active)
+TEST(nla_track, BKE_nlatrack_new_tail)
 {
   AnimData adt{};
-  NlaTrack *trackB = BKE_nlatrack_new_tail_and_set_active(&adt.nla_tracks, false);
-  NlaTrack *trackA = BKE_nlatrack_new_tail_and_set_active(&adt.nla_tracks, false);
+  NlaTrack *trackB = BKE_nlatrack_new_tail(&adt.nla_tracks, false);
+  NlaTrack *trackA = BKE_nlatrack_new_tail(&adt.nla_tracks, false);
 
   // Expect that Track B was added before track A
   EXPECT_EQ(1, BLI_findindex(&adt.nla_tracks, trackA));
@@ -129,11 +129,11 @@ TEST(nla_track, BKE_nlatrack_new_tail_and_set_active)
   BKE_nlatrack_remove_and_free(&adt.nla_tracks, trackB, false);
 }
 
-TEST(nla_track, BKE_nlatrack_new_head_and_set_active)
+TEST(nla_track, BKE_nlatrack_new_head)
 {
   AnimData adt{};
-  NlaTrack *trackB = BKE_nlatrack_new_head_and_set_active(&adt.nla_tracks, false);
-  NlaTrack *trackA = BKE_nlatrack_new_head_and_set_active(&adt.nla_tracks, false);
+  NlaTrack *trackB = BKE_nlatrack_new_head(&adt.nla_tracks, false);
+  NlaTrack *trackA = BKE_nlatrack_new_head(&adt.nla_tracks, false);
 
   // Expect that Track A was added before track B
   EXPECT_EQ(0, BLI_findindex(&adt.nla_tracks, trackA));
@@ -142,10 +142,49 @@ TEST(nla_track, BKE_nlatrack_new_head_and_set_active)
   // Free the tracks
   BKE_nlatrack_remove_and_free(&adt.nla_tracks, trackA, false);
   BKE_nlatrack_remove_and_free(&adt.nla_tracks, trackB, false);
+
+}
+
+TEST(nla_track, BKE_nlatrack_insert_before)
+{
+  AnimData adt{};
+  NlaTrack *trackA = BKE_nlatrack_new(true);
+  NlaTrack *trackB = BKE_nlatrack_new(true);
+  NlaTrack *trackC = BKE_nlatrack_new(false);
+  // NlaTrack *trackD = BKE_nlatrack_new(false);
+
+  BKE_nlatrack_insert_before(&adt.nla_tracks, NULL, trackA);
+  BKE_nlatrack_insert_before(&adt.nla_tracks, trackA, trackB);
+
+  // Since Track C isn't library override, it'll get inserted after A
+  BKE_nlatrack_insert_before(&adt.nla_tracks, trackA, trackC);
+  // BKE_nlatrack_insert_before(&adt.nla_tracks, trackC, trackD);
+
+  // Expect B -> A -> C ordering. 
+  EXPECT_EQ(0, BLI_findindex(&adt.nla_tracks, trackB));
+  EXPECT_EQ(1, BLI_findindex(&adt.nla_tracks, trackA));
+  EXPECT_EQ(2, BLI_findindex(&adt.nla_tracks, trackC));
+
+  // Free the tracks
+  BKE_nlatrack_remove_and_free(&adt.nla_tracks, trackA, false);
+  BKE_nlatrack_remove_and_free(&adt.nla_tracks, trackB, false);
+  BKE_nlatrack_remove_and_free(&adt.nla_tracks, trackC, false);
+  // BKE_nlatrack_remove_and_free(&adt.nla_tracks, trackD, false);
+}
+
+TEST(nla_track, BKE_nlatrack_is_liboverride)
+{
+  AnimData adt{};
+  NlaTrack *trackA = BKE_nlatrack_new_head(&adt.nla_tracks, true);
+  NlaTrack *trackB = BKE_nlatrack_new_after(&adt.nla_tracks, trackA, false);
+
+  // Verify Track A has library override, and B doesn't
+  EXPECT_TRUE(BKE_nlatrack_is_liboverride(trackA));
+  EXPECT_FALSE(BKE_nlatrack_is_liboverride(trackB));
+
+  // Free the tracks
+  BKE_nlatrack_remove_and_free(&adt.nla_tracks, trackA, false);
+  BKE_nlatrack_remove_and_free(&adt.nla_tracks, trackB, false);
 }
 
 }  // namespace blender::bke::tests
-
-
-
-
