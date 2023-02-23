@@ -727,8 +727,6 @@ void ED_info_draw_stats(
     FRAMES,
     STROKES,
     POINTS,
-    STROKES_SEL,
-    POINTS_SEL,
     LIGHTS,
     MAX_LABELS_COUNT
   };
@@ -745,8 +743,6 @@ void ED_info_draw_stats(
   STRNCPY(labels[FRAMES], IFACE_("Frames"));
   STRNCPY(labels[STROKES], IFACE_("Strokes"));
   STRNCPY(labels[POINTS], IFACE_("Points"));
-  STRNCPY(labels[STROKES_SEL], IFACE_("Selected Strokes"));
-  STRNCPY(labels[POINTS_SEL], IFACE_("Selected Points"));
   STRNCPY(labels[LIGHTS], IFACE_("Lights"));
 
   int longest_label = 0;
@@ -788,10 +784,10 @@ void ED_info_draw_stats(
   else if ((ob) && (ob->type == OB_GPENCIL)) {
     stats_row(col1, labels[LAYERS], col2, stats_fmt.totgplayer, nullptr, y, height);
     stats_row(col1, labels[FRAMES], col2, stats_fmt.totgpframe, nullptr, y, height);
-    stats_row(col1, labels[STROKES], col2, stats_fmt.totgpstroke, nullptr, y, height);
-    stats_row(col1, labels[POINTS], col2, stats_fmt.totgppoint, nullptr, y, height);
-    stats_row(col1, labels[STROKES_SEL], col2, stats_fmt.totgpstrokesel, nullptr, y, height);
-    stats_row(col1, labels[POINTS_SEL], col2, stats_fmt.totgppointsel, nullptr, y, height);
+    stats_row(
+        col1, labels[STROKES], col2, stats_fmt.totgpstrokesel, stats_fmt.totgpstroke, y, height);
+    stats_row(
+        col1, labels[POINTS], col2, stats_fmt.totgppointsel, stats_fmt.totgppoint, y, height);
   }
   else if (ob && (object_mode & OB_MODE_SCULPT)) {
     if (stats_is_object_dynamic_topology_sculpt(ob)) {
