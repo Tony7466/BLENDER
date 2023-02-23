@@ -340,6 +340,9 @@ VFont *BKE_vfont_load(Main *bmain, const char *filepath)
     if (vfd) {
       /* If there's a font name, use it for the ID name. */
       vfont = BKE_libblock_alloc(bmain, ID_VF, vfd->name[0] ? vfd->name : filename, 0);
+      /* The font is always used as an id property. His user will be established later. */
+      id_us_min((ID *)vfont);
+
       vfont->data = vfd;
       BLI_strncpy(vfont->filepath, filepath, sizeof(vfont->filepath));
 
