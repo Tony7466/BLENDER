@@ -568,9 +568,7 @@ void MetalDevice::compile_and_load(int device_id, MetalPipelineType pso_type)
       }
       else {
         NSString *err = [error localizedDescription];
-        fprintf(stderr, "Cycles MSL->AIR compilation failed:\n%s\n", [err UTF8String]);
-        fflush(stderr);
-        exit(3);
+        instance->set_error(string_printf("Failed to compile library:\n%s", [err UTF8String]));
       }
     }
   }
@@ -904,6 +902,11 @@ void MetalDevice::cancel()
 
 bool MetalDevice::is_ready(string &status) const
 {
+  if (!error_msg.empty()) {
+    /* Avoid hanging if we had an error. */
+    return true;
+  }
+
   int num_loaded = MetalDeviceKernels::get_loaded_kernel_count(this, PSO_GENERIC);
   if (num_loaded < DEVICE_KERNEL_NUM) {
     status = string_printf("%d / %d render kernels loaded (may take a few minutes the first time)",
