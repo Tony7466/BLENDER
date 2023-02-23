@@ -257,6 +257,10 @@ if(WITH_CYCLES_DEVICE_HIP)
   endif()
 endif()
 
+if(WITH_CYCLES_DEVICE_HIPRT)
+  add_definitions(-DWITH_HIPRT)
+endif()
+
 if(WITH_CYCLES_DEVICE_OPTIX)
   find_package(OptiX 7.3.0)
 

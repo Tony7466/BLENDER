@@ -14,6 +14,7 @@ set(SRC
   binning.cpp
   build.cpp
   embree.cpp
+  hiprt.cpp
   multi.cpp
   node.cpp
   optix.cpp
@@ -33,12 +34,23 @@ if(WITH_CYCLES_DEVICE_METAL)
   add_definitions(-DWITH_METAL)
 endif()
 
+if(WITH_CYCLES_DEVICE_HIPRT)
+  list(APPEND INC
+    ../../../extern/hipew/include
+	$ENV{HIPRT_SDK_DIR}
+      )
+  add_definitions(-DWITH_HIPRT)
+  add_definitions(-DWITH_HIP)
+  add_definitions(-DWITH_HIP_DYNLOAD)
+endif()
+
 set(SRC_HEADERS
   bvh.h
   bvh2.h
   binning.h
   build.h
   embree.h
+  hiprt.h
   multi.h
   node.h
   optix.h

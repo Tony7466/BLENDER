@@ -153,7 +153,9 @@ const char *device_kernel_as_string(DeviceKernel kernel)
     case DEVICE_KERNEL_NUM:
       break;
   };
+
   LOG(FATAL) << "Unhandled kernel " << static_cast<int>(kernel) << ", should never happen.";
+
   return "UNKNOWN";
 }
 

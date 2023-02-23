@@ -116,6 +116,11 @@ DeviceInfo blender_device_info(BL::Preferences &b_preferences,
     device.use_metalrt = true;
   }
 
+#ifdef WITH_HIPRT
+  if (get_boolean(cpreferences, "use_hiprt")) {
+    device.use_hiprt = true;
+  }
+#endif
   if (preview) {
     /* Disable specialization for preview renders. */
     device.kernel_optimization_level = KERNEL_OPTIMIZATION_LEVEL_OFF;

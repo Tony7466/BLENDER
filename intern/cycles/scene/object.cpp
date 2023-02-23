@@ -573,7 +573,8 @@ void ObjectManager::device_update_prim_offsets(Device *device, DeviceScene *dsce
   if (!scene->integrator->get_use_light_tree()) {
     BVHLayoutMask layout_mask = device->get_bvh_layout_mask();
     if (layout_mask != BVH_LAYOUT_METAL && layout_mask != BVH_LAYOUT_MULTI_METAL &&
-        layout_mask != BVH_LAYOUT_MULTI_METAL_EMBREE) {
+        layout_mask != BVH_LAYOUT_MULTI_METAL_EMBREE && layout_mask != BVH_LAYOUT_HIPRT &&
+        layout_mask != BVH_LAYOUT_MULTI_HIPRT && layout_mask != BVH_LAYOUT_MULTI_HIPRT_EMBREE) {
       return;
     }
   }

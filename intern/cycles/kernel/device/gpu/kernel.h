@@ -48,6 +48,9 @@
 
 #include "kernel/film/read.h"
 
+#if defined(__HIPRT__)
+#  include "kernel/device/hiprt/hiprt_kernels.h"
+#endif
 /* --------------------------------------------------------------------
  * Integrator.
  */
@@ -127,7 +130,7 @@ ccl_gpu_kernel(GPU_KERNEL_BLOCK_NUM_THREADS, GPU_KERNEL_MAX_REGISTERS)
       integrator_init_from_bake(nullptr, state, tile, render_buffer, x, y, sample));
 }
 ccl_gpu_kernel_postfix
-
+#if !defined(__HIPRT__)
 ccl_gpu_kernel(GPU_KERNEL_BLOCK_NUM_THREADS, GPU_KERNEL_MAX_REGISTERS)
     ccl_gpu_kernel_signature(integrator_intersect_closest,
                              ccl_global const int *path_index_array,
@@ -184,6 +187,7 @@ ccl_gpu_kernel(GPU_KERNEL_BLOCK_NUM_THREADS, GPU_KERNEL_MAX_REGISTERS)
   }
 }
 ccl_gpu_kernel_postfix
+#endif
 
 ccl_gpu_kernel(GPU_KERNEL_BLOCK_NUM_THREADS, GPU_KERNEL_MAX_REGISTERS)
     ccl_gpu_kernel_signature(integrator_shade_background,
@@ -248,7 +252,7 @@ ccl_gpu_kernel_postfix
 #if defined(__KERNEL_METAL_APPLE__) && defined(__METALRT__)
 constant int __dummy_constant [[function_constant(Kernel_DummyConstant)]];
 #endif
-
+#if !defined(__HIPRT__)
 ccl_gpu_kernel(GPU_KERNEL_BLOCK_NUM_THREADS, GPU_KERNEL_MAX_REGISTERS)
     ccl_gpu_kernel_signature(integrator_shade_surface_raytrace,
                              ccl_global const int *path_index_array,
@@ -260,15 +264,15 @@ ccl_gpu_kernel(GPU_KERNEL_BLOCK_NUM_THREADS, GPU_KERNEL_MAX_REGISTERS)
   if (global_index < work_size) {
     const int state = (path_index_array) ? path_index_array[global_index] : global_index;
 
-#if defined(__KERNEL_METAL_APPLE__) && defined(__METALRT__)
+#  if defined(__KERNEL_METAL_APPLE__) && defined(__METALRT__)
     KernelGlobals kg = NULL;
     /* Workaround Ambient Occlusion and Bevel nodes not working with Metal.
      * Dummy offset should not affect result, but somehow fixes bug! */
     kg += __dummy_constant;
     ccl_gpu_kernel_call(integrator_shade_surface_raytrace(kg, state, render_buffer));
-#else
+#  else
     ccl_gpu_kernel_call(integrator_shade_surface_raytrace(NULL, state, render_buffer));
-#endif
+#  endif
   }
 }
 ccl_gpu_kernel_postfix
@@ -287,7 +291,7 @@ ccl_gpu_kernel(GPU_KERNEL_BLOCK_NUM_THREADS, GPU_KERNEL_MAX_REGISTERS)
   }
 }
 ccl_gpu_kernel_postfix
-
+#endif
 ccl_gpu_kernel(GPU_KERNEL_BLOCK_NUM_THREADS, GPU_KERNEL_MAX_REGISTERS)
     ccl_gpu_kernel_signature(integrator_shade_volume,
                              ccl_global const int *path_index_array,

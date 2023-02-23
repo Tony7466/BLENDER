@@ -40,6 +40,7 @@ enum DeviceType {
   DEVICE_MULTI,
   DEVICE_OPTIX,
   DEVICE_HIP,
+  DEVICE_HIPRT,
   DEVICE_METAL,
   DEVICE_ONEAPI,
   DEVICE_DUMMY,
@@ -80,6 +81,7 @@ class DeviceInfo {
   bool has_peer_memory; /* GPU has P2P access to memory of another GPU. */
   bool has_gpu_queue;   /* Device supports GPU queue. */
   bool use_metalrt;     /* Use MetalRT to accelerate ray queries (Metal only). */
+  bool use_hiprt;       /* Use HIPRT to enable AMD hardware ray tracing*/
   KernelOptimizationLevel kernel_optimization_level; /* Optimization level applied to path tracing
                                                       * kernels (Metal only). */
   DenoiserTypeMask denoisers;                        /* Supported denoiser types. */

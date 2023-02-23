@@ -1261,6 +1261,12 @@ elseif(WIN32)
     )
   endif()
 
+  if(WITH_CYCLES_DEVICE_HIPRT)
+    set (HIPRTSDK $ENV{HIPRT_SDK_DIR})
+	#Do not use environment variables for this, these kinds of paths should be specified through cmake options.
+    target_link_libraries(blender ${HIPRTSDK}/hiprt${HIPRT_VERSION}64.lib)
+  endif()
+
   if(WITH_BLENDER_THUMBNAILER)
     install(
       TARGETS BlendThumb
