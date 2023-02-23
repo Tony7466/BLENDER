@@ -235,7 +235,7 @@ string DeviceSceneStats::full_report(int indent_level)
 {
   const string indent(indent_level * kIndentNumSpaces, ' ');
   string result = "";
-  result += indent + "DeviceScene:\n" + buffers.full_report(indent_level + 1);
+  result += indent + "Buffers:\n" + buffers.full_report(indent_level + 1);
   return result;
 }
 
