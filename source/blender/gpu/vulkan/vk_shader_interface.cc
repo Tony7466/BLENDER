@@ -42,7 +42,7 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
     }
   }
 
-  /* Reserve 1 storage buffer for push constants fallback. */
+  /* Reserve 1 uniform buffer for push constants fallback. */
   size_t names_size = info.interface_names_size_;
   VKContext &context = *VKContext::get();
   const VKPushConstants::StorageType push_constants_storage_type =
