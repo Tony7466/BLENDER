@@ -665,11 +665,13 @@ void nla_buttons_register(ARegionType *art)
   strcpy(pt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
   pt->draw = nla_panel_evaluation;
   pt->draw_header = nla_panel_animated_influence_header;
-  pt->parent = pt_properties;
+  //pt->parent = pt_properties;
   pt->flag = PANEL_TYPE_DEFAULT_CLOSED;
   pt->poll = nla_strip_eval_panel_poll;
-  BLI_addtail(&pt_properties->children, BLI_genericNodeN(pt));
-  BLI_addtail(&art->paneltypes, pt);
+  //BLI_addtail(&pt_properties->children, BLI_genericNodeN(pt));
+  //BLI_addtail(&art->paneltypes, pt);
+
+   WM_paneltype_subpanel_add(pt_properties, pt, true); 
 
   pt = MEM_callocN(sizeof(PanelType), "spacetype nla panel animated strip time");
   strcpy(pt->idname, "NLA_PT_animated_strip_time");
@@ -679,11 +681,13 @@ void nla_buttons_register(ARegionType *art)
   strcpy(pt->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
   pt->draw = nla_panel_animated_strip_time;
   pt->draw_header = nla_panel_animated_strip_time_header;
-  pt->parent = pt_properties;
+ // pt->parent = pt_properties;
   pt->flag = PANEL_TYPE_DEFAULT_CLOSED;
   pt->poll = nla_strip_eval_panel_poll;
-  BLI_addtail(&pt_properties->children, BLI_genericNodeN(pt));
-  BLI_addtail(&art->paneltypes, pt);
+  //BLI_addtail(&pt_properties->children, BLI_genericNodeN(pt));
+  //BLI_addtail(&art->paneltypes, pt);
+
+   WM_paneltype_subpanel_add(pt_properties, pt, true); 
 
   pt = MEM_callocN(sizeof(PanelType), "spacetype nla panel modifiers");
   strcpy(pt->idname, "NLA_PT_modifiers");
