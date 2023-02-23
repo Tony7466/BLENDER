@@ -61,7 +61,7 @@ GPU_SHADER_CREATE_INFO(gpu_push_constants_base_test)
     .storage_buf(0, Qualifier::WRITE, "float", "data_out[]")
     .compute_source("gpu_push_constants_test.glsl");
 
-GPU_SHADER_CREATE_INFO(gpu_push_constants_packed_test)
+GPU_SHADER_CREATE_INFO(gpu_push_constants_test)
     .additional_info("gpu_push_constants_base_test")
     .push_constant(Type::FLOAT, "float_in")
     .push_constant(Type::VEC2, "vec2_in")
@@ -71,7 +71,7 @@ GPU_SHADER_CREATE_INFO(gpu_push_constants_packed_test)
 
 /* Push constants size test. */
 GPU_SHADER_CREATE_INFO(gpu_push_constants_128bytes_test)
-    .additional_info("gpu_push_constants_packed_test")
+    .additional_info("gpu_push_constants_test")
     .push_constant(Type::FLOAT, "filler", 20)
     .do_static_compilation(true);
 
