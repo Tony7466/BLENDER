@@ -94,9 +94,6 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
   }
 
   /* Push constants. */
-  /* NOTE: Push constants must be added after other uniform resources as resources have strict
-   * rules for their 'location' due to descriptor sets. Push constants only need an unique location
-   * as it is only used by the GPU module internally.*/
   int32_t push_constant_location = 1024;
   for (const ShaderCreateInfo::PushConst &push_constant : info.push_constants_) {
     copy_input_name(input, push_constant.name, name_buffer_, name_buffer_offset);
