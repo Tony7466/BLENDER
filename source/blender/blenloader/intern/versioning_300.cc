@@ -2078,6 +2078,66 @@ static void version_fix_image_format_copy(Main *bmain, ImageFormatData *format)
   }
 }
 
+/**
+ * Some editors would manually manage visibility of regions, or lazy create them based on
+ * context. Ensure they are always there now, and use the new #ARegionType.poll().
+ */
+static void version_ensure_missing_regions(ScrArea *area, SpaceLink *sl)
+{
+  ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase : &sl->regionbase;
+
+  switch (sl->spacetype) {
+    case SPACE_FILE: {
+      ARegion *new_region;
+
+      new_region = do_versions_add_region_if_not_found(
+          regionbase, RGN_TYPE_UI, "versioning: UI region for file", RGN_TYPE_TOOLS);
+      if (new_region) {
+        new_region->alignment = RGN_ALIGN_TOP;
+        new_region->flag |= RGN_FLAG_DYNAMIC_SIZE;
+      }
+
+      new_region = do_versions_add_region_if_not_found(
+          regionbase, RGN_TYPE_EXECUTE, "versioning: execute region for file", RGN_TYPE_UI);
+      if (new_region) {
+        new_region->alignment = RGN_ALIGN_BOTTOM;
+        new_region->flag = RGN_FLAG_DYNAMIC_SIZE;
+      }
+
+      new_region = do_versions_add_region_if_not_found(regionbase,
+                                                       RGN_TYPE_TOOL_PROPS,
+                                                       "versioning: tool props region for file",
+                                                       RGN_TYPE_EXECUTE);
+      if (new_region) {
+        new_region->alignment = RGN_ALIGN_RIGHT;
+        new_region->flag = RGN_FLAG_HIDDEN;
+      }
+      break;
+    }
+    case SPACE_CLIP: {
+      ARegion *region;
+
+      region = do_versions_ensure_region(
+          regionbase, RGN_TYPE_UI, "versioning: properties region for clip", RGN_TYPE_HEADER);
+      region->alignment = RGN_ALIGN_RIGHT;
+      region->flag &= ~RGN_FLAG_HIDDEN;
+
+      region = do_versions_ensure_region(
+          regionbase, RGN_TYPE_CHANNELS, "versioning: channels region for clip", RGN_TYPE_UI);
+      region->alignment = RGN_ALIGN_LEFT;
+      region->flag &= ~RGN_FLAG_HIDDEN;
+      region->v2d.scroll = V2D_SCROLL_BOTTOM;
+      region->v2d.flag = V2D_VIEWSYNC_AREA_VERTICAL;
+
+      region = do_versions_ensure_region(
+          regionbase, RGN_TYPE_PREVIEW, "versioning: preview region for clip", RGN_TYPE_WINDOW);
+      region->flag &= ~RGN_FLAG_HIDDEN;
+
+      break;
+    }
+  }
+}
+
 /* NOLINTNEXTLINE: readability-function-size */
 void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
 {
@@ -4020,37 +4080,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
       LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
         LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
-          if (sl->spacetype != SPACE_FILE) {
-            continue;
-          }
-          ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
-                                                                 &sl->regionbase;
-
-          ARegion *new_region;
-          if ((new_region = do_versions_add_region_if_not_found(
-                   regionbase,
-                   RGN_TYPE_UI,
-                   "versioning: UI region for space file",
-                   RGN_TYPE_TOOLS))) {
-            new_region->alignment = RGN_ALIGN_TOP;
-            new_region->flag |= RGN_FLAG_DYNAMIC_SIZE;
-          }
-          if ((new_region = do_versions_add_region_if_not_found(
-                   regionbase,
-                   RGN_TYPE_EXECUTE,
-                   "versioning: execute region for space file",
-                   RGN_TYPE_UI))) {
-            new_region->alignment = RGN_ALIGN_BOTTOM;
-            new_region->flag = RGN_FLAG_DYNAMIC_SIZE;
-          }
-          if ((new_region = do_versions_add_region_if_not_found(
-                   regionbase,
-                   RGN_TYPE_TOOL_PROPS,
-                   "versioning: tool props region for space file",
-                   RGN_TYPE_EXECUTE))) {
-            new_region->alignment = RGN_ALIGN_RIGHT;
-            new_region->flag = RGN_FLAG_HIDDEN;
-          }
+          version_ensure_missing_regions(area, sl);
         }
       }
     }

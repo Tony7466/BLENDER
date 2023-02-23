@@ -34,7 +34,6 @@ set(SRC
   clip_graph_draw.c
   clip_graph_ops.c
   clip_ops.c
-  clip_toolbar.c
   clip_utils.c
   space_clip.c
   tracking_ops.c
