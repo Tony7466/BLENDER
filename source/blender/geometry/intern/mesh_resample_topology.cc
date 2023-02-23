@@ -2,6 +2,7 @@
 
 #include "DNA_mesh_types.h"
 
+#include "BLI_linear_allocator.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_virtual_array.hh"
 
@@ -127,11 +128,13 @@ namespace blender::detail {
 
 class MeshMarket {
  private:
+  LinearAllocator<> allocator_;
+
   struct CustomOffsets {
-    std::optional<Array<int>> vert_offsets;
-    std::optional<Array<int>> edge_offsets;
-    std::optional<Array<int>> loop_offsets;
-    std::optional<Array<int>> face_offsets;
+    std::optional<Span<int>> vert_offsets;
+    std::optional<Span<int>> edge_offsets;
+    std::optional<Span<int>> loop_offsets;
+    std::optional<Span<int>> face_offsets;
   };
 
   struct CustomData {
@@ -203,16 +206,17 @@ class MeshMarket {
                  const bool save_offsets = true)
   {
 
-    auto total_size = [save_offsets](const VArray<int> &counts,
-                                     std::optional<Array<int>> &offsets) -> int {
+    auto total_size = [save_offsets, &allocator_ = this->allocator_](
+                          const VArray<int> &counts, std::optional<Span<int>> &offsets) -> int {
       if (counts.is_single()) {
         return counts.get_internal_single() * counts.size();
       }
       else {
-        Array<int> vert_accumulate(counts.size() + 1);
+        MutableSpan<int> vert_accumulate = allocator_.allocate_array<int>(
+            counts.index_range().one_after_last());
         vert_accumulate.last() = 0;
-        counts.materialize(vert_accumulate.as_mutable_span().drop_back(1));
-        offset_indices::accumulate_counts_to_offsets(vert_accumulate.as_mutable_span());
+        counts.materialize(vert_accumulate.drop_back(1));
+        offset_indices::accumulate_counts_to_offsets(vert_accumulate);
         const int total_size = vert_accumulate.last();
         if (save_offsets) {
           offsets.emplace(std::move(vert_accumulate));
@@ -279,7 +283,7 @@ class MeshMarket {
     const CustomData &last_custom = customs_[custom_index];
     BLI_assert(last_custom.offsets.vert_offsets);
 
-    return OffsetIndices<int>(last_custom.offsets.vert_offsets->as_span());
+    return OffsetIndices<int>(*last_custom.offsets.vert_offsets);
   }
 
   OffsetIndices<int> get_edge_offsets_in(const int custom_index) const
@@ -287,7 +291,7 @@ class MeshMarket {
     const CustomData &last_custom = customs_[custom_index];
     BLI_assert(last_custom.offsets.edge_offsets);
 
-    return OffsetIndices<int>(last_custom.offsets.edge_offsets->as_span());
+    return OffsetIndices<int>(*last_custom.offsets.edge_offsets);
   }
 
   OffsetIndices<int> get_loop_offsets_in(const int custom_index) const
@@ -295,7 +299,7 @@ class MeshMarket {
     const CustomData &last_custom = customs_[custom_index];
     BLI_assert(last_custom.offsets.loop_offsets);
 
-    return OffsetIndices<int>(last_custom.offsets.loop_offsets->as_span());
+    return OffsetIndices<int>(*last_custom.offsets.loop_offsets);
   }
 
   OffsetIndices<int> get_face_offsets_in(const int custom_index) const
@@ -303,7 +307,7 @@ class MeshMarket {
     const CustomData &last_custom = customs_[custom_index];
     BLI_assert(last_custom.offsets.face_offsets);
 
-    return OffsetIndices<int>(last_custom.offsets.face_offsets->as_span());
+    return OffsetIndices<int>(*last_custom.offsets.face_offsets);
   }
 };
 
