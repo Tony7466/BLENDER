@@ -33,7 +33,7 @@ class VKShaderInterface : public ShaderInterface {
 
  public:
   /**
-   * When the push constants fallback is used, this name will be used in the GLSL source.
+   * GLSL resource name for the push constants fallback.
    */
   static constexpr StringRefNull PUSH_CONSTANTS_FALLBACK_NAME = StringRefNull(
       "push_constants_fallback", 23);
