@@ -145,17 +145,6 @@ static void file_init(wmWindowManager *UNUSED(wm), ScrArea *area)
   }
   /* Validate the params right after file read. */
   fileselect_refresh_params(sfile);
-
-  ARegion *region_props = BKE_area_find_region_type(area, RGN_TYPE_TOOL_PROPS);
-  FileSelectParams *params = ED_fileselect_get_active_params(sfile);
-  if (params && !(region_props->v2d.flag & V2D_IS_INIT)) {
-    if (params->flag & FILE_HIDE_TOOL_PROPS) {
-      region_props->flag |= RGN_FLAG_HIDDEN;
-    }
-    else {
-      region_props->flag &= ~RGN_FLAG_HIDDEN;
-    }
-  }
 }
 
 static void file_exit(wmWindowManager *wm, ScrArea *area)
@@ -296,6 +285,28 @@ static void file_refresh(const bContext *C, ScrArea *area)
 
   if (sfile->layout) {
     sfile->layout->dirty = true;
+  }
+
+  if (area) {
+    ARegion *region_props = BKE_area_find_region_type(area, RGN_TYPE_TOOL_PROPS);
+    const bool region_flag_old = region_props->flag;
+    if (!(region_props->v2d.flag & V2D_IS_INIT)) {
+      if (ED_fileselect_is_asset_browser(sfile)) {
+        /* Hide by default in asset browser. */
+        region_props->flag |= RGN_FLAG_HIDDEN;
+      }
+      else {
+        if (params->flag & FILE_HIDE_TOOL_PROPS) {
+          region_props->flag |= RGN_FLAG_HIDDEN;
+        }
+        else {
+          region_props->flag &= ~RGN_FLAG_HIDDEN;
+        }
+      }
+    }
+    if (region_flag_old != region_props->flag) {
+      ED_region_visibility_change_update((bContext *)C, area, region_props);
+    }
   }
 
   ED_area_tag_redraw(area);
@@ -792,6 +803,10 @@ static int file_space_subtype_get(ScrArea *area)
 static void file_space_subtype_set(ScrArea *area, int value)
 {
   SpaceFile *sfile = area->spacedata.first;
+  /* Force re-init. */
+  LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
+    region->v2d.flag &= ~V2D_IS_INIT;
+  }
   sfile->browse_mode = value;
 }
 

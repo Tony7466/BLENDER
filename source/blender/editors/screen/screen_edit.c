@@ -728,7 +728,7 @@ static void screen_regions_poll(bContext *C, const wmWindow *win, bScreen *scree
   ScrArea *previous_area = CTX_wm_area(C);
   ARegion *previous_region = CTX_wm_region(C);
 
-  bool changed = false;
+  bool any_changed = false;
   ED_screen_areas_iter (win, screen, area) {
     CTX_wm_area_set(C, area);
 
@@ -743,17 +743,17 @@ static void screen_regions_poll(bContext *C, const wmWindow *win, bScreen *scree
       }
 
       if (old_region_flag != region->flag) {
+        any_changed = true;
+
         /* Enforce complete re-init. */
         region->v2d.flag &= ~V2D_IS_INIT;
-        changed = true;
         ED_region_visibility_change_update(C, area, region);
       }
     }
   }
 
-  if (changed) {
+  if (any_changed) {
     screen->do_refresh = true;
-    //    ED_area_tag_redraw();
   }
 
   CTX_wm_area_set(C, previous_area);
