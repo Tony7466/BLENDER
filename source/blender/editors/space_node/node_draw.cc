@@ -181,6 +181,26 @@ void ED_node_tag_update_id(ID *id)
 
 namespace blender::ed::space_node {
 
+static const char *node_socket_get_translation_context(const bNodeSocket &socket)
+{
+  std::stringstream output;
+  const nodes::SocketDeclaration &socket_decl = *socket.runtime->declaration;
+
+  /* The node is not explicitly defined. */
+  if (&socket_decl == nullptr) {
+    return nullptr;
+  }
+
+  /* Default context. */
+  blender::StringRef translation_context = socket_decl.translation_context;
+  if (translation_context.is_empty()) {
+    return nullptr;
+  }
+
+  output << translation_context.data();
+  return BLI_strdup(output.str().c_str());
+}
+
 static void node_socket_add_tooltip_in_node_editor(const bNodeTree &ntree,
                                                    const bNodeSocket &sock,
                                                    uiLayout &layout);
@@ -377,8 +397,14 @@ static void node_update_basis(const bContext &C,
     /* Align output buttons to the right. */
     uiLayout *row = uiLayoutRow(layout, true);
     uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
+
     const char *socket_label = nodeSocketLabel(socket);
-    socket->typeinfo->draw((bContext *)&C, row, &sockptr, &nodeptr, IFACE_(socket_label));
+    const char *socket_translation_context = node_socket_get_translation_context(*socket);
+    socket->typeinfo->draw((bContext *)&C,
+                           row,
+                           &sockptr,
+                           &nodeptr,
+                           CTX_IFACE_(socket_translation_context, socket_label));
 
     node_socket_add_tooltip_in_node_editor(ntree, *socket, *row);
 
@@ -511,7 +537,12 @@ static void node_update_basis(const bContext &C,
     uiLayout *row = uiLayoutRow(layout, true);
 
     const char *socket_label = nodeSocketLabel(socket);
-    socket->typeinfo->draw((bContext *)&C, row, &sockptr, &nodeptr, IFACE_(socket_label));
+    const char *socket_translation_context = node_socket_get_translation_context(*socket);
+    socket->typeinfo->draw((bContext *)&C,
+                           row,
+                           &sockptr,
+                           &nodeptr,
+                           CTX_IFACE_(socket_translation_context, socket_label));
 
     node_socket_add_tooltip_in_node_editor(ntree, *socket, *row);
 
