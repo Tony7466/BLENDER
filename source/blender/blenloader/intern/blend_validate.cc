@@ -44,7 +44,7 @@ bool BLO_main_validate_libraries(Main *bmain, ReportList *reports)
 
   ListBase *lbarray[INDEX_ID_MAX];
   int i = set_listbasepointers(bmain, lbarray);
-  while (i--) {
+  while (--i) {
     for (ID *id = static_cast<ID *>(lbarray[i]->first); id != nullptr;
          id = static_cast<ID *>(id->next)) {
       if (ID_IS_LINKED(id)) {
@@ -80,7 +80,7 @@ bool BLO_main_validate_libraries(Main *bmain, ReportList *reports)
     }
 
     i = set_listbasepointers(curmain, lbarray);
-    while (i--) {
+    while (--i) {
       ID *id = static_cast<ID *>(lbarray[i]->first);
       if (id == nullptr) {
         continue;
