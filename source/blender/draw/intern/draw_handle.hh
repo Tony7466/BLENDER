@@ -26,24 +26,28 @@ struct DupliObject;
 namespace blender::draw {
 
 struct ResourceHandle {
-  uint raw;
+  union {
+    uint raw;
+    struct {
+      uint index : 25;
+      uint sub_index : 6;
+      uint inverted_handedness : 1;
+    };
+  };
 
   ResourceHandle() = default;
   ResourceHandle(uint raw_) : raw(raw_){};
   ResourceHandle(uint index, bool inverted_handedness)
-  {
-    raw = index;
-    SET_FLAG_FROM_TEST(raw, inverted_handedness, 0x80000000u);
-  }
+      : index(index), sub_index(0), inverted_handedness(inverted_handedness){};
 
   bool has_inverted_handedness() const
   {
-    return (raw & 0x80000000u) != 0;
+    return inverted_handedness != 0;
   }
 
   uint resource_index() const
   {
-    return (raw & 0x7FFFFFFFu);
+    return index;
   }
 };
 
