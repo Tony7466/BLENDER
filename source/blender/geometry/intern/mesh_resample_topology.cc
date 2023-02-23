@@ -163,6 +163,8 @@ class MeshMarket {
 
   Vector<CustomData> customs_;
 
+  mutable Mesh *result = nullptr;
+
  public:
   MeshMarket() = default;
 
@@ -231,15 +233,21 @@ class MeshMarket {
         vert_total_size, edge_total_size, loop_total_size, face_total_size, std::move(offsets));
   }
 
-  Mesh *build_new_mesh()
+  void build_new_mesh()
   {
+    BLI_assert(result == nullptr);
     const CustomData &last_custom = customs_.last();
+    result = BKE_mesh_new_nomain(last_custom.vert_range.one_after_last(),
+                                 last_custom.edge_range.one_after_last(),
+                                 0,
+                                 last_custom.loop_range.one_after_last(),
+                                 last_custom.face_range.one_after_last());
+  }
 
-    return BKE_mesh_new_nomain(last_custom.vert_range.one_after_last(),
-                               last_custom.edge_range.one_after_last(),
-                               0,
-                               last_custom.loop_range.one_after_last(),
-                               last_custom.face_range.one_after_last());
+  Mesh &mesh() const
+  {
+    BLI_assert(result != nullptr);
+    return *result;
   }
 
   IndexRange get_vert_range_in(const int custom_index) const
@@ -690,11 +698,12 @@ static void propagate_attributes_on_new_mesh(
     const Span<int> resample_edge_num,
     const bool try_to_fill_by_grid,
     const Map<bke::AttributeIDRef, bke::AttributeKind> &attributes,
-    const Mesh &src_mesh,
-    Mesh &dst_mesh)
+    const Mesh &src_mesh)
 {
+  Mesh &result = mesh_builder.mesh();
+
   const bke::AttributeAccessor src_attributes = src_mesh.attributes();
-  bke::MutableAttributeAccessor dst_attributes = dst_mesh.attributes_for_write();
+  bke::MutableAttributeAccessor dst_attributes = result.attributes_for_write();
 
   for (Map<bke::AttributeIDRef, bke::AttributeKind>::Item entry : attributes.items()) {
     const bke::AttributeIDRef attribute_id = entry.key;
@@ -730,7 +739,7 @@ static void propagate_attributes_on_new_mesh(
                           resample_edge_num,
                           src_mesh,
                           src_attribute_value,
-                          dst_mesh,
+                          result,
                           dst_attribute_value);
     }
     else {
@@ -739,7 +748,7 @@ static void propagate_attributes_on_new_mesh(
                           mesh_builder,
                           src_mesh,
                           src_attribute_value,
-                          dst_mesh,
+                          result,
                           dst_attribute_value);
     }
 
@@ -830,14 +839,14 @@ void compute_new_mesh(const Mesh &mesh,
 void build_new_mesh_topology(const Mesh &mesh,
                              const Span<int> /*resample_edge_num*/,
                              const bool try_to_fill_by_grid,
-                             const detail::MeshMarket &mesh_builder,
-                             Mesh &r_new_mesh)
+                             const detail::MeshMarket &mesh_builder)
 {
+  Mesh &result = mesh_builder.mesh();
   build_edge_vert_indices(mesh_builder.get_edge_offsets_in(1),
                           mesh_builder.get_vert_offsets_in(1),
                           mesh.edges(),
                           mesh_builder.get_vert_range_in(1),
-                          r_new_mesh.edges_for_write().slice(mesh_builder.get_edge_range_in(1)));
+                          result.edges_for_write().slice(mesh_builder.get_edge_range_in(1)));
 
   if (try_to_fill_by_grid) {
     return;
@@ -848,13 +857,13 @@ void build_new_mesh_topology(const Mesh &mesh,
                       mesh.loops(),
                       mesh_builder.get_edge_offsets_in(1),
                       mesh_builder.get_loop_offsets_in(2),
-                      r_new_mesh.edges(),
-                      r_new_mesh.loops_for_write());
-    build_faces(mesh.polys(), mesh_builder.get_loop_offsets_in(2), r_new_mesh.polys_for_write());
+                      result.edges(),
+                      result.loops_for_write());
+    build_faces(mesh.polys(), mesh_builder.get_loop_offsets_in(2), result.polys_for_write());
   }
 }
 
-Mesh *resample_topology(const Mesh &mesh,
+Mesh &resample_topology(const Mesh &mesh,
                         const Span<int> resample_edge_num,
                         const bool try_to_fill_by_grid,
                         const Map<bke::AttributeIDRef, bke::AttributeKind> attributes)
@@ -863,14 +872,14 @@ Mesh *resample_topology(const Mesh &mesh,
 
   compute_new_mesh(mesh, resample_edge_num, try_to_fill_by_grid, mesh_builder);
 
-  Mesh &result = *mesh_builder.build_new_mesh();
+  mesh_builder.build_new_mesh();
 
-  build_new_mesh_topology(mesh, resample_edge_num, try_to_fill_by_grid, mesh_builder, result);
+  build_new_mesh_topology(mesh, resample_edge_num, try_to_fill_by_grid, mesh_builder);
 
   propagate_attributes_on_new_mesh(
-      mesh_builder, resample_edge_num, try_to_fill_by_grid, attributes, mesh, result);
+      mesh_builder, resample_edge_num, try_to_fill_by_grid, attributes, mesh);
 
-  return &result;
+  return mesh_builder.mesh();
 }
 
 }  // namespace blender::geometry

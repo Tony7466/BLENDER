@@ -10,7 +10,7 @@ struct Mesh;
 
 namespace blender::geometry {
 
-Mesh *resample_topology(const Mesh &mesh,
+Mesh &resample_topology(const Mesh &mesh,
                         const Span<int> resample_edge_num,
                         const bool try_to_fill_by_grid,
                         const Map<bke::AttributeIDRef, bke::AttributeKind> attributes);

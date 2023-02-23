@@ -61,9 +61,9 @@ static void node_geo_exec(GeoNodeExecParams params)
                                                    params.get_output_propagation_info("Mesh"),
                                                    attributes);
 
-    Mesh *result = geometry::resample_topology(
+    Mesh &result = geometry::resample_topology(
         mesh, count.as_span(), try_to_fill_by_grid, std::move(attributes));
-    geometry_set.replace_mesh(result);
+    geometry_set.replace_mesh(&result);
   });
 
   params.set_output("Mesh", std::move(geometry_set));
