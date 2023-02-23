@@ -688,7 +688,7 @@ void build_edge_vert_indices(const OffsetIndices<int> new_edges,
 static void propagate_attributes_on_new_mesh(
     const detail::MeshMarket &mesh_builder,
     const Span<int> resample_edge_num,
-    const ResampleTopologyMode fill_mode,
+    const bool try_to_fill_by_grid,
     const Map<bke::AttributeIDRef, bke::AttributeKind> &attributes,
     const Mesh &src_mesh,
     Mesh &dst_mesh)
@@ -723,34 +723,24 @@ static void propagate_attributes_on_new_mesh(
     GVArraySpan src_attribute_value(attribute.varray);
     GMutableSpan dst_attribute_value(result_attribute.span);
 
-    switch (fill_mode) {
-      case FILL_GRID: {
-        using namespace propagation_for_grid;
-        attribute_on_domain(attribute.domain,
-                            mesh_builder,
-                            resample_edge_num,
-                            src_mesh,
-                            src_attribute_value,
-                            dst_mesh,
-                            dst_attribute_value);
-        break;
-      }
-      case FILL_NGON: {
-        using namespace propagation_for_ngone;
-        attribute_on_domain(attribute.domain,
-                            mesh_builder,
-                            src_mesh,
-                            src_attribute_value,
-                            dst_mesh,
-                            dst_attribute_value);
-        break;
-      }
-      case FILL_DELAUNAY: {
-        break;
-      }
-      default: {
-        BLI_assert_unreachable();
-      }
+    if (try_to_fill_by_grid) {
+      using namespace propagation_for_grid;
+      attribute_on_domain(attribute.domain,
+                          mesh_builder,
+                          resample_edge_num,
+                          src_mesh,
+                          src_attribute_value,
+                          dst_mesh,
+                          dst_attribute_value);
+    }
+    else {
+      using namespace propagation_for_ngone;
+      attribute_on_domain(attribute.domain,
+                          mesh_builder,
+                          src_mesh,
+                          src_attribute_value,
+                          dst_mesh,
+                          dst_attribute_value);
     }
 
     result_attribute.finish();
@@ -759,7 +749,7 @@ static void propagate_attributes_on_new_mesh(
 
 void compute_new_mesh(const Mesh &mesh,
                       const Span<int> resample_edge_num,
-                      const ResampleTopologyMode fill_mode,
+                      const bool try_to_fill_by_grid,
                       detail::MeshMarket &r_mesh_builder)
 {
   /* New verices for original verts. */
@@ -778,80 +768,68 @@ void compute_new_mesh(const Mesh &mesh,
                               VArray<int>::ForSingle(0, 0));
   }
 
-  switch (fill_mode) {
-    case FILL_GRID: {
-      /* Face grid. */
-      {
-        const Span<MLoop> src_loops = mesh.loops();
-        const Span<MPoly> src_polys = mesh.polys();
+  if (try_to_fill_by_grid) {
+    /* Face grid. */
+    const Span<MLoop> src_loops = mesh.loops();
+    const Span<MPoly> src_polys = mesh.polys();
 
-        VArray<int> new_verts_for_original_faces = VArray<int>::ForFunc(
-            mesh.totpoly, [resample_edge_num, src_loops, src_polys](const int64_t index) -> int {
-              const MPoly face = src_polys[index];
-              const IndexRange loop_range(face.loopstart, face.totloop);
-              const Span<MLoop> loops = src_loops.slice(loop_range);
+    VArray<int> new_verts_for_original_faces = VArray<int>::ForFunc(
+        mesh.totpoly, [resample_edge_num, src_loops, src_polys](const int64_t index) -> int {
+          const MPoly face = src_polys[index];
+          const IndexRange loop_range(face.loopstart, face.totloop);
+          const Span<MLoop> loops = src_loops.slice(loop_range);
 
-              if (loops.size() != 4) {
-                return 0;
-              }
+          if (loops.size() != 4) {
+            return 0;
+          }
 
-              const int &points_num_edge_a = resample_edge_num[loops[0].e];
-              const int &points_num_edge_b = resample_edge_num[loops[1].e];
-              const int &points_num_edge_c = resample_edge_num[loops[2].e];
-              const int &points_num_edge_d = resample_edge_num[loops[3].e];
+          const int &points_num_edge_a = resample_edge_num[loops[0].e];
+          const int &points_num_edge_b = resample_edge_num[loops[1].e];
+          const int &points_num_edge_c = resample_edge_num[loops[2].e];
+          const int &points_num_edge_d = resample_edge_num[loops[3].e];
 
-              {
-                const bool horizontal_equal = points_num_edge_a == points_num_edge_c;
-                const bool vertical_equal = points_num_edge_b == points_num_edge_d;
-                if (horizontal_equal && vertical_equal) {
-                  return points_num_edge_a * points_num_edge_b;
-                }
-              }
+          {
+            const bool horizontal_equal = points_num_edge_a == points_num_edge_c;
+            const bool vertical_equal = points_num_edge_b == points_num_edge_d;
+            if (horizontal_equal && vertical_equal) {
+              return points_num_edge_a * points_num_edge_b;
+            }
+          }
 
-              ResampleQuad resample(
-                  points_num_edge_a, points_num_edge_c, points_num_edge_b, points_num_edge_d);
+          ResampleQuad resample(
+              points_num_edge_a, points_num_edge_c, points_num_edge_b, points_num_edge_d);
 
-              return resample.total_points();
-            });
+          return resample.total_points();
+        });
 
-        r_mesh_builder.add_custom(std::move(new_verts_for_original_faces),
-                                  VArray<int>::ForSingle(0, 0),
-                                  VArray<int>::ForSingle(0, 0),
-                                  VArray<int>::ForSingle(0, 0));
-      }
-      break;
+    r_mesh_builder.add_custom(std::move(new_verts_for_original_faces),
+                              VArray<int>::ForSingle(0, 0),
+                              VArray<int>::ForSingle(0, 0),
+                              VArray<int>::ForSingle(0, 0));
+  }
+  else {
+    /* New loops for original loops. */
+    {
+      const Span<MLoop> src_loops = mesh.loops();
+      VArray<int> new_loops_for_original_faces = VArray<int>::ForFunc(
+          mesh.totloop, [resample_edge_num, src_loops](const int64_t index) -> int {
+            const MLoop src_loop = src_loops[index];
+            return resample_edge_num[src_loop.e] + 1;
+          });
+
+      r_mesh_builder.add_custom(VArray<int>::ForSingle(0, 0),
+                                VArray<int>::ForSingle(0, 0),
+                                std::move(new_loops_for_original_faces),
+                                VArray<int>::ForSingle(0, 0));
     }
-    case FILL_NGON: {
-      /* New loops for original loops. */
-      {
-        const Span<MLoop> src_loops = mesh.loops();
-        VArray<int> new_loops_for_original_faces = VArray<int>::ForFunc(
-            mesh.totloop, [resample_edge_num, src_loops](const int64_t index) -> int {
-              const MLoop src_loop = src_loops[index];
-              return resample_edge_num[src_loop.e] + 1;
-            });
-
-        r_mesh_builder.add_custom(VArray<int>::ForSingle(0, 0),
-                                  VArray<int>::ForSingle(0, 0),
-                                  std::move(new_loops_for_original_faces),
-                                  VArray<int>::ForSingle(0, 0));
-      }
-      /* New faces for original faces. */
-      r_mesh_builder.add_custom(0, 0, 0, mesh.totpoly);
-      break;
-    }
-    case FILL_DELAUNAY: {
-      break;
-    }
-    default: {
-      BLI_assert_unreachable();
-    }
+    /* New faces for original faces. */
+    r_mesh_builder.add_custom(0, 0, 0, mesh.totpoly);
   }
 }
 
 void build_new_mesh_topology(const Mesh &mesh,
                              const Span<int> /*resample_edge_num*/,
-                             const ResampleTopologyMode fill_mode,
+                             const bool try_to_fill_by_grid,
                              const detail::MeshMarket &mesh_builder,
                              Mesh &r_new_mesh)
 {
@@ -861,45 +839,36 @@ void build_new_mesh_topology(const Mesh &mesh,
                           mesh_builder.get_vert_range_in(1),
                           r_new_mesh.edges_for_write().slice(mesh_builder.get_edge_range_in(1)));
 
-  switch (fill_mode) {
-    case FILL_GRID: {
-      break;
-    }
-    case FILL_NGON: {
-      using namespace ngone_fill;
-      build_faces_loops(mesh.edges(),
-                        mesh.loops(),
-                        mesh_builder.get_edge_offsets_in(1),
-                        mesh_builder.get_loop_offsets_in(2),
-                        r_new_mesh.edges(),
-                        r_new_mesh.loops_for_write());
-      build_faces(mesh.polys(), mesh_builder.get_loop_offsets_in(2), r_new_mesh.polys_for_write());
-      break;
-    }
-    case FILL_DELAUNAY: {
-      break;
-    }
-    default: {
-      BLI_assert_unreachable();
-    }
+  if (try_to_fill_by_grid) {
+    return;
+  }
+  else {
+    using namespace ngone_fill;
+    build_faces_loops(mesh.edges(),
+                      mesh.loops(),
+                      mesh_builder.get_edge_offsets_in(1),
+                      mesh_builder.get_loop_offsets_in(2),
+                      r_new_mesh.edges(),
+                      r_new_mesh.loops_for_write());
+    build_faces(mesh.polys(), mesh_builder.get_loop_offsets_in(2), r_new_mesh.polys_for_write());
   }
 }
 
 Mesh *resample_topology(const Mesh &mesh,
                         const Span<int> resample_edge_num,
-                        const ResampleTopologyMode fill_mode,
+                        const bool try_to_fill_by_grid,
                         const Map<bke::AttributeIDRef, bke::AttributeKind> attributes)
 {
   detail::MeshMarket mesh_builder;
 
-  compute_new_mesh(mesh, resample_edge_num, fill_mode, mesh_builder);
+  compute_new_mesh(mesh, resample_edge_num, try_to_fill_by_grid, mesh_builder);
 
   Mesh &result = *mesh_builder.build_new_mesh();
 
-  build_new_mesh_topology(mesh, resample_edge_num, fill_mode, mesh_builder, result);
+  build_new_mesh_topology(mesh, resample_edge_num, try_to_fill_by_grid, mesh_builder, result);
 
   propagate_attributes_on_new_mesh(
-      mesh_builder, resample_edge_num, fill_mode, attributes, mesh, result);
+      mesh_builder, resample_edge_num, try_to_fill_by_grid, attributes, mesh, result);
 
   return &result;
 }

@@ -10,15 +10,9 @@ struct Mesh;
 
 namespace blender::geometry {
 
-enum ResampleTopologyMode : int8_t {
-  FILL_GRID = 0,
-  FILL_NGON = 1,
-  FILL_DELAUNAY = 2,
-};
-
 Mesh *resample_topology(const Mesh &mesh,
                         const Span<int> resample_edge_num,
-                        const ResampleTopologyMode fill_mode,
+                        const bool try_to_fill_by_grid,
                         const Map<bke::AttributeIDRef, bke::AttributeKind> attributes);
 
 }  // namespace blender::geometry
