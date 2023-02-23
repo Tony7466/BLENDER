@@ -31,12 +31,12 @@ void main()
     frustum = isect_data_setup(pyramid);
   }
 
-  uint resource_id = resource_ids_buf[gl_GlobalInvocationID.x];
+  uint _resource_id = resource_ids_buf[gl_GlobalInvocationID.x];
 
-  IsectBox box = isect_data_setup(bounds_buf[resource_id].bounding_corners[0].xyz,
-                                  bounds_buf[resource_id].bounding_corners[1].xyz,
-                                  bounds_buf[resource_id].bounding_corners[2].xyz,
-                                  bounds_buf[resource_id].bounding_corners[3].xyz);
+  IsectBox box = isect_data_setup(bounds_buf[_resource_id].bounding_corners[0].xyz,
+                                  bounds_buf[_resource_id].bounding_corners[1].xyz,
+                                  bounds_buf[_resource_id].bounding_corners[2].xyz,
+                                  bounds_buf[_resource_id].bounding_corners[3].xyz);
 
   int clipped = 0;
   /* NDC space post projection [-1..1] (unclamped). */
