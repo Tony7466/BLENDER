@@ -57,6 +57,7 @@ VKContext::~VKContext()
 
 void VKContext::init_physical_device_limits()
 {
+  BLI_assert(vk_physical_device_ != VK_NULL_HANDLE);
   VkPhysicalDeviceProperties properties = {};
   vkGetPhysicalDeviceProperties(vk_physical_device_, &properties);
   vk_physical_device_limits_ = properties.limits;

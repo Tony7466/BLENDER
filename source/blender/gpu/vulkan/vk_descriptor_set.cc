@@ -48,20 +48,20 @@ void VKDescriptorSet::bind(VKStorageBuffer &buffer, const Location location)
   binding.buffer_size = buffer.size_in_bytes();
 }
 
-void VKDescriptorSet::bind(VKUniformBuffer &buffer, const Location location)
-{
-  Binding &binding = ensure_location(location);
-  binding.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  binding.vk_buffer = buffer.vk_handle();
-  binding.buffer_size = buffer.size_in_bytes();
-}
-
 void VKDescriptorSet::bind_as_ssbo(VKVertexBuffer &buffer, const Location location)
 {
   Binding &binding = ensure_location(location);
   binding.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
   binding.vk_buffer = buffer.vk_handle();
   binding.buffer_size = buffer.size_used_get();
+}
+
+void VKDescriptorSet::bind(VKUniformBuffer &buffer, const Location location)
+{
+  Binding &binding = ensure_location(location);
+  binding.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  binding.vk_buffer = buffer.vk_handle();
+  binding.buffer_size = buffer.size_in_bytes();
 }
 
 void VKDescriptorSet::bind_as_ssbo(VKIndexBuffer &buffer, const Location location)
