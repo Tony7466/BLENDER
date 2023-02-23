@@ -15,14 +15,14 @@
 namespace blender::gpu {
 
 template<typename Layout>
-static VKPushConstantsLayout::PushConstantLayout init_constant(
+static VKPushConstants::Layout::PushConstant init_constant(
     const shader::ShaderCreateInfo::PushConst &push_constant,
     const ShaderInput &shader_input,
     uint32_t *r_offset)
 {
   align<Layout>(push_constant.type, push_constant.array_size, r_offset);
 
-  VKPushConstantsLayout::PushConstantLayout layout;
+  VKPushConstants::Layout::PushConstant layout;
   layout.location = shader_input.location;
   layout.type = push_constant.type;
   layout.array_size = push_constant.array_size;
@@ -45,7 +45,7 @@ uint32_t struct_size(Span<shader::ShaderCreateInfo::PushConst> push_constants)
   return offset;
 }
 
-VKPushConstantsLayout::StorageType VKPushConstantsLayout::determine_storage_type(
+VKPushConstants::StorageType VKPushConstants::Layout::determine_storage_type(
     const shader::ShaderCreateInfo &info, const VkPhysicalDeviceLimits &vk_physical_device_limits)
 {
   if (info.push_constants_.is_empty()) {
@@ -60,7 +60,7 @@ VKPushConstantsLayout::StorageType VKPushConstantsLayout::determine_storage_type
 template<typename Layout>
 void init_struct(const shader::ShaderCreateInfo &info,
                  const VKShaderInterface &interface,
-                 Vector<VKPushConstantsLayout::PushConstantLayout> &r_struct,
+                 Vector<VKPushConstants::Layout::PushConstant> &r_struct,
                  uint32_t *r_offset)
 {
   for (const shader::ShaderCreateInfo::PushConst &push_constant : info.push_constants_) {
@@ -70,10 +70,10 @@ void init_struct(const shader::ShaderCreateInfo &info,
   align_end_of_struct<Std140>(r_offset);
 }
 
-void VKPushConstantsLayout::init(const shader::ShaderCreateInfo &info,
-                                 const VKShaderInterface &interface,
-                                 const StorageType storage_type,
-                                 const VKDescriptorSet::Location location)
+void VKPushConstants::Layout::init(const shader::ShaderCreateInfo &info,
+                                   const VKShaderInterface &interface,
+                                   const StorageType storage_type,
+                                   const VKDescriptorSet::Location location)
 {
   BLI_assert(push_constants.is_empty());
   storage_type_ = storage_type;
@@ -88,10 +88,9 @@ void VKPushConstantsLayout::init(const shader::ShaderCreateInfo &info,
   }
 }
 
-const VKPushConstantsLayout::PushConstantLayout *VKPushConstantsLayout::find(
-    int32_t location) const
+const VKPushConstants::Layout::PushConstant *VKPushConstants::Layout::find(int32_t location) const
 {
-  for (const PushConstantLayout &push_constant : push_constants) {
+  for (const PushConstant &push_constant : push_constants) {
     if (push_constant.location == location) {
       return &push_constant;
     }
@@ -100,16 +99,16 @@ const VKPushConstantsLayout::PushConstantLayout *VKPushConstantsLayout::find(
 }
 
 VKPushConstants::VKPushConstants() = default;
-VKPushConstants::VKPushConstants(const VKPushConstantsLayout *layout) : layout_(layout)
+VKPushConstants::VKPushConstants(const Layout *layout) : layout_(layout)
 {
   data_ = MEM_mallocN(layout->size_in_bytes(), __func__);
   switch (layout_->storage_type_get()) {
-    case VKPushConstantsLayout::StorageType::UNIFORM_BUFFER:
+    case StorageType::UNIFORM_BUFFER:
       uniform_buffer_ = new VKUniformBuffer(layout_->size_in_bytes(), __func__);
       break;
 
-    case VKPushConstantsLayout::StorageType::PUSH_CONSTANTS:
-    case VKPushConstantsLayout::StorageType::NONE:
+    case StorageType::PUSH_CONSTANTS:
+    case StorageType::NONE:
       break;
   }
 }
@@ -149,7 +148,7 @@ VKPushConstants &VKPushConstants::operator=(VKPushConstants &&other)
 
 void VKPushConstants::update_uniform_buffer()
 {
-  BLI_assert(layout_->storage_type_get() == VKPushConstantsLayout::StorageType::UNIFORM_BUFFER);
+  BLI_assert(layout_->storage_type_get() == StorageType::UNIFORM_BUFFER);
   BLI_assert(uniform_buffer_ != nullptr);
   BLI_assert(data_ != nullptr);
   uniform_buffer_->update(data_);
@@ -157,7 +156,7 @@ void VKPushConstants::update_uniform_buffer()
 
 VKUniformBuffer &VKPushConstants::uniform_buffer_get()
 {
-  BLI_assert(layout_->storage_type_get() == VKPushConstantsLayout::StorageType::UNIFORM_BUFFER);
+  BLI_assert(layout_->storage_type_get() == StorageType::UNIFORM_BUFFER);
   BLI_assert(uniform_buffer_ != nullptr);
   return *uniform_buffer_;
 }

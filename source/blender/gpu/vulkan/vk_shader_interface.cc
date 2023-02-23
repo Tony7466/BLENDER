@@ -45,9 +45,9 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
   /* Reserve 1 storage buffer for push constants fallback. */
   size_t names_size = info.interface_names_size_;
   VKContext &context = *VKContext::get();
-  const VKPushConstantsLayout::StorageType push_constants_storage_type =
-      VKPushConstantsLayout::determine_storage_type(info, context.physical_device_limits_get());
-  if (push_constants_storage_type == VKPushConstantsLayout::StorageType::UNIFORM_BUFFER) {
+  const VKPushConstants::StorageType push_constants_storage_type =
+      VKPushConstants::Layout::determine_storage_type(info, context.physical_device_limits_get());
+  if (push_constants_storage_type == VKPushConstants::StorageType::UNIFORM_BUFFER) {
     ubo_len_++;
     names_size += PUSH_CONSTANTS_FALLBACK_NAME_LEN + 1;
   }
@@ -73,7 +73,7 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
   }
   /* Add push constant when using uniform buffer as fallback. */
   int32_t push_constants_fallback_location = -1;
-  if (push_constants_storage_type == VKPushConstantsLayout::StorageType::UNIFORM_BUFFER) {
+  if (push_constants_storage_type == VKPushConstants::StorageType::UNIFORM_BUFFER) {
     copy_input_name(input, PUSH_CONSTANTS_FALLBACK_NAME, name_buffer_, name_buffer_offset);
     input->location = input->binding = -1;
     input++;
@@ -138,7 +138,7 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
   /* Post initializing push constants.*/
   /* Determine the binding location of push constants fallback buffer.*/
   int32_t push_constant_descriptor_set_location = -1;
-  if (push_constants_storage_type == VKPushConstantsLayout::StorageType::UNIFORM_BUFFER) {
+  if (push_constants_storage_type == VKPushConstants::StorageType::UNIFORM_BUFFER) {
     push_constant_descriptor_set_location = descriptor_set_location++;
     const ShaderInput *push_constant_input = ubo_get(PUSH_CONSTANTS_FALLBACK_NAME.c_str());
     descriptor_set_location_update(push_constant_input, push_constants_fallback_location);

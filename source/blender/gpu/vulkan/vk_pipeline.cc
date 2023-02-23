@@ -29,11 +29,12 @@ VKPipeline::~VKPipeline()
   }
 }
 
-VKPipeline VKPipeline::create_compute_pipeline(VKContext &context,
-                                               VkShaderModule compute_module,
-                                               VkDescriptorSetLayout &descriptor_set_layout,
-                                               VkPipelineLayout &pipeline_layout,
-                                               const VKPushConstantsLayout &push_constants_layout)
+VKPipeline VKPipeline::create_compute_pipeline(
+    VKContext &context,
+    VkShaderModule compute_module,
+    VkDescriptorSetLayout &descriptor_set_layout,
+    VkPipelineLayout &pipeline_layout,
+    const VKPushConstants::Layout &push_constants_layout)
 {
   VK_ALLOCATION_CALLBACKS
   VkDevice vk_device = context.device_get();

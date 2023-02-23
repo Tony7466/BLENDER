@@ -756,10 +756,9 @@ bool VKShader::finalize_pipeline_layout(VkDevice vk_device,
   pipeline_info.pSetLayouts = &layout_;
 
   /* Setup push constants. */
-  const VKPushConstantsLayout &push_constants_layout =
+  const VKPushConstants::Layout &push_constants_layout =
       shader_interface.push_constants_layout_get();
-  if (push_constants_layout.storage_type_get() ==
-      VKPushConstantsLayout::StorageType::PUSH_CONSTANTS) {
+  if (push_constants_layout.storage_type_get() == VKPushConstants::StorageType::PUSH_CONSTANTS) {
     push_constant_range.offset = 0;
     push_constant_range.size = push_constants_layout.size_in_bytes();
     push_constant_range.stageFlags = VK_SHADER_STAGE_ALL;
@@ -886,10 +885,10 @@ static VkDescriptorSetLayoutBinding create_descriptor_set_layout_binding(
 }
 
 static VkDescriptorSetLayoutBinding create_descriptor_set_layout_binding(
-    const VKPushConstantsLayout &push_constants_layout)
+    const VKPushConstants::Layout &push_constants_layout)
 {
   BLI_assert(push_constants_layout.storage_type_get() ==
-             VKPushConstantsLayout::StorageType::UNIFORM_BUFFER);
+             VKPushConstants::StorageType::UNIFORM_BUFFER);
   VkDescriptorSetLayoutBinding binding = {};
   binding.binding = push_constants_layout.storage_buffer_binding_get();
   binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -911,9 +910,8 @@ static void add_descriptor_set_layout_bindings(
   }
 
   /* Add push constants to the descriptor when push constants are stored in an uniform buffer.*/
-  const VKPushConstantsLayout &push_constants_layout = interface.push_constants_layout_get();
-  if (push_constants_layout.storage_type_get() ==
-      VKPushConstantsLayout::StorageType::UNIFORM_BUFFER) {
+  const VKPushConstants::Layout &push_constants_layout = interface.push_constants_layout_get();
+  if (push_constants_layout.storage_type_get() == VKPushConstants::StorageType::UNIFORM_BUFFER) {
     r_bindings.append(create_descriptor_set_layout_binding(push_constants_layout));
   }
 }
@@ -938,7 +936,7 @@ static bool descriptor_sets_needed(const VKShaderInterface &shader_interface,
 {
   return !info.pass_resources_.is_empty() || !info.batch_resources_.is_empty() ||
          shader_interface.push_constants_layout_get().storage_type_get() ==
-             VKPushConstantsLayout::StorageType::UNIFORM_BUFFER;
+             VKPushConstants::StorageType::UNIFORM_BUFFER;
 }
 
 bool VKShader::finalize_descriptor_set_layouts(VkDevice vk_device,
@@ -1038,15 +1036,15 @@ std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) co
   }
 
   /* Push constants. */
-  const VKPushConstantsLayout &push_constants_layout = interface.push_constants_layout_get();
-  const VKPushConstantsLayout::StorageType push_constants_storage =
+  const VKPushConstants::Layout &push_constants_layout = interface.push_constants_layout_get();
+  const VKPushConstants::StorageType push_constants_storage =
       push_constants_layout.storage_type_get();
-  if (push_constants_storage != VKPushConstantsLayout::StorageType::NONE) {
+  if (push_constants_storage != VKPushConstants::StorageType::NONE) {
     ss << "\n/* Push Constants. */\n";
-    if (push_constants_storage == VKPushConstantsLayout::StorageType::PUSH_CONSTANTS) {
+    if (push_constants_storage == VKPushConstants::StorageType::PUSH_CONSTANTS) {
       ss << "layout(push_constant) uniform constants\n";
     }
-    else if (push_constants_storage == VKPushConstantsLayout::StorageType::UNIFORM_BUFFER) {
+    else if (push_constants_storage == VKPushConstants::StorageType::UNIFORM_BUFFER) {
       ss << "layout(binding = " << push_constants_layout.storage_buffer_binding_get()
          << ", std140) uniform constants\n";
     }

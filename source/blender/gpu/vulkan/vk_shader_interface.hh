@@ -29,7 +29,7 @@ class VKShaderInterface : public ShaderInterface {
   uint32_t image_offset_ = 0;
   Array<VKDescriptorSet::Location> descriptor_set_locations_;
 
-  VKPushConstantsLayout push_constants_layout_;
+  VKPushConstants::Layout push_constants_layout_;
 
  public:
   /**
@@ -49,8 +49,8 @@ class VKShaderInterface : public ShaderInterface {
   const VKDescriptorSet::Location descriptor_set_location(
       const shader::ShaderCreateInfo::Resource::BindType &bind_type, int binding) const;
 
-  /** Get the VKPushConstantsLayout of the shader.*/
-  const VKPushConstantsLayout &push_constants_layout_get() const
+  /** Get the Layout of the shader.*/
+  const VKPushConstants::Layout &push_constants_layout_get() const
   {
     return push_constants_layout_;
   }

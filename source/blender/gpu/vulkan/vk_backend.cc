@@ -71,15 +71,15 @@ void VKBackend::compute_dispatch(int groups_x_len, int groups_y_len, int groups_
 
   /* Update push constants based on their storage type.*/
   switch (push_constants.layout_get().storage_type_get()) {
-    case VKPushConstantsLayout::StorageType::NONE:
+    case VKPushConstants::StorageType::NONE:
       break;
 
-    case VKPushConstantsLayout::StorageType::PUSH_CONSTANTS:
+    case VKPushConstants::StorageType::PUSH_CONSTANTS:
       command_buffer.push_constants(
           push_constants, shader->vk_pipeline_layout_get(), VK_SHADER_STAGE_ALL);
       break;
 
-    case VKPushConstantsLayout::StorageType::UNIFORM_BUFFER:
+    case VKPushConstants::StorageType::UNIFORM_BUFFER:
       push_constants.update_uniform_buffer();
       descriptor_set.bind(push_constants.uniform_buffer_get(),
                           push_constants.layout_get().storage_buffer_binding_get());
