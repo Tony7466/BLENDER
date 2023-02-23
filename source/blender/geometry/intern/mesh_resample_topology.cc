@@ -152,6 +152,13 @@ class MeshMarket {
       }
       return OffestRange(range.shift(n));
     }
+
+    void status(std::stringstream &stream, const char *pref = "") const
+    {
+      stream << pref << "{Start: " << range.start();
+      stream << " : Size: " << range.size();
+      stream << ", End: " << range.one_after_last() << "}\n";
+    }
   };
 
   struct CustomData {
@@ -160,22 +167,25 @@ class MeshMarket {
     OffestRange loop;
     OffestRange face;
 
-    void debug_print(const char *pref = "") const
+    void status(std::stringstream &stream, const char *pref = "") const
     {
-      printf("%s: CustomData: v{%d : %d, %d}, e{%d : %d, %d}, l{%d : %d, %d}, f{%d : %d, %d};\n",
-             pref,
-             int(vert.range.start()),
-             int(vert.range.size()),
-             int(vert.range.one_after_last()),
-             int(edge.range.start()),
-             int(edge.range.size()),
-             int(edge.range.one_after_last()),
-             int(loop.range.start()),
-             int(loop.range.size()),
-             int(loop.range.one_after_last()),
-             int(face.range.start()),
-             int(face.range.size()),
-             int(face.range.one_after_last()));
+      stream << pref << "CustomData:\n";
+      {
+        std::string new_pref = std::string(pref) + std::string("  Verts");
+        vert.status(stream, new_pref.c_str());
+      }
+      {
+        std::string new_pref = std::string(pref) + std::string("  Edges");
+        edge.status(stream, new_pref.c_str());
+      }
+      {
+        std::string new_pref = std::string(pref) + std::string("  Loops");
+        loop.status(stream, new_pref.c_str());
+      }
+      {
+        std::string new_pref = std::string(pref) + std::string("  Faces");
+        face.status(stream, new_pref.c_str());
+      }
     };
   };
 
@@ -185,6 +195,17 @@ class MeshMarket {
 
  public:
   MeshMarket() = default;
+
+  void status(std::stringstream &stream) const
+  {
+    stream << "Status:\n";
+    stream << "  Has mesh: " << ((result != nullptr) ? "True" : "False") << ";\n";
+    stream << "  Customs{\n";
+    for (const CustomData &cdata : customs_) {
+      cdata.status(stream, "    ");
+    }
+    stream << "};\n";
+  }
 
   int add_custom(const int tot_vert, const int tot_edge, const int tot_loop, const int tot_face)
   {
@@ -236,8 +257,7 @@ class MeshMarket {
         return;
       }
       else {
-        MutableSpan<int> accumulations = allocator_.allocate_array<int>(
-            counts.index_range().one_after_last());
+        MutableSpan<int> accumulations = allocator_.allocate_array<int>(counts.size() + 1);
         accumulations.last() = 0;
         counts.materialize(accumulations.drop_back(1));
         offset_indices::accumulate_counts_to_offsets(accumulations);
