@@ -49,6 +49,7 @@ struct bNodeSocket;
 struct bNodeTree;
 struct bPoseChannel;
 struct bSound;
+struct PointerRNA;
 
 namespace blender::deg {
 
@@ -215,7 +216,7 @@ class DepsgraphNodeBuilder : public DepsgraphBuilder {
    */
   virtual void build_driver(ID *id, FCurve *fcurve, int driver_index);
   virtual void build_driver_variables(ID *id, FCurve *fcurve);
-  virtual void build_driver_id_property(ID *id, const char *rna_path);
+  virtual void build_driver_id_property(const PointerRNA &target_prop, const char *rna_path);
   virtual void build_parameters(ID *id);
   virtual void build_dimensions(Object *object);
   virtual void build_ik_pose(Object *object, bPoseChannel *pchan, bConstraint *con);

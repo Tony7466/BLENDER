@@ -171,7 +171,7 @@ class DepsgraphRelationBuilder : public DepsgraphBuilder {
   virtual void build_driver(ID *id, FCurve *fcurve);
   virtual void build_driver_data(ID *id, FCurve *fcurve);
   virtual void build_driver_variables(ID *id, FCurve *fcurve);
-  virtual void build_driver_id_property(ID *id, const char *rna_path);
+  virtual void build_driver_id_property(const PointerRNA &target_prop, const char *rna_path);
   virtual void build_parameters(ID *id);
   virtual void build_dimensions(Object *object);
   virtual void build_world(World *world);
