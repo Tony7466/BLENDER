@@ -35,10 +35,18 @@ void FinalEngine::render(BL::Depsgraph &b_depsgraph)
   BL::Scene b_scene = b_depsgraph.scene();
   BL::ViewLayer b_view_layer = b_depsgraph.view_layer();
   string sceneName = b_scene.name(), layerName = b_view_layer.name();
-  GfVec2i res = get_resolution(b_scene.render());
-  GfCamera gfCamera = CameraData((Object *)b_scene.camera().ptr.data, res, GfVec4f(0, 0, 1, 1)).gf_camera();
+  GfVec2i buffer_res = get_resolution(b_scene.render());
+  GfVec2i image_res = {b_scene.render().resolution_x() * b_scene.render().resolution_percentage() / 100,
+                       b_scene.render().resolution_y() * b_scene.render().resolution_percentage() / 100};
+
+  auto max_x = b_scene.render().border_max_x();
+  auto min_x = b_scene.render().border_min_x();
+  auto max_y = b_scene.render().border_max_y();
+  auto min_y = b_scene.render().border_min_y();
+
+  GfCamera gfCamera = CameraData((Object *)b_scene.camera().ptr.data, image_res, GfVec4f(0, 0, 1, 1)).gf_camera(GfVec4f(min_x, min_y, max_x - min_x, max_y - min_y));
   freeCameraDelegate->SetCamera(gfCamera);
-  renderTaskDelegate->SetCameraAndViewport(freeCameraDelegate->GetCameraId(), GfVec4d(0, 0, res[0], res[1]));
+  renderTaskDelegate->SetCameraAndViewport(freeCameraDelegate->GetCameraId(), GfVec4d(0, 0, buffer_res[0], buffer_res[1]));
   renderTaskDelegate->SetRendererAov(HdAovTokens->color);
   
   HdTaskSharedPtrVector tasks = renderTaskDelegate->GetTasks();
@@ -49,7 +57,7 @@ void FinalEngine::render(BL::Depsgraph &b_depsgraph)
   float percentDone = 0.0;
 
   map<string, vector<float>> renderImages{
-    {"Combined", vector<float>(res[0] * res[1] * 4)}};  // 4 - number of channels
+    {"Combined", vector<float>(buffer_res[0] * buffer_res[1] * 4)}};  // 4 - number of channels
   vector<float> &pixels = renderImages["Combined"];
 
   {
@@ -75,11 +83,11 @@ void FinalEngine::render(BL::Depsgraph &b_depsgraph)
     }
 
     renderTaskDelegate->GetRendererAovData(HdAovTokens->color, pixels.data());
-    updateRenderResult(renderImages, layerName, res[0], res[1]);
+    updateRenderResult(renderImages, layerName, buffer_res[0], buffer_res[1]);
   }
 
   renderTaskDelegate->GetRendererAovData(HdAovTokens->color, pixels.data());
-  updateRenderResult(renderImages, layerName, res[0], res[1]);
+  updateRenderResult(renderImages, layerName, buffer_res[0], buffer_res[1]);
 }
 
 GfVec2i FinalEngine::get_resolution(BL::RenderSettings b_render)
