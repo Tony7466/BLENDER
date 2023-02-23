@@ -6,7 +6,6 @@
  */
 
 #include "vk_buffer.hh"
-#include "vk_context.hh"
 
 namespace blender::gpu {
 
