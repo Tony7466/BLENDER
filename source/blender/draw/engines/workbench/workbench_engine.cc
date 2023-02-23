@@ -207,8 +207,6 @@ class Instance {
             if (batches[i] == nullptr) {
               continue;
             }
-            ResourceHandle _handle = handle;
-            _handle.sub_index = i;
 
             Material &mat = resources.material_buf.get_or_resize(material_count++);
 
@@ -228,7 +226,10 @@ class Instance {
               get_material_image(ob_ref.object, i + 1, image, iuser, sampler_state);
             }
 
-            draw_mesh(ob_ref, mat, batches[i], _handle, image, sampler_state, iuser);
+            if (i != 0) {
+              handle = manager.resource_sub_handle(handle);
+            }
+            draw_mesh(ob_ref, mat, batches[i], handle, image, sampler_state, iuser);
           }
         }
       }

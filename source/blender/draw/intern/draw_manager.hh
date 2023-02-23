@@ -109,6 +109,9 @@ class Manager {
   /** Number of object attribute recorded. */
   uint attribute_len_ = 0;
 
+  Vector<uint8_t> sub_handle_indices_;
+  int max_sub_handles_ = 64;
+
   Object *object_active = nullptr;
 
  public:
@@ -133,6 +136,12 @@ class Manager {
   ResourceHandle resource_handle(const float4x4 &model_matrix,
                                  const float3 &bounds_center,
                                  const float3 &bounds_half_extent);
+
+  /**
+   * Returns a copy of the resource handle with a unique sub-index.
+   * Or a new full copy handle when running out of sub-indices.
+   */
+  ResourceHandle resource_sub_handle(const ResourceHandle handle);
 
   /**
    * Populate additional per resource data on demand.
@@ -196,6 +205,7 @@ inline ResourceHandle Manager::resource_handle(const ObjectRef ref)
   matrix_buf.current().get_or_resize(resource_len_).sync(*ref.object);
   bounds_buf.current().get_or_resize(resource_len_).sync(*ref.object);
   infos_buf.current().get_or_resize(resource_len_).sync(ref, is_active_object);
+  sub_handle_indices_.append(0);
   return ResourceHandle(resource_len_++, (ref.object->transflag & OB_NEG_SCALE) != 0);
 }
 
@@ -204,6 +214,7 @@ inline ResourceHandle Manager::resource_handle(const float4x4 &model_matrix)
   matrix_buf.current().get_or_resize(resource_len_).sync(model_matrix);
   bounds_buf.current().get_or_resize(resource_len_).sync();
   infos_buf.current().get_or_resize(resource_len_).sync();
+  sub_handle_indices_.append(0);
   return ResourceHandle(resource_len_++, false);
 }
 
@@ -214,7 +225,32 @@ inline ResourceHandle Manager::resource_handle(const float4x4 &model_matrix,
   matrix_buf.current().get_or_resize(resource_len_).sync(model_matrix);
   bounds_buf.current().get_or_resize(resource_len_).sync(bounds_center, bounds_half_extent);
   infos_buf.current().get_or_resize(resource_len_).sync();
+  sub_handle_indices_.append(0);
   return ResourceHandle(resource_len_++, false);
+}
+
+inline ResourceHandle Manager::resource_sub_handle(const ResourceHandle handle)
+{
+  const uint i = handle.resource_index();
+
+  /* Always call resource_sub_handle_with a new handle or its last created sub-handle.
+   * This avoids reaching a point where a handle has been already saturated and each call to this
+   * function creates a new copy.*/
+  BLI_assert(handle.sub_index == sub_handle_indices_[i]);
+
+  if (++sub_handle_indices_[i] < max_sub_handles_) {
+    ResourceHandle sub_handle = handle;
+    sub_handle.sub_index = sub_handle_indices_[i];
+    return sub_handle;
+  }
+  else {
+    /* Can't add more sub handles, make a full copy instead. */
+    matrix_buf.current().get_or_resize(resource_len_) = matrix_buf.current()[i];
+    bounds_buf.current().get_or_resize(resource_len_) = bounds_buf.current()[i];
+    infos_buf.current().get_or_resize(resource_len_) = infos_buf.current()[i];
+    sub_handle_indices_.append(0);
+    return ResourceHandle(resource_len_++, handle.has_inverted_handedness());
+  }
 }
 
 inline void Manager::extract_object_attributes(ResourceHandle handle,

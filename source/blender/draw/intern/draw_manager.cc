@@ -55,6 +55,7 @@ void Manager::begin_sync()
 #endif
   resource_len_ = 0;
   attribute_len_ = 0;
+  sub_handle_indices_.clear();
   /* TODO(fclem): Resize buffers if too big, but with an hysteresis threshold. */
 
   object_active = DST.draw_ctx.obact;
