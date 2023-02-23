@@ -38,6 +38,8 @@ class Instance {
   DofPass dof_ps;
   AntiAliasingPass anti_aliasing_ps;
 
+  uint material_count = 0;
+
   /* An array of nullptr GPUMaterial pointers so we can call DRW_cache_object_surface_material_get.
    * They never get actually used. */
   Vector<GPUMaterial *> dummy_gpu_materials = {1, nullptr, {}};
@@ -68,6 +70,7 @@ class Instance {
                                  resolution,
                                  GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT |
                                      GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW);
+    material_count = 0;
 
     opaque_ps.sync(scene_state, resources);
     transparent_ps.sync(scene_state, resources);
@@ -82,6 +85,7 @@ class Instance {
   void end_sync()
   {
     resources.material_buf.push_update();
+    resources.per_obj_material_start_buf.push_update();
   }
 
   void object_sync(Manager &manager, ObjectRef &ob_ref)
@@ -177,6 +181,7 @@ class Instance {
   void mesh_sync(Manager &manager, ObjectRef &ob_ref, const ObjectState &object_state)
   {
     ResourceHandle handle = manager.resource_handle(ob_ref);
+    resources.per_obj_material_start_buf.get_or_resize(handle.resource_index()) = material_count;
     bool has_transparent_material = false;
 
     if (object_state.sculpt_pbvh) {
@@ -186,7 +191,7 @@ class Instance {
     }
     else {
       if (object_state.use_per_material_batches) {
-        const int material_count = DRW_cache_object_material_count_get(ob_ref.object);
+        const int slot_count = DRW_cache_object_material_count_get(ob_ref.object);
 
         struct GPUBatch **batches;
         if (object_state.color_type == V3D_SHADING_TEXTURE_COLOR) {
@@ -194,20 +199,18 @@ class Instance {
         }
         else {
           batches = DRW_cache_object_surface_material_get(
-              ob_ref.object, get_dummy_gpu_materials(material_count), material_count);
+              ob_ref.object, get_dummy_gpu_materials(slot_count), slot_count);
         }
 
         if (batches) {
-          for (auto i : IndexRange(material_count)) {
+          for (auto i : IndexRange(slot_count)) {
             if (batches[i] == nullptr) {
               continue;
             }
-            /* TODO(fclem): This create a cull-able instance for each sub-object. This is done
-             * for simplicity to reduce complexity. But this increase the overhead per object.
-             * Instead, we should use an indirection buffer to the material buffer. */
-            ResourceHandle _handle = i == 0 ? handle : manager.resource_handle(ob_ref);
+            ResourceHandle _handle = handle;
+            _handle.sub_index = i;
 
-            Material &mat = resources.material_buf.get_or_resize(_handle.resource_index());
+            Material &mat = resources.material_buf.get_or_resize(material_count++);
 
             if (::Material *_mat = BKE_object_material_get_eval(ob_ref.object, i + 1)) {
               mat = Material(*_mat);
@@ -247,7 +250,7 @@ class Instance {
         }
 
         if (batch) {
-          Material &mat = resources.material_buf.get_or_resize(handle.resource_index());
+          Material &mat = resources.material_buf.get_or_resize(material_count++);
 
           if (object_state.color_type == V3D_SHADING_OBJECT_COLOR) {
             mat = Material(*ob_ref.object);

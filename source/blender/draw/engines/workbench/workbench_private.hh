@@ -148,6 +148,7 @@ struct SceneResources {
   TextureFromPool depth_in_front_tx = "wb_depth_in_front_tx";
 
   StorageVectorBuffer<Material> material_buf = {"material_buf"};
+  StorageVectorBuffer<uint> per_obj_material_start_buf = {"per_obj_material_start_buf"};
   UniformBuffer<WorldData> world_buf = {};
   UniformArrayBuffer<float4, 6> clip_planes_buf;
 

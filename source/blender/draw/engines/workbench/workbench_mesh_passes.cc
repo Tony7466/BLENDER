@@ -22,8 +22,9 @@ void MeshPass::init_pass(SceneResources &resources, DRWState state, int clip_pla
   PassMain::init();
   state_set(state, clip_planes);
   bind_texture(WB_MATCAP_SLOT, resources.matcap_tx);
-  bind_ssbo(WB_MATERIAL_SLOT, &resources.material_buf);
   bind_ubo(WB_WORLD_SLOT, resources.world_buf);
+  bind_ssbo(WB_MATERIAL_SLOT, &resources.material_buf);
+  bind_ssbo(WB_MATERIAL_START_SLOT, &resources.per_obj_material_start_buf);
   if (clip_planes > 0) {
     bind_ubo(DRW_CLIPPING_UBO_SLOT, resources.clip_planes_buf);
   }

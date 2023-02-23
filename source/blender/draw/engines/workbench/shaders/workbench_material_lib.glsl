@@ -17,7 +17,8 @@ void workbench_material_data_get(int handle,
 #else
 
 #  ifdef WORKBENCH_COLOR_MATERIAL
-  vec4 data = materials_data[handle];
+  uint index = material_start_indices[resource_id] + sub_resource_id;
+  vec4 data = materials_data[index];
 #  else
   vec4 data = vec4(0.0);
 #  endif
