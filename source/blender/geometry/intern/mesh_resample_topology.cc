@@ -130,37 +130,52 @@ class MeshMarket {
  private:
   LinearAllocator<> allocator_;
 
-  struct CustomOffsets {
-    std::optional<Span<int>> vert_offsets;
-    std::optional<Span<int>> edge_offsets;
-    std::optional<Span<int>> loop_offsets;
-    std::optional<Span<int>> face_offsets;
+  struct OffestRange {
+    IndexRange range;
+    std::optional<Span<int>> offsets;
+
+    OffestRange() = default;
+
+    OffestRange(const IndexRange in_range, const Span<int> in_offsets)
+        : range(in_range), offsets(in_offsets)
+    {
+    }
+
+    OffestRange(const IndexRange in_range) : range(in_range)
+    {
+    }
+
+    OffestRange shift(const int64_t n) const
+    {
+      if (offsets.has_value()) {
+        return OffestRange(range.shift(n), *offsets);
+      }
+      return OffestRange(range.shift(n));
+    }
   };
 
   struct CustomData {
-    IndexRange vert_range;
-    IndexRange edge_range;
-    IndexRange loop_range;
-    IndexRange face_range;
-
-    CustomOffsets offsets;
+    OffestRange vert;
+    OffestRange edge;
+    OffestRange loop;
+    OffestRange face;
 
     void debug_print(const char *pref = "") const
     {
       printf("%s: CustomData: v{%d : %d, %d}, e{%d : %d, %d}, l{%d : %d, %d}, f{%d : %d, %d};\n",
              pref,
-             int(vert_range.start()),
-             int(vert_range.size()),
-             int(vert_range.one_after_last()),
-             int(edge_range.start()),
-             int(edge_range.size()),
-             int(edge_range.one_after_last()),
-             int(loop_range.start()),
-             int(loop_range.size()),
-             int(loop_range.one_after_last()),
-             int(face_range.start()),
-             int(face_range.size()),
-             int(face_range.one_after_last()));
+             int(vert.range.start()),
+             int(vert.range.size()),
+             int(vert.range.one_after_last()),
+             int(edge.range.start()),
+             int(edge.range.size()),
+             int(edge.range.one_after_last()),
+             int(loop.range.start()),
+             int(loop.range.size()),
+             int(loop.range.one_after_last()),
+             int(face.range.start()),
+             int(face.range.size()),
+             int(face.range.one_after_last()));
     };
   };
 
@@ -171,81 +186,88 @@ class MeshMarket {
  public:
   MeshMarket() = default;
 
-  int add_custom(const int vert,
-                 const int edge,
-                 const int loop,
-                 const int face,
-                 const CustomOffsets offset_values = {})
+  int add_custom(const int tot_vert, const int tot_edge, const int tot_loop, const int tot_face)
   {
+    const int index = this->add_custom(OffestRange(IndexRange(tot_vert)),
+                                       OffestRange(IndexRange(tot_edge)),
+                                       OffestRange(IndexRange(tot_loop)),
+                                       OffestRange(IndexRange(tot_face)));
+    return index;
+  }
+
+  int add_custom(const OffestRange vert,
+                 const OffestRange edge,
+                 const OffestRange loop,
+                 const OffestRange face)
+  {
+    const CustomData new_range{vert, edge, loop, face};
+
     if (customs_.is_empty()) {
-      const CustomData new_range{IndexRange(vert),
-                                 IndexRange(edge),
-                                 IndexRange(loop),
-                                 IndexRange(face),
-                                 std::move(offset_values)};
       customs_.append(new_range);
       return 0;
     }
 
-    const CustomData prev_range = customs_.last();
+    const CustomData previous_one = customs_.last();
+    const CustomData another_one{new_range.vert.shift(previous_one.vert.range.one_after_last()),
+                                 new_range.edge.shift(previous_one.edge.range.one_after_last()),
+                                 new_range.loop.shift(previous_one.loop.range.one_after_last()),
+                                 new_range.face.shift(previous_one.face.range.one_after_last())};
 
-    const CustomData new_range{IndexRange(prev_range.vert_range.one_after_last(), vert),
-                               IndexRange(prev_range.edge_range.one_after_last(), edge),
-                               IndexRange(prev_range.loop_range.one_after_last(), loop),
-                               IndexRange(prev_range.face_range.one_after_last(), face),
-                               std::move(offset_values)};
+    return customs_.append_and_get_index(another_one);
+  }
 
-    return customs_.append_and_get_index(new_range);
-    ;
+  int add_custom(const CustomData custom)
+  {
+    const int index = this->add_custom(custom.vert, custom.edge, custom.loop, custom.face);
+    return index;
   }
 
   int add_custom(const VArray<int> verts,
                  const VArray<int> edges,
                  const VArray<int> loops,
-                 const VArray<int> faces,
-                 const bool save_offsets = true)
+                 const VArray<int> faces)
   {
 
-    auto total_size = [save_offsets, &allocator_ = this->allocator_](
-                          const VArray<int> &counts, std::optional<Span<int>> &offsets) -> int {
+    auto total_size = [&allocator_ = this->allocator_](const VArray<int> &counts,
+                                                       OffestRange &r_offset_range) {
       if (counts.is_single()) {
-        return counts.get_internal_single() * counts.size();
+        const int total_size = counts.get_internal_single() * counts.size();
+        r_offset_range.range = IndexRange(total_size);
+        return;
       }
       else {
-        MutableSpan<int> vert_accumulate = allocator_.allocate_array<int>(
+        MutableSpan<int> accumulations = allocator_.allocate_array<int>(
             counts.index_range().one_after_last());
-        vert_accumulate.last() = 0;
-        counts.materialize(vert_accumulate.drop_back(1));
-        offset_indices::accumulate_counts_to_offsets(vert_accumulate);
-        const int total_size = vert_accumulate.last();
-        if (save_offsets) {
-          offsets.emplace(std::move(vert_accumulate));
-        }
+        accumulations.last() = 0;
+        counts.materialize(accumulations.drop_back(1));
+        offset_indices::accumulate_counts_to_offsets(accumulations);
+        const int total_size = accumulations.last();
 
-        return total_size;
+        r_offset_range.range = IndexRange(total_size);
+        r_offset_range.offsets.emplace(accumulations.as_span());
+        return;
       }
     };
 
-    CustomOffsets offsets;
+    CustomData custom;
 
-    const int vert_total_size = total_size(std::move(verts), offsets.vert_offsets);
-    const int edge_total_size = total_size(std::move(edges), offsets.edge_offsets);
-    const int loop_total_size = total_size(std::move(loops), offsets.loop_offsets);
-    const int face_total_size = total_size(std::move(faces), offsets.face_offsets);
+    total_size(std::move(verts), custom.vert);
+    total_size(std::move(edges), custom.edge);
+    total_size(std::move(loops), custom.loop);
+    total_size(std::move(faces), custom.face);
 
-    return this->add_custom(
-        vert_total_size, edge_total_size, loop_total_size, face_total_size, std::move(offsets));
+    return this->add_custom(custom);
   }
 
-  void build_new_mesh()
+  void finalize()
   {
     BLI_assert(result == nullptr);
     const CustomData &last_custom = customs_.last();
-    result = BKE_mesh_new_nomain(last_custom.vert_range.one_after_last(),
-                                 last_custom.edge_range.one_after_last(),
+    result = BKE_mesh_new_nomain(last_custom.vert.range.one_after_last(),
+                                 last_custom.edge.range.one_after_last(),
                                  0,
-                                 last_custom.loop_range.one_after_last(),
-                                 last_custom.face_range.one_after_last());
+                                 last_custom.loop.range.one_after_last(),
+                                 last_custom.face.range.one_after_last());
   }
 
   Mesh &mesh() const
@@ -254,60 +276,56 @@ class MeshMarket {
     return *result;
   }
 
-  IndexRange get_vert_range_in(const int custom_index) const
+  IndexRange get_vert_range_in(const int index) const
   {
-    const CustomData &last_custom = customs_[custom_index];
-    return last_custom.vert_range;
+    const CustomData &custom = customs_[index];
+    return custom.vert.range;
   }
 
-  IndexRange get_edge_range_in(const int custom_index) const
+  IndexRange get_edge_range_in(const int index) const
   {
-    const CustomData &last_custom = customs_[custom_index];
-    return last_custom.edge_range;
+    const CustomData &custom = customs_[index];
+    return custom.edge.range;
   }
 
-  IndexRange get_loop_range_in(const int custom_index) const
+  IndexRange get_loop_range_in(const int index) const
   {
-    const CustomData &last_custom = customs_[custom_index];
-    return last_custom.loop_range;
+    const CustomData &custom = customs_[index];
+    return custom.loop.range;
   }
 
-  IndexRange get_face_range_in(const int custom_index) const
+  IndexRange get_face_range_in(const int index) const
   {
-    const CustomData &last_custom = customs_[custom_index];
-    return last_custom.face_range;
+    const CustomData &custom = customs_[index];
+    return custom.face.range;
   }
 
-  OffsetIndices<int> get_vert_offsets_in(const int custom_index) const
+  OffsetIndices<int> get_vert_offsets_in(const int index) const
   {
-    const CustomData &last_custom = customs_[custom_index];
-    BLI_assert(last_custom.offsets.vert_offsets);
-
-    return OffsetIndices<int>(*last_custom.offsets.vert_offsets);
+    const CustomData &custom = customs_[index];
+    BLI_assert(custom.vert.offsets.has_value());
+    return *custom.vert.offsets;
   }
 
-  OffsetIndices<int> get_edge_offsets_in(const int custom_index) const
+  OffsetIndices<int> get_edge_offsets_in(const int index) const
   {
-    const CustomData &last_custom = customs_[custom_index];
-    BLI_assert(last_custom.offsets.edge_offsets);
-
-    return OffsetIndices<int>(*last_custom.offsets.edge_offsets);
+    const CustomData &custom = customs_[index];
+    BLI_assert(custom.edge.offsets.has_value());
+    return *custom.edge.offsets;
   }
 
-  OffsetIndices<int> get_loop_offsets_in(const int custom_index) const
+  OffsetIndices<int> get_loop_offsets_in(const int index) const
   {
-    const CustomData &last_custom = customs_[custom_index];
-    BLI_assert(last_custom.offsets.loop_offsets);
-
-    return OffsetIndices<int>(*last_custom.offsets.loop_offsets);
+    const CustomData &custom = customs_[index];
+    BLI_assert(custom.loop.offsets.has_value());
+    return *custom.loop.offsets;
   }
 
-  OffsetIndices<int> get_face_offsets_in(const int custom_index) const
+  OffsetIndices<int> get_face_offsets_in(const int index) const
   {
-    const CustomData &last_custom = customs_[custom_index];
-    BLI_assert(last_custom.offsets.face_offsets);
-
-    return OffsetIndices<int>(*last_custom.offsets.face_offsets);
+    const CustomData &custom = customs_[index];
+    BLI_assert(custom.face.offsets.has_value());
+    return *custom.face.offsets;
   }
 };
 
@@ -760,10 +778,10 @@ static void propagate_attributes_on_new_mesh(
   }
 }
 
-void compute_new_mesh(const Mesh &mesh,
-                      const Span<int> resample_edge_num,
-                      const bool try_to_fill_by_grid,
-                      detail::MeshMarket &r_mesh_builder)
+void build_mesh(const Mesh &mesh,
+                const Span<int> resample_edge_num,
+                const bool try_to_fill_by_grid,
+                detail::MeshMarket &r_mesh_builder)
 {
   /* New verices for original verts. */
   r_mesh_builder.add_custom(mesh.totvert, 0, 0, 0);
@@ -838,6 +856,8 @@ void compute_new_mesh(const Mesh &mesh,
     /* New faces for original faces. */
     r_mesh_builder.add_custom(0, 0, 0, mesh.totpoly);
   }
+
+  r_mesh_builder.finalize();
 }
 
 void build_new_mesh_topology(const Mesh &mesh,
@@ -873,10 +893,7 @@ Mesh &resample_topology(const Mesh &mesh,
                         const Map<bke::AttributeIDRef, bke::AttributeKind> attributes)
 {
   detail::MeshMarket mesh_builder;
-
-  compute_new_mesh(mesh, resample_edge_num, try_to_fill_by_grid, mesh_builder);
-
-  mesh_builder.build_new_mesh();
+  build_mesh(mesh, resample_edge_num, try_to_fill_by_grid, mesh_builder);
 
   build_new_mesh_topology(mesh, resample_edge_num, try_to_fill_by_grid, mesh_builder);
 
