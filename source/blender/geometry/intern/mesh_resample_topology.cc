@@ -3,7 +3,9 @@
 #include "DNA_mesh_types.h"
 
 #include "BLI_linear_allocator.hh"
+#include "BLI_map.hh"
 #include "BLI_offset_indices.hh"
+#include "BLI_string_ref.hh"
 #include "BLI_virtual_array.hh"
 
 #include "BKE_attribute.hh"
@@ -189,7 +191,11 @@ class MeshMarket {
     };
   };
 
-  Vector<CustomData> customs_;
+  // Vector<CustomData> customs_;
+
+  Map<StringRef, CustomData> customs_;
+  Vector<StringRef> to_debug_in_order_;
+  CustomData *last_one_ = nullptr;
 
   mutable Mesh *result = nullptr;
 
@@ -201,52 +207,61 @@ class MeshMarket {
     stream << "Status:\n";
     stream << "  Has mesh: " << ((result != nullptr) ? "True" : "False") << ";\n";
     stream << "  Customs{\n";
-    for (const CustomData &cdata : customs_) {
-      cdata.status(stream, "    ");
+    for (const StringRef custom_identifier : to_debug_in_order_) {
+      customs_.lookup(custom_identifier).status(stream, "    ");
     }
     stream << "};\n";
   }
 
-  int add_custom(const int tot_vert, const int tot_edge, const int tot_loop, const int tot_face)
+  void add_custom(const StringRef custom_identifier,
+                  const int tot_vert,
+                  const int tot_edge,
+                  const int tot_loop,
+                  const int tot_face)
   {
-    const int index = this->add_custom(OffestRange(IndexRange(tot_vert)),
-                                       OffestRange(IndexRange(tot_edge)),
-                                       OffestRange(IndexRange(tot_loop)),
-                                       OffestRange(IndexRange(tot_face)));
-    return index;
+    this->add_custom(custom_identifier,
+                     OffestRange(IndexRange(tot_vert)),
+                     OffestRange(IndexRange(tot_edge)),
+                     OffestRange(IndexRange(tot_loop)),
+                     OffestRange(IndexRange(tot_face)));
   }
 
-  int add_custom(const OffestRange vert,
-                 const OffestRange edge,
-                 const OffestRange loop,
-                 const OffestRange face)
+  void add_custom(const StringRef custom_identifier,
+                  const OffestRange vert,
+                  const OffestRange edge,
+                  const OffestRange loop,
+                  const OffestRange face)
   {
     const CustomData new_range{vert, edge, loop, face};
 
-    if (customs_.is_empty()) {
-      customs_.append(new_range);
-      return 0;
+    if (last_one_ == nullptr) {
+      customs_.add_new(custom_identifier, new_range);
+      last_one_ = &customs_.lookup(custom_identifier);
+      to_debug_in_order_.append(custom_identifier);
+      return;
     }
 
-    const CustomData previous_one = customs_.last();
+    const CustomData &previous_one = *last_one_;
     const CustomData another_one{new_range.vert.shift(previous_one.vert.range.one_after_last()),
                                  new_range.edge.shift(previous_one.edge.range.one_after_last()),
                                  new_range.loop.shift(previous_one.loop.range.one_after_last()),
                                  new_range.face.shift(previous_one.face.range.one_after_last())};
 
-    return customs_.append_and_get_index(another_one);
+    customs_.add_new(custom_identifier, another_one);
+    last_one_ = &customs_.lookup(custom_identifier);
+    to_debug_in_order_.append(custom_identifier);
   }
 
-  int add_custom(const CustomData custom)
+  void add_custom(const StringRef custom_identifier, const CustomData custom)
   {
-    const int index = this->add_custom(custom.vert, custom.edge, custom.loop, custom.face);
-    return index;
+    this->add_custom(custom_identifier, custom.vert, custom.edge, custom.loop, custom.face);
   }
 
-  int add_custom(const VArray<int> verts,
-                 const VArray<int> edges,
-                 const VArray<int> loops,
-                 const VArray<int> faces)
+  void add_custom(const StringRef custom_identifier,
+                  const VArray<int> verts,
+                  const VArray<int> edges,
+                  const VArray<int> loops,
+                  const VArray<int> faces)
   {
 
     auto total_size = [&allocator_ = this->allocator_](const VArray<int> &counts,
@@ -276,18 +291,18 @@ class MeshMarket {
     total_size(std::move(loops), custom.loop);
     total_size(std::move(faces), custom.face);
 
-    return this->add_custom(custom);
+    this->add_custom(custom_identifier, custom);
   }
 
   void finalize()
   {
     BLI_assert(result == nullptr);
-    const CustomData &last_custom = customs_.last();
-    result = BKE_mesh_new_nomain(last_custom.vert.range.one_after_last(),
-                                 last_custom.edge.range.one_after_last(),
+    BLI_assert(last_one_ != nullptr);
+    result = BKE_mesh_new_nomain(last_one_->vert.range.one_after_last(),
+                                 last_one_->edge.range.one_after_last(),
                                  0,
-                                 last_custom.loop.range.one_after_last(),
-                                 last_custom.face.range.one_after_last());
+                                 last_one_->loop.range.one_after_last(),
+                                 last_one_->face.range.one_after_last());
   }
 
   Mesh &mesh() const
@@ -296,56 +311,49 @@ class MeshMarket {
     return *result;
   }
 
-  IndexRange get_vert_range_in(const int index) const
+  IndexRange lookup_range(const StringRef custom_identifier, const StringRef primitive_type) const
   {
-    const CustomData &custom = customs_[index];
-    return custom.vert.range;
+    const CustomData &custom = customs_.lookup(custom_identifier);
+
+    if ("Vertices" == primitive_type) {
+      return custom.vert.range;
+    }
+    if ("Edges" == primitive_type) {
+      return custom.edge.range;
+    }
+    if ("Loops" == primitive_type) {
+      return custom.loop.range;
+    }
+    if ("Faces" == primitive_type) {
+      return custom.face.range;
+    }
+    BLI_assert_unreachable();
+    return {};
   }
 
-  IndexRange get_edge_range_in(const int index) const
+  OffsetIndices<int> lookup_offsets(const StringRef custom_identifier,
+                                    const StringRef primitive_type) const
   {
-    const CustomData &custom = customs_[index];
-    return custom.edge.range;
-  }
+    const CustomData &custom = customs_.lookup(custom_identifier);
 
-  IndexRange get_loop_range_in(const int index) const
-  {
-    const CustomData &custom = customs_[index];
-    return custom.loop.range;
-  }
-
-  IndexRange get_face_range_in(const int index) const
-  {
-    const CustomData &custom = customs_[index];
-    return custom.face.range;
-  }
-
-  OffsetIndices<int> get_vert_offsets_in(const int index) const
-  {
-    const CustomData &custom = customs_[index];
-    BLI_assert(custom.vert.offsets.has_value());
-    return *custom.vert.offsets;
-  }
-
-  OffsetIndices<int> get_edge_offsets_in(const int index) const
-  {
-    const CustomData &custom = customs_[index];
-    BLI_assert(custom.edge.offsets.has_value());
-    return *custom.edge.offsets;
-  }
-
-  OffsetIndices<int> get_loop_offsets_in(const int index) const
-  {
-    const CustomData &custom = customs_[index];
-    BLI_assert(custom.loop.offsets.has_value());
-    return *custom.loop.offsets;
-  }
-
-  OffsetIndices<int> get_face_offsets_in(const int index) const
-  {
-    const CustomData &custom = customs_[index];
-    BLI_assert(custom.face.offsets.has_value());
-    return *custom.face.offsets;
+    if ("Vertices" == primitive_type) {
+      BLI_assert(custom.vert.offsets.has_value());
+      return *custom.vert.offsets;
+    }
+    if ("Edges" == primitive_type) {
+      BLI_assert(custom.edge.offsets.has_value());
+      return *custom.edge.offsets;
+    }
+    if ("Loops" == primitive_type) {
+      BLI_assert(custom.loop.offsets.has_value());
+      return *custom.loop.offsets;
+    }
+    if ("Faces" == primitive_type) {
+      BLI_assert(custom.face.offsets.has_value());
+      return *custom.face.offsets;
+    }
+    BLI_assert_unreachable();
+    return Span<int>();
   }
 };
 
@@ -505,18 +513,20 @@ void attribute_on_domain(const eAttrDomain domain,
 
     switch (domain) {
       case ATTR_DOMAIN_POINT: {
-        const IndexRange vert_mapping = mesh_builder.get_vert_range_in(0);
+        const IndexRange vert_mapping = mesh_builder.lookup_range("Vertices", "Vertices");
         MutableSpan<T> dst_vert_vertices = dst_typed_values.slice(vert_mapping);
         dst_vert_vertices.copy_from(src_typed_values);
 
-        const OffsetIndices<int> edge_vertices_offsets = mesh_builder.get_vert_offsets_in(1);
+        const OffsetIndices<int> edge_vertices_offsets = mesh_builder.lookup_offsets("Edges",
+                                                                                     "Vertices");
         MutableSpan<T> dst_edge_vertices = dst_typed_values.slice(
-            mesh_builder.get_vert_range_in(1));
+            mesh_builder.lookup_range("Edges", "Vertices"));
         edges_have_created_new_verts<T>(
             edge_vertices_offsets, src_mesh.edges(), src_typed_values, dst_edge_vertices);
 
-        const IndexRange poly_vert_mapping = mesh_builder.get_vert_range_in(2);
-        const OffsetIndices<int> face_vertices_offsets = mesh_builder.get_vert_offsets_in(2);
+        const IndexRange poly_vert_mapping = mesh_builder.lookup_range("Grid faces", "Vertices");
+        const OffsetIndices<int> face_vertices_offsets = mesh_builder.lookup_offsets("Grid faces",
+                                                                                     "Vertices");
 
         MutableSpan<T> poly_dst_vert_vertices = dst_typed_values.slice(poly_vert_mapping);
         polys_have_created_new_verts<T>(face_vertices_offsets,
@@ -528,13 +538,15 @@ void attribute_on_domain(const eAttrDomain domain,
         break;
       }
       case ATTR_DOMAIN_EDGE: {
-        const OffsetIndices<int> edge_edges_offsets = mesh_builder.get_edge_offsets_in(1);
+        const OffsetIndices<int> edge_edges_offsets = mesh_builder.lookup_offsets("Edges",
+                                                                                  "Edges");
         edges_have_created_new_edges<T>(edge_edges_offsets, src_typed_values, dst_typed_values);
         polys_have_created_new_edges<T>();
         break;
       }
       case ATTR_DOMAIN_CORNER: {
-        const OffsetIndices<int> loop_loops_offsets = mesh_builder.get_loop_offsets_in(2);
+        const OffsetIndices<int> loop_loops_offsets = mesh_builder.lookup_offsets("Grid faces",
+                                                                                  "Loops");
         loops_have_created_new_loops<T>(loop_loops_offsets, src_typed_values, dst_typed_values);
         break;
       }
@@ -605,24 +617,27 @@ void attribute_on_domain(const eAttrDomain domain,
 
     switch (domain) {
       case ATTR_DOMAIN_POINT: {
-        const IndexRange vert_mapping = mesh_builder.get_vert_range_in(0);
+        const IndexRange vert_mapping = mesh_builder.lookup_range("Vertices", "Vertices");
         MutableSpan<T> dst_vert_vertices = dst_typed_values.slice(vert_mapping);
         dst_vert_vertices.copy_from(src_typed_values);
 
-        const OffsetIndices<int> edge_vertices_offsets = mesh_builder.get_vert_offsets_in(1);
+        const OffsetIndices<int> edge_vertices_offsets = mesh_builder.lookup_offsets("Edges",
+                                                                                     "Vertices");
         MutableSpan<T> dst_edge_vertices = dst_typed_values.slice(
-            mesh_builder.get_vert_range_in(1));
+            mesh_builder.lookup_range("Edges", "Vertices"));
         edges_have_created_new_verts<T>(
             edge_vertices_offsets, src_mesh.edges(), src_typed_values, dst_edge_vertices);
         break;
       }
       case ATTR_DOMAIN_EDGE: {
-        const OffsetIndices<int> edge_edges_offsets = mesh_builder.get_edge_offsets_in(1);
+        const OffsetIndices<int> edge_edges_offsets = mesh_builder.lookup_offsets("Edges",
+                                                                                  "Edges");
         edges_have_created_new_edges<T>(edge_edges_offsets, src_typed_values, dst_typed_values);
         break;
       }
       case ATTR_DOMAIN_CORNER: {
-        const OffsetIndices<int> loop_loops_offsets = mesh_builder.get_loop_offsets_in(2);
+        const OffsetIndices<int> loop_loops_offsets = mesh_builder.lookup_offsets("N-gon loops",
+                                                                                  "Loops");
         /* Loops and edges propagation is equal. */
         edges_have_created_new_edges<T>(loop_loops_offsets, src_typed_values, dst_typed_values);
         break;
@@ -804,7 +819,7 @@ void build_mesh(const Mesh &mesh,
                 detail::MeshMarket &r_mesh_builder)
 {
   /* New verices for original verts. */
-  r_mesh_builder.add_custom(mesh.totvert, 0, 0, 0);
+  r_mesh_builder.add_custom("Vertices", mesh.totvert, 0, 0, 0);
 
   /* New vertices and edges for original edges. */
   {
@@ -813,7 +828,8 @@ void build_mesh(const Mesh &mesh,
         mesh.totedge,
         [resample_edge_num](const int64_t index) -> int { return resample_edge_num[index] + 1; });
 
-    r_mesh_builder.add_custom(std::move(new_vertices_for_original_edges),
+    r_mesh_builder.add_custom("Edges",
+                              std::move(new_vertices_for_original_edges),
                               std::move(new_edges_for_original_edges),
                               VArray<int>::ForSingle(0, 0),
                               VArray<int>::ForSingle(0, 0));
@@ -853,28 +869,29 @@ void build_mesh(const Mesh &mesh,
           return resample.total_points();
         });
 
-    r_mesh_builder.add_custom(std::move(new_verts_for_original_faces),
+    r_mesh_builder.add_custom("Grid faces",
+                              std::move(new_verts_for_original_faces),
                               VArray<int>::ForSingle(0, 0),
                               VArray<int>::ForSingle(0, 0),
                               VArray<int>::ForSingle(0, 0));
   }
   else {
     /* New loops for original loops. */
-    {
-      const Span<MLoop> src_loops = mesh.loops();
-      VArray<int> new_loops_for_original_faces = VArray<int>::ForFunc(
-          mesh.totloop, [resample_edge_num, src_loops](const int64_t index) -> int {
-            const MLoop src_loop = src_loops[index];
-            return resample_edge_num[src_loop.e] + 1;
-          });
+    const Span<MLoop> src_loops = mesh.loops();
+    VArray<int> new_loops_for_original_faces = VArray<int>::ForFunc(
+        mesh.totloop, [resample_edge_num, src_loops](const int64_t index) -> int {
+          const MLoop src_loop = src_loops[index];
+          return resample_edge_num[src_loop.e] + 1;
+        });
 
-      r_mesh_builder.add_custom(VArray<int>::ForSingle(0, 0),
-                                VArray<int>::ForSingle(0, 0),
-                                std::move(new_loops_for_original_faces),
-                                VArray<int>::ForSingle(0, 0));
-    }
+    r_mesh_builder.add_custom("N-gon loops",
+                              VArray<int>::ForSingle(0, 0),
+                              VArray<int>::ForSingle(0, 0),
+                              std::move(new_loops_for_original_faces),
+                              VArray<int>::ForSingle(0, 0));
+
     /* New faces for original faces. */
-    r_mesh_builder.add_custom(0, 0, 0, mesh.totpoly);
+    r_mesh_builder.add_custom("N-gon faces", 0, 0, 0, mesh.totpoly);
   }
 
   r_mesh_builder.finalize();
@@ -886,24 +903,27 @@ void build_new_mesh_topology(const Mesh &mesh,
                              const detail::MeshMarket &mesh_builder)
 {
   Mesh &result = mesh_builder.mesh();
-  build_edge_vert_indices(mesh_builder.get_edge_offsets_in(1),
-                          mesh_builder.get_vert_offsets_in(1),
-                          mesh.edges(),
-                          mesh_builder.get_vert_range_in(1),
-                          result.edges_for_write().slice(mesh_builder.get_edge_range_in(1)));
+  build_edge_vert_indices(
+      mesh_builder.lookup_offsets("Edges", "Edges"),
+      mesh_builder.lookup_offsets("Edges", "Vertices"),
+      mesh.edges(),
+      mesh_builder.lookup_range("Edges", "Vertices"),
+      result.edges_for_write().slice(mesh_builder.lookup_range("Edges", "Edges")));
 
   if (try_to_fill_by_grid) {
-    return;
+    /* pass */
   }
   else {
     using namespace ngone_fill;
     build_faces_loops(mesh.edges(),
                       mesh.loops(),
-                      mesh_builder.get_edge_offsets_in(1),
-                      mesh_builder.get_loop_offsets_in(2),
+                      mesh_builder.lookup_offsets("Edges", "Edges"),
+                      mesh_builder.lookup_offsets("N-gon loops", "Loops"),
                       result.edges(),
                       result.loops_for_write());
-    build_faces(mesh.polys(), mesh_builder.get_loop_offsets_in(2), result.polys_for_write());
+    build_faces(mesh.polys(),
+                mesh_builder.lookup_offsets("N-gon loops", "Loops"),
+                result.polys_for_write());
   }
 }
 
