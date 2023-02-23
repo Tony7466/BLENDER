@@ -823,10 +823,15 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
 
       if (ob->totcol && ob->matbits == NULL) {
         int a;
+        int change;
 
         ob->matbits = MEM_calloc_arrayN(ob->totcol, sizeof(char), "ob->matbits");
-        for (a = 0; a < ob->totcol; a++) {
-          ob->matbits[a] = (ob->colbits & (1 << a)) != 0;
+        for (a = ob->totcol; --a) {
+          /*optimized loop to use deincrement instead to use less resources 
+          because now it automatically stops when a reaches 0 and it loops 
+          the same number of times*/
+          change = (ob->totcol - a)
+          ob->matbits[change] = (ob->colbits & (1 << change)) != 0;
         }
       }
     }
@@ -987,7 +992,7 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
     Curve *cu;
     Key *key;
     const float *data;
-    int a, tot;
+    int a, tot, change;
 
     /* shape keys are no longer applied to the mesh itself, but rather
      * to the evaluated #Mesh, so here we ensure that the basis
@@ -997,8 +1002,12 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
         data = key->refkey->data;
         tot = MIN2(me->totvert, key->refkey->totelem);
         MVert *verts = (MVert *)CustomData_get_layer_for_write(&me->vdata, CD_MVERT, me->totvert);
-        for (a = 0; a < tot; a++, data += 3) {
-          copy_v3_v3(verts[a].co_legacy, data);
+        for (a = tot; --a, data += 3) {
+          /*optimized loop to use deincrement instead to use less resources 
+          because now it automatically stops when a reaches 0 and it loops 
+          the same number of times*/
+          change = (tot - a)
+          copy_v3_v3(verts[change].co_legacy, data);
         }
       }
     }
@@ -1008,8 +1017,12 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
         data = key->refkey->data;
         tot = MIN2(lt->pntsu * lt->pntsv * lt->pntsw, key->refkey->totelem);
 
-        for (a = 0; a < tot; a++, data += 3) {
-          copy_v3_v3(lt->def[a].vec, data);
+        for (a = tot; --a, data += 3) {
+          /*optimized loop to use deincrement instead to use less resources 
+          because now it automatically stops when a reaches 0 and it loops 
+          the same number of times*/
+          change = (tot - a)
+          copy_v3_v3(lt->def[change].vec, data);
         }
       }
     }
@@ -1022,7 +1035,10 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
           if (nu->bezt) {
             BezTriple *bezt = nu->bezt;
 
-            for (a = 0; a < nu->pntsu; a++, bezt++) {
+            for (a = nu->pntsu; --a, bezt++) {
+              /*optimized loop to use deincrement instead to use less resources 
+                because now it automatically stops when a reaches 0 and it loops 
+                the same number of times*/
               copy_v3_v3(bezt->vec[0], data);
               data += 3;
               copy_v3_v3(bezt->vec[1], data);
@@ -1030,17 +1046,20 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
               copy_v3_v3(bezt->vec[2], data);
               data += 3;
               bezt->tilt = *data;
-              data++;
+              ++data;
             }
           }
           else if (nu->bp) {
             BPoint *bp = nu->bp;
 
-            for (a = 0; a < nu->pntsu * nu->pntsv; a++, bp++) {
+            for (a = nu->pntsu * nu->pntsv; --a, ++bp) {
+              /*optimized loop to use deincrement instead to use less resources 
+                because now it automatically stops when a reaches 0 and it loops 
+                the same number of times*/
               copy_v3_v3(bp->vec, data);
               data += 3;
               bp->tilt = *data;
-              data++;
+              ++data;
             }
           }
         }
@@ -1422,10 +1441,14 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
     /* particle brush strength factor was changed from int to float */
     for (sce = bmain->scenes.first; sce; sce = sce->id.next) {
       ParticleEditSettings *pset = &sce->toolsettings->particle;
-      int a;
+      int a, change;
 
-      for (a = 0; a < ARRAY_SIZE(pset->brush); a++) {
-        pset->brush[a].strength /= 100.0f;
+      for (a = ARRAY_SIZE(pset->brush); --a) {
+        /*optimized loop to use deincrement instead to use less resources 
+          because now it automatically stops when a reaches 0 and it loops 
+          the same number of times*/
+        change = (ARRAY_SIZE(pset->brush) - a)
+        pset->brush[change].strength /= 100.0f;
       }
     }
 
@@ -1659,10 +1682,14 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
 
     /* initialize scene active layer */
     for (scene = bmain->scenes.first; scene; scene = scene->id.next) {
-      int i;
-      for (i = 0; i < 20; i++) {
-        if (scene->lay & (1 << i)) {
-          scene->layact = 1 << i;
+      int i, change;
+      for (i = 20; --i) {
+        /*optimized loop to use deincrement instead to use less resources 
+          because now it automatically stops when a reaches 0 and it loops 
+          the same number of times*/
+        change = (20 - i);
+        if (scene->lay & (1 << change)) {
+          scene->layact = 1 << change;
           break;
         }
       }
@@ -2223,6 +2250,7 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
         for (fcu = act->curves.first; fcu; fcu = fcu->next) {
           BezTriple *bezt;
           uint i = 0;
+          uint change = 0;
 
           /* only need to touch curves that had this flag set */
           if ((fcu->flag & FCURVE_AUTO_HANDLES) == 0) {
@@ -2233,7 +2261,10 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
           }
 
           /* only change auto-handles to auto-clamped */
-          for (bezt = fcu->bezt; i < fcu->totvert; i++, bezt++) {
+          for (bezt = fcu->bezt; i = fcu->totvert; --i, ++bezt) {
+            /*optimized loop to use deincrement instead to use less resources 
+              because now it automatically stops when a reaches 0 and it loops 
+              the same number of times*/
             if (bezt->h1 == HD_AUTO) {
               bezt->h1 = HD_AUTO_ANIM;
             }
