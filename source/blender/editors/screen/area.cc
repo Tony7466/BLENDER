@@ -2076,7 +2076,7 @@ void ED_region_cursor_set(wmWindow *win, ScrArea *area, ARegion *region)
 
 void ED_region_visibility_change_update(bContext *C, ScrArea *area, ARegion *region)
 {
-  if (region->flag & RGN_FLAG_HIDDEN) {
+  if (region->flag & (RGN_FLAG_HIDDEN | RGN_FLAG_POLL_FAILED)) {
     WM_event_remove_handlers(C, &region->handlers);
     /* Needed to close any open pop-overs which would otherwise remain open,
      * crashing on attempting to refresh. See: #93410.
