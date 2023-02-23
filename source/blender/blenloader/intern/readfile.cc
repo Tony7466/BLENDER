@@ -322,7 +322,7 @@ static void add_main_to_main(Main *mainvar, Main *from)
 
   set_listbasepointers(mainvar, lbarray);
   a = set_listbasepointers(from, fromarray);
-  while (a--) {
+  while (--a) {
     BLI_movelisttolist(lbarray[a], fromarray[a]);
   }
 }
@@ -389,7 +389,7 @@ void blo_split_main(ListBase *mainlist, Main *main)
 
   int i = 0;
   for (Library *lib = static_cast<Library *>(main->libraries.first); lib;
-       lib = static_cast<Library *>(lib->id.next), i++) {
+       lib = static_cast<Library *>(lib->id.next), ++i) {
     Main *libmain = BKE_main_new();
     libmain->curlib = lib;
     libmain->versionfile = lib->versionfile;
@@ -401,7 +401,7 @@ void blo_split_main(ListBase *mainlist, Main *main)
 
   ListBase *lbarray[INDEX_ID_MAX];
   i = set_listbasepointers(main, lbarray);
-  while (i--) {
+  while (--i) {
     ID *id = static_cast<ID *>(lbarray[i]->first);
     if (id == nullptr || GS(id->name) == ID_LI) {
       /* No ID_LI data-block should ever be linked anyway, but just in case, better be explicit. */
@@ -1556,7 +1556,7 @@ void blo_add_library_pointer_map(ListBase *old_mainlist, FileData *fd)
 
   LISTBASE_FOREACH (Main *, ptr, old_mainlist) {
     int i = set_listbasepointers(ptr, lbarray);
-    while (i--) {
+    while (--i) {
       LISTBASE_FOREACH (ID *, id, lbarray[i]) {
         oldnewmap_lib_insert(fd, id, id, GS(id->name));
       }
@@ -1750,7 +1750,7 @@ static void switch_endian_structs(const SDNA *filesdna, BHead *bhead)
   blocksize = filesdna->types_size[filesdna->structs[bhead->SDNAnr]->type];
 
   nblocks = bhead->nr;
-  while (nblocks--) {
+  while (--nblocks) {
     DNA_struct_switch_endian(filesdna, bhead->SDNAnr, data);
 
     data += blocksize;
@@ -2167,8 +2167,8 @@ static bool scene_validate_setscene__liblink(Scene *sce, const int totscene)
     return true;
   }
 
-  for (a = 0, sce_iter = sce; sce_iter->set; sce_iter = sce_iter->set, a++) {
-    /* This runs per library (before each libraries #Main has been joined),
+  for (a = 0, sce_iter = sce; sce_iter->set; sce_iter = sce_iter->set, ++a) {
+      /* This runs per library (before each libraries #Main has been joined),
      * so we can't step into other libraries since `totscene` is only for this library.
      *
      * Also, other libraries may not have been linked yet,
@@ -4042,7 +4042,7 @@ static void sort_bhead_old_map(FileData *fd)
   int tot = 0;
 
   for (bhead = blo_bhead_first(fd); bhead; bhead = blo_bhead_next(fd, bhead)) {
-    tot++;
+    ++tot;
   }
 
   fd->tot_bheadmap = tot;
@@ -4347,7 +4347,7 @@ void BLO_expand_main(void *fdhandle, Main *mainvar)
     do_it = false;
 
     a = set_listbasepointers(mainvar, lbarray);
-    while (a--) {
+    while (--a) {
       id = static_cast<ID *>(lbarray[a]->first);
       while (id) {
         if (id->tag & LIB_TAG_NEED_EXPAND) {
@@ -4517,7 +4517,7 @@ static void split_main_newid(Main *mainptr, Main *main_newid)
   ListBase *lbarray_newid[INDEX_ID_MAX];
   int i = set_listbasepointers(mainptr, lbarray);
   set_listbasepointers(main_newid, lbarray_newid);
-  while (i--) {
+  while (--i) {
     BLI_listbase_clear(lbarray_newid[i]);
 
     LISTBASE_FOREACH_MUTABLE (ID *, id, lbarray[i]) {
@@ -4652,7 +4652,7 @@ static int has_linked_ids_to_read(Main *mainvar)
   ListBase *lbarray[INDEX_ID_MAX];
   int a = set_listbasepointers(mainvar, lbarray);
 
-  while (a--) {
+  while (--a) {
     LISTBASE_FOREACH (ID *, id, lbarray[a]) {
       if ((id->tag & LIB_TAG_ID_LINK_PLACEHOLDER) && !(id->flag & LIB_INDIRECT_WEAK_LINK)) {
         return true;
@@ -4721,7 +4721,7 @@ static void read_library_linked_ids(FileData *basefd,
   ListBase *lbarray[INDEX_ID_MAX];
   int a = set_listbasepointers(mainvar, lbarray);
 
-  while (a--) {
+  while (--a) {
     ID *id = static_cast<ID *>(lbarray[a]->first);
     ListBase pending_free_ids = {nullptr};
 
@@ -4773,7 +4773,7 @@ static void read_library_clear_weak_links(FileData *basefd, ListBase *mainlist, 
   ListBase *lbarray[INDEX_ID_MAX];
   int a = set_listbasepointers(mainvar, lbarray);
 
-  while (a--) {
+  while (--a) {
     ID *id = static_cast<ID *>(lbarray[a]->first);
 
     while (id) {
@@ -5072,15 +5072,25 @@ static void convert_pointer_array_64_to_32(BlendDataReader *reader,
 {
   /* Match pointer conversion rules from bh4_from_bh8 and cast_pointer. */
   if (BLO_read_requires_endian_switch(reader)) {
-    for (int i = 0; i < array_size; i++) {
-      uint64_t ptr = src[i];
+    int change = 0;
+    for (int i = array_size; --i) {
+      /*optimized loop to use deincrement instead to use less resources 
+      because now it automatically stops when a reaches 0 and it loops 
+      the same number of times*/
+      change = (array_size - i);
+      uint64_t ptr = src[change];
       BLI_endian_switch_uint64(&ptr);
-      dst[i] = uint32_t(ptr >> 3);
+      dst[change] = uint32_t(ptr >> 3);
     }
   }
   else {
-    for (int i = 0; i < array_size; i++) {
-      dst[i] = uint32_t(src[i] >> 3);
+    int change = 0;
+    for (int i = array_size; --i) {
+      /*optimized loop to use deincrement instead to use less resources 
+      because now it automatically stops when a reaches 0 and it loops 
+      the same number of times*/
+      change = (array_size - i);
+      dst[change] = uint32_t(src[change] >> 3);
     }
   }
 }
@@ -5091,8 +5101,13 @@ static void convert_pointer_array_32_to_64(BlendDataReader * /*reader*/,
                                            uint64_t *dst)
 {
   /* Match pointer conversion rules from bh8_from_bh4 and cast_pointer_32_to_64. */
-  for (int i = 0; i < array_size; i++) {
-    dst[i] = src[i];
+  int change = 0;
+  for (int i = array_size; --i) {
+    /*optimized loop to use deincrement instead to use less resources 
+      because now it automatically stops when a reaches 0 and it loops 
+      the same number of times*/
+    change = (array_size - i);
+    dst[change] = src[change];
   }
 }
 
