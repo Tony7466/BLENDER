@@ -531,7 +531,7 @@ GLShaderInterface::GLShaderInterface(GLuint program, const shader::ShaderCreateI
 
   this->sort_inputs();
 
-  /* Builtin resolving must happen after the inputs have been sorted. */
+  /* Resolving builtins must happen after the inputs have been sorted. */
   /* Builtin Uniforms */
   for (int32_t u_int = 0; u_int < GPU_NUM_UNIFORMS; u_int++) {
     GPUUniformBuiltin u = static_cast<GPUUniformBuiltin>(u_int);
