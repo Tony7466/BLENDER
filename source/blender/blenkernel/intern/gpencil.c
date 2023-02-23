@@ -2196,16 +2196,19 @@ uint64_t BKE_gpencil_selected_stroke_count_get(bGPdata *gpd)
 {
   uint64_t selected_count = 0;
 
-  LISTBASE_FOREACH (const bGPDlayer *, gpl, &gpd->layers) {
-    /* FIXME: For now, we just skip parented layers.
-     * Otherwise, we have to update each frame to find
-     * the current parent position/effects.
-     */
-    if (gpl->parent) {
+  /* Iterate through Grease Pencil Data layers. */
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+
+    /* Skip locked & hidden layers. */
+    if (gpl->flag & GP_LAYER_LOCKED || gpl->flag & GP_LAYER_HIDE) {
       continue;
     }
 
-    LISTBASE_FOREACH (const bGPDframe *, gpf, &gpl->frames) {
+    /* Get active frame. */
+    bGPDframe *gpf = gpl->actframe;
+
+    /* If there's an active frame, count selected strokes. */
+    if (gpf != NULL) {
       LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         if (gps->flag & GP_STROKE_SELECT) {
           selected_count++;
@@ -2213,6 +2216,7 @@ uint64_t BKE_gpencil_selected_stroke_count_get(bGPdata *gpd)
       }
     }
   }
+
   return selected_count;
 }
 
@@ -2220,16 +2224,19 @@ uint64_t BKE_gpencil_selected_stroke_point_count_get(bGPdata *gpd)
 {
   uint64_t selected_count = 0;
 
-  LISTBASE_FOREACH (const bGPDlayer *, gpl, &gpd->layers) {
-    /* FIXME: For now, we just skip parented layers.
-     * Otherwise, we have to update each frame to find
-     * the current parent position/effects.
-     */
-    if (gpl->parent) {
+  /* Iterate through Grease Pencil Data layers. */
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+
+    /* Skip locked & hidden layers. */
+    if (gpl->flag & GP_LAYER_LOCKED || gpl->flag & GP_LAYER_HIDE) {
       continue;
     }
 
-    LISTBASE_FOREACH (const bGPDframe *, gpf, &gpl->frames) {
+    /* Get active frame. */
+    bGPDframe *gpf = gpl->actframe;
+
+    /* If there's an active frame, count selected points. */
+    if (gpf != NULL) {
       LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         bGPDspoint *pt;
         int i;
