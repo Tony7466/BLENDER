@@ -63,7 +63,7 @@ static void init_dualcon_mesh(DualConInput *input, Mesh *mesh)
   input->co_stride = sizeof(float[3]);
   input->totco = mesh->totvert;
 
-  input->mloop = (DualConLoop)BKE_mesh_loops(mesh);
+  input->mloop = (DualConLoop)mesh->loops().data();
   input->loop_stride = sizeof(MLoop);
 
   input->looptri = (DualConTri)BKE_mesh_runtime_looptri_ensure(mesh);
@@ -95,8 +95,8 @@ static void *dualcon_alloc_output(int totvert, int totquad)
 
   output->mesh = BKE_mesh_new_nomain(totvert, 0, 0, 4 * totquad, totquad);
   output->vert_positions = BKE_mesh_vert_positions_for_write(output->mesh);
-  output->polys = BKE_mesh_polys_for_write(output->mesh);
-  output->loops = BKE_mesh_loops_for_write(output->mesh);
+  output->polys = output->mesh->polys_for_write().data();
+  output->loops = output->mesh->loops_for_write().data();
 
   return output;
 }

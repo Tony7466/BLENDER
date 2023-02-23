@@ -463,8 +463,8 @@ static TriTessFace *mesh_calc_tri_tessface(Mesh *me, bool tangent, Mesh *me_eval
   float no[3];
 
   const float(*positions)[3] = BKE_mesh_vert_positions(me);
-  const MPoly *polys = BKE_mesh_polys(me);
-  const MLoop *loops = BKE_mesh_loops(me);
+  const blender::Span<MPoly> polys = me->polys();
+  const blender::Span<MLoop> loops = me->loops();
   const bke::AttributeAccessor attributes = me->attributes();
   const VArray<bool> sharp_faces = attributes.lookup_or_default<bool>(
       "sharp_face", ATTR_DOMAIN_FACE, false);
@@ -478,11 +478,17 @@ static TriTessFace *mesh_calc_tri_tessface(Mesh *me, bool tangent, Mesh *me_eval
   const bool calculate_normal = precomputed_normals ? false : true;
 
   if (precomputed_normals != nullptr) {
-    BKE_mesh_recalc_looptri_with_normals(
-        loops, polys, positions, me->totloop, me->totpoly, looptri, precomputed_normals);
+    BKE_mesh_recalc_looptri_with_normals(loops.data(),
+                                         polys.data(),
+                                         positions,
+                                         me->totloop,
+                                         me->totpoly,
+                                         looptri,
+                                         precomputed_normals);
   }
   else {
-    BKE_mesh_recalc_looptri(loops, polys, positions, me->totloop, me->totpoly, looptri);
+    BKE_mesh_recalc_looptri(
+        loops.data(), polys.data(), positions, me->totloop, me->totpoly, looptri);
   }
 
   const TSpace *tspace = nullptr;
@@ -751,9 +757,10 @@ void RE_bake_pixels_populate(Mesh *me,
   MLoopTri *looptri = static_cast<MLoopTri *>(MEM_mallocN(sizeof(*looptri) * tottri, __func__));
 
   const float(*positions)[3] = BKE_mesh_vert_positions(me);
-  const MPoly *polys = BKE_mesh_polys(me);
-  const MLoop *loops = BKE_mesh_loops(me);
-  BKE_mesh_recalc_looptri(loops, polys, positions, me->totloop, me->totpoly, looptri);
+  const blender::Span<MPoly> polys = me->polys();
+  const blender::Span<MLoop> loops = me->loops();
+  BKE_mesh_recalc_looptri(
+      loops.data(), polys.data(), positions, me->totloop, me->totpoly, looptri);
 
   const int *material_indices = BKE_mesh_material_indices(me);
   const int materials_num = targets->materials_num;
