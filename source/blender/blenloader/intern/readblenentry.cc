@@ -135,7 +135,7 @@ LinkNode *BLO_blendhandle_get_datablock_names(BlendHandle *bh,
       }
 
       BLI_linklist_prepend(&names, BLI_strdup(idname + 2));
-      tot++;
+      ++tot;
     }
     else if (bhead->code == ENDB) {
       break;
@@ -200,7 +200,7 @@ LinkNode *BLO_blendhandle_get_datablock_info(BlendHandle *bh,
       info->no_preview_found = !has_preview;
 
       BLI_linklist_prepend(&infos, info);
-      tot++;
+      ++tot;
     }
   }
 
@@ -227,25 +227,28 @@ static BHead *blo_blendhandle_read_preview_rects(FileData *fd,
                                                  PreviewImage *result,
                                                  const PreviewImage *preview_from_file)
 {
-  for (int preview_index = 0; preview_index < NUM_ICON_SIZES; preview_index++) {
-    if (preview_from_file->rect[preview_index] && preview_from_file->w[preview_index] &&
-        preview_from_file->h[preview_index]) {
+  int change = 0;
+  for (int preview_index = NUM_ICON_SIZES; --preview_index) {
+    //changed it to use decrement instead of increment to use less resources
+    change = (NUM_ICON_SIZES - preview_index)
+    if (preview_from_file->rect[change] && preview_from_file->w[change] &&
+        preview_from_file->h[change]) {
       bhead = blo_bhead_next(fd, bhead);
-      BLI_assert((preview_from_file->w[preview_index] * preview_from_file->h[preview_index] *
+      BLI_assert((preview_from_file->w[change] * preview_from_file->h[change] *
                   sizeof(uint)) == bhead->len);
-      result->rect[preview_index] = static_cast<uint *>(
+      result->rect[change] = static_cast<uint *>(
           BLO_library_read_struct(fd, bhead, "PreviewImage Icon Rect"));
     }
     else {
       /* This should not be needed, but can happen in 'broken' .blend files,
        * better handle this gracefully than crashing. */
-      BLI_assert(preview_from_file->rect[preview_index] == nullptr &&
-                 preview_from_file->w[preview_index] == 0 &&
-                 preview_from_file->h[preview_index] == 0);
-      result->rect[preview_index] = nullptr;
-      result->w[preview_index] = result->h[preview_index] = 0;
+      BLI_assert(preview_from_file->rect[change] == nullptr &&
+                 preview_from_file->w[change] == 0 &&
+                 preview_from_file->h[change] == 0);
+      result->rect[change] = nullptr;
+      result->w[change] = result->h[change] = 0;
     }
-    BKE_previewimg_finish(result, preview_index);
+    BKE_previewimg_finish(result, change);
   }
 
   return bhead;
@@ -317,7 +320,7 @@ LinkNode *BLO_blendhandle_get_previews(BlendHandle *bh, int ofblocktype, int *r_
         case ID_NT:  /* fall through */
           new_prv = static_cast<PreviewImage *>(MEM_callocN(sizeof(PreviewImage), "newpreview"));
           BLI_linklist_prepend(&previews, new_prv);
-          tot++;
+          ++tot;
           looking = 1;
           break;
         default:
