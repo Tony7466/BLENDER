@@ -1,1 +1,2 @@
 Referenced by issue #105118, Regression: Curves: Sculpt mode density overlay looks different
+Referenced by commit e2f0a63e5568f6f1be50c672025dc6e40cdcfd99, Fix #105118: Wrong point size in sculpt density overlay
