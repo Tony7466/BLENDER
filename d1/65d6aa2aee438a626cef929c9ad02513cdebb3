@@ -2,4 +2,4 @@ Referenced by commit f4db58844d5e61e260318240714f8b1919ac7eb6, GPU: Fix wrong 2D
 Referenced by issue #105042, Regression: Curves: Sculpt mode density overlay does not display
 Referenced by commit 6466c247c986633b339f6948d3e47c936adc2d73, Fix: Overlay regression after d165d6aa2a
 Referenced by commit acd5889e50ecae1dd785845d5fd6e514b04ac104, Fix #105042: Regression: Sculpt density overlay not working
-Referenced by issue #105118, Curves: Sculpt mode density overlay looks different
+Referenced by issue #105118, Regression: Curves: Sculpt mode density overlay looks different
