@@ -4014,5 +4014,45 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+
+    /* Some regions used to be added/removed dynamically. Ensure they are always there, there is a
+     * `ARegionType.poll()` now. */
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          if (sl->spacetype != SPACE_FILE) {
+            continue;
+          }
+          ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
+                                                                 &sl->regionbase;
+
+          ARegion *new_region;
+          if ((new_region = do_versions_add_region_if_not_found(
+                   regionbase,
+                   RGN_TYPE_UI,
+                   "versioning: UI region for space file",
+                   RGN_TYPE_TOOLS))) {
+            new_region->alignment = RGN_ALIGN_TOP;
+            new_region->flag |= RGN_FLAG_DYNAMIC_SIZE;
+          }
+          if ((new_region = do_versions_add_region_if_not_found(
+                   regionbase,
+                   RGN_TYPE_EXECUTE,
+                   "versioning: execute region for space file",
+                   RGN_TYPE_UI))) {
+            new_region->alignment = RGN_ALIGN_BOTTOM;
+            new_region->flag = RGN_FLAG_DYNAMIC_SIZE;
+          }
+          if ((new_region = do_versions_add_region_if_not_found(
+                   regionbase,
+                   RGN_TYPE_TOOL_PROPS,
+                   "versioning: tool props region for space file",
+                   RGN_TYPE_EXECUTE))) {
+            new_region->alignment = RGN_ALIGN_RIGHT;
+            new_region->flag = RGN_FLAG_HIDDEN;
+          }
+        }
+      }
+    }
   }
 }
