@@ -784,16 +784,6 @@ void Mesh::pack_verts(packed_float3 *tri_verts,
       tri_patch[i] = -1;
       off += 3;
     }
-    // Store extra index set that does not have the offset for motion blur
-    // if (get_use_motion_blur()) {
-    //   off = 0;
-    //   for (size_t i = 0; i < triangles_size; i++) {
-    //     tri_vindex[i + triangles_size] = make_packed_uint3(
-    //         p_tris[off + 0], p_tris[off + 1], p_tris[off + 2]);
-    //     tri_patch[i + triangles_size] = -1;
-    //     off += 3;
-    //   }
-    // }
   }
 }
 

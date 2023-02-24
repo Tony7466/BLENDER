@@ -405,7 +405,7 @@ void Hair::compute_bounds()
     Attribute *curve_attr = attributes.find(ATTR_STD_MOTION_VERTEX_POSITION);
     if (use_motion_blur && curve_attr) {
       size_t steps_size = curve_keys.size() * (motion_steps - 1);
-      // WL: Attribute data is stored as a float4 and is not
+      // Attribute data is stored as a float4 and is not
       // interchangeable with float3
       float4 *key_steps = curve_attr->data_float4();
 
@@ -422,7 +422,7 @@ void Hair::compute_bounds()
 
       if (use_motion_blur && curve_attr) {
         size_t steps_size = curve_keys.size() * (motion_steps - 1);
-        // WL: Attribute data is stored as a float4 which is not
+        // Attribute data is stored as a float4 which is not
         // interchangeable with float4
         float4 *key_steps = curve_attr->data_float4();
 

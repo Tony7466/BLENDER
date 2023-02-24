@@ -153,14 +153,13 @@ void PointCloud::copy_center_to_motion_step(const int motion_step)
     float3 *points_data = points.data();
     size_t numpoints = points.size();
     float *radius_data = radius.data();
-    // FRL_CGR BEGIN
+
     float4 *attrib_P = attr_mP->data_float4() + motion_step * numpoints;
     for (int i = 0; i < numpoints; i++) {
       float3 P = points_data[i];
       float r = radius_data[i];
       attrib_P[i] = make_float4(P.x, P.y, P.z, r);
     }
-    // FRL_CGR END
   }
 }
 

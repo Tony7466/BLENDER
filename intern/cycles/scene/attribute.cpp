@@ -306,7 +306,7 @@ void Attribute::add_with_weight(void *dst, void *src, float weight)
     *((float2 *)dst) += *((float2 *)src) * weight;
   }
   else if (same_storage(type, TypeDesc::TypeVector)) {
-    // WL: Points are float3s and not float4s
+    // Points are float3s and not float4s
     *((float3 *)dst) += *((float3 *)src) * weight;
   }
   else {

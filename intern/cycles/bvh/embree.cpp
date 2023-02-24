@@ -373,8 +373,7 @@ void BVHEmbree::set_curve_vertex_buffer(RTCGeometry geom_id, const Hair *hair, c
   const int t_mid = (num_motion_steps - 1) / 2;
   const float *curve_radius = &hair->get_curve_radius()[0];
   for (int t = 0; t < num_motion_steps; ++t) {
-    // TODO: For the motion curves this can be replaced with using the pointer directly
-    // WL: As float4 and float3 are no longer interchangeable the 2 types need to be
+    // As float4 and float3 are no longer interchangeable the 2 types need to be
     // handled separately. Attributes are float4s where the radius is stored in w and
     // the middle motion vector is from the mesh points which are stored float3s with
     // the radius stored in another array.
@@ -440,8 +439,7 @@ void BVHEmbree::set_point_vertex_buffer(RTCGeometry geom_id,
   const int t_mid = (num_motion_steps - 1) / 2;
   const float *radius = pointcloud->get_radius().data();
   for (int t = 0; t < num_motion_steps; ++t) {
-    // TODO: Can replace this with a pointer for the motion steps
-    // WL: As float4 and float3 are no longer interchangeable the 2 types need to be
+    // As float4 and float3 are no longer interchangeable the 2 types need to be
     // handled separately. Attributes are float4s where the radius is stored in w and
     // the middle motion vector is from the mesh points which are stored float3s with
     // the radius stored in another array.

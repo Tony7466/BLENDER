@@ -262,7 +262,7 @@ class OsdData {
         }
         else if (attr.same_storage(attr.type, TypeFloat2)) {
           primvar_refiner.Interpolate(i + 1, (OsdValue<float2> *)src, (OsdValue<float2> *&)dest);
-          // WL: float3 is not interchangeable with float4 and so needs to be handled
+          // float3 is not interchangeable with float4 and so needs to be handled
           // separately
         }
         else if (attr.same_storage(attr.type, TypeFloat4)) {
@@ -284,16 +284,18 @@ class OsdData {
         else if (attr.same_storage(attr.type, TypeFloat2)) {
           patch_table->ComputeLocalPointValues(
               (OsdValue<float2> *)&attr.buffer[0],
-              (OsdValue<float2> *)&attr.buffer[num_refiner_verts * attr.data_sizeof()]);
-          // WL: float3 is not interchangeable with float4 and so needs to be handled
-          // separately
+              (OsdValue<float2> *)&attr.buffer[num_refiner_verts * attr.data_sizeof()]);          
         }
         else if (attr.same_storage(attr.type, TypeFloat4)) {
+	  // float3 is not interchangeable with float4 and so needs to be handled
+          // separately
           patch_table->ComputeLocalPointValues(
               (OsdValue<float4> *)&attr.buffer[0],
               (OsdValue<float4> *)&attr.buffer[num_refiner_verts * attr.data_sizeof()]);
         }
         else {
+	  // float3 is not interchangeable with float4 and so needs to be handled
+          // separately
           patch_table->ComputeLocalPointValues(
               (OsdValue<float3> *)&attr.buffer[0],
               (OsdValue<float3> *)&attr.buffer[num_refiner_verts * attr.data_sizeof()]);
