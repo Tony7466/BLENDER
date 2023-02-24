@@ -330,7 +330,7 @@ def banner(context):
     )
 
     for line in message:
-        add_scrollback(line, 'OUTPUT')
+        add_scrollback(line, 'INFO')
 
     sc.prompt = PROMPT
 
