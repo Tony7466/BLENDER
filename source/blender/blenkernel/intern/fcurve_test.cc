@@ -346,4 +346,153 @@ TEST(BKE_fcurve, BKE_fcurve_keyframe_move_value_with_handles)
   BKE_fcurve_free(fcu);
 }
 
+TEST(BKE_fcurve, BKE_fcurve_calc_range)
+{
+  FCurve *fcu = BKE_fcurve_create();
+
+  insert_vert_fcurve(fcu, 1.0f, 7.5f, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_NO_USERPREF);
+  insert_vert_fcurve(fcu, 4.0f, -15.0f, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_NO_USERPREF);
+  insert_vert_fcurve(fcu, 8.0f, 15.0f, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_NO_USERPREF);
+  insert_vert_fcurve(fcu, 14.0f, 8.2f, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_NO_USERPREF);
+  insert_vert_fcurve(fcu, 18.2f, -20.0f, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_NO_USERPREF);
+
+  for (int i = 0; i < fcu->totvert; i++) {
+    fcu->bezt[i].f1 &= ~SELECT;
+    fcu->bezt[i].f2 &= ~SELECT;
+    fcu->bezt[i].f3 &= ~SELECT;
+  }
+
+  float min, max;
+  bool success;
+
+  /* All keys. */
+  success = BKE_fcurve_calc_range(fcu, &min, &max, false);
+  EXPECT_TRUE(success);
+  EXPECT_FLOAT_EQ(fcu->bezt[0].vec[1][0], min);
+  EXPECT_FLOAT_EQ(fcu->bezt[4].vec[1][0], max);
+
+  /* Only selected. */
+  success = BKE_fcurve_calc_range(fcu, &min, &max, true);
+  EXPECT_FALSE(success);
+
+  fcu->bezt[1].f2 |= SELECT;
+  fcu->bezt[3].f2 |= SELECT;
+
+  success = BKE_fcurve_calc_range(fcu, &min, &max, true);
+  EXPECT_TRUE(success);
+  EXPECT_FLOAT_EQ(fcu->bezt[1].vec[1][0], min);
+  EXPECT_FLOAT_EQ(fcu->bezt[3].vec[1][0], max);
+
+  /* Curve samples. */
+  const int sample_start = 1;
+  const int sample_end = 20;
+  fcurve_store_samples(fcu, NULL, sample_start, sample_end, fcurve_samplingcb_evalcurve);
+
+  success = BKE_fcurve_calc_range(fcu, &min, &max, true);
+  EXPECT_TRUE(success);
+
+  EXPECT_FLOAT_EQ(sample_start, min);
+  EXPECT_FLOAT_EQ(sample_end, max);
+
+  BKE_fcurve_free(fcu);
+}
+
+TEST(BKE_fcurve, BKE_fcurve_calc_bounds)
+{
+  FCurve *fcu = BKE_fcurve_create();
+
+  insert_vert_fcurve(fcu, 1.0f, 7.5f, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_NO_USERPREF);
+  insert_vert_fcurve(fcu, 4.0f, -15.0f, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_NO_USERPREF);
+  insert_vert_fcurve(fcu, 8.0f, 15.0f, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_NO_USERPREF);
+  insert_vert_fcurve(fcu, 14.0f, 8.2f, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_NO_USERPREF);
+  insert_vert_fcurve(fcu, 18.2f, -20.0f, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_NO_USERPREF);
+
+  for (int i = 0; i < fcu->totvert; i++) {
+    fcu->bezt[i].f1 &= ~SELECT;
+    fcu->bezt[i].f2 &= ~SELECT;
+    fcu->bezt[i].f3 &= ~SELECT;
+  }
+
+  fcu->bezt[0].vec[0][0] = -5.0f;
+  fcu->bezt[4].vec[2][0] = 25.0f;
+
+  rctf bounds;
+  bool success;
+
+  /* All keys. */
+  success = BKE_fcurve_calc_bounds(
+      fcu, false /* sel only */, false /* include handles */, NULL /* frame range */, &bounds);
+  EXPECT_TRUE(success);
+  EXPECT_FLOAT_EQ(fcu->bezt[0].vec[1][0], bounds.xmin);
+  EXPECT_FLOAT_EQ(fcu->bezt[4].vec[1][0], bounds.xmax);
+  EXPECT_FLOAT_EQ(fcu->bezt[4].vec[1][1], bounds.ymin);
+  EXPECT_FLOAT_EQ(fcu->bezt[2].vec[1][1], bounds.ymax);
+
+  /* Only selected. */
+  success = BKE_fcurve_calc_bounds(
+      fcu, true /* sel only */, false /* include handles */, NULL /* frame range */, &bounds);
+  EXPECT_FALSE(success);
+
+  fcu->bezt[1].f2 |= SELECT;
+  fcu->bezt[3].f2 |= SELECT;
+
+  success = BKE_fcurve_calc_bounds(
+      fcu, true /* sel only */, false /* include handles */, NULL /* frame range */, &bounds);
+  EXPECT_TRUE(success);
+  EXPECT_FLOAT_EQ(fcu->bezt[1].vec[1][0], bounds.xmin);
+  EXPECT_FLOAT_EQ(fcu->bezt[3].vec[1][0], bounds.xmax);
+  EXPECT_FLOAT_EQ(fcu->bezt[1].vec[1][1], bounds.ymin);
+  EXPECT_FLOAT_EQ(fcu->bezt[3].vec[1][1], bounds.ymax);
+
+  /* Including handles. */
+  success = BKE_fcurve_calc_bounds(
+      fcu, false /* sel only */, true /* include handles */, NULL /* frame range */, &bounds);
+  EXPECT_TRUE(success);
+  EXPECT_FLOAT_EQ(fcu->bezt[0].vec[0][0], bounds.xmin);
+  EXPECT_FLOAT_EQ(fcu->bezt[4].vec[2][0], bounds.xmax);
+  EXPECT_FLOAT_EQ(fcu->bezt[4].vec[1][1], bounds.ymin);
+  EXPECT_FLOAT_EQ(fcu->bezt[2].vec[1][1], bounds.ymax);
+
+  /* Range. */
+  float range[2];
+
+  range[0] = 25;
+  range[1] = 30;
+  success = BKE_fcurve_calc_bounds(
+      fcu, false /* sel only */, false /* include handles */, range /* frame range */, &bounds);
+  EXPECT_FALSE(success);
+
+  range[0] = 0;
+  range[1] = 18.2f;
+  success = BKE_fcurve_calc_bounds(
+      fcu, false /* sel only */, false /* include handles */, range /* frame range */, &bounds);
+  EXPECT_TRUE(success);
+  EXPECT_FLOAT_EQ(fcu->bezt[0].vec[1][0], bounds.xmin);
+  EXPECT_FLOAT_EQ(fcu->bezt[3].vec[1][0], bounds.xmax);
+  EXPECT_FLOAT_EQ(fcu->bezt[1].vec[1][1], bounds.ymin);
+  EXPECT_FLOAT_EQ(fcu->bezt[2].vec[1][1], bounds.ymax);
+
+  /* Range and handles. */
+  success = BKE_fcurve_calc_bounds(
+      fcu, false /* sel only */, true /* include handles */, range /* frame range */, &bounds);
+  EXPECT_TRUE(success);
+  EXPECT_FLOAT_EQ(fcu->bezt[0].vec[0][0], bounds.xmin);
+  EXPECT_FLOAT_EQ(fcu->bezt[3].vec[2][0], bounds.xmax);
+  EXPECT_FLOAT_EQ(fcu->bezt[1].vec[1][1], bounds.ymin);
+  EXPECT_FLOAT_EQ(fcu->bezt[2].vec[1][1], bounds.ymax);
+
+  /* Range, handles and only selection. */
+  range[0] = 8.0f;
+  range[1] = 18.2f;
+  success = BKE_fcurve_calc_bounds(
+      fcu, true /* sel only */, true /* include handles */, range /* frame range */, &bounds);
+  EXPECT_TRUE(success);
+  EXPECT_FLOAT_EQ(fcu->bezt[3].vec[0][0], bounds.xmin);
+  EXPECT_FLOAT_EQ(fcu->bezt[3].vec[2][0], bounds.xmax);
+  EXPECT_FLOAT_EQ(fcu->bezt[3].vec[2][1], bounds.ymin);
+  EXPECT_FLOAT_EQ(fcu->bezt[3].vec[0][1], bounds.ymax);
+
+  BKE_fcurve_free(fcu);
+}
+
 }  // namespace blender::bke::tests
