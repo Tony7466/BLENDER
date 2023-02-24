@@ -130,7 +130,7 @@ class ResampleQuad {
   }
 };
 
-class MeshMarket {
+class MeshBuilder {
  private:
   LinearAllocator<> allocator_;
 
@@ -160,7 +160,7 @@ class MeshMarket {
   mutable Mesh *result = nullptr;
 
  public:
-  MeshMarket()
+  MeshBuilder()
   {
     mesh_primitives_.reserve(4);
     mesh_primitives_.add_new("Vertices", {});
@@ -410,11 +410,10 @@ template<typename T> void polys_have_created_new_loops()
 }
 
 void attribute_on_domain(const eAttrDomain domain,
-                         const MeshMarket &mesh_builder,
+                         const MeshBuilder &builder,
                          const Span<int> resample_edge_num,
                          const Mesh &src_mesh,
                          const GSpan src_value,
-                         Mesh & /*dst_mesh*/,
                          GMutableSpan dst_value)
 {
   const CPPType &type = src_value.type();
@@ -426,20 +425,20 @@ void attribute_on_domain(const eAttrDomain domain,
 
     switch (domain) {
       case ATTR_DOMAIN_POINT: {
-        const IndexRange vert_mapping = mesh_builder.lookup_range("Vertices", "Vertices");
+        const IndexRange vert_mapping = builder.lookup_range("Vertices", "Vertices");
         MutableSpan<T> dst_vert_vertices = dst_typed_values.slice(vert_mapping);
         dst_vert_vertices.copy_from(src_typed_values);
 
-        const OffsetIndices<int> edge_vertices_offsets = mesh_builder.lookup_offsets("Edges",
-                                                                                     "Vertices");
+        const OffsetIndices<int> edge_vertices_offsets = builder.lookup_offsets("Edges",
+                                                                                "Vertices");
         MutableSpan<T> dst_edge_vertices = dst_typed_values.slice(
-            mesh_builder.lookup_range("Edges", "Vertices"));
+            builder.lookup_range("Edges", "Vertices"));
         edges_have_created_new_verts<T>(
             edge_vertices_offsets, src_mesh.edges(), src_typed_values, dst_edge_vertices);
 
-        const IndexRange poly_vert_mapping = mesh_builder.lookup_range("Grid faces", "Vertices");
-        const OffsetIndices<int> face_vertices_offsets = mesh_builder.lookup_offsets("Grid faces",
-                                                                                     "Vertices");
+        const IndexRange poly_vert_mapping = builder.lookup_range("Grid faces", "Vertices");
+        const OffsetIndices<int> face_vertices_offsets = builder.lookup_offsets("Grid faces",
+                                                                                "Vertices");
 
         MutableSpan<T> poly_dst_vert_vertices = dst_typed_values.slice(poly_vert_mapping);
         polys_have_created_new_verts<T>(face_vertices_offsets,
@@ -451,15 +450,14 @@ void attribute_on_domain(const eAttrDomain domain,
         break;
       }
       case ATTR_DOMAIN_EDGE: {
-        const OffsetIndices<int> edge_edges_offsets = mesh_builder.lookup_offsets("Edges",
-                                                                                  "Edges");
+        const OffsetIndices<int> edge_edges_offsets = builder.lookup_offsets("Edges", "Edges");
         edges_have_created_new_edges<T>(edge_edges_offsets, src_typed_values, dst_typed_values);
         polys_have_created_new_edges<T>();
         break;
       }
       case ATTR_DOMAIN_CORNER: {
-        const OffsetIndices<int> loop_loops_offsets = mesh_builder.lookup_offsets("Grid faces",
-                                                                                  "Loops");
+        const OffsetIndices<int> loop_loops_offsets = builder.lookup_offsets("Grid faces",
+                                                                             "Loops");
         loops_have_created_new_loops<T>(loop_loops_offsets, src_typed_values, dst_typed_values);
         break;
       }
@@ -515,10 +513,9 @@ void edges_have_created_new_edges(const OffsetIndices<int> offsets,
 }
 
 void attribute_on_domain(const eAttrDomain domain,
-                         const MeshMarket &mesh_builder,
+                         const MeshBuilder &builder,
                          const Mesh &src_mesh,
                          const GSpan src_value,
-                         Mesh & /*dst_mesh*/,
                          GMutableSpan dst_value)
 {
   const CPPType &type = src_value.type();
@@ -530,27 +527,26 @@ void attribute_on_domain(const eAttrDomain domain,
 
     switch (domain) {
       case ATTR_DOMAIN_POINT: {
-        const IndexRange vert_mapping = mesh_builder.lookup_range("Vertices", "Vertices");
+        const IndexRange vert_mapping = builder.lookup_range("Vertices", "Vertices");
         MutableSpan<T> dst_vert_vertices = dst_typed_values.slice(vert_mapping);
         dst_vert_vertices.copy_from(src_typed_values);
 
-        const OffsetIndices<int> edge_vertices_offsets = mesh_builder.lookup_offsets("Edges",
-                                                                                     "Vertices");
+        const OffsetIndices<int> edge_vertices_offsets = builder.lookup_offsets("Edges",
+                                                                                "Vertices");
         MutableSpan<T> dst_edge_vertices = dst_typed_values.slice(
-            mesh_builder.lookup_range("Edges", "Vertices"));
+            builder.lookup_range("Edges", "Vertices"));
         edges_have_created_new_verts<T>(
             edge_vertices_offsets, src_mesh.edges(), src_typed_values, dst_edge_vertices);
         break;
       }
       case ATTR_DOMAIN_EDGE: {
-        const OffsetIndices<int> edge_edges_offsets = mesh_builder.lookup_offsets("Edges",
-                                                                                  "Edges");
+        const OffsetIndices<int> edge_edges_offsets = builder.lookup_offsets("Edges", "Edges");
         edges_have_created_new_edges<T>(edge_edges_offsets, src_typed_values, dst_typed_values);
         break;
       }
       case ATTR_DOMAIN_CORNER: {
-        const OffsetIndices<int> loop_loops_offsets = mesh_builder.lookup_offsets("N-gon loops",
-                                                                                  "Loops");
+        const OffsetIndices<int> loop_loops_offsets = builder.lookup_offsets("N-gon loops",
+                                                                             "Loops");
         /* Loops and edges propagation is equal. */
         edges_have_created_new_edges<T>(loop_loops_offsets, src_typed_values, dst_typed_values);
         break;
@@ -663,76 +659,13 @@ void build_edge_vert_indices(const OffsetIndices<int> new_edges,
   }
 }
 
-static void propagate_attributes_on_new_mesh(
-    const MeshMarket &mesh_builder,
-    const Span<int> resample_edge_num,
-    const bool try_to_fill_by_grid,
-    const Map<bke::AttributeIDRef, bke::AttributeKind> &attributes,
-    const Mesh &src_mesh)
-{
-  Mesh &result = mesh_builder.mesh();
-
-  const bke::AttributeAccessor src_attributes = src_mesh.attributes();
-  bke::MutableAttributeAccessor dst_attributes = result.attributes_for_write();
-
-  for (Map<bke::AttributeIDRef, bke::AttributeKind>::Item entry : attributes.items()) {
-    const bke::AttributeIDRef attribute_id = entry.key;
-    bke::GAttributeReader attribute = src_attributes.lookup(attribute_id);
-
-    if (!attribute) {
-      continue;
-    }
-
-    if (!ELEM(attribute.domain,
-              ATTR_DOMAIN_POINT,
-              ATTR_DOMAIN_EDGE,
-              ATTR_DOMAIN_CORNER,
-              ATTR_DOMAIN_FACE)) {
-      continue;
-    }
-
-    const eCustomDataType data_type = bke::cpp_type_to_custom_data_type(attribute.varray.type());
-    bke::GSpanAttributeWriter result_attribute = dst_attributes.lookup_or_add_for_write_only_span(
-        attribute_id, attribute.domain, data_type);
-
-    if (!result_attribute) {
-      continue;
-    }
-
-    GVArraySpan src_attribute_value(attribute.varray);
-    GMutableSpan dst_attribute_value(result_attribute.span);
-
-    if (try_to_fill_by_grid) {
-      using namespace propagation_for_grid;
-      attribute_on_domain(attribute.domain,
-                          mesh_builder,
-                          resample_edge_num,
-                          src_mesh,
-                          src_attribute_value,
-                          result,
-                          dst_attribute_value);
-    }
-    else {
-      using namespace propagation_for_ngone;
-      attribute_on_domain(attribute.domain,
-                          mesh_builder,
-                          src_mesh,
-                          src_attribute_value,
-                          result,
-                          dst_attribute_value);
-    }
-
-    result_attribute.finish();
-  }
-}
-
-void build_mesh(const Mesh &mesh,
-                const Span<int> resample_edge_num,
-                const bool try_to_fill_by_grid,
-                MeshMarket &r_mesh_builder)
+void compute_mesh(const Mesh &mesh,
+                  const Span<int> resample_edge_num,
+                  const bool try_to_fill_by_grid,
+                  MeshBuilder &builder)
 {
   /* New verices for original verts. */
-  r_mesh_builder.push_element_by_size("Vertices", "Vertices", mesh.totvert);
+  builder.push_element_by_size("Vertices", "Vertices", mesh.totvert);
 
   /* New vertices and edges for original edges. */
   {
@@ -741,9 +674,8 @@ void build_mesh(const Mesh &mesh,
         mesh.totedge,
         [resample_edge_num](const int64_t index) -> int { return resample_edge_num[index] + 1; });
 
-    r_mesh_builder.push_virtual_element(
-        "Edges", "Vertices", std::move(new_vertices_for_original_edges));
-    r_mesh_builder.push_virtual_element("Edges", "Edges", std::move(new_edges_for_original_edges));
+    builder.push_virtual_element("Edges", "Vertices", std::move(new_vertices_for_original_edges));
+    builder.push_virtual_element("Edges", "Edges", std::move(new_edges_for_original_edges));
   }
 
   if (try_to_fill_by_grid) {
@@ -780,7 +712,7 @@ void build_mesh(const Mesh &mesh,
           return resample.total_points();
         });
 
-    r_mesh_builder.push_virtual_element(
+    builder.push_virtual_element(
         "Grid faces", "Vertices", std::move(new_verts_for_original_faces));
   }
   else {
@@ -792,28 +724,26 @@ void build_mesh(const Mesh &mesh,
           return resample_edge_num[src_loop.e] + 1;
         });
 
-    r_mesh_builder.push_virtual_element(
-        "N-gon loops", "Loops", std::move(new_loops_for_original_faces));
+    builder.push_virtual_element("N-gon loops", "Loops", std::move(new_loops_for_original_faces));
 
     /* New faces for original faces. */
-    r_mesh_builder.push_element_by_size("N-gon faces", "Faces", mesh.totpoly);
+    builder.push_element_by_size("N-gon faces", "Faces", mesh.totpoly);
   }
 
-  r_mesh_builder.finalize();
+  builder.finalize();
 }
 
-void build_new_mesh_topology(const Mesh &mesh,
-                             const Span<int> /*resample_edge_num*/,
-                             const bool try_to_fill_by_grid,
-                             const MeshMarket &mesh_builder)
+void build_topology(const Mesh &mesh,
+                    const Span<int> /*resample_edge_num*/,
+                    const bool try_to_fill_by_grid,
+                    const MeshBuilder &builder)
 {
-  Mesh &result = mesh_builder.mesh();
-  build_edge_vert_indices(
-      mesh_builder.lookup_offsets("Edges", "Edges"),
-      mesh_builder.lookup_offsets("Edges", "Vertices"),
-      mesh.edges(),
-      mesh_builder.lookup_range("Edges", "Vertices"),
-      result.edges_for_write().slice(mesh_builder.lookup_range("Edges", "Edges")));
+  Mesh &result = builder.mesh();
+  build_edge_vert_indices(builder.lookup_offsets("Edges", "Edges"),
+                          builder.lookup_offsets("Edges", "Vertices"),
+                          mesh.edges(),
+                          builder.lookup_range("Edges", "Vertices"),
+                          result.edges_for_write().slice(builder.lookup_range("Edges", "Edges")));
 
   if (try_to_fill_by_grid) {
     /* pass */
@@ -822,13 +752,67 @@ void build_new_mesh_topology(const Mesh &mesh,
     using namespace ngone_fill;
     build_faces_loops(mesh.edges(),
                       mesh.loops(),
-                      mesh_builder.lookup_offsets("Edges", "Edges"),
-                      mesh_builder.lookup_offsets("N-gon loops", "Loops"),
+                      builder.lookup_offsets("Edges", "Edges"),
+                      builder.lookup_offsets("N-gon loops", "Loops"),
                       result.edges(),
                       result.loops_for_write());
-    build_faces(mesh.polys(),
-                mesh_builder.lookup_offsets("N-gon loops", "Loops"),
-                result.polys_for_write());
+    build_faces(
+        mesh.polys(), builder.lookup_offsets("N-gon loops", "Loops"), result.polys_for_write());
+  }
+}
+
+static void propagate_attributes(const Mesh &src_mesh,
+                                 const Span<int> resample_edge_num,
+                                 const bool try_to_fill_by_grid,
+                                 const MeshBuilder &builder,
+                                 const Map<bke::AttributeIDRef, bke::AttributeKind> &attributes)
+{
+  const bke::AttributeAccessor src_attributes = src_mesh.attributes();
+  bke::MutableAttributeAccessor dst_attributes = builder.mesh().attributes_for_write();
+
+  for (Map<bke::AttributeIDRef, bke::AttributeKind>::Item entry : attributes.items()) {
+    const bke::AttributeIDRef attribute_id = entry.key;
+    bke::GAttributeReader attribute = src_attributes.lookup(attribute_id);
+
+    if (!attribute) {
+      continue;
+    }
+
+    if (!ELEM(attribute.domain,
+              ATTR_DOMAIN_POINT,
+              ATTR_DOMAIN_EDGE,
+              ATTR_DOMAIN_CORNER,
+              ATTR_DOMAIN_FACE)) {
+      continue;
+    }
+
+    const eCustomDataType data_type = bke::cpp_type_to_custom_data_type(attribute.varray.type());
+    bke::GSpanAttributeWriter result_attribute = dst_attributes.lookup_or_add_for_write_only_span(
+        attribute_id, attribute.domain, data_type);
+
+    if (!result_attribute) {
+      continue;
+    }
+
+    GVArraySpan src_attribute_value(attribute.varray);
+    GMutableSpan dst_attribute_value(result_attribute.span);
+
+    if (try_to_fill_by_grid) {
+      using namespace propagation_for_grid;
+      attribute_on_domain(attribute.domain,
+                          builder,
+                          resample_edge_num,
+                          src_mesh,
+                          src_attribute_value,
+                          dst_attribute_value);
+    }
+    else {
+      using namespace propagation_for_ngone;
+      attribute_on_domain(
+          attribute.domain, builder, src_mesh, src_attribute_value, dst_attribute_value);
+    }
+
+    result_attribute.finish();
   }
 }
 
@@ -839,13 +823,12 @@ Mesh &resample_topology(const Mesh &mesh,
                         const bool try_to_fill_by_grid,
                         const Map<bke::AttributeIDRef, bke::AttributeKind> attributes)
 {
-  details::MeshMarket mesh_builder;
-  details::build_mesh(mesh, resample_edge_num, try_to_fill_by_grid, mesh_builder);
-  details::build_new_mesh_topology(mesh, resample_edge_num, try_to_fill_by_grid, mesh_builder);
-  details::propagate_attributes_on_new_mesh(
-      mesh_builder, resample_edge_num, try_to_fill_by_grid, attributes, mesh);
+  details::MeshBuilder builder;
+  details::compute_mesh(mesh, resample_edge_num, try_to_fill_by_grid, builder);
+  details::build_topology(mesh, resample_edge_num, try_to_fill_by_grid, builder);
+  details::propagate_attributes(mesh, resample_edge_num, try_to_fill_by_grid, builder, attributes);
 
-  return mesh_builder.mesh();
+  return builder.mesh();
 }
 
 }  // namespace blender::geometry
