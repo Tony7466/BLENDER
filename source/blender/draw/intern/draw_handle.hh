@@ -29,8 +29,8 @@ struct ResourceHandle {
   union {
     uint raw;
     struct {
-      uint index : 25;
-      uint sub_index : 6;
+      uint index : 26;
+      uint sub_index : 5;
       uint inverted_handedness : 1;
     };
   };

@@ -161,8 +161,8 @@ flat in int resourceIDFrag;
 #  endif
 #endif
 
-#define resource_id int(_resource_id_ & 0x01ffffffu)
-#define sub_resource_id int((_resource_id_ >> 25) & 0x3fu)
+#define resource_id int(_resource_id_ & 0x03FFFFFFu)
+#define sub_resource_id int((_resource_id_ >> 26) & 0x1Fu)
 
 /* Breaking this across multiple lines causes issues for some older GLSL compilers. */
 /* clang-format off */

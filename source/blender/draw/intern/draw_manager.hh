@@ -110,7 +110,7 @@ class Manager {
   uint attribute_len_ = 0;
 
   Vector<uint8_t> sub_handle_indices_;
-  int max_sub_handles_ = 64;
+  int max_sub_handles_ = 32;
 
   Object *object_active = nullptr;
 
