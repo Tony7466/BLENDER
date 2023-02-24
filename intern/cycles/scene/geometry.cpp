@@ -2119,24 +2119,6 @@ void GeometryManager::device_update(Device *device,
   dscene->attributes_float3.clear_modified();
   dscene->attributes_float4.clear_modified();
   dscene->attributes_uchar4.clear_modified();
-
-  if (scene->update_stats) {
-    SceneUpdateStats *update_stats = scene->update_stats;
-    const DeviceScene *dscene = &(scene->dscene);
-    vector<const device_memory *> memoryItems = {
-        &(dscene->bvh_nodes),         &(dscene->bvh_leaf_nodes),    &(dscene->object_node),
-        &(dscene->prim_type),         &(dscene->prim_visibility),   &(dscene->prim_index),
-        &(dscene->prim_object),       &(dscene->prim_time),         &(dscene->tri_verts),
-        &(dscene->tri_shader),        &(dscene->tri_vnormal),       &(dscene->tri_vindex),
-        &(dscene->tri_patch),         &(dscene->tri_patch_uv),      &(dscene->curves),
-        &(dscene->curve_keys),        &(dscene->curve_segments),    &(dscene->points),
-        &(dscene->points_shader),     &(dscene->patches),           &(dscene->attributes_map),
-        &(dscene->attributes_float),  &(dscene->attributes_float2), &(dscene->attributes_float3),
-        &(dscene->attributes_float4), &(dscene->attributes_uchar4)};
-    std::for_each(memoryItems.begin(), memoryItems.end(), [update_stats](const device_memory *dm) {
-      update_stats->device.buffers.add_entry({dm->name, dm->memory_size()});
-    });
-  }
 }
 
 void GeometryManager::device_free(Device *device, DeviceScene *dscene, bool force_free)

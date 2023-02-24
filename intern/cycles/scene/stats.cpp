@@ -225,20 +225,6 @@ string MeshStats::full_report(int indent_level)
   return result;
 }
 
-/* DeviceScene statistics. */
-
-DeviceSceneStats::DeviceSceneStats()
-{
-}
-
-string DeviceSceneStats::full_report(int indent_level)
-{
-  const string indent(indent_level * kIndentNumSpaces, ' ');
-  string result = "";
-  result += indent + "DeviceScene:\n" + buffers.full_report(indent_level + 1);
-  return result;
-}
-
 /* Image statistics. */
 
 ImageStats::ImageStats()
@@ -358,8 +344,6 @@ string SceneUpdateStats::full_report()
   result += "SVM:\n" + svm.full_report(1);
   result += "Tables:\n" + tables.full_report(1);
   result += "Procedurals:\n" + procedurals.full_report(1);
-
-  result += "DeviceScene:\n" + device.full_report(1);
   return result;
 }
 
