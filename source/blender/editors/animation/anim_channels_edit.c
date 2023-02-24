@@ -3651,14 +3651,8 @@ static void get_normalized_fcurve_bounds(FCurve *fcu,
                                          rctf *r_bounds)
 {
   const bool fcu_selection_only = false;
-  BKE_fcurve_calc_bounds(fcu,
-                         &r_bounds->xmin,
-                         &r_bounds->xmax,
-                         &r_bounds->ymin,
-                         &r_bounds->ymax,
-                         fcu_selection_only,
-                         include_handles,
-                         range);
+  BKE_fcurve_calc_bounds(fcu, fcu_selection_only, include_handles, range, r_bounds);
+
   const short mapping_flag = ANIM_get_normalization_flags(ac);
 
   float offset;
@@ -3806,6 +3800,7 @@ static int graphkeys_view_selected_channels_exec(bContext *C, wmOperator *op)
 
   if (!valid_bounds) {
     ANIM_animdata_freelist(&anim_data);
+    WM_report(RPT_WARNING, "No keyframes to focus on.");
     return OPERATOR_CANCELLED;
   }
 
@@ -3892,6 +3887,7 @@ static int graphkeys_channel_view_pick_invoke(bContext *C, wmOperator *op, const
 
   if (!found_bounds) {
     ANIM_animdata_freelist(&anim_data);
+    WM_report(RPT_WARNING, "No keyframes to focus on.");
     return OPERATOR_CANCELLED;
   }
 
