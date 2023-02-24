@@ -337,10 +337,12 @@ void ED_text_format_register_lua(void)
 {
   static TextFormatType tft = {NULL};
   static const char *ext[] = {"lua", NULL};
+  static const char *comment_line = "--";
 
   tft.format_identifier = txtfmt_lua_format_identifier;
   tft.format_line = txtfmt_lua_format_line;
   tft.ext = ext;
+  tft.comment_line = comment_line;
 
   ED_text_format_register(&tft);
 }

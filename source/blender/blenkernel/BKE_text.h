@@ -20,7 +20,7 @@ struct TextFormatType;
 
 struct TextFormatType *ED_text_format_get(struct Text *text);
 
-const char **ED_text_format_ext_get(struct TextFormatType *format);
+const char *ED_text_format_comment_line_prefix(struct TextFormatType *format);
 
 /**
  * \note caller must handle `compiled` member.

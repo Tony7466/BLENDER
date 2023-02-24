@@ -2124,31 +2124,6 @@ static bool txt_select_unprefix(Text *text, const char *remove, const bool requi
   return changed_any;
 }
 
-const char *get_comment_prefix(struct TextFormatType *format)
-{
-  for (char **ext = ED_text_format_ext_get(format); *ext != NULL; ext++) {
-    if (BLI_strcaseeq(*ext, "osl")) {
-      return "//";
-    }
-    if (BLI_strcaseeq(*ext, "ini")) {
-      return "//";
-    }
-    if (BLI_strcaseeq(*ext, "mcr")) {
-      return "//";
-    }
-    if (BLI_strcaseeq(*ext, "mac")) {
-      return "//";
-    }
-    if (BLI_strcaseeq(*ext, "py")) {
-      return "#";
-    }
-    if (BLI_strcaseeq(*ext, "lua")) {
-      return "--";
-    }
-  }
-  return NULL;
-}
-
 void txt_comment(Text *text)
 {
   struct TextFormatType *format = ED_text_format_get(text);
@@ -2156,7 +2131,7 @@ void txt_comment(Text *text)
     return;
   }
 
-  const char *prefix = get_comment_prefix(format);
+  const char *prefix = ED_text_format_comment_line_prefix(format);
   if (prefix == NULL) {
     return;
   }
@@ -2172,7 +2147,7 @@ bool txt_uncomment(Text *text)
     return false;
   }
 
-  const char *prefix = get_comment_prefix(format);
+  const char *prefix = ED_text_format_comment_line_prefix(format);
   if (prefix == NULL) {
     return false;
   }

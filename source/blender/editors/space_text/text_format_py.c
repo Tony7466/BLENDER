@@ -503,10 +503,12 @@ void ED_text_format_register_py(void)
 {
   static TextFormatType tft = {NULL};
   static const char *ext[] = {"py", NULL};
+  static const char *comment_line = "#";
 
   tft.format_identifier = txtfmt_py_format_identifier;
   tft.format_line = txtfmt_py_format_line;
   tft.ext = ext;
+  tft.comment_line = comment_line;
 
   ED_text_format_register(&tft);
 }
