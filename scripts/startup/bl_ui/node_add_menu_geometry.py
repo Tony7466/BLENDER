@@ -591,9 +591,10 @@ class NODE_MT_category_GEO_VOLUME(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeVolumeToMesh")
         layout.separator()
         if _context.preferences.experimental.use_new_volume_nodes:
+            node_add_menu.add_node_type(layout, "GeometryNodeMeanFilterSdfVolume")
             node_add_menu.add_node_type(layout, "GeometryNodeMeshToSdfVolume")
+            node_add_menu.add_node_type(layout, "GeometryNodeOffsetSdfVolume")
             node_add_menu.add_node_type(layout, "GeometryNodePointsToSdfVolume")
-            node_add_menu.add_node_type(layout, "GeometryNodeSdfVolumeFilter")
             node_add_menu.add_node_type(layout, "GeometryNodeSdfVolumeSphere")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 

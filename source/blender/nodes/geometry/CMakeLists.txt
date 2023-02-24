@@ -112,6 +112,7 @@ set(SRC
   nodes/node_geo_join_geometry.cc
   nodes/node_geo_material_replace.cc
   nodes/node_geo_material_selection.cc
+  nodes/node_geo_mean_filter_sdf_volume.cc
   nodes/node_geo_merge_by_distance.cc
   nodes/node_geo_mesh_face_group_boundaries.cc
   nodes/node_geo_mesh_primitive_circle.cc
@@ -136,6 +137,7 @@ set(SRC
   nodes/node_geo_mesh_topology_vertex_of_corner.cc
   nodes/node_geo_object_info.cc
   nodes/node_geo_offset_point_in_curve.cc
+  nodes/node_geo_offset_sdf_volume.cc
   nodes/node_geo_points.cc
   nodes/node_geo_points_to_vertices.cc
   nodes/node_geo_points_to_sdf_volume.cc
@@ -151,7 +153,6 @@ set(SRC
   nodes/node_geo_sample_uv_surface.cc
   nodes/node_geo_scale_elements.cc
   nodes/node_geo_scale_instances.cc
-  nodes/node_geo_sdf_volume_filter.cc
   nodes/node_geo_sdf_volume_sphere.cc
   nodes/node_geo_self_object.cc
   nodes/node_geo_separate_components.cc

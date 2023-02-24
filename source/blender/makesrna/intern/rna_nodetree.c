@@ -9806,31 +9806,6 @@ static void def_geo_curve_primitive_line(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 
-static void def_geo_sdf_volume_filter(StructRNA *srna)
-{
-  PropertyRNA *prop;
-
-  static const EnumPropertyItem operation_items[] = {
-      {GEO_NODE_SDF_VOLUME_FILTER_GAUSSIAN, "GAUSSIAN", 0, "Gaussian", "Gaussian filter"},
-      {GEO_NODE_SDF_VOLUME_FILTER_LAPLACIAN, "LAPLACIAN", 0, "Laplacian", "Laplacian flow"},
-      {GEO_NODE_SDF_VOLUME_FILTER_MEAN, "MEAN", 0, "Mean", "Mean flow"},
-      {GEO_NODE_SDF_VOLUME_FILTER_MEAN_CURVATURE,
-       "MEAN_CURVATURE",
-       0,
-       "Mean Curvature",
-       "Mean Curvature flow"},
-      {GEO_NODE_SDF_VOLUME_FILTER_MEDIAN, "MEDIAN", 0, "Median", "Median flow"},
-      {GEO_NODE_SDF_VOLUME_FILTER_OFFSET, "OFFSET", 0, "Offset", "Expand or contract the surface"},
-      {0, NULL, 0, NULL, NULL},
-  };
-
-  RNA_def_struct_sdna_from(srna, "NodeGeometrySdfVolumeFilter", "storage");
-  prop = RNA_def_property(srna, "operation", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, operation_items);
-  RNA_def_property_ui_text(prop, "Filter Operation", "Method to use for filtering the SDF");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
-}
-
 static void def_fn_rotate_euler(StructRNA *srna)
 {
   static const EnumPropertyItem type_items[] = {

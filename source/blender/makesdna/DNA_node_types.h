@@ -1594,11 +1594,6 @@ typedef struct NodeGeometryDistributePointsInVolume {
   uint8_t mode;
 } NodeGeometryDistributePointsInVolume;
 
-typedef struct NodeGeometrySdfVolumeFilter {
-  /* GeometryNodeSdfVolumeFilterOperation. */
-  uint8_t operation;
-} NodeGeometrySdfVolumeFilter;
-
 typedef struct NodeFunctionCompare {
   /* NodeCompareOperation */
   int8_t operation;
@@ -2228,15 +2223,6 @@ typedef enum GeometryNodeExtrudeMeshMode {
   GEO_NODE_EXTRUDE_MESH_EDGES = 1,
   GEO_NODE_EXTRUDE_MESH_FACES = 2,
 } GeometryNodeExtrudeMeshMode;
-
-typedef enum GeometryNodeSdfVolumeFilterOperation {
-  GEO_NODE_SDF_VOLUME_FILTER_GAUSSIAN = 0,
-  GEO_NODE_SDF_VOLUME_FILTER_LAPLACIAN = 1,
-  GEO_NODE_SDF_VOLUME_FILTER_MEDIAN = 2,
-  GEO_NODE_SDF_VOLUME_FILTER_MEAN = 3,
-  GEO_NODE_SDF_VOLUME_FILTER_MEAN_CURVATURE = 4,
-  GEO_NODE_SDF_VOLUME_FILTER_OFFSET = 5,
-} GeometryNodeSdfVolumeFilterOperation;
 
 typedef enum FunctionNodeRotateEulerType {
   FN_NODE_ROTATE_EULER_TYPE_EULER = 0,
