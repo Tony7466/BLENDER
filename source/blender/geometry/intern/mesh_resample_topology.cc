@@ -14,6 +14,10 @@
 
 #include "GEO_mesh_resample_topology.hh"
 
+namespace blender::geometry {
+
+namespace details {
+
 class ResampleQuad {
  private:
   /*
@@ -126,34 +130,13 @@ class ResampleQuad {
   }
 };
 
-namespace blender::detail {
-
 class MeshMarket {
  private:
   LinearAllocator<> allocator_;
 
-  struct OffestRange {
+  struct OffsetRange {
     IndexRange range;
     std::optional<Span<int>> offsets;
-
-    OffestRange() = default;
-
-    OffestRange(const IndexRange in_range, const Span<int> in_offsets)
-        : range(in_range), offsets(in_offsets)
-    {
-    }
-
-    OffestRange(const IndexRange in_range) : range(in_range)
-    {
-    }
-
-    OffestRange shift(const int64_t n) const
-    {
-      if (offsets.has_value()) {
-        return OffestRange(range.shift(n), *offsets);
-      }
-      return OffestRange(range.shift(n));
-    }
 
     void status(std::stringstream &stream, const char *pref = "") const
     {
@@ -163,146 +146,113 @@ class MeshMarket {
     }
   };
 
-  struct CustomData {
-    OffestRange vert;
-    OffestRange edge;
-    OffestRange loop;
-    OffestRange face;
+  struct Branch {
+    Vector<OffsetRange> ordered_elements;
+    Map<StringRef, OffsetRange *> named_elements;
 
     void status(std::stringstream &stream, const char *pref = "") const
     {
-      stream << pref << "CustomData:\n";
-      {
-        std::string new_pref = std::string(pref) + std::string("  Verts");
-        vert.status(stream, new_pref.c_str());
-      }
-      {
-        std::string new_pref = std::string(pref) + std::string("  Edges");
-        edge.status(stream, new_pref.c_str());
-      }
-      {
-        std::string new_pref = std::string(pref) + std::string("  Loops");
-        loop.status(stream, new_pref.c_str());
-      }
-      {
-        std::string new_pref = std::string(pref) + std::string("  Faces");
-        face.status(stream, new_pref.c_str());
-      }
-    };
+    }
   };
 
-  // Vector<CustomData> customs_;
-
-  Map<StringRef, CustomData> customs_;
-  Vector<StringRef> to_debug_in_order_;
-  CustomData *last_one_ = nullptr;
+  Map<StringRef, Branch> mesh_primitives_;
 
   mutable Mesh *result = nullptr;
 
  public:
-  MeshMarket() = default;
-
-  void status(std::stringstream &stream) const
+  MeshMarket()
   {
-    stream << "Status:\n";
-    stream << "  Has mesh: " << ((result != nullptr) ? "True" : "False") << ";\n";
-    stream << "  Customs{\n";
-    for (const StringRef custom_identifier : to_debug_in_order_) {
-      customs_.lookup(custom_identifier).status(stream, "    ");
-    }
-    stream << "};\n";
+    mesh_primitives_.reserve(4);
+    mesh_primitives_.add_new("Vertices", {});
+    mesh_primitives_.add_new("Edges", {});
+    mesh_primitives_.add_new("Loops", {});
+    mesh_primitives_.add_new("Faces", {});
   }
 
-  void add_custom(const StringRef custom_identifier,
-                  const int tot_vert,
-                  const int tot_edge,
-                  const int tot_loop,
-                  const int tot_face)
+  void push_element(const StringRef &identifier,
+                    const StringRef &primitive_type,
+                    const OffsetRange &element)
   {
-    this->add_custom(custom_identifier,
-                     OffestRange(IndexRange(tot_vert)),
-                     OffestRange(IndexRange(tot_edge)),
-                     OffestRange(IndexRange(tot_loop)),
-                     OffestRange(IndexRange(tot_face)));
-  }
-
-  void add_custom(const StringRef custom_identifier,
-                  const OffestRange vert,
-                  const OffestRange edge,
-                  const OffestRange loop,
-                  const OffestRange face)
-  {
-    const CustomData new_range{vert, edge, loop, face};
-
-    if (last_one_ == nullptr) {
-      customs_.add_new(custom_identifier, new_range);
-      last_one_ = &customs_.lookup(custom_identifier);
-      to_debug_in_order_.append(custom_identifier);
+    Branch &branch = mesh_primitives_.lookup(primitive_type);
+    if (branch.ordered_elements.is_empty()) {
+      BLI_assert(branch.named_elements.is_empty());
+      branch.ordered_elements.append(element);
+      branch.named_elements.add_new(identifier, &branch.ordered_elements.first());
       return;
     }
 
-    const CustomData &previous_one = *last_one_;
-    const CustomData another_one{new_range.vert.shift(previous_one.vert.range.one_after_last()),
-                                 new_range.edge.shift(previous_one.edge.range.one_after_last()),
-                                 new_range.loop.shift(previous_one.loop.range.one_after_last()),
-                                 new_range.face.shift(previous_one.face.range.one_after_last())};
+    const OffsetRange &previous_element = branch.ordered_elements.last();
+    const int64_t n_shift = previous_element.range.one_after_last();
 
-    customs_.add_new(custom_identifier, another_one);
-    last_one_ = &customs_.lookup(custom_identifier);
-    to_debug_in_order_.append(custom_identifier);
+    OffsetRange shifted_element = element;
+    shifted_element.range = shifted_element.range.shift(n_shift);
+
+    const int index = branch.ordered_elements.append_and_get_index(shifted_element);
+    branch.named_elements.add_new(identifier, &branch.ordered_elements[index]);
   }
 
-  void add_custom(const StringRef custom_identifier, const CustomData custom)
+  void push_element_by_size(const StringRef identifier,
+                            const StringRef &primitive_type,
+                            const int total)
   {
-    this->add_custom(custom_identifier, custom.vert, custom.edge, custom.loop, custom.face);
+    this->push_element(identifier, primitive_type, OffsetRange{IndexRange(total), std::nullopt});
   }
 
-  void add_custom(const StringRef custom_identifier,
-                  const VArray<int> verts,
-                  const VArray<int> edges,
-                  const VArray<int> loops,
-                  const VArray<int> faces)
+  void push_virtual_element(const StringRef identifier,
+                            const StringRef primitive_type,
+                            const VArray<int> counts)
   {
+    if (counts.is_single()) {
+      const int total_size = counts.get_internal_single() * counts.size();
+      this->push_element_by_size(identifier, primitive_type, total_size);
+      return;
+    }
 
-    auto total_size = [&allocator_ = this->allocator_](const VArray<int> &counts,
-                                                       OffestRange &r_offset_range) {
-      if (counts.is_single()) {
-        const int total_size = counts.get_internal_single() * counts.size();
-        r_offset_range.range = IndexRange(total_size);
-        return;
-      }
-      else {
-        MutableSpan<int> accumulations = allocator_.allocate_array<int>(counts.size() + 1);
-        accumulations.last() = 0;
-        counts.materialize(accumulations.drop_back(1));
-        offset_indices::accumulate_counts_to_offsets(accumulations);
-        const int total_size = accumulations.last();
+    MutableSpan<int> accumulations = allocator_.allocate_array<int>(counts.size() + 1);
+    accumulations.last() = 0;
+    counts.materialize(accumulations.drop_back(1));
+    offset_indices::accumulate_counts_to_offsets(accumulations);
+    const int total_size = accumulations.last();
 
-        r_offset_range.range = IndexRange(total_size);
-        r_offset_range.offsets.emplace(accumulations.as_span());
-        return;
-      }
-    };
+    OffsetRange new_element{IndexRange(total_size), accumulations.as_span()};
+    this->push_element(identifier, primitive_type, new_element);
+  }
 
-    CustomData custom;
+  IndexRange lookup_range(const StringRef identifier, const StringRef primitive_type) const
+  {
+    const Branch &branch = mesh_primitives_.lookup(primitive_type);
+    const OffsetRange &offset_range = *branch.named_elements.lookup(identifier);
+    return offset_range.range;
+  }
 
-    total_size(std::move(verts), custom.vert);
-    total_size(std::move(edges), custom.edge);
-    total_size(std::move(loops), custom.loop);
-    total_size(std::move(faces), custom.face);
-
-    this->add_custom(custom_identifier, custom);
+  OffsetIndices<int> lookup_offsets(const StringRef identifier,
+                                    const StringRef primitive_type) const
+  {
+    const Branch &branch = mesh_primitives_.lookup(primitive_type);
+    const OffsetRange &offset_range = *branch.named_elements.lookup(identifier);
+    BLI_assert(offset_range.offsets.has_value());
+    return OffsetIndices<int>(*offset_range.offsets);
   }
 
   void finalize()
   {
     BLI_assert(result == nullptr);
-    BLI_assert(last_one_ != nullptr);
-    result = BKE_mesh_new_nomain(last_one_->vert.range.one_after_last(),
-                                 last_one_->edge.range.one_after_last(),
-                                 0,
-                                 last_one_->loop.range.one_after_last(),
-                                 last_one_->face.range.one_after_last());
+
+    const auto branch_total = [this](const StringRef primitive_type) {
+      const Branch &branch = mesh_primitives_.lookup(primitive_type);
+      if (branch.ordered_elements.is_empty()) {
+        return 0;
+      }
+      const int size = branch.ordered_elements.last().range.one_after_last();
+      return size;
+    };
+
+    const int tot_vert = branch_total("Vertices");
+    const int tot_edge = branch_total("Edges");
+    const int tot_loop = branch_total("Loops");
+    const int tot_face = branch_total("Faces");
+
+    result = BKE_mesh_new_nomain(tot_vert, tot_edge, 0, tot_loop, tot_face);
   }
 
   Mesh &mesh() const
@@ -311,55 +261,18 @@ class MeshMarket {
     return *result;
   }
 
-  IndexRange lookup_range(const StringRef custom_identifier, const StringRef primitive_type) const
+  void status(std::stringstream &stream) const
   {
-    const CustomData &custom = customs_.lookup(custom_identifier);
-
-    if ("Vertices" == primitive_type) {
-      return custom.vert.range;
-    }
-    if ("Edges" == primitive_type) {
-      return custom.edge.range;
-    }
-    if ("Loops" == primitive_type) {
-      return custom.loop.range;
-    }
-    if ("Faces" == primitive_type) {
-      return custom.face.range;
-    }
-    BLI_assert_unreachable();
-    return {};
-  }
-
-  OffsetIndices<int> lookup_offsets(const StringRef custom_identifier,
-                                    const StringRef primitive_type) const
-  {
-    const CustomData &custom = customs_.lookup(custom_identifier);
-
-    if ("Vertices" == primitive_type) {
-      BLI_assert(custom.vert.offsets.has_value());
-      return *custom.vert.offsets;
-    }
-    if ("Edges" == primitive_type) {
-      BLI_assert(custom.edge.offsets.has_value());
-      return *custom.edge.offsets;
-    }
-    if ("Loops" == primitive_type) {
-      BLI_assert(custom.loop.offsets.has_value());
-      return *custom.loop.offsets;
-    }
-    if ("Faces" == primitive_type) {
-      BLI_assert(custom.face.offsets.has_value());
-      return *custom.face.offsets;
-    }
-    BLI_assert_unreachable();
-    return Span<int>();
+    stream << "Status:\n";
+    stream << "  Has mesh: " << ((result != nullptr) ? "True" : "False") << ";\n";
+    stream << "  Customs{\n";
+    mesh_primitives_.lookup("Vertices").status(stream, "Vertices");
+    mesh_primitives_.lookup("Edges").status(stream, "Edges");
+    mesh_primitives_.lookup("Loops").status(stream, "Loops");
+    mesh_primitives_.lookup("Faces").status(stream, "Faces");
+    stream << "};\n";
   }
 };
-
-}  // namespace blender::detail
-
-namespace blender::geometry {
 
 namespace propagation_for_grid {
 
@@ -497,7 +410,7 @@ template<typename T> void polys_have_created_new_loops()
 }
 
 void attribute_on_domain(const eAttrDomain domain,
-                         const detail::MeshMarket &mesh_builder,
+                         const MeshMarket &mesh_builder,
                          const Span<int> resample_edge_num,
                          const Mesh &src_mesh,
                          const GSpan src_value,
@@ -602,7 +515,7 @@ void edges_have_created_new_edges(const OffsetIndices<int> offsets,
 }
 
 void attribute_on_domain(const eAttrDomain domain,
-                         const detail::MeshMarket &mesh_builder,
+                         const MeshMarket &mesh_builder,
                          const Mesh &src_mesh,
                          const GSpan src_value,
                          Mesh & /*dst_mesh*/,
@@ -751,7 +664,7 @@ void build_edge_vert_indices(const OffsetIndices<int> new_edges,
 }
 
 static void propagate_attributes_on_new_mesh(
-    const detail::MeshMarket &mesh_builder,
+    const MeshMarket &mesh_builder,
     const Span<int> resample_edge_num,
     const bool try_to_fill_by_grid,
     const Map<bke::AttributeIDRef, bke::AttributeKind> &attributes,
@@ -816,10 +729,10 @@ static void propagate_attributes_on_new_mesh(
 void build_mesh(const Mesh &mesh,
                 const Span<int> resample_edge_num,
                 const bool try_to_fill_by_grid,
-                detail::MeshMarket &r_mesh_builder)
+                MeshMarket &r_mesh_builder)
 {
   /* New verices for original verts. */
-  r_mesh_builder.add_custom("Vertices", mesh.totvert, 0, 0, 0);
+  r_mesh_builder.push_element_by_size("Vertices", "Vertices", mesh.totvert);
 
   /* New vertices and edges for original edges. */
   {
@@ -828,11 +741,9 @@ void build_mesh(const Mesh &mesh,
         mesh.totedge,
         [resample_edge_num](const int64_t index) -> int { return resample_edge_num[index] + 1; });
 
-    r_mesh_builder.add_custom("Edges",
-                              std::move(new_vertices_for_original_edges),
-                              std::move(new_edges_for_original_edges),
-                              VArray<int>::ForSingle(0, 0),
-                              VArray<int>::ForSingle(0, 0));
+    r_mesh_builder.push_virtual_element(
+        "Edges", "Vertices", std::move(new_vertices_for_original_edges));
+    r_mesh_builder.push_virtual_element("Edges", "Edges", std::move(new_edges_for_original_edges));
   }
 
   if (try_to_fill_by_grid) {
@@ -869,11 +780,8 @@ void build_mesh(const Mesh &mesh,
           return resample.total_points();
         });
 
-    r_mesh_builder.add_custom("Grid faces",
-                              std::move(new_verts_for_original_faces),
-                              VArray<int>::ForSingle(0, 0),
-                              VArray<int>::ForSingle(0, 0),
-                              VArray<int>::ForSingle(0, 0));
+    r_mesh_builder.push_virtual_element(
+        "Grid faces", "Vertices", std::move(new_verts_for_original_faces));
   }
   else {
     /* New loops for original loops. */
@@ -884,14 +792,11 @@ void build_mesh(const Mesh &mesh,
           return resample_edge_num[src_loop.e] + 1;
         });
 
-    r_mesh_builder.add_custom("N-gon loops",
-                              VArray<int>::ForSingle(0, 0),
-                              VArray<int>::ForSingle(0, 0),
-                              std::move(new_loops_for_original_faces),
-                              VArray<int>::ForSingle(0, 0));
+    r_mesh_builder.push_virtual_element(
+        "N-gon loops", "Loops", std::move(new_loops_for_original_faces));
 
     /* New faces for original faces. */
-    r_mesh_builder.add_custom("N-gon faces", 0, 0, 0, mesh.totpoly);
+    r_mesh_builder.push_element_by_size("N-gon faces", "Faces", mesh.totpoly);
   }
 
   r_mesh_builder.finalize();
@@ -900,7 +805,7 @@ void build_mesh(const Mesh &mesh,
 void build_new_mesh_topology(const Mesh &mesh,
                              const Span<int> /*resample_edge_num*/,
                              const bool try_to_fill_by_grid,
-                             const detail::MeshMarket &mesh_builder)
+                             const MeshMarket &mesh_builder)
 {
   Mesh &result = mesh_builder.mesh();
   build_edge_vert_indices(
@@ -927,17 +832,17 @@ void build_new_mesh_topology(const Mesh &mesh,
   }
 }
 
+}  // namespace details
+
 Mesh &resample_topology(const Mesh &mesh,
                         const Span<int> resample_edge_num,
                         const bool try_to_fill_by_grid,
                         const Map<bke::AttributeIDRef, bke::AttributeKind> attributes)
 {
-  detail::MeshMarket mesh_builder;
-  build_mesh(mesh, resample_edge_num, try_to_fill_by_grid, mesh_builder);
-
-  build_new_mesh_topology(mesh, resample_edge_num, try_to_fill_by_grid, mesh_builder);
-
-  propagate_attributes_on_new_mesh(
+  details::MeshMarket mesh_builder;
+  details::build_mesh(mesh, resample_edge_num, try_to_fill_by_grid, mesh_builder);
+  details::build_new_mesh_topology(mesh, resample_edge_num, try_to_fill_by_grid, mesh_builder);
+  details::propagate_attributes_on_new_mesh(
       mesh_builder, resample_edge_num, try_to_fill_by_grid, attributes, mesh);
 
   return mesh_builder.mesh();
