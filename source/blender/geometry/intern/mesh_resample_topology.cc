@@ -169,8 +169,8 @@ class MeshBuilder {
     mesh_primitives_.add_new("Faces", {});
   }
 
-  void push_element(const StringRef &identifier,
-                    const StringRef &primitive_type,
+  void push_element(const StringRef &primitive_type,
+                    const StringRef &identifier,
                     const OffsetRange &element)
   {
     Branch &branch = mesh_primitives_.lookup(primitive_type);
@@ -191,20 +191,20 @@ class MeshBuilder {
     branch.named_elements.add_new(identifier, &branch.ordered_elements[index]);
   }
 
-  void push_element_by_size(const StringRef identifier,
-                            const StringRef &primitive_type,
+  void push_element_by_size(const StringRef &primitive_type,
+                            const StringRef identifier,
                             const int total)
   {
-    this->push_element(identifier, primitive_type, OffsetRange{IndexRange(total), std::nullopt});
+    this->push_element(primitive_type, identifier, OffsetRange{IndexRange(total), std::nullopt});
   }
 
-  void push_virtual_element(const StringRef identifier,
-                            const StringRef primitive_type,
+  void push_virtual_element(const StringRef primitive_type,
+                            const StringRef identifier,
                             const VArray<int> counts)
   {
     if (counts.is_single()) {
       const int total_size = counts.get_internal_single() * counts.size();
-      this->push_element_by_size(identifier, primitive_type, total_size);
+      this->push_element_by_size(primitive_type, identifier, total_size);
       return;
     }
 
@@ -215,18 +215,18 @@ class MeshBuilder {
     const int total_size = accumulations.last();
 
     OffsetRange new_element{IndexRange(total_size), accumulations.as_span()};
-    this->push_element(identifier, primitive_type, new_element);
+    this->push_element(primitive_type, identifier, new_element);
   }
 
-  IndexRange lookup_range(const StringRef identifier, const StringRef primitive_type) const
+  IndexRange lookup_range(const StringRef primitive_type, const StringRef identifier) const
   {
     const Branch &branch = mesh_primitives_.lookup(primitive_type);
     const OffsetRange &offset_range = *branch.named_elements.lookup(identifier);
     return offset_range.range;
   }
 
-  OffsetIndices<int> lookup_offsets(const StringRef identifier,
-                                    const StringRef primitive_type) const
+  OffsetIndices<int> lookup_offsets(const StringRef primitive_type,
+                                    const StringRef identifier) const
   {
     const Branch &branch = mesh_primitives_.lookup(primitive_type);
     const OffsetRange &offset_range = *branch.named_elements.lookup(identifier);
@@ -427,20 +427,20 @@ void attribute_on_domain(const eAttrDomain domain,
     switch (domain) {
       case ATTR_DOMAIN_POINT: {
         if (try_to_fill_by_grid) {
-          const IndexRange vert_mapping = builder.lookup_range("Vertices", "Vertices");
+          const IndexRange vert_mapping = builder.lookup_range("Vertices", "of Vertex");
           MutableSpan<T> dst_vert_vertices = dst_typed_values.slice(vert_mapping);
           dst_vert_vertices.copy_from(src_typed_values);
 
-          const OffsetIndices<int> edge_vertices_offsets = builder.lookup_offsets("Edges",
-                                                                                  "Vertices");
+          const OffsetIndices<int> edge_vertices_offsets = builder.lookup_offsets("Vertices",
+                                                                                  "of Edge");
           MutableSpan<T> dst_edge_vertices = dst_typed_values.slice(
-              builder.lookup_range("Edges", "Vertices"));
+              builder.lookup_range("Vertices", "of Edge"));
           edges_have_created_new_verts<T>(
               edge_vertices_offsets, src_mesh.edges(), src_typed_values, dst_edge_vertices);
 
-          const IndexRange poly_vert_mapping = builder.lookup_range("Grid faces", "Vertices");
-          const OffsetIndices<int> face_vertices_offsets = builder.lookup_offsets("Grid faces",
-                                                                                  "Vertices");
+          const IndexRange poly_vert_mapping = builder.lookup_range("Vertices", "of Face Grid");
+          const OffsetIndices<int> face_vertices_offsets = builder.lookup_offsets("Vertices",
+                                                                                  "of Face Grid");
 
           MutableSpan<T> poly_dst_vert_vertices = dst_typed_values.slice(poly_vert_mapping);
           polys_have_created_new_verts<T>(face_vertices_offsets,
@@ -451,14 +451,14 @@ void attribute_on_domain(const eAttrDomain domain,
                                           poly_dst_vert_vertices);
         }
         else {
-          const IndexRange vert_mapping = builder.lookup_range("Vertices", "Vertices");
+          const IndexRange vert_mapping = builder.lookup_range("Vertices", "of Vertex");
           MutableSpan<T> dst_vert_vertices = dst_typed_values.slice(vert_mapping);
           dst_vert_vertices.copy_from(src_typed_values);
 
-          const OffsetIndices<int> edge_vertices_offsets = builder.lookup_offsets("Edges",
-                                                                                  "Vertices");
+          const OffsetIndices<int> edge_vertices_offsets = builder.lookup_offsets("Vertices",
+                                                                                  "of Edge");
           MutableSpan<T> dst_edge_vertices = dst_typed_values.slice(
-              builder.lookup_range("Edges", "Vertices"));
+              builder.lookup_range("Vertices", "of Edge"));
           edges_have_created_new_verts<T>(
               edge_vertices_offsets, src_mesh.edges(), src_typed_values, dst_edge_vertices);
         }
@@ -466,25 +466,25 @@ void attribute_on_domain(const eAttrDomain domain,
       }
       case ATTR_DOMAIN_EDGE: {
         if (try_to_fill_by_grid) {
-          const OffsetIndices<int> edge_edges_offsets = builder.lookup_offsets("Edges", "Edges");
+          const OffsetIndices<int> edge_edges_offsets = builder.lookup_offsets("Edges", "of Edge");
           edges_have_created_new_edges<T>(edge_edges_offsets, src_typed_values, dst_typed_values);
           polys_have_created_new_edges<T>();
         }
         else {
-          const OffsetIndices<int> edge_edges_offsets = builder.lookup_offsets("Edges", "Edges");
+          const OffsetIndices<int> edge_edges_offsets = builder.lookup_offsets("Edges", "of Edge");
           edges_have_created_new_edges<T>(edge_edges_offsets, src_typed_values, dst_typed_values);
         }
         break;
       }
       case ATTR_DOMAIN_CORNER: {
         if (try_to_fill_by_grid) {
-          const OffsetIndices<int> loop_loops_offsets = builder.lookup_offsets("Grid faces",
-                                                                               "Loops");
+          const OffsetIndices<int> loop_loops_offsets = builder.lookup_offsets("Loops",
+                                                                               "of Face Grid");
           loops_have_created_new_loops<T>(loop_loops_offsets, src_typed_values, dst_typed_values);
         }
         else {
-          const OffsetIndices<int> loop_loops_offsets = builder.lookup_offsets("N-gon loops",
-                                                                               "Loops");
+          const OffsetIndices<int> loop_loops_offsets = builder.lookup_offsets(
+              "Loops", "of Face N-gon Loop");
           /* Loops and edges propagation is equal. */
           edges_have_created_new_edges<T>(loop_loops_offsets, src_typed_values, dst_typed_values);
         }
@@ -610,7 +610,7 @@ void compute_mesh(const Mesh &mesh,
                   MeshBuilder &builder)
 {
   /* New verices for original verts. */
-  builder.push_element_by_size("Vertices", "Vertices", mesh.totvert);
+  builder.push_element_by_size("Vertices", "of Vertex", mesh.totvert);
 
   /* New vertices and edges for original edges. */
   {
@@ -619,12 +619,15 @@ void compute_mesh(const Mesh &mesh,
         mesh.totedge,
         [resample_edge_num](const int64_t index) -> int { return resample_edge_num[index] + 1; });
 
-    builder.push_virtual_element("Edges", "Vertices", std::move(new_vertices_for_original_edges));
-    builder.push_virtual_element("Edges", "Edges", std::move(new_edges_for_original_edges));
+    builder.push_virtual_element(
+        "Vertices", "of Edge", std::move(new_vertices_for_original_edges));
+    builder.push_virtual_element("Edges", "of Edge", std::move(new_edges_for_original_edges));
   }
 
   if (try_to_fill_by_grid) {
     /* Face grid. */
+    builder.push_element_by_size("Loops", "of Face Grid", 0);
+
     const Span<MLoop> src_loops = mesh.loops();
     const Span<MPoly> src_polys = mesh.polys();
 
@@ -658,7 +661,7 @@ void compute_mesh(const Mesh &mesh,
         });
 
     builder.push_virtual_element(
-        "Grid faces", "Vertices", std::move(new_verts_for_original_faces));
+        "Vertices", "of Face Grid", std::move(new_verts_for_original_faces));
   }
   else {
     /* New loops for original loops. */
@@ -669,10 +672,11 @@ void compute_mesh(const Mesh &mesh,
           return resample_edge_num[src_loop.e] + 1;
         });
 
-    builder.push_virtual_element("N-gon loops", "Loops", std::move(new_loops_for_original_faces));
+    builder.push_virtual_element(
+        "Loops", "of Face N-gon Loop", std::move(new_loops_for_original_faces));
 
     /* New faces for original faces. */
-    builder.push_element_by_size("N-gon faces", "Faces", mesh.totpoly);
+    builder.push_element_by_size("Faces", "of Face N-gon", mesh.totpoly);
   }
 
   builder.finalize();
@@ -687,11 +691,12 @@ void build_topology(const Mesh &mesh,
 
   Mesh &result = builder.mesh();
 
-  build_edge_vert_indices(builder.lookup_offsets("Edges", "Edges"),
-                          builder.lookup_offsets("Edges", "Vertices"),
-                          mesh.edges(),
-                          builder.lookup_range("Edges", "Vertices"),
-                          result.edges_for_write().slice(builder.lookup_range("Edges", "Edges")));
+  build_edge_vert_indices(
+      builder.lookup_offsets("Edges", "of Edge"),
+      builder.lookup_offsets("Vertices", "of Edge"),
+      mesh.edges(),
+      builder.lookup_range("Vertices", "of Edge"),
+      result.edges_for_write().slice(builder.lookup_range("Edges", "of Edge")));
 
   if (try_to_fill_by_grid) {
     /* pass */
@@ -699,12 +704,13 @@ void build_topology(const Mesh &mesh,
   else {
     build_faces_loops(mesh.edges(),
                       mesh.loops(),
-                      builder.lookup_offsets("Edges", "Edges"),
-                      builder.lookup_offsets("N-gon loops", "Loops"),
+                      builder.lookup_offsets("Edges", "of Edge"),
+                      builder.lookup_offsets("Loops", "of Face N-gon Loop"),
                       result.edges(),
                       result.loops_for_write());
-    build_faces(
-        mesh.polys(), builder.lookup_offsets("N-gon loops", "Loops"), result.polys_for_write());
+    build_faces(mesh.polys(),
+                builder.lookup_offsets("Loops", "of Face N-gon Loop"),
+                result.polys_for_write());
   }
 }
 
