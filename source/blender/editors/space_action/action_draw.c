@@ -218,6 +218,7 @@ void draw_channel_strips(bAnimContext *ac, SpaceAction *saction, ARegion *region
   const float channel_step = ANIM_UI_get_channel_step();
   for (ale = anim_data.first; ale; ale = ale->next, ymax -= channel_step) {
     const float ymin = ymax - ANIM_UI_get_channel_height();
+    const bool is_expanded = ANIM_channel_setting_get(ac, ale, ACHANNEL_SETTING_EXPAND) != 0;
 
     /* check if visible */
     if (IN_RANGE(ymin, v2d->cur.ymin, v2d->cur.ymax) ||
@@ -298,8 +299,11 @@ void draw_channel_strips(bAnimContext *ac, SpaceAction *saction, ARegion *region
             }
           }
 
-          /* draw region twice: firstly backdrop, then the current range */
-          immRectf(pos, v2d->cur.xmin, ymin, v2d->cur.xmax + EXTRA_SCROLL_PAD, ymax);
+          /* Don't show backdrop color when summary is collapsed. */
+          if (ale->type != ANIMTYPE_SUMMARY || is_expanded) {
+            /* draw region twice: firstly backdrop, then the current range */
+            immRectf(pos, v2d->cur.xmin, ymin, v2d->cur.xmax + EXTRA_SCROLL_PAD, ymax);
+          }
         }
         else if (ac->datatype == ANIMCONT_GPENCIL) {
           uchar *color;
