@@ -339,7 +339,7 @@ PyTypeObject BPyGPUBatch_Type = {
     .tp_flags = Py_TPFLAGS_DEFAULT,
 #endif
     .tp_methods = pygpu_batch__tp_methods,
-    .tp_new = pygpu_batch__tp_new,mm
+    .tp_new = pygpu_batch__tp_new,
 };
 
 /** \} */
@@ -351,7 +351,7 @@ PyTypeObject BPyGPUBatch_Type = {
 PyObject *BPyGPUBatch_CreatePyObject(GPUBatch *batch)
 {
   BPyGPUBatch *self;
-   
+  
 #ifdef USE_GPU_PY_REFERENCES
   self = (BPyGPUBatch *)_PyObject_GC_New(&BPyGPUBatch_Type);
   self->references = NULL;
