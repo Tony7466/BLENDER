@@ -361,14 +361,6 @@ static void apply_selection_operation_at_index(GMutableSpan selection,
   }
 }
 
-/**
- * Helper struct for `select_pick`.
- */
-struct FindClosestData {
-  int index = -1;
-  float distance = FLT_MAX;
-};
-
 static bool find_closest_point_to_screen_co(const Depsgraph &depsgraph,
                                             const ARegion *region,
                                             const RegionView3D *rv3d,
@@ -388,7 +380,7 @@ static bool find_closest_point_to_screen_co(const Depsgraph &depsgraph,
   closest_data = threading::parallel_reduce(
       curves.points_range(),
       1024,
-      FindClosestData(),
+      closest_data,
       [&](const IndexRange point_range, const FindClosestData &init) {
         FindClosestData best_match = init;
         for (const int point_i : point_range) {
@@ -419,7 +411,7 @@ static bool find_closest_point_to_screen_co(const Depsgraph &depsgraph,
         }
         return b;
       });
-  if (closest_data.index > 0) {
+  if (closest_data.index >= 0) {
     return true;
   }
 
@@ -447,7 +439,7 @@ static bool find_closest_curve_to_screen_co(const Depsgraph &depsgraph,
   closest_data = threading::parallel_reduce(
       curves.curves_range(),
       256,
-      FindClosestData(),
+      closest_data,
       [&](const IndexRange curves_range, const FindClosestData &init) {
         FindClosestData best_match = init;
         for (const int curve_i : curves_range) {
@@ -515,18 +507,21 @@ static bool find_closest_curve_to_screen_co(const Depsgraph &depsgraph,
 }
 
 bool select_pick(const ViewContext &vc,
+                 const Object &object,
                  bke::CurvesGeometry &curves,
                  const eAttrDomain selection_domain,
                  const SelectPick_Params &params,
-                 const int2 coord)
+                 const int2 coord,
+                 FindClosestData initial)
 {
-  FindClosestData closest;
+  FindClosestData closest = initial;
   bool found = false;
+
   if (selection_domain == ATTR_DOMAIN_POINT) {
     found = find_closest_point_to_screen_co(*vc.depsgraph,
                                             vc.region,
                                             vc.rv3d,
-                                            *vc.obact,
+                                            object,
                                             curves,
                                             float2(coord),
                                             ED_view3d_select_dist_px(),
@@ -536,7 +531,7 @@ bool select_pick(const ViewContext &vc,
     found = find_closest_curve_to_screen_co(*vc.depsgraph,
                                             vc.region,
                                             vc.rv3d,
-                                            *vc.obact,
+                                            object,
                                             curves,
                                             float2(coord),
                                             ED_view3d_select_dist_px(),
