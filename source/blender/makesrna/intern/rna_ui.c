@@ -389,7 +389,7 @@ static StructRNA *rna_Panel_register(Main *bmain,
   }
 
   /* Insert into list. */
-  BLI_insertlinkafter(&art->paneltypes, pt_iter, pt);
+  /* BLI_insertlinkafter(&art->paneltypes, pt_iter, pt);
 
   if (parent) {
     pt->parent = parent;
@@ -410,7 +410,9 @@ static StructRNA *rna_Panel_register(Main *bmain,
     }
   }
 
-  WM_paneltype_add(pt);
+  WM_paneltype_add(pt); */
+
+  WM_paneltype_subpanel_add(parent, NULL, pt, true);
 
   /* update while blender is running */
   WM_main_add_notifier(NC_WINDOW, NULL);
