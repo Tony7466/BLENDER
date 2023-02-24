@@ -367,4 +367,3 @@ PyObject *BPyGPUBatch_CreatePyObject(GPUBatch *batch)
 /** \} */
 
 #undef BPY_GPU_BATCH_CHECK_OBJ
-    
