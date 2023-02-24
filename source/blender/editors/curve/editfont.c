@@ -2068,13 +2068,13 @@ static int font_open_exec(bContext *C, wmOperator *op)
   pprop = op->customdata;
 
   if (pprop->prop) {
-    /* when creating new ID blocks, use is already 1, but RNA
-     * pointer use also increases user, so this compensates it */
-    id_us_min(&font->id);
-
     RNA_id_pointer_create(&font->id, &idptr);
     RNA_property_pointer_set(&pprop->ptr, pprop->prop, idptr, NULL);
     RNA_property_update(C, &pprop->ptr, pprop->prop);
+  }
+  else {
+    /* Provide the user for the font assigned to somewhere. */
+    id_us_plus(&font->id);
   }
 
   MEM_freeN(op->customdata);

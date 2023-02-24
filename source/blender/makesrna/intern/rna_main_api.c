@@ -469,6 +469,8 @@ static VFont *rna_Main_fonts_load(Main *bmain,
   }
   else {
     font = BKE_vfont_load(bmain, filepath);
+    /* Provide the user for the font assigned to somewhere. */
+    id_us_plus(&font->id);
   }
 
   if (!font) {
