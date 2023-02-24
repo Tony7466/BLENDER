@@ -2686,6 +2686,15 @@ void CustomData_clear_layer_flag(CustomData *data, const int type, const int fla
   }
 }
 
+bool CustomData_layer_is_anonymous(const struct CustomData *data, int type, int n)
+{
+  const int layer_index = data->typemap[type];
+  BLI_assert(customdata_typemap_is_valid(data));
+  BLI_assert(data->layers[layer_index + n].type == type);
+
+  return data->layers[layer_index + n].anonymous_id != nullptr;
+}
+
 static bool customData_resize(CustomData *data, const int amount)
 {
   CustomDataLayer *tmp = static_cast<CustomDataLayer *>(
