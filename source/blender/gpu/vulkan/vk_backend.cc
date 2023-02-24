@@ -66,7 +66,7 @@ void VKBackend::compute_dispatch(int groups_x_len, int groups_y_len, int groups_
   VKShader *shader = static_cast<VKShader *>(context.shader);
   VKCommandBuffer &command_buffer = context.command_buffer_get();
   VKPipeline &pipeline = shader->pipeline_get();
-  VKDescriptorSet &descriptor_set = pipeline.descriptor_set_get();
+  VKDescriptorSetTracker &descriptor_set = pipeline.descriptor_set_get();
   VKPushConstants &push_constants = pipeline.push_constants_get();
 
   /* Update push constants based on their storage type.*/
@@ -85,9 +85,10 @@ void VKBackend::compute_dispatch(int groups_x_len, int groups_y_len, int groups_
                           push_constants.layout_get().descriptor_set_location_get());
       break;
   }
-  descriptor_set.update(context.device_get());
-  command_buffer.bind(
-      descriptor_set, shader->vk_pipeline_layout_get(), VK_PIPELINE_BIND_POINT_COMPUTE);
+  descriptor_set.update(context);
+  command_buffer.bind(descriptor_set.active_descriptor_set(),
+                      shader->vk_pipeline_layout_get(),
+                      VK_PIPELINE_BIND_POINT_COMPUTE);
   command_buffer.dispatch(groups_x_len, groups_y_len, groups_z_len);
 }
 

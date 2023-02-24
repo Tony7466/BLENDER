@@ -212,6 +212,7 @@ set(VULKAN_SRC
   vulkan/vk_shader_log.cc
   vulkan/vk_state_manager.cc
   vulkan/vk_storage_buffer.cc
+  vulkan/vk_submission_tracker.cc
   vulkan/vk_texture.cc
   vulkan/vk_uniform_buffer.cc
   vulkan/vk_vertex_buffer.cc
@@ -239,6 +240,7 @@ set(VULKAN_SRC
   vulkan/vk_shader_log.hh
   vulkan/vk_state_manager.hh
   vulkan/vk_storage_buffer.hh
+  vulkan/vk_submission_tracker.hh
   vulkan/vk_texture.hh
   vulkan/vk_uniform_buffer.hh
   vulkan/vk_vertex_buffer.hh

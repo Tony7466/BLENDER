@@ -178,17 +178,14 @@ static void test_push_constants_512bytes()
 }
 GPU_TEST(push_constants_512bytes)
 
-#if 0
 /* Schedule multiple simultaneously. */
-/* These test have been disabled for now as this will to be solved in a separate PR.
- * - DescriptorSets may not be altered, when they are in the command queue or being executed.
- */
 static void test_push_constants_multiple()
 {
-  do_push_constants_test("gpu_push_constants_test", 10);
+  do_push_constants_test("gpu_push_constants_test", 2);
 }
 GPU_TEST(push_constants_multiple)
 
+#if 0
 static void test_push_constants_multiple_128bytes()
 {
   do_push_constants_test("gpu_push_constants_128bytes_test", 10);
@@ -207,5 +204,4 @@ static void test_push_constants_multiple_512bytes()
 }
 GPU_TEST(push_constants_multiple_512bytes)
 #endif
-
 }  // namespace blender::gpu::tests
