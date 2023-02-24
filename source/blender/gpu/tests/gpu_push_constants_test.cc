@@ -181,11 +181,10 @@ GPU_TEST(push_constants_512bytes)
 /* Schedule multiple simultaneously. */
 static void test_push_constants_multiple()
 {
-  do_push_constants_test("gpu_push_constants_test", 2);
+  do_push_constants_test("gpu_push_constants_test", 10);
 }
 GPU_TEST(push_constants_multiple)
 
-#if 0
 static void test_push_constants_multiple_128bytes()
 {
   do_push_constants_test("gpu_push_constants_128bytes_test", 10);
@@ -203,5 +202,5 @@ static void test_push_constants_multiple_512bytes()
   do_push_constants_test("gpu_push_constants_512bytes_test", 10);
 }
 GPU_TEST(push_constants_multiple_512bytes)
-#endif
+
 }  // namespace blender::gpu::tests
