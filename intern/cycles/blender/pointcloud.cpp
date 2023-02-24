@@ -234,7 +234,7 @@ static void export_pointcloud_motion(PointCloud *pointcloud,
   std::optional<BL::FloatAttribute> b_attr_radius = find_radius_attribute(b_pointcloud);
 
   for (int i = 0; i < std::min(num_points, b_points_num); i++) {
-    float3 P = get_float3(b_attr_position.data[i].vector());
+    const float3 P = get_float3(b_attr_position.data[i].vector());
     const float radius = b_attr_radius ? b_attr_radius->data[i].value() : 0.01f;
     mP[i] = make_float4(P.x, P.y, P.z, radius);
     have_motion = have_motion || (P != pointcloud_points[i]);

@@ -167,7 +167,7 @@ size_t Attribute::data_sizeof() const
     return sizeof(float2);
   else if (type == TypeDesc::TypeMatrix)
     return sizeof(Transform);
-  // WL: The float3 type is not interchangeable with float4
+  // The float3 type is not interchangeable with float4
   // as it is now a packed type.
   else if (type == TypeDesc::TypeFloat4)
     return sizeof(float4);

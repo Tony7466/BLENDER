@@ -318,7 +318,6 @@ void BVHEmbree::set_tri_vertex_buffer(RTCGeometry geom_id, const Mesh *mesh, con
                                  num_verts + 1);
     }
   }
-  // FRL_CGR END
 }
 
 /**
@@ -586,8 +585,7 @@ void BVHEmbree::refit(Progress &progress)
         Mesh *mesh = static_cast<Mesh *>(geom);
         if (mesh->num_triangles() > 0) {
           RTCGeometry geom = rtcGetGeometry(scene, geom_id);
-	  // FIXME: Update only works if the buffer has the same pointer
-          set_tri_vertex_buffer(geom, mesh, false /*true*/);
+          set_tri_vertex_buffer(geom, mesh, true);
           rtcSetGeometryUserData(geom, (void *)mesh->prim_offset);
           rtcCommitGeometry(geom);
         }
@@ -596,8 +594,7 @@ void BVHEmbree::refit(Progress &progress)
         Hair *hair = static_cast<Hair *>(geom);
         if (hair->num_curves() > 0) {
           RTCGeometry geom = rtcGetGeometry(scene, geom_id + 1);
-	  // FIXME: Update only works if the buffer has the same pointer
-          set_curve_vertex_buffer(geom, hair, false /*true*/);
+          set_curve_vertex_buffer(geom, hair, true);
           rtcSetGeometryUserData(geom, (void *)hair->curve_segment_offset);
           rtcCommitGeometry(geom);
         }
@@ -606,8 +603,7 @@ void BVHEmbree::refit(Progress &progress)
         PointCloud *pointcloud = static_cast<PointCloud *>(geom);
         if (pointcloud->num_points() > 0) {
           RTCGeometry geom = rtcGetGeometry(scene, geom_id);
-	  // FIXME: Update only works if the buffer has the same pointer
-          set_point_vertex_buffer(geom, pointcloud, false /*true*/);
+          set_point_vertex_buffer(geom, pointcloud, true);
           rtcCommitGeometry(geom);
         }
       }
