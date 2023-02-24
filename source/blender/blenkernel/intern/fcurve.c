@@ -629,6 +629,9 @@ static void calculate_bezt_bounds_x(BezTriple *bezt_array,
                                     float *r_min,
                                     float *r_max)
 {
+  *r_min = bezt_array[index_range[0]].vec[1][0];
+  *r_max = bezt_array[index_range[0]].vec[1][0];
+
   if (include_handles) {
     /* Need to check all handles because they might extend beyond their neighboring keys. */
     for (int i = index_range[0]; i <= index_range[1]; i++) {
@@ -653,33 +656,31 @@ static void calculate_bezt_bounds_y(BezTriple *bezt_array,
   *r_min = bezt_array[index_range[0]].vec[1][1];
   *r_max = bezt_array[index_range[0]].vec[1][1];
 
-  BezTriple *bezt, *prev_bezt = NULL;
   for (int i = index_range[0]; i <= index_range[1]; i++) {
-    bezt = &bezt_array[i];
+    BezTriple bezt = bezt_array[i];
 
-    if (do_sel_only && !BEZT_ISSEL_ANY(bezt)) {
+    if (do_sel_only && !BEZT_ISSEL_ANY(&bezt)) {
       continue;
     }
 
-    *r_min = min_ff(*r_min, bezt->vec[1][1]);
-    *r_max = max_ff(*r_max, bezt->vec[1][1]);
+    *r_min = min_ff(*r_min, bezt.vec[1][1]);
+    *r_max = max_ff(*r_max, bezt.vec[1][1]);
 
     if (include_handles) {
       /* Left handle - only if applicable.
        * NOTE: for the very first keyframe,
        * the left handle actually has no bearings on anything. */
-      if (prev_bezt && (prev_bezt->ipo == BEZT_IPO_BEZ)) {
-        *r_min = min_ff(*r_min, bezt->vec[0][1]);
-        *r_max = max_ff(*r_max, bezt->vec[0][1]);
+      if (i - 1 > 0 && (bezt_array[i - 1].ipo == BEZT_IPO_BEZ)) {
+        *r_min = min_ff(*r_min, bezt.vec[0][1]);
+        *r_max = max_ff(*r_max, bezt.vec[0][1]);
       }
 
       /* Right handle - only if applicable. */
-      if (bezt->ipo == BEZT_IPO_BEZ) {
-        *r_min = min_ff(*r_min, bezt->vec[2][1]);
-        *r_max = max_ff(*r_max, bezt->vec[2][1]);
+      if (bezt.ipo == BEZT_IPO_BEZ) {
+        *r_min = min_ff(*r_min, bezt.vec[2][1]);
+        *r_max = max_ff(*r_max, bezt.vec[2][1]);
       }
     }
-    prev_bezt = bezt;
   }
 }
 
@@ -700,7 +701,6 @@ bool BKE_fcurve_calc_bounds(const FCurve *fcu,
     if (!found_indices) {
       return false;
     }
-
     calculate_bezt_bounds_x(
         fcu->bezt, index_range, include_handles, &r_bounds->xmin, &r_bounds->xmax);
     calculate_bezt_bounds_y(
