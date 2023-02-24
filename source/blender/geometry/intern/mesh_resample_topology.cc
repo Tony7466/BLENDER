@@ -274,7 +274,7 @@ class MeshBuilder {
   }
 };
 
-namespace propagation_for_grid {
+namespace propagation {
 
 template<typename T>
 void edges_have_created_new_verts(const OffsetIndices<int> offsets,
@@ -296,6 +296,18 @@ void edges_have_created_new_verts(const OffsetIndices<int> offsets,
       dst[range.start() + index_in_edge] = attribute_math::mix2(
           factor, value_on_a_edge_vertex, value_on_b_edge_vertex);
     }
+  }
+}
+
+template<typename T>
+void edges_have_created_new_edges(const OffsetIndices<int> offsets,
+                                  const Span<T> src,
+                                  MutableSpan<T> dst)
+{
+  for (const int index : offsets.index_range()) {
+    const IndexRange new_edges = offsets[index];
+    const T edge_value = src[index];
+    dst.slice(new_edges).fill(edge_value);
   }
 }
 
@@ -372,18 +384,6 @@ void polys_have_created_new_verts(const OffsetIndices<int> offsets,
   }
 }
 
-template<typename T>
-void edges_have_created_new_edges(const OffsetIndices<int> offsets,
-                                  const Span<T> src,
-                                  MutableSpan<T> dst)
-{
-  for (const int index : offsets.index_range()) {
-    const IndexRange new_edges = offsets[index];
-    const T edge_value = src[index];
-    dst.slice(new_edges).fill(edge_value);
-  }
-}
-
 template<typename T> void polys_have_created_new_edges()
 {
 }
@@ -412,6 +412,7 @@ template<typename T> void polys_have_created_new_loops()
 void attribute_on_domain(const eAttrDomain domain,
                          const MeshBuilder &builder,
                          const Span<int> resample_edge_num,
+                         const bool try_to_fill_by_grid,
                          const Mesh &src_mesh,
                          const GSpan src_value,
                          GMutableSpan dst_value)
@@ -425,45 +426,78 @@ void attribute_on_domain(const eAttrDomain domain,
 
     switch (domain) {
       case ATTR_DOMAIN_POINT: {
-        const IndexRange vert_mapping = builder.lookup_range("Vertices", "Vertices");
-        MutableSpan<T> dst_vert_vertices = dst_typed_values.slice(vert_mapping);
-        dst_vert_vertices.copy_from(src_typed_values);
+        if (try_to_fill_by_grid) {
+          const IndexRange vert_mapping = builder.lookup_range("Vertices", "Vertices");
+          MutableSpan<T> dst_vert_vertices = dst_typed_values.slice(vert_mapping);
+          dst_vert_vertices.copy_from(src_typed_values);
 
-        const OffsetIndices<int> edge_vertices_offsets = builder.lookup_offsets("Edges",
-                                                                                "Vertices");
-        MutableSpan<T> dst_edge_vertices = dst_typed_values.slice(
-            builder.lookup_range("Edges", "Vertices"));
-        edges_have_created_new_verts<T>(
-            edge_vertices_offsets, src_mesh.edges(), src_typed_values, dst_edge_vertices);
+          const OffsetIndices<int> edge_vertices_offsets = builder.lookup_offsets("Edges",
+                                                                                  "Vertices");
+          MutableSpan<T> dst_edge_vertices = dst_typed_values.slice(
+              builder.lookup_range("Edges", "Vertices"));
+          edges_have_created_new_verts<T>(
+              edge_vertices_offsets, src_mesh.edges(), src_typed_values, dst_edge_vertices);
 
-        const IndexRange poly_vert_mapping = builder.lookup_range("Grid faces", "Vertices");
-        const OffsetIndices<int> face_vertices_offsets = builder.lookup_offsets("Grid faces",
-                                                                                "Vertices");
+          const IndexRange poly_vert_mapping = builder.lookup_range("Grid faces", "Vertices");
+          const OffsetIndices<int> face_vertices_offsets = builder.lookup_offsets("Grid faces",
+                                                                                  "Vertices");
 
-        MutableSpan<T> poly_dst_vert_vertices = dst_typed_values.slice(poly_vert_mapping);
-        polys_have_created_new_verts<T>(face_vertices_offsets,
-                                        src_mesh.polys(),
-                                        src_mesh.loops(),
-                                        resample_edge_num,
-                                        src_typed_values,
-                                        poly_dst_vert_vertices);
+          MutableSpan<T> poly_dst_vert_vertices = dst_typed_values.slice(poly_vert_mapping);
+          polys_have_created_new_verts<T>(face_vertices_offsets,
+                                          src_mesh.polys(),
+                                          src_mesh.loops(),
+                                          resample_edge_num,
+                                          src_typed_values,
+                                          poly_dst_vert_vertices);
+        }
+        else {
+          const IndexRange vert_mapping = builder.lookup_range("Vertices", "Vertices");
+          MutableSpan<T> dst_vert_vertices = dst_typed_values.slice(vert_mapping);
+          dst_vert_vertices.copy_from(src_typed_values);
+
+          const OffsetIndices<int> edge_vertices_offsets = builder.lookup_offsets("Edges",
+                                                                                  "Vertices");
+          MutableSpan<T> dst_edge_vertices = dst_typed_values.slice(
+              builder.lookup_range("Edges", "Vertices"));
+          edges_have_created_new_verts<T>(
+              edge_vertices_offsets, src_mesh.edges(), src_typed_values, dst_edge_vertices);
+        }
         break;
       }
       case ATTR_DOMAIN_EDGE: {
-        const OffsetIndices<int> edge_edges_offsets = builder.lookup_offsets("Edges", "Edges");
-        edges_have_created_new_edges<T>(edge_edges_offsets, src_typed_values, dst_typed_values);
-        polys_have_created_new_edges<T>();
+        if (try_to_fill_by_grid) {
+          const OffsetIndices<int> edge_edges_offsets = builder.lookup_offsets("Edges", "Edges");
+          edges_have_created_new_edges<T>(edge_edges_offsets, src_typed_values, dst_typed_values);
+          polys_have_created_new_edges<T>();
+        }
+        else {
+          const OffsetIndices<int> edge_edges_offsets = builder.lookup_offsets("Edges", "Edges");
+          edges_have_created_new_edges<T>(edge_edges_offsets, src_typed_values, dst_typed_values);
+        }
         break;
       }
       case ATTR_DOMAIN_CORNER: {
-        const OffsetIndices<int> loop_loops_offsets = builder.lookup_offsets("Grid faces",
-                                                                             "Loops");
-        loops_have_created_new_loops<T>(loop_loops_offsets, src_typed_values, dst_typed_values);
+        if (try_to_fill_by_grid) {
+          const OffsetIndices<int> loop_loops_offsets = builder.lookup_offsets("Grid faces",
+                                                                               "Loops");
+          loops_have_created_new_loops<T>(loop_loops_offsets, src_typed_values, dst_typed_values);
+        }
+        else {
+          const OffsetIndices<int> loop_loops_offsets = builder.lookup_offsets("N-gon loops",
+                                                                               "Loops");
+          /* Loops and edges propagation is equal. */
+          edges_have_created_new_edges<T>(loop_loops_offsets, src_typed_values, dst_typed_values);
+        }
         break;
       }
       case ATTR_DOMAIN_FACE: {
-        polys_have_created_new_polys<T>(src_typed_values, dst_typed_values);
-        polys_have_created_new_loops<T>();
+        if (try_to_fill_by_grid) {
+          polys_have_created_new_polys<T>(src_typed_values, dst_typed_values);
+          polys_have_created_new_loops<T>();
+        }
+        else {
+          dst_typed_values.copy_from(src_typed_values);
+        }
         break;
       }
       default: {
@@ -473,98 +507,9 @@ void attribute_on_domain(const eAttrDomain domain,
   });
 }
 
-}  // namespace propagation_for_grid
+}  // namespace propagation
 
-namespace propagation_for_ngone {
-
-template<typename T>
-void edges_have_created_new_verts(const OffsetIndices<int> offsets,
-                                  const Span<MEdge> edges,
-                                  const Span<T> src,
-                                  MutableSpan<T> dst)
-{
-  for (const int index : offsets.index_range()) {
-    const MEdge edge = edges[index];
-
-    const T value_on_a_edge_vertex = src[edge.v1];
-    const T value_on_b_edge_vertex = src[edge.v2];
-
-    const IndexRange range = offsets[index];
-    const int size = range.size();
-
-    for (const int index_in_edge : IndexRange(size)) {
-      const float factor = float(index_in_edge + 1) / float(size + 1);
-      dst[range.start() + index_in_edge] = attribute_math::mix2(
-          factor, value_on_a_edge_vertex, value_on_b_edge_vertex);
-    }
-  }
-}
-
-template<typename T>
-void edges_have_created_new_edges(const OffsetIndices<int> offsets,
-                                  const Span<T> src,
-                                  MutableSpan<T> dst)
-{
-  for (const int index : offsets.index_range()) {
-    const IndexRange new_edges = offsets[index];
-    const T edge_value = src[index];
-    dst.slice(new_edges).fill(edge_value);
-  }
-}
-
-void attribute_on_domain(const eAttrDomain domain,
-                         const MeshBuilder &builder,
-                         const Mesh &src_mesh,
-                         const GSpan src_value,
-                         GMutableSpan dst_value)
-{
-  const CPPType &type = src_value.type();
-
-  attribute_math::convert_to_static_type(type, [&](auto dumpy) {
-    using T = decltype(dumpy);
-    const Span<T> src_typed_values = src_value.typed<T>();
-    MutableSpan<T> dst_typed_values = dst_value.typed<T>();
-
-    switch (domain) {
-      case ATTR_DOMAIN_POINT: {
-        const IndexRange vert_mapping = builder.lookup_range("Vertices", "Vertices");
-        MutableSpan<T> dst_vert_vertices = dst_typed_values.slice(vert_mapping);
-        dst_vert_vertices.copy_from(src_typed_values);
-
-        const OffsetIndices<int> edge_vertices_offsets = builder.lookup_offsets("Edges",
-                                                                                "Vertices");
-        MutableSpan<T> dst_edge_vertices = dst_typed_values.slice(
-            builder.lookup_range("Edges", "Vertices"));
-        edges_have_created_new_verts<T>(
-            edge_vertices_offsets, src_mesh.edges(), src_typed_values, dst_edge_vertices);
-        break;
-      }
-      case ATTR_DOMAIN_EDGE: {
-        const OffsetIndices<int> edge_edges_offsets = builder.lookup_offsets("Edges", "Edges");
-        edges_have_created_new_edges<T>(edge_edges_offsets, src_typed_values, dst_typed_values);
-        break;
-      }
-      case ATTR_DOMAIN_CORNER: {
-        const OffsetIndices<int> loop_loops_offsets = builder.lookup_offsets("N-gon loops",
-                                                                             "Loops");
-        /* Loops and edges propagation is equal. */
-        edges_have_created_new_edges<T>(loop_loops_offsets, src_typed_values, dst_typed_values);
-        break;
-      }
-      case ATTR_DOMAIN_FACE: {
-        dst_typed_values.copy_from(src_typed_values);
-        break;
-      }
-      default: {
-        BLI_assert_unreachable();
-      }
-    }
-  });
-}
-
-}  // namespace propagation_for_ngone
-
-namespace ngone_fill {
+namespace topology {
 
 void build_face_loops(const bool flip_order,
                       const IndexRange edge_mappng,
@@ -625,8 +570,6 @@ void build_faces(const Span<MPoly> src_polys,
   }
 }
 
-}  // namespace ngone_fill
-
 void build_edge_vert_indices(const OffsetIndices<int> new_edges,
                              const OffsetIndices<int> new_verts_for_edges,
                              const Span<MEdge> edges,
@@ -658,6 +601,8 @@ void build_edge_vert_indices(const OffsetIndices<int> new_edges,
     dst_edges.last().v2 = src_edge.v2;
   }
 }
+
+}  // namespace topology
 
 void compute_mesh(const Mesh &mesh,
                   const Span<int> resample_edge_num,
@@ -738,7 +683,10 @@ void build_topology(const Mesh &mesh,
                     const bool try_to_fill_by_grid,
                     const MeshBuilder &builder)
 {
+  using namespace topology;
+
   Mesh &result = builder.mesh();
+
   build_edge_vert_indices(builder.lookup_offsets("Edges", "Edges"),
                           builder.lookup_offsets("Edges", "Vertices"),
                           mesh.edges(),
@@ -749,7 +697,6 @@ void build_topology(const Mesh &mesh,
     /* pass */
   }
   else {
-    using namespace ngone_fill;
     build_faces_loops(mesh.edges(),
                       mesh.loops(),
                       builder.lookup_offsets("Edges", "Edges"),
@@ -797,20 +744,14 @@ static void propagate_attributes(const Mesh &src_mesh,
     GVArraySpan src_attribute_value(attribute.varray);
     GMutableSpan dst_attribute_value(result_attribute.span);
 
-    if (try_to_fill_by_grid) {
-      using namespace propagation_for_grid;
-      attribute_on_domain(attribute.domain,
-                          builder,
-                          resample_edge_num,
-                          src_mesh,
-                          src_attribute_value,
-                          dst_attribute_value);
-    }
-    else {
-      using namespace propagation_for_ngone;
-      attribute_on_domain(
-          attribute.domain, builder, src_mesh, src_attribute_value, dst_attribute_value);
-    }
+    using namespace propagation;
+    attribute_on_domain(attribute.domain,
+                        builder,
+                        resample_edge_num,
+                        try_to_fill_by_grid,
+                        src_mesh,
+                        src_attribute_value,
+                        dst_attribute_value);
 
     result_attribute.finish();
   }
