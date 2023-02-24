@@ -208,13 +208,11 @@ static PanelType *fmodifier_subpanel_register(ARegionType *region_type,
   panel_type->poll = poll;
   panel_type->flag = PANEL_TYPE_DEFAULT_CLOSED;
 
-  /* BLI_assert(parent != NULL);
+  BLI_assert(parent != NULL);
   BLI_strncpy(panel_type->parent_id, parent->idname, BKE_ST_MAXNAME);
   panel_type->parent = parent;
   BLI_addtail(&parent->children, BLI_genericNodeN(panel_type));
-  BLI_addtail(&region_type->paneltypes, panel_type); */
-
-  WM_paneltype_subpanel_add(parent, NULL, panel_type, true);
+  BLI_addtail(&region_type->paneltypes, panel_type);
 
   return panel_type;
 }
