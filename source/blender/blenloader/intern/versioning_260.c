@@ -353,13 +353,23 @@ static void do_versions_mesh_mloopcol_swap_2_62_1(Mesh *me)
   MLoopCol *mloopcol;
   int a;
   int i;
+  int change1;
+  int change2;
 
-  for (a = 0; a < me->ldata.totlayer; a++) {
+  for (a = me->ldata.totlayer; --a) {
+    /*optimized loop to use deincrement instead to use less resources 
+    because now it automatically stops when a reaches 0 and it loops 
+    the same number of times*/
+    change1 = (me->ldata.totlayer - a);
     layer = &me->ldata.layers[a];
 
     if (layer->type == CD_PROP_BYTE_COLOR) {
       mloopcol = (MLoopCol *)layer->data;
-      for (i = 0; i < me->totloop; i++, mloopcol++) {
+      for (i = me->totloop; --i, ++mloopcol) {
+        /*optimized loop to use deincrement instead to use less resources 
+          because now it automatically stops when a reaches 0 and it loops 
+          the same number of times*/
+        change2 = (me->totloop - i);
         SWAP(uchar, mloopcol->r, mloopcol->b);
       }
     }
@@ -450,9 +460,14 @@ static void do_versions_nodetree_frame_2_64_6(bNodeTree *ntree)
 static void do_versions_affine_tracker_track(MovieTrackingTrack *track)
 {
   int i;
+  int change;
 
-  for (i = 0; i < track->markersnr; i++) {
-    MovieTrackingMarker *marker = &track->markers[i];
+  for (i = track->markersnr; --i) {
+    /*optimized loop to use deincrement instead to use less resources 
+    because now it automatically stops when a reaches 0 and it loops 
+    the same number of times*/
+    change = (track->markersnr - i);
+    MovieTrackingMarker *marker = &track->markers[change];
 
     if (is_zero_v2(marker->pattern_corners[0]) && is_zero_v2(marker->pattern_corners[1]) &&
         is_zero_v2(marker->pattern_corners[2]) && is_zero_v2(marker->pattern_corners[3])) {
@@ -892,15 +907,20 @@ void blo_do_versions_260(FileData *fd, Library *UNUSED(lib), Main *bmain)
       for (ob = bmain->objects.first; ob; ob = ob->id.next) {
         /* convert delta addition into delta scale */
         int i;
-        for (i = 0; i < 3; i++) {
-          if ((ob->dsize[i] == 0.0f) || /* simple case, user never touched dsize */
-              (ob->scale[i] == 0.0f))   /* can't scale the dsize to give a non zero result,
+        int change;
+        for (i = 3; --i) {
+          /*optimized loop to use deincrement instead to use less resources 
+          because now it automatically stops when a reaches 0 and it loops 
+          the same number of times*/
+          change = (3 - i)
+          if ((ob->dsize[change] == 0.0f) || /* simple case, user never touched dsize */
+              (ob->scale[change] == 0.0f))   /* can't scale the dsize to give a non zero result,
                                          * so fallback to 1.0f */
           {
-            ob->dscale[i] = 1.0f;
+            ob->dscale[change] = 1.0f;
           }
           else {
-            ob->dscale[i] = (ob->scale[i] + ob->dsize[i]) / ob->scale[i];
+            ob->dscale[change] = (ob->scale[change] + ob->dsize[change]) / ob->scale[change];
           }
         }
       }
@@ -1863,18 +1883,18 @@ void blo_do_versions_260(FileData *fd, Library *UNUSED(lib), Main *bmain)
               BezTriple *bezt = nu->bezt;
               a = nu->pntsu;
 
-              while (a--) {
+              while (--a) {
                 bezt->radius = 1.0f;
-                bezt++;
+                ++bezt;
               }
             }
             else if (nu->bp) {
               BPoint *bp = nu->bp;
               a = nu->pntsu * nu->pntsv;
 
-              while (a--) {
+              while (--a) {
                 bp->radius = 1.0f;
-                bp++;
+                ++bp;
               }
             }
           }
@@ -2606,7 +2626,7 @@ void do_versions_after_linking_260(Main *bmain)
           if (input_node) {
             link->fromnode = input_node;
             link->fromsock = node_group_input_find_socket(input_node, link->fromsock->identifier);
-            num_inputs++;
+            ++num_inputs;
 
             if (link->tonode) {
               if (input_locx > link->tonode->locx - offsetx) {
@@ -2624,7 +2644,7 @@ void do_versions_after_linking_260(Main *bmain)
           if (output_node) {
             link->tonode = output_node;
             link->tosock = node_group_output_find_socket(output_node, link->tosock->identifier);
-            num_outputs++;
+            ++num_outputs;
 
             if (link->fromnode) {
               if (output_locx < link->fromnode->locx + offsetx) {
