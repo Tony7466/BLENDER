@@ -210,34 +210,6 @@ VolumeGrid *fog_volume_grid_add_from_mesh(Volume *volume,
   return c_grid;
 }
 
-// VolumeGrid *fog_volume_grid_add_from_mesh(Volume *volume,
-//                                           const StringRefNull name,
-//                                           const Mesh *mesh,
-//                                           const float4x4 &mesh_to_volume_space_transform,
-//                                           const float voxel_size,
-//                                           const bool fill_volume,
-//                                           const float exterior_band_width,
-//                                           const float interior_band_width,
-//                                           const float density)
-// {
-//   openvdb::FloatGrid::Ptr mesh_grid = mesh_to_fog_volume_grid(mesh,
-//                                                               mesh_to_volume_space_transform,
-//                                                               voxel_size,
-//                                                               fill_volume,
-//                                                               exterior_band_width,
-//                                                               interior_band_width,
-//                                                               density);
-
-//   if (mesh_grid == nullptr) {
-//     return nullptr;
-//   }
-
-//   /* Change transform so that the index space is correctly transformed to object space. */
-//   mesh_grid->transform().postScale(voxel_size);
-
-//   return BKE_volume_grid_add_vdb(*volume, name, std::move(mesh_grid));
-// }
-
 VolumeGrid *sdf_volume_grid_add_from_mesh(Volume *volume,
                                           const StringRefNull name,
                                           const Mesh *mesh,
@@ -245,12 +217,7 @@ VolumeGrid *sdf_volume_grid_add_from_mesh(Volume *volume,
                                           const float half_band_width)
 {
   openvdb::FloatGrid::Ptr mesh_grid = mesh_to_sdf_volume_grid(mesh, voxel_size, half_band_width);
-
-  if (mesh_grid == nullptr) {
-    return nullptr;
-  }
-
-  return BKE_volume_grid_add_vdb(*volume, name, std::move(mesh_grid));
+  return mesh_grid ? BKE_volume_grid_add_vdb(*volume, name, std::move(mesh_grid)) : nullptr;
 }
 }  // namespace blender::geometry
 #endif
