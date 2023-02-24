@@ -55,9 +55,6 @@ class UsdUsdzExportTest : public BlendfileLoadingBaseTest {
       FAIL();
     }
 
-    char original_wd[FILE_MAX];
-    BLI_current_working_dir(original_wd, FILE_MAX);
-
     BKE_tempdir_init(nullptr);
     const char *temp_base_dir = BKE_tempdir_base();
 
@@ -92,6 +89,14 @@ TEST_F(UsdUsdzExportTest, usdz_export)
   ASSERT_EQ(BLI_listbase_count(&bfile->main->objects), 4)
       << "Blender scene should have 4 objects.";
 
+  char original_cwd_buff[FILE_MAX];
+  char *original_cwd = BLI_current_working_dir(original_cwd_buff, sizeof(original_cwd_buff));
+  /* Buffer is expected to be returned by #BLI_current_working_dir, although in theory other
+   * returns are possible on some platforms, this is not handled by this code. */
+  ASSERT_EQ(original_cwd, original_cwd_buff)
+      << "BLI_current_working_dir is not expected to return a different value than the given char "
+         "buffer.";
+
   USDExportParams params{};
 
   bool result = USD_export(context, output_filename, &params, false);
@@ -115,6 +120,15 @@ TEST_F(UsdUsdzExportTest, usdz_export)
   prim_name = pxr::TfMakeValidIdentifier("Sphere");
   test_prim = stage->GetPrimAtPath(pxr::SdfPath("/Sphere/" + prim_name));
   EXPECT_TRUE(bool(test_prim)) << "Sphere prim should exist in exported usdz file.";
+
+  char final_cwd_buff[FILE_MAX];
+  char *final_cwd = BLI_current_working_dir(final_cwd_buff, sizeof(final_cwd_buff));
+  /* Buffer is expected to be returned by #BLI_current_working_dir, although in theory other
+   * returns are possible on some platforms, this is not handled by this code. */
+  ASSERT_EQ(final_cwd, final_cwd_buff) << "BLI_current_working_dir is not expected to return "
+                                          "a different value than the given char buffer.";
+  EXPECT_TRUE(STREQ(original_cwd, final_cwd))
+      << "Final CWD should be the same as the original one.";
 }
 
 }  // namespace blender::io::usd

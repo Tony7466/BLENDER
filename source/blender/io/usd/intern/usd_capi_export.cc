@@ -49,13 +49,9 @@ struct ExportJobData {
   bool export_ok;
   timeit::TimePoint start_time;
 
-  const bool targets_usdz() const
+  bool targets_usdz() const
   {
-    if (usdz_filepath) {
-      return usdz_filepath[0];
-    }
-
-    return false;
+    return usdz_filepath[0] != '\0';
   }
 
   const char *export_filepath() const
@@ -92,8 +88,13 @@ static bool perform_usdz_conversion(const ExportJobData *data)
   char usdz_file[FILE_MAX];
   BLI_split_file_part(data->usdz_filepath, usdz_file, FILE_MAX);
 
-  char original_working_dir[FILE_MAX];
-  BLI_current_working_dir(original_working_dir, FILE_MAX);
+  char original_working_dir_buff[FILE_MAX];
+  char *original_working_dir = BLI_current_working_dir(original_working_dir_buff,
+                                                       sizeof(original_working_dir_buff));
+  /* Buffer is expected to be returned by #BLI_current_working_dir, although in theory other
+   * returns are possible on some platforms, this is not handled by this code. */
+  BLI_assert(original_working_dir == original_working_dir_buff);
+
   BLI_change_working_dir(usdc_temp_dir);
 
   pxr::UsdUtilsCreateNewUsdzPackage(pxr::SdfAssetPath(usdc_file), usdz_file);
