@@ -16,8 +16,6 @@
 
 namespace blender::geometry {
 
-namespace details {
-
 class ResampleQuad {
  private:
   /*
@@ -319,68 +317,129 @@ void polys_have_created_new_verts(const OffsetIndices<int> offsets,
                                   const Span<T> src,
                                   MutableSpan<T> dst)
 {
+
+  Array<int> vertical_linkeds;
+  Array<int> horizontal_linkeds;
+
   for (const int poly_i : polys.index_range()) {
     const MPoly src_poly = polys[poly_i];
     const Span<MLoop> src_loops = loops.slice(src_poly.loopstart, src_poly.totloop);
     const IndexRange poly_vertices = offsets[poly_i];
 
-    if (src_loops.size() == 3) {
+    if (src_loops.size() != 4) {
       return;
     }
-    else if (src_loops.size() == 4) {
-      const int &points_a = src_loops[0].v;
-      const int &points_b = src_loops[1].v;
-      const int &points_c = src_loops[2].v;
-      const int &points_d = src_loops[3].v;
 
-      const int &points_num_edge_a = resample_edge_num[src_loops[0].e];
-      const int &points_num_edge_b = resample_edge_num[src_loops[1].e];
-      const int &points_num_edge_c = resample_edge_num[src_loops[2].e];
-      const int &points_num_edge_d = resample_edge_num[src_loops[3].e];
+    const int &points_a = src_loops[0].v;
+    const int &points_b = src_loops[1].v;
+    const int &points_c = src_loops[2].v;
+    const int &points_d = src_loops[3].v;
 
-      const int horizontal_connections = math::max(points_num_edge_a, points_num_edge_c);
-      const int horizontal_other_side = math::min(points_num_edge_a, points_num_edge_c);
+    const int &points_num_edge_a = resample_edge_num[src_loops[0].e];
+    const int &points_num_edge_b = resample_edge_num[src_loops[1].e];
+    const int &points_num_edge_c = resample_edge_num[src_loops[2].e];
+    const int &points_num_edge_d = resample_edge_num[src_loops[3].e];
 
-      const int vertical_connections = math::max(points_num_edge_b, points_num_edge_d);
-      const int vertical_other_side = math::min(points_num_edge_b, points_num_edge_d);
+    const int horizontal_connections = math::max(points_num_edge_a, points_num_edge_c);
+    const int horizontal_other_side = math::min(points_num_edge_a, points_num_edge_c);
 
-      const auto find_nearest_one = [](const int max, const int min, const int i) -> int {
-        return i * min / max;
-      };
+    const int vertical_connections = math::max(points_num_edge_b, points_num_edge_d);
+    const int vertical_other_side = math::min(points_num_edge_b, points_num_edge_d);
 
-      const auto intersection =
-          [](const float2 p1, const float2 p2, const float2 p3, const float2 p4) -> float2 {
-        printf(">\n");
-        printf(" - x1: %f, y1: %f;\n", p1.x, p1.y);
-        printf(" - x2: %f, y2: %f;\n", p2.x, p2.y);
-        printf(" - x3: %f, y3: %f;\n", p3.x, p3.y);
-        printf(" - x4: %f, y4: %f;\n", p4.x, p4.y);
-        return {};
-      };
+    horizontal_linkeds.reinitialize(horizontal_connections);
+    vertical_linkeds.reinitialize(vertical_connections);
 
-      for (const int x : IndexRange(horizontal_connections)) {
-        const int x_other = find_nearest_one(horizontal_connections, horizontal_other_side, x);
+    for (const int index : IndexRange(horizontal_connections)) {
+      const float d_index = float((horizontal_other_side + 1) * (1 + index));
+      const float d_total = float(horizontal_connections + 1);
+      horizontal_linkeds[index] = int(std::round(d_index / d_total));
+    }
 
-        const float x_p_left = float(x * horizontal_other_side);
-        const float x_p_right = float(x_other * horizontal_connections);
+    for (const int index : IndexRange(vertical_connections)) {
+      const float d_index = float((vertical_other_side + 1) * (1 + index));
+      const float d_total = float(vertical_connections + 1);
+      vertical_linkeds[index] = int(std::round(d_index / d_total));
+    }
 
-        for (const int y : IndexRange(vertical_connections)) {
-          const int y_other = find_nearest_one(vertical_connections, vertical_other_side, y);
+    const auto intersection =
+        [](const float2 p1, const float2 p2, const float2 p3, const float2 p4) -> float2 {
+      printf(">\n");
+      printf(" - x1: %f, y1: %f;\n", p1.x, p1.y);
+      printf(" - x2: %f, y2: %f;\n", p2.x, p2.y);
+      printf(" - x3: %f, y3: %f;\n", p3.x, p3.y);
+      printf(" - x4: %f, y4: %f;\n", p4.x, p4.y);
+      return {};
+    };
 
-          const float y_p_top = float(y * vertical_other_side);
-          const float y_p_bottom = float(y_other * vertical_connections);
-          return;
-          const float2 uv = intersection(float2{0.0f, x_p_left},
-                                         float2{1.0f, x_p_right},
-                                         float2{y_p_top, 0.0f},
-                                         float2{y_p_bottom, 1.0f});
+    ResampleQuad resample(
+        points_num_edge_a, points_num_edge_c, points_num_edge_b, points_num_edge_d);
 
-          attribute_math::mix2(uv.x,
-                               attribute_math::mix2(uv.y, src[points_a], src[points_b]),
-                               attribute_math::mix2(uv.y, src[points_c], src[points_d]));
-        }
+    int point_index = 0;
+
+    for (const int index_h : IndexRange(resample.hor_corner)) {
+      for (const int index_v : IndexRange(resample.hor_body + resample.hor_corner)) {
+
+        const float2 point_a = (index_h + 1) / horizontal_connections;
+        const float2 point_b = horizontal_linkeds[index_h] / horizontal_other_side;
+        const float2 point_c = (index_v + 1) / vertical_connections;
+        const float2 point_d = vertical_linkeds[index_v] / vertical_other_side;
+
+        const float2 point_locaton = intersection(point_a, point_b, point_c, point_d);
+
+        dst[point_index] = attribute_math::mix2(
+            point_locaton.x,
+            attribute_math::mix2(point_locaton.y, src[points_a], src[points_b]),
+            attribute_math::mix2(point_locaton.y, src[points_c], src[points_d]));
+
+        point_index++;
       }
     }
+
+    for (const int index_h :
+         IndexRange(resample.hor_corner, resample.hor_body + resample.hor_corner)) {
+      for (const int index_v :
+           IndexRange(resample.hor_corner + resample.hor_body + resample.hor_corner)) {
+
+        const float2 point_a = (index_h + 1) / horizontal_connections;
+        const float2 point_b = horizontal_linkeds[index_h] / horizontal_other_side;
+        const float2 point_c = (index_v + 1) / vertical_connections;
+        const float2 point_d = vertical_linkeds[index_v] / vertical_other_side;
+
+        const float2 point_locaton = intersection(point_a, point_b, point_c, point_d);
+
+        dst[point_index] = attribute_math::mix2(
+            point_locaton.x,
+            attribute_math::mix2(point_locaton.y, src[points_a], src[points_b]),
+            attribute_math::mix2(point_locaton.y, src[points_c], src[points_d]));
+
+        point_index++;
+      }
+    }
+
+    /*
+    for (const int x : IndexRange(horizontal_connections)) {
+      const int x_other = find_nearest_one(horizontal_connections, horizontal_other_side, x);
+
+      const float x_p_left = float(x * horizontal_other_side);
+      const float x_p_right = float(x_other * horizontal_connections);
+
+      for (const int y : IndexRange(vertical_connections)) {
+        const int y_other = find_nearest_one(vertical_connections, vertical_other_side, y);
+
+        const float y_p_top = float(y * vertical_other_side);
+        const float y_p_bottom = float(y_other * vertical_connections);
+        return;
+        const float2 uv = intersection(float2{0.0f, x_p_left},
+                                       float2{1.0f, x_p_right},
+                                       float2{y_p_top, 0.0f},
+                                       float2{y_p_bottom, 1.0f});
+
+        attribute_math::mix2(uv.x,
+                             attribute_math::mix2(uv.y, src[points_a], src[points_b]),
+                             attribute_math::mix2(uv.y, src[points_c], src[points_d]));
+      }
+    }
+    */
   }
 }
 
@@ -763,17 +822,15 @@ static void propagate_attributes(const Mesh &src_mesh,
   }
 }
 
-}  // namespace details
-
 Mesh &resample_topology(const Mesh &mesh,
                         const Span<int> resample_edge_num,
                         const bool try_to_fill_by_grid,
                         const Map<bke::AttributeIDRef, bke::AttributeKind> attributes)
 {
-  details::MeshBuilder builder;
-  details::compute_mesh(mesh, resample_edge_num, try_to_fill_by_grid, builder);
-  details::build_topology(mesh, resample_edge_num, try_to_fill_by_grid, builder);
-  details::propagate_attributes(mesh, resample_edge_num, try_to_fill_by_grid, builder, attributes);
+  MeshBuilder builder;
+  compute_mesh(mesh, resample_edge_num, try_to_fill_by_grid, builder);
+  build_topology(mesh, resample_edge_num, try_to_fill_by_grid, builder);
+  propagate_attributes(mesh, resample_edge_num, try_to_fill_by_grid, builder, attributes);
 
   return builder.mesh();
 }
