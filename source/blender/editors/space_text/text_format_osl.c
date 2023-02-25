@@ -355,12 +355,11 @@ void ED_text_format_register_osl(void)
 {
   static TextFormatType tft = {NULL};
   static const char *ext[] = {"osl", NULL};
-  static const char *comment_line = "//";
 
   tft.format_identifier = txtfmt_osl_format_identifier;
   tft.format_line = txtfmt_osl_format_line;
   tft.ext = ext;
-  tft.comment_line = comment_line;
+  tft.comment_line = "//";
 
   ED_text_format_register(&tft);
 }

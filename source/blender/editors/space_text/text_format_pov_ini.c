@@ -508,12 +508,11 @@ void ED_text_format_register_pov_ini(void)
 {
   static TextFormatType tft = {NULL};
   static const char *ext[] = {"ini", NULL};
-  static const char *comment_line = "//";
 
   tft.format_identifier = txtfmt_pov_ini_format_identifier;
   tft.format_line = txtfmt_pov_ini_format_line;
   tft.ext = ext;
-  tft.comment_line = comment_line;
+  tft.comment_line = "//";
 
   ED_text_format_register(&tft);
 }
