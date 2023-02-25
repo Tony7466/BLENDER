@@ -391,6 +391,7 @@ class NODE_MT_geometry_node_GEO_MESH_OPERATIONS(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeSubdivideMesh")
         node_add_menu.add_node_type(layout, "GeometryNodeSubdivisionSurface")
         node_add_menu.add_node_type(layout, "GeometryNodeTriangulate")
+        node_add_menu.add_node_type(layout, "GeometryNodeResampleTopology")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 

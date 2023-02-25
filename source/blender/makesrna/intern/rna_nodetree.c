@@ -10306,6 +10306,15 @@ static void def_geo_curve_resample(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 
+static void def_geo_resample_topology(StructRNA *srna)
+{
+  PropertyRNA *prop = RNA_def_property(srna, "try_to_fill_by_grid", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "custom1", 0);
+  RNA_def_property_boolean_default(prop, false);
+  RNA_def_property_ui_text(prop, "Fill by Grig", "Fill quads and triangles by grid");
+  RNA_def_property_update(prop, 0, "rna_Node_update");
+}
+
 static void def_geo_curve_fillet(StructRNA *srna)
 {
   PropertyRNA *prop;
