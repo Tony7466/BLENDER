@@ -2040,23 +2040,8 @@ static bool gpencil_generic_stroke_select(bContext *C,
   gpencil_point_conversion_init(C, &gsc);
 
   /* deselect all strokes first? */
-  if (SEL_OP_USE_PRE_DESELECT(sel_op) || GPENCIL_PAINT_MODE(gpd)) {
-    /* Set selection index to 0. */
-    gpd->select_last_index = 0;
-
-    CTX_DATA_BEGIN (C, bGPDstroke *, gps, editable_gpencil_strokes) {
-      bGPDspoint *pt;
-      int i;
-
-      for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-        pt->flag &= ~GP_SPOINT_SELECT;
-      }
-
-      gps->flag &= ~GP_STROKE_SELECT;
-      BKE_gpencil_stroke_select_index_reset(gps);
-    }
-    CTX_DATA_END;
-
+  if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
+    deselect_all_selected(C);
     changed = true;
   }
 
