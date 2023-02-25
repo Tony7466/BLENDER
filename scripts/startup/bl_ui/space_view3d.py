@@ -3224,6 +3224,9 @@ class VIEW3D_MT_sculpt(Menu):
         layout.operator("transform.rotate")
         layout.operator("transform.resize", text="Scale")
 
+        props = layout.operator("sculpt.mesh_filter", text="Sphere")
+        props.type = 'SPHERE'
+
         layout.separator()
 
         props = layout.operator("paint.hide_show", text="Box Hide")
