@@ -2039,6 +2039,13 @@ static bool gpencil_generic_stroke_select(bContext *C,
   /* init space conversion stuff */
   gpencil_point_conversion_init(C, &gsc);
 
+  /* Use only object transform matrix because all layer transformations are already included
+   * in the evaluated stroke. */
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+  Object *ob_eval = depsgraph != NULL ? DEG_get_evaluated_object(depsgraph, ob) : ob;
+  float select_mat[4][4];
+  copy_m4_m4(select_mat, ob_eval->object_to_world);
+
   /* deselect all strokes first? */
   if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
     deselect_all_selected(C);
@@ -2058,7 +2065,7 @@ static bool gpencil_generic_stroke_select(bContext *C,
 
       /* Convert point coords to screen-space. Needs to use the evaluated point
        * to consider modifiers. */
-      const bool is_inside = is_inside_fn(gsc.region, gpstroke_iter.diff_mat, &pt->x, user_data);
+      const bool is_inside = is_inside_fn(gsc.region, select_mat, &pt->x, user_data);
       if (strokemode == false) {
         const bool is_select = (pt_active->flag & GP_SPOINT_SELECT) != 0;
         const int sel_op_result = ED_select_op_action_deselected(sel_op, is_select, is_inside);
