@@ -29,7 +29,11 @@ void main()
   GPU_INTEL_VERTEX_SHADER_WORKAROUND
 
   vec3 world_pos = point_object_to_world(pos);
-  gl_Position = point_world_to_ndc(world_pos);
+  vec3 view_pos = point_world_to_view(world_pos);
+  gl_Position = point_view_to_ndc(view_pos);
+
+  /* Offset Z position for retopology overlay. */
+  gl_Position.z -= get_homogenous_z_offset(view_pos.z, gl_Position.w, retopologyBias);
 
   uvec4 m_data = data & uvec4(dataMask);
 
@@ -94,9 +98,6 @@ void main()
   /* Do interpolation in a non-linear space to have a better visual result. */
   finalColor.rgb = non_linear_blend_color(colorEditMeshMiddle.rgb, finalColor.rgb, facing);
 #endif
-
-  /* Offset Z position for retopology overlay. */
-  gl_Position.z -= retopologyBias / abs(gl_Position.w);
 
   view_clipping_distances(world_pos);
 }

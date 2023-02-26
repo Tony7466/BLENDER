@@ -82,8 +82,15 @@ void main()
 
   vec3 world_pos0 = point_object_to_world(in_pos0);
   vec3 world_pos1 = point_object_to_world(in_pos1);
-  vec4 out_pos0 = point_world_to_ndc(world_pos0);
-  vec4 out_pos1 = point_world_to_ndc(world_pos1);
+  vec3 view_pos0 = point_world_to_view(world_pos0);
+  vec3 view_pos1 = point_world_to_view(world_pos1);
+  vec4 out_pos0 = point_view_to_ndc(view_pos0);
+  vec4 out_pos1 = point_view_to_ndc(view_pos1);
+
+  /* Offset Z position for retopology overlay. */
+  out_pos0.z -= get_homogenous_z_offset(view_pos0.z, out_pos0.w, retopologyBias);
+  out_pos1.z -= get_homogenous_z_offset(view_pos1.z, out_pos1.w, retopologyBias);
+
   uvec4 m_data0 = uvec4(in_data0) & uvec4(dataMask);
   uvec4 m_data1 = uvec4(in_data1) & uvec4(dataMask);
 
@@ -142,10 +149,6 @@ void main()
   out_finalColor[1].rgb = non_linear_blend_color(
       colorEditMeshMiddle.rgb, out_finalColor[1].rgb, facing1);
 #endif
-
-  /* Offset Z position for retopology overlay. */
-  out_pos0.z -= retopologyBias / abs(out_pos0.w);
-  out_pos1.z -= retopologyBias / abs(out_pos1.w);
 
   // -------- GEOM SHADER ALTERNATIVE ----------- //
   vec2 ss_pos[2];
