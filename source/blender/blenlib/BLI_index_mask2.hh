@@ -95,21 +95,22 @@ class IndexMask {
   template<typename Fn> void foreach_span_or_range(Fn &&fn) const;
   template<typename Fn> void foreach_index(Fn &&fn) const;
 
+  template<typename T>
+  static IndexMask from_indices(Span<T> indices, LinearAllocator<> &allocator, int64_t offset = 0);
+  static IndexMask from_bits(BitSpan bits, LinearAllocator<> &allocator, int64_t offset = 0);
+
+  template<typename T> void to_indices(MutableSpan<T> r_indices, int64_t offset = 0) const;
+  void to_bits(MutableBitSpan r_bits, int64_t offset = 0) const;
+
   const IndexMaskData &data() const;
   IndexMaskData &data_for_inplace_construction();
 };
 
 std::ostream &operator<<(std::ostream &stream, const IndexMask &mask);
 
-IndexMask bits_to_index_mask(BitSpan bits, int64_t start, LinearAllocator<> &allocator);
-void index_mask_to_bits(const IndexMask &mask, int64_t offset, MutableBitSpan r_bits);
-
 namespace unique_sorted_indices {
 
 template<typename T> Vector<IndexRange> split_by_chunk(Span<T> indices);
-
-template<typename T> IndexMask to_index_mask(Span<T> indices, LinearAllocator<> &allocator);
-template<typename T> void from_index_mask(const IndexMask &mask, MutableSpan<T> r_indices);
 
 template<typename T> using RangeOrSpanVariant = std::variant<IndexRange, Span<T>>;
 
@@ -137,7 +138,7 @@ inline IndexMask grow_indices_to_ranges(const IndexMask &mask,
       indices.append(new_index);
     }
   });
-  return unique_sorted_indices::to_index_mask<int64_t>(indices, allocator);
+  return IndexMask::from_indices<int64_t>(indices, allocator);
 }
 
 /* -------------------------------------------------------------------- */

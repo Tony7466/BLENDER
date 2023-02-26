@@ -108,7 +108,7 @@ TEST(index_mask2, IndicesToMask)
   LinearAllocator<> allocator;
   Array<int> data = {
       5, 100, 16383, 16384, 16385, 20000, 20001, 50000, 50001, 50002, 100000, 101000};
-  IndexMask mask = unique_sorted_indices::to_index_mask<int>(data, allocator);
+  IndexMask mask = IndexMask::from_indices<int>(data, allocator);
 
   EXPECT_EQ(mask.first(), 5);
   EXPECT_EQ(mask.last(), 101000);
@@ -120,9 +120,9 @@ TEST(index_mask2, FromBits)
   LinearAllocator<> allocator;
   const uint64_t bits =
       0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'1111'0010'0000;
-  const IndexMask mask = bits_to_index_mask(BitSpan(&bits, IndexRange(2, 40)), 100, allocator);
+  const IndexMask mask = IndexMask::from_bits(BitSpan(&bits, IndexRange(2, 40)), allocator, 100);
   Array<int> indices(5);
-  unique_sorted_indices::from_index_mask<int>(mask, indices);
+  mask.to_indices<int>(indices);
   EXPECT_EQ(indices[0], 103);
   EXPECT_EQ(indices[1], 106);
   EXPECT_EQ(indices[2], 107);
@@ -130,7 +130,7 @@ TEST(index_mask2, FromBits)
   EXPECT_EQ(indices[4], 109);
 
   uint64_t new_bits = 0;
-  index_mask_to_bits(mask, 100, MutableBitSpan(&new_bits, IndexRange(5, 40)));
+  mask.to_bits(MutableBitSpan(&new_bits, IndexRange(5, 40)), 100);
   EXPECT_EQ(new_bits, bits << 3);
 }
 
@@ -168,11 +168,11 @@ TEST(index_mask2, DefaultConstructor)
 TEST(index_mask2, IndicesToRanges)
 {
   LinearAllocator<> allocator;
-  const IndexMask mask = unique_sorted_indices::to_index_mask<int>({0, 1, 5}, allocator);
+  const IndexMask mask = IndexMask::from_indices<int>({0, 1, 5}, allocator);
   const IndexMask new_mask = grow_indices_to_ranges(
       mask, [&](const int64_t i) { return IndexRange(i * 10, 3); }, allocator);
   Vector<int64_t> indices(new_mask.size());
-  unique_sorted_indices::from_index_mask<int64_t>(new_mask, indices);
+  new_mask.to_indices<int64_t>(indices);
   EXPECT_EQ(indices.size(), 9);
   EXPECT_EQ(indices[0], 0);
   EXPECT_EQ(indices[1], 1);
@@ -188,8 +188,7 @@ TEST(index_mask2, IndicesToRanges)
 TEST(index_mask2, ForeachRange)
 {
   LinearAllocator<> allocator;
-  const IndexMask mask = unique_sorted_indices::to_index_mask<int>({2, 3, 4, 10, 40, 41},
-                                                                   allocator);
+  const IndexMask mask = IndexMask::from_indices<int>({2, 3, 4, 10, 40, 41}, allocator);
   Vector<IndexRange> ranges;
   mask.foreach_range([&](const IndexRange range) { ranges.append(range); });
 
