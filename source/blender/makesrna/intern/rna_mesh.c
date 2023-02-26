@@ -2292,6 +2292,13 @@ static PointerRNA rna_Mesh_vertex_color_new(struct Mesh *me,
   if (index != -1) {
     ldata = rna_mesh_ldata_helper(me);
     cdl = &ldata->layers[CustomData_get_layer_index_n(ldata, CD_PROP_BYTE_COLOR, index)];
+
+    if (!me->active_color_attribute) {
+      me->active_color_attribute = BLI_strdup(cdl->name);
+    }
+    if (!me->default_color_attribute) {
+      me->default_color_attribute = BLI_strdup(cdl->name);
+    }
   }
 
   RNA_pointer_create(&me->id, &RNA_MeshLoopColorLayer, cdl, &ptr);
@@ -2385,8 +2392,9 @@ static PointerRNA rna_Mesh_uv_layers_new(struct Mesh *me,
 
 static void rna_Mesh_uv_layers_remove(struct Mesh *me, ReportList *reports, CustomDataLayer *layer)
 {
-  if (!BKE_id_attribute_find(&me->id, layer->name, CD_PROP_FLOAT, ATTR_DOMAIN_CORNER)) {
+  if (!BKE_id_attribute_find(&me->id, layer->name, CD_PROP_FLOAT2, ATTR_DOMAIN_CORNER)) {
     BKE_reportf(reports, RPT_ERROR, "UV map '%s' not found", layer->name);
+    return;
   }
   BKE_id_attribute_remove(&me->id, layer->name, reports);
 }

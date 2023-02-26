@@ -524,7 +524,7 @@ static eKeyPasteError paste_action_keys(bAnimContext *ac,
    * - First time we try to filter more strictly, allowing only selected channels
    *   to allow copying animation between channels
    * - Second time, we loosen things up if nothing was found the first time, allowing
-   *   users to just paste keyframes back into the original curve again T31670.
+   *   users to just paste keyframes back into the original curve again #31670.
    */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_FOREDIT |
             ANIMFILTER_FCURVESONLY | ANIMFILTER_NODUPLIS);
@@ -533,8 +533,9 @@ static eKeyPasteError paste_action_keys(bAnimContext *ac,
     ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
   }
 
-  /* paste keyframes */
-  const eKeyPasteError ok = paste_animedit_keys(ac, &anim_data, offset_mode, merge_mode, flip);
+  /* Value offset is always None because the user cannot see the effect of it. */
+  const eKeyPasteError ok = paste_animedit_keys(
+      ac, &anim_data, offset_mode, KEYFRAME_PASTE_VALUE_OFFSET_NONE, merge_mode, flip);
 
   /* clean up */
   ANIM_animdata_freelist(&anim_data);
