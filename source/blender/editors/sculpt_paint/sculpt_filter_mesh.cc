@@ -1157,21 +1157,6 @@ static void sculpt_mesh_ui_exec(bContext * /*C*/, wmOperator *op)
   uiItemR(layout, op->ptr, "deform_axis", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
 }
 
-// Check this out for more context: 
-// https://projects.blender.org/blender/blender/pulls/104718#issuecomment-888923
-bool sculpt_filter_mesh_poll(bContext *C) 
-{
-  Object *ob = CTX_data_active_object(C);
-  bool multires_with_subdivision = false;
-  MultiresModifierData * md = (MultiresModifierData*)BKE_modifiers_findby_type(ob, eModifierType_Multires);
-
-  if (md && md->sculptlvl > 0) {
-    multires_with_subdivision = true; 
-  }
-
-  return SCULPT_mode_poll(C) && !multires_with_subdivision;
-}
-
 void SCULPT_OT_mesh_filter(wmOperatorType *ot)
 {
   /* Identifiers. */
@@ -1182,7 +1167,7 @@ void SCULPT_OT_mesh_filter(wmOperatorType *ot)
   /* API callbacks. */
   ot->invoke = sculpt_mesh_filter_invoke;
   ot->modal = sculpt_mesh_filter_modal;
-  ot->poll = sculpt_filter_mesh_poll;
+  ot->poll = SCULPT_mode_poll;
   ot->exec = sculpt_mesh_filter_exec;
   ot->ui = sculpt_mesh_ui_exec;
 
