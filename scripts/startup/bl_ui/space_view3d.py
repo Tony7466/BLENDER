@@ -6554,7 +6554,7 @@ class VIEW3D_PT_overlay_edit_mesh_shading(Panel):
         row.prop(overlay, "show_retopology", text="")
         sub = row.row()
         sub.active = overlay.show_retopology
-        sub.prop(overlay, "retopology_bias", text="Retopology")
+        sub.prop(overlay, "retopology_offset", text="Retopology")
 
         col.prop(overlay, "show_weight", text="Vertex Group Weights")
         if overlay.show_weight:

@@ -88,8 +88,8 @@ void main()
   vec4 out_pos1 = point_view_to_ndc(view_pos1);
 
   /* Offset Z position for retopology overlay. */
-  out_pos0.z -= get_homogenous_z_offset(view_pos0.z, out_pos0.w, retopologyBias);
-  out_pos1.z -= get_homogenous_z_offset(view_pos1.z, out_pos1.w, retopologyBias);
+  out_pos0.z += get_homogenous_z_offset(view_pos0.z, out_pos0.w, retopologyOffset);
+  out_pos1.z += get_homogenous_z_offset(view_pos1.z, out_pos1.w, retopologyOffset);
 
   uvec4 m_data0 = uvec4(in_data0) & uvec4(dataMask);
   uvec4 m_data1 = uvec4(in_data1) & uvec4(dataMask);

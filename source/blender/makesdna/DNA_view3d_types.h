@@ -221,7 +221,7 @@ typedef struct View3DOverlay {
   /** Other settings. */
   float wireframe_threshold;
   float wireframe_opacity;
-  float retopology_bias;
+  float retopology_offset;
 
   /** Grease pencil settings. */
   float gpencil_paper_opacity;
