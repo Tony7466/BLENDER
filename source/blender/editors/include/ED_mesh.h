@@ -88,7 +88,7 @@ void EDBM_mesh_make(struct Object *ob, int select_mode, bool add_key_index);
 void EDBM_mesh_free_data(struct BMEditMesh *em);
 /**
  * \warning This can invalidate the #Mesh runtime cache of other objects (for linked duplicates).
- * Most callers should run #DEG_id_tag_update on `ob->data`, see: T46738, T46913.
+ * Most callers should run #DEG_id_tag_update on `ob->data`, see: #46738, #46913.
  * This ensures #BKE_object_free_derived_caches runs on all objects that use this mesh.
  */
 void EDBM_mesh_load_ex(struct Main *bmain, struct Object *ob, bool free_data);
@@ -570,9 +570,6 @@ bool ED_mesh_edge_is_loose(const struct Mesh *mesh, int index);
 void ED_mesh_uv_ensure(struct Mesh *me, const char *name);
 int ED_mesh_uv_add(
     struct Mesh *me, const char *name, bool active_set, bool do_init, struct ReportList *reports);
-bool ED_mesh_uv_remove_index(struct Mesh *me, int n);
-bool ED_mesh_uv_remove_active(struct Mesh *me);
-bool ED_mesh_uv_remove_named(struct Mesh *me, const char *name);
 
 void ED_mesh_uv_loop_reset(struct bContext *C, struct Mesh *me);
 /**

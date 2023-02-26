@@ -235,7 +235,7 @@ static bool node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
      * This also removes remaining links to and from interface nodes.
      */
     if (ELEM(node->type, NODE_GROUP_INPUT, NODE_GROUP_OUTPUT)) {
-      /* We must delay removal since sockets will reference this node. see: T52092 */
+      /* We must delay removal since sockets will reference this node. see: #52092 */
       nodes_delayed_free.append(node);
     }
 
@@ -993,7 +993,9 @@ static void node_group_make_insert_selected(const bContext &C,
     }
   }
 
-  bke::node_field_inferencing::update_field_inferencing(group);
+  if (group.type == NTREE_GEOMETRY) {
+    bke::node_field_inferencing::update_field_inferencing(group);
+  }
   nodes::update_node_declaration_and_sockets(ntree, *gnode);
 
   /* Add new links to inputs outside of the group. */
