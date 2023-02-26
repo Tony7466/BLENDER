@@ -137,12 +137,12 @@ Value parallel_reduce(IndexRange range,
 }
 
 template<typename Value, typename Function, typename Reduction>
-Value parallel_reduce(const IndexRange range,
-                      const int64_t grain_size,
-                      const int64_t alignment,
-                      const Value &identity,
-                      const Function &function,
-                      const Reduction &reduction)
+Value parallel_reduce_aligned(const IndexRange range,
+                              const int64_t grain_size,
+                              const int64_t alignment,
+                              const Value &identity,
+                              const Function &function,
+                              const Reduction &reduction)
 {
   parallel_reduce(
       range,
