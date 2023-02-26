@@ -233,10 +233,7 @@ static PyObject *pygpu_batch_draw(BPyGPUBatch *self, PyObject *args)
 
 PyDoc_STRVAR(
     pygpu_batch_draw_instanced_doc,
-    ".. method:: draw_instanced("
-    "program=None, "
-    "instance_start=0, "
-    "instance_count=0)\n"
+    ".. method:: draw_instanced(program, *, instance_start=0, instance_count=0)\n"
     "\n"
     "   Draw multiple instances of the drawing program with the parameters assigned\n"
     "   to the batch. In the vertex shader, `gl_InstanceID` will contain the instance\n"
@@ -277,7 +274,7 @@ static PyObject *pygpu_batch_draw_instanced(BPyGPUBatch *self, PyObject *args, P
 }
 
 PyDoc_STRVAR(pygpu_batch_draw_range_doc,
-             ".. method:: draw_range(program=None, elem_start=0, elem_count=0)\n"
+             ".. method:: draw_range(program, *, elem_start=0, elem_count=0)\n"
              "\n"
              "   Run the drawing program with the parameters assigned to the batch. Only draw\n"
              "   the `elem_count` elements of the index buffer starting at `elem_start` \n"
