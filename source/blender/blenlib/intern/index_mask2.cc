@@ -3,6 +3,7 @@
 #include "BLI_array.hh"
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_index_mask2.hh"
+#include "BLI_set.hh"
 #include "BLI_strict_flags.h"
 #include "BLI_task.hh"
 #include "BLI_timeit.hh"
@@ -361,6 +362,74 @@ IndexMask IndexMask::from_bits(const BitSpan bits,
                                const int64_t offset)
 {
   return bits_to_index_mask(bits, offset, allocator);
+}
+
+static Set<int64_t> eval_expr(const Expr &base_expr, const IndexRange universe)
+{
+  Set<int64_t> result;
+  switch (base_expr.type) {
+    case Expr::Type::Atomic: {
+      const AtomicExpr &expr = static_cast<const AtomicExpr &>(base_expr);
+      expr.mask->foreach_index([&](const int64_t i) {
+        BLI_assert(universe.contains(i));
+        result.add_new(i);
+      });
+      break;
+    }
+    case Expr::Type::Union: {
+      const UnionExpr &expr = static_cast<const UnionExpr &>(base_expr);
+      for (const Expr *child : expr.children) {
+        const Set<int64_t> child_result = eval_expr(*child, universe);
+        for (const int64_t i : child_result) {
+          result.add(i);
+        }
+      }
+      break;
+    }
+    case Expr::Type::Difference: {
+      const DifferenceExpr &expr = static_cast<const DifferenceExpr &>(base_expr);
+      result = eval_expr(*expr.base, universe);
+      for (const Expr *child : expr.children) {
+        const Set<int64_t> child_result = eval_expr(*child, universe);
+        for (const int64_t i : child_result) {
+          result.remove(i);
+        }
+      }
+      break;
+    }
+    case Expr::Type::Complement: {
+      const ComplementExpr &expr = static_cast<const ComplementExpr &>(base_expr);
+      const Set<int64_t> child_result = eval_expr(*expr.base, universe);
+      for (const int64_t i : universe) {
+        if (!child_result.contains(i)) {
+          result.add_new(i);
+        }
+      }
+      break;
+    }
+    case Expr::Type::Intersection: {
+      const IntersectionExpr &expr = static_cast<const IntersectionExpr &>(base_expr);
+      BLI_assert(!expr.children.is_empty());
+      result = eval_expr(*expr.children.first(), universe);
+      for (const Expr *child : expr.children.as_span().drop_front(1)) {
+        const Set<int64_t> child_result = eval_expr(*child, universe);
+        result.remove_if([&](const int64_t i) { return !child_result.contains(i); });
+      }
+      break;
+    }
+  }
+  return result;
+}
+
+IndexMask IndexMask::from_expr(const Expr &expr,
+                               const IndexRange universe,
+                               LinearAllocator<> &allocator)
+{
+  const Set<int64_t> indices_set = eval_expr(expr, universe);
+  Vector<int64_t> indices;
+  indices.extend(indices_set.begin(), indices_set.end());
+  std::sort(indices.begin(), indices.end());
+  return IndexMask::from_indices<int64_t>(indices, allocator);
 }
 
 template<typename T> void IndexMask::to_indices(MutableSpan<T> r_indices) const

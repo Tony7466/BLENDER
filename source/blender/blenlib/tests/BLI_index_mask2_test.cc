@@ -198,4 +198,22 @@ TEST(index_mask2, ForeachRange)
   EXPECT_EQ(ranges[2], IndexRange(40, 2));
 }
 
+TEST(index_mask2, Expr)
+{
+  LinearAllocator<> allocator;
+
+  const IndexMask mask1(IndexRange(10, 5));
+  const IndexMask mask2(IndexRange(40, 5));
+  const IndexMask mask3 = IndexMask::from_indices<int>({12, 13, 20, 21, 22}, allocator);
+
+  const AtomicExpr expr1{mask1};
+  const AtomicExpr expr2{mask2};
+  const AtomicExpr expr3{mask3};
+  const UnionExpr union_expr({&expr1, &expr2});
+  const DifferenceExpr difference_expr(union_expr, {&expr3});
+
+  const IndexMask result = IndexMask::from_expr(difference_expr, IndexRange(100), allocator);
+  std::cout << result << "\n";
+}
+
 }  // namespace blender::index_mask::tests

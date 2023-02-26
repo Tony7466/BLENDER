@@ -69,6 +69,64 @@ struct IndexMaskSegment {
   OffsetSpan<int64_t, int16_t> indices;
 };
 
+struct Expr {
+  enum class Type {
+    Atomic,
+    Union,
+    Difference,
+    Complement,
+    Intersection,
+  };
+  Type type;
+
+  Expr(const Type type) : type(type)
+  {
+  }
+};
+
+struct AtomicExpr : public Expr {
+  const IndexMask *mask;
+
+  AtomicExpr(const IndexMask &mask) : Expr(Type::Atomic), mask(&mask)
+  {
+  }
+};
+
+struct UnionExpr : public Expr {
+  Vector<const Expr *> children;
+
+  UnionExpr(Vector<const Expr *> children) : Expr(Type::Union), children(std::move(children))
+  {
+  }
+};
+
+struct DifferenceExpr : public Expr {
+  const Expr *base = nullptr;
+  Vector<const Expr *> children;
+
+  DifferenceExpr(const Expr &base, Vector<const Expr *> children)
+      : Expr(Type::Difference), base(&base), children(std::move(children))
+  {
+  }
+};
+
+struct ComplementExpr : public Expr {
+  const Expr *base = nullptr;
+
+  ComplementExpr(const Expr &base) : Expr(Type::Complement), base(&base)
+  {
+  }
+};
+
+struct IntersectionExpr : public Expr {
+  Vector<const Expr *> children;
+
+  IntersectionExpr(Vector<const Expr *> children)
+      : Expr(Type::Intersection), children(std::move(children))
+  {
+  }
+};
+
 class IndexMask {
  private:
   IndexMaskData data_;
@@ -98,6 +156,7 @@ class IndexMask {
   template<typename T>
   static IndexMask from_indices(Span<T> indices, LinearAllocator<> &allocator);
   static IndexMask from_bits(BitSpan bits, LinearAllocator<> &allocator, int64_t offset = 0);
+  static IndexMask from_expr(const Expr &expr, IndexRange universe, LinearAllocator<> &allocator);
 
   template<typename T> void to_indices(MutableSpan<T> r_indices) const;
   void to_bits(MutableBitSpan r_bits, int64_t offset = 0) const;
