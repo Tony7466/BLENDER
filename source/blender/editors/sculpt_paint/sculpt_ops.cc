@@ -968,7 +968,7 @@ static void SCULPT_OT_mask_by_color(wmOperatorType *ot)
   ot->invoke = sculpt_mask_by_color_invoke;
   ot->poll = SCULPT_mode_poll;
 
-  ot->flag = OPTYPE_REGISTER;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_DEPENDS_ON_CURSOR;
 
   ot->prop = RNA_def_boolean(
       ot->srna, "contiguous", false, "Contiguous", "Mask only contiguous color areas");

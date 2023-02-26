@@ -3269,11 +3269,9 @@ class VIEW3D_MT_sculpt(Menu):
 
         layout.separator()
 
-        # Fair Positions
         props = layout.operator("sculpt.face_set_edit", text="Fair Positions")
         props.mode = 'FAIR_POSITIONS'
 
-        # Fair Tangency
         props = layout.operator("sculpt.face_set_edit", text="Fair Tangency")
         props.mode = 'FAIR_TANGENCY'
 
@@ -3301,7 +3299,6 @@ class VIEW3D_MT_sculpt(Menu):
 
         layout.separator()
 
-        # Rebuild BVH
         layout.operator("sculpt.optimize")
 
         layout.separator()
@@ -3327,6 +3324,14 @@ class VIEW3D_MT_mask(Menu):
     def draw(self, _context):
         layout = self.layout
 
+        props = layout.operator("paint.mask_box_gesture", text="Box Mask")
+        props.mode = 'VALUE'
+        props.value = 0
+
+        props = layout.operator("paint.mask_lasso_gesture", text="Lasso Mask")
+
+        layout.separator()
+
         props = layout.operator("paint.mask_flood_fill", text="Invert Mask")
         props.mode = 'INVERT'
 
@@ -3338,11 +3343,24 @@ class VIEW3D_MT_mask(Menu):
         props.mode = 'VALUE'
         props.value = 0
 
-        props = layout.operator("paint.mask_box_gesture", text="Box Mask")
-        props.mode = 'VALUE'
-        props.value = 0
+        props = layout.operator("sculpt.mask_by_color", text="Mask by Color")
 
-        props = layout.operator("paint.mask_lasso_gesture", text="Lasso Mask")
+        layout.separator()
+
+        props = layout.operator("sculpt.expand", text="Expand Mask by Topology")
+        props.target = 'MASK'
+        props.falloff_type = 'GEODESIC'
+        props.invert = True
+
+        props = layout.operator("sculpt.expand", text="Expand Mask by Normals")
+        props.target = 'MASK'
+        props.falloff_type = 'NORMALS'
+        props.invert = False
+
+        layout.separator()
+
+        props = layout.operator("sculpt.mask_from_cavity", text="Mask From Cavity")
+        props.settings_source = "OPERATOR"
 
         layout.separator()
 
@@ -3368,33 +3386,16 @@ class VIEW3D_MT_mask(Menu):
 
         layout.separator()
 
-        props = layout.operator("sculpt.expand", text="Expand Mask by Topology")
-        props.target = 'MASK'
-        props.falloff_type = 'GEODESIC'
-        props.invert = True
-
-        props = layout.operator("sculpt.expand", text="Expand Mask by Normals")
-        props.target = 'MASK'
-        props.falloff_type = 'NORMALS'
-        props.invert = False
-
-        layout.separator()
-
         props = layout.operator("mesh.paint_mask_extract", text="Mask Extract")
 
         layout.separator()
 
-        props = layout.operator("mesh.paint_mask_slice", text="Mask Slice")
+        props = layout.operator("mesh.paint_mask_slice", text="Slice Masked")
         props.fill_holes = False
         props.new_object = False
-        props = layout.operator("mesh.paint_mask_slice", text="Mask Slice and Fill Holes")
+        props = layout.operator("mesh.paint_mask_slice", text="Slice Masked and Fill Holes")
         props.new_object = False
-        props = layout.operator("mesh.paint_mask_slice", text="Mask Slice to New Object")
-
-        layout.separator()
-
-        props = layout.operator("sculpt.mask_from_cavity", text="Mask From Cavity")
-        props.settings_source = "OPERATOR"
+        props = layout.operator("mesh.paint_mask_slice", text="Slice Masked to New Object")
 
         layout.separator()
 
