@@ -96,10 +96,10 @@ class IndexMask {
   template<typename Fn> void foreach_index(Fn &&fn) const;
 
   template<typename T>
-  static IndexMask from_indices(Span<T> indices, LinearAllocator<> &allocator, int64_t offset = 0);
+  static IndexMask from_indices(Span<T> indices, LinearAllocator<> &allocator);
   static IndexMask from_bits(BitSpan bits, LinearAllocator<> &allocator, int64_t offset = 0);
 
-  template<typename T> void to_indices(MutableSpan<T> r_indices, int64_t offset = 0) const;
+  template<typename T> void to_indices(MutableSpan<T> r_indices) const;
   void to_bits(MutableBitSpan r_bits, int64_t offset = 0) const;
 
   const IndexMaskData &data() const;

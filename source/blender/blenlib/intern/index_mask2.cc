@@ -351,11 +351,8 @@ static void index_mask_to_bits(const IndexMask &mask, const int64_t start, Mutab
 }
 
 template<typename T>
-IndexMask IndexMask::from_indices(const Span<T> indices,
-                                  LinearAllocator<> &allocator,
-                                  [[maybe_unused]] const int64_t offset)
+IndexMask IndexMask::from_indices(const Span<T> indices, LinearAllocator<> &allocator)
 {
-  BLI_assert(offset == 0);
   return unique_sorted_indices::to_index_mask(indices, allocator);
 }
 
@@ -366,10 +363,8 @@ IndexMask IndexMask::from_bits(const BitSpan bits,
   return bits_to_index_mask(bits, offset, allocator);
 }
 
-template<typename T>
-void IndexMask::to_indices(MutableSpan<T> r_indices, [[maybe_unused]] int64_t offset) const
+template<typename T> void IndexMask::to_indices(MutableSpan<T> r_indices) const
 {
-  BLI_assert(offset == 0);
   unique_sorted_indices::from_index_mask(*this, r_indices);
 }
 
@@ -378,10 +373,10 @@ void IndexMask::to_bits(MutableBitSpan r_bits, int64_t offset) const
   index_mask_to_bits(*this, offset, r_bits);
 }
 
-template IndexMask IndexMask::from_indices(Span<int32_t>, LinearAllocator<> &, int64_t);
-template IndexMask IndexMask::from_indices(Span<int64_t>, LinearAllocator<> &, int64_t);
-template void IndexMask::to_indices(MutableSpan<int32_t>, int64_t) const;
-template void IndexMask::to_indices(MutableSpan<int64_t>, int64_t) const;
+template IndexMask IndexMask::from_indices(Span<int32_t>, LinearAllocator<> &);
+template IndexMask IndexMask::from_indices(Span<int64_t>, LinearAllocator<> &);
+template void IndexMask::to_indices(MutableSpan<int32_t>) const;
+template void IndexMask::to_indices(MutableSpan<int64_t>) const;
 
 namespace unique_sorted_indices {
 template Vector<IndexRange> split_by_chunk(const Span<int32_t> indices);
