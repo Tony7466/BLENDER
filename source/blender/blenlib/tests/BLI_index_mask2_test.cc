@@ -185,4 +185,18 @@ TEST(index_mask2, IndicesToRanges)
   EXPECT_EQ(indices[8], 52);
 }
 
+TEST(index_mask2, ForeachRange)
+{
+  LinearAllocator<> allocator;
+  const IndexMask mask = unique_sorted_indices::to_index_mask<int>({2, 3, 4, 10, 40, 41},
+                                                                   allocator);
+  Vector<IndexRange> ranges;
+  mask.foreach_range([&](const IndexRange range) { ranges.append(range); });
+
+  EXPECT_EQ(ranges.size(), 3);
+  EXPECT_EQ(ranges[0], IndexRange(2, 3));
+  EXPECT_EQ(ranges[1], IndexRange(10, 1));
+  EXPECT_EQ(ranges[2], IndexRange(40, 2));
+}
+
 }  // namespace blender::index_mask::tests

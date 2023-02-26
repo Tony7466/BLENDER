@@ -91,8 +91,9 @@ class IndexMask {
 
   template<typename Fn> void foreach_segment(Fn &&fn) const;
   template<typename Fn> void foreach_span(Fn &&fn) const;
-  template<typename Fn> void foreach_index(Fn &&fn) const;
+  template<typename Fn> void foreach_range(Fn &&fn) const;
   template<typename Fn> void foreach_span_or_range(Fn &&fn) const;
+  template<typename Fn> void foreach_index(Fn &&fn) const;
 
   const IndexMaskData &data() const;
   IndexMaskData &data_for_inplace_construction();
@@ -512,6 +513,18 @@ template<typename Fn> inline void IndexMask::foreach_span_or_range(Fn &&fn) cons
     }
     else {
       fn(indices);
+    }
+  });
+}
+
+template<typename Fn> inline void IndexMask::foreach_range(Fn &&fn) const
+{
+  this->foreach_segment([&](const IndexMaskSegment &segment) {
+    Span<int16_t> indices = segment.indices.base_span();
+    while (!indices.is_empty()) {
+      const int64_t next_range_size = unique_sorted_indices::find_size_of_next_range(indices);
+      fn(IndexRange(int64_t(indices[0]) + segment.indices.offset(), next_range_size));
+      indices = indices.drop_front(next_range_size);
     }
   });
 }

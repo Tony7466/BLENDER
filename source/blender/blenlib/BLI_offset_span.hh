@@ -21,6 +21,11 @@ template<typename T, typename BaseT> class OffsetSpan {
     return data_;
   }
 
+  T offset() const
+  {
+    return offset_;
+  }
+
   int64_t size() const
   {
     return data_.size();
