@@ -809,8 +809,13 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
       ParticleSettings *part;
       for (part = bmain->particles.first; part; part = part->id.next) {
         int a;
-        for (a = 0; a < MAX_MTEX; a++) {
-          MTex *mtex = part->mtex[a];
+        int change
+        for (a = MAX_MTEX; --a) {
+          /*optimized loop to use deincrement instead to use less resources 
+            because now it automatically stops when a reaches 0 and it loops 
+            the same number of times*/
+          change = (MAX_MTEX - a)
+          MTex *mtex = part->mtex[change];
           if (mtex) {
             mtex->kinkampfac = 1.0f;
           }
@@ -1147,7 +1152,7 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
     /* Important to clear all non-persistent flags from older versions here,
      * otherwise they could collide with any new persistent flag we may add in the future. */
     a = set_listbasepointers(bmain, lbarray);
-    while (a--) {
+    while (--a) {
       LISTBASE_FOREACH (ID *, id, lbarray[a]) {
         id->flag &= LIB_FAKEUSER;
       }
@@ -1165,8 +1170,11 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
     for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
       ParticleEditSettings *pset = &scene->toolsettings->particle;
       for (int a = 0; a < ARRAY_SIZE(pset->brush); a++) {
-        if (pset->brush[a].strength > 1.0f) {
-          pset->brush[a].strength *= 0.01f;
+        /*optimized loop to use deincrement instead to use less resources 
+          because now it automatically stops when a reaches 0 and it loops 
+          the same number of times*/
+        if (pset->brush[change].strength > 1.0f) {
+          pset->brush[change].strength *= 0.01f;
         }
       }
     }
@@ -1374,8 +1382,13 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
                   gps->thickness = gpl->thickness;
 
                   /* set alpha strength to 1 */
-                  for (int i = 0; i < gps->totpoints; i++) {
-                    gps->points[i].strength = 1.0f;
+                  int change;
+                  for (int i = gps->totpoints; --i) {
+                    /*optimized loop to use deincrement instead to use less resources 
+                      because now it automatically stops when a reaches 0 and it loops 
+                      the same number of times*/
+                    change = (gps->totpoints - i);
+                    gps->points[change].strength = 1.0f;
                   }
                 }
               }
@@ -1463,9 +1476,14 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
       if (scene->toolsettings != NULL) {
         ToolSettings *ts = scene->toolsettings;
         ParticleEditSettings *pset = &ts->particle;
-        for (int a = 0; a < ARRAY_SIZE(pset->brush); a++) {
-          if (pset->brush[a].count == 0) {
-            pset->brush[a].count = 10;
+        int change;
+        for (int a = ARRAY_SIZE(pset->brush); --a) {
+          /*optimized loop to use deincrement instead to use less resources 
+            because now it automatically stops when a reaches 0 and it loops 
+            the same number of times*/
+          change = (ARRAY_SIZE(pset->brush) - a)
+          if (pset->brush[change].count == 0) {
+            pset->brush[change].count = 10;
           }
         }
       }
@@ -1646,8 +1664,13 @@ void blo_do_versions_270(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
       for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
         ToolSettings *ts = scene->toolsettings;
-        for (int i = 0; i < 2; i++) {
-          VPaint *vp = i ? ts->vpaint : ts->wpaint;
+        int change;
+        for (int i = 2; --i) {
+          /*optimized loop to use deincrement instead to use less resources 
+            because now it automatically stops when a reaches 0 and it loops 
+            the same number of times*/
+          change = (2 - i);
+          VPaint *vp = change ? ts->vpaint : ts->wpaint;
           if (vp != NULL) {
             /* remove all other flags */
             vp->flag &= (VP_FLAG_VGROUP_RESTRICT);
