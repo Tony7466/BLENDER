@@ -69,10 +69,10 @@ std::ostream &operator<<(std::ostream &stream, const IndexMask &mask)
 {
   Array<int64_t> indices(mask.size());
   mask.to_indices<int64_t>(indices);
-  Vector<unique_sorted_indices::RangeOrSpanVariant<int64_t>> segments;
+  Vector<std::variant<IndexRange, Span<int64_t>>> segments;
   unique_sorted_indices::split_to_ranges_and_spans<int64_t>(indices, 16, segments);
   std::cout << "(Size: " << mask.size() << " | ";
-  for (const unique_sorted_indices::RangeOrSpanVariant<int64_t> &segment : segments) {
+  for (const std::variant<IndexRange, Span<int64_t>> &segment : segments) {
     if (std::holds_alternative<IndexRange>(segment)) {
       const IndexRange range = std::get<IndexRange>(segment);
       std::cout << range;
@@ -131,7 +131,7 @@ template<typename T> Vector<IndexRange> split_by_chunk(const Span<T> indices)
 template<typename T>
 int64_t split_to_ranges_and_spans(const Span<T> indices,
                                   const int64_t range_threshold,
-                                  Vector<RangeOrSpanVariant<T>> &r_parts)
+                                  Vector<std::variant<IndexRange, Span<T>>> &r_parts)
 {
   BLI_assert(range_threshold >= 1);
   const int64_t old_parts_num = r_parts.size();
@@ -187,7 +187,7 @@ IndexMask to_index_mask(const Span<T> indices, std::pmr::memory_resource &memory
   std::mutex scope_mutex;
 
   threading::parallel_for(split_ranges.index_range(), 32, [&](const IndexRange slice) {
-    Vector<RangeOrSpanVariant<T>> segments_in_chunks;
+    Vector<std::variant<IndexRange, Span<T>>> segments_in_chunks;
     Vector<int64_t> segments_per_chunk_cumulative;
     segments_per_chunk_cumulative.reserve(slice.size() + 1);
     segments_per_chunk_cumulative.append(0);
@@ -219,7 +219,7 @@ IndexMask to_index_mask(const Span<T> indices, std::pmr::memory_resource &memory
 
       for (const int64_t segment_i :
            segments_in_chunks.index_range().take_back(segments_in_chunk_num)) {
-        const RangeOrSpanVariant<T> &segment = segments_in_chunks[segment_i];
+        const std::variant<IndexRange, Span<T>> &segment = segments_in_chunks[segment_i];
         if (std::holds_alternative<IndexRange>(segment)) {
           /* No extra allocations necessary because static memory is used. */
         }
@@ -273,7 +273,8 @@ IndexMask to_index_mask(const Span<T> indices, std::pmr::memory_resource &memory
 
       int64_t cumulative_size = 0;
       for (const int64_t segment_i : IndexRange(segments_num)) {
-        const RangeOrSpanVariant<T> &segment = segments_in_chunks[segments_in_chunk[segment_i]];
+        const std::variant<IndexRange, Span<T>> &segment =
+            segments_in_chunks[segments_in_chunk[segment_i]];
         cumulative_segment_sizes[segment_i] = int16_t(cumulative_size);
 
         if (std::holds_alternative<IndexRange>(segment)) {

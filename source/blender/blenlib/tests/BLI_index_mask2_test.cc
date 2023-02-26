@@ -82,7 +82,7 @@ TEST(index_mask2, FindStartOfNextRange)
 TEST(index_mask2, SplitToRangesAndSpans)
 {
   Array<int> data = {1, 2, 3, 4, 7, 9, 10, 13, 14, 15, 20, 21, 22, 23, 24};
-  Vector<unique_sorted_indices::RangeOrSpanVariant<int>> parts;
+  Vector<std::variant<IndexRange, Span<int>>> parts;
   const int64_t parts_num = unique_sorted_indices::split_to_ranges_and_spans<int>(data, 3, parts);
 
   EXPECT_EQ(parts_num, 4);
