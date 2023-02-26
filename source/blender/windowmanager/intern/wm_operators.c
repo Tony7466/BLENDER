@@ -1437,7 +1437,7 @@ static void dialog_exec_cb(bContext *C, void *arg1, void *arg2)
 
   uiBlock *block = arg2;
   /* Explicitly set UI_RETURN_OK flag, otherwise the menu might be canceled
-   * in case WM_operator_call_ex exits/reloads the current file (T49199). */
+   * in case WM_operator_call_ex exits/reloads the current file (#49199). */
 
   UI_popup_menu_retval_set(block, UI_RETURN_OK, true);
 
@@ -1473,7 +1473,7 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *userD
   /* clear so the OK button is left alone */
   UI_block_func_set(block, NULL, NULL, NULL);
 
-  /* new column so as not to interfere with custom layouts T26436. */
+  /* new column so as not to interfere with custom layouts #26436. */
   {
     uiLayout *col = uiLayoutColumn(layout, false);
     uiBlock *col_block = uiLayoutGetBlock(col);
@@ -2306,14 +2306,14 @@ static void radial_control_set_tex(RadialControl *rc)
                rc->use_secondary_tex,
                !ELEM(rc->subtype, PROP_NONE, PROP_PIXEL, PROP_DISTANCE)))) {
 
-        rc->texture = GPU_texture_create_2d_ex("radial_control",
-                                               ibuf->x,
-                                               ibuf->y,
-                                               1,
-                                               GPU_R8,
-                                               GPU_TEXTURE_USAGE_SHADER_READ |
-                                                   GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
-                                               ibuf->rect_float);
+        rc->texture = GPU_texture_create_2d("radial_control",
+                                            ibuf->x,
+                                            ibuf->y,
+                                            1,
+                                            GPU_R8,
+                                            GPU_TEXTURE_USAGE_SHADER_READ |
+                                                GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
+                                            ibuf->rect_float);
 
         GPU_texture_filter_mode(rc->texture, true);
         GPU_texture_swizzle_set(rc->texture, "111r");
