@@ -3408,6 +3408,12 @@ class VIEW3D_MT_face_sets(Menu):
     def draw(self, _context):
         layout = self.layout
 
+        layout.operator("sculpt.face_set_box_gesture", text="Box Face Set")
+
+        layout.operator("sculpt.face_set_lasso_gesture", text="Lasso Face Set")
+
+        layout.separator()
+
         op = layout.operator("sculpt.face_sets_create", text="Face Set from Masked")
         op.mode = 'MASKED'
 
@@ -3445,6 +3451,14 @@ class VIEW3D_MT_face_sets(Menu):
 
         layout.separator()
 
+        op = layout.operator("sculpt.face_set_edit", text="Fair Face Set Positions")
+        op.mode = 'FAIR_POSITIONS'
+
+        op = layout.operator("sculpt.face_set_edit", text="Fair Face Set Tangency")
+        op.mode = 'FAIR_TANGENCY'
+
+        layout.separator()
+
         op = layout.operator("mesh.face_set_extract", text="Extract Face Set")
 
         layout.separator()
@@ -3456,7 +3470,10 @@ class VIEW3D_MT_face_sets(Menu):
 
         layout.separator()
 
-        op = layout.operator("sculpt.face_sets_randomize_colors", text="Randomize Colors")
+        op = layout.operator("sculpt.face_sets_randomize_colors", text="Random Face Set Colors")
+
+        op = layout.operator("sculpt.face_set_edit", text="Delete Face Set")
+        op.mode = 'DELETE_GEOMETRY'
 
 
 class VIEW3D_MT_sculpt_set_pivot(Menu):
