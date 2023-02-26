@@ -331,6 +331,7 @@ template<typename T> void from_index_mask(const IndexMask &mask, MutableSpan<T> 
 template Vector<IndexRange> split_by_chunk(const Span<int> indices);
 template IndexMask to_index_mask(const Span<int>, LinearAllocator<> &);
 template void from_index_mask(const IndexMask &mask, MutableSpan<int> r_indices);
+template void from_index_mask(const IndexMask &mask, MutableSpan<int64_t> r_indices);
 template int64_t split_to_ranges_and_spans(const Span<int> indices,
                                            const int64_t range_threshold,
                                            Vector<std::variant<IndexRange, Span<int>>> &r_parts);
