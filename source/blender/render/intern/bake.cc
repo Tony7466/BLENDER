@@ -461,8 +461,8 @@ static TriTessFace *mesh_calc_tri_tessface(Mesh *me, bool tangent, Mesh *me_eval
   float no[3];
 
   const float(*positions)[3] = BKE_mesh_vert_positions(me);
-  const MPoly *polys = BKE_mesh_polys(me);
-  const MLoop *loops = BKE_mesh_loops(me);
+  const blender::Span<MPoly> polys = me->polys();
+  const blender::Span<MLoop> loops = me->loops();
 
   looptri = static_cast<MLoopTri *>(MEM_mallocN(sizeof(*looptri) * tottri, __func__));
   triangles = static_cast<TriTessFace *>(MEM_callocN(sizeof(TriTessFace) * tottri, __func__));
@@ -473,11 +473,17 @@ static TriTessFace *mesh_calc_tri_tessface(Mesh *me, bool tangent, Mesh *me_eval
   const bool calculate_normal = precomputed_normals ? false : true;
 
   if (precomputed_normals != nullptr) {
-    BKE_mesh_recalc_looptri_with_normals(
-        loops, polys, positions, me->totloop, me->totpoly, looptri, precomputed_normals);
+    BKE_mesh_recalc_looptri_with_normals(loops.data(),
+                                         polys.data(),
+                                         positions,
+                                         me->totloop,
+                                         me->totpoly,
+                                         looptri,
+                                         precomputed_normals);
   }
   else {
-    BKE_mesh_recalc_looptri(loops, polys, positions, me->totloop, me->totpoly, looptri);
+    BKE_mesh_recalc_looptri(
+        loops.data(), polys.data(), positions, me->totloop, me->totpoly, looptri);
   }
 
   const TSpace *tspace = nullptr;
@@ -746,9 +752,10 @@ void RE_bake_pixels_populate(Mesh *me,
   MLoopTri *looptri = static_cast<MLoopTri *>(MEM_mallocN(sizeof(*looptri) * tottri, __func__));
 
   const float(*positions)[3] = BKE_mesh_vert_positions(me);
-  const MPoly *polys = BKE_mesh_polys(me);
-  const MLoop *loops = BKE_mesh_loops(me);
-  BKE_mesh_recalc_looptri(loops, polys, positions, me->totloop, me->totpoly, looptri);
+  const blender::Span<MPoly> polys = me->polys();
+  const blender::Span<MLoop> loops = me->loops();
+  BKE_mesh_recalc_looptri(
+      loops.data(), polys.data(), positions, me->totloop, me->totpoly, looptri);
 
   const int *material_indices = BKE_mesh_material_indices(me);
   const int materials_num = targets->materials_num;
@@ -777,7 +784,7 @@ void RE_bake_pixels_populate(Mesh *me,
         /* NOTE(@ideasman42): workaround for pixel aligned UVs which are common and can screw
          * up our intersection tests where a pixel gets in between 2 faces or the middle of a quad,
          * camera aligned quads also have this problem but they are less common.
-         * Add a small offset to the UVs, fixes bug T18685. */
+         * Add a small offset to the UVs, fixes bug #18685. */
         vec[a][0] = (uv[0] - bk_image->uv_offset[0]) * float(bk_image->width) - (0.5f + 0.001f);
         vec[a][1] = (uv[1] - bk_image->uv_offset[1]) * float(bk_image->height) - (0.5f + 0.002f);
       }

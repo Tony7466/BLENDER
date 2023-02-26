@@ -12,8 +12,10 @@
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
 #include "BLI_math.h"
+#include "BLI_sort.hh"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
+#include "BLI_vector.hh"
 
 #include "PIL_time.h"
 
@@ -1861,7 +1863,7 @@ struct EdgeNeighborData {
   LineartEdgeNeighbor *edge_nabr;
   LineartAdjacentEdge *adj_e;
   const MLoopTri *mlooptri;
-  const MLoop *mloop;
+  blender::Span<MLoop> loops;
 };
 
 static void lineart_edge_neighbor_init_task(void *__restrict userdata,
@@ -1872,11 +1874,11 @@ static void lineart_edge_neighbor_init_task(void *__restrict userdata,
   LineartAdjacentEdge *adj_e = &en_data->adj_e[i];
   const MLoopTri *looptri = &en_data->mlooptri[i / 3];
   LineartEdgeNeighbor *edge_nabr = &en_data->edge_nabr[i];
-  const MLoop *mloop = en_data->mloop;
+  const blender::Span<MLoop> loops = en_data->loops;
 
   adj_e->e = i;
-  adj_e->v1 = mloop[looptri->tri[i % 3]].v;
-  adj_e->v2 = mloop[looptri->tri[(i + 1) % 3]].v;
+  adj_e->v1 = loops[looptri->tri[i % 3]].v;
+  adj_e->v2 = loops[looptri->tri[(i + 1) % 3]].v;
   if (adj_e->v1 > adj_e->v2) {
     std::swap(adj_e->v1, adj_e->v2);
   }
@@ -1885,6 +1887,25 @@ static void lineart_edge_neighbor_init_task(void *__restrict userdata,
   edge_nabr->v1 = adj_e->v1;
   edge_nabr->v2 = adj_e->v2;
   edge_nabr->flags = 0;
+}
+
+static void lineart_sort_adjacent_items(LineartAdjacentEdge *ai, int length)
+{
+  blender::parallel_sort(
+      ai, ai + length, [](const LineartAdjacentEdge &p1, const LineartAdjacentEdge &p2) {
+        int a = p1.v1 - p2.v1;
+        int b = p1.v2 - p2.v2;
+        /* `parallel_sort()` requires `cmp()` to return true when the first element needs to appear
+         * before the second element in the sorted array, false otherwise (strict weak ordering),
+         * see https://en.cppreference.com/w/cpp/named_req/Compare. */
+        if (a < 0) {
+          return true;
+        }
+        if (a > 0) {
+          return false;
+        }
+        return b < 0;
+      });
 }
 
 static LineartEdgeNeighbor *lineart_build_edge_neighbor(Mesh *me, int total_edges)
@@ -1904,7 +1925,7 @@ static LineartEdgeNeighbor *lineart_build_edge_neighbor(Mesh *me, int total_edge
   en_data.adj_e = adj_e;
   en_data.edge_nabr = edge_nabr;
   en_data.mlooptri = BKE_mesh_runtime_looptri_ensure(me);
-  en_data.mloop = BKE_mesh_loops(me);
+  en_data.loops = me->loops();
 
   BLI_task_parallel_range(0, total_edges, &en_data, lineart_edge_neighbor_init_task, &en_settings);
 
@@ -2458,7 +2479,7 @@ static void lineart_object_load_single_instance(LineartData *ld,
     if ((!use_mesh) || use_mesh->edit_mesh) {
       /* If the object is being edited, then the mesh is not evaluated fully into the final
        * result, do not load them. This could be caused by incorrect evaluation order due to
-       * the way line art uses depsgraph.See T102612 for explanation of this workaround. */
+       * the way line art uses depsgraph.See #102612 for explanation of this workaround. */
       return;
     }
   }
