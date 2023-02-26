@@ -77,6 +77,7 @@
 
 #include "SEQ_channels.h"
 #include "SEQ_iterator.h"
+#include "SEQ_retiming.h"
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
 
@@ -685,6 +686,25 @@ static bool seq_speed_factor_set(Sequence *seq, void *user_data)
   return true;
 }
 
+static bool do_versions_sequencer_init_retiming_tool_data(Sequence *seq, void *user_data)
+{
+  const Scene *scene = static_cast<const Scene *>(user_data);
+
+  if (seq->speed_factor == 1 || !SEQ_retiming_is_allowed(seq)) {
+    return true;
+  }
+
+  const int content_length = SEQ_time_strip_length_get(scene, seq);
+
+  SEQ_retiming_data_ensure(scene, seq);
+
+  SeqRetimingHandle *handle = &seq->retiming_handles[seq->retiming_handle_num - 1];
+  handle->strip_frame_index = round_fl_to_int(content_length / seq->speed_factor);
+  seq->speed_factor = 0.0f;
+
+  return true;
+}
+
 static void version_geometry_nodes_replace_transfer_attribute_node(bNodeTree *ntree)
 {
   using namespace blender;
@@ -1205,6 +1225,16 @@ void do_versions_after_linking_300(Main *bmain, ReportList * /*reports*/)
    */
   {
     /* Keep this block, even when empty. */
+
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      Editing *ed = SEQ_editing_get(scene);
+      if (ed == nullptr) {
+        continue;
+      }
+
+      SEQ_for_each_callback(
+          &scene->ed->seqbase, do_versions_sequencer_init_retiming_tool_data, scene);
+    }
   }
 }
 
@@ -1598,6 +1628,12 @@ static bool version_merge_still_offsets(Sequence *seq, void * /*user_data*/)
   seq->endofs -= seq->endstill;
   seq->startstill = 0;
   seq->endstill = 0;
+  return true;
+}
+
+static bool version_fix_delete_flag(Sequence *seq, void * /*user_data*/)
+{
+  seq->flag &= ~SEQ_FLAG_DELETE;
   return true;
 }
 
@@ -3907,6 +3943,66 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_ATLEAST(bmain, 305, 10)) {
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          if (sl->spacetype != SPACE_FILE) {
+            continue;
+          }
+          SpaceFile *sfile = reinterpret_cast<SpaceFile *>(sl);
+          if (!sfile->asset_params) {
+            continue;
+          }
+
+          /* When an asset browser uses the default import method, make it follow the new
+           * preference setting. This means no effective default behavior change. */
+          if (sfile->asset_params->import_type == FILE_ASSET_IMPORT_APPEND_REUSE) {
+            sfile->asset_params->import_type = FILE_ASSET_IMPORT_FOLLOW_PREFS;
+          }
+        }
+      }
+    }
+
+    if (!DNA_struct_elem_find(fd->filesdna, "SceneEEVEE", "int", "shadow_pool_size")) {
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        scene->eevee.flag |= SCE_EEVEE_SHADOW_ENABLED;
+        scene->eevee.shadow_pool_size = 512;
+        scene->r.simplify_shadows = 1.0f;
+        scene->r.simplify_shadows_render = 1.0f;
+      }
+    }
+
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          if (sl->spacetype == SPACE_VIEW3D) {
+            View3D *v3d = (View3D *)sl;
+            v3d->overlay.flag |= V3D_OVERLAY_SCULPT_CURVES_CAGE;
+            v3d->overlay.sculpt_curves_cage_opacity = 0.5f;
+          }
+        }
+      }
+    }
+
+    /* Fix possible uncleared `SEQ_FLAG_DELETE` flag */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      Editing *ed = SEQ_editing_get(scene);
+      if (ed != nullptr) {
+        SEQ_for_each_callback(&ed->seqbase, version_fix_delete_flag, nullptr);
+      }
+    }
+
+    LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
+      if (brush->ob_mode == OB_MODE_SCULPT_CURVES) {
+        if (brush->curves_sculpt_settings->curve_parameter_falloff == nullptr) {
+          brush->curves_sculpt_settings->curve_parameter_falloff = BKE_curvemapping_add(
+              1, 0.0f, 0.0f, 1.0f, 1.0f);
+        }
+      }
+    }
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -3917,15 +4013,6 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
    * \note Keep this message at the bottom of the function.
    */
   {
-    if (!DNA_struct_elem_find(fd->filesdna, "SceneEEVEE", "int", "shadow_pool_size")) {
-      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-        scene->eevee.flag |= SCE_EEVEE_SHADOW_ENABLED;
-        scene->eevee.shadow_pool_size = 512;
-        scene->r.simplify_shadows = 1.0f;
-        scene->r.simplify_shadows_render = 1.0f;
-      }
-    }
-
     /* Keep this block, even when empty. */
   }
 }

@@ -1337,8 +1337,6 @@ static void layerCopyValue_propcol(const void *source,
       memcpy(tmp_col, m1->color, sizeof(tmp_col));
     }
     blend_color_interpolate_float(m2->color, m2->color, tmp_col, mixfactor);
-
-    copy_v4_v4(m2->color, m1->color);
   }
 }
 
@@ -2984,6 +2982,19 @@ int CustomData_number_of_layers(const CustomData *data, const int type)
 
   for (int i = 0; i < data->totlayer; i++) {
     if (data->layers[i].type == type) {
+      number++;
+    }
+  }
+
+  return number;
+}
+
+int CustomData_number_of_anonymous_layers(const CustomData *data, const int type)
+{
+  int number = 0;
+
+  for (int i = 0; i < data->totlayer; i++) {
+    if (data->layers[i].type == type && data->layers[i].anonymous_id != nullptr) {
       number++;
     }
   }
