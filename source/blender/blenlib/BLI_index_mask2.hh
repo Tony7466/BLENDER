@@ -117,55 +117,11 @@ template<typename T>
 int64_t split_to_ranges_and_spans(Span<T> indices,
                                   int64_t range_threshold,
                                   Vector<RangeOrSpanVariant<T>> &r_parts);
-
-template<typename T> inline bool non_empty_is_range(const Span<T> indices)
-{
-  BLI_assert(!indices.is_empty());
-  return indices.last() - indices.first() == indices.size() - 1;
-}
-
-template<typename T> inline IndexRange non_empty_as_range(const Span<T> indices)
-{
-  BLI_assert(!indices.is_empty());
-  BLI_assert(non_empty_is_range(indices));
-  return IndexRange(indices.first(), indices.size());
-}
-
-template<typename T> inline int64_t find_size_of_next_range(const Span<T> indices)
-{
-  BLI_assert(!indices.is_empty());
-  return std::lower_bound(
-             indices.begin(),
-             indices.end(),
-             0,
-             [indices, offset = indices[0]](const T &element, const int64_t /*dummy*/) {
-               const int64_t element_index = &element - indices.begin();
-               return element - offset == element_index;
-             }) -
-         indices.begin();
-}
-
+template<typename T> bool non_empty_is_range(const Span<T> indices);
+template<typename T> IndexRange non_empty_as_range(const Span<T> indices);
+template<typename T> int64_t find_size_of_next_range(const Span<T> indices);
 template<typename T>
-inline int64_t find_size_until_next_range(const Span<T> indices, const int64_t min_range_size)
-{
-  BLI_assert(!indices.is_empty());
-  int64_t current_range_size = 1;
-  int64_t last_value = indices[0];
-  for (const int64_t i : indices.index_range().drop_front(1)) {
-    const T current_value = indices[i];
-    if (current_value == last_value + 1) {
-      current_range_size++;
-      if (current_range_size >= min_range_size) {
-        return i - min_range_size + 1;
-      }
-    }
-    else {
-      current_range_size = 1;
-    }
-    last_value = current_value;
-  }
-  return indices.size();
-}
+int64_t find_size_until_next_range(const Span<T> indices, const int64_t min_range_size);
 
 }  // namespace unique_sorted_indices
 
@@ -232,6 +188,63 @@ inline bool IndexRangeChecker::check_static(const Span<int16_t> indices) const
   return indices_ptr + adder_ >
          std::numeric_limits<uintptr_t>::max() - chunk_capacity * sizeof(int16_t);
 }
+
+/* -------------------------------------------------------------------- */
+/** \name Unique Sorted Indices Inline Methods
+ * \{ */
+
+namespace unique_sorted_indices {
+
+template<typename T> inline bool non_empty_is_range(const Span<T> indices)
+{
+  BLI_assert(!indices.is_empty());
+  return indices.last() - indices.first() == indices.size() - 1;
+}
+
+template<typename T> inline IndexRange non_empty_as_range(const Span<T> indices)
+{
+  BLI_assert(!indices.is_empty());
+  BLI_assert(non_empty_is_range(indices));
+  return IndexRange(indices.first(), indices.size());
+}
+
+template<typename T> inline int64_t find_size_of_next_range(const Span<T> indices)
+{
+  BLI_assert(!indices.is_empty());
+  return std::lower_bound(
+             indices.begin(),
+             indices.end(),
+             0,
+             [indices, offset = indices[0]](const T &element, const int64_t /*dummy*/) {
+               const int64_t element_index = &element - indices.begin();
+               return element - offset == element_index;
+             }) -
+         indices.begin();
+}
+
+template<typename T>
+inline int64_t find_size_until_next_range(const Span<T> indices, const int64_t min_range_size)
+{
+  BLI_assert(!indices.is_empty());
+  int64_t current_range_size = 1;
+  int64_t last_value = indices[0];
+  for (const int64_t i : indices.index_range().drop_front(1)) {
+    const T current_value = indices[i];
+    if (current_value == last_value + 1) {
+      current_range_size++;
+      if (current_range_size >= min_range_size) {
+        return i - min_range_size + 1;
+      }
+    }
+    else {
+      current_range_size = 1;
+    }
+    last_value = current_value;
+  }
+  return indices.size();
+}
+
+}  // namespace unique_sorted_indices
 
 /* -------------------------------------------------------------------- */
 /** \name #Chunk Inline Methods
