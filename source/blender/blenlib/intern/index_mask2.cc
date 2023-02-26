@@ -157,7 +157,15 @@ int64_t split_to_ranges_and_spans(const Span<T> indices,
   return r_parts.size() - old_parts_num;
 }
 
-template<typename T> IndexMask to_index_mask(const Span<T> indices, LinearAllocator<> &allocator)
+template<typename T>
+static MutableSpan<T> allocate_array(std::pmr::memory_resource &memory, const int64_t n)
+{
+  void *buffer = memory.allocate(sizeof(T) * size_t(n), alignof(T));
+  return MutableSpan<T>(static_cast<T *>(buffer), n);
+}
+
+template<typename T>
+IndexMask to_index_mask(const Span<T> indices, std::pmr::memory_resource &memory)
 {
   if (indices.is_empty()) {
     return {};
@@ -168,8 +176,8 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, LinearAlloca
   const Vector<IndexRange> split_ranges = split_by_chunk(indices);
   const int64_t chunks_num = split_ranges.size();
 
-  MutableSpan<Chunk> chunks = allocator.allocate_array<Chunk>(chunks_num);
-  MutableSpan<int64_t> chunk_ids = allocator.allocate_array<int64_t>(chunks_num);
+  MutableSpan<Chunk> chunks = allocate_array<Chunk>(memory, chunks_num);
+  MutableSpan<int64_t> chunk_ids = allocate_array<int64_t>(memory, chunks_num);
 
   static const int16_t *static_offsets = get_static_indices_array().data();
 
@@ -234,11 +242,11 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, LinearAlloca
 
     {
       std::lock_guard lock{scope_mutex};
-      remaining_indices_by_segment = allocator.allocate_array<const int16_t *>(
-          segments_in_chunks.size());
-      remaining_indices = allocator.allocate_array<int16_t>(index_allocations_num);
-      remaining_cumulative_segment_sizes = allocator.allocate_array<int16_t>(
-          segments_in_chunks.size() + chunks_to_postprocess.size());
+      remaining_indices_by_segment = allocate_array<const int16_t *>(memory,
+                                                                     segments_in_chunks.size());
+      remaining_indices = allocate_array<int16_t>(memory, index_allocations_num);
+      remaining_cumulative_segment_sizes = allocate_array<int16_t>(
+          memory, segments_in_chunks.size() + chunks_to_postprocess.size());
     }
 
     const OffsetIndices<int64_t> segments_by_chunk = segments_per_chunk_cumulative.as_span();
@@ -297,7 +305,7 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, LinearAlloca
     BLI_assert(remaining_cumulative_segment_sizes.is_empty());
   });
 
-  MutableSpan<int64_t> cumulative_chunk_sizes = allocator.allocate_array<int64_t>(chunks_num + 1);
+  MutableSpan<int64_t> cumulative_chunk_sizes = allocate_array<int64_t>(memory, chunks_num + 1);
   int64_t cumulative_size = 0;
   for (const int64_t i : chunks.index_range()) {
     cumulative_chunk_sizes[i] = cumulative_size;
@@ -333,7 +341,7 @@ template<typename T> void from_index_mask(const IndexMask &mask, MutableSpan<T> 
 
 static IndexMask bits_to_index_mask(const BitSpan bits,
                                     const int64_t start,
-                                    LinearAllocator<> &allocator)
+                                    std::pmr::memory_resource &memory)
 {
   Vector<int64_t> indices;
   for (const int64_t i : bits.index_range()) {
@@ -341,7 +349,7 @@ static IndexMask bits_to_index_mask(const BitSpan bits,
       indices.append(i + start);
     }
   }
-  return unique_sorted_indices::to_index_mask<int64_t>(indices, allocator);
+  return unique_sorted_indices::to_index_mask<int64_t>(indices, memory);
 }
 
 static void index_mask_to_bits(const IndexMask &mask, const int64_t start, MutableBitSpan r_bits)
@@ -352,16 +360,16 @@ static void index_mask_to_bits(const IndexMask &mask, const int64_t start, Mutab
 }
 
 template<typename T>
-IndexMask IndexMask::from_indices(const Span<T> indices, LinearAllocator<> &allocator)
+IndexMask IndexMask::from_indices(const Span<T> indices, std::pmr::memory_resource &memory)
 {
-  return unique_sorted_indices::to_index_mask(indices, allocator);
+  return unique_sorted_indices::to_index_mask(indices, memory);
 }
 
 IndexMask IndexMask::from_bits(const BitSpan bits,
-                               LinearAllocator<> &allocator,
+                               std::pmr::memory_resource &memory,
                                const int64_t offset)
 {
-  return bits_to_index_mask(bits, offset, allocator);
+  return bits_to_index_mask(bits, offset, memory);
 }
 
 static Set<int64_t> eval_expr(const Expr &base_expr, const IndexRange universe)
@@ -423,13 +431,13 @@ static Set<int64_t> eval_expr(const Expr &base_expr, const IndexRange universe)
 
 IndexMask IndexMask::from_expr(const Expr &expr,
                                const IndexRange universe,
-                               LinearAllocator<> &allocator)
+                               std::pmr::memory_resource &memory)
 {
   const Set<int64_t> indices_set = eval_expr(expr, universe);
   Vector<int64_t> indices;
   indices.extend(indices_set.begin(), indices_set.end());
   std::sort(indices.begin(), indices.end());
-  return IndexMask::from_indices<int64_t>(indices, allocator);
+  return IndexMask::from_indices<int64_t>(indices, memory);
 }
 
 template<typename T> void IndexMask::to_indices(MutableSpan<T> r_indices) const
@@ -442,8 +450,8 @@ void IndexMask::to_bits(MutableBitSpan r_bits, int64_t offset) const
   index_mask_to_bits(*this, offset, r_bits);
 }
 
-template IndexMask IndexMask::from_indices(Span<int32_t>, LinearAllocator<> &);
-template IndexMask IndexMask::from_indices(Span<int64_t>, LinearAllocator<> &);
+template IndexMask IndexMask::from_indices(Span<int32_t>, std::pmr::memory_resource &);
+template IndexMask IndexMask::from_indices(Span<int64_t>, std::pmr::memory_resource &);
 template void IndexMask::to_indices(MutableSpan<int32_t>) const;
 template void IndexMask::to_indices(MutableSpan<int64_t>) const;
 
