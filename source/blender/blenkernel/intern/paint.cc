@@ -2267,6 +2267,8 @@ PBVH *BKE_sculpt_object_pbvh_ensure(Depsgraph *depsgraph, Object *ob)
     return pbvh;
   }
 
+  ob->sculpt->islands_valid = false;
+
   if (ob->sculpt->bm != nullptr) {
     /* Sculpting on a BMesh (dynamic-topology) gets a special PBVH. */
     pbvh = build_pbvh_for_dynamic_topology(ob);
@@ -2716,6 +2718,11 @@ static SculptAttribute *sculpt_attribute_ensure_ex(Object *ob,
 
   if (attr) {
     sculpt_attr_update(ob, attr);
+
+    /* Since "stroke_only" is not a CustomData flag we have
+     * to sync its parameter setting manually. Fixes #104618.
+     */
+    attr->params.stroke_only = params->stroke_only;
 
     return attr;
   }
