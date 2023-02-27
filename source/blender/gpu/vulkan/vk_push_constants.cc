@@ -14,13 +14,13 @@
 
 namespace blender::gpu {
 
-template<typename Layout>
+template<typename LayoutT>
 static VKPushConstants::Layout::PushConstant init_constant(
     const shader::ShaderCreateInfo::PushConst &push_constant,
     const ShaderInput &shader_input,
     uint32_t *r_offset)
 {
-  align<Layout>(push_constant.type, push_constant.array_size, r_offset);
+  align<LayoutT>(push_constant.type, push_constant.array_size, r_offset);
 
   VKPushConstants::Layout::PushConstant layout;
   layout.location = shader_input.location;
@@ -28,20 +28,20 @@ static VKPushConstants::Layout::PushConstant init_constant(
   layout.array_size = push_constant.array_size;
   layout.offset = *r_offset;
 
-  reserve<Layout>(push_constant.type, push_constant.array_size, r_offset);
+  reserve<LayoutT>(push_constant.type, push_constant.array_size, r_offset);
   return layout;
 }
 
-template<typename Layout>
+template<typename LayoutT>
 uint32_t struct_size(Span<shader::ShaderCreateInfo::PushConst> push_constants)
 {
   uint32_t offset = 0;
   for (const shader::ShaderCreateInfo::PushConst &push_constant : push_constants) {
-    align<Layout>(push_constant.type, push_constant.array_size, &offset);
-    reserve<Layout>(push_constant.type, push_constant.array_size, &offset);
+    align<LayoutT>(push_constant.type, push_constant.array_size, &offset);
+    reserve<LayoutT>(push_constant.type, push_constant.array_size, &offset);
   }
 
-  align_end_of_struct<Layout>(&offset);
+  align_end_of_struct<LayoutT>(&offset);
   return offset;
 }
 
@@ -57,7 +57,7 @@ VKPushConstants::StorageType VKPushConstants::Layout::determine_storage_type(
                                                                   STORAGE_TYPE_FALLBACK;
 }
 
-template<typename Layout>
+template<typename LayoutT>
 void init_struct(const shader::ShaderCreateInfo &info,
                  const VKShaderInterface &interface,
                  Vector<VKPushConstants::Layout::PushConstant> &r_struct,
@@ -65,7 +65,7 @@ void init_struct(const shader::ShaderCreateInfo &info,
 {
   for (const shader::ShaderCreateInfo::PushConst &push_constant : info.push_constants_) {
     const ShaderInput *shader_input = interface.uniform_get(push_constant.name.c_str());
-    r_struct.append(init_constant<Layout>(push_constant, *shader_input, r_offset));
+    r_struct.append(init_constant<LayoutT>(push_constant, *shader_input, r_offset));
   }
   align_end_of_struct<Std140>(r_offset);
 }
