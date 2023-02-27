@@ -917,6 +917,17 @@ bool MetalDevice::is_ready(string &status) const
                            DEVICE_KERNEL_NUM);
     return false;
   }
+
+	if (int num_requests = MetalDeviceKernels::num_incomplete_specialization_requests()) {
+    status = string_printf("%d kernels to optimize", num_requests);
+  }
+  else if (kernel_specialization_level == PSO_SPECIALIZED_INTERSECT) {
+    status = "Using optimized intersection kernels";
+  }
+  else if (kernel_specialization_level == PSO_SPECIALIZED_SHADE) {
+    status = "Using optimized kernels";
+  }
+
   metal_printf("MetalDevice::is_ready(...) --> true\n");
   return true;
 }
@@ -953,7 +964,7 @@ void MetalDevice::optimize_for_scene(Scene *scene)
   }
 
   if (specialize_in_background) {
-    if (!MetalDeviceKernels::any_specialization_happening_now()) {
+    if (MetalDeviceKernels::num_incomplete_specialization_requests() == 0) {
       dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
                      specialize_kernels_fn);
     }
