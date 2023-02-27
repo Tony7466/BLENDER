@@ -289,15 +289,17 @@ class MTLSafeFreeList {
   std::recursive_mutex lock_;
 
   /* Linked list of next MTLSafeFreeList chunk if current chunk is full. */
-  std::atomic<int> has_next_pool_;
+  std::atomic<int> next_pool_creation_attempts_;
   std::atomic<MTLSafeFreeList *> next_;
 
   /* Lockless list. MAX_NUM_BUFFERS_ within a chunk based on considerations
-   * for performance and memory.
+   * for performance and memory. Higher chunk counts are preferable for efficiently
+   * performing block operations such as copying several objects simultaneously.
+   *
    * MIN_BUFFER_FLUSH_COUNT refers to the minimum count of buffers in the MTLSafeFreeList
    * before buffers are returned to global memory pool. This is set at a point to reduce
    * overhead of small pool flushes, while ensuring floating memory overhead is not excessive. */
-  static const int MAX_NUM_BUFFERS_ = 1024;
+  static const int MAX_NUM_BUFFERS_ = 8192;
   static const int MIN_BUFFER_FLUSH_COUNT = 120;
   std::atomic<int> current_list_index_;
   gpu::MTLBuffer *safe_free_pool_[MAX_NUM_BUFFERS_];
@@ -321,7 +323,7 @@ class MTLSafeFreeList {
   void flag_in_queue()
   {
     in_free_queue_ = true;
-    if (has_next_pool_) {
+    if (next_pool_creation_attempts_ > 0) {
       MTLSafeFreeList *next_pool = next_.load();
       BLI_assert(next_pool != nullptr);
       next_pool->flag_in_queue();

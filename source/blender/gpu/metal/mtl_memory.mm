@@ -8,6 +8,8 @@
 #include "mtl_debug.hh"
 #include "mtl_memory.hh"
 
+#include <condition_variable>
+
 using namespace blender;
 using namespace blender::gpu;
 
@@ -258,7 +260,7 @@ void MTLBufferPool::update_memory_pools()
 
       /* Fetch next MTLSafeFreeList chunk, if any. */
       MTLSafeFreeList *next_list = nullptr;
-      if (current_pool->has_next_pool_ > 0) {
+      if (current_pool->next_pool_creation_attempts_ > 0) {
         next_list = current_pool->next_.load();
       }
 
@@ -396,7 +398,7 @@ MTLSafeFreeList::MTLSafeFreeList()
   in_free_queue_ = false;
   current_list_index_ = 0;
   next_ = nullptr;
-  has_next_pool_ = 0;
+  next_pool_creation_attempts_ = 0;
 }
 
 void MTLSafeFreeList::insert_buffer(gpu::MTLBuffer *buffer)
@@ -410,12 +412,27 @@ void MTLSafeFreeList::insert_buffer(gpu::MTLBuffer *buffer)
    * insert the buffer into the next available chunk. */
   if (insert_index >= MTLSafeFreeList::MAX_NUM_BUFFERS_) {
 
-    /* Check if first caller to generate next pool. */
-    int has_next = has_next_pool_++;
-    if (has_next == 0) {
-      next_ = new MTLSafeFreeList();
-    }
+    /* Check if first caller to generate next pool in chain.
+     * Otherwise, ensure pool exists or wait for first caller to create next pool. */
     MTLSafeFreeList *next_list = next_.load();
+
+    if (next_list == nullptr) {
+      int has_created_next_chunk = next_pool_creation_attempts_++;
+      if (has_created_next_chunk == 0) {
+        lock_.lock();
+        next_ = new MTLSafeFreeList();
+        next_list = next_;
+        lock_.unlock();
+      }
+      else {
+        /* Wait until next pool in chain exists.
+         * Another thread will be creating the next link in the chain and will hold the lock
+         * so if the resource is not ready, we can hold until it is available. */
+        std::condition_variable_any wait_cond;
+        std::unique_lock<std::recursive_mutex> cond_lock(lock_);
+        wait_cond.wait(cond_lock, [&] { return (next_list = next_.load()) != nullptr; });
+      }
+    }
     BLI_assert(next_list);
     next_list->insert_buffer(buffer);
 
