@@ -395,13 +395,14 @@ static bool eevee_lightcache_static_load(LightCache *lcache)
   }
 
   if (lcache->grid_tx.tex == NULL) {
-    eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
-    lcache->grid_tx.tex = GPU_texture_create_2d_array_ex("lightcache_irradiance",
-                                                         UNPACK3(lcache->grid_tx.tex_size),
-                                                         1,
-                                                         IRRADIANCE_FORMAT,
-                                                         usage,
-                                                         NULL);
+    eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT |
+                             GPU_TEXTURE_USAGE_HOST_READ;
+    lcache->grid_tx.tex = GPU_texture_create_2d_array("lightcache_irradiance",
+                                                      UNPACK3(lcache->grid_tx.tex_size),
+                                                      1,
+                                                      IRRADIANCE_FORMAT,
+                                                      usage,
+                                                      NULL);
     GPU_texture_update(lcache->grid_tx.tex, GPU_DATA_UBYTE, lcache->grid_tx.data);
 
     if (lcache->grid_tx.tex == NULL) {
@@ -417,23 +418,23 @@ static bool eevee_lightcache_static_load(LightCache *lcache)
                              GPU_TEXTURE_USAGE_HOST_READ;
 
     /* Try to create a cubemap array. */
-    lcache->cube_tx.tex = GPU_texture_create_cube_array_ex("lightcache_cubemaps",
-                                                           lcache->cube_tx.tex_size[0],
-                                                           lcache->cube_tx.tex_size[2] / 6,
-                                                           lcache->mips_len + 1,
-                                                           GPU_R11F_G11F_B10F,
-                                                           usage,
-                                                           NULL);
+    lcache->cube_tx.tex = GPU_texture_create_cube_array("lightcache_cubemaps",
+                                                        lcache->cube_tx.tex_size[0],
+                                                        lcache->cube_tx.tex_size[2] / 6,
+                                                        lcache->mips_len + 1,
+                                                        GPU_R11F_G11F_B10F,
+                                                        usage,
+                                                        NULL);
 
     if (lcache->cube_tx.tex == NULL) {
       /* Try fallback to 2D array. */
 
-      lcache->cube_tx.tex = GPU_texture_create_2d_array_ex("lightcache_cubemaps_fallback",
-                                                           UNPACK3(lcache->cube_tx.tex_size),
-                                                           lcache->mips_len + 1,
-                                                           GPU_R11F_G11F_B10F,
-                                                           usage,
-                                                           NULL);
+      lcache->cube_tx.tex = GPU_texture_create_2d_array("lightcache_cubemaps_fallback",
+                                                        UNPACK3(lcache->cube_tx.tex_size),
+                                                        lcache->mips_len + 1,
+                                                        GPU_R11F_G11F_B10F,
+                                                        usage,
+                                                        NULL);
     }
 
     if (lcache->cube_tx.tex == NULL) {
@@ -529,7 +530,7 @@ static void write_lightcache_texture(BlendWriter *writer, LightCacheTexture *tex
     }
 
     /* FIXME: We can't save more than what 32bit systems can handle.
-     * The solution would be to split the texture but it is too late for 2.90. (see T78529) */
+     * The solution would be to split the texture but it is too late for 2.90. (see #78529) */
     if (data_size < INT_MAX) {
       BLO_write_raw(writer, data_size, tex->data);
     }
@@ -716,7 +717,8 @@ static void eevee_lightbake_create_resources(EEVEE_LightBake *lbake)
                                                     lbake->irr_size[1],
                                                     lbake->irr_size[2],
                                                     IRRADIANCE_FORMAT,
-                                                    GPU_TEXTURE_USAGE_SHADER_READ,
+                                                    GPU_TEXTURE_USAGE_SHADER_READ |
+                                                        GPU_TEXTURE_USAGE_ATTACHMENT,
                                                     DRW_TEX_FILTER,
                                                     NULL);
 

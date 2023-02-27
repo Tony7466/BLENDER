@@ -408,23 +408,8 @@ static void retrieve_active_attribute_names(MeshRenderData &mr,
                                             const Mesh &mesh)
 {
   const Mesh *mesh_final = editmesh_final_or_this(&object, &mesh);
-  const CustomData *cd_vdata = mesh_cd_vdata_get_from_mesh(mesh_final);
-  const CustomData *cd_ldata = mesh_cd_ldata_get_from_mesh(mesh_final);
-
-  /* Necessary because which attributes are active/default is stored in #CustomData. */
-  Mesh me_query = blender::dna::shallow_zero_initialize();
-  BKE_id_attribute_copy_domains_temp(
-      ID_ME, cd_vdata, nullptr, cd_ldata, nullptr, nullptr, &me_query.id);
-
-  mr.active_color_name = nullptr;
-  mr.default_color_name = nullptr;
-
-  if (const CustomDataLayer *active = BKE_id_attributes_active_color_get(&me_query.id)) {
-    mr.active_color_name = active->name;
-  }
-  if (const CustomDataLayer *render = BKE_id_attributes_render_color_get(&me_query.id)) {
-    mr.default_color_name = render->name;
-  }
+  mr.active_color_name = mesh_final->active_color_attribute;
+  mr.default_color_name = mesh_final->default_color_attribute;
 }
 
 MeshRenderData *mesh_render_data_create(Object *object,
@@ -539,10 +524,10 @@ MeshRenderData *mesh_render_data_create(Object *object,
     mr->poly_len = mr->me->totpoly;
     mr->tri_len = poly_to_tri_count(mr->poly_len, mr->loop_len);
 
-    mr->mvert = BKE_mesh_verts(mr->me);
-    mr->medge = BKE_mesh_edges(mr->me);
-    mr->mpoly = BKE_mesh_polys(mr->me);
-    mr->mloop = BKE_mesh_loops(mr->me);
+    mr->vert_positions = mr->me->vert_positions().data();
+    mr->medge = mr->me->edges().data();
+    mr->mpoly = mr->me->polys().data();
+    mr->mloop = mr->me->loops().data();
 
     mr->v_origindex = static_cast<const int *>(CustomData_get_layer(&mr->me->vdata, CD_ORIGINDEX));
     mr->e_origindex = static_cast<const int *>(CustomData_get_layer(&mr->me->edata, CD_ORIGINDEX));

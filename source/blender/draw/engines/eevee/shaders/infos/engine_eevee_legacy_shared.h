@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -9,10 +10,18 @@ typedef struct CommonUniformBlock CommonUniformBlock;
 #endif
 
 #ifdef GPU_SHADER
-/* Catch for non-create info cass. */
+/* Catch for non-create info case. */
 #  ifndef BLI_STATIC_ASSERT_ALIGN
 #    define BLI_STATIC_ASSERT_ALIGN(type, alignment)
 #  endif
+#endif
+
+/* NOTE: AMD-based macOS platforms experience performance and correctness issues with EEVEE
+ * material closure evaluation. Using singular closure evaluation, rather than the compound
+ * function calls reduces register overflow, by limiting the simultaneous number of live
+ * registers used by the virtual GPU function stack. */
+#if (defined(GPU_METAL) && defined(GPU_ATI))
+#  define DO_SPLIT_CLOSURE_EVAL 1
 #endif
 
 struct CommonUniformBlock {

@@ -215,12 +215,8 @@ class GHOST_IWindow {
    * Needs to be called after each swap events as the framebuffer will change.
    * \return  A boolean success indicator.
    */
-  virtual GHOST_TSuccess getVulkanBackbuffer(void *image,
-                                             void *framebuffer,
-                                             void *command_buffer,
-                                             void *render_pass,
-                                             void *extent,
-                                             uint32_t *fb_id) = 0;
+  virtual GHOST_TSuccess getVulkanBackbuffer(
+      void *image, void *framebuffer, void *render_pass, void *extent, uint32_t *fb_id) = 0;
 
   /**
    * Invalidates the contents of this window.
@@ -274,7 +270,7 @@ class GHOST_IWindow {
    */
   virtual GHOST_TSuccess setCursorShape(GHOST_TStandardCursor cursorShape) = 0;
 
-  virtual GHOST_TSuccess getCursorGrabBounds(GHOST_Rect &bounds) = 0;
+  virtual GHOST_TSuccess getCursorGrabBounds(GHOST_Rect &bounds) const = 0;
 
   virtual void getCursorGrabState(GHOST_TGrabCursorMode &mode,
                                   GHOST_TAxisFlag &axis_flag,
