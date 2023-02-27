@@ -473,6 +473,9 @@ bool MetalDevice::make_source_and_check_if_compile_needed(MetalPipelineType pso_
   MD5Hash md5;
   md5.append(constant_values);
   md5.append(source[pso_type]);
+  if (use_metalrt) {
+    md5.append(string_printf("metalrt_features=%d", kernel_features & METALRT_FEATURE_MASK));
+  }
   kernels_md5[pso_type] = md5.get_hex();
 
   return MetalDeviceKernels::should_load_kernels(this, pso_type);
