@@ -42,7 +42,7 @@ class VKUniformBuffer;
  * It should also keep track of the submissions in order to reuse the allocated
  * data.
  */
-class VKPushConstants : NonCopyable {
+class VKPushConstants : ResourceTracker<VKUniformBuffer> {
  public:
   /** Different methods to store push constants.*/
   enum class StorageType {
@@ -150,7 +150,6 @@ class VKPushConstants : NonCopyable {
  private:
   const Layout *layout_ = nullptr;
   void *data_ = nullptr;
-  VKUniformBuffer *uniform_buffer_ = nullptr;
 
  public:
   VKPushConstants();
@@ -183,7 +182,12 @@ class VKPushConstants : NonCopyable {
    *
    * Only valid when storage type = StorageType::UNIFORM_BUFFER.
    */
-  VKUniformBuffer &uniform_buffer_get();
+  std::unique_ptr<VKUniformBuffer> &uniform_buffer_get();
+
+  /**
+   * Part of Resource Tracking API is called when new resource is needed.
+   */
+  std::unique_ptr<VKUniformBuffer> create_new_resource(VKContext &context) override;
 
   /**
    * Get the reference to the active data.

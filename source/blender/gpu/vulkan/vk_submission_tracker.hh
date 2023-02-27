@@ -100,7 +100,7 @@ class SubmissionTracker {
 
 template<typename Resource> class ResourceTracker : NonCopyable {
   SubmissionTracker submission_tracker_;
-  Vector<Resource> tracked_resources_;
+  Vector<std::unique_ptr<Resource>> tracked_resources_;
 
  protected:
   ResourceTracker<Resource>()
@@ -124,7 +124,7 @@ template<typename Resource> class ResourceTracker : NonCopyable {
     free_tracked_resources();
   }
 
-  Resource &handle_pre_update(VKContext &context)
+  std::unique_ptr<Resource> &handle_pre_update(VKContext &context)
   {
     if (submission_tracker_.submission_tracker_pre_update(context) ==
         SubmissionTracker::Result::FREE_AND_CREATE_NEW_RESOURCE) {
@@ -134,9 +134,9 @@ template<typename Resource> class ResourceTracker : NonCopyable {
     return active_resource();
   }
 
-  virtual Resource create_new_resource(VKContext &context) = 0;
+  virtual std::unique_ptr<Resource> create_new_resource(VKContext &context) = 0;
 
-  Resource &active_resource()
+  std::unique_ptr<Resource> &active_resource()
   {
     BLI_assert(!tracked_resources_.is_empty());
     return tracked_resources_.last();

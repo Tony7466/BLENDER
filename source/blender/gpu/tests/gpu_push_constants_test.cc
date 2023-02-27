@@ -78,6 +78,11 @@ struct Shader {
   GPUShader *shader = nullptr;
   Vector<CallData> call_datas;
 
+  Shader()
+  {
+    call_datas.reserve(10);
+  }
+
   ~Shader()
   {
     if (shader != nullptr) {
@@ -117,7 +122,9 @@ struct Shader {
 
   void dispatch()
   {
-    GPU_compute_dispatch(shader, 1, 1, 1);
+    /* Dispatching 1000000 times to add some stress to the GPU. Without it tests mail succeed when
+     * using to simple shaders. */
+    GPU_compute_dispatch(shader, 1000, 1000, 1);
   }
 };
 

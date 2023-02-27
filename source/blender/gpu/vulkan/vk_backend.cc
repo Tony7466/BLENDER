@@ -81,12 +81,12 @@ void VKBackend::compute_dispatch(int groups_x_len, int groups_y_len, int groups_
 
     case VKPushConstants::StorageType::UNIFORM_BUFFER:
       push_constants.update_uniform_buffer();
-      descriptor_set.bind(push_constants.uniform_buffer_get(),
+      descriptor_set.bind(*push_constants.uniform_buffer_get(),
                           push_constants.layout_get().descriptor_set_location_get());
       break;
   }
   descriptor_set.update(context);
-  command_buffer.bind(descriptor_set.active_descriptor_set(),
+  command_buffer.bind(*descriptor_set.active_descriptor_set(),
                       shader->vk_pipeline_layout_get(),
                       VK_PIPELINE_BIND_POINT_COMPUTE);
   command_buffer.dispatch(groups_x_len, groups_y_len, groups_z_len);

@@ -12,8 +12,10 @@
 
 #include "gpu_shader_private.hh"
 
+#include "vk_buffer.hh"
 #include "vk_common.hh"
 #include "vk_submission_tracker.hh"
+#include "vk_uniform_buffer.hh"
 
 namespace blender::gpu {
 class VKIndexBuffer;
@@ -144,7 +146,7 @@ class VKDescriptorSetTracker : protected ResourceTracker<VKDescriptorSet> {
   VKDescriptorSetTracker()
   {
   }
-  
+
   VKDescriptorSetTracker(VkDescriptorSetLayout layout) : layout_(layout)
   {
   }
@@ -160,13 +162,13 @@ class VKDescriptorSetTracker : protected ResourceTracker<VKDescriptorSet> {
    */
   void update(VKContext &context);
 
-  VKDescriptorSet &active_descriptor_set()
+  std::unique_ptr<VKDescriptorSet> &active_descriptor_set()
   {
     return active_resource();
   }
 
  protected:
-  VKDescriptorSet create_new_resource(VKContext &context) override;
+  std::unique_ptr<VKDescriptorSet> create_new_resource(VKContext &context) override;
 
  private:
   Binding &ensure_location(VKDescriptorSet::Location location);

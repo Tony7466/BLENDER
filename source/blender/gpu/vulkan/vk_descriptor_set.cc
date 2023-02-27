@@ -101,8 +101,8 @@ VKDescriptorSetTracker::Binding &VKDescriptorSetTracker::ensure_location(
 void VKDescriptorSetTracker::update(VKContext &context)
 {
   handle_pre_update(context);
-  VKDescriptorSet &descriptor_set = active_descriptor_set();
-  VkDescriptorSet vk_descriptor_set = descriptor_set.vk_handle();
+  std::unique_ptr<VKDescriptorSet> &descriptor_set = active_descriptor_set();
+  VkDescriptorSet vk_descriptor_set = descriptor_set->vk_handle();
 
   Vector<VkDescriptorBufferInfo> buffer_infos;
   Vector<VkWriteDescriptorSet> descriptor_writes;
@@ -157,7 +157,7 @@ void VKDescriptorSetTracker::update(VKContext &context)
   bindings_.clear();
 }
 
-VKDescriptorSet VKDescriptorSetTracker::create_new_resource(VKContext &context)
+std::unique_ptr<VKDescriptorSet> VKDescriptorSetTracker::create_new_resource(VKContext &context)
 {
   return context.descriptor_pools_get().allocate(layout_);
 }

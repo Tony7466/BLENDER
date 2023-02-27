@@ -7,6 +7,7 @@
 
 #include "vk_push_constants.hh"
 #include "vk_backend.hh"
+#include "vk_context.hh"
 #include "vk_memory_layout.hh"
 #include "vk_shader_interface.hh"
 #include "vk_storage_buffer.hh"
@@ -102,24 +103,12 @@ VKPushConstants::VKPushConstants() = default;
 VKPushConstants::VKPushConstants(const Layout *layout) : layout_(layout)
 {
   data_ = MEM_mallocN(layout->size_in_bytes(), __func__);
-  switch (layout_->storage_type_get()) {
-    case StorageType::UNIFORM_BUFFER:
-      uniform_buffer_ = new VKUniformBuffer(layout_->size_in_bytes(), __func__);
-      break;
-
-    case StorageType::PUSH_CONSTANTS:
-    case StorageType::NONE:
-      break;
-  }
 }
 
 VKPushConstants::VKPushConstants(VKPushConstants &&other) : layout_(other.layout_)
 {
   data_ = other.data_;
   other.data_ = nullptr;
-
-  uniform_buffer_ = other.uniform_buffer_;
-  other.uniform_buffer_ = nullptr;
 }
 
 VKPushConstants::~VKPushConstants()
@@ -128,9 +117,6 @@ VKPushConstants::~VKPushConstants()
     MEM_freeN(data_);
     data_ = nullptr;
   }
-
-  delete uniform_buffer_;
-  uniform_buffer_ = nullptr;
 }
 
 VKPushConstants &VKPushConstants::operator=(VKPushConstants &&other)
@@ -140,25 +126,27 @@ VKPushConstants &VKPushConstants::operator=(VKPushConstants &&other)
   data_ = other.data_;
   other.data_ = nullptr;
 
-  uniform_buffer_ = other.uniform_buffer_;
-  other.uniform_buffer_ = nullptr;
-
   return *this;
 }
 
 void VKPushConstants::update_uniform_buffer()
 {
   BLI_assert(layout_->storage_type_get() == StorageType::UNIFORM_BUFFER);
-  BLI_assert(uniform_buffer_ != nullptr);
   BLI_assert(data_ != nullptr);
-  uniform_buffer_->update(data_);
+  VKContext &context = *VKContext::get();
+  std::unique_ptr<VKUniformBuffer> &uniform_buffer = handle_pre_update(context);
+  uniform_buffer->update(data_);
 }
 
-VKUniformBuffer &VKPushConstants::uniform_buffer_get()
+std::unique_ptr<VKUniformBuffer> &VKPushConstants::uniform_buffer_get()
 {
   BLI_assert(layout_->storage_type_get() == StorageType::UNIFORM_BUFFER);
-  BLI_assert(uniform_buffer_ != nullptr);
-  return *uniform_buffer_;
+  return active_resource();
+}
+
+std::unique_ptr<VKUniformBuffer> VKPushConstants::create_new_resource(VKContext & /*context*/)
+{
+  return std::make_unique<VKUniformBuffer>(layout_->size_in_bytes(), __func__);
 }
 
 }  // namespace blender::gpu
