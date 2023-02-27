@@ -127,8 +127,6 @@ static StringRefNull identifier_suffix(eCustomDataType data_type)
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  GeometrySet geometry_set = params.extract_input<GeometrySet>("Geometry");
-
   if (!params.output_is_required("Geometry")) {
     params.error_message_add(
         NodeWarningType::Info,
@@ -141,17 +139,27 @@ static void node_geo_exec(GeoNodeExecParams params)
   const eCustomDataType data_type = eCustomDataType(storage.data_type);
   const eAttrDomain domain = eAttrDomain(storage.domain);
 
+  const std::string input_identifier = "Value" + identifier_suffix(data_type);
   const std::string output_identifier = "Attribute" + identifier_suffix(data_type);
   AutoAnonymousAttributeID attribute_id = params.get_output_anonymous_attribute_id_if_needed(
       output_identifier);
 
-  if (!attribute_id) {
+  if (!attribute_id || !params.output_is_required(output_identifier)) {
+    params.set_input_unused(input_identifier);
+    if (params.lazy_require_input("Geometry")) {
+      return;
+    }
+    GeometrySet geometry_set = params.extract_input<GeometrySet>("Geometry");
     params.set_output("Geometry", geometry_set);
-    params.set_default_remaining_outputs();
     return;
   }
 
-  const std::string input_identifier = "Value" + identifier_suffix(data_type);
+  if (params.lazy_require_input(input_identifier) | params.lazy_require_input("Geometry")) {
+    return;
+  }
+
+  GeometrySet geometry_set = params.extract_input<GeometrySet>("Geometry");
+
   GField field;
 
   switch (data_type) {
@@ -249,5 +257,6 @@ void register_node_type_geo_attribute_capture()
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   ntype.draw_buttons = file_ns::node_layout;
   ntype.gather_link_search_ops = file_ns::node_gather_link_searches;
+  ntype.geometry_node_execute_supports_laziness = true;
   nodeRegisterType(&ntype);
 }
