@@ -610,14 +610,6 @@ void OVERLAY_light_cache_populate(OVERLAY_Data *vedata, Object *ob)
   float *color_p;
   DRW_object_wire_theme_get(ob, view_layer, &color_p);
 
-  float color_icon[4];
-
-  PointerRNA lamp_ptr;
-  RNA_pointer_create(&la->id, &RNA_Light, la, &lamp_ptr);
-
-  PropertyRNA *color_prop = RNA_struct_find_property(&lamp_ptr, "color");
-  RNA_property_float_get_array(&lamp_ptr, color_prop, color_icon);
-
   /* Remove the alpha. */
   float color[4] = {UNPACK3(color_p), 1.0f};
   /* Pack render data into object matrix. */
@@ -649,7 +641,21 @@ void OVERLAY_light_cache_populate(OVERLAY_Data *vedata, Object *ob)
 
   DRW_buffer_add_entry(cb->groundline, instdata.pos);
 
+  float color_icon[4];
+  const bool show_light_colors = vedata->stl->pd->overlay.flag & V3D_OVERLAY_SHOW_LIGHT_COLORS;
+  if (show_light_colors) {
+    /* Get light color. */
+    PointerRNA lamp_ptr;
+    RNA_pointer_create(&la->id, &RNA_Light, la, &lamp_ptr);
+
+    PropertyRNA *color_prop = RNA_struct_find_property(&lamp_ptr, "color");
+    RNA_property_float_get_array(&lamp_ptr, color_prop, color_icon);
+  }
+  else {
+    copy_v4_v4(color_icon, color);
+  }
   DRW_buffer_add_entry(cb->light_icon, color_icon, &instdata);
+
   if (la->type == LA_LOCAL) {
     instdata.area_size_x = instdata.area_size_y = la->radius;
     DRW_buffer_add_entry(cb->light_point, color, &instdata);
