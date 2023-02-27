@@ -1,14 +1,15 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_boxpack_2d.h"
+#include "BLI_span.hh"
+
+#include "DNA_vec_types.h"
+
 #pragma once
 
 /** \file
  * \ingroup geo
  */
-
-#include "BLI_boxpack_2d.h"
-#include "BLI_span.hh"
-#include "DNA_vec_types.h"
 
 enum eUVPackIsland_MarginMethod {
   ED_UVPACK_MARGIN_SCALED = 0, /* Use scale of existing UVs to multiply margin. */
@@ -40,11 +41,15 @@ struct UVPackIsland_Params {
   float udim_base_offset[2];
 };
 
+namespace blender::geometry {
+
 class PackIsland {
  public:
   rctf bounds_rect;
 };
 
-BoxPack *pack_islands(const blender::Span<PackIsland *> &island_vector,
+BoxPack *pack_islands(const Span<PackIsland *> &island_vector,
                       const UVPackIsland_Params &params,
                       float r_scale[2]);
+
+}  // namespace blender::geometry

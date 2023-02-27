@@ -560,10 +560,10 @@ void ED_uvedit_pack_islands_multi(const Scene *scene,
   }
 
   float scale[2] = {1.0f, 1.0f};
-  blender::Vector<PackIsland *> pack_island_vector;
+  blender::Vector<blender::geometry::PackIsland *> pack_island_vector;
   for (int i = 0; i < island_vector.size(); i++) {
     FaceIsland *face_island = island_vector[i];
-    PackIsland *pack_island = new PackIsland();
+    blender::geometry::PackIsland *pack_island = new blender::geometry::PackIsland();
     pack_island->bounds_rect = face_island->bounds_rect;
     pack_island_vector.append(pack_island);
   }
@@ -635,7 +635,7 @@ void ED_uvedit_pack_islands_multi(const Scene *scene,
   }
 
   for (int i = 0; i < pack_island_vector.size(); i++) {
-    PackIsland *pack_island = pack_island_vector[i];
+    blender::geometry::PackIsland *pack_island = pack_island_vector[i];
     pack_island_vector[i] = nullptr;
     delete pack_island;
   }
