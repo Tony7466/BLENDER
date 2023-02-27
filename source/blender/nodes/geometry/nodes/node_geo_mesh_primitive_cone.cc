@@ -701,6 +701,10 @@ Mesh *create_cylinder_or_cone_mesh(const float radius_top,
   }
   calculate_selection_outputs(config, attribute_outputs, mesh->attributes_for_write());
 
+  const float radius_max = std::max(radius_top, radius_bottom);
+  const float3 bounds(radius_max, radius_max, config.height);
+  mesh->bounds_set_eager({-bounds, bounds});
+
   mesh->loose_edges_tag_none();
 
   return mesh;
