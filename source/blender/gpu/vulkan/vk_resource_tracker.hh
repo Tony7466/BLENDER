@@ -89,13 +89,14 @@ class SubmissionTracker {
   enum class Result {
     FREE_AND_CREATE_NEW_RESOURCE,
     CREATE_NEW_RESOURCE,
+    USE_LAST_RESOURCE,
   };
 
  private:
   SubmissionID last_known_id_;
 
  public:
-  Result submission_tracker_pre_update(VKContext &context);
+  Result submission_tracker_pre_update(VKContext &context, bool is_dirty);
 };
 
 template<typename Resource> class ResourceTracker : NonCopyable {
@@ -124,13 +125,23 @@ template<typename Resource> class ResourceTracker : NonCopyable {
     free_tracked_resources();
   }
 
-  std::unique_ptr<Resource> &handle_pre_update(VKContext &context)
+  std::unique_ptr<Resource> &handle_pre_update(VKContext &context, const bool is_dirty)
   {
-    if (submission_tracker_.submission_tracker_pre_update(context) ==
-        SubmissionTracker::Result::FREE_AND_CREATE_NEW_RESOURCE) {
-      free_tracked_resources();
+    SubmissionTracker::Result resource_action = submission_tracker_.submission_tracker_pre_update(
+        context, is_dirty);
+    switch (resource_action) {
+      case SubmissionTracker::Result::FREE_AND_CREATE_NEW_RESOURCE:
+        free_tracked_resources();
+        tracked_resources_.append(create_new_resource(context));
+        break;
+
+      case SubmissionTracker::Result::CREATE_NEW_RESOURCE:
+        tracked_resources_.append(create_new_resource(context));
+        break;
+
+      case SubmissionTracker::Result::USE_LAST_RESOURCE:
+        break;
     }
-    tracked_resources_.append(create_new_resource(context));
     return active_resource();
   }
 

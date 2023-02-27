@@ -100,7 +100,7 @@ VKDescriptorSetTracker::Binding &VKDescriptorSetTracker::ensure_location(
 
 void VKDescriptorSetTracker::update(VKContext &context)
 {
-  handle_pre_update(context);
+  handle_pre_update(context, !bindings_.is_empty());
   std::unique_ptr<VKDescriptorSet> &descriptor_set = active_descriptor_set();
   VkDescriptorSet vk_descriptor_set = descriptor_set->vk_handle();
 

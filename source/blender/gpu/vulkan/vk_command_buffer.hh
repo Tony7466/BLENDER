@@ -8,7 +8,7 @@
 #pragma once
 
 #include "vk_common.hh"
-#include "vk_submission_tracker.hh"
+#include "vk_resource_tracker.hh"
 
 #include "BLI_utility_mixins.hh"
 

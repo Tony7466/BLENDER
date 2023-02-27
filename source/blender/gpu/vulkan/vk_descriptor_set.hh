@@ -14,7 +14,7 @@
 
 #include "vk_buffer.hh"
 #include "vk_common.hh"
-#include "vk_submission_tracker.hh"
+#include "vk_resource_tracker.hh"
 #include "vk_uniform_buffer.hh"
 
 namespace blender::gpu {

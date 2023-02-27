@@ -134,8 +134,9 @@ void VKPushConstants::update_uniform_buffer()
   BLI_assert(layout_->storage_type_get() == StorageType::UNIFORM_BUFFER);
   BLI_assert(data_ != nullptr);
   VKContext &context = *VKContext::get();
-  std::unique_ptr<VKUniformBuffer> &uniform_buffer = handle_pre_update(context);
+  std::unique_ptr<VKUniformBuffer> &uniform_buffer = handle_pre_update(context, is_dirty_);
   uniform_buffer->update(data_);
+  is_dirty_ = false;
 }
 
 std::unique_ptr<VKUniformBuffer> &VKPushConstants::uniform_buffer_get()

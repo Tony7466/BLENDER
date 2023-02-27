@@ -150,6 +150,7 @@ class VKPushConstants : ResourceTracker<VKUniformBuffer> {
  private:
   const Layout *layout_ = nullptr;
   void *data_ = nullptr;
+  bool is_dirty_ = false;
 
  public:
   VKPushConstants();
@@ -227,6 +228,7 @@ class VKPushConstants : ResourceTracker<VKUniformBuffer> {
                          layout_->size_in_bytes(),
                      "Tried to write outside the push constant allocated memory.");
       memcpy(dst, input_data, comp_len * array_size * sizeof(T));
+      is_dirty_ = true;
       return;
     }
 
@@ -240,6 +242,7 @@ class VKPushConstants : ResourceTracker<VKUniformBuffer> {
       src += comp_len;
       dst += 4;
     }
+    is_dirty_ = true;
   }
 };
 
