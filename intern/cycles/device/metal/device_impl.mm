@@ -918,7 +918,7 @@ bool MetalDevice::is_ready(string &status) const
     return false;
   }
 
-	if (int num_requests = MetalDeviceKernels::num_incomplete_specialization_requests()) {
+  if (int num_requests = MetalDeviceKernels::num_incomplete_specialization_requests()) {
     status = string_printf("%d kernels to optimize", num_requests);
   }
   else if (kernel_specialization_level == PSO_SPECIALIZED_INTERSECT) {

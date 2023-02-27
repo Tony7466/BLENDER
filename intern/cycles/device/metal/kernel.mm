@@ -361,7 +361,8 @@ MetalKernelPipeline *ShaderCache::get_best_pipeline(DeviceKernel kernel, const M
     {
       thread_scoped_lock lock(cache_mutex);
       for (auto &candidate : pipelines[kernel]) {
-        if (candidate->loaded && candidate->kernels_md5 == device->kernels_md5[candidate->pso_type]) {
+        if (candidate->loaded &&
+            candidate->kernels_md5 == device->kernels_md5[candidate->pso_type]) {
           /* Replace existing match if candidate is more specialized. */
           if (!best_match || candidate->pso_type > best_match->pso_type) {
             best_match = candidate.get();
@@ -373,8 +374,8 @@ MetalKernelPipeline *ShaderCache::get_best_pipeline(DeviceKernel kernel, const M
     if (best_match) {
       if (best_match->usage_count == 0 && best_match->pso_type != PSO_GENERIC) {
         metal_printf("Swapping in %s version of %s\n",
-                    kernel_type_as_string(best_match->pso_type),
-                    device_kernel_as_string(kernel));
+                     kernel_type_as_string(best_match->pso_type),
+                     device_kernel_as_string(kernel));
       }
       best_match->usage_count += 1;
       return best_match;
