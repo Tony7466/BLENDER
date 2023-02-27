@@ -473,8 +473,8 @@ void ED_uvedit_pack_islands_multi(const Scene *scene,
                                   Object **objects,
                                   const uint objects_len,
                                   BMesh **bmesh_override,
-                                  const struct UVMapUDIM_Params *closest_udim,
-                                  const struct UVPackIsland_Params *params)
+                                  const UVMapUDIM_Params *closest_udim,
+                                  const UVPackIsland_Params *params)
 {
   blender::Vector<FaceIsland *> island_vector;
 

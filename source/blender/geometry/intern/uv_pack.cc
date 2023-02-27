@@ -18,7 +18,7 @@
 
 #include "MEM_guardedalloc.h"
 
-static float pack_islands_scale_margin(const blender::Vector<PackIsland *> &island_vector,
+static float pack_islands_scale_margin(const blender::Span<PackIsland *> &island_vector,
                                        BoxPack *box_array,
                                        const float scale,
                                        const float margin)
@@ -35,7 +35,7 @@ static float pack_islands_scale_margin(const blender::Vector<PackIsland *> &isla
   return max_ff(max_u, max_v);
 }
 
-static float pack_islands_margin_fraction(const blender::Vector<PackIsland *> &island_vector,
+static float pack_islands_margin_fraction(const blender::Span<PackIsland *> &island_vector,
                                           BoxPack *box_array,
                                           const float margin_fraction)
 {
@@ -147,8 +147,8 @@ static float pack_islands_margin_fraction(const blender::Vector<PackIsland *> &i
   return scale_last;
 }
 
-static float calc_margin_from_aabb_length_sum(const blender::Vector<PackIsland *> &island_vector,
-                                              const struct UVPackIsland_Params &params)
+static float calc_margin_from_aabb_length_sum(const blender::Span<PackIsland *> &island_vector,
+                                              const UVPackIsland_Params &params)
 {
   /* Logic matches behavior from #GEO_uv_parametrizer_pack.
    * Attempt to give predictable results not dependent on current UV scale by using
@@ -162,8 +162,8 @@ static float calc_margin_from_aabb_length_sum(const blender::Vector<PackIsland *
   return params.margin * aabb_length_sum * 0.1f;
 }
 
-BoxPack *pack_islands(const blender::Vector<PackIsland *> &island_vector,
-                      const struct UVPackIsland_Params &params,
+BoxPack *pack_islands(const blender::Span<PackIsland *> &island_vector,
+                      const UVPackIsland_Params &params,
                       float r_scale[2])
 {
   BoxPack *box_array = static_cast<BoxPack *>(

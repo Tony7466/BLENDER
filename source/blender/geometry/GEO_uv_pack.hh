@@ -7,14 +7,14 @@
  */
 
 #include "BLI_boxpack_2d.h"
-#include "BLI_vector.hh"
+#include "BLI_span.hh"
 #include "DNA_vec_types.h"
 
-typedef enum {
+enum eUVPackIsland_MarginMethod {
   ED_UVPACK_MARGIN_SCALED = 0, /* Use scale of existing UVs to multiply margin. */
   ED_UVPACK_MARGIN_ADD,        /* Just add the margin, ignoring any UV scale. */
   ED_UVPACK_MARGIN_FRACTION,   /* Specify a precise fraction of final UV output. */
-} eUVPackIsland_MarginMethod;
+};
 
 /** See also #UnwrapOptions. */
 struct UVPackIsland_Params {
@@ -45,6 +45,6 @@ class PackIsland {
   rctf bounds_rect;
 };
 
-extern BoxPack *pack_islands(const blender::Vector<PackIsland *> &island_vector,
-                             const struct UVPackIsland_Params &params,
-                             float r_scale[2]);
+BoxPack *pack_islands(const blender::Span<PackIsland *> &island_vector,
+                      const UVPackIsland_Params &params,
+                      float r_scale[2]);
