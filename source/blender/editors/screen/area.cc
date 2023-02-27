@@ -938,7 +938,7 @@ static void region_azone_edge(AZone *az, ARegion *region)
    * actual contents).
    * Note that this is an arbitrary amount that matches nicely with numbers elsewhere. */
   const int overlap_padding = (region->overlap && !RGN_TYPE_IS_HEADER_ANY(region->regiontype)) ?
-                                  in)(0.4f * U.widget_unit) :
+                                  int(0.4f * U.widget_unit) :
                                   0;
 
   switch (az->edge) {
