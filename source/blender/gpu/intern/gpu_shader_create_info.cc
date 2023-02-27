@@ -317,6 +317,7 @@ void gpu_shader_create_info_init()
   /* WORKAROUND: Replace the use of gpu_BaseInstance by an instance attribute. */
   if (GPU_shader_draw_parameters_support() == false) {
     draw_resource_id_new = draw_resource_id_fallback;
+    draw_resource_id_new_with_thin = draw_resource_id_with_thin_fallback;
   }
 
 #ifdef WITH_METAL_BACKEND

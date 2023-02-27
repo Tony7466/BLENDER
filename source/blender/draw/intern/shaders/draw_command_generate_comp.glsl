@@ -122,7 +122,12 @@ void main()
   }
   else {
     for (uint i = dst_index; i < dst_index + visible_instance_len; i++) {
+#ifdef WITH_THIN_HANDLES
+      resource_id_buf[i * 2] = visibility_index;
+      resource_id_buf[i * 2 + 1] = resource_index;
+#else
       resource_id_buf[i] = resource_index;
+#endif
     }
   }
 }

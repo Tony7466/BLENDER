@@ -19,7 +19,7 @@ void main()
 #ifdef WORKBENCH_NEXT
   object_id = int(uint(resource_id) & 0xFFFFu) + 1;
   workbench_material_data_get(
-      int(resource_handle), ac.rgb, color_interp, alpha_interp, _roughness, metallic);
+      int(thin_resource_id), ac.rgb, color_interp, alpha_interp, _roughness, metallic);
 #else
   object_id = int(uint(resource_handle) & 0xFFFFu) + 1;
   workbench_material_data_get(

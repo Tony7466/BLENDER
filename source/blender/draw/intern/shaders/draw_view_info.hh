@@ -191,13 +191,11 @@ GPU_SHADER_CREATE_INFO(draw_command_generate)
     .push_constant(Type::INT, "view_shift")
     .compute_source("draw_command_generate_comp.glsl");
 
-GPU_SHADER_CREATE_INFO(with_thin_handles)
-    .define("WITH_THIN_HANDLES")
-    .storage_buf(DRW_RESOURCE_THIN_MAP_SLOT, Qualifier::READ, "uint", "thin_map_buf[]");
-
 GPU_SHADER_CREATE_INFO(draw_command_with_thin_generate)
     .do_static_compilation(true)
-    .additional_info("draw_command_generate", "with_thin_handles");
+    .define("WITH_THIN_HANDLES")
+    .storage_buf(4, Qualifier::READ, "uint", "thin_map_buf[]")
+    .additional_info("draw_command_generate");
 
 /** \} */
 
@@ -211,12 +209,27 @@ GPU_SHADER_CREATE_INFO(draw_resource_id_new)
     .storage_buf(DRW_RESOURCE_ID_SLOT, Qualifier::READ, "int", "resource_id_buf[]")
     .define("drw_ResourceID", "resource_id_buf[gpu_BaseInstance + gl_InstanceID]");
 
+GPU_SHADER_CREATE_INFO(draw_resource_id_new_with_thin)
+    .define("UNIFORM_RESOURCE_ID_NEW")
+    .define("WITH_THIN_HANDLES")
+    /*TODO (Miguel Pozo): Should be uint2 ? */
+    .storage_buf(DRW_RESOURCE_ID_SLOT, Qualifier::READ, "int2", "resource_id_buf[]")
+    .define("drw_ResourceID", "resource_id_buf[gpu_BaseInstance + gl_InstanceID].x")
+    .define("drw_ThinResourceID", "resource_id_buf[gpu_BaseInstance + gl_InstanceID].y");
+
 /**
  * Workaround the lack of gl_BaseInstance by binding the resource_id_buf as vertex buf.
  */
 GPU_SHADER_CREATE_INFO(draw_resource_id_fallback)
     .define("UNIFORM_RESOURCE_ID_NEW")
     .vertex_in(15, Type::INT, "drw_ResourceID");
+
+GPU_SHADER_CREATE_INFO(draw_resource_id_with_thin_fallback)
+    .define("UNIFORM_RESOURCE_ID_NEW")
+    .define("WITH_THIN_HANDLES")
+    .vertex_in(15, Type::IVEC2, "vertex_in_drw_ResourceID_")
+    .define("drw_ResourceID", "vertex_in_drw_ResourceID_.x")
+    .define("drw_ThinResourceID", "vertex_in_drw_ResourceID_.y");
 
 /** TODO mask view id bits. */
 GPU_SHADER_CREATE_INFO(draw_resource_handle_new).define("resource_handle", "drw_ResourceID");
@@ -227,14 +240,19 @@ GPU_SHADER_CREATE_INFO(draw_resource_handle_new).define("resource_handle", "drw_
 /** \name Draw Object Resources
  * \{ */
 
-GPU_SHADER_CREATE_INFO(draw_modelmat_new)
+GPU_SHADER_CREATE_INFO(draw_modelmat_new_common_)
     .typedef_source("draw_shader_shared.h")
     .storage_buf(DRW_OBJ_MAT_SLOT, Qualifier::READ, "ObjectMatrices", "drw_matrix_buf[]")
     .define("drw_ModelMatrixInverse", "drw_matrix_buf[resource_id].model_inverse")
     .define("drw_ModelMatrix", "drw_matrix_buf[resource_id].model")
     /* TODO For compatibility with old shaders. To be removed. */
     .define("ModelMatrixInverse", "drw_ModelMatrixInverse")
-    .define("ModelMatrix", "drw_ModelMatrix")
-    .additional_info("draw_resource_id_new");
+    .define("ModelMatrix", "drw_ModelMatrix");
+
+GPU_SHADER_CREATE_INFO(draw_modelmat_new)
+    .additional_info("draw_modelmat_new_common_", "draw_resource_id_new");
+
+GPU_SHADER_CREATE_INFO(draw_modelmat_new_with_thin)
+    .additional_info("draw_modelmat_new_common_", "draw_resource_id_new_with_thin");
 
 /** \} */

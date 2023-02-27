@@ -581,7 +581,10 @@ class DrawMultiBufBase {
     }
   }
 
-  void bind_base(RecordingState &state, int view_len, std::function<void()> generate_commands);
+  void bind_base(RecordingState &state,
+                 int view_len,
+                 int handle_size,
+                 std::function<void()> generate_commands);
 
  public:
   void clear()

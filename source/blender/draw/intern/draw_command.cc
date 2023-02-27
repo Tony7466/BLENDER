@@ -601,6 +601,7 @@ void DrawCommandBuf::bind(RecordingState &state,
 
 void DrawMultiBufBase::bind_base(RecordingState &state,
                                  int view_len,
+                                 int handle_size,
                                  std::function<void()> generate_commands)
 {
   GPU_debug_group_begin("DrawMultiBuf.bind");
@@ -631,7 +632,7 @@ void DrawMultiBufBase::bind_base(RecordingState &state,
   group_buf_.push_update();
   prototype_buf_.push_update();
   /* Allocate enough for the expansion pass. */
-  resource_id_buf_.get_or_resize(resource_id_count_);
+  resource_id_buf_.get_or_resize(resource_id_count_ * handle_size);
   /* Two command per group. */
   command_buf_.get_or_resize(group_count_ * 2);
 
@@ -657,7 +658,7 @@ void DrawMultiBuf::bind(RecordingState &state,
                         int visibility_word_per_draw,
                         int view_len)
 {
-  bind_base(state, view_len, [&]() {
+  bind_base(state, view_len, 1, [&]() {
     GPUShader *shader = DRW_shader_draw_command_generate_get();
     GPU_shader_bind(shader);
     GPU_shader_uniform_1i(shader, "prototype_len", prototype_count_);
@@ -680,7 +681,7 @@ void DrawMultiThinBuf::bind(RecordingState &state,
                             int view_len,
                             ThinMapBuf &thin_map_buf)
 {
-  bind_base(state, view_len, [&]() {
+  bind_base(state, view_len, 2, [&]() {
     GPUShader *shader = DRW_shader_draw_command_with_thin_generate_get();
     GPU_shader_bind(shader);
     GPU_shader_uniform_1i(shader, "prototype_len", prototype_count_);
@@ -690,8 +691,8 @@ void DrawMultiThinBuf::bind(RecordingState &state,
     GPU_storagebuf_bind(visibility_buf, GPU_shader_get_ssbo_binding(shader, "visibility_buf"));
     GPU_storagebuf_bind(prototype_buf_, GPU_shader_get_ssbo_binding(shader, "prototype_buf"));
     GPU_storagebuf_bind(command_buf_, GPU_shader_get_ssbo_binding(shader, "command_buf"));
+    GPU_storagebuf_bind(thin_map_buf, GPU_shader_get_ssbo_binding(shader, "thin_map_buf"));
     GPU_storagebuf_bind(resource_id_buf_, DRW_RESOURCE_ID_SLOT);
-    GPU_storagebuf_bind(thin_map_buf, DRW_RESOURCE_THIN_MAP_SLOT);
     GPU_compute_dispatch(shader, divide_ceil_u(prototype_count_, DRW_COMMAND_GROUP_SIZE), 1, 1);
   });
 }
