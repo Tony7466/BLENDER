@@ -340,6 +340,51 @@ template<typename T> void from_index_mask(const IndexMask &mask, MutableSpan<T> 
 
 }  // namespace unique_sorted_indices
 
+void IndexMask::foreach_segment(FunctionRef<void(const IndexMaskSegment &)> fn) const
+{
+  if (data_.indices_num == 0) {
+    return;
+  }
+
+  int64_t chunk_i = 0;
+  int64_t segment_i = data_.begin_it.segment_i;
+  int64_t segment_drop_front = data_.begin_it.index_in_segment;
+  const int64_t final_drop_back = data_.chunks[data_.chunks_num - 1].segment_size(
+                                      data_.end_it.segment_i) -
+                                  data_.end_it.index_in_segment;
+  const int64_t final_segment_i = data_.end_it.segment_i;
+  const int64_t final_segments_num = data_.end_it.segment_i + 1;
+
+  int64_t counter = 0;
+  while (chunk_i < data_.chunks_num) {
+    const Chunk &chunk = data_.chunks[chunk_i];
+    const int64_t chunk_id = data_.chunk_ids[chunk_i];
+    const bool is_last_chunk = (chunk_i == data_.chunks_num - 1);
+    const int64_t segments_num = is_last_chunk ? final_segments_num : chunk.segments_num;
+    const int64_t offset = chunk_capacity * chunk_id;
+    int64_t prev_cumulative_segment_size = chunk.cumulative_segment_sizes[segment_i];
+    while (segment_i < segments_num) {
+      const int64_t next_segment_i = segment_i + 1;
+      const int64_t cumulative_segment_size = chunk.cumulative_segment_sizes[next_segment_i];
+      const int64_t stored_segment_size = cumulative_segment_size - prev_cumulative_segment_size;
+      const bool is_last_segment = is_last_chunk & (segment_i == final_segment_i);
+      const int64_t segment_drop_back = is_last_segment * final_drop_back;
+      const int16_t *indices_in_segment = chunk.indices_by_segment[segment_i] + segment_drop_front;
+      const int64_t segment_size = stored_segment_size - segment_drop_front - segment_drop_back;
+      const Span<int16_t> indices_span{indices_in_segment, segment_size};
+
+      const IndexMaskSegment segment{counter, {offset, indices_span}};
+      fn(segment);
+
+      counter += segment_size;
+      segment_drop_front = 0;
+      segment_i = next_segment_i;
+    }
+    segment_i = 0;
+    chunk_i++;
+  }
+}
+
 static IndexMask bits_to_index_mask(const BitSpan bits,
                                     const int64_t start,
                                     std::pmr::memory_resource &memory)
