@@ -35,6 +35,9 @@
 #include "DNA_pointcache_types.h"
 #include "DNA_rigidbody_types.h"
 
+#include "RNA_access.h"
+#include "RNA_prototypes.h"
+
 #include "DEG_depsgraph_query.h"
 
 #include "ED_view3d.h"
@@ -123,6 +126,7 @@ void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
       cb->field_tube_limit = BUF_INSTANCE(grp_sub, format, DRW_cache_field_tube_limit_get());
       cb->field_vortex = BUF_INSTANCE(grp_sub, format, DRW_cache_field_vortex_get());
       cb->field_wind = BUF_INSTANCE(grp_sub, format, DRW_cache_field_wind_get());
+      cb->light_icon = BUF_INSTANCE(grp_sub, format, DRW_cache_light_icon_lines_get());
       cb->light_area[0] = BUF_INSTANCE(grp_sub, format, DRW_cache_light_area_disk_lines_get());
       cb->light_area[1] = BUF_INSTANCE(grp_sub, format, DRW_cache_light_area_square_lines_get());
       cb->light_point = BUF_INSTANCE(grp_sub, format, DRW_cache_light_point_lines_get());
@@ -605,6 +609,15 @@ void OVERLAY_light_cache_populate(OVERLAY_Data *vedata, Object *ob)
   Light *la = static_cast<Light *>(ob->data);
   float *color_p;
   DRW_object_wire_theme_get(ob, view_layer, &color_p);
+
+  float color_icon[4];
+
+  PointerRNA lamp_ptr;
+  RNA_pointer_create(&la->id, &RNA_Light, la, &lamp_ptr);
+
+  PropertyRNA *color_prop = RNA_struct_find_property(&lamp_ptr, "color");
+  RNA_property_float_get_array(&lamp_ptr, color_prop, color_icon);
+
   /* Remove the alpha. */
   float color[4] = {UNPACK3(color_p), 1.0f};
   /* Pack render data into object matrix. */
@@ -636,6 +649,7 @@ void OVERLAY_light_cache_populate(OVERLAY_Data *vedata, Object *ob)
 
   DRW_buffer_add_entry(cb->groundline, instdata.pos);
 
+  DRW_buffer_add_entry(cb->light_icon, color_icon, &instdata);
   if (la->type == LA_LOCAL) {
     instdata.area_size_x = instdata.area_size_y = la->radius;
     DRW_buffer_add_entry(cb->light_point, color, &instdata);

@@ -106,6 +106,7 @@ struct GPUBatch *DRW_cache_field_sphere_limit_get(void);
 
 /* Lights */
 
+struct GPUBatch *DRW_cache_light_icon_lines_get(void);
 struct GPUBatch *DRW_cache_light_point_lines_get(void);
 struct GPUBatch *DRW_cache_light_sun_lines_get(void);
 struct GPUBatch *DRW_cache_light_spot_lines_get(void);
