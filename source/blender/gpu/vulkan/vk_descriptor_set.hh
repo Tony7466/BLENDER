@@ -168,7 +168,7 @@ class VKDescriptorSetTracker : protected ResourceTracker<VKDescriptorSet> {
   }
 
  protected:
-  std::unique_ptr<VKDescriptorSet> create_new_resource(VKContext &context) override;
+  std::unique_ptr<VKDescriptorSet> create_resource(VKContext &context) override;
 
  private:
   Binding &ensure_location(VKDescriptorSet::Location location);

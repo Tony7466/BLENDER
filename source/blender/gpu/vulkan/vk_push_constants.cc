@@ -134,7 +134,7 @@ void VKPushConstants::update_uniform_buffer()
   BLI_assert(layout_->storage_type_get() == StorageType::UNIFORM_BUFFER);
   BLI_assert(data_ != nullptr);
   VKContext &context = *VKContext::get();
-  std::unique_ptr<VKUniformBuffer> &uniform_buffer = handle_pre_update(context, is_dirty_);
+  std::unique_ptr<VKUniformBuffer> &uniform_buffer = tracked_resource_for(context, is_dirty_);
   uniform_buffer->update(data_);
   is_dirty_ = false;
 }
@@ -145,7 +145,7 @@ std::unique_ptr<VKUniformBuffer> &VKPushConstants::uniform_buffer_get()
   return active_resource();
 }
 
-std::unique_ptr<VKUniformBuffer> VKPushConstants::create_new_resource(VKContext & /*context*/)
+std::unique_ptr<VKUniformBuffer> VKPushConstants::create_resource(VKContext & /*context*/)
 {
   return std::make_unique<VKUniformBuffer>(layout_->size_in_bytes(), __func__);
 }

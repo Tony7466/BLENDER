@@ -84,29 +84,30 @@ struct SubmissionID {
   friend class VKCommandBuffer;
 };
 
+/**
+ * Submission tracker keeps track of the last known submission id of the
+ * command buffer.
+ */
 class SubmissionTracker {
- public:
-  enum class Result {
-    FREE_AND_CREATE_NEW_RESOURCE,
-    CREATE_NEW_RESOURCE,
-    USE_LAST_RESOURCE,
-  };
-
- private:
   SubmissionID last_known_id_;
 
  public:
-  Result submission_tracker_pre_update(VKContext &context, bool is_dirty);
+  /**
+   * Check if the submission_id has changed since the last time it was called
+   * on this SubmissionTracker.
+   */
+  bool is_changed(VKContext &context);
 };
 
+/**
+ * ResourceTracker will keep track of resources.
+ */
 template<typename Resource> class ResourceTracker : NonCopyable {
   SubmissionTracker submission_tracker_;
   Vector<std::unique_ptr<Resource>> tracked_resources_;
 
  protected:
-  ResourceTracker<Resource>()
-  {
-  }
+  ResourceTracker<Resource>() = default;
   ResourceTracker<Resource>(ResourceTracker<Resource> &&other)
       : submission_tracker_(other.submission_tracker_),
         tracked_resources_(std::move(other.tracked_resources_))
@@ -125,28 +126,42 @@ template<typename Resource> class ResourceTracker : NonCopyable {
     free_tracked_resources();
   }
 
-  std::unique_ptr<Resource> &handle_pre_update(VKContext &context, const bool is_dirty)
+  /**
+   * Get a resource what can be used by the resource tracker.
+   *
+   * When a different submission was detected all previous resources
+   * will be freed and a new resource will be returned.
+   *
+   * When still in the same submission and we need to update the resource
+   * (is_dirty=true) then a new resource will be returned. Otherwise
+   * the previous used resource will be used.
+   *
+   * When no resources exists, a new resource will be created.
+   *
+   * The resource given back is owned by this resource tracker. And
+   * the resource should not be stored outside this class as it might
+   * be destroyed when the next submission is detected.
+   */
+  std::unique_ptr<Resource> &tracked_resource_for(VKContext &context, const bool is_dirty)
   {
-    SubmissionTracker::Result resource_action = submission_tracker_.submission_tracker_pre_update(
-        context, is_dirty);
-    switch (resource_action) {
-      case SubmissionTracker::Result::FREE_AND_CREATE_NEW_RESOURCE:
-        free_tracked_resources();
-        tracked_resources_.append(create_new_resource(context));
-        break;
-
-      case SubmissionTracker::Result::CREATE_NEW_RESOURCE:
-        tracked_resources_.append(create_new_resource(context));
-        break;
-
-      case SubmissionTracker::Result::USE_LAST_RESOURCE:
-        break;
+    if (submission_tracker_.is_changed(context)) {
+      free_tracked_resources();
+      tracked_resources_.append(create_resource(context));
+    }
+    else if (is_dirty || tracked_resources_.is_empty()) {
+      tracked_resources_.append(create_resource(context));
     }
     return active_resource();
   }
 
-  virtual std::unique_ptr<Resource> create_new_resource(VKContext &context) = 0;
+  /**
+   * Callback to create a new resource. Can be called by the `tracked_resource_for` method.
+   */
+  virtual std::unique_ptr<Resource> create_resource(VKContext &context) = 0;
 
+  /**
+   * Return the active resource of the tracker.
+   */
   std::unique_ptr<Resource> &active_resource()
   {
     BLI_assert(!tracked_resources_.is_empty());
