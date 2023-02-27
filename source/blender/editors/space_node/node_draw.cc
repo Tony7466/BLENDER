@@ -183,22 +183,19 @@ namespace blender::ed::space_node {
 
 static const char *node_socket_get_translation_context(const bNodeSocket &socket)
 {
-  std::stringstream output;
-  const nodes::SocketDeclaration &socket_decl = *socket.runtime->declaration;
-
   /* The node is not explicitly defined. */
-  if (&socket_decl == nullptr) {
+  if (socket.runtime->declaration == nullptr) {
     return nullptr;
   }
 
+  blender::StringRef translation_context = socket.runtime->declaration->translation_context;
+
   /* Default context. */
-  blender::StringRef translation_context = socket_decl.translation_context;
   if (translation_context.is_empty()) {
     return nullptr;
   }
 
-  output << translation_context.data();
-  return BLI_strdup(output.str().c_str());
+  return BLI_strdup(translation_context.data());
 }
 
 static void node_socket_add_tooltip_in_node_editor(const bNodeTree &ntree,
