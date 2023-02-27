@@ -271,7 +271,6 @@ if(WITH_PUGIXML)
 endif()
 
 find_package(OpenImageIO REQUIRED)
-set(OPENIMAGEIO_DEFINITIONS "")
 add_bundled_libraries(openimageio/lib)
 
 if(WITH_OPENCOLORIO)

@@ -439,7 +439,6 @@ if(WITH_IMAGE_WEBP)
 endif()
 
 find_package_wrapper(OpenImageIO REQUIRED)
-set(OPENIMAGEIO_DEFINITIONS "")
 add_bundled_libraries(openimageio/lib)
 
 if(WITH_OPENCOLORIO)
