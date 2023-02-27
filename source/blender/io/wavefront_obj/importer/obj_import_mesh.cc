@@ -48,7 +48,7 @@ Object *MeshFromGeometry::create_mesh(Main *bmain,
   const int64_t tot_face_elems{mesh_geometry_.face_elements_.size()};
   const int64_t tot_loops{mesh_geometry_.total_loops_};
 
-  Mesh *mesh = BKE_mesh_new_nomain(tot_verts_object, tot_edges, 0, tot_loops, tot_face_elems);
+  Mesh *mesh = BKE_mesh_new_nomain(tot_verts_object, tot_edges, tot_loops, tot_face_elems);
   Object *obj = BKE_object_add_only_object(bmain, OB_MESH, ob_name.c_str());
   obj->data = BKE_object_obdata_add_from_type(bmain, OB_MESH, ob_name.c_str());
 
@@ -86,6 +86,7 @@ void MeshFromGeometry::fixup_invalid_faces()
       /* Skip and remove faces that have fewer than 3 corners. */
       mesh_geometry_.total_loops_ -= curr_face.corner_count_;
       mesh_geometry_.face_elements_.remove_and_reorder(face_idx);
+      --face_idx;
       continue;
     }
 
@@ -128,6 +129,7 @@ void MeshFromGeometry::fixup_invalid_faces()
     /* Remove the invalid face. */
     mesh_geometry_.total_loops_ -= curr_face.corner_count_;
     mesh_geometry_.face_elements_.remove_and_reorder(face_idx);
+    --face_idx;
 
     Vector<Vector<int>> new_faces = fixup_invalid_polygon(global_vertices_.vertices, face_verts);
 
@@ -399,6 +401,7 @@ void MeshFromGeometry::create_colors(Mesh *mesh)
       CustomDataLayer *color_layer = BKE_id_attribute_new(
           &mesh->id, "Color", CD_PROP_COLOR, ATTR_DOMAIN_POINT, nullptr);
       BKE_id_attributes_active_color_set(&mesh->id, color_layer->name);
+      BKE_id_attributes_default_color_set(&mesh->id, color_layer->name);
       float4 *colors = (float4 *)color_layer->data;
       int offset = mesh_geometry_.vertex_index_min_ - block.start_vertex_index;
       for (int i = 0, n = mesh_geometry_.get_vertex_count(); i != n; ++i) {

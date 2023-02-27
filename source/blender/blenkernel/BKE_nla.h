@@ -41,10 +41,10 @@ struct PropertyRNA;
  */
 void BKE_nlastrip_free(struct NlaStrip *strip, bool do_id_user);
 /**
- * Remove the given NLA track from the set of NLA tracks, free the track's data,
- * and the track itself.
+ * Remove & Frees all NLA strips from the given NLA track,
+ * then frees (doesn't remove) the track itself.
  */
-void BKE_nlatrack_free(ListBase *tracks, struct NlaTrack *nlt, bool do_id_user);
+void BKE_nlatrack_free(struct NlaTrack *nlt, bool do_id_user);
 /**
  * Free the elements of type NLA Tracks provided in the given list, but do not free
  * the list itself since that is not free-standing
@@ -94,6 +94,17 @@ void BKE_nla_tracks_copy_from_adt(struct Main *bmain,
 struct NlaTrack *BKE_nlatrack_add(struct AnimData *adt,
                                   struct NlaTrack *prev,
                                   bool is_liboverride);
+
+/**
+ * Removes the given NLA track from the list of tracks provided.
+ */
+void BKE_nlatrack_remove(ListBase *tracks, struct NlaTrack *nlt);
+
+/**
+ * Remove the given NLA track from the list of NLA tracks, free the track's data,
+ * and the track itself.
+ */
+void BKE_nlatrack_remove_and_free(ListBase *tracks, struct NlaTrack *nlt, bool do_id_user);
 
 /**
  * Create a NLA Strip referencing the given Action.
@@ -151,9 +162,9 @@ void BKE_nlastrips_sort_strips(ListBase *strips);
 void BKE_nlastrips_add_strip_unsafe(ListBase *strips, struct NlaStrip *strip);
 
 /**
- *  NULL checks incoming strip and verifies no overlap / invalid
- *  configuration against other strips in NLA Track before calling
- *  #BKE_nlastrips_add_strip_unsafe.
+ * NULL checks incoming strip and verifies no overlap / invalid
+ * configuration against other strips in NLA Track before calling
+ * #BKE_nlastrips_add_strip_unsafe.
  */
 bool BKE_nlastrips_add_strip(ListBase *strips, struct NlaStrip *strip);
 

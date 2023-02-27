@@ -1074,7 +1074,7 @@ typedef struct wmDragAsset {
   const char *path;
   int id_type;
   struct AssetMetaData *metadata;
-  int import_type; /* eFileAssetImportType */
+  int import_method; /* eAssetImportType */
 
   /* FIXME: This is temporary evil solution to get scene/view-layer/etc in the copy callback of the
    * #wmDropBox.
@@ -1106,6 +1106,13 @@ typedef struct wmDragAssetListItem {
 
   bool is_external;
 } wmDragAssetListItem;
+
+typedef struct wmDragPath {
+  char *path;
+  /* Note that even though the enum type uses bit-flags, this should never have multiple type-bits
+   * set, so `ELEM()` like comparison is possible. */
+  int file_type; /* eFileSel_File_Types */
+} wmDragPath;
 
 typedef char *(*WMDropboxTooltipFunc)(struct bContext *,
                                       struct wmDrag *,
@@ -1144,7 +1151,6 @@ typedef struct wmDrag {
   /** See 'WM_DRAG_' defines above. */
   int type;
   void *poin;
-  char path[1024]; /* FILE_MAX */
   double value;
 
   /** If no icon but imbuf should be drawn around cursor. */

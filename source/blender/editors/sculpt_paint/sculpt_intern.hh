@@ -24,6 +24,8 @@
 
 #include "ED_view3d.h"
 
+#include <functional>
+
 struct AutomaskingCache;
 struct AutomaskingNodeData;
 struct Dial;
@@ -494,6 +496,8 @@ struct FilterCache {
   float (*pre_smoothed_color)[4];
 
   ViewContext vc;
+  float start_filter_strength;
+  bool no_orig_co;
 };
 
 /**
@@ -586,8 +590,13 @@ struct StrokeCache {
   float sculpt_normal_symm[3];
 
   /* Used for area texture mode, local_mat gets calculated by
-   * calc_brush_local_mat() and used in tex_strength(). */
+   * calc_brush_local_mat() and used in sculpt_apply_texture().
+   * Transforms from model-space coords to local area coords.
+   */
   float brush_local_mat[4][4];
+  /* The matrix from local area coords to model-space coords is used to calculate the vector
+   * displacement in area plane mode. */
+  float brush_local_mat_inv[4][4];
 
   float plane_offset[3]; /* used to shift the plane around when doing tiled strokes */
   int tile_pass;
@@ -885,7 +894,18 @@ void SCULPT_tag_update_overlays(bContext *C);
  * Do a ray-cast in the tree to find the 3d brush location
  * (This allows us to ignore the GL depth buffer)
  * Returns 0 if the ray doesn't hit the mesh, non-zero otherwise.
+ *
+ * If check_closest is true and the ray test fails a point closest
+ * to the ray will be found. If limit_closest_radius is true then
+ * the closest point will be tested against the active brush radius.
  */
+bool SCULPT_stroke_get_location_ex(bContext *C,
+                                   float out[3],
+                                   const float mval[2],
+                                   bool force_original,
+                                   bool check_closest,
+                                   bool limit_closest_radius);
+
 bool SCULPT_stroke_get_location(bContext *C,
                                 float out[3],
                                 const float mouse[2],
@@ -1242,6 +1262,30 @@ float SCULPT_brush_strength_factor(SculptSession *ss,
                                    AutomaskingNodeData *automask_data);
 
 /**
+ * Return a color of a brush texture on a particular vertex multiplied by active masks.
+ */
+void SCULPT_brush_strength_color(SculptSession *ss,
+                                 const Brush *brush,
+                                 const float brush_point[3],
+                                 float len,
+                                 const float vno[3],
+                                 const float fno[3],
+                                 float mask,
+                                 const PBVHVertRef vertex,
+                                 int thread_id,
+                                 AutomaskingNodeData *automask_data,
+                                 float r_rgba[4]);
+
+/**
+ * Calculates the vertex offset for a single vertex depending on the brush setting rgb as vector
+ * displacement.
+ */
+void SCULPT_calc_vertex_displacement(SculptSession *ss,
+                                     const Brush *brush,
+                                     float rgba[3],
+                                     float out_offset[3]);
+
+/**
  * Tilts a normal by the x and y tilt values using the view axis.
  */
 void SCULPT_tilt_apply_to_normal(float r_normal[3], StrokeCache *cache, float tilt_strength);
@@ -1398,7 +1442,8 @@ void SCULPT_filter_cache_init(bContext *C,
                               Sculpt *sd,
                               int undo_type,
                               const int mval[2],
-                              float area_normal_radius);
+                              float area_normal_radius,
+                              float start_strength);
 void SCULPT_filter_cache_free(SculptSession *ss);
 void SCULPT_mesh_filter_properties(wmOperatorType *ot);
 
@@ -1851,12 +1896,13 @@ void SCULPT_ensure_valid_pivot(const Object *ob, Scene *scene);
 /* Ensures vertex island keys exist and are valid. */
 void SCULPT_topology_islands_ensure(Object *ob);
 
-/* Mark vertex island keys as invalid.  Call when adding or hiding
- * geometry.
+/**
+ * Mark vertex island keys as invalid.
+ * Call when adding or hiding geometry.
  */
 void SCULPT_topology_islands_invalidate(SculptSession *ss);
 
-/* Get vertex island key.*/
+/** Get vertex island key. */
 int SCULPT_vertex_island_get(SculptSession *ss, PBVHVertRef vertex);
 
 /** \} */

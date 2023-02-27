@@ -1345,7 +1345,7 @@ bool WM_drag_is_ID_type(const struct wmDrag *drag, int idcode);
  */
 wmDragAsset *WM_drag_create_asset_data(const struct AssetHandle *asset,
                                        const char *path,
-                                       int import_type);
+                                       int /* #eAssetImportMethod */ import_type);
 struct wmDragAsset *WM_drag_get_asset_data(const struct wmDrag *drag, int idcode);
 struct AssetMetaData *WM_drag_get_asset_meta_data(const struct wmDrag *drag, int idcode);
 /**
@@ -1378,6 +1378,19 @@ void WM_drag_add_asset_list_item(wmDrag *drag, const struct AssetHandle *asset);
 const ListBase *WM_drag_asset_list_get(const wmDrag *drag);
 
 const char *WM_drag_get_item_name(struct wmDrag *drag);
+
+/* Path drag and drop. */
+/**
+ * \param path: The path to drag. Value will be copied into the drag data so the passed string may
+ *              be destructed.
+ */
+wmDragPath *WM_drag_create_path_data(const char *path);
+const char *WM_drag_get_path(const wmDrag *drag);
+/**
+ * Note that even though the enum return type uses bit-flags, this should never have multiple
+ * type-bits set, so `ELEM()` like comparison is possible.
+ */
+int /* eFileSel_File_Types */ WM_drag_get_path_file_type(const wmDrag *drag);
 
 /* Set OpenGL viewport and scissor */
 void wmViewport(const struct rcti *winrct);
