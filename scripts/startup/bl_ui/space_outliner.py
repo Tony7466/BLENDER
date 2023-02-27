@@ -487,7 +487,7 @@ class OUTLINER_PT_filter(Panel):
         if bpy.data.grease_pencils:
             row = sub.row()
             row.label(icon='STROKE')
-            row.prop(space, "use_filter_object_grease_pencil", text="Grease Pencils")
+            row.prop(space, "use_filter_object_grease_pencil", text="Grease Pencil")
         row = sub.row()
         row.label(icon='EMPTY_DATA')
         row.prop(space, "use_filter_object_empty", text="Empties")
