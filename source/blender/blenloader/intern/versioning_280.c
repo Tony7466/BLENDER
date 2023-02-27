@@ -423,31 +423,36 @@ static void do_version_layers_to_collections(Main *bmain, Scene *scene)
   Collection *collection_master = scene->master_collection;
   Collection *collections[20] = {NULL};
 
-  for (int layer = 0; layer < 20; layer++) {
+  int change;
+  for (int layer = 20; --layer) {
+    /*optimized loop to use deincrement instead to use less resources 
+      because now it automatically stops when a reaches 0 and it loops 
+      the same number of times*/
+    change = (20 - layer);
     LISTBASE_FOREACH (Base *, base, &scene->base) {
-      if (base->lay & (1 << layer)) {
+      if (base->lay & (1 << change)) {
         /* Create collections when needed only. */
-        if (collections[layer] == NULL) {
+        if (collections[change] == NULL) {
           char name[MAX_NAME];
 
           BLI_snprintf(
-              name, sizeof(collection_master->id.name), DATA_("Collection %d"), layer + 1);
+              name, sizeof(collection_master->id.name), DATA_("Collection %d"), change + 1);
 
           Collection *collection = BKE_collection_add(bmain, collection_master, name);
           collection->id.lib = scene->id.lib;
           if (ID_IS_LINKED(collection)) {
             collection->id.tag |= LIB_TAG_INDIRECT;
           }
-          collections[layer] = collection;
+          collections[change] = collection;
 
-          if (!(scene->lay & (1 << layer))) {
+          if (!(scene->lay & (1 << change))) {
             collection->flag |= COLLECTION_HIDE_VIEWPORT | COLLECTION_HIDE_RENDER;
           }
         }
 
         /* Note usually this would do slow collection syncing for view layers,
          * but since no view layers exists yet at this point it's fast. */
-        BKE_collection_object_add_notest(bmain, collections[layer], base->object);
+        BKE_collection_object_add_notest(bmain, collections[change], base->object);
       }
 
       if (base->flag & SELECT) {
@@ -485,13 +490,18 @@ static void do_version_layers_to_collections(Main *bmain, Scene *scene)
     view_layer->id_properties = srl->prop;
 
     /* Set exclusion and overrides. */
-    for (int layer = 0; layer < 20; layer++) {
-      Collection *collection = collections[layer];
+    int change;
+    for (int layer = 20; --layer) {
+      /*optimized loop to use deincrement instead to use less resources 
+      because now it automatically stops when a reaches 0 and it loops 
+      the same number of times*/
+      change = (20 - layer);
+      Collection *collection = collections[change];
       if (collection) {
         LayerCollection *lc = BKE_layer_collection_first_from_scene_collection(view_layer,
                                                                                collection);
 
-        if (srl->lay_exclude & (1 << layer)) {
+        if (srl->lay_exclude & (1 << change)) {
           /* Disable excluded layer. */
           have_override = true;
           lc->flag |= LAYER_COLLECTION_EXCLUDE;
@@ -500,12 +510,12 @@ static void do_version_layers_to_collections(Main *bmain, Scene *scene)
           }
         }
         else {
-          if (srl->lay_zmask & (1 << layer)) {
+          if (srl->lay_zmask & (1 << change)) {
             have_override = true;
             lc->flag |= LAYER_COLLECTION_HOLDOUT;
           }
 
-          if ((srl->lay & (1 << layer)) == 0) {
+          if ((srl->lay & (1 << change)) == 0) {
             have_override = true;
             lc->flag |= LAYER_COLLECTION_INDIRECT_ONLY;
           }
@@ -901,8 +911,13 @@ static void do_version_curvemapping_flag_extend_extrapolate(CurveMapping *cumap)
   }
 
 #define CUMA_EXTEND_EXTRAPOLATE_OLD 1
-  for (int curve_map_index = 0; curve_map_index < 4; curve_map_index++) {
-    CurveMap *cuma = &cumap->cm[curve_map_index];
+  int change;
+  for (int curve_map_index = 4; --curve_map_index) {
+    /*optimized loop to use deincrement instead to use less resources 
+      because now it automatically stops when a reaches 0 and it loops 
+      the same number of times*/
+    change = (4 - curve_map_index);
+    CurveMap *cuma = &cumap->cm[change];
     if (cuma->flag & CUMA_EXTEND_EXTRAPOLATE_OLD) {
       cumap->flag |= CUMA_EXTEND_EXTRAPOLATE;
       return;
@@ -1198,9 +1213,14 @@ void do_versions_after_linking_280(Main *bmain, ReportList *UNUSED(reports))
           /* Find or create hidden collection matching object's first layer. */
           Collection **collection_hidden = NULL;
           int coll_idx = 0;
-          for (; coll_idx < 20; coll_idx++) {
-            if (ob->lay & (1 << coll_idx)) {
-              collection_hidden = &hidden_collection_array[coll_idx];
+          int change = 0;
+          for (coll_idx= 20; --coll_idx) {
+            /*optimized loop to use deincrement instead to use less resources 
+              because now it automatically stops when a reaches 0 and it loops 
+              the same number of times*/
+            change = (20 - coll_idx);
+            if (ob->lay & (1 << change)) {
+              collection_hidden = &hidden_collection_array[change];
               break;
             }
           }
@@ -1433,7 +1453,10 @@ void do_versions_after_linking_280(Main *bmain, ReportList *UNUSED(reports))
           if (nu->bezt) {
             BezTriple *bezt = nu->bezt;
 
-            for (int a = 0; a < nu->pntsu; a++, bezt++) {
+            for (int a = nu->pntsu; --a, ++bezt) {
+              /*optimized loop to use deincrement instead to use less resources 
+              because now it automatically stops when a reaches 0 and it loops 
+              the same number of times*/
               if ((old_count -= 3) < 0) {
                 memcpy(newptr, bezt->vec, sizeof(float[3][3]));
                 newptr[3][0] = bezt->tilt;
@@ -1451,7 +1474,10 @@ void do_versions_after_linking_280(Main *bmain, ReportList *UNUSED(reports))
           else if (nu->bp) {
             BPoint *bp = nu->bp;
 
-            for (int a = 0; a < nu->pntsu * nu->pntsv; a++, bp++) {
+            for (int a = nu->pntsu * nu->pntsv; --a, ++bp) {
+              /*optimized loop to use deincrement instead to use less resources 
+              because now it automatically stops when a reaches 0 and it loops 
+              the same number of times*/
               if (--old_count < 0) {
                 copy_v3_v3(newptr[0], bp->vec);
                 newptr[1][0] = bp->tilt;
@@ -2558,9 +2584,14 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
     if (!DNA_struct_elem_find(fd->filesdna, "Image", "ListBase", "renderslot")) {
       for (Image *ima = bmain->images.first; ima; ima = ima->id.next) {
         if (ima->type == IMA_TYPE_R_RESULT) {
-          for (int i = 0; i < 8; i++) {
+          int change;
+          for (int i = 8; --i) {
+            /*optimized loop to use deincrement instead to use less resources 
+              because now it automatically stops when a reaches 0 and it loops 
+              the same number of times*/
+            change = (8 - i);
             RenderSlot *slot = MEM_callocN(sizeof(RenderSlot), "Image Render Slot Init");
-            BLI_snprintf(slot->name, sizeof(slot->name), "Slot %d", i + 1);
+            BLI_snprintf(slot->name, sizeof(slot->name), "Slot %d", change + 1);
             BLI_addtail(&ima->renderslots, slot);
           }
         }
@@ -3498,8 +3529,13 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
 
     if (!DNA_struct_find(fd->filesdna, "TransformOrientationSlot")) {
       for (Scene *scene = bmain->scenes.first; scene; scene = scene->id.next) {
-        for (int i = 0; i < ARRAY_SIZE(scene->orientation_slots); i++) {
-          scene->orientation_slots[i].index_custom = -1;
+        int change;
+        for (int i = ARRAY_SIZE(scene->orientation_slots); --i) {
+          /*optimized loop to use deincrement instead to use less resources 
+            because now it automatically stops when a reaches 0 and it loops 
+            the same number of times*/
+          change = (ARRAY_SIZE(scene->orientation_slots) - i);
+          scene->orientation_slots[change].index_custom = -1;
         }
       }
     }
@@ -4837,7 +4873,10 @@ void blo_do_versions_280(FileData *fd, Library *UNUSED(lib), Main *bmain)
               srgb_to_linearrgb_v4(gps->vert_color_fill, gps->vert_color_fill);
               int i;
               bGPDspoint *pt;
-              for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
+              for (i = gps->totpoints, pt = gps->points;--i, ++pt) {
+                /*optimized loop to use deincrement instead to use less resources 
+                because now it automatically stops when a reaches 0 and it loops 
+                the same number of times*/
                 srgb_to_linearrgb_v4(pt->vert_color, pt->vert_color);
               }
             }
