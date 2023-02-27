@@ -475,10 +475,63 @@ static Set<int64_t> eval_expr(const Expr &base_expr, const IndexRange universe)
   return result;
 }
 
+static Set<int64_t> find_chunk_ids_to_process(const Expr &base_expr, const IndexRange universe)
+{
+  Set<int64_t> result;
+  switch (base_expr.type) {
+    case Expr::Type::Atomic: {
+      const AtomicExpr &expr = static_cast<const AtomicExpr &>(base_expr);
+      for (const int64_t chunk_i : IndexRange(expr.mask->data().chunks_num)) {
+        result.add_new(expr.mask->data().chunk_ids[chunk_i]);
+      }
+      break;
+    }
+    case Expr::Type::Union: {
+      const UnionExpr &expr = static_cast<const UnionExpr &>(base_expr);
+      for (const Expr *child : expr.children) {
+        const Set<int64_t> child_result = find_chunk_ids_to_process(*child, universe);
+        for (const int64_t chunk_id : child_result) {
+          result.add(chunk_id);
+        }
+      }
+      break;
+    }
+    case Expr::Type::Difference: {
+      const DifferenceExpr &expr = static_cast<const DifferenceExpr &>(base_expr);
+      result = find_chunk_ids_to_process(*expr.base, universe);
+      break;
+    }
+    case Expr::Type::Complement: {
+      const int64_t first_chunk_id = index_to_chunk_id(universe.first());
+      const int64_t last_chunk_id = index_to_chunk_id(universe.last());
+      for (const int64_t chunk_id :
+           IndexRange(first_chunk_id, last_chunk_id - first_chunk_id + 1)) {
+        result.add(chunk_id);
+      }
+      break;
+    }
+    case Expr::Type::Intersection: {
+      const IntersectionExpr &expr = static_cast<const IntersectionExpr &>(base_expr);
+      BLI_assert(!expr.children.is_empty());
+      result = find_chunk_ids_to_process(*expr.children.first(), universe);
+      for (const Expr *child : expr.children.as_span().drop_front(1)) {
+        const Set<int64_t> child_result = find_chunk_ids_to_process(*child, universe);
+        result.remove_if([&](const int64_t chunk_id) { return !child_result.contains(chunk_id); });
+      }
+      break;
+    }
+  }
+  return result;
+}
+
 IndexMask IndexMask::from_expr(const Expr &expr,
                                const IndexRange universe,
                                std::pmr::memory_resource &memory)
 {
+  if (universe.is_empty()) {
+    return {};
+  }
+
   const Set<int64_t> indices_set = eval_expr(expr, universe);
   Vector<int64_t> indices;
   indices.extend(indices_set.begin(), indices_set.end());
