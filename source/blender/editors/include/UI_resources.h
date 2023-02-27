@@ -79,6 +79,7 @@ typedef enum ThemeColorID {
   TH_VERTEX_ACTIVE,
   TH_VERTEX_UNREFERENCED,
   TH_VERTEX_SIZE,
+  TH_EDGE_WIDTH,
   TH_OUTLINE_WIDTH,
   TH_OBCENTER_DIA,
   TH_EDGE,
@@ -336,7 +337,6 @@ typedef enum ThemeColorID {
 
   TH_EDGE_BEVEL,
   TH_VERTEX_BEVEL,
-  TH_EDGE_WIDTH,
 } ThemeColorID;
 
 /* Specific defines per space should have higher define values. */
