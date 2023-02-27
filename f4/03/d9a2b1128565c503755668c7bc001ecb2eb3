@@ -1,1 +1,2 @@
 Referenced by issue #105229, Operator tooltips are cut short (doesn't affect properties)
+Referenced by commit 0965341dcf53cd63c9a8c54339d678aec793ae47, Fix #105229: Operator tooltips are cut short
