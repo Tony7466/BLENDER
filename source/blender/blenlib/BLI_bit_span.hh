@@ -225,6 +225,15 @@ class MutableBitSpan {
   {
     this->set_all(value);
   }
+
+  template<typename Fn> void foreach_1(Fn &&fn) const
+  {
+    for (const int64_t i : this->index_range()) {
+      if ((*this)[i].test()) {
+        fn(i);
+      }
+    }
+  }
 };
 
 std::ostream &operator<<(std::ostream &stream, const BitSpan &span);

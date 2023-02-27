@@ -76,6 +76,15 @@ inline const BitInt *int_containing_bit(const BitInt *data, const int64_t bit_in
   return data + (bit_index >> BitToIntIndexShift);
 }
 
+template<typename Fn> inline void foreach_1_in_int(BitInt value, Fn &&fn)
+{
+  while (value != 0) {
+    const int index = bitscan_forward_uint64(value);
+    value &= ~mask_single_bit(index);
+    fn(index);
+  }
+}
+
 /**
  * This is a read-only pointer to a specific bit. The value of the bit can be retrieved, but
  * not changed.
