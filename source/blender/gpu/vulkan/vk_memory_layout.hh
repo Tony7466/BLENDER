@@ -39,14 +39,14 @@ struct Std430 {
   static uint32_t array_components_len(const shader::Type type);
 };
 
-template<typename Layout> static uint32_t element_stride(const shader::Type type)
+template<typename LayoutT> static uint32_t element_stride(const shader::Type type)
 {
-  return Layout::element_components_len(type) * Layout::component_mem_size(type);
+  return LayoutT::element_components_len(type) * LayoutT::component_mem_size(type);
 }
 
-template<typename Layout> static uint32_t array_stride(const shader::Type type)
+template<typename LayoutT> static uint32_t array_stride(const shader::Type type)
 {
-  return Layout::array_components_len(type) * Layout::component_mem_size(type);
+  return LayoutT::array_components_len(type) * LayoutT::component_mem_size(type);
 }
 
 /**
@@ -58,10 +58,10 @@ template<typename Layout> static uint32_t array_stride(const shader::Type type)
  * 'r_offset': After the call it will point to the byte where the reservation
  *     can happen.
  */
-template<typename Layout>
+template<typename LayoutT>
 static void align(const shader::Type &type, const int32_t array_size, uint32_t *r_offset)
 {
-  uint32_t alignment = Layout::element_alignment(type, array_size != 0);
+  uint32_t alignment = LayoutT::element_alignment(type, array_size != 0);
   uint32_t alignment_mask = alignment - 1;
   uint32_t offset = *r_offset;
   if ((offset & alignment_mask) != 0) {
@@ -83,11 +83,11 @@ static void align(const shader::Type &type, const int32_t array_size, uint32_t *
  *     reserve space. After the call it will point to the byte just after reserved
  *     space.
  */
-template<typename Layout>
+template<typename LayoutT>
 static void reserve(const shader::Type type, int32_t array_size, uint32_t *r_offset)
 {
-  uint32_t size = array_size == 0 ? element_stride<Layout>(type) :
-                                    array_stride<Layout>(type) * array_size;
+  uint32_t size = array_size == 0 ? element_stride<LayoutT>(type) :
+                                    array_stride<LayoutT>(type) * array_size;
   *r_offset += size;
 }
 
@@ -97,9 +97,9 @@ static void reserve(const shader::Type type, int32_t array_size, uint32_t *r_off
  * Call this function when all attributes have been added to make sure that the struct size is
  * correct.
  */
-template<typename Layout> static void align_end_of_struct(uint32_t *r_offset)
+template<typename LayoutT> static void align_end_of_struct(uint32_t *r_offset)
 {
-  align<Layout>(shader::Type::VEC4, 0, r_offset);
+  align<LayoutT>(shader::Type::VEC4, 0, r_offset);
 }
 
 }  // namespace blender::gpu

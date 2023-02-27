@@ -5526,7 +5526,8 @@ void SCULPT_flush_update_step(bContext *C, SculptUpdateType update_flags)
       SCULPT_update_object_bounding_box(ob);
     }
 
-    if (SCULPT_get_redraw_rect(region, CTX_wm_region_view3d(C), ob, &r)) {
+    RegionView3D *rv3d = CTX_wm_region_view3d(C);
+    if (rv3d && SCULPT_get_redraw_rect(region, rv3d, ob, &r)) {
       if (ss->cache) {
         ss->cache->current_r = r;
       }
@@ -6201,15 +6202,15 @@ void SCULPT_boundary_info_ensure(Object *object)
   }
 
   Mesh *base_mesh = BKE_mesh_from_object(object);
-  const MEdge *edges = BKE_mesh_edges(base_mesh);
-  const MPoly *polys = BKE_mesh_polys(base_mesh);
-  const MLoop *loops = BKE_mesh_loops(base_mesh);
+  const blender::Span<MEdge> edges = base_mesh->edges();
+  const blender::Span<MPoly> polys = base_mesh->polys();
+  const blender::Span<MLoop> loops = base_mesh->loops();
 
   ss->vertex_info.boundary = BLI_BITMAP_NEW(base_mesh->totvert, "Boundary info");
   int *adjacent_faces_edge_count = static_cast<int *>(
       MEM_calloc_arrayN(base_mesh->totedge, sizeof(int), "Adjacent face edge count"));
 
-  for (int p = 0; p < base_mesh->totpoly; p++) {
+  for (const int p : polys.index_range()) {
     const MPoly *poly = &polys[p];
     for (int l = 0; l < poly->totloop; l++) {
       const MLoop *loop = &loops[l + poly->loopstart];
@@ -6217,7 +6218,7 @@ void SCULPT_boundary_info_ensure(Object *object)
     }
   }
 
-  for (int e = 0; e < base_mesh->totedge; e++) {
+  for (const int e : edges.index_range()) {
     if (adjacent_faces_edge_count[e] < 2) {
       const MEdge *edge = &edges[e];
       BLI_BITMAP_SET(ss->vertex_info.boundary, edge->v1, true);

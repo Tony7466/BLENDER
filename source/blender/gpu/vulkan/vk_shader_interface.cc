@@ -52,7 +52,7 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
     names_size += PUSH_CONSTANTS_FALLBACK_NAME_LEN + 1;
   }
 
-  /* Make sure that the image slots don't overlap with the sampler slots.*/
+  /* Make sure that the image slots don't overlap with the sampler slots. */
   image_offset_++;
 
   int32_t input_tot_len = ubo_len_ + uniform_len_ + ssbo_len_;
@@ -127,7 +127,7 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
     builtin_blocks_[u] = (block != nullptr) ? block->binding : -1;
   }
 
-  /* Determine the descriptor set locations after the inputs have been sorted.*/
+  /* Determine the descriptor set locations after the inputs have been sorted. */
   descriptor_set_locations_ = Array<VKDescriptorSet::Location>(input_tot_len);
   uint32_t descriptor_set_location = 0;
   for (ShaderCreateInfo::Resource &res : all_resources) {

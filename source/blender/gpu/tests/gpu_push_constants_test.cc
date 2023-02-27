@@ -40,17 +40,16 @@ struct CallData {
     }
   }
 
-  void generate_test_data(const float components_mul, const float component_mul)
+  void generate_test_data(const float vector_mul, const float scalar_mul)
   {
-    float_in = components_mul;
-    vec2_in = float2(components_mul * 2.0, components_mul * 2.0 + component_mul);
-    vec3_in = float3(components_mul * 3.0,
-                     components_mul * 3.0 + component_mul,
-                     components_mul * 3.0 + component_mul * 2.0);
-    vec4_in = float4(components_mul * 4.0,
-                     components_mul * 4.0 + component_mul,
-                     components_mul * 4.0 + component_mul * 2.0,
-                     components_mul * 4.0 + component_mul * 3.0);
+    float_in = vector_mul;
+    vec2_in = float2(vector_mul * 2.0, vector_mul * 2.0 + scalar_mul);
+    vec3_in = float3(
+        vector_mul * 3.0, vector_mul * 3.0 + scalar_mul, vector_mul * 3.0 + scalar_mul * 2.0);
+    vec4_in = float4(vector_mul * 4.0,
+                     vector_mul * 4.0 + scalar_mul,
+                     vector_mul * 4.0 + scalar_mul * 2.0,
+                     vector_mul * 4.0 + scalar_mul * 3.0);
   }
 
   void read_back()
