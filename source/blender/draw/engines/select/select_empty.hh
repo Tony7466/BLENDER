@@ -1,0 +1,34 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2023 Blender Foundation. */
+
+/** \file
+ * \ingroup draw_engine
+ *
+ * Dummy implementation of the select engine types to avoid any overhead.
+ */
+
+#pragma once
+
+#include "draw_manager.hh"
+
+namespace blender::draw::select {
+
+struct EngineEmpty {
+  /* Add type safety to selection ID. Only the select engine should provide them. */
+  struct ID {};
+
+  struct SelectBuf {
+    void select_clear(){};
+    void select_append(ID){};
+    void select_bind(PassSimple &){};
+  };
+
+  struct SelectMap {
+    [[nodiscard]] constexpr ID select_id(const ObjectRef &)
+    {
+      return {};
+    }
+  };
+};
+
+}  // namespace blender::draw::select

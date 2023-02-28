@@ -19,12 +19,14 @@
 
 namespace blender::draw::overlay {
 
-class Background {
+template<typename SelectEngineT> class Background {
+  using ResourcesT = Resources<SelectEngineT>;
+
  private:
   PassSimple bg_ps_ = {"Background"};
 
  public:
-  void begin_sync(Resources &res, const State &state)
+  void begin_sync(ResourcesT &res, const State &state)
   {
     DRWState pass_state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_BACKGROUND;
     float4 color_override(0.0f, 0.0f, 0.0f, 0.0f);
@@ -92,7 +94,7 @@ class Background {
     }
   }
 
-  void draw(Resources &res, Manager &manager)
+  void draw(ResourcesT &res, Manager &manager)
   {
     GPU_framebuffer_bind(res.overlay_color_only_fb);
     manager.submit(bg_ps_);

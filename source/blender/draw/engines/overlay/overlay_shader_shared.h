@@ -192,7 +192,6 @@ struct ThemeColorData {
 };
 BLI_STATIC_ASSERT_ALIGN(ThemeColorData, 16)
 
-/* TODO Move to overlay engine. */
 struct ExtraInstanceData {
   float4 color_;
   float4x4 object_to_world_;

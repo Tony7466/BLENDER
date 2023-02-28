@@ -10,7 +10,7 @@
 
 namespace blender::draw::overlay {
 
-void Instance::init()
+template<typename T> void Instance<T>::init()
 {
   resources.depth_tx.wrap(DRW_viewport_texture_list_get()->depth);
   resources.depth_in_front_tx.wrap(DRW_viewport_texture_list_get()->depth_in_front);
@@ -65,7 +65,7 @@ void Instance::init()
   resources.theme_settings = G_draw.block;
 }
 
-void Instance::begin_sync()
+template<typename T> void Instance<T>::begin_sync()
 {
   const DRWView *view_legacy = DRW_view_default_get();
   View view("OverlayView", view_legacy);
@@ -76,7 +76,7 @@ void Instance::begin_sync()
   grid.begin_sync(resources, state, view);
 }
 
-void Instance::object_sync(ObjectRef &ob_ref)
+template<typename T> void Instance<T>::object_sync(ObjectRef &ob_ref)
 {
   const bool in_edit_mode = object_is_edit_mode(ob_ref.object);
 
@@ -120,13 +120,13 @@ void Instance::object_sync(ObjectRef &ob_ref)
   }
 }
 
-void Instance::end_sync()
+template<typename T> void Instance<T>::end_sync()
 {
   metaballs.end_sync(resources, state);
   empties.end_sync(resources, shapes, state);
 }
 
-void Instance::draw(Manager &manager)
+template<typename T> void Instance<T>::draw(Manager &manager)
 {
   /* WORKAROUND: This is to prevent crashes when using depth picking or selection.
    * The selection engine should handle theses cases instead. */
@@ -181,5 +181,12 @@ void Instance::draw(Manager &manager)
   resources.line_tx.release();
   resources.depth_in_front_alloc_tx.release();
 }
+
+/* Instantiation. */
+template void Instance<>::init();
+template void Instance<>::begin_sync();
+template void Instance<>::object_sync(ObjectRef &ob_ref);
+template void Instance<>::end_sync();
+template void Instance<>::draw(Manager &manager);
 
 }  // namespace blender::draw::overlay

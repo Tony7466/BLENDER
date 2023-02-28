@@ -18,7 +18,9 @@
 
 namespace blender::draw::overlay {
 
-class Grid {
+template<typename SelectEngineT> class Grid {
+  using ResourcesT = Resources<SelectEngineT>;
+
  private:
   UniformBuffer<OVERLAY_GridData> data_;
 
@@ -164,7 +166,7 @@ class Grid {
     data_.push_update();
   }
 
-  void begin_sync(Resources &res, const State &state, const View &view)
+  void begin_sync(ResourcesT &res, const State &state, const View &view)
   {
     this->update_ubo(state, view);
 
@@ -195,7 +197,7 @@ class Grid {
     }
   }
 
-  void draw(Resources &res, Manager &manager, View &view)
+  void draw(ResourcesT &res, Manager &manager, View &view)
   {
     if (!enabled_) {
       return;

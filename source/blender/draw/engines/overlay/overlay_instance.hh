@@ -14,6 +14,9 @@
 #include "overlay_metaball.hh"
 #include "overlay_shape.hh"
 
+#include "../select/select_empty.hh"
+#include "../select/select_object.hh"
+
 namespace blender::draw::overlay {
 
 class ShaderCache {
@@ -22,32 +25,12 @@ class ShaderCache {
   int clipping_enabled = 0;
 };
 
-class SceneResources {
-  ShaderCache shaders;
-
-  // UniformBuffer<ThemeColorData> theme_colors;
-  // Texture color_ramp = {"color_ramp"};
-
-  void weight_ramp_init()
-  {
-    /* Weight Painting color ramp texture */
-    // bool user_weight_ramp = (U.flag & USER_CUSTOM_RANGE) != 0;
-
-    // if (weight_ramp_custom != user_weight_ramp ||
-    //     (user_weight_ramp && memcmp(&weight_ramp_copy, &U.coba_weight, sizeof(ColorBand)) != 0))
-    //     {
-    //   DRW_TEXTURE_FREE_SAFE(G_draw.weight_ramp);
-    // }
-
-    // if (G_draw.weight_ramp == NULL) {
-    //   weight_ramp_custom = user_weight_ramp;
-    //   memcpy(&weight_ramp_copy, &U.coba_weight, sizeof(ColorBand));
-
-    //   G_draw.weight_ramp = DRW_create_weight_colorramp_texture();
-    // }
-  }
-};
-
+template<
+    /* Selection engine reuse most of the Overlay engine by creating selection IDs for each
+     * selectable component and using a special shaders for drawing.
+     * Making the select engine templated makes it easier to phase out any overhead of the
+     * selection for the regular non-selection case.*/
+    typename SelectEngineT = select::EngineEmpty>
 class Instance {
  public:
   ShaderCache shaders;
@@ -57,14 +40,14 @@ class Instance {
   GPUUniformBuf *grid_ubo = nullptr;
 
   /** Global types. */
-  Resources resources;
+  Resources<SelectEngineT> resources;
   State state;
 
   /** Overlay types. */
-  Background background;
-  Metaballs metaballs;
-  Empties empties;
-  Grid grid;
+  Background<SelectEngineT> background;
+  Metaballs<SelectEngineT> metaballs;
+  Empties<SelectEngineT> empties;
+  Grid<SelectEngineT> grid;
 
   ~Instance()
   {
@@ -108,5 +91,12 @@ class Instance {
     return false;
   }
 };
+
+/* Instantiation. */
+extern template void Instance<>::init();
+extern template void Instance<>::begin_sync();
+extern template void Instance<>::object_sync(ObjectRef &ob_ref);
+extern template void Instance<>::end_sync();
+extern template void Instance<>::draw(Manager &manager);
 
 }  // namespace blender::draw::overlay

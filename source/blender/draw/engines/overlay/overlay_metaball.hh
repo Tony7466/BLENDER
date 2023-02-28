@@ -19,7 +19,8 @@
 
 namespace blender::draw::overlay {
 
-class Metaballs {
+template<typename SelectEngineT> class Metaballs {
+  using ResourcesT = Resources<SelectEngineT>;
 
  private:
   PassSimple metaball_ps_ = {"MetaBalls"};
@@ -50,7 +51,7 @@ class Metaballs {
     OVERLAY_bone_instance_data_set_color(data, color);
   }
 
-  void edit_object_sync(const ObjectRef &ob_ref, const Resources &res)
+  void edit_object_sync(const ObjectRef &ob_ref, const ResourcesT &res)
   {
     ArmatureSphereBuf &data_buf = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0 ?
                                       data_in_front_buf_ :
@@ -79,7 +80,7 @@ class Metaballs {
     }
   }
 
-  void object_sync(const ObjectRef &ob_ref, const Resources &res, const State &state)
+  void object_sync(const ObjectRef &ob_ref, const ResourcesT &res, const State &state)
   {
     ArmatureSphereBuf &data_buf = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0 ?
                                       data_in_front_buf_ :
@@ -96,7 +97,7 @@ class Metaballs {
     }
   }
 
-  void end_sync(Resources &res, const State &state)
+  void end_sync(ResourcesT &res, const State &state)
   {
     auto init_pass = [&](PassSimple &pass, ArmatureSphereBuf &data_buf) {
       data_buf.push_update();
@@ -113,13 +114,13 @@ class Metaballs {
     init_pass(metaball_in_front_ps_, data_in_front_buf_);
   }
 
-  void draw(Resources &res, Manager &manager, View &view)
+  void draw(ResourcesT &res, Manager &manager, View &view)
   {
     GPU_framebuffer_bind(res.overlay_line_fb);
     manager.submit(metaball_ps_, view);
   }
 
-  void draw_in_front(Resources &res, Manager &manager, View &view)
+  void draw_in_front(ResourcesT &res, Manager &manager, View &view)
   {
     GPU_framebuffer_bind(res.overlay_line_in_front_fb);
     manager.submit(metaball_in_front_ps_, view);

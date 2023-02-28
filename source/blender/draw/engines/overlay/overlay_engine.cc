@@ -30,6 +30,10 @@
 #include "overlay_engine.h"
 #include "overlay_private.hh"
 
+using namespace blender::draw;
+
+using Instance = blender::draw::overlay::Instance<>;
+
 /* -------------------------------------------------------------------- */
 /** \name Engine Callbacks
  * \{ */
@@ -51,7 +55,7 @@ static void OVERLAY_engine_init(void *vedata)
 
   /* Allocate instance. */
   if (data->instance == nullptr) {
-    data->instance = new blender::draw::overlay::Instance();
+    data->instance = new Instance();
   }
 
   OVERLAY_PrivateData *pd = stl->pd;
@@ -737,7 +741,7 @@ static void OVERLAY_engine_free()
 
 static void OVERLAY_instance_free(void *instance_)
 {
-  blender::draw::overlay::Instance *instance = (blender::draw::overlay::Instance *)instance_;
+  auto *instance = (Instance *)instance_;
   if (instance != nullptr) {
     delete instance;
   }
@@ -748,8 +752,6 @@ static void OVERLAY_instance_free(void *instance_)
 /** \name Engine Instance
  * \{ */
 
-using namespace blender::draw;
-
 static void OVERLAY_next_engine_init(void *vedata)
 {
   if (!GPU_shader_storage_buffer_objects_support()) {
@@ -759,10 +761,10 @@ static void OVERLAY_next_engine_init(void *vedata)
   OVERLAY_Data *ved = reinterpret_cast<OVERLAY_Data *>(vedata);
 
   if (ved->instance == nullptr) {
-    ved->instance = new overlay::Instance();
+    ved->instance = new Instance();
   }
 
-  ved->instance->init();
+  reinterpret_cast<Instance *>(ved->instance)->init();
 }
 
 static void OVERLAY_next_cache_init(void *vedata)
@@ -770,7 +772,7 @@ static void OVERLAY_next_cache_init(void *vedata)
   if (!GPU_shader_storage_buffer_objects_support()) {
     return;
   }
-  reinterpret_cast<OVERLAY_Data *>(vedata)->instance->begin_sync();
+  reinterpret_cast<Instance *>(reinterpret_cast<OVERLAY_Data *>(vedata)->instance)->begin_sync();
 }
 
 static void OVERLAY_next_cache_populate(void *vedata, Object *object)
@@ -783,7 +785,8 @@ static void OVERLAY_next_cache_populate(void *vedata, Object *object)
   ref.dupli_object = DRW_object_get_dupli(object);
   ref.dupli_parent = DRW_object_get_dupli_parent(object);
 
-  reinterpret_cast<OVERLAY_Data *>(vedata)->instance->object_sync(ref);
+  reinterpret_cast<Instance *>(reinterpret_cast<OVERLAY_Data *>(vedata)->instance)
+      ->object_sync(ref);
 }
 
 static void OVERLAY_next_cache_finish(void *vedata)
@@ -791,7 +794,7 @@ static void OVERLAY_next_cache_finish(void *vedata)
   if (!GPU_shader_storage_buffer_objects_support()) {
     return;
   }
-  reinterpret_cast<OVERLAY_Data *>(vedata)->instance->end_sync();
+  reinterpret_cast<Instance *>(reinterpret_cast<OVERLAY_Data *>(vedata)->instance)->end_sync();
 }
 
 static void OVERLAY_next_draw_scene(void *vedata)
@@ -800,7 +803,8 @@ static void OVERLAY_next_draw_scene(void *vedata)
     return;
   }
 
-  reinterpret_cast<OVERLAY_Data *>(vedata)->instance->draw(*DRW_manager_get());
+  reinterpret_cast<Instance *>(reinterpret_cast<OVERLAY_Data *>(vedata)->instance)
+      ->draw(*DRW_manager_get());
 }
 
 /** \} */

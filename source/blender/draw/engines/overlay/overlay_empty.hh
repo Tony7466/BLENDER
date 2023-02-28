@@ -15,13 +15,14 @@
 
 namespace blender::draw::overlay {
 
-class Empties {
+template<typename SelectEngineT> class Empties {
+  using SelectID = typename SelectEngineT::ID;
+  using ResourcesT = Resources<SelectEngineT>;
+  using EmptyInstanceBuf = ShapeInstanceBuf<SelectEngineT, ExtraInstanceData>;
 
  private:
   PassSimple empty_ps_ = {"Empties"};
   PassSimple empty_in_front_ps_ = {"Empties_In_front"};
-
-  using EmptyInstanceBuf = StorageVectorBuffer<ExtraInstanceData>;
 
   struct CallBuffers {
     EmptyInstanceBuf plain_axes_buf = {"plain_axes_buf"};
@@ -49,7 +50,7 @@ class Empties {
     }
   }
 
-  void object_sync(const ObjectRef &ob_ref, const Resources &res, const State &state)
+  void object_sync(const ObjectRef &ob_ref, ResourcesT &res, const State &state)
   {
     CallBuffers &call_bufs = call_buffers_[int((ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0)];
 
@@ -57,36 +58,39 @@ class Empties {
     ExtraInstanceData data(
         float4x4(ob_ref.object->object_to_world), color, ob_ref.object->empty_drawsize);
 
+    /* TODO(fclem): Get selection ID from the selection engine. */
+    const SelectID select_id = res.select_id(ob_ref);
+
     switch (ob_ref.object->empty_drawtype) {
       case OB_PLAINAXES:
-        call_bufs.plain_axes_buf.append(data);
+        call_bufs.plain_axes_buf.append(data, select_id);
         break;
       case OB_SINGLE_ARROW:
-        call_bufs.single_arrow_buf.append(data);
+        call_bufs.single_arrow_buf.append(data, select_id);
         break;
       case OB_CUBE:
-        call_bufs.cube_buf.append(data);
+        call_bufs.cube_buf.append(data, select_id);
         break;
       case OB_CIRCLE:
-        call_bufs.circle_buf.append(data);
+        call_bufs.circle_buf.append(data, select_id);
         break;
       case OB_EMPTY_SPHERE:
-        call_bufs.sphere_buf.append(data);
+        call_bufs.sphere_buf.append(data, select_id);
         break;
       case OB_EMPTY_CONE:
-        call_bufs.cone_buf.append(data);
+        call_bufs.cone_buf.append(data, select_id);
         break;
       case OB_ARROWS:
-        call_bufs.arrows_buf.append(data);
+        call_bufs.arrows_buf.append(data, select_id);
         break;
       case OB_EMPTY_IMAGE:
         /* This only show the frame. See OVERLAY_image_empty_cache_populate() for the image. */
-        call_bufs.image_buf.append(data);
+        call_bufs.image_buf.append(data, select_id);
         break;
     }
   }
 
-  void end_sync(Resources &res, ShapeCache &shapes, const State &state)
+  void end_sync(ResourcesT &res, ShapeCache &shapes, const State &state)
   {
     auto init_pass = [&](PassSimple &pass, CallBuffers &call_bufs) {
       pass.init();
@@ -95,49 +99,26 @@ class Empties {
       pass.shader_set(OVERLAY_shader_extra(false));
       pass.bind_ubo("globalsBlock", &res.globals_buf);
 
-      call_bufs.plain_axes_buf.push_update();
-      pass.bind_ssbo("data_buf", &call_bufs.plain_axes_buf);
-      pass.draw(shapes.plain_axes, call_bufs.plain_axes_buf.size());
-
-      call_bufs.single_arrow_buf.push_update();
-      pass.bind_ssbo("data_buf", &call_bufs.single_arrow_buf);
-      pass.draw(shapes.single_arrow, call_bufs.single_arrow_buf.size());
-
-      call_bufs.cube_buf.push_update();
-      pass.bind_ssbo("data_buf", &call_bufs.cube_buf);
-      pass.draw(shapes.cube, call_bufs.cube_buf.size());
-
-      call_bufs.circle_buf.push_update();
-      pass.bind_ssbo("data_buf", &call_bufs.circle_buf);
-      pass.draw(shapes.circle, call_bufs.circle_buf.size());
-
-      call_bufs.sphere_buf.push_update();
-      pass.bind_ssbo("data_buf", &call_bufs.sphere_buf);
-      pass.draw(shapes.empty_sphere, call_bufs.sphere_buf.size());
-
-      call_bufs.cone_buf.push_update();
-      pass.bind_ssbo("data_buf", &call_bufs.cone_buf);
-      pass.draw(shapes.empty_cone, call_bufs.cone_buf.size());
-
-      call_bufs.arrows_buf.push_update();
-      pass.bind_ssbo("data_buf", &call_bufs.arrows_buf);
-      pass.draw(shapes.arrows, call_bufs.arrows_buf.size());
-
-      call_bufs.image_buf.push_update();
-      pass.bind_ssbo("data_buf", &call_bufs.image_buf);
-      pass.draw(shapes.quad_wire, call_bufs.image_buf.size());
+      call_bufs.plain_axes_buf.end_sync(pass, shapes.plain_axes);
+      call_bufs.single_arrow_buf.end_sync(pass, shapes.single_arrow);
+      call_bufs.cube_buf.end_sync(pass, shapes.cube);
+      call_bufs.circle_buf.end_sync(pass, shapes.circle);
+      call_bufs.sphere_buf.end_sync(pass, shapes.empty_sphere);
+      call_bufs.cone_buf.end_sync(pass, shapes.empty_cone);
+      call_bufs.arrows_buf.end_sync(pass, shapes.arrows);
+      call_bufs.image_buf.end_sync(pass, shapes.quad_wire);
     };
     init_pass(empty_ps_, call_buffers_[0]);
     init_pass(empty_in_front_ps_, call_buffers_[1]);
   }
 
-  void draw(Resources &res, Manager &manager, View &view)
+  void draw(ResourcesT &res, Manager &manager, View &view)
   {
     GPU_framebuffer_bind(res.overlay_line_fb);
     manager.submit(empty_ps_, view);
   }
 
-  void draw_in_front(Resources &res, Manager &manager, View &view)
+  void draw_in_front(ResourcesT &res, Manager &manager, View &view)
   {
     GPU_framebuffer_bind(res.overlay_line_in_front_fb);
     manager.submit(empty_in_front_ps_, view);

@@ -18,10 +18,6 @@
 
 #include "overlay_shader_shared.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #ifdef __APPLE__
 #  define USE_GEOM_SHADER_WORKAROUND 1
 #else
@@ -35,7 +31,7 @@ extern "C" {
 struct ImBuf;
 
 namespace blender::draw::overlay {
-class Instance;
+template<typename SelectEngineT> class Instance;
 
 struct State {
   Depsgraph *depsgraph;
@@ -68,7 +64,7 @@ using blender::draw::TextureFromPool;
 using blender::draw::TextureRef;
 using ArmatureSphereBuf = StorageVectorBuffer<float4x4>;
 
-struct Resources {
+template<typename SelectEngineT> struct Resources : public SelectEngineT::SelectMap {
   Framebuffer overlay_fb = {"overlay_fb"};
   Framebuffer overlay_in_front_fb = {"overlay_in_front_fb"};
   Framebuffer overlay_color_only_fb = {"overlay_color_only_fb"};
@@ -578,7 +574,7 @@ typedef struct OVERLAY_Data {
   OVERLAY_PassList *psl;
   OVERLAY_StorageList *stl;
 
-  blender::draw::overlay::Instance *instance;
+  void *instance;
 } OVERLAY_Data;
 
 typedef struct OVERLAY_DupliData {
@@ -927,7 +923,3 @@ GPUShader *OVERLAY_shader_xray_fade(void);
 OVERLAY_InstanceFormats *OVERLAY_shader_instance_formats_get(void);
 
 void OVERLAY_shader_free(void);
-
-#ifdef __cplusplus
-}
-#endif

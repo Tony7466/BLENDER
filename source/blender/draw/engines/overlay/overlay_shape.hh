@@ -13,6 +13,41 @@
 namespace blender::draw::overlay {
 
 /**
+ * Buffer containing instances of a certain shape.
+ */
+template<typename SelectEngineT, typename InstanceDataT>
+struct ShapeInstanceBuf : private SelectEngineT::SelectBuf {
+  using SelectID = typename SelectEngineT::ID;
+
+  StorageVectorBuffer<InstanceDataT> data_buf;
+
+  ShapeInstanceBuf(const char *name = nullptr) : data_buf(name){};
+
+  void clear()
+  {
+    this->select_clear();
+    data_buf.clear();
+  }
+
+  void append(const InstanceDataT &data, SelectID select_id)
+  {
+    this->select_append(select_id);
+    data_buf.append(data);
+  }
+
+  void end_sync(PassSimple &pass, GPUBatch *shape)
+  {
+    if (data_buf.size() == 0) {
+      return;
+    }
+    this->select_bind(pass);
+    data_buf.push_update();
+    pass.bind_ssbo("data_buf", &data_buf);
+    pass.draw(shape, data_buf.size());
+  }
+};
+
+/**
  * Contains all overlay generic geometry batches.
  */
 class ShapeCache {
