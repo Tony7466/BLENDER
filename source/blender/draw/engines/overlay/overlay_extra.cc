@@ -35,9 +35,6 @@
 #include "DNA_pointcache_types.h"
 #include "DNA_rigidbody_types.h"
 
-#include "RNA_access.h"
-#include "RNA_prototypes.h"
-
 #include "DEG_depsgraph_query.h"
 
 #include "ED_view3d.h"
@@ -641,15 +638,11 @@ void OVERLAY_light_cache_populate(OVERLAY_Data *vedata, Object *ob)
 
   DRW_buffer_add_entry(cb->groundline, instdata.pos);
 
-  float color_icon[4];
+  float color_icon[4] = {1.0f};
   const bool show_light_colors = vedata->stl->pd->overlay.flag & V3D_OVERLAY_SHOW_LIGHT_COLORS;
   if (show_light_colors) {
     /* Get light color. */
-    PointerRNA lamp_ptr;
-    RNA_pointer_create(&la->id, &RNA_Light, la, &lamp_ptr);
-
-    PropertyRNA *color_prop = RNA_struct_find_property(&lamp_ptr, "color");
-    RNA_property_float_get_array(&lamp_ptr, color_prop, color_icon);
+    copy_v3_v3(color_icon, &la->r);
   }
   else {
     copy_v4_v4(color_icon, color);
