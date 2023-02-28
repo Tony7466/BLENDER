@@ -35,7 +35,7 @@ set(INC
 
   # dna_type_offsets.h
   ${CMAKE_CURRENT_BINARY_DIR}/../makesdna/intern
-  )
+)
 
 set(SRC
   intern/draw_cache.c
