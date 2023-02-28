@@ -66,7 +66,7 @@ static bool can_use_fill_command(eGPUTextureFormat internal_format,
                                  void *data)
 {
   int element_size = to_bytesize(internal_format);
-  int num_components = element_size / 8;
+  int num_components = element_size / 4;
   if (is_uniform(Span<uint32_t>(static_cast<uint32_t *>(data), num_components))) {
     return true;
   }

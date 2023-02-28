@@ -74,7 +74,6 @@ static void test_storage_buffer_clear_zero()
 
 GPU_TEST(storage_buffer_clear_zero);
 
-/* TODO: Make template.*/
 template<eGPUTextureFormat TextureFormat> static void storage_buffer_clear_uniform()
 {
   GPUStorageBuf *ssbo = GPU_storagebuf_create_ex(
