@@ -2914,10 +2914,10 @@ void BKE_node_preview_merge_tree(bNodeTree *to_ntree, bNodeTree *from_ntree, boo
   }
 }
 
-void nodeUnlinkNode(bNodeTree *ntree, const bNode *node)
+void nodeUnlinkNode(bNodeTree *ntree, bNode *node)
 {
   LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, &ntree->links) {
-    ListBase const *lb = nullptr;
+    ListBase *lb = nullptr;
     if (link->fromnode == node) {
       lb = &node->outputs;
     }

@@ -678,7 +678,7 @@ struct bNode *nodeAddStaticNode(const struct bContext *C, struct bNodeTree *ntre
 /**
  * \note Goes over entire tree.
  */
-void nodeUnlinkNode(struct bNodeTree *ntree, const struct bNode *node);
+void nodeUnlinkNode(struct bNodeTree *ntree, struct bNode *node);
 /**
  * Find the first available, non-duplicate name for a given node.
  */
