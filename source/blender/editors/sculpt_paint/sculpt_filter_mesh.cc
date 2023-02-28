@@ -849,7 +849,6 @@ static void sculpt_mesh_filter_end(bContext *C)
   SculptSession *ss = ob->sculpt;
 
   SCULPT_filter_cache_free(ss);
-  SCULPT_undo_push_end_ex(ob, true);
   SCULPT_flush_update_done(C, ob, SCULPT_UPDATE_COORDS);
 }
 
@@ -914,11 +913,13 @@ static int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *
     switch (event->val) {
       case FILTER_MESH_MODAL_CANCEL:
         sculpt_mesh_filter_cancel(C, op);
+        SCULPT_undo_push_end_ex(ob, true);
         ret = OPERATOR_CANCELLED;
         break;
 
       case FILTER_MESH_MODAL_CONFIRM: 
         ret = sculpt_mesh_filter_confirm(ss, op, filter_type);
+        SCULPT_undo_push_end_ex(ob, false);
         break;
 
       default:
