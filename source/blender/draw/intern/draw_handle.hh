@@ -47,14 +47,6 @@ struct ResourceHandle {
   }
 };
 
-struct ResourceThinHandle : public ResourceHandle {
-  ResourceHandle object_handle;
-
-  ResourceThinHandle(const ResourceHandle object_handle, uint thin_index)
-      : ResourceHandle(thin_index, object_handle.has_inverted_handedness()),
-        object_handle(object_handle){};
-};
-
 /* TODO(fclem): Move to somewhere more appropriated after cleaning up the header dependencies. */
 struct ObjectRef {
   Object *object;

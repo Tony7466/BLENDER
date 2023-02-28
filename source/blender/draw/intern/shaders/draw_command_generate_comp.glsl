@@ -54,15 +54,11 @@ void main()
   uint group_id = proto.group_id;
   bool is_inverted = (proto.resource_handle & 0x80000000u) != 0;
   uint resource_index = (proto.resource_handle & 0x7FFFFFFFu);
-  uint visibility_index = resource_index;
-#ifdef WITH_THIN_HANDLES
-  visibility_index = thin_map_buf[resource_index] & 0x7FFFFFFFu;
-#endif
 
   /* Visibility test result. */
   uint visible_instance_len = 0;
   if (visibility_word_per_draw > 0) {
-    uint visibility_word = visibility_index * visibility_word_per_draw;
+    uint visibility_word = resource_index * visibility_word_per_draw;
     for (uint i = 0; i < visibility_word_per_draw; i++, visibility_word++) {
       /* NOTE: This assumes `proto.instance_len` is 1. */
       /* TODO: Assert. */
@@ -70,7 +66,7 @@ void main()
     }
   }
   else {
-    if ((visibility_buf[visibility_index / 32u] & (1u << (visibility_index % 32u))) != 0) {
+    if ((visibility_buf[resource_index / 32u] & (1u << (resource_index % 32u))) != 0) {
       visible_instance_len = proto.instance_len;
     }
   }
@@ -106,14 +102,20 @@ void main()
 
   /* Fill resource_id buffer for each instance of this draw. */
   if (visibility_word_per_draw > 0) {
-    uint visibility_word = visibility_index * visibility_word_per_draw;
+    uint visibility_word = resource_index * visibility_word_per_draw;
     for (uint i = 0; i < visibility_word_per_draw; i++, visibility_word++) {
       uint word = visibility_buf[visibility_word];
       uint view_index = i * 32u;
       while (word != 0u) {
         if ((word & 1u) != 0u) {
-          /* TODO (Miguel Pozo): ??? */
-          resource_id_buf[dst_index++] = view_index | (resource_index << view_shift);
+          if (use_custom_ids) {
+            resource_id_buf[dst_index * 2] = view_index | (resource_index << view_shift);
+            resource_id_buf[dst_index * 2 + 1] = proto.custom_id;
+          }
+          else {
+            resource_id_buf[dst_index] = view_index | (resource_index << view_shift);
+          }
+          dst_index++;
         }
         view_index++;
         word >>= 1u;
@@ -122,12 +124,13 @@ void main()
   }
   else {
     for (uint i = dst_index; i < dst_index + visible_instance_len; i++) {
-#ifdef WITH_THIN_HANDLES
-      resource_id_buf[i * 2] = visibility_index;
-      resource_id_buf[i * 2 + 1] = resource_index;
-#else
-      resource_id_buf[i] = resource_index;
-#endif
+      if (use_custom_ids) {
+        resource_id_buf[i * 2] = resource_index;
+        resource_id_buf[i * 2 + 1] = proto.custom_id;
+      }
+      else {
+        resource_id_buf[i] = resource_index;
+      }
     }
   }
 }

@@ -189,13 +189,8 @@ GPU_SHADER_CREATE_INFO(draw_command_generate)
     .push_constant(Type::INT, "prototype_len")
     .push_constant(Type::INT, "visibility_word_per_draw")
     .push_constant(Type::INT, "view_shift")
+    .push_constant(Type::BOOL, "use_custom_ids")
     .compute_source("draw_command_generate_comp.glsl");
-
-GPU_SHADER_CREATE_INFO(draw_command_with_thin_generate)
-    .do_static_compilation(true)
-    .define("WITH_THIN_HANDLES")
-    .storage_buf(4, Qualifier::READ, "uint", "thin_map_buf[]")
-    .additional_info("draw_command_generate");
 
 /** \} */
 
@@ -209,13 +204,13 @@ GPU_SHADER_CREATE_INFO(draw_resource_id_new)
     .storage_buf(DRW_RESOURCE_ID_SLOT, Qualifier::READ, "int", "resource_id_buf[]")
     .define("drw_ResourceID", "resource_id_buf[gpu_BaseInstance + gl_InstanceID]");
 
-GPU_SHADER_CREATE_INFO(draw_resource_id_new_with_thin)
+GPU_SHADER_CREATE_INFO(draw_resource_and_custom_id_new)
     .define("UNIFORM_RESOURCE_ID_NEW")
-    .define("WITH_THIN_HANDLES")
+    .define("WITH_CUSTOM_IDS")
     /*TODO (Miguel Pozo): Should be uint2 ? */
     .storage_buf(DRW_RESOURCE_ID_SLOT, Qualifier::READ, "int2", "resource_id_buf[]")
     .define("drw_ResourceID", "resource_id_buf[gpu_BaseInstance + gl_InstanceID].x")
-    .define("drw_ThinResourceID", "resource_id_buf[gpu_BaseInstance + gl_InstanceID].y");
+    .define("drw_CustomID", "resource_id_buf[gpu_BaseInstance + gl_InstanceID].y");
 
 /**
  * Workaround the lack of gl_BaseInstance by binding the resource_id_buf as vertex buf.
@@ -224,12 +219,12 @@ GPU_SHADER_CREATE_INFO(draw_resource_id_fallback)
     .define("UNIFORM_RESOURCE_ID_NEW")
     .vertex_in(15, Type::INT, "drw_ResourceID");
 
-GPU_SHADER_CREATE_INFO(draw_resource_id_with_thin_fallback)
+GPU_SHADER_CREATE_INFO(draw_resource_and_custom_id_fallback)
     .define("UNIFORM_RESOURCE_ID_NEW")
-    .define("WITH_THIN_HANDLES")
+    .define("WITH_CUSTOM_IDS")
     .vertex_in(15, Type::IVEC2, "vertex_in_drw_ResourceID_")
     .define("drw_ResourceID", "vertex_in_drw_ResourceID_.x")
-    .define("drw_ThinResourceID", "vertex_in_drw_ResourceID_.y");
+    .define("drw_CustomID", "vertex_in_drw_ResourceID_.y");
 
 /** TODO mask view id bits. */
 GPU_SHADER_CREATE_INFO(draw_resource_handle_new).define("resource_handle", "drw_ResourceID");
@@ -252,7 +247,7 @@ GPU_SHADER_CREATE_INFO(draw_modelmat_new_common_)
 GPU_SHADER_CREATE_INFO(draw_modelmat_new)
     .additional_info("draw_modelmat_new_common_", "draw_resource_id_new");
 
-GPU_SHADER_CREATE_INFO(draw_modelmat_new_with_thin)
-    .additional_info("draw_modelmat_new_common_", "draw_resource_id_new_with_thin");
+GPU_SHADER_CREATE_INFO(draw_modelmat_new_with_custom_id)
+    .additional_info("draw_modelmat_new_common_", "draw_resource_and_custom_id_new");
 
 /** \} */

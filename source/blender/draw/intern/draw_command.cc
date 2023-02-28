@@ -104,8 +104,8 @@ void Draw::execute(RecordingState &state) const
 
 void DrawMulti::execute(RecordingState &state) const
 {
-  DrawMultiBufBase::DrawCommandBuf &indirect_buf = multi_draw_buf->command_buf_;
-  DrawMultiBufBase::DrawGroupBuf &groups = multi_draw_buf->group_buf_;
+  DrawMultiBuf::DrawCommandBuf &indirect_buf = multi_draw_buf->command_buf_;
+  DrawMultiBuf::DrawGroupBuf &groups = multi_draw_buf->group_buf_;
 
   uint group_index = this->group_first;
   while (group_index != uint(-1)) {
@@ -397,7 +397,7 @@ std::string Draw::serialize() const
 
 std::string DrawMulti::serialize(std::string line_prefix) const
 {
-  DrawMultiBufBase::DrawGroupBuf &groups = multi_draw_buf->group_buf_;
+  DrawMultiBuf::DrawGroupBuf &groups = multi_draw_buf->group_buf_;
 
   MutableSpan<DrawPrototype> prototypes(multi_draw_buf->prototype_buf_.data(),
                                         multi_draw_buf->prototype_count_);
@@ -599,10 +599,13 @@ void DrawCommandBuf::bind(RecordingState &state,
   }
 }
 
-void DrawMultiBufBase::bind_base(RecordingState &state,
-                                 int view_len,
-                                 int handle_size,
-                                 std::function<void()> generate_commands)
+void DrawMultiBuf::bind(RecordingState &state,
+                        Vector<Header, 0> & /*headers*/,
+                        Vector<Undetermined, 0> & /*commands*/,
+                        VisibilityBuf &visibility_buf,
+                        int visibility_word_per_draw,
+                        int view_len,
+                        bool use_custom_ids)
 {
   GPU_debug_group_begin("DrawMultiBuf.bind");
 
@@ -632,13 +635,23 @@ void DrawMultiBufBase::bind_base(RecordingState &state,
   group_buf_.push_update();
   prototype_buf_.push_update();
   /* Allocate enough for the expansion pass. */
-  resource_id_buf_.get_or_resize(resource_id_count_ * handle_size);
+  resource_id_buf_.get_or_resize(resource_id_count_ * (use_custom_ids ? 2 : 1));
   /* Two command per group. */
   command_buf_.get_or_resize(group_count_ * 2);
 
   if (prototype_count_ > 0) {
-    generate_commands();
-
+    GPUShader *shader = DRW_shader_draw_command_generate_get();
+    GPU_shader_bind(shader);
+    GPU_shader_uniform_1i(shader, "prototype_len", prototype_count_);
+    GPU_shader_uniform_1i(shader, "visibility_word_per_draw", visibility_word_per_draw);
+    GPU_shader_uniform_1i(shader, "view_shift", log2_ceil_u(view_len));
+    GPU_shader_uniform_1b(shader, "use_custom_ids", use_custom_ids);
+    GPU_storagebuf_bind(group_buf_, GPU_shader_get_ssbo_binding(shader, "group_buf"));
+    GPU_storagebuf_bind(visibility_buf, GPU_shader_get_ssbo_binding(shader, "visibility_buf"));
+    GPU_storagebuf_bind(prototype_buf_, GPU_shader_get_ssbo_binding(shader, "prototype_buf"));
+    GPU_storagebuf_bind(command_buf_, GPU_shader_get_ssbo_binding(shader, "command_buf"));
+    GPU_storagebuf_bind(resource_id_buf_, DRW_RESOURCE_ID_SLOT);
+    GPU_compute_dispatch(shader, divide_ceil_u(prototype_count_, DRW_COMMAND_GROUP_SIZE), 1, 1);
     if (GPU_shader_draw_parameters_support() == false) {
       GPU_memory_barrier(GPU_BARRIER_VERTEX_ATTRIB_ARRAY);
       state.resource_id_buf = resource_id_buf_;
@@ -649,52 +662,6 @@ void DrawMultiBufBase::bind_base(RecordingState &state,
   }
 
   GPU_debug_group_end();
-}
-
-void DrawMultiBuf::bind(RecordingState &state,
-                        Vector<Header, 0> & /*headers*/,
-                        Vector<Undetermined, 0> & /*commands*/,
-                        VisibilityBuf &visibility_buf,
-                        int visibility_word_per_draw,
-                        int view_len)
-{
-  bind_base(state, view_len, 1, [&]() {
-    GPUShader *shader = DRW_shader_draw_command_generate_get();
-    GPU_shader_bind(shader);
-    GPU_shader_uniform_1i(shader, "prototype_len", prototype_count_);
-    GPU_shader_uniform_1i(shader, "visibility_word_per_draw", visibility_word_per_draw);
-    GPU_shader_uniform_1i(shader, "view_shift", log2_ceil_u(view_len));
-    GPU_storagebuf_bind(group_buf_, GPU_shader_get_ssbo_binding(shader, "group_buf"));
-    GPU_storagebuf_bind(visibility_buf, GPU_shader_get_ssbo_binding(shader, "visibility_buf"));
-    GPU_storagebuf_bind(prototype_buf_, GPU_shader_get_ssbo_binding(shader, "prototype_buf"));
-    GPU_storagebuf_bind(command_buf_, GPU_shader_get_ssbo_binding(shader, "command_buf"));
-    GPU_storagebuf_bind(resource_id_buf_, DRW_RESOURCE_ID_SLOT);
-    GPU_compute_dispatch(shader, divide_ceil_u(prototype_count_, DRW_COMMAND_GROUP_SIZE), 1, 1);
-  });
-}
-
-void DrawMultiThinBuf::bind(RecordingState &state,
-                            Vector<Header, 0> & /*headers*/,
-                            Vector<Undetermined, 0> & /*commands*/,
-                            VisibilityBuf &visibility_buf,
-                            int visibility_word_per_draw,
-                            int view_len,
-                            ThinMapBuf &thin_map_buf)
-{
-  bind_base(state, view_len, 2, [&]() {
-    GPUShader *shader = DRW_shader_draw_command_with_thin_generate_get();
-    GPU_shader_bind(shader);
-    GPU_shader_uniform_1i(shader, "prototype_len", prototype_count_);
-    GPU_shader_uniform_1i(shader, "visibility_word_per_draw", visibility_word_per_draw);
-    GPU_shader_uniform_1i(shader, "view_shift", log2_ceil_u(view_len));
-    GPU_storagebuf_bind(group_buf_, GPU_shader_get_ssbo_binding(shader, "group_buf"));
-    GPU_storagebuf_bind(visibility_buf, GPU_shader_get_ssbo_binding(shader, "visibility_buf"));
-    GPU_storagebuf_bind(prototype_buf_, GPU_shader_get_ssbo_binding(shader, "prototype_buf"));
-    GPU_storagebuf_bind(command_buf_, GPU_shader_get_ssbo_binding(shader, "command_buf"));
-    GPU_storagebuf_bind(thin_map_buf, GPU_shader_get_ssbo_binding(shader, "thin_map_buf"));
-    GPU_storagebuf_bind(resource_id_buf_, DRW_RESOURCE_ID_SLOT);
-    GPU_compute_dispatch(shader, divide_ceil_u(prototype_count_, DRW_COMMAND_GROUP_SIZE), 1, 1);
-  });
 }
 
 /** \} */

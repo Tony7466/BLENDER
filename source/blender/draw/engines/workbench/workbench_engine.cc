@@ -38,6 +38,8 @@ class Instance {
   DofPass dof_ps;
   AntiAliasingPass anti_aliasing_ps;
 
+  uint material_buf_len;
+
   /* An array of nullptr GPUMaterial pointers so we can call DRW_cache_object_surface_material_get.
    * They never get actually used. */
   Vector<GPUMaterial *> dummy_gpu_materials = {1, nullptr, {}};
@@ -62,6 +64,7 @@ class Instance {
 
   void begin_sync()
   {
+    material_buf_len = 0;
     const float2 viewport_size = DRW_viewport_size_get();
     const int2 resolution = {int(viewport_size.x), int(viewport_size.y)};
     resources.depth_tx.ensure_2d(GPU_DEPTH24_STENCIL8,
@@ -203,9 +206,9 @@ class Instance {
               continue;
             }
 
-            ResourceThinHandle _handle = manager.resource_thin_handle(handle);
+            uint material_buf_index = material_buf_len++;
 
-            Material &mat = resources.material_buf.get_or_resize(_handle.resource_index());
+            Material &mat = resources.material_buf.get_or_resize(material_buf_index);
 
             if (::Material *_mat = BKE_object_material_get_eval(ob_ref.object, i + 1)) {
               mat = Material(*_mat);
@@ -223,7 +226,8 @@ class Instance {
               get_material_image(ob_ref.object, i + 1, image, iuser, sampler_state);
             }
 
-            draw_mesh(ob_ref, mat, batches[i], _handle, image, sampler_state, iuser);
+            draw_mesh(
+                ob_ref, mat, batches[i], handle, material_buf_index, image, sampler_state, iuser);
           }
         }
       }
@@ -245,8 +249,8 @@ class Instance {
         }
 
         if (batch) {
-          ResourceThinHandle _handle = manager.resource_thin_handle(handle);
-          Material &mat = resources.material_buf.get_or_resize(_handle.resource_index());
+          uint material_buf_index = material_buf_len++;
+          Material &mat = resources.material_buf.get_or_resize(material_buf_index);
 
           if (object_state.color_type == V3D_SHADING_OBJECT_COLOR) {
             mat = Material(*ob_ref.object);
@@ -269,7 +273,8 @@ class Instance {
           draw_mesh(ob_ref,
                     mat,
                     batch,
-                    _handle,
+                    handle,
+                    material_buf_index,
                     object_state.image_paint_override,
                     object_state.override_sampler_state);
         }
@@ -284,7 +289,8 @@ class Instance {
   void draw_mesh(ObjectRef &ob_ref,
                  Material &material,
                  GPUBatch *batch,
-                 ResourceThinHandle handle,
+                 ResourceHandle handle,
+                 uint material_index,
                  ::Image *image = nullptr,
                  eGPUSamplerState sampler_state = GPU_SAMPLER_DEFAULT,
                  ImageUser *iuser = nullptr)
@@ -292,7 +298,7 @@ class Instance {
     const bool in_front = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0;
 
     auto draw = [&](MeshPass &pass) {
-      pass.draw(ob_ref, batch, handle, image, sampler_state, iuser);
+      pass.draw(ob_ref, batch, handle, material_index, image, sampler_state, iuser);
     };
 
     if (scene_state.xray_mode || material.is_transparent()) {

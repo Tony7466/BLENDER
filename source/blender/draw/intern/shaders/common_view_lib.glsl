@@ -120,9 +120,6 @@ uniform int drw_ResourceID;
 #  elif defined(GPU_VERTEX_SHADER)
 #    if defined(UNIFORM_RESOURCE_ID_NEW)
 #      define resource_id (drw_ResourceID >> DRW_VIEW_SHIFT)
-#      if defined(WITH_THIN_HANDLES)
-#        define thin_resource_id (drw_ThinResourceID)
-#      endif
 #    else
 #      define resource_id gpu_InstanceIndex
 #    endif

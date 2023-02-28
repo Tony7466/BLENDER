@@ -30,9 +30,7 @@ template<typename DrawCommandBufType> class PassBase;
 namespace blender::draw::command {
 
 class DrawCommandBuf;
-class DrawMultiBufBase;
-
-using ThinMapBuf = StorageArrayBuffer<uint, 128>;
+class DrawMultiBuf;
 
 /* -------------------------------------------------------------------- */
 /** \name Recording State
@@ -299,7 +297,7 @@ struct Draw {
 
 struct DrawMulti {
   GPUBatch *batch;
-  DrawMultiBufBase *multi_draw_buf;
+  DrawMultiBuf *multi_draw_buf;
   uint group_first;
   uint uuid;
 
@@ -435,7 +433,8 @@ class DrawCommandBuf {
                    uint instance_len,
                    uint vertex_len,
                    uint vertex_first,
-                   ResourceHandle handle)
+                   ResourceHandle handle,
+                   uint /*custom_id*/)
   {
     vertex_first = vertex_first != -1 ? vertex_first : 0;
     instance_len = instance_len != -1 ? instance_len : 1;
@@ -488,11 +487,11 @@ class DrawCommandBuf {
  *
  * \{ */
 
-class DrawMultiBufBase {
+class DrawMultiBuf {
   friend Manager;
   friend DrawMulti;
 
- protected:
+ private:
   using DrawGroupBuf = StorageArrayBuffer<DrawGroup, 16>;
   using DrawPrototypeBuf = StorageArrayBuffer<DrawPrototype, 16>;
   using DrawCommandBuf = StorageArrayBuffer<DrawCommand, 16, true>;
@@ -520,14 +519,23 @@ class DrawMultiBufBase {
   /** Used items in the resource_id_buf_. Not it's allocated length. */
   uint resource_id_count_ = 0;
 
-  void append_draw_base(Vector<Header, 0> &headers,
-                        Vector<Undetermined, 0> &commands,
-                        GPUBatch *batch,
-                        uint instance_len,
-                        uint vertex_len,
-                        uint vertex_first,
-                        uint handle_index,
-                        bool inverted_handedness)
+ public:
+  void clear()
+  {
+    header_id_counter_ = 0;
+    group_count_ = 0;
+    prototype_count_ = 0;
+    group_ids_.clear();
+  }
+
+  void append_draw(Vector<Header, 0> &headers,
+                   Vector<Undetermined, 0> &commands,
+                   GPUBatch *batch,
+                   uint instance_len,
+                   uint vertex_len,
+                   uint vertex_first,
+                   ResourceHandle handle,
+                   uint custom_id)
   {
     /* Custom draw-calls cannot be batched and will produce one group per draw. */
     const bool custom_group = ((vertex_first != 0 && vertex_first != -1) || vertex_len != -1);
@@ -545,8 +553,11 @@ class DrawMultiBufBase {
 
     uint &group_id = group_ids_.lookup_or_add(DrawGroupKey(cmd.uuid, batch), uint(-1));
 
+    bool inverted = handle.has_inverted_handedness();
+
     DrawPrototype &draw = prototype_buf_.get_or_resize(prototype_count_++);
-    draw.resource_handle = handle_index;
+    draw.resource_handle = handle.raw;
+    draw.custom_id = custom_id;
     draw.instance_len = instance_len;
     draw.group_id = group_id;
 
@@ -557,7 +568,7 @@ class DrawMultiBufBase {
       DrawGroup &group = group_buf_.get_or_resize(new_group_id);
       group.next = cmd.group_first;
       group.len = instance_len;
-      group.front_facing_len = inverted_handedness ? 0 : instance_len;
+      group.front_facing_len = inverted ? 0 : instance_len;
       group.gpu_batch = batch;
       group.front_proto_len = 0;
       group.back_proto_len = 0;
@@ -568,80 +579,17 @@ class DrawMultiBufBase {
         group_id = new_group_id;
       }
       /* For serialization only. */
-      (inverted_handedness ? group.back_proto_len : group.front_proto_len)++;
+      (inverted ? group.back_proto_len : group.front_proto_len)++;
       /* Append to list. */
       cmd.group_first = new_group_id;
     }
     else {
       DrawGroup &group = group_buf_[group_id];
       group.len += instance_len;
-      group.front_facing_len += inverted_handedness ? 0 : instance_len;
+      group.front_facing_len += inverted ? 0 : instance_len;
       /* For serialization only. */
-      (inverted_handedness ? group.back_proto_len : group.front_proto_len)++;
+      (inverted ? group.back_proto_len : group.front_proto_len)++;
     }
-  }
-
-  void bind_base(RecordingState &state,
-                 int view_len,
-                 int handle_size,
-                 std::function<void()> generate_commands);
-
- public:
-  void clear()
-  {
-    header_id_counter_ = 0;
-    group_count_ = 0;
-    prototype_count_ = 0;
-    group_ids_.clear();
-  }
-};
-
-class DrawMultiBuf : public DrawMultiBufBase {
- public:
-  void append_draw(Vector<Header, 0> &headers,
-                   Vector<Undetermined, 0> &commands,
-                   GPUBatch *batch,
-                   uint instance_len,
-                   uint vertex_len,
-                   uint vertex_first,
-                   ResourceHandle handle)
-  {
-    append_draw_base(headers,
-                     commands,
-                     batch,
-                     instance_len,
-                     vertex_len,
-                     vertex_first,
-                     handle.raw,
-                     handle.has_inverted_handedness());
-  }
-
-  void bind(RecordingState &state,
-            Vector<Header, 0> &headers,
-            Vector<Undetermined, 0> &commands,
-            VisibilityBuf &visibility_buf,
-            int visibility_word_per_draw,
-            int view_len);
-};
-
-class DrawMultiThinBuf : public DrawMultiBufBase {
- public:
-  void append_draw(Vector<Header, 0> &headers,
-                   Vector<Undetermined, 0> &commands,
-                   GPUBatch *batch,
-                   uint instance_len,
-                   uint vertex_len,
-                   uint vertex_first,
-                   ResourceThinHandle handle)
-  {
-    append_draw_base(headers,
-                     commands,
-                     batch,
-                     instance_len,
-                     vertex_len,
-                     vertex_first,
-                     handle.raw,
-                     handle.object_handle.has_inverted_handedness());
   }
 
   void bind(RecordingState &state,
@@ -650,7 +598,7 @@ class DrawMultiThinBuf : public DrawMultiBufBase {
             VisibilityBuf &visibility_buf,
             int visibility_word_per_draw,
             int view_len,
-            ThinMapBuf &thin_map_buf);
+            bool use_custom_ids);
 };
 
 /** \} */

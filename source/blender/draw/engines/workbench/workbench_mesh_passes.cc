@@ -8,7 +8,7 @@ namespace blender::workbench {
 /** \name MeshPass
  * \{ */
 
-MeshPass::MeshPass(const char *name) : PassMainThin(name){};
+MeshPass::MeshPass(const char *name) : PassMain(name){};
 
 /* Move to draw::Pass */
 bool MeshPass::is_empty() const
@@ -18,8 +18,9 @@ bool MeshPass::is_empty() const
 
 void MeshPass::init_pass(SceneResources &resources, DRWState state, int clip_planes)
 {
+  use_custom_ids = true;
   is_empty_ = true;
-  PassMainThin::init();
+  PassMain::init();
   state_set(state, clip_planes);
   bind_texture(WB_MATCAP_SLOT, resources.matcap_tx);
   bind_ssbo(WB_MATERIAL_SLOT, &resources.material_buf);
@@ -47,7 +48,7 @@ void MeshPass::init_subpasses(ePipelineType pipeline,
                                    std::string(get_name(shader_type));
       }
       GPUShader *sh = shaders.prepass_shader_get(pipeline, geom_type, shader_type, lighting, clip);
-      PassMainThin::Sub *pass = &sub(pass_names[geom][shader].c_str());
+      PassMain::Sub *pass = &sub(pass_names[geom][shader].c_str());
       pass->shader_set(sh);
       passes_[geom][shader] = pass;
     }
@@ -56,7 +57,8 @@ void MeshPass::init_subpasses(ePipelineType pipeline,
 
 void MeshPass::draw(ObjectRef &ref,
                     GPUBatch *batch,
-                    ResourceThinHandle handle,
+                    ResourceHandle handle,
+                    uint material_index,
                     ::Image *image /* = nullptr */,
                     eGPUSamplerState sampler_state /* = GPU_SAMPLER_DEFAULT */,
                     ImageUser *iuser /* = nullptr */)
@@ -76,7 +78,7 @@ void MeshPass::draw(ObjectRef &ref,
     }
     if (texture) {
       auto add_cb = [&] {
-        PassMainThin::Sub *sub_pass = passes_[int(geometry_type)][int(eShaderType::TEXTURE)];
+        PassMain::Sub *sub_pass = passes_[int(geometry_type)][int(eShaderType::TEXTURE)];
         sub_pass = &sub_pass->sub(image->id.name);
         if (tilemap) {
           sub_pass->bind_texture(WB_TILE_ARRAY_SLOT, texture, sampler_state);
@@ -95,11 +97,11 @@ void MeshPass::draw(ObjectRef &ref,
       };
 
       texture_subpass_map_.lookup_or_add_cb(TextureSubPassKey(texture, geometry_type), add_cb)
-          ->draw(batch, handle);
+          ->draw(batch, handle, material_index);
       return;
     }
   }
-  passes_[int(geometry_type)][int(eShaderType::MATERIAL)]->draw(batch, handle);
+  passes_[int(geometry_type)][int(eShaderType::MATERIAL)]->draw(batch, handle, material_index);
 }
 
 /** \} */
