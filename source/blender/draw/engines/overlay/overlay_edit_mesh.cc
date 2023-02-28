@@ -63,9 +63,9 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
 
   RegionView3D *rv3d = draw_ctx->rv3d;
   bool show_retopology = (v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_RETOPOLOGY) != 0;
-  /* Add epsilon to ensure the value is never zero when the effect is enabled. */
-  float retopology_offset = (show_retopology) ? (v3d->overlay.retopology_offset + FLT_EPSILON) :
-                                                0.0f;
+  float retopology_offset = (show_retopology) ?
+                                max_ff(v3d->overlay.retopology_offset, FLT_EPSILON) :
+                                0.0f;
 
   pd->edit_mesh.do_faces = true;
   pd->edit_mesh.do_edges = true;
