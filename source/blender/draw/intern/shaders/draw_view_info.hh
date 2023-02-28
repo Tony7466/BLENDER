@@ -206,7 +206,7 @@ GPU_SHADER_CREATE_INFO(draw_resource_id_new)
     .storage_buf(DRW_RESOURCE_ID_SLOT, Qualifier::READ, "int", "resource_id_buf[]")
     .define("drw_ResourceID", "resource_id_buf[gpu_BaseInstance + gl_InstanceID]");
 
-GPU_SHADER_CREATE_INFO(draw_resource_and_custom_id_new)
+GPU_SHADER_CREATE_INFO(draw_resource_with_custom_id_new)
     .define("UNIFORM_RESOURCE_ID_NEW")
     .define("WITH_CUSTOM_IDS")
     .storage_buf(DRW_RESOURCE_ID_SLOT, Qualifier::READ, "int2", "resource_id_buf[]")
@@ -220,12 +220,12 @@ GPU_SHADER_CREATE_INFO(draw_resource_id_fallback)
     .define("UNIFORM_RESOURCE_ID_NEW")
     .vertex_in(15, Type::INT, "drw_ResourceID");
 
-GPU_SHADER_CREATE_INFO(draw_resource_and_custom_id_fallback)
+GPU_SHADER_CREATE_INFO(draw_resource_with_custom_id_fallback)
     .define("UNIFORM_RESOURCE_ID_NEW")
     .define("WITH_CUSTOM_IDS")
-    .vertex_in(15, Type::IVEC2, "vertex_in_drw_ResourceID_")
-    .define("drw_ResourceID", "vertex_in_drw_ResourceID_.x")
-    .define("drw_CustomID", "vertex_in_drw_ResourceID_.y");
+    .vertex_in(15, Type::IVEC2, "vertex_in_drw_ResourceID")
+    .define("drw_ResourceID", "vertex_in_drw_ResourceID.x")
+    .define("drw_CustomID", "vertex_in_drw_ResourceID.y");
 
 /** TODO mask view id bits. */
 GPU_SHADER_CREATE_INFO(draw_resource_handle_new).define("resource_handle", "drw_ResourceID");
@@ -236,7 +236,7 @@ GPU_SHADER_CREATE_INFO(draw_resource_handle_new).define("resource_handle", "drw_
 /** \name Draw Object Resources
  * \{ */
 
-GPU_SHADER_CREATE_INFO(draw_modelmat_new_common_)
+GPU_SHADER_CREATE_INFO(draw_modelmat_new_common)
     .typedef_source("draw_shader_shared.h")
     .storage_buf(DRW_OBJ_MAT_SLOT, Qualifier::READ, "ObjectMatrices", "drw_matrix_buf[]")
     .define("drw_ModelMatrixInverse", "drw_matrix_buf[resource_id].model_inverse")
@@ -246,9 +246,9 @@ GPU_SHADER_CREATE_INFO(draw_modelmat_new_common_)
     .define("ModelMatrix", "drw_ModelMatrix");
 
 GPU_SHADER_CREATE_INFO(draw_modelmat_new)
-    .additional_info("draw_modelmat_new_common_", "draw_resource_id_new");
+    .additional_info("draw_modelmat_new_common", "draw_resource_id_new");
 
 GPU_SHADER_CREATE_INFO(draw_modelmat_new_with_custom_id)
-    .additional_info("draw_modelmat_new_common_", "draw_resource_and_custom_id_new");
+    .additional_info("draw_modelmat_new_common", "draw_resource_with_custom_id_new");
 
 /** \} */
