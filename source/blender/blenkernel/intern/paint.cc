@@ -234,6 +234,7 @@ const uchar PAINT_CURSOR_SCULPT[3] = {255, 100, 100};
 const uchar PAINT_CURSOR_VERTEX_PAINT[3] = {255, 255, 255};
 const uchar PAINT_CURSOR_WEIGHT_PAINT[3] = {200, 200, 255};
 const uchar PAINT_CURSOR_TEXTURE_PAINT[3] = {255, 255, 255};
+const uchar PAINT_CURSOR_SCULPT_CURVES[3] = {255, 100, 100};
 
 static ePaintOverlayControlFlags overlay_flags = (ePaintOverlayControlFlags)0;
 
@@ -1424,7 +1425,7 @@ void BKE_sculptsession_bm_to_me(Object *ob, bool reorder)
     sculptsession_bm_to_me_update_data_only(ob, reorder);
 
     /* Ensure the objects evaluated mesh doesn't hold onto arrays
-     * now realloc'd in the mesh T34473. */
+     * now realloc'd in the mesh #34473. */
     DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
   }
 }
@@ -2266,6 +2267,8 @@ PBVH *BKE_sculpt_object_pbvh_ensure(Depsgraph *depsgraph, Object *ob)
     return pbvh;
   }
 
+  ob->sculpt->islands_valid = false;
+
   if (ob->sculpt->bm != nullptr) {
     /* Sculpting on a BMesh (dynamic-topology) gets a special PBVH. */
     pbvh = build_pbvh_for_dynamic_topology(ob);
@@ -2715,6 +2718,11 @@ static SculptAttribute *sculpt_attribute_ensure_ex(Object *ob,
 
   if (attr) {
     sculpt_attr_update(ob, attr);
+
+    /* Since "stroke_only" is not a CustomData flag we have
+     * to sync its parameter setting manually. Fixes #104618.
+     */
+    attr->params.stroke_only = params->stroke_only;
 
     return attr;
   }

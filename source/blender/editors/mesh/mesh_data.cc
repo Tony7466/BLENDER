@@ -465,13 +465,6 @@ int ED_mesh_color_add(
     name = "Col";
   }
 
-  if (const CustomDataLayer *layer = BKE_id_attribute_find(
-          &me->id, me->active_color_attribute, CD_PROP_BYTE_COLOR, ATTR_DOMAIN_CORNER)) {
-    int dummy;
-    const CustomData *data = mesh_customdata_get_type(me, BM_LOOP, &dummy);
-    return CustomData_get_named_layer(data, CD_PROP_BYTE_COLOR, layer->name);
-  }
-
   CustomDataLayer *layer = BKE_id_attribute_new(
       &me->id, name, CD_PROP_BYTE_COLOR, ATTR_DOMAIN_CORNER, reports);
 
@@ -518,6 +511,7 @@ bool ED_mesh_color_ensure(Mesh *me, const char *name)
   }
 
   BKE_id_attributes_active_color_set(&me->id, unique_name);
+  BKE_id_attributes_default_color_set(&me->id, unique_name);
   BKE_mesh_tessface_clear(me);
   DEG_id_tag_update(&me->id, 0);
 
@@ -644,6 +638,9 @@ static int mesh_uv_texture_remove_exec(bContext *C, wmOperator *op)
     ED_paint_proj_mesh_data_check(scene, ob, nullptr, nullptr, nullptr, nullptr);
     WM_event_add_notifier(C, NC_SCENE | ND_TOOLSETTINGS, nullptr);
   }
+
+  DEG_id_tag_update(&me->id, ID_RECALC_GEOMETRY);
+  WM_main_add_notifier(NC_GEOM | ND_DATA, me);
 
   return OPERATOR_FINISHED;
 }
@@ -1260,11 +1257,6 @@ static void mesh_add_edges(Mesh *mesh, int len)
 
   mesh->totedge = totedge;
 
-  MutableSpan<MEdge> edges = mesh->edges_for_write();
-  for (MEdge &edge : edges.take_back(len)) {
-    edge.flag = ME_EDGEDRAW;
-  }
-
   bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
   bke::SpanAttributeWriter<bool> select_edge = attributes.lookup_or_add_for_write_span<bool>(
       ".select_edge", ATTR_DOMAIN_EDGE);
@@ -1539,8 +1531,13 @@ void ED_mesh_split_faces(Mesh *mesh)
   const Span<MPoly> polys = mesh->polys();
   const Span<MLoop> loops = mesh->loops();
   const float split_angle = (mesh->flag & ME_AUTOSMOOTH) != 0 ? mesh->smoothresh : float(M_PI);
+  const bke::AttributeAccessor attributes = mesh->attributes();
+  const VArray<bool> mesh_sharp_edges = attributes.lookup_or_default<bool>(
+      "sharp_edge", ATTR_DOMAIN_EDGE, false);
 
-  Array<bool> sharp_edges(mesh->totedge, false);
+  Array<bool> sharp_edges(mesh->totedge);
+  mesh_sharp_edges.materialize(sharp_edges);
+
   BKE_edges_sharp_from_angle_set(mesh->totedge,
                                  loops.data(),
                                  loops.size(),

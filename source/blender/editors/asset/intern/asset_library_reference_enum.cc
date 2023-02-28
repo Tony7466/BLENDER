@@ -47,7 +47,7 @@ AssetLibraryReference ED_asset_library_reference_from_enum_value(int value)
   if (value < ASSET_LIBRARY_CUSTOM) {
     library.type = value;
     library.custom_library_index = -1;
-    BLI_assert(ELEM(value, ASSET_LIBRARY_ALL, ASSET_LIBRARY_LOCAL));
+    BLI_assert(ELEM(value, ASSET_LIBRARY_ALL, ASSET_LIBRARY_LOCAL, ASSET_LIBRARY_ESSENTIALS));
     return library;
   }
 
@@ -57,7 +57,7 @@ AssetLibraryReference ED_asset_library_reference_from_enum_value(int value)
   /* Note that there is no check if the path exists here. If an invalid library path is used, the
    * Asset Browser can give a nice hint on what's wrong. */
   if (!user_library) {
-    library.type = ASSET_LIBRARY_LOCAL;
+    library.type = ASSET_LIBRARY_ALL;
     library.custom_library_index = -1;
   }
   else {
@@ -79,14 +79,20 @@ const EnumPropertyItem *ED_asset_library_reference_to_rna_enum_itemf(const bool 
     const EnumPropertyItem generated_items[] = {
         {ASSET_LIBRARY_ALL,
          "ALL",
-         ICON_NONE,
+         ICON_BLANK1,
          "All",
          "Show assets from all of the listed asset libraries"},
+        RNA_ENUM_ITEM_SEPR,
         {ASSET_LIBRARY_LOCAL,
          "LOCAL",
          ICON_CURRENT_FILE,
          "Current File",
          "Show the assets currently available in this Blender session"},
+        {ASSET_LIBRARY_ESSENTIALS,
+         "ESSENTIALS",
+         ICON_BLANK1,
+         "Essentials",
+         "Show the basic building blocks and utilities coming with Blender"},
         {0, nullptr, 0, nullptr, nullptr},
     };
 
@@ -116,7 +122,7 @@ const EnumPropertyItem *ED_asset_library_reference_to_rna_enum_itemf(const bool 
     const int enum_value = ED_asset_library_reference_to_enum_value(&library_reference);
     /* Use library path as description, it's a nice hint for users. */
     EnumPropertyItem tmp = {
-        enum_value, user_library->name, ICON_NONE, user_library->name, user_library->path};
+        enum_value, user_library->name, ICON_BLANK1, user_library->name, user_library->path};
     RNA_enum_item_add(&item, &totitem, &tmp);
   }
 

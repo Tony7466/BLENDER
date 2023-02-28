@@ -52,7 +52,7 @@
 #include "paint_intern.h"
 
 /* For undo push. */
-#include "sculpt_intern.h"
+#include "sculpt_intern.hh"
 
 static const EnumPropertyItem mode_items[] = {
     {PAINT_MASK_FLOOD_VALUE,
@@ -1033,8 +1033,10 @@ static void sculpt_gesture_trim_shape_origin_normal_get(SculptGestureContext *sg
    */
   switch (trim_operation->orientation) {
     case SCULPT_GESTURE_TRIM_ORIENTATION_VIEW:
-      copy_v3_v3(r_origin, sgcontext->world_space_view_origin);
+      mul_v3_m4v3(
+          r_origin, sgcontext->vc.obact->object_to_world, sgcontext->ss->gesture_initial_location);
       copy_v3_v3(r_normal, sgcontext->world_space_view_normal);
+      negate_v3(r_normal);
       break;
     case SCULPT_GESTURE_TRIM_ORIENTATION_SURFACE:
       mul_v3_m4v3(
@@ -1109,7 +1111,7 @@ static void sculpt_gesture_trim_calculate_depth(SculptGestureContext *sgcontext)
     else {
       /* ss->cursor_radius is only valid if the stroke started
        * over the sculpt mesh.  If it's not we must
-       * compute the radius ourselves.  See T81452.
+       * compute the radius ourselves.  See #81452.
        */
 
       Sculpt *sd = CTX_data_tool_settings(vc->C)->sculpt;
@@ -1168,14 +1170,30 @@ static void sculpt_gesture_trim_geometry_generate(SculptGestureContext *sgcontex
 
   const float(*ob_imat)[4] = vc->obact->world_to_object;
 
-  /* Write vertices coordinates for the front face. */
+  /* Write vertices coordinatesSCULPT_GESTURE_TRIM_DIFFERENCE for the front face. */
   float(*positions)[3] = BKE_mesh_vert_positions_for_write(trim_operation->mesh);
   float depth_point[3];
-  madd_v3_v3v3fl(depth_point, shape_origin, shape_normal, depth_front);
+
+  /* Get origin point for SCULPT_GESTURE_TRIM_ORIENTATION_VIEW.
+   * Note: for projection extrusion we add depth_front here
+   * instead of in the loop.
+   */
+  if (trim_operation->extrude_mode == SCULPT_GESTURE_TRIM_EXTRUDE_FIXED) {
+    copy_v3_v3(depth_point, shape_origin);
+  }
+  else {
+    madd_v3_v3v3fl(depth_point, shape_origin, shape_normal, depth_front);
+  }
+
   for (int i = 0; i < tot_screen_points; i++) {
     float new_point[3];
     if (trim_operation->orientation == SCULPT_GESTURE_TRIM_ORIENTATION_VIEW) {
       ED_view3d_win_to_3d(vc->v3d, region, depth_point, screen_points[i], new_point);
+
+      /* For fixed mode we add the shape normal here to avoid projection errors. */
+      if (trim_operation->extrude_mode == SCULPT_GESTURE_TRIM_EXTRUDE_FIXED) {
+        madd_v3_v3fl(new_point, shape_normal, depth_front);
+      }
     }
     else {
       ED_view3d_win_to_3d_on_plane(region, shape_plane, screen_points[i], false, new_point);
