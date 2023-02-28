@@ -4,7 +4,9 @@ from bpy.types import (
     Header,
     Menu,
     Panel,
+    WindowManager
 )
+
 from bl_ui.properties_paint_common import (
     UnifiedPaintPanel,
     brush_basic_texpaint_settings,
@@ -999,6 +1001,7 @@ class VIEW3D_MT_editor_menus(Menu):
             if mode_string == 'SCULPT':
                 layout.menu("VIEW3D_MT_mask")
                 layout.menu("VIEW3D_MT_face_sets")
+                layout.menu("VIEW3D_MT_paint")
             if mode_string == 'SCULPT_CURVES':
                 layout.menu("VIEW3D_MT_select_sculpt_curves")
                 layout.menu("VIEW3D_MT_sculpt_curves")
@@ -3475,6 +3478,42 @@ class VIEW3D_MT_face_sets(Menu):
         op = layout.operator("sculpt.face_set_edit", text="Delete Face Set")
         op.mode = 'DELETE_GEOMETRY'
 
+class VIEW3D_MT_paint(Menu):
+    bl_label = "Paint"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.prop(WindowManager.operator_properties_last("sculpt.color_filter"), "fill_color")
+        props = layout.operator("sculpt.color_filter")
+        props.type = "FILL"
+
+        props = layout.operator("sculpt.color_filter", text="Blur Colors")
+        props.type = "SMOOTH"
+
+        layout.separator()
+
+        # Invert
+        # Levels
+
+        filter_color_entries = [
+            ("HUE", "Change hue"),
+            ("SATURATION", "Change saturation"),
+            ("VALUE", "Change value"),
+            ("BRIGHTNESS", "Change brightness"),
+            ("CONTRAST", "Change contrast"),
+            ("RED", "Change red channel"),
+            ("GREEN", "Change green channel"),
+            ("BLUE", "Change blue channel"),
+        ]
+
+        for filter_type, ui_name in filter_color_entries:
+            props = layout.operator("sculpt.color_filter", text=ui_name)
+            props.type = filter_type
+
+        props = layout.operator("sculpt.expand", text="Expand Color by Topology")
+        props.target = 'COLOR'
+
 
 class VIEW3D_MT_sculpt_set_pivot(Menu):
     bl_label = "Sculpt Set Pivot"
@@ -5688,6 +5727,28 @@ class VIEW3D_MT_wpaint_vgroup_lock_pie(Menu):
 
 
 # ********** Panel **********
+
+class VIEW3D_PT_sculpt_fill_popover(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "Tool"
+    bl_label = "Fill"
+
+    bl_context = ".sculpt_mode"
+
+    @classmethod
+    def poll(cls, context):
+        if not context.sculpt_object:
+            return False
+        return True
+
+    def draw(self, context):
+        layout = self.layout
+
+        layout.prop(WindowManager.operator_properties_last("sculpt.color_filter"), "fill_color")
+        props = layout.operator("sculpt.color_filter", text="Fill")
+        props.type = "FILL"
+        props.strength = 1.0
 
 
 class VIEW3D_PT_active_tool(Panel, ToolActivePanelHelper):
@@ -8184,6 +8245,7 @@ classes = (
     VIEW3D_MT_hook,
     VIEW3D_MT_vertex_group,
     VIEW3D_MT_gpencil_vertex_group,
+    VIEW3D_MT_paint,
     VIEW3D_MT_paint_weight,
     VIEW3D_MT_paint_weight_lock,
     VIEW3D_MT_sculpt,
@@ -8337,6 +8399,7 @@ classes = (
     VIEW3D_PT_gpencil_sculpt_context_menu,
     VIEW3D_PT_gpencil_weight_context_menu,
     VIEW3D_PT_gpencil_draw_context_menu,
+    VIEW3D_PT_sculpt_fill_popover,
     VIEW3D_PT_sculpt_automasking,
     VIEW3D_PT_sculpt_context_menu,
     TOPBAR_PT_gpencil_materials,

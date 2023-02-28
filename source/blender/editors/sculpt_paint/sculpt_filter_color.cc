@@ -375,7 +375,7 @@ void SCULPT_OT_color_filter(wmOperatorType *ot)
   ot->modal = sculpt_color_filter_modal;
   ot->poll = SCULPT_mode_poll;
 
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_DEPENDS_ON_CURSOR;
 
   /* rna */
   SCULPT_mesh_filter_properties(ot);
