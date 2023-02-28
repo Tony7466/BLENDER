@@ -201,13 +201,14 @@ GPU_SHADER_CREATE_INFO(draw_command_generate)
 
 GPU_SHADER_CREATE_INFO(draw_resource_id_new)
     .define("UNIFORM_RESOURCE_ID_NEW")
+    /* TODO (Miguel Pozo): This is an int for compatibility.
+     * It should become uint once the "Next" ports are complete. */
     .storage_buf(DRW_RESOURCE_ID_SLOT, Qualifier::READ, "int", "resource_id_buf[]")
     .define("drw_ResourceID", "resource_id_buf[gpu_BaseInstance + gl_InstanceID]");
 
 GPU_SHADER_CREATE_INFO(draw_resource_and_custom_id_new)
     .define("UNIFORM_RESOURCE_ID_NEW")
     .define("WITH_CUSTOM_IDS")
-    /*TODO (Miguel Pozo): Should be uint2 ? */
     .storage_buf(DRW_RESOURCE_ID_SLOT, Qualifier::READ, "int2", "resource_id_buf[]")
     .define("drw_ResourceID", "resource_id_buf[gpu_BaseInstance + gl_InstanceID].x")
     .define("drw_CustomID", "resource_id_buf[gpu_BaseInstance + gl_InstanceID].y");

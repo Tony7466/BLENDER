@@ -16,12 +16,11 @@ void main()
 
   normal_interp = normalize(normal_object_to_view(nor));
 
-#ifdef WORKBENCH_NEXT
   object_id = int(uint(resource_id) & 0xFFFFu) + 1;
+#ifdef WORKBENCH_NEXT
   workbench_material_data_get(
       int(drw_CustomID), ac.rgb, color_interp, alpha_interp, _roughness, metallic);
 #else
-  object_id = int(uint(resource_handle) & 0xFFFFu) + 1;
   workbench_material_data_get(
       resource_handle, ac.rgb, color_interp, alpha_interp, _roughness, metallic);
 #endif

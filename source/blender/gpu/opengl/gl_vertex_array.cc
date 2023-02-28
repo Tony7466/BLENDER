@@ -121,16 +121,18 @@ void GLVertArray::update_bindings(const GLuint vao,
 
   if (batch->resource_id_buf) {
     const ShaderInput *input = interface->attr_get("drw_ResourceID");
-    int size = 1;
+    int component_len = 1;
     if (input == nullptr) {
+      /* Uses Custom IDs */
       input = interface->attr_get("vertex_in_drw_ResourceID_");
-      size = 2;
+      component_len = 2;
     }
     if (input) {
       dynamic_cast<GLStorageBuf *>(unwrap(batch->resource_id_buf))->bind_as(GL_ARRAY_BUFFER);
       glEnableVertexAttribArray(input->location);
       glVertexAttribDivisor(input->location, 1);
-      glVertexAttribIPointer(input->location, size, to_gl(GPU_COMP_I32), 0, (GLvoid *)nullptr);
+      glVertexAttribIPointer(
+          input->location, component_len, to_gl(GPU_COMP_I32), 0, (GLvoid *)nullptr);
       attr_mask &= ~(1 << input->location);
     }
   }
