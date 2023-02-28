@@ -116,7 +116,9 @@ static struct DRWShapeCache {
   GPUBatch *drw_field_cone_limit;
   GPUBatch *drw_field_sphere_limit;
   GPUBatch *drw_ground_line;
-  GPUBatch *drw_light_icon_lines;
+  GPUBatch *drw_light_icon_inner_lines;
+  GPUBatch *drw_light_icon_outer_lines;
+  GPUBatch *drw_light_icon_sun_rays;
   GPUBatch *drw_light_point_lines;
   GPUBatch *drw_light_sun_lines;
   GPUBatch *drw_light_spot_lines;
@@ -1462,12 +1464,12 @@ GPUBatch *DRW_cache_groundline_get(void)
   return SHC.drw_ground_line;
 }
 
-GPUBatch *DRW_cache_light_icon_lines_get(void)
+GPUBatch *DRW_cache_light_icon_inner_lines_get(void)
 {
-  if (!SHC.drw_light_icon_lines) {
+  if (!SHC.drw_light_icon_inner_lines) {
     GPUVertFormat format = extra_vert_format();
 
-    int v_len = 2 * (DIAMOND_NSEGMENTS + INNER_NSEGMENTS + OUTER_NSEGMENTS);
+    int v_len = 2 * (DIAMOND_NSEGMENTS + INNER_NSEGMENTS);
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
     GPU_vertbuf_data_alloc(vbo, v_len);
 
@@ -1476,11 +1478,63 @@ GPUBatch *DRW_cache_light_icon_lines_get(void)
 
     circle_verts(vbo, &v, DIAMOND_NSEGMENTS, r * 0.3f, 0.0f, VCLASS_SCREENSPACE);
     circle_dashed_verts(vbo, &v, INNER_NSEGMENTS, r * 1.0f, 0.0f, VCLASS_SCREENSPACE);
+
+    SHC.drw_light_icon_inner_lines = GPU_batch_create_ex(
+        GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
+  }
+  return SHC.drw_light_icon_inner_lines;
+}
+
+GPUBatch *DRW_cache_light_icon_outer_lines_get(void)
+{
+  if (!SHC.drw_light_icon_outer_lines) {
+    GPUVertFormat format = extra_vert_format();
+
+    int v_len = 2 * OUTER_NSEGMENTS;
+    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+    GPU_vertbuf_data_alloc(vbo, v_len);
+
+    const float r = 9.0f;
+    int v = 0;
+
     circle_dashed_verts(vbo, &v, OUTER_NSEGMENTS, r * 1.33f, 0.0f, VCLASS_SCREENSPACE);
 
-    SHC.drw_light_icon_lines = GPU_batch_create_ex(GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
+    SHC.drw_light_icon_outer_lines = GPU_batch_create_ex(
+        GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
   }
-  return SHC.drw_light_icon_lines;
+  return SHC.drw_light_icon_outer_lines;
+}
+
+GPUBatch *DRW_cache_light_icon_sun_rays_get(void)
+{
+  if (!SHC.drw_light_icon_sun_rays) {
+    GPUVertFormat format = extra_vert_format();
+
+    const int num_rays = 8;
+    int v_len = 4 * num_rays;
+
+    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+    GPU_vertbuf_data_alloc(vbo, v_len);
+
+    const float r = 9.0f;
+
+    int v = 0;
+
+    /* Sun Rays */
+    for (int a = 0; a < num_rays; a++) {
+      float angle = (2.0f * M_PI * a) / (float)num_rays;
+      float s = sinf(angle) * r;
+      float c = cosf(angle) * r;
+      GPU_vertbuf_vert_set(vbo, v++, &(Vert){{s * 1.6f, c * 1.6f, 0.0f}, VCLASS_SCREENSPACE});
+      GPU_vertbuf_vert_set(vbo, v++, &(Vert){{s * 1.9f, c * 1.9f, 0.0f}, VCLASS_SCREENSPACE});
+      GPU_vertbuf_vert_set(vbo, v++, &(Vert){{s * 2.2f, c * 2.2f, 0.0f}, VCLASS_SCREENSPACE});
+      GPU_vertbuf_vert_set(vbo, v++, &(Vert){{s * 2.5f, c * 2.5f, 0.0f}, VCLASS_SCREENSPACE});
+    }
+
+    SHC.drw_light_icon_sun_rays = GPU_batch_create_ex(
+        GPU_PRIM_LINES, vbo, NULL, GPU_BATCH_OWNS_VBO);
+  }
+  return SHC.drw_light_icon_sun_rays;
 }
 
 GPUBatch *DRW_cache_light_point_lines_get(void)
@@ -1508,23 +1562,12 @@ GPUBatch *DRW_cache_light_sun_lines_get(void)
   if (!SHC.drw_light_sun_lines) {
     GPUVertFormat format = extra_vert_format();
 
-    int v_len = 2 * (8 * 2 + 1);
+    int v_len = 2;
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
     GPU_vertbuf_data_alloc(vbo, v_len);
 
-    const float r = 9.0f;
     int v = 0;
 
-    /* Sun Rays */
-    for (int a = 0; a < 8; a++) {
-      float angle = (2.0f * M_PI * a) / 8.0f;
-      float s = sinf(angle) * r;
-      float c = cosf(angle) * r;
-      GPU_vertbuf_vert_set(vbo, v++, &(Vert){{s * 1.6f, c * 1.6f, 0.0f}, VCLASS_SCREENSPACE});
-      GPU_vertbuf_vert_set(vbo, v++, &(Vert){{s * 1.9f, c * 1.9f, 0.0f}, VCLASS_SCREENSPACE});
-      GPU_vertbuf_vert_set(vbo, v++, &(Vert){{s * 2.2f, c * 2.2f, 0.0f}, VCLASS_SCREENSPACE});
-      GPU_vertbuf_vert_set(vbo, v++, &(Vert){{s * 2.5f, c * 2.5f, 0.0f}, VCLASS_SCREENSPACE});
-    }
     /* Direction Line */
     GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, 0.0}, 0});
     GPU_vertbuf_vert_set(vbo, v++, &(Vert){{0.0, 0.0, -20.0}, 0}); /* Good default. */
