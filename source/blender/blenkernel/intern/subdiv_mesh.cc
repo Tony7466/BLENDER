@@ -535,7 +535,7 @@ static bool subdiv_mesh_topology_info(const SubdivForeachContext *foreach_contex
 
   SubdivMeshContext *subdiv_context = static_cast<SubdivMeshContext *>(foreach_context->user_data);
   subdiv_context->subdiv_mesh = BKE_mesh_new_nomain_from_template_ex(
-      subdiv_context->coarse_mesh, num_vertices, num_edges, num_loops, num_polygons, mask);
+      subdiv_context->coarse_mesh, num_vertices, num_edges, 0, num_loops, num_polygons, mask);
   subdiv_mesh_ctx_cache_custom_data_layers(subdiv_context);
   subdiv_mesh_prepare_accumulator(subdiv_context, num_vertices);
   subdiv_context->subdiv_mesh->runtime->subsurf_face_dot_tags.clear();
@@ -1226,7 +1226,7 @@ Mesh *BKE_subdiv_to_mesh(Subdiv *subdiv,
    * calculation. Since vertex normals are supposed to be a consistent cache, don't bother
    * calculating them here. The work may have been pointless anyway if the mesh is deformed or
    * changed afterwards. */
-  BLI_assert(BKE_mesh_vertex_normals_are_dirty(result) || BKE_mesh_poly_normals_are_dirty(result));
+  BLI_assert(BKE_mesh_vert_normals_are_dirty(result) || BKE_mesh_poly_normals_are_dirty(result));
   /* Free used memory. */
   subdiv_mesh_context_free(&subdiv_context);
   return result;
