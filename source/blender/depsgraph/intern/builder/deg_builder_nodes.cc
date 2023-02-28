@@ -1222,16 +1222,16 @@ void DepsgraphNodeBuilder::build_driver_variables(ID *id, FCurve *fcurve)
 }
 
 void DepsgraphNodeBuilder::build_driver_id_property(const PointerRNA &target_prop,
-                                                    const char *rna_path)
+                                                    const char *rna_path_from_target_prop)
 {
-  if (rna_path == nullptr || rna_path[0] == '\0') {
+  if (rna_path_from_target_prop == nullptr || rna_path_from_target_prop[0] == '\0') {
     return;
   }
 
   PointerRNA ptr;
   PropertyRNA *prop;
   int index;
-  if (!RNA_path_resolve_full(&target_prop, rna_path, &ptr, &prop, &index)) {
+  if (!RNA_path_resolve_full(&target_prop, rna_path_from_target_prop, &ptr, &prop, &index)) {
     return;
   }
   if (prop == nullptr) {
