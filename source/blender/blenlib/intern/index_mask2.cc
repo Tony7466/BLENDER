@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array.hh"
+#include "BLI_bit_vector.hh"
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_index_mask2.hh"
 #include "BLI_set.hh"
@@ -522,6 +523,101 @@ static Set<int64_t> find_chunk_ids_to_process(const Expr &base_expr, const Index
     }
   }
   return result;
+}
+
+static void find_chunk_ids_to_process(const Expr &base_expr,
+                                      const IndexRange universe,
+                                      MutableBitSpan r_chunk_is_full,
+                                      MutableBitSpan r_chunk_non_empty)
+{
+  using TmpBitVector = BitVector<1024>;
+
+  const int64_t max_chunk_id = index_to_chunk_id(universe.last());
+  const int64_t r_size = max_chunk_id + 1;
+  BLI_assert(r_chunk_is_full.size() == r_size);
+  BLI_assert(r_chunk_non_empty.size() == r_size);
+
+  switch (base_expr.type) {
+    case Expr::Type::Atomic: {
+      const AtomicExpr &expr = static_cast<const AtomicExpr &>(base_expr);
+      const IndexMaskData &data = expr.mask->data();
+      if (data.chunks_num == 0) {
+        break;
+      }
+      if (data.chunks_num == 1) {
+        const int64_t chunk_id = data.chunk_ids[0];
+        r_chunk_non_empty[chunk_id].set();
+        if (data.indices_num == chunk_capacity) {
+          r_chunk_is_full[data.chunk_ids[0]].set();
+        }
+        break;
+      }
+      for (const int64_t chunk_i : IndexRange(data.chunks_num)) {
+        const int64_t chunk_id = data.chunk_ids[chunk_i];
+        const Chunk &chunk = data.chunks[chunk_i];
+        r_chunk_non_empty[chunk_id].set();
+        MutableBitRef is_full = r_chunk_is_full[chunk_id];
+        if (chunk.is_full()) {
+          if (chunk_i == 0 && data.begin_it.segment_i == 0 &&
+              data.begin_it.index_in_segment == 0) {
+            is_full.set();
+          }
+          else if (chunk_i == data.chunks_num - 1 && data.end_it.segment_i == 0 &&
+                   data.end_it.index_in_segment == chunk_capacity) {
+            is_full.set();
+          }
+          else {
+            is_full.set();
+          }
+        }
+      }
+      break;
+    }
+    case Expr::Type::Union: {
+      const UnionExpr &expr = static_cast<const UnionExpr &>(base_expr);
+      for (const Expr *child : expr.children) {
+        TmpBitVector child_chunk_is_full(r_size, false);
+        TmpBitVector child_chunk_non_empty(r_size, false);
+        find_chunk_ids_to_process(*child, universe, child_chunk_is_full, child_chunk_non_empty);
+        r_chunk_is_full |= child_chunk_is_full;
+        r_chunk_non_empty |= child_chunk_non_empty;
+      }
+      break;
+    }
+    case Expr::Type::Difference: {
+      const DifferenceExpr &expr = static_cast<const DifferenceExpr &>(base_expr);
+      find_chunk_ids_to_process(*expr.base, universe, r_chunk_is_full, r_chunk_non_empty);
+      for (const Expr *child : expr.children) {
+        TmpBitVector child_chunk_is_full(r_size, false);
+        TmpBitVector child_chunk_non_empty(r_size, false);
+        find_chunk_ids_to_process(*child, universe, child_chunk_is_full, child_chunk_non_empty);
+        r_chunk_is_full.clear_by_set_bits(child_chunk_non_empty);
+        r_chunk_non_empty.clear_by_set_bits(child_chunk_is_full);
+      }
+      break;
+    }
+    case Expr::Type::Complement: {
+      const ComplementExpr &expr = static_cast<const ComplementExpr &>(base_expr);
+      /* The parameters are reversed intentionally. */
+      find_chunk_ids_to_process(*expr.base, universe, r_chunk_non_empty, r_chunk_is_full);
+      r_chunk_is_full.flip();
+      r_chunk_non_empty.flip();
+      break;
+    }
+    case Expr::Type::Intersection: {
+      const IntersectionExpr &expr = static_cast<const IntersectionExpr &>(base_expr);
+      BLI_assert(!expr.children.is_empty());
+      find_chunk_ids_to_process(*expr.children[0], universe, r_chunk_is_full, r_chunk_non_empty);
+      for (const Expr *child : expr.children.as_span().drop_front(1)) {
+        TmpBitVector child_chunk_is_full(r_size, false);
+        TmpBitVector child_chunk_non_empty(r_size, false);
+        find_chunk_ids_to_process(*child, universe, child_chunk_is_full, child_chunk_non_empty);
+        r_chunk_is_full &= child_chunk_is_full;
+        r_chunk_non_empty &= child_chunk_non_empty;
+      }
+      break;
+    }
+  }
 }
 
 IndexMask IndexMask::from_expr(const Expr &expr,

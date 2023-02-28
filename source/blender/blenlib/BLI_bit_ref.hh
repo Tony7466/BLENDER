@@ -16,6 +16,7 @@
  */
 
 #include "BLI_index_range.hh"
+#include "BLI_math_bits.h"
 #include "BLI_utildefines.h"
 
 #include <ostream>
@@ -190,6 +191,11 @@ class MutableBitRef {
   void reset()
   {
     *int_ &= ~mask_;
+  }
+
+  void flip()
+  {
+    *int_ ^= mask_;
   }
 
   /**
