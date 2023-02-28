@@ -12,6 +12,7 @@
 #include "overlay_empty.hh"
 #include "overlay_grid.hh"
 #include "overlay_metaball.hh"
+#include "overlay_prepass.hh"
 #include "overlay_shape.hh"
 
 #include "../select/select_empty.hh"
@@ -45,6 +46,7 @@ class Instance {
 
   /** Overlay types. */
   Background<SelectEngineT> background;
+  Prepass<SelectEngineT> prepass;
   Metaballs<SelectEngineT> metaballs;
   Empties<SelectEngineT> empties;
   Grid<SelectEngineT> grid;
@@ -56,7 +58,7 @@ class Instance {
 
   void init();
   void begin_sync();
-  void object_sync(ObjectRef &ob_ref);
+  void object_sync(ObjectRef &ob_ref, Manager &manager);
   void end_sync();
   void draw(Manager &manager);
 
@@ -95,7 +97,7 @@ class Instance {
 /* Instantiation. */
 extern template void Instance<>::init();
 extern template void Instance<>::begin_sync();
-extern template void Instance<>::object_sync(ObjectRef &ob_ref);
+extern template void Instance<>::object_sync(ObjectRef &ob_ref, Manager &manager);
 extern template void Instance<>::end_sync();
 extern template void Instance<>::draw(Manager &manager);
 

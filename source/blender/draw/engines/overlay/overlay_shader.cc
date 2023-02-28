@@ -148,6 +148,16 @@ GPUShader *OVERLAY_shader_depth_only(void)
   const DRWContextState *draw_ctx = DRW_context_state_get();
   OVERLAY_Shaders *sh_data = &e_data.sh_data[draw_ctx->sh_cfg];
   if (!sh_data->depth_only) {
+    if (U.experimental.enable_overlay_next) {
+      using namespace blender::gpu::shader;
+      ShaderCreateInfo &info = const_cast<ShaderCreateInfo &>(
+          *reinterpret_cast<const ShaderCreateInfo *>(
+              GPU_shader_create_info_get("overlay_depth_only")));
+
+      info.additional_infos_.clear();
+      info.additional_info("draw_view", "draw_modelmat_new", "draw_resource_handle_new");
+    }
+
     sh_data->depth_only = GPU_shader_create_from_info_name(
         (draw_ctx->sh_cfg == GPU_SHADER_CFG_CLIPPED) ? "overlay_depth_only_clipped" :
                                                        "overlay_depth_only");

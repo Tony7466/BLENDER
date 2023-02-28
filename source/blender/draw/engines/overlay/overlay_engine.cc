@@ -786,7 +786,7 @@ static void OVERLAY_next_cache_populate(void *vedata, Object *object)
   ref.dupli_parent = DRW_object_get_dupli_parent(object);
 
   reinterpret_cast<Instance *>(reinterpret_cast<OVERLAY_Data *>(vedata)->instance)
-      ->object_sync(ref);
+      ->object_sync(ref, *DRW_manager_get());
 }
 
 static void OVERLAY_next_cache_finish(void *vedata)

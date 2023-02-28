@@ -28,21 +28,21 @@ template<typename SelectEngineT> class Metaballs {
   PassSimple metaball_ps_ = {"MetaBalls"};
   PassSimple metaball_in_front_ps_ = {"MetaBalls_In_front"};
 
-  SphereOutlineInstanceBuf data_buf_ = {"metaball_data_buf"};
-  SphereOutlineInstanceBuf data_in_front_buf_ = {"metaball_data_buf"};
+  SphereOutlineInstanceBuf circle_buf_ = {"metaball_data_buf"};
+  SphereOutlineInstanceBuf circle_in_front_buf_ = {"metaball_data_buf"};
 
  public:
   void begin_sync()
   {
-    data_buf_.clear();
-    data_in_front_buf_.clear();
+    circle_buf_.clear();
+    circle_in_front_buf_.clear();
   }
 
   void edit_object_sync(const ObjectRef &ob_ref, ResourcesT &res)
   {
-    SphereOutlineInstanceBuf &data_buf = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0 ?
-                                             data_in_front_buf_ :
-                                             data_buf_;
+    SphereOutlineInstanceBuf &circle_buf = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0 ?
+                                               circle_in_front_buf_ :
+                                               circle_buf_;
     MetaBall *mb = static_cast<MetaBall *>(ob_ref.object->data);
 
     const float *color;
@@ -58,19 +58,19 @@ template<typename SelectEngineT> class Metaballs {
 
       const SelectID radius_id = res.select_id(ob_ref, MBALLSEL_RADIUS);
       color = (is_selected && is_scale_radius) ? col_radius_select : col_radius;
-      data_buf.append({ob_ref.object, &ml->x, ml->rad, color}, radius_id);
+      circle_buf.append({ob_ref.object, &ml->x, ml->rad, color}, radius_id);
 
       const SelectID stiff_id = res.select_id(ob_ref, MBALLSEL_STIFF);
       color = (is_selected && !is_scale_radius) ? col_stiffness_select : col_stiffness;
-      data_buf.append({ob_ref.object, &ml->x, stiffness_radius, color}, stiff_id);
+      circle_buf.append({ob_ref.object, &ml->x, stiffness_radius, color}, stiff_id);
     }
   }
 
   void object_sync(const ObjectRef &ob_ref, ResourcesT &res, const State &state)
   {
-    SphereOutlineInstanceBuf &data_buf = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0 ?
-                                             data_in_front_buf_ :
-                                             data_buf_;
+    SphereOutlineInstanceBuf &circle_buf = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0 ?
+                                               circle_in_front_buf_ :
+                                               circle_buf_;
     MetaBall *mb = static_cast<MetaBall *>(ob_ref.object->data);
 
     const float4 &color = res.object_wire_color(ob_ref, state);
@@ -78,7 +78,7 @@ template<typename SelectEngineT> class Metaballs {
 
     LISTBASE_FOREACH (MetaElem *, ml, &mb->elems) {
       /* Draw radius only. */
-      data_buf.append({ob_ref.object, &ml->x, ml->rad, color}, select_id);
+      circle_buf.append({ob_ref.object, &ml->x, ml->rad, color}, select_id);
     }
   }
 
@@ -93,8 +93,8 @@ template<typename SelectEngineT> class Metaballs {
 
       call_buf.end_sync(pass, shapes.metaball_wire_circle);
     };
-    init_pass(metaball_ps_, data_buf_);
-    init_pass(metaball_in_front_ps_, data_in_front_buf_);
+    init_pass(metaball_ps_, circle_buf_);
+    init_pass(metaball_in_front_ps_, circle_in_front_buf_);
   }
 
   void draw(ResourcesT &res, Manager &manager, View &view)

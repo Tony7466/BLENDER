@@ -71,14 +71,28 @@ template<typename T> void Instance<T>::begin_sync()
   View view("OverlayView", view_legacy);
 
   background.begin_sync(resources, state);
+  prepass.begin_sync(state);
   empties.begin_sync();
   metaballs.begin_sync();
   grid.begin_sync(resources, state, view);
 }
 
-template<typename T> void Instance<T>::object_sync(ObjectRef &ob_ref)
+template<typename T> void Instance<T>::object_sync(ObjectRef &ob_ref, Manager &manager)
 {
   const bool in_edit_mode = object_is_edit_mode(ob_ref.object);
+  const bool needs_prepass = true; /* TODO */
+
+  if (needs_prepass) {
+    switch (ob_ref.object->type) {
+      case OB_MESH:
+      case OB_SURF:
+      case OB_CURVES:
+      case OB_FONT:
+      case OB_CURVES_LEGACY:
+        prepass.object_sync(manager, ob_ref, resources);
+        break;
+    }
+  }
 
   if (in_edit_mode && !state.hide_overlays) {
     switch (ob_ref.object->type) {
@@ -166,6 +180,9 @@ template<typename T> void Instance<T>::draw(Manager &manager)
   float4 clear_color(0.0f);
   GPU_framebuffer_clear_color(resources.overlay_color_only_fb, clear_color);
 
+  prepass.draw(resources, manager, view);
+  prepass.draw_in_front(resources, manager, view);
+
   background.draw(resources, manager);
 
   empties.draw(resources, manager, view);
@@ -185,7 +202,7 @@ template<typename T> void Instance<T>::draw(Manager &manager)
 /* Instantiation. */
 template void Instance<>::init();
 template void Instance<>::begin_sync();
-template void Instance<>::object_sync(ObjectRef &ob_ref);
+template void Instance<>::object_sync(ObjectRef &ob_ref, Manager &manager);
 template void Instance<>::end_sync();
 template void Instance<>::draw(Manager &manager);
 
