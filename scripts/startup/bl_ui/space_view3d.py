@@ -3484,8 +3484,7 @@ class VIEW3D_MT_paint(Menu):
     def draw(self, _context):
         layout = self.layout
 
-        layout.prop(WindowManager.operator_properties_last("sculpt.color_filter"), "fill_color")
-        props = layout.operator("sculpt.color_filter")
+        props = layout.operator("sculpt.color_filter", text="Fill Color")
         props.type = "FILL"
 
         props = layout.operator("sculpt.color_filter", text="Blur Colors")
@@ -5733,7 +5732,6 @@ class VIEW3D_PT_sculpt_fill_popover(Panel):
     bl_region_type = 'UI'
     bl_category = "Tool"
     bl_label = "Fill"
-
     bl_context = ".sculpt_mode"
 
     @classmethod

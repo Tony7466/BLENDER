@@ -460,7 +460,7 @@ void SCULPT_OT_color_filter(wmOperatorType *ot)
   ot->ui = sculpt_color_filter_ui;
   ot->get_name = sculpt_color_filter_get_name;
 
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_DEPENDS_ON_CURSOR;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_DEPENDS_ON_CURSOR | OPTYPE_GRAB_CURSOR_X;
 
   /* rna */
   SCULPT_mesh_filter_properties(ot);
