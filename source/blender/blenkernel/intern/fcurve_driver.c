@@ -79,31 +79,33 @@ typedef struct DriverVarTypeInfo {
 /** \name Driver Target Utilities
  * \{ */
 
-static DriverTargetContext target_context_from_animation_context(
+static DriverTargetContext driver_target_context_from_animation_context(
     const AnimationEvalContext *anim_eval_context)
 {
-  DriverTargetContext target_context;
+  DriverTargetContext driver_target_context;
 
-  target_context.scene = DEG_get_evaluated_scene(anim_eval_context->depsgraph);
-  target_context.view_layer = DEG_get_evaluated_view_layer(anim_eval_context->depsgraph);
+  driver_target_context.scene = DEG_get_evaluated_scene(anim_eval_context->depsgraph);
+  driver_target_context.view_layer = DEG_get_evaluated_view_layer(anim_eval_context->depsgraph);
 
-  return target_context;
+  return driver_target_context;
 }
 
-/* Specialized implementation of driver_get_target_property() sued for the
+/* Specialized implementation of driver_get_target_property() used for the
  * DVAR_TYPE_CONTEXT_PROP variable type. */
-static bool driver_get_target_context_property(const DriverTargetContext *context,
+static bool driver_get_target_context_property(const DriverTargetContext *driver_target_context,
                                                DriverTarget *dtar,
                                                PointerRNA *r_property_ptr)
 {
   switch (dtar->context_property) {
     case DTAR_CONTEXT_PROPERTY_ACTIVE_SCENE:
-      RNA_id_pointer_create(&context->scene->id, r_property_ptr);
+      RNA_id_pointer_create(&driver_target_context->scene->id, r_property_ptr);
       return true;
 
     case DTAR_CONTEXT_PROPERTY_ACTIVE_VIEW_LAYER: {
-      // XXX: Deeds implementation.
-      RNA_pointer_create(&context->scene->id, &RNA_ViewLayer, context->view_layer, r_property_ptr);
+      RNA_pointer_create(&driver_target_context->scene->id,
+                         &RNA_ViewLayer,
+                         driver_target_context->view_layer,
+                         r_property_ptr);
       return true;
     }
   }
@@ -113,7 +115,7 @@ static bool driver_get_target_context_property(const DriverTargetContext *contex
   /* Reset to a NULL RNA pointer.
    * This allows to more gracefully handle issues with unsupported configuration (forward
    * compatibility. for example). */
-  /* TODO(sergey): Is there an utility function for this? */
+  /* TODO(sergey): Replace with utility null-RNA-pointer creation once that is available. */
   r_property_ptr->data = NULL;
   r_property_ptr->type = NULL;
   r_property_ptr->owner_id = NULL;
@@ -121,13 +123,13 @@ static bool driver_get_target_context_property(const DriverTargetContext *contex
   return false;
 }
 
-bool driver_get_target_property(const DriverTargetContext *context,
+bool driver_get_target_property(const DriverTargetContext *driver_target_context,
                                 DriverVar *dvar,
                                 DriverTarget *dtar,
                                 PointerRNA *r_prop)
 {
   if (dvar->type == DVAR_TYPE_CONTEXT_PROP) {
-    return driver_get_target_context_property(context, dtar, r_prop);
+    return driver_get_target_context_property(driver_target_context, dtar, r_prop);
   }
 
   if (dtar->id == NULL) {
@@ -156,10 +158,10 @@ static float dtar_get_prop_val(const AnimationEvalContext *anim_eval_context,
   /* Get property to resolve the target from.
    * Naming is a bit confusing, but this is what is exposed as "Prop" or "Context Property" in
    * interface. */
-  const DriverTargetContext target_context = target_context_from_animation_context(
+  const DriverTargetContext driver_target_context = driver_target_context_from_animation_context(
       anim_eval_context);
   PointerRNA property_ptr;
-  if (!driver_get_target_property(&target_context, dvar, dtar, &property_ptr)) {
+  if (!driver_get_target_property(&driver_target_context, dvar, dtar, &property_ptr)) {
     if (G.debug & G_DEBUG) {
       CLOG_ERROR(&LOG, "driver has an invalid target to use (path = %s)", dtar->rna_path);
     }
@@ -263,10 +265,10 @@ bool driver_get_variable_property(const AnimationEvalContext *anim_eval_context,
   }
 
   /* Get RNA-pointer for the data-block given in target. */
-  const DriverTargetContext target_context = target_context_from_animation_context(
+  const DriverTargetContext driver_target_context = driver_target_context_from_animation_context(
       anim_eval_context);
   PointerRNA target_ptr;
-  if (!driver_get_target_property(&target_context, dvar, dtar, &target_ptr)) {
+  if (!driver_get_target_property(&driver_target_context, dvar, dtar, &target_ptr)) {
     if (G.debug & G_DEBUG) {
       CLOG_ERROR(&LOG, "driver has an invalid target to use (path = %s)", dtar->rna_path);
     }

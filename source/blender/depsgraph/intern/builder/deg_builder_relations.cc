@@ -1746,15 +1746,15 @@ void DepsgraphRelationBuilder::build_driver_variables(ID *id, FCurve *fcu)
 
   const RNAPathKey self_key(id, rna_path, RNAPointerSource::ENTRY);
 
-  DriverTargetContext target_context;
-  target_context.scene = graph_->scene;
-  target_context.view_layer = graph_->view_layer;
+  DriverTargetContext driver_target_context;
+  driver_target_context.scene = graph_->scene;
+  driver_target_context.view_layer = graph_->view_layer;
 
   LISTBASE_FOREACH (DriverVar *, dvar, &driver->variables) {
     /* Only used targets. */
     DRIVER_TARGETS_USED_LOOPER_BEGIN (dvar) {
       PointerRNA target_prop;
-      if (!driver_get_target_property(&target_context, dvar, dtar, &target_prop)) {
+      if (!driver_get_target_property(&driver_target_context, dvar, dtar, &target_prop)) {
         continue;
       }
 

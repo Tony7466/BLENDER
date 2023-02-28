@@ -62,17 +62,19 @@ void fcurve_free_driver(struct FCurve *fcu);
 struct ChannelDriver *fcurve_copy_driver(const struct ChannelDriver *driver);
 
 /**
- * Get property from which the specific property can be found found from.
+ * Get property from which the specific property can be found from.
  *
- * For the Single Property the `r_prop` is a pointer to an ID, form which the target rna_path is
- * accessed from.
+ * This depends on the type of `dvar`:
  *
- * For Transform Channel, Rotational Difference, Distance the `r_prop` is a pointer to an object
- * from which transformation is read.
+ *   - For the Single Property the `r_prop` is a pointer to an ID, which is used to resolve the
+ *     target rna_path.
  *
- * For Context Property the `r_prop` points to a resolved data corresponding to the
- * dtar->context_property accessed from the given evaluated context. This could either be an ID
- * property for Active Scene, or a data property for Active View Layer.
+ *   - For Transform Channel, Rotational Difference, Distance the `r_prop` is a pointer to an
+ *     object from which transformation is read.
+ *
+ *   - For Context Property the `r_prop` points to a resolved data corresponding to the
+ *     dtar->context_property accessed from the given evaluated context. This could either be an ID
+ *     property for Active Scene, or a data property for Active View Layer.
  *
  * If the target property can not be resolved false is returned.
  */
@@ -80,7 +82,7 @@ typedef struct DriverTargetContext {
   struct Scene *scene;
   struct ViewLayer *view_layer;
 } DriverTargetContext;
-bool driver_get_target_property(const DriverTargetContext *context,
+bool driver_get_target_property(const DriverTargetContext *driver_target_context,
                                 struct DriverVar *dvar,
                                 struct DriverTarget *dtar,
                                 struct PointerRNA *r_prop);
