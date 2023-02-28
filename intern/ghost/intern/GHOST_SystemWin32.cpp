@@ -424,10 +424,9 @@ bool GHOST_SystemWin32::processEvents(bool waitForEvent)
 
     processTrackpad();
 
-    /* PeekMessage above is allowed to dispatch messages to the wndproc without us
+    /* `PeekMessage` above is allowed to dispatch messages to the `wndproc` without us
      * noticing, so we need to check the event manager here to see if there are
-     * events waiting in the queue.
-     */
+     * events waiting in the queue. */
     hasEventHandled |= this->m_eventManager->getNumEvents() > 0;
 
   } while (waitForEvent && !hasEventHandled);
@@ -566,8 +565,8 @@ GHOST_TKey GHOST_SystemWin32::hardKey(RAWINPUT const &raw, bool *r_key_down)
 /**
  * \note this function can be extended to include other exotic cases as they arise.
  *
- * This function was added in response to bug T25715.
- * This is going to be a long list T42426.
+ * This function was added in response to bug #25715.
+ * This is going to be a long list #42426.
  */
 GHOST_TKey GHOST_SystemWin32::processSpecialKey(short vKey, short scanCode) const
 {
@@ -1084,7 +1083,7 @@ GHOST_EventCursor *GHOST_SystemWin32::processCursorEvent(GHOST_WindowWin32 *wind
          * so the box needs to small enough not to let the cursor escape the window but large
          * enough that the cursor isn't being warped every time.
          * If this was not the case it would be less trouble to simply warp the cursor to the
-         * center of the screen on every motion, see: D16558 (alternative fix for T102346). */
+         * center of the screen on every motion, see: D16558 (alternative fix for #102346). */
         const int32_t subregion_div = 4; /* One quarter of the region. */
         const int32_t size[2] = {bounds.getWidth(), bounds.getHeight()};
         const int32_t center[2] = {(bounds.m_l + bounds.m_r) / 2, (bounds.m_t + bounds.m_b) / 2};
@@ -1210,7 +1209,7 @@ GHOST_EventKey *GHOST_SystemWin32::processKeyEvent(GHOST_WindowWin32 *window, RA
     const bool ctrl_pressed = has_state && state[VK_CONTROL] & 0x80;
     const bool alt_pressed = has_state && state[VK_MENU] & 0x80;
 
-    /* We can be here with !key_down if processing dead keys (diacritics). See T103119. */
+    /* We can be here with !key_down if processing dead keys (diacritics). See #103119. */
 
     /* No text with control key pressed (Alt can be used to insert special characters though!). */
     if (ctrl_pressed && !alt_pressed) {
@@ -1827,7 +1826,10 @@ LRESULT WINAPI GHOST_SystemWin32::s_wndProc(HWND hwnd, uint msg, WPARAM wParam, 
           if (!window->m_mousePresent) {
             WINTAB_PRINTF("HWND %p mouse enter\n", window->getHWND());
             TRACKMOUSEEVENT tme = {sizeof(tme)};
-            tme.dwFlags = TME_LEAVE;
+            /* Request WM_MOUSELEAVE message when the cursor leaves the client area, and
+             * WM_MOUSEHOVER message after 50ms when in the client area. */
+            tme.dwFlags = TME_LEAVE | TME_HOVER;
+            tme.dwHoverTime = 50;
             tme.hwndTrack = hwnd;
             TrackMouseEvent(&tme);
             window->m_mousePresent = true;
@@ -1842,6 +1844,35 @@ LRESULT WINAPI GHOST_SystemWin32::s_wndProc(HWND hwnd, uint msg, WPARAM wParam, 
           window->clientToScreen(UNPACK2(window_co), UNPACK2(screen_co));
           event = processCursorEvent(window, screen_co);
 
+          break;
+        }
+        case WM_MOUSEHOVER: {
+          /* Mouse Tracking is now off. TrackMouseEvent restarts in MouseMove. */
+          window->m_mousePresent = false;
+
+          /* Auto-focus only occurs within Blender windows, not with _other_ applications. */
+          HWND old_hwnd = ::GetFocus();
+          if (hwnd != old_hwnd) {
+            HWND new_parent = ::GetParent(hwnd);
+            HWND old_parent = ::GetParent(old_hwnd);
+            if (hwnd == old_parent || old_hwnd == new_parent) {
+              /* Child to its parent, parent to its child. */
+              ::SetFocus(hwnd);
+            }
+            else if (new_parent != HWND_DESKTOP && new_parent == old_parent) {
+              /* Between siblings of same parent. */
+              ::SetFocus(hwnd);
+            }
+            else if (!new_parent && !old_parent) {
+              /* Between main windows that don't overlap. */
+              RECT new_rect, old_rect, dest_rect;
+              ::GetWindowRect(hwnd, &new_rect);
+              ::GetWindowRect(old_hwnd, &old_rect);
+              if (!IntersectRect(&dest_rect, &new_rect, &old_rect)) {
+                ::SetFocus(hwnd);
+              }
+            }
+          }
           break;
         }
         case WM_MOUSEWHEEL: {

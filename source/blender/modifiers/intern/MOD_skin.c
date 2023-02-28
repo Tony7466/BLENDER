@@ -143,7 +143,7 @@ typedef struct Frame {
     struct Frame *frame;
     int corner;
     /* checked to avoid chaining.
-     * (merging when we're already been referenced), see T39775 */
+     * (merging when we're already been referenced), see #39775 */
     uint is_target : 1;
   } merge[4];
 
@@ -834,7 +834,7 @@ static int calc_edge_subdivisions(const float (*vert_positions)[3],
                                   const MEdge *e,
                                   const int *degree)
 {
-  /* prevent memory errors T38003. */
+  /* prevent memory errors #38003. */
 #define NUM_SUBDIVISIONS_MAX 128
 
   const MVertSkin *evs[2] = {&nodes[e->v1], &nodes[e->v2]};
@@ -918,7 +918,7 @@ static Mesh *subdivide_base(const Mesh *orig)
 
   /* Allocate output mesh */
   Mesh *result = BKE_mesh_new_nomain_from_template(
-      orig, orig_vert_num + subd_num, orig_edge_num + subd_num, 0, 0, 0);
+      orig, orig_vert_num + subd_num, orig_edge_num + subd_num, 0, 0);
 
   float(*out_vert_positions)[3] = BKE_mesh_vert_positions_for_write(result);
   MEdge *outedge = BKE_mesh_edges_for_write(result);

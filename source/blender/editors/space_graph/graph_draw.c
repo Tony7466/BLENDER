@@ -593,7 +593,7 @@ static void draw_fcurve_curve(bAnimContext *ac,
    *
    * If the automatically determined sampling frequency is likely to cause an infinite
    * loop (i.e. too close to 0), then clamp it to a determined "safe" value. The value
-   *  chosen here is just the coarsest value which still looks reasonable...
+   * chosen here is just the coarsest value which still looks reasonable.
    */
 
   /* TODO: perhaps we should have 1.0 frames
@@ -606,7 +606,7 @@ static void draw_fcurve_curve(bAnimContext *ac,
      *
      * Although the "Beauty Draw" flag was originally for AA'd
      * line drawing, the sampling rate here has a much greater
-     * impact on performance (e.g. for T40372)!
+     * impact on performance (e.g. for #40372)!
      *
      * This one still amounts to 10 sample-frames for each 1-frame interval
      * which should be quite a decent approximation in many situations.
@@ -616,7 +616,7 @@ static void draw_fcurve_curve(bAnimContext *ac,
     }
   }
   else {
-    /* "Higher Precision" but slower - especially on larger windows (e.g. T40372) */
+    /* "Higher Precision" but slower - especially on larger windows (e.g. #40372) */
     if (samplefreq < 0.00001f) {
       samplefreq = 0.00001f;
     }

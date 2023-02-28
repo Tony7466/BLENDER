@@ -1092,7 +1092,7 @@ static void sculpt_undo_restore_list(bContext *C, Depsgraph *depsgraph, ListBase
 
     if (tag_update) {
       Mesh *mesh = static_cast<Mesh *>(ob->data);
-      BKE_mesh_tag_coords_changed(mesh);
+      BKE_mesh_tag_positions_changed(mesh);
 
       BKE_sculptsession_free_deformMats(ss);
     }
@@ -1839,7 +1839,7 @@ static void sculpt_undo_set_active_layer(struct bContext *C, SculptAttrRef *attr
   CustomDataLayer *layer;
   layer = BKE_id_attribute_find(&me->id, attr->name, attr->type, attr->domain);
 
-  /* Temporary fix for T97408. This is a fundamental
+  /* Temporary fix for #97408. This is a fundamental
    * bug in the undo stack; the operator code needs to push
    * an extra undo step before running an operator if a
    * non-memfile undo system is active.

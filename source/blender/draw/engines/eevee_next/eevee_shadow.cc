@@ -409,7 +409,7 @@ void ShadowDirectional::cascade_tilemaps_distribution(Light &light, const Camera
 
   /* Offset in tiles from the origin to the center of the first tile-maps. */
   int2 origin_offset = int2(round(float2(near_point) / tile_size));
-  /* Offset in tiles between the first andlod the last tile-maps. */
+  /* Offset in tiles between the first and the last tile-maps. */
   int2 offset_vector = int2(round(farthest_tilemap_center / tile_size));
 
   light.clipmap_base_offset = (offset_vector * (1 << 16)) / max_ii(levels_range.size() - 1, 1);
@@ -440,7 +440,7 @@ void ShadowDirectional::cascade_tilemaps_distribution(Light &light, const Camera
 
   /* The bias is applied in cascade_level_range().
    * Using clipmap_lod_min here simplify code in shadow_directional_level().
-   * Minus 1 because of the ceil().*/
+   * Minus 1 because of the ceil(). */
   light._clipmap_lod_bias = light.clipmap_lod_min - 1;
 
   /* Scaling is handled by ShadowCoordinates.lod_relative. */
@@ -449,7 +449,7 @@ void ShadowDirectional::cascade_tilemaps_distribution(Light &light, const Camera
 }
 
 /************************************************************************
- *                         Clipmap Distribution                         *
+ *                         Clip-map Distribution                        *
  ************************************************************************/
 
 IndexRange ShadowDirectional::clipmap_level_range(const Camera &camera)
@@ -593,7 +593,7 @@ void ShadowDirectional::end_sync(Light &light, const Camera &camera, float lod_b
     for (int64_t i = 0; i < before_range; i++) {
       tilemaps_.append(tilemap_pool.acquire());
     }
-    /* Keep cached lods. */
+    /* Keep cached LOD's. */
     tilemaps_.extend(cached_tilemaps);
     for (int64_t i = 0; i < after_range; i++) {
       tilemaps_.append(tilemap_pool.acquire());
@@ -1044,7 +1044,7 @@ void ShadowModule::debug_end_sync()
 
   debug_draw_ps_.state_set(state);
   debug_draw_ps_.shader_set(inst_.shaders.static_shader_get(SHADOW_DEBUG));
-  debug_draw_ps_.push_constant("debug_mode", (int)inst_.debug_mode);
+  debug_draw_ps_.push_constant("debug_mode", int(inst_.debug_mode));
   debug_draw_ps_.push_constant("debug_tilemap_index", light.tilemap_index);
   debug_draw_ps_.bind_ssbo("tilemaps_buf", &tilemap_pool.tilemaps_data);
   debug_draw_ps_.bind_ssbo("tiles_buf", &tilemap_pool.tiles_data);

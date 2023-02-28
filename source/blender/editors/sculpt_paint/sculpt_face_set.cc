@@ -410,7 +410,7 @@ static int sculpt_face_set_create_exec(bContext *C, wmOperator *op)
     const bke::AttributeAccessor attributes = mesh->attributes();
     const VArraySpan<bool> select_poly = attributes.lookup_or_default<bool>(
         ".select_poly", ATTR_DOMAIN_FACE, false);
-    threading::parallel_for(IndexRange(mesh->totvert), 4096, [&](const IndexRange range) {
+    threading::parallel_for(select_poly.index_range(), 4096, [&](const IndexRange range) {
       for (const int i : range) {
         if (select_poly[i]) {
           ss->face_sets[i] = next_face_set;
@@ -548,7 +548,6 @@ static void sculpt_face_sets_init_flood_fill(Object *ob, const FaceSetsFloodFill
   if (!ss->epmap) {
     BKE_mesh_edge_poly_map_create(&ss->epmap,
                                   &ss->epmap_mem,
-                                  edges.data(),
                                   edges.size(),
                                   polys.data(),
                                   polys.size(),
@@ -1103,10 +1102,10 @@ static void sculpt_face_set_grow(Object *ob,
                                  const bool modify_hidden)
 {
   Mesh *mesh = BKE_mesh_from_object(ob);
-  const MPoly *polys = BKE_mesh_polys(mesh);
-  const MLoop *loops = BKE_mesh_loops(mesh);
+  const blender::Span<MPoly> polys = mesh->polys();
+  const blender::Span<MLoop> loops = mesh->loops();
 
-  for (int p = 0; p < mesh->totpoly; p++) {
+  for (const int p : polys.index_range()) {
     if (!modify_hidden && prev_face_sets[p] <= 0) {
       continue;
     }
@@ -1134,9 +1133,9 @@ static void sculpt_face_set_shrink(Object *ob,
                                    const bool modify_hidden)
 {
   Mesh *mesh = BKE_mesh_from_object(ob);
-  const MPoly *polys = BKE_mesh_polys(mesh);
-  const MLoop *loops = BKE_mesh_loops(mesh);
-  for (int p = 0; p < mesh->totpoly; p++) {
+  const blender::Span<MPoly> polys = mesh->polys();
+  const blender::Span<MLoop> loops = mesh->loops();
+  for (const int p : polys.index_range()) {
     if (!modify_hidden && prev_face_sets[p] <= 0) {
       continue;
     }

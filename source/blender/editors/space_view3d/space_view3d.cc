@@ -647,8 +647,8 @@ static bool view3d_ima_drop_poll(bContext *C, wmDrag *drag, const wmEvent *event
     return false;
   }
   if (drag->type == WM_DRAG_PATH) {
-    /* rule might not work? */
-    return ELEM(drag->icon, 0, ICON_FILE_IMAGE, ICON_FILE_MOVIE);
+    const eFileSel_File_Types file_type = eFileSel_File_Types(WM_drag_get_path_file_type(drag));
+    return ELEM(file_type, 0, FILE_TYPE_IMAGE, FILE_TYPE_MOVIE);
   }
 
   return WM_drag_is_ID_type(drag, ID_IM);
@@ -700,7 +700,8 @@ static bool view3d_ima_empty_drop_poll(bContext *C, wmDrag *drag, const wmEvent 
 
 static bool view3d_volume_drop_poll(bContext * /*C*/, wmDrag *drag, const wmEvent * /*event*/)
 {
-  return (drag->type == WM_DRAG_PATH) && (drag->icon == ICON_FILE_VOLUME);
+  const eFileSel_File_Types file_type = eFileSel_File_Types(WM_drag_get_path_file_type(drag));
+  return (drag->type == WM_DRAG_PATH) && (file_type == FILE_TYPE_VOLUME);
 }
 
 static bool view3d_geometry_nodes_drop_poll(bContext *C, wmDrag *drag, const wmEvent *event)
@@ -902,9 +903,11 @@ static void view3d_id_path_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *
   if (id) {
     WM_operator_properties_id_lookup_set_from_id(drop->ptr, id);
     RNA_struct_property_unset(drop->ptr, "filepath");
+    return;
   }
-  else if (drag->path[0]) {
-    RNA_string_set(drop->ptr, "filepath", drag->path);
+  const char *path = WM_drag_get_path(drag);
+  if (path) {
+    RNA_string_set(drop->ptr, "filepath", path);
     RNA_struct_property_unset(drop->ptr, "image");
   }
 }
@@ -1022,6 +1025,7 @@ static void view3d_widgets()
 
   WM_gizmogrouptype_append_and_link(gzmap_type, VIEW3D_GGT_xform_gizmo_context);
   WM_gizmogrouptype_append_and_link(gzmap_type, VIEW3D_GGT_light_spot);
+  WM_gizmogrouptype_append_and_link(gzmap_type, VIEW3D_GGT_light_point);
   WM_gizmogrouptype_append_and_link(gzmap_type, VIEW3D_GGT_light_area);
   WM_gizmogrouptype_append_and_link(gzmap_type, VIEW3D_GGT_light_target);
   WM_gizmogrouptype_append_and_link(gzmap_type, VIEW3D_GGT_force_field);
@@ -1968,7 +1972,7 @@ static int view3d_context(const bContext *C, const char *member, bContextDataRes
      * it's simplest if all these methods behave consistently - respecting the object-mode
      * without showing the object.
      *
-     * See T85532 for alternatives that were considered. */
+     * See #85532 for alternatives that were considered. */
     const Scene *scene = CTX_data_scene(C);
     ViewLayer *view_layer = CTX_data_view_layer(C);
     BKE_view_layer_synced_ensure(scene, view_layer);
@@ -2045,7 +2049,7 @@ static void view3d_id_remap(ScrArea *area, SpaceLink *slink, const struct IDRema
   view3d_id_remap_v3d(area, slink, view3d, mappings, false);
   view3d_id_remap_v3d_ob_centers(view3d, mappings);
   if (view3d->localvd != nullptr) {
-    /* Object centers in local-view aren't used, see: T52663 */
+    /* Object centers in local-view aren't used, see: #52663 */
     view3d_id_remap_v3d(area, slink, view3d->localvd, mappings, true);
   }
   BKE_viewer_path_id_remap(&view3d->viewer_path, mappings);
