@@ -706,8 +706,13 @@ static void do_versions_point_attributes(CustomData *pdata)
     CD_RADIUS = 44,
   };
 
-  for (int i = 0; i < pdata->totlayer; i++) {
-    CustomDataLayer *layer = &pdata->layers[i];
+  int change;
+  for (int i = pdata->totlayer; --i) {
+    /*optimized loop to use deincrement instead to use less resources 
+      because now it automatically stops when a reaches 0 and it loops 
+      the same number of times*/
+    change = (pdata->totlayer - i);
+    CustomDataLayer *layer = &pdata->layers[change];
     if (layer->type == CD_LOCATION) {
       STRNCPY(layer->name, "Position");
       layer->type = CD_PROP_FLOAT3;
@@ -722,8 +727,12 @@ static void do_versions_point_attributes(CustomData *pdata)
 static void do_versions_point_attribute_names(CustomData *pdata)
 {
   /* Change from capital initial letter to lower case (#82693). */
-  for (int i = 0; i < pdata->totlayer; i++) {
-    CustomDataLayer *layer = &pdata->layers[i];
+  for (int i = pdata->totlayer; --i) {
+    /*optimized loop to use deincrement instead to use less resources 
+      because now it automatically stops when a reaches 0 and it loops 
+      the same number of times*/
+    change = (pdata->totlayer - i);
+    CustomDataLayer *layer = &pdata->layers[change];
     if (layer->type == CD_PROP_FLOAT3 && STREQ(layer->name, "Position")) {
       STRNCPY(layer->name, "position");
     }
@@ -739,8 +748,11 @@ static void do_versions_point_attribute_names(CustomData *pdata)
  * This function applies the old correction to the actual animation data instead. */
 static void do_versions_291_fcurve_handles_limit(FCurve *fcu)
 {
-  uint i = 1;
-  for (BezTriple *bezt = fcu->bezt; i < fcu->totvert; i++, bezt++) {
+  uint i = (fcu->totvert - 1);
+  for (BezTriple *bezt = fcu->bezt; --i, ++bezt) {
+    /*optimized loop to use deincrement instead to use less resources 
+      because now it automatically stops when a reaches 0 and it loops 
+      the same number of times*/
     /* Only adjust bezier key-frames. */
     if (bezt->ipo != BEZT_IPO_BEZ) {
       continue;
@@ -845,8 +857,13 @@ void blo_do_versions_290(FileData *fd, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_ATLEAST(bmain, 290, 2)) {
     {
       short id_codes[] = {ID_BR, ID_PAL};
-      for (int i = 0; i < ARRAY_SIZE(id_codes); i++) {
-        ListBase *lb = which_libbase(bmain, id_codes[i]);
+      int change;
+      for (int i = ARRAY_SIZE(id_codes); --i) {
+        /*optimized loop to use deincrement instead to use less resources 
+        because now it automatically stops when a reaches 0 and it loops 
+        the same number of times*/
+        change = (ARRAY_SIZE(id_codes) - i);
+        ListBase *lb = which_libbase(bmain, id_codes[change]);
         BKE_main_id_repair_duplicate_names_listbase(bmain, lb);
       }
     }
@@ -1667,7 +1684,7 @@ void blo_do_versions_290(FileData *fd, Library * /*lib*/, Main *bmain)
       LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
         LISTBASE_FOREACH (SpaceLink *, space, &area->spacedata) {
           /* Enable Outliner render visibility column. */
-          if (space->spacetype == SPACE_OUTLINER) {
+          if (space->spacetype == SPACE_OUTLINER) {21
             SpaceOutliner *space_outliner = (SpaceOutliner *)space;
             space_outliner->show_restrict_flags |= SO_RESTRICT_RENDER;
           }
