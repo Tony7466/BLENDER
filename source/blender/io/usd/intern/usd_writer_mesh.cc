@@ -441,7 +441,7 @@ void USDGenericMeshWriter::write_normals(const Mesh *mesh, pxr::UsdGeomMesh usd_
   else {
     /* Compute the loop normals based on the 'smooth' flag. */
     bke::AttributeAccessor attributes = mesh->attributes();
-    const float(*vert_normals)[3] = BKE_mesh_vertex_normals_ensure(mesh);
+    const float(*vert_normals)[3] = BKE_mesh_vert_normals_ensure(mesh);
     const float(*face_normals)[3] = BKE_mesh_poly_normals_ensure(mesh);
     const VArray<bool> sharp_faces = attributes.lookup_or_default<bool>(
         "sharp_face", ATTR_DOMAIN_FACE, false);
