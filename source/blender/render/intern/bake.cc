@@ -500,7 +500,7 @@ static TriTessFace *mesh_calc_tri_tessface(Mesh *me, bool tangent, Mesh *me_eval
         CustomData_get_layer(&me_eval->ldata, CD_NORMAL));
   }
 
-  const float(*vert_normals)[3] = BKE_mesh_vertex_normals_ensure(me);
+  const float(*vert_normals)[3] = BKE_mesh_vert_normals_ensure(me);
   for (i = 0; i < tottri; i++) {
     const MLoopTri *lt = &looptri[i];
     const MPoly *mp = &polys[lt->poly];
@@ -597,7 +597,6 @@ bool RE_bake_pixels_populate_from_objects(Mesh *me_low,
     tris_high[i] = mesh_calc_tri_tessface(highpoly[i].me, false, nullptr);
 
     me_highpoly[i] = highpoly[i].me;
-    BKE_mesh_runtime_looptri_ensure(me_highpoly[i]);
 
     if (BKE_mesh_runtime_looptri_len(me_highpoly[i]) != 0) {
       /* Create a BVH-tree for each `highpoly` object. */
