@@ -188,14 +188,14 @@ static const char *node_socket_get_translation_context(const bNodeSocket &socket
     return nullptr;
   }
 
-  blender::StringRef translation_context = socket.runtime->declaration->translation_context;
+  blender::StringRefNull translation_context = socket.runtime->declaration->translation_context;
 
   /* Default context. */
   if (translation_context.is_empty()) {
     return nullptr;
   }
 
-  return BLI_strdup(translation_context.data());
+  return translation_context.data();
 }
 
 static void node_socket_add_tooltip_in_node_editor(const bNodeTree &ntree,
