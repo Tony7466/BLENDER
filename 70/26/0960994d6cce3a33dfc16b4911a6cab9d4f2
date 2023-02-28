@@ -1,2 +1,3 @@
 Referenced by issue #104296, Regression: crash loading test file library_test_scene.blend
 Referenced by issue #104278, Crash in geometrynode doversion code when opening Sprite production file
+Referenced by issue #105314, Regression: ShaderNodeCustomGroup based nodes lost their UI
