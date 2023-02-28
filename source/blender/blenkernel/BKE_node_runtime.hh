@@ -154,7 +154,8 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
 
   /**
    * The location of all sockets in the tree, calculated while drawing the nodes.
-   * Indexed with #bNodeSocket::index_in_tree().
+   * Indexed with #bNodeSocket::index_in_tree(). In the node tree's "world space"
+   * (the same as #bNode::runtime::totr).
    */
   Vector<float2> all_socket_locations;
 };
