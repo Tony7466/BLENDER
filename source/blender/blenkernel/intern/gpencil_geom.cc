@@ -493,7 +493,13 @@ bool BKE_gpencil_stroke_sample(bGPdata *gpd,
   copy_v3_v3(&pt2->x, last_coord);
   new_pt[i].pressure = pt[0].pressure;
   new_pt[i].strength = pt[0].strength;
-  memcpy(new_pt[i].vert_color, pt[0].vert_color, sizeof(float[4]));
+  copy_v3_v3(&pt2->x, last_coord);
+  new_pt[i].pressure = pt[0].pressure;
+  new_pt[i].strength = pt[0].strength;
+  new_pt[i].uv_fac = pt[0].uv_fac;
+  new_pt[i].uv_rot = pt[0].uv_rot;
+  copy_v2_v2(new_pt[i].uv_fill, pt[0].uv_fill);
+  copy_v4_v4(new_pt[i].vert_color, pt[0].vert_color);
   if (select) {
     new_pt[i].flag |= GP_SPOINT_SELECT;
   }
@@ -2497,7 +2503,7 @@ static void gpencil_generate_edgeloops(Object *ob,
   const Span<float3> vert_positions = me->vert_positions();
   const Span<MEdge> edges = me->edges();
   const Span<MDeformVert> dverts = me->deform_verts();
-  const float(*vert_normals)[3] = BKE_mesh_vertex_normals_ensure(me);
+  const float(*vert_normals)[3] = BKE_mesh_vert_normals_ensure(me);
 
   /* Arrays for all edge vertices (forward and backward) that form a edge loop.
    * This is reused for each edge-loop to create gpencil stroke. */
