@@ -10,10 +10,12 @@
  * update notifications from a job running in another thread. All methods
  * except for the constructor/destructor are thread safe. */
 
+#include <atomic>
 #include "util/function.h"
 #include "util/string.h"
 #include "util/thread.h"
 #include "util/time.h"
+#include "util/log.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -40,6 +42,10 @@ class Progress {
     error = false;
     error_message = "";
     cancel_cb = function_null;
+    updates = true;
+    update_time = true;
+    update_pixels = true;
+    update_status = true;
   }
 
   Progress(Progress &progress)
@@ -49,14 +55,18 @@ class Progress {
 
   Progress &operator=(Progress &progress)
   {
-    thread_scoped_lock lock(progress.progress_mutex);
+    // Busy wait until update status is true
+    bool can_update = true;
+    while(!update_status.compare_exchange_weak(can_update, false)) {};
+    //thread_scoped_lock lock(progress.progress_mutex);
 
     progress.get_status(status, substatus);
 
-    pixel_samples = progress.pixel_samples;
-    total_pixel_samples = progress.total_pixel_samples;
+    pixel_samples = progress.pixel_samples; //.load();
+    total_pixel_samples = progress.total_pixel_samples; //.load();
     current_tile_sample = progress.get_current_sample();
 
+    update_status = true;
     return *this;
   }
 
@@ -79,14 +89,23 @@ class Progress {
     cancel_message = "";
     error = false;
     error_message = "";
+    updates = true;
   }
 
+  void set_updates(bool updates_) {
+    updates = updates_;
+    VLOG_INFO << "Set progress updates " << (updates_? "on" : "off");
+  }
+  
   /* cancel */
   void set_cancel(const string &cancel_message_)
   {
-    thread_scoped_lock lock(progress_mutex);
+    //thread_scoped_lock lock(progress_mutex);
+    bool can_update = true;
+    while(!update_status.compare_exchange_weak(can_update, false)) {};
     cancel_message = cancel_message_;
     cancel = true;
+    update_status = true;
   }
 
   bool get_cancel() const
@@ -97,10 +116,20 @@ class Progress {
     return cancel;
   }
 
-  string get_cancel_message() const
+  bool get_updates() const
   {
-    thread_scoped_lock lock(progress_mutex);
-    return cancel_message;
+    return updates;
+  }
+
+  string get_cancel_message() //const
+  {
+    string msg;
+    bool can_update = true;
+    while(!update_status.compare_exchange_weak(can_update, false)) {};
+    //thread_scoped_lock lock(progress_mutex);
+    msg = cancel_message;
+    update_status = true;
+    return msg;
   }
 
   void set_cancel_callback(function<void()> function)
@@ -111,12 +140,15 @@ class Progress {
   /* error */
   void set_error(const string &error_message_)
   {
-    thread_scoped_lock lock(progress_mutex);
+    bool can_update = true;
+    while(!update_status.compare_exchange_weak(can_update, false)) {};
+    //thread_scoped_lock lock(progress_mutex);
     error_message = error_message_;
     error = true;
     /* If error happens we also stop rendering. */
     cancel_message = error_message_;
     cancel = true;
+    update_status = true;
   }
 
   bool get_error() const
@@ -124,51 +156,61 @@ class Progress {
     return error;
   }
 
-  string get_error_message() const
+  string get_error_message() //const
   {
-    thread_scoped_lock lock(progress_mutex);
-    return error_message;
+    string msg;
+    bool can_update = true;
+    while(!update_status.compare_exchange_weak(can_update, false)) {};
+    //thread_scoped_lock lock(progress_mutex);
+    msg = error_message;
+    update_status = true;
+    return msg;
   }
 
   /* tile and timing information */
 
   void set_start_time()
   {
-    thread_scoped_lock lock(progress_mutex);
-
-    start_time = time_dt();
-    end_time = 0.0;
+    // Busy wait until update status is true
+    bool can_update = true;
+    while(!update_status.compare_exchange_weak(can_update, false)) {};
+    start_time = /*.store(*/time_dt(); //);
+    end_time = 0.0; //.store(0.0);
+    update_status = true;
   }
 
   void set_render_start_time()
   {
-    thread_scoped_lock lock(progress_mutex);
-
-    render_start_time = time_dt();
+    bool can_update = true;
+    while(!update_status.compare_exchange_weak(can_update, false)) {};
+    render_start_time = /*.store(*/ time_dt(); //);
+    update_status = true;
   }
 
   void set_time_limit(double time_limit_)
   {
-    thread_scoped_lock lock(progress_mutex);
-
-    time_limit = time_limit_;
+    bool can_update = true;
+    while(!update_status.compare_exchange_weak(can_update, false)) {};
+    time_limit = /*.store(*/time_limit_; //);
+    update_status = true;
   }
 
   void add_skip_time(const scoped_timer &start_timer, bool only_render)
   {
     double skip_time = time_dt() - start_timer.get_start();
 
-    render_start_time += skip_time;
+    double rst = render_start_time + skip_time;
+    render_start_time = rst;
     if (!only_render) {
-      start_time += skip_time;
+      double st = start_time + skip_time;
+      start_time = st;
     }
   }
 
   void get_time(double &total_time_, double &render_time_) const
   {
-    thread_scoped_lock lock(progress_mutex);
-
-    double time = (end_time > 0) ? end_time : time_dt();
+    double et = end_time;
+    double time = (et > 0) ? et : time_dt();
 
     total_time_ = time - start_time;
     render_time_ = time - render_start_time;
@@ -181,8 +223,6 @@ class Progress {
 
   void reset_sample()
   {
-    thread_scoped_lock lock(progress_mutex);
-
     pixel_samples = 0;
     current_tile_sample = 0;
     rendered_tiles = 0;
@@ -191,15 +231,11 @@ class Progress {
 
   void set_total_pixel_samples(uint64_t total_pixel_samples_)
   {
-    thread_scoped_lock lock(progress_mutex);
-
     total_pixel_samples = total_pixel_samples_;
   }
 
   double get_progress() const
   {
-    thread_scoped_lock lock(progress_mutex);
-
     if (pixel_samples > 0) {
       double progress_percent = (double)pixel_samples / (double)total_pixel_samples;
       if (time_limit != 0.0) {
@@ -213,8 +249,6 @@ class Progress {
 
   void add_samples(uint64_t pixel_samples_, int tile_sample)
   {
-    thread_scoped_lock lock(progress_mutex);
-
     pixel_samples += pixel_samples_;
     current_tile_sample = tile_sample;
   }
@@ -227,8 +261,6 @@ class Progress {
 
   void add_finished_tile(bool denoised)
   {
-    thread_scoped_lock lock(progress_mutex);
-
     if (denoised) {
       denoised_tiles++;
     }
@@ -239,7 +271,6 @@ class Progress {
 
   int get_current_sample() const
   {
-    thread_scoped_lock lock(progress_mutex);
     /* Note that the value here always belongs to the last tile that updated,
      * so it's only useful if there is only one active tile. */
     return current_tile_sample;
@@ -247,13 +278,11 @@ class Progress {
 
   int get_rendered_tiles() const
   {
-    thread_scoped_lock lock(progress_mutex);
     return rendered_tiles;
   }
 
   int get_denoised_tiles() const
   {
-    thread_scoped_lock lock(progress_mutex);
     return denoised_tiles;
   }
 
@@ -261,10 +290,14 @@ class Progress {
 
   void set_status(const string &status_, const string &substatus_ = "")
   {
+    if(updates)
     {
-      thread_scoped_lock lock(progress_mutex);
+      bool can_update = true;
+      while(!update_status.compare_exchange_weak(can_update, false)) {};
+      //thread_scoped_lock lock(progress_mutex);
       status = status_;
       substatus = substatus_;
+      update_status = true;
     }
 
     set_update();
@@ -272,9 +305,13 @@ class Progress {
 
   void set_substatus(const string &substatus_)
   {
+    if(updates)
     {
-      thread_scoped_lock lock(progress_mutex);
+      bool can_update = true;
+      while(!update_status.compare_exchange_weak(can_update, false)) {};
+      //thread_scoped_lock lock(progress_mutex);
       substatus = substatus_;
+      update_status = true;
     }
 
     set_update();
@@ -282,10 +319,13 @@ class Progress {
 
   void set_sync_status(const string &status_, const string &substatus_ = "")
   {
-    {
-      thread_scoped_lock lock(progress_mutex);
+    if(updates) {
+      bool can_update = true;
+      while(!update_status.compare_exchange_weak(can_update, false)) {};
+      //thread_scoped_lock lock(progress_mutex);
       sync_status = status_;
       sync_substatus = substatus_;
+      update_status = true;
     }
 
     set_update();
@@ -293,18 +333,22 @@ class Progress {
 
   void set_sync_substatus(const string &substatus_)
   {
-    {
-      thread_scoped_lock lock(progress_mutex);
+    if(updates) {
+      bool can_update = true;
+      while(!update_status.compare_exchange_weak(can_update, false)) {};
+      //thread_scoped_lock lock(progress_mutex);
       sync_substatus = substatus_;
+      update_status = true;
     }
 
     set_update();
   }
 
-  void get_status(string &status_, string &substatus_) const
+  void get_status(string &status_, string &substatus_) // const
   {
-    thread_scoped_lock lock(progress_mutex);
-
+    // thread_scoped_lock lock(progress_mutex);
+    bool can_update = true;
+    while(!update_status.compare_exchange_weak(can_update, false)) {};
     if (sync_status != "") {
       status_ = sync_status;
       substatus_ = sync_substatus;
@@ -313,13 +357,14 @@ class Progress {
       status_ = status;
       substatus_ = substatus;
     }
+    update_status = true;
   }
 
   /* callback */
 
   void set_update()
   {
-    if (update_cb) {
+    if (updates && update_cb) {
       thread_scoped_lock lock(update_mutex);
       update_cb();
     }
@@ -331,7 +376,7 @@ class Progress {
   }
 
  protected:
-  mutable thread_mutex progress_mutex;
+  //mutable thread_mutex progress_mutex;
   mutable thread_mutex update_mutex;
   function<void()> update_cb;
   function<void()> cancel_cb;
@@ -353,6 +398,10 @@ class Progress {
   /* End time written when render is done, so it doesn't keep increasing on redraws. */
   double end_time;
 
+  std::atomic<bool> update_time;
+  std::atomic<bool> update_pixels;
+  std::atomic<bool> update_status;
+  
   string status;
   string substatus;
 
@@ -364,6 +413,9 @@ class Progress {
 
   volatile bool error;
   string error_message;
+
+  // Used to enable progress updates if true
+  bool updates;
 };
 
 CCL_NAMESPACE_END
