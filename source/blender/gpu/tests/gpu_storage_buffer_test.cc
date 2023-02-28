@@ -4,6 +4,7 @@
 
 #include "GPU_storage_buffer.h"
 
+#include "BLI_math_vector_types.hh"
 #include "BLI_vector.hh"
 
 #include "gpu_testing.hh"
@@ -22,7 +23,7 @@ static Vector<int32_t> test_data()
   return data;
 }
 
-static void test_gpu_storage_buffer_create_update_read()
+static void test_storage_buffer_create_update_read()
 {
   GPUStorageBuf *ssbo = GPU_storagebuf_create_ex(
       SIZE_IN_BYTES, nullptr, GPU_USAGE_STATIC, __func__);
@@ -45,6 +46,94 @@ static void test_gpu_storage_buffer_create_update_read()
   GPU_storagebuf_free(ssbo);
 }
 
-GPU_TEST(gpu_storage_buffer_create_update_read);
+GPU_TEST(storage_buffer_create_update_read);
+
+static void test_storage_buffer_clear_zero()
+{
+  GPUStorageBuf *ssbo = GPU_storagebuf_create_ex(
+      SIZE_IN_BYTES, nullptr, GPU_USAGE_STATIC, __func__);
+  EXPECT_NE(ssbo, nullptr);
+
+  /* Upload some dummy data. */
+  const Vector<int32_t> data = test_data();
+  GPU_storagebuf_update(ssbo, data.data());
+  GPU_storagebuf_clear_to_zero(ssbo);
+
+  /* Read back data from SSBO. */
+  Vector<int32_t> read_data;
+  read_data.resize(SIZE, 0);
+  GPU_storagebuf_read(ssbo, read_data.data());
+
+  /* Check if data is the same. */
+  for (int i : IndexRange(SIZE)) {
+    EXPECT_EQ(0, read_data[i]);
+  }
+
+  GPU_storagebuf_free(ssbo);
+}
+
+GPU_TEST(storage_buffer_clear_zero);
+
+/* TODO: Make template.*/
+template<eGPUTextureFormat TextureFormat> static void storage_buffer_clear_uniform()
+{
+  GPUStorageBuf *ssbo = GPU_storagebuf_create_ex(
+      SIZE_IN_BYTES, nullptr, GPU_USAGE_STATIC, __func__);
+  EXPECT_NE(ssbo, nullptr);
+
+  /* Read back data from SSBO. */
+  int4 clear_data = {-1, -1, -1, -1};
+  GPU_storagebuf_clear(ssbo, TextureFormat, GPU_DATA_INT, &clear_data);
+
+  /* Check if data is the same. */
+  Vector<int32_t> read_data;
+  read_data.resize(SIZE, 0);
+  GPU_storagebuf_read(ssbo, read_data.data());
+  for (int i : IndexRange(SIZE)) {
+    EXPECT_EQ(clear_data[i % 4], read_data[i]);
+  }
+
+  GPU_storagebuf_free(ssbo);
+}
+
+static void test_storage_buffer_clear_RGBA32I_uniform()
+{
+  storage_buffer_clear_uniform<GPU_RGBA32I>();
+}
+GPU_TEST(storage_buffer_clear_RGBA32I_uniform);
+
+static void test_storage_buffer_clear_RG32I_uniform()
+{
+  storage_buffer_clear_uniform<GPU_RG32I>();
+}
+GPU_TEST(storage_buffer_clear_RG32I_uniform);
+
+static void test_storage_buffer_clear_RG32UI_uniform()
+{
+  storage_buffer_clear_uniform<GPU_RG32UI>();
+}
+GPU_TEST(storage_buffer_clear_RG32UI_uniform);
+
+static void test_storage_buffer_clear_RGBAI32()
+{
+  GPUStorageBuf *ssbo = GPU_storagebuf_create_ex(
+      SIZE_IN_BYTES, nullptr, GPU_USAGE_STATIC, __func__);
+  EXPECT_NE(ssbo, nullptr);
+
+  /* Read back data from SSBO. */
+  int4 clear_data = {-1, -2, -3, -4};
+  GPU_storagebuf_clear(ssbo, GPU_RGBA32I, GPU_DATA_INT, &clear_data);
+
+  /* Check if data is the same. */
+  Vector<int32_t> read_data;
+  read_data.resize(SIZE, 0);
+  GPU_storagebuf_read(ssbo, read_data.data());
+  for (int i : IndexRange(SIZE)) {
+    EXPECT_EQ(clear_data[i % 4], read_data[i]);
+  }
+
+  GPU_storagebuf_free(ssbo);
+}
+GPU_TEST(storage_buffer_clear_RGBAI32);
 
 }  // namespace blender::gpu::tests

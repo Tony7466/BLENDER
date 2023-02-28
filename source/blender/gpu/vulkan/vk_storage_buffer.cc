@@ -10,6 +10,8 @@
 
 #include "vk_storage_buffer.hh"
 
+#include "BLI_span.hh"
+
 namespace blender::gpu {
 
 void VKStorageBuffer::update(const void *data)
@@ -23,7 +25,11 @@ void VKStorageBuffer::update(const void *data)
 
 void VKStorageBuffer::allocate(VKContext &context)
 {
-  buffer_.create(context, size_in_bytes_, usage_, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+  buffer_.create(context,
+                 size_in_bytes_,
+                 usage_,
+                 static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+                                                    VK_BUFFER_USAGE_TRANSFER_DST_BIT));
 }
 
 void VKStorageBuffer::bind(int slot)
@@ -43,11 +49,51 @@ void VKStorageBuffer::unbind()
 {
 }
 
-void VKStorageBuffer::clear(eGPUTextureFormat /*internal_format*/,
-                            eGPUDataFormat /*data_format*/,
-                            void * /*data*/)
+static bool is_uniform(Span<uint32_t> data)
 {
+  BLI_assert(!data.is_empty());
+  uint32_t expected_value = data[0];
+  for (uint32_t value : data) {
+    if (value != expected_value) {
+      return false;
+    }
+  }
+  return true;
 }
+
+static bool can_use_fill_command(eGPUTextureFormat internal_format,
+                                 eGPUDataFormat /*data_format*/,
+                                 void *data)
+{
+  int element_size = to_bytesize(internal_format);
+  int num_components = element_size / 8;
+  if (is_uniform(Span<uint32_t>(static_cast<uint32_t *>(data), num_components))) {
+    return true;
+  }
+  return false;
+}
+
+void VKStorageBuffer::clear(eGPUTextureFormat internal_format,
+                            eGPUDataFormat data_format,
+                            void *data)
+{
+  VKContext &context = *VKContext::get();
+  if (!buffer_.is_allocated()) {
+    allocate(context);
+  }
+
+  VKCommandBuffer &command_buffer = context.command_buffer_get();
+  if (can_use_fill_command(internal_format, data_format, data)) {
+    /* When the data format is 4 bytes we can use vkCmdFillBuffer.
+     * Common case when using GPU_storagebuf_clear_to_zero. */
+    command_buffer.fill(buffer_, *static_cast<uint32_t *>(data));
+    return;
+  }
+
+  /* TODO: Use a compute shader to clear the buffer. */
+  BLI_assert_unreachable();
+}
+
 void VKStorageBuffer::copy_sub(VertBuf * /*src*/,
                                uint /*dst_offset*/,
                                uint /*src_offset*/,
