@@ -257,18 +257,18 @@ vec3 point_world_to_view(vec3 p)
   return (ViewMatrix * vec4(p, 1.0)).xyz;
 }
 
-/* View Z is used to adjust for perspective projection.
+/* Viewspace Z is used to adjust for perspective projection.
  * Homogenous W is used to convert from NDC to homogenous space.
  * Offset is in viewspace, so positive values are closer to the camera. */
-float get_homogenous_z_offset(float vs_z, float hs_w, float offset)
+float get_homogenous_z_offset(float vs_z, float hs_w, float vs_offset)
 {
   if (ProjectionMatrix[3][3] == 0.0) {
     /* From "Projection Matrix Tricks" by Eric Lengyel:
      * http://www.terathon.com/gdc07_lengyel.pdf (p. 24 Depth Modification) */
-    return ProjectionMatrix[3][2] * (offset / (vs_z * (vs_z + offset))) * hs_w;
+    return ProjectionMatrix[3][2] * (vs_offset / (vs_z * (vs_z + vs_offset))) * hs_w;
   }
   else {
-    return ProjectionMatrix[2][2] * offset * hs_w;
+    return ProjectionMatrix[2][2] * vs_offset * hs_w;
   }
 }
 
