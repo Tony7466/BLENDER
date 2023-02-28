@@ -7,8 +7,8 @@
 #pragma once
 
 #include "DEG_depsgraph_query.h"
-#include "DNA_camera_types.h"
 #include "DNA_space_types.h"
+#include "ED_mball.h"
 #include "ED_view3d.h"
 #include "UI_resources.h"
 
@@ -20,14 +20,16 @@
 namespace blender::draw::overlay {
 
 template<typename SelectEngineT> class Metaballs {
+  using SelectID = typename SelectEngineT::ID;
   using ResourcesT = Resources<SelectEngineT>;
+  using SphereOutlineInstanceBuf = ShapeInstanceBuf<SelectEngineT, BoneInstanceData>;
 
  private:
   PassSimple metaball_ps_ = {"MetaBalls"};
   PassSimple metaball_in_front_ps_ = {"MetaBalls_In_front"};
 
-  ArmatureSphereBuf data_buf_ = {"metaball_data_buf"};
-  ArmatureSphereBuf data_in_front_buf_ = {"metaball_data_buf"};
+  SphereOutlineInstanceBuf data_buf_ = {"metaball_data_buf"};
+  SphereOutlineInstanceBuf data_in_front_buf_ = {"metaball_data_buf"};
 
  public:
   void begin_sync()
@@ -36,26 +38,11 @@ template<typename SelectEngineT> class Metaballs {
     data_in_front_buf_.clear();
   }
 
-  void metaball_instance_data_set(BoneInstanceData *data,
-                                  Object *ob,
-                                  const float *pos,
-                                  const float radius,
-                                  const float color[4])
+  void edit_object_sync(const ObjectRef &ob_ref, ResourcesT &res)
   {
-    /* Bone point radius is 0.05. Compensate for that. */
-    mul_v3_v3fl(data->mat[0], ob->object_to_world[0], radius / 0.05f);
-    mul_v3_v3fl(data->mat[1], ob->object_to_world[1], radius / 0.05f);
-    mul_v3_v3fl(data->mat[2], ob->object_to_world[2], radius / 0.05f);
-    mul_v3_m4v3(data->mat[3], ob->object_to_world, pos);
-    /* WATCH: Reminder, alpha is wire-size. */
-    OVERLAY_bone_instance_data_set_color(data, color);
-  }
-
-  void edit_object_sync(const ObjectRef &ob_ref, const ResourcesT &res)
-  {
-    ArmatureSphereBuf &data_buf = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0 ?
-                                      data_in_front_buf_ :
-                                      data_buf_;
+    SphereOutlineInstanceBuf &data_buf = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0 ?
+                                             data_in_front_buf_ :
+                                             data_buf_;
     MetaBall *mb = static_cast<MetaBall *>(ob_ref.object->data);
 
     const float *color;
@@ -68,47 +55,43 @@ template<typename SelectEngineT> class Metaballs {
       const bool is_selected = (ml->flag & SELECT) != 0;
       const bool is_scale_radius = (ml->flag & MB_SCALE_RAD) != 0;
       float stiffness_radius = ml->rad * atanf(ml->s) / float(M_PI_2);
-      BoneInstanceData instdata;
 
+      const SelectID radius_id = res.select_id(ob_ref, MBALLSEL_RADIUS);
       color = (is_selected && is_scale_radius) ? col_radius_select : col_radius;
-      metaball_instance_data_set(&instdata, ob_ref.object, &ml->x, ml->rad, color);
-      data_buf.append(*reinterpret_cast<float4x4 *>(&instdata));
+      data_buf.append({ob_ref.object, &ml->x, ml->rad, color}, radius_id);
 
+      const SelectID stiff_id = res.select_id(ob_ref, MBALLSEL_STIFF);
       color = (is_selected && !is_scale_radius) ? col_stiffness_select : col_stiffness;
-      metaball_instance_data_set(&instdata, ob_ref.object, &ml->x, stiffness_radius, color);
-      data_buf.append(*reinterpret_cast<float4x4 *>(&instdata));
+      data_buf.append({ob_ref.object, &ml->x, stiffness_radius, color}, stiff_id);
     }
   }
 
-  void object_sync(const ObjectRef &ob_ref, const ResourcesT &res, const State &state)
+  void object_sync(const ObjectRef &ob_ref, ResourcesT &res, const State &state)
   {
-    ArmatureSphereBuf &data_buf = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0 ?
-                                      data_in_front_buf_ :
-                                      data_buf_;
+    SphereOutlineInstanceBuf &data_buf = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0 ?
+                                             data_in_front_buf_ :
+                                             data_buf_;
     MetaBall *mb = static_cast<MetaBall *>(ob_ref.object->data);
 
     const float4 &color = res.object_wire_color(ob_ref, state);
+    const SelectID select_id = res.select_id(ob_ref);
 
     LISTBASE_FOREACH (MetaElem *, ml, &mb->elems) {
       /* Draw radius only. */
-      BoneInstanceData instdata;
-      metaball_instance_data_set(&instdata, ob_ref.object, &ml->x, ml->rad, color);
-      data_buf.append(*reinterpret_cast<float4x4 *>(&instdata));
+      data_buf.append({ob_ref.object, &ml->x, ml->rad, color}, select_id);
     }
   }
 
-  void end_sync(ResourcesT &res, const State &state)
+  void end_sync(ResourcesT &res, ShapeCache &shapes, const State &state)
   {
-    auto init_pass = [&](PassSimple &pass, ArmatureSphereBuf &data_buf) {
-      data_buf.push_update();
-
+    auto init_pass = [&](PassSimple &pass, SphereOutlineInstanceBuf &call_buf) {
       pass.init();
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
                      state.clipping_state);
       pass.shader_set(OVERLAY_shader_armature_sphere(true));
       pass.bind_ubo("globalsBlock", &res.globals_buf);
-      pass.bind_ssbo("data_buf", &data_buf);
-      pass.draw(DRW_cache_bone_point_wire_outline_get(), data_buf.size());
+
+      call_buf.end_sync(pass, shapes.metaball_wire_circle);
     };
     init_pass(metaball_ps_, data_buf_);
     init_pass(metaball_in_front_ps_, data_in_front_buf_);

@@ -52,10 +52,12 @@ struct EngineObject {
     uint next_id = 0;
     Map<uint, ObjectRef> map;
 
-    [[nodiscard]] const ID select_id(const ObjectRef &)
+    /* TODO(fclem): The sub_object_id id should eventually become some enum or take a sub-object
+     * reference directly. */
+    [[nodiscard]] const ID select_id(const ObjectRef &, uint sub_object_id = 0)
     {
       /* TODO Insert Ref into the map. */
-      return {next_id++};
+      return {sub_object_id | next_id++};
     }
   };
 };

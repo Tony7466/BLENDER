@@ -122,7 +122,7 @@ template<typename T> void Instance<T>::object_sync(ObjectRef &ob_ref)
 
 template<typename T> void Instance<T>::end_sync()
 {
-  metaballs.end_sync(resources, state);
+  metaballs.end_sync(resources, shapes, state);
   empties.end_sync(resources, shapes, state);
 }
 
@@ -190,3 +190,18 @@ template void Instance<>::end_sync();
 template void Instance<>::draw(Manager &manager);
 
 }  // namespace blender::draw::overlay
+
+/* TODO(fclem): Move elsewhere. */
+BoneInstanceData::BoneInstanceData(Object *ob,
+                                   const float *pos,
+                                   const float radius,
+                                   const float color[4])
+{
+  /* TODO(fclem): Use C++ math API. */
+  mul_v3_v3fl(this->mat[0], ob->object_to_world[0], radius);
+  mul_v3_v3fl(this->mat[1], ob->object_to_world[1], radius);
+  mul_v3_v3fl(this->mat[2], ob->object_to_world[2], radius);
+  mul_v3_m4v3(this->mat[3], ob->object_to_world, pos);
+  /* WATCH: Reminder, alpha is wire-size. */
+  OVERLAY_bone_instance_data_set_color(this, color);
+}

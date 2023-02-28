@@ -24,7 +24,7 @@ struct EngineEmpty {
   };
 
   struct SelectMap {
-    [[nodiscard]] constexpr ID select_id(const ObjectRef &)
+    [[nodiscard]] const ID select_id(const ObjectRef &, uint = 0)
     {
       return {};
     }

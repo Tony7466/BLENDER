@@ -62,7 +62,6 @@ using blender::draw::StorageVectorBuffer;
 using blender::draw::Texture;
 using blender::draw::TextureFromPool;
 using blender::draw::TextureRef;
-using ArmatureSphereBuf = StorageVectorBuffer<float4x4>;
 
 template<typename SelectEngineT> struct Resources : public SelectEngineT::SelectMap {
   Framebuffer overlay_fb = {"overlay_fb"};
@@ -587,7 +586,7 @@ typedef struct OVERLAY_DupliData {
   short base_flag;
 } OVERLAY_DupliData;
 
-typedef struct BoneInstanceData {
+struct BoneInstanceData {
   /* Keep sync with bone instance vertex format (OVERLAY_InstanceFormats) */
   union {
     float mat[4][4];
@@ -604,7 +603,12 @@ typedef struct BoneInstanceData {
       float _pad03[3], amax_b;
     };
   };
-} BoneInstanceData;
+
+  BoneInstanceData() = default;
+  /* Constructor used by metaball overlays and expected to be used for drawing
+   * metaball_wire_sphere with armature wire shader that produces wide-lines. */
+  BoneInstanceData(Object *ob, const float *pos, const float radius, const float color[4]);
+};
 
 typedef struct OVERLAY_InstanceFormats {
   struct GPUVertFormat *instance_pos;

@@ -58,7 +58,6 @@ template<typename SelectEngineT> class Empties {
     ExtraInstanceData data(
         float4x4(ob_ref.object->object_to_world), color, ob_ref.object->empty_drawsize);
 
-    /* TODO(fclem): Get selection ID from the selection engine. */
     const SelectID select_id = res.select_id(ob_ref);
 
     switch (ob_ref.object->empty_drawtype) {
