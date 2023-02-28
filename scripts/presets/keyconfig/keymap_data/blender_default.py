@@ -6326,6 +6326,7 @@ def km_sculpt_mesh_filter_modal_map(_params):
 
     items.extend([
         ("CONFIRM", {"type": 'LEFTMOUSE', "value": 'PRESS', "any": True}, None),
+        ("CONFIRM", {"type": 'LEFTMOUSE', "value": 'RELEASE', "any": True}, None),
         ("CONFIRM", {"type": 'RET', "value": 'RELEASE', "any": True}, None),
         ("CONFIRM", {"type": 'NUMPAD_ENTER', "value": 'RELEASE', "any": True}, None),
 

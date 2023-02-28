@@ -849,7 +849,7 @@ static void sculpt_mesh_filter_end(bContext *C)
   SculptSession *ss = ob->sculpt;
 
   SCULPT_filter_cache_free(ss);
-  SCULPT_undo_push_end(ob);
+  SCULPT_undo_push_end_ex(ob, true);
   SCULPT_flush_update_done(C, ob, SCULPT_UPDATE_COORDS);
 }
 
@@ -895,6 +895,7 @@ static void sculpt_mesh_filter_cancel(bContext *C, wmOperator * /*op*/)
     BKE_pbvh_node_mark_update(node);
   }
 
+  MEM_SAFE_FREE(nodes);
   BKE_pbvh_update_bounds(ss->pbvh, PBVH_UpdateBB);
 }
 
@@ -911,7 +912,6 @@ static int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *
   if (event->type == EVT_MODAL_MAP) {
     int ret = FILTER_MESH_MODAL_CONFIRM;
     switch (event->val) {
-
       case FILTER_MESH_MODAL_CANCEL:
         sculpt_mesh_filter_cancel(C, op);
         ret = OPERATOR_CANCELLED;
@@ -926,7 +926,7 @@ static int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *
     }
 
     sculpt_mesh_filter_end(C);
-    ED_workspace_status_text(C, NULL);  // Clear status bar
+    ED_workspace_status_text(C, nullptr);  /* Clear status bar */
     WM_cursor_modal_restore(CTX_wm_window(C));
 
     return ret;
@@ -1171,8 +1171,8 @@ void SCULPT_OT_mesh_filter(wmOperatorType *ot)
   ot->exec = sculpt_mesh_filter_exec;
   ot->ui = sculpt_mesh_ui_exec;
 
-  // Doesn't seem to actually be called?
-  // Check `sculpt_mesh_filter_modal` to see where it's really called.
+  /* Doesn't seem to actually be called?
+     Check `sculpt_mesh_filter_modal` to see where it's really called. */
   ot->cancel = sculpt_mesh_filter_cancel; 
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_GRAB_CURSOR_X | OPTYPE_BLOCKING | OPTYPE_DEPENDS_ON_CURSOR;
