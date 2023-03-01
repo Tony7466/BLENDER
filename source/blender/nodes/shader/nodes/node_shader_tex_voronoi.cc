@@ -186,10 +186,8 @@ static void node_shader_update_tex_voronoi(bNodeTree *ntree, bNode *node)
       storage.distance == SHD_VORONOI_MINKOWSKI && storage.dimensions != 1 &&
           !ELEM(storage.feature, SHD_VORONOI_DISTANCE_TO_EDGE, SHD_VORONOI_N_SPHERE_RADIUS));
   nodeSetSocketAvailability(ntree, inDetailSock, storage.feature != SHD_VORONOI_N_SPHERE_RADIUS);
-  nodeSetSocketAvailability(ntree,
-                            inRoughnessSock,
-                            storage.feature != SHD_VORONOI_N_SPHERE_RADIUS &&
-                                storage.feature != SHD_VORONOI_DISTANCE_TO_EDGE);
+  nodeSetSocketAvailability(
+      ntree, inRoughnessSock, storage.feature != SHD_VORONOI_N_SPHERE_RADIUS);
   nodeSetSocketAvailability(
       ntree, inLacunaritySock, storage.feature != SHD_VORONOI_N_SPHERE_RADIUS);
   nodeSetSocketAvailability(ntree, inSmoothnessSock, storage.feature == SHD_VORONOI_SMOOTH_F1);
@@ -1180,6 +1178,7 @@ class VoronoiEdgeFunction : public mf::MultiFunction {
     builder.single_input<float>("Scale");
     if (feature == SHD_VORONOI_DISTANCE_TO_EDGE) {
       builder.single_input<float>("Detail");
+      builder.single_input<float>("Roughness");
       builder.single_input<float>("Lacunarity");
     }
     builder.single_input<float>("Randomness");
@@ -1207,6 +1206,9 @@ class VoronoiEdgeFunction : public mf::MultiFunction {
     auto get_detail = [&](int param_index) -> VArray<float> {
       return params.readonly_single_input<float>(param_index, "Detail");
     };
+    auto get_roughness = [&](int param_index) -> VArray<float> {
+      return params.readonly_single_input<float>(param_index, "Roughness");
+    };
     auto get_lacunarity = [&](int param_index) -> VArray<float> {
       return params.readonly_single_input<float>(param_index, "Lacunarity");
     };
@@ -1228,6 +1230,7 @@ class VoronoiEdgeFunction : public mf::MultiFunction {
         switch (feature_) {
           case SHD_VORONOI_DISTANCE_TO_EDGE: {
             const VArray<float> &detail = get_detail(param++);
+            const VArray<float> &roughness = get_roughness(param++);
             const VArray<float> &lacunarity = get_lacunarity(param++);
             const VArray<float> &randomness = get_randomness(param++);
             MutableSpan<float> r_distance = get_r_distance(param++);
