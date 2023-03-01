@@ -266,18 +266,25 @@ void ViewportEngine::viewDraw(BL::Depsgraph &b_depsgraph, BL::Context &b_context
   freeCameraDelegate->SetCamera(gfCamera);
   renderTaskDelegate->SetCameraAndViewport(freeCameraDelegate->GetCameraId(), 
     GfVec4d(viewSettings.border[0], viewSettings.border[1], viewSettings.border[2], viewSettings.border[3]));
+  if (simpleLightTaskDelegate) {
+    simpleLightTaskDelegate->SetCameraPath(freeCameraDelegate->GetCameraId());
+  }
 
   if (!b_engine.bl_use_gpu_context()) {
     renderTaskDelegate->SetRendererAov(HdAovTokens->color);
   }
-  
-  HdTaskSharedPtrVector tasks = renderTaskDelegate->GetTasks();
 
   if (getRendererPercentDone() == 0.0f) {
     timeBegin = chrono::steady_clock::now();
   }
 
   b_engine.bind_display_space_shader(b_scene);
+
+  HdTaskSharedPtrVector tasks;
+  if (simpleLightTaskDelegate) {
+    tasks.push_back(simpleLightTaskDelegate->GetTask());
+  }
+  tasks.push_back(renderTaskDelegate->GetTask());
 
   {
     // Release the GIL before calling into hydra, in case any hydra plugins call into python.

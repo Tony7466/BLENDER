@@ -18,6 +18,7 @@
 
 #include "sceneDelegate/blenderSceneDelegate.h"
 #include "renderTaskDelegate.h"
+#include "simpleLightTaskDelegate.h"
 
 namespace blender::render::hydra {
 
@@ -39,6 +40,7 @@ protected:
   std::unique_ptr<BlenderSceneDelegate> sceneDelegate;
   std::unique_ptr<RenderTaskDelegate> renderTaskDelegate;
   std::unique_ptr<HdxFreeCameraSceneDelegate> freeCameraDelegate;
+  std::unique_ptr<SimpleLightTaskDelegate> simpleLightTaskDelegate;
   std::unique_ptr<HdEngine> engine;
 
   HgiUniquePtr hgi;

@@ -2,6 +2,7 @@
  * Copyright 2011-2022 Blender Foundation */
 
 #include <pxr/imaging/hd/rendererPluginRegistry.h>
+#include <pxr/imaging/hdSt/renderDelegate.h>
 #include <pxr/imaging/hgi/tokens.h>
 #include <pxr/base/plug/plugin.h>
 #include <pxr/base/plug/registry.h>
@@ -38,6 +39,10 @@ Engine::Engine(BL::RenderEngine &b_engine, const std::string &delegateId)
     renderIndex.get(), SdfPath::AbsoluteRootPath().AppendElementString("freeCamera"));
   renderTaskDelegate = std::make_unique<RenderTaskDelegate>(
     renderIndex.get(), SdfPath::AbsoluteRootPath().AppendElementString("renderTask"));
+  if (renderDelegate->GetRendererDisplayName() == "GL") {
+    simpleLightTaskDelegate = std::make_unique<SimpleLightTaskDelegate>(
+        renderIndex.get(), SdfPath::AbsoluteRootPath().AppendElementString("simpleLightTask"));
+  }
 
   engine = std::make_unique<HdEngine>();
 }
@@ -47,6 +52,7 @@ Engine::~Engine()
   sceneDelegate = nullptr;
   renderTaskDelegate = nullptr;
   freeCameraDelegate = nullptr;
+  simpleLightTaskDelegate = nullptr;
   renderIndex = nullptr;
   renderDelegate = nullptr;
   engine = nullptr;

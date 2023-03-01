@@ -20,6 +20,9 @@ RenderTaskDelegate::RenderTaskDelegate(HdRenderIndex* parentIndex, SdfPath const
   GetRenderIndex().InsertTask<HdxRenderTask>(this, renderTaskId);
   GetRenderIndex().GetChangeTracker().MarkTaskDirty(renderTaskId, HdChangeTracker::DirtyCollection);
   GetRenderIndex().GetChangeTracker().MarkTaskDirty(renderTaskId, HdChangeTracker::DirtyRenderTags);
+
+  taskParams.enableLighting = true;
+  taskParams.alphaThreshold = 0.1f;
 }
 
 SdfPath RenderTaskDelegate::GetTaskID() const
@@ -103,10 +106,9 @@ void RenderTaskDelegate::GetRendererAovData(TfToken const &aov, void *data)
   buffer->Unmap();
 }
 
-HdTaskSharedPtrVector RenderTaskDelegate::GetTasks()
+HdTaskSharedPtr RenderTaskDelegate::GetTask()
 {
-  HdTaskSharedPtr renderTask = GetRenderIndex().GetTask(GetTaskID());
-  return { renderTask };
+  return GetRenderIndex().GetTask(GetTaskID());
 }
 
 void RenderTaskDelegate::SetCameraAndViewport(SdfPath const &cameraId, GfVec4d const &viewport)

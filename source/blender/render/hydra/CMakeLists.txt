@@ -59,6 +59,8 @@ set(SRC
 
   renderTaskDelegate.cc
   renderTaskDelegate.h
+  simpleLightTaskDelegate.cc
+  simpleLightTaskDelegate.h
 
   sceneDelegate/blenderSceneDelegate.h
   sceneDelegate/blenderSceneDelegate.cc

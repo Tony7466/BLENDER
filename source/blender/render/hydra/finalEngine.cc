@@ -48,8 +48,15 @@ void FinalEngine::render(BL::Depsgraph &b_depsgraph)
   freeCameraDelegate->SetCamera(gfCamera);
   renderTaskDelegate->SetCameraAndViewport(freeCameraDelegate->GetCameraId(), GfVec4d(0, 0, buffer_res[0], buffer_res[1]));
   renderTaskDelegate->SetRendererAov(HdAovTokens->color);
-  
-  HdTaskSharedPtrVector tasks = renderTaskDelegate->GetTasks();
+  if (simpleLightTaskDelegate) {
+    simpleLightTaskDelegate->SetCameraPath(freeCameraDelegate->GetCameraId());
+  }
+
+  HdTaskSharedPtrVector tasks;
+  if (simpleLightTaskDelegate) {
+    tasks.push_back(simpleLightTaskDelegate->GetTask());
+  }
+  tasks.push_back(renderTaskDelegate->GetTask());
 
   chrono::time_point<chrono::steady_clock> timeBegin = chrono::steady_clock::now(), timeCurrent;
   chrono::milliseconds elapsedTime;
@@ -132,8 +139,17 @@ void FinalEngineGL::render(BL::Depsgraph &b_depsgraph)
   GfCamera gfCamera = CameraData((Object *)b_scene.camera().ptr.data, res, GfVec4f(0, 0, 1, 1)).gf_camera();
   freeCameraDelegate->SetCamera(gfCamera);
   renderTaskDelegate->SetCameraAndViewport(freeCameraDelegate->GetCameraId(), GfVec4d(0, 0, res[0], res[1]));
+  if (simpleLightTaskDelegate) {
+    simpleLightTaskDelegate->SetCameraPath(freeCameraDelegate->GetCameraId());
+  }
 
-  HdTaskSharedPtrVector tasks = renderTaskDelegate->GetTasks();
+  HdTaskSharedPtrVector tasks;
+  if (simpleLightTaskDelegate) {
+    /* TODO: Uncomment this and fix GL error:
+         invalid operation, reported from void __cdecl pxrInternal_v0_22__pxrReserved__::HgiGLResourceBindings::BindResources(void) */
+    // tasks.push_back(simpleLightTaskDelegate->GetTask());
+  }
+  tasks.push_back(renderTaskDelegate->GetTask());
 
   chrono::time_point<chrono::steady_clock> timeBegin = chrono::steady_clock::now(), timeCurrent;
   chrono::milliseconds elapsedTime;

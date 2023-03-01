@@ -28,7 +28,7 @@ public:
   HdRenderBuffer *GetRendererAov(TfToken const &id);
   void GetRendererAovData(TfToken const &id, void *buf);
 
-  HdTaskSharedPtrVector GetTasks();
+  HdTaskSharedPtr GetTask();
   void SetCameraAndViewport(SdfPath const &cameraId, GfVec4d const &viewport);
 
 private:
