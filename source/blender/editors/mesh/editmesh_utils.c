@@ -294,7 +294,7 @@ void EDBM_mesh_load_ex(Main *bmain, Object *ob, bool free_data)
   Mesh *me = ob->data;
   BMesh *bm = me->edit_mesh->bm;
 
-  /* Workaround for T42360, 'ob->shapenr' should be 1 in this case.
+  /* Workaround for #42360, 'ob->shapenr' should be 1 in this case.
    * however this isn't synchronized between objects at the moment. */
   if (UNLIKELY((ob->shapenr == 0) && (me->key && !BLI_listbase_is_empty(&me->key->block)))) {
     bm->shapenr = 1;
@@ -444,19 +444,19 @@ void EDBM_flag_enable_all(BMEditMesh *em, const char hflag)
 /** \name UV Vertex Map API
  * \{ */
 
-UvVertMap *BM_uv_vert_map_create(BMesh *bm, const bool use_select, const bool use_winding)
+UvVertMap *BM_uv_vert_map_create(BMesh *bm, const bool use_select)
 {
+  /* NOTE: delimiting on alternate face-winding was once supported and could be useful
+   * in some cases. If this is need see: D17137 to restore support. */
   BMVert *ev;
   BMFace *efa;
   BMLoop *l;
   BMIter iter, liter;
   uint a;
   const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_PROP_FLOAT2);
-  BLI_buffer_declare_static(vec2f, tf_uv_buf, BLI_BUFFER_NOP, BM_DEFAULT_NGON_STACK_SIZE);
 
   BM_mesh_elem_index_ensure(bm, BM_VERT | BM_FACE);
 
-  const int totfaces = bm->totface;
   const int totverts = bm->totvert;
   int totuv = 0;
 
@@ -478,11 +478,6 @@ UvVertMap *BM_uv_vert_map_create(BMesh *bm, const bool use_select, const bool us
   vmap->vert = (UvMapVert **)MEM_callocN(sizeof(*vmap->vert) * totverts, "UvMapVert_pt");
   UvMapVert *buf = vmap->buf = (UvMapVert *)MEM_callocN(sizeof(*vmap->buf) * totuv, "UvMapVert");
 
-  bool *winding = NULL;
-  if (use_winding) {
-    winding = MEM_callocN(sizeof(*winding) * totfaces, "winding");
-  }
-
   if (!vmap->vert || !vmap->buf) {
     BKE_mesh_uv_vert_map_free(vmap);
     return NULL;
@@ -490,12 +485,6 @@ UvVertMap *BM_uv_vert_map_create(BMesh *bm, const bool use_select, const bool us
 
   BM_ITER_MESH_INDEX (efa, &iter, bm, BM_FACES_OF_MESH, a) {
     if ((use_select == false) || BM_elem_flag_test(efa, BM_ELEM_SELECT)) {
-      float(*tf_uv)[2] = NULL;
-
-      if (use_winding) {
-        tf_uv = (float(*)[2])BLI_buffer_reinit_data(&tf_uv_buf, vec2f, efa->len);
-      }
-
       int i;
       BM_ITER_ELEM_INDEX (l, &liter, efa, BM_LOOPS_OF_FACE, i) {
         buf->loop_of_poly_index = i;
@@ -505,15 +494,6 @@ UvVertMap *BM_uv_vert_map_create(BMesh *bm, const bool use_select, const bool us
         buf->next = vmap->vert[BM_elem_index_get(l->v)];
         vmap->vert[BM_elem_index_get(l->v)] = buf;
         buf++;
-
-        if (use_winding) {
-          const float(*luv)[2] = BM_ELEM_CD_GET_FLOAT2_P(l, cd_loop_uv_offset);
-          copy_v2_v2(tf_uv[i], *luv);
-        }
-      }
-
-      if (use_winding) {
-        winding[a] = cross_poly_v2(tf_uv, efa->len) > 0;
       }
     }
   }
@@ -544,8 +524,7 @@ UvVertMap *BM_uv_vert_map_create(BMesh *bm, const bool use_select, const bool us
         l = BM_iter_at_index(bm, BM_LOOPS_OF_FACE, efa, iterv->loop_of_poly_index);
         uv2 = BM_ELEM_CD_GET_FLOAT_P(l, cd_loop_uv_offset);
 
-        if (compare_v2v2(uv2, uv, STD_UV_CONNECT_LIMIT) &&
-            (!use_winding || winding[iterv->poly_index] == winding[v->poly_index])) {
+        if (compare_v2v2(uv2, uv, STD_UV_CONNECT_LIMIT)) {
           if (lastv) {
             lastv->next = next;
           }
@@ -567,12 +546,6 @@ UvVertMap *BM_uv_vert_map_create(BMesh *bm, const bool use_select, const bool us
 
     vmap->vert[a] = newvlist;
   }
-
-  if (use_winding) {
-    MEM_freeN(winding);
-  }
-
-  BLI_buffer_free(&tf_uv_buf);
 
   return vmap;
 }
@@ -985,7 +958,7 @@ static bool seam_connected(BMLoop *loop_a, BMLoop *loop_b, GSet *visited, int cd
       loop_a->e, luv_anchor, luv_next_fan, loop_b, visited, cd_loop_uv_offset);
   if (!result) {
     /* Search around `loop_a` in the opposite direction, as one of the edges may be delimited by
-     * a boundary, seam or disjoint UV, or itself be one of these. See: T103670, T103787. */
+     * a boundary, seam or disjoint UV, or itself be one of these. See: #103670, #103787. */
     const float *luv_prev_fan = BM_ELEM_CD_GET_FLOAT_P(loop_a->prev, cd_loop_uv_offset);
     result = seam_connected_recursive(
         loop_a->prev->e, luv_anchor, luv_prev_fan, loop_b, visited, cd_loop_uv_offset);
@@ -1007,7 +980,6 @@ UvElementMap *BM_uv_element_map_create(BMesh *bm,
   BMVert *ev;
   BMFace *efa;
   BMIter iter, liter;
-  BLI_buffer_declare_static(vec2f, tf_uv_buf, BLI_BUFFER_NOP, BM_DEFAULT_NGON_STACK_SIZE);
 
   const BMUVOffsets offsets = BM_uv_map_get_offsets(bm);
   if (offsets.uv < 0) {
@@ -1065,12 +1037,6 @@ UvElementMap *BM_uv_element_map_create(BMesh *bm,
       continue;
     }
 
-    float(*tf_uv)[2] = NULL;
-
-    if (use_winding) {
-      tf_uv = (float(*)[2])BLI_buffer_reinit_data(&tf_uv_buf, vec2f, efa->len);
-    }
-
     int i;
     BMLoop *l;
     BM_ITER_ELEM_INDEX (l, &liter, efa, BM_LOOPS_OF_FACE, i) {
@@ -1086,19 +1052,13 @@ UvElementMap *BM_uv_element_map_create(BMesh *bm,
       buf->next = element_map->vertex[BM_elem_index_get(l->v)];
       element_map->vertex[BM_elem_index_get(l->v)] = buf;
 
-      if (use_winding) {
-        const float *uv = BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv);
-        copy_v2_v2(tf_uv[i], uv);
-      }
-
       buf++;
     }
 
     if (winding) {
-      winding[j] = cross_poly_v2(tf_uv, efa->len) > 0;
+      winding[j] = BM_face_calc_area_uv_signed(efa, offsets.uv) > 0;
     }
   }
-  BLI_buffer_free(&tf_uv_buf);
 
   GSet *seam_visited_gset = use_seams ? BLI_gset_ptr_new(__func__) : NULL;
 
@@ -1468,7 +1428,7 @@ BMEdge *EDBM_verts_mirror_get_edge(BMEditMesh *em, BMEdge *e)
   BMVert *v1_mirr, *v2_mirr;
   if ((v1_mirr = EDBM_verts_mirror_get(em, e->v1)) &&
       (v2_mirr = EDBM_verts_mirror_get(em, e->v2)) &&
-      /* While highly unlikely, a zero length central edges vertices can match, see T89342. */
+      /* While highly unlikely, a zero length central edges vertices can match, see #89342. */
       LIKELY(v1_mirr != v2_mirr)) {
     return BM_edge_exists(v1_mirr, v2_mirr);
   }
@@ -1711,7 +1671,7 @@ void EDBM_update(Mesh *mesh, const struct EDBMUpdate_Params *params)
   }
 
   if (params->is_destructive) {
-    /* TODO(@campbellbarton): we may be able to remove this now! */
+    /* TODO(@ideasman42): we may be able to remove this now! */
     // BM_mesh_elem_table_free(em->bm, BM_ALL_NOLOOP);
   }
   else {
@@ -1964,31 +1924,40 @@ void EDBM_project_snap_verts(
 
   ED_view3d_init_mats_rv3d(obedit, region->regiondata);
 
-  struct SnapObjectContext *snap_context = ED_transform_snap_object_context_create(
-      CTX_data_scene(C), 0);
+  Scene *scene = CTX_data_scene(C);
+  struct SnapObjectContext *snap_context = ED_transform_snap_object_context_create(scene, 0);
+
+  eSnapTargetOP target_op = SCE_SNAP_TARGET_NOT_ACTIVE;
+  const int snap_flag = scene->toolsettings->snap_flag;
+
+  SET_FLAG_FROM_TEST(
+      target_op, !(snap_flag & SCE_SNAP_TO_INCLUDE_EDITED), SCE_SNAP_TARGET_NOT_EDITED);
+  SET_FLAG_FROM_TEST(
+      target_op, !(snap_flag & SCE_SNAP_TO_INCLUDE_NONEDITED), SCE_SNAP_TARGET_NOT_NONEDITED);
+  SET_FLAG_FROM_TEST(
+      target_op, (snap_flag & SCE_SNAP_TO_ONLY_SELECTABLE), SCE_SNAP_TARGET_ONLY_SELECTABLE);
 
   BM_ITER_MESH (eve, &iter, em->bm, BM_VERTS_OF_MESH) {
     if (BM_elem_flag_test(eve, BM_ELEM_SELECT)) {
       float mval[2], co_proj[3];
       if (ED_view3d_project_float_object(region, eve->co, mval, V3D_PROJ_TEST_NOP) ==
           V3D_PROJ_RET_OK) {
-        if (ED_transform_snap_object_project_view3d(
-                snap_context,
-                depsgraph,
-                region,
-                CTX_wm_view3d(C),
-                SCE_SNAP_MODE_FACE_RAYCAST,
-                &(const struct SnapObjectParams){
-                    .snap_target_select = SCE_SNAP_TARGET_NOT_ACTIVE,
-                    .edit_mode_type = SNAP_GEOM_FINAL,
-                    .use_occlusion_test = true,
-                },
-                NULL,
-                mval,
-                NULL,
-                NULL,
-                co_proj,
-                NULL)) {
+        if (ED_transform_snap_object_project_view3d(snap_context,
+                                                    depsgraph,
+                                                    region,
+                                                    CTX_wm_view3d(C),
+                                                    SCE_SNAP_MODE_FACE_RAYCAST,
+                                                    &(const struct SnapObjectParams){
+                                                        .snap_target_select = target_op,
+                                                        .edit_mode_type = SNAP_GEOM_FINAL,
+                                                        .use_occlusion_test = true,
+                                                    },
+                                                    NULL,
+                                                    mval,
+                                                    NULL,
+                                                    NULL,
+                                                    co_proj,
+                                                    NULL)) {
           mul_v3_m4v3(eve->co, obedit->world_to_object, co_proj);
         }
       }

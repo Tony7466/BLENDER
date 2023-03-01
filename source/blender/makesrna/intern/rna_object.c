@@ -770,7 +770,7 @@ static void rna_Object_dup_collection_set(PointerRNA *ptr,
   Collection *grp = (Collection *)value.data;
 
   /* Must not let this be set if the object belongs in this group already,
-   * thus causing a cycle/infinite-recursion leading to crashes on load T25298. */
+   * thus causing a cycle/infinite-recursion leading to crashes on load #25298. */
   if (BKE_collection_has_object_recursive(grp, ob) == 0) {
     if (ob->type == OB_EMPTY) {
       id_us_min(&ob->instance_collection->id);
@@ -1759,8 +1759,7 @@ static void rna_Object_modifier_clear(Object *object, bContext *C)
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER | NA_REMOVED, object);
 }
 
-static void rna_Object_modifier_move(
-    Object *object, Main *bmain, ReportList *reports, int from, int to)
+static void rna_Object_modifier_move(Object *object, ReportList *reports, int from, int to)
 {
   ModifierData *md = BLI_findlink(&object->modifiers, from);
 
@@ -2374,14 +2373,14 @@ static void rna_def_vertex_group(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Name", "Vertex group name");
   RNA_def_struct_name_property(srna, prop);
   RNA_def_property_string_funcs(prop, NULL, NULL, "rna_VertexGroup_name_set");
-  /* update data because modifiers may use T24761. */
+  /* update data because modifiers may use #24761. */
   RNA_def_property_update(
       prop, NC_GEOM | ND_DATA | NA_RENAME, "rna_Object_internal_update_data_dependency");
 
   prop = RNA_def_property(srna, "lock_weight", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(prop, "", "Maintain the relative weights for the group");
   RNA_def_property_boolean_sdna(prop, NULL, "flag", 0);
-  /* update data because modifiers may use T24761. */
+  /* update data because modifiers may use #24761. */
   RNA_def_property_update(prop, NC_GEOM | ND_DATA | NA_RENAME, "rna_Object_internal_update_data");
 
   prop = RNA_def_property(srna, "index", PROP_INT, PROP_UNSIGNED);
@@ -2434,7 +2433,7 @@ static void rna_def_face_map(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Name", "Face map name");
   RNA_def_struct_name_property(srna, prop);
   RNA_def_property_string_funcs(prop, NULL, NULL, "rna_FaceMap_name_set");
-  /* update data because modifiers may use T24761. */
+  /* update data because modifiers may use #24761. */
   RNA_def_property_update(prop, NC_GEOM | ND_DATA | NA_RENAME, "rna_Object_internal_update_data");
 
   prop = RNA_def_property(srna, "select", PROP_BOOLEAN, PROP_NONE);
@@ -2651,7 +2650,7 @@ static void rna_def_object_modifiers(BlenderRNA *brna, PropertyRNA *cprop)
   /* move a modifier */
   func = RNA_def_function(srna, "move", "rna_Object_modifier_move");
   RNA_def_function_ui_description(func, "Move a modifier to a different position");
-  RNA_def_function_flag(func, FUNC_USE_MAIN | FUNC_USE_REPORTS);
+  RNA_def_function_flag(func, FUNC_USE_REPORTS);
   parm = RNA_def_int(
       func, "from_index", -1, INT_MIN, INT_MAX, "From Index", "Index to move", 0, 10000);
   RNA_def_parameter_flags(parm, 0, PARM_REQUIRED);

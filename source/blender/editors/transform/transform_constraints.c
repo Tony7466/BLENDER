@@ -34,6 +34,7 @@
 #include "UI_resources.h"
 
 #include "transform.h"
+#include "transform_gizmo.h"
 #include "transform_orientations.h"
 #include "transform_snap.h"
 
@@ -421,7 +422,7 @@ static void applyAxisConstraintVec(const TransInfo *t,
             constraint_snap_plane_to_edge(t, plane, out);
           }
           else if (is_snap_to_face) {
-            /* Disabled, as it has not proven to be really useful. (See T82386). */
+            /* Disabled, as it has not proven to be really useful. (See #82386). */
             // constraint_snap_plane_to_face(t, plane, out);
           }
           else if (!isPlaneProjectionViewAligned(t, plane)) {
@@ -734,6 +735,61 @@ void setUserConstraint(TransInfo *t, int mode, const char text_[])
 /* -------------------------------------------------------------------- */
 /** \name Drawing Constraints
  * \{ */
+
+static void drawLine(
+    TransInfo *t, const float center[3], const float dir[3], char axis, short options)
+{
+  if (!ELEM(t->spacetype, SPACE_VIEW3D, SPACE_SEQ)) {
+    return;
+  }
+
+  float v1[3], v2[3], v3[3];
+  uchar col[3], col2[3];
+
+  if (t->spacetype == SPACE_VIEW3D) {
+    View3D *v3d = t->view;
+
+    copy_v3_v3(v3, dir);
+    mul_v3_fl(v3, v3d->clip_end);
+
+    sub_v3_v3v3(v2, center, v3);
+    add_v3_v3v3(v1, center, v3);
+  }
+  else if (t->spacetype == SPACE_SEQ) {
+    View2D *v2d = t->view;
+
+    copy_v3_v3(v3, dir);
+    float max_dist = max_ff(BLI_rctf_size_x(&v2d->cur), BLI_rctf_size_y(&v2d->cur));
+    mul_v3_fl(v3, max_dist);
+
+    sub_v3_v3v3(v2, center, v3);
+    add_v3_v3v3(v1, center, v3);
+  }
+
+  GPU_matrix_push();
+
+  if (options & DRAWLIGHT) {
+    col[0] = col[1] = col[2] = 220;
+  }
+  else {
+    UI_GetThemeColor3ubv(TH_GRID, col);
+  }
+  UI_make_axis_color(col, col2, axis);
+
+  uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+
+  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+  immUniformColor3ubv(col2);
+
+  immBegin(GPU_PRIM_LINES, 2);
+  immVertex3fv(pos, v1);
+  immVertex3fv(pos, v2);
+  immEnd();
+
+  immUnbindProgram();
+
+  GPU_matrix_pop();
+}
 
 void drawConstraint(TransInfo *t)
 {
@@ -1110,6 +1166,7 @@ void setNearestAxis(TransInfo *t)
 
   if (mode_prev != t->con.mode) {
     projection_matrix_calc(t, t->con.pmtx);
+    transform_gizmo_3d_model_from_constraint_and_mode_set(t);
   }
 }
 
