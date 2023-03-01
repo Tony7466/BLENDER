@@ -4185,7 +4185,7 @@ void GEO_uv_parametrizer_pack(ParamHandle *handle,
     pack_island->bounds_rect.ymax = maxv[1];
   }
 
-  UVPackIsland_Params params;
+  UVPackIsland_Params params{};
   params.rotate = do_rotate;
   params.only_selected_uvs = false;
   params.only_selected_faces = false;
