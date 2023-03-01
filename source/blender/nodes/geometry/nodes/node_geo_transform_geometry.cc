@@ -6,6 +6,7 @@
 
 #include "BLI_math_matrix.hh"
 #include "BLI_math_matrix_types.hh"
+#include "BLI_task.hh"
 
 #include "DNA_mesh_types.h"
 #include "DNA_pointcloud_types.h"
@@ -57,14 +58,14 @@ static void translate_mesh(Mesh &mesh, const float3 translation)
 {
   if (!math::is_zero(translation)) {
     translate_positions(mesh.vert_positions_for_write(), translation);
-    BKE_mesh_tag_coords_changed_uniformly(&mesh);
+    BKE_mesh_tag_positions_changed_uniformly(&mesh);
   }
 }
 
 static void transform_mesh(Mesh &mesh, const float4x4 &transform)
 {
   transform_positions(mesh.vert_positions_for_write(), transform);
-  BKE_mesh_tag_coords_changed(&mesh);
+  BKE_mesh_tag_positions_changed(&mesh);
 }
 
 static void translate_pointcloud(PointCloud &pointcloud, const float3 translation)
