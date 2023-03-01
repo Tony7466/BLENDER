@@ -1,4 +1,4 @@
 Referenced by pull request #105297, Cleanup: Mesh: Access looptris with Span
 Referenced by commit eb68334b58d22e325af8c23f064ab63fe3272cbc, Cleanup: Mesh: Access looptris with Span
 Referenced by commit 62c6eb12bf7762b2205af7da854a3d83c22a7eb4, Fix #105165: Weighted normal modifier crash after recent cleanup
-Referenced by issue #105331, Blender close when I open a file
+Referenced by issue #105331, Regression: Crash when opening file
