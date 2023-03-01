@@ -992,6 +992,18 @@ if(WITH_VULKAN_BACKEND)
     message(WARNING "Vulkan SDK was not found, disabling WITH_VULKAN_BACKEND")
     set(WITH_VULKAN_BACKEND OFF)
   endif()
+
+  if(EXISTS ${LIBDIR}/shaderc)
+    set(SHADERC_FOUND On)
+    set(SHADERC_ROOT_DIR ${LIBDIR}/shaderc)
+    set(SHADERC_INCLUDE_DIR ${LIBDIR}/shaderc/include)
+    set(SHADERC_INCLUDE_DIRS ${SHADERC_INCLUDE_DIR})
+    set(SHADERC_LIBRARY  optimized ${LIBDIR}/shaderc/Lib/shaderc_shared.lib debug ${LIBDIR}/shaderc/Lib/shaderc_shared_d.lib)
+    set(SHADERC_LIBRARIES ${SHADERC_LIBRARY})
+  else()
+    message(ERROR "shaderc was not found, disabling WITH_VULKAN_BACKEND")
+  endif()
+
 endif()
 
 if(WITH_CYCLES AND WITH_CYCLES_PATH_GUIDING)
