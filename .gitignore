@@ -65,3 +65,6 @@ waveletNoiseTile.bin
 /release/datafiles/locale/
 /release/scripts/addons_contrib/
 /source/tools/
+
+#vulkan-debuggingtools
+CMakeSettings.json
