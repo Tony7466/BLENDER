@@ -1310,9 +1310,6 @@ void ED_uvedit_live_unwrap_end(short cancel)
 #define PINCH 0
 #define FAN 1
 
-#define SEAM_IGNORE 0
-#define SEAM_RESPECT 1
-
 static void uv_map_transform_calc_bounds(BMEditMesh *em, float r_min[3], float r_max[3])
 {
   BMFace *efa;
@@ -2802,50 +2799,77 @@ static void uv_map_mirror(BMFace *efa,
   }
 }
 
+/** Store a face and it's current branch on the generalized atan2 function.
+ *
+ * In complex analysis, we can generalize the arctangent function
+ * into a multi-valued function that is "almost everywhere continuous"
+ * in the complex plane.
+ *
+ * The downside is that we need to keep track of which "branch" of the
+ * multi-valued function we are currently on.
+ *
+ * \note Even though atan2(a+bi, c+di) is now (multiply) defined for all
+ * complex inputs, we will only evaluate it with `b==0` and `d==0`.
+ */
+
+struct uv_face_branch {
+  BMFace *efa;
+  float branch;
+};
+
+/** Compute the sphere projection for a BMFace using #map_to_sphere and store on BMLoops.
+ *
+ * Heuristics are used in #uv_map_mirror to improve winding.
+ *
+ * if `fan` is true, faces with UVs at the pole have corrections appled to fan the UVs.
+ *
+ * if `use_seams` is true, the unwrapping will flood fill across the mesh, using
+ * seams to mark boundaries, and #BM_ELEM_TAG to prevent revisiting faces.
+ */
 static float uv_sphere_project(const Scene *scene,
                                BMesh *bm,
-                               BMFace *efa,
+                               BMFace *efa_init,
                                const float center[3],
                                const float rotmat[3][3],
                                const bool fan,
                                const BMUVOffsets offsets,
                                const bool only_selected_uvs,
                                const bool use_seams,
-                               float branch)
+                               const float branch_init)
 {
   float max_u = 0.0f;
-  if (BM_elem_flag_test(efa, BM_ELEM_TAG)) {
+  if (BM_elem_flag_test(efa_init, BM_ELEM_TAG)) {
     return max_u;
   }
 
-  blender::Vector<BMFace *> consider_stack;
-  blender::Vector<float> branch_stack;
-  consider_stack.append(efa);
-  branch_stack.append(branch);
+  /* Similar to BM_mesh_calc_face_groups with added connectivity information. */
+  blender::Vector<uv_face_branch> stack;
+  stack.append({efa_init, branch_init});
 
-  while (consider_stack.size()) {
-    efa = consider_stack.pop_last();
-    branch = branch_stack.pop_last();
+  while (stack.size()) {
+    uv_face_branch face_branch = stack.pop_last();
+    BMFace *efa = face_branch.efa;
 
     if (use_seams) {
       if (BM_elem_flag_test(efa, BM_ELEM_TAG)) {
-        continue; /* Faces can be in the stack more than once. */
+        continue; /* Faces might be in the stack more than once. */
       }
 
       BM_elem_flag_set(efa, BM_ELEM_TAG, true); /* Visited, don't consider again. */
     }
 
     if (!BM_elem_flag_test(efa, BM_ELEM_SELECT)) {
-      continue;
+      continue; /* Unselected face, ignore. */
     }
 
     if (only_selected_uvs) {
       if (!uvedit_face_select_test(scene, efa, offsets)) {
         uvedit_face_select_disable(scene, bm, efa, offsets);
-        continue;
+        continue; /* Unselected UV, ignore. */
       }
     }
 
+    /* Remember which UVs are at the pole. */
     blender::Array<bool, BM_DEFAULT_NGON_STACK_SIZE> regular(efa->len);
 
     int i;
@@ -2862,20 +2886,20 @@ static float uv_sphere_project(const Scene *scene,
       }
 
       /* Move UV to correct branch. */
-      luv[0] = luv[0] + ceilf(branch - 0.5f - luv[0]);
+      luv[0] = luv[0] + ceilf(face_branch.branch - 0.5f - luv[0]);
       max_u = max_ff(max_u, luv[0]);
 
       BMEdge *edge = l->e;
       if (BM_elem_flag_test(edge, BM_ELEM_SEAM)) {
-        continue; /* Seam? Don't spread. */
+        continue; /* Stop flood fill at seams. */
       }
 
+      /* Extend flood fill by pushing to stack. */
       BMFace *efa2;
       BMIter iter2;
       BM_ITER_ELEM (efa2, &iter2, edge, BM_FACES_OF_EDGE) {
         if (!BM_elem_flag_test(efa2, BM_ELEM_TAG)) {
-          consider_stack.append(efa2);
-          branch_stack.append(luv[0]);
+          stack.append({efa2, luv[0]});
         }
       }
     }
@@ -2925,9 +2949,7 @@ static int sphere_project_exec(bContext *C, wmOperator *op)
     const bool use_seams = RNA_boolean_get(op->ptr, "seam");
 
     if (use_seams) {
-      BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
-        BM_elem_flag_set(efa, BM_ELEM_TAG, false);
-      }
+      BM_mesh_elem_hflag_disable_all(em->bm, BM_FACE, BM_ELEM_TAG, false);
     }
 
     float island_offset = 0.0f;
@@ -2980,45 +3002,55 @@ void UV_OT_sphere_project(wmOperatorType *ot)
 /** \name Cylinder UV Project Operator
  * \{ */
 
+/* See #uv_sphere_project for description of parameters. */
 static float uv_cylinder_project(const Scene *scene,
                                  BMesh *bm,
-                                 BMFace *efa,
+                                 BMFace *efa_init,
                                  const float center[3],
                                  const float rotmat[3][3],
                                  const bool fan,
                                  const BMUVOffsets offsets,
                                  const bool only_selected_uvs,
                                  const bool use_seams,
-                                 float branch)
+                                 const float branch_init)
 {
   float max_u = 0.0f;
-  if (BM_elem_flag_test(efa, BM_ELEM_TAG)) {
+  if (BM_elem_flag_test(efa_init, BM_ELEM_TAG)) {
     return max_u;
   }
-  blender::Vector<BMFace *> consider_stack;
-  blender::Vector<float> branch_stack;
-  consider_stack.append(efa);
-  branch_stack.append(branch);
-  while (consider_stack.size()) {
-    efa = consider_stack.pop_last();
-    branch = branch_stack.pop_last();
+
+  /* Similar to BM_mesh_calc_face_groups with added connectivity information. */
+
+  blender::Vector<uv_face_branch> stack;
+
+  stack.append({efa_init, branch_init});
+
+  while (stack.size()) {
+    uv_face_branch face_branch = stack.pop_last();
+    BMFace *efa = face_branch.efa;
 
     if (use_seams) {
       if (BM_elem_flag_test(efa, BM_ELEM_TAG)) {
-        continue; /* Faces can be in the stack more than once. */
+        continue; /* Faces might be in the stack more than once. */
       }
 
       BM_elem_flag_set(efa, BM_ELEM_TAG, true); /* Visited, don't consider again. */
     }
 
+    if (!BM_elem_flag_test(efa, BM_ELEM_SELECT)) {
+      continue; /* Unselected face, ignore. */
+    }
+
     if (only_selected_uvs) {
       if (!uvedit_face_select_test(scene, efa, offsets)) {
         uvedit_face_select_disable(scene, bm, efa, offsets);
-        continue;
+        continue; /* Unselected UV, ignore. */
       }
     }
 
+    /* Remember which UVs are at the pole. */
     blender::Array<bool, BM_DEFAULT_NGON_STACK_SIZE> regular(efa->len);
+
     int i;
     BMLoop *l;
     BMIter iter;
@@ -3032,27 +3064,22 @@ static float uv_cylinder_project(const Scene *scene,
       if (!use_seams) {
         continue; /* Nothing more to do. */
       }
+
       /* Move UV to correct branch. */
-      luv[0] = luv[0] + ceilf(branch - 0.5f - luv[0]);
+      luv[0] = luv[0] + ceilf(face_branch.branch - 0.5f - luv[0]);
       max_u = max_ff(max_u, luv[0]);
 
       BMEdge *edge = l->e;
       if (BM_elem_flag_test(edge, BM_ELEM_SEAM)) {
-        continue; /* Seam? Don't spread. */
+        continue; /* Stop flood fill at seams. */
       }
 
-      if (only_selected_uvs) {
-        if (!uvedit_face_select_test(scene, efa, offsets)) {
-          uvedit_face_select_disable(scene, bm, efa, offsets);
-          continue;
-        }
-      }
+      /* Extend flood fill by pushing to stack. */
       BMFace *efa2;
       BMIter iter2;
       BM_ITER_ELEM (efa2, &iter2, edge, BM_FACES_OF_EDGE) {
         if (!BM_elem_flag_test(efa2, BM_ELEM_TAG)) {
-          consider_stack.append(efa2);
-          branch_stack.append(luv[0]);
+          stack.append({efa2, luv[0]});
         }
       }
     }
@@ -3103,9 +3130,7 @@ static int cylinder_project_exec(bContext *C, wmOperator *op)
     const bool use_seams = RNA_boolean_get(op->ptr, "seam");
 
     if (use_seams) {
-      BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
-        BM_elem_flag_set(efa, BM_ELEM_TAG, false);
-      }
+      BM_mesh_elem_hflag_disable_all(em->bm, BM_FACE, BM_ELEM_TAG, false);
     }
 
     float island_offset = 0.0f;
