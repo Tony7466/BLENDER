@@ -66,4 +66,9 @@ waveletNoiseTile.bin
 /release/scripts/addons_contrib/
 /source/tools/
 
+<<<<<<< HEAD
 CMakeSettings.json
+=======
+#vulkan-debuggingtools
+CMakeSettings.json
+>>>>>>> shaderc-conf
