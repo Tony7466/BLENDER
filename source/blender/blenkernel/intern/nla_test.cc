@@ -148,16 +148,16 @@ TEST(nla_track, BKE_nlatrack_new_head)
 TEST(nla_track, BKE_nlatrack_insert_before)
 {
   AnimData adt{};
-  NlaTrack *trackA = BKE_nlatrack_new(true);
-  NlaTrack *trackB = BKE_nlatrack_new(true);
-  NlaTrack *trackC = BKE_nlatrack_new(false);
+  NlaTrack *trackA = BKE_nlatrack_new();
+  NlaTrack *trackB = BKE_nlatrack_new();
+  NlaTrack *trackC = BKE_nlatrack_new();
   // NlaTrack *trackD = BKE_nlatrack_new(false);
 
-  BKE_nlatrack_insert_before(&adt.nla_tracks, NULL, trackA);
-  BKE_nlatrack_insert_before(&adt.nla_tracks, trackA, trackB);
+  BKE_nlatrack_insert_before(&adt.nla_tracks, NULL, trackA, true);
+  BKE_nlatrack_insert_before(&adt.nla_tracks, trackA, trackB, true);
 
   // Since Track C isn't library override, it'll get inserted after A
-  BKE_nlatrack_insert_before(&adt.nla_tracks, trackA, trackC);
+  BKE_nlatrack_insert_before(&adt.nla_tracks, trackA, trackC, false);
   // BKE_nlatrack_insert_before(&adt.nla_tracks, trackC, trackD);
 
   // Expect B -> A -> C ordering. 
@@ -172,19 +172,5 @@ TEST(nla_track, BKE_nlatrack_insert_before)
   // BKE_nlatrack_remove_and_free(&adt.nla_tracks, trackD, false);
 }
 
-TEST(nla_track, BKE_nlatrack_is_liboverride)
-{
-  AnimData adt{};
-  NlaTrack *trackA = BKE_nlatrack_new_head(&adt.nla_tracks, true);
-  NlaTrack *trackB = BKE_nlatrack_new_after(&adt.nla_tracks, trackA, false);
-
-  // Verify Track A has library override, and B doesn't
-  EXPECT_TRUE(BKE_nlatrack_is_liboverride(trackA));
-  EXPECT_FALSE(BKE_nlatrack_is_liboverride(trackB));
-
-  // Free the tracks
-  BKE_nlatrack_remove_and_free(&adt.nla_tracks, trackA, false);
-  BKE_nlatrack_remove_and_free(&adt.nla_tracks, trackB, false);
-}
 
 }  // namespace blender::bke::tests
