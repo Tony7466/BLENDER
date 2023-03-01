@@ -297,6 +297,7 @@ static bool volume_object_grids_init(PassMain::Sub &ps, Object *ob, Span<VolumeA
   Volume *volume = (Volume *)ob->data;
   BKE_volume_load(volume, G.main);
 
+  /* TODO (Miguel Pozo): Should have *= volume->display.density ? */
   volume_infos.density_scale = BKE_volume_density_scale(volume, ob->object_to_world);
   volume_infos.color_mul = float4(1.0f);
   volume_infos.temperature_mul = 1.0f;

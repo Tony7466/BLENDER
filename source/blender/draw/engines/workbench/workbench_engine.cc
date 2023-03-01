@@ -13,13 +13,177 @@
 #include "ED_view3d.h"
 #include "GPU_capabilities.h"
 
+#include "draw_common.hh"
+
 #include "workbench_private.hh"
+
+#include "BKE_volume.h"
+#include "BKE_volume_render.h"
+#include "BLI_rand.h"
 
 #include "workbench_engine.h" /* Own include. */
 
 namespace blender::workbench {
 
 using namespace draw;
+
+class VolumePass {
+  PassMain ps_ = {"Volume Ps"};
+  Framebuffer fb_ = {"Volume Fb"};
+  bool active_ = true;
+  Texture dummy_shadow_tx = {"Dummy Shadow"};
+
+  GPUShader *shaders[2][2][3][2];
+
+  GPUShader *get_shader(bool slice, bool coba, VolumeDisplayInterpMethod interpolation, bool smoke)
+  {
+    GPUShader *&shader = shaders[slice][coba][interpolation][smoke];
+
+    if (shader == nullptr) {
+      std::string create_info_name = "workbench_next_volume";
+      create_info_name += (smoke) ? "_smoke" : "_object";
+      switch (interpolation) {
+        case VOLUME_DISPLAY_INTERP_LINEAR:
+          create_info_name += "_linear";
+          break;
+        case VOLUME_DISPLAY_INTERP_CUBIC:
+          create_info_name += "_linear";
+          break;
+        case VOLUME_DISPLAY_INTERP_CLOSEST:
+          create_info_name += "_linear";
+          break;
+        default:
+          BLI_assert_unreachable();
+      }
+      create_info_name += (coba) ? "_coba" : "_no_coba";
+      create_info_name += (slice) ? "_slice" : "_no_slice";
+      shader = GPU_shader_create_from_info_name(create_info_name.c_str());
+    }
+    return shader;
+  }
+
+ public:
+  void sync(SceneResources &resources)
+  {
+    active_ = false;
+    ps_.init();
+    ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL | DRW_STATE_CULL_FRONT);
+    ps_.bind_ubo(WB_WORLD_SLOT, resources.world_buf);
+
+    dummy_shadow_tx.ensure_3d(GPU_RGBA8, int3(1), GPU_TEXTURE_USAGE_SHADER_READ, float4(1));
+  }
+
+  void object_sync_volume(Manager &manager,
+                          SceneResources &resources,
+                          const SceneState &scene_state,
+                          ObjectRef &ob_ref,
+                          float3 color)
+  {
+    Object *ob = ob_ref.object;
+    /* Create 3D textures. */
+    Volume *volume = static_cast<Volume *>(ob->data);
+    BKE_volume_load(volume, G.main);
+    const VolumeGrid *volume_grid = BKE_volume_grid_active_get_for_read(volume);
+    if (volume_grid == nullptr) {
+      return;
+    }
+
+#if 0
+    /* TODO (Miguel Pozo): Use common API? */
+    Vector<VolumeAttribute> attrs = {
+        {"densityTexture", BKE_volume_grid_name(volume_grid), eGPUDefaultValue::GPU_DEFAULT_1}};
+    PassMain::Sub &sub_ps = ps_.sub(ob->id.name);
+    if (!volume_sub_pass(ps_, nullptr, nullptr, attrs)) {
+      return;
+    }
+#endif
+
+    DRWVolumeGrid *grid = DRW_volume_batch_cache_get_grid(volume, volume_grid);
+    if (grid == nullptr) {
+      return;
+    }
+
+    active_ = true;
+
+    PassMain::Sub &sub_ps = ps_.sub(ob->id.name);
+
+    const bool use_slice = (volume->display.axis_slice_method == AXIS_SLICE_SINGLE);
+    VolumeDisplayInterpMethod interpolation = static_cast<VolumeDisplayInterpMethod>(
+        volume->display.interpolation_method);
+
+    sub_ps.shader_set(get_shader(use_slice, false, interpolation, false));
+
+    if (use_slice) {
+      float4x4 view_mat_inv;
+      DRW_view_viewmat_get(nullptr, view_mat_inv.ptr(), true);
+
+      const int axis = (volume->display.slice_axis == SLICE_AXIS_AUTO) ?
+                           axis_dominant_v3_single(view_mat_inv[2]) :
+                           volume->display.slice_axis - 1;
+
+      float3 dim;
+      BKE_object_dimensions_get(ob, dim);
+      /* 0.05f to achieve somewhat the same opacity as the full view. */
+      float step_length = max_ff(1e-16f, dim[axis] * 0.05f);
+
+      const float slice_position = volume->display.slice_depth;
+
+      /*TODO (Miguel Pozo): Does this override or replace the parent pass state ? */
+      sub_ps.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL |
+                       ~DRW_STATE_CULL_FRONT);
+      sub_ps.push_constant("slicePosition", slice_position);
+      sub_ps.push_constant("sliceAxis", axis);
+      sub_ps.push_constant("stepLength", step_length);
+    }
+    else {
+      /* Compute world space dimensions for step size. */
+      float4x4 texture_to_world = float4x4(ob->object_to_world) *
+                                  float4x4(grid->texture_to_object);
+      float3 world_size;
+      math::normalize_and_get_size(float3x3(texture_to_world), world_size);
+
+      /* Compute step parameters. */
+      double noise_offset;
+      BLI_halton_1d(3, 0.0, scene_state.sample, &noise_offset);
+      int3 resolution;
+      GPU_texture_get_mipmap_size(grid->texture, 0, resolution);
+
+      float3 slice_count = math::max(float3(0.01f), float3(resolution)) * 5.0f;
+      int max_slice = std::max({UNPACK3(slice_count)});
+      float step_length = math::length((1.0f / slice_count) * world_size);
+
+      sub_ps.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL |
+                       DRW_STATE_CULL_FRONT);
+      sub_ps.push_constant("samplesLen", max_slice);
+      sub_ps.push_constant("stepLength", step_length);
+      sub_ps.push_constant("noiseOfs", float(noise_offset));
+    }
+
+    const float density_scale = volume->display.density *
+                                BKE_volume_density_scale(volume, ob->object_to_world);
+
+    sub_ps.bind_texture("depthBuffer", &resources.depth_tx);
+    sub_ps.bind_texture("densityTexture", grid->texture);
+    /* TODO: implement shadow texture, see manta_smoke_calc_transparency. */
+    sub_ps.bind_texture("shadowTexture", dummy_shadow_tx);
+    sub_ps.push_constant("activeColor", color);
+    sub_ps.push_constant("densityScale", density_scale);
+    sub_ps.push_constant("volumeObjectToTexture", float4x4(grid->object_to_texture));
+    sub_ps.push_constant("volumeTextureToObject", float4x4(grid->texture_to_object));
+
+    sub_ps.draw(DRW_cache_cube_get(), manager.resource_handle(ob_ref));
+  }
+
+  void draw(Manager &manager, View &view, SceneResources &resources)
+  {
+    if (!active_) {
+      return;
+    }
+    fb_.ensure(GPU_ATTACHMENT_NONE, GPU_ATTACHMENT_TEXTURE(resources.color_tx));
+    fb_.bind();
+    manager.submit(ps_, view);
+  }
+};
 
 class Instance {
  public:
@@ -34,6 +198,7 @@ class Instance {
   TransparentDepthPass transparent_depth_ps;
 
   ShadowPass shadow_ps;
+  VolumePass volume_ps;
   OutlinePass outline_ps;
   DofPass dof_ps;
   AntiAliasingPass anti_aliasing_ps;
@@ -75,6 +240,7 @@ class Instance {
     transparent_depth_ps.sync(scene_state, resources);
 
     shadow_ps.sync();
+    volume_ps.sync(resources);
     outline_ps.sync(resources);
     dof_ps.sync(resources);
     anti_aliasing_ps.sync(resources, scene_state.resolution);
@@ -83,6 +249,26 @@ class Instance {
   void end_sync()
   {
     resources.material_buf.push_update();
+  }
+
+  Material get_material(ObjectRef ob_ref, eV3DShadingColorType color_type, int slot = 0)
+  {
+    switch (color_type) {
+      case V3D_SHADING_OBJECT_COLOR:
+        return Material(*ob_ref.object);
+      case V3D_SHADING_RANDOM_COLOR:
+        return Material(*ob_ref.object, true);
+      case V3D_SHADING_SINGLE_COLOR:
+        return scene_state.material_override;
+      case V3D_SHADING_VERTEX_COLOR:
+        return scene_state.material_attribute_color;
+      case V3D_SHADING_MATERIAL_COLOR:
+        if (::Material *_mat = BKE_object_material_get_eval(ob_ref.object, slot + 1)) {
+          return Material(*_mat);
+        }
+      default:
+        return Material(*BKE_material_default_empty());
+    }
   }
 
   void object_sync(Manager &manager, ObjectRef &ob_ref)
@@ -163,14 +349,16 @@ class Instance {
 #if 0 /* TODO(@pragma37): */
       DRWShadingGroup *grp = workbench_material_hair_setup(
           wpd, ob, CURVES_MATERIAL_NR, object_state.color_type);
-      DRW_shgroup_curves_create_sub(ob, grp, NULL);
+      DRW_shgroup_curves_create_sub(ob, grp, nullptr);
 #endif
     }
     else if (ob->type == OB_VOLUME) {
       if (scene_state.shading.type != OB_WIRE) {
-#if 0 /* TODO(@pragma37): */
-        workbench_volume_cache_populate(vedata, wpd->scene, ob, NULL, object_state.color_type);
-#endif
+        volume_ps.object_sync_volume(manager,
+                                     resources,
+                                     scene_state,
+                                     ob_ref,
+                                     get_material(ob_ref, object_state.color_type).base_color);
       }
     }
   }
@@ -204,15 +392,7 @@ class Instance {
               continue;
             }
 
-            Material mat;
-
-            if (::Material *_mat = BKE_object_material_get_eval(ob_ref.object, i + 1)) {
-              mat = Material(*_mat);
-            }
-            else {
-              mat = Material(*BKE_material_default_empty());
-            }
-
+            Material mat = get_material(ob_ref, object_state.color_type, i);
             has_transparent_material = has_transparent_material || mat.is_transparent();
 
             ::Image *image = nullptr;
@@ -244,24 +424,7 @@ class Instance {
         }
 
         if (batch) {
-          Material mat;
-
-          if (object_state.color_type == V3D_SHADING_OBJECT_COLOR) {
-            mat = Material(*ob_ref.object);
-          }
-          else if (object_state.color_type == V3D_SHADING_RANDOM_COLOR) {
-            mat = Material(*ob_ref.object, true);
-          }
-          else if (object_state.color_type == V3D_SHADING_SINGLE_COLOR) {
-            mat = scene_state.material_override;
-          }
-          else if (object_state.color_type == V3D_SHADING_VERTEX_COLOR) {
-            mat = scene_state.material_attribute_color;
-          }
-          else {
-            mat = Material(*BKE_material_default_empty());
-          }
-
+          Material mat = get_material(ob_ref, object_state.color_type);
           has_transparent_material = has_transparent_material || mat.is_transparent();
 
           draw_mesh(ob_ref,
@@ -370,8 +533,7 @@ class Instance {
     transparent_ps.draw(manager, view, resources, resolution);
     transparent_depth_ps.draw(manager, view, resources);
 
-    // volume_ps.draw_prepass(manager, view, resources.depth_tx);
-
+    volume_ps.draw(manager, view, resources);
     outline_ps.draw(manager, resources);
     dof_ps.draw(manager, view, resources, resolution);
     anti_aliasing_ps.draw(manager, view, resources, resolution, depth_tx, color_tx);
