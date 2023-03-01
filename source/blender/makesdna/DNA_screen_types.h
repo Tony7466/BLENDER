@@ -455,6 +455,9 @@ typedef struct ARegion {
   rcti drawrct;
   /** Size. */
   short winx, winy;
+  /** Scroll value for category tab. */
+  int category_scroll;
+  char _pad0[4];
 
   /** Region is currently visible on screen. */
   short visible;
