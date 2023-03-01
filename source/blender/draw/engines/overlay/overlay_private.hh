@@ -16,6 +16,7 @@
 
 #include "draw_handle.hh"
 
+#include "overlay_shader.hh"
 #include "overlay_shader_shared.h"
 
 #ifdef __APPLE__
@@ -64,6 +65,8 @@ using blender::draw::TextureFromPool;
 using blender::draw::TextureRef;
 
 template<typename SelectEngineT> struct Resources : public SelectEngineT::SelectMap {
+  ShaderModule<SelectEngineT> &shaders;
+
   Framebuffer overlay_fb = {"overlay_fb"};
   Framebuffer overlay_in_front_fb = {"overlay_in_front_fb"};
   Framebuffer overlay_color_only_fb = {"overlay_color_only_fb"};
@@ -82,6 +85,8 @@ template<typename SelectEngineT> struct Resources : public SelectEngineT::Select
   TextureRef depth_in_front_tx;
   TextureRef color_overlay_tx;
   TextureRef color_render_tx;
+
+  Resources(ShaderModule<SelectEngineT> &shader_module) : shaders(shader_module){};
 
   [[nodiscard]] ThemeColorID object_wire_theme_id(const ObjectRef &ob_ref,
                                                   const State &state) const

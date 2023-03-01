@@ -176,7 +176,7 @@ template<typename SelectEngineT> class Grid {
 
     grid_ps_.init();
     grid_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA);
-    grid_ps_.shader_set(OVERLAY_shader_grid());
+    grid_ps_.shader_set(res.shaders.grid);
     grid_ps_.bind_ubo("grid_buf", &data_);
     grid_ps_.bind_ubo("globalsBlock", &res.globals_buf);
     grid_ps_.bind_texture("depth_tx", &res.depth_tx);

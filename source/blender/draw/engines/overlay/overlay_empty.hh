@@ -95,7 +95,7 @@ template<typename SelectEngineT> class Empties {
       pass.init();
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
                      state.clipping_state);
-      pass.shader_set(OVERLAY_shader_extra(false));
+      pass.shader_set(res.shaders.extra_shape);
       pass.bind_ubo("globalsBlock", &res.globals_buf);
 
       call_bufs.plain_axes_buf.end_sync(pass, shapes.plain_axes);

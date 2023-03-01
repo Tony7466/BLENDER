@@ -77,7 +77,7 @@ template<typename SelectEngineT> class Background {
 
     bg_ps_.init();
     bg_ps_.state_set(pass_state);
-    bg_ps_.shader_set(OVERLAY_shader_background());
+    bg_ps_.shader_set(res.shaders.background_fill);
     bg_ps_.bind_ubo("globalsBlock", &res.globals_buf);
     bg_ps_.bind_texture("colorBuffer", &res.color_render_tx);
     bg_ps_.bind_texture("depthBuffer", &res.depth_tx);
@@ -87,7 +87,7 @@ template<typename SelectEngineT> class Background {
 
     if (state.clipping_state != 0 && state.rv3d != nullptr && state.rv3d->clipbb != nullptr) {
       bg_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA | DRW_STATE_CULL_BACK);
-      bg_ps_.shader_set(OVERLAY_shader_clipbound());
+      bg_ps_.shader_set(res.shaders.background_clip_bound);
       bg_ps_.push_constant("ucolor", res.theme_settings.color_clipping_border);
       bg_ps_.push_constant("boundbox", &state.rv3d->clipbb->vec[0][0], 8);
       bg_ps_.draw(DRW_cache_cube_get());

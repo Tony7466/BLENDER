@@ -20,12 +20,6 @@
 
 namespace blender::draw::overlay {
 
-class ShaderCache {
-  Map<StringRefNull, std::array<GPUShader *, 2>> cache;
-
-  int clipping_enabled = 0;
-};
-
 template<
     /* Selection engine reuse most of the Overlay engine by creating selection IDs for each
      * selectable component and using a special shaders for drawing.
@@ -34,14 +28,13 @@ template<
     typename SelectEngineT = select::EngineEmpty>
 class Instance {
  public:
-  ShaderCache shaders;
-  ShapeCache shapes;
-
   /* WORKAROUND: Legacy. Move to grid pass. */
   GPUUniformBuf *grid_ubo = nullptr;
 
+  ShapeCache shapes;
+
   /** Global types. */
-  Resources<SelectEngineT> resources;
+  Resources<SelectEngineT> resources = {overlay::ShaderModule<SelectEngineT>::module_get()};
   State state;
 
   /** Overlay types. */

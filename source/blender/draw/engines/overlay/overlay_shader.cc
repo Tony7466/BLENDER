@@ -14,6 +14,7 @@
 #include "gpu_shader_create_info.hh"
 
 #include "overlay_private.hh"
+#include "overlay_shader.hh"
 
 struct OVERLAY_Shaders {
   GPUShader *antialiasing;
@@ -1231,3 +1232,19 @@ void OVERLAY_shader_free(void)
     MEM_SAFE_FREE(*format);
   }
 }
+
+namespace blender::draw::overlay {
+
+template<>
+ShaderModule<select::EngineEmpty> *ShaderModule<select::EngineEmpty>::g_shader_module = nullptr;
+
+template<>
+ShaderModule<select::EngineObject> *ShaderModule<select::EngineObject>::g_shader_module = nullptr;
+
+void shader_module_free()
+{
+  ShaderModule<select::EngineEmpty>::module_free();
+  ShaderModule<select::EngineObject>::module_free();
+}
+
+}  // namespace blender::draw::overlay

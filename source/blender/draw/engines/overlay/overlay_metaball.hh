@@ -88,7 +88,7 @@ template<typename SelectEngineT> class Metaballs {
       pass.init();
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
                      state.clipping_state);
-      pass.shader_set(OVERLAY_shader_armature_sphere(true));
+      pass.shader_set(res.shaders.armature_sphere_outline);
       pass.bind_ubo("globalsBlock", &res.globals_buf);
 
       call_buf.end_sync(pass, shapes.metaball_wire_circle);

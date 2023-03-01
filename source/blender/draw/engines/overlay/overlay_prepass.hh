@@ -24,12 +24,12 @@ template<typename SelectEngineT> class Prepass {
   PassMain prepass_in_front_ps_ = {"prepass_in_front"};
 
  public:
-  void begin_sync(const State &state)
+  void begin_sync(ResourcesT &res, const State &state)
   {
     auto init_pass = [&](PassMain &pass) {
       pass.init();
       pass.state_set(DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL | state.clipping_state);
-      pass.shader_set(OVERLAY_shader_depth_only());
+      pass.shader_set(res.shaders.depth_mesh);
     };
     init_pass(prepass_ps_);
     init_pass(prepass_in_front_ps_);

@@ -71,7 +71,7 @@ template<typename T> void Instance<T>::begin_sync()
   View view("OverlayView", view_legacy);
 
   background.begin_sync(resources, state);
-  prepass.begin_sync(state);
+  prepass.begin_sync(resources, state);
   empties.begin_sync();
   metaballs.begin_sync();
   grid.begin_sync(resources, state, view);

@@ -17,6 +17,8 @@ struct EngineEmpty {
   /* Add type safety to selection ID. Only the select engine should provide them. */
   struct ID {};
 
+  static constexpr const char *shader_define = "NO_SELECT";
+
   struct SelectBuf {
     void select_clear(){};
     void select_append(ID){};

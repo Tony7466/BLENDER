@@ -12,6 +12,7 @@
 
 #include "DRW_gpu_wrapper.hh"
 #include "draw_manager.hh"
+#include "draw_pass.hh"
 
 namespace blender::draw::select {
 
@@ -20,6 +21,8 @@ struct EngineObject {
   struct ID {
     uint32_t value;
   };
+
+  static constexpr const char *shader_define = "SELECT_OBJECT";
 
   /**
    * Add a dedicated selection id buffer to a pass.
