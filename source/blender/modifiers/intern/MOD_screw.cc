@@ -180,7 +180,7 @@ static Mesh *mesh_remove_doubles_on_axis(Mesh *result,
                                         MutableSpan<int>{full_doubles_map, result->totvert},
                                         int(tot_doubles * (step_tot - 1)));
 
-    BKE_id_free(NULL, tmp);
+    BKE_id_free(nullptr, tmp);
     MEM_freeN(full_doubles_map);
   }
 
@@ -261,7 +261,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 
   /* don't do anything? */
   if (!totvert) {
-    return BKE_mesh_new_nomain_from_template(mesh, 0, 0, 0, 0, 0);
+    return BKE_mesh_new_nomain_from_template(mesh, 0, 0, 0, 0);
   }
 
   switch (ltmd->axis) {
@@ -390,7 +390,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   const bool do_remove_doubles = (ltmd->flag & MOD_SCREW_MERGE) && (screw_ofs == 0.0f);
 
   result = BKE_mesh_new_nomain_from_template(
-      mesh, int(maxVerts), int(maxEdges), 0, int(maxPolys) * 4, int(maxPolys));
+      mesh, int(maxVerts), int(maxEdges), int(maxPolys) * 4, int(maxPolys));
   /* The modifier doesn't support original index mapping on the edge or face domains. Remove
    * original index layers, since otherwise edges aren't displayed at all in wireframe view. */
   CustomData_free_layers(&result->edata, CD_ORIGINDEX, result->totedge);
@@ -449,7 +449,6 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   for (uint i = 0; i < totedge; i++, med_orig++, med_new++) {
     med_new->v1 = med_orig->v1;
     med_new->v2 = med_orig->v2;
-    med_new->flag = med_orig->flag;
   }
 
   /* build polygon -> edge map */
@@ -801,7 +800,6 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
       /* add the new edge */
       med_new->v1 = varray_stride + j;
       med_new->v2 = med_new->v1 - totvert;
-      med_new->flag = 0;
       med_new++;
     }
   }
@@ -819,7 +817,6 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     for (uint i = 0; i < totvert; i++) {
       med_new->v1 = i;
       med_new->v2 = varray_stride + i;
-      med_new->flag = 0;
       med_new++;
     }
   }
@@ -948,7 +945,6 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
         if (step) { /* The first set is already done */
           med_new->v1 = i1;
           med_new->v2 = i2;
-          med_new->flag = med_new_firstloop->flag;
           med_new++;
         }
         i1 += totvert;
@@ -975,7 +971,6 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     /* new vertical edge */
     med_new->v1 = i1;
     med_new->v2 = i2;
-    med_new->flag = med_new_firstloop->flag;
     med_new++;
   }
 
