@@ -399,6 +399,9 @@ MTLSafeFreeList::MTLSafeFreeList()
   current_list_index_ = 0;
   next_ = nullptr;
   next_pool_creation_attempts_ = 0;
+
+  /* Create shared future for signalling next chunk readiness. */
+  next_ready_future_ = next_ready_.get_future().share();
 }
 
 void MTLSafeFreeList::insert_buffer(gpu::MTLBuffer *buffer)
@@ -422,15 +425,15 @@ void MTLSafeFreeList::insert_buffer(gpu::MTLBuffer *buffer)
         lock_.lock();
         next_ = new MTLSafeFreeList();
         next_list = next_;
+        next_ready_.set_value(true);
         lock_.unlock();
       }
       else {
         /* Wait until next pool in chain exists.
          * Another thread will be creating the next link in the chain and will hold the lock
          * so if the resource is not ready, we can hold until it is available. */
-        std::condition_variable_any wait_cond;
-        std::unique_lock<std::recursive_mutex> cond_lock(lock_);
-        wait_cond.wait(cond_lock, [&] { return (next_list = next_.load()) != nullptr; });
+        next_ready_future_.wait();
+        next_list = next_.load();
       }
     }
     BLI_assert(next_list);

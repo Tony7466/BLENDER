@@ -15,6 +15,8 @@
 #include <Metal/Metal.h>
 #include <QuartzCore/QuartzCore.h>
 
+#include <future>
+
 @class CAMetalLayer;
 @class MTLCommandQueue;
 @class MTLRenderPipelineState;
@@ -291,6 +293,9 @@ class MTLSafeFreeList {
   /* Linked list of next MTLSafeFreeList chunk if current chunk is full. */
   std::atomic<int> next_pool_creation_attempts_;
   std::atomic<MTLSafeFreeList *> next_;
+  /* Synchronization primitive to signal next chunk being ready for use. */
+  std::promise<bool> next_ready_;
+  std::shared_future<bool> next_ready_future_;
 
   /* Lockless list. MAX_NUM_BUFFERS_ within a chunk based on considerations
    * for performance and memory. Higher chunk counts are preferable for efficiently
