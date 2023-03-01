@@ -45,8 +45,7 @@ class Progress {
     error_message = "";
     cancel_cb = function_null;
     updates = true;
-    update_time = true;
-    update_pixels = true;
+    update_call = true;
     update_status = true;
   }
 
@@ -363,8 +362,11 @@ class Progress {
   void set_update()
   {
     if (updates && update_cb) {
-      thread_scoped_lock lock(update_mutex);
+      // Busy wait until update status is true
+      bool can_update = true;
+      while(!update_call.compare_exchange_weak(can_update, false)) {};
       update_cb();
+      update_call = true;
     }
   }
 
@@ -386,7 +388,7 @@ class Progress {
   
  protected:
   //mutable thread_mutex progress_mutex;
-  mutable thread_mutex update_mutex;
+  //mutable thread_mutex update_mutex;
   function<void()> update_cb;
   function<void()> cancel_cb;
 
@@ -407,8 +409,7 @@ class Progress {
   /* End time written when render is done, so it doesn't keep increasing on redraws. */
   double end_time;
 
-  std::atomic<bool> update_time;
-  std::atomic<bool> update_pixels;
+  std::atomic<bool> update_call;
   std::atomic<bool> update_status;
   
   string status;
