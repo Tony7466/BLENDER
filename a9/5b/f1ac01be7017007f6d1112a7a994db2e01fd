@@ -2,3 +2,4 @@ Referenced by issue #103338, Blender reported "CommandBuffer Failed: cycles_meta
 Referenced by issue #103260, Cycles missing HIP support for gfx1036 devices
 Referenced by issue #103217, Freezing up in Geometry Nodes!
 Referenced by issue #105283, Regression: Match interface of custom group nodes and custom group trees.
+Referenced by issue #105325, Python: Crash when bpy.ops.wm.previews_ensure() called after queuing preview render job
