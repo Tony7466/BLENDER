@@ -27,7 +27,7 @@
 #include "ED_sculpt.h"
 #include "ED_view3d.h"
 #include "paint_intern.h"
-#include "sculpt_intern.h"
+#include "sculpt_intern.hh"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -58,7 +58,7 @@ void ED_sculpt_init_transform(bContext *C, Object *ob, const int mval[2], const 
 
   SCULPT_vertex_random_access_ensure(ss);
 
-  SCULPT_filter_cache_init(C, ob, sd, SCULPT_UNDO_COORDS, mval, 5.0);
+  SCULPT_filter_cache_init(C, ob, sd, SCULPT_UNDO_COORDS, mval, 5.0, 1.0f);
 
   if (sd->transform_mode == SCULPT_TRANSFORM_MODE_RADIUS_ELASTIC) {
     ss->filter_cache->transform_displacement_mode = SCULPT_TRANSFORM_DISPLACEMENT_INCREMENTAL;

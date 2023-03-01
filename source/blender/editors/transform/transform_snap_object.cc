@@ -162,7 +162,7 @@ struct SnapObjectContext {
  *
  * - When the return value is null the `BKE_editmesh_from_object(ob_eval)` should be used.
  * - In rare cases there is no evaluated mesh available and a null result doesn't imply an
- *   edit-mesh, so callers need to account for a null edit-mesh too, see: T96536.
+ *   edit-mesh, so callers need to account for a null edit-mesh too, see: #96536.
  */
 static ID *data_for_snap(Object *ob_eval, eSnapEditType edit_mode_type, bool *r_use_hide)
 {
@@ -726,7 +726,7 @@ static bool raycastMesh(SnapObjectContext *sctx,
   }
 
   /* We pass a temp ray_start, set from object's boundbox, to avoid precision issues with
-   * very far away ray_start values (as returned in case of ortho view3d), see T50486, T38358.
+   * very far away ray_start values (as returned in case of ortho view3d), see #50486, #38358.
    */
   if (len_diff > 400.0f) {
     /* Make temporary start point a bit away from bounding-box hit point. */
@@ -860,7 +860,7 @@ static bool raycastEditMesh(SnapObjectContext *sctx,
   }
 
   /* We pass a temp ray_start, set from object's boundbox, to avoid precision issues with
-   * very far away ray_start values (as returned in case of ortho view3d), see T50486, T38358.
+   * very far away ray_start values (as returned in case of ortho view3d), see #50486, #38358.
    */
   if (len_diff > 400.0f) {
     len_diff -= local_scale; /* make temp start point a bit away from bbox hit point. */
@@ -1375,7 +1375,7 @@ static bool snap_bound_box_check_dist(const float min[3],
                                       float dist_px_sq)
 {
   /* In vertex and edges you need to get the pixel distance from ray to BoundBox,
-   * see: T46099, T46816 */
+   * see: #46099, #46816 */
 
   DistProjectedAABBPrecalc data_precalc;
   dist_squared_to_projected_aabb_precalc(&data_precalc, lpmat, win_size, mval);
@@ -1430,7 +1430,7 @@ struct Nearest2dUserData {
       const float (*vert_normals)[3];
       const MEdge *edge; /* only used for #BVHTreeFromMeshEdges */
       const MLoop *loop;
-      const MLoopTri *looptri;
+      const MLoopTri *looptris;
     };
   };
 
@@ -1481,7 +1481,7 @@ static void cb_mlooptri_edges_get(const int index, const Nearest2dUserData *data
 {
   const MEdge *medge = data->edge;
   const MLoop *mloop = data->loop;
-  const MLoopTri *lt = &data->looptri[index];
+  const MLoopTri *lt = &data->looptris[index];
   for (int j = 2, j_next = 0; j_next < 3; j = j_next++) {
     const MEdge *ed = &medge[mloop[lt->tri[j]].e];
     const uint tri_edge[2] = {mloop[lt->tri[j]].v, mloop[lt->tri[j_next]].v};
@@ -1498,7 +1498,7 @@ static void cb_mlooptri_edges_get(const int index, const Nearest2dUserData *data
 static void cb_mlooptri_verts_get(const int index, const Nearest2dUserData *data, int r_v_index[3])
 {
   const MLoop *loop = data->loop;
-  const MLoopTri *looptri = &data->looptri[index];
+  const MLoopTri *looptri = &data->looptris[index];
 
   r_v_index[0] = loop[looptri->tri[0]].v;
   r_v_index[1] = loop[looptri->tri[1]].v;
@@ -1716,10 +1716,10 @@ static void nearest2d_data_init_mesh(const Mesh *mesh,
   r_nearest2d->get_tri_edges_index = cb_mlooptri_edges_get;
 
   r_nearest2d->vert_positions = BKE_mesh_vert_positions(mesh);
-  r_nearest2d->vert_normals = BKE_mesh_vertex_normals_ensure(mesh);
+  r_nearest2d->vert_normals = BKE_mesh_vert_normals_ensure(mesh);
   r_nearest2d->edge = mesh->edges().data();
   r_nearest2d->loop = mesh->loops().data();
-  r_nearest2d->looptri = BKE_mesh_runtime_looptri_ensure(mesh);
+  r_nearest2d->looptris = mesh->looptris().data();
 
   r_nearest2d->is_persp = is_persp;
   r_nearest2d->use_backface_culling = use_backface_culling;

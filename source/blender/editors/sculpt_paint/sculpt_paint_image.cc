@@ -26,7 +26,7 @@
 
 #include "bmesh.h"
 
-#include "sculpt_intern.h"
+#include "sculpt_intern.hh"
 
 namespace blender::ed::sculpt_paint::paint::image {
 
@@ -547,8 +547,6 @@ static void fix_non_manifold_seam_bleeding(Object &ob,
 
 }  // namespace blender::ed::sculpt_paint::paint::image
 
-extern "C" {
-
 using namespace blender::ed::sculpt_paint::paint::image;
 
 bool SCULPT_paint_image_canvas_get(PaintModeSettings *paint_mode_settings,
@@ -609,5 +607,4 @@ void SCULPT_do_paint_brush_image(PaintModeSettings *paint_mode_settings,
 
   BKE_pbvh_parallel_range_settings(&settings_flush, false, texnodes_num);
   BLI_task_parallel_range(0, texnodes_num, &data, do_mark_dirty_regions, &settings_flush);
-}
 }
