@@ -538,14 +538,14 @@ bool select_pick(const ViewContext &vc,
                                             closest);
   }
 
-  bool changed = false;
+  bool deselected = false;
   if (params.sel_op == SEL_OP_SET) {
     if (found || params.deselect_all) {
       bke::GSpanAttributeWriter selection = ensure_selection_attribute(
           curves, selection_domain, CD_PROP_BOOL);
       fill_selection_false(selection.span);
       selection.finish();
-      changed = true;
+      deselected = true;
     }
   }
 
@@ -556,7 +556,7 @@ bool select_pick(const ViewContext &vc,
     selection.finish();
   }
 
-  return changed || found;
+  return deselected || found;
 }
 
 bool select_box(const ViewContext &vc,
