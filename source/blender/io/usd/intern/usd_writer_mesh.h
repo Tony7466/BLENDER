@@ -4,6 +4,7 @@
 #pragma once
 
 #include "usd_writer_abstract.h"
+#include "DNA_modifier_types.h"
 
 #include "BLI_map.hh"
 
@@ -31,7 +32,7 @@ class USDGenericMeshWriter : public USDAbstractWriter {
   /* Mapping from material slot number to array of face indices with that material. */
   using MaterialFaceGroups = Map<short, pxr::VtIntArray>;
 
-  void write_mesh(HierarchyContext &context, Mesh *mesh);
+  void write_mesh(HierarchyContext &context, Mesh *mesh, SubsurfModifierData* subsurfData);
   void get_geometry_data(const Mesh *mesh, struct USDMeshData &usd_mesh_data);
   void assign_materials(const HierarchyContext &context,
                         pxr::UsdGeomMesh usd_mesh,

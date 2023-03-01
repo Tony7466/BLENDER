@@ -26,6 +26,7 @@
 #include "BKE_modifier.h"
 #include "BKE_object.hh"
 #include "BKE_report.h"
+#include "BKE_modifier.h"
 
 #include "DEG_depsgraph.hh"
 
@@ -61,13 +62,20 @@ void USDGenericMeshWriter::do_write(HierarchyContext &context)
   Object *object_eval = context.object;
   bool needsfree = false;
   Mesh *mesh = get_export_mesh(object_eval, needsfree);
+  
+  /* Only fetch the subdiv modifier if it is the last modifier. */
+  SubsurfModifierData *subsurfData = nullptr;
+  ModifierData *md = (ModifierData *)(object_eval->modifiers.last);
+  if (md && (md->type == eModifierType_Subsurf)) {
+    subsurfData = (SubsurfModifierData *)(md);
+  }
 
   if (mesh == nullptr) {
     return;
   }
 
   try {
-    write_mesh(context, mesh);
+    write_mesh(context, mesh, subsurfData);
 
     if (needsfree) {
       free_export_mesh(mesh);
@@ -376,7 +384,7 @@ struct USDMeshData {
   pxr::VtFloatArray corner_sharpnesses;
 };
 
-void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
+void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh, SubsurfModifierData* subsurfData)
 {
   pxr::UsdTimeCode timecode = get_export_time_code();
   pxr::UsdStageRefPtr stage = usd_export_context_.stage;
@@ -476,8 +484,22 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
     return;
   }
 
+  /* Default to setting the subdivision scheme to None. */
   usd_mesh.CreateSubdivisionSchemeAttr().Set(pxr::UsdGeomTokens->none);
-
+  
+  if (subsurfData) {
+    if (subsurfData->subdivType == SUBSURF_TYPE_CATMULL_CLARK) {
+      if (usd_export_context_.export_params.export_subdiv == USD_SUBDIV_BESTMATCH) {
+        /* If a subdivision modifier exists, and it uses Catmull-Clark, then apply Catmull-Clark SubD scheme. */
+        usd_mesh.CreateSubdivisionSchemeAttr().Set(pxr::UsdGeomTokens->catmullClark);
+      }
+    } else {
+      /* "Simple" is currently the only other subdivision type provided by Blender, */
+      /* and we do not yet provide a corresponding representation for USD export. */
+      WM_reportf(RPT_WARNING, "USD export: Simple subdivision not supported, exporting subdivided mesh at render quality");
+    }
+  }
+    
   if (usd_export_context_.export_params.export_materials) {
     assign_materials(context, usd_mesh, usd_mesh_data.face_groups);
   }

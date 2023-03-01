@@ -6,6 +6,7 @@
 #include "usd.hh"
 #include "usd_hierarchy_iterator.h"
 #include "usd_hook.h"
+#include "usd_modifier_disabler.h"
 
 #include <pxr/base/plug/registry.h>
 #include <pxr/base/tf/token.h>
@@ -223,6 +224,12 @@ pxr::UsdStageRefPtr export_to_stage(const USDExportParams &params,
   wmJobWorkerStatus *worker_status = params.worker_status;
   Scene *scene = DEG_get_input_scene(depsgraph);
   Main *bmain = DEG_get_bmain(depsgraph);
+  
+  SubdivModifierDisabler mod_disabler(depsgraph, params);
+  if ((params.export_subdiv == USD_SUBDIV_BESTMATCH) || (params.export_subdiv == USD_SUBDIV_NONE)) {
+    mod_disabler.disable_modifiers();
+    BKE_scene_graph_update_tagged(depsgraph, bmain);
+  }
 
   usd_stage->SetMetadata(pxr::UsdGeomTokens->metersPerUnit, double(scene->unit.scale_length));
   usd_stage->GetRootLayer()->SetDocumentation(std::string("Blender v") +
