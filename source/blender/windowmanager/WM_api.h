@@ -622,7 +622,7 @@ int WM_operator_props_popup_confirm(struct bContext *C,
 /**
  * Same as #WM_operator_props_popup but call the operator first,
  * This way - the button values correspond to the result of the operator.
- * Without this, first access to a button will make the result jump, see T32452.
+ * Without this, first access to a button will make the result jump, see #32452.
  */
 int WM_operator_props_popup_call(struct bContext *C,
                                  struct wmOperator *op,
@@ -672,7 +672,7 @@ bool WM_operator_poll_context(struct bContext *C, struct wmOperatorType *ot, sho
  * \param store: Store properties for re-use when an operator has finished
  * (unless #PROP_SKIP_SAVE is set).
  *
- * \warning do not use this within an operator to call itself! T29537.
+ * \warning do not use this within an operator to call itself! #29537.
  */
 int WM_operator_call_ex(struct bContext *C, struct wmOperator *op, bool store);
 int WM_operator_call(struct bContext *C, struct wmOperator *op);
@@ -1345,7 +1345,7 @@ bool WM_drag_is_ID_type(const struct wmDrag *drag, int idcode);
  */
 wmDragAsset *WM_drag_create_asset_data(const struct AssetHandle *asset,
                                        const char *path,
-                                       int import_type);
+                                       int /* #eAssetImportMethod */ import_type);
 struct wmDragAsset *WM_drag_get_asset_data(const struct wmDrag *drag, int idcode);
 struct AssetMetaData *WM_drag_get_asset_meta_data(const struct wmDrag *drag, int idcode);
 /**
@@ -1378,6 +1378,19 @@ void WM_drag_add_asset_list_item(wmDrag *drag, const struct AssetHandle *asset);
 const ListBase *WM_drag_asset_list_get(const wmDrag *drag);
 
 const char *WM_drag_get_item_name(struct wmDrag *drag);
+
+/* Path drag and drop. */
+/**
+ * \param path: The path to drag. Value will be copied into the drag data so the passed string may
+ *              be destructed.
+ */
+wmDragPath *WM_drag_create_path_data(const char *path);
+const char *WM_drag_get_path(const wmDrag *drag);
+/**
+ * Note that even though the enum return type uses bit-flags, this should never have multiple
+ * type-bits set, so `ELEM()` like comparison is possible.
+ */
+int /* eFileSel_File_Types */ WM_drag_get_path_file_type(const wmDrag *drag);
 
 /* Set OpenGL viewport and scissor */
 void wmViewport(const struct rcti *winrct);
@@ -1619,7 +1632,7 @@ char WM_event_utf8_to_ascii(const struct wmEvent *event) ATTR_NONNULL(1) ATTR_WA
  * \param mval: Region relative coordinates, call with (-1, -1) resets the last cursor location.
  * \returns True when there was motion since last called.
  *
- * NOTE(@campbellbarton): The logic used here isn't foolproof.
+ * NOTE(@ideasman42): The logic used here isn't foolproof.
  * It's possible that users move the cursor past #WM_EVENT_CURSOR_MOTION_THRESHOLD then back to
  * a position within the threshold (between mouse clicks).
  * In practice users never reported this since the threshold is very small (a few pixels).

@@ -272,8 +272,10 @@ enum {
   /** User cannot change that override operation. */
   IDOVERRIDE_LIBRARY_FLAG_LOCKED = 1 << 1,
 
-  /** For overrides of ID pointers: this override still matches (follows) the hierarchy of the
-   *  reference linked data. */
+  /**
+   * For overrides of ID pointers: this override still matches (follows) the hierarchy of the
+   * reference linked data.
+   */
   IDOVERRIDE_LIBRARY_FLAG_IDPOINTER_MATCH_REFERENCE = 1 << 8,
 };
 
@@ -818,7 +820,7 @@ enum {
    * RESET_NEVER
    *
    * \warning This should not be cleared on existing data.
-   * If support for this is needed, see T88026 as this flag controls memory ownership
+   * If support for this is needed, see #88026 as this flag controls memory ownership
    * of physics *shared* pointers.
    */
   LIB_TAG_COPIED_ON_WRITE = 1 << 12,
