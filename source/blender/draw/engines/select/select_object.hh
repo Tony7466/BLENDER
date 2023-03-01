@@ -25,22 +25,18 @@ struct EngineObject {
   /* Add type safety to selection ID. Only the select engine should provide them. */
   struct ID {
     uint32_t value;
-
-    friend constexpr bool operator==(ID a, ID b)
-    {
-      return a.value == b.value;
-    }
-
-    uint64_t hash() const
-    {
-      return BLI_ghashutil_uinthash(value);
-    }
   };
 
   struct SelectShader {
     static void patch(gpu::shader::ShaderCreateInfo &info)
     {
       info.define("SELECT_UNORDERED");
+      /* Replace additional info. */
+      for (StringRefNull &str : info.additional_infos_) {
+        if (str == "draw_modelmat_new") {
+          str = "draw_modelmat_new_with_custom_id";
+        }
+      }
       info.additional_info("select_id_patch");
     };
   };
@@ -100,11 +96,8 @@ struct EngineObject {
     void begin_sync()
     {
       select_id_map.clear();
-      /* Index 0 is the invalid selection ID. */
-      select_id_map.append(uint(-1));
 #ifdef DEBUG
       map_names.clear();
-      map_names.append("Invalid Index");
 #endif
     }
 
@@ -115,6 +108,7 @@ struct EngineObject {
 
     void select_bind(PassMain &pass)
     {
+      pass.use_custom_ids = true;
       /* IMPORTANT: This binds a dummy buffer `in_select_buf` but it is not supposed to be used. */
       pass.bind_ssbo(SELECT_ID_IN, &dummy_select_buf);
       pass.bind_ssbo(SELECT_ID_OUT, &select_output_buf);
@@ -138,7 +132,8 @@ struct EngineObject {
         uint32_t word = select_output_buf[i];
         for (auto bit : IndexRange(32)) {
           if ((word & 1) != 0) {
-            std::cout << map_names[i * 32 + bit] << std::endl;
+            uint index = i * 32 + bit;
+            std::cout << index << map_names[index] << std::endl;
           }
           word >>= 1;
         }
