@@ -11,8 +11,13 @@
 #pragma once
 
 #include "DRW_gpu_wrapper.hh"
+
 #include "draw_manager.hh"
 #include "draw_pass.hh"
+
+#include "gpu_shader_create_info.hh"
+
+#include "select_defines.h"
 
 namespace blender::draw::select {
 
@@ -20,9 +25,25 @@ struct EngineObject {
   /* Add type safety to selection ID. Only the select engine should provide them. */
   struct ID {
     uint32_t value;
+
+    friend constexpr bool operator==(ID a, ID b)
+    {
+      return a.value == b.value;
+    }
+
+    uint64_t hash() const
+    {
+      return BLI_ghashutil_uinthash(value);
+    }
   };
 
-  static constexpr const char *shader_define = "SELECT_OBJECT";
+  struct SelectShader {
+    static void patch(gpu::shader::ShaderCreateInfo &info)
+    {
+      info.define("SELECT_UNORDERED");
+      info.additional_info("select_id_patch");
+    };
+  };
 
   /**
    * Add a dedicated selection id buffer to a pass.
@@ -44,23 +65,85 @@ struct EngineObject {
     void select_bind(PassSimple &pass)
     {
       select_buf.push_update();
-      pass.bind_ssbo("select_buf", &select_buf);
+      pass.bind_ssbo(SELECT_ID_IN, &select_buf);
     }
   };
 
   /**
    * Generate selection IDs from objects and keep record of the mapping between them.
+   * The id's are contiguous so that we can create a destination buffer.
    */
   struct SelectMap {
-    uint next_id = 0;
-    Map<uint, ObjectRef> map;
+    /** Mapping between internal IDs and `object->runtime.select_id`. */
+    Vector<uint> select_id_map;
+#ifdef DEBUG
+    /** Debug map containing a copy of the object name. */
+    Vector<std::string> map_names;
+#endif
+    /** Stores the result of the whole selection drawing. Content depends on selection mode. */
+    StorageArrayBuffer<uint> select_output_buf = {"select_output_buf"};
+    /** Dummy buffer. Might be better to remove, but simplify the shader create info patching. */
+    StorageArrayBuffer<uint, 4, true> dummy_select_buf = {"dummy_select_buf"};
 
     /* TODO(fclem): The sub_object_id id should eventually become some enum or take a sub-object
-     * reference directly. */
-    [[nodiscard]] const ID select_id(const ObjectRef &, uint sub_object_id = 0)
+     * reference directly. This would isolate the selection logic to this class. */
+    [[nodiscard]] const ID select_id(const ObjectRef &ob_ref, uint sub_object_id = 0)
     {
-      /* TODO Insert Ref into the map. */
-      return {sub_object_id | next_id++};
+      uint object_id = ob_ref.object->runtime.select_id;
+      uint id = select_id_map.append_and_get_index(object_id | sub_object_id);
+#ifdef DEBUG
+      map_names.append(ob_ref.object->id.name);
+#endif
+      return {id};
+    }
+
+    void begin_sync()
+    {
+      select_id_map.clear();
+      /* Index 0 is the invalid selection ID. */
+      select_id_map.append(uint(-1));
+#ifdef DEBUG
+      map_names.clear();
+      map_names.append("Invalid Index");
+#endif
+    }
+
+    void select_bind(PassSimple &pass)
+    {
+      pass.bind_ssbo(SELECT_ID_OUT, &select_output_buf);
+    }
+
+    void select_bind(PassMain &pass)
+    {
+      /* IMPORTANT: This binds a dummy buffer `in_select_buf` but it is not supposed to be used. */
+      pass.bind_ssbo(SELECT_ID_IN, &dummy_select_buf);
+      pass.bind_ssbo(SELECT_ID_OUT, &select_output_buf);
+    }
+
+    void end_sync()
+    {
+      select_output_buf.resize(ceil_to_multiple_u(select_id_map.size(), 4));
+      select_output_buf.push_update();
+      select_output_buf.clear_to_zero();
+    }
+
+    void read_result()
+    {
+      /* TODO right barrier. */
+      GPU_finish();
+      select_output_buf.read();
+
+#ifdef DEBUG
+      for (auto i : IndexRange(select_output_buf.size())) {
+        uint32_t word = select_output_buf[i];
+        for (auto bit : IndexRange(32)) {
+          if ((word & 1) != 0) {
+            std::cout << map_names[i * 32 + bit] << std::endl;
+          }
+          word >>= 1;
+        }
+      }
+#endif
     }
   };
 };

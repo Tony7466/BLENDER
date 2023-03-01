@@ -11,13 +11,17 @@
 
 #include "draw_manager.hh"
 
+#include "gpu_shader_create_info.hh"
+
 namespace blender::draw::select {
 
 struct EngineEmpty {
   /* Add type safety to selection ID. Only the select engine should provide them. */
   struct ID {};
 
-  static constexpr const char *shader_define = "NO_SELECT";
+  struct SelectShader {
+    static void patch(gpu::shader::ShaderCreateInfo &){};
+  };
 
   struct SelectBuf {
     void select_clear(){};
@@ -30,6 +34,16 @@ struct EngineEmpty {
     {
       return {};
     }
+
+    void begin_sync(){};
+
+    void select_bind(PassSimple &){};
+
+    void select_bind(PassMain &){};
+
+    void end_sync(){};
+
+    void read_result(){};
   };
 };
 

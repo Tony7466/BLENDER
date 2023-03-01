@@ -6,8 +6,6 @@
 
 #pragma once
 
-#include <functional>
-
 #include "GPU_shader.h"
 
 #include "gpu_shader_create_info.hh"
@@ -51,7 +49,7 @@ template<typename SelectEngineT, bool ClippingEnabled = false> class ShaderModul
   };
 
   /**
-   * Special class for every shader that needs to have clipped and selection variations.
+   * Special class for any shader that needs to have clipped and selection variations.
    */
   class ShaderGeometry : public Shader {
    public:
@@ -83,7 +81,7 @@ template<typename SelectEngineT, bool ClippingEnabled = false> class ShaderModul
               GPU_shader_create_info_get(create_info_name));
 
       patch(info);
-      info.define(SelectEngineT::shader_define);
+      SelectEngineT::SelectShader::patch(info);
 
       this->shader_ = GPU_shader_create_from_info(
           reinterpret_cast<const GPUShaderCreateInfo *>(&info));
@@ -124,6 +122,8 @@ template<typename SelectEngineT, bool ClippingEnabled = false> class ShaderModul
 
   Shader background_fill = {"overlay_background"};
   Shader background_clip_bound = {"overlay_clipbound"};
+
+  /** Module */
 
   /** Only to be used by Instance constructor. */
   static ShaderModule &module_get()

@@ -70,6 +70,8 @@ template<typename T> void Instance<T>::begin_sync()
   const DRWView *view_legacy = DRW_view_default_get();
   View view("OverlayView", view_legacy);
 
+  resources.begin_sync();
+
   background.begin_sync(resources, state);
   prepass.begin_sync(resources, state);
   empties.begin_sync();
@@ -136,6 +138,8 @@ template<typename T> void Instance<T>::object_sync(ObjectRef &ob_ref, Manager &m
 
 template<typename T> void Instance<T>::end_sync()
 {
+  resources.end_sync();
+
   metaballs.end_sync(resources, shapes, state);
   empties.end_sync(resources, shapes, state);
 }
@@ -197,6 +201,8 @@ template<typename T> void Instance<T>::draw(Manager &manager)
 
   resources.line_tx.release();
   resources.depth_in_front_alloc_tx.release();
+
+  resources.read_result();
 }
 
 /* Instantiation. */

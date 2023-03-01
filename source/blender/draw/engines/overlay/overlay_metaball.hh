@@ -90,6 +90,7 @@ template<typename SelectEngineT> class Metaballs {
                      state.clipping_state);
       pass.shader_set(res.shaders.armature_sphere_outline);
       pass.bind_ubo("globalsBlock", &res.globals_buf);
+      res.select_bind(pass);
 
       call_buf.end_sync(pass, shapes.metaball_wire_circle);
     };

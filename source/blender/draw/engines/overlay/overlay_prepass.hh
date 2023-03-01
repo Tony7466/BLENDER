@@ -30,6 +30,7 @@ template<typename SelectEngineT> class Prepass {
       pass.init();
       pass.state_set(DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL | state.clipping_state);
       pass.shader_set(res.shaders.depth_mesh);
+      res.select_bind(pass);
     };
     init_pass(prepass_ps_);
     init_pass(prepass_in_front_ps_);

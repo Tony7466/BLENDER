@@ -97,6 +97,7 @@ template<typename SelectEngineT> class Empties {
                      state.clipping_state);
       pass.shader_set(res.shaders.extra_shape);
       pass.bind_ubo("globalsBlock", &res.globals_buf);
+      res.select_bind(pass);
 
       call_bufs.plain_axes_buf.end_sync(pass, shapes.plain_axes);
       call_bufs.single_arrow_buf.end_sync(pass, shapes.single_arrow);
