@@ -367,8 +367,9 @@ int BKE_fcurve_pathcache_find_array(struct FCurvePathCache *fcache,
 
 /**
  * Calculate the x range of the given F-Curve's data.
+ * \return true if a range has been found.
  */
-bool BKE_fcurve_calc_range(const struct FCurve *fcu, float *min, float *max, bool do_sel_only);
+bool BKE_fcurve_calc_range(const struct FCurve *fcu, float *r_min, float *r_max, bool selected_keys_only);
 
 /**
  * Calculate the x and y extents of F-Curve's data.
@@ -377,7 +378,7 @@ bool BKE_fcurve_calc_range(const struct FCurve *fcu, float *min, float *max, boo
  * \return true if the bounds have been found.
  */
 bool BKE_fcurve_calc_bounds(const struct FCurve *fcu,
-                            bool do_sel_only,
+                            bool selected_keys_only,
                             bool include_handles,
                             const float frame_range[2],
                             struct rctf *r_bounds);

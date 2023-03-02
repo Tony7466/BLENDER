@@ -557,11 +557,11 @@ int BKE_fcurve_bezt_binarysearch_index(const BezTriple array[],
 /* ...................................... */
 
 /* Get the first and last index to the bezt array that satisfies the given parameters.
- * \param do_sel_only Only accept indices of bezt that are selected. Is a subset of frame_range.
- * \param frame_range Only consider keyframes in that frame interval. Can be NULL.
+ * \param selected_keys_only Only accept indices of bezt that are selected. Is a subset of
+ * frame_range. \param frame_range Only consider keyframes in that frame interval. Can be NULL.
  */
 static bool get_bounding_bezt_indices(const FCurve *fcu,
-                                      const bool do_sel_only,
+                                      const bool selected_keys_only,
                                       const float frame_range[2],
                                       int *r_first,
                                       int *r_last)
@@ -595,7 +595,7 @@ static bool get_bounding_bezt_indices(const FCurve *fcu,
   }
 
   /* Only include selected items? */
-  if (do_sel_only) {
+  if (selected_keys_only) {
     /* Find first selected. */
     for (int i = *r_first; i <= *r_last; i++) {
       BezTriple *bezt = &fcu->bezt[i];
@@ -630,25 +630,21 @@ static void calculate_bezt_bounds_x(BezTriple *bezt_array,
                                     float *r_max)
 {
   *r_min = bezt_array[index_range[0]].vec[1][0];
-  *r_max = bezt_array[index_range[0]].vec[1][0];
+  *r_max = bezt_array[index_range[1]].vec[1][0];
 
   if (include_handles) {
     /* Need to check all handles because they might extend beyond their neighboring keys. */
     for (int i = index_range[0]; i <= index_range[1]; i++) {
-      BezTriple bezt = bezt_array[i];
-      *r_min = min_fff(*r_min, bezt.vec[0][0], bezt.vec[1][0]);
-      *r_max = max_fff(*r_max, bezt.vec[1][0], bezt.vec[2][0]);
+      const BezTriple *bezt = &bezt_array[i];
+      *r_min = min_fff(*r_min, bezt->vec[0][0], bezt->vec[1][0]);
+      *r_max = max_fff(*r_max, bezt->vec[1][0], bezt->vec[2][0]);
     }
-  }
-  else {
-    *r_min = bezt_array[index_range[0]].vec[1][0];
-    *r_max = bezt_array[index_range[1]].vec[1][0];
   }
 }
 
 static void calculate_bezt_bounds_y(BezTriple *bezt_array,
                                     const int index_range[2],
-                                    const bool do_sel_only,
+                                    const bool selected_keys_only,
                                     const bool include_handles,
                                     float *r_min,
                                     float *r_max)
@@ -657,35 +653,103 @@ static void calculate_bezt_bounds_y(BezTriple *bezt_array,
   *r_max = bezt_array[index_range[0]].vec[1][1];
 
   for (int i = index_range[0]; i <= index_range[1]; i++) {
-    BezTriple bezt = bezt_array[i];
+    const BezTriple *bezt = &bezt_array[i];
 
-    if (do_sel_only && !BEZT_ISSEL_ANY(&bezt)) {
+    if (selected_keys_only && !BEZT_ISSEL_ANY(bezt)) {
       continue;
     }
 
-    *r_min = min_ff(*r_min, bezt.vec[1][1]);
-    *r_max = max_ff(*r_max, bezt.vec[1][1]);
+    *r_min = min_ff(*r_min, bezt->vec[1][1]);
+    *r_max = max_ff(*r_max, bezt->vec[1][1]);
 
     if (include_handles) {
-      /* Left handle - only if applicable.
-       * NOTE: for the very first keyframe,
-       * the left handle actually has no bearings on anything. */
-      if (i - 1 > 0 && (bezt_array[i - 1].ipo == BEZT_IPO_BEZ)) {
-        *r_min = min_ff(*r_min, bezt.vec[0][1]);
-        *r_max = max_ff(*r_max, bezt.vec[0][1]);
+      /* Left handle - only if applicable. */
+      if (i == 0 || (i - 1 > 0 && (bezt_array[i - 1].ipo == BEZT_IPO_BEZ))) {
+        *r_min = min_ff(*r_min, bezt->vec[0][1]);
+        *r_max = max_ff(*r_max, bezt->vec[0][1]);
       }
 
       /* Right handle - only if applicable. */
       if (bezt.ipo == BEZT_IPO_BEZ) {
-        *r_min = min_ff(*r_min, bezt.vec[2][1]);
-        *r_max = max_ff(*r_max, bezt.vec[2][1]);
+        *r_min = min_ff(*r_min, bezt->vec[2][1]);
+        *r_max = max_ff(*r_max, bezt->vec[2][1]);
       }
     }
   }
 }
 
+static bool calculate_bezt_bounds(const FCurve *fcu,
+                                  const bool selected_keys_only,
+                                  const bool include_handles,
+                                  const float frame_range[2],
+                                  rctf *r_bounds)
+{
+  int index_range[2];
+  const bool found_indices = get_bounding_bezt_indices(
+      fcu, selected_keys_only, frame_range, &index_range[0], &index_range[1]);
+  if (!found_indices) {
+    return false;
+  }
+  calculate_bezt_bounds_x(
+      fcu->bezt, index_range, include_handles, &r_bounds->xmin, &r_bounds->xmax);
+  calculate_bezt_bounds_y(fcu->bezt,
+                          index_range,
+                          selected_keys_only,
+                          include_handles,
+                          &r_bounds->ymin,
+                          &r_bounds->ymax);
+  return true;
+}
+
+static bool calculate_fpt_bounds(const FCurve *fcu, const float frame_range[2], rctf *r_bounds)
+{
+  r_bounds->xmin = FLT_MAX;
+  r_bounds->xmax = -FLT_MAX;
+  r_bounds->ymin = FLT_MAX;
+  r_bounds->ymax = -FLT_MAX;
+
+  if (frame_range != NULL) {
+    /* Start index can be calculated because fpt has a key on every full frame. */
+    const int start_index = int(frame_range[0] - fcu->fpt[0].vec[0]);
+    const int end_index = start_index + int(frame_range[1] - frame_range[0]);
+
+    if (start_index > fcu->totvert - 1 || end_index < 0) {
+      /* Range is outside of keyframe samples. */
+      return false;
+    }
+
+    /* Range might be partially covering keyframe samples. */
+    const int start_index_clamped = clamp_i(start_index, 0 fcu->totvert - 1);
+    const int end_index_clamped = clamp_i(end_index, 0, fcu->totvert - 1);
+
+    r_bounds->xmin = fcu->fpt[start_index_clamped].vec[0];
+    r_bounds->xmax = fcu->fpt[end_index_clamped].vec[0];
+
+    for (int i = start_index_clamped; i <= end_index_clamped; i++) {
+      r_bounds->ymin = min_ff(r_bounds->ymin, fcu->fpt[i].vec[1]);
+      r_bounds->ymax = max_ff(r_bounds->ymax, fcu->fpt[i].vec[1]);
+    }
+    return r_bounds->xmin <= r_bounds->xmax;
+  }
+
+  else {
+    /* X range can be directly calculated from end verts. */
+    r_bounds->xmin = fcu->fpt[0].vec[0];
+    r_bounds->xmax = fcu->fpt[fcu->totvert - 1].vec[0];
+
+    r_bounds->ymin = fcu->fpt[0].vec[1];
+    r_bounds->ymax = fcu->fpt[0].vec[1];
+    for (int i = 0; i < fcu->totvert; i++) {
+      r_bounds->ymin = min_ff(r_bounds->ymin, fcu->fpt[i].vec[1]);
+      r_bounds->ymax = max_ff(r_bounds->ymax, fcu->fpt[i].vec[1]);
+    }
+  }
+
+  return true;
+}
+
 bool BKE_fcurve_calc_bounds(const FCurve *fcu,
-                            const bool do_sel_only,
+                            const bool selected_keys_only,
                             const bool include_handles,
                             const float frame_range[2],
                             rctf *r_bounds)
@@ -695,63 +759,23 @@ bool BKE_fcurve_calc_bounds(const FCurve *fcu,
   }
 
   if (fcu->bezt) {
-    int index_range[2];
-    const bool found_indices = get_bounding_bezt_indices(
-        fcu, do_sel_only, frame_range, &index_range[0], &index_range[1]);
-    if (!found_indices) {
-      return false;
-    }
-    calculate_bezt_bounds_x(
-        fcu->bezt, index_range, include_handles, &r_bounds->xmin, &r_bounds->xmax);
-    calculate_bezt_bounds_y(
-        fcu->bezt, index_range, do_sel_only, include_handles, &r_bounds->ymin, &r_bounds->ymax);
+    const bool found_bounds = calculate_bezt_bounds(
+        fcu, selected_keys_only, include_handles, frame_range, r_bounds);
+    return found_bounds;
   }
 
   else if (fcu->fpt) {
-    if (frame_range != NULL) {
-      bool found_indices = false;
-      for (int i = 0; i < fcu->totvert; i++) {
-        if (fcu->fpt[i].vec[0] < frame_range[0] || fcu->fpt[i].vec[0] > frame_range[1]) {
-          continue;
-        }
-        if (!found_indices) {
-          r_bounds->xmin = fcu->fpt[i].vec[0];
-          r_bounds->xmax = fcu->fpt[i].vec[0];
-          r_bounds->ymin = fcu->fpt[i].vec[1];
-          r_bounds->ymax = fcu->fpt[i].vec[1];
-          found_indices = true;
-        }
-        else {
-          r_bounds->xmin = min_ff(r_bounds->xmin, fcu->fpt[i].vec[0]);
-          r_bounds->xmax = max_ff(r_bounds->xmax, fcu->fpt[i].vec[0]);
-          r_bounds->ymin = min_ff(r_bounds->ymin, fcu->fpt[i].vec[1]);
-          r_bounds->ymax = max_ff(r_bounds->ymax, fcu->fpt[i].vec[1]);
-        }
-      }
-      return found_indices;
-    }
-    else {
-      /* X range can be directly calculated from end verts. */
-      r_bounds->xmin = fcu->fpt[0].vec[0];
-      r_bounds->xmax = fcu->fpt[fcu->totvert - 1].vec[0];
-
-      r_bounds->ymin = fcu->fpt[0].vec[1];
-      r_bounds->ymax = fcu->fpt[0].vec[1];
-      for (int i = 0; i < fcu->totvert; i++) {
-        r_bounds->ymin = min_ff(r_bounds->ymin, fcu->fpt[i].vec[1]);
-        r_bounds->ymax = max_ff(r_bounds->ymax, fcu->fpt[i].vec[1]);
-      }
-    }
+    const bool founds_bounds = calculate_fpt_bounds(fcu, frame_range, r_bounds);
+    return founds_bounds;
   }
 
-  else {
-    return false;
-  }
-
-  return true;
+  return false;
 }
 
-bool BKE_fcurve_calc_range(const FCurve *fcu, float *start, float *end, const bool do_sel_only)
+bool BKE_fcurve_calc_range(const FCurve *fcu,
+                           float *r_start,
+                           float *r_end,
+                           const bool selected_keys_only)
 {
   float min, max = 0.0f;
   bool foundvert = false;
@@ -763,7 +787,7 @@ bool BKE_fcurve_calc_range(const FCurve *fcu, float *start, float *end, const bo
   if (fcu->bezt) {
     int index_range[2];
     foundvert = get_bounding_bezt_indices(
-        fcu, do_sel_only, NULL, &index_range[0], &index_range[1]);
+        fcu, selected_keys_only, NULL, &index_range[0], &index_range[1]);
     if (!foundvert) {
       return false;
     }
@@ -777,8 +801,8 @@ bool BKE_fcurve_calc_range(const FCurve *fcu, float *start, float *end, const bo
     foundvert = true;
   }
 
-  *start = min;
-  *end = max;
+  *r_start = min;
+  *r_end = max;
 
   return foundvert;
 }
