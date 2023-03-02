@@ -663,17 +663,8 @@ static void calculate_bezt_bounds_y(BezTriple *bezt_array,
     *r_max = max_ff(*r_max, bezt->vec[1][1]);
 
     if (include_handles) {
-      /* Left handle - only if applicable. */
-      if (i == 0 || (i - 1 > 0 && (bezt_array[i - 1].ipo == BEZT_IPO_BEZ))) {
-        *r_min = min_ff(*r_min, bezt->vec[0][1]);
-        *r_max = max_ff(*r_max, bezt->vec[0][1]);
-      }
-
-      /* Right handle - only if applicable. */
-      if (bezt->ipo == BEZT_IPO_BEZ) {
-        *r_min = min_ff(*r_min, bezt->vec[2][1]);
-        *r_max = max_ff(*r_max, bezt->vec[2][1]);
-      }
+      *r_min = min_fff(*r_min, bezt->vec[0][1], bezt->vec[2][1]);
+      *r_max = max_fff(*r_max, bezt->vec[0][1], bezt->vec[2][1]);
     }
   }
 }
