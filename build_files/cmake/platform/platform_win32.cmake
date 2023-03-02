@@ -899,6 +899,13 @@ if(WITH_USD)
   endif()
 endif()
 
+if(WITH_MATERIALX)
+  windows_find_package(MaterialX)
+  if(NOT MaterialX_FOUND)
+    include("${LIBDIR}/MaterialX/lib/cmake/MaterialX/MaterialXTargets.cmake")
+  endif()
+endif()
+
 if(WINDOWS_PYTHON_DEBUG)
   # Include the system scripts in the blender_python_system_scripts project.
   file(GLOB_RECURSE inFiles "${CMAKE_SOURCE_DIR}/release/scripts/*.*" )

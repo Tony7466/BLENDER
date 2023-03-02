@@ -5,6 +5,7 @@
 
 #include <pxr/imaging/hd/tokens.h>
 #include <pxr/imaging/hd/material.h>
+#include <pxr/imaging/hd/renderDelegate.h>
 
 #include "glog/logging.h"
 
@@ -12,6 +13,7 @@
 #include "BKE_lib_id.h"
 
 #include "material.h"
+#include "mtlxHydraAdapter.h"
 
 using namespace pxr;
 
@@ -49,7 +51,18 @@ VtValue MaterialData::get_data(TfToken const &key)
 
 pxr::VtValue MaterialData::material_resource()
 {
-  /* TODO: Implement return of HdMaterialNetwork */
+  std::string const &path = mtlx_path.GetResolvedPath();
+  if (!path.empty()) {
+    HdRenderDelegate *render_delegate = scene_delegate->GetRenderIndex().GetRenderDelegate();
+    TfTokenVector shader_source_types = render_delegate->GetShaderSourceTypes();
+    TfTokenVector render_contexts = render_delegate->GetMaterialRenderContexts();
+
+    HdMaterialNetworkMap material_network_map;
+    HdMtlxConvertToMaterialNetworkMap(
+        path, shader_source_types, render_contexts, &material_network_map);
+    return VtValue(material_network_map);
+  }
+
   return pxr::VtValue();
 }
 

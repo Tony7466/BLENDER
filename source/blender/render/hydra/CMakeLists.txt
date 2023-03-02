@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2011-2022 Blender Foundation
 
+if(NOT TARGET MaterialXCore OR NOT TARGET MaterialXFormat)
+  message(FATAL_ERROR "Hydra Scene Delegate requires MaterialX")
+endif()
+
 if(WIN32)
   add_definitions(-DNOMINMAX -DWIN32_LEAN_AND_MEAN -DBOOST_DEBUG_PYTHON)
 endif()
@@ -72,6 +76,8 @@ set(SRC
   sceneDelegate/material.cc
   sceneDelegate/mesh.h
   sceneDelegate/mesh.cc
+  sceneDelegate/mtlxHydraAdapter.h
+  sceneDelegate/mtlxHydraAdapter.cc
   sceneDelegate/light.h
   sceneDelegate/light.cc
   sceneDelegate/world.h
@@ -87,5 +93,9 @@ set(LIB
 )
 
 blender_add_lib(bf_render_hydra "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+
+target_link_libraries(bf_render_hydra PRIVATE
+    MaterialXCore
+    MaterialXFormat)
 
 add_dependencies(bf_render_hydra bf_rna)

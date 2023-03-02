@@ -794,7 +794,7 @@ set(POSTCONFIGURE_SCRIPT "" CACHE FILEPATH "Run given CMake script as the last s
 mark_as_advanced(POSTCONFIGURE_SCRIPT)
 
 # USD Hydra plugin.
-if(WIN32 AND WITH_USD)
+if(WIN32 AND WITH_USD AND WITH_MATERIALX)
   option(WITH_HYDRA "Enable USD Hydra plugin" ON)
 endif()
 
