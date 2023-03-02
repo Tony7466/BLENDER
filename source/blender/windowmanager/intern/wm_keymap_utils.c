@@ -183,7 +183,6 @@ wmKeyMap *WM_keymap_guess_opname(const bContext *C, const char *opname)
    *     ED_OT
    *     FLUID_OT
    *     TEXTURE_OT
-   *     UI_OT
    *     WORLD_OT
    */
 
