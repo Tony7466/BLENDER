@@ -11,7 +11,7 @@ void main()
   float world_radius;
   pointcloud_get_pos_nor_radius(world_pos, world_nor, world_radius);
 
-  gl_Position = point_world_to_ndc(world_pos);
+  gl_Position = point_world_to_homogenous(world_pos);
 
 #ifdef CONSERVATIVE_RASTER
   /* Avoid expense of geometry shader by ensuring rastered pointcloud primitive
