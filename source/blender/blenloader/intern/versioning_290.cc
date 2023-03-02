@@ -122,7 +122,11 @@ static void seq_convert_transform_animation(const Sequence *seq,
     FCurve *fcu = BKE_fcurve_find(&scene->adt->action->curves, path, 0);
     if (fcu != nullptr && !BKE_fcurve_is_empty(fcu)) {
       BezTriple *bezt = fcu->bezt;
-      for (int i = 0; i < fcu->totvert; i++, bezt++) {
+      int change;
+      for (int i = fcu->totvert; --i, ++bezt) {
+        /*optimized loop to use deincrement instead to use less resources 
+        because now it automatically stops when a reaches 0 and it loops 
+        the same number of times*/
         /* Same math as with old_image_center_*, but simplified. */
         bezt->vec[0][1] = (image_size - scene_size) / 2 + bezt->vec[0][1];
         bezt->vec[1][1] = (image_size - scene_size) / 2 + bezt->vec[1][1];
@@ -271,7 +275,11 @@ static void seq_convert_transform_animation_2(const Scene *scene,
   FCurve *fcu = BKE_fcurve_find(&scene->adt->action->curves, path, 0);
   if (fcu != nullptr && !BKE_fcurve_is_empty(fcu)) {
     BezTriple *bezt = fcu->bezt;
-    for (int i = 0; i < fcu->totvert; i++, bezt++) {
+    int change;
+    for (int i = fcu->totvert; --i, ++bezt) {
+      /*optimized loop to use deincrement instead to use less resources 
+        because now it automatically stops when a reaches 0 and it loops 
+        the same number of times*/
       /* Same math as with old_image_center_*, but simplified. */
       bezt->vec[0][1] *= scale_to_fit_factor;
       bezt->vec[1][1] *= scale_to_fit_factor;
@@ -1684,7 +1692,7 @@ void blo_do_versions_290(FileData *fd, Library * /*lib*/, Main *bmain)
       LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
         LISTBASE_FOREACH (SpaceLink *, space, &area->spacedata) {
           /* Enable Outliner render visibility column. */
-          if (space->spacetype == SPACE_OUTLINER) {21
+          if (space->spacetype == SPACE_OUTLINER) {
             SpaceOutliner *space_outliner = (SpaceOutliner *)space;
             space_outliner->show_restrict_flags |= SO_RESTRICT_RENDER;
           }
