@@ -16,13 +16,11 @@ extern "C" {
 
 struct BHead;
 struct BlendThumbnail;
-struct Collection;
 struct FileData;
 struct LinkNode;
 struct ListBase;
 struct Main;
 struct MemFile;
-struct Object;
 struct ReportList;
 struct Scene;
 struct UserDef;
@@ -124,6 +122,7 @@ typedef enum eBLOReadSkip {
   /** Do not attempt to re-use IDs from old bmain for unchanged ones in case of undo. */
   BLO_READ_SKIP_UNDO_OLD_MAIN = (1 << 2),
 } eBLOReadSkip;
+ENUM_OPERATORS(eBLOReadSkip, BLO_READ_SKIP_UNDO_OLD_MAIN)
 #define BLO_READ_SKIP_ALL (BLO_READ_SKIP_USERDEF | BLO_READ_SKIP_DATA)
 
 /**
@@ -288,6 +287,26 @@ struct LinkNode *BLO_blendhandle_get_linkable_groups(BlendHandle *bh);
  * \param bh: The handle to close.
  */
 void BLO_blendhandle_close(BlendHandle *bh);
+
+/** Mark the given Main (and the 'root' local one in case of lib-split Mains) as invalid, and
+ * generate an error report containing given `message`. */
+void BLO_read_invalidate_message(BlendHandle *bh, struct Main *bmain, const char *message);
+
+/**
+ * BLI_assert-like macro to check a condition, and if `false`, fail the whole .blend reading
+ * process by marking the Main data-base as invalid, and returning provided `_ret_value`.
+ *
+ * NOTE: About usages:
+ *   - #BLI_assert should be used when the error is considered as a bug, but there is some code to
+ *     recover from it and produce a valid Main data-base.
+ *   - #BLO_read_assert_message should be used when the error is not considered as recoverable.
+ */
+#define BLO_read_assert_message(_check_expr, _ret_value, _bh, _bmain, _message) \
+  if (_check_expr) { \
+    BLO_read_invalidate_message((_bh), (_bmain), (_message)); \
+    return _ret_value; \
+  } \
+  (void)0
 
 /** \} */
 

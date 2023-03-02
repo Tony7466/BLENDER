@@ -127,14 +127,14 @@ VArray<float3> mesh_normals_varray(const Mesh &mesh,
       return VArray<float3>::ForSpan(mesh.poly_normals());
     }
     case ATTR_DOMAIN_POINT: {
-      return VArray<float3>::ForSpan(mesh.vertex_normals());
+      return VArray<float3>::ForSpan(mesh.vert_normals());
     }
     case ATTR_DOMAIN_EDGE: {
       /* In this case, start with vertex normals and convert to the edge domain, since the
        * conversion from edges to vertices is very simple. Use "manual" domain interpolation
        * instead of the GeometryComponent API to avoid calculating unnecessary values and to
        * allow normalizing the result more simply. */
-      Span<float3> vert_normals = mesh.vertex_normals();
+      Span<float3> vert_normals = mesh.vert_normals();
       const Span<MEdge> edges = mesh.edges();
       Array<float3> edge_normals(mask.min_array_size());
       for (const int i : mask) {
@@ -211,7 +211,8 @@ void adapt_mesh_domain_corner_to_point_impl(const Mesh &mesh,
 
   /* Deselect loose vertices without corners that are still selected from the 'true' default. */
   /* The record fact says that the value is true.
-   *Writing to the array from different threads is okay because each thread sets the same value. */
+   * Writing to the array from different threads is okay because each thread sets the same value.
+   */
   threading::parallel_for(loose_verts.index_range(), 2048, [&](const IndexRange range) {
     for (const int vert_index : range) {
       if (loose_verts[vert_index]) {
@@ -904,42 +905,22 @@ static GVMutableArray make_derived_write_attribute(void *data, const int domain_
       MutableSpan<StructT>((StructT *)data, domain_num));
 }
 
-static float3 get_vertex_position(const MVert &vert)
-{
-  return float3(vert.co);
-}
-
-static void set_vertex_position(MVert &vert, float3 position)
-{
-  copy_v3_v3(vert.co, position);
-}
-
 static void tag_component_positions_changed(void *owner)
 {
   Mesh *mesh = static_cast<Mesh *>(owner);
   if (mesh != nullptr) {
-    BKE_mesh_tag_coords_changed(mesh);
+    BKE_mesh_tag_positions_changed(mesh);
   }
 }
 
-static bool get_shade_smooth(const MPoly &mpoly)
+static bool get_shade_smooth(const MPoly &poly)
 {
-  return mpoly.flag & ME_SMOOTH;
+  return poly.flag & ME_SMOOTH;
 }
 
-static void set_shade_smooth(MPoly &mpoly, bool value)
+static void set_shade_smooth(MPoly &poly, bool value)
 {
-  SET_FLAG_FROM_TEST(mpoly.flag, value, ME_SMOOTH);
-}
-
-static float2 get_loop_uv(const MLoopUV &uv)
-{
-  return float2(uv.uv);
-}
-
-static void set_loop_uv(MLoopUV &uv, float2 co)
-{
-  copy_v2_v2(uv.uv, co);
+  SET_FLAG_FROM_TEST(poly.flag, value, ME_SMOOTH);
 }
 
 static float get_crease(const float &crease)
@@ -997,29 +978,33 @@ class VArrayImpl_For_VertexWeights final : public VMutableArrayImpl<float> {
 
   void set_all(Span<float> src) override
   {
-    for (const int64_t index : src.index_range()) {
-      this->set(index, src[index]);
-    }
+    threading::parallel_for(src.index_range(), 4096, [&](const IndexRange range) {
+      for (const int64_t i : range) {
+        this->set(i, src[i]);
+      }
+    });
   }
 
-  void materialize(IndexMask mask, MutableSpan<float> r_span) const override
+  void materialize(IndexMask mask, float *dst) const override
   {
     if (dverts_ == nullptr) {
-      return r_span.fill_indices(mask, 0.0f);
+      mask.foreach_index([&](const int i) { dst[i] = 0.0f; });
     }
-    for (const int64_t index : mask) {
-      if (const MDeformWeight *weight = this->find_weight_at_index(index)) {
-        r_span[index] = weight->weight;
+    threading::parallel_for(mask.index_range(), 4096, [&](const IndexRange range) {
+      for (const int64_t i : mask.slice(range)) {
+        if (const MDeformWeight *weight = this->find_weight_at_index(i)) {
+          dst[i] = weight->weight;
+        }
+        else {
+          dst[i] = 0.0f;
+        }
       }
-      else {
-        r_span[index] = 0.0f;
-      }
-    }
+    });
   }
 
-  void materialize_to_uninitialized(IndexMask mask, MutableSpan<float> r_span) const override
+  void materialize_to_uninitialized(IndexMask mask, float *dst) const override
   {
-    this->materialize(mask, r_span);
+    this->materialize(mask, dst);
   }
 
  private:
@@ -1051,7 +1036,7 @@ class VertexGroupsAttributeProvider final : public DynamicAttributesProvider {
   GAttributeReader try_get_for_read(const void *owner,
                                     const AttributeIDRef &attribute_id) const final
   {
-    if (!attribute_id.is_named()) {
+    if (attribute_id.is_anonymous()) {
       return {};
     }
     const Mesh *mesh = static_cast<const Mesh *>(owner);
@@ -1075,7 +1060,7 @@ class VertexGroupsAttributeProvider final : public DynamicAttributesProvider {
 
   GAttributeWriter try_get_for_write(void *owner, const AttributeIDRef &attribute_id) const final
   {
-    if (!attribute_id.is_named()) {
+    if (attribute_id.is_anonymous()) {
       return {};
     }
     Mesh *mesh = static_cast<Mesh *>(owner);
@@ -1096,7 +1081,7 @@ class VertexGroupsAttributeProvider final : public DynamicAttributesProvider {
 
   bool try_delete(void *owner, const AttributeIDRef &attribute_id) const final
   {
-    if (!attribute_id.is_named()) {
+    if (attribute_id.is_anonymous()) {
       return false;
     }
     Mesh *mesh = static_cast<Mesh *>(owner);
@@ -1117,15 +1102,18 @@ class VertexGroupsAttributeProvider final : public DynamicAttributesProvider {
       return true;
     }
 
-    for (MDeformVert &dvert : mesh->deform_verts_for_write()) {
-      MDeformWeight *weight = BKE_defvert_find_index(&dvert, index);
-      BKE_defvert_remove_group(&dvert, weight);
-      for (MDeformWeight &weight : MutableSpan(dvert.dw, dvert.totweight)) {
-        if (weight.def_nr > index) {
-          weight.def_nr--;
+    MutableSpan<MDeformVert> dverts = mesh->deform_verts_for_write();
+    threading::parallel_for(dverts.index_range(), 1024, [&](IndexRange range) {
+      for (MDeformVert &dvert : dverts.slice(range)) {
+        MDeformWeight *weight = BKE_defvert_find_index(&dvert, index);
+        BKE_defvert_remove_group(&dvert, weight);
+        for (MDeformWeight &weight : MutableSpan(dvert.dw, dvert.totweight)) {
+          if (weight.def_nr > index) {
+            weight.def_nr--;
+          }
         }
       }
-    }
+    });
     return true;
   }
 
@@ -1147,48 +1135,6 @@ class VertexGroupsAttributeProvider final : public DynamicAttributesProvider {
   void foreach_domain(const FunctionRef<void(eAttrDomain)> callback) const final
   {
     callback(ATTR_DOMAIN_POINT);
-  }
-};
-
-/**
- * This provider makes face normals available as a read-only float3 attribute.
- */
-class NormalAttributeProvider final : public BuiltinAttributeProvider {
- public:
-  NormalAttributeProvider()
-      : BuiltinAttributeProvider(
-            "normal", ATTR_DOMAIN_FACE, CD_PROP_FLOAT3, NonCreatable, Readonly, NonDeletable)
-  {
-  }
-
-  GVArray try_get_for_read(const void *owner) const final
-  {
-    const Mesh *mesh = static_cast<const Mesh *>(owner);
-    if (mesh == nullptr || mesh->totpoly == 0) {
-      return {};
-    }
-    return VArray<float3>::ForSpan({(float3 *)BKE_mesh_poly_normals_ensure(mesh), mesh->totpoly});
-  }
-
-  GAttributeWriter try_get_for_write(void * /*owner*/) const final
-  {
-    return {};
-  }
-
-  bool try_delete(void * /*owner*/) const final
-  {
-    return false;
-  }
-
-  bool try_create(void * /*owner*/, const AttributeInit & /*initializer*/) const final
-  {
-    return false;
-  }
-
-  bool exists(const void *owner) const final
-  {
-    const Mesh *mesh = static_cast<const Mesh *>(owner);
-    return mesh->totpoly != 0;
   }
 };
 
@@ -1230,46 +1176,40 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
 #undef MAKE_CONST_CUSTOM_DATA_GETTER
 #undef MAKE_MUTABLE_CUSTOM_DATA_GETTER
 
-  static BuiltinCustomDataLayerProvider position(
-      "position",
-      ATTR_DOMAIN_POINT,
-      CD_PROP_FLOAT3,
-      CD_MVERT,
-      BuiltinAttributeProvider::NonCreatable,
-      BuiltinAttributeProvider::Writable,
-      BuiltinAttributeProvider::NonDeletable,
-      point_access,
-      make_derived_read_attribute<MVert, float3, get_vertex_position>,
-      make_derived_write_attribute<MVert, float3, get_vertex_position, set_vertex_position>,
-      tag_component_positions_changed);
-
-  static NormalAttributeProvider normal;
+  static BuiltinCustomDataLayerProvider position("position",
+                                                 ATTR_DOMAIN_POINT,
+                                                 CD_PROP_FLOAT3,
+                                                 CD_PROP_FLOAT3,
+                                                 BuiltinAttributeProvider::NonCreatable,
+                                                 BuiltinAttributeProvider::NonDeletable,
+                                                 point_access,
+                                                 make_array_read_attribute<float3>,
+                                                 make_array_write_attribute<float3>,
+                                                 tag_component_positions_changed);
 
   static BuiltinCustomDataLayerProvider id("id",
                                            ATTR_DOMAIN_POINT,
                                            CD_PROP_INT32,
                                            CD_PROP_INT32,
                                            BuiltinAttributeProvider::Creatable,
-                                           BuiltinAttributeProvider::Writable,
                                            BuiltinAttributeProvider::Deletable,
                                            point_access,
                                            make_array_read_attribute<int>,
                                            make_array_write_attribute<int>,
                                            nullptr);
 
-  static const fn::CustomMF_SI_SO<int, int> material_index_clamp{
+  static const auto material_index_clamp = mf::build::SI1_SO<int, int>(
       "Material Index Validate",
       [](int value) {
         /* Use #short for the maximum since many areas still use that type for indices. */
         return std::clamp<int>(value, 0, std::numeric_limits<short>::max());
       },
-      fn::CustomMF_presets::AllSpanOrSingle()};
+      mf::build::exec_presets::AllSpanOrSingle());
   static BuiltinCustomDataLayerProvider material_index("material_index",
                                                        ATTR_DOMAIN_FACE,
                                                        CD_PROP_INT32,
                                                        CD_PROP_INT32,
                                                        BuiltinAttributeProvider::Creatable,
-                                                       BuiltinAttributeProvider::Writable,
                                                        BuiltinAttributeProvider::Deletable,
                                                        face_access,
                                                        make_array_read_attribute<int>,
@@ -1283,12 +1223,22 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
       CD_PROP_BOOL,
       CD_MPOLY,
       BuiltinAttributeProvider::NonCreatable,
-      BuiltinAttributeProvider::Writable,
       BuiltinAttributeProvider::NonDeletable,
       face_access,
       make_derived_read_attribute<MPoly, bool, get_shade_smooth>,
       make_derived_write_attribute<MPoly, bool, get_shade_smooth, set_shade_smooth>,
       nullptr);
+
+  static BuiltinCustomDataLayerProvider sharp_edge("sharp_edge",
+                                                   ATTR_DOMAIN_EDGE,
+                                                   CD_PROP_BOOL,
+                                                   CD_PROP_BOOL,
+                                                   BuiltinAttributeProvider::Creatable,
+                                                   BuiltinAttributeProvider::Deletable,
+                                                   edge_access,
+                                                   make_array_read_attribute<bool>,
+                                                   make_array_write_attribute<bool>,
+                                                   nullptr);
 
   static BuiltinCustomDataLayerProvider crease(
       "crease",
@@ -1296,20 +1246,11 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
       CD_PROP_FLOAT,
       CD_CREASE,
       BuiltinAttributeProvider::Creatable,
-      BuiltinAttributeProvider::Writable,
       BuiltinAttributeProvider::Deletable,
       edge_access,
       make_array_read_attribute<float>,
       make_derived_write_attribute<float, float, get_crease, set_crease>,
       nullptr);
-
-  static NamedLegacyCustomDataProvider uvs(
-      ATTR_DOMAIN_CORNER,
-      CD_PROP_FLOAT2,
-      CD_MLOOPUV,
-      corner_access,
-      make_derived_read_attribute<MLoopUV, float2, get_loop_uv>,
-      make_derived_write_attribute<MLoopUV, float2, get_loop_uv, set_loop_uv>);
 
   static VertexGroupsAttributeProvider vertex_groups;
   static CustomDataAttributeProvider corner_custom_data(ATTR_DOMAIN_CORNER, corner_access);
@@ -1318,9 +1259,8 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
   static CustomDataAttributeProvider face_custom_data(ATTR_DOMAIN_FACE, face_access);
 
   return ComponentAttributeProviders(
-      {&position, &id, &material_index, &shade_smooth, &normal, &crease},
-      {&uvs,
-       &corner_custom_data,
+      {&position, &id, &material_index, &shade_smooth, &sharp_edge, &crease},
+      {&corner_custom_data,
        &vertex_groups,
        &point_custom_data,
        &edge_custom_data,

@@ -2,10 +2,8 @@
 
 #include "node_function_util.hh"
 
-#include "BKE_node_runtime.hh"
-
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 
 namespace blender::nodes::node_fn_decompose_matrix3x3_cc {
 
@@ -17,24 +15,22 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Vector>(N_("Scale"));
 };
 
-class DecomposeMatrix3x3Function : public fn::MultiFunction {
+class DecomposeMatrix3x3Function : public mf::MultiFunction {
  public:
   DecomposeMatrix3x3Function()
   {
-    static fn::MFSignature signature = create_signature();
+    static const mf::Signature signature = []() {
+      mf::Signature signature;
+      mf::SignatureBuilder builder{"Decompose Matrix 3x3", signature};
+      builder.single_input<float3x3>("Matrix");
+      builder.single_output<float3>("Rotation");
+      builder.single_output<float3>("Scale");
+      return signature;
+    }();
     this->set_signature(&signature);
   }
 
-  static fn::MFSignature create_signature()
-  {
-    fn::MFSignatureBuilder signature{"Decompose Matrix 3x3"};
-    signature.single_input<float3x3>("Matrix");
-    signature.single_output<float3>("Rotation");
-    signature.single_output<float3>("Scale");
-    return signature.build();
-  }
-
-  void call(IndexMask mask, fn::MFParams params, fn::MFContext /*context*/) const override
+  void call(IndexMask mask, mf::Params params, mf::Context /*context*/) const override
   {
     const VArray<float3x3> &matrices = params.readonly_single_input<float3x3>(0, "Matrix");
     MutableSpan<float3> rotations = params.uninitialized_single_output<float3>(0, "Rotation");

@@ -2,10 +2,7 @@
 
 #include "node_function_util.hh"
 
-#include "BKE_node_runtime.hh"
-
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "BLI_math_vector.h"
 
 namespace blender::nodes::node_fn_scale_matrix3x3_cc {
 
@@ -19,15 +16,15 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
-  static fn::CustomMF_SI_SI_SO<float3x3, float3, float3x3> scale_matrix_fn{
+  static auto fn = mf::build::SI2_SO<float3x3, float3, float3x3>(
       "scale_matrix", [](const float3x3 &mat, const float3 &scale) {
         float3x3 result;
-        mul_v3_v3fl(result.values[0], mat[0], scale[0]);
-        mul_v3_v3fl(result.values[1], mat[1], scale[1]);
-        mul_v3_v3fl(result.values[2], mat[2], scale[2]);
+        mul_v3_v3fl(result.view()[0], mat[0], scale[0]);
+        mul_v3_v3fl(result.view()[1], mat[1], scale[1]);
+        mul_v3_v3fl(result.view()[2], mat[2], scale[2]);
         return result;
-      }};
-  builder.set_matching_fn(&scale_matrix_fn);
+      });
+  builder.set_matching_fn(&fn);
 }
 
 }  // namespace blender::nodes::node_fn_scale_matrix3x3_cc

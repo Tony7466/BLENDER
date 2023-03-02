@@ -2,32 +2,12 @@
 
 #include "node_function_util.hh"
 
-#include "BKE_node_runtime.hh"
+#include "BLI_math_matrix.h"
 
 #include "NOD_socket_search_link.hh"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
-
-namespace blender::math {
-
-/* XXX These are placeholder functions based on BLI math until SIMD versions are available */
-
-inline float3x3 [[nodiscard]] add(const float3x3 &a, const float3x3 &b)
-{
-  float3x3 r;
-  add_m3_m3m3(r.ptr(), a.ptr(), b.ptr());
-  return r;
-}
-
-inline float3x3 [[nodiscard]] subtract(const float3x3 &a, const float3x3 &b)
-{
-  float3x3 r;
-  sub_m3_m3m3(r.ptr(), a.ptr(), b.ptr());
-  return r;
-}
-
-}
 
 namespace blender::nodes::node_fn_matrix3x3_math_cc {
 
@@ -79,8 +59,6 @@ static void node_update(bNodeTree *tree, bNode *node)
   node_sock_label_clear(in_matrix_a);
   node_sock_label_clear(in_matrix_b);
   node_sock_label_clear(in_scale);
-  switch (op) {
-  }
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -88,19 +66,16 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->custom1 = NODE_MATRIX_MATH_ADD;
 }
 
-static const fn::MultiFunction *get_multi_function(NodeMatrixMathOperation op)
+static const mf::MultiFunction *get_multi_function(NodeMatrixMathOperation op)
 {
-  static auto exec_preset_fast = fn::CustomMF_presets::AllSpanOrSingle();
-  static auto exec_preset_slow = fn::CustomMF_presets::Materialized();
-
-  const fn::MultiFunction *multi_fn = nullptr;
+  static auto exec_preset = mf::build::exec_presets::AllSpanOrSingle();
 
   switch (op) {
     case NODE_MATRIX_MATH_ADD: {
-      static fn::CustomMF_SI_SI_SO<float3x3, float3x3, float3x3> fn{
+      static auto fn = mf::build::SI2_SO<float3x3, float3x3, float3x3>(
           "add",
-          [](const float3x3 &a, const float3x3 &b) -> float3x3 { return math::add(a, b); },
-          exec_preset_fast};
+          [](const float3x3 &a, const float3x3 &b) -> float3x3 { return a + b; },
+          exec_preset);
       return &fn;
     }
   }
@@ -111,7 +86,7 @@ static const fn::MultiFunction *get_multi_function(NodeMatrixMathOperation op)
 static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
   const NodeMatrixMathOperation op = (NodeMatrixMathOperation)builder.node().custom1;
-  const fn::MultiFunction *fn = get_multi_function(op);
+  const mf::MultiFunction *fn = get_multi_function(op);
   builder.set_matching_fn(fn);
 }
 

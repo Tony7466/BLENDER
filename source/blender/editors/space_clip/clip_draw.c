@@ -978,7 +978,7 @@ static void draw_marker_slide_zones(SpaceClip *sc,
 
   if ((sc->flag & SC_SHOW_MARKER_PATTERN) && ((track->pat_flag & SELECT) == sel || outline)) {
     float pat_min[2], pat_max[2];
-    /*      float dx = 12.0f / width, dy = 12.0f / height;*/ /* XXX UNUSED */
+    // float dx = 12.0f / width, dy = 12.0f / height; /*UNUSED*/
     float tilt_ctrl[2];
 
     if (!outline) {
@@ -1196,13 +1196,13 @@ static void draw_plane_marker_image(Scene *scene,
         GPU_blend(GPU_BLEND_ALPHA);
       }
 
-      GPUTexture *texture = GPU_texture_create_2d_ex("plane_marker_image",
-                                                     ibuf->x,
-                                                     ibuf->y,
-                                                     1,
-                                                     GPU_RGBA8,
-                                                     GPU_TEXTURE_USAGE_SHADER_READ,
-                                                     NULL);
+      GPUTexture *texture = GPU_texture_create_2d("plane_marker_image",
+                                                  ibuf->x,
+                                                  ibuf->y,
+                                                  1,
+                                                  GPU_RGBA8,
+                                                  GPU_TEXTURE_USAGE_SHADER_READ,
+                                                  NULL);
       GPU_texture_update(texture, GPU_DATA_UBYTE, display_buffer);
       GPU_texture_filter_mode(texture, false);
 

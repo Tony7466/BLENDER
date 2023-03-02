@@ -317,6 +317,7 @@ void gpu_shader_create_info_init()
   /* WORKAROUND: Replace the use of gpu_BaseInstance by an instance attribute. */
   if (GPU_shader_draw_parameters_support() == false) {
     draw_resource_id_new = draw_resource_id_fallback;
+    draw_resource_with_custom_id_new = draw_resource_with_custom_id_fallback;
   }
 
 #ifdef WITH_METAL_BACKEND
@@ -334,6 +335,8 @@ void gpu_shader_create_info_init()
     overlay_edit_mesh_edge_flat = overlay_edit_mesh_edge_flat_no_geom;
     overlay_edit_mesh_edge_clipped = overlay_edit_mesh_edge_clipped_no_geom;
     overlay_edit_mesh_edge_flat_clipped = overlay_edit_mesh_edge_flat_clipped_no_geom;
+    overlay_edit_curve_handle = overlay_edit_curve_handle_no_geom;
+    overlay_edit_curve_handle_clipped = overlay_edit_curve_handle_clipped_no_geom;
 
     /* Overlay Armature Shape outline. */
     overlay_armature_shape_outline = overlay_armature_shape_outline_no_geom;
@@ -344,7 +347,7 @@ void gpu_shader_create_info_init()
     overlay_motion_path_line_clipped = overlay_motion_path_line_clipped_no_geom;
 
     /* Workbench shadows.
-     * Note: Updates additional-info used by workbench shadow permutations.
+     * NOTE: Updates additional-info used by workbench shadow permutations.
      * Must be prepared prior to permutation preparation. */
     workbench_shadow_manifold = workbench_shadow_manifold_no_geom;
     workbench_shadow_no_manifold = workbench_shadow_no_manifold_no_geom;
@@ -377,6 +380,9 @@ void gpu_shader_create_info_init()
 
     /* EEVEE Volumetric Material */
     eevee_legacy_material_volumetric_vert = eevee_legacy_material_volumetric_vert_no_geom;
+
+    /* GPencil stroke. */
+    gpu_shader_gpencil_stroke = gpu_shader_gpencil_stroke_no_geom;
   }
 #endif
 

@@ -10,6 +10,7 @@ set(INC
   ../../bmesh
   ../../depsgraph
   ../../draw
+  ../../functions
   ../../geometry
   ../../gpu
   ../../imbuf
@@ -27,6 +28,7 @@ set(SRC
   editface.cc
   editmesh_add.c
   editmesh_add_gizmo.c
+  editmesh_attribute.cc
   editmesh_automerge.c
   editmesh_bevel.c
   editmesh_bisect.c
@@ -39,7 +41,7 @@ set(SRC
   editmesh_knife.c
   editmesh_knife_project.c
   editmesh_loopcut.c
-  editmesh_mask_extract.c
+  editmesh_mask_extract.cc
   editmesh_path.c
   editmesh_polybuild.c
   editmesh_preselect_edgering.c
@@ -52,7 +54,7 @@ set(SRC
   editmesh_undo.cc
   editmesh_utils.c
   mesh_data.cc
-  mesh_mirror.c
+  mesh_mirror.cc
   mesh_ops.c
   meshtools.cc
 

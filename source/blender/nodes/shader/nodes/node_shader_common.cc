@@ -95,7 +95,7 @@ void register_node_type_sh_group()
 
   node_type_size(&ntype, 140, 60, 400);
   ntype.labelfunc = node_group_label;
-  ntype.group_update_func = node_group_update;
+  ntype.declare_dynamic = blender::nodes::node_group_declare_dynamic;
   ntype.gpu_fn = gpu_group_execute;
 
   nodeRegisterType(&ntype);
@@ -110,6 +110,6 @@ void register_node_type_sh_custom_group(bNodeType *ntype)
   if (ntype->insert_link == nullptr) {
     ntype->insert_link = node_insert_link_default;
   }
-
+  ntype->declare_dynamic = blender::nodes::node_group_declare_dynamic;
   ntype->gpu_fn = gpu_group_execute;
 }

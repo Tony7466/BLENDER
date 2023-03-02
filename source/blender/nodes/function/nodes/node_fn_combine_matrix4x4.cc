@@ -2,8 +2,6 @@
 
 #include "node_function_util.hh"
 
-#include "BKE_node_runtime.hh"
-
 #include "UI_interface.h"
 #include "UI_resources.h"
 
@@ -82,26 +80,21 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->custom1 = NODE_COMBSEP_MATRIX_COLUMNS;
 }
 
-static const fn::MultiFunction *get_multi_function(const bNode &bnode)
+static const mf::MultiFunction *get_multi_function(const bNode &bnode)
 {
   const NodeCombSepMatrixMode mode = (NodeCombSepMatrixMode)bnode.custom1;
 
-  static fn::CustomMF_SI_SI_SI_SI_SO<float3, float3, float3, float3, float4x4>
-      columns_to_matrix_fn{
-          "columns_to_matrix",
-          [](const float3 &c0, const float3 &c1, const float3 &c2, const float3 &c3) {
-            float4x4 m;
-            copy_v3_v3(m[0], c0);
-            m[0][3] = 0.0f;
-            copy_v3_v3(m[1], c1);
-            m[1][3] = 0.0f;
-            copy_v3_v3(m[2], c2);
-            m[2][3] = 0.0f;
-            copy_v3_v3(m[3], c3);
-            m[3][3] = 1.0f;
-            return m;
-          }};
-  static fn::CustomMF_SI_SI_SI_SI_SO<float3, float3, float3, float3, float4x4> rows_to_matrix_fn{
+  static auto columns_fn = mf::build::SI4_SO<float3, float3, float3, float3, float4x4>(
+      "columns_to_matrix",
+      [](const float3 &c0, const float3 &c1, const float3 &c2, const float3 &c3) {
+        float4x4 m;
+        m.view()[0] = float4(c0, 0.0f);
+        m.view()[1] = float4(c1, 0.0f);
+        m.view()[2] = float4(c2, 0.0f);
+        m.view()[3] = float4(c3, 1.0f);
+        return m;
+      });
+  static auto rows_fn = mf::build::SI4_SO<float3, float3, float3, float3, float4x4>(
       "rows_to_matrix",
       [](const float3 &r0, const float3 &r1, const float3 &r2, const float3 &r3) {
         float4x4 m;
@@ -122,27 +115,10 @@ static const fn::MultiFunction *get_multi_function(const bNode &bnode)
         m[3][2] = 0.0f;
         m[3][3] = 1.0f;
         return m;
-      }};
-  using Element = fn::MFParamTag<fn::MFParamCategory::SingleInput, float>;
-  using Matrix = fn::MFParamTag<fn::MFParamCategory::SingleOutput, float4x4>;
-  static fn::CustomMF<Element,
-                      Element,
-                      Element,
-                      Element,
-                      Element,
-                      Element,
-                      Element,
-                      Element,
-                      Element,
-                      Element,
-                      Element,
-                      Element,
-                      Element,
-                      Element,
-                      Element,
-                      Element,
-                      Matrix>
-      elements_to_matrix_fn{
+      });
+  static auto exec_preset = mf::build::exec_presets::AllSpanOrSingle();
+  static auto elements_fn =
+      mf::build::detail::build_multi_function_with_n_inputs_one_output<float4x4>(
           "elements_to_matrix",
           [](float m00,
              float m01,
@@ -159,20 +135,21 @@ static const fn::MultiFunction *get_multi_function(const bNode &bnode)
              float m30,
              float m31,
              float m32,
-             float m33,
-             float4x4 *result) {
+             float m33) {
             const float elements[] = {
                 m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33};
-            *result = float4x4(elements);
-          }};
+            return float4x4(elements);
+          },
+          exec_preset,
+          TypeSequence<float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float>());
 
   switch (mode) {
     case NODE_COMBSEP_MATRIX_COLUMNS:
-      return &columns_to_matrix_fn;
+      return &columns_fn;
     case NODE_COMBSEP_MATRIX_ROWS:
-      return &rows_to_matrix_fn;
+      return &rows_fn;
     case NODE_COMBSEP_MATRIX_ELEMENTS:
-      return &elements_to_matrix_fn;
+      return &elements_fn;
   }
 
   BLI_assert_unreachable();
@@ -181,7 +158,7 @@ static const fn::MultiFunction *get_multi_function(const bNode &bnode)
 
 static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
-  const fn::MultiFunction *fn = get_multi_function(builder.node());
+  const mf::MultiFunction *fn = get_multi_function(builder.node());
   builder.set_matching_fn(fn);
 }
 

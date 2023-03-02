@@ -28,7 +28,7 @@ struct Scene;
 int BKE_mesh_runtime_looptri_len(const struct Mesh *mesh);
 
 /**
- * Return mesh triangulation data, calculated lazily when necessary necessary.
+ * Return mesh triangulation data, calculated lazily when necessary.
  * See #MLoopTri for further description of mesh triangulation.
  *
  * \note Prefer #Mesh::looptris() in C++ code.
@@ -44,7 +44,7 @@ void BKE_mesh_runtime_reset_edit_data(struct Mesh *mesh);
  * directly or making other large changes to topology. It does not need to be called on new meshes.
  *
  * For "smaller" changes to meshes like updating positions, consider calling a more specific update
- * function like #BKE_mesh_tag_coords_changed.
+ * function like #BKE_mesh_tag_positions_changed.
  *
  * Also note that some derived caches like #CD_NORMAL and #CD_TANGENT are stored directly in
  * #CustomData.

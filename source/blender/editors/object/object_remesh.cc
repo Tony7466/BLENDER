@@ -73,6 +73,7 @@
 
 #include "object_intern.h" /* own include */
 
+using blender::float3;
 using blender::IndexRange;
 using blender::Span;
 
@@ -675,7 +676,7 @@ static bool mesh_is_manifold_consistent(Mesh *mesh)
    * check that the direction of the faces are consistent and doesn't suddenly
    * flip
    */
-  const Span<MVert> verts = mesh->verts();
+  const Span<float3> positions = mesh->vert_positions();
   const Span<MEdge> edges = mesh->edges();
   const Span<MLoop> loops = mesh->loops();
 
@@ -713,9 +714,7 @@ static bool mesh_is_manifold_consistent(Mesh *mesh)
         break;
       }
       /* Check for zero length edges */
-      const MVert &v1 = verts[edges[i].v1];
-      const MVert &v2 = verts[edges[i].v2];
-      if (compare_v3v3(v1.co, v2.co, 1e-4f)) {
+      if (compare_v3v3(positions[edges[i].v1], positions[edges[i].v2], 1e-4f)) {
         is_manifold_consistent = false;
         break;
       }
@@ -820,7 +819,7 @@ static Mesh *remesh_symmetry_mirror(Object *ob, Mesh *mesh, eSymmetryAxes symmet
       mmd.flag &= MOD_MIR_AXIS_X << i;
       mesh_mirror_temp = mesh_mirror;
       mesh_mirror = BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(
-          &mmd, ob, mesh_mirror, axis, true);
+          &mmd, ob, mesh_mirror, axis, true, nullptr, nullptr);
       if (mesh_mirror_temp != mesh_mirror) {
         BKE_id_free(nullptr, mesh_mirror_temp);
       }

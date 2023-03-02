@@ -181,7 +181,7 @@ static uint partition_mainb(MetaElem **mainb, uint start, uint end, uint s, floa
       break;
     }
 
-    SWAP(MetaElem *, mainb[i], mainb[j]);
+    std::swap(mainb[i], mainb[j]);
     i++;
     j--;
   }
@@ -1463,15 +1463,12 @@ Mesh *BKE_mball_polygonize(Depsgraph *depsgraph, Scene *scene, Object *ob)
   Mesh *mesh = (Mesh *)BKE_id_new_nomain(ID_ME, ((ID *)ob->data)->name + 2);
 
   mesh->totvert = int(process.curvertex);
-  MVert *mvert = static_cast<MVert *>(
-      CustomData_add_layer(&mesh->vdata, CD_MVERT, CD_CONSTRUCT, nullptr, mesh->totvert));
-  for (int i = 0; i < mesh->totvert; i++) {
-    copy_v3_v3(mvert[i].co, process.co[i]);
-  }
-  MEM_freeN(process.co);
+  CustomData_add_layer_named(
+      &mesh->vdata, CD_PROP_FLOAT3, CD_ASSIGN, process.co, mesh->totvert, "position");
+  process.co = nullptr;
 
   mesh->totpoly = int(process.curindex);
-  MPoly *mpoly = static_cast<MPoly *>(
+  MPoly *polys = static_cast<MPoly *>(
       CustomData_add_layer(&mesh->pdata, CD_MPOLY, CD_CONSTRUCT, nullptr, mesh->totpoly));
   MLoop *mloop = static_cast<MLoop *>(
       CustomData_add_layer(&mesh->ldata, CD_MLOOP, CD_CONSTRUCT, nullptr, mesh->totpoly * 4));
@@ -1481,9 +1478,9 @@ Mesh *BKE_mball_polygonize(Depsgraph *depsgraph, Scene *scene, Object *ob)
     const int *indices = process.indices[i];
 
     const int count = indices[2] != indices[3] ? 4 : 3;
-    mpoly[i].loopstart = loop_offset;
-    mpoly[i].totloop = count;
-    mpoly[i].flag = ME_SMOOTH;
+    polys[i].loopstart = loop_offset;
+    polys[i].totloop = count;
+    polys[i].flag = ME_SMOOTH;
 
     mloop[loop_offset].v = uint32_t(indices[0]);
     mloop[loop_offset + 1].v = uint32_t(indices[1]);
@@ -1499,11 +1496,10 @@ Mesh *BKE_mball_polygonize(Depsgraph *depsgraph, Scene *scene, Object *ob)
   for (int i = 0; i < mesh->totvert; i++) {
     normalize_v3(process.no[i]);
   }
-  memcpy(BKE_mesh_vertex_normals_for_write(mesh),
-         process.no,
-         sizeof(float[3]) * size_t(mesh->totvert));
+  memcpy(
+      BKE_mesh_vert_normals_for_write(mesh), process.no, sizeof(float[3]) * size_t(mesh->totvert));
   MEM_freeN(process.no);
-  BKE_mesh_vertex_normals_clear_dirty(mesh);
+  BKE_mesh_vert_normals_clear_dirty(mesh);
 
   mesh->totloop = loop_offset;
 

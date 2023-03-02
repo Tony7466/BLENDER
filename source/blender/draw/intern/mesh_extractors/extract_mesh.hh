@@ -9,6 +9,8 @@
 
 #pragma once
 
+#include "BLI_math_vector_types.hh"
+
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
@@ -72,19 +74,19 @@ struct MeshRenderData {
   int freestyle_face_ofs;
   /** Mesh */
   Mesh *me;
-  const MVert *mvert;
-  const MEdge *medge;
-  const MLoop *mloop;
-  const MPoly *mpoly;
+  blender::Span<blender::float3> vert_positions;
+  blender::Span<MEdge> edges;
+  blender::Span<MPoly> polys;
+  blender::Span<MLoop> loops;
   BMVert *eve_act;
   BMEdge *eed_act;
   BMFace *efa_act;
   BMFace *efa_act_uv;
   /* The triangulation of #Mesh polygons, owned by the mesh. */
-  const MLoopTri *mlooptri;
+  blender::Span<MLoopTri> looptris;
   const int *material_indices;
-  const float (*vert_normals)[3];
-  const float (*poly_normals)[3];
+  blender::Span<blender::float3> vert_normals;
+  blender::Span<blender::float3> poly_normals;
   const bool *hide_vert;
   const bool *hide_edge;
   const bool *hide_poly;
@@ -252,25 +254,22 @@ using ExtractPolyBMeshFn = void(const MeshRenderData *mr,
                                 int f_index,
                                 void *data);
 using ExtractPolyMeshFn = void(const MeshRenderData *mr,
-                               const MPoly *mp,
-                               int mp_index,
+                               const MPoly *poly,
+                               int poly_index,
                                void *data);
 using ExtractLEdgeBMeshFn = void(const MeshRenderData *mr,
                                  const BMEdge *eed,
                                  int ledge_index,
                                  void *data);
 using ExtractLEdgeMeshFn = void(const MeshRenderData *mr,
-                                const MEdge *med,
+                                const MEdge *edge,
                                 int ledge_index,
                                 void *data);
 using ExtractLVertBMeshFn = void(const MeshRenderData *mr,
                                  const BMVert *eve,
                                  int lvert_index,
                                  void *data);
-using ExtractLVertMeshFn = void(const MeshRenderData *mr,
-                                const MVert *mv,
-                                int lvert_index,
-                                void *data);
+using ExtractLVertMeshFn = void(const MeshRenderData *mr, int lvert_index, void *data);
 using ExtractLooseGeomSubdivFn = void(const DRWSubdivCache *subdiv_cache,
                                       const MeshRenderData *mr,
                                       void *buffer,
@@ -390,15 +389,15 @@ const MeshExtract *mesh_extract_override_get(const MeshExtract *extractor,
                                              bool do_single_mat);
 void mesh_render_data_face_flag(const MeshRenderData *mr,
                                 const BMFace *efa,
-                                int cd_ofs,
+                                BMUVOffsets offsets,
                                 EditLoopData *eattr);
 void mesh_render_data_loop_flag(const MeshRenderData *mr,
                                 BMLoop *l,
-                                int cd_ofs,
+                                BMUVOffsets offsets,
                                 EditLoopData *eattr);
 void mesh_render_data_loop_edge_flag(const MeshRenderData *mr,
                                      BMLoop *l,
-                                     int cd_ofs,
+                                     BMUVOffsets offsets,
                                      EditLoopData *eattr);
 
 extern const MeshExtract extract_tris;

@@ -329,7 +329,7 @@ static void movieclip_blend_read_data(BlendDataReader *reader, ID *id)
   BLI_listbase_clear(&clip->runtime.gputextures);
 
   /* Needed for proper versioning, will be NULL for all newer files anyway. */
-  BLO_read_data_address(reader, &clip->tracking.stabilization.rot_track);
+  BLO_read_data_address(reader, &clip->tracking.stabilization.rot_track_legacy);
 
   clip->tracking.dopesheet.ok = 0;
   BLI_listbase_clear(&clip->tracking.dopesheet.channels);
@@ -474,14 +474,14 @@ static int get_timecode(MovieClip *clip, int flag)
   return clip->proxy.tc;
 }
 
-static void get_sequence_fname(const MovieClip *clip, const int framenr, char *name)
+static void get_sequence_filepath(const MovieClip *clip, const int framenr, char *filepath)
 {
   ushort numlen;
   char head[FILE_MAX], tail[FILE_MAX];
   int offset;
 
-  BLI_strncpy(name, clip->filepath, sizeof(clip->filepath));
-  BLI_path_sequence_decode(name, head, tail, &numlen);
+  BLI_strncpy(filepath, clip->filepath, sizeof(clip->filepath));
+  BLI_path_sequence_decode(filepath, head, tail, &numlen);
 
   /* Movie-clips always points to first image from sequence, auto-guess offset for now.
    * Could be something smarter in the future. */
@@ -489,18 +489,18 @@ static void get_sequence_fname(const MovieClip *clip, const int framenr, char *n
 
   if (numlen) {
     BLI_path_sequence_encode(
-        name, head, tail, numlen, offset + framenr - clip->start_frame + clip->frame_offset);
+        filepath, head, tail, numlen, offset + framenr - clip->start_frame + clip->frame_offset);
   }
   else {
-    BLI_strncpy(name, clip->filepath, sizeof(clip->filepath));
+    BLI_strncpy(filepath, clip->filepath, sizeof(clip->filepath));
   }
 
-  BLI_path_abs(name, ID_BLEND_PATH_FROM_GLOBAL(&clip->id));
+  BLI_path_abs(filepath, ID_BLEND_PATH_FROM_GLOBAL(&clip->id));
 }
 
 /* supposed to work with sequences only */
-static void get_proxy_fname(
-    const MovieClip *clip, int proxy_render_size, bool undistorted, int framenr, char *name)
+static void get_proxy_filepath(
+    const MovieClip *clip, int proxy_render_size, bool undistorted, int framenr, char *filepath)
 {
   int size = rendersize_to_number(proxy_render_size);
   char dir[FILE_MAX], clipdir[FILE_MAX], clipfile[FILE_MAX];
@@ -516,16 +516,17 @@ static void get_proxy_fname(
   }
 
   if (undistorted) {
-    BLI_snprintf(name, FILE_MAX, "%s/%s/proxy_%d_undistorted/%08d", dir, clipfile, size, proxynr);
+    BLI_snprintf(
+        filepath, FILE_MAX, "%s/%s/proxy_%d_undistorted/%08d", dir, clipfile, size, proxynr);
   }
   else {
-    BLI_snprintf(name, FILE_MAX, "%s/%s/proxy_%d/%08d", dir, clipfile, size, proxynr);
+    BLI_snprintf(filepath, FILE_MAX, "%s/%s/proxy_%d/%08d", dir, clipfile, size, proxynr);
   }
 
-  BLI_path_abs(name, BKE_main_blendfile_path_from_global());
-  BLI_path_frame(name, 1, 0);
+  BLI_path_abs(filepath, BKE_main_blendfile_path_from_global());
+  BLI_path_frame(filepath, 1, 0);
 
-  strcat(name, ".jpg");
+  strcat(filepath, ".jpg");
 }
 
 #ifdef WITH_OPENEXR
@@ -610,7 +611,7 @@ static ImBuf *movieclip_load_sequence_file(MovieClip *clip,
                                            int flag)
 {
   struct ImBuf *ibuf;
-  char name[FILE_MAX];
+  char filepath[FILE_MAX];
   int loadflag;
   bool use_proxy = false;
   char *colorspace;
@@ -618,7 +619,7 @@ static ImBuf *movieclip_load_sequence_file(MovieClip *clip,
   use_proxy = (flag & MCLIP_USE_PROXY) && user->render_size != MCLIP_PROXY_RENDER_SIZE_FULL;
   if (use_proxy) {
     int undistort = user->render_flag & MCLIP_PROXY_RENDER_UNDISTORT;
-    get_proxy_fname(clip, user->render_size, undistort, framenr, name);
+    get_proxy_filepath(clip, user->render_size, undistort, framenr, filepath);
 
     /* Well, this is a bit weird, but proxies for movie sources
      * are built in the same exact color space as the input,
@@ -633,14 +634,14 @@ static ImBuf *movieclip_load_sequence_file(MovieClip *clip,
     }
   }
   else {
-    get_sequence_fname(clip, framenr, name);
+    get_sequence_filepath(clip, framenr, filepath);
     colorspace = clip->colorspace_settings.name;
   }
 
   loadflag = IB_rect | IB_multilayer | IB_alphamode_detect | IB_metadata;
 
   /* read ibuf */
-  ibuf = IMB_loadiffname(name, loadflag, colorspace);
+  ibuf = IMB_loadiffname(filepath, loadflag, colorspace);
   BKE_movieclip_convert_multilayer_ibuf(ibuf);
 
   return ibuf;
@@ -699,7 +700,7 @@ static void movieclip_calc_length(MovieClip *clip)
   }
   else if (clip->source == MCLIP_SRC_SEQUENCE) {
     ushort numlen;
-    char name[FILE_MAX], head[FILE_MAX], tail[FILE_MAX];
+    char filepath[FILE_MAX], head[FILE_MAX], tail[FILE_MAX];
 
     BLI_path_sequence_decode(clip->filepath, head, tail, &numlen);
 
@@ -710,9 +711,9 @@ static void movieclip_calc_length(MovieClip *clip)
     else {
       clip->len = 0;
       for (;;) {
-        get_sequence_fname(clip, clip->len + clip->start_frame, name);
+        get_sequence_filepath(clip, clip->len + clip->start_frame, filepath);
 
-        if (BLI_exists(name)) {
+        if (BLI_exists(filepath)) {
           clip->len++;
         }
         else {
@@ -791,7 +792,7 @@ static int user_frame_to_cache_frame(MovieClip *clip, int framenr)
 
       BLI_path_sequence_decode(clip->filepath, head, tail, &numlen);
 
-      /* see comment in get_sequence_fname */
+      /* see comment in get_sequence_filepath */
       clip->cache->sequence_offset = sequence_guess_offset(clip->filepath, strlen(head), numlen);
     }
 
@@ -884,7 +885,7 @@ static ImBuf *get_imbuf_cache(MovieClip *clip, const MovieClipUser *user, int fl
   return NULL;
 }
 
-static bool has_imbuf_cache(MovieClip *clip, MovieClipUser *user, int flag)
+static bool has_imbuf_cache(MovieClip *clip, const MovieClipUser *user, int flag)
 {
   if (clip->cache) {
     MovieClipImBufCacheKey key;
@@ -996,12 +997,12 @@ static void movieclip_load_get_size(MovieClip *clip)
 static void detect_clip_source(Main *bmain, MovieClip *clip)
 {
   ImBuf *ibuf;
-  char name[FILE_MAX];
+  char filepath[FILE_MAX];
 
-  BLI_strncpy(name, clip->filepath, sizeof(name));
-  BLI_path_abs(name, BKE_main_blendfile_path(bmain));
+  BLI_strncpy(filepath, clip->filepath, sizeof(filepath));
+  BLI_path_abs(filepath, BKE_main_blendfile_path(bmain));
 
-  ibuf = IMB_testiffname(name, IB_rect | IB_multilayer);
+  ibuf = IMB_testiffname(filepath, IB_rect | IB_multilayer);
   if (ibuf) {
     clip->source = MCLIP_SRC_SEQUENCE;
     IMB_freeImBuf(ibuf);
@@ -1011,13 +1012,13 @@ static void detect_clip_source(Main *bmain, MovieClip *clip)
   }
 }
 
-MovieClip *BKE_movieclip_file_add(Main *bmain, const char *name)
+MovieClip *BKE_movieclip_file_add(Main *bmain, const char *filepath)
 {
   MovieClip *clip;
   int file;
   char str[FILE_MAX];
 
-  BLI_strncpy(str, name, sizeof(str));
+  BLI_strncpy(str, filepath, sizeof(str));
   BLI_path_abs(str, BKE_main_blendfile_path(bmain));
 
   /* exists? */
@@ -1030,8 +1031,8 @@ MovieClip *BKE_movieclip_file_add(Main *bmain, const char *name)
   /* ** add new movieclip ** */
 
   /* create a short library name */
-  clip = movieclip_alloc(bmain, BLI_path_basename(name));
-  BLI_strncpy(clip->filepath, name, sizeof(clip->filepath));
+  clip = movieclip_alloc(bmain, BLI_path_basename(filepath));
+  BLI_strncpy(clip->filepath, filepath, sizeof(clip->filepath));
 
   detect_clip_source(bmain, clip);
 
@@ -1344,7 +1345,6 @@ static ImBuf *movieclip_get_postprocessed_ibuf(
   }
 
   if (ibuf) {
-    clip->lastframe = framenr;
     real_ibuf_size(clip, user, ibuf, &clip->lastsize[0], &clip->lastsize[1]);
 
     /* Post-process frame and put to cache if needed. */
@@ -1373,25 +1373,31 @@ static ImBuf *movieclip_get_postprocessed_ibuf(
   return ibuf;
 }
 
-ImBuf *BKE_movieclip_get_ibuf(MovieClip *clip, MovieClipUser *user)
+ImBuf *BKE_movieclip_get_ibuf(MovieClip *clip, const MovieClipUser *user)
 {
   return BKE_movieclip_get_ibuf_flag(clip, user, clip->flag, 0);
 }
 
-ImBuf *BKE_movieclip_get_ibuf_flag(MovieClip *clip, MovieClipUser *user, int flag, int cache_flag)
+ImBuf *BKE_movieclip_get_ibuf_flag(MovieClip *clip,
+                                   const MovieClipUser *user,
+                                   const int flag,
+                                   const int cache_flag)
 {
   return movieclip_get_postprocessed_ibuf(clip, user, flag, 0, cache_flag);
 }
 
 ImBuf *BKE_movieclip_get_postprocessed_ibuf(MovieClip *clip,
-                                            MovieClipUser *user,
-                                            int postprocess_flag)
+                                            const MovieClipUser *user,
+                                            const int postprocess_flag)
 {
   return movieclip_get_postprocessed_ibuf(clip, user, clip->flag, postprocess_flag, 0);
 }
 
-static ImBuf *get_stable_cached_frame(
-    MovieClip *clip, MovieClipUser *user, ImBuf *reference_ibuf, int framenr, int postprocess_flag)
+static ImBuf *get_stable_cached_frame(MovieClip *clip,
+                                      const MovieClipUser *user,
+                                      ImBuf *reference_ibuf,
+                                      const int framenr,
+                                      const int postprocess_flag)
 {
   MovieClipCache *cache = clip->cache;
   MovieTracking *tracking = &clip->tracking;
@@ -1449,8 +1455,11 @@ static ImBuf *get_stable_cached_frame(
   return stableibuf;
 }
 
-static ImBuf *put_stabilized_frame_to_cache(
-    MovieClip *clip, MovieClipUser *user, ImBuf *ibuf, int framenr, int postprocess_flag)
+static ImBuf *put_stabilized_frame_to_cache(MovieClip *clip,
+                                            const MovieClipUser *user,
+                                            ImBuf *ibuf,
+                                            const int framenr,
+                                            const int postprocess_flag)
 {
   MovieClipCache *cache = clip->cache;
   MovieTracking *tracking = &clip->tracking;
@@ -1492,11 +1501,11 @@ static ImBuf *put_stabilized_frame_to_cache(
 }
 
 ImBuf *BKE_movieclip_get_stable_ibuf(MovieClip *clip,
-                                     MovieClipUser *user,
+                                     const MovieClipUser *user,
                                      float loc[2],
                                      float *scale,
                                      float *angle,
-                                     int postprocess_flag)
+                                     const int postprocess_flag)
 {
   ImBuf *ibuf, *stableibuf = NULL;
   int framenr = user->framenr;
@@ -1552,7 +1561,7 @@ ImBuf *BKE_movieclip_get_stable_ibuf(MovieClip *clip,
   return ibuf;
 }
 
-bool BKE_movieclip_has_frame(MovieClip *clip, MovieClipUser *user)
+bool BKE_movieclip_has_frame(MovieClip *clip, const MovieClipUser *user)
 {
   ImBuf *ibuf = BKE_movieclip_get_ibuf(clip, user);
 
@@ -1564,19 +1573,9 @@ bool BKE_movieclip_has_frame(MovieClip *clip, MovieClipUser *user)
   return false;
 }
 
-void BKE_movieclip_get_size(MovieClip *clip, MovieClipUser *user, int *width, int *height)
+void BKE_movieclip_get_size(MovieClip *clip, const MovieClipUser *user, int *width, int *height)
 {
-#if 0
-  /* originally was needed to support image sequences with different image dimensions,
-   * which might be useful for such things as reconstruction of unordered image sequence,
-   * or painting/rotoscoping of non-equal-sized images, but this ended up in unneeded
-   * cache lookups and even unwanted non-proxied files loading when doing mask parenting,
-   * so let's disable this for now and assume image sequence consists of images with
-   * equal sizes (sergey)
-   * TODO(sergey): Support reading sequences of different resolution.
-   */
-  if (user->framenr == clip->lastframe) {
-#endif
+  /* TODO(sergey): Support reading sequences of different resolution. */
   if (clip->lastsize[0] != 0 && clip->lastsize[1] != 0) {
     *width = clip->lastsize[0];
     *height = clip->lastsize[1];
@@ -1597,7 +1596,7 @@ void BKE_movieclip_get_size(MovieClip *clip, MovieClipUser *user, int *width, in
     }
   }
 }
-void BKE_movieclip_get_size_fl(MovieClip *clip, MovieClipUser *user, float size[2])
+void BKE_movieclip_get_size_fl(MovieClip *clip, const MovieClipUser *user, float size[2])
 {
   int width, height;
   BKE_movieclip_get_size(clip, user, &width, &height);
@@ -1641,7 +1640,7 @@ void BKE_movieclip_get_aspect(MovieClip *clip, float *aspx, float *aspy)
 }
 
 void BKE_movieclip_get_cache_segments(MovieClip *clip,
-                                      MovieClipUser *user,
+                                      const MovieClipUser *user,
                                       int *r_totseg,
                                       int **r_points)
 {
@@ -1728,7 +1727,9 @@ void BKE_movieclip_reload(Main *bmain, MovieClip *clip)
   BKE_ntree_update_tag_id_changed(bmain, &clip->id);
 }
 
-void BKE_movieclip_update_scopes(MovieClip *clip, MovieClipUser *user, MovieClipScopes *scopes)
+void BKE_movieclip_update_scopes(MovieClip *clip,
+                                 const MovieClipUser *user,
+                                 MovieClipScopes *scopes)
 {
   if (scopes->ok) {
     return;
@@ -1826,12 +1827,12 @@ void BKE_movieclip_update_scopes(MovieClip *clip, MovieClipUser *user, MovieClip
 static void movieclip_build_proxy_ibuf(
     MovieClip *clip, ImBuf *ibuf, int cfra, int proxy_render_size, bool undistorted, bool threaded)
 {
-  char name[FILE_MAX];
+  char filepath[FILE_MAX];
   int quality, rectx, recty;
   int size = rendersize_to_number(proxy_render_size);
   ImBuf *scaleibuf;
 
-  get_proxy_fname(clip, proxy_render_size, undistorted, cfra, name);
+  get_proxy_filepath(clip, proxy_render_size, undistorted, cfra, filepath);
 
   rectx = ibuf->x * size / 100.0f;
   recty = ibuf->y * size / 100.0f;
@@ -1859,9 +1860,9 @@ static void movieclip_build_proxy_ibuf(
    */
   BLI_thread_lock(LOCK_MOVIECLIP);
 
-  BLI_make_existing_file(name);
-  if (IMB_saveiff(scaleibuf, name, IB_rect) == 0) {
-    perror(name);
+  BLI_make_existing_file(filepath);
+  if (IMB_saveiff(scaleibuf, filepath, IB_rect) == 0) {
+    perror(filepath);
   }
 
   BLI_thread_unlock(LOCK_MOVIECLIP);
@@ -1945,17 +1946,17 @@ bool BKE_movieclip_proxy_enabled(MovieClip *clip)
   return clip->flag & MCLIP_USE_PROXY;
 }
 
-float BKE_movieclip_remap_scene_to_clip_frame(const MovieClip *clip, float framenr)
+float BKE_movieclip_remap_scene_to_clip_frame(const MovieClip *clip, const float framenr)
 {
   return framenr - (float)clip->start_frame + 1.0f;
 }
 
-float BKE_movieclip_remap_clip_to_scene_frame(const MovieClip *clip, float framenr)
+float BKE_movieclip_remap_clip_to_scene_frame(const MovieClip *clip, const float framenr)
 {
   return framenr + (float)clip->start_frame - 1.0f;
 }
 
-void BKE_movieclip_filename_for_frame(MovieClip *clip, MovieClipUser *user, char *name)
+void BKE_movieclip_filepath_for_frame(MovieClip *clip, const MovieClipUser *user, char *filepath)
 {
   if (clip->source == MCLIP_SRC_SEQUENCE) {
     int use_proxy;
@@ -1965,19 +1966,19 @@ void BKE_movieclip_filename_for_frame(MovieClip *clip, MovieClipUser *user, char
 
     if (use_proxy) {
       int undistort = user->render_flag & MCLIP_PROXY_RENDER_UNDISTORT;
-      get_proxy_fname(clip, user->render_size, undistort, user->framenr, name);
+      get_proxy_filepath(clip, user->render_size, undistort, user->framenr, filepath);
     }
     else {
-      get_sequence_fname(clip, user->framenr, name);
+      get_sequence_filepath(clip, user->framenr, filepath);
     }
   }
   else {
-    BLI_strncpy(name, clip->filepath, FILE_MAX);
-    BLI_path_abs(name, ID_BLEND_PATH_FROM_GLOBAL(&clip->id));
+    BLI_strncpy(filepath, clip->filepath, FILE_MAX);
+    BLI_path_abs(filepath, ID_BLEND_PATH_FROM_GLOBAL(&clip->id));
   }
 }
 
-ImBuf *BKE_movieclip_anim_ibuf_for_frame_no_lock(MovieClip *clip, MovieClipUser *user)
+ImBuf *BKE_movieclip_anim_ibuf_for_frame_no_lock(MovieClip *clip, const MovieClipUser *user)
 {
   ImBuf *ibuf = NULL;
 
@@ -1988,7 +1989,7 @@ ImBuf *BKE_movieclip_anim_ibuf_for_frame_no_lock(MovieClip *clip, MovieClipUser 
   return ibuf;
 }
 
-bool BKE_movieclip_has_cached_frame(MovieClip *clip, MovieClipUser *user)
+bool BKE_movieclip_has_cached_frame(MovieClip *clip, const MovieClipUser *user)
 {
   bool has_frame = false;
 
@@ -1999,7 +2000,7 @@ bool BKE_movieclip_has_cached_frame(MovieClip *clip, MovieClipUser *user)
   return has_frame;
 }
 
-bool BKE_movieclip_put_frame_if_possible(MovieClip *clip, MovieClipUser *user, ImBuf *ibuf)
+bool BKE_movieclip_put_frame_if_possible(MovieClip *clip, const MovieClipUser *user, ImBuf *ibuf)
 {
   bool result;
 

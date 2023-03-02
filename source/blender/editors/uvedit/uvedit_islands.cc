@@ -5,7 +5,7 @@
  *
  * Utilities for manipulating UV islands.
  *
- * \note This is similar to `GEO_uv_parametrizer.h`,
+ * \note This is similar to `GEO_uv_parametrizer.hh`,
  * however the data structures there don't support arbitrary topology
  * such as an edge with 3 or more faces using it.
  * This API uses #BMesh data structures and doesn't have limitations for manifold meshes.
@@ -31,6 +31,8 @@
 
 #include "ED_uvedit.h" /* Own include. */
 
+#include "GEO_uv_pack.hh"
+
 #include "WM_api.h"
 #include "WM_types.h"
 
@@ -42,11 +44,11 @@ static void mul_v2_m2_add_v2v2(float r[2],
                                const float b[2])
 {
   /* Compute `r = mat * (a + b)` with high precision. */
-  const double x = static_cast<double>(a[0]) + double(b[0]);
-  const double y = static_cast<double>(a[1]) + double(b[1]);
+  const double x = double(a[0]) + double(b[0]);
+  const double y = double(a[1]) + double(b[1]);
 
-  r[0] = static_cast<float>(mat[0][0] * x + mat[1][0] * y);
-  r[1] = static_cast<float>(mat[0][1] * x + mat[1][1] * y);
+  r[0] = float(mat[0][0] * x + mat[1][0] * y);
+  r[1] = float(mat[0][1] * x + mat[1][1] * y);
 }
 
 static void island_uv_transform(FaceIsland *island,
@@ -65,15 +67,15 @@ static void island_uv_transform(FaceIsland *island,
    * To convert post-transform to pre-transform, use `A * x + b == A * (x + c), c = A^-1 * b`
    */
 
-  const int cd_loop_uv_offset = island->cd_loop_uv_offset;
+  const int cd_loop_uv_offset = island->offsets.uv;
   const int faces_len = island->faces_len;
   for (int i = 0; i < faces_len; i++) {
     BMFace *f = island->faces[i];
     BMLoop *l;
     BMIter iter;
     BM_ITER_ELEM (l, &iter, f, BM_LOOPS_OF_FACE) {
-      MLoopUV *luv = (MLoopUV *)BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset);
-      mul_v2_m2_add_v2v2(luv->uv, matrix, luv->uv, pre_translate);
+      float *luv = BM_ELEM_CD_GET_FLOAT_P(l, cd_loop_uv_offset);
+      mul_v2_m2_add_v2v2(luv, matrix, luv, pre_translate);
     }
   }
 }
@@ -134,9 +136,8 @@ static float (*bm_face_array_calc_unique_uv_coords(
       }
 
       BM_elem_flag_disable(l_iter, BM_ELEM_TAG);
-      const MLoopUV *luv = static_cast<const MLoopUV *>(
-          BM_ELEM_CD_GET_VOID_P(l_iter, cd_loop_uv_offset));
-      copy_v2_v2(coords[coords_len++], luv->uv);
+      const float *luv = BM_ELEM_CD_GET_FLOAT_P(l_iter, cd_loop_uv_offset);
+      copy_v2_v2(coords[coords_len++], luv);
 
       /* Un tag all connected so we don't add them twice.
        * Note that we will tag other loops not part of `faces` but this is harmless,
@@ -150,9 +151,8 @@ static float (*bm_face_array_calc_unique_uv_coords(
           do {
             if (l_radial->v == l_iter->v) {
               if (BM_elem_flag_test(l_radial, BM_ELEM_TAG)) {
-                const MLoopUV *luv_radial = static_cast<const MLoopUV *>(
-                    BM_ELEM_CD_GET_VOID_P(l_radial, cd_loop_uv_offset));
-                if (equals_v2v2(luv->uv, luv_radial->uv)) {
+                const float *luv_radial = BM_ELEM_CD_GET_FLOAT_P(l_radial, cd_loop_uv_offset);
+                if (equals_v2v2(luv, luv_radial)) {
                   /* Don't add this UV when met in another face in `faces`. */
                   BM_elem_flag_disable(l_iter, BM_ELEM_TAG);
                 }
@@ -172,7 +172,7 @@ static void face_island_uv_rotate_fit_aabb(FaceIsland *island)
   BMFace **faces = island->faces;
   const int faces_len = island->faces_len;
   const float aspect_y = island->aspect_y;
-  const int cd_loop_uv_offset = island->cd_loop_uv_offset;
+  const int cd_loop_uv_offset = island->offsets.uv;
 
   /* Calculate unique coordinates since calculating a convex hull can be an expensive operation. */
   int coords_len;
@@ -320,7 +320,7 @@ static float uv_nearest_grid_tile_distance(const int udim_grid[2],
  * \{ */
 
 struct SharedUVLoopData {
-  int cd_loop_uv_offset;
+  BMUVOffsets offsets;
   bool use_seams;
 };
 
@@ -334,7 +334,35 @@ static bool bm_loop_uv_shared_edge_check(const BMLoop *l_a, const BMLoop *l_b, v
     }
   }
 
-  return BM_loop_uv_share_edge_check((BMLoop *)l_a, (BMLoop *)l_b, data->cd_loop_uv_offset);
+  return BM_loop_uv_share_edge_check((BMLoop *)l_a, (BMLoop *)l_b, data->offsets.uv);
+}
+
+/**
+ * Returns true if `efa` is able to be affected by a packing operation, given various parameters.
+ *
+ * Checks if it's (not) hidden, and optionally selected, and/or UV selected.
+ *
+ * Will eventually be superseded by `BM_uv_element_map_create()`.
+ *
+ * Loosely based on `uvedit_is_face_affected`, but "bug-compatible" with previous code.
+ */
+static bool uvedit_is_face_affected_for_calc_uv_islands(const Scene *scene,
+                                                        BMFace *efa,
+                                                        const bool only_selected_faces,
+                                                        const bool only_selected_uvs,
+                                                        const BMUVOffsets &uv_offsets)
+{
+  if (BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
+    return false;
+  }
+  if (only_selected_faces) {
+    if (only_selected_uvs) {
+      return BM_elem_flag_test(efa, BM_ELEM_SELECT) &&
+             uvedit_face_select_test(scene, efa, uv_offsets);
+    }
+    return BM_elem_flag_test(efa, BM_ELEM_SELECT);
+  }
+  return true;
 }
 
 /**
@@ -347,9 +375,9 @@ int bm_mesh_calc_uv_islands(const Scene *scene,
                             const bool only_selected_uvs,
                             const bool use_seams,
                             const float aspect_y,
-                            const int cd_loop_uv_offset)
+                            const BMUVOffsets uv_offsets)
 {
-  BLI_assert(cd_loop_uv_offset >= 0);
+  BLI_assert(uv_offsets.uv >= 0);
   int island_added = 0;
   BM_mesh_elem_table_ensure(bm, BM_FACE);
 
@@ -358,29 +386,17 @@ int bm_mesh_calc_uv_islands(const Scene *scene,
 
   int(*group_index)[2];
 
-  /* Calculate the tag to use. */
-  uchar hflag_face_test = 0;
-  if (only_selected_faces) {
-    if (only_selected_uvs) {
-      BMFace *f;
-      BMIter iter;
-      BM_ITER_MESH (f, &iter, bm, BM_FACES_OF_MESH) {
-        bool value = false;
-        if (BM_elem_flag_test(f, BM_ELEM_SELECT) &&
-            uvedit_face_select_test(scene, f, cd_loop_uv_offset)) {
-          value = true;
-        }
-        BM_elem_flag_set(f, BM_ELEM_TAG, value);
-      }
-      hflag_face_test = BM_ELEM_TAG;
-    }
-    else {
-      hflag_face_test = BM_ELEM_SELECT;
-    }
+  /* Set the tag for `BM_mesh_calc_face_groups`. */
+  BMFace *f;
+  BMIter iter;
+  BM_ITER_MESH (f, &iter, bm, BM_FACES_OF_MESH) {
+    const bool face_affected = uvedit_is_face_affected_for_calc_uv_islands(
+        scene, f, only_selected_faces, only_selected_uvs, uv_offsets);
+    BM_elem_flag_set(f, BM_ELEM_TAG, face_affected);
   }
 
-  struct SharedUVLoopData user_data = {0};
-  user_data.cd_loop_uv_offset = cd_loop_uv_offset;
+  struct SharedUVLoopData user_data = {{0}};
+  user_data.offsets = uv_offsets;
   user_data.use_seams = use_seams;
 
   const int group_len = BM_mesh_calc_face_groups(bm,
@@ -389,7 +405,7 @@ int bm_mesh_calc_uv_islands(const Scene *scene,
                                                  nullptr,
                                                  bm_loop_uv_shared_edge_check,
                                                  &user_data,
-                                                 hflag_face_test,
+                                                 BM_ELEM_TAG,
                                                  BM_EDGE);
 
   for (int i = 0; i < group_len; i++) {
@@ -408,7 +424,7 @@ int bm_mesh_calc_uv_islands(const Scene *scene,
         MEM_callocN(sizeof(*island), __func__));
     island->faces = faces;
     island->faces_len = faces_len;
-    island->cd_loop_uv_offset = cd_loop_uv_offset;
+    island->offsets = uv_offsets;
     island->aspect_y = aspect_y;
     BLI_addtail(island_list, island);
     island_added += 1;
@@ -421,203 +437,6 @@ int bm_mesh_calc_uv_islands(const Scene *scene,
 
 /** \} */
 
-static float pack_islands_scale_margin(const blender::Vector<FaceIsland *> &island_vector,
-                                       BoxPack *box_array,
-                                       const float scale,
-                                       const float margin)
-{
-  for (const int index : island_vector.index_range()) {
-    FaceIsland *island = island_vector[index];
-    BoxPack *box = &box_array[index];
-    box->index = index;
-    box->w = BLI_rctf_size_x(&island->bounds_rect) * scale + 2 * margin;
-    box->h = BLI_rctf_size_y(&island->bounds_rect) * scale + 2 * margin;
-  }
-  float max_u, max_v;
-  BLI_box_pack_2d(box_array, island_vector.size(), &max_u, &max_v);
-  return max_ff(max_u, max_v);
-}
-
-static float pack_islands_margin_fraction(const blender::Vector<FaceIsland *> &island_vector,
-                                          BoxPack *box_array,
-                                          const float margin_fraction)
-{
-  /*
-   * Root finding using a combined search / modified-secant method.
-   * First, use a robust search procedure to bracket the root within a factor of 10.
-   * Then, use a modified-secant method to converge.
-   *
-   * This is a specialized solver using domain knowledge to accelerate convergence.
-   */
-
-  float scale_low = 0.0f;
-  float value_low = 0.0f;
-  float scale_high = 0.0f;
-  float value_high = 0.0f;
-  float scale_last = 0.0f;
-
-  /* Scaling smaller than `min_scale_roundoff` is unlikely to fit and
-   * will destroy information in existing UVs. */
-  float min_scale_roundoff = 1e-5f;
-
-  /* Certain inputs might have poor convergence properties.
-   * Use `max_iteration` to prevent an infinite loop. */
-  int max_iteration = 25;
-  for (int iteration = 0; iteration < max_iteration; iteration++) {
-    float scale = 1.0f;
-
-    if (iteration == 0) {
-      BLI_assert(iteration == 0);
-      BLI_assert(scale == 1.0f);
-      BLI_assert(scale_low == 0.0f);
-      BLI_assert(scale_high == 0.0f);
-    }
-    else if (scale_low == 0.0f) {
-      BLI_assert(scale_high > 0.0f);
-      /* Search mode, shrink layout until we can find a scale that fits. */
-      scale = scale_high * 0.1f;
-    }
-    else if (scale_high == 0.0f) {
-      BLI_assert(scale_low > 0.0f);
-      /* Search mode, grow layout until we can find a scale that doesn't fit. */
-      scale = scale_low * 10.0f;
-    }
-    else {
-      /* Bracket mode, use modified secant method to find root. */
-      BLI_assert(scale_low > 0.0f);
-      BLI_assert(scale_high > 0.0f);
-      BLI_assert(value_low <= 0.0f);
-      BLI_assert(value_high >= 0.0f);
-      if (scale_high < scale_low * 1.0001f) {
-        /* Convergence. */
-        break;
-      }
-
-      /* Secant method for area. */
-      scale = (sqrtf(scale_low) * value_high - sqrtf(scale_high) * value_low) /
-              (value_high - value_low);
-      scale = scale * scale;
-
-      if (iteration & 1) {
-        /* Modified binary-search to improve robustness. */
-        scale = sqrtf(scale * sqrtf(scale_low * scale_high));
-      }
-    }
-
-    scale = max_ff(scale, min_scale_roundoff);
-
-    /* Evaluate our `f`. */
-    scale_last = scale;
-    float max_uv = pack_islands_scale_margin(
-        island_vector, box_array, scale_last, margin_fraction);
-    float value = sqrtf(max_uv) - 1.0f;
-
-    if (value <= 0.0f) {
-      scale_low = scale;
-      value_low = value;
-    }
-    else {
-      scale_high = scale;
-      value_high = value;
-      if (scale == min_scale_roundoff) {
-        /* Unable to pack without damaging UVs. */
-        scale_low = scale;
-        break;
-      }
-    }
-  }
-
-  const bool flush = true;
-  if (flush) {
-    /* Write back best pack as a side-effect. First get best pack. */
-    if (scale_last != scale_low) {
-      scale_last = scale_low;
-      float max_uv = pack_islands_scale_margin(
-          island_vector, box_array, scale_last, margin_fraction);
-      UNUSED_VARS(max_uv);
-      /* TODO (?): `if (max_uv < 1.0f) { scale_last /= max_uv; }` */
-    }
-
-    /* Then expand FaceIslands by the correct amount. */
-    for (const int index : island_vector.index_range()) {
-      BoxPack *box = &box_array[index];
-      box->x /= scale_last;
-      box->y /= scale_last;
-      FaceIsland *island = island_vector[index];
-      BLI_rctf_pad(
-          &island->bounds_rect, margin_fraction / scale_last, margin_fraction / scale_last);
-    }
-  }
-  return scale_last;
-}
-
-static float calc_margin_from_aabb_length_sum(const blender::Vector<FaceIsland *> &island_vector,
-                                              const struct UVPackIsland_Params &params)
-{
-  /* Logic matches behavior from #GEO_uv_parametrizer_pack.
-   * Attempt to give predictable results
-   * not dependent on current UV scale by using
-   * `aabb_length_sum` (was "`area`") to multiply
-   * the margin by the length (was "area").
-   */
-  double aabb_length_sum = 0.0f;
-  for (FaceIsland *island : island_vector) {
-    float w = BLI_rctf_size_x(&island->bounds_rect);
-    float h = BLI_rctf_size_y(&island->bounds_rect);
-    aabb_length_sum += sqrtf(w * h);
-  }
-  return params.margin * aabb_length_sum * 0.1f;
-}
-
-static BoxPack *pack_islands_params(const blender::Vector<FaceIsland *> &island_vector,
-                                    const struct UVPackIsland_Params &params,
-                                    float r_scale[2])
-{
-  BoxPack *box_array = static_cast<BoxPack *>(
-      MEM_mallocN(sizeof(*box_array) * island_vector.size(), __func__));
-
-  if (params.margin == 0.0f) {
-    /* Special case for zero margin. Margin_method is ignored as all formulas give same result. */
-    const float max_uv = pack_islands_scale_margin(island_vector, box_array, 1.0f, 0.0f);
-    r_scale[0] = 1.0f / max_uv;
-    r_scale[1] = r_scale[0];
-    return box_array;
-  }
-
-  if (params.margin_method == ED_UVPACK_MARGIN_FRACTION) {
-    /* Uses a line search on scale. ~10x slower than other method. */
-    const float scale = pack_islands_margin_fraction(island_vector, box_array, params.margin);
-    r_scale[0] = scale;
-    r_scale[1] = scale;
-    /* pack_islands_margin_fraction will pad FaceIslands, return early. */
-    return box_array;
-  }
-
-  float margin = params.margin;
-  switch (params.margin_method) {
-    case ED_UVPACK_MARGIN_ADD:    /* Default for Blender 2.8 and earlier. */
-      break;                      /* Nothing to do. */
-    case ED_UVPACK_MARGIN_SCALED: /* Default for Blender 3.3 and later. */
-      margin = calc_margin_from_aabb_length_sum(island_vector, params);
-      break;
-    case ED_UVPACK_MARGIN_FRACTION: /* Added as an option in Blender 3.4. */
-      BLI_assert_unreachable();     /* Handled above. */
-      break;
-    default:
-      BLI_assert_unreachable();
-  }
-
-  const float max_uv = pack_islands_scale_margin(island_vector, box_array, 1.0f, margin);
-  r_scale[0] = 1.0f / max_uv;
-  r_scale[1] = r_scale[0];
-
-  for (int index = 0; index < island_vector.size(); index++) {
-    FaceIsland *island = island_vector[index];
-    BLI_rctf_pad(&island->bounds_rect, margin, margin);
-  }
-  return box_array;
-}
-
 static bool island_has_pins(const Scene *scene,
                             FaceIsland *island,
                             const UVPackIsland_Params *params)
@@ -626,18 +445,17 @@ static bool island_has_pins(const Scene *scene,
   const bool only_selected_faces = params->only_selected_faces;
   BMLoop *l;
   BMIter iter;
-  const int cd_loop_uv_offset = island->cd_loop_uv_offset;
+  const int pin_offset = island->offsets.pin;
   for (int i = 0; i < island->faces_len; i++) {
     BMFace *efa = island->faces[i];
     if (pin_unselected && only_selected_faces && !BM_elem_flag_test(efa, BM_ELEM_SELECT)) {
       return true;
     }
-    BM_ITER_ELEM (l, &iter, efa, BM_LOOPS_OF_FACE) {
-      MLoopUV *luv = static_cast<MLoopUV *>(BM_ELEM_CD_GET_VOID_P(l, cd_loop_uv_offset));
-      if (luv->flag & MLOOPUV_PINNED) {
+    BM_ITER_ELEM (l, &iter, island->faces[i], BM_LOOPS_OF_FACE) {
+      if (BM_ELEM_CD_GET_BOOL(l, pin_offset)) {
         return true;
       }
-      if (pin_unselected && !uvedit_uv_select_test(scene, l, cd_loop_uv_offset)) {
+      if (pin_unselected && !uvedit_uv_select_test(scene, l, island->offsets)) {
         return true;
       }
     }
@@ -648,15 +466,15 @@ static bool island_has_pins(const Scene *scene,
 /* -------------------------------------------------------------------- */
 /** \name Public UV Island Packing
  *
- * \note This behavior loosely follows #GEO_uv_parametrizer_pack.
+ * \note This behavior loosely follows #geometry::uv_parametrizer_pack.
  * \{ */
 
 void ED_uvedit_pack_islands_multi(const Scene *scene,
                                   Object **objects,
                                   const uint objects_len,
                                   BMesh **bmesh_override,
-                                  const struct UVMapUDIM_Params *closest_udim,
-                                  const struct UVPackIsland_Params *params)
+                                  const UVMapUDIM_Params *closest_udim,
+                                  const UVPackIsland_Params *params)
 {
   blender::Vector<FaceIsland *> island_vector;
 
@@ -672,19 +490,13 @@ void ED_uvedit_pack_islands_multi(const Scene *scene,
       bm = em->bm;
     }
     BLI_assert(bm);
-    const int cd_loop_uv_offset = CustomData_get_offset(&bm->ldata, CD_MLOOPUV);
-    if (cd_loop_uv_offset == -1) {
+
+    const BMUVOffsets offsets = BM_uv_map_get_offsets(bm);
+    if (offsets.uv == -1) {
       continue;
     }
 
-    float aspect_y = 1.0f;
-    if (params->correct_aspect) {
-      float aspx, aspy;
-      ED_uvedit_get_aspect(obedit, &aspx, &aspy);
-      if (aspx != aspy) {
-        aspect_y = aspx / aspy;
-      }
-    }
+    const float aspect_y = params->correct_aspect ? ED_uvedit_get_aspect_y(obedit) : 1.0f;
 
     bool only_selected_faces = params->only_selected_faces;
     bool only_selected_uvs = params->only_selected_uvs;
@@ -700,7 +512,7 @@ void ED_uvedit_pack_islands_multi(const Scene *scene,
                             only_selected_uvs,
                             params->use_seams,
                             aspect_y,
-                            cd_loop_uv_offset);
+                            offsets);
 
     /* Remove from linked list and append to blender::Vector. */
     LISTBASE_FOREACH_MUTABLE (struct FaceIsland *, island, &island_list) {
@@ -728,7 +540,7 @@ void ED_uvedit_pack_islands_multi(const Scene *scene,
       /* Only calculate selection bounding box if using closest_udim. */
       for (int i = 0; i < island->faces_len; i++) {
         BMFace *f = island->faces[i];
-        BM_face_uv_minmax(f, selection_min_co, selection_max_co, island->cd_loop_uv_offset);
+        BM_face_uv_minmax(f, selection_min_co, selection_max_co, island->offsets.uv);
       }
     }
 
@@ -737,7 +549,7 @@ void ED_uvedit_pack_islands_multi(const Scene *scene,
     }
 
     bm_face_array_calc_bounds(
-        island->faces, island->faces_len, island->cd_loop_uv_offset, &island->bounds_rect);
+        island->faces, island->faces_len, island->offsets.uv, &island->bounds_rect);
   }
 
   /* Center of bounding box containing all selected UVs. */
@@ -748,7 +560,14 @@ void ED_uvedit_pack_islands_multi(const Scene *scene,
   }
 
   float scale[2] = {1.0f, 1.0f};
-  BoxPack *box_array = pack_islands_params(island_vector, *params, scale);
+  blender::Vector<blender::geometry::PackIsland *> pack_island_vector;
+  for (int i = 0; i < island_vector.size(); i++) {
+    FaceIsland *face_island = island_vector[i];
+    blender::geometry::PackIsland *pack_island = new blender::geometry::PackIsland();
+    pack_island->bounds_rect = face_island->bounds_rect;
+    pack_island_vector.append(pack_island);
+  }
+  BoxPack *box_array = pack_islands(pack_island_vector, *params, scale);
 
   float base_offset[2] = {0.0f, 0.0f};
   copy_v2_v2(base_offset, params->udim_base_offset);
@@ -813,6 +632,12 @@ void ED_uvedit_pack_islands_multi(const Scene *scene,
   for (FaceIsland *island : island_vector) {
     MEM_freeN(island->faces);
     MEM_freeN(island);
+  }
+
+  for (int i = 0; i < pack_island_vector.size(); i++) {
+    blender::geometry::PackIsland *pack_island = pack_island_vector[i];
+    pack_island_vector[i] = nullptr;
+    delete pack_island;
   }
 
   MEM_freeN(box_array);

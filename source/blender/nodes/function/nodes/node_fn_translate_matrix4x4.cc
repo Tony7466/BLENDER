@@ -2,11 +2,6 @@
 
 #include "node_function_util.hh"
 
-#include "BKE_node_runtime.hh"
-
-#include "UI_interface.h"
-#include "UI_resources.h"
-
 namespace blender::nodes::node_fn_translate_matrix4x4_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
@@ -19,11 +14,16 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
-  static fn::CustomMF_SI_SI_SO<float4x4, float3, float4x4> translate_matrix_fn{
-      "translate_matrix", [](const float4x4 &mat, const float3 &vec) {
-        return float4x4::from_location(vec) * mat;
-      }};
-  builder.set_matching_fn(&translate_matrix_fn);
+  static auto fn = mf::build::SI2_SO<float4x4, float3, float4x4>(
+      "translate_matrix", [](const float4x4 &mat, const float3 &translation) {
+        float4x4 result;
+        result.view()[0] = mat.view()[0];
+        result.view()[1] = mat.view()[1];
+        result.view()[2] = mat.view()[2];
+        result.view()[3] = mat.view()[3] + float4(translation, 0.0f);
+        return result;
+      });
+  builder.set_matching_fn(&fn);
 }
 
 }  // namespace blender::nodes::node_fn_translate_matrix4x4_cc

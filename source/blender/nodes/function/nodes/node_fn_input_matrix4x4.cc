@@ -2,7 +2,7 @@
 
 #include "node_function_util.hh"
 
-#include "BKE_node_runtime.hh"
+#include "BLI_math_matrix.h"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -31,7 +31,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
   const NodeInputMatrix4x4 &storage = node_storage(builder.node());
-  builder.construct_and_set_matching_fn<fn::CustomMF_Constant<float4x4>>(float4x4{storage.matrix});
+  builder.construct_and_set_matching_fn<mf::CustomMF_Constant<float4x4>>(float4x4{storage.matrix});
 }
 
 }  // namespace blender::nodes::node_fn_input_matrix4x4_cc
