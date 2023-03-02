@@ -8146,7 +8146,8 @@ static int edbm_mark_freestyle_edge_exec(bContext *C, wmOperator *op)
     if (clear) {
       BM_ITER_MESH (eed, &iter, em->bm, BM_EDGES_OF_MESH) {
         if (BM_elem_flag_test(eed, BM_ELEM_SELECT) && !BM_elem_flag_test(eed, BM_ELEM_HIDDEN)) {
-          fed = CustomData_bmesh_get(&em->bm->edata, eed->head.data, CD_FREESTYLE_EDGE);
+          fed = static_cast<FreestyleEdge *>(
+              CustomData_bmesh_get(&em->bm->edata, eed->head.data, CD_FREESTYLE_EDGE));
           fed->flag &= ~FREESTYLE_EDGE_MARK;
         }
       }
@@ -8154,13 +8155,14 @@ static int edbm_mark_freestyle_edge_exec(bContext *C, wmOperator *op)
     else {
       BM_ITER_MESH (eed, &iter, em->bm, BM_EDGES_OF_MESH) {
         if (BM_elem_flag_test(eed, BM_ELEM_SELECT) && !BM_elem_flag_test(eed, BM_ELEM_HIDDEN)) {
-          fed = CustomData_bmesh_get(&em->bm->edata, eed->head.data, CD_FREESTYLE_EDGE);
+          fed = static_cast<FreestyleEdge *>(
+              CustomData_bmesh_get(&em->bm->edata, eed->head.data, CD_FREESTYLE_EDGE));
           fed->flag |= FREESTYLE_EDGE_MARK;
         }
       }
     }
 
-    DEG_id_tag_update(obedit->data, ID_RECALC_GEOMETRY);
+    DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
   }
   MEM_freeN(objects);
@@ -8225,7 +8227,8 @@ static int edbm_mark_freestyle_face_exec(bContext *C, wmOperator *op)
     if (clear) {
       BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
         if (BM_elem_flag_test(efa, BM_ELEM_SELECT) && !BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
-          ffa = CustomData_bmesh_get(&em->bm->pdata, efa->head.data, CD_FREESTYLE_FACE);
+          ffa = static_cast<FreestyleFace *>(
+              CustomData_bmesh_get(&em->bm->pdata, efa->head.data, CD_FREESTYLE_FACE));
           ffa->flag &= ~FREESTYLE_FACE_MARK;
         }
       }
@@ -8233,13 +8236,14 @@ static int edbm_mark_freestyle_face_exec(bContext *C, wmOperator *op)
     else {
       BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
         if (BM_elem_flag_test(efa, BM_ELEM_SELECT) && !BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
-          ffa = CustomData_bmesh_get(&em->bm->pdata, efa->head.data, CD_FREESTYLE_FACE);
+          ffa = static_cast<FreestyleFace *>(
+              CustomData_bmesh_get(&em->bm->pdata, efa->head.data, CD_FREESTYLE_FACE));
           ffa->flag |= FREESTYLE_FACE_MARK;
         }
       }
     }
 
-    DEG_id_tag_update(obedit->data, ID_RECALC_GEOMETRY);
+    DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
   }
   MEM_freeN(objects);
@@ -8922,7 +8926,7 @@ static void normals_merge(BMesh *bm, BMLoopNorEditDataArray *lnors_ed_arr)
         /* If avg normal is nearly 0, set clnor to default value. */
         zero_v3(avg_normal);
       }
-      while ((clnors_data = BLI_SMALLSTACK_POP(clnors))) {
+      while ((clnors_data = static_cast<short *>(BLI_SMALLSTACK_POP(clnors)))) {
         BKE_lnor_space_custom_normal_to_data(lnor_space, avg_normal, clnors_data);
       }
     }
@@ -8989,7 +8993,7 @@ static void normals_split(BMesh *bm)
             /* If avg normal is nearly 0, set clnor to default value. */
             zero_v3(avg_normal);
           }
-          while ((l = BLI_SMALLSTACK_POP(loop_stack))) {
+          while ((l = static_cast<BMLoop *>(BLI_SMALLSTACK_POP(loop_stack)))) {
             const int l_index = BM_elem_index_get(l);
             short *clnors = static_cast<short *>(BM_ELEM_CD_GET_VOID_P(l, cd_clnors_offset));
             BKE_lnor_space_custom_normal_to_data(
@@ -9254,7 +9258,7 @@ static int edbm_average_normals_exec(bContext *C, wmOperator *op)
               /* If avg normal is nearly 0, set clnor to default value. */
               zero_v3(avg_normal);
             }
-            while ((l = BLI_SMALLSTACK_POP(loop_stack))) {
+            while ((l = static_cast<BMLoop *>(BLI_SMALLSTACK_POP(loop_stack)))) {
               const int l_index = BM_elem_index_get(l);
               short *clnors = static_cast<short *>(BM_ELEM_CD_GET_VOID_P(l, cd_clnors_offset));
               BKE_lnor_space_custom_normal_to_data(
