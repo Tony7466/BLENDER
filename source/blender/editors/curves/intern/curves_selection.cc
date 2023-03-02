@@ -515,8 +515,8 @@ bool select_pick(const ViewContext &vc,
                  FindClosestData initial)
 {
   FindClosestData closest = initial;
-  bool found = false;
 
+  bool found = false;
   if (selection_domain == ATTR_DOMAIN_POINT) {
     found = find_closest_point_to_screen_co(*vc.depsgraph,
                                             vc.region,
@@ -540,13 +540,13 @@ bool select_pick(const ViewContext &vc,
 
   bool deselected = false;
   if (params.sel_op == SEL_OP_SET) {
-    if (found || params.deselect_all) {
-      bke::GSpanAttributeWriter selection = ensure_selection_attribute(
-          curves, selection_domain, CD_PROP_BOOL);
+    bke::GSpanAttributeWriter selection = ensure_selection_attribute(
+        curves, selection_domain, CD_PROP_BOOL);
+    if (found || ((params.deselect_all && has_anything_selected(selection.span)))) {
       fill_selection_false(selection.span);
-      selection.finish();
       deselected = true;
     }
+    selection.finish();
   }
 
   if (found) {
