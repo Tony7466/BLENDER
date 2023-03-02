@@ -670,7 +670,7 @@ static void calculate_bezt_bounds_y(BezTriple *bezt_array,
       }
 
       /* Right handle - only if applicable. */
-      if (bezt.ipo == BEZT_IPO_BEZ) {
+      if (bezt->ipo == BEZT_IPO_BEZ) {
         *r_min = min_ff(*r_min, bezt->vec[2][1]);
         *r_max = max_ff(*r_max, bezt->vec[2][1]);
       }
@@ -710,8 +710,8 @@ static bool calculate_fpt_bounds(const FCurve *fcu, const float frame_range[2], 
 
   if (frame_range != NULL) {
     /* Start index can be calculated because fpt has a key on every full frame. */
-    const int start_index = int(frame_range[0] - fcu->fpt[0].vec[0]);
-    const int end_index = start_index + int(frame_range[1] - frame_range[0]);
+    const int start_index = (int)(frame_range[0] - fcu->fpt[0].vec[0]);
+    const int end_index = start_index + (int)(frame_range[1] - frame_range[0]);
 
     if (start_index > fcu->totvert - 1 || end_index < 0) {
       /* Range is outside of keyframe samples. */
@@ -719,7 +719,7 @@ static bool calculate_fpt_bounds(const FCurve *fcu, const float frame_range[2], 
     }
 
     /* Range might be partially covering keyframe samples. */
-    const int start_index_clamped = clamp_i(start_index, 0 fcu->totvert - 1);
+    const int start_index_clamped = clamp_i(start_index, 0, fcu->totvert - 1);
     const int end_index_clamped = clamp_i(end_index, 0, fcu->totvert - 1);
 
     r_bounds->xmin = fcu->fpt[start_index_clamped].vec[0];
