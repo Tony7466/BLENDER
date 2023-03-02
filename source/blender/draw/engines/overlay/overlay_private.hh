@@ -75,6 +75,8 @@ template<typename SelectEngineT> struct Resources : public SelectEngineT::Select
 
   TextureFromPool line_tx = {"line_tx"};
   TextureFromPool depth_in_front_alloc_tx = {"overlay_depth_in_front_tx"};
+  TextureFromPool color_overlay_alloc_tx = {"overlay_color_overlay_alloc_tx"};
+  TextureFromPool color_render_alloc_tx = {"overlay_color_render_alloc_tx"};
 
   /** TODO(fclem): Copy of G_data.block that should become theme colors only and managed by the
    * engine. */

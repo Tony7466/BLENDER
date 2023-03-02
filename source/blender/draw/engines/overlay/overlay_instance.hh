@@ -24,7 +24,7 @@ template<
      * selectable component and using a special shaders for drawing.
      * Making the select engine templated makes it easier to phase out any overhead of the
      * selection for the regular non-selection case.*/
-    typename SelectEngineT = select::Instance>
+    typename SelectEngineT = select::InstanceDummy>
 class Instance {
  public:
   /* WORKAROUND: Legacy. Move to grid pass. */
@@ -92,5 +92,11 @@ extern template void Instance<>::begin_sync();
 extern template void Instance<>::object_sync(ObjectRef &ob_ref, Manager &manager);
 extern template void Instance<>::end_sync();
 extern template void Instance<>::draw(Manager &manager);
+
+extern template void Instance<select::Instance>::init();
+extern template void Instance<select::Instance>::begin_sync();
+extern template void Instance<select::Instance>::object_sync(ObjectRef &ob_ref, Manager &manager);
+extern template void Instance<select::Instance>::end_sync();
+extern template void Instance<select::Instance>::draw(Manager &manager);
 
 }  // namespace blender::draw::overlay

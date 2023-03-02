@@ -10,6 +10,10 @@
 
 #include "DRW_gpu_wrapper.hh"
 
+#include "GPU_select.h"
+
+#include "../intern/gpu_select_private.h"
+
 #include "draw_manager.hh"
 #include "draw_pass.hh"
 
@@ -133,6 +137,8 @@ struct Instance {
     StorageArrayBuffer<uint, 4, true> dummy_select_buf = {"dummy_select_buf"};
     /** Uniform buffer to bind to all passes to pass information about the selection state. */
     UniformBuffer<SelectInfoData> info_buf;
+    /** Will remove the depth test state from any pass drawing objects with select id. */
+    bool disable_depth_test;
 
     /* TODO(fclem): The sub_object_id id should eventually become some enum or take a sub-object
      * reference directly. This would isolate the selection logic to this class. */
@@ -154,23 +160,52 @@ struct Instance {
 
     void begin_sync()
     {
+      switch (gpu_select_next_get_mode()) {
+        case GPU_SELECT_ALL:
+          info_buf.mode = SelectType::SELECT_ALL;
+          disable_depth_test = true;
+          break;
+        /* Not sure if these 2 NEAREST are mapped to the right algorithm. */
+        case GPU_SELECT_NEAREST_FIRST_PASS:
+        case GPU_SELECT_NEAREST_SECOND_PASS:
+        case GPU_SELECT_PICK_ALL:
+          info_buf.mode = SelectType::SELECT_PICK_ALL;
+          info_buf.cursor = int2(gpu_select_next_get_pick_area_center());
+          disable_depth_test = true;
+          break;
+        case GPU_SELECT_PICK_NEAREST:
+          info_buf.mode = SelectType::SELECT_PICK_NEAREST;
+          info_buf.cursor = int2(gpu_select_next_get_pick_area_center());
+          disable_depth_test = true;
+          break;
+      }
+      info_buf.push_update();
+
       select_id_map.clear();
 #ifdef DEBUG
       map_names.clear();
 #endif
     }
 
-    /** IMPORTANT: Changes the draw state. Need to be called after the pass own state. */
+    /** IMPORTANT: Changes the draw state. Need to be called after the pass own state_set. */
     void select_bind(PassSimple &pass)
     {
+      if (disable_depth_test) {
+        /* TODO: clipping state. */
+        pass.state_set(DRW_STATE_WRITE_COLOR);
+      }
       pass.bind_ubo(SELECT_DATA, &info_buf);
       pass.bind_ssbo(SELECT_ID_OUT, &select_output_buf);
     }
 
-    /** IMPORTANT: Changes the draw state. Need to be called after the pass own state. */
+    /** IMPORTANT: Changes the draw state. Need to be called after the pass own state_set. */
     void select_bind(PassMain &pass)
     {
       pass.use_custom_ids = true;
+      if (disable_depth_test) {
+        /* TODO: clipping state. */
+        pass.state_set(DRW_STATE_WRITE_COLOR);
+      }
       pass.bind_ubo(SELECT_DATA, &info_buf);
       /* IMPORTANT: This binds a dummy buffer `in_select_buf` but it is not supposed to be used. */
       pass.bind_ssbo(SELECT_ID_IN, &dummy_select_buf);
@@ -179,11 +214,6 @@ struct Instance {
 
     void end_sync()
     {
-      info_buf.mode = SelectType::SELECT_ALL;
-      /* TODO: Should be select rect center. */
-      info_buf.cursor = int2(512, 512);
-      info_buf.push_update();
-
       select_output_buf.resize(ceil_to_multiple_u(select_id_map.size(), 4));
       select_output_buf.push_update();
       select_output_buf.clear_to_zero();
@@ -195,18 +225,31 @@ struct Instance {
       GPU_finish();
       select_output_buf.read();
 
-#ifdef DEBUG
-      for (auto i : IndexRange(select_output_buf.size())) {
-        uint32_t word = select_output_buf[i];
-        for (auto bit : IndexRange(32)) {
-          if ((word & 1) != 0) {
-            uint index = i * 32 + bit;
-            std::cout << index << map_names[index] << std::endl;
+      Vector<GPUSelectResult> result;
+
+      /* Convert raw data from GPU to #GPUSelectResult. */
+      switch (info_buf.mode) {
+        case SelectType::SELECT_ALL:
+          for (auto i : IndexRange(select_id_map.size())) {
+            if (((select_output_buf[i / 32] >> (i % 32)) & 1) != 0) {
+              result.append({select_id_map[i], 0xFFFFu});
+            }
           }
-          word >>= 1;
-        }
+          break;
+
+        case SelectType::SELECT_PICK_ALL:
+        case SelectType::SELECT_PICK_NEAREST:
+          for (auto i : IndexRange(select_id_map.size())) {
+            if (select_output_buf[i] != 0) {
+              /* NOTE: For `SELECT_PICK_NEAREST`, `select_output_buf` also contains the screen
+               * distance to cursor in the lowest bits. */
+              result.append({select_id_map[i], select_output_buf[i]});
+            }
+          }
+          break;
       }
-#endif
+
+      gpu_select_next_set_result(result.data(), result.size());
     }
   };
 };

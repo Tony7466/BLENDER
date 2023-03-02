@@ -12,11 +12,6 @@ namespace blender::draw::overlay {
 
 template<typename T> void Instance<T>::init()
 {
-  resources.depth_tx.wrap(DRW_viewport_texture_list_get()->depth);
-  resources.depth_in_front_tx.wrap(DRW_viewport_texture_list_get()->depth_in_front);
-  resources.color_overlay_tx.wrap(DRW_viewport_texture_list_get()->color_overlay);
-  resources.color_render_tx.wrap(DRW_viewport_texture_list_get()->color);
-
   /* TODO(fclem): Remove DRW global usage. */
   const DRWContextState *ctx = DRW_context_state_get();
   /* Was needed by `object_wire_theme_id()` when doing the port. Not sure if needed nowadays. */
@@ -146,26 +141,41 @@ template<typename T> void Instance<T>::end_sync()
 
 template<typename T> void Instance<T>::draw(Manager &manager)
 {
-  /* WORKAROUND: This is to prevent crashes when using depth picking or selection.
-   * The selection engine should handle theses cases instead. */
-  if (!DRW_state_is_fbo()) {
-    return;
-  }
+  resources.depth_tx.wrap(DRW_viewport_texture_list_get()->depth);
+  resources.depth_in_front_tx.wrap(DRW_viewport_texture_list_get()->depth_in_front);
+  resources.color_overlay_tx.wrap(DRW_viewport_texture_list_get()->color_overlay);
+  resources.color_render_tx.wrap(DRW_viewport_texture_list_get()->color);
 
   int2 render_size = int2(resources.depth_tx.size());
 
   const DRWView *view_legacy = DRW_view_default_get();
   View view("OverlayView", view_legacy);
 
-  resources.line_tx.acquire(render_size, GPU_RGBA8);
+  /* TODO: Better semantical switch? */
+  if (!resources.color_overlay_tx.is_valid()) {
+    /* Likely to be the selection case. Allocate dummy texture and bind only depth buffer. */
+    resources.line_tx.acquire(int2(1, 1), GPU_RGBA8);
+    resources.color_overlay_alloc_tx.acquire(int2(1, 1), GPU_SRGB8_A8);
+    resources.color_render_alloc_tx.acquire(int2(1, 1), GPU_SRGB8_A8);
 
-  resources.overlay_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_tx),
-                              GPU_ATTACHMENT_TEXTURE(resources.color_overlay_tx));
-  resources.overlay_line_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_tx),
-                                   GPU_ATTACHMENT_TEXTURE(resources.color_overlay_tx),
-                                   GPU_ATTACHMENT_TEXTURE(resources.line_tx));
-  resources.overlay_color_only_fb.ensure(GPU_ATTACHMENT_NONE,
-                                         GPU_ATTACHMENT_TEXTURE(resources.color_overlay_tx));
+    resources.color_overlay_tx.wrap(resources.color_overlay_alloc_tx);
+    resources.color_render_tx.wrap(resources.color_render_alloc_tx);
+
+    resources.overlay_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_tx));
+    resources.overlay_line_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_tx));
+    resources.overlay_color_only_fb.ensure(GPU_ATTACHMENT_NONE);
+  }
+  else {
+    resources.line_tx.acquire(render_size, GPU_RGBA8);
+
+    resources.overlay_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_tx),
+                                GPU_ATTACHMENT_TEXTURE(resources.color_overlay_tx));
+    resources.overlay_line_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_tx),
+                                     GPU_ATTACHMENT_TEXTURE(resources.color_overlay_tx),
+                                     GPU_ATTACHMENT_TEXTURE(resources.line_tx));
+    resources.overlay_color_only_fb.ensure(GPU_ATTACHMENT_NONE,
+                                           GPU_ATTACHMENT_TEXTURE(resources.color_overlay_tx));
+  }
 
   /* TODO(fclem): Remove mandatory allocation. */
   if (!resources.depth_in_front_tx.is_valid()) {
@@ -201,6 +211,8 @@ template<typename T> void Instance<T>::draw(Manager &manager)
 
   resources.line_tx.release();
   resources.depth_in_front_alloc_tx.release();
+  resources.color_overlay_alloc_tx.release();
+  resources.color_render_alloc_tx.release();
 
   resources.read_result();
 }
@@ -211,6 +223,12 @@ template void Instance<>::begin_sync();
 template void Instance<>::object_sync(ObjectRef &ob_ref, Manager &manager);
 template void Instance<>::end_sync();
 template void Instance<>::draw(Manager &manager);
+
+template void Instance<select::Instance>::init();
+template void Instance<select::Instance>::begin_sync();
+template void Instance<select::Instance>::object_sync(ObjectRef &ob_ref, Manager &manager);
+template void Instance<select::Instance>::end_sync();
+template void Instance<select::Instance>::draw(Manager &manager);
 
 }  // namespace blender::draw::overlay
 
