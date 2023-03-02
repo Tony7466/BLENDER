@@ -259,10 +259,7 @@ void MTLBufferPool::update_memory_pools()
       }
 
       /* Fetch next MTLSafeFreeList chunk, if any. */
-      MTLSafeFreeList *next_list = nullptr;
-      if (current_pool->next_pool_creation_attempts_ > 0) {
-        next_list = current_pool->next_.load();
-      }
+      MTLSafeFreeList *next_list = current_pool->next_.load();
 
       /* Delete current MTLSafeFreeList */
       current_pool->lock_.unlock();
@@ -398,10 +395,6 @@ MTLSafeFreeList::MTLSafeFreeList()
   in_free_queue_ = false;
   current_list_index_ = 0;
   next_ = nullptr;
-  next_pool_creation_attempts_ = 0;
-
-  /* Create shared future for signalling next chunk readiness. */
-  next_ready_future_ = next_ready_.get_future().share();
 }
 
 void MTLSafeFreeList::insert_buffer(gpu::MTLBuffer *buffer)
@@ -419,21 +412,13 @@ void MTLSafeFreeList::insert_buffer(gpu::MTLBuffer *buffer)
      * Otherwise, ensure pool exists or wait for first caller to create next pool. */
     MTLSafeFreeList *next_list = next_.load();
 
-    if (next_list == nullptr) {
-      int has_created_next_chunk = next_pool_creation_attempts_++;
-      if (has_created_next_chunk == 0) {
-        lock_.lock();
-        next_ = new MTLSafeFreeList();
-        next_list = next_;
-        next_ready_.set_value(true);
-        lock_.unlock();
-      }
-      else {
-        /* Wait until next pool in chain exists.
-         * Another thread will be creating the next link in the chain and will hold the lock
-         * so if the resource is not ready, we can hold until it is available. */
-        next_ready_future_.wait();
-        next_list = next_.load();
+    if (!next_list) {
+      std::unique_lock lock(lock_);
+
+      next_list = next_.load();
+      if (!next_list) {
+        next_list = new MTLSafeFreeList();
+        next_.store(next_list);
       }
     }
     BLI_assert(next_list);

@@ -289,13 +289,8 @@ class MTLSafeFreeList {
   std::atomic<bool> in_free_queue_;
   std::atomic<bool> referenced_by_workload_;
   std::recursive_mutex lock_;
-
   /* Linked list of next MTLSafeFreeList chunk if current chunk is full. */
-  std::atomic<int> next_pool_creation_attempts_;
   std::atomic<MTLSafeFreeList *> next_;
-  /* Synchronization primitive to signal next chunk being ready for use. */
-  std::promise<bool> next_ready_;
-  std::shared_future<bool> next_ready_future_;
 
   /* Lockless list. MAX_NUM_BUFFERS_ within a chunk based on considerations
    * for performance and memory. Higher chunk counts are preferable for efficiently
@@ -328,10 +323,11 @@ class MTLSafeFreeList {
   void flag_in_queue()
   {
     in_free_queue_ = true;
-    if (next_pool_creation_attempts_ > 0) {
+    if (current_list_index_ >= MTLSafeFreeList::MAX_NUM_BUFFERS_) {
       MTLSafeFreeList *next_pool = next_.load();
-      BLI_assert(next_pool != nullptr);
-      next_pool->flag_in_queue();
+      if (next_pool) {
+        next_pool->flag_in_queue();
+      }
     }
   }
 };
