@@ -1,2 +1,3 @@
 Referenced by issue #91256, Custom property settings not preserved when changing its type
 Referenced by issue #105278, IDProperty UI missing library overridable toggle when Boolean type
+Referenced by pull request #105370, Fix #105278: IDProperty UI missing library overridable toggle
