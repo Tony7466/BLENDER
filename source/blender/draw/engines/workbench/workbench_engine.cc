@@ -13,8 +13,6 @@
 #include "ED_view3d.h"
 #include "GPU_capabilities.h"
 
-#include "draw_common.hh"
-
 #include "workbench_private.hh"
 
 #include "BKE_volume.h"
@@ -128,16 +126,6 @@ class VolumePass {
     if (volume_grid == nullptr) {
       return;
     }
-
-#if 0
-    /* TODO (Miguel Pozo): Use common API? */
-    Vector<VolumeAttribute> attrs = {
-        {"densityTexture", BKE_volume_grid_name(volume_grid), eGPUDefaultValue::GPU_DEFAULT_1}};
-    PassMain::Sub &sub_ps = ps_.sub(ob->id.name);
-    if (!volume_sub_pass(ps_, nullptr, nullptr, attrs)) {
-      return;
-    }
-#endif
 
     DRWVolumeGrid *grid = DRW_volume_batch_cache_get_grid(volume, volume_grid);
     if (grid == nullptr) {
