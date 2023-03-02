@@ -13,6 +13,7 @@
 #include "usd_writer_transform.h"
 #include "usd_writer_volume.h"
 
+#include <memory>
 #include <string>
 
 #include <pxr/base/tf/stringUtils.h>
@@ -109,8 +110,9 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const Hierarch
       break;
     case OB_CURVES_LEGACY: {
       const Curve *legacy_curve = static_cast<Curve *>(context->object->data);
-      Curves *curves = bke::curve_legacy_to_curves(*legacy_curve);
-      data_writer = new USDCurvesWriter(usd_export_context, curves);
+      std::unique_ptr<Curves> curves = std::unique_ptr<Curves>(
+          bke::curve_legacy_to_curves(*legacy_curve));
+      data_writer = new USDCurvesWriter(usd_export_context, std::move(curves));
       break;
     }
     case OB_CURVES:

@@ -2,6 +2,8 @@
  * Copyright 2022 Blender Foundation. All rights reserved. */
 #pragma once
 
+#include <memory>
+
 #include "DNA_curves_types.h"
 #include "usd_writer_abstract.h"
 
@@ -13,7 +15,8 @@ namespace blender::io::usd {
 class USDCurvesWriter : public USDAbstractWriter {
  public:
   USDCurvesWriter(const USDExporterContext &ctx);
-  USDCurvesWriter(const USDExporterContext &ctx, Curves *converted_legacy_curves);
+  USDCurvesWriter(const USDExporterContext &ctx, std::unique_ptr<Curves> converted_legacy_curves);
+  ~USDCurvesWriter();
 
  protected:
   virtual void do_write(HierarchyContext &context) override;
@@ -21,9 +24,8 @@ class USDCurvesWriter : public USDAbstractWriter {
   void assign_materials(const HierarchyContext &context, pxr::UsdGeomCurves usd_curve);
 
  private:
-  Curves *converted_curves;
+  std::unique_ptr<Curves> converted_curves_;
   pxr::UsdGeomCurves DefineUsdGeomBasisCurves(pxr::VtValue curve_basis, bool cyclic, bool cubic);
 };
 
 }  // namespace blender::io::usd
-

@@ -14,6 +14,7 @@
 #include "usd_writer_curves.h"
 
 #include "BKE_curves.hh"
+#include "BKE_lib_id.h"
 #include "BKE_material.h"
 
 #include "BLI_math_geom.h"
@@ -24,13 +25,21 @@
 namespace blender::io::usd {
 
 USDCurvesWriter::USDCurvesWriter(const USDExporterContext &ctx)
-    : USDAbstractWriter(ctx), converted_curves(nullptr)
+    : USDAbstractWriter(ctx), converted_curves_(nullptr)
 {
 }
 
-USDCurvesWriter::USDCurvesWriter(const USDExporterContext &ctx, Curves *converted_legacy_curves)
-    : USDAbstractWriter(ctx), converted_curves(converted_legacy_curves)
+USDCurvesWriter::USDCurvesWriter(const USDExporterContext &ctx,
+                                 std::unique_ptr<Curves> converted_legacy_curves)
+    : USDAbstractWriter(ctx), converted_curves_(std::move(converted_legacy_curves))
 {
+}
+
+USDCurvesWriter::~USDCurvesWriter()
+{
+  if (converted_curves_) {
+    BKE_id_free(nullptr, converted_curves_.release());
+  }
 }
 
 pxr::UsdGeomCurves USDCurvesWriter::DefineUsdGeomBasisCurves(pxr::VtValue curve_basis,
@@ -61,7 +70,7 @@ pxr::UsdGeomCurves USDCurvesWriter::DefineUsdGeomBasisCurves(pxr::VtValue curve_
   return curves;
 }
 
-void populate_curve_widths(const bke::CurvesGeometry &geometry, pxr::VtArray<float> &widths)
+static void populate_curve_widths(const bke::CurvesGeometry &geometry, pxr::VtArray<float> &widths)
 {
   const bke::AttributeAccessor curve_attributes = geometry.attributes();
   const VArray<float> radii = curve_attributes.lookup<float>("radius", ATTR_DOMAIN_POINT);
@@ -73,47 +82,45 @@ void populate_curve_widths(const bke::CurvesGeometry &geometry, pxr::VtArray<flo
   }
 }
 
-void set_curve_width_interpolation(const pxr::VtArray<float> &widths,
-                                   const pxr::VtArray<int> &segments,
-                                   const pxr::VtIntArray &control_point_counts,
-                                   const bool cyclic,
-                                   pxr::TfToken &interpolation)
+static pxr::TfToken set_curve_width_interpolation(const pxr::VtArray<float> &widths,
+                                                  const pxr::VtArray<int> &segments,
+                                                  const pxr::VtIntArray &control_point_counts,
+                                                  const bool cyclic)
 {
-  if (widths.size() == 0) {
-    return;
+  if (widths.empty()) {
+    return pxr::TfToken();
   }
 
-  size_t expectedVaryingSize;
-  if (cyclic) {
-    expectedVaryingSize = std::accumulate(segments.begin(), segments.end(), 0);
-  }
-  else {
-    expectedVaryingSize = std::accumulate(segments.begin(), segments.end(), 0) +
-                          control_point_counts.size();
-  }
-
-  size_t accumulatedControlPointCount = std::accumulate(
+  const size_t accumulatedControlPointCount = std::accumulate(
       control_point_counts.begin(), control_point_counts.end(), 0);
 
   /* For Blender curves, radii are always stored per point. For linear curves, this should match
    * with USD's vertex interpolation. For cubic curves, this should match with USD's varying
    * interpolation. */
-  if (widths.size() == accumulatedControlPointCount)
-    interpolation = pxr::UsdGeomTokens->vertex;
-  if (widths.size() == expectedVaryingSize)
-    interpolation = pxr::UsdGeomTokens->varying;
-  else {
-    WM_reportf(RPT_WARNING, "Curve width size not supported for USD interpolation.");
+  if (widths.size() == accumulatedControlPointCount) {
+    return pxr::UsdGeomTokens->vertex;
   }
+
+  size_t expectedVaryingSize = std::accumulate(segments.begin(), segments.end(), 0);
+  if (!cyclic) {
+    expectedVaryingSize += control_point_counts.size();
+  }
+
+  if (widths.size() == expectedVaryingSize) {
+    return pxr::UsdGeomTokens->varying;
+  }
+
+  WM_reportf(RPT_WARNING, "Curve width size not supported for USD interpolation.");
+  return pxr::TfToken();
 }
 
-void populate_curve_props(const bke::CurvesGeometry &geometry,
-                          pxr::VtArray<pxr::GfVec3f> &verts,
-                          pxr::VtIntArray &control_point_counts,
-                          pxr::VtArray<float> &widths,
-                          pxr::TfToken &interpolation,
-                          const bool cyclic,
-                          const bool cubic)
+static void populate_curve_props(const bke::CurvesGeometry &geometry,
+                                 pxr::VtArray<pxr::GfVec3f> &verts,
+                                 pxr::VtIntArray &control_point_counts,
+                                 pxr::VtArray<float> &widths,
+                                 pxr::TfToken &interpolation,
+                                 const bool cyclic,
+                                 const bool cubic)
 {
   const int num_curves = geometry.curve_num;
   const Span<float3> positions = geometry.positions();
@@ -146,15 +153,15 @@ void populate_curve_props(const bke::CurvesGeometry &geometry,
   }
 
   populate_curve_widths(geometry, widths);
-  set_curve_width_interpolation(widths, segments, control_point_counts, cyclic, interpolation);
+  interpolation = set_curve_width_interpolation(widths, segments, control_point_counts, cyclic);
 }
 
-void populate_curve_props_for_bezier(const bke::CurvesGeometry &geometry,
-                                     pxr::VtArray<pxr::GfVec3f> &verts,
-                                     pxr::VtIntArray &control_point_counts,
-                                     pxr::VtArray<float> &widths,
-                                     pxr::TfToken &interpolation,
-                                     const bool cyclic)
+static void populate_curve_props_for_bezier(const bke::CurvesGeometry &geometry,
+                                            pxr::VtArray<pxr::GfVec3f> &verts,
+                                            pxr::VtIntArray &control_point_counts,
+                                            pxr::VtArray<float> &widths,
+                                            pxr::TfToken &interpolation,
+                                            const bool cyclic)
 {
   const int bezier_vstep = 3;
   const int num_curves = geometry.curve_num;
@@ -208,17 +215,17 @@ void populate_curve_props_for_bezier(const bke::CurvesGeometry &geometry,
   }
 
   populate_curve_widths(geometry, widths);
-  set_curve_width_interpolation(widths, segments, control_point_counts, cyclic, interpolation);
+  interpolation = set_curve_width_interpolation(widths, segments, control_point_counts, cyclic);
 }
 
-void populate_curve_props_for_nurbs(const bke::CurvesGeometry &geometry,
-                                    pxr::VtArray<pxr::GfVec3f> &verts,
-                                    pxr::VtIntArray &control_point_counts,
-                                    pxr::VtArray<float> &widths,
-                                    pxr::VtArray<double> &knots,
-                                    pxr::VtArray<int> &orders,
-                                    pxr::TfToken &interpolation,
-                                    const bool cyclic)
+static void populate_curve_props_for_nurbs(const bke::CurvesGeometry &geometry,
+                                           pxr::VtArray<pxr::GfVec3f> &verts,
+                                           pxr::VtIntArray &control_point_counts,
+                                           pxr::VtArray<float> &widths,
+                                           pxr::VtArray<double> &knots,
+                                           pxr::VtArray<int> &orders,
+                                           pxr::TfToken &interpolation,
+                                           const bool cyclic)
 {
   const int num_curves = geometry.curve_num;
   orders.resize(num_curves);
@@ -273,8 +280,8 @@ void populate_curve_props_for_nurbs(const bke::CurvesGeometry &geometry,
 void USDCurvesWriter::do_write(HierarchyContext &context)
 {
 
-  Curves *curve = converted_curves ? converted_curves :
-                                     static_cast<Curves *>(context.object->data);
+  const Curves *curve = converted_curves_ ? converted_curves_.get() :
+                                            static_cast<Curves *>(context.object->data);
 
   const bke::CurvesGeometry &geometry = bke::CurvesGeometry::wrap(curve->geometry);
   if (geometry.points_num() == 0) {
