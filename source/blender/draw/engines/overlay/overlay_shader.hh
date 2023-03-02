@@ -10,8 +10,7 @@
 
 #include "gpu_shader_create_info.hh"
 
-#include "../select/select_empty.hh"
-#include "../select/select_object.hh"
+#include "../select/select_instance.hh"
 
 namespace blender::draw::overlay {
 

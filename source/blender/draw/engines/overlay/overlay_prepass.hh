@@ -46,7 +46,7 @@ template<typename SelectEngineT> class Prepass {
     GPUBatch *geom = DRW_cache_object_surface_get(ob_ref.object);
     if (geom) {
       ResourceHandle res_handle = manager.resource_handle(ob_ref);
-      pass.draw(geom, res_handle, res.select_id(ob_ref).value);
+      pass.draw(geom, res_handle, res.select_id(ob_ref).get());
     }
   }
 

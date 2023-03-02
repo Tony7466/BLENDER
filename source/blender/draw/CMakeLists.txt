@@ -597,6 +597,8 @@ set(GLSL_SRC
   engines/select/shaders/select_id_frag.glsl
   engines/select/shaders/select_lib.glsl
 
+  engines/select/select_shader_shared.hh
+
   engines/basic/shaders/basic_conservative_depth_geom.glsl
   engines/basic/shaders/basic_depth_vert.glsl
   engines/basic/shaders/basic_depth_vert_conservative_no_geom.glsl

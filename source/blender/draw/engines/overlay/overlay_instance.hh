@@ -15,8 +15,7 @@
 #include "overlay_prepass.hh"
 #include "overlay_shape.hh"
 
-#include "../select/select_empty.hh"
-#include "../select/select_object.hh"
+#include "../select/select_instance.hh"
 
 namespace blender::draw::overlay {
 
@@ -25,7 +24,7 @@ template<
      * selectable component and using a special shaders for drawing.
      * Making the select engine templated makes it easier to phase out any overhead of the
      * selection for the regular non-selection case.*/
-    typename SelectEngineT = select::EngineEmpty>
+    typename SelectEngineT = select::Instance>
 class Instance {
  public:
   /* WORKAROUND: Legacy. Move to grid pass. */

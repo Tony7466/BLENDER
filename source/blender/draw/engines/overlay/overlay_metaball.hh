@@ -88,6 +88,8 @@ template<typename SelectEngineT> class Metaballs {
       pass.init();
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
                      state.clipping_state);
+      /* NOTE: Use armature sphere outline shader to have perspective correct outline instead of
+       * just a circle facing the camera. */
       pass.shader_set(res.shaders.armature_sphere_outline);
       pass.bind_ubo("globalsBlock", &res.globals_buf);
       res.select_bind(pass);

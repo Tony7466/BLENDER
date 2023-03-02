@@ -4,8 +4,6 @@
 /** \file
  * \ingroup draw_engine
  *
- * This is an implementation of the Select engine specialized for selecting object.
- * Should plug seamlessly inside the overlay engine logic.
  */
 
 #pragma once
@@ -18,19 +16,72 @@
 #include "gpu_shader_create_info.hh"
 
 #include "select_defines.h"
+#include "select_shader_shared.hh"
 
 namespace blender::draw::select {
 
-struct EngineObject {
+/**
+ * Dummy implementation of the select engine types to avoid any overhead.
+ * Bypass any selection logic.
+ */
+struct InstanceDummy {
   /* Add type safety to selection ID. Only the select engine should provide them. */
-  struct ID {
+  class ID {
+   public:
+    constexpr uint32_t get() const
+    {
+      return 0;
+    }
+  };
+
+  struct SelectShader {
+    static void patch(gpu::shader::ShaderCreateInfo &){};
+  };
+
+  struct SelectBuf {
+    void select_clear(){};
+    void select_append(ID){};
+    void select_bind(PassSimple &){};
+  };
+
+  struct SelectMap {
+    [[nodiscard]] const ID select_id(const ObjectRef &, uint = 0)
+    {
+      return {};
+    }
+
+    void begin_sync(){};
+
+    void select_bind(PassSimple &){};
+
+    void select_bind(PassMain &){};
+
+    void end_sync(){};
+
+    void read_result(){};
+  };
+};
+
+/**
+ * This is an implementation of the Select engine specialized for selecting object.
+ * Should plug seamlessly inside the overlay engine logic.
+ */
+struct Instance {
+  /* Add type safety to selection ID. Only the select engine should provide them. */
+  class ID {
+   public:
     uint32_t value;
+
+    uint32_t get() const
+    {
+      return value;
+    }
   };
 
   struct SelectShader {
     static void patch(gpu::shader::ShaderCreateInfo &info)
     {
-      info.define("SELECT_UNORDERED");
+      info.define("SELECT_ENABLE");
       /* Replace additional info. */
       for (StringRefNull &str : info.additional_infos_) {
         if (str == "draw_modelmat_new") {
@@ -43,7 +94,7 @@ struct EngineObject {
 
   /**
    * Add a dedicated selection id buffer to a pass.
-   * Use this when not using a #PassMain which can pass the select ID via CustomID.
+   * To be used when not using a #PassMain which can pass the select ID via CustomID.
    */
   struct SelectBuf {
     StorageVectorBuffer<uint32_t> select_buf = {"select_buf"};
@@ -55,7 +106,7 @@ struct EngineObject {
 
     void select_append(ID select_id)
     {
-      select_buf.append(select_id.value);
+      select_buf.append(select_id.get());
     }
 
     void select_bind(PassSimple &pass)
@@ -80,6 +131,8 @@ struct EngineObject {
     StorageArrayBuffer<uint> select_output_buf = {"select_output_buf"};
     /** Dummy buffer. Might be better to remove, but simplify the shader create info patching. */
     StorageArrayBuffer<uint, 4, true> dummy_select_buf = {"dummy_select_buf"};
+    /** Uniform buffer to bind to all passes to pass information about the selection state. */
+    UniformBuffer<SelectInfoData> info_buf;
 
     /* TODO(fclem): The sub_object_id id should eventually become some enum or take a sub-object
      * reference directly. This would isolate the selection logic to this class. */
@@ -93,6 +146,12 @@ struct EngineObject {
       return {id};
     }
 
+    /* Load an invalid index that will not write to the output (not selectable). */
+    [[nodiscard]] const ID select_invalid_id()
+    {
+      return {uint32_t(-1)};
+    }
+
     void begin_sync()
     {
       select_id_map.clear();
@@ -101,14 +160,18 @@ struct EngineObject {
 #endif
     }
 
+    /** IMPORTANT: Changes the draw state. Need to be called after the pass own state. */
     void select_bind(PassSimple &pass)
     {
+      pass.bind_ubo(SELECT_DATA, &info_buf);
       pass.bind_ssbo(SELECT_ID_OUT, &select_output_buf);
     }
 
+    /** IMPORTANT: Changes the draw state. Need to be called after the pass own state. */
     void select_bind(PassMain &pass)
     {
       pass.use_custom_ids = true;
+      pass.bind_ubo(SELECT_DATA, &info_buf);
       /* IMPORTANT: This binds a dummy buffer `in_select_buf` but it is not supposed to be used. */
       pass.bind_ssbo(SELECT_ID_IN, &dummy_select_buf);
       pass.bind_ssbo(SELECT_ID_OUT, &select_output_buf);
@@ -116,6 +179,11 @@ struct EngineObject {
 
     void end_sync()
     {
+      info_buf.mode = SelectType::SELECT_ALL;
+      /* TODO: Should be select rect center. */
+      info_buf.cursor = int2(512, 512);
+      info_buf.push_update();
+
       select_output_buf.resize(ceil_to_multiple_u(select_id_map.size(), 4));
       select_output_buf.push_update();
       select_output_buf.clear_to_zero();
