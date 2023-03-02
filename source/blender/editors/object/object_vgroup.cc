@@ -2375,36 +2375,6 @@ static bool vertex_group_poll(bContext *C)
   return vertex_group_poll_ex(C, ob);
 }
 
-static bool vertex_group_mesh_poll_ex(bContext *C, Object *ob)
-{
-  if (!vertex_group_poll_ex(C, ob)) {
-    return false;
-  }
-
-  if (ob->type != OB_MESH) {
-    CTX_wm_operator_poll_msg_set(C, "Only mesh objects are supported");
-    return false;
-  }
-
-  return true;
-}
-
-static bool UNUSED_FUNCTION(vertex_group_mesh_with_dvert_poll(bContext *C))
-{
-  Object *ob = ED_object_context(C);
-  if (!vertex_group_mesh_poll_ex(C, ob)) {
-    return false;
-  }
-
-  Mesh *me = static_cast<Mesh *>(ob->data);
-  if (me->deform_verts().is_empty()) {
-    CTX_wm_operator_poll_msg_set(C, "The active mesh object has no vertex group data");
-    return false;
-  }
-
-  return true;
-}
-
 static bool UNUSED_FUNCTION(vertex_group_poll_edit)(bContext *C)
 {
   Object *ob = ED_object_context(C);
