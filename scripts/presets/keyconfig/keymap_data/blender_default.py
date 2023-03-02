@@ -5637,6 +5637,8 @@ def km_curves(params):
         ("curves.delete", {"type": 'DEL', "value": 'PRESS'}, None),
         ("curves.select_more", {"type": 'NUMPAD_PLUS', "value": 'PRESS', "ctrl": True, "repeat": True}, None),
         ("curves.select_less", {"type": 'NUMPAD_MINUS', "value": 'PRESS', "ctrl": True, "repeat": True}, None),
+        *_template_items_proportional_editing(
+            params, connected=True, toggle_data_path='tool_settings.use_proportional_edit'),
     ])
 
     return keymap
@@ -5787,7 +5789,9 @@ def km_transform_modal_map(_params):
         ("PLANE_Z", {"type": 'Z', "value": 'PRESS', "shift": True}, None),
         ("CONS_OFF", {"type": 'C', "value": 'PRESS'}, None),
         ("TRANSLATE", {"type": 'G', "value": 'PRESS'}, None),
+        ("VERT_EDGE_SLIDE", {"type": 'G', "value": 'PRESS'}, None),
         ("ROTATE", {"type": 'R', "value": 'PRESS'}, None),
+        ("TRACKBALL", {"type": 'R', "value": 'PRESS'}, None),
         ("RESIZE", {"type": 'S', "value": 'PRESS'}, None),
         ("SNAP_TOGGLE", {"type": 'TAB', "value": 'PRESS', "shift": True}, None),
         ("SNAP_INV_ON", {"type": 'LEFT_CTRL', "value": 'PRESS', "any": True}, None),

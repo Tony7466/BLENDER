@@ -12,8 +12,6 @@
 #include "vk_command_buffer.hh"
 #include "vk_descriptor_pools.hh"
 
-#include "vk_mem_alloc.h"
-
 namespace blender::gpu {
 
 class VKContext : public Context {
@@ -29,6 +27,9 @@ class VKContext : public Context {
   /** Allocator used for texture and buffers and other resources. */
   VmaAllocator mem_allocator_ = VK_NULL_HANDLE;
   VKDescriptorPools descriptor_pools_;
+
+  /** Limits of the device linked to this context. */
+  VkPhysicalDeviceLimits vk_physical_device_limits_;
 
   void *ghost_context_;
 
@@ -57,6 +58,11 @@ class VKContext : public Context {
   VkPhysicalDevice physical_device_get() const
   {
     return vk_physical_device_;
+  }
+
+  const VkPhysicalDeviceLimits &physical_device_limits_get() const
+  {
+    return vk_physical_device_limits_;
   }
 
   VkDevice device_get() const
@@ -88,6 +94,9 @@ class VKContext : public Context {
   {
     return mem_allocator_;
   }
+
+ private:
+  void init_physical_device_limits();
 };
 
 }  // namespace blender::gpu
