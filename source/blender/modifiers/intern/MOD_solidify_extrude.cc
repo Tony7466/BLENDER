@@ -17,7 +17,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BKE_deform.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_particle.h"
 
 #include "MOD_modifiertypes.h"
@@ -717,7 +717,7 @@ Mesh *MOD_solidify_extrude_modifyMesh(ModifierData *md, const ModifierEvalContex
 
     const MPoly *poly;
     for (i = 0, poly = polys.data(); i < polys_num; i++, poly++) {
-      /* #BKE_mesh_calc_poly_angles logic is inlined here */
+      /* #bke::mesh::poly_angles_calc logic is inlined here */
       float nor_prev[3];
       float nor_next[3];
 

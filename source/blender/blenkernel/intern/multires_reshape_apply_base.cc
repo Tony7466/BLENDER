@@ -19,7 +19,7 @@
 
 #include "BKE_customdata.h"
 #include "BKE_lib_id.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_multires.h"
@@ -115,9 +115,8 @@ void multires_reshape_apply_base_refit_base_mesh(MultiresReshapeContext *reshape
     for (int j = 0; j < pmap[i].count; j++) {
       const MPoly *poly = &reshape_context->base_polys[pmap[i].indices[j]];
       MPoly fake_poly;
-      float no[3];
 
-      /* Set up poly, loops, and coords in order to call BKE_mesh_calc_poly_normal(). */
+      /* Set up poly, loops, and coords in order to call #bke::mesh::poly_normal_calc(). */
       fake_poly.totloop = poly->totloop;
       fake_poly.loopstart = 0;
       MLoop *fake_loops = static_cast<MLoop *>(
@@ -138,7 +137,10 @@ void multires_reshape_apply_base_refit_base_mesh(MultiresReshapeContext *reshape
         }
       }
 
-      BKE_mesh_calc_poly_normal(&fake_poly, fake_loops, (const float(*)[3])fake_co, no);
+      const blender::float3 no = blender::bke::mesh::poly_normal_calc(
+          {reinterpret_cast<const blender::float3 *>(fake_co), poly->totloop},
+          {fake_loops, poly->totloop});
+
       MEM_freeN(fake_loops);
       MEM_freeN(fake_co);
 

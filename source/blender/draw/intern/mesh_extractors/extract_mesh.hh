@@ -93,7 +93,7 @@ struct MeshRenderData {
   const bool *select_vert;
   const bool *select_edge;
   const bool *select_poly;
-  float (*loop_normals)[3];
+  blender::Array<blender::float3> loop_normals;
   int *lverts, *ledges;
 
   const char *active_color_name;

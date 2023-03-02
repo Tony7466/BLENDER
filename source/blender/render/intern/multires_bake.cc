@@ -24,7 +24,7 @@
 #include "BKE_image.h"
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_tangent.h"
 #include "BKE_modifier.h"
 #include "BKE_multires.h"
@@ -125,8 +125,10 @@ static void multiresbake_get_normal(const MResolvePixelData *data,
       copy_v3_v3(r_normal, data->precomputed_normals[poly_index]);
     }
     else {
-      BKE_mesh_calc_poly_normal(
-          poly, &data->mloop[poly->loopstart], data->vert_positions, r_normal);
+      copy_v3_v3(r_normal,
+                 blender::bke::mesh::poly_normal_calc(
+                     {reinterpret_cast<const blender::float3 *>(data->vert_positions), INT_MAX},
+                     {&data->mloop[poly->loopstart], poly->totloop}));
     }
   }
 }

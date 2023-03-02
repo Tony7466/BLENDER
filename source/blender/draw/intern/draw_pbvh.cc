@@ -36,7 +36,7 @@
 #include "BKE_attribute.h"
 #include "BKE_ccg.h"
 #include "BKE_customdata.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_paint.h"
 #include "BKE_pbvh.h"
 #include "BKE_subdiv_ccg.h"
@@ -333,7 +333,7 @@ struct PBVHBatches {
           foreach_faces,
       GPUVertBufRaw *access)
   {
-    float fno[3];
+    float3 fno;
     short no[3];
     int last_poly = -1;
     bool smooth = false;
@@ -346,8 +346,9 @@ struct PBVHBatches {
 
         if (!(poly->flag & ME_SMOOTH)) {
           smooth = true;
-          BKE_mesh_calc_poly_normal(
-              poly, args->mloop + poly->loopstart, args->vert_positions, fno);
+          fno = blender::bke::mesh::poly_normal_calc(
+              {reinterpret_cast<const float3 *>(args->vert_positions), args->mesh_verts_num},
+              {&args->mloop[poly->loopstart], poly->totloop});
           normal_float_to_short_v3(no, fno);
         }
         else {
