@@ -37,7 +37,6 @@ struct PropertyRNA;
 
 /**
  * Create new NLA Track.
- *
  * The returned pointer is owned by the caller.
  */
 struct NlaTrack *BKE_nlatrack_new(void);

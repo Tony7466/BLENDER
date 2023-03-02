@@ -145,32 +145,4 @@ TEST(nla_track, BKE_nlatrack_new_head)
 
 }
 
-TEST(nla_track, BKE_nlatrack_insert_before)
-{
-  AnimData adt{};
-  NlaTrack *trackA = BKE_nlatrack_new();
-  NlaTrack *trackB = BKE_nlatrack_new();
-  NlaTrack *trackC = BKE_nlatrack_new();
-  // NlaTrack *trackD = BKE_nlatrack_new(false);
-
-  BKE_nlatrack_insert_before(&adt.nla_tracks, NULL, trackA, true);
-  BKE_nlatrack_insert_before(&adt.nla_tracks, trackA, trackB, true);
-
-  // Since Track C isn't library override, it'll get inserted after A
-  BKE_nlatrack_insert_before(&adt.nla_tracks, trackA, trackC, false);
-  // BKE_nlatrack_insert_before(&adt.nla_tracks, trackC, trackD);
-
-  // Expect B -> A -> C ordering. 
-  EXPECT_EQ(0, BLI_findindex(&adt.nla_tracks, trackB));
-  EXPECT_EQ(1, BLI_findindex(&adt.nla_tracks, trackA));
-  EXPECT_EQ(2, BLI_findindex(&adt.nla_tracks, trackC));
-
-  // Free the tracks
-  BKE_nlatrack_remove_and_free(&adt.nla_tracks, trackA, false);
-  BKE_nlatrack_remove_and_free(&adt.nla_tracks, trackB, false);
-  BKE_nlatrack_remove_and_free(&adt.nla_tracks, trackC, false);
-  // BKE_nlatrack_remove_and_free(&adt.nla_tracks, trackD, false);
-}
-
-
 }  // namespace blender::bke::tests

@@ -429,7 +429,7 @@ NlaTrack *BKE_nlatrack_new_after(ListBase *nla_tracks, struct NlaTrack *prev, bo
 {
   NlaTrack *new_track = BKE_nlatrack_new();
 
-  BKE_nlatrack_insert_after(nla_tracks, prev, is_liboverride);
+  BKE_nlatrack_insert_after(nla_tracks, prev, new_track, is_liboverride);
 
   return new_track;
 }
