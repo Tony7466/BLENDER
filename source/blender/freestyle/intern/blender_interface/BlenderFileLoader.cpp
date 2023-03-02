@@ -388,9 +388,9 @@ static bool testEdgeMark(Mesh *me, const FreestyleEdge *fed, const MLoopTri *lt,
 
   const MLoop *mloop = &loops[lt->tri[i]];
   const MLoop *mloop_next = &loops[lt->tri[(i + 1) % 3]];
-  const MEdge *medge = &edges[mloop->e];
+  const MEdge *edge = &edges[mloop->e];
 
-  if (!ELEM(mloop_next->v, medge->v1, medge->v2)) {
+  if (!ELEM(mloop_next->v, edge->v1, edge->v2)) {
     /* Not an edge in the original mesh before triangulation. */
     return false;
   }

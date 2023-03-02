@@ -459,11 +459,11 @@ void BM_mesh_bm_from_me(BMesh *bm, const Mesh *me, const struct BMeshFromMeshPar
     bm->elem_index_dirty &= ~BM_VERT; /* Added in order, clear dirty flag. */
   }
 
-  const Span<MEdge> medge = me->edges();
+  const Span<MEdge> edges = me->edges();
   Array<BMEdge *> etable(me->totedge);
-  for (const int i : medge.index_range()) {
+  for (const int i : edges.index_range()) {
     BMEdge *e = etable[i] = BM_edge_create(
-        bm, vtable[medge[i].v1], vtable[medge[i].v2], nullptr, BM_CREATE_SKIP_CD);
+        bm, vtable[edges[i].v1], vtable[edges[i].v2], nullptr, BM_CREATE_SKIP_CD);
     BM_elem_index_set(e, i); /* set_ok */
 
     e->head.hflag = 0;
@@ -486,7 +486,7 @@ void BM_mesh_bm_from_me(BMesh *bm, const Mesh *me, const struct BMeshFromMeshPar
     bm->elem_index_dirty &= ~BM_EDGE; /* Added in order, clear dirty flag. */
   }
 
-  const Span<MPoly> mpoly = me->polys();
+  const Span<MPoly> polys = me->polys();
   const Span<MLoop> mloop = me->loops();
 
   /* Only needed for selection. */
@@ -497,9 +497,9 @@ void BM_mesh_bm_from_me(BMesh *bm, const Mesh *me, const struct BMeshFromMeshPar
   }
 
   int totloops = 0;
-  for (const int i : mpoly.index_range()) {
+  for (const int i : polys.index_range()) {
     BMFace *f = bm_face_create_from_mpoly(
-        *bm, mloop.slice(mpoly[i].loopstart, mpoly[i].totloop), vtable, etable);
+        *bm, mloop.slice(polys[i].loopstart, polys[i].totloop), vtable, etable);
     if (!ftable.is_empty()) {
       ftable[i] = f;
     }
@@ -533,7 +533,7 @@ void BM_mesh_bm_from_me(BMesh *bm, const Mesh *me, const struct BMeshFromMeshPar
       bm->act_face = f;
     }
 
-    int j = mpoly[i].loopstart;
+    int j = polys[i].loopstart;
     BMLoop *l_first = BM_FACE_FIRST_LOOP(f);
     BMLoop *l_iter = l_first;
     do {
@@ -1234,8 +1234,8 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMesh
   CustomData_add_layer(&me->ldata, CD_MLOOP, CD_SET_DEFAULT, nullptr, me->totloop);
   CustomData_add_layer(&me->pdata, CD_MPOLY, CD_SET_DEFAULT, nullptr, me->totpoly);
   MutableSpan<float3> positions = me->vert_positions_for_write();
-  MutableSpan<MEdge> medge = me->edges_for_write();
-  MutableSpan<MPoly> mpoly = me->polys_for_write();
+  MutableSpan<MEdge> edges = me->edges_for_write();
+  MutableSpan<MPoly> polys = me->polys_for_write();
   MutableSpan<MLoop> mloop = me->loops_for_write();
 
   bool need_select_vert = false;
@@ -1272,8 +1272,8 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMesh
 
   i = 0;
   BM_ITER_MESH (e, &iter, bm, BM_EDGES_OF_MESH) {
-    medge[i].v1 = BM_elem_index_get(e->v1);
-    medge[i].v2 = BM_elem_index_get(e->v2);
+    edges[i].v1 = BM_elem_index_get(e->v1);
+    edges[i].v2 = BM_elem_index_get(e->v2);
 
     if (BM_elem_flag_test(e, BM_ELEM_SEAM)) {
       need_uv_seam = true;
@@ -1301,8 +1301,8 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMesh
   j = 0;
   BM_ITER_MESH (f, &iter, bm, BM_FACES_OF_MESH) {
     BMLoop *l_iter, *l_first;
-    mpoly[i].loopstart = j;
-    mpoly[i].totloop = f->len;
+    polys[i].loopstart = j;
+    polys[i].totloop = f->len;
     if (f->mat_nr != 0) {
       need_material_index = true;
     }
