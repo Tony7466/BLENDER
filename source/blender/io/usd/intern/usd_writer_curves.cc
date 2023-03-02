@@ -104,10 +104,7 @@ void set_curve_width_interpolation(const pxr::VtArray<float> &widths,
   else if (widths.size() == expectedVaryingSize)
     interpolation = pxr::UsdGeomTokens->varying;
   else {
-    /*TF_WARN(
-        "MFnNurbsCurve has unsupported width size "
-        "for standard interpolation metadata: %s",
-        GetDagPath().fullPathName().asChar());*/
+    WM_reportf(RPT_WARNING, "Curve width size not supported for standard USD interpolation.");
   }
 }
 
@@ -259,6 +256,18 @@ void populate_curve_props_for_nurbs(const bke::CurvesGeometry &geometry,
     for (int i_knot = 0; i_knot < knots_num; i_knot++) {
       knots[i_knot] = (double)temp_knots[i_knot];
     }
+
+    /* Set end knots according to the USD spec for periodic curves
+       https://graphics.pixar.com/usd/dev/api/class_usd_geom_nurbs_curves.html#details */
+    if (cyclic) {
+      knots[0] = knots[1] - (knots[knots.size() - 2] - knots[knots.size() - 3]);
+      knots[knots.size() - 1] = knots[knots.size() - 2] + (knots[2] - knots[1]);
+    }
+    else {
+      // Set end knots according to the USD spec for non-periodic curves
+      knots[0] = knots[1];
+      knots[knots.size() - 1] = knots[knots.size() - 2];
+    }
   }
 
   populate_curve_widths(geometry, widths);
@@ -370,6 +379,8 @@ void USDCurvesWriter::do_write(HierarchyContext &context)
 
     usd_curves.SetWidthsInterpolation(interpolation);
   }
+
+  assign_materials(context, usd_curves);
 }
 
 bool USDCurvesWriter::check_is_animated(const HierarchyContext &) const
@@ -407,13 +418,6 @@ void USDCurvesWriter::assign_materials(const HierarchyContext &context,
   if (!curve_material_bound) {
     /* Blender defaults to double-sided, but USD to single-sided. */
     usd_curve.CreateDoubleSidedAttr(pxr::VtValue(true));
-  }
-
-  if (!curve_material_bound) {
-    /* Either all material slots were empty or there is only one material in use. As geometry
-     * subsets are only written when actually used to assign a material, and the mesh already has
-     * the material assigned, there is no need to continue. */
-    return;
   }
 }
 
