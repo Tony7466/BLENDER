@@ -161,6 +161,7 @@ if(WITH_GTESTS)
     tests/usd_tests_common.cc
     tests/usd_tests_common.h
     tests/usd_usdz_export_test.cc
+    tests/usd_curves_test.cc
     intern/usd_writer_material.h
   )
   if(USD_IMAGING_HEADERS)

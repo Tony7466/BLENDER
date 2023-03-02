@@ -130,7 +130,6 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const Hierarch
     case OB_ARMATURE:
     case OB_GPENCIL_LEGACY:
     case OB_POINTCLOUD:
-    case OB_CURVES:
       return nullptr;
     case OB_TYPE_MAX:
       BLI_assert_msg(0, "OB_TYPE_MAX should not be used");
