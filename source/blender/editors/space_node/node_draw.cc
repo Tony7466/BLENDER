@@ -2854,11 +2854,7 @@ static void frame_node_draw_label(TreeDrawContext &tree_draw_ctx,
     int y_min = y + ((margin * 2) - (y - rct.ymin));
 
     BLF_enable(fontid, BLF_CLIPPING | BLF_WORD_WRAP);
-    BLF_clipping(fontid,
-                 rct.xmin,
-                 rct.ymin + margin,
-                 rct.xmax,
-                 rct.ymax);
+    BLF_clipping(fontid, rct.xmin, rct.ymin + margin, rct.xmax, rct.ymax);
 
     BLF_wordwrap(fontid, line_width);
 
