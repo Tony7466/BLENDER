@@ -43,9 +43,9 @@ shader node_voronoi_texture(
   coord *= Scale;
 
   if (dimensions == "1D") {
-    if (feature == "f1") {
-      float max_amplitude = 1.0;
+    float max_amplitude = 0.0;
 
+    if (feature == "f1") {
       fractal_voronoi_f1(w,
                          detail,
                          roughness,
@@ -57,15 +57,13 @@ shader node_voronoi_texture(
                          Distance,
                          Color,
                          WOut);
-
       if (normalize != 0.0) {
-        /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness) */
+        /* Optimized mix(max_amplitude * 0.5, max_amplitude, randomness) */
         Distance /= (0.5 + 0.5 * randomness) * max_amplitude;
+        Color /= max_amplitude;
       }
     }
     else if (feature == "smooth_f1") {
-      float max_amplitude = 1.0;
-
       fractal_voronoi_smooth_f1(w,
                                 detail,
                                 roughness,
@@ -78,15 +76,13 @@ shader node_voronoi_texture(
                                 Distance,
                                 Color,
                                 WOut);
-
       if (normalize != 0.0) {
-        /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness) */
+        /* Optimized mix(max_amplitude * 0.5, max_amplitude, randomness) */
         Distance /= (0.5 + 0.5 * randomness) * max_amplitude;
+        Color /= max_amplitude;
       }
     }
     else if (feature == "f2") {
-      float max_amplitude = 1.0;
-
       fractal_voronoi_f2(w,
                          detail,
                          roughness,
@@ -98,7 +94,6 @@ shader node_voronoi_texture(
                          Distance,
                          Color,
                          WOut);
-
       if (normalize != 0.0) {
         if (detail == 0.0 || roughness == 0.0 || Lacunarity == 0.0) {
           Distance /= (1.0 - randomness) + randomness * max_amplitude;
@@ -106,10 +101,19 @@ shader node_voronoi_texture(
         else {
           Distance /= (1.0 - randomness) * ceil(detail + 1.0) + randomness * max_amplitude;
         }
+        Color /= max_amplitude;
       }
     }
     else if (feature == "distance_to_edge") {
-      fractal_voronoi_distance_to_edge(w, detail, Lacunarity, randomness, normalize, Distance);
+      fractal_voronoi_distance_to_edge(
+          w, detail, roughness, Lacunarity, randomness, max_amplitude, Distance);
+      if (normalize != 0.0) {
+        /* max_amplitude is used here to keep the code consistent, however it has a different
+         * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude, it
+         * represents an abstract factor needed to cancel out the amplitude attenuation caused
+         * by the higher layers. */
+        Distance *= max_amplitude;
+      }
     }
     else if (feature == "n_sphere_radius") {
       voronoi_n_sphere_radius(w, randomness, Radius);
@@ -122,11 +126,10 @@ shader node_voronoi_texture(
   else if (dimensions == "2D") {
     vector2 coord2D = vector2(coord[0], coord[1]);
     vector2 outPosition2D;
-    if (feature == "f1") {
-      float max_distance = voronoi_distance(
-          vector2(1.0, 1.0), vector2(0.0, 0.0), metric, Exponent);
-      float max_amplitude = max_distance;
+    float max_distance = voronoi_distance(vector2(1.0, 1.0), vector2(0.0, 0.0), metric, Exponent);
+    float max_amplitude = 0.0;
 
+    if (feature == "f1") {
       fractal_voronoi_f1(coord2D,
                          detail,
                          roughness,
@@ -134,22 +137,18 @@ shader node_voronoi_texture(
                          Exponent,
                          randomness,
                          metric,
-                         max_distance,
                          max_amplitude,
                          Distance,
                          Color,
                          outPosition2D);
-
       if (normalize != 0.0) {
-        /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness) */
-        Distance /= (0.5 + 0.5 * randomness) * max_amplitude;
+        /* Optimized mix(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
+         * randomness) */
+        Distance /= (0.5 + 0.5 * randomness) * max_amplitude * max_distance;
+        Color /= max_amplitude;
       }
     }
     else if (feature == "smooth_f1") {
-      float max_distance = voronoi_distance(
-          vector2(1.0, 1.0), vector2(0.0, 0.0), metric, Exponent);
-      float max_amplitude = max_distance;
-
       fractal_voronoi_smooth_f1(coord2D,
                                 detail,
                                 roughness,
@@ -158,22 +157,18 @@ shader node_voronoi_texture(
                                 Exponent,
                                 randomness,
                                 metric,
-                                max_distance,
                                 max_amplitude,
                                 Distance,
                                 Color,
                                 outPosition2D);
-
       if (normalize != 0.0) {
-        /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness) */
-        Distance /= (0.5 + 0.5 * randomness) * max_amplitude;
+        /* Optimized mix(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
+         * randomness) */
+        Distance /= (0.5 + 0.5 * randomness) * max_amplitude * max_distance;
+        Color /= max_amplitude;
       }
     }
     else if (feature == "f2") {
-      float max_distance = voronoi_distance(
-          vector2(1.0, 1.0), vector2(0.0, 0.0), metric, Exponent);
-      float max_amplitude = max_distance;
-
       fractal_voronoi_f2(coord2D,
                          detail,
                          roughness,
@@ -181,24 +176,31 @@ shader node_voronoi_texture(
                          Exponent,
                          randomness,
                          metric,
-                         max_distance,
                          max_amplitude,
                          Distance,
                          Color,
                          outPosition2D);
-
       if (normalize != 0.0) {
         if (detail == 0.0 || roughness == 0.0 || Lacunarity == 0.0) {
-          Distance /= (1.0 - randomness) + randomness * max_amplitude;
+          Distance /= (1.0 - randomness) + randomness * max_amplitude * max_distance;
         }
         else {
-          Distance /= (1.0 - randomness) * ceil(detail + 1.0) + randomness * max_amplitude;
+          Distance /= (1.0 - randomness) * ceil(detail + 1.0) +
+                      randomness * max_amplitude * max_distance;
         }
+        Color /= max_amplitude;
       }
     }
     else if (feature == "distance_to_edge") {
       fractal_voronoi_distance_to_edge(
-          coord2D, detail, Lacunarity, randomness, normalize, Distance);
+          coord2D, detail, roughness, Lacunarity, randomness, max_amplitude, Distance);
+      if (normalize != 0.0) {
+        /* max_amplitude is used here to keep the code consistent, however it has a different
+         * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude, it
+         * represents an abstract factor needed to cancel out the amplitude attenuation caused
+         * by the higher layers. */
+        Distance *= max_amplitude;
+      }
     }
     else if (feature == "n_sphere_radius") {
       voronoi_n_sphere_radius(coord2D, randomness, Radius);
@@ -210,11 +212,11 @@ shader node_voronoi_texture(
     Position = vector3(outPosition2D.x, outPosition2D.y, 0.0);
   }
   else if (dimensions == "3D") {
-    if (feature == "f1") {
-      float max_distance = voronoi_distance(
-          vector3(1.0, 1.0, 1.0), vector3(0.0, 0.0, 0.0), metric, Exponent);
-      float max_amplitude = max_distance;
+    float max_distance = voronoi_distance(
+        vector3(1.0, 1.0, 1.0), vector3(0.0, 0.0, 0.0), metric, Exponent);
+    float max_amplitude = 0.0;
 
+    if (feature == "f1") {
       fractal_voronoi_f1(coord,
                          detail,
                          roughness,
@@ -222,22 +224,18 @@ shader node_voronoi_texture(
                          Exponent,
                          randomness,
                          metric,
-                         max_distance,
                          max_amplitude,
                          Distance,
                          Color,
                          Position);
-
       if (normalize != 0.0) {
-        /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness) */
-        Distance /= (0.5 + 0.5 * randomness) * max_amplitude;
+        /* Optimized mix(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
+         * randomness) */
+        Distance /= (0.5 + 0.5 * randomness) * max_amplitude * max_distance;
+        Color /= max_amplitude;
       }
     }
     else if (feature == "smooth_f1") {
-      float max_distance = voronoi_distance(
-          vector3(1.0, 1.0, 1.0), vector3(0.0, 0.0, 0.0), metric, Exponent);
-      float max_amplitude = max_distance;
-
       fractal_voronoi_smooth_f1(coord,
                                 detail,
                                 roughness,
@@ -246,22 +244,18 @@ shader node_voronoi_texture(
                                 Exponent,
                                 randomness,
                                 metric,
-                                max_distance,
                                 max_amplitude,
                                 Distance,
                                 Color,
                                 Position);
-
       if (normalize != 0.0) {
-        /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness) */
-        Distance /= (0.5 + 0.5 * randomness) * max_amplitude;
+        /* Optimized mix(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
+         * randomness) */
+        Distance /= (0.5 + 0.5 * randomness) * max_amplitude * max_distance;
+        Color /= max_amplitude;
       }
     }
     else if (feature == "f2") {
-      float max_distance = voronoi_distance(
-          vector3(1.0, 1.0, 1.0), vector3(0.0, 0.0, 0.0), metric, Exponent);
-      float max_amplitude = max_distance;
-
       fractal_voronoi_f2(coord,
                          detail,
                          roughness,
@@ -269,23 +263,31 @@ shader node_voronoi_texture(
                          Exponent,
                          randomness,
                          metric,
-                         max_distance,
                          max_amplitude,
                          Distance,
                          Color,
                          Position);
-
       if (normalize != 0.0) {
         if (detail == 0.0 || roughness == 0.0 || Lacunarity == 0.0) {
-          Distance /= (1.0 - randomness) + randomness * max_amplitude;
+          Distance /= (1.0 - randomness) + randomness * max_amplitude * max_distance;
         }
         else {
-          Distance /= (1.0 - randomness) * ceil(detail + 1.0) + randomness * max_amplitude;
+          Distance /= (1.0 - randomness) * ceil(detail + 1.0) +
+                      randomness * max_amplitude * max_distance;
         }
+        Color /= max_amplitude;
       }
     }
     else if (feature == "distance_to_edge") {
-      fractal_voronoi_distance_to_edge(coord, detail, Lacunarity, randomness, normalize, Distance);
+      fractal_voronoi_distance_to_edge(
+          coord, detail, roughness, Lacunarity, randomness, max_amplitude, Distance);
+      if (normalize != 0.0) {
+        /* max_amplitude is used here to keep the code consistent, however it has a different
+         * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude, it
+         * represents an abstract factor needed to cancel out the amplitude attenuation caused
+         * by the higher layers. */
+        Distance *= max_amplitude;
+      }
     }
     else if (feature == "n_sphere_radius") {
       voronoi_n_sphere_radius(coord, randomness, Radius);
@@ -298,11 +300,11 @@ shader node_voronoi_texture(
   else if (dimensions == "4D") {
     vector4 coord4D = vector4(coord[0], coord[1], coord[2], w);
     vector4 outPosition4D;
-    if (feature == "f1") {
-      float max_distance = voronoi_distance(
-          vector4(1.0, 1.0, 1.0, 1.0), vector4(0.0, 0.0, 0.0, 0.0), metric, Exponent);
-      float max_amplitude = max_distance;
+    float max_distance = voronoi_distance(
+        vector4(1.0, 1.0, 1.0, 1.0), vector4(0.0, 0.0, 0.0, 0.0), metric, Exponent);
+    float max_amplitude = 0.0;
 
+    if (feature == "f1") {
       fractal_voronoi_f1(coord4D,
                          detail,
                          roughness,
@@ -310,22 +312,18 @@ shader node_voronoi_texture(
                          Exponent,
                          randomness,
                          metric,
-                         max_distance,
                          max_amplitude,
                          Distance,
                          Color,
                          outPosition4D);
-
       if (normalize != 0.0) {
-        /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness) */
-        Distance /= (0.5 + 0.5 * randomness) * max_amplitude;
+        /* Optimized mix(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
+         * randomness) */
+        Distance /= (0.5 + 0.5 * randomness) * max_amplitude * max_distance;
+        Color /= max_amplitude;
       }
     }
     else if (feature == "smooth_f1") {
-      float max_distance = voronoi_distance(
-          vector4(1.0, 1.0, 1.0, 1.0), vector4(0.0, 0.0, 0.0, 0.0), metric, Exponent);
-      float max_amplitude = max_distance;
-
       fractal_voronoi_smooth_f1(coord4D,
                                 detail,
                                 roughness,
@@ -334,22 +332,18 @@ shader node_voronoi_texture(
                                 Exponent,
                                 randomness,
                                 metric,
-                                max_distance,
                                 max_amplitude,
                                 Distance,
                                 Color,
                                 outPosition4D);
-
       if (normalize != 0.0) {
-        /* Optimized lerp(max_amplitude*0.5, max_amplitude, randomness) */
-        Distance /= (0.5 + 0.5 * randomness) * max_amplitude;
+        /* Optimized mix(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
+         * randomness) */
+        Distance /= (0.5 + 0.5 * randomness) * max_amplitude * max_distance;
+        Color /= max_amplitude;
       }
     }
     else if (feature == "f2") {
-      float max_distance = voronoi_distance(
-          vector4(1.0, 1.0, 1.0, 1.0), vector4(0.0, 0.0, 0.0, 0.0), metric, Exponent);
-      float max_amplitude = max_distance;
-
       fractal_voronoi_f2(coord4D,
                          detail,
                          roughness,
@@ -357,24 +351,31 @@ shader node_voronoi_texture(
                          Exponent,
                          randomness,
                          metric,
-                         max_distance,
                          max_amplitude,
                          Distance,
                          Color,
                          outPosition4D);
-
       if (normalize != 0.0) {
         if (detail == 0.0 || roughness == 0.0 || Lacunarity == 0.0) {
-          Distance /= (1.0 - randomness) + randomness * max_amplitude;
+          Distance /= (1.0 - randomness) + randomness * max_amplitude * max_distance;
         }
         else {
-          Distance /= (1.0 - randomness) * ceil(detail + 1.0) + randomness * max_amplitude;
+          Distance /= (1.0 - randomness) * ceil(detail + 1.0) +
+                      randomness * max_amplitude * max_distance;
         }
+        Color /= max_amplitude;
       }
     }
     else if (feature == "distance_to_edge") {
       fractal_voronoi_distance_to_edge(
-          coord4D, detail, Lacunarity, randomness, normalize, Distance);
+          coord4D, detail, roughness, Lacunarity, randomness, max_amplitude, Distance);
+      if (normalize != 0.0) {
+        /* max_amplitude is used here to keep the code consistent, however it has a different
+         * meaning than in F1, Smooth F1 and F2. Instead of the highest possible amplitude, it
+         * represents an abstract factor needed to cancel out the amplitude attenuation caused
+         * by the higher layers. */
+        Distance *= max_amplitude;
+      }
     }
     else if (feature == "n_sphere_radius") {
       voronoi_n_sphere_radius(coord4D, randomness, Radius);

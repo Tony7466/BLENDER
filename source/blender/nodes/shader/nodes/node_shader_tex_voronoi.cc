@@ -462,7 +462,7 @@ class VoronoiMetricFunction : public mf::MultiFunction {
                                                calc_w ? &r_w[i] : nullptr);
               if (normalize_) {
                 if (calc_distance) {
-                  /* Optimized lerp(max_amplitude * 0.5, max_amplitude, randomness) */
+                  /* Optimized lerp(max_amplitude * 0.5f, max_amplitude, randomness) */
                   r_distance[i] /= (0.5f + 0.5f * rand) * max_amplitude;
                 }
                 if (calc_color) {
@@ -566,7 +566,7 @@ class VoronoiMetricFunction : public mf::MultiFunction {
                                                       calc_w ? &r_w[i] : nullptr);
               if (normalize_) {
                 if (calc_distance) {
-                  /* Optimized lerp(max_amplitude * 0.5, max_amplitude, randomness) */
+                  /* Optimized lerp(max_amplitude * 0.5f, max_amplitude, randomness) */
                   r_distance[i] /= (0.5f + 0.5f * rand) * max_amplitude;
                 }
                 if (calc_color) {
@@ -630,7 +630,7 @@ class VoronoiMetricFunction : public mf::MultiFunction {
                                                 calc_position ? &pos : nullptr);
               if (normalize_) {
                 if (calc_distance) {
-                  /* Optimized lerp(max_amplitude * max_distance * 0.5, max_amplitude *
+                  /* Optimized lerp(max_amplitude * max_distance * 0.5f, max_amplitude *
                    * max_distance, randomness) */
                   r_distance[i] /= (0.5f + 0.5f * rand) * max_amplitude * max_distance;
                 }
@@ -759,7 +759,7 @@ class VoronoiMetricFunction : public mf::MultiFunction {
                   calc_position ? &pos : nullptr);
               if (normalize_) {
                 if (calc_distance) {
-                  /* Optimized lerp(max_amplitude * max_distance * 0.5, max_amplitude *
+                  /* Optimized lerp(max_amplitude * max_distance * 0.5f, max_amplitude *
                    * max_distance, randomness) */
                   r_distance[i] /= (0.5f + 0.5f * rand) * max_amplitude * max_distance;
                 }
@@ -824,7 +824,7 @@ class VoronoiMetricFunction : public mf::MultiFunction {
                                                 calc_position ? &r_position[i] : nullptr);
               if (normalize_) {
                 if (calc_distance) {
-                  /* Optimized lerp(max_amplitude * max_distance * 0.5, max_amplitude *
+                  /* Optimized lerp(max_amplitude * max_distance * 0.5f, max_amplitude *
                    * max_distance, randomness) */
                   r_distance[i] /= (0.5f + 0.5f * rand) * max_amplitude * max_distance;
                 }
@@ -950,7 +950,7 @@ class VoronoiMetricFunction : public mf::MultiFunction {
                   calc_position ? &r_position[i] : nullptr);
               if (normalize_) {
                 if (calc_distance) {
-                  /* Optimized lerp(max_amplitude * max_distance * 0.5, max_amplitude *
+                  /* Optimized lerp(max_amplitude * max_distance * 0.5f, max_amplitude *
                    * max_distance, randomness) */
                   r_distance[i] /= (0.5f + 0.5f * rand) * max_amplitude * max_distance;
                 }
@@ -1019,7 +1019,7 @@ class VoronoiMetricFunction : public mf::MultiFunction {
                                                 calc_position ? &pos : nullptr);
               if (normalize_) {
                 if (calc_distance) {
-                  /* Optimized lerp(max_amplitude * max_distance * 0.5, max_amplitude *
+                  /* Optimized lerp(max_amplitude * max_distance * 0.5f, max_amplitude *
                    * max_distance, randomness) */
                   r_distance[i] /= (0.5f + 0.5f * rand) * max_amplitude * max_distance;
                 }
@@ -1166,7 +1166,7 @@ class VoronoiMetricFunction : public mf::MultiFunction {
                   calc_position ? &pos : nullptr);
               if (normalize_) {
                 if (calc_distance) {
-                  /* Optimized lerp(max_amplitude * max_distance * 0.5, max_amplitude *
+                  /* Optimized lerp(max_amplitude * max_distance * 0.5f, max_amplitude *
                    * max_distance, randomness) */
                   r_distance[i] /= (0.5f + 0.5f * rand) * max_amplitude * max_distance;
                 }

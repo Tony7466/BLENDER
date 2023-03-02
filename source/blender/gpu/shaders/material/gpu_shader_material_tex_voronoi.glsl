@@ -55,8 +55,8 @@ void node_tex_voronoi_f1_1d(vec3 coord,
                      outColor,
                      outW);
   if (normalize != 0.0) {
-    /* Optimized lerp(max_amplitude * 0.5, max_amplitude, randomness) */
-    outDistance /= (0.5f + 0.5f * randomness) * max_amplitude;
+    /* Optimized mix(max_amplitude * 0.5, max_amplitude, randomness) */
+    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude;
     outColor /= max_amplitude;
   }
   outW = safe_divide(outW, scale);
@@ -98,8 +98,8 @@ void node_tex_voronoi_smooth_f1_1d(vec3 coord,
                             outColor,
                             outW);
   if (normalize != 0.0) {
-    /* Optimized lerp(max_amplitude * 0.5, max_amplitude, randomness) */
-    outDistance /= (0.5f + 0.5f * randomness) * max_amplitude;
+    /* Optimized mix(max_amplitude * 0.5, max_amplitude, randomness) */
+    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude;
     outColor /= max_amplitude;
   }
   outW = safe_divide(outW, scale);
@@ -139,11 +139,11 @@ void node_tex_voronoi_f2_1d(vec3 coord,
                      outColor,
                      outW);
   if (normalize != 0.0) {
-    if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
-      outDistance /= (1.0f - randomness) + randomness * max_amplitude;
+    if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
+      outDistance /= (1.0 - randomness) + randomness * max_amplitude;
     }
     else {
-      outDistance /= (1.0f - randomness) * ceilf(detail + 1.0f) + randomness * max_amplitude;
+      outDistance /= (1.0 - randomness) * ceil(detail + 1.0) + randomness * max_amplitude;
     }
     outColor /= max_amplitude;
   }
@@ -248,9 +248,9 @@ void node_tex_voronoi_f1_2d(vec3 coord,
                      outColor,
                      outPosition_2d);
   if (normalize != 0.0) {
-    /* Optimized lerp(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
+    /* Optimized mix(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
      * randomness) */
-    outDistance /= (0.5f + 0.5f * randomness) * max_amplitude * max_distance;
+    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude * max_distance;
     outColor /= max_amplitude;
   }
   outPosition = vec3(safe_divide(outPosition_2d, scale), 0.0);
@@ -296,9 +296,9 @@ void node_tex_voronoi_smooth_f1_2d(vec3 coord,
                             outColor,
                             outPosition_2d);
   if (normalize != 0.0) {
-    /* Optimized lerp(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
+    /* Optimized mix(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
      * randomness) */
-    outDistance /= (0.5f + 0.5f * randomness) * max_amplitude * max_distance;
+    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude * max_distance;
     outColor /= max_amplitude;
   }
   outPosition = vec3(safe_divide(outPosition_2d, scale), 0.0);
@@ -342,11 +342,11 @@ void node_tex_voronoi_f2_2d(vec3 coord,
                      outColor,
                      outPosition_2d);
   if (normalize != 0.0) {
-    if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
-      outDistance /= (1.0f - randomness) + randomness * max_amplitude * max_distance;
+    if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
+      outDistance /= (1.0 - randomness) + randomness * max_amplitude * max_distance;
     }
     else {
-      outDistance /= (1.0f - randomness) * ceilf(detail + 1.0f) +
+      outDistance /= (1.0 - randomness) * ceil(detail + 1.0) +
                      randomness * max_amplitude * max_distance;
     }
     outColor /= max_amplitude;
@@ -452,9 +452,9 @@ void node_tex_voronoi_f1_3d(vec3 coord,
                      outColor,
                      outPosition);
   if (normalize != 0.0) {
-    /* Optimized lerp(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
+    /* Optimized mix(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
      * randomness) */
-    outDistance /= (0.5f + 0.5f * randomness) * max_amplitude * max_distance;
+    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude * max_distance;
     outColor /= max_amplitude;
   }
   outPosition = safe_divide(outPosition, scale);
@@ -500,9 +500,9 @@ void node_tex_voronoi_smooth_f1_3d(vec3 coord,
                             outColor,
                             outPosition);
   if (normalize != 0.0) {
-    /* Optimized lerp(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
+    /* Optimized mix(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
      * randomness) */
-    outDistance /= (0.5f + 0.5f * randomness) * max_amplitude * max_distance;
+    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude * max_distance;
     outColor /= max_amplitude;
   }
   outPosition = safe_divide(outPosition, scale);
@@ -546,11 +546,11 @@ void node_tex_voronoi_f2_3d(vec3 coord,
                      outColor,
                      outPosition);
   if (normalize != 0.0) {
-    if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
-      outDistance /= (1.0f - randomness) + randomness * max_amplitude * max_distance;
+    if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
+      outDistance /= (1.0 - randomness) + randomness * max_amplitude * max_distance;
     }
     else {
-      outDistance /= (1.0f - randomness) * ceilf(detail + 1.0f) +
+      outDistance /= (1.0 - randomness) * ceil(detail + 1.0) +
                      randomness * max_amplitude * max_distance;
     }
     outColor /= max_amplitude;
@@ -657,9 +657,9 @@ void node_tex_voronoi_f1_4d(vec3 coord,
                      outColor,
                      outPosition_4d);
   if (normalize != 0.0) {
-    /* Optimized lerp(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
+    /* Optimized mix(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
      * randomness) */
-    outDistance /= (0.5f + 0.5f * randomness) * max_amplitude * max_distance;
+    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude * max_distance;
     outColor /= max_amplitude;
   }
   outPosition_4d = safe_divide(outPosition_4d, scale);
@@ -707,9 +707,9 @@ void node_tex_voronoi_smooth_f1_4d(vec3 coord,
                             outColor,
                             outPosition_4d);
   if (normalize != 0.0) {
-    /* Optimized lerp(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
+    /* Optimized mix(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
      * randomness) */
-    outDistance /= (0.5f + 0.5f * randomness) * max_amplitude * max_distance;
+    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude * max_distance;
     outColor /= max_amplitude;
   }
   outPosition_4d = safe_divide(outPosition_4d, scale);
@@ -756,11 +756,11 @@ void node_tex_voronoi_f2_4d(vec3 coord,
                      outColor,
                      outPosition_4d);
   if (normalize != 0.0) {
-    if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
-      outDistance /= (1.0f - randomness) + randomness * max_amplitude * max_distance;
+    if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
+      outDistance /= (1.0 - randomness) + randomness * max_amplitude * max_distance;
     }
     else {
-      outDistance /= (1.0f - randomness) * ceilf(detail + 1.0f) +
+      outDistance /= (1.0 - randomness) * ceil(detail + 1.0) +
                      randomness * max_amplitude * max_distance;
     }
     outColor /= max_amplitude;

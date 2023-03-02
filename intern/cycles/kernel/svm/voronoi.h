@@ -1232,7 +1232,7 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                     &color_out,
                                     &w_out);
           if (normalize) {
-            /* Optimized lerp(max_amplitude * 0.5, max_amplitude, randomness) */
+            /* Optimized lerp(max_amplitude * 0.5f, max_amplitude, randomness) */
             distance_out /= (0.5f + 0.5f * randomness) * max_amplitude;
             color_out /= max_amplitude;
           }
@@ -1252,7 +1252,7 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                            &color_out,
                                            &w_out);
           if (normalize) {
-            /* Optimized lerp(max_amplitude * 0.5, max_amplitude, randomness) */
+            /* Optimized lerp(max_amplitude * 0.5f, max_amplitude, randomness) */
             distance_out /= (0.5f + 0.5f * randomness) * max_amplitude;
             color_out /= max_amplitude;
           }
@@ -1324,7 +1324,7 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                      &color_out,
                                      &position_out_2d);
           if (normalize) {
-            /* Optimized lerp(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
+            /* Optimized lerp(max_amplitude * max_distance * 0.5f, max_amplitude * max_distance,
              * randomness) */
             distance_out /= (0.5f + 0.5f * randomness) * max_amplitude * max_distance;
             color_out /= max_amplitude;
@@ -1347,7 +1347,7 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                               &color_out,
                                               &position_out_2d);
             if (normalize) {
-              /* Optimized lerp(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
+              /* Optimized lerp(max_amplitude * max_distance * 0.5f, max_amplitude * max_distance,
                * randomness) */
               distance_out /= (0.5f + 0.5f * randomness) * max_amplitude * max_distance;
               color_out /= max_amplitude;
@@ -1420,7 +1420,7 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                      &color_out,
                                      &position_out);
           if (normalize) {
-            /* Optimized lerp(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
+            /* Optimized lerp(max_amplitude * max_distance * 0.5f, max_amplitude * max_distance,
              * randomness) */
             distance_out /= (0.5f + 0.5f * randomness) * max_amplitude * max_distance;
             color_out /= max_amplitude;
@@ -1443,7 +1443,7 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                               &color_out,
                                               &position_out);
             if (normalize) {
-              /* Optimized lerp(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
+              /* Optimized lerp(max_amplitude * max_distance * 0.5f, max_amplitude * max_distance,
                * randomness) */
               distance_out /= (0.5f + 0.5f * randomness) * max_amplitude * max_distance;
               color_out /= max_amplitude;
@@ -1522,7 +1522,7 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                        &color_out,
                                        &position_out_4d);
             if (normalize) {
-              /* Optimized lerp(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
+              /* Optimized lerp(max_amplitude * max_distance * 0.5f, max_amplitude * max_distance,
                * randomness) */
               distance_out /= (0.5f + 0.5f * randomness) * max_amplitude * max_distance;
               color_out /= max_amplitude;
@@ -1543,7 +1543,7 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                               &color_out,
                                               &position_out_4d);
             if (normalize) {
-              /* Optimized lerp(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
+              /* Optimized lerp(max_amplitude * max_distance * 0.5f, max_amplitude * max_distance,
                * randomness) */
               distance_out /= (0.5f + 0.5f * randomness) * max_amplitude * max_distance;
               color_out /= max_amplitude;

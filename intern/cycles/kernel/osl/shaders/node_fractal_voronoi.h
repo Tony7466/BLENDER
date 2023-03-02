@@ -28,6 +28,8 @@ void fractal_voronoi_f1(float coord,
   float octave_scale = 1.0;
   float octave_amplitude = 1.0;
   float octave_distance = 0.0;
+  color octave_color;
+  float octave_postion;
 
   max_amplitude = 0.0;
   outDistance = 0.0;
@@ -37,27 +39,33 @@ void fractal_voronoi_f1(float coord,
                randomness,
                metric,
                octave_distance,
-               outColor,
-               outPosition);
+               octave_color,
+               octave_postion);
     if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
       max_amplitude = 1.0;
       outDistance = octave_distance;
+      outColor = octave_color;
+      outPosition = octave_postion;
       return;
     }
     else if (i <= detail) {
       max_amplitude += octave_amplitude;
       outDistance += octave_distance * octave_amplitude;
-      outPosition /= octave_scale;
+      outColor += octave_color * octave_amplitude;
+      outPosition = mix(outPosition, octave_postion / octave_scale, octave_amplitude);
       octave_scale *= lacunarity;
       octave_amplitude *= roughness;
     }
     else {
       float remainder = detail - floor(detail);
       if (remainder != 0.0) {
-        max_amplitude += octave_amplitude;
-        float lerp_distance = outDistance + octave_distance * octave_amplitude;
-        outDistance = (1.0 - remainder) * outDistance + remainder * lerp_distance;
-        outPosition /= octave_scale;
+        max_amplitude = mix(max_amplitude, max_amplitude + octave_amplitude, remainder);
+        outDistance = mix(
+            outDistance, outDistance + octave_distance * octave_amplitude, remainder);
+        outColor = mix(outColor, outColor + octave_color * octave_amplitude, remainder);
+        outPosition = mix(outPosition,
+                          mix(outPosition, octave_postion / octave_scale, octave_amplitude),
+                          remainder);
       }
     }
   }
@@ -79,6 +87,8 @@ void fractal_voronoi_smooth_f1(float coord,
   float octave_scale = 1.0;
   float octave_amplitude = 1.0;
   float octave_distance = 0.0;
+  color octave_color;
+  float octave_postion;
 
   max_amplitude = 0.0;
   outDistance = 0.0;
@@ -94,22 +104,28 @@ void fractal_voronoi_smooth_f1(float coord,
     if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
       max_amplitude = 1.0;
       outDistance = octave_distance;
+      outColor = octave_color;
+      outPosition = octave_postion;
       return;
     }
     else if (i <= detail) {
       max_amplitude += octave_amplitude;
       outDistance += octave_distance * octave_amplitude;
-      outPosition /= octave_scale;
+      outColor += octave_color * octave_amplitude;
+      outPosition = mix(outPosition, octave_postion / octave_scale, octave_amplitude);
       octave_scale *= lacunarity;
       octave_amplitude *= roughness;
     }
     else {
       float remainder = detail - floor(detail);
       if (remainder != 0.0) {
-        max_amplitude += octave_amplitude;
-        float lerp_distance = outDistance + octave_distance * octave_amplitude;
-        outDistance = (1.0 - remainder) * outDistance + remainder * lerp_distance;
-        outPosition /= octave_scale;
+        max_amplitude = mix(max_amplitude, max_amplitude + octave_amplitude, remainder);
+        outDistance = mix(
+            outDistance, outDistance + octave_distance * octave_amplitude, remainder);
+        outColor = mix(outColor, outColor + octave_color * octave_amplitude, remainder);
+        outPosition = mix(outPosition,
+                          mix(outPosition, octave_postion / octave_scale, octave_amplitude),
+                          remainder);
       }
     }
   }
@@ -130,6 +146,8 @@ void fractal_voronoi_f2(float coord,
   float octave_scale = 1.0;
   float octave_amplitude = 1.0;
   float octave_distance = 0.0;
+  color octave_color;
+  float octave_postion;
 
   max_amplitude = 0.0;
   outDistance = 0.0;
@@ -139,27 +157,33 @@ void fractal_voronoi_f2(float coord,
                randomness,
                metric,
                octave_distance,
-               outColor,
-               outPosition);
+               octave_color,
+               octave_postion);
     if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
       max_amplitude = 1.0;
       outDistance = octave_distance;
+      outColor = octave_color;
+      outPosition = octave_postion;
       return;
     }
     else if (i <= detail) {
       max_amplitude += octave_amplitude;
       outDistance += octave_distance * octave_amplitude;
-      outPosition /= octave_scale;
+      outColor += octave_color * octave_amplitude;
+      outPosition = mix(outPosition, octave_postion / octave_scale, octave_amplitude);
       octave_scale *= lacunarity;
       octave_amplitude *= roughness;
     }
     else {
       float remainder = detail - floor(detail);
       if (remainder != 0.0) {
-        max_amplitude += octave_amplitude;
-        float lerp_distance = outDistance + octave_distance * octave_amplitude;
-        outDistance = (1.0 - remainder) * outDistance + remainder * lerp_distance;
-        outPosition /= octave_scale;
+        max_amplitude = mix(max_amplitude, max_amplitude + octave_amplitude, remainder);
+        outDistance = mix(
+            outDistance, outDistance + octave_distance * octave_amplitude, remainder);
+        outColor = mix(outColor, outColor + octave_color * octave_amplitude, remainder);
+        outPosition = mix(outPosition,
+                          mix(outPosition, octave_postion / octave_scale, octave_amplitude),
+                          remainder);
       }
     }
   }
@@ -167,22 +191,42 @@ void fractal_voronoi_f2(float coord,
 
 void fractal_voronoi_distance_to_edge(float coord,
                                       float detail,
+                                      float roughness,
                                       float lacunarity,
                                       float randomness,
-                                      float normalize,
+                                      output float max_amplitude,
                                       output float outDistance)
 {
   float octave_scale = 1.0;
+  float octave_amplitude = 1.0;
   float octave_distance = 0.0;
 
+  max_amplitude = 2.0 - randomness;
   outDistance = 8.0;
   for (int i = 0; i <= ceil(detail); ++i) {
     voronoi_distance_to_edge(coord * octave_scale, randomness, octave_distance);
-    outDistance = min(outDistance, octave_distance / octave_scale);
-    octave_scale *= lacunarity;
-  }
-  if (normalize) {
-    outDistance *= (2.0 - randomness) * octave_scale / lacunarity;
+    if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
+      outDistance = octave_distance;
+      return;
+    }
+    else if (i <= detail) {
+      max_amplitude = mix(max_amplitude, (2.0 - randomness) * octave_scale, octave_amplitude);
+      outDistance = mix(
+          outDistance, min(outDistance, octave_distance / octave_scale), octave_amplitude);
+      octave_scale *= lacunarity;
+      octave_amplitude *= roughness;
+    }
+    else {
+      float remainder = detail - floor(detail);
+      if (remainder != 0.0) {
+        float lerp_amplitude = mix(
+            max_amplitude, (2.0 - randomness) * octave_scale, octave_amplitude);
+        max_amplitude = mix(max_amplitude, lerp_amplitude, remainder);
+        float lerp_distance = mix(
+            outDistance, min(outDistance, octave_distance / octave_scale), octave_amplitude);
+        outDistance = mix(outDistance, min(outDistance, lerp_distance), remainder);
+      }
+    }
   }
 }
 
@@ -195,7 +239,6 @@ void fractal_voronoi_f1(vector2 coord,
                         float exponent,
                         float randomness,
                         string metric,
-                        float max_distance,
                         output float max_amplitude,
                         output float outDistance,
                         output color outColor,
@@ -204,6 +247,8 @@ void fractal_voronoi_f1(vector2 coord,
   float octave_scale = 1.0;
   float octave_amplitude = 1.0;
   float octave_distance = 0.0;
+  color octave_color;
+  vector2 octave_postion;
 
   max_amplitude = 0.0;
   outDistance = 0.0;
@@ -213,27 +258,33 @@ void fractal_voronoi_f1(vector2 coord,
                randomness,
                metric,
                octave_distance,
-               outColor,
-               outPosition);
+               octave_color,
+               octave_postion);
     if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
-      max_amplitude = max_distance;
+      max_amplitude = 1.0;
       outDistance = octave_distance;
+      outColor = octave_color;
+      outPosition = octave_postion;
       return;
     }
     else if (i <= detail) {
-      max_amplitude += max_distance * octave_amplitude;
+      max_amplitude += octave_amplitude;
       outDistance += octave_distance * octave_amplitude;
-      outPosition /= octave_scale;
+      outColor += octave_color * octave_amplitude;
+      outPosition = mix(outPosition, octave_postion / octave_scale, octave_amplitude);
       octave_scale *= lacunarity;
       octave_amplitude *= roughness;
     }
     else {
       float remainder = detail - floor(detail);
       if (remainder != 0.0) {
-        max_amplitude += max_distance * octave_amplitude;
-        float lerp_distance = outDistance + octave_distance * octave_amplitude;
-        outDistance = (1.0 - remainder) * outDistance + remainder * lerp_distance;
-        outPosition /= octave_scale;
+        max_amplitude = mix(max_amplitude, max_amplitude + octave_amplitude, remainder);
+        outDistance = mix(
+            outDistance, outDistance + octave_distance * octave_amplitude, remainder);
+        outColor = mix(outColor, outColor + octave_color * octave_amplitude, remainder);
+        outPosition = mix(outPosition,
+                          mix(outPosition, octave_postion / octave_scale, octave_amplitude),
+                          remainder);
       }
     }
   }
@@ -247,7 +298,6 @@ void fractal_voronoi_smooth_f1(vector2 coord,
                                float exponent,
                                float randomness,
                                string metric,
-                               float max_distance,
                                output float max_amplitude,
                                output float outDistance,
                                output color outColor,
@@ -256,6 +306,8 @@ void fractal_voronoi_smooth_f1(vector2 coord,
   float octave_scale = 1.0;
   float octave_amplitude = 1.0;
   float octave_distance = 0.0;
+  color octave_color;
+  vector2 octave_postion;
 
   max_amplitude = 0.0;
   outDistance = 0.0;
@@ -269,24 +321,30 @@ void fractal_voronoi_smooth_f1(vector2 coord,
                       outColor,
                       outPosition);
     if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
-      max_amplitude = max_distance;
+      max_amplitude = 1.0;
       outDistance = octave_distance;
+      outColor = octave_color;
+      outPosition = octave_postion;
       return;
     }
     else if (i <= detail) {
-      max_amplitude += max_distance * octave_amplitude;
+      max_amplitude += octave_amplitude;
       outDistance += octave_distance * octave_amplitude;
-      outPosition /= octave_scale;
+      outColor += octave_color * octave_amplitude;
+      outPosition = mix(outPosition, octave_postion / octave_scale, octave_amplitude);
       octave_scale *= lacunarity;
       octave_amplitude *= roughness;
     }
     else {
       float remainder = detail - floor(detail);
       if (remainder != 0.0) {
-        max_amplitude += max_distance * octave_amplitude;
-        float lerp_distance = outDistance + octave_distance * octave_amplitude;
-        outDistance = (1.0 - remainder) * outDistance + remainder * lerp_distance;
-        outPosition /= octave_scale;
+        max_amplitude = mix(max_amplitude, max_amplitude + octave_amplitude, remainder);
+        outDistance = mix(
+            outDistance, outDistance + octave_distance * octave_amplitude, remainder);
+        outColor = mix(outColor, outColor + octave_color * octave_amplitude, remainder);
+        outPosition = mix(outPosition,
+                          mix(outPosition, octave_postion / octave_scale, octave_amplitude),
+                          remainder);
       }
     }
   }
@@ -299,7 +357,6 @@ void fractal_voronoi_f2(vector2 coord,
                         float exponent,
                         float randomness,
                         string metric,
-                        float max_distance,
                         output float max_amplitude,
                         output float outDistance,
                         output color outColor,
@@ -308,6 +365,8 @@ void fractal_voronoi_f2(vector2 coord,
   float octave_scale = 1.0;
   float octave_amplitude = 1.0;
   float octave_distance = 0.0;
+  color octave_color;
+  vector2 octave_postion;
 
   max_amplitude = 0.0;
   outDistance = 0.0;
@@ -317,27 +376,33 @@ void fractal_voronoi_f2(vector2 coord,
                randomness,
                metric,
                octave_distance,
-               outColor,
-               outPosition);
+               octave_color,
+               octave_postion);
     if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
-      max_amplitude = max_distance;
+      max_amplitude = 1.0;
       outDistance = octave_distance;
+      outColor = octave_color;
+      outPosition = octave_postion;
       return;
     }
     else if (i <= detail) {
-      max_amplitude += max_distance * octave_amplitude;
+      max_amplitude += octave_amplitude;
       outDistance += octave_distance * octave_amplitude;
-      outPosition /= octave_scale;
+      outColor += octave_color * octave_amplitude;
+      outPosition = mix(outPosition, octave_postion / octave_scale, octave_amplitude);
       octave_scale *= lacunarity;
       octave_amplitude *= roughness;
     }
     else {
       float remainder = detail - floor(detail);
       if (remainder != 0.0) {
-        max_amplitude += max_distance * octave_amplitude;
-        float lerp_distance = outDistance + octave_distance * octave_amplitude;
-        outDistance = (1.0 - remainder) * outDistance + remainder * lerp_distance;
-        outPosition /= octave_scale;
+        max_amplitude = mix(max_amplitude, max_amplitude + octave_amplitude, remainder);
+        outDistance = mix(
+            outDistance, outDistance + octave_distance * octave_amplitude, remainder);
+        outColor = mix(outColor, outColor + octave_color * octave_amplitude, remainder);
+        outPosition = mix(outPosition,
+                          mix(outPosition, octave_postion / octave_scale, octave_amplitude),
+                          remainder);
       }
     }
   }
@@ -345,22 +410,42 @@ void fractal_voronoi_f2(vector2 coord,
 
 void fractal_voronoi_distance_to_edge(vector2 coord,
                                       float detail,
+                                      float roughness,
                                       float lacunarity,
                                       float randomness,
-                                      float normalize,
+                                      output float max_amplitude,
                                       output float outDistance)
 {
   float octave_scale = 1.0;
+  float octave_amplitude = 1.0;
   float octave_distance = 0.0;
 
+  max_amplitude = 2.0 - randomness;
   outDistance = 8.0;
   for (int i = 0; i <= ceil(detail); ++i) {
     voronoi_distance_to_edge(coord * octave_scale, randomness, octave_distance);
-    outDistance = min(outDistance, octave_distance / octave_scale);
-    octave_scale *= lacunarity;
-  }
-  if (normalize) {
-    outDistance *= (2.0 - randomness) * octave_scale / lacunarity;
+    if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
+      outDistance = octave_distance;
+      return;
+    }
+    else if (i <= detail) {
+      max_amplitude = mix(max_amplitude, (2.0 - randomness) * octave_scale, octave_amplitude);
+      outDistance = mix(
+          outDistance, min(outDistance, octave_distance / octave_scale), octave_amplitude);
+      octave_scale *= lacunarity;
+      octave_amplitude *= roughness;
+    }
+    else {
+      float remainder = detail - floor(detail);
+      if (remainder != 0.0) {
+        float lerp_amplitude = mix(
+            max_amplitude, (2.0 - randomness) * octave_scale, octave_amplitude);
+        max_amplitude = mix(max_amplitude, lerp_amplitude, remainder);
+        float lerp_distance = mix(
+            outDistance, min(outDistance, octave_distance / octave_scale), octave_amplitude);
+        outDistance = mix(outDistance, min(outDistance, lerp_distance), remainder);
+      }
+    }
   }
 }
 
@@ -373,7 +458,6 @@ void fractal_voronoi_f1(vector3 coord,
                         float exponent,
                         float randomness,
                         string metric,
-                        float max_distance,
                         output float max_amplitude,
                         output float outDistance,
                         output color outColor,
@@ -382,6 +466,8 @@ void fractal_voronoi_f1(vector3 coord,
   float octave_scale = 1.0;
   float octave_amplitude = 1.0;
   float octave_distance = 0.0;
+  color octave_color;
+  vector3 octave_postion;
 
   max_amplitude = 0.0;
   outDistance = 0.0;
@@ -391,27 +477,33 @@ void fractal_voronoi_f1(vector3 coord,
                randomness,
                metric,
                octave_distance,
-               outColor,
-               outPosition);
+               octave_color,
+               octave_postion);
     if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
-      max_amplitude = max_distance;
+      max_amplitude = 1.0;
       outDistance = octave_distance;
+      outColor = octave_color;
+      outPosition = octave_postion;
       return;
     }
     else if (i <= detail) {
-      max_amplitude += max_distance * octave_amplitude;
+      max_amplitude += octave_amplitude;
       outDistance += octave_distance * octave_amplitude;
-      outPosition /= octave_scale;
+      outColor += octave_color * octave_amplitude;
+      outPosition = mix(outPosition, octave_postion / octave_scale, octave_amplitude);
       octave_scale *= lacunarity;
       octave_amplitude *= roughness;
     }
     else {
       float remainder = detail - floor(detail);
       if (remainder != 0.0) {
-        max_amplitude += max_distance * octave_amplitude;
-        float lerp_distance = outDistance + octave_distance * octave_amplitude;
-        outDistance = (1.0 - remainder) * outDistance + remainder * lerp_distance;
-        outPosition /= octave_scale;
+        max_amplitude = mix(max_amplitude, max_amplitude + octave_amplitude, remainder);
+        outDistance = mix(
+            outDistance, outDistance + octave_distance * octave_amplitude, remainder);
+        outColor = mix(outColor, outColor + octave_color * octave_amplitude, remainder);
+        outPosition = mix(outPosition,
+                          mix(outPosition, octave_postion / octave_scale, octave_amplitude),
+                          remainder);
       }
     }
   }
@@ -425,7 +517,6 @@ void fractal_voronoi_smooth_f1(vector3 coord,
                                float exponent,
                                float randomness,
                                string metric,
-                               float max_distance,
                                output float max_amplitude,
                                output float outDistance,
                                output color outColor,
@@ -434,6 +525,8 @@ void fractal_voronoi_smooth_f1(vector3 coord,
   float octave_scale = 1.0;
   float octave_amplitude = 1.0;
   float octave_distance = 0.0;
+  color octave_color;
+  vector3 octave_postion;
 
   max_amplitude = 0.0;
   outDistance = 0.0;
@@ -447,24 +540,30 @@ void fractal_voronoi_smooth_f1(vector3 coord,
                       outColor,
                       outPosition);
     if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
-      max_amplitude = max_distance;
+      max_amplitude = 1.0;
       outDistance = octave_distance;
+      outColor = octave_color;
+      outPosition = octave_postion;
       return;
     }
     else if (i <= detail) {
-      max_amplitude += max_distance * octave_amplitude;
+      max_amplitude += octave_amplitude;
       outDistance += octave_distance * octave_amplitude;
-      outPosition /= octave_scale;
+      outColor += octave_color * octave_amplitude;
+      outPosition = mix(outPosition, octave_postion / octave_scale, octave_amplitude);
       octave_scale *= lacunarity;
       octave_amplitude *= roughness;
     }
     else {
       float remainder = detail - floor(detail);
       if (remainder != 0.0) {
-        max_amplitude += max_distance * octave_amplitude;
-        float lerp_distance = outDistance + octave_distance * octave_amplitude;
-        outDistance = (1.0 - remainder) * outDistance + remainder * lerp_distance;
-        outPosition /= octave_scale;
+        max_amplitude = mix(max_amplitude, max_amplitude + octave_amplitude, remainder);
+        outDistance = mix(
+            outDistance, outDistance + octave_distance * octave_amplitude, remainder);
+        outColor = mix(outColor, outColor + octave_color * octave_amplitude, remainder);
+        outPosition = mix(outPosition,
+                          mix(outPosition, octave_postion / octave_scale, octave_amplitude),
+                          remainder);
       }
     }
   }
@@ -477,7 +576,6 @@ void fractal_voronoi_f2(vector3 coord,
                         float exponent,
                         float randomness,
                         string metric,
-                        float max_distance,
                         output float max_amplitude,
                         output float outDistance,
                         output color outColor,
@@ -486,6 +584,8 @@ void fractal_voronoi_f2(vector3 coord,
   float octave_scale = 1.0;
   float octave_amplitude = 1.0;
   float octave_distance = 0.0;
+  color octave_color;
+  vector3 octave_postion;
 
   max_amplitude = 0.0;
   outDistance = 0.0;
@@ -495,27 +595,33 @@ void fractal_voronoi_f2(vector3 coord,
                randomness,
                metric,
                octave_distance,
-               outColor,
-               outPosition);
+               octave_color,
+               octave_postion);
     if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
-      max_amplitude = max_distance;
+      max_amplitude = 1.0;
       outDistance = octave_distance;
+      outColor = octave_color;
+      outPosition = octave_postion;
       return;
     }
     else if (i <= detail) {
-      max_amplitude += max_distance * octave_amplitude;
+      max_amplitude += octave_amplitude;
       outDistance += octave_distance * octave_amplitude;
-      outPosition /= octave_scale;
+      outColor += octave_color * octave_amplitude;
+      outPosition = mix(outPosition, octave_postion / octave_scale, octave_amplitude);
       octave_scale *= lacunarity;
       octave_amplitude *= roughness;
     }
     else {
       float remainder = detail - floor(detail);
       if (remainder != 0.0) {
-        max_amplitude += max_distance * octave_amplitude;
-        float lerp_distance = outDistance + octave_distance * octave_amplitude;
-        outDistance = (1.0 - remainder) * outDistance + remainder * lerp_distance;
-        outPosition /= octave_scale;
+        max_amplitude = mix(max_amplitude, max_amplitude + octave_amplitude, remainder);
+        outDistance = mix(
+            outDistance, outDistance + octave_distance * octave_amplitude, remainder);
+        outColor = mix(outColor, outColor + octave_color * octave_amplitude, remainder);
+        outPosition = mix(outPosition,
+                          mix(outPosition, octave_postion / octave_scale, octave_amplitude),
+                          remainder);
       }
     }
   }
@@ -523,22 +629,42 @@ void fractal_voronoi_f2(vector3 coord,
 
 void fractal_voronoi_distance_to_edge(vector3 coord,
                                       float detail,
+                                      float roughness,
                                       float lacunarity,
                                       float randomness,
-                                      float normalize,
+                                      output float max_amplitude,
                                       output float outDistance)
 {
   float octave_scale = 1.0;
+  float octave_amplitude = 1.0;
   float octave_distance = 0.0;
 
+  max_amplitude = 2.0 - randomness;
   outDistance = 8.0;
   for (int i = 0; i <= ceil(detail); ++i) {
     voronoi_distance_to_edge(coord * octave_scale, randomness, octave_distance);
-    outDistance = min(outDistance, octave_distance / octave_scale);
-    octave_scale *= lacunarity;
-  }
-  if (normalize) {
-    outDistance *= (2.0 - randomness) * octave_scale / lacunarity;
+    if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
+      outDistance = octave_distance;
+      return;
+    }
+    else if (i <= detail) {
+      max_amplitude = mix(max_amplitude, (2.0 - randomness) * octave_scale, octave_amplitude);
+      outDistance = mix(
+          outDistance, min(outDistance, octave_distance / octave_scale), octave_amplitude);
+      octave_scale *= lacunarity;
+      octave_amplitude *= roughness;
+    }
+    else {
+      float remainder = detail - floor(detail);
+      if (remainder != 0.0) {
+        float lerp_amplitude = mix(
+            max_amplitude, (2.0 - randomness) * octave_scale, octave_amplitude);
+        max_amplitude = mix(max_amplitude, lerp_amplitude, remainder);
+        float lerp_distance = mix(
+            outDistance, min(outDistance, octave_distance / octave_scale), octave_amplitude);
+        outDistance = mix(outDistance, min(outDistance, lerp_distance), remainder);
+      }
+    }
   }
 }
 
@@ -551,7 +677,6 @@ void fractal_voronoi_f1(vector4 coord,
                         float exponent,
                         float randomness,
                         string metric,
-                        float max_distance,
                         output float max_amplitude,
                         output float outDistance,
                         output color outColor,
@@ -560,6 +685,8 @@ void fractal_voronoi_f1(vector4 coord,
   float octave_scale = 1.0;
   float octave_amplitude = 1.0;
   float octave_distance = 0.0;
+  color octave_color;
+  vector4 octave_postion;
 
   max_amplitude = 0.0;
   outDistance = 0.0;
@@ -569,27 +696,33 @@ void fractal_voronoi_f1(vector4 coord,
                randomness,
                metric,
                octave_distance,
-               outColor,
-               outPosition);
+               octave_color,
+               octave_postion);
     if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
-      max_amplitude = max_distance;
+      max_amplitude = 1.0;
       outDistance = octave_distance;
+      outColor = octave_color;
+      outPosition = octave_postion;
       return;
     }
     else if (i <= detail) {
-      max_amplitude += max_distance * octave_amplitude;
+      max_amplitude += octave_amplitude;
       outDistance += octave_distance * octave_amplitude;
-      outPosition /= octave_scale;
+      outColor += octave_color * octave_amplitude;
+      outPosition = mix(outPosition, octave_postion / octave_scale, octave_amplitude);
       octave_scale *= lacunarity;
       octave_amplitude *= roughness;
     }
     else {
       float remainder = detail - floor(detail);
       if (remainder != 0.0) {
-        max_amplitude += max_distance * octave_amplitude;
-        float lerp_distance = outDistance + octave_distance * octave_amplitude;
-        outDistance = (1.0 - remainder) * outDistance + remainder * lerp_distance;
-        outPosition /= octave_scale;
+        max_amplitude = mix(max_amplitude, max_amplitude + octave_amplitude, remainder);
+        outDistance = mix(
+            outDistance, outDistance + octave_distance * octave_amplitude, remainder);
+        outColor = mix(outColor, outColor + octave_color * octave_amplitude, remainder);
+        outPosition = mix(outPosition,
+                          mix(outPosition, octave_postion / octave_scale, octave_amplitude),
+                          remainder);
       }
     }
   }
@@ -603,7 +736,6 @@ void fractal_voronoi_smooth_f1(vector4 coord,
                                float exponent,
                                float randomness,
                                string metric,
-                               float max_distance,
                                output float max_amplitude,
                                output float outDistance,
                                output color outColor,
@@ -612,6 +744,8 @@ void fractal_voronoi_smooth_f1(vector4 coord,
   float octave_scale = 1.0;
   float octave_amplitude = 1.0;
   float octave_distance = 0.0;
+  color octave_color;
+  vector4 octave_postion;
 
   max_amplitude = 0.0;
   outDistance = 0.0;
@@ -625,24 +759,30 @@ void fractal_voronoi_smooth_f1(vector4 coord,
                       outColor,
                       outPosition);
     if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
-      max_amplitude = max_distance;
+      max_amplitude = 1.0;
       outDistance = octave_distance;
+      outColor = octave_color;
+      outPosition = octave_postion;
       return;
     }
     else if (i <= detail) {
-      max_amplitude += max_distance * octave_amplitude;
+      max_amplitude += octave_amplitude;
       outDistance += octave_distance * octave_amplitude;
-      outPosition /= octave_scale;
+      outColor += octave_color * octave_amplitude;
+      outPosition = mix(outPosition, octave_postion / octave_scale, octave_amplitude);
       octave_scale *= lacunarity;
       octave_amplitude *= roughness;
     }
     else {
       float remainder = detail - floor(detail);
       if (remainder != 0.0) {
-        max_amplitude += max_distance * octave_amplitude;
-        float lerp_distance = outDistance + octave_distance * octave_amplitude;
-        outDistance = (1.0 - remainder) * outDistance + remainder * lerp_distance;
-        outPosition /= octave_scale;
+        max_amplitude = mix(max_amplitude, max_amplitude + octave_amplitude, remainder);
+        outDistance = mix(
+            outDistance, outDistance + octave_distance * octave_amplitude, remainder);
+        outColor = mix(outColor, outColor + octave_color * octave_amplitude, remainder);
+        outPosition = mix(outPosition,
+                          mix(outPosition, octave_postion / octave_scale, octave_amplitude),
+                          remainder);
       }
     }
   }
@@ -655,7 +795,6 @@ void fractal_voronoi_f2(vector4 coord,
                         float exponent,
                         float randomness,
                         string metric,
-                        float max_distance,
                         output float max_amplitude,
                         output float outDistance,
                         output color outColor,
@@ -664,6 +803,8 @@ void fractal_voronoi_f2(vector4 coord,
   float octave_scale = 1.0;
   float octave_amplitude = 1.0;
   float octave_distance = 0.0;
+  color octave_color;
+  vector4 octave_postion;
 
   max_amplitude = 0.0;
   outDistance = 0.0;
@@ -673,27 +814,33 @@ void fractal_voronoi_f2(vector4 coord,
                randomness,
                metric,
                octave_distance,
-               outColor,
-               outPosition);
+               octave_color,
+               octave_postion);
     if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
-      max_amplitude = max_distance;
+      max_amplitude = 1.0;
       outDistance = octave_distance;
+      outColor = octave_color;
+      outPosition = octave_postion;
       return;
     }
     else if (i <= detail) {
-      max_amplitude += max_distance * octave_amplitude;
+      max_amplitude += octave_amplitude;
       outDistance += octave_distance * octave_amplitude;
-      outPosition /= octave_scale;
+      outColor += octave_color * octave_amplitude;
+      outPosition = mix(outPosition, octave_postion / octave_scale, octave_amplitude);
       octave_scale *= lacunarity;
       octave_amplitude *= roughness;
     }
     else {
       float remainder = detail - floor(detail);
       if (remainder != 0.0) {
-        max_amplitude += max_distance * octave_amplitude;
-        float lerp_distance = outDistance + octave_distance * octave_amplitude;
-        outDistance = (1.0 - remainder) * outDistance + remainder * lerp_distance;
-        outPosition /= octave_scale;
+        max_amplitude = mix(max_amplitude, max_amplitude + octave_amplitude, remainder);
+        outDistance = mix(
+            outDistance, outDistance + octave_distance * octave_amplitude, remainder);
+        outColor = mix(outColor, outColor + octave_color * octave_amplitude, remainder);
+        outPosition = mix(outPosition,
+                          mix(outPosition, octave_postion / octave_scale, octave_amplitude),
+                          remainder);
       }
     }
   }
@@ -701,21 +848,41 @@ void fractal_voronoi_f2(vector4 coord,
 
 void fractal_voronoi_distance_to_edge(vector4 coord,
                                       float detail,
+                                      float roughness,
                                       float lacunarity,
                                       float randomness,
-                                      float normalize,
+                                      output float max_amplitude,
                                       output float outDistance)
 {
   float octave_scale = 1.0;
+  float octave_amplitude = 1.0;
   float octave_distance = 0.0;
 
+  max_amplitude = 2.0 - randomness;
   outDistance = 8.0;
   for (int i = 0; i <= ceil(detail); ++i) {
     voronoi_distance_to_edge(coord * octave_scale, randomness, octave_distance);
-    outDistance = min(outDistance, octave_distance / octave_scale);
-    octave_scale *= lacunarity;
-  }
-  if (normalize) {
-    outDistance *= (2.0 - randomness) * octave_scale / lacunarity;
+    if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
+      outDistance = octave_distance;
+      return;
+    }
+    else if (i <= detail) {
+      max_amplitude = mix(max_amplitude, (2.0 - randomness) * octave_scale, octave_amplitude);
+      outDistance = mix(
+          outDistance, min(outDistance, octave_distance / octave_scale), octave_amplitude);
+      octave_scale *= lacunarity;
+      octave_amplitude *= roughness;
+    }
+    else {
+      float remainder = detail - floor(detail);
+      if (remainder != 0.0) {
+        float lerp_amplitude = mix(
+            max_amplitude, (2.0 - randomness) * octave_scale, octave_amplitude);
+        max_amplitude = mix(max_amplitude, lerp_amplitude, remainder);
+        float lerp_distance = mix(
+            outDistance, min(outDistance, octave_distance / octave_scale), octave_amplitude);
+        outDistance = mix(outDistance, min(outDistance, lerp_distance), remainder);
+      }
+    }
   }
 }
