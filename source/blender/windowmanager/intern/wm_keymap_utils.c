@@ -446,6 +446,10 @@ wmKeyMap *WM_keymap_guess_opname(const bContext *C, const char *opname)
         break;
     }
   }
+  /* User Interface */
+  else if (STRPREFIX(opname, "UI_OT")) {
+    km = WM_keymap_find_all(wm, "User Interface", 0, 0);
+  }
 
   return km;
 }
