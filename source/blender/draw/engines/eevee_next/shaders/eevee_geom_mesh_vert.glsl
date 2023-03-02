@@ -32,5 +32,5 @@ void main()
 
   interp.P += nodetree_displacement();
 
-  gl_Position = point_world_to_ndc(interp.P);
+  gl_Position = point_world_to_homogenous(interp.P);
 }

@@ -90,9 +90,9 @@ float shadow_slope_bias_get(vec2 atlas_size, LightData light, vec3 lNg, vec3 lP,
   vec2 ndc_texel_center_delta = uv_subpixel_coord * 2.0 - 1.0;
   /* Create a normal plane equation and go through the normal projection matrix. */
   vec4 lNg_plane = vec4(lNg, -dot(lNg, lP));
-  vec4 ndc_Ng = shadow_load_normal_matrix(light) * lNg_plane;
+  vec4 hs_Ng = shadow_load_normal_matrix(light) * lNg_plane;
   /* Get slope from normal vector. Note that this is signed. */
-  vec2 ndc_slope = ndc_Ng.xy / abs(ndc_Ng.z);
+  vec2 ndc_slope = hs_Ng.xy / abs(hs_Ng.z);
   /* Clamp out to avoid the bias going to infinity. Remember this is in NDC space. */
   ndc_slope = clamp(ndc_slope, -100.0, 100.0);
   /* Compute slope to where the receiver should be by extending the plane to the texel center. */

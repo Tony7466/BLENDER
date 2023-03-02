@@ -18,5 +18,5 @@ void main()
   interp.P += bounds.bounding_corners[3].xyz * pos.z;
   interp.vP = point_world_to_view(interp.P);
 
-  gl_Position = point_world_to_ndc(interp.P);
+  gl_Position = point_world_to_homogenous(interp.P);
 }
