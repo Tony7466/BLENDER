@@ -51,10 +51,10 @@ class VolumePass {
           create_info_name += "_linear";
           break;
         case VOLUME_DISPLAY_INTERP_CUBIC:
-          create_info_name += "_linear";
+          create_info_name += "_cubic";
           break;
         case VOLUME_DISPLAY_INTERP_CLOSEST:
-          create_info_name += "_linear";
+          create_info_name += "_closest";
           break;
         default:
           BLI_assert_unreachable();
@@ -80,8 +80,7 @@ class VolumePass {
     /* 0.05f to achieve somewhat the same opacity as the full view. */
     float step_length = max_ff(1e-16f, dimensions[axis] * 0.05f);
 
-    /*TODO (Miguel Pozo): Does this override or replace the parent pass state ? */
-    ps.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL | ~DRW_STATE_CULL_FRONT);
+    ps.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL);
     ps.push_constant("slicePosition", slice_depth);
     ps.push_constant("sliceAxis", axis);
     ps.push_constant("stepLength", step_length);
@@ -108,7 +107,6 @@ class VolumePass {
   {
     active_ = false;
     ps_.init();
-    ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL | DRW_STATE_CULL_FRONT);
     ps_.bind_ubo(WB_WORLD_SLOT, resources.world_buf);
 
     dummy_shadow_tx_.ensure_3d(GPU_RGBA8, int3(1), GPU_TEXTURE_USAGE_SHADER_READ, float4(1));
