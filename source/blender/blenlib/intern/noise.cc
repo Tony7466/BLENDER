@@ -2369,6 +2369,11 @@ void voronoi_n_sphere_radius(const float4 coord, const float randomness, float *
 
 /* **** Fractal Voronoi **** */
 
+template<class A, class B> static A lerp(const A &a, const A &b, const B &t)
+{
+  return (A)(a * ((B)1 - t) + b * t);
+}
+
 template<typename T>
 void fractal_voronoi_f1(const T coord,
                         const float detail,
@@ -2377,7 +2382,6 @@ void fractal_voronoi_f1(const T coord,
                         const float exponent,
                         const float randomness,
                         const int metric,
-                        const float max_distance,
                         float *r_max_amplitude,
                         float *r_distance,
                         float3 *r_color,
@@ -2386,28 +2390,44 @@ void fractal_voronoi_f1(const T coord,
   float octave_scale = 1.0f;
   float octave_amplitude = 1.0f;
   float octave_distance = 0.0f;
+  float3 octave_color{};
+  T octave_postion{};
 
+  *r_max_amplitude = 0.0f;
   if (r_distance != nullptr) {
-    *r_max_amplitude = 0.0f;
     *r_distance = 0.0f;
   }
   for (int i = 0; i <= ceilf(detail); ++i) {
-    voronoi_f1(
-        coord * octave_scale, exponent, randomness, metric, &octave_distance, r_color, r_position);
+    voronoi_f1(coord * octave_scale,
+               exponent,
+               randomness,
+               metric,
+               &octave_distance,
+               &octave_color,
+               &octave_postion);
     if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
+      *r_max_amplitude = 1.0f;
       if (r_distance != nullptr) {
-        *r_max_amplitude = max_distance;
         *r_distance = octave_distance;
+      }
+      if (r_color != nullptr) {
+        *r_color = octave_color;
+      }
+      if (r_position != nullptr) {
+        *r_position = octave_postion;
       }
       return;
     }
     else if (i <= detail) {
+      *r_max_amplitude += octave_amplitude;
       if (r_distance != nullptr) {
-        *r_max_amplitude += max_distance * octave_amplitude;
         *r_distance += octave_distance * octave_amplitude;
       }
+      if (r_color != nullptr) {
+        *r_color += octave_color * octave_amplitude;
+      }
       if (r_position != nullptr) {
-        *r_position /= octave_scale;
+        *r_position = lerp(*r_position, octave_postion / octave_scale, octave_amplitude);
       }
       octave_scale *= lacunarity;
       octave_amplitude *= roughness;
@@ -2415,13 +2435,18 @@ void fractal_voronoi_f1(const T coord,
     else {
       float remainder = detail - floorf(detail);
       if (remainder != 0.0f) {
+        *r_max_amplitude = lerp(*r_max_amplitude, *r_max_amplitude + octave_amplitude, remainder);
         if (r_distance != nullptr) {
-          *r_max_amplitude += max_distance * octave_amplitude;
-          float lerp_distance = *r_distance + octave_distance * octave_amplitude;
-          *r_distance = (1.0f - remainder) * (*r_distance) + remainder * lerp_distance;
+          *r_distance = lerp(
+              *r_distance, *r_distance + octave_distance * octave_amplitude, remainder);
+        }
+        if (r_color != nullptr) {
+          *r_color = lerp(*r_color, *r_color + octave_color * octave_amplitude, remainder);
         }
         if (r_position != nullptr) {
-          *r_position /= octave_scale;
+          *r_position = lerp(*r_position,
+                             lerp(*r_position, octave_postion / octave_scale, octave_amplitude),
+                             remainder);
         }
       }
     }
@@ -2437,7 +2462,6 @@ void fractal_voronoi_smooth_f1(const T coord,
                                const float exponent,
                                const float randomness,
                                const int metric,
-                               const float max_distance,
                                float *r_max_amplitude,
                                float *r_distance,
                                float3 *r_color,
@@ -2446,9 +2470,11 @@ void fractal_voronoi_smooth_f1(const T coord,
   float octave_scale = 1.0f;
   float octave_amplitude = 1.0f;
   float octave_distance = 0.0f;
+  float3 octave_color{};
+  T octave_postion{};
 
+  *r_max_amplitude = 0.0f;
   if (r_distance != nullptr) {
-    *r_max_amplitude = 0.0f;
     *r_distance = 0.0f;
   }
   for (int i = 0; i <= ceilf(detail); ++i) {
@@ -2458,22 +2484,31 @@ void fractal_voronoi_smooth_f1(const T coord,
                       randomness,
                       metric,
                       &octave_distance,
-                      r_color,
-                      r_position);
+                      &octave_color,
+                      &octave_postion);
     if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
+      *r_max_amplitude = 1.0f;
       if (r_distance != nullptr) {
-        *r_max_amplitude = max_distance;
         *r_distance = octave_distance;
+      }
+      if (r_color != nullptr) {
+        *r_color = octave_color;
+      }
+      if (r_position != nullptr) {
+        *r_position = octave_postion;
       }
       return;
     }
     else if (i <= detail) {
+      *r_max_amplitude += octave_amplitude;
       if (r_distance != nullptr) {
-        *r_max_amplitude += max_distance * octave_amplitude;
         *r_distance += octave_distance * octave_amplitude;
       }
+      if (r_color != nullptr) {
+        *r_color += octave_color * octave_amplitude;
+      }
       if (r_position != nullptr) {
-        *r_position /= octave_scale;
+        *r_position = lerp(*r_position, octave_postion / octave_scale, octave_amplitude);
       }
       octave_scale *= lacunarity;
       octave_amplitude *= roughness;
@@ -2481,13 +2516,18 @@ void fractal_voronoi_smooth_f1(const T coord,
     else {
       float remainder = detail - floorf(detail);
       if (remainder != 0.0f) {
+        *r_max_amplitude = lerp(*r_max_amplitude, *r_max_amplitude + octave_amplitude, remainder);
         if (r_distance != nullptr) {
-          *r_max_amplitude += max_distance * octave_amplitude;
-          float lerp_distance = *r_distance + octave_distance * octave_amplitude;
-          *r_distance = (1.0f - remainder) * (*r_distance) + remainder * lerp_distance;
+          *r_distance = lerp(
+              *r_distance, *r_distance + octave_distance * octave_amplitude, remainder);
+        }
+        if (r_color != nullptr) {
+          *r_color = lerp(*r_color, *r_color + octave_color * octave_amplitude, remainder);
         }
         if (r_position != nullptr) {
-          *r_position /= octave_scale;
+          *r_position = lerp(*r_position,
+                             lerp(*r_position, octave_postion / octave_scale, octave_amplitude),
+                             remainder);
         }
       }
     }
@@ -2502,7 +2542,6 @@ void fractal_voronoi_f2(const T coord,
                         const float exponent,
                         const float randomness,
                         const int metric,
-                        const float max_distance,
                         float *r_max_amplitude,
                         float *r_distance,
                         float3 *r_color,
@@ -2511,28 +2550,44 @@ void fractal_voronoi_f2(const T coord,
   float octave_scale = 1.0f;
   float octave_amplitude = 1.0f;
   float octave_distance = 0.0f;
+  float3 octave_color{};
+  T octave_postion{};
 
+  *r_max_amplitude = 0.0f;
   if (r_distance != nullptr) {
-    *r_max_amplitude = 0.0f;
     *r_distance = 0.0f;
   }
   for (int i = 0; i <= ceilf(detail); ++i) {
-    voronoi_f2(
-        coord * octave_scale, exponent, randomness, metric, &octave_distance, r_color, r_position);
+    voronoi_f2(coord * octave_scale,
+               exponent,
+               randomness,
+               metric,
+               &octave_distance,
+               &octave_color,
+               &octave_postion);
     if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
+      *r_max_amplitude = 1.0f;
       if (r_distance != nullptr) {
-        *r_max_amplitude = max_distance;
         *r_distance = octave_distance;
+      }
+      if (r_color != nullptr) {
+        *r_color = octave_color;
+      }
+      if (r_position != nullptr) {
+        *r_position = octave_postion;
       }
       return;
     }
     else if (i <= detail) {
+      *r_max_amplitude += octave_amplitude;
       if (r_distance != nullptr) {
-        *r_max_amplitude += max_distance * octave_amplitude;
         *r_distance += octave_distance * octave_amplitude;
       }
+      if (r_color != nullptr) {
+        *r_color += octave_color * octave_amplitude;
+      }
       if (r_position != nullptr) {
-        *r_position /= octave_scale;
+        *r_position = lerp(*r_position, octave_postion / octave_scale, octave_amplitude);
       }
       octave_scale *= lacunarity;
       octave_amplitude *= roughness;
@@ -2540,13 +2595,18 @@ void fractal_voronoi_f2(const T coord,
     else {
       float remainder = detail - floorf(detail);
       if (remainder != 0.0f) {
+        *r_max_amplitude = lerp(*r_max_amplitude, *r_max_amplitude + octave_amplitude, remainder);
         if (r_distance != nullptr) {
-          *r_max_amplitude += max_distance * octave_amplitude;
-          float lerp_distance = *r_distance + octave_distance * octave_amplitude;
-          *r_distance = (1.0f - remainder) * (*r_distance) + remainder * lerp_distance;
+          *r_distance = lerp(
+              *r_distance, *r_distance + octave_distance * octave_amplitude, remainder);
+        }
+        if (r_color != nullptr) {
+          *r_color = lerp(*r_color, *r_color + octave_color * octave_amplitude, remainder);
         }
         if (r_position != nullptr) {
-          *r_position /= octave_scale;
+          *r_position = lerp(*r_position,
+                             lerp(*r_position, octave_postion / octave_scale, octave_amplitude),
+                             remainder);
         }
       }
     }
@@ -2556,22 +2616,43 @@ void fractal_voronoi_f2(const T coord,
 template<typename T>
 void fractal_voronoi_distance_to_edge(const T coord,
                                       const float detail,
+                                      const float roughness,
                                       const float lacunarity,
                                       const float randomness,
-                                      const bool normalize,
+                                      float *r_max_amplitude,
                                       float *r_distance)
 {
   float octave_scale = 1.0f;
+  float octave_amplitude = 1.0f;
   float octave_distance = 0.0f;
 
+  *r_max_amplitude = 2.0f - randomness;
   *r_distance = 8.0f;
   for (int i = 0; i <= ceilf(detail); ++i) {
     voronoi_distance_to_edge(coord * octave_scale, randomness, &octave_distance);
-    *r_distance = std::min(*r_distance, octave_distance / octave_scale);
-    octave_scale *= lacunarity;
-  }
-  if (normalize) {
-    *r_distance *= (2.0f - randomness) * octave_scale / lacunarity;
+    if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
+      *r_distance = octave_distance;
+      return;
+    }
+    else if (i <= detail) {
+      *r_max_amplitude = lerp(
+          *r_max_amplitude, (2.0f - randomness) * octave_scale, octave_amplitude);
+      *r_distance = lerp(
+          *r_distance, std::min(*r_distance, octave_distance / octave_scale), octave_amplitude);
+      octave_scale *= lacunarity;
+      octave_amplitude *= roughness;
+    }
+    else {
+      float remainder = detail - floorf(detail);
+      if (remainder != 0.0f) {
+        float lerp_amplitude = lerp(
+            *r_max_amplitude, (2.0f - randomness) * octave_scale, octave_amplitude);
+        *r_max_amplitude = lerp(*r_max_amplitude, lerp_amplitude, remainder);
+        float lerp_distance = lerp(
+            *r_distance, std::min(*r_distance, octave_distance / octave_scale), octave_amplitude);
+        *r_distance = lerp(*r_distance, std::min(*r_distance, lerp_distance), remainder);
+      }
+    }
   }
 }
 
@@ -2584,7 +2665,6 @@ template void fractal_voronoi_f1<float>(const float coord,
                                         const float exponent,
                                         const float randomness,
                                         const int metric,
-                                        const float max_distance,
                                         float *r_max_amplitude,
                                         float *r_distance,
                                         float3 *r_color,
@@ -2596,7 +2676,6 @@ template void fractal_voronoi_f1<float2>(const float2 coord,
                                          const float exponent,
                                          const float randomness,
                                          const int metric,
-                                         const float max_distance,
                                          float *r_max_amplitude,
                                          float *r_distance,
                                          float3 *r_color,
@@ -2608,7 +2687,6 @@ template void fractal_voronoi_f1<float3>(const float3 coord,
                                          const float exponent,
                                          const float randomness,
                                          const int metric,
-                                         const float max_distance,
                                          float *r_max_amplitude,
                                          float *r_distance,
                                          float3 *r_color,
@@ -2620,7 +2698,6 @@ template void fractal_voronoi_f1<float4>(const float4 coord,
                                          const float exponent,
                                          const float randomness,
                                          const int metric,
-                                         const float max_distance,
                                          float *r_max_amplitude,
                                          float *r_distance,
                                          float3 *r_color,
@@ -2634,7 +2711,6 @@ template void fractal_voronoi_smooth_f1<float>(const float coord,
                                                const float exponent,
                                                const float randomness,
                                                const int metric,
-                                               const float max_distance,
                                                float *r_max_amplitude,
                                                float *r_distance,
                                                float3 *r_color,
@@ -2647,7 +2723,6 @@ template void fractal_voronoi_smooth_f1<float2>(const float2 coord,
                                                 const float exponent,
                                                 const float randomness,
                                                 const int metric,
-                                                const float max_distance,
                                                 float *r_max_amplitude,
                                                 float *r_distance,
                                                 float3 *r_color,
@@ -2660,7 +2735,6 @@ template void fractal_voronoi_smooth_f1<float3>(const float3 coord,
                                                 const float exponent,
                                                 const float randomness,
                                                 const int metric,
-                                                const float max_distance,
                                                 float *r_max_amplitude,
                                                 float *r_distance,
                                                 float3 *r_color,
@@ -2673,7 +2747,6 @@ template void fractal_voronoi_smooth_f1<float4>(const float4 coord,
                                                 const float exponent,
                                                 const float randomness,
                                                 const int metric,
-                                                const float max_distance,
                                                 float *r_max_amplitude,
                                                 float *r_distance,
                                                 float3 *r_color,
@@ -2686,7 +2759,6 @@ template void fractal_voronoi_f2<float>(const float coord,
                                         const float exponent,
                                         const float randomness,
                                         const int metric,
-                                        const float max_distance,
                                         float *r_max_amplitude,
                                         float *r_distance,
                                         float3 *r_color,
@@ -2698,7 +2770,6 @@ template void fractal_voronoi_f2<float2>(const float2 coord,
                                          const float exponent,
                                          const float randomness,
                                          const int metric,
-                                         const float max_distance,
                                          float *r_max_amplitude,
                                          float *r_distance,
                                          float3 *r_color,
@@ -2710,7 +2781,6 @@ template void fractal_voronoi_f2<float3>(const float3 coord,
                                          const float exponent,
                                          const float randomness,
                                          const int metric,
-                                         const float max_distance,
                                          float *r_max_amplitude,
                                          float *r_distance,
                                          float3 *r_color,
@@ -2722,7 +2792,6 @@ template void fractal_voronoi_f2<float4>(const float4 coord,
                                          const float exponent,
                                          const float randomness,
                                          const int metric,
-                                         const float max_distance,
                                          float *r_max_amplitude,
                                          float *r_distance,
                                          float3 *r_color,
@@ -2730,27 +2799,31 @@ template void fractal_voronoi_f2<float4>(const float4 coord,
 
 template void fractal_voronoi_distance_to_edge<float>(const float coord,
                                                       const float detail,
+                                                      const float roughness,
                                                       const float lacunarity,
                                                       const float randomness,
-                                                      const bool normalize,
+                                                      float *r_max_amplitude,
                                                       float *r_distance);
 template void fractal_voronoi_distance_to_edge<float2>(const float2 coord,
                                                        const float detail,
+                                                       const float roughness,
                                                        const float lacunarity,
                                                        const float randomness,
-                                                       const bool normalize,
+                                                       float *r_max_amplitude,
                                                        float *r_distance);
 template void fractal_voronoi_distance_to_edge<float3>(const float3 coord,
                                                        const float detail,
+                                                       const float roughness,
                                                        const float lacunarity,
                                                        const float randomness,
-                                                       const bool normalize,
+                                                       float *r_max_amplitude,
                                                        float *r_distance);
 template void fractal_voronoi_distance_to_edge<float4>(const float4 coord,
                                                        const float detail,
+                                                       const float roughness,
                                                        const float lacunarity,
                                                        const float randomness,
-                                                       const bool normalize,
+                                                       float *r_max_amplitude,
                                                        float *r_distance);
 
 /** \} */

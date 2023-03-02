@@ -977,14 +977,13 @@ ccl_device void fractal_voronoi_f1(T coord,
     else {
       float remainder = detail - floorf(detail);
       if (remainder != 0.0f) {
-        float lerp_amplitude = *max_amplitude + octave_amplitude;
-        float lerp_distance = *outDistance + octave_distance * octave_amplitude;
-        float3 lerp_color = *outColor + octave_color * octave_amplitude;
-        T lerp_position = lerp(*outPosition, octave_postion / octave_scale, octave_amplitude);
-        *max_amplitude = lerp(*max_amplitude, lerp_amplitude, remainder);
-        *outDistance = lerp(*outDistance, lerp_distance, remainder);
-        *outColor = lerp(*outColor, lerp_color, remainder);
-        *outPosition = lerp(*outPosition, lerp_position, remainder);
+        *max_amplitude = lerp(*max_amplitude, *max_amplitude + octave_amplitude, remainder);
+        *outDistance = lerp(
+            *outDistance, *outDistance + octave_distance * octave_amplitude, remainder);
+        *outColor = lerp(*outColor, *outColor + octave_color * octave_amplitude, remainder);
+        *outPosition = lerp(*outPosition,
+                            lerp(*outPosition, octave_postion / octave_scale, octave_amplitude),
+                            remainder);
       }
     }
   }
@@ -1039,14 +1038,13 @@ ccl_device void fractal_voronoi_smooth_f1(T coord,
     else {
       float remainder = detail - floorf(detail);
       if (remainder != 0.0f) {
-        float lerp_amplitude = *max_amplitude + octave_amplitude;
-        float lerp_distance = *outDistance + octave_distance * octave_amplitude;
-        float3 lerp_color = *outColor + octave_color * octave_amplitude;
-        T lerp_position = lerp(*outPosition, octave_postion / octave_scale, octave_amplitude);
-        *max_amplitude = lerp(*max_amplitude, lerp_amplitude, remainder);
-        *outDistance = lerp(*outDistance, lerp_distance, remainder);
-        *outColor = lerp(*outColor, lerp_color, remainder);
-        *outPosition = lerp(*outPosition, lerp_position, remainder);
+        *max_amplitude = lerp(*max_amplitude, *max_amplitude + octave_amplitude, remainder);
+        *outDistance = lerp(
+            *outDistance, *outDistance + octave_distance * octave_amplitude, remainder);
+        *outColor = lerp(*outColor, *outColor + octave_color * octave_amplitude, remainder);
+        *outPosition = lerp(*outPosition,
+                            lerp(*outPosition, octave_postion / octave_scale, octave_amplitude),
+                            remainder);
       }
     }
   }
@@ -1099,14 +1097,13 @@ ccl_device void fractal_voronoi_f2(T coord,
     else {
       float remainder = detail - floorf(detail);
       if (remainder != 0.0f) {
-        float lerp_amplitude = *max_amplitude + octave_amplitude;
-        float lerp_distance = *outDistance + octave_distance * octave_amplitude;
-        float3 lerp_color = *outColor + octave_color * octave_amplitude;
-        T lerp_position = lerp(*outPosition, octave_postion / octave_scale, octave_amplitude);
-        *max_amplitude = lerp(*max_amplitude, lerp_amplitude, remainder);
-        *outDistance = lerp(*outDistance, lerp_distance, remainder);
-        *outColor = lerp(*outColor, lerp_color, remainder);
-        *outPosition = lerp(*outPosition, lerp_position, remainder);
+        *max_amplitude = lerp(*max_amplitude, *max_amplitude + octave_amplitude, remainder);
+        *outDistance = lerp(
+            *outDistance, *outDistance + octave_distance * octave_amplitude, remainder);
+        *outColor = lerp(*outColor, *outColor + octave_color * octave_amplitude, remainder);
+        *outPosition = lerp(*outPosition,
+                            lerp(*outPosition, octave_postion / octave_scale, octave_amplitude),
+                            remainder);
       }
     }
   }
@@ -1145,9 +1142,9 @@ ccl_device void fractal_voronoi_distance_to_edge(T coord,
       if (remainder != 0.0f) {
         float lerp_amplitude = lerp(
             *max_amplitude, (2.0f - randomness) * octave_scale, octave_amplitude);
+        *max_amplitude = lerp(*max_amplitude, lerp_amplitude, remainder);
         float lerp_distance = lerp(
             *outDistance, min(*outDistance, octave_distance / octave_scale), octave_amplitude);
-        *max_amplitude = lerp(*max_amplitude, lerp_amplitude, remainder);
         *outDistance = lerp(*outDistance, min(*outDistance, lerp_distance), remainder);
       }
     }
@@ -1235,7 +1232,7 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                     &color_out,
                                     &w_out);
           if (normalize) {
-            /* Optimized std::lerp(max_amplitude * 0.5, max_amplitude, randomness) */
+            /* Optimized lerp(max_amplitude * 0.5, max_amplitude, randomness) */
             distance_out /= (0.5f + 0.5f * randomness) * max_amplitude;
             color_out /= max_amplitude;
           }
@@ -1255,7 +1252,7 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                            &color_out,
                                            &w_out);
           if (normalize) {
-            /* Optimized std::lerp(max_amplitude * 0.5, max_amplitude, randomness) */
+            /* Optimized lerp(max_amplitude * 0.5, max_amplitude, randomness) */
             distance_out /= (0.5f + 0.5f * randomness) * max_amplitude;
             color_out /= max_amplitude;
           }
