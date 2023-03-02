@@ -496,6 +496,38 @@ TEST(BKE_fcurve, BKE_fcurve_calc_bounds)
   EXPECT_FLOAT_EQ(fcu->bezt[3].vec[2][1], bounds.ymin);
   EXPECT_FLOAT_EQ(fcu->bezt[3].vec[0][1], bounds.ymax);
 
+  /* Curve samples. */
+  const int sample_start = 1;
+  const int sample_end = 20;
+  fcurve_store_samples(fcu, NULL, sample_start, sample_end, fcurve_samplingcb_evalcurve);
+
+  success = BKE_fcurve_calc_bounds(
+      fcu, false /* sel only */, false /* include handles */, NULL /* frame range */, &bounds);
+  EXPECT_TRUE(success) << "FCurve samples should have a range.";
+
+  EXPECT_FLOAT_EQ(sample_start, bounds.xmin);
+  EXPECT_FLOAT_EQ(sample_end, bounds.xmax);
+  EXPECT_FLOAT_EQ(-20.0f, bounds.ymin);
+  EXPECT_FLOAT_EQ(15.0f, bounds.ymax);
+
+  range[0] = 8.0f;
+  range[1] = 20.0f;
+  success = BKE_fcurve_calc_bounds(
+      fcu, false /* sel only */, false /* include handles */, range /* frame range */, &bounds);
+  EXPECT_TRUE(success) << "FCurve samples should have a range.";
+
+  EXPECT_FLOAT_EQ(range[0], bounds.xmin);
+  EXPECT_FLOAT_EQ(range[1], bounds.xmax);
+  EXPECT_FLOAT_EQ(-20.0f, bounds.ymin);
+  EXPECT_FLOAT_EQ(15.0f, bounds.ymax);
+
+  range[0] = 20.1f;
+  range[1] = 30.0f;
+  success = BKE_fcurve_calc_bounds(
+      fcu, false /* sel only */, false /* include handles */, range /* frame range */, &bounds);
+  EXPECT_FALSE(success)
+      << "A frame range outside the range of keyframe samples should not have bounds.";
+
   BKE_fcurve_free(fcu);
 }
 
