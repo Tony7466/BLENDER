@@ -113,7 +113,7 @@ void BKE_nlatrack_insert_after(ListBase *nla_tracks,
 
 /**
  * Calls #BKE_nlatrack_new to create a new NLA track, inserts it before the
- * given NLA track with #BKE_nlatrack_insert_before, and sets it as active.
+ * given NLA track with #BKE_nlatrack_insert_before.
  */
 struct NlaTrack *BKE_nlatrack_new_before(ListBase *nla_tracks,
                                          struct NlaTrack *next,
