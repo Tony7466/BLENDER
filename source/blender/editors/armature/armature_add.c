@@ -1100,9 +1100,15 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
   const int direction = RNA_enum_get(op->ptr, "direction");
   const int axis = 0;
 
-  /* cancel if nothing selected */
+  /* select all visible bones if nothing selected */
   if (CTX_DATA_COUNT(C, selected_bones) == 0) {
-    return OPERATOR_CANCELLED;
+    CTX_DATA_BEGIN (C, EditBone *, ebone, visible_bones) {
+      ebone->flag |= (BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
+      if (ebone->parent) {
+        ebone->parent->flag |= BONE_TIPSEL;
+      }
+    }
+    CTX_DATA_END;
   }
 
   uint objects_len = 0;
