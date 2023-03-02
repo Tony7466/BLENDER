@@ -4,3 +4,4 @@ Referenced by issue #85306, Use boolean in the modifier for exposed boolean node
 Referenced by pull request #104995, Fix #104902: Use forward compatible integers for boolean RNA properties
 Referenced by commit 720dbea429d1f58cac4fac0409257d40ce37c588, Fix #104902: Use forward compatible integers for boolean RNA properties
 Referenced by commit d90d6f8674030f84d44419d743f171190b786932, Fix #105259: Copy & paste boolean custom property as driver doesn't work
+Referenced by pull request #105370, Fix #105278: IDProperty UI missing library overridable toggle
