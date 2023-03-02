@@ -111,14 +111,14 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const Hierarch
       auto legacy_curve = static_cast<Curve *>(context->object->data);
       auto curves = bke::curve_legacy_to_curves(*legacy_curve);
       data_writer = new USDCurvesWriter(usd_export_context, curves);
-    } break;
+      break;
+    }
     case OB_CURVES:
       data_writer = new USDCurvesWriter(usd_export_context);
       break;
     case OB_VOLUME:
       data_writer = new USDVolumeWriter(usd_export_context);
       break;
-
     case OB_EMPTY:
     case OB_SURF:
     case OB_FONT:
