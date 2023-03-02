@@ -2051,10 +2051,16 @@ bool nodeFindNodeTry(bNodeTree *ntree, bNodeSocket *sock, bNode **r_node, int *r
 
 bNode *nodeFindRootParent(bNode *node)
 {
-  if (node->parent) {
-    return nodeFindRootParent(node->parent);
+  bNode *t_node = node;
+  while (t_node->parent != nullptr) {
+    t_node = t_node->parent;
   }
-  return node->type == NODE_FRAME ? node : nullptr;
+
+  if (t_node->type != NODE_FRAME) {
+    return nullptr;
+  }
+
+  return t_node;
 }
 
 bool nodeIsChildOf(const bNode *parent, const bNode *child)
@@ -2062,9 +2068,16 @@ bool nodeIsChildOf(const bNode *parent, const bNode *child)
   if (parent == child) {
     return true;
   }
-  if (child->parent) {
-    return nodeIsChildOf(parent, child->parent);
+
+  const bNode *t_child = child;
+  while (t_child->parent != nullptr) {
+    t_child = t_child->parent;
+
+    if (t_child == parent) {
+      return true;
+    }
   }
+
   return false;
 }
 
@@ -2547,28 +2560,42 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node)
   }
 }
 
+/**
+ * Location mapping in parent frame node space.
+ */
+static void nodeViewMapping(const bNode *node, float &mapping_x, float &mapping_y)
+{
+  const bNode *t_node = node;
+
+  mapping_x += t_node->locx;
+  mapping_y += t_node->locy;
+
+  while (t_node->parent != nullptr) {
+    t_node = t_node->parent;
+
+    mapping_x += t_node->locx;
+    mapping_y += t_node->locy;
+  }
+}
+
 void nodeToView(const bNode *node, float x, float y, float *rx, float *ry)
 {
-  if (node->parent) {
-    nodeToView(node->parent, x + node->locx, y + node->locy, rx, ry);
-  }
-  else {
-    *rx = x + node->locx;
-    *ry = y + node->locy;
-  }
+  float mapping_x = 0.0f;
+  float mapping_y = 0.0f;
+  nodeViewMapping(node, mapping_x, mapping_y);
+
+  *rx = mapping_x + x;
+  *ry = mapping_y + y;
 }
 
 void nodeFromView(const bNode *node, float x, float y, float *rx, float *ry)
 {
-  if (node->parent) {
-    nodeFromView(node->parent, x, y, rx, ry);
-    *rx -= node->locx;
-    *ry -= node->locy;
-  }
-  else {
-    *rx = x - node->locx;
-    *ry = y - node->locy;
-  }
+  float mapping_x = 0.0f;
+  float mapping_y = 0.0f;
+  nodeViewMapping(node, mapping_x, mapping_y);
+
+  *rx = -mapping_x + x;
+  *ry = -mapping_y + y;
 }
 
 bool nodeAttachNodeCheck(const bNode *node, const bNode *parent)
