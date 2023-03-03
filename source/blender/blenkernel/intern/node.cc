@@ -2576,7 +2576,7 @@ void nodeFromView(const bNode *node, const float x, const float y, float *rx, fl
 void nodeAttachNode(bNodeTree *ntree, bNode *node, bNode *parent)
 {
   BLI_assert(parent->type == NODE_FRAME);
-  BLI_assert(nodeIsParentAndChild(parent, node) == false);
+  BLI_assert(!nodeIsParentAndChild(parent, node));
 
   float locx, locy;
   nodeToView(node, 0.0f, 0.0f, &locx, &locy);
