@@ -114,11 +114,8 @@ void multires_reshape_apply_base_refit_base_mesh(MultiresReshapeContext *reshape
     /* Find normal. */
     for (int j = 0; j < pmap[i].count; j++) {
       const MPoly &poly = reshape_context->base_polys[pmap[i].indices[j]];
-      MPoly fake_poly;
 
       /* Set up poly, loops, and coords in order to call #bke::mesh::poly_normal_calc(). */
-      fake_poly.totloop = poly.totloop;
-      fake_poly.loopstart = 0;
       MLoop *fake_loops = static_cast<MLoop *>(
           MEM_malloc_arrayN(poly.totloop, sizeof(MLoop), __func__));
       float(*fake_co)[3] = static_cast<float(*)[3]>(

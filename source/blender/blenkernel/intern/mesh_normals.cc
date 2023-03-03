@@ -167,7 +167,7 @@ namespace blender::bke::mesh {
  * polygon See Graphics Gems for
  * computing newell normal.
  */
-float3 normal_calc_ngon(const Span<float3> vert_positions, const Span<MLoop> poly_loops)
+static float3 normal_calc_ngon(const Span<float3> vert_positions, const Span<MLoop> poly_loops)
 {
   float3 normal(0);
 
