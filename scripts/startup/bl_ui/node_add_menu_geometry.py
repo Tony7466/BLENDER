@@ -560,13 +560,13 @@ class NODE_MT_category_GEO_UTILITIES_MATRIX(Menu):
 
     def draw(self, _context):
         layout = self.layout
-        node_add_menu.add_node_type(layout, "FunctionNodeCombineMatrix4x4")
-        node_add_menu.add_node_type(layout, "FunctionNodeSeparateMatrix4x4")
-        node_add_menu.add_node_type(layout, "FunctionNodeDecomposeMatrix4x4")
-        node_add_menu.add_node_type(layout, "FunctionNodeMatrix4x4Math")
-        node_add_menu.add_node_type(layout, "FunctionNodeRotateMatrix4x4")
-        node_add_menu.add_node_type(layout, "FunctionNodeScaleMatrix4x4")
-        node_add_menu.add_node_type(layout, "FunctionNodeTranslateMatrix4x4")
+        node_add_menu.add_node_type(layout, "FunctionNodeCombineMatrix")
+        node_add_menu.add_node_type(layout, "FunctionNodeSeparateMatrix")
+        node_add_menu.add_node_type(layout, "FunctionNodeDecomposeMatrix")
+        node_add_menu.add_node_type(layout, "FunctionNodeMatrixMath")
+        node_add_menu.add_node_type(layout, "FunctionNodeRotateMatrix")
+        node_add_menu.add_node_type(layout, "FunctionNodeScaleMatrix")
+        node_add_menu.add_node_type(layout, "FunctionNodeTranslateMatrix")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 

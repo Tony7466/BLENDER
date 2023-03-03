@@ -5,7 +5,7 @@
 #include "UI_interface.h"
 #include "UI_resources.h"
 
-namespace blender::nodes::node_fn_separate_matrix4x4_cc {
+namespace blender::nodes::node_fn_separate_matrix_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -248,15 +248,15 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
   }
 }
 
-}  // namespace blender::nodes::node_fn_separate_matrix4x4_cc
+}  // namespace blender::nodes::node_fn_separate_matrix_cc
 
-void register_node_type_fn_separate_matrix_4x4(void)
+void register_node_type_fn_separate_matrix(void)
 {
-  namespace file_ns = blender::nodes::node_fn_separate_matrix4x4_cc;
+  namespace file_ns = blender::nodes::node_fn_separate_matrix_cc;
 
   static bNodeType ntype;
 
-  fn_node_type_base(&ntype, FN_NODE_SEPARATE_MATRIX_4X4, "Separate 4x4 Matrix", NODE_CLASS_CONVERTER);
+  fn_node_type_base(&ntype, FN_NODE_SEPARATE_MATRIX, "Separate Matrix", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::node_declare;
   ntype.updatefunc = file_ns::node_update;
   ntype.initfunc = file_ns::node_init;

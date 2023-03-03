@@ -1626,9 +1626,9 @@ typedef struct NodeShaderMix {
   char _pad[3];
 } NodeShaderMix;
 
-typedef struct NodeInputMatrix4x4 {
+typedef struct NodeInputMatrix {
   float matrix[4][4];
-} NodeInputMatrix4x4;
+} NodeInputMatrix;
 
 /* script node mode */
 #define NODE_SCRIPT_INTERNAL 0

@@ -6,7 +6,7 @@
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 
-namespace blender::nodes::node_fn_decompose_matrix4x4_cc {
+namespace blender::nodes::node_fn_decompose_matrix_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -55,15 +55,15 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
   builder.set_matching_fn(&decompose_matrix_fn);
 }
 
-}  // namespace blender::nodes::node_fn_decompose_matrix4x4_cc
+}  // namespace blender::nodes::node_fn_decompose_matrix_cc
 
-void register_node_type_fn_decompose_matrix_4x4(void)
+void register_node_type_fn_decompose_matrix(void)
 {
-  namespace file_ns = blender::nodes::node_fn_decompose_matrix4x4_cc;
+  namespace file_ns = blender::nodes::node_fn_decompose_matrix_cc;
 
   static bNodeType ntype;
 
-  fn_node_type_base(&ntype, FN_NODE_DECOMPOSE_MATRIX_4X4, "Decompose 4x4 Matrix", NODE_CLASS_CONVERTER);
+  fn_node_type_base(&ntype, FN_NODE_DECOMPOSE_MATRIX, "Decompose Matrix", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::node_declare;
   ntype.build_multi_function = file_ns::node_build_multi_function;
 

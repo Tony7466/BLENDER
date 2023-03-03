@@ -5237,7 +5237,7 @@ static void def_fn_combsep_color(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 
-static void def_fn_input_matrix_4x4(StructRNA *srna)
+static void def_fn_input_matrix(StructRNA *srna)
 {
   static const float default_elements[] = {
       1.0f,
@@ -5259,7 +5259,7 @@ static void def_fn_input_matrix_4x4(StructRNA *srna)
   };
   PropertyRNA *prop;
 
-  RNA_def_struct_sdna_from(srna, "NodeInputMatrix4x4", "storage");
+  RNA_def_struct_sdna_from(srna, "NodeInputMatrix", "storage");
 
   prop = RNA_def_property(srna, "matrix", PROP_FLOAT, PROP_MATRIX);
   RNA_def_property_float_sdna(prop, NULL, "matrix");
@@ -5280,7 +5280,7 @@ static void def_fn_combsep_matrix(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 
-static void def_fn_matrix_4x4_math(StructRNA *srna)
+static void def_fn_matrix_math(StructRNA *srna)
 {
   PropertyRNA *prop;
 

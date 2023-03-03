@@ -7,7 +7,7 @@
 #include "UI_interface.h"
 #include "UI_resources.h"
 
-namespace blender::nodes::node_fn_matrix4x4_math_cc {
+namespace blender::nodes::node_fn_matrix_math_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -88,15 +88,15 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
   builder.set_matching_fn(fn);
 }
 
-}  // namespace blender::nodes::node_fn_matrix4x4_math_cc
+}  // namespace blender::nodes::node_fn_matrix_math_cc
 
-void register_node_type_fn_matrix_4x4_math(void)
+void register_node_type_fn_matrix_math(void)
 {
-  namespace file_ns = blender::nodes::node_fn_matrix4x4_math_cc;
+  namespace file_ns = blender::nodes::node_fn_matrix_math_cc;
 
   static bNodeType ntype;
 
-  fn_node_type_base(&ntype, FN_NODE_MATRIX_4X4_MATH, "4x4 Matrix Math", NODE_CLASS_CONVERTER);
+  fn_node_type_base(&ntype, FN_NODE_MATRIX_MATH, "Matrix Math", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::node_declare;
   ntype.updatefunc = file_ns::node_update;
   ntype.initfunc = file_ns::node_init;
