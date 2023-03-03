@@ -1279,6 +1279,21 @@ void GHOST_GetVulkanBackbuffer(GHOST_WindowHandle windowhandle,
                                void *r_extent,
                                uint32_t *r_fb_id);
 
+#  ifdef VULKAN_H_
+
+
+/**
+ * TODO :: COMMENT
+ **/
+
+extern const char *GHOST_VulkanErrorAsString(int64_t result);
+
+extern void GHOST_VulkanInstanceLoad(void *r_instance);
+
+extern void GHOST_VulkanInstanceUnload();
+
+
+#endif
 #endif
 
 #ifdef __cplusplus

@@ -5,6 +5,7 @@
  */
 
 #include "GHOST_ContextVK.h"
+#include "GHOST_C-api.h"
 
 #ifdef _WIN32
 #  include <vulkan/vulkan_win32.h>
@@ -164,6 +165,8 @@ GHOST_ContextVK::~GHOST_ContextVK()
   if (m_surface != VK_NULL_HANDLE) {
     vkDestroySurfaceKHR(m_instance, m_surface, NULL);
   }
+
+   GHOST_VulkanInstanceUnload();
   if (m_instance != VK_NULL_HANDLE) {
     vkDestroyInstance(m_instance, NULL);
   }
@@ -868,6 +871,8 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
   vector<const char *> extensions_device;
   vector<const char *> extensions_enabled;
 
+  requireExtension(extensions_available, extensions_enabled, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+
   if (use_window_surface) {
     const char *native_surface_extension_name = getPlatformSpecificSurfaceExtension();
 
@@ -901,6 +906,8 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
   create_info.ppEnabledExtensionNames = extensions_enabled.data();
 
   VK_CHECK(vkCreateInstance(&create_info, NULL, &m_instance));
+
+  GHOST_VulkanInstanceLoad(m_instance);
 
   if (use_window_surface) {
 #ifdef _WIN32
