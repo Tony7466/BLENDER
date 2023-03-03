@@ -1,4 +1,4 @@
-#pragma BLENDER_REQUIRE(common_view_lib.glsl)
+f#pragma BLENDER_REQUIRE(common_view_lib.glsl)
 
 /* Two variants, split pass, generates either 2 triangles or 6 triangles depending on input
  * geometry manifold type */
@@ -82,17 +82,17 @@ void main()
   vData[3].pos = vertex_fetch_attribute(input_base_vertex_id + 3, pos, vec3);
 
   /* Calculate front/back Positions. */
-  vData[0].frontPosition = point_object_to_ndc(vData[0].pos);
-  vData[0].backPosition = point_object_to_ndc(vData[0].pos + lightDirection * lightDistance);
+  vData[0].frontPosition = point_object_to_homogenous(vData[0].pos);
+  vData[0].backPosition = point_object_to_homogenous(vData[0].pos + lightDirection * lightDistance);
 
-  vData[1].frontPosition = point_object_to_ndc(vData[1].pos);
-  vData[1].backPosition = point_object_to_ndc(vData[1].pos + lightDirection * lightDistance);
+  vData[1].frontPosition = point_object_to_homogenous(vData[1].pos);
+  vData[1].backPosition = point_object_to_homogenous(vData[1].pos + lightDirection * lightDistance);
 
-  vData[2].frontPosition = point_object_to_ndc(vData[2].pos);
-  vData[2].backPosition = point_object_to_ndc(vData[2].pos + lightDirection * lightDistance);
+  vData[2].frontPosition = point_object_to_homogenous(vData[2].pos);
+  vData[2].backPosition = point_object_to_homogenous(vData[2].pos + lightDirection * lightDistance);
 
-  vData[3].frontPosition = point_object_to_ndc(vData[3].pos);
-  vData[3].backPosition = point_object_to_ndc(vData[3].pos + lightDirection * lightDistance);
+  vData[3].frontPosition = point_object_to_homogenous(vData[3].pos);
+  vData[3].backPosition = point_object_to_homogenous(vData[3].pos + lightDirection * lightDistance);
 
   /* Geometry shader equivalent path. */
   vec3 v10 = vData[0].pos - vData[1].pos;

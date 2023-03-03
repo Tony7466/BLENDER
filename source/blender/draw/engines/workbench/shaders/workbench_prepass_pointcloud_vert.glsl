@@ -13,7 +13,7 @@ void main()
 
   normal_interp = normalize(normal_world_to_view(normal_interp));
 
-  gl_Position = point_world_to_ndc(world_pos);
+  gl_Position = point_world_to_homogenous(world_pos);
 
   view_clipping_distances(world_pos);
 

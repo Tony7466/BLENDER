@@ -57,7 +57,7 @@ void main()
                               thickness,
                               thick_time);
 
-  gl_Position = point_world_to_ndc(world_pos);
+  gl_Position = point_world_to_homogenous(world_pos);
 
   float hair_rand = integer_noise(hair_get_strand_id());
   vec3 nor = workbench_hair_random_normal(tan, binor, hair_rand);

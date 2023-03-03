@@ -25,7 +25,7 @@ void main()
 #else
   final_pos = (volumeTextureToObject * vec4(final_pos * 0.5 + 0.5, 1.0)).xyz;
 #endif
-  gl_Position = point_object_to_ndc(final_pos);
+  gl_Position = point_object_to_homogenous(final_pos);
 
   PASS_RESOURCE_ID
 }
