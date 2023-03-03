@@ -314,26 +314,6 @@ class NODE_MT_geometry_node_GEO_MATERIAL(Menu):
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
-class NODE_MT_category_GEO_MATRIX(Menu):
-    bl_idname = "NODE_MT_category_GEO_MATRIX"
-    bl_label = "Matrix"
-
-    def draw(self, _context):
-        layout = self.layout
-        node_add_menu.add_node_type(layout, "FunctionNodeCombineMatrix3x3")
-        node_add_menu.add_node_type(layout, "FunctionNodeCombineMatrix4x4")
-        node_add_menu.add_node_type(layout, "FunctionNodeSeparateMatrix3x3")
-        node_add_menu.add_node_type(layout, "FunctionNodeSeparateMatrix4x4")
-        node_add_menu.add_node_type(layout, "FunctionNodeDecomposeMatrix3x3")
-        node_add_menu.add_node_type(layout, "FunctionNodeDecomposeMatrix4x4")
-        node_add_menu.add_node_type(layout, "FunctionNodeMatrix3x3Math")
-        node_add_menu.add_node_type(layout, "FunctionNodeMatrix4x4Math")
-        node_add_menu.add_node_type(layout, "FunctionNodeRotateMatrix3x3")
-        node_add_menu.add_node_type(layout, "FunctionNodeScaleMatrix3x3")
-        node_add_menu.add_node_type(layout, "FunctionNodeTranslateMatrix4x4")
-        node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
-
-
 class NODE_MT_geometry_node_GEO_MESH(Menu):
     bl_idname = "NODE_MT_geometry_node_GEO_MESH"
     bl_label = "Mesh"
@@ -526,6 +506,7 @@ class NODE_MT_category_GEO_UTILITIES(Menu):
         layout.separator()
         layout.menu("NODE_MT_category_GEO_UTILITIES_FIELD")
         layout.menu("NODE_MT_category_GEO_UTILITIES_MATH")
+        layout.menu("NODE_MT_category_GEO_UTILITIES_MATRIX")
         layout.menu("NODE_MT_category_GEO_UTILITIES_ROTATION")
         layout.separator()
         node_add_menu.add_node_type(layout, "FunctionNodeRandomValue")
@@ -570,6 +551,26 @@ class NODE_MT_category_GEO_UTILITIES_MATH(Menu):
         node_add_menu.add_node_type(layout, "ShaderNodeMapRange")
         node_add_menu.add_node_type(layout, "ShaderNodeMath")
         node_add_menu.add_node_type(layout, "ShaderNodeMix")
+        node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
+
+
+class NODE_MT_category_GEO_UTILITIES_MATRIX(Menu):
+    bl_idname = "NODE_MT_category_GEO_UTILITIES_MATRIX"
+    bl_label = "Matrix"
+
+    def draw(self, _context):
+        layout = self.layout
+        node_add_menu.add_node_type(layout, "FunctionNodeCombineMatrix3x3")
+        node_add_menu.add_node_type(layout, "FunctionNodeCombineMatrix4x4")
+        node_add_menu.add_node_type(layout, "FunctionNodeSeparateMatrix3x3")
+        node_add_menu.add_node_type(layout, "FunctionNodeSeparateMatrix4x4")
+        node_add_menu.add_node_type(layout, "FunctionNodeDecomposeMatrix3x3")
+        node_add_menu.add_node_type(layout, "FunctionNodeDecomposeMatrix4x4")
+        node_add_menu.add_node_type(layout, "FunctionNodeMatrix3x3Math")
+        node_add_menu.add_node_type(layout, "FunctionNodeMatrix4x4Math")
+        node_add_menu.add_node_type(layout, "FunctionNodeRotateMatrix3x3")
+        node_add_menu.add_node_type(layout, "FunctionNodeScaleMatrix3x3")
+        node_add_menu.add_node_type(layout, "FunctionNodeTranslateMatrix4x4")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
@@ -649,7 +650,6 @@ class NODE_MT_geometry_node_add_all(Menu):
         layout.separator()
         layout.menu("NODE_MT_geometry_node_GEO_CURVE")
         layout.menu("NODE_MT_geometry_node_GEO_INSTANCE")
-        layout.menu("NODE_MT_category_GEO_MATRIX")
         layout.menu("NODE_MT_geometry_node_GEO_MESH")
         layout.menu("NODE_MT_category_GEO_POINT")
         layout.menu("NODE_MT_category_GEO_VOLUME")
@@ -684,7 +684,6 @@ classes = (
     NODE_MT_geometry_node_GEO_GEOMETRY_OPERATIONS,
     NODE_MT_geometry_node_GEO_GEOMETRY_SAMPLE,
     NODE_MT_geometry_node_GEO_INSTANCE,
-    NODE_MT_category_GEO_MATRIX,
     NODE_MT_geometry_node_GEO_MESH,
     NODE_MT_geometry_node_GEO_MESH_READ,
     NODE_MT_geometry_node_GEO_MESH_SAMPLE,
@@ -703,6 +702,7 @@ classes = (
     NODE_MT_category_GEO_VECTOR,
     NODE_MT_category_GEO_UTILITIES_FIELD,
     NODE_MT_category_GEO_UTILITIES_MATH,
+    NODE_MT_category_GEO_UTILITIES_MATRIX,
     NODE_MT_category_GEO_UTILITIES_ROTATION,
     NODE_MT_category_GEO_GROUP,
     NODE_MT_category_GEO_LAYOUT,
