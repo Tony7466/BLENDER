@@ -13,7 +13,7 @@ NODE_STORAGE_FUNCS(NodeInputMatrix);
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Matrix4x4>(N_("Matrix"));
+  b.add_output<decl::Matrix>(N_("Matrix"));
 };
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)

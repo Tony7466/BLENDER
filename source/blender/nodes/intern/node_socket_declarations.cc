@@ -274,45 +274,45 @@ bNodeSocket &Vector::update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket 
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name #Matrix4x4
+/** \name #Matrix
  * \{ */
 
-bNodeSocket &Matrix4x4::build(bNodeTree &ntree, bNode &node) const
+bNodeSocket &Matrix::build(bNodeTree &ntree, bNode &node) const
 {
   bNodeSocket &socket = *nodeAddStaticSocket(
-      &ntree, &node, in_out, SOCK_MATRIX_4X4, PROP_MATRIX, identifier.c_str(), name.c_str());
+      &ntree, &node, in_out, SOCK_MATRIX, PROP_MATRIX, identifier.c_str(), name.c_str());
   this->set_common_flags(socket);
-  bNodeSocketValueMatrix4x4 &value = *(bNodeSocketValueMatrix4x4 *)socket.default_value;
+  bNodeSocketValueMatrix &value = *(bNodeSocketValueMatrix *)socket.default_value;
   copy_m4_m4(value.value, default_value_.ptr());
   value.min = soft_min_value_;
   value.max = soft_max_value_;
   return socket;
 }
 
-bool Matrix4x4::matches(const bNodeSocket &socket) const
+bool Matrix::matches(const bNodeSocket &socket) const
 {
   if (!this->matches_common_data(socket)) {
     return false;
   }
-  if (socket.type != SOCK_MATRIX_4X4) {
+  if (socket.type != SOCK_MATRIX) {
     return false;
   }
   return true;
 }
 
-bool Matrix4x4::can_connect(const bNodeSocket &socket) const
+bool Matrix::can_connect(const bNodeSocket &socket) const
 {
-  return sockets_can_connect(*this, socket) && socket.type == SOCK_MATRIX_4X4;
+  return sockets_can_connect(*this, socket) && socket.type == SOCK_MATRIX;
 }
 
-bNodeSocket &Matrix4x4::update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket &socket) const
+bNodeSocket &Matrix::update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket &socket) const
 {
-  if (socket.type != SOCK_MATRIX_4X4) {
+  if (socket.type != SOCK_MATRIX) {
     BLI_assert(socket.in_out == in_out);
     return this->build(ntree, node);
   }
   this->set_common_flags(socket);
-  bNodeSocketValueMatrix4x4 &value = *(bNodeSocketValueMatrix4x4 *)socket.default_value;
+  /*bNodeSocketValueMatrix &value = *(bNodeSocketValueMatrix *)socket.default_value;*/
   STRNCPY(socket.name, name.c_str());
   return socket;
 }

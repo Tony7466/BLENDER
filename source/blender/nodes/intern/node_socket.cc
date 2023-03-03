@@ -80,8 +80,8 @@ struct bNodeSocket *node_add_socket_from_template(struct bNodeTree *ntree,
       dval->max = stemp->max;
       break;
     }
-    case SOCK_MATRIX_4X4: {
-      bNodeSocketValueMatrix4x4 *dval = (bNodeSocketValueMatrix4x4 *)sock->default_value;
+    case SOCK_MATRIX: {
+      bNodeSocketValueMatrix *dval = (bNodeSocketValueMatrix *)sock->default_value;
       dval->value[0][0] = stemp->val1;
       dval->value[0][1] = 0.0f;
       dval->value[0][2] = 0.0f;
@@ -374,12 +374,12 @@ void node_socket_init_default_value(bNodeSocket *sock)
       sock->default_value = dval;
       break;
     }
-    case SOCK_MATRIX_4X4: {
+    case SOCK_MATRIX: {
       static float default_value[][4] = {{1.0f, 0.0f, 0.0f, 0.0f},
                                          {0.0f, 1.0f, 0.0f, 0.0f},
                                          {0.0f, 0.0f, 1.0f, 0.0f},
                                          {0.0f, 0.0f, 0.0f, 1.0f}};
-      bNodeSocketValueMatrix4x4 *dval = MEM_cnew<bNodeSocketValueMatrix4x4>(
+      bNodeSocketValueMatrix *dval = MEM_cnew<bNodeSocketValueMatrix>(
           "node socket value vector");
       copy_m4_m4(dval->value, default_value);
       dval->min = -FLT_MAX;
@@ -488,9 +488,9 @@ void node_socket_copy_default_value(bNodeSocket *to, const bNodeSocket *from)
       *toval = *fromval;
       break;
     }
-    case SOCK_MATRIX_4X4: {
-      bNodeSocketValueMatrix4x4 *toval = (bNodeSocketValueMatrix4x4 *)to->default_value;
-      bNodeSocketValueMatrix4x4 *fromval = (bNodeSocketValueMatrix4x4 *)from->default_value;
+    case SOCK_MATRIX: {
+      bNodeSocketValueMatrix *toval = (bNodeSocketValueMatrix *)to->default_value;
+      bNodeSocketValueMatrix *fromval = (bNodeSocketValueMatrix *)from->default_value;
       *toval = *fromval;
       break;
     }
@@ -713,12 +713,12 @@ static bNodeSocketType *make_socket_type_vector(PropertySubType subtype)
   return socktype;
 }
 
-static bNodeSocketType *make_socket_type_matrix4x4()
+static bNodeSocketType *make_socket_type_matrix()
 {
-  bNodeSocketType *socktype = make_standard_socket_type(SOCK_MATRIX_4X4, PROP_MATRIX);
+  bNodeSocketType *socktype = make_standard_socket_type(SOCK_MATRIX, PROP_MATRIX);
   socktype->base_cpp_type = &blender::CPPType::get<blender::float4x4>();
   socktype->get_base_cpp_value = [](const bNodeSocket &socket, void *r_value) {
-    *(blender::float4x4 *)r_value = float4x4(((bNodeSocketValueMatrix4x4 *)socket.default_value)->value);
+    *(blender::float4x4 *)r_value = float4x4(((bNodeSocketValueMatrix *)socket.default_value)->value);
   };
   socktype->geometry_nodes_cpp_type = &blender::CPPType::get<ValueOrField<blender::float4x4>>();
   socktype->get_geometry_nodes_cpp_value = [](const bNodeSocket &socket, void *r_value) {
@@ -863,7 +863,7 @@ void register_standard_node_socket_types()
   nodeRegisterSocketType(make_socket_type_vector(PROP_EULER));
   nodeRegisterSocketType(make_socket_type_vector(PROP_XYZ));
 
-  nodeRegisterSocketType(make_socket_type_matrix4x4());
+  nodeRegisterSocketType(make_socket_type_matrix());
 
   nodeRegisterSocketType(make_socket_type_rgba());
 

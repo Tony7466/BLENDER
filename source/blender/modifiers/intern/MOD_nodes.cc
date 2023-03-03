@@ -419,7 +419,7 @@ static const std::string attribute_name_suffix = "_attribute_name";
  */
 static bool socket_type_has_attribute_toggle(const bNodeSocket &socket)
 {
-  return ELEM(socket.type, SOCK_FLOAT, SOCK_VECTOR, SOCK_BOOLEAN, SOCK_RGBA, SOCK_INT, SOCK_MATRIX_4X4);
+  return ELEM(socket.type, SOCK_FLOAT, SOCK_VECTOR, SOCK_BOOLEAN, SOCK_RGBA, SOCK_INT, SOCK_MATRIX);
 }
 
 /**
@@ -477,8 +477,8 @@ id_property_create_from_socket(const bNodeSocket &socket)
       }
       return property;
     }
-    case SOCK_MATRIX_4X4: {
-      const bNodeSocketValueMatrix4x4 *value = static_cast<const bNodeSocketValueMatrix4x4 *>(
+    case SOCK_MATRIX: {
+      const bNodeSocketValueMatrix *value = static_cast<const bNodeSocketValueMatrix *>(
           socket.default_value);
       const Span<float> default_value_span((float *)value->value, 16);
       auto property = bke::idprop::create(socket.identifier, default_value_span);
@@ -570,7 +570,7 @@ static bool id_property_type_matches_socket(const bNodeSocket &socket, const IDP
       return property.type == IDP_INT;
     case SOCK_VECTOR:
       return property.type == IDP_ARRAY && property.subtype == IDP_FLOAT && property.len == 3;
-    case SOCK_MATRIX_4X4:
+    case SOCK_MATRIX:
       return property.type == IDP_ARRAY && property.subtype == IDP_FLOAT && property.len == 16;
     case SOCK_RGBA:
       return property.type == IDP_ARRAY && property.subtype == IDP_FLOAT && property.len == 4;
@@ -616,7 +616,7 @@ static void init_socket_cpp_value_from_property(const IDProperty &property,
       new (r_value) ValueOrField<float3>(value);
       break;
     }
-    case SOCK_MATRIX_4X4: {
+    case SOCK_MATRIX: {
       float4x4 value;
       copy_m4_m4(value.ptr(), (const float(*)[4])IDP_Array(&property));
       new (r_value) ValueOrField<float4x4>(value);

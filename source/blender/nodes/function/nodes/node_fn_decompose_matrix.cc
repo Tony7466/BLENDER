@@ -11,15 +11,15 @@ namespace blender::nodes::node_fn_decompose_matrix_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  b.add_input<decl::Matrix4x4>(N_("Matrix"));
+  b.add_input<decl::Matrix>(N_("Matrix"));
   b.add_output<decl::Vector>(N_("Translation"));
   b.add_output<decl::Vector>(N_("Rotation"));
   b.add_output<decl::Vector>(N_("Scale"));
 };
 
-class DecomposeMatrix4x4Function : public mf::MultiFunction {
+class DecomposeMatrixFunction : public mf::MultiFunction {
  public:
-  DecomposeMatrix4x4Function()
+  DecomposeMatrixFunction()
   {
     static const mf::Signature signature = []() {
       mf::Signature signature;
@@ -51,7 +51,7 @@ class DecomposeMatrix4x4Function : public mf::MultiFunction {
 
 static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
-  static DecomposeMatrix4x4Function decompose_matrix_fn;
+  static DecomposeMatrixFunction decompose_matrix_fn;
   builder.set_matching_fn(&decompose_matrix_fn);
 }
 

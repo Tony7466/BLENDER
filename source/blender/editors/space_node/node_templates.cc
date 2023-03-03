@@ -381,8 +381,8 @@ static Vector<NodeLinkItem> ui_node_link_items(NodeLinkArg *arg,
       else if (dynamic_cast<const decl::Vector *>(&socket_decl)) {
         item.socket_type = SOCK_VECTOR;
       }
-      else if (dynamic_cast<const decl::Matrix4x4 *>(&socket_decl)) {
-        item.socket_type = SOCK_MATRIX_4X4;
+      else if (dynamic_cast<const decl::Matrix *>(&socket_decl)) {
+        item.socket_type = SOCK_MATRIX;
       }
       else if (dynamic_cast<const decl::Color *>(&socket_decl)) {
         item.socket_type = SOCK_RGBA;
@@ -864,7 +864,7 @@ static void ui_node_draw_input(
     else {
       switch (input.type) {
         case SOCK_VECTOR:
-        case SOCK_MATRIX_4X4:
+        case SOCK_MATRIX:
           uiItemS(sub);
           sub = uiLayoutColumn(sub, true);
           ATTR_FALLTHROUGH;

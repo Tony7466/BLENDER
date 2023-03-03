@@ -22,7 +22,7 @@ std::optional<eCustomDataType> node_data_type_to_custom_data_type(const eNodeSoc
       return CD_PROP_FLOAT;
     case SOCK_VECTOR:
       return CD_PROP_FLOAT3;
-    case SOCK_MATRIX_4X4:
+    case SOCK_MATRIX:
       return CD_PROP_FLOAT4X4;
     case SOCK_RGBA:
       return CD_PROP_COLOR;

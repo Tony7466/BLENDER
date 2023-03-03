@@ -148,8 +148,8 @@ static SocketDeclarationPtr declaration_for_interface_socket(const bNodeSocket &
       dst = std::move(decl);
       break;
     }
-    case SOCK_MATRIX_4X4: {
-      std::unique_ptr<decl::Matrix4x4> decl = std::make_unique<decl::Matrix4x4>();
+    case SOCK_MATRIX: {
+      std::unique_ptr<decl::Matrix> decl = std::make_unique<decl::Matrix>();
       dst = std::move(decl);
       break;
     }

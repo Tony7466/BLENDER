@@ -14,10 +14,10 @@ namespace blender::nodes::node_fn_matrix_math_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  b.add_input<decl::Matrix4x4>(N_("Matrix"));
-  b.add_input<decl::Matrix4x4>(N_("Matrix"), "Matrix_001");
+  b.add_input<decl::Matrix>(N_("Matrix"));
+  b.add_input<decl::Matrix>(N_("Matrix"), "Matrix_001");
   b.add_input<decl::Float>(N_("Scale")).default_value(1.0f);
-  b.add_output<decl::Matrix4x4>(N_("Matrix"));
+  b.add_output<decl::Matrix>(N_("Matrix"));
   b.add_output<decl::Float>(N_("Value"));
 };
 

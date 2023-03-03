@@ -94,18 +94,18 @@ class VectorBuilder : public SocketDeclarationBuilder<Vector> {
   VectorBuilder &compact();
 };
 
-class Matrix4x4Builder;
+class MatrixBuilder;
 
-class Matrix4x4 : public SocketDeclaration {
+class Matrix : public SocketDeclaration {
  private:
   float4x4 default_value_ = float4x4::identity();
   float soft_min_value_ = -FLT_MAX;
   float soft_max_value_ = FLT_MAX;
 
-  friend Matrix4x4Builder;
+  friend MatrixBuilder;
 
  public:
-  using Builder = Matrix4x4Builder;
+  using Builder = MatrixBuilder;
 
   bNodeSocket &build(bNodeTree &ntree, bNode &node) const override;
   bool matches(const bNodeSocket &socket) const override;
@@ -113,11 +113,11 @@ class Matrix4x4 : public SocketDeclaration {
   bool can_connect(const bNodeSocket &socket) const override;
 };
 
-class Matrix4x4Builder : public SocketDeclarationBuilder<Matrix4x4> {
+class MatrixBuilder : public SocketDeclarationBuilder<Matrix> {
  public:
-  Matrix4x4Builder &default_value(const float4x4 &value);
-  Matrix4x4Builder &min(float min);
-  Matrix4x4Builder &max(float max);
+  MatrixBuilder &default_value(const float4x4 &value);
+  MatrixBuilder &min(float min);
+  MatrixBuilder &max(float max);
 };
 
 class BoolBuilder;
@@ -371,22 +371,22 @@ inline VectorBuilder &VectorBuilder::compact()
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name #Matrix4x4Builder Inline Methods
+/** \name #MatrixBuilder Inline Methods
  * \{ */
 
-inline Matrix4x4Builder &Matrix4x4Builder::default_value(const float4x4 &value)
+inline MatrixBuilder &MatrixBuilder::default_value(const float4x4 &value)
 {
   decl_->default_value_ = value;
   return *this;
 }
 
-inline Matrix4x4Builder &Matrix4x4Builder::min(const float min)
+inline MatrixBuilder &MatrixBuilder::min(const float min)
 {
   decl_->soft_min_value_ = min;
   return *this;
 }
 
-inline Matrix4x4Builder &Matrix4x4Builder::max(const float max)
+inline MatrixBuilder &MatrixBuilder::max(const float max)
 {
   decl_->soft_max_value_ = max;
   return *this;

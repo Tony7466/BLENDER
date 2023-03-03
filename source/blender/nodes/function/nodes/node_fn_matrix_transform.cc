@@ -12,7 +12,7 @@ namespace blender::nodes::node_fn_matrix_transform_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  b.add_input<decl::Matrix4x4>(N_("Matrix"));
+  b.add_input<decl::Matrix>(N_("Matrix"));
   b.add_input<decl::Vector>(N_("Vector"));
   b.add_output<decl::Vector>(N_("Vector"));
 };

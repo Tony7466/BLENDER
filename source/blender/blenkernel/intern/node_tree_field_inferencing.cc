@@ -20,7 +20,7 @@ using nodes::SocketDeclaration;
 
 static bool is_field_socket_type(eNodeSocketDatatype type)
 {
-  return ELEM(type, SOCK_FLOAT, SOCK_INT, SOCK_BOOLEAN, SOCK_VECTOR, SOCK_RGBA, SOCK_MATRIX_4X4);
+  return ELEM(type, SOCK_FLOAT, SOCK_INT, SOCK_BOOLEAN, SOCK_VECTOR, SOCK_RGBA, SOCK_MATRIX);
 }
 
 static bool is_field_socket_type(const bNodeSocket &socket)

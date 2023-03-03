@@ -62,7 +62,7 @@ static const EnumPropertyItem node_socket_data_type_items[] = {
     {SOCK_INT, "INT", 0, "Integer", ""},
     {SOCK_BOOLEAN, "BOOLEAN", 0, "Boolean", ""},
     {SOCK_VECTOR, "VECTOR", 0, "Vector", ""},
-    {SOCK_MATRIX_4X4, "MATRIX4x4", 0, "4x4 Matrix", ""},
+    {SOCK_MATRIX, "MATRIX", 0, "Matrix", ""},
     {SOCK_STRING, "STRING", 0, "String", ""},
     {SOCK_RGBA, "RGBA", 0, "Color", ""},
     {SOCK_OBJECT, "OBJECT", 0, "Object", ""},
@@ -90,7 +90,7 @@ static const EnumPropertyItem node_socket_type_items[] = {
     {SOCK_INT, "INT", 0, "Integer", ""},
     {SOCK_BOOLEAN, "BOOLEAN", 0, "Boolean", ""},
     {SOCK_VECTOR, "VECTOR", 0, "Vector", ""},
-    {SOCK_MATRIX_4X4, "MATRIX4x4", 0, "4x4 Matrix", ""},
+    {SOCK_MATRIX, "MATRIX", 0, "Matrix", ""},
     {SOCK_STRING, "STRING", 0, "String", ""},
     {SOCK_RGBA, "RGBA", 0, "RGBA", ""},
     {SOCK_SHADER, "SHADER", 0, "Shader", ""},
@@ -3298,11 +3298,11 @@ static void rna_NodeSocketStandard_vector_range(
   *softmax = dval->max;
 }
 
-static void rna_NodeSocketStandard_matrix4x4_range(
+static void rna_NodeSocketStandard_matrix_range(
     PointerRNA *ptr, float *min, float *max, float *softmin, float *softmax)
 {
   bNodeSocket *sock = ptr->data;
-  bNodeSocketValueMatrix4x4 *dval = sock->default_value;
+  bNodeSocketValueMatrix *dval = sock->default_value;
 
   if (dval->max < dval->min) {
     dval->max = dval->min;
@@ -11674,9 +11674,9 @@ static void rna_def_node_socket_vector(BlenderRNA *brna,
   RNA_def_struct_sdna_from(srna, "bNodeSocket", NULL);
 }
 
-static void rna_def_node_socket_matrix4x4(BlenderRNA *brna,
-                                          const char *identifier,
-                                          const char *interface_idname)
+static void rna_def_node_socket_matrix(BlenderRNA *brna,
+                                       const char *identifier,
+                                       const char *interface_idname)
 {
   StructRNA *srna;
   PropertyRNA *prop;
@@ -11698,15 +11698,15 @@ static void rna_def_node_socket_matrix4x4(BlenderRNA *brna,
                                  1.0f};
 
   srna = RNA_def_struct(brna, identifier, "NodeSocketStandard");
-  RNA_def_struct_ui_text(srna, "Matrix 4x4 Node Socket", "4x4 matrix socket of a node");
+  RNA_def_struct_ui_text(srna, "Matrix Node Socket", "Matrix socket of a node");
   RNA_def_struct_sdna(srna, "bNodeSocket");
 
-  RNA_def_struct_sdna_from(srna, "bNodeSocketValueMatrix4x4", "default_value");
+  RNA_def_struct_sdna_from(srna, "bNodeSocketValueMatrix", "default_value");
 
   prop = RNA_def_property(srna, "default_value", PROP_FLOAT, PROP_MATRIX);
   RNA_def_property_float_sdna(prop, NULL, "value");
   RNA_def_property_float_array_default(prop, value_default);
-  RNA_def_property_float_funcs(prop, NULL, NULL, "rna_NodeSocketStandard_matrix4x4_range");
+  RNA_def_property_float_funcs(prop, NULL, NULL, "rna_NodeSocketStandard_matrix_range");
   RNA_def_property_ui_text(prop, "Default Value", "Input value used for unconnected socket");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeSocketStandard_value_update");
   RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
@@ -11715,15 +11715,15 @@ static void rna_def_node_socket_matrix4x4(BlenderRNA *brna,
 
   /* socket interface */
   srna = RNA_def_struct(brna, interface_idname, "NodeSocketInterfaceStandard");
-  RNA_def_struct_ui_text(srna, "Matrix 4x4 Node Socket Interface", "4x4 matrix socket of a node");
+  RNA_def_struct_ui_text(srna, "Matrix Node Socket Interface", "Matrix socket of a node");
   RNA_def_struct_sdna(srna, "bNodeSocket");
 
-  RNA_def_struct_sdna_from(srna, "bNodeSocketValueMatrix4x4", "default_value");
+  RNA_def_struct_sdna_from(srna, "bNodeSocketValueMatrix", "default_value");
 
   prop = RNA_def_property(srna, "default_value", PROP_FLOAT, PROP_MATRIX);
   RNA_def_property_float_sdna(prop, NULL, "value");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_float_funcs(prop, NULL, NULL, "rna_NodeSocketStandard_matrix4x4_range");
+  RNA_def_property_float_funcs(prop, NULL, NULL, "rna_NodeSocketStandard_matrix_range");
   RNA_def_property_ui_text(prop, "Default Value", "Input value used for unconnected socket");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeSocketInterface_update");
 
@@ -12183,7 +12183,7 @@ static void rna_def_node_socket_standard_types(BlenderRNA *brna)
   rna_def_node_socket_vector(
       brna, "NodeSocketVectorXYZ", "NodeSocketInterfaceVectorXYZ", PROP_XYZ);
 
-  rna_def_node_socket_matrix4x4(brna, "NodeSocketMatrix4x4", "NodeSocketInterfaceMatrix4x4");
+  rna_def_node_socket_matrix(brna, "NodeSocketMatrix", "NodeSocketInterfaceMatrix");
 
   rna_def_node_socket_color(brna, "NodeSocketColor", "NodeSocketInterfaceColor");
 
