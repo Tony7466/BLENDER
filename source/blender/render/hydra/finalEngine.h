@@ -12,8 +12,8 @@ namespace blender::render::hydra {
 class FinalEngine : public Engine {
 public:
   using Engine::Engine;
-  void sync(BL::Depsgraph &b_depsgraph, BL::Context &b_context, pxr::HdRenderSettingsMap &renderSettings) override;
-  virtual void render(BL::Depsgraph &b_depsgraph);
+  virtual void sync(BL::Depsgraph &b_depsgraph, BL::Context &b_context, pxr::HdRenderSettingsMap &renderSettings) override;
+  virtual void render(BL::Depsgraph &b_depsgraph) override;
 
 protected:
   pxr::GfVec2i get_resolution(BL::RenderSettings b_render);

@@ -3,6 +3,7 @@
 
 #include "BKE_object.h"
 
+#include "blenderSceneDelegate.h"
 #include "object.h"
 #include "mesh.h"
 #include "light.h"
@@ -30,7 +31,7 @@ bool ObjectData::supported(Object *object)
   return false;
 }
 
-std::unique_ptr<ObjectData> ObjectData::init(pxr::HdSceneDelegate *scene_delegate, Object *object)
+std::unique_ptr<ObjectData> ObjectData::init(BlenderSceneDelegate *scene_delegate, Object *object)
 {
   switch (object->type) {
     case OB_MESH:
@@ -50,7 +51,7 @@ std::unique_ptr<ObjectData> ObjectData::init(pxr::HdSceneDelegate *scene_delegat
   return nullptr;
 }
 
-pxr::SdfPath ObjectData::prim_id(pxr::HdSceneDelegate *scene_delegate, Object *object)
+pxr::SdfPath ObjectData::prim_id(BlenderSceneDelegate *scene_delegate, Object *object)
 {
   /* Making id of object in form like O_<pointer in 16 hex digits format>. Example:
    * O_000002073e369608 */
@@ -59,7 +60,7 @@ pxr::SdfPath ObjectData::prim_id(pxr::HdSceneDelegate *scene_delegate, Object *o
   return scene_delegate->GetDelegateID().AppendElementString(str);
 }
 
-ObjectData::ObjectData(pxr::HdSceneDelegate *scene_delegate, Object *object)
+ObjectData::ObjectData(BlenderSceneDelegate *scene_delegate, Object *object)
   : IdData(scene_delegate, (ID *)object)
   , visible(true)
 {

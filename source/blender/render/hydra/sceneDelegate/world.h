@@ -20,10 +20,10 @@ namespace blender::render::hydra {
 
 class WorldData: public IdData {
 public:
-  static std::unique_ptr<WorldData> init(pxr::HdSceneDelegate *scene_delegate, World *world, bContext *context);
-  static pxr::SdfPath prim_id(pxr::HdSceneDelegate *scene_delegate);
+  static std::unique_ptr<WorldData> init(BlenderSceneDelegate *scene_delegate, World *world, bContext *context);
+  static pxr::SdfPath prim_id(BlenderSceneDelegate *scene_delegate);
 
-  WorldData(pxr::HdSceneDelegate *scene_delegate, World *world, bContext *context);
+  WorldData(BlenderSceneDelegate *scene_delegate, World *world, bContext *context);
 
   pxr::GfMatrix4d transform();
 

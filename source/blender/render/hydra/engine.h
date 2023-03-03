@@ -28,6 +28,7 @@ public:
   virtual ~Engine();
 
   virtual void sync(BL::Depsgraph &b_depsgraph, BL::Context &b_context, pxr::HdRenderSettingsMap &renderSettings) = 0;
+  virtual void render(BL::Depsgraph &b_depsgraph) = 0;
 
 protected:
   float getRendererPercentDone();

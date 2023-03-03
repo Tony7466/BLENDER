@@ -12,11 +12,12 @@ using namespace pxr;
 
 namespace blender::render::hydra {
 
-BlenderSceneDelegate::BlenderSceneDelegate(HdRenderIndex* parentIndex, SdfPath const& delegateID)
+BlenderSceneDelegate::BlenderSceneDelegate(HdRenderIndex* parentIndex, SdfPath const& delegateID, BlenderSceneDelegate::EngineType engine_type)
   : HdSceneDelegate(parentIndex, delegateID)
   , depsgraph(nullptr)
   , context(nullptr)
   , view3d(nullptr)
+  , engine_type(engine_type)
 {
 }
 

@@ -12,6 +12,7 @@
 #include "BKE_material.h"
 #include "BKE_lib_id.h"
 
+#include "blenderSceneDelegate.h"
 #include "material.h"
 #include "mtlxHydraAdapter.h"
 
@@ -19,12 +20,12 @@ using namespace pxr;
 
 namespace blender::render::hydra {
 
-std::unique_ptr<MaterialData> MaterialData::init(pxr::HdSceneDelegate *scene_delegate, Material *material)
+std::unique_ptr<MaterialData> MaterialData::init(BlenderSceneDelegate *scene_delegate, Material *material)
 {
   return std::make_unique<MaterialData>(scene_delegate, material);
 }
 
-pxr::SdfPath MaterialData::prim_id(pxr::HdSceneDelegate *scene_delegate, Material *material)
+pxr::SdfPath MaterialData::prim_id(BlenderSceneDelegate *scene_delegate, Material *material)
 {
   /* Making id of material in form like M_<pointer in 16 hex digits format>.
    * Example: M_000002074e812088 */
@@ -33,7 +34,7 @@ pxr::SdfPath MaterialData::prim_id(pxr::HdSceneDelegate *scene_delegate, Materia
   return scene_delegate->GetDelegateID().AppendElementString(str);
 }
 
-MaterialData::MaterialData(pxr::HdSceneDelegate *scene_delegate, Material *material)
+MaterialData::MaterialData(BlenderSceneDelegate *scene_delegate, Material *material)
   : IdData(scene_delegate, (ID *)material)
 {
 }

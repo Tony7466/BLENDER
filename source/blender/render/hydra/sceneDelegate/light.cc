@@ -12,6 +12,7 @@
 #include "BKE_light.h"
 #include "DNA_light_types.h"
 
+#include "blenderSceneDelegate.h"
 #include "light.h"
 
 using namespace pxr;
@@ -19,12 +20,15 @@ using namespace boost::algorithm;
 
 namespace blender::render::hydra {
 
-LightData::LightData(pxr::HdSceneDelegate *scene_delegate, Object *object)
+LightData::LightData(BlenderSceneDelegate *scene_delegate, Object *object)
   : ObjectData(scene_delegate, object)
 {
   Light *light = (Light *)((Object *)id)->data;
 
-  data[HdLightTokens->intensity] = light->energy;
+  data[HdLightTokens->intensity] = scene_delegate->engine_type == BlenderSceneDelegate::EngineType::Preview
+    ? light->energy / 1000
+    : light->energy;
+
   data[HdLightTokens->color] = GfVec3f(light->r, light->g, light->b);
 
   switch (light->type) {

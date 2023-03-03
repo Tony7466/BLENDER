@@ -244,7 +244,7 @@ void ViewportEngine::sync(BL::Depsgraph &b_depsgraph, BL::Context &b_context, Hd
 {
   if (!sceneDelegate) {
     sceneDelegate = std::make_unique<BlenderSceneDelegate>(renderIndex.get(), 
-      SdfPath::AbsoluteRootPath().AppendElementString("scene"));
+      SdfPath::AbsoluteRootPath().AppendElementString("scene"), BlenderSceneDelegate::EngineType::Viewport);
   }
   sceneDelegate->populate((Depsgraph *)b_depsgraph.ptr.data, (bContext *)b_context.ptr.data);
 
@@ -253,7 +253,7 @@ void ViewportEngine::sync(BL::Depsgraph &b_depsgraph, BL::Context &b_context, Hd
   }
 }
 
-void ViewportEngine::viewDraw(BL::Depsgraph &b_depsgraph, BL::Context &b_context)
+void ViewportEngine::render(BL::Depsgraph &b_depsgraph, BL::Context &b_context)
 {
   ViewSettings viewSettings(b_context);
   if (viewSettings.width() * viewSettings.height() == 0) {
@@ -312,6 +312,10 @@ void ViewportEngine::viewDraw(BL::Depsgraph &b_depsgraph, BL::Context &b_context
   else {
     notifyStatus(("Time: " + formattedTime).c_str(), "Rendering Done");
   }
+}
+
+void ViewportEngine::render(BL::Depsgraph &b_depsgraph)
+{
 }
 
 void ViewportEngine::notifyStatus(const string &info, const string &status)

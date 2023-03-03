@@ -3,13 +3,14 @@
 
 #include "BKE_lib_id.h"
 
+#include "blenderSceneDelegate.h"
 #include "id.h"
 
 using namespace pxr;
 
 namespace blender::render::hydra {
 
-IdData::IdData(pxr::HdSceneDelegate *scene_delegate, ID *id)
+IdData::IdData(BlenderSceneDelegate *scene_delegate, ID *id)
   : scene_delegate(scene_delegate)
   , id(id)
 {

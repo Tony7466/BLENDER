@@ -11,9 +11,11 @@
 
 namespace blender::render::hydra {
 
+class BlenderSceneDelegate;
+
 class IdData {
  public:
-  IdData(pxr::HdSceneDelegate *scene_delegate, ID *id);
+  IdData(BlenderSceneDelegate *scene_delegate, ID *id);
   virtual ~IdData() = default;
 
   std::string name();
@@ -32,7 +34,7 @@ class IdData {
   virtual void mark_prim_dirty(DirtyBits dirty_bits) = 0;
 
  protected:
-  pxr::HdSceneDelegate *scene_delegate;
+  BlenderSceneDelegate *scene_delegate;
   ID *id;
 };
 

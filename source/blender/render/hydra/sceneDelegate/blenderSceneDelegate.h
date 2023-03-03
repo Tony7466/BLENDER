@@ -18,7 +18,13 @@ namespace blender::render::hydra {
 
 class BlenderSceneDelegate : public pxr::HdSceneDelegate {
 public:
-  BlenderSceneDelegate(pxr::HdRenderIndex *renderIndex, pxr::SdfPath const &delegateId);
+  enum class EngineType {
+    Viewport = 1,
+    Final,
+    Preview
+  };
+
+  BlenderSceneDelegate(pxr::HdRenderIndex *renderIndex, pxr::SdfPath const &delegateId, BlenderSceneDelegate::EngineType engine_type);
   ~BlenderSceneDelegate() override = default;
 
   void populate(Depsgraph *depsgraph, bContext *context);
@@ -32,6 +38,8 @@ public:
   pxr::SdfPath GetMaterialId(pxr::SdfPath const &rprimId) override;
   pxr::VtValue GetMaterialResource(pxr::SdfPath const &materialId) override;
   bool GetVisible(pxr::SdfPath const &id) override;
+
+  EngineType engine_type;
 
 private:
   ObjectData *object_data(pxr::SdfPath const &id);

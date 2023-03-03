@@ -15,10 +15,10 @@ namespace blender::render::hydra {
 
 class MaterialData: IdData {
  public:
-  static std::unique_ptr<MaterialData> init(pxr::HdSceneDelegate *scene_delegate, Material *material);
-  static pxr::SdfPath prim_id(pxr::HdSceneDelegate *scene_delegate, Material *material);
+  static std::unique_ptr<MaterialData> init(BlenderSceneDelegate *scene_delegate, Material *material);
+  static pxr::SdfPath prim_id(BlenderSceneDelegate *scene_delegate, Material *material);
 
-  MaterialData(pxr::HdSceneDelegate *scene_delegate, Material *material);
+  MaterialData(BlenderSceneDelegate *scene_delegate, Material *material);
 
   pxr::VtValue get_data(pxr::TfToken const &key) override;
   void insert_prim() override;

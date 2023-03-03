@@ -19,10 +19,10 @@ using namespace pxr;
 
 namespace blender::render::hydra {
 
-void FinalEngine::sync(BL::Depsgraph &b_depsgraph, BL::Context &b_context, pxr::HdRenderSettingsMap &renderSettings)
+void FinalEngine::sync(BL::Depsgraph &b_depsgraph, BL::Context &b_context, HdRenderSettingsMap &renderSettings)
 {
   sceneDelegate = std::make_unique<BlenderSceneDelegate>(renderIndex.get(), 
-    SdfPath::AbsoluteRootPath().AppendElementString("scene"));
+    SdfPath::AbsoluteRootPath().AppendElementString("scene"), BlenderSceneDelegate::EngineType::Final);
   sceneDelegate->populate((Depsgraph *)b_depsgraph.ptr.data, (bContext *)b_context.ptr.data);
 
   for (auto const& setting : renderSettings) {

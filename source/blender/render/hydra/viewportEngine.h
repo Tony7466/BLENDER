@@ -33,7 +33,8 @@ class ViewportEngine : public Engine {
 public:
   using Engine::Engine;
   void sync(BL::Depsgraph &b_depsgraph, BL::Context &b_context, pxr::HdRenderSettingsMap &renderSettings) override;
-  void viewDraw(BL::Depsgraph &b_depsgraph, BL::Context &b_context);
+  void render(BL::Depsgraph &b_depsgraph) override;
+  void render(BL::Depsgraph &b_depsgraph, BL::Context &b_context);
 
 private:
   void notifyStatus(const std::string &title, const std::string &info);

@@ -54,6 +54,8 @@ set(SRC
   engine.cc
   finalEngine.h
   finalEngine.cc
+  previewEngine.h
+  previewEngine.cc
   viewportEngine.h
   viewportEngine.cc
   camera.h

@@ -17,10 +17,10 @@ namespace blender::render::hydra {
 class ObjectData: public IdData {
 public:
   static bool supported(Object *object);
-  static std::unique_ptr<ObjectData> init(pxr::HdSceneDelegate *scene_delegate, Object *object);
-  static pxr::SdfPath prim_id(pxr::HdSceneDelegate *scene_delegate, Object *object);
+  static std::unique_ptr<ObjectData> init(BlenderSceneDelegate *scene_delegate, Object *object);
+  static pxr::SdfPath prim_id(BlenderSceneDelegate *scene_delegate, Object *object);
 
-  ObjectData(pxr::HdSceneDelegate *scene_delegate, Object *object);
+  ObjectData(BlenderSceneDelegate *scene_delegate, Object *object);
 
   int type();
   pxr::GfMatrix4d transform();

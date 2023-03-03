@@ -1,13 +1,14 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
+#include "blenderSceneDelegate.h"
 #include "instance.h"
 
 using namespace pxr;
 
 namespace blender::render::hydra {
 
-InstanceData::InstanceData(pxr::HdSceneDelegate *scene_delegate, DupliObject *dupli)
+InstanceData::InstanceData(BlenderSceneDelegate *scene_delegate, DupliObject *dupli)
   : IdData(scene_delegate, (ID *)dupli->ob_data)
   , dupli(dupli)
 {

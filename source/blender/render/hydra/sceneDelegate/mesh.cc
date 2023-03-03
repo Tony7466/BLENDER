@@ -11,14 +11,14 @@
 #include "BKE_object.h"
 #include "BKE_material.h"
 
-
+#include "blenderSceneDelegate.h"
 #include "mesh.h"
 
 using namespace pxr;
 
 namespace blender::render::hydra {
 
-MeshData::MeshData(pxr::HdSceneDelegate *scene_delegate, Object *object)
+MeshData::MeshData(BlenderSceneDelegate *scene_delegate, Object *object)
   : ObjectData(scene_delegate, object)
 {
   if (object->type == OB_MESH && object->mode == OB_MODE_OBJECT &&

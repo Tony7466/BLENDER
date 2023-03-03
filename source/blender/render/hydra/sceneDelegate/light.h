@@ -13,7 +13,7 @@ namespace blender::render::hydra {
 
 class LightData: public ObjectData {
  public:
-  LightData(pxr::HdSceneDelegate *scene_delegate, Object *object);
+  LightData(BlenderSceneDelegate *scene_delegate, Object *object);
 
   pxr::VtValue get_data(pxr::TfToken const &key) override;
   void insert_prim() override;

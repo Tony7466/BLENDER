@@ -11,7 +11,7 @@ namespace blender::render::hydra {
 
 class InstanceData: public IdData {
 public:
-  InstanceData(pxr::HdSceneDelegate *scene_delegate, DupliObject *dupli);
+  InstanceData(BlenderSceneDelegate *scene_delegate, DupliObject *dupli);
 
   int random_id();
 

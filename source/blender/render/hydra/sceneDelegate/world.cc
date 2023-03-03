@@ -22,6 +22,7 @@
 
 #include "glog/logging.h"
 
+#include "blenderSceneDelegate.h"
 #include "world.h"
 #include "../utils.h"
 
@@ -31,18 +32,18 @@ using namespace pxr;
 
 namespace blender::render::hydra {
 
-std::unique_ptr<WorldData> WorldData::init(pxr::HdSceneDelegate *scene_delegate,
+std::unique_ptr<WorldData> WorldData::init(BlenderSceneDelegate *scene_delegate,
                                            World *world, bContext *context)
 {
   return std::make_unique<WorldData>(scene_delegate, world, context);
 }
 
-SdfPath WorldData::prim_id(HdSceneDelegate *scene_delegate)
+SdfPath WorldData::prim_id(BlenderSceneDelegate *scene_delegate)
 {
   return scene_delegate->GetDelegateID().AppendElementString("World");
 }
 
-WorldData::WorldData(pxr::HdSceneDelegate *scene_delegate, World *world, bContext *context)
+WorldData::WorldData(BlenderSceneDelegate *scene_delegate, World *world, bContext *context)
   : IdData(scene_delegate, (ID *)world)
 {
   data[UsdLuxTokens->orientToStageUpAxis] = true;

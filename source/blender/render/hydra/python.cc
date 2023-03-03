@@ -16,6 +16,7 @@
 
 #include "finalEngine.h"
 #include "viewportEngine.h"
+#include "previewEngine.h"
 
 using namespace std;
 
@@ -130,8 +131,12 @@ static PyObject *engine_create_func(PyObject * /*self*/, PyObject *args)
   BL::RenderEngine b_engine(engineptr);
 
   Engine *engine;
+
   if (string(engineType) == "VIEWPORT") {
     engine = new ViewportEngine(b_engine, delegateId);
+  }
+  else if (string(engineType) == "PREVIEW") {
+    engine = new PreviewEngine(b_engine, delegateId);
   }
   else {
     if (b_engine.bl_use_gpu_context()) {
@@ -204,11 +209,12 @@ static PyObject *engine_sync_func(PyObject * /*self*/, PyObject *args)
 static PyObject *engine_render_func(PyObject * /*self*/, PyObject *args)
 {
   PyObject *pyengine, *pydepsgraph;
+
   if (!PyArg_ParseTuple(args, "OO", &pyengine, &pydepsgraph)) {
     Py_RETURN_NONE;
   }
 
-  FinalEngine *engine = (FinalEngine *)PyLong_AsVoidPtr(pyengine);
+  Engine *engine = (Engine *)PyLong_AsVoidPtr(pyengine);
 
   PointerRNA depsgraphptr;
   RNA_pointer_create(NULL, &RNA_Depsgraph, (ID *)PyLong_AsVoidPtr(pydepsgraph), &depsgraphptr);
@@ -241,7 +247,7 @@ static PyObject *engine_view_draw_func(PyObject * /*self*/, PyObject *args)
 
   /* Allow Blender to execute other Python scripts. */
   Py_BEGIN_ALLOW_THREADS
-    engine->viewDraw(b_depsgraph, b_context);
+    engine->render(b_depsgraph, b_context);
   Py_END_ALLOW_THREADS
 
   Py_RETURN_NONE;

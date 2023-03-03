@@ -12,7 +12,7 @@ namespace blender::render::hydra {
 
 class MeshData: public ObjectData {
 public:
-  MeshData(pxr::HdSceneDelegate *scene_delegate, Object *object);
+  MeshData(BlenderSceneDelegate *scene_delegate, Object *object);
 
   pxr::VtValue get_data(pxr::TfToken const &key) override;
 
