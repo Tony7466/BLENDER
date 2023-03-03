@@ -7,13 +7,13 @@ void main()
   vec3 world_pos = point_object_to_world(pos);
   if (isCameraBackground) {
     /* Model matrix converts to view position to avoid jittering (see #91398). */
-    gl_Position = point_view_to_ndc(world_pos);
+    gl_Position = point_view_to_homogenous(world_pos);
     /* Camera background images are not really part of the 3D space.
      * It makes no sense to apply clipping on them. */
     view_clipping_distances_bypass();
   }
   else {
-    gl_Position = point_world_to_ndc(world_pos);
+    gl_Position = point_world_to_homogenous(world_pos);
     view_clipping_distances(world_pos);
   }
 

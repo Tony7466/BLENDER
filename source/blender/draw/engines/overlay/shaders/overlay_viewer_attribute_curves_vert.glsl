@@ -17,7 +17,7 @@ void main()
                               time,
                               thickness,
                               thick_time);
-  gl_Position = point_world_to_ndc(world_pos);
+  gl_Position = point_world_to_homogenous(world_pos);
 
   if (is_point_domain) {
     finalColor = texelFetch(color_tx, hair_get_base_id());

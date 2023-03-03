@@ -42,7 +42,7 @@ void main()
   ls_cell_location = ls_cell_location * 2.0 - 1.0;
 
   vec3 ws_cell_location = (model_mat * vec4(ls_cell_location, 1.0)).xyz;
-  gl_Position = point_world_to_ndc(ws_cell_location);
+  gl_Position = point_world_to_homogenous(ws_cell_location);
   gl_PointSize = sizeVertex * 2.0;
 
   finalColor = color_from_id(color_id);

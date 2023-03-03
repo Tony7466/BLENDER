@@ -64,7 +64,7 @@ float area_ratio_to_stretch(float ratio, float tot_ratio)
 void main()
 {
   vec3 world_pos = point_object_to_world(vec3(pos, 0.0));
-  gl_Position = point_world_to_ndc(world_pos);
+  gl_Position = point_world_to_homogenous(world_pos);
 
 #ifdef STRETCH_ANGLE
   vec2 v1 = angle_to_v2(uv_angles.x * M_PI);

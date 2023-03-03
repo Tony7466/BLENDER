@@ -8,7 +8,7 @@ void main()
   mat4 model_mat = extract_matrix_packed_data(inst_obmat, state_color, bone_color);
 
   vec3 world_pos = (model_mat * vec4(pos, 1.0)).xyz;
-  gl_Position = point_world_to_ndc(world_pos);
+  gl_Position = point_world_to_homogenous(world_pos);
 
   finalColor.rgb = mix(state_color.rgb, bone_color.rgb, 0.5);
   finalColor.a = 1.0;

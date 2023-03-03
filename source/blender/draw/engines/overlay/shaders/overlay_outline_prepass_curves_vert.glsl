@@ -45,7 +45,7 @@ void main()
   vec3 world_pos;
   if (hairThicknessRes > 1) {
     /* Calculate the thickness, thicktime, worldpos taken into account the outline. */
-    float outline_width = point_world_to_ndc(center_wpos).w * 1.25 * sizeViewportInv.y *
+    float outline_width = point_world_to_homogenous (center_wpos).w * 1.25 * sizeViewportInv.y *
                           drw_view.wininv[1][1];
     thickness += outline_width;
     float thick_time = float(gl_VertexID % hairThicknessRes) / float(hairThicknessRes - 1);
@@ -59,7 +59,7 @@ void main()
     world_pos = center_wpos;
   }
 
-  gl_Position = point_world_to_ndc(world_pos);
+  gl_Position = point_world_to_homogenous(world_pos);
 
 #ifdef USE_GEOM
   vert.pos = point_world_to_view(world_pos);

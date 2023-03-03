@@ -30,7 +30,7 @@ void main()
 {
   vec3 world_pos = pointcloud_get_pos();
 
-  gl_Position = point_world_to_ndc(world_pos);
+  gl_Position = point_world_to_homogenous(world_pos);
 
   /* Small bias to always be on top of the geom. */
   gl_Position.z -= 1e-3;

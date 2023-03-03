@@ -8,11 +8,11 @@
   finalColor = vec4(0.0); \
   return;
 
-void output_line(vec2 offset, vec4 color, vec3 out_world_pos, vec4 out_ndc_pos)
+void output_line(vec2 offset, vec4 color, vec3 out_world_pos, vec4 out_hs_pos)
 {
   finalColor = color;
-  gl_Position = out_ndc_pos;
-  gl_Position.xy += offset * out_ndc_pos.w;
+  gl_Position = out_hs_pos;
+  gl_Position.xy += offset * out_hs_pos.w;
   view_clipping_distances(out_world_pos);
 }
 
@@ -23,7 +23,7 @@ void main()
   /* Perform vertex shader for each input primitive. */
   vec3 in_pos[2];
   vec3 world_pos[2];
-  vec4 ndc_pos[2];
+  vec4 hs_pos[2];
   uint vert_flag[2];
 
   /* Input prim is LineList. */
@@ -39,7 +39,7 @@ void main()
     in_pos[i] = vertex_fetch_attribute((input_line_id * 2) + i, pos, vec3).xyz;
     vert_flag[i] = (uint)vertex_fetch_attribute((input_line_id * 2) + i, data, uchar);
     world_pos[i] = point_object_to_world(in_pos[i]);
-    ndc_pos[i] = point_world_to_ndc(world_pos[i]);
+    hs_pos[i] = point_world_to_homogenous(world_pos[i]);
   }
 
   /* Perform Geometry shader equivalent calculation. */
@@ -103,7 +103,7 @@ void main()
                          :
                          vec4(inner_color.rgb, 0.0);
 
-  vec2 v1_2 = (ndc_pos[1].xy / ndc_pos[1].w - ndc_pos[0].xy / ndc_pos[0].w);
+  vec2 v1_2 = (hs_pos[1].xy / hs_pos[1].w - hs_pos[0].xy / hs_pos[0].w);
   vec2 offset = sizeEdge * 4.0 * sizeViewportInv; /* 4.0 is eyeballed */
 
   if (abs(v1_2.x * sizeViewport.x) < abs(v1_2.y * sizeViewport.y)) {
@@ -122,7 +122,7 @@ void main()
         output_line(offset * 2.0,
                     vec4(colorActiveSpline.rgb, 0.0),
                     world_pos[output_prim_vert_id],
-                    ndc_pos[output_prim_vert_id]);
+                    hs_pos[output_prim_vert_id]);
       }
       else {
         DISCARD_VERTEX
@@ -132,19 +132,19 @@ void main()
     case 1: {
       /* draw the outline. */
       output_line(
-          offset, outer_color, world_pos[output_prim_vert_id], ndc_pos[output_prim_vert_id]);
+          offset, outer_color, world_pos[output_prim_vert_id], hs_pos[output_prim_vert_id]);
       break;
     }
     case 2: {
       /* draw the core of the line. */
       output_line(
-          vec2(0.0), inner_color, world_pos[output_prim_vert_id], ndc_pos[output_prim_vert_id]);
+          vec2(0.0), inner_color, world_pos[output_prim_vert_id], hs_pos[output_prim_vert_id]);
       break;
     }
     case 3: {
       /* draw the outline. */
       output_line(
-          -offset, outer_color, world_pos[output_prim_vert_id], ndc_pos[output_prim_vert_id]);
+          -offset, outer_color, world_pos[output_prim_vert_id], hs_pos[output_prim_vert_id]);
       break;
     }
     case 4: {
@@ -153,7 +153,7 @@ void main()
         output_line(offset * -2.0,
                     vec4(colorActiveSpline.rgb, 0.0),
                     world_pos[output_prim_vert_id],
-                    ndc_pos[output_prim_vert_id]);
+                    hs_pos[output_prim_vert_id]);
       }
       break;
     }

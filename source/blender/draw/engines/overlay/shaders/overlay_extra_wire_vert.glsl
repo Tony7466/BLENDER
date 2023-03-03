@@ -10,7 +10,7 @@ vec2 screen_position(vec4 p)
 void main()
 {
   vec3 world_pos = point_object_to_world(pos);
-  gl_Position = point_world_to_ndc(world_pos);
+  gl_Position = point_world_to_homogenous(world_pos);
 
 #ifdef SELECT_EDGES
   /* HACK: to avoid losing sub-pixel object in selections, we add a bit of randomness to the

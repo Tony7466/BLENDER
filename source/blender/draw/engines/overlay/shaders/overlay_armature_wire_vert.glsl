@@ -8,7 +8,7 @@ void main()
   finalColor.a = 1.0;
 
   vec3 world_pos = point_object_to_world(pos);
-  gl_Position = point_world_to_ndc(world_pos);
+  gl_Position = point_world_to_homogenous(world_pos);
 
   edgeStart = edgePos = ((gl_Position.xy / gl_Position.w) * 0.5 + 0.5) * sizeViewport.xy;
 

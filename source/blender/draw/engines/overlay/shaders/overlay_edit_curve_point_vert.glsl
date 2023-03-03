@@ -21,7 +21,7 @@ void main()
   }
 
   vec3 world_pos = point_object_to_world(pos);
-  gl_Position = point_world_to_ndc(world_pos);
+  gl_Position = point_world_to_homogenous(world_pos);
   gl_PointSize = (!is_gpencil) ? sizeVertex * 2.0 : sizeVertexGpencil * 2.0;
   view_clipping_distances(world_pos);
 

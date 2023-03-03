@@ -46,7 +46,7 @@ void main()
         vertex_id_from_index_id(4 * line_prim_id + i), pos, vec3);
     world_pos[i] = point_object_to_world(in_pos);
     view_pos[i] = point_world_to_view(world_pos[i]);
-    gl_pos[i] = point_world_to_ndc(world_pos[i]);
+    gl_pos[i] = point_world_to_homogenous(world_pos[i]);
     gl_pos[i].z -= 1e-3;
   }
 

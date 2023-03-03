@@ -86,7 +86,7 @@ void main()
 
   float facing = dot(wnor, V);
 
-  gl_Position = point_world_to_ndc(wpos);
+  gl_Position = point_world_to_homogenous(wpos);
 
 #ifndef CUSTOM_DEPTH_BIAS
   float facing_ratio = clamp(1.0 - facing * facing, 0.0, 1.0);

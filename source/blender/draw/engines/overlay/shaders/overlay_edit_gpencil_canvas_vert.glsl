@@ -19,7 +19,7 @@ void main()
 
   vec3 world_pos = xAxis * pos.x + yAxis * pos.y + origin;
 
-  gl_Position = point_world_to_ndc(world_pos);
+  gl_Position = point_world_to_homogenous(world_pos);
 
   view_clipping_distances(world_pos);
 

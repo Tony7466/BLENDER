@@ -82,8 +82,8 @@ void main()
 
   vec3 world_pos0 = point_object_to_world(in_pos0);
   vec3 world_pos1 = point_object_to_world(in_pos1);
-  vec4 out_pos0 = point_world_to_ndc(world_pos0);
-  vec4 out_pos1 = point_world_to_ndc(world_pos1);
+  vec4 out_pos0 = point_world_to_homogenous(world_pos0);
+  vec4 out_pos1 = point_world_to_homogenous(world_pos1);
   uvec4 m_data0 = uvec4(in_data0) & uvec4(dataMask);
   uvec4 m_data1 = uvec4(in_data1) & uvec4(dataMask);
 

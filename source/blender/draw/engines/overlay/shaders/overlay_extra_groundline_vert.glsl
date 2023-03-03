@@ -13,7 +13,7 @@ void main()
   float screen_size = mul_project_m4_v3_zfac(p) * sizePixel;
   vec3 world_pos = p + screen_pos * screen_size;
 
-  gl_Position = point_world_to_ndc(world_pos);
+  gl_Position = point_world_to_homogenous(world_pos);
 
   /* Convert to screen position [0..sizeVp]. */
   edgePos = edgeStart = ((gl_Position.xy / gl_Position.w) * 0.5 + 0.5) * sizeViewport.xy;

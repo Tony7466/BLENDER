@@ -61,7 +61,7 @@ void main()
     }
   }
 
-  gl_Position = point_world_to_ndc(world_pos);
+  gl_Position = point_world_to_homogenous(world_pos);
 
   finalColor.a *= (test_occlusion()) ? alpha : 1.0;
 

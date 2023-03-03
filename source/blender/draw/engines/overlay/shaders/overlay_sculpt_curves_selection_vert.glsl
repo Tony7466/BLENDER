@@ -26,7 +26,7 @@ void main()
                               thickness,
                               thick_time);
 
-  gl_Position = point_world_to_ndc(world_pos);
+  gl_Position = point_world_to_homogenous(world_pos);
 
   mask_weight = 1.0 - (selection_opacity - retrieve_selection() * selection_opacity);
 
