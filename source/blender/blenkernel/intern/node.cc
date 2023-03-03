@@ -2065,10 +2065,10 @@ bNode *nodeFindRootParent(bNode *node)
   return parent_iter;
 }
 
-bool nodeIsChildOf(const bNode *parent, const bNode *child)
+bool nodeIsParentAndChild(const bNode *parent, const bNode *child)
 {
-  for (const bNode *parent_iter = child; parent_iter; parent_iter = parent_iter->parent) {
-    if (parent_iter == parent) {
+  for (const bNode *child_iter = child; child_iter; child_iter = child_iter->parent) {
+    if (child_iter == parent) {
       return true;
     }
   }
@@ -2586,15 +2586,10 @@ void nodeFromView(const bNode *node, const float x, const float y, float *rx, fl
   *ry = -mapping_y + y;
 }
 
-bool nodeAttachNodeCheck(const bNode *node, const bNode *parent)
-{
-  return nodeIsChildOf(parent, node);
-}
-
 void nodeAttachNode(bNodeTree *ntree, bNode *node, bNode *parent)
 {
   BLI_assert(parent->type == NODE_FRAME);
-  BLI_assert(nodeAttachNodeCheck(parent, node) == false);
+  BLI_assert(!nodeIsParentAndChild(parent, node));
 
   float locx, locy;
   nodeToView(node, 0.0f, 0.0f, &locx, &locy);
