@@ -2688,6 +2688,12 @@ static void count_multi_input_socket_links(bNodeTree &ntree, SpaceNode &snode)
   }
 }
 
+
+static float frame_node_label_height(const NodeFrame &frame_data)
+{
+  return frame_data.label_size * U.dpi_fac;
+}
+
 #define NODE_FRAME_MARGIN (1.5f * U.widget_unit)
 
 /* XXX Does a bounding box update by iterating over all children.
@@ -2696,13 +2702,13 @@ static void count_multi_input_socket_links(bNodeTree &ntree, SpaceNode &snode)
 static void frame_node_prepare_for_draw(bNode &node, Span<bNode *> nodes)
 {
   NodeFrame *data = (NodeFrame *)node.storage;
-  const float font_size = data->label_size;
 
   const float margin = NODE_FRAME_MARGIN;
-  /* This is a reasonable heuristic for the margin at the top of the frame to avoid the
-   * node label clipping under the frame's child nodes. */
   const float has_label = node.label[0] != '\0';
-  const float margin_top = margin + (has_label ? (margin * font_size / 24.0f) : 0.0f);
+
+  const float label_height = frame_node_label_height(*data);
+  /* Add an additional 25 % to account for the descenders. This works well in most cases. */
+  const float margin_top = 0.5f * margin + (has_label ? 1.25f * label_height : 0.5f * margin);
 
   /* Initialize rect from current frame size. */
   rctf rect;
@@ -2829,21 +2835,18 @@ static void frame_node_draw_label(TreeDrawContext &tree_draw_ctx,
   UI_GetThemeColorBlendShade3ubv(TH_TEXT, color_id, 0.4f, 10, color);
   BLF_color3ubv(fontid, color);
 
-  const float margin = float(NODE_DY / 4);
+  const float margin = NODE_FRAME_MARGIN;
   const float width = BLF_width(fontid, label, sizeof(label));
-  const float ascender = BLF_ascender(fontid);
-  const int label_height = ((margin / aspect) + (ascender * aspect));
+  const int label_height = frame_node_label_height(*data);
 
-  /* 'x' doesn't need aspect correction */
   const rctf &rct = node.runtime->totr;
-  /* XXX a bit hacky, should use separate align values for x and y. */
-  float x = BLI_rctf_cent_x(&rct) - (0.5f * width);
-  float y = rct.ymax - label_height - (0.5f * NODE_FRAME_MARGIN);
+  const float label_x = BLI_rctf_cent_x(&rct) - (0.5f * width);
+  const float label_y = rct.ymax - label_height - (0.5f * margin);
 
-  /* label */
+  /* Label */
   const bool has_label = node.label[0] != '\0';
   if (has_label) {
-    BLF_position(fontid, x, y, 0);
+    BLF_position(fontid, label_x, label_y, 0);
     BLF_draw(fontid, label, sizeof(label));
   }
 
@@ -2854,11 +2857,10 @@ static void frame_node_draw_label(TreeDrawContext &tree_draw_ctx,
     const float line_spacing = (line_height_max * aspect);
     const float line_width = (BLI_rctf_size_x(&rct) - 2 * margin) / aspect;
 
-    /* 'x' doesn't need aspect correction. */
-    x = rct.xmin + margin;
-    y = rct.ymax - label_height - (has_label ? line_spacing : 0);
+    const float x = rct.xmin + margin;
+    float y = rct.ymax - label_height - (has_label ? line_spacing + margin : 0);
 
-    int y_min = y + ((margin * 2) - (y - rct.ymin));
+    int y_min = rct.ymin + margin;
 
     BLF_enable(fontid, BLF_CLIPPING | BLF_WORD_WRAP);
     BLF_clipping(fontid, rct.xmin, rct.ymin + margin, rct.xmax, rct.ymax);
