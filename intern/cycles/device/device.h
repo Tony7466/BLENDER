@@ -216,6 +216,16 @@ class Device {
   {
     return 0;
   }
+  // FRL_CGR END
+
+  // FRL_CGR BEGIN
+  virtual void push_marker(const string) {    
+  }
+
+  virtual void pop_marker() {    
+  }
+
+  // FRL_CGR END
 
   /* Called after kernel texture setup, and prior to integrator state setup. */
   virtual void optimize_for_scene(Scene * /*scene*/)
@@ -308,6 +318,31 @@ class Device {
   static vector<DeviceInfo> oneapi_devices;
   static uint devices_initialized_mask;
 };
+
+// FRL_CGR
+class ScopedMarker {
+private:
+  Device *_device;
+public:
+  ScopedMarker(Device *p_device, const string name) {
+    _device = p_device;
+    _device->push_marker(name.c_str() + std::to_string(p_device->info.num));
+  }
+  
+  ~ScopedMarker() {
+    _device->pop_marker();
+  }
+};
+
+#define USE_SCOPED_MARKER
+#ifndef SCOPED_MARKER
+#   ifdef USE_SCOPED_MARKER
+#      define SCOPED_MARKER(device, msg) ScopedMarker scoped_marker(device, msg)
+#   else
+#      define SCOPED_MARKER(device, msg)
+#   endif
+#endif
+// FRL_CGR
 
 /* Device, which is GPU, with some common functionality for GPU backends */
 class GPUDevice : public Device {

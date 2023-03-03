@@ -66,10 +66,22 @@ typedef void* DynamicLibrary;
         _LIBRARY_FIND_CHECKED(nvrtc_lib, name)
 #define NVRTC_LIBRARY_FIND(name) _LIBRARY_FIND(nvrtc_lib, name)
 
+// FRL_CGR
+#define NVTX_LIBRARY_FIND_CHECKED(name) \
+        _LIBRARY_FIND_CHECKED(nvrtc_lib, name)
+#define NVTX_LIBRARY_FIND(name) _LIBRARY_FIND(nvtx_lib, name)
+// FRL_CGR
+
 static DynamicLibrary cuda_lib;
 static DynamicLibrary nvrtc_lib;
+static DynamicLibrary nvtx_lib;
 
 /* Function definitions. */
+// FRL_CGR
+tnvtxRangePushA *nvtxRangePushA;
+tnvtxRangePop *nvtxRangePop;
+// FRL_CGR
+
 tcuGetErrorString *cuGetErrorString;
 tcuGetErrorName *cuGetErrorName;
 tcuInit *cuInit;
@@ -611,6 +623,16 @@ static int cuewCudaInit(void) {
   return result;
 }
 
+// FRL_CGR
+static void cuewExitNvtx(void) {
+  if (nvrtc_lib != NULL) {
+    /*  Ignore errors. */
+    dynamic_library_close(nvtx_lib);
+    nvtx_lib = NULL;
+  }
+}
+// FRL_CGR
+
 static void cuewExitNvrtc(void) {
   if (nvrtc_lib != NULL) {
     /*  Ignore errors. */
@@ -681,6 +703,56 @@ static int cuewNvrtcInit(void) {
   return result;
 }
 
+// FRL_CGR
+static int cuewNvtxInit(void) {
+  /* Library paths. */
+#ifdef _WIN32
+  /* Expected in c:/windows/system or similar, no path needed. */
+  const char *nvtc_paths[] = {"nvToolsExt64_101_0.dll",
+                               NULL};
+#elif defined(__APPLE__)
+  /* Default installation path. */
+  const char *nvtx_paths[] = {"/usr/local/cuda/lib/libnvToolsExt.dylib", NULL};
+#else
+  const char *nvtx_paths[] = {"libnvToolsExt.so",
+#  if defined(__x86_64__) || defined(_M_X64)
+                               "/usr/local/cuda/lib64/libnvToolsExt.so",
+#else
+                               "/usr/local/cuda/lib/libnvToolsExt.so",
+#endif
+                               NULL};
+#endif
+  static int nvtx_initialized = 0;
+  static int result = 0;
+  int error;
+
+  if (nvtx_initialized) {
+    return result;
+  }
+
+  nvtx_initialized = 1;
+
+  error = atexit(cuewExitNvtx);
+  if (error) {
+    result = CUEW_ERROR_ATEXIT_FAILED;
+    return result;
+  }
+
+  /* Load library. */
+  nvtx_lib = dynamic_library_open_find(nvtx_paths);
+
+  if (nvtx_lib == NULL) {
+    result = CUEW_ERROR_OPEN_FAILED;
+    return result;
+  }
+
+  NVTX_LIBRARY_FIND(nvtxRangePushA);
+  NVTX_LIBRARY_FIND(nvtxRangePop);
+
+  result = CUEW_SUCCESS;
+  return result;
+}
+// FRL_CGR
 
 int cuewInit(cuuint32_t flags) {
   int result = CUEW_SUCCESS;
@@ -698,6 +770,14 @@ int cuewInit(cuuint32_t flags) {
       return result;
     }
   }
+// FRL_CGR
+  if(flags & CUEW_INIT_NVTX) {
+    result = cuewNvtxInit();
+    if(result != CUEW_SUCCESS) {
+      return result;
+    }
+  }
+// FRL_CGR
 
   return result;
 }

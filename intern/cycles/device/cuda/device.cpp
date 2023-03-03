@@ -27,7 +27,13 @@ bool device_cuda_init()
     return result;
 
   initialized = true;
-  int cuew_result = cuewInit(CUEW_INIT_CUDA);
+  // FRL_CGR
+  int flags = CUEW_INIT_CUDA;
+#ifdef USE_SCOPED_MARKER
+  flags |= CUEW_INIT_NVTX;
+#endif
+  int cuew_result = cuewInit(flags);
+  // FRL_CGR
   if (cuew_result == CUEW_SUCCESS) {
     VLOG_INFO << "CUEW initialization succeeded";
     if (CUDADevice::have_precompiled_kernels()) {

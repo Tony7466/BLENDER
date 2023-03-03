@@ -702,6 +702,7 @@ void GeometryManager::device_update_attributes(Device *device,
                                                Scene *scene,
                                                Progress &progress)
 {
+  SCOPED_MARKER(device, "GeometryManager::device_update_attributes");
   progress.set_status("Updating Mesh", "Computing attributes");
 
   /* gather per mesh requested attributes. as meshes may have multiple
@@ -1042,11 +1043,12 @@ void GeometryManager::geom_calc_offset(Scene *scene, BVHLayout bvh_layout)
   }
 }
 
-void GeometryManager::device_update_mesh(Device *,
+void GeometryManager::device_update_mesh(Device *device,
                                          DeviceScene *dscene,
                                          Scene *scene,
                                          Progress &progress)
 {
+  SCOPED_MARKER(device, "GeometryManager::device_update_mesh");
   /* Count. */
   size_t vert_size = 0;
   size_t tri_size = 0;
@@ -1769,6 +1771,7 @@ void GeometryManager::device_update(Device *device,
                                     Scene *scene,
                                     Progress &progress)
 {
+  SCOPED_MARKER(device, "GeometryManager::device_update");
   if (!need_update())
     return;
 
@@ -1784,7 +1787,8 @@ void GeometryManager::device_update(Device *device,
         scene->update_stats->geometry.times.add_entry({"device_update (normals)", time});
       }
     });
-
+    {
+    SCOPED_MARKER(device, "Update face and vertex normals");
     foreach (Geometry *geom, scene->geometry) {
       if (geom->is_modified()) {
         if ((geom->geometry_type == Geometry::MESH || geom->geometry_type == Geometry::VOLUME)) {
@@ -1820,6 +1824,7 @@ void GeometryManager::device_update(Device *device,
         }
       }
     }
+    }
   }
 
   if (progress.get_cancel()) {
@@ -1828,6 +1833,7 @@ void GeometryManager::device_update(Device *device,
 
   /* Tessellate meshes that are using subdivision */
   if (total_tess_needed) {
+    SCOPED_MARKER(device, "Tesselate");
     scoped_callback_timer timer([scene](double time) {
       if (scene->update_stats) {
         scene->update_stats->geometry.times.add_entry(
@@ -1877,6 +1883,7 @@ void GeometryManager::device_update(Device *device,
   /* Update images needed for true displacement. */
   bool old_need_object_flags_update = false;
   if (true_displacement_used || curve_shadow_transparency_used) {
+    SCOPED_MARKER(device, "Update displacement images");
     scoped_callback_timer timer([scene](double time) {
       if (scene->update_stats) {
         scene->update_stats->geometry.times.add_entry(
@@ -1925,6 +1932,7 @@ void GeometryManager::device_update(Device *device,
   size_t num_bvh = 0;
 
   {
+    SCOPED_MARKER(device, "displace and shadow transp");
     /* Copy constant data needed by shader evaluation. */
     device->const_copy_to("data", &dscene->data, sizeof(dscene->data));
 
@@ -1990,6 +1998,7 @@ void GeometryManager::device_update(Device *device,
   bool need_update_scene_bvh = (scene->bvh == nullptr ||
                                 (update_flags & (TRANSFORM_MODIFIED | VISIBILITY_MODIFIED)) != 0);
   {
+    SCOPED_MARKER(device, "Build Object BVH");
     scoped_callback_timer timer([scene](double time) {
       if (scene->update_stats) {
         scene->update_stats->geometry.times.add_entry({"device_update (build object BVHs)", time});
@@ -2025,6 +2034,7 @@ void GeometryManager::device_update(Device *device,
 
   /* Update objects. */
   {
+    SCOPED_MARKER(device, "compute bounds");
     scoped_callback_timer timer([scene](double time) {
       if (scene->update_stats) {
         scene->update_stats->geometry.times.add_entry({"device_update (compute bounds)", time});
@@ -2040,6 +2050,7 @@ void GeometryManager::device_update(Device *device,
   }
 
   if (need_update_scene_bvh) {
+    SCOPED_MARKER(device, "update scene BVH");
     scoped_callback_timer timer([scene](double time) {
       if (scene->update_stats) {
         scene->update_stats->geometry.times.add_entry({"device_update (build scene BVH)", time});
@@ -2123,6 +2134,7 @@ void GeometryManager::device_update(Device *device,
 
 void GeometryManager::device_free(Device *device, DeviceScene *dscene, bool force_free)
 {
+  SCOPED_MARKER(device, "GeometryManager::device_free");
   dscene->bvh_nodes.free_if_need_realloc(force_free);
   dscene->bvh_leaf_nodes.free_if_need_realloc(force_free);
   dscene->object_node.free_if_need_realloc(force_free);

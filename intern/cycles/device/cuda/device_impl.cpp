@@ -987,7 +987,15 @@ int CUDADevice::get_device_default_attribute(CUdevice_attribute attribute, int d
   }
   return value;
 }
+// FRL_CGR
+void CUDADevice::push_marker(const string name) {
+  nvtxRangePushA(name.c_str());
+}
 
+void CUDADevice::pop_marker() {
+  nvtxRangePop();
+}
+// FRL_CGR
 CCL_NAMESPACE_END
 
 #endif
