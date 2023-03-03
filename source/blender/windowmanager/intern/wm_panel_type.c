@@ -46,6 +46,7 @@ bool WM_paneltype_add(PanelType *pt)
   BLI_ghash_insert(g_paneltypes_hash, pt->idname, pt);
   return true;
 }
+
 void WM_paneltype_subpanel_add(PanelType *pt, PanelType *parent, bool use_order)
 {
   pt->parent = parent;
@@ -64,18 +65,7 @@ void WM_paneltype_subpanel_add(PanelType *pt, PanelType *parent, bool use_order)
     else {
       BLI_addtail(&parent->children, BLI_genericNodeN(pt));
     }
-
-    BLI_addtail(&art->paneltypes, pt);
   }
-
-  {
-    const char *owner_id = RNA_struct_state_owner_get();
-    if (owner_id) {
-      BLI_strncpy(pt->owner_id, owner_id, sizeof(pt->owner_id));
-    }
-  }
-
-  WM_paneltype_add(pt);
 }
 
 void WM_paneltype_remove(PanelType *pt)
