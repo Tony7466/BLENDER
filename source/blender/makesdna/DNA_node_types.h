@@ -1919,6 +1919,12 @@ typedef enum NodeMatrixMathOperation {
   //NODE_MATRIX_MATH_IS_ORTHOGONAL = 10,
 } NodeMatrixMathOperation;
 
+typedef enum NodeMatrixTransformVectorMode {
+  NODE_MATRIX_TRANSFORM_POINT = 0,
+  NODE_MATRIX_TRANSFORM_DIRECTION = 1,
+  NODE_MATRIX_TRANSFORM_NORMAL = 2,
+} NodeMatrixTransformVectorMode;
+
 typedef enum NodeBooleanMathOperation {
   NODE_BOOLEAN_MATH_AND = 0,
   NODE_BOOLEAN_MATH_OR = 1,

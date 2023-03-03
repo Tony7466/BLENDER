@@ -308,6 +308,13 @@ const EnumPropertyItem rna_enum_node_matrix_math_items[] = {
     {0, NULL, 0, NULL, NULL},
 };
 
+const EnumPropertyItem rna_enum_node_matrix_transform_vector_mode_items[] = {
+    {NODE_MATRIX_TRANSFORM_POINT, "POINT", 0, "Point", "Apply translation, rotation and scale"},
+    {NODE_MATRIX_TRANSFORM_DIRECTION, "DIRECTION", 0, "Direction", "Apply only rotation and scale"},
+    {NODE_MATRIX_TRANSFORM_NORMAL, "NORMAL", 0, "Normal", "Apply inverse transpose of the matrix for surface normals"},
+    {0, NULL, 0, NULL, NULL},
+};
+
 const EnumPropertyItem rna_enum_node_boolean_math_items[] = {
     {NODE_BOOLEAN_MATH_AND, "AND", 0, "And", "True when both inputs are true"},
     {NODE_BOOLEAN_MATH_OR, "OR", 0, "Or", "True when at least one input is true"},
@@ -5288,6 +5295,17 @@ static void def_fn_matrix_math(StructRNA *srna)
   RNA_def_property_enum_sdna(prop, NULL, "custom1");
   RNA_def_property_enum_items(prop, rna_enum_node_matrix_math_items);
   RNA_def_property_ui_text(prop, "Operation", "");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+}
+
+static void def_fn_matrix_transform(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  prop = RNA_def_property(srna, "vector_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "custom1");
+  RNA_def_property_enum_items(prop, rna_enum_node_matrix_transform_vector_mode_items);
+  RNA_def_property_ui_text(prop, "Vector Mode", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 

@@ -564,6 +564,7 @@ class NODE_MT_category_GEO_UTILITIES_MATRIX(Menu):
         node_add_menu.add_node_type(layout, "FunctionNodeSeparateMatrix")
         node_add_menu.add_node_type(layout, "FunctionNodeDecomposeMatrix")
         node_add_menu.add_node_type(layout, "FunctionNodeMatrixMath")
+        node_add_menu.add_node_type(layout, "FunctionNodeMatrixTransform")
         node_add_menu.add_node_type(layout, "FunctionNodeRotateMatrix")
         node_add_menu.add_node_type(layout, "FunctionNodeScaleMatrix")
         node_add_menu.add_node_type(layout, "FunctionNodeTranslateMatrix")

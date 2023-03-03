@@ -35,6 +35,7 @@ set(SRC
   nodes/node_fn_input_string.cc
   nodes/node_fn_input_vector.cc
   nodes/node_fn_matrix_math.cc
+  nodes/node_fn_matrix_transform.cc
   nodes/node_fn_random_value.cc
   nodes/node_fn_replace_string.cc
   nodes/node_fn_rotate_euler.cc
