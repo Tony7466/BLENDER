@@ -603,7 +603,7 @@ static const char *info_statusbar_string(Main *bmain,
 {
   char formatted_mem[BLI_STR_FORMAT_INT64_BYTE_UNIT_SIZE];
   size_t ofs = 0;
-  static char info[512];
+  static char info[256];
   int len = sizeof(info);
 
   info[0] = '\0';
@@ -659,7 +659,7 @@ static const char *info_statusbar_string(Main *bmain,
     const float duration_secs = duration - (duration_mins * 60);
     ofs += BLI_snprintf_rlen(info + ofs,
                              len - ofs,
-                             TIP_("Frame Count: %i Duration: %i:%05.2f"),
+                             TIP_("Frame Count: %i | Duration: %i:%05.2f"),
                              frame_count,
                              duration_mins,
                              duration_secs);
