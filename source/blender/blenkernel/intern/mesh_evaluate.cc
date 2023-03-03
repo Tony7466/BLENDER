@@ -90,7 +90,7 @@ void BKE_mesh_calc_poly_center(const struct MPoly *poly,
 
 namespace blender::bke::mesh {
 
-float poly_area_calc(Span<float3> vert_positions, Span<MLoop> poly_loops)
+float poly_area_calc(const Span<float3> vert_positions, const Span<MLoop> poly_loops)
 {
   if (poly_loops.size() == 3) {
     return area_tri_v3(vert_positions[poly_loops[0].v],

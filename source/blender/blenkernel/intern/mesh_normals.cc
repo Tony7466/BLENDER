@@ -821,9 +821,9 @@ static void mesh_edges_sharp_tag(const Span<MPoly> polys,
   }
 }
 
-void edges_sharp_from_angle_set(Span<MPoly> polys,
-                                Span<MLoop> loops,
-                                Span<float3> poly_normals,
+void edges_sharp_from_angle_set(const Span<MPoly> polys,
+                                const Span<MLoop> loops,
+                                const Span<float3> poly_normals,
                                 const float split_angle,
                                 MutableSpan<bool> sharp_edges)
 {
@@ -1391,13 +1391,13 @@ static void loop_split_generator(TaskPool *pool, LoopSplitTaskDataCommon *common
   }
 }
 
-void normals_calc_loop(Span<float3> vert_positions,
-                       Span<MEdge> edges,
-                       Span<MPoly> polys,
-                       Span<MLoop> loops,
-                       Span<int> loop_to_poly_map,
-                       Span<float3> vert_normals,
-                       Span<float3> poly_normals,
+void normals_calc_loop(const Span<float3> vert_positions,
+                       const Span<MEdge> edges,
+                       const Span<MPoly> polys,
+                       const Span<MLoop> loops,
+                       const Span<int> loop_to_poly_map,
+                       const Span<float3> vert_normals,
+                       const Span<float3> poly_normals,
                        const bool *sharp_edges,
                        bool use_split_normals,
                        float split_angle,
@@ -1775,12 +1775,12 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
   BKE_lnor_spacearr_free(&lnors_spacearr);
 }
 
-void normals_loop_custom_set(Span<float3> vert_positions,
-                             Span<MEdge> edges,
-                             Span<MPoly> polys,
-                             Span<MLoop> loops,
-                             Span<float3> vert_normals,
-                             Span<float3> poly_normals,
+void normals_loop_custom_set(const Span<float3> vert_positions,
+                             const Span<MEdge> edges,
+                             const Span<MPoly> polys,
+                             const Span<MLoop> loops,
+                             const Span<float3> vert_normals,
+                             const Span<float3> poly_normals,
                              MutableSpan<bool> sharp_edges,
                              MutableSpan<float3> r_custom_loop_normals,
                              short (*r_clnors_data)[2])
@@ -1797,12 +1797,12 @@ void normals_loop_custom_set(Span<float3> vert_positions,
                                r_clnors_data);
 }
 
-void normals_loop_custom_set_from_verts(Span<float3> vert_positions,
-                                        Span<MEdge> edges,
-                                        Span<MPoly> polys,
-                                        Span<MLoop> loops,
-                                        Span<float3> vert_normals,
-                                        Span<float3> poly_normals,
+void normals_loop_custom_set_from_verts(const Span<float3> vert_positions,
+                                        const Span<MEdge> edges,
+                                        const Span<MPoly> polys,
+                                        const Span<MLoop> loops,
+                                        const Span<float3> vert_normals,
+                                        const Span<float3> poly_normals,
                                         MutableSpan<bool> sharp_edges,
                                         MutableSpan<float3> r_custom_vert_normals,
                                         short (*r_clnors_data)[2])
