@@ -1465,7 +1465,7 @@ void ED_mesh_split_faces(Mesh *mesh)
   mesh_sharp_edges.materialize(sharp_edges);
 
   bke::mesh::edges_sharp_from_angle_set(
-      polys, loops, mesh->poly_normals(), mesh->smoothresh, sharp_edges);
+      polys, loops, mesh->poly_normals(), split_angle, sharp_edges);
 
   threading::parallel_for(polys.index_range(), 1024, [&](const IndexRange range) {
     for (const int poly_i : range) {
