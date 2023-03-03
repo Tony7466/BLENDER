@@ -746,10 +746,8 @@ void RE_bake_pixels_populate(Mesh *me,
   const int tottri = poly_to_tri_count(me->totpoly, me->totloop);
   MLoopTri *looptri = static_cast<MLoopTri *>(MEM_mallocN(sizeof(*looptri) * tottri, __func__));
 
-  const blender::Span<blender::float3> positions = me->vert_positions();
-  const blender::Span<MPoly> polys = me->polys();
-  const blender::Span<MLoop> loops = me->loops();
-  blender::bke::mesh::looptris_calc(positions, polys, loops, {looptri, tottri});
+  blender::bke::mesh::looptris_calc(
+      me->vert_positions(), me->polys(), me->loops(), {looptri, tottri});
 
   const int *material_indices = BKE_mesh_material_indices(me);
   const int materials_num = targets->materials_num;

@@ -79,11 +79,12 @@ float3 poly_center_calc(const Span<float3> vert_positions, const Span<MLoop> pol
 void BKE_mesh_calc_poly_center(const struct MPoly *poly,
                                const struct MLoop *loopstart,
                                const float (*vert_positions)[3],
+                               const int verts_num,
                                float r_cent[3])
 {
   copy_v3_v3(r_cent,
              blender::bke::mesh::poly_center_calc(
-                 {reinterpret_cast<const blender::float3 *>(vert_positions), INT_MAX},
+                 {reinterpret_cast<const blender::float3 *>(vert_positions), verts_num},
                  {loopstart, poly->totloop}));
 }
 
@@ -96,12 +97,10 @@ float poly_area_calc(Span<float3> vert_positions, Span<MLoop> poly_loops)
                        vert_positions[poly_loops[1].v],
                        vert_positions[poly_loops[2].v]);
   }
-
   Array<float3, 32> poly_coords(poly_loops.size());
   for (const int i : poly_loops.index_range()) {
     poly_coords[i] = vert_positions[poly_loops[i].v];
   }
-
   return area_poly_v3((const float(*)[3])poly_coords.data(), poly_loops.size());
 }
 
@@ -109,10 +108,11 @@ float poly_area_calc(Span<float3> vert_positions, Span<MLoop> poly_loops)
 
 float BKE_mesh_calc_poly_area(const MPoly *poly,
                               const MLoop *loopstart,
-                              const float (*vert_positions)[3])
+                              const float (*vert_positions)[3],
+                              const int verts_num)
 {
   return blender::bke::mesh::poly_area_calc(
-      {reinterpret_cast<const float3 *>(vert_positions), INT_MAX}, {loopstart, poly->totloop});
+      {reinterpret_cast<const float3 *>(vert_positions), verts_num}, {loopstart, poly->totloop});
 }
 
 float BKE_mesh_calc_area(const Mesh *me)

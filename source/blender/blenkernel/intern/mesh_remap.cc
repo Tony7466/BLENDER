@@ -1668,9 +1668,6 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
                         {reinterpret_cast<const blender::float3 *>(vert_positions_dst),
                          numverts_dst},
                         {&loops_dst[mp_dst->loopstart], mp_dst->totloop});
-
-                    BKE_mesh_calc_poly_center(
-                        mp_dst, &loops_dst[mp_dst->loopstart], vert_positions_dst, pcent_dst);
                     pcent_dst_valid = true;
                   }
                   pcent_src = poly_cents_src[pidx_src];
@@ -2158,6 +2155,7 @@ void BKE_mesh_remap_calc_polys_from_mesh(const int mode,
                                          const float ray_radius,
                                          const Mesh *mesh_dst,
                                          const float (*vert_positions_dst)[3],
+                                         const int numverts_dst,
                                          const MLoop *loops_dst,
                                          const MPoly *polys_dst,
                                          const int numpolys_dst,
@@ -2167,7 +2165,7 @@ void BKE_mesh_remap_calc_polys_from_mesh(const int mode,
   const float full_weight = 1.0f;
   const float max_dist_sq = max_dist * max_dist;
   const float(*poly_nors_dst)[3] = nullptr;
-  float tmp_co[3], tmp_no[3];
+  blender::float3 tmp_co, tmp_no;
   int i;
 
   BLI_assert(mode & MREMAP_MODE_POLY);
@@ -2197,8 +2195,9 @@ void BKE_mesh_remap_calc_polys_from_mesh(const int mode,
 
       for (i = 0; i < numpolys_dst; i++) {
         const MPoly &poly = polys_dst[i];
-
-        BKE_mesh_calc_poly_center(&poly, &loops_dst[poly.loopstart], vert_positions_dst, tmp_co);
+        tmp_co = blender::bke::mesh::poly_center_calc(
+            {reinterpret_cast<const blender::float3 *>(vert_positions_dst), INT_MAX},
+            {&loops_dst[poly.loopstart], poly.totloop});
 
         /* Convert the vertex to tree coordinates, if needed. */
         if (space_transform) {
@@ -2223,7 +2222,9 @@ void BKE_mesh_remap_calc_polys_from_mesh(const int mode,
       for (i = 0; i < numpolys_dst; i++) {
         const MPoly &poly = polys_dst[i];
 
-        BKE_mesh_calc_poly_center(&poly, &loops_dst[poly.loopstart], vert_positions_dst, tmp_co);
+        tmp_co = blender::bke::mesh::poly_center_calc(
+            {reinterpret_cast<const blender::float3 *>(vert_positions_dst), INT_MAX},
+            {&loops_dst[poly.loopstart], poly.totloop});
         copy_v3_v3(tmp_no, poly_nors_dst[i]);
 
         /* Convert the vertex to tree coordinates, if needed. */
@@ -2275,7 +2276,7 @@ void BKE_mesh_remap_calc_polys_from_mesh(const int mode,
         int tot_rays, done_rays = 0;
         float poly_area_2d_inv, done_area = 0.0f;
 
-        float pcent_dst[3];
+        blender::float3 pcent_dst;
         float to_pnor_2d_mat[3][3], from_pnor_2d_mat[3][3];
         float poly_dst_2d_min[2], poly_dst_2d_max[2], poly_dst_2d_z;
         float poly_dst_2d_size[2];
@@ -2286,8 +2287,10 @@ void BKE_mesh_remap_calc_polys_from_mesh(const int mode,
         const int tris_num = poly.totloop - 2;
         int j;
 
-        BKE_mesh_calc_poly_center(
-            &poly, &loops_dst[poly.loopstart], vert_positions_dst, pcent_dst);
+        pcent_dst = blender::bke::mesh::poly_center_calc(
+            {reinterpret_cast<const blender::float3 *>(vert_positions_dst), INT_MAX},
+            {&loops_dst[poly.loopstart], poly.totloop});
+
         copy_v3_v3(tmp_no, poly_nors_dst[i]);
 
         /* We do our transform here, else it'd be redone by raycast helper for each ray, ugh! */

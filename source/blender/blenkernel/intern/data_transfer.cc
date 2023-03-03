@@ -360,36 +360,34 @@ static void data_transfer_dtdata_type_preprocess(Mesh *me_src,
     BLI_assert(CustomData_get_layer(&me_src->ldata, CD_NORMAL) != nullptr);
     (void)me_src;
 
-    float(*loop_nors_dst)[3];
     short(*custom_nors_dst)[2] = static_cast<short(*)[2]>(
         CustomData_get_layer_for_write(ldata_dst, CD_CUSTOMLOOPNORMAL, me_dst->totloop));
 
     /* Cache loop nors into a temp CDLayer. */
-    loop_nors_dst = static_cast<float(*)[3]>(
+    blender::float3 *loop_nors_dst = static_cast<blender::float3 *>(
         CustomData_get_layer_for_write(ldata_dst, CD_NORMAL, me_dst->totloop));
     const bool do_loop_nors_dst = (loop_nors_dst == nullptr);
     if (do_loop_nors_dst) {
-      loop_nors_dst = static_cast<float(*)[3]>(
+      loop_nors_dst = static_cast<blender::float3 *>(
           CustomData_add_layer(ldata_dst, CD_NORMAL, CD_SET_DEFAULT, nullptr, me_dst->totloop));
       CustomData_set_layer_flag(ldata_dst, CD_NORMAL, CD_FLAG_TEMPORARY);
     }
     if (dirty_nors_dst || do_loop_nors_dst) {
       const bool *sharp_edges = static_cast<const bool *>(
           CustomData_get_layer_named(&me_dst->edata, CD_PROP_BOOL, "sharp_edge"));
-      blender::bke::mesh::normals_calc_loop(
-          me_dst->vert_positions(),
-          me_dst->edges(),
-          me_dst->polys(),
-          me_dst->loops(),
-          {},
-          me_dst->vert_normals(),
-          me_dst->poly_normals(),
-          sharp_edges,
-          use_split_nors_dst,
-          split_angle_dst,
-          custom_nors_dst,
-          nullptr,
-          {reinterpret_cast<blender::float3 *>(loop_nors_dst), me_dst->totloop});
+      blender::bke::mesh::normals_calc_loop(me_dst->vert_positions(),
+                                            me_dst->edges(),
+                                            me_dst->polys(),
+                                            me_dst->loops(),
+                                            {},
+                                            me_dst->vert_normals(),
+                                            me_dst->poly_normals(),
+                                            sharp_edges,
+                                            use_split_nors_dst,
+                                            split_angle_dst,
+                                            custom_nors_dst,
+                                            nullptr,
+                                            {loop_nors_dst, me_dst->totloop});
     }
   }
 }
@@ -409,8 +407,7 @@ static void data_transfer_dtdata_type_postprocess(Object * /*ob_src*/,
     /* Bake edited destination loop normals into custom normals again. */
     CustomData *ldata_dst = &me_dst->ldata;
 
-    const float(*poly_nors_dst)[3] = BKE_mesh_poly_normals_ensure(me_dst);
-    float(*loop_nors_dst)[3] = static_cast<float(*)[3]>(
+    blender::float3 *loop_nors_dst = static_cast<blender::float3 *>(
         CustomData_get_layer_for_write(ldata_dst, CD_NORMAL, me_dst->totloop));
     short(*custom_nors_dst)[2] = static_cast<short(*)[2]>(
         CustomData_get_layer_for_write(ldata_dst, CD_CUSTOMLOOPNORMAL, me_dst->totloop));
@@ -424,16 +421,15 @@ static void data_transfer_dtdata_type_postprocess(Object * /*ob_src*/,
     bke::SpanAttributeWriter<bool> sharp_edges = attributes.lookup_or_add_for_write_span<bool>(
         "sharp_edge", ATTR_DOMAIN_EDGE);
     /* Note loop_nors_dst contains our custom normals as transferred from source... */
-    blender::bke::mesh::normals_loop_custom_set(
-        me_dst->vert_positions(),
-        me_dst->edges(),
-        me_dst->polys(),
-        me_dst->loops(),
-        me_dst->vert_normals(),
-        me_dst->poly_normals(),
-        sharp_edges.span,
-        {reinterpret_cast<blender::float3 *>(loop_nors_dst), me_dst->totloop},
-        custom_nors_dst);
+    blender::bke::mesh::normals_loop_custom_set(me_dst->vert_positions(),
+                                                me_dst->edges(),
+                                                me_dst->polys(),
+                                                me_dst->loops(),
+                                                me_dst->vert_normals(),
+                                                me_dst->poly_normals(),
+                                                sharp_edges.span,
+                                                {loop_nors_dst, me_dst->totloop},
+                                                custom_nors_dst);
 
     sharp_edges.finish();
   }
@@ -1696,6 +1692,7 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
                                             ray_radius,
                                             me_dst,
                                             positions_dst,
+                                            num_verts_dst,
                                             loops_dst.data(),
                                             polys_dst.data(),
                                             polys_dst.size(),

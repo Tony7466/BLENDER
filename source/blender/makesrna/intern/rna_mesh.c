@@ -630,7 +630,7 @@ static void rna_MeshPolygon_normal_get(PointerRNA *ptr, float *values)
   MPoly *poly = (MPoly *)ptr->data;
   const float(*positions)[3] = BKE_mesh_vert_positions(me);
   const MLoop *loops = BKE_mesh_loops(me);
-  BKE_mesh_calc_poly_normal(poly, loops + poly->loopstart, positions, values);
+  BKE_mesh_calc_poly_normal(poly, loops + poly->loopstart, positions, me->totvert, values);
 }
 
 static bool rna_MeshPolygon_hide_get(PointerRNA *ptr)
@@ -707,7 +707,7 @@ static void rna_MeshPolygon_center_get(PointerRNA *ptr, float *values)
   MPoly *poly = (MPoly *)ptr->data;
   const float(*positions)[3] = BKE_mesh_vert_positions(me);
   const MLoop *loops = BKE_mesh_loops(me);
-  BKE_mesh_calc_poly_center(poly, loops + poly->loopstart, positions, values);
+  BKE_mesh_calc_poly_center(poly, loops + poly->loopstart, positions, me->totvert, values);
 }
 
 static float rna_MeshPolygon_area_get(PointerRNA *ptr)
@@ -716,7 +716,7 @@ static float rna_MeshPolygon_area_get(PointerRNA *ptr)
   MPoly *poly = (MPoly *)ptr->data;
   const float(*positions)[3] = BKE_mesh_vert_positions(me);
   const MLoop *loops = BKE_mesh_loops(me);
-  return BKE_mesh_calc_poly_area(poly, loops + poly->loopstart, positions);
+  return BKE_mesh_calc_poly_area(poly, loops + poly->loopstart, me->totvert, positions);
 }
 
 static void rna_MeshPolygon_flip(ID *id, MPoly *poly)

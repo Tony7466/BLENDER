@@ -398,6 +398,7 @@ bool BKE_mesh_poly_normals_are_dirty(const struct Mesh *mesh);
 void BKE_mesh_calc_poly_normal(const struct MPoly *poly,
                                const struct MLoop *loopstart,
                                const float (*vert_positions)[3],
+                               int verts_num,
                                float r_no[3]);
 
 /**
@@ -559,10 +560,12 @@ void BKE_mesh_set_custom_normals_from_verts(struct Mesh *mesh, float (*r_custom_
 void BKE_mesh_calc_poly_center(const struct MPoly *poly,
                                const struct MLoop *loopstart,
                                const float (*vert_positions)[3],
+                               int verts_num,
                                float r_cent[3]);
 float BKE_mesh_calc_poly_area(const struct MPoly *poly,
                               const struct MLoop *loopstart,
-                              const float (*vert_positions)[3]);
+                              const float (*vert_positions)[3],
+                              int verts_num);
 float BKE_mesh_calc_area(const struct Mesh *me);
 
 void BKE_mesh_poly_edgehash_insert(struct EdgeHash *ehash,
