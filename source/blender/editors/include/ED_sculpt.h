@@ -18,6 +18,7 @@ struct ViewContext;
 struct bContext;
 struct rcti;
 struct wmOperator;
+struct wmKeyConfig;
 
 /* sculpt.cc */
 
@@ -27,6 +28,8 @@ bool ED_sculpt_mask_box_select(struct bContext *C,
                                struct ViewContext *vc,
                                const struct rcti *rect,
                                bool select);
+
+void ED_keymap_sculpt(wmKeyConfig *keyconf);
 
 /* sculpt_transform.cc */
 

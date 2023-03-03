@@ -1691,6 +1691,7 @@ void SCULPT_OT_cloth_filter(wmOperatorType *ot);
 /* Color Filter. */
 
 void SCULPT_OT_color_filter(wmOperatorType *ot);
+struct wmKeyMap *filter_color_modal_keymap(struct wmKeyConfig *keyconf);
 
 /** \} */
 

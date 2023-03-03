@@ -5,6 +5,7 @@
  * \ingroup edsculpt
  */
 
+#include "DNA_windowmanager_types.h"
 #include "MEM_guardedalloc.h"
 
 #include "BLI_math.h"
@@ -66,6 +67,11 @@ static EnumPropertyItem prop_color_filter_types[] = {
     {COLOR_FILTER_GREEN, "GREEN", 0, "Green", "Change green channel"},
     {COLOR_FILTER_BLUE, "BLUE", 0, "Blue", "Change blue channel"},
     {0, nullptr, 0, nullptr, nullptr},
+};
+
+enum {
+  FILTER_COLOR_MODAL_CANCEL = 1,
+  FILTER_COLOR_MODAL_CONFIRM
 };
 
 static void color_filter_task_cb(void *__restrict userdata,
@@ -222,6 +228,41 @@ static void color_filter_task_cb(void *__restrict userdata,
   BKE_pbvh_node_mark_update_color(data->nodes[n]);
 }
 
+static void sculpt_color_filter_cancel(bContext *C, wmOperator * /*op*/)
+{
+  Object *ob = CTX_data_active_object(C);
+  SculptSession *ss = ob->sculpt;
+  PBVHNode **nodes;
+  int nodes_num;
+
+  if (!ss || !ss->pbvh) {
+    return;
+  }
+
+  /* Gather all PBVH leaf nodes. */
+  BKE_pbvh_search_gather(ss->pbvh, nullptr, nullptr, &nodes, &nodes_num);
+
+  for (int i : blender::IndexRange(nodes_num)) {
+    PBVHNode *node = nodes[i];
+    PBVHVertexIter vd;
+
+    SculptOrigVertData orig_data;
+    SCULPT_orig_vert_data_init(&orig_data, ob, nodes[i], SCULPT_UNDO_COLOR);
+
+    BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+      SCULPT_orig_vert_data_update(&orig_data, &vd);
+      /* copy_v3_v3(vd.vertex, orig_data.col); */
+      SCULPT_vertex_color_set(ss, vd.vertex, orig_data.col);
+    }
+    BKE_pbvh_vertex_iter_end;
+
+    BKE_pbvh_node_mark_update(node);
+  }
+
+  MEM_SAFE_FREE(nodes);
+  BKE_pbvh_update_bounds(ss->pbvh, PBVH_UpdateBB);
+}
+
 static void sculpt_color_presmooth_init(SculptSession *ss)
 {
   int totvert = SCULPT_vertex_count_get(ss);
@@ -305,6 +346,27 @@ static void sculpt_color_filter_end(bContext *C, Object *ob)
   SCULPT_flush_update_done(C, ob, SCULPT_UPDATE_COLOR);
 }
 
+wmKeyMap *filter_color_modal_keymap(wmKeyConfig *keyconf)
+{
+  static const EnumPropertyItem modal_items[] = {
+      {FILTER_COLOR_MODAL_CANCEL, "CANCEL", 0, "Cancel", ""},
+      {FILTER_COLOR_MODAL_CONFIRM, "CONFIRM", 0, "Confirm", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  wmKeyMap *keymap = WM_modalkeymap_find(keyconf, "Color Filter Modal Map");
+
+  if (keymap && keymap->modal_items) {
+    return nullptr;
+  }
+
+  keymap = WM_modalkeymap_ensure(keyconf, "Color Filter Modal Map", modal_items);
+
+  WM_modalkeymap_assign(keymap, "SCULPT_OT_color_filter");
+
+  return keymap;
+}
+
 static int sculpt_color_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   Object *ob = CTX_data_active_object(C);
@@ -312,10 +374,28 @@ static int sculpt_color_filter_modal(bContext *C, wmOperator *op, const wmEvent 
 
   WM_cursor_modal_set(CTX_wm_window(C), WM_CURSOR_EW_SCROLL);
 
-  if (event->type == LEFTMOUSE && event->val == KM_RELEASE) {
+  if (event->type == EVT_MODAL_MAP) {
+    int ret = OPERATOR_CANCELLED;
+
+    switch (event->val) {
+      case FILTER_COLOR_MODAL_CANCEL:
+        /* Operator cancelling code (clean up, reverting changes, etc...) */
+        /* TODO */
+        sculpt_color_filter_cancel(C, op);
+        SCULPT_undo_push_end_ex(ob, true);
+        ret = OPERATOR_CANCELLED;
+        break;
+
+      case FILTER_COLOR_MODAL_CONFIRM: 
+        SCULPT_undo_push_end_ex(ob, false);
+        ret = OPERATOR_FINISHED;
+        break;
+    }
+
+
     sculpt_color_filter_end(C, ob);
     WM_cursor_modal_restore(CTX_wm_window(C));
-    return OPERATOR_FINISHED;
+    return ret;
   }
 
   if (event->type != MOUSEMOVE) {

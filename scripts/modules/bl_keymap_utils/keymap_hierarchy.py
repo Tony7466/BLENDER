@@ -223,6 +223,7 @@ _km_hierarchy = [
     ('Gesture Box', 'EMPTY', 'WINDOW', []),
 
     ('Standard Modal Map', 'EMPTY', 'WINDOW', []),
+    ('Color Filter Modal Map', 'EMPTY', 'WINDOW', []),
     ('Transform Modal Map', 'EMPTY', 'WINDOW', []),
     ('Eyedropper Modal Map', 'EMPTY', 'WINDOW', []),
     ('Eyedropper ColorRamp PointSampling Map', 'EMPTY', 'WINDOW', []),
