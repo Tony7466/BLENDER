@@ -341,9 +341,9 @@ void BKE_remesh_reproject_sculpt_face_sets(Mesh *target, const Mesh *source)
       BVHTreeNearest nearest;
       nearest.index = -1;
       nearest.dist_sq = FLT_MAX;
-      const MPoly *poly = &target_polys[i];
+      const MPoly &poly = target_polys[i];
       const float3 from_co = mesh::poly_center_calc(
-          target_positions, target_loops.slice(poly->loopstart, poly->totloop));
+          target_positions, target_loops.slice(poly.loopstart, poly.totloop));
       BLI_bvhtree_find_nearest(
           bvhtree.tree, from_co, &nearest, bvhtree.nearest_callback, &bvhtree);
       if (nearest.index != -1) {

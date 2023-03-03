@@ -1895,27 +1895,25 @@ static void mesh_init_origspace(Mesh *mesh)
 
   OrigSpaceLoop *lof_array = (OrigSpaceLoop *)CustomData_get_layer_for_write(
       &mesh->ldata, CD_ORIGSPACE_MLOOP, mesh->totloop);
-  const int numpoly = mesh->totpoly;
-  // const int numloop = mesh->totloop;
   const Span<float3> positions = mesh->vert_positions();
   const Span<MPoly> polys = mesh->polys();
   const Span<MLoop> loops = mesh->loops();
 
-  const MPoly *poly = polys.data();
-  int i, j, k;
+  int j, k;
 
   blender::Vector<blender::float2, 64> vcos_2d;
 
-  for (i = 0; i < numpoly; i++, poly++) {
-    OrigSpaceLoop *lof = lof_array + poly->loopstart;
+  for (const int i : polys.index_range()) {
+    const MPoly &poly = polys[i];
+    OrigSpaceLoop *lof = lof_array + poly.loopstart;
 
-    if (ELEM(poly->totloop, 3, 4)) {
-      for (j = 0; j < poly->totloop; j++, lof++) {
+    if (ELEM(poly.totloop, 3, 4)) {
+      for (j = 0; j < poly.totloop; j++, lof++) {
         copy_v2_v2(lof->uv, default_osf[j]);
       }
     }
     else {
-      const MLoop *l = &loops[poly->loopstart];
+      const MLoop *l = &loops[poly.loopstart];
       float co[3];
       float mat[3][3];
 
@@ -1923,12 +1921,12 @@ static void mesh_init_origspace(Mesh *mesh)
       float translate[2], scale[2];
 
       const float3 p_nor = blender::bke::mesh::poly_normal_calc(
-          positions, loops.slice(poly->loopstart, poly->totloop));
+          positions, loops.slice(poly.loopstart, poly.totloop));
 
       axis_dominant_v3_to_m3(mat, p_nor);
 
-      vcos_2d.resize(poly->totloop);
-      for (j = 0; j < poly->totloop; j++, l++) {
+      vcos_2d.resize(poly.totloop);
+      for (j = 0; j < poly.totloop; j++, l++) {
         mul_v3_m3v3(co, mat, positions[l->v]);
         copy_v2_v2(vcos_2d[j], co);
 
@@ -1957,7 +1955,7 @@ static void mesh_init_origspace(Mesh *mesh)
 
       /* Finally, transform all vcos_2d into ((0, 0), (1, 1))
        * square and assign them as origspace. */
-      for (j = 0; j < poly->totloop; j++, lof++) {
+      for (j = 0; j < poly.totloop; j++, lof++) {
         add_v2_v2v2(lof->uv, vcos_2d[j], translate);
         mul_v2_v2(lof->uv, scale);
       }

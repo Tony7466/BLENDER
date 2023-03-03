@@ -37,18 +37,18 @@ static void multires_subdivide_create_object_space_linear_grids(Mesh *mesh)
   MDisps *mdisps = static_cast<MDisps *>(
       CustomData_get_layer_for_write(&mesh->ldata, CD_MDISPS, mesh->totloop));
   for (const int p : polys.index_range()) {
-    const MPoly *poly = &polys[p];
+    const MPoly &poly = polys[p];
     const float3 poly_center = mesh::poly_center_calc(positions,
-                                                      loops.slice(poly->loopstart, poly->totloop));
-    for (int l = 0; l < poly->totloop; l++) {
-      const int loop_index = poly->loopstart + l;
+                                                      loops.slice(poly.loopstart, poly.totloop));
+    for (int l = 0; l < poly.totloop; l++) {
+      const int loop_index = poly.loopstart + l;
 
       float(*disps)[3] = mdisps[loop_index].disps;
       mdisps[loop_index].totdisp = 4;
       mdisps[loop_index].level = 1;
 
-      int prev_loop_index = l - 1 >= 0 ? loop_index - 1 : loop_index + poly->totloop - 1;
-      int next_loop_index = l + 1 < poly->totloop ? loop_index + 1 : poly->loopstart;
+      int prev_loop_index = l - 1 >= 0 ? loop_index - 1 : loop_index + poly.totloop - 1;
+      int next_loop_index = l + 1 < poly.totloop ? loop_index + 1 : poly.loopstart;
 
       const MLoop *loop = &loops[loop_index];
       const MLoop *loop_next = &loops[next_loop_index];

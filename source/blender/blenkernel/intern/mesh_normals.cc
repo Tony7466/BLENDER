@@ -1666,9 +1666,9 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
            * previous loop's face and current's one as sharp.
            * We know those two loops do not point to the same edge,
            * since we do not allow reversed winding in a same smooth fan. */
-          const MPoly *poly = &polys[loop_to_poly[lidx]];
+          const MPoly &poly = polys[loop_to_poly[lidx]];
           const MLoop *mlp =
-              &loops[(lidx == poly->loopstart) ? poly->loopstart + poly->totloop - 1 : lidx - 1];
+              &loops[(lidx == poly.loopstart) ? poly.loopstart + poly.totloop - 1 : lidx - 1];
           sharp_edges[(prev_ml->e == mlp->e) ? prev_ml->e : ml->e] = true;
 
           org_nor = nor;
@@ -1691,9 +1691,9 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
         float *nor = r_custom_loop_normals[nidx];
 
         if (dot_v3v3(org_nor, nor) < LNOR_SPACE_TRIGO_THRESHOLD) {
-          const MPoly *poly = &polys[loop_to_poly[lidx]];
+          const MPoly &poly = polys[loop_to_poly[lidx]];
           const MLoop *mlp =
-              &loops[(lidx == poly->loopstart) ? poly->loopstart + poly->totloop - 1 : lidx - 1];
+              &loops[(lidx == poly.loopstart) ? poly.loopstart + poly.totloop - 1 : lidx - 1];
           sharp_edges[(prev_ml->e == mlp->e) ? prev_ml->e : ml->e] = true;
         }
       }
