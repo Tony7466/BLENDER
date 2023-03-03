@@ -33,3 +33,4 @@ Referenced by issue #93602, Struct of Arrays Refactor for Mesh Vertices
 Referenced by issue #92288, High memory consumption on instances in some cases (in 2.93 to render in Cycles, in 3.1 worse: also on file load)
 Referenced by issue #91186, Move mesh vertex normals out of MVert
 Referenced by issue #90598, Sculpting produces weird shading artifacts
+Referenced by commit d0eeb3d15559ddce1abf1d27b3caa1b6a6ede9d4, Cleanup: Remove mesh normals function, deprecate in RNA
