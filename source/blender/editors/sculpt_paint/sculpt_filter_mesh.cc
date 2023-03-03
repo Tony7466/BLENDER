@@ -6,6 +6,7 @@
  */
 
 #include "DNA_modifier_types.h"
+#include "DNA_windowmanager_types.h"
 #include "MEM_guardedalloc.h"
 
 #include "BLI_hash.h"
@@ -717,14 +718,14 @@ wmKeyMap *filter_mesh_modal_keymap(wmKeyConfig *keyconf)
   static const EnumPropertyItem modal_items[] = {
       {FILTER_MESH_MODAL_CANCEL, "CANCEL", 0, "Cancel", ""},
       {FILTER_MESH_MODAL_CONFIRM, "CONFIRM", 0, "Confirm", ""},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   wmKeyMap *keymap = WM_modalkeymap_find(keyconf, "Mesh Filter Modal Map");
 
   /* This function is called for each space-type, only needs to add map once. */
   if (keymap && keymap->modal_items) {
-    return NULL;
+    return nullptr;
   }
 
   keymap = WM_modalkeymap_ensure(keyconf, "Mesh Filter Modal Map", modal_items);
@@ -909,7 +910,7 @@ static int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *
   sculpt_mesh_update_status_bar(C, op);
     
   if (event->type == EVT_MODAL_MAP) {
-    int ret = FILTER_MESH_MODAL_CONFIRM;
+    int ret = OPERATOR_FINISHED;
     switch (event->val) {
       case FILTER_MESH_MODAL_CANCEL:
         sculpt_mesh_filter_cancel(C, op);
@@ -920,9 +921,6 @@ static int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *
       case FILTER_MESH_MODAL_CONFIRM: 
         ret = sculpt_mesh_filter_confirm(ss, op, filter_type);
         SCULPT_undo_push_end_ex(ob, false);
-        break;
-
-      default:
         break;
     }
 
