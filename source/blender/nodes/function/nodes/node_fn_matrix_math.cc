@@ -2,6 +2,8 @@
 
 #include "node_function_util.hh"
 
+#include "BLI_math_matrix.hh"
+
 #include "NOD_socket_search_link.hh"
 
 #include "UI_interface.h"
@@ -73,6 +75,55 @@ static const mf::MultiFunction *get_multi_function(NodeMatrixMathOperation op)
       static auto fn = mf::build::SI2_SO<float4x4, float4x4, float4x4>(
           "add",
           [](const float4x4 &a, const float4x4 &b) -> float4x4 { return a + b; },
+          exec_preset);
+      return &fn;
+    }
+    case NODE_MATRIX_MATH_SUBTRACT: {
+      static auto fn = mf::build::SI2_SO<float4x4, float4x4, float4x4>(
+          "subtract",
+          [](const float4x4 &a, const float4x4 &b) -> float4x4 { return a - b; },
+          exec_preset);
+      return &fn;
+    }
+    case NODE_MATRIX_MATH_SCALAR_MULTIPLY: {
+      static auto fn = mf::build::SI2_SO<float4x4, float, float4x4>(
+          "scalar_multiply",
+          [](const float4x4 &a, const float &s) -> float4x4 { return a * s; },
+          exec_preset);
+      return &fn;
+    }
+    case NODE_MATRIX_MATH_MULTIPLY: {
+      static auto fn = mf::build::SI2_SO<float4x4, float4x4, float4x4>(
+          "multiply",
+          [](const float4x4 &a, const float4x4 &b) -> float4x4 { return a * b; },
+          exec_preset);
+      return &fn;
+    }
+    case NODE_MATRIX_MATH_TRANSPOSE: {
+      static auto fn = mf::build::SI1_SO<float4x4, float4x4>(
+          "transpose",
+          [](const float4x4 &a) -> float4x4 { return math::transpose(a); },
+          exec_preset);
+      return &fn;
+    }
+    case NODE_MATRIX_MATH_INVERSE: {
+      static auto fn = mf::build::SI1_SO<float4x4, float4x4>(
+          "inverse",
+          [](const float4x4 &a) -> float4x4 { return math::invert(a); },
+          exec_preset);
+      return &fn;
+    }
+    case NODE_MATRIX_MATH_DETERMINANT: {
+      static auto fn = mf::build::SI1_SO<float4x4, float>(
+          "determinant",
+          [](const float4x4 &a) -> float { return math::determinant(a); },
+          exec_preset);
+      return &fn;
+    }
+    case NODE_MATRIX_MATH_TRACE: {
+      static auto fn = mf::build::SI1_SO<float4x4, float>(
+          "trace",
+          [](const float4x4 &a) -> float { return a[0][0] + a[1][1] + a[2][2] + a[3][3]; },
           exec_preset);
       return &fn;
     }
