@@ -2053,29 +2053,22 @@ bool nodeFindNodeTry(bNodeTree *ntree, bNodeSocket *sock, bNode **r_node, int *r
 
 bNode *nodeFindRootParent(bNode *node)
 {
-  bNode *t_node = node;
-  while (t_node->parent != nullptr) {
-    t_node = t_node->parent;
+  bNode *parent_iter = node;
+  while (parent_iter->parent != nullptr) {
+    parent_iter = parent_iter->parent;
   }
 
-  if (t_node->type != NODE_FRAME) {
+  if (parent_iter->type != NODE_FRAME) {
     return nullptr;
   }
 
-  return t_node;
+  return parent_iter;
 }
 
 bool nodeIsChildOf(const bNode *parent, const bNode *child)
 {
-  if (parent == child) {
-    return true;
-  }
-
-  const bNode *t_child = child;
-  while (t_child->parent != nullptr) {
-    t_child = t_child->parent;
-
-    if (t_child == parent) {
+  for (const bNode *parent_iter = child; parent_iter; parent_iter = parent_iter->parent) {
+    if (parent_iter == parent) {
       return true;
     }
   }
@@ -2567,16 +2560,9 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node)
  */
 static void nodeViewMapping(const bNode *node, float &mapping_x, float &mapping_y)
 {
-  const bNode *t_node = node;
-
-  mapping_x += t_node->locx;
-  mapping_y += t_node->locy;
-
-  while (t_node->parent != nullptr) {
-    t_node = t_node->parent;
-
-    mapping_x += t_node->locx;
-    mapping_y += t_node->locy;
+  for (const bNode *node_iter = node; node_iter; node_iter = node_iter->parent) {
+    mapping_x += node_iter->locx;
+    mapping_y += node_iter->locy;
   }
 }
 
@@ -2602,13 +2588,7 @@ void nodeFromView(const bNode *node, const float x, const float y, float *rx, fl
 
 bool nodeAttachNodeCheck(const bNode *node, const bNode *parent)
 {
-  for (const bNode *parent_iter = node; parent_iter; parent_iter = parent_iter->parent) {
-    if (parent_iter == parent) {
-      return true;
-    }
-  }
-
-  return false;
+  return nodeIsChildOf(parent, node);
 }
 
 void nodeAttachNode(bNodeTree *ntree, bNode *node, bNode *parent)
