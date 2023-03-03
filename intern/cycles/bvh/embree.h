@@ -21,6 +21,7 @@ CCL_NAMESPACE_BEGIN
 class Hair;
 class Mesh;
 class PointCloud;
+class Device;
 
 class BVHEmbree : public BVH {
  public:
@@ -33,7 +34,8 @@ class BVHEmbree : public BVH {
   friend class BVH;
   BVHEmbree(const BVHParams &params,
             const vector<Geometry *> &geometry,
-            const vector<Object *> &objects);
+            const vector<Object *> &objects,
+            const Device *device);
   virtual ~BVHEmbree();
 
   void add_object(Object *ob, int i);
@@ -51,6 +53,7 @@ class BVHEmbree : public BVH {
 
   RTCDevice rtc_device;
   enum RTCBuildQuality build_quality;
+  const Device *device;
 };
 
 CCL_NAMESPACE_END

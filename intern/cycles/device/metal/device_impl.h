@@ -134,7 +134,7 @@ class MetalDevice : public Device {
 
   virtual unique_ptr<DeviceQueue> gpu_queue_create() override;
 
-  virtual void build_bvh(BVH *bvh, Progress &progress, bool refit) override;
+  virtual void build_bvh(BVH *bvh, DeviceScene *dscene, Progress &progress, bool refit) override;
 
   virtual void optimize_for_scene(Scene *scene) override;
 
@@ -149,12 +149,16 @@ class MetalDevice : public Device {
 
   void generic_copy_to(device_memory &mem);
 
+  void generic_copy_to(device_memory &mem, size_t size, size_t offset);
+
   void generic_free(device_memory &mem);
 
   void mem_alloc(device_memory &mem) override;
 
   void mem_copy_to(device_memory &mem) override;
 
+  void mem_copy_to(device_memory &mem, size_t size, size_t offset) override;
+  
   void mem_copy_from(device_memory &mem)
   {
     mem_copy_from(mem, -1, -1, -1, -1);

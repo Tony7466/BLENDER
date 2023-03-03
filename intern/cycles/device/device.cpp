@@ -49,7 +49,7 @@ Device::~Device() noexcept(false)
 {
 }
 
-void Device::build_bvh(BVH *bvh, Progress &progress, bool refit)
+void Device::build_bvh(BVH *bvh, DeviceScene *dscene, Progress &progress, bool refit)
 {
   assert(bvh->params.bvh_layout == BVH_LAYOUT_BVH2);
 
@@ -452,6 +452,14 @@ void *Device::get_cpu_osl_memory()
   return nullptr;
 }
 
+void Device::host_mem_alloc(size_t size, int alignment, void **p_mem) {
+  *p_mem = util_aligned_malloc(size, alignment);
+}
+
+void Device::host_mem_free(void *p_mem) {
+  util_aligned_free(p_mem);
+}
+
 GPUDevice::~GPUDevice() noexcept(false)
 {
 }
@@ -762,9 +770,26 @@ void GPUDevice::generic_copy_to(device_memory &mem)
    * copy data from mem.host_pointer. */
   thread_scoped_lock lock(device_mem_map_mutex);
   if (!device_mem_map[&mem].use_mapped_host || mem.host_pointer != mem.shared_pointer) {
-    copy_host_to_device((void *)mem.device_pointer, mem.host_pointer, mem.memory_size());
+    copy_host_to_device((void *)mem.device_pointer, mem.host_pointer, mem.memory_size(), 0);
   }
 }
+
+// FRL_CGR
+void GPUDevice::generic_copy_to(device_memory &mem, size_t size, size_t offset)
+{
+  if (!mem.host_pointer || !mem.device_pointer) {
+    return;
+  }
+
+  /* If use_mapped_host of mem is false, the current device only uses device memory allocated by
+   * cuMemAlloc regardless of mem.host_pointer and mem.shared_pointer, and should copy data from
+   * mem.host_pointer. */
+  thread_scoped_lock lock(device_mem_map_mutex);
+  if (!device_mem_map[&mem].use_mapped_host || mem.host_pointer != mem.shared_pointer) {
+    copy_host_to_device((void *)mem.device_pointer, mem.host_pointer, mem.memory_size(), offset);
+  }
+}
+// FRL_CGR
 
 /* DeviceInfo */
 

@@ -149,6 +149,15 @@ void CPUDevice::mem_copy_to(device_memory &mem)
   }
 }
 
+void CPUDevice::mem_copy_to(device_memory &mem, size_t, size_t offset)
+{
+  /* size (2n param) is not used as this does not actually copy anything
+   * as the original host memory is used as is. The device
+   * memory is the same memory.
+   */
+  mem_copy_to(mem);
+}
+
 void CPUDevice::mem_copy_from(
     device_memory & /*mem*/, size_t /*y*/, size_t /*w*/, size_t /*h*/, size_t /*elem*/)
 {
@@ -256,7 +265,7 @@ void CPUDevice::tex_free(device_texture &mem)
   }
 }
 
-void CPUDevice::build_bvh(BVH *bvh, Progress &progress, bool refit)
+void CPUDevice::build_bvh(BVH *bvh, DeviceScene *dscene, Progress &progress, bool refit)
 {
 #ifdef WITH_EMBREE
   if (bvh->params.bvh_layout == BVH_LAYOUT_EMBREE ||
@@ -276,7 +285,7 @@ void CPUDevice::build_bvh(BVH *bvh, Progress &progress, bool refit)
   }
   else
 #endif
-    Device::build_bvh(bvh, progress, refit);
+    Device::build_bvh(bvh, dscene, progress, refit);
 }
 
 void *CPUDevice::get_guiding_device() const

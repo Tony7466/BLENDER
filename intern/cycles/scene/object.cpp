@@ -660,11 +660,8 @@ void ObjectManager::device_update_transforms(DeviceScene *dscene, Scene *scene, 
                  }
                });
 
-  if (progress.get_cancel()) {
-    return;
-  }
-
-  dscene->objects.copy_to_device_if_modified();
+  /* Moved copy to GeometryManager::device_update
+     for better control over updating */
   if (state.need_motion == Scene::MOTION_PASS) {
     dscene->object_motion_pass.copy_to_device();
   }
@@ -677,7 +674,6 @@ void ObjectManager::device_update_transforms(DeviceScene *dscene, Scene *scene, 
   dscene->data.bvh.have_points = state.have_points;
   dscene->data.bvh.have_volumes = state.have_volumes;
 
-  dscene->objects.clear_modified();
   dscene->object_motion_pass.clear_modified();
   dscene->object_motion.clear_modified();
 }
@@ -861,15 +857,15 @@ void ObjectManager::device_update_flags(
   dscene->object_volume_step.clear_modified();
 }
 
-void ObjectManager::device_update_geom_offsets(Device *, DeviceScene *dscene, Scene *scene)
+bool ObjectManager::device_update_geom_offsets(Device *, DeviceScene *dscene, Scene *scene)
 {
+  bool update = false;
+
   if (dscene->objects.size() == 0) {
-    return;
+    return update;
   }
 
   KernelObject *kobjects = dscene->objects.data();
-
-  bool update = false;
 
   foreach (Object *object, scene->objects) {
     Geometry *geom = object->geometry;
@@ -902,8 +898,10 @@ void ObjectManager::device_update_geom_offsets(Device *, DeviceScene *dscene, Sc
   }
 
   if (update) {
-    dscene->objects.copy_to_device();
+    /* Moved to copy to device_update_attributes */
+    dscene->objects.tag_modified();
   }
+  return update;
 }
 
 void ObjectManager::device_free(Device *, DeviceScene *dscene, bool force_free)

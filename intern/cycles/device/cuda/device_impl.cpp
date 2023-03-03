@@ -544,11 +544,29 @@ bool CUDADevice::transform_host_pointer(void *&device_pointer, void *&shared_poi
   return true;
 }
 
-void CUDADevice::copy_host_to_device(void *device_pointer, void *host_pointer, size_t size)
+void CUDADevice::copy_host_to_device(void *device_pointer, void *host_pointer, size_t size, size_t offset)
 {
   const CUDAContextScope scope(this);
 
-  cuda_assert(cuMemcpyHtoD((CUdeviceptr)device_pointer, host_pointer, size));
+  cuda_assert(cuMemcpyHtoD((CUdeviceptr)device_pointer + offset,
+                           reinterpret_cast<unsigned char *>(host_pointer) + offset,
+                           size));
+}
+
+void CUDADevice::host_mem_alloc(size_t size, int aligment, void **p_mem) {
+  CUDAContextScope scope(this);
+  CUresult result = cuMemAllocHost(p_mem, size);
+  if(result != CUDA_SUCCESS) {
+    char const * err_msg = NULL;
+    cuGetErrorString(result, &err_msg);
+    fprintf(stderr, "CUDA Runtime Error: %s\n", err_msg);
+    assert("unable to allocate memory.");
+  }
+}
+
+void CUDADevice::host_mem_free(void *p_mem) {
+  CUDAContextScope scope(this);
+  cuMemFreeHost(p_mem);
 }
 
 void CUDADevice::mem_alloc(device_memory &mem)
@@ -567,8 +585,14 @@ void CUDADevice::mem_alloc(device_memory &mem)
 void CUDADevice::mem_copy_to(device_memory &mem)
 {
   if (mem.type == MEM_GLOBAL) {
-    global_free(mem);
-    global_alloc(mem);
+    // FRL_CGR
+    if ((mem.device_size < mem.memory_size()) || (!mem.device_pointer)) {
+      global_free(mem);
+      global_alloc(mem);
+    }
+    else {
+      generic_copy_to(mem);
+    }
   }
   else if (mem.type == MEM_TEXTURE) {
     tex_free((device_texture &)mem);
@@ -581,6 +605,30 @@ void CUDADevice::mem_copy_to(device_memory &mem)
     generic_copy_to(mem);
   }
 }
+
+void CUDADevice::mem_copy_to(device_memory &mem, size_t size, size_t offset)
+{
+  if (mem.type == MEM_GLOBAL) {
+    if ((mem.device_size < mem.memory_size()) || (!mem.device_pointer)) {
+      global_free(mem);
+      global_alloc(mem);
+    }
+    else {
+      generic_copy_to(mem, size, offset);
+    }
+  }
+  else if (mem.type == MEM_TEXTURE) {
+    tex_free((device_texture &)mem);
+    tex_alloc((device_texture &)mem);
+  }
+  else {
+    if (!mem.device_pointer) {
+      generic_alloc(mem);
+    }
+    generic_copy_to(mem, size, offset);
+  }
+}
+// FRL_CGR
 
 void CUDADevice::mem_copy_from(device_memory &mem, size_t y, size_t w, size_t h, size_t elem)
 {

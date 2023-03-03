@@ -60,6 +60,7 @@ class CPUDevice : public Device {
 
   virtual void mem_alloc(device_memory &mem) override;
   virtual void mem_copy_to(device_memory &mem) override;
+  virtual void mem_copy_to(device_memory &mem, size_t size, size_t offset) override;
   virtual void mem_copy_from(
       device_memory &mem, size_t y, size_t w, size_t h, size_t elem) override;
   virtual void mem_zero(device_memory &mem) override;
@@ -76,7 +77,7 @@ class CPUDevice : public Device {
   void tex_alloc(device_texture &mem);
   void tex_free(device_texture &mem);
 
-  void build_bvh(BVH *bvh, Progress &progress, bool refit) override;
+  void build_bvh(BVH *bvh, DeviceScene *dscene, Progress &progress, bool refit) override;
 
   void *get_guiding_device() const override;
 

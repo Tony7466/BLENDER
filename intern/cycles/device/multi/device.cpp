@@ -18,6 +18,7 @@
 #include "util/log.h"
 #include "util/map.h"
 #include "util/time.h"
+#include "util/tbb.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -30,7 +31,10 @@ class MultiDevice : public Device {
     int peer_island_index = -1;
   };
 
-  list<SubDevice> devices;
+  // Switch from list to a vector to make the parallel_for easily map to the integer id.
+  // Also id now could be used to access the real device pointer more quickly. Also, since
+  // the vector reallocates the memory on resize the sub-devices are stored as pointers.
+  vector<SubDevice *> devices;
   device_ptr unique_key;
   vector<vector<SubDevice *>> peer_islands;
 
@@ -40,28 +44,35 @@ class MultiDevice : public Device {
     foreach (const DeviceInfo &subinfo, info.multi_devices) {
       /* Always add CPU devices at the back since GPU devices can change
        * host memory pointers, which CPU uses as device pointer. */
-      SubDevice *sub;
+      SubDevice *sub = new SubDevice;
       if (subinfo.type == DEVICE_CPU) {
-        devices.emplace_back();
-        sub = &devices.back();
+        devices.emplace_back(sub);
       }
       else {
-        devices.emplace_front();
-        sub = &devices.front();
+        devices.emplace_back(sub);
+        // find first CPU device and swop it with the new device
+        // to keep the CPU devices at the end of the vector.
+        int last = devices.size() - 1;
+        int o = last;
+        while ((o > 0) && (devices[o - 1]->device->info.type == DEVICE_CPU)) {
+          o--;
+        };
+        if (o != last) {
+          std::swap(devices[last], devices[o]);
+        }
+        sub = devices[o];
       }
 
-      /* The pointer to 'sub->stats' will stay valid even after new devices
-       * are added, since 'devices' is a linked list. */
       sub->device = Device::create(subinfo, sub->stats, profiler);
     }
 
     /* Build a list of peer islands for the available render devices */
-    foreach (SubDevice &sub, devices) {
+    foreach (SubDevice *sub, devices) {
       /* First ensure that every device is in at least once peer island */
-      if (sub.peer_island_index < 0) {
+      if (sub->peer_island_index < 0) {
         peer_islands.emplace_back();
-        sub.peer_island_index = (int)peer_islands.size() - 1;
-        peer_islands[sub.peer_island_index].push_back(&sub);
+        sub->peer_island_index = (int)peer_islands.size() - 1;
+        peer_islands[sub->peer_island_index].push_back(sub);
       }
 
       if (!info.has_peer_memory) {
@@ -69,12 +80,12 @@ class MultiDevice : public Device {
       }
 
       /* Second check peer access between devices and fill up the islands accordingly */
-      foreach (SubDevice &peer_sub, devices) {
-        if (peer_sub.peer_island_index < 0 &&
-            peer_sub.device->info.type == sub.device->info.type &&
-            peer_sub.device->check_peer_access(sub.device)) {
-          peer_sub.peer_island_index = sub.peer_island_index;
-          peer_islands[sub.peer_island_index].push_back(&peer_sub);
+      foreach (SubDevice *peer_sub, devices) {
+        if (peer_sub->peer_island_index < 0 &&
+            peer_sub->device->info.type == sub->device->info.type &&
+            peer_sub->device->check_peer_access(sub->device)) {
+          peer_sub->peer_island_index = sub->peer_island_index;
+          peer_islands[sub->peer_island_index].push_back(peer_sub);
         }
       }
     }
@@ -82,16 +93,23 @@ class MultiDevice : public Device {
 
   ~MultiDevice()
   {
-    foreach (SubDevice &sub, devices)
-      delete sub.device;
+    foreach (SubDevice *sub, devices) {
+      delete sub->device;
+      delete sub;
+    }
+  }
+
+  int get_num_devices() const override
+  {
+    return devices.size();
   }
 
   const string &error_message() override
   {
     error_msg.clear();
 
-    foreach (SubDevice &sub, devices)
-      error_msg += sub.device->error_message();
+    foreach (SubDevice *sub, devices)
+      error_msg += sub->device->error_message();
 
     return error_msg;
   }
@@ -100,8 +118,8 @@ class MultiDevice : public Device {
   {
     BVHLayoutMask bvh_layout_mask = BVH_LAYOUT_ALL;
     BVHLayoutMask bvh_layout_mask_all = BVH_LAYOUT_NONE;
-    foreach (const SubDevice &sub_device, devices) {
-      BVHLayoutMask device_bvh_layout_mask = sub_device.device->get_bvh_layout_mask();
+    foreach (const SubDevice *sub_device, devices) {
+      BVHLayoutMask device_bvh_layout_mask = sub_device->device->get_bvh_layout_mask();
       bvh_layout_mask &= device_bvh_layout_mask;
       bvh_layout_mask_all |= device_bvh_layout_mask;
     }
@@ -131,8 +149,8 @@ class MultiDevice : public Device {
 
   bool load_kernels(const uint kernel_features) override
   {
-    foreach (SubDevice &sub, devices)
-      if (!sub.device->load_kernels(kernel_features))
+    foreach (SubDevice *sub, devices)
+      if (!sub->device->load_kernels(kernel_features))
         return false;
 
     return true;
@@ -140,18 +158,18 @@ class MultiDevice : public Device {
 
   bool load_osl_kernels() override
   {
-    foreach (SubDevice &sub, devices)
-      if (!sub.device->load_osl_kernels())
+    foreach (SubDevice *sub, devices)
+      if (!sub->device->load_osl_kernels())
         return false;
 
     return true;
   }
 
-  void build_bvh(BVH *bvh, Progress &progress, bool refit) override
+void build_bvh(BVH *bvh, DeviceScene *dscene, Progress &progress, bool refit) override
   {
     /* Try to build and share a single acceleration structure, if possible */
     if (bvh->params.bvh_layout == BVH_LAYOUT_BVH2 || bvh->params.bvh_layout == BVH_LAYOUT_EMBREE) {
-      devices.back().device->build_bvh(bvh, progress, refit);
+      devices.back()->device->build_bvh(bvh, dscene, progress, refit);
       return;
     }
 
@@ -163,82 +181,71 @@ class MultiDevice : public Device {
     BVHMulti *const bvh_multi = static_cast<BVHMulti *>(bvh);
     bvh_multi->sub_bvhs.resize(devices.size());
 
-    vector<BVHMulti *> geom_bvhs;
-    geom_bvhs.reserve(bvh->geometry.size());
-    foreach (Geometry *geom, bvh->geometry) {
-      geom_bvhs.push_back(static_cast<BVHMulti *>(geom->bvh));
-    }
-
     /* Broadcast acceleration structure build to all render devices */
-    size_t i = 0;
-    foreach (SubDevice &sub, devices) {
-      /* Change geometry BVH pointers to the sub BVH */
-      for (size_t k = 0; k < bvh->geometry.size(); ++k) {
-        bvh->geometry[k]->bvh = geom_bvhs[k]->sub_bvhs[i];
-      }
+    parallel_for(size_t(0), devices.size(), [this, &bvh_multi, &dscene, refit, &progress](size_t id) {
+      // WL: Pointer translation is removed as it is not thread safe. Instead a new method is added
+      // to retrieve the real device pointer.
+      SubDevice *sub = devices[id];
 
-      if (!bvh_multi->sub_bvhs[i]) {
-        BVHParams params = bvh->params;
-        if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_OPTIX)
+      if (!bvh_multi->sub_bvhs[id]) {
+        BVHParams params = bvh_multi->params;
+        if (bvh_multi->params.bvh_layout == BVH_LAYOUT_MULTI_OPTIX)
           params.bvh_layout = BVH_LAYOUT_OPTIX;
-        else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_METAL)
+        else if (bvh_multi->params.bvh_layout == BVH_LAYOUT_MULTI_METAL)
           params.bvh_layout = BVH_LAYOUT_METAL;
-        else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_OPTIX_EMBREE)
-          params.bvh_layout = sub.device->info.type == DEVICE_OPTIX ? BVH_LAYOUT_OPTIX :
-                                                                      BVH_LAYOUT_EMBREE;
-        else if (bvh->params.bvh_layout == BVH_LAYOUT_MULTI_METAL_EMBREE)
-          params.bvh_layout = sub.device->info.type == DEVICE_METAL ? BVH_LAYOUT_METAL :
-                                                                      BVH_LAYOUT_EMBREE;
+        else if (bvh_multi->params.bvh_layout == BVH_LAYOUT_MULTI_OPTIX_EMBREE)
+          params.bvh_layout = sub->device->info.type == DEVICE_OPTIX ? BVH_LAYOUT_OPTIX :
+                                                                       BVH_LAYOUT_EMBREE;
+        else if (bvh_multi->params.bvh_layout == BVH_LAYOUT_MULTI_METAL_EMBREE)
+          params.bvh_layout = sub->device->info.type == DEVICE_METAL ? BVH_LAYOUT_METAL :
+                                                                       BVH_LAYOUT_EMBREE;
 
         /* Skip building a bottom level acceleration structure for non-instanced geometry on Embree
          * (since they are put into the top level directly, see bvh_embree.cpp) */
         if (!params.top_level && params.bvh_layout == BVH_LAYOUT_EMBREE &&
-            !bvh->geometry[0]->is_instanced()) {
-          i++;
-          continue;
+            !bvh_multi->geometry[0]->is_instanced()) {
         }
-
-        bvh_multi->sub_bvhs[i] = BVH::create(params, bvh->geometry, bvh->objects, sub.device);
+        else {
+          bvh_multi->sub_bvhs[id] = BVH::create(
+              params, bvh_multi->geometry, bvh_multi->objects, sub->device);
+        }
       }
-
-      sub.device->build_bvh(bvh_multi->sub_bvhs[i], progress, refit);
-      i++;
-    }
-
-    /* Change geometry BVH pointers back to the multi BVH. */
-    for (size_t k = 0; k < bvh->geometry.size(); ++k) {
-      bvh->geometry[k]->bvh = geom_bvhs[k];
-    }
+      if (bvh_multi->sub_bvhs[id]) {
+        sub->device->build_bvh(bvh_multi->sub_bvhs[id], dscene, progress, refit);
+      }
+    });
   }
 
   virtual void *get_cpu_osl_memory() override
   {
     /* Always return the OSL memory of the CPU device (this works since the constructor above
      * guarantees that CPU devices are always added to the back). */
-    if (devices.size() > 1 && devices.back().device->info.type != DEVICE_CPU) {
+    if (devices.size() > 1 && devices.back()->device->info.type != DEVICE_CPU) {
       return NULL;
     }
-    return devices.back().device->get_cpu_osl_memory();
+
+    return devices.back()->device->get_cpu_osl_memory();
   }
 
   bool is_resident(device_ptr key, Device *sub_device) override
   {
-    foreach (SubDevice &sub, devices) {
-      if (sub.device == sub_device) {
+    foreach (SubDevice *sub, devices) {
+      if (sub->device == sub_device) {
         return find_matching_mem_device(key, sub)->device == sub_device;
       }
     }
     return false;
   }
 
-  SubDevice *find_matching_mem_device(device_ptr key, SubDevice &sub)
+  SubDevice *find_matching_mem_device(device_ptr key, SubDevice *sub)
   {
-    assert(key != 0 && (sub.peer_island_index >= 0 || sub.ptr_map.find(key) != sub.ptr_map.end()));
+    assert(key != 0 &&
+           (sub->peer_island_index >= 0 || sub->ptr_map.find(key) != sub->ptr_map.end()));
 
     /* Get the memory owner of this key (first try current device, then peer devices) */
-    SubDevice *owner_sub = &sub;
+    SubDevice *owner_sub = sub;
     if (owner_sub->ptr_map.find(key) == owner_sub->ptr_map.end()) {
-      foreach (SubDevice *island_sub, peer_islands[sub.peer_island_index]) {
+      foreach (SubDevice *island_sub, peer_islands[sub->peer_island_index]) {
         if (island_sub != owner_sub &&
             island_sub->ptr_map.find(key) != island_sub->ptr_map.end()) {
           owner_sub = island_sub;
@@ -263,7 +270,18 @@ class MultiDevice : public Device {
     return owner_sub;
   }
 
-  inline device_ptr find_matching_mem(device_ptr key, SubDevice &sub)
+  inline device_ptr find_matching_mem(device_ptr key, Device *dev) override
+  {
+    device_ptr ptr = 0;
+    foreach (SubDevice *sub, devices) {
+      if (sub->device == dev) {
+        return find_matching_mem_device(key, sub)->ptr_map[key];
+      }
+    }
+    return ptr;
+  }
+
+  inline device_ptr find_matching_mem(device_ptr key, SubDevice *sub)
   {
     return find_matching_mem_device(key, sub)->ptr_map[key];
   }
@@ -320,12 +338,43 @@ class MultiDevice : public Device {
     stats.mem_alloc(mem.device_size - existing_size);
   }
 
+  void mem_copy_to(device_memory &mem, size_t size, size_t offset) override
+  {
+    device_ptr existing_key = mem.device_pointer;
+    device_ptr key = (existing_key) ? existing_key : unique_key++;
+    size_t existing_size = mem.device_size;
+
+    /* The tile buffers are allocated on each device (see below), so copy to all of them */
+    foreach (const vector<SubDevice *> &island, peer_islands) {
+      SubDevice *owner_sub = find_suitable_mem_device(existing_key, island);
+      mem.device = owner_sub->device;
+      mem.device_pointer = (existing_key) ? owner_sub->ptr_map[existing_key] : 0;
+      mem.device_size = existing_size;
+
+      owner_sub->device->mem_copy_to(mem);
+      owner_sub->ptr_map[key] = mem.device_pointer;
+
+      if (mem.type == MEM_GLOBAL || mem.type == MEM_TEXTURE) {
+        /* Need to create texture objects and update pointer in kernel globals on all devices */
+        foreach (SubDevice *island_sub, island) {
+          if (island_sub != owner_sub) {
+            island_sub->device->mem_copy_to(mem, size, offset);
+          }
+        }
+      }
+    }
+
+    mem.device = this;
+    mem.device_pointer = key;
+    stats.mem_alloc(mem.device_size - existing_size);
+  }
+
   void mem_copy_from(device_memory &mem, size_t y, size_t w, size_t h, size_t elem) override
   {
     device_ptr key = mem.device_pointer;
     size_t i = 0, sub_h = h / devices.size();
 
-    foreach (SubDevice &sub, devices) {
+    foreach (SubDevice *sub, devices) {
       size_t sy = y + i * sub_h;
       size_t sh = (i == (size_t)devices.size() - 1) ? h - sub_h * i : sub_h;
 
@@ -369,7 +418,7 @@ class MultiDevice : public Device {
 
     /* Free memory that was allocated for all devices (see above) on each device */
     foreach (const vector<SubDevice *> &island, peer_islands) {
-      SubDevice *owner_sub = find_matching_mem_device(key, *island.front());
+      SubDevice *owner_sub = find_matching_mem_device(key, island.front());
       mem.device = owner_sub->device;
       mem.device_pointer = owner_sub->ptr_map[key];
       mem.device_size = existing_size;
@@ -387,24 +436,26 @@ class MultiDevice : public Device {
       }
     }
 
-    mem.device = this;
-    mem.device_pointer = 0;
-    mem.device_size = 0;
-    stats.mem_free(existing_size);
+    if (mem.device_pointer) {
+      mem.device = this;
+      mem.device_pointer = 0;
+      mem.device_size = 0;
+      stats.mem_free(existing_size);
+    }
   }
 
   void const_copy_to(const char *name, void *host, size_t size) override
   {
-    foreach (SubDevice &sub, devices)
-      sub.device->const_copy_to(name, host, size);
+    foreach (SubDevice *sub, devices)
+      sub->device->const_copy_to(name, host, size);
   }
 
-  int device_number(Device *sub_device) override
+  int device_number(const Device *sub_device) const override
   {
     int i = 0;
 
-    foreach (SubDevice &sub, devices) {
-      if (sub.device == sub_device)
+    for (const SubDevice *sub : devices) {
+      if (sub->device == sub_device)
         return i;
       i++;
     }
@@ -414,8 +465,8 @@ class MultiDevice : public Device {
 
   virtual void foreach_device(const function<void(Device *)> &callback) override
   {
-    foreach (SubDevice &sub, devices) {
-      sub.device->foreach_device(callback);
+    foreach (SubDevice *sub, devices) {
+      sub->device->foreach_device(callback);
     }
   }
 };

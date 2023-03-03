@@ -27,7 +27,8 @@ device_memory::device_memory(Device *device, const char *name, MemoryType type)
       original_device_size(0),
       original_device(0),
       need_realloc_(false),
-      modified(false)
+      modified(false),
+      shared_mem(false)
 {
 }
 
@@ -43,7 +44,8 @@ void *device_memory::host_alloc(size_t size)
     return 0;
   }
 
-  void *ptr = util_aligned_malloc(size, MIN_ALIGNMENT_CPU_DATA_TYPES);
+  void *ptr = NULL;
+  device->host_mem_alloc(size, MIN_ALIGNMENT_CPU_DATA_TYPES, &ptr);
 
   if (ptr) {
     util_guarded_mem_alloc(size);
@@ -57,10 +59,9 @@ void *device_memory::host_alloc(size_t size)
 
 void device_memory::host_free()
 {
-  if (host_pointer) {
+  if ((host_pointer != 0) && !shared_mem) {
     util_guarded_mem_free(memory_size());
-    util_aligned_free((void *)host_pointer);
-    host_pointer = 0;
+    device->host_mem_free(host_pointer);
   }
 }
 
@@ -68,6 +69,11 @@ void device_memory::device_alloc()
 {
   assert(!device_pointer && type != MEM_TEXTURE && type != MEM_GLOBAL);
   device->mem_alloc(*this);
+}
+
+device_ptr device_memory::get_device_ptr(Device *dev) const
+{
+  return device->find_matching_mem(device_pointer, dev);
 }
 
 void device_memory::device_free()
@@ -81,6 +87,13 @@ void device_memory::device_copy_to()
 {
   if (host_pointer) {
     device->mem_copy_to(*this);
+  }
+}
+
+void device_memory::device_copy_to(size_t size, size_t offset)
+{
+  if (host_pointer) {
+    device->mem_copy_to(*this, size, offset);
   }
 }
 

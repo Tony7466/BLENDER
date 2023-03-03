@@ -246,6 +246,9 @@ class Scene : public NodeOwner {
   Device *device;
   DeviceScene dscene;
 
+  /* Stores a DeviceScene for each sub-device */
+  std::vector<DeviceScene *> dscenes;
+
   /* parameters */
   SceneParams params;
 
@@ -330,6 +333,12 @@ class Scene : public NodeOwner {
   template<typename T> void delete_nodes(const set<T *> &nodes, const NodeOwner *owner);
 
  protected:
+  /*
+   * checks the progress for if a cancel has been requested and also
+   * the device to see if an error has occurred.
+   */
+  bool progressErrorCheck(Progress &progress, Device *device);
+  
   /* Check if some heavy data worth logging was updated.
    * Mainly used to suppress extra annoying logging.
    */

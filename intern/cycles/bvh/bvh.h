@@ -74,6 +74,12 @@ class BVH {
   {
   }
 
+  virtual BVH *get_device_bvh(const Device *)
+  {
+    return this;
+  };
+  virtual void set_device_bvh(const Device *, BVH *){};
+
   virtual void replace_geometry(const vector<Geometry *> &geometry,
                                 const vector<Object *> &objects)
   {

@@ -84,6 +84,7 @@ class OptiXDevice : public CUDADevice {
   vector<unique_ptr<device_only_memory<char>>> delayed_free_bvh_memory;
   thread_mutex delayed_free_bvh_mutex;
 
+  unsigned int max_num_instances = 0xFFFFFFFF;
  public:
   OptiXDevice(const DeviceInfo &info, Stats &stats, Profiler &profiler);
   ~OptiXDevice();
@@ -101,7 +102,7 @@ class OptiXDevice : public CUDADevice {
                        const OptixBuildInput &build_input,
                        uint16_t num_motion_steps);
 
-  void build_bvh(BVH *bvh, Progress &progress, bool refit) override;
+  void build_bvh(BVH *bvh, DeviceScene *dscene, Progress &progress, bool refit) override;
 
   void release_optix_bvh(BVH *bvh) override;
   void free_bvh_memory_delayed();

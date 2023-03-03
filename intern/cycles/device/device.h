@@ -7,7 +7,7 @@
 #include <stdlib.h>
 
 #include "bvh/params.h"
-
+#include "scene/scene.h"
 #include "device/denoise.h"
 #include "device/memory.h"
 
@@ -139,6 +139,11 @@ class Device {
   /* noexcept needed to silence TBB warning. */
   virtual ~Device() noexcept(false);
 
+  virtual int get_num_devices() const
+  {
+    return 1;
+  }
+
   /* info */
   DeviceInfo info;
   virtual const string &error_message()
@@ -206,26 +211,27 @@ class Device {
   virtual void *get_cpu_osl_memory();
 
   /* acceleration structure building */
-  virtual void build_bvh(BVH *bvh, Progress &progress, bool refit);
+  virtual void build_bvh(BVH *bvh, DeviceScene *dscene, Progress &progress, bool refit);
 
   /* OptiX specific destructor. */
   virtual void release_optix_bvh(BVH * /*bvh*/){};
 
   /* multi device */
-  virtual int device_number(Device * /*sub_device*/)
+  virtual int device_number(const Device * /*sub_device*/) const
   {
     return 0;
   }
-  // FRL_CGR END
 
-  // FRL_CGR BEGIN
   virtual void push_marker(const string) {    
   }
 
   virtual void pop_marker() {    
   }
 
-  // FRL_CGR END
+  virtual device_ptr find_matching_mem(device_ptr key, Device * /*sub*/)
+  {
+    return key;
+  }
 
   /* Called after kernel texture setup, and prior to integrator state setup. */
   virtual void optimize_for_scene(Scene * /*scene*/)
@@ -300,8 +306,11 @@ class Device {
   friend class DeviceServer;
   friend class device_memory;
 
+  virtual void host_mem_alloc(size_t size, int alignment, void **p_mem);
+  virtual void host_mem_free(void *p_mem);
   virtual void mem_alloc(device_memory &mem) = 0;
   virtual void mem_copy_to(device_memory &mem) = 0;
+  virtual void mem_copy_to(device_memory &mem, size_t size, size_t offset) = 0;
   virtual void mem_copy_from(device_memory &mem, size_t y, size_t w, size_t h, size_t elem) = 0;
   virtual void mem_zero(device_memory &mem) = 0;
   virtual void mem_free(device_memory &mem) = 0;
@@ -411,7 +420,8 @@ class GPUDevice : public Device {
   virtual GPUDevice::Mem *generic_alloc(device_memory &mem, size_t pitch_padding = 0);
   virtual void generic_free(device_memory &mem);
   virtual void generic_copy_to(device_memory &mem);
-
+  void generic_copy_to(device_memory &mem, size_t size, size_t offset);
+  
   /* total - amount of device memory, free - amount of available device memory */
   virtual void get_device_memory_info(size_t &total, size_t &free) = 0;
 
@@ -427,8 +437,7 @@ class GPUDevice : public Device {
    * is host buffer, allocated in `alloc_host`. The function should `true`, if such
    * address transformation is possible and `false` otherwise. */
   virtual bool transform_host_pointer(void *&device_pointer, void *&shared_pointer) = 0;
-
-  virtual void copy_host_to_device(void *device_pointer, void *host_pointer, size_t size) = 0;
+  virtual void copy_host_to_device(void *device_pointer, void *host_pointer, size_t size, size_t offset) = 0;
 };
 
 CCL_NAMESPACE_END

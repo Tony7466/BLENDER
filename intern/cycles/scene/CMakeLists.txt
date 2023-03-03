@@ -17,6 +17,7 @@ set(SRC
   constant_fold.cpp
   film.cpp
   geometry.cpp
+  geometry_additions.cpp
   hair.cpp
   image.cpp
   image_oiio.cpp

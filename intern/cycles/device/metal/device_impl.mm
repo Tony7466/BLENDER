@@ -752,6 +752,23 @@ MetalDevice::MetalMem *MetalDevice::generic_alloc(device_memory &mem)
   return mmem;
 }
 
+void MetalDevice::generic_copy_to(device_memory &mem, size_t size,
+size_t offset)
+{
+  if (!mem.host_pointer || !mem.device_pointer) {
+    return;
+  }
+
+  std::lock_guard<std::recursive_mutex> lock(metal_mem_map_mutex);
+  if (!metal_mem_map.at(&mem)->use_UMA || mem.host_pointer != mem.shared_pointer) {
+    MetalMem &mmem = *metal_mem_map.at(&mem);
+    memcpy(mmem.hostPtr, mem.host_pointer, mem.memory_size());
+    if (mmem.mtlBuffer.storageMode == MTLStorageModeManaged) {
+      [mmem.mtlBuffer didModifyRange:NSMakeRange(offset, size)];
+    }
+  }
+}
+
 void MetalDevice::generic_copy_to(device_memory &mem)
 {
   if (!mem.host_pointer || !mem.device_pointer) {
@@ -824,11 +841,36 @@ void MetalDevice::mem_alloc(device_memory &mem)
   }
 }
 
+void MetalDevice::mem_copy_to(device_memory &mem, size_t size, size_t offset)
+{
+  if (mem.type == MEM_GLOBAL) {
+    if ((mem.device_size < mem.memory_size()) || (!mem.device_pointer)) {
+      global_free(mem);
+      global_alloc(mem);
+    }
+    else {
+      generic_copy_to(mem, size, offset);
+    }
+  }
+  else if (mem.type == MEM_TEXTURE) {
+    tex_free((device_texture &)mem);
+    tex_alloc((device_texture &)mem);
+  }
+  else {
+    if (!mem.device_pointer) {
+      generic_alloc(mem);
+    }
+    generic_copy_to(mem, size, offset);
+  }
+}
+
 void MetalDevice::mem_copy_to(device_memory &mem)
 {
   if (mem.type == MEM_GLOBAL) {
-    global_free(mem);
-    global_alloc(mem);
+	if ((mem.device_size < mem.memory_size()) || (!mem.device_pointer)) {
+		global_free(mem);
+		global_alloc(mem);
+	}
   }
   else if (mem.type == MEM_TEXTURE) {
     tex_free((device_texture &)mem);
@@ -1341,10 +1383,10 @@ void MetalDevice::flush_delayed_free_list()
   delayed_free_list.clear();
 }
 
-void MetalDevice::build_bvh(BVH *bvh, Progress &progress, bool refit)
+void MetalDevice::build_bvh(BVH *bvh, DeviceScene *dscene, Progress &progress, bool refit)
 {
   if (bvh->params.bvh_layout == BVH_LAYOUT_BVH2) {
-    Device::build_bvh(bvh, progress, refit);
+    Device::build_bvh(bvh, dscene, progress, refit);
     return;
   }
 

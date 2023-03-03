@@ -170,6 +170,12 @@ template<> struct device_type_traits<packed_float3> {
   static_assert(sizeof(packed_float3) == num_elements * datatype_size(data_type));
 };
 
+template<> struct device_type_traits<packed_uint3> {
+  static const DataType data_type = TYPE_UINT;
+  static const size_t num_elements = 3;
+  static_assert(sizeof(packed_float3) == num_elements * datatype_size(data_type));
+};
+
 template<> struct device_type_traits<float4> {
   static const DataType data_type = TYPE_FLOAT;
   static const size_t num_elements = 4;
@@ -248,6 +254,8 @@ class device_memory {
 
   bool is_resident(Device *sub_device) const;
 
+  device_ptr get_device_ptr(Device *dev) const;
+
  protected:
   friend class Device;
   friend class GPUDevice;
@@ -279,6 +287,7 @@ class device_memory {
   void device_alloc();
   void device_free();
   void device_copy_to();
+  void device_copy_to(size_t size, size_t offset);
   void device_copy_from(size_t y, size_t w, size_t h, size_t elem);
   void device_zero();
 
@@ -289,6 +298,7 @@ class device_memory {
   Device *original_device;
   bool need_realloc_;
   bool modified;
+  bool shared_mem;
 };
 
 /* Device Only Memory
@@ -369,17 +379,68 @@ template<typename T> class device_vector : public device_memory {
     assert(data_elements > 0);
   }
 
+  device_vector(Device *device,
+                const char *name,
+                void *p_mem,
+                size_t width,
+                size_t height,
+                size_t depth,
+                MemoryType type)
+      : device_memory(device, name, type)
+  {
+    data_type = device_type_traits<T>::data_type;
+    data_elements = device_type_traits<T>::num_elements;
+    modified = true;
+    need_realloc_ = true;
+    assign_mem(p_mem, width, height, depth);
+
+    assert(data_elements > 0);
+  }
+
   virtual ~device_vector()
   {
     free();
+  }
+
+  /* Host memory assignment. */
+  T *assign_mem(const device_vector<T> &src)
+  {
+    return assign_mem(src.host_pointer, src.data_width, src.data_height, src.data_depth);
+  }
+
+  T *assign_mem(const device_vector<T> *p_src)
+  {
+    return assign_mem(
+        p_src->host_pointer, p_src->data_width, p_src->data_height, p_src->data_depth);
+  }
+
+  T *assign_mem(void *p_mem, size_t width, size_t height = 0, size_t depth = 0)
+  {
+    size_t new_size = size(width, height, depth);
+
+    host_free();
+    if (new_size > data_size) {
+      device_free();
+      // host_pointer = host_alloc(sizeof(T) * new_size);
+      modified = true;
+      assert(device_pointer == 0);
+    }
+    host_pointer = p_mem;
+    // FRL_CGR
+    shared_mem = true;
+    data_size = new_size;
+    data_width = width;
+    data_height = height;
+    data_depth = depth;
+
+    return data();
   }
 
   /* Host memory allocation. */
   T *alloc(size_t width, size_t height = 0, size_t depth = 0)
   {
     size_t new_size = size(width, height, depth);
-
-    if (new_size != data_size) {
+    if (new_size > data_size) {
       device_free();
       host_free();
       host_pointer = host_alloc(sizeof(T) * new_size);
@@ -520,6 +581,22 @@ template<typename T> class device_vector : public device_memory {
     if (data_size != 0) {
       device_copy_to();
     }
+  }
+
+  void copy_to_device(size_t size, size_t offset)
+  {
+    if (data_size != 0) {
+      assert(size <= data_size);
+      device_copy_to(size, offset);
+    }
+  }
+  void copy_to_device_if_modified(size_t size, size_t offset)
+  {
+    if (!modified) {
+      return;
+    }
+
+    copy_to_device(size, offset);
   }
 
   void copy_to_device_if_modified()

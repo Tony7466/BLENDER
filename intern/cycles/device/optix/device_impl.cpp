@@ -97,6 +97,11 @@ OptiXDevice::OptiXDevice(const DeviceInfo &info, Stats &stats, Profiler &profile
 
   /* Allocate launch parameter buffer memory on device. */
   launch_params.alloc_to_device(1);
+
+  optixDeviceContextGetProperty(context,
+                                OPTIX_DEVICE_PROPERTY_LIMIT_MAX_INSTANCE_ID,
+                                &max_num_instances,
+                                sizeof(max_num_instances));
 }
 
 OptiXDevice::~OptiXDevice()
@@ -1056,7 +1061,7 @@ bool OptiXDevice::build_optix_bvh(BVHOptiX *bvh,
   return !have_error();
 }
 
-void OptiXDevice::build_bvh(BVH *bvh, Progress &progress, bool refit)
+void OptiXDevice::build_bvh(BVH *bvh, DeviceScene *dscene, Progress &progress, bool refit)
 {
   const bool use_fast_trace_bvh = (bvh->params.bvh_type == BVH_TYPE_STATIC);
 
@@ -1388,18 +1393,11 @@ void OptiXDevice::build_bvh(BVH *bvh, Progress &progress, bool refit)
   }
   else {
     unsigned int num_instances = 0;
-    unsigned int max_num_instances = 0xFFFFFFFF;
 
     bvh_optix->as_data->free();
     bvh_optix->traversable_handle = 0;
     bvh_optix->motion_transform_data->free();
 
-    optixDeviceContextGetProperty(context,
-                                  OPTIX_DEVICE_PROPERTY_LIMIT_MAX_INSTANCE_ID,
-                                  &max_num_instances,
-                                  sizeof(max_num_instances));
-    /* Do not count first bit, which is used to distinguish instanced and non-instanced objects. */
-    max_num_instances >>= 1;
     if (bvh->objects.size() > max_num_instances) {
       progress.set_error(
           "Failed to build OptiX acceleration structure because there are too many instances");
@@ -1635,7 +1633,7 @@ void OptiXDevice::update_launch_params(size_t offset, void *data, size_t data_si
 {
   const CUDAContextScope scope(this);
 
-  cuda_assert(cuMemcpyHtoD(launch_params.device_pointer + offset, data, data_size));
+  cuda_assert(cuMemcpyHtoD(launch_params.get_device_ptr(this) + offset, data, data_size));
 }
 
 CCL_NAMESPACE_END

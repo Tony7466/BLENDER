@@ -451,6 +451,7 @@ void ShaderManager::device_update(Device *device,
                                   Scene *scene,
                                   Progress &progress)
 {
+  SCOPED_MARKER(device,"ShaderManager::device_update");
   if (!need_update()) {
     return;
   }
@@ -470,11 +471,12 @@ void ShaderManager::device_update(Device *device,
   device_update_specific(device, dscene, scene, progress);
 }
 
-void ShaderManager::device_update_common(Device * /*device*/,
+void ShaderManager::device_update_common(Device *device,
                                          DeviceScene *dscene,
                                          Scene *scene,
                                          Progress & /*progress*/)
 {
+  SCOPED_MARKER(device, "ShaderManager::device_update_common");
   dscene->shaders.free();
 
   if (scene->shaders.size() == 0)
