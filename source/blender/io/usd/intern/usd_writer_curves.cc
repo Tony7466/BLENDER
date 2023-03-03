@@ -134,6 +134,12 @@ static void populate_curve_verts(const bke::CurvesGeometry &geometry,
     const int tot_points = curve_points.size();
     control_point_counts[i_curve] = tot_points;
 
+    /* For periodic linear curve, segment count = curveVertexCount.
+       For periodic cubic curve, segment count = curveVertexCount / vstep.
+       For nonperiodic linear curve, segment count = curveVertexCount - 1.
+       For nonperiodic cubic curve, segment count = ((curveVertexCount - 4) / vstep) + 1.
+       This function handles linear and Catmull-Rom curves. For Catmull-Rom, vstep is 1.
+       https://graphics.pixar.com/usd/dev/api/class_usd_geom_basis_curves.html */
     if (is_cyclic) {
       segments[i_curve] = tot_points;
     }
@@ -215,6 +221,10 @@ static void populate_curve_verts_for_bezier(const bke::CurvesGeometry &geometry,
 
       const blender::float3 left_handle = handles_l[start_point_index];
       verts.push_back(pxr::GfVec3f(left_handle[0], left_handle[1], left_handle[2]));
+
+      verts.push_back(pxr::GfVec3f(positions[start_point_index][0],
+                                   positions[start_point_index][1],
+                                   positions[start_point_index][2]));
     }
 
     const int tot_points = verts.size() - start_verts_count;
