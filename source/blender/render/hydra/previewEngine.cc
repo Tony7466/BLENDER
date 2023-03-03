@@ -35,7 +35,11 @@ void PreviewEngine::render(BL::Depsgraph &b_depsgraph)
   renderTaskDelegate->SetCameraAndViewport(freeCameraDelegate->GetCameraId(), GfVec4d(0, 0, buffer_res[0], buffer_res[1]));
   renderTaskDelegate->SetRendererAov(HdAovTokens->color);
 
-  HdTaskSharedPtrVector tasks = renderTaskDelegate->GetTasks();
+  HdTaskSharedPtrVector tasks;
+  if (simpleLightTaskDelegate) {
+    tasks.push_back(simpleLightTaskDelegate->GetTask());
+  }
+  tasks.push_back(renderTaskDelegate->GetTask());
 
   vector<float> pixels = vector<float>(buffer_res[0] * buffer_res[1] * 4);  // 4 - number of channels
 
