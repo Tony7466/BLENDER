@@ -2425,7 +2425,7 @@ static bool rna_Node_parent_poll(PointerRNA *ptr, PointerRNA value)
     return false;
   }
 
-  if (nodeIsParentAndChild(node, parent)) {
+  if (node->type == NODE_FRAME && nodeIsParentAndChild(node, parent)) {
     return false;
   }
 
