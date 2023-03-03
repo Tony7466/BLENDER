@@ -419,7 +419,7 @@ static const std::string attribute_name_suffix = "_attribute_name";
  */
 static bool socket_type_has_attribute_toggle(const bNodeSocket &socket)
 {
-  return ELEM(socket.type, SOCK_FLOAT, SOCK_VECTOR, SOCK_BOOLEAN, SOCK_RGBA, SOCK_INT, SOCK_MATRIX_3X3, SOCK_MATRIX_4X4);
+  return ELEM(socket.type, SOCK_FLOAT, SOCK_VECTOR, SOCK_BOOLEAN, SOCK_RGBA, SOCK_INT, SOCK_MATRIX_4X4);
 }
 
 /**
@@ -474,22 +474,6 @@ id_property_create_from_socket(const bNodeSocket &socket)
       ui_data->default_array_len = 3;
       for (const int i : IndexRange(3)) {
         ui_data->default_array[i] = double(value->value[i]);
-      }
-      return property;
-    }
-    case SOCK_MATRIX_3X3: {
-      const bNodeSocketValueMatrix3x3 *value = static_cast<const bNodeSocketValueMatrix3x3 *>(
-          socket.default_value);
-      const Span<float> default_value_span((float *)value->value, 9);
-      auto property = bke::idprop::create(socket.identifier, default_value_span);
-      IDPropertyUIDataFloat *ui_data = (IDPropertyUIDataFloat *)IDP_ui_data_ensure(property.get());
-      ui_data->base.rna_subtype = PROP_MATRIX;
-      ui_data->min = ui_data->soft_min = double(value->min);
-      ui_data->max = ui_data->soft_max = double(value->max);
-      ui_data->default_array = (double *)MEM_mallocN(sizeof(double[9]), "mod_prop_default");
-      ui_data->default_array_len = 9;
-      for (const int i : IndexRange(9)) {
-        ui_data->default_array[i] = double(default_value_span[i]);
       }
       return property;
     }
@@ -586,8 +570,6 @@ static bool id_property_type_matches_socket(const bNodeSocket &socket, const IDP
       return property.type == IDP_INT;
     case SOCK_VECTOR:
       return property.type == IDP_ARRAY && property.subtype == IDP_FLOAT && property.len == 3;
-    case SOCK_MATRIX_3X3:
-      return property.type == IDP_ARRAY && property.subtype == IDP_FLOAT && property.len == 9;
     case SOCK_MATRIX_4X4:
       return property.type == IDP_ARRAY && property.subtype == IDP_FLOAT && property.len == 16;
     case SOCK_RGBA:
@@ -632,12 +614,6 @@ static void init_socket_cpp_value_from_property(const IDProperty &property,
       float3 value;
       copy_v3_v3(value, (const float *)IDP_Array(&property));
       new (r_value) ValueOrField<float3>(value);
-      break;
-    }
-    case SOCK_MATRIX_3X3: {
-      float3x3 value;
-      copy_m3_m3(value.ptr(), (const float (*)[3])IDP_Array(&property));
-      new (r_value) ValueOrField<float3x3>(value);
       break;
     }
     case SOCK_MATRIX_4X4: {

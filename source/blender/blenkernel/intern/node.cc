@@ -317,8 +317,6 @@ static void library_foreach_node_socket(LibraryForeachIDData *data, bNodeSocket 
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
-    case SOCK_MATRIX_2X2:
-    case SOCK_MATRIX_3X3:
     case SOCK_MATRIX_4X4:
       break;
   }
@@ -458,12 +456,6 @@ static void write_node_socket_default_value(BlendWriter *writer, bNodeSocket *so
       break;
     case SOCK_MATERIAL:
       BLO_write_struct(writer, bNodeSocketValueMaterial, sock->default_value);
-      break;
-    case SOCK_MATRIX_2X2:
-      BLO_write_struct(writer, bNodeSocketValueMatrix2x2, sock->default_value);
-      break;
-    case SOCK_MATRIX_3X3:
-      BLO_write_struct(writer, bNodeSocketValueMatrix3x3, sock->default_value);
       break;
     case SOCK_MATRIX_4X4:
       BLO_write_struct(writer, bNodeSocketValueMatrix4x4, sock->default_value);
@@ -893,7 +885,6 @@ static void lib_link_node_socket(BlendLibReader *reader, Library *lib, bNodeSock
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
-    case SOCK_MATRIX_3X3:
     case SOCK_MATRIX_4X4:
       break;
   }
@@ -994,8 +985,6 @@ static void expand_node_socket(BlendExpander *expander, bNodeSocket *sock)
       case SOCK_CUSTOM:
       case SOCK_SHADER:
       case SOCK_GEOMETRY:
-      case SOCK_MATRIX_2X2:
-      case SOCK_MATRIX_3X3:
       case SOCK_MATRIX_4X4:
         break;
     }
@@ -1613,8 +1602,6 @@ static void socket_id_user_increment(bNodeSocket *sock)
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
-    case SOCK_MATRIX_2X2:
-    case SOCK_MATRIX_3X3:
     case SOCK_MATRIX_4X4:
       break;
   }
@@ -1675,8 +1662,6 @@ static bool socket_id_user_decrement(bNodeSocket *sock)
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
-    case SOCK_MATRIX_2X2:
-    case SOCK_MATRIX_3X3:
     case SOCK_MATRIX_4X4:
       break;
   }
@@ -1822,10 +1807,6 @@ const char *nodeStaticSocketType(const int type, const int subtype)
       return "NodeSocketTexture";
     case SOCK_MATERIAL:
       return "NodeSocketMaterial";
-    case SOCK_MATRIX_2X2:
-      return "NodeSocketMatrix2x2";
-    case SOCK_MATRIX_3X3:
-      return "NodeSocketMatrix3x3";
     case SOCK_MATRIX_4X4:
       return "NodeSocketMatrix4x4";
   }
@@ -1905,10 +1886,6 @@ const char *nodeStaticSocketInterfaceType(const int type, const int subtype)
       return "NodeSocketInterfaceTexture";
     case SOCK_MATERIAL:
       return "NodeSocketInterfaceMaterial";
-    case SOCK_MATRIX_2X2:
-      return "NodeSocketInterfaceMatrix2x2";
-    case SOCK_MATRIX_3X3:
-      return "NodeSocketInterfaceMatrix3x3";
     case SOCK_MATRIX_4X4:
       return "NodeSocketInterfaceMatrix4x4";
   }
@@ -1944,10 +1921,6 @@ const char *nodeStaticSocketLabel(const int type, const int /*subtype*/)
       return "Texture";
     case SOCK_MATERIAL:
       return "Material";
-    case SOCK_MATRIX_2X2:
-      return "2x2 Matrix";
-    case SOCK_MATRIX_3X3:
-      return "3x3 Matrix";
     case SOCK_MATRIX_4X4:
       return "4x4 Matrix";
   }

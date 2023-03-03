@@ -94,32 +94,6 @@ class VectorBuilder : public SocketDeclarationBuilder<Vector> {
   VectorBuilder &compact();
 };
 
-class Matrix3x3Builder;
-
-class Matrix3x3 : public SocketDeclaration {
- private:
-  float3x3 default_value_ = float3x3::identity();
-  float soft_min_value_ = -FLT_MAX;
-  float soft_max_value_ = FLT_MAX;
-
-  friend Matrix3x3Builder;
-
- public:
-  using Builder = Matrix3x3Builder;
-
-  bNodeSocket &build(bNodeTree &ntree, bNode &node) const override;
-  bool matches(const bNodeSocket &socket) const override;
-  bNodeSocket &update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket &socket) const override;
-  bool can_connect(const bNodeSocket &socket) const override;
-};
-
-class Matrix3x3Builder : public SocketDeclarationBuilder<Matrix3x3> {
- public:
-  Matrix3x3Builder &default_value(const float3x3 &value);
-  Matrix3x3Builder &min(float min);
-  Matrix3x3Builder &max(float max);
-};
-
 class Matrix4x4Builder;
 
 class Matrix4x4 : public SocketDeclaration {
@@ -391,30 +365,6 @@ inline VectorBuilder &VectorBuilder::max(const float max)
 inline VectorBuilder &VectorBuilder::compact()
 {
   decl_->compact = true;
-  return *this;
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name #Matrix3x3Builder Inline Methods
- * \{ */
-
-inline Matrix3x3Builder &Matrix3x3Builder::default_value(const float3x3 &value)
-{
-  decl_->default_value_ = value;
-  return *this;
-}
-
-inline Matrix3x3Builder &Matrix3x3Builder::min(const float min)
-{
-  decl_->soft_min_value_ = min;
-  return *this;
-}
-
-inline Matrix3x3Builder &Matrix3x3Builder::max(const float max)
-{
-  decl_->soft_max_value_ = max;
   return *this;
 }
 

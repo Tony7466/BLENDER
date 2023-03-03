@@ -274,52 +274,6 @@ bNodeSocket &Vector::update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket 
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name #Matrix3x3
- * \{ */
-
-bNodeSocket &Matrix3x3::build(bNodeTree &ntree, bNode &node) const
-{
-  bNodeSocket &socket = *nodeAddStaticSocket(
-      &ntree, &node, in_out, SOCK_MATRIX_3X3, PROP_MATRIX, identifier.c_str(), name.c_str());
-  this->set_common_flags(socket);
-  bNodeSocketValueMatrix3x3 &value = *(bNodeSocketValueMatrix3x3 *)socket.default_value;
-  copy_m3_m3(value.value, default_value_.ptr());
-  value.min = soft_min_value_;
-  value.max = soft_max_value_;
-  return socket;
-}
-
-bool Matrix3x3::matches(const bNodeSocket &socket) const
-{
-  if (!this->matches_common_data(socket)) {
-    return false;
-  }
-  if (socket.type != SOCK_MATRIX_3X3) {
-    return false;
-  }
-  return true;
-}
-
-bool Matrix3x3::can_connect(const bNodeSocket &socket) const
-{
-  return sockets_can_connect(*this, socket) && socket.type == SOCK_MATRIX_3X3;
-}
-
-bNodeSocket &Matrix3x3::update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket &socket) const
-{
-  if (socket.type != SOCK_MATRIX_3X3) {
-    BLI_assert(socket.in_out == in_out);
-    return this->build(ntree, node);
-  }
-  this->set_common_flags(socket);
-  bNodeSocketValueMatrix3x3 &value = *(bNodeSocketValueMatrix3x3 *)socket.default_value;
-  STRNCPY(socket.name, name.c_str());
-  return socket;
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name #Matrix4x4
  * \{ */
 

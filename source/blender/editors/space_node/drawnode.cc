@@ -1200,8 +1200,6 @@ static const float std_node_socket_colors[][4] = {
     {0.96, 0.96, 0.96, 1.0}, /* SOCK_COLLECTION */
     {0.62, 0.31, 0.64, 1.0}, /* SOCK_TEXTURE */
     {0.92, 0.46, 0.51, 1.0}, /* SOCK_MATERIAL */
-    {0.01, 0.61, 0.66, 1.0}, /* SOCK_MATRIX_2X2 */
-    {0.01, 0.61, 0.66, 1.0}, /* SOCK_MATRIX_3X3 */
     {0.01, 0.61, 0.66, 1.0}, /* SOCK_MATRIX_4X4 */
 };
 
@@ -1324,8 +1322,6 @@ static void std_node_socket_draw(
         }
       }
       break;
-    case SOCK_MATRIX_2X2:
-    case SOCK_MATRIX_3X3:
     case SOCK_MATRIX_4X4:
       if (sock->flag & SOCK_COMPACT) {
         uiTemplateComponentMenu(layout, ptr, "default_value", text);
@@ -1465,8 +1461,6 @@ static void std_node_socket_interface_draw(bContext * /*C*/, uiLayout *layout, P
       uiItemR(sub, ptr, "max_value", DEFAULT_FLAGS, IFACE_("Max"), ICON_NONE);
       break;
     }
-    case SOCK_MATRIX_2X2:
-    case SOCK_MATRIX_3X3:
     case SOCK_MATRIX_4X4: {
       uiItemR(col, ptr, "default_value", DEFAULT_FLAGS, IFACE_("Default"), ICON_NONE);
       uiLayout *sub = uiLayoutColumn(col, true);

@@ -448,10 +448,6 @@ static eCustomDataType socket_type_to_custom_data_type(const eNodeSocketDatatype
       return CD_PROP_INT32;
     case SOCK_VECTOR:
       return CD_PROP_FLOAT3;
-    case SOCK_MATRIX_2X2:
-      return CD_PROP_FLOAT2X2;
-    case SOCK_MATRIX_3X3:
-      return CD_PROP_FLOAT3X3;
     case SOCK_MATRIX_4X4:
       return CD_PROP_FLOAT4X4;
     case SOCK_BOOLEAN:
@@ -2224,8 +2220,6 @@ static int get_main_socket_priority(const bNodeSocket *socket)
     case SOCK_COLLECTION:
     case SOCK_TEXTURE:
     case SOCK_MATERIAL:
-    case SOCK_MATRIX_2X2:
-    case SOCK_MATRIX_3X3:
     case SOCK_MATRIX_4X4:
       return 6;
   }

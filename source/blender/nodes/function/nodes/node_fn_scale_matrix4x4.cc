@@ -4,21 +4,21 @@
 
 #include "BLI_math_vector.h"
 
-namespace blender::nodes::node_fn_scale_matrix3x3_cc {
+namespace blender::nodes::node_fn_scale_matrix4x4_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  b.add_input<decl::Matrix3x3>(N_("Matrix"));
+  b.add_input<decl::Matrix4x4>(N_("Matrix"));
   b.add_input<decl::Vector>(N_("Scale"));
-  b.add_output<decl::Matrix3x3>(N_("Matrix"));
+  b.add_output<decl::Matrix4x4>(N_("Matrix"));
 };
 
 static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
-  static auto fn = mf::build::SI2_SO<float3x3, float3, float3x3>(
-      "scale_matrix", [](const float3x3 &mat, const float3 &scale) {
-        float3x3 result;
+  static auto fn = mf::build::SI2_SO<float4x4, float3, float4x4>(
+      "scale_matrix", [](const float4x4 &mat, const float3 &scale) {
+        float4x4 result;
         mul_v3_v3fl(result.view()[0], mat[0], scale[0]);
         mul_v3_v3fl(result.view()[1], mat[1], scale[1]);
         mul_v3_v3fl(result.view()[2], mat[2], scale[2]);
@@ -27,15 +27,15 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
   builder.set_matching_fn(&fn);
 }
 
-}  // namespace blender::nodes::node_fn_scale_matrix3x3_cc
+}  // namespace blender::nodes::node_fn_scale_matrix4x4_cc
 
-void register_node_type_fn_scale_matrix_3x3(void)
+void register_node_type_fn_scale_matrix_4x4(void)
 {
-  namespace file_ns = blender::nodes::node_fn_scale_matrix3x3_cc;
+  namespace file_ns = blender::nodes::node_fn_scale_matrix4x4_cc;
 
   static bNodeType ntype;
 
-  fn_node_type_base(&ntype, FN_NODE_SCALE_MATRIX_3X3, "Scale 3x3 Matrix", NODE_CLASS_CONVERTER);
+  fn_node_type_base(&ntype, FN_NODE_SCALE_MATRIX_4X4, "Scale 4x4 Matrix", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::node_declare;
   ntype.build_multi_function = file_ns::node_build_multi_function;
 
