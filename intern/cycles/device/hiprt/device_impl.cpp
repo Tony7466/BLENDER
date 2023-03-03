@@ -50,6 +50,7 @@ HIPRTDevice::HIPRTDevice(const DeviceInfo &info, Stats &stats, Profiler &profile
       prims_time(this, "prims_time", MEM_GLOBAL),
       prim_time_offset(this, "prim_time_offset", MEM_GLOBAL)
 {
+  HIPContextScope scope(this);
   hiprtContextCreationInput hiprt_context_input = {0};
   hiprt_context_input.ctxt = hipContext;
   hiprt_context_input.device = hipDevice;
@@ -65,6 +66,7 @@ HIPRTDevice::HIPRTDevice(const DeviceInfo &info, Stats &stats, Profiler &profile
 
 HIPRTDevice::~HIPRTDevice()
 {
+  HIPContextScope scope(this);
   user_instance_id.free();
   visibility.free();
   hiprt_blas_ptr.free();
@@ -1027,7 +1029,7 @@ void HIPRTDevice::build_bvh(BVH *bvh, Progress &progress, bool refit)
   options.buildFlags = hiprtBuildFlagBitPreferHighQualityBuild;
 
   BVHHIPRT *bvh_rt = static_cast<BVHHIPRT *>(bvh);
-
+  HIPContextScope scope(this);
   if (!bvh_rt->is_tlas()) {
 
     vector<Geometry *> geometry = bvh_rt->geometry;
