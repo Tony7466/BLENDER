@@ -228,7 +228,8 @@ static void move_key(BezTriple *bezt, const float key_y_value)
 {
   const float delta = key_y_value - bezt->vec[1][1];
   bezt->vec[1][1] = key_y_value;
-  /* When handle type is HD_ALIGN one handle would get stuck. */
+  /* When handle type is HD_ALIGN handles would get stuck unless we move them along with the key.
+   */
   if (ELEM(HD_ALIGN, bezt->h1, bezt->h2)) {
     bezt->vec[0][1] += delta;
     bezt->vec[2][1] += delta;
