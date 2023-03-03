@@ -34,6 +34,7 @@ shader node_voronoi_texture(
   float roughness = clamp(Roughness, 0.0, 1.0);
   float randomness = clamp(Randomness, 0.0, 1.0);
   float smoothness = clamp(Smoothness / 2.0, 0.0, 0.5);
+  float max_amplitude = 0.0;
 
   vector3 coord = Vector;
   if (use_mapping)
@@ -43,8 +44,6 @@ shader node_voronoi_texture(
   coord *= Scale;
 
   if (dimensions == "1D") {
-    float max_amplitude = 0.0;
-
     if (feature == "f1") {
       fractal_voronoi_f1(w,
                          detail,
@@ -58,7 +57,6 @@ shader node_voronoi_texture(
                          Color,
                          WOut);
       if (normalize != 0.0) {
-        /* Optimized mix(max_amplitude * 0.5, max_amplitude, randomness) */
         Distance /= (0.5 + 0.5 * randomness) * max_amplitude;
         Color /= max_amplitude;
       }
@@ -77,7 +75,6 @@ shader node_voronoi_texture(
                                 Color,
                                 WOut);
       if (normalize != 0.0) {
-        /* Optimized mix(max_amplitude * 0.5, max_amplitude, randomness) */
         Distance /= (0.5 + 0.5 * randomness) * max_amplitude;
         Color /= max_amplitude;
       }
@@ -126,8 +123,6 @@ shader node_voronoi_texture(
   else if (dimensions == "2D") {
     vector2 coord2D = vector2(coord[0], coord[1]);
     vector2 outPosition2D;
-    float max_distance = voronoi_distance(vector2(1.0, 1.0), vector2(0.0, 0.0), metric, Exponent);
-    float max_amplitude = 0.0;
 
     if (feature == "f1") {
       fractal_voronoi_f1(coord2D,
@@ -142,9 +137,8 @@ shader node_voronoi_texture(
                          Color,
                          outPosition2D);
       if (normalize != 0.0) {
-        /* Optimized mix(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
-         * randomness) */
-        Distance /= (0.5 + 0.5 * randomness) * max_amplitude * max_distance;
+        Distance /= (0.5 + 0.5 * randomness) * max_amplitude *
+                    voronoi_distance(vector2(1.0, 1.0), vector2(0.0, 0.0), metric, Exponent);
         Color /= max_amplitude;
       }
     }
@@ -162,9 +156,8 @@ shader node_voronoi_texture(
                                 Color,
                                 outPosition2D);
       if (normalize != 0.0) {
-        /* Optimized mix(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
-         * randomness) */
-        Distance /= (0.5 + 0.5 * randomness) * max_amplitude * max_distance;
+        Distance /= (0.5 + 0.5 * randomness) * max_amplitude *
+                    voronoi_distance(vector2(1.0, 1.0), vector2(0.0, 0.0), metric, Exponent);
         Color /= max_amplitude;
       }
     }
@@ -182,11 +175,14 @@ shader node_voronoi_texture(
                          outPosition2D);
       if (normalize != 0.0) {
         if (detail == 0.0 || roughness == 0.0 || Lacunarity == 0.0) {
-          Distance /= (1.0 - randomness) + randomness * max_amplitude * max_distance;
+          Distance /= (1.0 - randomness) +
+                      randomness * max_amplitude *
+                          voronoi_distance(vector2(1.0, 1.0), vector2(0.0, 0.0), metric, Exponent);
         }
         else {
           Distance /= (1.0 - randomness) * ceil(detail + 1.0) +
-                      randomness * max_amplitude * max_distance;
+                      randomness * max_amplitude *
+                          voronoi_distance(vector2(1.0, 1.0), vector2(0.0, 0.0), metric, Exponent);
         }
         Color /= max_amplitude;
       }
@@ -212,10 +208,6 @@ shader node_voronoi_texture(
     Position = vector3(outPosition2D.x, outPosition2D.y, 0.0);
   }
   else if (dimensions == "3D") {
-    float max_distance = voronoi_distance(
-        vector3(1.0, 1.0, 1.0), vector3(0.0, 0.0, 0.0), metric, Exponent);
-    float max_amplitude = 0.0;
-
     if (feature == "f1") {
       fractal_voronoi_f1(coord,
                          detail,
@@ -229,9 +221,9 @@ shader node_voronoi_texture(
                          Color,
                          Position);
       if (normalize != 0.0) {
-        /* Optimized mix(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
-         * randomness) */
-        Distance /= (0.5 + 0.5 * randomness) * max_amplitude * max_distance;
+        Distance /= (0.5 + 0.5 * randomness) * max_amplitude *
+                    voronoi_distance(
+                        vector3(1.0, 1.0, 1.0), vector3(0.0, 0.0, 0.0), metric, Exponent);
         Color /= max_amplitude;
       }
     }
@@ -249,9 +241,9 @@ shader node_voronoi_texture(
                                 Color,
                                 Position);
       if (normalize != 0.0) {
-        /* Optimized mix(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
-         * randomness) */
-        Distance /= (0.5 + 0.5 * randomness) * max_amplitude * max_distance;
+        Distance /= (0.5 + 0.5 * randomness) * max_amplitude *
+                    voronoi_distance(
+                        vector3(1.0, 1.0, 1.0), vector3(0.0, 0.0, 0.0), metric, Exponent);
         Color /= max_amplitude;
       }
     }
@@ -269,11 +261,16 @@ shader node_voronoi_texture(
                          Position);
       if (normalize != 0.0) {
         if (detail == 0.0 || roughness == 0.0 || Lacunarity == 0.0) {
-          Distance /= (1.0 - randomness) + randomness * max_amplitude * max_distance;
+          Distance /= (1.0 - randomness) +
+                      randomness * max_amplitude *
+                          voronoi_distance(
+                              vector3(1.0, 1.0, 1.0), vector3(0.0, 0.0, 0.0), metric, Exponent);
         }
         else {
           Distance /= (1.0 - randomness) * ceil(detail + 1.0) +
-                      randomness * max_amplitude * max_distance;
+                      randomness * max_amplitude *
+                          voronoi_distance(
+                              vector3(1.0, 1.0, 1.0), vector3(0.0, 0.0, 0.0), metric, Exponent);
         }
         Color /= max_amplitude;
       }
@@ -300,9 +297,6 @@ shader node_voronoi_texture(
   else if (dimensions == "4D") {
     vector4 coord4D = vector4(coord[0], coord[1], coord[2], w);
     vector4 outPosition4D;
-    float max_distance = voronoi_distance(
-        vector4(1.0, 1.0, 1.0, 1.0), vector4(0.0, 0.0, 0.0, 0.0), metric, Exponent);
-    float max_amplitude = 0.0;
 
     if (feature == "f1") {
       fractal_voronoi_f1(coord4D,
@@ -317,9 +311,11 @@ shader node_voronoi_texture(
                          Color,
                          outPosition4D);
       if (normalize != 0.0) {
-        /* Optimized mix(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
-         * randomness) */
-        Distance /= (0.5 + 0.5 * randomness) * max_amplitude * max_distance;
+        Distance /= (0.5 + 0.5 * randomness) * max_amplitude *
+                    voronoi_distance(vector4(1.0, 1.0, 1.0, 1.0),
+                                     vector4(0.0, 0.0, 0.0, 0.0),
+                                     metric,
+                                     Exponent);
         Color /= max_amplitude;
       }
     }
@@ -337,9 +333,11 @@ shader node_voronoi_texture(
                                 Color,
                                 outPosition4D);
       if (normalize != 0.0) {
-        /* Optimized mix(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
-         * randomness) */
-        Distance /= (0.5 + 0.5 * randomness) * max_amplitude * max_distance;
+        Distance /= (0.5 + 0.5 * randomness) * max_amplitude *
+                    voronoi_distance(vector4(1.0, 1.0, 1.0, 1.0),
+                                     vector4(0.0, 0.0, 0.0, 0.0),
+                                     metric,
+                                     Exponent);
         Color /= max_amplitude;
       }
     }
@@ -357,11 +355,19 @@ shader node_voronoi_texture(
                          outPosition4D);
       if (normalize != 0.0) {
         if (detail == 0.0 || roughness == 0.0 || Lacunarity == 0.0) {
-          Distance /= (1.0 - randomness) + randomness * max_amplitude * max_distance;
+          Distance /= (1.0 - randomness) + randomness * max_amplitude *
+                                               voronoi_distance(vector4(1.0, 1.0, 1.0, 1.0),
+                                                                vector4(0.0, 0.0, 0.0, 0.0),
+                                                                metric,
+                                                                Exponent);
         }
         else {
           Distance /= (1.0 - randomness) * ceil(detail + 1.0) +
-                      randomness * max_amplitude * max_distance;
+                      randomness * max_amplitude *
+                          voronoi_distance(vector4(1.0, 1.0, 1.0, 1.0),
+                                           vector4(0.0, 0.0, 0.0, 0.0),
+                                           metric,
+                                           Exponent);
         }
         Color /= max_amplitude;
       }

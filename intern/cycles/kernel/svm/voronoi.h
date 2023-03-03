@@ -1205,6 +1205,7 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
   float distance_out = 0.0f, w_out = 0.0f, radius_out = 0.0f;
   float3 color_out = make_float3(0.0f, 0.0f, 0.0f);
   float3 position_out = make_float3(0.0f, 0.0f, 0.0f);
+  float max_amplitude = 0.0f;
 
   detail = clamp(detail, 0.0f, 15.0f);
   roughness = clamp(roughness, 0.0f, 1.0f);
@@ -1216,8 +1217,6 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
 
   switch (dimensions) {
     case 1: {
-      float max_amplitude = 0.0f;
-
       switch (voronoi_feature) {
         case NODE_VORONOI_F1: {
           fractal_voronoi_f1<float>(w,
@@ -1232,7 +1231,6 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                     &color_out,
                                     &w_out);
           if (normalize) {
-            /* Optimized lerp(max_amplitude * 0.5f, max_amplitude, randomness) */
             distance_out /= (0.5f + 0.5f * randomness) * max_amplitude;
             color_out /= max_amplitude;
           }
@@ -1252,7 +1250,6 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                            &color_out,
                                            &w_out);
           if (normalize) {
-            /* Optimized lerp(max_amplitude * 0.5f, max_amplitude, randomness) */
             distance_out /= (0.5f + 0.5f * randomness) * max_amplitude;
             color_out /= max_amplitude;
           }
@@ -1306,9 +1303,6 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
     case 2: {
       float2 coord_2d = make_float2(coord.x, coord.y);
       float2 position_out_2d = zero_float2();
-      const float max_distance = voronoi_distance_2d(
-          make_float2(1.0f, 1.0f), make_float2(0.0f, 0.0f), voronoi_metric, exponent);
-      float max_amplitude = 0.0f;
 
       switch (voronoi_feature) {
         case NODE_VORONOI_F1: {
@@ -1324,9 +1318,11 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                      &color_out,
                                      &position_out_2d);
           if (normalize) {
-            /* Optimized lerp(max_amplitude * max_distance * 0.5f, max_amplitude * max_distance,
-             * randomness) */
-            distance_out /= (0.5f + 0.5f * randomness) * max_amplitude * max_distance;
+            distance_out /= (0.5f + 0.5f * randomness) * max_amplitude *
+                            voronoi_distance_2d(make_float2(1.0f, 1.0f),
+                                                make_float2(0.0f, 0.0f),
+                                                voronoi_metric,
+                                                exponent);
             color_out /= max_amplitude;
           }
           break;
@@ -1347,9 +1343,11 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                               &color_out,
                                               &position_out_2d);
             if (normalize) {
-              /* Optimized lerp(max_amplitude * max_distance * 0.5f, max_amplitude * max_distance,
-               * randomness) */
-              distance_out /= (0.5f + 0.5f * randomness) * max_amplitude * max_distance;
+              distance_out /= (0.5f + 0.5f * randomness) * max_amplitude *
+                              voronoi_distance_2d(make_float2(1.0f, 1.0f),
+                                                  make_float2(0.0f, 0.0f),
+                                                  voronoi_metric,
+                                                  exponent);
               color_out /= max_amplitude;
             }
             break;
@@ -1369,11 +1367,20 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                      &position_out_2d);
           if (normalize) {
             if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
-              distance_out /= (1.0f - randomness) + randomness * max_amplitude * max_distance;
+              distance_out /= (1.0f - randomness) +
+                              randomness * max_amplitude *
+                                  voronoi_distance_2d(make_float2(1.0f, 1.0f),
+                                                      make_float2(0.0f, 0.0f),
+                                                      voronoi_metric,
+                                                      exponent);
             }
             else {
               distance_out /= (1.0f - randomness) * ceilf(detail + 1.0f) +
-                              randomness * max_amplitude * max_distance;
+                              randomness * max_amplitude *
+                                  voronoi_distance_2d(make_float2(1.0f, 1.0f),
+                                                      make_float2(0.0f, 0.0f),
+                                                      voronoi_metric,
+                                                      exponent);
             }
             color_out /= max_amplitude;
           }
@@ -1402,10 +1409,6 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
       break;
     }
     case 3: {
-      const float max_distance = voronoi_distance_3d(
-          make_float3(1.0f, 1.0f, 1.0f), make_float3(0.0f, 0.0f, 0.0f), voronoi_metric, exponent);
-      float max_amplitude = 0.0f;
-
       switch (voronoi_feature) {
         case NODE_VORONOI_F1: {
           fractal_voronoi_f1<float3>(coord,
@@ -1420,9 +1423,11 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                      &color_out,
                                      &position_out);
           if (normalize) {
-            /* Optimized lerp(max_amplitude * max_distance * 0.5f, max_amplitude * max_distance,
-             * randomness) */
-            distance_out /= (0.5f + 0.5f * randomness) * max_amplitude * max_distance;
+            distance_out /= (0.5f + 0.5f * randomness) * max_amplitude *
+                            voronoi_distance_3d(make_float3(1.0f, 1.0f, 1.0f),
+                                                make_float3(0.0f, 0.0f, 0.0f),
+                                                voronoi_metric,
+                                                exponent);
             color_out /= max_amplitude;
           }
           break;
@@ -1443,9 +1448,11 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                               &color_out,
                                               &position_out);
             if (normalize) {
-              /* Optimized lerp(max_amplitude * max_distance * 0.5f, max_amplitude * max_distance,
-               * randomness) */
-              distance_out /= (0.5f + 0.5f * randomness) * max_amplitude * max_distance;
+              distance_out /= (0.5f + 0.5f * randomness) * max_amplitude *
+                              voronoi_distance_3d(make_float3(1.0f, 1.0f, 1.0f),
+                                                  make_float3(0.0f, 0.0f, 0.0f),
+                                                  voronoi_metric,
+                                                  exponent);
               color_out /= max_amplitude;
             }
             break;
@@ -1465,11 +1472,20 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                      &position_out);
           if (normalize) {
             if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
-              distance_out /= (1.0f - randomness) + randomness * max_amplitude * max_distance;
+              distance_out /= (1.0f - randomness) +
+                              randomness * max_amplitude *
+                                  voronoi_distance_3d(make_float3(1.0f, 1.0f, 1.0f),
+                                                      make_float3(0.0f, 0.0f, 0.0f),
+                                                      voronoi_metric,
+                                                      exponent);
             }
             else {
               distance_out /= (1.0f - randomness) * ceilf(detail + 1.0f) +
-                              randomness * max_amplitude * max_distance;
+                              randomness * max_amplitude *
+                                  voronoi_distance_3d(make_float3(1.0f, 1.0f, 1.0f),
+                                                      make_float3(0.0f, 0.0f, 0.0f),
+                                                      voronoi_metric,
+                                                      exponent);
             }
             color_out /= max_amplitude;
           }
@@ -1502,11 +1518,6 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
       {
         float4 coord_4d = make_float4(coord.x, coord.y, coord.z, w);
         float4 position_out_4d;
-        const float max_distance = voronoi_distance_4d(make_float4(1.0f, 1.0f, 1.0f, 1.0f),
-                                                       make_float4(0.0f, 0.0f, 0.0f, 0.0f),
-                                                       voronoi_metric,
-                                                       exponent);
-        float max_amplitude = 0.0f;
 
         switch (voronoi_feature) {
           case NODE_VORONOI_F1: {
@@ -1522,9 +1533,11 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                        &color_out,
                                        &position_out_4d);
             if (normalize) {
-              /* Optimized lerp(max_amplitude * max_distance * 0.5f, max_amplitude * max_distance,
-               * randomness) */
-              distance_out /= (0.5f + 0.5f * randomness) * max_amplitude * max_distance;
+              distance_out /= (0.5f + 0.5f * randomness) * max_amplitude *
+                              voronoi_distance_4d(make_float4(1.0f, 1.0f, 1.0f, 1.0f),
+                                                  make_float4(0.0f, 0.0f, 0.0f, 0.0f),
+                                                  voronoi_metric,
+                                                  exponent);
               color_out /= max_amplitude;
             }
             break;
@@ -1543,9 +1556,11 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                               &color_out,
                                               &position_out_4d);
             if (normalize) {
-              /* Optimized lerp(max_amplitude * max_distance * 0.5f, max_amplitude * max_distance,
-               * randomness) */
-              distance_out /= (0.5f + 0.5f * randomness) * max_amplitude * max_distance;
+              distance_out /= (0.5f + 0.5f * randomness) * max_amplitude *
+                              voronoi_distance_4d(make_float4(1.0f, 1.0f, 1.0f, 1.0f),
+                                                  make_float4(0.0f, 0.0f, 0.0f, 0.0f),
+                                                  voronoi_metric,
+                                                  exponent);
               color_out /= max_amplitude;
             }
             break;
@@ -1564,11 +1579,20 @@ ccl_device_noinline int svm_node_tex_voronoi(KernelGlobals kg,
                                        &position_out_4d);
             if (normalize) {
               if (detail == 0.0f || roughness == 0.0f || lacunarity == 0.0f) {
-                distance_out /= (1.0f - randomness) + randomness * max_amplitude * max_distance;
+                distance_out /= (1.0f - randomness) +
+                                randomness * max_amplitude *
+                                    voronoi_distance_4d(make_float4(1.0f, 1.0f, 1.0f, 1.0f),
+                                                        make_float4(0.0f, 0.0f, 0.0f, 0.0f),
+                                                        voronoi_metric,
+                                                        exponent);
               }
               else {
                 distance_out /= (1.0f - randomness) * ceilf(detail + 1.0f) +
-                                randomness * max_amplitude * max_distance;
+                                randomness * max_amplitude *
+                                    voronoi_distance_4d(make_float4(1.0f, 1.0f, 1.0f, 1.0f),
+                                                        make_float4(0.0f, 0.0f, 0.0f, 0.0f),
+                                                        voronoi_metric,
+                                                        exponent);
               }
               color_out /= max_amplitude;
             }

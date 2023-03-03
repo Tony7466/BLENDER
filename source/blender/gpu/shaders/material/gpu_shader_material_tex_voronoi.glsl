@@ -55,7 +55,6 @@ void node_tex_voronoi_f1_1d(vec3 coord,
                      outColor,
                      outW);
   if (normalize != 0.0) {
-    /* Optimized mix(max_amplitude * 0.5, max_amplitude, randomness) */
     outDistance /= (0.5 + 0.5 * randomness) * max_amplitude;
     outColor /= max_amplitude;
   }
@@ -98,7 +97,6 @@ void node_tex_voronoi_smooth_f1_1d(vec3 coord,
                             outColor,
                             outW);
   if (normalize != 0.0) {
-    /* Optimized mix(max_amplitude * 0.5, max_amplitude, randomness) */
     outDistance /= (0.5 + 0.5 * randomness) * max_amplitude;
     outColor /= max_amplitude;
   }
@@ -230,7 +228,6 @@ void node_tex_voronoi_f1_2d(vec3 coord,
   detail = clamp(detail, 0.0, 15.0);
   roughness = clamp(roughness, 0.0, 1.0);
   randomness = clamp(randomness, 0.0, 1.0);
-  const float max_distance = voronoi_distance(vec2(1.0, 1.0), vec2(0.0, 0.0), metric, exponent);
   float max_amplitude = 0.0;
 
   vec2 scaledCoord = coord.xy * scale;
@@ -248,9 +245,8 @@ void node_tex_voronoi_f1_2d(vec3 coord,
                      outColor,
                      outPosition_2d);
   if (normalize != 0.0) {
-    /* Optimized mix(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
-     * randomness) */
-    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude * max_distance;
+    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude *
+                   voronoi_distance(vec2(1.0, 1.0), vec2(0.0, 0.0), metric, exponent);
     outColor /= max_amplitude;
   }
   outPosition = vec3(safe_divide(outPosition_2d, scale), 0.0);
@@ -277,7 +273,6 @@ void node_tex_voronoi_smooth_f1_2d(vec3 coord,
   roughness = clamp(roughness, 0.0, 1.0);
   randomness = clamp(randomness, 0.0, 1.0);
   smoothness = clamp(smoothness / 2.0, 0.0, 0.5);
-  const float max_distance = voronoi_distance(vec2(1.0, 1.0), vec2(0.0, 0.0), metric, exponent);
   float max_amplitude = 0.0;
 
   vec2 scaledCoord = coord.xy * scale;
@@ -296,9 +291,8 @@ void node_tex_voronoi_smooth_f1_2d(vec3 coord,
                             outColor,
                             outPosition_2d);
   if (normalize != 0.0) {
-    /* Optimized mix(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
-     * randomness) */
-    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude * max_distance;
+    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude *
+                   voronoi_distance(vec2(1.0, 1.0), vec2(0.0, 0.0), metric, exponent);
     outColor /= max_amplitude;
   }
   outPosition = vec3(safe_divide(outPosition_2d, scale), 0.0);
@@ -324,7 +318,6 @@ void node_tex_voronoi_f2_2d(vec3 coord,
   detail = clamp(detail, 0.0, 15.0);
   roughness = clamp(roughness, 0.0, 1.0);
   randomness = clamp(randomness, 0.0, 1.0);
-  const float max_distance = voronoi_distance(vec2(1.0, 1.0), vec2(0.0, 0.0), metric, exponent);
   float max_amplitude = 0.0;
 
   vec2 scaledCoord = coord.xy * scale;
@@ -343,11 +336,14 @@ void node_tex_voronoi_f2_2d(vec3 coord,
                      outPosition_2d);
   if (normalize != 0.0) {
     if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
-      outDistance /= (1.0 - randomness) + randomness * max_amplitude * max_distance;
+      outDistance /= (1.0 - randomness) +
+                     randomness * max_amplitude *
+                         voronoi_distance(vec2(1.0, 1.0), vec2(0.0, 0.0), metric, exponent);
     }
     else {
       outDistance /= (1.0 - randomness) * ceil(detail + 1.0) +
-                     randomness * max_amplitude * max_distance;
+                     randomness * max_amplitude *
+                         voronoi_distance(vec2(1.0, 1.0), vec2(0.0, 0.0), metric, exponent);
     }
     outColor /= max_amplitude;
   }
@@ -434,8 +430,6 @@ void node_tex_voronoi_f1_3d(vec3 coord,
   detail = clamp(detail, 0.0, 15.0);
   roughness = clamp(roughness, 0.0, 1.0);
   randomness = clamp(randomness, 0.0, 1.0);
-  const float max_distance = voronoi_distance(
-      vec3(1.0, 1.0, 1.0), vec3(0.0, 0.0, 0.0), metric, exponent);
   float max_amplitude = 0.0;
 
   vec3 scaledCoord = coord * scale;
@@ -452,9 +446,8 @@ void node_tex_voronoi_f1_3d(vec3 coord,
                      outColor,
                      outPosition);
   if (normalize != 0.0) {
-    /* Optimized mix(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
-     * randomness) */
-    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude * max_distance;
+    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude *
+                   voronoi_distance(vec3(1.0, 1.0, 1.0), vec3(0.0, 0.0, 0.0), metric, exponent);
     outColor /= max_amplitude;
   }
   outPosition = safe_divide(outPosition, scale);
@@ -481,8 +474,6 @@ void node_tex_voronoi_smooth_f1_3d(vec3 coord,
   roughness = clamp(roughness, 0.0, 1.0);
   randomness = clamp(randomness, 0.0, 1.0);
   smoothness = clamp(smoothness / 2.0, 0.0, 0.5);
-  const float max_distance = voronoi_distance(
-      vec3(1.0, 1.0, 1.0), vec3(0.0, 0.0, 0.0), metric, exponent);
   float max_amplitude = 0.0;
 
   vec3 scaledCoord = coord * scale;
@@ -500,9 +491,8 @@ void node_tex_voronoi_smooth_f1_3d(vec3 coord,
                             outColor,
                             outPosition);
   if (normalize != 0.0) {
-    /* Optimized mix(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
-     * randomness) */
-    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude * max_distance;
+    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude *
+                   voronoi_distance(vec3(1.0, 1.0, 1.0), vec3(0.0, 0.0, 0.0), metric, exponent);
     outColor /= max_amplitude;
   }
   outPosition = safe_divide(outPosition, scale);
@@ -528,8 +518,6 @@ void node_tex_voronoi_f2_3d(vec3 coord,
   detail = clamp(detail, 0.0, 15.0);
   roughness = clamp(roughness, 0.0, 1.0);
   randomness = clamp(randomness, 0.0, 1.0);
-  const float max_distance = voronoi_distance(
-      vec3(1.0, 1.0, 1.0), vec3(0.0, 0.0, 0.0), metric, exponent);
   float max_amplitude = 0.0;
 
   vec3 scaledCoord = coord * scale;
@@ -547,11 +535,16 @@ void node_tex_voronoi_f2_3d(vec3 coord,
                      outPosition);
   if (normalize != 0.0) {
     if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
-      outDistance /= (1.0 - randomness) + randomness * max_amplitude * max_distance;
+      outDistance /= (1.0 - randomness) +
+                     randomness * max_amplitude *
+                         voronoi_distance(
+                             vec3(1.0, 1.0, 1.0), vec3(0.0, 0.0, 0.0), metric, exponent);
     }
     else {
       outDistance /= (1.0 - randomness) * ceil(detail + 1.0) +
-                     randomness * max_amplitude * max_distance;
+                     randomness * max_amplitude *
+                         voronoi_distance(
+                             vec3(1.0, 1.0, 1.0), vec3(0.0, 0.0, 0.0), metric, exponent);
     }
     outColor /= max_amplitude;
   }
@@ -638,8 +631,6 @@ void node_tex_voronoi_f1_4d(vec3 coord,
   detail = clamp(detail, 0.0, 15.0);
   roughness = clamp(roughness, 0.0, 1.0);
   randomness = clamp(randomness, 0.0, 1.0);
-  const float max_distance = voronoi_distance(
-      vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0, 0.0, 0.0, 0.0), metric, exponent);
   float max_amplitude = 0.0;
 
   vec4 scaledCoord = vec4(coord, w) * scale;
@@ -657,9 +648,9 @@ void node_tex_voronoi_f1_4d(vec3 coord,
                      outColor,
                      outPosition_4d);
   if (normalize != 0.0) {
-    /* Optimized mix(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
-     * randomness) */
-    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude * max_distance;
+    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude *
+                   voronoi_distance(
+                       vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0, 0.0, 0.0, 0.0), metric, exponent);
     outColor /= max_amplitude;
   }
   outPosition_4d = safe_divide(outPosition_4d, scale);
@@ -687,8 +678,6 @@ void node_tex_voronoi_smooth_f1_4d(vec3 coord,
   roughness = clamp(roughness, 0.0, 1.0);
   randomness = clamp(randomness, 0.0, 1.0);
   smoothness = clamp(smoothness / 2.0, 0.0, 0.5);
-  const float max_distance = voronoi_distance(
-      vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0, 0.0, 0.0, 0.0), metric, exponent);
   float max_amplitude = 0.0;
 
   vec4 scaledCoord = vec4(coord, w) * scale;
@@ -707,9 +696,9 @@ void node_tex_voronoi_smooth_f1_4d(vec3 coord,
                             outColor,
                             outPosition_4d);
   if (normalize != 0.0) {
-    /* Optimized mix(max_amplitude * max_distance * 0.5, max_amplitude * max_distance,
-     * randomness) */
-    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude * max_distance;
+    outDistance /= (0.5 + 0.5 * randomness) * max_amplitude *
+                   voronoi_distance(
+                       vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0, 0.0, 0.0, 0.0), metric, exponent);
     outColor /= max_amplitude;
   }
   outPosition_4d = safe_divide(outPosition_4d, scale);
@@ -737,8 +726,6 @@ void node_tex_voronoi_f2_4d(vec3 coord,
   detail = clamp(detail, 0.0, 15.0);
   roughness = clamp(roughness, 0.0, 1.0);
   randomness = clamp(randomness, 0.0, 1.0);
-  const float max_distance = voronoi_distance(
-      vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0, 0.0, 0.0, 0.0), metric, exponent);
   float max_amplitude = 0.0;
 
   vec4 scaledCoord = vec4(coord, w) * scale;
@@ -757,11 +744,16 @@ void node_tex_voronoi_f2_4d(vec3 coord,
                      outPosition_4d);
   if (normalize != 0.0) {
     if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
-      outDistance /= (1.0 - randomness) + randomness * max_amplitude * max_distance;
+      outDistance /= (1.0 - randomness) +
+                     randomness * max_amplitude *
+                         voronoi_distance(
+                             vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0, 0.0, 0.0, 0.0), metric, exponent);
     }
     else {
       outDistance /= (1.0 - randomness) * ceil(detail + 1.0) +
-                     randomness * max_amplitude * max_distance;
+                     randomness * max_amplitude *
+                         voronoi_distance(
+                             vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0, 0.0, 0.0, 0.0), metric, exponent);
     }
     outColor /= max_amplitude;
   }

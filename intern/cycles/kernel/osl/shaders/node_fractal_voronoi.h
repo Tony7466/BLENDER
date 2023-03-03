@@ -99,8 +99,8 @@ void fractal_voronoi_smooth_f1(float coord,
                       randomness,
                       metric,
                       octave_distance,
-                      outColor,
-                      outPosition);
+                      octave_color,
+                      octave_postion);
     if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
       max_amplitude = 1.0;
       outDistance = octave_distance;
@@ -318,8 +318,8 @@ void fractal_voronoi_smooth_f1(vector2 coord,
                       randomness,
                       metric,
                       octave_distance,
-                      outColor,
-                      outPosition);
+                      octave_color,
+                      octave_postion);
     if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
       max_amplitude = 1.0;
       outDistance = octave_distance;
@@ -537,8 +537,8 @@ void fractal_voronoi_smooth_f1(vector3 coord,
                       randomness,
                       metric,
                       octave_distance,
-                      outColor,
-                      outPosition);
+                      octave_color,
+                      octave_postion);
     if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
       max_amplitude = 1.0;
       outDistance = octave_distance;
@@ -756,8 +756,8 @@ void fractal_voronoi_smooth_f1(vector4 coord,
                       randomness,
                       metric,
                       octave_distance,
-                      outColor,
-                      outPosition);
+                      octave_color,
+                      octave_postion);
     if (detail == 0.0 || roughness == 0.0 || lacunarity == 0.0) {
       max_amplitude = 1.0;
       outDistance = octave_distance;
