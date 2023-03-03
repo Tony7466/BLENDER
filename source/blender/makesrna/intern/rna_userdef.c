@@ -5180,12 +5180,11 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_GRAPH, NULL);
 
   /* Graph Editor line drawing quality. */
-  prop = RNA_def_property(srna, "fcurve_high_quality_drawing", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "use_fcurve_high_quality_drawing", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "animation_flag", USER_ANIM_HIGH_QUALITY_DRAWING);
   RNA_def_property_ui_text(prop,
-                           "F-Curve High Quality Display",
-                           "Display F-Curves using Anti-Aliasing and other fancy effects "
-                           "(disable for better performance)");
+                           "F-Curve High Quality Drawing",
+                           "Draw F-Curves using Anti-Aliasing (disable for better performance)");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_GRAPH, NULL);
 
   /* grease pencil */
