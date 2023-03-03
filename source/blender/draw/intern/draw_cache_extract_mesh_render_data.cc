@@ -437,7 +437,7 @@ MeshRenderData *mesh_render_data_create(Object *object,
                                         const bool do_uvedit,
                                         const ToolSettings *ts)
 {
-  MeshRenderData *mr = static_cast<MeshRenderData *>(MEM_callocN(sizeof(*mr), __func__));
+  MeshRenderData *mr = MEM_new<MeshRenderData>(__func__);
   mr->toolsettings = ts;
   mr->mat_len = mesh_render_mat_len_get(object, me);
 
