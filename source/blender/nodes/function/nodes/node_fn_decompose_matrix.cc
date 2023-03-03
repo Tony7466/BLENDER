@@ -36,9 +36,9 @@ class DecomposeMatrix4x4Function : public mf::MultiFunction {
   void call(IndexMask mask, mf::Params params, mf::Context /*context*/) const override
   {
     const VArray<float4x4> &matrices = params.readonly_single_input<float4x4>(0, "Matrix");
-    MutableSpan<float3> translations = params.uninitialized_single_output<float3>(0, "Translation");
-    MutableSpan<float3> rotations = params.uninitialized_single_output<float3>(0, "Rotation");
-    MutableSpan<float3> scales = params.uninitialized_single_output<float3>(1, "Scale");
+    MutableSpan<float3> translations = params.uninitialized_single_output<float3>(1, "Translation");
+    MutableSpan<float3> rotations = params.uninitialized_single_output<float3>(2, "Rotation");
+    MutableSpan<float3> scales = params.uninitialized_single_output<float3>(3, "Scale");
 
     for (int64_t i : mask) {
       const float4x4 &mat = matrices[i];
