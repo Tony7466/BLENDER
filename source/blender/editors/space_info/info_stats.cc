@@ -603,7 +603,7 @@ static const char *info_statusbar_string(Main *bmain,
 {
   char formatted_mem[BLI_STR_FORMAT_INT64_BYTE_UNIT_SIZE];
   size_t ofs = 0;
-  static char info[256];
+  static char info[512];
   int len = sizeof(info);
 
   info[0] = '\0';
@@ -648,6 +648,23 @@ static const char *info_statusbar_string(Main *bmain,
     }
   }
 
+  if (statusbar_flag & STATUSBAR_SHOW_SCENE_DURATION) {
+    if (info[0]) {
+      ofs += BLI_snprintf_rlen(info + ofs, len - ofs, " | ");
+    }
+    const int frame_count = (scene->r.efra - scene->r.sfra) + 1;
+    const float fps = (((float)scene->r.frs_sec) / (float)scene->r.frs_sec_base);
+    const float duration = frame_count / fps;
+    const int duration_mins = (int)(duration / 60);
+    const float duration_secs = duration - (duration_mins * 60);
+    ofs += BLI_snprintf_rlen(info + ofs,
+                             len - ofs,
+                             TIP_("Frame Count: %i Duration: %i:%05.2f"),
+                             frame_count,
+                             duration_mins,
+                             duration_secs);
+  }
+
   /* Blender version. */
   if (statusbar_flag & STATUSBAR_SHOW_VERSION) {
     if (info[0]) {
@@ -668,7 +685,8 @@ const char *ED_info_statistics_string(Main *bmain, Scene *scene, ViewLayer *view
 {
   const eUserpref_StatusBar_Flag statistics_status_bar_flag = STATUSBAR_SHOW_STATS |
                                                               STATUSBAR_SHOW_MEMORY |
-                                                              STATUSBAR_SHOW_VERSION;
+                                                              STATUSBAR_SHOW_VERSION |
+                                                              STATUSBAR_SHOW_SCENE_DURATION;
 
   return info_statusbar_string(bmain, scene, view_layer, statistics_status_bar_flag);
 }
