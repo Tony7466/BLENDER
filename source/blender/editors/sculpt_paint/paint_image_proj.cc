@@ -4390,11 +4390,11 @@ static void project_paint_prepare_all_faces(ProjPaintState *ps,
             if (prev_poly != looptris[tri_index].poly) {
               int iloop;
               bool culled = true;
-              const MPoly *poly = &ps->polys_eval[looptris[tri_index].poly];
-              int poly_loops = poly->totloop;
+              const MPoly &poly = ps->polys_eval[looptris[tri_index].poly];
+              int poly_loops = poly.totloop;
               prev_poly = looptris[tri_index].poly;
               for (iloop = 0; iloop < poly_loops; iloop++) {
-                if (!(ps->vertFlags[ps->loops_eval[poly->loopstart + iloop].v] & PROJ_VERT_CULL)) {
+                if (!(ps->vertFlags[ps->loops_eval[poly.loopstart + iloop].v] & PROJ_VERT_CULL)) {
                   culled = false;
                   break;
                 }

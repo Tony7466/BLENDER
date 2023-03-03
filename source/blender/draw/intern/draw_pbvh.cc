@@ -340,16 +340,15 @@ struct PBVHBatches {
         CustomData_get_layer_named(args->pdata, CD_PROP_BOOL, "sharp_face"));
 
     foreach_faces([&](int /*buffer_i*/, int /*tri_i*/, int vertex_i, const MLoopTri *tri) {
-      const MPoly *poly = args->polys + tri->poly;
-
       bool smooth = false;
       if (tri->poly != last_poly) {
         last_poly = tri->poly;
 
         if (sharp_faces && sharp_faces[tri->poly]) {
           smooth = true;
+          const MPoly &poly = args->polys[tri->poly];
           BKE_mesh_calc_poly_normal(
-              poly, args->mloop + poly->loopstart, args->vert_positions, fno);
+              &poly, args->mloop + poly.loopstart, args->vert_positions, fno);
           normal_float_to_short_v3(no, fno);
         }
         else {
