@@ -296,8 +296,8 @@ class USERPREF_PT_interface_statusbar(InterfacePanel, CenterAlignMixIn, Panel):
         col.prop(view, "show_statusbar_stats", text="Scene Statistics")
         col.prop(view, "show_statusbar_memory", text="System Memory")
         col.prop(view, "show_statusbar_vram", text="Video Memory")
-        col.prop(view, "show_statusbar_version", text="Blender Version")
         col.prop(view, "show_statusbar_scene_duration", text="Scene Duration")
+        col.prop(view, "show_statusbar_version", text="Blender Version")
 
 
 class USERPREF_PT_interface_menus(InterfacePanel, Panel):
