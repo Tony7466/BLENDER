@@ -230,24 +230,24 @@ uniform mat4 ModelMatrixInverse;
 #define normal_world_to_view(n) (mat3(ViewMatrix) * n)
 #define normal_view_to_world(n) (mat3(ViewMatrixInverse) * n)
 
-#define point_object_to_ndc(p) \
+#define point_object_to_homogenous(p) \
   (ProjectionMatrix * (ViewMatrix * vec4((ModelMatrix * vec4(p, 1.0)).xyz, 1.0)))
 #define point_object_to_view(p) ((ViewMatrix * vec4((ModelMatrix * vec4(p, 1.0)).xyz, 1.0)).xyz)
 #define point_object_to_world(p) ((ModelMatrix * vec4(p, 1.0)).xyz)
 #define point_view_to_object(p) ((ModelMatrixInverse * (ViewMatrixInverse * vec4(p, 1.0))).xyz)
 #define point_world_to_object(p) ((ModelMatrixInverse * vec4(p, 1.0)).xyz)
 
-vec4 point_view_to_ndc(vec3 p)
+vec4 point_view_to_homogenous(vec3 p)
 {
   return ProjectionMatrix * vec4(p, 1.0);
 }
 
-vec3 point_view_to_world(vec3 p)
+vec3 point_view_to_homogenous(vec3 p)
 {
   return (ViewMatrixInverse * vec4(p, 1.0)).xyz;
 }
 
-vec4 point_world_to_ndc(vec3 p)
+vec4 point_world_to_homogenous(vec3 p)
 {
   return ProjectionMatrix * (ViewMatrix * vec4(p, 1.0));
 }
@@ -318,8 +318,8 @@ float get_depth_from_view_z(float z)
 
 vec2 get_uvs_from_view(vec3 view)
 {
-  vec4 ndc = ProjectionMatrix * vec4(view, 1.0);
-  return (ndc.xy / ndc.w) * 0.5 + 0.5;
+  vec4 hs = ProjectionMatrix * vec4(view, 1.0);
+  return (hs.xy / hs.w) * 0.5 + 0.5;
 }
 
 vec3 get_view_space_from_depth(vec2 uvcoords, float depth)

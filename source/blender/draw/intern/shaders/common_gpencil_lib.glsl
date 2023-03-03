@@ -61,7 +61,7 @@ vec2 gpencil_project_to_screenspace(vec4 v, vec4 viewport_size)
   return ((v.xy / v.w) * 0.5 + 0.5) * viewport_size.xy;
 }
 
-float gpencil_stroke_thickness_modulate(float thickness, vec4 ndc_pos, vec4 viewport_size)
+float gpencil_stroke_thickness_modulate(float thickness, vec4 hs_pos, vec4 viewport_size)
 {
   /* Modify stroke thickness by object and layer factors. */
   thickness = max(1.0, thickness * gpThicknessScale + gpThicknessOffset);
@@ -69,7 +69,7 @@ float gpencil_stroke_thickness_modulate(float thickness, vec4 ndc_pos, vec4 view
   if (gpThicknessIsScreenSpace) {
     /* Multiply offset by view Z so that offset is constant in screenspace.
      * (e.i: does not change with the distance to camera) */
-    thickness *= ndc_pos.w;
+    thickness *= hs_pos.w;
   }
   else {
     /* World space point size. */
@@ -78,11 +78,11 @@ float gpencil_stroke_thickness_modulate(float thickness, vec4 ndc_pos, vec4 view
   return thickness;
 }
 
-float gpencil_clamp_small_stroke_thickness(float thickness, vec4 ndc_pos)
+float gpencil_clamp_small_stroke_thickness(float thickness, vec4 hs_pos)
 {
   /* To avoid aliasing artifacts, we clamp the line thickness and
    * reduce its opacity in the fragment shader. */
-  float min_thickness = ndc_pos.w * 1.3;
+  float min_thickness = hs_pos.w * 1.3;
   thickness = max(min_thickness, thickness);
 
   return thickness;
@@ -175,7 +175,7 @@ vec4 gpencil_vertex(vec4 viewport_size,
 #  define uvrot1 ma1.w
 #  define aspect1 ma1.w
 
-  vec4 out_ndc;
+  vec4 out_hs;
 
   if (gpencil_is_stroke_vertex()) {
     bool is_dot = flag_test(material_flags, GP_STROKE_ALIGNMENT);
@@ -190,8 +190,8 @@ vec4 gpencil_vertex(vec4 viewport_size,
     /* Endpoints, we discard the vertices. */
     if (!is_dot && ma2.x == -1) {
       /* We set the vertex at the camera origin to generate 0 fragments. */
-      out_ndc = vec4(0.0, 0.0, -3e36, 0.0);
-      return out_ndc;
+      out_hs = vec4(0.0, 0.0, -3e36, 0.0);
+      return out_hs;
     }
 
     /* Avoid using a vertex attribute for quad positioning. */
@@ -220,25 +220,25 @@ vec4 gpencil_vertex(vec4 viewport_size,
     vec3 B = cross(T, ViewMatrixInverse[2].xyz);
     out_N = normalize(cross(B, T));
 
-    vec4 ndc_adj = point_world_to_ndc(wpos_adj);
-    vec4 ndc1 = point_world_to_ndc(wpos1);
-    vec4 ndc2 = point_world_to_ndc(wpos2);
+    vec4 hs_adj = point_world_to_hs(wpos_adj);
+    vec4 hs1 = point_world_to_homogenous(wpos1);
+    vec4 hs2 = point_world_to_homogenous(wpos2);
 
-    out_ndc = (use_curr) ? ndc1 : ndc2;
+    out_hs = (use_curr) ? hs1 : hs2;
     out_P = (use_curr) ? wpos1 : wpos2;
     out_strength = abs((use_curr) ? strength1 : strength2);
 
-    vec2 ss_adj = gpencil_project_to_screenspace(ndc_adj, viewport_size);
-    vec2 ss1 = gpencil_project_to_screenspace(ndc1, viewport_size);
-    vec2 ss2 = gpencil_project_to_screenspace(ndc2, viewport_size);
+    vec2 ss_adj = gpencil_project_to_screenspace(hs_adj, viewport_size);
+    vec2 ss1 = gpencil_project_to_screenspace(hs1, viewport_size);
+    vec2 ss2 = gpencil_project_to_screenspace(hs2, viewport_size);
     /* Screenspace Lines tangents. */
     float line_len;
     vec2 line = safe_normalize_len(ss2 - ss1, line_len);
     vec2 line_adj = safe_normalize((use_curr) ? (ss1 - ss_adj) : (ss_adj - ss2));
 
     float thickness = abs((use_curr) ? thickness1 : thickness2);
-    thickness = gpencil_stroke_thickness_modulate(thickness, out_ndc, viewport_size);
-    float clamped_thickness = gpencil_clamp_small_stroke_thickness(thickness, out_ndc);
+    thickness = gpencil_stroke_thickness_modulate(thickness, out_hs, viewport_size);
+    float clamped_thickness = gpencil_clamp_small_stroke_thickness(thickness, out_hs);
 
     out_uv = vec2(x, y) * 0.5 + 0.5;
     out_hardness = gpencil_decode_hardness(use_curr ? hardness1 : hardness2);
@@ -260,8 +260,8 @@ vec4 gpencil_vertex(vec4 viewport_size,
         x_axis = vec2(1.0, 0.0);
       }
       else { /* GP_STROKE_ALIGNMENT_OBJECT */
-        vec4 ndc_x = point_world_to_ndc(wpos1 + ModelMatrix[0].xyz);
-        vec2 ss_x = gpencil_project_to_screenspace(ndc_x, viewport_size);
+        vec4 hs_x = point_world_to_homogenous(wpos1 + ModelMatrix[0].xyz);
+        vec2 ss_x = gpencil_project_to_screenspace(hs_x, viewport_size);
         x_axis = safe_normalize(ss_x - ss1);
       }
 
@@ -284,12 +284,12 @@ vec4 gpencil_vertex(vec4 viewport_size,
       /* Invert for vertex shader. */
       out_aspect = 1.0 / out_aspect;
 
-      out_ndc.xy += (x * x_axis + y * y_axis) * viewport_size.zw * clamped_thickness;
+      out_hs.xy += (x * x_axis + y * y_axis) * viewport_size.zw * clamped_thickness;
 
       out_sspos.xy = ss1;
       out_sspos.zw = ss1 + x_axis * 0.5;
-      out_thickness.x = (is_squares) ? 1e18 : (clamped_thickness / out_ndc.w);
-      out_thickness.y = (is_squares) ? 1e18 : (thickness / out_ndc.w);
+      out_thickness.x = (is_squares) ? 1e18 : (clamped_thickness / out_hs.w);
+      out_thickness.y = (is_squares) ? 1e18 : (thickness / out_hs.w);
     }
     else {
       bool is_stroke_start = (ma.x == -1 && x == -1);
@@ -308,8 +308,8 @@ vec4 gpencil_vertex(vec4 viewport_size,
 
       out_sspos.xy = ss1;
       out_sspos.zw = ss2;
-      out_thickness.x = clamped_thickness / out_ndc.w;
-      out_thickness.y = thickness / out_ndc.w;
+      out_thickness.x = clamped_thickness / out_hs.w;
+      out_thickness.y = thickness / out_hs.w;
       out_aspect = vec2(1.0);
 
       vec2 screen_ofs = miter * y;
@@ -320,7 +320,7 @@ vec4 gpencil_vertex(vec4 viewport_size,
         screen_ofs += line * x;
       }
 
-      out_ndc.xy += screen_ofs * viewport_size.zw * clamped_thickness;
+      out_hs.xy += screen_ofs * viewport_size.zw * clamped_thickness;
 
       out_uv.x = (use_curr) ? uv1.z : uv2.z;
     }
@@ -330,7 +330,7 @@ vec4 gpencil_vertex(vec4 viewport_size,
   else {
     /* Fill vertex. */
     out_P = transform_point(ModelMatrix, pos1.xyz);
-    out_ndc = point_world_to_ndc(out_P);
+    out_hs = point_world_to_homogenous(out_P);
     out_uv = uv1.xy;
     out_thickness.x = 1e18;
     out_thickness.y = 1e20;
@@ -349,7 +349,7 @@ vec4 gpencil_vertex(vec4 viewport_size,
     out_color = vec4(fcol1.rgb, floor(fcol1.a / 10.0) / 10000.0);
 
     /* We still offset the fills a little to avoid overlaps */
-    out_ndc.z += 0.000002;
+    out_hs.z += 0.000002;
   }
 
 #  undef thickness1
@@ -361,7 +361,7 @@ vec4 gpencil_vertex(vec4 viewport_size,
 #  undef uvrot1
 #  undef aspect1
 
-  return out_ndc;
+  return out_hs;
 }
 
 vec4 gpencil_vertex(vec4 viewport_size,
