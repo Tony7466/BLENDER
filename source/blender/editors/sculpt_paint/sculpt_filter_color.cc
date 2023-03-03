@@ -24,6 +24,7 @@
 
 #include "WM_api.h"
 #include "WM_types.h"
+#include "wm_cursors.h"
 
 #include "ED_paint.h"
 #include "sculpt_intern.hh"
@@ -309,8 +310,11 @@ static int sculpt_color_filter_modal(bContext *C, wmOperator *op, const wmEvent 
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
 
+  WM_cursor_modal_set(CTX_wm_window(C), WM_CURSOR_EW_SCROLL);
+
   if (event->type == LEFTMOUSE && event->val == KM_RELEASE) {
     sculpt_color_filter_end(C, ob);
+    WM_cursor_modal_restore(CTX_wm_window(C));
     return OPERATOR_FINISHED;
   }
 
