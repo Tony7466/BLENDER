@@ -5,7 +5,9 @@
  * \ingroup edsculpt
  */
 
+#include "BLT_translation.h"
 #include "DNA_windowmanager_types.h"
+#include "ED_screen.h"
 #include "MEM_guardedalloc.h"
 
 #include "BLI_math.h"
@@ -367,20 +369,43 @@ wmKeyMap *filter_color_modal_keymap(wmKeyConfig *keyconf)
   return keymap;
 }
 
+static void sculpt_filter_color_update_status_bar(bContext* C, wmOperator* op) {
+  char header[UI_MAX_DRAW_STR];
+  char buf[UI_MAX_DRAW_STR];
+  int available_len = sizeof(buf);
+
+
+  char* p = buf;
+#define WM_MODALKEY(_id) \
+  WM_modalkeymap_operator_items_to_string_buf( \
+      op->type, (_id), true, UI_MAX_SHORTCUT_STR, &available_len, &p)
+
+  BLI_snprintf(
+      header,
+      sizeof(header),
+      TIP_("%s: Confirm, %s: Cancel"),
+      WM_MODALKEY(FILTER_COLOR_MODAL_CONFIRM),
+      WM_MODALKEY(FILTER_COLOR_MODAL_CANCEL)
+  );
+
+#undef WM_MODALKEY
+
+  ED_workspace_status_text(C, TIP_(header));
+}
+
 static int sculpt_color_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
 
   WM_cursor_modal_set(CTX_wm_window(C), WM_CURSOR_EW_SCROLL);
+  sculpt_filter_color_update_status_bar(C, op);
 
   if (event->type == EVT_MODAL_MAP) {
     int ret = OPERATOR_CANCELLED;
 
     switch (event->val) {
       case FILTER_COLOR_MODAL_CANCEL:
-        /* Operator cancelling code (clean up, reverting changes, etc...) */
-        /* TODO */
         sculpt_color_filter_cancel(C, op);
         SCULPT_undo_push_end_ex(ob, true);
         ret = OPERATOR_CANCELLED;
@@ -394,6 +419,7 @@ static int sculpt_color_filter_modal(bContext *C, wmOperator *op, const wmEvent 
 
 
     sculpt_color_filter_end(C, ob);
+    ED_workspace_status_text(C, nullptr); 
     WM_cursor_modal_restore(CTX_wm_window(C));
     return ret;
   }
