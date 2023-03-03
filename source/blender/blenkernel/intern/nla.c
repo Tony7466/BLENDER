@@ -812,7 +812,7 @@ void BKE_nlastrips_sort_strips(ListBase *strips)
 
     for (sstrip = tmp.last; sstrip; sstrip = sstrip->prev) {
       /* check if add after */
-      if (sstrip->end <= strip->start) {
+      if (sstrip->start <= strip->start) {
         BLI_insertlinkafter(&tmp, sstrip, strip);
         not_added = 0;
         break;
@@ -841,7 +841,7 @@ void BKE_nlastrips_add_strip_unsafe(ListBase *strips, NlaStrip *strip)
   /* find the right place to add the strip to the nominated track */
   for (ns = strips->first; ns; ns = ns->next) {
     /* if current strip occurs after the new strip, add it before */
-    if (ns->start >= strip->end) {
+    if (ns->start >= strip->start) {
       BLI_insertlinkbefore(strips, ns, strip);
       not_added = 0;
       break;
@@ -1960,6 +1960,24 @@ void BKE_nla_validate_state(AnimData *adt)
   /* sanity checks */
   if (ELEM(NULL, adt, adt->nla_tracks.first)) {
     return;
+  }
+
+  /* Ensure every transition's start/end properly set. */
+  LISTBASE_FOREACH_MUTABLE (NlaTrack *, track, &adt->nla_tracks) {
+    LISTBASE_FOREACH_MUTABLE (NlaStrip *, strip, &track->strips) {
+      if (!(strip->type & NLASTRIP_TYPE_TRANSITION)) {
+        continue;
+      }
+      if (strip->prev) {
+        strip->start = strip->prev->end;
+      }
+      if (strip->next) {
+        strip->end = strip->next->start;
+      }
+      if (strip->start >= strip->end || strip->prev == NULL || strip->next == NULL) {
+        BKE_nlastrip_free(strip, true);
+      }
+    }
   }
 
   /* Adjust blending values for auto-blending,
