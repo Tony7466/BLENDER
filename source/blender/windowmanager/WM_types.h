@@ -848,6 +848,11 @@ typedef struct wmXrActionData {
 typedef enum {
   /** Do not attempt to free custom-data pointer even if non-NULL. */
   WM_TIMER_NO_FREE_CUSTOM_DATA = 1 << 0,
+
+  /* Internal falgs, should not be used outside of WM code. */
+  /** This timer has been tagged for removal and deletion, handled by WM code to ensure timers are
+   * deleted in a safe context. */
+  WM_TIMER_TAGGED_FOR_REMOVAL = 1 << 16,
 } wmTimerFlags;
 
 typedef struct wmTimer {
@@ -881,10 +886,11 @@ typedef struct wmTimer {
 } wmTimer;
 
 typedef struct wmOperatorType {
-  /** Text for UI, undo. */
+  /** Text for UI, undo (should not exceed #OP_MAX_TYPENAME). */
   const char *name;
-  /** Unique identifier. */
+  /** Unique identifier (must not exceed #OP_MAX_TYPENAME). */
   const char *idname;
+  /** Translation context (must not exceed #BKE_ST_MAXNAME) */
   const char *translation_context;
   /** Use for tool-tips and Python docs. */
   const char *description;

@@ -191,7 +191,6 @@ static void generate_ocean_geometry_polys(void *__restrict userdata,
   for (x = 0; x < gogd->res_x; x++) {
     const int fi = y * gogd->res_x + x;
     const int vi = y * (gogd->res_x + 1) + x;
-    MPoly *mp = &gogd->polys[fi];
     MLoop *ml = &gogd->loops[fi * 4];
 
     ml->v = vi;
@@ -203,10 +202,9 @@ static void generate_ocean_geometry_polys(void *__restrict userdata,
     ml->v = vi + gogd->res_x + 1;
     ml++;
 
-    mp->loopstart = fi * 4;
-    mp->totloop = 4;
-
-    mp->flag |= ME_SMOOTH;
+    gogd->polys[fi].loopstart = fi * 4;
+    gogd->polys[fi].totloop = 4;
+    gogd->polys[fi].flag |= ME_SMOOTH;
   }
 }
 
@@ -466,7 +464,7 @@ static Mesh *doOcean(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mes
     }
   }
 
-  BKE_mesh_tag_coords_changed(mesh);
+  BKE_mesh_tag_positions_changed(mesh);
 
   if (allocated_ocean) {
     BKE_ocean_free(omd->ocean);
