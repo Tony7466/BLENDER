@@ -802,8 +802,14 @@ void USDMaterialReader::convert_usd_primvar_reader_float2(
   
   if (varname_input) {
     pxr::VtValue varname_val;
-    if (varname_input.Get(&varname_val) && varname_val.IsHolding<pxr::TfToken>()) {
-      std::string varname = varname_val.Get<pxr::TfToken>().GetString();
+    if (varname_input.Get(&varname_val)) {
+      std::string varname;
+      if (varname_val.IsHolding<std::string>()) {
+        varname = varname_val.Get<std::string>();
+      }
+      if (varname_val.IsHolding<pxr::TfToken>()) {
+        varname = varname_val.Get<pxr::TfToken>().GetString();
+      }
       if (!varname.empty()) {
         NodeShaderUVMap *storage = (NodeShaderUVMap *)uv_map->storage;
         BLI_strncpy(storage->uv_map, varname.c_str(), sizeof(storage->uv_map));
