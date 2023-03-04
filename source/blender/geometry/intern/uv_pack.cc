@@ -96,6 +96,13 @@ static float pack_islands_scale_margin(const Span<PackIsland *> islands,
                                        const float scale,
                                        const float margin)
 {
+  /* Current strategy is:
+   * - Sort islands in size order.
+   * - Call #BLI_box_pack_2d on the first `max_box_pack` islands.
+   * - Call #pack_islands_alpaca_turbo on the remaining islands.
+   * - Combine results.
+   */
+
   /* First, copy information from our input into the AABB structure. */
   Array<UVAABBIsland *> aabbs(islands.size());
   for (const int64_t i : islands.index_range()) {
@@ -110,20 +117,16 @@ static float pack_islands_scale_margin(const Span<PackIsland *> islands,
   }
 
   /* Sort from "biggest" to "smallest". */
-  std::stable_sort(aabbs.begin(),
-                   aabbs.end(),
-                   [](const UVAABBIsland *a, const UVAABBIsland *b)
-                   {
-                     /* Just choose the AABB with larger rectangular area. */
-                     return b->uv_diagonal.x * b->uv_diagonal.y <
-                            a->uv_diagonal.x * a->uv_diagonal.y;
-                   });
+  std::stable_sort(aabbs.begin(), aabbs.end(), [](const UVAABBIsland *a, const UVAABBIsland *b) {
+    /* Just choose the AABB with larger rectangular area. */
+    return b->uv_diagonal.x * b->uv_diagonal.y < a->uv_diagonal.x * a->uv_diagonal.y;
+  });
 
   /* Partition island_vector, largest will go to box_pack, the rest alpaca_turbo. */
   const int64_t alpaca_cutoff = int64_t(1024); /* TODO: Tune constant. */
   int64_t max_box_pack = std::min(alpaca_cutoff, islands.size());
 
-  /* Prepare for box_pack. */
+  /* Prepare for box_pack_2d. */
   for (const int64_t i : islands.index_range()) {
     UVAABBIsland *aabb = aabbs[i];
     BoxPack *box = &box_array[i];
@@ -132,18 +135,15 @@ static float pack_islands_scale_margin(const Span<PackIsland *> islands,
     box->h = aabb->uv_diagonal.y;
   }
 
-  /* Call box_pack (slow for large N.) */
+  /* Call box_pack_2d (slow for large N.) */
   float max_box_u = 0.0f;
   float max_box_v = 0.0f;
   BLI_box_pack_2d(box_array, int(max_box_pack), &max_box_u, &max_box_v);
 
-  /* At this point, `max_box_u` and `max_box_v` contain the box_pack UVs. */
+  /* At this stage, `max_box_u` and `max_box_v` contain the box_pack UVs. */
 
   /* Call Alpaca. */
-  pack_islands_alpaca_turbo(
-      Span<UVAABBIsland *>(aabbs.data() + max_box_pack, aabbs.size() - max_box_pack),
-      &max_box_u,
-      &max_box_v);
+  pack_islands_alpaca_turbo(aabbs.as_span().drop_front(max_box_pack), &max_box_u, &max_box_v);
 
   /* Write back Alpaca UVs. */
   for (int64_t index = max_box_pack; index < aabbs.size(); index++) {
