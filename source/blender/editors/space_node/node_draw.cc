@@ -2843,7 +2843,7 @@ static void frame_node_draw_label(TreeDrawContext &tree_draw_ctx,
   const float label_x = BLI_rctf_cent_x(&rct) - (0.5f * width);
   const float label_y = rct.ymax - label_height - (0.5f * margin);
 
-  /* Label */
+  /* Label. */
   const bool has_label = node.label[0] != '\0';
   if (has_label) {
     BLF_position(fontid, label_x, label_y, 0);
@@ -2860,7 +2860,7 @@ static void frame_node_draw_label(TreeDrawContext &tree_draw_ctx,
     const float x = rct.xmin + margin;
     float y = rct.ymax - label_height - (has_label ? line_spacing + margin : 0);
 
-    int y_min = rct.ymin + margin;
+    const int y_min = rct.ymin + margin;
 
     BLF_enable(fontid, BLF_CLIPPING | BLF_WORD_WRAP);
     BLF_clipping(fontid, rct.xmin, rct.ymin + margin, rct.xmax, rct.ymax);
