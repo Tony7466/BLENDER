@@ -77,6 +77,10 @@ float seq_give_frame_index(const Scene *scene, Sequence *seq, float timeline_fra
     return -1;
   }
 
+  if (seq->len == 1 && seq->type == SEQ_TYPE_IMAGE) {
+    return 0;
+  }
+
   if (seq->flag & SEQ_REVERSE_FRAMES) {
     frame_index = end - timeline_frame;
   }
@@ -86,14 +90,12 @@ float seq_give_frame_index(const Scene *scene, Sequence *seq, float timeline_fra
 
   frame_index = max_ff(frame_index, 0);
 
+  frame_index *= seq_time_media_playback_rate_factor_get(scene, seq);
+
   if (SEQ_retiming_is_active(seq)) {
     const float retiming_factor = seq_retiming_evaluate(scene, seq, frame_index);
     frame_index = retiming_factor * (length - 1);
   }
-  else {
-    frame_index *= seq_time_media_playback_rate_factor_get(scene, seq);
-  }
-
   /* Clamp frame index to strip content frame range. */
   frame_index = clamp_f(frame_index, 0, length);
 
