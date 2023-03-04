@@ -220,17 +220,17 @@ vec4 gpencil_vertex(vec4 viewport_size,
     vec3 B = cross(T, ViewMatrixInverse[2].xyz);
     out_N = normalize(cross(B, T));
 
-    vec4 hs_adj = point_world_to_hs(wpos_adj);
-    vec4 hs1 = point_world_to_homogenous(wpos1);
-    vec4 hs2 = point_world_to_homogenous(wpos2);
+    vec4 hs_pos_adj = point_world_to_hs(wpos_adj);
+    vec4 hs_pos1 = point_world_to_homogenous(wpos1);
+    vec4 hs_pos2 = point_world_to_homogenous(wpos2);
 
-    out_hs = (use_curr) ? hs1 : hs2;
+    out_hs = (use_curr) ? hs_pos1 : hs_pos2;
     out_P = (use_curr) ? wpos1 : wpos2;
     out_strength = abs((use_curr) ? strength1 : strength2);
 
-    vec2 ss_adj = gpencil_project_to_screenspace(hs_adj, viewport_size);
-    vec2 ss1 = gpencil_project_to_screenspace(hs1, viewport_size);
-    vec2 ss2 = gpencil_project_to_screenspace(hs2, viewport_size);
+    vec2 ss_adj = gpencil_project_to_screenspace(hs_pos_adj, viewport_size);
+    vec2 ss1 = gpencil_project_to_screenspace(hs_pos1, viewport_size);
+    vec2 ss2 = gpencil_project_to_screenspace(hs_pos2, viewport_size);
     /* Screenspace Lines tangents. */
     float line_len;
     vec2 line = safe_normalize_len(ss2 - ss1, line_len);

@@ -45,7 +45,7 @@ void main()
   vec3 world_pos;
   if (hairThicknessRes > 1) {
     /* Calculate the thickness, thicktime, worldpos taken into account the outline. */
-    float outline_width = point_world_to_homogenous (center_wpos).w * 1.25 * sizeViewportInv.y *
+    float outline_width = point_world_to_homogenous(center_wpos).w * 1.25 * sizeViewportInv.y *
                           drw_view.wininv[1][1];
     thickness += outline_width;
     float thick_time = float(gl_VertexID % hairThicknessRes) / float(hairThicknessRes - 1);

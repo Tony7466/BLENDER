@@ -1,4 +1,4 @@
-f#pragma BLENDER_REQUIRE(common_view_lib.glsl)
+#pragma BLENDER_REQUIRE(common_view_lib.glsl)
 
 /* Two variants, split pass, generates either 2 triangles or 6 triangles depending on input
  * geometry manifold type */

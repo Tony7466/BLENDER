@@ -84,9 +84,9 @@ void main()
   vec2 stippleStart1 = stipplePos1;
 
   /* Geometry shader equivalent calculations. */
-  vec2 ss_pos[2];
-  ss_pos[0] = hs_pos0.xy / hs_pos0.w;
-  ss_pos[1] = hs_pos1.xy / hs_pos1.w;
+  vec2 ndc_pos[2];
+  ndc_pos[0] = hs_pos0.xy / hs_pos0.w;
+  ndc_pos[1] = hs_pos1.xy / hs_pos1.w;
 
   float half_size = sizeEdge;
 
@@ -100,7 +100,7 @@ void main()
     half_size += 0.5;
   }
 
-  vec2 line = ss_pos[0] - ss_pos[1];
+  vec2 line = ndc_pos[0] - ndc_pos[1];
   vec2 line_dir = normalize(line);
   vec2 line_perp = vec2(-line_dir.y, line_dir.x);
   vec2 edge_ofs = line_perp * sizeViewportInv * ceil(half_size);
