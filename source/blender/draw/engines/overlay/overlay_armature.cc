@@ -2020,6 +2020,22 @@ static void pchan_draw_ik_lines(ArmatureDrawContext *ctx,
   }
 }
 
+static void draw_bone_bone_line(ArmatureDrawContext *ctx,
+                                const float bone_head[3],
+                                const float bone_tail[3],
+                                const float parent_head[3],
+                                const float parent_tail[3],
+                                const float axes_position)
+{
+  float bone_pos[3];
+  interp_v3_v3v3(bone_pos, bone_head, bone_tail, axes_position);
+
+  float parent_pos[3];
+  interp_v3_v3v3(parent_pos, parent_head, parent_tail, axes_position);
+
+  drw_shgroup_bone_relationship_lines(ctx, bone_pos, parent_pos);
+}
+
 static void draw_bone_relations(ArmatureDrawContext *ctx,
                                 EditBone *ebone,
                                 bPoseChannel *pchan,
@@ -2033,7 +2049,12 @@ static void draw_bone_relations(ArmatureDrawContext *ctx,
        * since riggers will want to know about the links between bones
        */
       if ((boneflag & BONE_CONNECTED) == 0) {
-        drw_shgroup_bone_relationship_lines(ctx, ebone->head, ebone->parent->tail);
+        draw_bone_bone_line(ctx,
+                            ebone->head,
+                            ebone->tail,
+                            ebone->parent->head,
+                            ebone->parent->tail,
+                            arm->axes_position);
       }
     }
   }
@@ -2044,7 +2065,12 @@ static void draw_bone_relations(ArmatureDrawContext *ctx,
       if ((boneflag & BONE_SELECTED) ||
           (pchan->parent->bone && (pchan->parent->bone->flag & BONE_SELECTED))) {
         if ((boneflag & BONE_CONNECTED) == 0) {
-          drw_shgroup_bone_relationship_lines(ctx, pchan->pose_head, pchan->parent->pose_tail);
+          draw_bone_bone_line(ctx,
+                              pchan->pose_head,
+                              pchan->pose_tail,
+                              pchan->parent->pose_head,
+                              pchan->parent->pose_tail,
+                              arm->axes_position);
         }
       }
     }
