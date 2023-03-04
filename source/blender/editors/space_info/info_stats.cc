@@ -659,10 +659,10 @@ static const char *info_statusbar_string(Main *bmain,
     const float duration_secs = duration - (duration_mins * 60);
     ofs += BLI_snprintf_rlen(info + ofs,
                              len - ofs,
-                             TIP_("Frame Count: %i | Duration: %i:%05.2f"),
-                             frame_count,
+                             TIP_("Scene Duration: %i:%05.2f | Frame Count: %i"),
                              duration_mins,
-                             duration_secs);
+                             duration_secs,
+                             frame_count);
   }
 
   /* Blender version. */
