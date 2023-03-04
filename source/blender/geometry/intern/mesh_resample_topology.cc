@@ -80,38 +80,38 @@ class ResampledPair {
 };
 
 class ResampleQuad {
- private:
-  const ResampledPair horizontal_;
-  const ResampledPair vertical_;
+ public:
+  const ResampledPair horizontal;
+  const ResampledPair vertical;
 
  public:
   ResampleQuad(const int &left_added_points,
                const int &right_added_points,
                const int &top_added_points,
                const int &bottom_added_points)
-      : horizontal_(left_added_points, right_added_points),
-        vertical_(top_added_points, bottom_added_points)
+      : horizontal(left_added_points, right_added_points),
+        vertical(top_added_points, bottom_added_points)
   {
   }
 
   int total_points() const
   {
-    const int body_body_points = horizontal_.body_points * vertical_.body_points;
+    const int body_body_points = horizontal.body_points * vertical.body_points;
 
-    const int body_corner_points_hor = horizontal_.body_points * vertical_.corner_points;
-    const int body_corner_points_ver = vertical_.body_points * horizontal_.corner_points;
+    const int body_corner_points_hor = horizontal.body_points * vertical.corner_points;
+    const int body_corner_points_ver = vertical.body_points * horizontal.corner_points;
 
-    const int side_corner_points_hor = horizontal_.total_connectios * vertical_.corner_points;
-    const int side_corner_points_ver = vertical_.total_connectios * horizontal_.corner_points;
+    const int side_corner_points_hor = horizontal.total_connectios * vertical.corner_points;
+    const int side_corner_points_ver = vertical.total_connectios * horizontal.corner_points;
 
-    const int corner_corner_duply_sub = horizontal_.corner_points * vertical_.corner_points;
+    const int corner_corner_duply_sub = horizontal.corner_points * vertical.corner_points;
 
     const int total_points = body_body_points + body_corner_points_hor + body_corner_points_ver +
                              side_corner_points_hor + side_corner_points_ver -
                              corner_corner_duply_sub;
 
     BLI_assert(total_points >= 0);
-    return total_points;
+    return vertical.total_connectios * horizontal.total_connectios;
   }
 };
 
@@ -327,106 +327,89 @@ void polys_have_created_new_verts(const OffsetIndices<int> offsets,
     const int &points_num_edge_c = resample_edge_num[src_loops[2].e];
     const int &points_num_edge_d = resample_edge_num[src_loops[3].e];
 
-    const int horizontal_connections = math::max(points_num_edge_a, points_num_edge_c);
-    const int horizontal_other_side = math::min(points_num_edge_a, points_num_edge_c);
+    const ResampleQuad resample(
+        points_num_edge_a, points_num_edge_c, points_num_edge_b, points_num_edge_d);
 
-    const int vertical_connections = math::max(points_num_edge_b, points_num_edge_d);
-    const int vertical_other_side = math::min(points_num_edge_b, points_num_edge_d);
+    const int &hor_connection = resample.horizontal.total_connectios;
+    const int &hor_other_side = resample.horizontal.less_points;
+    const int &ver_connection = resample.vertical.total_connectios;
+    const int &ver_other_side = resample.vertical.less_points;
 
-    horizontal_linkeds.reinitialize(horizontal_connections);
-    vertical_linkeds.reinitialize(vertical_connections);
+    horizontal_linkeds.reinitialize(hor_connection);
+    vertical_linkeds.reinitialize(ver_connection);
 
-    for (const int index : IndexRange(horizontal_connections)) {
-      const float d_index = float((horizontal_other_side + 1) * (1 + index));
-      const float d_total = float(horizontal_connections + 1);
+    for (const int index : IndexRange(hor_connection)) {
+      const float d_index = float((hor_other_side + 1) * (1 + index));
+      const float d_total = float(hor_connection + 1);
       horizontal_linkeds[index] = int(std::round(d_index / d_total));
     }
 
-    for (const int index : IndexRange(vertical_connections)) {
-      const float d_index = float((vertical_other_side + 1) * (1 + index));
-      const float d_total = float(vertical_connections + 1);
+    for (const int index : IndexRange(ver_connection)) {
+      const float d_index = float((ver_other_side + 1) * (1 + index));
+      const float d_total = float(ver_connection + 1);
       vertical_linkeds[index] = int(std::round(d_index / d_total));
     }
-    /*
-        const auto intersection =
-            [](const float2 p1, const float2 p2, const float2 p3, const float2 p4) -> float2 {
-          printf(">\n");
-          printf(" - x1: %f, y1: %f;\n", p1.x, p1.y);
-          printf(" - x2: %f, y2: %f;\n", p2.x, p2.y);
-          printf(" - x3: %f, y3: %f;\n", p3.x, p3.y);
-          printf(" - x4: %f, y4: %f;\n", p4.x, p4.y);
-          return {};
-        };
 
-        ResampleQuad resample(
-            points_num_edge_a, points_num_edge_c, points_num_edge_b, points_num_edge_d);
+    const auto intersection =
+        [](const float2 p1, const float2 p2, const float2 p3, const float2 p4) -> float2 {
+      float2 result = {};
+      isect_seg_seg_v2_point_ex(p1, p2, p3, p4, 0.2f, result);
+      /*
+      printf(">\n");
+      printf(" - x1: %f, y1: %f;\n", p1.x, p1.y);
+      printf(" - x2: %f, y2: %f;\n", p2.x, p2.y);
+      printf(" - x3: %f, y3: %f;\n", p3.x, p3.y);
+      printf(" - x4: %f, y4: %f;\n", p4.x, p4.y);
+      printf(" - xr: %f, yr: %f;\n", result.x, result.y);
+      */
+      return result;
+    };
 
-        int point_index = 0;
+    const auto colculate_result = [&](const int &index_h, const int &index_v) -> float2 {
+      const float2 uv_point_a = {0.0f, float(index_h + 1) / (hor_connection + 1)};
+      const float2 uv_point_b = {1.0f, float(horizontal_linkeds[index_h]) / (hor_other_side + 1)};
+      const float2 uv_point_c = {float(index_v + 1) / (ver_connection + 1), 0.0f};
+      const float2 uv_point_d = {float(vertical_linkeds[index_v]) / (ver_other_side + 1), 1.0f};
 
-        for (const int index_h : IndexRange(resample.hor_corner)) {
-          for (const int index_v : IndexRange(resample.hor_body + resample.hor_corner)) {
+      const float2 uv_point = intersection(uv_point_a, uv_point_b, uv_point_c, uv_point_d);
 
-            const float2 point_a = (index_h + 1) / horizontal_connections;
-            const float2 point_b = horizontal_linkeds[index_h] / horizontal_other_side;
-            const float2 point_c = (index_v + 1) / vertical_connections;
-            const float2 point_d = vertical_linkeds[index_v] / vertical_other_side;
+      return uv_point;
+    };
 
-            const float2 point_locaton = intersection(point_a, point_b, point_c, point_d);
+    int point_index = 0;
 
-            dst[point_index] = attribute_math::mix2(
-                point_locaton.x,
-                attribute_math::mix2(point_locaton.y, src[points_a], src[points_b]),
-                attribute_math::mix2(point_locaton.y, src[points_c], src[points_d]));
+    const IndexRange f_h(resample.horizontal.total_connectios);
+    const IndexRange f_v(resample.vertical.total_connectios);
 
-            point_index++;
-          }
-        }
+    for (const int index_h : f_h) {
+      for (const int index_v : f_v) {
+        const float2 uv_point = colculate_result(index_h, index_v);
 
-        for (const int index_h :
-             IndexRange(resample.hor_corner, resample.hor_body + resample.hor_corner)) {
-          for (const int index_v :
-               IndexRange(resample.hor_corner + resample.hor_body + resample.hor_corner)) {
+        dst[point_index] = attribute_math::mix2(
+            uv_point.x,
+            attribute_math::mix2(uv_point.y, src[points_a], src[points_b]),
+            attribute_math::mix2(uv_point.y, src[points_d], src[points_c]));
 
-            const float2 point_a = (index_h + 1) / horizontal_connections;
-            const float2 point_b = horizontal_linkeds[index_h] / horizontal_other_side;
-            const float2 point_c = (index_v + 1) / vertical_connections;
-            const float2 point_d = vertical_linkeds[index_v] / vertical_other_side;
-
-            const float2 point_locaton = intersection(point_a, point_b, point_c, point_d);
-
-            dst[point_index] = attribute_math::mix2(
-                point_locaton.x,
-                attribute_math::mix2(point_locaton.y, src[points_a], src[points_b]),
-                attribute_math::mix2(point_locaton.y, src[points_c], src[points_d]));
-
-            point_index++;
-          }
-        }
-    */
-    /*
-    for (const int x : IndexRange(horizontal_connections)) {
-      const int x_other = find_nearest_one(horizontal_connections, horizontal_other_side, x);
-
-      const float x_p_left = float(x * horizontal_other_side);
-      const float x_p_right = float(x_other * horizontal_connections);
-
-      for (const int y : IndexRange(vertical_connections)) {
-        const int y_other = find_nearest_one(vertical_connections, vertical_other_side, y);
-
-        const float y_p_top = float(y * vertical_other_side);
-        const float y_p_bottom = float(y_other * vertical_connections);
-        return;
-        const float2 uv = intersection(float2{0.0f, x_p_left},
-                                       float2{1.0f, x_p_right},
-                                       float2{y_p_top, 0.0f},
-                                       float2{y_p_bottom, 1.0f});
-
-        attribute_math::mix2(uv.x,
-                             attribute_math::mix2(uv.y, src[points_a], src[points_b]),
-                             attribute_math::mix2(uv.y, src[points_c], src[points_d]));
+        point_index++;
       }
     }
-    */
+    continue;
+    const IndexRange l_h(resample.horizontal.corner_points,
+                         resample.horizontal.body_points + resample.horizontal.corner_points);
+    const IndexRange l_v(resample.vertical.total_connectios);
+
+    for (const int index_h : l_h) {
+      for (const int index_v : l_v) {
+        const float2 uv_point = colculate_result(index_h, index_v);
+
+        dst[point_index] = attribute_math::mix2(
+            uv_point.x,
+            attribute_math::mix2(uv_point.y, src[points_a], src[points_b]),
+            attribute_math::mix2(uv_point.y, src[points_d], src[points_c]));
+
+        point_index++;
+      }
+    }
   }
 }
 
@@ -700,7 +683,7 @@ void compute_mesh(const Mesh &mesh,
             }
           }
 
-          ResampleQuad resample(
+          const ResampleQuad resample(
               points_num_edge_a, points_num_edge_c, points_num_edge_b, points_num_edge_d);
 
           return resample.total_points();
