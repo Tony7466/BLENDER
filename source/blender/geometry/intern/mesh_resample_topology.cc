@@ -16,72 +16,95 @@
 
 namespace blender::geometry {
 
+class ResampledPair {
+ public:
+  bool flip_axis;
+
+  /*
+   * A     -     -     B
+   * |\  / | \ / | \ / | <-
+   * C - - - - - - - - D
+   * total_connectios: Is number of edge-lines for side pair without bounding pair.
+   */
+  int total_connectios;
+  int less_points;
+
+  int t_max_edges;
+  int t_min_edges;
+
+  /*
+   * A     -     -     B
+   * |\  / | \ / | \ / |
+   * C - - - - - - - - D
+   *   ^             ^
+   *   |             |
+   * corner_points: Is points of side corner.
+   */
+  int corner_points;
+
+  /*
+   * A     -     -     B
+   * |\  / | \ / | \ / |
+   * C - - - - - - - - D
+   *     ^ ^ ^ ^ ^ ^
+   *     | | | | | |
+   * body_points: Is points of side body.
+   */
+  int body_points;
+
+  ResampledPair(const int &total_points_a, const int &total_points_b)
+  {
+    flip_axis = total_points_a >= total_points_b;
+
+    total_connectios = math::max<int>(total_points_a, total_points_b);
+    less_points = math::min<int>(total_points_a, total_points_b);
+
+    t_max_edges = total_connectios + 1;
+    t_min_edges = less_points + 1;
+
+    corner_points = this->corner_for_size(t_max_edges, t_min_edges);
+
+    body_points = this->body_of_side_without_corners(total_connectios, corner_points);
+  }
+
+ protected:
+  int corner_for_size(const int &edge_max, const int &edge_min) const
+  {
+    return edge_max / (edge_min * 2);
+  }
+
+  int body_of_side_without_corners(const int &side, const int &corner) const
+  {
+    return side - corner * 2;
+  }
+};
+
 class ResampleQuad {
  private:
-  /*
-  struct EdgePair {
-    const int splittings;
-    const int edges_a;
-    const int edges_b;
-    const int max_edges;
-    const int min_edges;
-    const int corner;
-    const int body;
-  };
-  */
-  const int hor_conections_;
-  const int ver_conections_;
-
-  const int left_edges_;
-  const int right_edges_;
-  const int top_edges_;
-  const int bottom_edges_;
-
-  const int hor_max_;
-  const int ver_max_;
-
-  const int hor_min_;
-  const int ver_min_;
-
-  const int hor_corner_total_;
-  const int ver_corner_total_;
-
-  const int hor_body_total_;
-  const int ver_body_total_;
+  const ResampledPair horizontal_;
+  const ResampledPair vertical_;
 
  public:
-  ResampleQuad(const int left_added_points,
-               const int right_added_points,
-               const int top_added_points,
-               const int bottom_added_points)
-      : hor_conections_(split_lines_between(top_added_points, bottom_added_points)),
-        ver_conections_(split_lines_between(left_added_points, right_added_points)),
-        left_edges_(left_added_points + 1),
-        right_edges_(right_added_points + 1),
-        top_edges_(top_added_points + 1),
-        bottom_edges_(bottom_added_points + 1),
-        hor_max_(std::max(top_edges_, bottom_edges_)),
-        ver_max_(std::max(left_edges_, right_edges_)),
-        hor_min_(std::min(top_edges_, bottom_edges_)),
-        ver_min_(std::min(left_edges_, right_edges_)),
-        hor_corner_total_(corner_for_size(hor_max_, hor_min_)),
-        ver_corner_total_(corner_for_size(ver_max_, ver_min_)),
-        hor_body_total_(body_of_side_without_corners(hor_conections_, hor_corner_total_)),
-        ver_body_total_(body_of_side_without_corners(ver_conections_, ver_corner_total_))
+  ResampleQuad(const int &left_added_points,
+               const int &right_added_points,
+               const int &top_added_points,
+               const int &bottom_added_points)
+      : horizontal_(left_added_points, right_added_points),
+        vertical_(top_added_points, bottom_added_points)
   {
   }
 
   int total_points() const
   {
-    const int body_body_points = hor_body_total_ * ver_body_total_;
+    const int body_body_points = horizontal_.body_points * vertical_.body_points;
 
-    const int body_corner_points_hor = hor_body_total_ * ver_corner_total_;
-    const int body_corner_points_ver = ver_body_total_ * hor_corner_total_;
+    const int body_corner_points_hor = horizontal_.body_points * vertical_.corner_points;
+    const int body_corner_points_ver = vertical_.body_points * horizontal_.corner_points;
 
-    const int side_corner_points_hor = hor_conections_ * ver_corner_total_;
-    const int side_corner_points_ver = ver_conections_ * hor_corner_total_;
+    const int side_corner_points_hor = horizontal_.total_connectios * vertical_.corner_points;
+    const int side_corner_points_ver = vertical_.total_connectios * horizontal_.corner_points;
 
-    const int corner_corner_duply_sub = hor_corner_total_ * ver_corner_total_;
+    const int corner_corner_duply_sub = horizontal_.corner_points * vertical_.corner_points;
 
     const int total_points = body_body_points + body_corner_points_hor + body_corner_points_ver +
                              side_corner_points_hor + side_corner_points_ver -
@@ -89,42 +112,6 @@ class ResampleQuad {
 
     BLI_assert(total_points >= 0);
     return total_points;
-  }
-
- protected:
-  /*
-   * A     -     -     B
-   * |\  / | \ / | \ / | <-|
-   * C - - - - - - - - D
-   * Is number of edge-lines for side pair without bounding pair.
-   */
-  int split_lines_between(const int &tot_points_a, const int &tot_points_b) const
-  {
-    return std::max(tot_points_a, tot_points_b);
-  }
-
-  /*
-   * A     -     -     B
-   * |\  / | \ / | \ / |
-   * C - - - - - - - - D
-   *   ^             ^
-   * Is points of side corner.
-   */
-  int corner_for_size(const int &edge_max, const int &edge_min) const
-  {
-    return edge_max / (edge_min * 2);
-  }
-
-  /*
-   * A     -     -     B
-   * |\  / | \ / | \ / |
-   * C - - - - - - - - D
-   *     ^ ^ ^ ^ ^ ^
-   * Is points of side body.
-   */
-  int body_of_side_without_corners(const int &side, const int &corner) const
-  {
-    return side - corner * 2;
   }
 };
 
@@ -250,7 +237,7 @@ class MeshBuilder {
     const int tot_loop = branch_total("Loops");
     const int tot_face = branch_total("Faces");
 
-    result = BKE_mesh_new_nomain(tot_vert, tot_edge, 0, tot_loop, tot_face);
+    result = BKE_mesh_new_nomain(tot_vert, tot_edge, tot_loop, tot_face);
   }
 
   Mesh &mesh() const
@@ -360,62 +347,62 @@ void polys_have_created_new_verts(const OffsetIndices<int> offsets,
       const float d_total = float(vertical_connections + 1);
       vertical_linkeds[index] = int(std::round(d_index / d_total));
     }
+    /*
+        const auto intersection =
+            [](const float2 p1, const float2 p2, const float2 p3, const float2 p4) -> float2 {
+          printf(">\n");
+          printf(" - x1: %f, y1: %f;\n", p1.x, p1.y);
+          printf(" - x2: %f, y2: %f;\n", p2.x, p2.y);
+          printf(" - x3: %f, y3: %f;\n", p3.x, p3.y);
+          printf(" - x4: %f, y4: %f;\n", p4.x, p4.y);
+          return {};
+        };
 
-    const auto intersection =
-        [](const float2 p1, const float2 p2, const float2 p3, const float2 p4) -> float2 {
-      printf(">\n");
-      printf(" - x1: %f, y1: %f;\n", p1.x, p1.y);
-      printf(" - x2: %f, y2: %f;\n", p2.x, p2.y);
-      printf(" - x3: %f, y3: %f;\n", p3.x, p3.y);
-      printf(" - x4: %f, y4: %f;\n", p4.x, p4.y);
-      return {};
-    };
+        ResampleQuad resample(
+            points_num_edge_a, points_num_edge_c, points_num_edge_b, points_num_edge_d);
 
-    ResampleQuad resample(
-        points_num_edge_a, points_num_edge_c, points_num_edge_b, points_num_edge_d);
+        int point_index = 0;
 
-    int point_index = 0;
+        for (const int index_h : IndexRange(resample.hor_corner)) {
+          for (const int index_v : IndexRange(resample.hor_body + resample.hor_corner)) {
 
-    for (const int index_h : IndexRange(resample.hor_corner)) {
-      for (const int index_v : IndexRange(resample.hor_body + resample.hor_corner)) {
+            const float2 point_a = (index_h + 1) / horizontal_connections;
+            const float2 point_b = horizontal_linkeds[index_h] / horizontal_other_side;
+            const float2 point_c = (index_v + 1) / vertical_connections;
+            const float2 point_d = vertical_linkeds[index_v] / vertical_other_side;
 
-        const float2 point_a = (index_h + 1) / horizontal_connections;
-        const float2 point_b = horizontal_linkeds[index_h] / horizontal_other_side;
-        const float2 point_c = (index_v + 1) / vertical_connections;
-        const float2 point_d = vertical_linkeds[index_v] / vertical_other_side;
+            const float2 point_locaton = intersection(point_a, point_b, point_c, point_d);
 
-        const float2 point_locaton = intersection(point_a, point_b, point_c, point_d);
+            dst[point_index] = attribute_math::mix2(
+                point_locaton.x,
+                attribute_math::mix2(point_locaton.y, src[points_a], src[points_b]),
+                attribute_math::mix2(point_locaton.y, src[points_c], src[points_d]));
 
-        dst[point_index] = attribute_math::mix2(
-            point_locaton.x,
-            attribute_math::mix2(point_locaton.y, src[points_a], src[points_b]),
-            attribute_math::mix2(point_locaton.y, src[points_c], src[points_d]));
+            point_index++;
+          }
+        }
 
-        point_index++;
-      }
-    }
+        for (const int index_h :
+             IndexRange(resample.hor_corner, resample.hor_body + resample.hor_corner)) {
+          for (const int index_v :
+               IndexRange(resample.hor_corner + resample.hor_body + resample.hor_corner)) {
 
-    for (const int index_h :
-         IndexRange(resample.hor_corner, resample.hor_body + resample.hor_corner)) {
-      for (const int index_v :
-           IndexRange(resample.hor_corner + resample.hor_body + resample.hor_corner)) {
+            const float2 point_a = (index_h + 1) / horizontal_connections;
+            const float2 point_b = horizontal_linkeds[index_h] / horizontal_other_side;
+            const float2 point_c = (index_v + 1) / vertical_connections;
+            const float2 point_d = vertical_linkeds[index_v] / vertical_other_side;
 
-        const float2 point_a = (index_h + 1) / horizontal_connections;
-        const float2 point_b = horizontal_linkeds[index_h] / horizontal_other_side;
-        const float2 point_c = (index_v + 1) / vertical_connections;
-        const float2 point_d = vertical_linkeds[index_v] / vertical_other_side;
+            const float2 point_locaton = intersection(point_a, point_b, point_c, point_d);
 
-        const float2 point_locaton = intersection(point_a, point_b, point_c, point_d);
+            dst[point_index] = attribute_math::mix2(
+                point_locaton.x,
+                attribute_math::mix2(point_locaton.y, src[points_a], src[points_b]),
+                attribute_math::mix2(point_locaton.y, src[points_c], src[points_d]));
 
-        dst[point_index] = attribute_math::mix2(
-            point_locaton.x,
-            attribute_math::mix2(point_locaton.y, src[points_a], src[points_b]),
-            attribute_math::mix2(point_locaton.y, src[points_c], src[points_d]));
-
-        point_index++;
-      }
-    }
-
+            point_index++;
+          }
+        }
+    */
     /*
     for (const int x : IndexRange(horizontal_connections)) {
       const int x_other = find_nearest_one(horizontal_connections, horizontal_other_side, x);
