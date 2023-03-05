@@ -3,13 +3,13 @@
 #pragma once
 
 #include <array>
-#include <memory_resource>
 #include <optional>
 #include <variant>
 
 #include "BLI_bit_span.hh"
 #include "BLI_function_ref.hh"
 #include "BLI_index_range.hh"
+#include "BLI_linear_allocator.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_offset_span.hh"
 #include "BLI_span.hh"
@@ -162,11 +162,9 @@ class IndexMask {
   template<typename Fn> void foreach_index(Fn &&fn) const;
 
   template<typename T>
-  static IndexMask from_indices(Span<T> indices, std::pmr::memory_resource &memory);
-  static IndexMask from_bits(BitSpan bits, std::pmr::memory_resource &memory, int64_t offset = 0);
-  static IndexMask from_expr(const Expr &expr,
-                             IndexRange universe,
-                             std::pmr::memory_resource &memory);
+  static IndexMask from_indices(Span<T> indices, LinearAllocator<> &allocator);
+  static IndexMask from_bits(BitSpan bits, LinearAllocator<> &allocator, int64_t offset = 0);
+  static IndexMask from_expr(const Expr &expr, IndexRange universe, LinearAllocator<> &allocator);
 
   template<typename T> void to_indices(MutableSpan<T> r_indices) const;
   void to_bits(MutableBitSpan r_bits, int64_t offset = 0) const;
@@ -196,7 +194,7 @@ int64_t find_size_until_next_range(const Span<T> indices, const int64_t min_rang
 template<typename Fn>
 inline IndexMask grow_indices_to_ranges(const IndexMask &mask,
                                         const Fn &fn,
-                                        std::pmr::memory_resource &memory)
+                                        LinearAllocator<> &allocator)
 {
   Vector<int64_t> indices;
   mask.foreach_index([&](const int64_t i) {
@@ -205,7 +203,7 @@ inline IndexMask grow_indices_to_ranges(const IndexMask &mask,
       indices.append(new_index);
     }
   });
-  return IndexMask::from_indices<int64_t>(indices, memory);
+  return IndexMask::from_indices<int64_t>(indices, allocator);
 }
 
 /* -------------------------------------------------------------------- */
