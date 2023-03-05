@@ -3199,13 +3199,11 @@ static void animchannel_clear_selection(bAnimContext *ac)
       case ANIMTYPE_FCURVE: {
         FCurve *fcu = (FCurve *)ale->data;
         fcu->flag &= ~FCURVE_SELECTED;
-      }
-      break;
+      } break;
       case ANIMTYPE_GPLAYER: {
         bGPDlayer *gpl = (bGPDlayer *)ale->data;
         gpl->flag &= ~GP_LAYER_SELECT;
-      }
-      break;
+      } break;
       default:
         break;
     }
@@ -3218,7 +3216,7 @@ static void animchannel_clear_selection(bAnimContext *ac)
 static void animchannel_select_range(bAnimContext *ac, bAnimListElem *cursor_elem)
 {
   ListBase anim_data = anim_channels_for_selection(ac);
-  bool selected = false;
+  bool in_selection_range = false;
 
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     switch (ale->type) {
@@ -3228,19 +3226,14 @@ static void animchannel_select_range(bAnimContext *ac, bAnimListElem *cursor_ele
         FCurve *fcu = (FCurve *)ale->data;
         FCurve *cursor = (FCurve *)cursor_elem->data;
 
-        if (cursor->flag & FCURVE_ACTIVE) {
-          cursor->flag |= FCURVE_SELECTED;
-          break;
-        }
-
         /* Select first and last element from the range. Reverse selection status on extremes. */
         if ((fcu->flag & FCURVE_ACTIVE) || fcu == cursor) {
           fcu->flag |= FCURVE_SELECTED;
-          selected = !selected;
+          in_selection_range = !in_selection_range;
         }
 
         /* Select elements between the range. */
-        if (selected) {
+        if (in_selection_range) {
           fcu->flag |= FCURVE_SELECTED;
         }
       } break;
@@ -3248,17 +3241,12 @@ static void animchannel_select_range(bAnimContext *ac, bAnimListElem *cursor_ele
         bGPDlayer *gpl = (bGPDlayer *)ale->data;
         bGPDlayer *cursor = (bGPDlayer *)cursor_elem->data;
 
-        if (cursor->flag & GP_LAYER_ACTIVE) {
-          cursor->flag |= GP_LAYER_SELECT;
-          break;
-        }
-
         if ((gpl->flag & GP_LAYER_ACTIVE) || gpl == cursor) {
           gpl->flag |= GP_LAYER_SELECT;
-          selected = !selected;
+          in_selection_range = !in_selection_range;
         }
 
-        if (selected) {
+        if (in_selection_range) {
           gpl->flag |= GP_LAYER_SELECT;
         }
       } break;
@@ -3284,7 +3272,14 @@ static int click_select_channel_fcurve(bAnimContext *ac,
   }
   else if (selectmode == SELECT_EXTEND_RANGE) {
     animchannel_clear_selection(ac);
-    animchannel_select_range(ac, ale);
+    /* When active channel is being clicked again for range selection, only select the
+     * clicked/active channel. Otherwise call range selection function. */
+    if ((fcu->flag & FCURVE_ACTIVE) == 0) {
+      animchannel_select_range(ac, ale);
+    }
+    else {
+      fcu->flag |= FCURVE_SELECTED;
+    }
   }
   else {
     /* select F-Curve by itself */
@@ -3364,7 +3359,14 @@ static int click_select_channel_gplayer(bContext *C,
   }
   else if (selectmode == SELECT_EXTEND_RANGE) {
     animchannel_clear_selection(ac);
-    animchannel_select_range(ac, ale);
+    /* When active channel is being clicked again for range selection, only select the
+     * clicked/active channel. Otherwise call range selection function. */
+    if ((gpl->flag & FCURVE_ACTIVE) == 0) {
+      animchannel_select_range(ac, ale);
+    }
+    else {
+      gpl->flag |= GP_LAYER_SELECT;
+    }
   }
   else {
     /* select layer by itself */
@@ -3619,7 +3621,11 @@ static void ANIM_OT_channels_click(wmOperatorType *ot)
   prop = RNA_def_boolean(ot->srna, "extend", false, "Extend Select", "");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
-  prop = RNA_def_boolean(ot->srna, "extend_range", false, "Extend Range", "");
+  prop = RNA_def_boolean(ot->srna,
+                         "extend_range",
+                         false,
+                         "Extend Range",
+                         "Selection of active channel to clicked channel");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
   /* Key-map: Enable with `Ctrl-Shift`. */
