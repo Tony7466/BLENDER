@@ -625,6 +625,4 @@ template<typename Fn> inline void IndexMask::foreach_range(Fn &&fn) const
 
 }  // namespace index_mask
 
-using index_mask::IndexMask;
-
 }  // namespace blender
