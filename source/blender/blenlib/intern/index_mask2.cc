@@ -341,7 +341,7 @@ template<typename T> void from_index_mask(const IndexMask &mask, MutableSpan<T> 
 
 }  // namespace unique_sorted_indices
 
-void IndexMask::foreach_segment(FunctionRef<void(const IndexMaskSegment &)> fn) const
+void IndexMask::foreach_span(FunctionRef<void(OffsetSpan<int64_t, int16_t>)> fn) const
 {
   if (data_.indices_num == 0) {
     return;
@@ -356,7 +356,6 @@ void IndexMask::foreach_segment(FunctionRef<void(const IndexMaskSegment &)> fn) 
   const int64_t final_segment_i = data_.end_it.segment_i;
   const int64_t final_segments_num = data_.end_it.segment_i + 1;
 
-  int64_t counter = 0;
   while (chunk_i < data_.chunks_num) {
     const Chunk &chunk = data_.chunks[chunk_i];
     const int64_t chunk_id = data_.chunk_ids[chunk_i];
@@ -374,10 +373,9 @@ void IndexMask::foreach_segment(FunctionRef<void(const IndexMaskSegment &)> fn) 
       const int64_t segment_size = stored_segment_size - segment_drop_front - segment_drop_back;
       const Span<int16_t> indices_span{indices_in_segment, segment_size};
 
-      const IndexMaskSegment segment{counter, {offset, indices_span}};
+      const OffsetSpan<int64_t, int16_t> segment{offset, indices_span};
       fn(segment);
 
-      counter += segment_size;
       segment_drop_front = 0;
       segment_i = next_segment_i;
     }

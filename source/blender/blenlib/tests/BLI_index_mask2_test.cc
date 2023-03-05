@@ -138,20 +138,22 @@ TEST(index_mask2, FromSize)
 {
   {
     IndexMask mask(5);
-    Vector<IndexMaskSegment> segments;
-    mask.foreach_segment([&](const IndexMaskSegment &segment) { segments.append(segment); });
+    Vector<OffsetSpan<int64_t, int16_t>> segments;
+    mask.foreach_span(
+        [&](const OffsetSpan<int64_t, int16_t> segment) { segments.append(segment); });
     EXPECT_EQ(segments.size(), 1);
-    EXPECT_EQ(segments[0].indices.size(), 5);
+    EXPECT_EQ(segments[0].size(), 5);
     EXPECT_EQ(mask.first(), 0);
     EXPECT_EQ(mask.last(), 4);
     EXPECT_EQ(mask.min_array_size(), 5);
   }
   {
     IndexMask mask(chunk_capacity);
-    Vector<IndexMaskSegment> segments;
-    mask.foreach_segment([&](const IndexMaskSegment &segment) { segments.append(segment); });
+    Vector<OffsetSpan<int64_t, int16_t>> segments;
+    mask.foreach_span(
+        [&](const OffsetSpan<int64_t, int16_t> segment) { segments.append(segment); });
     EXPECT_EQ(segments.size(), 1);
-    EXPECT_EQ(segments[0].indices.size(), chunk_capacity);
+    EXPECT_EQ(segments[0].size(), chunk_capacity);
     EXPECT_EQ(mask.first(), 0);
     EXPECT_EQ(mask.last(), chunk_capacity - 1);
     EXPECT_EQ(mask.min_array_size(), chunk_capacity);
