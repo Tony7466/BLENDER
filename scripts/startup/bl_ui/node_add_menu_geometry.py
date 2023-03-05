@@ -303,6 +303,7 @@ class NODE_MT_geometry_node_GEO_MATERIAL(Menu):
     def draw(self, _context):
         layout = self.layout
         node_add_menu.add_node_type(layout, "GeometryNodeReplaceMaterial")
+        node_add_menu.add_node_type(layout, "GeometryNodeCopyMaterials")
         layout.separator()
         node_add_menu.add_node_type(layout, "GeometryNodeInputMaterialIndex")
         node_add_menu.add_node_type(layout, "GeometryNodeMaterialSelection")

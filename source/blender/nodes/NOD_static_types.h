@@ -279,7 +279,6 @@ DefNode(FunctionNode, FN_NODE_SEPARATE_COLOR, def_fn_combsep_color, "SEPARATE_CO
 DefNode(FunctionNode, FN_NODE_SLICE_STRING, 0, "SLICE_STRING", SliceString, "Slice String", "")
 DefNode(FunctionNode, FN_NODE_STRING_LENGTH, 0, "STRING_LENGTH", StringLength, "String Length", "")
 DefNode(FunctionNode, FN_NODE_VALUE_TO_STRING, 0, "VALUE_TO_STRING", ValueToString, "Value to String", "")
-
 DefNode(GeometryNode, GEO_NODE_ACCUMULATE_FIELD, def_geo_accumulate_field, "ACCUMULATE_FIELD", AccumulateField, "Accumulate Field", "Add the values of an evaluated field together and output the running total for each element")
 DefNode(GeometryNode, GEO_NODE_ATTRIBUTE_DOMAIN_SIZE, def_geo_attribute_domain_size, "ATTRIBUTE_DOMAIN_SIZE", AttributeDomainSize, "Domain Size", "Retrieve the number of elements in a geometry for each attribute domain")
 DefNode(GeometryNode, GEO_NODE_ATTRIBUTE_STATISTIC, def_geo_attribute_statistic, "ATTRIBUTE_STATISTIC",AttributeStatistic, "Attribute Statistic","Calculate statistics about a data set from a field evaluated on a geometry")
@@ -288,6 +287,7 @@ DefNode(GeometryNode, GEO_NODE_BOUNDING_BOX, 0, "BOUNDING_BOX", BoundBox, "Bound
 DefNode(GeometryNode, GEO_NODE_CAPTURE_ATTRIBUTE, def_geo_attribute_capture,"CAPTURE_ATTRIBUTE", CaptureAttribute, "Capture Attribute", "Store the result of a field on a geometry and output the data as a node socket. Allows remembering or interpolating data as the geometry changes, such as positions before deformation")
 DefNode(GeometryNode, GEO_NODE_COLLECTION_INFO, def_geo_collection_info, "COLLECTION_INFO", CollectionInfo, "Collection Info", "Retrieve geometry instances from a collection")
 DefNode(GeometryNode, GEO_NODE_CONVEX_HULL, 0, "CONVEX_HULL", ConvexHull, "Convex Hull", "Create a mesh that encloses all points in the input geometry with the smallest number of points")
+DefNode(GeometryNode, GEO_NODE_COPY_MATERIALS, 0, "COPY_MATERIALS", CopyMaterials, "Copy Materials", "")
 DefNode(GeometryNode, GEO_NODE_CURVE_ENDPOINT_SELECTION, 0, "CURVE_ENDPOINT_SELECTION", CurveEndpointSelection, "Endpoint Selection", "Provide a selection for an arbitrary number of endpoints in each spline")
 DefNode(GeometryNode, GEO_NODE_CURVE_HANDLE_TYPE_SELECTION, def_geo_curve_handle_type_selection, "CURVE_HANDLE_TYPE_SELECTION", CurveHandleTypeSelection, "Handle Type Selection", "Provide a selection based on the handle types of Bézier control points")
 DefNode(GeometryNode, GEO_NODE_CURVE_LENGTH, 0, "CURVE_LENGTH", CurveLength, "Curve Length", "Retrieve the length of all splines added together")

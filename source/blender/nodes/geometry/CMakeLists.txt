@@ -35,6 +35,7 @@ set(SRC
   nodes/node_geo_collection_info.cc
   nodes/node_geo_common.cc
   nodes/node_geo_convex_hull.cc
+  nodes/node_geo_copy_materials.cc
   nodes/node_geo_curve_endpoint_selection.cc
   nodes/node_geo_curve_fill.cc
   nodes/node_geo_curve_fillet.cc
