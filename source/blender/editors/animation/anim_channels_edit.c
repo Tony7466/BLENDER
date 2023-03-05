@@ -3195,44 +3195,75 @@ static void animchannel_clear_selection(bAnimContext *ac)
   ListBase anim_data = anim_channels_for_selection(ac);
 
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    if (ale->type != ANIMTYPE_FCURVE) {
-      continue;
+    switch (ale->type) {
+      case ANIMTYPE_FCURVE: {
+        FCurve *fcu = (FCurve *)ale->data;
+        fcu->flag &= ~FCURVE_SELECTED;
+      }
+      break;
+      case ANIMTYPE_GPLAYER: {
+        bGPDlayer *gpl = (bGPDlayer *)ale->data;
+        gpl->flag &= ~GP_LAYER_SELECT;
+      }
+      break;
+      default:
+        break;
     }
-
-    FCurve *fcu = (FCurve *)ale->data;
-    fcu->flag &= ~FCURVE_SELECTED;
   }
 
   ANIM_animdata_freelist(&anim_data);
 }
 
-static void animchannel_select_range(bAnimContext *ac, FCurve *cursor)
+/* Select channels that lies between active channel and last clicked channel. */
+static void animchannel_select_range(bAnimContext *ac, bAnimListElem *cursor_elem)
 {
   ListBase anim_data = anim_channels_for_selection(ac);
   bool selected = false;
 
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    switch (ale->type) {
 
-    if (ale->type != ANIMTYPE_FCURVE) {
-      continue;
-    }
+      case ANIMTYPE_FCURVE:
+      case ANIMTYPE_NLACURVE: {
+        FCurve *fcu = (FCurve *)ale->data;
+        FCurve *cursor = (FCurve *)cursor_elem->data;
 
-    FCurve *fcu = (FCurve *)ale->data;
+        if (cursor->flag & FCURVE_ACTIVE) {
+          cursor->flag |= FCURVE_SELECTED;
+          break;
+        }
 
-    if (cursor->flag & FCURVE_ACTIVE) {
-      cursor->flag |= FCURVE_SELECTED;
-      break;
-    }
+        /* Select first and last element from the range. Reverse selection status on extremes. */
+        if ((fcu->flag & FCURVE_ACTIVE) || fcu == cursor) {
+          fcu->flag |= FCURVE_SELECTED;
+          selected = !selected;
+        }
 
-    /* Select first and last element from the range. Reverse selection status on extremes. */
-    if ((fcu->flag & FCURVE_ACTIVE) || fcu == cursor) {
-      fcu->flag |= FCURVE_SELECTED;
-      selected = !selected;
-    }
+        /* Select elements between the range. */
+        if (selected) {
+          fcu->flag |= FCURVE_SELECTED;
+        }
+      } break;
+      case ANIMTYPE_GPLAYER: {
+        bGPDlayer *gpl = (bGPDlayer *)ale->data;
+        bGPDlayer *cursor = (bGPDlayer *)cursor_elem->data;
 
-    /* Select elements between the range. */
-    if (selected) {
-      fcu->flag |= FCURVE_SELECTED;
+        if (cursor->flag & GP_LAYER_ACTIVE) {
+          cursor->flag |= GP_LAYER_SELECT;
+          break;
+        }
+
+        if ((gpl->flag & GP_LAYER_ACTIVE) || gpl == cursor) {
+          gpl->flag |= GP_LAYER_SELECT;
+          selected = !selected;
+        }
+
+        if (selected) {
+          gpl->flag |= GP_LAYER_SELECT;
+        }
+      } break;
+      default:
+        break;
     }
   }
 
@@ -3253,7 +3284,7 @@ static int click_select_channel_fcurve(bAnimContext *ac,
   }
   else if (selectmode == SELECT_EXTEND_RANGE) {
     animchannel_clear_selection(ac);
-    animchannel_select_range(ac, fcu);
+    animchannel_select_range(ac, ale);
   }
   else {
     /* select F-Curve by itself */
@@ -3331,6 +3362,10 @@ static int click_select_channel_gplayer(bContext *C,
     /* invert selection status of this layer only */
     gpl->flag ^= GP_LAYER_SELECT;
   }
+  else if (selectmode == SELECT_EXTEND_RANGE) {
+    animchannel_clear_selection(ac);
+    animchannel_select_range(ac, ale);
+  }
   else {
     /* select layer by itself */
     ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_CLEAR);
@@ -3338,7 +3373,7 @@ static int click_select_channel_gplayer(bContext *C,
   }
 
   /* change active layer, if this is selected (since we must always have an active layer) */
-  if (gpl->flag & GP_LAYER_SELECT) {
+  if ((gpl->flag & GP_LAYER_SELECT) && (selectmode != SELECT_EXTEND_RANGE)) {
     ANIM_set_active_channel(ac, ac->data, ac->datatype, filter, gpl, ANIMTYPE_GPLAYER);
     /* update other layer status */
     BKE_gpencil_layer_active_set(gpd, gpl);
