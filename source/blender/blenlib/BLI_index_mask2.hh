@@ -56,6 +56,8 @@ struct Chunk {
   bool is_full() const;
   bool is_full_after_inclusive(const RawChunkIterator &it) const;
   bool is_full_until_exclusive(const RawChunkIterator &it) const;
+
+  template<typename Fn> void foreach_span(Fn &&fn) const;
 };
 
 struct IndexMaskData {
@@ -71,6 +73,14 @@ struct IndexMaskData {
 struct IndexMaskSegment {
   int64_t start_index;
   OffsetSpan<int64_t, int16_t> indices;
+};
+
+struct ChunkSlice {
+  const Chunk *chunk;
+  RawChunkIterator begin_it;
+  RawChunkIterator end_it;
+
+  template<typename Fn> void foreach_span(Fn &&fn) const;
 };
 
 struct Expr {
@@ -512,8 +522,7 @@ inline OffsetIndices<int16_t> Chunk::segment_offsets() const
 
 inline int16_t Chunk::size() const
 {
-  return this->cumulative_segment_sizes[this->segments_num + 1] -
-         this->cumulative_segment_sizes[0];
+  return this->cumulative_segment_sizes[this->segments_num] - this->cumulative_segment_sizes[0];
 }
 
 inline bool Chunk::is_full() const
@@ -539,6 +548,53 @@ inline bool Chunk::is_full_until_exclusive(const RawChunkIterator &it) const
 inline int16_t Chunk::segment_size(const int16_t segment_i) const
 {
   return this->cumulative_segment_sizes[segment_i + 1] - this->cumulative_segment_sizes[segment_i];
+}
+
+template<typename Fn> inline void Chunk::foreach_span(Fn &&fn) const
+{
+  for (const int64_t segment_i : IndexRange(this->segments_num)) {
+    const Span<int16_t> indices{this->indices_by_segment[segment_i],
+                                this->segment_size(segment_i)};
+    fn(indices);
+  }
+}
+
+template<typename Fn> inline void ChunkSlice::foreach_span(Fn &&fn) const
+{
+  if (this->begin_it.segment_i == this->end_it.segment_i) {
+    const int64_t segment_i = this->begin_it.segment_i;
+    const int64_t begin_i = this->begin_it.index_in_segment;
+    const int64_t end_i = this->end_it.index_in_segment;
+    const Span<int16_t> indices{this->chunk->indices_by_segment[segment_i] + begin_i,
+                                end_i - begin_i};
+    fn(indices);
+  }
+  else {
+    {
+      const int64_t first_segment_i = this->begin_it.segment_i;
+      const int64_t begin_i = this->begin_it.index_in_segment;
+      const int64_t end_i = this->chunk->segment_size(first_segment_i);
+      const Span<int16_t> indices{this->chunk->indices_by_segment[first_segment_i] + begin_i,
+                                  end_i - begin_i};
+      fn(indices);
+    }
+    for (int64_t segment_i = this->begin_it.segment_i + 1; segment_i < this->end_it.segment_i;
+         segment_i++) {
+      const int64_t begin_i = 0;
+      const int64_t end_i = this->chunk->segment_size(segment_i);
+      const Span<int16_t> indices{this->chunk->indices_by_segment[segment_i] + begin_i,
+                                  end_i - begin_i};
+      fn(indices);
+    }
+    {
+      const int64_t last_segment_i = this->end_it.segment_i;
+      const int64_t begin_i = 0;
+      const int64_t end_i = this->end_it.index_in_segment;
+      const Span<int16_t> indices{this->chunk->indices_by_segment[last_segment_i] + begin_i,
+                                  end_i - begin_i};
+      fn(indices);
+    }
+  }
 }
 
 template<typename Fn> inline void IndexMask::foreach_span(Fn &&fn) const
