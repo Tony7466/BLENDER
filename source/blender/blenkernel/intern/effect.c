@@ -683,7 +683,7 @@ bool get_effector_data(EffectorCache *eff,
   bool ret = false;
 
   /* In case surface object is in Edit mode when loading the .blend,
-   * surface modifier is never executed and bvhtree never built, see T48415. */
+   * surface modifier is never executed and bvhtree never built, see #48415. */
   if (eff->pd && eff->pd->shape == PFIELD_SHAPE_SURFACE && eff->surmd &&
       eff->surmd->runtime.bvhtree) {
     /* closest point in the object surface is an effector */
@@ -703,7 +703,7 @@ bool get_effector_data(EffectorCache *eff,
     /* TODO: hair and points object support */
     const Mesh *me_eval = BKE_object_get_evaluated_mesh(eff->ob);
     const float(*positions)[3] = BKE_mesh_vert_positions(me_eval);
-    const float(*vert_normals)[3] = BKE_mesh_vertex_normals_ensure(me_eval);
+    const float(*vert_normals)[3] = BKE_mesh_vert_normals_ensure(me_eval);
     if (me_eval != NULL) {
       copy_v3_v3(efd->loc, positions[*efd->index]);
       copy_v3_v3(efd->nor, vert_normals[*efd->index]);

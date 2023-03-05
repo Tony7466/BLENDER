@@ -1303,6 +1303,7 @@ static bool view3d_lasso_select(bContext *C,
                                 const int mcoords_len,
                                 const eSelectOp sel_op)
 {
+  using namespace blender;
   Object *ob = CTX_data_active_object(C);
   bool changed_multi = false;
 
@@ -1362,6 +1363,23 @@ static bool view3d_lasso_select(bContext *C,
         case OB_MBALL:
           changed = do_lasso_select_meta(vc, mcoords, mcoords_len, sel_op);
           break;
+        case OB_CURVES: {
+          Curves &curves_id = *static_cast<Curves *>(vc->obedit->data);
+          bke::CurvesGeometry &curves = curves_id.geometry.wrap();
+          changed = ed::curves::select_lasso(
+              *vc,
+              curves,
+              eAttrDomain(curves_id.selection_domain),
+              Span<int2>(reinterpret_cast<const int2 *>(mcoords), mcoords_len),
+              sel_op);
+          if (changed) {
+            /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a
+             * generic attribute for now. */
+            DEG_id_tag_update(static_cast<ID *>(vc->obedit->data), ID_RECALC_GEOMETRY);
+            WM_event_add_notifier(C, NC_GEOM | ND_DATA, vc->obedit->data);
+          }
+          break;
+        }
         default:
           BLI_assert_msg(0, "lasso select on incorrect object type");
           break;
@@ -1989,7 +2007,7 @@ static int selectbuffer_ret_hits_5(GPUSelectResult *buffer,
  *
  * \param do_nearest_xray_if_supported: When set, read in hits that don't stop
  * at the nearest surface. The hits must still be ordered by depth.
- * Needed so we can step to the next, non-active object when it's already selected, see: T76445.
+ * Needed so we can step to the next, non-active object when it's already selected, see: #76445.
  */
 static int mixed_bones_object_selectbuffer(ViewContext *vc,
                                            GPUSelectResult *buffer,
@@ -2596,7 +2614,7 @@ static bool ed_object_select_pick(bContext *C,
 
   ViewLayer *view_layer = vc.view_layer;
   BKE_view_layer_synced_ensure(scene, view_layer);
-  /* Don't set when the context has no active object (hidden), see: T60807. */
+  /* Don't set when the context has no active object (hidden), see: #60807. */
   const Base *oldbasact = vc.obact ? BKE_view_layer_active_base_get(view_layer) : nullptr;
   /* Always start list from `basact` when cycling the selection. */
   Base *startbase = (oldbasact && oldbasact->next) ?
@@ -2610,7 +2628,7 @@ static bool ed_object_select_pick(bContext *C,
   /* For the most part this is equivalent to `(object_mode & OB_MODE_POSE) != 0`
    * however this logic should also run with weight-paint + pose selection.
    * Without this, selection in weight-paint mode can de-select armatures which isn't useful,
-   * see: T101686. */
+   * see: #101686. */
   const bool has_pose_old = (oldbasact &&
                              BKE_object_pose_armature_get_with_wpaint_check(oldbasact->object));
 
@@ -2967,12 +2985,65 @@ static bool ed_wpaint_vertex_select_pick(bContext *C,
   return changed || found;
 }
 
-static int view3d_select_exec(bContext *C, wmOperator *op)
+/**
+ * Cursor selection for the Curves object.
+ *
+ * \returns true if the selection changed.
+ */
+static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPick_Params &params)
 {
   using namespace blender;
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(&C);
+  ViewContext vc;
+  /* Setup view context for argument to callbacks. */
+  ED_view3d_viewcontext_init(&C, &vc, depsgraph);
+
+  uint bases_len;
+  Base **bases = BKE_view_layer_array_from_bases_in_edit_mode_unique_data(
+      vc.scene, vc.view_layer, vc.v3d, &bases_len);
+
+  bool changed = false;
+  ed::curves::FindClosestData closest_data;
+  for (uint base_index = 0; base_index < bases_len; base_index++) {
+    Base *base = bases[base_index];
+    Object *curves_ob = base->object;
+    Curves &curves_id = *static_cast<Curves *>(curves_ob->data);
+    bke::CurvesGeometry &curves = curves_id.geometry.wrap();
+
+    if (ed::curves::select_pick(vc,
+                                *curves_ob,
+                                curves,
+                                eAttrDomain(curves_id.selection_domain),
+                                params,
+                                mval,
+                                closest_data)) {
+      changed = true;
+      /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a
+       * generic attribute for now. */
+      DEG_id_tag_update(&curves_id.id, ID_RECALC_GEOMETRY);
+      WM_event_add_notifier(&C, NC_GEOM | ND_DATA, &curves_id);
+    }
+  }
+
+  MEM_freeN(bases);
+
+  return changed;
+}
+
+static int view3d_select_exec(bContext *C, wmOperator *op)
+{
   Scene *scene = CTX_data_scene(C);
   Object *obedit = CTX_data_edit_object(C);
   Object *obact = CTX_data_active_object(C);
+
+  if (obact && obact->type == OB_GPENCIL && GPENCIL_ANY_MODE((bGPdata *)obact->data)) {
+    /* Prevent acting on Grease Pencil (when not in object mode), it implements its own selection
+     * operator in other modes. We might still fall trough to here (because that operator uses
+     * OPERATOR_PASS_THROUGH to make tweak work) but if we don't stop here code below assumes we
+     * are in object mode it might falsely toggle object selection. Alternatively, this could be
+     * put in the poll function instead. */
+    return OPERATOR_PASS_THROUGH | OPERATOR_CANCELLED;
+  }
 
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   ViewContext vc;
@@ -3010,7 +3081,7 @@ static int view3d_select_exec(bContext *C, wmOperator *op)
 
   if (obedit && enumerate) {
     /* Enumerate makes no sense in edit-mode unless also explicitly picking objects or bones.
-     * Pass the event through so the event may be handled by loop-select for e.g. see: T100204. */
+     * Pass the event through so the event may be handled by loop-select for e.g. see: #100204. */
     if (obedit->type != OB_ARMATURE) {
       return OPERATOR_PASS_THROUGH | OPERATOR_CANCELLED;
     }
@@ -3050,17 +3121,7 @@ static int view3d_select_exec(bContext *C, wmOperator *op)
       changed = ED_curve_editfont_select_pick(C, mval, &params);
     }
     else if (obedit->type == OB_CURVES) {
-      Curves &curves_id = *static_cast<Curves *>(obact->data);
-      bke::CurvesGeometry &curves = curves_id.geometry.wrap();
-      changed = ed::curves::select_pick(
-          vc, curves, eAttrDomain(curves_id.selection_domain), params, mval);
-      if (changed) {
-        /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a
-         * generic attribute for now. */
-        DEG_id_tag_update(&curves_id.id, ID_RECALC_GEOMETRY);
-        WM_event_add_notifier(C, NC_GEOM | ND_DATA, &curves_id);
-        return true;
-      }
+      changed = ed_curves_select_pick(*C, mval, params);
     }
   }
   else if (obact && obact->mode & OB_MODE_PARTICLE_EDIT) {
@@ -3135,8 +3196,8 @@ void VIEW3D_OT_select(wmOperatorType *ot)
       ot->srna, "object", false, "Object", "Use object selection (edit mode only)");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
-  /* Needed for select-through to usefully drag handles, see: T98254.
-   * NOTE: this option may be removed and become default behavior, see design task: T98552. */
+  /* Needed for select-through to usefully drag handles, see: #98254.
+   * NOTE: this option may be removed and become default behavior, see design task: #98552. */
   prop = RNA_def_boolean(ot->srna,
                          "vert_without_handles",
                          false,
@@ -3778,7 +3839,7 @@ static bool do_object_box_select(bContext *C, ViewContext *vc, rcti *rect, const
     }
   }
 
-  /* The draw order doesn't always match the order we populate the engine, see: T51695. */
+  /* The draw order doesn't always match the order we populate the engine, see: #51695. */
   qsort(buffer, hits, sizeof(GPUSelectResult), opengl_bone_select_buffer_cmp);
 
   for (const GPUSelectResult *buf_iter = buffer, *buf_end = buf_iter + hits; buf_iter < buf_end;
@@ -3839,7 +3900,7 @@ static bool do_pose_box_select(bContext *C, ViewContext *vc, rcti *rect, const e
   if (hits > 0) {
     /* no need to loop if there's no hit */
 
-    /* The draw order doesn't always match the order we populate the engine, see: T51695. */
+    /* The draw order doesn't always match the order we populate the engine, see: #51695. */
     qsort(buffer, hits, sizeof(GPUSelectResult), opengl_bone_select_buffer_cmp);
 
     for (const GPUSelectResult *buf_iter = buffer, *buf_end = buf_iter + hits; buf_iter < buf_end;
@@ -3957,7 +4018,7 @@ static int view3d_box_select_exec(bContext *C, wmOperator *op)
           }
           break;
         case OB_CURVES: {
-          Curves &curves_id = *static_cast<Curves *>(vc.obact->data);
+          Curves &curves_id = *static_cast<Curves *>(vc.obedit->data);
           bke::CurvesGeometry &curves = curves_id.geometry.wrap();
           changed = ed::curves::select_box(
               vc, curves, eAttrDomain(curves_id.selection_domain), rect, sel_op);
@@ -4701,6 +4762,7 @@ static bool obedit_circle_select(bContext *C,
                                  const int mval[2],
                                  float rad)
 {
+  using namespace blender;
   bool changed = false;
   BLI_assert(ELEM(sel_op, SEL_OP_SET, SEL_OP_ADD, SEL_OP_SUB));
   switch (vc->obedit->type) {
@@ -4723,6 +4785,20 @@ static bool obedit_circle_select(bContext *C,
     case OB_MBALL:
       changed = mball_circle_select(vc, sel_op, mval, rad);
       break;
+    case OB_CURVES: {
+      Curves &curves_id = *static_cast<Curves *>(vc->obedit->data);
+      bke::CurvesGeometry &curves = curves_id.geometry.wrap();
+      changed = ed::curves::select_circle(
+          *vc, curves, eAttrDomain(curves_id.selection_domain), mval, rad, sel_op);
+      if (changed) {
+        /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a
+         * generic attribute for now. */
+        DEG_id_tag_update(static_cast<ID *>(vc->obedit->data), ID_RECALC_GEOMETRY);
+        WM_event_add_notifier(C, NC_GEOM | ND_DATA, vc->obedit->data);
+      }
+      break;
+    }
+
     default:
       BLI_assert(0);
       break;
