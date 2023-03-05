@@ -142,7 +142,7 @@ static openvdb::FloatGrid::Ptr mesh_to_fog_volume_grid(
   return new_grid;
 }
 
-static openvdb::FloatGrid::Ptr mesh_to_sdf_volume_grid(const Mesh *mesh,
+static openvdb::FloatGrid::Ptr mesh_to_sdf_volume_grid(const Mesh &mesh,
                                                        const float voxel_size,
                                                        const float half_band_width)
 {
@@ -150,19 +150,19 @@ static openvdb::FloatGrid::Ptr mesh_to_sdf_volume_grid(const Mesh *mesh,
     return nullptr;
   }
 
-  const Span<float3> positions = mesh->vert_positions();
-  const Span<MLoop> loops = mesh->loops();
-  const Span<MLoopTri> looptris = mesh->looptris();
+  const Span<float3> positions = mesh.vert_positions();
+  const Span<MLoop> loops = mesh.loops();
+  const Span<MLoopTri> looptris = mesh.looptris();
 
-  std::vector<openvdb::Vec3s> points(mesh->totvert);
+  std::vector<openvdb::Vec3s> points(positions.size());
   std::vector<openvdb::Vec3I> triangles(looptris.size());
 
-  for (const int i : IndexRange(mesh->totvert)) {
+  for (const int i : positions.index_range()) {
     const float3 &co = positions[i];
     points[i] = openvdb::Vec3s(co.x, co.y, co.z);
   }
 
-  for (const int i : IndexRange(looptris.size())) {
+  for (const int i : looptris.index_range()) {
     const MLoopTri &loop_tri = looptris[i];
     triangles[i] = openvdb::Vec3I(
         loops[loop_tri.tri[0]].v, loops[loop_tri.tri[1]].v, loops[loop_tri.tri[2]].v);
@@ -212,7 +212,7 @@ VolumeGrid *fog_volume_grid_add_from_mesh(Volume *volume,
 
 VolumeGrid *sdf_volume_grid_add_from_mesh(Volume *volume,
                                           const StringRefNull name,
-                                          const Mesh *mesh,
+                                          const Mesh &mesh,
                                           const float voxel_size,
                                           const float half_band_width)
 {

@@ -2,13 +2,13 @@
 
 #ifdef WITH_OPENVDB
 #  include <openvdb/openvdb.h>
-#  include <openvdb/tools/LevelSetUtil.h>
-#  include <openvdb/tools/ParticlesToLevelSet.h>
 #endif
 
 #include "BLI_bounds.hh"
 
 #include "node_geometry_util.hh"
+
+#include "GEO_points_to_volume.hh"
 
 #include "BKE_lib_id.h"
 #include "BKE_volume.h"
@@ -74,53 +74,6 @@ static void node_update(bNodeTree *ntree, bNode *node)
 }
 
 #ifdef WITH_OPENVDB
-namespace {
-/* Implements the interface required by #openvdb::tools::ParticlesToLevelSet. */
-struct ParticleList {
-  using PosType = openvdb::Vec3R;
-
-  Span<float3> positions;
-  Span<float> radii;
-
-  size_t size() const
-  {
-    return size_t(positions.size());
-  }
-
-  void getPos(size_t n, openvdb::Vec3R &xyz) const
-  {
-    xyz = &positions[n].x;
-  }
-
-  void getPosRad(size_t n, openvdb::Vec3R &xyz, openvdb::Real &radius) const
-  {
-    xyz = &positions[n].x;
-    radius = radii[n];
-  }
-};
-}  // namespace
-
-static openvdb::FloatGrid::Ptr generate_volume_from_points(const Span<float3> positions,
-                                                           const Span<float> radii)
-{
-  /* Create a new grid that will be filled. #ParticlesToLevelSet requires the background value to
-   * be positive. It will be set to zero later on. */
-  openvdb::FloatGrid::Ptr new_grid = openvdb::FloatGrid::create(1.0f);
-
-  /* Create a narrow-band level set grid based on the positions and radii. */
-  openvdb::tools::ParticlesToLevelSet op{*new_grid};
-  /* Don't ignore particles based on their radius. */
-  op.setRmin(0.0f);
-  op.setRmax(FLT_MAX);
-  ParticleList particles{positions, radii};
-  op.rasterizeSpheres(particles);
-  op.finalize();
-
-  new_grid->setGridClass(openvdb::GRID_LEVEL_SET);
-
-  return new_grid;
-}
-
 static float compute_voxel_size(const GeoNodeExecParams &params,
                                 Span<float3> positions,
                                 const float radius)
@@ -214,9 +167,8 @@ static void initialize_volume_component_from_points(GeoNodeExecParams &params,
   Volume *volume = reinterpret_cast<Volume *>(BKE_id_new_nomain(ID_VO, nullptr));
 
   convert_to_grid_index_space(voxel_size, positions, radii);
-  openvdb::FloatGrid::Ptr new_grid = generate_volume_from_points(positions, radii);
-  new_grid->transform().postScale(voxel_size);
-  BKE_volume_grid_add_vdb(*volume, "distance", std::move(new_grid));
+  blender::geometry::sdf_volume_grid_add_from_points(
+      volume, "distance", positions, radii, voxel_size);
 
   r_geometry_set.keep_only_during_modify({GEO_COMPONENT_TYPE_VOLUME});
   r_geometry_set.replace_volume(volume);

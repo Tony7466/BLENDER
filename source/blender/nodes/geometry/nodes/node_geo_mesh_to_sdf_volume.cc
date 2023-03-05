@@ -70,8 +70,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
 
 static Volume *create_volume_from_mesh(const Mesh &mesh, GeoNodeExecParams &params)
 {
-  const NodeGeometryMeshToVolume &storage =
-      *(const NodeGeometryMeshToVolume *)params.node().storage;
+  const NodeGeometryMeshToVolume &storage = node_storage(params.node());
 
   const float half_band_width = params.get_input<float>("Half-Band Width");
 
@@ -90,7 +89,7 @@ static Volume *create_volume_from_mesh(const Mesh &mesh, GeoNodeExecParams &para
     }
   }
 
-  if (mesh.totvert == 0 || mesh.totpoly == 0) {
+  if (mesh.totpoly == 0) {
     return nullptr;
   }
 
@@ -110,7 +109,7 @@ static Volume *create_volume_from_mesh(const Mesh &mesh, GeoNodeExecParams &para
   Volume *volume = reinterpret_cast<Volume *>(BKE_id_new_nomain(ID_VO, nullptr));
 
   /* Convert mesh to grid and add to volume. */
-  geometry::sdf_volume_grid_add_from_mesh(volume, "distance", &mesh, voxel_size, half_band_width);
+  geometry::sdf_volume_grid_add_from_mesh(volume, "distance", mesh, voxel_size, half_band_width);
 
   return volume;
 }

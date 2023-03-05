@@ -15,11 +15,7 @@ namespace blender::nodes::node_geo_sdf_volume_sphere_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Float>(N_("Radius"))
-      .description(N_("Sphere radius"))
-      .default_value(1.0f)
-      .min(0.01f)
-      .subtype(PROP_DISTANCE);
+  b.add_input<decl::Float>(N_("Radius")).default_value(1.0f).min(0.0f).subtype(PROP_DISTANCE);
   b.add_input<decl::Float>(N_("Voxel Size")).default_value(0.2f).min(0.01f).subtype(PROP_DISTANCE);
   b.add_input<decl::Float>(N_("Half-Band Width"))
       .description(N_("Half the width of the narrow band in voxel units"))
@@ -37,25 +33,29 @@ static void node_geo_exec(GeoNodeExecParams params)
   float half_width = params.extract_input<float>("Half-Band Width");
 
   if (radius <= 0.0f) {
-    params.error_message_add(NodeWarningType::Error, TIP_("Radius needs to be greater than 0"));
+    params.error_message_add(NodeWarningType::Error, TIP_("Radius must be greater than 0"));
     params.set_default_remaining_outputs();
     return;
   }
-  else if (half_width <= 1.0f) {
+
+  if (half_width <= 1.0f) {
     params.error_message_add(NodeWarningType::Error,
-                             TIP_("Half-band width needs to be greater than 1"));
+                             TIP_("Half-band width must be greater than 1"));
     params.set_default_remaining_outputs();
     return;
   }
 
   openvdb::FloatGrid::Ptr grid;
 
-  grid = openvdb::tools::createLevelSetSphere<openvdb::FloatGrid>(
-      /*radius*/ radius,
-      /*center*/ openvdb::Vec3f(0, 0, 0),
-      /*voxel size*/ voxel_size,
-      /*half-band width*/ half_width);
-
+  try {
+    grid = openvdb::tools::createLevelSetSphere<openvdb::FloatGrid>(
+        radius, openvdb::Vec3f(0, 0, 0), voxel_size, half_width);
+  }
+  catch (openvdb::ArithmeticError) {
+    params.error_message_add(NodeWarningType::Error, TIP_("Voxel size is too small"));
+    params.set_default_remaining_outputs();
+    return;
+  }
   Volume *volume = reinterpret_cast<Volume *>(BKE_id_new_nomain(ID_VO, nullptr));
   BKE_volume_grid_add_vdb(*volume, "distance", std::move(grid));
 

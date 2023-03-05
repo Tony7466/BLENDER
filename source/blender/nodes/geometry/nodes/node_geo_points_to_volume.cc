@@ -10,6 +10,8 @@
 
 #include "node_geometry_util.hh"
 
+#include "GEO_points_to_volume.hh"
+
 #include "BKE_lib_id.h"
 #include "BKE_volume.h"
 
@@ -75,61 +77,6 @@ static void node_update(bNodeTree *ntree, bNode *node)
 }
 
 #ifdef WITH_OPENVDB
-namespace {
-/* Implements the interface required by #openvdb::tools::ParticlesToLevelSet. */
-struct ParticleList {
-  using PosType = openvdb::Vec3R;
-
-  Span<float3> positions;
-  Span<float> radii;
-
-  size_t size() const
-  {
-    return size_t(positions.size());
-  }
-
-  void getPos(size_t n, openvdb::Vec3R &xyz) const
-  {
-    xyz = &positions[n].x;
-  }
-
-  void getPosRad(size_t n, openvdb::Vec3R &xyz, openvdb::Real &radius) const
-  {
-    xyz = &positions[n].x;
-    radius = radii[n];
-  }
-};
-}  // namespace
-
-static openvdb::FloatGrid::Ptr generate_volume_from_points(const Span<float3> positions,
-                                                           const Span<float> radii,
-                                                           const float density)
-{
-  /* Create a new grid that will be filled. #ParticlesToLevelSet requires the background value to
-   * be positive. It will be set to zero later on. */
-  openvdb::FloatGrid::Ptr new_grid = openvdb::FloatGrid::create(1.0f);
-
-  /* Create a narrow-band level set grid based on the positions and radii. */
-  openvdb::tools::ParticlesToLevelSet op{*new_grid};
-  /* Don't ignore particles based on their radius. */
-  op.setRmin(0.0f);
-  op.setRmax(FLT_MAX);
-  ParticleList particles{positions, radii};
-  op.rasterizeSpheres(particles);
-  op.finalize();
-
-  /* Convert the level set to a fog volume. This also sets the background value to zero. Inside the
-   * fog there will be a density of 1. */
-  openvdb::tools::sdfToFogVolume(*new_grid);
-
-  /* Take the desired density into account. */
-  openvdb::tools::foreach (new_grid->beginValueOn(),
-                           [&](const openvdb::FloatGrid::ValueOnIter &iter) {
-                             iter.modifyValue([&](float &value) { value *= density; });
-                           });
-  return new_grid;
-}
-
 static float compute_voxel_size(const GeoNodeExecParams &params,
                                 Span<float3> positions,
                                 const float radius)
@@ -224,9 +171,8 @@ static void initialize_volume_component_from_points(GeoNodeExecParams &params,
 
   const float density = params.get_input<float>("Density");
   convert_to_grid_index_space(voxel_size, positions, radii);
-  openvdb::FloatGrid::Ptr new_grid = generate_volume_from_points(positions, radii, density);
-  new_grid->transform().postScale(voxel_size);
-  BKE_volume_grid_add_vdb(*volume, "density", std::move(new_grid));
+  blender::geometry::fog_volume_grid_add_from_points(
+      volume, "density", positions, radii, voxel_size, density);
 
   r_geometry_set.keep_only_during_modify({GEO_COMPONENT_TYPE_VOLUME});
   r_geometry_set.replace_volume(volume);

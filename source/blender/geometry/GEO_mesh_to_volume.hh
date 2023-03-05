@@ -56,7 +56,7 @@ VolumeGrid *fog_volume_grid_add_from_mesh(Volume *volume,
  */
 VolumeGrid *sdf_volume_grid_add_from_mesh(Volume *volume,
                                           const StringRefNull name,
-                                          const Mesh *mesh,
+                                          const Mesh &mesh,
                                           float voxel_size,
                                           float half_band_width);
 #endif
