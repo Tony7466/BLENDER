@@ -82,10 +82,8 @@ void main()
 
   vec3 world_pos0 = point_object_to_world(in_pos0);
   vec3 world_pos1 = point_object_to_world(in_pos1);
-<<<<<<< HEAD
   vec4 out_pos0 = point_world_to_homogenous(world_pos0);
   vec4 out_pos1 = point_world_to_homogenous(world_pos1);
-=======
   vec3 view_pos0 = point_world_to_view(world_pos0);
   vec3 view_pos1 = point_world_to_view(world_pos1);
   vec4 out_pos0 = point_view_to_ndc(view_pos0);
@@ -95,7 +93,6 @@ void main()
   out_pos0.z += get_homogenous_z_offset(view_pos0.z, out_pos0.w, retopologyOffset);
   out_pos1.z += get_homogenous_z_offset(view_pos1.z, out_pos1.w, retopologyOffset);
 
->>>>>>> main
   uvec4 m_data0 = uvec4(in_data0) & uvec4(dataMask);
   uvec4 m_data1 = uvec4(in_data1) & uvec4(dataMask);
 
