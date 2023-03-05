@@ -16,27 +16,27 @@
 
 namespace blender {
 
-template<typename T> class ListBaseWrapper {
+template<typename LB, typename T> class ListBaseWrapperTemplate {
  private:
-  ListBase *listbase_;
+  LB *listbase_;
 
  public:
-  ListBaseWrapper(ListBase *listbase) : listbase_(listbase)
+  ListBaseWrapperTemplate(LB *listbase) : listbase_(listbase)
   {
     BLI_assert(listbase);
   }
 
-  ListBaseWrapper(ListBase &listbase) : ListBaseWrapper(&listbase)
+  ListBaseWrapperTemplate(LB &listbase) : ListBaseWrapperTemplate(&listbase)
   {
   }
 
   class Iterator {
    private:
-    ListBase *listbase_;
+    LB *listbase_;
     T *current_;
 
    public:
-    Iterator(ListBase *listbase, T *current) : listbase_(listbase), current_(current)
+    Iterator(LB *listbase, T *current) : listbase_(listbase), current_(current)
     {
     }
 
@@ -93,6 +93,31 @@ template<typename T> class ListBaseWrapper {
     }
     BLI_assert(false);
     return -1;
+  }
+};
+
+template<typename T> class ListBaseWrapper : public ListBaseWrapperTemplate<ListBase, T> {
+ public:
+  ListBaseWrapper(ListBase *listbase) : ListBaseWrapperTemplate<ListBase, T>(listbase)
+  {
+  }
+  ListBaseWrapper(ListBase &listbase) : ListBaseWrapperTemplate<ListBase, T>(listbase)
+  {
+  }
+};
+
+template<typename T>
+class ConstListBaseWrapper : public ListBaseWrapperTemplate<const ListBase, T> {
+  static_assert(std::is_const<T>::value, "const ListBase needs to produce const T");
+
+ public:
+  ConstListBaseWrapper(const ListBase *listbase)
+      : ListBaseWrapperTemplate<const ListBase, T>(listbase)
+  {
+  }
+  ConstListBaseWrapper(const ListBase &listbase)
+      : ListBaseWrapperTemplate<const ListBase, T>(listbase)
+  {
   }
 };
 
