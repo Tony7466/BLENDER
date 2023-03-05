@@ -2555,22 +2555,14 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node)
   }
 }
 
-/**
- * Location mapping in parent frame node space.
- */
-static void nodeViewMapping(const bNode *node, float &mapping_x, float &mapping_y)
-{
-  for (const bNode *node_iter = node; node_iter; node_iter = node_iter->parent) {
-    mapping_x += node_iter->locx;
-    mapping_y += node_iter->locy;
-  }
-}
-
 void nodeToView(const bNode *node, const float x, const float y, float *rx, float *ry)
 {
   float mapping_x = 0.0f;
   float mapping_y = 0.0f;
-  nodeViewMapping(node, mapping_x, mapping_y);
+  for (const bNode *node_iter = node; node_iter; node_iter = node_iter->parent) {
+    mapping_x += node_iter->locx;
+    mapping_y += node_iter->locy;
+  }
 
   *rx = mapping_x + x;
   *ry = mapping_y + y;
@@ -2580,7 +2572,10 @@ void nodeFromView(const bNode *node, const float x, const float y, float *rx, fl
 {
   float mapping_x = 0.0f;
   float mapping_y = 0.0f;
-  nodeViewMapping(node, mapping_x, mapping_y);
+  for (const bNode *node_iter = node; node_iter; node_iter = node_iter->parent) {
+    mapping_x += node_iter->locx;
+    mapping_y += node_iter->locy;
+  }
 
   *rx = -mapping_x + x;
   *ry = -mapping_y + y;
