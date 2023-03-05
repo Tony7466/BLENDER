@@ -84,8 +84,6 @@ set(SRC
   sceneDelegate/light.cc
   sceneDelegate/world.h
   sceneDelegate/world.cc
-  sceneDelegate/instance.h
-  sceneDelegate/instance.cc
 )
 
 set(LIB

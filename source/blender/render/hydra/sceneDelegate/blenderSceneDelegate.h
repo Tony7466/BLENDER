@@ -12,7 +12,6 @@
 #include "mesh.h"
 #include "light.h"
 #include "world.h"
-#include "instance.h"
 
 namespace blender::render::hydra {
 
@@ -38,6 +37,14 @@ public:
   pxr::SdfPath GetMaterialId(pxr::SdfPath const &rprimId) override;
   pxr::VtValue GetMaterialResource(pxr::SdfPath const &materialId) override;
   bool GetVisible(pxr::SdfPath const &id) override;
+  pxr::SdfPath GetInstancerId(pxr::SdfPath const &primId) override;
+  pxr::SdfPathVector GetInstancerPrototypes(pxr::SdfPath const &instancerId) override;
+  pxr::VtIntArray GetInstanceIndices(pxr::SdfPath const &instancerId, pxr::SdfPath const &prototypeId) override;
+  pxr::GfMatrix4d GetInstancerTransform(pxr::SdfPath const &instancerId);
+  size_t SampleInstancerTransform(pxr::SdfPath const &instancerId, size_t maxSampleCount,
+                                  float *sampleTimes, pxr::GfMatrix4d *sampleValues) override;
+  size_t SamplePrimvar(pxr::SdfPath const &id, pxr::TfToken const &key, size_t maxSampleCount,
+                       float *sampleTimes, pxr::VtValue *sampleValues) override;
 
   EngineType engine_type;
 
@@ -48,6 +55,7 @@ private:
   MaterialData *material_data(pxr::SdfPath const &id);
 
   void add_update_object(Object *object, bool geometry, bool transform, bool shading);
+  void add_update_instance(DupliObject *dupli);
   void set_material(MeshData &mesh_data);
   void update_material(Material *material);
   void update_world();
@@ -61,7 +69,6 @@ private:
   ObjectDataMap objects;
   MaterialDataMap materials;
   std::unique_ptr<WorldData> world_data;
-  InstanceDataMap instances;
 };
 
 } // namespace blender::render::hydra

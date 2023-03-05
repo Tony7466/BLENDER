@@ -79,6 +79,64 @@ bool BlenderSceneDelegate::GetVisible(SdfPath const &id)
   return object_data(id)->visible;
 }
 
+SdfPath BlenderSceneDelegate::GetInstancerId(SdfPath const &primId)
+{
+  LOG(INFO) << "GetInstancerId: " << primId.GetAsString();
+  MeshData *m_data = mesh_data(primId);
+  if (m_data) {
+    return m_data->instancer_id;
+  }
+  return SdfPath();
+}
+
+SdfPathVector BlenderSceneDelegate::GetInstancerPrototypes(SdfPath const &instancerId)
+{
+  LOG(INFO) << "GetInstancerPrototypes: " << instancerId.GetString();
+  SdfPathVector paths;
+  paths.push_back(instancerId.GetParentPath());
+  return paths;
+}
+
+VtIntArray BlenderSceneDelegate::GetInstanceIndices(SdfPath const &instancerId,
+                                                    SdfPath const &prototypeId)
+{
+  LOG(INFO) << "GetInstanceIndices: " << instancerId.GetString() << " " << prototypeId.GetString();
+  MeshData *m_data = mesh_data(prototypeId);
+  VtIntArray ret = m_data->instance_indices();
+  return ret;
+}
+
+GfMatrix4d BlenderSceneDelegate::GetInstancerTransform(SdfPath const &instancerId)
+{
+  LOG(INFO) << "GetInstancerTransform: " << instancerId.GetString();
+  // TODO: add a separate object for instancer for cleaner handling code
+  // Actual instancer transform is get here
+  return GfMatrix4d(1.0);
+}
+
+size_t BlenderSceneDelegate::SampleInstancerTransform(SdfPath const &instancerId, size_t maxSampleCount,
+                                                      float *sampleTimes,  GfMatrix4d *sampleValues)
+{
+  LOG(INFO) << "SampleInstancerTransform: " << instancerId.GetString();
+  size_t ret = 0;
+  MeshData *m_data = mesh_data(instancerId.GetParentPath());
+  ret = m_data->sample_instancer_transform(maxSampleCount, sampleTimes, sampleValues);
+  return ret;
+}
+
+size_t BlenderSceneDelegate::SamplePrimvar(SdfPath const &id, TfToken const &key, size_t maxSampleCount,
+                                           float *sampleTimes, VtValue *sampleValues)
+{
+  // TODO: add a separate object for instancer for cleaner handling code
+  if (id.GetName() == "Instancer") {
+    MeshData *m_data = mesh_data(id.GetParentPath());
+    if (m_data) {
+      return m_data->sample_instancer_primvar(key, maxSampleCount, sampleTimes, sampleValues);
+    }
+  }
+  return HdSceneDelegate::SamplePrimvar(id, key, maxSampleCount, sampleTimes, sampleValues);
+}
+
 void BlenderSceneDelegate::update_collection(bool remove, bool visibility)
 {
   if (visibility) {
@@ -92,6 +150,7 @@ void BlenderSceneDelegate::update_collection(bool remove, bool visibility)
 
   /* Export of new visible objects which were not exported before */
   std::set<SdfPath> available_objects;
+  SdfPath id;
 
   DEGObjectIterSettings settings = {0};
   settings.depsgraph = depsgraph;
@@ -106,15 +165,15 @@ void BlenderSceneDelegate::update_collection(bool remove, bool visibility)
               DEG_iterator_objects_end,
               &data, Object *, object) {
     if (data.dupli_object_current != nullptr) {
-      InstanceData i_data(this, data.dupli_object_current);
-      LOG(INFO) << "Instance: " << i_data.name() << " " << i_data.random_id();
+      add_update_instance(data.dupli_object_current);
       continue;
     }
+
     if (!ObjectData::supported(object)) {
       continue;
     }
 
-    SdfPath id = ObjectData::prim_id(this, object);
+    id = ObjectData::prim_id(this, object);
     if (remove) {
       available_objects.insert(id);
     }
@@ -192,6 +251,17 @@ void BlenderSceneDelegate::add_update_object(Object *object, bool geometry, bool
   }
 }
 
+void BlenderSceneDelegate::add_update_instance(DupliObject *dupli)
+{
+  SdfPath id = ObjectData::prim_id(this, dupli->ob);
+  if (!object_data(id)) {
+    add_update_object(dupli->ob, true, true, true);
+  }
+
+  MeshData *m_data = mesh_data(id);
+  m_data->add_instance(dupli);
+}
+
 ObjectData *BlenderSceneDelegate::object_data(SdfPath const &id)
 {
   auto it = objects.find(id);
@@ -232,6 +302,7 @@ void BlenderSceneDelegate::populate(Depsgraph *deps, bContext *cont)
     /* Export initial objects */
     update_collection(false, false);
     update_world();
+    GetRenderIndex().InsertInstancer(this, GetDelegateID().AppendElementString("Instancer"));
     return;
   }
 
@@ -312,13 +383,19 @@ void BlenderSceneDelegate::populate(Depsgraph *deps, bContext *cont)
 
 HdMeshTopology BlenderSceneDelegate::GetMeshTopology(SdfPath const& id)
 {
+  LOG(INFO) << "GetMeshTopology: " << id.GetString();
   MeshData *m_data = mesh_data(id);
   return m_data->mesh_topology();
 }
 
 VtValue BlenderSceneDelegate::Get(SdfPath const& id, TfToken const& key)
 {
+  LOG(INFO) << "Get: " << id.GetString() << " " << key.GetString();
   ObjectData *obj_data = object_data(id);
+  // TODO: add a separate object for instancer for cleaner handling code
+  if (!obj_data && id.GetName() == "Instancer") {
+    obj_data = object_data(id.GetParentPath());
+  }
   if (obj_data) {
     return obj_data->get_data(key);
   }
@@ -332,7 +409,18 @@ VtValue BlenderSceneDelegate::Get(SdfPath const& id, TfToken const& key)
 
 HdPrimvarDescriptorVector BlenderSceneDelegate::GetPrimvarDescriptors(SdfPath const& id, HdInterpolation interpolation)
 {
-  return mesh_data(id)->primvar_descriptors(interpolation);
+  LOG(INFO) << "GetPrimvarDescriptors: " << id.GetString() << " " << interpolation;
+  if (mesh_data(id)) {
+    return mesh_data(id)->primvar_descriptors(interpolation);
+  }
+  // TODO: add a separate object for instancer for cleaner handling code
+  else if (id.GetName() == "Instancer") {
+    if (MeshData *data = mesh_data(id.GetParentPath())) {
+      return data->instancer_primvar_descriptors(interpolation);
+    }
+  }
+  HdPrimvarDescriptorVector primvars;
+  return primvars;
 }
 
 SdfPath BlenderSceneDelegate::GetMaterialId(SdfPath const & rprimId)
@@ -351,9 +439,16 @@ VtValue BlenderSceneDelegate::GetMaterialResource(SdfPath const& id)
 
 GfMatrix4d BlenderSceneDelegate::GetTransform(SdfPath const& id)
 {
+  LOG(INFO) << "GetTransform: " << id.GetString();
   ObjectData *obj_data = object_data(id);
   if (obj_data) {
     return obj_data->transform();
+  }
+  // TODO: add a separate object for instancer for cleaner handling code
+  else if (id.GetName() == "Instancer") {
+    if (MeshData *mesh = mesh_data(id.GetParentPath())) {
+      return mesh->transform().GetInverse();
+    }
   }
   if (id == WorldData::prim_id(this)) {
     return world_data->transform();

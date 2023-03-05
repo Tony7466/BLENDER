@@ -6,6 +6,8 @@
 #include <pxr/base/vt/array.h>
 #include <pxr/imaging/hd/sceneDelegate.h>
 
+#include "BKE_duplilist.h"
+
 #include "object.h"
 
 namespace blender::render::hydra {
@@ -23,8 +25,15 @@ public:
   Material *material();
   pxr::HdMeshTopology mesh_topology();
   pxr::HdPrimvarDescriptorVector primvar_descriptors(pxr::HdInterpolation interpolation);
+  pxr::HdPrimvarDescriptorVector instancer_primvar_descriptors(pxr::HdInterpolation interpolation);
+  pxr::VtIntArray instance_indices();
+  size_t sample_instancer_transform(size_t maxSampleCount, float *sampleTimes, pxr::GfMatrix4d *sampleValues);
+  size_t sample_instancer_primvar(pxr::TfToken const &key, size_t maxSampleCount, float *sampleTimes, pxr::VtValue *sampleValues);
+
+  void add_instance(DupliObject *dupli);
 
   pxr::SdfPath material_id;
+  pxr::SdfPath instancer_id;
 
  private:
   void set_mesh(Mesh *mesh);
@@ -34,6 +43,10 @@ public:
   pxr::VtVec3fArray vertices;
   pxr::VtVec3fArray normals;
   pxr::VtVec2fArray uvs;
+
+  pxr::VtMatrix4dArray instances;
 };
+
+
 
 } // namespace blender::render::hydra

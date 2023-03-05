@@ -13,6 +13,7 @@
 
 #include "blenderSceneDelegate.h"
 #include "mesh.h"
+#include "../utils.h"
 
 using namespace pxr;
 
@@ -44,6 +45,9 @@ VtValue MeshData::get_data(TfToken const &key)
   else if (key == HdPrimvarRoleTokens->textureCoordinate) {
     ret = uvs;
   }
+  else if (key == HdInstancerTokens->instanceTransform) {
+    ret = instances;
+  }
   return ret;
 }
 
@@ -71,7 +75,7 @@ HdPrimvarDescriptorVector MeshData::primvar_descriptors(HdInterpolation interpol
     }
   }
   else if (interpolation == HdInterpolationFaceVarying) {
-    if (!vertices.empty()) {
+    if (!normals.empty()) {
       primvars.emplace_back(HdTokens->normals, interpolation, HdPrimvarRoleTokens->normal);
     }
     if (!uvs.empty()) {
@@ -80,6 +84,59 @@ HdPrimvarDescriptorVector MeshData::primvar_descriptors(HdInterpolation interpol
     }
   }
   return primvars;
+}
+
+HdPrimvarDescriptorVector MeshData::instancer_primvar_descriptors(HdInterpolation interpolation)
+{
+  HdPrimvarDescriptorVector primvars;
+  if (interpolation == HdInterpolationInstance) {
+    primvars.emplace_back(HdInstancerTokens->instanceTransform, interpolation,
+                          HdPrimvarRoleTokens->none);
+  }
+  return primvars;
+}
+
+VtIntArray MeshData::instance_indices()
+{
+  VtIntArray ret(instances.size());
+  for (size_t i = 0; i < ret.size(); ++i) {
+    ret[i] = i;
+  }
+  return ret;
+}
+
+size_t MeshData::sample_instancer_transform(size_t maxSampleCount, float *sampleTimes, GfMatrix4d *sampleValues)
+{
+  *sampleTimes = 0.0f;
+  *sampleValues = GfMatrix4d(1.0);
+  return 1;
+}
+
+size_t MeshData::sample_instancer_primvar(TfToken const &key, size_t maxSampleCount, float *sampleTimes, VtValue *sampleValues)
+{
+  if (key == HdInstancerTokens->instanceTransform) {
+    if (maxSampleCount > 0) {
+      sampleTimes[0] = 0.0f;
+      sampleValues[0] = instances;
+      return 1;
+    }
+  }
+  return 0;
+}
+
+void MeshData::add_instance(DupliObject *dupli)
+{
+  if (instancer_id.IsEmpty()) {
+    instancer_id = prim_id(scene_delegate, (Object *)id).AppendElementString("Instancer");
+    scene_delegate->GetRenderIndex().InsertInstancer(scene_delegate, instancer_id);
+    LOG(INFO) << "Add instancer: " << name() << " id=" << instancer_id.GetAsString();
+  }
+  if (instances.empty()) {
+    // USD hides the prototype mesh when instancing in contrary to the Blender, so we must add it back implicitly
+    instances.push_back(GfMatrix4d(1.0));
+  }
+  instances.push_back(transform().GetInverse() * gf_matrix_from_transform(dupli->mat));
+  LOG(INFO) << "Add instance: " << instancer_id.GetAsString() << " " << dupli->random_id;
 }
 
 void MeshData::set_mesh(Mesh *mesh)
