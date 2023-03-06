@@ -34,8 +34,6 @@ class PlyExportTest : public BlendfileLoadingBaseTest {
   }
 
  protected:
-  std::string temp_ply_filename_;
-
   void SetUp() override
   {
     BlendfileLoadingBaseTest::SetUp();
