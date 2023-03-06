@@ -182,7 +182,24 @@ def draw_kmi(display_keymaps, kc, km, kmi, layout, level):
 
             if map_type in {'KEYBOARD', 'MOUSE'} and kmi.value == 'CLICK_DRAG':
                 subrow = sub.row()
-                subrow.prop(kmi, "direction")
+                if bpy.context.preferences.inputs.click_drag_direction == 'LEFT_RIGHT':
+                    if kmi.direction == 'ANY' or kmi.direction == 'EAST' or kmi.direction == 'WEST':
+                        subrow.label(text="Direction:")
+                    else:
+                        subrow.label(text="WARNING - No Direction:")
+                    subrow.operator("preferences.set_direction_any", text="Any", depress= kmi.direction == 'ANY').item_id = kmi.id
+                    subrow.operator("preferences.set_direction_left", text="Left", depress= kmi.direction == 'WEST').item_id = kmi.id
+                    subrow.operator("preferences.set_direction_right", text="Right", depress= kmi.direction == 'EAST').item_id = kmi.id
+                elif bpy.context.preferences.inputs.click_drag_direction == 'UP_DOWN':
+                    if kmi.direction == 'ANY' or kmi.direction == 'NORTH' or kmi.direction == 'SOUTH':
+                        subrow.label(text="Direction:")
+                    else:
+                        subrow.label(text="WARNING - No Direction:")
+                    subrow.operator("preferences.set_direction_any", text="Any", depress= kmi.direction == 'ANY').item_id = kmi.id
+                    subrow.operator("preferences.set_direction_up", text="Up", depress= kmi.direction == 'NORTH').item_id = kmi.id
+                    subrow.operator("preferences.set_direction_down", text="Down", depress= kmi.direction == 'SOUTH').item_id = kmi.id
+                else:
+                    subrow.prop(kmi, "direction")
 
             subrow = sub.row()
             subrow.scale_x = 0.75
