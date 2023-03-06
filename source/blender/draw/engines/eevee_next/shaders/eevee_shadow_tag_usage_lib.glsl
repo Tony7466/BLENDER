@@ -24,8 +24,7 @@ void shadow_tag_usage_tile(LightData light, ivec2 tile_co, int lod, int tilemap_
   atomicOr(tiles_buf[tile_index], SHADOW_IS_USED);
 }
 
-void shadow_tag_usage_tilemap_directional(
-    uint l_idx, vec3 P, vec3 V, float dist_to_cam, float radius)
+void shadow_tag_usage_tilemap_directional(uint l_idx, vec3 P, vec3 V, float radius)
 {
   LightData light = light_buf[l_idx];
 
@@ -150,7 +149,7 @@ void shadow_tag_usage_tilemap_punctual(uint l_idx, vec3 P, vec3 V, float dist_to
 void shadow_tag_usage(vec3 vP, vec3 P, vec3 V, float radius, float dist_to_cam, vec2 pixel)
 {
   LIGHT_FOREACH_BEGIN_DIRECTIONAL (light_cull_buf, l_idx) {
-    shadow_tag_usage_tilemap_directional(l_idx, P, V, dist_to_cam, radius);
+    shadow_tag_usage_tilemap_directional(l_idx, P, V, radius);
   }
   LIGHT_FOREACH_END
 
@@ -162,7 +161,6 @@ void shadow_tag_usage(vec3 vP, vec3 P, vec3 V, float radius, float dist_to_cam, 
 
 void shadow_tag_usage(vec3 vP, vec3 P, vec2 pixel)
 {
-  /* TODO (Miguel Pozo): Is this correct for orto view? */
   float dist_to_cam = length(vP);
 
   shadow_tag_usage(vP, P, vec3(0), 0, dist_to_cam, pixel);
