@@ -37,10 +37,8 @@ GPUShader *VolumePass::get_shader(bool slice, bool coba, int interpolation, bool
   return shader;
 }
 
-void VolumePass::setup_slice_ps(PassMain::Sub &ps,
-                                Object *ob,
-                                int slice_axis_enum,
-                                float slice_depth)
+void VolumePass::draw_slice_ps(
+    Manager &manager, PassMain::Sub &ps, ObjectRef &ob_ref, int slice_axis_enum, float slice_depth)
 {
   float4x4 view_mat_inv;
   DRW_view_viewmat_get(nullptr, view_mat_inv.ptr(), true);
@@ -50,18 +48,24 @@ void VolumePass::setup_slice_ps(PassMain::Sub &ps,
                        slice_axis_enum - 1;
 
   float3 dimensions;
-  BKE_object_dimensions_get(ob, dimensions);
+  BKE_object_dimensions_get(ob_ref.object, dimensions);
   /* 0.05f to achieve somewhat the same opacity as the full view. */
-  float step_length = max_ff(1e-16f, dimensions[axis] * 0.05f);
+  float step_length = std::max(1e-16f, dimensions[axis] * 0.05f);
 
   ps.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL);
   ps.push_constant("slicePosition", slice_depth);
   ps.push_constant("sliceAxis", axis);
   ps.push_constant("stepLength", step_length);
+
+  ps.draw(DRW_cache_quad_get(), manager.resource_handle(ob_ref));
 }
 
-void VolumePass::setup_non_slice_ps(
-    PassMain::Sub &ps, Object *ob, int taa_sample, float3 slice_count, float3 world_size)
+void VolumePass::draw_volume_ps(Manager &manager,
+                                PassMain::Sub &ps,
+                                ObjectRef &ob_ref,
+                                int taa_sample,
+                                float3 slice_count,
+                                float3 world_size)
 {
   double noise_offset;
   BLI_halton_1d(3, 0.0, taa_sample, &noise_offset);
@@ -69,11 +73,12 @@ void VolumePass::setup_non_slice_ps(
   int max_slice = std::max({UNPACK3(slice_count)});
   float step_length = math::length((1.0f / slice_count) * world_size);
 
-  /*TODO (Miguel Pozo): Does this override or replace the parent pass state ? */
   ps.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL | DRW_STATE_CULL_FRONT);
   ps.push_constant("samplesLen", max_slice);
   ps.push_constant("stepLength", step_length);
   ps.push_constant("noiseOfs", float(noise_offset));
+
+  ps.draw(DRW_cache_cube_get(), manager.resource_handle(ob_ref));
 }
 
 void VolumePass::sync(SceneResources &resources)
@@ -128,7 +133,8 @@ void VolumePass::object_sync_volume(Manager &manager,
   sub_ps.push_constant("volumeTextureToObject", float4x4(grid->texture_to_object));
 
   if (use_slice) {
-    setup_slice_ps(sub_ps, ob, volume->display.slice_axis, volume->display.slice_depth);
+    draw_slice_ps(
+        manager, sub_ps, ob_ref, volume->display.slice_axis, volume->display.slice_depth);
   }
   else {
     float3 world_size;
@@ -139,10 +145,8 @@ void VolumePass::object_sync_volume(Manager &manager,
     GPU_texture_get_mipmap_size(grid->texture, 0, resolution);
     float3 slice_count = float3(resolution) * 5.0f;
 
-    setup_non_slice_ps(sub_ps, ob, scene_state.sample, slice_count, world_size);
+    draw_volume_ps(manager, sub_ps, ob_ref, scene_state.sample, slice_count, world_size);
   }
-
-  sub_ps.draw(DRW_cache_cube_get(), manager.resource_handle(ob_ref));
 }
 
 void VolumePass::object_sync_modifier(Manager &manager,
@@ -227,9 +231,7 @@ void VolumePass::object_sync_modifier(Manager &manager,
   sub_ps.bind_texture("depthBuffer", &resources.depth_tx);
 
   if (use_slice) {
-    setup_slice_ps(sub_ps, ob, settings.slice_axis, settings.slice_depth);
-    /* TODO (Miguel Pozo): Why is a quad used here, but not in volume? */
-    sub_ps.draw(DRW_cache_quad_get(), manager.resource_handle(ob_ref));
+    draw_slice_ps(manager, sub_ps, ob_ref, settings.slice_axis, settings.slice_depth);
   }
   else {
     float3 world_size;
@@ -237,8 +239,7 @@ void VolumePass::object_sync_modifier(Manager &manager,
 
     float3 slice_count = float3(settings.res) * std::max(0.001f, settings.slice_per_voxel);
 
-    setup_non_slice_ps(sub_ps, ob, scene_state.sample, slice_count, world_size);
-    sub_ps.draw(DRW_cache_cube_get(), manager.resource_handle(ob_ref));
+    draw_volume_ps(manager, sub_ps, ob_ref, scene_state.sample, slice_count, world_size);
   }
 }
 

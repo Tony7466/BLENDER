@@ -337,10 +337,18 @@ class VolumePass {
   GPUShader *shaders_[2][2][3][2];
   GPUShader *get_shader(bool slice, bool coba, int interpolation, bool smoke);
 
-  void setup_slice_ps(PassMain::Sub &ps, Object *ob, int slice_axis_enum, float slice_depth);
+  void draw_slice_ps(Manager &manager,
+                     PassMain::Sub &ps,
+                     ObjectRef &ob_ref,
+                     int slice_axis_enum,
+                     float slice_depth);
 
-  void setup_non_slice_ps(
-      PassMain::Sub &ps, Object *ob, int taa_sample, float3 slice_count, float3 world_size);
+  void draw_volume_ps(Manager &manager,
+                      PassMain::Sub &ps,
+                      ObjectRef &ob_ref,
+                      int taa_sample,
+                      float3 slice_count,
+                      float3 world_size);
 
  public:
   void sync(SceneResources &resources);
