@@ -31,13 +31,6 @@ class VKShaderInterface : public ShaderInterface {
 
   VKPushConstants::Layout push_constants_layout_;
 
- public:
-  /**
-   * GLSL resource name for the push constants fallback.
-   */
-  static constexpr StringRefNull PUSH_CONSTANTS_FALLBACK_NAME = StringRefNull(
-      "push_constants_fallback", 23);
-  static constexpr size_t PUSH_CONSTANTS_FALLBACK_NAME_LEN = PUSH_CONSTANTS_FALLBACK_NAME.size();
 
  public:
   VKShaderInterface() = default;
