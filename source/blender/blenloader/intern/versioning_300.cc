@@ -4003,6 +4003,10 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 1)) {
+    remove_legacy_instances_on(bmain, bmain->objects);
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *

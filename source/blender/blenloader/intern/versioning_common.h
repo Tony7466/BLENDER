@@ -8,6 +8,7 @@
 
 #ifdef __cplusplus
 #  include "BLI_map.hh"
+#  include "BLI_span.hh"
 #endif
 
 struct ARegion;
@@ -103,4 +104,7 @@ void node_tree_relink_with_socket_id_map(bNodeTree &ntree,
                                          bNode &old_node,
                                          bNode &new_node,
                                          const blender::Map<std::string, std::string> &map);
+
+void remove_legacy_instances_on(Main *bmain, ListBase &lb_objects);
+
 #endif

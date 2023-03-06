@@ -9,12 +9,17 @@
 #include <cstring>
 
 #include "DNA_node_types.h"
+#include "DNA_object_types.h"
 #include "DNA_screen_types.h"
 
 #include "BLI_listbase.h"
 #include "BLI_map.hh"
+#include "BLI_multi_value_map.hh"
+#include "BLI_set.hh"
+#include "BLI_span.hh"
 #include "BLI_string.h"
 #include "BLI_string_ref.hh"
+#include "BLI_vector.hh"
 
 #include "BKE_animsys.h"
 #include "BKE_lib_id.h"
@@ -263,4 +268,75 @@ void node_tree_relink_with_socket_id_map(bNodeTree &ntree,
       }
     }
   }
+}
+
+namespace replace_legacy_instances {
+
+using namespace blender;
+
+bNode *childrens_combine_node_group(Main *bmain, const Span<Object *>, const char *name)
+{
+  std::stringstream tree_name_stream;
+  tree_name_stream << name << "childrens";
+  const std::string tree_name = tree_name_stream.str();
+
+  bNodeTree *node_tree = ntreeAddTree(bmain, tree_name.c_str(), "GeometryNodeTree");
+
+  ntreeAddSocketInterface(node_tree, SOCK_OUT, "NodeSocketGeometry", "Childrens");
+
+  return nullptr;
+}
+bNode *buildin_instancing_node_group(Main *bmain, const bool on_vertices)
+{
+  return nullptr;
+}
+bNodeTree *instances_node_group(Main *bmain, bNode *children_combine_node, bNode *instancer_node)
+{
+  return nullptr;
+}
+
+void object_push_instances_modifier(Main *bmain, Object *object, bNodeTree *node_tree)
+{
+}
+
+}  //  namespace replace_legacy_instances
+
+void remove_legacy_instances_on(Main *bmain, ListBase &lb_objects)
+{
+  using namespace blender;
+
+  Vector<Object *> objects(lb_objects);
+
+  MultiValueMap<Object *, Object *> parents_map;
+
+  for (Object *object : objects) {
+    Object *emitter = object->parent;
+    if (emitter == nullptr) {
+      continue;
+    }
+    /* Object, that may have children, but that not an instance emitter. */
+    if (emitter->transflag == 0) {
+      continue;
+    }
+    parents_map.add(emitter, object);
+  }
+
+  // Map<ChildrenGroupMeta, bNodeTree *>
+
+  for (auto &&[parent, objects] : parents_map.items()) {
+
+    /* Or on faces (OB_DUPLIFACES). */
+    const bool on_vertices = (parent->transflag & OB_DUPLIVERTS) != 0;
+
+    using namespace replace_legacy_instances;
+    bNode *childrens_combine_node = childrens_combine_node_group(bmain, objects, parent->id.name);
+    bNode *instancer_node = buildin_instancing_node_group(bmain, on_vertices);
+    bNodeTree *geometry_node_instances_group = instances_node_group(
+        bmain, childrens_combine_node, instancer_node);
+    object_push_instances_modifier(bmain, parent, geometry_node_instances_group);
+
+    // parent->transflag = 0;
+  }
+
+  printf("HELLO!\n");
 }
