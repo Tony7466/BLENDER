@@ -3,6 +3,7 @@
 #include "testing/testing.h"
 #include "tests/blendfile_loading_base_test.h"
 
+#include "BKE_appdir.h"
 #include "BKE_blender_version.h"
 
 #include "DEG_depsgraph.h"
@@ -30,6 +31,28 @@ class PlyExportTest : public BlendfileLoadingBaseTest {
     }
     depsgraph_create(eval_mode);
     return true;
+  }
+
+ protected:
+  std::string temp_ply_filename_;
+
+  void SetUp() override
+  {
+    BlendfileLoadingBaseTest::SetUp();
+
+    BKE_tempdir_init("");
+  }
+
+  void TearDown() override
+  {
+    BlendfileLoadingBaseTest::TearDown();
+
+    BKE_tempdir_session_purge();
+  }
+
+  std::string get_temp_ply_filename(const std::string &filename)
+  {
+    return std::string(BKE_tempdir_session()) + "/" + filename;
   }
 };
 
@@ -103,7 +126,7 @@ static std::vector<char> read_temp_file_in_vectorchar(const std::string &file_pa
 
 TEST_F(PlyExportTest, WriteHeaderAscii)
 {
-  std::string filePath = blender::tests::flags_test_release_dir() + "/" + temp_file_path;
+  std::string filePath = get_temp_ply_filename(temp_file_path);
   PLYExportParams _params;
   _params.ascii_format = true;
   _params.export_normals = false;
@@ -141,7 +164,7 @@ TEST_F(PlyExportTest, WriteHeaderAscii)
 
 TEST_F(PlyExportTest, WriteHeaderBinary)
 {
-  std::string filePath = blender::tests::flags_test_release_dir() + "/" + temp_file_path;
+  std::string filePath = get_temp_ply_filename(temp_file_path);
   PLYExportParams _params;
   _params.ascii_format = false;
   _params.export_normals = false;
@@ -179,7 +202,7 @@ TEST_F(PlyExportTest, WriteHeaderBinary)
 
 TEST_F(PlyExportTest, WriteVerticesAscii)
 {
-  std::string filePath = blender::tests::flags_test_release_dir() + "/" + temp_file_path;
+  std::string filePath = get_temp_ply_filename(temp_file_path);
   PLYExportParams _params;
   _params.ascii_format = true;
   _params.export_normals = false;
@@ -211,7 +234,7 @@ TEST_F(PlyExportTest, WriteVerticesAscii)
 
 TEST_F(PlyExportTest, WriteVerticesBinary)
 {
-  std::string filePath = blender::tests::flags_test_release_dir() + "/" + temp_file_path;
+  std::string filePath = get_temp_ply_filename(temp_file_path);
   PLYExportParams _params;
   _params.ascii_format = false;
   _params.export_normals = false;
@@ -253,7 +276,7 @@ TEST_F(PlyExportTest, WriteVerticesBinary)
 
 TEST_F(PlyExportTest, WriteFacesAscii)
 {
-  std::string filePath = blender::tests::flags_test_release_dir() + "/" + temp_file_path;
+  std::string filePath = get_temp_ply_filename(temp_file_path);
   PLYExportParams _params;
   _params.ascii_format = true;
   _params.export_normals = false;
@@ -283,7 +306,7 @@ TEST_F(PlyExportTest, WriteFacesAscii)
 
 TEST_F(PlyExportTest, WriteFacesBinary)
 {
-  std::string filePath = blender::tests::flags_test_release_dir() + "/" + temp_file_path;
+  std::string filePath = get_temp_ply_filename(temp_file_path);
   PLYExportParams _params;
   _params.ascii_format = false;
   _params.export_normals = false;
@@ -326,7 +349,7 @@ TEST_F(PlyExportTest, WriteFacesBinary)
 
 TEST_F(PlyExportTest, WriteVertexNormalsAscii)
 {
-  std::string filePath = blender::tests::flags_test_release_dir() + "/" + temp_file_path;
+  std::string filePath = get_temp_ply_filename(temp_file_path);
   PLYExportParams _params;
   _params.ascii_format = true;
   _params.export_normals = true;
@@ -358,7 +381,7 @@ TEST_F(PlyExportTest, WriteVertexNormalsAscii)
 
 TEST_F(PlyExportTest, WriteVertexNormalsBinary)
 {
-  std::string filePath = blender::tests::flags_test_release_dir() + "/" + temp_file_path;
+  std::string filePath = get_temp_ply_filename(temp_file_path);
   PLYExportParams _params;
   _params.ascii_format = false;
   _params.export_normals = true;
