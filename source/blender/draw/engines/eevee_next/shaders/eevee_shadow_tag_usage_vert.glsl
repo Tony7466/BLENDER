@@ -7,7 +7,7 @@
  */
 
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
-#pragma BLENDER_REQUIRE(common_intersect_lib.glsl)
+#pragma BLENDER_REQUIRE(common_shape_lib.glsl)
 
 #pragma BLENDER_REQUIRE(common_debug_shape_lib.glsl)
 
@@ -42,12 +42,10 @@ void main()
 
   const ObjectBounds bounds = bounds_buf[resource_id];
 
-  /* TODO (Miguel Pozo):
-   *This could compute the box planes if the compiler doesn't optimize it out.*/
-  IsectBox box = isect_data_setup(bounds.bounding_corners[0].xyz,
-                                  bounds.bounding_corners[1].xyz,
-                                  bounds.bounding_corners[2].xyz,
-                                  bounds.bounding_corners[3].xyz);
+  Box box = shape_box(bounds.bounding_corners[0].xyz,
+                      bounds.bounding_corners[0].xyz + bounds.bounding_corners[1].xyz,
+                      bounds.bounding_corners[0].xyz + bounds.bounding_corners[2].xyz,
+                      bounds.bounding_corners[0].xyz + bounds.bounding_corners[3].xyz);
 
   vec3 ws_aabb_min = bounds.bounding_corners[0].xyz;
   vec3 ws_aabb_max = bounds.bounding_corners[0].xyz + bounds.bounding_corners[1].xyz +
