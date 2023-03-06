@@ -445,7 +445,7 @@ class PREFERENCES_OT_set_direction_left(Operator):
 class PREFERENCES_OT_set_direction_right(Operator):
     """Drag to the right"""
     bl_idname = "preferences.set_direction_right"
-    bl_label = "Set Direction Any"
+    bl_label = "Set Direction Right"
 
     item_id: IntProperty(
         name="Item Identifier",
