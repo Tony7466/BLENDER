@@ -2358,7 +2358,7 @@ static void draw_armature_pose(ArmatureDrawContext *ctx)
     const Object *obact_orig = DEG_get_original_object(draw_ctx->obact);
 
     const ListBase *defbase = BKE_object_defgroup_list(obact_orig);
-    for (const bDeformGroup *dg : ConstListBaseWrapper<const bDeformGroup>(defbase)) {
+    for (const bDeformGroup *dg : ConstListBaseWrapper<bDeformGroup>(defbase)) {
       if (dg->flag & DG_LOCK_WEIGHT) {
         pchan = BKE_pose_channel_find_name(ob->pose, dg->name);
 

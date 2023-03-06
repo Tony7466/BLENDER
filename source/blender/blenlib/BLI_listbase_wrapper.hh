@@ -107,16 +107,14 @@ template<typename T> class ListBaseWrapper : public ListBaseWrapperTemplate<List
 };
 
 template<typename T>
-class ConstListBaseWrapper : public ListBaseWrapperTemplate<const ListBase, T> {
-  static_assert(std::is_const<T>::value, "const ListBase needs to produce const T");
-
+class ConstListBaseWrapper : public ListBaseWrapperTemplate<const ListBase, const T> {
  public:
   ConstListBaseWrapper(const ListBase *listbase)
-      : ListBaseWrapperTemplate<const ListBase, T>(listbase)
+      : ListBaseWrapperTemplate<const ListBase, const T>(listbase)
   {
   }
   ConstListBaseWrapper(const ListBase &listbase)
-      : ListBaseWrapperTemplate<const ListBase, T>(listbase)
+      : ListBaseWrapperTemplate<const ListBase, const T>(listbase)
   {
   }
 };
