@@ -149,7 +149,7 @@ float seq_retiming_evaluate(const Scene *scene, const Sequence *seq, const int f
 
 SeqRetimingHandle *SEQ_retiming_add_handle(Scene *scene, Sequence *seq, const int timeline_frame)
 {
-  float frame_index = (timeline_frame - SEQ_time_start_frame_get(seq)) *
+  float frame_index = (timeline_frame - SEQ_time_start_frame_get(scene, seq)) *
                       seq_time_media_playback_rate_factor_get(scene, seq);
   float value = seq_retiming_evaluate(scene, seq, frame_index);
 
@@ -251,6 +251,6 @@ float SEQ_retiming_handle_timeline_frame_get(const Scene *scene,
                                              const Sequence *seq,
                                              const SeqRetimingHandle *handle)
 {
-  return SEQ_time_start_frame_get(seq) +
+  return SEQ_time_start_frame_get(scene, seq) +
          handle->strip_frame_index / seq_time_media_playback_rate_factor_get(scene, seq);
 }

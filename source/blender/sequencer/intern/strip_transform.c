@@ -129,7 +129,7 @@ void SEQ_transform_translate_sequence(Scene *evil_scene, Sequence *seq, int delt
     seq_time_translate_handles(evil_scene, seq, delta);
   }
   else if (seq->seq1 == NULL && seq->seq2 == NULL) { /* All other strip types. */
-    seq->start += delta;
+    seq->start += SEQ_time_frames_to_seconds(evil_scene, delta);
     /* Only to make files usable in older versions. */
     seq->startdisp = SEQ_time_left_handle_frame_get(evil_scene, seq);
     seq->enddisp = SEQ_time_right_handle_frame_get(evil_scene, seq);

@@ -180,7 +180,8 @@ static TransData *SeqToTransData(Scene *scene,
        * tdsq->start_offset is used when flushing the tx data back */
       start_left = SEQ_time_left_handle_frame_get(scene, seq);
       td2d->loc[0] = start_left;
-      tdsq->start_offset = start_left - seq->start; /* use to apply the original location */
+      tdsq->start_offset = start_left - SEQ_time_start_frame_get(
+                                            scene, seq); /* use to apply the original location */
       break;
     case SEQ_LEFTSEL:
       start_left = SEQ_time_left_handle_frame_get(scene, seq);
@@ -602,7 +603,7 @@ static void flushTransSeq(TransInfo *t)
     switch (tdsq->sel_flag) {
       case SELECT: {
         if (SEQ_transform_sequence_can_be_translated(seq)) {
-          offset = new_frame - tdsq->start_offset - seq->start;
+          offset = new_frame - tdsq->start_offset - SEQ_time_start_frame_get(scene, seq);
           SEQ_transform_translate_sequence(scene, seq, offset);
           if (abs(offset) > abs(max_offset)) {
             max_offset = offset;

@@ -576,9 +576,9 @@ static StripElem *rna_SequenceElements_append(ID *id, Sequence *seq, const char 
 
   seq->strip->stripdata = se = MEM_reallocN(seq->strip->stripdata,
                                             sizeof(StripElem) * (seq->len + 1));
-  se += seq->len;
+  /* se += seq->len;  // XXX get size of se before realloc...
   BLI_strncpy(se->name, filename, sizeof(se->name));
-  seq->len++;
+  seq->len++;*/
 
   WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, scene);
 

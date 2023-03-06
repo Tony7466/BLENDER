@@ -69,7 +69,9 @@ void seq_cache_cleanup_sequence(struct Scene *scene,
                                 bool force_seq_changed_range);
 void seq_cache_thumbnail_cleanup(Scene *scene, rctf *view_area);
 bool seq_cache_is_full(void);
-float seq_cache_frame_index_to_timeline_frame(struct Sequence *seq, float frame_index);
+float seq_cache_frame_index_to_timeline_frame(const struct Scene *scene,
+                                              struct Sequence *seq,
+                                              float frame_index);
 
 #ifdef __cplusplus
 }

@@ -127,7 +127,7 @@ Sequence *SEQ_add_scene_strip(Scene *scene, ListBase *seqbase, struct SeqLoadDat
   Sequence *seq = SEQ_sequence_alloc(
       seqbase, load_data->start_frame, load_data->channel, SEQ_TYPE_SCENE);
   seq->scene = load_data->scene;
-  seq->len = load_data->scene->r.efra - load_data->scene->r.sfra + 1;
+  SEQ_time_strip_length_set(scene, seq, load_data->scene->r.efra - load_data->scene->r.sfra + 1);
   id_us_ensure_real((ID *)load_data->scene);
   seq_add_set_name(scene, seq, load_data);
   seq_add_generic_update(scene, seq);
@@ -139,7 +139,7 @@ Sequence *SEQ_add_movieclip_strip(Scene *scene, ListBase *seqbase, struct SeqLoa
   Sequence *seq = SEQ_sequence_alloc(
       seqbase, load_data->start_frame, load_data->channel, SEQ_TYPE_MOVIECLIP);
   seq->clip = load_data->clip;
-  seq->len = BKE_movieclip_get_duration(load_data->clip);
+  SEQ_time_strip_length_set(scene, seq, BKE_movieclip_get_duration(load_data->clip));
   id_us_ensure_real((ID *)load_data->clip);
   seq_add_set_name(scene, seq, load_data);
   seq_add_generic_update(scene, seq);
@@ -151,7 +151,7 @@ Sequence *SEQ_add_mask_strip(Scene *scene, ListBase *seqbase, struct SeqLoadData
   Sequence *seq = SEQ_sequence_alloc(
       seqbase, load_data->start_frame, load_data->channel, SEQ_TYPE_MASK);
   seq->mask = load_data->mask;
-  seq->len = BKE_mask_get_duration(load_data->mask);
+  SEQ_time_strip_length_set(scene, seq, BKE_mask_get_duration(load_data->mask));
   id_us_ensure_real((ID *)load_data->mask);
   seq_add_set_name(scene, seq, load_data);
   seq_add_generic_update(scene, seq);
@@ -175,7 +175,7 @@ Sequence *SEQ_add_effect_strip(Scene *scene, ListBase *seqbase, struct SeqLoadDa
   }
 
   if (!load_data->effect.seq1) {
-    seq->len = 1; /* Effect is generator, set non zero length. */
+    SEQ_time_strip_length_set(scene, seq, 0); /* XXX Effect is generator, set non zero length. */
     SEQ_time_right_handle_frame_set(scene, seq, load_data->effect.end_frame);
   }
 
@@ -194,7 +194,7 @@ void SEQ_add_image_set_directory(Sequence *seq, char *path)
 void SEQ_add_image_load_file(Scene *scene, Sequence *seq, size_t strip_frame, char *filename)
 {
   StripElem *se = SEQ_render_give_stripelem(
-      scene, seq, SEQ_time_start_frame_get(seq) + strip_frame);
+      scene, seq, SEQ_time_start_frame_get(scene, seq) + strip_frame);
   BLI_strncpy(se->name, filename, sizeof(se->name));
 }
 
@@ -231,7 +231,7 @@ Sequence *SEQ_add_image_strip(Main *bmain, Scene *scene, ListBase *seqbase, SeqL
 {
   Sequence *seq = SEQ_sequence_alloc(
       seqbase, load_data->start_frame, load_data->channel, SEQ_TYPE_IMAGE);
-  seq->len = load_data->image.len;
+  SEQ_time_strip_length_set(scene, seq, load_data->image.len);
   Strip *strip = seq->strip;
   strip->stripdata = MEM_callocN(load_data->image.len * sizeof(StripElem), "stripelem");
 
@@ -315,7 +315,7 @@ Sequence *SEQ_add_sound_strip(Main *bmain, Scene *scene, ListBase *seqbase, SeqL
    * nearest frame as the audio track usually overshoots or undershoots the
    * end frame of the video by a little bit.
    * See #47135 for under shoot example. */
-  seq->len = MAX2(1, round((info.length - sound->offset_time) * FPS));
+  SEQ_time_strip_length_set(scene, seq, MAX2(1, round((info.length - sound->offset_time) * FPS)));
 
   Strip *strip = seq->strip;
   /* We only need 1 element to store the filename. */
@@ -438,8 +438,10 @@ Sequence *SEQ_add_movie_strip(Main *bmain, Scene *scene, ListBase *seqbase, SeqL
     load_data->r_video_stream_start = IMD_anim_get_offset(anim_arr[0]);
   }
 
-  Sequence *seq = SEQ_sequence_alloc(
-      seqbase, load_data->start_frame, load_data->channel, SEQ_TYPE_MOVIE);
+  Sequence *seq = SEQ_sequence_alloc(seqbase,
+                                     SEQ_time_frames_to_seconds(scene, load_data->start_frame),
+                                     load_data->channel,
+                                     SEQ_TYPE_MOVIE);
 
   /* Multiview settings. */
   if (load_data->use_multiview) {
@@ -462,7 +464,7 @@ Sequence *SEQ_add_movie_strip(Main *bmain, Scene *scene, ListBase *seqbase, SeqL
   }
 
   if (anim_arr[0] != NULL) {
-    seq->len = IMB_anim_get_duration(anim_arr[0], IMB_TC_RECORD_RUN);
+    SEQ_time_strip_length_set(scene, seq, IMB_anim_get_duration(anim_arr[0], IMB_TC_RECORD_RUN));
 
     IMB_anim_load_metadata(anim_arr[0]);
 
@@ -479,7 +481,7 @@ Sequence *SEQ_add_movie_strip(Main *bmain, Scene *scene, ListBase *seqbase, SeqL
     }
   }
 
-  seq->len = MAX2(1, seq->len);
+  seq->len = MAX2(SEQ_time_frames_to_seconds(scene, 1), seq->len);  // XXX
   if (load_data->adjust_playback_rate) {
     seq->flag |= SEQ_AUTO_PLAYBACK_RATE;
   }
@@ -528,17 +530,17 @@ void SEQ_add_reload_new_file(Main *bmain, Scene *scene, Sequence *seq, const boo
     prev_enddisp = SEQ_time_right_handle_frame_get(scene, seq);
   }
 
+  int length;
   switch (seq->type) {
     case SEQ_TYPE_IMAGE: {
       /* Hack? */
       size_t olen = MEM_allocN_len(seq->strip->stripdata) / sizeof(StripElem);
 
-      seq->len = olen;
-      seq->len -= seq->anim_startofs;
-      seq->len -= seq->anim_endofs;
-      if (seq->len < 0) {
-        seq->len = 0;
+      length = olen - seq->anim_startofs - seq->anim_endofs;
+      if (length < 0) {
+        length = 0;
       }
+      SEQ_time_strip_length_set(scene, seq, length);
       break;
     }
     case SEQ_TYPE_MOVIE: {
@@ -604,14 +606,15 @@ void SEQ_add_reload_new_file(Main *bmain, Scene *scene, Sequence *seq, const boo
 
       IMB_anim_load_metadata(sanim->anim);
 
-      seq->len = IMB_anim_get_duration(
+      length = IMB_anim_get_duration(
           sanim->anim, seq->strip->proxy ? seq->strip->proxy->tc : IMB_TC_RECORD_RUN);
 
-      seq->len -= seq->anim_startofs;
-      seq->len -= seq->anim_endofs;
-      if (seq->len < 0) {
-        seq->len = 0;
+      length -= seq->anim_startofs;
+      length -= seq->anim_endofs;
+      if (length < 0) {
+        length = 0;
       }
+      SEQ_time_strip_length_set(scene, seq, length);
       break;
     }
     case SEQ_TYPE_MOVIECLIP:
@@ -619,48 +622,52 @@ void SEQ_add_reload_new_file(Main *bmain, Scene *scene, Sequence *seq, const boo
         return;
       }
 
-      seq->len = BKE_movieclip_get_duration(seq->clip);
+      length = BKE_movieclip_get_duration(seq->clip);
 
-      seq->len -= seq->anim_startofs;
-      seq->len -= seq->anim_endofs;
-      if (seq->len < 0) {
-        seq->len = 0;
+      length -= seq->anim_startofs;
+      length -= seq->anim_endofs;
+      if (length < 0) {
+        length = 0;
       }
+      SEQ_time_strip_length_set(scene, seq, length);
       break;
     case SEQ_TYPE_MASK:
       if (seq->mask == NULL) {
         return;
       }
-      seq->len = BKE_mask_get_duration(seq->mask);
-      seq->len -= seq->anim_startofs;
-      seq->len -= seq->anim_endofs;
-      if (seq->len < 0) {
-        seq->len = 0;
+      length = BKE_mask_get_duration(seq->mask);
+      length -= seq->anim_startofs;
+      length -= seq->anim_endofs;
+      if (length < 0) {
+        length = 0;
       }
+      SEQ_time_strip_length_set(scene, seq, length);
       break;
     case SEQ_TYPE_SOUND_RAM:
 #ifdef WITH_AUDASPACE
       if (!seq->sound) {
         return;
       }
-      seq->len = ceil((double)BKE_sound_get_length(bmain, seq->sound) * FPS);
-      seq->len -= seq->anim_startofs;
-      seq->len -= seq->anim_endofs;
-      if (seq->len < 0) {
-        seq->len = 0;
+      length = ceil((double)BKE_sound_get_length(bmain, seq->sound) * FPS);
+      length -= seq->anim_startofs;
+      length -= seq->anim_endofs;
+      if (length < 0) {
+        length = 0;
       }
+      SEQ_time_strip_length_set(scene, seq, length);
 #else
       UNUSED_VARS(bmain);
       return;
 #endif
       break;
     case SEQ_TYPE_SCENE: {
-      seq->len = (seq->scene) ? seq->scene->r.efra - seq->scene->r.sfra + 1 : 0;
-      seq->len -= seq->anim_startofs;
-      seq->len -= seq->anim_endofs;
-      if (seq->len < 0) {
-        seq->len = 0;
+      length = (seq->scene) ? seq->scene->r.efra - seq->scene->r.sfra + 1 : 0;
+      length -= seq->anim_startofs;
+      length -= seq->anim_endofs;
+      if (length < 0) {
+        length = 0;
       }
+      SEQ_time_strip_length_set(scene, seq, length);
       break;
     }
   }

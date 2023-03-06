@@ -263,7 +263,7 @@ static void seq_split_set_right_hold_offset(Main *bmain,
                                             Sequence *seq,
                                             int timeline_frame)
 {
-  const float content_start = SEQ_time_start_frame_get(seq);
+  const float content_start = SEQ_time_start_frame_get(scene, seq);
   const float content_end = SEQ_time_content_end_frame_get(scene, seq);
 
   /* Adjust within range of extended still-frames before strip. */
@@ -289,7 +289,7 @@ static void seq_split_set_left_hold_offset(Main *bmain,
                                            Sequence *seq,
                                            int timeline_frame)
 {
-  const float content_start = SEQ_time_start_frame_get(seq);
+  const float content_start = SEQ_time_start_frame_get(scene, seq);
   const float content_end = SEQ_time_content_end_frame_get(scene, seq);
 
   /* Adjust within range of strip contents. */

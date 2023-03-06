@@ -145,12 +145,12 @@ static float seq_cache_timeline_frame_to_frame_index(Scene *scene,
     return seq_give_frame_index(scene, seq, timeline_frame);
   }
 
-  return timeline_frame - SEQ_time_start_frame_get(seq);
+  return timeline_frame - SEQ_time_start_frame_get(scene, seq);
 }
 
-float seq_cache_frame_index_to_timeline_frame(Sequence *seq, float frame_index)
+float seq_cache_frame_index_to_timeline_frame(const Scene *scene, Sequence *seq, float frame_index)
 {
-  return frame_index + SEQ_time_start_frame_get(seq);
+  return frame_index + SEQ_time_start_frame_get(scene, seq);
 }
 
 static SeqCache *seq_cache_get_from_scene(Scene *scene)

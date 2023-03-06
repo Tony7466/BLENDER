@@ -345,7 +345,7 @@ static int rna_Sequence_retiming_handle_frame_get(PointerRNA *ptr)
     return 0;
   }
 
-  return SEQ_time_start_frame_get(seq) + handle->strip_frame_index;
+  return SEQ_time_start_frame_get(scene, seq) + handle->strip_frame_index;
 }
 
 static void rna_Sequence_retiming_handle_frame_set(PointerRNA *ptr, int value)
@@ -358,7 +358,7 @@ static void rna_Sequence_retiming_handle_frame_set(PointerRNA *ptr, int value)
     return;
   }
 
-  const int offset = value - SEQ_time_start_frame_get(seq) + handle->strip_frame_index;
+  const int offset = value - SEQ_time_start_frame_get(scene, seq) + handle->strip_frame_index;
   SEQ_retiming_offset_handle(scene, seq, handle, offset);
   SEQ_relations_invalidate_cache_raw(scene, seq);
 }
@@ -2095,6 +2095,7 @@ static void rna_def_sequence(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Lock", "Lock strip so that it cannot be transformed");
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, NULL);
 
+#  if 0
   /* strip positioning */
   /* Cache has to be invalidated before and after transformation. */
   prop = RNA_def_property(srna, "frame_final_duration", PROP_INT, PROP_TIME);
@@ -2120,7 +2121,7 @@ static void rna_def_sequence(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Start Frame", "X position where the strip begins");
   RNA_def_property_ui_range(prop, MINFRAME, MAXFRAME, 3, 0);
-  RNA_def_property_float_funcs(
+  /* RNA_def_property_float_funcs(
       prop, NULL, "rna_Sequence_start_frame_set", NULL); /* overlap tests and calc_seq_disp */
   RNA_def_property_editable_func(prop, "rna_Sequence_frame_editable");
   RNA_def_property_update(
@@ -2170,6 +2171,7 @@ static void rna_def_sequence(BlenderRNA *brna)
   RNA_def_property_float_funcs(
       prop, NULL, "rna_Sequence_frame_offset_end_set", "rna_Sequence_frame_offset_end_range");
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_frame_change_update");
+#  endif
 
   prop = RNA_def_property(srna, "channel", PROP_INT, PROP_UNSIGNED);
   RNA_def_property_int_sdna(prop, NULL, "machine");

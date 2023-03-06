@@ -65,7 +65,7 @@ int seq_time_strip_original_content_length_get(const Scene *scene, const Sequenc
 float seq_give_frame_index(const Scene *scene, Sequence *seq, float timeline_frame)
 {
   float frame_index;
-  float sta = SEQ_time_start_frame_get(seq);
+  float sta = SEQ_time_start_frame_get(scene, seq);
   float end = SEQ_time_content_end_frame_get(scene, seq) - 1;
   const float length = seq_time_strip_original_content_length_get(scene, seq);
 
@@ -490,7 +490,7 @@ void SEQ_time_speed_factor_set(const Scene *scene, Sequence *seq, const float sp
 
 bool SEQ_time_has_left_still_frames(const Scene *scene, const Sequence *seq)
 {
-  return SEQ_time_left_handle_frame_get(scene, seq) < SEQ_time_start_frame_get(seq);
+  return SEQ_time_left_handle_frame_get(scene, seq) < SEQ_time_start_frame_get(scene, seq);
 }
 
 bool SEQ_time_has_right_still_frames(const Scene *scene, const Sequence *seq)
@@ -503,10 +503,15 @@ bool SEQ_time_has_still_frames(const Scene *scene, const Sequence *seq)
   return SEQ_time_has_right_still_frames(scene, seq) || SEQ_time_has_left_still_frames(scene, seq);
 }
 
+void SEQ_time_strip_length_set(const Scene *scene, Sequence *seq, double length_in_frames)
+{
+  seq->len = SEQ_time_frames_to_seconds(scene, length_in_frames);
+}
+
 int SEQ_time_strip_length_get(const Scene *scene, const Sequence *seq)
 {
   if (seq->type == SEQ_TYPE_SOUND_RAM) {
-    return seq->len;
+    return SEQ_time_seconds_to_frames(scene, seq->len);
   }
 
   if (SEQ_retiming_is_active(seq)) {
@@ -517,33 +522,35 @@ int SEQ_time_strip_length_get(const Scene *scene, const Sequence *seq)
                seq_time_media_playback_rate_factor_get(scene, seq);
   }
 
-  return seq->len / seq_time_media_playback_rate_factor_get(scene, seq);
+  /* XXX  it was seq->len / seq_time_media_playback_rate_factor_get(scene, seq) but now it doesn't
+   * make sense, because playback rate factor does not influence length. */
+  return SEQ_time_seconds_to_frames(scene, seq->len);
 }
 
-float SEQ_time_start_frame_get(const Sequence *seq)
+float SEQ_time_start_frame_get(const Scene *scene, const Sequence *seq)
 {
-  return seq->start;
+  return SEQ_time_seconds_to_frames(scene, seq->start);
 }
 
 void SEQ_time_start_frame_set(const Scene *scene, Sequence *seq, int timeline_frame)
 {
-  seq->start = timeline_frame;
+  seq->start = SEQ_time_frames_to_seconds(scene, timeline_frame);
   SEQ_time_update_meta_strip_range(scene, seq_sequence_lookup_meta_by_seq(scene, seq));
   seq_time_update_effects_strip_range(scene, seq_sequence_lookup_effects_by_seq(scene, seq));
 }
 
 float SEQ_time_content_end_frame_get(const Scene *scene, const Sequence *seq)
 {
-  return SEQ_time_start_frame_get(seq) + SEQ_time_strip_length_get(scene, seq);
+  return SEQ_time_start_frame_get(scene, seq) + SEQ_time_strip_length_get(scene, seq);
 }
 
-int SEQ_time_left_handle_frame_get(const Scene *UNUSED(scene), const Sequence *seq)
+int SEQ_time_left_handle_frame_get(const Scene *scene, const Sequence *seq)
 {
   if (seq->seq1 || seq->seq2) {
     return seq->startdisp;
   }
 
-  return seq->start + seq->startofs;
+  return SEQ_time_start_frame_get(scene, seq) + SEQ_time_seconds_to_frames(scene, seq->startofs);
 }
 
 int SEQ_time_right_handle_frame_get(const Scene *scene, const Sequence *seq)
@@ -552,7 +559,8 @@ int SEQ_time_right_handle_frame_get(const Scene *scene, const Sequence *seq)
     return seq->enddisp;
   }
 
-  return SEQ_time_content_end_frame_get(scene, seq) - seq->endofs;
+  return SEQ_time_content_end_frame_get(scene, seq) -
+         SEQ_time_seconds_to_frames(scene, seq->endofs);
 }
 
 void SEQ_time_left_handle_frame_set(const Scene *scene, Sequence *seq, int timeline_frame)
@@ -563,7 +571,7 @@ void SEQ_time_left_handle_frame_set(const Scene *scene, Sequence *seq, int timel
     timeline_frame = right_handle_orig_frame - 1;
   }
 
-  float offset = timeline_frame - SEQ_time_start_frame_get(seq);
+  float offset = timeline_frame - SEQ_time_start_frame_get(scene, seq);
 
   if (SEQ_transform_single_image_check(seq)) {
     /* This strip has only 1 frame of content, that is always stretched to whole strip length.
@@ -605,4 +613,16 @@ void seq_time_translate_handles(const Scene *scene, Sequence *seq, const int off
 
   SEQ_time_update_meta_strip_range(scene, seq_sequence_lookup_meta_by_seq(scene, seq));
   seq_time_update_effects_strip_range(scene, seq_sequence_lookup_effects_by_seq(scene, seq));
+}
+
+double SEQ_time_frames_to_seconds(const Scene *scene, double frames)
+{
+  double scene_playback_rate = (float)scene->r.frs_sec / scene->r.frs_sec_base;
+  return frames / scene_playback_rate;
+}
+
+int SEQ_time_seconds_to_frames(const Scene *scene, double seconds)
+{
+  double scene_playback_rate = (float)scene->r.frs_sec / scene->r.frs_sec_base;
+  return round_db_to_int(seconds * scene_playback_rate);
 }

@@ -179,7 +179,10 @@ const char *SEQ_sequence_give_name(Sequence *seq)
   return name;
 }
 
-ListBase *SEQ_get_seqbase_from_sequence(Sequence *seq, ListBase **r_channels, int *r_offset)
+ListBase *SEQ_get_seqbase_from_sequence(const Scene *scene,
+                                        Sequence *seq,
+                                        ListBase **r_channels,
+                                        int *r_offset)
 {
   ListBase *seqbase = NULL;
 
@@ -187,7 +190,7 @@ ListBase *SEQ_get_seqbase_from_sequence(Sequence *seq, ListBase **r_channels, in
     case SEQ_TYPE_META: {
       seqbase = &seq->seqbase;
       *r_channels = &seq->channels;
-      *r_offset = SEQ_time_start_frame_get(seq);
+      *r_offset = SEQ_time_start_frame_get(scene, seq);
       break;
     }
     case SEQ_TYPE_SCENE: {

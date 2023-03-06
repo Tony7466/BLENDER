@@ -74,7 +74,7 @@ static bool check_seq_need_thumbnails(const Scene *scene, Sequence *seq, rctf *v
   if (!ELEM(seq->type, SEQ_TYPE_MOVIE, SEQ_TYPE_IMAGE)) {
     return false;
   }
-  if (min_ii(SEQ_time_left_handle_frame_get(scene, seq), SEQ_time_start_frame_get(seq)) >
+  if (min_ii(SEQ_time_left_handle_frame_get(scene, seq), SEQ_time_start_frame_get(scene, seq)) >
       view_area->xmax) {
     return false;
   }

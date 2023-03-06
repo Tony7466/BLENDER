@@ -208,7 +208,8 @@ static void seq_snap_target_points_build(Scene *scene,
       int content_end = max_ii(SEQ_time_right_handle_frame_get(scene, seq),
                                SEQ_time_content_end_frame_get(scene, seq));
       /* Effects and single image strips produce incorrect content length. Skip these strips. */
-      if ((seq->type & SEQ_TYPE_EFFECT) != 0 || seq->len == 1) {
+      if ((seq->type & SEQ_TYPE_EFFECT) != 0 ||
+          seq->len == 1) {  // XXX - this has to have some flag. it can't rely on precise length.
         content_start = SEQ_time_left_handle_frame_get(scene, seq);
         content_end = SEQ_time_right_handle_frame_get(scene, seq);
       }

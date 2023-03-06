@@ -77,11 +77,12 @@
  * \{ */
 
 typedef struct TransSeq {
-  int start, machine;
-  int startofs, endofs;
+  double start;
+  int machine;
+  double startofs, endofs;
   int anim_startofs, anim_endofs;
   /* int final_left, final_right; */ /* UNUSED */
-  int len;
+  double len;
   float content_start;
 } TransSeq;
 
@@ -475,7 +476,7 @@ typedef struct SlipData {
 
 static void transseq_backup(TransSeq *ts, Sequence *seq)
 {
-  ts->content_start = SEQ_time_start_frame_get(seq);
+  // ts->content_start = SEQ_time_start_frame_get(seq); //XXX
   ts->start = seq->start;
   ts->machine = seq->machine;
   ts->startofs = seq->startofs;
@@ -3592,7 +3593,7 @@ static int sequencer_scene_frame_range_update_exec(bContext *C, wmOperator *UNUS
 
   Scene *target_scene = seq->scene;
 
-  seq->len = target_scene->r.efra - target_scene->r.sfra + 1;
+  SEQ_time_strip_length_set(scene, seq, target_scene->r.efra - target_scene->r.sfra + 1);
   SEQ_time_left_handle_frame_set(scene, seq, old_start);
   SEQ_time_right_handle_frame_set(scene, seq, old_end);
 

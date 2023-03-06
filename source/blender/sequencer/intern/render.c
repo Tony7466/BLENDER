@@ -1625,7 +1625,7 @@ static ImBuf *do_render_strip_seqbase(const SeqRenderData *context,
   ListBase *channels = NULL;
   int offset;
 
-  seqbase = SEQ_get_seqbase_from_sequence(seq, &channels, &offset);
+  seqbase = SEQ_get_seqbase_from_sequence(context->scene, seq, &channels, &offset);
 
   if (seqbase && !BLI_listbase_is_empty(seqbase)) {
 
@@ -2168,7 +2168,7 @@ void SEQ_render_thumbnails(const SeqRenderData *context,
 int SEQ_render_thumbnails_guaranteed_set_frame_step_get(const Scene *scene, const Sequence *seq)
 {
   const int content_start = max_ii(SEQ_time_left_handle_frame_get(scene, seq),
-                                   SEQ_time_start_frame_get(seq));
+                                   SEQ_time_start_frame_get(scene, seq));
   const int content_end = min_ii(SEQ_time_right_handle_frame_get(scene, seq),
                                  SEQ_time_content_end_frame_get(scene, seq));
   const int content_len = content_end - content_start;

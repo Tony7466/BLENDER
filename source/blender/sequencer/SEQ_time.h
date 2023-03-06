@@ -111,6 +111,10 @@ void SEQ_time_right_handle_frame_set(const struct Scene *scene,
  * This can change depending on scene FPS or strip speed factor.
  */
 int SEQ_time_strip_length_get(const struct Scene *scene, const struct Sequence *seq);
+void SEQ_time_strip_length_set(const struct Scene *scene,
+                               struct Sequence *seq,
+                               const double length_in_frames);
+
 /**
  * Set strip playback speed.
  * Strip length is affected by changing speed factor.
@@ -121,7 +125,7 @@ void SEQ_time_speed_factor_set(const struct Scene *scene,
 /**
  * Get timeline frame where strip content starts.
  */
-float SEQ_time_start_frame_get(const struct Sequence *seq);
+float SEQ_time_start_frame_get(const struct Scene *scene, const struct Sequence *seq);
 /**
  * Get timeline frame where strip content ends.
  */
@@ -136,6 +140,9 @@ void SEQ_time_start_frame_set(const struct Scene *scene, struct Sequence *seq, i
  * \note this function is currently only used internally and in versioning code.
  */
 void SEQ_time_update_meta_strip_range(const struct Scene *scene, struct Sequence *seq_meta);
+double SEQ_time_frames_to_seconds(const struct Scene *scene, const double frames);
+int SEQ_time_seconds_to_frames(const struct Scene *scene, const double seconds);
+
 #ifdef __cplusplus
 }
 #endif

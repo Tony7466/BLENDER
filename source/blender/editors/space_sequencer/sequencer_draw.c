@@ -542,7 +542,7 @@ static void drawmeta_contents(Scene *scene,
   ListBase *meta_channels;
   int offset;
 
-  meta_seqbase = SEQ_get_seqbase_from_sequence(seqm, &meta_channels, &offset);
+  meta_seqbase = SEQ_get_seqbase_from_sequence(scene, seqm, &meta_channels, &offset);
 
   if (!meta_seqbase || BLI_listbase_is_empty(meta_seqbase)) {
     return;
@@ -961,7 +961,7 @@ static void draw_sequence_extensions_overlay(
   col[3] = SEQ_render_is_muted(channels, seq) ? MUTE_ALPHA : 200;
   UI_GetColorPtrShade3ubv(col, blend_col, 10);
 
-  const float strip_content_start = SEQ_time_start_frame_get(seq);
+  const float strip_content_start = SEQ_time_start_frame_get(scene, seq);
   const float strip_content_end = SEQ_time_content_end_frame_get(scene, seq);
   float right_handle_frame = SEQ_time_right_handle_frame_get(scene, seq);
   float left_handle_frame = SEQ_time_left_handle_frame_get(scene, seq);
@@ -1089,7 +1089,7 @@ static void draw_seq_background(Scene *scene,
 
     if (SEQ_time_has_left_still_frames(scene, seq)) {
       float left_handle_frame = SEQ_time_left_handle_frame_get(scene, seq);
-      const float content_start = SEQ_time_start_frame_get(seq);
+      const float content_start = SEQ_time_start_frame_get(scene, seq);
       immRectf(pos, left_handle_frame, y1, content_start, y2);
     }
     if (SEQ_time_has_right_still_frames(scene, seq)) {
@@ -1312,7 +1312,7 @@ static void draw_seq_strip(const bContext *C,
                                      SEQ_TIMELINE_SHOW_STRIP_COLOR_TAG);
 
   /* Draw strip body. */
-  x1 = SEQ_time_has_left_still_frames(scene, seq) ? SEQ_time_start_frame_get(seq) :
+  x1 = SEQ_time_has_left_still_frames(scene, seq) ? SEQ_time_start_frame_get(scene, seq) :
                                                     SEQ_time_left_handle_frame_get(scene, seq);
   y1 = seq->machine + SEQ_STRIP_OFSBOTTOM;
   x2 = SEQ_time_has_right_still_frames(scene, seq) ? SEQ_time_content_end_frame_get(scene, seq) :
@@ -2282,8 +2282,8 @@ static void draw_seq_strips(const bContext *C, Editing *ed, ARegion *region)
       if (seq == last_seq && (last_seq->flag & SELECT)) {
         continue;
       }
-      if (min_ii(SEQ_time_left_handle_frame_get(scene, seq), SEQ_time_start_frame_get(seq)) >
-          v2d->cur.xmax) {
+      if (min_ii(SEQ_time_left_handle_frame_get(scene, seq),
+                 SEQ_time_start_frame_get(scene, seq)) > v2d->cur.xmax) {
         continue;
       }
       if (max_ii(SEQ_time_right_handle_frame_get(scene, seq),
