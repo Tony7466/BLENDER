@@ -112,10 +112,10 @@ TEST_F(UsdCurvesTest, usd_export_curves)
   USDExportParams params{};
 
   const bool result = USD_export(context, output_filename.c_str(), &params, false);
-  EXPECT_TRUE(result);
+  EXPECT_TRUE(result) << "USD export should succed.";
 
   pxr::UsdStageRefPtr stage = pxr::UsdStage::Open(output_filename);
-  ASSERT_NE(stage, nullptr);
+  ASSERT_NE(stage, nullptr) << "Stage should not be null after opening usd file.";
 
   {
     std::string prim_name = pxr::TfMakeValidIdentifier("BezierCurve");
@@ -128,7 +128,7 @@ TEST_F(UsdCurvesTest, usd_export_curves)
     std::string prim_name = pxr::TfMakeValidIdentifier("BezierCircle");
     pxr::UsdPrim test_prim = stage->GetPrimAtPath(pxr::SdfPath("/BezierCircle/" + prim_name));
     EXPECT_TRUE(test_prim.IsValid());
-    check_bezier_curve(test_prim, true, 12);
+    check_bezier_curve(test_prim, true, 13);
   }
 
   {
@@ -168,14 +168,16 @@ static void check_catmullRom_curve(const pxr::UsdPrim prim,
   basis_attr.Get(&basis);
   auto basis_token = basis.Get<pxr::TfToken>();
 
-  EXPECT_EQ(basis_token, pxr::UsdGeomTokens->catmullRom);
+  EXPECT_EQ(basis_token, pxr::UsdGeomTokens->catmullRom)
+      << "Basis token should be catmullRom for catmullRom curve";
 
   pxr::VtValue type;
   pxr::UsdAttribute type_attr = curve.GetTypeAttr();
   type_attr.Get(&type);
   auto type_token = type.Get<pxr::TfToken>();
 
-  EXPECT_EQ(type_token, pxr::UsdGeomTokens->cubic);
+  EXPECT_EQ(type_token, pxr::UsdGeomTokens->cubic)
+      << "Type token should be cubic for catmullRom curve";
 
   pxr::VtValue wrap;
   pxr::UsdAttribute wrap_attr = curve.GetWrapAttr();
@@ -183,20 +185,22 @@ static void check_catmullRom_curve(const pxr::UsdPrim prim,
   auto wrap_token = wrap.Get<pxr::TfToken>();
 
   if (is_periodic) {
-    EXPECT_EQ(wrap_token, pxr::UsdGeomTokens->periodic);
+    EXPECT_EQ(wrap_token, pxr::UsdGeomTokens->periodic)
+        << "Wrap token should be periodic for periodic curve";
   }
   else {
-    EXPECT_EQ(wrap_token, pxr::UsdGeomTokens->nonperiodic);
+    EXPECT_EQ(wrap_token, pxr::UsdGeomTokens->nonperiodic)
+        << "Wrap token should be nonperiodic for nonperiodic curve";
   }
 
   pxr::UsdAttribute vert_count_attr = curve.GetCurveVertexCountsAttr();
   pxr::VtArray<int> vert_counts;
   vert_count_attr.Get(&vert_counts);
 
-  EXPECT_EQ(vert_counts.size(), 3);
-  EXPECT_EQ(vert_counts[0], vertex_count);
-  EXPECT_EQ(vert_counts[1], vertex_count);
-  EXPECT_EQ(vert_counts[2], vertex_count);
+  EXPECT_EQ(vert_counts.size(), 3) << "Prim should contain verts for three curves";
+  EXPECT_EQ(vert_counts[0], vertex_count) << "Curve 0 should have " << vertex_count << " verts.";
+  EXPECT_EQ(vert_counts[1], vertex_count) << "Curve 1 should have " << vertex_count << " verts.";
+  EXPECT_EQ(vert_counts[2], vertex_count) << "Curve 2 should have " << vertex_count << " verts.";
 }
 
 /**
@@ -214,14 +218,16 @@ static void check_bezier_curve(const pxr::UsdPrim bezier_prim,
   basis_attr.Get(&basis);
   auto basis_token = basis.Get<pxr::TfToken>();
 
-  EXPECT_EQ(basis_token, pxr::UsdGeomTokens->bezier);
+  EXPECT_EQ(basis_token, pxr::UsdGeomTokens->bezier)
+      << "Basis token should be bezier for bezier curve";
 
   pxr::VtValue type;
   pxr::UsdAttribute type_attr = curve.GetTypeAttr();
   type_attr.Get(&type);
   auto type_token = type.Get<pxr::TfToken>();
 
-  EXPECT_EQ(type_token, pxr::UsdGeomTokens->cubic);
+  EXPECT_EQ(type_token, pxr::UsdGeomTokens->cubic)
+      << "Type token should be cubic for bezier curve";
 
   pxr::VtValue wrap;
   pxr::UsdAttribute wrap_attr = curve.GetWrapAttr();
@@ -229,21 +235,24 @@ static void check_bezier_curve(const pxr::UsdPrim bezier_prim,
   auto wrap_token = wrap.Get<pxr::TfToken>();
 
   if (is_periodic) {
-    EXPECT_EQ(wrap_token, pxr::UsdGeomTokens->periodic);
+    EXPECT_EQ(wrap_token, pxr::UsdGeomTokens->periodic)
+        << "Wrap token should be periodic for periodic curve";
   }
   else {
-    EXPECT_EQ(wrap_token, pxr::UsdGeomTokens->nonperiodic);
+    EXPECT_EQ(wrap_token, pxr::UsdGeomTokens->nonperiodic)
+        << "Wrap token should be nonperiodic for nonperiodic curve";
   }
 
   auto widths_interp_token = curve.GetWidthsInterpolation();
-  EXPECT_EQ(widths_interp_token, pxr::UsdGeomTokens->varying);
+  EXPECT_EQ(widths_interp_token, pxr::UsdGeomTokens->varying)
+      << "Widths interpolation token should be varying for bezier curve";
 
   pxr::UsdAttribute vert_count_attr = curve.GetCurveVertexCountsAttr();
   pxr::VtArray<int> vert_counts;
   vert_count_attr.Get(&vert_counts);
 
-  EXPECT_EQ(vert_counts.size(), 1);
-  EXPECT_EQ(vert_counts[0], vertex_count);
+  EXPECT_EQ(vert_counts.size(), 1) << "Prim should only contains verts for a single curve";
+  EXPECT_EQ(vert_counts[0], vertex_count) << "Curve should have " << vertex_count << " verts.";
 }
 
 /**
@@ -263,32 +272,37 @@ static void check_nurbs_curve(const pxr::UsdPrim nurbs_prim,
   pxr::VtArray<int> orders;
   order_attr.Get(&orders);
 
-  EXPECT_EQ(orders.size(), 1);
-  EXPECT_EQ(orders[0], order);
+  EXPECT_EQ(orders.size(), 1) << "Prim should only contain orders for a single curve";
+  EXPECT_EQ(orders[0], order) << "Curve should have order " << order;
 
   pxr::UsdAttribute knots_attr = curve.GetKnotsAttr();
   pxr::VtArray<double> knots;
   knots_attr.Get(&knots);
 
-  EXPECT_EQ(knots.size(), knots_count);
+  EXPECT_EQ(knots.size(), knots_count) << "Curve should have " << knots_count << " knots.";
   if (is_periodic) {
-    EXPECT_EQ(knots[0], knots[1] - (knots[knots.size() - 2] - knots[knots.size() - 3]));
-    EXPECT_EQ(knots[knots.size() - 1], knots[knots.size() - 2] + (knots[2] - knots[1]));
+    EXPECT_EQ(knots[0], knots[1] - (knots[knots.size() - 2] - knots[knots.size() - 3]))
+        << "NURBS curve should satisfy this knots rule for a periodic curve";
+    EXPECT_EQ(knots[knots.size() - 1], knots[knots.size() - 2] + (knots[2] - knots[1]))
+        << "NURBS curve should satisfy this knots rule for a periodic curve";
   }
   else {
-    EXPECT_EQ(knots[0], knots[1]);
-    EXPECT_EQ(knots[knots.size() - 1], knots[knots.size() - 2]);
+    EXPECT_EQ(knots[0], knots[1])
+        << "NURBS curve should satisfy this knots rule for a nonperiodic curve";
+    EXPECT_EQ(knots[knots.size() - 1], knots[knots.size() - 2])
+        << "NURBS curve should satisfy this knots rule for a nonperiodic curve";
   }
 
   auto widths_interp_token = curve.GetWidthsInterpolation();
-  EXPECT_EQ(widths_interp_token, pxr::UsdGeomTokens->vertex);
+  EXPECT_EQ(widths_interp_token, pxr::UsdGeomTokens->vertex)
+      << "Widths interpolation token should be vertex for NURBS curve";
 
   pxr::UsdAttribute vert_count_attr = curve.GetCurveVertexCountsAttr();
   pxr::VtArray<int> vert_counts;
   vert_count_attr.Get(&vert_counts);
 
-  EXPECT_EQ(vert_counts.size(), 1);
-  EXPECT_EQ(vert_counts[0], vertex_count);
+  EXPECT_EQ(vert_counts.size(), 1) << "Prim should only contains verts for a single curve";
+  EXPECT_EQ(vert_counts[0], vertex_count) << "Curve should have " << vertex_count << " verts.";
 }
 
 }  // namespace blender::io::usd
