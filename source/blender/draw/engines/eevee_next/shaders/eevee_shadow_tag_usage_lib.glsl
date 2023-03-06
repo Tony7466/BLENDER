@@ -146,6 +146,11 @@ void shadow_tag_usage_tilemap_punctual(uint l_idx, vec3 P, vec3 V, float dist_to
   }
 }
 
+/**
+ * \a radius Radius of the tagging area in world space.
+ * Used for downsampled/ray-marched tagging, so all the shadowmap texels covered get correctly
+ * tagged.
+ */
 void shadow_tag_usage(vec3 vP, vec3 P, vec3 V, float radius, float dist_to_cam, vec2 pixel)
 {
   LIGHT_FOREACH_BEGIN_DIRECTIONAL (light_cull_buf, l_idx) {

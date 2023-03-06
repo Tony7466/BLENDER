@@ -3,7 +3,8 @@
  * Virtual shadowmapping: Usage tagging
  *
  * Shadow pages are only allocated if they are visible.
- * This ray-marches the object bounds and tags all tiles that are needed for light shadowing.
+ * This ray-marches the current fragment along the bounds depth and tags all the intersected shadow
+ * tiles.
  */
 
 #pragma BLENDER_REQUIRE(eevee_shadow_tag_usage_lib.glsl)
