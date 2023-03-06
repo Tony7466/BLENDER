@@ -849,6 +849,11 @@ elseif(WIN32)
     ALL
   )
 
+  windows_install_shared_manifest(
+    FILES ${LIBDIR}/zlib/bin/zlib.dll
+    ALL
+  )
+
   if(WITH_OPENMP AND MSVC_CLANG)
     windows_install_shared_manifest(
       FILES ${CLANG_OPENMP_DLL}
@@ -857,7 +862,7 @@ elseif(WIN32)
   endif()
 
   windows_install_shared_manifest(
-    FILES ${LIBDIR}/fftw3/lib/libfftw3-3.dll
+    FILES ${LIBDIR}/fftw3/lib/fftw3.dll
     ALL
   )
   if(MSVC_ASAN)
@@ -919,18 +924,21 @@ elseif(WIN32)
       DEBUG
     )
   endif()
-  windows_install_shared_manifest(
-    FILES ${LIBDIR}/gmp/lib/libgmp-10.dll
-    ALL
-  )
-  windows_install_shared_manifest(
-    FILES ${LIBDIR}/gmp/lib/libgmpxx.dll
-    RELEASE
-  )
-  windows_install_shared_manifest(
-    FILES ${LIBDIR}/gmp/lib/libgmpxx_d.dll
-    DEBUG
-  )
+
+  if(WITH_GMP)
+    windows_install_shared_manifest(
+      FILES ${LIBDIR}/gmp/lib/gmp-10.dll
+      ALL
+    )
+    windows_install_shared_manifest(
+      FILES ${LIBDIR}/gmp/lib/libgmpxx.dll
+      RELEASE
+    )
+    windows_install_shared_manifest(
+      FILES ${LIBDIR}/gmp/lib/libgmpxx_d.dll
+      DEBUG
+    )
+  endif()
 
   if(WITH_WINDOWS_PDB)
     if(WITH_WINDOWS_STRIPPED_PDB)
@@ -972,26 +980,28 @@ elseif(WIN32)
     )
   endif()
 
-  windows_install_shared_manifest(
-    FILES
-      ${LIBDIR}/materialx/bin/MaterialXCore.dll
-      ${LIBDIR}/materialx/bin/MaterialXFormat.dll
-      ${LIBDIR}/materialx/bin/MaterialXGenGlsl.dll
-      ${LIBDIR}/materialx/bin/MaterialXGenMdl.dll
-      ${LIBDIR}/materialx/bin/MaterialXGenOsl.dll
-      ${LIBDIR}/materialx/bin/MaterialXGenShader.dll
-    RELEASE
-  )
-  windows_install_shared_manifest(
-    FILES
-      ${LIBDIR}/materialx/bin/MaterialXCore_d.dll
-      ${LIBDIR}/materialx/bin/MaterialXFormat_d.dll
-      ${LIBDIR}/materialx/bin/MaterialXGenGlsl_d.dll
-      ${LIBDIR}/materialx/bin/MaterialXGenMdl_d.dll
-      ${LIBDIR}/materialx/bin/MaterialXGenOsl_d.dll
-      ${LIBDIR}/materialx/bin/MaterialXGenShader_d.dll
-    DEBUG
-  )
+  if(WITH_MATERIALX)
+    windows_install_shared_manifest(
+      FILES
+        ${LIBDIR}/materialx/bin/MaterialXCore.dll
+        ${LIBDIR}/materialx/bin/MaterialXFormat.dll
+        ${LIBDIR}/materialx/bin/MaterialXGenGlsl.dll
+        ${LIBDIR}/materialx/bin/MaterialXGenMdl.dll
+        ${LIBDIR}/materialx/bin/MaterialXGenOsl.dll
+        ${LIBDIR}/materialx/bin/MaterialXGenShader.dll
+      RELEASE
+    )
+    windows_install_shared_manifest(
+      FILES
+        ${LIBDIR}/materialx/bin/MaterialXCore_d.dll
+        ${LIBDIR}/materialx/bin/MaterialXFormat_d.dll
+        ${LIBDIR}/materialx/bin/MaterialXGenGlsl_d.dll
+        ${LIBDIR}/materialx/bin/MaterialXGenMdl_d.dll
+        ${LIBDIR}/materialx/bin/MaterialXGenOsl_d.dll
+        ${LIBDIR}/materialx/bin/MaterialXGenShader_d.dll
+      DEBUG
+    )
+  endif()
 
   if(WITH_PYTHON)
     string(REPLACE "." "" _PYTHON_VERSION_NO_DOTS ${PYTHON_VERSION})
@@ -1122,25 +1132,27 @@ elseif(WIN32)
         )
       endif()
 
-      # MaterialX python bindings
-      install(
-        DIRECTORY ${LIBDIR}/materialx/python/Release/MaterialX
-        DESTINATION ${TARGETDIR_VER}/python/lib/site-packages/
-        CONFIGURATIONS Release;RelWithDebInfo;MinSizeRel
-        PATTERN ".svn" EXCLUDE
-        PATTERN "__pycache__" EXCLUDE           # * any cache *
-        PATTERN "*.pyc" EXCLUDE                 # * any cache *
-        PATTERN "*.pyo" EXCLUDE                 # * any cache *
-      )
-      install(
-        DIRECTORY ${LIBDIR}/materialx/python/Debug/MaterialX
-        DESTINATION ${TARGETDIR_VER}/python/lib/site-packages/
-        CONFIGURATIONS Debug
-        PATTERN ".svn" EXCLUDE
-        PATTERN "__pycache__" EXCLUDE           # * any cache *
-        PATTERN "*.pyc" EXCLUDE                 # * any cache *
-        PATTERN "*.pyo" EXCLUDE                 # * any cache *
-      )
+      if(WITH_MATERIALX)
+        # MaterialX python bindings
+        install(
+          DIRECTORY ${LIBDIR}/materialx/python/Release/MaterialX
+          DESTINATION ${TARGETDIR_VER}/python/lib/site-packages/
+          CONFIGURATIONS Release;RelWithDebInfo;MinSizeRel
+          PATTERN ".svn" EXCLUDE
+          PATTERN "__pycache__" EXCLUDE           # * any cache *
+          PATTERN "*.pyc" EXCLUDE                 # * any cache *
+          PATTERN "*.pyo" EXCLUDE                 # * any cache *
+        )
+        install(
+          DIRECTORY ${LIBDIR}/materialx/python/Debug/MaterialX
+          DESTINATION ${TARGETDIR_VER}/python/lib/site-packages/
+          CONFIGURATIONS Debug
+          PATTERN ".svn" EXCLUDE
+          PATTERN "__pycache__" EXCLUDE           # * any cache *
+          PATTERN "*.pyc" EXCLUDE                 # * any cache *
+          PATTERN "*.pyo" EXCLUDE                 # * any cache *
+        )
+      endif()
 
       if(WINDOWS_PYTHON_DEBUG)
         install(
@@ -1213,7 +1225,7 @@ elseif(WIN32)
   endif()
 
   windows_install_shared_manifest(
-    FILES ${LIBDIR}/sndfile/lib/libsndfile-1.dll
+    FILES ${LIBDIR}/sndfile/lib/sndfile.dll
     ALL
   )
 

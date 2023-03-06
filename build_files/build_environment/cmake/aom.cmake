@@ -1,13 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 if(WIN32)
-  # The default generator on windows is msbuild, which we do not
-  # want to use for this dep, as needs to build with mingw
-  set(AOM_GENERATOR "Ninja")
-  # The default flags are full of MSVC options given this will be
-  # building with mingw, it'll have an unhappy time with that and
-  # we need to clear them out.
-  set(AOM_CMAKE_FLAGS )
+  set(AOM_GENERATOR "Visual Studio 17 2022")
+  
 else()
   set(AOM_GENERATOR "Unix Makefiles")
   set(AOM_CMAKE_FLAGS ${DEFAULT_CMAKE_FLAGS})

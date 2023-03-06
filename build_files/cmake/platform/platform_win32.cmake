@@ -800,7 +800,7 @@ if(WITH_CODEC_SNDFILE)
   set(LIBSNDFILE ${LIBDIR}/sndfile)
   set(LIBSNDFILE_INCLUDE_DIRS ${LIBSNDFILE}/include)
   set(LIBSNDFILE_LIBPATH ${LIBSNDFILE}/lib) # TODO, deprecate
-  set(LIBSNDFILE_LIBRARIES ${LIBSNDFILE_LIBPATH}/libsndfile-1.lib)
+  set(LIBSNDFILE_LIBRARIES ${LIBSNDFILE_LIBPATH}/sndfile.lib)
 endif()
 
 if(WITH_CYCLES AND WITH_CYCLES_OSL)
@@ -962,7 +962,7 @@ endif()
 
 if(WITH_GMP)
   set(GMP_INCLUDE_DIRS ${LIBDIR}/gmp/include)
-  set(GMP_LIBRARIES ${LIBDIR}/gmp/lib/libgmp-10.lib optimized ${LIBDIR}/gmp/lib/libgmpxx.lib debug ${LIBDIR}/gmp/lib/libgmpxx_d.lib)
+  set(GMP_LIBRARIES ${LIBDIR}/gmp/lib/gmp.dll.lib optimized ${LIBDIR}/gmp/lib/libgmpxx.lib debug ${LIBDIR}/gmp/lib/libgmpxx_d.lib)
   set(GMP_ROOT_DIR ${LIBDIR}/gmp)
   set(GMP_FOUND ON)
 endif()
