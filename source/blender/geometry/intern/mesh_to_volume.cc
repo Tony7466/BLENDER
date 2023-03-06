@@ -121,16 +121,9 @@ static openvdb::FloatGrid::Ptr mesh_to_fog_volume_grid(
   const float exterior = MAX2(0.001f, exterior_band_width / voxel_size);
   const float interior = MAX2(0.001f, interior_band_width / voxel_size);
 
-  openvdb::FloatGrid::Ptr new_grid;
-  if (fill_volume) {
-    /* Setting the interior bandwidth to FLT_MAX, will make it fill the entire volume. */
-    new_grid = openvdb::tools::meshToVolume<openvdb::FloatGrid>(
-        mesh_adapter, {}, exterior, FLT_MAX);
-  }
-  else {
-    new_grid = openvdb::tools::meshToVolume<openvdb::FloatGrid>(
-        mesh_adapter, {}, exterior, interior);
-  }
+  /* Setting the interior bandwidth to FLT_MAX, will make it fill the entire volume. */
+  openvdb::FloatGrid::Ptr new_grid = openvdb::tools::meshToVolume<openvdb::FloatGrid>(
+      mesh_adapter, {}, exterior, fill_volume ? FLT_MAX : interior);
 
   /* Give each grid cell a fixed density for now. */
   openvdb::tools::foreach (
@@ -146,7 +139,7 @@ static openvdb::FloatGrid::Ptr mesh_to_sdf_volume_grid(const Mesh &mesh,
                                                        const float voxel_size,
                                                        const float half_band_width)
 {
-  if (voxel_size == 0.0f) {
+  if (voxel_size <= 0.0f || half_band_width <= 0.0f) {
     return nullptr;
   }
 
@@ -159,7 +152,7 @@ static openvdb::FloatGrid::Ptr mesh_to_sdf_volume_grid(const Mesh &mesh,
 
   for (const int i : positions.index_range()) {
     const float3 &co = positions[i];
-    points[i] = openvdb::Vec3s(co.x, co.y, co.z);
+    points[i] = openvdb::Vec3s(co.x, co.y, co.z) - 0.5f * voxel_size;
   }
 
   for (const int i : looptris.index_range()) {
@@ -172,8 +165,6 @@ static openvdb::FloatGrid::Ptr mesh_to_sdf_volume_grid(const Mesh &mesh,
       voxel_size);
   openvdb::FloatGrid::Ptr new_grid = openvdb::tools::meshToLevelSet<openvdb::FloatGrid>(
       *transform, points, triangles, half_band_width);
-
-  new_grid->setGridClass(openvdb::GRID_LEVEL_SET);
 
   return new_grid;
 }

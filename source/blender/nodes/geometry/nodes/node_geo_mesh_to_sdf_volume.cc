@@ -106,6 +106,11 @@ static Volume *create_volume_from_mesh(const Mesh &mesh, GeoNodeExecParams &para
   const float voxel_size = geometry::volume_compute_voxel_size(
       params.depsgraph(), bounds_fn, resolution, half_band_width, mesh_to_volume_space_transform);
 
+  if (voxel_size < 1e-5f) {
+    /* The voxel size is too small. */
+    return nullptr;
+  }
+
   Volume *volume = reinterpret_cast<Volume *>(BKE_id_new_nomain(ID_VO, nullptr));
 
   /* Convert mesh to grid and add to volume. */
