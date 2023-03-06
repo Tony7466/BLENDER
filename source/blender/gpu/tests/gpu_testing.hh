@@ -68,7 +68,6 @@ class GPUVulkanTest : public GPUTest {
  public:
   GPUVulkanTest() : GPUTest(GHOST_kDrawingContextTypeVulkan, GPU_BACKEND_VULKAN)
   {
-
   }
 };
 #  define GPU_VULKAN_TEST(test_name) \

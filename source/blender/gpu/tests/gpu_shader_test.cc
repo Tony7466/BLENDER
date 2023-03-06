@@ -28,7 +28,7 @@ using namespace blender::gpu::shader;
 
 static void test_gpu_shader_compute_2d()
 {
-  return;
+
   if (!GPU_compute_shader_support()) {
     /* We can't test as a the platform does not support compute shaders. */
     std::cout << "Skipping compute shader test: platform not supported";
