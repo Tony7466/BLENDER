@@ -2057,11 +2057,9 @@ bNode *nodeFindRootParent(bNode *node)
   while (parent_iter->parent != nullptr) {
     parent_iter = parent_iter->parent;
   }
-
   if (parent_iter->type != NODE_FRAME) {
     return nullptr;
   }
-
   return parent_iter;
 }
 
@@ -2072,7 +2070,6 @@ bool nodeIsParentAndChild(const bNode *parent, const bNode *child)
       return true;
     }
   }
-
   return false;
 }
 
@@ -2563,7 +2560,6 @@ void nodeToView(const bNode *node, const float x, const float y, float *rx, floa
     mapping_x += node_iter->locx;
     mapping_y += node_iter->locy;
   }
-
   *rx = mapping_x + x;
   *ry = mapping_y + y;
 }
@@ -2576,7 +2572,6 @@ void nodeFromView(const bNode *node, const float x, const float y, float *rx, fl
     mapping_x += node_iter->locx;
     mapping_y += node_iter->locy;
   }
-
   *rx = -mapping_x + x;
   *ry = -mapping_y + y;
 }
