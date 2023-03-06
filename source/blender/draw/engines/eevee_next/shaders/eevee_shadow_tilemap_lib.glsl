@@ -101,8 +101,8 @@ ShadowTileData shadow_tile_load(usampler2D tilemaps_tx, ivec2 tile_co, int tilem
 /**
  * This function should be the inverse of ShadowDirectional::coverage_get().
  *
- * \a lP shading point position in light space relative to the view position
- * (shadow_world_to_local - light._position).
+ * \a lP shading point position in light space, relative to the to camera position snapped to
+ * the smallest clipmap level (shadow_world_to_local - light._position).
  */
 int shadow_directional_level(LightData light, vec3 lP)
 {
