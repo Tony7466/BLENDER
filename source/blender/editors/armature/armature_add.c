@@ -1100,15 +1100,10 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
   const int direction = RNA_enum_get(op->ptr, "direction");
   const int axis = 0;
 
-  /* select all visible bones if nothing selected */
+  /* check is any ebone is selected on init */
+  bool is_selected = true;
   if (CTX_DATA_COUNT(C, selected_bones) == 0) {
-    CTX_DATA_BEGIN (C, EditBone *, ebone, visible_bones) {
-      ebone->flag |= (BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
-      if (ebone->parent) {
-        ebone->parent->flag |= BONE_TIPSEL;
-      }
-    }
-    CTX_DATA_END;
+    is_selected = false;
   }
 
   uint objects_len = 0;
@@ -1128,24 +1123,23 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
 
     /* Select mirrored bones */
     for (ebone_iter = arm->edbo->first; ebone_iter; ebone_iter = ebone_iter->next) {
-      if (EBONE_VISIBLE(arm, ebone_iter) && (ebone_iter->flag & BONE_SELECTED)) {
+      if (EBONE_VISIBLE(arm, ebone_iter)) {
         char name_flip[MAXBONENAME];
 
         BLI_string_flip_side_name(name_flip, ebone_iter->name, false, sizeof(name_flip));
 
-        if (STREQ(name_flip, ebone_iter->name)) {
+        if (STREQ(name_flip, ebone_iter->name) && (ebone_iter->flag & BONE_SELECTED)) {
           /* if the name matches, we don't have the potential to be mirrored, just skip */
           ebone_iter->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
         }
         else {
           EditBone *ebone = ED_armature_ebone_find_name(arm->edbo, name_flip);
-
           if (ebone) {
-            if ((ebone->flag & BONE_SELECTED) == 0) {
+            if (((ebone->flag & BONE_SELECTED) == 0 && (ebone_iter->flag & BONE_SELECTED))) {
               /* simple case, we're selected, the other bone isn't! */
               ebone_iter->temp.ebone = ebone;
             }
-            else {
+            else if ((ebone_iter->flag & BONE_SELECTED) | (!is_selected)) {
               /* complicated - choose which direction to copy */
               float axis_delta;
 
@@ -1154,7 +1148,7 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
                 axis_delta = ebone->tail[axis] - ebone_iter->tail[axis];
               }
 
-              if (axis_delta == 0.0f) {
+              if ((axis_delta == 0.0f) && is_selected) {
                 /* Both mirrored bones exist and point to each other and overlap exactly.
                  *
                  * in this case there's no well defined solution, so de-select both and skip.
@@ -1164,6 +1158,7 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
               }
               else {
                 EditBone *ebone_src, *ebone_dst;
+
                 if (((axis_delta < 0.0f) ? -1 : 1) == direction) {
                   ebone_src = ebone;
                   ebone_dst = ebone_iter;
@@ -1173,15 +1168,23 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
                   ebone_dst = ebone;
                 }
 
-                ebone_src->temp.ebone = ebone_dst;
-                ebone_dst->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
+                if (is_selected) {
+                  ebone_src->temp.ebone = ebone_dst;
+                  ebone_dst->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
+                }
+                else {
+                  ebone_src->flag |= (BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
+                  ebone_src->temp.ebone = ebone_dst;
+                }
               }
             }
+          }
+          else {
+            ebone_iter->flag |= (BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
           }
         }
       }
     }
-
     /* Find the selected bones and duplicate them as needed, with mirrored name. */
     for (ebone_iter = arm->edbo->first; ebone_iter && ebone_iter != ebone_first_dupe;
          ebone_iter = ebone_iter->next) {
@@ -1247,8 +1250,8 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
              */
 
             if (ebone->head[axis] != 0.0f) {
-              /* The mirrored bone doesn't start on the mirror axis, so assume that this one should
-               * not be connected to the old parent */
+              /* The mirrored bone doesn't start on the mirror axis, so assume that this one
+               * should not be connected to the old parent */
               ebone->flag &= ~BONE_CONNECTED;
             }
           }
