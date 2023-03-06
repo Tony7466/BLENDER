@@ -802,14 +802,10 @@ void USDMaterialReader::convert_usd_primvar_reader_float2(
   
   if (varname_input) {
     pxr::VtValue varname_val;
-    if (varname_input.Get(&varname_val)) {
-      std::string varname;
-      if (varname_val.IsHolding<std::string>()) {
-        varname = varname_val.Get<std::string>();
-      }
-      if (varname_val.IsHolding<pxr::TfToken>()) {
-        varname = varname_val.Get<pxr::TfToken>().GetString();
-      }
+    /* The varname input may be a string or TfToken, so just cast it to a string.
+     * The Cast function is defined to provide an empty result if it fails. */
+    if (varname_input.Get(&varname_val) && varname_val.CanCastToTypeid(typeid(std::string))) {
+      std::string varname = varname_val.Cast<std::string>().Get<std::string>();
       if (!varname.empty()) {
         NodeShaderUVMap *storage = (NodeShaderUVMap *)uv_map->storage;
         BLI_strncpy(storage->uv_map, varname.c_str(), sizeof(storage->uv_map));
