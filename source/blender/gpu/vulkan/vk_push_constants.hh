@@ -29,6 +29,7 @@
 namespace blender::gpu {
 class VKShaderInterface;
 class VKUniformBuffer;
+class VKContext;
 
 /**
  * Container to store push constants in a buffer.
@@ -171,21 +172,6 @@ class VKPushConstants : NonCopyable {
   }
 
   /**
-   * When storage type = StorageType::UNIFORM_BUFFER use this method to update the uniform
-   * buffer.
-   *
-   * It must be called just before adding a draw/compute command to the command queue.
-   */
-  void update_uniform_buffer();
-
-  /**
-   * Get a reference to the uniform buffer.
-   *
-   * Only valid when storage type = StorageType::UNIFORM_BUFFER.
-   */
-  VKUniformBuffer &uniform_buffer_get();
-
-  /**
    * Get the reference to the active data.
    *
    * Data can get inactive when push constants are modified, after being added to the command
@@ -237,6 +223,27 @@ class VKPushConstants : NonCopyable {
       dst += 4;
     }
   }
+
+  /**
+   * Update the GPU resources with the latest push constants.
+   */
+  void update(VKContext &context);
+
+ private:
+  /**
+   * When storage type = StorageType::UNIFORM_BUFFER use this method to update the uniform
+   * buffer.
+   *
+   * It must be called just before adding a draw/compute command to the command queue.
+   */
+  void update_uniform_buffer();
+
+  /**
+   * Get a reference to the uniform buffer.
+   *
+   * Only valid when storage type = StorageType::UNIFORM_BUFFER.
+   */
+  VKUniformBuffer &uniform_buffer_get();
 };
 
 }  // namespace blender::gpu
