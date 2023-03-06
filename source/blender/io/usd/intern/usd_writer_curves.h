@@ -23,9 +23,8 @@ class USDCurvesWriter : public USDAbstractWriter {
   void assign_materials(const HierarchyContext &context, pxr::UsdGeomCurves usd_curve);
 
  private:
-  std::unique_ptr<Curves> converted_curves_;
   pxr::UsdGeomCurves DefineUsdGeomBasisCurves(pxr::VtValue curve_basis, bool cyclic, bool cubic);
-  
+
   void set_writer_attributes(pxr::UsdGeomCurves &usd_curves,
                              const pxr::VtArray<pxr::GfVec3f> verts,
                              const pxr::VtIntArray control_point_counts,

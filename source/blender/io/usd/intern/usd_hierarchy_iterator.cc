@@ -18,7 +18,6 @@
 
 #include <pxr/base/tf/stringUtils.h>
 
-#include "BKE_curve_legacy_convert.hh"
 #include "BKE_duplilist.h"
 
 #include "BLI_assert.h"
@@ -108,13 +107,7 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const Hierarch
     case OB_MBALL:
       data_writer = new USDMetaballWriter(usd_export_context);
       break;
-    case OB_CURVES_LEGACY: {
-      const Curve *legacy_curve = static_cast<Curve *>(context->object->data);
-      std::unique_ptr<Curves> curves = std::unique_ptr<Curves>(
-          bke::curve_legacy_to_curves(*legacy_curve));
-      data_writer = new USDCurvesWriter(usd_export_context, std::move(curves));
-      break;
-    }
+    case OB_CURVES_LEGACY:
     case OB_CURVES:
       data_writer = new USDCurvesWriter(usd_export_context);
       break;

@@ -13,6 +13,7 @@
 #include "usd_hierarchy_iterator.h"
 #include "usd_writer_curves.h"
 
+#include "BKE_curve_legacy_convert.hh"
 #include "BKE_curves.hh"
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
@@ -24,22 +25,12 @@
 
 namespace blender::io::usd {
 
-USDCurvesWriter::USDCurvesWriter(const USDExporterContext &ctx)
-    : USDAbstractWriter(ctx), converted_curves_(nullptr)
-{
-}
-
-USDCurvesWriter::USDCurvesWriter(const USDExporterContext &ctx,
-                                 std::unique_ptr<Curves> converted_legacy_curves)
-    : USDAbstractWriter(ctx), converted_curves_(std::move(converted_legacy_curves))
+USDCurvesWriter::USDCurvesWriter(const USDExporterContext &ctx) : USDAbstractWriter(ctx)
 {
 }
 
 USDCurvesWriter::~USDCurvesWriter()
 {
-  if (converted_curves_) {
-    BKE_id_free(nullptr, converted_curves_.release());
-  }
 }
 
 pxr::UsdGeomCurves USDCurvesWriter::DefineUsdGeomBasisCurves(pxr::VtValue curve_basis,
@@ -359,11 +350,25 @@ void USDCurvesWriter::set_writer_attributes(pxr::UsdGeomCurves &usd_curves,
 
 void USDCurvesWriter::do_write(HierarchyContext &context)
 {
+  Curves *curves;
+  std::unique_ptr<Curves> converted_curves;
 
-  const Curves *curve = converted_curves_ ? converted_curves_.get() :
-                                            static_cast<Curves *>(context.object->data);
+  switch (context.object->type) {
+    case OB_CURVES_LEGACY: {
+      const Curve *legacy_curve = static_cast<Curve *>(context.object->data);
+      converted_curves = std::unique_ptr<Curves>(bke::curve_legacy_to_curves(*legacy_curve));
+      curves = converted_curves.get();
+      break;
+    }
+    case OB_CURVES:
+      curves = static_cast<Curves *>(context.object->data);
+      break;
+    default:
+      BLI_assert_unreachable();
+      return;
+  }
 
-  const bke::CurvesGeometry &geometry = curve->geometry.wrap();
+  const bke::CurvesGeometry &geometry = curves->geometry.wrap();
   if (geometry.points_num() == 0) {
     return;
   }
@@ -448,6 +453,10 @@ void USDCurvesWriter::do_write(HierarchyContext &context)
   set_writer_attributes(usd_curves, verts, control_point_counts, widths, timecode, interpolation);
 
   assign_materials(context, usd_curves);
+
+  if (converted_curves) {
+    BKE_id_free(nullptr, converted_curves.release());
+  }
 }
 
 void USDCurvesWriter::assign_materials(const HierarchyContext &context,
