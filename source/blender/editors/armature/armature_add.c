@@ -1132,6 +1132,9 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
           /* if the name matches, we don't have the potential to be mirrored, just skip */
           ebone_iter->flag &= ~(BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
         }
+        else if (STREQ(name_flip, ebone_iter->name) && (!is_selected)) {
+          continue;
+        }
         else {
           EditBone *ebone = ED_armature_ebone_find_name(arm->edbo, name_flip);
           if (ebone) {
@@ -1180,6 +1183,7 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
             }
           }
           else {
+            // select ebone if not availe at the other side but contains .L or .R
             ebone_iter->flag |= (BONE_SELECTED | BONE_TIPSEL | BONE_ROOTSEL);
           }
         }
