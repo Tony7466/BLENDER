@@ -450,11 +450,6 @@ void USDCurvesWriter::do_write(HierarchyContext &context)
   assign_materials(context, usd_curves);
 }
 
-bool USDCurvesWriter::check_is_animated(const HierarchyContext &) const
-{
-  return true;
-}
-
 void USDCurvesWriter::assign_materials(const HierarchyContext &context,
                                        pxr::UsdGeomCurves usd_curve)
 {
