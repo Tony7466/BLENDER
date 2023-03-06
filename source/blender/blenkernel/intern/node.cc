@@ -2174,7 +2174,7 @@ bool nodeIsDanglingReroute(const bNodeTree *ntree, const bNode *node)
     if (links.is_empty()) {
       return true;
     }
-    const bNodeLink &link = *links[0];
+    const bNodeLink &link = *links.first();
     if (!link.is_available()) {
       return false;
     }
