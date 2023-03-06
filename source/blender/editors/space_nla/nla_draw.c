@@ -539,11 +539,11 @@ static void nla_draw_strip(SpaceNla *snla,
   }
   else if (strip->flag & NLASTRIP_FLAG_ACTIVE) {
     /* strip should appear 'sunken', so draw a light border around it */
-    color[0] = color[1] = color[2] = 0.0f; /* FIXME: hardcoded temp-hack colors */
+    color[0] = color[1] = color[2] = 1.0f; /* FIXME: hardcoded temp-hack colors */
   }
   else {
     /* strip should appear to stand out, so draw a dark border around it */
-    color[0] = color[1] = color[2] = 1.0f; /* FIXME: or 1.0f ?? */
+    color[0] = color[1] = color[2] = 0.0f; /* FIXME: or 1.0f ?? */
   }
 
   /* draw outline
