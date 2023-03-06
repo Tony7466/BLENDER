@@ -69,22 +69,7 @@ void VKBackend::compute_dispatch(int groups_x_len, int groups_y_len, int groups_
   VKDescriptorSetTracker &descriptor_set = pipeline.descriptor_set_get();
   VKPushConstants &push_constants = pipeline.push_constants_get();
 
-  /* Update push constants based on their storage type.*/
-  switch (push_constants.layout_get().storage_type_get()) {
-    case VKPushConstants::StorageType::NONE:
-      break;
-
-    case VKPushConstants::StorageType::PUSH_CONSTANTS:
-      command_buffer.push_constants(
-          push_constants, shader->vk_pipeline_layout_get(), VK_SHADER_STAGE_ALL);
-      break;
-
-    case VKPushConstants::StorageType::UNIFORM_BUFFER:
-      push_constants.update_uniform_buffer();
-      descriptor_set.bind(*push_constants.uniform_buffer_get(),
-                          push_constants.layout_get().descriptor_set_location_get());
-      break;
-  }
+  push_constants.update(context);
   descriptor_set.update(context);
   command_buffer.bind(*descriptor_set.active_descriptor_set(),
                       shader->vk_pipeline_layout_get(),

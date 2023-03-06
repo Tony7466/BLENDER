@@ -9,6 +9,7 @@
 #include "vk_backend.hh"
 #include "vk_context.hh"
 #include "vk_memory_layout.hh"
+#include "vk_shader.hh"
 #include "vk_shader_interface.hh"
 #include "vk_storage_buffer.hh"
 #include "vk_uniform_buffer.hh"
@@ -127,6 +128,31 @@ VKPushConstants &VKPushConstants::operator=(VKPushConstants &&other)
   other.data_ = nullptr;
 
   return *this;
+}
+
+void VKPushConstants::update(VKContext &context)
+{
+  VKShader *shader = static_cast<VKShader *>(context.shader);
+  VKCommandBuffer &command_buffer = context.command_buffer_get();
+  VKPipeline &pipeline = shader->pipeline_get();
+  BLI_assert_msg(&pipeline.push_constants_get() == this,
+                 "Invalid state detected. Push constants doesn't belong to the active shader of "
+                 "the given context.");
+  VKDescriptorSetTracker &descriptor_set = pipeline.descriptor_set_get();
+
+  switch (layout_get().storage_type_get()) {
+    case VKPushConstants::StorageType::NONE:
+      break;
+
+    case VKPushConstants::StorageType::PUSH_CONSTANTS:
+      command_buffer.push_constants(*this, shader->vk_pipeline_layout_get(), VK_SHADER_STAGE_ALL);
+      break;
+
+    case VKPushConstants::StorageType::UNIFORM_BUFFER:
+      update_uniform_buffer();
+      descriptor_set.bind(*uniform_buffer_get(), layout_get().descriptor_set_location_get());
+      break;
+  }
 }
 
 void VKPushConstants::update_uniform_buffer()

@@ -29,6 +29,7 @@
 namespace blender::gpu {
 class VKShaderInterface;
 class VKUniformBuffer;
+class VKContext;
 
 /**
  * Container to store push constants in a buffer.
@@ -171,21 +172,6 @@ class VKPushConstants : ResourceTracker<VKUniformBuffer> {
   }
 
   /**
-   * When storage type = StorageType::UNIFORM_BUFFER use this method to update the uniform
-   * buffer.
-   *
-   * It must be called just before adding a draw/compute command to the command queue.
-   */
-  void update_uniform_buffer();
-
-  /**
-   * Get a reference to the uniform buffer.
-   *
-   * Only valid when storage type = StorageType::UNIFORM_BUFFER.
-   */
-  std::unique_ptr<VKUniformBuffer> &uniform_buffer_get();
-
-  /**
    * Part of Resource Tracking API is called when new resource is needed.
    */
   std::unique_ptr<VKUniformBuffer> create_resource(VKContext &context) override;
@@ -244,6 +230,27 @@ class VKPushConstants : ResourceTracker<VKUniformBuffer> {
     }
     is_dirty_ = true;
   }
+
+  /**
+   * Update the GPU resources with the latest push constants.
+   */
+  void update(VKContext &context);
+
+ private:
+  /**
+   * When storage type = StorageType::UNIFORM_BUFFER use this method to update the uniform
+   * buffer.
+   *
+   * It must be called just before adding a draw/compute command to the command queue.
+   */
+  void update_uniform_buffer();
+
+  /**
+   * Get a reference to the uniform buffer.
+   *
+   * Only valid when storage type = StorageType::UNIFORM_BUFFER.
+   */
+  std::unique_ptr<VKUniformBuffer> &uniform_buffer_get();
 };
 
 }  // namespace blender::gpu

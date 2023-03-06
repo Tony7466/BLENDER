@@ -12,6 +12,9 @@ namespace blender::gpu {
 
 void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
 {
+  static char PUSH_CONSTANTS_FALLBACK_NAME[] = "push_constants_fallback";
+  static size_t PUSH_CONSTANTS_FALLBACK_NAME_LEN = strlen(PUSH_CONSTANTS_FALLBACK_NAME);
+
   using namespace blender::gpu::shader;
 
   attr_len_ = 0;
@@ -140,7 +143,7 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
   int32_t push_constant_descriptor_set_location = -1;
   if (push_constants_storage_type == VKPushConstants::StorageType::UNIFORM_BUFFER) {
     push_constant_descriptor_set_location = descriptor_set_location++;
-    const ShaderInput *push_constant_input = ubo_get(PUSH_CONSTANTS_FALLBACK_NAME.c_str());
+    const ShaderInput *push_constant_input = ubo_get(PUSH_CONSTANTS_FALLBACK_NAME);
     descriptor_set_location_update(push_constant_input, push_constants_fallback_location);
   }
   push_constants_layout_.init(

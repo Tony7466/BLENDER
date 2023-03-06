@@ -11,8 +11,6 @@
 
 #include "vk_common.hh"
 
-#include "vk_mem_alloc.h"
-
 namespace blender::gpu {
 class VKContext;
 
