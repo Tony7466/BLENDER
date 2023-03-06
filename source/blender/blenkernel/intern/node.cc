@@ -2524,55 +2524,49 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node)
   /* redirect downstream links */
   LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, &ntree->links) {
     /* do we have internal link? */
-    if (link->fromnode == node) {
-      if (link->fromsock->link) {
-        /* get the upstream input link */
-        bNodeLink *fromlink = link->fromsock->link->fromsock->link;
-        /* skip the node */
-        if (fromlink) {
-          if (link->tosock->flag & SOCK_MULTI_INPUT) {
-            /* remove the link that would be the same as the relinked one */
-            LISTBASE_FOREACH_MUTABLE (bNodeLink *, link_to_compare, &ntree->links) {
-              if (link_to_compare->fromsock == fromlink->fromsock &&
-                  link_to_compare->tosock == link->tosock) {
-                adjust_multi_input_indices_after_removed_link(
-                    ntree, link_to_compare->tosock, link_to_compare->multi_input_socket_index);
-                duplicate_links_to_remove.append_non_duplicates(link_to_compare);
-              }
-            }
-          }
-          link->fromnode = fromlink->fromnode;
-          link->fromsock = fromlink->fromsock;
+    if (link->fromnode != node) {
+      continue;
+    }
 
-          /* if the up- or downstream link is invalid,
-           * the replacement link will be invalid too.
-           */
-          if (!(fromlink->flag & NODE_LINK_VALID)) {
-            link->flag &= ~NODE_LINK_VALID;
-          }
+    bNodeLink *internal_link = link->fromsock->link;
+    bNodeLink *fromlink = internal_link ? internal_link->fromsock->link : nullptr;
 
-          if (fromlink->flag & NODE_LINK_MUTED) {
-            link->flag |= NODE_LINK_MUTED;
-          }
-
-          BKE_ntree_update_tag_link_changed(ntree);
-        }
-        else {
-          if (link->tosock->flag & SOCK_MULTI_INPUT) {
-            adjust_multi_input_indices_after_removed_link(
-                ntree, link->tosock, link->multi_input_socket_index);
-          }
-          nodeRemLink(ntree, link);
-        }
+    if (fromlink == nullptr) {
+      if (link->tosock->flag & SOCK_MULTI_INPUT) {
+        adjust_multi_input_indices_after_removed_link(
+            ntree, link->tosock, link->multi_input_socket_index);
       }
-      else {
-        if (link->tosock->flag & SOCK_MULTI_INPUT) {
+      nodeRemLink(ntree, link);
+      continue;
+    }
+
+    if (link->tosock->flag & SOCK_MULTI_INPUT) {
+      /* remove the link that would be the same as the relinked one */
+      LISTBASE_FOREACH_MUTABLE (bNodeLink *, link_to_compare, &ntree->links) {
+        if (link_to_compare->fromsock == fromlink->fromsock &&
+            link_to_compare->tosock == link->tosock) {
           adjust_multi_input_indices_after_removed_link(
-              ntree, link->tosock, link->multi_input_socket_index);
-        };
-        nodeRemLink(ntree, link);
+              ntree, link_to_compare->tosock, link_to_compare->multi_input_socket_index);
+          duplicate_links_to_remove.append_non_duplicates(link_to_compare);
+        }
       }
     }
+
+    link->fromnode = fromlink->fromnode;
+    link->fromsock = fromlink->fromsock;
+
+    /* if the up- or downstream link is invalid,
+     * the replacement link will be invalid too.
+     */
+    if (!(fromlink->flag & NODE_LINK_VALID)) {
+      link->flag &= ~NODE_LINK_VALID;
+    }
+
+    if (fromlink->flag & NODE_LINK_MUTED) {
+      link->flag |= NODE_LINK_MUTED;
+    }
+
+    BKE_ntree_update_tag_link_changed(ntree);
   }
 
   for (bNodeLink *link : duplicate_links_to_remove) {
