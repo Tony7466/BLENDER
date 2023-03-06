@@ -59,8 +59,9 @@ def url_prefill_from_blender(*, addon_info=None):
         "\n"
     )
 
-    form_number = 2 if addon_info else 1
-    return (
-        "https://developer.blender.org/maniphest/task/edit/form/%i?description=" % form_number +
-        urllib.parse.quote(fh.getvalue())
-    )
+    form_template = "?template=.gitea/issue_template/bug.yaml&field:body="
+    if addon_info:
+        url = "https://projects.blender.org/blender/blender-addons/issues/new"
+    else:
+        url = "https://projects.blender.org/blender/blender/issues/new"
+    return (url + form_template + urllib.parse.quote(fh.getvalue()))
