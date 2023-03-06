@@ -147,13 +147,13 @@ bool VKTexture::allocate()
   VKContext &context = *VKContext::get();
   VkImageCreateInfo image_info = {};
   image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-  image_info.imageType = VK_IMAGE_TYPE_2D; //to_vk_image_type(type_);
+  image_info.imageType = to_vk_image_type(type_);
   image_info.extent.width = extent[0];
   image_info.extent.height = extent[1];
   image_info.extent.depth = extent[2];
   image_info.mipLevels = 1;
   image_info.arrayLayers = 1;
-  image_info.format =  to_vk_format(format_);
+  image_info.format = to_vk_format(format_);
   image_info.tiling = VK_IMAGE_TILING_LINEAR;
   image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   image_info.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
@@ -206,8 +206,7 @@ bool VKTexture::allocate()
   VkImageViewCreateInfo image_view_info = {};
   image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
   image_view_info.image = vk_image_;
-  image_view_info.viewType = VK_IMAGE_VIEW_TYPE_1D;
-  //to_vk_image_view_type(type_);
+  image_view_info.viewType = to_vk_image_view_type(type_);
   image_view_info.format = to_vk_format(format_);
   image_view_info.components = to_vk_component_mapping(format_);
   image_view_info.subresourceRange.aspectMask = to_vk_image_aspect_flag_bits(format_);

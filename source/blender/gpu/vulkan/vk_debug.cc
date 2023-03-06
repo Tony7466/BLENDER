@@ -414,39 +414,9 @@ void raise_vk_error(const char *info){
                                  VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
                                  VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT,
                                  &cbdata);
-  
-#if 0
-    void{
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT = 0x00000001,
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT = 0x00000010,
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT = 0x00000100,
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT = 0x00001000,
-    
-typedef enum VkDebugUtilsMessageTypeFlagBitsEXT {
-  VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT = 0x00000001,
-  VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT = 0x00000002,
-  VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT = 0x00000004,
-  // Provided by VK_EXT_device_address_binding_report
-  VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT = 0x00000008,
-} VkDebugUtilsMessageTypeFlagBitsEXT;
 
-      typedef struct VkDebugUtilsMessengerCallbackDataEXT {
-        VkStructureType sType;
-        const void *pNext;
-        VkDebugUtilsMessengerCallbackDataFlagsEXT flags;
-        const char *pMessageIdName;
-        int32_t messageIdNumber;
-        const char *pMessage;
-        uint32_t queueLabelCount;
-        const VkDebugUtilsLabelEXT *pQueueLabels;
-        uint32_t cmdBufLabelCount;
-        const VkDebugUtilsLabelEXT *pCmdBufLabels;
-        uint32_t objectCount;
-        const VkDebugUtilsObjectNameInfoEXT *pObjects;
-      } VkDebugUtilsMessengerCallbackDataEXT;
-      #endif
 
-    }
+}
 void check_vk_resources(const char *info){};
 
 }  // namespace debug
