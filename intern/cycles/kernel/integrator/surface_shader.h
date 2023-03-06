@@ -336,7 +336,7 @@ ccl_device_inline
 
 /* Randomly sample a BSSRDF or BSDF proportional to ShaderClosure.sample_weight. */
 ccl_device_inline ccl_private const ShaderClosure *surface_shader_bsdf_bssrdf_pick(
-    ccl_private const ShaderData *ccl_restrict sd, ccl_private float2 *rand_bsdf)
+    ccl_private const ShaderData *ccl_restrict sd, ccl_private float3 *rand_bsdf)
 {
   int sampled = 0;
 
@@ -352,7 +352,7 @@ ccl_device_inline ccl_private const ShaderClosure *surface_shader_bsdf_bssrdf_pi
       }
     }
 
-    float r = (*rand_bsdf).x * sum;
+    float r = (*rand_bsdf).z * sum;
     float partial_sum = 0.0f;
 
     for (int i = 0; i < sd->num_closure; i++) {
@@ -365,7 +365,7 @@ ccl_device_inline ccl_private const ShaderClosure *surface_shader_bsdf_bssrdf_pi
           sampled = i;
 
           /* Rescale to reuse for direction sample, to better preserve stratification. */
-          (*rand_bsdf).x = (r - partial_sum) / sc->sample_weight;
+          (*rand_bsdf).z = (r - partial_sum) / sc->sample_weight;
           break;
         }
 
@@ -407,7 +407,7 @@ ccl_device int surface_shader_bsdf_guided_sample_closure(KernelGlobals kg,
                                                          IntegratorState state,
                                                          ccl_private ShaderData *sd,
                                                          ccl_private const ShaderClosure *sc,
-                                                         const float2 rand_bsdf,
+                                                         const float3 rand_bsdf,
                                                          ccl_private BsdfEval *bsdf_eval,
                                                          ccl_private float3 *wo,
                                                          ccl_private float *bsdf_pdf,
@@ -445,7 +445,7 @@ ccl_device int surface_shader_bsdf_guided_sample_closure(KernelGlobals kg,
 
   if (sample_guiding) {
     /* Sample guiding distribution. */
-    guide_pdf = guiding_bsdf_sample(kg, state, rand_bsdf, wo);
+    guide_pdf = guiding_bsdf_sample(kg, state, float3_to_float2(rand_bsdf), wo);
     *bsdf_pdf = 0.0f;
 
     if (guide_pdf != 0.0f) {
@@ -487,11 +487,10 @@ ccl_device int surface_shader_bsdf_guided_sample_closure(KernelGlobals kg,
     *bsdf_pdf = 0.0f;
     label = bsdf_sample(kg,
                         state,
-                        path_flag,
                         sd,
                         sc,
-                        rand_bsdf.x,
-                        rand_bsdf.y,
+                        INTEGRATOR_STATE(state, path, flag),
+                        rand_bsdf,
                         &eval,
                         wo,
                         unguided_bsdf_pdf,
@@ -534,10 +533,10 @@ ccl_device int surface_shader_bsdf_guided_sample_closure(KernelGlobals kg,
  * BSDFs combined using MIS. */
 ccl_device int surface_shader_bsdf_sample_closure(KernelGlobals kg,
                                                   ConstIntegratorState state,
-                                                  const uint32_t path_flag,
                                                   ccl_private ShaderData *sd,
                                                   ccl_private const ShaderClosure *sc,
-                                                  const float2 rand_bsdf,
+                                                  const int path_flag,
+                                                  const float3 rand_bsdf,
                                                   ccl_private BsdfEval *bsdf_eval,
                                                   ccl_private float3 *wo,
                                                   ccl_private float *pdf,
@@ -551,18 +550,8 @@ ccl_device int surface_shader_bsdf_sample_closure(KernelGlobals kg,
   Spectrum eval = zero_spectrum();
 
   *pdf = 0.0f;
-  label = bsdf_sample(kg,
-                      state,
-                      path_flag,
-                      sd,
-                      sc,
-                      rand_bsdf.x,
-                      rand_bsdf.y,
-                      &eval,
-                      wo,
-                      pdf,
-                      sampled_roughness,
-                      eta);
+  label = bsdf_sample(
+      kg, state, sd, sc, path_flag, rand_bsdf, &eval, wo, pdf, sampled_roughness, eta);
 
   if (*pdf != 0.0f) {
     bsdf_eval_init(bsdf_eval, sc->type, eval * sc->weight);

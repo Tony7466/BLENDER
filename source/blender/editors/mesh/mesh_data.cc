@@ -169,15 +169,15 @@ static void mesh_uv_reset_bmface(BMFace *f, const int cd_loop_uv_offset)
   mesh_uv_reset_array(fuv.data(), f->len);
 }
 
-static void mesh_uv_reset_mface(const MPoly *mp, float2 *mloopuv)
+static void mesh_uv_reset_mface(const MPoly *poly, float2 *mloopuv)
 {
-  Array<float *, BM_DEFAULT_NGON_STACK_SIZE> fuv(mp->totloop);
+  Array<float *, BM_DEFAULT_NGON_STACK_SIZE> fuv(poly->totloop);
 
-  for (int i = 0; i < mp->totloop; i++) {
-    fuv[i] = mloopuv[mp->loopstart + i];
+  for (int i = 0; i < poly->totloop; i++) {
+    fuv[i] = mloopuv[poly->loopstart + i];
   }
 
-  mesh_uv_reset_array(fuv.data(), mp->totloop);
+  mesh_uv_reset_array(fuv.data(), poly->totloop);
 }
 
 void ED_mesh_uv_loop_reset_ex(Mesh *me, const int layernum)
@@ -208,8 +208,8 @@ void ED_mesh_uv_loop_reset_ex(Mesh *me, const int layernum)
     float2 *mloopuv = static_cast<float2 *>(
         CustomData_get_layer_n_for_write(&me->ldata, CD_PROP_FLOAT2, layernum, me->totloop));
 
-    const MPoly *polys = BKE_mesh_polys(me);
-    for (int i = 0; i < me->totpoly; i++) {
+    const blender::Span<MPoly> polys = me->polys();
+    for (const int i : polys.index_range()) {
       mesh_uv_reset_mface(&polys[i], mloopuv);
     }
   }
@@ -399,13 +399,6 @@ int ED_mesh_color_add(
     name = "Col";
   }
 
-  if (const CustomDataLayer *layer = BKE_id_attribute_find(
-          &me->id, me->active_color_attribute, CD_PROP_BYTE_COLOR, ATTR_DOMAIN_CORNER)) {
-    int dummy;
-    const CustomData *data = mesh_customdata_get_type(me, BM_LOOP, &dummy);
-    return CustomData_get_named_layer(data, CD_PROP_BYTE_COLOR, layer->name);
-  }
-
   CustomDataLayer *layer = BKE_id_attribute_new(
       &me->id, name, CD_PROP_BYTE_COLOR, ATTR_DOMAIN_CORNER, reports);
 
@@ -452,6 +445,7 @@ bool ED_mesh_color_ensure(Mesh *me, const char *name)
   }
 
   BKE_id_attributes_active_color_set(&me->id, unique_name);
+  BKE_id_attributes_default_color_set(&me->id, unique_name);
   BKE_mesh_tessface_clear(me);
   DEG_id_tag_update(&me->id, 0);
 
@@ -578,6 +572,9 @@ static int mesh_uv_texture_remove_exec(bContext *C, wmOperator *op)
     ED_paint_proj_mesh_data_check(scene, ob, nullptr, nullptr, nullptr, nullptr);
     WM_event_add_notifier(C, NC_SCENE | ND_TOOLSETTINGS, nullptr);
   }
+
+  DEG_id_tag_update(&me->id, ID_RECALC_GEOMETRY);
+  WM_main_add_notifier(NC_GEOM | ND_DATA, me);
 
   return OPERATOR_FINISHED;
 }
