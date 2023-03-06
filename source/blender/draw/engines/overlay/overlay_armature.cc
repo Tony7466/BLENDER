@@ -2022,18 +2022,16 @@ static void pchan_draw_ik_lines(ArmatureDrawContext *ctx,
 
 static void draw_bone_bone_line(ArmatureDrawContext *ctx,
                                 const float bone_head[3],
-                                const float bone_tail[3],
+                                const float /*bone_tail*/[3],
                                 const float parent_head[3],
                                 const float parent_tail[3],
                                 const float axes_position)
 {
-  float bone_pos[3];
-  interp_v3_v3v3(bone_pos, bone_head, bone_tail, axes_position);
-
+  /* Only interpolate the parent position. */
   float parent_pos[3];
   interp_v3_v3v3(parent_pos, parent_head, parent_tail, axes_position);
 
-  drw_shgroup_bone_relationship_lines(ctx, bone_pos, parent_pos);
+  drw_shgroup_bone_relationship_lines(ctx, bone_head, parent_pos);
 }
 
 static void draw_bone_relations(ArmatureDrawContext *ctx,
