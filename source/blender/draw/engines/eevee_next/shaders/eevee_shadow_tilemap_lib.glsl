@@ -98,7 +98,12 @@ ShadowTileData shadow_tile_load(usampler2D tilemaps_tx, ivec2 tile_co, int tilem
   return shadow_tile_unpack(tile_data);
 }
 
-/* This function should be the inverse of ShadowDirectional::coverage_get(). */
+/**
+ * This function should be the inverse of ShadowDirectional::coverage_get().
+ *
+ * \a lP shading point position in light space relative to the view position
+ * (shadow_world_to_local - light._position).
+ */
 int shadow_directional_level(LightData light, vec3 lP)
 {
   float lod;
@@ -143,6 +148,9 @@ ivec2 shadow_decompress_grid_offset(eLightType light_type, ivec2 offset, int lev
   }
 }
 
+/**
+ * \a lP shading point position in light space (shadow_world_to_local).
+ */
 ShadowCoordinates shadow_directional_coordinates_at_level(LightData light, vec3 lP, int level)
 {
   ShadowCoordinates ret;
@@ -168,13 +176,10 @@ ShadowCoordinates shadow_directional_coordinates_at_level(LightData light, vec3 
 }
 
 /**
- * \a lP shading point position in light space (world unit) and translated to camera position
- * snapped to smallest clipmap level.
+ * \a lP shading point position in light space (shadow_world_to_local).
  */
 ShadowCoordinates shadow_directional_coordinates(LightData light, vec3 lP)
 {
-  /* TODO (Miguel Pozo): This is somewhat confusing, lP is used for P in light space, but also for
-   * P in light oriented world space ? */
   int level = shadow_directional_level(light, lP - light._position);
   return shadow_directional_coordinates_at_level(light, lP, level);
 }
