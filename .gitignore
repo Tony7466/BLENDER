@@ -65,3 +65,13 @@ waveletNoiseTile.bin
 /release/datafiles/locale/
 /release/scripts/addons_contrib/
 /source/tools/
+
+# Build files for Visual Studio.
+/out/
+CMakeSettings.json
+CMakePresets.json
+CppProperties.json
+
+# Build files for Visual Studio Code.
+/build/
+c_cpp_properties.json
