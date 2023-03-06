@@ -13,6 +13,9 @@
 
 #include "glog/logging.h"
 #include "BKE_appdir.h"
+#include "BLI_string.h"
+#include "BLI_fileops.h"
+#include "BLI_path_util.h"
 
 #include "finalEngine.h"
 #include "viewportEngine.h"
@@ -22,11 +25,50 @@ using namespace std;
 
 namespace blender::render::hydra {
 
+void setup_usd_mtlx_environment()
+{
+  /* PXR_MTLX_STDLIB_SEARCH_PATHS - path to the MaterialX standard library
+   * USD's MaterialX code expects to be set. */
+
+  static bool mtlx_env_set = false;
+  if (mtlx_env_set) {
+    return;
+  }
+  mtlx_env_set = true;
+
+  char stdlib_path[FILE_MAX] = "";
+  size_t stdlib_path_len = BLI_path_join(
+      stdlib_path, sizeof(stdlib_path), BKE_appdir_program_dir(), "materialx", "libraries");
+  if (stdlib_path_len == 0 || !BLI_exists(stdlib_path)) {
+    return;
+  }
+
+#ifdef _WIN32
+#  define PATH_SEP ";"
+#else
+#  define PATH_SEP ":"
+#endif
+
+  const char *env_var_name = "PXR_MTLX_STDLIB_SEARCH_PATHS";
+  const char *env_var = BLI_getenv(env_var_name);
+  if (!env_var) {
+    BLI_setenv(env_var_name, stdlib_path);
+  }
+  else {
+    size_t env_var_len = strlen(env_var);
+    std::string combined(stdlib_path_len + 1 + env_var_len, '\0');
+    BLI_snprintf(combined.data(), combined.capacity(), "%s" PATH_SEP "%s", stdlib_path, env_var);
+    BLI_setenv(env_var_name, combined.c_str());
+  }
+}
+
 static PyObject *init_func(PyObject * /*self*/, PyObject *args)
 {
   LOG(INFO) << "init_func";
 
   pxr::PlugRegistry::GetInstance().RegisterPlugins(string(BKE_appdir_program_dir()) + "/blender.shared/usd");
+
+  setup_usd_mtlx_environment();
 
   Py_RETURN_NONE;
 }
