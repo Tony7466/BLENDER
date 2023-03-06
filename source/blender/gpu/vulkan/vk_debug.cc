@@ -23,24 +23,24 @@
 #include  "GHOST_C-api.h"
 
 
-#if _WIN32
-#  define WINDOWS_LEAN_AND_MEAN
-#  include <windows.h>
-
-HMODULE  VulkanLibary;
-#  define VulkanLoadLibrary LoadLibraryA
-#  define VulkanLoadProcAddr GetProcAddress
-
-#  define VULKANLIB "vulkan-1.dll"
-#endif
-
-#include <sstream>
-
-
 static CLG_LogRef LOG = {"gpu.debug.vulkan"};
 
+/* Function pointer definitions for use only in this file.*/
+#if defined(VK_EXT_debug_utils)
+PFN_vkCreateDebugUtilsMessengerEXT  pfvkCreateDebugUtilsMessengerEXT  = nullptr;
+PFN_vkDestroyDebugUtilsMessengerEXT pfvkDestroyDebugUtilsMessengerEXT = nullptr;
+PFN_vkSubmitDebugUtilsMessageEXT pfvkSubmitDebugUtilsMessageEXT = nullptr;
+PFN_vkCmdBeginDebugUtilsLabelEXT pfvkCmdBeginDebugUtilsLabelEXT =nullptr;
+PFN_vkCmdEndDebugUtilsLabelEXT pfvkCmdEndDebugUtilsLabelEXT = nullptr;
+PFN_vkCmdInsertDebugUtilsLabelEXT pfvkCmdInsertDebugUtilsLabelEXT = nullptr;
+PFN_vkQueueBeginDebugUtilsLabelEXT pfvkQueueBeginDebugUtilsLabelEXT = nullptr;
+PFN_vkQueueEndDebugUtilsLabelEXT pfvkQueueEndDebugUtilsLabelEXT = nullptr;
+PFN_vkQueueInsertDebugUtilsLabelEXT pfvkQueueInsertDebugUtilsLabelEXT = nullptr;
+PFN_vkSetDebugUtilsObjectNameEXT pfvkSetDebugUtilsObjectNameEXT = nullptr;
+PFN_vkSetDebugUtilsObjectTagEXT pfvkSetDebugUtilsObjectTagEXT = nullptr;
+#endif /* defined(VK_EXT_debug_utils) */
 
-PFN_vkGetInstanceProcAddr pfvkGetInstanceProcAddr;
+
 
 namespace blender {
 namespace gpu {
@@ -84,31 +84,20 @@ namespace blender {
 namespace gpu {
 namespace debug {
 
-
-
-VkResult initVulkanDLL()
-  {
-
-    HMODULE module = VulkanLoadLibrary(VULKANLIB);
-
-    if (!module) {
-      return VK_ERROR_INITIALIZATION_FAILED;
-    }
-
-    pfvkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)(void (*)(void))VulkanLoadProcAddr(module, "vkGetInstanceProcAddr");
-
-    return VK_SUCCESS;
-
-}
+/**
+ * A function that loads a function for an instance of Vulkan.
+ * Each extension must be enabled in the instance to be loaded here.
+ * DLL load seems unnecessary for now.
+ */
 static void BlenderVulkanLoadInstance(VkInstance context)
 {
 #define load vkGetInstanceProcAddr
 
-#if defined(VK_EXT_debug_utils) 
+#if defined(VK_EXT_debug_utils)
   pfvkCmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT)load(
       context, "vkCmdBeginDebugUtilsLabelEXT");
-  pfvkCmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)load(context,
-                                                                    "vkCmdEndDebugUtilsLabelEXT");
+  pfvkCmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)load(
+      context, "vkCmdEndDebugUtilsLabelEXT");
   pfvkCmdInsertDebugUtilsLabelEXT = (PFN_vkCmdInsertDebugUtilsLabelEXT)load(
       context, "vkCmdInsertDebugUtilsLabelEXT");
   pfvkCreateDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT)load(
@@ -130,7 +119,6 @@ static void BlenderVulkanLoadInstance(VkInstance context)
 #endif /* defined(VK_EXT_debug_utils) */
 
 #undef load
-
 }
 
 /*If we don't have multiple instances, VKDebuggingTools is Singleton.*/
@@ -149,12 +137,10 @@ vkCreateDebugUtilsMessengerEXT(VkInstance instance,
   return r;
 };
 
-
-
-
-
-/*Supported since Vulkan 1.0. https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VK_EXT_debug_utils.html */
-VKAPI_ATTR VkBool32 VKAPI_CALL debugUtilsCB(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+/*Supported since Vulkan 1.0.
+ * https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VK_EXT_debug_utils.html */
+VKAPI_ATTR VkBool32 VKAPI_CALL
+debugUtilsCB(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
              VkDebugUtilsMessageTypeFlagsEXT messageType,
              const VkDebugUtilsMessengerCallbackDataEXT *callbackData,
              void *userData)
@@ -167,26 +153,25 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugUtilsCB(VkDebugUtilsMessageSeverityFlagBitsE
   }
 
   if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) {
-    printf(  "vk_debug.cc::VERBOSE:: %s\n  %s\n",
-                 callbackData->pMessageIdName,
-                 callbackData->pMessage);
-  }
+      CLOG_INFO(&LOG, 1, " %s\n  %s\n",
+             callbackData->pMessageIdName,
+             callbackData->pMessage);
+    }
   else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
-    printf("vk_debug.cc::INFO: %s\n  %s\n", callbackData->pMessageIdName, callbackData->pMessage);
+    CLOG_INFO(&LOG, 2," %s\n  %s\n", callbackData->pMessageIdName, callbackData->pMessage);
   }
   else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
-    printf("vk_debug.cc::WARNING: %s\n  %s\n", callbackData->pMessageIdName, callbackData->pMessage);
+    CLOG_WARN(&LOG, "%s\n  %s\n", callbackData->pMessageIdName, callbackData->pMessage);
   }
   else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
-    printf("vk_debug.cc::ERROR: %s\n  %s\n", callbackData->pMessageIdName, callbackData->pMessage);
+    CLOG_ERROR(&LOG,"%s\n  %s\n", callbackData->pMessageIdName, callbackData->pMessage);
   }
   else if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT) {
-    printf("vk_debug.cc::GENERAL: %s\n  %s\n", callbackData->pMessageIdName, callbackData->pMessage);
+    CLOG_INFO(&LOG, 1, "%s\n  %s\n", callbackData->pMessageIdName, callbackData->pMessage);
   }
   else {
-    printf("vk_debug.cc::%s\n  %s\n", callbackData->pMessageIdName, callbackData->pMessage);
+    BLI_assert_unreachable();
   }
-
 
   return VK_FALSE;
 }
@@ -208,15 +193,14 @@ static VkResult CreateDebugUtils(VkDebugUtilsMessageSeverityFlagsEXT flag, VKDeb
   dbg_messenger_create_info.pfnUserCallback = debugUtilsCB;
   dbg_messenger_create_info.pUserData = &deb;
   return pfvkCreateDebugUtilsMessengerEXT(
-        deb.instance, &dbg_messenger_create_info, nullptr, &deb.dbgMessenger);
-
+      deb.instance, &dbg_messenger_create_info, nullptr, &deb.dbgMessenger);
 }
 static VkResult DestroyDebugUtils(VKDebuggingTools &deb)
 {
 
   BLI_assert(pfvkDestroyDebugUtilsMessengerEXT);
   pfvkDestroyDebugUtilsMessengerEXT(deb.instance, deb.dbgMessenger, nullptr);
-  
+
   deb.dbgIgnoreMessages.clear();
   deb.dbgMessenger = nullptr;
   deb.instance = VK_NULL_HANDLE;
@@ -226,7 +210,7 @@ static VkResult DestroyDebugUtils(VKDebuggingTools &deb)
 
 static bool CreateDebug(VKDebuggingTools &deb)
 {
-
+  /*Associate flag settings with interfaces?*/
   VkDebugUtilsMessageSeverityFlagsEXT flag = VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
                                              VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
                                              VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
@@ -236,12 +220,13 @@ static bool CreateDebug(VKDebuggingTools &deb)
   CreateDebugUtils(flag, deb);
   return true;
 };
+
 #endif
 
 bool init_vk_callbacks(void *instance)
 {
   CLOG_ENSURE(&LOG);
- 
+
   /*
   One-to-one with instances.
   Currently, we do not assume multiple instances.
@@ -254,13 +239,12 @@ bool init_vk_callbacks(void *instance)
 
   tools.instance = static_cast<VkInstance>(instance);
 
-  BLI_assert( initVulkanDLL() == VK_SUCCESS);
-
   BlenderVulkanLoadInstance(tools.instance);
 
 #if defined(VK_EXT_debug_utils)
   CreateDebug(tools);
 #endif
+
   return true;
 }
 
@@ -272,7 +256,6 @@ void destroy_vk_callbacks()
     DestroyDebugUtils(tools);
   }
 #endif
-
 }
 
 void object_vk_label(VkDevice device, VkObjectType objType, uint64_t obj, const std::string &name)
@@ -416,8 +399,54 @@ void popMarker(VkQueue q)
   }
 }
 
-void init_vk_debug_layer(){};
-void raise_vk_error(const char *info){};
+void raise_vk_error(const char *info){
+
+  static VkDebugUtilsMessengerCallbackDataEXT cbdata;
+  cbdata.sType  = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CALLBACK_DATA_EXT;
+  cbdata.pNext = 0;
+  cbdata.messageIdNumber = 100;
+  cbdata.pMessageIdName = "Raise";
+  cbdata.objectCount = 0;
+  cbdata.flags = 0;
+  cbdata.pObjects = nullptr;
+  cbdata.pMessage = info;
+  pfvkSubmitDebugUtilsMessageEXT(tools.instance,
+                                 VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+                                 VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT,
+                                 &cbdata);
+  
+#if 0
+    void{
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT = 0x00000001,
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT = 0x00000010,
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT = 0x00000100,
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT = 0x00001000,
+    
+typedef enum VkDebugUtilsMessageTypeFlagBitsEXT {
+  VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT = 0x00000001,
+  VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT = 0x00000002,
+  VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT = 0x00000004,
+  // Provided by VK_EXT_device_address_binding_report
+  VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT = 0x00000008,
+} VkDebugUtilsMessageTypeFlagBitsEXT;
+
+      typedef struct VkDebugUtilsMessengerCallbackDataEXT {
+        VkStructureType sType;
+        const void *pNext;
+        VkDebugUtilsMessengerCallbackDataFlagsEXT flags;
+        const char *pMessageIdName;
+        int32_t messageIdNumber;
+        const char *pMessage;
+        uint32_t queueLabelCount;
+        const VkDebugUtilsLabelEXT *pQueueLabels;
+        uint32_t cmdBufLabelCount;
+        const VkDebugUtilsLabelEXT *pCmdBufLabels;
+        uint32_t objectCount;
+        const VkDebugUtilsObjectNameInfoEXT *pObjects;
+      } VkDebugUtilsMessengerCallbackDataEXT;
+      #endif
+
+    }
 void check_vk_resources(const char *info){};
 
 }  // namespace debug
@@ -432,56 +461,6 @@ void GHOST_VulkanInstanceLoad(void *m_instance)
   blender::gpu::debug::init_vk_callbacks(m_instance);
 };
 
-const char *GHOST_VulkanErrorAsString(int64_t result)
-{
-#define FORMAT_ERROR(X) \
-  case X: { \
-    return "" #X; \
-  }
-
-  switch ((VkResult)result) {
-    FORMAT_ERROR(VK_NOT_READY);
-    FORMAT_ERROR(VK_TIMEOUT);
-    FORMAT_ERROR(VK_EVENT_SET);
-    FORMAT_ERROR(VK_EVENT_RESET);
-    FORMAT_ERROR(VK_INCOMPLETE);
-    FORMAT_ERROR(VK_ERROR_OUT_OF_HOST_MEMORY);
-    FORMAT_ERROR(VK_ERROR_OUT_OF_DEVICE_MEMORY);
-    FORMAT_ERROR(VK_ERROR_INITIALIZATION_FAILED);
-    FORMAT_ERROR(VK_ERROR_DEVICE_LOST);
-    FORMAT_ERROR(VK_ERROR_MEMORY_MAP_FAILED);
-    FORMAT_ERROR(VK_ERROR_LAYER_NOT_PRESENT);
-    FORMAT_ERROR(VK_ERROR_EXTENSION_NOT_PRESENT);
-    FORMAT_ERROR(VK_ERROR_FEATURE_NOT_PRESENT);
-    FORMAT_ERROR(VK_ERROR_INCOMPATIBLE_DRIVER);
-    FORMAT_ERROR(VK_ERROR_TOO_MANY_OBJECTS);
-    FORMAT_ERROR(VK_ERROR_FORMAT_NOT_SUPPORTED);
-    FORMAT_ERROR(VK_ERROR_FRAGMENTED_POOL);
-    FORMAT_ERROR(VK_ERROR_UNKNOWN);
-    FORMAT_ERROR(VK_ERROR_OUT_OF_POOL_MEMORY);
-    FORMAT_ERROR(VK_ERROR_INVALID_EXTERNAL_HANDLE);
-    FORMAT_ERROR(VK_ERROR_FRAGMENTATION);
-    FORMAT_ERROR(VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS);
-    FORMAT_ERROR(VK_ERROR_SURFACE_LOST_KHR);
-    FORMAT_ERROR(VK_ERROR_NATIVE_WINDOW_IN_USE_KHR);
-    FORMAT_ERROR(VK_SUBOPTIMAL_KHR);
-    FORMAT_ERROR(VK_ERROR_OUT_OF_DATE_KHR);
-    FORMAT_ERROR(VK_ERROR_INCOMPATIBLE_DISPLAY_KHR);
-    FORMAT_ERROR(VK_ERROR_VALIDATION_FAILED_EXT);
-    FORMAT_ERROR(VK_ERROR_INVALID_SHADER_NV);
-    FORMAT_ERROR(VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT);
-    FORMAT_ERROR(VK_ERROR_NOT_PERMITTED_EXT);
-    FORMAT_ERROR(VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT);
-    FORMAT_ERROR(VK_THREAD_IDLE_KHR);
-    FORMAT_ERROR(VK_THREAD_DONE_KHR);
-    FORMAT_ERROR(VK_OPERATION_DEFERRED_KHR);
-    FORMAT_ERROR(VK_OPERATION_NOT_DEFERRED_KHR);
-    FORMAT_ERROR(VK_PIPELINE_COMPILE_REQUIRED_EXT);
-    default:
-      return "Unknown Error";
-  }
-}
-
 void GHOST_VulkanInstanceUnload()
 {
   blender::gpu::debug::destroy_vk_callbacks();
@@ -489,9 +468,4 @@ void GHOST_VulkanInstanceUnload()
 
 
 
-#if 0
-  void DebugMaster::ignoreDebugMessage(int32_t msgID)
-{
-  dbgIgnoreMessages.insert(msgID);
-}
-#endif
+

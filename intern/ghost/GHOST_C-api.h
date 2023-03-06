@@ -1282,12 +1282,10 @@ void GHOST_GetVulkanBackbuffer(GHOST_WindowHandle windowhandle,
 #  ifdef VULKAN_H_
 
 
+
 /**
- * TODO :: COMMENT
+ * Implement the Load function externally for flexibility in defining Vulkan functions.
  **/
-
-extern const char *GHOST_VulkanErrorAsString(int64_t result);
-
 extern void GHOST_VulkanInstanceLoad(void *r_instance);
 
 extern void GHOST_VulkanInstanceUnload();

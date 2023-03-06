@@ -11,22 +11,6 @@
 #include "gl_debug.hh"
 #include "GHOST_C-api.h"
 
-#if defined(VK_EXT_debug_utils)
-PFN_vkCreateDebugUtilsMessengerEXT  pfvkCreateDebugUtilsMessengerEXT  = nullptr;
-PFN_vkDestroyDebugUtilsMessengerEXT pfvkDestroyDebugUtilsMessengerEXT = nullptr;
-PFN_vkSubmitDebugUtilsMessageEXT pfvkSubmitDebugUtilsMessageEXT = nullptr;
-PFN_vkCmdBeginDebugUtilsLabelEXT pfvkCmdBeginDebugUtilsLabelEXT =nullptr;
-PFN_vkCmdEndDebugUtilsLabelEXT pfvkCmdEndDebugUtilsLabelEXT = nullptr;
-PFN_vkCmdInsertDebugUtilsLabelEXT pfvkCmdInsertDebugUtilsLabelEXT = nullptr;
-PFN_vkQueueBeginDebugUtilsLabelEXT pfvkQueueBeginDebugUtilsLabelEXT = nullptr;
-PFN_vkQueueEndDebugUtilsLabelEXT pfvkQueueEndDebugUtilsLabelEXT = nullptr;
-PFN_vkQueueInsertDebugUtilsLabelEXT pfvkQueueInsertDebugUtilsLabelEXT = nullptr;
-PFN_vkSetDebugUtilsObjectNameEXT pfvkSetDebugUtilsObjectNameEXT = nullptr;
-PFN_vkSetDebugUtilsObjectTagEXT pfvkSetDebugUtilsObjectTagEXT = nullptr;
-#endif /* defined(VK_EXT_debug_utils) */
-
-
-
 
 
 namespace blender {
@@ -35,17 +19,13 @@ namespace debug {
 
 void raise_vk_error(const char *info);
 void check_vk_resources(const char *info);
+
 /**
  * This function needs to be called once per context.
  */
 bool init_vk_callbacks(void *instance);
 void destroy_vk_callbacks();
-/**
- * Initialize a fallback layer (to KHR_debug) that covers only some functions.
- * We override the functions pointers by our own implementation that just checks #glGetError.
- * Some additional functions (not overridable) are covered inside the header using wrappers.
- */
-void init_vk_debug_layer();
+
 
 /* render doc demo => https://
  * github.com/baldurk/renderdoc/blob/52e9404961277d1bb1ed03a376b722c2b91e3762/util/test/demos/vk/vk_test.h#L231
@@ -79,7 +59,7 @@ void popMarker(VkQueue q);
         fprintf(stderr, \
                 "Vulkan Error :: %s failled with %s\n", \
                   name,\
-                GHOST_VulkanErrorAsString(r)); \
+                blender::gpu::to_vk_error_string(r) ); \
     }\
 }}
 
@@ -92,7 +72,6 @@ inline VKAPI_ATTR VkResult VKAPI_CALL func(ARG_LIST(__VA_ARGS__)) \
 }
 
 VK_FUNC_ERROR_CHECK_OVERRIDE(vkCreateInstance,const VkInstanceCreateInfo*, pCreateInfo, const VkAllocationCallbacks* ,pAllocator, VkInstance*, pInstance);
-
 VK_FUNC_ERROR_CHECK_OVERRIDE(vkEnumeratePhysicalDevices , VkInstance, instance, uint32_t*, pPhysicalDeviceCount, VkPhysicalDevice* ,pPhysicalDevices);
 VK_FUNC_ERROR_CHECK_OVERRIDE(vkGetPhysicalDeviceImageFormatProperties , VkPhysicalDevice ,physicalDevice, VkFormat ,format, VkImageType ,type, VkImageTiling, tiling, VkImageUsageFlags, usage, VkImageCreateFlags ,flags, VkImageFormatProperties* ,pImageFormatProperties);
 VK_FUNC_ERROR_CHECK_OVERRIDE(vkCreateDevice , VkPhysicalDevice ,physicalDevice, const VkDeviceCreateInfo* ,pCreateInfo, const VkAllocationCallbacks* ,pAllocator, VkDevice* ,pDevice);
@@ -131,20 +110,13 @@ VK_FUNC_ERROR_CHECK_OVERRIDE(vkGetPipelineCacheData , VkDevice , device, VkPipel
 VK_FUNC_ERROR_CHECK_OVERRIDE(vkMergePipelineCaches , VkDevice , device, VkPipelineCache ,dstCache, uint32_t, srcCacheCount, const VkPipelineCache* ,pSrcCaches);
 VK_FUNC_ERROR_CHECK_OVERRIDE(vkCreateGraphicsPipelines , VkDevice , device, VkPipelineCache, pipelineCache, uint32_t ,createInfoCount, const VkGraphicsPipelineCreateInfo*, pCreateInfos, const VkAllocationCallbacks* ,pAllocator, VkPipeline* ,pPipelines);
 VK_FUNC_ERROR_CHECK_OVERRIDE(vkCreateComputePipelines , VkDevice , device, VkPipelineCache ,pipelineCache, uint32_t ,createInfoCount, const VkComputePipelineCreateInfo*, pCreateInfos, const VkAllocationCallbacks* ,pAllocator, VkPipeline* ,pPipelines);
-
-
 VK_FUNC_ERROR_CHECK_OVERRIDE(vkCreatePipelineLayout , VkDevice , device, const VkPipelineLayoutCreateInfo* ,pCreateInfo, const VkAllocationCallbacks*, pAllocator, VkPipelineLayout* ,pPipelineLayout);
-
 VK_FUNC_ERROR_CHECK_OVERRIDE(vkCreateSampler , VkDevice , device, const VkSamplerCreateInfo* ,pCreateInfo, const VkAllocationCallbacks* ,pAllocator, VkSampler*, pSampler);
-
 VK_FUNC_ERROR_CHECK_OVERRIDE(vkCreateDescriptorSetLayout , VkDevice , device, const VkDescriptorSetLayoutCreateInfo* ,pCreateInfo, const VkAllocationCallbacks* ,pAllocator, VkDescriptorSetLayout* ,pSetLayout);
-
 VK_FUNC_ERROR_CHECK_OVERRIDE(vkCreateDescriptorPool , VkDevice , device, const VkDescriptorPoolCreateInfo*, pCreateInfo, const VkAllocationCallbacks* ,pAllocator, VkDescriptorPool*, pDescriptorPool);
-
 VK_FUNC_ERROR_CHECK_OVERRIDE(vkResetDescriptorPool , VkDevice , device, VkDescriptorPool, descriptorPool, VkDescriptorPoolResetFlags, flags);
 VK_FUNC_ERROR_CHECK_OVERRIDE(vkAllocateDescriptorSets , VkDevice , device, const VkDescriptorSetAllocateInfo* ,pAllocateInfo, VkDescriptorSet* ,pDescriptorSets);
 VK_FUNC_ERROR_CHECK_OVERRIDE(vkFreeDescriptorSets , VkDevice , device, VkDescriptorPool, descriptorPool, uint32_t ,descriptorSetCount, const VkDescriptorSet* ,pDescriptorSets);
-
 VK_FUNC_ERROR_CHECK_OVERRIDE(vkCreateFramebuffer , VkDevice , device, const VkFramebufferCreateInfo*, pCreateInfo, const VkAllocationCallbacks* ,pAllocator, VkFramebuffer* ,pFramebuffer);
 VK_FUNC_ERROR_CHECK_OVERRIDE(vkCreateRenderPass , VkDevice , device, const VkRenderPassCreateInfo* ,pCreateInfo, const VkAllocationCallbacks*, pAllocator, VkRenderPass*, pRenderPass);
 VK_FUNC_ERROR_CHECK_OVERRIDE(vkCreateCommandPool , VkDevice , device, const VkCommandPoolCreateInfo*, pCreateInfo, const VkAllocationCallbacks* ,pAllocator, VkCommandPool* ,pCommandPool);

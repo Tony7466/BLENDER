@@ -19,6 +19,9 @@ void GPUTest::SetUp()
   glSettings.context_type = draw_context_type;
   glSettings.flags = GHOST_glDebugContext;
   CLG_init();
+  const char *gpu_filter = "gpu.*";
+  CLG_type_filter_include(gpu_filter, strlen(gpu_filter));
+
   ghost_system = GHOST_CreateSystem();
   ghost_context = GHOST_CreateOpenGLContext(ghost_system, glSettings);
   GHOST_ActivateOpenGLContext(ghost_context);
