@@ -79,7 +79,7 @@ template<typename T> struct AngleRadian {
   }
 
   /**
-   * Return the angle wrapped inside [-pi..pi] range.
+   * Return the angle wrapped inside [-pi..pi] interval. Basically `(angle + pi) % 2pi - pi`.
    */
   AngleRadian wrapped() const
   {
@@ -87,7 +87,8 @@ template<typename T> struct AngleRadian {
   }
 
   /**
-   * Return the angle wrapped inside [-pi..pi] range around a \a reference.
+   * Return the angle wrapped inside [-pi..pi] interval around a \a reference .
+   * Basically `(angle - reference + pi) % 2pi - pi + reference` .
    * This means the interpolation between the returned value and \a reference will always take the
    * shortest path.
    */
@@ -299,9 +300,9 @@ template<typename T> struct AngleCartesian {
     return a * b;
   }
 
-  friend AngleCartesian operator/(const AngleCartesian &a, const T &b)
+  friend AngleCartesian operator/(const AngleCartesian &a, const T &divisor)
   {
-    if (b == T(2)) {
+    if (divisor == T(2)) {
       /* Still costly but faster than using `atan()`. */
       AngleCartesian result = {math::sqrt((T(1) + a.cos_) / T(2)),
                                math::sqrt((T(1) - a.cos_) / T(2))};
@@ -433,8 +434,8 @@ template<typename T = float> struct AngleFraction {
   /* Return angle value in radian. */
   T radian() const
   {
-    /* This can be refined at will. This tries to reduce the error to a maximum. */
-    bool is_negative = numerator_ < 0;
+    /* This can be refined at will. This tries to reduce the float precision error to a minimum. */
+    const bool is_negative = numerator_ < 0;
     /* TODO jump table. */
     if (abs(numerator_) == denominator_ * 2) {
       return is_negative ? T(-M_PI * 2) : T(M_PI * 2);
@@ -452,8 +453,8 @@ template<typename T = float> struct AngleFraction {
       return is_negative ? T(-M_PI_4) : T(M_PI_4);
     }
     /* TODO(fclem): No idea if this is precise or not. Just doing something for now. */
-    int64_t number_of_pi = numerator_ / denominator_;
-    int64_t slice_numerator = numerator_ - number_of_pi * denominator_;
+    const int64_t number_of_pi = numerator_ / denominator_;
+    const int64_t slice_numerator = numerator_ - number_of_pi * denominator_;
     T slice_of_pi;
     /* Avoid integer overflow. */
     /* TODO(fclem): This is conservative. Could find a better threshold. */
@@ -472,7 +473,7 @@ template<typename T = float> struct AngleFraction {
   /** Methods. */
 
   /**
-   * Return the angle wrapped inside [-pi..pi] range.
+   * Return the angle wrapped inside [-pi..pi] interval. Basically `(angle + pi) % 2pi - pi`.
    */
   AngleFraction wrapped() const
   {
@@ -484,10 +485,10 @@ template<typename T = float> struct AngleFraction {
   }
 
   /**
-   * Return the angle wrapped inside [-pi..pi] range around a \a reference.
+   * Return the angle wrapped inside [-pi..pi] interval around a \a reference .
+   * Basically `(angle - reference + pi) % 2pi - pi + reference` .
    * This means the interpolation between the returned value and \a reference will always take the
    * shortest path.
-   * In case of ambiguity (-pi vs. pi), the sign of the angle is preserved.
    */
   AngleFraction wrapped_around(const AngleFraction &reference) const
   {

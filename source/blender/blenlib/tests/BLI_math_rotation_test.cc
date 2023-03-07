@@ -547,8 +547,8 @@ TEST(math_rotation, QuaternionFromTracking)
 {
   for (int i : IndexRange(6)) {
     for (int j : IndexRange(3)) {
-      AxisSigned forward_axis = AxisSigned::from_dna(i);
-      Axis up_axis = Axis::from_dna(j);
+      AxisSigned forward_axis = AxisSigned::from_int(i);
+      Axis up_axis = Axis::from_int(j);
 
       if (Axis(forward_axis) == up_axis) {
         continue;
@@ -614,10 +614,10 @@ TEST(math_rotation, CartesianBasis)
     for (int j : IndexRange(6)) {
       for (int k : IndexRange(6)) {
         for (int l : IndexRange(6)) {
-          AxisSigned src_forward = AxisSigned::from_dna(i);
-          AxisSigned src_up = AxisSigned::from_dna(j);
-          AxisSigned dst_forward = AxisSigned::from_dna(k);
-          AxisSigned dst_up = AxisSigned::from_dna(l);
+          AxisSigned src_forward = AxisSigned::from_int(i);
+          AxisSigned src_up = AxisSigned::from_int(j);
+          AxisSigned dst_forward = AxisSigned::from_int(k);
+          AxisSigned dst_up = AxisSigned::from_int(l);
 
           if ((Axis(src_forward) == Axis(src_up)) || (Axis(dst_forward) == Axis(dst_up))) {
             /* Assertion expected. */

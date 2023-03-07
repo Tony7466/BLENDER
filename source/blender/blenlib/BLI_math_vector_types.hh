@@ -75,6 +75,9 @@ template<typename T> uint64_t vector_hash(const T &vec)
   return result;
 }
 
+class Axis;
+class AxisSigned;
+
 }  // namespace math
 
 template<typename T, int Size> struct VecBase : public vec_struct_base<T, Size> {

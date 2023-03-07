@@ -1009,9 +1009,9 @@ MatBase<T, NumCol, NumRow> from_rotation(const CartesianBasis &rotation)
 {
   using MatT = MatBase<T, NumCol, NumRow>;
   MatT mat = MatT::identity();
-  mat.x_axis() = VecBase<T, 3>(rotation.axes.x);
-  mat.y_axis() = VecBase<T, 3>(rotation.axes.y);
-  mat.z_axis() = VecBase<T, 3>(rotation.axes.z);
+  mat.x_axis() = to_vector<VecBase<T, 3>>(rotation.axes.x);
+  mat.y_axis() = to_vector<VecBase<T, 3>>(rotation.axes.y);
+  mat.z_axis() = to_vector<VecBase<T, 3>>(rotation.axes.z);
   return mat;
 }
 

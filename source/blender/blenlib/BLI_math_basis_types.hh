@@ -18,8 +18,8 @@
  * The basis changes for each space:
  * - Object: X-right, Y-forward, Z-up
  * - World: X-right, Y-forward, Z-up
+ * - Armature Bone: X-right, Y-forward, Z-up (with forward being the root to tip direction)
  * - Curve Tangent-Space: X-left, Y-up, Z-forward
- * - Armature Bone: (todo)
  */
 
 #include "BLI_math_base.hh"
@@ -31,6 +31,11 @@ namespace blender::math {
 /** \name Axes
  * \{ */
 
+/**
+ * An enum class representing one of the 3 basis axes.
+ * This is implemented using a class to allow operators and methods.
+ * NOTE: While this represents a 3D axis it can still be used to generate 2D basis vectors.
+ */
 class Axis {
  public:
   enum Value : int {
@@ -55,18 +60,10 @@ class Axis {
   }
 
   /** Allow casting from DNA enums stored as short / int. */
-  constexpr static Axis from_dna(int axis)
+  constexpr static Axis from_int(int axis)
   {
-    BLI_assert(axis >= Axis::X && axis <= Axis::Z);
+    BLI_assert(Axis::X <= axis && axis <= Axis::Z);
     return Axis(static_cast<Value>(axis));
-  }
-
-  /** Create basis vector. */
-  template<typename T> explicit operator VecBase<T, 3>() const
-  {
-    VecBase<T, 3> vec{};
-    vec[axis_] = T(1);
-    return vec;
   }
 
   /* Allow usage in `switch()` statements and comparisons. */
@@ -94,6 +91,11 @@ class Axis {
   }
 };
 
+/**
+ * An enum class representing one of the 6 axis aligned direction.
+ * This is implemented using a class to allow operators and methods.
+ * NOTE: While this represents a 3D axis it can still be used to generate 2D basis vectors.
+ */
 class AxisSigned {
  public:
   enum Value : int {
@@ -108,54 +110,37 @@ class AxisSigned {
   };
 
  private:
-  enum Value axis_;
+  Value axis_;
 
  public:
   AxisSigned() = default;
 
   constexpr AxisSigned(Value axis) : axis_(axis){};
-  constexpr AxisSigned(Axis axis) : axis_(from_dna(axis)){};
+  constexpr AxisSigned(Axis axis) : axis_(from_int(axis)){};
 
   /** Allow casting from DNA enums stored as short / int. */
-  constexpr static AxisSigned from_dna(int axis)
+  constexpr static AxisSigned from_int(int axis)
   {
-    BLI_assert(axis >= AxisSigned::X_POS && axis <= AxisSigned::Z_NEG);
+    BLI_assert(AxisSigned::X_POS <= axis && axis <= AxisSigned::Z_NEG);
     return AxisSigned(static_cast<Value>(axis));
   }
 
   /** Convert / extract the axis. */
   constexpr explicit operator Axis() const
   {
-    return Axis::from_dna(static_cast<int>(axis_ - ((axis_ <= 2) ? 0 : 3)));
-  }
-
-  /** Create signed 2D basis vector. */
-  template<typename T> explicit operator VecBase<T, 2>() const
-  {
-    BLI_assert(Axis(*this) != Axis::Z);
-    VecBase<T, 2> vec{};
-    vec[axis_] = is_negative() ? T(-1) : T(1);
-    return vec;
-  }
-
-  /** Create signed 3D basis vector. */
-  template<typename T> explicit operator VecBase<T, 3>() const
-  {
-    VecBase<T, 3> vec{};
-    vec[axis_] = is_negative() ? T(-1) : T(1);
-    return vec;
+    return Axis::from_int(axis_ % 3);
   }
 
   /** Return the opposing axis. */
   AxisSigned operator-() const
   {
-    return AxisSigned::from_dna((int(axis_) + 3) % 6);
+    return from_int((static_cast<int>(axis_) + 3) % 6);
   }
 
   /** Return next enum value. */
   AxisSigned next_after() const
   {
-    return AxisSigned::from_dna((int(axis_) + 1) % 6);
+    return from_int((static_cast<int>(axis_) + 1) % 6);
   }
 
   /** Allow usage in `switch()` statements and comparisons. */
@@ -173,7 +158,7 @@ class AxisSigned {
   /** Returns true if axis is negative, false otherwise. */
   constexpr bool is_negative() const
   {
-    return axis_ > Z_POS;
+    return static_cast<int>(axis_) > static_cast<int>(Value::Z_POS);
   }
 
   /** Avoid hell. */
@@ -195,6 +180,7 @@ class AxisSigned {
     }
   }
 };
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -214,10 +200,12 @@ template<> inline AxisSigned abs(const AxisSigned &axis)
 /**
  * Returns the cross direction from two basis direction using the right hand rule.
  * Way faster than true cross product if the vectors are basis vectors.
- * Any ill-formed case will return positive X.
+ * Any ill-formed case will return a orthogonal axis to \a a but will also trigger an assert. It is
+ * better filter these cases upstream.
  */
 [[nodiscard]] inline AxisSigned cross(const AxisSigned a, const AxisSigned b)
 {
+  BLI_assert_msg(abs(a) != abs(b), "Axes must not be colinear.");
   switch (a) {
     case AxisSigned::X_POS:
       switch (b) {
@@ -316,7 +304,25 @@ template<> inline AxisSigned abs(const AxisSigned &axis)
       }
       break;
   }
-  return AxisSigned::X_POS;
+  return a.next_after();
+}
+
+/** Create basis vector. */
+template<typename T> T to_vector(Axis axis)
+{
+  BLI_assert(axis <= Axis::from_int(T::type_length - 1));
+  T vec{};
+  vec[axis] = 1;
+  return vec;
+}
+
+/** Create signed basis vector. */
+template<typename T> T to_vector(AxisSigned axis)
+{
+  BLI_assert(Axis(axis) <= Axis::from_int(T::type_length - 1));
+  T vec{};
+  vec[Axis(axis)] = axis.is_negative() ? -1 : 1;
+  return vec;
 }
 
 /** \} */
@@ -397,11 +403,10 @@ struct CartesianBasis {
 [[nodiscard]] inline CartesianBasis rotation_between(const CartesianBasis &a,
                                                      const CartesianBasis &b)
 {
-
   CartesianBasis basis;
-  basis.axes[abs(b.x())] = (sign(b.x()) != sign(a.x())) ? -abs(a.x()) : abs(a.x());
-  basis.axes[abs(b.y())] = (sign(b.y()) != sign(a.y())) ? -abs(a.y()) : abs(a.y());
-  basis.axes[abs(b.z())] = (sign(b.z()) != sign(a.z())) ? -abs(a.z()) : abs(a.z());
+  basis.axes[int(abs(b.x()))] = (sign(b.x()) != sign(a.x())) ? -abs(a.x()) : abs(a.x());
+  basis.axes[int(abs(b.y()))] = (sign(b.y()) != sign(a.y())) ? -abs(a.y()) : abs(a.y());
+  basis.axes[int(abs(b.z()))] = (sign(b.z()) != sign(a.z())) ? -abs(a.z()) : abs(a.z());
   return basis;
 }
 
