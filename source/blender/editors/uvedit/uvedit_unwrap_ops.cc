@@ -426,7 +426,7 @@ static ParamHandle *construct_param_handle(const Scene *scene,
                                            Object *ob,
                                            BMesh *bm,
                                            const UnwrapOptions *options,
-                                           UnwrapResultInfo *result_info)
+                                           int *r_count_failed = nullptr)
 {
   BMFace *efa;
   BMIter iter;
@@ -462,11 +462,8 @@ static ParamHandle *construct_param_handle(const Scene *scene,
 
   construct_param_edge_set_seams(handle, bm, options);
 
-  blender::geometry::uv_parametrizer_construct_end(handle,
-                                                   options->fill_holes,
-                                                   options->topology_from_uvs,
-                                                   result_info ? &result_info->count_failed :
-                                                                 nullptr);
+  blender::geometry::uv_parametrizer_construct_end(
+      handle, options->fill_holes, options->topology_from_uvs, r_count_failed);
 
   return handle;
 }
@@ -597,7 +594,7 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
                                                      Object *ob,
                                                      BMEditMesh *em,
                                                      const UnwrapOptions *options,
-                                                     UnwrapResultInfo *result_info)
+                                                     int *r_count_failed = nullptr)
 {
   /* pointers to modifier data for unwrap control */
   SubsurfModifierData *smd_real;
@@ -669,8 +666,8 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
                      nullptr;
   }
 
-  /* Prepare and feed faces to the solver */
-  for (const int i : subsurf_polys.index_range()) {
+  /* Prepare and feed faces to the solver. */
+  for (const int64_t i : subsurf_polys.index_range()) {
     const MPoly &poly = subsurf_polys[i];
     ParamKey key, vkeys[4];
     bool pin[4], select[4];
@@ -720,8 +717,8 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
     blender::geometry::uv_parametrizer_face_add(handle, key, 4, vkeys, co, uv, pin, select);
   }
 
-  /* these are calculated from original mesh too */
-  for (const int i : subsurf_edges.index_range()) {
+  /* These are calculated from original mesh too. */
+  for (const int64_t i : subsurf_edges.index_range()) {
     if ((edgeMap[i] != nullptr) && BM_elem_flag_test(edgeMap[i], BM_ELEM_SEAM)) {
       const MEdge *edge = &subsurf_edges[i];
       ParamKey vkeys[2];
@@ -731,11 +728,8 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
     }
   }
 
-  blender::geometry::uv_parametrizer_construct_end(handle,
-                                                   options->fill_holes,
-                                                   options->topology_from_uvs,
-                                                   result_info ? &result_info->count_failed :
-                                                                 nullptr);
+  blender::geometry::uv_parametrizer_construct_end(
+      handle, options->fill_holes, options->topology_from_uvs, r_count_failed);
 
   /* cleanup */
   MEM_freeN(faceMap);
@@ -1807,10 +1801,12 @@ static void uvedit_unwrap(const Scene *scene,
 
   ParamHandle *handle;
   if (use_subsurf) {
-    handle = construct_param_handle_subsurfed(scene, obedit, em, options, result_info);
+    handle = construct_param_handle_subsurfed(
+        scene, obedit, em, options, result_info ? &result_info->count_failed : nullptr);
   }
   else {
-    handle = construct_param_handle(scene, obedit, em->bm, options, result_info);
+    handle = construct_param_handle(
+        scene, obedit, em->bm, options, result_info ? &result_info->count_failed : nullptr);
   }
 
   blender::geometry::uv_parametrizer_lscm_begin(

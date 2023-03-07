@@ -271,9 +271,20 @@ typedef struct bNodeType {
   /** Check and update if internal ID data has changed. */
   void (*group_update_func)(struct bNodeTree *ntree, struct bNode *node);
 
-  /** Initialize a new node instance of this type after creation. */
+  /**
+   * Initialize a new node instance of this type after creation.
+   *
+   * \note Assignments to `node->id` must not increment the user of the ID.
+   * This is handled by the caller of this callback.
+   */
   void (*initfunc)(struct bNodeTree *ntree, struct bNode *node);
-  /** Free the node instance. */
+  /**
+   * Free the node instance.
+   *
+   * \note Access to `node->id` must be avoided in this function as this is called
+   * while freeing #Main, the state of this ID is undefined.
+   * Higher level logic to remove the node handles the user-count.
+   */
   void (*freefunc)(struct bNode *node);
   /** Make a copy of the node instance. */
   void (*copyfunc)(struct bNodeTree *dest_ntree,
@@ -757,7 +768,6 @@ void nodeInternalRelink(struct bNodeTree *ntree, struct bNode *node);
 
 void nodeToView(const struct bNode *node, float x, float y, float *rx, float *ry);
 void nodeFromView(const struct bNode *node, float x, float y, float *rx, float *ry);
-bool nodeAttachNodeCheck(const struct bNode *node, const struct bNode *parent);
 void nodeAttachNode(struct bNodeTree *ntree, struct bNode *node, struct bNode *parent);
 void nodeDetachNode(struct bNodeTree *ntree, struct bNode *node);
 
@@ -790,11 +800,7 @@ void nodeFindNode(struct bNodeTree *ntree,
  */
 struct bNode *nodeFindRootParent(bNode *node);
 
-/**
- * \returns true if \a child has \a parent as a parent/grandparent/... etc.
- * \note Recursive
- */
-bool nodeIsChildOf(const bNode *parent, const bNode *child);
+bool nodeIsParentAndChild(const bNode *parent, const bNode *child);
 
 /**
  * Iterate over a chain of nodes, starting with \a node_start, executing
