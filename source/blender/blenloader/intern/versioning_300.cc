@@ -76,6 +76,7 @@
 #include "readfile.h"
 
 #include "SEQ_channels.h"
+#include "SEQ_effects.h"
 #include "SEQ_iterator.h"
 #include "SEQ_retiming.h"
 #include "SEQ_sequencer.h"
@@ -696,7 +697,7 @@ static bool do_versions_sequencer_init_retiming_tool_data(Sequence *seq, void *u
 
   const int content_length = SEQ_time_strip_length_get(scene, seq);
 
-  SEQ_retiming_data_ensure(scene, seq);
+  SEQ_retiming_data_ensure(seq);
 
   SeqRetimingHandle *handle = &seq->retiming_handles[seq->retiming_handle_num - 1];
   handle->strip_frame_index = round_fl_to_int(content_length / seq->speed_factor);
@@ -1634,6 +1635,16 @@ static bool version_merge_still_offsets(Sequence *seq, void * /*user_data*/)
 static bool version_fix_delete_flag(Sequence *seq, void * /*user_data*/)
 {
   seq->flag &= ~SEQ_FLAG_DELETE;
+  return true;
+}
+
+static bool version_set_seq_single_frame_content(Sequence *seq, void * /*user_data*/)
+{
+  if ((seq->len == 1) &&
+      (seq->type == SEQ_TYPE_IMAGE ||
+       ((seq->type & SEQ_TYPE_EFFECT) && SEQ_effect_get_num_inputs(seq->type) == 0))) {
+    seq->flag |= SEQ_SINGLE_FRAME_CONTENT;
+  }
   return true;
 }
 
@@ -4027,6 +4038,14 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
       }
     }
 
+    /* Use `SEQ_SINGLE_FRAME_CONTENT` flag instead of weird function to check if strip has multiple
+     * frames. */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      Editing *ed = SEQ_editing_get(scene);
+      if (ed != nullptr) {
+        SEQ_for_each_callback(&ed->seqbase, version_set_seq_single_frame_content, nullptr);
+      }
+    }
     /* Keep this block, even when empty. */
   }
 }
