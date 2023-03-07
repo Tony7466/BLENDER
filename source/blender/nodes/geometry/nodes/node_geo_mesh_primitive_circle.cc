@@ -169,9 +169,6 @@ static Mesh *create_circle_mesh(const float radius,
     }
   }
 
-  const float3 bounds(radius, radius, 0.0f);
-  mesh->bounds_set_eager({-bounds, bounds});
-
   return mesh;
 }
 
