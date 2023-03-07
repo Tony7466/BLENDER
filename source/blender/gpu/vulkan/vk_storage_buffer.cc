@@ -43,11 +43,10 @@ void VKStorageBuffer::unbind()
 {
 }
 
-void VKStorageBuffer::clear(eGPUTextureFormat /*internal_format*/,
-                            eGPUDataFormat /*data_format*/,
-                            void * /*data*/)
+void VKStorageBuffer::clear(Span<uint32_t> /*data*/)
 {
 }
+
 void VKStorageBuffer::copy_sub(VertBuf * /*src*/,
                                uint /*dst_offset*/,
                                uint /*src_offset*/,

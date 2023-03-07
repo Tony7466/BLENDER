@@ -834,17 +834,17 @@ void ShadowModule::end_sync()
     /* Clear tile-map clip buffer. */
     union {
       ShadowTileMapClip clip;
-      int4 i;
+      uint4 i;
     } u;
     u.clip.clip_near_stored = 0.0f;
     u.clip.clip_far_stored = 0.0f;
-    u.clip.clip_near = int(0xFF7FFFFFu ^ 0x7FFFFFFFu); /* floatBitsToOrderedInt(-FLT_MAX) */
-    u.clip.clip_far = 0x7F7FFFFF;                      /* floatBitsToOrderedInt(FLT_MAX) */
-    GPU_storagebuf_clear(tilemap_pool.tilemaps_clip, GPU_RGBA32I, GPU_DATA_INT, &u.i);
+    u.clip.clip_near = 0xFF7FFFFFu ^ 0x7FFFFFFFu; /* floatBitsToOrderedInt(-FLT_MAX) */
+    u.clip.clip_far = 0x7F7FFFFF;                 /* floatBitsToOrderedInt(FLT_MAX) */
+    GPU_storagebuf_clear_uint(tilemap_pool.tilemaps_clip, u.i, 4);
 
     /* Clear cached page buffer. */
     int2 data = {-1, -1};
-    GPU_storagebuf_clear(pages_cached_data_, GPU_RG32I, GPU_DATA_INT, &data);
+    GPU_storagebuf_clear_int(pages_cached_data_, data, 2);
 
     /* Reset info to match new state. */
     pages_infos_data_.page_free_count = shadow_page_len_;

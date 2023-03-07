@@ -39,11 +39,23 @@ void GPU_storagebuf_bind(GPUStorageBuf *ssbo, int slot);
 void GPU_storagebuf_unbind(GPUStorageBuf *ssbo);
 void GPU_storagebuf_unbind_all(void);
 
-void GPU_storagebuf_clear(GPUStorageBuf *ssbo,
-                          eGPUTextureFormat internal_format,
-                          eGPUDataFormat data_format,
-                          void *data);
 void GPU_storagebuf_clear_to_zero(GPUStorageBuf *ssbo);
+
+/**
+ * Clear the content of the buffer using the given #clear_data. #clear_data will be used as a
+ * repeatable pattern.
+ *
+ * NOTE: clear_data_len must be in range 1 to 4 (inclusive).
+ */
+void GPU_storagebuf_clear_uint(GPUStorageBuf *ssbo, uint32_t *clear_data, uint8_t clear_data_len);
+
+/**
+ * Clear the content of the buffer using the given #clear_data. #clear_data will be used as a
+ * repeatable pattern.
+ *
+ * NOTE: clear_data_len must be in range 1 to 4 (inclusive).
+ */
+void GPU_storagebuf_clear_int(GPUStorageBuf *ssbo, int32_t *clear_data, uint8_t clear_data_len);
 
 /**
  * Read back content of the buffer to CPU for inspection.

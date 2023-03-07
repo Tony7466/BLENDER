@@ -225,9 +225,9 @@ void ShadowPass::ShadowView::compute_visibility(ObjectBoundsBuf &bounds,
   if (current_pass_type_ == ShadowPass::PASS) {
     /* TODO(fclem): Resize to nearest pow2 to reduce fragmentation. */
     pass_visibility_buf_.resize(words_len);
-    GPU_storagebuf_clear(pass_visibility_buf_, GPU_R32UI, GPU_DATA_UINT, &data);
+    GPU_storagebuf_clear_uint(pass_visibility_buf_, &data, 1);
     fail_visibility_buf_.resize(words_len);
-    GPU_storagebuf_clear(fail_visibility_buf_, GPU_R32UI, GPU_DATA_UINT, &data);
+    GPU_storagebuf_clear_uint(fail_visibility_buf_, &data, 1);
   }
   else if (current_pass_type_ == ShadowPass::FAIL) {
     /* Already computed in the ShadowPass::PASS */
@@ -236,7 +236,7 @@ void ShadowPass::ShadowView::compute_visibility(ObjectBoundsBuf &bounds,
   }
   else {
     visibility_buf_.resize(words_len);
-    GPU_storagebuf_clear(visibility_buf_, GPU_R32UI, GPU_DATA_UINT, &data);
+    GPU_storagebuf_clear_uint(visibility_buf_, &data, 1);
   }
 
   if (do_visibility_) {
