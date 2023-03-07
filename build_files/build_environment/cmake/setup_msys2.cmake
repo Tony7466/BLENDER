@@ -67,7 +67,7 @@ execute_process(
 
 message("Installing required packages")
 execute_process(
-  COMMAND ${DOWNLOAD_DIR}/msys2/msys64/msys2_shell.cmd -defterm -no-start -clang64 -c "pacman -S patch m4 coreutils nasm pkgconf make diffutils autoconf-wrapper --noconfirm && exit"
+  COMMAND ${DOWNLOAD_DIR}/msys2/msys64/msys2_shell.cmd -defterm -no-start -clang64 -c "pacman -S patch m4 coreutils pkgconf make diffutils autoconf-wrapper --noconfirm && exit"
   WORKING_DIRECTORY ${DOWNLOAD_DIR}/msys2/msys64
 )
 
@@ -86,6 +86,23 @@ if(EXISTS "${DOWNLOAD_DIR}/msys2/msys64/usr/bin/link.exe")
     WORKING_DIRECTORY ${DOWNLOAD_DIR}/msys2/msys64
   )
 endif()
+
+message("Checking for nasm")
+if(NOT EXISTS "${DOWNLOAD_DIR}/nasm-2.13.02-win64.zip")
+  message("Downloading nasm")
+  file(DOWNLOAD "http://www.nasm.us/pub/nasm/releasebuilds/2.13.02/win64/nasm-2.13.02-win64.zip" "${DOWNLOAD_DIR}/nasm-2.13.02-win64.zip")
+endif()
+
+# extract nasm
+if((NOT EXISTS "${DOWNLOAD_DIR}/msys2/msys64/usr/bin/nasm.exe") AND (EXISTS "${DOWNLOAD_DIR}/nasm-2.13.02-win64.zip"))
+  message("Extracting nasm")
+  execute_process(
+    COMMAND ${CMAKE_COMMAND} -E tar jxf "${DOWNLOAD_DIR}/nasm-2.13.02-win64.zip"
+    WORKING_DIRECTORY ${DOWNLOAD_DIR}/
+  )
+  execute_process(
+    COMMAND ${CMAKE_COMMAND} -E copy "${DOWNLOAD_DIR}/nasm-2.13.02/nasm.exe" "${DOWNLOAD_DIR}/msys2/msys64/usr/bin/nasm.exe"
+  )
 
 message("Checking for perl")
 # download perl for libvpx
@@ -117,6 +134,13 @@ message("Checking for gas-preprocessor.pl")
 if(NOT EXISTS "${DOWNLOAD_DIR}/msys2/msys64/usr/bin/gas-preprocessor.pl")
   message("Downloading gas-preprocessor.pl")
   file(DOWNLOAD "https://raw.githubusercontent.com/FFmpeg/gas-preprocessor/9309c67acb535ca6248f092e96131d8eb07eefc1/gas-preprocessor.pl" "${DOWNLOAD_DIR}/msys2/msys64/usr/bin/gas-preprocessor.pl")
+endif()
+
+# Get ar-lib
+message("Checking for ar-lib")
+if(NOT EXISTS "${DOWNLOAD_DIR}/msys2/msys64/usr/bin/ar-lib")
+  message("Downloading ar-lib")
+  file(DOWNLOAD "https://raw.githubusercontent.com/gcc-mirror/gcc/releases/gcc-12.2.0/ar-lib" "${DOWNLOAD_DIR}/msys2/msys64/usr/bin/ar-lib")
 endif()
 
 if(NOT EXISTS "${DOWNLOAD_DIR}/msys2/msys64/ming64sh.cmd")

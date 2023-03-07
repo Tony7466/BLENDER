@@ -3,12 +3,10 @@
 set(GMP_EXTRA_ARGS -enable-cxx)
 
 if(WIN32)
-  # Borrow a reasonably up-to-date ar-lib from webp to enable MSVC
-  cmake_to_msys_path("${BUILD_DIR}/webp/src/external_webp/ar-lib" arlib_path)
   cmake_to_msys_path("${BUILD_DIR}/gmp/src/external_gmp/compile" compilescript_path)
 
   
-  set(arlib_joint_path "${arlib_path} lib.exe")
+  set(arlib_joint_path "ar-lib lib.exe")
   set(GMP_CFLAGS "-nologo -W3 -utf-8 -MP -MD -Z7 -Ob0 -Od -Xcompiler -RTC1 -DWIN32 -D_WINDOWS")
   set(GMP_CC_CXX "${compilescript_path} cl")
   set(GMP_NM "dumpbin.exe -symbols -headers")
@@ -59,14 +57,6 @@ ExternalProject_Add(external_gmp
   INSTALL_COMMAND ${CONFIGURE_ENV_NO_PERL} && cd ${BUILD_DIR}/gmp/src/external_gmp/ && make install
   INSTALL_DIR ${LIBDIR}/gmp
 )
-
-if(MSVC)
-  # This is in order to use the version of ar-lib that comes with webp
-  add_dependencies(
-    external_gmp
-    external_webp
-  )
-endif()
 
 if(BUILD_MODE STREQUAL Release AND WIN32)
   ExternalProject_Add_Step(external_gmp after_install
