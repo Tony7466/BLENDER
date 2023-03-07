@@ -1091,6 +1091,17 @@ static void blf_glyph_calc_rect(rcti *rect, GlyphBLF *g, const int x, const int 
   rect->ymax = rect->ymin - g->dims[1];
 }
 
+static void blf_glyph_calc_rect_test(rcti *rect, GlyphBLF *g, const int x, const int y)
+{
+  /* Intentionally check with `g->advance`, because this is the
+   * width used by BLF_width. This allows that the text slightly
+   * overlaps the clipping border to achieve better alignment. */
+  rect->xmin = x;
+  rect->xmax = rect->xmin + MIN2(ft_pix_to_int(g->advance_x), g->dims[0]);
+  rect->ymin = y;
+  rect->ymax = rect->ymin - g->dims[1];
+}
+
 static void blf_glyph_calc_rect_shadow(
     rcti *rect, GlyphBLF *g, const int x, const int y, FontBLF *font)
 {
@@ -1188,7 +1199,7 @@ void blf_glyph_draw(FontBLF *font, GlyphCacheBLF *gc, GlyphBLF *g, const int x, 
       if (gc->texture) {
         GPU_texture_free(gc->texture);
       }
-      gc->texture = GPU_texture_create_2d_ex(
+      gc->texture = GPU_texture_create_2d(
           __func__, w, h, 1, GPU_R8, GPU_TEXTURE_USAGE_SHADER_READ, NULL);
 
       gc->bitmap_len_landed = 0;
@@ -1201,11 +1212,20 @@ void blf_glyph_draw(FontBLF *font, GlyphCacheBLF *gc, GlyphBLF *g, const int x, 
   }
 
   if (font->flags & BLF_CLIPPING) {
+    float xa, ya;
+
+    if (font->flags & BLF_ASPECT) {
+      xa = font->aspect[0];
+      ya = font->aspect[1];
+    }
+    else {
+      xa = 1.0f;
+      ya = 1.0f;
+    }
+
     rcti rect_test;
-    rect_test.xmin = x + font->pos[0] + g->pos[0] + 1;
-    rect_test.xmax = rect_test.xmin + g->dims[0] - 2;
-    rect_test.ymin = y + font->pos[1];
-    rect_test.ymax = rect_test.ymin + g->pos[1];
+    blf_glyph_calc_rect_test(&rect_test, g, (int)((float)x * xa), (int)((float)y * ya));
+    BLI_rcti_translate(&rect_test, font->pos[0], font->pos[1]);
     if (!BLI_rcti_inside_rcti(&font->clip_rec, &rect_test)) {
       return;
     }
