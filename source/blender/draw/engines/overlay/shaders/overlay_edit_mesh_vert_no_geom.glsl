@@ -86,8 +86,6 @@ void main()
   vec3 view_pos1 = point_world_to_view(world_pos1);
   vec4 out_pos0 = point_world_to_homogenous(world_pos0);
   vec4 out_pos1 = point_world_to_homogenous(world_pos1);
- 
-
 
   /* Offset Z position for retopology overlay. */
   out_pos0.z += get_homogenous_z_offset(view_pos0.z, out_pos0.w, retopologyOffset);
