@@ -351,12 +351,13 @@ void USDCurvesWriter::set_writer_attributes(pxr::UsdGeomCurves &usd_curves,
 void USDCurvesWriter::do_write(HierarchyContext &context)
 {
   Curves *curves;
-  std::unique_ptr<Curves> converted_curves;
+  std::unique_ptr<Curves, std::function<void(Curves *)>> converted_curves;
 
   switch (context.object->type) {
     case OB_CURVES_LEGACY: {
       const Curve *legacy_curve = static_cast<Curve *>(context.object->data);
-      converted_curves = std::unique_ptr<Curves>(bke::curve_legacy_to_curves(*legacy_curve));
+      converted_curves = std::unique_ptr<Curves, std::function<void(Curves *)>>(
+          bke::curve_legacy_to_curves(*legacy_curve), [](Curves *c) { BKE_id_free(nullptr, c); });
       curves = converted_curves.get();
       break;
     }
@@ -453,10 +454,6 @@ void USDCurvesWriter::do_write(HierarchyContext &context)
   set_writer_attributes(usd_curves, verts, control_point_counts, widths, timecode, interpolation);
 
   assign_materials(context, usd_curves);
-
-  if (converted_curves) {
-    BKE_id_free(nullptr, converted_curves.release());
-  }
 }
 
 void USDCurvesWriter::assign_materials(const HierarchyContext &context,
