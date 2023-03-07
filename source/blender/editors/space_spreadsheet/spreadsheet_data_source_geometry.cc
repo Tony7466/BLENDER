@@ -426,7 +426,7 @@ void VolumeDataSource::foreach_default_column_ids(
     return;
   }
 
-  for (const char *name : {"Grid Name", "Data Type", "Class"}) {
+  for (const char *name : {"Grid Name", "Data Type", "Class", "Active Voxels"}) {
     SpreadsheetColumnID column_id{(char *)name};
     fn(column_id, false);
   }
@@ -472,6 +472,14 @@ std::unique_ptr<ColumnValues> VolumeDataSource::get_column_values(
             return IFACE_("Level Set");
           }
           return IFACE_("Unknown");
+        }));
+  }
+  if (STREQ(column_id.name, "Active Voxels")) {
+    return std::make_unique<ColumnValues>(
+        IFACE_("Active Voxels"), VArray<int>::ForFunc(size, [volume](int64_t index) {
+          const VolumeGrid *volume_grid = BKE_volume_grid_get_for_read(volume, index);
+          openvdb::GridBase::ConstPtr grid = BKE_volume_grid_openvdb_for_read(volume, volume_grid);
+          return grid->activeVoxelCount();
         }));
   }
 #else
