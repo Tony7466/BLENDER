@@ -28,12 +28,12 @@ static float pack_islands_scale_margin(const Span<PackIsland *> &island_vector,
   for (const int64_t index : island_vector.index_range()) {
     PackIsland *island = island_vector[index];
     BoxPack *box = &box_array[index];
-    box->index = (int)index;
+    box->index = int(index);
     box->w = BLI_rctf_size_x(&island->bounds_rect) * scale + 2 * margin;
     box->h = BLI_rctf_size_y(&island->bounds_rect) * scale + 2 * margin;
   }
   float max_u, max_v;
-  BLI_box_pack_2d(box_array, (int)island_vector.size(), &max_u, &max_v);
+  BLI_box_pack_2d(box_array, int(island_vector.size()), &max_u, &max_v);
   return max_ff(max_u, max_v);
 }
 
@@ -152,7 +152,7 @@ static float pack_islands_margin_fraction(const Span<PackIsland *> &island_vecto
 static float calc_margin_from_aabb_length_sum(const Span<PackIsland *> &island_vector,
                                               const UVPackIsland_Params &params)
 {
-  /* Logic matches behavior from #GEO_uv_parametrizer_pack.
+  /* Logic matches behavior from #geometry::uv_parametrizer_pack.
    * Attempt to give predictable results not dependent on current UV scale by using
    * `aabb_length_sum` (was "`area`") to multiply the margin by the length (was "area"). */
   double aabb_length_sum = 0.0f;
