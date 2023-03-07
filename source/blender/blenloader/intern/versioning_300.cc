@@ -4027,6 +4027,13 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
       }
     }
 
+    if (!DNA_struct_elem_find(fd->filesdna, "bArmature", "float", "relation_line_position")) {
+      /* Convert the axes draw position to its default (tip of parent bone). */
+      LISTBASE_FOREACH (bArmature *, arm, &bmain->armatures) {
+        arm->relation_line_position = 1.0;
+      }
+    }
+
     /* Keep this block, even when empty. */
   }
 }

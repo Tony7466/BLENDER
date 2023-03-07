@@ -143,6 +143,12 @@ typedef struct bArmature {
 
   /** Relative position of the axes on the bone, from head (0.0f) to tail (1.0f). */
   float axes_position;
+
+  /** Relative position of the parent-child relation lines on the bone, from
+   * head (0.0f) to tail (1.0f). Only controls the parent side of the line; the
+   * child side is always drawn to the head of the bone. */
+  float relation_line_position;
+  char _pad2[4];
 } bArmature;
 
 /* armature->flag */

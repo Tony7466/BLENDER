@@ -1554,6 +1554,18 @@ static void rna_def_armature(BlenderRNA *brna)
                            "closer to the tip; decreasing moves it closer to the root");
   RNA_def_property_update(prop, 0, "rna_Armature_redraw_data");
 
+  prop = RNA_def_property(srna, "relation_line_position", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, NULL, "relation_line_position");
+  RNA_def_property_range(prop, 0.0, 1.0);
+  RNA_def_property_ui_range(prop, 0.0, 1.0, 10, 1);
+  RNA_def_property_ui_text(
+      prop,
+      "Relation Line Position",
+      "The start position of the relation lines from parent to child bones. Increasing the value "
+      "moves it "
+      "closer to the tip of the parent; decreasing moves it closer to the root");
+  RNA_def_property_update(prop, 0, "rna_Armature_redraw_data");
+
   prop = RNA_def_property(srna, "show_names", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "flag", ARM_DRAWNAMES);
   RNA_def_property_ui_text(prop, "Display Names", "Display bone names");

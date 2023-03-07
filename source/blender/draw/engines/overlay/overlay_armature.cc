@@ -2052,7 +2052,7 @@ static void draw_bone_relations(ArmatureDrawContext *ctx,
                             ebone->tail,
                             ebone->parent->head,
                             ebone->parent->tail,
-                            arm->axes_position);
+                            arm->relation_line_position);
       }
     }
   }
@@ -2068,7 +2068,7 @@ static void draw_bone_relations(ArmatureDrawContext *ctx,
                               pchan->pose_tail,
                               pchan->parent->pose_head,
                               pchan->parent->pose_tail,
-                              arm->axes_position);
+                              arm->relation_line_position);
         }
       }
     }

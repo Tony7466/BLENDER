@@ -80,6 +80,7 @@ class DATA_PT_display(ArmatureButtonsPanel, Panel):
         sub = row.row(align=True)
         sub.active = arm.show_axes
         sub.prop(arm, "axes_position", text="Position")
+        col.prop(arm, "relation_line_position", text="Relations")
 
 
 class DATA_MT_bone_group_context_menu(Menu):
