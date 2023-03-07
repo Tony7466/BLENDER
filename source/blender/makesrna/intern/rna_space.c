@@ -3608,7 +3608,7 @@ static void rna_def_space_image_uv(BlenderRNA *brna)
   prop = RNA_def_property(srna, "show_texpaint", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(prop, NULL, "flag", SI_NO_DRAW_TEXPAINT);
   RNA_def_property_ui_text(
-      prop, "Display Texture Paint UVs", "Display overlay of texture paint uv layer");
+      prop, "Display Texture Paint UVs", "Display overlay of texture paint UV layer");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_IMAGE, NULL);
 
   prop = RNA_def_property(srna, "show_pixel_coords", PROP_BOOLEAN, PROP_NONE);
@@ -4405,6 +4405,11 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
       prop, NULL, "overlay.flag", V3D_OVERLAY_HIDE_OBJECT_XTRAS);
   RNA_def_property_ui_text(
       prop, "Extras", "Object details, including empty wire, cameras and other visual guides");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
+
+  prop = RNA_def_property(srna, "show_light_colors", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "overlay.flag", V3D_OVERLAY_SHOW_LIGHT_COLORS);
+  RNA_def_property_ui_text(prop, "Light Colors", "Show light colors");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
   prop = RNA_def_property(srna, "show_bones", PROP_BOOLEAN, PROP_NONE);
