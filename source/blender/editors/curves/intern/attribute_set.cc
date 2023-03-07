@@ -136,6 +136,7 @@ static int set_attribute_exec(bContext *C, wmOperator *op)
     Vector<int64_t> indices;
     const IndexMask selection = retrieve_selected_elements(*curves_id, attribute.domain, indices);
     if (selection.is_empty()) {
+      attribute.finish();
       continue;
     }
     dst_type.fill_assign_indices(dst_value.get(), attribute.span.data(), selection);
