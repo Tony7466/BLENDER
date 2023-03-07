@@ -274,23 +274,36 @@ namespace replace_legacy_instances {
 
 using namespace blender;
 
-bNode *childrens_combine_node_group(Main *bmain, const Span<Object *>, const char *name)
+bNodeTree *childrens_combine_node_group(Main *bmain,
+                                        const Span<Object *> objects,
+                                        const char *name)
 {
-  std::stringstream tree_name_stream;
-  tree_name_stream << name << "childrens";
-  const std::string tree_name = tree_name_stream.str();
-
+  const std::string tree_name = std::string(name) + std::string("_childrens");
   bNodeTree *node_tree = ntreeAddTree(bmain, tree_name.c_str(), "GeometryNodeTree");
 
   ntreeAddSocketInterface(node_tree, SOCK_OUT, "NodeSocketGeometry", "Childrens");
 
-  return nullptr;
+  bNode *join_objects = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_JOIN_GEOMETRY);
+
+  bNodeSocket *to_join_objects = reinterpret_cast<bNodeSocket *>(join_objects->inputs.first);
+
+  for (const Object *object : objects) {
+    bNode *object_info = nodeAddStaticNode(nullptr, node_tree, GEO_NODE_OBJECT_INFO);
+
+    bNodeSocket *from_object = reinterpret_cast<bNodeSocket *>(object_info->outputs.last);
+
+    nodeAddLink(node_tree, object_info, from_object, join_objects, to_join_objects);
+  }
+
+  return node_tree;
 }
-bNode *buildin_instancing_node_group(Main *bmain, const bool on_vertices)
+bNodeTree *buildin_instancing_node_group(Main *bmain, const bool on_vertices)
 {
   return nullptr;
 }
-bNodeTree *instances_node_group(Main *bmain, bNode *children_combine_node, bNode *instancer_node)
+bNodeTree *instances_node_group(Main *bmain,
+                                bNodeTree *children_combine_node_group,
+                                bNodeTree *instancer_node_group)
 {
   return nullptr;
 }
@@ -305,14 +318,9 @@ void remove_legacy_instances_on(Main *bmain, ListBase &lb_objects)
 {
   using namespace blender;
 
-  Vector<Object *> objects(lb_objects);
-
   MultiValueMap<Object *, Object *> parents_map;
 
-  for (Object *object : objects) {
-    
-    printf("Name: %s, Pointer: %p, Parent: %p;\n", object->id.name, object, object->parent);
-    continue;
+  LISTBASE_FOREACH (Object *, object, &lb_objects) {
     Object *emitter = object->parent;
     if (emitter == nullptr) {
       continue;
@@ -332,8 +340,9 @@ void remove_legacy_instances_on(Main *bmain, ListBase &lb_objects)
     const bool on_vertices = (parent->transflag & OB_DUPLIVERTS) != 0;
 
     using namespace replace_legacy_instances;
-    bNode *childrens_combine_node = childrens_combine_node_group(bmain, objects, parent->id.name);
-    bNode *instancer_node = buildin_instancing_node_group(bmain, on_vertices);
+    bNodeTree *childrens_combine_node = childrens_combine_node_group(
+        bmain, objects, parent->id.name + 2);
+    bNodeTree *instancer_node = buildin_instancing_node_group(bmain, on_vertices);
     bNodeTree *geometry_node_instances_group = instances_node_group(
         bmain, childrens_combine_node, instancer_node);
     object_push_instances_modifier(bmain, parent, geometry_node_instances_group);
