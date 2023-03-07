@@ -123,7 +123,7 @@ void fill_selection_true(GMutableSpan selection)
   }
 }
 
-static bool contains(const VArray<bool> &varray, const bool value)
+static bool contains(const VArray<bool> &varray, const IndexRange range_to_check, const bool value)
 {
   const CommonVArrayInfo info = varray.common_info();
   if (info.type == CommonVArrayInfo::Type::Single) {
@@ -132,7 +132,7 @@ static bool contains(const VArray<bool> &varray, const bool value)
   if (info.type == CommonVArrayInfo::Type::Span) {
     const Span<bool> span(static_cast<const bool *>(info.data), varray.size());
     return threading::parallel_reduce(
-        span.index_range(),
+        range_to_check,
         4096,
         false,
         [&](const IndexRange range, const bool init) {
@@ -141,7 +141,7 @@ static bool contains(const VArray<bool> &varray, const bool value)
         [&](const bool a, const bool b) { return a || b; });
   }
   return threading::parallel_reduce(
-      varray.index_range(),
+      range_to_check,
       2048,
       false,
       [&](const IndexRange range, const bool init) {
@@ -159,10 +159,15 @@ static bool contains(const VArray<bool> &varray, const bool value)
       [&](const bool a, const bool b) { return a || b; });
 }
 
+bool has_anything_selected(const VArray<bool> &varray, const IndexRange range_to_check)
+{
+  return contains(varray, range_to_check, true);
+}
+
 bool has_anything_selected(const bke::CurvesGeometry &curves)
 {
   const VArray<bool> selection = curves.attributes().lookup<bool>(".selection");
-  return !selection || contains(selection, true);
+  return !selection || contains(selection, curves.curves_range(), true);
 }
 
 bool has_anything_selected(const GSpan selection)
@@ -267,6 +272,85 @@ void select_linked(bke::CurvesGeometry &curves)
   selection.finish();
 }
 
+void select_adjacent(bke::CurvesGeometry &curves, const bool deselect)
+{
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  bke::GSpanAttributeWriter selection = ensure_selection_attribute(
+      curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
+  const VArray<bool> cyclic = curves.cyclic();
+
+  if (deselect) {
+    invert_selection(selection.span);
+  }
+
+  if (selection.span.type().is<bool>()) {
+    MutableSpan<bool> selection_typed = selection.span.typed<bool>();
+    threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
+      for (const int curve_i : range) {
+        const IndexRange points = points_by_curve[curve_i];
+
+        /* Handle all cases in the forward direction. */
+        for (int point_i = points.first(); point_i < points.last(); point_i++) {
+          if (!selection_typed[point_i] && selection_typed[point_i + 1]) {
+            selection_typed[point_i] = true;
+          }
+        }
+
+        /* Handle all cases in the backwards direction. */
+        for (int point_i = points.last(); point_i > points.first(); point_i--) {
+          if (!selection_typed[point_i] && selection_typed[point_i - 1]) {
+            selection_typed[point_i] = true;
+          }
+        }
+
+        /* Handle cyclic curve case. */
+        if (cyclic[curve_i]) {
+          if (selection_typed[points.first()] != selection_typed[points.last()]) {
+            selection_typed[points.first()] = true;
+            selection_typed[points.last()] = true;
+          }
+        }
+      }
+    });
+  }
+  else if (selection.span.type().is<float>()) {
+    MutableSpan<float> selection_typed = selection.span.typed<float>();
+    threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
+      for (const int curve_i : range) {
+        const IndexRange points = points_by_curve[curve_i];
+
+        /* Handle all cases in the forward direction. */
+        for (int point_i = points.first(); point_i < points.last(); point_i++) {
+          if ((selection_typed[point_i] == 0.0f) && (selection_typed[point_i + 1] > 0.0f)) {
+            selection_typed[point_i] = 1.0f;
+          }
+        }
+
+        /* Handle all cases in the backwards direction. */
+        for (int point_i = points.last(); point_i > points.first(); point_i--) {
+          if ((selection_typed[point_i] == 0.0f) && (selection_typed[point_i - 1] > 0.0f)) {
+            selection_typed[point_i] = 1.0f;
+          }
+        }
+
+        /* Handle cyclic curve case. */
+        if (cyclic[curve_i]) {
+          if (selection_typed[points.first()] != selection_typed[points.last()]) {
+            selection_typed[points.first()] = 1.0f;
+            selection_typed[points.last()] = 1.0f;
+          }
+        }
+      }
+    });
+  }
+
+  if (deselect) {
+    invert_selection(selection.span);
+  }
+
+  selection.finish();
+}
+
 void select_random(bke::CurvesGeometry &curves,
                    const eAttrDomain selection_domain,
                    uint32_t random_seed,
@@ -356,14 +440,6 @@ static void apply_selection_operation_at_index(GMutableSpan selection,
   }
 }
 
-/**
- * Helper struct for `select_pick`.
- */
-struct FindClosestData {
-  int index = -1;
-  float distance = FLT_MAX;
-};
-
 static bool find_closest_point_to_screen_co(const Depsgraph &depsgraph,
                                             const ARegion *region,
                                             const RegionView3D *rv3d,
@@ -383,7 +459,7 @@ static bool find_closest_point_to_screen_co(const Depsgraph &depsgraph,
   closest_data = threading::parallel_reduce(
       curves.points_range(),
       1024,
-      FindClosestData(),
+      closest_data,
       [&](const IndexRange point_range, const FindClosestData &init) {
         FindClosestData best_match = init;
         for (const int point_i : point_range) {
@@ -414,7 +490,7 @@ static bool find_closest_point_to_screen_co(const Depsgraph &depsgraph,
         }
         return b;
       });
-  if (closest_data.index > 0) {
+  if (closest_data.index >= 0) {
     return true;
   }
 
@@ -442,7 +518,7 @@ static bool find_closest_curve_to_screen_co(const Depsgraph &depsgraph,
   closest_data = threading::parallel_reduce(
       curves.curves_range(),
       256,
-      FindClosestData(),
+      closest_data,
       [&](const IndexRange curves_range, const FindClosestData &init) {
         FindClosestData best_match = init;
         for (const int curve_i : curves_range) {
@@ -502,7 +578,7 @@ static bool find_closest_curve_to_screen_co(const Depsgraph &depsgraph,
         return b;
       });
 
-  if (closest_data.index > 0) {
+  if (closest_data.index >= 0) {
     return true;
   }
 
@@ -510,18 +586,21 @@ static bool find_closest_curve_to_screen_co(const Depsgraph &depsgraph,
 }
 
 bool select_pick(const ViewContext &vc,
+                 const Object &object,
                  bke::CurvesGeometry &curves,
                  const eAttrDomain selection_domain,
                  const SelectPick_Params &params,
-                 const int2 coord)
+                 const int2 coord,
+                 FindClosestData initial)
 {
-  FindClosestData closest;
+  FindClosestData closest = initial;
+
   bool found = false;
   if (selection_domain == ATTR_DOMAIN_POINT) {
     found = find_closest_point_to_screen_co(*vc.depsgraph,
                                             vc.region,
                                             vc.rv3d,
-                                            *vc.obact,
+                                            object,
                                             curves,
                                             float2(coord),
                                             ED_view3d_select_dist_px(),
@@ -531,22 +610,22 @@ bool select_pick(const ViewContext &vc,
     found = find_closest_curve_to_screen_co(*vc.depsgraph,
                                             vc.region,
                                             vc.rv3d,
-                                            *vc.obact,
+                                            object,
                                             curves,
                                             float2(coord),
                                             ED_view3d_select_dist_px(),
                                             closest);
   }
 
-  bool changed = false;
+  bool deselected = false;
   if (params.sel_op == SEL_OP_SET) {
-    if (found || params.deselect_all) {
-      bke::GSpanAttributeWriter selection = ensure_selection_attribute(
-          curves, selection_domain, CD_PROP_BOOL);
+    bke::GSpanAttributeWriter selection = ensure_selection_attribute(
+        curves, selection_domain, CD_PROP_BOOL);
+    if (found || ((params.deselect_all && has_anything_selected(selection.span)))) {
       fill_selection_false(selection.span);
-      selection.finish();
-      changed = true;
+      deselected = true;
     }
+    selection.finish();
   }
 
   if (found) {
@@ -556,7 +635,7 @@ bool select_pick(const ViewContext &vc,
     selection.finish();
   }
 
-  return changed || found;
+  return deselected || found;
 }
 
 bool select_box(const ViewContext &vc,

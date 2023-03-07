@@ -3608,7 +3608,7 @@ static void rna_def_space_image_uv(BlenderRNA *brna)
   prop = RNA_def_property(srna, "show_texpaint", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(prop, NULL, "flag", SI_NO_DRAW_TEXPAINT);
   RNA_def_property_ui_text(
-      prop, "Display Texture Paint UVs", "Display overlay of texture paint uv layer");
+      prop, "Display Texture Paint UVs", "Display overlay of texture paint UV layer");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_IMAGE, NULL);
 
   prop = RNA_def_property(srna, "show_pixel_coords", PROP_BOOLEAN, PROP_NONE);
@@ -3906,6 +3906,11 @@ static void rna_def_space_outliner(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_filter_object_camera", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(prop, NULL, "filter", SO_FILTER_NO_OB_CAMERA);
   RNA_def_property_ui_text(prop, "Show Cameras", "Show camera objects");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_OUTLINER, NULL);
+
+  prop = RNA_def_property(srna, "use_filter_object_grease_pencil", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_negative_sdna(prop, NULL, "filter", SO_FILTER_NO_OB_GPENCIL);
+  RNA_def_property_ui_text(prop, "Show Grease Pencil", "Show grease pencil objects");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_OUTLINER, NULL);
 
   prop = RNA_def_property(srna, "use_filter_object_others", PROP_BOOLEAN, PROP_NONE);
@@ -4527,10 +4532,19 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Show Weights", "Display weights in editmode");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
-  prop = RNA_def_property(srna, "show_occlude_wire", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "overlay.edit_flag", V3D_OVERLAY_EDIT_OCCLUDE_WIRE);
-  RNA_def_property_ui_text(prop, "Hidden Wire", "Use hidden wireframe display");
+  prop = RNA_def_property(srna, "show_retopology", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "overlay.edit_flag", V3D_OVERLAY_EDIT_RETOPOLOGY);
+  RNA_def_property_ui_text(prop, "Retopology", "Use retopology display");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D | NS_VIEW3D_SHADING, NULL);
+
+  prop = RNA_def_property(srna, "retopology_offset", PROP_FLOAT, PROP_DISTANCE);
+  RNA_def_property_float_sdna(prop, NULL, "overlay.retopology_offset");
+  RNA_def_property_ui_text(
+      prop, "Retopology Offset", "Offset used to draw edit mesh in front of other geometry");
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0.0f, 10.0f, 0.1f, 3);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
   prop = RNA_def_property(srna, "show_face_normals", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "overlay.edit_flag", V3D_OVERLAY_EDIT_FACE_NORMALS);
@@ -4714,7 +4728,7 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
-  prop = RNA_def_property(srna, "sculpt_curves_cage", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "show_sculpt_curves_cage", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "overlay.flag", V3D_OVERLAY_SCULPT_CURVES_CAGE);
   RNA_def_property_ui_text(
       prop, "Sculpt Curves Cage", "Show original curves that are currently being edited");
@@ -4733,12 +4747,12 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
-  prop = RNA_def_property(srna, "sculpt_show_mask", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "show_sculpt_mask", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "overlay.flag", V3D_OVERLAY_SCULPT_SHOW_MASK);
   RNA_def_property_ui_text(prop, "Sculpt Show Mask", "");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
 
-  prop = RNA_def_property(srna, "sculpt_show_face_sets", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "show_sculpt_face_sets", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "overlay.flag", V3D_OVERLAY_SCULPT_SHOW_FACE_SETS);
   RNA_def_property_ui_text(prop, "Sculpt Show Face Sets", "");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, NULL);
@@ -6912,6 +6926,12 @@ static void rna_def_fileselect_asset_params(BlenderRNA *brna)
   PropertyRNA *prop;
 
   static const EnumPropertyItem asset_import_type_items[] = {
+      {FILE_ASSET_IMPORT_FOLLOW_PREFS,
+       "FOLLOW_PREFS",
+       0,
+       "Follow Preferences",
+       "Use the import method set in the Preferences for this asset library, don't override it "
+       "for this Asset Browser"},
       {FILE_ASSET_IMPORT_LINK, "LINK", 0, "Link", "Import the assets as linked data-block"},
       {FILE_ASSET_IMPORT_APPEND,
        "APPEND",
@@ -6958,9 +6978,9 @@ static void rna_def_fileselect_asset_params(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "import_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, asset_import_type_items);
-  RNA_def_property_ui_text(prop, "Import Type", "Determine how the asset will be imported");
-  /* Asset drag info saved by buttons stores the import type, so the space must redraw when import
-   * type changes. */
+  RNA_def_property_ui_text(prop, "Import Method", "Determine how the asset will be imported");
+  /* Asset drag info saved by buttons stores the import method, so the space must redraw when
+   * import type changes. */
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_FILE_LIST, NULL);
 }
 

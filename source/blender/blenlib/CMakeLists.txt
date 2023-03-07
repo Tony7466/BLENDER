@@ -52,6 +52,7 @@ set(SRC
   intern/array_utils.cc
   intern/astar.c
   intern/atomic_disjoint_set.cc
+  intern/bit_span.cc
   intern/bitmap.c
   intern/bitmap_draw_2d.c
   intern/boxpack_2d.c
@@ -177,6 +178,8 @@ set(SRC
   BLI_assert.h
   BLI_astar.h
   BLI_atomic_disjoint_set.hh
+  BLI_bit_ref.hh
+  BLI_bit_span.hh
   BLI_bit_vector.hh
   BLI_bitmap.h
   BLI_bitmap_draw_2d.h
@@ -465,6 +468,8 @@ if(WITH_GTESTS)
     tests/BLI_array_store_test.cc
     tests/BLI_array_test.cc
     tests/BLI_array_utils_test.cc
+    tests/BLI_bit_ref_test.cc
+    tests/BLI_bit_span_test.cc
     tests/BLI_bit_vector_test.cc
     tests/BLI_bitmap_test.cc
     tests/BLI_bounds_test.cc
