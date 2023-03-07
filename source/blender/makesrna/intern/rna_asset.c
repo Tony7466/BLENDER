@@ -486,7 +486,7 @@ static void rna_def_asset_data(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "License",
                            "The type of license this asset is distributed under. An empty license "
-                           "name does not necessarily indicate that this is without licensing "
+                           "name does not necessarily indicate that this is free of licensing "
                            "terms. Contact the author if any clarification is needed");
 
   prop = RNA_def_property(srna, "tags", PROP_COLLECTION, PROP_NONE);
