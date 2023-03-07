@@ -1,1 +1,2 @@
 Referenced by issue #105198, Regression: Node Editor: Search doesn't find the Frame or Reroute nodes
+Referenced by issue #103108, Regression: NODE_OT_add_search ignores NodeItems entries
