@@ -99,6 +99,8 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
    * \note Keep this message at the bottom of the function.
    */
   {
+    FROM_DEFAULT_V4_UCHAR(space_view3d.face_retopology);
+
     /* Keep this block, even when empty. */
   }
 
