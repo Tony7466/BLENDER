@@ -3009,6 +3009,9 @@ static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPi
       vc.scene, vc.view_layer, vc.v3d, &bases_len);
   Span<Base *> bases(bases_ptr, bases_len);
 
+  Curves &active_curves_id = *static_cast<Curves *>(vc.obedit->data);
+  const eAttrDomain selection_domain = eAttrDomain(active_curves_id.selection_domain);
+
   const ClosestCurveDataBlock closest = threading::parallel_reduce(
       bases.index_range(),
       1L,
@@ -3022,7 +3025,7 @@ static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPi
               ed::curves::closest_elem_find_screen_space(vc,
                                                          curves_ob,
                                                          curves_id.geometry.wrap(),
-                                                         eAttrDomain(curves_id.selection_domain),
+                                                         selection_domain,
                                                          mval,
                                                          new_closest.elem);
           if (new_closest_elem) {
@@ -3044,7 +3047,7 @@ static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPi
         bke::CurvesGeometry &curves = curves_id.geometry.wrap();
         if (ed::curves::has_anything_selected(curves)) {
           bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
-              curves, eAttrDomain(curves_id.selection_domain), CD_PROP_BOOL);
+              curves, selection_domain, CD_PROP_BOOL);
           ed::curves::fill_selection_false(selection.span);
           selection.finish();
 
@@ -3064,9 +3067,7 @@ static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPi
   }
 
   bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
-      closest.curves_id->geometry.wrap(),
-      eAttrDomain(closest.curves_id->selection_domain),
-      CD_PROP_BOOL);
+      closest.curves_id->geometry.wrap(), selection_domain, CD_PROP_BOOL);
   ed::curves::apply_selection_operation_at_index(
       selection.span, closest.elem.index, params.sel_op);
   selection.finish();
