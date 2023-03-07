@@ -68,9 +68,6 @@ const char *imb_ext_image[] = {
 };
 
 const char *imb_ext_image_filepath_only[] = {
-    ".psd",
-    ".pdd",
-    ".psb",
     NULL,
 };
 
