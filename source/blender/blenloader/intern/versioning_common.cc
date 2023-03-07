@@ -310,6 +310,9 @@ void remove_legacy_instances_on(Main *bmain, ListBase &lb_objects)
   MultiValueMap<Object *, Object *> parents_map;
 
   for (Object *object : objects) {
+    
+    printf("Name: %s, Pointer: %p, Parent: %p;\n", object->id.name, object, object->parent);
+    continue;
     Object *emitter = object->parent;
     if (emitter == nullptr) {
       continue;
