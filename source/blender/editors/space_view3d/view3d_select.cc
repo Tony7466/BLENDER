@@ -3059,6 +3059,7 @@ static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPi
   }
 
   if (!closest.curves_id) {
+    MEM_freeN(bases_ptr);
     return deselected;
   }
 
