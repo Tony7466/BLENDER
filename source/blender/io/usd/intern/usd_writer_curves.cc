@@ -381,7 +381,7 @@ void USDCurvesWriter::do_write(HierarchyContext &context)
       });
 
   if (number_of_curve_types > 1) {
-    WM_report(RPT_WARNING, "Cannot export mixed curve types.");
+    WM_report(RPT_WARNING, "Cannot export mixed curve types in the same Curve object.");
     return;
   }
 
@@ -397,7 +397,7 @@ void USDCurvesWriter::do_write(HierarchyContext &context)
   }
 
   if (!all_same_cyclic_type) {
-    WM_report(RPT_WARNING, "Cannot export mixed cyclic and non-cyclic curves.");
+    WM_report(RPT_WARNING, "Cannot export mixed cyclic and non-cyclic curves in the same Curve object.");
     return;
   }
 
