@@ -160,8 +160,10 @@ Sequence *SEQ_add_mask_strip(Scene *scene, ListBase *seqbase, struct SeqLoadData
 
 Sequence *SEQ_add_effect_strip(Scene *scene, ListBase *seqbase, struct SeqLoadData *load_data)
 {
-  Sequence *seq = SEQ_sequence_alloc(
-      seqbase, load_data->start_frame, load_data->channel, load_data->effect.type);
+  Sequence *seq = SEQ_sequence_alloc(seqbase,
+                                     SEQ_time_frames_to_seconds(scene, load_data->start_frame),
+                                     load_data->channel,
+                                     load_data->effect.type);
 
   seq->flag |= SEQ_USE_EFFECT_DEFAULT_FADE;
   struct SeqEffectHandle sh = SEQ_effect_handle_get(seq);
@@ -175,7 +177,7 @@ Sequence *SEQ_add_effect_strip(Scene *scene, ListBase *seqbase, struct SeqLoadDa
   }
 
   if (!load_data->effect.seq1) {
-    SEQ_time_strip_length_set(scene, seq, 0); /* XXX Effect is generator, set non zero length. */
+    SEQ_time_strip_length_set(scene, seq, 0);
     seq->flag |= SEQ_SINGLE_FRAME_CONTENT;
     SEQ_time_right_handle_frame_set(scene, seq, load_data->effect.end_frame);
   }

@@ -66,7 +66,7 @@ struct ListBase *SEQ_active_seqbase_get(const struct Editing *ed);
  * \param seqbase: ListBase with strips
  */
 void SEQ_seqbase_active_set(struct Editing *ed, struct ListBase *seqbase);
-struct Sequence *SEQ_sequence_alloc(ListBase *lb, int timeline_frame, int machine, int type);
+struct Sequence *SEQ_sequence_alloc(ListBase *lb, double start_time, int machine, int type);
 void SEQ_sequence_free(struct Scene *scene, struct Sequence *seq);
 /**
  * Get #MetaStack that corresponds to current level that is being viewed

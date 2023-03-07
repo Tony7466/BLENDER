@@ -571,13 +571,13 @@ void SEQ_time_left_handle_frame_set(const Scene *scene, Sequence *seq, int timel
     timeline_frame = right_handle_orig_frame - 1;
   }
 
-  float offset = timeline_frame - SEQ_time_start_frame_get(scene, seq);
+  float offset = SEQ_time_frames_to_seconds(scene, timeline_frame) - seq->start;
 
   if (SEQ_transform_single_image_check(seq)) {
     /* This strip has only 1 frame of content, that is always stretched to whole strip length.
      * Therefore, strip start should be moved instead of adjusting offset. */
     SEQ_time_start_frame_set(scene, seq, timeline_frame);
-    seq->endofs += offset;
+    seq->len -= offset;
   }
   else {
     seq->startofs = offset;
@@ -597,7 +597,15 @@ void SEQ_time_right_handle_frame_set(const Scene *scene, Sequence *seq, int time
     timeline_frame = left_handle_orig_frame + 1;
   }
 
-  seq->endofs = SEQ_time_content_end_frame_get(scene, seq) - timeline_frame;
+  if (SEQ_transform_single_image_check(seq)) {
+    double strip_end_time = seq->start + seq->len;
+    double time = SEQ_time_frames_to_seconds(scene, timeline_frame);
+    seq->len += time - strip_end_time;
+  }
+  else {
+    seq->endofs = seq->start + seq->len - SEQ_time_frames_to_seconds(scene, timeline_frame);
+  }
+
   seq->enddisp = timeline_frame; /* Only to make files usable in older versions. */
 
   SEQ_time_update_meta_strip_range(scene, seq_sequence_lookup_meta_by_seq(scene, seq));

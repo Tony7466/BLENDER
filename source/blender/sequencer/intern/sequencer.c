@@ -112,7 +112,7 @@ static void seq_free_strip(Strip *strip)
   MEM_freeN(strip);
 }
 
-Sequence *SEQ_sequence_alloc(ListBase *lb, int timeline_frame, int machine, int type)
+Sequence *SEQ_sequence_alloc(ListBase *lb, double start_time, int machine, int type)
 {
   Sequence *seq;
 
@@ -123,7 +123,7 @@ Sequence *SEQ_sequence_alloc(ListBase *lb, int timeline_frame, int machine, int 
   seq->name[2] = 0;
 
   seq->flag = SELECT;
-  seq->start = timeline_frame;
+  seq->start = start_time;
   seq->machine = machine;
   seq->sat = 1.0;
   seq->mul = 1.0;
