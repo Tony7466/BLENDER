@@ -8,7 +8,6 @@
 
 #ifdef __cplusplus
 #  include "BLI_map.hh"
-#  include "BLI_span.hh"
 #endif
 
 struct ARegion;
