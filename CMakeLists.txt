@@ -331,7 +331,6 @@ option(WITH_MOD_REMESH          "Enable Remesh Modifier" ON)
 option(WITH_MOD_OCEANSIM        "Enable Ocean Modifier" ON)
 
 # Image format support
-option(WITH_OPENIMAGEIO         "Enable OpenImageIO Support (http://www.openimageio.org)" ON)
 option(WITH_IMAGE_OPENEXR       "Enable OpenEXR Support (http://www.openexr.com)" ON)
 option(WITH_IMAGE_OPENJPEG      "Enable OpenJpeg Support (http://www.openjpeg.org)" ON)
 option(WITH_IMAGE_TIFF          "Enable LibTIFF Support" ON)
@@ -358,6 +357,7 @@ option(WITH_MATERIALX           "Enable MaterialX Support" OFF)
 # Disable opencollada when we don't have precompiled libs
 option(WITH_OPENCOLLADA   "Enable OpenCollada Support (http://www.opencollada.org)" ON)
 option(WITH_IO_WAVEFRONT_OBJ  "Enable Wavefront-OBJ 3D file format support (*.obj)" ON)
+option(WITH_IO_PLY            "Enable PLY 3D file format support (*.ply)" ON)
 option(WITH_IO_STL            "Enable STL 3D file format support (*.stl)" ON)
 option(WITH_IO_GPENCIL        "Enable grease-pencil file format IO (*.svg, *.pdf)" ON)
 
@@ -524,7 +524,7 @@ endif()
 if(NOT APPLE)
   option(WITH_CYCLES_DEVICE_HIP        "Enable Cycles AMD HIP support" ON)
   option(WITH_CYCLES_HIP_BINARIES      "Build Cycles AMD HIP binaries" OFF)
-  set(CYCLES_HIP_BINARIES_ARCH gfx1010 gfx1011 gfx1012 gfx1030 gfx1031 gfx1032 gfx1034 gfx1035 gfx1100 gfx1101 gfx1102 CACHE STRING "AMD HIP architectures to build binaries for")
+  set(CYCLES_HIP_BINARIES_ARCH gfx900 gfx906 gfx90c gfx902 gfx1010 gfx1011 gfx1012 gfx1030 gfx1031 gfx1032 gfx1034 gfx1035 gfx1100 gfx1101 gfx1102 CACHE STRING "AMD HIP architectures to build binaries for")
   mark_as_advanced(WITH_CYCLES_DEVICE_HIP)
   mark_as_advanced(CYCLES_HIP_BINARIES_ARCH)
 endif()
@@ -892,8 +892,6 @@ set_and_warn_dependency(WITH_IMAGE_TIFF WITH_HARU       OFF)
 
 # auto enable openimageio for cycles
 if(WITH_CYCLES)
-  set(WITH_OPENIMAGEIO ON)
-
   # auto enable llvm for cycles_osl
   if(WITH_CYCLES_OSL)
     set(WITH_LLVM ON CACHE BOOL "" FORCE)
@@ -954,21 +952,6 @@ endif()
 # -----------------------------------------------------------------------------
 # Check if Sub-modules are Cloned
 
-if(WITH_INTERNATIONAL)
-  file(GLOB RESULT "${CMAKE_SOURCE_DIR}/release/datafiles/locale")
-  list(LENGTH RESULT DIR_LEN)
-  if(DIR_LEN EQUAL 0)
-    message(
-      WARNING
-      "Translation path '${CMAKE_SOURCE_DIR}/release/datafiles/locale' is missing, "
-      "This is a 'git submodule', which are known not to work with bridges to other version "
-      "control systems."
-    )
-    set(TRANSLATIONS_FOUND OFF)
-    set_and_warn_library_found("Translations" TRANSLATIONS_FOUND WITH_INTERNATIONAL)
-  endif()
-endif()
-
 if(WITH_PYTHON)
   # While we have this as an '#error' in 'bpy_capi_utils.h',
   # upgrading Python tends to cause confusion for users who build.
@@ -984,14 +967,14 @@ if(WITH_PYTHON)
     )
   endif()
 
-  file(GLOB RESULT "${CMAKE_SOURCE_DIR}/release/scripts/addons")
+  file(GLOB RESULT "${CMAKE_SOURCE_DIR}/scripts/addons")
   list(LENGTH RESULT DIR_LEN)
   if(DIR_LEN EQUAL 0)
     message(
       WARNING
-      "Addons path '${CMAKE_SOURCE_DIR}/release/scripts/addons' is missing, "
-      "This is a 'git submodule', which are known not to work with bridges to other version "
-      "control systems: * CONTINUING WITHOUT ADDONS *"
+      "Addons path '${CMAKE_SOURCE_DIR}/scripts/addons' is missing. "
+      "This is an external repository which needs to be checked out. Use `make update` to do so. "
+      "* CONTINUING WITHOUT ADDONS *"
     )
   endif()
 endif()
@@ -1100,13 +1083,6 @@ if(NOT WITH_FFTW3 AND WITH_MOD_OCEANSIM)
 endif()
 
 if(WITH_CYCLES)
-  if(NOT WITH_OPENIMAGEIO)
-    message(
-      FATAL_ERROR
-      "Cycles requires WITH_OPENIMAGEIO, the library may not have been found. "
-      "Configure OIIO or disable WITH_CYCLES"
-    )
-  endif()
   if(WITH_CYCLES_OSL)
     if(NOT WITH_LLVM)
       message(
@@ -1957,8 +1933,7 @@ if(FIRST_RUN)
   info_cfg_option(WITH_IMAGE_OPENEXR)
   info_cfg_option(WITH_IMAGE_OPENJPEG)
   info_cfg_option(WITH_IMAGE_TIFF)
-  info_cfg_option(WITH_OPENIMAGEIO)
-
+  
   info_cfg_text("Audio:")
   info_cfg_option(WITH_CODEC_AVI)
   info_cfg_option(WITH_CODEC_FFMPEG)

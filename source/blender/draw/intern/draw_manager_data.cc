@@ -7,7 +7,7 @@
 
 #include "DRW_pbvh.hh"
 
-#include "draw_attributes.h"
+#include "draw_attributes.hh"
 #include "draw_manager.h"
 #include "draw_pbvh.h"
 
@@ -698,7 +698,7 @@ static void drw_call_obinfos_init(DRWObjectInfos *ob_infos, Object *ob)
   drw_call_calc_orco(ob, ob_infos->orcotexfac);
   /* Random float value. */
   uint random = (DST.dupli_source) ?
-                    DST.dupli_source->random_id :
+                     DST.dupli_source->random_id :
                      /* TODO(fclem): this is rather costly to do at runtime. Maybe we can
                       * put it in ob->runtime and make depsgraph ensure it is up to date. */
                      BLI_hash_int_2d(BLI_hash_string(ob->id.name + 2), 0);
@@ -1709,7 +1709,7 @@ static void drw_shgroup_init(DRWShadingGroup *shgroup, GPUShader *shader)
         shgroup, view_ubo_location, DRW_UNIFORM_BLOCK, G_draw.view_ubo, GPU_SAMPLER_DEFAULT, 0, 1);
   }
 
-  if (clipping_ubo_location) {
+  if (clipping_ubo_location != -1) {
     drw_shgroup_uniform_create_ex(shgroup,
                                   clipping_ubo_location,
                                   DRW_UNIFORM_BLOCK,
