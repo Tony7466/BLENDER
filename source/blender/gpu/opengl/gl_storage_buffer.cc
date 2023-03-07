@@ -124,7 +124,7 @@ void GLStorageBuf::clear(Span<uint32_t> data)
   }
 
   GLenum internal_format = GL_R32UI;
-  GLenum format = GL_RED;
+  GLenum format = GL_RED_INTEGER;
   if (data.size() == 1) {
     internal_format = GL_R32UI;
     format = GL_RED_INTEGER;

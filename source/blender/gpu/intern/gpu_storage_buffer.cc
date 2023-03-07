@@ -95,13 +95,13 @@ void GPU_storagebuf_clear_to_zero(GPUStorageBuf *ssbo)
   GPU_storagebuf_clear_uint(ssbo, &data, 1);
 }
 
-void GPU_storagebuf_clear_int(GPUStorageBuf *ssbo, int32_t *clear_data, uint8_t clear_data_len)
+void GPU_storagebuf_clear_int(GPUStorageBuf *ssbo, int32_t *clear_data, int clear_data_len)
 {
   uint32_t *clear_data_uint = static_cast<uint32_t *>(static_cast<void *>(clear_data));
   GPU_storagebuf_clear_uint(ssbo, clear_data_uint, clear_data_len);
 }
 
-void GPU_storagebuf_clear_uint(GPUStorageBuf *ssbo, uint32_t *clear_data, uint8_t clear_data_len)
+void GPU_storagebuf_clear_uint(GPUStorageBuf *ssbo, uint32_t *clear_data, int clear_data_len)
 {
   BLI_assert(clear_data_len >= 1 && clear_data_len <= 4);
   unwrap(ssbo)->clear(blender::Span<uint32_t>(clear_data, clear_data_len));
