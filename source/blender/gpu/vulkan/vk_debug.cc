@@ -9,6 +9,8 @@
 
 
 #include  "BLI_set.hh"
+#include "BLI_system.h"
+
 #include  "BKE_global.h"
 
 #include  "GPU_debug.h"
@@ -121,8 +123,16 @@ static void BlenderVulkanLoadInstance(VkInstance context)
 #undef load
 }
 
+
+
+
 /*If we don't have multiple instances, VKDebuggingTools is Singleton.*/
 static VKDebuggingTools tools;
+
+#define CONSOLE_COLOR_YELLOW "\x1b[33m"
+#define CONSOLE_COLOR_RED "\x1b[31m"
+#define CONSOLE_COLOR_RESET "\x1b[0m"
+#define CONSOLE_COLOR_FINE "\x1b[2m"
 
 #if defined(VK_EXT_debug_utils)
 
@@ -147,34 +157,68 @@ debugUtilsCB(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 {
 
   VKDebuggingTools *ctx = reinterpret_cast<VKDebuggingTools *>(userData);
-
   if (ctx->dbgIgnoreMessages.contains(callbackData->messageIdNumber)) {
     return VK_FALSE;
   }
 
-  if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) {
-      CLOG_INFO(&LOG, 1, " %s\n  %s\n",
-             callbackData->pMessageIdName,
-             callbackData->pMessage);
+  const bool use_color = CLG_color_support_get(&LOG);
+  if (ELEM(messageSeverity,
+           VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT,
+           VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)) {
+    if ((LOG.type->flag & CLG_FLAG_USE) && (LOG.type->level >= CLG_SEVERITY_INFO)) {
+      const char *format = use_color ? CONSOLE_COLOR_FINE "% s\n %s " CONSOLE_COLOR_RESET:" % s\n %s ";
+      CLG_logf(LOG.type,
+               CLG_SEVERITY_INFO,
+               "",
+               "",
+               format,
+               callbackData->pMessageIdName,
+               callbackData->pMessage);
     }
-  else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
-    CLOG_INFO(&LOG, 2," %s\n  %s\n", callbackData->pMessageIdName, callbackData->pMessage);
-  }
-  else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
-    CLOG_WARN(&LOG, "%s\n  %s\n", callbackData->pMessageIdName, callbackData->pMessage);
-  }
-  else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
-    CLOG_ERROR(&LOG,"%s\n  %s\n", callbackData->pMessageIdName, callbackData->pMessage);
-  }
-  else if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT) {
-    CLOG_INFO(&LOG, 1, "%s\n  %s\n", callbackData->pMessageIdName, callbackData->pMessage);
   }
   else {
-    BLI_assert_unreachable();
+
+    CLG_Severity clog_severity;
+    switch (messageSeverity) {
+      case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
+        clog_severity = CLG_SEVERITY_WARN;
+        break;
+      case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
+        clog_severity = CLG_SEVERITY_ERROR;
+        break;
+      default:
+        BLI_assert_unreachable();
+    }
+
+    if (clog_severity == CLG_SEVERITY_ERROR) {
+
+      const char *format = use_color ? CONSOLE_COLOR_RED "%s\n" CONSOLE_COLOR_RESET " %s \n " : " %s\n %s ";
+      CLG_logf(LOG.type,
+               clog_severity,
+               "",
+               "",
+               format,
+               callbackData->pMessageIdName,
+               callbackData->pMessage);
+
+    }
+    else if (LOG.type->level >= CLG_SEVERITY_WARN){
+      const char *format = use_color ? CONSOLE_COLOR_YELLOW "%s\n" CONSOLE_COLOR_RESET " %s \n " : " %s\n %s ";
+      CLG_logf(LOG.type,
+               clog_severity,
+               "",
+               "",
+               format,
+               callbackData->pMessageIdName,
+               callbackData->pMessage);
+    }
   }
 
-  return VK_FALSE;
-}
+  return VK_TRUE;
+
+};
+
+
 
 static VkResult CreateDebugUtils(VkDebugUtilsMessageSeverityFlagsEXT flag, VKDebuggingTools &deb)
 {
