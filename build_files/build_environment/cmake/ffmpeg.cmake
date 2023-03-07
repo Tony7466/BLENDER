@@ -3,9 +3,9 @@
 set(temp_LIBDIR ${LIBDIR})
 
 if(WIN32)
-  set(LIBDIR_PREFIX "L")
+  set(LIBDIR_FLAG "-L")
 else()
-  set(LIBDIR_PREFIX "LIBPATH")
+  set(LIBDIR_FLAG "-LIBPATH")
 endif()
 
 set(FFMPEG_CFLAGS "\
@@ -21,16 +21,16 @@ set(FFMPEG_CFLAGS "\
 -I${temp_LIBDIR}/aom/include"
 )
 set(FFMPEG_LDFLAGS "\
--${LIBDIR_PREFIX}${temp_LIBDIR}/lame/lib \
--${LIBDIR_PREFIX}${temp_LIBDIR}/openjpeg/lib \
--${LIBDIR_PREFIX}${temp_LIBDIR}/ogg/lib \
--${LIBDIR_PREFIX}${temp_LIBDIR}/vorbis/lib \
--${LIBDIR_PREFIX}${temp_LIBDIR}/theora/lib \
--${LIBDIR_PREFIX}${temp_LIBDIR}/opus/lib \
--${LIBDIR_PREFIX}${temp_LIBDIR}/vpx/lib \
--${LIBDIR_PREFIX}${temp_LIBDIR}/x264/lib \
--${LIBDIR_PREFIX}${temp_LIBDIR}/zlib/lib \
--${LIBDIR_PREFIX}${temp_LIBDIR}/aom/lib"
+${LIBDIR_FLAG}${temp_LIBDIR}/lame/lib \
+${LIBDIR_FLAG}${temp_LIBDIR}/openjpeg/lib \
+${LIBDIR_FLAG}${temp_LIBDIR}/ogg/lib \
+${LIBDIR_FLAG}${temp_LIBDIR}/vorbis/lib \
+${LIBDIR_FLAG}${temp_LIBDIR}/theora/lib \
+${LIBDIR_FLAG}${temp_LIBDIR}/opus/lib \
+${LIBDIR_FLAG}${temp_LIBDIR}/vpx/lib \
+${LIBDIR_FLAG}${temp_LIBDIR}/x264/lib \
+${LIBDIR_FLAG}${temp_LIBDIR}/zlib/lib \
+${LIBDIR_FLAG}${temp_LIBDIR}/aom/lib"
 )
 
 if(WIN32)
@@ -202,7 +202,6 @@ endif()
 add_dependencies(
   external_ffmpeg
   external_zlib
-  external_openjpeg
   external_x264
   external_opus
   external_vpx
@@ -224,6 +223,7 @@ if(UNIX)
   add_dependencies(
     external_ffmpeg
     external_nasm
+    external_openjpeg
   )
 endif()
 

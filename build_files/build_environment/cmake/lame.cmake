@@ -3,7 +3,6 @@
 set(LAME_EXTRA_ARGS)
 if(MSVC)
   set(LAME_ARCH Win64)
-  endif()
   set (LAME_CONFIGURE echo .)
   set (LAME_BUILD cd ${BUILD_DIR}/lame/src/external_lame/ && nmake /F MakeFile.msvc MSVCVER=${LAME_ARCH} all)
   set (LAME_INSTALL cd ${BUILD_DIR}/lame/src/external_lame/ &&
@@ -34,7 +33,3 @@ ExternalProject_Add(external_lame
   INSTALL_COMMAND ${LAME_INSTALL}
   INSTALL_DIR ${LIBDIR}/lame
 )
-
-if(MSVC)
-  set_target_properties(external_lame PROPERTIES FOLDER Mingw)
-endif()
