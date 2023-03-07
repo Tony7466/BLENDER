@@ -96,27 +96,7 @@ template<typename LB, typename T> class ListBaseWrapperTemplate {
   }
 };
 
-template<typename T> class ListBaseWrapper : public ListBaseWrapperTemplate<ListBase, T> {
- public:
-  ListBaseWrapper(ListBase *listbase) : ListBaseWrapperTemplate<ListBase, T>(listbase)
-  {
-  }
-  ListBaseWrapper(ListBase &listbase) : ListBaseWrapperTemplate<ListBase, T>(listbase)
-  {
-  }
-};
-
-template<typename T>
-class ConstListBaseWrapper : public ListBaseWrapperTemplate<const ListBase, const T> {
- public:
-  ConstListBaseWrapper(const ListBase *listbase)
-      : ListBaseWrapperTemplate<const ListBase, const T>(listbase)
-  {
-  }
-  ConstListBaseWrapper(const ListBase &listbase)
-      : ListBaseWrapperTemplate<const ListBase, const T>(listbase)
-  {
-  }
-};
+template<typename T> using ListBaseWrapper = ListBaseWrapperTemplate<ListBase, T>;
+template<typename T> using ConstListBaseWrapper = ListBaseWrapperTemplate<const ListBase, const T>;
 
 } /* namespace blender */
