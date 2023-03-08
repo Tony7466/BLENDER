@@ -38,7 +38,7 @@ namespace blender::math {
  */
 class Axis {
  public:
-  enum class Value : int {
+  enum class Value : int8_t {
     /* Must start at 0. Used as indices in tables and vectors. */
     X = 0,
     Y,
@@ -77,9 +77,9 @@ class Axis {
     return axis_;
   }
 
-  int as_int() const
+  constexpr int as_int() const
   {
-    return static_cast<int>(axis_);
+    return int(axis_);
   }
 
   /** Avoid hell. */
@@ -108,7 +108,7 @@ class Axis {
  */
 class AxisSigned {
  public:
-  enum class Value : int {
+  enum class Value : int8_t {
     /* Match #eTrackToAxis_Modes */
     /* Must start at 0. Used as indices in tables and vectors. */
     X_POS = 0,
@@ -169,7 +169,7 @@ class AxisSigned {
 
   constexpr int as_int() const
   {
-    return static_cast<int>(axis_);
+    return int(axis_);
   }
 
   /** Returns -1 if axis is negative, 1 otherwise. */
@@ -181,7 +181,7 @@ class AxisSigned {
   /** Returns true if axis is negative, false otherwise. */
   constexpr bool is_negative() const
   {
-    return static_cast<int>(axis_) > static_cast<int>(Value::Z_POS);
+    return int(axis_) > int(Value::Z_POS);
   }
 
   /** Avoid hell. */
@@ -206,12 +206,12 @@ class AxisSigned {
 
 constexpr static bool operator<=(Axis::Value a, Axis::Value b)
 {
-  return static_cast<int>(a) <= static_cast<int>(b);
+  return int(a) <= int(b);
 }
 
 constexpr static bool operator<=(AxisSigned::Value a, AxisSigned::Value b)
 {
-  return static_cast<int>(a) <= static_cast<int>(b);
+  return int(a) <= int(b);
 }
 
 /** \} */
