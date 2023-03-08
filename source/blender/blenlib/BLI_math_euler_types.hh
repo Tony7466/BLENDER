@@ -16,12 +16,12 @@
  * values to other rotation types.
  *
  * The rotation values can still be reinterpreted like this:
- * `Euler3(float3(my_euler3_zyx_rot), Euler3::eEulerOrder::XYZ)`
+ * `Euler3(float3(my_euler3_zyx_rot), EulerOrder::XYZ)`
  * This will swap the X and Z rotation order and will likely not produce the same rotation matrix.
  *
  * If the goal is to convert (keep the same orientation) to `Euler3` then you have to do an
  * assignment.
- * eg: `Euler3 my_euler(Euler3::eEulerOrder::XYZ); my_euler = my_quaternion:`
+ * eg: `Euler3 my_euler(EulerOrder::XYZ); my_euler = my_quaternion:`
  */
 
 #include "BLI_math_angle_types.hh"
@@ -32,7 +32,7 @@ namespace blender::math {
 
 /* WARNING: must match the #eRotationModes in `DNA_action_types.h`
  * order matters - types are saved to file. */
-enum eEulerOrder {
+enum EulerOrder {
   XYZ = 1,
   XZY,
   YXZ,
@@ -41,7 +41,7 @@ enum eEulerOrder {
   ZYX,
 };
 
-inline std::ostream &operator<<(std::ostream &stream, eEulerOrder order)
+inline std::ostream &operator<<(std::ostream &stream, EulerOrder order)
 {
   switch (order) {
     default:
@@ -225,7 +225,7 @@ template<typename T> struct Euler3 : public EulerBase<T> {
 
  private:
   /** Axes order from applying the rotation. */
-  eEulerOrder order_;
+  EulerOrder order_;
 
   /**
    * Swizzle structure allowing to rotation ordered assignement.
@@ -262,19 +262,19 @@ template<typename T> struct Euler3 : public EulerBase<T> {
   /**
    * Create an euler rotation with \a order rotation ordering
    * from a triple of radian angles in XYZ order.
-   * eg: If \a order is `eEulerOrder::ZXY` then `angles.z` will be the angle of the first rotation.
+   * eg: If \a order is `EulerOrder::ZXY` then `angles.z` will be the angle of the first rotation.
    */
   template<typename AngleU>
-  Euler3(const VecBase<AngleU, 3> &angles_xyz, eEulerOrder order)
+  Euler3(const VecBase<AngleU, 3> &angles_xyz, EulerOrder order)
       : EulerBase<T>(angles_xyz), order_(order){};
 
-  Euler3(const AngleT &x, const AngleT &y, const AngleT &z, eEulerOrder order)
+  Euler3(const AngleT &x, const AngleT &y, const AngleT &z, EulerOrder order)
       : EulerBase<T>(x, y, z), order_(order){};
 
   /**
    * Create a rotation around a single euler axis and an angle.
    */
-  Euler3(const Axis axis, AngleT angle, eEulerOrder order) : EulerBase<T>(), order_(order)
+  Euler3(const Axis axis, AngleT angle, EulerOrder order) : EulerBase<T>(), order_(order)
   {
     this->xyz_[axis] = angle;
   }
@@ -283,11 +283,11 @@ template<typename T> struct Euler3 : public EulerBase<T> {
    * Defines rotation order but not the rotation values.
    * Used for conversion from other rotation types.
    */
-  Euler3(eEulerOrder order) : order_(order){};
+  Euler3(EulerOrder order) : order_(order){};
 
   /** Methods. */
 
-  const eEulerOrder &order() const
+  const EulerOrder &order() const
   {
     return order_;
   }

@@ -16,9 +16,9 @@ namespace blender::math {
 template EulerXYZ to_euler(const AxisAngle &);
 template EulerXYZ to_euler(const AxisAngleCartesian &);
 template EulerXYZ to_euler(const Quaternion &);
-template Euler3 to_euler(const AxisAngle &, eEulerOrder);
-template Euler3 to_euler(const AxisAngleCartesian &, eEulerOrder);
-template Euler3 to_euler(const Quaternion &, eEulerOrder);
+template Euler3 to_euler(const AxisAngle &, EulerOrder);
+template Euler3 to_euler(const AxisAngleCartesian &, EulerOrder);
+template Euler3 to_euler(const Quaternion &, EulerOrder);
 template Quaternion to_quaternion(const AxisAngle &);
 template Quaternion to_quaternion(const AxisAngleCartesian &);
 template Quaternion to_quaternion(const Euler3 &);

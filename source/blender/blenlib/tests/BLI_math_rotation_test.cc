@@ -550,12 +550,12 @@ TEST(math_rotation, QuaternionFromTracking)
       AxisSigned forward_axis = AxisSigned::from_int(i);
       Axis up_axis = Axis::from_int(j);
 
-      if (Axis(forward_axis) == up_axis) {
+      if (forward_axis.axis() == up_axis) {
         continue;
       }
 
       Quaternion expect = Quaternion::identity();
-      quat_apply_track(&expect.w, forward_axis, up_axis);
+      quat_apply_track(&expect.w, forward_axis.as_int(), up_axis.as_int());
 
       /* This is the expected axis conversion for curve tangent space to tracked object space. */
       CartesianBasis axes = rotation_between(
@@ -580,12 +580,12 @@ TEST(math_rotation, Euler3ToGimbal)
 {
   /* All the same rotation. */
   float3 ijk{0.350041, -0.358896, 0.528994};
-  Euler3 euler3_xyz(ijk, eEulerOrder::XYZ);
-  Euler3 euler3_xzy(ijk, eEulerOrder::XZY);
-  Euler3 euler3_yxz(ijk, eEulerOrder::YXZ);
-  Euler3 euler3_yzx(ijk, eEulerOrder::YZX);
-  Euler3 euler3_zxy(ijk, eEulerOrder::ZXY);
-  Euler3 euler3_zyx(ijk, eEulerOrder::ZYX);
+  Euler3 euler3_xyz(ijk, EulerOrder::XYZ);
+  Euler3 euler3_xzy(ijk, EulerOrder::XZY);
+  Euler3 euler3_yxz(ijk, EulerOrder::YXZ);
+  Euler3 euler3_yzx(ijk, EulerOrder::YZX);
+  Euler3 euler3_zxy(ijk, EulerOrder::ZXY);
+  Euler3 euler3_zyx(ijk, EulerOrder::ZYX);
 
   float3x3 mat_xyz = transpose(
       float3x3({0.808309, -0.504665, 0}, {0.47251, 0.863315, 0}, {0.351241, 0, 1}));
@@ -619,7 +619,7 @@ TEST(math_rotation, CartesianBasis)
           AxisSigned dst_forward = AxisSigned::from_int(k);
           AxisSigned dst_up = AxisSigned::from_int(l);
 
-          if ((Axis(src_forward) == Axis(src_up)) || (Axis(dst_forward) == Axis(dst_up))) {
+          if ((abs(src_forward) == abs(src_up)) || (abs(dst_forward) == abs(dst_up))) {
             /* Assertion expected. */
             continue;
           }
@@ -630,7 +630,11 @@ TEST(math_rotation, CartesianBasis)
           }
           else {
             /* TODO: Find a way to test without resorting to old C API. */
-            mat3_from_axis_conversion(src_forward, src_up, dst_forward, dst_up, expect.ptr());
+            mat3_from_axis_conversion(src_forward.as_int(),
+                                      src_up.as_int(),
+                                      dst_forward.as_int(),
+                                      dst_up.as_int(),
+                                      expect.ptr());
           }
 
           EXPECT_EQ(from_rotation<float3x3>(
@@ -643,7 +647,8 @@ TEST(math_rotation, CartesianBasis)
           }
           else {
             /* TODO: Find a way to test without resorting to old C API. */
-            mat3_from_axis_conversion_single(src_forward, dst_forward, expect.ptr());
+            mat3_from_axis_conversion_single(
+                src_forward.as_int(), dst_forward.as_int(), expect.ptr());
           }
 
           EXPECT_EQ(from_rotation<float3x3>(rotation_between(src_forward, dst_forward)), expect);

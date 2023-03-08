@@ -38,12 +38,16 @@ namespace blender::math {
  */
 class Axis {
  public:
-  enum Value : int {
+  enum class Value : int {
     /* Must start at 0. Used as indices in tables and vectors. */
     X = 0,
     Y,
     Z,
   };
+
+  constexpr static Value X = Value::X;
+  constexpr static Value Y = Value::Y;
+  constexpr static Value Z = Value::Z;
 
  private:
   Value axis_;
@@ -56,20 +60,26 @@ class Axis {
   /** Convert an uppercase axis character 'X', 'Y' or 'Z' to an enum value. */
   constexpr explicit Axis(char axis_char) : axis_(static_cast<Value>(axis_char - 'X'))
   {
-    BLI_assert(axis_ >= Value::X && axis_ <= Value::Z);
+    BLI_assert(Value::X <= axis_ && axis_ <= Value::Z);
   }
 
   /** Allow casting from DNA enums stored as short / int. */
-  constexpr static Axis from_int(int axis)
+  constexpr static Axis from_int(int axis_int)
   {
+    Axis axis = static_cast<Value>(axis_int);
     BLI_assert(Axis::X <= axis && axis <= Axis::Z);
-    return Axis(static_cast<Value>(axis));
+    return axis;
   }
 
   /* Allow usage in `switch()` statements and comparisons. */
   constexpr operator Value() const
   {
     return axis_;
+  }
+
+  int as_int() const
+  {
+    return static_cast<int>(axis_);
   }
 
   /** Avoid hell. */
@@ -98,7 +108,7 @@ class Axis {
  */
 class AxisSigned {
  public:
-  enum Value : int {
+  enum class Value : int {
     /* Match #eTrackToAxis_Modes */
     /* Must start at 0. Used as indices in tables and vectors. */
     X_POS = 0,
@@ -109,6 +119,13 @@ class AxisSigned {
     Z_NEG = 5,
   };
 
+  constexpr static Value X_POS = Value::X_POS;
+  constexpr static Value Y_POS = Value::Y_POS;
+  constexpr static Value Z_POS = Value::Z_POS;
+  constexpr static Value X_NEG = Value::X_NEG;
+  constexpr static Value Y_NEG = Value::Y_NEG;
+  constexpr static Value Z_NEG = Value::Z_NEG;
+
  private:
   Value axis_;
 
@@ -116,37 +133,43 @@ class AxisSigned {
   AxisSigned() = default;
 
   constexpr AxisSigned(Value axis) : axis_(axis){};
-  constexpr AxisSigned(Axis axis) : axis_(from_int(axis)){};
+  constexpr AxisSigned(Axis axis) : axis_(from_int(axis.as_int())){};
 
   /** Allow casting from DNA enums stored as short / int. */
-  constexpr static AxisSigned from_int(int axis)
+  constexpr static AxisSigned from_int(int axis_int)
   {
+    AxisSigned axis = static_cast<Value>(axis_int);
     BLI_assert(AxisSigned::X_POS <= axis && axis <= AxisSigned::Z_NEG);
-    return AxisSigned(static_cast<Value>(axis));
+    return axis;
   }
 
-  /** Convert / extract the axis. */
+  /** Return the axis without the sign. It changes the type whereas abs(axis) doesn't. */
   constexpr Axis axis() const
   {
-    return Axis::from_int(axis_ % 3);
+    return Axis::from_int(this->as_int() % 3);
   }
 
   /** Return the opposing axis. */
   AxisSigned operator-() const
   {
-    return from_int((static_cast<int>(axis_) + 3) % 6);
+    return from_int((this->as_int() + 3) % 6);
   }
 
   /** Return next enum value. */
   AxisSigned next_after() const
   {
-    return from_int((static_cast<int>(axis_) + 1) % 6);
+    return from_int((this->as_int() + 1) % 6);
   }
 
   /** Allow usage in `switch()` statements and comparisons. */
   constexpr operator Value() const
   {
     return axis_;
+  }
+
+  constexpr int as_int() const
+  {
+    return static_cast<int>(axis_);
   }
 
   /** Returns -1 if axis is negative, 1 otherwise. */
@@ -180,6 +203,16 @@ class AxisSigned {
     }
   }
 };
+
+constexpr static bool operator<=(Axis::Value a, Axis::Value b)
+{
+  return static_cast<int>(a) <= static_cast<int>(b);
+}
+
+constexpr static bool operator<=(AxisSigned::Value a, AxisSigned::Value b)
+{
+  return static_cast<int>(a) <= static_cast<int>(b);
+}
 
 /** \} */
 
@@ -310,7 +343,7 @@ template<> inline AxisSigned abs(const AxisSigned &axis)
 /** Create basis vector. */
 template<typename T> T to_vector(Axis axis)
 {
-  BLI_assert(axis <= Axis::from_int(T::type_length - 1));
+  BLI_assert(axis <= AxisSigned::from_int(T::type_length - 1));
   T vec{};
   vec[axis] = 1;
   return vec;
@@ -319,9 +352,9 @@ template<typename T> T to_vector(Axis axis)
 /** Create signed basis vector. */
 template<typename T> T to_vector(AxisSigned axis)
 {
-  BLI_assert(Axis(axis) <= Axis::from_int(T::type_length - 1));
+  BLI_assert(abs(axis) <= AxisSigned::from_int(T::type_length - 1));
   T vec{};
-  vec[Axis(axis)] = axis.is_negative() ? -1 : 1;
+  vec[abs(axis).as_int()] = axis.is_negative() ? -1 : 1;
   return vec;
 }
 
@@ -404,9 +437,9 @@ struct CartesianBasis {
                                                      const CartesianBasis &b)
 {
   CartesianBasis basis;
-  basis.axes[int(abs(b.x()))] = (sign(b.x()) != sign(a.x())) ? -abs(a.x()) : abs(a.x());
-  basis.axes[int(abs(b.y()))] = (sign(b.y()) != sign(a.y())) ? -abs(a.y()) : abs(a.y());
-  basis.axes[int(abs(b.z()))] = (sign(b.z()) != sign(a.z())) ? -abs(a.z()) : abs(a.z());
+  basis.axes[abs(b.x()).as_int()] = (sign(b.x()) != sign(a.x())) ? -abs(a.x()) : abs(a.x());
+  basis.axes[abs(b.y()).as_int()] = (sign(b.y()) != sign(a.y())) ? -abs(a.y()) : abs(a.y());
+  basis.axes[abs(b.z()).as_int()] = (sign(b.z()) != sign(a.z())) ? -abs(a.z()) : abs(a.z());
   return basis;
 }
 

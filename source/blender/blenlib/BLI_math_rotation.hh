@@ -281,7 +281,7 @@ template<typename T>
     return detail::Quaternion<T>::identity();
   }
 
-  Axis axis(track_flag);
+  Axis axis = track_flag.axis();
   const Vec3T vec = track_flag.is_negative() ? vector : -vector;
 
   Vec3T rotation_axis;
@@ -310,7 +310,7 @@ template<typename T>
   }
   /* TODO(fclem): Can optimize here by initializing AxisAngle using the cos an sin directly.
    * Avoiding the need for safe_acos and deriving sin from cos. */
-  T rotation_angle = math::safe_acos(vec[axis] / vec_len);
+  T rotation_angle = math::safe_acos(vec[axis.as_int()] / vec_len);
 
   detail::Quaternion<T> q1 = to_quaternion(
       detail::AxisAngle<T, detail::AngleRadian<T>>(rotation_axis, rotation_angle));
@@ -327,9 +327,9 @@ template<typename T>
   /* Project using axes index instead of arithmetic. It's much faster and more precise. */
   AxisSigned y_axis_signed = math::cross(AxisSigned(axis), AxisSigned(up_flag));
   Axis x_axis = up_flag;
-  Axis y_axis = Axis(y_axis_signed);
+  Axis y_axis = y_axis_signed.axis();
 
-  Vec2T projected = normalize(Vec2T(rotated_up[x_axis], rotated_up[y_axis]));
+  Vec2T projected = normalize(Vec2T(rotated_up[x_axis.as_int()], rotated_up[y_axis.as_int()]));
   /* Flip sign for flipped axis. */
   if (y_axis_signed.is_negative()) {
     projected.y = -projected.y;
@@ -351,7 +351,7 @@ template<typename T>
 template<typename T>
 [[nodiscard]] detail::Quaternion<T> from_tracking(AxisSigned forward_axis, Axis up_axis)
 {
-  BLI_assert(Axis(forward_axis) != up_axis);
+  BLI_assert(forward_axis.axis() != up_axis);
 
   /* Curve have Z forward, Y up, X left. */
   return detail::Quaternion<T>(
@@ -399,54 +399,58 @@ template<typename T> detail::Quaternion<T> to_quaternion(const CartesianBasis &r
    * We precompute them and store them inside this switch using a key.
    * Generated using `generate_axes_to_quaternion_switch_cases()`.
    */
-  switch (rotation.axes.x << 16 | rotation.axes.y << 8 | rotation.axes.z) {
+  constexpr auto map = [](AxisSigned x, AxisSigned y, AxisSigned z) {
+    return x.as_int() << 16 | y.as_int() << 8 | z.as_int();
+  };
+
+  switch (map(rotation.axes.x, rotation.axes.y, rotation.axes.z)) {
     default:
       return detail::Quaternion<T>::identity();
-    case AxisSigned::Z_POS << 16 | AxisSigned::X_POS << 8 | AxisSigned::Y_POS:
+    case map(AxisSigned::Z_POS, AxisSigned::X_POS, AxisSigned::Y_POS):
       return detail::Quaternion<T>{T(0.5), T(-0.5), T(-0.5), T(-0.5)};
-    case AxisSigned::Y_NEG << 16 | AxisSigned::X_POS << 8 | AxisSigned::Z_POS:
+    case map(AxisSigned::Y_NEG, AxisSigned::X_POS, AxisSigned::Z_POS):
       return detail::Quaternion<T>{T(M_SQRT1_2), T(0), T(0), T(-M_SQRT1_2)};
-    case AxisSigned::Z_NEG << 16 | AxisSigned::X_POS << 8 | AxisSigned::Y_NEG:
+    case map(AxisSigned::Z_NEG, AxisSigned::X_POS, AxisSigned::Y_NEG):
       return detail::Quaternion<T>{T(0.5), T(0.5), T(0.5), T(-0.5)};
-    case AxisSigned::Y_POS << 16 | AxisSigned::X_POS << 8 | AxisSigned::Z_NEG:
+    case map(AxisSigned::Y_POS, AxisSigned::X_POS, AxisSigned::Z_NEG):
       return detail::Quaternion<T>{T(0), T(M_SQRT1_2), T(M_SQRT1_2), T(0)};
-    case AxisSigned::Z_NEG << 16 | AxisSigned::Y_POS << 8 | AxisSigned::X_POS:
+    case map(AxisSigned::Z_NEG, AxisSigned::Y_POS, AxisSigned::X_POS):
       return detail::Quaternion<T>{T(M_SQRT1_2), T(0), T(M_SQRT1_2), T(0)};
-    case AxisSigned::Z_POS << 16 | AxisSigned::Y_POS << 8 | AxisSigned::X_NEG:
+    case map(AxisSigned::Z_POS, AxisSigned::Y_POS, AxisSigned::X_NEG):
       return detail::Quaternion<T>{T(M_SQRT1_2), T(0), T(-M_SQRT1_2), T(0)};
-    case AxisSigned::X_NEG << 16 | AxisSigned::Y_POS << 8 | AxisSigned::Z_NEG:
+    case map(AxisSigned::X_NEG, AxisSigned::Y_POS, AxisSigned::Z_NEG):
       return detail::Quaternion<T>{T(0), T(0), T(1), T(0)};
-    case AxisSigned::Y_POS << 16 | AxisSigned::Z_POS << 8 | AxisSigned::X_POS:
+    case map(AxisSigned::Y_POS, AxisSigned::Z_POS, AxisSigned::X_POS):
       return detail::Quaternion<T>{T(0.5), T(0.5), T(0.5), T(0.5)};
-    case AxisSigned::X_NEG << 16 | AxisSigned::Z_POS << 8 | AxisSigned::Y_POS:
+    case map(AxisSigned::X_NEG, AxisSigned::Z_POS, AxisSigned::Y_POS):
       return detail::Quaternion<T>{T(0), T(0), T(M_SQRT1_2), T(M_SQRT1_2)};
-    case AxisSigned::Y_NEG << 16 | AxisSigned::Z_POS << 8 | AxisSigned::X_NEG:
+    case map(AxisSigned::Y_NEG, AxisSigned::Z_POS, AxisSigned::X_NEG):
       return detail::Quaternion<T>{T(0.5), T(0.5), T(-0.5), T(-0.5)};
-    case AxisSigned::X_POS << 16 | AxisSigned::Z_POS << 8 | AxisSigned::Y_NEG:
+    case map(AxisSigned::X_POS, AxisSigned::Z_POS, AxisSigned::Y_NEG):
       return detail::Quaternion<T>{T(M_SQRT1_2), T(M_SQRT1_2), T(0), T(0)};
-    case AxisSigned::Z_NEG << 16 | AxisSigned::X_NEG << 8 | AxisSigned::Y_POS:
+    case map(AxisSigned::Z_NEG, AxisSigned::X_NEG, AxisSigned::Y_POS):
       return detail::Quaternion<T>{T(0.5), T(-0.5), T(0.5), T(0.5)};
-    case AxisSigned::Y_POS << 16 | AxisSigned::X_NEG << 8 | AxisSigned::Z_POS:
+    case map(AxisSigned::Y_POS, AxisSigned::X_NEG, AxisSigned::Z_POS):
       return detail::Quaternion<T>{T(M_SQRT1_2), T(0), T(0), T(M_SQRT1_2)};
-    case AxisSigned::Z_POS << 16 | AxisSigned::X_NEG << 8 | AxisSigned::Y_NEG:
+    case map(AxisSigned::Z_POS, AxisSigned::X_NEG, AxisSigned::Y_NEG):
       return detail::Quaternion<T>{T(0.5), T(0.5), T(-0.5), T(0.5)};
-    case AxisSigned::Y_NEG << 16 | AxisSigned::X_NEG << 8 | AxisSigned::Z_NEG:
+    case map(AxisSigned::Y_NEG, AxisSigned::X_NEG, AxisSigned::Z_NEG):
       return detail::Quaternion<T>{T(0), T(-M_SQRT1_2), T(M_SQRT1_2), T(0)};
-    case AxisSigned::Z_POS << 16 | AxisSigned::Y_NEG << 8 | AxisSigned::X_POS:
+    case map(AxisSigned::Z_POS, AxisSigned::Y_NEG, AxisSigned::X_POS):
       return detail::Quaternion<T>{T(0), T(M_SQRT1_2), T(0), T(M_SQRT1_2)};
-    case AxisSigned::X_NEG << 16 | AxisSigned::Y_NEG << 8 | AxisSigned::Z_POS:
+    case map(AxisSigned::X_NEG, AxisSigned::Y_NEG, AxisSigned::Z_POS):
       return detail::Quaternion<T>{T(0), T(0), T(0), T(1)};
-    case AxisSigned::Z_NEG << 16 | AxisSigned::Y_NEG << 8 | AxisSigned::X_NEG:
+    case map(AxisSigned::Z_NEG, AxisSigned::Y_NEG, AxisSigned::X_NEG):
       return detail::Quaternion<T>{T(0), T(-M_SQRT1_2), T(0), T(M_SQRT1_2)};
-    case AxisSigned::X_POS << 16 | AxisSigned::Y_NEG << 8 | AxisSigned::Z_NEG:
+    case map(AxisSigned::X_POS, AxisSigned::Y_NEG, AxisSigned::Z_NEG):
       return detail::Quaternion<T>{T(0), T(1), T(0), T(0)};
-    case AxisSigned::Y_NEG << 16 | AxisSigned::Z_NEG << 8 | AxisSigned::X_POS:
+    case map(AxisSigned::Y_NEG, AxisSigned::Z_NEG, AxisSigned::X_POS):
       return detail::Quaternion<T>{T(0.5), T(-0.5), T(0.5), T(-0.5)};
-    case AxisSigned::X_POS << 16 | AxisSigned::Z_NEG << 8 | AxisSigned::Y_POS:
+    case map(AxisSigned::X_POS, AxisSigned::Z_NEG, AxisSigned::Y_POS):
       return detail::Quaternion<T>{T(M_SQRT1_2), T(-M_SQRT1_2), T(0), T(0)};
-    case AxisSigned::Y_POS << 16 | AxisSigned::Z_NEG << 8 | AxisSigned::X_NEG:
+    case map(AxisSigned::Y_POS, AxisSigned::Z_NEG, AxisSigned::X_NEG):
       return detail::Quaternion<T>{T(0.5), T(-0.5), T(-0.5), T(0.5)};
-    case AxisSigned::X_NEG << 16 | AxisSigned::Z_NEG << 8 | AxisSigned::Y_NEG:
+    case map(AxisSigned::X_NEG, AxisSigned::Z_NEG, AxisSigned::Y_NEG):
       return detail::Quaternion<T>{T(0), T(0), T(-M_SQRT1_2), T(M_SQRT1_2)};
   }
 }
@@ -461,9 +465,9 @@ namespace blender::math {
 extern template EulerXYZ to_euler(const AxisAngle &);
 extern template EulerXYZ to_euler(const AxisAngleCartesian &);
 extern template EulerXYZ to_euler(const Quaternion &);
-extern template Euler3 to_euler(const AxisAngle &, eEulerOrder);
-extern template Euler3 to_euler(const AxisAngleCartesian &, eEulerOrder);
-extern template Euler3 to_euler(const Quaternion &, eEulerOrder);
+extern template Euler3 to_euler(const AxisAngle &, EulerOrder);
+extern template Euler3 to_euler(const AxisAngleCartesian &, EulerOrder);
+extern template Euler3 to_euler(const Quaternion &, EulerOrder);
 extern template Quaternion to_quaternion(const AxisAngle &);
 extern template Quaternion to_quaternion(const AxisAngleCartesian &);
 extern template Quaternion to_quaternion(const Euler3 &);

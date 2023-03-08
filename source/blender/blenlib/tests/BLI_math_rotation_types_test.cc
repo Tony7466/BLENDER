@@ -64,38 +64,38 @@ TEST(math_rotation_types, Euler3Order)
    * Do not do it in the header to avoid including the DNA header everywhere.
    */
   BLI_STATIC_ASSERT(
-      static_cast<int>(eEulerOrder::XYZ) == static_cast<int>(eRotationModes::ROT_MODE_XYZ), "");
+      static_cast<int>(EulerOrder::XYZ) == static_cast<int>(eRotationModes::ROT_MODE_XYZ), "");
   BLI_STATIC_ASSERT(
-      static_cast<int>(eEulerOrder::XZY) == static_cast<int>(eRotationModes::ROT_MODE_XZY), "");
+      static_cast<int>(EulerOrder::XZY) == static_cast<int>(eRotationModes::ROT_MODE_XZY), "");
   BLI_STATIC_ASSERT(
-      static_cast<int>(eEulerOrder::YXZ) == static_cast<int>(eRotationModes::ROT_MODE_YXZ), "");
+      static_cast<int>(EulerOrder::YXZ) == static_cast<int>(eRotationModes::ROT_MODE_YXZ), "");
   BLI_STATIC_ASSERT(
-      static_cast<int>(eEulerOrder::YZX) == static_cast<int>(eRotationModes::ROT_MODE_YZX), "");
+      static_cast<int>(EulerOrder::YZX) == static_cast<int>(eRotationModes::ROT_MODE_YZX), "");
   BLI_STATIC_ASSERT(
-      static_cast<int>(eEulerOrder::ZXY) == static_cast<int>(eRotationModes::ROT_MODE_ZXY), "");
+      static_cast<int>(EulerOrder::ZXY) == static_cast<int>(eRotationModes::ROT_MODE_ZXY), "");
   BLI_STATIC_ASSERT(
-      static_cast<int>(eEulerOrder::ZYX) == static_cast<int>(eRotationModes::ROT_MODE_ZYX), "");
+      static_cast<int>(EulerOrder::ZYX) == static_cast<int>(eRotationModes::ROT_MODE_ZYX), "");
 
-  EXPECT_EQ(float3(Euler3(0, 1, 2, eEulerOrder::XYZ).ijk()), float3(0, 1, 2));
-  EXPECT_EQ(float3(Euler3(0, 1, 2, eEulerOrder::XZY).ijk()), float3(0, 2, 1));
-  EXPECT_EQ(float3(Euler3(0, 1, 2, eEulerOrder::YXZ).ijk()), float3(1, 0, 2));
-  EXPECT_EQ(float3(Euler3(0, 1, 2, eEulerOrder::YZX).ijk()), float3(1, 2, 0));
-  EXPECT_EQ(float3(Euler3(0, 1, 2, eEulerOrder::ZXY).ijk()), float3(2, 0, 1));
-  EXPECT_EQ(float3(Euler3(0, 1, 2, eEulerOrder::ZYX).ijk()), float3(2, 1, 0));
+  EXPECT_EQ(float3(Euler3(0, 1, 2, EulerOrder::XYZ).ijk()), float3(0, 1, 2));
+  EXPECT_EQ(float3(Euler3(0, 1, 2, EulerOrder::XZY).ijk()), float3(0, 2, 1));
+  EXPECT_EQ(float3(Euler3(0, 1, 2, EulerOrder::YXZ).ijk()), float3(1, 0, 2));
+  EXPECT_EQ(float3(Euler3(0, 1, 2, EulerOrder::YZX).ijk()), float3(1, 2, 0));
+  EXPECT_EQ(float3(Euler3(0, 1, 2, EulerOrder::ZXY).ijk()), float3(2, 0, 1));
+  EXPECT_EQ(float3(Euler3(0, 1, 2, EulerOrder::ZYX).ijk()), float3(2, 1, 0));
 
-  EXPECT_EQ(float3(Euler3(0, 1, 2, eEulerOrder::XYZ).xyz()), float3(0, 1, 2));
-  EXPECT_EQ(float3(Euler3(0, 1, 2, eEulerOrder::XZY).xyz()), float3(0, 1, 2));
-  EXPECT_EQ(float3(Euler3(0, 1, 2, eEulerOrder::YXZ).xyz()), float3(0, 1, 2));
-  EXPECT_EQ(float3(Euler3(0, 1, 2, eEulerOrder::YZX).xyz()), float3(0, 1, 2));
-  EXPECT_EQ(float3(Euler3(0, 1, 2, eEulerOrder::ZXY).xyz()), float3(0, 1, 2));
-  EXPECT_EQ(float3(Euler3(0, 1, 2, eEulerOrder::ZYX).xyz()), float3(0, 1, 2));
+  EXPECT_EQ(float3(Euler3(0, 1, 2, EulerOrder::XYZ).xyz()), float3(0, 1, 2));
+  EXPECT_EQ(float3(Euler3(0, 1, 2, EulerOrder::XZY).xyz()), float3(0, 1, 2));
+  EXPECT_EQ(float3(Euler3(0, 1, 2, EulerOrder::YXZ).xyz()), float3(0, 1, 2));
+  EXPECT_EQ(float3(Euler3(0, 1, 2, EulerOrder::YZX).xyz()), float3(0, 1, 2));
+  EXPECT_EQ(float3(Euler3(0, 1, 2, EulerOrder::ZXY).xyz()), float3(0, 1, 2));
+  EXPECT_EQ(float3(Euler3(0, 1, 2, EulerOrder::ZYX).xyz()), float3(0, 1, 2));
 
-  EXPECT_EQ(float3(Euler3(eEulerOrder::XYZ).ijk() = {0, 1, 2}), float3(0, 1, 2));
-  EXPECT_EQ(float3(Euler3(eEulerOrder::XZY).ijk() = {0, 1, 2}), float3(0, 2, 1));
-  EXPECT_EQ(float3(Euler3(eEulerOrder::YXZ).ijk() = {0, 1, 2}), float3(1, 0, 2));
-  EXPECT_EQ(float3(Euler3(eEulerOrder::YZX).ijk() = {0, 1, 2}), float3(1, 2, 0));
-  EXPECT_EQ(float3(Euler3(eEulerOrder::ZXY).ijk() = {0, 1, 2}), float3(2, 0, 1));
-  EXPECT_EQ(float3(Euler3(eEulerOrder::ZYX).ijk() = {0, 1, 2}), float3(2, 1, 0));
+  EXPECT_EQ(float3(Euler3(EulerOrder::XYZ).ijk() = {0, 1, 2}), float3(0, 1, 2));
+  EXPECT_EQ(float3(Euler3(EulerOrder::XZY).ijk() = {0, 1, 2}), float3(0, 2, 1));
+  EXPECT_EQ(float3(Euler3(EulerOrder::YXZ).ijk() = {0, 1, 2}), float3(1, 0, 2));
+  EXPECT_EQ(float3(Euler3(EulerOrder::YZX).ijk() = {0, 1, 2}), float3(1, 2, 0));
+  EXPECT_EQ(float3(Euler3(EulerOrder::ZXY).ijk() = {0, 1, 2}), float3(2, 0, 1));
+  EXPECT_EQ(float3(Euler3(EulerOrder::ZYX).ijk() = {0, 1, 2}), float3(2, 1, 0));
 }
 
 TEST(math_rotation_types, DualQuaternionUniformScaleConstructor)
@@ -333,12 +333,12 @@ TEST(math_rotation_types, Euler3Conversion)
 {
   /* All the same rotation. */
   float3 xyz{0.350041, -0.358896, 0.528994};
-  Euler3 euler3_xyz(xyz, eEulerOrder::XYZ);
-  Euler3 euler3_xzy(xyz, eEulerOrder::XZY);
-  Euler3 euler3_yxz(xyz, eEulerOrder::YXZ);
-  Euler3 euler3_yzx(xyz, eEulerOrder::YZX);
-  Euler3 euler3_zxy(xyz, eEulerOrder::ZXY);
-  Euler3 euler3_zyx(xyz, eEulerOrder::ZYX);
+  Euler3 euler3_xyz(xyz, EulerOrder::XYZ);
+  Euler3 euler3_xzy(xyz, EulerOrder::XZY);
+  Euler3 euler3_yxz(xyz, EulerOrder::YXZ);
+  Euler3 euler3_yzx(xyz, EulerOrder::YZX);
+  Euler3 euler3_zxy(xyz, EulerOrder::ZXY);
+  Euler3 euler3_zyx(xyz, EulerOrder::ZYX);
 
   Quaternion quat_xyz(0.927091f, 0.211322f, -0.124857f, 0.283295f);
   Quaternion quat_xzy(0.943341f, 0.119427f, -0.124857f, 0.283295f);
@@ -373,12 +373,12 @@ TEST(math_rotation_types, Euler3Conversion)
   EXPECT_V4_NEAR(float4(to_quaternion(euler3_zxy)), float4(quat_zxy), 1e-4);
   EXPECT_V4_NEAR(float4(to_quaternion(euler3_zyx)), float4(quat_zyx), 1e-4);
 
-  EXPECT_V3_NEAR(float3(to_euler(quat_xyz, eEulerOrder::XYZ).xyz()), xyz, 1e-4);
-  EXPECT_V3_NEAR(float3(to_euler(quat_xzy, eEulerOrder::XZY).xyz()), xyz, 1e-4);
-  EXPECT_V3_NEAR(float3(to_euler(quat_yxz, eEulerOrder::YXZ).xyz()), xyz, 1e-4);
-  EXPECT_V3_NEAR(float3(to_euler(quat_yzx, eEulerOrder::YZX).xyz()), xyz, 1e-4);
-  EXPECT_V3_NEAR(float3(to_euler(quat_zxy, eEulerOrder::ZXY).xyz()), xyz, 1e-4);
-  EXPECT_V3_NEAR(float3(to_euler(quat_zyx, eEulerOrder::ZYX).xyz()), xyz, 1e-4);
+  EXPECT_V3_NEAR(float3(to_euler(quat_xyz, EulerOrder::XYZ).xyz()), xyz, 1e-4);
+  EXPECT_V3_NEAR(float3(to_euler(quat_xzy, EulerOrder::XZY).xyz()), xyz, 1e-4);
+  EXPECT_V3_NEAR(float3(to_euler(quat_yxz, EulerOrder::YXZ).xyz()), xyz, 1e-4);
+  EXPECT_V3_NEAR(float3(to_euler(quat_yzx, EulerOrder::YZX).xyz()), xyz, 1e-4);
+  EXPECT_V3_NEAR(float3(to_euler(quat_zxy, EulerOrder::ZXY).xyz()), xyz, 1e-4);
+  EXPECT_V3_NEAR(float3(to_euler(quat_zyx, EulerOrder::ZYX).xyz()), xyz, 1e-4);
 
   EXPECT_M3_NEAR(from_rotation<float3x3>(euler3_xyz), mat_xyz, 1e-4);
   EXPECT_M3_NEAR(from_rotation<float3x3>(euler3_xzy), mat_xzy, 1e-4);
@@ -387,12 +387,12 @@ TEST(math_rotation_types, Euler3Conversion)
   EXPECT_M3_NEAR(from_rotation<float3x3>(euler3_zxy), mat_zxy, 1e-4);
   EXPECT_M3_NEAR(from_rotation<float3x3>(euler3_zyx), mat_zyx, 1e-4);
 
-  EXPECT_V3_NEAR(float3(to_euler(mat_xyz, eEulerOrder::XYZ).xyz()), xyz, 1e-4);
-  EXPECT_V3_NEAR(float3(to_euler(mat_xzy, eEulerOrder::XZY).xyz()), xyz, 1e-4);
-  EXPECT_V3_NEAR(float3(to_euler(mat_yxz, eEulerOrder::YXZ).xyz()), xyz, 1e-4);
-  EXPECT_V3_NEAR(float3(to_euler(mat_yzx, eEulerOrder::YZX).xyz()), xyz, 1e-4);
-  EXPECT_V3_NEAR(float3(to_euler(mat_zxy, eEulerOrder::ZXY).xyz()), xyz, 1e-4);
-  EXPECT_V3_NEAR(float3(to_euler(mat_zyx, eEulerOrder::ZYX).xyz()), xyz, 1e-4);
+  EXPECT_V3_NEAR(float3(to_euler(mat_xyz, EulerOrder::XYZ).xyz()), xyz, 1e-4);
+  EXPECT_V3_NEAR(float3(to_euler(mat_xzy, EulerOrder::XZY).xyz()), xyz, 1e-4);
+  EXPECT_V3_NEAR(float3(to_euler(mat_yxz, EulerOrder::YXZ).xyz()), xyz, 1e-4);
+  EXPECT_V3_NEAR(float3(to_euler(mat_yzx, EulerOrder::YZX).xyz()), xyz, 1e-4);
+  EXPECT_V3_NEAR(float3(to_euler(mat_zxy, EulerOrder::ZXY).xyz()), xyz, 1e-4);
+  EXPECT_V3_NEAR(float3(to_euler(mat_zyx, EulerOrder::ZYX).xyz()), xyz, 1e-4);
 
   AxisAngle axis_angle_xyz = AxisAngle({0.563771, -0.333098, 0.755783}, 0.76844f);
   AxisAngle axis_angle_xzy = AxisAngle({0.359907, -0.376274, 0.853747}, 0.676476f);
@@ -415,12 +415,12 @@ TEST(math_rotation_types, Euler3Conversion)
   EXPECT_NEAR(float(to_axis_angle(euler3_zxy).angle()), float(axis_angle_zxy.angle()), 1e-4);
   EXPECT_NEAR(float(to_axis_angle(euler3_zyx).angle()), float(axis_angle_zyx.angle()), 1e-4);
 
-  EXPECT_V3_NEAR(float3(to_euler(axis_angle_xyz, eEulerOrder::XYZ).xyz()), xyz, 1e-4);
-  EXPECT_V3_NEAR(float3(to_euler(axis_angle_xzy, eEulerOrder::XZY).xyz()), xyz, 1e-4);
-  EXPECT_V3_NEAR(float3(to_euler(axis_angle_yxz, eEulerOrder::YXZ).xyz()), xyz, 1e-4);
-  EXPECT_V3_NEAR(float3(to_euler(axis_angle_yzx, eEulerOrder::YZX).xyz()), xyz, 1e-4);
-  EXPECT_V3_NEAR(float3(to_euler(axis_angle_zxy, eEulerOrder::ZXY).xyz()), xyz, 1e-4);
-  EXPECT_V3_NEAR(float3(to_euler(axis_angle_zyx, eEulerOrder::ZYX).xyz()), xyz, 1e-4);
+  EXPECT_V3_NEAR(float3(to_euler(axis_angle_xyz, EulerOrder::XYZ).xyz()), xyz, 1e-4);
+  EXPECT_V3_NEAR(float3(to_euler(axis_angle_xzy, EulerOrder::XZY).xyz()), xyz, 1e-4);
+  EXPECT_V3_NEAR(float3(to_euler(axis_angle_yxz, EulerOrder::YXZ).xyz()), xyz, 1e-4);
+  EXPECT_V3_NEAR(float3(to_euler(axis_angle_yzx, EulerOrder::YZX).xyz()), xyz, 1e-4);
+  EXPECT_V3_NEAR(float3(to_euler(axis_angle_zxy, EulerOrder::ZXY).xyz()), xyz, 1e-4);
+  EXPECT_V3_NEAR(float3(to_euler(axis_angle_zyx, EulerOrder::ZYX).xyz()), xyz, 1e-4);
 }
 
 TEST(math_rotation_types, AngleSinCosOperators)

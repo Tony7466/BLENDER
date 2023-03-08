@@ -147,7 +147,7 @@ template<typename T> AngleRadian<T> Quaternion<T>::twist_angle(const Axis axis) 
   /* The calculation requires a canonical quaternion. */
   const VecBase<T, 4> input_vec(canonicalize(*this));
 
-  return T(2) * AngleRadian<T>(input_vec[0], input_vec.yzw()[axis]);
+  return T(2) * AngleRadian<T>(input_vec[0], input_vec.yzw()[axis.as_int()]);
 }
 
 template<typename T> Quaternion<T> Quaternion<T>::swing(const Axis axis) const
@@ -157,7 +157,7 @@ template<typename T> Quaternion<T> Quaternion<T>::swing(const Axis axis) const
   /* Compute swing by multiplying the original quaternion by inverted twist. */
   Quaternion<T> swing = input * invert_normalized(input.twist(axis));
 
-  BLI_assert(math::abs(VecBase<T, 4>(swing)[axis + 1]) < BLI_ASSERT_UNIT_EPSILON);
+  BLI_assert(math::abs(VecBase<T, 4>(swing)[axis.as_int() + 1]) < BLI_ASSERT_UNIT_EPSILON);
   return swing;
 }
 
@@ -167,10 +167,10 @@ template<typename T> Quaternion<T> Quaternion<T>::twist(const Axis axis) const
   const VecBase<T, 4> input_vec(canonicalize(*this));
 
   AngleCartesian<T> half_angle = AngleCartesian<T>::from_point(input_vec[0],
-                                                               input_vec.yzw()[axis]);
+                                                               input_vec.yzw()[axis.as_int()]);
 
   VecBase<T, 4> twist(half_angle.cos(), T(0), T(0), T(0));
-  twist[int(axis) + 1] = half_angle.sin();
+  twist[axis.as_int() + 1] = half_angle.sin();
   return Quaternion<T>(twist);
 }
 
@@ -667,7 +667,7 @@ template<typename T> detail::EulerXYZ<T> to_euler(const detail::Quaternion<T> &q
 }
 
 template<typename T>
-detail::Euler3<T> to_euler(const detail::Quaternion<T> &quat, eEulerOrder order)
+detail::Euler3<T> to_euler(const detail::Quaternion<T> &quat, EulerOrder order)
 {
   using Mat3T = MatBase<T, 3, 3>;
   BLI_assert(is_unit_scale(quat));

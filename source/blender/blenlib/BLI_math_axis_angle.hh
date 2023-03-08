@@ -92,7 +92,7 @@ detail::Quaternion<T> to_quaternion(const detail::AxisAngle<T, AngleT> &axis_ang
  * \{ */
 
 template<typename T, typename AngleT>
-detail::Euler3<T> to_euler(const detail::AxisAngle<T, AngleT> &axis_angle, eEulerOrder order)
+detail::Euler3<T> to_euler(const detail::AxisAngle<T, AngleT> &axis_angle, EulerOrder order)
 {
   /* Use quaternions as intermediate representation for now... */
   return to_euler(to_quaternion(axis_angle), order);
