@@ -170,7 +170,7 @@ template<typename T> Quaternion<T> Quaternion<T>::twist(const Axis axis) const
                                                                input_vec.yzw()[axis]);
 
   VecBase<T, 4> twist(half_angle.cos(), T(0), T(0), T(0));
-  twist[axis + 1] = half_angle.sin();
+  twist[int(axis) + 1] = half_angle.sin();
   return Quaternion<T>(twist);
 }
 
