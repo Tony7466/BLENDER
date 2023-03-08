@@ -48,7 +48,7 @@ Object *MeshFromGeometry::create_mesh(Main *bmain,
   const int64_t tot_face_elems{mesh_geometry_.face_elements_.size()};
   const int64_t tot_loops{mesh_geometry_.total_loops_};
 
-  Mesh *mesh = BKE_mesh_new_nomain(tot_verts_object, tot_edges, 0, tot_loops, tot_face_elems);
+  Mesh *mesh = BKE_mesh_new_nomain(tot_verts_object, tot_edges, tot_loops, tot_face_elems);
   Object *obj = BKE_object_add_only_object(bmain, OB_MESH, ob_name.c_str());
   obj->data = BKE_object_obdata_add_from_type(bmain, OB_MESH, ob_name.c_str());
 
@@ -185,9 +185,11 @@ void MeshFromGeometry::create_polys_loops(Mesh *mesh, bool use_vertex_groups)
 
   MutableSpan<MPoly> polys = mesh->polys_for_write();
   MutableSpan<MLoop> loops = mesh->loops_for_write();
+  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
   bke::SpanAttributeWriter<int> material_indices =
-      mesh->attributes_for_write().lookup_or_add_for_write_only_span<int>("material_index",
-                                                                          ATTR_DOMAIN_FACE);
+      attributes.lookup_or_add_for_write_only_span<int>("material_index", ATTR_DOMAIN_FACE);
+  bke::SpanAttributeWriter<bool> sharp_faces = attributes.lookup_or_add_for_write_span<bool>(
+      "sharp_face", ATTR_DOMAIN_FACE);
 
   const int64_t tot_face_elems{mesh->totpoly};
   int tot_loop_idx = 0;
@@ -200,12 +202,10 @@ void MeshFromGeometry::create_polys_loops(Mesh *mesh, bool use_vertex_groups)
       continue;
     }
 
-    MPoly &mpoly = polys[poly_idx];
-    mpoly.totloop = curr_face.corner_count_;
-    mpoly.loopstart = tot_loop_idx;
-    if (curr_face.shaded_smooth) {
-      mpoly.flag |= ME_SMOOTH;
-    }
+    MPoly &poly = polys[poly_idx];
+    poly.totloop = curr_face.corner_count_;
+    poly.loopstart = tot_loop_idx;
+    sharp_faces.span[poly_idx] = !curr_face.shaded_smooth;
     material_indices.span[poly_idx] = curr_face.material_index;
     /* Importing obj files without any materials would result in negative indices, which is not
      * supported. */
@@ -233,6 +233,7 @@ void MeshFromGeometry::create_polys_loops(Mesh *mesh, bool use_vertex_groups)
   }
 
   material_indices.finish();
+  sharp_faces.finish();
 }
 
 void MeshFromGeometry::create_vertex_groups(Object *obj)
@@ -358,7 +359,7 @@ void MeshFromGeometry::create_materials(Main *bmain,
 void MeshFromGeometry::create_normals(Mesh *mesh)
 {
   /* No normal data: nothing to do. */
-  if (global_vertices_.vertex_normals.is_empty()) {
+  if (global_vertices_.vert_normals.is_empty()) {
     return;
   }
   /* Custom normals can only be stored on face corners. */
@@ -375,7 +376,7 @@ void MeshFromGeometry::create_normals(Mesh *mesh)
       int n_index = curr_corner.vertex_normal_index;
       float3 normal(0, 0, 0);
       if (n_index >= 0) {
-        normal = global_vertices_.vertex_normals[n_index];
+        normal = global_vertices_.vert_normals[n_index];
       }
       copy_v3_v3(loop_normals[tot_loop_idx], normal);
       tot_loop_idx++;

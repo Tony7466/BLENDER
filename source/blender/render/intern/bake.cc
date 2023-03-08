@@ -56,6 +56,7 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 
+#include "BKE_attribute.hh"
 #include "BKE_bvhutils.h"
 #include "BKE_customdata.h"
 #include "BKE_image.h"
@@ -450,6 +451,7 @@ static bool cast_ray_highpoly(BVHTreeFromMesh *treeData,
  */
 static TriTessFace *mesh_calc_tri_tessface(Mesh *me, bool tangent, Mesh *me_eval)
 {
+  using namespace blender;
   int i;
 
   const int tottri = poly_to_tri_count(me->totpoly, me->totloop);
@@ -463,6 +465,9 @@ static TriTessFace *mesh_calc_tri_tessface(Mesh *me, bool tangent, Mesh *me_eval
   const float(*positions)[3] = BKE_mesh_vert_positions(me);
   const blender::Span<MPoly> polys = me->polys();
   const blender::Span<MLoop> loops = me->loops();
+  const bke::AttributeAccessor attributes = me->attributes();
+  const VArray<bool> sharp_faces = attributes.lookup_or_default<bool>(
+      "sharp_face", ATTR_DOMAIN_FACE, false);
 
   looptri = static_cast<MLoopTri *>(MEM_mallocN(sizeof(*looptri) * tottri, __func__));
   triangles = static_cast<TriTessFace *>(MEM_callocN(sizeof(TriTessFace) * tottri, __func__));
@@ -500,10 +505,10 @@ static TriTessFace *mesh_calc_tri_tessface(Mesh *me, bool tangent, Mesh *me_eval
         CustomData_get_layer(&me_eval->ldata, CD_NORMAL));
   }
 
-  const float(*vert_normals)[3] = BKE_mesh_vertex_normals_ensure(me);
+  const float(*vert_normals)[3] = BKE_mesh_vert_normals_ensure(me);
   for (i = 0; i < tottri; i++) {
     const MLoopTri *lt = &looptri[i];
-    const MPoly *mp = &polys[lt->poly];
+    const MPoly &poly = polys[lt->poly];
 
     triangles[i].positions[0] = positions[loops[lt->tri[0]].v];
     triangles[i].positions[1] = positions[loops[lt->tri[1]].v];
@@ -511,7 +516,7 @@ static TriTessFace *mesh_calc_tri_tessface(Mesh *me, bool tangent, Mesh *me_eval
     triangles[i].vert_normals[0] = vert_normals[loops[lt->tri[0]].v];
     triangles[i].vert_normals[1] = vert_normals[loops[lt->tri[1]].v];
     triangles[i].vert_normals[2] = vert_normals[loops[lt->tri[2]].v];
-    triangles[i].is_smooth = (mp->flag & ME_SMOOTH) != 0;
+    triangles[i].is_smooth = !sharp_faces[lt->poly];
 
     if (tangent) {
       triangles[i].tspace[0] = &tspace[lt->tri[0]];
@@ -527,7 +532,7 @@ static TriTessFace *mesh_calc_tri_tessface(Mesh *me, bool tangent, Mesh *me_eval
 
     if (calculate_normal) {
       if (lt->poly != mpoly_prev) {
-        BKE_mesh_calc_poly_normal(mp, &loops[mp->loopstart], positions, no);
+        BKE_mesh_calc_poly_normal(&poly, &loops[poly.loopstart], positions, no);
         mpoly_prev = lt->poly;
       }
       copy_v3_v3(triangles[i].normal, no);
@@ -597,7 +602,6 @@ bool RE_bake_pixels_populate_from_objects(Mesh *me_low,
     tris_high[i] = mesh_calc_tri_tessface(highpoly[i].me, false, nullptr);
 
     me_highpoly[i] = highpoly[i].me;
-    BKE_mesh_runtime_looptri_ensure(me_highpoly[i]);
 
     if (BKE_mesh_runtime_looptri_len(me_highpoly[i]) != 0) {
       /* Create a BVH-tree for each `highpoly` object. */
