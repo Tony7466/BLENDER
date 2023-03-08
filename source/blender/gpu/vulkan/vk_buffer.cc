@@ -77,7 +77,7 @@ bool VKBuffer::create(VKContext &context,
   return map(context);
 }
 
-bool VKBuffer::update(VKContext &context, const void *data)
+bool VKBuffer::update(const void *data)
 {
   BLI_assert_msg(mapped_memory_ != nullptr, "Cannot update a non-mapped buffer.");
   memcpy(mapped_memory_, data, size_in_bytes_);
@@ -93,6 +93,9 @@ bool VKBuffer::map(VKContext &context)
 
 void VKBuffer::unmap(VKContext &context)
 {
+  if (allocation_ == VK_NULL_HANDLE) {
+    return;
+  }
   VmaAllocator allocator = context.mem_allocator_get();
   vmaUnmapMemory(allocator, allocation_);
   mapped_memory_ = nullptr;

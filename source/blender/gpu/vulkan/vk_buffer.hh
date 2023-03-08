@@ -34,7 +34,7 @@ class VKBuffer {
               int64_t size,
               GPUUsageType usage,
               VkBufferUsageFlagBits buffer_usage);
-  bool update(VKContext &context, const void *data);
+  bool update(const void *data);
   bool free(VKContext &context);
 
   int64_t size_in_bytes() const
