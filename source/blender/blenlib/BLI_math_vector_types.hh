@@ -82,6 +82,9 @@ class AxisSigned;
 
 template<typename T, int Size> struct VecBase : public vec_struct_base<T, Size> {
 
+  BLI_STATIC_ASSERT(alignof(T) <= sizeof(T),
+                    "VecBase is not compatible with aligned type for now.");
+
   static constexpr int type_length = Size;
 
   using base_type = T;
@@ -184,9 +187,29 @@ template<typename T, int Size> struct VecBase : public vec_struct_base<T, Size> 
     return *reinterpret_cast<const VecBase<T, 2> *>(this);
   }
 
+  template<BLI_ENABLE_IF_VEC(Size, >= 3)> VecBase<T, 2> yz() const
+  {
+    return *reinterpret_cast<const VecBase<T, 2> *>(&((*this)[1]));
+  }
+
+  template<BLI_ENABLE_IF_VEC(Size, >= 4)> VecBase<T, 2> zw() const
+  {
+    return *reinterpret_cast<const VecBase<T, 2> *>(&((*this)[2]));
+  }
+
   template<BLI_ENABLE_IF_VEC(Size, >= 3)> VecBase<T, 3> xyz() const
   {
     return *reinterpret_cast<const VecBase<T, 3> *>(this);
+  }
+
+  template<BLI_ENABLE_IF_VEC(Size, >= 4)> VecBase<T, 3> yzw() const
+  {
+    return *reinterpret_cast<const VecBase<T, 3> *>(&((*this)[1]));
+  }
+
+  template<BLI_ENABLE_IF_VEC(Size, >= 4)> VecBase<T, 4> xyzw() const
+  {
+    return *reinterpret_cast<const VecBase<T, 4> *>(this);
   }
 
 #undef BLI_ENABLE_IF_VEC
