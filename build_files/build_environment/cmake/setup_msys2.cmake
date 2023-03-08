@@ -103,6 +103,7 @@ if((NOT EXISTS "${DOWNLOAD_DIR}/msys2/msys64/usr/bin/nasm.exe") AND (EXISTS "${D
   execute_process(
     COMMAND ${CMAKE_COMMAND} -E copy "${DOWNLOAD_DIR}/nasm-2.13.02/nasm.exe" "${DOWNLOAD_DIR}/msys2/msys64/usr/bin/nasm.exe"
   )
+endif()
 
 message("Checking for perl")
 # download perl for libvpx
