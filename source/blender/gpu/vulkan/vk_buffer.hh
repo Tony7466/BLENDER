@@ -34,10 +34,7 @@ class VKBuffer {
               GPUUsageType usage,
               VkBufferUsageFlagBits buffer_usage);
   bool update(VKContext &context, const void *data);
-  void clear(VKContext &context,
-             eGPUTextureFormat internal_format,
-             eGPUDataFormat data_format,
-             void *data);
+  void clear(VKContext &context, Span<uint32_t> data);
   bool free(VKContext &context);
   bool map(VKContext &context, void **r_mapped_memory) const;
   void unmap(VKContext &context) const;

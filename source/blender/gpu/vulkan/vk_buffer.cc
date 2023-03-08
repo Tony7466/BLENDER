@@ -90,7 +90,7 @@ static bool is_uniform(Span<uint32_t> data)
 {
   BLI_assert(!data.is_empty());
   uint32_t expected_value = data[0];
-  for (uint32_t value : data) {
+  for (uint32_t value : data.drop_front(1)) {
     if (value != expected_value) {
       return false;
     }
@@ -98,26 +98,11 @@ static bool is_uniform(Span<uint32_t> data)
   return true;
 }
 
-static bool can_use_fill_command(eGPUTextureFormat internal_format,
-                                 eGPUDataFormat data_format,
-                                 void *data)
-{
-  /* TODO: See `validate_data_format` what we should support. */
-  BLI_assert(ELEM(data_format, GPU_DATA_INT, GPU_DATA_UINT, GPU_DATA_FLOAT));
-  UNUSED_VARS_NDEBUG(data_format);
-  const uint32_t element_size = to_bytesize(internal_format);
-  const uint32_t num_components = element_size / sizeof(uint32_t);
-  return is_uniform(Span<uint32_t>(static_cast<uint32_t *>(data), num_components));
-}
-
-void VKBuffer::clear(VKContext &context,
-                     eGPUTextureFormat internal_format,
-                     eGPUDataFormat data_format,
-                     void *data)
+void VKBuffer::clear(VKContext &context, Span<uint32_t> data)
 {
   VKCommandBuffer &command_buffer = context.command_buffer_get();
-  if (can_use_fill_command(internal_format, data_format, data)) {
-    command_buffer.fill(*this, *static_cast<uint32_t *>(data));
+  if (is_uniform(data)) {
+    command_buffer.fill(*this, *data.begin());
     return;
   }
 

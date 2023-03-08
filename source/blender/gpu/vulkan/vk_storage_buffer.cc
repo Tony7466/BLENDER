@@ -47,15 +47,13 @@ void VKStorageBuffer::unbind()
 {
 }
 
-void VKStorageBuffer::clear(eGPUTextureFormat internal_format,
-                            eGPUDataFormat data_format,
-                            void *data)
+void VKStorageBuffer::clear(Span<uint32_t> data)
 {
   VKContext &context = *VKContext::get();
   if (!buffer_.is_allocated()) {
     allocate(context);
   }
-  buffer_.clear(context, internal_format, data_format, data);
+  buffer_.clear(context, data);
 }
 
 void VKStorageBuffer::copy_sub(VertBuf * /*src*/,
