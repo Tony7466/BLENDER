@@ -176,7 +176,7 @@ class AxisSigned {
       case Value::X_NEG:
       case Value::Y_NEG:
       case Value::Z_NEG:
-        return stream << Axis(axis) << (axis.sign() == -1 ? '-' : '+');
+        return stream << static_cast<Axis>(axis) << (axis.sign() == -1 ? '-' : '+');
     }
   }
 };
@@ -189,7 +189,7 @@ class AxisSigned {
 
 template<> inline AxisSigned abs(const AxisSigned &axis)
 {
-  return Axis(axis);
+  return static_cast<Axis>(axis);
 }
 
 [[nodiscard]] inline int sign(const AxisSigned &axis)
