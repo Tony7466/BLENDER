@@ -70,35 +70,38 @@ bool VKBuffer::create(VKContext &context,
 
   VkResult result = vmaCreateBuffer(
       allocator, &create_info, &vma_create_info, &vk_buffer_, &allocation_, nullptr);
-  return result == VK_SUCCESS;
+  if (result != VK_SUCCESS) {
+    return false;
+  }
+
+  return map(context);
 }
 
 bool VKBuffer::update(VKContext &context, const void *data)
 {
-  void *mapped_memory;
-  bool result = map(context, &mapped_memory);
-  if (result) {
-    memcpy(mapped_memory, data, size_in_bytes_);
-    unmap(context);
-  }
-  return result;
+  BLI_assert_msg(mapped_memory_ != nullptr, "Cannot update a non-mapped buffer.");
+  memcpy(mapped_memory_, data, size_in_bytes_);
+  return true;
 }
 
-bool VKBuffer::map(VKContext &context, void **r_mapped_memory) const
+bool VKBuffer::map(VKContext &context)
 {
   VmaAllocator allocator = context.mem_allocator_get();
-  VkResult result = vmaMapMemory(allocator, allocation_, r_mapped_memory);
+  VkResult result = vmaMapMemory(allocator, allocation_, &mapped_memory_);
   return result == VK_SUCCESS;
 }
 
-void VKBuffer::unmap(VKContext &context) const
+void VKBuffer::unmap(VKContext &context)
 {
   VmaAllocator allocator = context.mem_allocator_get();
   vmaUnmapMemory(allocator, allocation_);
+  mapped_memory_ = nullptr;
 }
 
 bool VKBuffer::free(VKContext &context)
 {
+  unmap(context);
+
   VmaAllocator allocator = context.mem_allocator_get();
   vmaDestroyBuffer(allocator, vk_buffer_, allocation_);
   return true;

@@ -35,11 +35,8 @@ void VKIndexBuffer::read(uint32_t *data) const
   VKCommandBuffer &command_buffer = context.command_buffer_get();
   command_buffer.submit();
 
-  void *mapped_memory;
-  if (buffer_.map(context, &mapped_memory)) {
-    memcpy(data, mapped_memory, size_get());
-    buffer_.unmap(context);
-  }
+  void *mapped_memory = buffer_.mapped_memory_get();
+  memcpy(data, mapped_memory, size_get());
 }
 
 void VKIndexBuffer::update_sub(uint /*start*/, uint /*len*/, const void * /*data*/)

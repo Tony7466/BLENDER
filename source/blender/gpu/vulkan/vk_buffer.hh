@@ -21,6 +21,7 @@ class VKBuffer {
   int64_t size_in_bytes_;
   VkBuffer vk_buffer_ = VK_NULL_HANDLE;
   VmaAllocation allocation_ = VK_NULL_HANDLE;
+  void *mapped_memory_ = nullptr;
 
  public:
   VKBuffer() = default;
@@ -35,8 +36,6 @@ class VKBuffer {
               VkBufferUsageFlagBits buffer_usage);
   bool update(VKContext &context, const void *data);
   bool free(VKContext &context);
-  bool map(VKContext &context, void **r_mapped_memory) const;
-  void unmap(VKContext &context) const;
 
   int64_t size_in_bytes() const
   {
@@ -47,5 +46,16 @@ class VKBuffer {
   {
     return vk_buffer_;
   }
+
+  void *mapped_memory_get() const
+  {
+    BLI_assert_msg(mapped_memory_ != nullptr,
+                   "Buffer mapped memory requested on unmapped buffer.");
+    return mapped_memory_;
+  }
+
+ private:
+  bool map(VKContext &context);
+  void unmap(VKContext &context);
 };
 }  // namespace blender::gpu
