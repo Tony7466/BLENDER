@@ -101,17 +101,6 @@ float seq_give_frame_index(const Scene *scene, Sequence *seq, float timeline_fra
 
   return frame_index;
 }
-
-static int metaseq_start(Sequence *metaseq)
-{
-  return metaseq->start + metaseq->startofs;
-}
-
-static int metaseq_end(Sequence *metaseq)
-{
-  return metaseq->start + metaseq->len - metaseq->endofs;
-}
-
 static void seq_update_sound_bounds_recursive_impl(const Scene *scene,
                                                    Sequence *metaseq,
                                                    int start,
@@ -124,18 +113,23 @@ static void seq_update_sound_bounds_recursive_impl(const Scene *scene,
   for (seq = metaseq->seqbase.first; seq; seq = seq->next) {
     if (seq->type == SEQ_TYPE_META) {
       seq_update_sound_bounds_recursive_impl(
-          scene, seq, max_ii(start, metaseq_start(seq)), min_ii(end, metaseq_end(seq)));
+          scene,
+          seq,
+          max_ii(start, SEQ_time_left_handle_frame_get(scene, seq)),
+          min_ii(end, SEQ_time_right_handle_frame_get(scene, seq)));
     }
     else if (ELEM(seq->type, SEQ_TYPE_SOUND_RAM, SEQ_TYPE_SCENE)) {
       if (seq->scene_sound) {
-        int startofs = seq->startofs;
-        int endofs = seq->endofs;
-        if (seq->startofs + seq->start < start) {
-          startofs = start - seq->start;
+        int start_frame = SEQ_time_start_frame_get(scene, seq);
+        int length = SEQ_time_strip_length_get(scene, seq);
+        int startofs = SEQ_time_seconds_to_frames(scene, seq->startofs);
+        int endofs = SEQ_time_seconds_to_frames(scene, seq->endofs);
+        if (startofs + start_frame < start) {
+          startofs = start - start_frame;
         }
 
-        if (seq->start + seq->len - seq->endofs > end) {
-          endofs = seq->start + seq->len - end;
+        if (start_frame + length - endofs > end) {
+          endofs = start_frame + length - end;
         }
 
         double offset_time = 0.0f;
@@ -145,8 +139,8 @@ static void seq_update_sound_bounds_recursive_impl(const Scene *scene,
 
         BKE_sound_move_scene_sound(scene,
                                    seq->scene_sound,
-                                   seq->start + startofs,
-                                   seq->start + seq->len - endofs,
+                                   start_frame + startofs,
+                                   start_frame + length - endofs,
                                    startofs + seq->anim_startofs,
                                    offset_time);
       }
@@ -156,8 +150,10 @@ static void seq_update_sound_bounds_recursive_impl(const Scene *scene,
 
 void seq_update_sound_bounds_recursive(const Scene *scene, Sequence *metaseq)
 {
-  seq_update_sound_bounds_recursive_impl(
-      scene, metaseq, metaseq_start(metaseq), metaseq_end(metaseq));
+  seq_update_sound_bounds_recursive_impl(scene,
+                                         metaseq,
+                                         SEQ_time_left_handle_frame_get(scene, metaseq),
+                                         SEQ_time_right_handle_frame_get(scene, metaseq));
 }
 
 /* Update meta strip content start and end, update sound playback range. */

@@ -777,12 +777,15 @@ void BKE_sound_move_scene_sound_defaults(Scene *scene, Sequence *sequence)
 {
   sound_verify_evaluated_id(&scene->id);
   if (sequence->scene_sound) {
-    BKE_sound_move_scene_sound(scene,
-                               sequence->scene_sound,
-                               SEQ_time_left_handle_frame_get(scene, sequence),
-                               SEQ_time_right_handle_frame_get(scene, sequence),
-                               sequence->startofs + sequence->anim_startofs,
-                               0.0);
+    BKE_sound_move_scene_sound(
+        scene,
+        sequence->scene_sound,
+        SEQ_time_left_handle_frame_get(scene, sequence),
+        SEQ_time_right_handle_frame_get(scene, sequence),
+        SEQ_time_seconds_to_frames(
+            scene,
+            sequence->startofs + sequence->anim_startofs),  // XXX don't use the function here!
+        0.0);
   }
 }
 

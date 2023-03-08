@@ -1650,6 +1650,10 @@ static bool version_set_seq_single_frame_content(Sequence *seq, void * /*user_da
 
 static bool version_seq_convert_frames_to_seconds(Sequence *seq, void *user_data)
 {
+  if (seq->seq1 != nullptr || seq->seq2 != nullptr) {
+    return true;
+  }
+
   const Scene *scene = static_cast<Scene *>(user_data);
   double scene_playback_rate = (float)scene->r.frs_sec / scene->r.frs_sec_base;
 
@@ -4027,16 +4031,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  /**
-   * Versioning code until next subversion bump goes here.
-   *
-   * \note Be sure to check when bumping the version:
-   * - "versioning_userdef.c", #blo_do_versions_userdef
-   * - "versioning_userdef.c", #do_versions_theme
-   *
-   * \note Keep this message at the bottom of the function.
-   */
-  {
+  if (!MAIN_VERSION_ATLEAST(bmain, 306, 1)) {
     /* Z bias for retopology overlay. */
     if (!DNA_struct_elem_find(fd->filesdna, "View3DOverlay", "float", "retopology_offset")) {
       LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
@@ -4067,6 +4062,18 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
         SEQ_for_each_callback(&ed->seqbase, version_seq_convert_frames_to_seconds, scene);
       }
     }
+  }
+
+  /**
+   * Versioning code until next subversion bump goes here.
+   *
+   * \note Be sure to check when bumping the version:
+   * - "versioning_userdef.c", #blo_do_versions_userdef
+   * - "versioning_userdef.c", #do_versions_theme
+   *
+   * \note Keep this message at the bottom of the function.
+   */
+  {
     /* Keep this block, even when empty. */
   }
 }

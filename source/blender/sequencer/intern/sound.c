@@ -49,7 +49,8 @@ static bool sequencer_refresh_sound_length_recursive(Main *bmain, Scene *scene, 
       int old = seq->len;
       float fac;
 
-      seq->len = MAX2(1, round((info.length - seq->sound->offset_time) * FPS));
+      SEQ_time_strip_length_set(
+          scene, seq, MAX2(1, round((info.length - seq->sound->offset_time) * FPS)));
       fac = (float)seq->len / (float)old;
       old = seq->startofs;
       seq->startofs *= fac;
@@ -97,7 +98,8 @@ void SEQ_sound_update_bounds(Scene *scene, Sequence *seq)
   if (seq->type == SEQ_TYPE_SCENE) {
     if (seq->scene && seq->scene_sound) {
       /* We have to take into account start frame of the sequence's scene! */
-      int startofs = seq->startofs + seq->anim_startofs + seq->scene->r.sfra;
+      int startofs = SEQ_time_seconds_to_frames(scene, seq->startofs + seq->anim_startofs) +
+                     seq->scene->r.sfra;
 
       BKE_sound_move_scene_sound(scene,
                                  seq->scene_sound,
