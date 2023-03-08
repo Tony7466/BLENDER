@@ -147,7 +147,7 @@ template<typename T> AngleRadian<T> Quaternion<T>::twist_angle(const Axis axis) 
   /* The calculation requires a canonical quaternion. */
   const VecBase<T, 4> input_vec(canonicalize(*this));
 
-  return T(2) * AngleRadian<T>(input_vec[0], input_vec[axis + 1]);
+  return T(2) * AngleRadian<T>(input_vec[0], input_vec.yzw()[axis]);
 }
 
 template<typename T> Quaternion<T> Quaternion<T>::swing(const Axis axis) const
@@ -166,7 +166,8 @@ template<typename T> Quaternion<T> Quaternion<T>::twist(const Axis axis) const
   /* The calculation requires a canonical quaternion. */
   const VecBase<T, 4> input_vec(canonicalize(*this));
 
-  AngleCartesian<T> half_angle = AngleCartesian<T>::from_point(input_vec[0], input_vec[axis + 1]);
+  AngleCartesian<T> half_angle = AngleCartesian<T>::from_point(input_vec[0],
+                                                               input_vec.yzw()[axis]);
 
   VecBase<T, 4> twist(half_angle.cos(), T(0), T(0), T(0));
   twist[axis + 1] = half_angle.sin();
