@@ -11,6 +11,12 @@ void compute_segment_lengths(OffsetIndices<int> points_by_curve,
                              IndexMask curve_selection,
                              MutableSpan<float> r_segment_lengths);
 
+void compute_goal_points(OffsetIndices<int> points_by_curve,
+                         Span<float3> positions,
+                         IndexMask curve_selection,
+                         const float3 &target_point,
+                         MutableSpan<float3> r_goals);
+
 void solve_length_constraints(OffsetIndices<int> points_by_curve,
                               IndexMask curve_selection,
                               Span<float> segment_lenghts,
@@ -24,9 +30,9 @@ void solve_collision_constraints(OffsetIndices<int> points_by_curve,
                                  const bke::CurvesSurfaceTransforms &transforms,
                                  MutableSpan<float3> positions_cu);
 
-void solve_distance_constraints(OffsetIndices<int> points_by_curve,
-                                IndexMask curve_selection,
-                                Span<float3> goal_points,
-                                MutableSpan<float3> positions_cu);
+void solve_slip_constraints(OffsetIndices<int> points_by_curve,
+                            IndexMask curve_selection,
+                            Span<float3> goal_points,
+                            MutableSpan<float3> positions_cu);
 
 }  // namespace blender::geometry::curve_constraints

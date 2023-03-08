@@ -436,7 +436,8 @@ void report_invalid_uv_map(ReportList *reports)
 void CurvesConstraintSolver::initialize(const bke::CurvesGeometry &curves,
                                         const IndexMask curve_selection,
                                         const bool use_surface_collision,
-                                        const GoalType goal_type)
+                                        const GoalType goal_type,
+                                        const float3 &target_point)
 {
   use_surface_collision_ = use_surface_collision;
   goal_type_ = goal_type;
@@ -446,17 +447,47 @@ void CurvesConstraintSolver::initialize(const bke::CurvesGeometry &curves,
   if (use_surface_collision_) {
     start_positions_ = curves.positions();
   }
+
+  local_goals_.reinitialize(curves.curves_num());
+  goals_.reinitialize(curves.curves_num());
+  switch (goal_type_) {
+    case GoalType::None:
+      break;
+    case GoalType::Grab:
+    case GoalType::Slip:
+      /* Compute local goal points */
+      geometry::curve_constraints::compute_goal_points(curves.points_by_curve(),
+                                                       curves.positions(),
+                                                       curve_selection,
+                                                       target_point,
+                                                       local_goals_);
+      /* Transform local to the brush */
+      threading::parallel_for(curve_selection.index_range(), 256, [&](const IndexRange range) {
+        for (const int curve_i : curve_selection.slice(range)) {
+          local_goals_[curve_i] -= target_point;
+        }
+      });
+      break;
+  }
 }
 
 void CurvesConstraintSolver::solve_step(bke::CurvesGeometry &curves,
                                         const IndexMask curve_selection,
                                         const Mesh *surface,
                                         const CurvesSurfaceTransforms &transforms,
-                                        const int iterations)
+                                        const int iterations,
+                                        const float3 &target_point)
 {
   const bool solve_length = true;
   const bool solve_collision = use_surface_collision_ && surface != nullptr;
   const bool require_start_positions = solve_collision;
+
+  /* Transform from brush to curves space */
+  threading::parallel_for(curve_selection.index_range(), 256, [&](const IndexRange range) {
+    for (const int curve_i : curve_selection.slice(range)) {
+      goals_[curve_i] = local_goals_[curve_i] + target_point;
+    }
+  });
 
   for (const int iter : IndexRange(iterations)) {
     switch (goal_type_) {
@@ -467,13 +498,8 @@ void CurvesConstraintSolver::solve_step(bke::CurvesGeometry &curves,
         BLI_assert_unreachable();
         break;
       case GoalType::Slip:
-        geometry::curve_constraints::solve_distance_constraints(curves.points_by_curve(),
-                                                                 curve_selection,
-                                                                 segment_lengths_,
-                                                                 start_positions_,
-                                                                 *surface,
-                                                                 transforms,
-                                                                 curves.positions_for_write());
+        geometry::curve_constraints::solve_slip_constraints(
+            curves.points_by_curve(), curve_selection, goals_, curves.positions_for_write());
         break;
     }
     if (solve_length) {
