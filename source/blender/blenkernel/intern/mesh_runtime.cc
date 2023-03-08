@@ -135,7 +135,7 @@ const blender::bke::LooseGeomCache &Mesh::loose_verts() const
     r_data.count = count;
   });
 
-  return this->runtime->loose_edges_cache.data();
+  return this->runtime->loose_verts_cache.data();
 }
 
 const blender::bke::LooseGeomCache &Mesh::loose_edges() const
