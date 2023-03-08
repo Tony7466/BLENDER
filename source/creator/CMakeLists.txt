@@ -925,20 +925,18 @@ elseif(WIN32)
     )
   endif()
 
-  if(WITH_GMP)
-    windows_install_shared_manifest(
-      FILES ${LIBDIR}/gmp/lib/gmp-10.dll
-      ALL
-    )
-    windows_install_shared_manifest(
-      FILES ${LIBDIR}/gmp/lib/libgmpxx.dll
-      RELEASE
-    )
-    windows_install_shared_manifest(
-      FILES ${LIBDIR}/gmp/lib/libgmpxx_d.dll
-      DEBUG
-    )
-  endif()
+  windows_install_shared_manifest(
+    FILES ${LIBDIR}/gmp/lib/gmp-10.dll
+    ALL
+  )
+  windows_install_shared_manifest(
+    FILES ${LIBDIR}/gmp/lib/libgmpxx.dll
+    RELEASE
+  )
+  windows_install_shared_manifest(
+    FILES ${LIBDIR}/gmp/lib/libgmpxx_d.dll
+    DEBUG
+  )
 
   if(WITH_WINDOWS_PDB)
     if(WITH_WINDOWS_STRIPPED_PDB)
@@ -980,28 +978,26 @@ elseif(WIN32)
     )
   endif()
 
-  if(WITH_MATERIALX)
-    windows_install_shared_manifest(
-      FILES
-        ${LIBDIR}/materialx/bin/MaterialXCore.dll
-        ${LIBDIR}/materialx/bin/MaterialXFormat.dll
-        ${LIBDIR}/materialx/bin/MaterialXGenGlsl.dll
-        ${LIBDIR}/materialx/bin/MaterialXGenMdl.dll
-        ${LIBDIR}/materialx/bin/MaterialXGenOsl.dll
-        ${LIBDIR}/materialx/bin/MaterialXGenShader.dll
-      RELEASE
-    )
-    windows_install_shared_manifest(
-      FILES
-        ${LIBDIR}/materialx/bin/MaterialXCore_d.dll
-        ${LIBDIR}/materialx/bin/MaterialXFormat_d.dll
-        ${LIBDIR}/materialx/bin/MaterialXGenGlsl_d.dll
-        ${LIBDIR}/materialx/bin/MaterialXGenMdl_d.dll
-        ${LIBDIR}/materialx/bin/MaterialXGenOsl_d.dll
-        ${LIBDIR}/materialx/bin/MaterialXGenShader_d.dll
-      DEBUG
-    )
-  endif()
+  windows_install_shared_manifest(
+    FILES
+      ${LIBDIR}/materialx/bin/MaterialXCore.dll
+      ${LIBDIR}/materialx/bin/MaterialXFormat.dll
+      ${LIBDIR}/materialx/bin/MaterialXGenGlsl.dll
+      ${LIBDIR}/materialx/bin/MaterialXGenMdl.dll
+      ${LIBDIR}/materialx/bin/MaterialXGenOsl.dll
+      ${LIBDIR}/materialx/bin/MaterialXGenShader.dll
+    RELEASE
+  )
+  windows_install_shared_manifest(
+    FILES
+      ${LIBDIR}/materialx/bin/MaterialXCore_d.dll
+      ${LIBDIR}/materialx/bin/MaterialXFormat_d.dll
+      ${LIBDIR}/materialx/bin/MaterialXGenGlsl_d.dll
+      ${LIBDIR}/materialx/bin/MaterialXGenMdl_d.dll
+      ${LIBDIR}/materialx/bin/MaterialXGenOsl_d.dll
+      ${LIBDIR}/materialx/bin/MaterialXGenShader_d.dll
+    DEBUG
+  )
 
   if(WITH_PYTHON)
     string(REPLACE "." "" _PYTHON_VERSION_NO_DOTS ${PYTHON_VERSION})
