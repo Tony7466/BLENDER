@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. All rights reserved. */
+ * Copyright 2023 Blender Foundation. All rights reserved. */
 
 #include <numeric>
 
@@ -174,13 +174,14 @@ static void populate_curve_verts_for_bezier(const bke::CurvesGeometry &geometry,
 {
   const int bezier_vstep = 3;
   const OffsetIndices points_by_curve = geometry.points_by_curve();
-  const int start_verts_count = verts.size();
 
   for (int i_curve = 0; i_curve < geometry.curve_num; i_curve++) {
 
     const IndexRange curve_points = points_by_curve[i_curve];
     const int start_point_index = curve_points[0];
     const int last_point_index = curve_points[curve_points.size() - 1];
+
+    const int start_verts_count = verts.size();
 
     for (int i_point = start_point_index; i_point < last_point_index; i_point++) {
 
@@ -397,7 +398,8 @@ void USDCurvesWriter::do_write(HierarchyContext &context)
   }
 
   if (!all_same_cyclic_type) {
-    WM_report(RPT_WARNING, "Cannot export mixed cyclic and non-cyclic curves in the same Curve object.");
+    WM_report(RPT_WARNING,
+              "Cannot export mixed cyclic and non-cyclic curves in the same Curve object.");
     return;
   }
 
@@ -411,6 +413,20 @@ void USDCurvesWriter::do_write(HierarchyContext &context)
   pxr::TfToken interpolation;
 
   const int8_t curve_type = geometry.curve_types()[0];
+
+  if (first_frame_curve_type == -1) {
+    first_frame_curve_type = curve_type;
+  }
+  else if (first_frame_curve_type != curve_type) {
+    WM_reportf(RPT_WARNING,
+               "USD does not support animating curve types. The curve type changes from %i to "
+               "%i on frame %f",
+               first_frame_curve_type,
+               curve_type,
+               timecode);
+    return;
+  }
+
   switch (curve_type) {
     case CURVE_TYPE_POLY:
       usd_curves = DefineUsdGeomBasisCurves(pxr::VtValue(), is_cyclic, false);

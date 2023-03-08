@@ -15,7 +15,6 @@ namespace blender::io::usd {
 class USDCurvesWriter : public USDAbstractWriter {
  public:
   USDCurvesWriter(const USDExporterContext &ctx);
-  USDCurvesWriter(const USDExporterContext &ctx, std::unique_ptr<Curves> converted_legacy_curves);
   ~USDCurvesWriter();
 
  protected:
@@ -23,6 +22,7 @@ class USDCurvesWriter : public USDAbstractWriter {
   void assign_materials(const HierarchyContext &context, pxr::UsdGeomCurves usd_curve);
 
  private:
+  int8_t first_frame_curve_type = -1;
   pxr::UsdGeomCurves DefineUsdGeomBasisCurves(pxr::VtValue curve_basis, bool cyclic, bool cubic);
 
   void set_writer_attributes(pxr::UsdGeomCurves &usd_curves,
