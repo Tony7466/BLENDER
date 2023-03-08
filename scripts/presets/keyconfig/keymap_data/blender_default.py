@@ -5789,7 +5789,9 @@ def km_transform_modal_map(_params):
         ("PLANE_Z", {"type": 'Z', "value": 'PRESS', "shift": True}, None),
         ("CONS_OFF", {"type": 'C', "value": 'PRESS'}, None),
         ("TRANSLATE", {"type": 'G', "value": 'PRESS'}, None),
+        ("VERT_EDGE_SLIDE", {"type": 'G', "value": 'PRESS'}, None),
         ("ROTATE", {"type": 'R', "value": 'PRESS'}, None),
+        ("TRACKBALL", {"type": 'R', "value": 'PRESS'}, None),
         ("RESIZE", {"type": 'S', "value": 'PRESS'}, None),
         ("SNAP_TOGGLE", {"type": 'TAB', "value": 'PRESS', "shift": True}, None),
         ("SNAP_INV_ON", {"type": 'LEFT_CTRL', "value": 'PRESS', "any": True}, None),
@@ -6316,8 +6318,26 @@ def km_sculpt_expand_modal(_params):
     ])
     return keymap
 
-def km_sculpt_color_filter_modal_map(_params):
+def km_sculpt_mesh_filter_modal_map(_params):
+    items = []
+    keymap = (
+        "Mesh Filter Modal Map",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW', "modal": True},
+        {"items": items},
+    )
 
+    items.extend([
+        ("CONFIRM", {"type": 'LEFTMOUSE', "value": 'PRESS', "any": True}, None),
+        ("CONFIRM", {"type": 'LEFTMOUSE', "value": 'RELEASE', "any": True}, None),
+        ("CONFIRM", {"type": 'RET', "value": 'RELEASE', "any": True}, None),
+        ("CONFIRM", {"type": 'NUMPAD_ENTER', "value": 'RELEASE', "any": True}, None),
+
+        ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
+        ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'PRESS', "any": True}, None),
+    ])
+    return keymap
+
+def km_sculpt_color_filter_modal_map(_params):
     items = []
     keymap = (
         "Color Filter Modal Map",
@@ -6334,7 +6354,6 @@ def km_sculpt_color_filter_modal_map(_params):
         ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
         ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'PRESS', "any": True}, None),
     ])
-
     return keymap
 
 def km_curve_pen_modal_map(_params):
@@ -8145,6 +8164,7 @@ def generate_keymaps(params=None):
         km_paint_stroke_modal(params),
         km_sculpt_expand_modal(params),
         km_sculpt_color_filter_modal_map(params),
+        km_sculpt_mesh_filter_modal_map(params),
         km_curve_pen_modal_map(params),
         km_node_link_modal_map(params),
 

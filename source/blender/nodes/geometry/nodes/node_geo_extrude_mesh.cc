@@ -152,7 +152,6 @@ static MEdge new_edge(const int v1, const int v2)
   MEdge edge;
   edge.v1 = v1;
   edge.v2 = v2;
-  edge.flag = 0;
   return edge;
 }
 
@@ -161,7 +160,6 @@ static MPoly new_poly(const int loopstart, const int totloop)
   MPoly poly;
   poly.loopstart = loopstart;
   poly.totloop = totloop;
-  poly.flag = 0;
   return poly;
 }
 

@@ -1431,4 +1431,5 @@ void ED_operatortypes_sculpt(void)
 void ED_keymap_sculpt(wmKeyConfig *keyconf)
 {
   filter_color_modal_keymap(keyconf);
+  filter_mesh_modal_keymap(keyconf);
 }

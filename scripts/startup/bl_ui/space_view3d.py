@@ -2835,7 +2835,9 @@ class VIEW3D_MT_object_parent(Menu):
         layout.separator()
 
         layout.operator_context = 'EXEC_REGION_WIN'
-        layout.operator("object.parent_no_inverse_set")
+        layout.operator("object.parent_no_inverse_set").keep_transform = False
+        props = layout.operator("object.parent_no_inverse_set", text="Make Parent without Inverse (Keep Transform)")
+        props.keep_transform = True
         layout.operator_context = operator_context_default
 
         layout.separator()
@@ -3204,7 +3206,6 @@ class VIEW3D_MT_paint_weight(Menu):
             props.data_type = 'VGROUP_WEIGHTS'
 
         layout.operator("object.vertex_group_limit_total", text="Limit Total")
-        layout.operator("object.vertex_group_fix", text="Fix Deforms")
 
         if not is_editmode:
             layout.separator()
@@ -3302,6 +3303,7 @@ class VIEW3D_MT_sculpt(Menu):
 
         layout.separator()
 
+        # Rebuild BVH
         layout.operator("sculpt.optimize")
 
         layout.separator()
@@ -6514,6 +6516,9 @@ class VIEW3D_PT_overlay_object(Panel):
 
         sub = split.column(align=True)
         sub.prop(overlay, "show_extras", text="Extras")
+        subsub = sub.column()
+        subsub.active = overlay.show_extras
+        subsub.prop(overlay, "show_light_colors")
         sub.prop(overlay, "show_relationship_lines")
         sub.prop(overlay, "show_outline_selected")
 
@@ -6687,7 +6692,11 @@ class VIEW3D_PT_overlay_edit_mesh_shading(Panel):
         col = layout.column()
         col.active = display_all
 
-        col.prop(overlay, "show_occlude_wire")
+        row = col.row(align=True)
+        row.prop(overlay, "show_retopology", text="")
+        sub = row.row()
+        sub.active = overlay.show_retopology
+        sub.prop(overlay, "retopology_offset", text="Retopology")
 
         col.prop(overlay, "show_weight", text="Vertex Group Weights")
         if overlay.show_weight:
