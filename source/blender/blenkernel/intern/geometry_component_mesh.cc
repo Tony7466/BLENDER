@@ -196,30 +196,27 @@ void adapt_mesh_domain_corner_to_point_impl(const Mesh &mesh,
   BLI_assert(r_values.size() == mesh.totvert);
   const Span<MLoop> loops = mesh.loops();
 
-  Array<bool> loose_verts(mesh.totvert, true);
-
   r_values.fill(true);
   for (const int loop_index : IndexRange(mesh.totloop)) {
     const MLoop &loop = loops[loop_index];
     const int point_index = loop.v;
-
-    loose_verts[point_index] = false;
     if (!old_values[loop_index]) {
       r_values[point_index] = false;
     }
   }
 
   /* Deselect loose vertices without corners that are still selected from the 'true' default. */
-  /* The record fact says that the value is true.
-   * Writing to the array from different threads is okay because each thread sets the same value.
-   */
-  threading::parallel_for(loose_verts.index_range(), 2048, [&](const IndexRange range) {
-    for (const int vert_index : range) {
-      if (loose_verts[vert_index]) {
-        r_values[vert_index] = false;
+  const bke::LooseGeomCache &loose_verts = mesh.loose_verts();
+  if (loose_verts.count > 0) {
+    const BitSpan loose = loose_verts.is_loose_bits;
+    threading::parallel_for(loose.index_range(), 2048, [loose, r_values](const IndexRange range) {
+      for (const int vert_index : range) {
+        if (loose[vert_index]) {
+          r_values[vert_index] = false;
+        }
       }
-    }
-  });
+    });
+  }
 }
 
 static GVArray adapt_mesh_domain_corner_to_point(const Mesh &mesh, const GVArray &varray)
@@ -783,20 +780,26 @@ static bool can_simple_adapt_for_single(const Mesh &mesh,
       /* All other domains are always connected to points. */
       return true;
     case ATTR_DOMAIN_EDGE:
-      /* There may be loose vertices not connected to edges. */
-      return ELEM(to_domain, ATTR_DOMAIN_FACE, ATTR_DOMAIN_CORNER);
+      if (to_domain == ATTR_DOMAIN_POINT) {
+        return mesh.loose_verts().count == 0;
+      }
+      return true;
     case ATTR_DOMAIN_FACE:
-      /* There may be loose vertices or edges not connected to faces. */
+      if (to_domain == ATTR_DOMAIN_POINT) {
+        return mesh.loose_verts().count == 0;
+      }
       if (to_domain == ATTR_DOMAIN_EDGE) {
         return mesh.loose_edges().count == 0;
       }
-      return to_domain == ATTR_DOMAIN_CORNER;
+      return true;
     case ATTR_DOMAIN_CORNER:
-      /* Only faces are always connected to corners. */
+      if (to_domain == ATTR_DOMAIN_POINT) {
+        return mesh.loose_verts().count == 0;
+      }
       if (to_domain == ATTR_DOMAIN_EDGE) {
         return mesh.loose_edges().count == 0;
       }
-      return to_domain == ATTR_DOMAIN_FACE;
+      return true;
     default:
       BLI_assert_unreachable();
       return false;
