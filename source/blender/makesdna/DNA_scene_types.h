@@ -2333,7 +2333,7 @@ typedef enum eSnapTransformMode {
 
 /** #ToolSettings.face_select */
 enum {
-  FACE_DEFAULT = (1 << 0),
+  FACE_AUTO = (1 << 0),
   FACE_TOUCH = (1 << 1),
   FACE_ENCLOSE = (1 << 2),
   FACE_CENTER = (1 << 3),
@@ -2341,7 +2341,7 @@ enum {
 
 /** #ToolSettings.edge_select */
 enum {
-  EDGE_DEFAULT = (1 << 0),
+  EDGE_HYBRID = (1 << 0),
   EDGE_TOUCH = (1 << 1),
   EDGE_ENCLOSE = (1 << 2),
 };
