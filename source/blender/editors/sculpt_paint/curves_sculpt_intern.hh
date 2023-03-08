@@ -149,20 +149,33 @@ void report_invalid_uv_map(ReportList *reports);
  * collision.
  */
 struct CurvesConstraintSolver {
+ public:
+  enum GoalType {
+    /* Only use positions as initial deform, constraints can override them. */
+    None,
+    /* Try to solve for exact position match with goals. */
+    Grab,
+    /* Allow slip along the curve direction, minimize lateral distance to goals. */
+    Slip,
+  };
+
  private:
   bool use_surface_collision_;
   Array<float3> start_positions_;
   Array<float> segment_lengths_;
+  GoalType goal_type_;
 
  public:
   void initialize(const bke::CurvesGeometry &curves,
                   const IndexMask curve_selection,
-                  const bool use_surface_collision);
+                  const bool use_surface_collision,
+                  const GoalType goal_type = GoalType::None);
 
   void solve_step(bke::CurvesGeometry &curves,
                   const IndexMask curve_selection,
                   const Mesh *surface,
-                  const CurvesSurfaceTransforms &transforms);
+                  const CurvesSurfaceTransforms &transforms,
+                  const int iterations = 1);
 
   Span<float> segment_lengths() const
   {

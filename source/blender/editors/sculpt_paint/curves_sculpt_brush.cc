@@ -435,9 +435,11 @@ void report_invalid_uv_map(ReportList *reports)
 
 void CurvesConstraintSolver::initialize(const bke::CurvesGeometry &curves,
                                         const IndexMask curve_selection,
-                                        const bool use_surface_collision)
+                                        const bool use_surface_collision,
+                                        const GoalType goal_type)
 {
   use_surface_collision_ = use_surface_collision;
+  goal_type_ = goal_type;
   segment_lengths_.reinitialize(curves.points_num());
   geometry::curve_constraints::compute_segment_lengths(
       curves.points_by_curve(), curves.positions(), curve_selection, segment_lengths_);
@@ -449,23 +451,52 @@ void CurvesConstraintSolver::initialize(const bke::CurvesGeometry &curves,
 void CurvesConstraintSolver::solve_step(bke::CurvesGeometry &curves,
                                         const IndexMask curve_selection,
                                         const Mesh *surface,
-                                        const CurvesSurfaceTransforms &transforms)
+                                        const CurvesSurfaceTransforms &transforms,
+                                        const int iterations)
 {
-  if (use_surface_collision_ && surface != nullptr) {
-    geometry::curve_constraints::solve_length_and_collision_constraints(
-        curves.points_by_curve(),
-        curve_selection,
-        segment_lengths_,
-        start_positions_,
-        *surface,
-        transforms,
-        curves.positions_for_write());
-    start_positions_ = curves.positions();
+  const bool solve_length = true;
+  const bool solve_collision = use_surface_collision_ && surface != nullptr;
+  const bool require_start_positions = solve_collision;
+
+  for (const int iter : IndexRange(iterations)) {
+    switch (goal_type_) {
+      case GoalType::None:
+        break;
+      case GoalType::Grab:
+        // TODO
+        BLI_assert_unreachable();
+        break;
+      case GoalType::Slip:
+        geometry::curve_constraints::solve_distance_constraints(curves.points_by_curve(),
+                                                                 curve_selection,
+                                                                 segment_lengths_,
+                                                                 start_positions_,
+                                                                 *surface,
+                                                                 transforms,
+                                                                 curves.positions_for_write());
+        break;
+    }
+    if (solve_length) {
+      geometry::curve_constraints::solve_length_constraints(curves.points_by_curve(),
+                                                            curve_selection,
+                                                            segment_lengths_,
+                                                            curves.positions_for_write());
+    }
+    if (solve_collision) {
+      geometry::curve_constraints::solve_collision_constraints(curves.points_by_curve(),
+                                                               curve_selection,
+                                                               segment_lengths_,
+                                                               start_positions_,
+                                                               *surface,
+                                                               transforms,
+                                                               curves.positions_for_write());
+    }
+
+    if (require_start_positions) {
+      start_positions_ = curves.positions();
+    }
   }
-  else {
-    geometry::curve_constraints::solve_length_constraints(
-        curves.points_by_curve(), curve_selection, segment_lengths_, curves.positions_for_write());
-  }
+
   curves.tag_positions_changed();
 }
 

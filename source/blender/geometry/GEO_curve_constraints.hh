@@ -16,12 +16,17 @@ void solve_length_constraints(OffsetIndices<int> points_by_curve,
                               Span<float> segment_lenghts,
                               MutableSpan<float3> positions);
 
-void solve_length_and_collision_constraints(OffsetIndices<int> points_by_curve,
-                                            IndexMask curve_selection,
-                                            Span<float> segment_lengths,
-                                            Span<float3> start_positions,
-                                            const Mesh &surface,
-                                            const bke::CurvesSurfaceTransforms &transforms,
-                                            MutableSpan<float3> positions);
+void solve_collision_constraints(OffsetIndices<int> points_by_curve,
+                                 IndexMask curve_selection,
+                                 Span<float> segment_lengths_cu,
+                                 Span<float3> start_positions_cu,
+                                 const Mesh &surface,
+                                 const bke::CurvesSurfaceTransforms &transforms,
+                                 MutableSpan<float3> positions_cu);
+
+void solve_distance_constraints(OffsetIndices<int> points_by_curve,
+                                IndexMask curve_selection,
+                                Span<float3> goal_points,
+                                MutableSpan<float3> positions_cu);
 
 }  // namespace blender::geometry::curve_constraints

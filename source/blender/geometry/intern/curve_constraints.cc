@@ -57,16 +57,14 @@ void solve_length_constraints(const OffsetIndices<int> points_by_curve,
   });
 }
 
-void solve_length_and_collision_constraints(const OffsetIndices<int> points_by_curve,
-                                            const IndexMask curve_selection,
-                                            const Span<float> segment_lengths_cu,
-                                            const Span<float3> start_positions_cu,
-                                            const Mesh &surface,
-                                            const bke::CurvesSurfaceTransforms &transforms,
-                                            MutableSpan<float3> positions_cu)
+void solve_collision_constraints(const OffsetIndices<int> points_by_curve,
+                                 const IndexMask curve_selection,
+                                 const Span<float> segment_lengths_cu,
+                                 const Span<float3> start_positions_cu,
+                                 const Mesh &surface,
+                                 const bke::CurvesSurfaceTransforms &transforms,
+                                 MutableSpan<float3> positions_cu)
 {
-  solve_length_constraints(points_by_curve, curve_selection, segment_lengths_cu, positions_cu);
-
   BVHTreeFromMesh surface_bvh;
   BKE_bvhtree_from_mesh_get(&surface_bvh, &surface, BVHTREE_FROM_LOOPTRI, 2);
   BLI_SCOPED_DEFER([&]() { free_bvhtree_from_mesh(&surface_bvh); });
@@ -171,6 +169,43 @@ void solve_length_and_collision_constraints(const OffsetIndices<int> points_by_c
       if (revert_curve) {
         positions_cu.slice(points).copy_from(start_positions_cu.slice(points));
       }
+    }
+  });
+}
+
+void solve_distance_constraints(const OffsetIndices<int> points_by_curve,
+                                const IndexMask curve_selection,
+                                const Span<float3> goal_points,
+                                MutableSpan<float3> positions_cu)
+{
+  threading::parallel_for(curve_selection.index_range(), 64, [&](const IndexRange range) {
+    for (const int curve_i : curve_selection.slice(range)) {
+      const IndexRange points = points_by_curve[curve_i];
+      const float3 &goal = goal_points[curve_i];
+
+      // XXX computing the closest point from scratch every step is not very efficient.
+      // Could use an iterative approach, store a "current closest" point, then move that along the curve each step.
+      // This becomes path-dependent and may require smaller substeps, but would also be more robust
+      // (less likely to jump suddenly because some part of the curve moves closer to the goal, it would always move
+      // to the next local minimum)
+
+      int min_point_i = -1;
+      float min_distance_sq = FLT_MAX;
+      float min_lambda;
+      float3 min_closest;
+      for (const int point_i : points.drop_back(1)) {
+        float3 closest;
+        const float lambda = closest_to_line_segment_v3(closest, goal, positions_cu[point_i], positions_cu[point_i + 1]);
+        const float distance_sq = math::distance_squared(closest, goal);
+        if (distance_sq < min_distance_sq) {
+          min_point_i = point_i;
+          min_distance_sq = distance_sq;
+          min_lambda = lambda;
+          min_closest = closest;
+        }
+      }
+
+
     }
   });
 }
