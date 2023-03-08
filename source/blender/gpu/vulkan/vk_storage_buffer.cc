@@ -43,7 +43,7 @@ void VKStorageBuffer::unbind()
 {
 }
 
-void VKStorageBuffer::clear(Span<uint32_t> /*data*/)
+void VKStorageBuffer::clear(uint32_t /*clear_value*/)
 {
 }
 
