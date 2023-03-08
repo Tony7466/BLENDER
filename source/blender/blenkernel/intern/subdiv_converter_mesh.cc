@@ -271,7 +271,7 @@ static void free_user_data(const OpenSubdiv_Converter *converter)
   ConverterStorage *user_data = static_cast<ConverterStorage *>(converter->user_data);
   MEM_SAFE_FREE(user_data->loop_uv_indices);
   MEM_freeN(user_data->manifold_vertex_index);
-  MEM_freeN(user_data->infinite_sharp_vertices_map);
+  MEM_SAFE_FREE(user_data->infinite_sharp_vertices_map);
   MEM_freeN(user_data->manifold_vertex_index_reverse);
   MEM_freeN(user_data->manifold_edge_index_reverse);
   MEM_freeN(user_data);
@@ -330,7 +330,7 @@ static void initialize_manifold_index_array(const blender::BitSpan not_used_map,
   }
   int offset = 0;
   for (int i = 0; i < num_elements; i++) {
-    if (!not_used_map.is_empty() || !not_used_map[i]) {
+    if (not_used_map.is_empty() || !not_used_map[i]) {
       if (indices != nullptr) {
         indices[i] = i - offset;
       }
