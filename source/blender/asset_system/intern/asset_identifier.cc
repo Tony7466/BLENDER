@@ -4,6 +4,7 @@
  * \ingroup asset_system
  */
 
+#include <iostream>
 #include <string>
 
 #include "BKE_blendfile.h"
@@ -18,6 +19,11 @@ AssetIdentifier::AssetIdentifier(std::shared_ptr<std::string> library_root_path,
                                  std::string relative_asset_path)
     : library_root_path_(library_root_path), relative_asset_path_(relative_asset_path)
 {
+}
+
+StringRefNull AssetIdentifier::library_relative_identifier() const
+{
+  return relative_asset_path_;
 }
 
 std::string AssetIdentifier::full_path() const
