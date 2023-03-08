@@ -8,6 +8,13 @@
 /** \name Shadow pipeline
  * \{ */
 
+GPU_SHADER_CREATE_INFO(eevee_shadow_clipmap_clear)
+    .do_static_compilation(true)
+    .local_group_size(SHADOW_CLIPMAP_GROUP_SIZE)
+    .storage_buf(0, Qualifier::WRITE, "ShadowTileMapClip", "tilemaps_clip_buf[]")
+    .additional_info("eevee_shared")
+    .compute_source("eevee_shadow_clipmap_clear_comp.glsl");
+
 GPU_SHADER_CREATE_INFO(eevee_shadow_tilemap_bounds)
     .do_static_compilation(true)
     .local_group_size(SHADOW_BOUNDS_GROUP_SIZE)
