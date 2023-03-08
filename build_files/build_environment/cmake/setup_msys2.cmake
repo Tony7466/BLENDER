@@ -57,11 +57,10 @@ if((NOT EXISTS "${DOWNLOAD_DIR}/msys2/msys64/msys2_shell.cmd") AND (EXISTS "${DO
   )
 endif()
 
-# Refresh pacman and upgrade all packages
-# Note: We do this regardless of installation status, to get latest packages - pacman works on *rolling releases*
+# Refresh pacman repositories (similar to debian's `apt update`)
 message("Refreshing pacman")
 execute_process(
-  COMMAND ${DOWNLOAD_DIR}/msys2/msys64/msys2_shell.cmd -defterm -no-start -clang64 -c "pacman -Syu --noconfirm && exit"
+  COMMAND ${DOWNLOAD_DIR}/msys2/msys64/msys2_shell.cmd -defterm -no-start -clang64 -c "pacman -Syy --noconfirm && exit"
   WORKING_DIRECTORY ${DOWNLOAD_DIR}/msys2/msys64
 )
 
