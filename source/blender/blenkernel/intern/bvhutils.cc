@@ -1168,7 +1168,7 @@ static BitVector<> loose_verts_map_get(const Span<MEdge> edges,
 static BitVector<> loose_edges_map_get(const Mesh &mesh, int *r_loose_edge_len)
 {
   using namespace blender::bke;
-  const LooseEdgeCache &loose_edges = mesh.loose_edges();
+  const LooseGeomCache &loose_edges = mesh.loose_edges();
   *r_loose_edge_len = loose_edges.count;
   return loose_edges.is_loose_bits;
 }

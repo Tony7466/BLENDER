@@ -109,10 +109,40 @@ MeshRuntime::~MeshRuntime()
 
 }  // namespace blender::bke
 
-const blender::bke::LooseEdgeCache &Mesh::loose_edges() const
+const blender::bke::LooseGeomCache &Mesh::loose_verts() const
 {
   using namespace blender::bke;
-  this->runtime->loose_edges_cache.ensure([&](LooseEdgeCache &r_data) {
+  this->runtime->loose_verts_cache.ensure([&](LooseGeomCache &r_data) {
+    // SCOPED_TIMER_AVERAGED("loose_verts");
+    blender::BitVector<> &loose_verts = r_data.is_loose_bits;
+    loose_verts.resize(0);
+    loose_verts.resize(this->totvert, true);
+
+    int count = this->totvert;
+    for (const MEdge &edge : this->edges()) {
+      if (loose_verts[edge.v1]) {
+        loose_verts[edge.v1].reset();
+        count--;
+      }
+      if (loose_verts[edge.v2]) {
+        loose_verts[edge.v2].reset();
+        count--;
+      }
+    }
+    if (count == 0) {
+      loose_verts.clear_and_shrink();
+    }
+    r_data.count = count;
+  });
+
+  return this->runtime->loose_edges_cache.data();
+}
+
+const blender::bke::LooseGeomCache &Mesh::loose_edges() const
+{
+  using namespace blender::bke;
+  this->runtime->loose_edges_cache.ensure([&](LooseGeomCache &r_data) {
+    // SCOPED_TIMER_AVERAGED("loose_edges");
     blender::BitVector<> &loose_edges = r_data.is_loose_bits;
     loose_edges.resize(0);
     loose_edges.resize(this->totedge, true);
@@ -133,10 +163,19 @@ const blender::bke::LooseEdgeCache &Mesh::loose_edges() const
   return this->runtime->loose_edges_cache.data();
 }
 
+void Mesh::loose_verts_tag_none() const
+{
+  using namespace blender::bke;
+  this->runtime->loose_verts_cache.ensure([&](LooseGeomCache &r_data) {
+    r_data.is_loose_bits.clear_and_shrink();
+    r_data.count = 0;
+  });
+}
+
 void Mesh::loose_edges_tag_none() const
 {
   using namespace blender::bke;
-  this->runtime->loose_edges_cache.ensure([&](LooseEdgeCache &r_data) {
+  this->runtime->loose_edges_cache.ensure([&](LooseGeomCache &r_data) {
     r_data.is_loose_bits.clear_and_shrink();
     r_data.count = 0;
   });

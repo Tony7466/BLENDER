@@ -352,7 +352,7 @@ void adapt_mesh_domain_corner_to_edge_impl(const Mesh &mesh,
     }
   }
 
-  const bke::LooseEdgeCache &loose_edges = mesh.loose_edges();
+  const bke::LooseGeomCache &loose_edges = mesh.loose_edges();
   if (loose_edges.count > 0) {
     /* Deselect loose edges without corners that are still selected from the 'true' default. */
     threading::parallel_for(IndexRange(mesh.totedge), 2048, [&](const IndexRange range) {

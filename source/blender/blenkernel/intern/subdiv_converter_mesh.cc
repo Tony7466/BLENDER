@@ -177,6 +177,9 @@ static bool is_infinite_sharp_vertex(const OpenSubdiv_Converter *converter,
     return true;
   }
 #endif
+  if (storage->infinite_sharp_vertices_map == nullptr) {
+    return false;
+  }
   const int vertex_index = storage->manifold_vertex_index_reverse[manifold_vertex_index];
   return BLI_BITMAP_TEST_BOOL(storage->infinite_sharp_vertices_map, vertex_index);
 }
@@ -310,7 +313,7 @@ static void init_functions(OpenSubdiv_Converter *converter)
   converter->freeUserData = free_user_data;
 }
 
-static void initialize_manifold_index_array(const BLI_bitmap *used_map,
+static void initialize_manifold_index_array(const blender::BitSpan not_used_map,
                                             const int num_elements,
                                             int **r_indices,
                                             int **r_indices_reverse,
@@ -327,7 +330,7 @@ static void initialize_manifold_index_array(const BLI_bitmap *used_map,
   }
   int offset = 0;
   for (int i = 0; i < num_elements; i++) {
-    if (BLI_BITMAP_TEST_BOOL(used_map, i)) {
+    if (!not_used_map.is_empty() || !not_used_map[i]) {
       if (indices != nullptr) {
         indices[i] = i - offset;
       }
@@ -353,43 +356,35 @@ static void initialize_manifold_index_array(const BLI_bitmap *used_map,
 
 static void initialize_manifold_indices(ConverterStorage *storage)
 {
+  using namespace blender;
   const Mesh *mesh = storage->mesh;
   const blender::Span<MEdge> edges = storage->edges;
-  const blender::Span<MLoop> loops = storage->loops;
-  const blender::Span<MPoly> polys = storage->polys;
-  /* Set bits of elements which are not loose. */
-  BLI_bitmap *vert_used_map = BLI_BITMAP_NEW(mesh->totvert, "vert used map");
-  BLI_bitmap *edge_used_map = BLI_BITMAP_NEW(mesh->totedge, "edge used map");
-  for (int poly_index = 0; poly_index < mesh->totpoly; poly_index++) {
-    const MPoly &poly = polys[poly_index];
-    for (int corner = 0; corner < poly.totloop; corner++) {
-      const MLoop *loop = &loops[poly.loopstart + corner];
-      BLI_BITMAP_ENABLE(vert_used_map, loop->v);
-      BLI_BITMAP_ENABLE(edge_used_map, loop->e);
-    }
-  }
-  initialize_manifold_index_array(vert_used_map,
+  const bke::LooseGeomCache &loose_verts = mesh->loose_verts();
+  const bke::LooseGeomCache &loose_edges = mesh->loose_edges();
+  initialize_manifold_index_array(loose_verts.is_loose_bits,
                                   mesh->totvert,
                                   &storage->manifold_vertex_index,
                                   &storage->manifold_vertex_index_reverse,
                                   &storage->num_manifold_vertices);
-  initialize_manifold_index_array(edge_used_map,
+  initialize_manifold_index_array(loose_edges.is_loose_bits,
                                   mesh->totedge,
                                   nullptr,
                                   &storage->manifold_edge_index_reverse,
                                   &storage->num_manifold_edges);
   /* Initialize infinite sharp mapping. */
-  storage->infinite_sharp_vertices_map = BLI_BITMAP_NEW(mesh->totvert, "vert used map");
-  for (int edge_index = 0; edge_index < mesh->totedge; edge_index++) {
-    if (!BLI_BITMAP_TEST_BOOL(edge_used_map, edge_index)) {
-      const MEdge *edge = &edges[edge_index];
-      BLI_BITMAP_ENABLE(storage->infinite_sharp_vertices_map, edge->v1);
-      BLI_BITMAP_ENABLE(storage->infinite_sharp_vertices_map, edge->v2);
+  if (loose_edges.count > 0) {
+    storage->infinite_sharp_vertices_map = BLI_BITMAP_NEW(mesh->totvert, "vert used map");
+    for (int edge_index = 0; edge_index < mesh->totedge; edge_index++) {
+      if (loose_edges.is_loose_bits[edge_index]) {
+        const MEdge *edge = &edges[edge_index];
+        BLI_BITMAP_ENABLE(storage->infinite_sharp_vertices_map, edge->v1);
+        BLI_BITMAP_ENABLE(storage->infinite_sharp_vertices_map, edge->v2);
+      }
     }
   }
-  /* Free working variables. */
-  MEM_freeN(vert_used_map);
-  MEM_freeN(edge_used_map);
+  else {
+    storage->infinite_sharp_vertices_map = nullptr;
+  }
 }
 
 static void init_user_data(OpenSubdiv_Converter *converter,

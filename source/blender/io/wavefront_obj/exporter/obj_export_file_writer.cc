@@ -413,7 +413,7 @@ void OBJWriter::write_edges_indices(FormatHandler &fh,
                                     const OBJMesh &obj_mesh_data) const
 {
   const Mesh &mesh = *obj_mesh_data.get_mesh();
-  const bke::LooseEdgeCache &loose_edges = mesh.loose_edges();
+  const bke::LooseGeomCache &loose_edges = mesh.loose_edges();
   if (loose_edges.count == 0) {
     return;
   }

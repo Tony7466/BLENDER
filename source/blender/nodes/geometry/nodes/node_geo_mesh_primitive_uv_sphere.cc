@@ -333,6 +333,7 @@ static Mesh *create_uv_sphere_mesh(const float radius,
         }
       });
 
+  mesh->loose_verts_tag_none();
   mesh->loose_edges_tag_none();
 
   BLI_assert(BKE_mesh_is_valid(mesh));

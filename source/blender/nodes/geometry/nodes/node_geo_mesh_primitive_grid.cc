@@ -145,6 +145,7 @@ Mesh *create_grid_mesh(const int verts_x,
     calculate_uvs(mesh, positions, loops, size_x, size_y, uv_map_id);
   }
 
+  mesh->loose_verts_tag_none();
   mesh->loose_edges_tag_none();
 
   return mesh;

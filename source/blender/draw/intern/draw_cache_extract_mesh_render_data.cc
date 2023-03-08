@@ -79,9 +79,7 @@ static void mesh_render_data_loose_geom_build(const MeshRenderData *mr, MeshBuff
 static void mesh_render_data_loose_geom_mesh(const MeshRenderData *mr, MeshBufferCache *cache)
 {
   using namespace blender;
-  BLI_bitmap *lvert_map = BLI_BITMAP_NEW(mr->vert_len, __func__);
-
-  const bke::LooseEdgeCache &loose_edges = mr->me->loose_edges();
+  const bke::LooseGeomCache &loose_edges = mr->me->loose_edges();
   if (loose_edges.count > 0) {
     cache->loose_geom.edges = static_cast<int *>(
         MEM_malloc_arrayN(loose_edges.count, sizeof(int), __func__));
@@ -95,25 +93,19 @@ static void mesh_render_data_loose_geom_mesh(const MeshRenderData *mr, MeshBuffe
     }
   }
 
-  /* Tag verts as not loose. */
-  for (const MEdge &edge : mr->edges) {
-    BLI_BITMAP_ENABLE(lvert_map, edge.v1);
-    BLI_BITMAP_ENABLE(lvert_map, edge.v2);
-  }
+  const bke::LooseGeomCache &loose_verts = mr->me->loose_verts();
+  if (loose_verts.count > 0) {
+    cache->loose_geom.verts = static_cast<int *>(
+        MEM_malloc_arrayN(loose_verts.count, sizeof(int), __func__));
 
-  cache->loose_geom.verts = static_cast<int *>(
-      MEM_mallocN(mr->vert_len * sizeof(*cache->loose_geom.verts), __func__));
-  for (int v = 0; v < mr->vert_len; v++) {
-    if (!BLI_BITMAP_TEST(lvert_map, v)) {
-      cache->loose_geom.verts[cache->loose_geom.vert_len++] = v;
+    cache->loose_geom.vert_len = 0;
+    for (const int64_t i : loose_edges.is_loose_bits.index_range()) {
+      if (loose_verts.is_loose_bits[i]) {
+        cache->loose_geom.verts[cache->loose_geom.vert_len] = int(i);
+        cache->loose_geom.vert_len++;
+      }
     }
   }
-  if (cache->loose_geom.vert_len < mr->vert_len) {
-    cache->loose_geom.verts = static_cast<int *>(MEM_reallocN(
-        cache->loose_geom.verts, cache->loose_geom.vert_len * sizeof(*cache->loose_geom.verts)));
-  }
-
-  MEM_freeN(lvert_map);
 }
 
 static void mesh_render_data_lverts_bm(const MeshRenderData *mr, MeshBufferCache *cache, BMesh *bm)

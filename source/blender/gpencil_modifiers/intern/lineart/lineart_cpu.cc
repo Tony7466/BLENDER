@@ -2130,7 +2130,7 @@ static void lineart_geometry_object_load(LineartObjectInfo *ob_info,
   if (la_data->conf.use_loose) {
     /* Only identifying floating edges at this point because other edges has been taken care of
      * inside #lineart_identify_mlooptri_feature_edges function. */
-    const bke::LooseEdgeCache &loose_edges = me->loose_edges();
+    const bke::LooseGeomCache &loose_edges = me->loose_edges();
     loose_data.loose_array = static_cast<int *>(
         MEM_malloc_arrayN(loose_edges.count, sizeof(int), __func__));
     if (loose_edges.count > 0) {

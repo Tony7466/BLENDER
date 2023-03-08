@@ -25,7 +25,7 @@ namespace bke {
 struct MeshRuntime;
 class AttributeAccessor;
 class MutableAttributeAccessor;
-struct LooseEdgeCache;
+struct LooseGeomCache;
 }  // namespace bke
 }  // namespace blender
 using MeshRuntimeHandle = blender::bke::MeshRuntime;
@@ -264,7 +264,8 @@ typedef struct Mesh {
   /**
    * Cached information about loose edges, calculated lazily when necessary.
    */
-  const blender::bke::LooseEdgeCache &loose_edges() const;
+  const blender::bke::LooseGeomCache &loose_edges() const;
+  const blender::bke::LooseGeomCache &loose_verts() const;
   /**
    * Explicitly set the cached number of loose edges to zero. This can improve performance
    * later on, because finding loose edges lazily can be skipped entirely.
@@ -273,6 +274,7 @@ typedef struct Mesh {
    * cache dirty. If the mesh was changed first, the relevant dirty tags should be called first.
    */
   void loose_edges_tag_none() const;
+  void loose_verts_tag_none() const;
 
   /**
    * Normal direction of every polygon, which is defined by the winding direction of its corners.

@@ -1882,7 +1882,7 @@ void BKE_mesh_legacy_convert_loose_edges_to_flag(Mesh *mesh)
   using namespace blender;
   using namespace blender::bke;
 
-  const LooseEdgeCache &loose_edges = mesh->loose_edges();
+  const LooseGeomCache &loose_edges = mesh->loose_edges();
   MutableSpan<MEdge> edges = mesh->edges_for_write();
   threading::parallel_for(edges.index_range(), 4096, [&](const IndexRange range) {
     if (loose_edges.count == 0) {

@@ -1602,7 +1602,7 @@ static bool cloth_build_springs(ClothModifierData *clmd, Mesh *mesh)
   }
 
   /* Structural springs. */
-  const LooseEdgeCache &loose_edges = mesh->loose_edges();
+  const LooseGeomCache &loose_edges = mesh->loose_edges();
   for (int i = 0; i < numedges; i++) {
     spring = (ClothSpring *)MEM_callocN(sizeof(ClothSpring), "cloth spring");
 
