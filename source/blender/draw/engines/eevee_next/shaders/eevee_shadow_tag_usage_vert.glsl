@@ -12,7 +12,7 @@
 #pragma BLENDER_REQUIRE(common_debug_shape_lib.glsl)
 
 /* Inflate bounds by half a pixel as a conservative rasterization alternative,
- * to ensure the tilemaps needed by all LOD0 pixels get tagged */
+ * to ensure the tiles needed by all LOD0 pixels get tagged */
 void inflate_bounds(vec3 ls_center, inout vec3 P, inout vec3 lP)
 {
   vec3 vP = point_world_to_view(P);
