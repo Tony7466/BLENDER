@@ -126,7 +126,7 @@ class AxisSigned {
   }
 
   /** Convert / extract the axis. */
-  constexpr explicit operator Axis() const
+  constexpr Axis axis() const
   {
     return Axis::from_int(axis_ % 3);
   }
@@ -176,7 +176,7 @@ class AxisSigned {
       case Value::X_NEG:
       case Value::Y_NEG:
       case Value::Z_NEG:
-        return stream << static_cast<Axis>(axis) << (axis.sign() == -1 ? '-' : '+');
+        return stream << axis.axis() << (axis.sign() == -1 ? '-' : '+');
     }
   }
 };
@@ -189,7 +189,7 @@ class AxisSigned {
 
 template<> inline AxisSigned abs(const AxisSigned &axis)
 {
-  return static_cast<Axis>(axis);
+  return axis.axis();
 }
 
 [[nodiscard]] inline int sign(const AxisSigned &axis)
