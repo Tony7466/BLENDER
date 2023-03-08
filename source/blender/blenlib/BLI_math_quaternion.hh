@@ -6,8 +6,11 @@
  * \ingroup bli
  */
 
-#include "BLI_math_matrix.hh"
+#include "BLI_math_axis_angle_types.hh"
+#include "BLI_math_euler_types.hh"
 #include "BLI_math_quaternion_types.hh"
+
+#include "BLI_math_matrix.hh"
 
 namespace blender::math {
 
@@ -137,121 +140,7 @@ template<typename T> [[nodiscard]] inline bool is_unit_scale(const detail::Quate
 
 namespace detail {
 
-/* -------------- Constructors -------------- */
-
-template<typename T> Quaternion<T>::Quaternion(const CartesianBasis &rotation)
-{
-  /**
-   * There is only 6 * 4 = 24 possible valid orthonormal orientations.
-   * We precompute them and store them inside this switch using a key.
-   * Generated using `generate_axes_to_quaternion_switch_cases()`.
-   */
-  switch (rotation.axes.x << 16 | rotation.axes.y << 8 | rotation.axes.z) {
-    default:
-      *this = identity();
-      break;
-    case AxisSigned::Z_POS << 16 | AxisSigned::X_POS << 8 | AxisSigned::Y_POS:
-      *this = {T(0.5), T(-0.5), T(-0.5), T(-0.5)};
-      break;
-    case AxisSigned::Y_NEG << 16 | AxisSigned::X_POS << 8 | AxisSigned::Z_POS:
-      *this = {T(M_SQRT1_2), T(0), T(0), T(-M_SQRT1_2)};
-      break;
-    case AxisSigned::Z_NEG << 16 | AxisSigned::X_POS << 8 | AxisSigned::Y_NEG:
-      *this = {T(0.5), T(0.5), T(0.5), T(-0.5)};
-      break;
-    case AxisSigned::Y_POS << 16 | AxisSigned::X_POS << 8 | AxisSigned::Z_NEG:
-      *this = {T(0), T(M_SQRT1_2), T(M_SQRT1_2), T(0)};
-      break;
-    case AxisSigned::Z_NEG << 16 | AxisSigned::Y_POS << 8 | AxisSigned::X_POS:
-      *this = {T(M_SQRT1_2), T(0), T(M_SQRT1_2), T(0)};
-      break;
-    case AxisSigned::Z_POS << 16 | AxisSigned::Y_POS << 8 | AxisSigned::X_NEG:
-      *this = {T(M_SQRT1_2), T(0), T(-M_SQRT1_2), T(0)};
-      break;
-    case AxisSigned::X_NEG << 16 | AxisSigned::Y_POS << 8 | AxisSigned::Z_NEG:
-      *this = {T(0), T(0), T(1), T(0)};
-      break;
-    case AxisSigned::Y_POS << 16 | AxisSigned::Z_POS << 8 | AxisSigned::X_POS:
-      *this = {T(0.5), T(0.5), T(0.5), T(0.5)};
-      break;
-    case AxisSigned::X_NEG << 16 | AxisSigned::Z_POS << 8 | AxisSigned::Y_POS:
-      *this = {T(0), T(0), T(M_SQRT1_2), T(M_SQRT1_2)};
-      break;
-    case AxisSigned::Y_NEG << 16 | AxisSigned::Z_POS << 8 | AxisSigned::X_NEG:
-      *this = {T(0.5), T(0.5), T(-0.5), T(-0.5)};
-      break;
-    case AxisSigned::X_POS << 16 | AxisSigned::Z_POS << 8 | AxisSigned::Y_NEG:
-      *this = {T(M_SQRT1_2), T(M_SQRT1_2), T(0), T(0)};
-      break;
-    case AxisSigned::Z_NEG << 16 | AxisSigned::X_NEG << 8 | AxisSigned::Y_POS:
-      *this = {T(0.5), T(-0.5), T(0.5), T(0.5)};
-      break;
-    case AxisSigned::Y_POS << 16 | AxisSigned::X_NEG << 8 | AxisSigned::Z_POS:
-      *this = {T(M_SQRT1_2), T(0), T(0), T(M_SQRT1_2)};
-      break;
-    case AxisSigned::Z_POS << 16 | AxisSigned::X_NEG << 8 | AxisSigned::Y_NEG:
-      *this = {T(0.5), T(0.5), T(-0.5), T(0.5)};
-      break;
-    case AxisSigned::Y_NEG << 16 | AxisSigned::X_NEG << 8 | AxisSigned::Z_NEG:
-      *this = {T(0), T(-M_SQRT1_2), T(M_SQRT1_2), T(0)};
-      break;
-    case AxisSigned::Z_POS << 16 | AxisSigned::Y_NEG << 8 | AxisSigned::X_POS:
-      *this = {T(0), T(M_SQRT1_2), T(0), T(M_SQRT1_2)};
-      break;
-    case AxisSigned::X_NEG << 16 | AxisSigned::Y_NEG << 8 | AxisSigned::Z_POS:
-      *this = {T(0), T(0), T(0), T(1)};
-      break;
-    case AxisSigned::Z_NEG << 16 | AxisSigned::Y_NEG << 8 | AxisSigned::X_NEG:
-      *this = {T(0), T(-M_SQRT1_2), T(0), T(M_SQRT1_2)};
-      break;
-    case AxisSigned::X_POS << 16 | AxisSigned::Y_NEG << 8 | AxisSigned::Z_NEG:
-      *this = {T(0), T(1), T(0), T(0)};
-      break;
-    case AxisSigned::Y_NEG << 16 | AxisSigned::Z_NEG << 8 | AxisSigned::X_POS:
-      *this = {T(0.5), T(-0.5), T(0.5), T(-0.5)};
-      break;
-    case AxisSigned::X_POS << 16 | AxisSigned::Z_NEG << 8 | AxisSigned::Y_POS:
-      *this = {T(M_SQRT1_2), T(-M_SQRT1_2), T(0), T(0)};
-      break;
-    case AxisSigned::Y_POS << 16 | AxisSigned::Z_NEG << 8 | AxisSigned::X_NEG:
-      *this = {T(0.5), T(-0.5), T(-0.5), T(0.5)};
-      break;
-    case AxisSigned::X_NEG << 16 | AxisSigned::Z_NEG << 8 | AxisSigned::Y_NEG:
-      *this = {T(0), T(0), T(-M_SQRT1_2), T(M_SQRT1_2)};
-      break;
-  }
-}
-
-/* -------------- Static functions -------------- */
-
-template<typename T> Quaternion<T>::operator EulerXYZ<T>() const
-{
-  BLI_assert(is_unit_scale(*this));
-  using Mat3T = MatBase<T, 3, 3>;
-  const Quaternion<T> &quat = *this;
-  Mat3T unit_mat = math::from_rotation<Mat3T>(quat);
-  return math::to_euler<T, true>(unit_mat);
-}
-
-template<typename T> Quaternion<T> Quaternion<T>::expmap(const VecBase<T, 3> &expmap)
-{
-  /* Obtain axis/angle representation. */
-  T angle;
-  VecBase<T, 3> axis = normalize_and_get_length(expmap, angle);
-  if (LIKELY(angle != T(0))) {
-    return Quaternion<T>(detail::AxisAngle<T, AngleRadian<T>>(axis, angle_wrap_rad(angle)));
-  }
-  return Quaternion<T>::identity();
-}
-
 /* -------------- Conversions -------------- */
-
-template<typename T> VecBase<T, 3> Quaternion<T>::expmap() const
-{
-  BLI_assert(is_unit_scale(*this));
-  AxisAngle<T, AngleRadian<T>> axis_angle(*this);
-  return axis_angle.axis() * T(axis_angle.angle());
-}
 
 template<typename T> AngleRadian<T> Quaternion<T>::twist_angle(const Axis axis) const
 {
@@ -728,6 +617,92 @@ template<typename T>
   }
 
   return detail::DualQuaternion<T>(q, d);
+}
+
+/** \} */
+
+}  // namespace blender::math
+
+namespace blender::math {
+
+/* -------------------------------------------------------------------- */
+/** \name Conversion to Euler
+ * \{ */
+
+template<typename T, typename AngleT = AngleRadian>
+detail::AxisAngle<T, AngleT> to_axis_angle(const detail::Quaternion<T> &quat)
+{
+  BLI_assert(is_unit_scale(quat));
+
+  VecBase<T, 3> axis = VecBase<T, 3>(quat.x, quat.y, quat.z);
+  T cos_half_angle = quat.w;
+  T sin_half_angle = math::length(axis);
+  /* Prevent division by zero for axis conversion. */
+  if (sin_half_angle < T(0.0005)) {
+    sin_half_angle = T(1);
+    axis[1] = T(1);
+  }
+  /* Normalize the axis. */
+  axis /= sin_half_angle;
+
+  /* Leverage AngleT implementation of double angle. */
+  AngleT angle = AngleT(cos_half_angle, sin_half_angle) * 2;
+
+  return detail::AxisAngle<T, AngleT>(axis, angle);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Conversion to Euler
+ * \{ */
+
+template<typename T> detail::EulerXYZ<T> to_euler(const detail::Quaternion<T> &quat)
+{
+  using Mat3T = MatBase<T, 3, 3>;
+  BLI_assert(is_unit_scale(quat));
+  Mat3T unit_mat = from_rotation<Mat3T>(quat);
+  return to_euler<T, true>(unit_mat);
+}
+
+template<typename T>
+detail::Euler3<T> to_euler(const detail::Quaternion<T> &quat, eEulerOrder order)
+{
+  using Mat3T = MatBase<T, 3, 3>;
+  BLI_assert(is_unit_scale(quat));
+  Mat3T unit_mat = from_rotation<Mat3T>(quat);
+  return to_euler<T, true>(unit_mat, order);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Conversion from/to Expmap
+ * \{ */
+
+/* Prototype needed to avoid interdependencies of headers. */
+template<typename T, typename AngleT>
+detail::Quaternion<T> to_quaternion(const detail::AxisAngle<T, AngleT> &axis_angle);
+
+template<typename T>
+detail::Quaternion<T> detail::Quaternion<T>::expmap(const VecBase<T, 3> &expmap)
+{
+  using AxisAngleT = detail::AxisAngle<T, detail::AngleRadian<T>>;
+  /* Obtain axis/angle representation. */
+  T angle;
+  VecBase<T, 3> axis = normalize_and_get_length(expmap, angle);
+  if (LIKELY(angle != T(0))) {
+    return to_quaternion(AxisAngleT(axis, angle_wrap_rad(angle)));
+  }
+  return detail::Quaternion<T>::identity();
+}
+
+template<typename T> VecBase<T, 3> detail::Quaternion<T>::expmap() const
+{
+  using AxisAngleT = detail::AxisAngle<T, detail::AngleRadian<T>>;
+  BLI_assert(is_unit_scale(*this));
+  AxisAngleT axis_angle = to_axis_angle(*this);
+  return axis_angle.axis() * axis_angle.angle().radian();
 }
 
 /** \} */

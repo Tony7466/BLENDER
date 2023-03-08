@@ -66,12 +66,6 @@ template<typename T = float> struct Quaternion {
   Quaternion(const T &real, const VecBase<T, 3> &imaginary)
       : Quaternion(real, UNPACK3(imaginary)){};
 
-  /**
-   * Creates a quaternion from an axis triple.
-   * This is faster and more precise than converting from another representation.
-   */
-  Quaternion(const CartesianBasis &rotation);
-
   /** Static functions. */
 
   static Quaternion identity()
@@ -97,8 +91,6 @@ template<typename T = float> struct Quaternion {
   {
     return {this->w, this->x, this->y, this->z};
   }
-
-  explicit operator EulerXYZ<T>() const;
 
   /**
    * Create an exponential map representation of this quaternion.

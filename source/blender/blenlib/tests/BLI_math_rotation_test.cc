@@ -561,7 +561,7 @@ TEST(math_rotation, QuaternionFromTracking)
       CartesianBasis axes = rotation_between(
           from_orthonormal_axes(AxisSigned::Z_POS, AxisSigned::Y_POS),
           from_orthonormal_axes(forward_axis, AxisSigned(up_axis)));
-      Quaternion result = Quaternion(axes);
+      Quaternion result = to_quaternion<float>(axes);
 
       EXPECT_V4_NEAR(float4(result), float4(expect), 1e-5f);
     }

@@ -218,6 +218,9 @@ template<typename T> struct AngleCartesian {
   static AngleCartesian from_point(const T &x, const T &y)
   {
     T norm = math::sqrt(x * x + y * y);
+    if (norm == 0) {
+      return identity();
+    }
     return AngleCartesian(x / norm, y / norm);
   }
 

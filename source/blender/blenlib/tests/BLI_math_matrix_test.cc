@@ -230,8 +230,8 @@ TEST(math_matrix, MatrixInit)
                               {-0.909297, -0.350175, -0.224845, 0},
                               {0, 0, 0, 1}));
   EulerXYZ euler(1, 2, 3);
-  Quaternion quat(euler);
-  AxisAngle axis_angle(euler);
+  Quaternion quat = to_quaternion(euler);
+  AxisAngle axis_angle = to_axis_angle(euler);
   m = from_rotation<float4x4>(euler);
   EXPECT_M3_NEAR(m, expect, 1e-5);
   m = from_rotation<float4x4>(quat);

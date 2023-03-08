@@ -79,16 +79,6 @@ template<typename T, typename AngleT> struct AxisAngle {
     return angle_;
   }
 
-  /** Conversions. */
-
-  explicit operator Quaternion<T>() const;
-  explicit operator EulerXYZ<T>() const;
-  // explicit operator Euler3<T>() const; /* In Euler3 class because of order. */
-
-  explicit AxisAngle(const Quaternion<T> &quat);
-  explicit AxisAngle(const EulerXYZ<T> &euler);
-  explicit AxisAngle(const Euler3<T> &euler);
-
   /** Operators. */
 
   friend bool operator==(const AxisAngle &a, const AxisAngle &b)

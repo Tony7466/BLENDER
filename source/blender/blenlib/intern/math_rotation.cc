@@ -11,15 +11,24 @@
 #include "BLI_math_vector.h"
 #include "BLI_math_vector.hh"
 
-namespace blender::math::detail {
+namespace blender::math {
 
-template AxisAngle<float, AngleRadian<float>>::operator EulerXYZ<float>() const;
-template AxisAngle<float, AngleCartesian<float>>::operator EulerXYZ<float>() const;
-template AxisAngle<float, AngleRadian<float>>::operator Quaternion<float>() const;
-template AxisAngle<float, AngleCartesian<float>>::operator Quaternion<float>() const;
-template EulerXYZ<float>::operator Quaternion<float>() const;
-template Euler3<float>::operator Quaternion<float>() const;
-template Quaternion<float>::operator EulerXYZ<float>() const;
+template EulerXYZ to_euler(const AxisAngle &);
+template EulerXYZ to_euler(const AxisAngleCartesian &);
+template EulerXYZ to_euler(const Quaternion &);
+template Euler3 to_euler(const AxisAngle &, eEulerOrder);
+template Euler3 to_euler(const AxisAngleCartesian &, eEulerOrder);
+template Euler3 to_euler(const Quaternion &, eEulerOrder);
+template Quaternion to_quaternion(const AxisAngle &);
+template Quaternion to_quaternion(const AxisAngleCartesian &);
+template Quaternion to_quaternion(const Euler3 &);
+template Quaternion to_quaternion(const EulerXYZ &);
+template AxisAngleCartesian to_axis_angle(const Euler3 &);
+template AxisAngleCartesian to_axis_angle(const EulerXYZ &);
+template AxisAngleCartesian to_axis_angle(const Quaternion &);
+template AxisAngle to_axis_angle(const Euler3 &);
+template AxisAngle to_axis_angle(const EulerXYZ &);
+template AxisAngle to_axis_angle(const Quaternion &);
 
 #if 0 /* Only for reference. */
 void generate_axes_to_quaternion_switch_cases()
@@ -95,10 +104,6 @@ void generate_axes_to_quaternion_switch_cases()
   }
 }
 #endif
-
-}  // namespace blender::math::detail
-
-namespace blender::math {
 
 float3 rotate_direction_around_axis(const float3 &direction, const float3 &axis, const float angle)
 {

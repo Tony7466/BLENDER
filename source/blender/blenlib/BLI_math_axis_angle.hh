@@ -8,6 +8,7 @@
 
 #include "BLI_math_axis_angle_types.hh"
 #include "BLI_math_euler_types.hh"
+#include "BLI_math_quaternion_types.hh"
 
 #include "BLI_math_matrix.hh"
 #include "BLI_math_quaternion.hh"
@@ -63,82 +64,58 @@ AxisAngle<T, AngleT>::AxisAngle(const VecBase<T, 3> &from, const VecBase<T, 3> &
 
 /** \} */
 
+}  // namespace blender::math::detail
+
+namespace blender::math {
+
 /* -------------------------------------------------------------------- */
-/** \name Conversion
+/** \name Conversion to Quaternions
  * \{ */
 
-/* -------------- Quaternion -------------- */
-
-template<typename T, typename AngleT> AxisAngle<T, AngleT>::AxisAngle(const Quaternion<T> &quat)
+template<typename T, typename AngleT>
+detail::Quaternion<T> to_quaternion(const detail::AxisAngle<T, AngleT> &axis_angle)
 {
-  BLI_assert(is_unit_scale(quat));
+  BLI_assert(math::is_unit_scale(axis_angle.axis()));
 
-  AngleT half_angle = math::safe_acos(quat.w);
-  AngleT angle = half_angle * 2;
-  T sin_half_angle = math::sin(half_angle);
-
-  /* Prevent division by zero for axis conversion. */
-  if (math::abs(sin_half_angle) < T(0.0005)) {
-    sin_half_angle = T(1);
-  }
-
-  VecBase<T, 3> axis = VecBase<T, 3>(quat.x, quat.y, quat.z) / sin_half_angle;
-  if (math::is_zero(axis)) {
-    axis[1] = T(1);
-  }
-  *this = AxisAngle<T, AngleT>(axis, angle);
-}
-
-template<typename T, typename AngleT> AxisAngle<T, AngleT>::operator Quaternion<T>() const
-{
-  BLI_assert(math::is_unit_scale(axis_));
-
-  AngleT half_angle = angle() / 2;
+  AngleT half_angle = axis_angle.angle() / 2;
   T hs = math::sin(half_angle);
   T hc = math::cos(half_angle);
 
-  Quaternion<T> quat;
-  quat.w = hc;
-  quat.x = axis_.x * hs;
-  quat.y = axis_.y * hs;
-  quat.z = axis_.z * hs;
-  return quat;
+  VecBase<T, 3> xyz = axis_angle.axis() * hs;
+  return detail::Quaternion<T>(hc, xyz.x, xyz.y, xyz.z);
 }
 
-/* -------------- EulerXYZ -------------- */
+/** \} */
 
-template<typename T, typename AngleT> AxisAngle<T, AngleT>::AxisAngle(const EulerXYZ<T> &euler)
+/* -------------------------------------------------------------------- */
+/** \name Conversion to Euler
+ * \{ */
+
+template<typename T, typename AngleT>
+detail::Euler3<T> to_euler(const detail::AxisAngle<T, AngleT> &axis_angle, eEulerOrder order)
 {
   /* Use quaternions as intermediate representation for now... */
-  *this = AxisAngle<T, AngleT>(Quaternion<T>(euler));
+  return to_euler(to_quaternion(axis_angle), order);
 }
 
-template<typename T, typename AngleT> AxisAngle<T, AngleT>::operator EulerXYZ<T>() const
+template<typename T, typename AngleT>
+detail::EulerXYZ<T> to_euler(const detail::AxisAngle<T, AngleT> &axis_angle)
 {
   /* Check easy and exact conversions first. */
-  if (axis_.x == T(1)) {
-    return EulerXYZ<T>(T(angle()), T(0), T(0));
+  const VecBase<T, 3> axis = axis_angle.axis();
+  if (axis.x == T(1)) {
+    return detail::EulerXYZ<T>(T(axis_angle.angle()), T(0), T(0));
   }
-  else if (axis_.y == T(1)) {
-    return EulerXYZ<T>(T(0), T(angle()), T(0));
+  else if (axis.y == T(1)) {
+    return detail::EulerXYZ<T>(T(0), T(axis_angle.angle()), T(0));
   }
-  else if (axis_.z == T(1)) {
-    return EulerXYZ<T>(T(0), T(0), T(angle()));
+  else if (axis.z == T(1)) {
+    return detail::EulerXYZ<T>(T(0), T(0), T(axis_angle.angle()));
   }
   /* Use quaternions as intermediate representation for now... */
-  return EulerXYZ<T>(Quaternion<T>(*this));
-}
-
-/* -------------- Euler3 -------------- */
-
-template<typename T, typename AngleT> AxisAngle<T, AngleT>::AxisAngle(const Euler3<T> &euler)
-{
-  /* Use quaternions as intermediate representation for now... */
-  *this = AxisAngle<T, AngleT>(Quaternion<T>(euler));
+  return to_euler(to_quaternion(axis_angle));
 }
 
 /** \} */
 
-}  // namespace blender::math::detail
-
-/** \} */
+}  // namespace blender::math

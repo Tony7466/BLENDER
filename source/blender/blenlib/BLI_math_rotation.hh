@@ -312,7 +312,7 @@ template<typename T>
    * Avoiding the need for safe_acos and deriving sin from cos. */
   T rotation_angle = math::safe_acos(vec[axis] / vec_len);
 
-  detail::Quaternion<T> q1(
+  detail::Quaternion<T> q1 = to_quaternion(
       detail::AxisAngle<T, detail::AngleRadian<T>>(rotation_axis, rotation_angle));
 
   if (axis == up_flag) {
@@ -384,27 +384,97 @@ template<typename T>
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Conversion from Cartesian Basis
+ * \{ */
+
+/**
+ * Creates a quaternion from an axis triple.
+ * This is faster and more precise than converting from another representation.
+ */
+template<typename T> detail::Quaternion<T> to_quaternion(const CartesianBasis &rotation)
+{
+  /**
+   * There is only 6 * 4 = 24 possible valid orthonormal orientations.
+   * We precompute them and store them inside this switch using a key.
+   * Generated using `generate_axes_to_quaternion_switch_cases()`.
+   */
+  switch (rotation.axes.x << 16 | rotation.axes.y << 8 | rotation.axes.z) {
+    default:
+      return detail::Quaternion<T>::identity();
+    case AxisSigned::Z_POS << 16 | AxisSigned::X_POS << 8 | AxisSigned::Y_POS:
+      return detail::Quaternion<T>{T(0.5), T(-0.5), T(-0.5), T(-0.5)};
+    case AxisSigned::Y_NEG << 16 | AxisSigned::X_POS << 8 | AxisSigned::Z_POS:
+      return detail::Quaternion<T>{T(M_SQRT1_2), T(0), T(0), T(-M_SQRT1_2)};
+    case AxisSigned::Z_NEG << 16 | AxisSigned::X_POS << 8 | AxisSigned::Y_NEG:
+      return detail::Quaternion<T>{T(0.5), T(0.5), T(0.5), T(-0.5)};
+    case AxisSigned::Y_POS << 16 | AxisSigned::X_POS << 8 | AxisSigned::Z_NEG:
+      return detail::Quaternion<T>{T(0), T(M_SQRT1_2), T(M_SQRT1_2), T(0)};
+    case AxisSigned::Z_NEG << 16 | AxisSigned::Y_POS << 8 | AxisSigned::X_POS:
+      return detail::Quaternion<T>{T(M_SQRT1_2), T(0), T(M_SQRT1_2), T(0)};
+    case AxisSigned::Z_POS << 16 | AxisSigned::Y_POS << 8 | AxisSigned::X_NEG:
+      return detail::Quaternion<T>{T(M_SQRT1_2), T(0), T(-M_SQRT1_2), T(0)};
+    case AxisSigned::X_NEG << 16 | AxisSigned::Y_POS << 8 | AxisSigned::Z_NEG:
+      return detail::Quaternion<T>{T(0), T(0), T(1), T(0)};
+    case AxisSigned::Y_POS << 16 | AxisSigned::Z_POS << 8 | AxisSigned::X_POS:
+      return detail::Quaternion<T>{T(0.5), T(0.5), T(0.5), T(0.5)};
+    case AxisSigned::X_NEG << 16 | AxisSigned::Z_POS << 8 | AxisSigned::Y_POS:
+      return detail::Quaternion<T>{T(0), T(0), T(M_SQRT1_2), T(M_SQRT1_2)};
+    case AxisSigned::Y_NEG << 16 | AxisSigned::Z_POS << 8 | AxisSigned::X_NEG:
+      return detail::Quaternion<T>{T(0.5), T(0.5), T(-0.5), T(-0.5)};
+    case AxisSigned::X_POS << 16 | AxisSigned::Z_POS << 8 | AxisSigned::Y_NEG:
+      return detail::Quaternion<T>{T(M_SQRT1_2), T(M_SQRT1_2), T(0), T(0)};
+    case AxisSigned::Z_NEG << 16 | AxisSigned::X_NEG << 8 | AxisSigned::Y_POS:
+      return detail::Quaternion<T>{T(0.5), T(-0.5), T(0.5), T(0.5)};
+    case AxisSigned::Y_POS << 16 | AxisSigned::X_NEG << 8 | AxisSigned::Z_POS:
+      return detail::Quaternion<T>{T(M_SQRT1_2), T(0), T(0), T(M_SQRT1_2)};
+    case AxisSigned::Z_POS << 16 | AxisSigned::X_NEG << 8 | AxisSigned::Y_NEG:
+      return detail::Quaternion<T>{T(0.5), T(0.5), T(-0.5), T(0.5)};
+    case AxisSigned::Y_NEG << 16 | AxisSigned::X_NEG << 8 | AxisSigned::Z_NEG:
+      return detail::Quaternion<T>{T(0), T(-M_SQRT1_2), T(M_SQRT1_2), T(0)};
+    case AxisSigned::Z_POS << 16 | AxisSigned::Y_NEG << 8 | AxisSigned::X_POS:
+      return detail::Quaternion<T>{T(0), T(M_SQRT1_2), T(0), T(M_SQRT1_2)};
+    case AxisSigned::X_NEG << 16 | AxisSigned::Y_NEG << 8 | AxisSigned::Z_POS:
+      return detail::Quaternion<T>{T(0), T(0), T(0), T(1)};
+    case AxisSigned::Z_NEG << 16 | AxisSigned::Y_NEG << 8 | AxisSigned::X_NEG:
+      return detail::Quaternion<T>{T(0), T(-M_SQRT1_2), T(0), T(M_SQRT1_2)};
+    case AxisSigned::X_POS << 16 | AxisSigned::Y_NEG << 8 | AxisSigned::Z_NEG:
+      return detail::Quaternion<T>{T(0), T(1), T(0), T(0)};
+    case AxisSigned::Y_NEG << 16 | AxisSigned::Z_NEG << 8 | AxisSigned::X_POS:
+      return detail::Quaternion<T>{T(0.5), T(-0.5), T(0.5), T(-0.5)};
+    case AxisSigned::X_POS << 16 | AxisSigned::Z_NEG << 8 | AxisSigned::Y_POS:
+      return detail::Quaternion<T>{T(M_SQRT1_2), T(-M_SQRT1_2), T(0), T(0)};
+    case AxisSigned::Y_POS << 16 | AxisSigned::Z_NEG << 8 | AxisSigned::X_NEG:
+      return detail::Quaternion<T>{T(0.5), T(-0.5), T(-0.5), T(0.5)};
+    case AxisSigned::X_NEG << 16 | AxisSigned::Z_NEG << 8 | AxisSigned::Y_NEG:
+      return detail::Quaternion<T>{T(0), T(0), T(-M_SQRT1_2), T(M_SQRT1_2)};
+  }
+}
+
+/** \} */
+
 }  // namespace blender::math
 
-namespace blender::math::detail {
+namespace blender::math {
 
 /* Using explicit template instantiations in order to reduce compilation time. */
-extern template AxisAngle<float, AngleRadian<float>>::operator EulerXYZ<float>() const;
-extern template AxisAngle<float, AngleCartesian<float>>::operator EulerXYZ<float>() const;
-extern template AxisAngle<float, AngleRadian<float>>::operator Quaternion<float>() const;
-extern template AxisAngle<float, AngleCartesian<float>>::operator Quaternion<float>() const;
-#if 0 /* TODO: Make it compile. */
-extern template AxisAngle<float, AngleRadian<float>>::AxisAngle(const EulerXYZ<float> &) const;
-extern template AxisAngle<float, AngleCartesian<float>>::AxisAngle(const EulerXYZ<float> &) const;
-extern template AxisAngle<float, AngleRadian<float>>::AxisAngle(const Euler3<float> &) const;
-extern template AxisAngle<float, AngleCartesian<float>>::AxisAngle(const Euler3<float> &) const;
-extern template AxisAngle<float, AngleRadian<float>>::AxisAngle(const Quaternion<float> &) const;
-extern template AxisAngle<float, AngleCartesian<float>>::AxisAngle(const Quaternion<float> &) const;
-#endif
-extern template EulerXYZ<float>::operator Quaternion<float>() const;
-extern template Euler3<float>::operator Quaternion<float>() const;
-extern template Quaternion<float>::operator EulerXYZ<float>() const;
+extern template EulerXYZ to_euler(const AxisAngle &);
+extern template EulerXYZ to_euler(const AxisAngleCartesian &);
+extern template EulerXYZ to_euler(const Quaternion &);
+extern template Euler3 to_euler(const AxisAngle &, eEulerOrder);
+extern template Euler3 to_euler(const AxisAngleCartesian &, eEulerOrder);
+extern template Euler3 to_euler(const Quaternion &, eEulerOrder);
+extern template Quaternion to_quaternion(const AxisAngle &);
+extern template Quaternion to_quaternion(const AxisAngleCartesian &);
+extern template Quaternion to_quaternion(const Euler3 &);
+extern template Quaternion to_quaternion(const EulerXYZ &);
+extern template AxisAngleCartesian to_axis_angle(const Euler3 &);
+extern template AxisAngleCartesian to_axis_angle(const EulerXYZ &);
+extern template AxisAngleCartesian to_axis_angle(const Quaternion &);
+extern template AxisAngle to_axis_angle(const Euler3 &);
+extern template AxisAngle to_axis_angle(const EulerXYZ &);
+extern template AxisAngle to_axis_angle(const Quaternion &);
 
-}  // namespace blender::math::detail
+}  // namespace blender::math
 
 /** \} */

@@ -196,10 +196,6 @@ template<typename T> struct EulerXYZ : public EulerBase<T> {
    */
   EulerXYZ wrapped_around(const EulerXYZ &reference) const;
 
-  /** Conversions. */
-
-  explicit operator Quaternion<T>() const;
-
   /** Operators. */
 
   friend EulerXYZ operator-(const EulerXYZ &a)
@@ -288,16 +284,6 @@ template<typename T> struct Euler3 : public EulerBase<T> {
    * Used for conversion from other rotation types.
    */
   Euler3(eEulerOrder order) : order_(order){};
-
-  /** Conversions. */
-
-  explicit operator Quaternion<T>() const;
-
-  /**
-   * Conversion to Euler3 needs to be constructors because of the additional order.
-   */
-  explicit Euler3(const AxisAngle<T, AngleT> &axis_angle, eEulerOrder order);
-  explicit Euler3(const Quaternion<T> &quat, eEulerOrder order);
 
   /** Methods. */
 
