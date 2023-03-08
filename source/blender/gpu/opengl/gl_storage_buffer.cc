@@ -124,13 +124,13 @@ void GLStorageBuf::clear(uint32_t clear_value)
   }
 
   if (GLContext::direct_state_access_support) {
-    glClearNamedBufferData(ssbo_id_, GL_RGBA32UI, GL_RGBA_INTEGER, GL_UNSIGNED_INT, &clear_value);
+    glClearNamedBufferData(ssbo_id_, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT, &clear_value);
   }
   else {
     /* WATCH(@fclem): This should be ok since we only use clear outside of drawing functions. */
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_id_);
     glClearBufferData(
-        GL_SHADER_STORAGE_BUFFER, GL_RGBA32UI, GL_RGBA_INTEGER, GL_UNSIGNED_INT, &clear_value);
+        GL_SHADER_STORAGE_BUFFER, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT, &clear_value);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
   }
 }
