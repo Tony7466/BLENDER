@@ -66,17 +66,17 @@ class NodeTreeTest : public testing::Test {
   }
 };
 
-/* Regression test: node groups with trees with undefined type could crash on update */
+/* Regression test: node groups with trees with undefined type could crash on update. */
 TEST_F(NodeTreeTest, NT_undefined_node_group_update)
 {
   NodeTreeTestContext ctx;
 
-  /* Invalid idname that results in an "undefined" tree type */
+  /* Invalid idname that results in an "undefined" tree type. */
   bNodeTree *group_tree = ntreeAddTree(ctx.bmain, "GroupTree", "???");
   EXPECT_NE(group_tree, nullptr);
   EXPECT_EQ(group_tree->typeinfo, &NodeTreeTypeUndefined);
 
-  /* Node tree with a node group linking to the undefined tree */
+  /* Node tree with a node group linking to the undefined tree. */
   bNodeTree *node_tree = ntreeAddTree(ctx.bmain, "NodeTree", "GeometryNodeTree");
   EXPECT_NE(node_tree, nullptr);
   EXPECT_STREQ(node_tree->typeinfo->idname, "GeometryNodeTree");
