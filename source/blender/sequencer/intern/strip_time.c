@@ -58,7 +58,8 @@ float seq_give_frame_index(const Scene *scene, Sequence *seq, float timeline_fra
   float frame_index;
   float sta = SEQ_time_start_frame_get(scene, seq);
   float end = SEQ_time_content_end_frame_get(scene, seq) - 1;
-  const float length = seq->len;
+  const float length = SEQ_time_seconds_to_frames(scene, seq->len) *
+                       seq_time_media_playback_rate_factor_get(scene, seq);
 
   if (seq->type & SEQ_TYPE_EFFECT) {
     end = SEQ_time_right_handle_frame_get(scene, seq);

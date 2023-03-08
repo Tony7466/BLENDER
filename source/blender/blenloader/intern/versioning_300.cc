@@ -697,7 +697,7 @@ static bool do_versions_sequencer_init_retiming_tool_data(Sequence *seq, void *u
 
   const int content_length = SEQ_time_strip_length_get(scene, seq);
 
-  SEQ_retiming_data_ensure(seq);
+  SEQ_retiming_data_ensure(scene, seq);
 
   SeqRetimingHandle *handle = &seq->retiming_handles[seq->retiming_handle_num - 1];
   handle->strip_frame_index = round_fl_to_int(content_length / seq->speed_factor);
@@ -1645,6 +1645,19 @@ static bool version_set_seq_single_frame_content(Sequence *seq, void * /*user_da
        ((seq->type & SEQ_TYPE_EFFECT) && SEQ_effect_get_num_inputs(seq->type) == 0))) {
     seq->flag |= SEQ_SINGLE_FRAME_CONTENT;
   }
+  return true;
+}
+
+static bool version_seq_convert_frames_to_seconds(Sequence *seq, void *user_data)
+{
+  const Scene *scene = static_cast<Scene *>(user_data);
+  double scene_playback_rate = (float)scene->r.frs_sec / scene->r.frs_sec_base;
+
+  seq->start /= scene_playback_rate;
+  seq->len /= scene_playback_rate;
+  seq->startofs /= scene_playback_rate;
+  seq->endofs /= scene_playback_rate;
+  // XXX anim offsets
   return true;
 }
 
@@ -4044,6 +4057,14 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
       Editing *ed = SEQ_editing_get(scene);
       if (ed != nullptr) {
         SEQ_for_each_callback(&ed->seqbase, version_set_seq_single_frame_content, nullptr);
+      }
+    }
+
+    /* Convert strip length and position to seconds. */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      Editing *ed = SEQ_editing_get(scene);
+      if (ed != nullptr) {
+        SEQ_for_each_callback(&ed->seqbase, version_seq_convert_frames_to_seconds, scene);
       }
     }
     /* Keep this block, even when empty. */

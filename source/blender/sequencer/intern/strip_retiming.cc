@@ -86,7 +86,7 @@ int SEQ_retiming_handles_count(const Sequence *seq)
   return seq->retiming_handle_num;
 }
 
-void SEQ_retiming_data_ensure(Sequence *seq)
+void SEQ_retiming_data_ensure(const Scene *scene, Sequence *seq)
 {
   if (!SEQ_retiming_is_allowed(seq)) {
     return;
@@ -99,7 +99,7 @@ void SEQ_retiming_data_ensure(Sequence *seq)
   seq->retiming_handles = (SeqRetimingHandle *)MEM_calloc_arrayN(
       2, sizeof(SeqRetimingHandle), __func__);
   SeqRetimingHandle *handle = seq->retiming_handles + 1;
-  handle->strip_frame_index = seq->len;
+  handle->strip_frame_index = SEQ_time_seconds_to_frames(scene, seq->len);
   handle->retiming_factor = 1.0f;
   seq->retiming_handle_num = 2;
 }
@@ -224,7 +224,9 @@ void SEQ_retiming_remove_handle(Sequence *seq, SeqRetimingHandle *handle)
   seq->retiming_handle_num--;
 }
 
-float SEQ_retiming_handle_speed_get(const Sequence *seq, const SeqRetimingHandle *handle)
+float SEQ_retiming_handle_speed_get(const Scene *scene,
+                                    const Sequence *seq,
+                                    const SeqRetimingHandle *handle)
 {
   if (handle->strip_frame_index == 0) {
     return 1.0f;
@@ -232,7 +234,7 @@ float SEQ_retiming_handle_speed_get(const Sequence *seq, const SeqRetimingHandle
 
   const SeqRetimingHandle *handle_prev = handle - 1;
 
-  const int frame_index_max = seq->len - 1;
+  const int frame_index_max = SEQ_time_seconds_to_frames(scene, seq->len - 1);
   const int frame_retimed_prev = round_fl_to_int(handle_prev->retiming_factor * frame_index_max);
   const int frame_index_prev = handle_prev->strip_frame_index;
   const int frame_retimed = round_fl_to_int(handle->retiming_factor * frame_index_max);
