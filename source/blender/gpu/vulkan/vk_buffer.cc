@@ -86,30 +86,10 @@ bool VKBuffer::update(VKContext &context, const void *data)
   return result;
 }
 
-static bool is_uniform(Span<uint32_t> data)
-{
-  BLI_assert(!data.is_empty());
-  uint32_t expected_value = data[0];
-  for (uint32_t value : data.drop_front(1)) {
-    if (value != expected_value) {
-      return false;
-    }
-  }
-  return true;
-}
-
-void VKBuffer::clear(VKContext &context, Span<uint32_t> data)
+void VKBuffer::clear(VKContext &context, uint32_t clear_value)
 {
   VKCommandBuffer &command_buffer = context.command_buffer_get();
-  if (is_uniform(data)) {
-    command_buffer.fill(*this, *data.begin());
-    return;
-  }
-
-  /* TODO: Use a compute shader to clear the buffer. This is performance wise not recommended, and
-   * should be avoided. There are some cases where we don't have a choice. Especially when using
-   * compute shaders.*/
-  BLI_assert_unreachable();
+  command_buffer.fill(*this, clear_value);
 }
 
 bool VKBuffer::map(VKContext &context, void **r_mapped_memory) const

@@ -71,59 +71,29 @@ static void test_storage_buffer_clear_zero()
 
   GPU_storagebuf_free(ssbo);
 }
-
 GPU_TEST(storage_buffer_clear_zero);
 
-template<int DataLen> static void storage_buffer_clear_int_uniform()
+static void test_storage_buffer_clear()
 {
   GPUStorageBuf *ssbo = GPU_storagebuf_create_ex(
       SIZE_IN_BYTES, nullptr, GPU_USAGE_STATIC, __func__);
   EXPECT_NE(ssbo, nullptr);
 
-  /* Read back data from SSBO. */
-  int4 clear_data = {-1, -1, -1, -1};
-  GPU_storagebuf_clear_int(ssbo, clear_data, DataLen);
+  GPU_storagebuf_clear(ssbo, 157255);
 
-  /* Check if data is the same. */
+  /* Read back data from SSBO. */
   Vector<int32_t> read_data;
   read_data.resize(SIZE, 0);
   GPU_storagebuf_read(ssbo, read_data.data());
+
+  /* Check if datatest_ is the same. */
   for (int i : IndexRange(SIZE)) {
-    EXPECT_EQ(clear_data[i % DataLen], read_data[i]);
+    EXPECT_EQ(157255, read_data[i]);
   }
 
   GPU_storagebuf_free(ssbo);
 }
 
-static void test_storage_buffer_clear_int_uniform()
-{
-  storage_buffer_clear_int_uniform<1>();
-  storage_buffer_clear_int_uniform<2>();
-  storage_buffer_clear_int_uniform<3>();
-  storage_buffer_clear_int_uniform<4>();
-}
-GPU_TEST(storage_buffer_clear_int_uniform);
-
-static void test_storage_buffer_clear_non_uniform()
-{
-  GPUStorageBuf *ssbo = GPU_storagebuf_create_ex(
-      SIZE_IN_BYTES, nullptr, GPU_USAGE_STATIC, __func__);
-  EXPECT_NE(ssbo, nullptr);
-
-  /* Read back data from SSBO. */
-  int4 clear_data = {-1, -2, -3, -4};
-  GPU_storagebuf_clear_int(ssbo, clear_data, 4);
-
-  /* Check if data is the same. */
-  Vector<int32_t> read_data;
-  read_data.resize(SIZE, 0);
-  GPU_storagebuf_read(ssbo, read_data.data());
-  for (int i : IndexRange(SIZE)) {
-    EXPECT_EQ(clear_data[i % 4], read_data[i]);
-  }
-
-  GPU_storagebuf_free(ssbo);
-}
-GPU_TEST(storage_buffer_clear_non_uniform);
+GPU_TEST(storage_buffer_clear);
 
 }  // namespace blender::gpu::tests

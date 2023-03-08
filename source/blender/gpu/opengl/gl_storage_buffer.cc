@@ -117,39 +117,20 @@ void GLStorageBuf::unbind()
   slot_ = 0;
 }
 
-void GLStorageBuf::clear(Span<uint32_t> data)
+void GLStorageBuf::clear(uint32_t clear_value)
 {
   if (ssbo_id_ == 0) {
     this->init();
   }
 
-  GLenum internal_format = GL_R32UI;
-  GLenum format = GL_RED_INTEGER;
-  if (data.size() == 1) {
-    internal_format = GL_R32UI;
-    format = GL_RED_INTEGER;
-  }
-  else if (data.size() == 2) {
-    internal_format = GL_RG32UI;
-    format = GL_RG_INTEGER;
-  }
-  else if (data.size() == 3) {
-    internal_format = GL_RGB32UI;
-    format = GL_RGB_INTEGER;
-  }
-  else if (data.size() == 4) {
-    internal_format = GL_RGBA32UI;
-    format = GL_RGBA_INTEGER;
-  }
-
   if (GLContext::direct_state_access_support) {
-    glClearNamedBufferData(ssbo_id_, internal_format, format, GL_UNSIGNED_INT, data.data());
+    glClearNamedBufferData(ssbo_id_, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT, &clear_value);
   }
   else {
     /* WATCH(@fclem): This should be ok since we only use clear outside of drawing functions. */
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_id_);
     glClearBufferData(
-        GL_SHADER_STORAGE_BUFFER, internal_format, format, GL_UNSIGNED_INT, data.data());
+        GL_SHADER_STORAGE_BUFFER, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT, &clear_value);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
   }
 }

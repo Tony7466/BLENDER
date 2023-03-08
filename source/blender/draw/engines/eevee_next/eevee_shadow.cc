@@ -831,20 +831,8 @@ void ShadowModule::end_sync()
     /* Clear tiles to not reference any page. */
     tilemap_pool.tiles_data.clear_to_zero();
 
-    /* Clear tile-map clip buffer. */
-    union {
-      ShadowTileMapClip clip;
-      int4 i;
-    } u;
-    u.clip.clip_near_stored = 0.0f;
-    u.clip.clip_far_stored = 0.0f;
-    u.clip.clip_near = int(0xFF7FFFFFu ^ 0x7FFFFFFFu); /* floatBitsToOrderedInt(-FLT_MAX) */
-    u.clip.clip_far = 0x7F7FFFFF;                      /* floatBitsToOrderedInt(FLT_MAX) */
-    GPU_storagebuf_clear_int(tilemap_pool.tilemaps_clip, u.i, 4);
-
     /* Clear cached page buffer. */
-    int2 data = {-1, -1};
-    GPU_storagebuf_clear_int(pages_cached_data_, data, 2);
+    GPU_storagebuf_clear(pages_cached_data_, -1);
 
     /* Reset info to match new state. */
     pages_infos_data_.page_free_count = shadow_page_len_;
@@ -862,6 +850,16 @@ void ShadowModule::end_sync()
     {
       PassSimple &pass = tilemap_setup_ps_;
       pass.init();
+
+      {
+        /** Clear tile-map clip buffer. */
+        PassSimple::Sub &sub = pass.sub("ClearClipmap");
+        sub.shader_set(inst_.shaders.static_shader_get(SHADOW_CLIPMAP_CLEAR));
+        sub.bind_ssbo("tilemaps_clip_buf", tilemap_pool.tilemaps_clip);
+        sub.dispatch(int3(
+            divide_ceil_u(tilemap_pool.tilemaps_clip.size(), SHADOW_CLIPMAP_GROUP_SIZE), 1, 1));
+        sub.barrier(GPU_BARRIER_SHADER_STORAGE);
+      }
 
       {
         /** Compute near/far clip distances for directional shadows based on casters bounds. */

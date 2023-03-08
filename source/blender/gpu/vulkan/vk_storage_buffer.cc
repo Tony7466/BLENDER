@@ -47,13 +47,13 @@ void VKStorageBuffer::unbind()
 {
 }
 
-void VKStorageBuffer::clear(Span<uint32_t> data)
+void VKStorageBuffer::clear(uint32_t clear_value)
 {
   VKContext &context = *VKContext::get();
   if (!buffer_.is_allocated()) {
     allocate(context);
   }
-  buffer_.clear(context, data);
+  buffer_.clear(context, clear_value);
 }
 
 void VKStorageBuffer::copy_sub(VertBuf * /*src*/,
