@@ -1407,21 +1407,20 @@ bool nodeTypeUndefined(const bNode *node)
     return true;
   }
 
-  if (!node->is_group()) {
-    return false;
+  if (node->is_group()) {
+    const ID *group_tree = node->id;
+    if (group_tree == nullptr) {
+      return false;
+    }
+    if (!ID_IS_LINKED(group_tree)) {
+      return false;
+    }
+    if ((group_tree->tag & LIB_TAG_MISSING) == 0) {
+      return false;
+    }
+    return true;
   }
-
-  const ID *group_tree = node->id;
-  if (group_tree == nullptr) {
-    return false;
-  }
-  if (!ID_IS_LINKED(group_tree)) {
-    return false;
-  }
-  if ((group_tree->tag & LIB_TAG_MISSING) == 0) {
-    return false;
-  }
-  return true;
+  return false;
 }
 
 GHashIterator *nodeTypeGetIterator()
@@ -2103,12 +2102,6 @@ void nodeChainIter(const bNodeTree *ntree,
       /* Skip links marked as cyclic. */
       continue;
     }
-    /* TODO (mod_moder): This case less likely than the case below. Very less likely. Can swap.
-     * Need a benchmark.*/
-    if (ELEM(nullptr, link->tonode, link->fromnode)) {
-      continue;
-    }
-
     /* Is the link part of the chain meaning node_start == fromnode
      * (or tonode for reversed case)? */
     if (!reversed) {
@@ -2274,13 +2267,9 @@ bNode *nodeAddStaticNode(const bContext *C, bNodeTree *ntree, const int type)
     if (ntype->type != type) {
       continue;
     }
-    if (ntype->poll == nullptr) {
-      continue;
-    }
 
     const char *disabled_hint;
-    const bool can_by_created = ntype->poll(ntype, ntree, &disabled_hint);
-    if (can_by_created) {
+    if (ntype->poll && ntype->poll(ntype, ntree, &disabled_hint)) {
       idname = ntype->idname;
       break;
     }
