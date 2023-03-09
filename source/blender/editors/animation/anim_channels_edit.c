@@ -3274,11 +3274,11 @@ static int click_select_channel_fcurve(bAnimContext *ac,
     animchannel_clear_selection(ac);
     /* When active channel is being clicked again for range selection, only select the
      * clicked/active channel. Otherwise call range selection function. */
-    if ((fcu->flag & FCURVE_ACTIVE) == 0) {
-      animchannel_select_range(ac, ale);
+    if (fcu->flag & FCURVE_ACTIVE) {
+      fcu->flag |= FCURVE_SELECTED;
     }
     else {
-      fcu->flag |= FCURVE_SELECTED;
+      animchannel_select_range(ac, ale);
     }
   }
   else {
@@ -3361,11 +3361,11 @@ static int click_select_channel_gplayer(bContext *C,
     animchannel_clear_selection(ac);
     /* When active channel is being clicked again for range selection, only select the
      * clicked/active channel. Otherwise call range selection function. */
-    if ((gpl->flag & FCURVE_ACTIVE) == 0) {
-      animchannel_select_range(ac, ale);
+    if (gpl->flag & FCURVE_ACTIVE) {
+      gpl->flag |= GP_LAYER_SELECT;
     }
     else {
-      gpl->flag |= GP_LAYER_SELECT;
+      animchannel_select_range(ac, ale);
     }
   }
   else {
@@ -3374,7 +3374,8 @@ static int click_select_channel_gplayer(bContext *C,
     gpl->flag |= GP_LAYER_SELECT;
   }
 
-  /* change active layer, if this is selected (since we must always have an active layer) */
+  /* change active layer, if this is selected (since we must always have an active layer).
+   * Similar to outliner, do not change active element when selecting elements in range. */
   if ((gpl->flag & GP_LAYER_SELECT) && (selectmode != SELECT_EXTEND_RANGE)) {
     ANIM_set_active_channel(ac, ac->data, ac->datatype, filter, gpl, ANIMTYPE_GPLAYER);
     /* update other layer status */
