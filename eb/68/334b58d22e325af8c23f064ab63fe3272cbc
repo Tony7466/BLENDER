@@ -1,1 +1,2 @@
 Referenced by issue #105524, Blender 3.6 - Texture paint mode in viewport not working
+Referenced by commit 68a142ee7b80fbfc58f9e1d46cc7edb213e3e7e4, Fix #105524: Texture paint broken after recent cleanup
