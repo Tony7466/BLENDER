@@ -370,29 +370,31 @@ void paintface_select_more(bContext *C, Object *ob, const bool face_step)
   const Span<MLoop> loops = mesh->loops();
   const Span<MEdge> edges = mesh->edges();
 
-  for (const int i : select_poly.span.index_range()) {
-    if (select_poly.span[i] || hide_poly[i]) {
-      continue;
-    }
-    const MPoly &poly = polys[i];
+  threading::parallel_for(select_poly.span.index_range(), 1024, [&](const IndexRange range) {
+    for (const int i : range) {
+      if (select_poly.span[i] || hide_poly[i]) {
+        continue;
+      }
+      const MPoly &poly = polys[i];
 
-    for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
-      const MEdge &edge = edges[loop.e];
-      /* If a poly is selected, all of its verts are selected too, meaning that neighboring faces
-       * will have some vertices selected. */
-      bool selected_neighbor = false;
-      if (face_step) {
-        selected_neighbor = select_vert.span[edge.v1] || select_vert.span[edge.v2];
-      }
-      else {
-        selected_neighbor = select_vert.span[edge.v1] && select_vert.span[edge.v2];
-      }
-      if (selected_neighbor) {
-        select_poly.span[i] = true;
-        break;
+      for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
+        const MEdge &edge = edges[loop.e];
+        /* If a poly is selected, all of its verts are selected too, meaning that neighboring faces
+         * will have some vertices selected. */
+        bool selected_neighbor = false;
+        if (face_step) {
+          selected_neighbor = select_vert.span[edge.v1] || select_vert.span[edge.v2];
+        }
+        else {
+          selected_neighbor = select_vert.span[edge.v1] && select_vert.span[edge.v2];
+        }
+        if (selected_neighbor) {
+          select_poly.span[i] = true;
+          break;
+        }
       }
     }
-  }
+  });
 
   select_poly.finish();
   select_vert.finish();
@@ -430,29 +432,31 @@ void paintface_select_less(bContext *C, Object *ob, const bool face_step)
     }
   }
 
-  for (const int i : select_poly.span.index_range()) {
-    if (!select_poly.span[i] || hide_poly[i]) {
-      continue;
-    }
-    const MPoly &poly = polys[i];
+  threading::parallel_for(select_poly.span.index_range(), 1024, [&](const IndexRange range) {
+    for (const int i : range) {
+      if (!select_poly.span[i] || hide_poly[i]) {
+        continue;
+      }
+      const MPoly &poly = polys[i];
 
-    for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
-      const MEdge &edge = edges[loop.e];
-      bool unselected_neighbor = false;
-      if (face_step) {
-        unselected_neighbor = verts_of_unselected_faces[edge.v1] ||
-                              verts_of_unselected_faces[edge.v2];
-      }
-      else {
-        unselected_neighbor = verts_of_unselected_faces[edge.v1] &&
-                              verts_of_unselected_faces[edge.v2];
-      }
-      if (unselected_neighbor) {
-        select_poly.span[i] = false;
-        break;
+      for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
+        const MEdge &edge = edges[loop.e];
+        bool unselected_neighbor = false;
+        if (face_step) {
+          unselected_neighbor = verts_of_unselected_faces[edge.v1] ||
+                                verts_of_unselected_faces[edge.v2];
+        }
+        else {
+          unselected_neighbor = verts_of_unselected_faces[edge.v1] &&
+                                verts_of_unselected_faces[edge.v2];
+        }
+        if (unselected_neighbor) {
+          select_poly.span[i] = false;
+          break;
+        }
       }
     }
-  }
+  });
 
   select_poly.finish();
   paintface_flush_flags(C, ob, true, false);
