@@ -742,7 +742,7 @@ static float rna_MeshPolygon_area_get(PointerRNA *ptr)
   MPoly *poly = (MPoly *)ptr->data;
   const float(*positions)[3] = BKE_mesh_vert_positions(me);
   const MLoop *loops = BKE_mesh_loops(me);
-  return BKE_mesh_calc_poly_area(poly, loops + poly->loopstart, me->totvert, positions);
+  return BKE_mesh_calc_poly_area(poly, loops + poly->loopstart, positions, me->totvert);
 }
 
 static void rna_MeshPolygon_flip(ID *id, MPoly *poly)
