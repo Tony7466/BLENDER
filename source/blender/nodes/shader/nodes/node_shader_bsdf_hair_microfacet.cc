@@ -44,13 +44,13 @@ static void node_declare(NodeDeclarationBuilder &b)
           "For elliptical hair cross-section, the aspect ratio is the ratio of the minor axis to "
           "the major axis. Recommended values are 0.8~1 for Asian hair, 0.65~0.9 for Caucasian "
           "hair, 0.5~0.65 for African hair. Set this to 1 for circular cross-section");
-  b.add_input<decl::Float>(N_("Roughness"))
+  b.add_input<decl::Float>(N_("Roughness"), "Hair Roughness")
       .default_value(0.3f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR)
       .description("Microfacet roughness");
-  b.add_input<decl::Float>(N_("Reflection"))
+  b.add_input<decl::Float>(N_("Reflection"), "R lobe")
       .default_value(1.0f)
       .min(0.0f)
       .max(1.0f)
@@ -58,7 +58,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .description(
           "The first light bounce off the hair surface. The color of this component is always "
           "white");
-  b.add_input<decl::Float>(N_("Transmission"))
+  b.add_input<decl::Float>(N_("Transmission"), "TT lobe")
       .default_value(1.0f)
       .min(0.0f)
       .max(1.0f)
@@ -66,7 +66,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .description(
           "The component that is transmitted through the hair. Picks up the color of the pigment "
           "inside the hair");
-  b.add_input<decl::Float>(N_("Secondary Reflection"))
+  b.add_input<decl::Float>(N_("Secondary Reflection"), "TRT lobe")
       .default_value(1.0f)
       .min(0.0f)
       .max(1.0f)
