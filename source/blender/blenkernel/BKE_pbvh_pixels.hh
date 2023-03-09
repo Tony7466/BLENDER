@@ -261,47 +261,6 @@ struct NodeData {
 /** \name Fix non-manifold edge bleeding.
  * \{ */
 
-// TODO: move to image wrappers?
-// TODO: Add compile time checks.
-template<typename T, int Channels = 4> struct ImageBufferAccessor {
-  // BLI_static_assert(constexpr(std::is_same_v<T, int> || std::is_same_v<T, float>);
-
-  ImBuf &image_buffer;
-
-  ImageBufferAccessor(ImBuf &image_buffer) : image_buffer(image_buffer)
-  {
-  }
-
-  float4 read_pixel(const int2 coordinate)
-  {
-    if constexpr ((std::is_same_v<T, float>)) {
-      int offset = (coordinate.y * image_buffer.x + coordinate.x) * Channels;
-      return float4(&image_buffer.rect_float[offset]);
-    }
-    if constexpr ((std::is_same_v<T, int>)) {
-      int offset = (coordinate.y * image_buffer.x + coordinate.x);
-      float4 result;
-      rgba_uchar_to_float(result,
-                          static_cast<uchar *>(static_cast<void *>(&image_buffer.rect[offset])));
-      return result;
-    }
-    return float4();
-  }
-
-  void write_pixel(const int2 coordinate, float4 new_value)
-  {
-    if constexpr ((std::is_same_v<T, float>)) {
-      int offset = (coordinate.y * image_buffer.x + coordinate.x) * Channels;
-      copy_v4_v4(&image_buffer.rect_float[offset], new_value);
-    }
-    if constexpr ((std::is_same_v<T, int>)) {
-      int offset = (coordinate.y * image_buffer.x + coordinate.x);
-      rgba_float_to_uchar(static_cast<uchar *>(static_cast<void *>(&image_buffer.rect[offset])),
-                          new_value);
-    }
-  }
-};
-
 struct DeltaCopyPixelCommand {
   char2 delta_source_1;
   char2 delta_source_2;
@@ -341,7 +300,7 @@ struct CopyPixelCommand {
   }
 
   template<typename T>
-  void mix_source_and_write_destination(ImageBufferAccessor<T> &tile_buffer) const
+  void mix_source_and_write_destination(image::ImageBufferAccessor<T> &tile_buffer) const
   {
     float4 source_color_1 = tile_buffer.read_pixel(source_1);
     float4 source_color_2 = tile_buffer.read_pixel(source_2);
@@ -392,11 +351,11 @@ struct CopyPixelTile {
   void copy_pixels(ImBuf &tile_buffer, IndexRange group_range) const
   {
     if (tile_buffer.rect_float) {
-      ImageBufferAccessor<float4> accessor(tile_buffer);
+      image::ImageBufferAccessor<float4> accessor(tile_buffer);
       copy_pixels<float4>(accessor, group_range);
     }
     else {
-      ImageBufferAccessor<int> accessor(tile_buffer);
+      image::ImageBufferAccessor<int> accessor(tile_buffer);
       copy_pixels<int>(accessor, group_range);
     }
   }
@@ -415,7 +374,7 @@ struct CopyPixelTile {
 
  private:
   template<typename T>
-  void copy_pixels(ImageBufferAccessor<T> &image_buffer, IndexRange group_range) const
+  void copy_pixels(image::ImageBufferAccessor<T> &image_buffer, IndexRange group_range) const
   {
     for (const int64_t group_index : group_range) {
       const CopyPixelGroup &group = groups[group_index];
