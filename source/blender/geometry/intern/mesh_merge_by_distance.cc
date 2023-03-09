@@ -166,8 +166,8 @@ static void weld_assert_poly_and_loop_kill_len(WeldMesh *weld_mesh,
 {
   int poly_kills = 0;
   int loop_kills = mloop.size();
-  const MPoly *poly = &polys[0];
-  for (int i = 0; i < polys.size(); i++, poly++) {
+  for (const int i : polys.index_range()) {
+    const MPoly &poly = polys[i];
     int poly_ctx = weld_mesh->poly_map[i];
     if (poly_ctx != OUT_OF_CONTEXT) {
       const WeldPoly *wp = &weld_mesh->wpoly[poly_ctx];
@@ -206,7 +206,7 @@ static void weld_assert_poly_and_loop_kill_len(WeldMesh *weld_mesh,
       }
     }
     else {
-      loop_kills -= poly->totloop;
+      loop_kills -= poly.totloop;
     }
   }
 
@@ -805,8 +805,6 @@ static void weld_poly_loop_ctx_alloc(Span<MPoly> polys,
     const int loopstart = poly.loopstart;
     const int totloop = poly.totloop;
 
-    int vert_ctx_len = 0;
-
     int prev_wloop_len = wloop_len;
     for (const int i_loop : mloop.index_range().slice(loopstart, totloop)) {
       int v = mloop[i_loop].v;
@@ -815,9 +813,6 @@ static void weld_poly_loop_ctx_alloc(Span<MPoly> polys,
       int e_dest = edge_dest_map[e];
       bool is_vert_ctx = v_dest != OUT_OF_CONTEXT;
       bool is_edge_ctx = e_dest != OUT_OF_CONTEXT;
-      if (is_vert_ctx) {
-        vert_ctx_len++;
-      }
       if (is_vert_ctx || is_edge_ctx) {
         WeldLoop wl{};
         wl.vert = is_vert_ctx ? v_dest : v;
@@ -845,10 +840,12 @@ static void weld_poly_loop_ctx_alloc(Span<MPoly> polys,
       wpoly.append(wp);
 
       poly_map[i] = wpoly_len++;
-      if (totloop > 5 && vert_ctx_len > 1) {
-        int max_new = (totloop / 3) - 1;
-        vert_ctx_len /= 2;
-        maybe_new_poly += MIN2(max_new, vert_ctx_len);
+      if (totloop > 5 && loops_len > 1) {
+        /* We could be smarter here and actually count how many new polygons will be created.
+         * But counting this can be inefficient as it depends on the number of non-consecutive
+         * self polygon merges. For now just estimate a maximum value. */
+        int max_new = std::min((totloop / 3), loops_len) - 1;
+        maybe_new_poly += max_new;
         CLAMP_MIN(max_ctx_poly_len, totloop);
       }
     }
@@ -1115,7 +1112,7 @@ static int poly_find_doubles(const OffsetIndices<int> poly_corners_offsets,
 {
   /* Fills the `r_buffer` buffer with the intersection of the arrays in `buffer_a` and `buffer_b`.
    * `buffer_a` and `buffer_b` have a sequence of sorted, non-repeating indices representing
-   * polygons.  */
+   * polygons. */
   const auto intersect = [](const Span<int> buffer_a, const Span<int> buffer_b, int *r_buffer) {
     int result_num = 0;
     int index_a = 0, index_b = 0;
@@ -1606,7 +1603,6 @@ static Mesh *create_merged_mesh(const Mesh &mesh,
 
   /* Polys/Loops. */
 
-  MPoly *r_mp = dst_polys.data();
   MLoop *r_ml = dst_loops.data();
   int r_i = 0;
   int loop_cur = 0;
@@ -1648,9 +1644,8 @@ static Mesh *create_merged_mesh(const Mesh &mesh,
     }
 
     CustomData_copy_data(&mesh.pdata, &result->pdata, i, r_i, 1);
-    r_mp->loopstart = loop_start;
-    r_mp->totloop = loop_cur - loop_start;
-    r_mp++;
+    dst_polys[r_i].loopstart = loop_start;
+    dst_polys[r_i].totloop = loop_cur - loop_start;
     r_i++;
   }
 
@@ -1677,9 +1672,8 @@ static Mesh *create_merged_mesh(const Mesh &mesh,
       loop_cur++;
     }
 
-    r_mp->loopstart = loop_start;
-    r_mp->totloop = loop_cur - loop_start;
-    r_mp++;
+    dst_polys[r_i].loopstart = loop_start;
+    dst_polys[r_i].totloop = loop_cur - loop_start;
     r_i++;
   }
 

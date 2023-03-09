@@ -589,7 +589,7 @@ static bool get_bounding_bezt_indices(const FCurve *fcu,
     }
 
     /* The binary search returns an index where a keyframe would be inserted,
-    so it needs to be clamped to ensure it is in range of the array. */
+     * so it needs to be clamped to ensure it is in range of the array. */
     *r_first = clamp_i(*r_first, 0, fcu->totvert - 1);
     *r_last = clamp_i(*r_last - 1, 0, fcu->totvert - 1);
   }
