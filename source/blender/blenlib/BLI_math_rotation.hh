@@ -213,7 +213,8 @@ template<typename T, typename RotT>
 template<typename T, typename RotT>
 [[nodiscard]] detail::Euler3<T> rotate(const detail::Euler3<T> &a, const RotT &b)
 {
-  MatBase<T, 3, 3> tmp = from_rotation<MatBase<T, 3, 3>>(a) * from_rotation<MatBase<T, 3, 3>>(b);
+  const MatBase<T, 3, 3> tmp = from_rotation<MatBase<T, 3, 3>>(a) *
+                               from_rotation<MatBase<T, 3, 3>>(b);
   return to_euler(tmp, a.order());
 }
 
@@ -237,18 +238,18 @@ template<typename T>
   using Vec3T = VecBase<T, 3>;
 
   /* Move z-axis to face-normal. */
-  Vec3T z_axis = normal;
-  Vec3T n = normalize(Vec3T(z_axis.y, -z_axis.x, T(0)));
-  if (is_zero(n.xy())) {
-    n.x = T(1);
+  const Vec3T z_axis = normal;
+  const Vec3T nor = normalize(Vec3T(z_axis.y, -z_axis.x, T(0)));
+  if (is_zero(nor.xy())) {
+    nor.x = T(1);
   }
 
   T angle = T(-0.5) * math::safe_acos(z_axis.z);
   T si = math::sin(angle);
-  detail::Quaternion<T> q1(math::cos(angle), n.x * si, n.y * si, T(0));
+  detail::Quaternion<T> q1(math::cos(angle), nor.x * si, nor.y * si, T(0));
 
   /* Rotate back line v1-v2. */
-  Vec3T line = transform_point(conjugate(q1), (v2 - v1));
+  const Vec3T line = transform_point(conjugate(q1), (v2 - v1));
   /* What angle has this line with x-axis? */
   line = normalize(Vec3T(line.x, line.y, T(0)));
 
@@ -275,13 +276,13 @@ template<typename T>
   using Vec3T = VecBase<T, 3>;
   using Vec4T = VecBase<T, 4>;
 
-  T vec_len = length(vector);
+  const T vec_len = length(vector);
 
   if (UNLIKELY(vec_len == 0.0f)) {
     return detail::Quaternion<T>::identity();
   }
 
-  Axis axis = track_flag.axis();
+  const Axis axis = track_flag.axis();
   const Vec3T vec = track_flag.is_negative() ? vector : -vector;
 
   Vec3T rotation_axis;
@@ -310,9 +311,9 @@ template<typename T>
   }
   /* TODO(fclem): Can optimize here by initializing AxisAngle using the cos an sin directly.
    * Avoiding the need for safe_acos and deriving sin from cos. */
-  T rotation_angle = math::safe_acos(vec[axis.as_int()] / vec_len);
+  const T rotation_angle = math::safe_acos(vec[axis.as_int()] / vec_len);
 
-  detail::Quaternion<T> q1 = to_quaternion(
+  const detail::Quaternion<T> q1 = to_quaternion(
       detail::AxisAngle<T, detail::AngleRadian<T>>(rotation_axis, rotation_angle));
 
   if (axis == up_flag) {
@@ -322,12 +323,12 @@ template<typename T>
 
   /* Extract rotation between the up axis of the rotated space and the up axis. */
   /* There might be an easier way to get this angle directly from the quaternion representation. */
-  Vec3T rotated_up = transform_point(q1, Vec3T(0, 0, 1));
+  const Vec3T rotated_up = transform_point(q1, Vec3T(0, 0, 1));
 
   /* Project using axes index instead of arithmetic. It's much faster and more precise. */
-  AxisSigned y_axis_signed = math::cross(AxisSigned(axis), AxisSigned(up_flag));
-  Axis x_axis = up_flag;
-  Axis y_axis = y_axis_signed.axis();
+  const AxisSigned y_axis_signed = math::cross(AxisSigned(axis), AxisSigned(up_flag));
+  const Axis x_axis = up_flag;
+  const Axis y_axis = y_axis_signed.axis();
 
   Vec2T projected = normalize(Vec2T(rotated_up[x_axis.as_int()], rotated_up[y_axis.as_int()]));
   /* Flip sign for flipped axis. */
@@ -340,10 +341,10 @@ template<typename T>
     projected = -projected;
   }
 
-  detail::AngleCartesian<T> angle(projected.x, projected.y);
-  detail::AngleCartesian<T> half_angle = angle / T(2);
+  const detail::AngleCartesian<T> angle(projected.x, projected.y);
+  const detail::AngleCartesian<T> half_angle = angle / T(2);
 
-  detail::Quaternion<T> q2(Vec4T(half_angle.cos(), vec * (half_angle.sin() / vec_len)));
+  const detail::Quaternion<T> q2(Vec4T(half_angle.cos(), vec * (half_angle.sin() / vec_len)));
 
   return q2 * q1;
 }
@@ -364,20 +365,20 @@ template<typename T>
 {
   using Mat3T = MatBase<T, 3, 3>;
   using Vec3T = VecBase<T, 3>;
-  int i = rotation.i_index();
-  int j = rotation.j_index();
-  int k = rotation.k_index();
+  const int i_index = rotation.i_index();
+  const int j_index = rotation.j_index();
+  const int k_index = rotation.k_index();
 
   Mat3T result;
   /* First axis is local. */
-  result[i] = from_rotation<Mat3T>(rotation)[i];
+  result[i_index] = from_rotation<Mat3T>(rotation)[i_index];
   /* Second axis is local minus first rotation. */
-  detail::Euler3<T> tmp_rot = rotation;
+  const detail::Euler3<T> tmp_rot = rotation;
   tmp_rot.i() = T(0);
-  result[j] = from_rotation<Mat3T>(tmp_rot)[j];
+  result[j_index] = from_rotation<Mat3T>(tmp_rot)[j_index];
   /* Last axis is global. */
-  result[k] = Vec3T(0);
-  result[k][k] = T(1);
+  result[k_index] = Vec3T(0);
+  result[k_index][k_index] = T(1);
 
   return result;
 }

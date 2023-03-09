@@ -46,13 +46,8 @@ template<typename T = float> struct Quaternion {
 
   Quaternion() = default;
 
-  Quaternion(const T &w, const T &x, const T &y, const T &z)
-  {
-    this->w = w;
-    this->x = x;
-    this->y = y;
-    this->z = z;
-  }
+  Quaternion(const T &new_w, const T &new_x, const T &new_y, const T &new_z)
+      : w(new_w), x(new_x), y(new_y), z(new_z){};
 
   /**
    * Creates a quaternion from an vector without reordering the components.

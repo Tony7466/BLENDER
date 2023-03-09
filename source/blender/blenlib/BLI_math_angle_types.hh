@@ -627,7 +627,7 @@ template<typename T = float> struct AngleFraction {
      * closer to the origin where precision is highest.
      */
     /* Save negative sign so we cane assume unsigned angle for the rest of the computation.. */
-    bool is_negative = a.numerator_ < 0;
+    const bool is_negative = a.numerator_ < 0;
     /* Multiply numerator the same as denominator. */
     a.numerator_ = abs(a.numerator_) * 4;
     /* Determine the octant. */

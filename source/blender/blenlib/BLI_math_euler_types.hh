@@ -41,24 +41,7 @@ enum EulerOrder {
   ZYX,
 };
 
-inline std::ostream &operator<<(std::ostream &stream, EulerOrder order)
-{
-  switch (order) {
-    default:
-    case XYZ:
-      return stream << "XYZ";
-    case XZY:
-      return stream << "XZY";
-    case YXZ:
-      return stream << "YXZ";
-    case YZX:
-      return stream << "YZX";
-    case ZXY:
-      return stream << "ZXY";
-    case ZYX:
-      return stream << "ZYX";
-  }
-}
+std::ostream &operator<<(std::ostream &stream, EulerOrder order);
 
 namespace detail {
 
@@ -170,7 +153,7 @@ template<typename T> struct EulerXYZ : public EulerBase<T> {
    */
   EulerXYZ(const Axis axis, const AngleT &angle)
   {
-    *static_cast<EulerBase<T> *>(this) = identity();
+    *this = identity();
     this->xyz_[axis] = angle;
   }
 
@@ -228,14 +211,14 @@ template<typename T> struct Euler3 : public EulerBase<T> {
   EulerOrder order_;
 
   /**
-   * Swizzle structure allowing to rotation ordered assignement.
+   * Swizzle structure allowing to rotation ordered assignment.
    */
   class Swizzle {
    private:
     Euler3 &eul_;
 
    public:
-    Swizzle(Euler3 &eul) : eul_(eul){};
+    explicit Swizzle(Euler3 &eul) : eul_(eul){};
 
     Euler3 &operator=(const VecBase<AngleT, 3> &angles)
     {
@@ -298,7 +281,7 @@ template<typename T> struct Euler3 : public EulerBase<T> {
    */
   Swizzle ijk()
   {
-    return {*this};
+    return Swizzle{*this};
   }
   const VecBase<AngleT, 3> ijk() const
   {

@@ -45,7 +45,7 @@ AxisAngle<T, AngleT>::AxisAngle(const VecBase<T, 3> &from, const VecBase<T, 3> &
 
   T sin;
   T cos = dot(from, to);
-  this->axis_ = normalize_and_get_length(cross(from, to), sin);
+  axis_ = normalize_and_get_length(cross(from, to), sin);
 
   if (sin <= FLT_EPSILON) {
     if (cos > T(0)) {
@@ -59,7 +59,7 @@ AxisAngle<T, AngleT>::AxisAngle(const VecBase<T, 3> &from, const VecBase<T, 3> &
     cos = T(-1);
   }
   /* Avoid calculating the angle if possible. */
-  this->angle_ = AngleT(cos, sin);
+  angle_ = AngleT(cos, sin);
 }
 
 /** \} */

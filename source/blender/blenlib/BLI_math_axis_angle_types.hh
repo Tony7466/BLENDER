@@ -36,6 +36,7 @@ template<typename T, typename AngleT> struct AxisAngle {
   using vec3_type = VecBase<T, 3>;
 
  private:
+  /** Normalized direction around which we rotate anti-clockwise. */
   vec3_type axis_ = {0, 1, 0};
   AngleT angle_ = AngleT::identity();
 

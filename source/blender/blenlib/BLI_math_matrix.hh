@@ -230,7 +230,7 @@ template<typename MatT, typename VectorT>
                                          const VectorT up);
 
 /**
- * This return a version \a mat with orthonormal basis axes.
+ * This return a version of \a mat with orthonormal basis axes.
  * This leaves the given \a axis untouched.
  *
  * In other words this removes the shear of the matrix. However this doesn't properly account for
@@ -737,23 +737,23 @@ void normalized_to_eul2(const MatBase<T, 3, 3> &mat,
                         detail::Euler3<T> &eul2)
 {
   BLI_assert(math::is_unit_scale(mat));
-  int i = eul1.i_index();
-  int j = eul1.j_index();
-  int k = eul1.k_index();
+  const int i_index = eul1.i_index();
+  const int j_index = eul1.j_index();
+  const int k_index = eul1.k_index();
 
-  const T cy = math::hypot(mat[i][i], mat[i][j]);
+  const T cy = math::hypot(mat[i_index][i_index], mat[i_index][j_index]);
   if (cy > T(16) * FLT_EPSILON) {
-    eul1.i() = math::atan2(mat[j][k], mat[k][k]);
-    eul1.j() = math::atan2(-mat[i][k], cy);
-    eul1.k() = math::atan2(mat[i][j], mat[i][i]);
+    eul1.i() = math::atan2(mat[j_index][k_index], mat[k_index][k_index]);
+    eul1.j() = math::atan2(-mat[i_index][k_index], cy);
+    eul1.k() = math::atan2(mat[i_index][j_index], mat[i_index][i_index]);
 
-    eul2.i() = math::atan2(-mat[j][k], -mat[k][k]);
-    eul2.j() = math::atan2(-mat[i][k], -cy);
-    eul2.k() = math::atan2(-mat[i][j], -mat[i][i]);
+    eul2.i() = math::atan2(-mat[j_index][k_index], -mat[k_index][k_index]);
+    eul2.j() = math::atan2(-mat[i_index][k_index], -cy);
+    eul2.k() = math::atan2(-mat[i_index][j_index], -mat[i_index][i_index]);
   }
   else {
-    eul1.i() = math::atan2(-mat[k][j], mat[j][j]);
-    eul1.j() = math::atan2(-mat[i][k], cy);
+    eul1.i() = math::atan2(-mat[k_index][j_index], mat[j_index][j_index]);
+    eul1.j() = math::atan2(-mat[i_index][k_index], cy);
     eul1.k() = 0.0f;
 
     eul2 = eul1;
@@ -887,16 +887,16 @@ MatBase<T, NumCol, NumRow> from_rotation(const EulerXYZ<T> &rotation)
 {
   using MatT = MatBase<T, NumCol, NumRow>;
   using DoublePrecision = typename TypeTraits<T>::DoublePrecision;
-  DoublePrecision cos_i = math::cos(DoublePrecision(rotation.x().radian()));
-  DoublePrecision cos_j = math::cos(DoublePrecision(rotation.y().radian()));
-  DoublePrecision cos_k = math::cos(DoublePrecision(rotation.z().radian()));
-  DoublePrecision sin_i = math::sin(DoublePrecision(rotation.x().radian()));
-  DoublePrecision sin_j = math::sin(DoublePrecision(rotation.y().radian()));
-  DoublePrecision sin_k = math::sin(DoublePrecision(rotation.z().radian()));
-  DoublePrecision cos_i_cos_k = cos_i * cos_k;
-  DoublePrecision cos_i_sin_k = cos_i * sin_k;
-  DoublePrecision sin_i_cos_k = sin_i * cos_k;
-  DoublePrecision sin_i_sin_k = sin_i * sin_k;
+  const DoublePrecision cos_i = math::cos(DoublePrecision(rotation.x().radian()));
+  const DoublePrecision cos_j = math::cos(DoublePrecision(rotation.y().radian()));
+  const DoublePrecision cos_k = math::cos(DoublePrecision(rotation.z().radian()));
+  const DoublePrecision sin_i = math::sin(DoublePrecision(rotation.x().radian()));
+  const DoublePrecision sin_j = math::sin(DoublePrecision(rotation.y().radian()));
+  const DoublePrecision sin_k = math::sin(DoublePrecision(rotation.z().radian()));
+  const DoublePrecision cos_i_cos_k = cos_i * cos_k;
+  const DoublePrecision cos_i_sin_k = cos_i * sin_k;
+  const DoublePrecision sin_i_cos_k = sin_i * cos_k;
+  const DoublePrecision sin_i_sin_k = sin_i * sin_k;
 
   MatT mat = MatT::identity();
   mat[0][0] = T(cos_j * cos_k);
@@ -917,22 +917,22 @@ template<typename T, int NumCol, int NumRow>
 MatBase<T, NumCol, NumRow> from_rotation(const Euler3<T> &rotation)
 {
   using MatT = MatBase<T, NumCol, NumRow>;
-  int i = rotation.i_index();
-  int j = rotation.j_index();
-  int k = rotation.k_index();
+  const int i_index = rotation.i_index();
+  const int j_index = rotation.j_index();
+  const int k_index = rotation.k_index();
 #if 1 /* Reference. */
   EulerXYZ<T> euler_xyz(rotation.ijk());
-  MatT mat = from_rotation<T, NumCol, NumRow>(rotation.parity() ? -euler_xyz : euler_xyz);
+  const MatT mat = from_rotation<T, NumCol, NumRow>(rotation.parity() ? -euler_xyz : euler_xyz);
   MatT result = MatT::identity();
-  result[i][i] = mat[0][0];
-  result[j][i] = mat[1][0];
-  result[k][i] = mat[2][0];
-  result[i][j] = mat[0][1];
-  result[j][j] = mat[1][1];
-  result[k][j] = mat[2][1];
-  result[i][k] = mat[0][2];
-  result[j][k] = mat[1][2];
-  result[k][k] = mat[2][2];
+  result[i_index][i_index] = mat[0][0];
+  result[j_index][i_index] = mat[1][0];
+  result[k_index][i_index] = mat[2][0];
+  result[i_index][j_index] = mat[0][1];
+  result[j_index][j_index] = mat[1][1];
+  result[k_index][j_index] = mat[2][1];
+  result[i_index][k_index] = mat[0][2];
+  result[j_index][k_index] = mat[1][2];
+  result[k_index][k_index] = mat[2][2];
 #else
   /* TODO(fclem): Manually inline and check performance difference. */
 #endif
@@ -944,20 +944,20 @@ MatBase<T, NumCol, NumRow> from_rotation(const Quaternion<T> &rotation)
 {
   using MatT = MatBase<T, NumCol, NumRow>;
   using DoublePrecision = typename TypeTraits<T>::DoublePrecision;
-  DoublePrecision q0 = M_SQRT2 * DoublePrecision(rotation.w);
-  DoublePrecision q1 = M_SQRT2 * DoublePrecision(rotation.x);
-  DoublePrecision q2 = M_SQRT2 * DoublePrecision(rotation.y);
-  DoublePrecision q3 = M_SQRT2 * DoublePrecision(rotation.z);
+  const DoublePrecision q0 = M_SQRT2 * DoublePrecision(rotation.w);
+  const DoublePrecision q1 = M_SQRT2 * DoublePrecision(rotation.x);
+  const DoublePrecision q2 = M_SQRT2 * DoublePrecision(rotation.y);
+  const DoublePrecision q3 = M_SQRT2 * DoublePrecision(rotation.z);
 
-  DoublePrecision qda = q0 * q1;
-  DoublePrecision qdb = q0 * q2;
-  DoublePrecision qdc = q0 * q3;
-  DoublePrecision qaa = q1 * q1;
-  DoublePrecision qab = q1 * q2;
-  DoublePrecision qac = q1 * q3;
-  DoublePrecision qbb = q2 * q2;
-  DoublePrecision qbc = q2 * q3;
-  DoublePrecision qcc = q3 * q3;
+  const DoublePrecision qda = q0 * q1;
+  const DoublePrecision qdb = q0 * q2;
+  const DoublePrecision qdc = q0 * q3;
+  const DoublePrecision qaa = q1 * q1;
+  const DoublePrecision qab = q1 * q2;
+  const DoublePrecision qac = q1 * q3;
+  const DoublePrecision qbb = q2 * q2;
+  const DoublePrecision qbc = q2 * q3;
+  const DoublePrecision qcc = q3 * q3;
 
   MatT mat = MatT::identity();
   mat[0][0] = T(1.0 - qbb - qcc);
@@ -1048,15 +1048,15 @@ template<typename T, int NumCol, int NumRow>
 MatBase<T, NumCol, NumRow> from_rotation(const AngleRadian<T> &rotation)
 {
   using MatT = MatBase<T, NumCol, NumRow>;
-  T ci = cos(rotation);
-  T si = sin(rotation);
+  const T cos_i = cos(rotation);
+  const T sin_i = sin(rotation);
 
   MatT mat = MatT::identity();
-  mat[0][0] = ci;
-  mat[1][0] = -si;
+  mat[0][0] = cos_i;
+  mat[1][0] = -sin_i;
 
-  mat[0][1] = si;
-  mat[1][1] = ci;
+  mat[0][1] = sin_i;
+  mat[1][1] = cos_i;
   return mat;
 }
 
@@ -1360,7 +1360,7 @@ template<typename MatT> [[nodiscard]] MatT orthogonalize(const MatT &mat, const 
    * The issue is that the candidate axes are not normalized so this dot product
    * check is kind of pointless.
    * Because of this, the target axis could still be colinear but pass the check. */
-#if 1 /* Reproduce old behavior. Do not normalize other axes. */
+#if 1 /* Reproduce C API behavior. Do not normalize other axes. */
   switch (axis) {
     case Axis::X:
       R.y = mat.y_axis();

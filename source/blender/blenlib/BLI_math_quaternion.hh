@@ -111,7 +111,7 @@ template<typename T> [[nodiscard]] inline bool is_zero(const detail::Quaternion<
 }
 
 /**
- * Returns true if the quaternions are equal within the given epsilon.
+ * Returns true if the quaternions are equal within the given epsilon. Return false otherwise.
  */
 template<typename T>
 [[nodiscard]] inline bool is_equal(const detail::Quaternion<T> &a,
@@ -219,8 +219,8 @@ template<typename T>
    *
    * `y * angle * 0.5` expands to `y * 2 * acos(q.w) * 0.5` which simplifies to `y * acos(q.w)`.
    */
-  const T ha = y * math::safe_acos(q.w);
-  return {math::cos(ha), math::sin(ha) * normalize(q.imaginary_part())};
+  const T half_angle = y * math::safe_acos(q.w);
+  return {math::cos(half_angle), math::sin(half_angle) * normalize(q.imaginary_part())};
 }
 
 template<typename T>
@@ -471,7 +471,7 @@ template<typename T>
   if (dq.scale_weight > T(0)) {
     /* Compensate for any dual quaternions added without scale.
      * This is an optimization so that we can skip the scale part when not needed. */
-    float missing_uniform_scale = dq.quat_weight - dq.scale_weight;
+    const float missing_uniform_scale = dq.quat_weight - dq.scale_weight;
 
     if (missing_uniform_scale > T(0)) {
       dq.scale[0][0] += missing_uniform_scale;
@@ -567,7 +567,7 @@ template<typename T>
    * Copyright 2006-2007 University of Dublin, Trinity College, All Rights Reserved.
    *
    * Changes for Blender:
-   * - renaming, style changes and optimization's
+   * - renaming, style changes and optimizations
    * - added support for scaling
    */
   using Mat4T = MatBase<T, 4, 4>;
@@ -583,7 +583,7 @@ template<typename T>
                          length_squared(to_scale(baseRS) - T(1)) > square_f(1e-4f);
   if (has_scale) {
     /* Extract Rotation and Scale. */
-    Mat4T baseinv = invert(basemat);
+    const Mat4T baseinv = invert(basemat);
 
     /* Extra orthogonalize, to avoid flipping with stretched bones. */
     detail::Quaternion<T> basequat = to_quaternion(orthogonalize(baseRS, Axis::Y));
@@ -593,7 +593,7 @@ template<typename T>
 
     R = baseR * baseinv;
 
-    Mat4T S = invert(baseR) * baseRS;
+    const Mat4T S = invert(baseR) * baseRS;
     /* Set scaling part. */
     scale = basemat * S * baseinv;
   }
@@ -603,7 +603,7 @@ template<typename T>
   }
 
   /* Non-dual part. */
-  detail::Quaternion<T> q = to_quaternion(R);
+  const detail::Quaternion<T> q = to_quaternion(R);
 
   /* Dual part. */
   const Vec3T &t = R.location().xyz();
@@ -691,7 +691,7 @@ detail::Quaternion<T> detail::Quaternion<T>::expmap(const VecBase<T, 3> &expmap)
   using AxisAngleT = detail::AxisAngle<T, detail::AngleRadian<T>>;
   /* Obtain axis/angle representation. */
   T angle;
-  VecBase<T, 3> axis = normalize_and_get_length(expmap, angle);
+  const VecBase<T, 3> axis = normalize_and_get_length(expmap, angle);
   if (LIKELY(angle != T(0))) {
     return to_quaternion(AxisAngleT(axis, angle_wrap_rad(angle)));
   }
@@ -702,7 +702,7 @@ template<typename T> VecBase<T, 3> detail::Quaternion<T>::expmap() const
 {
   using AxisAngleT = detail::AxisAngle<T, detail::AngleRadian<T>>;
   BLI_assert(is_unit_scale(*this));
-  AxisAngleT axis_angle = to_axis_angle(*this);
+  const AxisAngleT axis_angle = to_axis_angle(*this);
   return axis_angle.axis() * axis_angle.angle().radian();
 }
 

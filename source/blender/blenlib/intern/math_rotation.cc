@@ -130,4 +130,23 @@ float3 rotate_around_axis(const float3 &vector,
   return result + center;
 }
 
+std::ostream &operator<<(std::ostream &stream, EulerOrder order)
+{
+  switch (order) {
+    default:
+    case XYZ:
+      return stream << "XYZ";
+    case XZY:
+      return stream << "XZY";
+    case YXZ:
+      return stream << "YXZ";
+    case YZX:
+      return stream << "YZX";
+    case ZXY:
+      return stream << "ZXY";
+    case ZYX:
+      return stream << "ZYX";
+  }
+}
+
 }  // namespace blender::math

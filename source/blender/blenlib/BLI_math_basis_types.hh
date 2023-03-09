@@ -55,7 +55,7 @@ class Axis {
  public:
   Axis() = default;
 
-  constexpr Axis(Value axis) : axis_(axis){};
+  constexpr Axis(const Value axis) : axis_(axis){};
 
   /** Convert an uppercase axis character 'X', 'Y' or 'Z' to an enum value. */
   constexpr explicit Axis(char axis_char) : axis_(static_cast<Value>(axis_char - 'X'))
@@ -64,9 +64,9 @@ class Axis {
   }
 
   /** Allow casting from DNA enums stored as short / int. */
-  constexpr static Axis from_int(int axis_int)
+  constexpr static Axis from_int(const int axis_int)
   {
-    Axis axis = static_cast<Value>(axis_int);
+    const Axis axis = static_cast<Value>(axis_int);
     BLI_assert(Axis::X <= axis && axis <= Axis::Z);
     return axis;
   }
@@ -85,7 +85,7 @@ class Axis {
   /** Avoid hell. */
   explicit operator bool() const = delete;
 
-  friend std::ostream &operator<<(std::ostream &stream, Axis axis)
+  friend std::ostream &operator<<(std::ostream &stream, const Axis axis)
   {
     switch (axis.axis_) {
       default:
@@ -138,7 +138,7 @@ class AxisSigned {
   /** Allow casting from DNA enums stored as short / int. */
   constexpr static AxisSigned from_int(int axis_int)
   {
-    AxisSigned axis = static_cast<Value>(axis_int);
+    const AxisSigned axis = static_cast<Value>(axis_int);
     BLI_assert(AxisSigned::X_POS <= axis && axis <= AxisSigned::Z_NEG);
     return axis;
   }
@@ -187,7 +187,7 @@ class AxisSigned {
   /** Avoid hell. */
   explicit operator bool() const = delete;
 
-  friend std::ostream &operator<<(std::ostream &stream, AxisSigned axis)
+  friend std::ostream &operator<<(std::ostream &stream, const AxisSigned axis)
   {
     switch (axis.axis_) {
       default:
@@ -204,12 +204,12 @@ class AxisSigned {
   }
 };
 
-constexpr static bool operator<=(Axis::Value a, Axis::Value b)
+constexpr static bool operator<=(const Axis::Value a, const Axis::Value b)
 {
   return int(a) <= int(b);
 }
 
-constexpr static bool operator<=(AxisSigned::Value a, AxisSigned::Value b)
+constexpr static bool operator<=(const AxisSigned::Value a, const AxisSigned::Value b)
 {
   return int(a) <= int(b);
 }
@@ -341,7 +341,7 @@ template<> inline AxisSigned abs(const AxisSigned &axis)
 }
 
 /** Create basis vector. */
-template<typename T> T to_vector(Axis axis)
+template<typename T> T to_vector(const Axis axis)
 {
   BLI_assert(axis <= AxisSigned::from_int(T::type_length - 1));
   T vec{};
@@ -350,7 +350,7 @@ template<typename T> T to_vector(Axis axis)
 }
 
 /** Create signed basis vector. */
-template<typename T> T to_vector(AxisSigned axis)
+template<typename T> T to_vector(const AxisSigned axis)
 {
   BLI_assert(abs(axis) <= AxisSigned::from_int(T::type_length - 1));
   T vec{};

@@ -22,7 +22,7 @@ namespace blender::draw::command {
  * the same render state.
  */
 struct DrawGroup {
-  /** Index of next #DrawGroup from the same header. (Only for CPU) */
+  /** Index of next #DrawGroup from the same header. */
   uint next;
 
   /** Index of the first instances after sorting. */
