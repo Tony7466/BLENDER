@@ -206,12 +206,12 @@ static int view_pan_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-inline bool mouse_in_category_tab(const ARegion *region, const wmEvent *event)
+bool mouse_in_category_tab(const ARegion *region, const wmEvent *event)
 {
   if (event == nullptr) {
     return false;
   }
-  const int mvalx = event->mval[0];
+  const int mvalx = event->xy[0] - region->winrct.xmin;
   if (region->runtime.category && !BLI_listbase_is_empty(&region->panels_category)) {
     const PanelCategoryDyn *pc_dyn = static_cast<PanelCategoryDyn *>(
         region->panels_category.first);
@@ -509,8 +509,8 @@ static int view_scrolldown_exec(bContext *C, wmOperator *op)
     return OPERATOR_PASS_THROUGH;
   }
 
-  wmWindow *win = CTX_wm_window(C);
-  wmEvent *event = win->event_last_handled;
+  const wmWindow *win = CTX_wm_window(C);
+  const wmEvent *event = win->eventstate;
   vpd->do_category_scroll = mouse_in_category_tab(vpd->region, event);
 
   /* set RNA-Props */
@@ -560,8 +560,8 @@ static int view_scrollup_exec(bContext *C, wmOperator *op)
     return OPERATOR_PASS_THROUGH;
   }
 
-  wmWindow *win = CTX_wm_window(C);
-  wmEvent *event = win->event_last_handled;
+  const wmWindow *win = CTX_wm_window(C);
+  const wmEvent *event = win->eventstate;
   vpd->do_category_scroll = mouse_in_category_tab(vpd->region, event);
 
   /* set RNA-Props */
