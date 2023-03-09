@@ -693,7 +693,6 @@ void PAINT_OT_face_select_all(wmOperatorType *ot)
   WM_operator_properties_select_all(ot);
 }
 
-/* face-select ops */
 static int paint_select_more_exec(bContext *C, wmOperator *op)
 {
   const bool face_step = RNA_boolean_get(op->ptr, "face_step");
@@ -715,6 +714,29 @@ void PAINT_OT_face_select_more(wmOperatorType *ot)
 
   RNA_def_boolean(
       ot->srna, "face_step", true, "Face Step", "Also select faces that only touch on a corner");
+}
+
+static int paint_select_less_exec(bContext *C, wmOperator *op)
+{
+  const bool face_step = RNA_boolean_get(op->ptr, "face_step");
+  paintface_select_less(C, CTX_data_active_object(C), face_step);
+  ED_region_tag_redraw(CTX_wm_region(C));
+  return OPERATOR_FINISHED;
+}
+
+void PAINT_OT_face_select_less(wmOperatorType *ot)
+{
+  ot->name = "Select Less";
+  ot->description = "Deselect Faces connected to existing selection";
+  ot->idname = "PAINT_OT_face_select_less";
+
+  ot->exec = paint_select_less_exec;
+  ot->poll = facemask_paint_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  RNA_def_boolean(
+      ot->srna, "face_step", true, "Face Step", "Also deselect faces that only touch on a corner");
 }
 
 static int vert_select_all_exec(bContext *C, wmOperator *op)

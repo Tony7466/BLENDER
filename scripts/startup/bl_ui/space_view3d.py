@@ -2012,6 +2012,7 @@ class VIEW3D_MT_select_paint_mask(Menu):
         layout.operator("paint.face_select_all", text="Invert").action = 'INVERT'
 
         layout.operator("paint.face_select_more")
+        layout.operator("paint.face_select_less")
 
         layout.separator()
 

@@ -370,8 +370,6 @@ void paintface_select_more(bContext *C, Object *ob, const bool face_step)
   const Span<MLoop> loops = mesh->loops();
   const Span<MEdge> edges = mesh->edges();
 
-  Vector<int> indices;
-
   for (const int i : select_poly.span.index_range()) {
     if (select_poly.span[i] || hide_poly[i]) {
       continue;
@@ -380,11 +378,16 @@ void paintface_select_more(bContext *C, Object *ob, const bool face_step)
 
     for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
       const MEdge &edge = edges[loop.e];
-      if (face_step && (select_vert.span[edge.v1] || select_vert.span[edge.v2])) {
-        select_poly.span[i] = true;
-        break;
+      /* If a poly is selected, all of its verts are selected too, meaning that neighboring faces
+       * will have some vertices selected. */
+      bool selected_neighbor = false;
+      if (face_step) {
+        selected_neighbor = select_vert.span[edge.v1] || select_vert.span[edge.v2];
       }
-      else if (select_vert.span[edge.v1] && select_vert.span[edge.v2]) {
+      else {
+        selected_neighbor = select_vert.span[edge.v1] && select_vert.span[edge.v2];
+      }
+      if (selected_neighbor) {
         select_poly.span[i] = true;
         break;
       }
@@ -393,6 +396,65 @@ void paintface_select_more(bContext *C, Object *ob, const bool face_step)
 
   select_poly.finish();
   select_vert.finish();
+  paintface_flush_flags(C, ob, true, false);
+}
+
+void paintface_select_less(bContext *C, Object *ob, const bool face_step)
+{
+  using namespace blender;
+  Mesh *mesh = BKE_mesh_from_object(ob);
+  if (mesh == nullptr || mesh->totpoly == 0) {
+    return;
+  }
+
+  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
+  bke::SpanAttributeWriter<bool> select_poly = attributes.lookup_or_add_for_write_span<bool>(
+      ".select_poly", ATTR_DOMAIN_FACE);
+  const VArray<bool> hide_poly = attributes.lookup_or_default<bool>(
+      ".hide_poly", ATTR_DOMAIN_FACE, false);
+
+  const Span<MPoly> polys = mesh->polys();
+  const Span<MLoop> loops = mesh->loops();
+  const Span<MEdge> edges = mesh->edges();
+
+  std::vector<bool> verts_of_unselected_faces(mesh->totvert, false);
+
+  /* Find all vertices of unselected faces to help find neighboring faces after. */
+  for (const int i : select_poly.span.index_range()) {
+    if (select_poly.span[i]) {
+      continue;
+    }
+    const MPoly &poly = polys[i];
+    for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
+      verts_of_unselected_faces[loop.v] = true;
+    }
+  }
+
+  for (const int i : select_poly.span.index_range()) {
+    if (!select_poly.span[i] || hide_poly[i]) {
+      continue;
+    }
+    const MPoly &poly = polys[i];
+
+    for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
+      const MEdge &edge = edges[loop.e];
+      bool unselected_neighbor = false;
+      if (face_step) {
+        unselected_neighbor = verts_of_unselected_faces[edge.v1] ||
+                              verts_of_unselected_faces[edge.v2];
+      }
+      else {
+        unselected_neighbor = verts_of_unselected_faces[edge.v1] &&
+                              verts_of_unselected_faces[edge.v2];
+      }
+      if (unselected_neighbor) {
+        select_poly.span[i] = false;
+        break;
+      }
+    }
+  }
+
+  select_poly.finish();
   paintface_flush_flags(C, ob, true, false);
 }
 
