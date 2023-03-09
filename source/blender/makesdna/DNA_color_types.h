@@ -59,6 +59,8 @@ typedef struct CurveMap {
   /** For RGB curves, pre-multiplied extrapolation vector. */
   float premul_ext_in[2];
   float premul_ext_out[2];
+  short default_handle_type;
+  char _pad[6];
 } CurveMap;
 
 typedef struct CurveMapping {

@@ -155,7 +155,7 @@ static void scene_init_data(ID *id)
   BLI_strncpy(scene->r.bake.filepath, U.renderdir, sizeof(scene->r.bake.filepath));
 
   mblur_shutter_curve = &scene->r.mblur_shutter_curve;
-  BKE_curvemapping_set_defaults(mblur_shutter_curve, 1, 0.0f, 0.0f, 1.0f, 1.0f);
+  BKE_curvemapping_set_defaults(mblur_shutter_curve, 1, 0.0f, 0.0f, 1.0f, 1.0f, HD_AUTO);
   BKE_curvemapping_init(mblur_shutter_curve);
   BKE_curvemap_reset(mblur_shutter_curve->cm,
                      &mblur_shutter_curve->clipr,

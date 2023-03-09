@@ -26,6 +26,7 @@
 #include "fx/ADSR.h"
 #include "fx/Delay.h"
 #include "fx/Envelope.h"
+#include "fx/Equalizer.h"
 #include "fx/Fader.h"
 #include "fx/Highpass.h"
 #include "fx/IIRFilter.h"
@@ -778,5 +779,15 @@ AUD_API AUD_Sound* AUD_Sound_equalize(AUD_Sound* sound, float *definition, int s
 	AUD_Sound *equalizer=new AUD_Sound(new Equalizer(*sound, buf, size, maxFreqEq, sizeConversion));
 	return equalizer;
 }
+
+#else
+
+AUD_API AUD_Sound* AUD_Sound_equalize(AUD_Sound* sound, float *definition, int size, float maxFreqEq, int sizeConversion)
+{
+	assert(sound);
+
+  return sound;
+}
+
 
 #endif
