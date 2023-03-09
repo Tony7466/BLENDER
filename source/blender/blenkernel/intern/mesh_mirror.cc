@@ -389,6 +389,8 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
 
     const bool *sharp_edges = static_cast<const bool *>(
         CustomData_get_layer_named(&result->edata, CD_PROP_BOOL, "sharp_edge"));
+    const bool *sharp_faces = static_cast<const bool *>(
+        CustomData_get_layer_named(&result->pdata, CD_PROP_BOOL, "sharp_face"));
     blender::bke::mesh::normals_calc_loop(result->vert_positions(),
                                           result_edges,
                                           result_polys,
@@ -397,6 +399,7 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
                                           result->vert_normals(),
                                           result->poly_normals(),
                                           sharp_edges,
+                                          sharp_faces,
                                           true,
                                           result->smoothresh,
                                           clnors,

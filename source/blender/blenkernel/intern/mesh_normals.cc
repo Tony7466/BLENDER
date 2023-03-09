@@ -457,10 +457,16 @@ void BKE_lnor_spacearr_init(MLoopNorSpaceArray *lnors_spacearr,
       lnors_spacearr->mem = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __func__);
     }
     mem = lnors_spacearr->mem;
-    lnors_spacearr->lspacearr = (MLoopNorSpace **)BLI_memarena_calloc(
-        mem, sizeof(MLoopNorSpace *) * size_t(numLoops));
-    lnors_spacearr->loops_pool = (LinkNode *)BLI_memarena_alloc(
-        mem, sizeof(LinkNode) * size_t(numLoops));
+    if (numLoops > 0) {
+      lnors_spacearr->lspacearr = (MLoopNorSpace **)BLI_memarena_calloc(
+          mem, sizeof(MLoopNorSpace *) * size_t(numLoops));
+      lnors_spacearr->loops_pool = (LinkNode *)BLI_memarena_alloc(
+          mem, sizeof(LinkNode) * size_t(numLoops));
+    }
+    else {
+      lnors_spacearr->lspacearr = nullptr;
+      lnors_spacearr->loops_pool = nullptr;
+    }
 
     lnors_spacearr->spaces_num = 0;
   }
@@ -758,6 +764,7 @@ static void mesh_edges_sharp_tag(const Span<MPoly> polys,
                                  const Span<MLoop> loops,
                                  const Span<int> loop_to_poly_map,
                                  const Span<float3> poly_normals,
+                                 const Span<bool> sharp_faces,
                                  const Span<bool> sharp_edges,
                                  const bool check_angle,
                                  const float split_angle,
@@ -765,6 +772,9 @@ static void mesh_edges_sharp_tag(const Span<MPoly> polys,
                                  MutableSpan<bool> r_sharp_edges)
 {
   const float split_angle_cos = check_angle ? cosf(split_angle) : -1.0f;
+  auto poly_is_smooth = [&](const int poly_i) {
+    return sharp_faces.is_empty() || !sharp_faces[poly_i];
+  };
 
   for (const int poly_i : polys.index_range()) {
     const MPoly &poly = polys[poly_i];
@@ -779,7 +789,7 @@ static void mesh_edges_sharp_tag(const Span<MPoly> polys,
         /* 'Empty' edge until now, set e2l[0] (and e2l[1] to INDEX_UNSET to tag it as unset). */
         e2l[0] = loop_index;
         /* We have to check this here too, else we might miss some flat faces!!! */
-        e2l[1] = (poly.flag & ME_SMOOTH) ? INDEX_UNSET : INDEX_INVALID;
+        e2l[1] = (poly_is_smooth(poly_i)) ? INDEX_UNSET : INDEX_INVALID;
       }
       else if (e2l[1] == INDEX_UNSET) {
         const bool is_angle_sharp = (check_angle &&
@@ -791,7 +801,7 @@ static void mesh_edges_sharp_tag(const Span<MPoly> polys,
          * or both poly have opposed (flipped) normals, i.e. both loops on the same edge share the
          * same vertex, or angle between both its polys' normals is above split_angle value.
          */
-        if (!(poly.flag & ME_SMOOTH) || (!sharp_edges.is_empty() && sharp_edges[edge_i]) ||
+        if (!poly_is_smooth(poly_i) || (!sharp_edges.is_empty() && sharp_edges[edge_i]) ||
             vert_i == loops[e2l[0]].v || is_angle_sharp) {
           /* NOTE: we are sure that loop != 0 here ;). */
           e2l[1] = INDEX_INVALID;
@@ -824,6 +834,7 @@ static void mesh_edges_sharp_tag(const Span<MPoly> polys,
 void edges_sharp_from_angle_set(const Span<MPoly> polys,
                                 const Span<MLoop> loops,
                                 const Span<float3> poly_normals,
+                                const bool *sharp_faces,
                                 const float split_angle,
                                 MutableSpan<bool> sharp_edges)
 {
@@ -842,6 +853,7 @@ void edges_sharp_from_angle_set(const Span<MPoly> polys,
                        loops,
                        loop_to_poly,
                        poly_normals,
+                       Span<bool>(sharp_faces, sharp_faces ? polys.size() : 0),
                        sharp_edges,
                        true,
                        split_angle,
@@ -1399,6 +1411,7 @@ void normals_calc_loop(const Span<float3> vert_positions,
                        const Span<float3> vert_normals,
                        const Span<float3> poly_normals,
                        const bool *sharp_edges,
+                       const bool *sharp_faces,
                        bool use_split_normals,
                        float split_angle,
                        short (*clnors_data)[2],
@@ -1420,7 +1433,7 @@ void normals_calc_loop(const Span<float3> vert_positions,
       const MPoly *poly = &polys[poly_index];
       int ml_index = poly->loopstart;
       const int ml_index_end = ml_index + poly->totloop;
-      const bool is_poly_flat = ((poly->flag & ME_SMOOTH) == 0);
+      const bool is_poly_flat = sharp_faces && sharp_faces[poly_index];
 
       for (; ml_index < ml_index_end; ml_index++) {
         if (is_poly_flat) {
@@ -1510,6 +1523,7 @@ void normals_calc_loop(const Span<float3> vert_positions,
                        loop_to_poly,
                        poly_normals,
                        Span<bool>(sharp_edges, sharp_edges ? edges.size() : 0),
+                       Span<bool>(sharp_faces, sharp_faces ? polys.size() : 0),
                        check_angle,
                        split_angle,
                        edge_to_loops,
@@ -1556,6 +1570,7 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
                                          Span<MLoop> loops,
                                          Span<float3> vert_normals,
                                          Span<float3> poly_normals,
+                                         const bool *sharp_faces,
                                          const bool use_vertices,
                                          MutableSpan<float3> r_custom_loop_normals,
                                          MutableSpan<bool> sharp_edges,
@@ -1586,6 +1601,7 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
                     vert_normals,
                     poly_normals,
                     sharp_edges.data(),
+                    sharp_faces,
                     use_split_normals,
                     split_angle,
                     r_clnors_data,
@@ -1710,6 +1726,7 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
                       vert_normals,
                       poly_normals,
                       sharp_edges.data(),
+                      sharp_faces,
                       use_split_normals,
                       split_angle,
                       r_clnors_data,
@@ -1781,6 +1798,7 @@ void normals_loop_custom_set(const Span<float3> vert_positions,
                              const Span<MLoop> loops,
                              const Span<float3> vert_normals,
                              const Span<float3> poly_normals,
+                             const bool *sharp_faces,
                              MutableSpan<bool> sharp_edges,
                              MutableSpan<float3> r_custom_loop_normals,
                              short (*r_clnors_data)[2])
@@ -1791,6 +1809,7 @@ void normals_loop_custom_set(const Span<float3> vert_positions,
                                loops,
                                vert_normals,
                                poly_normals,
+                               sharp_faces,
                                false,
                                r_custom_loop_normals,
                                sharp_edges,
@@ -1803,6 +1822,7 @@ void normals_loop_custom_set_from_verts(const Span<float3> vert_positions,
                                         const Span<MLoop> loops,
                                         const Span<float3> vert_normals,
                                         const Span<float3> poly_normals,
+                                        const bool *sharp_faces,
                                         MutableSpan<bool> sharp_edges,
                                         MutableSpan<float3> r_custom_vert_normals,
                                         short (*r_clnors_data)[2])
@@ -1813,6 +1833,7 @@ void normals_loop_custom_set_from_verts(const Span<float3> vert_positions,
                                loops,
                                vert_normals,
                                poly_normals,
+                               sharp_faces,
                                true,
                                r_custom_vert_normals,
                                sharp_edges,
@@ -1840,6 +1861,8 @@ static void mesh_set_custom_normals(Mesh *mesh, float (*r_custom_nors)[3], const
   MutableAttributeAccessor attributes = mesh->attributes_for_write();
   SpanAttributeWriter<bool> sharp_edges = attributes.lookup_or_add_for_write_span<bool>(
       "sharp_edge", ATTR_DOMAIN_EDGE);
+  const bool *sharp_faces = static_cast<const bool *>(
+      CustomData_get_layer_named(&mesh->pdata, CD_PROP_BOOL, "sharp_face"));
 
   mesh_normals_loop_custom_set(positions,
                                edges,
@@ -1847,6 +1870,7 @@ static void mesh_set_custom_normals(Mesh *mesh, float (*r_custom_nors)[3], const
                                loops,
                                mesh->vert_normals(),
                                mesh->poly_normals(),
+                               sharp_faces,
                                use_vertices,
                                {reinterpret_cast<blender::float3 *>(r_custom_nors),
                                 use_vertices ? mesh->totvert : mesh->totloop},

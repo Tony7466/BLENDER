@@ -1363,6 +1363,8 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
         if (dirty_nors_dst || do_loop_nors_dst) {
           const bool *sharp_edges = static_cast<const bool *>(
               CustomData_get_layer_named(&mesh_dst->edata, CD_PROP_BOOL, "sharp_edge"));
+          const bool *sharp_faces = static_cast<const bool *>(
+              CustomData_get_layer_named(&mesh_dst->pdata, CD_PROP_BOOL, "sharp_face"));
           blender::bke::mesh::normals_calc_loop(
               {reinterpret_cast<const blender::float3 *>(vert_positions_dst), numverts_dst},
               {edges_dst, numedges_dst},
@@ -1372,6 +1374,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
               mesh_dst->vert_normals(),
               mesh_dst->poly_normals(),
               sharp_edges,
+              sharp_faces,
               use_split_nors_dst,
               split_angle_dst,
               custom_nors_dst,

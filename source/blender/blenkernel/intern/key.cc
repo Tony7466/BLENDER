@@ -2277,6 +2277,8 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
         &mesh->ldata, CD_CUSTOMLOOPNORMAL, loops.size())); /* May be nullptr. */
     const bool *sharp_edges = static_cast<const bool *>(
         CustomData_get_layer_named(&mesh->edata, CD_PROP_BOOL, "sharp_edge"));
+    const bool *sharp_faces = static_cast<const bool *>(
+        CustomData_get_layer_named(&mesh->pdata, CD_PROP_BOOL, "sharp_face"));
     blender::bke::mesh::normals_calc_loop(
         {reinterpret_cast<const blender::float3 *>(positions), mesh->totvert},
         edges,
@@ -2286,6 +2288,7 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
         {reinterpret_cast<blender::float3 *>(vert_normals), mesh->totvert},
         {reinterpret_cast<blender::float3 *>(poly_normals), polys.size()},
         sharp_edges,
+        sharp_faces,
         (mesh->flag & ME_AUTOSMOOTH) != 0,
         mesh->smoothresh,
         clnors,

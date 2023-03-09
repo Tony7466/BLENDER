@@ -94,6 +94,7 @@ struct MeshRenderData {
   const bool *select_vert;
   const bool *select_edge;
   const bool *select_poly;
+  const bool *sharp_faces;
   blender::Array<blender::float3> loop_normals;
   int *lverts, *ledges;
 

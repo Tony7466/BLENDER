@@ -318,13 +318,15 @@ static void normalEditModifier_do_radial(NormalEditModifierData *enmd,
     /* We need to recompute vertex normals! */
     BKE_mesh_normals_tag_dirty(mesh);
   }
-
+  const bool *sharp_faces = static_cast<const bool *>(
+      CustomData_get_layer_named(&mesh->pdata, CD_PROP_BOOL, "sharp_face"));
   blender::bke::mesh::normals_loop_custom_set(vert_positions,
                                               edges,
                                               polys,
                                               loops,
                                               mesh->vert_normals(),
                                               poly_normals,
+                                              sharp_faces,
                                               sharp_edges,
                                               nos,
                                               clnors);
@@ -422,13 +424,15 @@ static void normalEditModifier_do_directional(NormalEditModifierData *enmd,
           loops, nos.data(), &mesh->ldata, polys, BKE_mesh_poly_normals_for_write(mesh))) {
     BKE_mesh_normals_tag_dirty(mesh);
   }
-
+  const bool *sharp_faces = static_cast<const bool *>(
+      CustomData_get_layer_named(&mesh->pdata, CD_PROP_BOOL, "sharp_face"));
   blender::bke::mesh::normals_loop_custom_set(positions,
                                               edges,
                                               polys,
                                               loops,
                                               mesh->vert_normals(),
                                               poly_normals,
+                                              sharp_faces,
                                               sharp_edges,
                                               nos,
                                               clnors);
@@ -522,7 +526,8 @@ static Mesh *normalEditModifier_do(NormalEditModifierData *enmd,
     clnors = static_cast<short(*)[2]>(
         CustomData_get_layer_for_write(ldata, CD_CUSTOMLOOPNORMAL, loops.size()));
     loop_normals.reinitialize(loops.size());
-
+    const bool *sharp_faces = static_cast<const bool *>(
+        CustomData_get_layer_named(&result->pdata, CD_PROP_BOOL, "sharp_face"));
     blender::bke::mesh::normals_calc_loop(positions,
                                           edges,
                                           polys,
@@ -531,6 +536,7 @@ static Mesh *normalEditModifier_do(NormalEditModifierData *enmd,
                                           vert_normals,
                                           poly_normals,
                                           sharp_edges.span.data(),
+                                          sharp_faces,
                                           true,
                                           result->smoothresh,
                                           clnors,

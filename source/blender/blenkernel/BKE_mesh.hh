@@ -94,6 +94,7 @@ void normals_calc_loop(Span<float3> vert_positions,
                        Span<float3> vert_normals,
                        Span<float3> poly_normals,
                        const bool *sharp_edges,
+                       const bool *sharp_faces,
                        bool use_split_normals,
                        float split_angle,
                        short (*clnors_data)[2],
@@ -106,6 +107,7 @@ void normals_loop_custom_set(Span<float3> vert_positions,
                              Span<MLoop> loops,
                              Span<float3> vert_normals,
                              Span<float3> poly_normals,
+                             const bool *sharp_faces,
                              MutableSpan<bool> sharp_edges,
                              MutableSpan<float3> r_custom_loop_normals,
                              short (*r_clnors_data)[2]);
@@ -116,6 +118,7 @@ void normals_loop_custom_set_from_verts(Span<float3> vert_positions,
                                         Span<MLoop> loops,
                                         Span<float3> vert_normals,
                                         Span<float3> poly_normals,
+                                        const bool *sharp_faces,
                                         MutableSpan<bool> sharp_edges,
                                         MutableSpan<float3> r_custom_vert_normals,
                                         short (*r_clnors_data)[2]);
@@ -125,10 +128,13 @@ void normals_loop_custom_set_from_verts(Span<float3> vert_positions,
  *
  * Used when defining an empty custom loop normals data layer,
  * to keep same shading as with auto-smooth!
+ *
+ * \param sharp_faces: Optional array used to mark specific faces for sharp shading.
  */
 void edges_sharp_from_angle_set(Span<MPoly> polys,
                                 Span<MLoop> loops,
                                 Span<float3> poly_normals,
+                                const bool *sharp_faces,
                                 const float split_angle,
                                 MutableSpan<bool> sharp_edges);
 
