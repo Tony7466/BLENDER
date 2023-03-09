@@ -268,7 +268,13 @@ static void node_socket_add_replace(const bContext *C,
             nodeRemLink(ntree, link);
           }
 
-          node_socket_copy_default_value(sock_from, sock_prev);
+          /* NOTE: some properties have different (physical) meanings among different nodes, even
+           * when they share the same name; the values of these sockets should not be copied. For
+           * now a few special cases are made, we could implement some more sophisticated mechanism
+           * if necessary. */
+          if (!STREQ(sock_from->name, "Roughness")) {
+            node_socket_copy_default_value(sock_from, sock_prev);
+          }
         }
       }
     }
