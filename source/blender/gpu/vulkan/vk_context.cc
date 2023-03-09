@@ -5,7 +5,9 @@
  * \ingroup gpu
  */
 
+
 #include "vk_context.hh"
+#include "vk_debug.hh"
 
 #include "vk_backend.hh"
 #include "vk_framebuffer.hh"
@@ -31,6 +33,17 @@ VKContext::VKContext(void *ghost_window, void *ghost_context)
                          &vk_device_,
                          &vk_queue_family_,
                          &vk_queue_);
+
+  /*Load extended functions.*/
+  {
+    debug::init_vk_callbacks(vk_instance_);
+  }
+
+  if (vk_device_ == VK_NULL_HANDLE) {
+    GHOST_GetVulkanLogicalDevice(
+        (GHOST_ContextHandle)ghost_context, &vk_device_, &vk_queue_family_, &vk_queue_);
+  }
+
   init_physical_device_limits();
 
   /* Initialize the memory allocator. */
@@ -57,6 +70,7 @@ VKContext::VKContext(void *ghost_window, void *ghost_context)
 VKContext::~VKContext()
 {
   vmaDestroyAllocator(mem_allocator_);
+  debug::destroy_vk_callbacks();
 }
 
 void VKContext::init_physical_device_limits()

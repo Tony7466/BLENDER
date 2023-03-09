@@ -7,9 +7,9 @@
 
 #pragma once
 
+#include "BKE_global.h"
 #include "vk_common.hh"
 #include "gl_debug.hh"
-#include "GHOST_C-api.h"
 
 
 

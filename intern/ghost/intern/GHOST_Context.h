@@ -139,7 +139,7 @@ class GHOST_Context : public GHOST_IContext {
    * Get Vulkan handles for the given context.
    *
    * These handles are the same for a given context.
-   * Should should only be called when using a Vulkan context.
+   * Should only be called when using a Vulkan context.
    * Other contexts will not return any handles and leave the
    * handles where the parameters are referring to unmodified.
    *
@@ -165,6 +165,35 @@ class GHOST_Context : public GHOST_IContext {
   virtual GHOST_TSuccess getVulkanHandles(void * /*r_instance*/,
                                           void * /*r_physical_device*/,
                                           void * /*r_device*/,
+                                          uint32_t * /*r_graphic_queue_family*/,
+                                          void * /*r_queue*/) override
+  {
+    return GHOST_kFailure;
+  };
+
+  /**
+   * Get Vulkan handles for the given context.
+   *
+   * These handles are the same for a given context.
+   * Should only be called when using a Vulkan context.
+   * Other contexts will not return any handles and leave the
+   * handles where the parameters are referring to unmodified.
+   *
+   * \param r_device: After calling this function the VkDevice
+   *     referenced by this parameter will contain the VKDevice handle
+   *     of the context associated with the `context` parameter.
+   * \param r_graphic_queue_family: After calling this function the uint32_t
+   *     referenced by this parameter will contain the graphic queue family id
+   *     of the context associated with the `context` parameter.
+   * \param r_queue: After calling this function the VkQueue
+   *     referenced by this parameter will contain the VKQueue handle
+   *     of the context associated with the `context` parameter.
+   * \returns GHOST_kFailure when context isn't a Vulkan context.
+   *     GHOST_kSuccess when the context is a Vulkan context and the
+   *     handles have been set.
+   */
+
+  virtual GHOST_TSuccess getVulkanLogicalDevice( void * /*r_device*/,
                                           uint32_t * /*r_graphic_queue_family*/,
                                           void * /*r_queue*/) override
   {

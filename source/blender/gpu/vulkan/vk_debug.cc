@@ -22,7 +22,7 @@
 #include  "vk_debug.hh"
 #include  "vk_context.hh"
 
-#include  "GHOST_C-api.h"
+
 
 
 static CLG_LogRef LOG = {"gpu.debug.vulkan"};
@@ -466,20 +466,3 @@ void check_vk_resources(const char *info){};
 }  // namespace debug
 }  // namespace gpu
 }  // namespace blender
-
-/*
- * TODO:: Comment
- */
-void GHOST_VulkanInstanceLoad(void *m_instance)
-{
-  blender::gpu::debug::init_vk_callbacks(m_instance);
-};
-
-void GHOST_VulkanInstanceUnload()
-{
-  blender::gpu::debug::destroy_vk_callbacks();
-}
-
-
-
-

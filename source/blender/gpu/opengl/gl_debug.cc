@@ -57,25 +57,7 @@ static void APIENTRY debug_callback(GLenum /*source*/,
                                     const GLchar *message,
                                     const GLvoid * /*userParm*/)
 {
-  if (ELEM(type, GL_DEBUG_TYPE_PUSH_GROUP, GL_DEBUG_TYPE_POP_GROUP)) {
-    /* The debug layer will emit a message each time a debug group is pushed or popped.
-     * We use that for easy command grouping inside frame analyzer tools. */
-    return;
-  }
 
-  /* NOTE: callback function can be triggered during before the platform is initialized.
-   *       In this case invoking `GPU_type_matches` would fail and
-   *       therefore the message is checked before the platform matching. */
-  if (TRIM_NVIDIA_BUFFER_INFO && STRPREFIX(message, "Buffer detailed info") &&
-      GPU_type_matches(GPU_DEVICE_NVIDIA, GPU_OS_ANY, GPU_DRIVER_OFFICIAL)) {
-    /** Suppress buffer infos flooding the output. */
-    return;
-  }
-
-  if (TRIM_SHADER_STATS_INFO && STRPREFIX(message, "Shader Stats")) {
-    /** Suppress buffer infos flooding the output. */
-    return;
-  }
 
   const bool use_color = CLG_color_support_get(&LOG);
 

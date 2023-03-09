@@ -1251,7 +1251,7 @@ void GHOST_GetVulkanCommandBuffer(GHOST_ContextHandle context, void *r_command_b
  * Gets the Vulkan back-buffer related resource handles associated with the Vulkan context.
  * Needs to be called after each swap event as the back-buffer will change.
  *
- * Should should only be called when using a Vulkan context with an active swap chain.
+ * Should only be called when using a Vulkan context with an active swap chain.
  * Other contexts will not return any handles and leave the
  * handles where the parameters are referring to unmodified.
  *
@@ -1279,19 +1279,30 @@ void GHOST_GetVulkanBackbuffer(GHOST_WindowHandle windowhandle,
                                void *r_extent,
                                uint32_t *r_fb_id);
 
-#  ifdef VULKAN_H_
-
-
 
 /**
- * Implement the Load function externally for flexibility in defining Vulkan functions.
- **/
-extern void GHOST_VulkanInstanceLoad(void *r_instance);
-
-extern void GHOST_VulkanInstanceUnload();
-
-
-#endif
+ * Get Vulkan logical device handles for the given context.
+ *
+ * When an instance has been created and the logical device is VK_NULL_HANDLE,
+ * the device is generated.
+ * If the device has already been generated, return it immediately.
+ *
+ * \param context: GHOST context handle of a vulkan context to
+ *     get the Vulkan handles from.
+ * \param r_device: After calling this function the VkDevice
+ *     referenced by this parameter will contain the VKDevice handle
+ *     of the context associated with the `context` parameter.
+ * \param r_graphic_queue_family: After calling this function the uint32_t
+ *     referenced by this parameter will contain the graphic queue family id
+ *     of the context associated with the `context` parameter.
+ * \param r_queue: After calling this function the VkQueue
+ *     referenced by this parameter will contain the VKQueue handle
+ *     of the context associated with the `context` parameter.
+ */
+void GHOST_GetVulkanLogicalDevice(GHOST_ContextHandle context,
+                                         void *r_device,
+                                         uint32_t *r_graphic_queue_family,
+                                         void *r_queue);
 #endif
 
 #ifdef __cplusplus

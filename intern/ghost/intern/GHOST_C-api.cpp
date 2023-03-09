@@ -1228,4 +1228,14 @@ void GHOST_GetVulkanBackbuffer(GHOST_WindowHandle windowhandle,
   window->getVulkanBackbuffer(image, framebuffer, render_pass, extent, fb_id);
 }
 
+void GHOST_GetVulkanLogicalDevice(GHOST_ContextHandle contexthandle,
+                                         void *r_device,
+                                         uint32_t *r_graphic_queue_family,
+                                         void *r_queue){
+
+  GHOST_IContext *context = (GHOST_IContext *)contexthandle;
+  context->getVulkanLogicalDevice(r_device, r_graphic_queue_family, r_queue);
+};
+
+
 #endif /* WITH_VULKAN_BACKEND */

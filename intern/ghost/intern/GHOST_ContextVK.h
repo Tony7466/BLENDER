@@ -115,6 +115,15 @@ class GHOST_ContextVK : public GHOST_Context {
                                   void *r_device,
                                   uint32_t *r_graphic_queue_family,
                                   void *r_queue);
+  /**
+   * Gets the Vulkan  logical  device and queue.
+   * If  device is VK_NULL_HANDLE, generate it.
+   * \return  A boolean success indicator.
+   */
+  GHOST_TSuccess getVulkanLogicalDevice(void *r_device,
+                                        uint32_t *r_graphic_queue_family,
+                                        void *r_queue);
+
   GHOST_TSuccess getVulkanCommandBuffer(void *r_command_buffer);
 
   /**
@@ -144,6 +153,9 @@ class GHOST_ContextVK : public GHOST_Context {
   {
     return GHOST_kFailure;
   };
+
+
+
 
  private:
 #ifdef _WIN32
@@ -188,6 +200,11 @@ class GHOST_ContextVK : public GHOST_Context {
   std::vector<VkSemaphore> m_render_finished_semaphores;
   std::vector<VkFence> m_in_flight_fences;
   std::vector<VkFence> m_in_flight_images;
+
+  std::vector<const char *>  m_extensions_device;
+  std::vector<const char *>  m_layers_enabled;
+  bool m_use_window_surface;
+
   /** frame modulo swapchain_len. Used as index for sync objects. */
   int m_currentFrame = 0;
   /** Image index in the swapchain. Used as index for render objects. */
@@ -203,4 +220,5 @@ class GHOST_ContextVK : public GHOST_Context {
   GHOST_TSuccess createGraphicsCommandBuffers();
   GHOST_TSuccess createGraphicsCommandBuffer();
   GHOST_TSuccess recordCommandBuffers();
+
 };

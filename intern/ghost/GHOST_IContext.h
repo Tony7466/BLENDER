@@ -72,6 +72,30 @@ class GHOST_IContext {
                                           void *r_device,
                                           uint32_t *r_graphic_queue_family,
                                           void *r_queue) = 0;
+  /**
+   * Get Vulkan handles for the given context.
+   *
+   * When an instance has been created and the logical device is VK_NULL_HANDLE,
+   * the device is generated.
+   * If the device has already been generated, return it immediately.
+   *
+   * \param r_device: After calling this function the VkDevice
+   *     referenced by this parameter will contain the VKDevice handle
+   *     of the context associated with the `context` parameter.
+   * \param r_graphic_queue_family: After calling this function the uint32_t
+   *     referenced by this parameter will contain the graphic queue family id
+   *     of the context associated with the `context` parameter.
+   * \param r_queue: After calling this function the VkQueue
+   *     referenced by this parameter will contain the VKQueue handle
+   *     of the context associated with the `context` parameter.
+   * \returns GHOST_kFailure when context isn't a Vulkan context.
+   *     GHOST_kSuccess when the context is a Vulkan context and the
+   *     handles have been set.
+   */
+
+  virtual GHOST_TSuccess getVulkanLogicalDevice(void *r_device,
+                                          uint32_t *r_graphic_queue_family,
+                                          void *r_queue) = 0;
 
   /**
    * Return Vulkan command buffer.
