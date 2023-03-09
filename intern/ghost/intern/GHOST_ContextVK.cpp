@@ -405,13 +405,15 @@ static bool checkLayerSupport(vector<VkLayerProperties> &layers_available, const
 
 static void enableLayer(vector<VkLayerProperties> &layers_available,
                         vector<const char *> &layers_enabled,
-                        const char *layer_name)
+                        const char *layer_name,
+                        const bool debug)
 {
   if (checkLayerSupport(layers_available, layer_name)) {
     layers_enabled.push_back(layer_name);
   }
-  else {
-    fprintf(stderr, "Error: %s not supported.\n", layer_name);
+  else if (debug) {
+    fprintf(
+        stderr, "Warning: Layer requested, but not supported by the platform. [%s]\n", layer_name);
   }
 }
 
