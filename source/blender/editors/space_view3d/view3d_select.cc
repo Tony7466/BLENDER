@@ -3088,7 +3088,7 @@ static int view3d_select_exec(bContext *C, wmOperator *op)
   Object *obedit = CTX_data_edit_object(C);
   Object *obact = CTX_data_active_object(C);
 
-  if (obact && obact->type == OB_GPENCIL && GPENCIL_ANY_MODE((bGPdata *)obact->data)) {
+  if (obact && obact->type == OB_GPENCIL_LEGACY && GPENCIL_ANY_MODE((bGPdata *)obact->data)) {
     /* Prevent acting on Grease Pencil (when not in object mode), it implements its own selection
      * operator in other modes. We might still fall trough to here (because that operator uses
      * OPERATOR_PASS_THROUGH to make tweak work) but if we don't stop here code below assumes we
