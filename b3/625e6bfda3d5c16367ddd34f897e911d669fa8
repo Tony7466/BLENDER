@@ -1,1 +1,1 @@
-Referenced by issue #105601, Attaching links from tha same node to `Join Geometry` node leads to only the last link being draw.
+Referenced by issue #105601, Regression: Attaching links from tha same node to `Join Geometry` node leads to only the last link being draw.
