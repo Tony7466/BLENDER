@@ -333,31 +333,26 @@ struct PBVHBatches {
           foreach_faces,
       GPUVertBufRaw *access)
   {
-    float3 fno;
-    short no[3];
-    int last_poly = -1;
     const bool *sharp_faces = static_cast<const bool *>(
         CustomData_get_layer_named(args->pdata, CD_PROP_BOOL, "sharp_face"));
+    short no[3];
+    int last_poly = -1;
+    bool flat = false;
 
     foreach_faces([&](int /*buffer_i*/, int /*tri_i*/, int vertex_i, const MLoopTri *tri) {
-      bool smooth = false;
       if (tri->poly != last_poly) {
         last_poly = tri->poly;
-
-        if (sharp_faces && sharp_faces[tri->poly]) {
-          smooth = true;
+        flat = sharp_faces && sharp_faces[tri->poly];
+        if (flat) {
           const MPoly &poly = args->polys[tri->poly];
-          fno = blender::bke::mesh::poly_normal_calc(
+          const float3 fno = blender::bke::mesh::poly_normal_calc(
               {reinterpret_cast<const float3 *>(args->vert_positions), args->mesh_verts_num},
               {&args->mloop[poly.loopstart], poly.totloop});
           normal_float_to_short_v3(no, fno);
         }
-        else {
-          smooth = false;
-        }
       }
 
-      if (!smooth) {
+      if (!flat) {
         normal_float_to_short_v3(no, args->vert_normals[vertex_i]);
       }
 
