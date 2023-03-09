@@ -38,12 +38,6 @@ const EnumPropertyItem rna_enum_curve_normal_modes[] = {
      "Z Up",
      "Calculate normals perpendicular to the Z axis and the curve tangent. If a series of points "
      "is vertical, the X axis is used"},
-    {NORMAL_MODE_CURVATURE_VECTOR,
-     "CURVATURE_VECTOR",
-     ICON_NONE,
-     "Curvature Vector",
-     "Calculate normals that are linearly interpolated between minimal twist normals and local "
-     "curvature vectors."},
     {0, NULL, 0, NULL, NULL},
 };
 

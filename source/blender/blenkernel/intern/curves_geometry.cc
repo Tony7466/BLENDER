@@ -32,7 +32,6 @@ static const std::string ATTR_CURVE_TYPE = "curve_type";
 static const std::string ATTR_CYCLIC = "cyclic";
 static const std::string ATTR_RESOLUTION = "resolution";
 static const std::string ATTR_NORMAL_MODE = "normal_mode";
-static const std::string ATTR_CURVATURE_VECTOR_WEIGHT = "curvature_vector_weight";
 static const std::string ATTR_HANDLE_TYPE_LEFT = "handle_type_left";
 static const std::string ATTR_HANDLE_TYPE_RIGHT = "handle_type_right";
 static const std::string ATTR_HANDLE_POSITION_LEFT = "handle_left";
@@ -363,15 +362,6 @@ MutableSpan<int8_t> CurvesGeometry::normal_mode_for_write()
   return get_mutable_attribute<int8_t>(*this, ATTR_DOMAIN_CURVE, ATTR_NORMAL_MODE);
 }
 
-VArray<float> CurvesGeometry::curvature_vector_weight() const
-{
-  return get_varray_attribute<float>(*this, ATTR_DOMAIN_CURVE, ATTR_CURVATURE_VECTOR_WEIGHT, 0.8f);
-}
-MutableSpan<float> CurvesGeometry::curvature_vector_weight_for_write()
-{
-  return get_mutable_attribute<float>(*this, ATTR_DOMAIN_CURVE, ATTR_CURVATURE_VECTOR_WEIGHT);
-}
-
 VArray<float> CurvesGeometry::tilt() const
 {
   return get_varray_attribute<float>(*this, ATTR_DOMAIN_POINT, ATTR_TILT, 0.0f);
@@ -691,35 +681,19 @@ Span<float3> CurvesGeometry::evaluated_tangents() const
 {
   const bke::CurvesGeometryRuntime &runtime = *this->runtime;
   runtime.evaluated_tangent_cache.ensure([&](Vector<float3> &r_data) {
-    const OffsetIndices<int> points_by_curve = this->points_by_curve();
     const OffsetIndices<int> evaluated_points_by_curve = this->evaluated_points_by_curve();
     const Span<float3> evaluated_positions = this->evaluated_positions();
-    const Span<float3> positions = this->positions();
-    const VArray<int> resolution = this->resolution();
     const VArray<bool> cyclic = this->cyclic();
-    const VArray<int8_t> types = this->curve_types();
 
     r_data.resize(this->evaluated_points_num());
     MutableSpan<float3> tangents = r_data;
 
     threading::parallel_for(this->curves_range(), 128, [&](IndexRange curves_range) {
       for (const int curve_index : curves_range) {
-        const IndexRange points = points_by_curve[curve_index];
         const IndexRange evaluated_points = evaluated_points_by_curve[curve_index];
-        switch (types[curve_index]) {
-          case CURVE_TYPE_CATMULL_ROM:
-            /* NOTE: this causes test geo_node_curves_test_sample_curves to fail. */
-            curves::catmull_rom::calculate_tangents(positions.slice(points),
-                                                    cyclic[curve_index],
-                                                    resolution[curve_index],
-                                                    tangents.slice(evaluated_points));
-            break;
-          default:
-            curves::poly::calculate_tangents(evaluated_positions.slice(evaluated_points),
-                                             cyclic[curve_index],
-                                             tangents.slice(evaluated_points));
-            break;
-        }
+        curves::poly::calculate_tangents(evaluated_positions.slice(evaluated_points),
+                                         cyclic[curve_index],
+                                         tangents.slice(evaluated_points));
       }
     });
 
@@ -815,8 +789,6 @@ Span<float3> CurvesGeometry::evaluated_normals() const
     const OffsetIndices<int> evaluated_points_by_curve = this->evaluated_points_by_curve();
     const VArray<int8_t> types = this->curve_types();
     const VArray<bool> cyclic = this->cyclic();
-    const Span<float3> positions = this->positions();
-    const VArray<float> weight = this->curvature_vector_weight();
     const VArray<int8_t> normal_mode = this->normal_mode();
     const VArray<int> resolution = this->resolution();
     const VArray<int8_t> nurbs_orders = this->nurbs_orders();
@@ -840,7 +812,6 @@ Span<float3> CurvesGeometry::evaluated_normals() const
       Vector<float> evaluated_tilts;
 
       for (const int curve_index : curves_range) {
-        const IndexRange points = points_by_curve[curve_index];
         const IndexRange evaluated_points = evaluated_points_by_curve[curve_index];
         switch (normal_mode[curve_index]) {
           case NORMAL_MODE_Z_UP:
@@ -851,25 +822,6 @@ Span<float3> CurvesGeometry::evaluated_normals() const
             curves::poly::calculate_normals_minimum(evaluated_tangents.slice(evaluated_points),
                                                     cyclic[curve_index],
                                                     evaluated_normals.slice(evaluated_points));
-            break;
-          case NORMAL_MODE_CURVATURE_VECTOR:
-            switch (types[curve_index]) {
-              case CURVE_TYPE_CATMULL_ROM:
-                curves::catmull_rom::calculate_normals(positions.slice(points),
-                                                       cyclic[curve_index],
-                                                       resolution[curve_index],
-                                                       weight[curve_index],
-                                                       evaluated_normals.slice(evaluated_points));
-                break;
-              default:
-                const Span<float3> evaluated_positions = this->evaluated_positions();
-                curves::poly::calculate_curvature_vectors(
-                    evaluated_positions.slice(evaluated_points),
-                    evaluated_tangents.slice(evaluated_points),
-                    cyclic[curve_index],
-                    evaluated_normals.slice(evaluated_points));
-                break;
-            }
             break;
         }
 

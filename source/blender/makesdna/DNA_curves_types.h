@@ -86,7 +86,6 @@ typedef enum NormalMode {
    * is vertical, the X axis is used.
    */
   NORMAL_MODE_Z_UP = 1,
-  NORMAL_MODE_CURVATURE_VECTOR = 2,
 } NormalMode;
 
 /**

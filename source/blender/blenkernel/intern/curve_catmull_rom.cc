@@ -8,8 +8,6 @@
 
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
-#include "BLI_math_rotation_legacy.hh"
-#include "BLI_math_vector.hh"
 
 namespace blender::bke::curves::catmull_rom {
 
@@ -35,36 +33,13 @@ void calculate_basis(const float parameter, float4 &r_weights)
   r_weights[3] = -s * t * t;
 }
 
-/* Adapted from Cycles #catmull_rom_basis_derivative function. */
-void calculate_basis_derivative(const float parameter, float4 &r_weights)
-{
-  const float t = parameter;
-  const float s = 1.0f - parameter;
-  r_weights[0] = s * (2.0f * t - s);
-  r_weights[1] = t * (9.0f * t - 10.0f);
-  r_weights[2] = -s * (9.0f * s - 10.0f);
-  r_weights[3] = t * (t - 2.0f * s);
-}
-
-/* Adapted from Cycles #catmull_rom_basis_derivative2 function. */
-void calculate_basis_derivative2(const float parameter, float4 &r_weights)
-{
-  const float t = parameter;
-  r_weights[0] = -6.0f * t + 4.0f;
-  r_weights[1] = 18.0f * t - 10.0f;
-  r_weights[2] = -18.0f * t + 8.0f;
-  r_weights[3] = 6.0f * t - 2.0f;
-}
-
 template<typename T>
-static void evaluate_segment(
-    const int order, const T &a, const T &b, const T &c, const T &d, MutableSpan<T> dst)
+static void evaluate_segment(const T &a, const T &b, const T &c, const T &d, MutableSpan<T> dst)
 {
   const float step = 1.0f / dst.size();
   dst.first() = b;
-  IndexRange index_range = (order == 0) ? dst.index_range().drop_front(1) : dst.index_range();
-  for (const int i : index_range) {
-    dst[i] = interpolate(order, a, b, c, d, i * step);
+  for (const int i : dst.index_range().drop_front(1)) {
+    dst[i] = interpolate<T>(a, b, c, d, i * step);
   }
 }
 
@@ -72,11 +47,9 @@ static void evaluate_segment(
  * \param range_fn: Returns an index range describing where in the #dst span each segment should be
  * evaluated to, and how many points to add to it. This is used to avoid the need to allocate an
  * actual offsets array in typical evaluation use cases where the resolution is per-curve.
- * \param order: The order of the derivative. order == 0 is the default.
  */
 template<typename T, typename RangeForSegmentFn>
-static void interpolate_to_evaluated(const int order,
-                                     const Span<T> src,
+static void interpolate_to_evaluated(const Span<T> src,
                                      const bool cyclic,
                                      const RangeForSegmentFn &range_fn,
                                      MutableSpan<T> dst)
@@ -88,27 +61,20 @@ static void interpolate_to_evaluated(const int order,
    * - Finally evaluate all of the segments in the middle in parallel. */
 
   if (src.size() == 1) {
-    switch (order) {
-      case 0:
-        dst.first() = src.first();
-        break;
-      default:
-        dst.first() = T(0);
-        break;
-    }
+    dst.first() = src.first();
     return;
   }
 
   const IndexRange first = range_fn(0);
 
   if (src.size() == 2) {
-    evaluate_segment(order, src.first(), src.first(), src.last(), src.last(), dst.slice(first));
+    evaluate_segment(src.first(), src.first(), src.last(), src.last(), dst.slice(first));
     if (cyclic) {
       const IndexRange last = range_fn(1);
-      evaluate_segment(order, src.last(), src.last(), src.first(), src.first(), dst.slice(last));
+      evaluate_segment(src.last(), src.last(), src.first(), src.first(), dst.slice(last));
     }
     else {
-      dst.last() = interpolate(order, src.first(), src.first(), src.last(), src.last(), 1);
+      dst.last() = src.last();
     }
     return;
   }
@@ -116,19 +82,17 @@ static void interpolate_to_evaluated(const int order,
   const IndexRange second_to_last = range_fn(src.index_range().last(1));
   const IndexRange last = range_fn(src.index_range().last());
   if (cyclic) {
-    evaluate_segment(order, src.last(), src[0], src[1], src[2], dst.slice(first));
-    evaluate_segment(
-        order, src.last(2), src.last(1), src.last(), src.first(), dst.slice(second_to_last));
-    evaluate_segment(order, src.last(1), src.last(), src[0], src[1], dst.slice(last));
+    evaluate_segment(src.last(), src[0], src[1], src[2], dst.slice(first));
+    evaluate_segment(src.last(2), src.last(1), src.last(), src.first(), dst.slice(second_to_last));
+    evaluate_segment(src.last(1), src.last(), src[0], src[1], dst.slice(last));
   }
   else {
-    evaluate_segment(order, src[0], src[0], src[1], src[2], dst.slice(first));
-    evaluate_segment(
-        order, src.last(2), src.last(1), src.last(), src.last(), dst.slice(second_to_last));
+    evaluate_segment(src[0], src[0], src[1], src[2], dst.slice(first));
+    evaluate_segment(src.last(2), src.last(1), src.last(), src.last(), dst.slice(second_to_last));
     /* For non-cyclic curves, the last segment should always just have a single point. We could
      * assert that the size of the provided range is 1 here, but that would require specializing
      * the #range_fn implementation for the last point, which may have a performance cost. */
-    dst.last() = interpolate(order, src.last(2), src.last(1), src.last(), src.last(), 1);
+    dst.last() = src.last();
   }
 
   /* Evaluate every segment that isn't the first or last. */
@@ -136,14 +100,13 @@ static void interpolate_to_evaluated(const int order,
   threading::parallel_for(inner_range, 512, [&](IndexRange range) {
     for (const int i : range) {
       const IndexRange segment = range_fn(i);
-      evaluate_segment(order, src[i - 1], src[i], src[i + 1], src[i + 2], dst.slice(segment));
+      evaluate_segment(src[i - 1], src[i], src[i + 1], src[i + 2], dst.slice(segment));
     }
   });
 }
 
 template<typename T>
-static void interpolate_to_evaluated(const int order,
-                                     const Span<T> src,
+static void interpolate_to_evaluated(const Span<T> src,
                                      const bool cyclic,
                                      const int resolution,
                                      MutableSpan<T> dst)
@@ -151,7 +114,6 @@ static void interpolate_to_evaluated(const int order,
 {
   BLI_assert(dst.size() == calculate_evaluated_num(src.size(), cyclic, resolution));
   interpolate_to_evaluated(
-      order,
       src,
       cyclic,
       [resolution](const int segment_i) -> IndexRange {
@@ -168,7 +130,6 @@ static void interpolate_to_evaluated(const Span<T> src,
 
 {
   interpolate_to_evaluated(
-      0,
       src,
       cyclic,
       [evaluated_offsets](const int segment_i) -> IndexRange {
@@ -184,7 +145,7 @@ void interpolate_to_evaluated(const GSpan src,
 {
   attribute_math::convert_to_static_type(src.type(), [&](auto dummy) {
     using T = decltype(dummy);
-    interpolate_to_evaluated(0, src.typed<T>(), cyclic, resolution, dst.typed<T>());
+    interpolate_to_evaluated(src.typed<T>(), cyclic, resolution, dst.typed<T>());
   });
 }
 
@@ -197,198 +158,6 @@ void interpolate_to_evaluated(const GSpan src,
     using T = decltype(dummy);
     interpolate_to_evaluated(src.typed<T>(), cyclic, evaluated_offsets, dst.typed<T>());
   });
-}
-
-/* Calculate analytical tangents from the first derivative. */
-void calculate_tangents(const Span<float3> positions,
-                        const bool is_cyclic,
-                        const int resolution,
-                        MutableSpan<float3> evaluated_tangents)
-{
-  if (evaluated_tangents.size() == 1) {
-    evaluated_tangents[0] = float3(0.0f, 0.0f, 1.0f);
-    return;
-  }
-
-  interpolate_to_evaluated(1, positions, is_cyclic, resolution, evaluated_tangents);
-
-  for (const int i : evaluated_tangents.index_range()) {
-    evaluated_tangents[i] = math::normalize(evaluated_tangents[i]);
-  }
-}
-
-/* Use a combination of Newton iterations and bisection to find the root in the monotonic interval
- * [x_begin, x_end], given precision. Idea taken from the paper High-Performance Polynomial Root
- * Finding for Graphics by Cem Yuksel, HPG 2022. */
-/* TODO: move this function elsewhere as a utility function? Also test corner cases. */
-static float find_root_newton_bisection(float x_begin,
-                                        float x_end,
-                                        std::function<float(float)> eval,
-                                        std::function<float(float)> eval_derivative,
-                                        const float precision)
-{
-  float x_mid = 0.5f * (x_begin + x_end);
-
-  float y_begin = eval(x_begin);
-  if (y_begin == 0.0f) {
-    return x_begin;
-  }
-
-  float y_end = eval(x_end);
-  if (y_end == 0.0f) {
-    return x_end;
-  }
-
-  BLI_assert(signf(y_begin) != signf(eval(x_end)));
-
-  while (x_mid - x_begin > precision) {
-    const float y_mid = eval(x_mid);
-    if (signf(y_begin) == signf(y_mid)) {
-      x_begin = x_mid;
-      y_begin = y_mid;
-    }
-    else {
-      x_end = x_mid;
-    }
-    const float x_newton = x_mid - y_mid / eval_derivative(x_mid);
-    x_mid = (x_newton > x_begin && x_newton < x_end) ? x_newton : 0.5f * (x_begin + x_end);
-  }
-  return x_mid;
-}
-
-/* Calculate normals by minimizing the potential energy due to twist and bending. Global
- * optimization would involve integration and is too costly. Instead, we start with the first
- * curvature vector and propogate it along the curve. */
-void calculate_normals(const Span<float3> positions,
-                       const bool is_cyclic,
-                       const int resolution,
-                       const float weight_bending,
-                       MutableSpan<float3> evaluated_normals)
-{
-  if (evaluated_normals.size() == 1) {
-    evaluated_normals[0] = float3(1.0f, 0.0f, 0.0f);
-    return;
-  }
-
-  const float weight_twist = 1.0f - clamp_f(weight_bending, 0.0f, 1.0f);
-
-  Vector<float3> first_derivatives_(evaluated_normals.size());
-  MutableSpan<float3> first_derivatives = first_derivatives_;
-  interpolate_to_evaluated(1, positions, is_cyclic, resolution, first_derivatives);
-
-  Vector<float3> second_derivatives_(evaluated_normals.size());
-  MutableSpan<float3> second_derivatives = second_derivatives_;
-  if (weight_twist < 1.0f) {
-    interpolate_to_evaluated(2, positions, is_cyclic, resolution, second_derivatives);
-  }
-  else {
-    /* TODO: Actually only the first entry needs to be evaluated. */
-    interpolate_to_evaluated(
-        2,
-        positions,
-        is_cyclic,
-        [resolution](const int segment_i) -> IndexRange {
-          return {segment_i * resolution, 1};
-        },
-        second_derivatives);
-  }
-
-  /* Hair-specific values, taken from Table 9.5 in book Chemical and Physical Behavior of Human
-   * Hair by Clarence R. Robbins, 5th edition. Unit: GPa. */
-  // const float youngs_modulus = 3.89f;
-  // const float shear_modulus = 0.89f;
-  // /* Assuming major axis a = 1. */
-  // const float aspect_ratio = 0.5f; /* Minimal realistic value. */
-  // const float aspect_ratio_squared = aspect_ratio * aspect_ratio;
-  // const float torsion_constant = M_PI * aspect_ratio_squared * aspect_ratio /
-  //                                (1.0f + aspect_ratio_squared);
-  // const float moment_of_inertia_coefficient = M_PI * aspect_ratio * 0.25f *
-  //                                             (1.0f - aspect_ratio_squared);
-
-  // const float weight_bending = 0.5f * youngs_modulus * moment_of_inertia_coefficient;
-  // const float weight_twist = 0.5f * shear_modulus * torsion_constant;
-
-  const float dt = 1.0f / resolution;
-  /* Compute evaluated_normals. */
-  for (const int i : evaluated_normals.index_range()) {
-    /* B = r' x r'' */
-    const float3 binormal = math::cross(first_derivatives[i], second_derivatives[i]);
-    /* N = B x T */
-    /* TODO: Catmull-Rom is not C2 continuous. Some smoothening maybe? */
-    float3 curvature_vector = math::normalize(math::cross(binormal, first_derivatives[i]));
-
-    const float first_derivative_norm = math::length(first_derivatives[i]);
-    const float curvature = math::length(binormal) / pow3f(first_derivative_norm);
-
-    if (i == 0) {
-      /* TODO: Does it make sense to propogate from where the curvature is the largest? */
-      evaluated_normals[i] = curvature > 1e-4f ? curvature_vector : float3(1.0f, 0.0f, 0.0f);
-      continue;
-    }
-
-    if (weight_twist == 0.0f) {
-      if (angle_normalized_v3v3(curvature_vector, evaluated_normals[i - 1]) < 0) {
-        curvature_vector = -curvature_vector;
-      }
-      evaluated_normals[i] = curvature_vector;
-      continue;
-    }
-
-    const float3 last_tangent = math::normalize(first_derivatives[i - 1]);
-    const float3 current_tangent = first_derivatives[i] / first_derivative_norm;
-    const float angle = angle_normalized_v3v3(last_tangent, current_tangent);
-    const float3 last_normal = evaluated_normals[i - 1];
-    const float3 minimal_twist_normal =
-        angle > 0 && first_derivative_norm > 0 ?
-            math::rotate_direction_around_axis(
-                last_normal, math::normalize(math::cross(last_tangent, current_tangent)), angle) :
-            last_normal;
-
-    /* Arc length depends on the unit, assuming meter. */
-    const float arc_length = first_derivative_norm * dt;
-
-    const float coefficient_twist = weight_twist / arc_length;
-    const float coefficient_bending = weight_bending * arc_length * curvature * curvature;
-
-    if (weight_twist == 1.0f || !(coefficient_bending > 0)) {
-      evaluated_normals[i] = minimal_twist_normal;
-      continue;
-    }
-
-    /* Angle between the curvature vector and the minimal twist normal. */
-    float theta_t = angle_normalized_v3v3(curvature_vector, minimal_twist_normal);
-    if (theta_t > M_PI_2) {
-      curvature_vector = -curvature_vector;
-      theta_t = M_PI - theta_t;
-    }
-
-    /* Minimizing the total potential energy U(θ) = wt * (θ - θt)^2 + wb * sin^2(θ) by solving the
-     * equation: 2 * wt * (θ - θt)  + wb * sin(2θ) = 0, with θ being the angle between the computed
-     * normal and the curvature vector. */
-    const float theta_begin = 0.0f;
-    const float theta_end = coefficient_twist + coefficient_bending * cosf(2.0f * theta_t) < 0 ?
-                                0.5f * acosf(-coefficient_twist / coefficient_bending) :
-                                theta_t;
-
-    const float theta = find_root_newton_bisection(
-        theta_begin,
-        theta_end,
-        [coefficient_bending, coefficient_twist, theta_t](float t) -> float {
-          return 2.0f * coefficient_twist * (t - theta_t) + coefficient_bending * sinf(2.0f * t);
-        },
-        [coefficient_bending, coefficient_twist](float t) -> float {
-          return 2.0f * (coefficient_twist + coefficient_bending * cosf(2.0f * t));
-        },
-        1e-4f);
-
-    const float3 axis = math::dot(current_tangent,
-                                  math::cross(curvature_vector, minimal_twist_normal)) > 0 ?
-                            current_tangent :
-                            -current_tangent;
-    evaluated_normals[i] = math::rotate_direction_around_axis(curvature_vector, axis, theta);
-  }
-
-  /* TODO: correct normals along the cyclic curve. */
 }
 
 }  // namespace blender::bke::curves::catmull_rom
