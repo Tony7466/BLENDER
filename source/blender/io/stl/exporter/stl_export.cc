@@ -63,28 +63,13 @@ void exporter_main(bContext *C, const STLExportParams &export_params)
                      BKE_object_get_evaluated_mesh(&export_object_eval_) :
                      BKE_object_get_pre_modified_mesh(&export_object_eval_);
 
-    BMeshCreateParams bm_create_params{};
-    bm_create_params.use_toolflags = false;
-
-    BMeshFromMeshParams bm_convert_params{};
-    /* We need to calculate face normals, otherwise #BKE_mesh_from_bmesh_for_eval_nomain fails due
-     * to an assertion in BMesh code */
-    bm_convert_params.calc_face_normal = true;
-    bm_convert_params.calc_vert_normal = false;
-
-    BMesh *bmesh = BKE_mesh_to_bmesh_ex(mesh, &bm_create_params, &bm_convert_params);
-    BM_mesh_triangulate(bmesh, 0, 3, 4, false, nullptr, nullptr, nullptr);
-    Mesh *triangulated_mesh = BKE_mesh_from_bmesh_for_eval_nomain(bmesh, nullptr, mesh);
-    BM_mesh_free(bmesh);
-
     // Write triangles
-    const auto loops = triangulated_mesh->loops();
-    for (const auto &poly : triangulated_mesh->polys()) {
-      const Span<MLoop> poly_loops = loops.slice(poly.loopstart, poly.totloop);
+    auto loops = mesh->loops();
+    for (const auto &loop_tri : mesh->looptris()) {
       Triangle t{};
-      for (int i = 0; i < poly_loops.size(); i++) {
+      for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
-          t.vertices[i][j] = triangulated_mesh->vert_positions()[poly_loops[i].v][j];
+          t.vertices[i][j] = mesh->vert_positions()[loops[loop_tri.tri[i]].v][j];
         }
       }
       writer->write_triangle(&t);
