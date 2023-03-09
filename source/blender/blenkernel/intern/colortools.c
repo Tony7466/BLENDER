@@ -261,6 +261,7 @@ void BKE_curvemap_reset(CurveMap *cuma, const rctf *clipr, int preset, int slope
 
   switch (preset) {
     case CURVE_PRESET_LINE:
+    case CURVE_PRESET_CONSTANT_MEDIAN:
       cuma->totpoint = 2;
       break;
     case CURVE_PRESET_SHARP:
@@ -301,6 +302,12 @@ void BKE_curvemap_reset(CurveMap *cuma, const rctf *clipr, int preset, int slope
         cuma->curve[0].flag |= CUMA_HANDLE_VECTOR;
         cuma->curve[1].flag |= CUMA_HANDLE_VECTOR;
       }
+      break;
+    case CURVE_PRESET_CONSTANT_MEDIAN:
+      cuma->curve[0].x = clipr->xmin;
+      cuma->curve[0].y = (clipr->ymin + clipr->ymax) / 2.0f;
+      cuma->curve[1].x = clipr->xmax;
+      cuma->curve[1].y = (clipr->ymin + clipr->ymax) / 2.0f;
       break;
     case CURVE_PRESET_SHARP:
       cuma->curve[0].x = 0;
