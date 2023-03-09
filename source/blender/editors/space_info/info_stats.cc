@@ -25,6 +25,7 @@
 #include "BLI_listbase.h"
 #include "BLI_math.h"
 #include "BLI_string.h"
+#include "BLI_timecode.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -652,16 +653,16 @@ static const char *info_statusbar_string(Main *bmain,
     if (info[0]) {
       ofs += BLI_snprintf_rlen(info + ofs, len - ofs, " | ");
     }
+    const int relative_current_frame = (scene->r.cfra - scene->r.sfra) + 1;
     const int frame_count = (scene->r.efra - scene->r.sfra) + 1;
-    const float fps = (((float)scene->r.frs_sec) / (float)scene->r.frs_sec_base);
-    const float duration = frame_count / fps;
-    const int duration_mins = (int)(duration / 60);
-    const float duration_secs = duration - (duration_mins * 60);
+    char timecode[32];
+    BLI_timecode_string_from_time(
+        timecode, sizeof(timecode), -2, FRA2TIME(frame_count), FPS, U.timecode_style);
     ofs += BLI_snprintf_rlen(info + ofs,
                              len - ofs,
-                             TIP_("Scene Duration: %i:%05.2f | Frame Count: %i"),
-                             duration_mins,
-                             duration_secs,
+                             TIP_("Duration: %s (Frame %i/%i)"),
+                             timecode,
+                             relative_current_frame,
                              frame_count);
   }
 
