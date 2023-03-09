@@ -239,7 +239,7 @@ template<typename T>
 
   /* Move z-axis to face-normal. */
   const Vec3T z_axis = normal;
-  const Vec3T nor = normalize(Vec3T(z_axis.y, -z_axis.x, T(0)));
+  Vec3T nor = normalize(Vec3T(z_axis.y, -z_axis.x, T(0)));
   if (is_zero(nor.xy())) {
     nor.x = T(1);
   }
@@ -249,7 +249,7 @@ template<typename T>
   detail::Quaternion<T> q1(math::cos(angle), nor.x * si, nor.y * si, T(0));
 
   /* Rotate back line v1-v2. */
-  const Vec3T line = transform_point(conjugate(q1), (v2 - v1));
+  Vec3T line = transform_point(conjugate(q1), (v2 - v1));
   /* What angle has this line with x-axis? */
   line = normalize(Vec3T(line.x, line.y, T(0)));
 
@@ -373,7 +373,7 @@ template<typename T>
   /* First axis is local. */
   result[i_index] = from_rotation<Mat3T>(rotation)[i_index];
   /* Second axis is local minus first rotation. */
-  const detail::Euler3<T> tmp_rot = rotation;
+  detail::Euler3<T> tmp_rot = rotation;
   tmp_rot.i() = T(0);
   result[j_index] = from_rotation<Mat3T>(tmp_rot)[j_index];
   /* Last axis is global. */
