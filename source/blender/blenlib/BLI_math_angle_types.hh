@@ -268,7 +268,7 @@ template<typename T> struct AngleCartesian {
    * https://en.wikipedia.org/wiki/List_of_trigonometric_identities
    * (see Angle_sum_and_difference_identities, Multiple-angle_formulae and Half-angle_formulae)
    *
-   * There is no identities for (arbitrary) product or quotient of angles.
+   * There are no identities for (arbitrary) product or quotient of angles.
    * Better leave these unimplemented to avoid accidentally using `atan` everywhere (which is the
    * purpose of this class).
    */
@@ -371,19 +371,19 @@ template<typename T> struct AngleCartesian {
 }  // namespace detail
 
 /**
- * A `blender::math::AngleFraction<T>` stores the radian angle as quotient.
+ * A `blender::math::AngleFraction<T>` stores a radian angle as quotient.
  * - Storage : `2 * sizeof(int64_t)`
  * - Range : [-INT64_MAX..INT64_MAX] but angle must be expressed as fraction (be in Q subset).
  * - Fast : Everything not slow.
  * - Slow : `cos()`, `sin()`, `tan()` for angles not optimized.
  *
- * It offers the best accuracy fo fractions of Pi radian angles. For instance
+ * It offers the best accuracy for fractions of Pi radian angles. For instance
  * `sin(AngleFraction::tau() * n - AngleFraction::pi() / 2)` will exactly return `-1` for any `n`
- * within [-INT_MAX..INT_MAX]. This holds true even with really high radian values.
+ * within [-INT_MAX..INT_MAX]. This holds true even with very high radian values.
  *
  * Arithmetic operators are relatively cheap (4 operations for addition, 2 for multiplication) but
  * not as cheap as a `AngleRadian`. Another nice property is that the `cos()` and `sin()` functions
- * give symetric results around the circle.
+ * give symmetric results around the circle.
  *
  * NOTE: Prefer converting to `blender::math::AngleCartesian<T>` if both `cos()` and `sin()`
  * are needed. This will save some computation.

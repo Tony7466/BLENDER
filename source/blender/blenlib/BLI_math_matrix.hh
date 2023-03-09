@@ -230,7 +230,7 @@ template<typename MatT, typename VectorT>
                                          const VectorT up);
 
 /**
- * This return a version of \a mat with orthonormal basis axes.
+ * This returns a version of \a mat with orthonormal basis axes.
  * This leaves the given \a axis untouched.
  *
  * In other words this removes the shear of the matrix. However this doesn't properly account for

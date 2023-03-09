@@ -5,8 +5,7 @@
 /** \file
  * \ingroup bli
  *
- * An `blender::math::CartesianBasis` represents an orientation that is aligned with the basis
- * axes. This type of rotation is fast, precise and adds more meaning to the code that uses it.
+ * Orthonormal rotation and orientation.
  *
  * A practical reminder:
  * - Forward is typically the positive Y direction in Blender.
@@ -232,9 +231,9 @@ template<> inline AxisSigned abs(const AxisSigned &axis)
 
 /**
  * Returns the cross direction from two basis direction using the right hand rule.
- * Way faster than true cross product if the vectors are basis vectors.
+ * This is much faster than true cross product if the vectors are basis vectors.
  * Any ill-formed case will return a orthogonal axis to \a a but will also trigger an assert. It is
- * better filter these cases upstream.
+ * better to filter these cases upstream.
  */
 [[nodiscard]] inline AxisSigned cross(const AxisSigned a, const AxisSigned b)
 {
@@ -364,6 +363,10 @@ template<typename T> T to_vector(const AxisSigned axis)
 /** \name CartesianBasis
  * \{ */
 
+/**
+ * An `blender::math::CartesianBasis` represents an orientation that is aligned with the basis
+ * axes. This type of rotation is fast, precise and adds more meaning to the code that uses it.
+ */
 struct CartesianBasis {
   VecBase<AxisSigned, 3> axes = {AxisSigned::X_POS, AxisSigned::Y_POS, AxisSigned::Z_POS};
 

@@ -396,7 +396,7 @@ template<typename T>
 template<typename T> detail::Quaternion<T> to_quaternion(const CartesianBasis &rotation)
 {
   /**
-   * There is only 6 * 4 = 24 possible valid orthonormal orientations.
+   * There are only 6 * 4 = 24 possible valid orthonormal orientations.
    * We precompute them and store them inside this switch using a key.
    * Generated using `generate_axes_to_quaternion_switch_cases()`.
    */

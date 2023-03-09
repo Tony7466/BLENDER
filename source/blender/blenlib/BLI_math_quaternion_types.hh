@@ -4,24 +4,6 @@
 
 /** \file
  * \ingroup bli
- *
- * A `blender::math::Quaternion<T>` represents either an orientation or a rotation.
- *
- * Mainly used for rigging and armature deformations as they have nice mathematical properties
- * (eg: smooth shortest path interpolation). A `blender::math::Quaternion<T>` is cheaper to combine
- * than `MatBase<T, 3, 3>`. However, transforming points is slower. Consider converting to a
- * rotation matrix if you are rotating many points.
- *
- * See this for more information:
- * https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation#Performance_comparisons
- *
- *
- * A `blender::math::DualQuaternion<T>` implements dual-quaternion skinning with scale aware
- * transformation. It allows volume preserving deformation for skinning.
- *
- * The type is implemented so that multiple weighted `blender::math::DualQuaternion<T>`
- * can be aggregated into a final rotation. Calling `normalize(dual_quat)` is mandatory before
- * trying to transform points with it.
  */
 
 #include "BLI_math_angle_types.hh"
@@ -41,6 +23,17 @@ namespace detail {
 /* Forward declaration for casting operators. */
 template<typename T> struct EulerXYZ;
 
+/**
+ * A `blender::math::Quaternion<T>` represents either an orientation or a rotation.
+ *
+ * Mainly used for rigging and armature deformations as they have nice mathematical properties
+ * (eg: smooth shortest path interpolation). A `blender::math::Quaternion<T>` is cheaper to combine
+ * than `MatBase<T, 3, 3>`. However, transforming points is slower. Consider converting to a
+ * rotation matrix if you are rotating many points.
+ *
+ * See this for more information:
+ * https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation#Performance_comparisons
+ */
 template<typename T = float> struct Quaternion {
   T w, x, y, z;
 
@@ -186,6 +179,14 @@ template<typename T = float> struct Quaternion {
 
 namespace detail {
 
+/**
+ * A `blender::math::DualQuaternion<T>` implements dual-quaternion skinning with scale aware
+ * transformation. It allows volume preserving deformation for skinning.
+ *
+ * The type is implemented so that multiple weighted `blender::math::DualQuaternion<T>`
+ * can be aggregated into a final rotation. Calling `normalize(dual_quat)` is mandatory before
+ * trying to transform points with it.
+ */
 template<typename T = float> struct DualQuaternion {
   /** Non-dual part. */
   Quaternion<T> quat;
