@@ -65,8 +65,7 @@ void VKStorageBuffer::read(void *data)
   VKCommandBuffer &command_buffer = context.command_buffer_get();
   command_buffer.submit();
 
-  void *mapped_memory = buffer_.mapped_memory_get();
-  memcpy(data, mapped_memory, size_in_bytes_);
+  buffer_.read(data);
 }
 
 }  // namespace blender::gpu

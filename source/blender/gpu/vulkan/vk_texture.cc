@@ -84,8 +84,7 @@ void *VKTexture::read(int mip, eGPUDataFormat format)
   BLI_assert_msg(device_memory_size == host_memory_size,
                  "Memory data conversions not implemented yet");
 
-  void *mapped_data = staging_buffer.mapped_memory_get();
-  memcpy(data, mapped_data, host_memory_size);
+  staging_buffer.read(data);
 
   return data;
 }

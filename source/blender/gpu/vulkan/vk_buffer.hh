@@ -21,6 +21,7 @@ class VKBuffer {
   int64_t size_in_bytes_;
   VkBuffer vk_buffer_ = VK_NULL_HANDLE;
   VmaAllocation allocation_ = VK_NULL_HANDLE;
+  /* Pointer to the virtually mapped memory. */
   void *mapped_memory_ = nullptr;
 
  public:
@@ -34,7 +35,8 @@ class VKBuffer {
               int64_t size,
               GPUUsageType usage,
               VkBufferUsageFlagBits buffer_usage);
-  bool update(const void *data);
+  void update(const void *data) const;
+  void read(void *data) const;
   bool free(VKContext &context);
 
   int64_t size_in_bytes() const
@@ -47,14 +49,9 @@ class VKBuffer {
     return vk_buffer_;
   }
 
-  void *mapped_memory_get() const
-  {
-    BLI_assert_msg(mapped_memory_ != nullptr,
-                   "Buffer mapped memory requested on unmapped buffer.");
-    return mapped_memory_;
-  }
-
  private:
+  /** Check if this buffer is mapped. */
+  bool is_mapped() const;
   bool map(VKContext &context);
   void unmap(VKContext &context);
 };
