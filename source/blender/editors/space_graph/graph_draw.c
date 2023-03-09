@@ -154,7 +154,7 @@ static void set_fcurve_vertex_color(FCurve *fcu, bool sel)
   }
   else {
     /* Curve's points CANNOT BE edited */
-    UI_GetThemeColor3fv(sel ? TH_TEXT_HI : TH_TEXT, color);
+    UI_GetThemeColor3fv(TH_VERTEX, color);
   }
 
   /* Fade the 'intensity' of the vertices based on the selection of the curves too
@@ -175,7 +175,13 @@ static void draw_fcurve_selected_keyframe_vertices(
 
   set_fcurve_vertex_color(fcu, sel);
 
-  immBeginAtMost(GPU_PRIM_POINTS, fcu->totvert);
+  if (edit) {
+    immBeginAtMost(GPU_PRIM_POINTS, fcu->totvert);
+  }
+  else {
+    immBeginAtMost(GPU_PRIM_POINTS, fcu->totvert);
+    /* immBegin(GPU_PRIM_LINES, fcu->totvert * 2); */
+  }
 
   BezTriple *bezt = fcu->bezt;
   for (int i = 0; i < fcu->totvert; i++, bezt++) {
@@ -194,9 +200,11 @@ static void draw_fcurve_selected_keyframe_vertices(
         }
       }
       else {
-        /* no check for selection here, as curve is not editable... */
-        /* XXX perhaps we don't want to even draw points?   maybe add an option for that later */
+        const float line_length = 2 * U.dpi_fac;
         immVertex2fv(pos, bezt->vec[1]);
+
+        /* immVertex2f(pos, bezt->vec[1][0] + line_length, bezt->vec[1][1] - line_length);
+        immVertex2f(pos, bezt->vec[1][0] - line_length, bezt->vec[1][1] + line_length); */
       }
     }
   }
@@ -1022,7 +1030,7 @@ static void draw_fcurve(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, bAn
       (((fcu->bezt) || (fcu->fpt)) && (fcu->totvert))) {
     /* set color/drawing style for curve itself */
     /* draw active F-Curve thicker than the rest to make it stand out */
-    if (fcu->flag & FCURVE_ACTIVE) {
+    if (fcu->flag & FCURVE_ACTIVE && !BKE_fcurve_is_protected(fcu)) {
       GPU_line_width(2.5);
     }
     else {
@@ -1046,8 +1054,8 @@ static void draw_fcurve(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, bAn
       immBindBuiltinProgram(GPU_SHADER_3D_LINE_DASHED_UNIFORM_COLOR);
       immUniform2f("viewport_size", viewport_size[2] / UI_DPI_FAC, viewport_size[3] / UI_DPI_FAC);
       immUniform1i("colors_len", 0); /* Simple dashes. */
-      immUniform1f("dash_width", 4.0f);
-      immUniform1f("udash_factor", 0.5f);
+      immUniform1f("dash_width", 16.0f * U.dpi_fac);
+      immUniform1f("udash_factor", 0.4f * U.dpi_fac);
     }
     else {
       immBindBuiltinProgram(GPU_SHADER_3D_POLYLINE_UNIFORM_COLOR);
