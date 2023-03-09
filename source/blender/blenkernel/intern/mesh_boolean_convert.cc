@@ -548,7 +548,6 @@ static void get_poly2d_cos(const Mesh *me,
 
   /* Project coordinates to 2d in cos_2d, using normal as projection axis. */
   const float3 axis_dominant = bke::mesh::poly_normal_calc(positions, poly_loops);
-
   axis_dominant_v3_to_m3(r_axis_mat, axis_dominant);
   for (const int i : poly_loops.index_range()) {
     float3 co = positions[poly_loops[i].v];

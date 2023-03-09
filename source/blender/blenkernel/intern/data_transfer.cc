@@ -436,7 +436,6 @@ static void data_transfer_dtdata_type_postprocess(Object * /*ob_src*/,
                                                 sharp_edges.span,
                                                 {loop_nors_dst, me_dst->totloop},
                                                 custom_nors_dst);
-
     sharp_edges.finish();
   }
 }

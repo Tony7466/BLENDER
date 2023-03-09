@@ -116,10 +116,8 @@ void multires_reshape_apply_base_refit_base_mesh(MultiresReshapeContext *reshape
       const MPoly &poly = reshape_context->base_polys[pmap[i].indices[j]];
 
       /* Set up poly, loops, and coords in order to call #bke::mesh::poly_normal_calc(). */
-      MLoop *fake_loops = static_cast<MLoop *>(
-          MEM_malloc_arrayN(poly.totloop, sizeof(MLoop), __func__));
-      float(*fake_co)[3] = static_cast<float(*)[3]>(
-          MEM_malloc_arrayN(poly.totloop, sizeof(float[3]), __func__));
+      blender::Array<MLoop> fake_loops(poly.totloop);
+      blender::Array<blender::float3> fake_co(poly.totloop);
 
       for (int k = 0; k < poly.totloop; k++) {
         const int vndx = reshape_context->base_loops[poly.loopstart + k].v;
@@ -134,13 +132,7 @@ void multires_reshape_apply_base_refit_base_mesh(MultiresReshapeContext *reshape
         }
       }
 
-      const blender::float3 no = blender::bke::mesh::poly_normal_calc(
-          {reinterpret_cast<const blender::float3 *>(fake_co), poly.totloop},
-          {fake_loops, poly.totloop});
-
-      MEM_freeN(fake_loops);
-      MEM_freeN(fake_co);
-
+      const blender::float3 no = blender::bke::mesh::poly_normal_calc(fake_co, fake_loops);
       add_v3_v3(avg_no, no);
     }
     normalize_v3(avg_no);

@@ -368,7 +368,6 @@ void mesh_render_data_update_normals(MeshRenderData *mr, const eMRDataType data_
           CustomData_get_layer_for_write(&mr->me->ldata, CD_CUSTOMLOOPNORMAL, mr->me->totloop));
       const bool *sharp_edges = static_cast<const bool *>(
           CustomData_get_layer_named(&mr->me->edata, CD_PROP_BOOL, "sharp_edge"));
-
       blender::bke::mesh::normals_calc_loop(mr->vert_positions,
                                             mr->edges,
                                             mr->polys,

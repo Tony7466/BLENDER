@@ -84,7 +84,6 @@ struct WeightedNormalData {
   blender::Span<MPoly> polys;
   blender::Span<blender::float3> poly_normals;
   const bool *sharp_faces;
-
   const int *poly_strength;
 
   const MDeformVert *dvert;

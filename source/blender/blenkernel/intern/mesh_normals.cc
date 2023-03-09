@@ -21,7 +21,7 @@
 #include "BLI_linklist.h"
 #include "BLI_linklist_stack.h"
 #include "BLI_math.h"
-#include "BLI_math_vector_types.hh"
+#include "BLI_math_vector.hh"
 #include "BLI_memarena.h"
 #include "BLI_span.hh"
 #include "BLI_stack.h"
@@ -192,12 +192,9 @@ float3 poly_normal_calc(const Span<float3> vert_positions, const Span<MLoop> pol
     return normal_calc_ngon(vert_positions, poly_loops);
   }
   if (poly_loops.size() == 3) {
-    float3 normal;
-    normal_tri_v3(normal,
-                  vert_positions[poly_loops[0].v],
-                  vert_positions[poly_loops[1].v],
-                  vert_positions[poly_loops[2].v]);
-    return normal;
+    return math::normal_tri(vert_positions[poly_loops[0].v],
+                            vert_positions[poly_loops[1].v],
+                            vert_positions[poly_loops[2].v]);
   }
   if (poly_loops.size() == 4) {
     float3 normal;
@@ -1522,8 +1519,8 @@ void normals_calc_loop(const Span<float3> vert_positions,
                        loops,
                        loop_to_poly,
                        poly_normals,
-                       Span<bool>(sharp_edges, sharp_edges ? edges.size() : 0),
                        Span<bool>(sharp_faces, sharp_faces ? polys.size() : 0),
+                       Span<bool>(sharp_edges, sharp_edges ? edges.size() : 0),
                        check_angle,
                        split_angle,
                        edge_to_loops,
