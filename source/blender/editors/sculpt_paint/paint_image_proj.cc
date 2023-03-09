@@ -419,6 +419,7 @@ struct ProjPaintState {
   blender::Span<MLoop> loops_eval;
   const bool *select_poly_eval;
   const int *material_indices;
+  const bool *sharp_faces_eval;
   blender::Span<MLoopTri> looptris_eval;
 
   const float (*mloopuv_stencil_eval)[2];
@@ -1721,10 +1722,9 @@ static float project_paint_uvpixel_mask(const ProjPaintState *ps,
   if (ps->do_mask_normal) {
     const MLoopTri *lt = &ps->looptris_eval[tri_index];
     const int lt_vtri[3] = {PS_LOOPTRI_AS_VERT_INDEX_3(ps, lt)};
-    const MPoly *mp = &ps->polys_eval[lt->poly];
     float no[3], angle_cos;
 
-    if (mp->flag & ME_SMOOTH) {
+    if (!(ps->sharp_faces_eval && ps->sharp_faces_eval[lt->poly])) {
       const float *no1, *no2, *no3;
       no1 = ps->vert_normals[lt_vtri[0]];
       no2 = ps->vert_normals[lt_vtri[1]];
@@ -4079,6 +4079,8 @@ static bool proj_paint_state_mesh_eval_init(const bContext *C, ProjPaintState *p
       &ps->me_eval->pdata, CD_PROP_BOOL, ".select_poly");
   ps->material_indices = (const int *)CustomData_get_layer_named(
       &ps->me_eval->pdata, CD_PROP_INT32, "material_index");
+  ps->sharp_faces_eval = static_cast<const bool *>(
+      CustomData_get_layer_named(&ps->me_eval->pdata, CD_PROP_BOOL, "sharp_face"));
 
   ps->totvert_eval = ps->me_eval->totvert;
   ps->totedge_eval = ps->me_eval->totedge;
@@ -4388,11 +4390,11 @@ static void project_paint_prepare_all_faces(ProjPaintState *ps,
             if (prev_poly != looptris[tri_index].poly) {
               int iloop;
               bool culled = true;
-              const MPoly *poly = &ps->polys_eval[looptris[tri_index].poly];
-              int poly_loops = poly->totloop;
+              const MPoly &poly = ps->polys_eval[looptris[tri_index].poly];
+              int poly_loops = poly.totloop;
               prev_poly = looptris[tri_index].poly;
               for (iloop = 0; iloop < poly_loops; iloop++) {
-                if (!(ps->vertFlags[ps->loops_eval[poly->loopstart + iloop].v] & PROJ_VERT_CULL)) {
+                if (!(ps->vertFlags[ps->loops_eval[poly.loopstart + iloop].v] & PROJ_VERT_CULL)) {
                   culled = false;
                   break;
                 }
@@ -6980,7 +6982,7 @@ void PAINT_OT_add_simple_uvs(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Add Simple UVs";
-  ot->description = "Add cube map uvs on mesh";
+  ot->description = "Add cube map UVs on mesh";
   ot->idname = "PAINT_OT_add_simple_uvs";
 
   /* api callbacks */
