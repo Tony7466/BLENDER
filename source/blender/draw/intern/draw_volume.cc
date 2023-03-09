@@ -25,6 +25,8 @@
 #include "draw_common.h"
 #include "draw_manager.h"
 
+#include "draw_common.hh"
+
 using namespace blender;
 using namespace blender::draw;
 using VolumeInfosBuf = blender::draw::UniformBuffer<VolumeInfos>;
@@ -272,3 +274,165 @@ DRWShadingGroup *DRW_shgroup_volume_create_sub(Scene *scene,
   }
   return drw_volume_object_mesh_init(scene, ob, &attrs, shgrp);
 }
+
+/* -------------------------------------------------------------------- */
+/** \name New Draw Manager implementation
+ * \{ */
+
+namespace blender::draw {
+
+static bool volume_world_grids_init(PassMain::Sub &ps, Span<VolumeAttribute> attrs)
+{
+  for (const VolumeAttribute &attr : attrs) {
+    ps.bind_texture(attr.input_name.c_str(), grid_default_texture(attr.default_value));
+  }
+
+  return true;
+}
+
+static bool volume_object_grids_init(PassMain::Sub &ps, Object *ob, Span<VolumeAttribute> attrs)
+{
+  VolumeUniformBufPool *pool = (VolumeUniformBufPool *)DST.vmempool->volume_grids_ubos;
+  VolumeInfosBuf &volume_infos = *pool->alloc();
+
+  Volume *volume = (Volume *)ob->data;
+  BKE_volume_load(volume, G.main);
+
+  volume_infos.density_scale = BKE_volume_density_scale(volume, ob->object_to_world);
+  volume_infos.color_mul = float4(1.0f);
+  volume_infos.temperature_mul = 1.0f;
+  volume_infos.temperature_bias = 0.0f;
+
+  bool has_grids = false;
+  for (const VolumeAttribute &attr : attrs) {
+    if (BKE_volume_grid_find_for_read(volume, attr.name.c_str()) != nullptr) {
+      has_grids = true;
+      break;
+    }
+  }
+  /* Render nothing if there is no attribute for the shader to render.
+   * This also avoids an assert caused by the bounding box being zero in size. */
+  if (!has_grids) {
+    return false;
+  }
+
+  /* Bind volume grid textures. */
+  int grid_id = 0, grids_len = 0;
+  for (const VolumeAttribute &attr : attrs) {
+    const VolumeGrid *volume_grid = BKE_volume_grid_find_for_read(volume, attr.name.c_str());
+    const DRWVolumeGrid *drw_grid = (volume_grid) ?
+                                        DRW_volume_batch_cache_get_grid(volume, volume_grid) :
+                                        nullptr;
+    /* Handle 3 cases here:
+     * - Grid exists and texture was loaded -> use texture.
+     * - Grid exists but has zero size or failed to load -> use zero.
+     * - Grid does not exist -> use default value. */
+    const GPUTexture *grid_tex = (drw_grid)    ? drw_grid->texture :
+                                 (volume_grid) ? g_data.dummy_zero :
+                                                 grid_default_texture(attr.default_value);
+    /* TODO (Miguel Pozo): bind_texture const support ? */
+    ps.bind_texture(attr.input_name.c_str(), (GPUTexture *)grid_tex);
+
+    volume_infos.grids_xform[grid_id++] = float4x4(drw_grid ? drw_grid->object_to_texture :
+                                                              g_data.dummy_grid_mat);
+  }
+
+  volume_infos.push_update();
+
+  ps.bind_ubo("drw_volume", volume_infos);
+
+  return true;
+}
+
+static bool drw_volume_object_mesh_init(PassMain::Sub &ps,
+                                        Scene *scene,
+                                        Object *ob,
+                                        Span<VolumeAttribute> attrs)
+{
+  VolumeUniformBufPool *pool = (VolumeUniformBufPool *)DST.vmempool->volume_grids_ubos;
+  VolumeInfosBuf &volume_infos = *pool->alloc();
+
+  ModifierData *md = nullptr;
+
+  volume_infos.density_scale = 1.0f;
+  volume_infos.color_mul = float4(1.0f);
+  volume_infos.temperature_mul = 1.0f;
+  volume_infos.temperature_bias = 0.0f;
+
+  /* Smoke Simulation */
+  if ((md = BKE_modifiers_findby_type(ob, eModifierType_Fluid)) &&
+      BKE_modifier_is_enabled(scene, md, eModifierMode_Realtime) &&
+      ((FluidModifierData *)md)->domain != nullptr) {
+    FluidModifierData *fmd = (FluidModifierData *)md;
+    FluidDomainSettings *fds = fmd->domain;
+
+    /* Don't try to show liquid domains here. */
+    if (!fds->fluid || !(fds->type == FLUID_DOMAIN_TYPE_GAS)) {
+      return false;
+    }
+
+    if (fds->fluid && (fds->type == FLUID_DOMAIN_TYPE_GAS)) {
+      DRW_smoke_ensure(fmd, fds->flags & FLUID_DOMAIN_USE_NOISE);
+    }
+
+    int grid_id = 0;
+    for (const VolumeAttribute &attr : attrs) {
+      if (STREQ(attr.name.c_str(), "density")) {
+        ps.bind_texture(attr.input_name.c_str(),
+                        fds->tex_density ? &fds->tex_density : &g_data.dummy_one);
+      }
+      else if (STREQ(attr.name.c_str(), "color")) {
+        ps.bind_texture(attr.input_name.c_str(),
+                        fds->tex_color ? &fds->tex_color : &g_data.dummy_one);
+      }
+      else if (STR_ELEM(attr.name.c_str(), "flame", "temperature")) {
+        ps.bind_texture(attr.input_name.c_str(),
+                        fds->tex_flame ? &fds->tex_flame : &g_data.dummy_zero);
+      }
+      else {
+        ps.bind_texture(attr.input_name.c_str(), grid_default_texture(attr.default_value));
+      }
+      volume_infos.grids_xform[grid_id++] = float4x4(g_data.dummy_grid_mat);
+    }
+
+    bool use_constant_color = ((fds->active_fields & FLUID_DOMAIN_ACTIVE_COLORS) == 0 &&
+                               (fds->active_fields & FLUID_DOMAIN_ACTIVE_COLOR_SET) != 0);
+    if (use_constant_color) {
+      volume_infos.color_mul = float4(UNPACK3(fds->active_color), 1.0f);
+    }
+
+    /* Output is such that 0..1 maps to 0..1000K */
+    volume_infos.temperature_mul = fds->flame_max_temp - fds->flame_ignition;
+    volume_infos.temperature_bias = fds->flame_ignition;
+  }
+  else {
+    int grid_id = 0;
+    for (const VolumeAttribute &attr : attrs) {
+      ps.bind_texture(attr.input_name.c_str(), grid_default_texture(attr.default_value));
+      volume_infos.grids_xform[grid_id++] = float4x4(g_data.dummy_grid_mat);
+    }
+  }
+
+  volume_infos.push_update();
+
+  ps.bind_ubo("drw_volume", volume_infos);
+
+  return true;
+}
+
+bool volume_sub_pass(PassMain::Sub &ps, Scene *scene, Object *ob, Span<VolumeAttribute> attrs)
+{
+  if (ob == nullptr) {
+    return volume_world_grids_init(ps, attrs);
+  }
+  else if (ob->type == OB_VOLUME) {
+    return volume_object_grids_init(ps, ob, attrs);
+  }
+  else {
+    return drw_volume_object_mesh_init(ps, scene, ob, attrs);
+  }
+}
+
+}  // namespace blender::draw
+
+/** \} */
