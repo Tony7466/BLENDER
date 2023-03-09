@@ -382,13 +382,6 @@ struct CopyPixelTile {
       for (const DeltaCopyPixelCommand &item : Span<const DeltaCopyPixelCommand>(
                &command_deltas[group.start_delta_index], group.num_deltas)) {
         copy_command.apply(item);
-        /*
-        printf("| %d,%d | %d,%d | %d,%d | %f |\n",
-               UNPACK2(copy_command.destination),
-               UNPACK2(copy_command.source_1),
-               UNPACK2(copy_command.source_2),
-               copy_command.mix_factor);
-               */
         copy_command.mix_source_and_write_destination<T>(image_buffer);
       }
     }

@@ -19,8 +19,6 @@
 #include "pbvh_pixels_copy.hh"
 #include "pbvh_uv_islands.hh"
 
-#include "PIL_time_utildefines.h"
-
 namespace blender::bke::pbvh::pixels {
 
 const int THREADING_GRAIN_SIZE = 128;
@@ -506,7 +504,6 @@ void BKE_pbvh_pixels_copy_update(PBVH &pbvh,
                                  ImageUser &image_user,
                                  const uv_islands::MeshData &mesh_data)
 {
-  TIMEIT_START(pbvh_pixels_copy_update);
   PBVHData &pbvh_data = BKE_pbvh_pixels_data_get(pbvh);
   pbvh_data.tiles_copy_pixels.clear();
   const NonManifoldUVEdges non_manifold_edges(mesh_data);
@@ -545,7 +542,6 @@ void BKE_pbvh_pixels_copy_update(PBVH &pbvh,
     copy_tile.print_compression_rate();
     pbvh_data.tiles_copy_pixels.tiles.append(copy_tile);
   }
-  TIMEIT_END(pbvh_pixels_copy_update);
 }
 
 void BKE_pbvh_pixels_copy_pixels(PBVH &pbvh,
@@ -553,7 +549,6 @@ void BKE_pbvh_pixels_copy_pixels(PBVH &pbvh,
                                  ImageUser &image_user,
                                  image::TileNumber tile_number)
 {
-  // TIMEIT_START(pbvh_pixels_copy_pixels);
   PBVHData &pbvh_data = BKE_pbvh_pixels_data_get(pbvh);
   std::optional<std::reference_wrapper<CopyPixelTile>> pixel_tile =
       pbvh_data.tiles_copy_pixels.find_tile(tile_number);
@@ -576,7 +571,6 @@ void BKE_pbvh_pixels_copy_pixels(PBVH &pbvh,
   });
 
   BKE_image_release_ibuf(&image, tile_buffer, nullptr);
-  // TIMEIT_END(pbvh_pixels_copy_pixels);
 }
 
 }  // namespace blender::bke::pbvh::pixels
