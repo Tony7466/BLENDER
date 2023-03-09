@@ -1952,6 +1952,25 @@ static void BKE_nlastrip_validate_autoblends(NlaTrack *nlt, NlaStrip *nls)
   }
 }
 
+/* Ensure every transition's start/end properly set. */
+static void nlastrip_validate_start_end(NlaStrip *strip)
+{
+
+  if (!(strip->type & NLASTRIP_TYPE_TRANSITION)) {
+    return;
+  }
+  if (strip->prev) {
+    strip->start = strip->prev->end;
+  }
+  if (strip->next) {
+    strip->end = strip->next->start;
+  }
+  if (strip->start >= strip->end || strip->prev == NULL || strip->next == NULL) {
+    BKE_nlastrip_free(strip, true);
+  }
+  return;
+}
+
 void BKE_nla_validate_state(AnimData *adt)
 {
   NlaStrip *strip = NULL;
@@ -1962,28 +1981,13 @@ void BKE_nla_validate_state(AnimData *adt)
     return;
   }
 
-  /* Ensure every transition's start/end properly set. */
-  LISTBASE_FOREACH_MUTABLE (NlaTrack *, track, &adt->nla_tracks) {
-    LISTBASE_FOREACH_MUTABLE (NlaStrip *, strip, &track->strips) {
-      if (!(strip->type & NLASTRIP_TYPE_TRANSITION)) {
-        continue;
-      }
-      if (strip->prev) {
-        strip->start = strip->prev->end;
-      }
-      if (strip->next) {
-        strip->end = strip->next->start;
-      }
-      if (strip->start >= strip->end || strip->prev == NULL || strip->next == NULL) {
-        BKE_nlastrip_free(strip, true);
-      }
-    }
-  }
-
   /* Adjust blending values for auto-blending,
    * and also do an initial pass to find the earliest strip. */
   for (nlt = adt->nla_tracks.first; nlt; nlt = nlt->next) {
     for (strip = nlt->strips.first; strip; strip = strip->next) {
+
+      nlastrip_validate_start_end(strip);
+
       /* auto-blending first */
       BKE_nlastrip_validate_autoblends(nlt, strip);
       BKE_nlastrip_recalculate_blend(strip);
