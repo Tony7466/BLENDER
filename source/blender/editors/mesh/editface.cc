@@ -350,6 +350,52 @@ void paintface_select_linked(bContext *C, Object *ob, const int mval[2], const b
   paintface_flush_flags(C, ob, true, false);
 }
 
+void paintface_select_more(bContext *C, Object *ob, const bool face_step)
+{
+  using namespace blender;
+  Mesh *mesh = BKE_mesh_from_object(ob);
+  if (mesh == nullptr || mesh->totpoly == 0) {
+    return;
+  }
+
+  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
+  bke::SpanAttributeWriter<bool> select_poly = attributes.lookup_or_add_for_write_span<bool>(
+      ".select_poly", ATTR_DOMAIN_FACE);
+  bke::SpanAttributeWriter<bool> select_vert = attributes.lookup_or_add_for_write_span<bool>(
+      ".select_vert", ATTR_DOMAIN_POINT);
+  const VArray<bool> hide_poly = attributes.lookup_or_default<bool>(
+      ".hide_poly", ATTR_DOMAIN_FACE, false);
+
+  const Span<MPoly> polys = mesh->polys();
+  const Span<MLoop> loops = mesh->loops();
+  const Span<MEdge> edges = mesh->edges();
+
+  Vector<int> indices;
+
+  for (const int i : select_poly.span.index_range()) {
+    if (select_poly.span[i] || hide_poly[i]) {
+      continue;
+    }
+    const MPoly &poly = polys[i];
+
+    for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
+      const MEdge &edge = edges[loop.e];
+      if (face_step && (select_vert.span[edge.v1] || select_vert.span[edge.v2])) {
+        select_poly.span[i] = true;
+        break;
+      }
+      else if (select_vert.span[edge.v1] && select_vert.span[edge.v2]) {
+        select_poly.span[i] = true;
+        break;
+      }
+    }
+  }
+
+  select_poly.finish();
+  select_vert.finish();
+  paintface_flush_flags(C, ob, true, false);
+}
+
 bool paintface_deselect_all_visible(bContext *C, Object *ob, int action, bool flush_flags)
 {
   using namespace blender;
