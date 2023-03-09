@@ -857,6 +857,7 @@ void ShadowModule::end_sync()
         PassSimple::Sub &sub = pass.sub("ClearClipmap");
         sub.shader_set(inst_.shaders.static_shader_get(SHADOW_CLIPMAP_CLEAR));
         sub.bind_ssbo("tilemaps_clip_buf", tilemap_pool.tilemaps_clip);
+        sub.push_constant("tilemaps_clip_buf_len", int(tilemap_pool.tilemaps_clip.size()));
         sub.dispatch(int3(
             divide_ceil_u(tilemap_pool.tilemaps_clip.size(), SHADOW_CLIPMAP_GROUP_SIZE), 1, 1));
         sub.barrier(GPU_BARRIER_SHADER_STORAGE);
