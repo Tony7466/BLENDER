@@ -43,7 +43,7 @@
 static bool gpencil_curve_edit_mode_poll(bContext *C)
 {
   Object *ob = CTX_data_active_object(C);
-  if ((ob == NULL) || (ob->type != OB_GPENCIL)) {
+  if ((ob == NULL) || (ob->type != OB_GPENCIL_LEGACY)) {
     return false;
   }
   bGPdata *gpd = (bGPdata *)ob->data;
@@ -188,7 +188,7 @@ void GPENCIL_OT_stroke_editcurve_set_handle_type(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Set handle type";
   ot->idname = "GPENCIL_OT_stroke_editcurve_set_handle_type";
-  ot->description = "Set the type of a edit curve handle";
+  ot->description = "Set the type of an edit curve handle";
 
   /* api callbacks */
   ot->invoke = WM_menu_invoke;

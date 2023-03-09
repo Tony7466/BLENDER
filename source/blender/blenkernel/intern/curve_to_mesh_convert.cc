@@ -62,7 +62,6 @@ static void fill_mesh_topology(const int vert_offset,
       MEdge &edge = edges[profile_edge_offset + i_ring];
       edge.v1 = ring_vert_offset + i_profile;
       edge.v2 = next_ring_vert_offset + i_profile;
-      edge.flag = ME_EDGEDRAW;
     }
   }
 
@@ -78,7 +77,6 @@ static void fill_mesh_topology(const int vert_offset,
       MEdge &edge = edges[ring_edge_offset + i_profile];
       edge.v1 = ring_vert_offset + i_profile;
       edge.v2 = ring_vert_offset + i_next_profile;
-      edge.flag = ME_EDGEDRAW;
     }
   }
 
@@ -105,7 +103,6 @@ static void fill_mesh_topology(const int vert_offset,
       MPoly &poly = polys[ring_poly_offset + i_profile];
       poly.loopstart = ring_segment_loop_offset;
       poly.totloop = 4;
-      poly.flag = ME_SMOOTH;
 
       MLoop &loop_a = loops[ring_segment_loop_offset];
       loop_a.v = ring_vert_offset + i_profile;
@@ -122,7 +119,7 @@ static void fill_mesh_topology(const int vert_offset,
     }
   }
 
-  const bool has_caps = fill_caps && !main_cyclic && profile_cyclic;
+  const bool has_caps = fill_caps && !main_cyclic && profile_cyclic && profile_point_num > 2;
   if (has_caps) {
     const int poly_num = main_segment_num * profile_segment_num;
     const int cap_loop_offset = loop_offset + poly_num * 4;
@@ -273,7 +270,7 @@ static ResultOffsets calculate_result_offsets(const CurvesInfo &info, const bool
       const int profile_point_num = profile_offsets.size(i_profile);
       const int profile_segment_num = curves::segments_num(profile_point_num, profile_cyclic);
 
-      const bool has_caps = fill_caps && !main_cyclic && profile_cyclic;
+      const bool has_caps = fill_caps && !main_cyclic && profile_cyclic && profile_point_num > 2;
       const int tube_face_num = main_segment_num * profile_segment_num;
 
       vert_offset += main_point_num * profile_point_num;
@@ -669,13 +666,14 @@ Mesh *curve_to_mesh_sweep(const CurvesGeometry &main,
   }
 
   Mesh *mesh = BKE_mesh_new_nomain(
-      offsets.vert.last(), offsets.edge.last(), 0, offsets.loop.last(), offsets.poly.last());
+      offsets.vert.last(), offsets.edge.last(), offsets.loop.last(), offsets.poly.last());
   mesh->flag |= ME_AUTOSMOOTH;
   mesh->smoothresh = DEG2RADF(180.0f);
   MutableSpan<float3> positions = mesh->vert_positions_for_write();
   MutableSpan<MEdge> edges = mesh->edges_for_write();
   MutableSpan<MPoly> polys = mesh->polys_for_write();
   MutableSpan<MLoop> loops = mesh->loops_for_write();
+  MutableAttributeAccessor mesh_attributes = mesh->attributes_for_write();
 
   foreach_curve_combination(curves_info, offsets, [&](const CombinationInfo &info) {
     fill_mesh_topology(info.vert_range.start(),
@@ -691,6 +689,23 @@ Mesh *curve_to_mesh_sweep(const CurvesGeometry &main,
                        loops,
                        polys);
   });
+
+  if (fill_caps) {
+    /* TODO: This is used to keep the tests passing after refactoring mesh shade smooth flags. It
+     * can be removed if the tests are updated and the final shading results will be the same. */
+    SpanAttributeWriter<bool> sharp_faces = mesh_attributes.lookup_or_add_for_write_span<bool>(
+        "sharp_face", ATTR_DOMAIN_FACE);
+    foreach_curve_combination(curves_info, offsets, [&](const CombinationInfo &info) {
+      const bool has_caps = fill_caps && !info.main_cyclic && info.profile_cyclic;
+      if (has_caps) {
+        const int poly_num = info.main_segment_num * info.profile_segment_num;
+        const int cap_poly_offset = info.poly_range.start() + poly_num;
+        sharp_faces.span[cap_poly_offset] = true;
+        sharp_faces.span[cap_poly_offset + 1] = true;
+      }
+    });
+    sharp_faces.finish();
+  }
 
   const Span<float3> main_positions = main.evaluated_positions();
   const Span<float3> tangents = main.evaluated_tangents();
@@ -722,8 +737,6 @@ Mesh *curve_to_mesh_sweep(const CurvesGeometry &main,
                         radii.is_empty() ? radii : radii.slice(info.main_points),
                         positions.slice(info.vert_range));
   });
-
-  MutableAttributeAccessor mesh_attributes = mesh->attributes_for_write();
 
   SpanAttributeWriter<bool> sharp_edges;
   write_sharp_bezier_edges(curves_info, offsets, mesh_attributes, sharp_edges);

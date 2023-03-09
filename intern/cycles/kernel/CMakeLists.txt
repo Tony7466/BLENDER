@@ -113,8 +113,6 @@ set(SRC_KERNEL_CLOSURE_HEADERS
   closure/bsdf_microfacet_multi_impl.h
   closure/bsdf_oren_nayar.h
   closure/bsdf_phong_ramp.h
-  closure/bsdf_reflection.h
-  closure/bsdf_refraction.h
   closure/bsdf_toon.h
   closure/bsdf_transparent.h
   closure/bsdf_util.h
@@ -412,11 +410,12 @@ if(WITH_CYCLES_CUDA_BINARIES)
   # warn for other versions
   if((CUDA_VERSION STREQUAL "101") OR
      (CUDA_VERSION STREQUAL "102") OR
-     (CUDA_VERSION_MAJOR STREQUAL "11"))
+     (CUDA_VERSION_MAJOR STREQUAL "11") OR
+     (CUDA_VERSION_MAJOR STREQUAL "12"))
   else()
     message(WARNING
       "CUDA version ${CUDA_VERSION_MAJOR}.${CUDA_VERSION_MINOR} detected, "
-      "build may succeed but only CUDA 11, 10.2 and 10.1 have been tested")
+      "build may succeed but only CUDA 12, 11, 10.2 and 10.1 have been tested")
   endif()
 
   # build for each arch
@@ -513,6 +512,16 @@ if(WITH_CYCLES_CUDA_BINARIES)
         set(cuda_toolkit_root_dir ${CUDA_TOOLKIT_ROOT_DIR})
       else()
         message(STATUS "CUDA binaries for ${arch} require CUDA 10 or earlier, skipped.")
+      endif()
+    elseif(${arch} MATCHES ".*_3.")
+      if(DEFINED CUDA11_NVCC_EXECUTABLE)
+        set(cuda_nvcc_executable ${CUDA11_NVCC_EXECUTABLE})
+        set(cuda_toolkit_root_dir ${CUDA11_TOOLKIT_ROOT_DIR})
+      elseif("${CUDA_VERSION}" LESS 120) # Support for sm_35, sm_37 was removed in CUDA 12
+        set(cuda_nvcc_executable ${CUDA_NVCC_EXECUTABLE})
+        set(cuda_toolkit_root_dir ${CUDA_TOOLKIT_ROOT_DIR})
+      else()
+        message(STATUS "CUDA binaries for ${arch} require CUDA 11 or earlier, skipped.")
       endif()
     elseif(${arch} MATCHES ".*_7." AND "${CUDA_VERSION}" LESS 100)
       message(STATUS "CUDA binaries for ${arch} require CUDA 10.0+, skipped.")
@@ -851,7 +860,7 @@ if(WITH_CYCLES_DEVICE_ONEAPI)
     add_custom_command(
       OUTPUT ${cycles_kernel_oneapi_lib} ${cycles_kernel_oneapi_linker_lib}
       COMMAND ${CMAKE_COMMAND} -E env
-              "LIB=${sycl_compiler_root}/../lib" # for compiler to find sycl.lib
+              "LIB=${sycl_compiler_root}/../lib\;${sycl_compiler_root}/../compiler/lib/intel64_win" # for compiler to find sycl.lib and in case of icpx, libircmt.lib
               "PATH=${OCLOC_INSTALL_DIR}\;${sycl_compiler_root}"
               ${SYCL_COMPILER}
               "$<$<CONFIG:Release>:${sycl_compiler_flags_Release}>"

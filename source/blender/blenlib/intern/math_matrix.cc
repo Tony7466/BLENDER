@@ -325,7 +325,7 @@ MatBase<T, 3, 3> interpolate(const MatBase<T, 3, 3> &A, const MatBase<T, 3, 3> &
 
   /* Quaternions cannot represent an axis flip. If such a singularity is detected, choose a
    * different decomposition of the matrix that still satisfies A = U_A * P_A but which has a
-   * positive determinant and thus no axis flips. This resolves T77154.
+   * positive determinant and thus no axis flips. This resolves #77154.
    *
    * Note that a flip of two axes is just a rotation of 180 degrees around the third axis, and
    * three flipped axes are just an 180 degree rotation + a single axis flip. It is thus sufficient
@@ -412,11 +412,43 @@ template double4x4 interpolate_fast(const double4x4 &a, const double4x4 &b, doub
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Legacy
+ * \{ */
+
+Quaternion to_quaternion_legacy(const float3x3 &mat)
+{
+  float3x3 n_mat = normalize(mat);
+  /* Rotate z-axis of matrix to z-axis. */
+  float3 z_axis = n_mat.z_axis();
+
+  /* Cross product with (0,0,1). */
+  float3 nor = normalize(float3(z_axis.y, -z_axis.x, 0.0f));
+
+  float ha = 0.5f * math::safe_acos(z_axis.z);
+  /* `nor` negative here, but why? */
+  Quaternion q1(math::cos(ha), -nor * math::sin(ha));
+
+  /* Rotate back x-axis from mat, using inverse q1. */
+  float3 x_axis = transform_point(conjugate(q1), n_mat.x_axis());
+
+  /* And align x-axes. */
+  float ha2 = 0.5f * math::atan2(x_axis.y, x_axis.x);
+  Quaternion q2(math::cos(ha2), 0.0f, 0.0f, math::sin(ha2));
+
+  return q1 * q2;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Template instantiation
  * \{ */
 
 namespace detail {
 
+template void normalized_to_eul2(const float3x3 &mat,
+                                 detail::Euler3<float> &eul1,
+                                 detail::Euler3<float> &eul2);
 template void normalized_to_eul2(const float3x3 &mat,
                                  detail::EulerXYZ<float> &eul1,
                                  detail::EulerXYZ<float> &eul2);
@@ -431,10 +463,14 @@ template MatBase<float, 2, 2> from_rotation(const detail::AngleRadian<float> &ro
 template MatBase<float, 3, 3> from_rotation(const detail::AngleRadian<float> &rotation);
 template MatBase<float, 3, 3> from_rotation(const detail::EulerXYZ<float> &rotation);
 template MatBase<float, 4, 4> from_rotation(const detail::EulerXYZ<float> &rotation);
+template MatBase<float, 3, 3> from_rotation(const detail::Euler3<float> &rotation);
+template MatBase<float, 4, 4> from_rotation(const detail::Euler3<float> &rotation);
 template MatBase<float, 3, 3> from_rotation(const detail::Quaternion<float> &rotation);
 template MatBase<float, 4, 4> from_rotation(const detail::Quaternion<float> &rotation);
-template MatBase<float, 3, 3> from_rotation(const detail::AxisAngle<float> &rotation);
-template MatBase<float, 4, 4> from_rotation(const detail::AxisAngle<float> &rotation);
+template MatBase<float, 3, 3> from_rotation(const math::AxisAngle &rotation);
+template MatBase<float, 4, 4> from_rotation(const math::AxisAngle &rotation);
+template MatBase<float, 3, 3> from_rotation(const math::AxisAngleCartesian &rotation);
+template MatBase<float, 4, 4> from_rotation(const math::AxisAngleCartesian &rotation);
 
 }  // namespace detail
 

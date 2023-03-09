@@ -497,7 +497,7 @@ typedef struct ObHook {
 enum {
   OB_EMPTY = 0,
   OB_MESH = 1,
-  /** Curve object is still used but replaced by "Curves" for the future (see T95355). */
+  /** Curve object is still used but replaced by "Curves" for the future (see #95355). */
   OB_CURVES_LEGACY = 2,
   OB_SURF = 3,
   OB_FONT = 4,
@@ -514,7 +514,7 @@ enum {
   OB_ARMATURE = 25,
 
   /** Grease Pencil object used in 3D view but not used for annotation in 2D. */
-  OB_GPENCIL = 26,
+  OB_GPENCIL_LEGACY = 26,
 
   OB_CURVES = 27,
 
@@ -528,7 +528,8 @@ enum {
 
 /* check if the object type supports materials */
 #define OB_TYPE_SUPPORT_MATERIAL(_type) \
-  (((_type) >= OB_MESH && (_type) <= OB_MBALL) || ((_type) >= OB_GPENCIL && (_type) <= OB_VOLUME))
+  (((_type) >= OB_MESH && (_type) <= OB_MBALL) || \
+   ((_type) >= OB_GPENCIL_LEGACY && (_type) <= OB_VOLUME))
 /** Does the object have some render-able geometry (unlike empties, cameras, etc.). */
 #define OB_TYPE_IS_GEOMETRY(_type) \
   (ELEM(_type, \
@@ -536,11 +537,11 @@ enum {
         OB_SURF, \
         OB_FONT, \
         OB_MBALL, \
-        OB_GPENCIL, \
+        OB_GPENCIL_LEGACY, \
         OB_CURVES, \
         OB_POINTCLOUD, \
         OB_VOLUME))
-#define OB_TYPE_SUPPORT_VGROUP(_type) (ELEM(_type, OB_MESH, OB_LATTICE, OB_GPENCIL))
+#define OB_TYPE_SUPPORT_VGROUP(_type) (ELEM(_type, OB_MESH, OB_LATTICE, OB_GPENCIL_LEGACY))
 #define OB_TYPE_SUPPORT_EDITMODE(_type) \
   (ELEM(_type, \
         OB_MESH, \
@@ -556,8 +557,7 @@ enum {
 
 /** Matches #OB_TYPE_SUPPORT_EDITMODE. */
 #define OB_DATA_SUPPORT_EDITMODE(_type) \
-  (ELEM(_type, ID_ME, ID_CU_LEGACY, ID_MB, ID_LT, ID_AR) || \
-   (U.experimental.use_new_curves_tools && (_type) == ID_CV))
+  (ELEM(_type, ID_ME, ID_CU_LEGACY, ID_MB, ID_LT, ID_AR, ID_CV))
 
 /* is this ID type used as object data */
 #define OB_DATA_SUPPORT_ID(_id_type) \
@@ -570,7 +570,7 @@ enum {
         ID_LP, \
         ID_CA, \
         ID_LT, \
-        ID_GD, \
+        ID_GD_LEGACY, \
         ID_AR, \
         ID_CV, \
         ID_PT, \
@@ -585,7 +585,7 @@ enum {
   case ID_LP: \
   case ID_CA: \
   case ID_LT: \
-  case ID_GD: \
+  case ID_GD_LEGACY: \
   case ID_AR: \
   case ID_CV: \
   case ID_PT: \

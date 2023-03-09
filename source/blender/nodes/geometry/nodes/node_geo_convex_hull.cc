@@ -37,13 +37,13 @@ static Mesh *hull_from_bullet(const Mesh *mesh, Span<float3> coords)
   /* Create Mesh *result with proper capacity. */
   Mesh *result;
   if (mesh) {
-    result = BKE_mesh_new_nomain_from_template(
-        mesh, verts_num, edges_num, 0, loops_num, faces_num);
+    result = BKE_mesh_new_nomain_from_template(mesh, verts_num, edges_num, loops_num, faces_num);
   }
   else {
-    result = BKE_mesh_new_nomain(verts_num, edges_num, 0, loops_num, faces_num);
+    result = BKE_mesh_new_nomain(verts_num, edges_num, loops_num, faces_num);
     BKE_id_material_eval_ensure_default_slot(&result->id);
   }
+  BKE_mesh_smooth_flag_set(result, false);
 
   /* Copy vertices. */
   MutableSpan<float3> dst_positions = result->vert_positions_for_write();
@@ -84,7 +84,6 @@ static Mesh *hull_from_bullet(const Mesh *mesh, Span<float3> coords)
       MEdge &edge = edges[edge_index];
       edge.v1 = v_from;
       edge.v2 = v_to;
-      edge.flag = ME_EDGEDRAW;
 
       /* Write edge index into both loops that have it. */
       int reverse_index = plConvexHullGetReversedLoopIndex(hull, i);
@@ -98,7 +97,6 @@ static Mesh *hull_from_bullet(const Mesh *mesh, Span<float3> coords)
     MEdge &edge = edges[0];
     edge.v1 = 0;
     edge.v2 = 1;
-    edge.flag = ME_EDGEDRAW;
     edge_index++;
   }
   BLI_assert(edge_index == edges_num);

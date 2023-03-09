@@ -294,7 +294,7 @@ void ED_armature_bone_rename(Main *bmain,
       }
 
       /* fix grease pencil modifiers and vertex groups */
-      if (ob->type == OB_GPENCIL) {
+      if (ob->type == OB_GPENCIL_LEGACY) {
 
         bGPdata *gpd = (bGPdata *)ob->data;
         LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
@@ -337,7 +337,7 @@ void ED_armature_bone_rename(Main *bmain,
 
     /* Fix all animdata that may refer to this bone -
      * we can't just do the ones attached to objects,
-     * since other ID-blocks may have drivers referring to this bone T29822. */
+     * since other ID-blocks may have drivers referring to this bone #29822. */
 
     /* XXX: the ID here is for armatures,
      * but most bone drivers are actually on the object instead. */

@@ -233,7 +233,7 @@ static void object_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const in
   BKE_object_facemap_copy_list(&ob_dst->fmaps, &ob_src->fmaps);
   BKE_constraints_copy_ex(&ob_dst->constraints, &ob_src->constraints, flag_subdata, true);
 
-  ob_dst->mode = ob_dst->type != OB_GPENCIL ? OB_MODE_OBJECT : ob_dst->mode;
+  ob_dst->mode = ob_dst->type != OB_GPENCIL_LEGACY ? OB_MODE_OBJECT : ob_dst->mode;
   ob_dst->sculpt = nullptr;
 
   if (ob_src->pd) {
@@ -622,7 +622,7 @@ static void object_blend_read_data(BlendDataReader *reader, ID *id)
   const bool is_undo = BLO_read_data_is_undo(reader);
   if (ob->id.tag & (LIB_TAG_EXTERN | LIB_TAG_INDIRECT)) {
     /* Do not allow any non-object mode for linked data.
-     * See T34776, T42780, T81027 for more information. */
+     * See #34776, #42780, #81027 for more information. */
     ob->mode &= ~OB_MODE_ALL_MODE_DATA;
   }
   else if (is_undo) {
@@ -939,7 +939,7 @@ static void object_blend_read_lib(BlendLibReader *reader, ID *id)
   }
 
   /* When the object is local and the data is library its possible
-   * the material list size gets out of sync. T22663. */
+   * the material list size gets out of sync. #22663. */
   if (ob->data && ob->id.lib != ((ID *)ob->data)->lib) {
     BKE_object_materials_test(bmain, ob, (ID *)ob->data);
   }
@@ -1489,7 +1489,7 @@ static ParticleSystem *object_copy_modifier_particle_system_ensure(Main *bmain,
 bool BKE_object_copy_modifier(
     Main *bmain, Scene *scene, Object *ob_dst, const Object *ob_src, ModifierData *md_src)
 {
-  BLI_assert(ob_dst->type != OB_GPENCIL);
+  BLI_assert(ob_dst->type != OB_GPENCIL_LEGACY);
 
   const ModifierTypeInfo *mti = BKE_modifier_get_info((ModifierType)md_src->type);
   if (!object_modifier_type_copy_check((ModifierType)md_src->type)) {
@@ -1587,7 +1587,7 @@ bool BKE_object_copy_modifier(
 
 bool BKE_object_copy_gpencil_modifier(struct Object *ob_dst, GpencilModifierData *gmd_src)
 {
-  BLI_assert(ob_dst->type == OB_GPENCIL);
+  BLI_assert(ob_dst->type == OB_GPENCIL_LEGACY);
 
   GpencilModifierData *gmd_dst = BKE_gpencil_modifier_new(gmd_src->type);
   BLI_strncpy(gmd_dst->name, gmd_src->name, sizeof(gmd_dst->name));
@@ -1607,7 +1607,7 @@ bool BKE_object_modifier_stack_copy(Object *ob_dst,
                                     const bool do_copy_all,
                                     const int flag_subdata)
 {
-  if ((ob_dst->type == OB_GPENCIL) != (ob_src->type == OB_GPENCIL)) {
+  if ((ob_dst->type == OB_GPENCIL_LEGACY) != (ob_src->type == OB_GPENCIL_LEGACY)) {
     BLI_assert_msg(0,
                    "Trying to copy a modifier stack between a GPencil object and another type.");
     return false;
@@ -1904,7 +1904,7 @@ bool BKE_object_is_in_editmode(const Object *ob)
     case OB_SURF:
     case OB_CURVES_LEGACY:
       return ((Curve *)ob->data)->editnurb != nullptr;
-    case OB_GPENCIL:
+    case OB_GPENCIL_LEGACY:
       /* Grease Pencil object has no edit mode data. */
       return GPENCIL_EDIT_MODE((bGPdata *)ob->data);
     case OB_CURVES:
@@ -2131,7 +2131,7 @@ static const char *get_obdata_defname(int type)
       return DATA_("Volume");
     case OB_EMPTY:
       return DATA_("Empty");
-    case OB_GPENCIL:
+    case OB_GPENCIL_LEGACY:
       return DATA_("GPencil");
     case OB_LIGHTPROBE:
       return DATA_("LightProbe");
@@ -2156,7 +2156,7 @@ static void object_init(Object *ob, const short ob_type)
     ob->upflag = OB_POSY;
   }
 
-  if (ob->type == OB_GPENCIL) {
+  if (ob->type == OB_GPENCIL_LEGACY) {
     ob->dtx |= OB_USE_GPENCIL_LIGHTS;
   }
 
@@ -2196,7 +2196,7 @@ void *BKE_object_obdata_add_from_type(Main *bmain, int type, const char *name)
       return BKE_speaker_add(bmain, name);
     case OB_LIGHTPROBE:
       return BKE_lightprobe_add(bmain, name);
-    case OB_GPENCIL:
+    case OB_GPENCIL_LEGACY:
       return BKE_gpencil_data_addnew(bmain, name);
     case OB_CURVES:
       return BKE_curves_add(bmain, name);
@@ -2230,8 +2230,8 @@ int BKE_object_obdata_to_type(const ID *id)
       return OB_CAMERA;
     case ID_LT:
       return OB_LATTICE;
-    case ID_GD:
-      return OB_GPENCIL;
+    case ID_GD_LEGACY:
+      return OB_GPENCIL_LEGACY;
     case ID_AR:
       return OB_ARMATURE;
     case ID_LP:
@@ -2432,7 +2432,7 @@ ParticleSystem *BKE_object_copy_particlesystem(ParticleSystem *psys, const int f
     psysn->pointcache = BKE_ptcache_copy_list(&psysn->ptcaches, &psys->ptcaches, flag);
   }
 
-  /* XXX(@campbellbarton): from reading existing code this seems correct but intended usage of
+  /* XXX(@ideasman42): from reading existing code this seems correct but intended usage of
    * point-cache should with cloth should be added in 'ParticleSystem'. */
   if (psysn->clmd) {
     psysn->clmd->point_cache = psysn->pointcache;
@@ -2558,7 +2558,7 @@ Object *BKE_object_pose_armature_get_with_wpaint_check(Object *ob)
         }
         break;
       }
-      case OB_GPENCIL: {
+      case OB_GPENCIL_LEGACY: {
         if ((ob->mode & OB_MODE_WEIGHT_GPENCIL) == 0) {
           return nullptr;
         }
@@ -2794,7 +2794,7 @@ Object *BKE_object_duplicate(Main *bmain, Object *ob, uint dupflag, uint duplica
         id_new = BKE_id_copy_for_duplicate(bmain, id_old, dupflag, copy_flags);
       }
       break;
-    case OB_GPENCIL:
+    case OB_GPENCIL_LEGACY:
       if (dupflag & USER_DUP_GPENCIL) {
         id_new = BKE_id_copy_for_duplicate(bmain, id_old, dupflag, copy_flags);
       }
@@ -3151,7 +3151,7 @@ static bool ob_parcurve(Object *ob, Object *par, float r_mat[4][4])
    * dependency cycles. We can't correct anything from here, since that would
    * cause threading conflicts.
    *
-   * TODO(sergey): Some of the legit looking cases like T56619 need to be
+   * TODO(sergey): Some of the legit looking cases like #56619 need to be
    * looked into, and maybe curve cache (and other dependencies) are to be
    * evaluated prior to conversion. */
   if (par->runtime.curve_cache == nullptr) {
@@ -3556,7 +3556,7 @@ void BKE_object_workob_calc_parent(Depsgraph *depsgraph, Scene *scene, Object *o
    * are supposed to be applied after the object's local loc/rot/scale. If the (inverted) effect of
    * constraints would be included in the parent inverse matrix, these would be applied before the
    * object's local loc/rot/scale instead of after. For example, a "Copy Rotation" constraint would
-   * rotate the object's local translation as well. See T82156. */
+   * rotate the object's local translation as well. See #82156. */
 
   BLI_strncpy(workob->parsubstr, ob->parsubstr, sizeof(workob->parsubstr));
 
@@ -3737,7 +3737,7 @@ const BoundBox *BKE_object_boundbox_get(Object *ob)
     case OB_ARMATURE:
       bb = BKE_armature_boundbox_get(ob);
       break;
-    case OB_GPENCIL:
+    case OB_GPENCIL_LEGACY:
       bb = BKE_gpencil_boundbox_get(ob);
       break;
     case OB_CURVES:
@@ -3889,7 +3889,7 @@ void BKE_object_minmax(Object *ob, float r_min[3], float r_max[3], const bool us
       changed = true;
       break;
     }
-    case OB_GPENCIL: {
+    case OB_GPENCIL_LEGACY: {
       const BoundBox bb = *BKE_gpencil_boundbox_get(ob);
       BKE_boundbox_minmax(&bb, ob->object_to_world, r_min, r_max);
       changed = true;
@@ -4090,7 +4090,7 @@ bool BKE_object_minmax_empty_drawtype(const struct Object *ob, float r_min[3], f
       max[0] = radius + (ofs[0] * radius);
       max[1] = radius + (ofs[1] * radius);
       /* Since the image aspect can shrink the bounds towards the object origin,
-       * adjust the min/max to account for that.  */
+       * adjust the min/max to account for that. */
       for (int i = 0; i < 2; i++) {
         CLAMP_MAX(min[i], 0.0f);
         CLAMP_MIN(max[i], 0.0f);
@@ -4190,7 +4190,7 @@ void BKE_object_foreach_display_point(Object *ob,
       func_cb(co, user_data);
     }
   }
-  else if (ob->type == OB_GPENCIL) {
+  else if (ob->type == OB_GPENCIL_LEGACY) {
     GPencilStrokePointIterData iter_data{};
     iter_data.obmat = obmat;
     iter_data.point_func_cb = func_cb;
@@ -5118,7 +5118,7 @@ bool BKE_object_supports_material_slots(struct Object *ob)
               OB_CURVES,
               OB_POINTCLOUD,
               OB_VOLUME,
-              OB_GPENCIL);
+              OB_GPENCIL_LEGACY);
 }
 
 /** \} */

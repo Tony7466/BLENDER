@@ -63,6 +63,9 @@ bool allow_procedural_attribute_access(StringRef attribute_name)
   if (attribute_name.startswith(".hide")) {
     return false;
   }
+  if (attribute_name.startswith(".uv")) {
+    return false;
+  }
   if (attribute_name.startswith("." UV_VERTSEL_NAME ".")) {
     return false;
   }
@@ -316,9 +319,6 @@ GVArray BuiltinCustomDataLayerProvider::try_get_for_read(const void *owner) cons
 
 GAttributeWriter BuiltinCustomDataLayerProvider::try_get_for_write(void *owner) const
 {
-  if (writable_ != Writable) {
-    return {};
-  }
   CustomData *custom_data = custom_data_access_.get_custom_data(owner);
   if (custom_data == nullptr) {
     return {};

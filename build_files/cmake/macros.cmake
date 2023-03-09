@@ -544,7 +544,7 @@ endfunction()
 function(setup_platform_linker_libs
   target
   )
-  # jemalloc must be early in the list, to be before pthread (see T57998)
+  # jemalloc must be early in the list, to be before pthread (see #57998).
   if(WITH_MEM_JEMALLOC)
     target_link_libraries(${target} ${JEMALLOC_LIBRARIES})
   endif()
@@ -702,6 +702,7 @@ macro(remove_strict_flags)
   endif()
 
   if(MSVC)
+    remove_cc_flag(/w34100) # Restore warn C4100 (unreferenced formal parameter) back to w4
     remove_cc_flag(/w34189) # Restore warn C4189 (unused variable) back to w4
   endif()
 
@@ -721,7 +722,7 @@ macro(remove_extra_strict_flags)
   endif()
 
   if(MSVC)
-    # TODO
+    remove_cc_flag(/w34100) # Restore warn C4100 (unreferenced formal parameter) back to w4
   endif()
 endmacro()
 
@@ -1090,7 +1091,7 @@ function(msgfmt_simple
   add_custom_command(
     OUTPUT  ${_file_to}
     COMMAND ${CMAKE_COMMAND} -E make_directory ${_file_to_path}
-    COMMAND "$<TARGET_FILE:msgfmt>" ${_file_from} ${_file_to}
+    COMMAND ${CMAKE_COMMAND} -E env ${PLATFORM_ENV_BUILD} "$<TARGET_FILE:msgfmt>" ${_file_from} ${_file_to}
     DEPENDS msgfmt ${_file_from})
 
   set_source_files_properties(${_file_to} PROPERTIES GENERATED TRUE)

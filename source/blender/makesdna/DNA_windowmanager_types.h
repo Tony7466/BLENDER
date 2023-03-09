@@ -292,7 +292,7 @@ typedef struct wmWindow {
   /**
    * Enable when the drag was handled,
    * to avoid mouse-motion continually triggering drag events which are not handled
-   * but add overhead to gizmo handling (for example), see T87511.
+   * but add overhead to gizmo handling (for example), see #87511.
    */
   char event_queue_check_drag_handled;
 
@@ -323,7 +323,12 @@ typedef struct wmWindow {
    *   left/right modifiers then release one. See note in #wm_event_add_ghostevent for details.
    */
   struct wmEvent *eventstate;
-  /** Keep the last handled event in `event_queue` here (owned and must be freed). */
+  /**
+   * Keep the last handled event in `event_queue` here (owned and must be freed).
+   *
+   * \warning This must only to be used for event queue logic.
+   * User interactions should use `eventstate` instead (if the event isn't passed to the function).
+   */
   struct wmEvent *event_last_handled;
 
   /* Input Method Editor data - complex character input (especially for Asian character input)
@@ -620,7 +625,7 @@ enum {
    * This difference can be important because previous settings may be used,
    * even with #PROP_SKIP_SAVE the repeat last operator will use the previous settings.
    * Unlike #OP_IS_REPEAT the selection (and context generally) may be different each time.
-   * See T60777 for an example of when this is needed.
+   * See #60777 for an example of when this is needed.
    */
   OP_IS_REPEAT_LAST = (1 << 1),
 

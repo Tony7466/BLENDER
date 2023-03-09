@@ -91,7 +91,7 @@ static bool gpencil_stroke_edit_poll(bContext *C)
 {
   /* edit only supported with grease pencil objects */
   Object *ob = CTX_data_active_object(C);
-  if ((ob == NULL) || (ob->type != OB_GPENCIL)) {
+  if ((ob == NULL) || (ob->type != OB_GPENCIL_LEGACY)) {
     return false;
   }
 
@@ -104,7 +104,7 @@ static bool gpencil_strokes_edit3d_poll(bContext *C)
 {
   /* edit only supported with grease pencil objects */
   Object *ob = CTX_data_active_object(C);
-  if ((ob == NULL) || (ob->type != OB_GPENCIL)) {
+  if ((ob == NULL) || (ob->type != OB_GPENCIL_LEGACY)) {
     return false;
   }
 
@@ -119,12 +119,12 @@ static bool gpencil_editmode_toggle_poll(bContext *C)
 {
   /* edit only supported with grease pencil objects */
   Object *ob = CTX_data_active_object(C);
-  if ((ob == NULL) || (ob->type != OB_GPENCIL)) {
+  if ((ob == NULL) || (ob->type != OB_GPENCIL_LEGACY)) {
     return false;
   }
 
   /* if using gpencil object, use this gpd */
-  if (ob->type == OB_GPENCIL) {
+  if (ob->type == OB_GPENCIL_LEGACY) {
     return ob->data != NULL;
   }
 
@@ -134,7 +134,7 @@ static bool gpencil_editmode_toggle_poll(bContext *C)
 static bool gpencil_stroke_not_in_curve_edit_mode(bContext *C)
 {
   Object *ob = CTX_data_active_object(C);
-  if ((ob == NULL) || (ob->type != OB_GPENCIL)) {
+  if ((ob == NULL) || (ob->type != OB_GPENCIL_LEGACY)) {
     return false;
   }
   bGPdata *gpd = (bGPdata *)ob->data;
@@ -159,7 +159,7 @@ static int gpencil_editmode_toggle_exec(bContext *C, wmOperator *op)
   short mode;
   /* if using a gpencil object, use this datablock */
   Object *ob = CTX_data_active_object(C);
-  if ((ob) && (ob->type == OB_GPENCIL)) {
+  if ((ob) && (ob->type == OB_GPENCIL_LEGACY)) {
     gpd = ob->data;
     is_object = true;
   }
@@ -261,7 +261,7 @@ static bool gpencil_selectmode_toggle_poll(bContext *C)
 {
   /* edit only supported with grease pencil objects */
   Object *ob = CTX_data_active_object(C);
-  if ((ob == NULL) || (ob->type != OB_GPENCIL) || (ob->mode != OB_MODE_EDIT_GPENCIL)) {
+  if ((ob == NULL) || (ob->type != OB_GPENCIL_LEGACY) || (ob->mode != OB_MODE_EDIT_GPENCIL)) {
     return false;
   }
 
@@ -341,7 +341,7 @@ static bool gpencil_paintmode_toggle_poll(bContext *C)
 {
   /* if using gpencil object, use this gpd */
   Object *ob = CTX_data_active_object(C);
-  if ((ob) && (ob->type == OB_GPENCIL)) {
+  if ((ob) && (ob->type == OB_GPENCIL_LEGACY)) {
     return ob->data != NULL;
   }
   return ED_gpencil_data_get_active(C) != NULL;
@@ -360,7 +360,7 @@ static int gpencil_paintmode_toggle_exec(bContext *C, wmOperator *op)
   short mode;
   /* if using a gpencil object, use this datablock */
   Object *ob = CTX_data_active_object(C);
-  if ((ob) && (ob->type == OB_GPENCIL)) {
+  if ((ob) && (ob->type == OB_GPENCIL_LEGACY)) {
     gpd = ob->data;
     is_object = true;
   }
@@ -457,7 +457,7 @@ static bool gpencil_sculptmode_toggle_poll(bContext *C)
 {
   /* if using gpencil object, use this gpd */
   Object *ob = CTX_data_active_object(C);
-  if ((ob) && (ob->type == OB_GPENCIL)) {
+  if ((ob) && (ob->type == OB_GPENCIL_LEGACY)) {
     return ob->data != NULL;
   }
   return ED_gpencil_data_get_active(C) != NULL;
@@ -476,7 +476,7 @@ static int gpencil_sculptmode_toggle_exec(bContext *C, wmOperator *op)
   short mode;
   /* if using a gpencil object, use this datablock */
   Object *ob = CTX_data_active_object(C);
-  if ((ob) && (ob->type == OB_GPENCIL)) {
+  if ((ob) && (ob->type == OB_GPENCIL_LEGACY)) {
     gpd = ob->data;
     is_object = true;
   }
@@ -566,7 +566,7 @@ static bool gpencil_weightmode_toggle_poll(bContext *C)
 {
   /* if using gpencil object, use this gpd */
   Object *ob = CTX_data_active_object(C);
-  if ((ob) && (ob->type == OB_GPENCIL)) {
+  if ((ob) && (ob->type == OB_GPENCIL_LEGACY)) {
     return ob->data != NULL;
   }
   return ED_gpencil_data_get_active(C) != NULL;
@@ -585,7 +585,7 @@ static int gpencil_weightmode_toggle_exec(bContext *C, wmOperator *op)
   short mode;
   /* if using a gpencil object, use this datablock */
   Object *ob = CTX_data_active_object(C);
-  if ((ob) && (ob->type == OB_GPENCIL)) {
+  if ((ob) && (ob->type == OB_GPENCIL_LEGACY)) {
     gpd = ob->data;
     is_object = true;
   }
@@ -678,7 +678,7 @@ static bool gpencil_vertexmode_toggle_poll(bContext *C)
 {
   /* if using gpencil object, use this gpd */
   Object *ob = CTX_data_active_object(C);
-  if ((ob) && (ob->type == OB_GPENCIL)) {
+  if ((ob) && (ob->type == OB_GPENCIL_LEGACY)) {
     return ob->data != NULL;
   }
   return ED_gpencil_data_get_active(C) != NULL;
@@ -696,7 +696,7 @@ static int gpencil_vertexmode_toggle_exec(bContext *C, wmOperator *op)
   short mode;
   /* if using a gpencil object, use this datablock */
   Object *ob = CTX_data_active_object(C);
-  if ((ob) && (ob->type == OB_GPENCIL)) {
+  if ((ob) && (ob->type == OB_GPENCIL_LEGACY)) {
     gpd = ob->data;
     is_object = true;
   }
@@ -2818,7 +2818,7 @@ static bool gpencil_snap_poll(bContext *C)
   ScrArea *area = CTX_wm_area(C);
   Object *ob = CTX_data_active_object(C);
 
-  return (ob != NULL) && (ob->type == OB_GPENCIL) &&
+  return (ob != NULL) && (ob->type == OB_GPENCIL_LEGACY) &&
          ((area != NULL) && (area->spacetype == SPACE_VIEW3D));
 }
 
@@ -4059,12 +4059,11 @@ void GPENCIL_OT_reproject(wmOperatorType *ot)
   ot->prop = RNA_def_enum(
       ot->srna, "type", reproject_type, GP_REPROJECT_VIEW, "Projection Type", "");
 
-  prop = RNA_def_boolean(
-      ot->srna,
-      "keep_original",
-      0,
-      "Keep Original",
-      "Keep original strokes and create a copy before reprojecting instead of reproject them");
+  prop = RNA_def_boolean(ot->srna,
+                         "keep_original",
+                         0,
+                         "Keep Original",
+                         "Keep original strokes and create a copy before reprojecting");
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_MOVIECLIP);
 
   RNA_def_float(ot->srna, "offset", 0.0f, 0.0f, 10.0f, "Surface Offset", "", 0.0f, 10.0f);
@@ -4073,7 +4072,7 @@ void GPENCIL_OT_reproject(wmOperatorType *ot)
 static int gpencil_recalc_geometry_exec(bContext *C, wmOperator *UNUSED(op))
 {
   Object *ob = CTX_data_active_object(C);
-  if ((ob == NULL) || (ob->type != OB_GPENCIL)) {
+  if ((ob == NULL) || (ob->type != OB_GPENCIL_LEGACY)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -4771,7 +4770,7 @@ void GPENCIL_OT_stroke_simplify(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Simplify Stroke";
   ot->idname = "GPENCIL_OT_stroke_simplify";
-  ot->description = "Simplify selected stroked reducing number of points";
+  ot->description = "Simplify selected strokes, reducing number of points";
 
   /* api callbacks */
   ot->exec = gpencil_stroke_simplify_exec;
@@ -4832,7 +4831,7 @@ void GPENCIL_OT_stroke_simplify_fixed(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Simplify Fixed Stroke";
   ot->idname = "GPENCIL_OT_stroke_simplify_fixed";
-  ot->description = "Simplify selected stroked reducing number of points using fixed algorithm";
+  ot->description = "Simplify selected strokes, reducing number of points using fixed algorithm";
 
   /* api callbacks */
   ot->exec = gpencil_stroke_simplify_fixed_exec;
@@ -5776,7 +5775,7 @@ bool ED_object_gpencil_exit(struct Main *bmain, Object *ob)
 static bool gpencil_merge_by_distance_poll(bContext *C)
 {
   Object *ob = CTX_data_active_object(C);
-  if ((ob == NULL) || (ob->type != OB_GPENCIL)) {
+  if ((ob == NULL) || (ob->type != OB_GPENCIL_LEGACY)) {
     return false;
   }
   bGPdata *gpd = (bGPdata *)ob->data;
@@ -5863,7 +5862,7 @@ typedef enum eGP_NormalizeMode {
 static bool gpencil_stroke_normalize_poll(bContext *C)
 {
   Object *ob = CTX_data_active_object(C);
-  if ((ob == NULL) || (ob->type != OB_GPENCIL)) {
+  if ((ob == NULL) || (ob->type != OB_GPENCIL_LEGACY)) {
     return false;
   }
   bGPdata *gpd = (bGPdata *)ob->data;

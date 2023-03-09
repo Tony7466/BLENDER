@@ -282,6 +282,10 @@ typedef enum eNodeSocketFlag {
    * type is obvious and the name takes up too much space.
    */
   SOCK_HIDE_LABEL = (1 << 12),
+  /**
+   * Only used for geometry nodes. Don't show the socket value in the modifier interface.
+   */
+  SOCK_HIDE_IN_MODIFIER = (1 << 13),
 } eNodeSocketFlag;
 
 typedef struct bNode {
@@ -326,7 +330,11 @@ typedef struct bNode {
   int16_t custom1, custom2;
   float custom3, custom4;
 
-  /** Optional link to libdata. */
+  /**
+   * Optional link to libdata.
+   *
+   * \see #bNodeType::initfunc & #bNodeType::freefunc for details on ID user-count.
+   */
   struct ID *id;
 
   /** Custom data struct for node properties for storage in files. */
@@ -961,7 +969,7 @@ typedef struct NodeScriptDict {
 typedef struct NodeGlare {
   char quality, type, iter;
   /* XXX angle is only kept for backward/forward compatibility,
-   * was used for two different things, see T50736. */
+   * was used for two different things, see #50736. */
   char angle DNA_DEPRECATED, _pad0, size, star_45, streaks;
   float colmod, mix, threshold, fade;
   float angle_ofs;
