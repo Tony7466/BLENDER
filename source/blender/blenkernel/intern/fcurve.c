@@ -694,15 +694,20 @@ static bool calculate_bezt_bounds(const FCurve *fcu,
 
 static bool calculate_fpt_bounds(const FCurve *fcu, const float frame_range[2], rctf *r_bounds)
 {
-  r_bounds->xmin = FLT_MAX;
-  r_bounds->xmax = -FLT_MAX;
-  r_bounds->ymin = FLT_MAX;
-  r_bounds->ymax = -FLT_MAX;
+  r_bounds->xmin = INFINITY;
+  r_bounds->xmax = -INFINITY;
+  r_bounds->ymin = INFINITY;
+  r_bounds->ymax = -INFINITY;
+
+  const int first_index = 0;
+  const int last_index = fcu->totvert - 1;
+  int start_index = first_index;
+  int end_index = last_index;
 
   if (frame_range != NULL) {
     /* Start index can be calculated because fpt has a key on every full frame. */
-    const float start_index = frame_range[0] - fcu->fpt[0].vec[0];
-    const float end_index = start_index + frame_range[1] - frame_range[0];
+    const float start_index_f = frame_range[0] - fcu->fpt[0].vec[0];
+    const float end_index_f = start_index + frame_range[1] - frame_range[0];
 
     if (start_index > fcu->totvert - 1 || end_index < 0) {
       /* Range is outside of keyframe samples. */
@@ -710,33 +715,20 @@ static bool calculate_fpt_bounds(const FCurve *fcu, const float frame_range[2], 
     }
 
     /* Range might be partially covering keyframe samples. */
-    const int start_index_clamped = clamp_i(start_index, 0, fcu->totvert - 1);
-    const int end_index_clamped = clamp_i(end_index, 0, fcu->totvert - 1);
-
-    r_bounds->xmin = fcu->fpt[start_index_clamped].vec[0];
-    r_bounds->xmax = fcu->fpt[end_index_clamped].vec[0];
-
-    for (int i = start_index_clamped; i <= end_index_clamped; i++) {
-      r_bounds->ymin = min_ff(r_bounds->ymin, fcu->fpt[i].vec[1]);
-      r_bounds->ymax = max_ff(r_bounds->ymax, fcu->fpt[i].vec[1]);
-    }
-    return r_bounds->xmin <= r_bounds->xmax;
+    start_index = clamp_i(start_index, 0, fcu->totvert - 1);
+    end_index = clamp_i(end_index, 0, fcu->totvert - 1);
   }
 
-  else {
-    /* X range can be directly calculated from end verts. */
-    r_bounds->xmin = fcu->fpt[0].vec[0];
-    r_bounds->xmax = fcu->fpt[fcu->totvert - 1].vec[0];
+  /* X range can be directly calculated from end verts. */
+  r_bounds->xmin = fcu->fpt[start_index].vec[0];
+  r_bounds->xmax = fcu->fpt[end_index].vec[0];
 
-    r_bounds->ymin = fcu->fpt[0].vec[1];
-    r_bounds->ymax = fcu->fpt[0].vec[1];
-    for (int i = 0; i < fcu->totvert; i++) {
-      r_bounds->ymin = min_ff(r_bounds->ymin, fcu->fpt[i].vec[1]);
-      r_bounds->ymax = max_ff(r_bounds->ymax, fcu->fpt[i].vec[1]);
-    }
+  for (int i = start_index; i <= end_index; i++) {
+    r_bounds->ymin = min_ff(r_bounds->ymin, fcu->fpt[i].vec[1]);
+    r_bounds->ymax = max_ff(r_bounds->ymax, fcu->fpt[i].vec[1]);
   }
 
-  return true;
+  return BLI_rctf_is_valid(r_bounds);
 }
 
 bool BKE_fcurve_calc_bounds(const FCurve *fcu,
