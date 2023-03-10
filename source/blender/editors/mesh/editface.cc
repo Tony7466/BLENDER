@@ -660,15 +660,6 @@ void paintvert_select_linked(bContext *C, Object *ob)
   paintvert_select_linked_vertices(C, ob, indices, true);
 }
 
-static void select_poly_verts(const MPoly &poly,
-                              const blender::Span<MLoop> &loops,
-                              blender::bke::SpanAttributeWriter<bool> &select_vert)
-{
-  for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
-    select_vert.span[loop.v] = true;
-  }
-}
-
 void paintvert_select_more(bContext *C, Object *ob, const bool face_step)
 {
   using namespace blender;
@@ -725,7 +716,9 @@ void paintvert_select_more(bContext *C, Object *ob, const bool face_step)
           continue;
         }
         const MPoly &poly = polys[poly_i];
-        select_poly_verts(poly, loops, select_vert);
+        for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
+          select_vert.span[loop.v] = true;
+        }
       }
     }
   }
