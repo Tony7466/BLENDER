@@ -747,7 +747,7 @@ bool BKE_fcurve_calc_bounds(const FCurve *fcu,
     return found_bounds;
   }
 
-  else if (fcu->fpt) {
+  if (fcu->fpt) {
     const bool founds_bounds = calculate_fpt_bounds(fcu, frame_range, r_bounds);
     return founds_bounds;
   }
