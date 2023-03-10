@@ -23,7 +23,7 @@ public:
     Preview
   };
 
-  BlenderSceneDelegate(pxr::HdRenderIndex *renderIndex, pxr::SdfPath const &delegateId, BlenderSceneDelegate::EngineType engine_type);
+  BlenderSceneDelegate(pxr::HdRenderIndex *render_index, pxr::SdfPath const &delegateId, BlenderSceneDelegate::EngineType engine_type);
   ~BlenderSceneDelegate() override = default;
 
   void populate(Depsgraph *depsgraph, bContext *context);

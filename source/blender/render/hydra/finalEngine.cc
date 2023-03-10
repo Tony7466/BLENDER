@@ -1,12 +1,10 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
-#include <memory>
-
-#include <pxr/imaging/hd/engine.h>
-#include <pxr/imaging/hdx/freeCameraSceneDelegate.h>
 #include <pxr/imaging/glf/drawTarget.h>
-#include <pxr/usdImaging/usdAppUtils/camera.h>
+
+#include "DEG_depsgraph_query.h"
+#include "BKE_lib_id.h"
 
 #include "glog/logging.h"
 
@@ -19,137 +17,48 @@ using namespace pxr;
 
 namespace blender::render::hydra {
 
-void FinalEngine::sync(BL::Depsgraph &b_depsgraph, BL::Context &b_context, HdRenderSettingsMap &renderSettings)
+void FinalEngine::sync(Depsgraph *depsgraph, bContext *context, HdRenderSettingsMap &renderSettings)
 {
-  sceneDelegate = std::make_unique<BlenderSceneDelegate>(renderIndex.get(), 
+  scene_delegate = std::make_unique<BlenderSceneDelegate>(render_index.get(), 
     SdfPath::AbsoluteRootPath().AppendElementString("scene"), BlenderSceneDelegate::EngineType::Final);
-  sceneDelegate->populate((Depsgraph *)b_depsgraph.ptr.data, (bContext *)b_context.ptr.data);
+  scene_delegate->populate(depsgraph, context);
 
   for (auto const& setting : renderSettings) {
-    renderDelegate->SetRenderSetting(setting.first, setting.second);
+    render_delegate->SetRenderSetting(setting.first, setting.second);
   }
 }
 
-void FinalEngine::render(BL::Depsgraph &b_depsgraph)
+void FinalEngine::render(Depsgraph *depsgraph)
 {
-  BL::Scene b_scene = b_depsgraph.scene();
-  BL::ViewLayer b_view_layer = b_depsgraph.view_layer();
-  string sceneName = b_scene.name(), layerName = b_view_layer.name();
-  GfVec2i buffer_res = get_resolution(b_scene.render());
-  GfVec2i image_res = {b_scene.render().resolution_x() * b_scene.render().resolution_percentage() / 100,
-                       b_scene.render().resolution_y() * b_scene.render().resolution_percentage() / 100};
+  Scene *scene = DEG_get_input_scene(depsgraph);
+  ViewLayer *view_layer = DEG_get_input_view_layer(depsgraph);
 
-  auto max_x = b_scene.render().border_max_x();
-  auto min_x = b_scene.render().border_min_x();
-  auto max_y = b_scene.render().border_max_y();
-  auto min_y = b_scene.render().border_min_y();
+  string scene_name(MAX_ID_FULL_NAME, 0);
+  BKE_id_full_name_get(scene_name.data(), (ID *)scene, 0);
+  string layer_name = view_layer->name;
 
-  GfCamera gfCamera = CameraData((Object *)b_scene.camera().ptr.data, image_res, GfVec4f(0, 0, 1, 1)).gf_camera(GfVec4f(min_x, min_y, max_x - min_x, max_y - min_y));
-  freeCameraDelegate->SetCamera(gfCamera);
-  renderTaskDelegate->SetCameraAndViewport(freeCameraDelegate->GetCameraId(), GfVec4d(0, 0, buffer_res[0], buffer_res[1]));
-  renderTaskDelegate->SetRendererAov(HdAovTokens->color);
-  if (simpleLightTaskDelegate) {
-    simpleLightTaskDelegate->SetCameraPath(freeCameraDelegate->GetCameraId());
+  RenderData &r = scene->r;
+  GfVec4f border(0, 0, 1, 1);
+  if (r.mode & R_BORDER) {
+    border = GfVec4f(r.border.xmin, r.border.ymin,
+                     r.border.xmax - r.border.xmin, r.border.ymax - r.border.ymin);
+  }
+  GfVec2i image_res(r.xsch * r.size / 100, r.ysch * r.size / 100);
+  GfVec2i res(int(image_res[0] * border[2]), int(image_res[1] * border[3]));
+  GfCamera camera = CameraData(scene->camera, image_res,  GfVec4f(0, 0, 1, 1)).gf_camera(border);
+
+  free_camera_delegate->SetCamera(camera);
+  render_task_delegate->SetCameraAndViewport(free_camera_delegate->GetCameraId(), GfVec4d(0, 0, res[0], res[1]));
+  render_task_delegate->SetRendererAov(HdAovTokens->color);
+  if (simple_light_task_delegate) {
+    simple_light_task_delegate->SetCameraPath(free_camera_delegate->GetCameraId());
   }
 
   HdTaskSharedPtrVector tasks;
-  if (simpleLightTaskDelegate) {
-    tasks.push_back(simpleLightTaskDelegate->GetTask());
+  if (simple_light_task_delegate) {
+    tasks.push_back(simple_light_task_delegate->GetTask());
   }
-  tasks.push_back(renderTaskDelegate->GetTask());
-
-  chrono::time_point<chrono::steady_clock> timeBegin = chrono::steady_clock::now(), timeCurrent;
-  chrono::milliseconds elapsedTime;
-
-  float percentDone = 0.0;
-
-  map<string, vector<float>> renderImages{
-    {"Combined", vector<float>(buffer_res[0] * buffer_res[1] * 4)}};  // 4 - number of channels
-  vector<float> &pixels = renderImages["Combined"];
-
-  {
-    // Release the GIL before calling into hydra, in case any hydra plugins call into python.
-    TF_PY_ALLOW_THREADS_IN_SCOPE();
-    engine->Execute(renderIndex.get(), &tasks);
-  }
-
-  while (true) {
-    if (b_engine.test_break()) {
-      break;
-    }
-
-    percentDone = getRendererPercentDone();
-    timeCurrent = chrono::steady_clock::now();
-    elapsedTime = chrono::duration_cast<chrono::milliseconds>(timeCurrent - timeBegin);
-
-    notifyStatus(percentDone / 100.0, sceneName + ": " + layerName,
-      "Render Time: " + format_duration(elapsedTime) + " | Done: " + to_string(int(percentDone)) + "%");
-
-    if (renderTaskDelegate->IsConverged()) {
-      break;
-    }
-
-    renderTaskDelegate->GetRendererAovData(HdAovTokens->color, pixels.data());
-    updateRenderResult(renderImages, layerName, buffer_res[0], buffer_res[1]);
-  }
-
-  renderTaskDelegate->GetRendererAovData(HdAovTokens->color, pixels.data());
-  updateRenderResult(renderImages, layerName, buffer_res[0], buffer_res[1]);
-}
-
-GfVec2i FinalEngine::get_resolution(BL::RenderSettings b_render)
-{
-  float border_w = 1.0, border_h = 1.0;
-  if (b_render.use_border()) {
-    border_w = b_render.border_max_x() - b_render.border_min_x();
-    border_h = b_render.border_max_y() - b_render.border_min_y();
-  }
-
-  return GfVec2i(int(b_render.resolution_x() * border_w * b_render.resolution_percentage() / 100),
-                 int(b_render.resolution_y() * border_h * b_render.resolution_percentage() / 100));
-}
-
-void FinalEngine::updateRenderResult(map<string, vector<float>>& renderImages, const string &layerName, int width, int height)
-{
-  BL::RenderResult b_result = b_engine.begin_result(0, 0, width, height, layerName.c_str(), NULL);
-  BL::CollectionRef b_passes = b_result.layers[0].passes;
-
-  for (BL::RenderPass b_pass : b_passes) {
-    auto it_image = renderImages.find(b_pass.name());
-    if (it_image == renderImages.end()) {
-      continue;
-    }
-    b_pass.rect(it_image->second.data());
-  }
-  b_engine.end_result(b_result, false, false, false);
-}
-
-void FinalEngine::notifyStatus(float progress, const string &title, const string &info)
-{
-  b_engine.update_progress(progress);
-  b_engine.update_stats(title.c_str(), info.c_str());
-}
-
-void FinalEngineGL::render(BL::Depsgraph &b_depsgraph)
-{
-  BL::Scene b_scene = b_depsgraph.scene();
-  BL::ViewLayer b_view_layer = b_depsgraph.view_layer();
-  string sceneName = b_scene.name(), layerName = b_view_layer.name();
-  GfVec2i res = get_resolution(b_scene.render());
-  GfCamera gfCamera = CameraData((Object *)b_scene.camera().ptr.data, res, GfVec4f(0, 0, 1, 1)).gf_camera();
-  freeCameraDelegate->SetCamera(gfCamera);
-  renderTaskDelegate->SetCameraAndViewport(freeCameraDelegate->GetCameraId(), GfVec4d(0, 0, res[0], res[1]));
-  if (simpleLightTaskDelegate) {
-    simpleLightTaskDelegate->SetCameraPath(freeCameraDelegate->GetCameraId());
-  }
-
-  HdTaskSharedPtrVector tasks;
-  if (simpleLightTaskDelegate) {
-    /* TODO: Uncomment this and fix GL error:
-         invalid operation, reported from void __cdecl pxrInternal_v0_22__pxrReserved__::HgiGLResourceBindings::BindResources(void) */
-    // tasks.push_back(simpleLightTaskDelegate->GetTask());
-  }
-  tasks.push_back(renderTaskDelegate->GetTask());
+  tasks.push_back(render_task_delegate->GetTask());
 
   chrono::time_point<chrono::steady_clock> timeBegin = chrono::steady_clock::now(), timeCurrent;
   chrono::milliseconds elapsedTime;
@@ -158,6 +67,115 @@ void FinalEngineGL::render(BL::Depsgraph &b_depsgraph)
 
   map<string, vector<float>> renderImages{
     {"Combined", vector<float>(res[0] * res[1] * 4)}};  // 4 - number of channels
+  vector<float> &pixels = renderImages["Combined"];
+
+  {
+    // Release the GIL before calling into hydra, in case any hydra plugins call into python.
+    TF_PY_ALLOW_THREADS_IN_SCOPE();
+    engine->Execute(render_index.get(), &tasks);
+  }
+
+  while (true) {
+    if (RE_engine_test_break(bl_engine)) {
+      break;
+    }
+
+    percentDone = renderer_percent_done();
+    timeCurrent = chrono::steady_clock::now();
+    elapsedTime = chrono::duration_cast<chrono::milliseconds>(timeCurrent - timeBegin);
+
+    notify_status(percentDone / 100.0, scene_name + ": " + layer_name,
+      "Render Time: " + format_duration(elapsedTime) + " | Done: " + to_string(int(percentDone)) + "%");
+
+    if (render_task_delegate->IsConverged()) {
+      break;
+    }
+
+    render_task_delegate->GetRendererAovData(HdAovTokens->color, pixels.data());
+    updateRenderResult(renderImages, layer_name, res[0], res[1]);
+  }
+
+  render_task_delegate->GetRendererAovData(HdAovTokens->color, pixels.data());
+  updateRenderResult(renderImages, layer_name, res[0], res[1]);
+}
+
+GfVec2i FinalEngine::get_resolution(Scene *scene)
+{
+  RenderData &r = scene->r;
+  float border_w = 1.0, border_h = 1.0;
+  if (r.mode & R_BORDER) {
+    border_w = r.border.xmax - r.border.xmin;
+    border_h = r.border.ymax - r.border.ymin;
+  }
+  return GfVec2i(int(r.xsch * border_w * r.size / 100), int(r.ysch * border_h * r.size / 100));
+}
+
+void FinalEngine::updateRenderResult(map<string, vector<float>>& renderImages, const string &layerName, int width, int height)
+{
+  RenderResult *result = RE_engine_begin_result(bl_engine, 0, 0, width, height, layerName.c_str(), nullptr);
+
+  /* TODO: only for the first render layer */
+  RenderLayer *layer = (RenderLayer *)result->layers.first;
+  for (RenderPass *pass = (RenderPass *)layer->passes.first; pass != nullptr; pass = pass->next) {
+    auto it_image = renderImages.find(pass->name);
+    if (it_image == renderImages.end()) {
+      continue;
+    }
+    memcpy(pass->rect, it_image->second.data(),
+           sizeof(float) * pass->rectx * pass->recty * pass->channels);
+  }
+
+  RE_engine_end_result(bl_engine, result, false, false, false);
+}
+
+void FinalEngine::notify_status(float progress, const string &title, const string &info)
+{
+  RE_engine_update_progress(bl_engine, progress);
+  RE_engine_update_stats(bl_engine, title.c_str(), info.c_str());
+}
+
+void FinalEngineGL::render(Depsgraph *depsgraph)
+{
+  Scene *scene = DEG_get_input_scene(depsgraph);
+  ViewLayer *view_layer = DEG_get_input_view_layer(depsgraph);
+  
+  string scene_name(MAX_ID_FULL_NAME, 0);
+  BKE_id_full_name_get(scene_name.data(), (ID *)scene, 0);
+  string layer_name = view_layer->name;
+
+  RenderData &r = scene->r;
+  GfVec4f border(0, 0, 1, 1);
+  if (r.mode & R_BORDER) {
+    border = GfVec4f(r.border.xmin, r.border.ymin,
+                     r.border.xmax - r.border.xmin, r.border.ymax - r.border.ymin);
+  }
+  GfVec2i image_res = {r.xsch * r.size / 100, r.ysch * r.size / 100};
+  GfVec2i res = {int(image_res[0] * border[2]), int(image_res[1] * border[3])};
+  GfCamera camera = CameraData(scene->camera, image_res,  GfVec4f(0, 0, 1, 1)).gf_camera(border);
+
+
+  free_camera_delegate->SetCamera(camera);
+  render_task_delegate->SetCameraAndViewport(free_camera_delegate->GetCameraId(),
+                                           GfVec4d(0, 0, res[0], res[1]));
+  if (simple_light_task_delegate) {
+    simple_light_task_delegate->SetCameraPath(free_camera_delegate->GetCameraId());
+  }
+
+  HdTaskSharedPtrVector tasks;
+  if (simple_light_task_delegate) {
+    /* TODO: Uncomment this and fix GL error:
+         invalid operation, reported from void __cdecl pxrInternal_v0_22__pxrReserved__::HgiGLResourceBindings::BindResources(void) */
+    // tasks.push_back(simple_light_task_delegate->GetTask());
+  }
+  tasks.push_back(render_task_delegate->GetTask());
+
+  chrono::time_point<chrono::steady_clock> timeBegin = chrono::steady_clock::now(), timeCurrent;
+  chrono::milliseconds elapsedTime;
+
+  float percentDone = 0.0;
+
+  map<string, vector<float>> renderImages{
+      {"Combined", vector<float>(res[0] * res[1] * 4)}};  // 4 - number of channels
   vector<float> &pixels = renderImages["Combined"];
 
   GLuint FramebufferName = 0;
@@ -189,33 +207,33 @@ void FinalEngineGL::render(BL::Depsgraph &b_depsgraph)
   {
     // Release the GIL before calling into hydra, in case any hydra plugins call into python.
     TF_PY_ALLOW_THREADS_IN_SCOPE();
-    engine->Execute(renderIndex.get(), &tasks);
+    engine->Execute(render_index.get(), &tasks);
   }
 
   while (true) {
-    if (b_engine.test_break()) {
+    if (RE_engine_test_break(bl_engine)) {
       break;
     }
 
-    percentDone = getRendererPercentDone();
+    percentDone = renderer_percent_done();
     timeCurrent = chrono::steady_clock::now();
     elapsedTime = chrono::duration_cast<chrono::milliseconds>(timeCurrent - timeBegin);
 
-    notifyStatus(percentDone / 100.0,
-                 sceneName + ": " + layerName,
+    notify_status(percentDone / 100.0,
+                 scene_name + ": " + layer_name,
                  "Render Time: " + format_duration(elapsedTime) +
                      " | Done: " + to_string(int(percentDone)) + "%");
 
-    if (renderTaskDelegate->IsConverged()) {
+    if (render_task_delegate->IsConverged()) {
       break;
     }
 
     glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, pixels.data());
-    updateRenderResult(renderImages, layerName, res[0], res[1]);
+    updateRenderResult(renderImages, layer_name, res[0], res[1]);
   }
 
   glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, pixels.data());
-  updateRenderResult(renderImages, layerName, res[0], res[1]);
+  updateRenderResult(renderImages, layer_name, res[0], res[1]);
 }
 
 }   // namespace blender::render::hydra

@@ -13,8 +13,7 @@
 #include <pxr/imaging/hdx/freeCameraSceneDelegate.h>
 #include <pxr/imaging/hgi/hgi.h>
 
-#include "MEM_guardedalloc.h"
-#include "RNA_blender_cpp.h"
+#include "RE_engine.h"
 
 #include "sceneDelegate/blenderSceneDelegate.h"
 #include "renderTaskDelegate.h"
@@ -24,28 +23,28 @@ namespace blender::render::hydra {
 
 class Engine {
 public:
-  Engine(BL::RenderEngine &b_engine, const std::string &delegateId);
+  Engine(RenderEngine *bl_engine, const std::string &render_delegate_id);
   virtual ~Engine();
 
-  virtual void sync(BL::Depsgraph &b_depsgraph, BL::Context &b_context, pxr::HdRenderSettingsMap &renderSettings) = 0;
-  virtual void render(BL::Depsgraph &b_depsgraph) = 0;
+  virtual void sync(Depsgraph *depsgraph, bContext *context, pxr::HdRenderSettingsMap &renderSettings) = 0;
+  virtual void render(Depsgraph *depsgraph) = 0;
 
 protected:
-  float getRendererPercentDone();
+  float renderer_percent_done();
 
 protected:
-  BL::RenderEngine b_engine;
+  RenderEngine *bl_engine;
 
-  HdPluginRenderDelegateUniqueHandle renderDelegate;
-  std::unique_ptr<HdRenderIndex> renderIndex;
-  std::unique_ptr<BlenderSceneDelegate> sceneDelegate;
-  std::unique_ptr<RenderTaskDelegate> renderTaskDelegate;
-  std::unique_ptr<HdxFreeCameraSceneDelegate> freeCameraDelegate;
-  std::unique_ptr<SimpleLightTaskDelegate> simpleLightTaskDelegate;
+  HdPluginRenderDelegateUniqueHandle render_delegate;
+  std::unique_ptr<HdRenderIndex> render_index;
+  std::unique_ptr<BlenderSceneDelegate> scene_delegate;
+  std::unique_ptr<RenderTaskDelegate> render_task_delegate;
+  std::unique_ptr<HdxFreeCameraSceneDelegate> free_camera_delegate;
+  std::unique_ptr<SimpleLightTaskDelegate> simple_light_task_delegate;
   std::unique_ptr<HdEngine> engine;
 
   HgiUniquePtr hgi;
-  HdDriver hgiDriver;
+  HdDriver hgi_driver;
 };
 
 }   // namespace blender::render::hydra

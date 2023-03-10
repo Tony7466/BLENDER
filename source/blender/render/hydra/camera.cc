@@ -2,6 +2,8 @@
  * Copyright 2011-2022 Blender Foundation */
 
 #include "DNA_camera_types.h"
+#include "DNA_screen_types.h"
+#include "BKE_context.h"
 
 #include "camera.h"
 #include "utils.h"
@@ -144,25 +146,26 @@ CameraData::CameraData(Object *camera_obj, GfVec2i res, GfVec4f tile)
   }
 }
 
-CameraData::CameraData(BL::Context &b_context)
+CameraData::CameraData(bContext *context)
 {
+  View3D *view3d = CTX_wm_view3d(context);
+  RegionView3D *region_data = (RegionView3D *)CTX_wm_region_data(context);
+  ARegion *region = CTX_wm_region(context);
+
   // this constant was found experimentally, didn't find such option in
-  // context.space_data or context.region_data
+  // context.view3d or context.region_data
   float VIEWPORT_SENSOR_SIZE = 72.0;
 
-  BL::SpaceView3D space_data = (BL::SpaceView3D)b_context.space_data();
-  BL::RegionView3D region_data = b_context.region_data();
-
-  GfVec2i res(b_context.region().width(), b_context.region().height());
+  GfVec2i res(region->winx, region->winy);
   float ratio = (float)res[0] / res[1];
-  transform = gf_matrix_from_transform((float(*)[4])region_data.view_matrix().data).GetInverse();
+  transform = gf_matrix_from_transform(region_data->viewmat).GetInverse();
 
-  switch (region_data.view_perspective()) {
-    case BL::RegionView3D::view_perspective_PERSP: {
+  switch (region_data->persp) {
+    case RV3D_PERSP: {
       mode = CAM_PERSP;
-      clip_range = GfRange1f(space_data.clip_start(), space_data.clip_end());
+      clip_range = GfRange1f(view3d->clip_start, view3d->clip_end);
       lens_shift = GfVec2f(0.0, 0.0);
-      focal_length = space_data.lens();
+      focal_length = view3d->lens;
 
       if (ratio > 1.0) {
         sensor_size = GfVec2f(VIEWPORT_SENSOR_SIZE, VIEWPORT_SENSOR_SIZE / ratio);
@@ -173,12 +176,12 @@ CameraData::CameraData(BL::Context &b_context)
       break;
     }
 
-    case BL::RegionView3D::view_perspective_ORTHO: {
+    case RV3D_ORTHO: {
       mode = CAM_ORTHO;
       lens_shift = GfVec2f(0.0f, 0.0f);
 
-      float o_size = region_data.view_distance() * VIEWPORT_SENSOR_SIZE / space_data.lens();
-      float o_depth = space_data.clip_end();
+      float o_size = region_data->dist * VIEWPORT_SENSOR_SIZE / view3d->lens;
+      float o_depth = view3d->clip_end;
 
       clip_range = GfRange1f(-o_depth * 0.5, o_depth * 0.5);
 
@@ -191,24 +194,22 @@ CameraData::CameraData(BL::Context &b_context)
       break;
     }
 
-    case BL::RegionView3D::view_perspective_CAMERA: {
-      BL::Object camera_obj = space_data.camera();
-
+    case RV3D_CAMOB: {
       GfMatrix4d mat = transform;
-      *this = CameraData((Object *)camera_obj.ptr.data, res, GfVec4f(0, 0, 1, 1));
+      *this = CameraData(view3d->camera, res, GfVec4f(0, 0, 1, 1));
       transform = mat;
 
       // This formula was taken from previous plugin with corresponded comment
       // See blender/intern/cycles/blender/blender_camera.cpp:blender_camera_from_view (look
       // for 1.41421f)
-      float zoom = 4.0 / pow((pow(2.0, 0.5) + region_data.view_camera_zoom() / 50.0), 2);
+      float zoom = 4.0 / pow((pow(2.0, 0.5) + region_data->camzoom / 50.0), 2);
 
       // Updating l_shift due to viewport zoom and view_camera_offset
       // view_camera_offset should be multiplied by 2
-      lens_shift = GfVec2f((lens_shift[0] + region_data.view_camera_offset()[0] * 2) / zoom,
-                           (lens_shift[1] + region_data.view_camera_offset()[1] * 2) / zoom);
+      lens_shift = GfVec2f((lens_shift[0] + region_data->camdx * 2) / zoom,
+                           (lens_shift[1] + region_data->camdy * 2) / zoom);
 
-      if (mode == BL::Camera::type_ORTHO) {
+      if (mode == CAM_ORTHO) {
         ortho_size *= zoom;
       }
       else {

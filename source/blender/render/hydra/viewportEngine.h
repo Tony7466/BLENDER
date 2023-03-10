@@ -32,12 +32,12 @@ private:
 class ViewportEngine : public Engine {
 public:
   using Engine::Engine;
-  void sync(BL::Depsgraph &b_depsgraph, BL::Context &b_context, pxr::HdRenderSettingsMap &renderSettings) override;
-  void render(BL::Depsgraph &b_depsgraph) override;
-  void render(BL::Depsgraph &b_depsgraph, BL::Context &b_context);
+  void sync(Depsgraph *depsgraph, bContext *context, pxr::HdRenderSettingsMap &renderSettings) override;
+  void render(Depsgraph *depsgraph) override;
+  void render(Depsgraph *depsgraph, bContext *context);
 
 private:
-  void notifyStatus(const std::string &title, const std::string &info);
+  void notify_status(const std::string &title, const std::string &info);
 
 private:
   std::chrono::time_point<std::chrono::steady_clock> timeBegin;

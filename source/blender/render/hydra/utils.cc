@@ -99,4 +99,26 @@ string cache_image(Main *bmain,
   return tempfile;
 }
 
+void set_env_paths(string const &name, vector<string> path_dirs)
+{
+  const char *env = BLI_getenv(name.c_str());;
+  stringstream ss;
+  int i = 0;
+  for (string &s : path_dirs) {
+    ++i;
+    ss << s;
+    if (i < path_dirs.size() || env) {
+      #ifdef _WIN32
+      ss << ";";
+      #else
+      ss << ":";
+      #endif
+    }
+  }
+  if (env) {
+    ss << env;
+  }
+  BLI_setenv(name.c_str(), ss.str().c_str());
+}
+
 }  // namespace blender::render::hydra

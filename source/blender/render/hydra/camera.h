@@ -8,16 +8,13 @@
 #include <pxr/base/gf/camera.h>
 #include <pxr/base/gf/vec2f.h>
 
-#include "MEM_guardedalloc.h"
-#include "RNA_blender_cpp.h"
-
 #include "DNA_object_types.h"
 
 namespace blender::render::hydra {
 
 class CameraData {
 public:
-  CameraData(BL::Context &b_context);
+  CameraData(bContext *context);
   CameraData(Object *camera_obj, pxr::GfVec2i res, pxr::GfVec4f tile);
 
   pxr::GfCamera gf_camera();

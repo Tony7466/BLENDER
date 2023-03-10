@@ -1,25 +1,22 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
-#include <iostream>
-#include <cstdlib>
-
 #include <Python.h>
 
-#include <pxr/pxr.h>
 #include <pxr/base/plug/plugin.h>
 #include <pxr/base/plug/registry.h>
 #include <pxr/usdImaging/usdImagingGL/engine.h>
 
-#include "glog/logging.h"
 #include "BKE_appdir.h"
-#include "BLI_string.h"
 #include "BLI_fileops.h"
 #include "BLI_path_util.h"
+
+#include "glog/logging.h"
 
 #include "finalEngine.h"
 #include "viewportEngine.h"
 #include "previewEngine.h"
+#include "utils.h"
 
 using namespace std;
 
@@ -43,23 +40,7 @@ void setup_usd_mtlx_environment()
     return;
   }
 
-#ifdef _WIN32
-#  define PATH_SEP ";"
-#else
-#  define PATH_SEP ":"
-#endif
-
-  const char *env_var_name = "PXR_MTLX_STDLIB_SEARCH_PATHS";
-  const char *env_var = BLI_getenv(env_var_name);
-  if (!env_var) {
-    BLI_setenv(env_var_name, stdlib_path);
-  }
-  else {
-    size_t env_var_len = strlen(env_var);
-    std::string combined(stdlib_path_len + 1 + env_var_len, '\0');
-    BLI_snprintf(combined.data(), combined.capacity(), "%s" PATH_SEP "%s", stdlib_path, env_var);
-    BLI_setenv(env_var_name, combined.c_str());
-  }
+  set_env_paths("PXR_MTLX_STDLIB_SEARCH_PATHS", {stdlib_path});
 }
 
 static PyObject *init_func(PyObject * /*self*/, PyObject *args)
@@ -102,20 +83,9 @@ static PyObject *register_plugins_func(PyObject * /*self*/, PyObject *args)
     }
     Py_DECREF(pyiter);
   }
-  
+
   if (!path_dirs.empty()) {
-    stringstream ss;
-    ss << "PATH=";
-    for (string &s : path_dirs) {
-      ss << s;
-#ifdef _WIN32
-      ss << ";";
-#else
-      ss << ":";
-#endif
-    }
-    ss << getenv("PATH");
-    putenv(ss.str().c_str());
+    set_env_paths("PATH", path_dirs);
   }
 
   pxr::PlugRegistry &registry = pxr::PlugRegistry::GetInstance();
@@ -129,20 +99,20 @@ static PyObject *get_render_plugins_func(PyObject * /*self*/, PyObject *args)
   LOG(INFO) << "get_render_plugins_func";
 
   PlugRegistry &registry = PlugRegistry::GetInstance();
-  TfTokenVector pluginsIds = UsdImagingGLEngine::GetRendererPlugins();
-  PyObject *ret = PyTuple_New(pluginsIds.size());
+  TfTokenVector plugin_ids = UsdImagingGLEngine::GetRendererPlugins();
+  PyObject *ret = PyTuple_New(plugin_ids.size());
   PyObject *val;
-  for (int i = 0; i < pluginsIds.size(); ++i) {
+  for (int i = 0; i < plugin_ids.size(); ++i) {
     PyObject *descr = PyDict_New();
 
-    PyDict_SetItemString(descr, "id", val = PyUnicode_FromString(pluginsIds[i].GetText()));
+    PyDict_SetItemString(descr, "id", val = PyUnicode_FromString(plugin_ids[i].GetText()));
     Py_DECREF(val);
 
     PyDict_SetItemString(descr, "name", 
-      val = PyUnicode_FromString(UsdImagingGLEngine::GetRendererDisplayName(pluginsIds[i]).c_str()));
+      val = PyUnicode_FromString(UsdImagingGLEngine::GetRendererDisplayName(plugin_ids[i]).c_str()));
     Py_DECREF(val);
 
-    string plugin_name = pluginsIds[i];
+    string plugin_name = plugin_ids[i];
     plugin_name = plugin_name.substr(0, plugin_name.size() - 6);
     plugin_name[0] = tolower(plugin_name[0]);
     string path = "";
@@ -163,29 +133,27 @@ static PyObject *engine_create_func(PyObject * /*self*/, PyObject *args)
   LOG(INFO) << "create_func";
 
   PyObject *pyengine;
-  char *engineType, *delegateId;
-  if (!PyArg_ParseTuple(args, "Oss", &pyengine, &engineType, &delegateId)) {
+  char *engineType, *render_delegate_id;
+  if (!PyArg_ParseTuple(args, "Oss", &pyengine, &engineType, &render_delegate_id)) {
     Py_RETURN_NONE;
   }
 
-  PointerRNA engineptr;
-  RNA_pointer_create(NULL, &RNA_RenderEngine, (void *)PyLong_AsVoidPtr(pyengine), &engineptr);
-  BL::RenderEngine b_engine(engineptr);
+  RenderEngine *bl_engine = (RenderEngine *)PyLong_AsVoidPtr(pyengine);
 
   Engine *engine;
 
   if (string(engineType) == "VIEWPORT") {
-    engine = new ViewportEngine(b_engine, delegateId);
+    engine = new ViewportEngine(bl_engine, render_delegate_id);
   }
   else if (string(engineType) == "PREVIEW") {
-    engine = new PreviewEngine(b_engine, delegateId);
+    engine = new PreviewEngine(bl_engine, render_delegate_id);
   }
   else {
-    if (b_engine.bl_use_gpu_context()) {
-      engine = new FinalEngineGL(b_engine, delegateId);
+    if (bl_engine->type->flag & RE_USE_GPU_CONTEXT) {
+      engine = new FinalEngineGL(bl_engine, render_delegate_id);
     }
     else {
-      engine = new FinalEngine(b_engine, delegateId);
+      engine = new FinalEngine(bl_engine, render_delegate_id);
     }
   }
 
@@ -213,14 +181,8 @@ static PyObject *engine_sync_func(PyObject * /*self*/, PyObject *args)
   }
 
   Engine *engine = (Engine *)PyLong_AsVoidPtr(pyengine);
-
-  PointerRNA depsgraphptr;
-  RNA_pointer_create(NULL, &RNA_Depsgraph, (ID *)PyLong_AsVoidPtr(pydepsgraph), &depsgraphptr);
-  BL::Depsgraph b_depsgraph(depsgraphptr);
-
-  PointerRNA contextptr;
-  RNA_pointer_create(NULL, &RNA_Context, (ID *)PyLong_AsVoidPtr(pycontext), &contextptr);
-  BL::Context b_context(contextptr);
+  Depsgraph *depsgraph = (Depsgraph *)PyLong_AsVoidPtr(pydepsgraph);
+  bContext *context = (bContext *)PyLong_AsVoidPtr(pycontext);
 
   HdRenderSettingsMap settings;
   PyObject *pyiter = PyObject_GetIter(pysettings);
@@ -244,7 +206,7 @@ static PyObject *engine_sync_func(PyObject * /*self*/, PyObject *args)
     Py_DECREF(pyiter);
   }
 
-  engine->sync(b_depsgraph, b_context, settings);
+  engine->sync(depsgraph, context, settings);
   Py_RETURN_NONE;
 }
 
@@ -257,10 +219,7 @@ static PyObject *engine_render_func(PyObject * /*self*/, PyObject *args)
   }
 
   Engine *engine = (Engine *)PyLong_AsVoidPtr(pyengine);
-
-  PointerRNA depsgraphptr;
-  RNA_pointer_create(NULL, &RNA_Depsgraph, (ID *)PyLong_AsVoidPtr(pydepsgraph), &depsgraphptr);
-  BL::Depsgraph depsgraph(depsgraphptr);
+  Depsgraph *depsgraph = (Depsgraph *)PyLong_AsVoidPtr(pydepsgraph);
 
   /* Allow Blender to execute other Python scripts. */
   Py_BEGIN_ALLOW_THREADS
@@ -278,18 +237,12 @@ static PyObject *engine_view_draw_func(PyObject * /*self*/, PyObject *args)
   }
 
   ViewportEngine *engine = (ViewportEngine *)PyLong_AsVoidPtr(pyengine);
-
-  PointerRNA depsgraphptr;
-  RNA_pointer_create(NULL, &RNA_Depsgraph, (ID *)PyLong_AsVoidPtr(pydepsgraph), &depsgraphptr);
-  BL::Depsgraph b_depsgraph(depsgraphptr);
-
-  PointerRNA contextptr;
-  RNA_pointer_create(NULL, &RNA_Context, (ID *)PyLong_AsVoidPtr(pycontext), &contextptr);
-  BL::Context b_context(contextptr);
+  Depsgraph *depsgraph = (Depsgraph *)PyLong_AsVoidPtr(pydepsgraph);
+  bContext *context = (bContext *)PyLong_AsVoidPtr(pycontext);
 
   /* Allow Blender to execute other Python scripts. */
   Py_BEGIN_ALLOW_THREADS
-    engine->render(b_depsgraph, b_context);
+    engine->render(depsgraph, context);
   Py_END_ALLOW_THREADS
 
   Py_RETURN_NONE;

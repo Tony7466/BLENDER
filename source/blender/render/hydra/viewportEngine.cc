@@ -7,8 +7,12 @@
 #include <pxr/imaging/glf/drawTarget.h>
 #include <pxr/usd/usdGeom/camera.h>
 
+#include "DEG_depsgraph_query.h"
 #include "BLI_math_matrix.h"
 #include "DNA_camera_types.h"
+#include "DNA_screen_types.h"
+#include "BKE_camera.h"
+#include "GPU_shader.h"
 
 #include "glog/logging.h"
 
@@ -22,7 +26,7 @@ using namespace pxr;
 namespace blender::render::hydra {
 
 struct ViewSettings {
-  ViewSettings(BL::Context &b_context);
+  ViewSettings(bContext *context);
 
   int width();
   int height();
@@ -36,43 +40,38 @@ struct ViewSettings {
   GfVec4i border;
 };
 
-ViewSettings::ViewSettings(BL::Context &b_context)
-  : camera_data(b_context)
+ViewSettings::ViewSettings(bContext *context)
+  : camera_data(context)
 {
-  screen_width = b_context.region().width();
-  screen_height = b_context.region().height();
+  View3D *view3d = CTX_wm_view3d(context);
+  RegionView3D *region_data = (RegionView3D *)CTX_wm_region_data(context);
+  ARegion *region = CTX_wm_region(context);
 
-  float width_half = screen_width / 2.0f;
-  float height_half = screen_height / 2.0f;
+  screen_width = region->winx;
+  screen_height = region->winy;
 
-  BL::Scene b_scene = b_context.scene();
+  Scene *scene = CTX_data_scene(context);
 
   //getting render border
   int x1 = 0, y1 = 0;
   int x2 = screen_width, y2 = screen_height;
 
-  if (b_context.region_data().view_perspective() == BL::RegionView3D::view_perspective_CAMERA) {
-    if (b_scene.render().use_border()) {
-      BL::Object b_camera_obj = b_scene.camera();
-      BL::Camera b_camera = (BL::Camera)b_camera_obj.data();
+  if (region_data->persp == RV3D_CAMOB) {
+    if (scene->r.mode & R_BORDER) {
+      Object *camera_obj = scene->camera;
 
       float camera_points[4][3];
-
-      b_camera.view_frame(b_scene, camera_points[0], camera_points[1], camera_points[2], camera_points[3]);
-
-      BL::Array<float, 16> region_persp_matrix = b_context.region_data().perspective_matrix();
-      BL::Array<float, 16> camera_world_matrix = b_camera_obj.matrix_world();
+      BKE_camera_view_frame(scene, (Camera *)camera_obj->data, camera_points);
 
       float screen_points[4][2];
-
       for (int i = 0 ; i < 4; i++) {
         float world_location[] = {camera_points[i][0], camera_points[i][1], camera_points[i][2], 1.0f};
-        mul_m4_v4((float(*)[4])camera_world_matrix.data, world_location);
-        mul_m4_v4((float(*)[4])region_persp_matrix.data, world_location);
+        mul_m4_v4(camera_obj->object_to_world, world_location);
+        mul_m4_v4(region_data->persmat, world_location);
 
         if (world_location[3] > 0.0) {
-          screen_points[i][0] = width_half + width_half * (world_location[0] / world_location[3]);
-          screen_points[i][1] = height_half + height_half * (world_location[1] / world_location[3]);
+          screen_points[i][0] = screen_width * 0.5f + screen_width * 0.5f * (world_location[0] / world_location[3]);
+          screen_points[i][1] = screen_height * 0.5f + screen_height * 0.5f * (world_location[1] / world_location[3]);
         }
       }
 
@@ -86,10 +85,10 @@ ViewSettings::ViewSettings(BL::Context &b_context)
       float x = x1_f, y = y1_f;
       float dx = x2_f - x1_f, dy = y2_f - y1_f;
 
-      x1 = x + b_scene.render().border_min_x() * dx;
-      x2 = x + b_scene.render().border_max_x() * dx;
-      y1 = y + b_scene.render().border_min_y() * dy;
-      y2 = y + b_scene.render().border_max_y() * dy;
+      x1 = x + scene->r.border.xmin * dx;
+      x2 = x + scene->r.border.xmax * dx;
+      y1 = y + scene->r.border.ymin * dy;
+      y2 = y + scene->r.border.ymax * dy;
 
       // adjusting to region screen resolution
       x1 = max(min(x1, screen_width), 0);
@@ -99,14 +98,14 @@ ViewSettings::ViewSettings(BL::Context &b_context)
     }
   }
   else {
-    if (((BL::SpaceView3D)b_context.space_data()).use_render_border()) {
+    if (view3d->flag2 & V3D_RENDER_BORDER) {
       int x = x1, y = y1;
       int dx = x2 - x1, dy = y2 - y1;
-
-      x1 = int(x + ((BL::SpaceView3D)b_context.space_data()).render_border_min_x() * dx);
-      x2 = int(x + ((BL::SpaceView3D)b_context.space_data()).render_border_max_x() * dx);
-      y1 = int(y + ((BL::SpaceView3D)b_context.space_data()).render_border_min_y() * dy);
-      y2 = int(y + ((BL::SpaceView3D)b_context.space_data()).render_border_max_y() * dy);
+      
+      x1 = int(x + view3d->render_border.xmin * dx);
+      x2 = int(x + view3d->render_border.xmax * dx);
+      y1 = int(y + view3d->render_border.ymin * dy);
+      y2 = int(y + view3d->render_border.ymax * dy);
     }
   }
 
@@ -240,87 +239,86 @@ void GLTexture::draw(GLfloat x, GLfloat y)
   glDeleteVertexArrays(1, &vertex_array);
 }
 
-void ViewportEngine::sync(BL::Depsgraph &b_depsgraph, BL::Context &b_context, HdRenderSettingsMap &renderSettings)
+void ViewportEngine::sync(Depsgraph *depsgraph, bContext *context, HdRenderSettingsMap &renderSettings)
 {
-  if (!sceneDelegate) {
-    sceneDelegate = std::make_unique<BlenderSceneDelegate>(renderIndex.get(), 
+  if (!scene_delegate) {
+    scene_delegate = std::make_unique<BlenderSceneDelegate>(render_index.get(), 
       SdfPath::AbsoluteRootPath().AppendElementString("scene"), BlenderSceneDelegate::EngineType::Viewport);
   }
-  sceneDelegate->populate((Depsgraph *)b_depsgraph.ptr.data, (bContext *)b_context.ptr.data);
+  scene_delegate->populate(depsgraph, context);
 
   for (auto const& setting : renderSettings) {
-    renderDelegate->SetRenderSetting(setting.first, setting.second);
+    render_delegate->SetRenderSetting(setting.first, setting.second);
   }
 }
 
-void ViewportEngine::render(BL::Depsgraph &b_depsgraph, BL::Context &b_context)
+void ViewportEngine::render(Depsgraph *depsgraph, bContext *context)
 {
-  ViewSettings viewSettings(b_context);
+  ViewSettings viewSettings(context);
   if (viewSettings.width() * viewSettings.height() == 0) {
     return;
   };
 
-  BL::Scene b_scene = b_depsgraph.scene_eval();
   GfCamera gfCamera = viewSettings.gf_camera();
-
-  freeCameraDelegate->SetCamera(gfCamera);
-  renderTaskDelegate->SetCameraAndViewport(freeCameraDelegate->GetCameraId(), 
+  free_camera_delegate->SetCamera(gfCamera);
+  render_task_delegate->SetCameraAndViewport(free_camera_delegate->GetCameraId(), 
     GfVec4d(viewSettings.border[0], viewSettings.border[1], viewSettings.border[2], viewSettings.border[3]));
-  if (simpleLightTaskDelegate) {
-    simpleLightTaskDelegate->SetCameraPath(freeCameraDelegate->GetCameraId());
+  if (simple_light_task_delegate) {
+    simple_light_task_delegate->SetCameraPath(free_camera_delegate->GetCameraId());
   }
 
-  if (!b_engine.bl_use_gpu_context()) {
-    renderTaskDelegate->SetRendererAov(HdAovTokens->color);
+  if ((bl_engine->type->flag & RE_USE_GPU_CONTEXT) == 0) {
+    render_task_delegate->SetRendererAov(HdAovTokens->color);
   }
 
-  if (getRendererPercentDone() == 0.0f) {
+  if (renderer_percent_done() == 0.0f) {
     timeBegin = chrono::steady_clock::now();
   }
 
-  b_engine.bind_display_space_shader(b_scene);
+  GPUShader *shader = GPU_shader_get_builtin_shader(GPU_SHADER_3D_IMAGE);
+  GPU_shader_bind(shader);
 
   HdTaskSharedPtrVector tasks;
-  if (simpleLightTaskDelegate) {
-    tasks.push_back(simpleLightTaskDelegate->GetTask());
+  if (simple_light_task_delegate) {
+    tasks.push_back(simple_light_task_delegate->GetTask());
   }
-  tasks.push_back(renderTaskDelegate->GetTask());
+  tasks.push_back(render_task_delegate->GetTask());
 
   {
-    // Release the GIL before calling into hydra, in case any hydra plugins call into python.
+    /* Release the GIL before calling into hydra, in case any hydra plugins call into python. */
     TF_PY_ALLOW_THREADS_IN_SCOPE();
-    engine->Execute(renderIndex.get(), &tasks);
+    engine->Execute(render_index.get(), &tasks);
 
-    if (!b_engine.bl_use_gpu_context()) {
-      texture.setBuffer(renderTaskDelegate->GetRendererAov(HdAovTokens->color));
+    if ((bl_engine->type->flag & RE_USE_GPU_CONTEXT) == 0) {
+      texture.setBuffer(render_task_delegate->GetRendererAov(HdAovTokens->color));
       texture.draw((GLfloat)viewSettings.border[0], (GLfloat)viewSettings.border[1]);
     }
   }
-  
-  b_engine.unbind_display_space_shader();
+
+  GPU_shader_unbind();
 
   chrono::time_point<chrono::steady_clock> timeCurrent = chrono::steady_clock::now();
   chrono::milliseconds elapsedTime = chrono::duration_cast<chrono::milliseconds>(timeCurrent - timeBegin);
 
   string formattedTime = format_duration(elapsedTime);
 
-  if (!renderTaskDelegate->IsConverged()) {
-    notifyStatus("Time: " + formattedTime + " | Done: " + to_string(int(getRendererPercentDone())) + "%",
-                 "Render");
-    b_engine.tag_redraw();
+  if (!render_task_delegate->IsConverged()) {
+    notify_status("Time: " + formattedTime + " | Done: " + to_string(int(renderer_percent_done())) + "%", "Render");
+    bl_engine->flag |= RE_ENGINE_DO_DRAW;
   }
   else {
-    notifyStatus(("Time: " + formattedTime).c_str(), "Rendering Done");
+    notify_status(("Time: " + formattedTime).c_str(), "Rendering Done");
   }
 }
 
-void ViewportEngine::render(BL::Depsgraph &b_depsgraph)
+void ViewportEngine::render(Depsgraph *depsgraph)
 {
+  /* Empty function */
 }
 
-void ViewportEngine::notifyStatus(const string &info, const string &status)
+void ViewportEngine::notify_status(const string &info, const string &status)
 {
-  b_engine.update_stats(status.c_str(), info.c_str());
+  RE_engine_update_stats(bl_engine, status.c_str(), info.c_str());
 }
 
 }   // namespace blender::render::hydra

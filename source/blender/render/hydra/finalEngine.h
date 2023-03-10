@@ -12,13 +12,13 @@ namespace blender::render::hydra {
 class FinalEngine : public Engine {
 public:
   using Engine::Engine;
-  virtual void sync(BL::Depsgraph &b_depsgraph, BL::Context &b_context, pxr::HdRenderSettingsMap &renderSettings) override;
-  virtual void render(BL::Depsgraph &b_depsgraph) override;
+  virtual void sync(Depsgraph *depsgraph, bContext *context, pxr::HdRenderSettingsMap &renderSettings) override;
+  virtual void render(Depsgraph *b_depsgraph) override;
 
 protected:
-  pxr::GfVec2i get_resolution(BL::RenderSettings b_render);
+  pxr::GfVec2i get_resolution(Scene *scene);
   void updateRenderResult(std::map<std::string, std::vector<float>> &render_images, const std::string &layerName, int width, int height);
-  void notifyStatus(float progress, const std::string &title, const std::string &info);
+  void notify_status(float progress, const std::string &title, const std::string &info);
 
 protected:
   HdRenderSettingsMap renderSettings;
@@ -27,7 +27,7 @@ protected:
 class FinalEngineGL : public FinalEngine {
  public:
   using FinalEngine::FinalEngine;
-  void render(BL::Depsgraph &b_depsgraph) override;
+  void render(Depsgraph *depsgraph) override;
 };
 
 }   // namespace blender::render::hydra
