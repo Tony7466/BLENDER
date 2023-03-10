@@ -629,7 +629,7 @@ static const char *info_statusbar_string(Main *bmain,
         timecode, sizeof(timecode), -2, FRA2TIME(frame_count), FPS, U.timecode_style);
     ofs += BLI_snprintf_rlen(info + ofs,
                              len - ofs,
-                             TIP_("Duration: %s (Frame %i/%i)"),
+                             TIP_("Duration: %s (Frame %i / %i)"),
                              timecode,
                              relative_current_frame,
                              frame_count);
