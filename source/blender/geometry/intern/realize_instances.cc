@@ -149,6 +149,8 @@ struct RealizeCurveInfo {
    */
   Span<float> radius;
 
+  Span<float> tilt;
+
   /**
    * The resolution attribute must be filled with the default value if it does not exist on some
    * curves.
@@ -213,6 +215,7 @@ struct AllCurvesInfo {
   bool create_id_attribute = false;
   bool create_handle_postion_attributes = false;
   bool create_radius_attribute = false;
+  bool create_tilt_attribute = false;
   bool create_resolution_attribute = false;
   bool create_nurbs_weight_attribute = false;
 };
@@ -1165,6 +1168,7 @@ static OrderedAttributes gather_generic_curve_attributes_to_propagate(
                                                     attributes_to_propagate);
   attributes_to_propagate.remove("position");
   attributes_to_propagate.remove("radius");
+  attributes_to_propagate.remove("tilt");
   attributes_to_propagate.remove("nurbs_weight");
   attributes_to_propagate.remove("resolution");
   attributes_to_propagate.remove("handle_right");
@@ -1232,6 +1236,11 @@ static AllCurvesInfo preprocess_curves(const GeometrySet &geometry_set,
           attributes.lookup<float>("radius", ATTR_DOMAIN_POINT).get_internal_span();
       info.create_radius_attribute = true;
     }
+
+    if (attributes.contains("tilt")) {
+      curve_info.tilt = attributes.lookup<float>("tilt", ATTR_DOMAIN_POINT).get_internal_span();
+      info.create_tilt_attribute = true;
+    }
     if (attributes.contains("nurbs_weight")) {
       curve_info.nurbs_weight =
           attributes.lookup<float>("nurbs_weight", ATTR_DOMAIN_POINT).get_internal_span();
@@ -1262,6 +1271,7 @@ static void execute_realize_curve_task(const RealizeInstancesOptions &options,
                                        MutableSpan<float3> all_handle_left,
                                        MutableSpan<float3> all_handle_right,
                                        MutableSpan<float> all_radii,
+                                       MutableSpan<float> all_tilt,
                                        MutableSpan<float> all_nurbs_weights,
                                        MutableSpan<int> all_resolutions)
 {
@@ -1304,6 +1314,36 @@ static void execute_realize_curve_task(const RealizeInstancesOptions &options,
       };
   if (all_curves_info.create_radius_attribute) {
     copy_point_span_with_default(curves_info.radius, all_radii, 1.0f);
+  }
+  if (all_curves_info.create_tilt_attribute) {
+    copy_point_span_with_default(curves_info.tilt, all_tilt, 1.0f);
+
+    const Span<int8_t> normal_mode_span =
+        curves.attributes().lookup<int8_t>("normal_mode", ATTR_DOMAIN_CURVE).get_internal_span();
+
+    const IndexRange curves_range = curves.curves_range();
+    const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+    for (const int curve_i : curves_range) {
+      const IndexRange curve_points = points_by_curve[curve_i];
+      if (curve_points.size() < 2) {
+        continue;
+      }
+
+      MutableSpan<float> curve_tilt = all_tilt.slice(curve_points);
+      const NormalMode normal_mode = static_cast<NormalMode>(normal_mode_span[curve_i]);
+      switch (normal_mode) {
+        case NORMAL_MODE_Z_UP: {
+          bke::curves::poly::fix_tilt_for_calculated_normals_z_up(curves, curve_i, curve_tilt);
+          break;
+        }
+        case NORMAL_MODE_MINIMUM_TWIST: {
+          bke::curves::poly::fix_tilt_for_calculated_normals_minimum(curves, curve_i, curve_tilt);
+          break;
+        }
+        default: {
+        }
+      }
+    }
   }
   if (all_curves_info.create_nurbs_weight_attribute) {
     copy_point_span_with_default(curves_info.nurbs_weight, all_nurbs_weights, 1.0f);
@@ -1403,6 +1443,10 @@ static void execute_realize_curve_tasks(const RealizeInstancesOptions &options,
   if (all_curves_info.create_radius_attribute) {
     radius = dst_attributes.lookup_or_add_for_write_only_span<float>("radius", ATTR_DOMAIN_POINT);
   }
+  SpanAttributeWriter<float> tilt;
+  if (all_curves_info.create_tilt_attribute) {
+    tilt = dst_attributes.lookup_or_add_for_write_only_span<float>("tilt", ATTR_DOMAIN_POINT);
+  }
   SpanAttributeWriter<float> nurbs_weight;
   if (all_curves_info.create_nurbs_weight_attribute) {
     nurbs_weight = dst_attributes.lookup_or_add_for_write_only_span<float>("nurbs_weight",
@@ -1428,6 +1472,7 @@ static void execute_realize_curve_tasks(const RealizeInstancesOptions &options,
                                  handle_left.span,
                                  handle_right.span,
                                  radius.span,
+                                 tilt.span,
                                  nurbs_weight.span,
                                  resolution.span);
     }
@@ -1448,6 +1493,7 @@ static void execute_realize_curve_tasks(const RealizeInstancesOptions &options,
   }
   point_ids.finish();
   radius.finish();
+  tilt.finish();
   resolution.finish();
   nurbs_weight.finish();
   handle_left.finish();

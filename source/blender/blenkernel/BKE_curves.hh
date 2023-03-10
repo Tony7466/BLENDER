@@ -481,11 +481,19 @@ void calculate_tangents(Span<float3> positions, bool is_cyclic, MutableSpan<floa
  */
 void calculate_normals_minimum(Span<float3> tangents, bool cyclic, MutableSpan<float3> normals);
 
+void fix_tilt_for_calculated_normals_z_up(const CurvesGeometry &curves,
+                                          const int curve_i,
+                                          MutableSpan<float> tilt);
+
 /**
  * Calculate a vector perpendicular to every tangent on the X-Y plane (unless the tangent is
  * vertical, in that case use the X direction).
  */
 void calculate_normals_z_up(Span<float3> tangents, MutableSpan<float3> normals);
+
+void fix_tilt_for_calculated_normals_minimum(const CurvesGeometry &curves,
+                                             const int curve_i,
+                                             MutableSpan<float> tilt);
 
 }  // namespace poly
 

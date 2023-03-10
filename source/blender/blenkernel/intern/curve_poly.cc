@@ -133,6 +133,12 @@ void calculate_normals_z_up(const Span<float3> tangents, MutableSpan<float3> nor
   }
 }
 
+void fix_tilt_for_calculated_normals_z_up(const CurvesGeometry &curves,
+                                          const int curve_i,
+                                          MutableSpan<float> tilt)
+{
+}
+
 /**
  * Rotate the last normal in the same way the tangent has been rotated.
  */
@@ -197,6 +203,12 @@ void calculate_normals_minimum(const Span<float3> tangents,
     const float angle = angle_step * i;
     normals[i] = math::rotate_direction_around_axis(normals[i], tangents[i], angle);
   }
+}
+
+void fix_tilt_for_calculated_normals_minimum(const CurvesGeometry &curves,
+                                             const int curve_i,
+                                             MutableSpan<float> tilt)
+{
 }
 
 }  // namespace blender::bke::curves::poly
