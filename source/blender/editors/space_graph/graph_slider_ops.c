@@ -1053,3 +1053,109 @@ void GRAPH_OT_ease(wmOperatorType *ot)
 }
 
 /** \} */
+/* -------------------------------------------------------------------- */
+/** \name Gauss Smooth Operator
+ * \{ */
+
+static void gauss_smooth_graph_keys(bAnimContext *ac,
+                                    const float factor,
+                                    const float sigma,
+                                    const int filter_width)
+{
+  ListBase anim_data = {NULL, NULL};
+  ANIM_animdata_filter(ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, ac->datatype);
+
+  bAnimListElem *ale;
+
+  double *kernel = MEM_callocN(sizeof(double) * (filter_width * 2 + 1), "Gauss Kernel");
+  get_1d_gauss_kernel(filter_width, sigma, kernel);
+
+  for (ale = anim_data.first; ale; ale = ale->next) {
+    FCurve *fcu = (FCurve *)ale->key_data;
+    ListBase segments = find_fcurve_segments(fcu);
+
+    LISTBASE_FOREACH (FCurveSegment *, segment, &segments) {
+      BezTriple left_bezt = fcu->bezt[segment->start_index];
+      BezTriple right_bezt = fcu->bezt[segment->start_index + segment->length - 1];
+      const int sample_count = (int)(right_bezt.vec[1][0] - left_bezt.vec[1][0]) +
+                               (filter_width * 2) + 1;
+      float *samples = MEM_callocN(sizeof(float) * sample_count, "Smooth FCurve Op Samples");
+      sample_fcurve_segment(fcu, left_bezt.vec[1][0] - filter_width, samples, sample_count);
+      smooth_fcurve_segment(fcu, segment, samples, factor, filter_width, kernel);
+      MEM_freeN(samples);
+    }
+
+    BLI_freelistN(&segments);
+    ale->update |= ANIM_UPDATE_DEFAULT;
+  }
+
+  MEM_freeN(kernel);
+  ANIM_animdata_update(ac, &anim_data);
+  ANIM_animdata_freelist(&anim_data);
+}
+
+static int gauss_exec(bContext *C, wmOperator *op)
+{
+  bAnimContext ac;
+
+  if (ANIM_animdata_get_context(C, &ac) == 0) {
+    return OPERATOR_CANCELLED;
+  }
+  const float factor = RNA_float_get(op->ptr, "factor");
+  const float sigma = RNA_float_get(op->ptr, "sigma");
+  const int filter_width = RNA_int_get(op->ptr, "filter_width");
+  gauss_smooth_graph_keys(&ac, factor, sigma, filter_width);
+
+  /* Set notifier that keyframes have changed. */
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+
+  return OPERATOR_FINISHED;
+}
+
+void GRAPH_OT_gauss_smooth(wmOperatorType *ot)
+{
+  /* Identifiers. */
+  ot->name = "Gauss Smooth";
+  ot->idname = "GRAPH_OT_gauss_smooth";
+  ot->description = "Smooth the curve using a Gauss filter";
+
+  /* API callbacks. */
+  /* ot->invoke = fft_invoke; */
+  /* ot->modal = fft_modal; */
+  ot->exec = gauss_exec;
+  ot->poll = graphop_editable_keyframes_poll;
+
+  /* Flags. */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  RNA_def_float_factor(ot->srna,
+                       "factor",
+                       1.0f,
+                       0.0f,
+                       FLT_MAX,
+                       "Factor",
+                       "How much to blend to the default value",
+                       0.0f,
+                       1.0f);
+
+  RNA_def_float(ot->srna,
+                "sigma",
+                2.0f,
+                0.001f,
+                FLT_MAX,
+                "Sigma",
+                "At which frquency the factor should be applied",
+                0.001f,
+                100.0f);
+
+  RNA_def_int(ot->srna,
+              "filter_width",
+              8,
+              1,
+              64,
+              "Filter Width",
+              "How far to each side the operator will average the key values",
+              1,
+              32);
+}
+/** \} */

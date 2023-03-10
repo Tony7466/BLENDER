@@ -424,6 +424,13 @@ void blend_to_neighbor_fcurve_segment(struct FCurve *fcu,
                                       struct FCurveSegment *segment,
                                       float factor);
 void breakdown_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
+void get_1d_gauss_kernel(int filter_width, const float sigma, double *kernel);
+void smooth_fcurve_segment(struct FCurve *fcu,
+                           struct FCurveSegment *segment,
+                           float *samples,
+                           float factor,
+                           int filter_order,
+                           double *kernel);
 void ease_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
 bool decimate_fcurve(struct bAnimListElem *ale, float remove_ratio, float error_sq_max);
 void blend_to_default_fcurve(struct PointerRNA *id_ptr, struct FCurve *fcu, float factor);
@@ -432,6 +439,10 @@ void blend_to_default_fcurve(struct PointerRNA *id_ptr, struct FCurve *fcu, floa
  */
 void smooth_fcurve(struct FCurve *fcu);
 void sample_fcurve(struct FCurve *fcu);
+void sample_fcurve_segment(struct FCurve *fcu,
+                           float start_frame,
+                           float *r_samples,
+                           int sample_count);
 
 /* ----------- */
 

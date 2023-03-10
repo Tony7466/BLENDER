@@ -392,7 +392,44 @@ void blend_to_default_fcurve(PointerRNA *id_ptr, FCurve *fcu, const float factor
     move_key(&fcu->bezt[i], key_y_value);
   }
 }
+/* ---------------- */
 
+void get_1d_gauss_kernel(const int filter_width, const float sigma, double *kernel)
+{
+  double norm = 1.0 / (M_2_SQRTPI * sigma);
+  double sig_sq = 2.0 * sigma * sigma;
+  double sum = 0.0;
+
+  for (int i = -filter_width; i <= filter_width; i++) {
+    kernel[i + filter_width] = norm * exp(-i * i / sig_sq);
+    sum += kernel[i + filter_width];
+  }
+
+  /* Normalize kernel values. */
+  for (int i = 0; i < filter_width * 2 + 1; i++) {
+    kernel[i] = kernel[i] / sum;
+  }
+}
+
+void smooth_fcurve_segment(FCurve *fcu,
+                           FCurveSegment *segment,
+                           float *samples,
+                           const float factor,
+                           const int filter_order,
+                           double *kernel)
+{
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+    const int sample_index = (int)(fcu->bezt[i].vec[1][0] -
+                                   fcu->bezt[segment->start_index].vec[1][0]) +
+                             filter_order;
+    double filter_result = 0;
+    /* Apply the kernel. */
+    for (int j = -filter_order; j <= filter_order; j++) {
+      filter_result += samples[sample_index + j] * kernel[filter_order + j];
+    }
+    fcu->bezt[i].vec[1][1] = interpf((float)filter_result, samples[sample_index], factor);
+  }
+}
 /* ---------------- */
 
 void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
@@ -679,6 +716,16 @@ void smooth_fcurve(FCurve *fcu)
 typedef struct TempFrameValCache {
   float frame, val;
 } TempFrameValCache;
+
+void sample_fcurve_segment(FCurve *fcu,
+                           const float start_frame,
+                           float *samples,
+                           const int sample_count)
+{
+  for (int i = 0; i < sample_count; i++) {
+    samples[i] = evaluate_fcurve(fcu, start_frame + i);
+  }
+}
 
 void sample_fcurve(FCurve *fcu)
 {
