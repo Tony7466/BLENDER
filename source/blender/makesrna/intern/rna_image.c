@@ -659,6 +659,10 @@ static void rna_Image_pixels_set(PointerRNA *ptr, const float *values)
     if (!G.background) {
       BKE_image_free_gputextures(ima);
     }
+
+    /* NOTE: Do update from the set() because typically pixels.foreach_set() is used to update
+     * the values, and it does not invoke the update(). */
+    BKE_image_partial_update_mark_full_update(ima);
     WM_main_add_notifier(NC_IMAGE | ND_DISPLAY, &ima->id);
   }
 
