@@ -669,11 +669,11 @@ void MetalKernelPipeline::compile()
         metal_printf("newBinaryArchiveWithDescriptor failed: %s\n", err ? err : "nil");
       }
       [archiveDesc release];
-    }
 
-    if (loading_existing_archive) {
-      pipelineOptions = MTLPipelineOptionFailOnBinaryArchiveMiss;
-      computePipelineStateDescriptor.binaryArchives = [NSArray arrayWithObjects:archive, nil];
+      if (loading_existing_archive) {
+        pipelineOptions = MTLPipelineOptionFailOnBinaryArchiveMiss;
+        computePipelineStateDescriptor.binaryArchives = [NSArray arrayWithObjects:archive, nil];
+      }
     }
   }
 
