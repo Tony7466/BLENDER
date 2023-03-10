@@ -10,6 +10,9 @@
 #include "DEG_depsgraph_query.h"
 
 #include "DNA_layer_types.h"
+#include "DNA_scene_types.h"
+
+#include "BLI_math_vector.h"
 
 #include "IO_stl.h"
 
@@ -26,6 +29,7 @@ void exporter_main(bContext *C, const STLExportParams &export_params)
   std::unique_ptr<FileWriter> writer;
 
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+  Scene *scene = CTX_data_scene(C);
 
   /* If not exporting in batch, create single writer for all objects */
   if (!export_params.use_batch) {
@@ -63,13 +67,31 @@ void exporter_main(bContext *C, const STLExportParams &export_params)
                      BKE_object_get_evaluated_mesh(&export_object_eval_) :
                      BKE_object_get_pre_modified_mesh(&export_object_eval_);
 
+    // Calculate transform
+    float global_scale = export_params.global_scale;
+    if ((scene->unit.system != USER_UNIT_NONE) && export_params.use_scene_unit) {
+      global_scale *= scene->unit.scale_length;
+    }
+    float scale_vec[3] = {global_scale, global_scale, global_scale};
+    float obmat3x3[3][3];
+    unit_m3(obmat3x3);
+    float obmat4x4[4][4];
+    unit_m4(obmat4x4);
+    /* +Y-forward and +Z-up are the Blender's default axis settings. */
+    mat3_from_axis_conversion(
+        IO_AXIS_Y, IO_AXIS_Z, export_params.forward_axis, export_params.up_axis, obmat3x3);
+    copy_m4_m3(obmat4x4, obmat3x3);
+    rescale_m4(obmat4x4, scale_vec);
+
     // Write triangles
     auto loops = mesh->loops();
     for (const auto &loop_tri : mesh->looptris()) {
       Triangle t{};
       for (int i = 0; i < 3; i++) {
+        auto co = mesh->vert_positions()[loops[loop_tri.tri[i]].v];
+        mul_m4_v3(obmat4x4, co);
         for (int j = 0; j < 3; j++) {
-          t.vertices[i][j] = mesh->vert_positions()[loops[loop_tri.tri[i]].v][j];
+          t.vertices[i][j] = co[j];
         }
       }
       writer->write_triangle(&t);
