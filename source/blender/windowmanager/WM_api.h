@@ -1154,6 +1154,7 @@ void WM_paneltype_init(void);
 void WM_paneltype_clear(void);
 struct PanelType *WM_paneltype_find(const char *idname, bool quiet);
 bool WM_paneltype_add(struct PanelType *pt);
+void WM_paneltype_subpanel_add(struct PanelType *parent, struct PanelType *pt, bool use_order);
 void WM_paneltype_remove(struct PanelType *pt);
 
 void WM_paneltype_idname_visit_for_search(const struct bContext *C,

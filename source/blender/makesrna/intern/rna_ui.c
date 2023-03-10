@@ -391,18 +391,7 @@ static StructRNA *rna_Panel_register(Main *bmain,
   /* Insert into list. */
   BLI_insertlinkafter(&art->paneltypes, pt_iter, pt);
 
-  if (parent) {
-    pt->parent = parent;
-    LinkData *pt_child_iter = parent->children.last;
-    for (; pt_child_iter; pt_child_iter = pt_child_iter->prev) {
-      PanelType *pt_child = pt_child_iter->data;
-      if (pt_child->order <= pt->order) {
-        break;
-      }
-    }
-    BLI_insertlinkafter(&parent->children, pt_child_iter, BLI_genericNodeN(pt));
-  }
-
+  WM_paneltype_subpanel_add(parent, pt, true);
   {
     const char *owner_id = RNA_struct_state_owner_get();
     if (owner_id) {

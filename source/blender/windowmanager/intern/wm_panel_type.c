@@ -47,6 +47,27 @@ bool WM_paneltype_add(PanelType *pt)
   return true;
 }
 
+void WM_paneltype_subpanel_add(PanelType *parent, PanelType *pt, bool use_order)
+{
+  pt->parent = parent;
+
+  if (parent) {
+    if (use_order) {
+      LinkData *pt_child_iter = parent->children.last;
+      for (; pt_child_iter; pt_child_iter = pt_child_iter->prev) {
+        PanelType *pt_child = pt_child_iter->data;
+        if (pt_child->order <= pt->order) {
+          break;
+        }
+      }
+      BLI_insertlinkafter(&parent->children, pt_child_iter, BLI_genericNodeN(pt));
+    }
+    else {
+      BLI_addtail(&parent->children, BLI_genericNodeN(pt));
+    }
+  }
+}
+
 void WM_paneltype_remove(PanelType *pt)
 {
   const bool ok = BLI_ghash_remove(g_paneltypes_hash, pt->idname, NULL, NULL);

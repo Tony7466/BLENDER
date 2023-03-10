@@ -393,8 +393,7 @@ PanelType *gpencil_modifier_subpanel_register(ARegionType *region_type,
 
   BLI_assert(parent != NULL);
   BLI_strncpy(panel_type->parent_id, parent->idname, BKE_ST_MAXNAME);
-  panel_type->parent = parent;
-  BLI_addtail(&parent->children, BLI_genericNodeN(panel_type));
+  WM_paneltype_subpanel_add(parent, NULL, false);
   BLI_addtail(&region_type->paneltypes, panel_type);
 
   return panel_type;
