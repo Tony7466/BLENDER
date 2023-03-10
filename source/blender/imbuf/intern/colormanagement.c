@@ -4097,6 +4097,7 @@ bool IMB_colormanagement_setup_glsl_draw_from_space(
   const float gamma = applied_view_settings->gamma;
   const float scale = (exposure == 0.0f) ? 1.0f : powf(2.0f, exposure);
   const float exponent = (gamma == 1.0f) ? 1.0f : 1.0f / max_ff(FLT_EPSILON, gamma);
+  const bool use_extended = STRPREFIX(display_settings->display_device, "Extended");
 
   OCIO_ConstConfigRcPtr *config = OCIO_getCurrentConfig();
 
@@ -4111,7 +4112,8 @@ bool IMB_colormanagement_setup_glsl_draw_from_space(
                                                                 exponent,
                                                                 dither,
                                                                 predivide,
-                                                                do_overlay_merge);
+                                                                do_overlay_merge,
+                                                                use_extended);
 
   OCIO_configRelease(config);
 
