@@ -28,7 +28,9 @@ MeshData::MeshData(BlenderSceneDelegate *scene_delegate, Object *object)
   }
   else {
     Mesh *mesh = BKE_object_to_mesh(nullptr, object, false);
-    set_mesh(mesh);
+    if (mesh) {
+      set_mesh(mesh);
+    }
     BKE_object_to_mesh_clear(object);
   }
 }

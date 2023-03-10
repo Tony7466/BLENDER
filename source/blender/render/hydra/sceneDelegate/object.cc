@@ -19,7 +19,6 @@ bool ObjectData::supported(Object *object)
     case OB_MESH:
     case OB_SURF:
     case OB_FONT:
-    case OB_CURVES:
     case OB_CURVES_LEGACY:
     case OB_MBALL:
     case OB_LAMP:

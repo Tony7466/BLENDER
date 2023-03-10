@@ -9,6 +9,7 @@
 #include "blenderSceneDelegate.h"
 
 using namespace pxr;
+using namespace std;
 
 namespace blender::render::hydra {
 
@@ -149,7 +150,7 @@ void BlenderSceneDelegate::update_collection(bool remove, bool visibility)
   }
 
   /* Export of new visible objects which were not exported before */
-  std::set<SdfPath> available_objects;
+  set<SdfPath> available_objects;
   SdfPath id;
 
   DEGObjectIterSettings settings = {0};
@@ -164,12 +165,13 @@ void BlenderSceneDelegate::update_collection(bool remove, bool visibility)
               DEG_iterator_objects_next,
               DEG_iterator_objects_end,
               &data, Object *, object) {
-    if (data.dupli_object_current != nullptr) {
-      add_update_instance(data.dupli_object_current);
+
+    if (!ObjectData::supported(object)) {
       continue;
     }
 
-    if (!ObjectData::supported(object)) {
+    if (data.dupli_object_current != nullptr) {
+      add_update_instance(data.dupli_object_current);
       continue;
     }
 
@@ -196,7 +198,7 @@ void BlenderSceneDelegate::update_collection(bool remove, bool visibility)
     }
 
     /* remove unused materials */
-    std::set<SdfPath> available_materials;
+    set<SdfPath> available_materials;
     for (auto &obj : objects) {
       MeshData *m_data = dynamic_cast<MeshData *>(obj.second.get());
       if (m_data && !m_data->material_id.IsEmpty()) {

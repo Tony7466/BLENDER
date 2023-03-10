@@ -59,6 +59,9 @@ WorldData::WorldData(BlenderSceneDelegate *scene_delegate, World *world, bContex
     }
 
     bNode *input_node = link->fromnode;
+    if (input_node->type != SH_NODE_BACKGROUND) {
+      return;
+    }
 
     bNodeSocket color_input = input_node->input_by_identifier("Color");
     bNodeSocket strength_input = input_node->input_by_identifier("Strength");
