@@ -1212,6 +1212,7 @@ elseif(WIN32)
     list(APPEND LIB ${TBB_MALLOC_LIBRARIES})
   endif()
 
+
   windows_install_shared_manifest(
     FILES ${LIBDIR}/sndfile/lib/libsndfile-1.dll
     ALL

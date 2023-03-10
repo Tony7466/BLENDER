@@ -4,7 +4,7 @@
 /** \file
  * \ingroup gpu
  */
-
+#include "vk_debug.hh"
 #include "vk_pipeline.hh"
 #include "vk_context.hh"
 #include "vk_memory.hh"

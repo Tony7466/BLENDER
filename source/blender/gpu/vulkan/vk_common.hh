@@ -7,14 +7,20 @@
 
 #pragma once
 
+#define VK_NO_PROTOTYPES
 #ifdef __APPLE__
 #  include <MoltenVK/vk_mvk_moltenvk.h>
+/* If we overload all functions, we should implement  own with VK_NO_PROTOTYPES.*/
 #else
-#  include <vulkan/vulkan.h>
-#endif
+#      include <vulkan/vulkan.h>
+#    endif
+
+
+
+
 
 #include "vk_mem_alloc.h"
-
+    
 #include "gpu_texture_private.hh"
 
 namespace blender::gpu {

@@ -5,6 +5,7 @@
  * \ingroup gpu
  */
 
+#include "vk_debug.hh"
 #include "vk_shader.hh"
 
 #include "vk_backend.hh"

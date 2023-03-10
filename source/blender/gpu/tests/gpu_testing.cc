@@ -7,13 +7,14 @@
 #include "GPU_context.h"
 #include "GPU_init_exit.h"
 #include "gpu_testing.hh"
-
+#include "BKE_global.h"
 #include "GHOST_C-api.h"
 
 namespace blender::gpu {
 
 void GPUTest::SetUp()
 {
+  G.debug |= G_DEBUG_GPU;
   GPU_backend_type_selection_set(gpu_backend_type);
   GHOST_GLSettings glSettings = {};
   glSettings.context_type = draw_context_type;

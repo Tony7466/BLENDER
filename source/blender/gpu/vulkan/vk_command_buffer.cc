@@ -5,6 +5,8 @@
  * \ingroup gpu
  */
 
+#include "vk_debug.hh"
+
 #include "vk_command_buffer.hh"
 #include "vk_buffer.hh"
 #include "vk_context.hh"
@@ -51,10 +53,12 @@ void VKCommandBuffer::begin_recording()
   VkCommandBufferBeginInfo begin_info = {};
   begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   vkBeginCommandBuffer(vk_command_buffer_, &begin_info);
+  debug::pushMarker(vk_command_buffer_, "vkcmd_frame");
 }
 
 void VKCommandBuffer::end_recording()
 {
+  debug::popMarker(vk_command_buffer_);
   vkEndCommandBuffer(vk_command_buffer_);
 }
 

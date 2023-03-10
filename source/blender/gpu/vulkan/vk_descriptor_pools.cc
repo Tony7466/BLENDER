@@ -5,6 +5,7 @@
  * \ingroup gpu
  */
 
+#include "vk_debug.hh"
 #include "vk_descriptor_pools.hh"
 #include "vk_memory.hh"
 

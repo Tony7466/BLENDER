@@ -36,13 +36,21 @@ VKContext::VKContext(void *ghost_window, void *ghost_context)
 
   /*Load extended functions.*/
   {
-    debug::init_vk_callbacks(vk_instance_);
+    void *void_inst = (void *)vk_instance_;
+    void *void_pdev = (void *)vk_physical_device_;
+    debug::init_vk_callbacks(void_inst,void_pdev);
   }
 
   if (vk_device_ == VK_NULL_HANDLE) {
     GHOST_GetVulkanLogicalDevice(
         (GHOST_ContextHandle)ghost_context, &vk_device_, &vk_queue_family_, &vk_queue_);
   }
+  {
+    debug::vulkanLoadDevice(vk_device_);
+  }
+
+  debug::object_vk_label(vk_device_, vk_device_, std::string("LogicalDevice"));
+  debug::object_vk_label(vk_device_, vk_queue_, std::string("GraphicsQueue"));
 
   init_physical_device_limits();
 
@@ -134,7 +142,7 @@ void VKContext::memory_statistics_get(int * /*total_mem*/, int * /*free_mem*/)
 {
 }
 
-void VKContext::debug_group_begin(const char * label, int id)
+void VKContext::debug_group_begin(const char *label, int /* id */)
 {
   debug::pushMarker(vk_queue_,label);
 }

@@ -15,6 +15,7 @@
 #include "GPU_texture.h"
 #include "GPU_vertex_buffer.h"
 #include "GPU_vertex_format.h"
+#include "GPU_debug.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -88,6 +89,8 @@ static void test_gpu_shader_compute_1d()
     return;
   }
 
+  GPU_debug_group_begin("gpu_shader_compute_1d");
+
   static constexpr uint SIZE = 10;
 
   /* Build compute shader. */
@@ -120,6 +123,8 @@ static void test_gpu_shader_compute_1d()
   }
   MEM_freeN(data);
 
+  GPU_debug_group_end();
+
   /* Cleanup. */
   GPU_shader_unbind();
   GPU_texture_unbind(texture);
@@ -136,7 +141,7 @@ static void test_gpu_shader_compute_vbo()
     std::cout << "Skipping compute shader test: platform not supported";
     return;
   }
-
+  GPU_debug_group_begin("gpu_shader_compute_vbo");
   static constexpr uint SIZE = 128;
 
   /* Build compute shader. */
@@ -168,6 +173,7 @@ static void test_gpu_shader_compute_vbo()
     EXPECT_FLOAT_EQ(data[index * 4 + 3], expected_value);
   }
 
+  GPU_debug_group_end();
   /* Cleanup. */
   GPU_shader_unbind();
   GPU_vertbuf_discard(vbo);

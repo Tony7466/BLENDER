@@ -875,7 +875,7 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
   m_extensions_device.clear();
 
   if (m_debug) {
-    enableLayer(layers_available, m_layers_enabled, "VK_LAYER_KHRONOS_validation");
+    enableLayer(layers_available, m_layers_enabled, "VK_LAYER_KHRONOS_validation", m_debug);
   }
 
 
@@ -891,8 +891,8 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
 
     m_extensions_device.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
   }
-  extensions_device.push_back("VK_KHR_dedicated_allocation");
-  extensions_device.push_back("VK_KHR_get_memory_requirements2");
+  m_extensions_device.push_back("VK_KHR_dedicated_allocation");
+  m_extensions_device.push_back("VK_KHR_get_memory_requirements2");
   /* Enable MoltenVK required instance extensions.*/
 #ifdef VK_MVK_MOLTENVK_EXTENSION_NAME
   requireExtension(
@@ -1065,5 +1065,6 @@ GHOST_TSuccess GHOST_ContextVK::getVulkanLogicalDevice(void *r_device,
   *((VkQueue *)r_queue) = m_graphic_queue;
 
   return GHOST_kSuccess;
+}
 
 }
