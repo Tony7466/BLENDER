@@ -898,29 +898,31 @@ static void displace_links(bNodeTree *ntree, const bNode *node, bNodeLink *inser
   bNodeSocket *replacement_socket = node_find_linkable_socket(*ntree, node, linked_socket);
 
   if (linked_socket->is_input()) {
-    if (linked_socket->limit + 1 < nodeSocketLinkLimit(linked_socket)) {
+    BLI_assert(!linked_socket->is_multi_input());
+    ntree->ensure_topology_cache();
+    bNodeLink *displaced_link = linked_socket->runtime->directly_linked_links.first();
+
+    if (!replacement_socket) {
+      nodeRemLink(ntree, displaced_link);
       return;
     }
 
-    LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, &ntree->links) {
-      if (link->tosock == linked_socket) {
-        if (!replacement_socket) {
-          nodeRemLink(ntree, link);
-          BKE_ntree_update_tag_link_removed(ntree);
+    displaced_link->tosock = replacement_socket;
+
+    if (replacement_socket->is_multi_input()) {
+      /* Check for duplicate links when linking to multi input sockets. */
+      for (bNodeLink *existing_link : replacement_socket->runtime->directly_linked_links) {
+        if (existing_link->fromsock == displaced_link->fromsock) {
+          nodeRemLink(ntree, displaced_link);
           return;
         }
-
-        link->tosock = replacement_socket;
-        if (replacement_socket->is_multi_input()) {
-          link->multi_input_socket_index = node_socket_count_links(*ntree, *replacement_socket) -
-                                           1;
-        }
-        BKE_ntree_update_tag_link_changed(ntree);
-        return;
       }
       const int multi_input_index = node_socket_count_links(*ntree, *replacement_socket) - 1;
       displaced_link->multi_input_socket_index = multi_input_index;
     }
+
+    BKE_ntree_update_tag_link_changed(ntree);
+    return;
   }
 
   LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, &ntree->links) {
