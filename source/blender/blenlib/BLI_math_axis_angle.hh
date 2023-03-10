@@ -22,19 +22,16 @@ namespace blender::math::detail {
 template<typename T, typename AngleT>
 AxisAngle<T, AngleT>::AxisAngle(const VecBase<T, 3> &axis, const AngleT &angle)
 {
-  /* TODO: After merge to limit side effects. */
-  // BLI_assert(is_unit_scale(axis));
-  // axis_ = axis;
-  T length;
-  this->axis_ = math::normalize_and_get_length(axis, length);
-  this->angle_ = angle;
+  BLI_assert(is_unit_scale(axis));
+  axis_ = axis;
+  angle_ = angle;
 }
 
 template<typename T, typename AngleT>
 AxisAngle<T, AngleT>::AxisAngle(const AxisSigned axis, const AngleT &angle)
 {
-  this->axis_ = VecBase<T, 3>(axis);
-  this->angle_ = angle;
+  axis_ = to_vector<VecBase<T, 3>>(axis);
+  angle_ = angle;
 }
 
 template<typename T, typename AngleT>
