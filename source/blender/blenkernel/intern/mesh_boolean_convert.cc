@@ -391,15 +391,12 @@ static void copy_vert_attributes(Mesh *dest_mesh,
 
 /* Similar to copy_vert_attributes but for poly attributes. */
 static void copy_poly_attributes(Mesh *dest_mesh,
-                                 MPoly *poly,
-                                 const MPoly *orig_poly,
                                  const Mesh *orig_me,
                                  int poly_index,
                                  int index_in_orig_me,
                                  Span<short> material_remap,
                                  MutableSpan<int> dst_material_indices)
 {
-  poly->flag = orig_poly->flag;
   CustomData *target_cd = &dest_mesh->pdata;
   const CustomData *source_cd = &orig_me->pdata;
   for (int source_layer_i = 0; source_layer_i < source_cd->totlayer; ++source_layer_i) {
@@ -751,8 +748,6 @@ static Mesh *imesh_to_mesh(IMesh *im, MeshesToIMeshInfo &mim)
     }
 
     copy_poly_attributes(result,
-                         poly,
-                         orig_poly,
                          orig_me,
                          fi,
                          index_in_orig_me,
@@ -773,13 +768,13 @@ static Mesh *imesh_to_mesh(IMesh *im, MeshesToIMeshInfo &mim)
    */
   for (int fi : im->face_index_range()) {
     const Face *f = im->face(fi);
-    const MPoly *poly = &dst_polys[fi];
+    const MPoly &poly = dst_polys[fi];
     for (int j : f->index_range()) {
       if (f->edge_orig[j] != NO_INDEX) {
         const Mesh *orig_me;
         int index_in_orig_me;
         mim.input_medge_for_orig_index(f->edge_orig[j], &orig_me, &index_in_orig_me);
-        int e_index = dst_loops[poly->loopstart + j].e;
+        int e_index = dst_loops[poly.loopstart + j].e;
         copy_edge_attributes(result, orig_me, e_index, index_in_orig_me);
       }
     }

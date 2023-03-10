@@ -203,7 +203,6 @@ static void read_mpolys(CDStreamConfig &config, const AbcMeshData &mesh_data)
 
     /* Polygons are always assumed to be smooth-shaded. If the Alembic mesh should be flat-shaded,
      * this is encoded in custom loop normals. See #71246. */
-    poly.flag |= ME_SMOOTH;
 
     /* NOTE: Alembic data is stored in the reverse order. */
     rev_loop_index = loop_index + (face_size - 1);
@@ -270,13 +269,14 @@ static void process_loop_normals(CDStreamConfig &config, const N3fArraySamplePtr
   float(*lnors)[3] = static_cast<float(*)[3]>(
       MEM_malloc_arrayN(loop_count, sizeof(float[3]), "ABC::FaceNormals"));
 
-  MPoly *poly = mesh->polys_for_write().data();
+  const Span<MPoly> polys = mesh->polys();
   const N3fArraySample &loop_normals = *loop_normals_ptr;
   int abc_index = 0;
-  for (int i = 0, e = mesh->totpoly; i < e; i++, poly++) {
+  for (const int i : polys.index_range()) {
+    const MPoly &poly = polys[i];
     /* As usual, ABC orders the loops in reverse. */
-    for (int j = poly->totloop - 1; j >= 0; j--, abc_index++) {
-      int blender_index = poly->loopstart + j;
+    for (int j = poly.totloop - 1; j >= 0; j--, abc_index++) {
+      int blender_index = poly.loopstart + j;
       copy_zup_from_yup(lnors[blender_index], loop_normals[abc_index].getValue());
     }
   }

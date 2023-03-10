@@ -11,6 +11,8 @@
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
 
+#include "BLF_api.h"
+
 #include "BLT_translation.h"
 
 #include "DNA_curves_types.h"
@@ -2384,24 +2386,24 @@ static void rna_Node_parent_set(PointerRNA *ptr,
   bNode *parent = value.data;
   bNodeTree *ntree = (bNodeTree *)ptr->owner_id;
 
-  if (parent) {
-    /* XXX only Frame node allowed for now,
-     * in the future should have a poll function or so to test possible attachment.
-     */
-    if (parent->type != NODE_FRAME) {
-      return;
-    }
+  if (!parent) {
+    nodeDetachNode(ntree, node);
+    return;
+  }
 
-    /* make sure parent is not attached to the node */
-    if (nodeAttachNodeCheck(parent, node)) {
-      return;
-    }
+  /* XXX only Frame node allowed for now,
+   * in the future should have a poll function or so to test possible attachment.
+   */
+  if (parent->type != NODE_FRAME) {
+    return;
+  }
+
+  if (nodeIsParentAndChild(node, parent)) {
+    return;
   }
 
   nodeDetachNode(ntree, node);
-  if (parent) {
-    nodeAttachNode(ntree, node, parent);
-  }
+  nodeAttachNode(ntree, node, parent);
 }
 
 static void rna_Node_internal_links_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
@@ -2425,8 +2427,7 @@ static bool rna_Node_parent_poll(PointerRNA *ptr, PointerRNA value)
     return false;
   }
 
-  /* make sure parent is not attached to the node */
-  if (nodeAttachNodeCheck(parent, node)) {
+  if (node->type == NODE_FRAME && nodeIsParentAndChild(node, parent)) {
     return false;
   }
 
@@ -4165,6 +4166,12 @@ static bNodeSocket *rna_NodeOutputFile_slots_new(
   return sock;
 }
 
+static void rna_FrameNode_label_size_update(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+  BLF_cache_clear();
+  rna_Node_update(bmain, scene, ptr);
+}
+
 static void rna_ShaderNodeTexIES_mode_set(PointerRNA *ptr, int value)
 {
   bNode *node = (bNode *)ptr->data;
@@ -4817,7 +4824,7 @@ static void def_frame(StructRNA *srna)
   RNA_def_property_int_sdna(prop, NULL, "label_size");
   RNA_def_property_range(prop, 8, 64);
   RNA_def_property_ui_text(prop, "Label Font Size", "Font size to use for displaying the label");
-  RNA_def_property_update(prop, NC_NODE | ND_DISPLAY, NULL);
+  RNA_def_property_update(prop, NC_NODE | ND_DISPLAY, "rna_FrameNode_label_size_update");
 }
 
 static void def_clamp(StructRNA *srna)
