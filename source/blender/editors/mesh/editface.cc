@@ -702,23 +702,22 @@ void paintvert_select_more(bContext *C, Object *ob, const bool face_step)
    * attached to them. */
   for (const int i : edges.index_range()) {
     const MEdge &edge = edges[i];
-    bool has_vertex_selected = false;
     if ((!select_vert_original[edge.v1] && !select_vert_original[edge.v2]) || hide_edge[i]) {
       continue;
     }
-    has_vertex_selected = true;
     select_vert.span[edge.v1] = true;
     select_vert.span[edge.v2] = true;
-    if (face_step && has_vertex_selected) {
-      const Span<int> neighbor_polys(edge_poly_map[i].indices, edge_poly_map[i].count);
-      for (const int poly_i : neighbor_polys) {
-        if (hide_poly[poly_i]) {
-          continue;
-        }
-        const MPoly &poly = polys[poly_i];
-        for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
-          select_vert.span[loop.v] = true;
-        }
+    if (!face_step) {
+      continue;
+    }
+    const Span<int> neighbor_polys(edge_poly_map[i].indices, edge_poly_map[i].count);
+    for (const int poly_i : neighbor_polys) {
+      if (hide_poly[poly_i]) {
+        continue;
+      }
+      const MPoly &poly = polys[poly_i];
+      for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
+        select_vert.span[loop.v] = true;
       }
     }
   }
@@ -739,10 +738,26 @@ void paintvert_select_less(bContext *C, Object *ob, const bool face_step)
   bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
   bke::SpanAttributeWriter<bool> select_vert = attributes.lookup_or_add_for_write_span<bool>(
       ".select_vert", ATTR_DOMAIN_POINT);
+  const VArray<bool> hide_edge = attributes.lookup_or_default<bool>(
+      ".hide_edge", ATTR_DOMAIN_EDGE, false);
+  const VArray<bool> hide_poly = attributes.lookup_or_default<bool>(
+      ".hide_poly", ATTR_DOMAIN_FACE, false);
 
   const Span<MPoly> polys = mesh->polys();
   const Span<MLoop> loops = mesh->loops();
   const Span<MEdge> edges = mesh->edges();
+
+  MeshElemMap *edge_poly_map;
+  int *edge_poly_mem;
+  if (face_step) {
+    BKE_mesh_edge_poly_map_create(&edge_poly_map,
+                                  &edge_poly_mem,
+                                  edges.size(),
+                                  polys.data(),
+                                  polys.size(),
+                                  loops.data(),
+                                  loops.size());
+  }
 
   /* Need a copy of the selected verts that we can read from and is not modified. */
   BitVector<> select_vert_original(mesh->totvert, false);
@@ -750,18 +765,23 @@ void paintvert_select_less(bContext *C, Object *ob, const bool face_step)
     select_vert_original[i].set(select_vert.span[i]);
   }
 
-  for (const MPoly &poly : polys) {
-    bool has_vertex_selected = false;
-    for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
-      if (select_vert_original[loop.v]) {
+  for (const int i : edges.index_range()) {
+    const MEdge &edge = edges[i];
+    if ((select_vert_original[edge.v1] && select_vert_original[edge.v2]) && !hide_edge[i]) {
+      continue;
+    }
+    select_vert.span[edge.v1] = false;
+    select_vert.span[edge.v2] = false;
+
+    if (!face_step) {
+      continue;
+    }
+    const Span<int> neighbor_polys(edge_poly_map[i].indices, edge_poly_map[i].count);
+    for (const int poly_i : neighbor_polys) {
+      if (hide_poly[poly_i]) {
         continue;
       }
-      has_vertex_selected = true;
-      const MEdge &edge = edges[loop.e];
-      select_vert.span[edge.v1] = false;
-      select_vert.span[edge.v2] = false;
-    }
-    if (face_step && has_vertex_selected) {
+      const MPoly &poly = polys[poly_i];
       for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
         select_vert.span[loop.v] = false;
       }
