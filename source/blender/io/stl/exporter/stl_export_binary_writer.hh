@@ -38,8 +38,8 @@ BinaryFileWriter::BinaryFileWriter(const char *filepath)
 
   char header[BINARY_HEADER_SIZE] = {};
   fwrite(header, 1, BINARY_HEADER_SIZE, file_);
-  // Write placeholder for number of triangles,
-  // so that it can be updated later (after all triangles have been written)
+  /* Write placeholder for number of triangles, so that it can be updated later (after all
+   * triangles have been written). */
   fwrite(&tris_num_, sizeof(uint32_t), 1, file_);
 }
 

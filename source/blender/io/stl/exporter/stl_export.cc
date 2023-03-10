@@ -31,7 +31,7 @@ void exporter_main(bContext *C, const STLExportParams &export_params)
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Scene *scene = CTX_data_scene(C);
 
-  /* If not exporting in batch, create single writer for all objects */
+  /* If not exporting in batch, create single writer for all objects. */
   if (!export_params.use_batch) {
     writer = create_writer(export_params.filepath,
                            export_params.use_ascii ? FileWriter::Type::ASCII :
@@ -53,9 +53,9 @@ void exporter_main(bContext *C, const STLExportParams &export_params)
       continue;
     }
 
-    /* If exporting in batch, create writer for each iteration over objects */
+    /* If exporting in batch, create writer for each iteration over objects. */
     if (export_params.use_batch) {
-      // TODO: append object name to exported file name to match old Python STL exporter
+      /* TODO: append object name to exported file name to match old Python STL exporter. */
       writer = create_writer(export_params.filepath,
                              export_params.use_ascii ? FileWriter::Type::ASCII :
                                                        FileWriter::Type::BINARY);
@@ -67,7 +67,7 @@ void exporter_main(bContext *C, const STLExportParams &export_params)
                      BKE_object_get_evaluated_mesh(&export_object_eval_) :
                      BKE_object_get_pre_modified_mesh(&export_object_eval_);
 
-    // Calculate transform
+    /* Calculate transform. */
     float global_scale = export_params.global_scale;
     if ((scene->unit.system != USER_UNIT_NONE) && export_params.use_scene_unit) {
       global_scale *= scene->unit.scale_length;
@@ -83,7 +83,7 @@ void exporter_main(bContext *C, const STLExportParams &export_params)
     copy_m4_m3(obmat4x4, obmat3x3);
     rescale_m4(obmat4x4, scale_vec);
 
-    // Write triangles
+    /* Write triangles. */
     auto loops = mesh->loops();
     for (const auto &loop_tri : mesh->looptris()) {
       Triangle t{};
