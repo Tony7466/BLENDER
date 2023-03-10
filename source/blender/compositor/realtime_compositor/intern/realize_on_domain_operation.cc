@@ -58,11 +58,14 @@ void RealizeOnDomainOperation::execute()
                                  Interpolation::Bicubic);
   GPU_texture_filter_mode(input.texture(), use_bilinear);
 
-  /* Make out-of-bound texture access return zero by clamping to border color. And make texture
-   * wrap appropriately if the input repeats. */
-  const bool repeats = input.get_realization_options().repeat_x ||
-                       input.get_realization_options().repeat_y;
-  GPU_texture_wrap_mode(input.texture(), repeats, false);
+  /* If the input repeats, set a repeating wrap mode for out-of-bound texture access. Otherwise,
+   * make out-of-bound texture access return zero by setting a clipping wrap mode. */
+  GPU_texture_wrap_mode_x(input.texture(),
+                          input.get_realization_options().repeat_x ? GPU_SAMPLER_WRAP_REPEAT :
+                                                                     GPU_SAMPLER_WRAP_CLIP);
+  GPU_texture_wrap_mode_y(input.texture(),
+                          input.get_realization_options().repeat_y ? GPU_SAMPLER_WRAP_REPEAT :
+                                                                     GPU_SAMPLER_WRAP_CLIP);
 
   input.bind_as_texture(shader, "input_tx");
   result.bind_as_image(shader, "domain_img");

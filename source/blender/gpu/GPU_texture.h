@@ -11,6 +11,11 @@
 
 #pragma once
 
+#ifdef __cplusplus
+#  include <string>
+#endif
+
+#include "BLI_assert.h"
 #include "BLI_utildefines.h"
 
 #include "GPU_state.h"
@@ -22,84 +27,310 @@ extern "C" {
 #endif
 
 /* -------------------------------------------------------------------- */
-/** \name Enums
+/** \name Sampler State
  * \{ */
 
 /**
- * A `eGPUSamplerState` specify the sampler state to bind a texture with.
- * One is stored inside `GPUTexture` for default parameters.
- *
- * Some sampler states commonly set:
- * - BORDER_COLOR is set to {0, 0, 0, 0}.
- * - MIN_LOD is set to -1000.
- * - MAX_LOD is set to 1000.
- * - LOD_BIAS is set to 0.0.
+ * The `eGPUSamplerFiltering` bit flag specifies the enabled filtering options of a texture
+ * sampler.
  */
-/**
- * TODO(fclem): this enum needs to be split into multiple states. One for filtering. One for
- * extension / wrap mode etc...
- */
-typedef enum eGPUSamplerState {
+typedef enum eGPUSamplerFiltering {
   /**
-   * Default sampler state with all options off.
-   * It means no filtering, no mipmap, clamp to edge texel, no compare.
+   * Default sampler filtering with all options off.
+   * It means no linear filtering, no mipmapping, and no anisotropic filtering.
    */
-  GPU_SAMPLER_DEFAULT = 0,
+  GPU_SAMPLER_FILTERING_DEFAULT = 0,
+
   /**
    * Enables hardware linear filtering.
-   * Enables linear interpolation between MIPS if GPU_SAMPLER_MIPMAP is also set.
+   * Also enables linear interpolation between MIPS if GPU_SAMPLER_FILTERING_MIPMAP is set.
    */
-  GPU_SAMPLER_FILTER = (1 << 0),
+  GPU_SAMPLER_FILTERING_LINEAR = (1 << 0),
+
   /**
    * Enables mipmap access through shader samplers.
-   * Enables linear interpolation between mips if GPU_SAMPLER_FILTER is also set, otherwise the mip
+   * Also enables linear interpolation between mips if GPU_SAMPLER_FILTER is set, otherwise the mip
    * interpolation will be set to nearest.
+   *
+   * The following parameters are always left to their default values and can't be changed:
+   * - TEXTURE_MIN_LOD is -1000.
+   * - TEXTURE_MAX_LOD is 1000.
+   * - TEXTURE_LOD_BIAS is 0.0f.
    */
-  GPU_SAMPLER_MIPMAP = (1 << 1),
-  /**
-   * Sets texture coordinate extension to repeat in X, Y and Z direction.
-   * If not set for some direction, either clamp to edge (texel) or border color (0,0,0,0) if
-   * `GPU_SAMPLER_CLAMP_BORDER` is set.
-   * If `GPU_SAMPLER_MIRROR_REPEAT` is set, any direction using `GPU_SAMPLER_REPEAT_*` will use a
-   * mirrored repeat coordinate extension.
-   */
-  GPU_SAMPLER_REPEAT_S = (1 << 2),
-  GPU_SAMPLER_REPEAT_T = (1 << 3),
-  GPU_SAMPLER_REPEAT_R = (1 << 4),
-  GPU_SAMPLER_REPEAT = (GPU_SAMPLER_REPEAT_S | GPU_SAMPLER_REPEAT_T | GPU_SAMPLER_REPEAT_R),
-  /**
-   * Clamp to border color instead of border texel.
-   * Used for directions not using `GPU_SAMPLER_REPEAT_*`.
-   */
-  GPU_SAMPLER_CLAMP_BORDER = (1 << 5),
-  /**
-   * Enable compare mode for depth texture. The depth texture must then be bound to a shadow
-   * sampler.
-   */
-  GPU_SAMPLER_COMPARE = (1 << 6),
-  /** Enable Anisotropic filtering. This only has effect if `GPU_SAMPLER_MIPMAP` is set.
-   * The filtered result is implementation dependent.
-   * The maximum amount of samples is set
-   */
-  GPU_SAMPLER_ANISO = (1 << 7),
-  /** Enable mirror repeat extension mode for directions using the `GPU_SAMPLER_REPEAT_*` flag. */
-  GPU_SAMPLER_MIRROR_REPEAT = (1 << 8),
+  GPU_SAMPLER_FILTERING_MIPMAP = (1 << 1),
 
-  /** Special icon sampler with custom LOD bias and interpolation mode. */
-  GPU_SAMPLER_ICON = (1 << 9),
-} eGPUSamplerState;
+  /**
+   * Enable Anisotropic filtering. This only has effect if `GPU_SAMPLER_FILTERING_MIPMAP` is set.
+   * The filtered result is implementation dependent.
+   *
+   * The maximum amount of samples is always set to its maximum possible value and can't be
+   * changed, except by the user through the user preferences, see the use of U.anisotropic_filter.
+   */
+  GPU_SAMPLER_FILTERING_ANISOTROPIC = (1 << 2),
+} eGPUSamplerFiltering;
+
+ENUM_OPERATORS(eGPUSamplerFiltering, GPU_SAMPLER_FILTERING_ANISOTROPIC)
+
+/** The number of every possible filtering configuration. */
+static const int GPU_SAMPLER_FILTERING_TYPES_COUNT = (GPU_SAMPLER_FILTERING_LINEAR |
+                                                      GPU_SAMPLER_FILTERING_MIPMAP |
+                                                      GPU_SAMPLER_FILTERING_ANISOTROPIC) +
+                                                     1;
 
 /**
- * #GPU_SAMPLER_MAX is not a valid enum value, but only a limit.
- * It also creates a bad mask for the `NOT` operator in #ENUM_OPERATORS.
+ * The `eGPUSamplerWrapType` specifies how the texture will be extrapolated for out-of-bound
+ * texture sampling.
  */
+typedef enum eGPUSamplerWrapType {
+  /** Extrapolate by extending the edge pixels of the texture, in other words, the texture
+     coordinates are clamped. */
+  GPU_SAMPLER_WRAP_EXTEND = 0,
+
+  /** Extrapolate by repeating the texture. */
+  GPU_SAMPLER_WRAP_REPEAT = 1,
+
+  /** Extrapolate by repeating the texture with mirroring in a ping-pong fashion. */
+  GPU_SAMPLER_WRAP_MIRRORED_REPEAT = 2,
+
+  /**
+   * Extrapolate using the value of TEXTURE_BORDER_COLOR, which is always set to a transparent
+   * black color (0, 0, 0, 0) and can't be changed.
+   * */
+  GPU_SAMPLER_WRAP_CLIP = 3,
+
+  GPU_SAMPLER_WRAP_TYPES_COUNT = 4,
+} eGPUSamplerWrapType;
+
+/**
+ * The `eGPUSamplerCustomType` specifies pre-defined sampler configurations with parameters that
+ * are not controllable using the eGPUSamplerFiltering and eGPUSamplerWrapType options. Hence, the
+ * use of a custom sampler type is mutually exclusive with the use of the aforementioned enums.
+ *
+ * The parameters that needs to be set for those custom samplers are not added as yet another
+ * option inside the GPUSamplerState structure because every possible configuration of sampler
+ * states are generated, setup, and cached at startup, so adding yet another axis of variation will
+ * multiply the number of configurations that needs to be cached, which is not worth it due to the
+ * limited use of the parameters needed to setup those custom samplers.
+ */
+typedef enum eGPUSamplerCustomType {
+  /**
+   * Enable compare mode for depth texture. The depth texture must then be bound to a shadow
+   * sampler. This is equivalent to:
+   *
+   * - GPU_SAMPLER_FILTERING_LINEAR.
+   * - GPU_SAMPLER_WRAP_EXTEND.
+   *
+   * And sets:
+   *
+   * - TEXTURE_COMPARE_MODE -> COMPARE_REF_TO_TEXTURE.
+   * - TEXTURE_COMPARE_FUNC -> LEQUAL.
+   */
+  GPU_SAMPLER_CUSTOM_COMPARE = 0,
+
+  /**
+   * Special icon sampler with custom LOD bias and interpolation mode. This sets:
+   *
+   * - TEXTURE_MAG_FILTER -> LINEAR.
+   * - TEXTURE_MIN_FILTER -> LINEAR_MIPMAP_NEAREST.
+   * - TEXTURE_LOD_BIAS   -> -0.5.
+   */
+  GPU_SAMPLER_CUSTOM_ICON = 1,
+
+  GPU_SAMPLER_CUSTOM_TYPES_COUNT = 2,
+} eGPUSamplerCustomType;
+
+/**
+ * The `eGPUSamplerStateType` specifies how the GPUSamplerState structure should be interpreted
+ * when passed around due to it being an overloaded type, see the documentation of each of the
+ * types for more information.
+ */
+typedef enum eGPUSamplerStateType {
+  /**
+   * The filtering, wrapping_x, and wrapping_y members of the GPUSamplerState structure will be
+   * used in setting up the sampler state for the texture.
+   */
+  GPU_SAMPLER_STATE_TYPE_PARAMETERS = 0,
+  /**
+   * The filtering, wrapping_x, and wrapping_y members of the GPUSamplerState structure will be
+   * ignored, and the predefined custom parameters outlined in the documentation of
+   * eGPUSamplerCustomType will be used in setting up the sampler state for the texture.
+   */
+  GPU_SAMPLER_STATE_TYPE_CUSTOM = 1,
+  /**
+   * The members of the GPUSamplerState structure will be ignored and the internal sampler state of
+   * the texture will be used. In other words, this is a signal value and stores no useful or
+   * actual data.
+   */
+  GPU_SAMPLER_STATE_TYPE_INTERNAL = 2,
+} eGPUSamplerStateType;
+
+/**
+ * The `GPUSamplerState` specifies the sampler state to bind a texture with.
+ *
+ * When the state type is set to GPU_SAMPLER_STATE_TYPE_CUSTOM or GPU_SAMPLER_STATE_TYPE_INTERNAL,
+ * the rest of the members of the structure will be ignored. However, we can't turn this structure
+ * into a union, because various functions merely temporally change the state type and expect the
+ * rest of the members' values to be retained when the state type is changed back to
+ * GPU_SAMPLER_STATE_TYPE_PARAMETERS. For the instance, a function might do the following and
+ * expect the original sampler state of the texture to be retained after disabling comparison mode:
+ *
+ * GPU_texture_compare_mode(texture, true);
+ * // Use the texture ...
+ * GPU_texture_compare_mode(texture, false);
+ *
+ */
+typedef struct GPUSamplerState {
+  eGPUSamplerFiltering filtering : 8;
+  eGPUSamplerWrapType wrapping_x : 4;
+  eGPUSamplerWrapType wrapping_y : 4;
+  eGPUSamplerCustomType custom_type : 8;
+  eGPUSamplerStateType type : 8;
+
 #ifdef __cplusplus
-static constexpr eGPUSamplerState GPU_SAMPLER_MAX = eGPUSamplerState(GPU_SAMPLER_ICON + 1);
-#else
-static const int GPU_SAMPLER_MAX = (GPU_SAMPLER_ICON + 1);
+  static constexpr GPUSamplerState default_sampler()
+  {
+    return {GPU_SAMPLER_FILTERING_DEFAULT,
+            GPU_SAMPLER_WRAP_EXTEND,
+            GPU_SAMPLER_WRAP_EXTEND,
+            GPU_SAMPLER_CUSTOM_COMPARE,
+            GPU_SAMPLER_STATE_TYPE_PARAMETERS};
+  }
+
+  static constexpr GPUSamplerState internal_sampler()
+  {
+    return {GPU_SAMPLER_FILTERING_DEFAULT,
+            GPU_SAMPLER_WRAP_EXTEND,
+            GPU_SAMPLER_WRAP_EXTEND,
+            GPU_SAMPLER_CUSTOM_COMPARE,
+            GPU_SAMPLER_STATE_TYPE_INTERNAL};
+  }
+
+  static constexpr GPUSamplerState icon_sampler()
+  {
+    return {GPU_SAMPLER_FILTERING_DEFAULT,
+            GPU_SAMPLER_WRAP_EXTEND,
+            GPU_SAMPLER_WRAP_EXTEND,
+            GPU_SAMPLER_CUSTOM_ICON,
+            GPU_SAMPLER_STATE_TYPE_CUSTOM};
+  }
+
+  static constexpr GPUSamplerState compare_sampler()
+  {
+    return {GPU_SAMPLER_FILTERING_DEFAULT,
+            GPU_SAMPLER_WRAP_EXTEND,
+            GPU_SAMPLER_WRAP_EXTEND,
+            GPU_SAMPLER_CUSTOM_COMPARE,
+            GPU_SAMPLER_STATE_TYPE_CUSTOM};
+  }
+
+  /**
+   * Enables the given filtering options if and only if the given condition is true, otherwise,
+   * disables it.
+   */
+  void set_filtering(eGPUSamplerFiltering target_filtering, bool condition = true)
+  {
+    /* Do not update the filtering member in-place, copy it first because it is a bit field that
+     * can't be referenced in the operators used by SET_FLAG_FROM_TEST. */
+    eGPUSamplerFiltering updated_filtering = this->filtering;
+    SET_FLAG_FROM_TEST(updated_filtering, condition, target_filtering);
+    this->filtering = updated_filtering;
+  }
+
+  std::string to_string() const
+  {
+    if (this->type == GPU_SAMPLER_STATE_TYPE_INTERNAL) {
+      return "internal";
+    }
+
+    if (this->type == GPU_SAMPLER_STATE_TYPE_CUSTOM) {
+      switch (this->custom_type) {
+        case GPU_SAMPLER_CUSTOM_COMPARE:
+          return "compare";
+          break;
+        case GPU_SAMPLER_CUSTOM_ICON:
+          return "icon";
+          break;
+        default:
+          BLI_assert_unreachable();
+          return "";
+      }
+    }
+
+    /* The sampler state is of type PARAMETERS, so serialize the parameters. */
+    BLI_assert(this->type == GPU_SAMPLER_STATE_TYPE_PARAMETERS);
+    std::string serialized_paramaters;
+
+    if (this->filtering & GPU_SAMPLER_FILTERING_LINEAR) {
+      serialized_paramaters += "linear-filter_";
+    }
+
+    if (this->filtering & GPU_SAMPLER_FILTERING_MIPMAP) {
+      serialized_paramaters += "mipmap_";
+    }
+
+    if (this->filtering & GPU_SAMPLER_FILTERING_ANISOTROPIC) {
+      serialized_paramaters += "anisotropic_";
+    }
+
+    switch (this->wrapping_x) {
+      case GPU_SAMPLER_WRAP_EXTEND:
+        serialized_paramaters += "wrap-extend-x_";
+        break;
+      case GPU_SAMPLER_WRAP_REPEAT:
+        serialized_paramaters += "wrap-repeat-x_";
+        break;
+      case GPU_SAMPLER_WRAP_MIRRORED_REPEAT:
+        serialized_paramaters += "wrap-mirrored-repeat-x_";
+        break;
+      case GPU_SAMPLER_WRAP_CLIP:
+        serialized_paramaters += "wrap-clip-x_";
+        break;
+      default:
+        BLI_assert_unreachable();
+    }
+
+    switch (this->wrapping_y) {
+      case GPU_SAMPLER_WRAP_EXTEND:
+        serialized_paramaters += "wrap-extend-y";
+        break;
+      case GPU_SAMPLER_WRAP_REPEAT:
+        serialized_paramaters += "wrap-repeat-y";
+        break;
+      case GPU_SAMPLER_WRAP_MIRRORED_REPEAT:
+        serialized_paramaters += "wrap-mirrored-repeat-y";
+        break;
+      case GPU_SAMPLER_WRAP_CLIP:
+        serialized_paramaters += "wrap-clip-y";
+        break;
+      default:
+        BLI_assert_unreachable();
+    }
+
+    return serialized_paramaters;
+  }
+
+  bool operator==(GPUSamplerState const &rhs) const
+  {
+    return this->filtering == rhs.filtering && this->wrapping_x == rhs.wrapping_x &&
+           this->wrapping_y == rhs.wrapping_y && this->custom_type == rhs.custom_type &&
+           this->type == rhs.type;
+  }
+#endif
+} GPUSamplerState;
+
+#ifndef __cplusplus
+const static GPUSamplerState GPU_SAMPLER_DEFAULT = {GPU_SAMPLER_FILTERING_DEFAULT,
+                                                    GPU_SAMPLER_WRAP_EXTEND,
+                                                    GPU_SAMPLER_WRAP_EXTEND,
+                                                    GPU_SAMPLER_CUSTOM_COMPARE,
+                                                    GPU_SAMPLER_STATE_TYPE_PARAMETERS};
 #endif
 
-ENUM_OPERATORS(eGPUSamplerState, GPU_SAMPLER_ICON)
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Enums
+ * \{ */
 
 /**
  * Types of texture internal storage. Defines how the data is stored inside the video memory.
@@ -505,7 +736,7 @@ void GPU_texture_bind(GPUTexture *texture, int unit);
 /**
  * Bind a texture to a texture sampling image units using the explicit sampler state.
  */
-void GPU_texture_bind_ex(GPUTexture *texture, eGPUSamplerState state, int unit);
+void GPU_texture_bind_ex(GPUTexture *texture, GPUSamplerState state, int unit);
 /**
  * Unbind \a tex from a texture sampling image unit.
  * \note this isn't strictly required but it is better for debugging purpose.
@@ -539,12 +770,6 @@ void GPU_texture_image_unbind_all(void);
  * \{ */
 
 /**
- * Set anisotropic filter usage. Filter sample count is determined globally by
- * `U.anisotropic_filter` and updated when `GPU_samplers_update` is called.
- */
-void GPU_texture_anisotropic_filter(GPUTexture *texture, bool use_aniso);
-
-/**
  * Set \a tex texture depth comparison mode. Only works on depth format.
  */
 void GPU_texture_compare_mode(GPUTexture *texture, bool use_compare);
@@ -567,15 +792,28 @@ void GPU_texture_filter_mode(GPUTexture *texture, bool use_filter);
 void GPU_texture_mipmap_mode(GPUTexture *texture, bool use_mipmap, bool use_filter);
 
 /**
- * Set \a tex texture sampling method for coordinates outside of the [0..1] uv range.
- *
- * If \a use_repeat is true, sampling the texture outside of the [0..1] uv range will repeat to
- * border color instead of the border texel value.
- *
- * If \a use_clamp is true, sampling the texture outside of the [0..1] uv range will clamp to the
- * closest border texel value. If set to false, it will use the values (0, 0, 0, 0) instead.
+ * Set anisotropic filter usage. Filter sample count is determined globally by
+ * `U.anisotropic_filter` and updated when `GPU_samplers_update` is called.
  */
-void GPU_texture_wrap_mode(GPUTexture *texture, bool use_repeat, bool use_clamp);
+void GPU_texture_anisotropic_filter(GPUTexture *texture, bool use_aniso);
+
+/**
+ * Set \a tex texture sampling method for coordinates outside of the [0..1] uv range along the x
+ * axis. See eGPUSamplerWrapType for the available and meaning of different wrap types.
+ */
+void GPU_texture_wrap_mode_x(GPUTexture *texture, eGPUSamplerWrapType wrap_type);
+
+/**
+ * Set \a tex texture sampling method for coordinates outside of the [0..1] uv range along the y
+ * axis. See eGPUSamplerWrapType for the available and meaning of different wrap types.
+ */
+void GPU_texture_wrap_mode_y(GPUTexture *texture, eGPUSamplerWrapType wrap_type);
+
+/**
+ * Set \a tex texture sampling method for coordinates outside of the [0..1] uv range along both the
+ * x and y axis. See eGPUSamplerWrapType for the available and meaning of different wrap types.
+ */
+void GPU_texture_wrap_mode(GPUTexture *texture, eGPUSamplerWrapType wrap_type);
 
 /**
  * Set \a tex texture swizzle state for swizzling sample components.

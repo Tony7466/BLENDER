@@ -38,10 +38,12 @@ static int node_shader_gpu_tex_environment(GPUMaterial *mat,
   bNode *node_original = node->runtime->original ? node->runtime->original : node;
   NodeTexImage *tex_original = (NodeTexImage *)node_original->storage;
   ImageUser *iuser = &tex_original->iuser;
-  eGPUSamplerState sampler = GPU_SAMPLER_REPEAT | GPU_SAMPLER_ANISO | GPU_SAMPLER_FILTER;
+  GPUSamplerState sampler = {GPU_SAMPLER_FILTERING_LINEAR | GPU_SAMPLER_FILTERING_ANISOTROPIC,
+                             GPU_SAMPLER_WRAP_REPEAT,
+                             GPU_SAMPLER_WRAP_REPEAT};
   /* TODO(@fclem): For now assume mipmap is always enabled. */
   if (true) {
-    sampler |= GPU_SAMPLER_MIPMAP;
+    sampler.set_filtering(GPU_SAMPLER_FILTERING_MIPMAP);
   }
 
   GPUNodeLink *outalpha;
@@ -63,15 +65,16 @@ static int node_shader_gpu_tex_environment(GPUMaterial *mat,
   if (tex->projection == SHD_PROJ_EQUIRECTANGULAR) {
     GPU_link(mat, "node_tex_environment_equirectangular", in[0].link, &in[0].link);
     /* To fix pole issue we clamp the v coordinate. */
-    sampler &= ~GPU_SAMPLER_REPEAT_T;
+    sampler.wrapping_y = GPU_SAMPLER_WRAP_EXTEND;
     /* Force the highest mipmap and don't do anisotropic filtering.
      * This is to fix the artifact caused by derivatives discontinuity. */
-    sampler &= ~(GPU_SAMPLER_MIPMAP | GPU_SAMPLER_ANISO);
+    sampler.set_filtering(GPU_SAMPLER_FILTERING_MIPMAP | GPU_SAMPLER_FILTERING_ANISOTROPIC, false);
   }
   else {
     GPU_link(mat, "node_tex_environment_mirror_ball", in[0].link, &in[0].link);
     /* Fix pole issue. */
-    sampler &= ~GPU_SAMPLER_REPEAT;
+    sampler.wrapping_x = GPU_SAMPLER_WRAP_EXTEND;
+    sampler.wrapping_y = GPU_SAMPLER_WRAP_EXTEND;
   }
 
   const char *gpu_fn;
@@ -85,7 +88,7 @@ static int node_shader_gpu_tex_environment(GPUMaterial *mat,
       gpu_fn = names[0];
       break;
     case SHD_INTERP_CLOSEST:
-      sampler &= ~(GPU_SAMPLER_FILTER | GPU_SAMPLER_MIPMAP);
+      sampler.set_filtering(GPU_SAMPLER_FILTERING_LINEAR | GPU_SAMPLER_FILTERING_MIPMAP, false);
       gpu_fn = names[0];
       break;
     default:

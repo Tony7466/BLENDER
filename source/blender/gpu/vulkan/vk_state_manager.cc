@@ -26,7 +26,7 @@ void VKStateManager::issue_barrier(eGPUBarrier /*barrier_bits*/)
   command_buffer.submit();
 }
 
-void VKStateManager::texture_bind(Texture * /*tex*/, eGPUSamplerState /*sampler*/, int /*unit*/)
+void VKStateManager::texture_bind(Texture * /*tex*/, GPUSamplerState /*sampler*/, int /*unit*/)
 {
 }
 

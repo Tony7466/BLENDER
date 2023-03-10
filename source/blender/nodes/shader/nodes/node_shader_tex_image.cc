@@ -52,26 +52,33 @@ static int node_shader_gpu_tex_image(GPUMaterial *mat,
 
   node_shader_gpu_tex_mapping(mat, node, in, out);
 
-  eGPUSamplerState sampler_state = GPU_SAMPLER_DEFAULT;
+  GPUSamplerState sampler_state = GPUSamplerState::default_sampler();
 
   switch (tex->extension) {
+    case SHD_IMAGE_EXTENSION_EXTEND:
+      sampler_state.wrapping_x = GPU_SAMPLER_WRAP_EXTEND;
+      sampler_state.wrapping_y = GPU_SAMPLER_WRAP_EXTEND;
+      break;
     case SHD_IMAGE_EXTENSION_REPEAT:
-      sampler_state |= GPU_SAMPLER_REPEAT;
+      sampler_state.wrapping_x = GPU_SAMPLER_WRAP_REPEAT;
+      sampler_state.wrapping_y = GPU_SAMPLER_WRAP_REPEAT;
       break;
     case SHD_IMAGE_EXTENSION_CLIP:
-      sampler_state |= GPU_SAMPLER_CLAMP_BORDER;
+      sampler_state.wrapping_x = GPU_SAMPLER_WRAP_CLIP;
+      sampler_state.wrapping_y = GPU_SAMPLER_WRAP_CLIP;
       break;
     case SHD_IMAGE_EXTENSION_MIRROR:
-      sampler_state |= GPU_SAMPLER_REPEAT | GPU_SAMPLER_MIRROR_REPEAT;
+      sampler_state.wrapping_x = GPU_SAMPLER_WRAP_MIRRORED_REPEAT;
+      sampler_state.wrapping_y = GPU_SAMPLER_WRAP_MIRRORED_REPEAT;
       break;
     default:
       break;
   }
 
   if (tex->interpolation != SHD_INTERP_CLOSEST) {
-    sampler_state |= GPU_SAMPLER_ANISO | GPU_SAMPLER_FILTER;
     /* TODO(fclem): For now assume mipmap is always enabled. */
-    sampler_state |= GPU_SAMPLER_MIPMAP;
+    sampler_state.filtering = GPU_SAMPLER_FILTERING_ANISOTROPIC | GPU_SAMPLER_FILTERING_LINEAR |
+                              GPU_SAMPLER_FILTERING_MIPMAP;
   }
   const bool use_cubic = ELEM(tex->interpolation, SHD_INTERP_CUBIC, SHD_INTERP_SMART);
 
@@ -105,7 +112,7 @@ static int node_shader_gpu_tex_image(GPUMaterial *mat,
       case SHD_PROJ_SPHERE: {
         /* This projection is known to have a derivative discontinuity.
          * Hide it by turning off mipmapping. */
-        sampler_state &= ~GPU_SAMPLER_MIPMAP;
+        sampler_state.set_filtering(GPU_SAMPLER_FILTERING_MIPMAP, false);
         GPUNodeLink *gpu_image = GPU_image(mat, ima, iuser, sampler_state);
         GPU_link(mat, "point_texco_remap_square", *texco, texco);
         GPU_link(mat, "point_map_to_sphere", *texco, texco);
@@ -115,7 +122,7 @@ static int node_shader_gpu_tex_image(GPUMaterial *mat,
       case SHD_PROJ_TUBE: {
         /* This projection is known to have a derivative discontinuity.
          * Hide it by turning off mipmapping. */
-        sampler_state &= ~GPU_SAMPLER_MIPMAP;
+        sampler_state.set_filtering(GPU_SAMPLER_FILTERING_MIPMAP, false);
         GPUNodeLink *gpu_image = GPU_image(mat, ima, iuser, sampler_state);
         GPU_link(mat, "point_texco_remap_square", *texco, texco);
         GPU_link(mat, "point_map_to_tube", *texco, texco);
