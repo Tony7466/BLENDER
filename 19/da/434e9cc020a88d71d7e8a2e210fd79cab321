@@ -1,3 +1,4 @@
 Referenced by issue #104482, Fix #101374: enable edge panning for move operators in menus
 Referenced by issue #91023, Nodes: Improvements to edge panning in the node editor. - keymap entry vanishes by
 Referenced by pull request #104482, Fix #101374: enable edge panning for move operators in menus
+Referenced by commit 382a54aefb8883b10864d0aae2dcd6321bf75b80, Fix #101374: enable edge panning for move operators in menus
