@@ -143,12 +143,6 @@ typedef struct bArmature {
 
   /** Relative position of the axes on the bone, from head (0.0f) to tail (1.0f). */
   float axes_position;
-
-  /** Relative position of the parent-child relation lines on the bone, from
-   * head (0.0f) to tail (1.0f). Only controls the parent side of the line; the
-   * child side is always drawn to the head of the bone. */
-  float relation_line_position;
-  char _pad2[4];
 } bArmature;
 
 /* armature->flag */
@@ -160,9 +154,12 @@ typedef enum eArmature_Flag {
   ARM_DRAWAXES = (1 << 2),
   ARM_DRAWNAMES = (1 << 3),
   ARM_POSEMODE = (1 << 4),
-  ARM_FLAG_UNUSED_5 = (1 << 5), /* cleared */
-  ARM_FLAG_UNUSED_6 = (1 << 6), /* cleared */
-  ARM_FLAG_UNUSED_7 = (1 << 7),
+  /** Position of the parent-child relation lines on the bone (cleared = drawn
+   * from the tail, set = drawn from the head). Only controls the parent side of
+   * the line; the child side is always drawn to the head of the bone. */
+  ARM_DRAW_RELATION_FROM_HEAD = (1 << 5), /* Cleared in versioning of pre-2.80 files. */
+  ARM_FLAG_UNUSED_6 = (1 << 6),           /* cleared */
+  ARM_FLAG_UNUSED_7 = (1 << 7),           /* cleared */
   ARM_MIRROR_EDIT = (1 << 8),
   ARM_FLAG_UNUSED_9 = (1 << 9),
   /** Made option negative, for backwards compatibility. */

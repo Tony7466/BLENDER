@@ -2025,13 +2025,14 @@ static void draw_bone_bone_line(ArmatureDrawContext *ctx,
                                 const float /*bone_tail*/[3],
                                 const float parent_head[3],
                                 const float parent_tail[3],
-                                const float axes_position)
+                                const short armature_flags)
 {
-  /* Only interpolate the parent position. */
-  float parent_pos[3];
-  interp_v3_v3v3(parent_pos, parent_head, parent_tail, axes_position);
-
-  drw_shgroup_bone_relationship_lines(ctx, bone_head, parent_pos);
+  if (armature_flags & ARM_DRAW_RELATION_FROM_HEAD) {
+    drw_shgroup_bone_relationship_lines(ctx, bone_head, parent_head);
+  }
+  else {
+    drw_shgroup_bone_relationship_lines(ctx, bone_head, parent_tail);
+  }
 }
 
 static void draw_bone_relations(ArmatureDrawContext *ctx,
@@ -2047,12 +2048,8 @@ static void draw_bone_relations(ArmatureDrawContext *ctx,
        * since riggers will want to know about the links between bones
        */
       if ((boneflag & BONE_CONNECTED) == 0) {
-        draw_bone_bone_line(ctx,
-                            ebone->head,
-                            ebone->tail,
-                            ebone->parent->head,
-                            ebone->parent->tail,
-                            arm->relation_line_position);
+        draw_bone_bone_line(
+            ctx, ebone->head, ebone->tail, ebone->parent->head, ebone->parent->tail, arm->flag);
       }
     }
   }
@@ -2068,7 +2065,7 @@ static void draw_bone_relations(ArmatureDrawContext *ctx,
                               pchan->pose_tail,
                               pchan->parent->pose_head,
                               pchan->parent->pose_tail,
-                              arm->relation_line_position);
+                              arm->flag);
         }
       }
     }
