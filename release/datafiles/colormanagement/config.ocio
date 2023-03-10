@@ -56,6 +56,8 @@ displays:
     - !<View> {name: Filmic Log, colorspace: Filmic Log}
     - !<View> {name: Raw, colorspace: Raw}
     - !<View> {name: False Color, colorspace: False Color}
+  Extended sRGB:
+    - !<View> {name: Standard, colorspace: sRGB}
   XYZ:
     - !<View> {name: Standard, colorspace: XYZ}
     - !<View> {name: DCI, colorspace: dci_xyz}
@@ -63,7 +65,7 @@ displays:
   None:
     - !<View> {name: Standard, colorspace: Raw}
 
-active_displays: [sRGB, XYZ, None]
+active_displays: [sRGB, Extended sRGB, XYZ, None]
 active_views: [Standard, Filmic, Filmic Log, Raw, False Color]
 
 colorspaces:
