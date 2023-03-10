@@ -164,26 +164,42 @@ struct CurvesConstraintSolver {
   Array<float3> start_positions_;
   Array<float> segment_lengths_;
   GoalType goal_type_;
-  Array<float3> local_goals_;
+  Array<bool> has_goals_;
   Array<float3> goals_;
 
  public:
   void initialize(const bke::CurvesGeometry &curves,
                   const IndexMask curve_selection,
                   const bool use_surface_collision,
-                  const GoalType goal_type = GoalType::None,
-                  const float3 &target_point = float3(0.0f));
+                  const GoalType goal_type = GoalType::None);
 
   void solve_step(bke::CurvesGeometry &curves,
                   const IndexMask curve_selection,
                   const Mesh *surface,
                   const CurvesSurfaceTransforms &transforms,
-                  const int iterations = 1,
-                  const float3 &target_point = float3(0.0f));
+                  const int iterations = 1);
 
   Span<float> segment_lengths() const
   {
     return segment_lengths_;
+  }
+
+  Span<float3> goals() const
+  {
+    return goals_;
+  }
+  MutableSpan<float3> goals()
+  {
+    return goals_;
+  }
+
+  Span<bool> has_goals() const
+  {
+    return has_goals_;
+  }
+  MutableSpan<bool> has_goals()
+  {
+    return has_goals_;
   }
 };
 

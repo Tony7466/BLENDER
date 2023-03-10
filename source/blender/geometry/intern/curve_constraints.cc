@@ -36,42 +36,6 @@ void compute_segment_lengths(const OffsetIndices<int> points_by_curve,
   });
 }
 
-void compute_goal_points(const OffsetIndices<int> points_by_curve,
-                         const Span<float3> positions,
-                         const IndexMask curve_selection,
-                         const float3 &target_point,
-                         MutableSpan<float3> r_goals)
-{
-  BLI_assert(r_goals.size() == points_by_curve.ranges_num());
-
-  threading::parallel_for(curve_selection.index_range(), 256, [&](const IndexRange range) {
-    for (const int curve_i : curve_selection.slice(range)) {
-      const IndexRange points = points_by_curve[curve_i].drop_back(1);
-      int min_point_i = -1;
-      float min_distance_sq = FLT_MAX;
-      float min_lambda;
-      float3 min_closest;
-      for (const int point_i : points) {
-        float3 closest;
-        const float lambda = closest_to_line_segment_v3(
-            closest, target_point, positions[point_i], positions[point_i + 1]);
-        const float distance_sq = math::distance_squared(closest, target_point);
-        if (distance_sq < min_distance_sq) {
-          min_point_i = point_i;
-          min_distance_sq = distance_sq;
-          min_lambda = lambda;
-          min_closest = closest;
-        }
-      }
-
-      if (min_point_i >= 0) {
-        r_goals[curve_i] = min_closest;
-        UNUSED_VARS(min_lambda);
-      }
-    }
-  });
-}
-
 void solve_length_constraints(const OffsetIndices<int> points_by_curve,
                               const IndexMask curve_selection,
                               const Span<float> segment_lenghts,
@@ -211,13 +175,13 @@ void solve_collision_constraints(const OffsetIndices<int> points_by_curve,
 
 void solve_slip_constraints(const OffsetIndices<int> points_by_curve,
                             const IndexMask curve_selection,
-                            const Span<float3> goal_points,
+                            const Span<float3> goals,
                             MutableSpan<float3> positions_cu)
 {
   threading::parallel_for(curve_selection.index_range(), 64, [&](const IndexRange range) {
     for (const int curve_i : curve_selection.slice(range)) {
       const IndexRange points = points_by_curve[curve_i].drop_back(1);
-      const float3 &goal = goal_points[curve_i];
+      const float3 &goal = goals[curve_i];
 
       // XXX computing the closest point from scratch every step is not very efficient.
       // Could use an iterative approach, store a "current closest" point, then move that along the curve each step.
@@ -243,8 +207,10 @@ void solve_slip_constraints(const OffsetIndices<int> points_by_curve,
 
       if (min_point_i >= 0) {
         const float3 delta = goal - min_closest;
-        positions_cu[min_point_i] += (1.0f - min_lambda) * delta;
-        positions_cu[min_point_i + 1] += min_lambda * delta;
+//        std::cout << "DELTA X " << delta.x << std::endl;
+//        std::cout << "GOAL X " << goal.x << std::endl;
+        positions_cu[min_point_i] += delta;
+        positions_cu[min_point_i + 1] += delta;
       }
     }
   });

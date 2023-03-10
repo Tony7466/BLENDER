@@ -112,6 +112,59 @@ struct CombOperationExecutor {
   {
   }
 
+  void find_or_update_goals(const OffsetIndices<int> points_by_curve,
+                            const Span<float3> positions,
+                            const IndexMask curve_selection,
+                            const float3 &target_point,
+                            const float brush_radius_sq,
+                            MutableSpan<bool> r_used_curves)
+  {
+    MutableSpan<bool> has_goals = self_->constraint_solver_.has_goals();
+    MutableSpan<float3> goals = self_->constraint_solver_.goals();
+
+    BLI_assert(goals.size() == points_by_curve.ranges_num());
+
+    threading::parallel_for(curve_selection.index_range(), 256, [&](const IndexRange range) {
+      for (const int curve_i : curve_selection.slice(range)) {
+        const IndexRange points = points_by_curve[curve_i].drop_back(1);
+        int min_point_i = -1;
+        float min_distance_sq = FLT_MAX;
+        float min_lambda;
+        float3 min_closest;
+        for (const int point_i : points) {
+          // TODO add brush bounding box check to speed up culling
+          float3 closest;
+          const float lambda = closest_to_line_segment_v3(
+              closest, target_point, positions[point_i], positions[point_i + 1]);
+          const float distance_sq = math::distance_squared(closest, target_point);
+          if (distance_sq <= brush_radius_sq && distance_sq < min_distance_sq) {
+            min_point_i = point_i;
+            min_distance_sq = distance_sq;
+            min_lambda = lambda;
+            min_closest = closest;
+          }
+        }
+
+        if (min_point_i >= 0) {
+          r_used_curves[curve_i] = true;
+
+          /* Initialize new goals */
+          if (!has_goals[curve_i]) {
+            has_goals[curve_i] = true;
+            goals[curve_i] = min_closest;
+            UNUSED_VARS(min_lambda);
+          }
+        }
+        else {
+          r_used_curves[curve_i] = false;
+
+          /* Drop existing goals */
+          has_goals[curve_i] = false;
+        }
+      }
+    });
+  }
+
   void execute(CombOperation &self, const bContext &C, const StrokeExtension &stroke_extension)
   {
     self_ = &self;
@@ -150,8 +203,7 @@ struct CombOperationExecutor {
       self_->constraint_solver_.initialize(*curves_orig_,
                                            curve_selection_,
                                            curves_id_orig_->flag & CV_SCULPT_COLLISION_ENABLED,
-                                           CurvesConstraintSolver::GoalType::Slip,
-                                           self_->brush_3d_.position_cu);
+                                           CurvesConstraintSolver::GoalType::Slip);
 
       self_->curve_lengths_.reinitialize(curves_orig_->curves_num());
       const Span<float> segment_lengths = self_->constraint_solver_.segment_lengths();
@@ -187,7 +239,7 @@ struct CombOperationExecutor {
     const IndexMask changed_curves_mask = index_mask_ops::find_indices_from_array(changed_curves,
                                                                                   indices);
     self_->constraint_solver_.solve_step(
-        *curves_orig_, changed_curves_mask, surface, transforms_, 5, self_->brush_3d_.position_cu);
+        *curves_orig_, changed_curves_mask, surface, transforms_, 5);
 
     curves_orig_->tag_positions_changed();
     DEG_id_tag_update(&curves_id_orig_->id, ID_RECALC_GEOMETRY);
@@ -329,6 +381,41 @@ struct CombOperationExecutor {
     }
   }
 
+#if 1
+  void comb_spherical(MutableSpan<bool> r_changed_curves,
+                      const float3 &brush_start_cu,
+                      const float3 &brush_end_cu,
+                      const float brush_radius_cu)
+  {
+    const float brush_radius_sq_cu = pow2f(brush_radius_cu);
+    const float3 brush_diff_cu = brush_end_cu - brush_start_cu;
+
+    CurveMapping &curve_parameter_falloff_mapping =
+        *brush_->curves_sculpt_settings->curve_parameter_falloff;
+    BKE_curvemapping_init(&curve_parameter_falloff_mapping);
+
+    const bke::crazyspace::GeometryDeformation deformation =
+        bke::crazyspace::get_evaluated_curves_deformation(*ctx_.depsgraph, *curves_ob_orig_);
+    const OffsetIndices points_by_curve = curves_orig_->points_by_curve();
+
+    find_or_update_goals(points_by_curve,
+                         deformation.positions,
+                         curve_selection_,
+                         brush_start_cu,
+                         brush_radius_sq_cu,
+                         r_changed_curves);
+
+    /* Move goals to the end of the stroke segment. */
+    MutableSpan<float3> goals = self_->constraint_solver_.goals();
+    threading::parallel_for(curve_selection_.index_range(), 256, [&](const IndexRange range) {
+      for (const int curve_i : curve_selection_.slice(range)) {
+        if (r_changed_curves[curve_i]) {
+          goals[curve_i] += brush_diff_cu;
+        }
+      }
+    });
+  }
+#else
   void comb_spherical(MutableSpan<bool> r_changed_curves,
                       const float3 &brush_start_cu,
                       const float3 &brush_end_cu,
@@ -386,6 +473,7 @@ struct CombOperationExecutor {
 
           /* Update the point position. */
           positions_cu[point_i] += translation_orig_cu;
+
           curve_changed = true;
         }
         if (curve_changed) {
@@ -394,6 +482,7 @@ struct CombOperationExecutor {
       }
     });
   }
+#endif
 
   /**
    * Sample depth under mouse by looking at curves and the surface.
