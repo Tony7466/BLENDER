@@ -206,21 +206,6 @@ static int view_pan_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-bool mouse_in_category_tab(const ARegion *region, const wmEvent *event)
-{
-  if (event == nullptr) {
-    return false;
-  }
-  const int mvalx = event->xy[0] - region->winrct.xmin;
-  if (region->runtime.category && !BLI_listbase_is_empty(&region->panels_category)) {
-    const PanelCategoryDyn *pc_dyn = static_cast<PanelCategoryDyn *>(
-        region->panels_category.first);
-    const bool in_category_tab = (mvalx < pc_dyn->rect.xmax) && (mvalx > pc_dyn->rect.xmin);
-    return in_category_tab;
-  }
-  return false;
-}
-
 /* set up modal operator and relevant settings */
 static int view_pan_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
@@ -237,7 +222,7 @@ static int view_pan_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   vpd->starty = vpd->lasty = event->xy[1];
   vpd->invoke_event = event->type;
 
-  vpd->do_category_scroll = mouse_in_category_tab(vpd->region, event);
+  vpd->do_category_scroll = ED_region_panel_category_gutter_isect_xy(vpd->region, event->xy);
 
   if (event->type == MOUSEPAN) {
     RNA_int_set(op->ptr, "deltax", event->prev_xy[0] - event->xy[0]);
@@ -510,8 +495,8 @@ static int view_scrolldown_exec(bContext *C, wmOperator *op)
   }
 
   const wmWindow *win = CTX_wm_window(C);
-  const wmEvent *event = win->eventstate;
-  vpd->do_category_scroll = mouse_in_category_tab(vpd->region, event);
+  vpd->do_category_scroll = ED_region_panel_category_gutter_isect_xy(vpd->region,
+                                                                     win->eventstate->xy);
 
   /* set RNA-Props */
   RNA_int_set(op->ptr, "deltax", 0);
@@ -561,8 +546,8 @@ static int view_scrollup_exec(bContext *C, wmOperator *op)
   }
 
   const wmWindow *win = CTX_wm_window(C);
-  const wmEvent *event = win->eventstate;
-  vpd->do_category_scroll = mouse_in_category_tab(vpd->region, event);
+  vpd->do_category_scroll = ED_region_panel_category_gutter_isect_xy(vpd->region,
+                                                                     win->eventstate->xy);
 
   /* set RNA-Props */
   RNA_int_set(op->ptr, "deltax", 0);

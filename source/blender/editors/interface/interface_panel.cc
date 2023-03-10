@@ -1400,9 +1400,13 @@ void UI_panel_category_draw_all(ARegion *region, const char *category_id_active)
 
   LISTBASE_FOREACH (PanelCategoryDyn *, pc_dyn, &region->panels_category) {
     const rcti *rct = &pc_dyn->rect;
-    const bool is_visible = rct->ymin < v2d->mask.ymax && rct->ymax > v2d->mask.ymin;
-    if (!is_visible) {
+    if (rct->ymin > v2d->mask.ymax) {
+      /* Scrolled outside the top of the view, check the next tab. */
       continue;
+    }
+    if (rct->ymax < v2d->mask.ymin) {
+      /* Scrolled past visible bounds, no need to draw other tabs. */
+      break;
     }
     const char *category_id = pc_dyn->idname;
     const char *category_id_draw = IFACE_(category_id);
@@ -2244,6 +2248,8 @@ static int ui_handle_panel_category_cycling(const wmEvent *event,
     const char *category = UI_panel_category_active_get(region, false);
     if (LIKELY(category)) {
       PanelCategoryDyn *pc_dyn = UI_panel_category_find(region, category);
+      /* Cyclic behavior between categories
+       * using Ctrl+Tab (+Shift for backwards) or Ctrl+Wheel Up/Down. */
       if (LIKELY(pc_dyn) && (event->modifier & KM_CTRL)) {
         if (is_mousewheel) {
           /* We can probably get rid of this and only allow Ctrl-Tabbing. */

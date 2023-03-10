@@ -455,7 +455,8 @@ typedef struct ARegion {
   rcti drawrct;
   /** Size. */
   short winx, winy;
-  /** Scroll value for category tab. */
+  /* This is a Y offset on the panel tabs that represents pixels, where zero represents no scroll -
+   * the first category always shows first at the top. */
   int category_scroll;
   char _pad0[4];
 
