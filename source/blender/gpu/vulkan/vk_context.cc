@@ -36,9 +36,7 @@ VKContext::VKContext(void *ghost_window, void *ghost_context)
 
   /*Load extended functions.*/
   {
-    void *void_inst = (void *)vk_instance_;
-    void *void_pdev = (void *)vk_physical_device_;
-    debug::init_vk_callbacks(void_inst,void_pdev);
+    debug::init_vk_callbacks(vk_instance_);
   }
 
   if (vk_device_ == VK_NULL_HANDLE) {

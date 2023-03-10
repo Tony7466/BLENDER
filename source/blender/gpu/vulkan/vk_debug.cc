@@ -272,13 +272,17 @@ static VKDebuggingTools tools;
 VKAPI_ATTR VkResult VKAPI_CALL func(ARG_LIST(__VA_ARGS__)) \
   { \
     VkResult r = blender::gpu::debug::tools.vk_wrapper.pf##func(ARG_LIST_CALL(__VA_ARGS__)); \
+    printf("Wrapper Test Callee %s   Res %d \n", __STR_VK_CHECK(func(__VA_ARGS__)), (int)r);\
     VK_ERROR_CHECK(r,__STR_VK_CHECK(func(__VA_ARGS__)));\
     return r;\
   };
 
 #define VK_FUNC_VOID_WRAPPER(func, ...) \
 VKAPI_ATTR void VKAPI_CALL func(ARG_LIST(__VA_ARGS__)) \
-  {  blender::gpu::debug::tools.vk_wrapper.func(ARG_LIST_CALL(__VA_ARGS__)); };
+  { \
+    printf("Wrapper Test Callee %s  void\n", __STR_VK_CHECK(func(__VA_ARGS__))); \
+    blender::gpu::debug::tools.vk_wrapper.func(ARG_LIST_CALL(__VA_ARGS__)); \
+  };
 
 
 VK_FUNC_ERROR_CHECK_WRAPPER(vkCreateInstance,
