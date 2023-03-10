@@ -918,6 +918,8 @@ static void displace_links(bNodeTree *ntree, const bNode *node, bNodeLink *inser
         BKE_ntree_update_tag_link_changed(ntree);
         return;
       }
+      const int multi_input_index = node_socket_count_links(*ntree, *replacement_socket) - 1;
+      displaced_link->multi_input_socket_index = multi_input_index;
     }
   }
 
@@ -976,28 +978,45 @@ static void node_remove_existing_links_if_needed(bNodeLinkDrag &nldrag, bNodeTre
 {
   bNodeSocket &linked_socket = *nldrag.hovered_socket;
 
-  const int link_count = node_socket_count_links(ntree, linked_socket);
+  int link_count = node_socket_count_links(ntree, linked_socket);
   const int link_limit = nodeSocketLinkLimit(&linked_socket);
+  Set<bNodeLink *> links_to_remove;
 
-  if (link_count < link_limit) {
-    return;
-  }
+  ntree.ensure_topology_cache();
 
-  if (linked_socket.is_input()) {
-    LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, &ntree.links) {
-      if (link->tosock == &linked_socket) {
-        nodeRemLink(&ntree, link);
-        return;
+  /* Remove duplicate links first. */
+  for (const bNodeLink dragged_link : nldrag.links) {
+    if (linked_socket.is_input()) {
+      for (bNodeLink *link : linked_socket.runtime->directly_linked_links) {
+        const bool duplicate_link = link->fromsock == dragged_link.fromsock;
+        if (duplicate_link) {
+          links_to_remove.add(link);
+          link_count--;
+        }
+      }
+    }
+    else {
+      for (bNodeLink *link : linked_socket.runtime->directly_linked_links) {
+        const bool duplicate_link = link->tosock == dragged_link.tosock;
+        if (duplicate_link) {
+          links_to_remove.add(link);
+          link_count--;
+        }
       }
     }
   }
-  else {
-    LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, &ntree.links) {
-      if (link->fromsock == &linked_socket) {
-        nodeRemLink(&ntree, link);
-        return;
+
+  for (bNodeLink *link : linked_socket.runtime->directly_linked_links) {
+    const bool link_limit_exceeded = !(link_count < link_limit);
+    if (link_limit_exceeded) {
+      if (links_to_remove.add(link)) {
+        link_count--;
       }
     }
+  }
+
+  for (bNodeLink *link : links_to_remove) {
+    nodeRemLink(&ntree, link);
   }
 }
 
