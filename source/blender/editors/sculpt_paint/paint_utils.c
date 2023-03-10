@@ -796,6 +796,52 @@ void PAINT_OT_vert_select_linked_pick(wmOperatorType *ot)
                   "Whether to select or deselect linked vertices under the cursor");
 }
 
+static int paintvert_select_more_exec(bContext *C, wmOperator *op)
+{
+  const bool face_step = RNA_boolean_get(op->ptr, "face_step");
+  paintvert_select_more(C, CTX_data_active_object(C), face_step);
+  ED_region_tag_redraw(CTX_wm_region(C));
+  return OPERATOR_FINISHED;
+}
+
+void PAINT_OT_vert_select_more(wmOperatorType *ot)
+{
+  ot->name = "Select More";
+  ot->description = "Select Vertices connected to existing selection";
+  ot->idname = "PAINT_OT_vert_select_more";
+
+  ot->exec = paintvert_select_more_exec;
+  ot->poll = vert_paint_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  RNA_def_boolean(
+      ot->srna, "face_step", true, "Face Step", "Also select faces that only touch on a corner");
+}
+
+static int paintvert_select_less_exec(bContext *C, wmOperator *op)
+{
+  const bool face_step = RNA_boolean_get(op->ptr, "face_step");
+  paintvert_select_less(C, CTX_data_active_object(C), face_step);
+  ED_region_tag_redraw(CTX_wm_region(C));
+  return OPERATOR_FINISHED;
+}
+
+void PAINT_OT_vert_select_less(wmOperatorType *ot)
+{
+  ot->name = "Select Less";
+  ot->description = "Deselect Vertices connected to existing selection";
+  ot->idname = "PAINT_OT_vert_select_less";
+
+  ot->exec = paintvert_select_less_exec;
+  ot->poll = vert_paint_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  RNA_def_boolean(
+      ot->srna, "face_step", true, "Face Step", "Also deselect faces that only touch on a corner");
+}
+
 static int face_select_hide_exec(bContext *C, wmOperator *op)
 {
   const bool unselected = RNA_boolean_get(op->ptr, "unselected");

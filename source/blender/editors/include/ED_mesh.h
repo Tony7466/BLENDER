@@ -444,6 +444,8 @@ void paintvert_select_linked_pick(struct bContext *C,
                                   struct Object *ob,
                                   const int region_coordinates[2],
                                   bool select);
+void paintvert_select_more(struct bContext *C, struct Object *ob, bool face_step);
+void paintvert_select_less(struct bContext *C, struct Object *ob, bool face_step);
 void paintvert_hide(struct bContext *C, struct Object *ob, bool unselected);
 void paintvert_reveal(struct bContext *C, struct Object *ob, bool select);
 

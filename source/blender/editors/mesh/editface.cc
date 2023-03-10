@@ -659,6 +659,93 @@ void paintvert_select_linked(bContext *C, Object *ob)
   paintvert_select_linked_vertices(C, ob, indices, true);
 }
 
+void paintvert_select_more(bContext *C, Object *ob, const bool face_step)
+{
+  using namespace blender;
+  Mesh *mesh = BKE_mesh_from_object(ob);
+  if (mesh == nullptr || mesh->totpoly == 0) {
+    return;
+  }
+
+  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
+  bke::SpanAttributeWriter<bool> select_vert = attributes.lookup_or_add_for_write_span<bool>(
+      ".select_vert", ATTR_DOMAIN_POINT);
+  const VArray<bool> hide_edge = attributes.lookup_or_default<bool>(
+      ".hide_edge", ATTR_DOMAIN_EDGE, false);
+
+  const Span<MPoly> polys = mesh->polys();
+  const Span<MLoop> loops = mesh->loops();
+  const Span<MEdge> edges = mesh->edges();
+
+  /* Need a copy of the selected verts that we can read from and is not modified. */
+  BitVector<> select_vert_original(mesh->totvert, false);
+  for (int i = 0; i < mesh->totvert; i++) {
+    select_vert_original[i].set(select_vert.span[i]);
+  }
+
+  for (const int i : edges.index_range()) {
+    const MEdge &edge = edges[i];
+    bool has_vertex_selected = false;
+    if ((!select_vert_original[edge.v1] && !select_vert_original[edge.v2]) || hide_edge[i]) {
+      continue;
+    }
+    has_vertex_selected = true;
+    select_vert.span[edge.v1] = true;
+    select_vert.span[edge.v2] = true;
+    if (face_step && has_vertex_selected) {
+    }
+  }
+
+  select_vert.finish();
+  paintvert_flush_flags(ob);
+  paintvert_tag_select_update(C, ob);
+}
+
+void paintvert_select_less(bContext *C, Object *ob, const bool face_step)
+{
+  using namespace blender;
+  Mesh *mesh = BKE_mesh_from_object(ob);
+  if (mesh == nullptr || mesh->totpoly == 0) {
+    return;
+  }
+
+  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
+  bke::SpanAttributeWriter<bool> select_vert = attributes.lookup_or_add_for_write_span<bool>(
+      ".select_vert", ATTR_DOMAIN_POINT);
+
+  const Span<MPoly> polys = mesh->polys();
+  const Span<MLoop> loops = mesh->loops();
+  const Span<MEdge> edges = mesh->edges();
+
+  /* Need a copy of the selected verts that we can read from and is not modified. */
+  BitVector<> select_vert_original(mesh->totvert, false);
+  for (int i = 0; i < mesh->totvert; i++) {
+    select_vert_original[i].set(select_vert.span[i]);
+  }
+
+  for (const MPoly &poly : polys) {
+    bool has_vertex_selected = false;
+    for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
+      if (select_vert_original[loop.v]) {
+        continue;
+      }
+      has_vertex_selected = true;
+      const MEdge &edge = edges[loop.e];
+      select_vert.span[edge.v1] = false;
+      select_vert.span[edge.v2] = false;
+    }
+    if (face_step && has_vertex_selected) {
+      for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
+        select_vert.span[loop.v] = false;
+      }
+    }
+  }
+
+  select_vert.finish();
+  paintvert_flush_flags(ob);
+  paintvert_tag_select_update(C, ob);
+}
+
 void paintvert_tag_select_update(bContext *C, Object *ob)
 {
   DEG_id_tag_update(static_cast<ID *>(ob->data), ID_RECALC_COPY_ON_WRITE | ID_RECALC_SELECT);
