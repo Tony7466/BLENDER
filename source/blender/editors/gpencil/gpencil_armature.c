@@ -207,7 +207,7 @@ static int dgroup_skinnable_cb(Object *ob, Bone *bone, void *datap)
           defgroup = BKE_object_defgroup_add_name(ob, bone->name);
         }
         else if (defgroup->flag & DG_LOCK_WEIGHT) {
-          /* In case vgroup already exists and is locked, do not modify it here. See T43814. */
+          /* In case vgroup already exists and is locked, do not modify it here. See #43814. */
           defgroup = NULL;
         }
       }
@@ -525,7 +525,7 @@ static bool gpencil_generate_weights_poll(bContext *C)
     return false;
   }
 
-  if (ob->type != OB_GPENCIL) {
+  if (ob->type != OB_GPENCIL_LEGACY) {
     return false;
   }
 

@@ -43,7 +43,7 @@
 #include "interface_intern.hh"
 
 /* Show an icon button after each RNA button to use to quickly set keyframes,
- * this is a way to display animation/driven/override status, see T54951. */
+ * this is a way to display animation/driven/override status, see #54951. */
 #define UI_PROP_DECORATE
 /* Alternate draw mode where some buttons can use single icon width,
  * giving more room for the text at the expense of nicely aligned text. */
@@ -1009,7 +1009,7 @@ static uiBut *ui_item_with_label(uiLayout *layout,
   ) {
     /* Also avoid setting 'align' if possible. Set the space to zero instead as aligning a large
      * number of labels can end up aligning thousands of buttons when displaying key-map search (a
-     * heavy operation), see: T78636. */
+     * heavy operation), see: #78636. */
     sub = uiLayoutRow(layout, layout->align);
     sub->space = 0;
   }
@@ -3516,7 +3516,7 @@ void uiItemMenuFN(uiLayout *layout, const char *name, int icon, uiMenuCreateFunc
 struct MenuItemLevel {
   wmOperatorCallContext opcontext;
   /* don't use pointers to the strings because python can dynamically
-   * allocate strings and free before the menu draws, see T27304. */
+   * allocate strings and free before the menu draws, see #27304. */
   char opname[OP_MAX_TYPENAME];
   char propname[MAX_IDPROP_NAME];
   PointerRNA rnapoin;
@@ -3960,8 +3960,7 @@ static void ui_litem_layout_radial(uiLayout *litem)
 
   /* For the radial layout we will use Matt Ebb's design
    * for radiation, see http://mattebb.com/weblog/radiation/
-   * also the old code at http://developer.blender.org/T5103
-   */
+   * also the old code at #5103. */
 
   const int pie_radius = U.pie_menu_radius * UI_DPI_FAC;
 
@@ -5810,7 +5809,6 @@ void uiLayoutSetTooltipFunc(uiLayout *layout,
     if (copy_arg != nullptr && arg_used) {
       arg = copy_arg(arg);
     }
-    arg_used = true;
 
     if (item->type == ITEM_BUTTON) {
       uiButtonItem *bitem = (uiButtonItem *)item;
@@ -5818,9 +5816,11 @@ void uiLayoutSetTooltipFunc(uiLayout *layout,
         continue;
       }
       UI_but_func_tooltip_set(bitem->but, func, arg, free_arg);
+      arg_used = true;
     }
     else {
       uiLayoutSetTooltipFunc((uiLayout *)item, func, arg, copy_arg, free_arg);
+      arg_used = true;
     }
   }
 
@@ -5913,7 +5913,8 @@ static bool ui_layout_has_panel_label(const uiLayout *layout, const PanelType *p
   LISTBASE_FOREACH (uiItem *, subitem, &layout->items) {
     if (subitem->type == ITEM_BUTTON) {
       uiButtonItem *bitem = (uiButtonItem *)subitem;
-      if (!(bitem->but->flag & UI_HIDDEN) && STREQ(bitem->but->str, pt->label)) {
+      if (!(bitem->but->flag & UI_HIDDEN) &&
+          STREQ(bitem->but->str, CTX_IFACE_(pt->translation_context, pt->label))) {
         return true;
       }
     }

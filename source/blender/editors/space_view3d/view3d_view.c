@@ -329,7 +329,7 @@ void view3d_winmatrix_set(Depsgraph *depsgraph,
          clipend);
 #endif
 
-  /* Note the code here was tweaked to avoid an apparent compiler bug in clang 13 (see T91680). */
+  /* Note the code here was tweaked to avoid an apparent compiler bug in clang 13 (see #91680). */
   rctf viewplane;
   if (rect) {
     /* Smaller viewplane subset for selection picking. */
@@ -623,7 +623,7 @@ int view3d_opengl_select_ex(ViewContext *vc,
       /* While this uses 'alloca' in a loop (which we typically avoid),
        * the number of items is nearly always 1, maybe 2..3 in rare cases. */
       LinkNode *ob_pose_list = NULL;
-      if (obact->type == OB_GPENCIL) {
+      if (obact->type == OB_GPENCIL_LEGACY) {
         GpencilVirtualModifierData virtualModifierData;
         const GpencilModifierData *md = BKE_gpencil_modifiers_get_virtual_modifierlist(
             obact, &virtualModifierData);
@@ -667,7 +667,7 @@ int view3d_opengl_select_ex(ViewContext *vc,
   G.f |= G_FLAG_PICKSEL;
 
   /* Important we use the 'viewmat' and don't re-calculate since
-   * the object & bone view locking takes 'rect' into account, see: T51629. */
+   * the object & bone view locking takes 'rect' into account, see: #51629. */
   ED_view3d_draw_setup_view(
       wm, vc->win, depsgraph, scene, region, v3d, vc->rv3d->viewmat, NULL, &rect);
 
@@ -702,7 +702,7 @@ int view3d_opengl_select_ex(ViewContext *vc,
                          object_filter.user_data);
     hits = drw_select_loop_user_data.hits;
     /* FIX: This cleanup the state before doing another selection pass.
-     * (see T56695) */
+     * (see #56695) */
     GPU_select_cache_end();
   }
 

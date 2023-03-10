@@ -275,7 +275,7 @@ void gpu::MTLTexture::blit(id<MTLBlitCommandEncoder> blit_encoder,
                            uint depth)
 {
 
-  BLI_assert(this && dest);
+  BLI_assert(dest);
   BLI_assert(width > 0 && height > 0 && depth > 0);
   MTLSize src_size = MTLSizeMake(width, height, depth);
   MTLOrigin src_origin = MTLOriginMake(src_x_offset, src_y_offset, src_z_offset);
@@ -497,7 +497,7 @@ void gpu::MTLTexture::update_sub(
     }
 
     /* Early exit if update size is zero. update_sub sometimes has a zero-sized
-     * extent when called from texture painting.  */
+     * extent when called from texture painting. */
     if (totalsize <= 0 || extent[0] <= 0) {
       MTL_LOG_WARNING(
           "MTLTexture::update_sub called with extent size of zero for one or more dimensions. "
@@ -643,7 +643,7 @@ void gpu::MTLTexture::update_sub(
 
       /* For compute, we should use a stating texture to avoid texture write usage,
        * if it has not been specified for the texture. Using shader-write disables
-       * lossless texture compression, so this is best to avoid where possible.  */
+       * lossless texture compression, so this is best to avoid where possible. */
       if (!(gpu_image_usage_flags_ & GPU_TEXTURE_USAGE_SHADER_WRITE)) {
         use_staging_texture = true;
       }
@@ -1347,7 +1347,7 @@ void *gpu::MTLTexture::read(int mip, eGPUDataFormat type)
   /* Prepare Array for return data. */
   BLI_assert(!(format_flag_ & GPU_FORMAT_COMPRESSED));
   BLI_assert(mip <= mipmaps_);
-  BLI_assert(validate_data_format_mtl(format_, type));
+  BLI_assert(validate_data_format(format_, type));
 
   /* NOTE: mip_size_get() won't override any dimension that is equal to 0. */
   int extent[3] = {1, 1, 1};
@@ -1406,7 +1406,7 @@ void gpu::MTLTexture::read_internal(int mip,
   bool is_depth_format = (format_flag_ & GPU_FORMAT_DEPTH);
 
   /* Verify if we need to use compute read. */
-  eGPUDataFormat data_format = to_mtl_internal_data_format(this->format_get());
+  eGPUDataFormat data_format = to_data_format(this->format_get());
   bool format_conversion_needed = (data_format != desired_output_format);
   bool can_use_simple_read = (desired_output_bpp == image_bpp) && (!format_conversion_needed) &&
                              (num_output_components == image_components);
@@ -1420,7 +1420,7 @@ void gpu::MTLTexture::read_internal(int mip,
     BLI_assert(num_output_components == 1);
     BLI_assert(image_components == 1);
     BLI_assert(data_format == GPU_DATA_FLOAT || data_format == GPU_DATA_UINT_24_8);
-    BLI_assert(validate_data_format_mtl(format_, data_format));
+    BLI_assert(validate_data_format(format_, data_format));
   }
 
   /* SPECIAL Workaround for R11G11B10 textures requesting a read using: GPU_DATA_10_11_11_REV. */

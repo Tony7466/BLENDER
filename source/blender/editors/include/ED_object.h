@@ -40,7 +40,7 @@ struct wmKeyConfig;
 struct wmOperator;
 struct wmOperatorType;
 
-/* object_edit.c */
+/* object_edit.cc */
 
 /** `context.object` */
 struct Object *ED_object_context(const struct bContext *C);
@@ -240,6 +240,9 @@ struct Base *ED_object_add_duplicate(struct Main *bmain,
 void ED_object_parent(struct Object *ob, struct Object *parent, int type, const char *substr);
 char *ED_object_ot_drop_named_material_tooltip(struct bContext *C,
                                                const char *name,
+                                               const int mval[2]);
+char *ED_object_ot_drop_geometry_nodes_tooltip(struct bContext *C,
+                                               struct PointerRNA *properties,
                                                const int mval[2]);
 
 /* bitflags for enter/exit editmode */
@@ -475,7 +478,7 @@ void ED_object_constraint_copy_for_pose(struct Main *bmain,
                                         struct bPoseChannel *pchan,
                                         struct bConstraint *con);
 
-/* object_modes.c */
+/* object_modes.cc */
 
 /**
  * Checks the mode to be set is compatible with the object
@@ -734,7 +737,7 @@ void ED_object_facemap_face_add(struct Object *ob, struct bFaceMap *fmap, int fa
  */
 void ED_object_facemap_face_remove(struct Object *ob, struct bFaceMap *fmap, int facenum);
 
-/* object_data_transform.c */
+/* object_data_transform.cc */
 
 struct XFormObjectData *ED_object_data_xform_create_ex(struct ID *id, bool is_edit_mode);
 struct XFormObjectData *ED_object_data_xform_create(struct ID *id);

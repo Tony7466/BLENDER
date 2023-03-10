@@ -832,7 +832,7 @@ ID *ui_template_id_liboverride_hierarchy_make(
     case ID_CA:
     case ID_SPK:
     case ID_AR:
-    case ID_GD:
+    case ID_GD_LEGACY:
     case ID_CV:
     case ID_PT:
     case ID_VO:
@@ -1102,7 +1102,7 @@ static const char *template_id_browse_tip(const StructRNA *type)
         return N_("Browse Brush to be linked");
       case ID_PA:
         return N_("Browse Particle Settings to be linked");
-      case ID_GD:
+      case ID_GD_LEGACY:
         return N_("Browse Grease Pencil Data to be linked");
       case ID_MC:
         return N_("Browse Movie Clip to be linked");
@@ -2337,7 +2337,7 @@ void uiTemplateModifiers(uiLayout * /*layout*/, bContext *C)
 /* -------------------------------------------------------------------- */
 /** \name Constraints Template
  *
- *  Template for building the panel layout for the active object or bone's constraints.
+ * Template for building the panel layout for the active object or bone's constraints.
  * \{ */
 
 /** For building the panel UI for constraints. */
@@ -2813,7 +2813,7 @@ static eAutoPropButsReturn template_operator_property_buts_draw_single(
       /* no undo for buttons for operator redo panels */
       UI_but_flag_disable(but, UI_BUT_UNDO);
 
-      /* only for popups, see T36109. */
+      /* only for popups, see #36109. */
 
       /* if button is operator's default property, and a text-field, enable focus for it
        * - this is used for allowing operators with popups to rename stuff with fewer clicks
@@ -6553,12 +6553,12 @@ void uiTemplateKeymapItemProperties(uiLayout *layout, PointerRNA *ptr)
     /* attach callbacks to compensate for missing properties update,
      * we don't know which keymap (item) is being modified there */
     for (; but; but = but->next) {
-      /* operator buttons may store props for use (file selector, T36492) */
+      /* operator buttons may store props for use (file selector, #36492) */
       if (but->rnaprop) {
         UI_but_func_set(but, keymap_item_modified, ptr->data, nullptr);
 
         /* Otherwise the keymap will be re-generated which we're trying to edit,
-         * see: T47685 */
+         * see: #47685 */
         UI_but_flag_enable(but, UI_BUT_UPDATE_DELAY);
       }
     }

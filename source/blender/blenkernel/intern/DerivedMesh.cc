@@ -109,17 +109,17 @@ static float *dm_getVertArray(DerivedMesh *dm)
 
 static MEdge *dm_getEdgeArray(DerivedMesh *dm)
 {
-  MEdge *medge = (MEdge *)CustomData_get_layer_for_write(
+  MEdge *edge = (MEdge *)CustomData_get_layer_for_write(
       &dm->edgeData, CD_MEDGE, dm->getNumEdges(dm));
 
-  if (!medge) {
-    medge = (MEdge *)CustomData_add_layer(
+  if (!edge) {
+    edge = (MEdge *)CustomData_add_layer(
         &dm->edgeData, CD_MEDGE, CD_SET_DEFAULT, nullptr, dm->getNumEdges(dm));
     CustomData_set_layer_flag(&dm->edgeData, CD_MEDGE, CD_FLAG_TEMPORARY);
-    dm->copyEdgeArray(dm, medge);
+    dm->copyEdgeArray(dm, edge);
   }
 
-  return medge;
+  return edge;
 }
 
 static MLoop *dm_getLoopArray(DerivedMesh *dm)
@@ -639,7 +639,7 @@ static Mesh *modifier_modify_mesh_and_geometry_set(ModifierData *md,
 
     /* Return an empty mesh instead of null. */
     if (mesh_output == nullptr) {
-      mesh_output = BKE_mesh_new_nomain(0, 0, 0, 0, 0);
+      mesh_output = BKE_mesh_new_nomain(0, 0, 0, 0);
       BKE_mesh_copy_parameters_for_eval(mesh_output, input_mesh);
     }
   }
@@ -911,7 +911,7 @@ static void mesh_calc_modifiers(struct Depsgraph *depsgraph,
 
       /* set the Mesh to only copy needed data */
       CustomData_MeshMasks mask = md_datamask->mask;
-      /* needMapping check here fixes bug T28112, otherwise it's
+      /* needMapping check here fixes bug #28112, otherwise it's
        * possible that it won't be copied */
       CustomData_MeshMasks_update(&mask, &append_mask);
       if (need_mapping) {
@@ -1467,7 +1467,7 @@ static void editbmesh_calc_modifiers(struct Depsgraph *depsgraph,
 
   /* Add orco coordinates to final and deformed mesh if requested. */
   if (final_datamask.vmask & CD_MASK_ORCO) {
-    /* FIXME(@campbellbarton): avoid the need to convert to mesh data just to add an orco layer. */
+    /* FIXME(@ideasman42): avoid the need to convert to mesh data just to add an orco layer. */
     BKE_mesh_wrapper_ensure_mdata(mesh_final);
 
     add_orco_mesh(ob, em_input, mesh_final, mesh_orco, CD_ORCO);
@@ -1678,7 +1678,7 @@ void makeDerivedMesh(struct Depsgraph *depsgraph,
   BLI_assert(ob->type == OB_MESH);
 
   /* Evaluated meshes aren't supposed to be created on original instances. If you do,
-   * they aren't cleaned up properly on mode switch, causing crashes, e.g T58150. */
+   * they aren't cleaned up properly on mode switch, causing crashes, e.g #58150. */
   BLI_assert(ob->id.tag & LIB_TAG_COPIED_ON_WRITE);
 
   BKE_object_free_derived_caches(ob);
@@ -1715,7 +1715,7 @@ Mesh *mesh_get_eval_final(struct Depsgraph *depsgraph,
   BLI_assert(DEG_is_evaluating(depsgraph) == false);
 
   /* Evaluated meshes aren't supposed to be created on original instances. If you do,
-   * they aren't cleaned up properly on mode switch, causing crashes, e.g T58150. */
+   * they aren't cleaned up properly on mode switch, causing crashes, e.g #58150. */
   BLI_assert(ob->id.tag & LIB_TAG_COPIED_ON_WRITE);
 
   /* if there's no evaluated mesh or the last data mask used doesn't include
@@ -1757,7 +1757,7 @@ Mesh *mesh_get_eval_deform(struct Depsgraph *depsgraph,
   BLI_assert(DEG_is_evaluating(depsgraph) == false);
 
   /* Evaluated meshes aren't supposed to be created on original instances. If you do,
-   * they aren't cleaned up properly on mode switch, causing crashes, e.g T58150. */
+   * they aren't cleaned up properly on mode switch, causing crashes, e.g #58150. */
   BLI_assert(ob->id.tag & LIB_TAG_COPIED_ON_WRITE);
 
   /* if there's no derived mesh or the last data mask used doesn't include
@@ -1895,27 +1895,25 @@ static void mesh_init_origspace(Mesh *mesh)
 
   OrigSpaceLoop *lof_array = (OrigSpaceLoop *)CustomData_get_layer_for_write(
       &mesh->ldata, CD_ORIGSPACE_MLOOP, mesh->totloop);
-  const int numpoly = mesh->totpoly;
-  // const int numloop = mesh->totloop;
   const Span<float3> positions = mesh->vert_positions();
   const Span<MPoly> polys = mesh->polys();
   const Span<MLoop> loops = mesh->loops();
 
-  const MPoly *mp = polys.data();
-  int i, j, k;
+  int j, k;
 
   blender::Vector<blender::float2, 64> vcos_2d;
 
-  for (i = 0; i < numpoly; i++, mp++) {
-    OrigSpaceLoop *lof = lof_array + mp->loopstart;
+  for (const int i : polys.index_range()) {
+    const MPoly &poly = polys[i];
+    OrigSpaceLoop *lof = lof_array + poly.loopstart;
 
-    if (ELEM(mp->totloop, 3, 4)) {
-      for (j = 0; j < mp->totloop; j++, lof++) {
+    if (ELEM(poly.totloop, 3, 4)) {
+      for (j = 0; j < poly.totloop; j++, lof++) {
         copy_v2_v2(lof->uv, default_osf[j]);
       }
     }
     else {
-      const MLoop *l = &loops[mp->loopstart];
+      const MLoop *l = &loops[poly.loopstart];
       float p_nor[3], co[3];
       float mat[3][3];
 
@@ -1923,11 +1921,11 @@ static void mesh_init_origspace(Mesh *mesh)
       float translate[2], scale[2];
 
       BKE_mesh_calc_poly_normal(
-          mp, l, reinterpret_cast<const float(*)[3]>(positions.data()), p_nor);
+          &poly, l, reinterpret_cast<const float(*)[3]>(positions.data()), p_nor);
       axis_dominant_v3_to_m3(mat, p_nor);
 
-      vcos_2d.resize(mp->totloop);
-      for (j = 0; j < mp->totloop; j++, l++) {
+      vcos_2d.resize(poly.totloop);
+      for (j = 0; j < poly.totloop; j++, l++) {
         mul_v3_m3v3(co, mat, positions[l->v]);
         copy_v2_v2(vcos_2d[j], co);
 
@@ -1956,7 +1954,7 @@ static void mesh_init_origspace(Mesh *mesh)
 
       /* Finally, transform all vcos_2d into ((0, 0), (1, 1))
        * square and assign them as origspace. */
-      for (j = 0; j < mp->totloop; j++, lof++) {
+      for (j = 0; j < poly.totloop; j++, lof++) {
         add_v2_v2v2(lof->uv, vcos_2d[j], translate);
         mul_v2_v2(lof->uv, scale);
       }

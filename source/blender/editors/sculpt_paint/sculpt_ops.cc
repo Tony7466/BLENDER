@@ -57,7 +57,7 @@
 #include "ED_sculpt.h"
 
 #include "paint_intern.h"
-#include "sculpt_intern.h"
+#include "sculpt_intern.hh"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -228,6 +228,8 @@ static int sculpt_symmetrize_exec(bContext *C, wmOperator *op)
     case PBVH_GRIDS:
       return OPERATOR_CANCELLED;
   }
+
+  SCULPT_topology_islands_invalidate(ss);
 
   /* Redraw. */
   SCULPT_pbvh_clear(ob);
@@ -514,7 +516,7 @@ static int sculpt_mode_toggle_exec(bContext *C, wmOperator *op)
       /* Dyntopo adds its own undo step. */
       if ((me->flag & ME_SCULPT_DYNAMIC_TOPOLOGY) == 0) {
         /* Without this the memfile undo step is used,
-         * while it works it causes lag when undoing the first undo step, see T71564. */
+         * while it works it causes lag when undoing the first undo step, see #71564. */
         wmWindowManager *wm = CTX_wm_manager(C);
         if (wm->op_undo_depth <= 1) {
           SCULPT_undo_push_begin(ob, op);
@@ -1424,4 +1426,9 @@ void ED_operatortypes_sculpt(void)
   WM_operatortype_append(SCULPT_OT_expand);
   WM_operatortype_append(SCULPT_OT_mask_from_cavity);
   WM_operatortype_append(SCULPT_OT_reveal_all);
+}
+
+void ED_keymap_sculpt(wmKeyConfig *keyconf)
+{
+  filter_mesh_modal_keymap(keyconf);
 }
