@@ -357,6 +357,21 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
   char filename[FILE_MAX];
   RNA_string_get(op->ptr, "filepath", filename);
 
+  /* Index to find the length of the file name. */
+  int i = 0;
+  while (filename[i] != '\0') {
+    i++;
+  }
+
+  /* If the file name does not end with '.usd', it is invalid. */
+  if (!(filename[i - 4] == '.' &&
+        filename[i - 4] == 'u' &&
+        filename[i - 4] == 's' &&
+        filename[i - 4] == 'd')) {
+    BKE_report(op->reports, RPT_ERROR_INVALID_INPUT, "Invalid Filename");
+    return OPERATOR_CANCELLED;
+  }
+
   eUSDOperatorOptions *options = (eUSDOperatorOptions *)op->customdata;
   const bool as_background_job = (options != NULL && options->as_background_job);
   MEM_SAFE_FREE(op->customdata);
