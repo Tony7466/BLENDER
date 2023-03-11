@@ -494,10 +494,27 @@ struct ImBuf *BKE_image_get_first_ibuf(struct Image *image);
 struct GPUTexture *BKE_image_create_gpu_texture_from_ibuf(struct Image *image, struct ImBuf *ibuf);
 
 /**
+ * Ensure that the cached GPU texture inside the image matches the pass, layer, and view of the
+ * given image user, if not, invalidate the cache such that the next call to the GPU texture
+ * retrieval functions such as BKE_image_get_gpu_texture updates the cache with an image that
+ * matches the give image user.
+ *
+ * This is provided as a separate function and not implemented as part of the GPU texture retrieval
+ * functions because the current cache system only allows a single pass, layer, and stereo view to
+ * be cached, so possible frequent invalidations of the cache can have performance implications,
+ * and making invalidation explicit by calling this function will help make that clear and pave the
+ * way for a more complete cache system in the future.
+ */
+void BKE_image_ensure_gpu_texture(struct Image *image, struct ImageUser *iuser);
+
+/**
  * Get the #GPUTexture for a given `Image`.
  *
  * `iuser` and `ibuf` are mutual exclusive parameters. The caller can pass the `ibuf` when already
  * available. It is also required when requesting the #GPUTexture for a render result.
+ *
+ * Call BKE_image_ensure_gpu_texture first if the requested layer, pass, and view might differ
+ * across calls.
  */
 struct GPUTexture *BKE_image_get_gpu_texture(struct Image *image,
                                              struct ImageUser *iuser,
