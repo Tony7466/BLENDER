@@ -4,6 +4,9 @@
  * \ingroup stl
  */
 
+#include <algorithm>
+#include <string>
+
 #include "BKE_mesh.h"
 #include "BKE_object.h"
 
@@ -55,10 +58,18 @@ void exporter_main(bContext *C, const STLExportParams &export_params)
 
     /* If exporting in batch, create writer for each iteration over objects. */
     if (export_params.use_batch) {
-      /* TODO: append object name to exported file name to match old Python STL exporter. */
-      writer = create_writer(export_params.filepath,
-                             export_params.use_ascii ? FileWriter::Type::ASCII :
-                                                       FileWriter::Type::BINARY);
+      /* Get object name by skipping initial "OB" prefix. */
+      std::string object_name = (object->id.name + 2);
+      /* Replace spaces with underscores. */
+      std::replace(object_name.begin(), object_name.end(), ' ', '_');
+
+      /* Include object name in the exported file name. */
+      std::string suffix = object_name + ".stl";
+      char filepath[FILE_MAX];
+      BLI_strncpy(filepath, export_params.filepath, FILE_MAX);
+      BLI_path_extension_replace(filepath, FILE_MAX, suffix.c_str());
+      writer = create_writer(
+          filepath, export_params.use_ascii ? FileWriter::Type::ASCII : FileWriter::Type::BINARY);
     }
 
     Object *obj_eval = DEG_get_evaluated_object(depsgraph, object);
