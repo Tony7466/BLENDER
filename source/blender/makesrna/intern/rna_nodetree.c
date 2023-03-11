@@ -1776,6 +1776,25 @@ static bool rna_Node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
   return true;
 }
 
+static bool rna_Node_remove_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
+{
+  extern FunctionRNA rna_Node_remove_link_func;
+
+  PointerRNA ptr;
+  ParameterList list;
+  FunctionRNA *func;
+
+  RNA_pointer_create((ID *)ntree, node->typeinfo->rna_ext.srna, node, &ptr);
+  func = &rna_Node_remove_link_func;
+
+  RNA_parameter_list_create(&list, &ptr, func);
+  RNA_parameter_set_lookup(&list, "link", &link);
+  node->typeinfo->rna_ext.call(NULL, &ptr, func, &list);
+
+  RNA_parameter_list_free(&list);
+  return true;
+}
+
 static void rna_Node_init(const bContext *C, PointerRNA *ptr)
 {
   extern FunctionRNA rna_Node_init_func;
@@ -1935,7 +1954,7 @@ static bNodeType *rna_Node_register_base(Main *bmain,
   PointerRNA dummy_node_ptr;
   FunctionRNA *func;
   PropertyRNA *parm;
-  bool have_function[10];
+  bool have_function[11];
 
   /* setup dummy node & node type to store static properties in */
   memset(&dummy_nt, 0, sizeof(bNodeType));
@@ -2010,6 +2029,7 @@ static bNodeType *rna_Node_register_base(Main *bmain,
   nt->draw_buttons = (have_function[7]) ? rna_Node_draw_buttons : NULL;
   nt->draw_buttons_ex = (have_function[8]) ? rna_Node_draw_buttons_ext : NULL;
   nt->labelfunc = (have_function[9]) ? rna_Node_draw_label : NULL;
+  nt->remove_link = (have_function[10]) ? rna_Node_remove_link : NULL;
 
   /* sanitize size values in case not all have been registered */
   if (nt->maxwidth < nt->minwidth) {
@@ -12519,6 +12539,12 @@ static void rna_def_node(BlenderRNA *brna)
   parm = RNA_def_string(func, "label", NULL, MAX_NAME, "Label", "");
   RNA_def_parameter_flags(parm, PROP_THICK_WRAP, 0); /* needed for string return value */
   RNA_def_function_output(func, parm);
+
+  /* Remove link callback. */
+  func = RNA_def_function(srna, "remove_link", NULL);
+  RNA_def_function_ui_description(func, "Handle removal of a link to or from the node");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_REGISTER_OPTIONAL | FUNC_ALLOW_WRITE);
+  parm = RNA_def_pointer(func, "link", "NodeLink", "Link", "Node link that will be removed");
 }
 
 static void rna_def_node_link(BlenderRNA *brna)

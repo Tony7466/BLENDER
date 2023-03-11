@@ -2420,6 +2420,12 @@ void nodeRemLink(bNodeTree *ntree, bNodeLink *link)
 {
   /* Can be called for links outside a node tree (e.g. clipboard). */
   if (ntree) {
+    if (link->fromnode->typeinfo->remove_link) {
+      link->fromnode->typeinfo->remove_link(ntree, link->fromnode, link);
+    }
+    if (link->tonode->typeinfo->remove_link) {
+      link->tonode->typeinfo->remove_link(ntree, link->tonode, link);
+    }
     BLI_remlink(&ntree->links, link);
   }
 

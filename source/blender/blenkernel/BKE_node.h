@@ -318,6 +318,9 @@ typedef struct bNodeType {
   /* Optional handling of link insertion. Returns false if the link shouldn't be created. */
   bool (*insert_link)(struct bNodeTree *ntree, struct bNode *node, struct bNodeLink *link);
 
+  /* Optional handling of link removal. */
+  void (*remove_link)(struct bNodeTree *ntree, struct bNode *node, struct bNodeLink *link);
+
   void (*free_self)(struct bNodeType *ntype);
 
   /* **** execution callbacks **** */
