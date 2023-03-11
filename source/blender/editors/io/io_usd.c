@@ -365,9 +365,9 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
 
   /* If the file name does not end with '.usd', it is invalid. */
   if (!(filename[i - 4] == '.' &&
-        filename[i - 4] == 'u' &&
-        filename[i - 4] == 's' &&
-        filename[i - 4] == 'd')) {
+        filename[i - 3] == 'u' &&
+        filename[i - 2] == 's' &&
+        filename[i - 1] == 'd')) {
     BKE_report(op->reports, RPT_ERROR_INVALID_INPUT, "Invalid Filename");
     return OPERATOR_CANCELLED;
   }
