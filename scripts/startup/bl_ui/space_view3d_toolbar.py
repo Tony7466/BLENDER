@@ -153,7 +153,7 @@ class VIEW3D_PT_tools_meshedit_options(View3DPanel, Panel):
     bl_context = ".mesh_edit"  # dot on purpose (access from topbar)
     bl_label = "Options"
     bl_options = {'DEFAULT_CLOSED'}
-    bl_ui_units_x = 12
+    bl_ui_units_x = 14
 
     @classmethod
     def poll(cls, context):
@@ -188,6 +188,60 @@ class VIEW3D_PT_tools_meshedit_options(View3DPanel, Panel):
         row = layout.row(align=True)
         row.active = ob.data.use_mirror_x or ob.data.use_mirror_y or ob.data.use_mirror_z
         row.prop(mesh, "use_mirror_topology")
+
+        from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
+        _cls = ToolSelectPanelHelper._tool_class_from_space_type('VIEW_3D')
+
+        if tool_settings.workspace_tool_type == 'FALLBACK':
+            tool = _cls._tool_get_by_id_active(context, _cls.tool_fallback_id)[0].idname
+        else:
+            tool = ToolSelectPanelHelper.tool_active_from_context(context).idname
+
+        if tool == "builtin.select_box":
+            row = layout.row(align=True)
+            row.prop(tool_settings, "box_drag_direction")
+            row = layout.row(align=True)
+            if tool_settings.box_drag_direction == 'MESH_DIRECTION_ANY':
+                    row.prop(tool_settings, "box_edge")
+                    row = layout.row(align=True)
+                    row.prop(tool_settings, "box_face")
+            elif tool_settings.box_drag_direction == 'MESH_DIRECTION_LEFT_RIGHT':
+                    row.prop(tool_settings, "box_edge_left", text="Box Edge")
+                    row.prop(tool_settings, "box_edge_right", text="")
+                    row = layout.row(align=True)
+                    row.prop(tool_settings, "box_face_left", text="Box Face")
+                    row.prop(tool_settings, "box_face_right", text="")
+            else:
+                row.prop(tool_settings, "box_edge_up", text="Box Edge")
+                row.prop(tool_settings, "box_edge_down", text="")
+                row = layout.row(align=True)
+                row.prop(tool_settings, "box_face_up", text="Box Face")
+                row.prop(tool_settings, "box_face_down", text="")
+        elif tool == "builtin.select_lasso":
+            row = layout.row(align=True)
+            row.prop(tool_settings, "lasso_drag_direction")
+            row = layout.row(align=True)
+            if tool_settings.lasso_drag_direction == 'MESH_DIRECTION_ANY':
+                row.prop(tool_settings, "lasso_edge")
+                row = layout.row(align=True)
+                row.prop(tool_settings, "lasso_face")
+            elif tool_settings.lasso_drag_direction == 'MESH_DIRECTION_LEFT_RIGHT':
+                row.prop(tool_settings, "lasso_edge_left", text="Lasso Edge")
+                row.prop(tool_settings, "lasso_edge_right", text="")
+                row = layout.row(align=True)
+                row.prop(tool_settings, "lasso_face_left", text="Lasso Face")
+                row.prop(tool_settings, "lasso_face_right", text="")
+            else:
+                row.prop(tool_settings, "lasso_edge_up", text="Lasso Edge")
+                row.prop(tool_settings, "lasso_edge_down", text="")
+                row = layout.row(align=True)
+                row.prop(tool_settings, "lasso_face_up", text="Lasso Face")
+                row.prop(tool_settings, "lasso_face_down", text="")
+        elif tool == "builtin.select_circle":
+            row = layout.row(align=True)
+            row.prop(tool_settings, "circle_edge")
+            row = layout.row(align=True)
+            row.prop(tool_settings, "circle_face")
 
 
 class VIEW3D_PT_tools_meshedit_options_automerge(View3DPanel, Panel):

@@ -3049,9 +3049,368 @@ static void rna_def_tool_settings(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
 
+  static const EnumPropertyItem mesh_drag_direction_items[] = {
+      {MESH_DIRECTION_ANY, "MESH_DIRECTION_ANY", 0, "Any", "Drag in any direction"},
+      {MESH_DIRECTION_LEFT_RIGHT,
+       "MESH_DIRECTION_LEFT_RIGHT",
+       0,
+       "Left Right",
+       "Drag to the left and right"},
+      {MESH_DIRECTION_UP_DOWN,
+       "MESH_DIRECTION_UP_DOWN",
+       0,
+       "Up Down",
+       "Drag upwards and downwards"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem edge_select_items[] = {
+      {EDGE_HYBRID,
+       "EDGE_HYBRID",
+       0,
+       "Hybrid",
+       "Select edges that are fully inside the selection area. If no edges are fully inside the "
+       "selection area, select edges that are touched by the selection area"},
+      {EDGE_TOUCH,
+       "EDGE_TOUCH",
+       0,
+       "Touch",
+       "Select edges that are touched by the selection area"},
+      {EDGE_ENCLOSE,
+       "EDGE_ENCLOSE",
+       0,
+       "Enclose",
+       "Select edges that are fully inside the selection area"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem edge_select_left_items[] = {
+      {EDGE_HYBRID,
+       "EDGE_HYBRID",
+       ICON_TRIA_LEFT,
+       "Hybrid",
+       "Select edges that are fully inside the selection area. If no edges are fully inside the "
+       "selection area, select edges that are touched by the selection area"},
+      {EDGE_TOUCH,
+       "EDGE_TOUCH",
+       ICON_TRIA_LEFT,
+       "Touch",
+       "Select edges that are touched by the selection area"},
+      {EDGE_ENCLOSE,
+       "EDGE_ENCLOSE",
+       ICON_TRIA_LEFT,
+       "Enclose",
+       "Select edges that are fully inside the selection area"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem edge_select_right_items[] = {
+      {EDGE_HYBRID,
+       "EDGE_HYBRID",
+       ICON_TRIA_RIGHT,
+       "Hybrid",
+       "Select edges that are fully inside the selection area. If no edges are fully inside the "
+       "selection area, select edges that are touched by the selection area"},
+      {EDGE_TOUCH,
+       "EDGE_TOUCH",
+       ICON_TRIA_RIGHT,
+       "Touch",
+       "Select edges that are touched by the selection area"},
+      {EDGE_ENCLOSE,
+       "EDGE_ENCLOSE",
+       ICON_TRIA_RIGHT,
+       "Enclose",
+       "Select edges that are fully inside the selection area"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem edge_select_up_items[] = {
+      {EDGE_HYBRID,
+       "EDGE_HYBRID",
+       ICON_TRIA_UP,
+       "Hybrid",
+       "Select edges that are fully inside the selection area. If no edges are fully inside the "
+       "selection area, select edges that are touched by the selection area"},
+      {EDGE_TOUCH,
+       "EDGE_TOUCH",
+       ICON_TRIA_UP,
+       "Touch",
+       "Select edges that are touched by the selection area"},
+      {EDGE_ENCLOSE,
+       "EDGE_ENCLOSE",
+       ICON_TRIA_UP,
+       "Enclose",
+       "Select edges that are fully inside the selection area"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem edge_select_down_items[] = {
+      {EDGE_HYBRID,
+       "EDGE_HYBRID",
+       ICON_TRIA_DOWN,
+       "Hybrid",
+       "Select edges that are fully inside the selection area. If no edges are fully inside the "
+       "selection area, select edges that are touched by the selection area"},
+      {EDGE_TOUCH,
+       "EDGE_TOUCH",
+       ICON_TRIA_DOWN,
+       "Touch",
+       "Select edges that are touched by the selection area"},
+      {EDGE_ENCLOSE,
+       "EDGE_ENCLOSE",
+       ICON_TRIA_DOWN,
+       "Enclose",
+       "Select edges that are fully inside the selection area"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem edge_circle_select_items[] = {
+      {EDGE_TOUCH,
+       "EDGE_TOUCH",
+       0,
+       "Touch",
+       "Select edges that are touched by the selection area"},
+      {EDGE_ENCLOSE,
+       "EDGE_ENCLOSE",
+       0,
+       "Enclose",
+       "Select edges that are fully inside the selection area"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem face_select_items[] = {
+      {FACE_AUTO,
+       "FACE_AUTO",
+       0,
+       "Auto",
+       "Select faces that are touched by the selection area in near select. Select faces whose "
+       "center is touched by the selection area in X-Ray select"},
+      {FACE_TOUCH,
+       "FACE_TOUCH",
+       0,
+       "Touch",
+       "Select faces that are touched by the selection area"},
+      {FACE_ENCLOSE,
+       "FACE_ENCLOSE",
+       0,
+       "Enclose",
+       "Select faces that are fully inside the selection area"},
+      {FACE_CENTER,
+       "FACE_CENTER",
+       0,
+       "Center",
+       "Select faces whose center is touched by the selection area"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem face_select_left_items[] = {
+      {FACE_AUTO,
+       "FACE_AUTO",
+       ICON_TRIA_LEFT,
+       "Auto",
+       "Select faces that are touched by the selection area in near select. Select faces whose "
+       "center is touched by the selection area in X-Ray select"},
+      {FACE_TOUCH,
+       "FACE_TOUCH",
+       ICON_TRIA_LEFT,
+       "Touch",
+       "Select faces that are touched by the selection area"},
+      {FACE_ENCLOSE,
+       "FACE_ENCLOSE",
+       ICON_TRIA_LEFT,
+       "Enclose",
+       "Select faces that are fully inside the selection area"},
+      {FACE_CENTER,
+       "FACE_CENTER",
+       ICON_TRIA_LEFT,
+       "Center",
+       "Select faces whose center is touched by the selection area"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem face_select_right_items[] = {
+      {FACE_AUTO,
+       "FACE_AUTO",
+       ICON_TRIA_RIGHT,
+       "Auto",
+       "Select faces that are touched by the selection area in near select. Select faces whose "
+       "center is touched by the selection area in X-Ray select"},
+      {FACE_TOUCH,
+       "FACE_TOUCH",
+       ICON_TRIA_RIGHT,
+       "Touch",
+       "Select faces that are touched by the selection area"},
+      {FACE_ENCLOSE,
+       "FACE_ENCLOSE",
+       ICON_TRIA_RIGHT,
+       "Enclose",
+       "Select faces that are fully inside the selection area"},
+      {FACE_CENTER,
+       "FACE_CENTER",
+       ICON_TRIA_RIGHT,
+       "Center",
+       "Select faces whose center is touched by the selection area"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem face_select_up_items[] = {
+      {FACE_AUTO,
+       "FACE_AUTO",
+       ICON_TRIA_UP,
+       "Auto",
+       "Select faces that are touched by the selection area in near select. Select faces whose "
+       "center is touched by the selection area in X-Ray select"},
+      {FACE_TOUCH,
+       "FACE_TOUCH",
+       ICON_TRIA_UP,
+       "Touch",
+       "Select faces that are touched by the selection area"},
+      {FACE_ENCLOSE,
+       "FACE_ENCLOSE",
+       ICON_TRIA_UP,
+       "Enclose",
+       "Select faces that are fully inside the selection area"},
+      {FACE_CENTER,
+       "FACE_CENTER",
+       ICON_TRIA_UP,
+       "Center",
+       "Select faces whose center is touched by the selection area"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem face_select_down_items[] = {
+      {FACE_AUTO,
+       "FACE_AUTO",
+       ICON_TRIA_DOWN,
+       "Auto",
+       "Select faces that are touched by the selection area in near select. Select faces whose "
+       "center is touched by the selection area in X-Ray select"},
+      {FACE_TOUCH,
+       "FACE_TOUCH",
+       ICON_TRIA_DOWN,
+       "Touch",
+       "Select faces that are touched by the selection area"},
+      {FACE_ENCLOSE,
+       "FACE_ENCLOSE",
+       ICON_TRIA_DOWN,
+       "Enclose",
+       "Select faces that are fully inside the selection area"},
+      {FACE_CENTER,
+       "FACE_CENTER",
+       ICON_TRIA_DOWN,
+       "Center",
+       "Select faces whose center is touched by the selection area"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   srna = RNA_def_struct(brna, "ToolSettings", NULL);
   RNA_def_struct_path_func(srna, "rna_ToolSettings_path");
   RNA_def_struct_ui_text(srna, "Tool Settings", "");
+
+  /* Mesh select settings. */
+  prop = RNA_def_property(srna, "box_drag_direction", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, mesh_drag_direction_items);
+  RNA_def_property_ui_text(prop, "Box Direction", "Click-drag direction style for box select");
+
+  prop = RNA_def_property(srna, "lasso_drag_direction", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, mesh_drag_direction_items);
+  RNA_def_property_ui_text(prop, "Lasso Direction", "Click-drag direction style for lasso select");
+
+  prop = RNA_def_property(srna, "box_direction_upright", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "box_direction_upright", 0);
+  RNA_def_property_ui_text(prop, "Box Direction Helper", "");
+
+  prop = RNA_def_property(srna, "lasso_direction_upright", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "lasso_direction_upright", 0);
+  RNA_def_property_ui_text(prop, "Lasso Direction Helper", "");
+
+  prop = RNA_def_property(srna, "box_edge", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, edge_select_items);
+  RNA_def_property_ui_text(prop, "Box Edge", "Box edge selection style");
+
+  prop = RNA_def_property(srna, "box_edge_left", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, edge_select_left_items);
+  RNA_def_property_ui_text(prop, "Box Edge Left", "Box edge selection style when dragging left");
+
+  prop = RNA_def_property(srna, "box_edge_right", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, edge_select_right_items);
+  RNA_def_property_ui_text(prop, "Box Edge Right", "Box edge selection style when dragging right");
+
+  prop = RNA_def_property(srna, "box_edge_up", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, edge_select_up_items);
+  RNA_def_property_ui_text(prop, "Box Edge Up", "Box edge selection style when dragging up");
+
+  prop = RNA_def_property(srna, "box_edge_down", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, edge_select_down_items);
+  RNA_def_property_ui_text(prop, "Box Edge Down", "Box edge selection style when dragging down");
+
+  prop = RNA_def_property(srna, "box_face", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, face_select_items);
+  RNA_def_property_ui_text(prop, "Box Face", "Box face selection style");
+
+  prop = RNA_def_property(srna, "box_face_left", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, face_select_left_items);
+  RNA_def_property_ui_text(prop, "Box Face Left", "Box face selection style when dragging left");
+
+  prop = RNA_def_property(srna, "box_face_right", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, face_select_right_items);
+  RNA_def_property_ui_text(prop, "Box Face Right", "Box face selection style when dragging right");
+
+  prop = RNA_def_property(srna, "box_face_up", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, face_select_up_items);
+  RNA_def_property_ui_text(prop, "Box Face Up", "Box face selection style when dragging up");
+
+  prop = RNA_def_property(srna, "box_face_down", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, face_select_down_items);
+  RNA_def_property_ui_text(prop, "Box Face Down", "Box face selection style when dragging down");
+
+  prop = RNA_def_property(srna, "lasso_edge", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, edge_select_items);
+  RNA_def_property_ui_text(prop, "Lasso Edge", "Lasso edge selection style");
+
+  prop = RNA_def_property(srna, "lasso_edge_left", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, edge_select_left_items);
+  RNA_def_property_ui_text(prop, "Lasso Edge Left", "Lasso edge selection style when dragging left");
+
+  prop = RNA_def_property(srna, "lasso_edge_right", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, edge_select_right_items);
+  RNA_def_property_ui_text(prop, "Lasso Edge Right", "Lasso edge selection style when dragging right");
+
+  prop = RNA_def_property(srna, "lasso_edge_up", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, edge_select_up_items);
+  RNA_def_property_ui_text(prop, "Lasso Edge Up", "Lasso edge selection style when dragging up");
+
+  prop = RNA_def_property(srna, "lasso_edge_down", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, edge_select_down_items);
+  RNA_def_property_ui_text(prop, "Lasso Edge Down", "Lasso edge selection style when dragging down");
+
+  prop = RNA_def_property(srna, "lasso_face", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, face_select_items);
+  RNA_def_property_ui_text(prop, "Lasso Face", "Lasso face selection style");
+
+  prop = RNA_def_property(srna, "lasso_face_left", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, face_select_left_items);
+  RNA_def_property_ui_text(prop, "Lasso Face Left", "Lasso face selection style when dragging left");
+
+  prop = RNA_def_property(srna, "lasso_face_right", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, face_select_right_items);
+  RNA_def_property_ui_text(prop, "Lasso Face Right", "Lasso face selection style when dragging right");
+
+  prop = RNA_def_property(srna, "lasso_face_up", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, face_select_up_items);
+  RNA_def_property_ui_text(prop, "Lasso Face Up", "Lasso face selection style when dragging up");
+
+  prop = RNA_def_property(srna, "lasso_face_down", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, face_select_down_items);
+  RNA_def_property_ui_text(prop, "Lasso Face Down", "Lasso face selection style when dragging down");
+
+  prop = RNA_def_property(srna, "circle_edge", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, edge_circle_select_items);
+  RNA_def_property_ui_text(prop, "Circle Edge", "Circle edge selection style");
+
+  prop = RNA_def_property(srna, "circle_face", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, face_select_items);
+  RNA_def_property_ui_text(prop, "Circle Face", "Circle face selection style");
 
   prop = RNA_def_property(srna, "sculpt", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "Sculpt");

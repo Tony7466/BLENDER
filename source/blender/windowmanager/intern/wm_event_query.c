@@ -264,12 +264,16 @@ bool WM_event_is_mouse_drag_or_press(const wmEvent *event)
          (ISMOUSE_BUTTON(event->type) && (event->val == KM_PRESS));
 }
 
-int WM_event_drag_direction(const wmEvent *event)
+int WM_event_drag_direction(const wmEvent *event, const Scene *scene)
 {
   const int delta[2] = {
       event->xy[0] - event->prev_press_xy[0],
       event->xy[1] - event->prev_press_xy[1],
   };
+
+  ToolSettings *ts = scene->toolsettings;
+  int box = ts->box_drag_direction;
+  int lasso = ts->lasso_drag_direction;
 
   int theta = round_fl_to_int(4.0f * atan2f((float)delta[1], (float)delta[0]) / (float)M_PI);
   int val = KM_DIRECTION_W;
@@ -294,6 +298,28 @@ int WM_event_drag_direction(const wmEvent *event)
   }
   else if (theta == -3) {
     val = KM_DIRECTION_SW;
+  }
+
+  if (box > 1) {
+    ts->box_direction_upright = false;
+    theta = box == 2 ? round_fl_to_int(atan2f(0.0f, (float)delta[0]) / (float)M_PI) :
+                       round_fl_to_int(atan2f(0.0f, (float)delta[1]) / (float)M_PI);
+    if (theta == 0) {
+      ts->box_direction_upright = true;
+    }
+  }
+  if (lasso > 1) {
+    if (lasso == box) {
+      ts->lasso_direction_upright = ts->box_direction_upright;
+    }
+    else {
+      ts->lasso_direction_upright = false;
+      theta = lasso == 2 ? round_fl_to_int(atan2f(0.0f, (float)delta[0]) / (float)M_PI) :
+                           round_fl_to_int(atan2f(0.0f, (float)delta[1]) / (float)M_PI);
+      if (theta == 0) {
+        ts->lasso_direction_upright = true;
+      }
+    }
   }
 
 #if 0
