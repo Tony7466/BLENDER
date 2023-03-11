@@ -35,7 +35,7 @@ class GLTexture : public Texture {
                                                  GPU_SAMPLER_WRAP_TYPES_COUNT *
                                                  GPU_SAMPLER_FILTERING_TYPES_COUNT;
   /**
-   * A cache of all custom sampler configurations described in eGPUSamplerCustomType. See the
+   * A cache of all custom sampler configurations described in GPUSamplerCustomType. See the
    * samplers_init() method for more information.
    */
   static GLuint custom_samplers_state_cache_[GPU_SAMPLER_CUSTOM_TYPES_COUNT];

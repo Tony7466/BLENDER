@@ -637,19 +637,19 @@ void GPU_texture_anisotropic_filter(GPUTexture *tex_, bool use_aniso)
   tex->sampler_state.set_filtering(GPU_SAMPLER_FILTERING_ANISOTROPIC, use_aniso);
 }
 
-void GPU_texture_wrap_mode_x(GPUTexture *tex_, eGPUSamplerWrapType wrap_type)
+void GPU_texture_wrap_mode_x(GPUTexture *tex_, GPUSamplerWrapType wrap_type)
 {
   Texture *tex = reinterpret_cast<Texture *>(tex_);
   tex->sampler_state.wrapping_x = wrap_type;
 }
 
-void GPU_texture_wrap_mode_y(GPUTexture *tex_, eGPUSamplerWrapType wrap_type)
+void GPU_texture_wrap_mode_y(GPUTexture *tex_, GPUSamplerWrapType wrap_type)
 {
   Texture *tex = reinterpret_cast<Texture *>(tex_);
   tex->sampler_state.wrapping_y = wrap_type;
 }
 
-void GPU_texture_wrap_mode(GPUTexture *tex_, eGPUSamplerWrapType wrap_type)
+void GPU_texture_wrap_mode(GPUTexture *tex_, GPUSamplerWrapType wrap_type)
 {
   Texture *tex = reinterpret_cast<Texture *>(tex_);
   tex->sampler_state.wrapping_x = wrap_type;

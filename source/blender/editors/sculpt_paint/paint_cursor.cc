@@ -655,9 +655,9 @@ static bool paint_draw_tex_overlay(UnifiedPaintSettings *ups,
     GPUTexture *texture = (primary) ? primary_snap.overlay_texture :
                                       secondary_snap.overlay_texture;
 
-    eGPUSamplerWrapType wrap_type = (mtex->brush_map_mode == MTEX_MAP_MODE_VIEW) ?
-                                        GPU_SAMPLER_WRAP_CLIP :
-                                        GPU_SAMPLER_WRAP_REPEAT;
+    GPUSamplerWrapType wrap_type = (mtex->brush_map_mode == MTEX_MAP_MODE_VIEW) ?
+                                       GPU_SAMPLER_WRAP_CLIP :
+                                       GPU_SAMPLER_WRAP_REPEAT;
     immBindTextureSampler("image", texture, {GPU_SAMPLER_FILTERING_LINEAR, wrap_type, wrap_type});
 
     /* Draw textured quad. */

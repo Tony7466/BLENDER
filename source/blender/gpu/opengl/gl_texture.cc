@@ -545,7 +545,7 @@ struct GPUFrameBuffer *GLTexture::framebuffer_get()
 /** \name Sampler objects
  * \{ */
 
-/** A static array that maps eGPUSamplerWrapType values to their OpenGL enum counterparts. */
+/** A static array that maps GPUSamplerWrapType values to their OpenGL enum counterparts. */
 static const GLenum gl_wrap_type_map[] = {
     GL_CLAMP_TO_EDGE,
     GL_REPEAT,
@@ -562,15 +562,15 @@ void GLTexture::samplers_init()
   glGenSamplers(samplers_state_cache_count_, &samplers_state_cache_[0][0][0]);
 
   for (int wrapping_y_i = 0; wrapping_y_i < GPU_SAMPLER_WRAP_TYPES_COUNT; wrapping_y_i++) {
-    const eGPUSamplerWrapType wrapping_y = static_cast<eGPUSamplerWrapType>(wrapping_y_i);
+    const GPUSamplerWrapType wrapping_y = static_cast<GPUSamplerWrapType>(wrapping_y_i);
     const GLenum wrap_t = gl_wrap_type_map[wrapping_y_i];
 
     for (int wrapping_x_i = 0; wrapping_x_i < GPU_SAMPLER_WRAP_TYPES_COUNT; wrapping_x_i++) {
-      const eGPUSamplerWrapType wrapping_x = static_cast<eGPUSamplerWrapType>(wrapping_x_i);
+      const GPUSamplerWrapType wrapping_x = static_cast<GPUSamplerWrapType>(wrapping_x_i);
       const GLenum wrap_s = gl_wrap_type_map[wrapping_x_i];
 
       for (int filtering_i = 0; filtering_i < GPU_SAMPLER_FILTERING_TYPES_COUNT; filtering_i++) {
-        const eGPUSamplerFiltering filtering = eGPUSamplerFiltering(filtering_i);
+        const GPUSamplerFiltering filtering = GPUSamplerFiltering(filtering_i);
 
         const GLenum mag_filter = (filtering & GPU_SAMPLER_FILTERING_LINEAR) ? GL_LINEAR :
                                                                                GL_NEAREST;
@@ -642,7 +642,7 @@ void GLTexture::samplers_update()
   for (int wrapping_y_i = 0; wrapping_y_i < GPU_SAMPLER_WRAP_TYPES_COUNT; wrapping_y_i++) {
     for (int wrapping_x_i = 0; wrapping_x_i < GPU_SAMPLER_WRAP_TYPES_COUNT; wrapping_x_i++) {
       for (int filtering_i = 0; filtering_i < GPU_SAMPLER_FILTERING_TYPES_COUNT; filtering_i++) {
-        const eGPUSamplerFiltering filtering = eGPUSamplerFiltering(filtering_i);
+        const GPUSamplerFiltering filtering = GPUSamplerFiltering(filtering_i);
 
         if ((filtering & GPU_SAMPLER_FILTERING_ANISOTROPIC) &&
             (filtering & GPU_SAMPLER_FILTERING_MIPMAP)) {

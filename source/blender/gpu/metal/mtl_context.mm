@@ -2038,7 +2038,7 @@ id<MTLSamplerState> MTLContext::get_sampler_from_state(MTLSamplerState sampler_s
                              [sampler_state.state.filtering];
 }
 
-/** A static array that maps eGPUSamplerWrapType values to their MTL enum counterparts. */
+/** A static array that maps GPUSamplerWrapType values to their MTL enum counterparts. */
 static const MTLSamplerAddressMode mtl_sampler_address_mode_map[] = {
     MTLSamplerAddressModeClampToEdge,
     MTLSamplerAddressModeRepeat,
@@ -2055,7 +2055,7 @@ void MTLContext::sampler_state_cache_init()
       const MTLSamplerAddressMode wrap_s = mtl_sampler_address_mode_map[wrapping_x_i];
 
       for (int filtering_i = 0; filtering_i < GPU_SAMPLER_FILTERING_TYPES_COUNT; filtering_i++) {
-        const eGPUSamplerFiltering filtering = eGPUSamplerFiltering(filtering_i);
+        const GPUSamplerFiltering filtering = GPUSamplerFiltering(filtering_i);
 
         MTLSamplerDescriptor *descriptor = [[MTLSamplerDescriptor alloc] init];
         descriptor.normalizedCoordinates = true;
