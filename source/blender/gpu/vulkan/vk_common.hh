@@ -7,6 +7,7 @@
 
 #pragma once
 
+
 #define VK_NO_PROTOTYPES
 #ifdef __APPLE__
 #  include <MoltenVK/vk_mvk_moltenvk.h>

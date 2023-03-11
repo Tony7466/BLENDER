@@ -23,10 +23,70 @@
 #include "gpu_shader_create_info_private.hh"
 #include "gpu_shader_dependency_private.h"
 #include "gpu_testing.hh"
+#include "PIL_time_utildefines.h"
+
+#ifdef WITH_VULKAN_BACKEND
+#define VK_WRAPPER_IMPL 1
+#include "vk_context.hh"
+#endif
 
 namespace blender::gpu::tests {
 
 using namespace blender::gpu::shader;
+
+#ifdef WITH_VULKAN_BACKEND
+static void test_vulkan_wrapper()
+{
+
+  GPU_debug_group_begin("gpu_vulkan_wrapper");
+
+  auto caller_intern = [&]() {
+    VkApplicationInfo app_info = {};
+    app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    app_info.pApplicationName = "Blender_test";
+    app_info.applicationVersion = VK_MAKE_VERSION(3, 5, 0);
+    app_info.pEngineName = "Blender_test";
+    app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+    app_info.apiVersion = VK_MAKE_VERSION(1, 2, 0);
+
+    VkInstanceCreateInfo create_info = {};
+    create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    create_info.pApplicationInfo = &app_info;
+    create_info.enabledLayerCount = 0;
+    create_info.ppEnabledLayerNames = nullptr;
+    create_info.enabledExtensionCount = 0;
+    create_info.ppEnabledExtensionNames = nullptr;
+    VkInstance instance = VK_NULL_HANDLE;
+    vkCreateInstance(&create_info, NULL, &instance);
+    vkDestroyInstance(instance, nullptr);
+  };
+
+#define TIMEIT_GETEND(name,val) val = TIMEIT_VALUE(name);}}
+  float time_intern  = 0.f;
+  float time_extern = 0.f;
+
+
+  TIMEIT_START(vk_func_caller);
+  for (int i = 0; i < 1000; i++) {
+    caller_intern();
+  };
+  TIMEIT_GETEND(vk_func_caller, time_intern);
+
+  TIMEIT_START(vk_func_caller);
+  for (int i = 0; i < 1000; i++) {
+    blender::tests::test_create();
+  };
+  TIMEIT_GETEND(vk_func_caller,time_extern);
+
+  printf("VkInstance  1000 creation     intern callee  %0.6f  extern callee  %0.6f \n", time_intern,time_extern);
+
+  GPU_debug_group_end();
+#undef TIMEIT_GETEND
+
+};
+
+GPU_VULKAN_TEST(vulkan_wrapper)
+#endif
 
 static void test_shader_compile_statically_defined()
 {

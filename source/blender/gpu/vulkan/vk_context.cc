@@ -16,7 +16,30 @@
 
 #include "GHOST_C-api.h"
 
+#ifdef VK_NO_PROTOTYPES
+#  if defined(__unix__) || defined(__APPLE__)
+#    include <sys/time.h>
+#    include <unistd.h>
+#    define GET_FUNC_ADDRESS dlsym
+#  endif
+#  if defined(_MSC_VER)
+#    include <Windows.h>
+
+#    include <VersionHelpers.h> /* This needs to be included after Windows.h. */
+#    include <io.h>
+#    if !defined(ENABLE_VIRTUAL_TERMINAL_PROCESSING)
+#      define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
+#    endif
+
+#    define GET_FUNC_ADDRESS (void *)GetProcAddress
+#  endif
+#endif
+
+
+
 namespace blender::gpu {
+
+static VKFunctionsLoader loader;
 
 VKContext::VKContext(void *ghost_window, void *ghost_context)
 {
@@ -34,17 +57,21 @@ VKContext::VKContext(void *ghost_window, void *ghost_context)
                          &vk_queue_family_,
                          &vk_queue_);
 
-  /*Load extended functions.*/
+
+  /*Load instance extended functions.*/
   {
-    debug::init_vk_callbacks(vk_instance_);
+    loader.vulkan_dynamic_load();
+    loader.vulkan_dynamic_load_instance(vk_instance_);
   }
 
   if (vk_device_ == VK_NULL_HANDLE) {
     GHOST_GetVulkanLogicalDevice(
         (GHOST_ContextHandle)ghost_context, &vk_device_, &vk_queue_family_, &vk_queue_);
   }
+
+  /*Load device extended functions.*/
   {
-    debug::vulkanLoadDevice(vk_device_);
+    loader.vulkan_dynamic_load_device(vk_device_);
   }
 
   debug::object_vk_label(vk_device_, vk_device_, std::string("LogicalDevice"));
@@ -149,5 +176,140 @@ void VKContext::debug_group_end()
 {
   debug::popMarker(vk_queue_);
 }
+}  // namespace blender::gpu
+
+
+namespace blender::gpu{
+#ifdef VK_NO_PROTOTYPES
+  VKWrapper vk_wrapper;
+#endif
+  VkResult VKFunctionsLoader::vulkan_dynamic_load(void)
+  {
+#ifdef VK_NO_PROTOTYPES
+#  if defined(_WIN32)
+    HMODULE vulkanDll = LoadLibraryA("vulkan-1.dll");
+    if (!vulkanDll) {
+      return VK_ERROR_INITIALIZATION_FAILED;
+    }
+#  elif defined(__APPLE__)
+    void *vulkanDll = dlopen("libvulkan.dylib", RTLD_NOW | RTLD_LOCAL);
+    if (!vulkanDll) {
+      vulkanDll = dlopen("libvulkan.1.dylib", RTLD_NOW | RTLD_LOCAL);
+    }
+    if (!vulkanDll) {
+      vulkanDll = dlopen("libMoltenVK.dylib", RTLD_NOW | RTLD_LOCAL);
+    }
+    if (!vulkanDll) {
+      return VK_ERROR_INITIALIZATION_FAILED;
+    }
+
+#  else
+    void *vulkanDll = dlopen("libvulkan.so.1", RTLD_NOW | RTLD_LOCAL);
+    if (!vulkanDll) {
+      vulkanDll = dlopen("libvulkan.so", RTLD_NOW | RTLD_LOCAL);
+    }
+    if (!vulkanDll) {
+      return VK_ERROR_INITIALIZATION_FAILED;
+    }
+#  endif
+
+#  define LOAD(name) GET_FUNC_ADDRESS(vulkanDll, name)
+
+    vk_wrapper.vkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)LOAD("vkGetInstanceProcAddr");
+    vk_wrapper.vkCreateInstance_r = (PFN_vkCreateInstance)LOAD("vkCreateInstance");
+    vk_wrapper.vkDestroyInstance = (PFN_vkDestroyInstance)LOAD("vkDestroyInstance");
+
+    vk_wrapper.vkGetPhysicalDeviceImageFormatProperties_r =
+        (PFN_vkGetPhysicalDeviceImageFormatProperties)LOAD(
+            "vkGetPhysicalDeviceImageFormatProperties");
+    vk_wrapper.vkGetPhysicalDeviceProperties = (PFN_vkGetPhysicalDeviceProperties)LOAD(
+        "vkGetPhysicalDeviceProperties");
+
+#  undef LOAD
+#endif
+    return VK_SUCCESS;
+  }
+
+  void VKFunctionsLoader::vulkan_dynamic_load_instance(VkInstance &instance)
+  {
+#ifdef VK_NO_PROTOTYPES
+#  define INSTLOAD vk_wrapper.vkGetInstanceProcAddr
+    vk_wrapper.vkGetDeviceProcAddr = (PFN_vkGetDeviceProcAddr)INSTLOAD(instance,"vkGetDeviceProcAddr");
+#else
+#  define INSTLOAD vkGetInstanceProcAddr
+#endif
+    debug::init_vk_callbacks(instance, INSTLOAD);
+#undef INSTLOAD
+  }
+
+  void VKFunctionsLoader::vulkan_dynamic_load_device(VkDevice &device)
+  {
+#ifdef VK_NO_PROTOTYPES
+#  define DEVLOAD(name) vk_wrapper.vkGetDeviceProcAddr(device, name)
+#else
+#  define DEVLOAD(name) vkGetDeviceProcAddr(device, name)
+#endif
+    /*There are currently no extension functions to load.*/
+#ifdef VK_NO_PROTOTYPES
+    vk_wrapper.vkAllocateCommandBuffers_r = (PFN_vkAllocateCommandBuffers)DEVLOAD(
+        "vkAllocateCommandBuffers");
+    vk_wrapper.vkAllocateDescriptorSets_r = (PFN_vkAllocateDescriptorSets)DEVLOAD(
+        "vkAllocateDescriptorSets");
+
+    vk_wrapper.vkCmdBindDescriptorSets = (PFN_vkCmdBindDescriptorSets)DEVLOAD(
+        "vkCmdBindDescriptorSets");
+    vk_wrapper.vkCmdBindPipeline = (PFN_vkCmdBindPipeline)DEVLOAD("vkCmdBindPipeline");
+    vk_wrapper.vkCmdCopyImageToBuffer = (PFN_vkCmdCopyImageToBuffer)DEVLOAD(
+        "vkCmdCopyImageToBuffer");
+    vk_wrapper.vkCmdDispatch = (PFN_vkCmdDispatch)DEVLOAD("vkCmdDispatch");
+    vk_wrapper.vkCmdPipelineBarrier = (PFN_vkCmdPipelineBarrier)DEVLOAD("vkCmdPipelineBarrier");
+    vk_wrapper.vkCmdPushConstants = (PFN_vkCmdPushConstants)DEVLOAD("vkCmdPushConstants");
+
+    vk_wrapper.vkCreateComputePipelines_r = (PFN_vkCreateComputePipelines)DEVLOAD(
+        "vkCreateComputePipelines");
+    vk_wrapper.vkCreateDescriptorPool_r = (PFN_vkCreateDescriptorPool)DEVLOAD(
+        "vkCreateDescriptorPool");
+    vk_wrapper.vkCreateDescriptorSetLayout_r = (PFN_vkCreateDescriptorSetLayout)DEVLOAD(
+        "vkCreateDescriptorSetLayout");
+    vk_wrapper.vkCreateFence_r = (PFN_vkCreateFence)DEVLOAD("vkCreateFence");
+    vk_wrapper.vkCreateFramebuffer_r = (PFN_vkCreateFramebuffer)DEVLOAD("vkCreateFramebuffer");
+    vk_wrapper.vkCreateImage_r = (PFN_vkCreateImage)DEVLOAD("vkCreateImage");
+    vk_wrapper.vkCreateImageView_r = (PFN_vkCreateImageView)DEVLOAD("vkCreateImageView");
+    vk_wrapper.vkCreatePipelineLayout_r = (PFN_vkCreatePipelineLayout)DEVLOAD(
+        "vkCreatePipelineLayout");
+    vk_wrapper.vkCreateShaderModule_r = (PFN_vkCreateShaderModule)DEVLOAD("vkCreateShaderModule");
+
+    vk_wrapper.vkDestroyDescriptorPool = (PFN_vkDestroyDescriptorPool)DEVLOAD(
+        "vkDestroyDescriptorPool");
+    vk_wrapper.vkDestroyDescriptorSetLayout = (PFN_vkDestroyDescriptorSetLayout)DEVLOAD(
+        "vkDestroyDescriptorSetLayout");
+    vk_wrapper.vkDestroyFence = (PFN_vkDestroyFence)DEVLOAD("vkDestroyFence");
+    vk_wrapper.vkDestroyFramebuffer = (PFN_vkDestroyFramebuffer)DEVLOAD("vkDestroyFramebuffer");
+    vk_wrapper.vkDestroyImage = (PFN_vkDestroyImage)DEVLOAD("vkDestroyImage");
+    vk_wrapper.vkDestroyImageView = (PFN_vkDestroyImageView)DEVLOAD("vkDestroyImageView");
+    vk_wrapper.vkDestroyPipeline = (PFN_vkDestroyPipeline)DEVLOAD("vkDestroyPipeline");
+    vk_wrapper.vkDestroyPipelineLayout = (PFN_vkDestroyPipelineLayout)DEVLOAD(
+        "vkDestroyPipelineLayout");
+    vk_wrapper.vkDestroyShaderModule = (PFN_vkDestroyShaderModule)DEVLOAD("vkDestroyShaderModule");
+
+    vk_wrapper.vkFreeCommandBuffers = (PFN_vkFreeCommandBuffers)DEVLOAD("vkFreeCommandBuffers");
+    vk_wrapper.vkFreeDescriptorSets_r = (PFN_vkFreeDescriptorSets)DEVLOAD("vkFreeDescriptorSets");
+    vk_wrapper.vkQueueSubmit_r = (PFN_vkQueueSubmit)DEVLOAD("vkQueueSubmit");
+
+    vk_wrapper.vkResetCommandBuffer_r = (PFN_vkResetCommandBuffer)DEVLOAD("vkResetCommandBuffer");
+    vk_wrapper.vkResetFences_r = (PFN_vkResetFences)DEVLOAD("vkResetFences");
+
+    vk_wrapper.vkBeginCommandBuffer_r = (PFN_vkBeginCommandBuffer)DEVLOAD("vkBeginCommandBuffer");
+    vk_wrapper.vkEndCommandBuffer_r = (PFN_vkEndCommandBuffer)DEVLOAD("vkEndCommandBuffer");
+
+    vk_wrapper.vkUpdateDescriptorSets = (PFN_vkUpdateDescriptorSets)DEVLOAD(
+        "vkUpdateDescriptorSets");
+    vk_wrapper.vkWaitForFences_r = (PFN_vkWaitForFences)DEVLOAD("vkWaitForFences");
+#else
+    (void *)device;
+#endif
+
+#undef DEVLOAD
+  }
 
 }  // namespace blender::gpu
