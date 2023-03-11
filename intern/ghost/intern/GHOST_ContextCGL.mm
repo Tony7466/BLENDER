@@ -89,16 +89,18 @@ GHOST_ContextCGL::GHOST_ContextCGL(bool stereoVisual,
       [m_metalLayer setDevice:metalDevice];
       m_metalLayer.allowsNextDrawableTimeout = NO;
 
-      // Enable EDR support. This is done by:
-      // 1. Using a floating point render target, so that values ouside 0..1 can be used
-      // 2. Informing the OS that we are EDR aware, and intend to use values outside 0..1
-      // 3. Setting the extended sRGB color space so tha the OS knows how to interpret the values
-      m_metalLayer.wantsExtendedDynamicRangeContent = YES;
-      m_metalLayer.pixelFormat = MTLPixelFormatRGBA16Float;
-      const CFStringRef name = kCGColorSpaceExtendedSRGB;
-      CGColorSpaceRef colorspace = CGColorSpaceCreateWithName(name);
-      m_metalLayer.colorspace = colorspace;
-      CGColorSpaceRelease(colorspace);
+      if (m_useMetalForRendering) {
+        // Enable EDR support. This is done by:
+        // 1. Using a floating point render target, so that values ouside 0..1 can be used
+        // 2. Informing the OS that we are EDR aware, and intend to use values outside 0..1
+        // 3. Setting the extended sRGB color space so that the OS knows how to interpret the values
+        m_metalLayer.wantsExtendedDynamicRangeContent = YES;
+        m_metalLayer.pixelFormat = MTLPixelFormatRGBA16Float;
+        const CFStringRef name = kCGColorSpaceExtendedSRGB;
+        CGColorSpaceRef colorspace = CGColorSpaceCreateWithName(name);
+        m_metalLayer.colorspace = colorspace;
+        CGColorSpaceRelease(colorspace);
+      }
 
       metalInit();
     }
@@ -530,8 +532,9 @@ GHOST_TSuccess GHOST_ContextCGL::releaseNativeHandles()
  *
  * Use Metal layer to avoid Viewport lagging on macOS, see #60043. */
 
-static const MTLPixelFormat METAL_FRAMEBUFFERPIXEL_FORMAT = MTLPixelFormatRGBA16Float;
-static const OSType METAL_CORE_VIDEO_PIXEL_FORMAT = kCVPixelFormatType_32BGRA;
+static const MTLPixelFormat METAL_FRAMEBUFFERPIXEL_FORMAT_EDR = MTLPixelFormatRGBA16Float;
+static const MTLPixelFormat METAL_FRAMEBUFFERPIXEL_FORMAT_SDR = MTLPixelFormatBGRA8Unorm;
+static const OSType METAL_CORE_VIDEO_PIXEL_FORMAT_SDR = kCVPixelFormatType_32BGRA;
 
 void GHOST_ContextCGL::metalInit()
 {
@@ -598,7 +601,9 @@ void GHOST_ContextCGL::metalInit()
     /* Ensure library is released. */
     [library autorelease];
 
-    [desc.colorAttachments objectAtIndexedSubscript:0].pixelFormat = METAL_FRAMEBUFFERPIXEL_FORMAT;
+    MTLPixelFormat attachmentFormat = m_useMetalForRendering ?
+        METAL_FRAMEBUFFERPIXEL_FORMAT_EDR : METAL_FRAMEBUFFERPIXEL_FORMAT_SDR;
+    [desc.colorAttachments objectAtIndexedSubscript:0].pixelFormat = attachmentFormat;
 
     m_metalRenderPipeline = (MTLRenderPipelineState *)[device
         newRenderPipelineStateWithDescriptor:desc
@@ -698,7 +703,7 @@ void GHOST_ContextCGL::metalUpdateFramebuffer()
     CVReturn cvret = CVPixelBufferCreate(kCFAllocatorDefault,
                                          width,
                                          height,
-                                         METAL_CORE_VIDEO_PIXEL_FORMAT,
+                                         METAL_CORE_VIDEO_PIXEL_FORMAT_SDR,
                                          (__bridge CFDictionaryRef)cvPixelBufferProps,
                                          &cvPixelBuffer);
     if (cvret != kCVReturnSuccess) {
@@ -740,7 +745,7 @@ void GHOST_ContextCGL::metalUpdateFramebuffer()
                                                       cvMetalTexCache,
                                                       cvPixelBuffer,
                                                       nil,
-                                                      METAL_FRAMEBUFFERPIXEL_FORMAT,
+                                                      METAL_FRAMEBUFFERPIXEL_FORMAT_SDR,
                                                       width,
                                                       height,
                                                       0,
