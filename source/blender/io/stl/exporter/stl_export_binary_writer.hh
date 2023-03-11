@@ -11,11 +11,22 @@
 #include <cstdio>
 #include <stdexcept>
 
+#include "BLI_assert.h"
 #include "BLI_utility_mixins.hh"
 
 #include "stl_export_writer.hh"
 
 namespace blender::io::stl {
+
+#pragma pack(push, 1)
+struct STLBinaryTriangle {
+  float normal[3]{};
+  float vertices[3][3]{};
+  uint16_t attribute_byte_count{};
+};
+#pragma pack(pop)
+BLI_STATIC_ASSERT_ALIGN(STLBinaryTriangle,
+                        sizeof(float[3]) + sizeof(float[3][3]) + sizeof(uint16_t));
 
 class BinaryFileWriter : public FileWriter, NonCopyable {
  private:
@@ -45,12 +56,12 @@ BinaryFileWriter::BinaryFileWriter(const char *filepath)
 
 void BinaryFileWriter::write_triangle(const Triangle *t)
 {
-  bool success = (fwrite(t->normal, sizeof(float[3]), 1, file_) == 1);
-  success = success && (fwrite(t->vertices, sizeof(float[3][3]), 1, file_) == 1);
+  STLBinaryTriangle packed_triangle{};
+  memcpy(packed_triangle.normal, t->normal, sizeof(float[3]));
+  memcpy(packed_triangle.vertices, t->vertices, sizeof(float[3][3]));
+  packed_triangle.attribute_byte_count = 0;
 
-  uint16_t attribute_byte_count = 0;
-  success = success && (fwrite(&attribute_byte_count, sizeof(uint16_t), 1, file_) == 1);
-  if (success) {
+  if (fwrite(&packed_triangle, sizeof(STLBinaryTriangle), 1, file_) == 1) {
     tris_num_++;
   }
 }
