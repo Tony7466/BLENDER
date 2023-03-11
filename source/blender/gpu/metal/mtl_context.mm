@@ -223,7 +223,7 @@ MTLContext::MTLContext(void *ghost_window, void *ghost_context)
   }
 
   /* Initialize samplers. */
-  this->samplers_init();
+  this->sampler_state_cache_init();
 }
 
 MTLContext::~MTLContext()
@@ -2125,7 +2125,7 @@ void MTLContext::sampler_state_cache_init()
 id<MTLSamplerState> MTLContext::get_default_sampler_state()
 {
   if (default_sampler_state_ == nil) {
-    default_sampler_state_ = this->get_sampler_from_state(GPUSamplerState::default_sampler());
+    default_sampler_state_ = this->get_sampler_from_state({GPUSamplerState::default_sampler()});
   }
   return default_sampler_state_;
 }

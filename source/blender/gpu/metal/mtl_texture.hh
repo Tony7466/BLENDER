@@ -138,12 +138,18 @@ struct MTLSamplerState {
 
   operator uint() const
   {
-    return uint(state);
+    return uint(uint64_t(state));
   }
 
   operator uint64_t() const
   {
-    return uint64_t(state);
+    uint64_t integer_representation = 0;
+    integer_representation |= this->state.filtering;
+    integer_representation |= this->state.wrapping_x << 8;
+    integer_representation |= this->state.wrapping_y << 12;
+    integer_representation |= this->state.custom_type << 16;
+    integer_representation |= this->state.type << 24;
+    return integer_representation;
   }
 };
 
