@@ -15,6 +15,7 @@
 
 #include "UI_interface.h"
 
+#include "BLI_index_mask_ops.hh"
 #include "BLI_length_parameterize.hh"
 #include "BLI_task.hh"
 
@@ -463,6 +464,10 @@ void CurvesConstraintSolver::solve_step(bke::CurvesGeometry &curves,
 //  const bool solve_collision = false;
   const bool require_start_positions = solve_collision;
 
+  Vector<int64_t> goal_indices;
+  IndexMask goal_selection = index_mask_ops::find_indices_based_on_predicate(
+      curve_selection, 256, goal_indices, [this](int64_t index) { return has_goals_[index]; });
+
   for (const int iter : IndexRange(iterations)) {
     switch (goal_type_) {
       case GoalType::None:
@@ -473,7 +478,7 @@ void CurvesConstraintSolver::solve_step(bke::CurvesGeometry &curves,
         break;
       case GoalType::Slip:
         geometry::curve_constraints::solve_slip_constraints(
-            curves.points_by_curve(), curve_selection, goals_, curves.positions_for_write());
+            curves.points_by_curve(), goal_selection, goals_, curves.positions_for_write());
         break;
     }
     if (solve_length) {
