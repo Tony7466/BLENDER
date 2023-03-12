@@ -124,6 +124,8 @@ class Params {
    * The #LazyFunction must leave returned object in an initialized state, but can move from it.
    */
   void *try_get_input_data_ptr(int index) const;
+  void try_get_input_data_ptr(IndexRange indices, MutableSpan<void *> r_data) const;
+  void try_get_input_data_ptr(Span<int> indices, MutableSpan<void *> r_data) const;
 
   /**
    * Same as #try_get_input_data_ptr, but if the data is not yet available, request it. This makes
@@ -138,6 +140,8 @@ class Params {
    * After the output has been initialized to its final value, #output_set has to be called.
    */
   void *get_output_data_ptr(int index);
+  void get_output_data_ptr(IndexRange indices, MutableSpan<void *> r_data);
+  void get_output_data_ptr(Span<int> indices, MutableSpan<void *> r_data);
 
   /**
    * Call this after the output value is initialized. After this is called, the value must not be
@@ -375,6 +379,38 @@ inline void *Params::try_get_input_data_ptr(const int index) const
   void *data;
   this->try_get_input_data_ptr_impl({index}, {&data, 1});
   return data;
+}
+
+inline void Params::get_output_data_ptr(const IndexRange indices, MutableSpan<void *> r_data)
+{
+  Array<int, 16> indices_array(indices.size());
+  for (const int i : IndexRange(indices.size())) {
+    indices_array[i] = indices[i];
+  }
+  this->get_output_data_ptr(indices_array, r_data);
+}
+
+inline void Params::get_output_data_ptr(const Span<int> indices, MutableSpan<void *> r_data)
+{
+  BLI_assert(indices.size() == r_data.size());
+  this->get_output_data_ptr_impl(indices, r_data);
+}
+
+inline void Params::try_get_input_data_ptr(const IndexRange indices,
+                                           MutableSpan<void *> r_data) const
+{
+  Array<int, 16> indices_array(indices.size());
+  for (const int i : IndexRange(indices.size())) {
+    indices_array[i] = indices[i];
+  }
+  this->try_get_input_data_ptr(indices_array, r_data);
+}
+
+inline void Params::try_get_input_data_ptr(const Span<int> indices,
+                                           MutableSpan<void *> r_data) const
+{
+  BLI_assert(indices.size() == r_data.size());
+  this->try_get_input_data_ptr_impl(indices, r_data);
 }
 
 inline void *Params::try_get_input_data_ptr_or_request(const int index)

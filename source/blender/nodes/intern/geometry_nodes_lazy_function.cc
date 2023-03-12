@@ -522,14 +522,10 @@ class LazyFunctionForMultiFunctionNode : public LazyFunction {
 
   void execute_impl(lf::Params &params, const lf::Context & /*context*/) const override
   {
-    Vector<const void *> input_values(inputs_.size());
+    Vector<void *> input_values(inputs_.size());
     Vector<void *> output_values(outputs_.size());
-    for (const int i : inputs_.index_range()) {
-      input_values[i] = params.try_get_input_data_ptr(i);
-    }
-    for (const int i : outputs_.index_range()) {
-      output_values[i] = params.get_output_data_ptr(i);
-    }
+    params.try_get_input_data_ptr(inputs_.index_range(), input_values);
+    params.get_output_data_ptr(outputs_.index_range(), output_values);
     execute_multi_function_on_value_or_field(
         *fn_item_.fn, fn_item_.owned_fn, input_types_, output_types_, input_values, output_values);
     for (const int i : outputs_.index_range()) {
