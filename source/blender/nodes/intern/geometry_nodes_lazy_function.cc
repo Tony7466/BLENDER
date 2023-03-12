@@ -528,9 +528,7 @@ class LazyFunctionForMultiFunctionNode : public LazyFunction {
     params.get_output_data_ptr(outputs_.index_range(), output_values);
     execute_multi_function_on_value_or_field(
         *fn_item_.fn, fn_item_.owned_fn, input_types_, output_types_, input_values, output_values);
-    for (const int i : outputs_.index_range()) {
-      params.output_set(i);
-    }
+    params.output_set(outputs_.index_range());
   }
 };
 

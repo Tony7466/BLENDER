@@ -148,6 +148,8 @@ class Params {
    * touched anymore. It may be moved or destructed immediately.
    */
   void output_set(int index);
+  void output_set(IndexRange indices);
+  void output_set(Span<int> indices);
 
   /**
    * Allows the #LazyFunction to check whether an output was computed already without keeping
@@ -374,6 +376,15 @@ inline Params::Params(const LazyFunction &fn,
 {
 }
 
+inline Array<int, 16> get_indices_array(const IndexRange indices)
+{
+  Array<int, 16> indices_array(indices.size());
+  for (const int i : IndexRange(indices.size())) {
+    indices_array[i] = indices[i];
+  }
+  return indices_array;
+}
+
 inline void *Params::try_get_input_data_ptr(const int index) const
 {
   void *data;
@@ -383,10 +394,7 @@ inline void *Params::try_get_input_data_ptr(const int index) const
 
 inline void Params::get_output_data_ptr(const IndexRange indices, MutableSpan<void *> r_data)
 {
-  Array<int, 16> indices_array(indices.size());
-  for (const int i : IndexRange(indices.size())) {
-    indices_array[i] = indices[i];
-  }
+  Array<int, 16> indices_array = get_indices_array(indices);
   this->get_output_data_ptr(indices_array, r_data);
 }
 
@@ -396,13 +404,21 @@ inline void Params::get_output_data_ptr(const Span<int> indices, MutableSpan<voi
   this->get_output_data_ptr_impl(indices, r_data);
 }
 
+inline void Params::output_set(const IndexRange indices)
+{
+  Array<int, 16> indices_array = get_indices_array(indices);
+  this->output_set(indices_array);
+}
+
+inline void Params::output_set(const Span<int> indices)
+{
+  this->output_set_impl(indices);
+}
+
 inline void Params::try_get_input_data_ptr(const IndexRange indices,
                                            MutableSpan<void *> r_data) const
 {
-  Array<int, 16> indices_array(indices.size());
-  for (const int i : IndexRange(indices.size())) {
-    indices_array[i] = indices[i];
-  }
+  Array<int, 16> indices_array = get_indices_array(indices);
   this->try_get_input_data_ptr(indices_array, r_data);
 }
 
