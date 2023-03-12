@@ -268,7 +268,7 @@ void node_combsep_color_label(const ListBase *sockets, NodeCombSepColorMode mode
     case NODE_COMBSEP_COLOR_HSV:
       node_sock_label(sock1, "Hue");
       node_sock_label(sock2, "Saturation");
-      node_sock_label(sock3, "Value");
+      node_sock_label(sock3, "Value", BLT_I18NCONTEXT_COLOR);
       break;
     default: {
       BLI_assert_unreachable();
