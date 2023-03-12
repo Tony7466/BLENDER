@@ -191,6 +191,11 @@ namespace blender::ed::space_node {
 
 static const char *node_socket_get_translation_context(const bNodeSocket &socket)
 {
+  /* Get the context from the label if it is defined. */
+  if (socket.runtime->label_translation_context[0] != '\0') {
+    return socket.runtime->label_translation_context.c_str();
+  }
+
   /* The node is not explicitly defined. */
   if (socket.runtime->declaration == nullptr) {
     return nullptr;

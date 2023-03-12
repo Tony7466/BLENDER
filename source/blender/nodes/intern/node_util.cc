@@ -73,15 +73,21 @@ void *node_initexec_curves(bNodeExecContext * /*context*/, bNode *node, bNodeIns
 /** \name Updates
  * \{ */
 
-void node_sock_label(bNodeSocket *sock, const char *name)
+void node_sock_label(bNodeSocket *sock, const char *name, const char *translation_context)
 {
   STRNCPY(sock->label, name);
+  if (translation_context) {
+    sock->runtime->label_translation_context = translation_context;
+  }
 }
 
 void node_sock_label_clear(bNodeSocket *sock)
 {
   if (sock->label[0] != '\0') {
     sock->label[0] = '\0';
+  }
+  if (sock->runtime->label_translation_context[0] != '\0') {
+    sock->runtime->label_translation_context[0] = '\0';
   }
 }
 

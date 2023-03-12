@@ -201,6 +201,7 @@ class bNodeSocketRuntime : NonCopyable, NonMovable {
   int index_in_node = -1;
   int index_in_all_sockets = -1;
   int index_in_inout_sockets = -1;
+  std::string label_translation_context;
 };
 
 /**

@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include "BLT_translation.h"
+
 struct bNode;
 struct bNodeTree;
 
@@ -30,7 +32,9 @@ void node_copy_standard_storage(bNodeTree *dest_ntree, bNode *dest_node, const b
 void *node_initexec_curves(bNodeExecContext *context, bNode *node, bNodeInstanceKey key);
 
 /**** Updates ****/
-void node_sock_label(bNodeSocket *sock, const char *name);
+void node_sock_label(bNodeSocket *sock,
+                     const char *name,
+                     const char *translation_context = BLT_I18NCONTEXT_DEFAULT);
 void node_sock_label_clear(bNodeSocket *sock);
 void node_math_update(bNodeTree *ntree, bNode *node);
 
