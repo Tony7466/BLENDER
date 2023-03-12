@@ -71,7 +71,7 @@ void get_material_image(Object *ob,
       case SH_NODE_TEX_IMAGE: {
         const NodeTexImage *storage = static_cast<NodeTexImage *>(node->storage);
         const bool use_filter = (storage->interpolation != SHD_INTERP_CLOSEST);
-        sampler_state.set_filtering(GPU_SAMPLER_FILTERING_LINEAR, use_filter);
+        sampler_state.set_filtering_flag_from_test(GPU_SAMPLER_FILTERING_LINEAR, use_filter);
         switch (storage->extension) {
           case SHD_IMAGE_EXTENSION_EXTEND:
           default:
@@ -96,7 +96,7 @@ void get_material_image(Object *ob,
       case SH_NODE_TEX_ENVIRONMENT: {
         const NodeTexEnvironment *storage = static_cast<NodeTexEnvironment *>(node->storage);
         const bool use_filter = (storage->interpolation != SHD_INTERP_CLOSEST);
-        sampler_state.set_filtering(GPU_SAMPLER_FILTERING_LINEAR, use_filter);
+        sampler_state.set_filtering_flag_from_test(GPU_SAMPLER_FILTERING_LINEAR, use_filter);
         break;
       }
       default:

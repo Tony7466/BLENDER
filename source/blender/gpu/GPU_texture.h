@@ -142,7 +142,8 @@ typedef enum GPUSamplerCustomType {
 typedef enum GPUSamplerStateType {
   /**
    * The filtering, wrapping_x, and wrapping_y members of the GPUSamplerState structure will be
-   * used in setting up the sampler state for the texture.
+   * used in setting up the sampler state for the texture. The custom_type member will be ignored
+   * in that case.
    */
   GPU_SAMPLER_STATE_TYPE_PARAMETERS = 0,
   /**
@@ -182,6 +183,14 @@ typedef struct GPUSamplerState {
   GPUSamplerStateType type : 8;
 
 #ifdef __cplusplus
+  /**
+   * Constructs a sampler state with default filtering and extended wrapping in both x and y axis.
+   * See the documentation on GPU_SAMPLER_FILTERING_DEFAULT and GPU_SAMPLER_WRAP_EXTEND for more
+   * information.
+   *
+   * GPU_SAMPLER_STATE_TYPE_PARAMETERS is set in order to utilize the aforementioned parameters, so
+   * GPU_SAMPLER_CUSTOM_COMPARE is arbitrary, ignored, and irrelevant.
+   */
   static constexpr GPUSamplerState default_sampler()
   {
     return {GPU_SAMPLER_FILTERING_DEFAULT,
@@ -191,6 +200,14 @@ typedef struct GPUSamplerState {
             GPU_SAMPLER_STATE_TYPE_PARAMETERS};
   }
 
+  /**
+   * Constructs a sampler state that can be used to signal that the internal sampler of the texture
+   * should be used instead. See the documentation on GPU_SAMPLER_STATE_TYPE_INTERNAL for more
+   * information.
+   *
+   * GPU_SAMPLER_STATE_TYPE_INTERNAL is set in order to signal the use of the internal sampler of
+   * the texture, so the rest of the options before it are arbitrary, ignored, and irrelevant.
+   */
   static constexpr GPUSamplerState internal_sampler()
   {
     return {GPU_SAMPLER_FILTERING_DEFAULT,
@@ -200,6 +217,13 @@ typedef struct GPUSamplerState {
             GPU_SAMPLER_STATE_TYPE_INTERNAL};
   }
 
+  /**
+   * Constructs a special sampler state that can be used sampler icons. See the documentation on
+   * GPU_SAMPLER_CUSTOM_ICON for more information.
+   *
+   * GPU_SAMPLER_STATE_TYPE_CUSTOM is set in order to specify a custom sampler type, so the rest of
+   * the options before it are arbitrary, ignored, and irrelevant.
+   */
   static constexpr GPUSamplerState icon_sampler()
   {
     return {GPU_SAMPLER_FILTERING_DEFAULT,
@@ -209,6 +233,15 @@ typedef struct GPUSamplerState {
             GPU_SAMPLER_STATE_TYPE_CUSTOM};
   }
 
+  /**
+   * Constructs a special sampler state for depth comparison. See the documentation on
+   * GPU_SAMPLER_CUSTOM_COMPARE for more information.
+   *
+   * GPU_SAMPLER_STATE_TYPE_CUSTOM is set in order to specify a custom sampler type, so the rest of
+   * the options before it are ignored and irrelevant, but they are set to sensible defaults in
+   * case comparison mode is turned off, in which case, the sampler state will become equivalent to
+   * GPUSamplerState::default_sampler().
+   */
   static constexpr GPUSamplerState compare_sampler()
   {
     return {GPU_SAMPLER_FILTERING_DEFAULT,
@@ -219,16 +252,33 @@ typedef struct GPUSamplerState {
   }
 
   /**
-   * Enables the given filtering options if and only if the given condition is true, otherwise,
-   * disables it.
+   * Enables the given filtering flags.
    */
-  void set_filtering(GPUSamplerFiltering target_filtering, bool condition = true)
+  void enable_filtering_flag(GPUSamplerFiltering filtering_flags)
   {
-    /* Do not update the filtering member in-place, copy it first because it is a bit field that
-     * can't be referenced in the operators used by SET_FLAG_FROM_TEST. */
-    GPUSamplerFiltering updated_filtering = this->filtering;
-    SET_FLAG_FROM_TEST(updated_filtering, condition, target_filtering);
-    this->filtering = updated_filtering;
+    this->filtering = this->filtering | filtering_flags;
+  }
+
+  /**
+   * Disables the given filtering flags.
+   */
+  void disable_filtering_flag(GPUSamplerFiltering filtering_flags)
+  {
+    this->filtering = this->filtering & ~filtering_flags;
+  }
+
+  /**
+   * Enables the given filtering flags if the given test is true, otherwise, disables the given
+   * filtering flags.
+   */
+  void set_filtering_flag_from_test(GPUSamplerFiltering filtering_flags, bool test)
+  {
+    if (test) {
+      this->enable_filtering_flag(filtering_flags);
+    }
+    else {
+      this->disable_filtering_flag(filtering_flags);
+    }
   }
 
   std::string to_string() const
@@ -314,6 +364,7 @@ typedef struct GPUSamplerState {
 } GPUSamplerState;
 
 #ifndef __cplusplus
+/** Identical to GPUSamplerState::default_sampler for non C++ users. */
 const static GPUSamplerState GPU_SAMPLER_DEFAULT = {GPU_SAMPLER_FILTERING_DEFAULT,
                                                     GPU_SAMPLER_WRAP_EXTEND,
                                                     GPU_SAMPLER_WRAP_EXTEND,

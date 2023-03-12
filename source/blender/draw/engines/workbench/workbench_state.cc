@@ -286,7 +286,8 @@ ObjectState::ObjectState(const SceneState &scene_state, Object *ob)
           override_sampler_state.wrapping_x = GPU_SAMPLER_WRAP_REPEAT;
           override_sampler_state.wrapping_y = GPU_SAMPLER_WRAP_REPEAT;
           const bool use_linear_filter = imapaint->interp == IMAGEPAINT_INTERP_LINEAR;
-          override_sampler_state.set_filtering(GPU_SAMPLER_FILTERING_LINEAR, use_linear_filter);
+          override_sampler_state.set_filtering_flag_from_test(GPU_SAMPLER_FILTERING_LINEAR,
+                                                              use_linear_filter);
         }
       }
     }

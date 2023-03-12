@@ -43,7 +43,7 @@ static int node_shader_gpu_tex_environment(GPUMaterial *mat,
                              GPU_SAMPLER_WRAP_REPEAT};
   /* TODO(@fclem): For now assume mipmap is always enabled. */
   if (true) {
-    sampler.set_filtering(GPU_SAMPLER_FILTERING_MIPMAP);
+    sampler.enable_filtering_flag(GPU_SAMPLER_FILTERING_MIPMAP);
   }
 
   GPUNodeLink *outalpha;
@@ -68,7 +68,8 @@ static int node_shader_gpu_tex_environment(GPUMaterial *mat,
     sampler.wrapping_y = GPU_SAMPLER_WRAP_EXTEND;
     /* Force the highest mipmap and don't do anisotropic filtering.
      * This is to fix the artifact caused by derivatives discontinuity. */
-    sampler.set_filtering(GPU_SAMPLER_FILTERING_MIPMAP | GPU_SAMPLER_FILTERING_ANISOTROPIC, false);
+    sampler.disable_filtering_flag(GPU_SAMPLER_FILTERING_MIPMAP |
+                                   GPU_SAMPLER_FILTERING_ANISOTROPIC);
   }
   else {
     GPU_link(mat, "node_tex_environment_mirror_ball", in[0].link, &in[0].link);
@@ -88,7 +89,7 @@ static int node_shader_gpu_tex_environment(GPUMaterial *mat,
       gpu_fn = names[0];
       break;
     case SHD_INTERP_CLOSEST:
-      sampler.set_filtering(GPU_SAMPLER_FILTERING_LINEAR | GPU_SAMPLER_FILTERING_MIPMAP, false);
+      sampler.disable_filtering_flag(GPU_SAMPLER_FILTERING_LINEAR | GPU_SAMPLER_FILTERING_MIPMAP);
       gpu_fn = names[0];
       break;
     default:

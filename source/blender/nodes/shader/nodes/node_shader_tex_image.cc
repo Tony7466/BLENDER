@@ -112,7 +112,7 @@ static int node_shader_gpu_tex_image(GPUMaterial *mat,
       case SHD_PROJ_SPHERE: {
         /* This projection is known to have a derivative discontinuity.
          * Hide it by turning off mipmapping. */
-        sampler_state.set_filtering(GPU_SAMPLER_FILTERING_MIPMAP, false);
+        sampler_state.disable_filtering_flag(GPU_SAMPLER_FILTERING_MIPMAP);
         GPUNodeLink *gpu_image = GPU_image(mat, ima, iuser, sampler_state);
         GPU_link(mat, "point_texco_remap_square", *texco, texco);
         GPU_link(mat, "point_map_to_sphere", *texco, texco);
@@ -122,7 +122,7 @@ static int node_shader_gpu_tex_image(GPUMaterial *mat,
       case SHD_PROJ_TUBE: {
         /* This projection is known to have a derivative discontinuity.
          * Hide it by turning off mipmapping. */
-        sampler_state.set_filtering(GPU_SAMPLER_FILTERING_MIPMAP, false);
+        sampler_state.disable_filtering_flag(GPU_SAMPLER_FILTERING_MIPMAP);
         GPUNodeLink *gpu_image = GPU_image(mat, ima, iuser, sampler_state);
         GPU_link(mat, "point_texco_remap_square", *texco, texco);
         GPU_link(mat, "point_map_to_tube", *texco, texco);

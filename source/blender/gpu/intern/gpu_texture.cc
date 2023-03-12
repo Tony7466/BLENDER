@@ -615,7 +615,7 @@ void GPU_texture_filter_mode(GPUTexture *tex_, bool use_filter)
   /* Stencil and integer format does not support filtering. */
   BLI_assert(!(use_filter) ||
              !(tex->format_flag_get() & (GPU_FORMAT_STENCIL | GPU_FORMAT_INTEGER)));
-  tex->sampler_state.set_filtering(GPU_SAMPLER_FILTERING_LINEAR, use_filter);
+  tex->sampler_state.set_filtering_flag_from_test(GPU_SAMPLER_FILTERING_LINEAR, use_filter);
 }
 
 void GPU_texture_mipmap_mode(GPUTexture *tex_, bool use_mipmap, bool use_filter)
@@ -624,8 +624,8 @@ void GPU_texture_mipmap_mode(GPUTexture *tex_, bool use_mipmap, bool use_filter)
   /* Stencil and integer format does not support filtering. */
   BLI_assert(!(use_filter || use_mipmap) ||
              !(tex->format_flag_get() & (GPU_FORMAT_STENCIL | GPU_FORMAT_INTEGER)));
-  tex->sampler_state.set_filtering(GPU_SAMPLER_FILTERING_MIPMAP, use_mipmap);
-  tex->sampler_state.set_filtering(GPU_SAMPLER_FILTERING_LINEAR, use_filter);
+  tex->sampler_state.set_filtering_flag_from_test(GPU_SAMPLER_FILTERING_MIPMAP, use_mipmap);
+  tex->sampler_state.set_filtering_flag_from_test(GPU_SAMPLER_FILTERING_LINEAR, use_filter);
 }
 
 void GPU_texture_anisotropic_filter(GPUTexture *tex_, bool use_aniso)
@@ -634,7 +634,7 @@ void GPU_texture_anisotropic_filter(GPUTexture *tex_, bool use_aniso)
   /* Stencil and integer format does not support filtering. */
   BLI_assert(!(use_aniso) ||
              !(tex->format_flag_get() & (GPU_FORMAT_STENCIL | GPU_FORMAT_INTEGER)));
-  tex->sampler_state.set_filtering(GPU_SAMPLER_FILTERING_ANISOTROPIC, use_aniso);
+  tex->sampler_state.set_filtering_flag_from_test(GPU_SAMPLER_FILTERING_ANISOTROPIC, use_aniso);
 }
 
 void GPU_texture_wrap_mode_x(GPUTexture *tex_, GPUSamplerWrapType wrap_type)
