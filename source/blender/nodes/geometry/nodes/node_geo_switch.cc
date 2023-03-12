@@ -170,11 +170,16 @@ class LazyFunctionForSwitchNode : public LazyFunction {
   {
     const ValueOrField<bool> condition = params.get_input<ValueOrField<bool>>(0);
     if (condition.is_field()) {
-      this->execute_field(condition.as_field(), params);
+      Field<bool> condition_field = condition.as_field();
+      if (condition_field.node().depends_on_input()) {
+        this->execute_field(condition.as_field(), params);
+        return;
+      }
+      const bool condition_bool = fn::evaluate_constant_field(condition_field);
+      this->execute_single(condition_bool, params);
+      return;
     }
-    else {
-      this->execute_single(condition.as_value(), params);
-    }
+    this->execute_single(condition.as_value(), params);
   }
 
   static const int false_input_index = 1;
@@ -200,6 +205,7 @@ class LazyFunctionForSwitchNode : public LazyFunction {
 
   void execute_field(Field<bool> condition, lf::Params &params) const
   {
+    /* When the condition is a non-constant field, we need both inputs. */
     void *false_value_or_field = params.try_get_input_data_ptr_or_request(false_input_index);
     void *true_value_or_field = params.try_get_input_data_ptr_or_request(true_input_index);
     if (ELEM(nullptr, false_value_or_field, true_value_or_field)) {
@@ -210,6 +216,22 @@ class LazyFunctionForSwitchNode : public LazyFunction {
     const CPPType &type = *outputs_[0].type;
     const fn::ValueOrFieldCPPType &value_or_field_type = *fn::ValueOrFieldCPPType::get_from_self(
         type);
+    const MultiFunction &switch_multi_function = this->get_switch_multi_function(type);
+
+    GField false_field = value_or_field_type.as_field(false_value_or_field);
+    GField true_field = value_or_field_type.as_field(true_value_or_field);
+
+    GField output_field{std::make_shared<FieldOperation>(
+        FieldOperation(switch_multi_function,
+                       {std::move(condition), std::move(false_field), std::move(true_field)}))};
+
+    void *output_ptr = params.get_output_data_ptr(0);
+    value_or_field_type.construct_from_field(output_ptr, std::move(output_field));
+    params.output_set(0);
+  }
+
+  const MultiFunction &get_switch_multi_function(const CPPType &type) const
+  {
     const MultiFunction *switch_multi_function = nullptr;
     type.to_static_type_tag<float, int, bool, float3, ColorGeometry4f, std::string>(
         [&](auto type_tag) {
@@ -226,17 +248,7 @@ class LazyFunctionForSwitchNode : public LazyFunction {
           }
         });
     BLI_assert(switch_multi_function != nullptr);
-
-    GField false_field = value_or_field_type.as_field(false_value_or_field);
-    GField true_field = value_or_field_type.as_field(true_value_or_field);
-
-    GField output_field{std::make_shared<FieldOperation>(
-        FieldOperation(*switch_multi_function,
-                       {std::move(condition), std::move(false_field), std::move(true_field)}))};
-
-    void *output_ptr = params.get_output_data_ptr(0);
-    value_or_field_type.construct_from_field(output_ptr, std::move(output_field));
-    params.output_set(0);
+    return *switch_multi_function;
   }
 };
 
