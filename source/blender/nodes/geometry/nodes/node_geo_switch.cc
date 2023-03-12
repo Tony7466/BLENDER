@@ -216,7 +216,8 @@ class LazyFunctionForSwitchNode : public LazyFunction {
     const CPPType &type = *outputs_[0].type;
     const fn::ValueOrFieldCPPType &value_or_field_type = *fn::ValueOrFieldCPPType::get_from_self(
         type);
-    const MultiFunction &switch_multi_function = this->get_switch_multi_function(type);
+    const CPPType &value_type = value_or_field_type.value;
+    const MultiFunction &switch_multi_function = this->get_switch_multi_function(value_type);
 
     GField false_field = value_or_field_type.as_field(false_value_or_field);
     GField true_field = value_or_field_type.as_field(true_value_or_field);
