@@ -1225,13 +1225,19 @@ class GraphExecutorLFParams final : public Params {
   }
 
  private:
-  void *try_get_input_data_ptr_impl(const int index) const override
+  void try_get_input_data_ptr_impl(const Span<int> indices,
+                                   MutableSpan<void *> r_data) const override
   {
-    const InputState &input_state = node_state_.inputs[index];
-    if (input_state.was_ready_for_execution) {
-      return input_state.value;
+    for (const int i : indices.index_range()) {
+      const int index = indices[i];
+      const InputState &input_state = node_state_.inputs[index];
+      if (input_state.was_ready_for_execution) {
+        r_data[i] = input_state.value;
+      }
+      else {
+        r_data[i] = nullptr;
+      }
     }
-    return nullptr;
   }
 
   void *try_get_input_data_ptr_or_request_impl(const int index) override

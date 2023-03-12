@@ -190,7 +190,8 @@ class Params {
    * methods above to make it easy to insert additional debugging logic on top of the
    * implementations.
    */
-  virtual void *try_get_input_data_ptr_impl(int index) const = 0;
+  virtual void try_get_input_data_ptr_impl(Span<int> indices,
+                                           MutableSpan<void *> r_data) const = 0;
   virtual void *try_get_input_data_ptr_or_request_impl(int index) = 0;
   virtual void *get_output_data_ptr_impl(int index) = 0;
   virtual void output_set_impl(int index) = 0;
@@ -369,7 +370,9 @@ inline Params::Params(const LazyFunction &fn,
 
 inline void *Params::try_get_input_data_ptr(const int index) const
 {
-  return this->try_get_input_data_ptr_impl(index);
+  void *data;
+  this->try_get_input_data_ptr_impl({index}, {&data, 1});
+  return data;
 }
 
 inline void *Params::try_get_input_data_ptr_or_request(const int index)

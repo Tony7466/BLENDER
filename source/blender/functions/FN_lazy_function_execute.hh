@@ -34,7 +34,7 @@ class BasicParams : public Params {
               Span<ValueUsage> output_usages,
               MutableSpan<bool> set_outputs);
 
-  void *try_get_input_data_ptr_impl(const int index) const override;
+  void try_get_input_data_ptr_impl(Span<int> indices, MutableSpan<void *> r_data) const override;
   void *try_get_input_data_ptr_or_request_impl(const int index) override;
   void *get_output_data_ptr_impl(const int index) override;
   void output_set_impl(const int index) override;

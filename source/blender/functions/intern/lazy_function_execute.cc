@@ -23,9 +23,13 @@ BasicParams::BasicParams(const LazyFunction &fn,
 {
 }
 
-void *BasicParams::try_get_input_data_ptr_impl(const int index) const
+void BasicParams::try_get_input_data_ptr_impl(const Span<int> indices,
+                                              MutableSpan<void *> r_data) const
 {
-  return inputs_[index].get();
+  for (const int i : indices.index_range()) {
+    const int index = indices[i];
+    r_data[i] = inputs_[index].get();
+  }
 }
 
 void *BasicParams::try_get_input_data_ptr_or_request_impl(const int index)
