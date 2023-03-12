@@ -211,8 +211,8 @@ float3 poly_normal_calc(const Span<float3> vert_positions, const Span<MLoop> pol
 
 }  // namespace blender::bke::mesh
 
-void BKE_mesh_calc_poly_normal(const struct MPoly *poly,
-                               const struct MLoop *loopstart,
+void BKE_mesh_calc_poly_normal(const MLoop *poly_loops,
+                               const int poly_size,
                                const float (*vert_positions)[3],
                                const int verts_num,
                                float r_no[3])
@@ -220,7 +220,7 @@ void BKE_mesh_calc_poly_normal(const struct MPoly *poly,
   copy_v3_v3(r_no,
              blender::bke::mesh::poly_normal_calc(
                  {reinterpret_cast<const blender::float3 *>(vert_positions), verts_num},
-                 {loopstart, poly->totloop}));
+                 {poly_loops, poly_size}));
 }
 
 namespace blender::bke::mesh {

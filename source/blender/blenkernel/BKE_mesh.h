@@ -395,8 +395,8 @@ bool BKE_mesh_vert_normals_are_dirty(const struct Mesh *mesh);
  */
 bool BKE_mesh_poly_normals_are_dirty(const struct Mesh *mesh);
 
-void BKE_mesh_calc_poly_normal(const struct MPoly *poly,
-                               const struct MLoop *loopstart,
+void BKE_mesh_calc_poly_normal(const struct MLoop *poly_loops,
+                               int poly_size,
                                const float (*vert_positions)[3],
                                int verts_num,
                                float r_no[3]);
@@ -557,22 +557,22 @@ void BKE_mesh_set_custom_normals_from_verts(struct Mesh *mesh, float (*r_custom_
 
 /* *** mesh_evaluate.cc *** */
 
-void BKE_mesh_calc_poly_center(const struct MPoly *poly,
-                               const struct MLoop *loopstart,
+void BKE_mesh_calc_poly_center(const struct MLoop *poly_loops,
+                               int poly_size,
                                const float (*vert_positions)[3],
                                int verts_num,
                                float r_cent[3]);
-float BKE_mesh_calc_poly_area(const struct MPoly *poly,
-                              const struct MLoop *loopstart,
+float BKE_mesh_calc_poly_area(const struct MLoop *poly_loops,
+                              int poly_size,
                               const float (*vert_positions)[3],
                               int verts_num);
 float BKE_mesh_calc_area(const struct Mesh *me);
 
 void BKE_mesh_poly_edgehash_insert(struct EdgeHash *ehash,
-                                   const struct MPoly *mp,
+                                   const struct MPoly *poly,
                                    const struct MLoop *mloop);
 void BKE_mesh_poly_edgebitmap_insert(unsigned int *edge_bitmap,
-                                     const struct MPoly *mp,
+                                     const struct MPoly *poly,
                                      const struct MLoop *mloop);
 
 bool BKE_mesh_center_median(const struct Mesh *me, float r_cent[3]);

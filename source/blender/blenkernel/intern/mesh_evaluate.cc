@@ -76,8 +76,8 @@ float3 poly_center_calc(const Span<float3> vert_positions, const Span<MLoop> pol
 
 }  // namespace blender::bke::mesh
 
-void BKE_mesh_calc_poly_center(const struct MPoly *poly,
-                               const struct MLoop *loopstart,
+void BKE_mesh_calc_poly_center(const MLoop *poly_loops,
+                               const int poly_size,
                                const float (*vert_positions)[3],
                                const int verts_num,
                                float r_cent[3])
@@ -85,7 +85,7 @@ void BKE_mesh_calc_poly_center(const struct MPoly *poly,
   copy_v3_v3(r_cent,
              blender::bke::mesh::poly_center_calc(
                  {reinterpret_cast<const blender::float3 *>(vert_positions), verts_num},
-                 {loopstart, poly->totloop}));
+                 {poly_loops, poly_size}));
 }
 
 namespace blender::bke::mesh {
@@ -106,13 +106,13 @@ float poly_area_calc(const Span<float3> vert_positions, const Span<MLoop> poly_l
 
 }  // namespace blender::bke::mesh
 
-float BKE_mesh_calc_poly_area(const MPoly *poly,
-                              const MLoop *loopstart,
+float BKE_mesh_calc_poly_area(const MLoop *poly_loops,
+                              const int poly_size,
                               const float (*vert_positions)[3],
                               const int verts_num)
 {
   return blender::bke::mesh::poly_area_calc(
-      {reinterpret_cast<const float3 *>(vert_positions), verts_num}, {loopstart, poly->totloop});
+      {reinterpret_cast<const float3 *>(vert_positions), verts_num}, {poly_loops, poly_size});
 }
 
 float BKE_mesh_calc_area(const Mesh *me)
@@ -129,8 +129,8 @@ float BKE_mesh_calc_area(const Mesh *me)
   return total_area;
 }
 
-static float UNUSED_FUNCTION(mesh_calc_poly_volume_centroid)(const MPoly *poly,
-                                                             const MLoop *loopstart,
+static float UNUSED_FUNCTION(mesh_calc_poly_volume_centroid)(const MLoop *poly_loops,
+                                                             const int poly_size,
                                                              const float (*positions)[3],
                                                              float r_cent[3])
 {
@@ -139,11 +139,11 @@ static float UNUSED_FUNCTION(mesh_calc_poly_volume_centroid)(const MPoly *poly,
 
   zero_v3(r_cent);
 
-  v_pivot = positions[loopstart[0].v];
-  v_step1 = positions[loopstart[1].v];
+  v_pivot = positions[poly_loops[0].v];
+  v_step1 = positions[poly_loops[1].v];
 
-  for (int i = 2; i < poly->totloop; i++) {
-    const float *v_step2 = positions[loopstart[i].v];
+  for (int i = 2; i < poly_size; i++) {
+    const float *v_step2 = positions[poly_loops[i].v];
 
     /* Calculate the 6x volume of the tetrahedron formed by the 3 vertices
      * of the triangle and the origin as the fourth vertex */
