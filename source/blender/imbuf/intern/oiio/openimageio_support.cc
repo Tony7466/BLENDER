@@ -16,6 +16,8 @@ OIIO_NAMESPACE_USING
 using std::string;
 using std::unique_ptr;
 
+namespace blender::imbuf {
+
 /* An OIIO IOProxy used during file packing to write into an in-memory #ImBuf buffer. */
 class ImBufMemWriter : public Filesystem::IOProxy {
  public:
@@ -389,3 +391,5 @@ ImageSpec imb_create_write_spec(const WriteContext &ctx, int file_channels, Type
 
   return file_spec;
 }
+
+}  // namespace blender::imbuf

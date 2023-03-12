@@ -7,10 +7,12 @@
 #include <OpenImageIO/filesystem.h>
 #include <OpenImageIO/imageio.h>
 
+#include "BLI_sys_types.h"
+
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 
-using uchar = unsigned char;
+namespace blender::imbuf {
 
 /**
  * Parameters and settings used while reading image formats.
@@ -98,3 +100,5 @@ WriteContext imb_create_write_context(const char *file_format,
 OIIO::ImageSpec imb_create_write_spec(const WriteContext &ctx,
                                       int file_channels,
                                       OIIO::TypeDesc data_format);
+
+}  // namespace blender::imbuf

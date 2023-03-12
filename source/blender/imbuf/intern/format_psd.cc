@@ -5,6 +5,7 @@
 #include "IMB_imbuf_types.h"
 
 OIIO_NAMESPACE_USING
+using namespace blender::imbuf;
 
 extern "C" {
 
