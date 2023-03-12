@@ -58,86 +58,6 @@ typedef struct TransDataNla {
   int handle;
 } TransDataNla;
 
-static bool is_overlap(const float left_bound_a,
-                       const float right_bound_a,
-                       const float left_bound_b,
-                       const float right_bound_b)
-{
-  return (left_bound_a < right_bound_b) && (right_bound_a > left_bound_b);
-}
-
-static bool nlastrip_is_overlap(const NlaStrip *strip_a,
-                                const float offset_a,
-                                const NlaStrip *strip_b,
-                                const float offset_b)
-{
-  return is_overlap(strip_a->start + offset_a,
-                    strip_a->end + offset_a,
-                    strip_b->start + offset_b,
-                    strip_b->end + offset_b);
-}
-
-/** Assumes strips to horizontally translate (shuffle) are tagged with
- * NLASTRIP_FLAG_INVALID_LOCATION.
- *
- * \returns The total sided offset that results in no overlaps between tagged strips and non-tagged
- * strips.
- */
-static float transdata_get_time_shuffle_offset_side(ListBase *trans_datas, const bool shuffle_left)
-{
-  float total_offset = 0;
-
-  float offset;
-  do {
-    offset = 0;
-
-    LISTBASE_FOREACH (LinkData *, link, trans_datas) {
-      TransDataNla *trans_data = (TransDataNla *)link->data;
-      NlaStrip *xformed_strip = trans_data->strip;
-
-      LISTBASE_FOREACH (NlaStrip *, non_xformed_strip, &trans_data->nlt->strips) {
-        if (non_xformed_strip->flag & NLASTRIP_FLAG_INVALID_LOCATION ||
-            non_xformed_strip->type & NLASTRIP_TYPE_TRANSITION) {
-          continue;
-        }
-
-        /* Allow overlap with transitions. */
-        if (non_xformed_strip->type & NLASTRIP_TYPE_TRANSITION) {
-          continue;
-        }
-
-        if (!nlastrip_is_overlap(non_xformed_strip, 0, xformed_strip, total_offset)) {
-          continue;
-        }
-
-        offset = shuffle_left ?
-                     fmin(offset, non_xformed_strip->start - (xformed_strip->end + total_offset)) :
-                     fmax(offset, non_xformed_strip->end - (xformed_strip->start + total_offset));
-      }
-    }
-
-    total_offset += offset;
-  } while (!IS_EQF(offset, 0.0f));
-
-  return total_offset;
-}
-
-/** Assumes strips to horizontally translate (shuffle) are tagged with
- * NLASTRIP_FLAG_INVALID_LOCATION.
- *
- * \returns The minimal total signed offset that results in no overlaps between tagged strips and
- * non-tagged strips.
- */
-static float transdata_get_time_shuffle_offset(ListBase *trans_datas)
-{
-  const float offset_left = transdata_get_time_shuffle_offset_side(trans_datas, true);
-  const float offset_right = transdata_get_time_shuffle_offset_side(trans_datas, false);
-  BLI_assert(offset_left <= 0);
-  BLI_assert(offset_right >= 0);
-
-  return -offset_left < offset_right ? offset_left : offset_right;
-}
-
 /* -------------------------------------------------------------------- */
 /** \name Transform application to NLA strips
  * \{ */
@@ -550,18 +470,75 @@ static void recalcData_nla(TransInfo *t)
       continue;
     }
 
-    const bool nlatrack_isliboverride = BKE_nlatrack_is_nonlocal_in_liboverride(tdn->id, tdn->nlt);
-    const bool allow_overlap = !nlatrack_isliboverride && is_translating;
+    /* firstly, check if the proposed transform locations would overlap with any neighboring strips
+     * (barring transitions) which are absolute barriers since they are not being moved
+     *
+     * this is done as a iterative procedure (done 5 times max for now)
+     */
+    NlaStrip *prev = BKE_nlastrip_prev_in_track(strip, true);
+    NlaStrip *next = BKE_nlastrip_next_in_track(strip, true);
 
-    if (allow_overlap) {
-      nlastrip_overlap_reorder(tdn, strip);
+    for (short iter = 0; iter < 5; iter++) {
+      const bool pExceeded = (prev != NULL) && (tdn->h1[0] < prev->end);
+      const bool nExceeded = (next != NULL) && (tdn->h2[0] > next->start);
 
-      /* Directly flush. */
-      strip->start = tdn->h1[0];
-      strip->end = tdn->h2[0];
+      if ((pExceeded && nExceeded) || (iter == 4)) {
+        /* both endpoints exceeded (or iteration ping-pong'd meaning that we need a
+         * compromise)
+         * - Simply crop strip to fit within the bounds of the strips bounding it
+         * - If there were no neighbors, clear the transforms
+         *   (make it default to the strip's current values).
+         */
+        if (prev && next) {
+          tdn->h1[0] = prev->end;
+          tdn->h2[0] = next->start;
+        }
+        else {
+          tdn->h1[0] = strip->start;
+          tdn->h2[0] = strip->end;
+        }
+      }
+      else if (nExceeded) {
+        /* move backwards */
+        float offset = tdn->h2[0] - next->start;
+
+        tdn->h1[0] -= offset;
+        tdn->h2[0] -= offset;
+      }
+      else if (pExceeded) {
+        /* more forwards */
+        float offset = prev->end - tdn->h1[0];
+
+        tdn->h1[0] += offset;
+        tdn->h2[0] += offset;
+      }
+      else { /* all is fine and well */
+        break;
+      }
     }
-    else {
-      nlastrip_fix_overlapping(t, tdn, strip, strip_ptr);
+
+    /* Use RNA to write the values to ensure that constraints on these are obeyed
+     * (e.g. for transition strips, the values are taken from the neighbors)
+     */
+    RNA_pointer_create(NULL, &RNA_NlaStrip, strip, &strip_ptr);
+
+    switch (t->mode) {
+      case TFM_TIME_EXTEND:
+      case TFM_TIME_SCALE: {
+        /* The final scale is the product of the original strip scale (from before the transform
+         * operation started) and the current scale value of this transform operation. */
+        const float originalStripScale = tdn->h1[2];
+        const float newStripScale = originalStripScale * t->values_final[0];
+        applyTransformNLA_timeScale(&strip_ptr, newStripScale);
+        applyTransformNLA_translation(&strip_ptr, tdn);
+        break;
+      }
+      case TFM_TRANSLATION:
+        applyTransformNLA_translation(&strip_ptr, tdn);
+        break;
+      default:
+        printf("recalcData_nla: unsupported NLA transformation mode %d\n", t->mode);
+        continue;
     }
 
     /* flush transforms to child strips (since this should be a meta) */
@@ -628,8 +605,6 @@ static void recalcData_nla(TransInfo *t)
         }
       }
     }
-
-    nlastrip_flag_overlaps(strip);
   }
 }
 
@@ -639,82 +614,7 @@ static void recalcData_nla(TransInfo *t)
 /** \name Special After Transform NLA
  * \{ */
 
-typedef struct IDGroupedTransData {
-  struct IDGroupedTransData *next, *prev;
-
-  ID *id;
-  ListBase trans_datas;
-} IDGroupedTransData;
-
-static void nlastrip_shuffle_transformed(TransDataContainer *tc, TransDataNla *first_trans_data)
-{
-  /** Element: (IDGroupedTransData*) */
-  ListBase grouped_trans_datas = {NULL, NULL};
-
-  /** Flag all non-library-override transformed strips so we can distinguish them when
-   * shuffling.
-   *
-   * Group trans_datas by ID so shuffling is unique per ID.
-   */
-  {
-    TransDataNla *tdn = first_trans_data;
-    for (int i = 0; i < tc->data_len; i++, tdn++) {
-
-      /* Skip dummy handles. */
-      if (tdn->handle == 0) {
-        continue;
-      }
-
-      /* For strips within library override tracks, don't do any shuffling at all. Unsure how
-       * library overrides should behave so, for now, they're treated as mostly immutable. */
-      if ((tdn->nlt->flag & NLATRACK_OVERRIDELIBRARY_LOCAL) == 0) {
-        continue;
-      }
-
-      tdn->strip->flag |= NLASTRIP_FLAG_INVALID_LOCATION;
-
-      IDGroupedTransData *dst_group = NULL;
-      /* Find dst_group with matching ID. */
-      LISTBASE_FOREACH (IDGroupedTransData *, group, &grouped_trans_datas) {
-        if (group->id == tdn->id) {
-          dst_group = group;
-          break;
-        }
-      }
-      if (dst_group == NULL) {
-        dst_group = MEM_callocN(sizeof(IDGroupedTransData), __func__);
-        dst_group->id = tdn->id;
-        BLI_addhead(&grouped_trans_datas, dst_group);
-      }
-
-      BLI_addtail(&dst_group->trans_datas, BLI_genericNodeN(tdn));
-    }
-  }
-
-  /** Apply shuffling. */
-  LISTBASE_FOREACH (IDGroupedTransData *, group, &grouped_trans_datas) {
-    ListBase *trans_datas = &group->trans_datas;
-
-    /** Apply horizontal shuffle. */
-    const float minimum_time_offset = transdata_get_time_shuffle_offset(trans_datas);
-    LISTBASE_FOREACH (LinkData *, link, trans_datas) {
-      TransDataNla *trans_data = (TransDataNla *)link->data;
-      NlaStrip *strip = trans_data->strip;
-
-      strip->start += minimum_time_offset;
-      strip->end += minimum_time_offset;
-      BKE_nlameta_flush_transforms(strip);
-    }
-  }
-
-  /** Memory cleanup. */
-  LISTBASE_FOREACH (IDGroupedTransData *, group, &grouped_trans_datas) {
-    BLI_freelistN(&group->trans_datas);
-  }
-  BLI_freelistN(&grouped_trans_datas);
-}
-
-static void special_aftertrans_update__nla(bContext *C, TransInfo *t)
+static void special_aftertrans_update__nla(bContext *C, TransInfo *UNUSED(t))
 {
   bAnimContext ac;
 
@@ -723,64 +623,42 @@ static void special_aftertrans_update__nla(bContext *C, TransInfo *t)
     return;
   }
 
-  if (!ac.datatype) {
-    return;
-  }
+  if (ac.datatype) {
+    ListBase anim_data = {NULL, NULL};
+    bAnimListElem *ale;
+    short filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_FOREDIT | ANIMFILTER_FCURVESONLY);
 
-  TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
-  TransDataNla *first_trans_data = tc->custom.type.data;
-  const bool is_translating = ELEM(t->mode, TFM_TRANSLATION);
+    /* get channels to work on */
+    ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
 
-  /** Shuffle transformed strips. */
-  if (is_translating) {
-    nlastrip_shuffle_transformed(tc, first_trans_data);
-  }
+    for (ale = anim_data.first; ale; ale = ale->next) {
+      NlaTrack *nlt = (NlaTrack *)ale->data;
 
-  /** Clear NLASTRIP_FLAG_INVALID_LOCATION flag. */
-  TransDataNla *tdn = first_trans_data;
-  for (int i = 0; i < tc->data_len; i++, tdn++) {
-    if (tdn->strip == NULL) {
-      continue;
+      /* make sure strips are in order again */
+      BKE_nlatrack_sort_strips(nlt);
+
+      /* remove the temp metas */
+      BKE_nlastrips_clear_metas(&nlt->strips, 0, 1);
     }
 
-    tdn->strip->flag &= ~NLASTRIP_FLAG_INVALID_LOCATION;
+    /* General refresh for the outliner because the following might have happened:
+     * - strips moved between tracks
+     * - strips swapped order
+     * - duplicate-move moves to different track. */
+    WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_ADDED, NULL);
+
+    /* free temp memory */
+    ANIM_animdata_freelist(&anim_data);
+
+    /* Perform after-transform validation. */
+    ED_nla_postop_refresh(&ac);
   }
 
-  ListBase anim_data = {NULL, NULL};
-  bAnimListElem *ale;
-  short filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_FOREDIT | ANIMFILTER_FCURVESONLY);
+  /** \} */
 
-  /* get channels to work on */
-  ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
-
-  for (ale = anim_data.first; ale; ale = ale->next) {
-    NlaTrack *nlt = (NlaTrack *)ale->data;
-
-    /* make sure strips are in order again */
-    BKE_nlatrack_sort_strips(nlt);
-
-    /* remove the temp metas */
-    BKE_nlastrips_clear_metas(&nlt->strips, 0, 1);
-  }
-
-  /* General refresh for the outliner because the following might have happened:
-   * - strips moved between tracks
-   * - strips swapped order
-   * - duplicate-move moves to different track. */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_ADDED, NULL);
-
-  /* free temp memory */
-  ANIM_animdata_freelist(&anim_data);
-
-  /* Perform after-transform validation. */
-  ED_nla_postop_refresh(&ac);
-}
-
-/** \} */
-
-TransConvertTypeInfo TransConvertType_NLA = {
-    /*flags*/ (T_POINTS | T_2D_EDIT),
-    /*createTransData*/ createTransNlaData,
-    /*recalcData*/ recalcData_nla,
-    /*special_aftertrans_update*/ special_aftertrans_update__nla,
-};
+  TransConvertTypeInfo TransConvertType_NLA = {
+      /*flags*/ (T_POINTS | T_2D_EDIT),
+      /*createTransData*/ createTransNlaData,
+      /*recalcData*/ recalcData_nla,
+      /*special_aftertrans_update*/ special_aftertrans_update__nla,
+  };
