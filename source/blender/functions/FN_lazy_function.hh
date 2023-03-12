@@ -194,7 +194,7 @@ class Params {
                                            MutableSpan<void *> r_data) const = 0;
   virtual void try_get_input_data_ptr_or_request_impl(Span<int> indices,
                                                       MutableSpan<void *> r_data) = 0;
-  virtual void *get_output_data_ptr_impl(int index) = 0;
+  virtual void get_output_data_ptr_impl(Span<int> indices, MutableSpan<void *> r_data) = 0;
   virtual void output_set_impl(int index) = 0;
   virtual bool output_was_set_impl(int index) const = 0;
   virtual ValueUsage get_output_usage_impl(int index) const = 0;
@@ -387,7 +387,9 @@ inline void *Params::try_get_input_data_ptr_or_request(const int index)
 inline void *Params::get_output_data_ptr(const int index)
 {
   this->assert_valid_thread();
-  return this->get_output_data_ptr_impl(index);
+  void *data;
+  this->get_output_data_ptr_impl({index}, {&data, 1});
+  return data;
 }
 
 inline void Params::output_set(const int index)

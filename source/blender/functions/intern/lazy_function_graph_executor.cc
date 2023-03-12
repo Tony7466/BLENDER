@@ -1256,16 +1256,19 @@ class GraphExecutorLFParams final : public Params {
     }
   }
 
-  void *get_output_data_ptr_impl(const int index) override
+  void get_output_data_ptr_impl(const Span<int> indices, MutableSpan<void *> r_data) override
   {
-    OutputState &output_state = node_state_.outputs[index];
-    BLI_assert(!output_state.has_been_computed);
-    if (output_state.value == nullptr) {
-      LinearAllocator<> &allocator = executor_.get_main_or_local_allocator();
-      const CPPType &type = node_.output(index).type();
-      output_state.value = allocator.allocate(type.size(), type.alignment());
+    for (const int i : indices.index_range()) {
+      const int index = indices[i];
+      OutputState &output_state = node_state_.outputs[index];
+      BLI_assert(!output_state.has_been_computed);
+      if (output_state.value == nullptr) {
+        LinearAllocator<> &allocator = executor_.get_main_or_local_allocator();
+        const CPPType &type = node_.output(index).type();
+        output_state.value = allocator.allocate(type.size(), type.alignment());
+      }
+      r_data[i] = output_state.value;
     }
-    return output_state.value;
   }
 
   void output_set_impl(const int index) override

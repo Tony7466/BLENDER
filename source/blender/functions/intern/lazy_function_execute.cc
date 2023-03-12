@@ -45,9 +45,12 @@ void BasicParams::try_get_input_data_ptr_or_request_impl(const Span<int> indices
   }
 }
 
-void *BasicParams::get_output_data_ptr_impl(const int index)
+void BasicParams::get_output_data_ptr_impl(const Span<int> indices, MutableSpan<void *> r_data)
 {
-  return outputs_[index].get();
+  for (const int i : indices.index_range()) {
+    const int index = indices[i];
+    r_data[i] = outputs_[index].get();
+  }
 }
 
 void BasicParams::output_set_impl(const int index)
