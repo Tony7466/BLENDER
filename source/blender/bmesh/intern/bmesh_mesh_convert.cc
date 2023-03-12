@@ -950,6 +950,21 @@ static void bm_to_mesh_shape(BMesh *bm,
 
 /** \} */
 
+static void assert_bmesh_has_no_mesh_only_attributes(const BMesh &bm)
+{
+  (void)bm; /* Unused in the release builds. */
+  BLI_assert(CustomData_get_layer_named(&bm.vdata, CD_PROP_FLOAT3, "position") == nullptr);
+
+  /* The "hide" attributes are stored as flags on #BMesh. */
+  BLI_assert(CustomData_get_layer_named(&bm.vdata, CD_PROP_BOOL, ".hide_vert") == nullptr);
+  BLI_assert(CustomData_get_layer_named(&bm.edata, CD_PROP_BOOL, ".hide_edge") == nullptr);
+  BLI_assert(CustomData_get_layer_named(&bm.pdata, CD_PROP_BOOL, ".hide_poly") == nullptr);
+  /* The "selection" attributes are stored as flags on #BMesh. */
+  BLI_assert(CustomData_get_layer_named(&bm.vdata, CD_PROP_BOOL, ".select_vert") == nullptr);
+  BLI_assert(CustomData_get_layer_named(&bm.edata, CD_PROP_BOOL, ".select_edge") == nullptr);
+  BLI_assert(CustomData_get_layer_named(&bm.pdata, CD_PROP_BOOL, ".select_poly") == nullptr);
+}
+
 static void bmesh_to_mesh_calc_object_remap(Main &bmain,
                                             Mesh &me,
                                             BMesh &bm,
@@ -1017,21 +1032,6 @@ static void bmesh_to_mesh_calc_object_remap(Main &bmain,
   }
 }
 
-static void assert_bmesh_has_no_mesh_only_attributes(const BMesh &bm)
-{
-  (void)bm; /* Unused in the release builds. */
-  BLI_assert(CustomData_get_layer_named(&bm.vdata, CD_PROP_FLOAT3, "position") == nullptr);
-
-  /* The "hide" attributes are stored as flags on #BMesh. */
-  BLI_assert(CustomData_get_layer_named(&bm.vdata, CD_PROP_BOOL, ".hide_vert") == nullptr);
-  BLI_assert(CustomData_get_layer_named(&bm.edata, CD_PROP_BOOL, ".hide_edge") == nullptr);
-  BLI_assert(CustomData_get_layer_named(&bm.pdata, CD_PROP_BOOL, ".hide_poly") == nullptr);
-  /* The "selection" attributes are stored as flags on #BMesh. */
-  BLI_assert(CustomData_get_layer_named(&bm.vdata, CD_PROP_BOOL, ".select_vert") == nullptr);
-  BLI_assert(CustomData_get_layer_named(&bm.edata, CD_PROP_BOOL, ".select_edge") == nullptr);
-  BLI_assert(CustomData_get_layer_named(&bm.pdata, CD_PROP_BOOL, ".select_poly") == nullptr);
-}
-
 struct BMeshToMeshLayerInfo {
   eCustomDataType type;
   /** The layer's position in the BMesh element's data block. */
@@ -1096,7 +1096,6 @@ static void bm_vert_table_build(BMesh &bm,
     BM_elem_index_set(vert, i); /* set_inline */
     table[i] = vert;
     hflag |= vert->head.hflag;
-
     BM_CHECK_ELEMENT(vert);
   }
   need_select_vert = (hflag & BM_ELEM_SELECT) != 0;
@@ -1118,7 +1117,6 @@ static void bm_edge_table_build(BMesh &bm,
     BM_elem_index_set(edge, i); /* set_inline */
     table[i] = edge;
     hflag |= edge->head.hflag;
-
     BM_CHECK_ELEMENT(edge);
   }
   need_select_edge = (hflag & BM_ELEM_SELECT) != 0;
@@ -1146,16 +1144,13 @@ static void bm_face_loop_table_build(BMesh &bm,
     hflag |= face->head.hflag;
     need_sharp_face |= (face->head.hflag & BM_ELEM_SMOOTH) == 0;
     need_material_index |= face->mat_nr != 0;
-
     BM_CHECK_ELEMENT(face);
 
     BMLoop *loop = BM_FACE_FIRST_LOOP(face);
     for ([[maybe_unused]] const int i : IndexRange(face->len)) {
       BM_elem_index_set(loop, loop_i); /* set_inline */
       loop_table[loop_i] = loop;
-
       BM_CHECK_ELEMENT(loop);
-
       loop = loop->next;
       loop_i++;
     }
@@ -1181,11 +1176,8 @@ static void bm_to_mesh_verts(const BMesh &bm,
                              MutableSpan<bool> select_vert,
                              MutableSpan<bool> hide_vert)
 {
-  if (!CustomData_get_layer_named(&mesh.vdata, CD_PROP_FLOAT3, "position")) {
-    CustomData_add_layer_named(
-        &mesh.vdata, CD_PROP_FLOAT3, CD_CONSTRUCT, nullptr, mesh.totvert, "position");
-  }
-
+  CustomData_add_layer_named(
+      &mesh.vdata, CD_PROP_FLOAT3, CD_CONSTRUCT, nullptr, mesh.totvert, "position");
   const Vector<BMeshToMeshLayerInfo> info = bm_to_mesh_copy_info_calc(bm.vdata, mesh.vdata);
   MutableSpan<float3> dst_vert_positions = mesh.vert_positions_for_write();
   threading::parallel_for(dst_vert_positions.index_range(), 1024, [&](const IndexRange range) {
@@ -1216,7 +1208,6 @@ static void bm_to_mesh_edges(const BMesh &bm,
                              MutableSpan<bool> uv_seams)
 {
   CustomData_add_layer(&mesh.edata, CD_MEDGE, CD_SET_DEFAULT, nullptr, mesh.totedge);
-
   const Vector<BMeshToMeshLayerInfo> info = bm_to_mesh_copy_info_calc(bm.edata, mesh.edata);
   MutableSpan<MEdge> dst_edges = mesh.edges_for_write();
   threading::parallel_for(dst_edges.index_range(), 512, [&](const IndexRange range) {
@@ -1259,7 +1250,6 @@ static void bm_to_mesh_faces(const BMesh &bm,
                              MutableSpan<int> material_indices)
 {
   CustomData_add_layer(&mesh.pdata, CD_MPOLY, CD_CONSTRUCT, nullptr, mesh.totpoly);
-
   const Vector<BMeshToMeshLayerInfo> info = bm_to_mesh_copy_info_calc(bm.pdata, mesh.pdata);
   MutableSpan<MPoly> dst_polys = mesh.polys_for_write();
   threading::parallel_for(dst_polys.index_range(), 1024, [&](const IndexRange range) {
@@ -1296,7 +1286,6 @@ static void bm_to_mesh_faces(const BMesh &bm,
 static void bm_to_mesh_loops(const BMesh &bm, const Span<const BMLoop *> bm_loops, Mesh &mesh)
 {
   CustomData_add_layer(&mesh.ldata, CD_MLOOP, CD_SET_DEFAULT, nullptr, mesh.totloop);
-
   const Vector<BMeshToMeshLayerInfo> info = bm_to_mesh_copy_info_calc(bm.ldata, mesh.ldata);
   MutableSpan<MLoop> dst_loops = mesh.loops_for_write();
   threading::parallel_for(dst_loops.index_range(), 1024, [&](const IndexRange range) {
@@ -1314,7 +1303,6 @@ static void bm_to_mesh_loops(const BMesh &bm, const Span<const BMLoop *> bm_loop
 
 void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMeshParams *params)
 {
-  SCOPED_TIMER_AVERAGED(__func__);
   using namespace blender;
   BMFace *f;
   BMIter iter;
@@ -1536,6 +1524,10 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMesh
         bm_to_mesh_loops(*bm, loop_table, *me);
         /* Topology could be changed, ensure #CD_MDISPS are ok. */
         multires_topology_changed(me);
+        /* Clear the CD_FLAG_NOCOPY flags for the layers they were temporarily set on */
+        for (const int i : ldata_layers_marked_nocopy) {
+          bm->ldata.layers[i].flag &= ~CD_FLAG_NOCOPY;
+        }
       },
       [&]() {
         /* Patch hook indices and vertex parents. */
@@ -1584,11 +1576,6 @@ void BM_mesh_bm_to_me(Main *bmain, BMesh *bm, Mesh *me, const struct BMeshToMesh
           }
         }
       });
-
-  /* Clear the CD_FLAG_NOCOPY flags for the layers they were temporarily set on */
-  for (const int i : ldata_layers_marked_nocopy) {
-    bm->ldata.layers[i].flag &= ~CD_FLAG_NOCOPY;
-  }
 
   select_vert.finish();
   hide_vert.finish();
