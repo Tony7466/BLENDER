@@ -39,16 +39,20 @@ class ImBufMemWriter : public Filesystem::IOProxy {
 
   size_t pwrite(const void *buf, size_t size, int64_t offset) override
   {
-    std::lock_guard<std::mutex> lock(mutex_);
-
     /* If buffer is too small increase it. */
     size_t end = offset + size;
     while (end > ibuf_->encodedbuffersize) {
-      imb_enlargeencodedbufferImBuf(ibuf_);
+      if (!imb_enlargeencodedbufferImBuf(ibuf_)) {
+        /* Out of memory. */
+        return 0;
+      }
     }
 
     memcpy(ibuf_->encodedbuffer + offset, buf, size);
-    ibuf_->encodedsize += size;
+
+    if (end > ibuf_->encodedsize) {
+      ibuf_->encodedsize = end;
+    }
 
     return size;
   }
@@ -60,7 +64,6 @@ class ImBufMemWriter : public Filesystem::IOProxy {
 
  private:
   ImBuf *ibuf_;
-  std::mutex mutex_;
 };
 
 /* Utility to in-place expand an n-component pixel buffer into a 4-component buffer. */
