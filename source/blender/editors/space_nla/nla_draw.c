@@ -539,15 +539,10 @@ static void nla_draw_strip(SpaceNla *snla,
   }
   else if (strip->flag & NLASTRIP_FLAG_ACTIVE) {
     /* strip should appear 'sunken', so draw a light border around it */
-    // NATE?
-    // printf("I am active?: %f \n", 1.0);
-    UI_GetThemeColor3fv(TH_NLA_ACTIVE, color);
-    // color[0] = color[1] = color[2] = 1.0f; /* FIXME: hardcoded temp-hack colors */
+    color[0] = color[1] = color[2] = 1.0f; /* FIXME: hardcoded temp-hack colors */
   }
   else {
-    printf("I am inactive?: %f \n", 0.0);
     /* strip should appear to stand out, so draw a dark border around it */
-    // UI_GetThemeColor3fv(TH_NLA_SELECTED, color);
     color[0] = color[1] = color[2] = 0.0f; /* FIXME: or 1.0f ?? */
   }
 
