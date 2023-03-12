@@ -67,10 +67,6 @@ const char *imb_ext_image[] = {
     NULL,
 };
 
-const char *imb_ext_image_filepath_only[] = {
-    NULL,
-};
-
 const char *imb_ext_movie[] = {
     ".avi",  ".flc", ".mov", ".movie", ".mp4",  ".m4v",  ".m2v", ".m2t",  ".m2ts", ".mts",
     ".ts",   ".mv",  ".avs", ".wmv",   ".ogv",  ".ogg",  ".r3d", ".dv",   ".mpeg", ".mpg",
