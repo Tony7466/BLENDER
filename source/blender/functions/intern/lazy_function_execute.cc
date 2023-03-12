@@ -53,9 +53,11 @@ void BasicParams::get_output_data_ptr_impl(const Span<int> indices, MutableSpan<
   }
 }
 
-void BasicParams::output_set_impl(const int index)
+void BasicParams::output_set_impl(const Span<int> indices)
 {
-  set_outputs_[index] = true;
+  for (const int index : indices) {
+    set_outputs_[index] = true;
+  }
 }
 
 bool BasicParams::output_was_set_impl(const int index) const

@@ -1271,16 +1271,18 @@ class GraphExecutorLFParams final : public Params {
     }
   }
 
-  void output_set_impl(const int index) override
+  void output_set_impl(const Span<int> indices) override
   {
-    OutputState &output_state = node_state_.outputs[index];
-    BLI_assert(!output_state.has_been_computed);
-    BLI_assert(output_state.value != nullptr);
-    const OutputSocket &output_socket = node_.output(index);
-    executor_.forward_value_to_linked_inputs(
-        output_socket, {output_socket.type(), output_state.value}, current_task_);
-    output_state.value = nullptr;
-    output_state.has_been_computed = true;
+    for (const int index : indices) {
+      OutputState &output_state = node_state_.outputs[index];
+      BLI_assert(!output_state.has_been_computed);
+      BLI_assert(output_state.value != nullptr);
+      const OutputSocket &output_socket = node_.output(index);
+      executor_.forward_value_to_linked_inputs(
+          output_socket, {output_socket.type(), output_state.value}, current_task_);
+      output_state.value = nullptr;
+      output_state.has_been_computed = true;
+    }
   }
 
   bool output_was_set_impl(const int index) const override
