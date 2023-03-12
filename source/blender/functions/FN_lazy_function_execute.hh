@@ -42,7 +42,7 @@ class BasicParams : public Params {
   void output_was_set_impl(Span<int> indices, MutableSpan<bool> r_result) const override;
   void get_output_usage_impl(const Span<int> indices,
                              MutableSpan<ValueUsage> r_result) const override;
-  void set_input_unused_impl(const int index) override;
+  void set_input_unused_impl(Span<int> indices) override;
   bool try_enable_multi_threading_impl() override;
 };
 

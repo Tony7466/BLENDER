@@ -199,7 +199,7 @@ class Params {
   virtual void output_was_set_impl(Span<int> indices, MutableSpan<bool> r_result) const = 0;
   virtual void get_output_usage_impl(Span<int> indices,
                                      MutableSpan<ValueUsage> r_result) const = 0;
-  virtual void set_input_unused_impl(int index) = 0;
+  virtual void set_input_unused_impl(Span<int> indices) = 0;
   virtual bool try_enable_multi_threading_impl();
 };
 
@@ -416,7 +416,7 @@ inline ValueUsage Params::get_output_usage(const int index) const
 inline void Params::set_input_unused(const int index)
 {
   this->assert_valid_thread();
-  this->set_input_unused_impl(index);
+  this->set_input_unused_impl({index});
 }
 
 template<typename T> inline T Params::extract_input(const int index)

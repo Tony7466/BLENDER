@@ -77,9 +77,11 @@ void BasicParams::get_output_usage_impl(const Span<int> indices,
   }
 }
 
-void BasicParams::set_input_unused_impl(const int index)
+void BasicParams::set_input_unused_impl(const Span<int> indices)
 {
-  input_usages_[index] = ValueUsage::Unused;
+  for (const int index : indices) {
+    input_usages_[index] = ValueUsage::Unused;
+  }
 }
 
 bool BasicParams::try_enable_multi_threading_impl()

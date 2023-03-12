@@ -1304,9 +1304,11 @@ class GraphExecutorLFParams final : public Params {
     }
   }
 
-  void set_input_unused_impl(const int index) override
+  void set_input_unused_impl(const Span<int> indices) override
   {
-    executor_.set_input_unused_during_execution(node_, node_state_, index, current_task_);
+    for (const int index : indices) {
+      executor_.set_input_unused_during_execution(node_, node_state_, index, current_task_);
+    }
   }
 
   bool try_enable_multi_threading_impl() override
