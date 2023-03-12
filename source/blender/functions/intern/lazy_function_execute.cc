@@ -68,9 +68,13 @@ void BasicParams::output_was_set_impl(const Span<int> indices, MutableSpan<bool>
   }
 }
 
-ValueUsage BasicParams::get_output_usage_impl(const int index) const
+void BasicParams::get_output_usage_impl(const Span<int> indices,
+                                        MutableSpan<ValueUsage> r_result) const
 {
-  return output_usages_[index];
+  for (const int i : indices.index_range()) {
+    const int index = indices[i];
+    r_result[i] = output_usages_[index];
+  }
 }
 
 void BasicParams::set_input_unused_impl(const int index)

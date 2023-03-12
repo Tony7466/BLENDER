@@ -197,7 +197,8 @@ class Params {
   virtual void get_output_data_ptr_impl(Span<int> indices, MutableSpan<void *> r_data) = 0;
   virtual void output_set_impl(Span<int> indices) = 0;
   virtual void output_was_set_impl(Span<int> indices, MutableSpan<bool> r_result) const = 0;
-  virtual ValueUsage get_output_usage_impl(int index) const = 0;
+  virtual void get_output_usage_impl(Span<int> indices,
+                                     MutableSpan<ValueUsage> r_result) const = 0;
   virtual void set_input_unused_impl(int index) = 0;
   virtual bool try_enable_multi_threading_impl();
 };
@@ -407,7 +408,9 @@ inline bool Params::output_was_set(const int index) const
 
 inline ValueUsage Params::get_output_usage(const int index) const
 {
-  return this->get_output_usage_impl(index);
+  ValueUsage result;
+  this->get_output_usage_impl({index}, {&result, 1});
+  return result;
 }
 
 inline void Params::set_input_unused(const int index)

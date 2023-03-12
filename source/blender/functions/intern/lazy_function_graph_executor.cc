@@ -1294,10 +1294,14 @@ class GraphExecutorLFParams final : public Params {
     }
   }
 
-  ValueUsage get_output_usage_impl(const int index) const override
+  void get_output_usage_impl(const Span<int> indices,
+                             MutableSpan<ValueUsage> r_result) const override
   {
-    const OutputState &output_state = node_state_.outputs[index];
-    return output_state.usage_for_execution;
+    for (const int i : indices.index_range()) {
+      const int index = indices[i];
+      const OutputState &output_state = node_state_.outputs[index];
+      r_result[i] = output_state.usage_for_execution;
+    }
   }
 
   void set_input_unused_impl(const int index) override
