@@ -251,6 +251,14 @@ PYGETTEXT_KEYWORDS = (() +
     tuple(("{}\\((?:[^\"',]+,){{2}}\\s*" + _msg_re + r"\s*(?:\)|,)").format(it)
           for it in ("BKE_modifier_set_error",)) +
 
+    # Extract messages specific to node sockets declaring labels.
+    tuple(("{}\\((?:[^\"',]+,)\\s*" + _msg_re + r"\s*\)").format(it)
+          for it in ("node_sock_label",)) +
+
+    # Same as above, but variant with a context.
+    tuple(("{}\\((?:[^\"',]+,)\\s*" + _msg_re + r"\s*,\s*" + _ctxt_re + r"\s*\)").format(it)
+          for it in ("node_sock_label",)) +
+
     # This one is a tad more risky, but in practice would not expect a name/uid string parameter
     # (the second one in those functions) to ever have a comma in it, so think this is fine.
     tuple(("{}\\((?:[^,]+,){{2}}\\s*" + _msg_re + r"\s*(?:\)|,)").format(it)
