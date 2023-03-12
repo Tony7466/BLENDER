@@ -229,6 +229,8 @@ static int sculpt_symmetrize_exec(bContext *C, wmOperator *op)
       return OPERATOR_CANCELLED;
   }
 
+  SCULPT_topology_islands_invalidate(ss);
+
   /* Redraw. */
   SCULPT_pbvh_clear(ob);
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
@@ -1424,4 +1426,9 @@ void ED_operatortypes_sculpt(void)
   WM_operatortype_append(SCULPT_OT_expand);
   WM_operatortype_append(SCULPT_OT_mask_from_cavity);
   WM_operatortype_append(SCULPT_OT_reveal_all);
+}
+
+void ED_keymap_sculpt(wmKeyConfig *keyconf)
+{
+  filter_mesh_modal_keymap(keyconf);
 }

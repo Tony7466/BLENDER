@@ -239,6 +239,11 @@ static void wm_event_free_last_handled(wmWindow *win, wmEvent *event)
   if (win->event_last_handled) {
     wm_event_free(win->event_last_handled);
   }
+
+  /* While not essential, these values are undefined, as the event is no longer in a list
+   * clear the linked-list pointers to avoid any confusion. */
+  event->next = event->prev = nullptr;
+
   /* Don't store custom data in the last handled event as we don't have control how long this event
    * will be stored and the referenced data may become invalid (also it's not needed currently). */
   wm_event_custom_free(event);
@@ -3669,22 +3674,26 @@ static void wm_paintcursor_test(bContext *C, const wmEvent *event)
   }
 }
 
-static void wm_event_drag_and_drop_test(wmWindowManager *wm, wmWindow *win, wmEvent *event)
+static eHandlerActionFlag wm_event_drag_and_drop_test(wmWindowManager *wm,
+                                                      wmWindow *win,
+                                                      wmEvent *event)
 {
   bScreen *screen = WM_window_get_active_screen(win);
 
   if (BLI_listbase_is_empty(&wm->drags)) {
-    return;
+    return WM_HANDLER_CONTINUE;
   }
 
   if (event->type == MOUSEMOVE || ISKEYMODIFIER(event->type)) {
     screen->do_draw_drag = true;
   }
-  else if (event->type == EVT_ESCKEY) {
+  else if (ELEM(event->type, EVT_ESCKEY, RIGHTMOUSE)) {
     wm_drags_exit(wm, win);
     WM_drag_free_list(&wm->drags);
 
     screen->do_draw_drag = true;
+
+    return WM_HANDLER_BREAK;
   }
   else if (event->type == LEFTMOUSE && event->val == KM_RELEASE) {
     event->type = EVT_DROP;
@@ -3703,6 +3712,8 @@ static void wm_event_drag_and_drop_test(wmWindowManager *wm, wmWindow *win, wmEv
     /* Restore cursor (disabled, see `wm_dragdrop.cc`) */
     // WM_cursor_modal_restore(win);
   }
+
+  return WM_HANDLER_CONTINUE;
 }
 
 /**
@@ -4025,7 +4036,7 @@ void wm_event_do_handlers(bContext *C)
       }
 
       /* Check dragging, creates new event or frees, adds draw tag. */
-      wm_event_drag_and_drop_test(wm, win, event);
+      action |= wm_event_drag_and_drop_test(wm, win, event);
 
       if ((action & WM_HANDLER_BREAK) == 0) {
         /* NOTE: setting sub-window active should be done here,

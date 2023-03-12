@@ -142,6 +142,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_light_culling_tile";
     case LIGHT_CULLING_ZBIN:
       return "eevee_light_culling_zbin";
+    case SHADOW_CLIPMAP_CLEAR:
+      return "eevee_shadow_clipmap_clear";
     case SHADOW_DEBUG:
       return "eevee_shadow_debug";
     case SHADOW_PAGE_ALLOCATE:
@@ -507,6 +509,8 @@ GPUMaterial *ShaderModule::material_shader_get(const char *name,
                                                    this);
   GPU_material_status_set(gpumat, GPU_MAT_QUEUED);
   GPU_material_compile(gpumat);
+  /* Queue deferred material optimization. */
+  DRW_shader_queue_optimize_material(gpumat);
   return gpumat;
 }
 

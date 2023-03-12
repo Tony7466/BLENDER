@@ -467,6 +467,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_sampling_lib.glsl
   engines/eevee_next/shaders/eevee_shadow_debug_frag.glsl
   engines/eevee_next/shaders/eevee_shadow_lib.glsl
+  engines/eevee_next/shaders/eevee_shadow_clipmap_clear_comp.glsl
   engines/eevee_next/shaders/eevee_shadow_page_allocate_comp.glsl
   engines/eevee_next/shaders/eevee_shadow_page_clear_comp.glsl
   engines/eevee_next/shaders/eevee_shadow_page_defrag_comp.glsl
@@ -638,6 +639,7 @@ set(GLSL_SRC
   engines/overlay/shaders/overlay_edit_mesh_analysis_frag.glsl
   engines/overlay/shaders/overlay_edit_mesh_analysis_vert.glsl
   engines/overlay/shaders/overlay_edit_mesh_common_lib.glsl
+  engines/overlay/shaders/overlay_edit_mesh_depth_vert.glsl
   engines/overlay/shaders/overlay_edit_mesh_frag.glsl
   engines/overlay/shaders/overlay_edit_mesh_geom.glsl
   engines/overlay/shaders/overlay_edit_mesh_normal_vert.glsl
@@ -702,6 +704,7 @@ set(GLSL_SRC
   engines/overlay/shaders/overlay_point_varying_color_frag.glsl
   engines/overlay/shaders/overlay_point_varying_color_varying_outline_aa_frag.glsl
   engines/overlay/shaders/overlay_pointcloud_only_vert.glsl
+  engines/overlay/shaders/overlay_sculpt_curves_cage_vert.glsl
   engines/overlay/shaders/overlay_sculpt_curves_selection_frag.glsl
   engines/overlay/shaders/overlay_sculpt_curves_selection_vert.glsl
   engines/overlay/shaders/overlay_sculpt_mask_frag.glsl
@@ -820,7 +823,6 @@ if(WITH_GTESTS)
       tests/draw_pass_test.cc
       tests/draw_testing.cc
       tests/eevee_test.cc
-      tests/shaders_test.cc
 
       tests/draw_testing.hh
     )

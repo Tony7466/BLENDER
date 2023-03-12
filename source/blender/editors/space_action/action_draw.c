@@ -44,8 +44,9 @@
 
 #include "action_intern.h"
 
-/* ************************************************************************* */
-/* Channel List */
+/* -------------------------------------------------------------------- */
+/** \name Channel List
+ * \{ */
 
 void draw_channel_names(bContext *C, bAnimContext *ac, ARegion *region)
 {
@@ -61,7 +62,8 @@ void draw_channel_names(bContext *C, bAnimContext *ac, ARegion *region)
   items = ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
 
   const int height = ANIM_UI_get_channels_total_height(v2d, items);
-  v2d->tot.ymin = -height;
+  const float pad_bottom = BLI_listbase_is_empty(ac->markers) ? 0 : UI_MARKER_MARGIN_Y;
+  v2d->tot.ymin = -(height + pad_bottom);
 
   /* need to do a view-sync here, so that the keys area doesn't jump around (it must copy this) */
   UI_view2d_sync(NULL, ac->area, v2d, V2D_LOCK_COPY);
@@ -109,8 +111,11 @@ void draw_channel_names(bContext *C, bAnimContext *ac, ARegion *region)
   ANIM_animdata_freelist(&anim_data);
 }
 
-/* ************************************************************************* */
-/* Keyframes */
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Keyframes
+ * \{ */
 
 /* extra padding for lengths (to go under scrollers) */
 #define EXTRA_SCROLL_PAD 100.0f
@@ -195,7 +200,8 @@ void draw_channel_strips(bAnimContext *ac, SpaceAction *saction, ARegion *region
   size_t items = ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
 
   const int height = ANIM_UI_get_channels_total_height(v2d, items);
-  v2d->tot.ymin = -height;
+  const float pad_bottom = BLI_listbase_is_empty(ac->markers) ? 0 : UI_MARKER_MARGIN_Y;
+  v2d->tot.ymin = -(height + pad_bottom);
 
   /* Draw the manual frame ranges for actions in the background of the dopesheet.
    * The action editor has already drawn the range for its action so it's not needed. */
@@ -422,8 +428,11 @@ void draw_channel_strips(bAnimContext *ac, SpaceAction *saction, ARegion *region
   ANIM_animdata_freelist(&anim_data);
 }
 
-/* ************************************************************************* */
-/* Timeline - Caches */
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Timeline - Caches
+ * \{ */
 
 static bool timeline_cache_is_hidden_by_setting(SpaceAction *saction, PTCacheID *pid)
 {
@@ -657,4 +666,4 @@ void timeline_draw_cache(SpaceAction *saction, Object *ob, Scene *scene)
   BLI_freelistN(&pidlist);
 }
 
-/* ************************************************************************* */
+/** \} */
