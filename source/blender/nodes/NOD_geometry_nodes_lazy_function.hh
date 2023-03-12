@@ -221,6 +221,10 @@ class GeometryNodesLazyFunctionLogger : public fn::lazy_function::GraphExecutor:
                                const lf::Context &context) const override;
 };
 
+namespace node_geo_switch_cc {
+std::unique_ptr<LazyFunction> get_switch_node_lazy_function(const bNode &node);
+}
+
 /**
  * Tells the lazy-function graph evaluator which nodes have side effects based on the current
  * context. For example, the same viewer node can have side effects in one context, but not in

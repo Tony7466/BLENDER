@@ -73,10 +73,7 @@ static void lazy_function_interface_from_node(const bNode &node,
                                               Vector<lf::Output> &r_outputs)
 {
   const bool is_muted = node.is_muted();
-  const bool supports_laziness = node.typeinfo->geometry_node_execute_supports_laziness ||
-                                 node.is_group();
-  const lf::ValueUsage input_usage = supports_laziness ? lf::ValueUsage::Maybe :
-                                                         lf::ValueUsage::Used;
+  const lf::ValueUsage input_usage = lf::ValueUsage::Used;
   for (const bNodeSocket *socket : node.input_sockets()) {
     if (!socket->is_available()) {
       continue;
@@ -1239,7 +1236,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     this->build_attribute_propagation_sets();
     this->fix_link_cycles();
 
-    // this->print_graph();
+    this->print_graph();
 
     lf_graph_->update_node_indices();
     lf_graph_info_->num_inline_nodes_approximate += lf_graph_->nodes().size();
@@ -1329,6 +1326,10 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         }
         case GEO_NODE_VIEWER: {
           this->handle_viewer_node(*bnode);
+          break;
+        }
+        case GEO_NODE_SWITCH: {
+          this->handle_switch_node(*bnode);
           break;
         }
         default: {
@@ -1570,6 +1571,32 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     }
 
     mapping_->viewer_node_map.add(&bnode, &lf_node);
+  }
+
+  void handle_switch_node(const bNode &bnode)
+  {
+    std::unique_ptr<LazyFunction> lazy_function =
+        node_geo_switch_cc::get_switch_node_lazy_function(bnode);
+    lf::FunctionNode &lf_node = lf_graph_->add_function(*lazy_function);
+    lf_graph_info_->functions.append(std::move(lazy_function));
+
+    int input_index = 0;
+    for (const bNodeSocket *bsocket : bnode.input_sockets()) {
+      if (bsocket->is_available()) {
+        lf::InputSocket &lf_socket = lf_node.input(input_index);
+        input_socket_map_.add(bsocket, &lf_socket);
+        mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);
+        input_index++;
+      }
+    }
+    for (const bNodeSocket *bsocket : bnode.output_sockets()) {
+      if (bsocket->is_available()) {
+        lf::OutputSocket &lf_socket = lf_node.output(0);
+        output_socket_map_.add(bsocket, &lf_socket);
+        mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);
+        break;
+      }
+    }
   }
 
   void handle_undefined_node(const bNode &bnode)
