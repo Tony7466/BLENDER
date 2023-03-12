@@ -676,11 +676,9 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
           cp = ts->color_strip;
           break;
         case TH_SEQ_ACTIVE:
-        case TH_NLA_ACTIVE:
           cp = ts->active_strip;
           break;
         case TH_SEQ_SELECTED:
-        case TH_NLA_SELECTED:
           cp = ts->selected_strip;
           break;
 
