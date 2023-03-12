@@ -60,9 +60,12 @@ void BasicParams::output_set_impl(const Span<int> indices)
   }
 }
 
-bool BasicParams::output_was_set_impl(const int index) const
+void BasicParams::output_was_set_impl(const Span<int> indices, MutableSpan<bool> r_result) const
 {
-  return set_outputs_[index];
+  for (const int i : indices.index_range()) {
+    const int index = indices[i];
+    r_result[i] = set_outputs_[index];
+  }
 }
 
 ValueUsage BasicParams::get_output_usage_impl(const int index) const

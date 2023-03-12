@@ -1285,10 +1285,13 @@ class GraphExecutorLFParams final : public Params {
     }
   }
 
-  bool output_was_set_impl(const int index) const override
+  void output_was_set_impl(const Span<int> indices, MutableSpan<bool> r_result) const override
   {
-    const OutputState &output_state = node_state_.outputs[index];
-    return output_state.has_been_computed;
+    for (const int i : indices.index_range()) {
+      const int index = indices[i];
+      const OutputState &output_state = node_state_.outputs[index];
+      r_result[i] = output_state.has_been_computed;
+    }
   }
 
   ValueUsage get_output_usage_impl(const int index) const override
