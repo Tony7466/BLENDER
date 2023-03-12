@@ -5,11 +5,6 @@
 #include "UI_interface.h"
 #include "UI_resources.h"
 
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
-
-#include "BKE_material.h"
-
 #include "NOD_socket_search_link.hh"
 
 #include "FN_field_cpp_type.hh"
