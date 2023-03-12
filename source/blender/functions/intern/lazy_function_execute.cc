@@ -32,13 +32,17 @@ void BasicParams::try_get_input_data_ptr_impl(const Span<int> indices,
   }
 }
 
-void *BasicParams::try_get_input_data_ptr_or_request_impl(const int index)
+void BasicParams::try_get_input_data_ptr_or_request_impl(const Span<int> indices,
+                                                         MutableSpan<void *> r_data)
 {
-  void *value = inputs_[index].get();
-  if (value == nullptr) {
-    input_usages_[index] = ValueUsage::Used;
+  for (const int i : indices.index_range()) {
+    const int index = indices[i];
+    void *value = inputs_[index].get();
+    if (value == nullptr) {
+      input_usages_[index] = ValueUsage::Used;
+    }
+    r_data[i] = value;
   }
-  return value;
 }
 
 void *BasicParams::get_output_data_ptr_impl(const int index)
