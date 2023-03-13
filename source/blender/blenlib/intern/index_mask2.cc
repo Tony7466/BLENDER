@@ -356,6 +356,7 @@ void IndexMask::foreach_span(FunctionRef<void(OffsetSpan<int64_t, int16_t>)> fn)
       const int64_t next_segment_i = segment_i + 1;
       const int64_t cumulative_segment_size = chunk.cumulative_segment_sizes[next_segment_i];
       const int64_t stored_segment_size = cumulative_segment_size - prev_cumulative_segment_size;
+      prev_cumulative_segment_size = cumulative_segment_size;
       const bool is_last_segment = is_last_chunk & (segment_i == final_segment_i);
       const int64_t segment_drop_back = is_last_segment * final_drop_back;
       const int16_t *indices_in_segment = chunk.indices_by_segment[segment_i] + segment_drop_front;
