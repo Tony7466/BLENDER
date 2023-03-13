@@ -450,6 +450,8 @@ void CurvesConstraintSolver::initialize(const bke::CurvesGeometry &curves,
 
   goals_.reinitialize(curves.curves_num());
   has_goals_.reinitialize(curves.curves_num());
+  closest_points_.reinitialize(curves.curves_num());
+  closest_factors_.reinitialize(curves.curves_num());
 }
 
 void CurvesConstraintSolver::solve_step(bke::CurvesGeometry &curves,
@@ -478,7 +480,7 @@ void CurvesConstraintSolver::solve_step(bke::CurvesGeometry &curves,
         break;
       case GoalType::Slip:
         geometry::curve_constraints::solve_slip_constraints(
-            curves.points_by_curve(), goal_selection, goals_, curves.positions_for_write());
+            curves.points_by_curve(), goal_selection, goals_, curves.positions_for_write(), closest_points_, closest_factors_);
         break;
     }
     if (solve_length) {

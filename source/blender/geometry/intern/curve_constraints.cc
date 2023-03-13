@@ -47,11 +47,24 @@ void solve_length_constraints(const OffsetIndices<int> points_by_curve,
     for (const int curve_i : curve_selection.slice(range)) {
       const IndexRange points = points_by_curve[curve_i].drop_back(1);
       for (const int point_i : points) {
-        const float3 &p1 = positions[point_i];
-        float3 &p2 = positions[point_i + 1];
-        const float3 direction = math::normalize(p2 - p1);
+        float3 &p0 = positions[point_i];
+        float3 &p1 = positions[point_i + 1];
+
         const float goal_length = segment_lenghts[point_i];
-        p2 = p1 + direction * goal_length;
+        float length;
+        const float3 gradient_p0 = math::normalize_and_get_length(p0 - p1, length);
+        const float3 gradient_p1 = -gradient_p0;
+        const float distance = length - goal_length;
+
+        const float weight_p0 = 1.0f;
+        const float weight_p1 = 1.0f;
+
+        const float gradient_sq_sum = weight_p0 * math::dot(gradient_p0, gradient_p0) +
+                                      weight_p1 * math::dot(gradient_p1, gradient_p1);
+        const float lambda = distance / gradient_sq_sum;
+
+        p0 -= weight_p0 * lambda * gradient_p0;
+        p1 -= weight_p1 * lambda * gradient_p1;
       }
     }
   });
@@ -173,6 +186,119 @@ void solve_collision_constraints(const OffsetIndices<int> points_by_curve,
   });
 }
 
+#if 1
+void solve_slip_constraints(const OffsetIndices<int> points_by_curve,
+                            const IndexMask curve_selection,
+                            const Span<float3> goals,
+                            MutableSpan<float3> positions_cu,
+                            MutableSpan<int> closest_points,
+                            MutableSpan<float> closest_factors)
+{
+  threading::parallel_for(curve_selection.index_range(), 64, [&](const IndexRange range) {
+    for (const int curve_i : curve_selection.slice(range)) {
+      const IndexRange points = points_by_curve[curve_i].drop_back(1);
+      const float3 &goal = goals[curve_i];
+
+      // XXX computing the closest point from scratch every step is not very efficient.
+      // Could use an iterative approach, store a "current closest" point, then move that along the curve each step.
+      // This becomes path-dependent and may require smaller substeps, but would also be more robust
+      // (less likely to jump suddenly because some part of the curve moves closer to the goal, it would always move
+      // to the next local minimum)
+
+//      {
+//        int min_point_i = -1;
+//        float min_distance_sq = FLT_MAX;
+//        float min_lambda;
+//        for (const int point_i : points) {
+//          float3 closest;
+//          const float lambda = closest_to_line_segment_v3(
+//              closest, goal, positions_cu[point_i], positions_cu[point_i + 1]);
+//          const float distance_sq = math::distance_squared(closest, goal);
+//          if (distance_sq < min_distance_sq) {
+//            min_point_i = point_i;
+//            min_distance_sq = distance_sq;
+//            min_lambda = lambda;
+//          }
+//        }
+//        if (min_point_i >= 0) {
+//          closest_points[curve_i] = min_point_i;
+//          closest_lambdas[curve_i] = min_lambda;
+//        }
+//      }
+
+      int &closest_point = closest_points[curve_i];
+      float &closest_u = closest_factors[curve_i];
+      float3 p0_fallback = positions_cu[closest_point];
+      float3 p3_fallback = positions_cu[closest_point + 1];
+      float3 &p0 = closest_point > 0 ? positions_cu[closest_point - 1] : p0_fallback;
+      float3 &p1 = positions_cu[closest_point];
+      float3 &p2 = positions_cu[closest_point + 1];
+      float3 &p3 = closest_point < points.last() ? positions_cu[closest_point + 2] : p3_fallback;
+
+      const float u = closest_u;
+      const float u2 = u * u;
+      const float u3 = u2 * u;
+      const float v = 1.0 - u;
+      const float v2 = v * v;
+      const float v3 = v2 * v;
+
+      /* Uniform cubic b-spline basis functions ensure smooth derivatives. */
+      const float b0 = v3 / 6.0f;
+      const float b1 = (3.0f * u3 - 6.0f * u2 + 4.0f) / 6.0f;
+      const float b2 = (-3.0f * u3 + 3.0f * u2 + 3.0f * u + 1.0f) / 6.0f;
+      const float b3 = u3 / 6.0f;
+      const float db0 = v2 / 2.0f;
+      const float db1 = (3.0f * u2 - 4.0f * u) / 2.0f;
+      const float db2 = (-3.0f * u2 + 2.0f * u + 1.0f) / 2.0f;
+      const float db3 = u2 / 2.0f;
+
+      /* Linear basis for testing */
+//      const float b0 = 0.0f;
+//      const float b1 = v;
+//      const float b2 = u;
+//      const float b3 = 0.0f;
+//      const float db0 = 0.0f;
+//      const float db1 = -1.0f;
+//      const float db2 = 1.0f;
+//      const float db3 = 0.0f;
+
+      const float3 distance = b0 * p0 + b1 * p1 + b2 * p2 + b3 * p3 - goal;
+      /* Note: technically gradients here are float3x3 matrices,
+       * but they are scaled identities, so only need to store the scalar factor. */
+      const float gradient_p0 = b0;
+      const float gradient_p1 = b1;
+      const float gradient_p2 = b2;
+      const float gradient_p3 = b3;
+      const float3 gradient_u = p0 * db0 + p1 * db1 + p2 * db2 + p3 * db3;
+
+      const float weight_p0 = 1.0f;
+      const float weight_p1 = 1.0f;
+      const float weight_p2 = 1.0f;
+      const float weight_p3 = 1.0f;
+      const float weight_u = 100.0f;
+
+      const float gradient_sq_sum = weight_p0 * gradient_p0 * gradient_p0 +
+                                    weight_p1 * gradient_p1 * gradient_p1 +
+                                    weight_p2 * gradient_p2 * gradient_p2 +
+                                    weight_p3 * gradient_p3 * gradient_p3 +
+                                    weight_u * math::dot(gradient_u, gradient_u);
+      const float3 lambda = distance / gradient_sq_sum;
+
+      /* See above: gradients wrt. positions are actually matrices, but with uniform diagonals. */
+      p0 -= weight_p0 * lambda * gradient_p0;
+      p1 -= weight_p1 * lambda * gradient_p1;
+      p2 -= weight_p2 * lambda * gradient_p2;
+      p3 -= weight_p3 * lambda * gradient_p3;
+
+      const float curve_factor_unclamped = closest_point + closest_u - weight_u * math::dot(lambda, gradient_u);
+      const int p = closest_point;
+      closest_point = math::clamp((int)curve_factor_unclamped, (int)points.first(), (int)points.last());
+      closest_u = math::clamp(curve_factor_unclamped, (float)points.first(), (float)points.last() + 1.0f) - (float)closest_point;
+      std::cout << "U: " << p << ":" << u << " -> " << closest_point << ":" << closest_u << std::endl;
+    }
+  });
+}
+#else
 void solve_slip_constraints(const OffsetIndices<int> points_by_curve,
                             const IndexMask curve_selection,
                             const Span<float3> goals,
@@ -215,5 +341,6 @@ void solve_slip_constraints(const OffsetIndices<int> points_by_curve,
     }
   });
 }
+#endif
 
 }  // namespace blender::geometry::curve_constraints

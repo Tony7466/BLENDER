@@ -166,6 +166,8 @@ struct CurvesConstraintSolver {
   GoalType goal_type_;
   Array<bool> has_goals_;
   Array<float3> goals_;
+  Array<int> closest_points_;
+  Array<float> closest_factors_;
 
  public:
   void initialize(const bke::CurvesGeometry &curves,
@@ -200,6 +202,24 @@ struct CurvesConstraintSolver {
   MutableSpan<bool> has_goals()
   {
     return has_goals_;
+  }
+
+  Span<int> closest_points() const
+  {
+    return closest_points_;
+  }
+  MutableSpan<int> closest_points()
+  {
+    return closest_points_;
+  }
+
+  Span<float> closest_factors() const
+  {
+    return closest_factors_;
+  }
+  MutableSpan<float> closest_factors()
+  {
+    return closest_factors_;
   }
 };
 

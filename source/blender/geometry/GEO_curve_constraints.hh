@@ -27,6 +27,8 @@ void solve_collision_constraints(OffsetIndices<int> points_by_curve,
 void solve_slip_constraints(OffsetIndices<int> points_by_curve,
                             IndexMask curve_selection,
                             Span<float3> goals,
-                            MutableSpan<float3> positions_cu);
+                            MutableSpan<float3> positions_cu,
+                            MutableSpan<int> closest_points,
+                            MutableSpan<float> closest_factors);
 
 }  // namespace blender::geometry::curve_constraints

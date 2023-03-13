@@ -121,6 +121,8 @@ struct CombOperationExecutor {
   {
     MutableSpan<bool> has_goals = self_->constraint_solver_.has_goals();
     MutableSpan<float3> goals = self_->constraint_solver_.goals();
+    MutableSpan<int> closest_points = self_->constraint_solver_.closest_points();
+    MutableSpan<float> closest_factors = self_->constraint_solver_.closest_factors();
 
     BLI_assert(goals.size() == points_by_curve.ranges_num());
 
@@ -152,7 +154,8 @@ struct CombOperationExecutor {
           if (!has_goals[curve_i]) {
             has_goals[curve_i] = true;
             goals[curve_i] = min_closest;
-            UNUSED_VARS(min_lambda);
+            closest_points[curve_i] = min_point_i;
+            closest_factors[curve_i] = min_lambda;
           }
         }
         else {
