@@ -394,19 +394,17 @@ static void CustomData_to_bmeshpoly(CustomData *fdata, CustomData *ldata, int to
   for (int i = 0; i < fdata->totlayer; i++) {
     if (fdata->layers[i].type == CD_MTFACE) {
       CustomData_add_layer_named(
-          ldata, CD_PROP_FLOAT2, CD_SET_DEFAULT, nullptr, totloop, fdata->layers[i].name);
+          ldata, CD_PROP_FLOAT2, CD_SET_DEFAULT, totloop, fdata->layers[i].name);
     }
     else if (fdata->layers[i].type == CD_MCOL) {
       CustomData_add_layer_named(
-          ldata, CD_PROP_BYTE_COLOR, CD_SET_DEFAULT, nullptr, totloop, fdata->layers[i].name);
+          ldata, CD_PROP_BYTE_COLOR, CD_SET_DEFAULT, totloop, fdata->layers[i].name);
     }
     else if (fdata->layers[i].type == CD_MDISPS) {
-      CustomData_add_layer_named(
-          ldata, CD_MDISPS, CD_SET_DEFAULT, nullptr, totloop, fdata->layers[i].name);
+      CustomData_add_layer_named(ldata, CD_MDISPS, CD_SET_DEFAULT, totloop, fdata->layers[i].name);
     }
     else if (fdata->layers[i].type == CD_TESSLOOPNORMAL) {
-      CustomData_add_layer_named(
-          ldata, CD_NORMAL, CD_SET_DEFAULT, nullptr, totloop, fdata->layers[i].name);
+      CustomData_add_layer_named(ldata, CD_NORMAL, CD_SET_DEFAULT, totloop, fdata->layers[i].name);
     }
   }
 }
@@ -445,13 +443,13 @@ static void convert_mfaces_to_mpolys(ID *id,
       CustomData_get_layer_named_for_write(pdata, CD_PROP_INT32, "material_index", totpoly));
   if (material_indices == nullptr) {
     material_indices = static_cast<int *>(CustomData_add_layer_named(
-        pdata, CD_PROP_INT32, CD_SET_DEFAULT, nullptr, totpoly, "material_index"));
+        pdata, CD_PROP_INT32, CD_SET_DEFAULT, totpoly, "material_index"));
   }
   bool *sharp_faces = static_cast<bool *>(
       CustomData_get_layer_named_for_write(pdata, CD_PROP_BOOL, "sharp_face", totpoly));
   if (!sharp_faces) {
-    sharp_faces = static_cast<bool *>(CustomData_add_layer_named(
-        pdata, CD_PROP_BOOL, CD_SET_DEFAULT, nullptr, totpoly, "sharp_face"));
+    sharp_faces = static_cast<bool *>(
+        CustomData_add_layer_named(pdata, CD_PROP_BOOL, CD_SET_DEFAULT, totpoly, "sharp_face"));
   }
 
   numTex = CustomData_number_of_layers(fdata, CD_MTFACE);
@@ -625,28 +623,25 @@ static void add_mface_layers(Mesh &mesh, CustomData *fdata, CustomData *ldata, i
 
   for (int i = 0; i < ldata->totlayer; i++) {
     if (ldata->layers[i].type == CD_PROP_FLOAT2) {
-      CustomData_add_layer_named(
-          fdata, CD_MTFACE, CD_SET_DEFAULT, nullptr, total, ldata->layers[i].name);
+      CustomData_add_layer_named(fdata, CD_MTFACE, CD_SET_DEFAULT, total, ldata->layers[i].name);
     }
     if (ldata->layers[i].type == CD_PROP_BYTE_COLOR) {
-      CustomData_add_layer_named(
-          fdata, CD_MCOL, CD_SET_DEFAULT, nullptr, total, ldata->layers[i].name);
+      CustomData_add_layer_named(fdata, CD_MCOL, CD_SET_DEFAULT, total, ldata->layers[i].name);
     }
     else if (ldata->layers[i].type == CD_PREVIEW_MLOOPCOL) {
       CustomData_add_layer_named(
-          fdata, CD_PREVIEW_MCOL, CD_SET_DEFAULT, nullptr, total, ldata->layers[i].name);
+          fdata, CD_PREVIEW_MCOL, CD_SET_DEFAULT, total, ldata->layers[i].name);
     }
     else if (ldata->layers[i].type == CD_ORIGSPACE_MLOOP) {
       CustomData_add_layer_named(
-          fdata, CD_ORIGSPACE, CD_SET_DEFAULT, nullptr, total, ldata->layers[i].name);
+          fdata, CD_ORIGSPACE, CD_SET_DEFAULT, total, ldata->layers[i].name);
     }
     else if (ldata->layers[i].type == CD_NORMAL) {
       CustomData_add_layer_named(
-          fdata, CD_TESSLOOPNORMAL, CD_SET_DEFAULT, nullptr, total, ldata->layers[i].name);
+          fdata, CD_TESSLOOPNORMAL, CD_SET_DEFAULT, total, ldata->layers[i].name);
     }
     else if (ldata->layers[i].type == CD_TANGENT) {
-      CustomData_add_layer_named(
-          fdata, CD_TANGENT, CD_SET_DEFAULT, nullptr, total, ldata->layers[i].name);
+      CustomData_add_layer_named(fdata, CD_TANGENT, CD_SET_DEFAULT, total, ldata->layers[i].name);
     }
   }
 
@@ -1314,8 +1309,8 @@ void BKE_mesh_legacy_face_set_to_generic(Mesh *mesh)
     }
   }
   if (faceset_data != nullptr) {
-    CustomData_add_layer_named(
-        &mesh->pdata, CD_PROP_INT32, CD_ASSIGN, faceset_data, mesh->totpoly, ".sculpt_face_set");
+    CustomData_add_layer_named_with_existing_data(
+        &mesh->pdata, CD_PROP_INT32, faceset_data, mesh->totpoly, ".sculpt_face_set");
   }
 }
 
@@ -1802,32 +1797,31 @@ void BKE_mesh_legacy_convert_uvs_to_generic(Mesh *mesh)
     });
 
     CustomData_free_layer_named(&mesh->ldata, name.c_str(), mesh->totloop);
-    CustomData_add_layer_named(
-        &mesh->ldata, CD_PROP_FLOAT2, CD_ASSIGN, coords, mesh->totloop, name.c_str());
+    CustomData_add_layer_named_with_existing_data(
+        &mesh->ldata, CD_PROP_FLOAT2, coords, mesh->totloop, name.c_str());
     char buffer[MAX_CUSTOMDATA_LAYER_NAME];
     if (vert_selection) {
-      CustomData_add_layer_named(&mesh->ldata,
-                                 CD_PROP_BOOL,
-                                 CD_ASSIGN,
-                                 vert_selection,
-                                 mesh->totloop,
-                                 BKE_uv_map_vert_select_name_get(name.c_str(), buffer));
+      CustomData_add_layer_named_with_existing_data(
+          &mesh->ldata,
+          CD_PROP_BOOL,
+          vert_selection,
+          mesh->totloop,
+          BKE_uv_map_vert_select_name_get(name.c_str(), buffer));
     }
     if (edge_selection) {
-      CustomData_add_layer_named(&mesh->ldata,
-                                 CD_PROP_BOOL,
-                                 CD_ASSIGN,
-                                 edge_selection,
-                                 mesh->totloop,
-                                 BKE_uv_map_edge_select_name_get(name.c_str(), buffer));
+      CustomData_add_layer_named_with_existing_data(
+          &mesh->ldata,
+          CD_PROP_BOOL,
+          edge_selection,
+          mesh->totloop,
+          BKE_uv_map_edge_select_name_get(name.c_str(), buffer));
     }
     if (pin) {
-      CustomData_add_layer_named(&mesh->ldata,
-                                 CD_PROP_BOOL,
-                                 CD_ASSIGN,
-                                 pin,
-                                 mesh->totloop,
-                                 BKE_uv_map_pin_name_get(name.c_str(), buffer));
+      CustomData_add_layer_named_with_existing_data(&mesh->ldata,
+                                                    CD_PROP_BOOL,
+                                                    pin,
+                                                    mesh->totloop,
+                                                    BKE_uv_map_pin_name_get(name.c_str(), buffer));
     }
   }
 
@@ -2000,7 +1994,7 @@ void BKE_mesh_legacy_convert_verts_to_positions(Mesh *mesh)
                           mesh->totvert);
   MutableSpan<float3> positions(
       static_cast<float3 *>(CustomData_add_layer_named(
-          &mesh->vdata, CD_PROP_FLOAT3, CD_CONSTRUCT, nullptr, mesh->totvert, "position")),
+          &mesh->vdata, CD_PROP_FLOAT3, CD_CONSTRUCT, mesh->totvert, "position")),
       mesh->totvert);
   threading::parallel_for(verts.index_range(), 2048, [&](IndexRange range) {
     for (const int i : range) {

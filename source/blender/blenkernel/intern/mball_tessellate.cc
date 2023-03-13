@@ -1463,8 +1463,8 @@ Mesh *BKE_mball_polygonize(Depsgraph *depsgraph, Scene *scene, Object *ob)
   Mesh *mesh = (Mesh *)BKE_id_new_nomain(ID_ME, ((ID *)ob->data)->name + 2);
 
   mesh->totvert = int(process.curvertex);
-  CustomData_add_layer_named(
-      &mesh->vdata, CD_PROP_FLOAT3, CD_ASSIGN, process.co, mesh->totvert, "position");
+  CustomData_add_layer_named_with_existing_data(
+      &mesh->vdata, CD_PROP_FLOAT3, process.co, mesh->totvert, "position");
   process.co = nullptr;
 
   mesh->totpoly = int(process.curindex);

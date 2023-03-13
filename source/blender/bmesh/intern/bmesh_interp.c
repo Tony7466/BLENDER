@@ -856,7 +856,7 @@ void BM_data_layer_add_named(BMesh *bm, CustomData *data, int type, const char *
   /* The pool is now owned by `olddata` and must not be shared. */
   data->pool = NULL;
 
-  CustomData_add_layer_named(data, type, CD_SET_DEFAULT, NULL, 0, name);
+  CustomData_add_layer_named(data, type, CD_SET_DEFAULT, 0, name);
 
   update_data_blocks(bm, &olddata, data);
   if (olddata.layers) {

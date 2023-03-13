@@ -273,19 +273,18 @@ int ED_mesh_uv_add(
     }
 
     if (CustomData_has_layer(&me->ldata, CD_PROP_FLOAT2) && do_init) {
-      CustomData_add_layer_named(&me->ldata,
-                                 CD_PROP_FLOAT2,
-                                 CD_DUPLICATE,
-                                 const_cast<float2 *>(static_cast<const float2 *>(
-                                     CustomData_get_layer(&me->ldata, CD_PROP_FLOAT2))),
-                                 me->totloop,
-                                 unique_name);
+      CustomData_add_layer_named_with_existing_data(
+          &me->ldata,
+          CD_PROP_FLOAT2,
+          MEM_dupallocN(CustomData_get_layer(&me->ldata, CD_PROP_FLOAT2)),
+          me->totloop,
+          unique_name);
 
       is_init = true;
     }
     else {
       CustomData_add_layer_named(
-          &me->ldata, CD_PROP_FLOAT2, CD_SET_DEFAULT, nullptr, me->totloop, unique_name);
+          &me->ldata, CD_PROP_FLOAT2, CD_SET_DEFAULT, me->totloop, unique_name);
     }
 
     if (active_set || layernum_dst == 0) {
@@ -343,7 +342,7 @@ static bool *ensure_corner_boolean_attribute(Mesh &mesh, const blender::StringRe
       CustomData_get_layer_named_for_write(&mesh.ldata, CD_PROP_BOOL, name.c_str(), mesh.totloop));
   if (!data) {
     data = static_cast<bool *>(CustomData_add_layer_named(
-        &mesh.ldata, CD_PROP_BOOL, CD_SET_DEFAULT, nullptr, mesh.totpoly, name.c_str()));
+        &mesh.ldata, CD_PROP_BOOL, CD_SET_DEFAULT, mesh.totpoly, name.c_str()));
   }
   return data;
 }
@@ -1144,8 +1143,7 @@ static void mesh_add_verts(Mesh *mesh, int len)
   CustomData_copy_data(&mesh->vdata, &vdata, 0, 0, mesh->totvert);
 
   if (!CustomData_get_layer_named(&vdata, CD_PROP_FLOAT3, "position")) {
-    CustomData_add_layer_named(
-        &vdata, CD_PROP_FLOAT3, CD_SET_DEFAULT, nullptr, totvert, "position");
+    CustomData_add_layer_named(&vdata, CD_PROP_FLOAT3, CD_SET_DEFAULT, totvert, "position");
   }
 
   CustomData_free(&mesh->vdata, mesh->totvert);
