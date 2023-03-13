@@ -292,7 +292,7 @@ static CurvesGeometry resample_to_uniform(const CurvesGeometry &src_curves,
   /* Use a "for each group of curves: for each attribute: for each curve" pattern to work on
    * smaller sections of data that ideally fit into CPU cache better than simply one attribute at a
    * time or one curve at a time. */
-  selection.foreach_span_parallel(512, [&](const auto sliced_selection) {
+  selection.foreach_span(GrainSize(512), [&](const auto sliced_selection) {
     Vector<std::byte> evaluated_buffer;
 
     /* Gather uniform samples based on the accumulated lengths of the original curve. */
@@ -436,7 +436,7 @@ CurvesGeometry resample_to_evaluated(const CurvesGeometry &src_curves,
   gather_point_attributes_to_interpolate(src_curves, dst_curves, attributes, output_ids);
 
   src_curves.ensure_can_interpolate_to_evaluated();
-  selection.foreach_span_parallel(512, [&](const auto sliced_selection) {
+  selection.foreach_span(GrainSize(512), [&](const auto sliced_selection) {
     /* Evaluate generic point attributes directly to the result attributes. */
     for (const int i_attribute : attributes.dst.index_range()) {
       attribute_math::convert_to_static_type(attributes.src[i_attribute].type(), [&](auto dummy) {

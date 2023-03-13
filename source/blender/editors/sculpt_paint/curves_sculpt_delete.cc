@@ -171,7 +171,7 @@ struct DeleteOperationExecutor {
     const float brush_radius_sq_re = pow2f(brush_radius_re);
     const OffsetIndices points_by_curve = curves_->points_by_curve();
 
-    curve_selection_.foreach_span_parallel(512, [&](const auto mask_segment) {
+    curve_selection_.foreach_span(GrainSize(512), [&](const auto mask_segment) {
       for (const int curve_i : mask_segment) {
         const IndexRange points = points_by_curve[curve_i];
         if (points.size() == 1) {
@@ -235,7 +235,7 @@ struct DeleteOperationExecutor {
     const float brush_radius_sq_cu = pow2f(brush_radius_cu);
     const OffsetIndices points_by_curve = curves_->points_by_curve();
 
-    curve_selection_.foreach_span_parallel(512, [&](const auto mask_segment) {
+    curve_selection_.foreach_span(GrainSize(512), [&](const auto mask_segment) {
       for (const int curve_i : mask_segment) {
         const IndexRange points = points_by_curve[curve_i];
 

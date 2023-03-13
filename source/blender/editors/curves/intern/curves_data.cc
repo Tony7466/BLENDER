@@ -22,7 +22,7 @@ void transverts_from_curves_positions_create(bke::CurvesGeometry &curves, TransV
       MEM_calloc_arrayN(selection.size(), sizeof(TransVert), __func__));
   tvs->transverts_tot = selection.size();
 
-  selection.foreach_span_parallel(1024, [&](const auto mask_segment, const IndexRange range) {
+  selection.foreach_span(GrainSize(1024), [&](const auto mask_segment, const IndexRange range) {
     for (const int i : mask_segment.index_range()) {
       TransVert &tv = tvs->transverts[range[i]];
       tv.loc = positions[mask_segment[i]];

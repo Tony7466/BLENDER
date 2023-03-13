@@ -23,7 +23,7 @@ void compute_segment_lengths(const OffsetIndices<int> points_by_curve,
 {
   BLI_assert(r_segment_lengths.size() == points_by_curve.total_size());
 
-  curve_selection.foreach_span_parallel(256, [&](const auto mask_segment) {
+  curve_selection.foreach_span(GrainSize(256), [&](const auto mask_segment) {
     for (const int curve_i : mask_segment) {
       const IndexRange points = points_by_curve[curve_i].drop_back(1);
       for (const int point_i : points) {
@@ -43,7 +43,7 @@ void solve_length_constraints(const OffsetIndices<int> points_by_curve,
 {
   BLI_assert(segment_lenghts.size() == points_by_curve.total_size());
 
-  curve_selection.foreach_span_parallel(256, [&](const auto mask_segment) {
+  curve_selection.foreach_span(GrainSize(256), [&](const auto mask_segment) {
     for (const int curve_i : mask_segment) {
       const IndexRange points = points_by_curve[curve_i].drop_back(1);
       for (const int point_i : points) {
@@ -74,7 +74,7 @@ void solve_length_and_collision_constraints(const OffsetIndices<int> points_by_c
   const float radius = 0.005f;
   const int max_collisions = 5;
 
-  curve_selection.foreach_span_parallel(64, [&](const auto mask_segment) {
+  curve_selection.foreach_span(GrainSize(64), [&](const auto mask_segment) {
     for (const int curve_i : mask_segment) {
       const IndexRange points = points_by_curve[curve_i];
 

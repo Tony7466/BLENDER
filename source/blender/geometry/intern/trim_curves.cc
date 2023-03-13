@@ -197,7 +197,7 @@ static void fill_bezier_data(bke::CurvesGeometry &dst_curves, const IndexMask se
   MutableSpan<int8_t> handle_types_left = dst_curves.handle_types_left_for_write();
   MutableSpan<int8_t> handle_types_right = dst_curves.handle_types_right_for_write();
 
-  selection.foreach_index_parallel(4096, [&](const int64_t curve_i) {
+  selection.foreach_index(GrainSize(4096), [&](const int64_t curve_i) {
     const IndexRange points = dst_points_by_curve[curve_i];
     handle_types_right.slice(points).fill(int8_t(BEZIER_HANDLE_FREE));
     handle_types_left.slice(points).fill(int8_t(BEZIER_HANDLE_FREE));
@@ -593,7 +593,7 @@ static void trim_attribute_linear(const bke::CurvesGeometry &src_curves,
     attribute_math::convert_to_static_type(attribute.meta_data.data_type, [&](auto dummy) {
       using T = decltype(dummy);
 
-      selection.foreach_span_parallel(512, [&](const auto sliced_selection) {
+      selection.foreach_span(GrainSize(512), [&](const auto sliced_selection) {
         for (const int64_t curve_i : sliced_selection) {
           const IndexRange src_points = src_points_by_curve[curve_i];
 
@@ -622,7 +622,7 @@ static void trim_polygonal_curves(const bke::CurvesGeometry &src_curves,
   const Span<float3> src_positions = src_curves.positions();
   MutableSpan<float3> dst_positions = dst_curves.positions_for_write();
 
-  selection.foreach_index_parallel(512, [&](const int64_t curve_i) {
+  selection.foreach_index(GrainSize(512), [&](const int64_t curve_i) {
     const IndexRange src_points = src_points_by_curve[curve_i];
     const IndexRange dst_points = dst_points_by_curve[curve_i];
 
@@ -658,7 +658,7 @@ static void trim_catmull_rom_curves(const bke::CurvesGeometry &src_curves,
   const VArray<bool> src_cyclic = src_curves.cyclic();
   MutableSpan<float3> dst_positions = dst_curves.positions_for_write();
 
-  selection.foreach_index_parallel(512, [&](const int64_t curve_i) {
+  selection.foreach_index(GrainSize(512), [&](const int64_t curve_i) {
     const IndexRange src_points = src_points_by_curve[curve_i];
     const IndexRange dst_points = dst_points_by_curve[curve_i];
 
@@ -677,7 +677,7 @@ static void trim_catmull_rom_curves(const bke::CurvesGeometry &src_curves,
     attribute_math::convert_to_static_type(attribute.meta_data.data_type, [&](auto dummy) {
       using T = decltype(dummy);
 
-      selection.foreach_span_parallel(512, [&](const auto sliced_selection) {
+      selection.foreach_span(GrainSize(512), [&](const auto sliced_selection) {
         for (const int64_t curve_i : sliced_selection) {
           const IndexRange src_points = src_points_by_curve[curve_i];
           const IndexRange dst_points = dst_points_by_curve[curve_i];
@@ -717,7 +717,7 @@ static void trim_bezier_curves(const bke::CurvesGeometry &src_curves,
   MutableSpan<float3> dst_handles_l = dst_curves.handle_positions_left_for_write();
   MutableSpan<float3> dst_handles_r = dst_curves.handle_positions_right_for_write();
 
-  selection.foreach_index_parallel(512, [&](const int64_t curve_i) {
+  selection.foreach_index(GrainSize(512), [&](const int64_t curve_i) {
     const IndexRange src_points = src_points_by_curve[curve_i];
     const IndexRange dst_points = dst_points_by_curve[curve_i];
 
@@ -760,7 +760,7 @@ static void trim_evaluated_curves(const bke::CurvesGeometry &src_curves,
   const Span<float3> src_eval_positions = src_curves.evaluated_positions();
   MutableSpan<float3> dst_positions = dst_curves.positions_for_write();
 
-  selection.foreach_index_parallel(512, [&](const int64_t curve_i) {
+  selection.foreach_index(GrainSize(512), [&](const int64_t curve_i) {
     const IndexRange src_evaluated_points = src_evaluated_points_by_curve[curve_i];
     const IndexRange dst_points = dst_points_by_curve[curve_i];
     sample_interval_linear<float3>(src_eval_positions.slice(src_evaluated_points),
@@ -777,7 +777,7 @@ static void trim_evaluated_curves(const bke::CurvesGeometry &src_curves,
     attribute_math::convert_to_static_type(attribute.meta_data.data_type, [&](auto dummy) {
       using T = decltype(dummy);
 
-      selection.foreach_span_parallel(512, [&](const auto sliced_selection) {
+      selection.foreach_span(GrainSize(512), [&](const auto sliced_selection) {
         Vector<std::byte> evaluated_buffer;
         for (const int64_t curve_i : sliced_selection) {
           const IndexRange src_points = src_points_by_curve[curve_i];
@@ -832,7 +832,7 @@ static void compute_curve_trim_parameters(const bke::CurvesGeometry &curves,
   const VArray<int8_t> curve_types = curves.curve_types();
   curves.ensure_can_interpolate_to_evaluated();
 
-  selection.foreach_index_parallel(128, [&](const int64_t curve_i) {
+  selection.foreach_index(GrainSize(128), [&](const int64_t curve_i) {
     CurveType curve_type = CurveType(curve_types[curve_i]);
 
     int point_count;
@@ -1053,7 +1053,7 @@ bke::CurvesGeometry trim_curves(const bke::CurvesGeometry &src_curves,
   else {
     /* Only trimmed curves are no longer cyclic. */
     if (bke::SpanAttributeWriter cyclic = dst_attributes.lookup_for_write_span<bool>("cyclic")) {
-      selection.foreach_index_parallel(4096, [&](const int64_t i) { cyclic.span[i] = false; });
+      selection.foreach_index(GrainSize(4096), [&](const int64_t i) { cyclic.span[i] = false; });
       cyclic.finish();
     }
 

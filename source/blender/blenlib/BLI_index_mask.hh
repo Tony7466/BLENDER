@@ -18,6 +18,14 @@
 
 namespace blender {
 
+struct GrainSize {
+  int64_t value;
+
+  explicit GrainSize(const int64_t grain_size) : value(grain_size)
+  {
+  }
+};
+
 template<typename T> class VArray;
 
 namespace index_mask {
@@ -173,9 +181,9 @@ class IndexMask {
   template<typename Fn> void foreach_index(Fn &&fn) const;
   template<typename Fn> void foreach_span_or_range_index(Fn &&fn) const;
 
-  template<typename Fn> void foreach_index_parallel(int64_t grain_size, Fn &&fn) const;
-  template<typename Fn> void foreach_span_parallel(int64_t grain_size, Fn &&fn) const;
-  template<typename Fn> void foreach_span_or_range_parallel(int64_t grain_size, Fn &&fn) const;
+  template<typename Fn> void foreach_index(GrainSize grain_size, Fn &&fn) const;
+  template<typename Fn> void foreach_span(GrainSize grain_size, Fn &&fn) const;
+  template<typename Fn> void foreach_span_or_range(GrainSize grain_size, Fn &&fn) const;
 
   template<typename T> static IndexMask from_indices(Span<T> indices, IndexMaskMemory &memory);
   static IndexMask from_bits(BitSpan bits, IndexMaskMemory &memory, int64_t offset = 0);
@@ -748,9 +756,9 @@ template<typename Fn> inline void IndexMask::foreach_range(Fn &&fn) const
 }
 
 template<typename Fn>
-inline void IndexMask::foreach_index_parallel(const int64_t grain_size, Fn &&fn) const
+inline void IndexMask::foreach_index(const GrainSize grain_size, Fn &&fn) const
 {
-  threading::parallel_for(this->index_range(), grain_size, [&](const IndexRange range) {
+  threading::parallel_for(this->index_range(), grain_size.value, [&](const IndexRange range) {
     const IndexMask sub_mask = this->slice(range);
     sub_mask.foreach_index([&](const int64_t i, const int64_t i_in_mask) {
       if constexpr (std::is_invocable_r_v<void, Fn, int64_t, int64_t>) {
@@ -764,9 +772,9 @@ inline void IndexMask::foreach_index_parallel(const int64_t grain_size, Fn &&fn)
 }
 
 template<typename Fn>
-inline void IndexMask::foreach_span_parallel(const int64_t grain_size, Fn &&fn) const
+inline void IndexMask::foreach_span(const GrainSize grain_size, Fn &&fn) const
 {
-  threading::parallel_for(this->index_range(), grain_size, [&](const IndexRange range) {
+  threading::parallel_for(this->index_range(), grain_size.value, [&](const IndexRange range) {
     const IndexMask sub_mask = this->slice(range);
     sub_mask.foreach_span(
         [&](const OffsetSpan<int64_t, int16_t> mask_segment, const int64_t start) {
@@ -781,9 +789,9 @@ inline void IndexMask::foreach_span_parallel(const int64_t grain_size, Fn &&fn) 
 }
 
 template<typename Fn>
-void IndexMask::foreach_span_or_range_parallel(int64_t grain_size, Fn &&fn) const
+void IndexMask::foreach_span_or_range(const GrainSize grain_size, Fn &&fn) const
 {
-  threading::parallel_for(this->index_range(), grain_size, [&](const IndexRange range) {
+  threading::parallel_for(this->index_range(), grain_size.value, [&](const IndexRange range) {
     const IndexMask sub_mask = this->slice(range);
     sub_mask.foreach_span_or_range([&](const auto mask_segment, const int64_t start) {
       if constexpr (has_mask_segment_and_start_parameter<Fn>) {

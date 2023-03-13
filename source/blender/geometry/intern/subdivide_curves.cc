@@ -22,7 +22,7 @@ static void calculate_result_offsets(const bke::CurvesGeometry &src_curves,
   /* Fill the array with each curve's point count, then accumulate them to the offsets. */
   const OffsetIndices src_points_by_curve = src_curves.points_by_curve();
   bke::curves::copy_curve_sizes(src_points_by_curve, unselected_ranges, dst_curve_offsets);
-  selection.foreach_index_parallel(1024, [&](const int curve_i) {
+  selection.foreach_index(GrainSize(1024), [&](const int curve_i) {
     const IndexRange src_points = src_points_by_curve[curve_i];
     const IndexRange src_segments = bke::curves::per_curve_point_offsets_range(src_points,
                                                                                curve_i);
@@ -69,7 +69,7 @@ static void subdivide_attribute_linear(const OffsetIndices<int> src_points_by_cu
                                        const Span<T> src,
                                        MutableSpan<T> dst)
 {
-  selection.foreach_index_parallel(512, [&](const int curve_i) {
+  selection.foreach_index(GrainSize(512), [&](const int curve_i) {
     const IndexRange src_points = src_points_by_curve[curve_i];
     const IndexRange src_segments = bke::curves::per_curve_point_offsets_range(src_points,
                                                                                curve_i);
@@ -117,7 +117,7 @@ static void subdivide_attribute_catmull_rom(const OffsetIndices<int> src_points_
                                             const Span<T> src,
                                             MutableSpan<T> dst)
 {
-  selection.foreach_index_parallel(512, [&](const int curve_i) {
+  selection.foreach_index(GrainSize(512), [&](const int curve_i) {
     const IndexRange src_points = src_points_by_curve[curve_i];
     const IndexRange src_segments = bke::curves::per_curve_point_offsets_range(src_points,
                                                                                curve_i);
@@ -375,7 +375,7 @@ bke::CurvesGeometry subdivide_curves(
     MutableSpan<float3> dst_handles_r = dst_curves.handle_positions_right_for_write();
     const OffsetIndices<int> dst_points_by_curve = dst_curves.points_by_curve();
 
-    selection.foreach_index_parallel(512, [&](const int curve_i) {
+    selection.foreach_index(GrainSize(512), [&](const int curve_i) {
       const IndexRange src_points = src_points_by_curve[curve_i];
       const IndexRange src_segments = bke::curves::per_curve_point_offsets_range(src_points,
                                                                                  curve_i);
