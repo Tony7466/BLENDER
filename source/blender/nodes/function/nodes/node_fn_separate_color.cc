@@ -122,14 +122,12 @@ class SeparateHSVAFunction : public mf::MultiFunction {
     MutableSpan<float> value = params.uninitialized_single_output<float>(3, "Value");
     MutableSpan<float> alpha = params.uninitialized_single_output_if_required<float>(4, "Alpha");
 
-    for (int64_t i : mask) {
+    mask.foreach_span_or_range_index([&](const int64_t i) {
       rgb_to_hsv(colors[i].r, colors[i].g, colors[i].b, &hue[i], &saturation[i], &value[i]);
-    }
+    });
 
     if (!alpha.is_empty()) {
-      for (int64_t i : mask) {
-        alpha[i] = colors[i].a;
-      }
+      mask.foreach_span_or_range_index([&](const int64_t i) { alpha[i] = colors[i].a; });
     }
   }
 };
@@ -160,14 +158,12 @@ class SeparateHSLAFunction : public mf::MultiFunction {
     MutableSpan<float> lightness = params.uninitialized_single_output<float>(3, "Lightness");
     MutableSpan<float> alpha = params.uninitialized_single_output_if_required<float>(4, "Alpha");
 
-    for (int64_t i : mask) {
+    mask.foreach_span_or_range_index([&](const int64_t i) {
       rgb_to_hsl(colors[i].r, colors[i].g, colors[i].b, &hue[i], &saturation[i], &lightness[i]);
-    }
+    });
 
     if (!alpha.is_empty()) {
-      for (int64_t i : mask) {
-        alpha[i] = colors[i].a;
-      }
+      mask.foreach_span_or_range_index([&](const int64_t i) { alpha[i] = colors[i].a; });
     }
   }
 };

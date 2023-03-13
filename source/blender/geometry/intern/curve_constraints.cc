@@ -23,8 +23,8 @@ void compute_segment_lengths(const OffsetIndices<int> points_by_curve,
 {
   BLI_assert(r_segment_lengths.size() == points_by_curve.total_size());
 
-  threading::parallel_for(curve_selection.index_range(), 256, [&](const IndexRange range) {
-    for (const int curve_i : curve_selection.slice(range)) {
+  curve_selection.foreach_span_parallel(256, [&](const auto mask_segment) {
+    for (const int curve_i : mask_segment) {
       const IndexRange points = points_by_curve[curve_i].drop_back(1);
       for (const int point_i : points) {
         const float3 &p1 = positions[point_i];
@@ -43,8 +43,8 @@ void solve_length_constraints(const OffsetIndices<int> points_by_curve,
 {
   BLI_assert(segment_lenghts.size() == points_by_curve.total_size());
 
-  threading::parallel_for(curve_selection.index_range(), 256, [&](const IndexRange range) {
-    for (const int curve_i : curve_selection.slice(range)) {
+  curve_selection.foreach_span_parallel(256, [&](const auto mask_segment) {
+    for (const int curve_i : mask_segment) {
       const IndexRange points = points_by_curve[curve_i].drop_back(1);
       for (const int point_i : points) {
         const float3 &p1 = positions[point_i];
@@ -74,8 +74,8 @@ void solve_length_and_collision_constraints(const OffsetIndices<int> points_by_c
   const float radius = 0.005f;
   const int max_collisions = 5;
 
-  threading::parallel_for(curve_selection.index_range(), 64, [&](const IndexRange range) {
-    for (const int curve_i : curve_selection.slice(range)) {
+  curve_selection.foreach_span_parallel(64, [&](const auto mask_segment) {
+    for (const int curve_i : mask_segment) {
       const IndexRange points = points_by_curve[curve_i];
 
       /* Sometimes not all collisions can be handled. This happens relatively rarely, but if it

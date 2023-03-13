@@ -296,13 +296,11 @@ static bke::CurvesGeometry convert_curves_to_bezier(
 
   MutableSpan<int> dst_offsets = dst_curves.offsets_for_write();
   bke::curves::copy_curve_sizes(src_points_by_curve, unselected_ranges, dst_offsets);
-  threading::parallel_for(selection.index_range(), 1024, [&](IndexRange range) {
-    for (const int i : selection.slice(range)) {
-      dst_offsets[i] = to_bezier_size(CurveType(src_types[i]),
-                                      src_cyclic[i],
-                                      KnotsMode(src_knot_modes[i]),
-                                      src_points_by_curve.size(i));
-    }
+  selection.foreach_index_parallel(1024, [&](const int i) {
+    dst_offsets[i] = to_bezier_size(CurveType(src_types[i]),
+                                    src_cyclic[i],
+                                    KnotsMode(src_knot_modes[i]),
+                                    src_points_by_curve.size(i));
   });
   offset_indices::accumulate_counts_to_offsets(dst_offsets);
   dst_curves.resize(dst_offsets.last(), dst_curves.curves_num());
@@ -334,15 +332,13 @@ static bke::CurvesGeometry convert_curves_to_bezier(
     bke::curves::copy_point_data(
         src_points_by_curve, dst_points_by_curve, selection, src_positions, dst_positions);
 
-    threading::parallel_for(selection.index_range(), 512, [&](IndexRange range) {
-      for (const int i : selection.slice(range)) {
-        const IndexRange src_points = src_points_by_curve[i];
-        const IndexRange dst_points = dst_points_by_curve[i];
-        catmull_rom_to_bezier_handles(src_positions.slice(src_points),
-                                      src_cyclic[i],
-                                      dst_handles_l.slice(dst_points),
-                                      dst_handles_r.slice(dst_points));
-      }
+    selection.foreach_index_parallel(512, [&](const int i) {
+      const IndexRange src_points = src_points_by_curve[i];
+      const IndexRange dst_points = dst_points_by_curve[i];
+      catmull_rom_to_bezier_handles(src_positions.slice(src_points),
+                                    src_cyclic[i],
+                                    dst_handles_l.slice(dst_points),
+                                    dst_handles_r.slice(dst_points));
     });
 
     for (bke::AttributeTransferData &attribute : generic_attributes) {
@@ -396,8 +392,8 @@ static bke::CurvesGeometry convert_curves_to_bezier(
     bke::curves::fill_points<int8_t>(
         dst_points_by_curve, selection, BEZIER_HANDLE_ALIGN, dst_types_r);
 
-    threading::parallel_for(selection.index_range(), 64, [&](IndexRange range) {
-      for (const int i : selection.slice(range)) {
+    selection.foreach_span_parallel(64, [&](const auto sliced_selection) {
+      for (const int i : sliced_selection) {
         const IndexRange src_points = src_points_by_curve[i];
         const IndexRange dst_points = dst_points_by_curve[i];
         const Span<float3> src_curve_positions = src_positions.slice(src_points);
@@ -434,14 +430,12 @@ static bke::CurvesGeometry convert_curves_to_bezier(
     });
 
     for (bke::AttributeTransferData &attribute : generic_attributes) {
-      threading::parallel_for(selection.index_range(), 512, [&](IndexRange range) {
-        for (const int i : selection.slice(range)) {
-          const IndexRange src_points = src_points_by_curve[i];
-          const IndexRange dst_points = dst_points_by_curve[i];
-          nurbs_to_bezier_assign(attribute.src.slice(src_points),
-                                 KnotsMode(src_knot_modes[i]),
-                                 attribute.dst.span.slice(dst_points));
-        }
+      selection.foreach_index_parallel(512, [&](const int i) {
+        const IndexRange src_points = src_points_by_curve[i];
+        const IndexRange dst_points = dst_points_by_curve[i];
+        nurbs_to_bezier_assign(attribute.src.slice(src_points),
+                               KnotsMode(src_knot_modes[i]),
+                               attribute.dst.span.slice(dst_points));
       });
     }
   };
@@ -487,10 +481,8 @@ static bke::CurvesGeometry convert_curves_to_nurbs(
 
   MutableSpan<int> dst_offsets = dst_curves.offsets_for_write();
   bke::curves::copy_curve_sizes(src_points_by_curve, unselected_ranges, dst_offsets);
-  threading::parallel_for(selection.index_range(), 1024, [&](IndexRange range) {
-    for (const int i : selection.slice(range)) {
-      dst_offsets[i] = to_nurbs_size(CurveType(src_types[i]), src_points_by_curve.size(i));
-    }
+  selection.foreach_index_parallel(1024, [&](const int i) {
+    dst_offsets[i] = to_nurbs_size(CurveType(src_types[i]), src_points_by_curve.size(i));
   });
   offset_indices::accumulate_counts_to_offsets(dst_offsets);
   dst_curves.resize(dst_offsets.last(), dst_curves.curves_num());
@@ -518,33 +510,35 @@ static bke::CurvesGeometry convert_curves_to_nurbs(
   };
 
   auto catmull_rom_to_nurbs = [&](IndexMask selection) {
-    dst_curves.nurbs_orders_for_write().fill_indices(selection, 4);
-    dst_curves.nurbs_knots_modes_for_write().fill_indices(selection, NURBS_KNOT_MODE_BEZIER);
+    MutableSpan<int8_t> nurbs_order = dst_curves.nurbs_orders_for_write();
+    MutableSpan<int8_t> nurbs_knots_modes = dst_curves.nurbs_knots_modes_for_write();
     fill_weights_if_necessary(selection);
-
-    threading::parallel_for(selection.index_range(), 512, [&](IndexRange range) {
-      for (const int i : selection.slice(range)) {
+    selection.foreach_span_parallel(512, [&](const auto sliced_selection) {
+      for (const int i : sliced_selection) {
+        nurbs_order[i] = 4;
+        nurbs_order[i] = NURBS_KNOT_MODE_BEZIER;
+      }
+      for (const int i : sliced_selection) {
         const IndexRange src_points = src_points_by_curve[i];
         const IndexRange dst_points = dst_points_by_curve[i];
         catmull_rom_to_nurbs_positions(
             src_positions.slice(src_points), src_cyclic[i], dst_positions.slice(dst_points));
       }
     });
-
     for (bke::AttributeTransferData &attribute : generic_attributes) {
-      threading::parallel_for(selection.index_range(), 512, [&](IndexRange range) {
-        for (const int i : selection.slice(range)) {
-          const IndexRange src_points = src_points_by_curve[i];
-          const IndexRange dst_points = dst_points_by_curve[i];
-          bezier_generic_to_nurbs(attribute.src.slice(src_points),
-                                  attribute.dst.span.slice(dst_points));
-        }
+      selection.foreach_index_parallel(512, [&](const int i) {
+        const IndexRange src_points = src_points_by_curve[i];
+        const IndexRange dst_points = dst_points_by_curve[i];
+        bezier_generic_to_nurbs(attribute.src.slice(src_points),
+                                attribute.dst.span.slice(dst_points));
       });
     }
+
+    threading::parallel_for(selection.index_range(), 512, [&](IndexRange range) {});
   };
 
   auto poly_to_nurbs = [&](IndexMask selection) {
-    dst_curves.nurbs_orders_for_write().fill_indices(selection, 4);
+    index_mask::masked_fill<int8_t>(dst_curves.nurbs_orders_for_write(), 4, selection);
     bke::curves::copy_point_data(
         src_points_by_curve, dst_points_by_curve, selection, src_positions, dst_positions);
     fill_weights_if_necessary(selection);
@@ -552,17 +546,16 @@ static bke::CurvesGeometry convert_curves_to_nurbs(
     /* Avoid using "Endpoint" knots modes for cyclic curves, since it adds a sharp point at the
      * start/end. */
     if (src_cyclic.is_single()) {
-      dst_curves.nurbs_knots_modes_for_write().fill_indices(
-          selection,
-          src_cyclic.get_internal_single() ? NURBS_KNOT_MODE_NORMAL : NURBS_KNOT_MODE_ENDPOINT);
+      index_mask::masked_fill<int8_t>(dst_curves.nurbs_knots_modes_for_write(),
+                                      src_cyclic.get_internal_single() ? NURBS_KNOT_MODE_NORMAL :
+                                                                         NURBS_KNOT_MODE_ENDPOINT,
+                                      selection);
     }
     else {
       VArraySpan<bool> cyclic{src_cyclic};
       MutableSpan<int8_t> knots_modes = dst_curves.nurbs_knots_modes_for_write();
-      threading::parallel_for(selection.index_range(), 1024, [&](IndexRange range) {
-        for (const int i : selection.slice(range)) {
-          knots_modes[i] = cyclic[i] ? NURBS_KNOT_MODE_NORMAL : NURBS_KNOT_MODE_ENDPOINT;
-        }
+      selection.foreach_index_parallel(1024, [&](const int i) {
+        knots_modes[i] = cyclic[i] ? NURBS_KNOT_MODE_NORMAL : NURBS_KNOT_MODE_ENDPOINT;
       });
     }
 
@@ -576,29 +569,26 @@ static bke::CurvesGeometry convert_curves_to_nurbs(
     const Span<float3> src_handles_l = src_curves.handle_positions_left();
     const Span<float3> src_handles_r = src_curves.handle_positions_right();
 
-    dst_curves.nurbs_orders_for_write().fill_indices(selection, 4);
-    dst_curves.nurbs_knots_modes_for_write().fill_indices(selection, NURBS_KNOT_MODE_BEZIER);
+    index_mask::masked_fill<int8_t>(dst_curves.nurbs_orders_for_write(), 4, selection);
+    index_mask::masked_fill<int8_t>(
+        dst_curves.nurbs_knots_modes_for_write(), NURBS_KNOT_MODE_BEZIER, selection);
     fill_weights_if_necessary(selection);
 
-    threading::parallel_for(selection.index_range(), 512, [&](IndexRange range) {
-      for (const int i : selection.slice(range)) {
-        const IndexRange src_points = src_points_by_curve[i];
-        const IndexRange dst_points = dst_points_by_curve[i];
-        bezier_positions_to_nurbs(src_positions.slice(src_points),
-                                  src_handles_l.slice(src_points),
-                                  src_handles_r.slice(src_points),
-                                  dst_positions.slice(dst_points));
-      }
+    selection.foreach_index_parallel(512, [&](const int i) {
+      const IndexRange src_points = src_points_by_curve[i];
+      const IndexRange dst_points = dst_points_by_curve[i];
+      bezier_positions_to_nurbs(src_positions.slice(src_points),
+                                src_handles_l.slice(src_points),
+                                src_handles_r.slice(src_points),
+                                dst_positions.slice(dst_points));
     });
 
     for (bke::AttributeTransferData &attribute : generic_attributes) {
-      threading::parallel_for(selection.index_range(), 512, [&](IndexRange range) {
-        for (const int i : selection.slice(range)) {
-          const IndexRange src_points = src_points_by_curve[i];
-          const IndexRange dst_points = dst_points_by_curve[i];
-          bezier_generic_to_nurbs(attribute.src.slice(src_points),
-                                  attribute.dst.span.slice(dst_points));
-        }
+      selection.foreach_index_parallel(512, [&](const int i) {
+        const IndexRange src_points = src_points_by_curve[i];
+        const IndexRange dst_points = dst_points_by_curve[i];
+        bezier_generic_to_nurbs(attribute.src.slice(src_points),
+                                attribute.dst.span.slice(dst_points));
       });
     }
   };

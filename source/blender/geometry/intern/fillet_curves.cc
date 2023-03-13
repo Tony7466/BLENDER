@@ -33,15 +33,13 @@ static void duplicate_fillet_point_data(const OffsetIndices<int> src_points_by_c
                                         const Span<T> src,
                                         MutableSpan<T> dst)
 {
-  threading::parallel_for(curve_selection.index_range(), 512, [&](IndexRange range) {
-    for (const int curve_i : curve_selection.slice(range)) {
-      const IndexRange src_points = src_points_by_curve[curve_i];
-      const IndexRange dst_points = dst_points_by_curve[curve_i];
-      const IndexRange offsets_range = bke::curves::per_curve_point_offsets_range(src_points,
-                                                                                  curve_i);
-      const OffsetIndices<int> offsets(all_point_offsets.slice(offsets_range));
-      threaded_slice_fill(src.slice(src_points), offsets, dst.slice(dst_points));
-    }
+  curve_selection.foreach_index_parallel(512, [&](const int curve_i) {
+    const IndexRange src_points = src_points_by_curve[curve_i];
+    const IndexRange dst_points = dst_points_by_curve[curve_i];
+    const IndexRange offsets_range = bke::curves::per_curve_point_offsets_range(src_points,
+                                                                                curve_i);
+    const OffsetIndices<int> offsets(all_point_offsets.slice(offsets_range));
+    threaded_slice_fill(src.slice(src_points), offsets, dst.slice(dst_points));
   });
 }
 
@@ -74,38 +72,36 @@ static void calculate_result_offsets(const OffsetIndices<int> src_points_by_curv
 {
   /* Fill the offsets array with the curve point counts, then accumulate them to form offsets. */
   bke::curves::copy_curve_sizes(src_points_by_curve, unselected_ranges, dst_curve_offsets);
-  threading::parallel_for(selection.index_range(), 512, [&](IndexRange range) {
-    for (const int curve_i : selection.slice(range)) {
-      const IndexRange src_points = src_points_by_curve[curve_i];
-      const IndexRange offsets_range = bke::curves::per_curve_point_offsets_range(src_points,
-                                                                                  curve_i);
+  selection.foreach_index_parallel(512, [&](const int curve_i) {
+    const IndexRange src_points = src_points_by_curve[curve_i];
+    const IndexRange offsets_range = bke::curves::per_curve_point_offsets_range(src_points,
+                                                                                curve_i);
 
-      MutableSpan<int> point_offsets = dst_point_offsets.slice(offsets_range);
-      MutableSpan<int> point_counts = point_offsets.drop_back(1);
+    MutableSpan<int> point_offsets = dst_point_offsets.slice(offsets_range);
+    MutableSpan<int> point_counts = point_offsets.drop_back(1);
 
-      counts.materialize_compressed(src_points, point_counts);
-      for (int &count : point_counts) {
-        /* Make sure the number of cuts is greater than zero and add one for the existing point. */
-        count = std::max(count, 0) + 1;
-      }
-      if (!cyclic[curve_i]) {
-        /* Endpoints on non-cyclic curves cannot be filleted. */
-        point_counts.first() = 1;
-        point_counts.last() = 1;
-      }
-      /* Implicitly "deselect" points with zero radius. */
-      devirtualize_varray(radii, [&](const auto radii) {
-        for (const int i : IndexRange(src_points.size())) {
-          if (radii[src_points[i]] == 0.0f) {
-            point_counts[i] = 1;
-          }
-        }
-      });
-
-      offset_indices::accumulate_counts_to_offsets(point_offsets);
-
-      dst_curve_offsets[curve_i] = point_offsets.last();
+    counts.materialize_compressed(src_points, point_counts);
+    for (int &count : point_counts) {
+      /* Make sure the number of cuts is greater than zero and add one for the existing point. */
+      count = std::max(count, 0) + 1;
     }
+    if (!cyclic[curve_i]) {
+      /* Endpoints on non-cyclic curves cannot be filleted. */
+      point_counts.first() = 1;
+      point_counts.last() = 1;
+    }
+    /* Implicitly "deselect" points with zero radius. */
+    devirtualize_varray(radii, [&](const auto radii) {
+      for (const int i : IndexRange(src_points.size())) {
+        if (radii[src_points[i]] == 0.0f) {
+          point_counts[i] = 1;
+        }
+      }
+    });
+
+    offset_indices::accumulate_counts_to_offsets(point_offsets);
+
+    dst_curve_offsets[curve_i] = point_offsets.last();
   });
   offset_indices::accumulate_counts_to_offsets(dst_curve_offsets);
 }
@@ -450,13 +446,13 @@ static bke::CurvesGeometry fillet_curves(
     dst_handles_r = dst_curves.handle_positions_right_for_write();
   }
 
-  threading::parallel_for(curve_selection.index_range(), 512, [&](IndexRange range) {
+  curve_selection.foreach_span_parallel(512, [&](const auto sliced_selection) {
     Array<float3> directions;
     Array<float> angles;
     Array<float> radii;
     Array<float> input_radii_buffer;
 
-    for (const int curve_i : curve_selection.slice(range)) {
+    for (const int curve_i : sliced_selection) {
       const IndexRange src_points = src_points_by_curve[curve_i];
       const IndexRange offsets_range = bke::curves::per_curve_point_offsets_range(src_points,
                                                                                   curve_i);

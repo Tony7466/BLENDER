@@ -358,11 +358,11 @@ void split_edges(Mesh &mesh,
   /* Flag vertices that need to be split. */
   Array<bool> should_split_vert(mesh.totvert, false);
   const Span<MEdge> edges = mesh.edges();
-  for (const int edge_i : mask) {
+  mask.foreach_index([&](const int edge_i) {
     const MEdge edge = edges[edge_i];
     should_split_vert[edge.v1] = true;
     should_split_vert[edge.v2] = true;
-  }
+  });
 
   /* Precalculate topology info. */
   Array<Vector<int>> vert_to_edge_map = bke::mesh_topology::build_vert_to_edge_map(edges,
@@ -376,14 +376,14 @@ void split_edges(Mesh &mesh,
   Array<int> edge_offsets(edges.size());
   Array<int> num_edge_duplicates(edges.size());
   int new_edges_size = edges.size();
-  for (const int edge : mask) {
+  mask.foreach_index([&](const int edge) {
     edge_offsets[edge] = new_edges_size;
     /* We add duplicates of the edge for each poly (except the first). */
     const int num_connected_loops = edge_to_loop_map[edge].size();
     const int num_duplicates = std::max(0, num_connected_loops - 1);
     new_edges_size += num_duplicates;
     num_edge_duplicates[edge] = num_duplicates;
-  }
+  });
 
   const Span<MPoly> polys = mesh.polys();
 
@@ -397,22 +397,19 @@ void split_edges(Mesh &mesh,
   Vector<int> new_to_old_edges_map(IndexRange(new_edges.size()).as_span());
 
   /* Step 1: Split the edges. */
-  threading::parallel_for(mask.index_range(), 512, [&](IndexRange range) {
-    for (const int mask_i : range) {
-      const int edge_i = mask[mask_i];
-      split_edge_per_poly(
-          edge_i, edge_offsets[edge_i], edge_to_loop_map, loops, new_edges, new_to_old_edges_map);
-    }
+  mask.foreach_index([&](const int edge_i) {
+    split_edge_per_poly(
+        edge_i, edge_offsets[edge_i], edge_to_loop_map, loops, new_edges, new_to_old_edges_map);
   });
 
   /* Step 1.5: Update topology information (can't parallelize). */
-  for (const int edge_i : mask) {
+  mask.foreach_index([&](const int edge_i) {
     const MEdge &edge = edges[edge_i];
     for (const int duplicate_i : IndexRange(edge_offsets[edge_i], num_edge_duplicates[edge_i])) {
       vert_to_edge_map[edge.v1].append(duplicate_i);
       vert_to_edge_map[edge.v2].append(duplicate_i);
     }
-  }
+  });
 
   /* Step 2: Calculate vertex fans. */
   Array<Vector<int>> vertex_fan_sizes(mesh.totvert);

@@ -26,9 +26,9 @@ PointCloud *point_merge_by_distance(const PointCloud &src_points,
   /* Create the KD tree based on only the selected points, to speed up merge detection and
    * balancing. */
   KDTree_3d *tree = BLI_kdtree_3d_new(selection.size());
-  for (const int i : selection.index_range()) {
-    BLI_kdtree_3d_insert(tree, i, positions[selection[i]]);
-  }
+  selection.foreach_span_or_range_index([&](const int64_t i, const int64_t i_in_mask) {
+    BLI_kdtree_3d_insert(tree, i_in_mask, positions[i]);
+  });
   BLI_kdtree_3d_balance(tree);
 
   /* Find the duplicates in the KD tree. Because the tree only contains the selected points, the
@@ -51,6 +51,7 @@ PointCloud *point_merge_by_distance(const PointCloud &src_points,
   for (const int i : merge_indices.index_range()) {
     merge_indices[i] = i;
   }
+
   for (const int i : selection_merge_indices.index_range()) {
     const int merge_index = selection_merge_indices[i];
     if (merge_index != -1) {

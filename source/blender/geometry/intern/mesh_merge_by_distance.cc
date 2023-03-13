@@ -1715,9 +1715,7 @@ std::optional<Mesh *> mesh_merge_by_distance_all(const Mesh &mesh,
   KDTree_3d *tree = BLI_kdtree_3d_new(selection.size());
 
   const Span<float3> positions = mesh.vert_positions();
-  for (const int i : selection) {
-    BLI_kdtree_3d_insert(tree, i, positions[i]);
-  }
+  selection.foreach_index([&](const int64_t i) { BLI_kdtree_3d_insert(tree, i, positions[i]); });
 
   BLI_kdtree_3d_balance(tree);
   const int vert_kill_len = BLI_kdtree_3d_calc_duplicates_fast(

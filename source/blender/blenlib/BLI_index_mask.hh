@@ -165,11 +165,15 @@ class IndexMask {
 
   IndexMask slice(IndexRange range) const;
 
+  int64_t operator[](const int64_t i) const;
+
   template<typename Fn> void foreach_span(Fn &&fn) const;
   template<typename Fn> void foreach_range(Fn &&fn) const;
   template<typename Fn> void foreach_span_or_range(Fn &&fn) const;
   template<typename Fn> void foreach_index(Fn &&fn) const;
   template<typename Fn> void foreach_span_or_range_index(Fn &&fn) const;
+
+  template<typename Fn> void foreach_index_parallel(int64_t grain_size, Fn &&fn) const;
   template<typename Fn> void foreach_span_parallel(int64_t grain_size, Fn &&fn) const;
   template<typename Fn> void foreach_span_or_range_parallel(int64_t grain_size, Fn &&fn) const;
 
@@ -259,6 +263,12 @@ inline int64_t index_to_chunk_id(const int64_t i)
 inline int64_t size_to_chunk_num(const int64_t size)
 {
   return (size + chunk_capacity - 1) >> chunk_size_shift;
+}
+
+template<typename T>
+inline void masked_fill(MutableSpan<T> data, const T &value, const IndexMask &mask)
+{
+  mask.foreach_span_or_range_index([&](const int64_t i) { data[i] = value; });
 }
 
 class IndexRangeChecker {
@@ -508,6 +518,14 @@ inline int64_t IndexMask::iterator_to_index(const RawMaskIterator &it) const
   return data_.cumulative_chunk_sizes[it.chunk_i] - data_.cumulative_chunk_sizes[0] - begin_index;
 }
 
+inline int64_t IndexMask::operator[](const int64_t i) const
+{
+  const RawMaskIterator it = this->index_to_iterator(i);
+  return data_.chunks[it.chunk_i]
+             .indices_by_segment[it.chunk_it.segment_i][it.chunk_it.index_in_segment] +
+         (data_.chunk_ids[it.chunk_i] << chunk_size_shift);
+}
+
 inline IndexMask IndexMask::slice(const IndexRange range) const
 {
   if (range.is_empty()) {
@@ -726,6 +744,22 @@ template<typename Fn> inline void IndexMask::foreach_range(Fn &&fn) const
       start += next_range_size;
       base_indices = base_indices.drop_front(next_range_size);
     }
+  });
+}
+
+template<typename Fn>
+inline void IndexMask::foreach_index_parallel(const int64_t grain_size, Fn &&fn) const
+{
+  threading::parallel_for(this->index_range(), grain_size, [&](const IndexRange range) {
+    const IndexMask sub_mask = this->slice(range);
+    sub_mask.foreach_index([&](const int64_t i, const int64_t i_in_mask) {
+      if constexpr (std::is_invocable_r_v<void, Fn, int64_t, int64_t>) {
+        fn(i, i_in_mask + range.start());
+      }
+      else {
+        fn(i);
+      }
+    });
   });
 }
 

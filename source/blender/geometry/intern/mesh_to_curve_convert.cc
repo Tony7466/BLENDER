@@ -208,9 +208,7 @@ static Vector<std::pair<int, int>> get_selected_edges(const Mesh &mesh, const In
 {
   Vector<std::pair<int, int>> selected_edges;
   const Span<MEdge> edges = mesh.edges();
-  for (const int i : selection) {
-    selected_edges.append({edges[i].v1, edges[i].v2});
-  }
+  selection.foreach_index([&](const int i) { selected_edges.append({edges[i].v1, edges[i].v2}); });
   return selected_edges;
 }
 
