@@ -478,10 +478,12 @@ Vector<GVArray> evaluate_fields(ResourceScope &scope,
         const CPPType &type = computed_varray.type();
         threading::parallel_for(mask.index_range(), 2048, [&](const IndexRange range) {
           BUFFER_FOR_CPP_TYPE_VALUE(type, buffer);
-          for (const int i : mask.slice(range)) {
-            computed_varray.get_to_uninitialized(i, buffer);
-            dst_varray.set_by_relocate(i, buffer);
-          }
+          mask.slice(range).foreach_span([&](auto mask_segment) {
+            for (const int i : mask_segment) {
+              computed_varray.get_to_uninitialized(i, buffer);
+              dst_varray.set_by_relocate(i, buffer);
+            }
+          });
         });
       }
       r_varrays[out_index] = dst_varray;
