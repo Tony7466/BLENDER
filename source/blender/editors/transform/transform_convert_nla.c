@@ -195,6 +195,9 @@ static void nlastrip_flag_overlaps(NlaStrip *strip)
   }
 }
 
+/** Check the Transformation data for the given Strip, and fix any overlap. Then
+ * apply the Transformation.
+ */
 static void nlastrip_fix_overlapping(TransInfo *t, TransDataNla *tdn, NlaStrip *strip)
 {
   /* firstly, check if the proposed transform locations would overlap with any neighboring
@@ -644,6 +647,7 @@ typedef struct IDGroupedTransData {
   ListBase trans_datas;
 } IDGroupedTransData;
 
+/** horizontally translate (shuffle) the transformed strip to a non-overlapping state. */
 static void nlastrip_shuffle_transformed(TransDataContainer *tc, TransDataNla *first_trans_data)
 {
   /** Element: (IDGroupedTransData*) */
