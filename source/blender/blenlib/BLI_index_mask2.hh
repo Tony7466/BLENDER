@@ -136,6 +136,9 @@ struct IntersectionExpr : public Expr {
   }
 };
 
+class IndexMaskMemory : public LinearAllocator<> {
+};
+
 class IndexMask {
  private:
   IndexMaskData data_;
@@ -161,10 +164,9 @@ class IndexMask {
   template<typename Fn> void foreach_span_or_range(Fn &&fn) const;
   template<typename Fn> void foreach_index(Fn &&fn) const;
 
-  template<typename T>
-  static IndexMask from_indices(Span<T> indices, LinearAllocator<> &allocator);
-  static IndexMask from_bits(BitSpan bits, LinearAllocator<> &allocator, int64_t offset = 0);
-  static IndexMask from_expr(const Expr &expr, IndexRange universe, LinearAllocator<> &allocator);
+  template<typename T> static IndexMask from_indices(Span<T> indices, IndexMaskMemory &memory);
+  static IndexMask from_bits(BitSpan bits, IndexMaskMemory &memory, int64_t offset = 0);
+  static IndexMask from_expr(const Expr &expr, IndexRange universe, IndexMaskMemory &memory);
 
   template<typename T> void to_indices(MutableSpan<T> r_indices) const;
   void to_bits(MutableBitSpan r_bits, int64_t offset = 0) const;
@@ -195,7 +197,7 @@ int64_t find_size_until_next_range(const Span<T> indices, const int64_t min_rang
 template<typename Fn>
 inline IndexMask grow_indices_to_ranges(const IndexMask &mask,
                                         const Fn &fn,
-                                        LinearAllocator<> &allocator)
+                                        IndexMaskMemory &memory)
 {
   Vector<int64_t> indices;
   mask.foreach_index([&](const int64_t i) {
@@ -204,7 +206,7 @@ inline IndexMask grow_indices_to_ranges(const IndexMask &mask,
       indices.append(new_index);
     }
   });
-  return IndexMask::from_indices<int64_t>(indices, allocator);
+  return IndexMask::from_indices<int64_t>(indices, memory);
 }
 
 /* -------------------------------------------------------------------- */

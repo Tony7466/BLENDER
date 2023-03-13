@@ -13,31 +13,6 @@ void do_benchmark(const int64_t total);
 
 namespace blender::index_mask::tests {
 
-TEST(index_mask2, Test)
-{
-  // const int64_t total = 1e8;
-  // do_benchmark(total);
-
-  // Vector<int> data;
-  // for (const int64_t i : IndexRange(100000)) {
-  //   data.append(int(i));
-  // }
-
-  // for ([[maybe_unused]] const int64_t i : IndexRange(50)) {
-  //   Vector<IndexRange> ranges = split_sorted_indices_by_chunk<int>(data);
-  // }
-  // ranges.as_span().print_as_lines("Ranges");
-
-  // IndexMask mask(500000);
-  // IndexMask sliced_mask = mask.slice(IndexRange(16000, 1000));
-  // sliced_mask = sliced_mask.slice(IndexRange(100, 800));
-  // sliced_mask.foreach_index_span([&](const int64_t offset, const Span<int16_t> indices) {
-  //   for (const int64_t i : indices) {
-  //     std::cout << (i + offset) << "\n";
-  //   }
-  // });
-}
-
 TEST(index_mask2, FindRangeEnd)
 {
   EXPECT_EQ(unique_sorted_indices::find_size_of_next_range<int>({4}), 1);
@@ -105,10 +80,10 @@ TEST(index_mask2, SplitByChunk)
 
 TEST(index_mask2, IndicesToMask)
 {
-  LinearAllocator<> allocator;
+  IndexMaskMemory memory;
   Array<int> data = {
       5, 100, 16383, 16384, 16385, 20000, 20001, 50000, 50001, 50002, 100000, 101000};
-  IndexMask mask = IndexMask::from_indices<int>(data, allocator);
+  IndexMask mask = IndexMask::from_indices<int>(data, memory);
 
   EXPECT_EQ(mask.first(), 5);
   EXPECT_EQ(mask.last(), 101000);
@@ -117,10 +92,10 @@ TEST(index_mask2, IndicesToMask)
 
 TEST(index_mask2, FromBits)
 {
-  LinearAllocator<> allocator;
+  IndexMaskMemory memory;
   const uint64_t bits =
       0b0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'0000'1111'0010'0000;
-  const IndexMask mask = IndexMask::from_bits(BitSpan(&bits, IndexRange(2, 40)), allocator, 100);
+  const IndexMask mask = IndexMask::from_bits(BitSpan(&bits, IndexRange(2, 40)), memory, 100);
   Array<int> indices(5);
   mask.to_indices<int>(indices);
   EXPECT_EQ(indices[0], 103);
@@ -169,10 +144,10 @@ TEST(index_mask2, DefaultConstructor)
 
 TEST(index_mask2, IndicesToRanges)
 {
-  LinearAllocator<> allocator;
-  const IndexMask mask = IndexMask::from_indices<int>({0, 1, 5}, allocator);
+  IndexMaskMemory memory;
+  const IndexMask mask = IndexMask::from_indices<int>({0, 1, 5}, memory);
   const IndexMask new_mask = grow_indices_to_ranges(
-      mask, [&](const int64_t i) { return IndexRange(i * 10, 3); }, allocator);
+      mask, [&](const int64_t i) { return IndexRange(i * 10, 3); }, memory);
   Vector<int64_t> indices(new_mask.size());
   new_mask.to_indices<int64_t>(indices);
   EXPECT_EQ(indices.size(), 9);
@@ -189,8 +164,8 @@ TEST(index_mask2, IndicesToRanges)
 
 TEST(index_mask2, ForeachRange)
 {
-  LinearAllocator<> allocator;
-  const IndexMask mask = IndexMask::from_indices<int>({2, 3, 4, 10, 40, 41}, allocator);
+  IndexMaskMemory memory;
+  const IndexMask mask = IndexMask::from_indices<int>({2, 3, 4, 10, 40, 41}, memory);
   Vector<IndexRange> ranges;
   mask.foreach_range([&](const IndexRange range) { ranges.append(range); });
 
@@ -202,11 +177,11 @@ TEST(index_mask2, ForeachRange)
 
 TEST(index_mask2, Expr)
 {
-  LinearAllocator<> allocator;
+  IndexMaskMemory memory;
 
   const IndexMask mask1(IndexRange(10, 5));
   const IndexMask mask2(IndexRange(40, 5));
-  const IndexMask mask3 = IndexMask::from_indices<int>({12, 13, 20, 21, 22}, allocator);
+  const IndexMask mask3 = IndexMask::from_indices<int>({12, 13, 20, 21, 22}, memory);
 
   const AtomicExpr expr1{mask1};
   const AtomicExpr expr2{mask2};
@@ -214,25 +189,25 @@ TEST(index_mask2, Expr)
   const UnionExpr union_expr({&expr1, &expr2});
   const DifferenceExpr difference_expr(union_expr, {&expr3});
 
-  const IndexMask result = IndexMask::from_expr(difference_expr, IndexRange(100), allocator);
+  const IndexMask result = IndexMask::from_expr(difference_expr, IndexRange(100), memory);
   std::cout << result << "\n";
 }
 
 TEST(index_mask2, ToRange)
 {
-  LinearAllocator<> allocator;
+  IndexMaskMemory memory;
   {
-    const IndexMask mask = IndexMask::from_indices<int>({4, 5, 6, 7}, allocator);
+    const IndexMask mask = IndexMask::from_indices<int>({4, 5, 6, 7}, memory);
     EXPECT_TRUE(mask.to_range().has_value());
     EXPECT_EQ(*mask.to_range(), IndexRange(4, 4));
   }
   {
-    const IndexMask mask = IndexMask::from_indices<int>({}, allocator);
+    const IndexMask mask = IndexMask::from_indices<int>({}, memory);
     EXPECT_TRUE(mask.to_range().has_value());
     EXPECT_EQ(*mask.to_range(), IndexRange());
   }
   {
-    const IndexMask mask = IndexMask::from_indices<int>({0, 1, 3, 4}, allocator);
+    const IndexMask mask = IndexMask::from_indices<int>({0, 1, 3, 4}, memory);
     EXPECT_FALSE(mask.to_range().has_value());
   }
   {
