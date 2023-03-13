@@ -569,7 +569,7 @@ static void rna_Sculpt_automasking_invert_cavity_set(PointerRNA *ptr, bool val)
   Sculpt *sd = (Sculpt *)ptr->data;
 
   if (val) {
-    sd->automasking_flags &= ~BRUSH_AUTOMASKING_CAVITY_NORMAL;
+    sd->automasking_flags |= BRUSH_AUTOMASKING_CAVITY_NORMAL;
     sd->automasking_flags |= BRUSH_AUTOMASKING_CAVITY_INVERTED;
   }
   else {
@@ -582,11 +582,11 @@ static void rna_Sculpt_automasking_cavity_set(PointerRNA *ptr, bool val)
   Sculpt *sd = (Sculpt *)ptr->data;
 
   if (val) {
-    sd->automasking_flags &= ~BRUSH_AUTOMASKING_CAVITY_INVERTED;
     sd->automasking_flags |= BRUSH_AUTOMASKING_CAVITY_NORMAL;
   }
   else {
     sd->automasking_flags &= ~BRUSH_AUTOMASKING_CAVITY_NORMAL;
+    sd->automasking_flags &= ~BRUSH_AUTOMASKING_CAVITY_INVERTED;
   }
 }
 #else

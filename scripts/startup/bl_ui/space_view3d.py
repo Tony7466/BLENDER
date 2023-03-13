@@ -7882,10 +7882,9 @@ class VIEW3D_PT_sculpt_automasking(Panel):
             props = row.operator("sculpt.mask_from_cavity", text="Create Mask")
             props.settings_source = "SCENE"
 
-        col.prop(sculpt, "use_automasking_cavity_inverted", text="Cavity (inverted)")
-
         if is_cavity_active:
             col = layout.column(align=True)
+            col.prop(sculpt, "use_automasking_cavity_inverted", text="Inverted")
             col.prop(sculpt, "automasking_cavity_factor", text="Factor")
             col.prop(sculpt, "automasking_cavity_blur_steps", text="Blur")
 
