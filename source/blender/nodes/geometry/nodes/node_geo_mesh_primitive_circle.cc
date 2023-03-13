@@ -167,6 +167,16 @@ static Mesh *create_circle_mesh(const float radius,
     }
   }
 
+  const float max_x = positions[0].x;
+  const float max_y = positions[(verts_num + 2) >> 2].y;
+  const float min_x = positions[verts_num >> 1].x;
+  const float min_y = -max_y;
+
+  const float3 bounds_min(min_x, min_y, 0.0f);
+  const float3 bounds_max(max_x, max_y, 0.0f);
+
+  mesh->bounds_set_eager({bounds_min, bounds_max});
+
   return mesh;
 }
 
