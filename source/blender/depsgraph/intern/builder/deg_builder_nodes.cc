@@ -608,6 +608,7 @@ void DepsgraphNodeBuilder::build_id(ID *id)
     case ID_CV:
     case ID_PT:
     case ID_VO:
+    case ID_GP:
       build_object_data_geometry_datablock(id);
       break;
     case ID_SPK:

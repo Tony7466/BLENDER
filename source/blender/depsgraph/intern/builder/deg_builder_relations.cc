@@ -549,6 +549,7 @@ void DepsgraphRelationBuilder::build_id(ID *id)
     case ID_PT:
     case ID_VO:
     case ID_GD_LEGACY:
+    case ID_GP:
       build_object_data_geometry_datablock(id);
       break;
     case ID_SPK:

@@ -148,6 +148,7 @@ set(SRC
   intern/gpencil_geom_legacy.cc
   intern/gpencil_modifier_legacy.c
   intern/gpencil_update_cache_legacy.c
+  intern/grease_pencil.cc
   intern/icons.cc
   intern/icons_rasterize.c
   intern/idprop.c

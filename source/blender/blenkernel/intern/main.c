@@ -714,6 +714,7 @@ int set_listbasepointers(Main *bmain, ListBase *lb[/*INDEX_ID_MAX*/])
   lb[INDEX_ID_WM] = &(bmain->wm);
   lb[INDEX_ID_MSK] = &(bmain->masks);
   lb[INDEX_ID_SIM] = &(bmain->simulations);
+  lb[INDEX_ID_GP] = &(bmain->greasepencils);
 
   lb[INDEX_ID_NULL] = NULL;
 

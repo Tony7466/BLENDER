@@ -200,6 +200,7 @@ typedef struct Main {
   ListBase pointclouds;
   ListBase volumes;
   ListBase simulations;
+  ListBase greasepencils;
 
   /**
    * Must be generated, used and freed by same code - never assume this is valid data unless you
