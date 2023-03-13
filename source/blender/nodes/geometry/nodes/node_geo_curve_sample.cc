@@ -137,8 +137,8 @@ static void sample_indices_and_lengths(const Span<float> accumulated_lengths,
   const float total_length = accumulated_lengths.last();
   length_parameterize::SampleSegmentHint hint;
 
-  mask.to_best_mask_type([&](const auto mask) {
-    for (const int64_t i : mask) {
+  mask.foreach_span_or_range([&](const auto mask_segment) {
+    for (const int64_t i : mask_segment) {
       const float sample_length = length_mode == GEO_NODE_CURVE_SAMPLE_FACTOR ?
                                       sample_lengths[i] * total_length :
                                       sample_lengths[i];
@@ -171,9 +171,9 @@ static void sample_indices_and_factors_to_compressed(const Span<float> accumulat
 
   switch (length_mode) {
     case GEO_NODE_CURVE_SAMPLE_FACTOR:
-      mask.to_best_mask_type([&](const auto mask) {
-        for (const int64_t i : IndexRange(mask.size())) {
-          const float length = sample_lengths[mask[i]] * total_length;
+      mask.foreach_span_or_range([&](const auto mask_segment) {
+        for (const int64_t i : IndexRange(mask_segment.size())) {
+          const float length = sample_lengths[mask_segment[i]] * total_length;
           length_parameterize::sample_at_length(accumulated_lengths,
                                                 std::clamp(length, 0.0f, total_length),
                                                 r_segment_indices[i],
@@ -183,9 +183,9 @@ static void sample_indices_and_factors_to_compressed(const Span<float> accumulat
       });
       break;
     case GEO_NODE_CURVE_SAMPLE_LENGTH:
-      mask.to_best_mask_type([&](const auto mask) {
-        for (const int64_t i : IndexRange(mask.size())) {
-          const float length = sample_lengths[mask[i]];
+      mask.foreach_span_or_range([&](const auto mask_segment) {
+        for (const int64_t i : IndexRange(mask_segment.size())) {
+          const float length = sample_lengths[mask_segment[i]];
           length_parameterize::sample_at_length(accumulated_lengths,
                                                 std::clamp(length, 0.0f, total_length),
                                                 r_segment_indices[i],

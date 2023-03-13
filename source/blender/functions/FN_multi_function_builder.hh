@@ -671,8 +671,8 @@ template<typename T> class CustomMF_Constant : public MultiFunction {
   void call(IndexMask mask, Params params, Context /*context*/) const override
   {
     MutableSpan<T> output = params.uninitialized_single_output<T>(0);
-    mask.to_best_mask_type([&](const auto &mask) {
-      for (const int64_t i : mask) {
+    mask.foreach_span_or_range([&](const auto mask_segment) {
+      for (const int64_t i : mask_segment) {
         new (&output[i]) T(value_);
       }
     });

@@ -52,16 +52,16 @@ inline void interpolate_to_masked(const Span<T> src,
   BLI_assert(indices.size() == dst_mask.size());
   const int last_src_index = src.size() - 1;
 
-  dst_mask.to_best_mask_type([&](auto dst_mask) {
-    for (const int i : IndexRange(dst_mask.size())) {
+  dst_mask.foreach_span_or_range([&](auto dst_mask_segment) {
+    for (const int i : IndexRange(dst_mask_segment.size())) {
       const int prev_index = indices[i];
       const float factor = factors[i];
       const bool is_cyclic_case = prev_index == last_src_index;
       if (is_cyclic_case) {
-        dst[dst_mask[i]] = math::interpolate(src.last(), src.first(), factor);
+        dst[dst_mask_segment[i]] = math::interpolate(src.last(), src.first(), factor);
       }
       else {
-        dst[dst_mask[i]] = math::interpolate(src[prev_index], src[prev_index + 1], factor);
+        dst[dst_mask_segment[i]] = math::interpolate(src[prev_index], src[prev_index + 1], factor);
       }
     }
   });
