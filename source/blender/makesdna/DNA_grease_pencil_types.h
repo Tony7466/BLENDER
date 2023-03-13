@@ -39,11 +39,12 @@ typedef struct GreasePencilDrawingOrReference {
    * One of `GreasePencilDrawingType`.
    * Indicates if this is an actual drawing or a drawing referenced from another object.
    */
-  char type;
+  uint8_t type;
+  char _pad[3];
   /**
    * Flag. Used to set e.g. the selection status.
    */
-  int flag;
+  uint32_t flag;
 } GreasePencilDrawingOrReference;
 
 /**
@@ -67,6 +68,17 @@ typedef struct GreasePencilDrawingReference {
    */
   struct GreasePencil *id_reference;
 } GreasePencilDrawingReference;
+
+/* Only used for storage in the .blend file. */
+typedef struct GreasePencilLayerFramesMapStorage {
+  /* Array of `frames` keys (sorted in ascending order). */
+  int *keys;
+  int keys_num;
+
+  /* Array of `frames` values (order matches the keys array). */
+  int *values;
+  int values_num;
+} GreasePencilLayerFramesMapStorage;
 
 /**
  * A grease pencil layer is a collection of drawings mapped to a specific time on the timeline.
@@ -99,17 +111,7 @@ typedef struct GreasePencilLayer {
    */
   const blender::Map<int, int> &frames() const;
 #endif
-
-  /* Only used for storage in the .blend file. */
-  struct {
-    /* Array of `frames` keys (sorted in ascending order). */
-    int *keys;
-    int keys_num;
-
-    /* Array of `frames` values (order matches the keys array). */
-    int *values;
-    int values_num;
-  } frames_storage;
+  GreasePencilLayerFramesMapStorage frames_storage;
 
   /**
    * Runtime struct pointer.
@@ -120,14 +122,19 @@ typedef struct GreasePencilLayer {
 typedef enum GreasePencilLayerTreeNodeType {
   GREASE_PENCIL_LAYER_TREE_LEAF = 0,
   GREASE_PENCIL_LAYER_TREE_GROUP = 1,
-} GreasePencilLayerTreeNode;
+} GreasePencilLayerTreeNodeType;
 
 typedef struct GreasePencilLayerTreeNode {
   /**
    * One of `GreasePencilLayerTreeNodeType`.
    * Indicates the type of struct this element is.
    */
-  char type;
+  uint8_t type;
+
+  /**
+   * Color tag.
+   */
+  uint8_t color[3];
 
   /**
    * Name of the layer/group. Dynamic length.
@@ -137,12 +144,7 @@ typedef struct GreasePencilLayerTreeNode {
   /**
    * Flag. Used to set e.g. the selection, visibility, ... status.
    */
-  int flag;
-
-  /**
-   * Color tag.
-   */
-  uchar color[3];
+  uint32_t flag;
 } GreasePencilLayerTreeNode;
 
 typedef struct GreasePencilLayerTreeGroup {
@@ -154,6 +156,13 @@ typedef struct GreasePencilLayerTreeLeaf {
   GreasePencilLayerTreeNode base;
   GreasePencilLayer layer;
 } GreasePencilLayerTreeLeaf;
+
+/* Only used for storage in the .blend file. */
+typedef struct GreasePencilLayerTreeStorage {
+  /* Array of tree nodes. Pre-order serialization of the layer tree. */
+  GreasePencilLayerTreeNode **nodes;
+  int nodes_num;
+} GreasePencilLayerTreeStorage;
 
 /**
  * The grease pencil data-block.
@@ -180,13 +189,7 @@ typedef struct GreasePencil {
    */
   // const bke::gpencil::LayerTree &layer_tree() const;
 #endif
-
-  /* Only used for storage in the .blend file. */
-  struct {
-    /* Array of tree nodes. Pre-order serialization of the layer tree. */
-    GreasePencilLayerTreeNode **nodes;
-    int nodes_num;
-  } layer_tree_storage;
+  GreasePencilLayerTreeStorage layer_tree_storage;
 
   /**
    * An array of materials.
@@ -197,7 +200,7 @@ typedef struct GreasePencil {
   /**
    * Global flag on the data-block.
    */
-  int flag;
+  uint32_t flag;
 
   /**
    * Runtime struct pointer.
