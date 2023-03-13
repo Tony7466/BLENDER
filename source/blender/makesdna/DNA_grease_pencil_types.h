@@ -62,8 +62,8 @@ typedef struct GreasePencilDrawingReference {
   GreasePencilDrawingOrReference base;
   /**
    * A reference to another GreasePencil data-block.
-   * If the data-block has multiple drawings, this drawing references
-   * all of them sequentially.
+   * If the data-block has multiple drawings, this drawing references all of them sequentially.
+   * See the note in `GreasePencilLayer->frames()` for a detailed expelantion of this.
    */
   struct GreasePencil *id_reference;
 } GreasePencilDrawingReference;
@@ -72,34 +72,31 @@ typedef struct GreasePencilDrawingReference {
  * A grease pencil layer is a collection of drawings mapped to a specific time on the timeline.
  */
 typedef struct GreasePencilLayer {
+#ifdef __cplusplus
   /**
-   * This Map maps a scene frame number (key) to an index into
-   * GreasePencil->drawings (value). The frame number indicates
-   * the first frame the drawing is shown. The end time is implicitly
-   * defined by the next greater frame number (key) in the map.
-   * If the value mapped to (index) is -1, no drawing is shown
-   * at this frame.
+   * This Map maps a scene frame number (key) to an index into GreasePencil->drawings (value). The
+   * frame number indicates the first frame the drawing is shown. The end time is implicitly
+   * defined by the next greater frame number (key) in the map. If the value mapped to (index) is
+   * -1, no drawing is shown at this frame.
    *
-   *    Example:
+   *    \example:
    *
    *    {0: 0, 5: 1, 10: -1, 12: 2, 16: -1}
    *
-   *    In this example there are three drawings (drawing #0,
-   *    drawing #1 and drawing #2). The first drawing starts at frame 0
-   *    and ends at frame 5 (excusive). The second drawing starts at
-   *    frame 5 and ends at frame 10. Finally, the third drawing starts
-   *    at frame 12 and ends at frame 16.
+   *    In this example there are three drawings (drawing #0, drawing #1 and drawing #2). The first
+   *    drawing starts at frame 0 and ends at frame 5 (excusive). The second drawing starts at
+   *    frame 5 and ends at frame 10. Finally, the third drawing starts at frame 12 and ends at
+   *    frame 16.
    *
    *           | | | | | | | | | | |1|1|1|1|1|1|1|
    *    Time:  |0|1|2|3|4|5|6|7|8|9|0|1|2|3|4|5|6|...
    *    Frame: [#0      ][#1      ]    [#2    ]
    *
-   * Note: If a drawing references another data-block, all of the drawings
-   *       in that data-block are mapped sequentially to the frames.
-   *       If another frame starts, the rest of the mapped drawings
-   *       are discarded.
+   * \note If a drawing references another data-block, all of the drawings in that data-block are
+   * mapped sequentially to the frames (frame-by-frame). If another frame starts, the rest of the
+   * referenced drawings are discarded. If the frame is longer than the number of referenced
+   * drawings, then the last referenced drawing is held for the rest of the duration.
    */
-#ifdef __cplusplus
   const blender::Map<int, int> &frames() const;
 #endif
 
@@ -177,10 +174,10 @@ typedef struct GreasePencil {
   blender::Span<GreasePencilDrawingOrReference> drawings() const;
 #endif
 
+#ifdef __cplusplus
   /**
    * The layer tree.
    */
-#ifdef __cplusplus
   // const bke::gpencil::LayerTree &layer_tree() const;
 #endif
 
