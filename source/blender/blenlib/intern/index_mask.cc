@@ -404,6 +404,14 @@ IndexMask IndexMask::slice_and_offset(const int64_t start,
   return IndexMask::from_bits(bits, memory);
 }
 
+IndexMask IndexMask::complement(const IndexRange universe, IndexMaskMemory &memory) const
+{
+  IndexMaskMemory memory;
+  const AtomicExpr atomic_expr{*this};
+  const ComplementExpr complement_expr{atomic_expr};
+  return IndexMask::from_expr(complement_expr, universe, memory);
+}
+
 static IndexMask bits_to_index_mask(const BitSpan bits,
                                     const int64_t start,
                                     IndexMaskMemory &memory)
@@ -897,10 +905,7 @@ Vector<IndexRange> IndexMask::to_ranges() const
 Vector<IndexRange> IndexMask::to_ranges_invert(const IndexRange universe) const
 {
   IndexMaskMemory memory;
-  const AtomicExpr atomic_expr{*this};
-  const ComplementExpr complement_expr{atomic_expr};
-  const IndexMask inverted_mask = IndexMask::from_expr(complement_expr, universe, memory);
-  return inverted_mask.to_ranges();
+  return this->complement(universe, memory).to_ranges();
 }
 
 template IndexMask IndexMask::from_indices(Span<int32_t>, IndexMaskMemory &);

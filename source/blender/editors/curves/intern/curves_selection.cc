@@ -64,10 +64,10 @@ IndexMask retrieve_selected_points(const bke::CurvesGeometry &curves, IndexMaskM
       curves.attributes().lookup_or_default<bool>(".selection", ATTR_DOMAIN_POINT, true), memory);
 }
 
-IndexMask retrieve_selected_points(const Curves &curves_id, Vector<int64_t> &r_indices)
+IndexMask retrieve_selected_points(const Curves &curves_id, IndexMaskMemory &memory)
 {
   const bke::CurvesGeometry &curves = curves_id.geometry.wrap();
-  return retrieve_selected_points(curves, r_indices);
+  return retrieve_selected_points(curves, memory);
 }
 
 bke::GSpanAttributeWriter ensure_selection_attribute(bke::CurvesGeometry &curves,

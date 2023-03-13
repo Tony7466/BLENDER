@@ -118,8 +118,8 @@ IndexMask retrieve_selected_curves(const Curves &curves_id, Vector<int64_t> &r_i
  * Find points that are selected (a selection factor greater than zero),
  * or points in curves with a selection factor greater than zero).
  */
-IndexMask retrieve_selected_points(const bke::CurvesGeometry &curves, Vector<int64_t> &r_indices);
-IndexMask retrieve_selected_points(const Curves &curves_id, Vector<int64_t> &r_indices);
+IndexMask retrieve_selected_points(const bke::CurvesGeometry &curves, IndexMaskMemory &memory);
+IndexMask retrieve_selected_points(const Curves &curves_id, IndexMaskMemory &memory);
 
 /**
  * If the ".selection" attribute doesn't exist, create it with the requested type (bool or float).

@@ -264,19 +264,17 @@ static bool transform_active_color(Mesh &mesh, const TransformFn &transform_fn)
 
   attribute_math::convert_to_static_type(color_attribute.varray.type(), [&](auto dummy) {
     using T = decltype(dummy);
-    threading::parallel_for(selection.index_range(), 1024, [&](IndexRange range) {
-      for ([[maybe_unused]] const int i : selection.slice(range)) {
-        if constexpr (std::is_same_v<T, ColorGeometry4f>) {
-          ColorGeometry4f color = color_attribute.varray.get<ColorGeometry4f>(i);
-          transform_fn(color);
-          color_attribute.varray.set_by_copy(i, &color);
-        }
-        else if constexpr (std::is_same_v<T, ColorGeometry4b>) {
-          ColorGeometry4f color = color_attribute.varray.get<ColorGeometry4b>(i).decode();
-          transform_fn(color);
-          ColorGeometry4b color_encoded = color.encode();
-          color_attribute.varray.set_by_copy(i, &color_encoded);
-        }
+    selection.foreach_index(GrainSize(1024), [&](const int i) {
+      if constexpr (std::is_same_v<T, ColorGeometry4f>) {
+        ColorGeometry4f color = color_attribute.varray.get<ColorGeometry4f>(i);
+        transform_fn(color);
+        color_attribute.varray.set_by_copy(i, &color);
+      }
+      else if constexpr (std::is_same_v<T, ColorGeometry4b>) {
+        ColorGeometry4f color = color_attribute.varray.get<ColorGeometry4b>(i).decode();
+        transform_fn(color);
+        ColorGeometry4b color_encoded = color.encode();
+        color_attribute.varray.set_by_copy(i, &color_encoded);
       }
     });
   });

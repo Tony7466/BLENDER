@@ -175,6 +175,7 @@ class IndexMask {
   IndexMask slice(int64_t start, int64_t size) const;
   IndexMask slice_and_offset(IndexRange range, IndexMaskMemory &memory) const;
   IndexMask slice_and_offset(int64_t start, int64_t size, IndexMaskMemory &memory) const;
+  IndexMask complement(const IndexRange universe, IndexMaskMemory &memory) const;
 
   int64_t operator[](const int64_t i) const;
 

@@ -165,9 +165,11 @@ struct PuffOperationExecutor {
         changed_curves_indices.append(curve_selection_[select_i]);
       }
     }
+    IndexMaskMemory memory;
+    const IndexMask changed_curves_mask = IndexMask::from_indices<int64_t>(changed_curves_indices,
+                                                                           memory);
 
-    self_->constraint_solver_.solve_step(
-        *curves_, IndexMask(changed_curves_indices), surface_, transforms_);
+    self_->constraint_solver_.solve_step(*curves_, changed_curves_mask, surface_, transforms_);
 
     curves_->tag_positions_changed();
     DEG_id_tag_update(&curves_id_->id, ID_RECALC_GEOMETRY);

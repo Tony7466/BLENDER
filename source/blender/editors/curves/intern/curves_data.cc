@@ -14,17 +14,17 @@ namespace blender::ed::curves {
 
 void transverts_from_curves_positions_create(bke::CurvesGeometry &curves, TransVertStore *tvs)
 {
-  Vector<int64_t> selected_indices;
-  IndexMask selection = retrieve_selected_points(curves, selected_indices);
+  IndexMaskMemory memory;
+  IndexMask selection = retrieve_selected_points(curves, memory);
   MutableSpan<float3> positions = curves.positions_for_write();
 
   tvs->transverts = static_cast<TransVert *>(
       MEM_calloc_arrayN(selection.size(), sizeof(TransVert), __func__));
   tvs->transverts_tot = selection.size();
 
-  selection.foreach_span(GrainSize(1024), [&](const auto mask_segment, const IndexRange range) {
+  selection.foreach_span(GrainSize(1024), [&](const auto mask_segment, const int64_t start) {
     for (const int i : mask_segment.index_range()) {
-      TransVert &tv = tvs->transverts[range[i]];
+      TransVert &tv = tvs->transverts[start + i];
       tv.loc = positions[mask_segment[i]];
       tv.flag = SELECT;
       copy_v3_v3(tv.oldloc, tv.loc);
