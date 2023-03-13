@@ -230,7 +230,7 @@ class DisplayGPUTexture {
     }
 
     GPU_texture_filter_mode(gpu_texture, false);
-    GPU_texture_wrap_mode(gpu_texture, GPU_SAMPLER_WRAP_EXTEND);
+    GPU_texture_extend_mode(gpu_texture, GPU_SAMPLER_EXTEND_MODE_EXTEND);
 
     ++num_used;
 

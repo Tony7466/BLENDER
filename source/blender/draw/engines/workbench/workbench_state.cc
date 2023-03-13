@@ -283,8 +283,8 @@ ObjectState::ObjectState(const SceneState &scene_state, Object *ob)
         const ImagePaintSettings *imapaint = &scene_state.scene->toolsettings->imapaint;
         if (imapaint->mode == IMAGEPAINT_MODE_IMAGE) {
           image_paint_override = imapaint->canvas;
-          override_sampler_state.wrapping_x = GPU_SAMPLER_WRAP_REPEAT;
-          override_sampler_state.wrapping_y = GPU_SAMPLER_WRAP_REPEAT;
+          override_sampler_state.extend_x = GPU_SAMPLER_EXTEND_MODE_REPEAT;
+          override_sampler_state.extend_y = GPU_SAMPLER_EXTEND_MODE_REPEAT;
           const bool use_linear_filter = imapaint->interp == IMAGEPAINT_INTERP_LINEAR;
           override_sampler_state.set_filtering_flag_from_test(GPU_SAMPLER_FILTERING_LINEAR,
                                                               use_linear_filter);

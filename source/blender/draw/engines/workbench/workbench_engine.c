@@ -146,7 +146,8 @@ static void workbench_cache_texpaint_populate(WORKBENCH_PrivateData *wpd, Object
       const GPUSamplerFiltering filtering = imapaint->interp == IMAGEPAINT_INTERP_LINEAR ?
                                                 GPU_SAMPLER_FILTERING_LINEAR :
                                                 GPU_SAMPLER_FILTERING_DEFAULT;
-      GPUSamplerState state = {filtering, GPU_SAMPLER_WRAP_REPEAT, GPU_SAMPLER_WRAP_REPEAT};
+      GPUSamplerState state = {
+          filtering, GPU_SAMPLER_EXTEND_MODE_REPEAT, GPU_SAMPLER_EXTEND_MODE_REPEAT};
 
       DRWShadingGroup *grp = workbench_image_setup(wpd, ob, 0, ima, NULL, state);
       workbench_object_drawcall(grp, geom, ob);

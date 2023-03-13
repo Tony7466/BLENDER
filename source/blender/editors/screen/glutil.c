@@ -92,7 +92,7 @@ void immDrawPixelsTexScaledFullSize(const IMMDrawPixelsTexState *state,
     GPU_texture_update_mipmap_chain(tex);
     GPU_texture_mipmap_mode(tex, true, true);
   }
-  GPU_texture_wrap_mode(tex, GPU_SAMPLER_WRAP_EXTEND);
+  GPU_texture_extend_mode(tex, GPU_SAMPLER_EXTEND_MODE_EXTEND);
 
   GPU_texture_bind(tex, 0);
 
@@ -174,7 +174,7 @@ void immDrawPixelsTexTiled_scaling_clipping(IMMDrawPixelsTexState *state,
       "immDrawPixels", tex_w, tex_h, 1, gpu_format, GPU_TEXTURE_USAGE_GENERAL, NULL);
 
   GPU_texture_filter_mode(tex, use_filter);
-  GPU_texture_wrap_mode(tex, GPU_SAMPLER_WRAP_EXTEND);
+  GPU_texture_extend_mode(tex, GPU_SAMPLER_EXTEND_MODE_EXTEND);
 
   GPU_texture_bind(tex, 0);
 

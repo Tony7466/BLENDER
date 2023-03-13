@@ -75,31 +75,31 @@ static const int GPU_SAMPLER_FILTERING_TYPES_COUNT = (GPU_SAMPLER_FILTERING_LINE
                                                      1;
 
 /**
- * The `GPUSamplerWrapType` specifies how the texture will be extrapolated for out-of-bound
+ * The `GPUSamplerExtendMode` specifies how the texture will be extrapolated for out-of-bound
  * texture sampling.
  */
-typedef enum GPUSamplerWrapType {
+typedef enum GPUSamplerExtendMode {
   /**
    * Extrapolate by extending the edge pixels of the texture, in other words, the texture
    * coordinates are clamped.
    */
-  GPU_SAMPLER_WRAP_EXTEND = 0,
+  GPU_SAMPLER_EXTEND_MODE_EXTEND = 0,
   /** Extrapolate by repeating the texture. */
-  GPU_SAMPLER_WRAP_REPEAT,
+  GPU_SAMPLER_EXTEND_MODE_REPEAT,
   /** Extrapolate by repeating the texture with mirroring in a ping-pong fashion. */
-  GPU_SAMPLER_WRAP_MIRRORED_REPEAT,
+  GPU_SAMPLER_EXTEND_MODE_MIRRORED_REPEAT,
   /**
    * Extrapolate using the value of TEXTURE_BORDER_COLOR, which is always set to a transparent
    * black color (0, 0, 0, 0) and can't be changed.
    */
-  GPU_SAMPLER_WRAP_CLIP,
-} GPUSamplerWrapType;
+  GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER,
+} GPUSamplerExtendMode;
 
-#define GPU_SAMPLER_WRAP_TYPES_COUNT (GPU_SAMPLER_WRAP_CLIP + 1)
+#define GPU_SAMPLER_EXTEND_MODES_COUNT (GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER + 1)
 
 /**
  * The `GPUSamplerCustomType` specifies pre-defined sampler configurations with parameters that
- * are not controllable using the GPUSamplerFiltering and GPUSamplerWrapType options. Hence, the
+ * are not controllable using the GPUSamplerFiltering and GPUSamplerExtendMode options. Hence, the
  * use of a custom sampler type is mutually exclusive with the use of the aforementioned enums.
  *
  * The parameters that needs to be set for those custom samplers are not added as yet another
@@ -114,7 +114,7 @@ typedef enum GPUSamplerCustomType {
    * sampler. This is equivalent to:
    *
    * - GPU_SAMPLER_FILTERING_LINEAR.
-   * - GPU_SAMPLER_WRAP_EXTEND.
+   * - GPU_SAMPLER_EXTEND_MODE_EXTEND.
    *
    * And sets:
    *
@@ -141,13 +141,13 @@ typedef enum GPUSamplerCustomType {
  */
 typedef enum GPUSamplerStateType {
   /**
-   * The filtering, wrapping_x, and wrapping_y members of the GPUSamplerState structure will be
-   * used in setting up the sampler state for the texture. The custom_type member will be ignored
-   * in that case.
+   * The filtering, extend_x, and extend_y members of the GPUSamplerState structure will be used in
+   * setting up the sampler state for the texture. The custom_type member will be ignored in that
+   * case.
    */
   GPU_SAMPLER_STATE_TYPE_PARAMETERS = 0,
   /**
-   * The filtering, wrapping_x, and wrapping_y members of the GPUSamplerState structure will be
+   * The filtering, extend_x, and extend_y members of the GPUSamplerState structure will be
    * ignored, and the predefined custom parameters outlined in the documentation of
    * GPUSamplerCustomType will be used in setting up the sampler state for the texture.
    */
@@ -177,16 +177,16 @@ typedef enum GPUSamplerStateType {
  */
 typedef struct GPUSamplerState {
   GPUSamplerFiltering filtering : 8;
-  GPUSamplerWrapType wrapping_x : 4;
-  GPUSamplerWrapType wrapping_y : 4;
+  GPUSamplerExtendMode extend_x : 4;
+  GPUSamplerExtendMode extend_y : 4;
   GPUSamplerCustomType custom_type : 8;
   GPUSamplerStateType type : 8;
 
 #ifdef __cplusplus
   /**
-   * Constructs a sampler state with default filtering and extended wrapping in both x and y axis.
-   * See the documentation on GPU_SAMPLER_FILTERING_DEFAULT and GPU_SAMPLER_WRAP_EXTEND for more
-   * information.
+   * Constructs a sampler state with default filtering and extended extend in both x and y axis.
+   * See the documentation on GPU_SAMPLER_FILTERING_DEFAULT and GPU_SAMPLER_EXTEND_MODE_EXTEND for
+   * more information.
    *
    * GPU_SAMPLER_STATE_TYPE_PARAMETERS is set in order to utilize the aforementioned parameters, so
    * GPU_SAMPLER_CUSTOM_COMPARE is arbitrary, ignored, and irrelevant.
@@ -194,8 +194,8 @@ typedef struct GPUSamplerState {
   static constexpr GPUSamplerState default_sampler()
   {
     return {GPU_SAMPLER_FILTERING_DEFAULT,
-            GPU_SAMPLER_WRAP_EXTEND,
-            GPU_SAMPLER_WRAP_EXTEND,
+            GPU_SAMPLER_EXTEND_MODE_EXTEND,
+            GPU_SAMPLER_EXTEND_MODE_EXTEND,
             GPU_SAMPLER_CUSTOM_COMPARE,
             GPU_SAMPLER_STATE_TYPE_PARAMETERS};
   }
@@ -211,8 +211,8 @@ typedef struct GPUSamplerState {
   static constexpr GPUSamplerState internal_sampler()
   {
     return {GPU_SAMPLER_FILTERING_DEFAULT,
-            GPU_SAMPLER_WRAP_EXTEND,
-            GPU_SAMPLER_WRAP_EXTEND,
+            GPU_SAMPLER_EXTEND_MODE_EXTEND,
+            GPU_SAMPLER_EXTEND_MODE_EXTEND,
             GPU_SAMPLER_CUSTOM_COMPARE,
             GPU_SAMPLER_STATE_TYPE_INTERNAL};
   }
@@ -227,8 +227,8 @@ typedef struct GPUSamplerState {
   static constexpr GPUSamplerState icon_sampler()
   {
     return {GPU_SAMPLER_FILTERING_DEFAULT,
-            GPU_SAMPLER_WRAP_EXTEND,
-            GPU_SAMPLER_WRAP_EXTEND,
+            GPU_SAMPLER_EXTEND_MODE_EXTEND,
+            GPU_SAMPLER_EXTEND_MODE_EXTEND,
             GPU_SAMPLER_CUSTOM_ICON,
             GPU_SAMPLER_STATE_TYPE_CUSTOM};
   }
@@ -245,8 +245,8 @@ typedef struct GPUSamplerState {
   static constexpr GPUSamplerState compare_sampler()
   {
     return {GPU_SAMPLER_FILTERING_DEFAULT,
-            GPU_SAMPLER_WRAP_EXTEND,
-            GPU_SAMPLER_WRAP_EXTEND,
+            GPU_SAMPLER_EXTEND_MODE_EXTEND,
+            GPU_SAMPLER_EXTEND_MODE_EXTEND,
             GPU_SAMPLER_CUSTOM_COMPARE,
             GPU_SAMPLER_STATE_TYPE_CUSTOM};
   }
@@ -317,35 +317,35 @@ typedef struct GPUSamplerState {
       serialized_paramaters += "anisotropic_";
     }
 
-    switch (this->wrapping_x) {
-      case GPU_SAMPLER_WRAP_EXTEND:
-        serialized_paramaters += "wrap-extend-x_";
+    switch (this->extend_x) {
+      case GPU_SAMPLER_EXTEND_MODE_EXTEND:
+        serialized_paramaters += "extend-x_";
         break;
-      case GPU_SAMPLER_WRAP_REPEAT:
-        serialized_paramaters += "wrap-repeat-x_";
+      case GPU_SAMPLER_EXTEND_MODE_REPEAT:
+        serialized_paramaters += "repeat-x_";
         break;
-      case GPU_SAMPLER_WRAP_MIRRORED_REPEAT:
-        serialized_paramaters += "wrap-mirrored-repeat-x_";
+      case GPU_SAMPLER_EXTEND_MODE_MIRRORED_REPEAT:
+        serialized_paramaters += "mirrored-repeat-x_";
         break;
-      case GPU_SAMPLER_WRAP_CLIP:
-        serialized_paramaters += "wrap-clip-x_";
+      case GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER:
+        serialized_paramaters += "clamp-to-border-x_";
         break;
       default:
         BLI_assert_unreachable();
     }
 
-    switch (this->wrapping_y) {
-      case GPU_SAMPLER_WRAP_EXTEND:
-        serialized_paramaters += "wrap-extend-y";
+    switch (this->extend_y) {
+      case GPU_SAMPLER_EXTEND_MODE_EXTEND:
+        serialized_paramaters += "extend-y";
         break;
-      case GPU_SAMPLER_WRAP_REPEAT:
-        serialized_paramaters += "wrap-repeat-y";
+      case GPU_SAMPLER_EXTEND_MODE_REPEAT:
+        serialized_paramaters += "repeat-y";
         break;
-      case GPU_SAMPLER_WRAP_MIRRORED_REPEAT:
-        serialized_paramaters += "wrap-mirrored-repeat-y";
+      case GPU_SAMPLER_EXTEND_MODE_MIRRORED_REPEAT:
+        serialized_paramaters += "mirrored-repeat-y";
         break;
-      case GPU_SAMPLER_WRAP_CLIP:
-        serialized_paramaters += "wrap-clip-y";
+      case GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER:
+        serialized_paramaters += "clamp-to-border-y";
         break;
       default:
         BLI_assert_unreachable();
@@ -356,8 +356,8 @@ typedef struct GPUSamplerState {
 
   bool operator==(GPUSamplerState const &rhs) const
   {
-    return this->filtering == rhs.filtering && this->wrapping_x == rhs.wrapping_x &&
-           this->wrapping_y == rhs.wrapping_y && this->custom_type == rhs.custom_type &&
+    return this->filtering == rhs.filtering && this->extend_x == rhs.extend_x &&
+           this->extend_y == rhs.extend_y && this->custom_type == rhs.custom_type &&
            this->type == rhs.type;
   }
 #endif
@@ -366,8 +366,8 @@ typedef struct GPUSamplerState {
 #ifndef __cplusplus
 /** Identical to GPUSamplerState::default_sampler for non C++ users. */
 const static GPUSamplerState GPU_SAMPLER_DEFAULT = {GPU_SAMPLER_FILTERING_DEFAULT,
-                                                    GPU_SAMPLER_WRAP_EXTEND,
-                                                    GPU_SAMPLER_WRAP_EXTEND,
+                                                    GPU_SAMPLER_EXTEND_MODE_EXTEND,
+                                                    GPU_SAMPLER_EXTEND_MODE_EXTEND,
                                                     GPU_SAMPLER_CUSTOM_COMPARE,
                                                     GPU_SAMPLER_STATE_TYPE_PARAMETERS};
 #endif
@@ -845,21 +845,21 @@ void GPU_texture_anisotropic_filter(GPUTexture *texture, bool use_aniso);
 
 /**
  * Set \a tex texture sampling method for coordinates outside of the [0..1] uv range along the x
- * axis. See GPUSamplerWrapType for the available and meaning of different wrap types.
+ * axis. See GPUSamplerExtendMode for the available and meaning of different extend modes.
  */
-void GPU_texture_wrap_mode_x(GPUTexture *texture, GPUSamplerWrapType wrap_type);
+void GPU_texture_extend_mode_x(GPUTexture *texture, GPUSamplerExtendMode extend_mode);
 
 /**
  * Set \a tex texture sampling method for coordinates outside of the [0..1] uv range along the y
- * axis. See GPUSamplerWrapType for the available and meaning of different wrap types.
+ * axis. See GPUSamplerExtendMode for the available and meaning of different extend modes.
  */
-void GPU_texture_wrap_mode_y(GPUTexture *texture, GPUSamplerWrapType wrap_type);
+void GPU_texture_extend_mode_y(GPUTexture *texture, GPUSamplerExtendMode extend_mode);
 
 /**
  * Set \a tex texture sampling method for coordinates outside of the [0..1] uv range along both the
- * x and y axis. See GPUSamplerWrapType for the available and meaning of different wrap types.
+ * x and y axis. See GPUSamplerExtendMode for the available and meaning of different extend modes.
  */
-void GPU_texture_wrap_mode(GPUTexture *texture, GPUSamplerWrapType wrap_type);
+void GPU_texture_extend_mode(GPUTexture *texture, GPUSamplerExtendMode extend_mode);
 
 /**
  * Set \a tex texture swizzle state for swizzling sample components.

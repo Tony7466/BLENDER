@@ -39,8 +39,8 @@ static int node_shader_gpu_tex_environment(GPUMaterial *mat,
   NodeTexImage *tex_original = (NodeTexImage *)node_original->storage;
   ImageUser *iuser = &tex_original->iuser;
   GPUSamplerState sampler = {GPU_SAMPLER_FILTERING_LINEAR | GPU_SAMPLER_FILTERING_ANISOTROPIC,
-                             GPU_SAMPLER_WRAP_REPEAT,
-                             GPU_SAMPLER_WRAP_REPEAT};
+                             GPU_SAMPLER_EXTEND_MODE_REPEAT,
+                             GPU_SAMPLER_EXTEND_MODE_REPEAT};
   /* TODO(@fclem): For now assume mipmap is always enabled. */
   if (true) {
     sampler.enable_filtering_flag(GPU_SAMPLER_FILTERING_MIPMAP);
@@ -65,7 +65,7 @@ static int node_shader_gpu_tex_environment(GPUMaterial *mat,
   if (tex->projection == SHD_PROJ_EQUIRECTANGULAR) {
     GPU_link(mat, "node_tex_environment_equirectangular", in[0].link, &in[0].link);
     /* To fix pole issue we clamp the v coordinate. */
-    sampler.wrapping_y = GPU_SAMPLER_WRAP_EXTEND;
+    sampler.extend_y = GPU_SAMPLER_EXTEND_MODE_EXTEND;
     /* Force the highest mipmap and don't do anisotropic filtering.
      * This is to fix the artifact caused by derivatives discontinuity. */
     sampler.disable_filtering_flag(GPU_SAMPLER_FILTERING_MIPMAP |
@@ -74,8 +74,8 @@ static int node_shader_gpu_tex_environment(GPUMaterial *mat,
   else {
     GPU_link(mat, "node_tex_environment_mirror_ball", in[0].link, &in[0].link);
     /* Fix pole issue. */
-    sampler.wrapping_x = GPU_SAMPLER_WRAP_EXTEND;
-    sampler.wrapping_y = GPU_SAMPLER_WRAP_EXTEND;
+    sampler.extend_x = GPU_SAMPLER_EXTEND_MODE_EXTEND;
+    sampler.extend_y = GPU_SAMPLER_EXTEND_MODE_EXTEND;
   }
 
   const char *gpu_fn;

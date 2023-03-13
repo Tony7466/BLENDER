@@ -59,13 +59,15 @@ void RealizeOnDomainOperation::execute()
   GPU_texture_filter_mode(input.texture(), use_bilinear);
 
   /* If the input repeats, set a repeating wrap mode for out-of-bound texture access. Otherwise,
-   * make out-of-bound texture access return zero by setting a clipping wrap mode. */
-  GPU_texture_wrap_mode_x(input.texture(),
-                          input.get_realization_options().repeat_x ? GPU_SAMPLER_WRAP_REPEAT :
-                                                                     GPU_SAMPLER_WRAP_CLIP);
-  GPU_texture_wrap_mode_y(input.texture(),
-                          input.get_realization_options().repeat_y ? GPU_SAMPLER_WRAP_REPEAT :
-                                                                     GPU_SAMPLER_WRAP_CLIP);
+   * make out-of-bound texture access return zero by setting a clamp to border extend mode. */
+  GPU_texture_extend_mode_x(input.texture(),
+                            input.get_realization_options().repeat_x ?
+                                GPU_SAMPLER_EXTEND_MODE_REPEAT :
+                                GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
+  GPU_texture_extend_mode_y(input.texture(),
+                            input.get_realization_options().repeat_y ?
+                                GPU_SAMPLER_EXTEND_MODE_REPEAT :
+                                GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
 
   input.bind_as_texture(shader, "input_tx");
   result.bind_as_image(shader, "domain_img");

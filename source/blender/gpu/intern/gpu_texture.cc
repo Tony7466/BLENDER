@@ -637,23 +637,23 @@ void GPU_texture_anisotropic_filter(GPUTexture *tex_, bool use_aniso)
   tex->sampler_state.set_filtering_flag_from_test(GPU_SAMPLER_FILTERING_ANISOTROPIC, use_aniso);
 }
 
-void GPU_texture_wrap_mode_x(GPUTexture *tex_, GPUSamplerWrapType wrap_type)
+void GPU_texture_extend_mode_x(GPUTexture *tex_, GPUSamplerExtendMode extend_mode)
 {
   Texture *tex = reinterpret_cast<Texture *>(tex_);
-  tex->sampler_state.wrapping_x = wrap_type;
+  tex->sampler_state.extend_x = extend_mode;
 }
 
-void GPU_texture_wrap_mode_y(GPUTexture *tex_, GPUSamplerWrapType wrap_type)
+void GPU_texture_extend_mode_y(GPUTexture *tex_, GPUSamplerExtendMode extend_mode)
 {
   Texture *tex = reinterpret_cast<Texture *>(tex_);
-  tex->sampler_state.wrapping_y = wrap_type;
+  tex->sampler_state.extend_y = extend_mode;
 }
 
-void GPU_texture_wrap_mode(GPUTexture *tex_, GPUSamplerWrapType wrap_type)
+void GPU_texture_extend_mode(GPUTexture *tex_, GPUSamplerExtendMode extend_mode)
 {
   Texture *tex = reinterpret_cast<Texture *>(tex_);
-  tex->sampler_state.wrapping_x = wrap_type;
-  tex->sampler_state.wrapping_y = wrap_type;
+  tex->sampler_state.extend_x = extend_mode;
+  tex->sampler_state.extend_y = extend_mode;
 }
 
 void GPU_texture_swizzle_set(GPUTexture *tex, const char swizzle[4])

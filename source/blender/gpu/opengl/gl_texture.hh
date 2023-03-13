@@ -29,10 +29,11 @@ class GLTexture : public Texture {
    * respectively, and the third variation axis is the filtering type. See the samplers_init()
    * method for more information.
    */
-  static GLuint samplers_state_cache_[GPU_SAMPLER_WRAP_TYPES_COUNT][GPU_SAMPLER_WRAP_TYPES_COUNT]
+  static GLuint samplers_state_cache_[GPU_SAMPLER_EXTEND_MODES_COUNT]
+                                     [GPU_SAMPLER_EXTEND_MODES_COUNT]
                                      [GPU_SAMPLER_FILTERING_TYPES_COUNT];
-  static const int samplers_state_cache_count_ = GPU_SAMPLER_WRAP_TYPES_COUNT *
-                                                 GPU_SAMPLER_WRAP_TYPES_COUNT *
+  static const int samplers_state_cache_count_ = GPU_SAMPLER_EXTEND_MODES_COUNT *
+                                                 GPU_SAMPLER_EXTEND_MODES_COUNT *
                                                  GPU_SAMPLER_FILTERING_TYPES_COUNT;
   /**
    * A cache of all custom sampler configurations described in GPUSamplerCustomType. See the

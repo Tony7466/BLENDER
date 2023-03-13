@@ -687,8 +687,8 @@ class MTLContext : public Context {
   /* Texture Samplers. */
   /* Cache of generated #MTLSamplerState objects based on permutations of the members of
    * `GPUSamplerState`. */
-  id<MTLSamplerState> sampler_state_cache_[GPU_SAMPLER_WRAP_TYPES_COUNT]
-                                          [GPU_SAMPLER_WRAP_TYPES_COUNT]
+  id<MTLSamplerState> sampler_state_cache_[GPU_SAMPLER_EXTEND_MODES_COUNT]
+                                          [GPU_SAMPLER_EXTEND_MODES_COUNT]
                                           [GPU_SAMPLER_FILTERING_TYPES_COUNT];
   id<MTLSamplerState> custom_sampler_state_cache_[GPU_SAMPLER_CUSTOM_TYPES_COUNT];
   id<MTLSamplerState> default_sampler_state_ = nil;

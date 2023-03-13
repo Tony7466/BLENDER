@@ -140,8 +140,8 @@ struct MTLSamplerState {
   {
     uint integer_representation = 0;
     integer_representation |= this->state.filtering;
-    integer_representation |= this->state.wrapping_x << 8;
-    integer_representation |= this->state.wrapping_y << 12;
+    integer_representation |= this->state.extend_x << 8;
+    integer_representation |= this->state.extend_y << 12;
     integer_representation |= this->state.custom_type << 16;
     integer_representation |= this->state.type << 24;
     return integer_representation;
@@ -151,8 +151,8 @@ struct MTLSamplerState {
   {
     uint64_t integer_representation = 0;
     integer_representation |= this->state.filtering;
-    integer_representation |= this->state.wrapping_x << 8;
-    integer_representation |= this->state.wrapping_y << 12;
+    integer_representation |= this->state.extend_x << 8;
+    integer_representation |= this->state.extend_y << 12;
     integer_representation |= this->state.custom_type << 16;
     integer_representation |= this->state.type << 24;
     return integer_representation;
