@@ -6,7 +6,7 @@
 #include "BKE_customdata.h"
 #include "BKE_deform.h"
 #include "BKE_geometry_set.hh"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_pointcloud.h"
 #include "BKE_type_conversions.hh"
 
@@ -61,6 +61,9 @@ bool allow_procedural_attribute_access(StringRef attribute_name)
     return false;
   }
   if (attribute_name.startswith(".hide")) {
+    return false;
+  }
+  if (attribute_name.startswith(".uv")) {
     return false;
   }
   if (attribute_name.startswith("." UV_VERTSEL_NAME ".")) {

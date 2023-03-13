@@ -43,7 +43,7 @@
 #include "BKE_gpencil_geom.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_object.h"
 
 #include "DEG_depsgraph_query.h"
@@ -2703,7 +2703,8 @@ bool BKE_gpencil_convert_mesh(Main *bmain,
 {
   using namespace blender;
   using namespace blender::bke;
-  if (ELEM(nullptr, ob_gp, ob_mesh) || (ob_gp->type != OB_GPENCIL) || (ob_gp->data == nullptr)) {
+  if (ELEM(nullptr, ob_gp, ob_mesh) || (ob_gp->type != OB_GPENCIL_LEGACY) ||
+      (ob_gp->data == nullptr)) {
     return false;
   }
 

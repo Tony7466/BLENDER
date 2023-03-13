@@ -10,7 +10,7 @@
 #include "BKE_customdata.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_object.h"
 
 #include "BLI_math.h"
@@ -277,7 +277,6 @@ void USDMeshReader::read_mpolys(Mesh *mesh)
 
     /* Polygons are always assumed to be smooth-shaded. If the mesh should be flat-shaded,
      * this is encoded in custom loop normals. */
-    poly.flag |= ME_SMOOTH;
 
     if (is_left_handed_) {
       int loop_end_index = loop_index + (face_size - 1);

@@ -46,7 +46,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_modifier.h"
@@ -2188,12 +2188,7 @@ static PBVH *build_pbvh_from_regular_mesh(Object *ob, Mesh *me_eval_deform, bool
   MLoopTri *looptri = static_cast<MLoopTri *>(
       MEM_malloc_arrayN(looptris_num, sizeof(*looptri), __func__));
 
-  BKE_mesh_recalc_looptri(loops.data(),
-                          polys.data(),
-                          reinterpret_cast<const float(*)[3]>(positions.data()),
-                          me->totloop,
-                          me->totpoly,
-                          looptri);
+  blender::bke::mesh::looptris_calc(positions, polys, loops, {looptri, looptris_num});
 
   BKE_pbvh_build_mesh(pbvh,
                       me,
@@ -2803,8 +2798,7 @@ static void sculpt_attribute_update_refs(Object *ob)
 {
   SculptSession *ss = ob->sculpt;
 
-  /* run twice, in case sculpt_attr_update had to recreate a layer and
-     messed up the bmesh offsets. */
+  /* Run twice, in case sculpt_attr_update had to recreate a layer and messed up #BMesh offsets. */
   for (int i = 0; i < 2; i++) {
     for (int j = 0; j < SCULPT_MAX_ATTRIBUTES; j++) {
       SculptAttribute *attr = ss->temp_attributes + j;

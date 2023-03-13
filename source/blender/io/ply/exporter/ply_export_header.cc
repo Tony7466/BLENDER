@@ -9,6 +9,7 @@
 
 #include "IO_ply.h"
 #include "ply_data.hh"
+#include "ply_export_header.hh"
 #include "ply_file_buffer.hh"
 
 namespace blender::io::ply {
@@ -43,7 +44,7 @@ void write_header(FileBuffer &buffer,
     buffer.write_header_scalar_property("uchar", "alpha");
   }
 
-  if (!ply_data.UV_coordinates.is_empty()) {
+  if (!ply_data.uv_coordinates.is_empty()) {
     buffer.write_header_scalar_property("float", "s");
     buffer.write_header_scalar_property("float", "t");
   }

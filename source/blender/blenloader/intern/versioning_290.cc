@@ -48,7 +48,7 @@
 #include "BKE_gpencil.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_multires.h"
 #include "BKE_node.h"
 
@@ -553,7 +553,7 @@ void do_versions_after_linking_290(FileData * /*fd*/, Main *bmain)
     Scene *scene = static_cast<Scene *>(bmain->scenes.first);
     if (scene != nullptr) {
       LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
-        if (ob->type != OB_GPENCIL) {
+        if (ob->type != OB_GPENCIL_LEGACY) {
           continue;
         }
         bGPdata *gpd = static_cast<bGPdata *>(ob->data);

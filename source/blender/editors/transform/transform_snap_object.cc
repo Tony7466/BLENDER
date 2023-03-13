@@ -34,7 +34,7 @@
 #include "BKE_geometry_set.h"
 #include "BKE_global.h"
 #include "BKE_layer.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.h"
 #include "BKE_mesh_wrapper.h"
 #include "BKE_object.h"
@@ -2968,7 +2968,7 @@ static eSnapMode snap_obj_fn(SnapObjectContext *sctx,
         break;
       }
       case OB_EMPTY:
-      case OB_GPENCIL:
+      case OB_GPENCIL_LEGACY:
       case OB_LAMP:
         retval = snap_object_center(
             sctx, ob_eval, obmat, dt->dist_px, sctx->ret.loc, sctx->ret.no, &sctx->ret.index);

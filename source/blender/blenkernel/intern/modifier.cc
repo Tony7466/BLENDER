@@ -54,7 +54,7 @@
 #include "BKE_key.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.h"
 #include "BKE_multires.h"
 #include "BKE_object.h"
@@ -735,7 +735,7 @@ ModifierData *BKE_modifiers_get_virtual_modifierlist(const Object *ob,
 
 Object *BKE_modifiers_is_deformed_by_armature(Object *ob)
 {
-  if (ob->type == OB_GPENCIL) {
+  if (ob->type == OB_GPENCIL_LEGACY) {
     GpencilVirtualModifierData gpencilvirtualModifierData;
     ArmatureGpencilModifierData *agmd = nullptr;
     GpencilModifierData *gmd = BKE_gpencil_modifiers_get_virtual_modifierlist(

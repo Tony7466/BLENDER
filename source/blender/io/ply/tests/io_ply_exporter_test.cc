@@ -3,6 +3,7 @@
 #include "testing/testing.h"
 #include "tests/blendfile_loading_base_test.h"
 
+#include "BKE_appdir.h"
 #include "BKE_blender_version.h"
 
 #include "DEG_depsgraph.h"
@@ -31,9 +32,29 @@ class PlyExportTest : public BlendfileLoadingBaseTest {
     depsgraph_create(eval_mode);
     return true;
   }
+
+ protected:
+  void SetUp() override
+  {
+    BlendfileLoadingBaseTest::SetUp();
+
+    BKE_tempdir_init("");
+  }
+
+  void TearDown() override
+  {
+    BlendfileLoadingBaseTest::TearDown();
+
+    BKE_tempdir_session_purge();
+  }
+
+  std::string get_temp_ply_filename(const std::string &filename)
+  {
+    return std::string(BKE_tempdir_session()) + SEP_STR + filename;
+  }
 };
 
-std::unique_ptr<PlyData> load_cube(PLYExportParams &params)
+static std::unique_ptr<PlyData> load_cube(PLYExportParams &params)
 {
   std::unique_ptr<PlyData> plyData = std::make_unique<PlyData>();
   plyData->vertices = {{1.122082, 1.122082, 1.122082},
@@ -78,11 +99,11 @@ static std::string read_temp_file_in_string(const std::string &file_path)
   return res;
 }
 
-char read(std::ifstream &file)
+static char read(std::ifstream &file)
 {
-  char returnVal;
-  file.read((char *)&returnVal, sizeof(returnVal));
-  return returnVal;
+  char return_val;
+  file.read((char *)&return_val, sizeof(return_val));
+  return return_val;
 }
 
 static std::vector<char> read_temp_file_in_vectorchar(const std::string &file_path)
@@ -103,8 +124,8 @@ static std::vector<char> read_temp_file_in_vectorchar(const std::string &file_pa
 
 TEST_F(PlyExportTest, WriteHeaderAscii)
 {
-  std::string filePath = blender::tests::flags_test_release_dir() + "/" + temp_file_path;
-  PLYExportParams _params;
+  std::string filePath = get_temp_ply_filename(temp_file_path);
+  PLYExportParams _params = {};
   _params.ascii_format = true;
   _params.export_normals = false;
   _params.vertex_colors = PLY_VERTEX_COLOR_NONE;
@@ -141,8 +162,8 @@ TEST_F(PlyExportTest, WriteHeaderAscii)
 
 TEST_F(PlyExportTest, WriteHeaderBinary)
 {
-  std::string filePath = blender::tests::flags_test_release_dir() + "/" + temp_file_path;
-  PLYExportParams _params;
+  std::string filePath = get_temp_ply_filename(temp_file_path);
+  PLYExportParams _params = {};
   _params.ascii_format = false;
   _params.export_normals = false;
   _params.vertex_colors = PLY_VERTEX_COLOR_NONE;
@@ -179,8 +200,8 @@ TEST_F(PlyExportTest, WriteHeaderBinary)
 
 TEST_F(PlyExportTest, WriteVerticesAscii)
 {
-  std::string filePath = blender::tests::flags_test_release_dir() + "/" + temp_file_path;
-  PLYExportParams _params;
+  std::string filePath = get_temp_ply_filename(temp_file_path);
+  PLYExportParams _params = {};
   _params.ascii_format = true;
   _params.export_normals = false;
   _params.vertex_colors = PLY_VERTEX_COLOR_NONE;
@@ -211,8 +232,8 @@ TEST_F(PlyExportTest, WriteVerticesAscii)
 
 TEST_F(PlyExportTest, WriteVerticesBinary)
 {
-  std::string filePath = blender::tests::flags_test_release_dir() + "/" + temp_file_path;
-  PLYExportParams _params;
+  std::string filePath = get_temp_ply_filename(temp_file_path);
+  PLYExportParams _params = {};
   _params.ascii_format = false;
   _params.export_normals = false;
   _params.vertex_colors = PLY_VERTEX_COLOR_NONE;
@@ -253,8 +274,8 @@ TEST_F(PlyExportTest, WriteVerticesBinary)
 
 TEST_F(PlyExportTest, WriteFacesAscii)
 {
-  std::string filePath = blender::tests::flags_test_release_dir() + "/" + temp_file_path;
-  PLYExportParams _params;
+  std::string filePath = get_temp_ply_filename(temp_file_path);
+  PLYExportParams _params = {};
   _params.ascii_format = true;
   _params.export_normals = false;
   _params.vertex_colors = PLY_VERTEX_COLOR_NONE;
@@ -283,8 +304,8 @@ TEST_F(PlyExportTest, WriteFacesAscii)
 
 TEST_F(PlyExportTest, WriteFacesBinary)
 {
-  std::string filePath = blender::tests::flags_test_release_dir() + "/" + temp_file_path;
-  PLYExportParams _params;
+  std::string filePath = get_temp_ply_filename(temp_file_path);
+  PLYExportParams _params = {};
   _params.ascii_format = false;
   _params.export_normals = false;
   _params.vertex_colors = PLY_VERTEX_COLOR_NONE;
@@ -326,8 +347,8 @@ TEST_F(PlyExportTest, WriteFacesBinary)
 
 TEST_F(PlyExportTest, WriteVertexNormalsAscii)
 {
-  std::string filePath = blender::tests::flags_test_release_dir() + "/" + temp_file_path;
-  PLYExportParams _params;
+  std::string filePath = get_temp_ply_filename(temp_file_path);
+  PLYExportParams _params = {};
   _params.ascii_format = true;
   _params.export_normals = true;
   _params.vertex_colors = PLY_VERTEX_COLOR_NONE;
@@ -358,8 +379,8 @@ TEST_F(PlyExportTest, WriteVertexNormalsAscii)
 
 TEST_F(PlyExportTest, WriteVertexNormalsBinary)
 {
-  std::string filePath = blender::tests::flags_test_release_dir() + "/" + temp_file_path;
-  PLYExportParams _params;
+  std::string filePath = get_temp_ply_filename(temp_file_path);
+  PLYExportParams _params = {};
   _params.ascii_format = false;
   _params.export_normals = true;
   _params.vertex_colors = PLY_VERTEX_COLOR_NONE;
@@ -429,35 +450,35 @@ class ply_exporter_ply_data_test : public PlyExportTest {
 
 TEST_F(ply_exporter_ply_data_test, CubeLoadPLYDataVertices)
 {
-  PLYExportParams params;
-  PlyData plyData = load_ply_data_from_blendfile("io_tests/blend_geometry/cube_all_data.blend",
-                                                 params);
+  PLYExportParams params = {};
+  PlyData plyData = load_ply_data_from_blendfile(
+      "io_tests" SEP_STR "blend_geometry" SEP_STR "cube_all_data.blend", params);
   EXPECT_EQ(plyData.vertices.size(), 8);
 }
 TEST_F(ply_exporter_ply_data_test, CubeLoadPLYDataUV)
 {
-  PLYExportParams params;
+  PLYExportParams params = {};
   params.export_uv = true;
-  PlyData plyData = load_ply_data_from_blendfile("io_tests/blend_geometry/cube_all_data.blend",
-                                                 params);
-  EXPECT_EQ(plyData.UV_coordinates.size(), 8);
+  PlyData plyData = load_ply_data_from_blendfile(
+      "io_tests" SEP_STR "blend_geometry" SEP_STR "cube_all_data.blend", params);
+  EXPECT_EQ(plyData.uv_coordinates.size(), 8);
 }
 TEST_F(ply_exporter_ply_data_test, SuzanneLoadPLYDataUV)
 {
-  PLYExportParams params;
+  PLYExportParams params = {};
   params.export_uv = true;
-  PlyData plyData = load_ply_data_from_blendfile("io_tests/blend_geometry/suzanne_all_data.blend",
-                                                 params);
-  EXPECT_EQ(plyData.UV_coordinates.size(), 541);
+  PlyData plyData = load_ply_data_from_blendfile(
+      "io_tests" SEP_STR "blend_geometry" SEP_STR "suzanne_all_data.blend", params);
+  EXPECT_EQ(plyData.uv_coordinates.size(), 542);
 }
 
 TEST_F(ply_exporter_ply_data_test, CubeLoadPLYDataUVDisabled)
 {
-  PLYExportParams params;
+  PLYExportParams params = {};
   params.export_uv = false;
-  PlyData plyData = load_ply_data_from_blendfile("io_tests/blend_geometry/cube_all_data.blend",
-                                                 params);
-  EXPECT_EQ(plyData.UV_coordinates.size(), 0);
+  PlyData plyData = load_ply_data_from_blendfile(
+      "io_tests" SEP_STR "blend_geometry" SEP_STR "cube_all_data.blend", params);
+  EXPECT_EQ(plyData.uv_coordinates.size(), 0);
 }
 
 }  // namespace blender::io::ply
