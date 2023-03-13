@@ -1682,7 +1682,35 @@ typedef struct ToolSettings {
 
   /** Normal Editing. */
   float normal_vector[3];
-  char _pad6[4];
+
+  /** Mesh Select Options. */
+  char box_drag_direction;
+  char lasso_drag_direction;
+  char box_direction_upright;
+  char lasso_direction_upright;
+  char box_edge;
+  char box_edge_left;
+  char box_edge_right;
+  char box_edge_up;
+  char box_edge_down;
+  char box_face;
+  char box_face_left;
+  char box_face_right;
+  char box_face_up;
+  char box_face_down;
+  char lasso_edge;
+  char lasso_edge_left;
+  char lasso_edge_right;
+  char lasso_edge_up;
+  char lasso_edge_down;
+  char lasso_face;
+  char lasso_face_left;
+  char lasso_face_right;
+  char lasso_face_up;
+  char lasso_face_down;
+  char circle_edge;
+  char circle_face;
+  char _pad6[2];
 
   /**
    * Custom Curve Profile for bevel tool:
@@ -2330,6 +2358,28 @@ typedef enum eSnapTransformMode {
   SCE_SNAP_TRANSFORM_MODE_ROTATE = (1 << 1),
   SCE_SNAP_TRANSFORM_MODE_SCALE = (1 << 2),
 } eSnapTransformMode;
+
+/** #ToolSettings.face_select */
+enum {
+  FACE_AUTO = (1 << 0),
+  FACE_TOUCH = (1 << 1),
+  FACE_ENCLOSE = (1 << 2),
+  FACE_CENTER = (1 << 3),
+};
+
+/** #ToolSettings.edge_select */
+enum {
+  EDGE_HYBRID = (1 << 0),
+  EDGE_TOUCH = (1 << 1),
+  EDGE_ENCLOSE = (1 << 2),
+};
+
+/** #ToolSettings.mesh_drag_direction */
+enum {
+  MESH_DIRECTION_ANY = (1 << 0),
+  MESH_DIRECTION_LEFT_RIGHT = (1 << 1),
+  MESH_DIRECTION_UP_DOWN = (1 << 2),
+};
 
 /** #ToolSettings.selectmode */
 #define SCE_SELECT_VERTEX (1 << 0) /* for mesh */

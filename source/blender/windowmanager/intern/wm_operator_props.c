@@ -411,7 +411,57 @@ void WM_operator_properties_gesture_box_ex(wmOperatorType *ot, bool deselect, bo
 {
   PropertyRNA *prop;
 
+  static const EnumPropertyItem face_select_items[] = {
+      {FACE_AUTO,
+       "FACE_AUTO",
+       0,
+       "Auto",
+       "Select faces that are touched by the selection area in near select. Select faces whose "
+       "center is touched by the selection area in X-Ray select"},
+      {FACE_TOUCH,
+       "FACE_TOUCH",
+       0,
+       "Touch",
+       "Select faces that are touched by the selection area"},
+      {FACE_ENCLOSE,
+       "FACE_ENCLOSE",
+       0,
+       "Enclose",
+       "Select faces that are fully inside the selection area"},
+      {FACE_CENTER,
+       "FACE_CENTER",
+       0,
+       "Center",
+       "Select faces whose center is touched by the selection area"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem edge_select_items[] = {
+      {EDGE_HYBRID,
+       "EDGE_HYBRID",
+       0,
+       "Hybrid",
+       "Select edges that are fully inside the selection area. If no edges are fully inside the "
+       "selection area, select edges that are touched by the selection area"},
+      {EDGE_TOUCH,
+       "EDGE_TOUCH",
+       0,
+       "Touch",
+       "Select edges that are touched by the selection area"},
+      {EDGE_ENCLOSE,
+       "EDGE_ENCLOSE",
+       0,
+       "Enclose",
+       "Select edges that are fully inside the selection area"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   WM_operator_properties_border(ot);
+
+  prop = RNA_def_enum(ot->srna, "face_type", face_select_items, 0, "Face Select", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_enum(ot->srna, "edge_type", edge_select_items, 0, "Edge Select", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
   if (deselect) {
     prop = RNA_def_boolean(
@@ -440,7 +490,8 @@ void WM_operator_properties_use_cursor_init(wmOperatorType *ot)
 
 void WM_operator_properties_gesture_box_select(wmOperatorType *ot)
 {
-  WM_operator_properties_gesture_box_ex(ot, true, true);
+  WM_operator_properties_gesture_box_ex(
+      ot, true, true);
 }
 void WM_operator_properties_gesture_box(wmOperatorType *ot)
 {
@@ -519,6 +570,54 @@ void WM_operator_properties_gesture_box_zoom(wmOperatorType *ot)
 void WM_operator_properties_gesture_lasso(wmOperatorType *ot)
 {
   PropertyRNA *prop;
+  static const EnumPropertyItem face_select_items[] = {
+      {FACE_AUTO,
+       "FACE_AUTO",
+       0,
+       "Auto",
+       "Select faces that are touched by the selection area in near select. Select faces whose "
+       "center is touched by the selection area in X-Ray select"},
+      {FACE_TOUCH,
+       "FACE_TOUCH",
+       0,
+       "Touch",
+       "Select faces that are touched by the selection area"},
+      {FACE_ENCLOSE,
+       "FACE_ENCLOSE",
+       0,
+       "Enclose",
+       "Select faces that are fully inside the selection area"},
+      {FACE_CENTER,
+       "FACE_CENTER",
+       0,
+       "Center",
+       "Select faces whose center is touched by the selection area"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem edge_select_items[] = {
+      {EDGE_HYBRID,
+       "EDGE_HYBRID",
+       0,
+       "Hybrid",
+       "Select edges that are fully inside the selection area. If no edges are fully inside the "
+       "selection area, select edges that are touched by the selection area"},
+      {EDGE_TOUCH,
+       "EDGE_TOUCH",
+       0,
+       "Touch",
+       "Select edges that are touched by the selection area"},
+      {EDGE_ENCLOSE,
+       "EDGE_ENCLOSE",
+       0,
+       "Enclose",
+       "Select edges that are fully inside the selection area"},
+      {0, NULL, 0, NULL, NULL},
+  };
+  prop = RNA_def_enum(ot->srna, "face_type", face_select_items, 0, "Face Select", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_enum(ot->srna, "edge_type", edge_select_items, 0, "Edge Select", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
   prop = RNA_def_collection_runtime(ot->srna, "path", &RNA_OperatorMousePath, "Path", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
@@ -557,6 +656,45 @@ void WM_operator_properties_gesture_circle(wmOperatorType *ot)
   PropertyRNA *prop;
   const int radius_default = 25;
 
+  static const EnumPropertyItem face_select_items[] = {
+      {FACE_AUTO,
+       "FACE_AUTO",
+       0,
+       "Auto",
+       "Select faces that are touched by the selection area in near select. Select faces whose "
+       "center is touched by the selection area in X-Ray select"},
+      {FACE_TOUCH,
+       "FACE_TOUCH",
+       0,
+       "Touch",
+       "Select faces that are touched by the selection area"},
+      {FACE_ENCLOSE,
+       "FACE_ENCLOSE",
+       0,
+       "Enclose",
+       "Select faces that are fully inside the selection area"},
+      {FACE_CENTER,
+       "FACE_CENTER",
+       0,
+       "Center",
+       "Select faces whose center is touched by the selection area"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
+  static const EnumPropertyItem edge_select_items[] = {
+      {EDGE_TOUCH,
+       "EDGE_TOUCH",
+       0,
+       "Touch",
+       "Select edges that are touched by the selection area"},
+      {EDGE_ENCLOSE,
+       "EDGE_ENCLOSE",
+       0,
+       "Enclose",
+       "Select edges that are fully inside the selection area"},
+      {0, NULL, 0, NULL, NULL},
+  };
+
   prop = RNA_def_int(ot->srna, "x", 0, INT_MIN, INT_MAX, "X", "", INT_MIN, INT_MAX);
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
   prop = RNA_def_int(ot->srna, "y", 0, INT_MIN, INT_MAX, "Y", "", INT_MIN, INT_MAX);
@@ -564,6 +702,11 @@ void WM_operator_properties_gesture_circle(wmOperatorType *ot)
   RNA_def_int(ot->srna, "radius", radius_default, 1, INT_MAX, "Radius", "", 1, INT_MAX);
 
   prop = RNA_def_boolean(ot->srna, "wait_for_input", true, "Wait for Input", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+
+  prop = RNA_def_enum(ot->srna, "face_type", face_select_items, 0, "Face Select", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_enum(ot->srna, "edge_type", edge_select_items, 0, "Edge Select", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 

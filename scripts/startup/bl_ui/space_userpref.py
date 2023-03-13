@@ -1559,6 +1559,8 @@ class USERPREF_PT_input_mouse(InputPanel, CenterAlignMixIn, Panel):
 
         flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=False)
 
+        flow.prop(inputs, "click_drag_direction")
+        flow.prop(inputs, "drag_select_mesh_control")
         flow.prop(inputs, "use_mouse_emulate_3_button")
         if sys.platform[:3] != "win":
             rowsub = flow.row()
