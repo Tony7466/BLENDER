@@ -5,8 +5,11 @@
  */
 
 #include "BKE_anim_data.h"
+#include "BKE_curves.hh"
+#include "BKE_customdata.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_idtype.h"
+#include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 
 #include "BLI_span.hh"
@@ -21,6 +24,9 @@
 #include "DNA_material_types.h"
 
 #include "MEM_guardedalloc.h"
+
+using blender::Span;
+using blender::Vector;
 
 static void grease_pencil_init_data(ID *id)
 {
@@ -52,10 +58,73 @@ static void grease_pencil_foreach_id(ID *id, LibraryForeachIDData *data)
 
 static void grease_pencil_blend_write(BlendWriter *writer, ID *id, const void *id_address)
 {
+  GreasePencil *grease_pencil = (GreasePencil *)id;
+
+  /* TODO: Flush runtime data to storage. */
+
+  /* Write LibData */
+  BLO_write_id_struct(writer, GreasePencil, id_address, &grease_pencil->id);
+  BKE_id_blend_write(writer, &grease_pencil->id);
+
+  /* Drawings. */
+  for (int i = 0; i < grease_pencil->drawing_array_size; i++) {
+    GreasePencilDrawingOrReference *drawing_or_ref = grease_pencil->drawing_array[i];
+    BLO_write_struct(writer, GreasePencilDrawingOrReference, drawing_or_ref);
+    switch (drawing_or_ref->type) {
+      case GREASE_PENCIL_DRAWING: {
+        GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_or_ref);
+        drawing->geometry.wrap().blend_write(writer, &grease_pencil->id);
+        break;
+      }
+      case GREASE_PENCIL_DRAWING_REFERENCE: {
+        GreasePencilDrawingReference *drawing_reference =
+            reinterpret_cast<GreasePencilDrawingReference *>(drawing_or_ref);
+        BLO_write_raw(writer, sizeof(void *), drawing_reference->id_reference);
+        break;
+      }
+    }
+  }
+
+  for (int i = 0; i < grease_pencil->layer_tree_storage.nodes_num; i++) {
+    GreasePencilLayerTreeNode *node = grease_pencil->layer_tree_storage.nodes[i];
+    BLO_write_struct(writer, GreasePencilLayerTreeNode, node);
+    switch (node->type) {
+      case GREASE_PENCIL_LAYER_TREE_LEAF: {
+        GreasePencilLayerTreeLeaf *node_leaf = reinterpret_cast<GreasePencilLayerTreeLeaf *>(node);
+
+        /* Write layer data. */
+        BLO_write_int32_array(
+            writer, node_leaf->layer.frames_storage.size, node_leaf->layer.frames_storage.keys);
+        BLO_write_int32_array(
+            writer, node_leaf->layer.frames_storage.size, node_leaf->layer.frames_storage.values);
+        break;
+      }
+      case GREASE_PENCIL_LAYER_TREE_GROUP: {
+        GreasePencilLayerTreeGroup *group = reinterpret_cast<GreasePencilLayerTreeGroup *>(node);
+        BLO_write_raw(writer, sizeof(int), &group->children_num);
+        break;
+      }
+    }
+  }
+
+  /* Materials. */
+  BLO_write_pointer_array(
+      writer, grease_pencil->material_array_size, grease_pencil->material_array);
+
+  /* Animation data. */
+  if (grease_pencil->adt) {
+    BKE_animdata_blend_write(writer, grease_pencil->adt);
+  }
 }
 
 static void grease_pencil_blend_read_data(BlendDataReader *reader, ID *id)
 {
+  GreasePencil *grease_pencil = (GreasePencil *)id;
+  /* TODO: Convert storage data to runtime structs. */
+
+  BLO_read_data_address(reader, &grease_pencil->adt);
+  BKE_animdata_blend_read_data(reader, grease_pencil->adt);
+  
 }
 
 static void grease_pencil_blend_read_lib(BlendLibReader *reader, ID *id)
@@ -100,7 +169,7 @@ IDTypeInfo IDType_ID_GP = {
     /*lib_override_apply_post*/ nullptr,
 };
 
-blender::Span<GreasePencilDrawingOrReference> blender::bke::GreasePencil::drawings() const
-{
-  return blender::Span<GreasePencilDrawingOrReference>{this->drawing_array, this->drawing_array_size};
-}
+// Span<GreasePencilDrawingOrReference> blender::bke::GreasePencil::drawings() const
+// {
+//   return Span<GreasePencilDrawingOrReference>{this->drawing_array, this->drawing_array_size};
+// }

@@ -17,37 +17,6 @@ class GreasePencilLayerRuntime {
   Map<int, int> frames;
 };
 
-// class GreasePencilLayer : ::GreasePencilLayer {
-//  public:
-//   GreasePencilLayer();
-//   GreasePencilLayer(const GreasePencilLayer &other);
-//   GreasePencilLayer(GreasePencilLayer &&other);
-//   GreasePencilLayer &operator=(const GreasePencilLayer &other);
-//   GreasePencilLayer &operator=(GreasePencilLayer &&other);
-//   ~GreasePencilLayer();
-
-//   /* --------------------------------------------------------------------
-//    * Accessors.
-//    */
-
-//   int frames_num() const;
-// };
-
-class GreasePencil : ::GreasePencil {
- public:
-  GreasePencil() = delete;
-  GreasePencil(const GreasePencil &other);
-  GreasePencil(GreasePencil &&other);
-  GreasePencil &operator=(const GreasePencil &other);
-  GreasePencil &operator=(GreasePencil &&other);
-  ~GreasePencil();
-
-  /* --------------------------------------------------------------------
-   * Accessors.
-   */
-
-  Span<GreasePencilDrawingOrReference> drawings() const;
-};
 
 }  // namespace blender::bke
 
