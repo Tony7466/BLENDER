@@ -218,4 +218,29 @@ TEST(index_mask2, Expr)
   std::cout << result << "\n";
 }
 
+TEST(index_mask2, ToRange)
+{
+  LinearAllocator<> allocator;
+  {
+    const IndexMask mask = IndexMask::from_indices<int>({4, 5, 6, 7}, allocator);
+    EXPECT_TRUE(mask.to_range().has_value());
+    EXPECT_EQ(*mask.to_range(), IndexRange(4, 4));
+  }
+  {
+    const IndexMask mask = IndexMask::from_indices<int>({}, allocator);
+    EXPECT_TRUE(mask.to_range().has_value());
+    EXPECT_EQ(*mask.to_range(), IndexRange());
+  }
+  {
+    const IndexMask mask = IndexMask::from_indices<int>({0, 1, 3, 4}, allocator);
+    EXPECT_FALSE(mask.to_range().has_value());
+  }
+  {
+    const IndexRange range{16000, 40000};
+    const IndexMask mask{range};
+    EXPECT_TRUE(mask.to_range().has_value());
+    EXPECT_EQ(*mask.to_range(), range);
+  }
+}
+
 }  // namespace blender::index_mask::tests

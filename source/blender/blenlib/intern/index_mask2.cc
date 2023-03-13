@@ -822,6 +822,19 @@ void IndexMask::to_bits(MutableBitSpan r_bits, int64_t offset) const
   index_mask_to_bits(*this, offset, r_bits);
 }
 
+std::optional<IndexRange> IndexMask::to_range() const
+{
+  if (data_.indices_num == 0) {
+    return IndexRange{};
+  }
+  const int64_t first_index = this->first();
+  const int64_t last_index = this->last();
+  if (last_index - first_index == data_.indices_num - 1) {
+    return IndexRange(first_index, data_.indices_num);
+  }
+  return std::nullopt;
+}
+
 template IndexMask IndexMask::from_indices(Span<int32_t>, LinearAllocator<> &);
 template IndexMask IndexMask::from_indices(Span<int64_t>, LinearAllocator<> &);
 template void IndexMask::to_indices(MutableSpan<int32_t>) const;
