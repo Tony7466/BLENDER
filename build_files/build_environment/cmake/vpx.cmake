@@ -18,15 +18,15 @@ if(WIN32)
   if(BLENDER_PLATFORM_ARM)
     # ARM64 requires a min of vc142
     set(VPX_EXTRA_FLAGS --target=arm64-win64-vs16 --as=nasm)
-    set(VPX_INCL_ARCH nodocs-arm64)
+    set(VPX_INCL_ARCH nopost-nodocs-arm64)
   else()
     set(VPX_EXTRA_FLAGS --target=x86_64-win64-${VPX_COMPILER_STRING} --as=nasm)
-    set(VPX_INCL_ARCH x86_64)
+    set(VPX_INCL_ARCH nodocs-x86_64-win64)
   endif()
 
   set(VPX_CONFIGURE_COMMAND ${CONFIGURE_ENV_MSVC})
 
-  set(VPX_INCLUDE_PATH ${BUILD_DIR}/vpx/src/external_vpx/vpx-vp8-vp9-nopost-${VPX_INCL_ARCH}md-${VPX_COMPILER_STRING}-v${VPX_VERSION})
+  set(VPX_INCLUDE_PATH ${BUILD_DIR}/vpx/src/external_vpx/vpx-vp8-vp9-${VPX_INCL_ARCH}md-${VPX_COMPILER_STRING}-v${VPX_VERSION})
 
   set(VPX_BUILD_COMMAND ${CONFIGURE_ENV} && cd ${BUILD_DIR}/vpx/src/external_vpx/ && make dist && msbuild /m vpx.sln /p:OutDir=${BUILD_DIR}/vpx/src/external_vpx-build/ /p:Configuration=Release)
   set(VPX_INSTALL_COMMAND ${CONFIGURE_ENV} && ${CMAKE_COMMAND} -E copy_directory ${VPX_INCLUDE_PATH}/include ${LIBDIR}/vpx/include &&
