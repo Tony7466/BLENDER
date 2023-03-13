@@ -5,7 +5,6 @@
  */
 
 #include "BLI_array.hh"
-#include "BLI_index_mask_ops.hh"
 #include "BLI_inplace_priority_queue.hh"
 #include "BLI_span.hh"
 
