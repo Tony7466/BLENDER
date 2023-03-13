@@ -634,7 +634,7 @@ static int mesh_customdata_add_exec__internal(bContext *C, char htype, int type)
     BM_data_layer_add(mesh->edit_mesh->bm, data, type);
   }
   else {
-    CustomData_add_layer(data, type, CD_SET_DEFAULT, nullptr, tot);
+    CustomData_add_layer(data, eCustomDataType(type), CD_SET_DEFAULT, tot);
   }
 
   DEG_id_tag_update(&mesh->id, 0);
@@ -809,7 +809,7 @@ static int mesh_customdata_custom_splitnormals_add_exec(bContext *C, wmOperator 
       sharp_edges.finish();
     }
 
-    CustomData_add_layer(&me->ldata, CD_CUSTOMLOOPNORMAL, CD_SET_DEFAULT, nullptr, me->totloop);
+    CustomData_add_layer(&me->ldata, CD_CUSTOMLOOPNORMAL, CD_SET_DEFAULT, me->totloop);
   }
 
   DEG_id_tag_update(&me->id, 0);
@@ -1179,7 +1179,7 @@ static void mesh_add_edges(Mesh *mesh, int len)
   CustomData_copy_data(&mesh->edata, &edata, 0, 0, mesh->totedge);
 
   if (!CustomData_has_layer(&edata, CD_MEDGE)) {
-    CustomData_add_layer(&edata, CD_MEDGE, CD_SET_DEFAULT, nullptr, totedge);
+    CustomData_add_layer(&edata, CD_MEDGE, CD_SET_DEFAULT, totedge);
   }
 
   CustomData_free(&mesh->edata, mesh->totedge);
@@ -1212,7 +1212,7 @@ static void mesh_add_loops(Mesh *mesh, int len)
   CustomData_copy_data(&mesh->ldata, &ldata, 0, 0, mesh->totloop);
 
   if (!CustomData_has_layer(&ldata, CD_MLOOP)) {
-    CustomData_add_layer(&ldata, CD_MLOOP, CD_SET_DEFAULT, nullptr, totloop);
+    CustomData_add_layer(&ldata, CD_MLOOP, CD_SET_DEFAULT, totloop);
   }
 
   BKE_mesh_runtime_clear_cache(mesh);
@@ -1240,7 +1240,7 @@ static void mesh_add_polys(Mesh *mesh, int len)
   CustomData_copy_data(&mesh->pdata, &pdata, 0, 0, mesh->totpoly);
 
   if (!CustomData_has_layer(&pdata, CD_MPOLY)) {
-    CustomData_add_layer(&pdata, CD_MPOLY, CD_SET_DEFAULT, nullptr, totpoly);
+    CustomData_add_layer(&pdata, CD_MPOLY, CD_SET_DEFAULT, totpoly);
   }
 
   CustomData_free(&mesh->pdata, mesh->totpoly);

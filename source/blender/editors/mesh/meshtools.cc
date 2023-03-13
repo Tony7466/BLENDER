@@ -584,9 +584,9 @@ int ED_mesh_join_objects_exec(bContext *C, wmOperator *op)
 
   float3 *vert_positions = (float3 *)CustomData_add_layer_named(
       &vdata, CD_PROP_FLOAT3, CD_SET_DEFAULT, nullptr, totvert, "position");
-  edge = (MEdge *)CustomData_add_layer(&edata, CD_MEDGE, CD_SET_DEFAULT, nullptr, totedge);
-  mloop = (MLoop *)CustomData_add_layer(&ldata, CD_MLOOP, CD_SET_DEFAULT, nullptr, totloop);
-  polys = (MPoly *)CustomData_add_layer(&pdata, CD_MPOLY, CD_SET_DEFAULT, nullptr, totpoly);
+  edge = (MEdge *)CustomData_add_layer(&edata, CD_MEDGE, CD_SET_DEFAULT, totedge);
+  mloop = (MLoop *)CustomData_add_layer(&ldata, CD_MLOOP, CD_SET_DEFAULT, totloop);
+  polys = (MPoly *)CustomData_add_layer(&pdata, CD_MPOLY, CD_SET_DEFAULT, totpoly);
 
   vertofs = 0;
   edgeofs = 0;

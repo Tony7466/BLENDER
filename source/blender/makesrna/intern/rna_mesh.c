@@ -522,7 +522,7 @@ static void rna_MeshVertex_bevel_weight_set(PointerRNA *ptr, float value)
   Mesh *mesh = rna_mesh(ptr);
   const int index = rna_MeshVertex_index_get(ptr);
   float *values = (float *)CustomData_add_layer(
-      &mesh->vdata, CD_BWEIGHT, CD_SET_DEFAULT, NULL, mesh->totvert);
+      &mesh->vdata, CD_BWEIGHT, CD_SET_DEFAULT, mesh->totvert);
   values[index] = clamp_f(value, 0.0f, 1.0f);
 }
 
@@ -539,7 +539,7 @@ static void rna_MEdge_bevel_weight_set(PointerRNA *ptr, float value)
   Mesh *mesh = rna_mesh(ptr);
   const int index = rna_MeshEdge_index_get(ptr);
   float *values = (float *)CustomData_add_layer(
-      &mesh->edata, CD_BWEIGHT, CD_SET_DEFAULT, NULL, mesh->totedge);
+      &mesh->edata, CD_BWEIGHT, CD_SET_DEFAULT, mesh->totedge);
   values[index] = clamp_f(value, 0.0f, 1.0f);
 }
 
@@ -556,7 +556,7 @@ static void rna_MEdge_crease_set(PointerRNA *ptr, float value)
   Mesh *mesh = rna_mesh(ptr);
   const int index = rna_MeshEdge_index_get(ptr);
   float *values = (float *)CustomData_add_layer(
-      &mesh->edata, CD_CREASE, CD_SET_DEFAULT, NULL, mesh->totedge);
+      &mesh->edata, CD_CREASE, CD_SET_DEFAULT, mesh->totedge);
   values[index] = clamp_f(value, 0.0f, 1.0f);
 }
 
@@ -954,7 +954,7 @@ static void rna_MEdge_freestyle_edge_mark_set(PointerRNA *ptr, bool value)
   FreestyleEdge *fed = CustomData_get_layer_for_write(&me->edata, CD_FREESTYLE_EDGE, me->totedge);
 
   if (!fed) {
-    fed = CustomData_add_layer(&me->edata, CD_FREESTYLE_EDGE, CD_SET_DEFAULT, NULL, me->totedge);
+    fed = CustomData_add_layer(&me->edata, CD_FREESTYLE_EDGE, CD_SET_DEFAULT, me->totedge);
   }
   if (value) {
     fed[index].flag |= FREESTYLE_EDGE_MARK;
@@ -980,7 +980,7 @@ static void rna_MPoly_freestyle_face_mark_set(PointerRNA *ptr, bool value)
   FreestyleFace *ffa = CustomData_get_layer_for_write(&me->pdata, CD_FREESTYLE_FACE, me->totpoly);
 
   if (!ffa) {
-    ffa = CustomData_add_layer(&me->pdata, CD_FREESTYLE_FACE, CD_SET_DEFAULT, NULL, me->totpoly);
+    ffa = CustomData_add_layer(&me->pdata, CD_FREESTYLE_FACE, CD_SET_DEFAULT, me->totpoly);
   }
   if (value) {
     ffa[index].flag |= FREESTYLE_FACE_MARK;

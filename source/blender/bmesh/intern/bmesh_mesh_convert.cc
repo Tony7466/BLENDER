@@ -342,7 +342,7 @@ void BM_mesh_bm_from_me(BMesh *bm, const Mesh *me, const struct BMeshFromMeshPar
 
   if (is_new) {
     if (tot_shape_keys || params->add_key_index) {
-      CustomData_add_layer(&bm->vdata, CD_SHAPE_KEYINDEX, CD_ASSIGN, nullptr, 0);
+      CustomData_add_layer(&bm->vdata, CD_SHAPE_KEYINDEX, CD_SET_DEFAULT, 0);
     }
   }
 
@@ -1207,7 +1207,7 @@ static void bm_to_mesh_edges(const BMesh &bm,
                              MutableSpan<bool> sharp_edge,
                              MutableSpan<bool> uv_seams)
 {
-  CustomData_add_layer(&mesh.edata, CD_MEDGE, CD_SET_DEFAULT, nullptr, mesh.totedge);
+  CustomData_add_layer(&mesh.edata, CD_MEDGE, CD_SET_DEFAULT, mesh.totedge);
   const Vector<BMeshToMeshLayerInfo> info = bm_to_mesh_copy_info_calc(bm.edata, mesh.edata);
   MutableSpan<MEdge> dst_edges = mesh.edges_for_write();
   threading::parallel_for(dst_edges.index_range(), 512, [&](const IndexRange range) {
@@ -1249,7 +1249,7 @@ static void bm_to_mesh_faces(const BMesh &bm,
                              MutableSpan<bool> sharp_faces,
                              MutableSpan<int> material_indices)
 {
-  CustomData_add_layer(&mesh.pdata, CD_MPOLY, CD_CONSTRUCT, nullptr, mesh.totpoly);
+  CustomData_add_layer(&mesh.pdata, CD_MPOLY, CD_CONSTRUCT, mesh.totpoly);
   const Vector<BMeshToMeshLayerInfo> info = bm_to_mesh_copy_info_calc(bm.pdata, mesh.pdata);
   MutableSpan<MPoly> dst_polys = mesh.polys_for_write();
   threading::parallel_for(dst_polys.index_range(), 1024, [&](const IndexRange range) {
@@ -1285,7 +1285,7 @@ static void bm_to_mesh_faces(const BMesh &bm,
 
 static void bm_to_mesh_loops(const BMesh &bm, const Span<const BMLoop *> bm_loops, Mesh &mesh)
 {
-  CustomData_add_layer(&mesh.ldata, CD_MLOOP, CD_SET_DEFAULT, nullptr, mesh.totloop);
+  CustomData_add_layer(&mesh.ldata, CD_MLOOP, CD_SET_DEFAULT, mesh.totloop);
   const Vector<BMeshToMeshLayerInfo> info = bm_to_mesh_copy_info_calc(bm.ldata, mesh.ldata);
   MutableSpan<MLoop> dst_loops = mesh.loops_for_write();
   threading::parallel_for(dst_loops.index_range(), 1024, [&](const IndexRange range) {

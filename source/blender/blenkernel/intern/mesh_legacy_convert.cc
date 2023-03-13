@@ -228,7 +228,7 @@ void BKE_mesh_calc_edges_legacy(Mesh *me)
     return;
   }
 
-  edges = (MEdge *)CustomData_add_layer(&me->edata, CD_MEDGE, CD_ASSIGN, edges, totedge);
+  edges = (MEdge *)CustomData_add_layer_with_existing_data(&me->edata, CD_MEDGE, edges, totedge);
   me->totedge = totedge;
 
   BKE_mesh_tag_topology_changed(me);
@@ -440,7 +440,7 @@ static void convert_mfaces_to_mpolys(ID *id,
   CustomData_free(pdata, totpoly_i);
 
   totpoly = totface_i;
-  mpoly = (MPoly *)CustomData_add_layer(pdata, CD_MPOLY, CD_SET_DEFAULT, nullptr, totpoly);
+  mpoly = (MPoly *)CustomData_add_layer(pdata, CD_MPOLY, CD_SET_DEFAULT, totpoly);
   int *material_indices = static_cast<int *>(
       CustomData_get_layer_named_for_write(pdata, CD_PROP_INT32, "material_index", totpoly));
   if (material_indices == nullptr) {
@@ -463,7 +463,7 @@ static void convert_mfaces_to_mpolys(ID *id,
     totloop += mf->v4 ? 4 : 3;
   }
 
-  mloop = (MLoop *)CustomData_add_layer(ldata, CD_MLOOP, CD_SET_DEFAULT, nullptr, totloop);
+  mloop = (MLoop *)CustomData_add_layer(ldata, CD_MLOOP, CD_SET_DEFAULT, totloop);
 
   CustomData_to_bmeshpoly(fdata, ldata, totloop);
 
@@ -1157,11 +1157,11 @@ static int mesh_tessface_calc(Mesh &mesh,
                                             sizeof(*mface_to_poly_map) * size_t(totface));
   }
 
-  CustomData_add_layer(fdata, CD_MFACE, CD_ASSIGN, mface, totface);
+  CustomData_add_layer_with_existing_data(fdata, CD_MFACE, mface, totface);
 
   /* #CD_ORIGINDEX will contain an array of indices from tessellation-faces to the polygons
    * they are directly tessellated from. */
-  CustomData_add_layer(fdata, CD_ORIGINDEX, CD_ASSIGN, mface_to_poly_map, totface);
+  CustomData_add_layer_with_existing_data(fdata, CD_ORIGINDEX, mface_to_poly_map, totface);
   add_mface_layers(mesh, fdata, ldata, totface);
 
   /* NOTE: quad detection issue - fourth vertex-index vs fourth loop-index:
@@ -1365,7 +1365,7 @@ void BKE_mesh_legacy_bevel_weight_to_layers(Mesh *mesh)
     const Span<MVert> verts(mesh->mvert, mesh->totvert);
     if (mesh->cd_flag & ME_CDFLAG_VERT_BWEIGHT) {
       float *weights = static_cast<float *>(
-          CustomData_add_layer(&mesh->vdata, CD_BWEIGHT, CD_CONSTRUCT, nullptr, verts.size()));
+          CustomData_add_layer(&mesh->vdata, CD_BWEIGHT, CD_CONSTRUCT, verts.size()));
       for (const int i : verts.index_range()) {
         weights[i] = verts[i].bweight_legacy / 255.0f;
       }
@@ -1376,7 +1376,7 @@ void BKE_mesh_legacy_bevel_weight_to_layers(Mesh *mesh)
   if (!CustomData_has_layer(&mesh->edata, CD_BWEIGHT)) {
     if (mesh->cd_flag & ME_CDFLAG_EDGE_BWEIGHT) {
       float *weights = static_cast<float *>(
-          CustomData_add_layer(&mesh->edata, CD_BWEIGHT, CD_CONSTRUCT, nullptr, edges.size()));
+          CustomData_add_layer(&mesh->edata, CD_BWEIGHT, CD_CONSTRUCT, edges.size()));
       for (const int i : edges.index_range()) {
         weights[i] = edges[i].bweight_legacy / 255.0f;
       }
@@ -1418,7 +1418,7 @@ void BKE_mesh_legacy_edge_crease_to_layers(Mesh *mesh)
   const Span<MEdge> edges = mesh->edges();
   if (mesh->cd_flag & ME_CDFLAG_EDGE_CREASE) {
     float *creases = static_cast<float *>(
-        CustomData_add_layer(&mesh->edata, CD_CREASE, CD_CONSTRUCT, nullptr, edges.size()));
+        CustomData_add_layer(&mesh->edata, CD_CREASE, CD_CONSTRUCT, edges.size()));
     for (const int i : edges.index_range()) {
       creases[i] = edges[i].crease_legacy / 255.0f;
     }

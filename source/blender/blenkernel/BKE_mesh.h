@@ -850,7 +850,7 @@ BLI_INLINE MDeformVert *BKE_mesh_deform_verts_for_write(Mesh *mesh)
     return dvert;
   }
   return (MDeformVert *)CustomData_add_layer(
-      &mesh->vdata, CD_MDEFORMVERT, CD_SET_DEFAULT, NULL, mesh->totvert);
+      &mesh->vdata, CD_MDEFORMVERT, CD_SET_DEFAULT, mesh->totvert);
 }
 
 #ifdef __cplusplus

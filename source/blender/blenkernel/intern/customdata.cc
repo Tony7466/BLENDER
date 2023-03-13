@@ -2835,7 +2835,7 @@ static CustomDataLayer *customData_add_layer__internal(CustomData *data,
   return &data->layers[index];
 }
 
-void *CustomData_add_layer(
+static void *customdata_add_layer(
     CustomData *data, const int type, eCDAllocType alloctype, void *layerdata, const int totelem)
 {
   const LayerTypeInfo *typeInfo = layerType_getInfo(type);
@@ -2849,6 +2849,22 @@ void *CustomData_add_layer(
   }
 
   return nullptr;
+}
+
+void *CustomData_add_layer(CustomData *data,
+                           const eCustomDataType type,
+                           const eCDAllocType alloctype,
+                           const int totelem)
+{
+  return customdata_add_layer(data, type, alloctype, nullptr, totelem);
+}
+
+const void *CustomData_add_layer_with_existing_data(CustomData *data,
+                                                    const eCustomDataType type,
+                                                    void *layer_data,
+                                                    const int totelem)
+{
+  return customdata_add_layer(data, type, CD_ASSIGN, layer_data, totelem);
 }
 
 void *CustomData_add_layer_named(CustomData *data,

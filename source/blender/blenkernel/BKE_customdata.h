@@ -233,8 +233,15 @@ void CustomData_free_temporary(struct CustomData *data, int totelem);
  * backed by an external data array. the different allocation types are
  * defined above. returns the data of the layer.
  */
-void *CustomData_add_layer(
-    struct CustomData *data, int type, eCDAllocType alloctype, void *layer, int totelem);
+void *CustomData_add_layer(struct CustomData *data,
+                           eCustomDataType type,
+                           eCDAllocType alloctype,
+                           int totelem);
+const void *CustomData_add_layer_with_existing_data(struct CustomData *data,
+                                                    eCustomDataType type,
+                                                    void *layer_data,
+                                                    int totelem);
+
 /**
  * Same as above but accepts a name.
  */

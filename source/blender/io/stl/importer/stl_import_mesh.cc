@@ -82,8 +82,8 @@ Mesh *STLMeshHelper::to_mesh(Main *bmain, char *mesh_name)
 
   mesh->totpoly = tris_.size();
   mesh->totloop = tris_.size() * 3;
-  CustomData_add_layer(&mesh->pdata, CD_MPOLY, CD_SET_DEFAULT, nullptr, mesh->totpoly);
-  CustomData_add_layer(&mesh->ldata, CD_MLOOP, CD_SET_DEFAULT, nullptr, mesh->totloop);
+  CustomData_add_layer(&mesh->pdata, CD_MPOLY, CD_SET_DEFAULT, mesh->totpoly);
+  CustomData_add_layer(&mesh->ldata, CD_MLOOP, CD_SET_DEFAULT, mesh->totloop);
   MutableSpan<MPoly> polys = mesh->polys_for_write();
   MutableSpan<MLoop> loops = mesh->loops_for_write();
   threading::parallel_for(tris_.index_range(), 2048, [&](IndexRange tris_range) {

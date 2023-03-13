@@ -456,8 +456,8 @@ void MeshImporter::allocate_poly_data(COLLADAFW::Mesh *collada_mesh, Mesh *me)
   if (total_poly_count > 0) {
     me->totpoly = total_poly_count;
     me->totloop = total_loop_count;
-    CustomData_add_layer(&me->pdata, CD_MPOLY, CD_SET_DEFAULT, nullptr, me->totpoly);
-    CustomData_add_layer(&me->ldata, CD_MLOOP, CD_SET_DEFAULT, nullptr, me->totloop);
+    CustomData_add_layer(&me->pdata, CD_MPOLY, CD_SET_DEFAULT, me->totpoly);
+    CustomData_add_layer(&me->ldata, CD_MLOOP, CD_SET_DEFAULT, me->totloop);
 
     uint totuvset = collada_mesh->getUVCoords().getInputInfosArray().getCount();
     for (int i = 0; i < totuvset; i++) {
@@ -558,7 +558,7 @@ void MeshImporter::mesh_add_edges(Mesh *mesh, int len)
   CustomData_copy_data(&mesh->edata, &edata, 0, 0, mesh->totedge);
 
   if (!CustomData_has_layer(&edata, CD_MEDGE)) {
-    CustomData_add_layer(&edata, CD_MEDGE, CD_SET_DEFAULT, nullptr, totedge);
+    CustomData_add_layer(&edata, CD_MEDGE, CD_SET_DEFAULT, totedge);
   }
 
   CustomData_free(&mesh->edata, mesh->totedge);

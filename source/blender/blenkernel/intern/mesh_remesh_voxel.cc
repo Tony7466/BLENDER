@@ -290,7 +290,7 @@ void BKE_mesh_remesh_reproject_paint_mask(Mesh *target, const Mesh *source)
   }
   else {
     target_mask = (float *)CustomData_add_layer(
-        &target->vdata, CD_PAINT_MASK, CD_CONSTRUCT, nullptr, target->totvert);
+        &target->vdata, CD_PAINT_MASK, CD_CONSTRUCT, target->totvert);
   }
 
   blender::threading::parallel_for(IndexRange(target->totvert), 4096, [&](const IndexRange range) {

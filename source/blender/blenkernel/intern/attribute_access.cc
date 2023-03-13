@@ -181,18 +181,15 @@ static bool add_builtin_type_custom_data_layer_from_init(CustomData &custom_data
 {
   switch (initializer.type) {
     case AttributeInit::Type::Construct: {
-      void *data = CustomData_add_layer(
-          &custom_data, data_type, CD_CONSTRUCT, nullptr, domain_num);
+      void *data = CustomData_add_layer(&custom_data, data_type, CD_CONSTRUCT, domain_num);
       return data != nullptr;
     }
     case AttributeInit::Type::DefaultValue: {
-      void *data = CustomData_add_layer(
-          &custom_data, data_type, CD_SET_DEFAULT, nullptr, domain_num);
+      void *data = CustomData_add_layer(&custom_data, data_type, CD_SET_DEFAULT, domain_num);
       return data != nullptr;
     }
     case AttributeInit::Type::VArray: {
-      void *data = CustomData_add_layer(
-          &custom_data, data_type, CD_CONSTRUCT, nullptr, domain_num);
+      void *data = CustomData_add_layer(&custom_data, data_type, CD_CONSTRUCT, domain_num);
       if (data == nullptr) {
         return false;
       }
@@ -202,8 +199,8 @@ static bool add_builtin_type_custom_data_layer_from_init(CustomData &custom_data
     }
     case AttributeInit::Type::MoveArray: {
       void *source_data = static_cast<const AttributeInitMoveArray &>(initializer).data;
-      void *data = CustomData_add_layer(
-          &custom_data, data_type, CD_ASSIGN, source_data, domain_num);
+      const void *data = CustomData_add_layer_with_existing_data(
+          &custom_data, data_type, source_data, domain_num);
       if (data == nullptr) {
         MEM_freeN(source_data);
         return false;

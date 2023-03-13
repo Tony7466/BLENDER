@@ -1186,8 +1186,8 @@ static void multires_create_grids_in_unsubdivided_base_mesh(MultiresUnsubdivideC
   if (CustomData_has_layer(&base_mesh->ldata, CD_MDISPS)) {
     CustomData_free_layers(&base_mesh->ldata, CD_MDISPS, base_mesh->totloop);
   }
-  MDisps *mdisps = static_cast<MDisps *>(CustomData_add_layer(
-      &base_mesh->ldata, CD_MDISPS, CD_SET_DEFAULT, nullptr, base_mesh->totloop));
+  MDisps *mdisps = static_cast<MDisps *>(
+      CustomData_add_layer(&base_mesh->ldata, CD_MDISPS, CD_SET_DEFAULT, base_mesh->totloop));
 
   const int totdisp = pow_i(BKE_ccg_gridsize(context->num_total_levels), 2);
   const int totloop = base_mesh->totloop;

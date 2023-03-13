@@ -584,11 +584,11 @@ void BlenderStrokeRenderer::GenerateStrokeMesh(StrokeGroup *group, bool hasTex)
   float3 *vert_positions = (float3 *)CustomData_add_layer_named(
       &mesh->vdata, CD_PROP_FLOAT3, CD_SET_DEFAULT, nullptr, mesh->totvert, "position");
   MEdge *edges = (MEdge *)CustomData_add_layer(
-      &mesh->edata, CD_MEDGE, CD_SET_DEFAULT, nullptr, mesh->totedge);
+      &mesh->edata, CD_MEDGE, CD_SET_DEFAULT, mesh->totedge);
   MPoly *polys = (MPoly *)CustomData_add_layer(
-      &mesh->pdata, CD_MPOLY, CD_SET_DEFAULT, nullptr, mesh->totpoly);
+      &mesh->pdata, CD_MPOLY, CD_SET_DEFAULT, mesh->totpoly);
   MLoop *loops = (MLoop *)CustomData_add_layer(
-      &mesh->ldata, CD_MLOOP, CD_SET_DEFAULT, nullptr, mesh->totloop);
+      &mesh->ldata, CD_MLOOP, CD_SET_DEFAULT, mesh->totloop);
   int *material_indices = (int *)CustomData_add_layer_named(
       &mesh->pdata, CD_PROP_INT32, CD_SET_DEFAULT, nullptr, mesh->totpoly, "material_index");
   blender::float2 *loopsuv[2] = {nullptr};
