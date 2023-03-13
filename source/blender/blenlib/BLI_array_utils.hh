@@ -69,9 +69,9 @@ inline void gather(const Span<T> src,
                    const int64_t grain_size = 4096)
 {
   BLI_assert(indices.size() == dst.size());
-  threading::parallel_for(indices.index_range(), grain_size, [&](const IndexRange range) {
-    for (const int64_t i : range) {
-      dst[i] = src[indices[i]];
+  indices.foreach_span_parallel(grain_size, [&](const auto mask_segment, const IndexRange range) {
+    for (const int64_t i : mask_segment.index_range()) {
+      dst[range[i]] = src[mask_segment[i]];
     }
   });
 }

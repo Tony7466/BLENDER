@@ -153,6 +153,11 @@ class IndexRange {
     return size_;
   }
 
+  constexpr IndexRange index_range() const
+  {
+    return IndexRange(size_);
+  }
+
   /**
    * Returns true if the size is zero.
    */

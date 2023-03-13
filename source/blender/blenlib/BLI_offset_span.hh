@@ -31,6 +31,11 @@ template<typename T, typename BaseT> class OffsetSpan {
     return data_.size();
   }
 
+  IndexRange index_range() const
+  {
+    return data_.index_range();
+  }
+
   T operator[](const int64_t i) const
   {
     return T(data_[i]) + offset_;
