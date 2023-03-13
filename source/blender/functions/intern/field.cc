@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array_utils.hh"
-#include "BLI_index_mask_ops.hh"
 #include "BLI_map.hh"
 #include "BLI_multi_value_map.hh"
 #include "BLI_set.hh"

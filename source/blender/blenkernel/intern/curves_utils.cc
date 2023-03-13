@@ -4,8 +4,6 @@
  * \ingroup bke
  */
 
-#include "BLI_index_mask_ops.hh"
-
 #include "BKE_curves_utils.hh"
 
 namespace blender::bke::curves {

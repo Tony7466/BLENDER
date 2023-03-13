@@ -14,7 +14,6 @@
 #include "DNA_view3d_types.h"
 
 #include "BLI_array.hh"
-#include "BLI_index_mask_ops.hh"
 #include "BLI_math.h"
 #include "BLI_utildefines.h"
 

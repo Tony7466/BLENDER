@@ -11,7 +11,6 @@
 
 #include "BLI_array_utils.hh"
 #include "BLI_bounds.hh"
-#include "BLI_index_mask_ops.hh"
 #include "BLI_length_parameterize.hh"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_rotation_legacy.hh"

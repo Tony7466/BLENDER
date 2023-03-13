@@ -4,7 +4,6 @@
 
 #include "curves_sculpt_intern.hh"
 
-#include "BLI_index_mask_ops.hh"
 #include "BLI_kdtree.h"
 #include "BLI_math_matrix_types.hh"
 #include "BLI_rand.hh"

@@ -20,7 +20,6 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "BLI_index_mask_ops.hh"
 #include "BLI_kdtree.h"
 #include "BLI_rand.hh"
 #include "BLI_task.hh"
