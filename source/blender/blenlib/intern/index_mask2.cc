@@ -152,7 +152,13 @@ int64_t split_to_ranges_and_spans(const Span<T> indices,
     }
     /* Next segment is just indices. Now find the place where the next range starts. */
     const int64_t segment_size = find_size_until_next_range(remaining_indices, range_threshold);
-    r_parts.append(remaining_indices.take_front(segment_size));
+    const Span<T> segment_indices = remaining_indices.take_front(segment_size);
+    if (non_empty_is_range(segment_indices)) {
+      r_parts.append(non_empty_as_range(segment_indices));
+    }
+    else {
+      r_parts.append(segment_indices);
+    }
     remaining_indices = remaining_indices.drop_front(segment_size);
   }
   return r_parts.size() - old_parts_num;
