@@ -73,11 +73,11 @@ typedef struct GreasePencilDrawingReference {
 typedef struct GreasePencilLayerFramesMapStorage {
   /* Array of `frames` keys (sorted in ascending order). */
   int *keys;
-  int keys_num;
-
   /* Array of `frames` values (order matches the keys array). */
   int *values;
-  int values_num;
+  /* Size of the map (number of key-value pairs). */
+  int size;
+  char _pad[4];
 } GreasePencilLayerFramesMapStorage;
 
 /**
@@ -137,19 +137,20 @@ typedef struct GreasePencilLayerTreeNode {
   uint8_t color[3];
 
   /**
-   * Name of the layer/group. Dynamic length.
-   */
-  char *name;
-
-  /**
    * Flag. Used to set e.g. the selection, visibility, ... status.
    */
   uint32_t flag;
+
+  /**
+   * Name of the layer/group. Dynamic length.
+   */
+  char *name;
 } GreasePencilLayerTreeNode;
 
 typedef struct GreasePencilLayerTreeGroup {
   GreasePencilLayerTreeNode base;
   int children_num;
+  char _pad[4];
 } GreasePencilLayerTreeGroup;
 
 typedef struct GreasePencilLayerTreeLeaf {
@@ -162,6 +163,7 @@ typedef struct GreasePencilLayerTreeStorage {
   /* Array of tree nodes. Pre-order serialization of the layer tree. */
   GreasePencilLayerTreeNode **nodes;
   int nodes_num;
+  char _pad[4];
 } GreasePencilLayerTreeStorage;
 
 /**
@@ -182,6 +184,7 @@ typedef struct GreasePencil {
 #ifdef __cplusplus
   blender::Span<GreasePencilDrawingOrReference> drawings() const;
 #endif
+  char _pad[4];
 
 #ifdef __cplusplus
   /**
