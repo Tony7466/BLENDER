@@ -252,6 +252,7 @@ set(SRC
   intern/pbvh_bmesh.cc
   intern/pbvh_colors.cc
   intern/pbvh_pixels.cc
+  intern/pbvh_pixels_copy.cc
   intern/pbvh_uv_islands.cc
   intern/pointcache.c
   intern/pointcloud.cc
@@ -420,6 +421,7 @@ set(SRC
   BKE_mball.h
   BKE_mball_tessellate.h
   BKE_mesh.h
+  BKE_mesh.hh
   BKE_mesh_boolean_convert.hh
   BKE_mesh_fair.h
   BKE_mesh_iterators.h
