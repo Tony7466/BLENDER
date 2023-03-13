@@ -17,7 +17,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BKE_deform.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_particle.h"
 
 #include "MOD_modifiertypes.h"
@@ -446,8 +446,8 @@ Mesh *MOD_solidify_extrude_modifyMesh(ModifierData *md, const ModifierEvalContex
 #endif
 
       if (mat_ofs) {
-        dst_material_index[i] += mat_ofs;
-        CLAMP(dst_material_index[i], 0, mat_nr_max);
+        dst_material_index[poly_i] += mat_ofs;
+        CLAMP(dst_material_index[poly_i], 0, mat_nr_max);
       }
 
       e = ml2[0].e;
@@ -715,7 +715,7 @@ Mesh *MOD_solidify_extrude_modifyMesh(ModifierData *md, const ModifierEvalContex
     }
 
     for (const int64_t i : blender::IndexRange(polys_num)) {
-      /* #BKE_mesh_calc_poly_angles logic is inlined here */
+      /* #bke::mesh::poly_angles_calc logic is inlined here */
       float nor_prev[3];
       float nor_next[3];
 
@@ -1085,7 +1085,6 @@ Mesh *MOD_solidify_extrude_modifyMesh(ModifierData *md, const ModifierEvalContex
       CustomData_copy_data(
           &mesh->pdata, &result->pdata, int(pidx), int((polys_num * stride) + i), 1);
       polys[new_poly_index].loopstart = int(j + (loops_num * stride));
-      polys[new_poly_index].flag = polys[pidx].flag;
 
       /* notice we use 'polys[new_poly_index].totloop' which is later overwritten,
        * we could lookup the original face but there's no point since this is a copy

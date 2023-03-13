@@ -23,7 +23,7 @@
 #include "BKE_context.h"
 #include "BKE_customdata.h"
 #include "BKE_editmesh.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.h"
 #include "BKE_report.h"
 
@@ -795,19 +795,17 @@ static int mesh_customdata_custom_splitnormals_add_exec(bContext *C, wmOperator 
     /* Tag edges as sharp according to smooth threshold if needed,
      * to preserve auto-smooth shading. */
     if (me->flag & ME_AUTOSMOOTH) {
-      const Span<MPoly> polys = me->polys();
-      const Span<MLoop> loops = me->loops();
       bke::MutableAttributeAccessor attributes = me->attributes_for_write();
       bke::SpanAttributeWriter<bool> sharp_edges = attributes.lookup_or_add_for_write_span<bool>(
           "sharp_edge", ATTR_DOMAIN_EDGE);
-      BKE_edges_sharp_from_angle_set(me->totedge,
-                                     loops.data(),
-                                     loops.size(),
-                                     polys.data(),
-                                     BKE_mesh_poly_normals_ensure(me),
-                                     polys.size(),
-                                     me->smoothresh,
-                                     sharp_edges.span.data());
+      const bool *sharp_faces = static_cast<const bool *>(
+          CustomData_get_layer_named(&me->pdata, CD_PROP_BOOL, "sharp_face"));
+      bke::mesh::edges_sharp_from_angle_set(me->polys(),
+                                            me->loops(),
+                                            me->poly_normals(),
+                                            sharp_faces,
+                                            me->smoothresh,
+                                            sharp_edges.span);
       sharp_edges.finish();
     }
 
@@ -1468,23 +1466,19 @@ void ED_mesh_split_faces(Mesh *mesh)
   const bke::AttributeAccessor attributes = mesh->attributes();
   const VArray<bool> mesh_sharp_edges = attributes.lookup_or_default<bool>(
       "sharp_edge", ATTR_DOMAIN_EDGE, false);
+  const bool *sharp_faces = static_cast<const bool *>(
+      CustomData_get_layer_named(&mesh->pdata, CD_PROP_BOOL, "sharp_face"));
 
   Array<bool> sharp_edges(mesh->totedge);
   mesh_sharp_edges.materialize(sharp_edges);
 
-  BKE_edges_sharp_from_angle_set(mesh->totedge,
-                                 loops.data(),
-                                 loops.size(),
-                                 polys.data(),
-                                 BKE_mesh_poly_normals_ensure(mesh),
-                                 polys.size(),
-                                 split_angle,
-                                 sharp_edges.data());
+  bke::mesh::edges_sharp_from_angle_set(
+      polys, loops, mesh->poly_normals(), sharp_faces, split_angle, sharp_edges);
 
   threading::parallel_for(polys.index_range(), 1024, [&](const IndexRange range) {
     for (const int poly_i : range) {
       const MPoly &poly = polys[poly_i];
-      if (!(poly.flag & ME_SMOOTH)) {
+      if (sharp_faces && sharp_faces[poly_i]) {
         for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
           sharp_edges[loop.e] = true;
         }

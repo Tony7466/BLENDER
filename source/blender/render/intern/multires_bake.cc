@@ -24,7 +24,7 @@
 #include "BKE_image.h"
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_tangent.h"
 #include "BKE_modifier.h"
 #include "BKE_multires.h"
@@ -62,8 +62,10 @@ struct MultiresBakeResult {
 struct MResolvePixelData {
   const float (*vert_positions)[3];
   const float (*vert_normals)[3];
+  int verts_num;
   const MPoly *polys;
   const int *material_indices;
+  const bool *sharp_faces;
   MLoop *mloop;
   float (*mloopuv)[2];
   float uv_offset[2];
@@ -114,7 +116,7 @@ static void multiresbake_get_normal(const MResolvePixelData *data,
 {
   const int poly_index = data->mlooptri[tri_num].poly;
   const MPoly &poly = data->polys[poly_index];
-  const bool smoothnormal = (poly.flag & ME_SMOOTH) != 0;
+  const bool smoothnormal = !(data->sharp_faces && data->sharp_faces[poly_index]);
 
   if (smoothnormal) {
     const int vi = data->mloop[data->mlooptri[tri_num].tri[vert_index]].v;
@@ -125,8 +127,11 @@ static void multiresbake_get_normal(const MResolvePixelData *data,
       copy_v3_v3(r_normal, data->precomputed_normals[poly_index]);
     }
     else {
-      BKE_mesh_calc_poly_normal(
-          &poly, &data->mloop[poly.loopstart], data->vert_positions, r_normal);
+      copy_v3_v3(
+          r_normal,
+          blender::bke::mesh::poly_normal_calc(
+              {reinterpret_cast<const blender::float3 *>(data->vert_positions), data->verts_num},
+              {&data->mloop[poly.loopstart], poly.totloop}));
     }
   }
 }
@@ -504,6 +509,8 @@ static void do_multires_bake(MultiresBakeRender *bkr,
           dm->getLoopArray(dm),
           dm->getLoopTriArray(dm),
           dm->getNumLoopTri(dm),
+          static_cast<const bool *>(
+              CustomData_get_layer_named(&dm->polyData, CD_PROP_BOOL, "sharp_face")),
           &dm->loopData,
           true,
           nullptr,
@@ -550,8 +557,11 @@ static void do_multires_bake(MultiresBakeRender *bkr,
     handle->data.polys = polys;
     handle->data.material_indices = static_cast<const int *>(
         CustomData_get_layer_named(&dm->polyData, CD_PROP_INT32, "material_index"));
+    handle->data.sharp_faces = static_cast<const bool *>(
+        CustomData_get_layer_named(&dm->polyData, CD_PROP_BOOL, "sharp_face"));
     handle->data.vert_positions = positions;
     handle->data.vert_normals = vert_normals;
+    handle->data.verts_num = dm->getNumVerts(dm);
     handle->data.mloopuv = mloopuv;
     BKE_image_get_tile_uv(ima, tile->tile_number, handle->data.uv_offset);
     handle->data.mlooptri = mlooptri;

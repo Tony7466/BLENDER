@@ -30,7 +30,7 @@
 #include "BKE_global.h"
 #include "BKE_lib_id.h"
 #include "BKE_mball_tessellate.h" /* own include */
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_object.h"
 #include "BKE_scene.h"
 
@@ -1480,7 +1480,6 @@ Mesh *BKE_mball_polygonize(Depsgraph *depsgraph, Scene *scene, Object *ob)
     const int count = indices[2] != indices[3] ? 4 : 3;
     polys[i].loopstart = loop_offset;
     polys[i].totloop = count;
-    polys[i].flag = ME_SMOOTH;
 
     mloop[loop_offset].v = uint32_t(indices[0]);
     mloop[loop_offset + 1].v = uint32_t(indices[1]);

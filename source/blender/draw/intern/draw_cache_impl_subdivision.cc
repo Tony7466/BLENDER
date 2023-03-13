@@ -9,7 +9,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_editmesh.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.h"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
@@ -757,7 +757,7 @@ static void draw_subdiv_cache_extra_coarse_face_data_mesh(const MeshRenderData *
   const Span<MPoly> polys = mesh->polys();
   for (const int i : polys.index_range()) {
     uint32_t flag = 0;
-    if ((polys[i].flag & ME_SMOOTH) != 0) {
+    if (!(mr->sharp_faces && mr->sharp_faces[i])) {
       flag |= SUBDIV_COARSE_FACE_FLAG_SMOOTH;
     }
     if (mr->select_poly && mr->select_poly[i]) {
@@ -786,7 +786,7 @@ static void draw_subdiv_cache_extra_coarse_face_data_mapped(Mesh *mesh,
     /* Selection and hiding from bmesh. */
     uint32_t flag = (f) ? compute_coarse_face_flag_bm(f, mr->efa_act) : 0;
     /* Smooth from mesh. */
-    if ((polys[i].flag & ME_SMOOTH) != 0) {
+    if (!(mr->sharp_faces && mr->sharp_faces[i])) {
       flag |= SUBDIV_COARSE_FACE_FLAG_SMOOTH;
     }
     flags_data[i] = uint(polys[i].loopstart) | (flag << SUBDIV_COARSE_FACE_FLAG_OFFSET);
