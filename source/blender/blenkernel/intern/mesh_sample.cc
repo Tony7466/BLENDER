@@ -24,7 +24,7 @@ BLI_NOINLINE static void sample_point_attribute(const Mesh &mesh,
   const Span<MLoop> loops = mesh.loops();
   const Span<MLoopTri> looptris = mesh.looptris();
 
-  for (const int i : mask) {
+  mask.foreach_index([&](const int i) {
     const int looptri_index = looptri_indices[i];
     const MLoopTri &looptri = looptris[looptri_index];
     const float3 &bary_coord = bary_coords[i];
@@ -39,7 +39,7 @@ BLI_NOINLINE static void sample_point_attribute(const Mesh &mesh,
 
     const T interpolated_value = attribute_math::mix3(bary_coord, v0, v1, v2);
     dst[i] = interpolated_value;
-  }
+  });
 }
 
 void sample_point_attribute(const Mesh &mesh,
@@ -70,7 +70,7 @@ BLI_NOINLINE static void sample_corner_attribute(const Mesh &mesh,
 {
   const Span<MLoopTri> looptris = mesh.looptris();
 
-  for (const int i : mask) {
+  mask.foreach_index([&](const int i) {
     const int looptri_index = looptri_indices[i];
     const MLoopTri &looptri = looptris[looptri_index];
     const float3 &bary_coord = bary_coords[i];
@@ -85,7 +85,7 @@ BLI_NOINLINE static void sample_corner_attribute(const Mesh &mesh,
 
     const T interpolated_value = attribute_math::mix3(bary_coord, v0, v1, v2);
     dst[i] = interpolated_value;
-  }
+  });
 }
 
 void sample_corner_attribute(const Mesh &mesh,
@@ -115,12 +115,12 @@ void sample_face_attribute(const Mesh &mesh,
 {
   const Span<MLoopTri> looptris = mesh.looptris();
 
-  for (const int i : mask) {
+  mask.foreach_index([&](const int i) {
     const int looptri_index = looptri_indices[i];
     const MLoopTri &looptri = looptris[looptri_index];
     const int poly_index = looptri.poly;
     dst[i] = src[poly_index];
-  }
+  });
 }
 
 void sample_face_attribute(const Mesh &mesh,
@@ -160,7 +160,7 @@ Span<float3> MeshAttributeInterpolator::ensure_barycentric_coords()
   const Span<MLoop> loops = mesh_->loops();
   const Span<MLoopTri> looptris = mesh_->looptris();
 
-  for (const int i : mask_) {
+  mask_.foreach_index([&](const int i) {
     const int looptri_index = looptri_indices_[i];
     const MLoopTri &looptri = looptris[looptri_index];
 
@@ -173,7 +173,7 @@ Span<float3> MeshAttributeInterpolator::ensure_barycentric_coords()
                           positions[v1_index],
                           positions[v2_index],
                           positions_[i]);
-  }
+  });
   return bary_coords_;
 }
 
@@ -189,7 +189,7 @@ Span<float3> MeshAttributeInterpolator::ensure_nearest_weights()
   const Span<MLoop> loops = mesh_->loops();
   const Span<MLoopTri> looptris = mesh_->looptris();
 
-  for (const int i : mask_) {
+  mask_.foreach_index([&](const int i) {
     const int looptri_index = looptri_indices_[i];
     const MLoopTri &looptri = looptris[looptri_index];
 
@@ -202,7 +202,7 @@ Span<float3> MeshAttributeInterpolator::ensure_nearest_weights()
     const float d2 = len_squared_v3v3(positions_[i], positions[v2_index]);
 
     nearest_weights_[i] = MIN3_PAIR(d0, d1, d2, float3(1, 0, 0), float3(0, 1, 0), float3(0, 0, 1));
-  }
+  });
   return nearest_weights_;
 }
 

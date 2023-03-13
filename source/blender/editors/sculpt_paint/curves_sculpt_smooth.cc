@@ -44,7 +44,7 @@ struct SmoothOperationExecutor {
   CurvesGeometry *curves_ = nullptr;
 
   VArray<float> point_factors_;
-  Vector<int64_t> selected_curve_indices_;
+  IndexMaskMemory selected_curve_memory_;
   IndexMask curve_selection_;
 
   const CurvesSculpt *curves_sculpt_ = nullptr;
@@ -81,7 +81,7 @@ struct SmoothOperationExecutor {
 
     point_factors_ = curves_->attributes().lookup_or_default<float>(
         ".selection", ATTR_DOMAIN_POINT, 1.0f);
-    curve_selection_ = curves::retrieve_selected_curves(*curves_id_, selected_curve_indices_);
+    curve_selection_ = curves::retrieve_selected_curves(*curves_id_, selected_curve_memory_);
     transforms_ = CurvesSurfaceTransforms(*object_, curves_id_->surface);
 
     const eBrushFalloffShape falloff_shape = static_cast<eBrushFalloffShape>(

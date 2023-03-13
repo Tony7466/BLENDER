@@ -406,7 +406,6 @@ IndexMask IndexMask::slice_and_offset(const int64_t start,
 
 IndexMask IndexMask::complement(const IndexRange universe, IndexMaskMemory &memory) const
 {
-  IndexMaskMemory memory;
   const AtomicExpr atomic_expr{*this};
   const ComplementExpr complement_expr{atomic_expr};
   return IndexMask::from_expr(complement_expr, universe, memory);

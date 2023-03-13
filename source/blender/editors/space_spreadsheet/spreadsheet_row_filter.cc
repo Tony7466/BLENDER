@@ -304,6 +304,7 @@ static IndexMask apply_row_filter(const SpreadsheetRowFilter &row_filter,
         prev_mask,
         memory);
   }
+  return prev_mask;
 }
 
 static bool use_row_filters(const SpaceSpreadsheet &sspreadsheet)

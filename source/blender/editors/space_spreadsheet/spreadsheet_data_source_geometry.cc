@@ -403,9 +403,9 @@ IndexMask GeometryDataSource::apply_selection_filter(IndexMaskMemory &memory) co
       const Curves &curves_id = *component.get_for_read();
       switch (domain_) {
         case ATTR_DOMAIN_POINT:
-          return curves::retrieve_selected_points(curves_id, indices);
+          return curves::retrieve_selected_points(curves_id, memory);
         case ATTR_DOMAIN_CURVE:
-          return curves::retrieve_selected_curves(curves_id, indices);
+          return curves::retrieve_selected_curves(curves_id, memory);
         default:
           BLI_assert_unreachable();
       }

@@ -56,7 +56,7 @@ struct PuffOperationExecutor {
   CurvesGeometry *curves_ = nullptr;
 
   VArray<float> point_factors_;
-  Vector<int64_t> selected_curve_indices_;
+  IndexMaskMemory selected_curve_memory_;
   IndexMask curve_selection_;
 
   const CurvesSculpt *curves_sculpt_ = nullptr;
@@ -107,7 +107,7 @@ struct PuffOperationExecutor {
 
     point_factors_ = curves_->attributes().lookup_or_default<float>(
         ".selection", ATTR_DOMAIN_POINT, 1.0f);
-    curve_selection_ = curves::retrieve_selected_curves(*curves_id_, selected_curve_indices_);
+    curve_selection_ = curves::retrieve_selected_curves(*curves_id_, selected_curve_memory_);
 
     falloff_shape_ = static_cast<eBrushFalloffShape>(brush_->falloff_shape);
 

@@ -85,7 +85,7 @@ struct SnakeHookOperatorExecutor {
   CurvesGeometry *curves_ = nullptr;
 
   VArray<float> curve_factors_;
-  Vector<int64_t> selected_curve_indices_;
+  IndexMaskMemory selected_curve_memory_;
   IndexMask curve_selection_;
 
   CurvesSurfaceTransforms transforms_;
@@ -126,7 +126,7 @@ struct SnakeHookOperatorExecutor {
 
     curve_factors_ = curves_->attributes().lookup_or_default(
         ".selection", ATTR_DOMAIN_CURVE, 1.0f);
-    curve_selection_ = curves::retrieve_selected_curves(*curves_id_, selected_curve_indices_);
+    curve_selection_ = curves::retrieve_selected_curves(*curves_id_, selected_curve_memory_);
 
     brush_pos_prev_re_ = self.last_mouse_position_re_;
     brush_pos_re_ = stroke_extension.mouse_position;

@@ -507,7 +507,7 @@ struct DensitySubtractOperationExecutor {
   Curves *curves_id_ = nullptr;
   CurvesGeometry *curves_ = nullptr;
 
-  Vector<int64_t> selected_curve_indices_;
+  IndexMaskMemory selected_curve_memory_;
   IndexMask curve_selection_;
 
   Object *surface_ob_orig_ = nullptr;
@@ -572,7 +572,7 @@ struct DensitySubtractOperationExecutor {
 
     minimum_distance_ = brush_->curves_sculpt_settings->minimum_distance;
 
-    curve_selection_ = curves::retrieve_selected_curves(*curves_id_, selected_curve_indices_);
+    curve_selection_ = curves::retrieve_selected_curves(*curves_id_, selected_curve_memory_);
 
     transforms_ = CurvesSurfaceTransforms(*object_, curves_id_->surface);
     const eBrushFalloffShape falloff_shape = static_cast<eBrushFalloffShape>(

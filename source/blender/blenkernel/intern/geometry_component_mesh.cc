@@ -137,11 +137,11 @@ VArray<float3> mesh_normals_varray(const Mesh &mesh,
       Span<float3> vert_normals = mesh.vert_normals();
       const Span<MEdge> edges = mesh.edges();
       Array<float3> edge_normals(mask.min_array_size());
-      for (const int i : mask) {
+      mask.foreach_index([&](const int i) {
         const MEdge &edge = edges[i];
         edge_normals[i] = math::normalize(
             math::interpolate(vert_normals[edge.v1], vert_normals[edge.v2], 0.5f));
-      }
+      });
 
       return VArray<float3>::ForContainer(std::move(edge_normals));
     }
@@ -980,14 +980,12 @@ class VArrayImpl_For_VertexWeights final : public VMutableArrayImpl<float> {
     if (dverts_ == nullptr) {
       mask.foreach_index([&](const int i) { dst[i] = 0.0f; });
     }
-    threading::parallel_for(mask.index_range(), 4096, [&](const IndexRange range) {
-      for (const int64_t i : mask.slice(range)) {
-        if (const MDeformWeight *weight = this->find_weight_at_index(i)) {
-          dst[i] = weight->weight;
-        }
-        else {
-          dst[i] = 0.0f;
-        }
+    mask.foreach_index(GrainSize(4096), [&](const int64_t i) {
+      if (const MDeformWeight *weight = this->find_weight_at_index(i)) {
+        dst[i] = weight->weight;
+      }
+      else {
+        dst[i] = 0.0f;
       }
     });
   }

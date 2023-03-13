@@ -111,7 +111,7 @@ struct SlideOperationExecutor {
   BVHTreeFromMesh surface_bvh_eval_;
 
   VArray<float> curve_factors_;
-  Vector<int64_t> selected_curve_indices_;
+  IndexMaskMemory selected_curve_memory_;
   IndexMask curve_selection_;
 
   float2 brush_pos_re_;
@@ -159,7 +159,7 @@ struct SlideOperationExecutor {
 
     curve_factors_ = curves_orig_->attributes().lookup_or_default(
         ".selection", ATTR_DOMAIN_CURVE, 1.0f);
-    curve_selection_ = curves::retrieve_selected_curves(*curves_id_orig_, selected_curve_indices_);
+    curve_selection_ = curves::retrieve_selected_curves(*curves_id_orig_, selected_curve_memory_);
 
     brush_pos_re_ = stroke_extension.mouse_position;
 
