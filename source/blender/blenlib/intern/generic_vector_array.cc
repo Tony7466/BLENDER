@@ -49,10 +49,10 @@ void GVectorArray::extend(const int64_t index, const GSpan values)
 
 void GVectorArray::extend(IndexMask mask, const GVVectorArray &values)
 {
-  for (const int i : mask) {
+  mask.foreach_index([&](const int64_t i) {
     GVArray_For_GVVectorArrayIndex array{values, i};
     this->extend(i, GVArray(&array));
-  }
+  });
 }
 
 void GVectorArray::extend(IndexMask mask, const GVectorArray &values)
@@ -63,11 +63,11 @@ void GVectorArray::extend(IndexMask mask, const GVectorArray &values)
 
 void GVectorArray::clear(IndexMask mask)
 {
-  for (const int64_t i : mask) {
+  mask.foreach_index([&](const int64_t i) {
     Item &item = items_[i];
     type_.destruct_n(item.start, item.length);
     item.length = 0;
-  }
+  });
 }
 
 GMutableSpan GVectorArray::operator[](const int64_t index)

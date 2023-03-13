@@ -10,34 +10,34 @@ namespace blender {
 
 void GVArrayImpl::materialize(const IndexMask mask, void *dst) const
 {
-  for (const int64_t i : mask) {
+  mask.foreach_span_or_range_index([&](const int64_t i) {
     void *elem_dst = POINTER_OFFSET(dst, type_->size() * i);
     this->get(i, elem_dst);
-  }
+  });
 }
 
 void GVArrayImpl::materialize_to_uninitialized(const IndexMask mask, void *dst) const
 {
-  for (const int64_t i : mask) {
+  mask.foreach_span_or_range_index([&](const int64_t i) {
     void *elem_dst = POINTER_OFFSET(dst, type_->size() * i);
     this->get_to_uninitialized(i, elem_dst);
-  }
+  });
 }
 
 void GVArrayImpl::materialize_compressed(IndexMask mask, void *dst) const
 {
-  for (const int64_t i : mask.index_range()) {
-    void *elem_dst = POINTER_OFFSET(dst, type_->size() * i);
-    this->get(mask[i], elem_dst);
-  }
+  mask.foreach_span_or_range_index([&](const int64_t i, const int64_t i_in_mask) {
+    void *elem_dst = POINTER_OFFSET(dst, type_->size() * i_in_mask);
+    this->get(i, elem_dst);
+  });
 }
 
 void GVArrayImpl::materialize_compressed_to_uninitialized(IndexMask mask, void *dst) const
 {
-  for (const int64_t i : mask.index_range()) {
-    void *elem_dst = POINTER_OFFSET(dst, type_->size() * i);
-    this->get_to_uninitialized(mask[i], elem_dst);
-  }
+  mask.foreach_span_or_range_index([&](const int64_t i, const int64_t i_in_mask) {
+    void *elem_dst = POINTER_OFFSET(dst, type_->size() * i_in_mask);
+    this->get_to_uninitialized(i, elem_dst);
+  });
 }
 
 void GVArrayImpl::get(const int64_t index, void *r_value) const
@@ -497,18 +497,11 @@ class GVArrayImpl_For_SlicedGVArray : public GVArrayImpl {
 
   void materialize_compressed_to_uninitialized(const IndexMask mask, void *dst) const override
   {
-    if (mask.is_range()) {
-      const IndexRange mask_range = mask.as_range();
-      const IndexRange offset_mask_range{mask_range.start() + offset_, mask_range.size()};
-      varray_.materialize_compressed_to_uninitialized(offset_mask_range, dst);
-    }
-    else {
-      Vector<int64_t, 32> offset_mask_indices(mask.size());
-      for (const int64_t i : mask.index_range()) {
-        offset_mask_indices[i] = mask[i] + offset_;
-      }
-      varray_.materialize_compressed_to_uninitialized(offset_mask_indices.as_span(), dst);
-    }
+    mask.foreach_range([&](const IndexRange mask_segment, const int64_t start) {
+      const IndexRange offset_mask_range = mask_segment.shift(offset_);
+      varray_.materialize_compressed_to_uninitialized(offset_mask_range,
+                                                      POINTER_OFFSET(dst, type_->size() * start));
+    });
   }
 };
 
