@@ -4,9 +4,12 @@
  * \ingroup bke
  */
 
+#include "BKE_anim_data.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_idtype.h"
 #include "BKE_lib_query.h"
+
+#include "BLI_span.hh"
 
 #include "BLO_read_write.h"
 
@@ -15,6 +18,7 @@
 #include "DNA_ID.h"
 #include "DNA_ID_enums.h"
 #include "DNA_grease_pencil_types.h"
+#include "DNA_material_types.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -34,14 +38,14 @@ static void grease_pencil_free_data(ID *id)
   // TODO: free drawing array
   // TODO: free layer tree
 
-  MEM_SAFE_FREE(grease_pencil->mat);
+  MEM_SAFE_FREE(grease_pencil->material_array);
 }
 
 static void grease_pencil_foreach_id(ID *id, LibraryForeachIDData *data)
 {
   GreasePencil *grease_pencil = (GreasePencil *)id;
-  for (int i = 0; i < grease_pencil->mat_num; i++) {
-    BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, grease_pencil->mat[i], IDWALK_CB_USER);
+  for (int i = 0; i < grease_pencil->material_array_size; i++) {
+    BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, grease_pencil->material_array[i], IDWALK_CB_USER);
   }
   // TODO: walk all the referenced drawings
 }
@@ -61,8 +65,8 @@ static void grease_pencil_blend_read_lib(BlendLibReader *reader, ID *id)
 static void grease_pencil_blend_read_expand(BlendExpander *expander, ID *id)
 {
   GreasePencil *grease_pencil = (GreasePencil *)id;
-  for (int i = 0; i < grease_pencil->mat_num; i++) {
-    BLO_expand(expander, grease_pencil->mat[i]);
+  for (int i = 0; i < grease_pencil->material_array_size; i++) {
+    BLO_expand(expander, grease_pencil->material_array[i]);
   }
 }
 
@@ -96,7 +100,7 @@ IDTypeInfo IDType_ID_GP = {
     /*lib_override_apply_post*/ nullptr,
 };
 
-Span<GreasePencilDrawing> blender::bke::GreasePencil::drawings() const
+blender::Span<GreasePencilDrawingOrReference> blender::bke::GreasePencil::drawings() const
 {
-  return Span<GreasePencilDrawing>{this->drawing_array, this->drawing_array_size};
+  return blender::Span<GreasePencilDrawingOrReference>{this->drawing_array, this->drawing_array_size};
 }

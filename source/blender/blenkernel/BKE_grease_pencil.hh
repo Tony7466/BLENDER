@@ -13,7 +13,7 @@
 namespace blender::bke {
 
 class GreasePencilLayerRuntime {
- private:
+ public:
   Map<int, int> frames;
 };
 
@@ -46,12 +46,12 @@ class GreasePencil : ::GreasePencil {
    * Accessors.
    */
 
-  Span<GreasePencilDrawing> drawings() const;
+  Span<GreasePencilDrawingOrReference> drawings() const;
 };
 
 }  // namespace blender::bke
 
-inline blender::Map<int, int> GreasePencilLayer::frames() const
+inline const blender::Map<int, int> &GreasePencilLayer::frames() const
 {
   return this->runtime->frames;
 }
