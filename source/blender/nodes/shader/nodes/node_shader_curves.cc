@@ -87,12 +87,12 @@ class CurveVecFunction : public mf::MultiFunction {
     const VArray<float3> &vec_in = params.readonly_single_input<float3>(1, "Vector");
     MutableSpan<float3> vec_out = params.uninitialized_single_output<float3>(2, "Vector");
 
-    for (int64_t i : mask) {
+    mask.foreach_index([&](const int64_t i) {
       BKE_curvemapping_evaluate3F(&cumap_, vec_out[i], vec_in[i]);
       if (fac[i] != 1.0f) {
         interp_v3_v3v3(vec_out[i], vec_in[i], vec_out[i], fac[i]);
       }
-    }
+    });
   }
 };
 
@@ -232,12 +232,12 @@ class CurveRGBFunction : public mf::MultiFunction {
     MutableSpan<ColorGeometry4f> col_out = params.uninitialized_single_output<ColorGeometry4f>(
         2, "Color");
 
-    for (int64_t i : mask) {
+    mask.foreach_index([&](const int64_t i) {
       BKE_curvemapping_evaluateRGBF(&cumap_, col_out[i], col_in[i]);
       if (fac[i] != 1.0f) {
         interp_v3_v3v3(col_out[i], col_in[i], col_out[i], fac[i]);
       }
-    }
+    });
   }
 };
 
@@ -350,12 +350,12 @@ class CurveFloatFunction : public mf::MultiFunction {
     const VArray<float> &val_in = params.readonly_single_input<float>(1, "Value");
     MutableSpan<float> val_out = params.uninitialized_single_output<float>(2, "Value");
 
-    for (int64_t i : mask) {
+    mask.foreach_index([&](const int64_t i) {
       val_out[i] = BKE_curvemapping_evaluateF(&cumap_, 0, val_in[i]);
       if (fac[i] != 1.0f) {
         val_out[i] = (1.0f - fac[i]) * val_in[i] + fac[i] * val_out[i];
       }
-    }
+    });
   }
 };
 

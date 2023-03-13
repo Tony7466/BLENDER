@@ -224,7 +224,7 @@ class BrickFunction : public mf::MultiFunction {
     const bool store_fac = !r_fac.is_empty();
     const bool store_color = !r_color.is_empty();
 
-    for (int64_t i : mask) {
+    mask.foreach_index([&](const int64_t i) {
       const float2 f2 = brick(vector[i] * scale[i],
                               mortar_size[i],
                               mortar_smooth[i],
@@ -256,7 +256,7 @@ class BrickFunction : public mf::MultiFunction {
       if (store_fac) {
         r_fac[i] = f;
       }
-    }
+    });
   }
 };
 

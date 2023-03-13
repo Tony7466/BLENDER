@@ -150,7 +150,7 @@ class SampleMeshBarycentricFunction : public mf::MultiFunction {
       using T = decltype(dummy);
       const VArray<T> src_typed = source_data_->typed<T>();
       MutableSpan<T> dst_typed = dst.typed<T>();
-      for (const int i : mask) {
+      mask.foreach_index([&](const int i) {
         const int triangle_index = triangle_indices[i];
         if (triangle_indices[i] != -1) {
           dst_typed[i] = attribute_math::mix3(bary_weights[i],
@@ -161,7 +161,7 @@ class SampleMeshBarycentricFunction : public mf::MultiFunction {
         else {
           dst_typed[i] = {};
         }
-      }
+      });
     });
   }
 
@@ -218,7 +218,7 @@ class ReverseUVSampleFunction : public mf::MultiFunction {
     MutableSpan<float3> bary_weights = params.uninitialized_single_output_if_required<float3>(
         3, "Barycentric Weights");
 
-    for (const int i : mask) {
+    mask.foreach_index([&](const int i) {
       const ReverseUVSampler::Result result = reverse_uv_sampler_->sample(sample_uvs[i]);
       if (!is_valid.is_empty()) {
         is_valid[i] = result.type == ReverseUVSampler::ResultType::Ok;
@@ -229,7 +229,7 @@ class ReverseUVSampleFunction : public mf::MultiFunction {
       if (!bary_weights.is_empty()) {
         bary_weights[i] = result.bary_weights;
       }
-    }
+    });
   }
 
  private:

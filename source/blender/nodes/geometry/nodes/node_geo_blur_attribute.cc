@@ -154,24 +154,21 @@ static Array<Vector<int>> build_edge_to_edge_by_vert_map(const Span<MEdge> edges
   Array<Vector<int>> vert_to_edge_map = bke::mesh_topology::build_vert_to_edge_map(edges,
                                                                                    verts_num);
 
-  threading::parallel_for(edge_mask.index_range(), 1024, [&](IndexRange range) {
-    for (const int edge_i : edge_mask.slice(range)) {
+  edge_mask.foreach_index(GrainSize(1024), [&](const int edge_i) {
+    Vector<int> &self_edges = map[edge_i];
+    const Span<int> vert_1_edges = vert_to_edge_map[edges[edge_i].v1];
+    const Span<int> vert_2_edges = vert_to_edge_map[edges[edge_i].v2];
 
-      Vector<int> &self_edges = map[edge_i];
-      const Span<int> vert_1_edges = vert_to_edge_map[edges[edge_i].v1];
-      const Span<int> vert_2_edges = vert_to_edge_map[edges[edge_i].v2];
+    self_edges.reserve(vert_1_edges.size() - 1 + vert_2_edges.size() - 1);
 
-      self_edges.reserve(vert_1_edges.size() - 1 + vert_2_edges.size() - 1);
-
-      for (const int i : vert_1_edges) {
-        if (i != edge_i) {
-          self_edges.append(i);
-        }
+    for (const int i : vert_1_edges) {
+      if (i != edge_i) {
+        self_edges.append(i);
       }
-      for (const int i : vert_2_edges) {
-        if (i != edge_i) {
-          self_edges.append(i);
-        }
+    }
+    for (const int i : vert_2_edges) {
+      if (i != edge_i) {
+        self_edges.append(i);
       }
     }
   });
@@ -200,16 +197,14 @@ static Array<Vector<int>> build_face_to_face_by_edge_map(const Span<MPoly> polys
   Array<Vector<int>> map(polys.size());
   Array<Vector<int>> faces_by_edge = build_face_to_edge_by_loop_map(polys, loops, edges_num);
 
-  threading::parallel_for(poly_mask.index_range(), 1024, [&](IndexRange range) {
-    for (const int poly_i : poly_mask.slice(range)) {
-      const MPoly &poly = polys[poly_i];
-      for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
-        const int edge_i = loop.e;
-        if (faces_by_edge[edge_i].size() > 1) {
-          for (const int neighbor : faces_by_edge[edge_i]) {
-            if (neighbor != poly_i) {
-              map[poly_i].append(neighbor);
-            }
+  poly_mask.foreach_index(GrainSize(1024), [&](const int poly_i) {
+    const MPoly &poly = polys[poly_i];
+    for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
+      const int edge_i = loop.e;
+      if (faces_by_edge[edge_i].size() > 1) {
+        for (const int neighbor : faces_by_edge[edge_i]) {
+          if (neighbor != poly_i) {
+            map[poly_i].append(neighbor);
           }
         }
       }

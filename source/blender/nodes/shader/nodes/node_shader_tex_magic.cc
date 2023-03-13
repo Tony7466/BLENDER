@@ -80,7 +80,7 @@ class MagicFunction : public mf::MultiFunction {
 
     const bool compute_factor = !r_fac.is_empty();
 
-    for (int64_t i : mask) {
+    mask.foreach_index([&](const int64_t i) {
       const float3 co = vector[i] * scale[i];
       const float distort = distortion[i];
       float x = sinf((co[0] + co[1] + co[2]) * 5.0f);
@@ -148,11 +148,11 @@ class MagicFunction : public mf::MultiFunction {
       }
 
       r_color[i] = ColorGeometry4f(0.5f - x, 0.5f - y, 0.5f - z, 1.0f);
-    }
+    });
     if (compute_factor) {
-      for (int64_t i : mask) {
+      mask.foreach_index([&](const int64_t i) {
         r_fac[i] = (r_color[i].r + r_color[i].g + r_color[i].b) * (1.0f / 3.0f);
-      }
+      });
     }
   }
 };

@@ -112,12 +112,12 @@ class ColorBandFunction : public mf::MultiFunction {
         1, "Color");
     MutableSpan<float> alphas = params.uninitialized_single_output<float>(2, "Alpha");
 
-    for (int64_t i : mask) {
+    mask.foreach_index([&](const int64_t i) {
       ColorGeometry4f color;
       BKE_colorband_evaluate(&color_band_, values[i], color);
       colors[i] = color;
       alphas[i] = color.a;
-    }
+    });
   }
 };
 

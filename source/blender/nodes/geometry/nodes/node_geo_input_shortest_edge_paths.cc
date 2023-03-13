@@ -50,10 +50,10 @@ static void shortest_paths(const Mesh &mesh,
 
   std::priority_queue<VertPriority, std::vector<VertPriority>, std::greater<VertPriority>> queue;
 
-  for (const int start_vert_i : end_selection) {
+  end_selection.foreach_index([&](const int start_vert_i) {
     r_cost[start_vert_i] = 0.0f;
     queue.emplace(0.0f, start_vert_i);
-  }
+  });
 
   while (!queue.empty()) {
     const float cost_i = queue.top().first;
