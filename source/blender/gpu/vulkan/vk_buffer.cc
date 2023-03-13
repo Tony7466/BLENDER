@@ -92,7 +92,7 @@ void VKBuffer::read(void *data) const
 
 void *VKBuffer::mapped_memory_get() const
 {
-  BLI_assert_msg(is_mapped(), "Cannot read a non-mapped buffer.");
+  BLI_assert_msg(is_mapped(), "Cannot access a non-mapped buffer.");
   return mapped_memory_;
 }
 
