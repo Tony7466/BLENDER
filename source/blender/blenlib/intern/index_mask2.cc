@@ -174,7 +174,6 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, LinearAlloca
 
   static const int16_t *static_offsets = get_static_indices_array().data();
 
-  /* TODO: Use that again to avoid some allocations. */
   [[maybe_unused]] const Chunk full_chunk_template = IndexMask(chunk_capacity).data().chunks[0];
 
   std::mutex scope_mutex;
@@ -205,7 +204,7 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, LinearAlloca
       chunks_to_postprocess.append(index_in_slice);
 
       const int16_t segments_in_chunk_num = int16_t(
-          split_to_ranges_and_spans(indices_in_chunk, 16, segments_in_chunks));
+          split_to_ranges_and_spans(indices_in_chunk, 64, segments_in_chunks));
       BLI_assert(segments_in_chunk_num > 0);
       segments_per_chunk_cumulative.append(segments_per_chunk_cumulative.last() +
                                            segments_in_chunk_num);
@@ -317,8 +316,6 @@ template<typename T> IndexMask to_index_mask(const Span<T> indices, LinearAlloca
   mask_data.begin_it = {0, 0};
   mask_data.end_it = chunks.last().end_iterator();
   return mask;
-
-  return {};
 }
 
 template<typename T> void from_index_mask(const IndexMask &mask, MutableSpan<T> r_indices)
