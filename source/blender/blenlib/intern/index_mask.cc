@@ -881,7 +881,7 @@ void IndexMask::to_bits(MutableBitSpan r_bits, int64_t offset) const
   index_mask_to_bits(*this, offset, r_bits);
 }
 
-void IndexMask::to_bools(MutableSpan<bool> r_bools, int64_t offset = 0) const
+void IndexMask::to_bools(MutableSpan<bool> r_bools, int64_t offset) const
 {
   r_bools.fill(false);
   this->foreach_index_optimized([&](const int64_t i) { r_bools[i - offset] = true; });

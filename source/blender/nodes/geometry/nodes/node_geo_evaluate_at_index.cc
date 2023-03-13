@@ -49,15 +49,13 @@ GVArray FieldAtIndexInput::get_varray_for_context(const bke::GeometryFieldContex
     using T = decltype(dummy);
     Array<T> dst_array(mask.min_array_size());
     VArray<T> src_values = values.typed<T>();
-    threading::parallel_for(mask.index_range(), 1024, [&](const IndexRange range) {
-      for (const int i : mask.slice(range)) {
-        const int index = indices[i];
-        if (src_values.index_range().contains(index)) {
-          dst_array[i] = src_values[index];
-        }
-        else {
-          dst_array[i] = {};
-        }
+    mask.foreach_index(GrainSize(1024), [&](const int i) {
+      const int index = indices[i];
+      if (src_values.index_range().contains(index)) {
+        dst_array[i] = src_values[index];
+      }
+      else {
+        dst_array[i] = {};
       }
     });
     output_array = VArray<T>::ForContainer(std::move(dst_array));

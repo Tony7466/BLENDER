@@ -135,7 +135,7 @@ TEST(multi_function_procedure, BranchTest)
   params.add_readonly_single_input(values_cond.as_span());
 
   ContextBuilder context;
-  procedure_fn.call({1, 2, 3, 4}, params, context);
+  procedure_fn.call(IndexRange(1, 4), params, context);
 
   EXPECT_EQ(values_a[0], 1);
   EXPECT_EQ(values_a[1], 25);
@@ -175,7 +175,8 @@ TEST(multi_function_procedure, EvaluateOne)
   params.add_uninitialized_single_output(values_out.as_mutable_span());
 
   ContextBuilder context;
-  procedure_fn.call({0, 1, 3, 4}, params, context);
+  IndexMaskMemory memory;
+  procedure_fn.call(IndexMask::from_indices<int>({0, 1, 3, 4}, memory), params, context);
 
   EXPECT_EQ(values_out[0], 11);
   EXPECT_EQ(values_out[1], 11);
@@ -249,7 +250,8 @@ TEST(multi_function_procedure, SimpleLoop)
   params.add_uninitialized_single_output(results.as_mutable_span());
 
   ContextBuilder context;
-  procedure_fn.call({0, 1, 3, 4}, params, context);
+  IndexMaskMemory memory;
+  procedure_fn.call(IndexMask::from_indices<int>({0, 1, 3, 4}, memory), params, context);
 
   EXPECT_EQ(results[0], 1016);
   EXPECT_EQ(results[1], 1008);
@@ -311,7 +313,8 @@ TEST(multi_function_procedure, Vectors)
   params.add_vector_output(v3);
 
   ContextBuilder context;
-  procedure_fn.call({0, 1, 3, 4}, params, context);
+  IndexMaskMemory memory;
+  procedure_fn.call(IndexMask::from_indices<int>({0, 1, 3, 4}, memory), params, context);
 
   EXPECT_EQ(v2[0].size(), 6);
   EXPECT_EQ(v2[1].size(), 4);
@@ -369,7 +372,8 @@ TEST(multi_function_procedure, BufferReuse)
   params.add_uninitialized_single_output(results.as_mutable_span());
 
   ContextBuilder context;
-  procedure_fn.call({0, 2, 3, 4}, params, context);
+  IndexMaskMemory memory;
+  procedure_fn.call(IndexMask::from_indices<int>({0, 2, 3, 4}, memory), params, context);
 
   EXPECT_EQ(results[0], 54);
   EXPECT_EQ(results[1], -1);

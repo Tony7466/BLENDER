@@ -85,7 +85,7 @@ static VArray<float3> construct_uv_gvarray(const Mesh &mesh,
   Array<float3> uv(loops.size(), float3(0));
 
   geometry::ParamHandle *handle = geometry::uv_parametrizer_construct_begin();
-  for (const int poly_index : selection) {
+  selection.foreach_index([&](const int poly_index) {
     const MPoly &poly = polys[poly_index];
     Array<geometry::ParamKey, 16> mp_vkeys(poly.totloop);
     Array<bool, 16> mp_pin(poly.totloop);
@@ -108,12 +108,12 @@ static VArray<float3> construct_uv_gvarray(const Mesh &mesh,
                                        mp_uv.data(),
                                        mp_pin.data(),
                                        mp_select.data());
-  }
-  for (const int i : seam) {
+  });
+  seam.foreach_index([&](const int i) {
     const MEdge &edge = edges[i];
     geometry::ParamKey vkeys[2]{edge.v1, edge.v2};
     geometry::uv_parametrizer_edge_set_seam(handle, vkeys);
-  }
+  });
   /* TODO: once field input nodes are able to emit warnings (#94039), emit a
    * warning if we fail to solve an island. */
   geometry::uv_parametrizer_construct_end(handle, fill_holes, false, nullptr);

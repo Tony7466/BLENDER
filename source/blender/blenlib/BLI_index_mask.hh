@@ -188,6 +188,7 @@ class IndexMask {
   template<typename Fn> void foreach_index(GrainSize grain_size, Fn &&fn) const;
   template<typename Fn> void foreach_span(GrainSize grain_size, Fn &&fn) const;
   template<typename Fn> void foreach_span_or_range(GrainSize grain_size, Fn &&fn) const;
+  template<typename Fn> void foreach_index_optimized(GrainSize grain_size, Fn &&fn) const;
 
   template<typename T> static IndexMask from_indices(Span<T> indices, IndexMaskMemory &memory);
   static IndexMask from_bits(BitSpan bits, IndexMaskMemory &memory, int64_t offset = 0);
@@ -799,7 +800,7 @@ inline void IndexMask::foreach_span(const GrainSize grain_size, Fn &&fn) const
 }
 
 template<typename Fn>
-void IndexMask::foreach_span_or_range(const GrainSize grain_size, Fn &&fn) const
+inline void IndexMask::foreach_span_or_range(const GrainSize grain_size, Fn &&fn) const
 {
   threading::parallel_for(this->index_range(), grain_size.value, [&](const IndexRange range) {
     const IndexMask sub_mask = this->slice(range);
@@ -811,6 +812,21 @@ void IndexMask::foreach_span_or_range(const GrainSize grain_size, Fn &&fn) const
         fn(mask_segment);
       }
     });
+  });
+}
+
+template<typename Fn>
+inline void IndexMask::foreach_index_optimized(const GrainSize grain_size, Fn &&fn) const
+{
+  threading::parallel_for(this->index_range(), grain_size.value, [&](const IndexRange range) {
+    const IndexMask sub_mask = this->slice(range);
+    if constexpr (has_mask_segment_and_start_parameter<Fn>) {
+      sub_mask.foreach_index_optimized(
+          [&](const int64_t i, const int64_t i_in_mask) { fn(i, i_in_mask + range.start()); });
+    }
+    else {
+      sub_mask.foreach_index_optimized(fn);
+    }
   });
 }
 

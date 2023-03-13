@@ -32,15 +32,13 @@ static void mesh_flip_faces(Mesh &mesh, const Field<bool> &selection_field)
   const Span<MPoly> polys = mesh.polys();
   MutableSpan<MLoop> loops = mesh.loops_for_write();
 
-  threading::parallel_for(selection.index_range(), 1024, [&](const IndexRange range) {
-    for (const int i : selection.slice(range)) {
-      const IndexRange poly(polys[i].loopstart, polys[i].totloop);
-      for (const int j : IndexRange(poly.size() / 2)) {
-        const int a = poly[j + 1];
-        const int b = poly.last(j);
-        std::swap(loops[a].v, loops[b].v);
-        std::swap(loops[a - 1].e, loops[b].e);
-      }
+  selection.foreach_index(GrainSize(1024), [&](const int i) {
+    const IndexRange poly(polys[i].loopstart, polys[i].totloop);
+    for (const int j : IndexRange(poly.size() / 2)) {
+      const int a = poly[j + 1];
+      const int b = poly.last(j);
+      std::swap(loops[a].v, loops[b].v);
+      std::swap(loops[a - 1].e, loops[b].e);
     }
   });
 
@@ -57,11 +55,9 @@ static void mesh_flip_faces(Mesh &mesh, const Field<bool> &selection_field)
         attribute_math::convert_to_static_type(meta_data.data_type, [&](auto dummy) {
           using T = decltype(dummy);
           MutableSpan<T> dst_span = attribute.span.typed<T>();
-          threading::parallel_for(selection.index_range(), 1024, [&](const IndexRange range) {
-            for (const int i : selection.slice(range)) {
-              const IndexRange poly(polys[i].loopstart, polys[i].totloop);
-              dst_span.slice(poly.drop_front(1)).reverse();
-            }
+          selection.foreach_index(GrainSize(1024), [&](const int i) {
+            const IndexRange poly(polys[i].loopstart, polys[i].totloop);
+            dst_span.slice(poly.drop_front(1)).reverse();
           });
         });
         attribute.finish();

@@ -80,13 +80,12 @@ class EdgesOfVertInput final : public bke::MeshFieldInput {
     const bool use_sorting = !all_sort_weights.is_single();
 
     Array<int> edge_of_vertex(mask.min_array_size());
-    threading::parallel_for(mask.index_range(), 1024, [&](const IndexRange range) {
+    mask.foreach_span(GrainSize(1024), [&](const auto sliced_mask) {
       /* Reuse arrays to avoid allocation. */
-      Array<int64_t> edge_indices;
       Array<float> sort_weights;
       Array<int> sort_indices;
 
-      for (const int selection_i : mask.slice(range)) {
+      for (const int selection_i : sliced_mask) {
         const int vert_i = vert_indices[selection_i];
         const int index_in_sort = indices_in_sort[selection_i];
         if (!vert_range.contains(vert_i)) {
@@ -102,13 +101,10 @@ class EdgesOfVertInput final : public bke::MeshFieldInput {
 
         const int index_in_sort_wrapped = mod_i(index_in_sort, edges.size());
         if (use_sorting) {
-          /* Retrieve the connected edge indices as 64 bit integers for #materialize_compressed. */
-          edge_indices.reinitialize(edges.size());
-          convert_span(edges, edge_indices);
-
           /* Retrieve a compressed array of weights for each edge. */
           sort_weights.reinitialize(edges.size());
-          all_sort_weights.materialize_compressed(IndexMask(edge_indices),
+          IndexMaskMemory memory;
+          all_sort_weights.materialize_compressed(IndexMask::from_indices<int>(edges, memory),
                                                   sort_weights.as_mutable_span());
 
           /* Sort a separate array of compressed indices corresponding to the compressed weights.
@@ -121,7 +117,7 @@ class EdgesOfVertInput final : public bke::MeshFieldInput {
             return sort_weights[a] < sort_weights[b];
           });
 
-          edge_of_vertex[selection_i] = edge_indices[sort_indices[index_in_sort_wrapped]];
+          edge_of_vertex[selection_i] = edges[sort_indices[index_in_sort_wrapped]];
         }
         else {
           edge_of_vertex[selection_i] = edges[index_in_sort_wrapped];
