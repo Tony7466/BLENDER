@@ -179,7 +179,7 @@ class IndexMask {
   template<typename Fn> void foreach_range(Fn &&fn) const;
   template<typename Fn> void foreach_span_or_range(Fn &&fn) const;
   template<typename Fn> void foreach_index(Fn &&fn) const;
-  template<typename Fn> void foreach_span_or_range_index(Fn &&fn) const;
+  template<typename Fn> void foreach_index_optimized(Fn &&fn) const;
 
   template<typename Fn> void foreach_index(GrainSize grain_size, Fn &&fn) const;
   template<typename Fn> void foreach_span(GrainSize grain_size, Fn &&fn) const;
@@ -276,7 +276,7 @@ inline int64_t size_to_chunk_num(const int64_t size)
 template<typename T>
 inline void masked_fill(MutableSpan<T> data, const T &value, const IndexMask &mask)
 {
-  mask.foreach_span_or_range_index([&](const int64_t i) { data[i] = value; });
+  mask.foreach_index_optimized([&](const int64_t i) { data[i] = value; });
 }
 
 class IndexRangeChecker {
@@ -681,7 +681,7 @@ template<typename Fn> inline void IndexMask::foreach_index(Fn &&fn) const
   });
 }
 
-template<typename Fn> inline void IndexMask::foreach_span_or_range_index(Fn &&fn) const
+template<typename Fn> inline void IndexMask::foreach_index_optimized(Fn &&fn) const
 {
   this->foreach_span_or_range([&](const auto mask_segment, const int64_t start) {
     if constexpr (std::is_invocable_r_v<void, Fn, int64_t, int64_t>) {
