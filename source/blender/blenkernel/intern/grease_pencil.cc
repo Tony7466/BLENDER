@@ -73,7 +73,7 @@ static void grease_pencil_blend_write(BlendWriter *writer, ID *id, const void *i
     switch (drawing_or_ref->type) {
       case GREASE_PENCIL_DRAWING: {
         GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_or_ref);
-        drawing->geometry.wrap().blend_write(writer, &grease_pencil->id);
+        drawing->geometry.wrap().blend_write(*writer, grease_pencil->id);
         break;
       }
       case GREASE_PENCIL_DRAWING_REFERENCE: {
