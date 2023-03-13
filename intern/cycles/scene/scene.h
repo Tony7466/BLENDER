@@ -249,6 +249,12 @@ class Scene : public NodeOwner {
   /* Stores a DeviceScene for each sub-device */
   std::vector<DeviceScene *> dscenes;
 
+  /* Stats time logging */
+  double *mesh_times;
+  double *attrib_times;
+  double *object_bvh_times;
+  double *scene_bvh_times;
+
   /* parameters */
   SceneParams params;
 
