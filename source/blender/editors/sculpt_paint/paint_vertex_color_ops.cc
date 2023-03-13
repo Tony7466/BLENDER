@@ -12,7 +12,6 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_array.hh"
-#include "BLI_index_mask_ops.hh"
 #include "BLI_math_base.h"
 #include "BLI_math_color.h"
 #include "BLI_vector.hh"
@@ -39,6 +38,7 @@ using blender::Array;
 using blender::ColorGeometry4f;
 using blender::GMutableSpan;
 using blender::IndexMask;
+using blender::IndexMaskMemory;
 using blender::Vector;
 
 /* -------------------------------------------------------------------- */
@@ -154,7 +154,7 @@ void PAINT_OT_vertex_color_from_weight(wmOperatorType *ot)
 
 static IndexMask get_selected_indices(const Mesh &mesh,
                                       const eAttrDomain domain,
-                                      Vector<int64_t> &indices)
+                                      IndexMaskMemory &memory)
 {
   using namespace blender;
   const bke::AttributeAccessor attributes = mesh.attributes();
@@ -162,14 +162,12 @@ static IndexMask get_selected_indices(const Mesh &mesh,
   if (mesh.editflag & ME_EDIT_PAINT_FACE_SEL) {
     const VArray<bool> selection = attributes.lookup_or_default<bool>(
         ".select_poly", domain, false);
-    return index_mask_ops::find_indices_from_virtual_array(
-        selection.index_range(), selection, 4096, indices);
+    return IndexMask::from_bools(selection, memory);
   }
   if (mesh.editflag & ME_EDIT_PAINT_VERT_SEL) {
     const VArray<bool> selection = attributes.lookup_or_default<bool>(
         ".select_vert", domain, false);
-    return index_mask_ops::find_indices_from_virtual_array(
-        selection.index_range(), selection, 4096, indices);
+    return IndexMask::from_bools(selection, memory);
   }
   return IndexMask(attributes.domain_size(domain));
 }
@@ -203,8 +201,8 @@ static bool vertex_color_smooth(Object *ob)
     return false;
   }
 
-  Vector<int64_t> indices;
-  const IndexMask selection = get_selected_indices(*me, ATTR_DOMAIN_CORNER, indices);
+  IndexMaskMemory memory;
+  const IndexMask selection = get_selected_indices(*me, ATTR_DOMAIN_CORNER, memory);
 
   face_corner_color_equalize_verts(*me, selection);
 

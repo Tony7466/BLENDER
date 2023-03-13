@@ -114,7 +114,7 @@ IndexMask indices_for_type(const VArray<int8_t> &types,
                            const std::array<int, CURVE_TYPES_NUM> &type_counts,
                            const CurveType type,
                            const IndexMask selection,
-                           Vector<int64_t> &r_indices)
+                           IndexMaskMemory &memory)
 {
   if (type_counts[type] == types.size()) {
     return selection;
@@ -123,8 +123,8 @@ IndexMask indices_for_type(const VArray<int8_t> &types,
     return types.get_internal_single() == type ? IndexMask(types.size()) : IndexMask(0);
   }
   Span<int8_t> types_span = types.get_internal_span();
-  return index_mask_ops::find_indices_based_on_predicate(
-      selection, 4096, r_indices, [&](const int index) { return types_span[index] == type; });
+  return IndexMask::from_predicate(
+      selection, 4096, memory, [&](const int index) { return types_span[index] == type; });
 }
 
 void foreach_curve_by_type(const VArray<int8_t> &types,
@@ -135,10 +135,9 @@ void foreach_curve_by_type(const VArray<int8_t> &types,
                            FunctionRef<void(IndexMask)> bezier_fn,
                            FunctionRef<void(IndexMask)> nurbs_fn)
 {
-  Vector<int64_t> indices;
   auto call_if_not_empty = [&](const CurveType type, FunctionRef<void(IndexMask)> fn) {
-    indices.clear();
-    const IndexMask mask = indices_for_type(types, counts, type, selection, indices);
+    IndexMaskMemory memory;
+    const IndexMask mask = indices_for_type(types, counts, type, selection, memory);
     if (!mask.is_empty()) {
       fn(mask);
     }

@@ -8,6 +8,7 @@
 #include "BLI_strict_flags.h"
 #include "BLI_task.hh"
 #include "BLI_timeit.hh"
+#include "BLI_virtual_array.hh"
 
 namespace blender::index_mask {
 
@@ -409,6 +410,32 @@ IndexMask IndexMask::from_indices(const Span<T> indices, IndexMaskMemory &memory
 IndexMask IndexMask::from_bits(const BitSpan bits, IndexMaskMemory &memory, const int64_t offset)
 {
   return bits_to_index_mask(bits, offset, memory);
+}
+
+IndexMask IndexMask::from_bools(Span<bool> bools, IndexMaskMemory &memory)
+{
+  return IndexMask::from_bools(bools.index_range(), bools, memory);
+}
+
+IndexMask IndexMask::from_bools(const VArray<bool> &bools, IndexMaskMemory &memory)
+{
+  return IndexMask::from_bools(bools.index_range(), bools, memory);
+}
+
+IndexMask IndexMask::from_bools(const IndexMask &universe,
+                                Span<bool> bools,
+                                IndexMaskMemory &memory)
+{
+  return IndexMask::from_predicate(
+      universe, 1024, memory, [&](const int64_t index) { return bools[index]; });
+}
+
+IndexMask IndexMask::from_bools(const IndexMask &universe,
+                                const VArray<bool> &bools,
+                                IndexMaskMemory &memory)
+{
+  return IndexMask::from_predicate(
+      universe, 512, memory, [&](const int64_t index) { return bools[index]; });
 }
 
 static Set<int64_t> eval_expr(const Expr &base_expr, const IndexRange universe)

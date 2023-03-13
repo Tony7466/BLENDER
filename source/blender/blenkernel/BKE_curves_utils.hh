@@ -553,7 +553,7 @@ IndexMask indices_for_type(const VArray<int8_t> &types,
                            const std::array<int, CURVE_TYPES_NUM> &type_counts,
                            const CurveType type,
                            const IndexMask selection,
-                           Vector<int64_t> &r_indices);
+                           IndexMaskMemory &memory);
 
 void foreach_curve_by_type(const VArray<int8_t> &types,
                            const std::array<int, CURVE_TYPES_NUM> &type_counts,

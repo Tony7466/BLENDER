@@ -6,16 +6,20 @@
 #include <optional>
 #include <variant>
 
-#include "BLI_bit_span.hh"
+#include "BLI_bit_vector.hh"
 #include "BLI_function_ref.hh"
 #include "BLI_index_range.hh"
 #include "BLI_linear_allocator.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_offset_span.hh"
 #include "BLI_span.hh"
+#include "BLI_task.hh"
 #include "BLI_vector.hh"
 
 namespace blender {
+
+template<typename T> class VArray;
+
 namespace index_mask {
 
 class IndexMask;
@@ -149,6 +153,8 @@ class IndexMask {
   IndexMask(IndexRange range);
 
   int64_t size() const;
+  bool is_empty() const;
+  IndexRange index_range() const;
   OffsetIndices<int64_t> chunk_offsets() const;
   int64_t first() const;
   int64_t last() const;
@@ -166,7 +172,25 @@ class IndexMask {
 
   template<typename T> static IndexMask from_indices(Span<T> indices, IndexMaskMemory &memory);
   static IndexMask from_bits(BitSpan bits, IndexMaskMemory &memory, int64_t offset = 0);
+  static IndexMask from_bools(Span<bool> bools, IndexMaskMemory &memory);
+  static IndexMask from_bools(const VArray<bool> &bools, IndexMaskMemory &memory);
+  static IndexMask from_bools(const IndexMask &universe,
+                              Span<bool> bools,
+                              IndexMaskMemory &memory);
+  static IndexMask from_bools(const IndexMask &universe,
+                              const VArray<bool> &bools,
+                              IndexMaskMemory &memory);
   static IndexMask from_expr(const Expr &expr, IndexRange universe, IndexMaskMemory &memory);
+  template<typename Fn>
+  static IndexMask from_predicate(IndexRange universe,
+                                  int64_t grain_size,
+                                  IndexMaskMemory &memory,
+                                  Fn &&predicate);
+  template<typename Fn>
+  static IndexMask from_predicate(const IndexMask &universe,
+                                  int64_t grain_size,
+                                  IndexMaskMemory &memory,
+                                  Fn &&predicate);
 
   template<typename T> void to_indices(MutableSpan<T> r_indices) const;
   void to_bits(MutableBitSpan r_bits, int64_t offset = 0) const;
@@ -415,6 +439,16 @@ inline int64_t IndexMask::size() const
   return data_.indices_num;
 }
 
+inline bool IndexMask::is_empty() const
+{
+  return data_.indices_num == 0;
+}
+
+inline IndexRange IndexMask::index_range() const
+{
+  return IndexRange(data_.indices_num);
+}
+
 inline OffsetIndices<int64_t> IndexMask::chunk_offsets() const
 {
   return Span<int64_t>(data_.cumulative_chunk_sizes, data_.chunks_num + 1);
@@ -624,6 +658,39 @@ template<typename Fn> inline void IndexMask::foreach_range(Fn &&fn) const
       base_indices = base_indices.drop_front(next_range_size);
     }
   });
+}
+
+template<typename Fn>
+inline IndexMask IndexMask::from_predicate(IndexRange universe,
+                                           int64_t grain_size,
+                                           IndexMaskMemory &memory,
+                                           Fn &&predicate)
+{
+  BitVector bits(universe.size());
+  threading::parallel_for_aligned(
+      bits.index_range(), grain_size, bits::BitsPerInt, [&](const IndexRange range) {
+        for (const int64_t i : range) {
+          const int64_t index = universe[i];
+          const bool result = predicate(index);
+          bits[i].set(result);
+        }
+      });
+  return IndexMask::from_bits(bits, memory, universe.start());
+}
+
+template<typename Fn>
+inline IndexMask IndexMask::from_predicate(const IndexMask &universe,
+                                           int64_t grain_size,
+                                           IndexMaskMemory &memory,
+                                           Fn &&predicate)
+{
+  Vector<int64_t> indices;
+  universe.foreach_index([&](const int64_t index) {
+    if (predicate(index)) {
+      indices.append(index);
+    }
+  });
+  return IndexMask::from_indices<int64_t>(indices, memory);
 }
 
 }  // namespace index_mask

@@ -167,10 +167,10 @@ class CurvesGeometry : public ::CurvesGeometry {
   /**
    * All of the curve indices for curves with a specific type.
    */
-  IndexMask indices_for_curve_type(CurveType type, Vector<int64_t> &r_indices) const;
+  IndexMask indices_for_curve_type(CurveType type, IndexMaskMemory &memory) const;
   IndexMask indices_for_curve_type(CurveType type,
                                    IndexMask selection,
-                                   Vector<int64_t> &r_indices) const;
+                                   IndexMaskMemory &memory) const;
 
   Array<int> point_to_curve_map() const;
 

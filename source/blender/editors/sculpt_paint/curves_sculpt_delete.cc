@@ -131,11 +131,8 @@ struct DeleteOperationExecutor {
       BLI_assert_unreachable();
     }
 
-    Vector<int64_t> indices;
-    const IndexMask mask_to_delete = index_mask_ops::find_indices_based_on_predicate(
-        curves_->curves_range(), 4096, indices, [&](const int curve_i) {
-          return curves_to_delete[curve_i];
-        });
+    IndexMaskMemory mask_memory;
+    const IndexMask mask_to_delete = IndexMask::from_bools(curves_to_delete, mask_memory);
 
     /* Remove deleted curves from the stored deformed positions. */
     const Vector<IndexRange> ranges_to_keep = mask_to_delete.extract_ranges_invert(

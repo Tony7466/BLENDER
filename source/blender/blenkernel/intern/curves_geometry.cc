@@ -538,17 +538,17 @@ OffsetIndices<int> CurvesGeometry::evaluated_points_by_curve() const
 }
 
 IndexMask CurvesGeometry::indices_for_curve_type(const CurveType type,
-                                                 Vector<int64_t> &r_indices) const
+                                                 IndexMaskMemory &memory) const
 {
-  return this->indices_for_curve_type(type, this->curves_range(), r_indices);
+  return this->indices_for_curve_type(type, this->curves_range(), memory);
 }
 
 IndexMask CurvesGeometry::indices_for_curve_type(const CurveType type,
                                                  const IndexMask selection,
-                                                 Vector<int64_t> &r_indices) const
+                                                 IndexMaskMemory &memory) const
 {
   return curves::indices_for_type(
-      this->curve_types(), this->curve_type_counts(), type, selection, r_indices);
+      this->curve_types(), this->curve_type_counts(), type, selection, memory);
 }
 
 Array<int> CurvesGeometry::point_to_curve_map() const
@@ -567,8 +567,8 @@ void CurvesGeometry::ensure_nurbs_basis_cache() const
 {
   const bke::CurvesGeometryRuntime &runtime = *this->runtime;
   runtime.nurbs_basis_cache.ensure([&](Vector<curves::nurbs::BasisCache> &r_data) {
-    Vector<int64_t> nurbs_indices;
-    const IndexMask nurbs_mask = this->indices_for_curve_type(CURVE_TYPE_NURBS, nurbs_indices);
+    IndexMaskMemory memory;
+    const IndexMask nurbs_mask = this->indices_for_curve_type(CURVE_TYPE_NURBS, memory);
     if (nurbs_mask.is_empty()) {
       r_data.clear_and_shrink();
       return;
@@ -700,8 +700,8 @@ Span<float3> CurvesGeometry::evaluated_tangents() const
     /* Correct the first and last tangents of non-cyclic Bezier curves so that they align with
      * the inner handles. This is a separate loop to avoid the cost when Bezier type curves are
      * not used. */
-    Vector<int64_t> bezier_indices;
-    const IndexMask bezier_mask = this->indices_for_curve_type(CURVE_TYPE_BEZIER, bezier_indices);
+    IndexMaskMemory memory;
+    const IndexMask bezier_mask = this->indices_for_curve_type(CURVE_TYPE_BEZIER, memory);
     if (!bezier_mask.is_empty()) {
       const OffsetIndices<int> points_by_curve = this->points_by_curve();
       const Span<float3> positions = this->positions();
@@ -709,25 +709,27 @@ Span<float3> CurvesGeometry::evaluated_tangents() const
       const Span<float3> handles_right = this->handle_positions_right();
 
       threading::parallel_for(bezier_mask.index_range(), 1024, [&](IndexRange range) {
-        for (const int curve_index : bezier_mask.slice(range)) {
-          if (cyclic[curve_index]) {
-            continue;
-          }
-          const IndexRange points = points_by_curve[curve_index];
-          const IndexRange evaluated_points = evaluated_points_by_curve[curve_index];
+        bezier_mask.slice(range).foreach_span([&](const auto mask_segment) {
+          for (const int curve_index : mask_segment) {
+            if (cyclic[curve_index]) {
+              continue;
+            }
+            const IndexRange points = points_by_curve[curve_index];
+            const IndexRange evaluated_points = evaluated_points_by_curve[curve_index];
 
-          const float epsilon = 1e-6f;
-          if (!math::almost_equal_relative(
-                  handles_right[points.first()], positions[points.first()], epsilon)) {
-            tangents[evaluated_points.first()] = math::normalize(handles_right[points.first()] -
-                                                                 positions[points.first()]);
+            const float epsilon = 1e-6f;
+            if (!math::almost_equal_relative(
+                    handles_right[points.first()], positions[points.first()], epsilon)) {
+              tangents[evaluated_points.first()] = math::normalize(handles_right[points.first()] -
+                                                                   positions[points.first()]);
+            }
+            if (!math::almost_equal_relative(
+                    handles_left[points.last()], positions[points.last()], epsilon)) {
+              tangents[evaluated_points.last()] = math::normalize(positions[points.last()] -
+                                                                  handles_left[points.last()]);
+            }
           }
-          if (!math::almost_equal_relative(
-                  handles_left[points.last()], positions[points.last()], epsilon)) {
-            tangents[evaluated_points.last()] = math::normalize(positions[points.last()] -
-                                                                handles_left[points.last()]);
-          }
-        }
+        });
       });
     }
   });
