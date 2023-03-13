@@ -12,7 +12,6 @@ set(INC
   ../sequencer
   ../../../intern/guardedalloc
   ../../../intern/memutil
-  oiio
 )
 
 set(INC_SYS
