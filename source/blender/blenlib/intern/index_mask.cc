@@ -337,7 +337,7 @@ template<typename T> void from_index_mask(const IndexMask &mask, MutableSpan<T> 
 
 }  // namespace unique_sorted_indices
 
-void IndexMask::foreach_span(FunctionRef<void(OffsetSpan<int64_t, int16_t>)> fn) const
+void IndexMask::foreach_span(const FunctionRef<void(OffsetSpan<int64_t, int16_t>)> fn) const
 {
   if (data_.indices_num == 0) {
     return;

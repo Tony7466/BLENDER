@@ -170,6 +170,9 @@ class IndexMask {
   template<typename Fn> void foreach_span_or_range(Fn &&fn) const;
   template<typename Fn> void foreach_index(Fn &&fn) const;
 
+  void foreach_span_parallel(int64_t grain_size,
+                             FunctionRef<void(OffsetSpan<int64_t, int16_t>)> fn) const;
+
   template<typename T> static IndexMask from_indices(Span<T> indices, IndexMaskMemory &memory);
   static IndexMask from_bits(BitSpan bits, IndexMaskMemory &memory, int64_t offset = 0);
   static IndexMask from_bools(Span<bool> bools, IndexMaskMemory &memory);
@@ -657,6 +660,15 @@ template<typename Fn> inline void IndexMask::foreach_range(Fn &&fn) const
       fn(IndexRange(int64_t(base_indices[0]) + indices.offset(), next_range_size));
       base_indices = base_indices.drop_front(next_range_size);
     }
+  });
+}
+
+inline void IndexMask::foreach_span_parallel(
+    const int64_t grain_size, const FunctionRef<void(OffsetSpan<int64_t, int16_t>)> fn) const
+{
+  threading::parallel_for(this->index_range(), grain_size, [&](const IndexRange range) {
+    const IndexMask sub_mask = this->slice(range);
+    sub_mask.foreach_span(fn);
   });
 }
 
