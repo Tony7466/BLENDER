@@ -767,7 +767,7 @@ struct DensitySubtractOperationExecutor {
 
     /* Detect curves that are too close to other existing curves. */
     curve_selection_.foreach_span([&](const auto sliced_selection) {
-      for (const int curve_i : curve_selection_) {
+      for (const int curve_i : sliced_selection) {
         if (curves_to_delete[curve_i]) {
           continue;
         }

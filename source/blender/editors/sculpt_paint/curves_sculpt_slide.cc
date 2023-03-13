@@ -271,35 +271,37 @@ struct SlideOperationExecutor {
     const float brush_radius_sq_cu = pow2f(brush_radius_cu);
 
     const Span<int> offsets = curves_orig_->offsets();
-    for (const int curve_i : curve_selection_) {
-      const int first_point_i = offsets[curve_i];
-      const float3 old_pos_cu = self_->initial_deformed_positions_cu_[first_point_i];
-      const float dist_to_brush_sq_cu = math::distance_squared(old_pos_cu, brush_pos_cu);
-      if (dist_to_brush_sq_cu > brush_radius_sq_cu) {
-        /* Root point is too far away from curve center. */
-        continue;
-      }
-      const float dist_to_brush_cu = std::sqrt(dist_to_brush_sq_cu);
-      const float radius_falloff = BKE_brush_curve_strength(
-          brush_, dist_to_brush_cu, brush_radius_cu);
+    curve_selection_.foreach_span([&](const auto sliced_selection) {
+      for (const int curve_i : sliced_selection) {
+        const int first_point_i = offsets[curve_i];
+        const float3 old_pos_cu = self_->initial_deformed_positions_cu_[first_point_i];
+        const float dist_to_brush_sq_cu = math::distance_squared(old_pos_cu, brush_pos_cu);
+        if (dist_to_brush_sq_cu > brush_radius_sq_cu) {
+          /* Root point is too far away from curve center. */
+          continue;
+        }
+        const float dist_to_brush_cu = std::sqrt(dist_to_brush_sq_cu);
+        const float radius_falloff = BKE_brush_curve_strength(
+            brush_, dist_to_brush_cu, brush_radius_cu);
 
-      const float2 uv = surface_uv_coords[curve_i];
-      ReverseUVSampler::Result result = reverse_uv_sampler_orig.sample(uv);
-      if (result.type != ReverseUVSampler::ResultType::Ok) {
-        /* The curve does not have a valid surface attachment. */
-        found_invalid_uv_mapping_.store(true);
-        continue;
-      }
-      /* Compute the normal at the initial surface position. */
-      const float3 point_no = geometry::compute_surface_point_normal(
-          surface_looptris_orig_[result.looptri_index],
-          result.bary_weights,
-          corner_normals_orig_su_);
-      const float3 normal_cu = math::normalize(
-          math::transform_point(transforms_.surface_to_curves_normal, point_no));
+        const float2 uv = surface_uv_coords[curve_i];
+        ReverseUVSampler::Result result = reverse_uv_sampler_orig.sample(uv);
+        if (result.type != ReverseUVSampler::ResultType::Ok) {
+          /* The curve does not have a valid surface attachment. */
+          found_invalid_uv_mapping_.store(true);
+          continue;
+        }
+        /* Compute the normal at the initial surface position. */
+        const float3 point_no = geometry::compute_surface_point_normal(
+            surface_looptris_orig_[result.looptri_index],
+            result.bary_weights,
+            corner_normals_orig_su_);
+        const float3 normal_cu = math::normalize(
+            math::transform_point(transforms_.surface_to_curves_normal, point_no));
 
-      r_curves_to_slide.append({curve_i, radius_falloff, normal_cu});
-    }
+        r_curves_to_slide.append({curve_i, radius_falloff, normal_cu});
+      }
+    });
   }
 
   void slide_with_symmetry()

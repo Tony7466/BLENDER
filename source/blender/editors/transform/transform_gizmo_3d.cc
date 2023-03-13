@@ -827,13 +827,13 @@ int ED_transform_calc_gizmo_stats(const bContext *C,
           mat_local = float4x4(obedit->world_to_object) * float4x4(ob_iter->object_to_world);
         }
 
-        Vector<int64_t> indices;
-        const IndexMask selected_points = ed::curves::retrieve_selected_points(curves, indices);
+        IndexMaskMemory memory;
+        const IndexMask selected_points = ed::curves::retrieve_selected_points(curves, memory);
         const Span<float3> positions = deformation.positions;
         totsel += selected_points.size();
-        for (const int point_i : selected_points) {
+        selected_points.foreach_index([&](const int point_i) {
           calc_tw_center_with_matrix(tbounds, positions[point_i], use_mat_local, mat_local.ptr());
-        }
+        });
       }
       FOREACH_EDIT_OBJECT_END();
     }

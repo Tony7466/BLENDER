@@ -259,8 +259,8 @@ static bool transform_active_color(Mesh &mesh, const TransformFn &transform_fn)
     return false;
   }
 
-  Vector<int64_t> indices;
-  const IndexMask selection = get_selected_indices(mesh, color_attribute.domain, indices);
+  IndexMaskMemory memory;
+  const IndexMask selection = get_selected_indices(mesh, color_attribute.domain, memory);
 
   attribute_math::convert_to_static_type(color_attribute.varray.type(), [&](auto dummy) {
     using T = decltype(dummy);

@@ -12,11 +12,7 @@ void copy_curve_sizes(const OffsetIndices<int> points_by_curve,
                       const IndexMask mask,
                       MutableSpan<int> sizes)
 {
-  threading::parallel_for(mask.index_range(), 4096, [&](IndexRange ranges_range) {
-    for (const int64_t i : mask.slice(ranges_range)) {
-      sizes[i] = points_by_curve.size(i);
-    }
-  });
+  mask.foreach_index(GrainSize(4096), [&](const int i) { sizes[i] = points_by_curve.size(i); });
 }
 
 void copy_curve_sizes(const OffsetIndices<int> points_by_curve,
@@ -56,13 +52,11 @@ void copy_point_data(const OffsetIndices<int> src_points_by_curve,
                      const GSpan src,
                      GMutableSpan dst)
 {
-  threading::parallel_for(src_curve_selection.index_range(), 512, [&](IndexRange range) {
-    for (const int i : src_curve_selection.slice(range)) {
-      const IndexRange src_points = src_points_by_curve[i];
-      const IndexRange dst_points = dst_points_by_curve[i];
-      /* The arrays might be large, so a threaded copy might make sense here too. */
-      dst.slice(dst_points).copy_from(src.slice(src_points));
-    }
+  src_curve_selection.foreach_index(GrainSize(512), [&](const int i) {
+    const IndexRange src_points = src_points_by_curve[i];
+    const IndexRange dst_points = dst_points_by_curve[i];
+    /* The arrays might be large, so a threaded copy might make sense here too. */
+    dst.slice(dst_points).copy_from(src.slice(src_points));
   });
 }
 
@@ -73,11 +67,9 @@ void fill_points(const OffsetIndices<int> points_by_curve,
 {
   BLI_assert(*value.type() == dst.type());
   const CPPType &type = dst.type();
-  threading::parallel_for(curve_selection.index_range(), 512, [&](IndexRange range) {
-    for (const int i : curve_selection.slice(range)) {
-      const IndexRange points = points_by_curve[i];
-      type.fill_assign_n(value.get(), dst.slice(points).data(), points.size());
-    }
+  curve_selection.foreach_index(GrainSize(512), [&](const int i) {
+    const IndexRange points = points_by_curve[i];
+    type.fill_assign_n(value.get(), dst.slice(points).data(), points.size());
   });
 }
 
