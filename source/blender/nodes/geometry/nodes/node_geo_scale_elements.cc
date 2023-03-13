@@ -244,7 +244,7 @@ static Vector<ElementIsland> prepare_face_islands(const Mesh &mesh, const IndexM
 
   /* Use the disjoint set data structure to determine which vertices have to be scaled together. */
   DisjointSet<int> disjoint_set(mesh.totvert);
-  for (const int poly_index : face_selection) {
+  face_selection.foreach_index([&](const int poly_index) {
     const MPoly &poly = polys[poly_index];
     const Span<MLoop> poly_loops = loops.slice(poly.loopstart, poly.totloop);
     for (const int loop_index : IndexRange(poly.totloop - 1)) {
@@ -253,7 +253,7 @@ static Vector<ElementIsland> prepare_face_islands(const Mesh &mesh, const IndexM
       disjoint_set.join(v1, v2);
     }
     disjoint_set.join(poly_loops.first().v, poly_loops.last().v);
-  }
+  });
 
   VectorSet<int> island_ids;
   Vector<ElementIsland> islands;
@@ -261,7 +261,7 @@ static Vector<ElementIsland> prepare_face_islands(const Mesh &mesh, const IndexM
   islands.reserve(face_selection.size());
 
   /* Gather all of the face indices in each island into separate vectors. */
-  for (const int poly_index : face_selection) {
+  face_selection.foreach_index([&](const int poly_index) {
     const MPoly &poly = polys[poly_index];
     const Span<MLoop> poly_loops = loops.slice(poly.loopstart, poly.totloop);
     const int island_id = disjoint_set.find_root(poly_loops[0].v);
@@ -271,7 +271,7 @@ static Vector<ElementIsland> prepare_face_islands(const Mesh &mesh, const IndexM
     }
     ElementIsland &island = islands[island_index];
     island.element_indices.append(poly_index);
-  }
+  });
 
   return islands;
 }
@@ -340,10 +340,10 @@ static Vector<ElementIsland> prepare_edge_islands(const Mesh &mesh, const IndexM
 
   /* Use the disjoint set data structure to determine which vertices have to be scaled together. */
   DisjointSet<int> disjoint_set(mesh.totvert);
-  for (const int edge_index : edge_selection) {
+  edge_selection.foreach_index([&](const int edge_index) {
     const MEdge &edge = edges[edge_index];
     disjoint_set.join(edge.v1, edge.v2);
-  }
+  });
 
   VectorSet<int> island_ids;
   Vector<ElementIsland> islands;
@@ -351,7 +351,7 @@ static Vector<ElementIsland> prepare_edge_islands(const Mesh &mesh, const IndexM
   islands.reserve(edge_selection.size());
 
   /* Gather all of the edge indices in each island into separate vectors. */
-  for (const int edge_index : edge_selection) {
+  edge_selection.foreach_index([&](const int edge_index) {
     const MEdge &edge = edges[edge_index];
     const int island_id = disjoint_set.find_root(edge.v1);
     const int island_index = island_ids.index_of_or_add(island_id);
@@ -360,7 +360,7 @@ static Vector<ElementIsland> prepare_edge_islands(const Mesh &mesh, const IndexM
     }
     ElementIsland &island = islands[island_index];
     island.element_indices.append(edge_index);
-  }
+  });
 
   return islands;
 }

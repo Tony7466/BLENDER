@@ -213,6 +213,7 @@ class IndexMask {
 
   template<typename T> void to_indices(MutableSpan<T> r_indices) const;
   void to_bits(MutableBitSpan r_bits, int64_t offset = 0) const;
+  void to_bools(MutableSpan<bool> r_bools, int64_t offset = 0) const;
   std::optional<IndexRange> to_range() const;
   Vector<IndexRange> to_ranges() const;
   Vector<IndexRange> to_ranges_invert(IndexRange universe) const;

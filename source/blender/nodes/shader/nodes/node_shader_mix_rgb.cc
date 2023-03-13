@@ -121,15 +121,13 @@ class MixRGBFunction : public mf::MultiFunction {
     MutableSpan<ColorGeometry4f> results = params.uninitialized_single_output<ColorGeometry4f>(
         3, "Color");
 
-    for (int64_t i : mask) {
+    mask.foreach_index([&](const int64_t i) {
       results[i] = col1[i];
       ramp_blend(type_, results[i], clamp_f(fac[i], 0.0f, 1.0f), col2[i]);
-    }
+    });
 
     if (clamp_) {
-      for (int64_t i : mask) {
-        clamp_v3(results[i], 0.0f, 1.0f);
-      }
+      mask.foreach_index([&](const int64_t i) { clamp_v3(results[i], 0.0f, 1.0f); });
     }
   }
 };

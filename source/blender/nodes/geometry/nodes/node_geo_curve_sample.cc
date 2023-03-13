@@ -282,13 +282,13 @@ class SampleCurveFunction : public mf::MultiFunction {
 
     auto return_default = [&]() {
       if (!sampled_positions.is_empty()) {
-        sampled_positions.fill_indices(mask, {0, 0, 0});
+        index_mask::masked_fill(sampled_positions, {0, 0, 0}, mask);
       }
       if (!sampled_tangents.is_empty()) {
-        sampled_tangents.fill_indices(mask, {0, 0, 0});
+        index_mask::masked_fill(sampled_tangents, {0, 0, 0}, mask);
       }
       if (!sampled_normals.is_empty()) {
-        sampled_normals.fill_indices(mask, {0, 0, 0});
+        index_mask::masked_fill(sampled_normals, {0, 0, 0}, mask);
       }
     };
 
@@ -325,18 +325,18 @@ class SampleCurveFunction : public mf::MultiFunction {
 
     auto fill_invalid = [&](const IndexMask mask) {
       if (!sampled_positions.is_empty()) {
-        sampled_positions.fill_indices(mask, float3(0));
+        index_mask::masked_fill(sampled_positions, float3(0), mask);
       }
       if (!sampled_tangents.is_empty()) {
-        sampled_tangents.fill_indices(mask, float3(0));
+        index_mask::masked_fill(sampled_tangents, float3(0), mask);
       }
       if (!sampled_normals.is_empty()) {
-        sampled_normals.fill_indices(mask, float3(0));
+        index_mask::masked_fill(sampled_normals, float3(0), mask);
       }
       if (!sampled_values.is_empty()) {
         attribute_math::convert_to_static_type(source_data_->type(), [&](auto dummy) {
           using T = decltype(dummy);
-          sampled_values.typed<T>().fill_indices(mask, {});
+          index_mask::masked_fill<T>(sampled_values.typed<T>(), {}, mask);
         });
       }
     };
@@ -367,16 +367,14 @@ class SampleCurveFunction : public mf::MultiFunction {
       if (!sampled_tangents.is_empty()) {
         length_parameterize::interpolate_to_masked<float3>(
             evaluated_tangents.slice(evaluated_points), indices, factors, mask, sampled_tangents);
-        for (const int64_t i : mask) {
-          sampled_tangents[i] = math::normalize(sampled_tangents[i]);
-        }
+        mask.foreach_index(
+            [&](const int64_t i) { sampled_tangents[i] = math::normalize(sampled_tangents[i]); });
       }
       if (!sampled_normals.is_empty()) {
         length_parameterize::interpolate_to_masked<float3>(
             evaluated_normals.slice(evaluated_points), indices, factors, mask, sampled_normals);
-        for (const int64_t i : mask) {
-          sampled_normals[i] = math::normalize(sampled_normals[i]);
-        }
+        mask.foreach_index(
+            [&](const int64_t i) { sampled_normals[i] = math::normalize(sampled_normals[i]); });
       }
       if (!sampled_values.is_empty()) {
         const IndexRange points = points_by_curve[curve_i];
@@ -406,7 +404,7 @@ class SampleCurveFunction : public mf::MultiFunction {
       Vector<int64_t> invalid_indices;
       MultiValueMap<int, int64_t> indices_per_curve;
       devirtualize_varray(curve_indices, [&](const auto curve_indices) {
-        for (const int64_t i : mask) {
+        mask.foreach_index([&](const int64_t i) {
           const int curve_i = curve_indices[i];
           if (curves.curves_range().contains(curve_i)) {
             indices_per_curve.add(curve_i, i);
@@ -414,13 +412,15 @@ class SampleCurveFunction : public mf::MultiFunction {
           else {
             invalid_indices.append(i);
           }
-        }
+        });
       });
 
+      IndexMaskMemory memory;
       for (const int curve_i : indices_per_curve.keys()) {
-        sample_curve(curve_i, IndexMask(indices_per_curve.lookup(curve_i)));
+        sample_curve(curve_i,
+                     IndexMask::from_indices<int64_t>(indices_per_curve.lookup(curve_i), memory));
       }
-      fill_invalid(IndexMask(invalid_indices));
+      fill_invalid(IndexMask::from_indices<int64_t>(invalid_indices, memory));
     }
   }
 

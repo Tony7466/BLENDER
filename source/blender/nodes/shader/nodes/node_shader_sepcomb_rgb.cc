@@ -51,12 +51,12 @@ class SeparateRGBFunction : public mf::MultiFunction {
     MutableSpan<float> gs = params.uninitialized_single_output<float>(2, "G");
     MutableSpan<float> bs = params.uninitialized_single_output<float>(3, "B");
 
-    for (int64_t i : mask) {
+    mask.foreach_index([&](const int64_t i) {
       ColorGeometry4f color = colors[i];
       rs[i] = color.r;
       gs[i] = color.g;
       bs[i] = color.b;
-    }
+    });
   }
 };
 
