@@ -457,7 +457,7 @@ IndexMask IndexMask::from_bools(const IndexMask &universe,
                                 IndexMaskMemory &memory)
 {
   return IndexMask::from_predicate(
-      universe, 1024, memory, [&](const int64_t index) { return bools[index]; });
+      universe, GrainSize(1024), memory, [&](const int64_t index) { return bools[index]; });
 }
 
 IndexMask IndexMask::from_bools(const IndexMask &universe,
@@ -465,7 +465,7 @@ IndexMask IndexMask::from_bools(const IndexMask &universe,
                                 IndexMaskMemory &memory)
 {
   return IndexMask::from_predicate(
-      universe, 512, memory, [&](const int64_t index) { return bools[index]; });
+      universe, GrainSize(512), memory, [&](const int64_t index) { return bools[index]; });
 }
 
 static Set<int64_t> eval_expr(const Expr &base_expr, const IndexRange universe)
@@ -883,6 +883,7 @@ void IndexMask::to_bits(MutableBitSpan r_bits, int64_t offset) const
 
 void IndexMask::to_bools(MutableSpan<bool> r_bools, int64_t offset) const
 {
+  BLI_assert(r_bools.size() >= this->min_array_size() - offset);
   r_bools.fill(false);
   this->foreach_index_optimized([&](const int64_t i) { r_bools[i - offset] = true; });
 }

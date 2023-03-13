@@ -149,7 +149,7 @@ static void raycast_to_mesh(IndexMask mask,
   /* We shouldn't be rebuilding the BVH tree when calling this function in parallel. */
   BLI_assert(tree_data.cached);
 
-  for (const int i : mask) {
+  mask.foreach_index([&](const int i) {
     const float ray_length = ray_lengths[i];
     const float3 ray_origin = ray_origins[i];
     const float3 ray_direction = math::normalize(ray_directions[i]);
@@ -199,7 +199,7 @@ static void raycast_to_mesh(IndexMask mask,
         r_hit_distances[i] = ray_length;
       }
     }
-  }
+  });
 }
 
 class RaycastFunction : public mf::MultiFunction {
@@ -271,20 +271,15 @@ class RaycastFunction : public mf::MultiFunction {
                     hit_count);
 
     if (target_data_) {
+      IndexMaskMemory memory;
       IndexMask hit_mask;
-      Vector<int64_t> hit_mask_indices;
       if (hit_count < mask.size()) {
         /* Not all rays hit the target. Create a corrected mask to avoid transferring attribute
          * data to invalid indices. An alternative would be handling -1 indices in a separate case
          * in #MeshAttributeInterpolator, but since it already has an IndexMask in its constructor,
          * it's simpler to use that. */
-        hit_mask_indices.reserve(hit_count);
-        for (const int64_t i : mask) {
-          if (hit_indices[i] != -1) {
-            hit_mask_indices.append(i);
-          }
-          hit_mask = IndexMask(hit_mask_indices);
-        }
+        hit_mask = IndexMask::from_predicate(
+            mask, GrainSize(1024), memory, [&](const int i) { return hit_indices[i] != -1; });
       }
       else {
         hit_mask = mask;

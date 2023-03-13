@@ -27,13 +27,10 @@ static void edge_paths_to_selection(const Mesh &src_mesh,
 {
   const Span<MEdge> edges = src_mesh.edges();
 
-  Array<bool> selection(src_mesh.totvert, false);
+  Array<bool> selection(src_mesh.totvert);
+  start_selection.to_bools(selection);
 
-  for (const int start_vert : start_selection) {
-    selection[start_vert] = true;
-  }
-
-  for (const int start_i : start_selection) {
+  start_selection.foreach_index([&](const int start_i) {
     int iter = start_i;
     while (iter != next_indices[iter] && !selection[next_indices[iter]]) {
       if (next_indices[iter] < 0 || next_indices[iter] >= src_mesh.totvert) {
@@ -42,7 +39,7 @@ static void edge_paths_to_selection(const Mesh &src_mesh,
       selection[next_indices[iter]] = true;
       iter = next_indices[iter];
     }
-  }
+  });
 
   for (const int i : edges.index_range()) {
     const MEdge &edge = edges[i];

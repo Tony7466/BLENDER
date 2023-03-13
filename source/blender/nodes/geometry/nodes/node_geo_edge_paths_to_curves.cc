@@ -27,13 +27,13 @@ static Curves *edge_paths_to_curves_convert(
   Vector<int> vert_indices;
   Vector<int> curve_offsets;
   Array<bool> visited(mesh.totvert, false);
-  for (const int first_vert : start_verts_mask) {
+  start_verts_mask.foreach_index([&](const int first_vert) {
     const int second_vert = next_indices[first_vert];
     if (first_vert == second_vert) {
-      continue;
+      return;
     }
     if (second_vert < 0 || second_vert >= mesh.totvert) {
-      continue;
+      return;
     }
 
     curve_offsets.append(vert_indices.size());
@@ -55,7 +55,7 @@ static Curves *edge_paths_to_curves_convert(
     for (const int vert_in_curve : vert_indices.as_span().take_back(points_in_curve_num)) {
       visited[vert_in_curve] = false;
     }
-  }
+  });
 
   if (vert_indices.is_empty()) {
     return nullptr;

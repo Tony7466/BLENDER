@@ -33,13 +33,6 @@ static void node_declare(NodeDeclarationBuilder &b)
       .description(N_("The number of edges connected to each vertex"));
 }
 
-static void convert_span(const Span<int> src, MutableSpan<int64_t> dst)
-{
-  for (const int i : src.index_range()) {
-    dst[i] = src[i];
-  }
-}
-
 class EdgesOfVertInput final : public bke::MeshFieldInput {
   const Field<int> vert_index_;
   const Field<int> sort_index_;

@@ -39,13 +39,14 @@ static IndexMask retrieve_selected_curves(const bke::CurvesGeometry &curves,
       return selection.get_internal_single() ? IndexMask(curves_range) : IndexMask();
     }
     const OffsetIndices points_by_curve = curves.points_by_curve();
-    return IndexMask::from_predicate(curves_range, 512, memory, [&](const int64_t curve_i) {
-      const IndexRange points = points_by_curve[curve_i];
-      /* The curve is selected if any of its points are selected. */
-      Array<bool, 32> point_selection(points.size());
-      selection.materialize_compressed(points, point_selection);
-      return point_selection.as_span().contains(true);
-    });
+    return IndexMask::from_predicate(
+        curves_range, GrainSize(512), memory, [&](const int64_t curve_i) {
+          const IndexRange points = points_by_curve[curve_i];
+          /* The curve is selected if any of its points are selected. */
+          Array<bool, 32> point_selection(points.size());
+          selection.materialize_compressed(points, point_selection);
+          return point_selection.as_span().contains(true);
+        });
   }
   const VArray<bool> selection = attributes.lookup_or_default<bool>(
       ".selection", ATTR_DOMAIN_CURVE, true);

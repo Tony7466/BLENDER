@@ -52,9 +52,9 @@ static Mesh *triangulate_mesh_selection(const Mesh &mesh,
 
   /* Tag faces to be triangulated from the selection mask. */
   BM_mesh_elem_table_ensure(bm, BM_FACE);
-  for (int i_face : selection) {
+  selection.foreach_index([&](const int i_face) {
     BM_elem_flag_set(BM_face_at_index(bm, i_face), BM_ELEM_TAG, true);
-  }
+  });
 
   BM_mesh_triangulate(bm, quad_method, ngon_method, min_vertices, true, nullptr, nullptr, nullptr);
   Mesh *result = BKE_mesh_from_bmesh_for_eval_nomain(bm, &cd_mask_extra, &mesh);

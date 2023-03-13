@@ -203,12 +203,12 @@ class IndexMask {
   static IndexMask from_expr(const Expr &expr, IndexRange universe, IndexMaskMemory &memory);
   template<typename Fn>
   static IndexMask from_predicate(IndexRange universe,
-                                  int64_t grain_size,
+                                  GrainSize grain_size,
                                   IndexMaskMemory &memory,
                                   Fn &&predicate);
   template<typename Fn>
   static IndexMask from_predicate(const IndexMask &universe,
-                                  int64_t grain_size,
+                                  GrainSize grain_size,
                                   IndexMaskMemory &memory,
                                   Fn &&predicate);
 
@@ -831,14 +831,14 @@ inline void IndexMask::foreach_index_optimized(const GrainSize grain_size, Fn &&
 }
 
 template<typename Fn>
-inline IndexMask IndexMask::from_predicate(IndexRange universe,
-                                           int64_t grain_size,
+inline IndexMask IndexMask::from_predicate(const IndexRange universe,
+                                           const GrainSize grain_size,
                                            IndexMaskMemory &memory,
                                            Fn &&predicate)
 {
   BitVector bits(universe.size());
   threading::parallel_for_aligned(
-      bits.index_range(), grain_size, bits::BitsPerInt, [&](const IndexRange range) {
+      bits.index_range(), grain_size.value, bits::BitsPerInt, [&](const IndexRange range) {
         for (const int64_t i : range) {
           const int64_t index = universe[i];
           const bool result = predicate(index);
@@ -850,7 +850,7 @@ inline IndexMask IndexMask::from_predicate(IndexRange universe,
 
 template<typename Fn>
 inline IndexMask IndexMask::from_predicate(const IndexMask &universe,
-                                           int64_t grain_size,
+                                           const GrainSize grain_size,
                                            IndexMaskMemory &memory,
                                            Fn &&predicate)
 {

@@ -57,7 +57,7 @@ static VArray<float3> construct_uv_gvarray(const Mesh &mesh,
   evaluator.evaluate();
 
   geometry::ParamHandle *handle = geometry::uv_parametrizer_construct_begin();
-  for (const int poly_index : selection) {
+  selection.foreach_index([&](const int poly_index) {
     const MPoly &poly = polys[poly_index];
     Array<geometry::ParamKey, 16> mp_vkeys(poly.totloop);
     Array<bool, 16> mp_pin(poly.totloop);
@@ -80,7 +80,7 @@ static VArray<float3> construct_uv_gvarray(const Mesh &mesh,
                                        mp_uv.data(),
                                        mp_pin.data(),
                                        mp_select.data());
-  }
+  });
   geometry::uv_parametrizer_construct_end(handle, true, true, nullptr);
 
   geometry::uv_parametrizer_pack(handle, margin, rotate, true);
