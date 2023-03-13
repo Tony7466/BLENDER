@@ -142,9 +142,8 @@ struct PinchOperationExecutor {
       BLI_assert_unreachable();
     }
 
-    Vector<int64_t> indices;
-    const IndexMask changed_curves_mask = index_mask_ops::find_indices_from_array(changed_curves,
-                                                                                  indices);
+    IndexMaskMemory memory;
+    const IndexMask changed_curves_mask = IndexMask::from_bools(changed_curves, memory);
     const Mesh *surface = curves_id_->surface && curves_id_->surface->type == OB_MESH ?
                               static_cast<const Mesh *>(curves_id_->surface->data) :
                               nullptr;

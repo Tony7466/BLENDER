@@ -53,7 +53,6 @@
 namespace blender::ed::sculpt_paint {
 
 using blender::bke::CurvesGeometry;
-using threading::EnumerableThreadSpecific;
 
 /**
  * Moves individual points under the brush and does a length preservation step afterwards.
@@ -179,9 +178,8 @@ struct CombOperationExecutor {
                               static_cast<Mesh *>(curves_id_orig_->surface->data) :
                               nullptr;
 
-    Vector<int64_t> indices;
-    const IndexMask changed_curves_mask = index_mask_ops::find_indices_from_array(changed_curves,
-                                                                                  indices);
+    IndexMaskMemory memory;
+    const IndexMask changed_curves_mask = IndexMask::from_bools(changed_curves, memory);
     self_->constraint_solver_.solve_step(*curves_orig_, changed_curves_mask, surface, transforms_);
 
     curves_orig_->tag_positions_changed();
