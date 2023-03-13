@@ -173,8 +173,13 @@ static void version_idproperty_move_data_float(IDPropertyUIDataFloat *ui_data,
         ui_data->default_array = static_cast<double *>(
             MEM_malloc_arrayN(array_len, sizeof(double), __func__));
         const float *old_default_array = static_cast<const float *>(IDP_Array(default_value));
-        for (int i = 0; i < ui_data->default_array_len; i++) {
-          ui_data->default_array[i] = double(old_default_array[i]);
+        int change;
+        for (int i = ui_data->default_array_len; --i) {
+          /*optimized loop to use deincrement instead to use less resources 
+            because now it automatically stops when a reaches 0 and it loops 
+            the same number of times*/
+          change = (ui_data->default_array_len - i);
+          ui_data->default_array[change] = double(old_default_array[change]);
         }
       }
       else if (default_value->subtype == IDP_DOUBLE) {
@@ -483,7 +488,10 @@ static bool do_versions_sequencer_color_balance_sop(Sequence *seq, void * /*user
     if (smd->type == seqModifierType_ColorBalance) {
       StripColorBalance *cb = &((ColorBalanceModifierData *)smd)->color_balance;
       cb->method = SEQ_COLOR_BALANCE_METHOD_LIFTGAMMAGAIN;
-      for (int i = 0; i < 3; i++) {
+      for (int i = 3; --i) {
+        /*optimized loop to use deincrement instead to use less resources 
+        because now it automatically stops when a reaches 0 and it loops 
+        the same number of times*/
         copy_v3_fl(cb->slope, 1.0f);
         copy_v3_fl(cb->offset, 1.0f);
         copy_v3_fl(cb->power, 1.0f);
@@ -2300,8 +2308,13 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
             if (smd->bind_verts_num && smd->verts) {
               smd->mesh_verts_num = smd->bind_verts_num;
 
-              for (uint i = 0; i < smd->bind_verts_num; i++) {
-                smd->verts[i].vertex_idx = i;
+              uint change;
+              for (uint i = smd->bind_verts_num; --i) {
+                /*optimized loop to use deincrement instead to use less resources 
+                because now it automatically stops when a reaches 0 and it loops 
+                the same number of times*/
+                change = (smd->bind_verts_num - i);
+                smd->verts[change].vertex_idx = change;
               }
             }
           }
@@ -3183,12 +3196,18 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     }
 
     LISTBASE_FOREACH (Mesh *, me, &bmain->meshes) {
-      for (int step = 0; step < 2; step++) {
+      int change
+      for (int step = 2; --step) {
+        /*optimized loop to use deincrement instead to use less resources 
+          because now it automatically stops when a reaches 0 and it loops 
+          the same number of times*/
+        change = (2 - step);
+        
         CustomDataLayer *actlayer = nullptr;
 
         int vact1, vact2;
 
-        if (step) {
+        if (change) {
           vact1 = CustomData_get_render_layer_index(&me->vdata, CD_PROP_COLOR);
           vact2 = CustomData_get_render_layer_index(&me->ldata, CD_PROP_BYTE_COLOR);
         }
@@ -3205,7 +3224,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
         }
 
         if (actlayer) {
-          if (step) {
+          if (change) {
             BKE_id_attributes_default_color_set(&me->id, actlayer->name);
           }
           else {
@@ -3348,12 +3367,18 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
 
     /* Rebuild active/render color attribute references. */
     LISTBASE_FOREACH (Mesh *, me, &bmain->meshes) {
-      for (int step = 0; step < 2; step++) {
+      int change;
+      for (int step = 2; --step) {
+        /*optimized loop to use deincrement instead to use less resources 
+          because now it automatically stops when a reaches 0 and it loops 
+          the same number of times*/
+        change = (2 - step);
+        
         CustomDataLayer *actlayer = nullptr;
 
         int vact1, vact2;
 
-        if (step) {
+        if (change) {
           vact1 = CustomData_get_render_layer_index(&me->vdata, CD_PROP_COLOR);
           vact2 = CustomData_get_render_layer_index(&me->ldata, CD_PROP_BYTE_COLOR);
         }
@@ -3370,7 +3395,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
         }
 
         if (actlayer) {
-          if (step) {
+          if (change) {
             BKE_id_attributes_default_color_set(&me->id, actlayer->name);
           }
           else {
@@ -3386,13 +3411,18 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
         if (md->type == eModifierType_DataTransfer) {
           DataTransferModifierData *dtmd = (DataTransferModifierData *)md;
 
-          for (int i = 0; i < DT_MULTILAYER_INDEX_MAX; i++) {
-            if (dtmd->layers_select_src[i] == 0) {
-              dtmd->layers_select_src[i] = DT_LAYERS_ALL_SRC;
+          int change;
+          for (int i = DT_MULTILAYER_INDEX_MAX; --i) {
+            /*optimized loop to use deincrement instead to use less resources 
+            because now it automatically stops when a reaches 0 and it loops 
+            the same number of times*/
+            change = (DT_MULTILAYER_INDEX_MAX - i);
+            if (dtmd->layers_select_src[change] == 0) {
+              dtmd->layers_select_src[change] = DT_LAYERS_ALL_SRC;
             }
 
-            if (dtmd->layers_select_dst[i] == 0) {
-              dtmd->layers_select_dst[i] = DT_LAYERS_NAME_DST;
+            if (dtmd->layers_select_dst[change] == 0) {
+              dtmd->layers_select_dst[change] = DT_LAYERS_NAME_DST;
             }
           }
         }
@@ -3677,8 +3707,13 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
       int *face_sets = (int *)CustomData_get_layer(&mesh->pdata, CD_SCULPT_FACE_SETS);
       if (face_sets) {
-        for (int i = 0; i < mesh->totpoly; i++) {
-          face_sets[i] = abs(face_sets[i]);
+        int change;
+        for (int i = mesh->totpoly; --i) {
+          /*optimized loop to use deincrement instead to use less resources 
+            because now it automatically stops when a reaches 0 and it loops 
+            the same number of times*/
+          change = (mesh->totpoly - i);
+          face_sets[change] = abs(face_sets[change]);
         }
       }
     }
