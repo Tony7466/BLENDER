@@ -261,7 +261,7 @@ static CurvesGeometry resample_to_uniform(const CurvesGeometry &src_curves,
   evaluator.add_with_destination(count_field, dst_offsets.drop_back(1));
   evaluator.evaluate();
   const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
-  const Vector<IndexRange> unselected_ranges = selection.extract_ranges_invert(
+  const Vector<IndexRange> unselected_ranges = selection.to_ranges_invert(
       src_curves.curves_range(), nullptr);
 
   /* Fill the counts for the curves that aren't selected and accumulate the counts into offsets. */
@@ -419,7 +419,7 @@ CurvesGeometry resample_to_evaluated(const CurvesGeometry &src_curves,
   evaluator.set_selection(selection_field);
   evaluator.evaluate();
   const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
-  const Vector<IndexRange> unselected_ranges = selection.extract_ranges_invert(
+  const Vector<IndexRange> unselected_ranges = selection.to_ranges_invert(
       src_curves.curves_range(), nullptr);
 
   CurvesGeometry dst_curves = bke::curves::copy_only_curve_domain(src_curves);

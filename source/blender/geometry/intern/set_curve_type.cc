@@ -288,7 +288,7 @@ static bke::CurvesGeometry convert_curves_to_bezier(
   const VArray<bool> src_cyclic = src_curves.cyclic();
   const Span<float3> src_positions = src_curves.positions();
   const bke::AttributeAccessor src_attributes = src_curves.attributes();
-  const Vector<IndexRange> unselected_ranges = selection.extract_ranges_invert(
+  const Vector<IndexRange> unselected_ranges = selection.to_ranges_invert(
       src_curves.curves_range());
 
   bke::CurvesGeometry dst_curves = bke::curves::copy_only_curve_domain(src_curves);
@@ -479,7 +479,7 @@ static bke::CurvesGeometry convert_curves_to_nurbs(
   const VArray<bool> src_cyclic = src_curves.cyclic();
   const Span<float3> src_positions = src_curves.positions();
   const bke::AttributeAccessor src_attributes = src_curves.attributes();
-  const Vector<IndexRange> unselected_ranges = selection.extract_ranges_invert(
+  const Vector<IndexRange> unselected_ranges = selection.to_ranges_invert(
       src_curves.curves_range());
 
   bke::CurvesGeometry dst_curves = bke::curves::copy_only_curve_domain(src_curves);

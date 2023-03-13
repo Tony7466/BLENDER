@@ -408,7 +408,7 @@ static bke::CurvesGeometry fillet_curves(
   const Span<float3> positions = src_curves.positions();
   const VArraySpan<bool> cyclic{src_curves.cyclic()};
   const bke::AttributeAccessor src_attributes = src_curves.attributes();
-  const Vector<IndexRange> unselected_ranges = curve_selection.extract_ranges_invert(
+  const Vector<IndexRange> unselected_ranges = curve_selection.to_ranges_invert(
       src_curves.curves_range());
 
   bke::CurvesGeometry dst_curves = bke::curves::copy_only_curve_domain(src_curves);

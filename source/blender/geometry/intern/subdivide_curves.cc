@@ -303,7 +303,7 @@ bke::CurvesGeometry subdivide_curves(
   const OffsetIndices src_points_by_curve = src_curves.points_by_curve();
   /* Cyclic is accessed a lot, it's probably worth it to make sure it's a span. */
   const VArraySpan<bool> cyclic{src_curves.cyclic()};
-  const Vector<IndexRange> unselected_ranges = selection.extract_ranges_invert(
+  const Vector<IndexRange> unselected_ranges = selection.to_ranges_invert(
       src_curves.curves_range());
 
   bke::CurvesGeometry dst_curves = bke::curves::copy_only_curve_domain(src_curves);

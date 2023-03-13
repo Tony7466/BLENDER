@@ -952,7 +952,7 @@ bke::CurvesGeometry trim_curves(const bke::CurvesGeometry &src_curves,
                                 const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   const OffsetIndices src_points_by_curve = src_curves.points_by_curve();
-  const Vector<IndexRange> unselected_ranges = selection.extract_ranges_invert(
+  const Vector<IndexRange> unselected_ranges = selection.to_ranges_invert(
       src_curves.curves_range());
 
   BLI_assert(selection.size() > 0);

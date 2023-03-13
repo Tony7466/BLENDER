@@ -864,6 +864,22 @@ std::optional<IndexRange> IndexMask::to_range() const
   return std::nullopt;
 }
 
+Vector<IndexRange> IndexMask::to_ranges() const
+{
+  Vector<IndexRange> ranges;
+  this->foreach_range([&](const IndexRange range) { ranges.append(range); });
+  return ranges;
+}
+
+Vector<IndexRange> IndexMask::to_ranges_invert(const IndexRange universe) const
+{
+  IndexMaskMemory memory;
+  const AtomicExpr atomic_expr{*this};
+  const ComplementExpr complement_expr{atomic_expr};
+  const IndexMask inverted_mask = IndexMask::from_expr(complement_expr, universe, memory);
+  return inverted_mask.to_ranges();
+}
+
 template IndexMask IndexMask::from_indices(Span<int32_t>, IndexMaskMemory &);
 template IndexMask IndexMask::from_indices(Span<int64_t>, IndexMaskMemory &);
 template void IndexMask::to_indices(MutableSpan<int32_t>) const;

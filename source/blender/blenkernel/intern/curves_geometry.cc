@@ -1105,7 +1105,7 @@ static CurvesGeometry copy_with_removed_points(
   /* Use a map from points to curves to facilitate using an #IndexMask input. */
   const Array<int> point_to_curve_map = curves.point_to_curve_map();
 
-  const Vector<IndexRange> copy_point_ranges = points_to_delete.extract_ranges_invert(
+  const Vector<IndexRange> copy_point_ranges = points_to_delete.to_ranges_invert(
       curves.points_range());
 
   /* For every range of points to copy, find the offset in the result curves point layers. */
@@ -1221,7 +1221,7 @@ static CurvesGeometry copy_with_removed_curves(
 {
   const OffsetIndices old_points_by_curve = curves.points_by_curve();
   const Span<int> old_offsets = curves.offsets();
-  const Vector<IndexRange> old_curve_ranges = curves_to_delete.extract_ranges_invert(
+  const Vector<IndexRange> old_curve_ranges = curves_to_delete.to_ranges_invert(
       curves.curves_range(), nullptr);
   Vector<IndexRange> new_curve_ranges;
   Vector<IndexRange> old_point_ranges;
