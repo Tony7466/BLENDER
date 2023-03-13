@@ -1485,7 +1485,7 @@ static void rna_def_armature(BlenderRNA *brna)
       {0, NULL, 0, NULL, NULL},
   };
   static const EnumPropertyItem prop_relation_lines_items[] = {
-      {0, "Tail", 0, "Tail", "Draw the relationship line from the parent tail to the child head"},
+      {0, "TAIL", 0, "Tail", "Draw the relationship line from the parent tail to the child head"},
       {1, "HEAD", 0, "Head", "Draw the relationship line from the parent head to the child head"},
       {0, NULL, 0, NULL, NULL},
   };
