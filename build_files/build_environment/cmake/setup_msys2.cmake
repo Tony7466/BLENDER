@@ -57,18 +57,21 @@ if((NOT EXISTS "${DOWNLOAD_DIR}/msys2/msys64/msys2_shell.cmd") AND (EXISTS "${DO
   )
 endif()
 
-# Refresh pacman repositories (similar to debian's `apt update`)
-message("Refreshing pacman")
-execute_process(
-  COMMAND ${DOWNLOAD_DIR}/msys2/msys64/msys2_shell.cmd -defterm -no-start -clang64 -c "pacman -Syy --noconfirm && exit"
-  WORKING_DIRECTORY ${DOWNLOAD_DIR}/msys2/msys64
-)
-
-message("Installing required packages")
-execute_process(
-  COMMAND ${DOWNLOAD_DIR}/msys2/msys64/msys2_shell.cmd -defterm -no-start -clang64 -c "pacman -S patch m4 coreutils pkgconf make diffutils autoconf-wrapper --noconfirm && exit"
-  WORKING_DIRECTORY ${DOWNLOAD_DIR}/msys2/msys64
-)
+# If m4 isn't there, the others probably aren't either
+if(NOT EXISTS "${DOWNLOAD_DIR}/msys2/msys64/usr/bin/m4.exe")
+  # Refresh pacman repositories (similar to debian's `apt update`)
+  message("Refreshing pacman")
+  execute_process(
+    COMMAND ${DOWNLOAD_DIR}/msys2/msys64/msys2_shell.cmd -defterm -no-start -clang64 -c "pacman -Syy --noconfirm && exit"
+    WORKING_DIRECTORY ${DOWNLOAD_DIR}/msys2/msys64
+  )
+  
+  message("Installing required packages")
+  execute_process(
+    COMMAND ${DOWNLOAD_DIR}/msys2/msys64/msys2_shell.cmd -defterm -no-start -clang64 -c "pacman -S patch m4 coreutils pkgconf make diffutils autoconf-wrapper --noconfirm && exit"
+    WORKING_DIRECTORY ${DOWNLOAD_DIR}/msys2/msys64
+  )
+endif()
 
 # Strip out the copy of perl that comes with msys2 if it exists, otherwise python builds break
 if(EXISTS "${DOWNLOAD_DIR}/msys2/msys64/usr/bin/perl.exe")
