@@ -381,6 +381,29 @@ void IndexMask::foreach_span_impl(const FunctionRef<void(OffsetSpan<int64_t, int
   }
 }
 
+IndexMask IndexMask::slice_and_offset(const IndexRange range, IndexMaskMemory &memory) const
+{
+  return this->slice_and_offset(range.start(), range.size(), memory);
+}
+
+IndexMask IndexMask::slice_and_offset(const int64_t start,
+                                      const int64_t size,
+                                      IndexMaskMemory &memory) const
+{
+  if (size == 0) {
+    return {};
+  }
+  const IndexMask sliced_mask = this->slice(start, size);
+  const int64_t offset = sliced_mask.first();
+  if (offset == 0) {
+    return {};
+  }
+  const int64_t range_size = sliced_mask.last() - sliced_mask.first() + 1;
+  BitVector bits(range_size);
+  sliced_mask.to_bits(bits, offset);
+  return IndexMask::from_bits(bits, memory);
+}
+
 static IndexMask bits_to_index_mask(const BitSpan bits,
                                     const int64_t start,
                                     IndexMaskMemory &memory)

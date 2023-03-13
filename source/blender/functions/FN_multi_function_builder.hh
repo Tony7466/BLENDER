@@ -60,10 +60,9 @@ struct AllSpanOrSingle {
   template<typename... ParamTags, typename... LoadedParams, size_t... I>
   auto create_devirtualizers(TypeSequence<ParamTags...> /*param_tags*/,
                              std::index_sequence<I...> /*indices*/,
-                             const IndexMask &mask,
                              const std::tuple<LoadedParams...> &loaded_params) const
   {
-    return std::make_tuple(IndexMaskDevirtualizer<true, true>{mask}, [&]() {
+    return std::make_tuple([&]() {
       typedef ParamTags ParamTag;
       typedef typename ParamTag::base_type T;
       if constexpr (ParamTag::category == ParamCategory::SingleInput) {
@@ -92,10 +91,9 @@ template<size_t... Indices> struct SomeSpanOrSingle {
   template<typename... ParamTags, typename... LoadedParams, size_t... I>
   auto create_devirtualizers(TypeSequence<ParamTags...> /*param_tags*/,
                              std::index_sequence<I...> /*indices*/,
-                             const IndexMask &mask,
                              const std::tuple<LoadedParams...> &loaded_params) const
   {
-    return std::make_tuple(IndexMaskDevirtualizer<true, true>{mask}, [&]() {
+    return std::make_tuple([&]() {
       typedef ParamTags ParamTag;
       typedef typename ParamTag::base_type T;
 
@@ -123,7 +121,7 @@ namespace detail {
  * as output parameters. Usually types in #args are devirtualized (e.g. a `Span<int>` is passed in
  * instead of a `VArray<int>`).
  */
-template<typename MaskT, typename... Args, typename... ParamTags, size_t... I, typename ElementFn>
+template<typename... Args, typename... ParamTags, size_t... I, typename ElementFn>
 /* Perform additional optimizations on this loop because it is a very hot loop. For example, the
  * math node in geometry nodes is processed here. */
 #if (defined(__GNUC__) && !defined(__clang__))
@@ -133,24 +131,13 @@ inline void
 execute_array(TypeSequence<ParamTags...> /*param_tags*/,
               std::index_sequence<I...> /*indices*/,
               ElementFn element_fn,
-              MaskT mask,
+              const IndexMask &mask,
               /* Use restrict to tell the compiler that pointer inputs do not alias each
                * other. This is important for some compiler optimizations. */
               Args &&__restrict... args)
 {
-  if constexpr (std::is_same_v<std::decay_t<MaskT>, IndexRange>) {
-    /* Having this explicit loop is necessary for MSVC to be able to vectorize this. */
-    const int64_t start = mask.start();
-    const int64_t end = mask.one_after_last();
-    for (int64_t i = start; i < end; i++) {
-      element_fn(args[i]...);
-    }
-  }
-  else {
-    for (const int32_t i : mask) {
-      element_fn(args[i]...);
-    }
-  }
+  /* TODO: Make sure auto-vectorization works. */
+  mask.foreach_index_optimized([&](const int64_t i) { element_fn(args[i]...); });
 }
 
 enum class MaterializeArgMode {
@@ -245,7 +232,8 @@ inline void execute_materialized(TypeSequence<ParamTags...> /* param_tags */,
     const int64_t chunk_size = chunk_end - chunk_start;
     const IndexMask sliced_mask = mask.slice(chunk_start, chunk_size);
     const int64_t mask_start = sliced_mask[0];
-    const bool sliced_mask_is_range = sliced_mask.is_range();
+    const std::optional<IndexRange> sliced_mask_range = sliced_mask.to_range();
+    const bool sliced_mask_is_range = sliced_mask_range.has_value();
 
     /* Move mutable data into temporary array. */
     if (!sliced_mask_is_range) {
@@ -398,12 +386,13 @@ inline void execute_element_fn_as_multi_function(const ElementFn element_fn,
   bool executed_devirtualized = false;
   if constexpr (ExecPreset::use_devirtualization) {
     const auto devirtualizers = exec_preset.create_devirtualizers(
-        TypeSequence<ParamTags...>(), std::index_sequence<I...>(), mask, loaded_params);
+        TypeSequence<ParamTags...>(), std::index_sequence<I...>(), loaded_params);
     executed_devirtualized = call_with_devirtualized_parameters(
         devirtualizers, [&](auto &&...args) {
           execute_array(TypeSequence<ParamTags...>(),
                         std::index_sequence<I...>(),
                         element_fn,
+                        mask,
                         std::forward<decltype(args)>(args)...);
         });
   }

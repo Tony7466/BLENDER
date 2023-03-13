@@ -172,6 +172,9 @@ class IndexMask {
   int64_t iterator_to_index(const RawMaskIterator &it) const;
 
   IndexMask slice(IndexRange range) const;
+  IndexMask slice(int64_t start, int64_t size) const;
+  IndexMask slice_and_offset(IndexRange range, IndexMaskMemory &memory) const;
+  IndexMask slice_and_offset(int64_t start, int64_t size, IndexMaskMemory &memory) const;
 
   int64_t operator[](const int64_t i) const;
 
@@ -536,15 +539,20 @@ inline int64_t IndexMask::operator[](const int64_t i) const
 
 inline IndexMask IndexMask::slice(const IndexRange range) const
 {
-  if (range.is_empty()) {
+  return this->slice(range.start(), range.size());
+}
+
+inline IndexMask IndexMask::slice(const int64_t start, const int64_t size) const
+{
+  if (size == 0) {
     return {};
   }
-  const RawMaskIterator first_it = this->index_to_iterator(range.first());
-  const RawMaskIterator last_it = this->index_to_iterator(range.last());
+  const RawMaskIterator first_it = this->index_to_iterator(start);
+  const RawMaskIterator last_it = this->index_to_iterator(start + size);
 
   IndexMask sliced;
   sliced.data_.chunks_num = last_it.chunk_i - first_it.chunk_i + 1;
-  sliced.data_.indices_num = range.size();
+  sliced.data_.indices_num = size;
   sliced.data_.chunks = data_.chunks + first_it.chunk_i;
   sliced.data_.chunk_ids = data_.chunk_ids + first_it.chunk_i;
   sliced.data_.cumulative_chunk_sizes = data_.cumulative_chunk_sizes + first_it.chunk_i;

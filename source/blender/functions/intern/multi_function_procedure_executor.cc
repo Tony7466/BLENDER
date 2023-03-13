@@ -773,25 +773,22 @@ class VariableState : NonCopyable, NonMovable {
     switch (value_->type) {
       case ValueType::GVArray: {
         const VArray<bool> varray = this->value_as<VariableValue_GVArray>()->data.typed<bool>();
-        for (const int i : mask) {
-          r_indices[varray[i]].append(i);
-        }
+        mask.foreach_index([&](const int64_t i) { r_indices[varray[i]].append(i); });
         break;
       }
       case ValueType::Span: {
         const Span<bool> span(
             static_cast<const bool *>(this->value_as<VariableValue_Span>()->data),
             mask.min_array_size());
-        for (const int i : mask) {
-          r_indices[span[i]].append(i);
-        }
+        mask.foreach_index([&](const int64_t i) { r_indices[span[i]].append(i); });
         break;
       }
       case ValueType::OneSingle: {
         auto *value_typed = this->value_as<VariableValue_OneSingle>();
         BLI_assert(value_typed->is_initialized);
         const bool condition = *static_cast<const bool *>(value_typed->data);
-        r_indices[condition].extend(mask);
+        Vector<int64_t> &indices = r_indices[condition];
+        mask.foreach_index([&](const int64_t i) { indices.append(i); });
         break;
       }
       case ValueType::GVVectorArray:
@@ -1083,15 +1080,11 @@ static void execute_call_instruction(const CallInstruction &instruction,
 
 /** An index mask, that might own the indices if necessary. */
 struct InstructionIndices {
-  bool is_owned;
-  Vector<int64_t> owned_indices;
+  std::unique_ptr<IndexMaskMemory> memory;
   IndexMask referenced_indices;
 
   IndexMask mask() const
   {
-    if (this->is_owned) {
-      return this->owned_indices.as_span();
-    }
     return this->referenced_indices;
   }
 };
@@ -1129,7 +1122,6 @@ class InstructionScheduler {
       return;
     }
     InstructionIndices new_indices;
-    new_indices.is_owned = false;
     new_indices.referenced_indices = mask;
     next_instructions_.push({&instruction, std::move(new_indices)});
   }
@@ -1139,11 +1131,11 @@ class InstructionScheduler {
     if (indices.is_empty()) {
       return;
     }
-    BLI_assert(IndexMask::indices_are_valid_index_mask(indices));
 
     InstructionIndices new_indices;
-    new_indices.is_owned = true;
-    new_indices.owned_indices = std::move(indices);
+    new_indices.memory = std::make_unique<IndexMaskMemory>();
+    new_indices.referenced_indices = IndexMask::from_indices<int64_t>(indices,
+                                                                      *new_indices.memory);
     next_instructions_.push({&instruction, std::move(new_indices)});
   }
 

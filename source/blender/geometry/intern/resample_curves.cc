@@ -296,7 +296,7 @@ static CurvesGeometry resample_to_uniform(const CurvesGeometry &src_curves,
     Vector<std::byte> evaluated_buffer;
 
     /* Gather uniform samples based on the accumulated lengths of the original curve. */
-    for (const int64_t curve_i : sliced_selection) {
+    for (const int64_t i_curve : sliced_selection) {
       const bool cyclic = curves_cyclic[i_curve];
       const IndexRange dst_points = dst_points_by_curve[i_curve];
       const Span<float> lengths = src_curves.evaluated_lengths_for_curve(i_curve, cyclic);

@@ -29,10 +29,10 @@ class MF_SpecialCharacters : public mf::MultiFunction {
     MutableSpan<std::string> lb = params.uninitialized_single_output<std::string>(0, "Line Break");
     MutableSpan<std::string> tab = params.uninitialized_single_output<std::string>(1, "Tab");
 
-    for (const int i : mask) {
+    mask.foreach_index([&](const int64_t i) {
       new (&lb[i]) std::string("\n");
       new (&tab[i]) std::string("\t");
-    }
+    });
   }
 };
 

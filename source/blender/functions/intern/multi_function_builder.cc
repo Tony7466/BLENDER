@@ -65,9 +65,9 @@ CustomMF_GenericConstantArray::CustomMF_GenericConstantArray(GSpan array) : arra
 void CustomMF_GenericConstantArray::call(IndexMask mask, Params params, Context /*context*/) const
 {
   GVectorArray &vectors = params.vector_output(0);
-  for (int64_t i : mask) {
+  mask.foreach_index([&](const int64_t i) {
     vectors.extend(i, array_);
-  }
+  });
 }
 
 CustomMF_DefaultOutput::CustomMF_DefaultOutput(Span<DataType> input_types,

@@ -147,8 +147,8 @@ void MultiFunction::call_auto(IndexMask mask, Params params, Context context) co
         const int64_t input_slice_size = sliced_mask.last() - input_slice_start + 1;
         const IndexRange input_slice_range{input_slice_start, input_slice_size};
 
-        Vector<int64_t> offset_mask_indices;
-        const IndexMask offset_mask = mask.slice_and_offset(sub_range, offset_mask_indices);
+        IndexMaskMemory memory;
+        const IndexMask offset_mask = mask.slice_and_offset(sub_range, memory);
 
         ParamsBuilder sliced_params{*this, offset_mask.min_array_size()};
         add_sliced_parameters(*signature_ref_, params, input_slice_range, sliced_params);

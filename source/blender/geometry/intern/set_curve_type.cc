@@ -516,7 +516,7 @@ static bke::CurvesGeometry convert_curves_to_nurbs(
     selection.foreach_span(GrainSize(512), [&](const auto sliced_selection) {
       for (const int i : sliced_selection) {
         nurbs_order[i] = 4;
-        nurbs_order[i] = NURBS_KNOT_MODE_BEZIER;
+        nurbs_knots_modes[i] = NURBS_KNOT_MODE_BEZIER;
       }
       for (const int i : sliced_selection) {
         const IndexRange src_points = src_points_by_curve[i];
@@ -533,8 +533,6 @@ static bke::CurvesGeometry convert_curves_to_nurbs(
                                 attribute.dst.span.slice(dst_points));
       });
     }
-
-    threading::parallel_for(selection.index_range(), 512, [&](IndexRange range) {});
   };
 
   auto poly_to_nurbs = [&](IndexMask selection) {

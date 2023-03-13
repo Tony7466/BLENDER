@@ -30,9 +30,7 @@ class AddFunction : public MultiFunction {
     const VArray<int> &b = params.readonly_single_input<int>(1, "B");
     MutableSpan<int> result = params.uninitialized_single_output<int>(2, "Result");
 
-    for (int64_t i : mask) {
-      result[i] = a[i] + b[i];
-    }
+    mask.foreach_index([&](const int64_t i) { result[i] = a[i] + b[i]; });
   }
 };
 
@@ -50,8 +48,9 @@ TEST(multi_function, AddFunction)
   params.add_uninitialized_single_output(output.as_mutable_span());
 
   ContextBuilder context;
+  IndexMaskMemory memory;
 
-  fn.call({0, 2}, params, context);
+  fn.call(IndexMask::from_indices<int>({0, 2}, memory), params, context);
 
   EXPECT_EQ(output[0], 14);
   EXPECT_EQ(output[1], -1);
@@ -76,8 +75,9 @@ TEST(multi_function, AddPrefixFunction)
   params.add_single_mutable(strings.as_mutable_span());
 
   ContextBuilder context;
+  IndexMaskMemory memory;
 
-  fn.call({0, 2, 3}, params, context);
+  fn.call(IndexMask::from_indices<int>({0, 2, 3}, memory), params, context);
 
   EXPECT_EQ(strings[0], "ABHello");
   EXPECT_EQ(strings[1], "World");
@@ -98,8 +98,9 @@ TEST(multi_function, CreateRangeFunction)
   params.add_vector_output(ranges);
 
   ContextBuilder context;
+  IndexMaskMemory memory;
 
-  fn.call({0, 1, 2, 3}, params, context);
+  fn.call(IndexMask::from_indices<int>({0, 1, 2, 3}, memory), params, context);
 
   EXPECT_EQ(ranges[0].size(), 3);
   EXPECT_EQ(ranges[1].size(), 0);
@@ -157,8 +158,9 @@ TEST(multi_function, CustomMF_Constant)
   params.add_uninitialized_single_output(outputs.as_mutable_span());
 
   ContextBuilder context;
+  IndexMaskMemory memory;
 
-  fn.call({0, 2, 3}, params, context);
+  fn.call(IndexMask::from_indices<int>({0, 2, 3}, memory), params, context);
 
   EXPECT_EQ(outputs[0], 42);
   EXPECT_EQ(outputs[1], 0);
@@ -177,8 +179,9 @@ TEST(multi_function, CustomMF_GenericConstant)
   params.add_uninitialized_single_output(outputs.as_mutable_span());
 
   ContextBuilder context;
+  IndexMaskMemory memory;
 
-  fn.call({0, 1, 2}, params, context);
+  fn.call(IndexMask::from_indices<int>({0, 1, 2}, memory), params, context);
 
   EXPECT_EQ(outputs[0], 42);
   EXPECT_EQ(outputs[1], 42);
@@ -198,8 +201,9 @@ TEST(multi_function, CustomMF_GenericConstantArray)
   params.add_vector_output(vector_array);
 
   ContextBuilder context;
+  IndexMaskMemory memory;
 
-  fn.call({1, 2, 3}, params, context);
+  fn.call(IndexMask::from_indices<int>({1, 2, 3}, memory), params, context);
 
   EXPECT_EQ(vector_array[0].size(), 0);
   EXPECT_EQ(vector_array[1].size(), 4);
