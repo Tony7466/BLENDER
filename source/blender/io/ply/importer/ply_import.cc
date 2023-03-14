@@ -44,28 +44,28 @@ void splitstr(std::string str, Vector<std::string> &words, const StringRef &deli
 
 enum PlyDataTypes from_string(const StringRef &input)
 {
-  if (input == "uchar") {
+  if (input == "uchar" || input == "uint8") {
     return PlyDataTypes::UCHAR;
   }
-  if (input == "char") {
+  if (input == "char" || input == "int8") {
     return PlyDataTypes::CHAR;
   }
-  if (input == "ushort") {
+  if (input == "ushort" || input == "uint16") {
     return PlyDataTypes::USHORT;
   }
-  if (input == "short") {
+  if (input == "short" || input == "int16") {
     return PlyDataTypes::SHORT;
   }
-  if (input == "uint") {
+  if (input == "uint" || input == "uint32") {
     return PlyDataTypes::UINT;
   }
-  if (input == "int") {
+  if (input == "int" || input == "int32") {
     return PlyDataTypes::INT;
   }
-  if (input == "float") {
+  if (input == "float" || input == "float32") {
     return PlyDataTypes::FLOAT;
   }
-  if (input == "double") {
+  if (input == "double" || input == "float64") {
     return PlyDataTypes::DOUBLE;
   }
   return PlyDataTypes::FLOAT;
@@ -95,7 +95,10 @@ const char *read_header(fstream &file, PlyHeader &r_header)
       }
     }
     else if (strcmp(words[0].c_str(), "element") == 0) {
-      r_header.elements.append(std::make_pair(words[1], std::stoi(words[2])));
+      PlyElement element;
+      element.name = words[1];
+      element.count = std::stoi(words[2]);
+      r_header.elements.append(element);
       if (strcmp(words[1].c_str(), "vertex") == 0) {
         r_header.vertex_count = std::stoi(words[2]);
       }
@@ -110,12 +113,7 @@ const char *read_header(fstream &file, PlyHeader &r_header)
       std::pair<std::string, PlyDataTypes> property;
       property.first = words[2];
       property.second = from_string(words[1]);
-
-      while (r_header.properties.size() < r_header.elements.size()) {
-        Vector<std::pair<std::string, PlyDataTypes>> temp;
-        r_header.properties.append(temp);
-      }
-      r_header.properties[r_header.elements.size() - 1].append(property);
+      r_header.elements.last().properties.append(property);
     }
     else if (words[0] == "end_header") {
       break;
@@ -174,7 +172,7 @@ void importer_main(Main *bmain,
   try {
     std::unique_ptr<PlyData> data;
     if (header.type == PlyFormatType::ASCII) {
-      data = import_ply_ascii(infile, &header);
+      data = import_ply_ascii(infile, header);
     }
     else {
       data = import_ply_binary(infile, &header);

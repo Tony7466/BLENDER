@@ -15,8 +15,6 @@ class fstream;
 
 namespace blender::io::ply {
 
-enum PlyDataTypes from_string(const StringRef &input);
-
 void splitstr(std::string str, Vector<std::string> &words, const StringRef &deli);
 
 /* Main import function used from within Blender. */

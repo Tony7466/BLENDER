@@ -84,36 +84,35 @@ PlyData load_ply_binary(fstream &file, const PlyHeader *header)
   PlyData data;
   bool is_big_endian = header->type == PlyFormatType::BINARY_BE;
 
-  for (int i = 0; i < header->elements.size(); i++) {
-    if (header->elements[i].first == "vertex") {
-      /* Import vertices. */
-      load_vertex_data(file, header, &data, i);
+  for (const PlyElement &element : header->elements) {
+    if (element.name == "vertex") {
+      /* Read vertices */
+      load_vertex_data(file, header, element, &data);
     }
-    else if (header->elements[i].first == "edge") {
-      /* Import edges. */
-      for (int j = 0; j < header->elements[i].second; j++) {
-        std::pair<int, int> vertex_indices;
-        for (auto [name, type] : header->properties[i]) {
+    else if (element.name == "edge") {
+      /* Read edges */
+      for (int j = 0; j < element.count; j++) {
+        std::pair<int, int> edge;
+        for (auto [name, type] : element.properties) {
           if (name == "vertex1") {
-            vertex_indices.first = int(read<int32_t>(file, is_big_endian));
+            edge.first = int(read<int32_t>(file, is_big_endian));
           }
           else if (name == "vertex2") {
-            vertex_indices.second = int(read<int32_t>(file, is_big_endian));
+            edge.second = int(read<int32_t>(file, is_big_endian));
           }
           else {
             discard_value(file, type);
           }
         }
-        data.edges.append(vertex_indices);
+        data.edges.append(edge);
       }
     }
-    else if (header->elements[i].first == "face") {
-
-      /* Import faces. */
-      for (int j = 0; j < header->elements[i].second; j++) {
+    else if (element.name == "face") {
+      /* Read faces */
+      for (int j = 0; j < element.count; j++) {
         /* Assume vertex_index_count_type is uchar. */
         uint8_t count = read<uint8_t>(file, is_big_endian);
-        Array<uint> vertex_indices(count);
+        Array<uint> face(count);
 
         /* Loop over the amount of vertex indices in this face. */
         for (uint8_t k = 0; k < count; k++) {
@@ -122,15 +121,15 @@ PlyData load_ply_binary(fstream &file, const PlyHeader *header)
           if (index >= data.vertices.size()) {
             throw std::runtime_error("Vertex index out of bounds");
           }
-          vertex_indices[k] = index;
+          face[k] = index;
         }
-        data.faces.append(vertex_indices);
+        data.faces.append(face);
       }
     }
     else {
-      /* Nothing else is supported. */
-      for (int j = 0; j < header->elements[i].second; j++) {
-        for (auto [name, type] : header->properties[i]) {
+      /* Skip everything else. */
+      for (int j = 0; j < element.count; j++) {
+        for (auto [name, type] : element.properties) {
           discard_value(file, type);
         }
       }
@@ -140,7 +139,10 @@ PlyData load_ply_binary(fstream &file, const PlyHeader *header)
   return data;
 }
 
-void load_vertex_data(fstream &file, const PlyHeader *header, PlyData *r_data, int index)
+void load_vertex_data(fstream &file,
+                      const PlyHeader *header,
+                      const PlyElement &element,
+                      PlyData *r_data)
 {
   bool hasNormal = false;
   bool hasColor = false;
@@ -153,7 +155,7 @@ void load_vertex_data(fstream &file, const PlyHeader *header, PlyData *r_data, i
     float4 color{1};
     float2 uv{0};
 
-    for (auto [name, type] : header->properties[index]) {
+    for (auto [name, type] : element.properties) {
       if (name == "x") {
         coord.x = read<float>(file, is_big_endian);
       }

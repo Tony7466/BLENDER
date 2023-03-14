@@ -10,213 +10,265 @@
 #include <algorithm>
 #include <fstream>
 
-namespace blender::io::ply {
+#include "fast_float.h"
+#include <charconv>
 
-std::unique_ptr<PlyData> import_ply_ascii(fstream &file, PlyHeader *header)
+static bool is_whitespace(char c)
 {
-  std::unique_ptr<PlyData> data = std::make_unique<PlyData>(load_ply_ascii(file, header));
-  return data;
+  return c <= ' ';
 }
 
-PlyData load_ply_ascii(fstream &file, const PlyHeader *header)
+static const char *drop_whitespace(const char *p, const char *end)
 {
-  PlyData data;
-  /* Check if header contains alpha. */
-  std::pair<std::string, PlyDataTypes> alpha = {"alpha", PlyDataTypes::UCHAR};
-  bool has_alpha = std::find(header->properties[0].begin(), header->properties[0].end(), alpha) !=
-                   header->properties[0].end();
+  while (p < end && is_whitespace(*p)) {
+    ++p;
+  }
+  return p;
+}
 
-  /* Check if header contains colors. */
-  std::pair<std::string, PlyDataTypes> red = {"red", PlyDataTypes::UCHAR};
-  bool has_color = std::find(header->properties[0].begin(), header->properties[0].end(), red) !=
-                   header->properties[0].end();
+static const char *drop_non_whitespace(const char *p, const char *end)
+{
+  while (p < end && !is_whitespace(*p)) {
+    ++p;
+  }
+  return p;
+}
 
-  /* Check if header contains normals. */
-  std::pair<std::string, PlyDataTypes> normalx = {"nx", PlyDataTypes::FLOAT};
-  bool has_normals = std::find(header->properties[0].begin(),
-                               header->properties[0].end(),
-                               normalx) != header->properties[0].end();
+static const char *drop_plus(const char *p, const char *end)
+{
+  if (p < end && *p == '+') {
+    ++p;
+  }
+  return p;
+}
 
-  /* Check if header contains uv data. */
-  std::pair<std::string, PlyDataTypes> uv = {"s", PlyDataTypes::FLOAT};
-  const bool has_uv = std::find(header->properties[0].begin(), header->properties[0].end(), uv) !=
-                      header->properties[0].end();
+static const char *parse_float(const char *p,
+                               const char *end,
+                               float fallback,
+                               float &dst,
+                               bool skip_space = true,
+                               bool require_trailing_space = false)
+{
+  if (skip_space) {
+    p = drop_whitespace(p, end);
+  }
+  p = drop_plus(p, end);
+  fast_float::from_chars_result res = fast_float::from_chars(p, end, dst);
+  if (ELEM(res.ec, std::errc::invalid_argument, std::errc::result_out_of_range)) {
+    dst = fallback;
+  }
+  else if (require_trailing_space && res.ptr < end && !is_whitespace(*res.ptr)) {
+    /* If there are trailing non-space characters, do not eat up the number. */
+    dst = fallback;
+    return p;
+  }
+  return res.ptr;
+}
 
-  int3 vertex_index = get_vertex_index(header);
-  int alpha_index;
-  int3 color_index;
-  int3 normal_index;
-  int2 uv_index;
+static const char *parse_int(
+    const char *p, const char *end, int fallback, int &dst, bool skip_space = true)
+{
+  if (skip_space) {
+    p = drop_whitespace(p, end);
+  }
+  p = drop_plus(p, end);
+  std::from_chars_result res = std::from_chars(p, end, dst);
+  if (ELEM(res.ec, std::errc::invalid_argument, std::errc::result_out_of_range)) {
+    dst = fallback;
+  }
+  return res.ptr;
+}
 
-  if (has_alpha) {
-    alpha_index = get_index(header, "alpha", PlyDataTypes::UCHAR);
+namespace blender::io::ply {
+
+static const float data_type_normalizer[] = {
+    127.0f, 255.0f, 32767.0f, 65535.0f, INT_MAX, UINT_MAX, 1.0f, 1.0f};
+static_assert(std::size(data_type_normalizer) == PLY_TYPE_COUNT,
+              "PLY data type normalization factor table mismatch");
+
+static int get_index(const PlyElement &element, StringRef property)
+{
+  for (int i = 0, n = int(element.properties.size()); i != n; i++) {
+    const auto &prop = element.properties[i];
+    if (prop.first == property) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+static int3 get_vertex_index(const PlyElement &element)
+{
+  return {get_index(element, "x"), get_index(element, "y"), get_index(element, "z")};
+}
+
+static int3 get_color_index(const PlyElement &element)
+{
+  return {get_index(element, "red"), get_index(element, "green"), get_index(element, "blue")};
+}
+
+static int3 get_normal_index(const PlyElement &element)
+{
+  return {get_index(element, "nx"), get_index(element, "ny"), get_index(element, "nz")};
+}
+
+static int2 get_uv_index(const PlyElement &element)
+{
+  return {get_index(element, "s"), get_index(element, "t")};
+}
+
+static void load_vertex_element(fstream &file,
+                                const PlyHeader &header,
+                                const PlyElement &element,
+                                PlyData *data)
+{
+  /* Figure out vertex component indices. */
+  int3 vertex_index = get_vertex_index(element);
+  int3 color_index = get_color_index(element);
+  int3 normal_index = get_normal_index(element);
+  int2 uv_index = get_uv_index(element);
+  int alpha_index = get_index(element, "alpha");
+
+  bool has_vertex = vertex_index.x >= 0 && vertex_index.y >= 0 && vertex_index.z >= 0;
+  bool has_color = color_index.x >= 0 && color_index.y >= 0 && color_index.z >= 0;
+  bool has_normal = normal_index.x >= 0 && normal_index.y >= 0 && normal_index.z >= 0;
+  bool has_uv = uv_index.x >= 0 && uv_index.y >= 0;
+  bool has_alpha = alpha_index >= 0;
+
+  if (!has_vertex) {
+    throw std::runtime_error("Vertex positions are not present in the file");
   }
 
+  float4 color_norm = {1, 1, 1, 1};
   if (has_color) {
-    /* x=red, y=green, z=blue */
-    color_index = get_color_index(header);
+    color_norm.x = data_type_normalizer[element.properties[color_index.x].second];
+    color_norm.y = data_type_normalizer[element.properties[color_index.y].second];
+    color_norm.z = data_type_normalizer[element.properties[color_index.z].second];
+  }
+  if (has_alpha) {
+    color_norm.w = data_type_normalizer[element.properties[alpha_index].second];
   }
 
-  if (has_normals) {
-    normal_index = get_normal_index(header);
-  }
+  Vector<float> value_vec(element.properties.size());
 
-  if (has_uv) {
-    uv_index = get_uv_index(header);
-  }
-
-  for (int i = 0; i < header->vertex_count; i++) {
+  for (int i = 0; i < header.vertex_count; i++) {
     std::string line;
     safe_getline(file, line);
-    Vector<std::string> value_vec = explode(line, ' ');
 
-    /* Vertex coords */
+    /* Parse whole line as floats. */
+    const char *p = line.data();
+    const char *end = p + line.size();
+    int value_idx = 0;
+    while (p < end && value_idx < value_vec.size()) {
+      float val;
+      p = parse_float(p, end, 0.0f, val);
+      value_vec[value_idx++] = val;
+    }
+
+    /* Vertex coord */
     float3 vertex3;
-    vertex3.x = std::stof(value_vec[vertex_index.x]);
-    vertex3.y = std::stof(value_vec[vertex_index.y]);
-    vertex3.z = std::stof(value_vec[vertex_index.z]);
+    vertex3.x = value_vec[vertex_index.x];
+    vertex3.y = value_vec[vertex_index.y];
+    vertex3.z = value_vec[vertex_index.z];
+    data->vertices.append(vertex3);
 
-    data.vertices.append(vertex3);
-
-    /* Vertex colors */
+    /* Vertex color */
     if (has_color) {
       float4 colors4;
-      colors4.x = std::stof(value_vec[color_index.x]) / 255.0f;
-      colors4.y = std::stof(value_vec[color_index.y]) / 255.0f;
-      colors4.z = std::stof(value_vec[color_index.z]) / 255.0f;
+      colors4.x = value_vec[color_index.x] / color_norm.x;
+      colors4.y = value_vec[color_index.y] / color_norm.y;
+      colors4.z = value_vec[color_index.z] / color_norm.z;
       if (has_alpha) {
-        colors4.w = std::stof(value_vec[alpha_index]) / 255.0f;
+        colors4.w = value_vec[alpha_index] / color_norm.w;
       }
       else {
         colors4.w = 1.0f;
       }
-
-      data.vertex_colors.append(colors4);
+      data->vertex_colors.append(colors4);
     }
 
     /* If normals */
-    if (has_normals) {
+    if (has_normal) {
       float3 normals3;
-      normals3.x = std::stof(value_vec[normal_index.x]);
-      normals3.y = std::stof(value_vec[normal_index.y]);
-      normals3.z = std::stof(value_vec[normal_index.z]);
-
-      data.vertex_normals.append(normals3);
+      normals3.x = value_vec[normal_index.x];
+      normals3.y = value_vec[normal_index.y];
+      normals3.z = value_vec[normal_index.z];
+      data->vertex_normals.append(normals3);
     }
 
     /* If uv */
     if (has_uv) {
       float2 uvmap;
-      uvmap.x = std::stof(value_vec[uv_index.x]);
-      uvmap.y = std::stof(value_vec[uv_index.y]);
-
-      data.uv_coordinates.append(uvmap);
+      uvmap.x = value_vec[uv_index.x];
+      uvmap.y = value_vec[uv_index.y];
+      data->uv_coordinates.append(uvmap);
     }
   }
-  for (int i = 0; i < header->face_count; i++) {
+}
+
+static void load_face_element(fstream &file,
+                              const PlyHeader &header,
+                              const PlyElement &element,
+                              PlyData *data)
+{
+  for (int i = 0; i < header.face_count; i++) {
     std::string line;
     getline(file, line);
-    Vector<std::string> value_vec = explode(line, ' ');
-    int count = std::stoi(value_vec[0]);
-    Array<uint> vertex_indices(count);
 
-    for (int j = 1; j <= count; j++) {
-      int index = std::stoi(value_vec[j]);
+    const char *p = line.data();
+    const char *end = p + line.size();
+    int count = 0;
+    p = parse_int(p, end, 0, count);
+
+    Array<uint> vertex_indices(count);
+    for (int j = 0; j < count; j++) {
+      int index;
+      p = parse_int(p, end, 0, index);
       /* If the face has a vertex index that is outside the range. */
-      if (index >= data.vertices.size()) {
+      if (index >= header.vertex_count) {
         throw std::runtime_error("Vertex index out of bounds");
       }
-      vertex_indices[j - 1] = index;
+      vertex_indices[j] = index;
     }
-    data.faces.append(vertex_indices);
+    data->faces.append(vertex_indices);
   }
+}
 
-  for (int i = 0; i < header->edge_count; i++) {
+static void load_edge_element(fstream &file,
+                              const PlyHeader &header,
+                              const PlyElement &element,
+                              PlyData *data)
+{
+  for (int i = 0; i < header.edge_count; i++) {
     std::string line;
     getline(file, line);
-    Vector<std::string> value_vec = explode(line, ' ');
+    const char *p = line.data();
+    const char *end = p + line.size();
+    int index0, index1;
+    p = parse_int(p, end, 0, index0);
+    p = parse_int(p, end, 0, index1);
+    data->edges.append(std::make_pair(index0, index1));
+  }
+}
 
-    std::pair<int, int> edge = std::make_pair(stoi(value_vec[0]), stoi(value_vec[1]));
-    data.edges.append(edge);
+std::unique_ptr<PlyData> import_ply_ascii(fstream &file, const PlyHeader &header)
+{
+  std::unique_ptr<PlyData> data = std::make_unique<PlyData>();
+
+  for (const PlyElement &element : header.elements) {
+    if (element.name == "vertex") {
+      load_vertex_element(file, header, element, data.get());
+    }
+    else if (element.name == "face") {
+      load_face_element(file, header, element, data.get());
+    }
+    else if (element.name == "edge") {
+      load_edge_element(file, header, element, data.get());
+    }
   }
 
   return data;
 }
 
-int3 get_vertex_index(const PlyHeader *header)
-{
-  int3 vertex_index;
-  vertex_index.x = get_index(header, "x", PlyDataTypes::FLOAT);
-  vertex_index.y = get_index(header, "y", PlyDataTypes::FLOAT);
-  vertex_index.z = get_index(header, "z", PlyDataTypes::FLOAT);
-
-  return vertex_index;
-}
-
-int3 get_color_index(const PlyHeader *header)
-{
-  int3 color_index;
-  color_index.x = get_index(header, "red", PlyDataTypes::UCHAR);
-  color_index.y = get_index(header, "green", PlyDataTypes::UCHAR);
-  color_index.z = get_index(header, "blue", PlyDataTypes::UCHAR);
-
-  return color_index;
-}
-
-int3 get_normal_index(const PlyHeader *header)
-{
-  int3 normal_index;
-  normal_index.x = get_index(header, "nx", PlyDataTypes::FLOAT);
-  normal_index.y = get_index(header, "ny", PlyDataTypes::FLOAT);
-  normal_index.z = get_index(header, "nz", PlyDataTypes::FLOAT);
-
-  return normal_index;
-}
-
-int2 get_uv_index(const PlyHeader *header)
-{
-  int2 uv_index;
-  uv_index.x = get_index(header, "s", PlyDataTypes::FLOAT);
-  uv_index.y = get_index(header, "t", PlyDataTypes::FLOAT);
-
-  return uv_index;
-}
-
-int get_index(const PlyHeader *header, std::string property, PlyDataTypes datatype)
-{
-  std::pair<std::string, PlyDataTypes> pair = {property, datatype};
-  const std::pair<std::string, blender::io::ply::PlyDataTypes> *it = std::find(
-      header->properties[0].begin(), header->properties[0].end(), pair);
-  return int(it - header->properties[0].begin());
-}
-
-Vector<std::string> explode(const StringRef str, const char &ch)
-{
-  std::string next;
-  Vector<std::string> result;
-
-  /* For each character in the string. */
-  for (char c : str) {
-    /* If we've hit the terminal character. */
-    if (c == ch) {
-      /* If we have some characters accumulated. */
-      if (!next.empty()) {
-        /* Add them to the result vector. */
-        result.append(next);
-        next.clear();
-      }
-    }
-    else {
-      /* Accumulate the next character into the sequence. */
-      next += c;
-    }
-  }
-
-  if (!next.empty()) {
-    result.append(next);
-  }
-
-  return result;
-}
 
 }  // namespace blender::io::ply

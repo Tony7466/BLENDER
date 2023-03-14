@@ -29,7 +29,10 @@ std::unique_ptr<PlyData> import_ply_binary(fstream &file, const PlyHeader *heade
  */
 PlyData load_ply_binary(fstream &file, const PlyHeader *header);
 
-void load_vertex_data(fstream &file, const PlyHeader *header, PlyData *r_data, int index);
+void load_vertex_data(fstream &file,
+                      const PlyHeader *header,
+                      const PlyElement &element,
+                      PlyData *r_data);
 
 void check_file_errors(const fstream &file);
 
