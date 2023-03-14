@@ -60,7 +60,6 @@ set(SRC
   intern/cache_mutex.cc
   intern/compute_context.cc
   intern/convexhull_2d.c
-  intern/copy_on_write.cc
   intern/cpp_types.cc
   intern/delaunay_2d.cc
   intern/dot_export.cc
@@ -198,7 +197,6 @@ set(SRC
   BLI_compute_context.hh
   BLI_console.h
   BLI_convexhull_2d.h
-  BLI_copy_on_write.h
   BLI_copy_on_write.hh
   BLI_copy_on_write_user.hh
   BLI_cpp_type.hh

@@ -2160,11 +2160,11 @@ void customData_mask_layers__print(const CustomData_MeshMasks *mask)
 static void customData_update_offsets(CustomData *data);
 
 static CustomDataLayer *customData_add_layer__internal(CustomData *data,
-                                                       const eCustomDataType type,
-                                                       const eCDAllocType alloctype,
+                                                       eCustomDataType type,
+                                                       eCDAllocType alloctype,
                                                        void *layer_data_to_assign,
                                                        const bCopyOnWrite *cow_to_assign,
-                                                       const int totelem,
+                                                       int totelem,
                                                        const char *name);
 
 void CustomData_update_typemap(CustomData *data)
@@ -2345,11 +2345,15 @@ CustomData CustomData_shallow_copy_remove_non_bmesh_attributes(const CustomData 
   return dst;
 }
 
+/**
+ * A #bCopyOnWrite that knows how to free the entire referenced custom data layer (including
+ * potentially separately allocated chunks like for vertex groups).
+ */
 class CustomDataLayerCOW : public bCopyOnWrite {
  private:
   const void *data_;
-  int totelem_;
-  eCustomDataType type_;
+  const int totelem_;
+  const eCustomDataType type_;
 
  public:
   CustomDataLayerCOW(const void *data, const int totelem, const eCustomDataType type)
@@ -2365,6 +2369,7 @@ class CustomDataLayerCOW : public bCopyOnWrite {
   }
 };
 
+/** Create a #bCopyOnWrite that takes ownership of the data. */
 static bCopyOnWrite *make_cow_for_array(const eCustomDataType type,
                                         const void *data,
                                         const int totelem)
@@ -2372,6 +2377,9 @@ static bCopyOnWrite *make_cow_for_array(const eCustomDataType type,
   return MEM_new<CustomDataLayerCOW>(__func__, data, totelem, type);
 }
 
+/**
+ * If the layer data is currently shared (hence it is immutable), create a copy that can be edited.
+ */
 static void ensure_layer_data_is_mutable(CustomDataLayer &layer, const int totelem)
 {
   if (layer.data == nullptr) {
@@ -2401,7 +2409,7 @@ void CustomData_realloc(CustomData *data, const int old_size, const int new_size
 
     void *new_layer_data = MEM_mallocN(new_size_in_bytes, __func__);
     /* Copy or relocate data to new array. */
-    if (layer->cow && layer->cow->is_shared() && typeInfo->copy) {
+    if (typeInfo->copy) {
       typeInfo->copy(layer->data, new_layer_data, std::min(old_size, new_size));
     }
     else {
@@ -2858,6 +2866,7 @@ static CustomDataLayer *customData_add_layer__internal(CustomData *data,
   }
 
   if (new_layer.data != nullptr && new_layer.cow == nullptr) {
+    /* Make layer data shareable. */
     new_layer.cow = make_cow_for_array(type, new_layer.data, totelem);
   }
 
@@ -5154,6 +5163,7 @@ void CustomData_blend_read(BlendDataReader *reader, CustomData *data, const int 
       }
       BLO_read_data_address(reader, &layer->data);
       if (layer->data != nullptr) {
+        /* Make layer data shareable. */
         layer->cow = make_cow_for_array(eCustomDataType(layer->type), layer->data, count);
       }
       if (CustomData_layer_ensure_data_exists(layer, count)) {

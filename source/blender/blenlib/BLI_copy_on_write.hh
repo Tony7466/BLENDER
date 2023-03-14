@@ -9,7 +9,6 @@
 #include <atomic>
 
 #include "BLI_compiler_attrs.h"
-#include "BLI_copy_on_write.h"
 #include "BLI_utildefines.h"
 #include "BLI_utility_mixins.hh"
 

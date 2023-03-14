@@ -74,7 +74,7 @@ extern const CustomData_MeshMasks CD_MASK_EVERYTHING;
 
 /** Add/copy/merge allocation types. */
 typedef enum eCDAllocType {
-  /** Use the data pointer. */
+  /** Use the data pointer. This is only used internally. */
   CD_ASSIGN = 0,
   /** Allocate and set to default, which is usually just zeroed memory. */
   CD_SET_DEFAULT = 2,
@@ -232,15 +232,18 @@ void CustomData_free_typemask(struct CustomData *data, int totelem, eCustomDataM
 void CustomData_free_temporary(struct CustomData *data, int totelem);
 
 /**
- * Adds a data layer of the given type to the #CustomData object, optionally
- * backed by an external data array. the different allocation types are
- * defined above. returns the data of the layer.
+ * Adds a layer of the given type to the #CustomData object. The new layer is initialized based on
+ * the given alloctype. \return The layer data.
  */
 void *CustomData_add_layer(struct CustomData *data,
                            eCustomDataType type,
                            eCDAllocType alloctype,
                            int totelem);
 
+/**
+ * Adds a layer of the given type to the #CustomData object. The new layer takes ownership of the
+ * passed in `layer_data`. If a #bCopyOnWrite is passed in, it's user count is increased.
+ */
 const void *CustomData_add_layer_with_data(struct CustomData *data,
                                            eCustomDataType type,
                                            void *layer_data,

@@ -39,9 +39,9 @@ class Instances;
 }  // namespace blender::bke
 
 /**
- * This is the base class for specialized geometry component types. A geometry component handles
- * a user count to allow avoiding duplication when it is wrapped with #UserCounter. It also handles
- * the attribute API, which generalizes storing and modifying generic information on a geometry.
+ * This is the base class for specialized geometry component types. A geometry component uses
+ * copy-on-write behavior to avoid read-only copies. It also integrates with attribute API, which
+ * generalizes storing and modifying generic information on a geometry.
  */
 class GeometryComponent : public bCopyOnWriteMixin<GeometryComponent> {
  private:

@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array_utils.hh"
-#include "BLI_copy_on_write.h"
 #include "BLI_index_mask.hh"
 
 #include "BKE_attribute.hh"
