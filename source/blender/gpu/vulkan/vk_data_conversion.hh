@@ -14,7 +14,7 @@ namespace blender::gpu {
 
 enum class ConversionType {
   /** No conversion needed, result can be directly read back to host memory. */
-  UNMODIFIED,
+  PASS_THROUGH,
 
   UI16_TO_UI32,
   UI32_TO_UI16,

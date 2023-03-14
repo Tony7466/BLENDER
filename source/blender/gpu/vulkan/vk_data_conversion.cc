@@ -15,7 +15,7 @@ static ConversionType type_of_conversion_float(eGPUTextureFormat device_format)
     case GPU_RG32F:
     case GPU_R32F:
     case GPU_DEPTH_COMPONENT32F:
-      return ConversionType::UNMODIFIED;
+      return ConversionType::PASS_THROUGH;
 
     case GPU_RGBA16F:
     case GPU_RG16F:
@@ -91,7 +91,7 @@ static ConversionType type_of_conversion_int(eGPUTextureFormat device_format)
     case GPU_RGBA32I:
     case GPU_RG32I:
     case GPU_R32I:
-      return ConversionType::UNMODIFIED;
+      return ConversionType::PASS_THROUGH;
 
     case GPU_RGBA8UI:
     case GPU_RGBA8I:
@@ -166,7 +166,7 @@ static ConversionType type_of_conversion_uint(eGPUTextureFormat device_format)
     case GPU_RGBA32UI:
     case GPU_RG32UI:
     case GPU_R32UI:
-      return ConversionType::UNMODIFIED;
+      return ConversionType::PASS_THROUGH;
 
     case GPU_RGBA16UI:
     case GPU_RG16UI:
@@ -338,8 +338,8 @@ ConversionType conversion_type_for_update(eGPUDataFormat host_format,
 static ConversionType invert(ConversionType type)
 {
   switch (type) {
-    case ConversionType::UNMODIFIED:
-      return ConversionType::UNMODIFIED;
+    case ConversionType::PASS_THROUGH:
+      return ConversionType::PASS_THROUGH;
 
     case ConversionType::UI16_TO_UI32:
       return ConversionType::UI32_TO_UI16;
@@ -384,7 +384,7 @@ void convert(ConversionType type,
     case ConversionType::UNSUPPORTED:
       return;
 
-    case ConversionType::UNMODIFIED:
+    case ConversionType::PASS_THROUGH:
       memcpy(dst_memory, src_memory, sample_len * to_bytesize(device_format));
       return;
 
