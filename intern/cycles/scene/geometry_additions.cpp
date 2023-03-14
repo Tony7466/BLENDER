@@ -742,6 +742,54 @@ void GeometryManager::gather_attributes(Scene *scene,
   attrib_calc_sizes(scene, sizes, geom_attributes, object_attributes, object_attribute_values);
 }
 
+void GeometryManager::device_update_bvh2(Device *device,
+                                         DeviceScene *dscene,
+                                         Scene *scene,
+                                         Progress &progress)
+{
+  SCOPED_MARKER(device, "GeometryManager::device_update_bvh2");
+  BVH *bvh = scene->bvh;
+  if (bvh->params.bvh_layout == BVH_LAYOUT_BVH2) {
+    BVH2 *bvh2 = static_cast<BVH2 *>(bvh);
+
+    /* When using BVH2, we always have to copy/update the data as its layout is dependent on
+     * the BVH's leaf nodes which may be different when the objects or vertices move. */
+
+    if (bvh2->pack.nodes.size()) {
+      dscene->bvh_nodes.assign_mem(bvh2->pack.nodes);
+      dscene->bvh_nodes.copy_to_device();
+    }
+    if (bvh2->pack.leaf_nodes.size()) {
+      dscene->bvh_leaf_nodes.assign_mem(bvh2->pack.leaf_nodes);
+      dscene->bvh_leaf_nodes.copy_to_device();
+    }
+    if (bvh2->pack.object_node.size()) {
+      dscene->object_node.assign_mem(bvh2->pack.object_node);
+      dscene->object_node.copy_to_device();
+    }
+    if (bvh2->pack.prim_type.size()) {
+      dscene->prim_type.assign_mem(bvh2->pack.prim_type);
+      dscene->prim_type.copy_to_device();
+    }
+    if (bvh2->pack.prim_visibility.size()) {
+      dscene->prim_visibility.assign_mem(bvh2->pack.prim_visibility);
+      dscene->prim_visibility.copy_to_device();
+    }
+    if (bvh2->pack.prim_index.size()) {
+      dscene->prim_index.assign_mem(bvh2->pack.prim_index);
+      dscene->prim_index.copy_to_device();
+    }
+    if (bvh2->pack.prim_object.size()) {
+      dscene->prim_object.assign_mem(bvh2->pack.prim_object);
+      dscene->prim_object.copy_to_device();
+    }
+    if (bvh2->pack.prim_time.size()) {
+      dscene->prim_time.assign_mem(bvh2->pack.prim_time);
+      dscene->prim_time.copy_to_device();
+    }
+  }
+}
+
 void GeometryManager::device_update_bvh_postprocess(Device *device,
                                                     DeviceScene *dscene,
                                                     Scene *scene,
@@ -750,60 +798,21 @@ void GeometryManager::device_update_bvh_postprocess(Device *device,
   SCOPED_MARKER(device, "GeometryManager::device_update_bvh_postprocess");
   BVH *bvh = scene->bvh;
 
-  // FIXME: The below should be in the Device parallel_for and also the preprocess host code
   const bool has_bvh2_layout = (bvh->params.bvh_layout == BVH_LAYOUT_BVH2);
 
-  PackedBVH pack;
+  //PackedBVH pack;
   if (has_bvh2_layout) {
-    pack = std::move(static_cast<BVH2 *>(bvh)->pack);
+    BVH2 *bvh2 = static_cast<BVH2 *>(scene->bvh);
+    //pack = std::move(static_cast<BVH2 *>(bvh)->pack);
+    dscene->data.bvh.root = bvh2->pack.root_index;
   }
   else {
-    pack.root_index = -1;
+    //pack.root_index = -1;
+    dscene->data.bvh.root = -1;
   }
 
-  /* copy to device */
-  /* When using BVH2, we always have to copy/update the data as its layout is dependent on the
-   * BVH's leaf nodes which may be different when the objects or vertices move. */
-
-  if (pack.nodes.size()) {
-    dscene->bvh_nodes.steal_data(pack.nodes);
-    dscene->bvh_nodes.copy_to_device();
-  }
-  if (pack.leaf_nodes.size()) {
-    dscene->bvh_leaf_nodes.steal_data(pack.leaf_nodes);
-    dscene->bvh_leaf_nodes.copy_to_device();
-  }
-  if (pack.object_node.size()) {
-    dscene->object_node.steal_data(pack.object_node);
-    dscene->object_node.copy_to_device();
-  }
-  if (pack.prim_type.size()) {
-    dscene->prim_type.steal_data(pack.prim_type);
-    dscene->prim_type.copy_to_device();
-  }
-  if (pack.prim_visibility.size()) {
-    dscene->prim_visibility.steal_data(pack.prim_visibility);
-    dscene->prim_visibility.copy_to_device();
-  }
-  if (pack.prim_index.size()) {
-    dscene->prim_index.steal_data(pack.prim_index);
-    dscene->prim_index.copy_to_device();
-  }
-  if (pack.prim_object.size()) {
-    dscene->prim_object.steal_data(pack.prim_object);
-    dscene->prim_object.copy_to_device();
-  }
-  if (pack.prim_time.size()) {
-    dscene->prim_time.steal_data(pack.prim_time);
-    dscene->prim_time.copy_to_device();
-  }
-
-  dscene->data.bvh.root = pack.root_index;
   dscene->data.bvh.use_bvh_steps = (scene->params.num_bvh_time_steps != 0);
   dscene->data.bvh.curve_subdivisions = scene->params.curve_subdivisions();
-  /* The scene handle is set in 'CPUDevice::const_copy_to' and 'OptiXDevice::const_copy_to' */
-  // EDIT: Edit for merge
-  // dscene->data.bvh.scene = 0;
   dscene->data.device_bvh = 0;
 }
 

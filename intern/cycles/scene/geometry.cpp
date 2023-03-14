@@ -1330,6 +1330,7 @@ void GeometryManager::deviceDataXferAndBVHUpdate(int idx,
       }
     });
     device_update_bvh(sub_device, sub_dscene, scene, can_refit, 1, 1, progress);
+    device_update_bvh2(sub_device, sub_dscene, scene, progress);
   }
 }
 
@@ -1586,7 +1587,7 @@ void GeometryManager::device_update(Device *device,
 						   can_refit_scene_bvh,
 						   need_update_scene_bvh,
                                                    progress);			
-		      });  // WL: End of parallel data upload and BVH refit/creation
+		      });
     if (need_update_scene_bvh) {
       device_update_bvh_postprocess(device, dscene, scene, progress);
     }

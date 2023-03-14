@@ -414,6 +414,17 @@ template<typename T> class device_vector : public device_memory {
         p_src->host_pointer, p_src->data_width, p_src->data_height, p_src->data_depth);
   }
 
+   T *assign_mem(array<T> &src)
+  {
+    return assign_mem(src.data(), src.size());
+  }
+
+  T *assign_mem(array<T> *p_src)
+  {
+    return assign_mem(
+		      p_src->data(), p_src->size());
+  }
+
   T *assign_mem(void *p_mem, size_t width, size_t height = 0, size_t depth = 0)
   {
     size_t new_size = size(width, height, depth);

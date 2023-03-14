@@ -313,6 +313,7 @@ class GeometryManager {
                           DeviceScene *dscene,
                           /*Scene *scene,*/ const GeometrySizes *sizes,
                           Progress &progress);
+  void device_update_bvh2(Device *device, DeviceScene *dscene, Scene *scene, Progress &progress);
   void device_update_host_pointers(Device *device,
                                    DeviceScene *dscene,
                                    DeviceScene *sub_dscene,
