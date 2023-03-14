@@ -5159,6 +5159,7 @@ void CustomData_blend_read(BlendDataReader *reader, CustomData *data, const int 
       if (BLO_read_is_cow_data(reader, layer->data)) {
         BLI_assert(layer->cow != nullptr);
         layer->cow->add_user();
+        i++;
         continue;
       }
       BLO_read_data_address(reader, &layer->data);
