@@ -112,7 +112,6 @@ bool MTLContext::debug_capture_scope_begin(void *scope)
 void MTLContext::debug_capture_scope_end(void *scope)
 {
   [(id<MTLCaptureScope>)scope endScope];
-  MTLCaptureManager *capture_manager = [MTLCaptureManager sharedCaptureManager];
 }
 
 /** \} */
