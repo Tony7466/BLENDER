@@ -59,7 +59,7 @@
 #include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_lib_id.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.h"
 #include "BKE_modifier.h"
 #include "BKE_screen.h"
@@ -1896,7 +1896,7 @@ static BMesh *build_skin(SkinNode *skin_nodes,
 static void skin_set_orig_indices(Mesh *mesh)
 {
   int *orig = static_cast<int *>(
-      CustomData_add_layer(&mesh->pdata, CD_ORIGINDEX, CD_CONSTRUCT, nullptr, mesh->totpoly));
+      CustomData_add_layer(&mesh->pdata, CD_ORIGINDEX, CD_CONSTRUCT, mesh->totpoly));
   copy_vn_i(orig, mesh->totpoly, ORIGINDEX_NONE);
 }
 
