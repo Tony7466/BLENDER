@@ -508,7 +508,6 @@ enum {
 
   OB_ARMATURE = 25,
 
-  /** Grease Pencil object used in 3D view but not used for annotation in 2D. */
   OB_GPENCIL_LEGACY = 26,
 
   OB_CURVES = 27,
@@ -517,6 +516,8 @@ enum {
 
   OB_VOLUME = 29,
 
+  OB_GREASE_PENCIL = 30,
+
   /* Keep last. */
   OB_TYPE_MAX,
 };
@@ -524,7 +525,7 @@ enum {
 /* check if the object type supports materials */
 #define OB_TYPE_SUPPORT_MATERIAL(_type) \
   (((_type) >= OB_MESH && (_type) <= OB_MBALL) || \
-   ((_type) >= OB_GPENCIL_LEGACY && (_type) <= OB_VOLUME))
+   ((_type) >= OB_GPENCIL_LEGACY && (_type) <= OB_GREASE_PENCIL))
 /** Does the object have some render-able geometry (unlike empties, cameras, etc.). */
 #define OB_TYPE_IS_GEOMETRY(_type) \
   (ELEM(_type, \
@@ -535,7 +536,8 @@ enum {
         OB_GPENCIL_LEGACY, \
         OB_CURVES, \
         OB_POINTCLOUD, \
-        OB_VOLUME))
+        OB_VOLUME, \
+        OB_GREASE_PENCIL))
 #define OB_TYPE_SUPPORT_VGROUP(_type) (ELEM(_type, OB_MESH, OB_LATTICE, OB_GPENCIL_LEGACY))
 #define OB_TYPE_SUPPORT_EDITMODE(_type) \
   (ELEM(_type, \
@@ -546,13 +548,14 @@ enum {
         OB_MBALL, \
         OB_LATTICE, \
         OB_ARMATURE, \
-        OB_CURVES))
+        OB_CURVES, \
+        OB_GREASE_PENCIL))
 #define OB_TYPE_SUPPORT_PARVERT(_type) \
   (ELEM(_type, OB_MESH, OB_SURF, OB_CURVES_LEGACY, OB_LATTICE))
 
 /** Matches #OB_TYPE_SUPPORT_EDITMODE. */
 #define OB_DATA_SUPPORT_EDITMODE(_type) \
-  (ELEM(_type, ID_ME, ID_CU_LEGACY, ID_MB, ID_LT, ID_AR, ID_CV))
+  (ELEM(_type, ID_ME, ID_CU_LEGACY, ID_MB, ID_LT, ID_AR, ID_CV, ID_GP))
 
 /* is this ID type used as object data */
 #define OB_DATA_SUPPORT_ID(_id_type) \
@@ -569,7 +572,8 @@ enum {
         ID_AR, \
         ID_CV, \
         ID_PT, \
-        ID_VO))
+        ID_VO, \
+        ID_GP))
 
 #define OB_DATA_SUPPORT_ID_CASE \
   ID_ME: \
@@ -584,7 +588,8 @@ enum {
   case ID_AR: \
   case ID_CV: \
   case ID_PT: \
-  case ID_VO
+  case ID_VO: \
+  case ID_GP
 
 /** #Object.partype: first 4 bits: type. */
 enum {

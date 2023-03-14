@@ -196,6 +196,9 @@ void BKE_object_handle_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
     case OB_VOLUME:
       BKE_volume_data_update(depsgraph, scene, ob);
       break;
+    case OB_GREASE_PENCIL:
+      /* TODO: data update. */
+      break;
   }
 
   /* particles */
@@ -315,6 +318,9 @@ void BKE_object_batch_cache_dirty_tag(Object *ob)
       break;
     case OB_VOLUME:
       BKE_volume_batch_cache_dirty_tag((struct Volume *)ob->data, BKE_VOLUME_BATCH_DIRTY_ALL);
+      break;
+    case OB_GREASE_PENCIL:
+      /* TODO: tag batches. */
       break;
     default:
       break;

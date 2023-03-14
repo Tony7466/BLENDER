@@ -146,6 +146,11 @@ bool ED_object_mode_compat_test(const Object *ob, eObjectMode mode)
         return true;
       }
       break;
+    case OB_GREASE_PENCIL:
+      if (mode & (OB_MODE_EDIT)) {
+        return true;
+      }
+      break;
   }
 
   return false;

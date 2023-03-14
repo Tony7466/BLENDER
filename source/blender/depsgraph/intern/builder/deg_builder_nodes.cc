@@ -938,6 +938,7 @@ void DepsgraphNodeBuilder::build_object_data(Object *object)
     case OB_CURVES:
     case OB_POINTCLOUD:
     case OB_VOLUME:
+    case OB_GREASE_PENCIL:
       build_object_data_geometry(object);
       break;
     case OB_ARMATURE:

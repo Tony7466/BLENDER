@@ -28,6 +28,9 @@ void legacy_gpencil_to_grease_pencil(bGPdata &gpd, GreasePencil &grease_pencil);
 
 }  // namespace blender::bke
 
+void *BKE_grease_pencil_add(Main *bmain, const char *name);
+BoundBox *BKE_grease_pencil_boundbox_get(Object *ob);
+
 inline const blender::Map<int, int> &GreasePencilLayer::frames() const
 {
   return this->runtime->frames;

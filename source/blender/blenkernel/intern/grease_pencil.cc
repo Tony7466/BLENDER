@@ -11,7 +11,9 @@
 #include "BKE_idtype.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
+#include "BKE_object.h"
 
+#include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
 
 #include "BLO_read_write.h"
@@ -25,6 +27,7 @@
 
 #include "MEM_guardedalloc.h"
 
+using blender::float3;
 using blender::Span;
 using blender::Vector;
 
@@ -215,6 +218,54 @@ IDTypeInfo IDType_ID_GP = {
 
     /*lib_override_apply_post*/ nullptr,
 };
+
+void *BKE_grease_pencil_add(Main *bmain, const char *name)
+{
+  GreasePencil *grease_pencil = static_cast<GreasePencil *>(BKE_id_new(bmain, ID_GP, name));
+
+  return grease_pencil;
+}
+
+BoundBox *BKE_grease_pencil_boundbox_get(Object *ob)
+{
+  BLI_assert(ob->type == OB_CURVES);
+  const GreasePencil *grease_pencil = static_cast<const GreasePencil *>(ob->data);
+
+  if (ob->runtime.bb != nullptr && (ob->runtime.bb->flag & BOUNDBOX_DIRTY) == 0) {
+    return ob->runtime.bb;
+  }
+
+  if (ob->runtime.bb == nullptr) {
+    ob->runtime.bb = MEM_cnew<BoundBox>(__func__);
+
+    float3 min(FLT_MAX);
+    float3 max(-FLT_MAX);
+
+    for (int i = 0; i < grease_pencil->drawing_array_size; i++) {
+      GreasePencilDrawingOrReference *drawing_or_ref = grease_pencil->drawing_array[i];
+      switch (drawing_or_ref->type) {
+        case GREASE_PENCIL_DRAWING: {
+          GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_or_ref);
+          const blender::bke::CurvesGeometry &curves = drawing->geometry.wrap();
+
+          if (!curves.bounds_min_max(min, max)) {
+            min = float3(-1);
+            max = float3(1);
+          }
+          break;
+        }
+        case GREASE_PENCIL_DRAWING_REFERENCE: {
+          /* TODO */
+          break;
+        }
+      }
+    }
+
+    BKE_boundbox_init_from_minmax(ob->runtime.bb, min, max);
+  }
+
+  return ob->runtime.bb;
+}
 
 // Span<GreasePencilDrawingOrReference> blender::bke::GreasePencil::drawings() const
 // {

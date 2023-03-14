@@ -589,6 +589,7 @@ NodeType geometry_tag_to_component(const ID *id)
         case OB_CURVES:
         case OB_POINTCLOUD:
         case OB_VOLUME:
+        case OB_GREASE_PENCIL:
           return NodeType::GEOMETRY;
         case OB_ARMATURE:
           return NodeType::EVAL_POSE;

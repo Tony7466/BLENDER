@@ -24,6 +24,7 @@
 #include "DNA_customdata_types.h"
 #include "DNA_defaults.h"
 #include "DNA_gpencil_legacy_types.h"
+#include "DNA_grease_pencil_types.h"
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -344,6 +345,10 @@ Material ***BKE_object_material_array_p(Object *ob)
     Volume *volume = static_cast<Volume *>(ob->data);
     return &(volume->mat);
   }
+  if (ob->type == OB_GREASE_PENCIL) {
+    GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
+    return &(grease_pencil->material_array);
+  }
   return nullptr;
 }
 
@@ -376,6 +381,10 @@ short *BKE_object_material_len_p(Object *ob)
   if (ob->type == OB_VOLUME) {
     Volume *volume = static_cast<Volume *>(ob->data);
     return &(volume->totcol);
+  }
+  if (ob->type == OB_GREASE_PENCIL) {
+    GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
+    return reinterpret_cast<short *>(&(grease_pencil->material_array_size));
   }
   return nullptr;
 }

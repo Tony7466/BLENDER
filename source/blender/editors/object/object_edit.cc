@@ -682,6 +682,9 @@ static bool ED_object_editmode_load_free_ex(Main *bmain,
   else if (obedit->type == OB_CURVES) {
     /* Curves don't have specific edit mode data, so pass. */
   }
+  else if (obedit->type == OB_GREASE_PENCIL) {
+    /* Grease Pencil does not have specific edit mode data, so pass. */
+  }
   else {
     return false;
   }
@@ -869,6 +872,10 @@ bool ED_object_editmode_enter_ex(Main *bmain, Scene *scene, Object *ob, int flag
   else if (ob->type == OB_CURVES) {
     ok = true;
     WM_main_add_notifier(NC_SCENE | ND_MODE | NS_EDITMODE_CURVES, scene);
+  }
+  else if (ob->type == OB_CURVES) {
+    ok = true;
+    /* TODO: Add NS_EDITMODE_GREASE_PENCIL for WM_main_add_notifier. */
   }
 
   if (ok) {
