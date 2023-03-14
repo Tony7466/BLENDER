@@ -1,1 +1,2 @@
 Referenced by issue #105707, Bug: All metaball and some surface type objects cause crash when added
+Referenced by commit 99506b3d733fc58bc91ff4ed048749d1302d4626, Fix: Crash in weighted normal modifier
