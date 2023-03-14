@@ -196,12 +196,12 @@ void CustomData_realloc(struct CustomData *data, int old_size, int new_size);
  * then goes through the mesh and makes sure all the custom-data blocks are
  * consistent with the new layout.
  */
-bool CustomData_bmesh_merge_without_data(const struct CustomData *source,
-                                         struct CustomData *dest,
-                                         eCustomDataMask mask,
-                                         eCDAllocType alloctype,
-                                         struct BMesh *bm,
-                                         char htype);
+bool CustomData_bmesh_merge_new(const struct CustomData *source,
+                                struct CustomData *dest,
+                                eCustomDataMask mask,
+                                eCDAllocType alloctype,
+                                struct BMesh *bm,
+                                char htype);
 
 /**
  * Remove layers that aren't stored in BMesh or are stored as flags on BMesh.
