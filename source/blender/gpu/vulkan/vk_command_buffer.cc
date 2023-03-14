@@ -98,6 +98,19 @@ void VKCommandBuffer::copy(VKBuffer &dst_buffer,
                          regions.data());
 }
 
+void VKCommandBuffer::clear(VkImage vk_image,
+                            VkImageLayout vk_image_layout,
+                            const VkClearColorValue &vk_clear_color,
+                            Span<VkImageSubresourceRange> ranges)
+{
+  vkCmdClearColorImage(vk_command_buffer_,
+                       vk_image,
+                       vk_image_layout,
+                       &vk_clear_color,
+                       ranges.size(),
+                       ranges.data());
+}
+
 void VKCommandBuffer::pipeline_barrier(VkPipelineStageFlags source_stages,
                                        VkPipelineStageFlags destination_stages)
 {
