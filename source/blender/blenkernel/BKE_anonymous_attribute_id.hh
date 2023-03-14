@@ -37,7 +37,6 @@ class AnonymousAttributeID : public bCopyOnWriteMixin<AnonymousAttributeID> {
   std::string name_;
 
  public:
-  AnonymousAttributeID();
   virtual ~AnonymousAttributeID() = default;
 
   StringRefNull name() const

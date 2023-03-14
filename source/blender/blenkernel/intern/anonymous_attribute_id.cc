@@ -4,8 +4,6 @@
 
 namespace blender::bke {
 
-AnonymousAttributeID::AnonymousAttributeID() = default;
-
 std::string AnonymousAttributeID::user_name() const
 {
   return this->name();
