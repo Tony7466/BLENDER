@@ -568,7 +568,7 @@ void MetalDevice::compile_and_load(int device_id, MetalPipelineType pso_type)
     if (MetalDevice *instance = get_device_by_ID(device_id, lock)) {
       if (mtlLibrary) {
         if (error && [error localizedDescription]) {
-          print("MSL compilation messages:\n%s\n", [[error localizedDescription] UTF8String]);
+          printf("MSL compilation messages:\n%s\n", [[error localizedDescription] UTF8String]);
         }
 
         instance->mtlLibrary[pso_type] = mtlLibrary;
