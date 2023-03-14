@@ -68,7 +68,7 @@ static void add_new_edges(Mesh &mesh,
   /* Store a copy of the IDs locally since we will remove the existing attributes which
    * can also free the names, since the API does not provide pointer stability. */
   Vector<std::string> named_ids;
-  Vector<COWUser<const bke::AnonymousAttributeID>> anonymous_ids;
+  Vector<bke::AutoAnonymousAttributeID> anonymous_ids;
   for (const bke::AttributeIDRef &id : attributes.all_ids()) {
     if (attributes.lookup_meta_data(id)->domain != ATTR_DOMAIN_EDGE) {
       continue;
@@ -88,7 +88,7 @@ static void add_new_edges(Mesh &mesh,
   for (const StringRef name : named_ids) {
     local_edge_ids.append(name);
   }
-  for (const COWUser<const bke::AnonymousAttributeID> &id : anonymous_ids) {
+  for (const bke::AutoAnonymousAttributeID &id : anonymous_ids) {
     local_edge_ids.append(*id);
   }
 

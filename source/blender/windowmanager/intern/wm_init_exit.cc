@@ -439,7 +439,7 @@ void WM_exit_ex(bContext *C, const bool do_python)
   /* NOTE: same code copied in `wm_files.cc`. */
   if (C && wm) {
     if (!G.background) {
-      /* Save the undo state as quit.blend. */
+      /* Save latest state before closing as quit.blend. */
       char filepath[FILE_MAX];
       const int fileflags = G.fileflags & ~G_FILE_COMPRESS;
       BLI_path_join(filepath, sizeof(filepath), BKE_tempdir_base(), BLENDER_QUIT_FILE);

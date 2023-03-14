@@ -72,6 +72,7 @@ struct bCopyOnWrite : blender::NonCopyable, blender::NonMovable {
   }
 
  private:
+  /** Has to free the #bCopyOnWrite and the referenced data. */
   virtual void delete_self_with_data() = 0;
 };
 
@@ -87,6 +88,7 @@ struct bCopyOnWriteMixin : public bCopyOnWrite {
  private:
   void delete_self_with_data() override
   {
+    /* Can't use `delete this` here, because we don't know what allocator was used. */
     this->delete_self();
   }
 

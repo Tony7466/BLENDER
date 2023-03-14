@@ -55,6 +55,10 @@ typedef struct CustomDataLayer {
    * attribute was created.
    */
   const AnonymousAttributeIDHandle *anonymous_id;
+  /**
+   * Run-time data that allows sharing `data` with other entities (mostly custom data layers on
+   * other geometries).
+   */
   const struct bCopyOnWrite *cow;
 } CustomDataLayer;
 

@@ -13,6 +13,25 @@
 struct GHash;
 struct Scene;
 
+#ifdef __cplusplus
+
+#  include "BLI_copy_on_write.hh"
+#  include "BLI_map.hh"
+
+/**
+ * Takes (shared) ownership of copy-on-write data so that it does not have to be copied into the
+ * undo step.
+ */
+struct MemFileCowStorage {
+  blender::Map<const void *, const bCopyOnWrite *> map;
+
+  ~MemFileCowStorage();
+};
+
+#else
+typedef struct MemFileCowStorage MemFileCowStorage;
+#endif
+
 typedef struct {
   void *next, *prev;
   const char *buf;
@@ -28,18 +47,6 @@ typedef struct {
    * ID-related data). Used to find matching chunks in previous memundo step. */
   uint id_session_uuid;
 } MemFileChunk;
-
-#ifdef __cplusplus
-#  include "BLI_copy_on_write.hh"
-#  include "BLI_map.hh"
-struct MemFileCowStorage {
-  blender::Map<const void *, const bCopyOnWrite *> map;
-
-  ~MemFileCowStorage();
-};
-#else
-typedef struct MemFileCowStorage MemFileCowStorage;
-#endif
 
 typedef struct MemFile {
   ListBase chunks;
