@@ -9,6 +9,10 @@
 #include "IO_ply.h"
 #include "ply_data.hh"
 
+namespace blender {
+class fstream;
+}
+
 namespace blender::io::ply {
 
 enum PlyDataTypes from_string(const StringRef &input);
@@ -24,5 +28,7 @@ void importer_main(Main *bmain,
                    ViewLayer *view_layer,
                    const PLYImportParams &import_params,
                    wmOperator *op);
+
+const char *read_header(fstream &file, PlyHeader &r_header);
 
 }  // namespace blender::io::ply

@@ -36,8 +36,6 @@ set(SRC
     importer/ply_import_mesh.cc
     IO_ply.cc
 
-
-
     exporter/ply_export.hh
     exporter/ply_export_data.hh
     exporter/ply_export_header.hh
@@ -65,10 +63,8 @@ blender_add_lib(bf_ply "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
 if (WITH_GTESTS)
   set(TEST_SRC
-          tests/io_ply_importer_test.cc
-
-          tests/io_ply_exporter_test.cc
-
+    tests/io_ply_importer_test.cc
+    tests/io_ply_exporter_test.cc
   )
   set(TEST_INC
     ../../blenloader
