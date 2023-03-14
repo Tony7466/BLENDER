@@ -182,8 +182,8 @@ class LazyFunctionForSwitchNode : public LazyFunction {
     this->execute_single(condition.as_value(), params);
   }
 
-  static const int false_input_index = 1;
-  static const int true_input_index = 2;
+  static constexpr int false_input_index = 1;
+  static constexpr int true_input_index = 2;
 
   void execute_single(const bool condition, lf::Params &params) const
   {
