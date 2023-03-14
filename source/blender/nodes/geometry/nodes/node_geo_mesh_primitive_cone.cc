@@ -664,6 +664,36 @@ static Mesh *create_vertex_mesh()
   return mesh;
 }
 
+void calculate_and_set_bounds_radial_primitive(Mesh *mesh,
+                                               const int verts_num,
+                                               const float radius_top,
+                                               const float radius_bottom,
+                                               const float height)
+{
+  const float radius = std::max(radius_top, radius_bottom);
+  const float angle_delta = 2.0f * (M_PI / float(verts_num));
+
+  const float x_max = radius;
+  const float x_min = std::cos(std::round(0.5f * verts_num) * angle_delta) * radius;
+  const float y_max = std::sin(std::round(0.25f * verts_num) * angle_delta) * radius;
+  const float y_min = -y_max;
+
+  const float3 bounds_min(x_min, y_min, -height);
+  const float3 bounds_max(x_max, y_max, height);
+
+  mesh->bounds_set_eager({bounds_min, bounds_max});
+}
+
+static void calculate_and_set_bounds_cylinder_mesh(const ConeConfig &config,
+                                                   Mesh *mesh)
+{
+  calculate_and_set_bounds_radial_primitive(mesh, 
+                                            config.circle_segments, 
+                                            config.radius_top, 
+                                            config.radius_bottom, 
+                                            config.height);
+}
+
 Mesh *create_cylinder_or_cone_mesh(const float radius_top,
                                    const float radius_bottom,
                                    const float depth,
@@ -708,6 +738,8 @@ Mesh *create_cylinder_or_cone_mesh(const float radius_top,
   calculate_selection_outputs(config, attribute_outputs, mesh->attributes_for_write());
 
   mesh->loose_edges_tag_none();
+
+  calculate_and_set_bounds_cylinder_mesh(config, mesh);
 
   return mesh;
 }

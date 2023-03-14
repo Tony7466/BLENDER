@@ -99,6 +99,13 @@ static int circle_face_total(const GeometryNodeMeshCircleFillType fill_type, con
   return 0;
 }
 
+static void calculate_and_set_bounds_for_circle(Mesh *mesh,
+                                                const int verts_num,
+                                                const float radius)
+{
+  calculate_and_set_bounds_radial_primitive(mesh, verts_num, 0.0f, radius, 0.0f);                                                  
+}
+
 static Mesh *create_circle_mesh(const float radius,
                                 const int verts_num,
                                 const GeometryNodeMeshCircleFillType fill_type)
@@ -167,15 +174,7 @@ static Mesh *create_circle_mesh(const float radius,
     }
   }
 
-  const float max_x = positions[0].x;
-  const float max_y = positions[(verts_num + 2) >> 2].y;
-  const float min_x = positions[verts_num >> 1].x;
-  const float min_y = -max_y;
-
-  const float3 bounds_min(min_x, min_y, 0.0f);
-  const float3 bounds_max(max_x, max_y, 0.0f);
-
-  mesh->bounds_set_eager({bounds_min, bounds_max});
+  calculate_and_set_bounds_for_circle(mesh, verts_num, radius);
 
   return mesh;
 }

@@ -71,6 +71,16 @@ Mesh *create_cylinder_or_cone_mesh(float radius_top,
                                    ConeAttributeOutputs &attribute_outputs);
 
 /**
+ * Calculates the bounds of a radial primitive and set them by calling #Mesh::bounds_set_eager.
+ * The algorithm assumes X-axis symmetry of primitives.
+ */
+void calculate_and_set_bounds_radial_primitive(Mesh *mesh,
+                                               const int verts_num,
+                                               const float radius_top,
+                                               const float radius_bottom,
+                                               const float height);
+
+/**
  * Returns the parts of the geometry that are on the selection for the given domain. If the domain
  * is not applicable for the component, e.g. face domain for point cloud, nothing happens to that
  * component. If no component can work with the domain, then `error_message` is set to true.
