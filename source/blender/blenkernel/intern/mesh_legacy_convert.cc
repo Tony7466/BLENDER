@@ -1314,7 +1314,8 @@ void BKE_mesh_legacy_face_set_to_generic(Mesh *mesh)
   }
   if (faceset_data != nullptr) {
     CustomData_add_layer_named_with_data(
-        &mesh->pdata, CD_PROP_INT32, faceset_data, mesh->totpoly, ".sculpt_face_set", nullptr);
+        &mesh->pdata, CD_PROP_INT32, faceset_data, mesh->totpoly, ".sculpt_face_set", faceset_cow);
+    faceset_cow->remove_user_and_delete_if_last();
   }
 }
 
