@@ -97,6 +97,17 @@ void VKCommandBuffer::copy(VKBuffer &dst_buffer,
                          regions.size(),
                          regions.data());
 }
+void VKCommandBuffer::copy(VKTexture &dst_texture,
+                           VKBuffer &src_buffer,
+                           Span<VkBufferImageCopy> regions)
+{
+  vkCmdCopyBufferToImage(vk_command_buffer_,
+                         src_buffer.vk_handle(),
+                         dst_texture.vk_image_handle(),
+                         VK_IMAGE_LAYOUT_GENERAL,
+                         regions.size(),
+                         regions.data());
+}
 
 void VKCommandBuffer::clear(VkImage vk_image,
                             VkImageLayout vk_image_layout,

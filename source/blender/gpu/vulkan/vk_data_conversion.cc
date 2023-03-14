@@ -14,7 +14,6 @@ static ConversionType type_of_conversion_float(eGPUTextureFormat device_format)
     case GPU_RGBA32F:
     case GPU_RG32F:
     case GPU_R32F:
-    case GPU_RGB32F:
     case GPU_DEPTH_COMPONENT32F:
       return ConversionType::UNMODIFIED;
 
@@ -24,6 +23,7 @@ static ConversionType type_of_conversion_float(eGPUTextureFormat device_format)
     case GPU_RGB16F:
       return ConversionType::FLOAT_TO_HALF;
 
+    case GPU_RGB32F: /* GPU_RGB32F Not supported by vendors. */
     case GPU_RGBA8UI:
     case GPU_RGBA8I:
     case GPU_RGBA8:
@@ -88,6 +88,11 @@ static ConversionType type_of_conversion_float(eGPUTextureFormat device_format)
 static ConversionType type_of_conversion_int(eGPUTextureFormat device_format)
 {
   switch (device_format) {
+    case GPU_RGBA32I:
+    case GPU_RG32I:
+    case GPU_R32I:
+      return ConversionType::UNMODIFIED;
+
     case GPU_RGBA8UI:
     case GPU_RGBA8I:
     case GPU_RGBA8:
@@ -96,7 +101,6 @@ static ConversionType type_of_conversion_int(eGPUTextureFormat device_format)
     case GPU_RGBA16F:
     case GPU_RGBA16:
     case GPU_RGBA32UI:
-    case GPU_RGBA32I:
     case GPU_RGBA32F:
     case GPU_RG8UI:
     case GPU_RG8I:
@@ -106,7 +110,6 @@ static ConversionType type_of_conversion_int(eGPUTextureFormat device_format)
     case GPU_RG16F:
     case GPU_RG16:
     case GPU_RG32UI:
-    case GPU_RG32I:
     case GPU_RG32F:
     case GPU_R8UI:
     case GPU_R8I:
@@ -116,7 +119,6 @@ static ConversionType type_of_conversion_int(eGPUTextureFormat device_format)
     case GPU_R16F:
     case GPU_R16:
     case GPU_R32UI:
-    case GPU_R32I:
     case GPU_R32F:
     case GPU_RGB10_A2:
     case GPU_RGB10_A2UI:
@@ -164,7 +166,6 @@ static ConversionType type_of_conversion_uint(eGPUTextureFormat device_format)
     case GPU_RGBA32UI:
     case GPU_RG32UI:
     case GPU_R32UI:
-    case GPU_RGB32UI:
       return ConversionType::UNMODIFIED;
 
     case GPU_RGBA16UI:
@@ -213,6 +214,7 @@ static ConversionType type_of_conversion_uint(eGPUTextureFormat device_format)
     case GPU_RGB16F:
     case GPU_RGB16:
     case GPU_RGB16_SNORM:
+    case GPU_RGB32UI:
     case GPU_RGB32I:
     case GPU_RGB32F:
     case GPU_RG8_SNORM:

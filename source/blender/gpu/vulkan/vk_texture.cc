@@ -148,12 +148,40 @@ void *VKTexture::read(int mip, eGPUDataFormat format)
   return data;
 }
 
-void VKTexture::update_sub(int /*mip*/,
-                           int /*offset*/[3],
-                           int /*extent*/[3],
-                           eGPUDataFormat /*format*/,
-                           const void * /*data*/)
+void VKTexture::update_sub(
+    int mip, int /*offset*/[3], int extent[3], eGPUDataFormat format, const void *data)
 {
+  if (!is_allocated()) {
+    allocate();
+  }
+
+  /* Vulkan images cannot be directly mapped to host memory and requires a staging buffer. */
+  VKContext &context = *VKContext::get();
+  VKBuffer staging_buffer;
+  size_t sample_len = extent[0] * extent[1] * extent[2];
+  size_t device_memory_size = sample_len * to_bytesize(format_);
+
+  staging_buffer.create(
+      context, device_memory_size, GPU_USAGE_DEVICE_ONLY, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+
+  ConversionType conversion_type = conversion_type_for_update(format, format_);
+  BLI_assert_msg(conversion_type != ConversionType::UNSUPPORTED,
+                 "Memory data conversions not implemented yet");
+  convert(conversion_type, format_, sample_len, staging_buffer.mapped_memory_get(), data);
+
+  VkBufferImageCopy region = {};
+  region.imageExtent.width = extent[0];
+  region.imageExtent.height = extent[1];
+  region.imageExtent.depth = extent[2];
+  region.imageSubresource.aspectMask = to_vk_image_aspect_flag_bits(format_);
+  region.imageSubresource.mipLevel = mip;
+  region.imageSubresource.layerCount = 1;
+
+  VKCommandBuffer &command_buffer = context.command_buffer_get();
+  command_buffer.copy(*this, staging_buffer, Span<VkBufferImageCopy>(&region, 1));
+  command_buffer.submit();
+
+  /* TODO: add support for offset. */
 }
 
 void VKTexture::update_sub(int /*offset*/[3],
