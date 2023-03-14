@@ -91,4 +91,35 @@ CurvesGeometry legacy_gpencil_frame_to_curves_geometry(bGPDframe &gpf)
   return curves;
 }
 
+void legacy_gpencil_to_grease_pencil(bGPdata &gpd, GreasePencil &grease_pencil)
+{
+  int num_layers = 0;
+  int num_drawings = 0;
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd.layers) {
+    num_drawings += BLI_listbase_count(&gpl->frames);
+    num_layers++;
+  }
+
+  grease_pencil.drawing_array_size = num_drawings;
+  grease_pencil.drawing_array = reinterpret_cast<GreasePencilDrawingOrReference **>(
+      MEM_cnew_array<GreasePencilDrawing>(num_drawings, __func__));
+
+  int i = 0;
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd.layers) {
+    /* TODO: create a new layer here. */
+    LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+      GreasePencilDrawing &drawing = *reinterpret_cast<GreasePencilDrawing *>(
+          grease_pencil.drawing_array[i]);
+      drawing.base.type = GREASE_PENCIL_DRAWING;
+      /* TODO: copy flag. */
+
+      /* Convert the frame to a drawing. */
+      drawing.geometry = legacy_gpencil_frame_to_curves_geometry(*gpf);
+
+      /* TODO: add drawing to layer. Using the gpf->framenum. */
+      i++;
+    }
+  }
+}
+
 }  // namespace blender::bke::gpencil::convert

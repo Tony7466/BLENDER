@@ -181,9 +181,6 @@ typedef struct GreasePencil {
    */
   GreasePencilDrawingOrReference **drawing_array;
   int drawing_array_size;
-#ifdef __cplusplus
-  blender::Span<GreasePencilDrawingOrReference *> drawings() const;
-#endif
   char _pad[4];
 
 #ifdef __cplusplus

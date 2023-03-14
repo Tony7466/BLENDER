@@ -22,6 +22,8 @@ namespace gpencil::convert {
 
 CurvesGeometry legacy_gpencil_frame_to_curves_geometry(bGPDframe &gpf);
 
+void legacy_gpencil_to_grease_pencil(bGPdata &gpd, GreasePencil &grease_pencil);
+
 }  // namespace gpencil::convert
 
 }  // namespace blender::bke
