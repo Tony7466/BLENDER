@@ -148,6 +148,7 @@ set(SRC
   intern/gpencil_geom_legacy.cc
   intern/gpencil_modifier_legacy.c
   intern/gpencil_update_cache_legacy.c
+  intern/grease_pencil_convert_legacy.cc
   intern/grease_pencil.cc
   intern/icons.cc
   intern/icons_rasterize.c
@@ -389,6 +390,7 @@ set(SRC
   BKE_gpencil_geom_legacy.h
   BKE_gpencil_modifier_legacy.h
   BKE_gpencil_update_cache_legacy.h
+  BKE_grease_pencil.hh
   BKE_icons.h
   BKE_idprop.h
   BKE_idprop.hh

@@ -8,6 +8,7 @@
  */
 
 #include "BLI_map.hh"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_grease_pencil_types.h"
 
 namespace blender::bke {
@@ -17,6 +18,11 @@ class GreasePencilLayerRuntime {
   Map<int, int> frames;
 };
 
+namespace gpencil::convert {
+
+CurvesGeometry &legacy_gpencil_frame_to_curves_geometry(bGPDframe &gpf);
+
+}  // namespace gpencil::convert
 
 }  // namespace blender::bke
 
