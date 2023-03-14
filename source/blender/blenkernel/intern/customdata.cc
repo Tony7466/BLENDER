@@ -2320,20 +2320,6 @@ bool CustomData_merge_without_data(const CustomData *source,
   return customdata_merge_internal(source, dest, mask, alloctype, totelem);
 }
 
-static bool attribute_stored_in_bmesh_flag(const StringRef name)
-{
-  return ELEM(name,
-              "position",
-              ".hide_vert",
-              ".hide_edge",
-              ".hide_poly",
-              ".select_vert",
-              ".select_edge",
-              ".select_poly",
-              "material_index",
-              "sharp_edge");
-}
-
 CustomData CustomData_shallow_copy_remove_non_bmesh_attributes(const CustomData *src,
                                                                const eCustomDataMask mask)
 {
