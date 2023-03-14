@@ -1268,9 +1268,6 @@ void GeometryManager::deviceDataXferAndBVHUpdate(int idx,
                                                  AttributeSizes &attrib_sizes,
                                                  const BVHLayout bvh_layout,
                                                  size_t num_bvh,
-                                                 double *mesh_times,
-                                                 double *attrib_times,
-                                                 double *object_bvh_times,
                                                  Progress &progress)
 {
   DeviceScene *sub_dscene = scene->dscenes[idx];
@@ -1285,10 +1282,10 @@ void GeometryManager::deviceDataXferAndBVHUpdate(int idx,
   // WL: Upload geometry and attribute buffers to the device
   {
     SCOPED_MARKER(sub_device, "copy mesh to device");
-    scoped_callback_timer timer([scene, idx, &mesh_times](double time) {
+    scoped_callback_timer timer([scene, idx](double time) {
       if (scene->update_stats) {
         // Save copy mesh to device duration for later logging
-        mesh_times[idx] = time;
+        scene->mesh_times[idx] = time;
       }
     });
     device_update_mesh(sub_device, sub_dscene, &sizes, progress);
@@ -1296,9 +1293,9 @@ void GeometryManager::deviceDataXferAndBVHUpdate(int idx,
 
   {
     SCOPED_MARKER(sub_device, "copy attributes to device");
-    scoped_callback_timer timer([scene, idx, &attrib_times](double time) {
+    scoped_callback_timer timer([scene, idx](double time) {
       if (scene->update_stats) {
-        attrib_times[idx] = time;
+        scene->attrib_times[idx] = time;
       }
     });
     device_update_attributes(sub_device, sub_dscene, &attrib_sizes, progress);
@@ -1307,9 +1304,9 @@ void GeometryManager::deviceDataXferAndBVHUpdate(int idx,
   device_scene_clear_modified(sub_dscene);
   {
     SCOPED_MARKER(sub_device, "Parallel BVH building");
-    scoped_callback_timer timer([scene, idx, &object_bvh_times](double time) {
+    scoped_callback_timer timer([scene, idx](double time) {
       if (scene->update_stats) {
-        object_bvh_times[idx] = time;
+        scene->object_bvh_times[idx] = time;
       }
     });
     size_t i = 0;
@@ -1573,9 +1570,6 @@ void GeometryManager::device_update(Device *device,
                                                    attrib_sizes,
                                                    bvh_layout,
                                                    num_bvh,
-                                                   scene->mesh_times,
-                                                   scene->attrib_times,
-                                                   scene->object_bvh_times,
                                                    progress);
 			{
 			  DeviceScene *sub_dscene = scene->dscenes[idx];
