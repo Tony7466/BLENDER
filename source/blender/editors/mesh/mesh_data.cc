@@ -273,7 +273,7 @@ int ED_mesh_uv_add(
     }
 
     if (CustomData_has_layer(&me->ldata, CD_PROP_FLOAT2) && do_init) {
-      CustomData_add_layer_named_with_existing_data(
+      CustomData_add_layer_named_with_data(
           &me->ldata,
           CD_PROP_FLOAT2,
           MEM_dupallocN(CustomData_get_layer(&me->ldata, CD_PROP_FLOAT2)),

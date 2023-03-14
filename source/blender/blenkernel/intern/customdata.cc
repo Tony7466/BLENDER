@@ -2859,10 +2859,10 @@ void *CustomData_add_layer(CustomData *data,
   return customdata_add_layer(data, type, alloctype, nullptr, totelem);
 }
 
-const void *CustomData_add_layer_with_existing_data(CustomData *data,
-                                                    const eCustomDataType type,
-                                                    void *layer_data,
-                                                    const int totelem)
+const void *CustomData_add_layer_with_data(CustomData *data,
+                                           const eCustomDataType type,
+                                           void *layer_data,
+                                           const int totelem)
 {
   return customdata_add_layer(data, type, CD_ASSIGN, layer_data, totelem);
 }
@@ -2894,7 +2894,7 @@ void *CustomData_add_layer_named(CustomData *data,
   return customdata_add_layer_named(data, type, alloctype, nullptr, totelem, name);
 }
 
-const void *CustomData_add_layer_named_with_existing_data(
+const void *CustomData_add_layer_named_with_data(
     CustomData *data, const eCustomDataType type, void *layer_data, int totelem, const char *name)
 {
   return customdata_add_layer_named(data, type, CD_ASSIGN, layer_data, totelem, name);

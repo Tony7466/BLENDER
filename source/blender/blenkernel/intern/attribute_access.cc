@@ -199,7 +199,7 @@ static bool add_builtin_type_custom_data_layer_from_init(CustomData &custom_data
     }
     case AttributeInit::Type::MoveArray: {
       void *source_data = static_cast<const AttributeInitMoveArray &>(initializer).data;
-      const void *data = CustomData_add_layer_with_existing_data(
+      const void *data = CustomData_add_layer_with_data(
           &custom_data, data_type, source_data, domain_num);
       if (data == nullptr) {
         MEM_freeN(source_data);
@@ -240,7 +240,7 @@ static const void *add_generic_custom_data_layer_with_existing_data(
   if (!attribute_id.is_anonymous()) {
     char attribute_name_c[MAX_CUSTOMDATA_LAYER_NAME];
     attribute_id.name().copy(attribute_name_c);
-    return CustomData_add_layer_named_with_existing_data(
+    return CustomData_add_layer_named_with_data(
         &custom_data, data_type, layer_data, domain_size, attribute_name_c);
   }
   const AnonymousAttributeID &anonymous_id = attribute_id.anonymous_id();

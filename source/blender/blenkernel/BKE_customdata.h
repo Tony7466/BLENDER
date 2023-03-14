@@ -237,10 +237,10 @@ void *CustomData_add_layer(struct CustomData *data,
                            eCustomDataType type,
                            eCDAllocType alloctype,
                            int totelem);
-const void *CustomData_add_layer_with_existing_data(struct CustomData *data,
-                                                    eCustomDataType type,
-                                                    void *layer_data,
-                                                    int totelem);
+const void *CustomData_add_layer_with_data(struct CustomData *data,
+                                           eCustomDataType type,
+                                           void *layer_data,
+                                           int totelem);
 
 /**
  * Same as above but accepts a name.
@@ -250,11 +250,11 @@ void *CustomData_add_layer_named(struct CustomData *data,
                                  eCDAllocType alloctype,
                                  int totelem,
                                  const char *name);
-const void *CustomData_add_layer_named_with_existing_data(struct CustomData *data,
-                                                          eCustomDataType type,
-                                                          void *layer_data,
-                                                          int totelem,
-                                                          const char *name);
+const void *CustomData_add_layer_named_with_data(struct CustomData *data,
+                                                 eCustomDataType type,
+                                                 void *layer_data,
+                                                 int totelem,
+                                                 const char *name);
 void *CustomData_add_layer_anonymous(struct CustomData *data,
                                      int type,
                                      eCDAllocType alloctype,

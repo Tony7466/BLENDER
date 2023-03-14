@@ -139,8 +139,7 @@ static void add_new_edges(Mesh &mesh,
   mesh.edges_for_write().copy_from(new_edges);
 
   if (new_orig_indices != nullptr) {
-    CustomData_add_layer_with_existing_data(
-        &mesh.edata, CD_ORIGINDEX, new_orig_indices, mesh.totedge);
+    CustomData_add_layer_with_data(&mesh.edata, CD_ORIGINDEX, new_orig_indices, mesh.totedge);
   }
 
   for (NewAttributeData &new_data : dst_attributes) {
