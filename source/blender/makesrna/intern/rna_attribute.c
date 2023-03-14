@@ -25,8 +25,6 @@
 
 #include "WM_types.h"
 
-#include "BLI_copy_on_write.h"
-
 const EnumPropertyItem rna_enum_attribute_type_items[] = {
     {CD_PROP_FLOAT, "FLOAT", 0, "Float", "Floating-point value"},
     {CD_PROP_INT32, "INT", 0, "Integer", "32-bit integer"},
@@ -734,24 +732,6 @@ static void rna_AttributeGroup_active_color_name_set(PointerRNA *ptr, const char
   }
 }
 
-static PointerRNA rna_Attribute_cow_get(PointerRNA *ptr)
-{
-  const CustomDataLayer *layer = ptr->data;
-  PointerRNA ret;
-  RNA_pointer_create(NULL, &RNA_bCopyOnWrite, (void *)layer->cow, &ret);
-  return ret;
-}
-
-static void rna_COW_add_user(bCopyOnWrite *cow)
-{
-  BLI_cow_user_add(cow);
-}
-
-static void rna_COW_remove_user(bCopyOnWrite *cow)
-{
-  BLI_cow_user_remove_and_delete_if_last(cow);
-}
-
 #else
 
 static void rna_def_attribute_float(BlenderRNA *brna)
@@ -1109,10 +1089,6 @@ static void rna_def_attribute(BlenderRNA *brna)
       prop, "Is Internal", "The attribute is meant for internal use by Blender");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
-  prop = RNA_def_property(srna, "cow", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "bCopyOnWrite");
-  RNA_def_property_pointer_funcs(prop, "rna_Attribute_cow_get", NULL, NULL, NULL);
-
   /* types */
   rna_def_attribute_float(brna);
   rna_def_attribute_float_vector(brna);
@@ -1272,23 +1248,8 @@ void rna_def_attributes_common(StructRNA *srna)
   RNA_def_property_srna(prop, "AttributeGroup");
 }
 
-static void rna_def_cow(BlenderRNA *brna)
-{
-  StructRNA *srna;
-
-  srna = RNA_def_struct(brna, "bCopyOnWrite", NULL);
-  RNA_def_struct_ui_text(
-      srna,
-      "Copy on Write",
-      "Allows taking (shared and readonly) ownership of underlying memory to avoid memory copies");
-
-  RNA_def_function(srna, "add_user", "rna_COW_add_user");
-  RNA_def_function(srna, "remove_user", "rna_COW_remove_user");
-}
-
 void RNA_def_attribute(BlenderRNA *brna)
 {
-  rna_def_cow(brna);
   rna_def_attribute(brna);
   rna_def_attribute_group(brna);
 }
