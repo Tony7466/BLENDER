@@ -36,6 +36,7 @@ void compute_segment_lengths(const OffsetIndices<int> points_by_curve,
   });
 }
 
+#if 0
 void solve_length_constraints(const OffsetIndices<int> points_by_curve,
                               const IndexMask curve_selection,
                               const Span<float> segment_lenghts,
@@ -56,7 +57,8 @@ void solve_length_constraints(const OffsetIndices<int> points_by_curve,
         const float3 gradient_p1 = -gradient_p0;
         const float distance = length - goal_length;
 
-        const float weight_p0 = 1.0f;
+        /* Implicit pinning constraint for the first point of each curve */
+        const float weight_p0 = point_i == points.first() ? 0.0f : 1.0f;
         const float weight_p1 = 1.0f;
 
         const float gradient_sq_sum = weight_p0 * math::dot(gradient_p0, gradient_p0) +
@@ -69,6 +71,29 @@ void solve_length_constraints(const OffsetIndices<int> points_by_curve,
     }
   });
 }
+#else
+void solve_length_constraints(const OffsetIndices<int> points_by_curve,
+                              const IndexMask curve_selection,
+                              const Span<float> segment_lenghts,
+                              MutableSpan<float3> positions)
+{
+  BLI_assert(segment_lenghts.size() == points_by_curve.total_size());
+
+  threading::parallel_for(curve_selection.index_range(), 256, [&](const IndexRange range) {
+    for (const int curve_i : curve_selection.slice(range)) {
+      const IndexRange points = points_by_curve[curve_i].drop_back(1);
+      for (const int point_i : points) {
+        const float3 &p1 = positions[point_i];
+        float3 &p2 = positions[point_i + 1];
+        const float3 direction = math::normalize(p2 - p1);
+
+        const float goal_length = segment_lenghts[point_i];
+        p2 = p1 + direction * goal_length;
+      }
+    }
+  });
+}
+#endif
 
 void solve_collision_constraints(const OffsetIndices<int> points_by_curve,
                                  const IndexMask curve_selection,
@@ -294,7 +319,7 @@ void solve_slip_constraints(const OffsetIndices<int> points_by_curve,
       const int p = closest_point;
       closest_point = math::clamp((int)curve_factor_unclamped, (int)points.first(), (int)points.last());
       closest_u = math::clamp(curve_factor_unclamped, (float)points.first(), (float)points.last() + 1.0f) - (float)closest_point;
-      std::cout << "U: " << p << ":" << u << " -> " << closest_point << ":" << closest_u << std::endl;
+//      std::cout << "U: " << p << ":" << u << " -> " << closest_point << ":" << closest_u << std::endl;
     }
   });
 }
