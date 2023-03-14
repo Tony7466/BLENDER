@@ -523,7 +523,7 @@ void GeometryManager::geom_calc_offset(Scene *scene, GeometrySizes *p_sizes)
       mesh->corner_offset = p_sizes->corner_size;
 
       p_sizes->vert_size += mesh->verts.size();
-      // WL: Store extra index set for motion blur
+      // Store extra index set for motion blur
       if(mesh->get_use_motion_blur()) {
 	p_sizes->tri_size += 2*mesh->num_triangles();
       } else {
@@ -942,7 +942,6 @@ bool GeometryManager::device_update_bvh_preprocess(Device *device,
 
   BVH *bvh = scene->bvh;
   if (!scene->bvh) {
-    // TODO: Store device BVHs in a vector instead of just 1
     bvh = scene->bvh = BVH::create(bparams, scene->geometry, scene->objects, device);
   }
 
@@ -973,10 +972,10 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
   bool displacement_done = false;
   bool curve_shadow_transparency_done = false;
   {
-    // WL: Need to upload the attribute and mesh buffers for dispacement.
-    // WL: Evaluate these on a single device (anyone will do, so use the first)
+    // Need to upload the attribute and mesh buffers for dispacement.
+    // Evaluate these on a single device (anyone will do, so use the first)
     {
-      // WL: Could break this out across all the devices as
+      // Could break this out across all the devices as
       // the results are read back to the host. For now, the computations
       // are done on the first device.
       DeviceScene *sub_dscene = scene->dscenes.front();
@@ -1029,8 +1028,7 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
       }
     }
 
-    //>>>>>HOST SIDE CODE BEGINS
-    // WL: Some host side code here as the mesh and attributes need to be
+    // Some host side code here as the mesh and attributes need to be
     // recalculated after displacement and shadow transparency
     /* Device re-update after displacement. */
     if (displacement_done || curve_shadow_transparency_done) {
@@ -1041,7 +1039,7 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
         }
       });
 
-      // WL: Need to redo host side filling out the attribute and mesh buffers as these may have
+      // Need to redo host side filling out the attribute and mesh buffers as these may have
       // changed. Hair adds a new attribute buffer and displace updates the mesh.
       geom_calc_offset(scene, sizes);
       gather_attributes(
@@ -1057,7 +1055,6 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
                                           progress);
       device_update_mesh_preprocess(device, dscene, scene, sizes, progress);
     }
-    //>>>>>>HOST SIDE CODE ENDS
   }
 
   return scene->object_manager->need_flags_update;

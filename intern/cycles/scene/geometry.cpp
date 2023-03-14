@@ -1274,14 +1274,14 @@ void GeometryManager::deviceDataXferAndBVHUpdate(int idx,
 {
   DeviceScene *sub_dscene = scene->dscenes[idx];
   sub_dscene->data.bvh.bvh_layout = BVH_LAYOUT_NONE;
-  // WL:Get the device to use for this DeviceScene from one of the buffers
+  // Get the device to use for this DeviceScene from one of the buffers
   Device *sub_device = sub_dscene->tri_verts.device;
   SCOPED_MARKER(sub_device, "parallel update device");
-  // WL: Assign the host_pointers to the sub_dscene so that they access
+  // Assign the host_pointers to the sub_dscene so that they access
   // the correct data
   device_update_host_pointers(sub_device, dscene, sub_dscene, &sizes);
 
-  // WL: Upload geometry and attribute buffers to the device
+  // Upload geometry and attribute buffers to the device
   {
     SCOPED_MARKER(sub_device, "copy mesh to device");
     scoped_callback_timer timer([scene, idx](double time) {
@@ -1611,16 +1611,8 @@ void GeometryManager::device_update(Device *device,
       scene->update_stats->geometry.times.add_entry(
 	  {"device_update (build scene BVH)", max_scene_bvh_time});
     }
+  }
 
-    // WL: Build scene BVH
-    // if (need_update_scene_bvh) {
-    //   updateSceneBVHs(device, dscene, scene, progress);
-    // }  // WL: End of scene BVH generation
-  }    // WL: End of device update
-
-  /* END OF DEVICE SPECIFIC CODE:BELOW THIS POINT IS HOST SIDE CODE
-     What follows is mainly code to clear update or modified
-     tags now that all the updates have been performed. */
   clearGeometryUpdateAndModifiedTags(scene);
   clearShaderUpdateTags(scene);
   update_flags = UPDATE_NONE;
