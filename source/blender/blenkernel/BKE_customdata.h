@@ -519,8 +519,6 @@ void CustomData_set_layer_stencil_index(struct CustomData *data, int type, int n
 void CustomData_set_layer_flag(struct CustomData *data, int type, int flag);
 void CustomData_clear_layer_flag(struct CustomData *data, int type, int flag);
 
-
-
 void CustomData_bmesh_set_default(struct CustomData *data, void **block);
 void CustomData_bmesh_free_block(struct CustomData *data, void **block);
 void CustomData_bmesh_alloc_block(struct CustomData *data, void **block);

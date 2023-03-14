@@ -2690,7 +2690,7 @@ bool CustomData_layer_is_anonymous(const struct CustomData *data, int type, int 
 {
   const int layer_index = CustomData_get_layer_index_n(data, type, n);
 
-  BLI_assert(layer_index >=0);
+  BLI_assert(layer_index >= 0);
 
   return data->layers[layer_index].anonymous_id != nullptr;
 }
