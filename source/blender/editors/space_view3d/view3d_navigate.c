@@ -5,7 +5,7 @@
  */
 
 #include "DNA_curve_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -16,7 +16,7 @@
 
 #include "BKE_armature.h"
 #include "BKE_context.h"
-#include "BKE_gpencil_geom.h"
+#include "BKE_gpencil_geom_legacy.h"
 #include "BKE_layer.h"
 #include "BKE_object.h"
 #include "BKE_paint.h"
@@ -819,7 +819,7 @@ static int view3d_all_exec(bContext *C, wmOperator *op)
      * object, but in this case there is no change in the scene,
      * only the cursor so I choice a ED_region_tag like
      * view3d_smooth_view do for the center_cursor.
-     * See bug T22640.
+     * See bug #22640.
      */
     return OPERATOR_FINISHED;
   }
@@ -882,7 +882,7 @@ static int viewselected_exec(bContext *C, wmOperator *op)
   BKE_view_layer_synced_ensure(scene_eval, view_layer_eval);
   Object *ob_eval = BKE_view_layer_active_object_get(view_layer_eval);
   Object *obedit = CTX_data_edit_object(C);
-  const bGPdata *gpd_eval = ob_eval && (ob_eval->type == OB_GPENCIL) ? ob_eval->data : NULL;
+  const bGPdata *gpd_eval = ob_eval && (ob_eval->type == OB_GPENCIL_LEGACY) ? ob_eval->data : NULL;
   const bool is_gp_edit = gpd_eval ? GPENCIL_ANY_MODE(gpd_eval) : false;
   const bool is_face_map = ((is_gp_edit == false) && region->gizmo_map &&
                             WM_gizmomap_is_any_selected(region->gizmo_map));

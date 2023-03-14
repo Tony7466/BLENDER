@@ -6,7 +6,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_attribute_math.hh"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.h"
 
 #include "GEO_mesh_split_edges.hh"
@@ -139,8 +139,8 @@ static void add_new_edges(Mesh &mesh,
   mesh.edges_for_write().copy_from(new_edges);
 
   if (new_orig_indices != nullptr) {
-    CustomData_add_layer_with_existing_data(
-        &mesh.edata, CD_ORIGINDEX, mesh.totedge, new_orig_indices, nullptr);
+    CustomData_add_layer_with_data(
+        &mesh.edata, CD_ORIGINDEX, new_orig_indices, mesh.totedge, nullptr);
   }
 
   for (NewAttributeData &new_data : dst_attributes) {

@@ -17,7 +17,6 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
-#include "BLI_bit_vector.hh"
 #include "BLI_bounds.hh"
 #include "BLI_edgehash.h"
 #include "BLI_endian_switch.h"
@@ -51,7 +50,7 @@
 #include "BKE_lib_query.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_legacy_convert.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_mesh_wrapper.h"
@@ -66,7 +65,6 @@
 
 #include "BLO_read_write.h"
 
-using blender::BitVector;
 using blender::float3;
 using blender::MutableSpan;
 using blender::Span;
@@ -256,23 +254,28 @@ static void mesh_blend_write(BlendWriter *writer, ID *id, const void *id_address
     Set<std::string> names_to_skip;
     if (!BLO_write_is_undo(writer)) {
       /* When converting to the old mesh format, don't save redundant attributes. */
-      names_to_skip.add_multiple_new({".hide_vert",
+      names_to_skip.add_multiple_new({"position",
+                                      ".hide_vert",
                                       ".hide_edge",
                                       ".hide_poly",
-                                      "position",
-                                      "material_index",
+                                      ".uv_seam",
                                       ".select_vert",
                                       ".select_edge",
-                                      ".select_poly"});
+                                      ".select_poly",
+                                      "material_index",
+                                      "sharp_face",
+                                      "sharp_edge"});
 
       mesh->mvert = BKE_mesh_legacy_convert_positions_to_verts(
           mesh, temp_arrays_for_legacy_format, vert_layers);
       BKE_mesh_legacy_convert_hide_layers_to_flags(mesh);
       BKE_mesh_legacy_convert_selection_layers_to_flags(mesh);
       BKE_mesh_legacy_convert_material_indices_to_mpoly(mesh);
+      BKE_mesh_legacy_sharp_faces_to_flags(mesh);
       BKE_mesh_legacy_bevel_weight_from_layers(mesh);
       BKE_mesh_legacy_edge_crease_from_layers(mesh);
       BKE_mesh_legacy_sharp_edges_to_flags(mesh);
+      BKE_mesh_legacy_uv_seam_to_flags(mesh);
       BKE_mesh_legacy_attribute_strings_to_flags(mesh);
       mesh->active_color_attribute = nullptr;
       mesh->default_color_attribute = nullptr;
@@ -906,7 +909,7 @@ void BKE_mesh_free_data_for_undo(Mesh *me)
  *
  * - Edit-Mesh (#Mesh.edit_mesh)
  *   Since edit-mesh is tied to the objects mode,
- *   which crashes when called in edit-mode, see: T90972.
+ *   which crashes when called in edit-mode, see: #90972.
  */
 static void mesh_clear_geometry(Mesh *mesh)
 {
@@ -957,7 +960,7 @@ Mesh *BKE_mesh_add(Main *bmain, const char *name)
 }
 
 /* Custom data layer functions; those assume that totXXX are set correctly. */
-static void mesh_ensure_cdlayers_primary(Mesh *mesh, bool do_tessface)
+static void mesh_ensure_cdlayers_primary(Mesh *mesh)
 {
   if (!CustomData_get_layer_named(&mesh->vdata, CD_PROP_FLOAT3, "position")) {
     CustomData_add_layer_named(
@@ -972,14 +975,9 @@ static void mesh_ensure_cdlayers_primary(Mesh *mesh, bool do_tessface)
   if (!CustomData_get_layer(&mesh->pdata, CD_MPOLY)) {
     CustomData_add_layer(&mesh->pdata, CD_MPOLY, CD_SET_DEFAULT, mesh->totpoly);
   }
-
-  if (do_tessface && !CustomData_get_layer(&mesh->fdata, CD_MFACE)) {
-    CustomData_add_layer(&mesh->fdata, CD_MFACE, CD_SET_DEFAULT, mesh->totface);
-  }
 }
 
-Mesh *BKE_mesh_new_nomain(
-    int verts_len, int edges_len, int tessface_len, int loops_len, int polys_len)
+Mesh *BKE_mesh_new_nomain(int verts_len, int edges_len, int loops_len, int polys_len)
 {
   Mesh *mesh = (Mesh *)BKE_libblock_alloc(
       nullptr, ID_ME, BKE_idtype_idcode_to_name(ID_ME), LIB_ID_CREATE_LOCALIZE);
@@ -994,11 +992,10 @@ Mesh *BKE_mesh_new_nomain(
 
   mesh->totvert = verts_len;
   mesh->totedge = edges_len;
-  mesh->totface = tessface_len;
   mesh->totloop = loops_len;
   mesh->totpoly = polys_len;
 
-  mesh_ensure_cdlayers_primary(mesh, true);
+  mesh_ensure_cdlayers_primary(mesh);
 
   return mesh;
 }
@@ -1099,23 +1096,22 @@ Mesh *BKE_mesh_new_nomain_from_template_ex(const Mesh *me_src,
 
   /* The destination mesh should at least have valid primary CD layers,
    * even in cases where the source mesh does not. */
-  mesh_ensure_cdlayers_primary(me_dst, do_tessface);
+  mesh_ensure_cdlayers_primary(me_dst);
+  if (do_tessface && !CustomData_get_layer(&me_dst->fdata, CD_MFACE)) {
+    CustomData_add_layer(&me_dst->fdata, CD_MFACE, CD_SET_DEFAULT, me_dst->totface);
+  }
 
   /* Expect that normals aren't copied at all, since the destination mesh is new. */
-  BLI_assert(BKE_mesh_vertex_normals_are_dirty(me_dst));
+  BLI_assert(BKE_mesh_vert_normals_are_dirty(me_dst));
 
   return me_dst;
 }
 
-Mesh *BKE_mesh_new_nomain_from_template(const Mesh *me_src,
-                                        int verts_len,
-                                        int edges_len,
-                                        int tessface_len,
-                                        int loops_len,
-                                        int polys_len)
+Mesh *BKE_mesh_new_nomain_from_template(
+    const Mesh *me_src, int verts_len, int edges_len, int loops_len, int polys_len)
 {
   return BKE_mesh_new_nomain_from_template_ex(
-      me_src, verts_len, edges_len, tessface_len, loops_len, polys_len, CD_MASK_EVERYTHING);
+      me_src, verts_len, edges_len, 0, loops_len, polys_len, CD_MASK_EVERYTHING);
 }
 
 void BKE_mesh_eval_delete(struct Mesh *mesh_eval)
@@ -1368,7 +1364,7 @@ void BKE_mesh_orco_ensure(Object *ob, Mesh *mesh)
   /* Orcos are stored in normalized 0..1 range by convention. */
   float(*orcodata)[3] = BKE_mesh_orco_verts_get(ob);
   BKE_mesh_orco_verts_transform(mesh, orcodata, mesh->totvert, false);
-  CustomData_add_layer_with_existing_data(&mesh->vdata, CD_ORCO, mesh->totvert, orcodata, nullptr);
+  CustomData_add_layer_with_data(&mesh->vdata, CD_ORCO, orcodata, mesh->totvert, nullptr);
 }
 
 Mesh *BKE_mesh_from_object(Object *ob)
@@ -1497,16 +1493,17 @@ void BKE_mesh_material_remap(Mesh *me, const uint *remap, uint remap_len)
 
 void BKE_mesh_smooth_flag_set(Mesh *me, const bool use_smooth)
 {
-  MutableSpan<MPoly> polys = me->polys_for_write();
+  using namespace blender;
+  using namespace blender::bke;
+  MutableAttributeAccessor attributes = me->attributes_for_write();
   if (use_smooth) {
-    for (MPoly &poly : polys) {
-      poly.flag |= ME_SMOOTH;
-    }
+    attributes.remove("sharp_face");
   }
   else {
-    for (MPoly &poly : polys) {
-      poly.flag &= ~ME_SMOOTH;
-    }
+    SpanAttributeWriter<bool> sharp_faces = attributes.lookup_or_add_for_write_only_span<bool>(
+        "sharp_face", ATTR_DOMAIN_FACE);
+    sharp_faces.span.fill(true);
+    sharp_faces.finish();
   }
 }
 
@@ -1547,13 +1544,13 @@ int poly_get_adj_loops_from_vert(const MPoly *poly, const MLoop *mloop, int vert
   return corner;
 }
 
-int BKE_mesh_edge_other_vert(const MEdge *e, int v)
+int BKE_mesh_edge_other_vert(const MEdge *edge, int v)
 {
-  if (e->v1 == v) {
-    return e->v2;
+  if (edge->v1 == v) {
+    return edge->v2;
   }
-  if (e->v2 == v) {
-    return e->v1;
+  if (edge->v2 == v) {
+    return edge->v1;
   }
 
   return -1;
@@ -1566,9 +1563,10 @@ void BKE_mesh_looptri_get_real_edges(const MEdge *edges,
 {
   for (int i = 2, i_next = 0; i_next < 3; i = i_next++) {
     const MLoop *l1 = &loops[tri->tri[i]], *l2 = &loops[tri->tri[i_next]];
-    const MEdge *e = &edges[l1->e];
+    const MEdge *edge = &edges[l1->e];
 
-    bool is_real = (l1->v == e->v1 && l2->v == e->v2) || (l1->v == e->v2 && l2->v == e->v1);
+    bool is_real = (l1->v == edge->v1 && l2->v == edge->v2) ||
+                   (l1->v == edge->v2 && l2->v == edge->v1);
 
     r_edges[i] = is_real ? l1->e : -1;
   }
@@ -1589,6 +1587,11 @@ bool BKE_mesh_minmax(const Mesh *me, float r_min[3], float r_max[3])
   copy_v3_v3(r_max, math::max(bounds.max, float3(r_max)));
 
   return true;
+}
+
+void Mesh::bounds_set_eager(const blender::Bounds<float3> &bounds)
+{
+  this->runtime->bounds_cache.ensure([&](blender::Bounds<float3> &r_data) { r_data = bounds; });
 }
 
 void BKE_mesh_transform(Mesh *me, const float mat[4][4], bool do_keys)
@@ -1622,7 +1625,7 @@ void BKE_mesh_transform(Mesh *me, const float mat[4][4], bool do_keys)
       mul_m3_v3(m3, *lnors);
     }
   }
-  BKE_mesh_tag_coords_changed(me);
+  BKE_mesh_tag_positions_changed(me);
 }
 
 void BKE_mesh_translate(Mesh *me, const float offset[3], const bool do_keys)
@@ -1641,7 +1644,7 @@ void BKE_mesh_translate(Mesh *me, const float offset[3], const bool do_keys)
       }
     }
   }
-  BKE_mesh_tag_coords_changed_uniformly(me);
+  BKE_mesh_tag_positions_changed_uniformly(me);
 }
 
 void BKE_mesh_tessface_clear(Mesh *mesh)
@@ -1807,7 +1810,7 @@ void BKE_mesh_vert_coords_apply(Mesh *mesh, const float (*vert_coords)[3])
   for (const int i : positions.index_range()) {
     copy_v3_v3(positions[i], vert_coords[i]);
   }
-  BKE_mesh_tag_coords_changed(mesh);
+  BKE_mesh_tag_positions_changed(mesh);
 }
 
 void BKE_mesh_vert_coords_apply_with_mat4(Mesh *mesh,
@@ -1818,7 +1821,7 @@ void BKE_mesh_vert_coords_apply_with_mat4(Mesh *mesh,
   for (const int i : positions.index_range()) {
     mul_v3_m4v3(positions[i], mat, vert_coords[i]);
   }
-  BKE_mesh_tag_coords_changed(mesh);
+  BKE_mesh_tag_positions_changed(mesh);
 }
 
 static float (*ensure_corner_normal_layer(Mesh &mesh))[3]
@@ -1853,29 +1856,24 @@ void BKE_mesh_calc_normals_split_ex(Mesh *mesh,
       &mesh->ldata, CD_CUSTOMLOOPNORMAL, mesh->totloop);
   const bool *sharp_edges = static_cast<const bool *>(
       CustomData_get_layer_named(&mesh->edata, CD_PROP_BOOL, "sharp_edge"));
+  const bool *sharp_faces = static_cast<const bool *>(
+      CustomData_get_layer_named(&mesh->pdata, CD_PROP_BOOL, "sharp_face"));
 
-  const Span<float3> positions = mesh->vert_positions();
-  const Span<MEdge> edges = mesh->edges();
-  const Span<MPoly> polys = mesh->polys();
-  const Span<MLoop> loops = mesh->loops();
-
-  BKE_mesh_normals_loop_split(reinterpret_cast<const float(*)[3]>(positions.data()),
-                              BKE_mesh_vertex_normals_ensure(mesh),
-                              positions.size(),
-                              edges.data(),
-                              edges.size(),
-                              loops.data(),
-                              r_corner_normals,
-                              loops.size(),
-                              polys.data(),
-                              BKE_mesh_poly_normals_ensure(mesh),
-                              polys.size(),
-                              use_split_normals,
-                              split_angle,
-                              sharp_edges,
-                              nullptr,
-                              r_lnors_spacearr,
-                              clnors);
+  blender::bke::mesh::normals_calc_loop(
+      mesh->vert_positions(),
+      mesh->edges(),
+      mesh->polys(),
+      mesh->loops(),
+      {},
+      mesh->vert_normals(),
+      mesh->poly_normals(),
+      sharp_edges,
+      sharp_faces,
+      use_split_normals,
+      split_angle,
+      clnors,
+      nullptr,
+      {reinterpret_cast<float3 *>(r_corner_normals), mesh->totloop});
 }
 
 void BKE_mesh_calc_normals_split(Mesh *mesh)

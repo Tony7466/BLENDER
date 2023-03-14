@@ -22,7 +22,7 @@
 #include "DNA_ID.h"
 #include "DNA_anim_types.h"
 #include "DNA_collection_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_key_types.h"
 #include "DNA_node_types.h"
 #include "DNA_workspace_types.h"
@@ -44,7 +44,7 @@
 #include "BKE_bpath.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
-#include "BKE_gpencil.h"
+#include "BKE_gpencil_legacy.h"
 #include "BKE_idprop.h"
 #include "BKE_idtype.h"
 #include "BKE_key.h"
@@ -839,7 +839,7 @@ bool id_single_user(bContext *C, ID *id, PointerRNA *ptr, PropertyRNA *prop)
         RNA_property_update(C, ptr, prop);
 
         /* tag grease pencil data-block and disable onion */
-        if (GS(id->name) == ID_GD) {
+        if (GS(id->name) == ID_GD_LEGACY) {
           DEG_id_tag_update(id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
           DEG_id_tag_update(newid, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
           bGPdata *gpd = (bGPdata *)newid;
@@ -1810,7 +1810,7 @@ void BKE_library_make_local(Main *bmain,
   /* Step 4: We have to remap local usages of old (linked) ID to new (local)
    * ID in a separated loop,
    * as lbarray ordering is not enough to ensure us we did catch all dependencies
-   * (e.g. if making local a parent object before its child...). See T48907. */
+   * (e.g. if making local a parent object before its child...). See #48907. */
   /* TODO: This is now the biggest step by far (in term of processing time).
    * We may be able to gain here by using again main->relations mapping, but...
    * this implies BKE_libblock_remap & co to be able to update main->relations on the fly.
@@ -1828,7 +1828,7 @@ void BKE_library_make_local(Main *bmain,
 
     /* Special hack for groups... Thing is, since we can't instantiate them here, we need to
      * ensure they remain 'alive' (only instantiation is a real group 'user'... *sigh* See
-     * T49722. */
+     * #49722. */
     if (GS(id->name) == ID_GR && (id->tag & LIB_TAG_INDIRECT) != 0) {
       id_us_ensure_real(id->newid);
     }

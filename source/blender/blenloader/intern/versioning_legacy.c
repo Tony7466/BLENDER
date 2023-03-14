@@ -273,20 +273,19 @@ static void customdata_version_242(Mesh *me)
   int a, mtfacen, mcoln;
 
   if (!me->vdata.totlayer) {
-    CustomData_add_layer_with_existing_data(&me->vdata, CD_MVERT, me->totvert, me->mvert, NULL);
+    CustomData_add_layer_with_data(&me->vdata, CD_MVERT, me->mvert, me->totvert, NULL);
 
     if (me->dvert) {
-      CustomData_add_layer_with_existing_data(
-          &me->vdata, CD_MDEFORMVERT, me->totvert, me->dvert, NULL);
+      CustomData_add_layer_with_data(&me->vdata, CD_MDEFORMVERT, me->dvert, me->totvert, NULL);
     }
   }
 
   if (!me->edata.totlayer) {
-    CustomData_add_layer_with_existing_data(&me->edata, CD_MEDGE, me->totedge, me->medge, NULL);
+    CustomData_add_layer_with_data(&me->edata, CD_MEDGE, me->medge, me->totedge, NULL);
   }
 
   if (!me->fdata.totlayer) {
-    CustomData_add_layer_with_existing_data(&me->fdata, CD_MFACE, me->totface, me->mface, NULL);
+    CustomData_add_layer_with_data(&me->fdata, CD_MFACE, me->mface, me->totface, NULL);
 
     if (me->tface) {
       if (me->mcol) {
@@ -309,7 +308,7 @@ static void customdata_version_242(Mesh *me)
       me->tface = NULL;
     }
     else if (me->mcol) {
-      CustomData_add_layer_with_existing_data(&me->fdata, CD_MCOL, me->totface, me->mcol, NULL);
+      CustomData_add_layer_with_data(&me->fdata, CD_MCOL, me->mcol, me->totface, NULL);
     }
   }
 
@@ -1308,7 +1307,7 @@ void blo_do_versions_pre250(FileData *fd, Library *lib, Main *bmain)
         /* Cannot call stuff now (pointers!), done in #setup_app_data. */
         ob->id.recalc |= ID_RECALC_ALL;
 
-        /* new generic xray option */
+        /* New generic X-ray option. */
         arm = blo_do_versions_newlibadr(fd, lib, ob->data);
         enum { ARM_DRAWXRAY = (1 << 1) };
         if (arm->flag & ARM_DRAWXRAY) {

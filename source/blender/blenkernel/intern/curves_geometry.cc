@@ -17,11 +17,14 @@
 #include "BLI_math_rotation_legacy.hh"
 #include "BLI_task.hh"
 
+#include "BLO_read_write.h"
+
 #include "DNA_curves_types.h"
 
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
 #include "BKE_curves_utils.hh"
+#include "BKE_customdata.h"
 
 namespace blender::bke {
 
@@ -464,8 +467,12 @@ static void calculate_evaluated_offsets(const CurvesGeometry &curves,
   const VArray<int> resolution = curves.resolution();
   const VArray<bool> cyclic = curves.cyclic();
 
-  const VArraySpan<int8_t> handle_types_left{curves.handle_types_left()};
-  const VArraySpan<int8_t> handle_types_right{curves.handle_types_right()};
+  VArraySpan<int8_t> handle_types_left;
+  VArraySpan<int8_t> handle_types_right;
+  if (curves.has_curve_with_type(CURVE_TYPE_BEZIER)) {
+    handle_types_left = curves.handle_types_left();
+    handle_types_right = curves.handle_types_right();
+  }
 
   const VArray<int8_t> nurbs_orders = curves.nurbs_orders();
   const VArray<int8_t> nurbs_knots_modes = curves.nurbs_knots_modes();
@@ -600,17 +607,15 @@ void CurvesGeometry::ensure_nurbs_basis_cache() const
 Span<float3> CurvesGeometry::evaluated_positions() const
 {
   const bke::CurvesGeometryRuntime &runtime = *this->runtime;
+  if (this->is_single_type(CURVE_TYPE_POLY)) {
+    runtime.evaluated_position_cache.ensure(
+        [&](Vector<float3> &r_data) { r_data.clear_and_shrink(); });
+    return this->positions();
+  }
   this->ensure_nurbs_basis_cache();
-  runtime.evaluated_position_cache.ensure([&](CurvesGeometryRuntime::EvaluatedPositions &r_data) {
-    if (this->is_single_type(CURVE_TYPE_POLY)) {
-      r_data.span = this->positions();
-      r_data.vector.clear_and_shrink();
-      return;
-    }
-
-    r_data.vector.resize(this->evaluated_points_num());
-    r_data.span = r_data.vector;
-    MutableSpan<float3> evaluated_positions = r_data.vector;
+  runtime.evaluated_position_cache.ensure([&](Vector<float3> &r_data) {
+    r_data.resize(this->evaluated_points_num());
+    MutableSpan<float3> evaluated_positions = r_data;
 
     const OffsetIndices<int> points_by_curve = this->points_by_curve();
     const OffsetIndices<int> evaluated_points_by_curve = this->evaluated_points_by_curve();
@@ -667,7 +672,7 @@ Span<float3> CurvesGeometry::evaluated_positions() const
       }
     });
   });
-  return runtime.evaluated_position_cache.data().span;
+  return runtime.evaluated_position_cache.data();
 }
 
 Span<float3> CurvesGeometry::evaluated_tangents() const
@@ -776,6 +781,7 @@ static void evaluate_generic_data_for_curve(
 Span<float3> CurvesGeometry::evaluated_normals() const
 {
   const bke::CurvesGeometryRuntime &runtime = *this->runtime;
+  this->ensure_nurbs_basis_cache();
   runtime.evaluated_normal_cache.ensure([&](Vector<float3> &r_data) {
     const OffsetIndices<int> points_by_curve = this->points_by_curve();
     const OffsetIndices<int> evaluated_points_by_curve = this->evaluated_points_by_curve();
@@ -977,7 +983,6 @@ void CurvesGeometry::tag_normals_changed()
 }
 void CurvesGeometry::tag_radii_changed()
 {
-  this->runtime->bounds_cache.tag_dirty();
 }
 
 static void translate_positions(MutableSpan<float3> positions, const float3 &translation)
@@ -1060,19 +1065,8 @@ bool CurvesGeometry::bounds_min_max(float3 &min, float3 &max) const
     return false;
   }
 
-  this->runtime->bounds_cache.ensure([&](Bounds<float3> &r_bounds) {
-    const Span<float3> positions = this->evaluated_positions();
-    if (this->attributes().contains("radius")) {
-      const VArraySpan<float> radii = this->attributes().lookup<float>("radius");
-      Array<float> evaluated_radii(this->evaluated_points_num());
-      this->ensure_can_interpolate_to_evaluated();
-      this->interpolate_to_evaluated(radii, evaluated_radii.as_mutable_span());
-      r_bounds = *bounds::min_max_with_radii(positions, evaluated_radii.as_span());
-    }
-    else {
-      r_bounds = *bounds::min_max(positions);
-    }
-  });
+  this->runtime->bounds_cache.ensure(
+      [&](Bounds<float3> &r_bounds) { r_bounds = *bounds::min_max(this->evaluated_positions()); });
 
   const Bounds<float3> &bounds = this->runtime->bounds_cache.data();
   min = math::min(bounds.min, min);
@@ -1572,6 +1566,35 @@ GVArray CurvesGeometry::adapt_domain(const GVArray &varray,
 
   BLI_assert_unreachable();
   return {};
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name File reading/writing.
+ * \{ */
+
+void CurvesGeometry::blend_read(BlendDataReader &reader)
+{
+  CustomData_blend_read(&reader, &this->point_data, this->point_num);
+  CustomData_blend_read(&reader, &this->curve_data, this->curve_num);
+
+  BLO_read_int32_array(&reader, this->curve_num + 1, &this->curve_offsets);
+}
+
+void CurvesGeometry::blend_write(BlendWriter &writer, ID &id)
+{
+  Vector<CustomDataLayer, 16> point_layers;
+  Vector<CustomDataLayer, 16> curve_layers;
+  CustomData_blend_write_prepare(this->point_data, point_layers);
+  CustomData_blend_write_prepare(this->curve_data, curve_layers);
+
+  CustomData_blend_write(
+      &writer, &this->point_data, point_layers, this->point_num, CD_MASK_ALL, &id);
+  CustomData_blend_write(
+      &writer, &this->curve_data, curve_layers, this->curve_num, CD_MASK_ALL, &id);
+
+  BLO_write_int32_array(&writer, this->curve_num + 1, this->curve_offsets);
 }
 
 /** \} */

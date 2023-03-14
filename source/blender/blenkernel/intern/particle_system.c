@@ -3309,7 +3309,7 @@ static void hair_create_input_mesh(ParticleSimulationData *sim,
   ParticleSystem *psys = sim->psys;
   ParticleSettings *part = psys->part;
   Mesh *mesh;
-  MEdge *medge;
+  MEdge *edge;
   MDeformVert *dvert;
   HairKey *key;
   PARTICLE_P;
@@ -3320,10 +3320,10 @@ static void hair_create_input_mesh(ParticleSimulationData *sim,
 
   mesh = *r_mesh;
   if (!mesh) {
-    *r_mesh = mesh = BKE_mesh_new_nomain(totpoint, totedge, 0, 0, 0);
+    *r_mesh = mesh = BKE_mesh_new_nomain(totpoint, totedge, 0, 0);
   }
   float(*positions)[3] = BKE_mesh_vert_positions_for_write(mesh);
-  medge = BKE_mesh_edges_for_write(mesh);
+  edge = BKE_mesh_edges_for_write(mesh);
   dvert = BKE_mesh_deform_verts_for_write(mesh);
 
   if (psys->clmd->hairdata == NULL) {
@@ -3390,13 +3390,13 @@ static void hair_create_input_mesh(ParticleSimulationData *sim,
           sub_v3_v3(positions[vert_index], co_next);
           mul_m4_v3(hairmat, positions[vert_index]);
 
-          medge->v1 = pa->hair_index - 1;
-          medge->v2 = pa->hair_index;
+          edge->v1 = pa->hair_index - 1;
+          edge->v2 = pa->hair_index;
 
           dvert = hair_set_pinning(dvert, 1.0f);
 
           vert_index++;
-          medge++;
+          edge++;
         }
 
         /* store root transform in cloth data */
@@ -3411,8 +3411,8 @@ static void hair_create_input_mesh(ParticleSimulationData *sim,
         mul_m4_v3(hairmat, positions[vert_index]);
 
         if (k) {
-          medge->v1 = pa->hair_index + k - 1;
-          medge->v2 = pa->hair_index + k;
+          edge->v1 = pa->hair_index + k - 1;
+          edge->v2 = pa->hair_index + k;
         }
 
         /* roots and disabled hairs should be 1.0, the rest can be anything from 0.0 to 1.0 */
@@ -3425,7 +3425,7 @@ static void hair_create_input_mesh(ParticleSimulationData *sim,
 
         vert_index++;
         if (k) {
-          medge++;
+          edge++;
         }
       }
 
@@ -3536,12 +3536,12 @@ static void hair_step(ParticleSimulationData *sim, float cfra, const bool use_re
     }
   }
 
-  /* dynamics with cloth simulation, psys->particles can be NULL with 0 particles T25519. */
+  /* dynamics with cloth simulation, psys->particles can be NULL with 0 particles #25519. */
   if (psys->part->type == PART_HAIR && psys->flag & PSYS_HAIR_DYNAMICS && psys->particles) {
     do_hair_dynamics(sim);
   }
 
-  /* following lines were removed r29079 but cause bug T22811, see report for details */
+  /* following lines were removed r29079 but cause bug #22811, see report for details */
   psys_update_effectors(sim);
   psys_update_path_cache(sim, cfra, use_render_params);
 

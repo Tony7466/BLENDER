@@ -17,7 +17,7 @@
 #include "BKE_editmesh.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_modifier.h"
 #include "BKE_paint.h"
 #include "BKE_report.h"
@@ -285,11 +285,11 @@ static int paint_mask_extract_exec(bContext *C, wmOperator *op)
   params.add_solidify = RNA_boolean_get(op->ptr, "add_solidify");
 
   /* Push an undo step prior to extraction.
-   * Note: A second push happens after the operator due to
+   * NOTE: A second push happens after the operator due to
    * the OPTYPE_UNDO flag; having an initial undo step here
    * is just needed to preserve the active object pointer.
    *
-   * Fixes T103261.
+   * Fixes #103261.
    */
   ED_undo_push_op(C, op);
 

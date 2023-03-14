@@ -13,7 +13,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -31,7 +31,7 @@
 #include "BKE_customdata.h"
 #include "BKE_data_transfer.h"
 #include "BKE_deform.h" /* own include */
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.h"
 #include "BKE_object.h"
 #include "BKE_object_deform.h"
@@ -440,7 +440,7 @@ bool BKE_object_supports_vertex_groups(const Object *ob)
     return false;
   }
 
-  return ELEM(GS(id->name), ID_ME, ID_LT, ID_GD);
+  return ELEM(GS(id->name), ID_ME, ID_LT, ID_GD_LEGACY);
 }
 
 const ListBase *BKE_id_defgroup_list_get(const ID *id)
@@ -454,7 +454,7 @@ const ListBase *BKE_id_defgroup_list_get(const ID *id)
       const Lattice *lt = (const Lattice *)id;
       return &lt->vertex_group_names;
     }
-    case ID_GD: {
+    case ID_GD_LEGACY: {
       const bGPdata *gpd = (const bGPdata *)id;
       return &gpd->vertex_group_names;
     }
@@ -477,7 +477,7 @@ static const int *object_defgroup_active_index_get_p(const Object *ob)
       const Lattice *lattice = (const Lattice *)ob->data;
       return &lattice->vertex_group_active_index;
     }
-    case OB_GPENCIL: {
+    case OB_GPENCIL_LEGACY: {
       const bGPdata *gpd = (const bGPdata *)ob->data;
       return &gpd->vertex_group_active_index;
     }
@@ -1059,9 +1059,9 @@ void BKE_defvert_extract_vgroup_to_edgeweights(const MDeformVert *dvert,
         dvert, defgroup, verts_num, invert_vgroup, tmp_weights);
 
     while (i--) {
-      const MEdge *me = &edges[i];
+      const MEdge *edge = &edges[i];
 
-      r_weights[i] = (tmp_weights[me->v1] + tmp_weights[me->v2]) * 0.5f;
+      r_weights[i] = (tmp_weights[edge->v1] + tmp_weights[edge->v2]) * 0.5f;
     }
 
     MEM_freeN(tmp_weights);
@@ -1119,15 +1119,15 @@ void BKE_defvert_extract_vgroup_to_polyweights(const MDeformVert *dvert,
         dvert, defgroup, verts_num, invert_vgroup, tmp_weights);
 
     while (i--) {
-      const MPoly *mp = &polys[i];
-      const MLoop *ml = &loops[mp->loopstart];
-      int j = mp->totloop;
+      const MPoly &poly = polys[i];
+      const MLoop *ml = &loops[poly.loopstart];
+      int j = poly.totloop;
       float w = 0.0f;
 
       for (; j--; ml++) {
         w += tmp_weights[ml->v];
       }
-      r_weights[i] = w / float(mp->totloop);
+      r_weights[i] = w / float(poly.totloop);
     }
 
     MEM_freeN(tmp_weights);

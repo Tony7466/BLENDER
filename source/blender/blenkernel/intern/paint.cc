@@ -11,7 +11,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_brush_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
@@ -38,7 +38,7 @@
 #include "BKE_context.h"
 #include "BKE_crazyspace.h"
 #include "BKE_deform.h"
-#include "BKE_gpencil.h"
+#include "BKE_gpencil_legacy.h"
 #include "BKE_idtype.h"
 #include "BKE_image.h"
 #include "BKE_key.h"
@@ -46,7 +46,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.h"
 #include "BKE_mesh_runtime.h"
 #include "BKE_modifier.h"
@@ -234,6 +234,7 @@ const uchar PAINT_CURSOR_SCULPT[3] = {255, 100, 100};
 const uchar PAINT_CURSOR_VERTEX_PAINT[3] = {255, 255, 255};
 const uchar PAINT_CURSOR_WEIGHT_PAINT[3] = {200, 200, 255};
 const uchar PAINT_CURSOR_TEXTURE_PAINT[3] = {255, 255, 255};
+const uchar PAINT_CURSOR_SCULPT_CURVES[3] = {255, 100, 100};
 
 static ePaintOverlayControlFlags overlay_flags = (ePaintOverlayControlFlags)0;
 
@@ -1424,7 +1425,7 @@ void BKE_sculptsession_bm_to_me(Object *ob, bool reorder)
     sculptsession_bm_to_me_update_data_only(ob, reorder);
 
     /* Ensure the objects evaluated mesh doesn't hold onto arrays
-     * now realloc'd in the mesh T34473. */
+     * now realloc'd in the mesh #34473. */
     DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
   }
 }
@@ -1695,16 +1696,16 @@ static void sculpt_update_object(
     /* These are assigned to the base mesh in Multires. This is needed because Face Sets operators
      * and tools use the Face Sets data from the base mesh when Multires is active. */
     ss->vert_positions = BKE_mesh_vert_positions_for_write(me);
-    ss->mpoly = BKE_mesh_polys(me);
-    ss->mloop = BKE_mesh_loops(me);
+    ss->polys = me->polys().data();
+    ss->mloop = me->loops().data();
   }
   else {
     ss->totvert = me->totvert;
     ss->totpoly = me->totpoly;
     ss->totfaces = me->totpoly;
     ss->vert_positions = BKE_mesh_vert_positions_for_write(me);
-    ss->mpoly = BKE_mesh_polys(me);
-    ss->mloop = BKE_mesh_loops(me);
+    ss->polys = me->polys().data();
+    ss->mloop = me->loops().data();
     ss->multires.active = false;
     ss->multires.modifier = nullptr;
     ss->multires.level = 0;
@@ -1764,8 +1765,8 @@ static void sculpt_update_object(
   if (need_pmap && ob->type == OB_MESH && !ss->pmap) {
     BKE_mesh_vert_poly_map_create(&ss->pmap,
                                   &ss->pmap_mem,
-                                  BKE_mesh_polys(me),
-                                  BKE_mesh_loops(me),
+                                  me->polys().data(),
+                                  me->loops().data(),
                                   me->totvert,
                                   me->totpoly,
                                   me->totloop);
@@ -2014,22 +2015,22 @@ int BKE_sculpt_mask_layers_ensure(Depsgraph *depsgraph,
     /* if vertices already have mask, copy into multires data */
     if (paint_mask) {
       for (i = 0; i < me->totpoly; i++) {
-        const MPoly *p = &polys[i];
+        const MPoly &poly = polys[i];
         float avg = 0;
 
         /* mask center */
-        for (j = 0; j < p->totloop; j++) {
-          const MLoop *l = &loops[p->loopstart + j];
+        for (j = 0; j < poly.totloop; j++) {
+          const MLoop *l = &loops[poly.loopstart + j];
           avg += paint_mask[l->v];
         }
-        avg /= float(p->totloop);
+        avg /= float(poly.totloop);
 
         /* fill in multires mask corner */
-        for (j = 0; j < p->totloop; j++) {
-          GridPaintMask *gpm = &gmask[p->loopstart + j];
-          const MLoop *l = &loops[p->loopstart + j];
-          const MLoop *prev = ME_POLY_LOOP_PREV(loops, p, j);
-          const MLoop *next = ME_POLY_LOOP_NEXT(loops, p, j);
+        for (j = 0; j < poly.totloop; j++) {
+          GridPaintMask *gpm = &gmask[poly.loopstart + j];
+          const MLoop *l = &loops[poly.loopstart + j];
+          const MLoop *prev = ME_POLY_LOOP_PREV(loops, &poly, j);
+          const MLoop *next = ME_POLY_LOOP_NEXT(loops, &poly, j);
 
           gpm->data[0] = avg;
           gpm->data[1] = (paint_mask[l->v] + paint_mask[next->v]) * 0.5f;
@@ -2187,12 +2188,7 @@ static PBVH *build_pbvh_from_regular_mesh(Object *ob, Mesh *me_eval_deform, bool
   MLoopTri *looptri = static_cast<MLoopTri *>(
       MEM_malloc_arrayN(looptris_num, sizeof(*looptri), __func__));
 
-  BKE_mesh_recalc_looptri(loops.data(),
-                          polys.data(),
-                          reinterpret_cast<const float(*)[3]>(positions.data()),
-                          me->totloop,
-                          me->totpoly,
-                          looptri);
+  blender::bke::mesh::looptris_calc(positions, polys, loops, {looptri, looptris_num});
 
   BKE_pbvh_build_mesh(pbvh,
                       me,
@@ -2265,6 +2261,8 @@ PBVH *BKE_sculpt_object_pbvh_ensure(Depsgraph *depsgraph, Object *ob)
 
     return pbvh;
   }
+
+  ob->sculpt->islands_valid = false;
 
   if (ob->sculpt->bm != nullptr) {
     /* Sculpting on a BMesh (dynamic-topology) gets a special PBVH. */
@@ -2716,6 +2714,11 @@ static SculptAttribute *sculpt_attribute_ensure_ex(Object *ob,
   if (attr) {
     sculpt_attr_update(ob, attr);
 
+    /* Since "stroke_only" is not a CustomData flag we have
+     * to sync its parameter setting manually. Fixes #104618.
+     */
+    attr->params.stroke_only = params->stroke_only;
+
     return attr;
   }
 
@@ -2795,8 +2798,7 @@ static void sculpt_attribute_update_refs(Object *ob)
 {
   SculptSession *ss = ob->sculpt;
 
-  /* run twice, in case sculpt_attr_update had to recreate a layer and
-     messed up the bmesh offsets. */
+  /* Run twice, in case sculpt_attr_update had to recreate a layer and messed up #BMesh offsets. */
   for (int i = 0; i < 2; i++) {
     for (int j = 0; j < SCULPT_MAX_ATTRIBUTES; j++) {
       SculptAttribute *attr = ss->temp_attributes + j;

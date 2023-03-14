@@ -30,7 +30,7 @@
 #include "BKE_global.h"
 #include "BKE_lib_id.h"
 #include "BKE_mball_tessellate.h" /* own include */
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_object.h"
 #include "BKE_scene.h"
 
@@ -1463,13 +1463,12 @@ Mesh *BKE_mball_polygonize(Depsgraph *depsgraph, Scene *scene, Object *ob)
   Mesh *mesh = (Mesh *)BKE_id_new_nomain(ID_ME, ((ID *)ob->data)->name + 2);
 
   mesh->totvert = int(process.curvertex);
-  CustomData_add_layer_named_with_existing_data(
-      &mesh->vdata, CD_PROP_FLOAT3, "position", mesh->totvert, process.co, nullptr);
-
+  CustomData_add_layer_named_with_data(
+      &mesh->vdata, CD_PROP_FLOAT3, process.co, mesh->totvert, "position", nullptr);
   process.co = nullptr;
 
   mesh->totpoly = int(process.curindex);
-  MPoly *mpoly = static_cast<MPoly *>(
+  MPoly *polys = static_cast<MPoly *>(
       CustomData_add_layer(&mesh->pdata, CD_MPOLY, CD_CONSTRUCT, mesh->totpoly));
   MLoop *mloop = static_cast<MLoop *>(
       CustomData_add_layer(&mesh->ldata, CD_MLOOP, CD_CONSTRUCT, mesh->totpoly * 4));
@@ -1479,9 +1478,8 @@ Mesh *BKE_mball_polygonize(Depsgraph *depsgraph, Scene *scene, Object *ob)
     const int *indices = process.indices[i];
 
     const int count = indices[2] != indices[3] ? 4 : 3;
-    mpoly[i].loopstart = loop_offset;
-    mpoly[i].totloop = count;
-    mpoly[i].flag = ME_SMOOTH;
+    polys[i].loopstart = loop_offset;
+    polys[i].totloop = count;
 
     mloop[loop_offset].v = uint32_t(indices[0]);
     mloop[loop_offset + 1].v = uint32_t(indices[1]);
@@ -1497,11 +1495,10 @@ Mesh *BKE_mball_polygonize(Depsgraph *depsgraph, Scene *scene, Object *ob)
   for (int i = 0; i < mesh->totvert; i++) {
     normalize_v3(process.no[i]);
   }
-  memcpy(BKE_mesh_vertex_normals_for_write(mesh),
-         process.no,
-         sizeof(float[3]) * size_t(mesh->totvert));
+  memcpy(
+      BKE_mesh_vert_normals_for_write(mesh), process.no, sizeof(float[3]) * size_t(mesh->totvert));
   MEM_freeN(process.no);
-  BKE_mesh_vertex_normals_clear_dirty(mesh);
+  BKE_mesh_vert_normals_clear_dirty(mesh);
 
   mesh->totloop = loop_offset;
 

@@ -7,7 +7,7 @@
 #include <stdlib.h>
 
 #include "DNA_brush_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_material_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -376,7 +376,7 @@ static EnumPropertyItem rna_enum_gpencil_brush_vertex_icons_items[] = {
 
 #  include "BKE_brush.h"
 #  include "BKE_colorband.h"
-#  include "BKE_gpencil.h"
+#  include "BKE_gpencil_legacy.h"
 #  include "BKE_icons.h"
 #  include "BKE_material.h"
 #  include "BKE_paint.h"
@@ -2106,6 +2106,12 @@ static void rna_def_curves_sculpt_options(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, density_mode_items);
   RNA_def_property_ui_text(
       prop, "Density Mode", "Determines whether the brush adds or removes curves");
+
+  prop = RNA_def_property(srna, "curve_parameter_falloff", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "CurveMapping");
+  RNA_def_property_ui_text(prop,
+                           "Curve Parameter Falloff",
+                           "Falloff that is applied from the tip to the root of each curve");
 }
 
 static void rna_def_brush(BlenderRNA *brna)
@@ -2550,6 +2556,7 @@ static void rna_def_brush(BlenderRNA *brna)
   prop = RNA_def_property(srna, "curve_preset", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, brush_curve_preset_items);
   RNA_def_property_ui_text(prop, "Curve Preset", "");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_CURVES); /* Abusing id_curves :/ */
   RNA_def_property_update(prop, 0, "rna_Brush_update");
 
   prop = RNA_def_property(srna, "deform_target", PROP_ENUM, PROP_NONE);
@@ -2897,6 +2904,14 @@ static void rna_def_brush(BlenderRNA *brna)
   RNA_def_property_float_default(prop, 0);
   RNA_def_property_range(prop, -1, 1);
   RNA_def_property_ui_text(prop, "Texture Sample Bias", "Value added to texture samples");
+  RNA_def_property_update(prop, 0, "rna_Brush_update");
+
+  prop = RNA_def_property(srna, "use_color_as_displacement", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "flag2", BRUSH_USE_COLOR_AS_DISPLACEMENT);
+  RNA_def_property_ui_text(prop,
+                           "Vector Displacement",
+                           "Handles each pixel color as individual vector for displacement. Works "
+                           "only with area plane mapping");
   RNA_def_property_update(prop, 0, "rna_Brush_update");
 
   prop = RNA_def_property(srna, "normal_weight", PROP_FLOAT, PROP_FACTOR);

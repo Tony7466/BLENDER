@@ -1704,7 +1704,7 @@ static void rigidbody_update_sim_ob(Depsgraph *depsgraph, Object *ob, RigidBodyO
     }
   }
 
-  /* Make transformed objects temporarily kinmatic
+  /* Make transformed objects temporarily kinematic
    * so that they can be moved by the user during simulation. */
   if (is_selected && (G.moving & G_TRANSFORM_OBJ)) {
     RB_body_set_kinematic_state(rbo->shared->physics_object, true);
@@ -1728,7 +1728,7 @@ static void rigidbody_update_simulation(Depsgraph *depsgraph,
 {
   /* update world */
   /* Note physics_world can get NULL when undoing the deletion of the last object in it (see
-   * T70667). */
+   * #70667). */
   if (rebuild || rbw->shared->physics_world == NULL) {
     BKE_rigidbody_validate_sim_world(scene, rbw, rebuild);
     /* We have rebuilt the world so we need to make sure the rest is rebuilt as well. */
@@ -2275,6 +2275,9 @@ void BKE_rigidbody_do_simulation(Depsgraph *depsgraph, Scene *scene, float ctime
 #  if defined(__GNUC__) || defined(__clang__)
 #    pragma GCC diagnostic push
 #    pragma GCC diagnostic ignored "-Wunused-parameter"
+#  elif defined(_MSC_VER)
+/* Suppress unreferenced formal parameter warning. */
+#    pragma warning(disable : 4100)
 #  endif
 
 void BKE_rigidbody_object_copy(Main *bmain, Object *ob_dst, const Object *ob_src, const int flag)

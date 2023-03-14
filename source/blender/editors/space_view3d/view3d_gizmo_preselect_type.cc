@@ -22,7 +22,7 @@
 #include "BKE_editmesh_cache.h"
 #include "BKE_global.h"
 #include "BKE_layer.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -46,7 +46,7 @@
 
 /**
  * Check if drawing should be performed, clear the pre-selection in the case it's disabled.
- * Without this, the gizmo would be visible while transforming. See T92954.
+ * Without this, the gizmo would be visible while transforming. See #92954.
  *
  * NOTE(@ideasman42): This is a workaround for the gizmo system, since typically poll
  * would be used for this purpose. The problem with using poll is once the gizmo is visible again

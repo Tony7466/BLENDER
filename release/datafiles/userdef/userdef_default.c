@@ -101,7 +101,11 @@ const UserDef U_default = {
     .gp_euclideandist = 2,
     .gp_eraser = 25,
     .gp_settings = 0,
+#ifdef __APPLE__
+    .gpu_backend = GPU_BACKEND_METAL,
+#else
     .gpu_backend = GPU_BACKEND_OPENGL,
+#endif
 
     /** Initialized by: #BKE_studiolight_default. */
     .light_param = {{0}},
@@ -145,7 +149,7 @@ const UserDef U_default = {
     .ndof_flag = (NDOF_MODE_ORBIT | NDOF_LOCK_HORIZON | NDOF_SHOULD_PAN | NDOF_SHOULD_ZOOM |
                   NDOF_SHOULD_ROTATE |
                   /* Software from the driver authors follows this convention
-                   * so invert this by default, see: T67579. */
+                   * so invert this by default, see: #67579. */
                   NDOF_ROTX_INVERT_AXIS | NDOF_ROTY_INVERT_AXIS | NDOF_ROTZ_INVERT_AXIS |
                   NDOF_PANX_INVERT_AXIS | NDOF_PANY_INVERT_AXIS | NDOF_PANZ_INVERT_AXIS |
                   NDOF_ZOOM_INVERT | NDOF_CAMERA_PAN_ZOOM),
@@ -153,6 +157,7 @@ const UserDef U_default = {
     .glalphaclip = 0.004,
     .autokey_mode = (AUTOKEY_MODE_NORMAL & ~AUTOKEY_ON),
     .autokey_flag = AUTOKEY_FLAG_XYZ2RGB,
+    .animation_flag = USER_ANIM_HIGH_QUALITY_DRAWING,
     .text_render = 0,
     .navigation_mode = VIEW_NAVIGATION_WALK,
     .view_rotate_sensitivity_turntable = DEG2RAD(0.4),

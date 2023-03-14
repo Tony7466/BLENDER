@@ -253,11 +253,20 @@ static void gather_search_link_ops_for_all_assets(const bContext &C,
         C, node_tree, socket, library_ref, true, search_link_ops);
   }
 
-  AssetLibraryReference library_ref{};
-  library_ref.custom_library_index = -1;
-  library_ref.type = ASSET_LIBRARY_LOCAL;
-  gather_search_link_ops_for_asset_library(
-      C, node_tree, socket, library_ref, false, search_link_ops);
+  {
+    AssetLibraryReference library_ref{};
+    library_ref.custom_library_index = -1;
+    library_ref.type = ASSET_LIBRARY_ESSENTIALS;
+    gather_search_link_ops_for_asset_library(
+        C, node_tree, socket, library_ref, true, search_link_ops);
+  }
+  {
+    AssetLibraryReference library_ref{};
+    library_ref.custom_library_index = -1;
+    library_ref.type = ASSET_LIBRARY_LOCAL;
+    gather_search_link_ops_for_asset_library(
+        C, node_tree, socket, library_ref, false, search_link_ops);
+  }
 }
 
 /**
@@ -300,7 +309,7 @@ static void gather_socket_link_operations(const bContext &C,
         continue;
       }
       search_link_ops.append(
-          {std::string(IFACE_("Group Input ")) + UI_MENU_ARROW_SEP + interface_socket->name,
+          {std::string(IFACE_("Group Input")) + " " + UI_MENU_ARROW_SEP + interface_socket->name,
            [interface_socket](nodes::LinkSearchOpParams &params) {
              add_existing_group_input_fn(params, *interface_socket);
            },

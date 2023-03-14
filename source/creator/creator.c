@@ -39,7 +39,7 @@
 #include "BKE_context.h"
 #include "BKE_cpp_types.h"
 #include "BKE_global.h"
-#include "BKE_gpencil_modifier.h"
+#include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_idtype.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
@@ -239,12 +239,12 @@ void *gmp_alloc(size_t size)
 {
   return scalable_malloc(size);
 }
-void *gmp_realloc(void *ptr, size_t old_size, size_t new_size)
+void *gmp_realloc(void *ptr, size_t UNUSED(old_size), size_t new_size)
 {
   return scalable_realloc(ptr, new_size);
 }
 
-void gmp_free(void *ptr, size_t size)
+void gmp_free(void *ptr, size_t UNUSED(size))
 {
   scalable_free(ptr);
 }
@@ -301,7 +301,7 @@ int main(int argc,
   /* Un-buffered `stdout` makes `stdout` and `stderr` better synchronized, and helps
    * when stepping through code in a debugger (prints are immediately
    * visible). However disabling buffering causes lock contention on windows
-   * see T76767 for details, since this is a debugging aid, we do not enable
+   * see #76767 for details, since this is a debugging aid, we do not enable
    * the un-buffered behavior for release builds. */
 #ifndef NDEBUG
   setvbuf(stdout, NULL, _IONBF, 0);

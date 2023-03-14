@@ -147,7 +147,7 @@ struct LayerTypeInfo {
    * \note in some cases \a dest pointer is in \a sources
    *       so all functions have to take this into account and delay
    *       applying changes while reading from sources.
-   *       See bug T32395 - Campbell.
+   *       See bug #32395 - Campbell.
    */
   cd_interp interp;
 
@@ -1337,8 +1337,6 @@ static void layerCopyValue_propcol(const void *source,
       memcpy(tmp_col, m1->color, sizeof(tmp_col));
     }
     blend_color_interpolate_float(m2->color, m2->color, tmp_col, mixfactor);
-
-    copy_v4_v4(m2->color, m1->color);
   }
 }
 
@@ -2341,7 +2339,7 @@ CustomData CustomData_shallow_copy_remove_non_bmesh_attributes(const CustomData 
 {
   Vector<CustomDataLayer> dst_layers;
   for (const CustomDataLayer &layer : Span<CustomDataLayer>{src->layers, src->totlayer}) {
-    if (attribute_stored_in_bmesh_flag(layer.name)) {
+    if (BM_attribute_stored_in_bmesh_builtin(layer.name)) {
       continue;
     }
     if (!(mask & CD_TYPE_AS_MASK(layer.type))) {
@@ -2931,11 +2929,11 @@ void *CustomData_add_layer(CustomData *data,
   return nullptr;
 }
 
-const void *CustomData_add_layer_with_existing_data(CustomData *data,
-                                                    const eCustomDataType type,
-                                                    const int totelem,
-                                                    void *layer_data,
-                                                    const bCopyOnWrite *cow)
+const void *CustomData_add_layer_with_data(CustomData *data,
+                                           const eCustomDataType type,
+                                           void *layer_data,
+                                           const int totelem,
+                                           const bCopyOnWrite *cow)
 {
   const LayerTypeInfo *typeInfo = layerType_getInfo(type);
 
@@ -2966,12 +2964,12 @@ void *CustomData_add_layer_named(CustomData *data,
   return nullptr;
 }
 
-const void *CustomData_add_layer_named_with_existing_data(CustomData *data,
-                                                          eCustomDataType type,
-                                                          const char *name,
-                                                          int totelem,
-                                                          void *layer_data,
-                                                          const bCopyOnWrite *cow)
+const void *CustomData_add_layer_named_with_data(CustomData *data,
+                                                 eCustomDataType type,
+                                                 void *layer_data,
+                                                 int totelem,
+                                                 const char *name,
+                                                 const bCopyOnWrite *cow)
 {
   CustomDataLayer *layer = customData_add_layer__internal(
       data, type, CD_ASSIGN, layer_data, cow, totelem, name);
@@ -3003,7 +3001,7 @@ void *CustomData_add_layer_anonymous(CustomData *data,
   return layer->data;
 }
 
-const void *CustomData_add_layer_anonymous_with_existing_data(
+const void *CustomData_add_layer_anonymous_with_data(
     CustomData *data,
     const eCustomDataType type,
     const AnonymousAttributeIDHandle *anonymous_id,
@@ -3116,6 +3114,19 @@ int CustomData_number_of_layers(const CustomData *data, const int type)
 
   for (int i = 0; i < data->totlayer; i++) {
     if (data->layers[i].type == type) {
+      number++;
+    }
+  }
+
+  return number;
+}
+
+int CustomData_number_of_anonymous_layers(const CustomData *data, const int type)
+{
+  int number = 0;
+
+  for (int i = 0; i < data->totlayer; i++) {
+    if (data->layers[i].type == type && data->layers[i].anonymous_id != nullptr) {
       number++;
     }
   }
@@ -3751,7 +3762,7 @@ void CustomData_bmesh_free_block_data(CustomData *data, void *block)
   }
 }
 
-static void CustomData_bmesh_alloc_block(CustomData *data, void **block)
+void CustomData_bmesh_alloc_block(CustomData *data, void **block)
 {
   if (*block) {
     CustomData_bmesh_free_block(data, block);
@@ -3784,17 +3795,21 @@ void CustomData_bmesh_free_block_data_exclude_by_type(CustomData *data,
   }
 }
 
-static void CustomData_bmesh_set_default_n(CustomData *data, void **block, const int n)
+void CustomData_data_set_default_value(const int type, void *elem)
 {
-  int offset = data->layers[n].offset;
-  const LayerTypeInfo *typeInfo = layerType_getInfo(data->layers[n].type);
-
+  const LayerTypeInfo *typeInfo = layerType_getInfo(type);
   if (typeInfo->set_default_value) {
-    typeInfo->set_default_value(POINTER_OFFSET(*block, offset), 1);
+    typeInfo->set_default_value(elem, 1);
   }
   else {
-    memset(POINTER_OFFSET(*block, offset), 0, typeInfo->size);
+    memset(elem, 0, typeInfo->size);
   }
+}
+
+static void CustomData_bmesh_set_default_n(CustomData *data, void **block, const int n)
+{
+  const int offset = data->layers[n].offset;
+  CustomData_data_set_default_value(data->layers[n].type, POINTER_OFFSET(*block, offset));
 }
 
 void CustomData_bmesh_set_default(CustomData *data, void **block)
@@ -3974,8 +3989,8 @@ void CustomData_data_copy_value(int type, const void *source, void *dest)
     return;
   }
 
-  if (typeInfo->copyvalue) {
-    typeInfo->copyvalue(source, dest, CDT_MIX_NOMIX, 0.0f);
+  if (typeInfo->copy) {
+    typeInfo->copy(source, dest, 1);
   }
   else {
     memcpy(dest, source, typeInfo->size);
@@ -4147,115 +4162,6 @@ void CustomData_bmesh_interp(CustomData *data,
   }
   if (!ELEM(default_weights, nullptr, default_weights_buf)) {
     MEM_freeN(default_weights);
-  }
-}
-
-void CustomData_to_bmesh_block(const CustomData *source,
-                               CustomData *dest,
-                               int src_index,
-                               void **dest_block,
-                               bool use_default_init)
-{
-  if (*dest_block == nullptr) {
-    CustomData_bmesh_alloc_block(dest, dest_block);
-  }
-
-  /* copies a layer at a time */
-  int dest_i = 0;
-  for (int src_i = 0; src_i < source->totlayer; src_i++) {
-
-    /* find the first dest layer with type >= the source type
-     * (this should work because layers are ordered by type)
-     */
-    while (dest_i < dest->totlayer && dest->layers[dest_i].type < source->layers[src_i].type) {
-      if (use_default_init) {
-        CustomData_bmesh_set_default_n(dest, dest_block, dest_i);
-      }
-      dest_i++;
-    }
-
-    /* if there are no more dest layers, we're done */
-    if (dest_i >= dest->totlayer) {
-      break;
-    }
-
-    /* if we found a matching layer, copy the data */
-    if (dest->layers[dest_i].type == source->layers[src_i].type) {
-      int offset = dest->layers[dest_i].offset;
-      const void *src_data = source->layers[src_i].data;
-      void *dest_data = POINTER_OFFSET(*dest_block, offset);
-
-      const LayerTypeInfo *typeInfo = layerType_getInfo(dest->layers[dest_i].type);
-      const size_t src_offset = size_t(src_index) * typeInfo->size;
-
-      if (typeInfo->copy) {
-        typeInfo->copy(POINTER_OFFSET(src_data, src_offset), dest_data, 1);
-      }
-      else {
-        memcpy(dest_data, POINTER_OFFSET(src_data, src_offset), typeInfo->size);
-      }
-
-      /* if there are multiple source & dest layers of the same type,
-       * we don't want to copy all source layers to the same dest, so
-       * increment dest_i
-       */
-      dest_i++;
-    }
-  }
-
-  if (use_default_init) {
-    while (dest_i < dest->totlayer) {
-      CustomData_bmesh_set_default_n(dest, dest_block, dest_i);
-      dest_i++;
-    }
-  }
-}
-
-void CustomData_from_bmesh_block(const CustomData *source,
-                                 CustomData *dest,
-                                 void *src_block,
-                                 int dest_index)
-{
-  /* copies a layer at a time */
-  int dest_i = 0;
-  for (int src_i = 0; src_i < source->totlayer; src_i++) {
-    if (source->layers[src_i].flag & CD_FLAG_NOCOPY) {
-      continue;
-    }
-
-    /* find the first dest layer with type >= the source type
-     * (this should work because layers are ordered by type)
-     */
-    while (dest_i < dest->totlayer && dest->layers[dest_i].type < source->layers[src_i].type) {
-      dest_i++;
-    }
-
-    /* if there are no more dest layers, we're done */
-    if (dest_i >= dest->totlayer) {
-      return;
-    }
-
-    /* if we found a matching layer, copy the data */
-    if (dest->layers[dest_i].type == source->layers[src_i].type) {
-      const LayerTypeInfo *typeInfo = layerType_getInfo(dest->layers[dest_i].type);
-      int offset = source->layers[src_i].offset;
-      const void *src_data = POINTER_OFFSET(src_block, offset);
-      void *dst_data = POINTER_OFFSET(dest->layers[dest_i].data,
-                                      size_t(dest_index) * typeInfo->size);
-
-      if (typeInfo->copy) {
-        typeInfo->copy(src_data, dst_data, 1);
-      }
-      else {
-        memcpy(dst_data, src_data, typeInfo->size);
-      }
-
-      /* if there are multiple source & dest layers of the same type,
-       * we don't want to copy all source layers to the same dest, so
-       * increment dest_i
-       */
-      dest_i++;
-    }
   }
 }
 
@@ -4439,7 +4345,7 @@ bool CustomData_verify_versions(CustomData *data, const int index)
     }
     /* This is a preemptive fix for cases that should not happen
      * (layers that should not be written in .blend files),
-     * but can happen due to bugs (see e.g. T62318).
+     * but can happen due to bugs (see e.g. #62318).
      * Also for forward compatibility, in future,
      * we may put into `.blend` file some currently un-written data types,
      * this should cover that case as well.
@@ -4480,9 +4386,9 @@ static bool CustomData_layer_ensure_data_exists(CustomDataLayer *layer, size_t c
 
   switch (layer->type) {
     /* When more instances of corrupt files are found, add them here. */
-    case CD_PROP_BOOL:   /* See T84935. */
-    case CD_MLOOPUV:     /* See T90620. */
-    case CD_PROP_FLOAT2: /* See T90620. */
+    case CD_PROP_BOOL:   /* See #84935. */
+    case CD_MLOOPUV:     /* See #90620. */
+    case CD_PROP_FLOAT2: /* See #90620. */
       layer->data = MEM_calloc_arrayN(count, typeInfo->size, layerType_getName(layer->type));
       BLI_assert(layer->data);
       if (typeInfo->set_default_value) {
@@ -5237,7 +5143,7 @@ void CustomData_blend_read(BlendDataReader *reader, CustomData *data, const int 
 {
   BLO_read_data_address(reader, &data->layers);
 
-  /* Annoying workaround for bug T31079 loading legacy files with
+  /* Annoying workaround for bug #31079 loading legacy files with
    * no polygons _but_ have stale custom-data. */
   if (UNLIKELY(count == 0 && data->layers == nullptr && data->totlayer != 0)) {
     CustomData_reset(data);
@@ -5266,8 +5172,8 @@ void CustomData_blend_read(BlendDataReader *reader, CustomData *data, const int 
       }
       if (CustomData_layer_ensure_data_exists(layer, count)) {
         /* Under normal operations, this shouldn't happen, but...
-         * For a CD_PROP_BOOL example, see T84935.
-         * For a CD_MLOOPUV example, see T90620. */
+         * For a CD_PROP_BOOL example, see #84935.
+         * For a CD_MLOOPUV example, see #90620. */
         CLOG_WARN(&LOG,
                   "Allocated custom data layer that was not saved correctly for layer->type = %d.",
                   layer->type);
@@ -5401,7 +5307,7 @@ eCustomDataType cpp_type_to_custom_data_type(const blender::CPPType &type)
 
 }  // namespace blender::bke
 
-size_t CustomData_get_elem_size(CustomDataLayer *layer)
+size_t CustomData_get_elem_size(const CustomDataLayer *layer)
 {
   return LAYERTYPEINFO[layer->type].size;
 }

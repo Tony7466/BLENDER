@@ -6,7 +6,7 @@
 #include "DNA_meshdata_types.h"
 
 #include "BKE_material.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 
 #include "UI_interface.h"
 #include "UI_resources.h"
@@ -51,13 +51,13 @@ Mesh *create_grid_mesh(const int verts_x,
   const int edges_y = verts_y - 1;
   Mesh *mesh = BKE_mesh_new_nomain(verts_x * verts_y,
                                    edges_x * verts_y + edges_y * verts_x,
-                                   0,
                                    edges_x * edges_y * 4,
                                    edges_x * edges_y);
   MutableSpan<float3> positions = mesh->vert_positions_for_write();
   MutableSpan<MEdge> edges = mesh->edges_for_write();
   MutableSpan<MPoly> polys = mesh->polys_for_write();
   MutableSpan<MLoop> loops = mesh->loops_for_write();
+  BKE_mesh_smooth_flag_set(mesh, false);
 
   {
     const float dx = edges_x == 0 ? 0.0f : size_x / edges_x;
@@ -147,6 +147,9 @@ Mesh *create_grid_mesh(const int verts_x,
   }
 
   mesh->loose_edges_tag_none();
+
+  const float3 bounds = float3(size_x * 0.5f, size_y * 0.5f, 0.0f);
+  mesh->bounds_set_eager({-bounds, bounds});
 
   return mesh;
 }

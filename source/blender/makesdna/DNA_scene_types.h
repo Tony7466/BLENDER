@@ -14,7 +14,7 @@
 
 /**
  * Check for cyclic set-scene.
- * Libraries can cause this case which is normally prevented, see (T42009).
+ * Libraries can cause this case which is normally prevented, see (#42009).
  */
 #define USE_SETSCENE_CHECK
 
@@ -2161,7 +2161,7 @@ extern const char *RE_engine_id_CYCLES;
 /** \name Scene Defines
  * \{ */
 
-/* Note that much higher max-frames give imprecise sub-frames, see: T46859. */
+/* Note that much higher max-frames give imprecise sub-frames, see: #46859. */
 /* Current precision is 16 for the sub-frames closer to MAXFRAME. */
 
 /* For general use. */
@@ -2296,10 +2296,6 @@ typedef enum eSnapMode {
   SCE_SNAP_MODE_EDGE_PERPENDICULAR = (1 << 5),
   SCE_SNAP_MODE_FACE_NEAREST = (1 << 8),
 
-  SCE_SNAP_MODE_GEOM = (SCE_SNAP_MODE_VERTEX | SCE_SNAP_MODE_EDGE | SCE_SNAP_MODE_FACE_RAYCAST |
-                        SCE_SNAP_MODE_EDGE_PERPENDICULAR | SCE_SNAP_MODE_EDGE_MIDPOINT |
-                        SCE_SNAP_MODE_FACE_NEAREST),
-
   /** #ToolSettings.snap_node_mode */
   SCE_SNAP_MODE_NODE_X = (1 << 0),
   SCE_SNAP_MODE_NODE_Y = (1 << 1),
@@ -2313,6 +2309,10 @@ typedef enum eSnapMode {
 #ifdef ENUM_OPERATORS
 ENUM_OPERATORS(eSnapMode, SCE_SNAP_MODE_GRID)
 #endif
+
+#define SCE_SNAP_MODE_GEOM \
+  (SCE_SNAP_MODE_VERTEX | SCE_SNAP_MODE_EDGE | SCE_SNAP_MODE_FACE_RAYCAST | \
+   SCE_SNAP_MODE_EDGE_PERPENDICULAR | SCE_SNAP_MODE_EDGE_MIDPOINT | SCE_SNAP_MODE_FACE_NEAREST)
 
 /** #SequencerToolSettings.snap_mode */
 #define SEQ_SNAP_TO_STRIPS (1 << 0)

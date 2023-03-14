@@ -6,7 +6,7 @@
 #include "BKE_customdata.h"
 #include "BKE_deform.h"
 #include "BKE_geometry_set.hh"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_pointcloud.h"
 #include "BKE_type_conversions.hh"
 
@@ -61,6 +61,9 @@ bool allow_procedural_attribute_access(StringRef attribute_name)
     return false;
   }
   if (attribute_name.startswith(".hide")) {
+    return false;
+  }
+  if (attribute_name.startswith(".uv")) {
     return false;
   }
   if (attribute_name.startswith("." UV_VERTSEL_NAME ".")) {
@@ -196,8 +199,8 @@ static bool add_builtin_type_custom_data_layer_from_init(CustomData &custom_data
     }
     case AttributeInit::Type::MoveArray: {
       void *src_data = static_cast<const AttributeInitMoveArray &>(initializer).data;
-      const void *stored_data = CustomData_add_layer_with_existing_data(
-          &custom_data, data_type, domain_num, src_data, nullptr);
+      const void *stored_data = CustomData_add_layer_with_data(
+          &custom_data, data_type, src_data, domain_num, nullptr);
       if (stored_data == nullptr) {
         return false;
       }
@@ -240,13 +243,13 @@ static const void *add_generic_custom_data_layer_with_existing_data(
 {
   if (attribute_id.is_anonymous()) {
     const AnonymousAttributeID &anonymous_id = attribute_id.anonymous_id();
-    return CustomData_add_layer_anonymous_with_existing_data(
+    return CustomData_add_layer_anonymous_with_data(
         &custom_data, data_type, &anonymous_id, domain_size, layer_data, cow);
   }
   char attribute_name_c[MAX_CUSTOMDATA_LAYER_NAME];
   attribute_id.name().copy(attribute_name_c);
-  return CustomData_add_layer_named_with_existing_data(
-      &custom_data, data_type, attribute_name_c, domain_size, layer_data, cow);
+  return CustomData_add_layer_named_with_data(
+      &custom_data, data_type, layer_data, domain_size, attribute_name_c, cow);
 }
 
 static bool add_custom_data_layer_from_attribute_init(const AttributeIDRef &attribute_id,
@@ -334,9 +337,6 @@ GVArray BuiltinCustomDataLayerProvider::try_get_for_read(const void *owner) cons
 
 GAttributeWriter BuiltinCustomDataLayerProvider::try_get_for_write(void *owner) const
 {
-  if (writable_ != Writable) {
-    return {};
-  }
   CustomData *custom_data = custom_data_access_.get_custom_data(owner);
   if (custom_data == nullptr) {
     return {};
