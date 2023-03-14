@@ -425,6 +425,8 @@ static void retrieve_active_attribute_names(MeshRenderData &mr,
   const Mesh *mesh_final = editmesh_final_or_this(&object, &mesh);
   mr.active_color_name = mesh_final->active_color_attribute;
   mr.default_color_name = mesh_final->default_color_attribute;
+  mr.active_uv_name = mesh_final->active_uv_attribute;
+  mr.default_uv_name = mesh_final->default_uv_attribute;
 }
 
 MeshRenderData *mesh_render_data_create(Object *object,

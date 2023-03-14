@@ -63,11 +63,11 @@ static void extract_tan_init_common(const MeshRenderData *mr,
       BLI_snprintf(attr_name, sizeof(attr_name), "t%s", attr_safe_name);
       GPU_vertformat_attr_add(format, attr_name, comp_type, 4, fetch_mode);
       /* Active render layer name. */
-      if (i == CustomData_get_render_layer(cd_ldata, CD_PROP_FLOAT2)) {
+      if (mr->default_uv_name && STREQ(layer_name, mr->default_uv_name)) {
         GPU_vertformat_alias_add(format, "t");
       }
       /* Active display layer name. */
-      if (i == CustomData_get_active_layer(cd_ldata, CD_PROP_FLOAT2)) {
+      if (mr->active_uv_name && STREQ(layer_name, mr->active_uv_name)) {
         GPU_vertformat_alias_add(format, "at");
       }
 
@@ -103,6 +103,8 @@ static void extract_tan_init_common(const MeshRenderData *mr,
     bool calc_active_tangent = false;
     if (mr->extract_type == MR_EXTRACT_BMESH) {
       BKE_editmesh_loop_tangent_calc(mr->edit_bmesh,
+                                     mr->me->active_uv_attribute,
+                                     mr->me->default_uv_attribute,
                                      calc_active_tangent,
                                      r_tangent_names,
                                      tan_len,
@@ -122,6 +124,8 @@ static void extract_tan_init_common(const MeshRenderData *mr,
                                     mr->tri_len,
                                     mr->sharp_faces,
                                     cd_ldata,
+                                    mr->me->active_uv_attribute,
+                                    mr->me->default_uv_attribute,
                                     calc_active_tangent,
                                     r_tangent_names,
                                     tan_len,

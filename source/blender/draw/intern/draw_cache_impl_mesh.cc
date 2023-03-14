@@ -251,8 +251,11 @@ static void mesh_cd_calc_active_uv_layer(const Object *object,
                                          DRW_MeshCDMask *cd_used)
 {
   const Mesh *me_final = editmesh_final_or_this(object, me);
+  if (!me_final->active_uv_attribute) {
+    return;
+  }
   const CustomData *cd_ldata = mesh_cd_ldata_get_from_mesh(me_final);
-  int layer = CustomData_get_active_layer(cd_ldata, CD_PROP_FLOAT2);
+  int layer = CustomData_get_named_layer(cd_ldata, CD_PROP_FLOAT2, me_final->active_uv_attribute);
   if (layer != -1) {
     cd_used->uv |= (1 << layer);
   }
@@ -289,6 +292,9 @@ static DRW_MeshCDMask mesh_cd_calc_used_gpu_layers(const Object *object,
   const StringRefNull default_color_name = me_final->default_color_attribute ?
                                                me_final->default_color_attribute :
                                                "";
+  const StringRefNull default_uv_name = me_final->default_uv_attribute ?
+                                            me_final->default_uv_attribute :
+                                            "";
 
   for (int i = 0; i < gpumat_array_len; i++) {
     GPUMaterial *gpumat = gpumat_array[i];
@@ -356,7 +362,8 @@ static DRW_MeshCDMask mesh_cd_calc_used_gpu_layers(const Object *object,
           if (layer == -1) {
             layer = (name[0] != '\0') ?
                         CustomData_get_named_layer(cd_ldata, CD_PROP_FLOAT2, name) :
-                        CustomData_get_render_layer(cd_ldata, CD_PROP_FLOAT2);
+                        CustomData_get_named_layer(
+                            cd_ldata, CD_PROP_FLOAT2, default_uv_name.c_str());
           }
           if (layer != -1) {
             cd_used.uv |= (1 << layer);
@@ -367,11 +374,13 @@ static DRW_MeshCDMask mesh_cd_calc_used_gpu_layers(const Object *object,
           if (layer == -1) {
             layer = (name[0] != '\0') ?
                         CustomData_get_named_layer(cd_ldata, CD_PROP_FLOAT2, name) :
-                        CustomData_get_render_layer(cd_ldata, CD_PROP_FLOAT2);
+                        CustomData_get_named_layer(
+                            cd_ldata, CD_PROP_FLOAT2, default_uv_name.c_str());
 
             /* Only fallback to orco (below) when we have no UV layers, see: #56545 */
             if (layer == -1 && name[0] != '\0') {
-              layer = CustomData_get_render_layer(cd_ldata, CD_PROP_FLOAT2);
+              layer = CustomData_get_named_layer(
+                  cd_ldata, CD_PROP_FLOAT2, default_uv_name.c_str());
             }
           }
           if (layer != -1) {

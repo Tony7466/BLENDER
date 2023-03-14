@@ -95,10 +95,7 @@ void MOD_get_texture_coords(MappingInfoModifierData *dmd,
       const blender::Span<MPoly> polys = mesh->polys();
       const blender::Span<MLoop> loops = mesh->loops();
       BLI_bitmap *done = BLI_BITMAP_NEW(verts_num, __func__);
-      char uvname[MAX_CUSTOMDATA_LAYER_NAME];
-      CustomData_validate_layer_name(&mesh->ldata, CD_PROP_FLOAT2, dmd->uvlayer_name, uvname);
-      const float(*mloop_uv)[2] = static_cast<const float(*)[2]>(
-          CustomData_get_layer_named(&mesh->ldata, CD_PROP_FLOAT2, uvname));
+      const float(*mloop_uv)[2] = BKE_mesh_get_uv_map_or_active(mesh, dmd->uvlayer_name);
 
       /* verts are given the UV from the first face that uses them */
       for (const int i : polys.index_range()) {

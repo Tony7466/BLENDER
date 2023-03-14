@@ -543,11 +543,15 @@ static void update_active_fdata_layers(Mesh &mesh, CustomData *fdata, CustomData
   int act;
 
   if (CustomData_has_layer(ldata, CD_PROP_FLOAT2)) {
-    act = CustomData_get_active_layer(ldata, CD_PROP_FLOAT2);
-    CustomData_set_layer_active(fdata, CD_MTFACE, act);
+    if (const char *name = mesh.active_uv_attribute) {
+      act = CustomData_get_named_layer(ldata, CD_PROP_FLOAT2, name);
+      CustomData_set_layer_active(fdata, CD_MTFACE, act);
+    }
 
-    act = CustomData_get_render_layer(ldata, CD_PROP_FLOAT2);
-    CustomData_set_layer_render(fdata, CD_MTFACE, act);
+    if (const char *name = mesh.active_uv_attribute) {
+      act = CustomData_get_named_layer(ldata, CD_PROP_FLOAT2, name);
+      CustomData_set_layer_render(fdata, CD_MTFACE, act);
+    }
 
     act = CustomData_get_clone_layer(ldata, CD_PROP_FLOAT2);
     CustomData_set_layer_clone(fdata, CD_MTFACE, act);
@@ -2072,6 +2076,19 @@ void BKE_mesh_legacy_attribute_flags_to_strings(Mesh *mesh)
   default_from_flags(mesh->ldata);
   default_from_indices(mesh->vdata);
   default_from_indices(mesh->ldata);
+
+  if (!mesh->active_uv_attribute) {
+    const int i = CustomData_get_active_layer_index(&mesh->ldata, CD_PROP_FLOAT2);
+    if (i != -1) {
+      mesh->active_uv_attribute = BLI_strdup(mesh->ldata.layers[i].name);
+    }
+  }
+  if (!mesh->default_uv_attribute) {
+    const int i = CustomData_get_render_layer_index(&mesh->ldata, CD_PROP_FLOAT2);
+    if (i != -1) {
+      mesh->default_uv_attribute = BLI_strdup(mesh->ldata.layers[i].name);
+    }
+  }
 }
 
 void BKE_mesh_legacy_attribute_strings_to_flags(Mesh *mesh)
@@ -2084,8 +2101,8 @@ void BKE_mesh_legacy_attribute_strings_to_flags(Mesh *mesh)
       vdata, CD_PROP_BYTE_COLOR, CD_FLAG_COLOR_ACTIVE | CD_FLAG_COLOR_RENDER);
   CustomData_clear_layer_flag(ldata, CD_PROP_COLOR, CD_FLAG_COLOR_ACTIVE | CD_FLAG_COLOR_RENDER);
 
+  int i;
   if (const char *name = mesh->active_color_attribute) {
-    int i;
     if ((i = CustomData_get_named_layer_index(vdata, CD_PROP_BYTE_COLOR, name)) != -1) {
       CustomData_set_layer_active_index(vdata, CD_PROP_BYTE_COLOR, i);
       vdata->layers[i].flag |= CD_FLAG_COLOR_ACTIVE;
@@ -2104,7 +2121,6 @@ void BKE_mesh_legacy_attribute_strings_to_flags(Mesh *mesh)
     }
   }
   if (const char *name = mesh->default_color_attribute) {
-    int i;
     if ((i = CustomData_get_named_layer_index(vdata, CD_PROP_BYTE_COLOR, name)) != -1) {
       CustomData_set_layer_render_index(vdata, CD_PROP_BYTE_COLOR, i);
       vdata->layers[i].flag |= CD_FLAG_COLOR_RENDER;
@@ -2120,6 +2136,16 @@ void BKE_mesh_legacy_attribute_strings_to_flags(Mesh *mesh)
     else if ((i = CustomData_get_named_layer_index(ldata, CD_PROP_COLOR, name)) != -1) {
       CustomData_set_layer_render_index(ldata, CD_PROP_COLOR, i);
       ldata->layers[i].flag |= CD_FLAG_COLOR_RENDER;
+    }
+  }
+  if (const char *name = mesh->active_uv_attribute) {
+    if ((i = CustomData_get_named_layer_index(ldata, CD_PROP_FLOAT2, name)) != -1) {
+      CustomData_set_layer_active_index(ldata, CD_PROP_FLOAT2, i);
+    }
+  }
+  if (const char *name = mesh->default_uv_attribute) {
+    if ((i = CustomData_get_named_layer_index(ldata, CD_PROP_FLOAT2, name)) != -1) {
+      CustomData_set_layer_render_index(ldata, CD_PROP_FLOAT2, i);
     }
   }
 }

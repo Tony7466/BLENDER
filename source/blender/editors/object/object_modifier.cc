@@ -932,7 +932,7 @@ static bool meta_data_matches(const std::optional<blender::bke::AttributeMetaDat
 static void remove_invalid_attribute_strings(Mesh &mesh)
 {
   using namespace blender;
-  bke::AttributeAccessor attributes = mesh.attributes();
+  const bke::AttributeAccessor attributes = mesh.attributes();
   if (!meta_data_matches(attributes.lookup_meta_data(mesh.active_color_attribute),
                          ATTR_DOMAIN_MASK_COLOR,
                          CD_MASK_COLOR_ALL)) {
@@ -942,6 +942,16 @@ static void remove_invalid_attribute_strings(Mesh &mesh)
                          ATTR_DOMAIN_MASK_COLOR,
                          CD_MASK_COLOR_ALL)) {
     MEM_SAFE_FREE(mesh.default_color_attribute);
+  }
+  if (!meta_data_matches(attributes.lookup_meta_data(mesh.active_uv_attribute),
+                         ATTR_DOMAIN_MASK_CORNER,
+                         CD_MASK_PROP_FLOAT2)) {
+    MEM_SAFE_FREE(mesh.active_uv_attribute);
+  }
+  if (!meta_data_matches(attributes.lookup_meta_data(mesh.default_uv_attribute),
+                         ATTR_DOMAIN_MASK_CORNER,
+                         CD_MASK_PROP_FLOAT2)) {
+    MEM_SAFE_FREE(mesh.default_uv_attribute);
   }
 }
 

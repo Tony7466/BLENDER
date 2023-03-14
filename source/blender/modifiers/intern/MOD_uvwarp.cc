@@ -131,7 +131,6 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   UVWarpModifierData *umd = (UVWarpModifierData *)md;
   const MDeformVert *dvert;
   int defgrp_index;
-  char uvname[MAX_CUSTOMDATA_LAYER_NAME];
   float warp_mat[4][4];
   const int axis_u = umd->axis_u;
   const int axis_v = umd->axis_v;
@@ -188,14 +187,10 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   translate_m4(warp_mat, umd->offset[0], umd->offset[1], 0.0f);
   translate_m4(warp_mat, -umd->center[0], -umd->center[1], 0.0f);
 
-  /* make sure we're using an existing layer */
-  CustomData_validate_layer_name(&mesh->ldata, CD_PROP_FLOAT2, umd->uvlayer_name, uvname);
-
   const blender::Span<MPoly> polys = mesh->polys();
   const blender::Span<MLoop> loops = mesh->loops();
 
-  float(*mloopuv)[2] = static_cast<float(*)[2]>(
-      CustomData_get_layer_named_for_write(&mesh->ldata, CD_PROP_FLOAT2, uvname, loops.size()));
+  float(*mloopuv)[2] = BKE_mesh_get_uv_map_or_active_for_write(mesh, umd->uvlayer_name);
   MOD_get_vgroup(ctx->object, mesh, umd->vgroup_name, &dvert, &defgrp_index);
 
   UVWarpData data{};

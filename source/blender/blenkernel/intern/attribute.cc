@@ -191,30 +191,48 @@ bool BKE_id_attribute_rename(ID *id,
 
   char result_name[MAX_CUSTOMDATA_LAYER_NAME];
   BKE_id_attribute_calc_unique_name(id, new_name, result_name);
+  if (GS(id->name) == ID_ME) {
+    Mesh &mesh = reinterpret_cast<Mesh &>(*id);
+    if (layer->type == CD_PROP_FLOAT2) {
+      /* Rename UV sub-attributes. */
+      char buffer_src[MAX_CUSTOMDATA_LAYER_NAME];
+      char buffer_dst[MAX_CUSTOMDATA_LAYER_NAME];
 
-  if (layer->type == CD_PROP_FLOAT2 && GS(id->name) == ID_ME) {
-    /* Rename UV sub-attributes. */
-    char buffer_src[MAX_CUSTOMDATA_LAYER_NAME];
-    char buffer_dst[MAX_CUSTOMDATA_LAYER_NAME];
-
-    bke_id_attribute_rename_if_exists(id,
-                                      BKE_uv_map_vert_select_name_get(layer->name, buffer_src),
-                                      BKE_uv_map_vert_select_name_get(result_name, buffer_dst),
-                                      reports);
-    bke_id_attribute_rename_if_exists(id,
-                                      BKE_uv_map_edge_select_name_get(layer->name, buffer_src),
-                                      BKE_uv_map_edge_select_name_get(result_name, buffer_dst),
-                                      reports);
-    bke_id_attribute_rename_if_exists(id,
-                                      BKE_uv_map_pin_name_get(layer->name, buffer_src),
-                                      BKE_uv_map_pin_name_get(result_name, buffer_dst),
-                                      reports);
-  }
-  if (StringRef(old_name) == BKE_id_attributes_active_color_name(id)) {
-    BKE_id_attributes_active_color_set(id, result_name);
-  }
-  if (StringRef(old_name) == BKE_id_attributes_default_color_name(id)) {
-    BKE_id_attributes_default_color_set(id, result_name);
+      bke_id_attribute_rename_if_exists(id,
+                                        BKE_uv_map_vert_select_name_get(layer->name, buffer_src),
+                                        BKE_uv_map_vert_select_name_get(result_name, buffer_dst),
+                                        reports);
+      bke_id_attribute_rename_if_exists(id,
+                                        BKE_uv_map_edge_select_name_get(layer->name, buffer_src),
+                                        BKE_uv_map_edge_select_name_get(result_name, buffer_dst),
+                                        reports);
+      bke_id_attribute_rename_if_exists(id,
+                                        BKE_uv_map_pin_name_get(layer->name, buffer_src),
+                                        BKE_uv_map_pin_name_get(result_name, buffer_dst),
+                                        reports);
+      if (const char *name = mesh.active_uv_attribute) {
+        if (StringRef(old_name) == name) {
+          BKE_id_attributes_active_uv_set(id, result_name);
+        }
+      }
+      if (const char *name = mesh.default_uv_attribute) {
+        if (StringRef(old_name) == name) {
+          BKE_id_attributes_default_uv_set(id, result_name);
+        }
+      }
+    }
+    if (CD_TYPE_AS_MASK(layer->type) & CD_MASK_COLOR_ALL) {
+      if (const char *name = mesh.active_color_attribute) {
+        if (StringRef(old_name) == name) {
+          BKE_id_attributes_active_color_set(id, result_name);
+        }
+      }
+      if (const char *name = mesh.default_color_attribute) {
+        if (StringRef(old_name) == name) {
+          BKE_id_attributes_default_color_set(id, result_name);
+        }
+      }
+    }
   }
 
   BLI_strncpy_utf8(layer->name, result_name, sizeof(layer->name));
@@ -810,6 +828,38 @@ void BKE_id_attributes_default_color_set(ID *id, const char *name)
   }
 }
 
+void BKE_id_attributes_active_uv_set(ID *id, const char *name)
+{
+  switch (GS(id->name)) {
+    case ID_ME: {
+      Mesh *mesh = reinterpret_cast<Mesh *>(id);
+      MEM_SAFE_FREE(mesh->active_uv_attribute);
+      if (name) {
+        mesh->active_uv_attribute = BLI_strdup(name);
+      }
+      break;
+    }
+    default:
+      break;
+  }
+}
+
+void BKE_id_attributes_default_uv_set(ID *id, const char *name)
+{
+  switch (GS(id->name)) {
+    case ID_ME: {
+      Mesh *mesh = reinterpret_cast<Mesh *>(id);
+      MEM_SAFE_FREE(mesh->default_uv_attribute);
+      if (name) {
+        mesh->default_uv_attribute = BLI_strdup(name);
+      }
+      break;
+    }
+    default:
+      break;
+  }
+}
+
 CustomDataLayer *BKE_id_attributes_color_find(const ID *id, const char *name)
 {
   if (CustomDataLayer *layer = BKE_id_attribute_find(id, name, CD_PROP_COLOR, ATTR_DOMAIN_POINT)) {
@@ -829,7 +879,6 @@ CustomDataLayer *BKE_id_attributes_color_find(const ID *id, const char *name)
   }
   return nullptr;
 }
-
 
 const char *BKE_uv_map_vert_select_name_get(const char *uv_map_name, char *buffer)
 {

@@ -773,6 +773,9 @@ char *BKE_mesh_debug_info(const struct Mesh *me)
 void BKE_mesh_debug_print(const struct Mesh *me) ATTR_NONNULL(1);
 #endif
 
+const float (*BKE_mesh_get_uv_map_or_active(const struct Mesh *mesh, const char *name))[2];
+float (*BKE_mesh_get_uv_map_or_active_for_write(struct Mesh *mesh, const char *name))[2];
+
 /* -------------------------------------------------------------------- */
 /** \name Inline Mesh Data Access
  * \{ */

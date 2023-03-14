@@ -392,13 +392,24 @@ static PointerRNA rna_AttributeGroup_new(
 {
   CustomDataLayer *layer = BKE_id_attribute_new(id, name, type, domain, reports);
 
-  if ((GS(id->name) == ID_ME) && ELEM(layer->type, CD_PROP_COLOR, CD_PROP_BYTE_COLOR)) {
+  if (GS(id->name) == ID_ME) {
     Mesh *mesh = (Mesh *)id;
-    if (!mesh->active_color_attribute) {
-      mesh->active_color_attribute = BLI_strdup(layer->name);
+    if ((CD_TYPE_AS_MASK(type) & CD_MASK_COLOR_ALL) &&
+        (ATTR_DOMAIN_AS_MASK(domain) & ATTR_DOMAIN_MASK_COLOR)) {
+      if (!mesh->active_color_attribute) {
+        BKE_id_attributes_active_color_set(&mesh->id, layer->name);
+      }
+      if (!mesh->default_color_attribute) {
+        BKE_id_attributes_default_color_set(&mesh->id, layer->name);
+      }
     }
-    if (!mesh->default_color_attribute) {
-      mesh->default_color_attribute = BLI_strdup(layer->name);
+    if (type == CD_PROP_FLOAT2 && domain == ATTR_DOMAIN_CORNER) {
+      if (!mesh->active_uv_attribute) {
+        BKE_id_attributes_active_uv_set(&mesh->id, layer->name);
+      }
+      if (!mesh->default_uv_attribute) {
+        BKE_id_attributes_default_uv_set(&mesh->id, layer->name);
+      }
     }
   }
 

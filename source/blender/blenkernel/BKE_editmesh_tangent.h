@@ -19,6 +19,8 @@ extern "C" {
  * This is done because #CD_TANGENT is cache data used only for drawing.
  */
 void BKE_editmesh_loop_tangent_calc(BMEditMesh *em,
+                                    const char *active_uv_name,
+                                    const char *default_uv_name,
                                     bool calc_active_tangent,
                                     const char (*tangent_names)[MAX_CUSTOMDATA_LAYER_NAME],
                                     int tangent_names_len,

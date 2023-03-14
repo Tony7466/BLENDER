@@ -1621,17 +1621,11 @@ static void dynamicPaint_setInitialColor(const Scene *scene, DynamicPaintSurface
     const blender::Span<MLoop> loops = mesh->loops();
     const blender::Span<MLoopTri> looptris = mesh->looptris();
 
-    char uvname[MAX_CUSTOMDATA_LAYER_NAME];
-
     if (!tex) {
       return;
     }
 
-    /* get uv map */
-    CustomData_validate_layer_name(&mesh->ldata, CD_PROP_FLOAT2, surface->init_layername, uvname);
-    const float(*mloopuv)[2] = static_cast<const float(*)[2]>(
-        CustomData_get_layer_named(&mesh->ldata, CD_PROP_FLOAT2, uvname));
-
+    const float(*mloopuv)[2] = BKE_mesh_get_uv_map_or_active(mesh, surface->init_layername);
     if (!mloopuv) {
       return;
     }
@@ -2803,7 +2797,6 @@ int dynamicPaint_createUVSurface(Scene *scene,
 {
   /* Anti-alias jitter point relative coords. */
   const int aa_samples = (surface->flags & MOD_DPAINT_ANTIALIAS) ? 5 : 1;
-  char uvname[MAX_CUSTOMDATA_LAYER_NAME];
   uint32_t active_points = 0;
   bool error = false;
 
@@ -2813,7 +2806,6 @@ int dynamicPaint_createUVSurface(Scene *scene,
 
   PaintUVPoint *tempPoints = nullptr;
   Vec3f *tempWeights = nullptr;
-  const float(*mloopuv)[2] = nullptr;
 
   Bounds2D *faceBB = nullptr;
   int *final_index;
@@ -2831,12 +2823,12 @@ int dynamicPaint_createUVSurface(Scene *scene,
   const blender::Span<MLoop> loops = mesh->loops();
   const blender::Span<MLoopTri> looptris = mesh->looptris();
 
-  /* get uv map */
-  if (CustomData_has_layer(&mesh->ldata, CD_PROP_FLOAT2)) {
-    CustomData_validate_layer_name(&mesh->ldata, CD_PROP_FLOAT2, surface->uvlayer_name, uvname);
-    mloopuv = static_cast<const float(*)[2]>(
-        CustomData_get_layer_named(&mesh->ldata, CD_PROP_FLOAT2, uvname));
+  const char *uvname = mesh->active_uv_attribute;
+  if (!uvname) {
+    return setError(canvas, N_("No UV data on canvas"));
   }
+  const float(*mloopuv)[2] = static_cast<const float(*)[2]>(
+      CustomData_get_layer_named(&mesh->ldata, CD_PROP_FLOAT2, uvname));
 
   /* Check for validity */
   if (!mloopuv) {

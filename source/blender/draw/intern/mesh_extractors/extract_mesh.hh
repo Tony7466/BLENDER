@@ -101,6 +101,9 @@ struct MeshRenderData {
   const char *active_color_name;
   const char *default_color_name;
 
+  const char *active_uv_name;
+  const char *default_uv_name;
+
   struct {
     int *tri_first_index;
     int *mat_tri_len;

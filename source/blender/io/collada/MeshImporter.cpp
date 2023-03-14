@@ -475,8 +475,10 @@ void MeshImporter::allocate_poly_data(COLLADAFW::Mesh *collada_mesh, Mesh *me)
         CustomData_add_layer_named(
             &me->ldata, CD_PROP_FLOAT2, CD_SET_DEFAULT, me->totloop, uvname.c_str());
       }
-      /* activate the first uv map */
-      CustomData_set_layer_active(&me->ldata, CD_PROP_FLOAT2, 0);
+      BKE_id_attributes_active_uv_set(&me->id,
+                                      CustomData_get_layer_name(&me->ldata, CD_PROP_FLOAT2, 0));
+      BKE_id_attributes_default_uv_set(&me->id,
+                                       CustomData_get_layer_name(&me->ldata, CD_PROP_FLOAT2, 0));
     }
 
     int totcolset = collada_mesh->getColors().getInputInfosArray().getCount();

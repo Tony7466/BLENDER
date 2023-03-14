@@ -51,6 +51,8 @@ void BKE_mesh_calc_loop_tangent_ex(const float (*vert_positions)[3],
                                    const bool *sharp_faces,
 
                                    struct CustomData *loopdata,
+                                   const char *active_uv_name,
+                                   const char *default_uv_name,
                                    bool calc_active_tangent,
                                    const char (*tangent_names)[MAX_CUSTOMDATA_LAYER_NAME],
                                    int tangent_names_len,
@@ -82,6 +84,8 @@ void BKE_mesh_add_loop_tangent_named_layer_for_uv(struct CustomData *uv_data,
  * If tangent_mask has changed, then recalculate tangents.
  */
 void BKE_mesh_calc_loop_tangent_step_0(const struct CustomData *loopData,
+                                       const char *active_uv_name,
+                                       const char *default_uv_name,
                                        bool calc_active_tangent,
                                        const char (*tangent_names)[MAX_CUSTOMDATA_LAYER_NAME],
                                        int tangent_names_count,
@@ -89,8 +93,6 @@ void BKE_mesh_calc_loop_tangent_step_0(const struct CustomData *loopData,
                                        bool *rcalc_ren,
                                        int *ract_uv_n,
                                        int *rren_uv_n,
-                                       char *ract_uv_name,
-                                       char *rren_uv_name,
                                        short *rtangent_mask);
 
 #ifdef __cplusplus

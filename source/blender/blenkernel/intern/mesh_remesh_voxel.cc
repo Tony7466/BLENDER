@@ -478,13 +478,11 @@ void BKE_remesh_reproject_vertex_paint(Mesh *target, const Mesh *source)
   }
 
   /* Make sure active/default color attribute (names) are brought over. */
-  if (source->active_color_attribute) {
-    MEM_SAFE_FREE(target->active_color_attribute);
-    target->active_color_attribute = BLI_strdup(source->active_color_attribute);
+  if (const char *name = source->active_color_attribute) {
+    BKE_id_attributes_active_color_set(&target->id, name);
   }
-  if (source->default_color_attribute) {
-    MEM_SAFE_FREE(target->default_color_attribute);
-    target->default_color_attribute = BLI_strdup(source->default_color_attribute);
+  if (const char *name = source->default_color_attribute) {
+    BKE_id_attributes_default_color_set(&target->id, name);
   }
 
   MEM_SAFE_FREE(source_lmap);

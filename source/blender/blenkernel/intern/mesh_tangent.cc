@@ -123,7 +123,7 @@ void BKE_mesh_calc_loop_tangent_single(Mesh *mesh,
   using namespace blender::bke;
 
   if (!uvmap) {
-    uvmap = CustomData_get_active_layer_name(&mesh->ldata, CD_PROP_FLOAT2);
+    uvmap = mesh->active_uv_attribute;
   }
 
   const AttributeAccessor attributes = mesh->attributes();
@@ -316,6 +316,8 @@ void BKE_mesh_add_loop_tangent_named_layer_for_uv(CustomData *uv_data,
 }
 
 void BKE_mesh_calc_loop_tangent_step_0(const CustomData *loopData,
+                                       const char *active_uv_name,
+                                       const char *default_uv_name,
                                        bool calc_active_tangent,
                                        const char (*tangent_names)[MAX_CUSTOMDATA_LAYER_NAME],
                                        int tangent_names_count,
@@ -323,23 +325,16 @@ void BKE_mesh_calc_loop_tangent_step_0(const CustomData *loopData,
                                        bool *rcalc_ren,
                                        int *ract_uv_n,
                                        int *rren_uv_n,
-                                       char *ract_uv_name,
-                                       char *rren_uv_name,
                                        short *rtangent_mask)
 {
   /* Active uv in viewport */
-  int layer_index = CustomData_get_layer_index(loopData, CD_PROP_FLOAT2);
-  *ract_uv_n = CustomData_get_active_layer(loopData, CD_PROP_FLOAT2);
-  ract_uv_name[0] = 0;
-  if (*ract_uv_n != -1) {
-    strcpy(ract_uv_name, loopData->layers[*ract_uv_n + layer_index].name);
+  if (active_uv_name) {
+    *ract_uv_n = CustomData_get_named_layer(loopData, CD_PROP_FLOAT2, active_uv_name);
   }
 
   /* Active tangent in render */
-  *rren_uv_n = CustomData_get_render_layer(loopData, CD_PROP_FLOAT2);
-  rren_uv_name[0] = 0;
-  if (*rren_uv_n != -1) {
-    strcpy(rren_uv_name, loopData->layers[*rren_uv_n + layer_index].name);
+  if (default_uv_name) {
+    *rren_uv_n = CustomData_get_named_layer(loopData, CD_PROP_FLOAT2, default_uv_name);
   }
 
   /* If active tangent not in tangent_names we take it into account */
@@ -354,10 +349,10 @@ void BKE_mesh_calc_loop_tangent_step_0(const CustomData *loopData,
     *rcalc_act = true;
     *rcalc_ren = true;
     for (int i = 0; i < tangent_names_count; i++) {
-      if (STREQ(ract_uv_name, tangent_names[i])) {
+      if (STREQ(active_uv_name, tangent_names[i])) {
         *rcalc_act = false;
       }
-      if (STREQ(rren_uv_name, tangent_names[i])) {
+      if (STREQ(default_uv_name, tangent_names[i])) {
         *rcalc_ren = false;
       }
     }
@@ -374,8 +369,8 @@ void BKE_mesh_calc_loop_tangent_step_0(const CustomData *loopData,
         break;
       }
     }
-    if (!add && ((*rcalc_act && ract_uv_name[0] && STREQ(ract_uv_name, name)) ||
-                 (*rcalc_ren && rren_uv_name[0] && STREQ(rren_uv_name, name)))) {
+    if (!add && ((*rcalc_act && active_uv_name[0] && STREQ(active_uv_name, name)) ||
+                 (*rcalc_ren && default_uv_name[0] && STREQ(default_uv_name, name)))) {
       add = true;
     }
     if (add) {
@@ -397,6 +392,8 @@ void BKE_mesh_calc_loop_tangent_ex(const float (*vert_positions)[3],
                                    const bool *sharp_faces,
 
                                    CustomData *loopdata,
+                                   const char *active_uv_name,
+                                   const char *default_uv_name,
                                    bool calc_active_tangent,
                                    const char (*tangent_names)[MAX_CUSTOMDATA_LAYER_NAME],
                                    int tangent_names_len,
@@ -413,12 +410,12 @@ void BKE_mesh_calc_loop_tangent_ex(const float (*vert_positions)[3],
   int ren_uv_n = -1;
   bool calc_act = false;
   bool calc_ren = false;
-  char act_uv_name[MAX_CUSTOMDATA_LAYER_NAME];
-  char ren_uv_name[MAX_CUSTOMDATA_LAYER_NAME];
   short tangent_mask = 0;
   short tangent_mask_curr = *tangent_mask_curr_p;
 
   BKE_mesh_calc_loop_tangent_step_0(loopdata,
+                                    active_uv_name,
+                                    default_uv_name,
                                     calc_active_tangent,
                                     tangent_names,
                                     tangent_names_len,
@@ -426,8 +423,6 @@ void BKE_mesh_calc_loop_tangent_ex(const float (*vert_positions)[3],
                                     &calc_ren,
                                     &act_uv_n,
                                     &ren_uv_n,
-                                    act_uv_name,
-                                    ren_uv_name,
                                     &tangent_mask);
   if ((tangent_mask_curr | tangent_mask) != tangent_mask_curr) {
     /* Check we have all the needed layers */
@@ -443,13 +438,13 @@ void BKE_mesh_calc_loop_tangent_ex(const float (*vert_positions)[3],
       CustomData_add_layer_named(
           loopdata_out, CD_TANGENT, CD_SET_DEFAULT, int(loopdata_out_len), "");
     }
-    if (calc_act && act_uv_name[0]) {
+    if (calc_act && active_uv_name) {
       BKE_mesh_add_loop_tangent_named_layer_for_uv(
-          loopdata, loopdata_out, int(loopdata_out_len), act_uv_name);
+          loopdata, loopdata_out, int(loopdata_out_len), active_uv_name);
     }
-    if (calc_ren && ren_uv_name[0]) {
+    if (calc_ren && default_uv_name) {
       BKE_mesh_add_loop_tangent_named_layer_for_uv(
-          loopdata, loopdata_out, int(loopdata_out_len), ren_uv_name);
+          loopdata, loopdata_out, int(loopdata_out_len), default_uv_name);
     }
 
 #ifdef USE_LOOPTRI_DETECT_QUADS
@@ -588,6 +583,8 @@ void BKE_mesh_calc_loop_tangents(Mesh *me_eval,
       static_cast<const bool *>(
           CustomData_get_layer_named(&me_eval->pdata, CD_PROP_BOOL, "sharp_face")),
       &me_eval->ldata,
+      me_eval->active_uv_attribute,
+      me_eval->default_uv_attribute,
       calc_active_tangent,
       tangent_names,
       tangent_names_len,

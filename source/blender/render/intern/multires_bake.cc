@@ -512,6 +512,8 @@ static void do_multires_bake(MultiresBakeRender *bkr,
           static_cast<const bool *>(
               CustomData_get_layer_named(&dm->polyData, CD_PROP_BOOL, "sharp_face")),
           &dm->loopData,
+          nullptr,
+          nullptr,
           true,
           nullptr,
           0,

@@ -117,19 +117,15 @@ static void get_uvs(const CDStreamConfig &config,
   }
 }
 
-const char *get_uv_sample(UVSample &sample, const CDStreamConfig &config, CustomData *data)
+const char *get_uv_sample(UVSample &sample, const CDStreamConfig &config, Mesh &mesh)
 {
-  const int active_uvlayer = CustomData_get_active_layer(data, CD_PROP_FLOAT2);
-
-  if (active_uvlayer < 0) {
+  const char *name = mesh.active_uv_attribute;
+  if (!name) {
     return "";
   }
-
-  const void *cd_data = CustomData_get_layer_n(data, CD_PROP_FLOAT2, active_uvlayer);
-
+  const void *cd_data = CustomData_get_layer_named(&mesh.ldata, CD_PROP_FLOAT2, name);
   get_uvs(config, sample.uvs, sample.indices, cd_data);
-
-  return CustomData_get_layer_name(data, CD_PROP_FLOAT2, active_uvlayer);
+  return name;
 }
 
 /* Convention to write UVs:
@@ -268,7 +264,8 @@ void write_generated_coordinates(const OCompoundProperty &prop, CDStreamConfig &
 void write_custom_data(const OCompoundProperty &prop,
                        CDStreamConfig &config,
                        CustomData *data,
-                       int data_type)
+                       int data_type,
+                       const char *active_name)
 {
   eCustomDataType cd_data_type = static_cast<eCustomDataType>(data_type);
 
@@ -276,7 +273,6 @@ void write_custom_data(const OCompoundProperty &prop,
     return;
   }
 
-  const int active_layer = CustomData_get_active_layer(data, cd_data_type);
   const int tot_layers = CustomData_number_of_layers(data, cd_data_type);
 
   for (int i = 0; i < tot_layers; i++) {
@@ -285,7 +281,7 @@ void write_custom_data(const OCompoundProperty &prop,
 
     if (cd_data_type == CD_PROP_FLOAT2) {
       /* Already exported. */
-      if (i == active_layer) {
+      if (STREQ(name, active_name)) {
         continue;
       }
 

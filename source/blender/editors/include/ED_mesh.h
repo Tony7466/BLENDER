@@ -575,7 +575,7 @@ void ED_mesh_uv_loop_reset(struct bContext *C, struct Mesh *me);
 /**
  * Without a #bContext, called when UV-editing.
  */
-void ED_mesh_uv_loop_reset_ex(struct Mesh *me, int layernum);
+void ED_mesh_uv_loop_reset_ex(struct Mesh *me, const char *name);
 bool ED_mesh_color_ensure(struct Mesh *me, const char *name);
 int ED_mesh_color_add(
     struct Mesh *me, const char *name, bool active_set, bool do_init, struct ReportList *reports);

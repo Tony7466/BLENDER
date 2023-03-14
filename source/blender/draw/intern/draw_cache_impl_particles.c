@@ -845,8 +845,14 @@ static void particle_batch_cache_ensure_procedural_strand_data(PTCacheEdit *edit
   if (psmd != NULL && psmd->mesh_final != NULL) {
     if (CustomData_has_layer(&psmd->mesh_final->ldata, CD_PROP_FLOAT2)) {
       cache->num_uv_layers = CustomData_number_of_layers(&psmd->mesh_final->ldata, CD_PROP_FLOAT2);
-      active_uv = CustomData_get_active_layer(&psmd->mesh_final->ldata, CD_PROP_FLOAT2);
-      render_uv = CustomData_get_render_layer(&psmd->mesh_final->ldata, CD_PROP_FLOAT2);
+      if (psmd->mesh_final->active_uv_attribute != NULL) {
+        active_uv = CustomData_get_named_layer(
+            &psmd->mesh_final->ldata, CD_PROP_FLOAT2, psmd->mesh_final->active_uv_attribute);
+      }
+      if (psmd->mesh_final->default_uv_attribute != NULL) {
+        render_uv = CustomData_get_named_layer(
+            &psmd->mesh_final->ldata, CD_PROP_FLOAT2, psmd->mesh_final->default_uv_attribute);
+      }
     }
     if (CustomData_has_layer(&psmd->mesh_final->ldata, CD_PROP_BYTE_COLOR)) {
       cache->num_col_layers = CustomData_number_of_layers(&psmd->mesh_final->ldata,
@@ -1182,7 +1188,10 @@ static void particle_batch_cache_ensure_pos_and_seg(PTCacheEdit *edit,
   if (psmd != NULL) {
     if (CustomData_has_layer(&psmd->mesh_final->ldata, CD_PROP_FLOAT2)) {
       num_uv_layers = CustomData_number_of_layers(&psmd->mesh_final->ldata, CD_PROP_FLOAT2);
-      active_uv = CustomData_get_active_layer(&psmd->mesh_final->ldata, CD_PROP_FLOAT2);
+      const char *name = psmd->mesh_final->active_uv_attribute;
+      if (name) {
+        active_uv = CustomData_get_named_layer(&psmd->mesh_final->ldata, CD_PROP_FLOAT2, name);
+      }
     }
     if (CustomData_has_layer(&psmd->mesh_final->ldata, CD_PROP_BYTE_COLOR)) {
       num_col_layers = CustomData_number_of_layers(&psmd->mesh_final->ldata, CD_PROP_BYTE_COLOR);

@@ -156,6 +156,11 @@ typedef struct Mesh {
   /** The color attribute used by default (i.e. for rendering) if no name is given explicitly. */
   char *default_color_attribute;
 
+  /** The UV map currently selected in the list and edited by a user. */
+  char *active_uv_attribute;
+  /** The UV map used by default (i.e. for rendering) if no name is given explicitly. */
+  char *default_uv_attribute;
+
   /**
    * User-defined symmetry flag (#eMeshSymmetryType) that causes editing operations to maintain
    * symmetrical geometry. Supported by operations such as transform and weight-painting.

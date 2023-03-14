@@ -150,6 +150,10 @@ static void mesh_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int 
       MEM_dupallocN(mesh_src->active_color_attribute));
   mesh_dst->default_color_attribute = static_cast<char *>(
       MEM_dupallocN(mesh_src->default_color_attribute));
+  mesh_dst->active_uv_attribute = static_cast<char *>(
+      MEM_dupallocN(mesh_src->active_uv_attribute));
+  mesh_dst->default_uv_attribute = static_cast<char *>(
+      MEM_dupallocN(mesh_src->default_uv_attribute));
 
   const eCDAllocType alloc_type = (flag & LIB_ID_COPY_CD_REFERENCE) ? CD_REFERENCE : CD_DUPLICATE;
   CustomData_copy(&mesh_src->vdata, &mesh_dst->vdata, mask.vmask, alloc_type, mesh_dst->totvert);
@@ -280,6 +284,8 @@ static void mesh_blend_write(BlendWriter *writer, ID *id, const void *id_address
       BKE_mesh_legacy_attribute_strings_to_flags(mesh);
       mesh->active_color_attribute = nullptr;
       mesh->default_color_attribute = nullptr;
+      mesh->active_uv_attribute = nullptr;
+      mesh->default_uv_attribute = nullptr;
       BKE_mesh_legacy_convert_loose_edges_to_flag(mesh);
 
       /* Set deprecated mesh data pointers for forward compatibility. */
@@ -313,6 +319,8 @@ static void mesh_blend_write(BlendWriter *writer, ID *id, const void *id_address
   BKE_defbase_blend_write(writer, &mesh->vertex_group_names);
   BLO_write_string(writer, mesh->active_color_attribute);
   BLO_write_string(writer, mesh->default_color_attribute);
+  BLO_write_string(writer, mesh->active_uv_attribute);
+  BLO_write_string(writer, mesh->default_uv_attribute);
 
   BLO_write_pointer_array(writer, mesh->totcol, mesh->mat);
   BLO_write_raw(writer, sizeof(MSelect) * mesh->totselect, mesh->mselect);
@@ -364,6 +372,8 @@ static void mesh_blend_read_data(BlendDataReader *reader, ID *id)
   }
   BLO_read_data_address(reader, &mesh->active_color_attribute);
   BLO_read_data_address(reader, &mesh->default_color_attribute);
+  BLO_read_data_address(reader, &mesh->active_uv_attribute);
+  BLO_read_data_address(reader, &mesh->default_uv_attribute);
 
   mesh->texspace_flag &= ~ME_TEXSPACE_FLAG_AUTO_EVALUATED;
   mesh->edit_mesh = nullptr;
@@ -933,6 +943,8 @@ static void mesh_clear_geometry(Mesh *mesh)
   BLI_freelistN(&mesh->vertex_group_names);
   MEM_SAFE_FREE(mesh->active_color_attribute);
   MEM_SAFE_FREE(mesh->default_color_attribute);
+  MEM_SAFE_FREE(mesh->active_uv_attribute);
+  MEM_SAFE_FREE(mesh->default_uv_attribute);
 }
 
 void BKE_mesh_clear_geometry(Mesh *mesh)
@@ -1003,13 +1015,17 @@ Mesh *BKE_mesh_new_nomain(int verts_len, int edges_len, int loops_len, int polys
 
 static void copy_attribute_names(const Mesh &mesh_src, Mesh &mesh_dst)
 {
-  if (mesh_src.active_color_attribute) {
-    MEM_SAFE_FREE(mesh_dst.active_color_attribute);
-    mesh_dst.active_color_attribute = BLI_strdup(mesh_src.active_color_attribute);
+  if (const char *name = mesh_src.active_color_attribute) {
+    BKE_id_attributes_active_color_set(&mesh_dst.id, name);
   }
-  if (mesh_src.default_color_attribute) {
-    MEM_SAFE_FREE(mesh_dst.default_color_attribute);
-    mesh_dst.default_color_attribute = BLI_strdup(mesh_src.default_color_attribute);
+  if (const char *name = mesh_src.default_color_attribute) {
+    BKE_id_attributes_default_color_set(&mesh_dst.id, name);
+  }
+  if (const char *name = mesh_src.active_uv_attribute) {
+    BKE_id_attributes_active_uv_set(&mesh_dst.id, name);
+  }
+  if (const char *name = mesh_src.default_uv_attribute) {
+    BKE_id_attributes_default_uv_set(&mesh_dst.id, name);
   }
 }
 
@@ -1875,6 +1891,38 @@ void BKE_mesh_calc_normals_split_ex(Mesh *mesh,
 void BKE_mesh_calc_normals_split(Mesh *mesh)
 {
   BKE_mesh_calc_normals_split_ex(mesh, nullptr, ensure_corner_normal_layer(*mesh));
+}
+
+const float (*BKE_mesh_get_uv_map_or_active(const Mesh *mesh, const char *name))[2]
+{
+  if (name) {
+    if (const void *uvs = CustomData_get_layer_named(&mesh->ldata, CD_PROP_FLOAT2, name)) {
+      return reinterpret_cast<const float(*)[2]>(uvs);
+    }
+  }
+  if (const char *name = mesh->active_uv_attribute) {
+    if (const void *uvs = CustomData_get_layer_named(&mesh->ldata, CD_PROP_FLOAT2, name)) {
+      return reinterpret_cast<const float(*)[2]>(uvs);
+    }
+  }
+  return nullptr;
+}
+
+float (*BKE_mesh_get_uv_map_or_active_for_write(Mesh *mesh, const char *name))[2]
+{
+  if (name) {
+    if (void *uvs = CustomData_get_layer_named_for_write(
+            &mesh->ldata, CD_PROP_FLOAT2, name, mesh->totloop)) {
+      return reinterpret_cast<float(*)[2]>(uvs);
+    }
+  }
+  if (const char *name = mesh->active_uv_attribute) {
+    if (void *uvs = CustomData_get_layer_named_for_write(
+            &mesh->ldata, CD_PROP_FLOAT2, name, mesh->totloop)) {
+      return reinterpret_cast<float(*)[2]>(uvs);
+    }
+  }
+  return nullptr;
 }
 
 /* **** Depsgraph evaluation **** */

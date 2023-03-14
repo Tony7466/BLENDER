@@ -594,15 +594,11 @@ void BlenderStrokeRenderer::GenerateStrokeMesh(StrokeGroup *group, bool hasTex)
   blender::float2 *loopsuv[2] = {nullptr};
 
   if (hasTex) {
-    // First UV layer
     loopsuv[0] = static_cast<blender::float2 *>(CustomData_add_layer_named(
         &mesh->ldata, CD_PROP_FLOAT2, CD_SET_DEFAULT, mesh->totloop, uvNames[0]));
-    CustomData_set_layer_active(&mesh->ldata, CD_PROP_FLOAT2, 0);
-
-    // Second UV layer
     loopsuv[1] = static_cast<blender::float2 *>(CustomData_add_layer_named(
         &mesh->ldata, CD_PROP_FLOAT2, CD_SET_DEFAULT, mesh->totloop, uvNames[1]));
-    CustomData_set_layer_active(&mesh->ldata, CD_PROP_FLOAT2, 1);
+    BKE_id_attributes_active_uv_set(&mesh->id, uvNames[1]);
   }
 
   // colors and transparency (the latter represented by grayscale colors)

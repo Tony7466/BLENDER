@@ -720,16 +720,7 @@ void RE_bake_pixels_populate(Mesh *me,
                              const BakeTargets *targets,
                              const char *uv_layer)
 {
-  const float(*mloopuv)[2];
-  if ((uv_layer == nullptr) || (uv_layer[0] == '\0')) {
-    mloopuv = static_cast<const float(*)[2]>(CustomData_get_layer(&me->ldata, CD_PROP_FLOAT2));
-  }
-  else {
-    int uv_id = CustomData_get_named_layer(&me->ldata, CD_PROP_FLOAT2, uv_layer);
-    mloopuv = static_cast<const float(*)[2]>(
-        CustomData_get_layer_n(&me->ldata, CD_PROP_FLOAT2, uv_id));
-  }
-
+  const float(*mloopuv)[2] = BKE_mesh_get_uv_map_or_active(me, uv_layer);
   if (mloopuv == nullptr) {
     return;
   }

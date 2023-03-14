@@ -23,6 +23,8 @@ static bool mesh_extract_uv_format_init(GPUVertFormat *format,
                                         MeshBatchCache *cache,
                                         CustomData *cd_ldata,
                                         eMRExtractType extract_type,
+                                        const char *active_uv_name,
+                                        const char *default_uv_name,
                                         uint32_t &r_uv_layers)
 {
   GPU_vertformat_deinterleave(format);
@@ -30,7 +32,7 @@ static bool mesh_extract_uv_format_init(GPUVertFormat *format,
   uint32_t uv_layers = cache->cd_used.uv;
   /* HACK to fix #68857 */
   if (extract_type == MR_EXTRACT_BMESH && cache->cd_used.edit_uv == 1) {
-    int layer = CustomData_get_active_layer(cd_ldata, CD_PROP_FLOAT2);
+    int layer = CustomData_get_named_layer(cd_ldata, CD_PROP_FLOAT2, active_uv_name);
     if (layer != -1) {
       uv_layers |= (1 << layer);
     }
@@ -48,11 +50,11 @@ static bool mesh_extract_uv_format_init(GPUVertFormat *format,
       BLI_snprintf(attr_name, sizeof(attr_name), "a%s", attr_safe_name);
       GPU_vertformat_attr_add(format, attr_name, GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
       /* Active render layer name. */
-      if (i == CustomData_get_render_layer(cd_ldata, CD_PROP_FLOAT2)) {
+      if (default_uv_name && STREQ(layer_name, default_uv_name)) {
         GPU_vertformat_alias_add(format, "a");
       }
       /* Active display layer name. */
-      if (i == CustomData_get_active_layer(cd_ldata, CD_PROP_FLOAT2)) {
+      if (active_uv_name && STREQ(layer_name, active_uv_name)) {
         GPU_vertformat_alias_add(format, "au");
         /* Alias to `pos` for edit uvs. */
         GPU_vertformat_alias_add(format, "pos");
@@ -83,7 +85,13 @@ static void extract_uv_init(const MeshRenderData *mr,
   CustomData *cd_ldata = (mr->extract_type == MR_EXTRACT_BMESH) ? &mr->bm->ldata : &mr->me->ldata;
   int v_len = mr->loop_len;
   uint32_t uv_layers = cache->cd_used.uv;
-  if (!mesh_extract_uv_format_init(&format, cache, cd_ldata, mr->extract_type, uv_layers)) {
+  if (!mesh_extract_uv_format_init(&format,
+                                   cache,
+                                   cd_ldata,
+                                   mr->extract_type,
+                                   mr->active_uv_name,
+                                   mr->default_uv_name,
+                                   uv_layers)) {
     /* VBO will not be used, only allocate minimum of memory. */
     v_len = 1;
   }
@@ -120,7 +128,7 @@ static void extract_uv_init(const MeshRenderData *mr,
 }
 
 static void extract_uv_init_subdiv(const DRWSubdivCache *subdiv_cache,
-                                   const MeshRenderData * /*mr*/,
+                                   const MeshRenderData *mr,
                                    MeshBatchCache *cache,
                                    void *buffer,
                                    void * /*data*/)
@@ -131,8 +139,13 @@ static void extract_uv_init_subdiv(const DRWSubdivCache *subdiv_cache,
 
   uint v_len = subdiv_cache->num_subdiv_loops;
   uint uv_layers;
-  if (!mesh_extract_uv_format_init(
-          &format, cache, &coarse_mesh->ldata, MR_EXTRACT_MESH, uv_layers)) {
+  if (!mesh_extract_uv_format_init(&format,
+                                   cache,
+                                   &coarse_mesh->ldata,
+                                   MR_EXTRACT_MESH,
+                                   mr->active_uv_name,
+                                   mr->default_uv_name,
+                                   uv_layers)) {
     /* TODO(kevindietrich): handle this more gracefully. */
     v_len = 1;
   }

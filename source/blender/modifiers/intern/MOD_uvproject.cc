@@ -21,6 +21,7 @@
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
 
+#include "BKE_attribute.h"
 #include "BKE_camera.h"
 #include "BKE_context.h"
 #include "BKE_lib_query.h"
@@ -36,6 +37,7 @@
 
 #include "MOD_modifiertypes.h"
 #include "MOD_ui_common.h"
+#include "MOD_util.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -98,7 +100,6 @@ static Mesh *uvprojectModifier_do(UVProjectModifierData *umd,
   int i, verts_num;
   Projector projectors[MOD_UVPROJECT_MAXPROJECTORS];
   int projectors_num = 0;
-  char uvname[MAX_CUSTOMDATA_LAYER_NAME];
   float aspx = umd->aspectx ? umd->aspectx : 1.0f;
   float aspy = umd->aspecty ? umd->aspecty : 1.0f;
   float scax = umd->scalex ? umd->scalex : 1.0f;
@@ -120,10 +121,9 @@ static Mesh *uvprojectModifier_do(UVProjectModifierData *umd,
   if (!CustomData_has_layer(&mesh->ldata, CD_PROP_FLOAT2)) {
     CustomData_add_layer_named(
         &mesh->ldata, CD_PROP_FLOAT2, CD_SET_DEFAULT, mesh->totloop, umd->uvlayer_name);
+    BKE_id_attributes_active_uv_set(&mesh->id, umd->uvlayer_name);
+    BKE_id_attributes_default_uv_set(&mesh->id, umd->uvlayer_name);
   }
-
-  /* make sure we're using an existing layer */
-  CustomData_validate_layer_name(&mesh->ldata, CD_PROP_FLOAT2, umd->uvlayer_name, uvname);
 
   /* calculate a projection matrix and normal for each projector */
   for (i = 0; i < projectors_num; i++) {
@@ -184,8 +184,7 @@ static Mesh *uvprojectModifier_do(UVProjectModifierData *umd,
   const blender::Span<MPoly> polys = mesh->polys();
   const blender::Span<MLoop> loops = mesh->loops();
 
-  float(*mloop_uv)[2] = static_cast<float(*)[2]>(
-      CustomData_get_layer_named_for_write(&mesh->ldata, CD_PROP_FLOAT2, uvname, loops.size()));
+  float(*mloop_uv)[2] = BKE_mesh_get_uv_map_or_active_for_write(mesh, umd->uvlayer_name);
 
   coords = BKE_mesh_vert_coords_alloc(mesh, &verts_num);
 

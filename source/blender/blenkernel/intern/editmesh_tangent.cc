@@ -150,6 +150,8 @@ static void emDM_calc_loop_tangents_thread(TaskPool *__restrict /*pool*/, void *
 }
 
 void BKE_editmesh_loop_tangent_calc(BMEditMesh *em,
+                                    const char *active_uv_name,
+                                    const char *default_uv_name,
                                     bool calc_active_tangent,
                                     const char (*tangent_names)[MAX_CUSTOMDATA_LAYER_NAME],
                                     int tangent_names_len,
@@ -167,12 +169,12 @@ void BKE_editmesh_loop_tangent_calc(BMEditMesh *em,
   int ren_uv_n = -1;
   bool calc_act = false;
   bool calc_ren = false;
-  char act_uv_name[MAX_NAME];
-  char ren_uv_name[MAX_NAME];
   short tangent_mask = 0;
   short tangent_mask_curr = *tangent_mask_curr_p;
 
   BKE_mesh_calc_loop_tangent_step_0(&bm->ldata,
+                                    active_uv_name,
+                                    default_uv_name,
                                     calc_active_tangent,
                                     tangent_names,
                                     tangent_names_len,
@@ -180,8 +182,6 @@ void BKE_editmesh_loop_tangent_calc(BMEditMesh *em,
                                     &calc_ren,
                                     &act_uv_n,
                                     &ren_uv_n,
-                                    act_uv_name,
-                                    ren_uv_name,
                                     &tangent_mask);
 
   if ((tangent_mask_curr | tangent_mask) != tangent_mask_curr) {
@@ -196,13 +196,13 @@ void BKE_editmesh_loop_tangent_calc(BMEditMesh *em,
       CustomData_add_layer_named(
           loopdata_out, CD_TANGENT, CD_SET_DEFAULT, int(loopdata_out_len), "");
     }
-    if (calc_act && act_uv_name[0]) {
+    if (calc_act && active_uv_name[0]) {
       BKE_mesh_add_loop_tangent_named_layer_for_uv(
-          &bm->ldata, loopdata_out, int(loopdata_out_len), act_uv_name);
+          &bm->ldata, loopdata_out, int(loopdata_out_len), active_uv_name);
     }
-    if (calc_ren && ren_uv_name[0]) {
+    if (calc_ren && default_uv_name[0]) {
       BKE_mesh_add_loop_tangent_named_layer_for_uv(
-          &bm->ldata, loopdata_out, int(loopdata_out_len), ren_uv_name);
+          &bm->ldata, loopdata_out, int(loopdata_out_len), default_uv_name);
     }
     int totface = em->tottri;
 #ifdef USE_LOOPTRI_DETECT_QUADS

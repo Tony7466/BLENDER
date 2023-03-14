@@ -1149,13 +1149,17 @@ void BKE_mesh_nomain_to_mesh(Mesh *mesh_src, Mesh *mesh_dst, Object *ob)
   CustomData_copy(&mesh_src->ldata, &mesh_dst->ldata, mask.lmask, CD_ASSIGN, mesh_src->totloop);
 
   /* Make sure active/default color attribute (names) are brought over. */
-  if (mesh_src->active_color_attribute) {
-    MEM_SAFE_FREE(mesh_dst->active_color_attribute);
-    mesh_dst->active_color_attribute = BLI_strdup(mesh_src->active_color_attribute);
+  if (const char *name = mesh_src->active_color_attribute) {
+    BKE_id_attributes_active_color_set(&mesh_dst->id, name);
   }
-  if (mesh_src->default_color_attribute) {
-    MEM_SAFE_FREE(mesh_dst->default_color_attribute);
-    mesh_dst->default_color_attribute = BLI_strdup(mesh_src->default_color_attribute);
+  if (const char *name = mesh_src->default_color_attribute) {
+    BKE_id_attributes_default_color_set(&mesh_dst->id, name);
+  }
+  if (const char *name = mesh_src->active_uv_attribute) {
+    BKE_id_attributes_active_uv_set(&mesh_dst->id, name);
+  }
+  if (const char *name = mesh_src->default_uv_attribute) {
+    BKE_id_attributes_default_uv_set(&mesh_dst->id, name);
   }
 
   BLI_freelistN(&mesh_dst->vertex_group_names);

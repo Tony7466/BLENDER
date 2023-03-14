@@ -246,8 +246,8 @@ static void extract_edituv_stretch_angle_init_subdiv(const DRWSubdivCache *subdi
 
   uint32_t uv_layers = cache->cd_used.uv;
   /* HACK to fix #68857 */
-  if (mr->extract_type == MR_EXTRACT_BMESH && cache->cd_used.edit_uv == 1) {
-    int layer = CustomData_get_active_layer(cd_ldata, CD_PROP_FLOAT2);
+  if (mr->active_uv_name && mr->extract_type == MR_EXTRACT_BMESH && cache->cd_used.edit_uv == 1) {
+    int layer = CustomData_get_named_layer(cd_ldata, CD_PROP_FLOAT2, mr->active_uv_name);
     if (layer != -1) {
       uv_layers |= (1 << layer);
     }
@@ -256,7 +256,7 @@ static void extract_edituv_stretch_angle_init_subdiv(const DRWSubdivCache *subdi
   int uvs_offset = 0;
   for (int i = 0; i < MAX_MTFACE; i++) {
     if (uv_layers & (1 << i)) {
-      if (i == CustomData_get_active_layer(cd_ldata, CD_PROP_FLOAT2)) {
+      if (i == CustomData_get_named_layer(cd_ldata, CD_PROP_FLOAT2, mr->active_uv_name)) {
         break;
       }
 

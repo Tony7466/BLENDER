@@ -1302,7 +1302,10 @@ static void make_duplis_faces(const DupliContext *ctx)
   FaceDupliData_Params fdd_params = {ctx, (parent->transflag & OB_DUPLIFACES_SCALE) != 0};
 
   if (em != nullptr) {
-    const int uv_idx = CustomData_get_render_layer(&em->bm->ldata, CD_PROP_FLOAT2);
+    const int uv_idx = me_eval->default_uv_attribute ?
+                           CustomData_get_named_layer(
+                               &em->bm->ldata, CD_PROP_FLOAT2, me_eval->default_uv_attribute) :
+                           -1;
     FaceDupliData_EditMesh fdd{};
     fdd.params = fdd_params;
     fdd.em = em;
@@ -1315,7 +1318,10 @@ static void make_duplis_faces(const DupliContext *ctx)
     make_child_duplis(ctx, &fdd, make_child_duplis_faces_from_editmesh);
   }
   else {
-    const int uv_idx = CustomData_get_render_layer(&me_eval->ldata, CD_PROP_FLOAT2);
+    const int uv_idx = me_eval->default_uv_attribute ?
+                           CustomData_get_named_layer(
+                               &me_eval->ldata, CD_PROP_FLOAT2, me_eval->default_uv_attribute) :
+                           -1;
     FaceDupliData_Mesh fdd{};
     fdd.params = fdd_params;
     fdd.totface = me_eval->totpoly;

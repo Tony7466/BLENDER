@@ -180,14 +180,14 @@ static void mesh_uv_reset_mface(const MPoly *poly, float2 *mloopuv)
   mesh_uv_reset_array(fuv.data(), poly->totloop);
 }
 
-void ED_mesh_uv_loop_reset_ex(Mesh *me, const int layernum)
+void ED_mesh_uv_loop_reset_ex(Mesh *me, const char *name)
 {
   BMEditMesh *em = me->edit_mesh;
 
   if (em) {
     /* Collect BMesh UVs */
-    const int cd_loop_uv_offset = CustomData_get_n_offset(
-        &em->bm->ldata, CD_PROP_FLOAT2, layernum);
+    const int cd_loop_uv_offset = CustomData_get_offset_named(
+        &em->bm->ldata, CD_PROP_FLOAT2, name);
 
     BMFace *efa;
     BMIter iter;
@@ -206,8 +206,10 @@ void ED_mesh_uv_loop_reset_ex(Mesh *me, const int layernum)
     /* Collect Mesh UVs */
     BLI_assert(CustomData_has_layer(&me->ldata, CD_PROP_FLOAT2));
     float2 *mloopuv = static_cast<float2 *>(
-        CustomData_get_layer_n_for_write(&me->ldata, CD_PROP_FLOAT2, layernum, me->totloop));
-
+        CustomData_get_layer_named_for_write(&me->ldata, CD_PROP_FLOAT2, name, me->totloop));
+    if (!mloopuv) {
+      return;
+    }
     const blender::Span<MPoly> polys = me->polys();
     for (const int i : polys.index_range()) {
       mesh_uv_reset_mface(&polys[i], mloopuv);
@@ -219,10 +221,9 @@ void ED_mesh_uv_loop_reset_ex(Mesh *me, const int layernum)
 
 void ED_mesh_uv_loop_reset(bContext *C, Mesh *me)
 {
-  /* could be ldata or pdata */
-  CustomData *ldata = GET_CD_DATA(me, ldata);
-  const int layernum = CustomData_get_active_layer(ldata, CD_PROP_FLOAT2);
-  ED_mesh_uv_loop_reset_ex(me, layernum);
+  if (const char *name = me->active_uv_attribute) {
+    ED_mesh_uv_loop_reset_ex(me, name);
+  }
 
   WM_event_add_notifier(C, NC_GEOM | ND_DATA, me);
 }
@@ -256,13 +257,14 @@ int ED_mesh_uv_add(
     BM_uv_map_ensure_select_and_pin_attrs(em->bm);
     /* copy data from active UV */
     if (layernum_dst && do_init) {
-      const int layernum_src = CustomData_get_active_layer(&em->bm->ldata, CD_PROP_FLOAT2);
+      const char *name = me->active_uv_attribute;
+      const int layernum_src = CustomData_get_named_layer(&em->bm->ldata, CD_PROP_FLOAT2, name);
       BM_data_layer_copy(em->bm, &em->bm->ldata, CD_PROP_FLOAT2, layernum_src, layernum_dst);
 
       is_init = true;
     }
     if (active_set || layernum_dst == 0) {
-      CustomData_set_layer_active(&em->bm->ldata, CD_PROP_FLOAT2, layernum_dst);
+      BKE_id_attributes_active_uv_set(&me->id, unique_name);
     }
   }
   else {
@@ -288,13 +290,13 @@ int ED_mesh_uv_add(
     }
 
     if (active_set || layernum_dst == 0) {
-      CustomData_set_layer_active(&me->ldata, CD_PROP_FLOAT2, layernum_dst);
+      BKE_id_attributes_active_uv_set(&me->id, unique_name);
     }
   }
 
   /* don't overwrite our copied coords */
   if (!is_init && do_init) {
-    ED_mesh_uv_loop_reset_ex(me, layernum_dst);
+    ED_mesh_uv_loop_reset_ex(me, unique_name);
   }
 
   DEG_id_tag_update(&me->id, 0);
@@ -510,16 +512,9 @@ static bool uv_texture_remove_poll(bContext *C)
   if (!layers_poll(C)) {
     return false;
   }
-
   Object *ob = ED_object_context(C);
-  Mesh *me = static_cast<Mesh *>(ob->data);
-  CustomData *ldata = GET_CD_DATA(me, ldata);
-  const int active = CustomData_get_active_layer(ldata, CD_PROP_FLOAT2);
-  if (active != -1) {
-    return true;
-  }
-
-  return false;
+  Mesh *mesh = static_cast<Mesh *>(ob->data);
+  return mesh->active_uv_attribute != nullptr;
 }
 
 static int mesh_uv_texture_add_exec(bContext *C, wmOperator *op)
@@ -560,9 +555,7 @@ static int mesh_uv_texture_remove_exec(bContext *C, wmOperator *op)
   Object *ob = ED_object_context(C);
   Mesh *me = static_cast<Mesh *>(ob->data);
 
-  CustomData *ldata = GET_CD_DATA(me, ldata);
-  const char *name = CustomData_get_active_layer_name(ldata, CD_PROP_FLOAT2);
-  if (!BKE_id_attribute_remove(&me->id, name, op->reports)) {
+  if (!BKE_id_attribute_remove(&me->id, me->active_uv_attribute, op->reports)) {
     return OPERATOR_CANCELLED;
   }
 

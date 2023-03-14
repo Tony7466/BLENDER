@@ -340,6 +340,46 @@ static void data_transfer_mesh_attributes_transfer_default_color_string(
   }
 }
 
+static void data_transfer_mesh_attributes_transfer_active_uv_string(Mesh *mesh_dst,
+                                                                    const Mesh *mesh_src)
+{
+  if (mesh_dst->active_uv_attribute) {
+    return;
+  }
+  const char *name = mesh_src->active_uv_attribute;
+  if (!BKE_id_attribute_find(&mesh_src->id, name, CD_PROP_FLOAT2, ATTR_DOMAIN_CORNER)) {
+    return;
+  }
+  if (BKE_id_attribute_find(&mesh_dst->id, name, CD_PROP_FLOAT2, ATTR_DOMAIN_CORNER)) {
+    BKE_id_attributes_active_uv_set(&mesh_dst->id, name);
+  }
+  else {
+    if (const char *name = CustomData_get_layer_name(&mesh_dst->ldata, CD_PROP_FLOAT2, 0)) {
+      BKE_id_attributes_active_uv_set(&mesh_dst->id, name);
+    }
+  }
+}
+
+static void data_transfer_mesh_attributes_transfer_default_uv_string(Mesh *mesh_dst,
+                                                                     const Mesh *mesh_src)
+{
+  if (mesh_dst->default_uv_attribute) {
+    return;
+  }
+  const char *name = mesh_src->default_uv_attribute;
+  if (!BKE_id_attribute_find(&mesh_src->id, name, CD_PROP_FLOAT2, ATTR_DOMAIN_CORNER)) {
+    return;
+  }
+  if (BKE_id_attribute_find(&mesh_dst->id, name, CD_PROP_FLOAT2, ATTR_DOMAIN_CORNER)) {
+    BKE_id_attributes_default_uv_set(&mesh_dst->id, name);
+  }
+  else {
+    if (const char *name = CustomData_get_layer_name(&mesh_dst->ldata, CD_PROP_FLOAT2, 0)) {
+      BKE_id_attributes_default_uv_set(&mesh_dst->id, name);
+    }
+  }
+}
+
 /* ********** */
 
 /* Generic pre/post processing, only used by custom loop normals currently. */
@@ -1028,7 +1068,24 @@ static bool data_transfer_layersmapping_generate(ListBase *r_map,
   }
   else if (elem_type == ME_LOOP) {
     if (cddata_type == CD_FAKE_UV) {
-      cddata_type = CD_PROP_FLOAT2;
+      if (const char *name = me_src->active_uv_attribute) {
+        if (!CustomData_get_layer_named(&me_dst->ldata, CD_PROP_FLOAT2, name)) {
+          CustomData_add_layer_named(
+              &me_dst->ldata, CD_PROP_FLOAT2, CD_SET_DEFAULT, me_dst->totpoly, name);
+        }
+        data_transfer_layersmapping_add_item_cd(
+            r_map,
+            CD_PROP_FLOAT2,
+            mix_mode,
+            mix_factor,
+            mix_weights,
+            CustomData_get_layer_named(&me_src->ldata, CD_PROP_FLOAT2, name),
+            CustomData_get_layer_named_for_write(
+                &me_dst->ldata, CD_PROP_FLOAT2, name, num_elem_dst),
+            interp,
+            interp_data);
+      }
+      return true;
     }
     else if (cddata_type == CD_FAKE_LNOR) {
       /* Pre-process should have generated it,
@@ -1240,6 +1297,10 @@ void BKE_object_data_transfer_layout(struct Depsgraph *depsgraph,
             me_dst, me_src, ATTR_DOMAIN_MASK_CORNER, cddata_type);
         data_transfer_mesh_attributes_transfer_default_color_string(
             me_dst, me_src, ATTR_DOMAIN_MASK_CORNER, cddata_type);
+      }
+      else if (cddata_type == CD_PROP_FLOAT2) {
+        data_transfer_mesh_attributes_transfer_active_uv_string(me_dst, me_src);
+        data_transfer_mesh_attributes_transfer_default_uv_string(me_dst, me_src);
       }
     }
     if (DT_DATATYPE_IS_POLY(dtdata_type)) {
