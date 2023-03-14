@@ -142,6 +142,7 @@ set(SRC
   engines/eevee_next/eevee_depth_of_field.cc
   engines/eevee_next/eevee_engine.cc
   engines/eevee_next/eevee_film.cc
+  engines/eevee_next/eevee_gi.cc
   engines/eevee_next/eevee_hizbuffer.cc
   engines/eevee_next/eevee_instance.cc
   engines/eevee_next/eevee_light.cc
@@ -273,6 +274,7 @@ set(SRC
   engines/eevee_next/eevee_depth_of_field.hh
   engines/eevee_next/eevee_engine.h
   engines/eevee_next/eevee_film.hh
+  engines/eevee_next/eevee_gi.hh
   engines/eevee_next/eevee_hizbuffer.hh
   engines/eevee_next/eevee_instance.hh
   engines/eevee_next/eevee_light.hh
@@ -448,6 +450,8 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_geom_gpencil_vert.glsl
   engines/eevee_next/shaders/eevee_geom_mesh_vert.glsl
   engines/eevee_next/shaders/eevee_geom_world_vert.glsl
+  engines/eevee_next/shaders/eevee_gi_debug_surfels_vert.glsl
+  engines/eevee_next/shaders/eevee_gi_debug_surfels_frag.glsl
   engines/eevee_next/shaders/eevee_hiz_debug_frag.glsl
   engines/eevee_next/shaders/eevee_hiz_update_comp.glsl
   engines/eevee_next/shaders/eevee_light_culling_debug_frag.glsl

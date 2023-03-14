@@ -49,8 +49,13 @@ enum eDebugMode : uint32_t {
    */
   DEBUG_HIZ_VALIDATION = 2u,
   /**
+   * Display GI surfels.
+   */
+  DEBUG_GI_SURFELS = 3u,
+  /**
    * Show tiles depending on their status.
    */
+
   DEBUG_SHADOW_TILEMAPS = 10u,
   /**
    * Show content of shadow map. Used to verify projection code.
@@ -822,6 +827,19 @@ static inline ShadowTileDataPacked shadow_tile_pack(ShadowTileData tile)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name GI
+ * \{ */
+
+struct Surfel {
+  float4 position;
+  float4 normal;
+  float4 color;
+};
+BLI_STATIC_ASSERT_ALIGN(Surfel, 16)
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Hierarchical-Z Buffer
  * \{ */
 
@@ -928,6 +946,7 @@ using DepthOfFieldDataBuf = draw::UniformBuffer<DepthOfFieldData>;
 using DepthOfFieldScatterListBuf = draw::StorageArrayBuffer<ScatterRect, 16, true>;
 using DrawIndirectBuf = draw::StorageBuffer<DrawCommand, true>;
 using FilmDataBuf = draw::UniformBuffer<FilmData>;
+using SurfelBuf = draw::StorageArrayBuffer<Surfel, 64>;
 using HiZDataBuf = draw::UniformBuffer<HiZData>;
 using LightCullingDataBuf = draw::StorageBuffer<LightCullingData>;
 using LightCullingKeyBuf = draw::StorageArrayBuffer<uint, LIGHT_CHUNK, true>;

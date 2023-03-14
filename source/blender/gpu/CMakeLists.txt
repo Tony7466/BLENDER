@@ -303,7 +303,6 @@ if(WITH_METAL_BACKEND)
   list(APPEND SRC ${METAL_SRC})
 endif()
 
-
 if(WITH_VULKAN_BACKEND)
   list(APPEND INC
     ../../../extern/vulkan_memory_allocator
@@ -525,7 +524,6 @@ set(GLSL_SRC
   shaders/gpu_shader_cfg_world_clip_lib.glsl
   shaders/gpu_shader_colorspace_lib.glsl
 
-
   GPU_shader_shared_utils.h
 )
 
@@ -567,18 +565,21 @@ if(WITH_METAL_BACKEND)
   list(APPEND GLSL_SRC ${MTL_BACKEND_GLSL_SRC})
 
   set(MSL_C)
+
   foreach(MSL_FILE ${MSL_SRC})
     data_to_c_simple(${MSL_FILE} MSL_C)
   endforeach()
 endif()
 
 set(GLSL_C)
+
 foreach(GLSL_FILE ${GLSL_SRC})
   data_to_c_simple(${GLSL_FILE} GLSL_C)
 endforeach()
 
 set(SHADER_C)
 list(APPEND SHADER_C ${GLSL_C})
+
 if(WITH_METAL_BACKEND)
   list(APPEND SHADER_C ${MSL_C})
 endif()
@@ -590,6 +591,7 @@ list(APPEND LIB
 )
 
 set(GLSL_SOURCE_CONTENT "")
+
 foreach(GLSL_FILE ${GLSL_SRC})
   get_filename_component(GLSL_FILE_NAME ${GLSL_FILE} NAME)
   string(REPLACE "." "_" GLSL_FILE_NAME_UNDERSCORES ${GLSL_FILE_NAME})
@@ -605,6 +607,7 @@ set(SRC_SHADER_CREATE_INFOS
   ../draw/engines/basic/shaders/infos/basic_depth_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_depth_of_field_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_film_info.hh
+  ../draw/engines/eevee_next/shaders/infos/eevee_gi_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_hiz_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_light_culling_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_material_info.hh
@@ -692,7 +695,6 @@ set(SRC_SHADER_CREATE_INFOS_TEST
   shaders/infos/gpu_shader_test_info.hh
 )
 
-
 set(SRC_SHADER_CREATE_INFOS_MTL
   metal/kernels/depth_2d_update_info.hh
   metal/kernels/gpu_shader_fullscreen_blit_info.hh
@@ -708,8 +710,8 @@ if(WITH_METAL_BACKEND)
   list(APPEND SRC_SHADER_CREATE_INFOS ${SRC_SHADER_CREATE_INFOS_MTL})
 endif()
 
-
 set(SHADER_CREATE_INFOS_CONTENT "")
+
 foreach(DESCRIPTOR_FILE ${SRC_SHADER_CREATE_INFOS})
   string(APPEND SHADER_CREATE_INFOS_CONTENT "#include \"${DESCRIPTOR_FILE}\"\n")
 endforeach()
@@ -740,12 +742,9 @@ if(WITH_OPENCOLORIO)
   target_link_libraries(bf_gpu PUBLIC bf_ocio_shaders)
 endif()
 
-
 if(CXX_WARN_NO_SUGGEST_OVERRIDE)
   target_compile_options(bf_gpu PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wsuggest-override>)
 endif()
-
-
 
 if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
   # TODO(@fclem) Fix this mess.
@@ -754,7 +753,7 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
       intern/gpu_shader_builder.cc
       intern/gpu_shader_builder_stubs.cc
       ${shader_create_info_list_file}
-      )
+    )
 
     setup_platform_linker_flags(shader_builder)
     target_link_libraries(shader_builder PUBLIC buildinfoobj)
@@ -765,14 +764,15 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
       # controls version.
       set(MANIFEST "${CMAKE_BINARY_DIR}/tests.exe.manifest")
     endif()
+
     add_executable(shader_builder
       intern/gpu_shader_builder.cc
       intern/gpu_shader_builder_stubs.cc
       ${shader_create_info_list_file}
       ${MANIFEST}
     )
-
   endif()
+
   target_link_libraries(shader_builder PUBLIC
     bf_gpu
     bf_intern_clog
@@ -788,7 +788,7 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
     OUTPUT
     ${SRC_BAKED_CREATE_INFOS_FILE}
     COMMAND
-      "$<TARGET_FILE:shader_builder>" ${SRC_BAKED_CREATE_INFOS_FILE}
+    "$<TARGET_FILE:shader_builder>" ${SRC_BAKED_CREATE_INFOS_FILE}
     DEPENDS shader_builder
   )
   set(GPU_SHADER_INFO_SRC
@@ -803,7 +803,6 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
   blender_add_lib(bf_gpu_shader_infos "${GPU_SHADER_INFO_SRC}" "" "" "")
 endif()
 
-
 if(WITH_GTESTS)
   if(WITH_OPENGL_DRAW_TESTS)
     set(TEST_SRC
@@ -817,6 +816,7 @@ if(WITH_GTESTS)
 
       tests/gpu_testing.hh
     )
+
     if(WITH_VULKAN_BACKEND)
       list(APPEND TEST_SRC
         tests/memory_layout_test.cc

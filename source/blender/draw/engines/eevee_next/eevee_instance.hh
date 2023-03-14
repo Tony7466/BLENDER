@@ -19,6 +19,7 @@
 #include "eevee_cryptomatte.hh"
 #include "eevee_depth_of_field.hh"
 #include "eevee_film.hh"
+#include "eevee_gi.hh"
 #include "eevee_hizbuffer.hh"
 #include "eevee_light.hh"
 #include "eevee_material.hh"
@@ -60,6 +61,7 @@ class Instance {
   RenderBuffers render_buffers;
   MainView main_view;
   World world;
+  GI gi;
 
   /** Input data. */
   Depsgraph *depsgraph;
@@ -103,7 +105,8 @@ class Instance {
         film(*this),
         render_buffers(*this),
         main_view(*this),
-        world(*this){};
+        world(*this),
+        gi(*this){};
   ~Instance(){};
 
   void init(const int2 &output_res,
