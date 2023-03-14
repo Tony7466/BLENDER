@@ -266,6 +266,8 @@ class GeometryManager {
                                   AttributeSizes &attrib_sizes,
                                   const BVHLayout bvh_layout,
                                   size_t num_bvh,
+				  bool can_refit,
+				  bool need_update_scene_bvh,
                                   Progress &progress);
   void updateObjectBounds(Scene *scene);
   void tesselate(Scene *scene, size_t total_tess_needed, Progress &progress);

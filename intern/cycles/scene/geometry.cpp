@@ -1268,6 +1268,8 @@ void GeometryManager::deviceDataXferAndBVHUpdate(int idx,
                                                  AttributeSizes &attrib_sizes,
                                                  const BVHLayout bvh_layout,
                                                  size_t num_bvh,
+						 bool can_refit,
+						 bool need_update_scene_bvh,
                                                  Progress &progress)
 {
   DeviceScene *sub_dscene = scene->dscenes[idx];
@@ -1318,6 +1320,16 @@ void GeometryManager::deviceDataXferAndBVHUpdate(int idx,
         }
       }
     }
+  }
+
+  if(need_update_scene_bvh) {
+    SCOPED_MARKER(sub_device, "Build Scene BVH");
+    scoped_callback_timer timer([scene, idx](double time) {
+      if (scene->update_stats) {
+        scene->scene_bvh_times[idx] = time;
+      }
+    });
+    device_update_bvh(sub_device, sub_dscene, scene, can_refit, 1, 1, progress);
   }
 }
 
@@ -1540,10 +1552,10 @@ void GeometryManager::device_update(Device *device,
   dscene->data.bvh.bvh_layout = bvh_layout;
 
   size_t num_bvh = createObjectBVHs(device, dscene, scene, bvh_layout, need_update_scene_bvh);
-  bool can_refit;
-  {
+  bool can_refit_scene_bvh = true;
+  if(need_update_scene_bvh) {
     SCOPED_MARKER(device, "update scene BVH");
-    can_refit = device_update_bvh_preprocess(device, dscene, scene, progress);
+    can_refit_scene_bvh = device_update_bvh_preprocess(device, dscene, scene, progress);
   }
   {
     size_t n_scenes = scene->dscenes.size();
@@ -1561,7 +1573,8 @@ void GeometryManager::device_update(Device *device,
                        &attrib_sizes,
                        bvh_layout,
                        num_bvh,
-		       can_refit,
+		       can_refit_scene_bvh,
+		       need_update_scene_bvh,
                        &progress](const size_t idx) {
                         deviceDataXferAndBVHUpdate(idx,
                                                    scene,
@@ -1570,19 +1583,13 @@ void GeometryManager::device_update(Device *device,
                                                    attrib_sizes,
                                                    bvh_layout,
                                                    num_bvh,
-                                                   progress);
-			{
-			  DeviceScene *sub_dscene = scene->dscenes[idx];
-			  Device *sub_device = sub_dscene->tri_verts.device;
-			  SCOPED_MARKER(sub_device, "Build Scene BVH");
-			  scoped_callback_timer timer([scene, idx](double time) {
-			    if (scene->update_stats) {
-			      scene->scene_bvh_times[idx] = time;
-			    }});
-			  device_update_bvh(sub_device, sub_dscene, scene, can_refit, 1, 1, progress);
-			}
+						   can_refit_scene_bvh,
+						   need_update_scene_bvh,
+                                                   progress);			
 		      });  // WL: End of parallel data upload and BVH refit/creation
-
+    if (need_update_scene_bvh) {
+      device_update_bvh_postprocess(device, dscene, scene, progress);
+    }
     if (scene->update_stats) {
       double max_mesh_time = 0.0f;
       double max_attrib_time = 0.0f;
@@ -1605,9 +1612,9 @@ void GeometryManager::device_update(Device *device,
     }
 
     // WL: Build scene BVH
-    if (need_update_scene_bvh) {
-      updateSceneBVHs(device, dscene, scene, progress);
-    }  // WL: End of scene BVH generation
+    // if (need_update_scene_bvh) {
+    //   updateSceneBVHs(device, dscene, scene, progress);
+    // }  // WL: End of scene BVH generation
   }    // WL: End of device update
 
   /* END OF DEVICE SPECIFIC CODE:BELOW THIS POINT IS HOST SIDE CODE
