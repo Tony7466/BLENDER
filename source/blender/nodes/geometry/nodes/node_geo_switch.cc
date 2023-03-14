@@ -193,7 +193,7 @@ class LazyFunctionForSwitchNode : public LazyFunction {
     params.set_input_unused(input_to_ignore);
     void *value_to_forward = params.try_get_input_data_ptr_or_request(input_to_forward);
     if (value_to_forward == nullptr) {
-      /* True again when the value is available. */
+      /* Try again when the value is available. */
       return;
     }
 
@@ -222,9 +222,9 @@ class LazyFunctionForSwitchNode : public LazyFunction {
     GField false_field = value_or_field_type.as_field(false_value_or_field);
     GField true_field = value_or_field_type.as_field(true_value_or_field);
 
-    GField output_field{std::make_shared<FieldOperation>(
-        FieldOperation(switch_multi_function,
-                       {std::move(condition), std::move(false_field), std::move(true_field)}))};
+    GField output_field{FieldOperation::Create(
+        switch_multi_function,
+        {std::move(condition), std::move(false_field), std::move(true_field)})};
 
     void *output_ptr = params.get_output_data_ptr(0);
     value_or_field_type.construct_from_field(output_ptr, std::move(output_field));
