@@ -8,8 +8,6 @@
 #include "mtl_debug.hh"
 #include "mtl_memory.hh"
 
-#include <condition_variable>
-
 using namespace blender;
 using namespace blender::gpu;
 

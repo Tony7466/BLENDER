@@ -15,8 +15,6 @@
 #include <Metal/Metal.h>
 #include <QuartzCore/QuartzCore.h>
 
-#include <future>
-
 @class CAMetalLayer;
 @class MTLCommandQueue;
 @class MTLRenderPipelineState;
@@ -307,8 +305,8 @@ class MTLSafeFreeList {
  public:
   MTLSafeFreeList();
 
-  /* Add buffer to Safe Free List, can be called from secondary threads.
-   * Performs a lockless list insert. */
+  /* Can be used from multiple threads. Performs insertion into Safe Free List with the least
+   * amount of threading synchronization. */
   void insert_buffer(gpu::MTLBuffer *buffer);
 
   /* Whether we need to start a new safe free list, or can carry on using the existing one. */
