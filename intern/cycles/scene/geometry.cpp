@@ -1474,24 +1474,6 @@ void GeometryManager::device_update(Device *device,
                                     Scene *scene,
                                     Progress &progress)
 {
-  // WL: This method works as follows:
-  // 1. Calculate vertex normals and gather undisplaced vertices
-  // 2. Tesselate mesh if needed
-  // 3. Compute object bounds
-  // 4. fill attribute buffers
-  // 5. fill geometry buffers
-  // ----DEVICE SPECIFIC BEGIN----
-  // 6. copy attribute buffers to device
-  // 7. copy geometry buffers to device
-  // --- only run on the first device ---
-  // 8. displace meshes and calculate shadow transparency if needed
-  // ----DEVICE SPECIFIC END----
-  // 9. if displacement or shadow transparency then refill buffers and re-upload
-  // ----START OF MIXED DEVICE AND HOST CODE----
-  // 10. build geometry BVHs
-  // 11. build scene BVH
-  // ----HOST SPECIFIC BELOW THIS POINT
-  // 12. Remove modified or update tags
   SCOPED_MARKER(device, "GeometryManager::device_update");
   if (!need_update())
     return;
@@ -1561,15 +1543,20 @@ void GeometryManager::device_update(Device *device,
   dscene->data.bvh.bvh_layout = bvh_layout;
 
   size_t num_bvh = createObjectBVHs(device, dscene, scene, bvh_layout, need_update_scene_bvh);
-
+  bool can_refit;
+  {
+    SCOPED_MARKER(device, "update scene BVH");
+    can_refit = device_update_bvh_preprocess(device, dscene, scene, progress);
+  }
   {
     SCOPED_MARKER(device, "device update");
-    // WL: Parallel upload the geometry data to the devices and
+    // Parallel upload the geometry data to the devices and
     // calculate or refit the BVHs
     size_t n_scenes = scene->dscenes.size();
     double mesh_times[n_scenes];
     double attrib_times[n_scenes];
-    double bvh_times[n_scenes];
+    double object_bvh_times[n_scenes];
+    double scene_bvh_times[n_scenes];
 
     tbb::parallel_for(size_t(0),
                       n_scenes,
@@ -1582,9 +1569,11 @@ void GeometryManager::device_update(Device *device,
                        &attrib_sizes,
                        bvh_layout,
                        num_bvh,
+		       can_refit,
                        &mesh_times,
                        &attrib_times,
-                       &bvh_times,
+                       &object_bvh_times,
+		       &scene_bvh_times,
                        &progress](const size_t idx) {
                         deviceDataXferAndBVHUpdate(idx,
                                                    scene,
@@ -1595,25 +1584,39 @@ void GeometryManager::device_update(Device *device,
                                                    num_bvh,
                                                    mesh_times,
                                                    attrib_times,
-                                                   bvh_times,
+                                                   object_bvh_times,
                                                    progress);
-                      });  // WL: End of parallel data upload and BVH refit/creation
+			{
+			  DeviceScene *sub_dscene = scene->dscenes[idx];
+			  Device *sub_device = sub_dscene->tri_verts.device;
+			  SCOPED_MARKER(sub_device, "Build Scene BVH");
+			  scoped_callback_timer timer([scene, idx, &scene_bvh_times](double time) {
+			    if (scene->update_stats) {
+			      scene_bvh_times[idx] = time;
+			    }});
+			  device_update_bvh(sub_device, sub_dscene, scene, can_refit, 1, 1, progress);
+			}
+		      });  // WL: End of parallel data upload and BVH refit/creation
 
     if (scene->update_stats) {
       double max_mesh_time = 0.0f;
       double max_attrib_time = 0.0f;
-      double max_bvh_time = 0.0f;
+      double max_object_bvh_time = 0.0f;
+      double max_scene_bvh_time = 0.0f;
       for (size_t i = 0; i < n_scenes; i++) {
         max_mesh_time = max(max_mesh_time, mesh_times[i]);
         max_attrib_time = max(max_attrib_time, attrib_times[i]);
-        max_bvh_time = max(max_bvh_time, bvh_times[i]);
+        max_object_bvh_time = max(max_object_bvh_time, object_bvh_times[i]);
+	max_scene_bvh_time = max(max_scene_bvh_time, scene_bvh_times[i]);
       }
       scene->update_stats->geometry.times.add_entry(
           {"device_update (copy meshes to device)", max_mesh_time});
       scene->update_stats->geometry.times.add_entry(
           {"device_update (attributes)", max_attrib_time});
       scene->update_stats->geometry.times.add_entry(
-          {"device_update (build object BVHs)", max_bvh_time});
+          {"device_update (build object BVHs)", max_object_bvh_time});
+      scene->update_stats->geometry.times.add_entry(
+	  {"device_update (build scene BVH)", max_scene_bvh_time});
     }
 
     // WL: Build scene BVH
