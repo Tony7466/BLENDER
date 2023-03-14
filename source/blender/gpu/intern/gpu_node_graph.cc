@@ -484,7 +484,7 @@ static GPUMaterialTexture *gpu_node_graph_add_texture(GPUNodeGraph *graph,
   GPUMaterialTexture *tex = static_cast<GPUMaterialTexture *>(graph->textures.first);
   for (; tex; tex = tex->next) {
     if (tex->ima == ima && tex->colorband == colorband && tex->sky == sky &&
-        tex->sampler_state == sampler_state) {
+        (tex->sampler_state == sampler_state || link_type == GPU_NODE_LINK_IMAGE_TILED_MAPPING)) {
       break;
     }
     num_textures++;
