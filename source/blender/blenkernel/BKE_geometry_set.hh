@@ -43,7 +43,7 @@ class Instances;
  * copy-on-write behavior to avoid read-only copies. It also integrates with attribute API, which
  * generalizes storing and modifying generic information on a geometry.
  */
-class GeometryComponent : public bCopyOnWriteMixin<GeometryComponent> {
+class GeometryComponent : public bCopyOnWriteMixin {
  private:
   GeometryComponentType type_;
 
@@ -74,10 +74,8 @@ class GeometryComponent : public bCopyOnWriteMixin<GeometryComponent> {
 
   virtual bool is_empty() const;
 
-  void delete_self()
-  {
-    delete this;
-  }
+ private:
+  void delete_self() override;
 };
 
 template<typename T>

@@ -32,7 +32,7 @@ namespace blender::bke {
  * because that is not available in C code. If possible, the #AutoAnonymousAttributeID wrapper
  * should be used to avoid manual reference counting in C++ code.
  */
-class AnonymousAttributeID : public bCopyOnWriteMixin<AnonymousAttributeID> {
+class AnonymousAttributeID : public bCopyOnWriteMixin {
  protected:
   std::string name_;
 
@@ -46,7 +46,8 @@ class AnonymousAttributeID : public bCopyOnWriteMixin<AnonymousAttributeID> {
 
   virtual std::string user_name() const;
 
-  void delete_self() const
+ private:
+  void delete_self() override
   {
     MEM_delete(this);
   }

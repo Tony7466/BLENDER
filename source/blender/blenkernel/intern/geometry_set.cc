@@ -94,6 +94,11 @@ bool GeometryComponent::is_empty() const
   return false;
 }
 
+void GeometryComponent::delete_self()
+{
+  delete this;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

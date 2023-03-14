@@ -12,6 +12,26 @@
 #include "BLI_utildefines.h"
 #include "BLI_utility_mixins.hh"
 
+/**
+ * #bCopyOnWrite allows implementing copy-on-write behavior, i.e. it allows sharing read-only data
+ * between multiple independend systems (e.g. meshes). The data is only copied when it is shared
+ * and is about to be modified. This is in contrast to making copies before it is actually known
+ * that it is necessary.
+ *
+ * Internally, this is mostly just a glorified reference count. If the reference count is 1, the
+ * data only has a single owner and is mutable. If it is larger than 1, it is shared and must be
+ * logically const.
+ *
+ * On top of containing a reference count, #bCopyOnWrite also knows how to destruct the referenced
+ * data. This is important because the code freeing the data in the end might not know how it was
+ * allocated (for example, it doesn't know whether an array was allocated using the system or
+ * guarded allocator).
+ *
+ * #bCopyOnWrite is used in two ways:
+ * - It can be allocated separately from the referenced data as is typically the case with raw
+ *   arrays (e.g. for mesh attributes).
+ * - It can be embedded into another struct. For that it's best to use #bCopyOnWriteMixin.
+ */
 struct bCopyOnWrite : blender::NonCopyable, blender::NonMovable {
  private:
   mutable std::atomic<int> users_;
@@ -55,7 +75,10 @@ struct bCopyOnWrite : blender::NonCopyable, blender::NonMovable {
   virtual void delete_self_with_data() = 0;
 };
 
-template<typename T> struct bCopyOnWriteMixin : public bCopyOnWrite {
+/**
+ * Makes it easy to embed copy-on-write behavior into a struct.
+ */
+struct bCopyOnWriteMixin : public bCopyOnWrite {
  public:
   bCopyOnWriteMixin() : bCopyOnWrite(1)
   {
@@ -64,8 +87,8 @@ template<typename T> struct bCopyOnWriteMixin : public bCopyOnWrite {
  private:
   void delete_self_with_data() override
   {
-    static_assert(std::is_base_of_v<bCopyOnWriteMixin<T>, T>);
-    T *data = static_cast<T *>(this);
-    data->delete_self();
+    this->delete_self();
   }
+
+  virtual void delete_self() = 0;
 };
