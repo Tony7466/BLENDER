@@ -53,7 +53,7 @@ static void grease_pencil_foreach_id(ID *id, LibraryForeachIDData *data)
   for (int i = 0; i < grease_pencil->material_array_size; i++) {
     BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, grease_pencil->material_array[i], IDWALK_CB_USER);
   }
-  // TODO: walk all the referenced drawings
+  /* TODO: walk all the referenced drawings */
 }
 
 static void grease_pencil_blend_write(BlendWriter *writer, ID *id, const void *id_address)
@@ -62,36 +62,41 @@ static void grease_pencil_blend_write(BlendWriter *writer, ID *id, const void *i
 
   /* TODO: Flush runtime data to storage. */
 
+  /* Write animation data. */
+  if (grease_pencil->adt) {
+    BKE_animdata_blend_write(writer, grease_pencil->adt);
+  }
+
   /* Write LibData */
   BLO_write_id_struct(writer, GreasePencil, id_address, &grease_pencil->id);
   BKE_id_blend_write(writer, &grease_pencil->id);
 
-  /* Drawings. */
+  /* Write drawings. */
   for (int i = 0; i < grease_pencil->drawing_array_size; i++) {
     GreasePencilDrawingOrReference *drawing_or_ref = grease_pencil->drawing_array[i];
-    BLO_write_struct(writer, GreasePencilDrawingOrReference, drawing_or_ref);
     switch (drawing_or_ref->type) {
       case GREASE_PENCIL_DRAWING: {
         GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_or_ref);
+        BLO_write_struct(writer, GreasePencilDrawing, drawing);
         drawing->geometry.wrap().blend_write(*writer, grease_pencil->id);
         break;
       }
       case GREASE_PENCIL_DRAWING_REFERENCE: {
         GreasePencilDrawingReference *drawing_reference =
             reinterpret_cast<GreasePencilDrawingReference *>(drawing_or_ref);
-        BLO_write_raw(writer, sizeof(void *), drawing_reference->id_reference);
+        BLO_write_struct(writer, GreasePencilDrawingReference, drawing_reference);
         break;
       }
     }
   }
 
+  /* Write layer tree. */
   for (int i = 0; i < grease_pencil->layer_tree_storage.nodes_num; i++) {
     GreasePencilLayerTreeNode *node = grease_pencil->layer_tree_storage.nodes[i];
-    BLO_write_struct(writer, GreasePencilLayerTreeNode, node);
     switch (node->type) {
       case GREASE_PENCIL_LAYER_TREE_LEAF: {
         GreasePencilLayerTreeLeaf *node_leaf = reinterpret_cast<GreasePencilLayerTreeLeaf *>(node);
-
+        BLO_write_struct(writer, GreasePencilLayerTreeLeaf, node_leaf);
         /* Write layer data. */
         BLO_write_int32_array(
             writer, node_leaf->layer.frames_storage.size, node_leaf->layer.frames_storage.keys);
@@ -101,30 +106,72 @@ static void grease_pencil_blend_write(BlendWriter *writer, ID *id, const void *i
       }
       case GREASE_PENCIL_LAYER_TREE_GROUP: {
         GreasePencilLayerTreeGroup *group = reinterpret_cast<GreasePencilLayerTreeGroup *>(node);
-        BLO_write_raw(writer, sizeof(int), &group->children_num);
+        BLO_write_struct(writer, GreasePencilLayerTreeGroup, group);
         break;
       }
     }
   }
 
-  /* Materials. */
+  /* Write materials. */
   BLO_write_pointer_array(
       writer, grease_pencil->material_array_size, grease_pencil->material_array);
-
-  /* Animation data. */
-  if (grease_pencil->adt) {
-    BKE_animdata_blend_write(writer, grease_pencil->adt);
-  }
 }
 
 static void grease_pencil_blend_read_data(BlendDataReader *reader, ID *id)
 {
   GreasePencil *grease_pencil = (GreasePencil *)id;
-  /* TODO: Convert storage data to runtime structs. */
 
+  /* Read animation data. */
   BLO_read_data_address(reader, &grease_pencil->adt);
   BKE_animdata_blend_read_data(reader, grease_pencil->adt);
-  
+
+  /* Read drawings. */
+  BLO_read_pointer_array(reader, (void **)&grease_pencil->drawing_array);
+  for (int i = 0; i < grease_pencil->drawing_array_size; i++) {
+    GreasePencilDrawingOrReference *drawing_or_ref = grease_pencil->drawing_array[i];
+    switch (drawing_or_ref->type) {
+      case GREASE_PENCIL_DRAWING: {
+        GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_or_ref);
+        BLO_read_data_address(reader, &drawing);
+        drawing->geometry.wrap().blend_read(*reader);
+        break;
+      }
+      case GREASE_PENCIL_DRAWING_REFERENCE: {
+        GreasePencilDrawingReference *drawing_reference =
+            reinterpret_cast<GreasePencilDrawingReference *>(drawing_or_ref);
+        BLO_read_data_address(reader, &drawing_reference);
+        break;
+      }
+    }
+  }
+
+  /* Read layer tree. */
+  BLO_read_pointer_array(reader, (void **)&grease_pencil->layer_tree_storage.nodes);
+  for (int i = 0; i < grease_pencil->layer_tree_storage.nodes_num; i++) {
+    GreasePencilLayerTreeNode *node = grease_pencil->layer_tree_storage.nodes[i];
+    switch (node->type) {
+      case GREASE_PENCIL_LAYER_TREE_LEAF: {
+        GreasePencilLayerTreeLeaf *node_leaf = reinterpret_cast<GreasePencilLayerTreeLeaf *>(node);
+        BLO_read_data_address(reader, &node_leaf);
+        /* Read layer data. */
+        BLO_read_int32_array(
+            reader, node_leaf->layer.frames_storage.size, &node_leaf->layer.frames_storage.keys);
+        BLO_read_int32_array(
+            reader, node_leaf->layer.frames_storage.size, &node_leaf->layer.frames_storage.values);
+        break;
+      }
+      case GREASE_PENCIL_LAYER_TREE_GROUP: {
+        GreasePencilLayerTreeGroup *group = reinterpret_cast<GreasePencilLayerTreeGroup *>(node);
+        BLO_read_data_address(reader, &group);
+        break;
+      }
+    }
+  }
+
+  /* Read materials. */
+  BLO_read_pointer_array(reader, (void **)&grease_pencil->material_array);
+
+  /* TODO: Convert storage data to runtime structs. */
 }
 
 static void grease_pencil_blend_read_lib(BlendLibReader *reader, ID *id)

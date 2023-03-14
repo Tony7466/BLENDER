@@ -154,7 +154,6 @@ static void curves_blend_read_data(BlendDataReader *reader, ID *id)
   /* Geometry */
   curves->geometry.wrap().blend_read(*reader);
 
-
   BLO_read_data_address(reader, &curves->surface_uv_map);
 
   curves->geometry.runtime = MEM_new<blender::bke::CurvesGeometryRuntime>(__func__);
