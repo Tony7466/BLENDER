@@ -22,7 +22,7 @@ struct bCopyOnWrite : blender::NonCopyable, blender::NonMovable {
   {
   }
 
-  ~bCopyOnWrite()
+  virtual ~bCopyOnWrite()
   {
     BLI_assert(this->is_mutable());
   }
