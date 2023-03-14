@@ -16,6 +16,7 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_array_utils.h"
+#include "BLI_copy_on_write.hh"
 #include "BLI_listbase.h"
 #include "BLI_task.hh"
 
@@ -40,7 +41,7 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
-// #define USE_ARRAY_STORE
+#define USE_ARRAY_STORE
 
 #ifdef USE_ARRAY_STORE
 // #  define DEBUG_PRINT
@@ -255,8 +256,15 @@ static void um_arraystore_cd_compact(CustomData *cdata,
       }
 
       if (layer->data) {
+        if (layer->cow) {
+          /* This assumes that the layer is not shared, which it is not here because it has just
+           * been created in #BM_mesh_bm_to_me. */
+          BLI_assert(layer->cow->is_mutable());
+          MEM_delete(layer->cow);
+        }
         MEM_freeN(layer->data);
         layer->data = nullptr;
+        layer->cow = nullptr;
       }
     }
 
