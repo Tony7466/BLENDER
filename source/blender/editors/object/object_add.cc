@@ -58,7 +58,9 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_gpencil_curve_legacy.h"
 #include "BKE_gpencil_geom_legacy.h"
+#include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_key.h"
 #include "BKE_lattice.h"
 #include "BKE_layer.h"
@@ -3060,6 +3062,31 @@ static int object_convert_exec(bContext *C, wmOperator *op)
         }
       }
       ob_gpencil->actcol = actcol;
+    }
+    else if (ob->type == OB_GPENCIL_LEGACY && target == OB_CURVES) {
+      ob->flag |= OB_DONE;
+
+      bGPdata *gpd = static_cast<bGPdata *>(ob->data);
+      bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
+      bGPDframe &gpf = *BKE_gpencil_layer_frame_find(gpl, scene->r.cfra);
+
+      if (keep_original) {
+        BLI_assert_unreachable();
+      }
+      else {
+        newob = ob;
+      }
+
+      Curves *new_curves = static_cast<Curves *>(BKE_id_new(bmain, ID_CV, newob->id.name + 2));
+
+      newob->data = new_curves;
+      newob->type = OB_CURVES;
+
+      new_curves->geometry.wrap() = std::move(
+          bke::gpencil::convert::legacy_gpencil_frame_to_curves_geometry(gpf));
+
+      BKE_object_free_derived_caches(newob);
+      BKE_object_free_modifiers(newob, 0);
     }
     else if (target == OB_CURVES) {
       ob->flag |= OB_DONE;
