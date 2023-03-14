@@ -253,12 +253,18 @@ class LazyFunctionForSwitchNode : public LazyFunction {
   }
 };
 
+}  // namespace blender::nodes::node_geo_switch_cc
+
+namespace blender::nodes {
+
 std::unique_ptr<LazyFunction> get_switch_node_lazy_function(const bNode &node)
 {
+  using namespace node_geo_switch_cc;
   BLI_assert(node.type == GEO_NODE_SWITCH);
   return std::make_unique<LazyFunctionForSwitchNode>(node);
 }
-}  // namespace blender::nodes::node_geo_switch_cc
+
+}  // namespace blender::nodes
 
 void register_node_type_geo_switch()
 {

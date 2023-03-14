@@ -1575,8 +1575,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
   void handle_switch_node(const bNode &bnode)
   {
-    std::unique_ptr<LazyFunction> lazy_function =
-        node_geo_switch_cc::get_switch_node_lazy_function(bnode);
+    std::unique_ptr<LazyFunction> lazy_function = get_switch_node_lazy_function(bnode);
     lf::FunctionNode &lf_node = lf_graph_->add_function(*lazy_function);
     lf_graph_info_->functions.append(std::move(lazy_function));
 
