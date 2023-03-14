@@ -20,7 +20,7 @@ class GreasePencilLayerRuntime {
 
 namespace gpencil::convert {
 
-CurvesGeometry &legacy_gpencil_frame_to_curves_geometry(bGPDframe &gpf);
+CurvesGeometry legacy_gpencil_frame_to_curves_geometry(bGPDframe &gpf);
 
 }  // namespace gpencil::convert
 

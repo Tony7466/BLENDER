@@ -16,7 +16,7 @@
 
 namespace blender::bke::gpencil::convert {
 
-CurvesGeometry &legacy_gpencil_frame_to_curves_geometry(bGPDframe &gpf)
+CurvesGeometry legacy_gpencil_frame_to_curves_geometry(bGPDframe &gpf)
 {
   /* Get the number of points, number of strokes and the offsets for each stroke. */
   Vector<int> offsets;
@@ -36,37 +36,39 @@ CurvesGeometry &legacy_gpencil_frame_to_curves_geometry(bGPDframe &gpf)
   MutableAttributeAccessor attributes = curves.attributes_for_write();
 
   /* All strokes are poly curves. */
-  curves.curve_types_for_write().fill(CURVE_TYPE_POLY);
+  curves.fill_curve_types(CURVE_TYPE_POLY);
 
   /* Point Attributes. */
   MutableSpan<float3> positions = curves.positions_for_write();
-  MutableSpan<float> radii =
-      attributes.lookup_or_add_for_write_span<float>("radius", ATTR_DOMAIN_POINT).span;
-  MutableSpan<float> opacities =
-      attributes.lookup_or_add_for_write_span<float>("opacity", ATTR_DOMAIN_POINT).span;
-  MutableSpan<bool> selection =
-      attributes.lookup_or_add_for_write_span<bool>(".selection", ATTR_DOMAIN_POINT).span;
+  SpanAttributeWriter<float> radii = attributes.lookup_or_add_for_write_span<float>(
+      "radius", ATTR_DOMAIN_POINT);
+  SpanAttributeWriter<float> opacities = attributes.lookup_or_add_for_write_span<float>(
+      "opacity", ATTR_DOMAIN_POINT);
+  SpanAttributeWriter<bool> selection = attributes.lookup_or_add_for_write_span<bool>(
+      ".selection", ATTR_DOMAIN_POINT);
 
   /* Curve Attributes. */
-  MutableSpan<bool> curve_cyclic =
-      attributes.lookup_or_add_for_write_span<bool>("cyclic", ATTR_DOMAIN_CURVE).span;
-  MutableSpan<int> curve_materials =
-      attributes.lookup_or_add_for_write_span<int>("material_index", ATTR_DOMAIN_CURVE).span;
+  SpanAttributeWriter<bool> curve_cyclic = attributes.lookup_or_add_for_write_span<bool>(
+      "cyclic", ATTR_DOMAIN_CURVE);
+  SpanAttributeWriter<int> curve_materials = attributes.lookup_or_add_for_write_span<int>(
+      "material_index", ATTR_DOMAIN_CURVE);
 
   int i = 0;
   LISTBASE_FOREACH_INDEX (bGPDstroke *, gps, &gpf.strokes, i) {
+    /* TODO: check if gps->editcurve is not nullptr and parse bezier curve instead. */
+
     /* Write curve attributes. */
-    curve_cyclic[i] = (gps->flag & GP_STROKE_CYCLIC) != 0;
-    curve_materials[i] = gps->mat_nr;
+    curve_cyclic.span[i] = (gps->flag & GP_STROKE_CYCLIC) != 0;
+    curve_materials.span[i] = gps->mat_nr;
 
     /* Write point attributes. */
     IndexRange curve_points = points_by_curve[i];
     Span<bGPDspoint> stroke_points{gps->points, gps->totpoints};
 
     MutableSpan<float3> curve_positions = positions.slice(curve_points);
-    MutableSpan<float> curve_radii = radii.slice(curve_points);
-    MutableSpan<float> curve_opacities = opacities.slice(curve_points);
-    MutableSpan<bool> curve_selections = selection.slice(curve_points);
+    MutableSpan<float> curve_radii = radii.span.slice(curve_points);
+    MutableSpan<float> curve_opacities = opacities.span.slice(curve_points);
+    MutableSpan<bool> curve_selections = selection.span.slice(curve_points);
 
     for (const int j : stroke_points.index_range()) {
       const bGPDspoint &pt = stroke_points[j];
@@ -76,6 +78,15 @@ CurvesGeometry &legacy_gpencil_frame_to_curves_geometry(bGPDframe &gpf)
       curve_selections[j] = (pt.flag & GP_SPOINT_SELECT) != 0;
     }
   }
+
+  radii.finish();
+  opacities.finish();
+  selection.finish();
+
+  curve_cyclic.finish();
+  curve_materials.finish();
+
+  curves.tag_topology_changed();
 
   return curves;
 }
