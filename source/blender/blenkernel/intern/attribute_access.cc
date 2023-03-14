@@ -219,18 +219,18 @@ static bool add_builtin_type_custom_data_layer_from_init(CustomData &custom_data
 static void *add_generic_custom_data_layer(CustomData &custom_data,
                                            const eCustomDataType data_type,
                                            const eCDAllocType alloctype,
-                                           const int domain_num,
+                                           const int domain_size,
                                            const AttributeIDRef &attribute_id)
 {
   if (!attribute_id.is_anonymous()) {
     char attribute_name_c[MAX_CUSTOMDATA_LAYER_NAME];
     attribute_id.name().copy(attribute_name_c);
     return CustomData_add_layer_named(
-        &custom_data, data_type, alloctype, domain_num, attribute_name_c);
+        &custom_data, data_type, alloctype, domain_size, attribute_name_c);
   }
   const AnonymousAttributeID &anonymous_id = attribute_id.anonymous_id();
   return CustomData_add_layer_anonymous(
-      &custom_data, data_type, alloctype, domain_num, &anonymous_id);
+      &custom_data, data_type, alloctype, domain_size, &anonymous_id);
 }
 
 static const void *add_generic_custom_data_layer_with_existing_data(
