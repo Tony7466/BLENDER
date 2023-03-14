@@ -450,6 +450,7 @@ void CurvesConstraintSolver::initialize(const bke::CurvesGeometry &curves,
 
   goals_.reinitialize(curves.curves_num());
   has_goals_.reinitialize(curves.curves_num());
+  has_goals_.fill(false);
   closest_points_.reinitialize(curves.curves_num());
   closest_factors_.reinitialize(curves.curves_num());
 }
