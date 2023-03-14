@@ -16,6 +16,7 @@
 /** Workaround to forward-declare C++ type in C header. */
 #ifdef __cplusplus
 
+#  include "BLI_bounds_types.hh"
 #  include "BLI_math_vector_types.hh"
 
 namespace blender {
@@ -261,6 +262,9 @@ typedef struct Mesh {
    */
   blender::Span<MLoopTri> looptris() const;
 
+  /** Set cached mesh bounds to a known-correct value to avoid their lazy calculation later on. */
+  void bounds_set_eager(const blender::Bounds<blender::float3> &bounds);
+
   /**
    * Cached information about loose edges, calculated lazily when necessary.
    */
@@ -283,7 +287,7 @@ typedef struct Mesh {
    * from a vertices surrounding faces, or the normalized position of vertices connected to no
    * faces.
    */
-  blender::Span<blender::float3> vertex_normals() const;
+  blender::Span<blender::float3> vert_normals() const;
 #endif
 } Mesh;
 

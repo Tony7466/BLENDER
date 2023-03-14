@@ -10,7 +10,7 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_volume_types.h"
 
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_volume.h"
 
 #ifdef WITH_OPENVDB
@@ -167,7 +167,7 @@ Mesh *volume_to_mesh(const openvdb::GridBase &grid,
 
   const int tot_loops = 3 * mesh_data.tris.size() + 4 * mesh_data.quads.size();
   const int tot_polys = mesh_data.tris.size() + mesh_data.quads.size();
-  Mesh *mesh = BKE_mesh_new_nomain(mesh_data.verts.size(), 0, 0, tot_loops, tot_polys);
+  Mesh *mesh = BKE_mesh_new_nomain(mesh_data.verts.size(), 0, tot_loops, tot_polys);
 
   fill_mesh_from_openvdb_data(mesh_data.verts,
                               mesh_data.tris,
@@ -180,6 +180,7 @@ Mesh *volume_to_mesh(const openvdb::GridBase &grid,
                               mesh->loops_for_write());
 
   BKE_mesh_calc_edges(mesh, false, false);
+  BKE_mesh_smooth_flag_set(mesh, false);
 
   return mesh;
 }

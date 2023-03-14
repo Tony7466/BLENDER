@@ -18,7 +18,7 @@
 #include "BKE_customdata.h"
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.h"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
@@ -381,9 +381,9 @@ void USDGenericMeshWriter::assign_materials(const HierarchyContext &context,
   }
 
   if (mesh_material_bound) {
-    /* USD will require that prims with material bindings have the MaterialBindingAPI applied
+    /* USD will require that prims with material bindings have the #MaterialBindingAPI applied
      * schema. While Bind() above will create the binding attribute, Apply() needs to be called as
-     * well to add the MaterialBindingAPI schema to the prim itself.*/
+     * well to add the #MaterialBindingAPI schema to the prim itself. */
     material_binding_api.Apply(mesh_prim);
   }
   else {
@@ -416,7 +416,7 @@ void USDGenericMeshWriter::assign_materials(const HierarchyContext &context,
     auto subset_prim = usd_face_subset.GetPrim();
     auto subset_material_api = pxr::UsdShadeMaterialBindingAPI(subset_prim);
     subset_material_api.Bind(usd_material);
-    /* Apply the MaterialBindingAPI applied schema, as required by USD.*/
+    /* Apply the #MaterialBindingAPI applied schema, as required by USD. */
     subset_material_api.Apply(subset_prim);
   }
 }
@@ -440,12 +440,15 @@ void USDGenericMeshWriter::write_normals(const Mesh *mesh, pxr::UsdGeomMesh usd_
   }
   else {
     /* Compute the loop normals based on the 'smooth' flag. */
-    const float(*vert_normals)[3] = BKE_mesh_vertex_normals_ensure(mesh);
+    bke::AttributeAccessor attributes = mesh->attributes();
+    const float(*vert_normals)[3] = BKE_mesh_vert_normals_ensure(mesh);
     const float(*face_normals)[3] = BKE_mesh_poly_normals_ensure(mesh);
+    const VArray<bool> sharp_faces = attributes.lookup_or_default<bool>(
+        "sharp_face", ATTR_DOMAIN_FACE, false);
     for (const int i : polys.index_range()) {
       const MPoly &poly = polys[i];
 
-      if ((poly.flag & ME_SMOOTH) == 0) {
+      if (sharp_faces[i]) {
         /* Flat shaded, use common normal for all verts. */
         pxr::GfVec3f pxr_normal(face_normals[i]);
         for (int loop_idx = 0; loop_idx < poly.totloop; ++loop_idx) {

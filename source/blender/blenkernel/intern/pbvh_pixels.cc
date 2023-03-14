@@ -3,7 +3,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_customdata.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.h"
 #include "BKE_pbvh.h"
 #include "BKE_pbvh_pixels.hh"
@@ -23,6 +23,7 @@
 #include "bmesh.h"
 
 #include "pbvh_intern.hh"
+#include "pbvh_pixels_copy.hh"
 #include "pbvh_uv_islands.hh"
 
 namespace blender::bke::pbvh::pixels {
@@ -672,7 +673,6 @@ static bool update_pixels(PBVH *pbvh, Mesh *mesh, Image *image, ImageUser *image
   uv_islands::MeshData mesh_data(
       {pbvh->looptri, pbvh->totprim},
       {pbvh->mloop, mesh->totloop},
-      pbvh->totvert,
       uv_map,
       {static_cast<blender::float3 *>(static_cast<void *>(pbvh->vert_positions)), pbvh->totvert});
   uv_islands::UVIslands islands(mesh_data);
@@ -714,6 +714,9 @@ static bool update_pixels(PBVH *pbvh, Mesh *mesh, Image *image, ImageUser *image
   if (USE_WATERTIGHT_CHECK) {
     apply_watertight_check(pbvh, image, image_user);
   }
+
+  /* Add solution for non-manifold parts of the model. */
+  BKE_pbvh_pixels_copy_update(*pbvh, *image, *image_user, mesh_data);
 
   /* Rebuild the undo regions. */
   for (PBVHNode *node : nodes_to_update) {
@@ -798,6 +801,13 @@ void BKE_pbvh_pixels_mark_image_dirty(PBVHNode &node, Image &image, ImageUser &i
     node_data->flags.dirty = false;
   }
 }
+
+void BKE_pbvh_pixels_collect_dirty_tiles(PBVHNode &node, Vector<image::TileNumber> &r_dirty_tiles)
+{
+  NodeData *node_data = static_cast<NodeData *>(node.pixels.node_data);
+  node_data->collect_dirty_tiles(r_dirty_tiles);
+}
+
 }  // namespace blender::bke::pbvh::pixels
 
 using namespace blender::bke::pbvh::pixels;

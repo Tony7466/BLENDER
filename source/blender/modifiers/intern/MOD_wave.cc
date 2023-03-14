@@ -24,7 +24,7 @@
 #include "BKE_editmesh_cache.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.h"
 #include "BKE_scene.h"
 #include "BKE_screen.h"
@@ -146,7 +146,7 @@ static void waveModifier_do(WaveModifierData *md,
 
   const float(*vert_normals)[3] = nullptr;
   if ((wmd->flag & MOD_WAVE_NORM) && (mesh != nullptr)) {
-    vert_normals = BKE_mesh_vertex_normals_ensure(mesh);
+    vert_normals = BKE_mesh_vert_normals_ensure(mesh);
   }
 
   if (wmd->objectcenter != nullptr) {

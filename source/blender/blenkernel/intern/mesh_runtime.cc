@@ -20,7 +20,7 @@
 #include "BKE_bvhutils.h"
 #include "BKE_editmesh_cache.h"
 #include "BKE_lib_id.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.h"
 #include "BKE_shrinkwrap.h"
 #include "BKE_subdiv_ccg.h"
@@ -124,7 +124,9 @@ const blender::bke::LooseEdgeCache &Mesh::loose_edges() const
         count--;
       }
     }
-
+    if (count == 0) {
+      loose_edges.clear_and_shrink();
+    }
     r_data.count = count;
   });
 
@@ -135,7 +137,7 @@ void Mesh::loose_edges_tag_none() const
 {
   using namespace blender::bke;
   this->runtime->loose_edges_cache.ensure([&](LooseEdgeCache &r_data) {
-    r_data.is_loose_bits.resize(0);
+    r_data.is_loose_bits.clear_and_shrink();
     r_data.count = 0;
   });
 }
@@ -150,21 +152,11 @@ blender::Span<MLoopTri> Mesh::looptris() const
     r_data.reinitialize(poly_to_tri_count(polys.size(), loops.size()));
 
     if (BKE_mesh_poly_normals_are_dirty(this)) {
-      BKE_mesh_recalc_looptri(loops.data(),
-                              polys.data(),
-                              reinterpret_cast<const float(*)[3]>(positions.data()),
-                              loops.size(),
-                              polys.size(),
-                              r_data.data());
+      blender::bke::mesh::looptris_calc(positions, polys, loops, r_data);
     }
     else {
-      BKE_mesh_recalc_looptri_with_normals(loops.data(),
-                                           polys.data(),
-                                           reinterpret_cast<const float(*)[3]>(positions.data()),
-                                           loops.size(),
-                                           polys.size(),
-                                           r_data.data(),
-                                           BKE_mesh_poly_normals_ensure(this));
+      blender::bke::mesh::looptris_calc_with_normals(
+          positions, polys, loops, this->poly_normals(), r_data);
     }
   });
 
@@ -252,7 +244,7 @@ void BKE_mesh_tag_edges_split(struct Mesh *mesh)
   }
 }
 
-void BKE_mesh_tag_coords_changed(Mesh *mesh)
+void BKE_mesh_tag_positions_changed(Mesh *mesh)
 {
   BKE_mesh_normals_tag_dirty(mesh);
   free_bvh_cache(*mesh->runtime);
@@ -260,7 +252,7 @@ void BKE_mesh_tag_coords_changed(Mesh *mesh)
   mesh->runtime->bounds_cache.tag_dirty();
 }
 
-void BKE_mesh_tag_coords_changed_uniformly(Mesh *mesh)
+void BKE_mesh_tag_positions_changed_uniformly(Mesh *mesh)
 {
   /* The normals and triangulation didn't change, since all verts moved by the same amount. */
   free_bvh_cache(*mesh->runtime);

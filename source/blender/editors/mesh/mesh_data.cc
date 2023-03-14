@@ -23,7 +23,7 @@
 #include "BKE_context.h"
 #include "BKE_customdata.h"
 #include "BKE_editmesh.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.h"
 #include "BKE_report.h"
 
@@ -169,15 +169,15 @@ static void mesh_uv_reset_bmface(BMFace *f, const int cd_loop_uv_offset)
   mesh_uv_reset_array(fuv.data(), f->len);
 }
 
-static void mesh_uv_reset_mface(const MPoly *mp, float2 *mloopuv)
+static void mesh_uv_reset_mface(const MPoly *poly, float2 *mloopuv)
 {
-  Array<float *, BM_DEFAULT_NGON_STACK_SIZE> fuv(mp->totloop);
+  Array<float *, BM_DEFAULT_NGON_STACK_SIZE> fuv(poly->totloop);
 
-  for (int i = 0; i < mp->totloop; i++) {
-    fuv[i] = mloopuv[mp->loopstart + i];
+  for (int i = 0; i < poly->totloop; i++) {
+    fuv[i] = mloopuv[poly->loopstart + i];
   }
 
-  mesh_uv_reset_array(fuv.data(), mp->totloop);
+  mesh_uv_reset_array(fuv.data(), poly->totloop);
 }
 
 void ED_mesh_uv_loop_reset_ex(Mesh *me, const int layernum)
@@ -208,8 +208,8 @@ void ED_mesh_uv_loop_reset_ex(Mesh *me, const int layernum)
     float2 *mloopuv = static_cast<float2 *>(
         CustomData_get_layer_n_for_write(&me->ldata, CD_PROP_FLOAT2, layernum, me->totloop));
 
-    const MPoly *polys = BKE_mesh_polys(me);
-    for (int i = 0; i < me->totpoly; i++) {
+    const blender::Span<MPoly> polys = me->polys();
+    for (const int i : polys.index_range()) {
       mesh_uv_reset_mface(&polys[i], mloopuv);
     }
   }
@@ -273,19 +273,18 @@ int ED_mesh_uv_add(
     }
 
     if (CustomData_has_layer(&me->ldata, CD_PROP_FLOAT2) && do_init) {
-      CustomData_add_layer_named(&me->ldata,
-                                 CD_PROP_FLOAT2,
-                                 CD_DUPLICATE,
-                                 const_cast<float2 *>(static_cast<const float2 *>(
-                                     CustomData_get_layer(&me->ldata, CD_PROP_FLOAT2))),
-                                 me->totloop,
-                                 unique_name);
+      CustomData_add_layer_named_with_data(
+          &me->ldata,
+          CD_PROP_FLOAT2,
+          MEM_dupallocN(CustomData_get_layer(&me->ldata, CD_PROP_FLOAT2)),
+          me->totloop,
+          unique_name);
 
       is_init = true;
     }
     else {
       CustomData_add_layer_named(
-          &me->ldata, CD_PROP_FLOAT2, CD_SET_DEFAULT, nullptr, me->totloop, unique_name);
+          &me->ldata, CD_PROP_FLOAT2, CD_SET_DEFAULT, me->totloop, unique_name);
     }
 
     if (active_set || layernum_dst == 0) {
@@ -343,7 +342,7 @@ static bool *ensure_corner_boolean_attribute(Mesh &mesh, const blender::StringRe
       CustomData_get_layer_named_for_write(&mesh.ldata, CD_PROP_BOOL, name.c_str(), mesh.totloop));
   if (!data) {
     data = static_cast<bool *>(CustomData_add_layer_named(
-        &mesh.ldata, CD_PROP_BOOL, CD_SET_DEFAULT, nullptr, mesh.totpoly, name.c_str()));
+        &mesh.ldata, CD_PROP_BOOL, CD_SET_DEFAULT, mesh.totpoly, name.c_str()));
   }
   return data;
 }
@@ -399,13 +398,6 @@ int ED_mesh_color_add(
     name = "Col";
   }
 
-  if (const CustomDataLayer *layer = BKE_id_attribute_find(
-          &me->id, me->active_color_attribute, CD_PROP_BYTE_COLOR, ATTR_DOMAIN_CORNER)) {
-    int dummy;
-    const CustomData *data = mesh_customdata_get_type(me, BM_LOOP, &dummy);
-    return CustomData_get_named_layer(data, CD_PROP_BYTE_COLOR, layer->name);
-  }
-
   CustomDataLayer *layer = BKE_id_attribute_new(
       &me->id, name, CD_PROP_BYTE_COLOR, ATTR_DOMAIN_CORNER, reports);
 
@@ -452,6 +444,7 @@ bool ED_mesh_color_ensure(Mesh *me, const char *name)
   }
 
   BKE_id_attributes_active_color_set(&me->id, unique_name);
+  BKE_id_attributes_default_color_set(&me->id, unique_name);
   BKE_mesh_tessface_clear(me);
   DEG_id_tag_update(&me->id, 0);
 
@@ -640,7 +633,7 @@ static int mesh_customdata_add_exec__internal(bContext *C, char htype, int type)
     BM_data_layer_add(mesh->edit_mesh->bm, data, type);
   }
   else {
-    CustomData_add_layer(data, type, CD_SET_DEFAULT, nullptr, tot);
+    CustomData_add_layer(data, eCustomDataType(type), CD_SET_DEFAULT, tot);
   }
 
   DEG_id_tag_update(&mesh->id, 0);
@@ -801,23 +794,21 @@ static int mesh_customdata_custom_splitnormals_add_exec(bContext *C, wmOperator 
     /* Tag edges as sharp according to smooth threshold if needed,
      * to preserve auto-smooth shading. */
     if (me->flag & ME_AUTOSMOOTH) {
-      const Span<MPoly> polys = me->polys();
-      const Span<MLoop> loops = me->loops();
       bke::MutableAttributeAccessor attributes = me->attributes_for_write();
       bke::SpanAttributeWriter<bool> sharp_edges = attributes.lookup_or_add_for_write_span<bool>(
           "sharp_edge", ATTR_DOMAIN_EDGE);
-      BKE_edges_sharp_from_angle_set(me->totedge,
-                                     loops.data(),
-                                     loops.size(),
-                                     polys.data(),
-                                     BKE_mesh_poly_normals_ensure(me),
-                                     polys.size(),
-                                     me->smoothresh,
-                                     sharp_edges.span.data());
+      const bool *sharp_faces = static_cast<const bool *>(
+          CustomData_get_layer_named(&me->pdata, CD_PROP_BOOL, "sharp_face"));
+      bke::mesh::edges_sharp_from_angle_set(me->polys(),
+                                            me->loops(),
+                                            me->poly_normals(),
+                                            sharp_faces,
+                                            me->smoothresh,
+                                            sharp_edges.span);
       sharp_edges.finish();
     }
 
-    CustomData_add_layer(&me->ldata, CD_CUSTOMLOOPNORMAL, CD_SET_DEFAULT, nullptr, me->totloop);
+    CustomData_add_layer(&me->ldata, CD_CUSTOMLOOPNORMAL, CD_SET_DEFAULT, me->totloop);
   }
 
   DEG_id_tag_update(&me->id, 0);
@@ -1152,8 +1143,7 @@ static void mesh_add_verts(Mesh *mesh, int len)
   CustomData_copy_data(&mesh->vdata, &vdata, 0, 0, mesh->totvert);
 
   if (!CustomData_get_layer_named(&vdata, CD_PROP_FLOAT3, "position")) {
-    CustomData_add_layer_named(
-        &vdata, CD_PROP_FLOAT3, CD_SET_DEFAULT, nullptr, totvert, "position");
+    CustomData_add_layer_named(&vdata, CD_PROP_FLOAT3, CD_SET_DEFAULT, totvert, "position");
   }
 
   CustomData_free(&mesh->vdata, mesh->totvert);
@@ -1187,7 +1177,7 @@ static void mesh_add_edges(Mesh *mesh, int len)
   CustomData_copy_data(&mesh->edata, &edata, 0, 0, mesh->totedge);
 
   if (!CustomData_has_layer(&edata, CD_MEDGE)) {
-    CustomData_add_layer(&edata, CD_MEDGE, CD_SET_DEFAULT, nullptr, totedge);
+    CustomData_add_layer(&edata, CD_MEDGE, CD_SET_DEFAULT, totedge);
   }
 
   CustomData_free(&mesh->edata, mesh->totedge);
@@ -1220,7 +1210,7 @@ static void mesh_add_loops(Mesh *mesh, int len)
   CustomData_copy_data(&mesh->ldata, &ldata, 0, 0, mesh->totloop);
 
   if (!CustomData_has_layer(&ldata, CD_MLOOP)) {
-    CustomData_add_layer(&ldata, CD_MLOOP, CD_SET_DEFAULT, nullptr, totloop);
+    CustomData_add_layer(&ldata, CD_MLOOP, CD_SET_DEFAULT, totloop);
   }
 
   BKE_mesh_runtime_clear_cache(mesh);
@@ -1248,7 +1238,7 @@ static void mesh_add_polys(Mesh *mesh, int len)
   CustomData_copy_data(&mesh->pdata, &pdata, 0, 0, mesh->totpoly);
 
   if (!CustomData_has_layer(&pdata, CD_MPOLY)) {
-    CustomData_add_layer(&pdata, CD_MPOLY, CD_SET_DEFAULT, nullptr, totpoly);
+    CustomData_add_layer(&pdata, CD_MPOLY, CD_SET_DEFAULT, totpoly);
   }
 
   CustomData_free(&mesh->pdata, mesh->totpoly);
@@ -1474,23 +1464,19 @@ void ED_mesh_split_faces(Mesh *mesh)
   const bke::AttributeAccessor attributes = mesh->attributes();
   const VArray<bool> mesh_sharp_edges = attributes.lookup_or_default<bool>(
       "sharp_edge", ATTR_DOMAIN_EDGE, false);
+  const bool *sharp_faces = static_cast<const bool *>(
+      CustomData_get_layer_named(&mesh->pdata, CD_PROP_BOOL, "sharp_face"));
 
   Array<bool> sharp_edges(mesh->totedge);
   mesh_sharp_edges.materialize(sharp_edges);
 
-  BKE_edges_sharp_from_angle_set(mesh->totedge,
-                                 loops.data(),
-                                 loops.size(),
-                                 polys.data(),
-                                 BKE_mesh_poly_normals_ensure(mesh),
-                                 polys.size(),
-                                 split_angle,
-                                 sharp_edges.data());
+  bke::mesh::edges_sharp_from_angle_set(
+      polys, loops, mesh->poly_normals(), sharp_faces, split_angle, sharp_edges);
 
   threading::parallel_for(polys.index_range(), 1024, [&](const IndexRange range) {
     for (const int poly_i : range) {
       const MPoly &poly = polys[poly_i];
-      if (!(poly.flag & ME_SMOOTH)) {
+      if (sharp_faces && sharp_faces[poly_i]) {
         for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
           sharp_edges[loop.e] = true;
         }
