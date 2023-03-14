@@ -60,7 +60,9 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
   float3 N = stack_valid(data_node.x) ? safe_normalize(stack_load_float3(stack, data_node.x)) :
                                         sd->N;
   if (!(sd->type & PRIMITIVE_CURVE)) {
-    N = ensure_valid_reflection(sd->Ng, sd->wi, N);
+    if (CLOSURE_IS_BSDF_GLOSSY(type) || CLOSURE_IS_BSDF_TRANSMISSION(type)) {
+      N = ensure_valid_reflection(sd->Ng, sd->wi, N);
+    }
   }
 
   float param1 = (stack_valid(param1_offset)) ? stack_load_float(stack, param1_offset) :
@@ -119,8 +121,11 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       /* calculate ior */
       float ior = (sd->flag & SD_BACKFACING) ? 1.0f / eta : eta;
 
-      // calculate fresnel for refraction
-      float cosNI = dot(N, sd->wi);
+      /* Calculate fresnel for refraction. */
+      float3 valid_reflection_N = (sd->type & PRIMITIVE_CURVE) ?
+                                      N :
+                                      ensure_valid_reflection(sd->Ng, sd->wi, N);
+      float cosNI = dot(valid_reflection_N, sd->wi);
       float fresnel = fresnel_dielectric_cos(cosNI, ior);
 
       // calculate weights of the diffuse and specular part
@@ -271,7 +276,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
                                NULL;
 
           if (bsdf && fresnel) {
-            bsdf->N = N;
+            bsdf->N = valid_reflection_N;
             bsdf->ior = (2.0f / (1.0f - safe_sqrtf(0.08f * specular))) - 1.0f;
             bsdf->T = T;
 
@@ -333,7 +338,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
                                    NULL;
 
               if (bsdf && fresnel) {
-                bsdf->N = N;
+                bsdf->N = valid_reflection_N;
                 bsdf->T = zero_float3();
                 bsdf->fresnel = fresnel;
 
@@ -362,7 +367,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
                   sizeof(MicrofacetBsdf),
                   rgb_to_spectrum(base_color) * glass_weight * refraction_fresnel);
               if (bsdf) {
-                bsdf->N = N;
+                bsdf->N = valid_reflection_N;
                 bsdf->T = zero_float3();
                 bsdf->fresnel = NULL;
 
@@ -390,7 +395,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
                                  NULL;
 
             if (bsdf && fresnel) {
-              bsdf->N = N;
+              bsdf->N = valid_reflection_N;
               bsdf->fresnel = fresnel;
               bsdf->T = zero_float3();
 
