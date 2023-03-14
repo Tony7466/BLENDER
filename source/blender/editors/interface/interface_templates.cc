@@ -6124,6 +6124,7 @@ void uiTemplateRunningJobs(uiLayout *layout, bContext *C)
   ScrArea *area = CTX_wm_area(C);
   void *owner = nullptr;
   int handle_event, icon = 0;
+  const char* op_name = NULL;
 
   uiBlock *block = uiLayoutGetBlock(layout);
   UI_block_layout_set_current(block, layout);
@@ -6185,6 +6186,7 @@ void uiTemplateRunningJobs(uiLayout *layout, bContext *C)
     if (WM_jobs_test(wm, scene, WM_JOB_TYPE_RENDER)) {
       handle_event = B_STOPRENDER;
       icon = ICON_SCENE;
+      op_name = "RENDER_OT_view_show";
       break;
     }
     if (WM_jobs_test(wm, scene, WM_JOB_TYPE_COMPOSITE)) {
@@ -6243,21 +6245,50 @@ void uiTemplateRunningJobs(uiLayout *layout, bContext *C)
 
     /* job name and icon */
     const int textwidth = UI_fontstyle_string_width(fstyle, name);
-    uiDefIconTextBut(block,
-                     UI_BTYPE_LABEL,
-                     0,
-                     icon,
-                     name,
-                     0,
-                     0,
-                     textwidth + UI_UNIT_X * 1.5f,
-                     UI_UNIT_Y,
-                     nullptr,
-                     0.0f,
-                     0.0f,
-                     0.0f,
-                     0.0f,
-                     "");
+    if(op_name) {
+      uiDefIconButO(block,
+                      UI_BTYPE_BUT,
+                      op_name,
+                      WM_OP_INVOKE_DEFAULT,
+                      icon,
+                      0,
+                      0,
+                      UI_UNIT_X,
+                      UI_UNIT_Y,
+                      TIP_("Show/ focus render window"));
+      uiDefIconTextBut(block,
+                      UI_BTYPE_LABEL,
+                      0,
+                      0,
+                      name,
+                      0,
+                      0,
+                      textwidth + UI_UNIT_X * 1.5f,
+                      UI_UNIT_Y,
+                      nullptr,
+                      0.0f,
+                      0.0f,
+                      0.0f,
+                      0.0f,
+                      "");      
+    }
+    else {
+      uiDefIconTextBut(block,
+                      UI_BTYPE_LABEL,
+                      0,
+                      icon,
+                      name,
+                      0,
+                      0,
+                      textwidth + UI_UNIT_X * 1.5f,
+                      UI_UNIT_Y,
+                      nullptr,
+                      0.0f,
+                      0.0f,
+                      0.0f,
+                      0.0f,
+                      "");
+    }
 
     /* stick progress bar and cancel button together */
     row = uiLayoutRow(layout, true);
