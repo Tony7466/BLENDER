@@ -248,7 +248,7 @@ void solve_slip_constraints(const OffsetIndices<int> points_by_curve,
                             MutableSpan<float> closest_factors)
 {
   /* Compensation factor for step-size dependent softness (see XPBD paper) */
-  const float alpha_compensation = 1.0f / (step_size * step_size);
+  const float alpha_compensation = 1.0f /* / (step_size * step_size)*/;
 
   threading::parallel_for(curve_selection.index_range(), 64, [&](const IndexRange range) {
     for (const int curve_i : curve_selection.slice(range)) {
