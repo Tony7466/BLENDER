@@ -366,6 +366,13 @@
     /* UV painting */ \
     .uv_sculpt_settings = 0, \
     .uv_relax_method = UV_SCULPT_TOOL_RELAX_LAPLACIAN, \
+ \
+    /* Select through */ \
+    .select_through = true, \
+    .select_through_object = true, \
+    .select_through_box = true, \
+    .select_through_lasso = true, \
+    .select_through_circle = true, \
   }
 
 /* clang-format off */
