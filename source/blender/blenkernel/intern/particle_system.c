@@ -3441,6 +3441,7 @@ static void do_hair_dynamics(ParticleSimulationData *sim)
   EffectorWeights *clmd_effweights;
   int totpoint;
   int totedge;
+  float(*deformedVerts)[3];
   bool realloc_roots;
 
   if (!psys->clmd) {
@@ -3494,13 +3495,12 @@ static void do_hair_dynamics(ParticleSimulationData *sim)
   psys->clmd->sim_parms->effector_weights = psys->part->effector_weights;
 
   BKE_id_copy_ex(NULL, &psys->hair_in_mesh->id, (ID **)&psys->hair_out_mesh, LIB_ID_COPY_LOCALIZE);
-  clothModifier_do(psys->clmd,
-                   sim->depsgraph,
-                   sim->scene,
-                   sim->ob,
-                   psys->hair_in_mesh,
-                   BKE_mesh_vert_positions_for_write(psys->hair_in_mesh));
-  BKE_mesh_tag_positions_changed(psys->hair_in_mesh);
+  deformedVerts = BKE_mesh_vert_coords_alloc(psys->hair_out_mesh, NULL);
+  clothModifier_do(
+      psys->clmd, sim->depsgraph, sim->scene, sim->ob, psys->hair_in_mesh, deformedVerts);
+  BKE_mesh_vert_coords_apply(psys->hair_out_mesh, deformedVerts);
+
+  MEM_freeN(deformedVerts);
 
   /* restore cloth effector weights */
   psys->clmd->sim_parms->effector_weights = clmd_effweights;
