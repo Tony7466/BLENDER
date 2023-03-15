@@ -36,7 +36,7 @@ void compute_segment_lengths(const OffsetIndices<int> points_by_curve,
   });
 }
 
-#if 0
+#if 1
 void solve_length_constraints(const OffsetIndices<int> points_by_curve,
                               const IndexMask curve_selection,
                               const Span<float> segment_lenghts,
@@ -46,27 +46,52 @@ void solve_length_constraints(const OffsetIndices<int> points_by_curve,
 
   threading::parallel_for(curve_selection.index_range(), 256, [&](const IndexRange range) {
     for (const int curve_i : curve_selection.slice(range)) {
-      const IndexRange points = points_by_curve[curve_i].drop_back(1);
-      for (const int point_i : points) {
-        float3 &p0 = positions[point_i];
-        float3 &p1 = positions[point_i + 1];
+      /* Preconditioning:
+       * Max. distance can not be greater than total curve length up to each point,
+       * we can clamp that distance to get closer to the solution and speed up convergence.
+       * This also ensures perfect solution of the root pinning constraint. */
 
-        const float goal_length = segment_lenghts[point_i];
-        float length;
-        const float3 gradient_p0 = math::normalize_and_get_length(p0 - p1, length);
-        const float3 gradient_p1 = -gradient_p0;
-        const float distance = length - goal_length;
+      {
+        const IndexRange points = points_by_curve[curve_i];
 
-        /* Implicit pinning constraint for the first point of each curve */
-        const float weight_p0 = point_i == points.first() ? 0.0f : 1.0f;
-        const float weight_p1 = 1.0f;
+        if (!points.is_empty()) {
+          const float3 root = positions[points.first()];
+          float total_distance = 0.0f;
+          for (const int point_i : points) {
+            float3 &p = positions[point_i];
+            float distance_sq = math::distance_squared(p, root);
+            if (distance_sq > 0.0f && distance_sq >= total_distance * total_distance) {
+              p = root + (p - root) * total_distance / math::sqrt(distance_sq);
+            }
 
-        const float gradient_sq_sum = weight_p0 * math::dot(gradient_p0, gradient_p0) +
-                                      weight_p1 * math::dot(gradient_p1, gradient_p1);
-        const float lambda = distance / gradient_sq_sum;
+            total_distance += segment_lenghts[point_i];
+          }
+        }
+      }
 
-        p0 -= weight_p0 * lambda * gradient_p0;
-        p1 -= weight_p1 * lambda * gradient_p1;
+      {
+        const IndexRange points = points_by_curve[curve_i].drop_back(1);
+        for (const int point_i : points) {
+          float3 &p0 = positions[point_i];
+          float3 &p1 = positions[point_i + 1];
+
+          const float goal_length = segment_lenghts[point_i];
+          float length;
+          const float3 gradient_p0 = math::normalize_and_get_length(p0 - p1, length) / goal_length;
+          const float3 gradient_p1 = -gradient_p0;
+          const float distance = length / goal_length - 1.0f;
+
+          /* Implicit pinning constraint for the first point of each curve */
+          const float weight_p0 = (point_i == points.first() ? 0.0f : 1.0f);
+          const float weight_p1 = 1.0f;
+
+          const float gradient_sq_sum = weight_p0 * math::dot(gradient_p0, gradient_p0) +
+                                        weight_p1 * math::dot(gradient_p1, gradient_p1);
+          const float lambda = distance / gradient_sq_sum;
+
+          p0 -= weight_p0 * lambda * gradient_p0;
+          p1 -= weight_p1 * lambda * gradient_p1;
+        }
       }
     }
   });
@@ -316,10 +341,8 @@ void solve_slip_constraints(const OffsetIndices<int> points_by_curve,
       p3 -= weight_p3 * lambda * gradient_p3;
 
       const float curve_factor_unclamped = closest_point + closest_u - weight_u * math::dot(lambda, gradient_u);
-      const int p = closest_point;
       closest_point = math::clamp((int)curve_factor_unclamped, (int)points.first(), (int)points.last());
       closest_u = math::clamp(curve_factor_unclamped, (float)points.first(), (float)points.last() + 1.0f) - (float)closest_point;
-//      std::cout << "U: " << p << ":" << u << " -> " << closest_point << ":" << closest_u << std::endl;
     }
   });
 }
