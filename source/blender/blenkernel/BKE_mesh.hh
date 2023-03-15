@@ -66,16 +66,16 @@ void normals_calc_polys(Span<float3> vert_positions,
                         MutableSpan<float3> poly_normals);
 
 /**
- * Calculate face and vertex normals directly into result arrays.
+ * Calculate vertex normals directly into result array.
  *
  * \note Usually #Mesh::vert_normals() is the preferred way to access vertex normals,
  * since they may already be calculated and cached on the mesh.
  */
-void normals_calc_poly_vert(Span<float3> vert_positions,
-                            OffsetIndices<int> polys,
-                            Span<int> corner_verts,
-                            MutableSpan<float3> poly_normals,
-                            MutableSpan<float3> vert_normals);
+void normals_calc_verts(Span<float3> vert_positions,
+                        OffsetIndices<int> polys,
+                        Span<int> corner_verts,
+                        Span<float3> poly_normals,
+                        MutableSpan<float3> vert_normals);
 
 /**
  * Compute split normals, i.e. vertex normals associated with each poly (hence 'loop normals').

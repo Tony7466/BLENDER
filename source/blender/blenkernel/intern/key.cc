@@ -2266,11 +2266,11 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
         {reinterpret_cast<blender::float3 *>(poly_normals), polys.size()});
   }
   if (vert_normals_needed) {
-    blender::bke::mesh::normals_calc_poly_vert(
+    blender::bke::mesh::normals_calc_verts(
         {reinterpret_cast<const blender::float3 *>(positions), mesh->totvert},
         polys,
         corner_verts,
-        {reinterpret_cast<blender::float3 *>(poly_normals), polys.size()},
+        {reinterpret_cast<const blender::float3 *>(poly_normals), polys.size()},
         {reinterpret_cast<blender::float3 *>(vert_normals), mesh->totvert});
   }
   if (loop_normals_needed) {

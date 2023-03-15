@@ -205,11 +205,20 @@ void normals_calc_polys(const Span<float3> positions,
   });
 }
 
-void normals_calc_poly_vert(const Span<float3> positions,
-                            const OffsetIndices<int> polys,
-                            const Span<int> corner_verts,
-                            MutableSpan<float3> poly_normals,
-                            MutableSpan<float3> vert_normals)
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Mesh Normal Calculation (Polygons & Vertices)
+ *
+ * Take care making optimizations to this function as improvements to low-poly
+ * meshes can slow down high-poly meshes. For details on performance, see D11993.
+ * \{ */
+
+void normals_calc_verts(const Span<float3> positions,
+                        const OffsetIndices<int> polys,
+                        const Span<int> corner_verts,
+                        const Span<float3> poly_normals,
+                        MutableSpan<float3> vert_normals)
 {
 
   /* Zero the vertex normal array for accumulation. */
@@ -217,31 +226,15 @@ void normals_calc_poly_vert(const Span<float3> positions,
     memset(vert_normals.data(), 0, vert_normals.as_span().size_in_bytes());
   }
 
-  /* Compute poly normals, accumulating them into vertex normals. */
+  /* Accumulate the normals of the faces surrounding each vertex. */
   {
     threading::parallel_for(polys.index_range(), 1024, [&](const IndexRange range) {
       for (const int poly_i : range) {
         const Span<int> poly_verts = corner_verts.slice(polys[poly_i]);
 
-        float3 &pnor = poly_normals[poly_i];
+        const float3 &pnor = poly_normals[poly_i];
 
         const int i_end = poly_verts.size() - 1;
-
-        /* Polygon Normal and edge-vector. */
-        /* Inline version of #poly_normal_calc, also does edge-vectors. */
-        {
-          zero_v3(pnor);
-          /* Newell's Method */
-          const float *v_curr = positions[poly_verts[i_end]];
-          for (int i_next = 0; i_next <= i_end; i_next++) {
-            const float *v_next = positions[poly_verts[i_next]];
-            add_newell_cross_v3_v3v3(pnor, v_curr, v_next);
-            v_curr = v_next;
-          }
-          if (UNLIKELY(normalize_v3(pnor) == 0.0f)) {
-            pnor[2] = 1.0f; /* Other axes set to zero. */
-          }
-        }
 
         /* Accumulate angle weighted face normal into the vertex normal. */
         /* Inline version of #accumulate_vertex_normals_poly_v3. */
@@ -309,6 +302,8 @@ blender::Span<blender::float3> Mesh::vert_normals() const
     return this->runtime->vert_normals;
   }
 
+  const Span<float3> poly_normals = this->poly_normals();
+
   std::lock_guard lock{this->runtime->normals_mutex};
   if (!this->runtime->vert_normals_dirty) {
     BLI_assert(this->runtime->vert_normals.size() == this->totvert);
@@ -322,12 +317,10 @@ blender::Span<blender::float3> Mesh::vert_normals() const
     const Span<int> corner_verts = this->corner_verts();
 
     this->runtime->vert_normals.reinitialize(positions.size());
-    this->runtime->poly_normals.reinitialize(polys.size());
-    bke::mesh::normals_calc_poly_vert(
-        positions, polys, corner_verts, this->runtime->poly_normals, this->runtime->vert_normals);
+    blender::bke::mesh::normals_calc_verts(
+        positions, polys, corner_verts, poly_normals, this->runtime->vert_normals);
 
     this->runtime->vert_normals_dirty = false;
-    this->runtime->poly_normals_dirty = false;
   });
 
   return this->runtime->vert_normals;
