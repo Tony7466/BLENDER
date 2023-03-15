@@ -3,24 +3,23 @@
 
 #include <Python.h>
 
-#include <pxr/imaging/hd/tokens.h>
 #include <pxr/imaging/hd/material.h>
 #include <pxr/imaging/hd/renderDelegate.h>
+#include <pxr/imaging/hd/tokens.h>
 
 #include "glog/logging.h"
 
-#include "BKE_material.h"
 #include "BKE_lib_id.h"
+#include "BKE_material.h"
 
-#include "blenderSceneDelegate.h"
+#include "blender_scene_delegate.h"
 #include "material.h"
-#include "mtlxHydraAdapter.h"
-
-using namespace pxr;
+#include "mtlx_hydra_adapter.h"
 
 namespace blender::render::hydra {
 
-std::unique_ptr<MaterialData> MaterialData::init(BlenderSceneDelegate *scene_delegate, Material *material)
+std::unique_ptr<MaterialData> MaterialData::init(BlenderSceneDelegate *scene_delegate,
+                                                 Material *material)
 {
   return std::make_unique<MaterialData>(scene_delegate, material);
 }
@@ -35,13 +34,13 @@ pxr::SdfPath MaterialData::prim_id(BlenderSceneDelegate *scene_delegate, Materia
 }
 
 MaterialData::MaterialData(BlenderSceneDelegate *scene_delegate, Material *material)
-  : IdData(scene_delegate, (ID *)material)
+    : IdData(scene_delegate, (ID *)material)
 {
 }
 
-VtValue MaterialData::get_data(TfToken const &key)
+pxr::VtValue MaterialData::get_data(pxr::TfToken const &key)
 {
-  VtValue ret;
+  pxr::VtValue ret;
   if (key.GetString() == "MaterialXFilename") {
     if (!mtlx_path.GetResolvedPath().empty()) {
       ret = mtlx_path;
@@ -54,14 +53,14 @@ pxr::VtValue MaterialData::material_resource()
 {
   std::string const &path = mtlx_path.GetResolvedPath();
   if (!path.empty()) {
-    HdRenderDelegate *render_delegate = scene_delegate->GetRenderIndex().GetRenderDelegate();
-    TfTokenVector shader_source_types = render_delegate->GetShaderSourceTypes();
-    TfTokenVector render_contexts = render_delegate->GetMaterialRenderContexts();
+    pxr::HdRenderDelegate *render_delegate = scene_delegate->GetRenderIndex().GetRenderDelegate();
+    pxr::TfTokenVector shader_source_types = render_delegate->GetShaderSourceTypes();
+    pxr::TfTokenVector render_contexts = render_delegate->GetMaterialRenderContexts();
 
-    HdMaterialNetworkMap material_network_map;
+    pxr::HdMaterialNetworkMap material_network_map;
     HdMtlxConvertToMaterialNetworkMap(
         path, shader_source_types, render_contexts, &material_network_map);
-    return VtValue(material_network_map);
+    return pxr::VtValue(material_network_map);
   }
 
   return pxr::VtValue();
@@ -87,37 +86,38 @@ void MaterialData::export_mtlx()
 
   PyGILState_Release(gstate);
 
-  mtlx_path = SdfAssetPath(path, path);
+  mtlx_path = pxr::SdfAssetPath(path, path);
   LOG(INFO) << "Material export: " << name() << " mtlx=" << mtlx_path.GetResolvedPath();
 }
 
 void MaterialData::insert_prim()
 {
-  SdfPath p_id = prim_id(scene_delegate, (Material *)id);
-  scene_delegate->GetRenderIndex().InsertSprim(HdPrimTypeTokens->material, scene_delegate, p_id);
+  pxr::SdfPath p_id = prim_id(scene_delegate, (Material *)id);
+  scene_delegate->GetRenderIndex().InsertSprim(
+      pxr::HdPrimTypeTokens->material, scene_delegate, p_id);
   LOG(INFO) << "Add material: " << name() << " id=" << p_id.GetAsString();
 }
 
 void MaterialData::remove_prim()
 {
-  SdfPath p_id = prim_id(scene_delegate, (Material *)id);
-  scene_delegate->GetRenderIndex().RemoveSprim(HdPrimTypeTokens->material, p_id);
+  pxr::SdfPath p_id = prim_id(scene_delegate, (Material *)id);
+  scene_delegate->GetRenderIndex().RemoveSprim(pxr::HdPrimTypeTokens->material, p_id);
   LOG(INFO) << "Remove material: " << name();
 }
 
 void MaterialData::mark_prim_dirty(DirtyBits dirty_bits)
 {
-  HdDirtyBits bits = HdMaterial::Clean;
+  pxr::HdDirtyBits bits = pxr::HdMaterial::Clean;
   switch (dirty_bits) {
-    case DirtyBits::AllDirty:
-      bits = HdMaterial::AllDirty;
+    case DirtyBits::ALL_DIRTY:
+      bits = pxr::HdMaterial::AllDirty;
       break;
     default:
       break;
   }
-  SdfPath p_id = prim_id(scene_delegate, (Material *)id);
+  pxr::SdfPath p_id = prim_id(scene_delegate, (Material *)id);
   scene_delegate->GetRenderIndex().GetChangeTracker().MarkSprimDirty(p_id, bits);
   LOG(INFO) << "Update material: " << name() << ", mtlx=" << mtlx_path.GetResolvedPath();
 }
 
-} // namespace blender::render::hydra
+}  // namespace blender::render::hydra

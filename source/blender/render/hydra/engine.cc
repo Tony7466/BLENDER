@@ -1,49 +1,47 @@
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
+#include <pxr/base/plug/plugin.h>
+#include <pxr/base/plug/registry.h>
 #include <pxr/imaging/hd/rendererPluginRegistry.h>
 #include <pxr/imaging/hdSt/renderDelegate.h>
 #include <pxr/imaging/hgi/tokens.h>
-#include <pxr/base/plug/plugin.h>
-#include <pxr/base/plug/registry.h>
 #include <pxr/usd/usdGeom/tokens.h>
 
 #include "glog/logging.h"
 
 #include "engine.h"
 
-using namespace pxr;
-
 namespace blender::render::hydra {
 
-Engine::Engine(RenderEngine *bl_engine, const std::string &delegateId)
-    : bl_engine(bl_engine)
+Engine::Engine(RenderEngine *bl_engine, const std::string &delegate_id) : bl_engine(bl_engine)
 {
-  HdRendererPluginRegistry& registry = HdRendererPluginRegistry::GetInstance();
+  pxr::HdRendererPluginRegistry &registry = pxr::HdRendererPluginRegistry::GetInstance();
 
-  TF_PY_ALLOW_THREADS_IN_SCOPE();
-  render_delegate = registry.CreateRenderDelegate(TfToken(delegateId));
+  pxr::TF_PY_ALLOW_THREADS_IN_SCOPE();
+  render_delegate = registry.CreateRenderDelegate(pxr::TfToken(delegate_id));
 
-  HdDriverVector hd_drivers;
+  pxr::HdDriverVector hd_drivers;
   if (bl_engine->type->flag & RE_USE_GPU_CONTEXT) {
-    hgi = Hgi::CreatePlatformDefaultHgi();
-    hgi_driver.name = HgiTokens->renderDriver; 
-    hgi_driver.driver = VtValue(hgi.get());
+    hgi = pxr::Hgi::CreatePlatformDefaultHgi();
+    hgi_driver.name = pxr::HgiTokens->renderDriver;
+    hgi_driver.driver = pxr::VtValue(hgi.get());
 
     hd_drivers.push_back(&hgi_driver);
   }
 
-  render_index.reset(HdRenderIndex::New(render_delegate.Get(), hd_drivers));
-  free_camera_delegate = std::make_unique<HdxFreeCameraSceneDelegate>(
-    render_index.get(), SdfPath::AbsoluteRootPath().AppendElementString("freeCamera"));
+  render_index.reset(pxr::HdRenderIndex::New(render_delegate.Get(), hd_drivers));
+  free_camera_delegate = std::make_unique<pxr::HdxFreeCameraSceneDelegate>(
+      render_index.get(), pxr::SdfPath::AbsoluteRootPath().AppendElementString("freeCamera"));
   render_task_delegate = std::make_unique<RenderTaskDelegate>(
-    render_index.get(), SdfPath::AbsoluteRootPath().AppendElementString("renderTask"));
+      render_index.get(), pxr::SdfPath::AbsoluteRootPath().AppendElementString("renderTask"));
   if (render_delegate->GetRendererDisplayName() == "GL") {
     simple_light_task_delegate = std::make_unique<SimpleLightTaskDelegate>(
-        render_index.get(), SdfPath::AbsoluteRootPath().AppendElementString("simpleLightTask"));
+        render_index.get(),
+        pxr::SdfPath::AbsoluteRootPath().AppendElementString("simpleLightTask"));
   }
 
-  engine = std::make_unique<HdEngine>();
+  engine = std::make_unique<pxr::HdEngine>();
 }
 
 Engine::~Engine()
@@ -60,7 +58,7 @@ Engine::~Engine()
 
 float Engine::renderer_percent_done()
 {
-  VtDictionary render_stats = render_delegate->GetRenderStats();
+  pxr::VtDictionary render_stats = render_delegate->GetRenderStats();
   auto it = render_stats.find("percentDone");
   if (it == render_stats.end()) {
     return 0.0;
@@ -68,4 +66,4 @@ float Engine::renderer_percent_done()
   return (float)it->second.UncheckedGet<double>();
 }
 
-}   // namespace blender::render::hydra
+}  // namespace blender::render::hydra

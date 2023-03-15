@@ -6,19 +6,18 @@
 
 #include "glog/logging.h"
 
-#include "blenderSceneDelegate.h"
-
-using namespace pxr;
-using namespace std;
+#include "blender_scene_delegate.h"
 
 namespace blender::render::hydra {
 
-BlenderSceneDelegate::BlenderSceneDelegate(HdRenderIndex* parentIndex, SdfPath const& delegateID, BlenderSceneDelegate::EngineType engine_type)
-  : HdSceneDelegate(parentIndex, delegateID)
-  , engine_type(engine_type)
-  , depsgraph(nullptr)
-  , context(nullptr)
-  , view3d(nullptr)
+BlenderSceneDelegate::BlenderSceneDelegate(pxr::HdRenderIndex *parent_index,
+                                           pxr::SdfPath const &delegate_id,
+                                           BlenderSceneDelegate::EngineType engine_type)
+    : HdSceneDelegate(parent_index, delegate_id),
+      engine_type(engine_type),
+      depsgraph(nullptr),
+      context(nullptr),
+      view3d(nullptr)
 {
 }
 
@@ -26,10 +25,10 @@ void BlenderSceneDelegate::set_material(MeshData &mesh_data)
 {
   Material *material = mesh_data.material();
   if (!material) {
-    mesh_data.material_id = SdfPath::EmptyPath();
+    mesh_data.material_id = pxr::SdfPath::EmptyPath();
     return;
   }
-  SdfPath id = MaterialData::prim_id(this, material);
+  pxr::SdfPath id = MaterialData::prim_id(this, material);
   MaterialData *mat_data = material_data(id);
   if (!mat_data) {
     materials[id] = MaterialData::init(this, material);
@@ -45,7 +44,7 @@ void BlenderSceneDelegate::update_material(Material *material)
   MaterialData *mat_data = material_data(MaterialData::prim_id(this, material));
   if (mat_data) {
     mat_data->export_mtlx();
-    mat_data->mark_prim_dirty(IdData::DirtyBits::AllDirty);
+    mat_data->mark_prim_dirty(IdData::DirtyBits::ALL_DIRTY);
   }
 }
 
@@ -62,7 +61,7 @@ void BlenderSceneDelegate::update_world()
   else {
     if (world) {
       world_data = WorldData::init(this, world, context);
-      world_data->mark_prim_dirty(IdData::DirtyBits::AllDirty);
+      world_data->mark_prim_dirty(IdData::DirtyBits::ALL_DIRTY);
     }
     else {
       world_data->remove_prim();
@@ -71,7 +70,7 @@ void BlenderSceneDelegate::update_world()
   }
 }
 
-bool BlenderSceneDelegate::GetVisible(SdfPath const &id)
+bool BlenderSceneDelegate::GetVisible(pxr::SdfPath const &id)
 {
   if (id == WorldData::prim_id(this)) {
     return true;
@@ -80,62 +79,68 @@ bool BlenderSceneDelegate::GetVisible(SdfPath const &id)
   return object_data(id)->visible;
 }
 
-SdfPath BlenderSceneDelegate::GetInstancerId(SdfPath const &primId)
+pxr::SdfPath BlenderSceneDelegate::GetInstancerId(pxr::SdfPath const &prim_id)
 {
-  LOG(INFO) << "GetInstancerId: " << primId.GetAsString();
-  MeshData *m_data = mesh_data(primId);
+  LOG(INFO) << "GetInstancerId: " << prim_id.GetAsString();
+  MeshData *m_data = mesh_data(prim_id);
   if (m_data) {
     return m_data->instancer_id;
   }
-  return SdfPath();
+  return pxr::SdfPath();
 }
 
-SdfPathVector BlenderSceneDelegate::GetInstancerPrototypes(SdfPath const &instancerId)
+pxr::SdfPathVector BlenderSceneDelegate::GetInstancerPrototypes(pxr::SdfPath const &instancer_id)
 {
-  LOG(INFO) << "GetInstancerPrototypes: " << instancerId.GetString();
-  SdfPathVector paths;
-  paths.push_back(instancerId.GetParentPath());
+  LOG(INFO) << "GetInstancerPrototypes: " << instancer_id.GetString();
+  pxr::SdfPathVector paths;
+  paths.push_back(instancer_id.GetParentPath());
   return paths;
 }
 
-VtIntArray BlenderSceneDelegate::GetInstanceIndices(SdfPath const &instancerId,
-                                                    SdfPath const &prototypeId)
+pxr::VtIntArray BlenderSceneDelegate::GetInstanceIndices(pxr::SdfPath const &instancer_id,
+                                                         pxr::SdfPath const &prototype_id)
 {
-  LOG(INFO) << "GetInstanceIndices: " << instancerId.GetString() << " " << prototypeId.GetString();
-  MeshData *m_data = mesh_data(prototypeId);
-  VtIntArray ret = m_data->instance_indices();
+  LOG(INFO) << "GetInstanceIndices: " << instancer_id.GetString() << " "
+            << prototype_id.GetString();
+  MeshData *m_data = mesh_data(prototype_id);
+  pxr::VtIntArray ret = m_data->instance_indices();
   return ret;
 }
 
-GfMatrix4d BlenderSceneDelegate::GetInstancerTransform(SdfPath const &instancerId)
+pxr::GfMatrix4d BlenderSceneDelegate::get_instancer_transform(pxr::SdfPath const &instancer_id)
 {
-  LOG(INFO) << "GetInstancerTransform: " << instancerId.GetString();
+  LOG(INFO) << "get_instancer_transform: " << instancer_id.GetString();
   // TODO: add a separate object for instancer for cleaner handling code
   // Actual instancer transform is get here
-  return GfMatrix4d(1.0);
+  return pxr::GfMatrix4d(1.0);
 }
 
-size_t BlenderSceneDelegate::SampleInstancerTransform(SdfPath const &instancerId, size_t maxSampleCount,
-                                                      float *sampleTimes,  GfMatrix4d *sampleValues)
+size_t BlenderSceneDelegate::SampleInstancerTransform(pxr::SdfPath const &instancer_id,
+                                                      size_t max_sample_count,
+                                                      float *sample_times,
+                                                      pxr::GfMatrix4d *sample_values)
 {
-  LOG(INFO) << "SampleInstancerTransform: " << instancerId.GetString();
+  LOG(INFO) << "SampleInstancerTransform: " << instancer_id.GetString();
   size_t ret = 0;
-  MeshData *m_data = mesh_data(instancerId.GetParentPath());
-  ret = m_data->sample_instancer_transform(maxSampleCount, sampleTimes, sampleValues);
+  MeshData *m_data = mesh_data(instancer_id.GetParentPath());
+  ret = m_data->sample_instancer_transform(max_sample_count, sample_times, sample_values);
   return ret;
 }
 
-size_t BlenderSceneDelegate::SamplePrimvar(SdfPath const &id, TfToken const &key, size_t maxSampleCount,
-                                           float *sampleTimes, VtValue *sampleValues)
+size_t BlenderSceneDelegate::SamplePrimvar(pxr::SdfPath const &id,
+                                           pxr::TfToken const &key,
+                                           size_t max_sample_count,
+                                           float *sample_times,
+                                           pxr::VtValue *sample_values)
 {
   // TODO: add a separate object for instancer for cleaner handling code
   if (id.GetName() == "Instancer") {
     MeshData *m_data = mesh_data(id.GetParentPath());
     if (m_data) {
-      return m_data->sample_instancer_primvar(key, maxSampleCount, sampleTimes, sampleValues);
+      return m_data->sample_instancer_primvar(key, max_sample_count, sample_times, sample_values);
     }
   }
-  return HdSceneDelegate::SamplePrimvar(id, key, maxSampleCount, sampleTimes, sampleValues);
+  return HdSceneDelegate::SamplePrimvar(id, key, max_sample_count, sample_times, sample_values);
 }
 
 void BlenderSceneDelegate::update_collection(bool remove, bool visibility)
@@ -144,14 +149,14 @@ void BlenderSceneDelegate::update_collection(bool remove, bool visibility)
     /* Check and update visibility */
     for (auto &obj : objects) {
       if (obj.second->update_visibility(view3d)) {
-        obj.second->mark_prim_dirty(IdData::DirtyBits::DirtyVisibility);
+        obj.second->mark_prim_dirty(IdData::DirtyBits::DIRTY_VISIBILITY);
       };
     }
   }
 
   /* Export of new visible objects which were not exported before */
-  set<SdfPath> available_objects;
-  SdfPath id;
+  std::set<pxr::SdfPath> available_objects;
+  pxr::SdfPath id;
 
   DEGObjectIterSettings settings = {0};
   settings.depsgraph = depsgraph;
@@ -164,7 +169,9 @@ void BlenderSceneDelegate::update_collection(bool remove, bool visibility)
   ITER_BEGIN (DEG_iterator_objects_begin,
               DEG_iterator_objects_next,
               DEG_iterator_objects_end,
-              &data, Object *, object) {
+              &data,
+              Object *,
+              object) {
 
     if (!ObjectData::supported(object)) {
       continue;
@@ -198,7 +205,7 @@ void BlenderSceneDelegate::update_collection(bool remove, bool visibility)
     }
 
     /* remove unused materials */
-    set<SdfPath> available_materials;
+    std::set<pxr::SdfPath> available_materials;
     for (auto &obj : objects) {
       MeshData *m_data = dynamic_cast<MeshData *>(obj.second.get());
       if (m_data && !m_data->material_id.IsEmpty()) {
@@ -216,9 +223,12 @@ void BlenderSceneDelegate::update_collection(bool remove, bool visibility)
   }
 }
 
-void BlenderSceneDelegate::add_update_object(Object *object, bool geometry, bool transform, bool shading)
+void BlenderSceneDelegate::add_update_object(Object *object,
+                                             bool geometry,
+                                             bool transform,
+                                             bool shading)
 {
-  SdfPath id = ObjectData::prim_id(this, object);
+  pxr::SdfPath id = ObjectData::prim_id(this, object);
   ObjectData *obj_data = object_data(id);
   if (!obj_data) {
     objects[id] = ObjectData::init(this, object);
@@ -240,22 +250,22 @@ void BlenderSceneDelegate::add_update_object(Object *object, bool geometry, bool
     if (m_data) {
       set_material(*m_data);
     }
-    obj_data->mark_prim_dirty(IdData::DirtyBits::AllDirty);
+    obj_data->mark_prim_dirty(IdData::DirtyBits::ALL_DIRTY);
     return;
   }
 
   if (transform) {
-    obj_data->mark_prim_dirty(IdData::DirtyBits::DirtyTransform);
+    obj_data->mark_prim_dirty(IdData::DirtyBits::DIRTY_TRANSFORM);
   }
 
   if (shading) {
-    obj_data->mark_prim_dirty(IdData::DirtyBits::DirtyMaterial);
+    obj_data->mark_prim_dirty(IdData::DirtyBits::DIRTY_MATERIAL);
   }
 }
 
 void BlenderSceneDelegate::add_update_instance(DupliObject *dupli)
 {
-  SdfPath id = ObjectData::prim_id(this, dupli->ob);
+  pxr::SdfPath id = ObjectData::prim_id(this, dupli->ob);
   if (!object_data(id)) {
     add_update_object(dupli->ob, true, true, true);
   }
@@ -264,7 +274,7 @@ void BlenderSceneDelegate::add_update_instance(DupliObject *dupli)
   m_data->add_instance(dupli);
 }
 
-ObjectData *BlenderSceneDelegate::object_data(SdfPath const &id)
+ObjectData *BlenderSceneDelegate::object_data(pxr::SdfPath const &id)
 {
   auto it = objects.find(id);
   if (it == objects.end()) {
@@ -273,17 +283,17 @@ ObjectData *BlenderSceneDelegate::object_data(SdfPath const &id)
   return it->second.get();
 }
 
-MeshData *BlenderSceneDelegate::mesh_data(SdfPath const &id)
+MeshData *BlenderSceneDelegate::mesh_data(pxr::SdfPath const &id)
 {
   return static_cast<MeshData *>(object_data(id));
 }
 
-LightData *BlenderSceneDelegate::light_data(SdfPath const &id)
+LightData *BlenderSceneDelegate::light_data(pxr::SdfPath const &id)
 {
   return static_cast<LightData *>(object_data(id));
 }
 
-MaterialData *BlenderSceneDelegate::material_data(SdfPath const &id)
+MaterialData *BlenderSceneDelegate::material_data(pxr::SdfPath const &id)
 {
   auto it = materials.find(id);
   if (it == materials.end()) {
@@ -317,10 +327,8 @@ void BlenderSceneDelegate::populate(Depsgraph *deps, bContext *cont)
   DEGIDIterData data = {0};
   data.graph = depsgraph;
   data.only_updated = true;
-  ITER_BEGIN (DEG_iterator_ids_begin,
-              DEG_iterator_ids_next,
-              DEG_iterator_ids_end,
-              &data, ID *, id) {
+  ITER_BEGIN (
+      DEG_iterator_ids_begin, DEG_iterator_ids_next, DEG_iterator_ids_end, &data, ID *, id) {
 
     transform = (id->recalc & ID_RECALC_TRANSFORM) != 0;
     shading = (id->recalc & (ID_RECALC_SHADING | ID_RECALC_ANIMATION)) != 0;
@@ -330,14 +338,13 @@ void BlenderSceneDelegate::populate(Depsgraph *deps, bContext *cont)
 
     switch (GS(id->name)) {
       case ID_OB: {
-          Object *object = (Object *)id;
-          if (!ObjectData::supported(object)) {
-            break;
-          }
-          geometry |= (((ID *)object->data)->recalc & ID_RECALC_GEOMETRY) != 0;
-          add_update_object(object, geometry, transform, shading);
+        Object *object = (Object *)id;
+        if (!ObjectData::supported(object)) {
+          break;
         }
-        break;
+        geometry |= (((ID *)object->data)->recalc & ID_RECALC_GEOMETRY) != 0;
+        add_update_object(object, geometry, transform, shading);
+      } break;
 
       case ID_MA:
         if (shading) {
@@ -383,14 +390,14 @@ void BlenderSceneDelegate::populate(Depsgraph *deps, bContext *cont)
   }
 }
 
-HdMeshTopology BlenderSceneDelegate::GetMeshTopology(SdfPath const& id)
+pxr::HdMeshTopology BlenderSceneDelegate::GetMeshTopology(pxr::SdfPath const &id)
 {
   LOG(INFO) << "GetMeshTopology: " << id.GetString();
   MeshData *m_data = mesh_data(id);
   return m_data->mesh_topology();
 }
 
-VtValue BlenderSceneDelegate::Get(SdfPath const& id, TfToken const& key)
+pxr::VtValue BlenderSceneDelegate::Get(pxr::SdfPath const &id, pxr::TfToken const &key)
 {
   LOG(INFO) << "Get: " << id.GetString() << " " << key.GetString();
   ObjectData *obj_data = object_data(id);
@@ -406,10 +413,11 @@ VtValue BlenderSceneDelegate::Get(SdfPath const& id, TfToken const& key)
   if (mat_data) {
     return mat_data->get_data(key);
   }
-  return VtValue();
+  return pxr::VtValue();
 }
 
-HdPrimvarDescriptorVector BlenderSceneDelegate::GetPrimvarDescriptors(SdfPath const& id, HdInterpolation interpolation)
+pxr::HdPrimvarDescriptorVector BlenderSceneDelegate::GetPrimvarDescriptors(
+    pxr::SdfPath const &id, pxr::HdInterpolation interpolation)
 {
   LOG(INFO) << "GetPrimvarDescriptors: " << id.GetString() << " " << interpolation;
   if (mesh_data(id)) {
@@ -421,25 +429,25 @@ HdPrimvarDescriptorVector BlenderSceneDelegate::GetPrimvarDescriptors(SdfPath co
       return data->instancer_primvar_descriptors(interpolation);
     }
   }
-  HdPrimvarDescriptorVector primvars;
+  pxr::HdPrimvarDescriptorVector primvars;
   return primvars;
 }
 
-SdfPath BlenderSceneDelegate::GetMaterialId(SdfPath const & rprimId)
+pxr::SdfPath BlenderSceneDelegate::GetMaterialId(pxr::SdfPath const &rprim_id)
 {
-  return mesh_data(rprimId)->material_id;
+  return mesh_data(rprim_id)->material_id;
 }
 
-VtValue BlenderSceneDelegate::GetMaterialResource(SdfPath const& id)
+pxr::VtValue BlenderSceneDelegate::GetMaterialResource(pxr::SdfPath const &id)
 {
   MaterialData *mat_data = material_data(id);
   if (mat_data) {
     return mat_data->material_resource();
   }
-  return VtValue();
+  return pxr::VtValue();
 }
 
-GfMatrix4d BlenderSceneDelegate::GetTransform(SdfPath const& id)
+pxr::GfMatrix4d BlenderSceneDelegate::GetTransform(pxr::SdfPath const &id)
 {
   LOG(INFO) << "GetTransform: " << id.GetString();
   ObjectData *obj_data = object_data(id);
@@ -455,10 +463,11 @@ GfMatrix4d BlenderSceneDelegate::GetTransform(SdfPath const& id)
   if (id == WorldData::prim_id(this)) {
     return world_data->transform();
   }
-  return GfMatrix4d();
+  return pxr::GfMatrix4d();
 }
 
-VtValue BlenderSceneDelegate::GetLightParamValue(SdfPath const& id, TfToken const& key)
+pxr::VtValue BlenderSceneDelegate::GetLightParamValue(pxr::SdfPath const &id,
+                                                      pxr::TfToken const &key)
 {
   LightData *l_data = light_data(id);
   if (l_data) {
@@ -467,7 +476,7 @@ VtValue BlenderSceneDelegate::GetLightParamValue(SdfPath const& id, TfToken cons
   if (id == WorldData::prim_id(this)) {
     return world_data->get_data(key);
   }
-  return VtValue();
+  return pxr::VtValue();
 }
 
-} // namespace blender::render::hydra
+}  // namespace blender::render::hydra

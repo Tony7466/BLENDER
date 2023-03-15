@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "pxr/base/tf/hashmap.h"
 #include <pxr/usd/sdf/assetPath.h>
 #include <pxr/usd/sdf/path.h>
-#include "pxr/base/tf/hashmap.h"
 
 #include "DNA_material_types.h"
 
@@ -13,9 +13,10 @@
 
 namespace blender::render::hydra {
 
-class MaterialData: IdData {
+class MaterialData : IdData {
  public:
-  static std::unique_ptr<MaterialData> init(BlenderSceneDelegate *scene_delegate, Material *material);
+  static std::unique_ptr<MaterialData> init(BlenderSceneDelegate *scene_delegate,
+                                            Material *material);
   static pxr::SdfPath prim_id(BlenderSceneDelegate *scene_delegate, Material *material);
 
   MaterialData(BlenderSceneDelegate *scene_delegate, Material *material);
@@ -28,10 +29,11 @@ class MaterialData: IdData {
   pxr::VtValue material_resource();
   void export_mtlx();
 
-private:
+ private:
   pxr::SdfAssetPath mtlx_path;
 };
 
-using MaterialDataMap = pxr::TfHashMap<pxr::SdfPath, std::unique_ptr<MaterialData>, pxr::SdfPath::Hash>;
+using MaterialDataMap =
+    pxr::TfHashMap<pxr::SdfPath, std::unique_ptr<MaterialData>, pxr::SdfPath::Hash>;
 
-} // namespace blender::render::hydra
+}  // namespace blender::render::hydra

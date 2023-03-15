@@ -13,12 +13,10 @@
 
 #include "glog/logging.h"
 
-#include "finalEngine.h"
-#include "viewportEngine.h"
-#include "previewEngine.h"
+#include "final_engine.h"
+#include "preview_engine.h"
 #include "utils.h"
-
-using namespace std;
+#include "viewport_engine.h"
 
 namespace blender::render::hydra {
 
@@ -47,7 +45,8 @@ static PyObject *init_func(PyObject * /*self*/, PyObject *args)
 {
   LOG(INFO) << "init_func";
 
-  pxr::PlugRegistry::GetInstance().RegisterPlugins(string(BKE_appdir_program_dir()) + "/blender.shared/usd");
+  pxr::PlugRegistry::GetInstance().RegisterPlugins(std::string(BKE_appdir_program_dir()) +
+                                                   "/blender.shared/usd");
 
   setup_usd_mtlx_environment();
 
@@ -63,7 +62,7 @@ static PyObject *register_plugins_func(PyObject * /*self*/, PyObject *args)
 
   LOG(INFO) << "register_plugins_func";
 
-  vector<string> plugin_dirs, path_dirs;
+  std::vector<std::string> plugin_dirs, path_dirs;
   PyObject *pyiter, *pyitem;
 
   pyiter = PyObject_GetIter(pyplugin_dirs);
@@ -98,8 +97,8 @@ static PyObject *get_render_plugins_func(PyObject * /*self*/, PyObject *args)
 {
   LOG(INFO) << "get_render_plugins_func";
 
-  PlugRegistry &registry = PlugRegistry::GetInstance();
-  TfTokenVector plugin_ids = UsdImagingGLEngine::GetRendererPlugins();
+  pxr::PlugRegistry &registry = pxr::PlugRegistry::GetInstance();
+  pxr::TfTokenVector plugin_ids = pxr::UsdImagingGLEngine::GetRendererPlugins();
   PyObject *ret = PyTuple_New(plugin_ids.size());
   PyObject *val;
   for (int i = 0; i < plugin_ids.size(); ++i) {
@@ -108,15 +107,18 @@ static PyObject *get_render_plugins_func(PyObject * /*self*/, PyObject *args)
     PyDict_SetItemString(descr, "id", val = PyUnicode_FromString(plugin_ids[i].GetText()));
     Py_DECREF(val);
 
-    PyDict_SetItemString(descr, "name", 
-      val = PyUnicode_FromString(UsdImagingGLEngine::GetRendererDisplayName(plugin_ids[i]).c_str()));
+    PyDict_SetItemString(
+        descr,
+        "name",
+        val = PyUnicode_FromString(
+            pxr::UsdImagingGLEngine::GetRendererDisplayName(plugin_ids[i]).c_str()));
     Py_DECREF(val);
 
-    string plugin_name = plugin_ids[i];
+    std::string plugin_name = plugin_ids[i];
     plugin_name = plugin_name.substr(0, plugin_name.size() - 6);
     plugin_name[0] = tolower(plugin_name[0]);
-    string path = "";
-    PlugPluginPtr plugin = registry.GetPluginWithName(plugin_name);
+    std::string path = "";
+    pxr::PlugPluginPtr plugin = registry.GetPluginWithName(plugin_name);
     if (plugin) {
       path = plugin->GetPath();
     }
@@ -133,8 +135,8 @@ static PyObject *engine_create_func(PyObject * /*self*/, PyObject *args)
   LOG(INFO) << "create_func";
 
   PyObject *pyengine;
-  char *engineType, *render_delegate_id;
-  if (!PyArg_ParseTuple(args, "Oss", &pyengine, &engineType, &render_delegate_id)) {
+  char *engine_type, *render_delegate_id;
+  if (!PyArg_ParseTuple(args, "Oss", &pyengine, &engine_type, &render_delegate_id)) {
     Py_RETURN_NONE;
   }
 
@@ -142,10 +144,10 @@ static PyObject *engine_create_func(PyObject * /*self*/, PyObject *args)
 
   Engine *engine;
 
-  if (string(engineType) == "VIEWPORT") {
+  if (std::string(engine_type) == "VIEWPORT") {
     engine = new ViewportEngine(bl_engine, render_delegate_id);
   }
-  else if (string(engineType) == "PREVIEW") {
+  else if (std::string(engine_type) == "PREVIEW") {
     engine = new PreviewEngine(bl_engine, render_delegate_id);
   }
   else {
@@ -184,12 +186,12 @@ static PyObject *engine_sync_func(PyObject * /*self*/, PyObject *args)
   Depsgraph *depsgraph = (Depsgraph *)PyLong_AsVoidPtr(pydepsgraph);
   bContext *context = (bContext *)PyLong_AsVoidPtr(pycontext);
 
-  HdRenderSettingsMap settings;
+  pxr::HdRenderSettingsMap settings;
   PyObject *pyiter = PyObject_GetIter(pysettings);
   if (pyiter) {
     PyObject *pykey, *pyval;
     while (pykey = PyIter_Next(pyiter)) {
-      TfToken key(PyUnicode_AsUTF8(pykey));
+      pxr::TfToken key(PyUnicode_AsUTF8(pykey));
       pyval = PyDict_GetItem(pysettings, pykey);
 
       if (PyLong_Check(pyval)) {
@@ -222,9 +224,9 @@ static PyObject *engine_render_func(PyObject * /*self*/, PyObject *args)
   Depsgraph *depsgraph = (Depsgraph *)PyLong_AsVoidPtr(pydepsgraph);
 
   /* Allow Blender to execute other Python scripts. */
-  Py_BEGIN_ALLOW_THREADS
-    engine->render(depsgraph);
-  Py_END_ALLOW_THREADS
+  Py_BEGIN_ALLOW_THREADS;
+  engine->render(depsgraph);
+  Py_END_ALLOW_THREADS;
 
   Py_RETURN_NONE;
 }
@@ -241,40 +243,40 @@ static PyObject *engine_view_draw_func(PyObject * /*self*/, PyObject *args)
   bContext *context = (bContext *)PyLong_AsVoidPtr(pycontext);
 
   /* Allow Blender to execute other Python scripts. */
-  Py_BEGIN_ALLOW_THREADS
-    engine->render(depsgraph, context);
-  Py_END_ALLOW_THREADS
+  Py_BEGIN_ALLOW_THREADS;
+  engine->render(depsgraph, context);
+  Py_END_ALLOW_THREADS;
 
   Py_RETURN_NONE;
 }
 
 static PyMethodDef methods[] = {
-  {"init", init_func, METH_VARARGS, ""},
-  {"register_plugins", register_plugins_func, METH_VARARGS, ""},
-  {"get_render_plugins", get_render_plugins_func, METH_VARARGS, ""},
+    {"init", init_func, METH_VARARGS, ""},
+    {"register_plugins", register_plugins_func, METH_VARARGS, ""},
+    {"get_render_plugins", get_render_plugins_func, METH_VARARGS, ""},
 
-  {"engine_create", engine_create_func, METH_VARARGS, ""},
-  {"engine_free", engine_free_func, METH_VARARGS, ""},
-  {"engine_render", engine_render_func, METH_VARARGS, ""},
-  {"engine_sync", engine_sync_func, METH_VARARGS, ""},
-  {"engine_view_draw", engine_view_draw_func, METH_VARARGS, ""},
+    {"engine_create", engine_create_func, METH_VARARGS, ""},
+    {"engine_free", engine_free_func, METH_VARARGS, ""},
+    {"engine_render", engine_render_func, METH_VARARGS, ""},
+    {"engine_sync", engine_sync_func, METH_VARARGS, ""},
+    {"engine_view_draw", engine_view_draw_func, METH_VARARGS, ""},
 
-  {NULL, NULL, 0, NULL},
+    {NULL, NULL, 0, NULL},
 };
 
 static struct PyModuleDef module = {
-  PyModuleDef_HEAD_INIT,
-  "_hydra",
-  "Hydra render API",
-  -1,
-  methods,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
+    PyModuleDef_HEAD_INIT,
+    "_hydra",
+    "Hydra render API",
+    -1,
+    methods,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
 };
 
-} // namespace blender::render::hydra
+}  // namespace blender::render::hydra
 
 #ifdef __cplusplus
 extern "C" {

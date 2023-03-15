@@ -3,13 +3,11 @@
 
 #include "BKE_object.h"
 
-#include "blenderSceneDelegate.h"
-#include "object.h"
-#include "mesh.h"
-#include "light.h"
 #include "../utils.h"
-
-using namespace pxr;
+#include "blender_scene_delegate.h"
+#include "light.h"
+#include "mesh.h"
+#include "object.h"
 
 namespace blender::render::hydra {
 
@@ -60,8 +58,7 @@ pxr::SdfPath ObjectData::prim_id(BlenderSceneDelegate *scene_delegate, Object *o
 }
 
 ObjectData::ObjectData(BlenderSceneDelegate *scene_delegate, Object *object)
-  : IdData(scene_delegate, (ID *)object)
-  , visible(true)
+    : IdData(scene_delegate, (ID *)object), visible(true)
 {
 }
 
@@ -70,7 +67,7 @@ int ObjectData::type()
   return ((Object *)id)->type;
 }
 
-GfMatrix4d ObjectData::transform()
+pxr::GfMatrix4d ObjectData::transform()
 {
   return gf_matrix_from_transform(((Object *)id)->object_to_world);
 }

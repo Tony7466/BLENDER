@@ -3,19 +3,19 @@
 
 #pragma once
 
-#include <pxr/base/gf/matrix4d.h>
 #include "pxr/base/tf/hashmap.h"
+#include <pxr/base/gf/matrix4d.h>
 
-#include "DNA_object_types.h"
 #include "BKE_layer.h"
+#include "DNA_object_types.h"
 
 #include "id.h"
 #include "material.h"
 
 namespace blender::render::hydra {
 
-class ObjectData: public IdData {
-public:
+class ObjectData : public IdData {
+ public:
   static bool supported(Object *object);
   static std::unique_ptr<ObjectData> init(BlenderSceneDelegate *scene_delegate, Object *object);
   static pxr::SdfPath prim_id(BlenderSceneDelegate *scene_delegate, Object *object);
@@ -29,6 +29,7 @@ public:
   bool visible;
 };
 
-using ObjectDataMap = pxr::TfHashMap<pxr::SdfPath, std::unique_ptr<ObjectData>, pxr::SdfPath::Hash>;
+using ObjectDataMap =
+    pxr::TfHashMap<pxr::SdfPath, std::unique_ptr<ObjectData>, pxr::SdfPath::Hash>;
 
-} // namespace blender::render::hydra
+}  // namespace blender::render::hydra

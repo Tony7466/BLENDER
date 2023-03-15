@@ -12,8 +12,8 @@
 
 namespace blender::render::hydra {
 
-class MeshData: public ObjectData {
-public:
+class MeshData : public ObjectData {
+ public:
   MeshData(BlenderSceneDelegate *scene_delegate, Object *object);
 
   pxr::VtValue get_data(pxr::TfToken const &key) override;
@@ -27,8 +27,13 @@ public:
   pxr::HdPrimvarDescriptorVector primvar_descriptors(pxr::HdInterpolation interpolation);
   pxr::HdPrimvarDescriptorVector instancer_primvar_descriptors(pxr::HdInterpolation interpolation);
   pxr::VtIntArray instance_indices();
-  size_t sample_instancer_transform(size_t maxSampleCount, float *sampleTimes, pxr::GfMatrix4d *sampleValues);
-  size_t sample_instancer_primvar(pxr::TfToken const &key, size_t maxSampleCount, float *sampleTimes, pxr::VtValue *sampleValues);
+  size_t sample_instancer_transform(size_t max_sample_count,
+                                    float *sample_times,
+                                    pxr::GfMatrix4d *sample_values);
+  size_t sample_instancer_primvar(pxr::TfToken const &key,
+                                  size_t max_sample_count,
+                                  float *sample_times,
+                                  pxr::VtValue *sample_values);
 
   void add_instance(DupliObject *dupli);
 
@@ -47,6 +52,4 @@ public:
   pxr::VtMatrix4dArray instances;
 };
 
-
-
-} // namespace blender::render::hydra
+}  // namespace blender::render::hydra

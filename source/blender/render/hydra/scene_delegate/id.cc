@@ -3,16 +3,13 @@
 
 #include "BKE_lib_id.h"
 
-#include "blenderSceneDelegate.h"
+#include "blender_scene_delegate.h"
 #include "id.h"
-
-using namespace pxr;
 
 namespace blender::render::hydra {
 
 IdData::IdData(BlenderSceneDelegate *scene_delegate, ID *id)
-  : scene_delegate(scene_delegate)
-  , id(id)
+    : scene_delegate(scene_delegate), id(id)
 {
 }
 
@@ -23,9 +20,9 @@ std::string IdData::name()
   return str;
 }
 
-VtValue IdData::get_data(TfToken const &key)
+pxr::VtValue IdData::get_data(pxr::TfToken const &key)
 {
-  return VtValue();
+  return pxr::VtValue();
 }
 
-} // namespace blender::render::hydra
+}  // namespace blender::render::hydra

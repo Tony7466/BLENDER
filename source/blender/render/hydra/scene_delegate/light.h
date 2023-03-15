@@ -3,15 +3,15 @@
 
 #pragma once
 
+#include "pxr/base/tf/hashmap.h"
 #include <pxr/usd/sdf/assetPath.h>
 #include <pxr/usd/sdf/path.h>
-#include "pxr/base/tf/hashmap.h"
 
 #include "object.h"
 
 namespace blender::render::hydra {
 
-class LightData: public ObjectData {
+class LightData : public ObjectData {
  public:
   LightData(BlenderSceneDelegate *scene_delegate, Object *object);
 
@@ -25,4 +25,4 @@ class LightData: public ObjectData {
   pxr::TfToken prim_type();
 };
 
-} // namespace blender::render::hydra
+}  // namespace blender::render::hydra

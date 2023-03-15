@@ -52,38 +52,38 @@ set(SRC
 
   engine.h
   engine.cc
-  finalEngine.h
-  finalEngine.cc
-  previewEngine.h
-  previewEngine.cc
-  viewportEngine.h
-  viewportEngine.cc
+  final_engine.h
+  final_engine.cc
+  preview_engine.h
+  preview_engine.cc
+  viewport_engine.h
+  viewport_engine.cc
   camera.h
   camera.cc
   utils.h
   utils.cc
 
-  renderTaskDelegate.cc
-  renderTaskDelegate.h
-  simpleLightTaskDelegate.cc
-  simpleLightTaskDelegate.h
+  render_task_delegate.cc
+  render_task_delegate.h
+  simple_light_task_delegate.cc
+  simple_light_task_delegate.h
 
-  sceneDelegate/blenderSceneDelegate.h
-  sceneDelegate/blenderSceneDelegate.cc
-  sceneDelegate/id.h
-  sceneDelegate/id.cc
-  sceneDelegate/object.h
-  sceneDelegate/object.cc
-  sceneDelegate/material.h
-  sceneDelegate/material.cc
-  sceneDelegate/mesh.h
-  sceneDelegate/mesh.cc
-  sceneDelegate/mtlxHydraAdapter.h
-  sceneDelegate/mtlxHydraAdapter.cc
-  sceneDelegate/light.h
-  sceneDelegate/light.cc
-  sceneDelegate/world.h
-  sceneDelegate/world.cc
+  scene_delegate/blender_scene_delegate.h
+  scene_delegate/blender_scene_delegate.cc
+  scene_delegate/id.h
+  scene_delegate/id.cc
+  scene_delegate/object.h
+  scene_delegate/object.cc
+  scene_delegate/material.h
+  scene_delegate/material.cc
+  scene_delegate/mesh.h
+  scene_delegate/mesh.cc
+  scene_delegate/mtlx_hydra_adapter.h
+  scene_delegate/mtlx_hydra_adapter.cc
+  scene_delegate/light.h
+  scene_delegate/light.cc
+  scene_delegate/world.h
+  scene_delegate/world.cc
 )
 
 set(LIB

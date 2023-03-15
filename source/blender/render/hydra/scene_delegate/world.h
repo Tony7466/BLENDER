@@ -5,11 +5,11 @@
 
 #include <map>
 
+#include "pxr/base/tf/staticTokens.h"
 #include <pxr/base/gf/matrix4d.h>
+#include <pxr/base/vt/value.h>
 #include <pxr/usd/sdf/assetPath.h>
 #include <pxr/usd/sdf/path.h>
-#include <pxr/base/vt/value.h>
-#include "pxr/base/tf/staticTokens.h"
 
 #include "DNA_view3d_types.h"
 #include "DNA_world_types.h"
@@ -18,9 +18,11 @@
 
 namespace blender::render::hydra {
 
-class WorldData: public IdData {
-public:
-  static std::unique_ptr<WorldData> init(BlenderSceneDelegate *scene_delegate, World *world, bContext *context);
+class WorldData : public IdData {
+ public:
+  static std::unique_ptr<WorldData> init(BlenderSceneDelegate *scene_delegate,
+                                         World *world,
+                                         bContext *context);
   static pxr::SdfPath prim_id(BlenderSceneDelegate *scene_delegate);
 
   WorldData(BlenderSceneDelegate *scene_delegate, World *world, bContext *context);
@@ -36,4 +38,4 @@ public:
   std::map<pxr::TfToken, pxr::VtValue> data;
 };
 
-} // namespace blender::render::hydra
+}  // namespace blender::render::hydra

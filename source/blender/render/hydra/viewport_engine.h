@@ -13,36 +13,37 @@
 
 namespace blender::render::hydra {
 
-class GLTexture
-{
-public:
+class GLTexture {
+ public:
   GLTexture();
   ~GLTexture();
-  void setBuffer(pxr::HdRenderBuffer *buffer);
+  void set_buffer(pxr::HdRenderBuffer *buffer);
   void draw(GLfloat x, GLfloat y);
 
-private:
+ private:
   void create(pxr::HdRenderBuffer *buffer);
   void free();
 
-  GLuint textureId;
+  GLuint texture_id;
   int width, height, channels;
 };
 
 class ViewportEngine : public Engine {
-public:
+ public:
   using Engine::Engine;
-  void sync(Depsgraph *depsgraph, bContext *context, pxr::HdRenderSettingsMap &renderSettings) override;
+  void sync(Depsgraph *depsgraph,
+            bContext *context,
+            pxr::HdRenderSettingsMap &render_settings) override;
   void render(Depsgraph *depsgraph) override;
   void render(Depsgraph *depsgraph, bContext *context);
 
-private:
+ private:
   void notify_status(const std::string &title, const std::string &info);
 
-private:
-  std::chrono::time_point<std::chrono::steady_clock> timeBegin;
+ private:
+  std::chrono::time_point<std::chrono::steady_clock> time_begin;
 
   GLTexture texture;
 };
 
-}   // namespace blender::render::hydra
+}  // namespace blender::render::hydra
