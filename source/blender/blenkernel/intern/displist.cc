@@ -745,6 +745,7 @@ static GeometrySet curve_calc_modifiers_post(Depsgraph *depsgraph,
     if (mti->type == eModifierTypeType_OnlyDeform) {
       mti->deformVerts(
           md, &mectx_deform, mesh, BKE_mesh_vert_positions_for_write(mesh), mesh->totvert);
+      BKE_mesh_tag_positions_changed(mesh);
     }
     else {
       Mesh *output_mesh = mti->modifyMesh(md, &mectx_apply, mesh);

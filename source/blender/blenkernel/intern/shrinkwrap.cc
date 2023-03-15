@@ -1547,6 +1547,7 @@ void BKE_shrinkwrap_mesh_nearest_surface_deform(bContext *C, Object *ob_source, 
                             -1,
                             BKE_mesh_vert_positions_for_write(src_me),
                             src_me->totvert);
+  BKE_mesh_tag_positions_changed(src_me);
 }
 
 void BKE_shrinkwrap_remesh_target_project(Mesh *src_me, Mesh *target_me, Object *ob_target)

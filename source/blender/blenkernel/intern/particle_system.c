@@ -3500,6 +3500,7 @@ static void do_hair_dynamics(ParticleSimulationData *sim)
                    sim->ob,
                    psys->hair_in_mesh,
                    BKE_mesh_vert_positions_for_write(psys->hair_in_mesh));
+  BKE_mesh_tag_positions_changed(psys->hair_in_mesh);
 
   /* restore cloth effector weights */
   psys->clmd->sim_parms->effector_weights = clmd_effweights;
