@@ -65,7 +65,7 @@ closure color principled_hair(normal N,
 closure color henyey_greenstein(float g) BUILTIN;
 closure color absorption() BUILTIN;
 
-normal ensure_valid_reflection(normal Ng, vector I, normal N)
+normal ensure_valid_specular_reflection(normal Ng, vector I, normal N)
 {
   /* The implementation here mirrors the one in bsdf_util.h,
    * check there for an explanation of the algorithm. */

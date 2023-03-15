@@ -61,7 +61,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
                                         sd->N;
   if (!(sd->type & PRIMITIVE_CURVE)) {
     if (CLOSURE_IS_BSDF_GLOSSY(type) || CLOSURE_IS_BSDF_TRANSMISSION(type)) {
-      N = ensure_valid_reflection(sd->Ng, sd->wi, N);
+      N = ensure_valid_specular_reflection(sd->Ng, sd->wi, N);
     }
   }
 
@@ -124,7 +124,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       /* Calculate fresnel for refraction. */
       float3 valid_reflection_N = (sd->type & PRIMITIVE_CURVE) ?
                                       N :
-                                      ensure_valid_reflection(sd->Ng, sd->wi, N);
+                                      ensure_valid_specular_reflection(sd->Ng, sd->wi, N);
       float cosNI = dot(valid_reflection_N, sd->wi);
       float fresnel = fresnel_dielectric_cos(cosNI, ior);
 
@@ -148,7 +148,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
                                     stack_load_float3(stack, data_cn_ssr.x) :
                                     sd->N;
       if (!(sd->type & PRIMITIVE_CURVE)) {
-        clearcoat_normal = ensure_valid_reflection(sd->Ng, sd->wi, clearcoat_normal);
+        clearcoat_normal = ensure_valid_specular_reflection(sd->Ng, sd->wi, clearcoat_normal);
       }
       float3 subsurface_radius = stack_valid(data_cn_ssr.y) ?
                                      stack_load_float3(stack, data_cn_ssr.y) :

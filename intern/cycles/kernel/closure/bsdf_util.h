@@ -105,7 +105,10 @@ ccl_device_forceinline Spectrum interpolate_fresnel_color(float3 L,
   return mix(F0, one_spectrum(), inverse_lerp(real_F0, 1.0f, real_F));
 }
 
-ccl_device float3 ensure_valid_reflection(float3 Ng, float3 I, float3 N)
+/* If the shading normal results in specular reflection in the lower hemisphere, raise the shading
+ * normal towards the geometry normal so that the specular reflection is just above the surface.
+ * Only used for glossy materials. */
+ccl_device float3 ensure_valid_specular_reflection(float3 Ng, float3 I, float3 N)
 {
   const float3 R = 2 * dot(N, I) * N - I;
 
