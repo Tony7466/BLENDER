@@ -69,6 +69,11 @@ if(WITH_HARU)
     ${HARU_INCLUDE_DIRS}
   )
   list(APPEND LIB
+    # Haru needs `TIFFFaxBlackCodes` & `TIFFFaxWhiteCodes` symbols from TIFF.
+    # Can be removed with Haru 2.4.0. They should be shipping with their own
+    # Fax codes defined by default from that version onwards.
+    ${TIFF_LIBRARY}
+
     ${HARU_LIBRARIES}
   )
   add_definitions(-DWITH_HARU)

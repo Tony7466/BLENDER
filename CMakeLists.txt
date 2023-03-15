@@ -333,10 +333,7 @@ option(WITH_MOD_OCEANSIM        "Enable Ocean Modifier" ON)
 # Image format support
 option(WITH_IMAGE_OPENEXR       "Enable OpenEXR Support (http://www.openexr.com)" ON)
 option(WITH_IMAGE_OPENJPEG      "Enable OpenJpeg Support (http://www.openjpeg.org)" ON)
-option(WITH_IMAGE_TIFF          "Enable LibTIFF Support" ON)
-option(WITH_IMAGE_DDS           "Enable DDS Image Support" ON)
 option(WITH_IMAGE_CINEON        "Enable CINEON and DPX Image Support" ON)
-option(WITH_IMAGE_HDR           "Enable HDR Image Support" ON)
 option(WITH_IMAGE_WEBP          "Enable WebP Image Support" ON)
 
 # Audio/Video format support
@@ -886,9 +883,6 @@ set_and_warn_dependency(WITH_OPENVDB WITH_NANOVDB       OFF)
 
 # OpenVDB and OpenColorIO uses 'half' type from OpenEXR
 set_and_warn_dependency(WITH_IMAGE_OPENEXR WITH_OPENVDB OFF)
-
-# Haru needs `TIFFFaxBlackCodes` & `TIFFFaxWhiteCodes` symbols from TIFF.
-set_and_warn_dependency(WITH_IMAGE_TIFF WITH_HARU       OFF)
 
 # auto enable openimageio for cycles
 if(WITH_CYCLES)
@@ -1929,11 +1923,8 @@ if(FIRST_RUN)
 
   info_cfg_text("Image Formats:")
   info_cfg_option(WITH_IMAGE_CINEON)
-  info_cfg_option(WITH_IMAGE_DDS)
-  info_cfg_option(WITH_IMAGE_HDR)
   info_cfg_option(WITH_IMAGE_OPENEXR)
   info_cfg_option(WITH_IMAGE_OPENJPEG)
-  info_cfg_option(WITH_IMAGE_TIFF)
 
   info_cfg_text("Audio:")
   info_cfg_option(WITH_CODEC_AVI)
