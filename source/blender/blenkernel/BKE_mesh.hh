@@ -208,6 +208,17 @@ inline int edge_other_vert(const int2 &edge, const int vert)
   return -1;
 }
 
+}  // namespace blender::bke::mesh
+
+namespace blender::bke {
+
+/** Set mesh vertex normals to known-correct values, avoiding future lazy computation. */
+void mesh_vert_normals_assign(Mesh &mesh, Span<float3> vert_normals);
+/** Set mesh vertex normals to known-correct values, avoiding future lazy computation. */
+void mesh_vert_normals_assign(Mesh &mesh, Vector<float3> vert_normals);
+
+}  // namespace blender::bke
+
 /** \} */
 
 }  // namespace blender::bke::mesh

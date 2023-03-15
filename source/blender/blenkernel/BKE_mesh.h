@@ -342,11 +342,6 @@ const float (*BKE_mesh_poly_normals_ensure(const struct Mesh *mesh))[3];
 float (*BKE_mesh_vert_normals_for_write(struct Mesh *mesh))[3];
 
 /**
- * Mark the mesh's vertex normals non-dirty, for when they are calculated or assigned manually.
- */
-void BKE_mesh_vert_normals_clear_dirty(struct Mesh *mesh);
-
-/**
  * Return true if the mesh vertex normals either are not stored or are dirty.
  * This can be used to help decide whether to transfer them when copying a mesh.
  */
