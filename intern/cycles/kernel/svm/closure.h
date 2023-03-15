@@ -59,11 +59,6 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
 
   float3 N = stack_valid(data_node.x) ? safe_normalize(stack_load_float3(stack, data_node.x)) :
                                         sd->N;
-  if (!(sd->type & PRIMITIVE_CURVE)) {
-    if (CLOSURE_IS_BSDF_GLOSSY(type) || CLOSURE_IS_BSDF_TRANSMISSION(type)) {
-      N = ensure_valid_specular_reflection(sd->Ng, sd->wi, N);
-    }
-  }
 
   float param1 = (stack_valid(param1_offset)) ? stack_load_float(stack, param1_offset) :
                                                 __uint_as_float(node.z);
@@ -122,9 +117,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       float ior = (sd->flag & SD_BACKFACING) ? 1.0f / eta : eta;
 
       /* Calculate fresnel for refraction. */
-      float3 valid_reflection_N = (sd->type & PRIMITIVE_CURVE) ?
-                                      N :
-                                      ensure_valid_specular_reflection(sd->Ng, sd->wi, N);
+      float3 valid_reflection_N = maybe_ensure_valid_specular_reflection(sd, N);
       float cosNI = dot(valid_reflection_N, sd->wi);
       float fresnel = fresnel_dielectric_cos(cosNI, ior);
 
@@ -147,9 +140,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       float3 clearcoat_normal = stack_valid(data_cn_ssr.x) ?
                                     stack_load_float3(stack, data_cn_ssr.x) :
                                     sd->N;
-      if (!(sd->type & PRIMITIVE_CURVE)) {
-        clearcoat_normal = ensure_valid_specular_reflection(sd->Ng, sd->wi, clearcoat_normal);
-      }
+      clearcoat_normal = maybe_ensure_valid_specular_reflection(sd, clearcoat_normal);
       float3 subsurface_radius = stack_valid(data_cn_ssr.y) ?
                                      stack_load_float3(stack, data_cn_ssr.y) :
                                      one_float3();
@@ -466,7 +457,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
           sd, sizeof(DiffuseBsdf), weight);
 
       if (bsdf) {
-        bsdf->N = N;
+        bsdf->N = maybe_ensure_valid_specular_reflection(sd, N);
         sd->flag |= bsdf_translucent_setup(bsdf);
       }
       break;
@@ -495,7 +486,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
 
       float roughness = sqr(param1);
 
-      bsdf->N = N;
+      bsdf->N = maybe_ensure_valid_specular_reflection(sd, N);
       bsdf->ior = 1.0f;
       bsdf->fresnel = NULL;
 
@@ -559,7 +550,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
           sd, sizeof(MicrofacetBsdf), weight);
 
       if (bsdf) {
-        bsdf->N = N;
+        bsdf->N = maybe_ensure_valid_specular_reflection(sd, N);
         bsdf->T = zero_float3();
         bsdf->fresnel = NULL;
 
@@ -602,7 +593,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
           sd, sizeof(MicrofacetBsdf), weight);
 
       if (bsdf) {
-        bsdf->N = N;
+        bsdf->N = maybe_ensure_valid_specular_reflection(sd, N);
         bsdf->T = zero_float3();
         bsdf->fresnel = NULL;
 
@@ -651,7 +642,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
         break;
       }
 
-      bsdf->N = N;
+      bsdf->N = maybe_ensure_valid_specular_reflection(sd, N);
       bsdf->fresnel = fresnel;
       bsdf->T = zero_float3();
 
@@ -757,7 +748,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
         float coat = stack_load_float_default(stack, coat_ofs, data_node2.y);
         float m0_roughness = 1.0f - clamp(coat, 0.0f, 1.0f);
 
-        bsdf->N = N;
+        bsdf->N = maybe_ensure_valid_specular_reflection(sd, N);
         bsdf->v = roughness;
         bsdf->s = radial_roughness;
         bsdf->m0_roughness = m0_roughness;
@@ -825,7 +816,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
           sd, sizeof(HairBsdf), weight);
 
       if (bsdf) {
-        bsdf->N = N;
+        bsdf->N = maybe_ensure_valid_specular_reflection(sd, N);
         bsdf->roughness1 = param1;
         bsdf->roughness2 = param2;
         bsdf->offset = -stack_load_float(stack, data_node.z);
