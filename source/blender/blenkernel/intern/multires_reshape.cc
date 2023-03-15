@@ -62,8 +62,13 @@ bool multiresModifier_reshapeFromObject(Depsgraph *depsgraph,
   Object *src_eval = DEG_get_evaluated_object(depsgraph, src);
   Mesh *src_mesh_eval = mesh_get_eval_final(depsgraph, scene_eval, src_eval, &CD_MASK_BAREMESH);
 
+  int num_deformed_verts;
+  float(*deformed_verts)[3] = BKE_mesh_vert_coords_alloc(src_mesh_eval, &num_deformed_verts);
+
   const bool result = multiresModifier_reshapeFromVertcos(
-      depsgraph, dst, mmd, BKE_mesh_vert_positions(src_mesh_eval), src_mesh_eval->totvert);
+      depsgraph, dst, mmd, deformed_verts, num_deformed_verts);
+
+  MEM_freeN(deformed_verts);
 
   return result;
 }
