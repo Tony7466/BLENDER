@@ -242,7 +242,7 @@ struct CombOperationExecutor {
     const IndexMask changed_curves_mask = index_mask_ops::find_indices_from_array(changed_curves,
                                                                                   indices);
     self_->constraint_solver_.solve_step(
-        *curves_orig_, changed_curves_mask, surface, transforms_, 5);
+        *curves_orig_, changed_curves_mask, surface, transforms_, point_factors_, 5);
 
     curves_orig_->tag_positions_changed();
     DEG_id_tag_update(&curves_id_orig_->id, ID_RECALC_GEOMETRY);
@@ -410,9 +410,33 @@ struct CombOperationExecutor {
 
     /* Move goals to the end of the stroke segment. */
     MutableSpan<float3> goals = self_->constraint_solver_.goals();
+    MutableSpan<float> goal_factors = self_->constraint_solver_.goal_factors();
+    Span<int> closest_points = self_->constraint_solver_.closest_points();
+    Span<float> closest_factors = self_->constraint_solver_.closest_factors();
     threading::parallel_for(curve_selection_.index_range(), 256, [&](const IndexRange range) {
       for (const int curve_i : curve_selection_.slice(range)) {
         if (r_changed_curves[curve_i]) {
+          const int closest_point = closest_points[curve_i];
+          const float closest_u = closest_factors[curve_i];
+          const float3 closest = (1.0f - closest_u) * deformation.positions[closest_point] + closest_u * deformation.positions[closest_point + 1];
+
+          /* Compute distance to the brush. */
+          const float distance_to_closest_sq = dist_squared_to_line_segment_v3(
+              closest, brush_start_cu, brush_end_cu);
+          if (distance_to_closest_sq > brush_radius_sq_cu) {
+            /* Ignore the point because it's too far away. */
+            continue;
+          }
+
+          const float distance_to_closest = std::sqrt(distance_to_closest_sq);
+
+          /* A falloff that is based on how far away the point is from the stroke. */
+          const float radius_falloff = BKE_brush_curve_strength(
+              brush_, distance_to_closest, brush_radius_cu);
+          /* Combine the falloff and brush strength. */
+          goal_factors[curve_i] = brush_strength_ * radius_falloff;
+
+          /* Update goal */
           goals[curve_i] += brush_diff_cu;
         }
       }

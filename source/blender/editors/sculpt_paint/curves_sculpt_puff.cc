@@ -168,7 +168,7 @@ struct PuffOperationExecutor {
     }
 
     self_->constraint_solver_.solve_step(
-        *curves_, IndexMask(changed_curves_indices), surface_, transforms_);
+        *curves_, IndexMask(changed_curves_indices), surface_, transforms_, point_factors_);
 
     curves_->tag_positions_changed();
     DEG_id_tag_update(&curves_id_->id, ID_RECALC_GEOMETRY);

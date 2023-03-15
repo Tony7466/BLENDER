@@ -451,6 +451,7 @@ void CurvesConstraintSolver::initialize(const bke::CurvesGeometry &curves,
   goals_.reinitialize(curves.curves_num());
   has_goals_.reinitialize(curves.curves_num());
   has_goals_.fill(false);
+  goal_factors_.reinitialize(curves.curves_num());
   closest_points_.reinitialize(curves.curves_num());
   closest_factors_.reinitialize(curves.curves_num());
 }
@@ -459,6 +460,7 @@ void CurvesConstraintSolver::solve_step(bke::CurvesGeometry &curves,
                                         const IndexMask curve_selection,
                                         const Mesh *surface,
                                         const CurvesSurfaceTransforms &transforms,
+                                        const VArray<float> point_factors,
                                         const int iterations)
 {
   const bool solve_length = true;
@@ -471,6 +473,9 @@ void CurvesConstraintSolver::solve_step(bke::CurvesGeometry &curves,
   IndexMask goal_selection = index_mask_ops::find_indices_based_on_predicate(
       curve_selection, 256, goal_indices, [this](int64_t index) { return has_goals_[index]; });
 
+  /* Step size is used to make constraint softness independent from iteration count. */
+  const float step_size = 1.0f / iterations;
+
   for (const int iter : IndexRange(iterations)) {
     switch (goal_type_) {
       case GoalType::None:
@@ -480,8 +485,15 @@ void CurvesConstraintSolver::solve_step(bke::CurvesGeometry &curves,
         BLI_assert_unreachable();
         break;
       case GoalType::Slip:
-        geometry::curve_constraints::solve_slip_constraints(
-            curves.points_by_curve(), goal_selection, goals_, curves.positions_for_write(), closest_points_, closest_factors_);
+        geometry::curve_constraints::solve_slip_constraints(curves.points_by_curve(),
+                                                            goal_selection,
+                                                            goals_,
+                                                            goal_factors_,
+                                                            point_factors,
+                                                            step_size,
+                                                            curves.positions_for_write(),
+                                                            closest_points_,
+                                                            closest_factors_);
         break;
     }
     if (solve_length) {

@@ -166,19 +166,21 @@ struct CurvesConstraintSolver {
   GoalType goal_type_;
   Array<bool> has_goals_;
   Array<float3> goals_;
+  Array<float> goal_factors_;
   Array<int> closest_points_;
   Array<float> closest_factors_;
 
  public:
   void initialize(const bke::CurvesGeometry &curves,
-                  const IndexMask curve_selection,
+                  IndexMask curve_selection,
                   const bool use_surface_collision,
                   const GoalType goal_type = GoalType::None);
 
   void solve_step(bke::CurvesGeometry &curves,
-                  const IndexMask curve_selection,
+                  IndexMask curve_selection,
                   const Mesh *surface,
                   const CurvesSurfaceTransforms &transforms,
+                  VArray<float> point_factors,
                   const int iterations = 1);
 
   Span<float> segment_lengths() const
@@ -202,6 +204,15 @@ struct CurvesConstraintSolver {
   MutableSpan<bool> has_goals()
   {
     return has_goals_;
+  }
+
+  Span<float> goal_factors() const
+  {
+    return goal_factors_;
+  }
+  MutableSpan<float> goal_factors()
+  {
+    return goal_factors_;
   }
 
   Span<int> closest_points() const

@@ -240,10 +240,16 @@ void solve_collision_constraints(const OffsetIndices<int> points_by_curve,
 void solve_slip_constraints(const OffsetIndices<int> points_by_curve,
                             const IndexMask curve_selection,
                             const Span<float3> goals,
+                            const Span<float> goal_factors,
+                            const VArray<float> point_factors,
+                            const float step_size,
                             MutableSpan<float3> positions_cu,
                             MutableSpan<int> closest_points,
                             MutableSpan<float> closest_factors)
 {
+  /* Compensation factor for step-size dependent softness (see XPBD paper) */
+  const float alpha_compensation = 1.0f / (step_size * step_size);
+
   threading::parallel_for(curve_selection.index_range(), 64, [&](const IndexRange range) {
     for (const int curve_i : curve_selection.slice(range)) {
       const IndexRange points = points_by_curve[curve_i].drop_back(1);
@@ -332,7 +338,10 @@ void solve_slip_constraints(const OffsetIndices<int> points_by_curve,
                                     weight_p2 * gradient_p2 * gradient_p2 +
                                     weight_p3 * gradient_p3 * gradient_p3 +
                                     weight_u * math::dot(gradient_u, gradient_u);
-      const float3 lambda = distance / gradient_sq_sum;
+      const float factor = goal_factors[curve_i];
+      /* TODO implement warm starting: this is in fact delta_lambda.
+       * If lambda is stored between iteration we can use the old value and speed up convergence. */
+      const float3 lambda = factor * distance / (factor * gradient_sq_sum + alpha_compensation * (1.0f - factor));
 
       /* See above: gradients wrt. positions are actually matrices, but with uniform diagonals. */
       p0 -= weight_p0 * lambda * gradient_p0;

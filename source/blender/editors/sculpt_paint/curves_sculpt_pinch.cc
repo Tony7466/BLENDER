@@ -149,7 +149,7 @@ struct PinchOperationExecutor {
     const Mesh *surface = curves_id_->surface && curves_id_->surface->type == OB_MESH ?
                               static_cast<const Mesh *>(curves_id_->surface->data) :
                               nullptr;
-    self_->constraint_solver_.solve_step(*curves_, changed_curves_mask, surface, transforms_);
+    self_->constraint_solver_.solve_step(*curves_, changed_curves_mask, surface, transforms_, point_factors_);
 
     curves_->tag_positions_changed();
     DEG_id_tag_update(&curves_id_->id, ID_RECALC_GEOMETRY);
