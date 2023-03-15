@@ -82,7 +82,7 @@ void solve_length_constraints(const OffsetIndices<int> points_by_curve,
           const float distance = length / goal_length - 1.0f;
 
           /* Implicit pinning constraint for the first point of each curve */
-          const float weight_p0 = (point_i == points.first() ? 0.0f : 1.0f);
+          const float weight_p0 = (point_i > points.first() ? 1.0f : 0.0f);
           const float weight_p1 = 1.0f;
 
           const float gradient_sq_sum = weight_p0 * math::dot(gradient_p0, gradient_p0) +
@@ -280,7 +280,7 @@ void solve_slip_constraints(const OffsetIndices<int> points_by_curve,
       float &closest_u = closest_factors[curve_i];
       float3 p0_fallback = positions_cu[closest_point];
       float3 p3_fallback = positions_cu[closest_point + 1];
-      float3 &p0 = closest_point > 0 ? positions_cu[closest_point - 1] : p0_fallback;
+      float3 &p0 = closest_point > points.first() ? positions_cu[closest_point - 1] : p0_fallback;
       float3 &p1 = positions_cu[closest_point];
       float3 &p2 = positions_cu[closest_point + 1];
       float3 &p3 = closest_point < points.last() ? positions_cu[closest_point + 2] : p3_fallback;
@@ -321,8 +321,8 @@ void solve_slip_constraints(const OffsetIndices<int> points_by_curve,
       const float gradient_p3 = b3;
       const float3 gradient_u = p0 * db0 + p1 * db1 + p2 * db2 + p3 * db3;
 
-      const float weight_p0 = 1.0f;
-      const float weight_p1 = 1.0f;
+      const float weight_p0 = closest_point > points.first() + 1 ? 1.0f : 0.0f;
+      const float weight_p1 = closest_point > points.first() ? 1.0f : 0.0f;
       const float weight_p2 = 1.0f;
       const float weight_p3 = 1.0f;
       const float weight_u = 100.0f;
