@@ -1164,6 +1164,8 @@ static void face_island_uv_rotate_fit_aabb(FaceIsland *island)
     }
   }
 
+  /* As the UV Packing API doesn't yet support rotation, we need
+   * to pre-rotate each island into the smallest AABB. */
   float angle = BLI_convexhull_aabb_fit_points_2d(coords, coords_len);
 
   /* Rotate coords by `angle` before computing bounding box. */
@@ -1184,6 +1186,12 @@ static void face_island_uv_rotate_fit_aabb(FaceIsland *island)
     minmax_v2v2_v2(bounds_min, bounds_max, coords[i]);
   }
 
+  /* "Stand-up" islands, corresponding to "step b)" of
+   * https://twitter.com/pixelmager/status/1434847825955852291
+   *
+   * If we rotate the AABB by 90 degrees, the aspect ratio correction for the X axis will be
+   * `aspect_y` and for the Y axis will be `1.0f / aspect_y`. Applying both corrections gives a
+   * combined factor of `aspect_y / (1.0f / aspect_y) == aspect_y * aspect_y` */
   float size[2];
   sub_v2_v2v2(size, bounds_max, bounds_min);
   if (size[1] < size[0] * (aspect_y * aspect_y)) {
@@ -1391,8 +1399,6 @@ static void uvedit_pack_islands_multi(const Scene *scene,
     blender::geometry::PackIsland *pack_island = new blender::geometry::PackIsland();
     pack_island->bounds_rect = face_island->bounds_rect;
     pack_island->caller_index = i;
-    pack_island->aspect_y = face_island->aspect_y;
-    pack_island->angle = 0.0f;
     pack_island_vector.append(pack_island);
   }
   pack_islands(pack_island_vector, *params, scale);

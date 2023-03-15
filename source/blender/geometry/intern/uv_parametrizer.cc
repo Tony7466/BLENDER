@@ -4168,8 +4168,6 @@ void uv_parametrizer_pack(ParamHandle *handle, float margin, bool do_rotate, boo
 
     geometry::PackIsland *pack_island = new geometry::PackIsland();
     pack_island->caller_index = i;
-    pack_island->aspect_y = handle->aspx / handle->aspy;
-    pack_island->angle = 0.0f;
     pack_island_vector.append(pack_island);
 
     float minv[2];
