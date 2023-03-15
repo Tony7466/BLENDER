@@ -3,17 +3,19 @@
 #include "testing/testing.h"
 
 #include "BLI_fileops.hh"
+#include "BLI_hash_mm2a.h"
+
 #include "ply_import.hh"
-#include "ply_import_ascii.hh"
-#include "ply_import_binary.hh"
+#include "ply_import_data.hh"
 
 namespace blender::io::ply {
 
 struct Expectation {
   int totvert, totpoly, totindex, totedge;
+  uint16_t polyhash = 0, edgehash = 0;
   float3 vert_first, vert_last;
   float3 normal_first = {0, 0, 0};
-  float2 uv_first;
+  float2 uv_first = {0, 0};
   float4 color_first = {-1, -1, -1, -1};
 };
 
@@ -32,12 +34,7 @@ class ply_import_test : public testing::Test {
     }
     std::unique_ptr<PlyData> data;
     try {
-      if (header.type == PlyFormatType::ASCII) {
-        data = import_ply_ascii(infile, header);
-      }
-      else {
-        data = import_ply_binary(infile, &header);
-      }
+      data = import_ply_data(infile, header);
     }
     catch (std::exception &e) {
       ASSERT_EQ(0, exp.totvert);
@@ -53,11 +50,27 @@ class ply_import_test : public testing::Test {
     ASSERT_EQ(header.face_count, exp.totpoly);
     ASSERT_EQ(data->faces.size(), exp.totpoly);
 
+    /* Test hash of face and edge index data. */
+    BLI_HashMurmur2A hash;
+    BLI_hash_mm2a_init(&hash, 0);
     int indexCount = 0;
     for (const auto &f : data->faces) {
       indexCount += f.size();
+      BLI_hash_mm2a_add(&hash, (const unsigned char *)f.data(), f.size() * sizeof(f[0]));
     }
     ASSERT_EQ(indexCount, exp.totindex);
+    uint16_t face_hash = BLI_hash_mm2a_end(&hash);
+
+    if (!data->faces.is_empty()) {
+      ASSERT_EQ(face_hash, exp.polyhash);
+    }
+
+    if (!data->edges.is_empty()) {
+      uint16_t edge_hash = BLI_hash_mm2((const unsigned char *)data->edges.data(),
+                                        data->edges.size() * sizeof(data->edges[0]),
+                                        0);
+      ASSERT_EQ(edge_hash, exp.edgehash);
+    }
 
     /* Test if first and last vertices match. */
     EXPECT_V3_NEAR(data->vertices.first(), exp.vert_first, 0.0001f);
@@ -85,6 +98,8 @@ TEST_F(ply_import_test, PLYImportCube)
                         6,
                         24,
                         0,
+                        26429,
+                        0,
                         float3(1, 1, -1),
                         float3(-1, 1, 1),
                         float3(0, 0, -1),
@@ -93,10 +108,11 @@ TEST_F(ply_import_test, PLYImportCube)
   import_and_check("cube_ascii.ply", expect);
 }
 
-TEST_F(ply_import_test, PLYImportASCIIEdgeTest)
+TEST_F(ply_import_test, PLYImportWireframeCube)
 {
-  Expectation expect = {8, 0, 0, 12, float3(-1, -1, -1), float3(1, 1, 1)};
+  Expectation expect = {8, 0, 0, 12, 0, 31435, float3(-1, -1, -1), float3(1, 1, 1)};
   import_and_check("ASCII_wireframe_cube.ply", expect);
+  import_and_check("wireframe_cube.ply", expect);
 }
 
 TEST_F(ply_import_test, PLYImportBunny)
@@ -104,6 +120,8 @@ TEST_F(ply_import_test, PLYImportBunny)
   Expectation expect = {1623,
                         1000,
                         3000,
+                        0,
+                        62556,
                         0,
                         float3(0.0380425, 0.109755, 0.0161689),
                         float3(-0.0722821, 0.143895, -0.0129091)};
@@ -116,6 +134,8 @@ TEST_F(ply_import_test, PlyImportManySmallHoles)
                         3524,
                         10572,
                         0,
+                        15143,
+                        0,
                         float3(-0.0131592, -0.0598382, 1.58958),
                         float3(-0.0177622, 0.0105153, 1.61977),
                         float3(0, 0, 0),
@@ -124,17 +144,11 @@ TEST_F(ply_import_test, PlyImportManySmallHoles)
   import_and_check("many_small_holes.ply", expect);
 }
 
-TEST_F(ply_import_test, PlyImportWireframeCube)
-{
-  Expectation expect = {8, 0, 0, 12, float3(-1, -1, -1), float3(1, 1, 1)};
-  import_and_check("wireframe_cube.ply", expect);
-}
-
 TEST_F(ply_import_test, PlyImportColorNotFull)
 {
-  Expectation expect = {4, 1, 4, 0, float3(1, 0, 1), float3(-1, 0, 1)};
+  Expectation expect = {4, 1, 4, 0, 37235, 0, float3(1, 0, 1), float3(-1, 0, 1)};
   import_and_check("color_not_full_a.ply", expect);
-  // import_and_check("color_not_full_b.ply", expect);
+  import_and_check("color_not_full_b.ply", expect);
 }
 
 TEST_F(ply_import_test, PlyImportDoubleXYZ)
@@ -143,20 +157,31 @@ TEST_F(ply_import_test, PlyImportDoubleXYZ)
                         1,
                         4,
                         0,
+                        37235,
+                        0,
                         float3(1, 0, 1),
                         float3(-1, 0, 1),
                         float3(0, 0, 0),
                         float2(0, 0),
                         float4(1, 0, 0, 1)};
   import_and_check("double_xyz_a.ply", expect);
-  // import_and_check("double_xyz_b.ply", expect);
+  import_and_check("double_xyz_b.ply", expect);
 }
+
+/*
+TEST_F(ply_import_test, PlyImportFaceIndicesNotFirstProp)
+{
+  Expectation expect = {4, 1, 4, 0, 37235, 0, float3(1, 0, 1), float3(-1, 0, 1)};
+  import_and_check("face_indices_not_first_prop_a.ply", expect);
+  import_and_check("face_indices_not_first_prop_b.ply", expect);
+}
+ */
 
 TEST_F(ply_import_test, PlyImportFaceUVsColors)
 {
-  Expectation expect = {4, 1, 4, 0, float3(1, 0, 1), float3(-1, 0, 1)};
+  Expectation expect = {4, 1, 4, 0, 37235, 0, float3(1, 0, 1), float3(-1, 0, 1)};
   import_and_check("face_uvs_colors_a.ply", expect);
-  // import_and_check("face_uvs_colors_b.ply", expect);
+  import_and_check("face_uvs_colors_b.ply", expect);
 }
 
 TEST_F(ply_import_test, PlyImportFacesFirst)
@@ -165,13 +190,15 @@ TEST_F(ply_import_test, PlyImportFacesFirst)
                         1,
                         4,
                         0,
+                        37235,
+                        0,
                         float3(1, 0, 1),
                         float3(-1, 0, 1),
                         float3(0, 0, 0),
                         float2(0, 0),
                         float4(1, 0, 0, 1)};
   import_and_check("faces_first_a.ply", expect);
-  // import_and_check("faces_first_b.ply", expect);
+  import_and_check("faces_first_b.ply", expect);
 }
 
 TEST_F(ply_import_test, PlyImportFloatFormats)
@@ -180,27 +207,29 @@ TEST_F(ply_import_test, PlyImportFloatFormats)
                         1,
                         4,
                         0,
+                        37235,
+                        0,
                         float3(1, 0, 1),
                         float3(-1, 0, 1),
                         float3(0, 0, 0),
                         float2(0, 0),
                         float4(0.5f, 0, 0.25f, 1)};
   import_and_check("float_formats_a.ply", expect);
-  // import_and_check("float_formats_b.ply", expect);
+  import_and_check("float_formats_b.ply", expect);
 }
 
 TEST_F(ply_import_test, PlyImportPositionNotFull)
 {
   Expectation expect = {0, 0, 0, 0};
   import_and_check("position_not_full_a.ply", expect);
-  // import_and_check("position_not_full_b.ply", expect);
+  import_and_check("position_not_full_b.ply", expect);
 }
 
 TEST_F(ply_import_test, PlyImportTristrips)
 {
-  Expectation expect = {6, 0, 0, 0, float3(1, 0, 1), float3(-3, 0, 1)};  //@TODO: incorrect
+  Expectation expect = {6, 0, 0, 0, 0, 0, float3(1, 0, 1), float3(-3, 0, 1)};  //@TODO: incorrect
   import_and_check("tristrips_a.ply", expect);
-  // import_and_check("tristrips_b.ply", expect);
+  import_and_check("tristrips_b.ply", expect);
 }
 
 TEST_F(ply_import_test, PlyImportTypeAliases)
@@ -209,13 +238,16 @@ TEST_F(ply_import_test, PlyImportTypeAliases)
                         1,
                         4,
                         0,
+                        37235,
+                        0,
                         float3(1, 0, 1),
                         float3(-1, 0, 1),
                         float3(0, 0, 0),
                         float2(0, 0),
                         float4(220 / 255.0f, 20 / 255.0f, 20 / 255.0f, 1)};
   import_and_check("type_aliases_a.ply", expect);
-  // import_and_check("type_aliases_b.ply", expect);
+  import_and_check("type_aliases_b.ply", expect);
+  import_and_check("type_aliases_be_b.ply", expect);
 }
 
 TEST_F(ply_import_test, PlyImportVertexCompOrder)
@@ -224,37 +256,22 @@ TEST_F(ply_import_test, PlyImportVertexCompOrder)
                         1,
                         4,
                         0,
+                        37235,
+                        0,
                         float3(1, 0, 1),
                         float3(-1, 0, 1),
                         float3(0, 0, 0),
                         float2(0, 0),
                         float4(0.8f, 0.2f, 0, 1)};
   import_and_check("vertex_comp_order_a.ply", expect);
-  // import_and_check("vertex_comp_order_b.ply", expect);
+  import_and_check("vertex_comp_order_b.ply", expect);
 }
 
-TEST(ply_import_functions_test, PlySwapBytes)
-{
-  /* Individual bits shouldn't swap with each other. */
-  uint8_t val8 = 0xA8;
-  uint8_t exp8 = 0xA8;
-  uint8_t actual8 = swap_bytes<uint8_t>(val8);
-  ASSERT_EQ(exp8, actual8);
-
-  uint16_t val16 = 0xFEB0;
-  uint16_t exp16 = 0xB0FE;
-  uint16_t actual16 = swap_bytes<uint16_t>(val16);
-  ASSERT_EQ(exp16, actual16);
-
-  uint32_t val32 = 0x80A37B0A;
-  uint32_t exp32 = 0x0A7BA380;
-  uint32_t actual32 = swap_bytes<uint32_t>(val32);
-  ASSERT_EQ(exp32, actual32);
-
-  uint64_t val64 = 0x0102030405060708;
-  uint64_t exp64 = 0x0807060504030201;
-  uint64_t actual64 = swap_bytes<uint64_t>(val64);
-  ASSERT_EQ(exp64, actual64);
-}
+//@TODO: test with vertex element having list properties
+//@TODO: test with face element having vertex_indices list as non-first property
+//@TODO: test big endian binaries
+//@TODO: test with edges starting with non-vertex index properties
+//@TODO: test various malformed headers
+//@TODO: line endings
 
 }  // namespace blender::io::ply

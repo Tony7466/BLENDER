@@ -32,8 +32,7 @@ set(SRC
     exporter/ply_file_buffer_ascii.cc
     exporter/ply_file_buffer_binary.cc
     importer/ply_import.cc
-    importer/ply_import_ascii.cc
-    importer/ply_import_binary.cc
+    importer/ply_import_data.cc
     importer/ply_import_mesh.cc
     IO_ply.cc
 
@@ -45,8 +44,7 @@ set(SRC
     exporter/ply_file_buffer_ascii.hh
     exporter/ply_file_buffer_binary.hh
     importer/ply_import.hh
-    importer/ply_import_ascii.hh
-    importer/ply_import_binary.hh
+    importer/ply_import_data.hh
     importer/ply_import_mesh.hh
     IO_ply.h
 

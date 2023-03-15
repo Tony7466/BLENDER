@@ -24,8 +24,7 @@
 #include "ply_data.hh"
 #include "ply_functions.hh"
 #include "ply_import.hh"
-#include "ply_import_ascii.hh"
-#include "ply_import_binary.hh"
+#include "ply_import_data.hh"
 #include "ply_import_mesh.hh"
 
 namespace blender::io::ply {
@@ -42,7 +41,7 @@ void splitstr(std::string str, Vector<std::string> &words, const StringRef &deli
   words.append(str.substr());
 }
 
-enum PlyDataTypes from_string(const StringRef &input)
+static PlyDataTypes type_from_string(const StringRef &input)
 {
   if (input == "uchar" || input == "uint8") {
     return PlyDataTypes::UCHAR;
@@ -68,7 +67,7 @@ enum PlyDataTypes from_string(const StringRef &input)
   if (input == "double" || input == "float64") {
     return PlyDataTypes::DOUBLE;
   }
-  return PlyDataTypes::FLOAT;
+  return PlyDataTypes::NONE;
 }
 
 const char *read_header(fstream &file, PlyHeader &r_header)
@@ -110,9 +109,19 @@ const char *read_header(fstream &file, PlyHeader &r_header)
       }
     }
     else if (strcmp(words[0].c_str(), "property") == 0) {
-      std::pair<std::string, PlyDataTypes> property;
-      property.first = words[2];
-      property.second = from_string(words[1]);
+      PlyProperty property;
+      if (words.size() >= 3 && words[1] != "list") {
+        property.type = type_from_string(words[1]);
+        property.name = words[2];
+      }
+      else if (words.size() >= 5 && words[1] == "list") {
+        property.count_type = type_from_string(words[2]);
+        property.type = type_from_string(words[3]);
+        property.name = words[4];
+      }
+      else {
+        return "Malformed property";
+      }
       r_header.elements.last().properties.append(property);
     }
     else if (words[0] == "end_header") {
@@ -123,6 +132,10 @@ const char *read_header(fstream &file, PlyHeader &r_header)
       /* A value was found before we broke out of the loop. No end_header. */
       return "No end_header.";
     }
+  }
+
+  for (PlyElement &el : r_header.elements) {
+    el.calc_stride();
   }
   return nullptr;
 }
@@ -170,13 +183,7 @@ void importer_main(Main *bmain,
 
   /* Parse actual file data. */
   try {
-    std::unique_ptr<PlyData> data;
-    if (header.type == PlyFormatType::ASCII) {
-      data = import_ply_ascii(infile, header);
-    }
-    else {
-      data = import_ply_binary(infile, &header);
-    }
+    std::unique_ptr<PlyData> data = import_ply_data(infile, header);
 
     Mesh *temp_val = convert_ply_to_mesh(*data, mesh, import_params);
     if (import_params.merge_verts && temp_val != mesh) {

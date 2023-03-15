@@ -12,7 +12,7 @@
 
 namespace blender::io::ply {
 
-enum PlyDataTypes { CHAR, UCHAR, SHORT, USHORT, INT, UINT, FLOAT, DOUBLE, PLY_TYPE_COUNT };
+enum PlyDataTypes { NONE, CHAR, UCHAR, SHORT, USHORT, INT, UINT, FLOAT, DOUBLE, PLY_TYPE_COUNT };
 
 struct PlyData {
   Vector<float3> vertices;
@@ -27,10 +27,19 @@ struct PlyData {
 
 enum PlyFormatType { ASCII, BINARY_LE, BINARY_BE };
 
+struct PlyProperty {
+  std::string name;
+  PlyDataTypes type = PlyDataTypes::NONE;
+  PlyDataTypes count_type = PlyDataTypes::NONE; /* NONE means it's not a list property */
+};
+
 struct PlyElement {
   std::string name;
   int count = 0;
-  Vector<std::pair<std::string, PlyDataTypes>> properties;
+  Vector<PlyProperty> properties;
+  int stride = 0;
+
+  void calc_stride();
 };
 
 struct PlyHeader {
