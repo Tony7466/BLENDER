@@ -29,7 +29,7 @@
 #include "BKE_customdata.h"
 #include "BKE_deform.h"
 #include "BKE_lib_query.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_modifier.h"
 #include "BKE_screen.h"
 
@@ -588,7 +588,6 @@ static void add_interpolated_polys_to_new_mesh(const Mesh &src_mesh,
         cut_edge.v1 = dst_loops[mp_dst.loopstart].v;
         cut_edge.v2 = cut_dst_loop.v;
         BLI_assert(cut_edge.v1 != cut_edge.v2);
-        cut_edge.flag = 0;
         edge_index++;
 
         /* Only handle one of the cuts per iteration. */

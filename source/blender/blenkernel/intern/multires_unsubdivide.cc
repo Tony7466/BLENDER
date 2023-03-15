@@ -20,7 +20,7 @@
 
 #include "BKE_customdata.h"
 #include "BKE_lib_id.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.h"
 #include "BKE_modifier.h"
 #include "BKE_multires.h"
@@ -644,15 +644,15 @@ static void store_grid_data(MultiresUnsubdivideContext *context,
   Mesh *original_mesh = context->original_mesh;
   const blender::Span<MPoly> polys = original_mesh->polys();
   const blender::Span<MLoop> loops = original_mesh->loops();
-  const MPoly *poly = &polys[BM_elem_index_get(f)];
+  const MPoly &poly = polys[BM_elem_index_get(f)];
 
   const int corner_vertex_index = BM_elem_index_get(v);
 
   /* Calculates an offset to write the grids correctly oriented in the main
    * #MultiresUnsubdivideGrid. */
   int loop_offset = 0;
-  for (int i = 0; i < poly->totloop; i++) {
-    const int loop_index = poly->loopstart + i;
+  for (int i = 0; i < poly.totloop; i++) {
+    const int loop_index = poly.loopstart + i;
     const MLoop *l = &loops[loop_index];
     if (l->v == corner_vertex_index) {
       loop_offset = i;
@@ -667,8 +667,8 @@ static void store_grid_data(MultiresUnsubdivideContext *context,
   float(*face_grid)[3] = static_cast<float(*)[3]>(
       MEM_calloc_arrayN(face_grid_area, sizeof(float[3]), "face_grid"));
 
-  for (int i = 0; i < poly->totloop; i++) {
-    const int loop_index = poly->loopstart + i;
+  for (int i = 0; i < poly.totloop; i++) {
+    const int loop_index = poly.loopstart + i;
     MDisps *mdisp = &context->original_mdisp[loop_index];
     int quad_loop = i - loop_offset;
     if (quad_loop < 0) {
@@ -903,10 +903,10 @@ static void multires_unsubdivide_add_original_index_datalayers(Mesh *mesh)
   multires_unsubdivide_free_original_datalayers(mesh);
 
   int *l_index = static_cast<int *>(CustomData_add_layer_named(
-      &mesh->ldata, CD_PROP_INT32, CD_SET_DEFAULT, nullptr, mesh->totloop, lname));
+      &mesh->ldata, CD_PROP_INT32, CD_SET_DEFAULT, mesh->totloop, lname));
 
   int *v_index = static_cast<int *>(CustomData_add_layer_named(
-      &mesh->vdata, CD_PROP_INT32, CD_SET_DEFAULT, nullptr, mesh->totvert, vname));
+      &mesh->vdata, CD_PROP_INT32, CD_SET_DEFAULT, mesh->totvert, vname));
 
   /* Initialize these data-layer with the indices in the current mesh. */
   for (int i = 0; i < mesh->totloop; i++) {
@@ -954,9 +954,9 @@ static void multires_unsubdivide_prepare_original_bmesh_for_extract(
       MEM_calloc_arrayN(original_mesh->totloop, sizeof(int), "loop map"));
 
   for (int i = 0; i < original_mesh->totpoly; i++) {
-    const MPoly *poly = &original_polys[i];
-    for (int l = 0; l < poly->totloop; l++) {
-      int original_loop_index = l + poly->loopstart;
+    const MPoly &poly = original_polys[i];
+    for (int l = 0; l < poly.totloop; l++) {
+      int original_loop_index = l + poly.loopstart;
       context->loop_to_face_map[original_loop_index] = i;
     }
   }
@@ -968,19 +968,19 @@ static void multires_unsubdivide_prepare_original_bmesh_for_extract(
  */
 static bool multires_unsubdivide_flip_grid_x_axis(const blender::Span<MPoly> polys,
                                                   const blender::Span<MLoop> loops,
-                                                  int poly,
+                                                  int poly_index,
                                                   int loop,
                                                   int v_x)
 {
-  const MPoly *p = &polys[poly];
+  const MPoly &poly = polys[poly_index];
 
-  const MLoop *l_first = &loops[p->loopstart];
-  if ((loop == (p->loopstart + (p->totloop - 1))) && l_first->v == v_x) {
+  const MLoop *l_first = &loops[poly.loopstart];
+  if ((loop == (poly.loopstart + (poly.totloop - 1))) && l_first->v == v_x) {
     return true;
   }
 
   int next_l_index = loop + 1;
-  if (next_l_index < p->loopstart + p->totloop) {
+  if (next_l_index < poly.loopstart + poly.totloop) {
     const MLoop *l_next = &loops[next_l_index];
     if (l_next->v == v_x) {
       return true;
@@ -1186,8 +1186,8 @@ static void multires_create_grids_in_unsubdivided_base_mesh(MultiresUnsubdivideC
   if (CustomData_has_layer(&base_mesh->ldata, CD_MDISPS)) {
     CustomData_free_layers(&base_mesh->ldata, CD_MDISPS, base_mesh->totloop);
   }
-  MDisps *mdisps = static_cast<MDisps *>(CustomData_add_layer(
-      &base_mesh->ldata, CD_MDISPS, CD_SET_DEFAULT, nullptr, base_mesh->totloop));
+  MDisps *mdisps = static_cast<MDisps *>(
+      CustomData_add_layer(&base_mesh->ldata, CD_MDISPS, CD_SET_DEFAULT, base_mesh->totloop));
 
   const int totdisp = pow_i(BKE_ccg_gridsize(context->num_total_levels), 2);
   const int totloop = base_mesh->totloop;

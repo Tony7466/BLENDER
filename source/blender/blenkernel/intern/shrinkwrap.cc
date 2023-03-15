@@ -33,7 +33,7 @@
 
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
-#include "BKE_mesh.h" /* for OMP limits. */
+#include "BKE_mesh.hh" /* for OMP limits. */
 #include "BKE_mesh_runtime.h"
 #include "BKE_mesh_wrapper.h"
 #include "BKE_subsurf.h"
@@ -116,6 +116,8 @@ bool BKE_shrinkwrap_init_tree(
   data->mesh = mesh;
   data->polys = mesh->polys().data();
   data->vert_normals = BKE_mesh_vert_normals_ensure(mesh);
+  data->sharp_faces = static_cast<const bool *>(
+      CustomData_get_layer_named(&mesh->edata, CD_PROP_BOOL, "sharp_face"));
 
   if (shrinkType == MOD_SHRINKWRAP_NEAREST_VERTEX) {
     data->bvh = BKE_bvhtree_from_mesh_get(&data->treeData, mesh, BVHTREE_FROM_VERTS, 2);
@@ -231,15 +233,14 @@ static ShrinkwrapBoundaryData *shrinkwrap_build_boundary_data(Mesh *mesh)
   data->edge_is_boundary = edge_is_boundary;
 
   /* Build the boundary looptri bitmask. */
-  const MLoopTri *mlooptri = BKE_mesh_runtime_looptri_ensure(mesh);
-  int totlooptri = BKE_mesh_runtime_looptri_len(mesh);
+  const blender::Span<MLoopTri> looptris = mesh->looptris();
 
-  BLI_bitmap *looptri_has_boundary = BLI_BITMAP_NEW(totlooptri,
+  BLI_bitmap *looptri_has_boundary = BLI_BITMAP_NEW(looptris.size(),
                                                     "ShrinkwrapBoundaryData::looptri_is_boundary");
 
-  for (int i = 0; i < totlooptri; i++) {
+  for (const int64_t i : looptris.index_range()) {
     int real_edges[3];
-    BKE_mesh_looptri_get_real_edges(edges.data(), loops.data(), &mlooptri[i], real_edges);
+    BKE_mesh_looptri_get_real_edges(edges.data(), loops.data(), &looptris[i], real_edges);
 
     for (int j = 0; j < 3; j++) {
       if (real_edges[j] >= 0 && edge_mode[real_edges[j]]) {
@@ -1176,7 +1177,7 @@ void BKE_shrinkwrap_compute_smooth_normal(const ShrinkwrapTreeData *tree,
   const float(*vert_normals)[3] = tree->vert_normals;
 
   /* Interpolate smooth normals if enabled. */
-  if ((tree->polys[tri->poly].flag & ME_SMOOTH) != 0) {
+  if (!(tree->sharp_faces && tree->sharp_faces[tri->poly])) {
     const uint32_t vert_indices[3] = {treeData->loop[tri->tri[0]].v,
                                       treeData->loop[tri->tri[1]].v,
                                       treeData->loop[tri->tri[2]].v};

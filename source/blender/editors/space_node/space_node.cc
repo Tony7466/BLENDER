@@ -6,7 +6,7 @@
  */
 
 #include "DNA_ID.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_light_types.h"
 #include "DNA_material_types.h"
 #include "DNA_node_types.h"
@@ -15,7 +15,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BKE_context.h"
-#include "BKE_gpencil.h"
+#include "BKE_gpencil_legacy.h"
 #include "BKE_lib_id.h"
 #include "BKE_lib_remap.h"
 #include "BKE_node.h"
@@ -950,7 +950,7 @@ static void node_id_remap_cb(ID *old_id, ID *new_id, void *user_data)
       snode->from = new_id;
     }
   }
-  else if (GS(old_id->name) == ID_GD) {
+  else if (GS(old_id->name) == ID_GD_LEGACY) {
     if ((ID *)snode->gpd == old_id) {
       snode->gpd = (bGPdata *)new_id;
       id_us_min(old_id);

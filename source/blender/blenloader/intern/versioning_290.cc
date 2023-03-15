@@ -20,8 +20,8 @@
 #include "DNA_curves_types.h"
 #include "DNA_fluid_types.h"
 #include "DNA_genfile.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_gpencil_modifier_types.h"
-#include "DNA_gpencil_types.h"
 #include "DNA_light_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -45,10 +45,10 @@
 #include "BKE_cryptomatte.h"
 #include "BKE_curve.h"
 #include "BKE_fcurve.h"
-#include "BKE_gpencil.h"
+#include "BKE_gpencil_legacy.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_multires.h"
 #include "BKE_node.h"
 
@@ -410,7 +410,7 @@ static void version_node_socket_duplicate(bNodeTree *ntree,
   }
 }
 
-void do_versions_after_linking_290(Main *bmain, ReportList * /*reports*/)
+void do_versions_after_linking_290(FileData * /*fd*/, Main *bmain)
 {
   if (!MAIN_VERSION_ATLEAST(bmain, 290, 1)) {
     /* Patch old grease pencil modifiers material filter. */
@@ -553,7 +553,7 @@ void do_versions_after_linking_290(Main *bmain, ReportList * /*reports*/)
     Scene *scene = static_cast<Scene *>(bmain->scenes.first);
     if (scene != nullptr) {
       LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
-        if (ob->type != OB_GPENCIL) {
+        if (ob->type != OB_GPENCIL_LEGACY) {
           continue;
         }
         bGPdata *gpd = static_cast<bGPdata *>(ob->data);
@@ -828,7 +828,7 @@ void blo_do_versions_290(FileData *fd, Library * /*lib*/, Main *bmain)
               me->totedge,
               (MFace *)CustomData_get_layer_for_write(&me->fdata, CD_MFACE, me->totface),
               me->totface,
-              BKE_mesh_loops_for_write(me),
+              me->loops_for_write().data(),
               polys.size(),
               polys.data(),
               me->totpoly,
