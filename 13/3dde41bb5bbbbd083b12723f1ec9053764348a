@@ -1,2 +1,3 @@
 Referenced by commit 313c2e91050, Fix a test after recent changes to lib (in)directly linked ID handling.
 Referenced by issue #103867, Linked Custom Nodes with fake user are removed when re-opening file.
+Referenced by issue #105786, How to handle linked data with 'fake user' set
