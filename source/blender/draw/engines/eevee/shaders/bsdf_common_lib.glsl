@@ -152,13 +152,13 @@ vec3 ensure_valid_specular_reflection(vec3 Ng, vec3 I, vec3 N)
   float Ix = dot(I, X);
 
   float a = sqr(Ix) + sqr(Iz);
-  float b = 2.0f * (a + Iz * threshold);
+  float b = 2.0 * (a + Iz * threshold);
   float c = sqr(threshold + Iz);
 
-  float Nz2 = (Ix < 0) ? 0.25f * (b + safe_sqrt(sqr(b) - 4.0f * a * c)) / a :
-                         0.25f * (b - safe_sqrt(sqr(b) - 4.0f * a * c)) / a;
+  float Nz2 = (Ix < 0.0) ? 0.25 * (b + safe_sqrt(sqr(b) - 4.0 * a * c)) / a :
+                           0.25 * (b - safe_sqrt(sqr(b) - 4.0 * a * c)) / a;
 
-  float Nx = safe_sqrt(1.0f - Nz2);
+  float Nx = safe_sqrt(1.0 - Nz2);
   float Nz = safe_sqrt(Nz2);
 
   return Nx * X + Nz * Ng;
