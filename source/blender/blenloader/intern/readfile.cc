@@ -75,7 +75,7 @@
 #include "BKE_main.h" /* for Main */
 #include "BKE_main_idmap.h"
 #include "BKE_material.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_modifier.h"
 #include "BKE_node.h" /* for tree type defines */
 #include "BKE_object.h"
@@ -2963,7 +2963,7 @@ static const char *dataname(short id_code)
       return "Data from PAL";
     case ID_PC:
       return "Data from PCRV";
-    case ID_GD:
+    case ID_GD_LEGACY:
       return "Data from GD";
     case ID_WM:
       return "Data from WM";

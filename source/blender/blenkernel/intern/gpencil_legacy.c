@@ -27,7 +27,7 @@
 /* Allow using deprecated functionality for .blend file I/O. */
 #define DNA_DEPRECATED_ALLOW
 
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_material_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_space_types.h"
@@ -37,9 +37,9 @@
 #include "BKE_collection.h"
 #include "BKE_colortools.h"
 #include "BKE_deform.h"
-#include "BKE_gpencil.h"
-#include "BKE_gpencil_geom.h"
-#include "BKE_gpencil_update_cache.h"
+#include "BKE_gpencil_geom_legacy.h"
+#include "BKE_gpencil_legacy.h"
+#include "BKE_gpencil_update_cache_legacy.h"
 #include "BKE_icons.h"
 #include "BKE_idtype.h"
 #include "BKE_image.h"
@@ -191,7 +191,7 @@ void BKE_gpencil_blend_read_data(BlendDataReader *reader, bGPdata *gpd)
   BLO_read_data_address(reader, &gpd->adt);
   BKE_animdata_blend_read_data(reader, gpd->adt);
 
-  /* Ensure full objectmode for linked grease pencil. */
+  /* Ensure full object-mode for linked grease pencil. */
   if (ID_IS_LINKED(gpd)) {
     gpd->flag &= ~GP_DATA_STROKE_PAINTMODE;
     gpd->flag &= ~GP_DATA_STROKE_EDITMODE;
@@ -296,10 +296,10 @@ static void greasepencil_blend_read_expand(BlendExpander *expander, ID *id)
   }
 }
 
-IDTypeInfo IDType_ID_GD = {
-    .id_code = ID_GD,
-    .id_filter = FILTER_ID_GD,
-    .main_listbase_index = INDEX_ID_GD,
+IDTypeInfo IDType_ID_GD_LEGACY = {
+    .id_code = ID_GD_LEGACY,
+    .id_filter = FILTER_ID_GD_LEGACY,
+    .main_listbase_index = INDEX_ID_GD_LEGACY,
     .struct_size = sizeof(bGPdata),
     .name = "GPencil",
     .name_plural = "grease_pencils",
@@ -707,7 +707,7 @@ bGPdata *BKE_gpencil_data_addnew(Main *bmain, const char name[])
   bGPdata *gpd;
 
   /* allocate memory for a new block */
-  gpd = BKE_libblock_alloc(bmain, ID_GD, name, 0);
+  gpd = BKE_libblock_alloc(bmain, ID_GD_LEGACY, name, 0);
 
   /* initial settings */
   gpd->flag = (GP_DATA_DISPINFO | GP_DATA_EXPAND);
@@ -1275,9 +1275,8 @@ bGPDframe *BKE_gpencil_layer_frame_get(bGPDlayer *gpl, int cframe, eGP_GetFrame_
           gpl->actframe = gpf;
         }
         else if (addnew == GP_GETFRAME_ADD_COPY) {
-          /* The frame_addcopy function copies the active frame of gpl,
-             so we need to set the active frame before copying.
-          */
+          /* The #BKE_gpencil_frame_addcopy function copies the active frame of gpl,
+           * so we need to set the active frame before copying. */
           gpl->actframe = gpf;
           gpl->actframe = BKE_gpencil_frame_addcopy(gpl, cframe);
         }
@@ -1306,9 +1305,8 @@ bGPDframe *BKE_gpencil_layer_frame_get(bGPDlayer *gpl, int cframe, eGP_GetFrame_
           gpl->actframe = gpf;
         }
         else if (addnew == GP_GETFRAME_ADD_COPY) {
-          /* The frame_addcopy function copies the active frame of gpl;
-             so we need to set the active frame before copying.
-          */
+          /* The #BKE_gpencil_frame_addcopy function copies the active frame of gpl;
+           * so we need to set the active frame before copying. */
           gpl->actframe = gpf;
           gpl->actframe = BKE_gpencil_frame_addcopy(gpl, cframe);
         }
@@ -1366,9 +1364,9 @@ bGPDframe *BKE_gpencil_layer_frame_get(bGPDlayer *gpl, int cframe, eGP_GetFrame_
         gpl->actframe = gpl->frames.first;
       }
       else {
-        /* unresolved errogenous situation! */
+        /* Unresolved erogenous situation! */
         CLOG_STR_ERROR(&LOG, "cannot find appropriate gp-frame");
-        /* gpl->actframe should still be NULL */
+        /* `gpl->actframe` should still be NULL. */
       }
     }
   }
@@ -2326,7 +2324,7 @@ bool BKE_gpencil_from_image(
           pt->strength = 1.0f - color[3];
         }
 
-        /* Selet Alpha points. */
+        /* Select Alpha points. */
         if (pt->strength < 0.03f) {
           gps->flag |= GP_STROKE_SELECT;
           pt->flag |= GP_SPOINT_SELECT;
@@ -2710,7 +2708,7 @@ void BKE_gpencil_layer_transform_matrix_get(const Depsgraph *depsgraph,
 
   /* if not layer parented, try with object parented */
   if (obparent_eval == NULL) {
-    if ((ob_eval != NULL) && (ob_eval->type == OB_GPENCIL)) {
+    if ((ob_eval != NULL) && (ob_eval->type == OB_GPENCIL_LEGACY)) {
       copy_m4_m4(diff_mat, ob_eval->object_to_world);
       mul_m4_m4m4(diff_mat, diff_mat, gpl->layer_mat);
       return;
@@ -2748,7 +2746,7 @@ void BKE_gpencil_layer_transform_matrix_get(const Depsgraph *depsgraph,
 
 void BKE_gpencil_update_layer_transforms(const Depsgraph *depsgraph, Object *ob)
 {
-  if (ob->type != OB_GPENCIL) {
+  if (ob->type != OB_GPENCIL_LEGACY) {
     return;
   }
 
