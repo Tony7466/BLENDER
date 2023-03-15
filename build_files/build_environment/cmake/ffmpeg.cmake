@@ -2,7 +2,7 @@
 
 set(temp_LIBDIR ${LIBDIR})
 
-if(WIN32)
+if(NOT WIN32)
   set(LIBDIR_FLAG "-L")
 else()
   set(LIBDIR_FLAG "-LIBPATH")
@@ -44,7 +44,7 @@ if(WIN32)
 
   set(FFMPEG_LDFLAGS "\
   ${FFMPEG_LDFLAGS} \
-  -L${temp_LIBDIR}/openjpeg_msvc/lib \
+  ${LIBDIR_FLAG}${temp_LIBDIR}/openjpeg_msvc/lib \
   ucrt.lib")
 endif()
 
