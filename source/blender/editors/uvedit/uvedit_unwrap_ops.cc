@@ -1186,7 +1186,7 @@ static void face_island_uv_rotate_fit_aabb(FaceIsland *island)
 
   float size[2];
   sub_v2_v2v2(size, bounds_max, bounds_min);
-  if (size[1] < size[0]) {
+  if (size[1] < size[0] * (aspect_y * aspect_y)) {
     angle += DEG2RADF(90.0f);
   }
 
@@ -1391,6 +1391,8 @@ static void uvedit_pack_islands_multi(const Scene *scene,
     blender::geometry::PackIsland *pack_island = new blender::geometry::PackIsland();
     pack_island->bounds_rect = face_island->bounds_rect;
     pack_island->caller_index = i;
+    pack_island->aspect_y = face_island->aspect_y;
+    pack_island->angle = 0.0f;
     pack_island_vector.append(pack_island);
   }
   pack_islands(pack_island_vector, *params, scale);

@@ -55,9 +55,13 @@ class UVPackIsland_Params {
 
 class PackIsland {
  public:
-  rctf bounds_rect;
+  rctf bounds_rect; /* Initial bounds. */
+  float aspect_y;   /* Aspect ratio, required for rotation. */
+
   float2 pre_translate; /* Output. */
-  int caller_index;     /* Unchanged by #pack_islands, used by caller. */
+  float angle;          /* Output. */
+
+  int caller_index; /* Unchanged by #pack_islands, used by caller. */
 };
 
 void pack_islands(const Span<PackIsland *> &islands,
