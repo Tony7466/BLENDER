@@ -1,1 +1,2 @@
 Referenced by issue #105587, Regression: Triangulated shading in sculpt mode
+Referenced by commit f6f2f4f26408f5bed76dc6ff81d00b73109e932e, Fix #105681: Sculpt trim generates smooth shaded faces
