@@ -5,7 +5,7 @@ void main()
   out_color = surfel.color;
 
   /* Display surfels as circles. */
-  if (distance(P, surfel.position.xyz) > surfel_radius) {
+  if (distance(P, surfel.position) > surfel_radius) {
     discard;
     return;
   }

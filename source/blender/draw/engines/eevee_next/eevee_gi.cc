@@ -17,8 +17,8 @@ void GI::generate_random_surfels()
 
   for (Surfel &surfel : surfels) {
     float3 random = rng.get_unit_float3();
-    surfel.position = float4(random * 3.0f);
-    surfel.normal = float4(random);
+    surfel.position = random * 3.0f;
+    surfel.normal = random;
     surfel.color = float4(rng.get_float(), rng.get_float(), rng.get_float(), 1.0f);
   }
 

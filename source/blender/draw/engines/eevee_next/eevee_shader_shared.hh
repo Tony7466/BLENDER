@@ -831,8 +831,10 @@ static inline ShadowTileDataPacked shadow_tile_pack(ShadowTileData tile)
  * \{ */
 
 struct Surfel {
-  float4 position;
-  float4 normal;
+  float3 position;
+  int _pad0;
+  float3 normal;
+  int _pad1;
   float4 color;
 };
 BLI_STATIC_ASSERT_ALIGN(Surfel, 16)
