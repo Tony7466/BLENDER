@@ -1611,7 +1611,7 @@ bool WM_event_is_modal_drag_exit(const struct wmEvent *event,
                                  short init_event_val);
 bool WM_event_is_mouse_drag(const struct wmEvent *event);
 bool WM_event_is_mouse_drag_or_press(const wmEvent *event);
-int WM_event_drag_direction(const wmEvent *event, const struct Scene *scene);
+int WM_event_drag_direction(const wmEvent *event, struct ToolSettings *ts);
 char WM_event_utf8_to_ascii(const struct wmEvent *event) ATTR_NONNULL(1) ATTR_WARN_UNUSED_RESULT;
 
 /**
