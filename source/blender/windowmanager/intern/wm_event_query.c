@@ -311,7 +311,6 @@ int WM_event_drag_direction(const wmEvent *event, ToolSettings *ts)
   }
 
   if (drag_select_toolsetting) {
-    ToolSettings *ts = scene->toolsettings;
     int box = ts->box_drag_direction;
     int lasso = ts->lasso_drag_direction;
 
