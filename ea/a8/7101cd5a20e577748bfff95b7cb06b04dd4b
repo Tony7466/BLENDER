@@ -2,3 +2,4 @@ Referenced by issue #103021, Regression: Metaballs have jagged normals in 3.4
 Referenced by issue #100639, Metaball particles are handled inconsistently in Geometry Nodes
 Referenced by issue #105593, Metaballs render mistake in 3.4.1
 Referenced by pull request #105799, Fix #103021: Metaballs have jagged normals
+Referenced by commit c6878d5e829fd84de5e08fbae780a60613292712, Fix #103021: Metaballs have jagged normals
