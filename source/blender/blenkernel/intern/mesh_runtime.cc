@@ -78,12 +78,6 @@ static void free_bvh_cache(MeshRuntime &mesh_runtime)
   }
 }
 
-static void reset_normals(MeshRuntime &mesh_runtime)
-{
-  mesh_runtime.vert_normals_cache.tag_dirty();
-  mesh_runtime.poly_normals_cache.tag_dirty();
-}
-
 static void free_batch_cache(MeshRuntime &mesh_runtime)
 {
   if (mesh_runtime.batch_cache) {
@@ -272,8 +266,9 @@ void BKE_mesh_runtime_clear_geometry(Mesh *mesh)
 {
   /* Tagging shared caches dirty will free the allocated data if there is only one user. */
   free_bvh_cache(*mesh->runtime);
-  reset_normals(*mesh->runtime);
   free_subdiv_ccg(*mesh->runtime);
+  mesh->runtime->vert_normals_cache.tag_dirty();
+  mesh->runtime->poly_normals_cache.tag_dirty();
   mesh->runtime->bounds_cache.tag_dirty();
   mesh->runtime->loose_edges_cache.tag_dirty();
   mesh->runtime->loose_verts_cache.tag_dirty();
@@ -289,12 +284,10 @@ void BKE_mesh_runtime_clear_geometry(Mesh *mesh)
 
 void BKE_mesh_tag_edges_split(struct Mesh *mesh)
 {
-  /* Triangulation didn't change because vertex positions and loop vertex indices didn't change.
-   * Face normals didn't change either, but tag those anyway, since there is no API function to
-   * only tag vertex normals dirty. */
+  /* Triangulation didn't change because vertex positions and loop vertex indices didn't change. */
   free_bvh_cache(*mesh->runtime);
-  reset_normals(*mesh->runtime);
   free_subdiv_ccg(*mesh->runtime);
+  mesh->runtime->vert_normals_cache.tag_dirty();
   mesh->runtime->loose_edges_cache.tag_dirty();
   mesh->runtime->loose_verts_cache.tag_dirty();
   mesh->runtime->verts_no_face_cache.tag_dirty();
