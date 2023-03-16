@@ -380,6 +380,8 @@ class AlembicObject : public Node {
   /* Transformation for object */
   NODE_SOCKET_API(Transform, tfm)
 
+  Transform abc_tfm;
+  
   AlembicObject();
   ~AlembicObject();
 
@@ -529,6 +531,14 @@ class AlembicProcedural : public Procedural {
   AlembicObject *get_or_create_object(const ustring &path);
 
  private:
+  /*
+   * Applies the Alembic transformation to the object taking into account the objects
+   * existing transformation.
+   */
+  void apply_transformation(AlembicObject *abc_object,
+                            CachedData &cached_data,
+                            Alembic::AbcGeom::Abc::chrono_t frame_time);
+
   /* Add an object to our list of objects, and tag the socket as modified. */
   void add_object(AlembicObject *object);
 

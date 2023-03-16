@@ -1011,6 +1011,7 @@ void AlembicProcedural::load_objects(Progress &progress)
 
       geometry->set_owner(this);
       geometry->name = abc_object->iobject.getName();
+      //geometry->is_procedural = true;
 
       array<Node *> used_shaders = abc_object->get_used_shaders();
       geometry->set_used_shaders(used_shaders);
@@ -1020,6 +1021,9 @@ void AlembicProcedural::load_objects(Progress &progress)
     object->set_owner(this);
     object->set_geometry(geometry);
     object->name = abc_object->iobject.getName();
+
+    Transform tfm = abc_object->get_tfm();
+    object->set_tfm(tfm);
 
     abc_object->set_object(object);
   }
@@ -1036,6 +1040,32 @@ void AlembicProcedural::load_objects(Progress &progress)
   }
 }
 
+/*
+ * Applies the Alembic transformation to the object taking into account the objects
+ * existing transformation.
+ */
+void AlembicProcedural::apply_transformation(AlembicObject *abc_object,
+                                             CachedData &cached_data,
+                                             Alembic::AbcGeom::Abc::chrono_t frame_time)
+{
+  CacheLookupResult<Transform> result = cached_data.transforms.data_for_time(frame_time);
+  if (result.has_new_data()) {
+    Transform tfm = abc_object->get_tfm();
+    Transform abc_tfm = result.get_data();
+    Object *object = abc_object->get_object();
+
+    object->set_tfm(tfm * abc_tfm);
+    abc_object->abc_tfm = abc_tfm;
+  }
+  else {
+    Object *object = abc_object->get_object();
+    Transform tfm = abc_object->get_tfm();
+    Transform abc_tfm = abc_object->abc_tfm;
+
+    object->set_tfm(tfm * abc_tfm);
+  }
+}
+
 void AlembicProcedural::read_mesh(AlembicObject *abc_object, Abc::chrono_t frame_time)
 {
   CachedData &cached_data = abc_object->get_cached_data();
@@ -1043,7 +1073,7 @@ void AlembicProcedural::read_mesh(AlembicObject *abc_object, Abc::chrono_t frame
   /* update sockets */
 
   Object *object = abc_object->get_object();
-  cached_data.transforms.copy_to_socket(frame_time, object, object->get_tfm_socket());
+  apply_transformation(abc_object, cached_data, frame_time);
 
   if (object->is_modified()) {
     object->tag_update(scene_);
@@ -1107,7 +1137,7 @@ void AlembicProcedural::read_subd(AlembicObject *abc_object, Abc::chrono_t frame
   /* Update sockets. */
 
   Object *object = abc_object->get_object();
-  cached_data.transforms.copy_to_socket(frame_time, object, object->get_tfm_socket());
+  apply_transformation(abc_object, cached_data, frame_time);
 
   if (object->is_modified()) {
     object->tag_update(scene_);
@@ -1205,7 +1235,7 @@ void AlembicProcedural::read_curves(AlembicObject *abc_object, Abc::chrono_t fra
   /* update sockets */
 
   Object *object = abc_object->get_object();
-  cached_data.transforms.copy_to_socket(frame_time, object, object->get_tfm_socket());
+  apply_transformation(abc_object, cached_data, frame_time);
 
   if (object->is_modified()) {
     object->tag_update(scene_);
@@ -1246,7 +1276,7 @@ void AlembicProcedural::read_points(AlembicObject *abc_object, Abc::chrono_t fra
   /* update sockets */
 
   Object *object = abc_object->get_object();
-  cached_data.transforms.copy_to_socket(frame_time, object, object->get_tfm_socket());
+  apply_transformation(abc_object, cached_data, frame_time);
 
   if (object->is_modified()) {
     object->tag_update(scene_);
