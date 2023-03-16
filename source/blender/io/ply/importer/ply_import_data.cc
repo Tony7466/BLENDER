@@ -477,6 +477,91 @@ static void load_face_element(fstream &file,
   }
 }
 
+static void load_tristrips_element(fstream &file,
+                                   const PlyHeader &header,
+                                   const PlyElement &element,
+                                   PlyData *data)
+{
+  if (header.face_count != 1) {
+    throw std::runtime_error("Tristrips element should contain one row");
+  }
+  if (element.properties.size() != 1) {
+    throw std::runtime_error("Tristrips element should contain one property");
+  }
+  const PlyProperty &prop = element.properties[0];
+  if (prop.count_type == PlyDataTypes::NONE) {
+    throw std::runtime_error("Tristrips element property must be a list");
+  }
+
+  Vector<int> strip;
+
+  if (header.type == PlyFormatType::ASCII) {
+    std::string line;
+    getline(file, line);
+
+    const char *p = line.data();
+    const char *end = p + line.size();
+    int count = 0;
+    p = parse_int(p, end, 0, count);
+
+    strip.resize(count);
+    for (int j = 0; j < count; j++) {
+      int index;
+      p = parse_int(p, end, 0, index);
+      if (index >= header.vertex_count) {
+        throw std::runtime_error("Tristrip vertex index out of bounds");
+      }
+      strip[j] = index;
+    }
+  }
+  else {
+    Vector<uint8_t> scratch(64);
+
+    const uint8_t *ptr;
+
+    uint32_t count = read_list_count(file, prop, scratch, header.type == PlyFormatType::BINARY_BE);
+
+    strip.resize(count);
+    scratch.resize(count * data_type_size[prop.type]);
+    file.read((char *)scratch.data(), scratch.size());
+    ptr = scratch.data();
+    if (header.type == PlyFormatType::BINARY_BE)
+      endian_switch_array((uint8_t *)ptr, data_type_size[prop.type], count);
+    for (int j = 0; j < count; ++j) {
+      int index = get_binary_value<int>(prop.type, ptr);
+      if (index >= header.vertex_count) {
+        throw std::runtime_error("Tristrip vertex index out of bounds");
+      }
+      strip[j] = index;
+    }
+  }
+
+  /* Decode triangle strip (with possible -1 restart indices) into faces. */
+  Array<uint> triangle(3);
+  size_t start = 0;
+
+  for (size_t i = 0; i < strip.size(); i++) {
+    if (strip[i] == -1) {
+      /* Restart strip. */
+      start = i + 1;
+    }
+    else if (i - start >= 2) {
+      int a = strip[i - 2], b = strip[i - 1], c = strip[i];
+      /* Flip odd triangles. */
+      if ((i - start) & 1) {
+        SWAP(int, a, b);
+      }
+      /* Add triangle if it's not degenerate. */
+      if (a != b && a != c && b != c) {
+        triangle[0] = a;
+        triangle[1] = b;
+        triangle[2] = c;
+        data->faces.append(triangle);
+      }
+    }
+  }
+}
+
 static void load_edge_element(fstream &file,
                               const PlyHeader &header,
                               const PlyElement &element,
@@ -508,7 +593,7 @@ static void load_edge_element(fstream &file,
   }
 }
 
-std::unique_ptr<PlyData> import_ply_data(fstream &file, const PlyHeader &header)
+std::unique_ptr<PlyData> import_ply_data(fstream &file, PlyHeader &header)
 {
   std::unique_ptr<PlyData> data = std::make_unique<PlyData>();
 
@@ -518,6 +603,12 @@ std::unique_ptr<PlyData> import_ply_data(fstream &file, const PlyHeader &header)
     }
     else if (element.name == "face") {
       load_face_element(file, header, element, data.get());
+    }
+    else if (element.name == "tristrips") {
+      int64_t prev_face_count = data->faces.size();
+      load_tristrips_element(file, header, element, data.get());
+      header.face_count -= 1;
+      header.face_count += data->faces.size() - prev_face_count;
     }
     else if (element.name == "edge") {
       load_edge_element(file, header, element, data.get());

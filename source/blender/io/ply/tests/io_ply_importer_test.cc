@@ -232,7 +232,7 @@ TEST_F(ply_import_test, PlyImportPositionNotFull)
 
 TEST_F(ply_import_test, PlyImportTristrips)
 {
-  Expectation expect = {6, 0, 0, 0, 0, 0, float3(1, 0, 1), float3(-3, 0, 1)};  //@TODO: incorrect
+  Expectation expect = {6, 4, 12, 0, 3404, 0, float3(1, 0, 1), float3(-3, 0, 1)};
   import_and_check("tristrips_a.ply", expect);
   import_and_check("tristrips_b.ply", expect);
 }

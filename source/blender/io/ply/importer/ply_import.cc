@@ -104,6 +104,10 @@ const char *read_header(fstream &file, PlyHeader &r_header)
       else if (strcmp(words[1].c_str(), "face") == 0) {
         r_header.face_count = std::stoi(words[2]);
       }
+      else if (strcmp(words[1].c_str(), "tristrips") == 0) {
+        /* Will get changed later after strip decoding. */
+        r_header.face_count = std::stoi(words[2]);
+      }
       else if (strcmp(words[1].c_str(), "edge") == 0) {
         r_header.edge_count = std::stoi(words[2]);
       }
