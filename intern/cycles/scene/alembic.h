@@ -377,6 +377,9 @@ class AlembicObject : public Node {
   /* Scale the radius of points and curves. */
   NODE_SOCKET_API(float, radius_scale)
 
+  /* Transformation for object */
+  NODE_SOCKET_API(Transform, tfm)
+
   AlembicObject();
   ~AlembicObject();
 

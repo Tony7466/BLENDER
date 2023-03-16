@@ -425,6 +425,8 @@ NODE_DEFINE(AlembicObject)
 
   SOCKET_FLOAT(radius_scale, "Radius Scale", 1.0f);
 
+  SOCKET_TRANSFORM(tfm, "Object Transform", transform_identity());
+  
   return type;
 }
 
@@ -799,6 +801,13 @@ void AlembicProcedural::generate(Scene *scene, Progress &progress)
   foreach (Node *object_node, objects) {
     AlembicObject *object = static_cast<AlembicObject *>(object_node);
 
+    Object *obj = object->get_object();
+    if((obj != NULL) && (object->tfm_is_modified())) {
+      Transform tfm = object->get_tfm();
+      obj->set_tfm(tfm);
+    }
+
+ 
     if (object->is_modified()) {
       need_data_updates = true;
     }

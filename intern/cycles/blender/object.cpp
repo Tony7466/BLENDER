@@ -507,6 +507,12 @@ void BlenderSync::sync_procedural(BL::Object &b_ob,
   abc_object->set_subd_dicing_rate(subd_dicing_rate);
   abc_object->set_subd_max_level(max_subdivisions);
 
+  Transform tfm = get_transform(b_ob.matrix_world());
+  if (tfm != abc_object->get_tfm()) {
+    VLOG_INFO << "Update Alembic object transformation.";
+    abc_object->set_tfm(tfm);
+  }
+
   abc_object->set_ignore_subdivision(!has_subdivision_modifier);
 
   if (abc_object->is_modified() || procedural->is_modified()) {
