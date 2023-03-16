@@ -680,16 +680,9 @@ void paintvert_select_more(bContext *C, Object *ob, const bool face_step)
   const Span<MLoop> loops = mesh->loops();
   const Span<MEdge> edges = mesh->edges();
 
-  MeshElemMap *edge_poly_map;
-  int *edge_poly_mem;
+  Array<Vector<int, 2>> edge_to_face_map;
   if (face_step) {
-    BKE_mesh_edge_poly_map_create(&edge_poly_map,
-                                  &edge_poly_mem,
-                                  edges.size(),
-                                  polys.data(),
-                                  polys.size(),
-                                  loops.data(),
-                                  loops.size());
+    edge_to_face_map = bke::mesh_topology::build_edge_to_poly_map(polys, loops, mesh->totedge);
   }
 
   /* Need a copy of the selected verts that we can read from and is not modified. */
@@ -710,7 +703,7 @@ void paintvert_select_more(bContext *C, Object *ob, const bool face_step)
     if (!face_step) {
       continue;
     }
-    const Span<int> neighbor_polys(edge_poly_map[i].indices, edge_poly_map[i].count);
+    const Span<int> neighbor_polys = edge_to_face_map[i];
     for (const int poly_i : neighbor_polys) {
       if (hide_poly[poly_i]) {
         continue;
