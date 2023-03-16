@@ -256,8 +256,8 @@ static PyObject *CCL_initPython(void)
 #endif
 
 #ifdef WITH_HYDRA
-/* defined in USD Hydra module */
-extern PyObject *Hydra_initPython(void);
+/* defined in render_hydra module */
+extern PyObject *BPyInit_hydra(void);
 #endif
 
 static struct _inittab bpy_internal_modules[] = {
@@ -290,7 +290,7 @@ static struct _inittab bpy_internal_modules[] = {
     {"gpu", BPyInit_gpu},
     {"idprop", BPyInit_idprop},
 #ifdef WITH_HYDRA
-    {"_hydra", Hydra_initPython},
+    {"_bpy_hydra", BPyInit_hydra},
 #endif
     {NULL, NULL},
 };

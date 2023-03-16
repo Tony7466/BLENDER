@@ -34,7 +34,9 @@ set(INC
   ../../gpu
   ../../gpu/opengl
   ../../gpu/intern
+  ../../python/intern
   ..
+  ${CMAKE_BINARY_DIR}/source/blender/makesrna/intern
 )
 
 set(INC_SYS

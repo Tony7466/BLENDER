@@ -266,7 +266,7 @@ static PyMethodDef methods[] = {
 
 static struct PyModuleDef module = {
     PyModuleDef_HEAD_INIT,
-    "_hydra",
+    "_bpy_hydra",
     "Hydra render API",
     -1,
     methods,
@@ -282,7 +282,7 @@ static struct PyModuleDef module = {
 extern "C" {
 #endif
 
-PyObject *Hydra_initPython(void)
+PyObject *BPyInit_hydra(void)
 {
   PyObject *mod = PyModule_Create(&blender::render::hydra::module);
   return mod;

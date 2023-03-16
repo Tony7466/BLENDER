@@ -12,6 +12,10 @@
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
 
+#include "MEM_guardedalloc.h"
+#include "RNA_blender_cpp.h"
+#include "bpy_rna.h"
+
 #include "blender_scene_delegate.h"
 #include "material.h"
 #include "mtlx_hydra_adapter.h"
@@ -74,14 +78,26 @@ void MaterialData::export_mtlx()
   gstate = PyGILState_Ensure();
 
   PyObject *module, *dict, *func, *result;
-  module = PyImport_ImportModule("hydra");
+  module = PyImport_ImportModule("bpy_hydra");
   dict = PyModule_GetDict(module);
   func = PyDict_GetItemString(dict, "export_mtlx");
-  result = PyObject_CallFunction(func, "s", name().c_str());
 
-  std::string path = PyUnicode_AsUTF8(result);
+  PointerRNA materialptr;
+  RNA_pointer_create(NULL, &RNA_Material, id, &materialptr);
+  PyObject *material = pyrna_struct_CreatePyObject(&materialptr);
 
-  Py_DECREF(result);
+  result = PyObject_CallFunction(func, "O", material);
+
+  Py_DECREF(material);
+
+  std::string path;
+  if (result) {
+    path = PyUnicode_AsUTF8(result);
+    Py_DECREF(result);
+  }
+  else {
+    PyErr_Print();
+  }
   Py_DECREF(module);
 
   PyGILState_Release(gstate);
