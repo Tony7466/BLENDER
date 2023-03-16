@@ -1,7 +1,7 @@
 
 void main()
 {
-  Surfel surfel = surfels_buf[surfel_index];
+  DebugSurfel surfel = surfels_buf[surfel_index];
   out_color = surfel.color;
 
   /* Display surfels as circles. */

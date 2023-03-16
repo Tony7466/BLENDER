@@ -136,7 +136,7 @@ void ShadingView::render()
   inst_.hiz_buffer.debug_draw(render_view_new_, combined_fb_);
   inst_.shadows.debug_draw(render_view_new_, combined_fb_);
 
-  inst_.gi.debug_draw(render_view_new_, combined_fb_);
+  inst_.irradiance_cache.debug_draw(render_view_new_, combined_fb_);
 
   GPUTexture *combined_final_tx = render_postfx(rbufs.combined_tx);
 

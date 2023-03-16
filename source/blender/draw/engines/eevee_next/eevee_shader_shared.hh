@@ -49,13 +49,12 @@ enum eDebugMode : uint32_t {
    */
   DEBUG_HIZ_VALIDATION = 2u,
   /**
-   * Display GI surfels.
+   * Display IrradianceCache surfels.
    */
-  DEBUG_GI_SURFELS = 3u,
+  DEBUG_IRRADIANCE_CACHE_SURFELS = 3u,
   /**
    * Show tiles depending on their status.
    */
-
   DEBUG_SHADOW_TILEMAPS = 10u,
   /**
    * Show content of shadow map. Used to verify projection code.
@@ -827,17 +826,17 @@ static inline ShadowTileDataPacked shadow_tile_pack(ShadowTileData tile)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name GI
+/** \name Debug
  * \{ */
 
-struct Surfel {
-  float3 position;
+struct DebugSurfel {
+  packed_float3 position;
   int _pad0;
-  float3 normal;
+  packed_float3 normal;
   int _pad1;
   float4 color;
 };
-BLI_STATIC_ASSERT_ALIGN(Surfel, 16)
+BLI_STATIC_ASSERT_ALIGN(DebugSurfel, 16)
 
 /** \} */
 
@@ -948,7 +947,7 @@ using DepthOfFieldDataBuf = draw::UniformBuffer<DepthOfFieldData>;
 using DepthOfFieldScatterListBuf = draw::StorageArrayBuffer<ScatterRect, 16, true>;
 using DrawIndirectBuf = draw::StorageBuffer<DrawCommand, true>;
 using FilmDataBuf = draw::UniformBuffer<FilmData>;
-using SurfelBuf = draw::StorageArrayBuffer<Surfel, 64>;
+using DebugSurfelBuf = draw::StorageArrayBuffer<DebugSurfel, 64>;
 using HiZDataBuf = draw::UniformBuffer<HiZData>;
 using LightCullingDataBuf = draw::StorageBuffer<LightCullingData>;
 using LightCullingKeyBuf = draw::StorageArrayBuffer<uint, LIGHT_CHUNK, true>;

@@ -119,7 +119,6 @@
 #define LIGHT_BUF_SLOT 1
 #define LIGHT_ZBIN_BUF_SLOT 2
 #define LIGHT_TILE_BUF_SLOT 3
-#define GI_SURFEL_BUF_SLOT 4
 /* Only during surface shading. */
 #define RBUFS_AOV_BUF_SLOT 5
 /* Only during shadow rendering. */

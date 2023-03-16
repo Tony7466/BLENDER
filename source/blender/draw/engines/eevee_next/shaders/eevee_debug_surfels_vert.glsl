@@ -4,7 +4,7 @@
 void main()
 {
   surfel_index = gl_InstanceID;
-  Surfel surfel = surfels_buf[surfel_index];
+  DebugSurfel surfel = surfels_buf[surfel_index];
 
   const vec3 verts[4] = vec3[4](vec3(-1, 1, 0), vec3(-1, -1, 0), vec3(1, 1, 0), vec3(1, -1, 0));
   vec3 lP = verts[gl_VertexID];

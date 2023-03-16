@@ -8,20 +8,20 @@ namespace blender::eevee {
 
 class Instance;
 
-class GI {
+class IrradianceCache {
  private:
   Instance &inst_;
 
-  SurfelBuf surfels;
-  PassSimple debug_surfels_ps_ = {"GI.Debug"};
+  DebugSurfelBuf debug_surfels;
+  PassSimple debug_surfels_ps_ = {"IrradianceCache.Debug"};
   GPUShader *debug_surfels_sh_ = nullptr;
 
   /* TODO: Remove this. */
   void generate_random_surfels();
 
  public:
-  GI(Instance &inst) : inst_(inst){};
-  ~GI(){};
+  IrradianceCache(Instance &inst) : inst_(inst){};
+  ~IrradianceCache(){};
 
   void init();
   void sync();
