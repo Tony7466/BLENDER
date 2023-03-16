@@ -165,6 +165,13 @@ struct MeshRuntime {
   SharedCache<Vector<float3>> poly_normals_cache;
 
   /** Cache of data about edges not used by faces. See #Mesh::loose_edges(). */
+  SharedCache<Vector<int>> vert_to_corner_offset_cache;
+  SharedCache<Vector<int>> vert_to_poly_indices_cache;
+
+  /**
+   * A cache of data about the loose edges. Can be shared with other data-blocks with unchanged
+   * topology. Accessed with #Mesh::loose_edges().
+   */
   SharedCache<LooseEdgeCache> loose_edges_cache;
   /** Cache of data about vertices not used by edges. See #Mesh::loose_verts(). */
   SharedCache<LooseVertCache> loose_verts_cache;

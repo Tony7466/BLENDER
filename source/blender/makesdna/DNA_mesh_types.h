@@ -29,6 +29,9 @@ class AttributeAccessor;
 class MutableAttributeAccessor;
 struct LooseVertCache;
 struct LooseEdgeCache;
+namespace mesh {
+class VertToPolyMap;
+}
 }  // namespace bke
 }  // namespace blender
 using MeshRuntimeHandle = blender::bke::MeshRuntime;
@@ -298,6 +301,11 @@ typedef struct Mesh {
 
   /** Set cached mesh bounds to a known-correct value to avoid their lazy calculation later on. */
   void bounds_set_eager(const blender::Bounds<blender::float3> &bounds);
+
+  /**
+   * A cached topology map of the faces connected to (using) each vertex.
+   */
+  blender::bke::mesh::VertToPolyMap vert_to_poly_map() const;
 
   /**
    * Cached information about loose edges, calculated lazily when necessary.

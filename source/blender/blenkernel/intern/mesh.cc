@@ -136,6 +136,8 @@ static void mesh_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int 
   mesh_dst->runtime->looptris_cache = mesh_src->runtime->looptris_cache;
   mesh_dst->runtime->vert_normals_cache = mesh_src->runtime->vert_normals_cache;
   mesh_dst->runtime->poly_normals_cache = mesh_src->runtime->poly_normals_cache;
+  mesh_dst->runtime->vert_to_corner_offset_cache = mesh_src->runtime->vert_to_corner_offset_cache;
+  mesh_dst->runtime->vert_to_poly_indices_cache = mesh_src->runtime->vert_to_poly_indices_cache;
 
   /* Only do tessface if we have no polys. */
   const bool do_tessface = ((mesh_src->totface != 0) && (mesh_src->totpoly == 0));

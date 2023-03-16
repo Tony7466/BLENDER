@@ -142,6 +142,26 @@ static void try_tag_verts_no_face_none(const Mesh &mesh)
 
 }  // namespace blender::bke
 
+blender::bke::mesh::VertToPolyMap Mesh::vert_to_poly_map() const
+{
+  using namespace blender;
+  this->runtime->vert_to_corner_offset_cache.ensure([&](Vector<int> &r_data) {
+    r_data.clear();
+    r_data.resize(this->totvert + 1, 0);
+    bke::mesh::build_poly_and_corner_by_vert_offsets(this->corner_verts(), r_data);
+  });
+  const OffsetIndices<int> offsets(this->runtime->vert_to_corner_offset_cache.data());
+
+  this->runtime->vert_to_poly_indices_cache.ensure([&](blender::Vector<int> &r_data) {
+    r_data.reinitialize(this->totloop);
+    blender::bke::mesh::build_vert_to_poly_indices(
+        this->polys(), this->corner_verts(), offsets, r_data);
+  });
+  const Span<int> indices = this->runtime->vert_to_poly_indices_cache.data();
+
+  return {offsets, indices};
+}
+
 const blender::bke::LooseVertCache &Mesh::loose_verts() const
 {
   using namespace blender::bke;
@@ -270,6 +290,8 @@ void BKE_mesh_runtime_clear_geometry(Mesh *mesh)
   mesh->runtime->vert_normals_cache.tag_dirty();
   mesh->runtime->poly_normals_cache.tag_dirty();
   mesh->runtime->bounds_cache.tag_dirty();
+  mesh->runtime->vert_to_corner_offset_cache.tag_dirty();
+  mesh->runtime->vert_to_poly_indices_cache.tag_dirty();
   mesh->runtime->loose_edges_cache.tag_dirty();
   mesh->runtime->loose_verts_cache.tag_dirty();
   mesh->runtime->verts_no_face_cache.tag_dirty();
@@ -288,6 +310,8 @@ void BKE_mesh_tag_edges_split(struct Mesh *mesh)
   free_bvh_cache(*mesh->runtime);
   free_subdiv_ccg(*mesh->runtime);
   mesh->runtime->vert_normals_cache.tag_dirty();
+  mesh->runtime->vert_to_corner_offset_cache.tag_dirty();
+  mesh->runtime->vert_to_poly_indices_cache.tag_dirty();
   mesh->runtime->loose_edges_cache.tag_dirty();
   mesh->runtime->loose_verts_cache.tag_dirty();
   mesh->runtime->verts_no_face_cache.tag_dirty();
