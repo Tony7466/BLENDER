@@ -6,11 +6,11 @@
 
 #pragma once
 
-#include "BLI_fileops.hh"
-
 #include "ply_data.hh"
 
 namespace blender::io::ply {
+
+class PlyReadBuffer;
 
 /**
  * Loads the information from a PLY file to a #PlyData data-structure.
@@ -18,6 +18,6 @@ namespace blender::io::ply {
  * \param header: The information in the PLY header.
  * \return The #PlyData data-structure that can be used for conversion to a Mesh.
  */
-std::unique_ptr<PlyData> import_ply_data(fstream &file, PlyHeader &header);
+std::unique_ptr<PlyData> import_ply_data(PlyReadBuffer &file, PlyHeader &header);
 
 }  // namespace blender::io::ply

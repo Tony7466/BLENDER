@@ -9,11 +9,9 @@
 #include "IO_ply.h"
 #include "ply_data.hh"
 
-namespace blender {
-class fstream;
-}
-
 namespace blender::io::ply {
+
+class PlyReadBuffer;
 
 void splitstr(std::string str, Vector<std::string> &words, const StringRef &deli);
 
@@ -27,6 +25,6 @@ void importer_main(Main *bmain,
                    const PLYImportParams &import_params,
                    wmOperator *op);
 
-const char *read_header(fstream &file, PlyHeader &r_header);
+const char *read_header(PlyReadBuffer &file, PlyHeader &r_header);
 
 }  // namespace blender::io::ply

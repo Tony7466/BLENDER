@@ -32,6 +32,7 @@ set(SRC
     exporter/ply_file_buffer_ascii.cc
     exporter/ply_file_buffer_binary.cc
     importer/ply_import.cc
+    importer/ply_import_buffer.cc
     importer/ply_import_data.cc
     importer/ply_import_mesh.cc
     IO_ply.cc
@@ -44,13 +45,12 @@ set(SRC
     exporter/ply_file_buffer_ascii.hh
     exporter/ply_file_buffer_binary.hh
     importer/ply_import.hh
+    importer/ply_import_buffer.hh
     importer/ply_import_data.hh
     importer/ply_import_mesh.hh
     IO_ply.h
 
     intern/ply_data.hh
-    intern/ply_functions.cc
-    intern/ply_functions.hh
 )
 
 set(LIB

@@ -6,6 +6,7 @@
 #include "BLI_hash_mm2a.h"
 
 #include "ply_import.hh"
+#include "ply_import_buffer.hh"
 #include "ply_import_data.hh"
 
 namespace blender::io::ply {
@@ -25,7 +26,8 @@ class ply_import_test : public testing::Test {
   {
     std::string ply_path = blender::tests::flags_test_asset_dir() + "/io_tests/ply/" + path;
 
-    fstream infile(ply_path, std::ios::in | std::ios::binary);
+    /* Use a small read buffer size for better coverage of buffer refilling behavior. */
+    PlyReadBuffer infile(ply_path.c_str(), 128);
     PlyHeader header;
     const char *header_err = read_header(infile, header);
     if (header_err != nullptr) {

@@ -5,7 +5,8 @@
  */
 
 #include "ply_import_data.hh"
-#include "ply_functions.hh"
+#include "ply_data.hh"
+#include "ply_import_buffer.hh"
 
 #include "BLI_endian_switch.h"
 
@@ -13,7 +14,6 @@
 
 #include <algorithm>
 #include <charconv>
-#include <fstream>
 
 static bool is_whitespace(char c)
 {
@@ -145,10 +145,9 @@ static int2 get_uv_index(const PlyElement &element)
   return {get_index(element, "s"), get_index(element, "t")};
 }
 
-static void parse_row_ascii(fstream &file, Vector<float> &r_values)
+static void parse_row_ascii(PlyReadBuffer &file, Vector<float> &r_values)
 {
-  std::string line;
-  safe_getline(file, line);
+  Span<char> line = file.read_line();
 
   /* Parse whole line as floats. */
   const char *p = line.data();
@@ -158,19 +157,6 @@ static void parse_row_ascii(fstream &file, Vector<float> &r_values)
     float val;
     p = parse_float(p, end, 0.0f, val);
     r_values[value_idx++] = val;
-  }
-}
-
-static void check_file_errors(const fstream &file)
-{
-  if (file.bad()) {
-    throw std::ios_base::failure("Read/Write error on io operation");
-  }
-  if (file.fail()) {
-    throw std::ios_base::failure("Logical error on io operation");
-  }
-  if (file.eof()) {
-    throw std::ios_base::failure("Reached end of the file");
   }
 }
 
@@ -218,7 +204,7 @@ template<typename T> static T get_binary_value(PlyDataTypes type, const uint8_t 
   return val;
 }
 
-static void parse_row_binary(fstream &file,
+static void parse_row_binary(PlyReadBuffer &file,
                              const PlyHeader &header,
                              const PlyElement &element,
                              Vector<uint8_t> &r_scratch,
@@ -230,8 +216,9 @@ static void parse_row_binary(fstream &file,
   }
   BLI_assert(r_scratch.size() == element.stride);
   BLI_assert(r_values.size() == element.properties.size());
-  file.read((char *)r_scratch.data(), r_scratch.size());
-  check_file_errors(file);
+  if (!file.read_bytes(r_scratch.data(), r_scratch.size())) {
+    throw std::runtime_error("Could not read row of binary property");
+  }
 
   const uint8_t *ptr = r_scratch.data();
   if (header.type == PlyFormatType::BINARY_LE) {
@@ -256,7 +243,7 @@ static void parse_row_binary(fstream &file,
   }
 }
 
-static void load_vertex_element(fstream &file,
+static void load_vertex_element(PlyReadBuffer &file,
                                 const PlyHeader &header,
                                 const PlyElement &element,
                                 PlyData *data)
@@ -344,13 +331,13 @@ static void load_vertex_element(fstream &file,
   }
 }
 
-static uint32_t read_list_count(fstream &file,
+static uint32_t read_list_count(PlyReadBuffer &file,
                                 const PlyProperty &prop,
                                 Vector<uint8_t> &scratch,
                                 bool big_endian)
 {
   scratch.resize(8);
-  file.read((char *)scratch.data(), data_type_size[prop.count_type]);
+  file.read_bytes(scratch.data(), data_type_size[prop.count_type]);
   const uint8_t *ptr = scratch.data();
   if (big_endian)
     endian_switch((uint8_t *)ptr, data_type_size[prop.count_type]);
@@ -358,23 +345,23 @@ static uint32_t read_list_count(fstream &file,
   return count;
 }
 
-static void skip_property(fstream &file,
+static void skip_property(PlyReadBuffer &file,
                           const PlyProperty &prop,
                           Vector<uint8_t> &scratch,
                           bool big_endian)
 {
   if (prop.count_type == PlyDataTypes::NONE) {
     scratch.resize(8);
-    file.read((char *)scratch.data(), data_type_size[prop.type]);
+    file.read_bytes(scratch.data(), data_type_size[prop.type]);
   }
   else {
     uint32_t count = read_list_count(file, prop, scratch, big_endian);
     scratch.resize(count * data_type_size[prop.type]);
-    file.read((char *)scratch.data(), scratch.size());
+    file.read_bytes(scratch.data(), scratch.size());
   }
 }
 
-static void load_face_element(fstream &file,
+static void load_face_element(PlyReadBuffer &file,
                               const PlyHeader &header,
                               const PlyElement &element,
                               PlyData *data)
@@ -397,8 +384,7 @@ static void load_face_element(fstream &file,
   if (header.type == PlyFormatType::ASCII) {
     for (int i = 0; i < header.face_count; i++) {
       /* Read line */
-      std::string line;
-      getline(file, line);
+      Span<char> line = file.read_line();
 
       const char *p = line.data();
       const char *end = p + line.size();
@@ -455,7 +441,7 @@ static void load_face_element(fstream &file,
 
       Array<uint> face(count);
       scratch.resize(count * data_type_size[prop.type]);
-      file.read((char *)scratch.data(), scratch.size());
+      file.read_bytes(scratch.data(), scratch.size());
       ptr = scratch.data();
       if (header.type == PlyFormatType::BINARY_BE)
         endian_switch_array((uint8_t *)ptr, data_type_size[prop.type], count);
@@ -477,7 +463,7 @@ static void load_face_element(fstream &file,
   }
 }
 
-static void load_tristrips_element(fstream &file,
+static void load_tristrips_element(PlyReadBuffer &file,
                                    const PlyHeader &header,
                                    const PlyElement &element,
                                    PlyData *data)
@@ -496,8 +482,7 @@ static void load_tristrips_element(fstream &file,
   Vector<int> strip;
 
   if (header.type == PlyFormatType::ASCII) {
-    std::string line;
-    getline(file, line);
+    Span<char> line = file.read_line();
 
     const char *p = line.data();
     const char *end = p + line.size();
@@ -523,7 +508,7 @@ static void load_tristrips_element(fstream &file,
 
     strip.resize(count);
     scratch.resize(count * data_type_size[prop.type]);
-    file.read((char *)scratch.data(), scratch.size());
+    file.read_bytes(scratch.data(), scratch.size());
     ptr = scratch.data();
     if (header.type == PlyFormatType::BINARY_BE)
       endian_switch_array((uint8_t *)ptr, data_type_size[prop.type], count);
@@ -562,7 +547,7 @@ static void load_tristrips_element(fstream &file,
   }
 }
 
-static void load_edge_element(fstream &file,
+static void load_edge_element(PlyReadBuffer &file,
                               const PlyHeader &header,
                               const PlyElement &element,
                               PlyData *data)
@@ -593,7 +578,7 @@ static void load_edge_element(fstream &file,
   }
 }
 
-std::unique_ptr<PlyData> import_ply_data(fstream &file, PlyHeader &header)
+std::unique_ptr<PlyData> import_ply_data(PlyReadBuffer &file, PlyHeader &header)
 {
   std::unique_ptr<PlyData> data = std::make_unique<PlyData>();
 
