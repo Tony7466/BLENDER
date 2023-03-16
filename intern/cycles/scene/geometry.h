@@ -165,7 +165,6 @@ class Geometry : public Node {
   void tag_bvh_update(bool rebuild);
 };
 
-// FRL_CGR BEGIN
 /* Geometry Sizes */
 struct GeometrySizes {
   size_t vert_size;
@@ -193,8 +192,6 @@ struct AttributeSizes {
   size_t attr_float4_size;
   size_t attr_uchar4_size;
 };
-
-// FRL_CGR END
 
 /* Geometry Manager */
 

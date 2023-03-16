@@ -129,19 +129,19 @@ void SVMShaderManager::device_update_specific(Device *device,
 
   /* Copy the nodes of each shader into the correct location. */
   {
-    SCOPED_MARKER(device,"copy shader node");
-    // FRL_CGR_END
-  svm_nodes += num_shaders;
-  for (int i = 0; i < num_shaders; i++) {
-    int shader_size = shader_svm_nodes[i].size() - 1;
+    SCOPED_MARKER(device, "copy shader node");
 
-    memcpy(svm_nodes, &shader_svm_nodes[i][1], sizeof(int4) * shader_size);
-    svm_nodes += shader_size;
-  }
+    svm_nodes += num_shaders;
+    for (int i = 0; i < num_shaders; i++) {
+      int shader_size = shader_svm_nodes[i].size() - 1;
 
-  if (progress.get_cancel()) {
-    return;
-  }
+      memcpy(svm_nodes, &shader_svm_nodes[i][1], sizeof(int4) * shader_size);
+      svm_nodes += shader_size;
+    }
+
+    if (progress.get_cancel()) {
+      return;
+    }
   }
 
   dscene->svm_nodes.copy_to_device();

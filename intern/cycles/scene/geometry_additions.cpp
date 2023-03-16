@@ -1,4 +1,3 @@
-// FRL_CGR BEGIN
 /* SPDX-License-Identifier: Apache-2.0
  * Copyright 2011-2022 Blender Foundation */
 
@@ -1060,4 +1059,3 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
   return scene->object_manager->need_flags_update;
 }
 CCL_NAMESPACE_END
-// FRL_CGR END

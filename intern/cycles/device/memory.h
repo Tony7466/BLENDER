@@ -437,7 +437,6 @@ template<typename T> class device_vector : public device_memory {
       assert(device_pointer == 0);
     }
     host_pointer = p_mem;
-    // FRL_CGR
     shared_mem = true;
     data_size = new_size;
     data_width = width;

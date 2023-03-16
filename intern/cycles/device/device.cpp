@@ -774,7 +774,6 @@ void GPUDevice::generic_copy_to(device_memory &mem)
   }
 }
 
-// FRL_CGR
 void GPUDevice::generic_copy_to(device_memory &mem, size_t size, size_t offset)
 {
   if (!mem.host_pointer || !mem.device_pointer) {
@@ -789,7 +788,6 @@ void GPUDevice::generic_copy_to(device_memory &mem, size_t size, size_t offset)
     copy_host_to_device((void *)mem.device_pointer, mem.host_pointer, mem.memory_size(), offset);
   }
 }
-// FRL_CGR
 
 /* DeviceInfo */
 

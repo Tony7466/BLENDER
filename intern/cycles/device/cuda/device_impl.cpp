@@ -585,7 +585,6 @@ void CUDADevice::mem_alloc(device_memory &mem)
 void CUDADevice::mem_copy_to(device_memory &mem)
 {
   if (mem.type == MEM_GLOBAL) {
-    // FRL_CGR
     if ((mem.device_size < mem.memory_size()) || (!mem.device_pointer)) {
       global_free(mem);
       global_alloc(mem);
@@ -628,7 +627,6 @@ void CUDADevice::mem_copy_to(device_memory &mem, size_t size, size_t offset)
     generic_copy_to(mem, size, offset);
   }
 }
-// FRL_CGR
 
 void CUDADevice::mem_copy_from(device_memory &mem, size_t y, size_t w, size_t h, size_t elem)
 {
@@ -1035,7 +1033,7 @@ int CUDADevice::get_device_default_attribute(CUdevice_attribute attribute, int d
   }
   return value;
 }
-// FRL_CGR
+
 void CUDADevice::push_marker(const string name) {
   nvtxRangePushA(name.c_str());
 }
@@ -1043,7 +1041,7 @@ void CUDADevice::push_marker(const string name) {
 void CUDADevice::pop_marker() {
   nvtxRangePop();
 }
-// FRL_CGR
+
 CCL_NAMESPACE_END
 
 #endif

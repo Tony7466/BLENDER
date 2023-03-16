@@ -328,7 +328,6 @@ class Device {
   static uint devices_initialized_mask;
 };
 
-// FRL_CGR
 class ScopedMarker {
 private:
   Device *_device;
@@ -351,7 +350,6 @@ public:
 #      define SCOPED_MARKER(device, msg)
 #   endif
 #endif
-// FRL_CGR
 
 /* Device, which is GPU, with some common functionality for GPU backends */
 class GPUDevice : public Device {
