@@ -394,20 +394,28 @@ void blend_to_default_fcurve(PointerRNA *id_ptr, FCurve *fcu, const float factor
 }
 /* ---------------- */
 
-void get_1d_gauss_kernel(const int filter_width, const float sigma, double *kernel)
+void get_1d_gauss_kernel(const float sigma, const int kernel_size, double *r_kernel)
 {
   double norm = 1.0 / (M_2_SQRTPI * sigma);
-  double sig_sq = 2.0 * sigma * sigma;
+  double sigma_sq = 2.0 * sigma * sigma;
   double sum = 0.0;
 
-  for (int i = -filter_width; i <= filter_width; i++) {
-    kernel[i + filter_width] = norm * exp(-i * i / sig_sq);
-    sum += kernel[i + filter_width];
+  for (int i = 0; i < kernel_size; i++) {
+    const double normalized_index = (double)i / (kernel_size - 1);
+    r_kernel[i] = norm * exp(-normalized_index * normalized_index / sigma_sq);
+    if (i == 0) {
+      sum += r_kernel[i];
+    }
+    else {
+      /* We only calculate half the kernel,
+       * the normalization needs to take that into account. */
+      sum += r_kernel[i] * 2;
+    }
   }
 
   /* Normalize kernel values. */
-  for (int i = 0; i < filter_width * 2 + 1; i++) {
-    kernel[i] = kernel[i] / sum;
+  for (int i = 0; i < kernel_size; i++) {
+    r_kernel[i] = r_kernel[i] / sum;
   }
 }
 
@@ -415,17 +423,17 @@ void smooth_fcurve_segment(FCurve *fcu,
                            FCurveSegment *segment,
                            float *samples,
                            const float factor,
-                           const int filter_order,
+                           const int kernel_size,
                            double *kernel)
 {
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
     const int sample_index = (int)(fcu->bezt[i].vec[1][0] -
                                    fcu->bezt[segment->start_index].vec[1][0]) +
-                             filter_order;
+                             kernel_size;
     double filter_result = 0;
     /* Apply the kernel. */
-    for (int j = -filter_order; j <= filter_order; j++) {
-      filter_result += samples[sample_index + j] * kernel[filter_order + j];
+    for (int j = -kernel_size; j <= kernel_size; j++) {
+      filter_result += samples[sample_index + j] * kernel[abs(j)];
     }
     fcu->bezt[i].vec[1][1] = interpf((float)filter_result, samples[sample_index], factor);
   }

@@ -1065,12 +1065,11 @@ static void gauss_smooth_graph_keys(bAnimContext *ac,
   ListBase anim_data = {NULL, NULL};
   ANIM_animdata_filter(ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, ac->datatype);
 
-  bAnimListElem *ale;
+  const int kernel_size = filter_width + 1;
+  double *kernel = MEM_callocN(sizeof(double) * kernel_size, "Gauss Kernel");
+  get_1d_gauss_kernel(sigma, kernel_size, kernel);
 
-  double *kernel = MEM_callocN(sizeof(double) * (filter_width * 2 + 1), "Gauss Kernel");
-  get_1d_gauss_kernel(filter_width, sigma, kernel);
-
-  for (ale = anim_data.first; ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     FCurve *fcu = (FCurve *)ale->key_data;
     ListBase segments = find_fcurve_segments(fcu);
 
@@ -1078,7 +1077,7 @@ static void gauss_smooth_graph_keys(bAnimContext *ac,
       BezTriple left_bezt = fcu->bezt[segment->start_index];
       BezTriple right_bezt = fcu->bezt[segment->start_index + segment->length - 1];
       const int sample_count = (int)(right_bezt.vec[1][0] - left_bezt.vec[1][0]) +
-                               (filter_width * 2) + 1;
+                               (filter_width * 2 + 1);
       float *samples = MEM_callocN(sizeof(float) * sample_count, "Smooth FCurve Op Samples");
       sample_fcurve_segment(fcu, left_bezt.vec[1][0] - filter_width, samples, sample_count);
       smooth_fcurve_segment(fcu, segment, samples, factor, filter_width, kernel);
@@ -1092,6 +1091,38 @@ static void gauss_smooth_graph_keys(bAnimContext *ac,
   MEM_freeN(kernel);
   ANIM_animdata_update(ac, &anim_data);
   ANIM_animdata_freelist(&anim_data);
+}
+
+static void gauss_smooth_modal_update(bContext *C, wmOperator *op)
+{
+  tGraphSliderOp *gso = op->customdata;
+
+  ease_draw_status_header(C, gso);
+
+  /* Reset keyframes to the state at invoke. */
+  reset_bezts(gso);
+  const float factor = slider_factor_get_and_remember(op);
+  const float sigma = RNA_float_get(op->ptr, "sigma");
+  const int filter_width = RNA_int_get(op->ptr, "filter_width");
+  gauss_smooth_graph_keys(&gso->ac, factor, sigma, filter_width);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+}
+
+static int gauss_smooth_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  const int invoke_result = graph_slider_invoke(C, op, event);
+
+  if (invoke_result == OPERATOR_CANCELLED) {
+    return invoke_result;
+  }
+
+  tGraphSliderOp *gso = op->customdata;
+  gso->modal_update = gauss_smooth_modal_update;
+  gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
+  ED_slider_allow_overshoot_set(gso->slider, false);
+  ease_draw_status_header(C, gso);
+
+  return invoke_result;
 }
 
 static int gauss_exec(bContext *C, wmOperator *op)
@@ -1120,8 +1151,8 @@ void GRAPH_OT_gauss_smooth(wmOperatorType *ot)
   ot->description = "Smooth the curve using a Gauss filter";
 
   /* API callbacks. */
-  /* ot->invoke = fft_invoke; */
-  /* ot->modal = fft_modal; */
+  ot->invoke = gauss_smooth_invoke;
+  ot->modal = graph_slider_modal;
   ot->exec = gauss_exec;
   ot->poll = graphop_editable_keyframes_poll;
 
@@ -1140,7 +1171,7 @@ void GRAPH_OT_gauss_smooth(wmOperatorType *ot)
 
   RNA_def_float(ot->srna,
                 "sigma",
-                2.0f,
+                0.33f,
                 0.001f,
                 FLT_MAX,
                 "Sigma",
@@ -1150,7 +1181,7 @@ void GRAPH_OT_gauss_smooth(wmOperatorType *ot)
 
   RNA_def_int(ot->srna,
               "filter_width",
-              8,
+              6,
               1,
               64,
               "Filter Width",

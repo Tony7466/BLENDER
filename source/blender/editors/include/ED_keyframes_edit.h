@@ -424,12 +424,16 @@ void blend_to_neighbor_fcurve_segment(struct FCurve *fcu,
                                       struct FCurveSegment *segment,
                                       float factor);
 void breakdown_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
-void get_1d_gauss_kernel(int filter_width, const float sigma, double *kernel);
+/** Get a 1D gauss kernel. Since the kernel is symmetrical, only calculates the positive side.
+ * \param sigma The shape of the gauss distribution.
+ * \param kernel_size How long the kernel array is.
+ */
+void get_1d_gauss_kernel(const float sigma, int kernel_size, double *r_kernel);
 void smooth_fcurve_segment(struct FCurve *fcu,
                            struct FCurveSegment *segment,
                            float *samples,
                            float factor,
-                           int filter_order,
+                           int kernel_size,
                            double *kernel);
 void ease_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
 bool decimate_fcurve(struct bAnimListElem *ale, float remove_ratio, float error_sq_max);
