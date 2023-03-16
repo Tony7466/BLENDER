@@ -28,7 +28,7 @@ void IrradianceCache::generate_random_surfels()
 void IrradianceCache::init()
 {
   if (debug_surfels_sh_ == nullptr) {
-    debug_surfels_sh_ = GPU_shader_create_from_info_name("eevee_debug_surfels");
+    debug_surfels_sh_ = inst_.shaders.static_shader_get(DEBUG_SURFELS);
   }
 
   /* TODO: Remove this. */
