@@ -66,21 +66,18 @@ typedef void* DynamicLibrary;
         _LIBRARY_FIND_CHECKED(nvrtc_lib, name)
 #define NVRTC_LIBRARY_FIND(name) _LIBRARY_FIND(nvrtc_lib, name)
 
-// FRL_CGR
 #define NVTX_LIBRARY_FIND_CHECKED(name) \
         _LIBRARY_FIND_CHECKED(nvrtc_lib, name)
 #define NVTX_LIBRARY_FIND(name) _LIBRARY_FIND(nvtx_lib, name)
-// FRL_CGR
 
 static DynamicLibrary cuda_lib;
 static DynamicLibrary nvrtc_lib;
 static DynamicLibrary nvtx_lib;
 
 /* Function definitions. */
-// FRL_CGR
+
 tnvtxRangePushA *nvtxRangePushA;
 tnvtxRangePop *nvtxRangePop;
-// FRL_CGR
 
 tcuGetErrorString *cuGetErrorString;
 tcuGetErrorName *cuGetErrorName;
@@ -623,7 +620,6 @@ static int cuewCudaInit(void) {
   return result;
 }
 
-// FRL_CGR
 static void cuewExitNvtx(void) {
   if (nvrtc_lib != NULL) {
     /*  Ignore errors. */
@@ -631,7 +627,6 @@ static void cuewExitNvtx(void) {
     nvtx_lib = NULL;
   }
 }
-// FRL_CGR
 
 static void cuewExitNvrtc(void) {
   if (nvrtc_lib != NULL) {
@@ -703,7 +698,6 @@ static int cuewNvrtcInit(void) {
   return result;
 }
 
-// FRL_CGR
 static int cuewNvtxInit(void) {
   /* Library paths. */
 #ifdef _WIN32
@@ -752,7 +746,6 @@ static int cuewNvtxInit(void) {
   result = CUEW_SUCCESS;
   return result;
 }
-// FRL_CGR
 
 int cuewInit(cuuint32_t flags) {
   int result = CUEW_SUCCESS;
@@ -770,14 +763,13 @@ int cuewInit(cuuint32_t flags) {
       return result;
     }
   }
-// FRL_CGR
+
   if(flags & CUEW_INIT_NVTX) {
     result = cuewNvtxInit();
     if(result != CUEW_SUCCESS) {
       return result;
     }
   }
-// FRL_CGR
 
   return result;
 }

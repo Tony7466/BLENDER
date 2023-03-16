@@ -886,11 +886,11 @@ typedef enum  {
 } nvrtcResult;
 
 typedef struct _nvrtcProgram* nvrtcProgram;
-// FRL_CGR
+
 /* Function types. */
 typedef void CUDAAPI tnvtxRangePushA(const char *msg);
 typedef void CUDAAPI tnvtxRangePop();
-// FRL_CGR
+
 typedef CUresult CUDAAPI tcuGetErrorString(CUresult error, const char** pStr);
 typedef CUresult CUDAAPI tcuGetErrorName(CUresult error, const char** pStr);
 typedef CUresult CUDAAPI tcuInit(unsigned int Flags);
@@ -1382,10 +1382,8 @@ enum {
 
 enum {
 	CUEW_INIT_CUDA = 1,
-// FRL_CGR
 	CUEW_INIT_NVRTC = 2,
 	CUEW_INIT_NVTX = 4,
-// FRL_CGR
 };
 
 int cuewInit(cuuint32_t flags);
