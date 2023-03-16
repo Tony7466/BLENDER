@@ -69,6 +69,10 @@ typedef struct tGraphSliderOp {
   /* Each operator has a specific update function. */
   void (*modal_update)(struct bContext *, struct wmOperator *);
 
+  /* If an operator stores custom data, it also needs to provide the function to clean it up. */
+  void *operator_data;
+  void (*cleanup_operator_data)(void *operator_data);
+
   NumInput num;
 } tGraphSliderOp;
 
@@ -189,6 +193,10 @@ static void graph_slider_exit(bContext *C, wmOperator *op)
   /* If data exists, clear its data and exit. */
   if (gso == NULL) {
     return;
+  }
+
+  if (gso->operator_data) {
+    gso->cleanup_operator_data(gso->operator_data);
   }
 
   ScrArea *area = gso->area;
@@ -1057,17 +1065,24 @@ void GRAPH_OT_ease(wmOperatorType *ot)
 /** \name Gauss Smooth Operator
  * \{ */
 
+typedef struct tGaussOperatorData {
+  double *kernel;
+} tGaussOperatorData;
+
+static void gauss_smooth_cleanup_custom_data(void *operator_data)
+{
+  tGaussOperatorData *gauss_data = (tGaussOperatorData *)operator_data;
+  MEM_freeN(gauss_data->kernel);
+  MEM_freeN(gauss_data);
+}
+
 static void gauss_smooth_graph_keys(bAnimContext *ac,
                                     const float factor,
-                                    const float sigma,
+                                    double *kernel,
                                     const int filter_width)
 {
   ListBase anim_data = {NULL, NULL};
   ANIM_animdata_filter(ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, ac->datatype);
-
-  const int kernel_size = filter_width + 1;
-  double *kernel = MEM_callocN(sizeof(double) * kernel_size, "Gauss Kernel");
-  get_1d_gauss_kernel(sigma, kernel_size, kernel);
 
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     FCurve *fcu = (FCurve *)ale->key_data;
@@ -1088,23 +1103,46 @@ static void gauss_smooth_graph_keys(bAnimContext *ac,
     ale->update |= ANIM_UPDATE_DEFAULT;
   }
 
-  MEM_freeN(kernel);
   ANIM_animdata_update(ac, &anim_data);
   ANIM_animdata_freelist(&anim_data);
+}
+
+static void gauss_smooth_draw_status_header(bContext *C, tGraphSliderOp *gso)
+{
+  char status_str[UI_MAX_DRAW_STR];
+  char mode_str[32];
+  char slider_string[UI_MAX_DRAW_STR];
+
+  ED_slider_status_string_get(gso->slider, slider_string, UI_MAX_DRAW_STR);
+
+  strcpy(mode_str, TIP_("Gauss Smooth"));
+
+  if (hasNumInput(&gso->num)) {
+    char str_ofs[NUM_STR_REP_LEN];
+
+    outputNumInput(&gso->num, str_ofs, &gso->scene->unit);
+
+    BLI_snprintf(status_str, sizeof(status_str), "%s: %s", mode_str, str_ofs);
+  }
+  else {
+    BLI_snprintf(status_str, sizeof(status_str), "%s: %s", mode_str, slider_string);
+  }
+
+  ED_workspace_status_text(C, status_str);
 }
 
 static void gauss_smooth_modal_update(bContext *C, wmOperator *op)
 {
   tGraphSliderOp *gso = op->customdata;
 
-  ease_draw_status_header(C, gso);
+  gauss_smooth_draw_status_header(C, gso);
 
   /* Reset keyframes to the state at invoke. */
   reset_bezts(gso);
   const float factor = slider_factor_get_and_remember(op);
-  const float sigma = RNA_float_get(op->ptr, "sigma");
+  tGaussOperatorData *operator_data = (tGaussOperatorData *)gso->operator_data;
   const int filter_width = RNA_int_get(op->ptr, "filter_width");
-  gauss_smooth_graph_keys(&gso->ac, factor, sigma, filter_width);
+  gauss_smooth_graph_keys(&gso->ac, factor, operator_data->kernel, filter_width);
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
 }
 
@@ -1119,6 +1157,19 @@ static int gauss_smooth_invoke(bContext *C, wmOperator *op, const wmEvent *event
   tGraphSliderOp *gso = op->customdata;
   gso->modal_update = gauss_smooth_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
+
+  const float sigma = RNA_float_get(op->ptr, "sigma");
+  const int filter_width = RNA_int_get(op->ptr, "filter_width");
+  const int kernel_size = filter_width + 1;
+  double *kernel = MEM_callocN(sizeof(double) * kernel_size, "Gauss Kernel");
+  get_1d_gauss_kernel(sigma, kernel_size, kernel);
+
+  tGaussOperatorData *operator_data = MEM_callocN(sizeof(tGaussOperatorData),
+                                                  "tGaussOperatorData");
+  operator_data->kernel = kernel;
+  gso->operator_data = operator_data;
+  gso->cleanup_operator_data = gauss_smooth_cleanup_custom_data;
+
   ED_slider_allow_overshoot_set(gso->slider, false);
   ease_draw_status_header(C, gso);
 
@@ -1133,9 +1184,12 @@ static int gauss_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
   const float factor = RNA_float_get(op->ptr, "factor");
-  const float sigma = RNA_float_get(op->ptr, "sigma");
   const int filter_width = RNA_int_get(op->ptr, "filter_width");
-  gauss_smooth_graph_keys(&ac, factor, sigma, filter_width);
+  const int kernel_size = filter_width + 1;
+  double *kernel = MEM_callocN(sizeof(double) * kernel_size, "Gauss Kernel");
+  get_1d_gauss_kernel(RNA_float_get(op->ptr, "sigma"), kernel_size, kernel);
+  gauss_smooth_graph_keys(&ac, factor, kernel, filter_width);
+  MEM_freeN(kernel);
 
   /* Set notifier that keyframes have changed. */
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
