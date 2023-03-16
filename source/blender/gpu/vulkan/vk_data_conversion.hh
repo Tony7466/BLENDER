@@ -16,17 +16,23 @@ enum class ConversionType {
   /** No conversion needed, result can be directly read back to host memory. */
   PASS_THROUGH,
 
-  UI16_TO_UI32,
-  UI32_TO_UI16,
+  FLOAT_TO_UNORM8,
+  UNORM8_TO_FLOAT,
 
-  /*
+  FLOAT_TO_SNORM8,
+  SNORM8_TO_FLOAT,
+
+  UI32_TO_UI16,
+  UI16_TO_UI32,
+
+  UI32_TO_UI8,
   UI8_TO_UI32,
+
+  I32_TO_I16,
   I16_TO_I32,
+
+  I32_TO_I8,
   I8_TO_I32,
-  UI8_TO_I32,
-  UI8_TO_FLOAT,
-  UI8_TO_UBYTE,
-  */
 
   /** Convert device 16F to floats. */
   HALF_TO_FLOAT,

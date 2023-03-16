@@ -149,7 +149,7 @@ void *VKTexture::read(int mip, eGPUDataFormat format)
 }
 
 void VKTexture::update_sub(
-    int mip, int /*offset*/[3], int extent[3], eGPUDataFormat format, const void *data)
+    int mip, int offset[3], int extent[3], eGPUDataFormat format, const void *data)
 {
   if (!is_allocated()) {
     allocate();
@@ -173,6 +173,9 @@ void VKTexture::update_sub(
   region.imageExtent.width = extent[0];
   region.imageExtent.height = extent[1];
   region.imageExtent.depth = extent[2];
+  region.imageOffset.x = offset[0];
+  region.imageOffset.y = offset[1];
+  region.imageOffset.z = offset[2];
   region.imageSubresource.aspectMask = to_vk_image_aspect_flag_bits(format_);
   region.imageSubresource.mipLevel = mip;
   region.imageSubresource.layerCount = 1;
@@ -180,8 +183,6 @@ void VKTexture::update_sub(
   VKCommandBuffer &command_buffer = context.command_buffer_get();
   command_buffer.copy(*this, staging_buffer, Span<VkBufferImageCopy>(&region, 1));
   command_buffer.submit();
-
-  /* TODO: add support for offset. */
 }
 
 void VKTexture::update_sub(int /*offset*/[3],
@@ -244,7 +245,7 @@ bool VKTexture::allocate()
   image_info.samples = VK_SAMPLE_COUNT_1_BIT;
 
   VkResult result;
-  if (G.debug &= G_DEBUG_GPU) {
+  if (G.debug & G_DEBUG_GPU) {
     VkImageFormatProperties image_format = {};
     result = vkGetPhysicalDeviceImageFormatProperties(context.physical_device_get(),
                                                       image_info.format,

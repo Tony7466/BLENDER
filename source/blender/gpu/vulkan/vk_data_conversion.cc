@@ -23,10 +23,20 @@ static ConversionType type_of_conversion_float(eGPUTextureFormat device_format)
     case GPU_RGB16F:
       return ConversionType::FLOAT_TO_HALF;
 
+    case GPU_RGBA8:
+    case GPU_RG8:
+    case GPU_R8:
+      return ConversionType::FLOAT_TO_UNORM8;
+
+    case GPU_RGBA8_SNORM:
+    case GPU_RGB8_SNORM:
+    case GPU_RG8_SNORM:
+    case GPU_R8_SNORM:
+      return ConversionType::FLOAT_TO_SNORM8;
+
     case GPU_RGB32F: /* GPU_RGB32F Not supported by vendors. */
     case GPU_RGBA8UI:
     case GPU_RGBA8I:
-    case GPU_RGBA8:
     case GPU_RGBA16UI:
     case GPU_RGBA16I:
     case GPU_RGBA16:
@@ -34,7 +44,6 @@ static ConversionType type_of_conversion_float(eGPUTextureFormat device_format)
     case GPU_RGBA32I:
     case GPU_RG8UI:
     case GPU_RG8I:
-    case GPU_RG8:
     case GPU_RG16UI:
     case GPU_RG16I:
     case GPU_RG16:
@@ -42,7 +51,6 @@ static ConversionType type_of_conversion_float(eGPUTextureFormat device_format)
     case GPU_RG32I:
     case GPU_R8UI:
     case GPU_R8I:
-    case GPU_R8:
     case GPU_R16UI:
     case GPU_R16I:
     case GPU_R16:
@@ -54,21 +62,17 @@ static ConversionType type_of_conversion_float(eGPUTextureFormat device_format)
     case GPU_DEPTH32F_STENCIL8:
     case GPU_DEPTH24_STENCIL8:
     case GPU_SRGB8_A8:
-    case GPU_RGBA8_SNORM:
     case GPU_RGBA16_SNORM:
     case GPU_RGB8UI:
     case GPU_RGB8I:
     case GPU_RGB8:
-    case GPU_RGB8_SNORM:
     case GPU_RGB16UI:
     case GPU_RGB16I:
     case GPU_RGB16:
     case GPU_RGB16_SNORM:
     case GPU_RGB32UI:
     case GPU_RGB32I:
-    case GPU_RG8_SNORM:
     case GPU_RG16_SNORM:
-    case GPU_R8_SNORM:
     case GPU_R16_SNORM:
     case GPU_SRGB8_A8_DXT1:
     case GPU_SRGB8_A8_DXT3:
@@ -93,29 +97,33 @@ static ConversionType type_of_conversion_int(eGPUTextureFormat device_format)
     case GPU_R32I:
       return ConversionType::PASS_THROUGH;
 
-    case GPU_RGBA8UI:
+    case GPU_RGBA16I:
+    case GPU_RG16I:
+    case GPU_R16I:
+      return ConversionType::I32_TO_I16;
+
     case GPU_RGBA8I:
+    case GPU_RG8I:
+    case GPU_R8I:
+      return ConversionType::I32_TO_I8;
+
+    case GPU_RGBA8UI:
     case GPU_RGBA8:
     case GPU_RGBA16UI:
-    case GPU_RGBA16I:
     case GPU_RGBA16F:
     case GPU_RGBA16:
     case GPU_RGBA32UI:
     case GPU_RGBA32F:
     case GPU_RG8UI:
-    case GPU_RG8I:
     case GPU_RG8:
     case GPU_RG16UI:
-    case GPU_RG16I:
     case GPU_RG16F:
-    case GPU_RG16:
     case GPU_RG32UI:
     case GPU_RG32F:
+    case GPU_RG16:
     case GPU_R8UI:
-    case GPU_R8I:
     case GPU_R8:
     case GPU_R16UI:
-    case GPU_R16I:
     case GPU_R16F:
     case GPU_R16:
     case GPU_R32UI:
@@ -175,6 +183,10 @@ static ConversionType type_of_conversion_uint(eGPUTextureFormat device_format)
       return ConversionType::UI32_TO_UI16;
 
     case GPU_RGBA8UI:
+    case GPU_RG8UI:
+    case GPU_R8UI:
+      return ConversionType::UI32_TO_UI8;
+
     case GPU_RGBA8I:
     case GPU_RGBA8:
     case GPU_RGBA16I:
@@ -182,7 +194,6 @@ static ConversionType type_of_conversion_uint(eGPUTextureFormat device_format)
     case GPU_RGBA16:
     case GPU_RGBA32I:
     case GPU_RGBA32F:
-    case GPU_RG8UI:
     case GPU_RG8I:
     case GPU_RG8:
     case GPU_RG16I:
@@ -190,7 +201,6 @@ static ConversionType type_of_conversion_uint(eGPUTextureFormat device_format)
     case GPU_RG16:
     case GPU_RG32I:
     case GPU_RG32F:
-    case GPU_R8UI:
     case GPU_R8I:
     case GPU_R8:
     case GPU_R16I:
@@ -310,6 +320,81 @@ static ConversionType type_of_conversion_half(eGPUTextureFormat device_format)
   return ConversionType::UNSUPPORTED;
 }
 
+static ConversionType type_of_conversion_ubyte(eGPUTextureFormat device_format)
+{
+  switch (device_format) {
+    case GPU_RGBA8UI:
+    case GPU_RG8UI:
+    case GPU_R8UI:
+      return ConversionType::PASS_THROUGH;
+
+    case GPU_RGBA8I:
+    case GPU_RGBA8:
+    case GPU_RGBA16UI:
+    case GPU_RGBA16I:
+    case GPU_RGBA16F:
+    case GPU_RGBA16:
+    case GPU_RGBA32UI:
+    case GPU_RGBA32I:
+    case GPU_RGBA32F:
+    case GPU_RG8I:
+    case GPU_RG8:
+    case GPU_RG16UI:
+    case GPU_RG16I:
+    case GPU_RG16F:
+    case GPU_RG16:
+    case GPU_RG32UI:
+    case GPU_RG32I:
+    case GPU_RG32F:
+    case GPU_R8I:
+    case GPU_R8:
+    case GPU_R16UI:
+    case GPU_R16I:
+    case GPU_R16F:
+    case GPU_R16:
+    case GPU_R32UI:
+    case GPU_R32I:
+    case GPU_R32F:
+    case GPU_RGB10_A2:
+    case GPU_RGB10_A2UI:
+    case GPU_R11F_G11F_B10F:
+    case GPU_DEPTH32F_STENCIL8:
+    case GPU_DEPTH24_STENCIL8:
+    case GPU_SRGB8_A8:
+    case GPU_RGBA8_SNORM:
+    case GPU_RGBA16_SNORM:
+    case GPU_RGB8UI:
+    case GPU_RGB8I:
+    case GPU_RGB8:
+    case GPU_RGB8_SNORM:
+    case GPU_RGB16UI:
+    case GPU_RGB16I:
+    case GPU_RGB16F:
+    case GPU_RGB16:
+    case GPU_RGB16_SNORM:
+    case GPU_RGB32UI:
+    case GPU_RGB32I:
+    case GPU_RGB32F:
+    case GPU_RG8_SNORM:
+    case GPU_RG16_SNORM:
+    case GPU_R8_SNORM:
+    case GPU_R16_SNORM:
+    case GPU_SRGB8_A8_DXT1:
+    case GPU_SRGB8_A8_DXT3:
+    case GPU_SRGB8_A8_DXT5:
+    case GPU_RGBA8_DXT1:
+    case GPU_RGBA8_DXT3:
+    case GPU_RGBA8_DXT5:
+    case GPU_SRGB8:
+    case GPU_RGB9_E5:
+    case GPU_DEPTH_COMPONENT32F:
+    case GPU_DEPTH_COMPONENT24:
+    case GPU_DEPTH_COMPONENT16:
+      return ConversionType::UNSUPPORTED;
+  }
+  return ConversionType::UNSUPPORTED;
+}
+
 ConversionType conversion_type_for_update(eGPUDataFormat host_format,
                                           eGPUTextureFormat device_format)
 {
@@ -324,8 +409,9 @@ ConversionType conversion_type_for_update(eGPUDataFormat host_format,
       return type_of_conversion_int(device_format);
     case GPU_DATA_HALF_FLOAT:
       return type_of_conversion_half(device_format);
-
     case GPU_DATA_UBYTE:
+      return type_of_conversion_ubyte(device_format);
+
     case GPU_DATA_UINT_24_8:
     case GPU_DATA_10_11_11_REV:
     case GPU_DATA_2_10_10_10_REV:
@@ -337,23 +423,32 @@ ConversionType conversion_type_for_update(eGPUDataFormat host_format,
 
 static ConversionType invert(ConversionType type)
 {
+#define CASE_SINGLE(a, b) \
+  case ConversionType::a##_TO_##b: \
+    return ConversionType::b##_TO_##a;
+
+#define CASE_PAIR(a, b) \
+  CASE_SINGLE(a, b) \
+  CASE_SINGLE(b, a)
+
   switch (type) {
     case ConversionType::PASS_THROUGH:
       return ConversionType::PASS_THROUGH;
 
-    case ConversionType::UI16_TO_UI32:
-      return ConversionType::UI32_TO_UI16;
-    case ConversionType::UI32_TO_UI16:
-      return ConversionType::UI16_TO_UI32;
-
-    case ConversionType::FLOAT_TO_HALF:
-      return ConversionType::HALF_TO_FLOAT;
-    case ConversionType::HALF_TO_FLOAT:
-      return ConversionType::FLOAT_TO_HALF;
+      CASE_PAIR(FLOAT, UNORM8)
+      CASE_PAIR(FLOAT, SNORM8)
+      CASE_PAIR(UI32, UI16)
+      CASE_PAIR(I32, I16)
+      CASE_PAIR(UI32, UI8)
+      CASE_PAIR(I32, I8)
+      CASE_PAIR(FLOAT, HALF)
 
     case ConversionType::UNSUPPORTED:
       return ConversionType::UNSUPPORTED;
   }
+
+#undef CASE_PAIR
+#undef CASE_SINGLE
 
   return ConversionType::UNSUPPORTED;
 }
@@ -365,13 +460,167 @@ ConversionType conversion_type_for_read(eGPUDataFormat host_format,
 }
 
 /* Copy the contents of src to dst with out performing any actual conversion. */
-template<typename SourceType, typename DestinationType>
+template<typename DestinationType, typename SourceType>
 void copy_unchecked(MutableSpan<DestinationType> dst, Span<SourceType> src)
 {
   BLI_assert(src.size() == dst.size());
-  for (SourceType index : IndexRange(src.size())) {
+  for (int64_t index : IndexRange(src.size())) {
     dst[index] = src[index];
   }
+}
+
+template<typename DestinationType, typename SourceType>
+void copy_unchecked(void *dst_memory,
+                    const void *src_memory,
+                    eGPUTextureFormat device_format,
+                    size_t sample_len)
+{
+  size_t total_components = to_component_len(device_format) * sample_len;
+  Span<SourceType> src = Span<SourceType>(static_cast<const SourceType *>(src_memory),
+                                          total_components);
+  MutableSpan<DestinationType> dst = MutableSpan<DestinationType>(
+      static_cast<DestinationType *>(dst_memory), total_components);
+  copy_unchecked<DestinationType, SourceType>(dst, src);
+}
+
+/* Float <=> unsigned normalized */
+static uint8_t clamp_unorm(int32_t unclamped)
+{
+  if (unclamped < 0.0f) {
+    return 0;
+  }
+  if (unclamped > 255.0f) {
+    return 255;
+  }
+  return uint8_t(unclamped);
+}
+
+template<typename DestinationType, typename SourceType>
+static DestinationType to_unorm(SourceType value)
+{
+  return (clamp_unorm((value * 255.0f)));
+}
+
+template<typename DestinationType, typename SourceType>
+static DestinationType from_unorm(SourceType value)
+{
+  return DestinationType(value / 255.0f);
+}
+
+template<typename DestinationType, typename SourceType>
+void float_to_unorm(MutableSpan<DestinationType> dst, Span<SourceType> src)
+{
+  BLI_assert(src.size() == dst.size());
+  for (int64_t index : IndexRange(src.size())) {
+    dst[index] = to_unorm<DestinationType, SourceType>(src[index]);
+  }
+}
+
+template<typename DestinationType, typename SourceType>
+void float_to_unorm(void *dst_memory,
+                    const void *src_memory,
+                    eGPUTextureFormat device_format,
+                    size_t sample_len)
+{
+  size_t total_components = to_component_len(device_format) * sample_len;
+  Span<SourceType> src = Span<SourceType>(static_cast<const SourceType *>(src_memory),
+                                          total_components);
+  MutableSpan<DestinationType> dst = MutableSpan<DestinationType>(
+      static_cast<DestinationType *>(dst_memory), total_components);
+  float_to_unorm<DestinationType, SourceType>(dst, src);
+}
+
+template<typename DestinationType, typename SourceType>
+void unorm_to_float(MutableSpan<DestinationType> dst, Span<SourceType> src)
+{
+  BLI_assert(src.size() == dst.size());
+  for (int64_t index : IndexRange(src.size())) {
+    dst[index] = from_unorm<DestinationType, SourceType>(src[index]);
+  }
+}
+
+template<typename DestinationType, typename SourceType>
+void unorm_to_float(void *dst_memory,
+                    const void *src_memory,
+                    eGPUTextureFormat device_format,
+                    size_t sample_len)
+{
+  size_t total_components = to_component_len(device_format) * sample_len;
+  Span<SourceType> src = Span<SourceType>(static_cast<const SourceType *>(src_memory),
+                                          total_components);
+  MutableSpan<DestinationType> dst = MutableSpan<DestinationType>(
+      static_cast<DestinationType *>(dst_memory), total_components);
+  unorm_to_float<DestinationType, SourceType>(dst, src);
+}
+
+/* Float <=> signed normalized */
+static int8_t clamp_snorm(int32_t unclamped)
+{
+  if (unclamped < -127) {
+    return 0;
+  }
+  if (unclamped > 128) {
+    return 128;
+  }
+  return int8_t(unclamped);
+}
+
+template<typename DestinationType, typename SourceType>
+static DestinationType to_snorm(SourceType value)
+{
+  return (clamp_snorm((value * 128.0f)));
+}
+
+template<typename DestinationType, typename SourceType>
+static DestinationType from_snorm(SourceType value)
+{
+  return DestinationType(value / 128.0f);
+}
+
+template<typename DestinationType, typename SourceType>
+void float_to_snorm(MutableSpan<DestinationType> dst, Span<SourceType> src)
+{
+  BLI_assert(src.size() == dst.size());
+  for (int64_t index : IndexRange(src.size())) {
+    dst[index] = to_snorm<DestinationType, SourceType>(src[index]);
+  }
+}
+
+template<typename DestinationType, typename SourceType>
+void float_to_snorm(void *dst_memory,
+                    const void *src_memory,
+                    eGPUTextureFormat device_format,
+                    size_t sample_len)
+{
+  size_t total_components = to_component_len(device_format) * sample_len;
+  Span<SourceType> src = Span<SourceType>(static_cast<const SourceType *>(src_memory),
+                                          total_components);
+  MutableSpan<DestinationType> dst = MutableSpan<DestinationType>(
+      static_cast<DestinationType *>(dst_memory), total_components);
+  float_to_snorm<DestinationType, SourceType>(dst, src);
+}
+
+template<typename DestinationType, typename SourceType>
+void snorm_to_float(MutableSpan<DestinationType> dst, Span<SourceType> src)
+{
+  BLI_assert(src.size() == dst.size());
+  for (int64_t index : IndexRange(src.size())) {
+    dst[index] = from_snorm<DestinationType, SourceType>(src[index]);
+  }
+}
+
+template<typename DestinationType, typename SourceType>
+void snorm_to_float(void *dst_memory,
+                    const void *src_memory,
+                    eGPUTextureFormat device_format,
+                    size_t sample_len)
+{
+  size_t total_components = to_component_len(device_format) * sample_len;
+  Span<SourceType> src = Span<SourceType>(static_cast<const SourceType *>(src_memory),
+                                          total_components);
+  MutableSpan<DestinationType> dst = MutableSpan<DestinationType>(
+      static_cast<DestinationType *>(dst_memory), total_components);
+  snorm_to_float<DestinationType, SourceType>(dst, src);
 }
 
 void convert(ConversionType type,
@@ -388,25 +637,51 @@ void convert(ConversionType type,
       memcpy(dst_memory, src_memory, sample_len * to_bytesize(device_format));
       return;
 
-    case ConversionType::UI16_TO_UI32: {
-      size_t component_len = to_component_len(device_format) * sample_len;
-      Span<uint16_t> src = Span<uint16_t>(static_cast<const uint16_t *>(src_memory),
-                                          component_len);
-      MutableSpan<uint32_t> dst = MutableSpan<uint32_t>(static_cast<uint32_t *>(dst_memory),
-                                                        component_len);
-      copy_unchecked<uint16_t, uint32_t>(dst, src);
+    case ConversionType::UI32_TO_UI16:
+      copy_unchecked<uint16_t, uint32_t>(dst_memory, src_memory, device_format, sample_len);
       break;
-    }
 
-    case ConversionType::UI32_TO_UI16: {
-      size_t component_len = to_component_len(device_format) * sample_len;
-      Span<uint32_t> src = Span<uint32_t>(static_cast<const uint32_t *>(src_memory),
-                                          component_len);
-      MutableSpan<uint16_t> dst = MutableSpan<uint16_t>(static_cast<uint16_t *>(dst_memory),
-                                                        component_len);
-      copy_unchecked<uint32_t, uint16_t>(dst, src);
+    case ConversionType::UI16_TO_UI32:
+      copy_unchecked<uint32_t, uint16_t>(dst_memory, src_memory, device_format, sample_len);
       break;
-    }
+
+    case ConversionType::UI32_TO_UI8:
+      copy_unchecked<uint8_t, uint32_t>(dst_memory, src_memory, device_format, sample_len);
+      break;
+
+    case ConversionType::UI8_TO_UI32:
+      copy_unchecked<uint32_t, uint8_t>(dst_memory, src_memory, device_format, sample_len);
+      break;
+
+    case ConversionType::I32_TO_I16:
+      copy_unchecked<int16_t, int32_t>(dst_memory, src_memory, device_format, sample_len);
+      break;
+
+    case ConversionType::I16_TO_I32:
+      copy_unchecked<int32_t, int16_t>(dst_memory, src_memory, device_format, sample_len);
+      break;
+
+    case ConversionType::I32_TO_I8:
+      copy_unchecked<int8_t, int32_t>(dst_memory, src_memory, device_format, sample_len);
+      break;
+
+    case ConversionType::I8_TO_I32:
+      copy_unchecked<int32_t, int8_t>(dst_memory, src_memory, device_format, sample_len);
+      break;
+
+    case ConversionType::FLOAT_TO_UNORM8:
+      float_to_unorm<uint8_t, float>(dst_memory, src_memory, device_format, sample_len);
+      break;
+    case ConversionType::UNORM8_TO_FLOAT:
+      unorm_to_float<float, uint8_t>(dst_memory, src_memory, device_format, sample_len);
+      break;
+
+    case ConversionType::FLOAT_TO_SNORM8:
+      float_to_snorm<int8_t, float>(dst_memory, src_memory, device_format, sample_len);
+      break;
+    case ConversionType::SNORM8_TO_FLOAT:
+      snorm_to_float<float, int8_t>(dst_memory, src_memory, device_format, sample_len);
+      break;
 
     case ConversionType::FLOAT_TO_HALF:
     case ConversionType::HALF_TO_FLOAT:
