@@ -158,15 +158,11 @@ struct MeshRuntime {
    */
   SubsurfRuntimeData *subsurf_runtime_data = nullptr;
 
-  /**
-   * Caches for lazily computed vertex and polygon normals. These are stored here rather than in
-   * #CustomData because they can be calculated on a `const` mesh, and adding custom data layers on
-   * a `const` mesh is not thread-safe.
-   */
-  bool vert_normals_dirty = true;
-  bool poly_normals_dirty = true;
-  mutable Vector<float3> vert_normals;
-  mutable Vector<float3> poly_normals;
+  /** Cache of lazily calculated vertex normals. Depends on #poly_normals_cache. */
+  SharedCache<Vector<float3>> vert_normals_cache;
+
+  /** Cache of lazily calculated face normals. Depends on positions and topology. */
+  SharedCache<Vector<float3>> poly_normals_cache;
 
   /** Cache of data about edges not used by faces. See #Mesh::loose_edges(). */
   SharedCache<LooseEdgeCache> loose_edges_cache;

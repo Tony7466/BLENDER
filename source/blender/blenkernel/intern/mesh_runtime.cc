@@ -80,10 +80,8 @@ static void free_bvh_cache(MeshRuntime &mesh_runtime)
 
 static void reset_normals(MeshRuntime &mesh_runtime)
 {
-  mesh_runtime.vert_normals.clear_and_shrink();
-  mesh_runtime.poly_normals.clear_and_shrink();
-  mesh_runtime.vert_normals_dirty = true;
-  mesh_runtime.poly_normals_dirty = true;
+  mesh_runtime.vert_normals_cache.tag_dirty();
+  mesh_runtime.poly_normals_cache.tag_dirty();
 }
 
 static void free_batch_cache(MeshRuntime &mesh_runtime)
@@ -310,14 +308,14 @@ void BKE_mesh_tag_edges_split(struct Mesh *mesh)
 
 void BKE_mesh_tag_face_winding_changed(Mesh *mesh)
 {
-  mesh->runtime->vert_normals_dirty = true;
-  mesh->runtime->poly_normals_dirty = true;
+  mesh->runtime->vert_normals_cache.tag_dirty();
+  mesh->runtime->poly_normals_cache.tag_dirty();
 }
 
 void BKE_mesh_tag_positions_changed(Mesh *mesh)
 {
-  mesh->runtime->vert_normals_dirty = true;
-  mesh->runtime->poly_normals_dirty = true;
+  mesh->runtime->vert_normals_cache.tag_dirty();
+  mesh->runtime->poly_normals_cache.tag_dirty();
   free_bvh_cache(*mesh->runtime);
   mesh->runtime->looptris_cache.tag_dirty();
   mesh->runtime->bounds_cache.tag_dirty();

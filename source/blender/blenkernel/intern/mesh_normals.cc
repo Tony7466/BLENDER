@@ -92,32 +92,43 @@ namespace blender::bke {
 
 void mesh_vert_normals_assign(Mesh &mesh, Span<float3> vert_normals)
 {
-  mesh.runtime->vert_normals = vert_normals;
-  mesh.runtime->vert_normals_dirty = false;
+  BLI_assert(!mesh.runtime->vert_normals_cache.is_cached());
+  mesh.runtime->vert_normals_cache.ensure([&](Vector<float3> &r_data) { r_data = vert_normals; });
 }
 
 void mesh_vert_normals_assign(Mesh &mesh, Vector<float3> vert_normals)
 {
-  mesh.runtime->vert_normals = std::move(vert_normals);
-  mesh.runtime->vert_normals_dirty = false;
+  BLI_assert(!mesh.runtime->vert_normals_cache.is_cached());
+  mesh.runtime->vert_normals_cache.ensure(
+      [vert_normals = std::move(vert_normals)](Vector<float3> &r_data) {
+        r_data = std::move(vert_normals);
+      });
 }
 
 }  // namespace blender::bke
 
 float (*BKE_mesh_vert_normals_for_write(Mesh *mesh))[3]
 {
-  mesh->runtime->vert_normals.reinitialize(mesh->totvert);
-  return reinterpret_cast<float(*)[3]>(mesh->runtime->vert_normals.data());
+  /* Make sure the normals aren't shared. */
+  using namespace blender;
+  Vector<float3> vert_normals = mesh->vert_normals();
+  mesh->runtime->vert_normals_cache.ensure(
+      [vert_normals = std::move(vert_normals)](Vector<float3> &r_data) {
+        r_data = std::move(vert_normals);
+      });
+  /* Give write access to the normals now used just by this mesh. */
+  return reinterpret_cast<float(*)[3]>(
+      const_cast<float3 *>(mesh->runtime->vert_normals_cache.data().data()));
 }
 
 bool BKE_mesh_vert_normals_are_dirty(const Mesh *mesh)
 {
-  return mesh->runtime->vert_normals_dirty;
+  return mesh->runtime->vert_normals_cache.is_dirty();
 }
 
 bool BKE_mesh_poly_normals_are_dirty(const Mesh *mesh)
 {
-  return mesh->runtime->poly_normals_dirty;
+  return mesh->runtime->poly_normals_cache.is_dirty();
 }
 
 /** \} */
@@ -325,15 +336,11 @@ blender::Span<blender::float3> Mesh::vert_normals() const
     const Span<float3> positions = this->vert_positions();
     const OffsetIndices polys = this->polys();
     const Span<int> corner_verts = this->corner_verts();
-
-    this->runtime->vert_normals.reinitialize(positions.size());
-    blender::bke::mesh::normals_calc_verts(
-        positions, polys, corner_verts, poly_normals, this->runtime->vert_normals);
-
-    this->runtime->vert_normals_dirty = false;
+    const Span<float3> poly_normals = this->poly_normals();
+    r_data.reinitialize(positions.size());
+    bke::mesh::normals_calc_verts(positions, polys, corner_verts, poly_normals, r_data);
   });
-
-  return this->runtime->vert_normals;
+  return this->runtime->vert_normals_cache.data();
 }
 
 blender::Span<blender::float3> Mesh::poly_normals() const
@@ -361,8 +368,7 @@ blender::Span<blender::float3> Mesh::poly_normals() const
 
     this->runtime->poly_normals_dirty = false;
   });
-
-  return this->runtime->poly_normals;
+  return this->runtime->poly_normals_cache.data();
 }
 
 const float (*BKE_mesh_vert_normals_ensure(const Mesh *mesh))[3]
