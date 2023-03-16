@@ -10,6 +10,7 @@
 
 #include "DRW_render.h"
 
+#include "eevee_material.hh"
 #include "eevee_shader_shared.hh"
 
 namespace blender::eevee {
@@ -69,10 +70,11 @@ struct GBuffer {
   Texture closure_tx = {"GbufferClosure"};
   Texture color_tx = {"GbufferColor"};
 
-  void acquire(int2 extent, eClosureBits closures_used)
+  void acquire(int2 extent, eClosureBits closure_bits_)
   {
+    const bool use_sss = (closure_bits_ & CLOSURE_SSS) != 0;
     eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
-    closure_tx.ensure_2d_array(GPU_RGBA16, extent, (closures_used & CLOSURE_SSS) ? 3 : 2, usage);
+    closure_tx.ensure_2d_array(GPU_RGBA16, extent, use_sss ? 3 : 2, usage);
     color_tx.ensure_2d_array(GPU_RGB10_A2, extent, 2, usage);
   }
 

@@ -240,10 +240,6 @@ Material &MaterialModule::material_sync(Object *ob,
                                        (has_motion ? MAT_PIPE_DEFERRED_PREPASS_VELOCITY :
                                                      MAT_PIPE_DEFERRED_PREPASS);
 
-  /* TEST until we have deferred pipeline up and running. */
-  surface_pipe = MAT_PIPE_FORWARD;
-  prepass_pipe = has_motion ? MAT_PIPE_FORWARD_PREPASS_VELOCITY : MAT_PIPE_FORWARD_PREPASS;
-
   MaterialKey material_key(blender_mat, geometry_type, surface_pipe);
 
   Material &mat = material_map_.lookup_or_add_cb(material_key, [&]() {

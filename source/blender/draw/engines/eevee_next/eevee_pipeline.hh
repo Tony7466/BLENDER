@@ -114,6 +114,65 @@ class ForwardPipeline {
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Deferred lighting.
+ * \{ */
+
+class DeferredLayer {
+ private:
+  Instance &inst_;
+
+  PassMain prepass_ps_ = {"Prepass"};
+  PassMain::Sub *prepass_single_sided_static_ps_ = nullptr;
+  PassMain::Sub *prepass_single_sided_moving_ps_ = nullptr;
+  PassMain::Sub *prepass_double_sided_static_ps_ = nullptr;
+  PassMain::Sub *prepass_double_sided_moving_ps_ = nullptr;
+
+  PassMain gbuffer_ps_ = {"Shading"};
+  PassMain::Sub *gbuffer_single_sided_ps_ = nullptr;
+  PassMain::Sub *gbuffer_double_sided_ps_ = nullptr;
+
+  /* Closures bits from the materials in this pass. */
+  eClosureBits closure_bits_;
+
+ public:
+  DeferredLayer(Instance &inst) : inst_(inst){};
+
+  void sync();
+
+  PassMain::Sub *prepass_add(::Material *blender_mat, GPUMaterial *gpumat, bool has_motion);
+  PassMain::Sub *material_add(::Material *blender_mat, GPUMaterial *gpumat);
+
+  void render(View &view, Framebuffer &prepass_fb, Framebuffer &combined_fb, int2 extent);
+};
+
+class DeferredPipeline {
+ public:
+  PassSimple eval_ps_ = {"EvalLighting"};
+
+ private:
+  Instance &inst_;
+
+  /* Gbuffer filling passes. We could have an arbitrary number of them but for now we just have
+   * a hardcoded number of them. */
+  DeferredLayer opaque_layer_;
+  DeferredLayer refraction_layer_;
+  DeferredLayer volumetric_layer_;
+
+ public:
+  DeferredPipeline(Instance &inst)
+      : inst_(inst), opaque_layer_(inst), refraction_layer_(inst), volumetric_layer_(inst){};
+
+  void sync();
+
+  PassMain::Sub *prepass_add(::Material *material, GPUMaterial *gpumat, bool has_motion);
+  PassMain::Sub *material_add(::Material *material, GPUMaterial *gpumat);
+
+  void render(View &view, Framebuffer &prepass_fb, Framebuffer &combined_fb, int2 extent);
+};
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Utility texture
  *
  * 64x64 2D array texture containing LUT tables and blue noises.
@@ -197,22 +256,20 @@ class UtilityTexture : public Texture {
 class PipelineModule {
  public:
   WorldPipeline world;
-  // DeferredPipeline deferred;
+  DeferredPipeline deferred;
   ForwardPipeline forward;
   ShadowPipeline shadow;
-  // VelocityPipeline velocity;
 
   UtilityTexture utility_tx;
 
  public:
-  PipelineModule(Instance &inst) : world(inst), forward(inst), shadow(inst){};
+  PipelineModule(Instance &inst) : world(inst), deferred(inst), forward(inst), shadow(inst){};
 
   void sync()
   {
-    // deferred.sync();
+    deferred.sync();
     forward.sync();
     shadow.sync();
-    // velocity.sync();
   }
 
   PassMain::Sub *material_add(Object *ob,
@@ -222,7 +279,7 @@ class PipelineModule {
   {
     switch (pipeline_type) {
       case MAT_PIPE_DEFERRED_PREPASS:
-        // return deferred.prepass_add(blender_mat, gpumat, false);
+        return deferred.prepass_add(blender_mat, gpumat, false);
       case MAT_PIPE_FORWARD_PREPASS:
         if (GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSPARENT)) {
           return forward.prepass_transparent_add(ob, blender_mat, gpumat);
@@ -230,7 +287,7 @@ class PipelineModule {
         return forward.prepass_opaque_add(blender_mat, gpumat, false);
 
       case MAT_PIPE_DEFERRED_PREPASS_VELOCITY:
-        // return deferred.prepass_add(blender_mat, gpumat, true);
+        return deferred.prepass_add(blender_mat, gpumat, true);
       case MAT_PIPE_FORWARD_PREPASS_VELOCITY:
         if (GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSPARENT)) {
           return forward.prepass_transparent_add(ob, blender_mat, gpumat);
@@ -238,7 +295,7 @@ class PipelineModule {
         return forward.prepass_opaque_add(blender_mat, gpumat, true);
 
       case MAT_PIPE_DEFERRED:
-        // return deferred.material_add(blender_mat, gpumat);
+        return deferred.material_add(blender_mat, gpumat);
       case MAT_PIPE_FORWARD:
         if (GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSPARENT)) {
           return forward.material_transparent_add(ob, blender_mat, gpumat);

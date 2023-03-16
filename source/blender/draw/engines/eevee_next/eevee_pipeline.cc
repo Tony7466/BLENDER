@@ -278,4 +278,184 @@ void ForwardPipeline::render(View &view,
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Deferred Pipeline
+ *
+ * Closure data are written to intermediate buffer allowing screen space processing.
+ * \{ */
+
+void DeferredLayer::sync()
+{
+  DRWState state_depth_only = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS;
+  DRWState state_depth_color = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS |
+                               DRW_STATE_WRITE_COLOR;
+  {
+    prepass_ps_.init();
+    prepass_ps_.clear_stencil(0x00u);
+
+    {
+      /* Common resources. */
+
+      /* Textures. */
+      prepass_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
+      /* Uniform Buf. */
+      prepass_ps_.bind_ubo(CAMERA_BUF_SLOT, inst_.camera.ubo_get());
+
+      inst_.velocity.bind_resources(&prepass_ps_);
+      inst_.sampling.bind_resources(&prepass_ps_);
+    }
+
+    prepass_double_sided_static_ps_ = &prepass_ps_.sub("DoubleSided.Static");
+    prepass_double_sided_static_ps_->state_set(state_depth_only);
+
+    prepass_single_sided_static_ps_ = &prepass_ps_.sub("SingleSided.Static");
+    prepass_single_sided_static_ps_->state_set(state_depth_only | DRW_STATE_CULL_BACK);
+
+    prepass_double_sided_moving_ps_ = &prepass_ps_.sub("DoubleSided.Moving");
+    prepass_double_sided_moving_ps_->state_set(state_depth_color);
+
+    prepass_single_sided_moving_ps_ = &prepass_ps_.sub("SingleSided.Moving");
+    prepass_single_sided_moving_ps_->state_set(state_depth_color | DRW_STATE_CULL_BACK);
+  }
+  {
+    gbuffer_ps_.init();
+
+    {
+      /* Common resources. */
+
+      /* G-buffer. */
+      gbuffer_ps_.bind_image(GBUF_CLOSURE_SLOT, &inst_.gbuffer.closure_tx);
+      gbuffer_ps_.bind_image(GBUF_COLOR_SLOT, &inst_.gbuffer.color_tx);
+
+      /* RenderPasses. */
+      gbuffer_ps_.bind_image(RBUFS_NORMAL_SLOT, &inst_.render_buffers.normal_tx);
+      /* TODO(fclem): Pack all render pass into the same texture. */
+      // gbuffer_ps_.bind_image(RBUFS_DIFF_COLOR_SLOT, &inst_.render_buffers.diffuse_color_tx);
+      gbuffer_ps_.bind_image(RBUFS_SPEC_COLOR_SLOT, &inst_.render_buffers.specular_color_tx);
+      gbuffer_ps_.bind_image(RBUFS_EMISSION_SLOT, &inst_.render_buffers.emission_tx);
+      /* AOVs. */
+      gbuffer_ps_.bind_image(RBUFS_AOV_COLOR_SLOT, &inst_.render_buffers.aov_color_tx);
+      gbuffer_ps_.bind_image(RBUFS_AOV_VALUE_SLOT, &inst_.render_buffers.aov_value_tx);
+      /* Cryptomatte. */
+      gbuffer_ps_.bind_image(RBUFS_CRYPTOMATTE_SLOT, &inst_.render_buffers.cryptomatte_tx);
+      /* Storage Buf. */
+      gbuffer_ps_.bind_ssbo(RBUFS_AOV_BUF_SLOT, &inst_.film.aovs_info);
+      /* Textures. */
+      gbuffer_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
+      /* Uniform Buf. */
+      gbuffer_ps_.bind_ubo(CAMERA_BUF_SLOT, inst_.camera.ubo_get());
+
+      inst_.sampling.bind_resources(&gbuffer_ps_);
+      inst_.cryptomatte.bind_resources(&gbuffer_ps_);
+    }
+
+    gbuffer_single_sided_ps_ = &gbuffer_ps_.sub("SingleSided");
+    gbuffer_single_sided_ps_->state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL |
+                                        DRW_STATE_CULL_BACK);
+
+    gbuffer_double_sided_ps_ = &gbuffer_ps_.sub("DoubleSided");
+    gbuffer_double_sided_ps_->state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL);
+  }
+}
+
+PassMain::Sub *DeferredLayer::prepass_add(::Material *blender_mat,
+                                          GPUMaterial *gpumat,
+                                          bool has_motion)
+{
+  closure_bits_ |= shader_closure_bits_from_flag(gpumat);
+
+  PassMain::Sub *pass = (blender_mat->blend_flag & MA_BL_CULL_BACKFACE) ?
+                            (has_motion ? prepass_single_sided_moving_ps_ :
+                                          prepass_single_sided_static_ps_) :
+                            (has_motion ? prepass_double_sided_moving_ps_ :
+                                          prepass_double_sided_static_ps_);
+  return &pass->sub(GPU_material_get_name(gpumat));
+}
+
+PassMain::Sub *DeferredLayer::material_add(::Material *blender_mat, GPUMaterial *gpumat)
+{
+  PassMain::Sub *pass = (blender_mat->blend_flag & MA_BL_CULL_BACKFACE) ?
+                            gbuffer_single_sided_ps_ :
+                            gbuffer_double_sided_ps_;
+  return &pass->sub(GPU_material_get_name(gpumat));
+}
+
+void DeferredLayer::render(View &view,
+                           Framebuffer &prepass_fb,
+                           Framebuffer &combined_fb,
+                           int2 extent)
+{
+  inst_.gbuffer.acquire(extent, closure_bits_);
+
+  GPU_framebuffer_bind(prepass_fb);
+  inst_.manager->submit(prepass_ps_, view);
+
+  inst_.hiz_buffer.set_dirty();
+
+  GPU_framebuffer_bind(combined_fb);
+  inst_.manager->submit(gbuffer_ps_, view);
+
+  inst_.shadows.set_view(view);
+  inst_.manager->submit(inst_.pipelines.deferred.eval_ps_);
+
+  /* TODO evaluate lights. */
+
+  inst_.gbuffer.release();
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Deferred Pipeline
+ *
+ * Closure data are written to intermediate buffer allowing screen space processing.
+ * \{ */
+
+void DeferredPipeline::sync()
+{
+  opaque_layer_.sync();
+  refraction_layer_.sync();
+
+  eval_ps_.init();
+  /* TODO Lighting. */
+}
+
+PassMain::Sub *DeferredPipeline::prepass_add(::Material *blender_mat,
+                                             GPUMaterial *gpumat,
+                                             bool has_motion)
+{
+  if (blender_mat->blend_flag & MA_BL_SS_REFRACTION) {
+    return refraction_layer_.prepass_add(blender_mat, gpumat, has_motion);
+  }
+  else {
+    return opaque_layer_.prepass_add(blender_mat, gpumat, has_motion);
+  }
+}
+
+PassMain::Sub *DeferredPipeline::material_add(::Material *blender_mat, GPUMaterial *gpumat)
+{
+  if (blender_mat->blend_flag & MA_BL_SS_REFRACTION) {
+    return refraction_layer_.material_add(blender_mat, gpumat);
+  }
+  else {
+    return opaque_layer_.material_add(blender_mat, gpumat);
+  }
+}
+
+void DeferredPipeline::render(View &view,
+                              Framebuffer &prepass_fb,
+                              Framebuffer &combined_fb,
+                              int2 extent)
+{
+  DRW_stats_group_start("Deferred.Opaque");
+  opaque_layer_.render(view, prepass_fb, combined_fb, extent);
+  DRW_stats_group_end();
+
+  DRW_stats_group_start("Deferred.Refract");
+  refraction_layer_.render(view, prepass_fb, combined_fb, extent);
+  DRW_stats_group_end();
+}
+
+/** \} */
+
 }  // namespace blender::eevee

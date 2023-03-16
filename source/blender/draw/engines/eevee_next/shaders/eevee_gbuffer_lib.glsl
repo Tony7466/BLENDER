@@ -1,58 +1,75 @@
 
 /**
- * G-buffer: Packing and upacking for the of the G-buffer data.
+ * G-buffer: Packing and upacking of G-buffer data.
  *
- * See `GPU_SHADER_CREATE_INFO(eevee_surf_deferred)` for a breakdown of the G-buffer layout.
+ * See #GBuffer for a breakdown of the G-buffer layout.
  */
 
-#pragma BLENDER_REQUIRE(common_view_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_vector_lib.glsl)
 
 vec2 gbuffer_normal_pack(vec3 N)
 {
+  N /= length_manhattan(N);
+  N.xy = (N.z >= 0.0) ? N.xy : ((1.0 - abs(N.yx)) * sign(N.xy));
+  N.xy = N.xy * 0.5 + 0.5;
   return N.xy;
 }
 
 vec3 gbuffer_normal_unpack(vec2 N_packed)
 {
-  return vec3(N_packed.xy, sqrt(1.0 - sqr(N_packed.x) - sqr(N_packed.y)));
+  N_packed = N_packed * 2.0 - 1.0;
+  vec3 N = vec3(N_packed.x, N_packed.y, 1.0 - abs(N_packed.x) - abs(N_packed.y));
+  float t = clamp(-N.z, 0.0, 1.0);
+  N.x += (N.x >= 0.0) ? -t : t;
+  N.y += (N.y >= 0.0) ? -t : t;
+  return normalize(N);
 }
 
 float gbuffer_ior_pack(float ior)
 {
-  return ior;
+  return (ior > 1.0) ? (1.0 - 0.5 / ior) : (0.5 * ior);
 }
 
 float gbuffer_ior_unpack(float ior_packed)
 {
-  return ior_packed;
+  return (ior_packed > 0.5) ? (-1.0 / (ior_packed * 2.0 + 2.0)) : (2.0 * ior_packed);
 }
 
 float gbuffer_thickness_pack(float thickness)
 {
+  /* TODO */
   return thickness;
 }
 
 float gbuffer_thickness_unpack(float thickness_packed)
 {
+  /* TODO */
   return thickness_packed;
 }
 
 vec3 gbuffer_sss_radii_pack(vec3 sss_radii)
 {
-  return sss_radii;
+  /* TODO(fclem): Something better. */
+  return vec3(
+      gbuffer_ior_pack(sss_radii.x), gbuffer_ior_pack(sss_radii.y), gbuffer_ior_pack(sss_radii.z));
 }
 
 vec3 gbuffer_sss_radii_unpack(vec3 sss_radii_packed)
 {
-  return sss_radii_packed;
+  /* TODO(fclem): Something better. */
+  return vec3(gbuffer_ior_unpack(sss_radii_packed.x),
+              gbuffer_ior_unpack(sss_radii_packed.y),
+              gbuffer_ior_unpack(sss_radii_packed.z));
 }
 
 vec4 gbuffer_color_pack(vec3 color)
 {
+  /* TODO(fclem): 2 exponent inside 2bit Alpha. */
   return vec4(color, 1.0);
 }
 
 vec3 gbuffer_color_unpack(vec4 color_packed)
 {
+  /* TODO(fclem): 2 exponent inside 2bit Alpha. */
   return color_packed.rgb;
 }
