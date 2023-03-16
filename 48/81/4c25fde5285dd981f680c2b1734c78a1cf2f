@@ -1,1 +1,2 @@
 Referenced by pull request #105825, Cleanup: Move blend file path utilities out of blenloader module
+Referenced by commit cb20f2cbf993737db5201a3e8cb4c4588ef608e4, Fix build error after previous merge
