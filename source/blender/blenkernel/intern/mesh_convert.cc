@@ -531,7 +531,7 @@ void BKE_mesh_to_curve_nurblist(const Mesh *me, ListBase *nurblist, const int ed
 
           if (edge->v1 == endVert) {
             endVert = edge->v2;
-            appendPolyLineVert(&polyline, edge->v2);
+            appendPolyLineVert(&polyline, endVert);
             totpoly++;
             BLI_freelinkN(&edges, edl);
             totedges--;
