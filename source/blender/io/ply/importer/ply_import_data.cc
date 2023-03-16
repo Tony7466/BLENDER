@@ -110,7 +110,7 @@ void PlyElement::calc_stride()
 }
 
 static const float data_type_normalizer[] = {
-    1.0f, 127.0f, 255.0f, 32767.0f, 65535.0f, INT_MAX, UINT_MAX, 1.0f, 1.0f};
+    1.0f, 127.0f, 255.0f, 32767.0f, 65535.0f, float(INT_MAX), float(UINT_MAX), 1.0f, 1.0f};
 static_assert(std::size(data_type_normalizer) == PLY_TYPE_COUNT,
               "PLY data type normalization factor table mismatch");
 
@@ -265,6 +265,17 @@ static void load_vertex_element(PlyReadBuffer &file,
     throw std::runtime_error("Vertex positions are not present in the file");
   }
 
+  data->vertices.reserve(element.count);
+  if (has_color) {
+    data->vertex_colors.reserve(element.count);
+  }
+  if (has_normal) {
+    data->vertex_normals.reserve(element.count);
+  }
+  if (has_uv) {
+    data->uv_coordinates.reserve(element.count);
+  }
+
   float4 color_norm = {1, 1, 1, 1};
   if (has_color) {
     color_norm.x = data_type_normalizer[element.properties[color_index.x].type];
@@ -281,7 +292,7 @@ static void load_vertex_element(PlyReadBuffer &file,
     scratch.resize(element.stride);
   }
 
-  for (int i = 0; i < header.vertex_count; i++) {
+  for (int i = 0; i < element.count; i++) {
 
     if (header.type == PlyFormatType::ASCII) {
       parse_row_ascii(file, value_vec);
@@ -381,8 +392,11 @@ static void load_face_element(PlyReadBuffer &file,
     throw std::runtime_error("Face element vertex indices property must be a list");
   }
 
+  data->face_vertices.reserve(element.count * 3);
+  data->face_sizes.reserve(element.count);
+
   if (header.type == PlyFormatType::ASCII) {
-    for (int i = 0; i < header.face_count; i++) {
+    for (int i = 0; i < element.count; i++) {
       /* Read line */
       Span<char> line = file.read_line();
 
@@ -408,23 +422,18 @@ static void load_face_element(PlyReadBuffer &file,
       /* Parse vertex indices list. */
       p = parse_int(p, end, 0, count);
 
-      Array<uint> vertex_indices(count);
       for (int j = 0; j < count; j++) {
         int index;
         p = parse_int(p, end, 0, index);
-        /* If the face has a vertex index that is outside the range. */
-        if (index >= header.vertex_count) {
-          throw std::runtime_error("Vertex index out of bounds");
-        }
-        vertex_indices[j] = index;
+        data->face_vertices.append(index);
       }
-      data->faces.append(vertex_indices);
+      data->face_sizes.append(count);
     }
   }
   else {
     Vector<uint8_t> scratch(64);
 
-    for (int i = 0; i < header.face_count; i++) {
+    for (int i = 0; i < element.count; i++) {
       const uint8_t *ptr;
 
       /* Skip any properties before vertex indices. */
@@ -439,7 +448,6 @@ static void load_face_element(PlyReadBuffer &file,
 
       //@TODO: check invalid face size values?
 
-      Array<uint> face(count);
       scratch.resize(count * data_type_size[prop.type]);
       file.read_bytes(scratch.data(), scratch.size());
       ptr = scratch.data();
@@ -447,12 +455,9 @@ static void load_face_element(PlyReadBuffer &file,
         endian_switch_array((uint8_t *)ptr, data_type_size[prop.type], count);
       for (int j = 0; j < count; ++j) {
         uint32_t index = get_binary_value<uint32_t>(prop.type, ptr);
-        if (index >= header.vertex_count) {
-          throw std::runtime_error("Vertex index out of bounds");
-        }
-        face[j] = index;
+        data->face_vertices.append(index);
       }
-      data->faces.append(face);
+      data->face_sizes.append(count);
 
       /* Skip any properties after vertex indices. */
       for (int j = prop_index + 1; j < element.properties.size(); j++) {
@@ -468,7 +473,7 @@ static void load_tristrips_element(PlyReadBuffer &file,
                                    const PlyElement &element,
                                    PlyData *data)
 {
-  if (header.face_count != 1) {
+  if (element.count != 1) {
     throw std::runtime_error("Tristrips element should contain one row");
   }
   if (element.properties.size() != 1) {
@@ -493,9 +498,6 @@ static void load_tristrips_element(PlyReadBuffer &file,
     for (int j = 0; j < count; j++) {
       int index;
       p = parse_int(p, end, 0, index);
-      if (index >= header.vertex_count) {
-        throw std::runtime_error("Tristrip vertex index out of bounds");
-      }
       strip[j] = index;
     }
   }
@@ -514,15 +516,11 @@ static void load_tristrips_element(PlyReadBuffer &file,
       endian_switch_array((uint8_t *)ptr, data_type_size[prop.type], count);
     for (int j = 0; j < count; ++j) {
       int index = get_binary_value<int>(prop.type, ptr);
-      if (index >= header.vertex_count) {
-        throw std::runtime_error("Tristrip vertex index out of bounds");
-      }
       strip[j] = index;
     }
   }
 
   /* Decode triangle strip (with possible -1 restart indices) into faces. */
-  Array<uint> triangle(3);
   size_t start = 0;
 
   for (size_t i = 0; i < strip.size(); i++) {
@@ -538,10 +536,10 @@ static void load_tristrips_element(PlyReadBuffer &file,
       }
       /* Add triangle if it's not degenerate. */
       if (a != b && a != c && b != c) {
-        triangle[0] = a;
-        triangle[1] = b;
-        triangle[2] = c;
-        data->faces.append(triangle);
+        data->face_vertices.append(a);
+        data->face_vertices.append(b);
+        data->face_vertices.append(c);
+        data->face_sizes.append(3);
       }
     }
   }
@@ -558,13 +556,15 @@ static void load_edge_element(PlyReadBuffer &file,
     throw std::runtime_error("Edge element does not contain vertex1 and vertex2 properties");
   }
 
+  data->edges.reserve(element.count);
+
   Vector<float> value_vec(element.properties.size());
   Vector<uint8_t> scratch;
   if (header.type != PlyFormatType::ASCII) {
     scratch.resize(element.stride);
   }
 
-  for (int i = 0; i < header.edge_count; i++) {
+  for (int i = 0; i < element.count; i++) {
     if (header.type == PlyFormatType::ASCII) {
       parse_row_ascii(file, value_vec);
     }
@@ -573,7 +573,6 @@ static void load_edge_element(PlyReadBuffer &file,
     }
     int index1 = value_vec[prop_vertex1];
     int index2 = value_vec[prop_vertex2];
-    //@TODO: bounds check
     data->edges.append(std::make_pair(index1, index2));
   }
 }
@@ -590,10 +589,7 @@ std::unique_ptr<PlyData> import_ply_data(PlyReadBuffer &file, PlyHeader &header)
       load_face_element(file, header, element, data.get());
     }
     else if (element.name == "tristrips") {
-      int64_t prev_face_count = data->faces.size();
       load_tristrips_element(file, header, element, data.get());
-      header.face_count -= 1;
-      header.face_count += data->faces.size() - prev_face_count;
     }
     else if (element.name == "edge") {
       load_edge_element(file, header, element, data.get());

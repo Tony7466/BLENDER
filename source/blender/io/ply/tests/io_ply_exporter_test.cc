@@ -68,8 +68,9 @@ static std::unique_ptr<PlyData> load_cube(PLYExportParams &params)
       {-1.122082, -1.122082, -1.122082},
   };
 
-  plyData->faces = {
-      {0, 2, 6, 4}, {3, 7, 6, 2}, {7, 5, 4, 6}, {5, 7, 3, 1}, {1, 3, 2, 0}, {5, 1, 0, 4}};
+  plyData->face_sizes = {4, 4, 4, 4, 4, 4};
+  plyData->face_vertices = {0, 2, 6, 4, 3, 7, 6, 2, 7, 5, 4, 6,
+                            5, 7, 3, 1, 1, 3, 2, 0, 5, 1, 0, 4};
 
   if (params.export_normals)
     plyData->vertex_normals = {

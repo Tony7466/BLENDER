@@ -45,25 +45,21 @@ class ply_import_test : public testing::Test {
     }
 
     /* Test expected amount of vertices, edges, and faces. */
-    ASSERT_EQ(header.vertex_count, exp.totvert);
     ASSERT_EQ(data->vertices.size(), exp.totvert);
-    ASSERT_EQ(header.edge_count, exp.totedge);
     ASSERT_EQ(data->edges.size(), exp.totedge);
-    ASSERT_EQ(header.face_count, exp.totpoly);
-    ASSERT_EQ(data->faces.size(), exp.totpoly);
+    ASSERT_EQ(data->face_sizes.size(), exp.totpoly);
+    ASSERT_EQ(data->face_vertices.size(), exp.totindex);
 
     /* Test hash of face and edge index data. */
     BLI_HashMurmur2A hash;
     BLI_hash_mm2a_init(&hash, 0);
-    int indexCount = 0;
-    for (const auto &f : data->faces) {
-      indexCount += f.size();
-      BLI_hash_mm2a_add(&hash, (const unsigned char *)f.data(), f.size() * sizeof(f[0]));
+    uint32_t offset = 0;
+    for (uint32_t face_size : data->face_sizes) {
+      BLI_hash_mm2a_add(&hash, (const unsigned char *)&data->face_vertices[offset], face_size * 4);
+      offset += face_size;
     }
-    ASSERT_EQ(indexCount, exp.totindex);
     uint16_t face_hash = BLI_hash_mm2a_end(&hash);
-
-    if (!data->faces.is_empty()) {
+    if (!data->face_vertices.is_empty()) {
       ASSERT_EQ(face_hash, exp.polyhash);
     }
 
@@ -275,13 +271,10 @@ TEST_F(ply_import_test, PlyImportVertexCompOrder)
 }
 
 //@TODO: test with vertex element having list properties
-//@TODO: test with face element having vertex_indices list as non-first property
-//@TODO: test big endian binaries
 //@TODO: test with edges starting with non-vertex index properties
 //@TODO: test various malformed headers
-//@TODO: line endings
 //@TODO: UVs with: s,t; u,v; texture_u,texture_v; texture_s,texture_t (from miniply)
 //@TODO: colors with: r,g,b in addition to red,green,blue (from miniply)
-//@TODO: vertex_index in addition to vertex_indices (from miniply)
+//@TODO: importing bunny2 with old importer results in smooth shading; flat shading with new one
 
 }  // namespace blender::io::ply

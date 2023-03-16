@@ -91,14 +91,14 @@ static PlyDataTypes type_from_string(Span<char> word)
 
 const char *read_header(PlyReadBuffer &file, PlyHeader &r_header)
 {
-  Span<char> word;
+  Span<char> word, line;
+  line = file.read_line();
+  if (StringRef(line.data(), line.size()) != "ply") {
+    return "Invalid PLY header.";
+  }
 
   while (true) { /* We break when end_header is encountered. */
-    Span<char> line = file.read_line();
-    if (r_header.header_size == 0 && StringRef(line.data(), line.size()) != "ply") {
-      return "Invalid PLY header.";
-    }
-    r_header.header_size++;
+    line = file.read_line();
 
     if (parse_keyword(line, "format")) {
       skip_space(line);
@@ -122,20 +122,6 @@ const char *read_header(PlyReadBuffer &file, PlyHeader &r_header)
       word = parse_word(line);
       element.count = std::stoi(std::string(word.data(), word.size()));
       r_header.elements.append(element);
-
-      if (element.name == "vertex") {
-        r_header.vertex_count = element.count;
-      }
-      else if (element.name == "face") {
-        r_header.face_count = element.count;
-      }
-      else if (element.name == "tristrips") {
-        /* Will get changed later after strip decoding. */
-        r_header.face_count = element.count;
-      }
-      else if (element.name == "edge") {
-        r_header.edge_count = element.count;
-      }
     }
     else if (parse_keyword(line, "property")) {
       PlyProperty property;

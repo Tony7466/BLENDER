@@ -39,30 +39,24 @@ Mesh *convert_ply_to_mesh(PlyData &data, Mesh *mesh, const PLYImportParams &para
   }
 
   /* Add faces to the mesh. */
-  if (!data.faces.is_empty()) {
-    /* Specify amount of total faces. */
-    mesh->totpoly = int(data.faces.size());
-    mesh->totloop = 0;
-    for (int i = 0; i < data.faces.size(); i++) {
-      /* Add number of loops from the vertex indices in the face. */
-      mesh->totloop += data.faces[i].size();
-    }
+  if (!data.face_sizes.is_empty()) {
+    /* Create poly and loop layers. */
+    mesh->totpoly = int(data.face_sizes.size());
+    mesh->totloop = int(data.face_vertices.size());
     CustomData_add_layer(&mesh->pdata, CD_MPOLY, CD_SET_DEFAULT, mesh->totpoly);
     CustomData_add_layer(&mesh->ldata, CD_MLOOP, CD_SET_DEFAULT, mesh->totloop);
     MutableSpan<MPoly> polys = mesh->polys_for_write();
     MutableSpan<MLoop> loops = mesh->loops_for_write();
 
-    int offset = 0;
-    /* Iterate over amount of faces. */
+    /* Fill in face data. */
+    //@TODO: validation of the indices
+    uint32_t offset = 0;
     for (int i = 0; i < mesh->totpoly; i++) {
-      int size = int(data.faces[i].size());
-      /* Set the index from where this face starts and specify the amount of edges it has. */
+      uint32_t size = data.face_sizes[i];
       polys[i].loopstart = offset;
       polys[i].totloop = size;
-
       for (int j = 0; j < size; j++) {
-        /* Set the vertex index of the loop to the one in PlyData. */
-        loops[offset + j].v = data.faces[i][j];
+        loops[offset + j].v = data.face_vertices[offset + j];
       }
       offset += size;
     }
@@ -93,12 +87,8 @@ Mesh *convert_ply_to_mesh(PlyData &data, Mesh *mesh, const PLYImportParams &para
   if (!data.uv_coordinates.is_empty()) {
     bke::SpanAttributeWriter<float2> uv_map = attributes.lookup_or_add_for_write_only_span<float2>(
         "UVMap", ATTR_DOMAIN_CORNER);
-    int counter = 0;
-    for (int i = 0; i < data.faces.size(); i++) {
-      for (int j = 0; j < data.faces[i].size(); j++) {
-        uv_map.span[counter] = data.uv_coordinates[data.faces[i][j]];
-        counter++;
-      }
+    for (size_t i = 0; i < data.face_vertices.size(); i++) {
+      uv_map.span[i] = data.uv_coordinates[data.face_vertices[i]];
     }
     uv_map.finish();
   }

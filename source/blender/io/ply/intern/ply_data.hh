@@ -17,11 +17,10 @@ enum PlyDataTypes { NONE, CHAR, UCHAR, SHORT, USHORT, INT, UINT, FLOAT, DOUBLE, 
 struct PlyData {
   Vector<float3> vertices;
   Vector<float3> vertex_normals;
-  /* Value between 0 and 1. */
-  Vector<float4> vertex_colors;
+  Vector<float4> vertex_colors; /* Linear space, 0..1 range colors. */
   Vector<std::pair<int, int>> edges;
-  Vector<float3> edge_colors;
-  Vector<Array<uint32_t>> faces;
+  Vector<uint32_t> face_vertices;
+  Vector<uint32_t> face_sizes;
   Vector<float2> uv_coordinates;
 };
 
@@ -43,13 +42,7 @@ struct PlyElement {
 };
 
 struct PlyHeader {
-  int vertex_count = 0;
-  int edge_count = 0;
-  int face_count = 0;
-  int header_size = 0;
-
   Vector<PlyElement> elements;
-
   PlyFormatType type;
 };
 
