@@ -34,26 +34,34 @@ static ConversionType type_of_conversion_float(eGPUTextureFormat device_format)
     case GPU_R8_SNORM:
       return ConversionType::FLOAT_TO_SNORM8;
 
+    case GPU_RGBA16:
+    case GPU_RG16:
+    case GPU_R16:
+      return ConversionType::FLOAT_TO_UNORM16;
+
+    case GPU_RGBA16_SNORM:
+    case GPU_RGB16_SNORM:
+    case GPU_RG16_SNORM:
+    case GPU_R16_SNORM:
+      return ConversionType::FLOAT_TO_SNORM16;
+
     case GPU_RGB32F: /* GPU_RGB32F Not supported by vendors. */
     case GPU_RGBA8UI:
     case GPU_RGBA8I:
     case GPU_RGBA16UI:
     case GPU_RGBA16I:
-    case GPU_RGBA16:
     case GPU_RGBA32UI:
     case GPU_RGBA32I:
     case GPU_RG8UI:
     case GPU_RG8I:
     case GPU_RG16UI:
     case GPU_RG16I:
-    case GPU_RG16:
     case GPU_RG32UI:
     case GPU_RG32I:
     case GPU_R8UI:
     case GPU_R8I:
     case GPU_R16UI:
     case GPU_R16I:
-    case GPU_R16:
     case GPU_R32UI:
     case GPU_R32I:
     case GPU_RGB10_A2:
@@ -62,18 +70,14 @@ static ConversionType type_of_conversion_float(eGPUTextureFormat device_format)
     case GPU_DEPTH32F_STENCIL8:
     case GPU_DEPTH24_STENCIL8:
     case GPU_SRGB8_A8:
-    case GPU_RGBA16_SNORM:
     case GPU_RGB8UI:
     case GPU_RGB8I:
     case GPU_RGB8:
     case GPU_RGB16UI:
     case GPU_RGB16I:
     case GPU_RGB16:
-    case GPU_RGB16_SNORM:
     case GPU_RGB32UI:
     case GPU_RGB32I:
-    case GPU_RG16_SNORM:
-    case GPU_R16_SNORM:
     case GPU_SRGB8_A8_DXT1:
     case GPU_SRGB8_A8_DXT3:
     case GPU_SRGB8_A8_DXT5:
@@ -437,6 +441,8 @@ static ConversionType invert(ConversionType type)
 
       CASE_PAIR(FLOAT, UNORM8)
       CASE_PAIR(FLOAT, SNORM8)
+      CASE_PAIR(FLOAT, UNORM16)
+      CASE_PAIR(FLOAT, SNORM16)
       CASE_PAIR(UI32, UI16)
       CASE_PAIR(I32, I16)
       CASE_PAIR(UI32, UI8)
@@ -484,27 +490,38 @@ void copy_unchecked(void *dst_memory,
 }
 
 /* Float <=> unsigned normalized */
-static uint8_t clamp_unorm(int32_t unclamped)
+template<typename Type> constexpr int32_t unorm_scalar()
 {
-  if (unclamped < 0.0f) {
-    return 0;
-  }
-  if (unclamped > 255.0f) {
-    return 255;
-  }
-  return uint8_t(unclamped);
+  return ((1 << (sizeof(Type) * 8)) - 1);
+}
+template<typename Type> constexpr int32_t snorm_scalar()
+{
+  return (1 << (sizeof(Type) * 8 - 1));
+}
+template<typename Type> constexpr int32_t snorm_max()
+{
+  return ((1 << (sizeof(Type) * 8)) - 1);
+}
+template<typename Type> constexpr int32_t snorm_delta()
+{
+  return (1 << (sizeof(Type) * 8 - 1)) - 1;
 }
 
 template<typename DestinationType, typename SourceType>
 static DestinationType to_unorm(SourceType value)
 {
-  return (clamp_unorm((value * 255.0f)));
+  static constexpr int32_t Multiplier = unorm_scalar<DestinationType>();
+  static constexpr int32_t Max = Multiplier;
+
+  int32_t before_clamping = value * Multiplier;
+  return clamp_i(before_clamping, 0, Max);
 }
 
 template<typename DestinationType, typename SourceType>
 static DestinationType from_unorm(SourceType value)
 {
-  return DestinationType(value / 255.0f);
+  static constexpr int32_t Multiplier = unorm_scalar<SourceType>();
+  return DestinationType(value) / Multiplier;
 }
 
 template<typename DestinationType, typename SourceType>
@@ -554,27 +571,23 @@ void unorm_to_float(void *dst_memory,
 }
 
 /* Float <=> signed normalized */
-static int8_t clamp_snorm(int32_t unclamped)
-{
-  if (unclamped < -127) {
-    return 0;
-  }
-  if (unclamped > 128) {
-    return 128;
-  }
-  return int8_t(unclamped);
-}
 
+/* TODO: SNORM needs to be shifted...*/
 template<typename DestinationType, typename SourceType>
 static DestinationType to_snorm(SourceType value)
 {
-  return (clamp_snorm((value * 128.0f)));
+  static constexpr int32_t Multiplier = snorm_scalar<DestinationType>();
+  static constexpr int32_t Max = snorm_max<DestinationType>();
+  static constexpr int32_t Delta = snorm_delta<DestinationType>();
+  return (clamp_i((value * Multiplier + Delta), 0, Max));
 }
 
 template<typename DestinationType, typename SourceType>
 static DestinationType from_snorm(SourceType value)
 {
-  return DestinationType(value / 128.0f);
+  static constexpr int32_t Multiplier = snorm_scalar<SourceType>();
+  static constexpr int32_t Delta = snorm_delta<SourceType>();
+  return DestinationType(int32_t(value) - Delta) / Multiplier;
 }
 
 template<typename DestinationType, typename SourceType>
@@ -582,7 +595,9 @@ void float_to_snorm(MutableSpan<DestinationType> dst, Span<SourceType> src)
 {
   BLI_assert(src.size() == dst.size());
   for (int64_t index : IndexRange(src.size())) {
-    dst[index] = to_snorm<DestinationType, SourceType>(src[index]);
+    const SourceType src_value = src[index];
+    const DestinationType dst_value = to_snorm<DestinationType, SourceType>(src_value);
+    dst[index] = dst_value;
   }
 }
 
@@ -605,7 +620,9 @@ void snorm_to_float(MutableSpan<DestinationType> dst, Span<SourceType> src)
 {
   BLI_assert(src.size() == dst.size());
   for (int64_t index : IndexRange(src.size())) {
-    dst[index] = from_snorm<DestinationType, SourceType>(src[index]);
+    const SourceType src_value = src[index];
+    const DestinationType dst_value = from_snorm<DestinationType, SourceType>(src_value);
+    dst[index] = dst_value;
   }
 }
 
@@ -677,10 +694,24 @@ void convert(ConversionType type,
       break;
 
     case ConversionType::FLOAT_TO_SNORM8:
-      float_to_snorm<int8_t, float>(dst_memory, src_memory, device_format, sample_len);
+      float_to_snorm<uint8_t, float>(dst_memory, src_memory, device_format, sample_len);
       break;
     case ConversionType::SNORM8_TO_FLOAT:
-      snorm_to_float<float, int8_t>(dst_memory, src_memory, device_format, sample_len);
+      snorm_to_float<float, uint8_t>(dst_memory, src_memory, device_format, sample_len);
+      break;
+
+    case ConversionType::FLOAT_TO_UNORM16:
+      float_to_unorm<uint16_t, float>(dst_memory, src_memory, device_format, sample_len);
+      break;
+    case ConversionType::UNORM16_TO_FLOAT:
+      unorm_to_float<float, uint16_t>(dst_memory, src_memory, device_format, sample_len);
+      break;
+
+    case ConversionType::FLOAT_TO_SNORM16:
+      float_to_snorm<uint16_t, float>(dst_memory, src_memory, device_format, sample_len);
+      break;
+    case ConversionType::SNORM16_TO_FLOAT:
+      snorm_to_float<float, uint16_t>(dst_memory, src_memory, device_format, sample_len);
       break;
 
     case ConversionType::FLOAT_TO_HALF:

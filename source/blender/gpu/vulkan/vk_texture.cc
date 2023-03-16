@@ -203,6 +203,8 @@ bool VKTexture::init_internal()
   /* Initialization can only happen after the usage is known. By the current API this isn't set
    * at this moment, so we cannot initialize here. The initialization is postponed until the
    * allocation of the texture on the device. */
+
+  /* TODO: return false when texture format isn't supported. */
   return true;
 }
 
