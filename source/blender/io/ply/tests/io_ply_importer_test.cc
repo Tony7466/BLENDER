@@ -168,14 +168,19 @@ TEST_F(ply_import_test, PlyImportDoubleXYZ)
   import_and_check("double_xyz_b.ply", expect);
 }
 
-/*
 TEST_F(ply_import_test, PlyImportFaceIndicesNotFirstProp)
 {
-  Expectation expect = {4, 1, 4, 0, 37235, 0, float3(1, 0, 1), float3(-1, 0, 1)};
+  Expectation expect = {4, 2, 6, 0, 4136, 0, float3(1, 0, 1), float3(-1, 0, 1)};
   import_and_check("face_indices_not_first_prop_a.ply", expect);
   import_and_check("face_indices_not_first_prop_b.ply", expect);
 }
- */
+
+TEST_F(ply_import_test, PlyImportFaceIndicesPrecededByList)
+{
+  Expectation expect = {4, 2, 6, 0, 4136, 0, float3(1, 0, 1), float3(-1, 0, 1)};
+  import_and_check("face_indices_preceded_by_list_a.ply", expect);
+  import_and_check("face_indices_preceded_by_list_b.ply", expect);
+}
 
 TEST_F(ply_import_test, PlyImportFaceUVsColors)
 {
@@ -273,5 +278,8 @@ TEST_F(ply_import_test, PlyImportVertexCompOrder)
 //@TODO: test with edges starting with non-vertex index properties
 //@TODO: test various malformed headers
 //@TODO: line endings
+//@TODO: UVs with: s,t; u,v; texture_u,texture_v; texture_s,texture_t (from miniply)
+//@TODO: colors with: r,g,b in addition to red,green,blue (from miniply)
+//@TODO: vertex_index in addition to vertex_indices (from miniply)
 
 }  // namespace blender::io::ply

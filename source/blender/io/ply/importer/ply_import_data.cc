@@ -28,6 +28,14 @@ static const char *drop_whitespace(const char *p, const char *end)
   return p;
 }
 
+const char *drop_non_whitespace(const char *p, const char *end)
+{
+  while (p < end && !is_whitespace(*p)) {
+    ++p;
+  }
+  return p;
+}
+
 static const char *drop_plus(const char *p, const char *end)
 {
   if (p < end && *p == '+') {
@@ -36,10 +44,7 @@ static const char *drop_plus(const char *p, const char *end)
   return p;
 }
 
-static const char *parse_float(const char *p,
-                               const char *end,
-                               float fallback,
-                               float &dst)
+static const char *parse_float(const char *p, const char *end, float fallback, float &dst)
 {
   p = drop_whitespace(p, end);
   p = drop_plus(p, end);
@@ -50,8 +55,7 @@ static const char *parse_float(const char *p,
   return res.ptr;
 }
 
-static const char *parse_int(
-    const char *p, const char *end, int fallback, int &dst)
+static const char *parse_int(const char *p, const char *end, int fallback, int &dst)
 {
   p = drop_whitespace(p, end);
   p = drop_plus(p, end);
@@ -65,26 +69,26 @@ static const char *parse_int(
 static void endian_switch(uint8_t *ptr, int type_size)
 {
   if (type_size == 2) {
-    BLI_endian_switch_uint16((uint16_t*)ptr);
+    BLI_endian_switch_uint16((uint16_t *)ptr);
   }
   else if (type_size == 4) {
-    BLI_endian_switch_uint32((uint32_t*)ptr);
+    BLI_endian_switch_uint32((uint32_t *)ptr);
   }
   else if (type_size == 8) {
-    BLI_endian_switch_uint64((uint64_t*)ptr);
+    BLI_endian_switch_uint64((uint64_t *)ptr);
   }
 }
 
 static void endian_switch_array(uint8_t *ptr, int type_size, int size)
 {
   if (type_size == 2) {
-    BLI_endian_switch_uint16_array((uint16_t*)ptr, size);
+    BLI_endian_switch_uint16_array((uint16_t *)ptr, size);
   }
   else if (type_size == 4) {
-    BLI_endian_switch_uint32_array((uint32_t*)ptr, size);
+    BLI_endian_switch_uint32_array((uint32_t *)ptr, size);
   }
   else if (type_size == 8) {
-    BLI_endian_switch_uint64_array((uint64_t*)ptr, size);
+    BLI_endian_switch_uint64_array((uint64_t *)ptr, size);
   }
 }
 
@@ -104,7 +108,6 @@ void PlyElement::calc_stride()
     stride += data_type_size[p.type];
   }
 }
-
 
 static const float data_type_normalizer[] = {
     1.0f, 127.0f, 255.0f, 32767.0f, 65535.0f, INT_MAX, UINT_MAX, 1.0f, 1.0f};
@@ -171,21 +174,46 @@ static void check_file_errors(const fstream &file)
   }
 }
 
-template<typename T>
-static T get_binary_value(PlyDataTypes type, const uint8_t*& r_ptr)
+template<typename T> static T get_binary_value(PlyDataTypes type, const uint8_t *&r_ptr)
 {
   T val = 0;
   switch (type) {
-    case NONE: break;
-    case CHAR: val = *(int8_t*)r_ptr; r_ptr += 1; break;
-    case UCHAR: val = *(uint8_t*)r_ptr; r_ptr += 1; break;
-    case SHORT: val = *(int16_t*)r_ptr; r_ptr += 2; break;
-    case USHORT: val = *(uint16_t*)r_ptr; r_ptr += 2; break;
-    case INT: val = *(int32_t*)r_ptr; r_ptr += 4; break;
-    case UINT: val = *(int32_t*)r_ptr; r_ptr += 4; break;
-    case FLOAT: val = *(float*)r_ptr; r_ptr += 4; break;
-    case DOUBLE: val = *(double*)r_ptr; r_ptr += 8; break;
-    default: throw std::runtime_error("Unknown property type");
+    case NONE:
+      break;
+    case CHAR:
+      val = *(int8_t *)r_ptr;
+      r_ptr += 1;
+      break;
+    case UCHAR:
+      val = *(uint8_t *)r_ptr;
+      r_ptr += 1;
+      break;
+    case SHORT:
+      val = *(int16_t *)r_ptr;
+      r_ptr += 2;
+      break;
+    case USHORT:
+      val = *(uint16_t *)r_ptr;
+      r_ptr += 2;
+      break;
+    case INT:
+      val = *(int32_t *)r_ptr;
+      r_ptr += 4;
+      break;
+    case UINT:
+      val = *(int32_t *)r_ptr;
+      r_ptr += 4;
+      break;
+    case FLOAT:
+      val = *(float *)r_ptr;
+      r_ptr += 4;
+      break;
+    case DOUBLE:
+      val = *(double *)r_ptr;
+      r_ptr += 8;
+      break;
+    default:
+      throw std::runtime_error("Unknown property type");
   }
   return val;
 }
@@ -197,18 +225,19 @@ static void parse_row_binary(fstream &file,
                              Vector<float> &r_values)
 {
   if (element.stride == 0) {
-    throw std::runtime_error("Vertex/Edge element contains list properties, this is not supported");
+    throw std::runtime_error(
+        "Vertex/Edge element contains list properties, this is not supported");
   }
   BLI_assert(r_scratch.size() == element.stride);
   BLI_assert(r_values.size() == element.properties.size());
-  file.read((char*)r_scratch.data(), r_scratch.size());
+  file.read((char *)r_scratch.data(), r_scratch.size());
   check_file_errors(file);
-  
-  const uint8_t* ptr = r_scratch.data();
+
+  const uint8_t *ptr = r_scratch.data();
   if (header.type == PlyFormatType::BINARY_LE) {
     /* Little endian: just read/convert the values. */
     for (int i = 0, n = int(element.properties.size()); i != n; i++) {
-      const PlyProperty& prop = element.properties[i];
+      const PlyProperty &prop = element.properties[i];
       float val = get_binary_value<float>(prop.type, ptr);
       r_values[i] = val;
     }
@@ -216,8 +245,8 @@ static void parse_row_binary(fstream &file,
   else if (header.type == PlyFormatType::BINARY_BE) {
     /* Big endian: read, switch endian, convert the values. */
     for (int i = 0, n = int(element.properties.size()); i != n; i++) {
-      const PlyProperty& prop = element.properties[i];
-      endian_switch((uint8_t*)ptr, data_type_size[prop.type]);
+      const PlyProperty &prop = element.properties[i];
+      endian_switch((uint8_t *)ptr, data_type_size[prop.type]);
       float val = get_binary_value<float>(prop.type, ptr);
       r_values[i] = val;
     }
@@ -263,10 +292,10 @@ static void load_vertex_element(fstream &file,
   Vector<uint8_t> scratch;
   if (header.type != PlyFormatType::ASCII) {
     scratch.resize(element.stride);
-  }  
+  }
 
   for (int i = 0; i < header.vertex_count; i++) {
-    
+
     if (header.type == PlyFormatType::ASCII) {
       parse_row_ascii(file, value_vec);
     }
@@ -315,12 +344,45 @@ static void load_vertex_element(fstream &file,
   }
 }
 
+static uint32_t read_list_count(fstream &file,
+                                const PlyProperty &prop,
+                                Vector<uint8_t> &scratch,
+                                bool big_endian)
+{
+  scratch.resize(8);
+  file.read((char *)scratch.data(), data_type_size[prop.count_type]);
+  const uint8_t *ptr = scratch.data();
+  if (big_endian)
+    endian_switch((uint8_t *)ptr, data_type_size[prop.count_type]);
+  uint32_t count = get_binary_value<uint32_t>(prop.count_type, ptr);
+  return count;
+}
+
+static void skip_property(fstream &file,
+                          const PlyProperty &prop,
+                          Vector<uint8_t> &scratch,
+                          bool big_endian)
+{
+  if (prop.count_type == PlyDataTypes::NONE) {
+    scratch.resize(8);
+    file.read((char *)scratch.data(), data_type_size[prop.type]);
+  }
+  else {
+    uint32_t count = read_list_count(file, prop, scratch, big_endian);
+    scratch.resize(count * data_type_size[prop.type]);
+    file.read((char *)scratch.data(), scratch.size());
+  }
+}
+
 static void load_face_element(fstream &file,
                               const PlyHeader &header,
                               const PlyElement &element,
                               PlyData *data)
 {
   int prop_index = get_index(element, "vertex_indices");
+  if (prop_index < 0) {
+    prop_index = get_index(element, "vertex_index");
+  }
   if (prop_index < 0 && element.properties.size() == 1) {
     prop_index = 0;
   }
@@ -331,15 +393,33 @@ static void load_face_element(fstream &file,
   if (prop.count_type == PlyDataTypes::NONE) {
     throw std::runtime_error("Face element vertex indices property must be a list");
   }
-  
+
   if (header.type == PlyFormatType::ASCII) {
     for (int i = 0; i < header.face_count; i++) {
+      /* Read line */
       std::string line;
       getline(file, line);
 
       const char *p = line.data();
       const char *end = p + line.size();
       int count = 0;
+
+      /* Skip any properties before vertex indices. */
+      for (int j = 0; j < prop_index; j++) {
+        p = drop_whitespace(p, end);
+        if (element.properties[j].count_type == PlyDataTypes::NONE) {
+          p = drop_non_whitespace(p, end);
+        }
+        else {
+          p = parse_int(p, end, 0, count);
+          for (int k = 0; k < count; ++k) {
+            p = drop_whitespace(p, end);
+            p = drop_non_whitespace(p, end);
+          }
+        }
+      }
+
+      /* Parse vertex indices list. */
       p = parse_int(p, end, 0, count);
 
       Array<uint> vertex_indices(count);
@@ -357,26 +437,28 @@ static void load_face_element(fstream &file,
   }
   else {
     Vector<uint8_t> scratch(64);
-    
+
     for (int i = 0; i < header.face_count; i++) {
-      const uint8_t* ptr;
-      /* Read list size. */
-      scratch.resize(8);
-      file.read((char*)scratch.data(), data_type_size[prop.count_type]);
-      ptr = scratch.data();
-      if (header.type == PlyFormatType::BINARY_BE)
-        endian_switch((uint8_t*)ptr, data_type_size[prop.count_type]);
-      uint32_t count = get_binary_value<uint32_t>(prop.count_type, ptr);
-      
+      const uint8_t *ptr;
+
+      /* Skip any properties before vertex indices. */
+      for (int j = 0; j < prop_index; j++) {
+        skip_property(
+            file, element.properties[j], scratch, header.type == PlyFormatType::BINARY_BE);
+      }
+
+      /* Read vertex indices list. */
+      uint32_t count = read_list_count(
+          file, prop, scratch, header.type == PlyFormatType::BINARY_BE);
+
       //@TODO: check invalid face size values?
-      
-      /* Read list values. */
+
       Array<uint> face(count);
       scratch.resize(count * data_type_size[prop.type]);
-      file.read((char*)scratch.data(), scratch.size());
+      file.read((char *)scratch.data(), scratch.size());
       ptr = scratch.data();
       if (header.type == PlyFormatType::BINARY_BE)
-        endian_switch_array((uint8_t*)ptr, data_type_size[prop.type], count);
+        endian_switch_array((uint8_t *)ptr, data_type_size[prop.type], count);
       for (int j = 0; j < count; ++j) {
         uint32_t index = get_binary_value<uint32_t>(prop.type, ptr);
         if (index >= header.vertex_count) {
@@ -385,10 +467,15 @@ static void load_face_element(fstream &file,
         face[j] = index;
       }
       data->faces.append(face);
+
+      /* Skip any properties after vertex indices. */
+      for (int j = prop_index + 1; j < element.properties.size(); j++) {
+        skip_property(
+            file, element.properties[j], scratch, header.type == PlyFormatType::BINARY_BE);
+      }
     }
   }
 }
-
 
 static void load_edge_element(fstream &file,
                               const PlyHeader &header,
@@ -400,13 +487,13 @@ static void load_edge_element(fstream &file,
   if (prop_vertex1 < 0 || prop_vertex2 < 0) {
     throw std::runtime_error("Edge element does not contain vertex1 and vertex2 properties");
   }
-  
+
   Vector<float> value_vec(element.properties.size());
   Vector<uint8_t> scratch;
   if (header.type != PlyFormatType::ASCII) {
     scratch.resize(element.stride);
   }
-  
+
   for (int i = 0; i < header.edge_count; i++) {
     if (header.type == PlyFormatType::ASCII) {
       parse_row_ascii(file, value_vec);
