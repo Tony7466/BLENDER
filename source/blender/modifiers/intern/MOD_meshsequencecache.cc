@@ -192,11 +192,12 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     }
   }
 
+  /* Commented out to show that mesh data matches in Cycles */
   /* Do not process data if using a render procedural, return a box instead for displaying in the
-   * viewport. */
+   * viewport.
   if (BKE_cache_file_uses_render_procedural(cache_file, scene)) {
     return generate_bounding_box_mesh(org_mesh);
-  }
+    } */
 
   /* If this invocation is for the ORCO mesh, and the mesh hasn't changed topology, we
    * must return the mesh as-is instead of deforming it. */
