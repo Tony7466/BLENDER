@@ -75,7 +75,7 @@
 #include "BKE_main.h" /* for Main */
 #include "BKE_main_idmap.h"
 #include "BKE_material.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_modifier.h"
 #include "BKE_node.h" /* for tree type defines */
 #include "BKE_object.h"
@@ -344,11 +344,9 @@ void blo_join_main(ListBase *mainlist)
   }
 
   while ((tojoin = mainl->next)) {
-    if (tojoin->is_read_invalid) {
-      mainl->is_read_invalid = true;
-    }
     add_main_to_main(mainl, tojoin);
     BLI_remlink(mainlist, tojoin);
+    tojoin->next = tojoin->prev = nullptr;
     BKE_main_free(tojoin);
   }
 }
@@ -2965,7 +2963,7 @@ static const char *dataname(short id_code)
       return "Data from PAL";
     case ID_PC:
       return "Data from PCRV";
-    case ID_GD:
+    case ID_GD_LEGACY:
       return "Data from GD";
     case ID_WM:
       return "Data from WM";
@@ -4673,13 +4671,18 @@ static void library_link_end(Main *mainl, FileData **fd, const int flag)
     add_main_to_main(mainvar, main_newid);
 
     if (mainvar->is_read_invalid) {
-      return;
+      break;
     }
   }
 
   blo_join_main((*fd)->mainlist);
   mainvar = static_cast<Main *>((*fd)->mainlist->first);
   MEM_freeN((*fd)->mainlist);
+
+  if (mainvar->is_read_invalid) {
+    BKE_main_free(main_newid);
+    return;
+  }
 
   /* This does not take into account old, deprecated data, so we also have to do it after
    * `do_versions_after_linking()`. */

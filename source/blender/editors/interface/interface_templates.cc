@@ -45,7 +45,7 @@
 #include "BKE_context.h"
 #include "BKE_curveprofile.h"
 #include "BKE_global.h"
-#include "BKE_gpencil_modifier.h"
+#include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_idprop.h"
 #include "BKE_idtype.h"
 #include "BKE_layer.h"
@@ -832,7 +832,7 @@ ID *ui_template_id_liboverride_hierarchy_make(
     case ID_CA:
     case ID_SPK:
     case ID_AR:
-    case ID_GD:
+    case ID_GD_LEGACY:
     case ID_CV:
     case ID_PT:
     case ID_VO:
@@ -1102,7 +1102,7 @@ static const char *template_id_browse_tip(const StructRNA *type)
         return N_("Browse Brush to be linked");
       case ID_PA:
         return N_("Browse Particle Settings to be linked");
-      case ID_GD:
+      case ID_GD_LEGACY:
         return N_("Browse Grease Pencil Data to be linked");
       case ID_MC:
         return N_("Browse Movie Clip to be linked");

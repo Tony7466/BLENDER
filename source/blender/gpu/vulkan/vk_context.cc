@@ -50,7 +50,7 @@ VKContext::VKContext(void *ghost_window, void *ghost_context)
 
   VKBackend::capabilities_init(*this);
 
-  /* For offscreen contexts. Default framebuffer is empty. */
+  /* For off-screen contexts. Default frame-buffer is empty. */
   active_fb = back_left = new VKFrameBuffer("back_left");
 }
 
@@ -125,6 +125,29 @@ void VKContext::debug_group_begin(const char *, int)
 }
 
 void VKContext::debug_group_end()
+{
+}
+
+bool VKContext::debug_capture_begin()
+{
+  return false;
+}
+
+void VKContext::debug_capture_end()
+{
+}
+
+void *VKContext::debug_capture_scope_create(const char * /*name*/)
+{
+  return nullptr;
+}
+
+bool VKContext::debug_capture_scope_begin(void * /*scope*/)
+{
+  return false;
+}
+
+void VKContext::debug_capture_scope_end(void * /*scope*/)
 {
 }
 

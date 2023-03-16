@@ -2433,7 +2433,7 @@ NODE_DEFINE(GlossyBsdfNode)
   static NodeEnum distribution_enum;
   distribution_enum.insert("sharp", CLOSURE_BSDF_REFLECTION_ID);
   distribution_enum.insert("beckmann", CLOSURE_BSDF_MICROFACET_BECKMANN_ID);
-  distribution_enum.insert("GGX", CLOSURE_BSDF_MICROFACET_GGX_ID);
+  distribution_enum.insert("ggx", CLOSURE_BSDF_MICROFACET_GGX_ID);
   distribution_enum.insert("ashikhmin_shirley", CLOSURE_BSDF_ASHIKHMIN_SHIRLEY_ID);
   distribution_enum.insert("Multiscatter GGX", CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
   SOCKET_ENUM(distribution, "Distribution", distribution_enum, CLOSURE_BSDF_MICROFACET_GGX_ID);
@@ -2525,7 +2525,7 @@ NODE_DEFINE(GlassBsdfNode)
   static NodeEnum distribution_enum;
   distribution_enum.insert("sharp", CLOSURE_BSDF_SHARP_GLASS_ID);
   distribution_enum.insert("beckmann", CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID);
-  distribution_enum.insert("GGX", CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID);
+  distribution_enum.insert("ggx", CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID);
   distribution_enum.insert("Multiscatter GGX", CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
   SOCKET_ENUM(
       distribution, "Distribution", distribution_enum, CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID);
@@ -2618,7 +2618,7 @@ NODE_DEFINE(RefractionBsdfNode)
   static NodeEnum distribution_enum;
   distribution_enum.insert("sharp", CLOSURE_BSDF_REFRACTION_ID);
   distribution_enum.insert("beckmann", CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID);
-  distribution_enum.insert("GGX", CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID);
+  distribution_enum.insert("ggx", CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID);
   SOCKET_ENUM(
       distribution, "Distribution", distribution_enum, CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID);
 

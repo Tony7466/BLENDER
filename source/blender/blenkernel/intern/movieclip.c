@@ -25,7 +25,7 @@
 #include "DNA_defaults.h"
 
 #include "DNA_constraint_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_movieclip_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
@@ -329,7 +329,7 @@ static void movieclip_blend_read_data(BlendDataReader *reader, ID *id)
   BLI_listbase_clear(&clip->runtime.gputextures);
 
   /* Needed for proper versioning, will be NULL for all newer files anyway. */
-  BLO_read_data_address(reader, &clip->tracking.stabilization.rot_track);
+  BLO_read_data_address(reader, &clip->tracking.stabilization.rot_track_legacy);
 
   clip->tracking.dopesheet.ok = 0;
   BLI_listbase_clear(&clip->tracking.dopesheet.channels);
