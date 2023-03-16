@@ -172,6 +172,16 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_shadow_tag_usage_opaque";
     case SHADOW_TILEMAP_TAG_USAGE_TRANSPARENT:
       return "eevee_shadow_tag_usage_transparent";
+    case VOLUME_CLEAR:
+      return "eevee_volume_clear";
+    case VOLUME_INTEGRATION:
+      return "eevee_volume_integration";
+    case VOLUME_RESOLVE_NO_ACCUM:
+      return "eevee_volume_resolve_no_accum";
+    case VOLUME_SCATTER:
+      return "eevee_volume_scatter";
+    case VOLUME_SCATTER_WITH_LIGHTS:
+      return "eevee_volume_scatter_with_lights";
     /* To avoid compiler warning about missing case. */
     case MAX_SHADER_TYPE:
       return "";
@@ -474,9 +484,10 @@ GPUMaterial *ShaderModule::material_shader_get(::Material *blender_mat,
       blender_mat, nodetree, shader_uuid, is_volume, deferred_compilation, codegen_callback, this);
 }
 
-GPUMaterial *ShaderModule::world_shader_get(::World *blender_world, struct bNodeTree *nodetree)
+GPUMaterial *ShaderModule::world_shader_get(::World *blender_world,
+                                            struct bNodeTree *nodetree,
+                                            eMaterialPipeline pipeline_type)
 {
-  eMaterialPipeline pipeline_type = MAT_PIPE_DEFERRED; /* Unused. */
   eMaterialGeometry geometry_type = MAT_GEOM_WORLD;
 
   uint64_t shader_uuid = shader_uuid_from_material_type(pipeline_type, geometry_type);

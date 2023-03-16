@@ -80,6 +80,12 @@ enum eShaderType {
   SHADOW_TILEMAP_TAG_USAGE_OPAQUE,
   SHADOW_TILEMAP_TAG_USAGE_TRANSPARENT,
 
+  VOLUME_CLEAR,
+  VOLUME_INTEGRATION,
+  VOLUME_RESOLVE_NO_ACCUM,
+  VOLUME_SCATTER,
+  VOLUME_SCATTER_WITH_LIGHTS,
+
   MAX_SHADER_TYPE,
 };
 
@@ -103,7 +109,9 @@ class ShaderModule {
                                    eMaterialPipeline pipeline_type,
                                    eMaterialGeometry geometry_type,
                                    bool deferred_compilation);
-  GPUMaterial *world_shader_get(::World *blender_world, struct bNodeTree *nodetree);
+  GPUMaterial *world_shader_get(::World *blender_world,
+                                struct bNodeTree *nodetree,
+                                eMaterialPipeline pipeline_type);
   GPUMaterial *material_shader_get(const char *name,
                                    ListBase &materials,
                                    struct bNodeTree *nodetree,

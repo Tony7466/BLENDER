@@ -12,12 +12,6 @@
 
 namespace blender::draw {
 
-struct VolumeAttribute {
-  StringRefNull input_name;
-  StringRefNull name;
-  eGPUDefaultValue default_value;
-};
-
-bool volume_sub_pass(PassMain::Sub &ps, Scene *scene, Object *ob, Span<VolumeAttribute> attrs);
+bool volume_sub_pass(PassMain::Sub &ps, Scene *scene, Object *ob, GPUMaterial *gpu_material);
 
 }  // namespace blender::draw

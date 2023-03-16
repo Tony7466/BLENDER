@@ -134,6 +134,11 @@ class Sampling {
     return sample_count_;
   }
 
+  uint64_t current_sample() const
+  {
+    return sample_;
+  }
+
   /* Return true if we are starting a new motion blur step. We need to run sync again since
    * depsgraph was updated by MotionBlur::step(). */
   bool do_render_sync() const

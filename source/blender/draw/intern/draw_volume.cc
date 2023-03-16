@@ -281,16 +281,19 @@ DRWShadingGroup *DRW_shgroup_volume_create_sub(Scene *scene,
 
 namespace blender::draw {
 
-static bool volume_world_grids_init(PassMain::Sub &ps, Span<VolumeAttribute> attrs)
+static bool volume_world_grids_init(PassMain::Sub &ps,
+                                    ListBaseWrapper<GPUMaterialAttribute> &attrs)
 {
-  for (const VolumeAttribute &attr : attrs) {
-    ps.bind_texture(attr.input_name.c_str(), grid_default_texture(attr.default_value));
+  for (const GPUMaterialAttribute *attr : attrs) {
+    ps.bind_texture(attr->input_name, grid_default_texture(attr->default_value));
   }
 
   return true;
 }
 
-static bool volume_object_grids_init(PassMain::Sub &ps, Object *ob, Span<VolumeAttribute> attrs)
+static bool volume_object_grids_init(PassMain::Sub &ps,
+                                     Object *ob,
+                                     ListBaseWrapper<GPUMaterialAttribute> &attrs)
 {
   VolumeUniformBufPool *pool = (VolumeUniformBufPool *)DST.vmempool->volume_grids_ubos;
   VolumeInfosBuf &volume_infos = *pool->alloc();
@@ -304,8 +307,8 @@ static bool volume_object_grids_init(PassMain::Sub &ps, Object *ob, Span<VolumeA
   volume_infos.temperature_bias = 0.0f;
 
   bool has_grids = false;
-  for (const VolumeAttribute &attr : attrs) {
-    if (BKE_volume_grid_find_for_read(volume, attr.name.c_str()) != nullptr) {
+  for (const GPUMaterialAttribute *attr : attrs) {
+    if (BKE_volume_grid_find_for_read(volume, attr->name) != nullptr) {
       has_grids = true;
       break;
     }
@@ -318,8 +321,8 @@ static bool volume_object_grids_init(PassMain::Sub &ps, Object *ob, Span<VolumeA
 
   /* Bind volume grid textures. */
   int grid_id = 0, grids_len = 0;
-  for (const VolumeAttribute &attr : attrs) {
-    const VolumeGrid *volume_grid = BKE_volume_grid_find_for_read(volume, attr.name.c_str());
+  for (const GPUMaterialAttribute *attr : attrs) {
+    const VolumeGrid *volume_grid = BKE_volume_grid_find_for_read(volume, attr->name);
     const DRWVolumeGrid *drw_grid = (volume_grid) ?
                                         DRW_volume_batch_cache_get_grid(volume, volume_grid) :
                                         nullptr;
@@ -329,9 +332,9 @@ static bool volume_object_grids_init(PassMain::Sub &ps, Object *ob, Span<VolumeA
      * - Grid does not exist -> use default value. */
     const GPUTexture *grid_tex = (drw_grid)    ? drw_grid->texture :
                                  (volume_grid) ? g_data.dummy_zero :
-                                                 grid_default_texture(attr.default_value);
+                                                 grid_default_texture(attr->default_value);
     /* TODO (Miguel Pozo): bind_texture const support ? */
-    ps.bind_texture(attr.input_name.c_str(), (GPUTexture *)grid_tex);
+    ps.bind_texture(attr->input_name, (GPUTexture *)grid_tex);
 
     volume_infos.grids_xform[grid_id++] = float4x4(drw_grid ? drw_grid->object_to_texture :
                                                               g_data.dummy_grid_mat);
@@ -347,7 +350,7 @@ static bool volume_object_grids_init(PassMain::Sub &ps, Object *ob, Span<VolumeA
 static bool drw_volume_object_mesh_init(PassMain::Sub &ps,
                                         Scene *scene,
                                         Object *ob,
-                                        Span<VolumeAttribute> attrs)
+                                        ListBaseWrapper<GPUMaterialAttribute> &attrs)
 {
   VolumeUniformBufPool *pool = (VolumeUniformBufPool *)DST.vmempool->volume_grids_ubos;
   VolumeInfosBuf &volume_infos = *pool->alloc();
@@ -376,21 +379,19 @@ static bool drw_volume_object_mesh_init(PassMain::Sub &ps,
     }
 
     int grid_id = 0;
-    for (const VolumeAttribute &attr : attrs) {
-      if (STREQ(attr.name.c_str(), "density")) {
-        ps.bind_texture(attr.input_name.c_str(),
+    for (const GPUMaterialAttribute *attr : attrs) {
+      if (STREQ(attr->name, "density")) {
+        ps.bind_texture(attr->input_name,
                         fds->tex_density ? &fds->tex_density : &g_data.dummy_one);
       }
-      else if (STREQ(attr.name.c_str(), "color")) {
-        ps.bind_texture(attr.input_name.c_str(),
-                        fds->tex_color ? &fds->tex_color : &g_data.dummy_one);
+      else if (STREQ(attr->name, "color")) {
+        ps.bind_texture(attr->input_name, fds->tex_color ? &fds->tex_color : &g_data.dummy_one);
       }
-      else if (STR_ELEM(attr.name.c_str(), "flame", "temperature")) {
-        ps.bind_texture(attr.input_name.c_str(),
-                        fds->tex_flame ? &fds->tex_flame : &g_data.dummy_zero);
+      else if (STR_ELEM(attr->name, "flame", "temperature")) {
+        ps.bind_texture(attr->input_name, fds->tex_flame ? &fds->tex_flame : &g_data.dummy_zero);
       }
       else {
-        ps.bind_texture(attr.input_name.c_str(), grid_default_texture(attr.default_value));
+        ps.bind_texture(attr->input_name, grid_default_texture(attr->default_value));
       }
       volume_infos.grids_xform[grid_id++] = float4x4(g_data.dummy_grid_mat);
     }
@@ -407,8 +408,8 @@ static bool drw_volume_object_mesh_init(PassMain::Sub &ps,
   }
   else {
     int grid_id = 0;
-    for (const VolumeAttribute &attr : attrs) {
-      ps.bind_texture(attr.input_name.c_str(), grid_default_texture(attr.default_value));
+    for (const GPUMaterialAttribute *attr : attrs) {
+      ps.bind_texture(attr->input_name, grid_default_texture(attr->default_value));
       volume_infos.grids_xform[grid_id++] = float4x4(g_data.dummy_grid_mat);
     }
   }
@@ -420,8 +421,10 @@ static bool drw_volume_object_mesh_init(PassMain::Sub &ps,
   return true;
 }
 
-bool volume_sub_pass(PassMain::Sub &ps, Scene *scene, Object *ob, Span<VolumeAttribute> attrs)
+bool volume_sub_pass(PassMain::Sub &ps, Scene *scene, Object *ob, GPUMaterial *gpu_material)
 {
+  ListBase attr_list = GPU_material_attributes(gpu_material);
+  ListBaseWrapper<GPUMaterialAttribute> attrs(attr_list);
   if (ob == nullptr) {
     return volume_world_grids_init(ps, attrs);
   }
