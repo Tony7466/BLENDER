@@ -6,9 +6,9 @@
 
 #include <string>
 
-#include "BLI_path_util.h"
-
 #include "BLO_readfile.h"
+
+#include "BLI_path_util.h"
 
 #include "AS_asset_identifier.hh"
 
