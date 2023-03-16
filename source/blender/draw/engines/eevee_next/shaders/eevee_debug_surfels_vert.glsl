@@ -6,8 +6,22 @@ void main()
   surfel_index = gl_InstanceID;
   DebugSurfel surfel = surfels_buf[surfel_index];
 
-  const vec3 verts[4] = vec3[4](vec3(-1, 1, 0), vec3(-1, -1, 0), vec3(1, 1, 0), vec3(1, -1, 0));
-  vec3 lP = verts[gl_VertexID];
+  vec3 lP;
+
+  switch (gl_VertexID) {
+    case 0:
+      lP = vec3(-1, 1, 0);
+      break;
+    case 1:
+      lP = vec3(-1, -1, 0);
+      break;
+    case 2:
+      lP = vec3(1, 1, 0);
+      break;
+    case 3:
+      lP = vec3(1, -1, 0);
+      break;
+  }
 
   vec3 N = surfel.normal;
   vec3 T, B;
