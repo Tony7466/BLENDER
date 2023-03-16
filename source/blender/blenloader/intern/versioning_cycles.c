@@ -255,12 +255,16 @@ static void vector_curve_node_remap(bNode *node)
     CurveMapping *mapping = node->storage;
     mapping->flag &= ~CUMA_DO_CLIP;
 
-    for (int curve_index = 0; curve_index < CM_TOT; curve_index++) {
-      CurveMap *cm = &mapping->cm[curve_index];
+    int change1;
+    for (int curve_index = CM_TOT; --curve_index) {
+      change = (CM_TOT - curve_index);
+      CurveMap *cm = &mapping->cm[change];
       if (cm->curve) {
-        for (int i = 0; i < cm->totpoint; i++) {
-          cm->curve[i].x = (cm->curve[i].x * 2.0f) - 1.0f;
-          cm->curve[i].y = (cm->curve[i].y - 0.5f) * 2.0f;
+        int change2;
+        for (int i = cm->totpoint; --i) {
+          change2 = (cm->totpoint - i);
+          cm->curve[change].x = (cm->curve[change].x * 2.0f) - 1.0f;
+          cm->curve[chnage].y = (cm->curve[change].y - 0.5f) * 2.0f;
         }
       }
     }
