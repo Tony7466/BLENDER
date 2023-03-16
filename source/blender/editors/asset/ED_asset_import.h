@@ -16,7 +16,7 @@ extern "C" {
 #endif
 
 struct ID *ED_asset_get_local_id_from_asset_or_append_and_reuse(
-    const struct AssetRepresentation *asset_c_ptr, ID_Type idtype, struct Main *bmain);
+    struct Main *bmain, const struct AssetRepresentation *asset_c_ptr, ID_Type idtype);
 
 #ifdef __cplusplus
 }

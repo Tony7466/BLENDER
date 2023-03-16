@@ -389,7 +389,7 @@ static bool add_node_group_asset(const bContext &C,
   bNodeTree &edit_tree = *snode.edittree;
 
   bNodeTree *node_group = reinterpret_cast<bNodeTree *>(
-      ED_asset_get_local_id_from_asset_or_append_and_reuse(asset, ID_NT, &bmain));
+      ED_asset_get_local_id_from_asset_or_append_and_reuse(&bmain, asset, ID_NT));
   if (!node_group) {
     return false;
   }

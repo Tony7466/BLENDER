@@ -15,9 +15,9 @@
 
 using namespace blender;
 
-ID *ED_asset_get_local_id_from_asset_or_append_and_reuse(const AssetRepresentation *asset_c_ptr,
-                                                         ID_Type idtype,
-                                                         Main *bmain)
+ID *ED_asset_get_local_id_from_asset_or_append_and_reuse(Main *bmain,
+                                                         const AssetRepresentation *asset_c_ptr,
+                                                         ID_Type idtype)
 {
   const asset_system::AssetRepresentation &asset =
       *reinterpret_cast<const asset_system::AssetRepresentation *>(asset_c_ptr);
