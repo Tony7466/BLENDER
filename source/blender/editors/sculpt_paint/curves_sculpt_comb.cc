@@ -112,62 +112,6 @@ struct CombOperationExecutor {
   {
   }
 
-  void find_or_update_goals(const OffsetIndices<int> points_by_curve,
-                            const Span<float3> positions,
-                            const IndexMask curve_selection,
-                            const float3 &target_point,
-                            const float brush_radius_sq,
-                            MutableSpan<bool> r_used_curves)
-  {
-    MutableSpan<bool> has_goals = self_->constraint_solver_.has_goals();
-    MutableSpan<float3> goals = self_->constraint_solver_.goals();
-    MutableSpan<int> closest_points = self_->constraint_solver_.closest_points();
-    MutableSpan<float> closest_factors = self_->constraint_solver_.closest_factors();
-
-    BLI_assert(goals.size() == points_by_curve.ranges_num());
-
-    threading::parallel_for(curve_selection.index_range(), 256, [&](const IndexRange range) {
-      for (const int curve_i : curve_selection.slice(range)) {
-        const IndexRange points = points_by_curve[curve_i].drop_back(1);
-        int min_point_i = -1;
-        float min_distance_sq = FLT_MAX;
-        float min_lambda;
-        float3 min_closest;
-        for (const int point_i : points) {
-          // TODO add brush bounding box check to speed up culling
-          float3 closest;
-          const float lambda = closest_to_line_segment_v3(
-              closest, target_point, positions[point_i], positions[point_i + 1]);
-          const float distance_sq = math::distance_squared(closest, target_point);
-          if (distance_sq <= brush_radius_sq && distance_sq < min_distance_sq) {
-            min_point_i = point_i;
-            min_distance_sq = distance_sq;
-            min_lambda = lambda;
-            min_closest = closest;
-          }
-        }
-
-        if (min_point_i >= 0) {
-          r_used_curves[curve_i] = true;
-
-          /* Initialize new goals */
-          if (!has_goals[curve_i]) {
-            has_goals[curve_i] = true;
-            goals[curve_i] = min_closest;
-            closest_points[curve_i] = min_point_i;
-            closest_factors[curve_i] = min_lambda;
-          }
-        }
-        else {
-          r_used_curves[curve_i] = false;
-
-          /* Drop existing goals */
-          has_goals[curve_i] = false;
-        }
-      }
-    });
-  }
-
   void execute(CombOperation &self, const bContext &C, const StrokeExtension &stroke_extension)
   {
     self_ = &self;
@@ -250,6 +194,130 @@ struct CombOperationExecutor {
     ED_region_tag_redraw(ctx_.region);
   }
 
+  void find_or_update_goals_projected(const OffsetIndices<int> points_by_curve,
+                                      const Span<float3> positions,
+                                      const IndexMask curve_selection,
+                                      const float2 &target_point,
+                                      const float brush_radius_sq,
+                                      MutableSpan<bool> r_used_curves)
+  {
+    MutableSpan<bool> has_goals = self_->constraint_solver_.has_goals();
+    MutableSpan<float3> goals = self_->constraint_solver_.goals();
+    MutableSpan<int> closest_points = self_->constraint_solver_.closest_points();
+    MutableSpan<float> closest_factors = self_->constraint_solver_.closest_factors();
+
+    BLI_assert(goals.size() == points_by_curve.ranges_num());
+
+    float4x4 projection;
+    ED_view3d_ob_project_mat_get(ctx_.rv3d, curves_ob_orig_, projection.ptr());
+
+    threading::parallel_for(curve_selection.index_range(), 256, [&](const IndexRange range) {
+      for (const int curve_i : curve_selection.slice(range)) {
+        const IndexRange points = points_by_curve[curve_i].drop_back(1);
+        int min_point_i = -1;
+        float min_distance_sq = FLT_MAX;
+        float min_lambda;
+        float2 min_closest_re;
+        for (const int point_i : points) {
+          float2 p0_re, p1_re;
+          ED_view3d_project_float_v2_m4(ctx_.region, positions[point_i], p0_re, projection.ptr());
+          ED_view3d_project_float_v2_m4(ctx_.region, positions[point_i + 1], p1_re, projection.ptr());
+
+                // TODO add brush bounding box check to speed up culling
+          float2 closest_re;
+          const float lambda = closest_to_line_segment_v2(closest_re, target_point, p0_re, p1_re);
+          const float distance_sq = math::distance_squared(closest_re, target_point);
+          if (distance_sq <= brush_radius_sq && distance_sq < min_distance_sq) {
+            min_point_i = point_i;
+            min_distance_sq = distance_sq;
+            min_lambda = lambda;
+            min_closest_re = closest_re;
+          }
+        }
+
+        if (min_point_i >= 0) {
+          r_used_curves[curve_i] = true;
+
+          /* Initialize new goals */
+          if (!has_goals[curve_i]) {
+            float3 min_closest_cu;
+            ED_view3d_win_to_3d(ctx_.v3d,
+                                ctx_.region,
+                                math::transform_point(transforms_.curves_to_world, positions[min_point_i]),
+                                min_closest_re,
+                                min_closest_cu);
+            has_goals[curve_i] = true;
+            goals[curve_i] = min_closest_cu;
+            closest_points[curve_i] = min_point_i;
+            closest_factors[curve_i] = min_lambda;
+          }
+        }
+        else {
+          r_used_curves[curve_i] = false;
+
+          /* Drop existing goals */
+          has_goals[curve_i] = false;
+        }
+      }
+    });
+  }
+
+  void find_or_update_goals_spherical(const OffsetIndices<int> points_by_curve,
+                                      const Span<float3> positions,
+                                      const IndexMask curve_selection,
+                                      const float3 &target_point,
+                                      const float brush_radius_sq,
+                                      MutableSpan<bool> r_used_curves)
+  {
+    MutableSpan<bool> has_goals = self_->constraint_solver_.has_goals();
+    MutableSpan<float3> goals = self_->constraint_solver_.goals();
+    MutableSpan<int> closest_points = self_->constraint_solver_.closest_points();
+    MutableSpan<float> closest_factors = self_->constraint_solver_.closest_factors();
+
+    BLI_assert(goals.size() == points_by_curve.ranges_num());
+
+    threading::parallel_for(curve_selection.index_range(), 256, [&](const IndexRange range) {
+      for (const int curve_i : curve_selection.slice(range)) {
+        const IndexRange points = points_by_curve[curve_i].drop_back(1);
+        int min_point_i = -1;
+        float min_distance_sq = FLT_MAX;
+        float min_lambda;
+        float3 min_closest;
+        for (const int point_i : points) {
+          // TODO add brush bounding box check to speed up culling
+          float3 closest;
+          const float lambda = closest_to_line_segment_v3(
+              closest, target_point, positions[point_i], positions[point_i + 1]);
+          const float distance_sq = math::distance_squared(closest, target_point);
+          if (distance_sq <= brush_radius_sq && distance_sq < min_distance_sq) {
+            min_point_i = point_i;
+            min_distance_sq = distance_sq;
+            min_lambda = lambda;
+            min_closest = closest;
+          }
+        }
+
+        if (min_point_i >= 0) {
+          r_used_curves[curve_i] = true;
+
+          /* Initialize new goals */
+          if (!has_goals[curve_i]) {
+            has_goals[curve_i] = true;
+            goals[curve_i] = min_closest;
+            closest_points[curve_i] = min_point_i;
+            closest_factors[curve_i] = min_lambda;
+          }
+        }
+        else {
+          r_used_curves[curve_i] = false;
+
+          /* Drop existing goals */
+          has_goals[curve_i] = false;
+        }
+      }
+    });
+  }
+
   /**
    * Do combing in screen space.
    */
@@ -262,6 +330,77 @@ struct CombOperationExecutor {
     }
   }
 
+#if 1
+  void comb_projected(MutableSpan<bool> r_changed_curves, const float4x4 &brush_transform)
+  {
+    const bke::crazyspace::GeometryDeformation deformation =
+        bke::crazyspace::get_evaluated_curves_deformation(*ctx_.depsgraph, *curves_ob_orig_);
+    const OffsetIndices points_by_curve = curves_orig_->points_by_curve();
+
+    float4x4 projection;
+    ED_view3d_ob_project_mat_get(ctx_.rv3d, curves_ob_orig_, projection.ptr());
+
+    const float brush_radius_re = brush_radius_base_re_ * brush_radius_factor_;
+    const float brush_radius_sq_re = pow2f(brush_radius_re);
+
+    CurveMapping &curve_parameter_falloff_mapping =
+        *brush_->curves_sculpt_settings->curve_parameter_falloff;
+    BKE_curvemapping_init(&curve_parameter_falloff_mapping);
+
+    find_or_update_goals_projected(points_by_curve,
+                                   deformation.positions,
+                                   curve_selection_,
+                                   brush_pos_prev_re_,
+                                   brush_radius_sq_re,
+                                   r_changed_curves);
+
+    /* Move goals to the end of the stroke segment. */
+    MutableSpan<float3> goals = self_->constraint_solver_.goals();
+    MutableSpan<float> goal_factors = self_->constraint_solver_.goal_factors();
+    Span<int> closest_points = self_->constraint_solver_.closest_points();
+    Span<float> closest_factors = self_->constraint_solver_.closest_factors();
+    threading::parallel_for(curve_selection_.index_range(), 256, [&](const IndexRange range) {
+      for (const int curve_i : curve_selection_.slice(range)) {
+        if (r_changed_curves[curve_i]) {
+
+          const int closest_point = closest_points[curve_i];
+          const float closest_u = closest_factors[curve_i];
+
+          float2 p0_re, p1_re;
+          ED_view3d_project_float_v2_m4(ctx_.region, deformation.positions[closest_point], p0_re, projection.ptr());
+          ED_view3d_project_float_v2_m4(ctx_.region, deformation.positions[closest_point + 1], p1_re, projection.ptr());
+          const float2 closest_pos_re = (1.0f - closest_u) * p0_re + closest_u * p1_re;
+
+          /* Compute distance to the brush. */
+          const float distance_to_closest_sq_re = dist_squared_to_line_segment_v3(
+              closest_pos_re, brush_pos_prev_re_, brush_pos_re_);
+          if (distance_to_closest_sq_re > brush_radius_sq_re) {
+            /* Ignore the curve because it's too far away. */
+            goal_factors[curve_i] = 0.0f;
+          }
+          else {
+            const float distance_to_closest_re = std::sqrt(distance_to_closest_sq_re);
+
+            /* A falloff that is based on how far away the point is from the stroke. */
+            const float radius_falloff = BKE_brush_curve_strength(
+                brush_, distance_to_closest_re, brush_radius_re);
+            /* Combine the falloff and brush strength. */
+            goal_factors[curve_i] = brush_strength_ * radius_falloff;
+
+            /* Update goal */
+            float3 brush_start_cu, brush_end_cu;
+            const float3 depth_point_cu = math::transform_point(transforms_.curves_to_world, goals[curve_i]);
+            ED_view3d_win_to_3d(
+                ctx_.v3d, ctx_.region, depth_point_cu, brush_pos_prev_re_, brush_start_cu);
+            ED_view3d_win_to_3d(
+                ctx_.v3d, ctx_.region, depth_point_cu, brush_pos_re_, brush_end_cu);
+            goals[curve_i] += brush_end_cu - brush_start_cu;
+          }
+        }
+      }
+    });
+  }
+#else
   void comb_projected(MutableSpan<bool> r_changed_curves, const float4x4 &brush_transform)
   {
     const float4x4 brush_transform_inv = math::invert(brush_transform);
@@ -346,6 +485,7 @@ struct CombOperationExecutor {
       }
     });
   }
+#endif
 
   /**
    * Do combing in 3D space.
@@ -401,12 +541,12 @@ struct CombOperationExecutor {
         bke::crazyspace::get_evaluated_curves_deformation(*ctx_.depsgraph, *curves_ob_orig_);
     const OffsetIndices points_by_curve = curves_orig_->points_by_curve();
 
-    find_or_update_goals(points_by_curve,
-                         deformation.positions,
-                         curve_selection_,
-                         brush_start_cu,
-                         brush_radius_sq_cu,
-                         r_changed_curves);
+    find_or_update_goals_spherical(points_by_curve,
+                                   deformation.positions,
+                                   curve_selection_,
+                                   brush_start_cu,
+                                   brush_radius_sq_cu,
+                                   r_changed_curves);
 
     /* Move goals to the end of the stroke segment. */
     MutableSpan<float3> goals = self_->constraint_solver_.goals();
@@ -424,20 +564,21 @@ struct CombOperationExecutor {
           const float distance_to_closest_sq = dist_squared_to_line_segment_v3(
               closest, brush_start_cu, brush_end_cu);
           if (distance_to_closest_sq > brush_radius_sq_cu) {
-            /* Ignore the point because it's too far away. */
-            continue;
+            /* Ignore the curve because it's too far away. */
+            goal_factors[curve_i] = 0.0f;
           }
+          else {
+            const float distance_to_closest = std::sqrt(distance_to_closest_sq);
 
-          const float distance_to_closest = std::sqrt(distance_to_closest_sq);
+            /* A falloff that is based on how far away the point is from the stroke. */
+            const float radius_falloff = BKE_brush_curve_strength(
+                brush_, distance_to_closest, brush_radius_cu);
+            /* Combine the falloff and brush strength. */
+            goal_factors[curve_i] = brush_strength_ * radius_falloff;
 
-          /* A falloff that is based on how far away the point is from the stroke. */
-          const float radius_falloff = BKE_brush_curve_strength(
-              brush_, distance_to_closest, brush_radius_cu);
-          /* Combine the falloff and brush strength. */
-          goal_factors[curve_i] = brush_strength_ * radius_falloff;
-
-          /* Update goal */
-          goals[curve_i] += brush_diff_cu;
+            /* Update goal */
+            goals[curve_i] += brush_diff_cu;
+          }
         }
       }
     });
