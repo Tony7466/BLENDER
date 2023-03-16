@@ -99,7 +99,8 @@ BVHEmbree::BVHEmbree(const BVHParams &params_,
     : BVH(params_, geometry_, objects_),
       scene(NULL),
       rtc_device(NULL),
-      build_quality(RTC_BUILD_QUALITY_REFIT)
+      build_quality(RTC_BUILD_QUALITY_REFIT),
+      is_curve_support_required(false)
 {
   SIMD_SET_FLUSH_TO_ZERO;
 }
@@ -125,6 +126,7 @@ void BVHEmbree::build(Progress &progress, Stats *stats, RTCDevice rtc_device_)
     rtcReleaseScene(scene);
     scene = NULL;
   }
+  is_curve_support_required = false;
 
   const bool dynamic = params.bvh_type == BVH_TYPE_DYNAMIC;
   const bool compact = params.use_compact_structure;
@@ -184,6 +186,7 @@ void BVHEmbree::add_object(Object *ob, int i)
     }
   }
   else if (geom->geometry_type == Geometry::HAIR) {
+    is_curve_support_required = true;
     Hair *hair = static_cast<Hair *>(geom);
     if (hair->num_curves() > 0) {
       add_curves(ob, hair, i);
@@ -596,6 +599,8 @@ void BVHEmbree::refit(Progress &progress)
 {
   progress.set_substatus("Refitting BVH nodes");
 
+  is_curve_support_required = false;
+
   /* Update all vertex buffers, then tell Embree to rebuild/-fit the BVHs. */
   unsigned geom_id = 0;
   foreach (Object *ob, objects) {
@@ -612,6 +617,7 @@ void BVHEmbree::refit(Progress &progress)
         }
       }
       else if (geom->geometry_type == Geometry::HAIR) {
+        is_curve_support_required = true;
         Hair *hair = static_cast<Hair *>(geom);
         if (hair->num_curves() > 0) {
           RTCGeometry geom = rtcGetGeometry(scene, geom_id + 1);
@@ -633,6 +639,11 @@ void BVHEmbree::refit(Progress &progress)
   }
 
   rtcCommitScene(scene);
+}
+
+bool BVHEmbree::with_curve_features() const
+{
+  return is_curve_support_required;
 }
 
 CCL_NAMESPACE_END

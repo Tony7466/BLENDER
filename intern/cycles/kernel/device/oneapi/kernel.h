@@ -47,9 +47,12 @@ CYCLES_KERNEL_ONEAPI_EXPORT size_t oneapi_kernel_preferred_local_size(
 CYCLES_KERNEL_ONEAPI_EXPORT bool oneapi_enqueue_kernel(KernelContext *context,
                                                        int kernel,
                                                        size_t global_size,
+                                                       bool use_hwrt,
+                                                       bool with_curve_features,
                                                        void **args);
 CYCLES_KERNEL_ONEAPI_EXPORT bool oneapi_load_kernels(SyclQueue *queue,
-                                                     const unsigned int requested_features);
+                                                     const unsigned int requested_features,
+                                                     bool use_hwrt);
 #  ifdef __cplusplus
 }
 #  endif

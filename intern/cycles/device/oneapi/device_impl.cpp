@@ -8,7 +8,12 @@
 #  include "util/debug.h"
 #  include "util/log.h"
 
+#  ifdef WITH_EMBREE_GPU
+#    include "bvh/embree.h"
+#  endif
+
 #  include "kernel/device/oneapi/globals.h"
+#  include "kernel/device/oneapi/kernel.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -22,16 +27,37 @@ static void queue_error_cb(const char *message, void *user_ptr)
 OneapiDevice::OneapiDevice(const DeviceInfo &info, Stats &stats, Profiler &profiler)
     : Device(info, stats, profiler),
       device_queue_(nullptr),
+#  ifdef WITH_EMBREE_GPU
+      embree_device(nullptr),
+      embree_scene(nullptr),
+#  endif
       texture_info_(this, "texture_info", MEM_GLOBAL),
       kg_memory_(nullptr),
       kg_memory_device_(nullptr),
       kg_memory_size_(0)
 {
   need_texture_info_ = false;
+  use_hwrt = info.use_hwrt;
 
   oneapi_set_error_cb(queue_error_cb, &oneapi_error_string_);
 
-  bool is_finished_ok = create_queue(device_queue_, info.num);
+  if (use_hwrt)
+    VLOG_INFO
+        << "oneAPI will try to use Hardware Raytracing capabilities for intersection acceleration";
+  bool is_finished_ok = create_queue(device_queue_,
+                                     info.num,
+#  ifdef WITH_EMBREE_GPU
+                                     use_hwrt ? &embree_device : nullptr
+#  else
+                                     nullptr
+#  endif
+  );
+#  ifdef WITH_EMBREE_GPU
+  use_hwrt = use_hwrt && (embree_device != nullptr);
+#  else
+  use_hwrt = false;
+#  endif
+
   if (is_finished_ok == false) {
     set_error("oneAPI queue initialization error: got runtime exception \"" +
               oneapi_error_string_ + "\"");
@@ -64,6 +90,11 @@ OneapiDevice::OneapiDevice(const DeviceInfo &info, Stats &stats, Profiler &profi
 
 OneapiDevice::~OneapiDevice()
 {
+#  ifdef WITH_EMBREE_GPU
+  if (embree_device)
+    rtcReleaseDevice(embree_device);
+#  endif
+
   texture_info_.free();
   usm_free(device_queue_, kg_memory_);
   usm_free(device_queue_, kg_memory_device_);
@@ -82,8 +113,34 @@ bool OneapiDevice::check_peer_access(Device * /*peer_device*/)
 
 BVHLayoutMask OneapiDevice::get_bvh_layout_mask() const
 {
-  return BVH_LAYOUT_BVH2;
+  return use_hwrt ? BVH_LAYOUT_EMBREE : BVH_LAYOUT_BVH2;
 }
+
+#  ifdef WITH_EMBREE_GPU
+void OneapiDevice::build_bvh(BVH *bvh, Progress &progress, bool refit)
+{
+  if (embree_device && bvh->params.bvh_layout == BVH_LAYOUT_EMBREE) {
+    BVHEmbree *const bvh_embree = static_cast<BVHEmbree *>(bvh);
+    if (refit) {
+      bvh_embree->refit(progress);
+    }
+    else {
+      bvh_embree->build(progress, &stats, embree_device);
+    }
+
+    if (bvh->params.top_level) {
+      embree_scene = bvh_embree->scene;
+    }
+    /* NOTE(sirgienko) We need to have an accumulative logic here, because Embree supports
+     * instancing, so BVH/scene can be placed inside another BVH/scene, and because of this we need
+     * to remember if any of used scenes have curves inside them. */
+    with_hair_in_bvh |= bvh_embree->with_curve_features();
+  }
+  else {
+    Device::build_bvh(bvh, progress, refit);
+  }
+}
+#  endif
 
 bool OneapiDevice::load_kernels(const uint requested_features)
 {
@@ -327,6 +384,16 @@ void OneapiDevice::const_copy_to(const char *name, void *host, size_t size)
              << string_human_readable_number(size) << " bytes. ("
              << string_human_readable_size(size) << ")";
 
+#  ifdef WITH_EMBREE_GPU
+  if (strcmp(name, "data") == 0) {
+    assert(size <= sizeof(KernelData));
+
+    /* Update scene handle(since it is different for each device on multi devices) */
+    KernelData *const data = (KernelData *)host;
+    data->device_bvh = embree_scene;
+  }
+#  endif
+
   ConstMemMap::iterator i = const_mem_map_.find(name);
   device_vector<uchar> *data;
 
@@ -446,7 +513,16 @@ void OneapiDevice::check_usm(SyclQueue *queue_, const void *usm_ptr, bool allow_
 #  endif
 }
 
-bool OneapiDevice::create_queue(SyclQueue *&external_queue, int device_index)
+#  if defined(WITH_EMBREE_GPU) && defined(EMBREE_SYCL_SUPPORT) && !defined(SYCL_LANGUAGE_VERSION)
+/* These declarations are missing from embree headers when compiling from a compiler that doesn't
+ * support SYCL. */
+extern "C" RTCDevice rtcNewSYCLDevice(sycl::context context, const char *config);
+extern "C" bool rtcIsSYCLDeviceSupported(const sycl::device sycl_device);
+#  endif
+
+bool OneapiDevice::create_queue(SyclQueue *&external_queue,
+                                int device_index,
+                                void *embree_device_pointer)
 {
   bool finished_correct = true;
   try {
@@ -457,6 +533,11 @@ bool OneapiDevice::create_queue(SyclQueue *&external_queue, int device_index)
     sycl::queue *created_queue = new sycl::queue(devices[device_index],
                                                  sycl::property::queue::in_order());
     external_queue = reinterpret_cast<SyclQueue *>(created_queue);
+#  ifdef WITH_EMBREE_GPU
+    if (embree_device_pointer) {
+      *((RTCDevice *)embree_device_pointer) = rtcNewSYCLDevice(created_queue->get_context(), "");
+    }
+#  endif
   }
   catch (sycl::exception const &e) {
     finished_correct = false;
@@ -625,7 +706,8 @@ bool OneapiDevice::enqueue_kernel(KernelContext *kernel_context,
                                   size_t global_size,
                                   void **args)
 {
-  return oneapi_enqueue_kernel(kernel_context, kernel, global_size, args);
+  return oneapi_enqueue_kernel(
+      kernel_context, kernel, global_size, use_hwrt, with_hair_in_bvh, args);
 }
 
 /* Compute-runtime (ie. NEO) version is what gets returned by sycl/L0 on Windows
@@ -831,11 +913,16 @@ void OneapiDevice::iterate_devices(OneAPIDeviceIteratorCallback cb, void *user_p
 #  else
     std::string name = "SYCL Host Task (Debug)";
 #  endif
+#  ifdef WITH_EMBREE_GPU
+    bool hwrt_support = rtcIsSYCLDeviceSupported(device);
+#  else
+    bool hwrt_support = false;
+#  endif
     std::string id = "ONEAPI_" + platform_name + "_" + name;
     if (device.has(sycl::aspect::ext_intel_pci_address)) {
       id.append("_" + device.get_info<sycl::ext::intel::info::device::pci_address>());
     }
-    (cb)(id.c_str(), name.c_str(), num, user_ptr);
+    (cb)(id.c_str(), name.c_str(), num, hwrt_support, user_ptr);
     num++;
   }
 }

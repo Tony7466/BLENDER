@@ -31,6 +31,7 @@ class BVHEmbree : public BVH {
  public:
   void build(Progress &progress, Stats *stats, RTCDevice rtc_device);
   void refit(Progress &progress);
+  bool with_curve_features() const;
 
   RTCScene scene;
 
@@ -56,6 +57,7 @@ class BVHEmbree : public BVH {
 
   RTCDevice rtc_device;
   enum RTCBuildQuality build_quality;
+  bool is_curve_support_required;
 };
 
 CCL_NAMESPACE_END

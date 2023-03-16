@@ -79,7 +79,7 @@ class DeviceInfo {
   bool has_profiling;   /* Supports runtime collection of profiling info. */
   bool has_peer_memory; /* GPU has P2P access to memory of another GPU. */
   bool has_gpu_queue;   /* Device supports GPU queue. */
-  bool use_metalrt;     /* Use MetalRT to accelerate ray queries (Metal only). */
+  bool use_hwrt;        /* Use hardware ray tracing to accelerate ray queries in a backend. */
   KernelOptimizationLevel kernel_optimization_level; /* Optimization level applied to path tracing
                                                       * kernels (Metal only). */
   DenoiserTypeMask denoisers;                        /* Supported denoiser types. */
@@ -101,7 +101,7 @@ class DeviceInfo {
     has_profiling = false;
     has_peer_memory = false;
     has_gpu_queue = false;
-    use_metalrt = false;
+    use_hwrt = false;
     denoisers = DENOISER_NONE;
   }
 

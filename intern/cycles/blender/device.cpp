@@ -112,9 +112,26 @@ DeviceInfo blender_device_info(BL::Preferences &b_preferences,
     device.has_peer_memory = false;
   }
 
-  if (get_boolean(cpreferences, "use_metalrt")) {
-    device.use_metalrt = true;
+  bool accumulated_use_hwrt = false;
+  foreach (
+      DeviceInfo &info,
+      (device.multi_devices.size() != 0 ? device.multi_devices : vector<DeviceInfo>({device}))) {
+    if (info.type == DEVICE_METAL && !get_boolean(cpreferences, "use_metalrt")) {
+      info.use_hwrt = false;
+    }
+
+    if (info.type == DEVICE_ONEAPI && !get_boolean(cpreferences, "use_oneapirt")) {
+      info.use_hwrt = false;
+    }
+
+    /* There is an accumulative logic here, because Multidevices are support only for
+     * the same backend + CPU in Blender right now, and both oneAPI and Metal have a
+     * global boolean backend setting (see above) for enabling/disabling HW RT,
+     * so all subdevices in the multidevice should enable (or disable) HW RT
+     * simultaneously (and CPU device are expected to ignore "use_hwrt" setting) */
+    accumulated_use_hwrt |= info.use_hwrt;
   }
+  device.use_hwrt = accumulated_use_hwrt;
 
   if (preview) {
     /* Disable specialization for preview renders. */
