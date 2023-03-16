@@ -22,6 +22,33 @@
 
 namespace blender::geometry {
 
+static float signedDistanceToEdge(float2 probe, float2 uva, float2 uvb)
+{
+  float2 edge = uvb - uva;
+  float2 side = probe - uva;
+
+  const float edge_length = blender::math::length(edge);
+  if (edge_length < 1e-20f) {
+    return blender::math::length(side);
+  }
+  return (edge.x * side.y - edge.y * side.x) / edge_length;
+}
+
+void PackIsland::addTriangle(const float2 uv0, const float2 uv1, const float2 uv2)
+{
+  /* Be careful with winding. */
+  if (signedDistanceToEdge(uv0, uv1, uv2) < 0.0f) {
+    triangleVertices.append(uv0);
+    triangleVertices.append(uv1);
+    triangleVertices.append(uv2);
+  }
+  else {
+    triangleVertices.append(uv0);
+    triangleVertices.append(uv2);
+    triangleVertices.append(uv1);
+  }
+}
+
 UVPackIsland_Params::UVPackIsland_Params()
 {
   /* TEMPORARY, set every thing to "zero" for backwards compatibility. */
@@ -36,6 +63,7 @@ UVPackIsland_Params::UVPackIsland_Params()
   margin_method = ED_UVPACK_MARGIN_SCALED;
   udim_base_offset[0] = 0.0f;
   udim_base_offset[1] = 0.0f;
+  shape_method = ED_UVPACK_SHAPE_AABB;
 }
 
 /* Compact representation for AABB packers. */
@@ -110,10 +138,220 @@ static void pack_islands_alpaca_turbo(const Span<UVAABBIsland *> islands,
   *r_max_v = next_v1;
 }
 
+class Occupancy {
+ public:
+  Occupancy();
+
+  void increaseScale();
+  bool traceTriangle(const float2 &uv0,
+                     const float2 &uv1,
+                     const float2 &uv2,
+                     const float margin,
+                     const bool write);
+
+  bool traceIsland(PackIsland *island,
+                   const float scale,
+                   const float margin,
+                   const float2 origin,
+                   float u,
+                   float v,
+                   const bool write);
+
+  int bitmapRadix;
+  float bitmapScale;
+  float bitmapScaleReciprocal;
+  blender::Array<bool> bitmap;
+};
+
+Occupancy::Occupancy() : bitmapRadix(512), bitmap(bitmapRadix * bitmapRadix, false)
+{
+  bitmapScale = 0.5f / bitmapRadix;
+  bitmapScaleReciprocal = 1.0f / bitmapScale;
+}
+
+void Occupancy::increaseScale()
+{
+  bitmapScale *= 2.0f;
+  bitmapScaleReciprocal = 1.0f / bitmapScale;
+  for (int i = 0; i < bitmapRadix * bitmapRadix; i++) {
+    bitmap[i] = false;
+  }
+}
+
+static bool pointOutsideFatTriangle(
+    float2 probe, float2 uv0, float2 uv1, float2 uv2, const float epsilon)
+{
+  const float dist01 = signedDistanceToEdge(probe, uv0, uv1);
+  const float dist12 = signedDistanceToEdge(probe, uv1, uv2);
+  const float dist20 = signedDistanceToEdge(probe, uv2, uv0);
+
+  if (dist01 <= epsilon && dist12 < epsilon && dist20 < epsilon) {
+    return false; /* Inside. */
+  }
+  return true; /* Outside. */
+}
+
+bool Occupancy::traceTriangle(
+    const float2 &uv0, const float2 &uv1, const float2 &uv2, const float margin, const bool write)
+{
+  float x0 = std::min(uv0.x, std::min(uv1.x, uv2.x));
+  float y0 = std::min(uv0.y, std::min(uv1.y, uv2.y));
+  float x1 = std::max(uv0.x, std::max(uv1.x, uv2.x));
+  float y1 = std::max(uv0.y, std::max(uv1.y, uv2.y));
+  int ix0 = std::max(int(floorf((x0 - margin) * bitmapScaleReciprocal)), 0);
+  int iy0 = std::max(int(floorf((y0 - margin) * bitmapScaleReciprocal)), 0);
+  int ix1 = std::min(int(floorf((x1 + margin) * bitmapScaleReciprocal + 1)), bitmapRadix);
+  int iy1 = std::min(int(floorf((y1 + margin) * bitmapScaleReciprocal + 1)), bitmapRadix);
+
+  for (int y = iy0; y < iy1; y++) {
+    for (int x = ix0; x < ix1; x++) {
+      float epsilon = 0.70710678118f; /* sqrt(0.5) pixels. */
+      epsilon = std::max(epsilon, margin * bitmapScaleReciprocal);
+      if (pointOutsideFatTriangle(float2(x, y),
+                                  uv0 * bitmapScaleReciprocal,
+                                  uv1 * bitmapScaleReciprocal,
+                                  uv2 * bitmapScaleReciprocal,
+                                  epsilon)) {
+        continue;
+      }
+
+      bool occupied_xy = bitmap[y * bitmapRadix + x];
+      if (write) {
+        bitmap[y * bitmapRadix + x] = true;
+      }
+      else {
+        if (occupied_xy) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+bool Occupancy::traceIsland(PackIsland *island,
+                            const float scale,
+                            const float margin,
+                            const float2 origin,
+                            float u,
+                            float v,
+                            const bool write)
+{
+
+  if (!write) {
+    if (u < 0.0f || v < 0.0f) {
+      return true;
+    }
+    float trial_u = u + BLI_rctf_size_x(&island->bounds_rect) * scale;
+    float trial_v = v + BLI_rctf_size_y(&island->bounds_rect) * scale;
+    if (trial_u > bitmapScale * bitmapRadix) {
+      return true;
+    }
+    if (trial_v > bitmapScale * bitmapRadix) {
+      return true;
+    }
+  }
+  for (int j = 0; j < island->triangleVertices.size(); j += 3) {
+    bool occupied = traceTriangle(
+        (island->triangleVertices[j] - origin) * scale + float2(u, v),
+        (island->triangleVertices[j + 1] - origin) * scale + float2(u, v),
+        (island->triangleVertices[j + 2] - origin) * scale + float2(u, v),
+        margin,
+        write);
+
+    if (!write && occupied) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static void pack_island_xatlas(const Span<UVAABBIsland *> island_indices,
+                               const Span<PackIsland *> islands,
+                               BoxPack *box_array,
+                               const float scale,
+                               const float margin,
+                               float *r_max_u,
+                               float *r_max_v)
+{
+  Occupancy occupancy;
+  float max_u = 0.0f;
+  float max_v = 0.0f;
+
+  int s0 = 0;
+  int i = 0;
+  while (i < island_indices.size()) {
+    PackIsland *island = islands[island_indices[i]->index];
+    bool found = false;
+    float best_u = 1.2f;
+    float best_v = 0.5f;
+
+    if ((i & 15) == 8) {
+      s0 = 0;
+    }
+
+    float2 origin(island->bounds_rect.xmin, island->bounds_rect.ymin);
+    for (int s = s0; s < occupancy.bitmapRadix; s++) {
+      for (int t = 0; t <= s; t++) {
+        float u = s * occupancy.bitmapScale - BLI_rctf_size_x(&island->bounds_rect) * scale;
+        float v = t * occupancy.bitmapScale - BLI_rctf_size_y(&island->bounds_rect) * scale;
+
+        if (!occupancy.traceIsland(island, scale, margin, origin, u, v, false)) {
+          best_u = u;
+          best_v = v;
+          s0 = std::max(s0, s - 25); /* TODO: Tune me. */
+          s = t = 1048576;           /* Fixme. */
+          found = true;
+          break;
+        }
+        u = t * occupancy.bitmapScale - BLI_rctf_size_x(&island->bounds_rect) * scale;
+        v = s * occupancy.bitmapScale - BLI_rctf_size_y(&island->bounds_rect) * scale;
+        if (!occupancy.traceIsland(island, scale, margin, origin, u, v, false)) {
+          best_u = u;
+          best_v = v;
+          s0 = std::max(s0, s - 25); /* TODO: Tune me. */
+          s = t = 1048576;           /* Fixme. */
+          found = true;
+          break;
+        }
+      }
+    }
+
+    if (best_u + BLI_rctf_size_x(&island->bounds_rect) * scale + 2 * margin >
+        0.75f * occupancy.bitmapRadix * occupancy.bitmapScale) {
+      found = false;
+    }
+
+    if (!found) {
+      s0 = 0;
+      occupancy.increaseScale();
+      for (int j = 0; j < i; j++) {
+        PackIsland *island = islands[island_indices[j]->index];
+        BoxPack *box = box_array + j;
+        float2 origin(island->bounds_rect.xmin, island->bounds_rect.ymin);
+        occupancy.traceIsland(island, scale, margin, origin, box->x, box->y, true);
+      }
+      continue;
+    }
+
+    BoxPack *box = box_array + i;
+    box->x = best_u;
+    box->y = best_v;
+    max_u = std::max(best_u + BLI_rctf_size_x(&island->bounds_rect) * scale + 2 * margin, max_u);
+    max_v = std::max(best_v + BLI_rctf_size_y(&island->bounds_rect) * scale + 2 * margin, max_v);
+    occupancy.traceIsland(island, scale, margin, origin, box->x, box->y, true);
+    i++; /* Next island. */
+  }
+
+  *r_max_u = max_u;
+  *r_max_v = max_v;
+}
+
 static float pack_islands_scale_margin(const Span<PackIsland *> islands,
                                        BoxPack *box_array,
                                        const float scale,
-                                       const float margin)
+                                       const float margin,
+                                       const eUVPackIsland_ShapeMethod shape_method)
 {
   /* #BLI_box_pack_2d produces layouts with high packing efficiency, but has `O(n^3)`
    * time complexity, causing poor performance if there are lots of islands. See: #102843.
@@ -150,7 +388,10 @@ static float pack_islands_scale_margin(const Span<PackIsland *> islands,
 
   /* Partition island_vector, largest will go to box_pack, the rest alpaca_turbo.
    * See discussion above for details. */
-  const int64_t alpaca_cutoff = int64_t(1024); /* TODO: Tune constant. */
+  int64_t alpaca_cutoff = int64_t(1024); /* TODO: Tune constant. */
+  if (shape_method == ED_UVPACK_SHAPE_CONCAVE_HOLE) {
+    alpaca_cutoff = int64_t(256); /* TODO: Tune constant. */
+  }
   int64_t max_box_pack = std::min(alpaca_cutoff, islands.size());
 
   /* Prepare for box_pack_2d. */
@@ -165,7 +406,18 @@ static float pack_islands_scale_margin(const Span<PackIsland *> islands,
   /* Call box_pack_2d (slow for large N.) */
   float max_u = 0.0f;
   float max_v = 0.0f;
-  BLI_box_pack_2d(box_array, int(max_box_pack), &max_u, &max_v);
+  if (shape_method == ED_UVPACK_SHAPE_CONCAVE_HOLE) {
+    pack_island_xatlas(aabbs.as_span().take_front(max_box_pack),
+                       islands,
+                       box_array,
+                       scale,
+                       margin,
+                       &max_u,
+                       &max_v);
+  }
+  else {
+    BLI_box_pack_2d(box_array, int(max_box_pack), &max_u, &max_v);
+  }
 
   /* At this stage, `max_u` and `max_v` contain the box_pack UVs. */
 
@@ -192,7 +444,8 @@ static float pack_islands_scale_margin(const Span<PackIsland *> islands,
 
 static float pack_islands_margin_fraction(const Span<PackIsland *> &island_vector,
                                           BoxPack *box_array,
-                                          const float margin_fraction)
+                                          const float margin_fraction,
+                                          const eUVPackIsland_ShapeMethod shape_method)
 {
   /*
    * Root finding using a combined search / modified-secant method.
@@ -260,7 +513,7 @@ static float pack_islands_margin_fraction(const Span<PackIsland *> &island_vecto
     /* Evaluate our `f`. */
     scale_last = scale;
     float max_uv = pack_islands_scale_margin(
-        island_vector, box_array, scale_last, margin_fraction);
+        island_vector, box_array, scale_last, margin_fraction, shape_method);
     float value = sqrtf(max_uv) - 1.0f;
 
     if (value <= 0.0f) {
@@ -284,7 +537,7 @@ static float pack_islands_margin_fraction(const Span<PackIsland *> &island_vecto
     if (scale_last != scale_low) {
       scale_last = scale_low;
       float max_uv = pack_islands_scale_margin(
-          island_vector, box_array, scale_last, margin_fraction);
+          island_vector, box_array, scale_last, margin_fraction, shape_method);
       UNUSED_VARS(max_uv);
       /* TODO (?): `if (max_uv < 1.0f) { scale_last /= max_uv; }` */
     }
@@ -326,7 +579,8 @@ static BoxPack *pack_islands_box_array(const Span<PackIsland *> &island_vector,
 
   if (params.margin == 0.0f) {
     /* Special case for zero margin. Margin_method is ignored as all formulas give same result. */
-    const float max_uv = pack_islands_scale_margin(island_vector, box_array, 1.0f, 0.0f);
+    const float max_uv = pack_islands_scale_margin(
+        island_vector, box_array, 1.0f, 0.0f, params.shape_method);
     r_scale[0] = 1.0f / max_uv;
     r_scale[1] = r_scale[0];
     return box_array;
@@ -334,7 +588,8 @@ static BoxPack *pack_islands_box_array(const Span<PackIsland *> &island_vector,
 
   if (params.margin_method == ED_UVPACK_MARGIN_FRACTION) {
     /* Uses a line search on scale. ~10x slower than other method. */
-    const float scale = pack_islands_margin_fraction(island_vector, box_array, params.margin);
+    const float scale = pack_islands_margin_fraction(
+        island_vector, box_array, params.margin, params.shape_method);
     r_scale[0] = scale;
     r_scale[1] = scale;
     /* pack_islands_margin_fraction will pad FaceIslands, return early. */
@@ -355,7 +610,8 @@ static BoxPack *pack_islands_box_array(const Span<PackIsland *> &island_vector,
       BLI_assert_unreachable();
   }
 
-  const float max_uv = pack_islands_scale_margin(island_vector, box_array, 1.0f, margin);
+  const float max_uv = pack_islands_scale_margin(
+      island_vector, box_array, 1.0f, margin, params.shape_method);
   r_scale[0] = 1.0f / max_uv;
   r_scale[1] = r_scale[0];
 

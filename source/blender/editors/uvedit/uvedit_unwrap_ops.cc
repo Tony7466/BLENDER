@@ -1398,6 +1398,22 @@ static void uvedit_pack_islands_multi(const Scene *scene,
     pack_island->bounds_rect = face_island->bounds_rect;
     pack_island->caller_index = i;
     pack_island_vector.append(pack_island);
+
+    /* TODO: Proper triangulation, not just fan... */
+    for (int i = 0; i < face_island->faces_len; i++) {
+      BMFace *f = face_island->faces[i];
+      BMLoop *l_a = BM_FACE_FIRST_LOOP(f);
+      BMLoop *l_b = l_a->next;
+      const float *uv_a = BM_ELEM_CD_GET_FLOAT_P(l_a, face_island->offsets.uv);
+      const float *uv_b = BM_ELEM_CD_GET_FLOAT_P(l_b, face_island->offsets.uv);
+      while (l_b->next != l_a) {
+        BMLoop *l_c = l_b->next;
+        const float *uv_c = BM_ELEM_CD_GET_FLOAT_P(l_c, face_island->offsets.uv);
+        pack_island->addTriangle(uv_a, uv_b, uv_c);
+        uv_b = uv_c;
+        l_b = l_c;
+      }
+    }
   }
   pack_islands(pack_island_vector, *params, scale);
 
@@ -1523,6 +1539,8 @@ static int pack_islands_exec(bContext *C, wmOperator *op)
   pack_island_params.margin_method = eUVPackIsland_MarginMethod(
       RNA_enum_get(op->ptr, "margin_method"));
   pack_island_params.margin = RNA_float_get(op->ptr, "margin");
+  pack_island_params.shape_method = eUVPackIsland_ShapeMethod(
+      RNA_enum_get(op->ptr, "shape_method"));
 
   UVMapUDIM_Params closest_udim_buf;
   UVMapUDIM_Params *closest_udim = nullptr;
@@ -1556,6 +1574,16 @@ static const EnumPropertyItem pack_margin_method_items[] = {
      0,
      "Fraction",
      "Specify a precise fraction of final UV output"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+static const EnumPropertyItem pack_shape_method_items[] = {
+    {ED_UVPACK_SHAPE_AABB, "AABB", 0, "AABB", "Use Axis-Aligned Bounding Boxes"},
+    {ED_UVPACK_SHAPE_CONCAVE_HOLE,
+     "CONCAVE_HOLE",
+     0,
+     "Concave with hole fill",
+     "Use concave hull with hole filling"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -1593,6 +1621,8 @@ void UV_OT_pack_islands(wmOperatorType *ot)
                "");
   RNA_def_float_factor(
       ot->srna, "margin", 0.001f, 0.0f, 1.0f, "Margin", "Space between islands", 0.0f, 1.0f);
+  RNA_def_enum(
+      ot->srna, "shape_method", pack_shape_method_items, ED_UVPACK_SHAPE_AABB, "Shape Method", "");
 }
 
 /** \} */
