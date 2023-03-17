@@ -8,6 +8,7 @@
 #include "scene/scene.h"
 
 #include "util/boundbox.h"
+#include "util/task.h"
 #include "util/types.h"
 #include "util/vector.h"
 
@@ -52,6 +53,12 @@ OrientationBounds merge(const OrientationBounds &cone_a, const OrientationBounds
  * The light tree construction is based on PBRT's BVH construction.
  */
 
+/* Left or right child of an inner node. */
+enum Child {
+  left = 0,
+  right = 1,
+};
+
 /* Light Tree Primitive
  * Struct that indexes into the scene's triangle and light arrays. */
 struct LightTreePrimitive {
@@ -95,11 +102,11 @@ struct LightTreeNode {
   OrientationBounds bcone;
   float energy;
   uint bit_trail;
-  int num_prims = -1;
-  union {
-    int first_prim_index;  /* leaf nodes contain an index to first primitive. */
-    int right_child_index; /* interior nodes contain an index to second child. */
-  };
+  int num_prims = -1;         /* The number of primitives a leaf node stores. A negative
+                                 number indicates it is an inner node. */
+  int first_prim_index;       /* Leaf nodes contain an index to first primitive. */
+  LightTreeNode *children[2]; /* Inner node. */
+
   LightTreeNode() = default;
 
   LightTreeNode(const BoundBox &bbox,
@@ -115,10 +122,6 @@ struct LightTreeNode {
     this->first_prim_index = first_prim_index;
     this->num_prims = num_prims;
   }
-  void make_interior(const int &right_child_index)
-  {
-    this->right_child_index = right_child_index;
-  }
 
   inline bool is_leaf() const
   {
@@ -131,7 +134,8 @@ struct LightTreeNode {
  * BVH-like data structure that keeps track of lights
  * and considers additional orientation and energy information */
 class LightTree {
-  vector<LightTreeNode> nodes_;
+  LightTreeNode *root;
+  atomic<int> num_nodes = 0;
   uint max_lights_in_leaf_;
 
  public:
@@ -139,11 +143,39 @@ class LightTree {
             const int &num_distant_lights,
             uint max_lights_in_leaf);
 
-  const vector<LightTreeNode> &get_nodes() const;
+  int size() const
+  {
+    return num_nodes;
+  };
+
+  LightTreeNode *get_root() const
+  {
+    return root;
+  };
+
+  /* NOTE: Always use this function to create a new node so the number of nodes is in sync. */
+  LightTreeNode *create_node(const BoundBox &bbox,
+                             const OrientationBounds &bcone,
+                             const float &energy,
+                             const uint &bit_trial)
+  {
+    num_nodes++;
+    return new LightTreeNode(bbox, bcone, energy, bit_trial);
+  }
 
  private:
-  int recursive_build(
-      int start, int end, vector<LightTreePrimitive> &prims, uint bit_trail, int depth);
+  /* Thread. */
+  TaskPool task_pool;
+  /* Do not spawn a thread if less than this amount of primitives are to be processed. */
+  enum { MIN_PRIMS_PER_THREAD = 4096 };
+
+  template<Child child>
+  void recursive_build(LightTreeNode *parent,
+                       int start,
+                       int end,
+                       vector<LightTreePrimitive> *prims,
+                       uint bit_trail,
+                       int depth);
   float min_split_saoh(const BoundBox &centroid_bbox,
                        int start,
                        int end,
