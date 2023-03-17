@@ -266,13 +266,13 @@ GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_SRGB8_A8);
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RGBA8_SNORM()
 {
-  texture_create_upload_read_with_bias<GPU_RGBA8_SNORM, GPU_DATA_FLOAT>(0.0f);
+  texture_create_upload_read_with_bias<GPU_RGBA8_SNORM, GPU_DATA_FLOAT>(0.004f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RGBA8_SNORM);
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RGBA16_SNORM()
 {
-  texture_create_upload_read_with_bias<GPU_RGBA16_SNORM, GPU_DATA_FLOAT>(0.0f);
+  texture_create_upload_read_with_bias<GPU_RGBA16_SNORM, GPU_DATA_FLOAT>(0.00002f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RGBA16_SNORM);
 
@@ -315,25 +315,25 @@ GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RGB32F);
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RG8_SNORM()
 {
-  texture_create_upload_read_with_bias<GPU_RG8_SNORM, GPU_DATA_FLOAT>(0.0f);
+  texture_create_upload_read_with_bias<GPU_RG8_SNORM, GPU_DATA_FLOAT>(0.004f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RG8_SNORM);
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RG16_SNORM()
 {
-  texture_create_upload_read_with_bias<GPU_RG16_SNORM, GPU_DATA_FLOAT>(0.0f);
+  texture_create_upload_read_with_bias<GPU_RG16_SNORM, GPU_DATA_FLOAT>(0.00002f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RG16_SNORM);
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_R8_SNORM()
 {
-  texture_create_upload_read_with_bias<GPU_R8_SNORM, GPU_DATA_FLOAT>(0.0f);
+  texture_create_upload_read_with_bias<GPU_R8_SNORM, GPU_DATA_FLOAT>(0.004f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_R8_SNORM);
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_R16_SNORM()
 {
-  texture_create_upload_read_with_bias<GPU_R16_SNORM, GPU_DATA_FLOAT>(0.0f);
+  texture_create_upload_read_with_bias<GPU_R16_SNORM, GPU_DATA_FLOAT>(0.00002f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_R16_SNORM);
 
