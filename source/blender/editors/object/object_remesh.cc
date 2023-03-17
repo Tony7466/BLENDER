@@ -693,18 +693,18 @@ static bool mesh_is_manifold_consistent(Mesh *mesh)
   }
 
   for (const int corner_i : corner_verts.index_range()) {
-    const int vert_i = corner_verts[corner_i];
-    const int edge_i = corner_edges[corner_i];
-    edge_faces[edge_i] += 1;
-    if (edge_faces[edge_i] > 2) {
+    const int vert = corner_verts[corner_i];
+    const int edge = corner_edges[corner_i];
+    edge_faces[edge] += 1;
+    if (edge_faces[edge] > 2) {
       is_manifold_consistent = false;
       break;
     }
 
-    if (edge_vert[edge_i] == -1) {
-      edge_vert[edge_i] = vert_i;
+    if (edge_vert[edge] == -1) {
+      edge_vert[edge] = vert;
     }
-    else if (edge_vert[edge_i] == vert_i) {
+    else if (edge_vert[edge] == vert) {
       /* Mesh has flips in the surface so it is non consistent */
       is_manifold_consistent = false;
       break;

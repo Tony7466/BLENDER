@@ -1083,8 +1083,8 @@ static int mesh_tessface_calc(Mesh &mesh,
       /* Calculate the normal, flipped: to get a positive 2D cross product. */
       co_prev = positions[corner_verts[mp_loopstart + mp_totloop - 1]];
       for (j = 0; j < mp_totloop; j++) {
-        const int vert_i = corner_verts[mp_loopstart + j];
-        co_curr = positions[vert_i];
+        const int vert = corner_verts[mp_loopstart + j];
+        co_curr = positions[vert];
         add_newell_cross_v3_v3v3(normal, co_prev, co_curr);
         co_prev = co_curr;
       }
@@ -1096,8 +1096,8 @@ static int mesh_tessface_calc(Mesh &mesh,
       axis_dominant_v3_to_m3_negate(axis_mat, normal);
 
       for (j = 0; j < mp_totloop; j++) {
-        const int vert_i = corner_verts[mp_loopstart + j];
-        mul_v2_m3v3(projverts[j], axis_mat, positions[vert_i]);
+        const int vert = corner_verts[mp_loopstart + j];
+        mul_v2_m3v3(projverts[j], axis_mat, positions[vert]);
       }
 
       BLI_polyfill_calc_arena(projverts, mp_totloop, 1, tris, arena);
