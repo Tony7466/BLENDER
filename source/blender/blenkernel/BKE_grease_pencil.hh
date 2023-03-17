@@ -196,6 +196,30 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
 
 class Layer : public TreeNode, ::GreasePencilLayer {
  private:
+  /**
+   * This Map maps a scene frame number (key) to an index into GreasePencil->drawings (value). The
+   * frame number indicates the first frame the drawing is shown. The end time is implicitly
+   * defined by the next greater frame number (key) in the map. If the value mapped to (index) is
+   * -1, no drawing is shown at this frame.
+   *
+   *    \example:
+   *
+   *    {0: 0, 5: 1, 10: -1, 12: 2, 16: -1}
+   *
+   *    In this example there are three drawings (drawing #0, drawing #1 and drawing #2). The first
+   *    drawing starts at frame 0 and ends at frame 5 (excusive). The second drawing starts at
+   *    frame 5 and ends at frame 10. Finally, the third drawing starts at frame 12 and ends at
+   *    frame 16.
+   *
+   *           | | | | | | | | | | |1|1|1|1|1|1|1|
+   *    Time:  |0|1|2|3|4|5|6|7|8|9|0|1|2|3|4|5|6|...
+   *    Frame: [#0      ][#1      ]    [#2    ]
+   *
+   * \note If a drawing references another data-block, all of the drawings in that data-block are
+   * mapped sequentially to the frames (frame-by-frame). If another frame starts, the rest of the
+   * referenced drawings are discarded. If the frame is longer than the number of referenced
+   * drawings, then the last referenced drawing is held for the rest of the duration.
+   */
   Map<int, int> frames_;
 
  public:
@@ -223,6 +247,16 @@ class Layer : public TreeNode, ::GreasePencilLayer {
   bool operator!=(const Layer &other) const
   {
     return this != &other;
+  }
+
+  bool insert_frame(int frame_number, int index)
+  {
+    return frames_.add(frame_number, index);
+  }
+
+  bool overwrite_frame(int frame_number, int index)
+  {
+    return frames_.add_overwrite(frame_number, index);
   }
 };
 
@@ -264,14 +298,16 @@ class LayerGroup : public TreeNode {
     children_.append(std::make_unique<LayerGroup>(group));
   }
 
-  void add_layer(Layer &layer)
+  Layer &add_layer(Layer &layer)
   {
-    children_.append(std::make_unique<Layer>(layer));
+    int64_t index = children_.append_and_get_index(std::make_unique<Layer>(layer));
+    return children_[index].get()->as_layer();
   }
 
-  void add_layer(Layer &&layer)
+  Layer &add_layer(Layer &&layer)
   {
-    children_.append(std::make_unique<Layer>(layer));
+    int64_t index = children_.append_and_get_index(std::make_unique<Layer>(layer));
+    return children_[index].get()->as_layer();
   }
 
   int num_children()
@@ -286,24 +322,30 @@ class LayerGroup : public TreeNode {
   }
 };
 
-class LayerTree {
- private:
-  LayerGroup root_;
-};
-
 namespace convert {
 
-CurvesGeometry legacy_gpencil_frame_to_curves_geometry(bGPDframe &gpf);
+void legacy_gpencil_frame_to_curves_geometry(GreasePencilDrawing &drawing, bGPDframe &gpf);
 
-void legacy_gpencil_to_grease_pencil(bGPdata &gpd, GreasePencil &grease_pencil);
+void legacy_gpencil_to_grease_pencil(GreasePencil &grease_pencil, bGPdata &gpd);
 
 }  // namespace convert
 
 }  // namespace gpencil
 
+using namespace blender::bke::gpencil;
 class GreasePencilRuntime {
  private:
-  gpencil::LayerTree layer_tree_;
+  LayerGroup root_group_;
+
+ public:
+  GreasePencilRuntime()
+  {
+  }
+
+  LayerGroup &root_group()
+  {
+    return root_group_;
+  }
 };
 
 }  // namespace blender::bke

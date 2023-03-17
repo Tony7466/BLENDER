@@ -2767,8 +2767,8 @@ static const EnumPropertyItem convert_target_items[] = {
     {OB_GPENCIL_LEGACY,
      "GPENCIL",
      ICON_OUTLINER_OB_GREASEPENCIL,
-     "Grease Pencil",
-     "Grease Pencil from Curve or Mesh objects"},
+     "Grease Pencil (legacy)",
+     "Grease Pencil (legacy) from Curve or Mesh objects"},
 #ifdef WITH_POINT_CLOUD
     {OB_POINTCLOUD,
      "POINTCLOUD",
@@ -2777,6 +2777,11 @@ static const EnumPropertyItem convert_target_items[] = {
      "Point Cloud from Mesh objects"},
 #endif
     {OB_CURVES, "CURVES", ICON_OUTLINER_OB_CURVES, "Curves", "Curves from evaluated curve data"},
+    {OB_GREASE_PENCIL,
+     "GREASEPENCIL",
+     ICON_OUTLINER_OB_GREASEPENCIL,
+     "Grease Pencil",
+     "Grease Pencil from Grease Pencil (legacy)"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -3063,37 +3068,10 @@ static int object_convert_exec(bContext *C, wmOperator *op)
       }
       ob_gpencil->actcol = actcol;
     }
-    else if (ob->type == OB_GPENCIL_LEGACY && target == OB_CURVES) {
-      ob->flag |= OB_DONE;
-
-      bGPdata *gpd = static_cast<bGPdata *>(ob->data);
-      bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
-      bGPDframe &gpf = *BKE_gpencil_layer_frame_find(gpl, scene->r.cfra);
-
-      if (keep_original) {
-        BLI_assert_unreachable();
-      }
-      else {
-        newob = ob;
-      }
-
-      Curves *new_curves = static_cast<Curves *>(BKE_id_new(bmain, ID_CV, newob->id.name + 2));
-
-      newob->data = new_curves;
-      newob->type = OB_CURVES;
-
-      new_curves->geometry.wrap() = std::move(
-          bke::gpencil::convert::legacy_gpencil_frame_to_curves_geometry(gpf));
-
-      BKE_object_free_derived_caches(newob);
-      BKE_object_free_modifiers(newob, 0);
-    }
     else if (ob->type == OB_GPENCIL_LEGACY && target == OB_GREASE_PENCIL) {
       ob->flag |= OB_DONE;
 
       bGPdata *gpd = static_cast<bGPdata *>(ob->data);
-      bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
-      bGPDframe &gpf = *BKE_gpencil_layer_frame_find(gpl, scene->r.cfra);
 
       if (keep_original) {
         BLI_assert_unreachable();
@@ -3102,13 +3080,12 @@ static int object_convert_exec(bContext *C, wmOperator *op)
         newob = ob;
       }
 
-      Curves *new_curves = static_cast<Curves *>(BKE_id_new(bmain, ID_CV, newob->id.name + 2));
+      GreasePencil *new_grease_pencil = static_cast<GreasePencil *>(
+          BKE_id_new(bmain, ID_GP, newob->id.name + 2));
+      newob->data = new_grease_pencil;
+      newob->type = OB_GREASE_PENCIL;
 
-      newob->data = new_curves;
-      newob->type = OB_CURVES;
-
-      new_curves->geometry.wrap() = std::move(
-          bke::gpencil::convert::legacy_gpencil_frame_to_curves_geometry(gpf));
+      bke::gpencil::convert::legacy_gpencil_to_grease_pencil(*new_grease_pencil, *gpd);
 
       BKE_object_free_derived_caches(newob);
       BKE_object_free_modifiers(newob, 0);

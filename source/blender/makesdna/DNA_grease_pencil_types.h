@@ -68,28 +68,8 @@ typedef struct GreasePencilDrawingReference {
 } GreasePencilDrawingReference;
 
 /**
- * This Map maps a scene frame number (key) to an index into GreasePencil->drawings (value). The
- * frame number indicates the first frame the drawing is shown. The end time is implicitly
- * defined by the next greater frame number (key) in the map. If the value mapped to (index) is
- * -1, no drawing is shown at this frame.
- *
- *    \example:
- *
- *    {0: 0, 5: 1, 10: -1, 12: 2, 16: -1}
- *
- *    In this example there are three drawings (drawing #0, drawing #1 and drawing #2). The first
- *    drawing starts at frame 0 and ends at frame 5 (excusive). The second drawing starts at
- *    frame 5 and ends at frame 10. Finally, the third drawing starts at frame 12 and ends at
- *    frame 16.
- *
- *           | | | | | | | | | | |1|1|1|1|1|1|1|
- *    Time:  |0|1|2|3|4|5|6|7|8|9|0|1|2|3|4|5|6|...
- *    Frame: [#0      ][#1      ]    [#2    ]
- *
- * \note If a drawing references another data-block, all of the drawings in that data-block are
- * mapped sequentially to the frames (frame-by-frame). If another frame starts, the rest of the
- * referenced drawings are discarded. If the frame is longer than the number of referenced
- * drawings, then the last referenced drawing is held for the rest of the duration.
+ * Storage for the Map in `blender::bke::gpencil::Layer`.
+ * See the description there for more detail.
  */
 typedef struct GreasePencilLayerFramesMapStorage {
   /* Array of `frames` keys (sorted in ascending order). */
@@ -173,12 +153,7 @@ typedef struct GreasePencil {
   int drawing_array_size;
   char _pad[4];
 
-#ifdef __cplusplus
-  /**
-   * The layer tree.
-   */
-  // const bke::gpencil::LayerTree &layer_tree() const;
-#endif
+  /* Only used for storage in the .blend file. */
   GreasePencilLayerTreeStorage layer_tree_storage;
 
   /**

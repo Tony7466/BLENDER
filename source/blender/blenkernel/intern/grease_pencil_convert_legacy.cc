@@ -16,7 +16,7 @@
 
 namespace blender::bke::gpencil::convert {
 
-CurvesGeometry legacy_gpencil_frame_to_curves_geometry(bGPDframe &gpf)
+void legacy_gpencil_frame_to_curves_geometry(GreasePencilDrawing &drawing, bGPDframe &gpf)
 {
   /* Get the number of points, number of strokes and the offsets for each stroke. */
   Vector<int> offsets;
@@ -88,11 +88,13 @@ CurvesGeometry legacy_gpencil_frame_to_curves_geometry(bGPDframe &gpf)
 
   curves.tag_topology_changed();
 
-  return curves;
+  drawing.geometry.wrap() = std::move(curves);
 }
 
-void legacy_gpencil_to_grease_pencil(bGPdata &gpd, GreasePencil &grease_pencil)
+void legacy_gpencil_to_grease_pencil(GreasePencil &grease_pencil, bGPdata &gpd)
 {
+  using namespace blender::bke::gpencil;
+
   int num_layers = 0;
   int num_drawings = 0;
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd.layers) {
@@ -102,21 +104,22 @@ void legacy_gpencil_to_grease_pencil(bGPdata &gpd, GreasePencil &grease_pencil)
 
   grease_pencil.drawing_array_size = num_drawings;
   grease_pencil.drawing_array = reinterpret_cast<GreasePencilDrawingOrReference **>(
-      MEM_cnew_array<GreasePencilDrawing>(num_drawings, __func__));
+      MEM_cnew_array<GreasePencilDrawing *>(num_drawings, __func__));
 
   int i = 0;
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd.layers) {
-    /* TODO: create a new layer here. */
+    Layer &new_layer = grease_pencil.runtime->root_group().add_layer(Layer(gpl->info));
     LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+      grease_pencil.drawing_array[i] = reinterpret_cast<GreasePencilDrawingOrReference *>(
+          MEM_new<GreasePencilDrawing>(__func__));
       GreasePencilDrawing &drawing = *reinterpret_cast<GreasePencilDrawing *>(
           grease_pencil.drawing_array[i]);
       drawing.base.type = GREASE_PENCIL_DRAWING;
       /* TODO: copy flag. */
 
       /* Convert the frame to a drawing. */
-      drawing.geometry = legacy_gpencil_frame_to_curves_geometry(*gpf);
-
-      /* TODO: add drawing to layer. Using the gpf->framenum. */
+      legacy_gpencil_frame_to_curves_geometry(drawing, *gpf);
+      new_layer.insert_frame(gpf->framenum, i);
       i++;
     }
   }
