@@ -1077,7 +1077,46 @@ typedef struct tFCurveSegmentLink {
   float *samples;
 } tFCurveSegmentLink;
 
-static void gauss_smooth_cleanup_custom_data(void *operator_data)
+static void gauss_smooth_build_custom_data(tGraphSliderOp *gso,
+                                           const int filter_width,
+                                           const float sigma)
+{
+  tGaussOperatorData *operator_data = MEM_callocN(sizeof(tGaussOperatorData),
+                                                  "tGaussOperatorData");
+  const int kernel_size = filter_width + 1;
+  double *kernel = MEM_callocN(sizeof(double) * kernel_size, "Gauss Kernel");
+  get_1d_gauss_kernel(sigma, kernel_size, kernel);
+  operator_data->kernel = kernel;
+
+  ListBase anim_data = {NULL, NULL};
+  ANIM_animdata_filter(&gso->ac, &anim_data, OPERATOR_DATA_FILTER, gso->ac.data, gso->ac.datatype);
+
+  ListBase segment_links = {NULL, NULL};
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    FCurve *fcu = (FCurve *)ale->key_data;
+    ListBase fcu_segments = find_fcurve_segments(fcu);
+    LISTBASE_FOREACH (FCurveSegment *, segment, &fcu_segments) {
+      tFCurveSegmentLink *segment_link = MEM_callocN(sizeof(tFCurveSegmentLink),
+                                                     "FCurve Segment Link");
+      segment_link->fcu = fcu;
+      segment_link->segment = segment;
+      BezTriple left_bezt = fcu->bezt[segment->start_index];
+      BezTriple right_bezt = fcu->bezt[segment->start_index + segment->length - 1];
+      const int sample_count = (int)(right_bezt.vec[1][0] - left_bezt.vec[1][0]) +
+                               (filter_width * 2 + 1);
+      float *samples = MEM_callocN(sizeof(float) * sample_count, "Smooth FCurve Op Samples");
+      sample_fcurve_segment(fcu, left_bezt.vec[1][0] - filter_width, samples, sample_count);
+      segment_link->samples = samples;
+      BLI_addtail(&segment_links, segment_link);
+    }
+  }
+  ANIM_animdata_freelist(&anim_data);
+
+  operator_data->segment_links = segment_links;
+  gso->operator_data = operator_data;
+}
+
+static void gauss_smooth_free_custom_data(void *operator_data)
 {
   tGaussOperatorData *gauss_data = (tGaussOperatorData *)operator_data;
   LISTBASE_FOREACH (tFCurveSegmentLink *, segment_link, &gauss_data->segment_links) {
@@ -1180,44 +1219,12 @@ static int gauss_smooth_invoke(bContext *C, wmOperator *op, const wmEvent *event
 
   const float sigma = RNA_float_get(op->ptr, "sigma");
   const int filter_width = RNA_int_get(op->ptr, "filter_width");
-  const int kernel_size = filter_width + 1;
-  double *kernel = MEM_callocN(sizeof(double) * kernel_size, "Gauss Kernel");
-  get_1d_gauss_kernel(sigma, kernel_size, kernel);
 
-  tGaussOperatorData *operator_data = MEM_callocN(sizeof(tGaussOperatorData),
-                                                  "tGaussOperatorData");
-  operator_data->kernel = kernel;
-
-  ListBase anim_data = {NULL, NULL};
-  ANIM_animdata_filter(&gso->ac, &anim_data, OPERATOR_DATA_FILTER, gso->ac.data, gso->ac.datatype);
-
-  ListBase segment_links = {NULL, NULL};
-  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    FCurve *fcu = (FCurve *)ale->key_data;
-    ListBase fcu_segments = find_fcurve_segments(fcu);
-    LISTBASE_FOREACH (FCurveSegment *, segment, &fcu_segments) {
-      tFCurveSegmentLink *segment_link = MEM_callocN(sizeof(tFCurveSegmentLink),
-                                                     "FCurve Segment Link");
-      segment_link->fcu = fcu;
-      segment_link->segment = segment;
-      BezTriple left_bezt = fcu->bezt[segment->start_index];
-      BezTriple right_bezt = fcu->bezt[segment->start_index + segment->length - 1];
-      const int sample_count = (int)(right_bezt.vec[1][0] - left_bezt.vec[1][0]) +
-                               (filter_width * 2 + 1);
-      float *samples = MEM_callocN(sizeof(float) * sample_count, "Smooth FCurve Op Samples");
-      sample_fcurve_segment(fcu, left_bezt.vec[1][0] - filter_width, samples, sample_count);
-      segment_link->samples = samples;
-      BLI_addtail(&segment_links, segment_link);
-    }
-  }
-
-  operator_data->segment_links = segment_links;
-  gso->operator_data = operator_data;
-  gso->cleanup_operator_data = gauss_smooth_cleanup_custom_data;
+  gauss_smooth_build_custom_data(gso, filter_width, sigma);
+  gso->cleanup_operator_data = gauss_smooth_free_custom_data;
 
   ED_slider_allow_overshoot_set(gso->slider, false);
   ease_draw_status_header(C, gso);
-  ANIM_animdata_freelist(&anim_data);
 
   return invoke_result;
 }
