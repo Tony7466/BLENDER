@@ -110,7 +110,7 @@ class Volumes {
   PassMain resolve_ps_ = {"Volumes.Resolve"};
   PassMain accum_ps_ = {"Volumes.Accum"};
 
-  // public:
+ public:
   Volumes(Instance &inst) : inst_(inst){};
 
   ~Volumes(){};
@@ -434,7 +434,7 @@ class Volumes {
 
     resolve_ps_.init();
     resolve_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
-    resolve_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_RESOLVE_NO_ACCUM));
+    resolve_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_RESOLVE));
 
     resolve_ps_.bind_texture("inScattering", &scatter_tx_);
     resolve_ps_.bind_texture("inTransmittance", &transmit_tx_);
