@@ -254,12 +254,16 @@ static ConversionType type_of_conversion_uint(eGPUTextureFormat device_format)
 static ConversionType type_of_conversion_half(eGPUTextureFormat device_format)
 {
   switch (device_format) {
+    case GPU_RGBA16F:
+    case GPU_RG16F:
+    case GPU_R16F:
+      return ConversionType::PASS_THROUGH;
+
     case GPU_RGBA8UI:
     case GPU_RGBA8I:
     case GPU_RGBA8:
     case GPU_RGBA16UI:
     case GPU_RGBA16I:
-    case GPU_RGBA16F:
     case GPU_RGBA16:
     case GPU_RGBA32UI:
     case GPU_RGBA32I:
@@ -269,7 +273,6 @@ static ConversionType type_of_conversion_half(eGPUTextureFormat device_format)
     case GPU_RG8:
     case GPU_RG16UI:
     case GPU_RG16I:
-    case GPU_RG16F:
     case GPU_RG16:
     case GPU_RG32UI:
     case GPU_RG32I:
@@ -279,7 +282,6 @@ static ConversionType type_of_conversion_half(eGPUTextureFormat device_format)
     case GPU_R8:
     case GPU_R16UI:
     case GPU_R16I:
-    case GPU_R16F:
     case GPU_R16:
     case GPU_R32UI:
     case GPU_R32I:

@@ -93,7 +93,7 @@ static void texture_create_upload_read()
   for (int i : IndexRange(data_len)) {
     bool ok = abs(read_data[i] - data[i]) < 0.01;
     failed |= !ok;
-    //EXPECT_EQ(read_data[i], data[i]);
+    // EXPECT_EQ(read_data[i], data[i]);
   }
   EXPECT_FALSE(failed);
 
@@ -245,6 +245,7 @@ static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RGB16F()
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RGB16F);
 #endif
+
 #if RUN_UNSUPPORTED
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RGB16()
 {
@@ -363,36 +364,39 @@ static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_DEPTH_COMPONENT16()
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_DEPTH_COMPONENT16);
 #endif
+
 /* \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Roundtrip testing GPU_DATA_HALF_FLOAT
  * \{ */
-#if 0
+
 static void test_texture_roundtrip__GPU_DATA_HALF_FLOAT__GPU_RGBA16F()
 {
-  texture_create_upload_read<GPU_RGBA16F, GPU_DATA_HALF_FLOAT, half>();
+  texture_create_upload_read<GPU_RGBA16F, GPU_DATA_HALF_FLOAT, uint16_t>();
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_HALF_FLOAT__GPU_RGBA16F);
 
 static void test_texture_roundtrip__GPU_DATA_HALF_FLOAT__GPU_RG16F()
 {
-  texture_create_upload_read<GPU_RG16F, GPU_DATA_HALF_FLOAT, half>();
+  texture_create_upload_read<GPU_RG16F, GPU_DATA_HALF_FLOAT, uint16_t>();
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_HALF_FLOAT__GPU_RG16F);
 
 static void test_texture_roundtrip__GPU_DATA_HALF_FLOAT__GPU_R16F()
 {
-  texture_create_upload_read<GPU_R16F, GPU_DATA_HALF_FLOAT, half>();
+  texture_create_upload_read<GPU_R16F, GPU_DATA_HALF_FLOAT, uint16_t>();
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_HALF_FLOAT__GPU_R16F);
 
+#if RUN_UNSUPPORTED
 static void test_texture_roundtrip__GPU_DATA_HALF_FLOAT__GPU_RGB16F()
 {
-  texture_create_upload_read<GPU_RGB16F, GPU_DATA_HALF_FLOAT, half>();
+  texture_create_upload_read<GPU_RGB16F, GPU_DATA_HALF_FLOAT, uint16_t>();
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_HALF_FLOAT__GPU_RGB16F);
 #endif
+
 /* \} */
 
 /* -------------------------------------------------------------------- */
@@ -433,9 +437,7 @@ static void test_texture_roundtrip__GPU_DATA_INT__GPU_RG32I()
 {
   texture_create_upload_read<GPU_RG32I, GPU_DATA_INT, int32_t>();
 }
-GPU_TEST(texture_roundtrip__GPU_DATA_INT__GPU_RG32I);
-
-static void test_texture_roundtrip__GPU_DATA_INT__GPU_R8I()
+GPU_TEST(texture_roundtrip__GPU_DATA_INT__GPU_RG32I);test_texture_roundtrip__GPU_DATA_UBYTE__GPU_SRGB8_A8
 {
   texture_create_upload_read<GPU_R8I, GPU_DATA_INT, int32_t>();
 }
@@ -708,7 +710,7 @@ GPU_TEST(texture_roundtrip__GPU_DATA_2_10_10_10_REV__GPU_RGB10_A2UI);
         return std::string("float");
 
       case GPU_DATA_HALF_FLOAT:
-        return std::string("half");
+        return std::string("uint16_t");
       case GPU_DATA_INT:
         return std::string("int32_t");
       case GPU_DATA_UINT:
