@@ -138,13 +138,7 @@ void *VKTexture::read(int mip, eGPUDataFormat format)
   command_buffer.submit();
 
   void *data = MEM_mallocN(host_memory_size, __func__);
-
-  /* Convert data from device to host memory. */
-  ConversionType conversion_type = conversion_type_for_read(format, format_);
-  BLI_assert_msg(conversion_type != ConversionType::UNSUPPORTED,
-                 "Memory data conversions not implemented yet");
-  convert(conversion_type, format_, sample_len, data, staging_buffer.mapped_memory_get());
-
+  convert_device_to_host(data, staging_buffer.mapped_memory_get(), sample_len, format, format_);
   return data;
 }
 
@@ -163,11 +157,7 @@ void VKTexture::update_sub(
 
   staging_buffer.create(
       context, device_memory_size, GPU_USAGE_DEVICE_ONLY, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-
-  ConversionType conversion_type = conversion_type_for_update(format, format_);
-  BLI_assert_msg(conversion_type != ConversionType::UNSUPPORTED,
-                 "Memory data conversions not implemented yet");
-  convert(conversion_type, format_, sample_len, staging_buffer.mapped_memory_get(), data);
+  convert_host_to_device(staging_buffer.mapped_memory_get(), data, sample_len, format, format_);
 
   VkBufferImageCopy region = {};
   region.imageExtent.width = extent[0];

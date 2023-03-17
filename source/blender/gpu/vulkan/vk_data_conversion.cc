@@ -8,6 +8,48 @@
 #include "vk_data_conversion.hh"
 
 namespace blender::gpu {
+
+/* -------------------------------------------------------------------- */
+/** \name Conversion types
+ * \{ */
+enum class ConversionType {
+  /** No conversion needed, result can be directly read back to host memory. */
+  PASS_THROUGH,
+
+  FLOAT_TO_UNORM8,
+  UNORM8_TO_FLOAT,
+
+  FLOAT_TO_SNORM8,
+  SNORM8_TO_FLOAT,
+
+  FLOAT_TO_UNORM16,
+  UNORM16_TO_FLOAT,
+
+  FLOAT_TO_SNORM16,
+  SNORM16_TO_FLOAT,
+
+  UI32_TO_UI16,
+  UI16_TO_UI32,
+
+  UI32_TO_UI8,
+  UI8_TO_UI32,
+
+  I32_TO_I16,
+  I16_TO_I32,
+
+  I32_TO_I8,
+  I8_TO_I32,
+
+  /** Convert device 16F to floats. */
+  HALF_TO_FLOAT,
+  FLOAT_TO_HALF,
+
+  /**
+   * The requested conversion isn't supported.
+   */
+  UNSUPPORTED,
+};
+
 static ConversionType type_of_conversion_float(eGPUTextureFormat device_format)
 {
   switch (device_format) {
@@ -401,8 +443,7 @@ static ConversionType type_of_conversion_ubyte(eGPUTextureFormat device_format)
   return ConversionType::UNSUPPORTED;
 }
 
-ConversionType conversion_type_for_update(eGPUDataFormat host_format,
-                                          eGPUTextureFormat device_format)
+static ConversionType host_to_device(eGPUDataFormat host_format, eGPUTextureFormat device_format)
 {
   BLI_assert(validate_data_format(device_format, host_format));
 
@@ -427,7 +468,7 @@ ConversionType conversion_type_for_update(eGPUDataFormat host_format,
   return ConversionType::UNSUPPORTED;
 }
 
-static ConversionType invert(ConversionType type)
+static ConversionType reversed(ConversionType type)
 {
 #define CASE_SINGLE(a, b) \
   case ConversionType::a##_TO_##b: \
@@ -461,11 +502,7 @@ static ConversionType invert(ConversionType type)
   return ConversionType::UNSUPPORTED;
 }
 
-ConversionType conversion_type_for_read(eGPUDataFormat host_format,
-                                        eGPUTextureFormat device_format)
-{
-  return invert(conversion_type_for_update(host_format, device_format));
-}
+/* \} */
 
 /* Copy the contents of src to dst with out performing any actual conversion. */
 template<typename DestinationType, typename SourceType>
@@ -481,9 +518,9 @@ template<typename DestinationType, typename SourceType>
 void copy_unchecked(void *dst_memory,
                     const void *src_memory,
                     eGPUTextureFormat device_format,
-                    size_t sample_len)
+                    size_t buffer_size)
 {
-  size_t total_components = to_component_len(device_format) * sample_len;
+  size_t total_components = to_component_len(device_format) * buffer_size;
   Span<SourceType> src = Span<SourceType>(static_cast<const SourceType *>(src_memory),
                                           total_components);
   MutableSpan<DestinationType> dst = MutableSpan<DestinationType>(
@@ -539,9 +576,9 @@ template<typename DestinationType, typename SourceType>
 void float_to_unorm(void *dst_memory,
                     const void *src_memory,
                     eGPUTextureFormat device_format,
-                    size_t sample_len)
+                    size_t buffer_size)
 {
-  size_t total_components = to_component_len(device_format) * sample_len;
+  size_t total_components = to_component_len(device_format) * buffer_size;
   Span<SourceType> src = Span<SourceType>(static_cast<const SourceType *>(src_memory),
                                           total_components);
   MutableSpan<DestinationType> dst = MutableSpan<DestinationType>(
@@ -562,9 +599,9 @@ template<typename DestinationType, typename SourceType>
 void unorm_to_float(void *dst_memory,
                     const void *src_memory,
                     eGPUTextureFormat device_format,
-                    size_t sample_len)
+                    size_t buffer_size)
 {
-  size_t total_components = to_component_len(device_format) * sample_len;
+  size_t total_components = to_component_len(device_format) * buffer_size;
   Span<SourceType> src = Span<SourceType>(static_cast<const SourceType *>(src_memory),
                                           total_components);
   MutableSpan<DestinationType> dst = MutableSpan<DestinationType>(
@@ -607,9 +644,9 @@ template<typename DestinationType, typename SourceType>
 void float_to_snorm(void *dst_memory,
                     const void *src_memory,
                     eGPUTextureFormat device_format,
-                    size_t sample_len)
+                    size_t buffer_size)
 {
-  size_t total_components = to_component_len(device_format) * sample_len;
+  size_t total_components = to_component_len(device_format) * buffer_size;
   Span<SourceType> src = Span<SourceType>(static_cast<const SourceType *>(src_memory),
                                           total_components);
   MutableSpan<DestinationType> dst = MutableSpan<DestinationType>(
@@ -632,9 +669,9 @@ template<typename DestinationType, typename SourceType>
 void snorm_to_float(void *dst_memory,
                     const void *src_memory,
                     eGPUTextureFormat device_format,
-                    size_t sample_len)
+                    size_t buffer_size)
 {
-  size_t total_components = to_component_len(device_format) * sample_len;
+  size_t total_components = to_component_len(device_format) * buffer_size;
   Span<SourceType> src = Span<SourceType>(static_cast<const SourceType *>(src_memory),
                                           total_components);
   MutableSpan<DestinationType> dst = MutableSpan<DestinationType>(
@@ -642,78 +679,78 @@ void snorm_to_float(void *dst_memory,
   snorm_to_float<DestinationType, SourceType>(dst, src);
 }
 
-void convert(ConversionType type,
-             eGPUTextureFormat device_format,
-             size_t sample_len,
-             void *dst_memory,
-             const void *src_memory)
+static void convert_buffer(void *dst_memory,
+                           const void *src_memory,
+                           size_t buffer_size,
+                           eGPUTextureFormat device_format,
+                           ConversionType type)
 {
   switch (type) {
     case ConversionType::UNSUPPORTED:
       return;
 
     case ConversionType::PASS_THROUGH:
-      memcpy(dst_memory, src_memory, sample_len * to_bytesize(device_format));
+      memcpy(dst_memory, src_memory, buffer_size * to_bytesize(device_format));
       return;
 
     case ConversionType::UI32_TO_UI16:
-      copy_unchecked<uint16_t, uint32_t>(dst_memory, src_memory, device_format, sample_len);
+      copy_unchecked<uint16_t, uint32_t>(dst_memory, src_memory, device_format, buffer_size);
       break;
 
     case ConversionType::UI16_TO_UI32:
-      copy_unchecked<uint32_t, uint16_t>(dst_memory, src_memory, device_format, sample_len);
+      copy_unchecked<uint32_t, uint16_t>(dst_memory, src_memory, device_format, buffer_size);
       break;
 
     case ConversionType::UI32_TO_UI8:
-      copy_unchecked<uint8_t, uint32_t>(dst_memory, src_memory, device_format, sample_len);
+      copy_unchecked<uint8_t, uint32_t>(dst_memory, src_memory, device_format, buffer_size);
       break;
 
     case ConversionType::UI8_TO_UI32:
-      copy_unchecked<uint32_t, uint8_t>(dst_memory, src_memory, device_format, sample_len);
+      copy_unchecked<uint32_t, uint8_t>(dst_memory, src_memory, device_format, buffer_size);
       break;
 
     case ConversionType::I32_TO_I16:
-      copy_unchecked<int16_t, int32_t>(dst_memory, src_memory, device_format, sample_len);
+      copy_unchecked<int16_t, int32_t>(dst_memory, src_memory, device_format, buffer_size);
       break;
 
     case ConversionType::I16_TO_I32:
-      copy_unchecked<int32_t, int16_t>(dst_memory, src_memory, device_format, sample_len);
+      copy_unchecked<int32_t, int16_t>(dst_memory, src_memory, device_format, buffer_size);
       break;
 
     case ConversionType::I32_TO_I8:
-      copy_unchecked<int8_t, int32_t>(dst_memory, src_memory, device_format, sample_len);
+      copy_unchecked<int8_t, int32_t>(dst_memory, src_memory, device_format, buffer_size);
       break;
 
     case ConversionType::I8_TO_I32:
-      copy_unchecked<int32_t, int8_t>(dst_memory, src_memory, device_format, sample_len);
+      copy_unchecked<int32_t, int8_t>(dst_memory, src_memory, device_format, buffer_size);
       break;
 
     case ConversionType::FLOAT_TO_UNORM8:
-      float_to_unorm<uint8_t, float>(dst_memory, src_memory, device_format, sample_len);
+      float_to_unorm<uint8_t, float>(dst_memory, src_memory, device_format, buffer_size);
       break;
     case ConversionType::UNORM8_TO_FLOAT:
-      unorm_to_float<float, uint8_t>(dst_memory, src_memory, device_format, sample_len);
+      unorm_to_float<float, uint8_t>(dst_memory, src_memory, device_format, buffer_size);
       break;
 
     case ConversionType::FLOAT_TO_SNORM8:
-      float_to_snorm<uint8_t, float>(dst_memory, src_memory, device_format, sample_len);
+      float_to_snorm<uint8_t, float>(dst_memory, src_memory, device_format, buffer_size);
       break;
     case ConversionType::SNORM8_TO_FLOAT:
-      snorm_to_float<float, uint8_t>(dst_memory, src_memory, device_format, sample_len);
+      snorm_to_float<float, uint8_t>(dst_memory, src_memory, device_format, buffer_size);
       break;
 
     case ConversionType::FLOAT_TO_UNORM16:
-      float_to_unorm<uint16_t, float>(dst_memory, src_memory, device_format, sample_len);
+      float_to_unorm<uint16_t, float>(dst_memory, src_memory, device_format, buffer_size);
       break;
     case ConversionType::UNORM16_TO_FLOAT:
-      unorm_to_float<float, uint16_t>(dst_memory, src_memory, device_format, sample_len);
+      unorm_to_float<float, uint16_t>(dst_memory, src_memory, device_format, buffer_size);
       break;
 
     case ConversionType::FLOAT_TO_SNORM16:
-      float_to_snorm<uint16_t, float>(dst_memory, src_memory, device_format, sample_len);
+      float_to_snorm<uint16_t, float>(dst_memory, src_memory, device_format, buffer_size);
       break;
     case ConversionType::SNORM16_TO_FLOAT:
-      snorm_to_float<float, uint16_t>(dst_memory, src_memory, device_format, sample_len);
+      snorm_to_float<float, uint16_t>(dst_memory, src_memory, device_format, buffer_size);
       break;
 
     case ConversionType::FLOAT_TO_HALF:
@@ -722,5 +759,33 @@ void convert(ConversionType type,
       return;
   }
 }
+
+/* -------------------------------------------------------------------- */
+/** \name API
+ * \{ */
+
+void convert_host_to_device(void *dst_buffer,
+                            const void *src_buffer,
+                            size_t buffer_size,
+                            eGPUDataFormat host_format,
+                            eGPUTextureFormat device_format)
+{
+  ConversionType conversion_type = host_to_device(host_format, device_format);
+  BLI_assert(conversion_type != ConversionType::UNSUPPORTED);
+  convert_buffer(dst_buffer, src_buffer, buffer_size, device_format, conversion_type);
+}
+
+void convert_device_to_host(void *dst_buffer,
+                            const void *src_buffer,
+                            size_t buffer_size,
+                            eGPUDataFormat host_format,
+                            eGPUTextureFormat device_format)
+{
+  ConversionType conversion_type = reversed(host_to_device(host_format, device_format));
+  BLI_assert(conversion_type != ConversionType::UNSUPPORTED);
+  convert_buffer(dst_buffer, src_buffer, buffer_size, device_format, conversion_type);
+}
+
+/* \} */
 
 }  // namespace blender::gpu

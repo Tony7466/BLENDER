@@ -12,57 +12,42 @@
 
 namespace blender::gpu {
 
-enum class ConversionType {
-  /** No conversion needed, result can be directly read back to host memory. */
-  PASS_THROUGH,
-
-  FLOAT_TO_UNORM8,
-  UNORM8_TO_FLOAT,
-
-  FLOAT_TO_SNORM8,
-  SNORM8_TO_FLOAT,
-
-  FLOAT_TO_UNORM16,
-  UNORM16_TO_FLOAT,
-
-  FLOAT_TO_SNORM16,
-  SNORM16_TO_FLOAT,
-
-  UI32_TO_UI16,
-  UI16_TO_UI32,
-
-  UI32_TO_UI8,
-  UI8_TO_UI32,
-
-  I32_TO_I16,
-  I16_TO_I32,
-
-  I32_TO_I8,
-  I8_TO_I32,
-
-  /** Convert device 16F to floats. */
-  HALF_TO_FLOAT,
-  FLOAT_TO_HALF,
-
-  /**
-   * The requested conversion isn't supported.
-   */
-  UNSUPPORTED,
-};
+/**
+ * Convert host buffer to device buffer.
+ *
+ * \param dst_buffer: device buffer.
+ * \param src_buffer: host buffer.
+ * \param buffer_size: number of pixels to convert from the start of the given buffer.
+ * \param host_format: format of the host buffer
+ * \param device_format: format of the device buffer.
+ *
+ * \note Will assert when the host_format/device_format combination isn't valid
+ * (#validate_data_format) or supported. Some combinations aren't supported in Vulkan due to
+ * platform incompatibility.
+ */
+void convert_host_to_device(void *dst_buffer,
+                            const void *src_buffer,
+                            size_t buffer_size,
+                            eGPUDataFormat host_format,
+                            eGPUTextureFormat device_format);
 
 /**
- * Determine the type of conversion that is needed to read back data from GPU device to host
- * memory.
+ * Convert device buffer to host buffer.
+ *
+ * \param dst_buffer: host buffer
+ * \param src_buffer: device buffer.
+ * \param buffer_size: number of pixels to convert from the start of the given buffer.
+ * \param host_format: format of the host buffer
+ * \param device_format: format of the device buffer.
+ *
+ * \note Will assert when the host_format/device_format combination isn't valid
+ * (#validate_data_format) or supported. Some combinations aren't supported in Vulkan due to
+ * platform incompatibility.
  */
-ConversionType conversion_type_for_read(eGPUDataFormat host_format,
-                                        eGPUTextureFormat device_format);
-ConversionType conversion_type_for_update(eGPUDataFormat host_format,
-                                          eGPUTextureFormat device_format);
-
-void convert(ConversionType type,
-             eGPUTextureFormat device_format,
-             size_t sample_len,
-             void *dst_memory,
-             const void *src_memory);
+void convert_device_to_host(void *dst_buffer,
+                            const void *src_buffer,
+                            size_t buffer_size,
+                            eGPUDataFormat host_format,
+                            eGPUTextureFormat device_format);
 
 };  // namespace blender::gpu
