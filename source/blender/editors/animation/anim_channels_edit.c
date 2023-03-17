@@ -141,7 +141,7 @@ static bool get_channel_bounds(bAnimContext *ac,
 
 /* Pad the given rctf with regions that could block the view.
  * For example Markers and Time Scrubbing. */
-static void add_region_padding(bContext *C, bAnimContext *ac, rctf *bounds)
+static void add_region_padding(bContext *C, ARegion *region, rctf *bounds)
 {
   BLI_rctf_scale(bounds, 1.1f);
 
@@ -149,7 +149,7 @@ static void add_region_padding(bContext *C, bAnimContext *ac, rctf *bounds)
   const float pad_bottom = BLI_listbase_is_empty(ED_context_get_markers(C)) ?
                                V2D_SCROLL_HANDLE_HEIGHT :
                                UI_MARKER_MARGIN_Y;
-  BLI_rctf_pad_y(bounds, ac->region->winy, pad_bottom, pad_top);
+  BLI_rctf_pad_y(bounds, region->winy, pad_bottom, pad_top);
 }
 /** \} */
 
@@ -761,7 +761,7 @@ void ANIM_frame_channel_y_extents(bContext *C, bAnimContext *ac)
     return;
   }
 
-  add_region_padding(C, ac, &bounds);
+  add_region_padding(C, window_region, &bounds);
 
   window_region->v2d.cur.ymin = bounds.ymin;
   window_region->v2d.cur.ymax = bounds.ymax;
@@ -3844,7 +3844,7 @@ static int graphkeys_view_selected_channels_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  add_region_padding(C, &ac, &bounds);
+  add_region_padding(C, window_region, &bounds);
 
   if (ac.spacetype == SPACE_ACTION) {
     bounds.ymin = window_region->v2d.cur.ymin;
@@ -3932,7 +3932,7 @@ static int graphkeys_channel_view_pick_invoke(bContext *C, wmOperator *op, const
     return OPERATOR_CANCELLED;
   }
 
-  add_region_padding(C, &ac, &bounds);
+  add_region_padding(C, window_region, &bounds);
 
   if (ac.spacetype == SPACE_ACTION) {
     bounds.ymin = window_region->v2d.cur.ymin;
