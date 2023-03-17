@@ -284,15 +284,10 @@ void ForwardPipeline::render(View &view,
  * Closure data are written to intermediate buffer allowing screen space processing.
  * \{ */
 
-void DeferredLayer::sync()
+void DeferredLayer::begin_sync()
 {
-  DRWState state_depth_only = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS;
-  DRWState state_depth_color = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS |
-                               DRW_STATE_WRITE_COLOR;
   {
     prepass_ps_.init();
-    prepass_ps_.clear_stencil(0x00u);
-
     {
       /* Common resources. */
 
@@ -304,6 +299,10 @@ void DeferredLayer::sync()
       inst_.velocity.bind_resources(&prepass_ps_);
       inst_.sampling.bind_resources(&prepass_ps_);
     }
+
+    DRWState state_depth_only = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS;
+    DRWState state_depth_color = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS |
+                                 DRW_STATE_WRITE_COLOR;
 
     prepass_double_sided_static_ps_ = &prepass_ps_.sub("DoubleSided.Static");
     prepass_double_sided_static_ps_->state_set(state_depth_only);
@@ -319,6 +318,8 @@ void DeferredLayer::sync()
   }
   {
     gbuffer_ps_.init();
+    gbuffer_ps_.clear_stencil(0x00u);
+    gbuffer_ps_.state_stencil(0x01u, 0x01u, 0x01u);
 
     {
       /* Common resources. */
@@ -326,7 +327,6 @@ void DeferredLayer::sync()
       /* G-buffer. */
       gbuffer_ps_.bind_image(GBUF_CLOSURE_SLOT, &inst_.gbuffer.closure_tx);
       gbuffer_ps_.bind_image(GBUF_COLOR_SLOT, &inst_.gbuffer.color_tx);
-
       /* RenderPasses. */
       gbuffer_ps_.bind_image(RBUFS_NORMAL_SLOT, &inst_.render_buffers.normal_tx);
       /* TODO(fclem): Pack all render pass into the same texture. */
@@ -349,12 +349,47 @@ void DeferredLayer::sync()
       inst_.cryptomatte.bind_resources(&gbuffer_ps_);
     }
 
+    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM | DRW_STATE_DEPTH_EQUAL |
+                     DRW_STATE_CULL_BACK | DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_ALWAYS;
+
     gbuffer_single_sided_ps_ = &gbuffer_ps_.sub("SingleSided");
-    gbuffer_single_sided_ps_->state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL |
-                                        DRW_STATE_CULL_BACK);
+    gbuffer_single_sided_ps_->state_set(state | DRW_STATE_CULL_BACK);
 
     gbuffer_double_sided_ps_ = &gbuffer_ps_.sub("DoubleSided");
-    gbuffer_double_sided_ps_->state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL);
+    gbuffer_double_sided_ps_->state_set(state);
+  }
+}
+
+void DeferredLayer::end_sync()
+{
+  /* Use stencil test to reject pixel not written by this layer. */
+  /* WORKAROUND: Stencil write is only here to avoid rasterizer discard. */
+  DRWState state = DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_EQUAL;
+  /* Allow output to combined pass for the last pass. */
+  DRWState state_write_color = state | DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM;
+
+  if (closure_bits_ & (CLOSURE_DIFFUSE | CLOSURE_REFLECTION)) {
+    const bool is_last_eval_pass = true;
+
+    eval_light_ps_.init();
+    eval_light_ps_.state_set(is_last_eval_pass ? state_write_color : state);
+    eval_light_ps_.state_stencil(0x00u, 0x01u, 0xFFu);
+    eval_light_ps_.shader_set(inst_.shaders.static_shader_get(DEFERRED_LIGHT));
+    eval_light_ps_.bind_image("out_diffuse_light_img", &diffuse_light_tx_);
+    eval_light_ps_.bind_image("out_specular_light_img", &specular_light_tx_);
+    eval_light_ps_.bind_texture("gbuffer_closure_tx", &inst_.gbuffer.closure_tx);
+    eval_light_ps_.bind_texture("gbuffer_color_tx", &inst_.gbuffer.color_tx);
+    eval_light_ps_.push_constant("is_last_eval_pass", is_last_eval_pass);
+    eval_light_ps_.bind_image(RBUFS_LIGHT_SLOT, &inst_.render_buffers.light_tx);
+    eval_light_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
+
+    inst_.lights.bind_resources(&eval_light_ps_);
+    inst_.shadows.bind_resources(&eval_light_ps_);
+    inst_.sampling.bind_resources(&eval_light_ps_);
+    inst_.hiz_buffer.bind_resources(&eval_light_ps_);
+
+    eval_light_ps_.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
+    eval_light_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
   }
 }
 
@@ -362,18 +397,19 @@ PassMain::Sub *DeferredLayer::prepass_add(::Material *blender_mat,
                                           GPUMaterial *gpumat,
                                           bool has_motion)
 {
-  closure_bits_ |= shader_closure_bits_from_flag(gpumat);
-
   PassMain::Sub *pass = (blender_mat->blend_flag & MA_BL_CULL_BACKFACE) ?
                             (has_motion ? prepass_single_sided_moving_ps_ :
                                           prepass_single_sided_static_ps_) :
                             (has_motion ? prepass_double_sided_moving_ps_ :
                                           prepass_double_sided_static_ps_);
+
   return &pass->sub(GPU_material_get_name(gpumat));
 }
 
 PassMain::Sub *DeferredLayer::material_add(::Material *blender_mat, GPUMaterial *gpumat)
 {
+  closure_bits_ |= shader_closure_bits_from_flag(gpumat);
+
   PassMain::Sub *pass = (blender_mat->blend_flag & MA_BL_CULL_BACKFACE) ?
                             gbuffer_single_sided_ps_ :
                             gbuffer_double_sided_ps_;
@@ -395,10 +431,17 @@ void DeferredLayer::render(View &view,
   GPU_framebuffer_bind(combined_fb);
   inst_.manager->submit(gbuffer_ps_, view);
 
-  inst_.shadows.set_view(view);
-  inst_.manager->submit(inst_.pipelines.deferred.eval_ps_);
+  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
+  diffuse_light_tx_.acquire(extent, GPU_RGBA16F, usage);
+  specular_light_tx_.acquire(extent, GPU_RGBA16F, usage);
+  diffuse_light_tx_.clear(float4(0.0f));
+  specular_light_tx_.clear(float4(0.0f));
 
-  /* TODO evaluate lights. */
+  inst_.shadows.set_view(view);
+  inst_.manager->submit(eval_light_ps_, view);
+
+  diffuse_light_tx_.release();
+  specular_light_tx_.release();
 
   inst_.gbuffer.release();
 }
@@ -411,13 +454,16 @@ void DeferredLayer::render(View &view,
  * Closure data are written to intermediate buffer allowing screen space processing.
  * \{ */
 
-void DeferredPipeline::sync()
+void DeferredPipeline::begin_sync()
 {
-  opaque_layer_.sync();
-  refraction_layer_.sync();
+  opaque_layer_.begin_sync();
+  refraction_layer_.begin_sync();
+}
 
-  eval_ps_.init();
-  /* TODO Lighting. */
+void DeferredPipeline::end_sync()
+{
+  opaque_layer_.end_sync();
+  refraction_layer_.end_sync();
 }
 
 PassMain::Sub *DeferredPipeline::prepass_add(::Material *blender_mat,

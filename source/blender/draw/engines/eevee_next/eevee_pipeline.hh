@@ -131,13 +131,27 @@ class DeferredLayer {
   PassMain::Sub *gbuffer_single_sided_ps_ = nullptr;
   PassMain::Sub *gbuffer_double_sided_ps_ = nullptr;
 
+  PassSimple eval_light_ps_ = {"EvalLights"};
+
   /* Closures bits from the materials in this pass. */
   eClosureBits closure_bits_;
+
+  /**
+   * Accumulation textures for all stages of lighting evaluation (Light, SSR, SSSS, SSGI ...).
+   * These are split and separate from the main radiance buffer in order to accumulate light for
+   * the render passes and avoid too much bandwidth waste. Otherwise, we would have to load the
+   * BSDF color and do additive blending for each of the lighting step.
+   *
+   * NOTE: Not to be confused with the render passes.
+   */
+  TextureFromPool diffuse_light_tx_ = {"diffuse_light_accum_tx"};
+  TextureFromPool specular_light_tx_ = {"specular_light_accum_tx"};
 
  public:
   DeferredLayer(Instance &inst) : inst_(inst){};
 
-  void sync();
+  void begin_sync();
+  void end_sync();
 
   PassMain::Sub *prepass_add(::Material *blender_mat, GPUMaterial *gpumat, bool has_motion);
   PassMain::Sub *material_add(::Material *blender_mat, GPUMaterial *gpumat);
@@ -146,9 +160,6 @@ class DeferredLayer {
 };
 
 class DeferredPipeline {
- public:
-  PassSimple eval_ps_ = {"EvalLighting"};
-
  private:
   Instance &inst_;
 
@@ -162,7 +173,8 @@ class DeferredPipeline {
   DeferredPipeline(Instance &inst)
       : inst_(inst), opaque_layer_(inst), refraction_layer_(inst), volumetric_layer_(inst){};
 
-  void sync();
+  void begin_sync();
+  void end_sync();
 
   PassMain::Sub *prepass_add(::Material *material, GPUMaterial *gpumat, bool has_motion);
   PassMain::Sub *material_add(::Material *material, GPUMaterial *gpumat);
@@ -265,11 +277,16 @@ class PipelineModule {
  public:
   PipelineModule(Instance &inst) : world(inst), deferred(inst), forward(inst), shadow(inst){};
 
-  void sync()
+  void begin_sync()
   {
-    deferred.sync();
+    deferred.begin_sync();
     forward.sync();
     shadow.sync();
+  }
+
+  void end_sync()
+  {
+    deferred.end_sync();
   }
 
   PassMain::Sub *material_add(Object *ob,

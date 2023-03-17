@@ -37,14 +37,14 @@ float gbuffer_ior_unpack(float ior_packed)
 
 float gbuffer_thickness_pack(float thickness)
 {
-  /* TODO */
-  return thickness;
+  /* TODO(fclem): Something better. */
+  return gbuffer_ior_pack(thickness);
 }
 
 float gbuffer_thickness_unpack(float thickness_packed)
 {
-  /* TODO */
-  return thickness_packed;
+  /* TODO(fclem): Something better. */
+  return gbuffer_ior_unpack(thickness_packed);
 }
 
 vec3 gbuffer_sss_radii_pack(vec3 sss_radii)
@@ -72,4 +72,32 @@ vec3 gbuffer_color_unpack(vec4 color_packed)
 {
   /* TODO(fclem): 2 exponent inside 2bit Alpha. */
   return color_packed.rgb;
+}
+
+float gbuffer_object_id_unorm16_pack(uint object_id)
+{
+  return float(object_id & 0xFFFFu) / float(0xFFFF);
+}
+
+uint gbuffer_object_id_unorm16_unpack(float object_id_packed)
+{
+  return uint(object_id_packed * float(0xFFFF));
+}
+
+float gbuffer_object_id_f16_pack(uint object_id)
+{
+  /* TODO(fclem): Make use of all the 16 bits in a half float.
+   * This here only correctly represent values up to 1024. */
+  return float(object_id);
+}
+
+uint gbuffer_object_id_f16_unpack(float object_id_packed)
+{
+  return uint(object_id_packed);
+}
+
+bool gbuffer_is_refraction(vec4 gbuffer)
+{
+  /* TODO. */
+  return false;
 }
