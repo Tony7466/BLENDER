@@ -12,6 +12,7 @@ namespace blender::gpu {
 /* -------------------------------------------------------------------- */
 /** \name Conversion types
  * \{ */
+
 enum class ConversionType {
   /** No conversion needed, result can be directly read back to host memory. */
   PASS_THROUGH,
@@ -504,179 +505,126 @@ static ConversionType reversed(ConversionType type)
 
 /* \} */
 
-/* Copy the contents of src to dst with out performing any actual conversion. */
+/* -------------------------------------------------------------------- */
+/** \name Data Conversion
+ * \{ */
+
+template<typename InnerType> struct SignedNormalized {
+  static_assert(std::is_same<InnerType, uint8_t>() || std::is_same<InnerType, uint16_t>());
+  InnerType value;
+
+  static constexpr int32_t scalar()
+  {
+    return (1 << (sizeof(InnerType) * 8 - 1));
+  }
+
+  static constexpr int32_t delta()
+  {
+    return (1 << (sizeof(InnerType) * 8 - 1)) - 1;
+  }
+
+  static constexpr int32_t max()
+  {
+    return ((1 << (sizeof(InnerType) * 8)) - 1);
+  }
+};
+
+template<typename InnerType> struct UnsignedNormalized {
+  static_assert(std::is_same<InnerType, uint8_t>() || std::is_same<InnerType, uint16_t>());
+  InnerType value;
+
+  static constexpr int32_t scalar()
+  {
+    return (1 << (sizeof(InnerType) * 8)) - 1;
+  }
+
+  static constexpr int32_t max()
+  {
+    return ((1 << (sizeof(InnerType) * 8)) - 1);
+  }
+};
+
+template<typename InnerType> struct ComponentValue {
+  InnerType value;
+};
+
+using F32 = ComponentValue<float>;
+using UI8 = ComponentValue<uint8_t>;
+using UI16 = ComponentValue<uint16_t>;
+using UI32 = ComponentValue<uint32_t>;
+using I8 = ComponentValue<int8_t>;
+using I16 = ComponentValue<int16_t>;
+using I32 = ComponentValue<int32_t>;
+
+template<typename StorageType>
+void convert_component(SignedNormalized<StorageType> &dst, const F32 &src)
+{
+  static constexpr int32_t scalar = SignedNormalized<StorageType>::scalar();
+  static constexpr int32_t delta = SignedNormalized<StorageType>::delta();
+  static constexpr int32_t max = SignedNormalized<StorageType>::max();
+  dst.value = (clamp_i((src.value * scalar + delta), 0, max));
+}
+
+template<typename StorageType>
+void convert_component(F32 &dst, const SignedNormalized<StorageType> &src)
+{
+  static constexpr int32_t scalar = SignedNormalized<StorageType>::scalar();
+  static constexpr int32_t delta = SignedNormalized<StorageType>::delta();
+  dst.value = float(int32_t(src.value) - delta) / scalar;
+}
+
+template<typename StorageType>
+void convert_component(UnsignedNormalized<StorageType> &dst, const F32 &src)
+{
+  static constexpr int32_t scalar = UnsignedNormalized<StorageType>::scalar();
+  static constexpr int32_t max = scalar;
+  dst.value = (clamp_i((src.value * scalar), 0, max));
+}
+
+template<typename StorageType>
+void convert_component(F32 &dst, const UnsignedNormalized<StorageType> &src)
+{
+  static constexpr int32_t scalar = UnsignedNormalized<StorageType>::scalar();
+  dst.value = float(src.value) / scalar;
+}
+
+/* Copy the contents of src to dst with out performing any actual conversion.*/
 template<typename DestinationType, typename SourceType>
-void copy_unchecked(MutableSpan<DestinationType> dst, Span<SourceType> src)
+void convert_component(DestinationType &dst, const SourceType &src)
+{
+  static_assert(std::is_same<DestinationType, UI8>() || std::is_same<DestinationType, UI16>() ||
+                std::is_same<DestinationType, UI32>() || std::is_same<DestinationType, I8>() ||
+                std::is_same<DestinationType, I16>() || std::is_same<DestinationType, I32>());
+  static_assert(std::is_same<SourceType, UI8>() || std::is_same<SourceType, UI16>() ||
+                std::is_same<SourceType, UI32>() || std::is_same<SourceType, I8>() ||
+                std::is_same<SourceType, I16>() || std::is_same<SourceType, I32>());
+  static_assert(!std::is_same<DestinationType, SourceType>());
+  dst.value = src.value;
+}
+
+/* \} */
+
+template<typename DestinationType, typename SourceType>
+void convert_per_component(MutableSpan<DestinationType> dst, Span<SourceType> src)
 {
   BLI_assert(src.size() == dst.size());
   for (int64_t index : IndexRange(src.size())) {
-    dst[index] = src[index];
+    convert_component(dst[index], src[index]);
   }
 }
 
 template<typename DestinationType, typename SourceType>
-void copy_unchecked(void *dst_memory,
-                    const void *src_memory,
-                    eGPUTextureFormat device_format,
-                    size_t buffer_size)
+void convert_per_component(void *dst_memory,
+                           const void *src_memory,
+                           size_t buffer_size,
+                           eGPUTextureFormat device_format)
 {
   size_t total_components = to_component_len(device_format) * buffer_size;
   Span<SourceType> src = Span<SourceType>(static_cast<const SourceType *>(src_memory),
                                           total_components);
   MutableSpan<DestinationType> dst = MutableSpan<DestinationType>(
       static_cast<DestinationType *>(dst_memory), total_components);
-  copy_unchecked<DestinationType, SourceType>(dst, src);
-}
-
-/* Float <=> unsigned normalized */
-template<typename Type> constexpr int32_t unorm_scalar()
-{
-  return ((1 << (sizeof(Type) * 8)) - 1);
-}
-template<typename Type> constexpr int32_t snorm_scalar()
-{
-  return (1 << (sizeof(Type) * 8 - 1));
-}
-template<typename Type> constexpr int32_t snorm_max()
-{
-  return ((1 << (sizeof(Type) * 8)) - 1);
-}
-template<typename Type> constexpr int32_t snorm_delta()
-{
-  return (1 << (sizeof(Type) * 8 - 1)) - 1;
-}
-
-template<typename DestinationType, typename SourceType>
-static DestinationType to_unorm(SourceType value)
-{
-  static constexpr int32_t Multiplier = unorm_scalar<DestinationType>();
-  static constexpr int32_t Max = Multiplier;
-
-  int32_t before_clamping = value * Multiplier;
-  return clamp_i(before_clamping, 0, Max);
-}
-
-template<typename DestinationType, typename SourceType>
-static DestinationType from_unorm(SourceType value)
-{
-  static constexpr int32_t Multiplier = unorm_scalar<SourceType>();
-  return DestinationType(value) / Multiplier;
-}
-
-template<typename DestinationType, typename SourceType>
-void float_to_unorm(MutableSpan<DestinationType> dst, Span<SourceType> src)
-{
-  BLI_assert(src.size() == dst.size());
-  for (int64_t index : IndexRange(src.size())) {
-    dst[index] = to_unorm<DestinationType, SourceType>(src[index]);
-  }
-}
-
-template<typename DestinationType, typename SourceType>
-void float_to_unorm(void *dst_memory,
-                    const void *src_memory,
-                    eGPUTextureFormat device_format,
-                    size_t buffer_size)
-{
-  size_t total_components = to_component_len(device_format) * buffer_size;
-  Span<SourceType> src = Span<SourceType>(static_cast<const SourceType *>(src_memory),
-                                          total_components);
-  MutableSpan<DestinationType> dst = MutableSpan<DestinationType>(
-      static_cast<DestinationType *>(dst_memory), total_components);
-  float_to_unorm<DestinationType, SourceType>(dst, src);
-}
-
-template<typename DestinationType, typename SourceType>
-void unorm_to_float(MutableSpan<DestinationType> dst, Span<SourceType> src)
-{
-  BLI_assert(src.size() == dst.size());
-  for (int64_t index : IndexRange(src.size())) {
-    dst[index] = from_unorm<DestinationType, SourceType>(src[index]);
-  }
-}
-
-template<typename DestinationType, typename SourceType>
-void unorm_to_float(void *dst_memory,
-                    const void *src_memory,
-                    eGPUTextureFormat device_format,
-                    size_t buffer_size)
-{
-  size_t total_components = to_component_len(device_format) * buffer_size;
-  Span<SourceType> src = Span<SourceType>(static_cast<const SourceType *>(src_memory),
-                                          total_components);
-  MutableSpan<DestinationType> dst = MutableSpan<DestinationType>(
-      static_cast<DestinationType *>(dst_memory), total_components);
-  unorm_to_float<DestinationType, SourceType>(dst, src);
-}
-
-/* Float <=> signed normalized */
-
-/* TODO: SNORM needs to be shifted...*/
-template<typename DestinationType, typename SourceType>
-static DestinationType to_snorm(SourceType value)
-{
-  static constexpr int32_t Multiplier = snorm_scalar<DestinationType>();
-  static constexpr int32_t Max = snorm_max<DestinationType>();
-  static constexpr int32_t Delta = snorm_delta<DestinationType>();
-  return (clamp_i((value * Multiplier + Delta), 0, Max));
-}
-
-template<typename DestinationType, typename SourceType>
-static DestinationType from_snorm(SourceType value)
-{
-  static constexpr int32_t Multiplier = snorm_scalar<SourceType>();
-  static constexpr int32_t Delta = snorm_delta<SourceType>();
-  return DestinationType(int32_t(value) - Delta) / Multiplier;
-}
-
-template<typename DestinationType, typename SourceType>
-void float_to_snorm(MutableSpan<DestinationType> dst, Span<SourceType> src)
-{
-  BLI_assert(src.size() == dst.size());
-  for (int64_t index : IndexRange(src.size())) {
-    const SourceType src_value = src[index];
-    const DestinationType dst_value = to_snorm<DestinationType, SourceType>(src_value);
-    dst[index] = dst_value;
-  }
-}
-
-template<typename DestinationType, typename SourceType>
-void float_to_snorm(void *dst_memory,
-                    const void *src_memory,
-                    eGPUTextureFormat device_format,
-                    size_t buffer_size)
-{
-  size_t total_components = to_component_len(device_format) * buffer_size;
-  Span<SourceType> src = Span<SourceType>(static_cast<const SourceType *>(src_memory),
-                                          total_components);
-  MutableSpan<DestinationType> dst = MutableSpan<DestinationType>(
-      static_cast<DestinationType *>(dst_memory), total_components);
-  float_to_snorm<DestinationType, SourceType>(dst, src);
-}
-
-template<typename DestinationType, typename SourceType>
-void snorm_to_float(MutableSpan<DestinationType> dst, Span<SourceType> src)
-{
-  BLI_assert(src.size() == dst.size());
-  for (int64_t index : IndexRange(src.size())) {
-    const SourceType src_value = src[index];
-    const DestinationType dst_value = from_snorm<DestinationType, SourceType>(src_value);
-    dst[index] = dst_value;
-  }
-}
-
-template<typename DestinationType, typename SourceType>
-void snorm_to_float(void *dst_memory,
-                    const void *src_memory,
-                    eGPUTextureFormat device_format,
-                    size_t buffer_size)
-{
-  size_t total_components = to_component_len(device_format) * buffer_size;
-  Span<SourceType> src = Span<SourceType>(static_cast<const SourceType *>(src_memory),
-                                          total_components);
-  MutableSpan<DestinationType> dst = MutableSpan<DestinationType>(
-      static_cast<DestinationType *>(dst_memory), total_components);
-  snorm_to_float<DestinationType, SourceType>(dst, src);
+  convert_per_component<DestinationType, SourceType>(dst, src);
 }
 
 static void convert_buffer(void *dst_memory,
@@ -694,63 +642,71 @@ static void convert_buffer(void *dst_memory,
       return;
 
     case ConversionType::UI32_TO_UI16:
-      copy_unchecked<uint16_t, uint32_t>(dst_memory, src_memory, device_format, buffer_size);
+      convert_per_component<UI16, UI32>(dst_memory, src_memory, buffer_size, device_format);
       break;
 
     case ConversionType::UI16_TO_UI32:
-      copy_unchecked<uint32_t, uint16_t>(dst_memory, src_memory, device_format, buffer_size);
+      convert_per_component<UI32, UI16>(dst_memory, src_memory, buffer_size, device_format);
       break;
 
     case ConversionType::UI32_TO_UI8:
-      copy_unchecked<uint8_t, uint32_t>(dst_memory, src_memory, device_format, buffer_size);
+      convert_per_component<UI8, UI32>(dst_memory, src_memory, buffer_size, device_format);
       break;
 
     case ConversionType::UI8_TO_UI32:
-      copy_unchecked<uint32_t, uint8_t>(dst_memory, src_memory, device_format, buffer_size);
+      convert_per_component<UI32, UI8>(dst_memory, src_memory, buffer_size, device_format);
       break;
 
     case ConversionType::I32_TO_I16:
-      copy_unchecked<int16_t, int32_t>(dst_memory, src_memory, device_format, buffer_size);
+      convert_per_component<I16, I32>(dst_memory, src_memory, buffer_size, device_format);
       break;
 
     case ConversionType::I16_TO_I32:
-      copy_unchecked<int32_t, int16_t>(dst_memory, src_memory, device_format, buffer_size);
+      convert_per_component<I32, I16>(dst_memory, src_memory, buffer_size, device_format);
       break;
 
     case ConversionType::I32_TO_I8:
-      copy_unchecked<int8_t, int32_t>(dst_memory, src_memory, device_format, buffer_size);
+      convert_per_component<I8, I32>(dst_memory, src_memory, buffer_size, device_format);
       break;
 
     case ConversionType::I8_TO_I32:
-      copy_unchecked<int32_t, int8_t>(dst_memory, src_memory, device_format, buffer_size);
-      break;
-
-    case ConversionType::FLOAT_TO_UNORM8:
-      float_to_unorm<uint8_t, float>(dst_memory, src_memory, device_format, buffer_size);
-      break;
-    case ConversionType::UNORM8_TO_FLOAT:
-      unorm_to_float<float, uint8_t>(dst_memory, src_memory, device_format, buffer_size);
+      convert_per_component<I32, I8>(dst_memory, src_memory, buffer_size, device_format);
       break;
 
     case ConversionType::FLOAT_TO_SNORM8:
-      float_to_snorm<uint8_t, float>(dst_memory, src_memory, device_format, buffer_size);
+      convert_per_component<SignedNormalized<uint8_t>, F32>(
+          dst_memory, src_memory, buffer_size, device_format);
       break;
     case ConversionType::SNORM8_TO_FLOAT:
-      snorm_to_float<float, uint8_t>(dst_memory, src_memory, device_format, buffer_size);
-      break;
-
-    case ConversionType::FLOAT_TO_UNORM16:
-      float_to_unorm<uint16_t, float>(dst_memory, src_memory, device_format, buffer_size);
-      break;
-    case ConversionType::UNORM16_TO_FLOAT:
-      unorm_to_float<float, uint16_t>(dst_memory, src_memory, device_format, buffer_size);
+      convert_per_component<F32, SignedNormalized<uint8_t>>(
+          dst_memory, src_memory, buffer_size, device_format);
       break;
 
     case ConversionType::FLOAT_TO_SNORM16:
-      float_to_snorm<uint16_t, float>(dst_memory, src_memory, device_format, buffer_size);
+      convert_per_component<SignedNormalized<uint16_t>, F32>(
+          dst_memory, src_memory, buffer_size, device_format);
       break;
     case ConversionType::SNORM16_TO_FLOAT:
-      snorm_to_float<float, uint16_t>(dst_memory, src_memory, device_format, buffer_size);
+      convert_per_component<F32, SignedNormalized<uint16_t>>(
+          dst_memory, src_memory, buffer_size, device_format);
+      break;
+
+    case ConversionType::FLOAT_TO_UNORM8:
+      convert_per_component<UnsignedNormalized<uint8_t>, F32>(
+          dst_memory, src_memory, buffer_size, device_format);
+      break;
+    case ConversionType::UNORM8_TO_FLOAT:
+      convert_per_component<F32, UnsignedNormalized<uint8_t>>(
+          dst_memory, src_memory, buffer_size, device_format);
+      break;
+
+    case ConversionType::FLOAT_TO_UNORM16:
+      convert_per_component<UnsignedNormalized<uint16_t>, F32>(
+          dst_memory, src_memory, buffer_size, device_format);
+      break;
+    case ConversionType::UNORM16_TO_FLOAT:
+      convert_per_component<F32, UnsignedNormalized<uint16_t>>(
+          dst_memory, src_memory, buffer_size, device_format);
       break;
 
     case ConversionType::FLOAT_TO_HALF:
