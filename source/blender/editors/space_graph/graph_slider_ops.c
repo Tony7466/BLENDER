@@ -1067,12 +1067,23 @@ void GRAPH_OT_ease(wmOperatorType *ot)
 
 typedef struct tGaussOperatorData {
   double *kernel;
+  ListBase segments /* tFCurveSegmentLink */;
 } tGaussOperatorData;
+
+typedef struct tFCurveSegmentLink {
+  tFCurveSegmentLink *prev, *next;
+  FCurve *fcu;
+  FCurveSegment *segment;
+  float *samples;
+} tFCurveSegmentLink;
 
 static void gauss_smooth_cleanup_custom_data(void *operator_data)
 {
   tGaussOperatorData *gauss_data = (tGaussOperatorData *)operator_data;
   MEM_freeN(gauss_data->kernel);
+  LISTBASE_FOREACH (tFCurveSegmentLink *, segment, &gauss_data->segments) {
+    MEM_freeN(segment->samples);
+  }
   MEM_freeN(gauss_data);
 }
 
@@ -1142,7 +1153,16 @@ static void gauss_smooth_modal_update(bContext *C, wmOperator *op)
   const float factor = slider_factor_get_and_remember(op);
   tGaussOperatorData *operator_data = (tGaussOperatorData *)gso->operator_data;
   const int filter_width = RNA_int_get(op->ptr, "filter_width");
-  gauss_smooth_graph_keys(&gso->ac, factor, operator_data->kernel, filter_width);
+
+  LISTBASE_FOREACH (tFCurveSegmentLink *, segment, &operator_data->segments) {
+    smooth_fcurve_segment(segment->fcu,
+                          segment->segment,
+                          segment->samples,
+                          factor,
+                          filter_width,
+                          operator_data->kernel);
+  }
+
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
 }
 
@@ -1167,6 +1187,32 @@ static int gauss_smooth_invoke(bContext *C, wmOperator *op, const wmEvent *event
   tGaussOperatorData *operator_data = MEM_callocN(sizeof(tGaussOperatorData),
                                                   "tGaussOperatorData");
   operator_data->kernel = kernel;
+
+  ListBase anim_data = {NULL, NULL};
+  ANIM_animdata_filter(
+      &gso->ac, &anim_data, OPERATOR_DATA_FILTER, &gso->ac.data, gso->ac.datatype);
+
+  ListBase segments = {NULL, NULL};
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    FCurve *fcu = (FCurve *)ale->key_data;
+    ListBase segments = find_fcurve_segments(fcu);
+    LISTBASE_FOREACH (FCurveSegment *, segment, &segments) {
+      tFCurveSegmentLink *segment_link = MEM_callocN(sizeof(tFCurveSegmentLink),
+                                                     "FCurve Segment Link");
+      segment_link->fcu = fcu;
+      segment_link->segment = segment;
+      BezTriple left_bezt = fcu->bezt[segment->start_index];
+      BezTriple right_bezt = fcu->bezt[segment->start_index + segment->length - 1];
+      const int sample_count = (int)(right_bezt.vec[1][0] - left_bezt.vec[1][0]) +
+                               (filter_width * 2 + 1);
+      float *samples = MEM_callocN(sizeof(float) * sample_count, "Smooth FCurve Op Samples");
+      sample_fcurve_segment(fcu, left_bezt.vec[1][0] - filter_width, samples, sample_count);
+      segment_link->samples = samples;
+      BLI_addtail(&segments, segment_link);
+    }
+  }
+
+  operator_data->segments = segments;
   gso->operator_data = operator_data;
   gso->cleanup_operator_data = gauss_smooth_cleanup_custom_data;
 
