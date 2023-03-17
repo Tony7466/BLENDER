@@ -435,7 +435,8 @@ void smooth_fcurve_segment(FCurve *fcu,
     for (int j = -kernel_size; j <= kernel_size; j++) {
       filter_result += samples[sample_index + j] * kernel[abs(j)];
     }
-    fcu->bezt[i].vec[1][1] = interpf((float)filter_result, samples[sample_index], factor);
+    const float key_y_value = interpf((float)filter_result, samples[sample_index], factor);
+    move_key(&fcu->bezt[i], key_y_value);
   }
 }
 /* ---------------- */
