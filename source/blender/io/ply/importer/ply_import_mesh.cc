@@ -33,8 +33,18 @@ Mesh *convert_ply_to_mesh(PlyData &data, Mesh *mesh, const PLYImportParams &para
     CustomData_add_layer(&mesh->edata, CD_MEDGE, CD_SET_DEFAULT, mesh->totedge);
     MutableSpan<MEdge> edges = mesh->edges_for_write();
     for (int i = 0; i < mesh->totedge; i++) {
-      edges[i].v1 = data.edges[i].first;
-      edges[i].v2 = data.edges[i].second;
+      uint32_t v1 = data.edges[i].first;
+      uint32_t v2 = data.edges[i].second;
+      if (v1 >= mesh->totvert) {
+        fprintf(stderr, "Invalid PLY vertex index in edge %i/1: %i\n", i, v1);
+        v1 = 0;
+      }
+      if (v2 >= mesh->totvert) {
+        fprintf(stderr, "Invalid PLY vertex index in edge %i/2: %i\n", i, v2);
+        v2 = 0;
+      }
+      edges[i].v1 = v1;
+      edges[i].v2 = v2;
     }
   }
 
@@ -49,14 +59,18 @@ Mesh *convert_ply_to_mesh(PlyData &data, Mesh *mesh, const PLYImportParams &para
     MutableSpan<MLoop> loops = mesh->loops_for_write();
 
     /* Fill in face data. */
-    //@TODO: validation of the indices
     uint32_t offset = 0;
     for (int i = 0; i < mesh->totpoly; i++) {
       uint32_t size = data.face_sizes[i];
       polys[i].loopstart = offset;
       polys[i].totloop = size;
       for (int j = 0; j < size; j++) {
-        loops[offset + j].v = data.face_vertices[offset + j];
+        uint32_t v = data.face_vertices[offset + j];
+        if (v >= mesh->totvert) {
+          fprintf(stderr, "Invalid PLY vertex index in face %i loop %i: %i\n", i, j, v);
+          v = 0;
+        }
+        loops[offset + j].v = v;
       }
       offset += size;
     }

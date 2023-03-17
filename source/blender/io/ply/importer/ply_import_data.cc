@@ -97,6 +97,11 @@ namespace blender::io::ply {
 static const int data_type_size[] = {0, 1, 1, 2, 2, 4, 4, 4, 8};
 static_assert(std::size(data_type_size) == PLY_TYPE_COUNT, "PLY data type size table mismatch");
 
+static const float data_type_normalizer[] = {
+    1.0f, 127.0f, 255.0f, 32767.0f, 65535.0f, float(INT_MAX), float(UINT_MAX), 1.0f, 1.0f};
+static_assert(std::size(data_type_normalizer) == PLY_TYPE_COUNT,
+              "PLY data type normalization factor table mismatch");
+
 void PlyElement::calc_stride()
 {
   stride = 0;
@@ -109,11 +114,6 @@ void PlyElement::calc_stride()
   }
 }
 
-static const float data_type_normalizer[] = {
-    1.0f, 127.0f, 255.0f, 32767.0f, 65535.0f, float(INT_MAX), float(UINT_MAX), 1.0f, 1.0f};
-static_assert(std::size(data_type_normalizer) == PLY_TYPE_COUNT,
-              "PLY data type normalization factor table mismatch");
-
 static int get_index(const PlyElement &element, StringRef property)
 {
   for (int i = 0, n = int(element.properties.size()); i != n; i++) {
@@ -123,26 +123,6 @@ static int get_index(const PlyElement &element, StringRef property)
     }
   }
   return -1;
-}
-
-static int3 get_vertex_index(const PlyElement &element)
-{
-  return {get_index(element, "x"), get_index(element, "y"), get_index(element, "z")};
-}
-
-static int3 get_color_index(const PlyElement &element)
-{
-  return {get_index(element, "red"), get_index(element, "green"), get_index(element, "blue")};
-}
-
-static int3 get_normal_index(const PlyElement &element)
-{
-  return {get_index(element, "nx"), get_index(element, "ny"), get_index(element, "nz")};
-}
-
-static int2 get_uv_index(const PlyElement &element)
-{
-  return {get_index(element, "s"), get_index(element, "t")};
 }
 
 static const char *parse_row_ascii(PlyReadBuffer &file, Vector<float> &r_values)
@@ -250,10 +230,12 @@ static const char *load_vertex_element(PlyReadBuffer &file,
                                        PlyData *data)
 {
   /* Figure out vertex component indices. */
-  int3 vertex_index = get_vertex_index(element);
-  int3 color_index = get_color_index(element);
-  int3 normal_index = get_normal_index(element);
-  int2 uv_index = get_uv_index(element);
+  int3 vertex_index = {get_index(element, "x"), get_index(element, "y"), get_index(element, "z")};
+  int3 color_index = {
+      get_index(element, "red"), get_index(element, "green"), get_index(element, "blue")};
+  int3 normal_index = {
+      get_index(element, "nx"), get_index(element, "ny"), get_index(element, "nz")};
+  int2 uv_index = {get_index(element, "s"), get_index(element, "t")};
   int alpha_index = get_index(element, "alpha");
 
   bool has_vertex = vertex_index.x >= 0 && vertex_index.y >= 0 && vertex_index.z >= 0;
@@ -427,6 +409,9 @@ static const char *load_face_element(PlyReadBuffer &file,
 
       /* Parse vertex indices list. */
       p = parse_int(p, end, 0, count);
+      if (count < 1 || count > 255) {
+        return "Invalid face size, must be between 1 and 255";
+      }
 
       for (int j = 0; j < count; j++) {
         int index;
@@ -451,8 +436,9 @@ static const char *load_face_element(PlyReadBuffer &file,
       /* Read vertex indices list. */
       uint32_t count = read_list_count(
           file, prop, scratch, header.type == PlyFormatType::BINARY_BE);
-
-      //@TODO: check invalid face size values?
+      if (count < 1 || count > 255) {
+        return "Invalid face size, must be between 1 and 255";
+      }
 
       scratch.resize(count * data_type_size[prop.type]);
       file.read_bytes(scratch.data(), scratch.size());
