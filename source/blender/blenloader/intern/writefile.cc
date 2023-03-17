@@ -953,7 +953,7 @@ static void write_libraries(WriteData *wd, Main *main)
     }
     else {
       found_one = false;
-      while (!found_one && tot--) {
+      while (!found_one && --tot) {
         for (id = static_cast<ID *>(lbarray[tot]->first); id; id = static_cast<ID *>(id->next)) {
           if (id->us > 0 &&
               ((id->tag & LIB_TAG_EXTERN) ||
@@ -989,7 +989,7 @@ static void write_libraries(WriteData *wd, Main *main)
       }
 
       /* Write link placeholders for all direct linked IDs. */
-      while (a--) {
+      while (--a) {
         for (id = static_cast<ID *>(lbarray[a]->first); id; id = static_cast<ID *>(id->next)) {
           if (id->us > 0 &&
               ((id->tag & LIB_TAG_EXTERN) ||
@@ -1181,7 +1181,7 @@ static bool write_file_handle(Main *mainvar,
   do {
     ListBase *lbarray[INDEX_ID_MAX];
     int a = set_listbasepointers(bmain, lbarray);
-    while (a--) {
+    while (--a) {
       ID *id = static_cast<ID *>(lbarray[a]->first);
 
       if (id == nullptr || GS(id->name) == ID_LI) {
