@@ -71,7 +71,7 @@ typedef struct tGraphSliderOp {
 
   /* If an operator stores custom data, it also needs to provide the function to clean it up. */
   void *operator_data;
-  void (*cleanup_operator_data)(void *operator_data);
+  void (*free_operator_data)(void *operator_data);
 
   NumInput num;
 } tGraphSliderOp;
@@ -196,7 +196,7 @@ static void graph_slider_exit(bContext *C, wmOperator *op)
   }
 
   if (gso->operator_data) {
-    gso->cleanup_operator_data(gso->operator_data);
+    gso->free_operator_data(gso->operator_data);
   }
 
   ScrArea *area = gso->area;
@@ -1077,9 +1077,9 @@ typedef struct tFCurveSegmentLink {
   float *samples;
 } tFCurveSegmentLink;
 
-static void gauss_smooth_build_custom_data(tGraphSliderOp *gso,
-                                           const int filter_width,
-                                           const float sigma)
+static void gauss_smooth_allocate_operator_data(tGraphSliderOp *gso,
+                                                const int filter_width,
+                                                const float sigma)
 {
   tGaussOperatorData *operator_data = MEM_callocN(sizeof(tGaussOperatorData),
                                                   "tGaussOperatorData");
@@ -1116,7 +1116,7 @@ static void gauss_smooth_build_custom_data(tGraphSliderOp *gso,
   gso->operator_data = operator_data;
 }
 
-static void gauss_smooth_free_custom_data(void *operator_data)
+static void gauss_smooth_free_operator_data(void *operator_data)
 {
   tGaussOperatorData *gauss_data = (tGaussOperatorData *)operator_data;
   LISTBASE_FOREACH (tFCurveSegmentLink *, segment_link, &gauss_data->segment_links) {
@@ -1220,8 +1220,8 @@ static int gauss_smooth_invoke(bContext *C, wmOperator *op, const wmEvent *event
   const float sigma = RNA_float_get(op->ptr, "sigma");
   const int filter_width = RNA_int_get(op->ptr, "filter_width");
 
-  gauss_smooth_build_custom_data(gso, filter_width, sigma);
-  gso->cleanup_operator_data = gauss_smooth_free_custom_data;
+  gauss_smooth_allocate_operator_data(gso, filter_width, sigma);
+  gso->free_operator_data = gauss_smooth_free_operator_data;
 
   ED_slider_allow_overshoot_set(gso->slider, false);
   ease_draw_status_header(C, gso);
@@ -1282,7 +1282,7 @@ void GRAPH_OT_gauss_smooth(wmOperatorType *ot)
                 0.001f,
                 FLT_MAX,
                 "Sigma",
-                "At which frquency the factor should be applied",
+                "The shape of the gauss distribution, lower values make it sharper",
                 0.001f,
                 100.0f);
 
