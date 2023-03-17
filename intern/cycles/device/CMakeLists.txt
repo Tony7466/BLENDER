@@ -16,11 +16,10 @@ if(WITH_CYCLES_DEVICE_OPTIX OR WITH_CYCLES_DEVICE_CUDA)
 endif()
 
 if(WITH_CYCLES_DEVICE_HIPRT)
-      list(APPEND INC
-        ${HIPRT_INCLUDE_DIR}
-      )
-      add_definitions(-DWITH_HIP)
-      add_definitions(-DWITH_HIPRT)
+  list(APPEND INC
+    ${HIPRT_INCLUDE_DIR})
+  add_definitions(-DWITH_HIP)
+  add_definitions(-DWITH_HIPRT)
 endif()
 
 set(SRC_BASE

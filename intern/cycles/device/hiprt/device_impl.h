@@ -4,20 +4,18 @@
 #pragma once
 
 #ifdef WITH_HIPRT
-#  include "hiprt/hiprt_types.h"
 #  include "device/hip/device_impl.h"
 #  include "device/hip/kernel.h"
 #  include "device/hip/queue.h"
 #  include "device/hiprt/queue.h"
+#  include "hiprt/hiprt_types.h"
 #  include "kernel/device/hiprt/globals.h"
 
 #  ifdef WITH_HIP_DYNLOAD
 #    include "hiprtew.h"
 #  endif
 
-
 CCL_NAMESPACE_BEGIN
-
 
 class Mesh;
 class Hair;
@@ -25,7 +23,6 @@ class PointCloud;
 class Geometry;
 class Object;
 class BVHHIPRT;
-
 
 class HIPRTDevice : public HIPDevice {
 
@@ -60,7 +57,6 @@ class HIPRTDevice : public HIPDevice {
   enum Filter_Function { Closest = 0, Shadows, Local, Volume, Max_Intersect_Filter_Function };
   enum Primitive_Type { Triangle = 0, Curve, Motion_Triangle, Point, Max_Primitive_Type };
 
-
   bool set_function_table(hiprtFuncNameSet *func_name_set);
 
   hiprtGeometry build_blas(BVHHIPRT *bvh, Geometry *geom, hiprtBuildOptions options);
@@ -76,8 +72,8 @@ class HIPRTDevice : public HIPDevice {
   // The following vectors are to transfer scene information available on the host to the GPU
   // visibility, instance_transform_matrix, transform_headers, and hiprt_blas_ptr are passed to
   // hiprt to build bvh the rest are directly used in traversal functions/intersection kernels and
-  // are defined on the GPU side as members of KernelParamsHIPRT struct the host memory is copied to
-  // GPU through const_copy_to() function.
+  // are defined on the GPU side as members of KernelParamsHIPRT struct the host memory is copied
+  // to GPU through const_copy_to() function.
 
   device_vector<uint32_t> visibility;
 
@@ -96,20 +92,21 @@ class HIPRTDevice : public HIPDevice {
 
   // Instance/object ids are not explicitly  passed to hiprt.
   // HIP RT assigns the ids based on the order blas pointers are passed to it (through
-  // instanceGeometries member of hiprtSceneBuildInput). If blas is absent for a particular geometry
-  // (e.g. a plane), HIP RT removes that entry and in scenes with objects with no blas, the instance
-  // id that hiprt returns for a hit point will not necessarily match the instance id of the
-  // application. user_instance_id provides a map for retrieving original instance id from what HIP RT returns as
-  // instance id. hiprt_blas_ptr is the list of all the valid blas pointers. blas_ptr has all the
-  // valid pointers and null pointers and blas for any geometry can be directly retrieved from this
-  // array (used in subsurface scattering).
+  // instanceGeometries member of hiprtSceneBuildInput). If blas is absent for a particular
+  // geometry (e.g. a plane), HIP RT removes that entry and in scenes with objects with no blas,
+  // the instance id that hiprt returns for a hit point will not necessarily match the instance id
+  // of the application. user_instance_id provides a map for retrieving original instance id from
+  // what HIP RT returns as instance id. hiprt_blas_ptr is the list of all the valid blas pointers.
+  // blas_ptr has all the valid pointers and null pointers and blas for any geometry can be
+  // directly retrieved from this array (used in subsurface scattering).
   device_vector<int> user_instance_id;
   device_vector<uint64_t> hiprt_blas_ptr;
   device_vector<uint64_t> blas_ptr;
 
   // custom_prim_info stores custom information for custom primitives for all the primitives in a
-  // scene. Primitive id that HIP RT returns is local to the geometry that was hit. custom_prim_info_offset
-  // returns the offset required to add to the primitive id to retrieve primitive info from custom_prim_info
+  // scene. Primitive id that HIP RT returns is local to the geometry that was hit.
+  // custom_prim_info_offset returns the offset required to add to the primitive id to retrieve
+  // primitive info from custom_prim_info
   device_vector<int2> custom_prim_info;
   device_vector<int2> custom_prim_info_offset;
 
@@ -119,13 +116,14 @@ class HIPRTDevice : public HIPDevice {
   device_vector<int> prim_time_offset;
 
   // global_stack_buffer is defined in global memory and the size is hard coded otherwise it causes
-  // instablity. The correct size of global_stack_buffer is (total number of threads) x HIPRT_THREAD_STACK_SIZE
-  // Global stack is a fallback space for HIP RT traversal if the stack on the local memory overflows. Each
-  // thread can store up to HIPRT_SHARED_STACK_SIZE elements in local memory and up to
-  // HIPRT_THREAD_STACK_SIZE elements in global memory.
-  // The code that allocates the buffer dynamically is commented out for the time being until the instability is root-caused.
-  // The size if calculated dynamically will br num_concurrent_states x HIPRT_THREAD_STACK_SIZE x sizeof(int)
-  //device_vector<int> global_stack_buffer;
+  // instablity. The correct size of global_stack_buffer is (total number of threads) x
+  // HIPRT_THREAD_STACK_SIZE Global stack is a fallback space for HIP RT traversal if the stack on
+  // the local memory overflows. Each thread can store up to HIPRT_SHARED_STACK_SIZE elements in
+  // local memory and up to HIPRT_THREAD_STACK_SIZE elements in global memory. The code that
+  // allocates the buffer dynamically is commented out for the time being until the instability is
+  // root-caused. The size if calculated dynamically will br num_concurrent_states x
+  // HIPRT_THREAD_STACK_SIZE x sizeof(int)
+  // device_vector<int> global_stack_buffer;
 };
 CCL_NAMESPACE_END
 

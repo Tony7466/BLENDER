@@ -38,7 +38,7 @@ if(WITH_CYCLES_DEVICE_HIPRT)
   list(APPEND INC
     ../../../extern/hipew/include
     ${HIPRT_INCLUDE_DIR}
-      )
+  )
   add_definitions(-DWITH_HIPRT)
   add_definitions(-DWITH_HIP)
   add_definitions(-DWITH_HIP_DYNLOAD)

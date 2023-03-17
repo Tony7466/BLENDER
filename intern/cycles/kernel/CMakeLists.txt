@@ -666,8 +666,8 @@ if(WITH_CYCLES_HIPRT_BINARIES AND WITH_CYCLES_DEVICE_HIPRT)
   if(WIN32)
     set(hiprt_compile_command ${CMAKE_COMMAND})
     set(hiprt_compile_flags
-    -E env "HIP_PATH=${HIP_ROOT_DIR}"
-    ${HIP_HIPCC_EXECUTABLE}.bat)
+      -E env "HIP_PATH=${HIP_ROOT_DIR}"
+      ${HIP_HIPCC_EXECUTABLE}.bat)
   else()
     set(hiprt_compile_command ${HIP_HIPCC_EXECUTABLE})
     set(hiprt_compile_flags)
@@ -1128,9 +1128,6 @@ if(WITH_CYCLES_HIP)
 endif()
 if(WITH_CYCLES_DEVICE_ONEAPI)
   add_dependencies(cycles_kernel cycles_kernel_oneapi)
-endif()
-if(WITH_CYCLES_DEVICE_HIPRT)
-# -D __HIPRT__
 endif()
 
 # Install kernel source for runtime compilation

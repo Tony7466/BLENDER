@@ -375,9 +375,9 @@ ccl_device_inline bool point_custom_intersect(const hiprtRay &ray,
 // intersection filters
 
 ccl_device_inline bool closest_intersection_filter(const hiprtRay &ray,
-                                                  const void *data,
-                                                  void *user_data,
-                                                  const hiprtHit &hit)
+                                                   const void *data,
+                                                   void *user_data,
+                                                   const hiprtHit &hit)
 {
   RayPayload *payload = (RayPayload *)user_data;
   int object_id = kernel_data_fetch(user_instance_id, hit.instanceID);
@@ -431,10 +431,6 @@ ccl_device_inline bool shadow_intersection_filter(const hiprtRay &ray,
     const KernelCurveSegment segment = kernel_data_fetch(curve_segments, prim);
     type = segment.type;
     prim = segment.prim;
-
-    /*if (u == 0.0f || u == 1.0f) {
-        return true;
-    }*/
   }
 #  endif
 

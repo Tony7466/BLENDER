@@ -31,7 +31,8 @@ bool HIPRTDeviceQueue::enqueue(DeviceKernel kernel,
   debug_enqueue_begin(kernel, work_size);
 
   if (work_size > HIPRT_NUM_MAX_THREADS * HIPRT_GLOBAL_STACK_HEADROOM_FACTOR) {
-    VLOG_WARNING << "HIP RT global stack buffer is not large enough and could result in unexpected behaviour.";
+    VLOG_WARNING << "HIP RT global stack buffer is not large enough and could result in "
+                    "unexpected behaviour.";
   }
 
   const HIPContextScope scope(hiprt_device_);

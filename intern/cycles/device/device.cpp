@@ -14,11 +14,11 @@
 #include "device/cuda/device.h"
 #include "device/dummy/device.h"
 #include "device/hip/device.h"
+#include "device/hiprt/device_impl.h"
 #include "device/metal/device.h"
 #include "device/multi/device.h"
 #include "device/oneapi/device.h"
 #include "device/optix/device.h"
-#include "device/hiprt/device_impl.h"
 
 #include "util/foreach.h"
 #include "util/half.h"

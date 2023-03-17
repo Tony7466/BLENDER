@@ -25,7 +25,6 @@
 #  include "scene/object.h"
 #  include "scene/pointcloud.h"
 
-
 CCL_NAMESPACE_BEGIN
 
 static void get_hiprt_transform(float matrix[][4], Transform &tfm)
@@ -291,7 +290,8 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
   double starttime = time_dt();
 
   const string hiprt_path = getenv("HIPRT_ROOT_DIR");
-  //First, app kernels are compiled into bitcode, without access to implementation of HIP RT functions
+  // First, app kernels are compiled into bitcode, without access to implementation of HIP RT
+  // functions
   if (!path_exists(bitcode)) {
 
     std::string rtc_options;
@@ -324,8 +324,8 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
     }
   }
 
-  // linking
-  // with bitcode compilation of hiprt functions and produces its own bitcode
+  // After compilation, the bitcode produced is linked with HIP RT bitcode (containing implementations of
+  // HIP RT functions, e.g. traversal, to produce the final executable code
   string linker_options;
   linker_options.append(" --offload-arch=").append(arch);
   linker_options.append(" -fgpu-rdc --hip-link --cuda-device-only ");
@@ -447,7 +447,8 @@ void HIPRTDevice::const_copy_to(const char *name, void *host, size_t size)
   KERNEL_DATA_ARRAY(int2, custom_prim_info)
   KERNEL_DATA_ARRAY(int, prim_time_offset)
   KERNEL_DATA_ARRAY(float2, prims_time)
-  //KERNEL_DATA_ARRAY(int, global_stack_buffer)
+  // global_stack_buffer is not dynamically allocated because of stability issues
+  // KERNEL_DATA_ARRAY(int, global_stack_buffer)
 #  include "kernel/data_arrays.h"
 #  undef KERNEL_DATA_ARRAY
 }
@@ -610,7 +611,7 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_curve_blas(BVHHIPRT *bvh, Hair *hai
         const float num_bvh_steps_inv_1 = 1.0f / (num_bvh_steps - 1);
         const size_t num_steps = hair->get_motion_steps();
         const float3 *curve_keys = &hair->get_curve_keys()[0];
-        const float3 *key_steps = curve_attr_mP->data_float3();
+        const float4 *key_steps = curve_attr_mP->data_float4();
         const size_t num_keys = hair->get_curve_keys().size();
 
         float4 prev_keys[4];
@@ -1075,7 +1076,6 @@ hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
   /*int max_path = queue.num_concurrent_states(0);
   global_stack_buffer.alloc(max_path * HIPRT_SHARED_STACK_SIZE * sizeof(int));
   global_stack_buffer.zero_to_device();*/
-
 
   return scene;
 }

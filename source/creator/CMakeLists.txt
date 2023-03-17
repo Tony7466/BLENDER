@@ -1261,11 +1261,6 @@ elseif(WIN32)
     )
   endif()
 
-  if(WITH_CYCLES_DEVICE_HIPRT)
-	#load dynamically
-    #target_link_libraries(blender ${HIPRT_INCLUDE_DIR}/hiprt${HIPRT_VERSION}64.lib)
-  endif()
-
   if(WITH_BLENDER_THUMBNAILER)
     install(
       TARGETS BlendThumb
