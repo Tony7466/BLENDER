@@ -4,7 +4,6 @@
 
 #include "GPU_storage_buffer.h"
 
-#include "BLI_math_vector_types.hh"
 #include "BLI_vector.hh"
 
 #include "gpu_testing.hh"

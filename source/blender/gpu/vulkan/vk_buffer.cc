@@ -6,7 +6,6 @@
  */
 
 #include "vk_buffer.hh"
-#include "BLI_span.hh"
 
 namespace blender::gpu {
 
