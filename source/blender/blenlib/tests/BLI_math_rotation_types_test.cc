@@ -63,18 +63,12 @@ TEST(math_rotation_types, Euler3Order)
   /* Asserts those match.
    * Do not do it in the header to avoid including the DNA header everywhere.
    */
-  BLI_STATIC_ASSERT(
-      static_cast<int>(EulerOrder::XYZ) == static_cast<int>(eRotationModes::ROT_MODE_XYZ), "");
-  BLI_STATIC_ASSERT(
-      static_cast<int>(EulerOrder::XZY) == static_cast<int>(eRotationModes::ROT_MODE_XZY), "");
-  BLI_STATIC_ASSERT(
-      static_cast<int>(EulerOrder::YXZ) == static_cast<int>(eRotationModes::ROT_MODE_YXZ), "");
-  BLI_STATIC_ASSERT(
-      static_cast<int>(EulerOrder::YZX) == static_cast<int>(eRotationModes::ROT_MODE_YZX), "");
-  BLI_STATIC_ASSERT(
-      static_cast<int>(EulerOrder::ZXY) == static_cast<int>(eRotationModes::ROT_MODE_ZXY), "");
-  BLI_STATIC_ASSERT(
-      static_cast<int>(EulerOrder::ZYX) == static_cast<int>(eRotationModes::ROT_MODE_ZYX), "");
+  BLI_STATIC_ASSERT(int(EulerOrder::XYZ) == int(eRotationModes::ROT_MODE_XYZ), "");
+  BLI_STATIC_ASSERT(int(EulerOrder::XZY) == int(eRotationModes::ROT_MODE_XZY), "");
+  BLI_STATIC_ASSERT(int(EulerOrder::YXZ) == int(eRotationModes::ROT_MODE_YXZ), "");
+  BLI_STATIC_ASSERT(int(EulerOrder::YZX) == int(eRotationModes::ROT_MODE_YZX), "");
+  BLI_STATIC_ASSERT(int(EulerOrder::ZXY) == int(eRotationModes::ROT_MODE_ZXY), "");
+  BLI_STATIC_ASSERT(int(EulerOrder::ZYX) == int(eRotationModes::ROT_MODE_ZYX), "");
 
   EXPECT_EQ(float3(Euler3(0, 1, 2, EulerOrder::XYZ).ijk()), float3(0, 1, 2));
   EXPECT_EQ(float3(Euler3(0, 1, 2, EulerOrder::XZY).ijk()), float3(0, 2, 1));
@@ -271,7 +265,7 @@ TEST(math_rotation_types, AngleFraction)
     EXPECT_NEAR(angle.cos(), cos((T(M_PI) * i) / 16), 1e-6f);
     EXPECT_NEAR(angle.sin(), sin((T(M_PI) * i) / 16), 1e-6f);
 
-    /* Ensure symetry. */
+    /* Ensure symmetry. */
     AngleCartesian angle_opposite(pi + pi * i / 16);
     EXPECT_EQ(angle.cos(), -angle_opposite.cos());
     EXPECT_EQ(angle.sin(), -angle_opposite.sin());
@@ -308,6 +302,7 @@ TEST(math_rotation_types, AngleFraction)
   EXPECT_EQ(AngleCartesian(-pi * 1 / 4).sin(), T(-M_SQRT1_2));
   EXPECT_EQ(AngleCartesian(-pi * 3 / 4).sin(), T(-M_SQRT1_2));
 }
+
 TEST(math_rotation_types, TypeConversion)
 {
   /* All the same rotation. */
@@ -315,7 +310,8 @@ TEST(math_rotation_types, TypeConversion)
   EulerXYZ euler_xyz(AngleRadian::from_degree(20.0559),
                      AngleRadian::from_degree(-20.5632f),
                      AngleRadian::from_degree(30.3091f));
-  AxisAngle axis_angle({0.563771, -0.333098, 0.755783}, AngleRadian::from_degree(44.0284f));
+  AxisAngle axis_angle(normalize(float3{0.563771, -0.333098, 0.755783}),
+                       AngleRadian::from_degree(44.0284f));
 
   EXPECT_V4_NEAR(float4(to_quaternion(euler_xyz)), float4(quaternion), 1e-4);
   EXPECT_V3_NEAR(to_axis_angle(euler_xyz).axis(), axis_angle.axis(), 1e-4);
@@ -394,12 +390,12 @@ TEST(math_rotation_types, Euler3Conversion)
   EXPECT_V3_NEAR(float3(to_euler(mat_zxy, EulerOrder::ZXY).xyz()), xyz, 1e-4);
   EXPECT_V3_NEAR(float3(to_euler(mat_zyx, EulerOrder::ZYX).xyz()), xyz, 1e-4);
 
-  AxisAngle axis_angle_xyz = AxisAngle({0.563771, -0.333098, 0.755783}, 0.76844f);
-  AxisAngle axis_angle_xzy = AxisAngle({0.359907, -0.376274, 0.853747}, 0.676476f);
-  AxisAngle axis_angle_yxz = AxisAngle({0.636846, -0.376274, 0.672937}, 0.676476f);
-  AxisAngle axis_angle_yzx = AxisAngle({0.563771, -0.572084, 0.59572}, 0.76844f);
-  AxisAngle axis_angle_zxy = AxisAngle({0.318609, -0.572084, 0.755783}, 0.76844f);
-  AxisAngle axis_angle_zyx = AxisAngle({0.359907, -0.646237, 0.672937}, 0.676476f);
+  AxisAngle axis_angle_xyz = {normalize(float3{0.563771, -0.333098, 0.755783}), 0.76844f};
+  AxisAngle axis_angle_xzy = {normalize(float3{0.359907, -0.376274, 0.853747}), 0.676476f};
+  AxisAngle axis_angle_yxz = {normalize(float3{0.636846, -0.376274, 0.672937}), 0.676476f};
+  AxisAngle axis_angle_yzx = {normalize(float3{0.563771, -0.572084, 0.59572}), 0.76844f};
+  AxisAngle axis_angle_zxy = {normalize(float3{0.318609, -0.572084, 0.755783}), 0.76844f};
+  AxisAngle axis_angle_zyx = {normalize(float3{0.359907, -0.646237, 0.672937}), 0.676476f};
 
   EXPECT_V3_NEAR(to_axis_angle(euler3_xyz).axis(), axis_angle_xyz.axis(), 1e-4);
   EXPECT_V3_NEAR(to_axis_angle(euler3_xzy).axis(), axis_angle_xzy.axis(), 1e-4);

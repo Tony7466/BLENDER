@@ -1555,6 +1555,9 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
   # add_check_c_compiler_flag(C_WARNINGS C_WARN_UNUSED_MACROS      -Wunused-macros)
   # add_check_cxx_compiler_flag(CXX_WARNINGS CXX_WARN_UNUSED_MACROS          -Wunused-macros)
 
+  add_check_c_compiler_flag(C_WARNINGS C_WARN_ERROR_UNGUARDED_AVAILABILITY_NEW -Werror=unguarded-availability-new)
+  add_check_c_compiler_flag(CXX_WARNINGS CXX_WARN_ERROR_UNGUARDED_AVAILABILITY_NEW -Werror=unguarded-availability-new)
+
   # ---------------------
   # Suppress Strict Flags
 
@@ -1934,7 +1937,7 @@ if(FIRST_RUN)
   info_cfg_option(WITH_IMAGE_OPENEXR)
   info_cfg_option(WITH_IMAGE_OPENJPEG)
   info_cfg_option(WITH_IMAGE_TIFF)
-  
+
   info_cfg_text("Audio:")
   info_cfg_option(WITH_CODEC_AVI)
   info_cfg_option(WITH_CODEC_FFMPEG)
