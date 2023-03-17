@@ -1067,7 +1067,8 @@ void GRAPH_OT_ease(wmOperatorType *ot)
 
 typedef struct tGaussOperatorData {
   double *kernel;
-  ListBase segment_links /* tFCurveSegmentLink */;
+  ListBase segment_links; /* tFCurveSegmentLink */
+  ListBase anim_data;     /* bAnimListElem */
 } tGaussOperatorData;
 
 typedef struct tFCurveSegmentLink {
@@ -1110,8 +1111,8 @@ static void gauss_smooth_allocate_operator_data(tGraphSliderOp *gso,
       BLI_addtail(&segment_links, segment_link);
     }
   }
-  ANIM_animdata_freelist(&anim_data);
 
+  operator_data->anim_data = anim_data;
   operator_data->segment_links = segment_links;
   gso->operator_data = operator_data;
 }
@@ -1125,6 +1126,7 @@ static void gauss_smooth_free_operator_data(void *operator_data)
   }
   MEM_freeN(gauss_data->kernel);
   BLI_freelistN(&gauss_data->segment_links);
+  ANIM_animdata_freelist(&gauss_data->anim_data);
   MEM_freeN(gauss_data);
 }
 
@@ -1187,6 +1189,12 @@ static void gauss_smooth_modal_update(bContext *C, wmOperator *op)
 {
   tGraphSliderOp *gso = op->customdata;
 
+  bAnimContext ac;
+
+  if (ANIM_animdata_get_context(C, &ac) == 0) {
+    return;
+  }
+
   gauss_smooth_draw_status_header(C, gso);
 
   const float factor = slider_factor_get_and_remember(op);
@@ -1202,6 +1210,11 @@ static void gauss_smooth_modal_update(bContext *C, wmOperator *op)
                           operator_data->kernel);
   }
 
+  LISTBASE_FOREACH (bAnimListElem *, ale, &operator_data->anim_data) {
+    ale->update |= ANIM_UPDATE_DEFAULT;
+  }
+
+  ANIM_animdata_update(&ac, &operator_data->anim_data);
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
 }
 
@@ -1224,7 +1237,7 @@ static int gauss_smooth_invoke(bContext *C, wmOperator *op, const wmEvent *event
   gso->free_operator_data = gauss_smooth_free_operator_data;
 
   ED_slider_allow_overshoot_set(gso->slider, false);
-  ease_draw_status_header(C, gso);
+  gauss_smooth_draw_status_header(C, gso);
 
   return invoke_result;
 }
