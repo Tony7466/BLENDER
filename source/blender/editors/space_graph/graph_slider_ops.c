@@ -1065,6 +1065,8 @@ void GRAPH_OT_ease(wmOperatorType *ot)
 /** \name Gauss Smooth Operator
  * \{ */
 
+/* It is necessary to store data for smoothing when running in modal, because the sampling of
+ * FCurves shouldn't be done on every update. */
 typedef struct tGaussOperatorData {
   double *kernel;
   ListBase segment_links; /* tFCurveSegmentLink */
@@ -1128,37 +1130,6 @@ static void gauss_smooth_free_operator_data(void *operator_data)
   BLI_freelistN(&gauss_data->segment_links);
   ANIM_animdata_freelist(&gauss_data->anim_data);
   MEM_freeN(gauss_data);
-}
-
-static void gauss_smooth_graph_keys(bAnimContext *ac,
-                                    const float factor,
-                                    double *kernel,
-                                    const int filter_width)
-{
-  ListBase anim_data = {NULL, NULL};
-  ANIM_animdata_filter(ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, ac->datatype);
-
-  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    FCurve *fcu = (FCurve *)ale->key_data;
-    ListBase segments = find_fcurve_segments(fcu);
-
-    LISTBASE_FOREACH (FCurveSegment *, segment, &segments) {
-      BezTriple left_bezt = fcu->bezt[segment->start_index];
-      BezTriple right_bezt = fcu->bezt[segment->start_index + segment->length - 1];
-      const int sample_count = (int)(right_bezt.vec[1][0] - left_bezt.vec[1][0]) +
-                               (filter_width * 2 + 1);
-      float *samples = MEM_callocN(sizeof(float) * sample_count, "Smooth FCurve Op Samples");
-      sample_fcurve_segment(fcu, left_bezt.vec[1][0] - filter_width, samples, sample_count);
-      smooth_fcurve_segment(fcu, segment, samples, factor, filter_width, kernel);
-      MEM_freeN(samples);
-    }
-
-    BLI_freelistN(&segments);
-    ale->update |= ANIM_UPDATE_DEFAULT;
-  }
-
-  ANIM_animdata_update(ac, &anim_data);
-  ANIM_animdata_freelist(&anim_data);
 }
 
 static void gauss_smooth_draw_status_header(bContext *C, tGraphSliderOp *gso)
@@ -1242,6 +1213,37 @@ static int gauss_smooth_invoke(bContext *C, wmOperator *op, const wmEvent *event
   return invoke_result;
 }
 
+static void gauss_smooth_graph_keys(bAnimContext *ac,
+                                    const float factor,
+                                    double *kernel,
+                                    const int filter_width)
+{
+  ListBase anim_data = {NULL, NULL};
+  ANIM_animdata_filter(ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, ac->datatype);
+
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    FCurve *fcu = (FCurve *)ale->key_data;
+    ListBase segments = find_fcurve_segments(fcu);
+
+    LISTBASE_FOREACH (FCurveSegment *, segment, &segments) {
+      BezTriple left_bezt = fcu->bezt[segment->start_index];
+      BezTriple right_bezt = fcu->bezt[segment->start_index + segment->length - 1];
+      const int sample_count = (int)(right_bezt.vec[1][0] - left_bezt.vec[1][0]) +
+                               (filter_width * 2 + 1);
+      float *samples = MEM_callocN(sizeof(float) * sample_count, "Smooth FCurve Op Samples");
+      sample_fcurve_segment(fcu, left_bezt.vec[1][0] - filter_width, samples, sample_count);
+      smooth_fcurve_segment(fcu, segment, samples, factor, filter_width, kernel);
+      MEM_freeN(samples);
+    }
+
+    BLI_freelistN(&segments);
+    ale->update |= ANIM_UPDATE_DEFAULT;
+  }
+
+  ANIM_animdata_update(ac, &anim_data);
+  ANIM_animdata_freelist(&anim_data);
+}
+
 static int gauss_exec(bContext *C, wmOperator *op)
 {
   bAnimContext ac;
@@ -1254,7 +1256,9 @@ static int gauss_exec(bContext *C, wmOperator *op)
   const int kernel_size = filter_width + 1;
   double *kernel = MEM_callocN(sizeof(double) * kernel_size, "Gauss Kernel");
   get_1d_gauss_kernel(RNA_float_get(op->ptr, "sigma"), kernel_size, kernel);
+
   gauss_smooth_graph_keys(&ac, factor, kernel, filter_width);
+
   MEM_freeN(kernel);
 
   /* Set notifier that keyframes have changed. */
