@@ -7,16 +7,17 @@
 GPU_SHADER_CREATE_INFO(eevee_volume_lib)
     .additional_info("eevee_shared")
     .additional_info("draw_view")
+    .uniform_buf(0, "VolumesData", "volumes_buf")
     //.additional_info("eevee_legacy_lights_lib")
     //.additional_info("eevee_legacy_lightprobe_lib")
     //.additional_info("eevee_legacy_irradiance_lib")
     .sampler(13, ImageType::FLOAT_3D, "inScattering")
     .sampler(14, ImageType::FLOAT_3D, "inTransmittance");
 
-GPU_SHADER_INTERFACE_INFO(eevee_volume_vert_geom_iface, "eevee_volume_vert_iface")
+GPU_SHADER_INTERFACE_INFO(eevee_volume_vert_geom_iface, "volume_vert_iface")
     .smooth(Type::VEC4, "vPos");
 
-GPU_SHADER_INTERFACE_INFO(eevee_volume_geom_frag_iface, "eevee_volume_geom_iface")
+GPU_SHADER_INTERFACE_INFO(eevee_volume_geom_frag_iface, "volume_geom_iface")
     .flat(Type::INT, "slice");
 
 GPU_SHADER_CREATE_INFO(eevee_volume_clear)

@@ -63,8 +63,9 @@ vec3 coordinate_incoming(vec3 P)
 
 void main()
 {
-  ivec3 volume_cell = ivec3(ivec2(gl_FragCoord.xy), volumetric_geom_iface.slice);
-  vec3 ndc_cell = volume_to_ndc((vec3(volume_cell) + volJitter.xyz) * volInvTexSize.xyz);
+  ivec3 volume_cell = ivec3(ivec2(gl_FragCoord.xy), volume_geom_iface.slice);
+  vec3 ndc_cell = volume_to_ndc((vec3(volume_cell) + volumes_buf.jitter) *
+                                volumes_buf.inv_tex_size);
 
   viewPosition = get_view_space_from_depth(ndc_cell.xy, ndc_cell.z);
   worldPosition = point_view_to_world(viewPosition);

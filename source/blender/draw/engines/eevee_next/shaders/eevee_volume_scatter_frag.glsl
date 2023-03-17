@@ -9,13 +9,13 @@
 
 void main()
 {
-  ivec3 volume_cell = ivec3(ivec2(gl_FragCoord.xy), volumetric_geom_iface.slice);
+  ivec3 volume_cell = ivec3(ivec2(gl_FragCoord.xy), volume_geom_iface.slice);
 
   /* Emission */
   outScattering = texelFetch(volumeEmission, volume_cell, 0);
   outTransmittance = texelFetch(volumeExtinction, volume_cell, 0);
   vec3 s_scattering = texelFetch(volumeScattering, volume_cell, 0).rgb;
-  vec3 volume_ndc = volume_to_ndc((vec3(volume_cell) + volJitter.xyz) * volInvTexSize.xyz);
+  vec3 volume_ndc = volume_to_ndc((vec3(volume_cell) + volumes_buf.jitter) * volumes_buf.inv_tex_size);
   vec3 P = get_world_space_from_depth(volume_ndc.xy, volume_ndc.z);
   vec3 V = cameraVec(P);
 
@@ -52,8 +52,8 @@ void main()
 
   /* Temporal supersampling */
   /* Note : this uses the cell non-jittered position (texel center). */
-  vec3 curr_ndc = volume_to_ndc(vec3(gl_FragCoord.xy, float(volumetric_geom_iface.slice) + 0.5) *
-                                volInvTexSize.xyz);
+  vec3 curr_ndc = volume_to_ndc(vec3(gl_FragCoord.xy, float(volume_geom_iface.slice) + 0.5) *
+                                volumes_buf.inv_tex_size);
   vec3 wpos = get_world_space_from_depth(curr_ndc.xy, curr_ndc.z);
   vec3 prev_ndc = project_point(pastViewProjectionMatrix, wpos);
   vec3 prev_volume = ndc_to_volume(prev_ndc * 0.5 + 0.5);

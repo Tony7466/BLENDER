@@ -428,13 +428,14 @@ BLI_STATIC_ASSERT_ALIGN(MotionBlurTileIndirection, 16)
  * \{ */
 
 struct VolumesData {
+  /* TODO (Miguel Pozo): Packed? */
   int3 tex_size;
   float history_alpha;
-  float3 inv_tex_size;
+  packed_float3 inv_tex_size;
   float shadow_steps;
-  float3 jitter;
+  packed_float3 jitter;
   int use_lights;
-  float3 depth_param;
+  packed_float3 depth_param;
   int use_soft_shadows;
   float2 coord_scale_a; /*TODO (Miguel Pozo): Rename. */
   float2 coord_scale_b;

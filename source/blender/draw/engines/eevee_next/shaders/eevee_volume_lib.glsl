@@ -1,7 +1,12 @@
+#pragma BLENDER_REQUIRE(common_view_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_light_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_shadow_lib.glsl)
 
-#pragma BLENDER_REQUIRE(lights_lib.glsl)
-#pragma BLENDER_REQUIRE(lightprobe_lib.glsl)
-#pragma BLENDER_REQUIRE(irradiance_lib.glsl)
+/*
+(lights_lib.glsl)
+(lightprobe_lib.glsl)
+(irradiance_lib.glsl)
+*/
 
 /* Based on Frosbite Unified Volumetric.
  * https://www.ea.com/frostbite/news/physically-based-unified-volumetric-rendering-in-frostbite */
@@ -9,25 +14,27 @@
 /* Volume slice to view space depth. */
 float volume_z_to_view_z(float z)
 {
+  float3 depth_params = volumes_buf.depth_param;
   if (ProjectionMatrix[3][3] == 0.0) {
     /* Exponential distribution */
-    return (exp2(z / volDepthParameters.z) - volDepthParameters.x) / volDepthParameters.y;
+    return (exp2(z / depth_params.z) - depth_params.x) / depth_params.y;
   }
   else {
     /* Linear distribution */
-    return mix(volDepthParameters.x, volDepthParameters.y, z);
+    return mix(depth_params.x, depth_params.y, z);
   }
 }
 
 float view_z_to_volume_z(float depth)
 {
+  float3 depth_params = volumes_buf.depth_param;
   if (ProjectionMatrix[3][3] == 0.0) {
     /* Exponential distribution */
-    return volDepthParameters.z * log2(depth * volDepthParameters.y + volDepthParameters.x);
+    return depth_params.z * log2(depth * depth_params.y + depth_params.x);
   }
   else {
     /* Linear distribution */
-    return (depth - volDepthParameters.x) * volDepthParameters.z;
+    return (depth - depth_params.x) * depth_params.z;
   }
 }
 
@@ -36,7 +43,7 @@ vec3 volume_to_ndc(vec3 cos)
 {
   cos.z = volume_z_to_view_z(cos.z);
   cos.z = get_depth_from_view_z(cos.z);
-  cos.xy /= volCoordScale.xy;
+  cos.xy /= volumes_buf.coord_scale_a;
   return cos;
 }
 
@@ -44,7 +51,7 @@ vec3 ndc_to_volume(vec3 cos)
 {
   cos.z = get_view_z_from_depth(cos.z);
   cos.z = view_z_to_volume_z(cos.z);
-  cos.xy *= volCoordScale.xy;
+  cos.xy *= volumes_buf.coord_scale_a;
   return cos;
 }
 
@@ -65,7 +72,7 @@ float phase_function(vec3 v, vec3 l, float g)
 vec3 light_volume(LightData ld, vec4 l_vector)
 {
   float power = 1.0;
-  if (ld.l_type != SUN) {
+  if (ld.type != LIGHT_SUN) {
     /**
      * Using "Point Light Attenuation Without Singularity" from Cem Yuksel
      * http://www.cemyuksel.com/research/pointlightattenuation/pointlightattenuation.pdf
@@ -73,30 +80,32 @@ vec3 light_volume(LightData ld, vec4 l_vector)
      */
     float d = l_vector.w;
     float d_sqr = sqr(d);
-    float r_sqr = ld.l_volume_radius;
+    /* TODO (Miguel Pozo): Not the same! */
+    // float r_sqr = ld.volume_radius;
+    float r_sqr = ld.radius_squared;
     /* Using reformulation that has better numerical precision. */
     power = 2.0 / (d_sqr + r_sqr + d * sqrt(d_sqr + r_sqr));
 
-    if (ld.l_type == AREA_RECT || ld.l_type == AREA_ELLIPSE) {
+    if (ld.type == LIGHT_RECT || ld.type == LIGHT_ELLIPSE) {
       /* Modulate by light plane orientation / solid angle. */
-      power *= saturate(dot(-ld.l_forward, l_vector.xyz / l_vector.w));
+      power *= saturate(dot(ld._back, l_vector.xyz / l_vector.w));
     }
   }
-  return ld.l_color * ld.l_volume * power;
+  return ld.color * ld.volume_power * power;
 }
 
 vec3 light_volume_light_vector(LightData ld, vec3 P)
 {
-  if (ld.l_type == SUN) {
-    return -ld.l_forward;
+  if (ld.type == LIGHT_SUN) {
+    return ld._back;
   }
-  else if (ld.l_type == AREA_RECT || ld.l_type == AREA_ELLIPSE) {
-    vec3 L = P - ld.l_position;
-    vec2 closest_point = vec2(dot(ld.l_right, L), dot(ld.l_up, L));
-    vec2 max_pos = vec2(ld.l_sizex, ld.l_sizey);
+  else if (ld.type == LIGHT_RECT || ld.type == LIGHT_ELLIPSE) {
+    vec3 L = P - ld._position;
+    vec2 closest_point = vec2(dot(ld._right, L), dot(ld._up, L));
+    vec2 max_pos = vec2(ld._area_size_x, ld._area_size_y);
     closest_point /= max_pos;
 
-    if (ld.l_type == AREA_ELLIPSE) {
+    if (ld.type == LIGHT_ELLIPSE) {
       closest_point /= max(1.0, length(closest_point));
     }
     else {
@@ -104,11 +113,11 @@ vec3 light_volume_light_vector(LightData ld, vec3 P)
     }
     closest_point *= max_pos;
 
-    vec3 L_prime = ld.l_right * closest_point.x + ld.l_up * closest_point.y;
+    vec3 L_prime = ld._right * closest_point.x + ld._up * closest_point.y;
     return L_prime - L;
   }
   else {
-    return ld.l_position - P;
+    return ld._position - P;
   }
 }
 
@@ -128,10 +137,10 @@ vec3 light_volume_shadow(LightData ld, vec3 ray_wpos, vec4 l_vector, sampler3D v
 {
 #if defined(VOLUME_SHADOW)
   /* If light is shadowed, use the shadow vector, if not, reuse the light vector. */
-  if (volUseSoftShadows && ld.l_shadowid >= 0.0) {
-    ShadowData sd = shadows_data[int(ld.l_shadowid)];
+  if (volUseSoftShadows && ld.shadowid >= 0.0) {
+    ShadowData sd = shadows_data[int(ld.shadowid)];
 
-    if (ld.l_type == SUN) {
+    if (ld.type == LIGHT_SUN) {
       l_vector.xyz = shadows_cascade_data[int(sd.sh_data_index)].sh_shadow_vec;
       /* No need for length, it is recomputed later. */
     }
@@ -145,7 +154,7 @@ vec3 light_volume_shadow(LightData ld, vec3 ray_wpos, vec4 l_vector, sampler3D v
   float dd = l_vector.w / volShadowSteps;
   vec3 L = l_vector.xyz / volShadowSteps;
 
-  if (ld.l_type == SUN) {
+  if (ld.type == LIGHT_SUN) {
     /* For sun light we scan the whole frustum. So we need to get the correct endpoints. */
     vec3 ndcP = project_point(ProjectionMatrix, transform_point(ViewMatrix, ray_wpos));
     vec3 ndcL = project_point(ProjectionMatrix,

@@ -20,17 +20,17 @@ void main()
    * -1 0 --------------- 2
    *   -1     0     1     ex
    */
-  volumetric_vert_iface.vPos.x = float(v_id / 2) * 4.0 - 1.0; /* int divisor round down */
-  volumetric_vert_iface.vPos.y = float(v_id % 2) * 4.0 - 1.0;
-  volumetric_vert_iface.vPos.z = float(t_id);
-  volumetric_vert_iface.vPos.w = 1.0;
+  volume_vert_iface.vPos.x = float(v_id / 2) * 4.0 - 1.0; /* int divisor round down */
+  volume_vert_iface.vPos.y = float(v_id % 2) * 4.0 - 1.0;
+  volume_vert_iface.vPos.z = float(t_id);
+  volume_vert_iface.vPos.w = 1.0;
 
   PASS_RESOURCE_ID
 
 #ifdef GPU_METAL
-  volumetric_geom_iface.slice = int(volumetric_vert_iface.vPos.z);
-  MTLRenderTargetArrayIndex = int(volumetric_vert_iface.vPos.z);
-  gl_Position = volumetric_vert_iface.vPos.xyww;
+  volume_geom_iface.slice = int(volume_vert_iface.vPos.z);
+  MTLRenderTargetArrayIndex = int(volume_vert_iface.vPos.z);
+  gl_Position = volume_vert_iface.vPos.xyww;
 #endif
 }
 
