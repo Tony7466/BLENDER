@@ -36,11 +36,11 @@ Mesh *convert_ply_to_mesh(PlyData &data, Mesh *mesh, const PLYImportParams &para
       uint32_t v1 = data.edges[i].first;
       uint32_t v2 = data.edges[i].second;
       if (v1 >= mesh->totvert) {
-        fprintf(stderr, "Invalid PLY vertex index in edge %i/1: %i\n", i, v1);
+        fprintf(stderr, "Invalid PLY vertex index in edge %i/1: %u\n", i, v1);
         v1 = 0;
       }
       if (v2 >= mesh->totvert) {
-        fprintf(stderr, "Invalid PLY vertex index in edge %i/2: %i\n", i, v2);
+        fprintf(stderr, "Invalid PLY vertex index in edge %i/2: %u\n", i, v2);
         v2 = 0;
       }
       edges[i].v1 = v1;
@@ -67,7 +67,7 @@ Mesh *convert_ply_to_mesh(PlyData &data, Mesh *mesh, const PLYImportParams &para
       for (int j = 0; j < size; j++) {
         uint32_t v = data.face_vertices[offset + j];
         if (v >= mesh->totvert) {
-          fprintf(stderr, "Invalid PLY vertex index in face %i loop %i: %i\n", i, j, v);
+          fprintf(stderr, "Invalid PLY vertex index in face %i loop %i: %u\n", i, j, v);
           v = 0;
         }
         loops[offset + j].v = v;

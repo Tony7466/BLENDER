@@ -4,6 +4,8 @@
 
 #include "BLI_fileops.h"
 
+#include <string.h>
+
 static inline bool is_newline(char ch)
 {
   return ch == '\n' || ch == '\r';

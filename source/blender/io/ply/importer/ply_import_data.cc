@@ -28,7 +28,7 @@ static const char *drop_whitespace(const char *p, const char *end)
   return p;
 }
 
-const char *drop_non_whitespace(const char *p, const char *end)
+static const char *drop_non_whitespace(const char *p, const char *end)
 {
   while (p < end && !is_whitespace(*p)) {
     ++p;
