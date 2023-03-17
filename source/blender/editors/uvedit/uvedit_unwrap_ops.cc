@@ -20,10 +20,13 @@
 
 #include "BLI_array.hh"
 #include "BLI_convexhull_2d.h"
+#include "BLI_heap.h"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
 #include "BLI_math.h"
 #include "BLI_memarena.h"
+#include "BLI_polyfill_2d.h"
+#include "BLI_polyfill_2d_beautify.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 #include "BLI_uvproject.h"
@@ -1390,6 +1393,9 @@ static void uvedit_pack_islands_multi(const Scene *scene,
     selection_center[1] = (selection_min_co[1] + selection_max_co[1]) / 2.0f;
   }
 
+  MemArena *arena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __FILE__);
+  Heap *heap = BLI_heap_new();
+
   float scale[2] = {1.0f, 1.0f};
   blender::Vector<blender::geometry::PackIsland *> pack_island_vector;
   for (int i = 0; i < island_vector.size(); i++) {
@@ -1399,22 +1405,42 @@ static void uvedit_pack_islands_multi(const Scene *scene,
     pack_island->caller_index = i;
     pack_island_vector.append(pack_island);
 
-    /* TODO: Proper triangulation, not just fan... */
     for (int i = 0; i < face_island->faces_len; i++) {
       BMFace *f = face_island->faces[i];
-      BMLoop *l_a = BM_FACE_FIRST_LOOP(f);
-      BMLoop *l_b = l_a->next;
-      const float *uv_a = BM_ELEM_CD_GET_FLOAT_P(l_a, face_island->offsets.uv);
-      const float *uv_b = BM_ELEM_CD_GET_FLOAT_P(l_b, face_island->offsets.uv);
-      while (l_b->next != l_a) {
-        BMLoop *l_c = l_b->next;
-        const float *uv_c = BM_ELEM_CD_GET_FLOAT_P(l_c, face_island->offsets.uv);
-        pack_island->addTriangle(uv_a, uv_b, uv_c);
-        uv_b = uv_c;
-        l_b = l_c;
+      int nverts = f->len;
+
+      /* Storage. */
+      int nfilltri = f->len - 2;
+      uint(*tris)[3] = static_cast<uint(*)[3]>(
+          BLI_memarena_alloc(arena, sizeof(*tris) * size_t(nfilltri)));
+      float(*projverts)[2] = static_cast<float(*)[2]>(
+          BLI_memarena_alloc(arena, sizeof(*projverts) * f->len));
+
+      /* Obtain UVs of n-gon. */
+      BMLoop *l;
+      BMIter iter;
+      int j;
+      BM_ITER_ELEM_INDEX (l, &iter, f, BM_LOOPS_OF_FACE, j) {
+        copy_v2_v2(projverts[j], BM_ELEM_CD_GET_FLOAT_P(l, face_island->offsets.uv));
       }
+
+      /* Triangulate. */
+      BLI_polyfill_calc_arena(projverts, f->len, 0, tris, arena);
+      /* Improves performance of packer. */
+      BLI_polyfill_beautify(projverts, f->len, tris, arena, heap);
+
+      /* Add triangles to pack_island. */
+      for (int j = 0; j < nfilltri; j++) {
+        uint *tri = tris[j];
+        pack_island->addTriangle(projverts[tri[0]], projverts[tri[1]], projverts[tri[2]]);
+      }
+
+      BLI_heap_clear(heap, nullptr);
+      BLI_memarena_clear(arena);
     }
   }
+  BLI_memarena_free(arena);
+  BLI_heap_free(heap, nullptr);
   pack_islands(pack_island_vector, *params, scale);
 
   float base_offset[2] = {0.0f, 0.0f};

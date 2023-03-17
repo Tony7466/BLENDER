@@ -27,11 +27,20 @@ static float signedDistanceToEdge(float2 probe, float2 uva, float2 uvb)
   float2 edge = uvb - uva;
   float2 side = probe - uva;
 
-  const float edge_length = blender::math::length(edge);
-  if (edge_length < 1e-20f) {
+  const float edge_length_squared = blender::math::length_squared(edge);
+  if (edge_length_squared < 1e-40f) {
     return blender::math::length(side);
   }
-  return (edge.x * side.y - edge.y * side.x) / edge_length;
+  float cross = (edge.x * side.y - edge.y * side.x);
+  if (cross <= 0) {
+    /* Result will be non-positive, can be unbounded. */
+    return cross / sqrtf(edge_length_squared);
+  }
+
+  /* Distance to endpoint or closest point on edge. */
+  float close[2];
+  closest_to_line_segment_v2(close, probe, uva, uvb);
+  return len_v2v2(close, probe);
 }
 
 void PackIsland::addTriangle(const float2 uv0, const float2 uv1, const float2 uv2)
@@ -161,12 +170,19 @@ class Occupancy {
   float bitmapScale;
   float bitmapScaleReciprocal;
   blender::Array<bool> bitmap;
+
+ private:
+  float2 witness;
+  int triangleWitness;
 };
 
 Occupancy::Occupancy() : bitmapRadix(512), bitmap(bitmapRadix * bitmapRadix, false)
 {
-  bitmapScale = 0.5f / bitmapRadix;
+  bitmapScale = 1.0f / bitmapRadix;
   bitmapScaleReciprocal = 1.0f / bitmapScale;
+  witness.x = -1;
+  witness.y = -1;
+  triangleWitness = 0;
 }
 
 void Occupancy::increaseScale()
@@ -176,51 +192,66 @@ void Occupancy::increaseScale()
   for (int i = 0; i < bitmapRadix * bitmapRadix; i++) {
     bitmap[i] = false;
   }
+  witness.x = -1;
+  witness.y = -1;
 }
 
-static bool pointOutsideFatTriangle(
+static bool pointInsideFatTriangle(
     float2 probe, float2 uv0, float2 uv1, float2 uv2, const float epsilon)
 {
   const float dist01 = signedDistanceToEdge(probe, uv0, uv1);
   const float dist12 = signedDistanceToEdge(probe, uv1, uv2);
   const float dist20 = signedDistanceToEdge(probe, uv2, uv0);
 
-  if (dist01 <= epsilon && dist12 < epsilon && dist20 < epsilon) {
-    return false; /* Inside. */
+  if (dist01 <= epsilon && dist12 <= epsilon && dist20 <= epsilon) {
+    return true; /* Inside. */
   }
-  return true; /* Outside. */
+  return false; /* Outside. */
 }
 
 bool Occupancy::traceTriangle(
     const float2 &uv0, const float2 &uv1, const float2 &uv2, const float margin, const bool write)
 {
-  float x0 = std::min(uv0.x, std::min(uv1.x, uv2.x));
-  float y0 = std::min(uv0.y, std::min(uv1.y, uv2.y));
-  float x1 = std::max(uv0.x, std::max(uv1.x, uv2.x));
-  float y1 = std::max(uv0.y, std::max(uv1.y, uv2.y));
+  const float x0 = min_fff(uv0.x, uv1.x, uv2.x);
+  const float y0 = min_fff(uv0.y, uv1.y, uv2.y);
+  const float x1 = max_fff(uv0.x, uv1.x, uv2.x);
+  const float y1 = max_fff(uv0.y, uv1.y, uv2.y);
   int ix0 = std::max(int(floorf((x0 - margin) * bitmapScaleReciprocal)), 0);
   int iy0 = std::max(int(floorf((y0 - margin) * bitmapScaleReciprocal)), 0);
   int ix1 = std::min(int(floorf((x1 + margin) * bitmapScaleReciprocal + 1)), bitmapRadix);
   int iy1 = std::min(int(floorf((y1 + margin) * bitmapScaleReciprocal + 1)), bitmapRadix);
 
-  for (int y = iy0; y < iy1; y++) {
-    for (int x = ix0; x < ix1; x++) {
-      float epsilon = 0.70710678118f; /* sqrt(0.5) pixels. */
-      epsilon = std::max(epsilon, margin * bitmapScaleReciprocal);
-      if (pointOutsideFatTriangle(float2(x, y),
-                                  uv0 * bitmapScaleReciprocal,
-                                  uv1 * bitmapScaleReciprocal,
-                                  uv2 * bitmapScaleReciprocal,
-                                  epsilon)) {
+  const float2 uv0s = uv0 * bitmapScaleReciprocal;
+  const float2 uv1s = uv1 * bitmapScaleReciprocal;
+  const float2 uv2s = uv2 * bitmapScaleReciprocal;
+
+  float epsilon = 0.70710678118f; /* sqrt(0.5) pixels. */
+  epsilon = std::max(epsilon, margin * bitmapScaleReciprocal - epsilon);
+
+  if (!write) {
+    if (ix0 <= witness.x && witness.x < ix1) {
+      if (iy0 <= witness.y && witness.y < iy1) {
+        if (pointInsideFatTriangle(witness, uv0s, uv1s, uv2s, epsilon)) {
+          return true;
+        }
+      }
+    }
+  }
+
+  /* Iterate in opposite direction to outer search to improve witness effectiveness. */
+  for (int y = iy1 - 1; y >= iy0; --y) {
+    for (int x = ix1 - 1; x >= ix0; --x) {
+      bool *hotspot = &bitmap[y * bitmapRadix + x];
+      if (!write && !*hotspot) {
         continue;
       }
-
-      bool occupied_xy = bitmap[y * bitmapRadix + x];
-      if (write) {
-        bitmap[y * bitmapRadix + x] = true;
-      }
-      else {
-        if (occupied_xy) {
+      float2 probe(x, y);
+      if (pointInsideFatTriangle(probe, uv0s, uv1s, uv2s, epsilon)) {
+        if (write) {
+          *hotspot = true;
+        }
+        else {
+          witness = probe;
           return true;
         }
       }
@@ -242,16 +273,10 @@ bool Occupancy::traceIsland(PackIsland *island,
     if (u < 0.0f || v < 0.0f) {
       return true;
     }
-    float trial_u = u + BLI_rctf_size_x(&island->bounds_rect) * scale;
-    float trial_v = v + BLI_rctf_size_y(&island->bounds_rect) * scale;
-    if (trial_u > bitmapScale * bitmapRadix) {
-      return true;
-    }
-    if (trial_v > bitmapScale * bitmapRadix) {
-      return true;
-    }
   }
-  for (int j = 0; j < island->triangleVertices.size(); j += 3) {
+  int s = int(island->triangleVertices.size());
+  for (int i = 0; i < s; i += 3) {
+    int j = (i + triangleWitness) % s;
     bool occupied = traceTriangle(
         (island->triangleVertices[j] - origin) * scale + float2(u, v),
         (island->triangleVertices[j + 1] - origin) * scale + float2(u, v),
@@ -260,12 +285,25 @@ bool Occupancy::traceIsland(PackIsland *island,
         write);
 
     if (!write && occupied) {
+      triangleWitness = j;
       return true;
     }
   }
   return false;
 }
 
+/**
+ * Pack irregular islands using the "xatlas" strategy, with no rotation.
+ *
+ * Loosely based on the 'xatlas' code by Jonathan Young
+ * from https://github.com/jpcy/xatlas
+ *
+ * A brute force packer (BFPacker) with accelerators:
+ * - Uses a Bitmap Occupancy class.
+ * - Uses a "Witness".
+ * - Write with `margin * 2`, read with `margin == 0`.
+ * - Lazy resetting of BF search.
+ */
 static void pack_island_xatlas(const Span<UVAABBIsland *> island_indices,
                                const Span<PackIsland *> islands,
                                BoxPack *box_array,
@@ -286,7 +324,7 @@ static void pack_island_xatlas(const Span<UVAABBIsland *> island_indices,
     float best_u = 1.2f;
     float best_v = 0.5f;
 
-    if ((i & 15) == 8) {
+    if (i < 128 || (i & 31) == 16) {
       s0 = 0;
     }
 
@@ -296,7 +334,7 @@ static void pack_island_xatlas(const Span<UVAABBIsland *> island_indices,
         float u = s * occupancy.bitmapScale - BLI_rctf_size_x(&island->bounds_rect) * scale;
         float v = t * occupancy.bitmapScale - BLI_rctf_size_y(&island->bounds_rect) * scale;
 
-        if (!occupancy.traceIsland(island, scale, margin, origin, u, v, false)) {
+        if (!occupancy.traceIsland(island, scale, 0.0f, origin, u, v, false)) {
           best_u = u;
           best_v = v;
           s0 = std::max(s0, s - 25); /* TODO: Tune me. */
@@ -306,7 +344,7 @@ static void pack_island_xatlas(const Span<UVAABBIsland *> island_indices,
         }
         u = t * occupancy.bitmapScale - BLI_rctf_size_x(&island->bounds_rect) * scale;
         v = s * occupancy.bitmapScale - BLI_rctf_size_y(&island->bounds_rect) * scale;
-        if (!occupancy.traceIsland(island, scale, margin, origin, u, v, false)) {
+        if (!occupancy.traceIsland(island, scale, 0.0f, origin, u, v, false)) {
           best_u = u;
           best_v = v;
           s0 = std::max(s0, s - 25); /* TODO: Tune me. */
@@ -329,7 +367,7 @@ static void pack_island_xatlas(const Span<UVAABBIsland *> island_indices,
         PackIsland *island = islands[island_indices[j]->index];
         BoxPack *box = box_array + j;
         float2 origin(island->bounds_rect.xmin, island->bounds_rect.ymin);
-        occupancy.traceIsland(island, scale, margin, origin, box->x, box->y, true);
+        occupancy.traceIsland(island, scale, 2.0f * margin, origin, box->x, box->y, true);
       }
       continue;
     }
@@ -339,7 +377,7 @@ static void pack_island_xatlas(const Span<UVAABBIsland *> island_indices,
     box->y = best_v;
     max_u = std::max(best_u + BLI_rctf_size_x(&island->bounds_rect) * scale + 2 * margin, max_u);
     max_v = std::max(best_v + BLI_rctf_size_y(&island->bounds_rect) * scale + 2 * margin, max_v);
-    occupancy.traceIsland(island, scale, margin, origin, box->x, box->y, true);
+    occupancy.traceIsland(island, scale, 2.0f * margin, origin, box->x, box->y, true);
     i++; /* Next island. */
   }
 
@@ -389,9 +427,6 @@ static float pack_islands_scale_margin(const Span<PackIsland *> islands,
   /* Partition island_vector, largest will go to box_pack, the rest alpaca_turbo.
    * See discussion above for details. */
   int64_t alpaca_cutoff = int64_t(1024); /* TODO: Tune constant. */
-  if (shape_method == ED_UVPACK_SHAPE_CONCAVE_HOLE) {
-    alpaca_cutoff = int64_t(256); /* TODO: Tune constant. */
-  }
   int64_t max_box_pack = std::min(alpaca_cutoff, islands.size());
 
   /* Prepare for box_pack_2d. */
