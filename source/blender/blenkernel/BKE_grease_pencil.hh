@@ -7,6 +7,7 @@
  * \brief Low-level operations for grease pencil.
  */
 
+#include "BLI_function_ref.hh"
 #include "BLI_map.hh"
 #include "BLI_stack.hh"
 #include "BLI_string.h"
@@ -16,37 +17,43 @@
 
 namespace blender::bke {
 
-class GreasePencilLayerRuntime {
- public:
-  Map<int, int> frames;
-};
-
 namespace gpencil {
 
+class LayerGroup;
+class Layer;
+
 class TreeNode : public ::GreasePencilLayerTreeNode {
- private:
+  using ItemIterFn = FunctionRef<void(TreeNode &)>;
+
+ protected:
   Vector<TreeNode, 0> children_;
 
  public:
-  TreeNode()
+  TreeNode(GreasePencilLayerTreeNodeType type)
   {
+    this->type = type;
     this->name = nullptr;
   }
-  TreeNode(StringRefNull name)
+  TreeNode(GreasePencilLayerTreeNodeType type, StringRefNull name)
   {
+    this->type = type;
     this->name = BLI_strdup(name.c_str());
   }
-  TreeNode(const TreeNode &other) : TreeNode(other.name)
+  TreeNode(const TreeNode &other)
   {
+    this->name = BLI_strdup(other.name);
   }
   TreeNode(TreeNode &&other)
   {
-    std::swap(this->name, other.name);
+    this->name = other.name;
     other.name = nullptr;
   }
   TreeNode &operator=(const TreeNode &other)
   {
     if (this != &other) {
+      if (this->name) {
+        MEM_freeN(this->name);
+      }
       this->name = BLI_strdup(other.name);
     }
     return *this;
@@ -54,7 +61,7 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
   TreeNode &operator=(TreeNode &&other)
   {
     if (this != &other) {
-      std::swap(this->name, other.name);
+      this->name = other.name;
       other.name = nullptr;
     }
     return *this;
@@ -146,48 +153,174 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
   };
 
  public:
-  bool operator==(const TreeNode &other) const
+  constexpr bool is_group() const
   {
-    return this == &other;
-  }
-  bool operator!=(const TreeNode &other) const
-  {
-    return this != &other;
+    return type == GREASE_PENCIL_LAYER_TREE_GROUP;
   }
 
-  void add_child(TreeNode &node)
+  constexpr bool is_layer() const
   {
-    children_.append(node);
+    return type == GREASE_PENCIL_LAYER_TREE_LEAF;
   }
 
-  void add_child(TreeNode &&node)
+  LayerGroup &as_group()
   {
-    children_.append(std::move(node));
+    return *static_cast<LayerGroup *>(this);
   }
-
-  int size()
+  Layer &as_layer()
   {
-    return children_.size();
-  }
-
-  bool remove_child(TreeNode &node)
-  {
-    BLI_assert(children_.size() != 0);
-    int64_t index = children_.first_index_of_try(node);
-    if (index < 0) {
-      return false;
-    }
-    children_.remove(index);
-    return true;
+    return *static_cast<Layer *>(this);
   }
 
   PreOrderRange children_in_pre_order()
   {
     return PreOrderRange(this);
   }
+
+  void foreach_children_pre_order(ItemIterFn function)
+  {
+    for (TreeNode &child : children_) {
+      child.foreach_children_pre_order_recursive_(function);
+    }
+  }
+
+  void foreach_leaf_pre_order(ItemIterFn function)
+  {
+    for (TreeNode &child : children_) {
+      child.foreach_leaf_pre_order_recursive_(function);
+    }
+  }
+
+ private:
+  void foreach_children_pre_order_recursive_(ItemIterFn function)
+  {
+    function(*this);
+    for (TreeNode &child : children_) {
+      child.foreach_children_pre_order_recursive_(function);
+    }
+  }
+
+  void foreach_leaf_pre_order_recursive_(ItemIterFn function)
+  {
+    if (children_.size() == 0) {
+      function(*this);
+    }
+    for (TreeNode &child : children_) {
+      child.foreach_children_pre_order_recursive_(function);
+    }
+  }
 };
 
-class Layer : TreeNode, ::GreasePencilLayer {};
+class Layer : public TreeNode, ::GreasePencilLayer {
+ private:
+  Map<int, int> frames_;
+
+ public:
+  Layer() : TreeNode(GREASE_PENCIL_LAYER_TREE_LEAF), frames_()
+  {
+  }
+  Layer(StringRefNull name) : TreeNode(GREASE_PENCIL_LAYER_TREE_LEAF, name), frames_()
+  {
+  }
+  Layer(const Layer &other)
+      : TreeNode(GREASE_PENCIL_LAYER_TREE_LEAF, other.name), frames_(other.frames_)
+  {
+  }
+  Layer(Layer &&other) : TreeNode(std::move(other))
+  {
+    frames_ = std::move(other.frames_);
+  }
+  Layer &operator=(const Layer &other)
+  {
+    return copy_assign_container(*this, other);
+  }
+  Layer &operator=(Layer &&other)
+  {
+    if (this != &other) {
+      frames_ = std::move(other.frames_);
+    }
+    return *this;
+  }
+
+  bool operator==(const Layer &other) const
+  {
+    return this == &other;
+  }
+  bool operator!=(const Layer &other) const
+  {
+    return this != &other;
+  }
+
+  Layer &as_layer()
+  {
+    return *this;
+  }
+};
+
+class LayerGroup : public TreeNode {
+ public:
+  LayerGroup() : TreeNode(GREASE_PENCIL_LAYER_TREE_GROUP)
+  {
+  }
+  LayerGroup(StringRefNull name) : TreeNode(GREASE_PENCIL_LAYER_TREE_GROUP, name)
+  {
+  }
+  LayerGroup(const LayerGroup &other) : TreeNode(GREASE_PENCIL_LAYER_TREE_GROUP, other.name)
+  {
+  }
+  LayerGroup(LayerGroup &&other) : TreeNode(std::move(other))
+  {
+  }
+  ~LayerGroup()
+  {
+  }
+
+ public:
+  bool operator==(const LayerGroup &other) const
+  {
+    return this == &other;
+  }
+  bool operator!=(const LayerGroup &other) const
+  {
+    return this != &other;
+  }
+
+  void add_group(LayerGroup &group)
+  {
+    children_.append(group);
+  }
+
+  void add_group(LayerGroup &&group)
+  {
+    children_.append(std::move(group));
+  }
+
+  void add_layer(Layer &layer)
+  {
+    children_.append(layer);
+  }
+
+  void add_layer(Layer &&layer)
+  {
+    children_.append(std::move(layer));
+  }
+
+  int num_children()
+  {
+    return children_.size();
+  }
+
+  void remove_child(int64_t index)
+  {
+    BLI_assert(index >= 0 && index < children_.size());
+    children_.remove(index);
+  }
+};
+
+class LayerTree {
+ private:
+  LayerGroup root_;
+};
 
 namespace convert {
 
@@ -199,6 +332,11 @@ void legacy_gpencil_to_grease_pencil(bGPdata &gpd, GreasePencil &grease_pencil);
 
 }  // namespace gpencil
 
+class GreasePencilRuntime {
+ private:
+  gpencil::LayerTree layer_tree_;
+};
+
 }  // namespace blender::bke
 
 struct Main;
@@ -206,8 +344,3 @@ struct BoundBox;
 
 void *BKE_grease_pencil_add(Main *bmain, const char *name);
 BoundBox *BKE_grease_pencil_boundbox_get(Object *ob);
-
-inline const blender::Map<int, int> &GreasePencilLayer::frames() const
-{
-  return this->runtime->frames;
-}

@@ -11,18 +11,22 @@ namespace blender::bke::gpencil::tests {
 
 TEST(gpencil, build_layer_tree)
 {
-  TreeNode root{};
-  
-  TreeNode node("Node1");
-  node.add_child(TreeNode("Child1"));
-  node.add_child(TreeNode("Child2"));
-  
-  root.add_child(std::move(node));
-  root.add_child(TreeNode("Node2"));
+  LayerGroup root{};
 
-  for (TreeNode &node : root.children_in_pre_order()) {
-    std::cout << node.name << std::endl;
-  }
+  LayerGroup group("Group1");
+  group.add_layer(Layer("Child1"));
+  group.add_layer(Layer("Child2"));
+
+  root.add_group(std::move(group));
+  root.add_layer(Layer("Group2"));
+
+  root.foreach_children_pre_order([](LayerGroup &child) { std::cout << child.name << std::endl; });
+
+  // root.remove_child(0);
+
+  // for (LayerGroup &child : root.children_in_pre_order()) {
+  //   std::cout << child.name << std::endl;
+  // }
 }
 
 }  // namespace blender::bke::gpencil::tests
