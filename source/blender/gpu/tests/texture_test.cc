@@ -13,7 +13,8 @@
 /* Not all texture types are supported by all platforms. This define safe guards them until we have
  * a working workaround or decided to remove support for those texture types. */
 #define RUN_UNSUPPORTED false
-/* Skip tests that haven't been developed yet due to non standard data types. */
+/* Skip tests that haven't been developed yet due to non standard data types or it needs an
+ * framebuffer to create the texture.. */
 #define RUN_16F_UNIMPLEMENTED false
 #define RUN_SRGB_UNIMPLEMENTED false
 #define RUN_NON_STANDARD_UNIMPLEMENTED false
@@ -82,7 +83,7 @@ static void texture_create_upload_read()
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_HOST_READ;
   GPUTexture *texture = GPU_texture_create_2d(
       "texture", Size, Size, 1, DeviceFormat, usage, nullptr);
-  EXPECT_NE(texture, nullptr);
+  ASSERT_NE(texture, nullptr);
 
   size_t data_len = Size * Size * to_component_len(DeviceFormat);
   DataType *data = static_cast<DataType *>(generate_test_data<DataType>(data_len));
@@ -91,8 +92,14 @@ static void texture_create_upload_read()
   DataType *read_data = static_cast<DataType *>(GPU_texture_read(texture, HostFormat, 0));
   bool failed = false;
   for (int i : IndexRange(data_len)) {
-    bool ok = abs(read_data[i] - data[i]) < 0.01;
-    failed |= !ok;
+    if constexpr (std::is_same_v<DataType, float>) {
+      bool ok = abs(read_data[i] - data[i]) < 0.01;
+      failed |= !ok;
+    }
+    else {
+      bool ok = (read_data[i] - data[i]) == 0;
+      failed |= !ok;
+    }
     // EXPECT_EQ(read_data[i], data[i]);
   }
   EXPECT_FALSE(failed);
@@ -402,7 +409,7 @@ GPU_TEST(texture_roundtrip__GPU_DATA_HALF_FLOAT__GPU_RGB16F);
 /* -------------------------------------------------------------------- */
 /** \name Roundtrip testing GPU_DATA_INT
  * \{ */
-#if 0
+
 static void test_texture_roundtrip__GPU_DATA_INT__GPU_RGBA8I()
 {
   texture_create_upload_read<GPU_RGBA8I, GPU_DATA_INT, int32_t>();
@@ -437,7 +444,9 @@ static void test_texture_roundtrip__GPU_DATA_INT__GPU_RG32I()
 {
   texture_create_upload_read<GPU_RG32I, GPU_DATA_INT, int32_t>();
 }
-GPU_TEST(texture_roundtrip__GPU_DATA_INT__GPU_RG32I);test_texture_roundtrip__GPU_DATA_UBYTE__GPU_SRGB8_A8
+GPU_TEST(texture_roundtrip__GPU_DATA_INT__GPU_RG32I);
+
+static void test_texture_roundtrip__GPU_DATA_INT__GPU_R8I()
 {
   texture_create_upload_read<GPU_R8I, GPU_DATA_INT, int32_t>();
 }
@@ -455,6 +464,7 @@ static void test_texture_roundtrip__GPU_DATA_INT__GPU_R32I()
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_INT__GPU_R32I);
 
+#if RUN_UNSUPPORTED
 static void test_texture_roundtrip__GPU_DATA_INT__GPU_RGB8I()
 {
   texture_create_upload_read<GPU_RGB8I, GPU_DATA_INT, int32_t>();
@@ -473,12 +483,13 @@ static void test_texture_roundtrip__GPU_DATA_INT__GPU_RGB32I()
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_INT__GPU_RGB32I);
 #endif
+
 /* \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Roundtrip testing GPU_DATA_UINT
  * \{ */
-#if 0
+
 static void test_texture_roundtrip__GPU_DATA_UINT__GPU_RGBA8UI()
 {
   texture_create_upload_read<GPU_RGBA8UI, GPU_DATA_UINT, uint32_t>();
@@ -533,6 +544,7 @@ static void test_texture_roundtrip__GPU_DATA_UINT__GPU_R32UI()
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_UINT__GPU_R32UI);
 
+#if RUN_UNSUPPORTED
 static void test_texture_roundtrip__GPU_DATA_UINT__GPU_DEPTH32F_STENCIL8()
 {
   texture_create_upload_read<GPU_DEPTH32F_STENCIL8, GPU_DATA_UINT, uint32_t>();
@@ -544,7 +556,9 @@ static void test_texture_roundtrip__GPU_DATA_UINT__GPU_DEPTH24_STENCIL8()
   texture_create_upload_read<GPU_DEPTH24_STENCIL8, GPU_DATA_UINT, uint32_t>();
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_UINT__GPU_DEPTH24_STENCIL8);
+#endif
 
+#if RUN_UNSUPPORTED
 static void test_texture_roundtrip__GPU_DATA_UINT__GPU_RGB8UI()
 {
   texture_create_upload_read<GPU_RGB8UI, GPU_DATA_UINT, uint32_t>();
@@ -562,7 +576,9 @@ static void test_texture_roundtrip__GPU_DATA_UINT__GPU_RGB32UI()
   texture_create_upload_read<GPU_RGB32UI, GPU_DATA_UINT, uint32_t>();
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_UINT__GPU_RGB32UI);
+#endif
 
+#if RUN_COMPONENT_UNIMPLEMENTED
 static void test_texture_roundtrip__GPU_DATA_UINT__GPU_DEPTH_COMPONENT32F()
 {
   texture_create_upload_read<GPU_DEPTH_COMPONENT32F, GPU_DATA_UINT, uint32_t>();
@@ -581,12 +597,13 @@ static void test_texture_roundtrip__GPU_DATA_UINT__GPU_DEPTH_COMPONENT16()
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_UINT__GPU_DEPTH_COMPONENT16);
 #endif
+
 /* \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Roundtrip testing GPU_DATA_UBYTE
  * \{ */
-#if 0
+
 static void test_texture_roundtrip__GPU_DATA_UBYTE__GPU_RGBA8UI()
 {
   texture_create_upload_read<GPU_RGBA8UI, GPU_DATA_UBYTE, uint8_t>();
@@ -623,12 +640,15 @@ static void test_texture_roundtrip__GPU_DATA_UBYTE__GPU_R8()
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_UBYTE__GPU_R8);
 
+#if RUN_SRGB_UNIMPLEMENTED
 static void test_texture_roundtrip__GPU_DATA_UBYTE__GPU_SRGB8_A8()
 {
   texture_create_upload_read<GPU_SRGB8_A8, GPU_DATA_UBYTE, uint8_t>();
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_UBYTE__GPU_SRGB8_A8);
+#endif
 
+#if RUN_UNSUPPORTED
 static void test_texture_roundtrip__GPU_DATA_UBYTE__GPU_RGB8I()
 {
   texture_create_upload_read<GPU_RGB8I, GPU_DATA_UBYTE, uint8_t>();
@@ -652,7 +672,8 @@ GPU_TEST(texture_roundtrip__GPU_DATA_UBYTE__GPU_SRGB8);
 /* -------------------------------------------------------------------- */
 /** \name Roundtrip testing GPU_DATA_UINT_24_8
  * \{ */
-#if 0
+
+#if RUN_UNSUPPORTED
 static void test_texture_roundtrip__GPU_DATA_UINT_24_8__GPU_DEPTH32F_STENCIL8()
 {
   texture_create_upload_read<GPU_DEPTH32F_STENCIL8, GPU_DATA_UINT_24_8, void>();
@@ -665,35 +686,36 @@ static void test_texture_roundtrip__GPU_DATA_UINT_24_8__GPU_DEPTH24_STENCIL8()
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_UINT_24_8__GPU_DEPTH24_STENCIL8);
 #endif
+
 /* \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Roundtrip testing GPU_DATA_10_11_11_REV
  * \{ */
-#if 0
+
 static void test_texture_roundtrip__GPU_DATA_10_11_11_REV__GPU_R11F_G11F_B10F()
 {
-  texture_create_upload_read<GPU_R11F_G11F_B10F, GPU_DATA_10_11_11_REV, void>();
+  texture_create_upload_read<GPU_R11F_G11F_B10F, GPU_DATA_10_11_11_REV, uint32_t>();
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_10_11_11_REV__GPU_R11F_G11F_B10F);
-#endif
+
 /* \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Roundtrip testing GPU_DATA_2_10_10_10_REV
  * \{ */
-#if 0
+
 static void test_texture_roundtrip__GPU_DATA_2_10_10_10_REV__GPU_RGB10_A2()
 {
-  texture_create_upload_read<GPU_RGB10_A2, GPU_DATA_2_10_10_10_REV, void>();
+  texture_create_upload_read<GPU_RGB10_A2, GPU_DATA_2_10_10_10_REV, uint32_t>();
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_2_10_10_10_REV__GPU_RGB10_A2);
 static void test_texture_roundtrip__GPU_DATA_2_10_10_10_REV__GPU_RGB10_A2UI()
 {
-  texture_create_upload_read<GPU_RGB10_A2UI, GPU_DATA_2_10_10_10_REV, void>();
+  texture_create_upload_read<GPU_RGB10_A2UI, GPU_DATA_2_10_10_10_REV, uint32_t>();
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_2_10_10_10_REV__GPU_RGB10_A2UI);
-#endif
+
 /* \} */
 
 /* -------------------------------------------------------------------- */
@@ -703,160 +725,158 @@ GPU_TEST(texture_roundtrip__GPU_DATA_2_10_10_10_REV__GPU_RGB10_A2UI);
  *
  * \{ */
 #if 0
-  static std::string to_prim_type_string(eGPUDataFormat host_format)
-  {
-    switch (host_format) {
-      case GPU_DATA_FLOAT:
-        return std::string("float");
+static std::string to_prim_type_string(eGPUDataFormat host_format)
+{
+  switch (host_format) {
+    case GPU_DATA_FLOAT:
+      return std::string("float");
 
-      case GPU_DATA_HALF_FLOAT:
-        return std::string("uint16_t");
-      case GPU_DATA_INT:
-        return std::string("int32_t");
-      case GPU_DATA_UINT:
-        return std::string("uint32_t");
-      case GPU_DATA_UBYTE:
-        return std::string("uint8_t");
-      case GPU_DATA_UINT_24_8:
-      case GPU_DATA_10_11_11_REV:
-      case GPU_DATA_2_10_10_10_REV:
-        return std::string("void");
-    }
-    return std::string("UNKNOWN");
+    case GPU_DATA_HALF_FLOAT:
+      return std::string("uint16_t");
+    case GPU_DATA_INT:
+      return std::string("int32_t");
+    case GPU_DATA_UBYTE:
+      return std::string("uint8_t");
+    case GPU_DATA_UINT:
+    case GPU_DATA_UINT_24_8:
+    case GPU_DATA_10_11_11_REV:
+    case GPU_DATA_2_10_10_10_REV:
+      return std::string("uint32_t");
   }
-  static std::string to_string(eGPUDataFormat host_format)
-  {
-    switch (host_format) {
-      case GPU_DATA_FLOAT:
-        return std::string("GPU_DATA_FLOAT");
+  return std::string("UNKNOWN");
+}
+static std::string to_string(eGPUDataFormat host_format)
+{
+  switch (host_format) {
+    case GPU_DATA_FLOAT:
+      return std::string("GPU_DATA_FLOAT");
 
-      case GPU_DATA_HALF_FLOAT:
-        return std::string("GPU_DATA_HALF_FLOAT");
-      case GPU_DATA_INT:
-        return std::string("GPU_DATA_INT");
-      case GPU_DATA_UINT:
-        return std::string("GPU_DATA_UINT");
-      case GPU_DATA_UBYTE:
-        return std::string("GPU_DATA_UBYTE");
-      case GPU_DATA_UINT_24_8:
-        return std::string("GPU_DATA_UINT_24_8");
-      case GPU_DATA_10_11_11_REV:
-        return std::string("GPU_DATA_10_11_11_REV");
-      case GPU_DATA_2_10_10_10_REV:
-        return std::string("GPU_DATA_2_10_10_10_REV");
-    }
-    return std::string("UNKNOWN");
+    case GPU_DATA_HALF_FLOAT:
+      return std::string("GPU_DATA_HALF_FLOAT");
+    case GPU_DATA_INT:
+      return std::string("GPU_DATA_INT");
+    case GPU_DATA_UINT:
+      return std::string("GPU_DATA_UINT");
+    case GPU_DATA_UBYTE:
+      return std::string("GPU_DATA_UBYTE");
+    case GPU_DATA_UINT_24_8:
+      return std::string("GPU_DATA_UINT_24_8");
+    case GPU_DATA_10_11_11_REV:
+      return std::string("GPU_DATA_10_11_11_REV");
+    case GPU_DATA_2_10_10_10_REV:
+      return std::string("GPU_DATA_2_10_10_10_REV");
   }
+  return std::string("UNKNOWN");
+}
 
-  static std::string to_string(eGPUTextureFormat texture_format)
-  {
-    return std::string("GPU_") + std::string(GPU_texture_format_name(texture_format));
-  }
+static std::string to_string(eGPUTextureFormat texture_format)
+{
+  return std::string("GPU_") + std::string(GPU_texture_format_name(texture_format));
+}
 
-  TEST(gpu_util, generate_test_cases)
-  {
-    Vector<eGPUDataFormat> host_formats;
-    host_formats.append(GPU_DATA_FLOAT);
-    host_formats.append(GPU_DATA_HALF_FLOAT);
-    host_formats.append(GPU_DATA_INT);
-    host_formats.append(GPU_DATA_UINT);
-    host_formats.append(GPU_DATA_UBYTE);
-    host_formats.append(GPU_DATA_UINT_24_8);
-    host_formats.append(GPU_DATA_10_11_11_REV);
-    host_formats.append(GPU_DATA_2_10_10_10_REV);
+TEST(gpu_util, generate_test_cases)
+{
+  Vector<eGPUDataFormat> host_formats;
+  host_formats.append(GPU_DATA_FLOAT);
+  host_formats.append(GPU_DATA_HALF_FLOAT);
+  host_formats.append(GPU_DATA_INT);
+  host_formats.append(GPU_DATA_UINT);
+  host_formats.append(GPU_DATA_UBYTE);
+  host_formats.append(GPU_DATA_UINT_24_8);
+  host_formats.append(GPU_DATA_10_11_11_REV);
+  host_formats.append(GPU_DATA_2_10_10_10_REV);
 
-    Vector<eGPUTextureFormat> texture_formats;
-    texture_formats.append(GPU_RGBA8UI);
-    texture_formats.append(GPU_RGBA8I);
-    texture_formats.append(GPU_RGBA8);
-    texture_formats.append(GPU_RGBA16UI);
-    texture_formats.append(GPU_RGBA16I);
-    texture_formats.append(GPU_RGBA16F);
-    texture_formats.append(GPU_RGBA16);
-    texture_formats.append(GPU_RGBA32UI);
-    texture_formats.append(GPU_RGBA32I);
-    texture_formats.append(GPU_RGBA32F);
-    texture_formats.append(GPU_RG8UI);
-    texture_formats.append(GPU_RG8I);
-    texture_formats.append(GPU_RG8);
-    texture_formats.append(GPU_RG16UI);
-    texture_formats.append(GPU_RG16I);
-    texture_formats.append(GPU_RG16F);
-    texture_formats.append(GPU_RG16);
-    texture_formats.append(GPU_RG32UI);
-    texture_formats.append(GPU_RG32I);
-    texture_formats.append(GPU_RG32F);
-    texture_formats.append(GPU_R8UI);
-    texture_formats.append(GPU_R8I);
-    texture_formats.append(GPU_R8);
-    texture_formats.append(GPU_R16UI);
-    texture_formats.append(GPU_R16I);
-    texture_formats.append(GPU_R16F);
-    texture_formats.append(GPU_R16);
-    texture_formats.append(GPU_R32UI);
-    texture_formats.append(GPU_R32I);
-    texture_formats.append(GPU_R32F);
-    texture_formats.append(GPU_RGB10_A2);
-    texture_formats.append(GPU_RGB10_A2UI);
-    texture_formats.append(GPU_R11F_G11F_B10F);
-    texture_formats.append(GPU_DEPTH32F_STENCIL8);
-    texture_formats.append(GPU_DEPTH24_STENCIL8);
-    texture_formats.append(GPU_SRGB8_A8);
-    texture_formats.append(GPU_RGBA8_SNORM);
-    texture_formats.append(GPU_RGBA16_SNORM);
-    texture_formats.append(GPU_RGB8UI);
-    texture_formats.append(GPU_RGB8I);
-    texture_formats.append(GPU_RGB8);
-    texture_formats.append(GPU_RGB8_SNORM);
-    texture_formats.append(GPU_RGB16UI);
-    texture_formats.append(GPU_RGB16I);
-    texture_formats.append(GPU_RGB16F);
-    texture_formats.append(GPU_RGB16);
-    texture_formats.append(GPU_RGB16_SNORM);
-    texture_formats.append(GPU_RGB32UI);
-    texture_formats.append(GPU_RGB32I);
-    texture_formats.append(GPU_RGB32F);
-    texture_formats.append(GPU_RG8_SNORM);
-    texture_formats.append(GPU_RG16_SNORM);
-    texture_formats.append(GPU_R8_SNORM);
-    texture_formats.append(GPU_R16_SNORM);
-    texture_formats.append(GPU_SRGB8_A8_DXT1);
-    texture_formats.append(GPU_SRGB8_A8_DXT3);
-    texture_formats.append(GPU_SRGB8_A8_DXT5);
-    texture_formats.append(GPU_RGBA8_DXT1);
-    texture_formats.append(GPU_RGBA8_DXT3);
-    texture_formats.append(GPU_RGBA8_DXT5);
-    texture_formats.append(GPU_SRGB8);
-    texture_formats.append(GPU_RGB9_E5);
-    texture_formats.append(GPU_DEPTH_COMPONENT32F);
-    texture_formats.append(GPU_DEPTH_COMPONENT24);
-    texture_formats.append(GPU_DEPTH_COMPONENT16);
+  Vector<eGPUTextureFormat> texture_formats;
+  texture_formats.append(GPU_RGBA8UI);
+  texture_formats.append(GPU_RGBA8I);
+  texture_formats.append(GPU_RGBA8);
+  texture_formats.append(GPU_RGBA16UI);
+  texture_formats.append(GPU_RGBA16I);
+  texture_formats.append(GPU_RGBA16F);
+  texture_formats.append(GPU_RGBA16);
+  texture_formats.append(GPU_RGBA32UI);
+  texture_formats.append(GPU_RGBA32I);
+  texture_formats.append(GPU_RGBA32F);
+  texture_formats.append(GPU_RG8UI);
+  texture_formats.append(GPU_RG8I);
+  texture_formats.append(GPU_RG8);
+  texture_formats.append(GPU_RG16UI);
+  texture_formats.append(GPU_RG16I);
+  texture_formats.append(GPU_RG16F);
+  texture_formats.append(GPU_RG16);
+  texture_formats.append(GPU_RG32UI);
+  texture_formats.append(GPU_RG32I);
+  texture_formats.append(GPU_RG32F);
+  texture_formats.append(GPU_R8UI);
+  texture_formats.append(GPU_R8I);
+  texture_formats.append(GPU_R8);
+  texture_formats.append(GPU_R16UI);
+  texture_formats.append(GPU_R16I);
+  texture_formats.append(GPU_R16F);
+  texture_formats.append(GPU_R16);
+  texture_formats.append(GPU_R32UI);
+  texture_formats.append(GPU_R32I);
+  texture_formats.append(GPU_R32F);
+  texture_formats.append(GPU_RGB10_A2);
+  texture_formats.append(GPU_RGB10_A2UI);
+  texture_formats.append(GPU_R11F_G11F_B10F);
+  texture_formats.append(GPU_DEPTH32F_STENCIL8);
+  texture_formats.append(GPU_DEPTH24_STENCIL8);
+  texture_formats.append(GPU_SRGB8_A8);
+  texture_formats.append(GPU_RGBA8_SNORM);
+  texture_formats.append(GPU_RGBA16_SNORM);
+  texture_formats.append(GPU_RGB8UI);
+  texture_formats.append(GPU_RGB8I);
+  texture_formats.append(GPU_RGB8);
+  texture_formats.append(GPU_RGB8_SNORM);
+  texture_formats.append(GPU_RGB16UI);
+  texture_formats.append(GPU_RGB16I);
+  texture_formats.append(GPU_RGB16F);
+  texture_formats.append(GPU_RGB16);
+  texture_formats.append(GPU_RGB16_SNORM);
+  texture_formats.append(GPU_RGB32UI);
+  texture_formats.append(GPU_RGB32I);
+  texture_formats.append(GPU_RGB32F);
+  texture_formats.append(GPU_RG8_SNORM);
+  texture_formats.append(GPU_RG16_SNORM);
+  texture_formats.append(GPU_R8_SNORM);
+  texture_formats.append(GPU_R16_SNORM);
+  texture_formats.append(GPU_SRGB8_A8_DXT1);
+  texture_formats.append(GPU_SRGB8_A8_DXT3);
+  texture_formats.append(GPU_SRGB8_A8_DXT5);
+  texture_formats.append(GPU_RGBA8_DXT1);
+  texture_formats.append(GPU_RGBA8_DXT3);
+  texture_formats.append(GPU_RGBA8_DXT5);
+  texture_formats.append(GPU_SRGB8);
+  texture_formats.append(GPU_RGB9_E5);
+  texture_formats.append(GPU_DEPTH_COMPONENT32F);
+  texture_formats.append(GPU_DEPTH_COMPONENT24);
+  texture_formats.append(GPU_DEPTH_COMPONENT16);
 
-    for (eGPUDataFormat host_format : host_formats) {
-      std::cout << "/* -------------------------------------------------------------------- */\n";
-      std::cout << "/** \\name Roundtrip testing " << to_string(host_format) << "\n";
-      std::cout << " * \\{ */\n\n";
+  for (eGPUDataFormat host_format : host_formats) {
+    std::cout << "/* -------------------------------------------------------------------- */\n";
+    std::cout << "/** \\name Roundtrip testing " << to_string(host_format) << "\n";
+    std::cout << " * \\{ */\n\n";
 
-      for (eGPUTextureFormat texture_format : texture_formats) {
-        if (!validate_data_format(texture_format, host_format)) {
-          continue;
-        }
-
-        std::cout << "static void test_texture_roundtrip__" << to_string(host_format) << "__"
-                  << to_string(texture_format) << "()\n";
-        std::cout << "{\n";
-
-        std::cout << "  texture_create_upload_read<" << to_string(texture_format) << ", "
-                  << to_string(host_format) << ", " << to_prim_type_string(host_format)
-                  << ">();\n";
-
-        std::cout << "}\n";
-        std::cout << "GPU_TEST(texture_roundtrip__" << to_string(host_format) << "__"
-                  << to_string(texture_format) << ");\n\n";
+    for (eGPUTextureFormat texture_format : texture_formats) {
+      if (!validate_data_format(texture_format, host_format)) {
+        continue;
       }
-      std::cout << "/* \\} */\n\n";
+
+      std::cout << "static void test_texture_roundtrip__" << to_string(host_format) << "__"
+                << to_string(texture_format) << "()\n";
+      std::cout << "{\n";
+
+      std::cout << "  texture_create_upload_read<" << to_string(texture_format) << ", "
+                << to_string(host_format) << ", " << to_prim_type_string(host_format) << ">();\n";
+
+      std::cout << "}\n";
+      std::cout << "GPU_TEST(texture_roundtrip__" << to_string(host_format) << "__"
+                << to_string(texture_format) << ");\n\n";
     }
+    std::cout << "/* \\} */\n\n";
   }
+}
 #endif
 /** \} */
 

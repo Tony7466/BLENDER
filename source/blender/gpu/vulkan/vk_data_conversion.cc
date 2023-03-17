@@ -373,12 +373,14 @@ static ConversionType type_of_conversion_ubyte(eGPUTextureFormat device_format)
 {
   switch (device_format) {
     case GPU_RGBA8UI:
+    case GPU_RGBA8:
     case GPU_RG8UI:
+    case GPU_RG8:
     case GPU_R8UI:
+    case GPU_R8:
       return ConversionType::PASS_THROUGH;
 
     case GPU_RGBA8I:
-    case GPU_RGBA8:
     case GPU_RGBA16UI:
     case GPU_RGBA16I:
     case GPU_RGBA16F:
@@ -387,7 +389,6 @@ static ConversionType type_of_conversion_ubyte(eGPUTextureFormat device_format)
     case GPU_RGBA32I:
     case GPU_RGBA32F:
     case GPU_RG8I:
-    case GPU_RG8:
     case GPU_RG16UI:
     case GPU_RG16I:
     case GPU_RG16F:
@@ -396,7 +397,6 @@ static ConversionType type_of_conversion_ubyte(eGPUTextureFormat device_format)
     case GPU_RG32I:
     case GPU_RG32F:
     case GPU_R8I:
-    case GPU_R8:
     case GPU_R16UI:
     case GPU_R16I:
     case GPU_R16F:
@@ -444,6 +444,22 @@ static ConversionType type_of_conversion_ubyte(eGPUTextureFormat device_format)
   return ConversionType::UNSUPPORTED;
 }
 
+static ConversionType type_of_conversion_r11g11b10(eGPUTextureFormat device_format)
+{
+  if (device_format == GPU_R11F_G11F_B10F) {
+    return ConversionType::PASS_THROUGH;
+  }
+  return ConversionType::UNSUPPORTED;
+}
+
+static ConversionType type_of_conversion_r10g10b10a2(eGPUTextureFormat device_format)
+{
+  if (ELEM(device_format, GPU_RGB10_A2, GPU_RGB10_A2UI)) {
+    return ConversionType::PASS_THROUGH;
+  }
+  return ConversionType::UNSUPPORTED;
+}
+
 static ConversionType host_to_device(eGPUDataFormat host_format, eGPUTextureFormat device_format)
 {
   BLI_assert(validate_data_format(device_format, host_format));
@@ -459,10 +475,12 @@ static ConversionType host_to_device(eGPUDataFormat host_format, eGPUTextureForm
       return type_of_conversion_half(device_format);
     case GPU_DATA_UBYTE:
       return type_of_conversion_ubyte(device_format);
+    case GPU_DATA_10_11_11_REV:
+      return type_of_conversion_r11g11b10(device_format);
+    case GPU_DATA_2_10_10_10_REV:
+      return type_of_conversion_r10g10b10a2(device_format);
 
     case GPU_DATA_UINT_24_8:
-    case GPU_DATA_10_11_11_REV:
-    case GPU_DATA_2_10_10_10_REV:
       return ConversionType::UNSUPPORTED;
   }
 
