@@ -5497,7 +5497,7 @@ static void rna_def_userdef_system(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "ui_scale", PROP_FLOAT, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_float_sdna(prop, NULL, "dpi_fac");
+  RNA_def_property_float_sdna(prop, NULL, "ui_scale");
   RNA_def_property_ui_text(
       prop,
       "UI Scale",
@@ -6518,6 +6518,10 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, NULL, "enable_eevee_next", 1);
   RNA_def_property_ui_text(prop, "EEVEE Next", "Enable the new EEVEE codebase, requires restart");
 
+  prop = RNA_def_property(srna, "enable_gpencil_next", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "enable_gpencil_next", 1);
+  RNA_def_property_ui_text(prop, "GPENCIL Next", "Enable the new GPencil codebase");
+  
   prop = RNA_def_property(srna, "enable_workbench_next", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "enable_workbench_next", 1);
   RNA_def_property_ui_text(prop,

@@ -25,6 +25,7 @@ extern "C" {
 #include "gpencil_shader_shared.h"
 
 extern DrawEngineType draw_engine_gpencil_type;
+extern DrawEngineType draw_engine_gpencil_next_type;
 
 struct GPENCIL_Data;
 struct GPENCIL_StorageList;
@@ -309,7 +310,7 @@ typedef struct GPENCIL_PrivateData {
   float fade_3d_object_opacity;
   /* Mask opacity uniform. */
   float mask_opacity;
-  /* Xray transparency in solid mode. */
+  /* X-ray transparency in solid mode. */
   float xray_alpha;
   /* Mask invert uniform. */
   int mask_invert;

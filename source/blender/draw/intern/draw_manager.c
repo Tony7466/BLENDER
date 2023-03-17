@@ -1283,7 +1283,8 @@ static void drw_engines_enable(ViewLayer *UNUSED(view_layer),
 
   drw_engines_enable_from_engine(engine_type, drawtype);
   if (gpencil_engine_needed && ((drawtype >= OB_SOLID) || !use_xray)) {
-    use_drw_engine(&draw_engine_gpencil_type);
+    use_drw_engine(((U.experimental.enable_gpencil_next) ? &draw_engine_gpencil_next_type :
+                                                           &draw_engine_gpencil_type));
   }
 
   if (is_compositor_enabled()) {
@@ -1891,10 +1892,13 @@ static void DRW_render_gpencil_to_image(RenderEngine *engine,
                                         struct RenderLayer *render_layer,
                                         const rcti *rect)
 {
-  if (draw_engine_gpencil_type.render_to_image) {
+  DrawEngineType *draw_engine = U.experimental.enable_gpencil_next ?
+                                    &draw_engine_gpencil_next_type :
+                                    &draw_engine_gpencil_type;
+  if (draw_engine->render_to_image) {
     ViewportEngineData *gpdata = DRW_view_data_engine_data_get_ensure(DST.view_data_active,
-                                                                      &draw_engine_gpencil_type);
-    draw_engine_gpencil_type.render_to_image(gpdata, engine, render_layer, rect);
+                                                                      draw_engine);
+    draw_engine->render_to_image(gpdata, engine, render_layer, rect);
   }
 }
 
@@ -2460,7 +2464,8 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
   else if (!draw_surface) {
     /* grease pencil selection */
     if (drw_gpencil_engine_needed(depsgraph, v3d)) {
-      use_drw_engine(&draw_engine_gpencil_type);
+      use_drw_engine(((U.experimental.enable_gpencil_next) ? &draw_engine_gpencil_next_type :
+                                                             &draw_engine_gpencil_type));
     }
 
     drw_engines_enable_overlays();
@@ -2470,7 +2475,8 @@ void DRW_draw_select_loop(struct Depsgraph *depsgraph,
     drw_engines_enable_basic();
     /* grease pencil selection */
     if (drw_gpencil_engine_needed(depsgraph, v3d)) {
-      use_drw_engine(&draw_engine_gpencil_type);
+      use_drw_engine(((U.experimental.enable_gpencil_next) ? &draw_engine_gpencil_next_type :
+                                                             &draw_engine_gpencil_type));
     }
 
     drw_engines_enable_overlays();
@@ -2635,7 +2641,8 @@ void DRW_draw_depth_loop(struct Depsgraph *depsgraph,
   drw_manager_init(&DST, viewport, NULL);
 
   if (use_gpencil) {
-    use_drw_engine(&draw_engine_gpencil_type);
+    use_drw_engine(((U.experimental.enable_gpencil_next) ? &draw_engine_gpencil_next_type :
+                                                           &draw_engine_gpencil_type));
   }
   if (use_basic) {
     drw_engines_enable_basic();
@@ -3006,6 +3013,7 @@ void DRW_engines_register(void)
   RE_engines_register(&DRW_engine_viewport_workbench_type);
 
   DRW_engine_register(&draw_engine_gpencil_type);
+  DRW_engine_register(&draw_engine_gpencil_next_type);
 
   DRW_engine_register(&draw_engine_overlay_type);
   DRW_engine_register(&draw_engine_select_type);
