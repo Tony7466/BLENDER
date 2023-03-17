@@ -3741,6 +3741,7 @@ static void pbvh_face_iter_step(PBVHFaceIter *fd, bool do_step)
 
       pbvh_face_iter_verts_reserve(fd, poly.totloop);
 
+      const int *poly_verts = &fd->corner_verts_[poly.loopstart];
       const int grid_area = fd->subdiv_key_.grid_area;
 
       for (int i = 0; i < poly.totloop; i++) {
@@ -3749,7 +3750,7 @@ static void pbvh_face_iter_step(PBVHFaceIter *fd, bool do_step)
           fd->verts[i].i = (poly.loopstart + i) * grid_area + grid_area - 1;
         }
         else {
-          fd->verts[i].i = fd->corner_verts_[poly.loopstart + i];
+          fd->verts[i].i = poly_verts[i];
         }
       }
       break;
