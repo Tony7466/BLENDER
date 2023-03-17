@@ -221,13 +221,7 @@ class Device {
   {
     return 0;
   }
-
-  virtual void push_marker(const string) {    
-  }
-
-  virtual void pop_marker() {    
-  }
-
+  
   virtual device_ptr find_matching_mem(device_ptr key, Device * /*sub*/)
   {
     return key;
@@ -327,29 +321,6 @@ class Device {
   static vector<DeviceInfo> oneapi_devices;
   static uint devices_initialized_mask;
 };
-
-class ScopedMarker {
-private:
-  Device *_device;
-public:
-  ScopedMarker(Device *p_device, const string name) {
-    _device = p_device;
-    _device->push_marker(name.c_str() + std::to_string(p_device->info.num));
-  }
-  
-  ~ScopedMarker() {
-    _device->pop_marker();
-  }
-};
-
-#define USE_SCOPED_MARKER
-#ifndef SCOPED_MARKER
-#   ifdef USE_SCOPED_MARKER
-#      define SCOPED_MARKER(device, msg) ScopedMarker scoped_marker(device, msg)
-#   else
-#      define SCOPED_MARKER(device, msg)
-#   endif
-#endif
 
 /* Device, which is GPU, with some common functionality for GPU backends */
 class GPUDevice : public Device {

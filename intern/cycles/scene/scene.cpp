@@ -262,8 +262,6 @@ void Scene::device_update(Device *device_, Progress &progress)
   if (!device)
     device = device_;
 
-  SCOPED_MARKER(device,"Scene::device_update");
-  
   bool print_stats = need_data_update();
 
   if (update_stats) {
@@ -598,7 +596,6 @@ void Scene::update_kernel_features()
 
 bool Scene::update(Progress &progress)
 {
-  SCOPED_MARKER(device, "Scene::update");
   if (!need_update()) {
     return false;
   }

@@ -29,9 +29,7 @@ bool device_cuda_init()
   initialized = true;
 
   int flags = CUEW_INIT_CUDA;
-#ifdef USE_SCOPED_MARKER
-  flags |= CUEW_INIT_NVTX;
-#endif
+
   int cuew_result = cuewInit(flags);
 
   if (cuew_result == CUEW_SUCCESS) {

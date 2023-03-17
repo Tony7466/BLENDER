@@ -51,7 +51,6 @@ void GeometryManager::clearShaderUpdateTags(Scene *scene)
 void GeometryManager::clearGeometryUpdateAndModifiedTags(Scene *scene)
 {
   // Clear update tags
-  SCOPED_MARKER(scene->device, "clear BVH update tags");
   foreach (Geometry *geom, scene->geometry) {
     // Clear update indicators
     if (geom->is_modified() || geom->need_update_bvh_for_offset) {
@@ -118,7 +117,6 @@ bool GeometryManager::device_update_attributes_preprocess(
     AttributeSizes *sizes,
     Progress &progress)
 {
-  SCOPED_MARKER(device, "GeometryManager::device_update_attributes");
   bool update_obj_offsets = false;
 
   progress.set_status("Updating Mesh", "Computing attributes");
@@ -259,7 +257,6 @@ bool GeometryManager::device_update_attributes_preprocess(
 void GeometryManager::device_update_mesh_preprocess(
     Device *device, DeviceScene *dscene, Scene *scene, GeometrySizes *p_sizes, Progress &progress)
 {
-  SCOPED_MARKER(device, "GeometryManager::device_update_mesh_preprocess");
   /* Fill in all the arrays. */
   if (p_sizes->tri_size != 0) {
     /* normals */
@@ -284,18 +281,15 @@ void GeometryManager::device_update_mesh_preprocess(
 
         if (mesh->shader_is_modified() || mesh->smooth_is_modified() ||
             mesh->triangles_is_modified() || copy_all_data) {
-          SCOPED_MARKER(scene->device, "Mesh:pack_shaders");
           mesh->pack_shaders(scene, &tri_shader[mesh->prim_offset]);
         }
 
         if (mesh->verts_is_modified() || copy_all_data) {
-          SCOPED_MARKER(scene->device, "Mesh:pack_normals");
           mesh->pack_normals(&vnormal[mesh->vert_offset]);
         }
 
         if (mesh->verts_is_modified() || mesh->triangles_is_modified() ||
             mesh->vert_patch_uv_is_modified() || copy_all_data) {
-          SCOPED_MARKER(scene->device, "Mesh:pack_vertices");
           mesh->pack_verts(&tri_verts[mesh->vert_offset],
                            &tri_vindex[mesh->prim_offset],
                            &tri_patch[mesh->prim_offset],
@@ -388,7 +382,6 @@ void GeometryManager::device_update_host_pointers(Device *device,
                                                   DeviceScene *sub_dscene,
                                                   GeometrySizes *p_sizes)
 {
-  SCOPED_MARKER(device, "update host_pointers");
   if (p_sizes->tri_size != 0) {
     if (dscene->tri_verts.is_modified()) {
       sub_dscene->tri_verts.assign_mem(dscene->tri_verts);
@@ -443,7 +436,6 @@ void GeometryManager::device_update_host_pointers(Device *device,
   }
 
   if (p_sizes->point_size != 0) {
-    SCOPED_MARKER(device, "copy points");
     // TODO: Why does this not check the modified tag?
     sub_dscene->points.assign_mem(dscene->points);
     // sub_dscene->points.tag_modified();
@@ -746,7 +738,6 @@ void GeometryManager::device_update_bvh2(Device *device,
                                          Scene *scene,
                                          Progress &progress)
 {
-  SCOPED_MARKER(device, "GeometryManager::device_update_bvh2");
   BVH *bvh = scene->bvh;
   if (bvh->params.bvh_layout == BVH_LAYOUT_BVH2) {
     BVH2 *bvh2 = static_cast<BVH2 *>(bvh);
@@ -794,7 +785,6 @@ void GeometryManager::device_update_bvh_postprocess(Device *device,
                                                     Scene *scene,
                                                     Progress &progress)
 {
-  SCOPED_MARKER(device, "GeometryManager::device_update_bvh_postprocess");
   BVH *bvh = scene->bvh;
 
   const bool has_bvh2_layout = (bvh->params.bvh_layout == BVH_LAYOUT_BVH2);
@@ -958,7 +948,6 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
     vector<AttributeSet> &object_attribute_values,
     Progress &progress)
 {
-  SCOPED_MARKER(device, "Displacement & Hair transparency");
   scoped_callback_timer timer([scene](double time) {
     if (scene->update_stats) {
       scene->update_stats->geometry.times.add_entry({"device_update (displacement)", time});
@@ -980,7 +969,6 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
       DeviceScene *sub_dscene = scene->dscenes.front();
       Device *sub_device = sub_dscene->tri_verts.device;
       {
-        SCOPED_MARKER(device, "copy mesh to device for displacement");
         scoped_callback_timer timer([scene](double time) {
           if (scene->update_stats) {
             scene->update_stats->geometry.times.add_entry(
@@ -991,16 +979,12 @@ bool GeometryManager::displacement_and_curve_shadow_transparency(
         device_update_attributes(sub_device, sub_dscene, attrib_sizes, progress);
         device_update_mesh(sub_device, sub_dscene, sizes, progress);
       }
-      {
         /* Copy constant data needed by shader evaluation. */
-        SCOPED_MARKER(device, "copy constant data for hair and displacement");
         sub_device->const_copy_to("data", &dscene->data, sizeof(dscene->data));
-      }
 
       foreach (Geometry *geom, scene->geometry) {
         /* Update images needed for true displacement. */
         {
-          SCOPED_MARKER(device, "upload images for displacement");
           scoped_callback_timer timer([scene](double time) {
             if (scene->update_stats) {
               scene->update_stats->geometry.times.add_entry(

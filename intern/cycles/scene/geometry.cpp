@@ -189,7 +189,6 @@ void Geometry::compute_bvh(Device *device,
                            size_t n,
                            size_t total)
 {
-  SCOPED_MARKER(device,"Geometry::compute_bvh");
   if (progress->get_cancel())
      return;
 
@@ -636,39 +635,13 @@ void GeometryManager::device_update_attributes(Device *device,
 {
   progress.set_status("Updating Mesh", "Copying Attributes to device");
   /* copy svm attributes to device */
-  {
-    SCOPED_MARKER(device, "copy attribute_map");
-    dscene->attributes_map.copy_to_device_if_modified();
-  }
-
-  {
-    SCOPED_MARKER(device, "copy attributes_float");
-    dscene->attributes_float.copy_to_device_if_modified(sizes->attr_float_size, 0);
-  }
-  {
-    SCOPED_MARKER(device, "copy attributes_float2");
-    dscene->attributes_float2.copy_to_device_if_modified(sizes->attr_float2_size, 0);
-  }
-  {
-    SCOPED_MARKER(device, "copy attributes_float3");
-    dscene->attributes_float3.copy_to_device_if_modified(sizes->attr_float3_size, 0);
-  }
-
-  {
-    SCOPED_MARKER(device, "copy attributes_float4");
-    dscene->attributes_float4.copy_to_device_if_modified(sizes->attr_float4_size, 0);
-  }
-  {
-    SCOPED_MARKER(device, "copy attributes_uchar4");
-    dscene->attributes_uchar4.copy_to_device_if_modified(sizes->attr_uchar4_size, 0);
-  }
-
-  /* After mesh attributes and patch tables have been copied to device memory,
-   * we need to update offsets in the objects. */
-  {
-    SCOPED_MARKER(device, "copy objects");
-    dscene->objects.copy_to_device_if_modified();
-  }
+  dscene->attributes_map.copy_to_device_if_modified();
+  dscene->attributes_float.copy_to_device_if_modified(sizes->attr_float_size, 0);
+  dscene->attributes_float2.copy_to_device_if_modified(sizes->attr_float2_size, 0);
+  dscene->attributes_float3.copy_to_device_if_modified(sizes->attr_float3_size, 0);
+  dscene->attributes_float4.copy_to_device_if_modified(sizes->attr_float4_size, 0);
+  dscene->attributes_uchar4.copy_to_device_if_modified(sizes->attr_uchar4_size, 0);
+  dscene->objects.copy_to_device_if_modified();
 }
 
 /**
@@ -679,55 +652,29 @@ void GeometryManager::device_update_mesh(Device *device,
                                          const GeometrySizes *p_sizes,
                                          Progress &progress)
 {
-  SCOPED_MARKER(device, "GeometryManager::device_update_mesh");
   progress.set_status("Updating Mesh", "Copying Mesh to device");
-  {
-    SCOPED_MARKER(device, "copy packed data to device");
-    if (p_sizes->tri_size != 0) {
-      SCOPED_MARKER(device, "copy mesh data");
-      {
-        SCOPED_MARKER(device, "copy tri_verts");
-        dscene->tri_verts.copy_to_device_if_modified(p_sizes->vert_size, 0);
-      }
-      {
-        SCOPED_MARKER(device, "copy tri_shader");
-        dscene->tri_shader.copy_to_device_if_modified(p_sizes->tri_size, 0);
-      }
-      {
-        SCOPED_MARKER(device, "copy tri_vnormal");
-        dscene->tri_vnormal.copy_to_device_if_modified(p_sizes->vert_size, 0);
-      }
-      {
-        SCOPED_MARKER(device, "copy tri_vindex");
-        dscene->tri_vindex.copy_to_device_if_modified(p_sizes->tri_size, 0);
-      }
-      {
-        SCOPED_MARKER(device, "copy tri_patch");
-        dscene->tri_patch.copy_to_device_if_modified(p_sizes->tri_size, 0);
-      }
-      {
-        SCOPED_MARKER(device, "copy tri_patch_uv");
-        dscene->tri_patch_uv.copy_to_device_if_modified(p_sizes->vert_size, 0);
-      }
-    }
+  if (p_sizes->tri_size != 0) {
+    dscene->tri_verts.copy_to_device_if_modified(p_sizes->vert_size, 0);
+    dscene->tri_shader.copy_to_device_if_modified(p_sizes->tri_size, 0);
+    dscene->tri_vnormal.copy_to_device_if_modified(p_sizes->vert_size, 0);
+    dscene->tri_vindex.copy_to_device_if_modified(p_sizes->tri_size, 0);
+    dscene->tri_patch.copy_to_device_if_modified(p_sizes->tri_size, 0);
+    dscene->tri_patch_uv.copy_to_device_if_modified(p_sizes->vert_size, 0);
+  }
 
-    if (p_sizes->curve_segment_size != 0) {
-      SCOPED_MARKER(device, "copy hair");
-      dscene->curve_keys.copy_to_device_if_modified(p_sizes->curve_key_size, 0);
-      dscene->curves.copy_to_device_if_modified(p_sizes->curve_size, 0);
-      dscene->curve_segments.copy_to_device_if_modified(p_sizes->curve_segment_size, 0);
-    }
+  if (p_sizes->curve_segment_size != 0) {
+    dscene->curve_keys.copy_to_device_if_modified(p_sizes->curve_key_size, 0);
+    dscene->curves.copy_to_device_if_modified(p_sizes->curve_size, 0);
+    dscene->curve_segments.copy_to_device_if_modified(p_sizes->curve_segment_size, 0);
+  }
 
-    if (p_sizes->point_size != 0) {
-      SCOPED_MARKER(device, "copy points");
-      dscene->points.copy_to_device(p_sizes->point_size, 0);
-      dscene->points_shader.copy_to_device(p_sizes->point_size, 0);
-    }
+  if (p_sizes->point_size != 0) {
+    dscene->points.copy_to_device(p_sizes->point_size, 0);
+    dscene->points_shader.copy_to_device(p_sizes->point_size, 0);
+  }
 
-    if (p_sizes->patch_size != 0 && dscene->patches.need_realloc()) {
-      SCOPED_MARKER(device, "copy patches");
-      dscene->patches.copy_to_device(p_sizes->patch_size, 0);
-    }
+  if (p_sizes->patch_size != 0 && dscene->patches.need_realloc()) {
+    dscene->patches.copy_to_device(p_sizes->patch_size, 0);
   }
 }
 
@@ -837,7 +784,6 @@ static void update_attribute_realloc_flags(uint32_t &device_update_flags,
 
 void GeometryManager::device_update_preprocess(Device *device, Scene *scene, Progress &progress)
 {
-  SCOPED_MARKER(device, "GeometryManager::device_update_preprocess");
   if (!need_update() && !need_flags_update) {
     return;
   }
@@ -1095,7 +1041,6 @@ void GeometryManager::device_update_displacement_images(Device *device,
                                                         Scene *scene,
                                                         Progress &progress)
 {
-  SCOPED_MARKER(device, "device_update_displacement_images");
   progress.set_status("Updating Displacement Images");
   TaskPool pool;
   ImageManager *image_manager = scene->image_manager;
@@ -1215,15 +1160,12 @@ void GeometryManager::preTessDispNormalAndVerticesSetup(Device *device,
   // also determines if tesselation, displacement or shadow transparency is needed.
   foreach (Geometry *geom, scene->geometry) {
     if (geom->is_modified()) {
-      SCOPED_MARKER(device, "add modified mesh");
       if ((geom->geometry_type == Geometry::MESH || geom->geometry_type == Geometry::VOLUME)) {
         Mesh *mesh = static_cast<Mesh *>(geom);
 
         /* Update normals. */
-        {
-          SCOPED_MARKER(device, "add vertex normals");
-          mesh->add_vertex_normals();
-        }
+	mesh->add_vertex_normals();
+
         if (mesh->need_attribute(scene, ATTR_STD_POSITION_UNDISPLACED)) {
           mesh->add_undisplaced();
         }
@@ -1276,14 +1218,12 @@ void GeometryManager::deviceDataXferAndBVHUpdate(int idx,
   sub_dscene->data.bvh.bvh_layout = BVH_LAYOUT_NONE;
   // Get the device to use for this DeviceScene from one of the buffers
   Device *sub_device = sub_dscene->tri_verts.device;
-  SCOPED_MARKER(sub_device, "parallel update device");
   // Assign the host_pointers to the sub_dscene so that they access
   // the correct data
   device_update_host_pointers(sub_device, dscene, sub_dscene, &sizes);
 
   // Upload geometry and attribute buffers to the device
   {
-    SCOPED_MARKER(sub_device, "copy mesh to device");
     scoped_callback_timer timer([scene, idx](double time) {
       if (scene->update_stats) {
         // Save copy mesh to device duration for later logging
@@ -1294,7 +1234,6 @@ void GeometryManager::deviceDataXferAndBVHUpdate(int idx,
   }
 
   {
-    SCOPED_MARKER(sub_device, "copy attributes to device");
     scoped_callback_timer timer([scene, idx](double time) {
       if (scene->update_stats) {
         scene->attrib_times[idx] = time;
@@ -1305,7 +1244,6 @@ void GeometryManager::deviceDataXferAndBVHUpdate(int idx,
 
   device_scene_clear_modified(sub_dscene);
   {
-    SCOPED_MARKER(sub_device, "Parallel BVH building");
     scoped_callback_timer timer([scene, idx](double time) {
       if (scene->update_stats) {
         scene->object_bvh_times[idx] = time;
@@ -1323,7 +1261,6 @@ void GeometryManager::deviceDataXferAndBVHUpdate(int idx,
   }
 
   if(need_update_scene_bvh) {
-    SCOPED_MARKER(sub_device, "Build Scene BVH");
     scoped_callback_timer timer([scene, idx](double time) {
       if (scene->update_stats) {
         scene->scene_bvh_times[idx] = time;
@@ -1340,8 +1277,6 @@ void GeometryManager::deviceDataXferAndBVHUpdate(int idx,
  */
 void GeometryManager::updateObjectBounds(Scene *scene)
 {
-  SCOPED_MARKER(scene->device, "update objects");
-
   Scene::MotionType need_motion = scene->need_motion();
   bool motion_blur = need_motion == Scene::MOTION_BLUR;
 
@@ -1371,7 +1306,6 @@ size_t GeometryManager::createObjectBVHs(Device *device,
                                          const BVHLayout bvh_layout,
                                          bool &need_update_scene_bvh)
 {
-  SCOPED_MARKER(device, "update object BVH preprocess");
   scoped_callback_timer timer([scene](double time) {
     if (scene->update_stats) {
       scene->update_stats->geometry.times.add_entry(
@@ -1385,20 +1319,17 @@ size_t GeometryManager::createObjectBVHs(Device *device,
   }
 
   // Create BVH structures where needed
-  {
-    SCOPED_MARKER(device, "create BVH structures");
-    int id = 0;
-    foreach (Geometry *geom, scene->geometry) {
-      if (geom->is_modified() || geom->need_update_bvh_for_offset) {
-        need_update_scene_bvh = true;
-        Object *object = &object_pool[id];
-        geom->create_new_bvh_if_needed(object, device, dscene, &scene->params);
-        if (geom->need_build_bvh(bvh_layout)) {
-          num_bvh++;
-        }
+  int id = 0;
+  foreach (Geometry *geom, scene->geometry) {
+    if (geom->is_modified() || geom->need_update_bvh_for_offset) {
+      need_update_scene_bvh = true;
+      Object *object = &object_pool[id];
+      geom->create_new_bvh_if_needed(object, device, dscene, &scene->params);
+      if (geom->need_build_bvh(bvh_layout)) {
+        num_bvh++;
       }
-      id++;
     }
+    id++;
   }
 
   return num_bvh;
@@ -1413,7 +1344,6 @@ void GeometryManager::updateSceneBVHs(Device *device,
                                       Scene *scene,
                                       Progress &progress)
 {
-  SCOPED_MARKER(device, "update scene BVH");
   scoped_callback_timer timer([scene](double time) {
     if (scene->update_stats) {
       scene->update_stats->geometry.times.add_entry({"device_update (build scene BVH)", time});
@@ -1423,7 +1353,6 @@ void GeometryManager::updateSceneBVHs(Device *device,
   bool can_refit = device_update_bvh_preprocess(device, dscene, scene, progress);
   foreach (DeviceScene *sub_dscene, scene->dscenes) {
     Device *sub_device = sub_dscene->tri_verts.device;
-    SCOPED_MARKER(sub_device, "Build Scene BVH");
     device_update_bvh(sub_device, sub_dscene, scene, can_refit, 1, 1, progress);
   }
   device_update_bvh_postprocess(device, dscene, scene, progress);
@@ -1436,7 +1365,6 @@ void GeometryManager::tesselate(Scene *scene, size_t total_tess_needed, Progress
 {
   /* Tessellate meshes that are using subdivision */
   if (total_tess_needed) {
-    SCOPED_MARKER(scene->device, "Tesselate");
     scoped_callback_timer timer([scene](double time) {
       if (scene->update_stats) {
         scene->update_stats->geometry.times.add_entry(
@@ -1454,7 +1382,6 @@ void GeometryManager::tesselate(Scene *scene, size_t total_tess_needed, Progress
       if (!(geom->is_modified() && geom->is_mesh())) {
         continue;
       }
-      SCOPED_MARKER(scene->device, "tesselate mesh");
       Mesh *mesh = static_cast<Mesh *>(geom);
       if (mesh->need_tesselation()) {
         string msg = "Tessellating ";
@@ -1484,7 +1411,6 @@ void GeometryManager::device_update(Device *device,
                                     Scene *scene,
                                     Progress &progress)
 {
-  SCOPED_MARKER(device, "GeometryManager::device_update");
   if (!need_update())
     return;
 
@@ -1555,12 +1481,10 @@ void GeometryManager::device_update(Device *device,
   size_t num_bvh = createObjectBVHs(device, dscene, scene, bvh_layout, need_update_scene_bvh);
   bool can_refit_scene_bvh = true;
   if(need_update_scene_bvh) {
-    SCOPED_MARKER(device, "update scene BVH");
     can_refit_scene_bvh = device_update_bvh_preprocess(device, dscene, scene, progress);
   }
   {
     size_t n_scenes = scene->dscenes.size();
-    SCOPED_MARKER(device, "device update");
     // Parallel upload the geometry data to the devices and
     // calculate or refit the BVHs
     tbb::parallel_for(size_t(0),
@@ -1621,7 +1545,6 @@ void GeometryManager::device_update(Device *device,
 
 void GeometryManager::device_free(Device *device, DeviceScene *dscene, bool force_free)
 {
-  SCOPED_MARKER(device, "GeometryManager::device_free");
   dscene->bvh_nodes.free_if_need_realloc(force_free);
   dscene->bvh_leaf_nodes.free_if_need_realloc(force_free);
   dscene->object_node.free_if_need_realloc(force_free);
