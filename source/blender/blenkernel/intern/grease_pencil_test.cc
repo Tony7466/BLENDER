@@ -17,8 +17,13 @@ TEST(gpencil, build_layer_tree)
   group.add_layer(Layer("Layer1"));
   group.add_layer(Layer("Layer2"));
 
+  LayerGroup group2("Group2");
+  group2.add_layer(Layer("Layer3"));
+  group2.add_layer(Layer("Layer4"));
+
+  group.add_group(std::move(group2));
   root.add_group(std::move(group));
-  root.add_layer(Layer("Layer3"));
+  root.add_layer(Layer("Layer5"));
 
   root.foreach_children_pre_order([](TreeNode &child) { std::cout << child.name << std::endl; });
 }

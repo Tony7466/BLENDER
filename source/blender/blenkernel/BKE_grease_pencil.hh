@@ -39,7 +39,15 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
     this->type = type;
     this->name = BLI_strdup(name.c_str());
   }
-  TreeNode(const TreeNode &other) = delete;
+  TreeNode(const TreeNode &other)
+  {
+    this->type = other.type;
+    this->name = BLI_strdup(other.name);
+    children_.reserve(other.children_.size());
+    for (const std::unique_ptr<TreeNode> &elem : other.children_) {
+      children_.append(std::make_unique<TreeNode>(*elem));
+    }
+  }
   TreeNode(TreeNode &&other) : children_(std::move(other.children_))
   {
     this->name = other.name;
@@ -197,24 +205,12 @@ class Layer : public TreeNode, ::GreasePencilLayer {
   Layer(StringRefNull name) : TreeNode(GREASE_PENCIL_LAYER_TREE_LEAF, name), frames_()
   {
   }
-  Layer(const Layer &other)
-      : TreeNode(GREASE_PENCIL_LAYER_TREE_LEAF, other.name), frames_(other.frames_)
+  Layer(const Layer &other) : TreeNode(other)
   {
   }
   Layer(Layer &&other) : TreeNode(std::move(other))
   {
     frames_ = std::move(other.frames_);
-  }
-  Layer &operator=(const Layer &other)
-  {
-    return copy_assign_container(*this, other);
-  }
-  Layer &operator=(Layer &&other)
-  {
-    if (this != &other) {
-      frames_ = std::move(other.frames_);
-    }
-    return *this;
   }
   ~Layer()
   {
@@ -238,7 +234,7 @@ class LayerGroup : public TreeNode {
   LayerGroup(StringRefNull name) : TreeNode(GREASE_PENCIL_LAYER_TREE_GROUP, name)
   {
   }
-  LayerGroup(const LayerGroup &other) : TreeNode(GREASE_PENCIL_LAYER_TREE_GROUP, other.name)
+  LayerGroup(const LayerGroup &other) : TreeNode(other)
   {
   }
   LayerGroup(LayerGroup &&other) : TreeNode(std::move(other))
