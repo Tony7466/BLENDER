@@ -13,7 +13,6 @@
 
 #include "BKE_attribute.h"
 #include "BKE_context.h"
-#include "BKE_fcurve.h"
 #include "BKE_geometry_set.h"
 #include "BKE_image.h"
 #include "BKE_key.h"
