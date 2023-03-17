@@ -51,6 +51,26 @@
 
 namespace blender::eevee {
 
+void Volumes::bind_common_buffers(PassMain &ps)
+{
+#if 0
+  /* TODO (Miguel Pozo) */
+  DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
+  /* TODO(fclem): remove those (need to clean the GLSL files). */
+  DRW_shgroup_uniform_block(grp, "grid_block", sldata->grid_ubo);
+  DRW_shgroup_uniform_block(grp, "probe_block", sldata->probe_ubo);
+  DRW_shgroup_uniform_block(grp, "planar_block", sldata->planar_ubo);
+  DRW_shgroup_uniform_block(grp, "light_block", sldata->light_ubo);
+  DRW_shgroup_uniform_block(grp, "shadow_block", sldata->shadow_ubo);
+  DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
+
+  /* Should this go here? */
+  ps.bind_texture("irradianceGrid", &lcache->grid_tx.tex);
+  ps.bind_texture("shadowCubeTexture", &sldata->shadow_cube_pool);
+  ps.bind_texture("shadowCascadeTexture", &sldata->shadow_cascade_pool);
+#endif
+}
+
 void Volumes::set_jitter(uint current_sample)
 {
   double ht_point[3];
@@ -88,23 +108,13 @@ void Volumes::init()
   if (data_.tex_size != tex_size) {
     data_.tex_size = tex_size;
     data_.inv_tex_size = 1.0f / float3(tex_size);
-
-    prop_scattering_tx_.free();
-    prop_extinction_tx_.free();
-    prop_emission_tx_.free();
-    prop_phase_tx_.free();
-    scatter_tx_.free();
-    transmit_tx_.free();
-    scatter_history_tx_.free();
-    transmit_history_tx_.free();
-    /* volumetric_fb_ */;
-    /* scatter_fb_ */;
+    data_.history_alpha = 0.0f;
+  }
+  else {
+    /* Like frostbite's paper, 5% blend of the new frame. */
+    data_.history_alpha = 0.95f;
   }
 
-  /* Like frostbite's paper, 5% blend of the new frame. */
-  data_.history_alpha = prop_scattering_tx_.is_valid() ? 0.95f : 0.0f;
-
-  /* If TAA is in use do not use the history buffer. */
   bool do_taa = inst_.sampling.sample_count() > 1;
   /* TODO (Miguel Pozo): Confirm this is equivalent to:
    * ((effects->enabled_effects & EFFECT_TAA) != 0) */
@@ -115,17 +125,18 @@ void Volumes::init()
   }
 
   /* Temporal Super sampling jitter */
-  uint3 ht_primes = {3, 7, 2};
   /* TODO (Miguel Pozo): Double check current_sample and current_sample_ logic. */
   uint current_sample = 0;
 
   if (do_taa) {
+    /* If TAA is in use do not use the history buffer. */
     data_.history_alpha = 0.0f;
     current_sample = inst_.sampling.current_sample() - 1;
     current_sample_ = -1;
   }
   else if (DRW_state_is_image_render()) {
-    const uint max_sample = (ht_primes[0] * ht_primes[1] * ht_primes[2]);
+    uint3 ht_primes = {3, 7, 2};
+    const uint max_sample = ht_primes[0] * ht_primes[1] * ht_primes[2];
     current_sample = current_sample_ = (current_sample_ + 1) % max_sample;
     if (current_sample != max_sample - 1) {
       DRW_viewport_request_redraw();
@@ -177,17 +188,10 @@ void Volumes::init()
   data_.use_lights = (scene_eval->eevee.flag & SCE_EEVEE_VOLUMETRIC_LIGHTS) != 0;
   data_.use_soft_shadows = (scene_eval->eevee.flag & SCE_EEVEE_SHADOW_SOFT) != 0;
 
-  if (!dummy_scatter_tx_.is_valid()) {
-    float4 scatter = float4(0.0f);
-    float4 transmit = float4(1.0f);
-
-    /* TODO (Miguel Pozo): DRW_TEX_WRAP ? */
-    dummy_scatter_tx_.ensure_3d(GPU_RGBA8, int3(1), GPU_TEXTURE_USAGE_SHADER_READ, scatter);
-    dummy_transmit_tx_.ensure_3d(GPU_RGBA8, int3(1), GPU_TEXTURE_USAGE_SHADER_READ, transmit);
-  }
+  data_.push_update();
 }
 
-void Volumes::sync()
+void Volumes::begin_sync()
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
   Scene *scene = draw_ctx->scene;
@@ -218,33 +222,20 @@ void Volumes::sync()
    *   work for alpha blended materials.
    */
 
-  auto setup_pass = [&](PassMain &ps) {
-#if 0
-      /* TODO (Miguel Pozo) */
-      DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);
-      /* TODO(fclem): remove those (need to clean the GLSL files). */
-      DRW_shgroup_uniform_block(grp, "grid_block", sldata->grid_ubo);
-      DRW_shgroup_uniform_block(grp, "probe_block", sldata->probe_ubo);
-      DRW_shgroup_uniform_block(grp, "planar_block", sldata->planar_ubo);
-      DRW_shgroup_uniform_block(grp, "light_block", sldata->light_ubo);
-      DRW_shgroup_uniform_block(grp, "shadow_block", sldata->shadow_ubo);
-      DRW_shgroup_uniform_block(grp, "renderpass_block", sldata->renderpass_ubo.combined);
-#endif
-  };
-
   /* World pass is not additive as it also clear the buffer. */
   world_ps_.init();
   world_ps_.state_set(DRW_STATE_WRITE_COLOR);
-  setup_pass(world_ps_);
+  bind_common_buffers(world_ps_);
+
   objects_ps_.init();
   objects_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ADD);
-  setup_pass(objects_ps_);
+  bind_common_buffers(objects_ps_);
 
   GPUMaterial *mat = nullptr;
 
   /* World Volumetric */
   ::World *world = scene->world;
-  if (world != nullptr && world->use_nodes && world->nodetree &&
+  if (world && world->use_nodes && world->nodetree &&
       !LOOK_DEV_STUDIO_LIGHT_ENABLED(draw_ctx->v3d)) {
 
     GPUMaterial *mat = inst_.shaders.world_shader_get(world, world->nodetree, MAT_PIPE_VOLUME);
@@ -269,10 +260,7 @@ void Volumes::sync()
   ps.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z);
 }
 
-void Volumes::sync_object(Object *ob,
-                          ObjectHandle &ob_handle,
-                          ResourceHandle /*res_handle*/,
-                          Scene *scene)
+void Volumes::sync_object(Object *ob, ObjectHandle &ob_handle, ResourceHandle /*res_handle*/)
 {
   int mat_nr = VOLUME_MATERIAL_NR;
   bool has_motion = inst_.velocity.step_object_sync(ob, ob_handle.object_key, ob_handle.recalc);
@@ -308,7 +296,7 @@ void Volumes::sync_object(Object *ob,
   }
 
   PassMain::Sub &ps = material.shading.sub_pass->sub(ob->id.name);
-  if (volume_sub_pass(ps, scene, ob, material.shading.gpumat)) {
+  if (volume_sub_pass(ps, inst_.scene, ob, material.shading.gpumat)) {
     /* TODO (Miguel Pozo): Is any equivalent required here?
      * DRW_shgroup_add_material_resources(grp, mat); */
 
@@ -320,16 +308,60 @@ void Volumes::sync_object(Object *ob,
   }
 }
 
-void Volumes::sync_end()
+void Volumes::end_sync()
 {
   if (!enabled_) {
+    prop_scattering_tx_.free();
+    prop_extinction_tx_.free();
+    prop_emission_tx_.free();
+    prop_phase_tx_.free();
+    scatter_tx_.free();
+    transmit_tx_.free();
+    scatter_history_tx_.free();
+    transmit_history_tx_.free();
+    /* volumetric_fb_ */;
+    /* scatter_fb_ */;
     return;
   }
+
+  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
+  /* Volume properties: We evaluate all volumetric objects
+   * and store their final properties into each froxel */
+  prop_scattering_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
+  prop_extinction_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
+  prop_emission_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
+  prop_phase_tx_.ensure_3d(GPU_RG16F, data_.tex_size, usage);
+
+  /* Volume scattering: We compute for each froxel the
+   * Scattered light towards the view. We also resolve temporal
+   * super sampling during this stage. */
+  scatter_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
+  transmit_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
+
+  /* Final integration: We compute for each froxel the
+   * amount of scattered light and extinction coef at this
+   * given depth. We use these textures as double buffer
+   * for the volumetric history. */
+  scatter_history_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
+  transmit_history_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
+
+  float4 scatter = float4(0.0f);
+  float4 transmit = float4(1.0f);
+  /* TODO (Miguel Pozo): DRW_TEX_WRAP ? */
+  dummy_scatter_tx_.ensure_3d(GPU_RGBA8, int3(1), GPU_TEXTURE_USAGE_SHADER_READ, scatter);
+  dummy_transmit_tx_.ensure_3d(GPU_RGBA8, int3(1), GPU_TEXTURE_USAGE_SHADER_READ, transmit);
+
+#if 0
+    /* TODO */
+    scatter_tx_ = dummy_scatter_tx_;
+    transmit_tx_ = dummy_transmit_tx_;
+#endif
 
   scatter_ps_.init();
   scatter_ps_.state_set(DRW_STATE_WRITE_COLOR);
   scatter_ps_.shader_set(inst_.shaders.static_shader_get(
       data_.use_lights ? VOLUME_SCATTER_WITH_LIGHTS : VOLUME_SCATTER));
+  bind_common_buffers(scatter_ps_);
 
   scatter_ps_.bind_texture("volumeScattering", &prop_scattering_tx_);
   scatter_ps_.bind_texture("volumeExtinction", &prop_extinction_tx_);
@@ -342,144 +374,81 @@ void Volumes::sync_end()
     scatter_ps_.bind_texture("irradianceGrid", &lcache->grid_tx.tex);
     scatter_ps_.bind_texture("shadowCubeTexture", &sldata->shadow_cube_pool);
     scatter_ps_.bind_texture("shadowCascadeTexture", &sldata->shadow_cascade_pool);
-    scatter_ps_.bind_ubo("light_block", sldata->light_ubo);
-    scatter_ps_.bind_ubo("shadow_block", sldata->shadow_ubo);
-    scatter_ps_.bind_ubo("common_block", sldata->common_ubo);
-    scatter_ps_.bind_ubo("probe_block", sldata->probe_ubo);
-    scatter_ps_.bind_ubo("renderpass_block", sldata->renderpass_ubo.combined);
 #endif
-
   scatter_ps_.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z);
 
   integration_ps_.init();
   integration_ps_.state_set(DRW_STATE_WRITE_COLOR);
   integration_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_INTEGRATION));
-
+  bind_common_buffers(integration_ps_);
   integration_ps_.bind_texture("volumeScattering", &scatter_tx_);
   integration_ps_.bind_texture("volumeExtinction", &transmit_tx_);
-#if 0
-    /* TODO */
-    integration_ps_.bind_ubo("common_block", sldata->common_ubo);
-    integration_ps_.bind_ubo("probe_block", sldata->probe_ubo);
-    integration_ps_.bind_ubo("renderpass_block", sldata->renderpass_ubo.combined);
-#endif
   integration_ps_.bind_image("finalScattering_img", &scatter_history_tx_);
   integration_ps_.bind_image("finalTransmittance_img", &transmit_history_tx_);
-
   integration_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 1);
 
   resolve_ps_.init();
   resolve_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
   resolve_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_RESOLVE));
-
+  bind_common_buffers(integration_ps_);
   resolve_ps_.bind_texture("inScattering", &scatter_tx_);
   resolve_ps_.bind_texture("inTransmittance", &transmit_tx_);
 #if 0
     /* TODO */
     resolve_ps_.bind_texture("inSceneDepth", &e_data.depth_src);
-    resolve_ps_.bind_ubo("light_block", sldata->light_ubo);
-    resolve_ps_.bind_ubo("common_block", sldata->common_ubo);
-    resolve_ps_.bind_ubo("probe_block", sldata->probe_ubo);
-    resolve_ps_.bind_ubo("renderpass_block", sldata->renderpass_ubo.combined);
-    resolve_ps_.bind_ubo("shadow_block", sldata->shadow_ubo);
 #endif
-
   resolve_ps_.draw_procedural(GPU_PRIM_TRIS, 1, data_.tex_size.z);
 }
 
-void Volumes::draw_init()
-{
-  if (enabled_) {
-    if (!prop_scattering_tx_.is_valid()) {
-      eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
-      /* Volume properties: We evaluate all volumetric objects
-       * and store their final properties into each froxel */
-      prop_scattering_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
-      prop_extinction_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
-      prop_emission_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
-      prop_phase_tx_.ensure_3d(GPU_RG16F, data_.tex_size, usage);
-
-      /* Volume scattering: We compute for each froxel the
-       * Scattered light towards the view. We also resolve temporal
-       * super sampling during this stage. */
-      scatter_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
-      transmit_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
-
-      /* Final integration: We compute for each froxel the
-       * amount of scattered light and extinction coef at this
-       * given depth. We use these textures as double buffer
-       * for the volumetric history. */
-      scatter_history_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
-      transmit_history_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
-    }
-
-    volumetric_fb_.ensure(GPU_ATTACHMENT_NONE,
-                          GPU_ATTACHMENT_TEXTURE(prop_scattering_tx_),
-                          GPU_ATTACHMENT_TEXTURE(prop_extinction_tx_),
-                          GPU_ATTACHMENT_TEXTURE(prop_emission_tx_),
-                          GPU_ATTACHMENT_TEXTURE(prop_phase_tx_));
-    scatter_fb_.ensure(GPU_ATTACHMENT_NONE,
-                       GPU_ATTACHMENT_TEXTURE(scatter_tx_),
-                       GPU_ATTACHMENT_TEXTURE(transmit_tx_));
-  }
-  else {
-    prop_scattering_tx_.free();
-    prop_extinction_tx_.free();
-    prop_emission_tx_.free();
-    prop_phase_tx_.free();
-    scatter_tx_.free();
-    transmit_tx_.free();
-    scatter_history_tx_.free();
-    transmit_history_tx_.free();
-    /* volumetric_fb_ */;
-    /* scatter_fb_ */;
-  }
-
-#if 0
-    scatter_tx_ = dummy_scatter_tx_;
-    transmit_tx_ = dummy_transmit_tx_;
-#endif
-}
-
-void Volumes::compute(View &view)
+void Volumes::draw_compute(View &view)
 {
   if (!enabled_) {
     return;
   }
 
-  DRW_stats_group_start("Volumetrics");
-  {
-    /* We sample the shadow-maps using shadow sampler. We need to enable Comparison mode.
-     * TODO(fclem): avoid this by using sampler objects. */
+  DRW_stats_group_start("Volumes");
+
+  /* We sample the shadow-maps using shadow sampler. We need to enable Comparison mode.
+   * TODO(fclem): avoid this by using sampler objects. */
 #if 0
-      /* TODO */
-      GPU_texture_compare_mode(sldata->shadow_cube_pool, true);
-      GPU_texture_compare_mode(sldata->shadow_cascade_pool, true);
+    /* TODO */
+    GPU_texture_compare_mode(sldata->shadow_cube_pool, true);
+    GPU_texture_compare_mode(sldata->shadow_cascade_pool, true);
 #endif
 
-    volumetric_fb_.bind();
-    inst_.manager->submit(world_ps_, view);
-    inst_.manager->submit(objects_ps_, view);
+  volumetric_fb_.ensure(GPU_ATTACHMENT_NONE,
+                        GPU_ATTACHMENT_TEXTURE(prop_scattering_tx_),
+                        GPU_ATTACHMENT_TEXTURE(prop_extinction_tx_),
+                        GPU_ATTACHMENT_TEXTURE(prop_emission_tx_),
+                        GPU_ATTACHMENT_TEXTURE(prop_phase_tx_));
 
-    scatter_fb_.bind();
-    inst_.manager->submit(scatter_ps_, view);
+  scatter_fb_.ensure(GPU_ATTACHMENT_NONE,
+                     GPU_ATTACHMENT_TEXTURE(scatter_tx_),
+                     GPU_ATTACHMENT_TEXTURE(transmit_tx_));
 
-    volumetric_fb_.bind();
-    inst_.manager->submit(integration_ps_, view);
+  volumetric_fb_.bind();
+  inst_.manager->submit(world_ps_, view);
+  inst_.manager->submit(objects_ps_, view);
+
+  scatter_fb_.bind();
+  inst_.manager->submit(scatter_ps_, view);
+
+  volumetric_fb_.bind();
+  inst_.manager->submit(integration_ps_, view);
 
 #if 0
-      SWAP(struct GPUFrameBuffer *, fbl->scatter_fb_, fbl->integration_fb_);
-      SWAP(GPUTexture *, scatter_tx_, scatter_history_tx_);
-      SWAP(GPUTexture *, transmit_tx_, transmit_history_tx_);
+    SWAP(struct GPUFrameBuffer *, fbl->scatter_fb_, fbl->integration_fb_);
+    SWAP(GPUTexture *, scatter_tx_, scatter_history_tx_);
+    SWAP(GPUTexture *, transmit_tx_, transmit_history_tx_);
 
-      effects->volume_scatter = scatter_tx_;
-      effects->volume_transmit = transmit_tx_;
+    effects->volume_scatter = scatter_tx_;
+    effects->volume_transmit = transmit_tx_;
 #endif
-  }
+
   DRW_stats_group_end();
 }
 
-void Volumes::resolve(View &view, Framebuffer &fb)
+void Volumes::draw_resolve(View &view, Framebuffer &fb)
 {
   if (!enabled_) {
     return;
@@ -489,16 +458,6 @@ void Volumes::resolve(View &view, Framebuffer &fb)
 
   fb.bind();
   inst_.manager->submit(resolve_ps_, view);
-}
-
-void Volumes::free()
-{
-  dummy_scatter_tx_.free();
-  dummy_transmit_tx_.free();
-
-  dummy_zero_tx_.free();
-  dummy_one_tx_.free();
-  dummy_flame_tx_.free();
 }
 
 /* -------------------------------------------------------------------- */

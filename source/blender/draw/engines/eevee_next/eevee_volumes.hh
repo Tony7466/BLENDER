@@ -6,21 +6,6 @@ namespace blender::eevee {
 
 class Instance;
 
-struct VolumesData {
-  int3 tex_size;
-  float history_alpha;
-  float3 inv_tex_size;
-  float shadow_steps;
-  float3 jitter;
-  int use_lights;
-  float3 depth_param;
-  int use_soft_shadows;
-  float2 coord_scale_a; /*TODO (Miguel Pozo): Rename. */
-  float2 coord_scale_b;
-};
-
-using VolumesDataBuf = draw::UniformBuffer<VolumesData>;
-
 class Volumes {
  private:
   Instance &inst_;
@@ -64,31 +49,26 @@ class Volumes {
   PassMain resolve_ps_ = {"Volumes.Resolve"};
   PassMain accum_ps_ = {"Volumes.Accum"};
 
-  void set_jitter(uint current_sample);
+  void bind_common_buffers(PassMain &ps);
 
  public:
   Volumes(Instance &inst) : inst_(inst){};
 
   ~Volumes(){};
 
+  void set_jitter(uint current_sample);
+
   void init();
 
-  void sync();
+  void begin_sync();
 
-  void sync_object(Object *ob,
-                   ObjectHandle &ob_handle,
-                   ResourceHandle /*res_handle*/,
-                   Scene *scene);
+  void sync_object(Object *ob, ObjectHandle &ob_handle, ResourceHandle res_handle);
 
-  void sync_end();
+  void end_sync();
 
-  void draw_init();
+  void draw_compute(View &view);
 
-  void compute(View &view);
-
-  void resolve(View &view, Framebuffer &fb);
-
-  void free();
+  void draw_resolve(View &view, Framebuffer &fb);
 };
 }  // namespace blender::eevee
 
