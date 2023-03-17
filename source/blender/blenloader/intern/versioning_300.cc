@@ -3698,22 +3698,6 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
         }
       }
     }
-    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
-      LISTBASE_FOREACH (GpencilModifierData *, gpd, &ob->greasepencil_modifiers) {
-        if (gpd->type == eGpencilModifierType_Lineart) {
-          LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)gpd;
-          /* Relocate calculation flags due to moved flag bits. */
-          if (lmd->flags & LRT_GPENCIL_MATCH_OUTPUT_VGROUP) {
-            lmd->flags &= (~LRT_GPENCIL_MATCH_OUTPUT_VGROUP);
-            lmd->calculation_flags |= LRT_GPENCIL_MATCH_OUTPUT_VGROUP;
-          }
-          if (lmd->flags & LRT_GPENCIL_INVERT_SOURCE_VGROUP) {
-            lmd->flags &= (~LRT_GPENCIL_INVERT_SOURCE_VGROUP);
-            lmd->calculation_flags |= LRT_GPENCIL_INVERT_SOURCE_VGROUP;
-          }
-        }
-      }
-    }
   }
 
   if (!MAIN_VERSION_ATLEAST(bmain, 304, 2)) {
