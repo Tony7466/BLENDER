@@ -4,7 +4,7 @@
 
 #include <string.h>
 
-#include "BLI_float4x4.hh"
+#include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_utildefines.h"
 
@@ -66,13 +66,6 @@ Mesh *create_cylinder_or_cone_mesh(float radius_top,
                                    GeometryNodeMeshCircleFillType fill_type,
                                    ConeAttributeOutputs &attribute_outputs);
 
-/**
- * Copies the point domain attributes from `in_component` that are in the mask to `out_component`.
- */
-void copy_point_attributes_based_on_mask(const GeometryComponent &in_component,
-                                         GeometryComponent &result_component,
-                                         Span<bool> masks,
-                                         bool invert);
 /**
  * Returns the parts of the geometry that are on the selection for the given domain. If the domain
  * is not applicable for the component, e.g. face domain for point cloud, nothing happens to that

@@ -19,17 +19,17 @@
 #include "BLT_translation.h"
 
 #include "DNA_defaults.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_gpencil_modifier_types.h"
-#include "DNA_gpencil_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
 #include "BKE_context.h"
-#include "BKE_gpencil.h"
-#include "BKE_gpencil_geom.h"
-#include "BKE_gpencil_modifier.h"
+#include "BKE_gpencil_geom_legacy.h"
+#include "BKE_gpencil_legacy.h"
+#include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_lib_query.h"
 #include "BKE_main.h"
 #include "BKE_modifier.h"
@@ -388,7 +388,7 @@ static void custom_range_panel_draw(const bContext *UNUSED(C), Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetActive(layout,
-                    (!ELEM(mode, GP_TIME_MODE_FIX, GP_TIME_MODE_CHAIN)) &&
+                    !ELEM(mode, GP_TIME_MODE_FIX, GP_TIME_MODE_CHAIN) &&
                         RNA_boolean_get(ptr, "use_custom_frame_range"));
 
   col = uiLayoutColumn(layout, true);

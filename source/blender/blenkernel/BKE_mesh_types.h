@@ -19,12 +19,14 @@
 #  include "BLI_math_vector_types.hh"
 #  include "BLI_shared_cache.hh"
 #  include "BLI_span.hh"
+#  include "BLI_vector.hh"
 
 #  include "DNA_customdata_types.h"
 #  include "DNA_meshdata_types.h"
 
 struct BVHCache;
 struct EditMeshData;
+struct Mesh;
 struct MLoopTri;
 struct ShrinkwrapBoundaryData;
 struct SubdivCCG;
@@ -131,7 +133,7 @@ struct MeshRuntime {
    *
    * Modifiers that edit the mesh data in-place must set this to false
    * (most #eModifierTypeType_NonGeometrical modifiers). Otherwise the edit-mesh
-   * data will be used for drawing, missing changes from modifiers. See T79517.
+   * data will be used for drawing, missing changes from modifiers. See #79517.
    */
   bool is_original_bmesh = false;
 
@@ -157,8 +159,8 @@ struct MeshRuntime {
    */
   bool vert_normals_dirty = true;
   bool poly_normals_dirty = true;
-  float (*vert_normals)[3] = nullptr;
-  float (*poly_normals)[3] = nullptr;
+  mutable Vector<float3> vert_normals;
+  mutable Vector<float3> poly_normals;
 
   /**
    * A cache of data about the loose edges. Can be shared with other data-blocks with unchanged
@@ -167,10 +169,18 @@ struct MeshRuntime {
   SharedCache<LooseEdgeCache> loose_edges_cache;
 
   /**
-   * A #BLI_bitmap containing tags for the center vertices of subdivided polygons, set by the
-   * subdivision surface modifier and used by drawing code instead of polygon center face dots.
+   * A bit vector the size of the number of vertices, set to true for the center vertices of
+   * subdivided polygons. The values are set by the subdivision surface modifier and used by
+   * drawing code instead of polygon center face dots. Otherwise this will be empty.
    */
-  uint32_t *subsurf_face_dot_tags = nullptr;
+  BitVector<> subsurf_face_dot_tags;
+
+  /**
+   * A bit vector the size of the number of edges, set to true for edges that should be drawn in
+   * the viewport. Created by the "Optimal Display" feature of the subdivision surface modifier.
+   * Otherwise it will be empty.
+   */
+  BitVector<> subsurf_optimal_display_edges;
 
   MeshRuntime() = default;
   ~MeshRuntime();

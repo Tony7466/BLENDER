@@ -504,7 +504,7 @@ static const char *wm_context_member_from_ptr(const bContext *C,
       }
       case ID_MA: {
 #  define ID_CAST_OBMATACT(id_pt) \
-    (BKE_object_material_get(((Object *)id_pt), ((Object *)id_pt)->actcol))
+    BKE_object_material_get(((Object *)id_pt), ((Object *)id_pt)->actcol)
         CTX_TEST_PTR_ID_CAST(
             C, "object", "object.active_material", ID_CAST_OBMATACT, ptr->owner_id);
         break;
@@ -1411,7 +1411,7 @@ static uiBlock *wm_block_create_redo(bContext *C, ARegion *region, void *arg_op)
   uiTemplateOperatorPropertyButs(
       C, col, op, UI_BUT_LABEL_ALIGN_NONE, UI_TEMPLATE_OP_PROPS_SHOW_TITLE);
 
-  UI_block_bounds_set_popup(block, 6 * U.dpi_fac, NULL);
+  UI_block_bounds_set_popup(block, 6 * UI_SCALE_FAC, NULL);
 
   return block;
 }
@@ -1437,7 +1437,7 @@ static void dialog_exec_cb(bContext *C, void *arg1, void *arg2)
 
   uiBlock *block = arg2;
   /* Explicitly set UI_RETURN_OK flag, otherwise the menu might be canceled
-   * in case WM_operator_call_ex exits/reloads the current file (T49199). */
+   * in case WM_operator_call_ex exits/reloads the current file (#49199). */
 
   UI_popup_menu_retval_set(block, UI_RETURN_OK, true);
 
@@ -1473,7 +1473,7 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *userD
   /* clear so the OK button is left alone */
   UI_block_func_set(block, NULL, NULL, NULL);
 
-  /* new column so as not to interfere with custom layouts T26436. */
+  /* new column so as not to interfere with custom layouts #26436. */
   {
     uiLayout *col = uiLayoutColumn(layout, false);
     uiBlock *col_block = uiLayoutGetBlock(col);
@@ -1486,7 +1486,7 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *userD
 
   /* center around the mouse */
   UI_block_bounds_set_popup(
-      block, 6 * U.dpi_fac, (const int[2]){data->width / -2, data->height / 2});
+      block, 6 * UI_SCALE_FAC, (const int[2]){data->width / -2, data->height / 2});
 
   return block;
 }
@@ -1510,7 +1510,7 @@ static uiBlock *wm_operator_ui_create(bContext *C, ARegion *region, void *userDa
 
   UI_block_func_set(block, NULL, NULL, NULL);
 
-  UI_block_bounds_set_popup(block, 6 * U.dpi_fac, NULL);
+  UI_block_bounds_set_popup(block, 6 * UI_SCALE_FAC, NULL);
 
   return block;
 }
@@ -1549,7 +1549,7 @@ int WM_operator_ui_popup(bContext *C, wmOperator *op, int width)
 {
   wmOpPopUp *data = MEM_callocN(sizeof(wmOpPopUp), "WM_operator_ui_popup");
   data->op = op;
-  data->width = width * U.dpi_fac;
+  data->width = width * UI_SCALE_FAC;
   /* Actual used height depends on the content. */
   data->height = 0;
   data->free_op = true; /* if this runs and gets registered we may want not to free it */
@@ -1619,7 +1619,7 @@ int WM_operator_props_dialog_popup(bContext *C, wmOperator *op, int width)
   wmOpPopUp *data = MEM_callocN(sizeof(wmOpPopUp), "WM_operator_props_dialog_popup");
 
   data->op = op;
-  data->width = width * U.dpi_fac;
+  data->width = width * UI_SCALE_FAC;
   /* Actual height depends on the content. */
   data->height = 0;
   data->free_op = true; /* if this runs and gets registered we may want not to free it */
@@ -2173,8 +2173,8 @@ void WM_paint_cursor_remove_by_type(wmWindowManager *wm, void *draw_fn, void (*f
 /** \name Radial Control Operator
  * \{ */
 
-#define WM_RADIAL_CONTROL_DISPLAY_SIZE (200 * UI_DPI_FAC)
-#define WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE (35 * UI_DPI_FAC)
+#define WM_RADIAL_CONTROL_DISPLAY_SIZE (200 * UI_SCALE_FAC)
+#define WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE (35 * UI_SCALE_FAC)
 #define WM_RADIAL_CONTROL_DISPLAY_WIDTH \
   (WM_RADIAL_CONTROL_DISPLAY_SIZE - WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE)
 #define WM_RADIAL_MAX_STR 10
@@ -2306,14 +2306,14 @@ static void radial_control_set_tex(RadialControl *rc)
                rc->use_secondary_tex,
                !ELEM(rc->subtype, PROP_NONE, PROP_PIXEL, PROP_DISTANCE)))) {
 
-        rc->texture = GPU_texture_create_2d_ex("radial_control",
-                                               ibuf->x,
-                                               ibuf->y,
-                                               1,
-                                               GPU_R8,
-                                               GPU_TEXTURE_USAGE_SHADER_READ |
-                                                   GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
-                                               ibuf->rect_float);
+        rc->texture = GPU_texture_create_2d("radial_control",
+                                            ibuf->x,
+                                            ibuf->y,
+                                            1,
+                                            GPU_R8,
+                                            GPU_TEXTURE_USAGE_SHADER_READ |
+                                                GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
+                                            ibuf->rect_float);
 
         GPU_texture_filter_mode(rc->texture, true);
         GPU_texture_swizzle_set(rc->texture, "111r");
@@ -2558,7 +2558,7 @@ static void radial_control_paint_cursor(bContext *UNUSED(C), int x, int y, void 
 
   immUnbindProgram();
 
-  BLF_size(fontid, 1.75f * fstyle_points * U.dpi_fac);
+  BLF_size(fontid, 1.75f * fstyle_points * UI_SCALE_FAC);
   UI_GetThemeColor4fv(TH_TEXT_HI, text_color);
   BLF_color4fv(fontid, text_color);
 
@@ -3327,7 +3327,7 @@ static void redraw_timer_step(bContext *C,
 static bool redraw_timer_poll(bContext *C)
 {
   /* Check background mode as many of these actions use redrawing.
-   * NOTE(@campbellbarton): if it's useful to support undo or animation step this could
+   * NOTE(@ideasman42): if it's useful to support undo or animation step this could
    * be allowed at the moment this seems like a corner case that isn't needed. */
   return !G.background && WM_operator_winactive(C);
 }

@@ -275,7 +275,7 @@ void gpu::MTLTexture::blit(id<MTLBlitCommandEncoder> blit_encoder,
                            uint depth)
 {
 
-  BLI_assert(this && dest);
+  BLI_assert(dest);
   BLI_assert(width > 0 && height > 0 && depth > 0);
   MTLSize src_size = MTLSizeMake(width, height, depth);
   MTLOrigin src_origin = MTLOriginMake(src_x_offset, src_y_offset, src_z_offset);
@@ -497,7 +497,7 @@ void gpu::MTLTexture::update_sub(
     }
 
     /* Early exit if update size is zero. update_sub sometimes has a zero-sized
-     * extent when called from texture painting.  */
+     * extent when called from texture painting. */
     if (totalsize <= 0 || extent[0] <= 0) {
       MTL_LOG_WARNING(
           "MTLTexture::update_sub called with extent size of zero for one or more dimensions. "
@@ -594,17 +594,6 @@ void gpu::MTLTexture::update_sub(
       }
     }
 
-    /* Prepare staging buffer for data. */
-    id<MTLBuffer> staging_buffer = nil;
-    uint64_t staging_buffer_offset = 0;
-
-    /* Fetch allocation from scratch buffer. */
-    MTLTemporaryBuffer allocation =
-        ctx->get_scratchbuffer_manager().scratch_buffer_allocate_range_aligned(totalsize, 256);
-    memcpy(allocation.data, data, totalsize);
-    staging_buffer = allocation.metal_buffer;
-    staging_buffer_offset = allocation.buffer_offset;
-
     /* Common Properties. */
     MTLPixelFormat compatible_write_format = mtl_format_get_writeable_view_format(
         destination_format);
@@ -615,6 +604,12 @@ void gpu::MTLTexture::update_sub(
                     *((int *)&compatible_write_format));
       return;
     }
+
+    /* Fetch allocation from memory pool. */
+    MTLBuffer *temp_allocation = MTLContext::get_global_memory_manager()->allocate_with_data(
+        totalsize, true, data);
+    id<MTLBuffer> staging_buffer = temp_allocation->get_metal_buffer();
+    BLI_assert(staging_buffer != nil);
 
     /* Prepare command encoders. */
     id<MTLBlitCommandEncoder> blit_encoder = nil;
@@ -643,7 +638,7 @@ void gpu::MTLTexture::update_sub(
 
       /* For compute, we should use a stating texture to avoid texture write usage,
        * if it has not been specified for the texture. Using shader-write disables
-       * lossless texture compression, so this is best to avoid where possible.  */
+       * lossless texture compression, so this is best to avoid where possible. */
       if (!(gpu_image_usage_flags_ & GPU_TEXTURE_USAGE_SHADER_WRITE)) {
         use_staging_texture = true;
       }
@@ -697,7 +692,7 @@ void gpu::MTLTexture::update_sub(
           int max_array_index = ((type_ == GPU_TEXTURE_1D_ARRAY) ? extent[1] : 1);
           for (int array_index = 0; array_index < max_array_index; array_index++) {
 
-            int buffer_array_offset = staging_buffer_offset + (bytes_per_image * array_index);
+            int buffer_array_offset = (bytes_per_image * array_index);
             [blit_encoder
                      copyFromBuffer:staging_buffer
                        sourceOffset:buffer_array_offset
@@ -722,10 +717,13 @@ void gpu::MTLTexture::update_sub(
                                           ((ctx->pipeline_state.unpack_row_length == 0) ?
                                                extent[0] :
                                                ctx->pipeline_state.unpack_row_length)};
-            [compute_encoder setComputePipelineState:pso];
-            [compute_encoder setBytes:&params length:sizeof(params) atIndex:0];
-            [compute_encoder setBuffer:staging_buffer offset:staging_buffer_offset atIndex:1];
-            [compute_encoder setTexture:texture_handle atIndex:0];
+
+            /* Bind resources via compute state for optimal state caching performance. */
+            MTLComputeState &cs = ctx->main_command_buffer.get_compute_state();
+            cs.bind_pso(pso);
+            cs.bind_compute_bytes(&params, sizeof(params), 0);
+            cs.bind_compute_buffer(staging_buffer, 0, 1);
+            cs.bind_compute_texture(texture_handle, 0);
             [compute_encoder
                       dispatchThreads:MTLSizeMake(extent[0], 1, 1) /* Width, Height, Layer */
                 threadsPerThreadgroup:MTLSizeMake(64, 1, 1)];
@@ -739,10 +737,13 @@ void gpu::MTLTexture::update_sub(
                                           ((ctx->pipeline_state.unpack_row_length == 0) ?
                                                extent[0] :
                                                ctx->pipeline_state.unpack_row_length)};
-            [compute_encoder setComputePipelineState:pso];
-            [compute_encoder setBytes:&params length:sizeof(params) atIndex:0];
-            [compute_encoder setBuffer:staging_buffer offset:staging_buffer_offset atIndex:1];
-            [compute_encoder setTexture:texture_handle atIndex:0];
+
+            /* Bind resources via compute state for optimal state caching performance. */
+            MTLComputeState &cs = ctx->main_command_buffer.get_compute_state();
+            cs.bind_pso(pso);
+            cs.bind_compute_bytes(&params, sizeof(params), 0);
+            cs.bind_compute_buffer(staging_buffer, 0, 1);
+            cs.bind_compute_texture(texture_handle, 0);
             [compute_encoder
                       dispatchThreads:MTLSizeMake(extent[0], extent[1], 1) /* Width, layers, nil */
                 threadsPerThreadgroup:MTLSizeMake(8, 8, 1)];
@@ -773,7 +774,7 @@ void gpu::MTLTexture::update_sub(
             }
 
             [blit_encoder copyFromBuffer:staging_buffer
-                            sourceOffset:staging_buffer_offset + texture_array_relative_offset
+                            sourceOffset:texture_array_relative_offset
                        sourceBytesPerRow:bytes_per_row
                      sourceBytesPerImage:bytes_per_image
                               sourceSize:MTLSizeMake(extent[0], extent[1], 1)
@@ -796,10 +797,13 @@ void gpu::MTLTexture::update_sub(
                                           ((ctx->pipeline_state.unpack_row_length == 0) ?
                                                extent[0] :
                                                ctx->pipeline_state.unpack_row_length)};
-            [compute_encoder setComputePipelineState:pso];
-            [compute_encoder setBytes:&params length:sizeof(params) atIndex:0];
-            [compute_encoder setBuffer:staging_buffer offset:staging_buffer_offset atIndex:1];
-            [compute_encoder setTexture:texture_handle atIndex:0];
+
+            /* Bind resources via compute state for optimal state caching performance. */
+            MTLComputeState &cs = ctx->main_command_buffer.get_compute_state();
+            cs.bind_pso(pso);
+            cs.bind_compute_bytes(&params, sizeof(params), 0);
+            cs.bind_compute_buffer(staging_buffer, 0, 1);
+            cs.bind_compute_texture(texture_handle, 0);
             [compute_encoder
                       dispatchThreads:MTLSizeMake(
                                           extent[0], extent[1], 1) /* Width, Height, Layer */
@@ -814,10 +818,13 @@ void gpu::MTLTexture::update_sub(
                                           ((ctx->pipeline_state.unpack_row_length == 0) ?
                                                extent[0] :
                                                ctx->pipeline_state.unpack_row_length)};
-            [compute_encoder setComputePipelineState:pso];
-            [compute_encoder setBytes:&params length:sizeof(params) atIndex:0];
-            [compute_encoder setBuffer:staging_buffer offset:staging_buffer_offset atIndex:1];
-            [compute_encoder setTexture:texture_handle atIndex:0];
+
+            /* Bind resources via compute state for optimal state caching performance. */
+            MTLComputeState &cs = ctx->main_command_buffer.get_compute_state();
+            cs.bind_pso(pso);
+            cs.bind_compute_bytes(&params, sizeof(params), 0);
+            cs.bind_compute_buffer(staging_buffer, 0, 1);
+            cs.bind_compute_texture(texture_handle, 0);
             [compute_encoder dispatchThreads:MTLSizeMake(extent[0],
                                                          extent[1],
                                                          extent[2]) /* Width, Height, Layer */
@@ -836,7 +843,7 @@ void gpu::MTLTexture::update_sub(
                                    ctx->pipeline_state.unpack_row_length);
           int bytes_per_image = bytes_per_row * extent[1];
           [blit_encoder copyFromBuffer:staging_buffer
-                          sourceOffset:staging_buffer_offset
+                          sourceOffset:0
                      sourceBytesPerRow:bytes_per_row
                    sourceBytesPerImage:bytes_per_image
                             sourceSize:MTLSizeMake(extent[0], extent[1], extent[2])
@@ -854,10 +861,13 @@ void gpu::MTLTexture::update_sub(
                                         ((ctx->pipeline_state.unpack_row_length == 0) ?
                                              extent[0] :
                                              ctx->pipeline_state.unpack_row_length)};
-          [compute_encoder setComputePipelineState:pso];
-          [compute_encoder setBytes:&params length:sizeof(params) atIndex:0];
-          [compute_encoder setBuffer:staging_buffer offset:staging_buffer_offset atIndex:1];
-          [compute_encoder setTexture:texture_handle atIndex:0];
+
+          /* Bind resources via compute state for optimal state caching performance. */
+          MTLComputeState &cs = ctx->main_command_buffer.get_compute_state();
+          cs.bind_pso(pso);
+          cs.bind_compute_bytes(&params, sizeof(params), 0);
+          cs.bind_compute_buffer(staging_buffer, 0, 1);
+          cs.bind_compute_texture(texture_handle, 0);
           [compute_encoder
                     dispatchThreads:MTLSizeMake(
                                         extent[0], extent[1], extent[2]) /* Width, Height, Depth */
@@ -881,7 +891,7 @@ void gpu::MTLTexture::update_sub(
             int face_index = offset[2] + i;
 
             [blit_encoder copyFromBuffer:staging_buffer
-                            sourceOffset:staging_buffer_offset + texture_array_relative_offset
+                            sourceOffset:texture_array_relative_offset
                        sourceBytesPerRow:bytes_per_row
                      sourceBytesPerImage:bytes_per_image
                               sourceSize:MTLSizeMake(extent[0], extent[1], 1)
@@ -915,7 +925,7 @@ void gpu::MTLTexture::update_sub(
           for (int i = 0; i < extent[2]; i++) {
             int face_index = offset[2] + i;
             [blit_encoder copyFromBuffer:staging_buffer
-                            sourceOffset:staging_buffer_offset + texture_array_relative_offset
+                            sourceOffset:texture_array_relative_offset
                        sourceBytesPerRow:bytes_per_row
                      sourceBytesPerImage:bytes_per_image
                               sourceSize:MTLSizeMake(extent[0], extent[1], 1)
@@ -1043,6 +1053,11 @@ void gpu::MTLTexture::update_sub(
 
     /* Decrement texture reference counts. This ensures temporary texture views are released. */
     [texture_handle release];
+
+    /* Release temporary staging buffer allocation.
+     * NOTE: Allocation will be tracked with command submission and released once no longer in use.
+     */
+    temp_allocation->free();
   }
 }
 
@@ -1332,7 +1347,7 @@ void *gpu::MTLTexture::read(int mip, eGPUDataFormat type)
   /* Prepare Array for return data. */
   BLI_assert(!(format_flag_ & GPU_FORMAT_COMPRESSED));
   BLI_assert(mip <= mipmaps_);
-  BLI_assert(validate_data_format_mtl(format_, type));
+  BLI_assert(validate_data_format(format_, type));
 
   /* NOTE: mip_size_get() won't override any dimension that is equal to 0. */
   int extent[3] = {1, 1, 1};
@@ -1391,7 +1406,7 @@ void gpu::MTLTexture::read_internal(int mip,
   bool is_depth_format = (format_flag_ & GPU_FORMAT_DEPTH);
 
   /* Verify if we need to use compute read. */
-  eGPUDataFormat data_format = to_mtl_internal_data_format(this->format_get());
+  eGPUDataFormat data_format = to_data_format(this->format_get());
   bool format_conversion_needed = (data_format != desired_output_format);
   bool can_use_simple_read = (desired_output_bpp == image_bpp) && (!format_conversion_needed) &&
                              (num_output_components == image_components);
@@ -1405,7 +1420,7 @@ void gpu::MTLTexture::read_internal(int mip,
     BLI_assert(num_output_components == 1);
     BLI_assert(image_components == 1);
     BLI_assert(data_format == GPU_DATA_FLOAT || data_format == GPU_DATA_UINT_24_8);
-    BLI_assert(validate_data_format_mtl(format_, data_format));
+    BLI_assert(validate_data_format(format_, data_format));
   }
 
   /* SPECIAL Workaround for R11G11B10 textures requesting a read using: GPU_DATA_10_11_11_REV. */
@@ -1521,10 +1536,13 @@ void gpu::MTLTexture::read_internal(int mip,
               {width, height, 1},
               {x_off, y_off, 0},
           };
-          [compute_encoder setComputePipelineState:pso];
-          [compute_encoder setBytes:&params length:sizeof(params) atIndex:0];
-          [compute_encoder setBuffer:destination_buffer offset:0 atIndex:1];
-          [compute_encoder setTexture:read_texture atIndex:0];
+
+          /* Bind resources via compute state for optimal state caching performance. */
+          MTLComputeState &cs = ctx->main_command_buffer.get_compute_state();
+          cs.bind_pso(pso);
+          cs.bind_compute_bytes(&params, sizeof(params), 0);
+          cs.bind_compute_buffer(destination_buffer, 0, 1);
+          cs.bind_compute_texture(read_texture, 0);
           [compute_encoder dispatchThreads:MTLSizeMake(width, height, 1) /* Width, Height, Layer */
                      threadsPerThreadgroup:MTLSizeMake(8, 8, 1)];
           copy_successful = true;
@@ -1568,10 +1586,13 @@ void gpu::MTLTexture::read_internal(int mip,
               {width, height, depth},
               {x_off, y_off, z_off},
           };
-          [compute_encoder setComputePipelineState:pso];
-          [compute_encoder setBytes:&params length:sizeof(params) atIndex:0];
-          [compute_encoder setBuffer:destination_buffer offset:0 atIndex:1];
-          [compute_encoder setTexture:read_texture atIndex:0];
+
+          /* Bind resources via compute state for optimal state caching performance. */
+          MTLComputeState &cs = ctx->main_command_buffer.get_compute_state();
+          cs.bind_pso(pso);
+          cs.bind_compute_bytes(&params, sizeof(params), 0);
+          cs.bind_compute_buffer(destination_buffer, 0, 1);
+          cs.bind_compute_texture(read_texture, 0);
           [compute_encoder
                     dispatchThreads:MTLSizeMake(width, height, depth) /* Width, Height, Layer */
               threadsPerThreadgroup:MTLSizeMake(8, 8, 1)];

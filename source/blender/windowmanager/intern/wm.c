@@ -179,6 +179,8 @@ static void window_manager_blend_read_data(BlendDataReader *reader, ID *id)
     win->event_queue_check_click = 0;
     win->event_queue_check_drag = 0;
     win->event_queue_check_drag_handled = 0;
+    win->event_queue_consecutive_gesture_type = 0;
+    win->event_queue_consecutive_gesture_data = NULL;
     BLO_read_data_address(reader, &win->stereo3d_format);
 
     /* Multi-view always fallback to anaglyph at file opening
@@ -619,7 +621,7 @@ void wm_close_and_free_all(bContext *C, ListBase *wmlist)
     BLI_remlink(wmlist, wm);
     /* Don't handle user counts as this is only ever called once #G_MAIN has already been freed via
      * #BKE_main_free so any ID's referenced by the window-manager (from ID properties) will crash.
-     * See: T100703. */
+     * See: #100703. */
     BKE_libblock_free_data(&wm->id, false);
     BKE_libblock_free_data_py(&wm->id);
     MEM_freeN(wm);

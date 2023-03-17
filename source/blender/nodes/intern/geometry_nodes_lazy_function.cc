@@ -73,10 +73,7 @@ static void lazy_function_interface_from_node(const bNode &node,
                                               Vector<lf::Output> &r_outputs)
 {
   const bool is_muted = node.is_muted();
-  const bool supports_laziness = node.typeinfo->geometry_node_execute_supports_laziness ||
-                                 node.is_group();
-  const lf::ValueUsage input_usage = supports_laziness ? lf::ValueUsage::Maybe :
-                                                         lf::ValueUsage::Used;
+  const lf::ValueUsage input_usage = lf::ValueUsage::Used;
   for (const bNodeSocket *socket : node.input_sockets()) {
     if (!socket->is_available()) {
       continue;
@@ -1078,6 +1075,33 @@ class LazyFunctionForAnonymousAttributeSetJoin : public lf::LazyFunction {
   {
     return 2 * i + 1;
   }
+
+  /**
+   * Cache for functions small amounts to avoid to avoid building them many times.
+   */
+  static const LazyFunctionForAnonymousAttributeSetJoin &get_cached(
+      const int amount, Vector<std::unique_ptr<LazyFunction>> &r_functions)
+  {
+    constexpr int cache_amount = 16;
+    static std::array<LazyFunctionForAnonymousAttributeSetJoin, cache_amount> cached_functions =
+        get_cache(std::make_index_sequence<cache_amount>{});
+    if (amount < cached_functions.size()) {
+      return cached_functions[amount];
+    }
+
+    auto fn = std::make_unique<LazyFunctionForAnonymousAttributeSetJoin>(amount);
+    const auto &fn_ref = *fn;
+    r_functions.append(std::move(fn));
+    return fn_ref;
+  }
+
+ private:
+  template<size_t... I>
+  static std::array<LazyFunctionForAnonymousAttributeSetJoin, sizeof...(I)> get_cache(
+      std::index_sequence<I...> /*indices*/)
+  {
+    return {LazyFunctionForAnonymousAttributeSetJoin(I)...};
+  }
 };
 
 enum class AttributeReferenceKeyType {
@@ -1304,6 +1328,10 @@ struct GeometryNodesLazyFunctionGraphBuilder {
           this->handle_viewer_node(*bnode);
           break;
         }
+        case GEO_NODE_SWITCH: {
+          this->handle_switch_node(*bnode);
+          break;
+        }
         default: {
           if (node_type->geometry_node_execute) {
             this->handle_geometry_node(*bnode);
@@ -1472,6 +1500,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
         multi_input_socket_nodes_.add_new(&bsocket, &lf_multi_input_node);
         for (lf::InputSocket *lf_multi_input_socket : lf_multi_input_node.inputs()) {
           mapping_->bsockets_by_lf_socket_map.add(lf_multi_input_socket, &bsocket);
+          const void *default_value = lf_multi_input_socket->type().default_value();
+          lf_multi_input_socket->set_default_value(default_value);
         }
       }
       else {
@@ -1541,6 +1571,31 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     }
 
     mapping_->viewer_node_map.add(&bnode, &lf_node);
+  }
+
+  void handle_switch_node(const bNode &bnode)
+  {
+    std::unique_ptr<LazyFunction> lazy_function = get_switch_node_lazy_function(bnode);
+    lf::FunctionNode &lf_node = lf_graph_->add_function(*lazy_function);
+    lf_graph_info_->functions.append(std::move(lazy_function));
+
+    int input_index = 0;
+    for (const bNodeSocket *bsocket : bnode.input_sockets()) {
+      if (bsocket->is_available()) {
+        lf::InputSocket &lf_socket = lf_node.input(input_index);
+        input_socket_map_.add(bsocket, &lf_socket);
+        mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);
+        input_index++;
+      }
+    }
+    for (const bNodeSocket *bsocket : bnode.output_sockets()) {
+      if (bsocket->is_available()) {
+        lf::OutputSocket &lf_socket = lf_node.output(0);
+        output_socket_map_.add(bsocket, &lf_socket);
+        mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);
+        break;
+      }
+    }
   }
 
   void handle_undefined_node(const bNode &bnode)
@@ -2523,27 +2578,23 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     if (attribute_set_sockets.is_empty()) {
       return nullptr;
     }
-    if (attribute_set_sockets.size() == 1) {
-      return attribute_set_sockets[0];
-    }
 
     Vector<lf::OutputSocket *, 16> key;
     key.extend(attribute_set_sockets);
     key.extend(used_sockets);
     std::sort(key.begin(), key.end());
     return cache.lookup_or_add_cb(key, [&]() {
-      auto lazy_function = std::make_unique<LazyFunctionForAnonymousAttributeSetJoin>(
-          attribute_set_sockets.size());
-      lf::Node &lf_node = lf_graph_->add_function(*lazy_function);
+      const auto &lazy_function = LazyFunctionForAnonymousAttributeSetJoin::get_cached(
+          attribute_set_sockets.size(), lf_graph_info_->functions);
+      lf::Node &lf_node = lf_graph_->add_function(lazy_function);
       for (const int i : attribute_set_sockets.index_range()) {
-        lf::InputSocket &lf_use_input = lf_node.input(lazy_function->get_use_input(i));
+        lf::InputSocket &lf_use_input = lf_node.input(lazy_function.get_use_input(i));
         socket_usage_inputs_.add(&lf_use_input);
         lf::InputSocket &lf_attributes_input = lf_node.input(
-            lazy_function->get_attribute_set_input(i));
+            lazy_function.get_attribute_set_input(i));
         lf_graph_->add_link(*used_sockets[i], lf_use_input);
         lf_graph_->add_link(*attribute_set_sockets[i], lf_attributes_input);
       }
-      lf_graph_info_->functions.append(std::move(lazy_function));
       return &lf_node.output(0);
     });
   }
@@ -2717,7 +2768,8 @@ class UsedSocketVisualizeOptions : public lf::Graph::ToDotOptions {
           socket_name_suffixes_.add(lf_socket, suffix);
         }
       }
-      else if (lf::OutputSocket *lf_socket = builder_.output_socket_map_.lookup(bsocket)) {
+      else if (lf::OutputSocket *lf_socket = builder_.output_socket_map_.lookup_default(bsocket,
+                                                                                        nullptr)) {
         socket_font_colors_.add(lf_socket, color_str);
         socket_name_suffixes_.add(lf_socket, suffix);
       }

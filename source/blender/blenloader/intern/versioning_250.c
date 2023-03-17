@@ -431,7 +431,7 @@ static void versions_gpencil_add_main(Main *bmain, ListBase *lb, ID *id, const c
   BLI_addtail(lb, id);
   id->us = 1;
   id->flag = LIB_FAKEUSER;
-  *((short *)id->name) = ID_GD;
+  *((short *)id->name) = ID_GD_LEGACY;
 
   BKE_id_new_name_validate(bmain, lb, id, name, false);
   /* alphabetic insertion: is in BKE_id_new_name_validate */
@@ -2115,7 +2115,7 @@ void blo_do_versions_250(FileData *fd, Library *lib, Main *bmain)
   }
 
   if (!MAIN_VERSION_ATLEAST(bmain, 258, 1)) {
-    /* screen view2d settings were not properly initialized T27164.
+    /* screen view2d settings were not properly initialized #27164.
      * v2d->scroll caused the bug but best reset other values too
      * which are in old blend files only.
      * Need to make less ugly - possibly an iterator? */

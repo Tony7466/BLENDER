@@ -9,7 +9,8 @@
 #include "DNA_meshdata_types.h"
 
 #include "BKE_attribute_math.hh"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
+#include "BKE_mesh_mapping.h"
 #include "BKE_mesh_runtime.h"
 
 #include "UI_interface.h"
@@ -151,7 +152,6 @@ static MEdge new_edge(const int v1, const int v2)
   MEdge edge;
   edge.v1 = v1;
   edge.v2 = v2;
-  edge.flag = ME_EDGEDRAW;
   return edge;
 }
 
@@ -160,7 +160,6 @@ static MPoly new_poly(const int loopstart, const int totloop)
   MPoly poly;
   poly.loopstart = loopstart;
   poly.totloop = totloop;
-  poly.flag = 0;
   return poly;
 }
 
@@ -288,22 +287,6 @@ static void extrude_mesh_vertices(Mesh &mesh,
   BKE_mesh_runtime_clear_cache(&mesh);
 }
 
-static Array<Vector<int, 2>> mesh_calculate_polys_of_edge(const Mesh &mesh)
-{
-  const Span<MPoly> polys = mesh.polys();
-  const Span<MLoop> loops = mesh.loops();
-  Array<Vector<int, 2>> polys_of_edge(mesh.totedge);
-
-  for (const int i_poly : polys.index_range()) {
-    const MPoly &poly = polys[i_poly];
-    for (const MLoop &loop : loops.slice(poly.loopstart, poly.totloop)) {
-      polys_of_edge[loop.e].append(i_poly);
-    }
-  }
-
-  return polys_of_edge;
-}
-
 static void fill_quad_consistent_direction(Span<MLoop> other_poly_loops,
                                            MutableSpan<MLoop> new_loops,
                                            const int vert_connected_to_poly_1,
@@ -382,7 +365,8 @@ static void extrude_mesh_edges(Mesh &mesh,
     return;
   }
 
-  const Array<Vector<int, 2>> edge_to_poly_map = mesh_calculate_polys_of_edge(mesh);
+  const Array<Vector<int, 2>> edge_to_poly_map = bke::mesh_topology::build_edge_to_poly_map(
+      orig_polys, mesh.loops(), mesh.totedge);
 
   /* Find the offsets on the vertex domain for translation. This must be done before the mesh's
    * custom data layers are reallocated, in case the virtual array references one of them. */
@@ -485,9 +469,6 @@ static void extrude_mesh_edges(Mesh &mesh,
     }
     GSpanAttributeWriter attribute = attributes.lookup_or_add_for_write_span(
         id, meta_data.domain, meta_data.data_type);
-    if (!attribute) {
-      return true; /* Impossible to write the "normal" attribute. */
-    }
 
     attribute_math::convert_to_static_type(meta_data.data_type, [&](auto dummy) {
       using T = decltype(dummy);
@@ -684,7 +665,8 @@ static void extrude_mesh_face_regions(Mesh &mesh,
   }
 
   /* All of the faces (selected and deselected) connected to each edge. */
-  const Array<Vector<int, 2>> edge_to_poly_map = mesh_calculate_polys_of_edge(mesh);
+  const Array<Vector<int, 2>> edge_to_poly_map = bke::mesh_topology::build_edge_to_poly_map(
+      orig_polys, orig_loops, orig_edges.size());
 
   /* All vertices that are connected to the selected polygons.
    * Start the size at one vert per poly to reduce unnecessary reallocation. */
@@ -880,9 +862,6 @@ static void extrude_mesh_face_regions(Mesh &mesh,
     }
     GSpanAttributeWriter attribute = attributes.lookup_or_add_for_write_span(
         id, meta_data.domain, meta_data.data_type);
-    if (!attribute) {
-      return true; /* Impossible to write the "normal" attribute. */
-    }
 
     attribute_math::convert_to_static_type(meta_data.data_type, [&](auto dummy) {
       using T = decltype(dummy);
@@ -1109,7 +1088,7 @@ static void extrude_individual_mesh_faces(Mesh &mesh,
   /* For every selected polygon, change it to use the new extruded vertices and the duplicate
    * edges, and build the faces that form the sides of the extrusion. Build "original index"
    * arrays for the new vertices and edges so they can be accessed later.
-
+   *
    * Filling some of this data like the new edges or polygons could be easily split into
    * separate loops, which may or may not be faster, but would involve more duplication. */
   Array<int> new_vert_indices(extrude_corner_size);
@@ -1171,9 +1150,6 @@ static void extrude_individual_mesh_faces(Mesh &mesh,
     }
     GSpanAttributeWriter attribute = attributes.lookup_or_add_for_write_span(
         id, meta_data.domain, meta_data.data_type);
-    if (!attribute) {
-      return true; /* Impossible to write the "normal" attribute. */
-    }
 
     attribute_math::convert_to_static_type(meta_data.data_type, [&](auto dummy) {
       using T = decltype(dummy);

@@ -39,13 +39,14 @@
 #include "BLT_translation.h"
 
 #include "BKE_action.h"
+#include "BKE_blendfile.h"
 #include "BKE_colorband.h"
 #include "BKE_colortools.h"
 #include "BKE_constraint.h"
 #include "BKE_context.h"
 #include "BKE_curveprofile.h"
 #include "BKE_global.h"
-#include "BKE_gpencil_modifier.h"
+#include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_idprop.h"
 #include "BKE_idtype.h"
 #include "BKE_layer.h"
@@ -78,8 +79,6 @@
 
 #include "WM_api.h"
 #include "WM_types.h"
-
-#include "BLO_readfile.h"
 
 #include "UI_interface.h"
 #include "UI_interface_icons.h"
@@ -832,7 +831,7 @@ ID *ui_template_id_liboverride_hierarchy_make(
     case ID_CA:
     case ID_SPK:
     case ID_AR:
-    case ID_GD:
+    case ID_GD_LEGACY:
     case ID_CV:
     case ID_PT:
     case ID_VO:
@@ -1102,7 +1101,7 @@ static const char *template_id_browse_tip(const StructRNA *type)
         return N_("Browse Brush to be linked");
       case ID_PA:
         return N_("Browse Particle Settings to be linked");
-      case ID_GD:
+      case ID_GD_LEGACY:
         return N_("Browse Grease Pencil Data to be linked");
       case ID_MC:
         return N_("Browse Movie Clip to be linked");
@@ -1677,12 +1676,12 @@ static void template_ID_tabs(const bContext *C,
                                                0.0f,
                                                0.0f,
                                                "");
-    UI_but_funcN_set(&tab->but, template_ID_set_property_exec_fn, MEM_dupallocN(template_id), id);
-    UI_but_drag_set_id(&tab->but, id);
-    tab->but.custom_data = (void *)id;
+    UI_but_funcN_set(tab, template_ID_set_property_exec_fn, MEM_dupallocN(template_id), id);
+    UI_but_drag_set_id(tab, id);
+    tab->custom_data = (void *)id;
     tab->menu = mt;
 
-    UI_but_drawflag_enable(&tab->but, but_align);
+    UI_but_drawflag_enable(tab, but_align);
   }
 
   BLI_freelistN(&ordered);
@@ -2337,7 +2336,7 @@ void uiTemplateModifiers(uiLayout * /*layout*/, bContext *C)
 /* -------------------------------------------------------------------- */
 /** \name Constraints Template
  *
- *  Template for building the panel layout for the active object or bone's constraints.
+ * Template for building the panel layout for the active object or bone's constraints.
  * \{ */
 
 /** For building the panel UI for constraints. */
@@ -2813,7 +2812,7 @@ static eAutoPropButsReturn template_operator_property_buts_draw_single(
       /* no undo for buttons for operator redo panels */
       UI_but_flag_disable(but, UI_BUT_UNDO);
 
-      /* only for popups, see T36109. */
+      /* only for popups, see #36109. */
 
       /* if button is operator's default property, and a text-field, enable focus for it
        * - this is used for allowing operators with popups to rename stuff with fewer clicks
@@ -5639,7 +5638,7 @@ void uiTemplateColorPicker(uiLayout *layout,
           hsv_but->gradient_type = UI_GRAD_HV;
           break;
       }
-      but = &hsv_but->but;
+      but = hsv_but;
       break;
 
     /* user default */
@@ -5688,7 +5687,7 @@ void uiTemplateColorPicker(uiLayout *layout,
                                                  "",
                                                  WHEEL_SIZE + 6,
                                                  0,
-                                                 14 * UI_DPI_FAC,
+                                                 14 * UI_SCALE_FAC,
                                                  WHEEL_SIZE,
                                                  ptr,
                                                  prop,
@@ -5709,7 +5708,7 @@ void uiTemplateColorPicker(uiLayout *layout,
                                                  0,
                                                  4,
                                                  WHEEL_SIZE,
-                                                 18 * UI_DPI_FAC,
+                                                 18 * UI_SCALE_FAC,
                                                  ptr,
                                                  prop,
                                                  -1,
@@ -5729,7 +5728,7 @@ void uiTemplateColorPicker(uiLayout *layout,
                                                  0,
                                                  4,
                                                  WHEEL_SIZE,
-                                                 18 * UI_DPI_FAC,
+                                                 18 * UI_SCALE_FAC,
                                                  ptr,
                                                  prop,
                                                  -1,
@@ -5749,7 +5748,7 @@ void uiTemplateColorPicker(uiLayout *layout,
                                                  0,
                                                  4,
                                                  WHEEL_SIZE,
-                                                 18 * UI_DPI_FAC,
+                                                 18 * UI_SCALE_FAC,
                                                  ptr,
                                                  prop,
                                                  -1,
@@ -5771,7 +5770,7 @@ void uiTemplateColorPicker(uiLayout *layout,
                                                  "",
                                                  WHEEL_SIZE + 6,
                                                  0,
-                                                 14 * UI_DPI_FAC,
+                                                 14 * UI_SCALE_FAC,
                                                  WHEEL_SIZE,
                                                  ptr,
                                                  prop,
@@ -5785,7 +5784,7 @@ void uiTemplateColorPicker(uiLayout *layout,
         break;
     }
 
-    hsv_but->but.custom_data = cpicker;
+    hsv_but->custom_data = cpicker;
   }
 }
 
@@ -6286,7 +6285,7 @@ void uiTemplateRunningJobs(uiLayout *layout, bContext *C)
                                                                             nullptr);
 
       but_progress->progress = progress;
-      UI_but_func_tooltip_set(&but_progress->but, progress_tooltip_func, tip_arg, MEM_freeN);
+      UI_but_func_tooltip_set(but_progress, progress_tooltip_func, tip_arg, MEM_freeN);
     }
 
     if (!wm->is_interface_locked) {
@@ -6359,7 +6358,7 @@ void uiTemplateReportsBanner(uiLayout *layout, bContext *C)
   UI_fontstyle_set(&style->widgetlabel);
   int width = BLF_width(style->widgetlabel.uifont_id, report->message, report->len);
   width = min_ii(int(rti->widthfac * width), width);
-  width = max_ii(width, 10 * UI_DPI_FAC);
+  width = max_ii(width, 10 * UI_SCALE_FAC);
 
   UI_block_align_begin(block);
 
@@ -6370,7 +6369,7 @@ void uiTemplateReportsBanner(uiLayout *layout, bContext *C)
                  "",
                  0,
                  0,
-                 UI_UNIT_X + (6 * UI_DPI_FAC),
+                 UI_UNIT_X + (6 * UI_SCALE_FAC),
                  UI_UNIT_Y,
                  nullptr,
                  0.0f,
@@ -6386,7 +6385,7 @@ void uiTemplateReportsBanner(uiLayout *layout, bContext *C)
                  UI_BTYPE_ROUNDBOX,
                  0,
                  "",
-                 UI_UNIT_X + (6 * UI_DPI_FAC),
+                 UI_UNIT_X + (6 * UI_SCALE_FAC),
                  0,
                  UI_UNIT_X + width,
                  UI_UNIT_Y,
@@ -6410,7 +6409,7 @@ void uiTemplateReportsBanner(uiLayout *layout, bContext *C)
                       "SCREEN_OT_info_log_show",
                       WM_OP_INVOKE_REGION_WIN,
                       UI_icon_from_report_type(report->type),
-                      (3 * UI_DPI_FAC),
+                      (3 * UI_SCALE_FAC),
                       0,
                       UI_UNIT_X,
                       UI_UNIT_Y,
@@ -6553,12 +6552,12 @@ void uiTemplateKeymapItemProperties(uiLayout *layout, PointerRNA *ptr)
     /* attach callbacks to compensate for missing properties update,
      * we don't know which keymap (item) is being modified there */
     for (; but; but = but->next) {
-      /* operator buttons may store props for use (file selector, T36492) */
+      /* operator buttons may store props for use (file selector, #36492) */
       if (but->rnaprop) {
         UI_but_func_set(but, keymap_item_modified, ptr->data, nullptr);
 
         /* Otherwise the keymap will be re-generated which we're trying to edit,
-         * see: T47685 */
+         * see: #47685 */
         UI_but_flag_enable(but, UI_BUT_UPDATE_DELAY);
       }
     }
@@ -6997,7 +6996,7 @@ int uiTemplateRecentFiles(uiLayout *layout, int rows)
     uiItemFullO(layout,
                 "WM_OT_open_mainfile",
                 filename,
-                BLO_has_bfile_extension(filename) ? ICON_FILE_BLEND : ICON_FILE_BACKUP,
+                BKE_blendfile_extension_check(filename) ? ICON_FILE_BLEND : ICON_FILE_BACKUP,
                 nullptr,
                 WM_OP_INVOKE_DEFAULT,
                 0,

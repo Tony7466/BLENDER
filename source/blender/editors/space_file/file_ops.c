@@ -11,9 +11,8 @@
 #include "BLI_linklist.h"
 #include "BLI_math.h"
 
-#include "BLO_readfile.h"
-
 #include "BKE_appdir.h"
+#include "BKE_blendfile.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_main.h"
@@ -1403,7 +1402,7 @@ int file_highlight_set(SpaceFile *sfile, ARegion *region, int mx, int my)
 
   params = ED_fileselect_get_active_params(sfile);
   /* In case #SpaceFile.browse_mode just changed, the area may be pending a refresh still, which is
-   * what creates the params for the current browse mode. See T93508. */
+   * what creates the params for the current browse mode. See #93508. */
   if (!params) {
     return false;
   }
@@ -2203,7 +2202,7 @@ static int file_smoothscroll_invoke(bContext *C, wmOperator *UNUSED(op), const w
   int deltay = 0;
 
   /* We adjust speed of scrolling to avoid tens of seconds of it in e.g. directories with tens of
-   * thousands of folders... See T65782. */
+   * thousands of folders... See #65782. */
   /* This will slow down scrolling when approaching final goal, also avoids going too far and
    * having to bounce back... */
 
@@ -2485,7 +2484,7 @@ static void file_expand_directory(bContext *C)
     {
       BLI_windows_get_default_root_dir(params->dir);
     }
-    /* change "C:" --> "C:\", T28102. */
+    /* change "C:" --> "C:\", #28102. */
     else if ((isalpha(params->dir[0]) && (params->dir[1] == ':')) && (params->dir[2] == '\0')) {
       params->dir[2] = '\\';
       params->dir[3] = '\0';
@@ -2539,7 +2538,7 @@ void file_directory_enter_handle(bContext *C, void *UNUSED(arg_unused), void *UN
         BLI_split_dirfile(
             path, params->dir, params->file, sizeof(params->dir), sizeof(params->file));
       }
-      else if (BLO_library_path_explode(params->dir, tdir, &group, &name)) {
+      else if (BKE_blendfile_library_path_explode(params->dir, tdir, &group, &name)) {
         if (group) {
           BLI_path_append(tdir, sizeof(tdir), group);
         }
@@ -2578,7 +2577,7 @@ void file_directory_enter_handle(bContext *C, void *UNUSED(arg_unused), void *UN
       char tdir[FILE_MAX_LIBEXTRA];
 
       /* If we are 'inside' a blend library, we cannot do anything... */
-      if (lastdir && BLO_library_path_explode(lastdir, tdir, NULL, NULL)) {
+      if (lastdir && BKE_blendfile_library_path_explode(lastdir, tdir, NULL, NULL)) {
         BLI_strncpy(params->dir, lastdir, sizeof(params->dir));
       }
       else {

@@ -32,7 +32,7 @@
 #include "DNA_cachefile_types.h"
 #include "DNA_camera_types.h"
 #include "DNA_curves_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_key_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_layer_types.h"
@@ -91,26 +91,6 @@
 
 /* ************************************************************ */
 /* Blender Context <-> Animation Context mapping */
-
-/* ----------- Private Stuff - General -------------------- */
-
-/* Get vertical scaling factor (i.e. typically used for keyframe size) */
-static void animedit_get_yscale_factor(bAnimContext *ac)
-{
-  bTheme *btheme = UI_GetTheme();
-
-  /* grab scale factor directly from action editor setting
-   * NOTE: This theme setting doesn't have an ID, as it cannot be accessed normally
-   *       since it is a float, and the theme settings methods can only handle chars.
-   */
-  ac->yscale_fac = btheme->space_action.keyframe_scale_fac;
-
-  /* clamp to avoid problems with uninitialized values... */
-  if (ac->yscale_fac < 0.1f) {
-    ac->yscale_fac = 1.0f;
-  }
-  // printf("yscale_fac = %f\n", ac->yscale_fac);
-}
 
 /* ----------- Private Stuff - Action Editor ------------- */
 
@@ -243,7 +223,7 @@ static bool actedit_get_context(bAnimContext *ac, SpaceAction *saction)
 
       /* sync scene's "selected keys only" flag with our "only selected" flag
        *
-       * XXX: This is a workaround for T55525. We shouldn't really be syncing the flags like this,
+       * XXX: This is a workaround for #55525. We shouldn't really be syncing the flags like this,
        * but it's a simpler fix for now than also figuring out how the next/prev keyframe
        * tools should work in the 3D View if we allowed full access to the timeline's
        * dopesheet filters (i.e. we'd have to figure out where to host those settings,
@@ -284,7 +264,7 @@ static bool graphedit_get_context(bAnimContext *ac, SpaceGraph *sipo)
   ac->ads = sipo->ads;
 
   /* set settings for Graph Editor - "Selected = Editable" */
-  if (sipo->flag & SIPO_SELCUVERTSONLY) {
+  if (U.animation_flag & USER_ANIM_ONLY_SHOW_SELECTED_CURVE_KEYS) {
     sipo->ads->filterflag |= ADS_FILTER_SELEDIT;
   }
   else {
@@ -407,9 +387,6 @@ bool ANIM_animdata_get_context(const bContext *C, bAnimContext *ac)
   ac->sl = sl;
   ac->spacetype = (area) ? area->spacetype : 0;
   ac->regiontype = (region) ? region->regiontype : 0;
-
-  /* Initialize default y-scale factor. */
-  animedit_get_yscale_factor(ac);
 
   /* get data context info */
   /* XXX: if the below fails, try to grab this info from context instead...
@@ -1095,7 +1072,7 @@ static bool skip_fcurve_selected_data(bDopeSheet *ads, FCurve *fcu, ID *owner_id
       /* Can only add this F-Curve if it is selected. */
       if (ads->filterflag & ADS_FILTER_ONLYSEL) {
 
-        /* NOTE(@campbellbarton): The `seq == NULL` check doesn't look right
+        /* NOTE(@ideasman42): The `seq == NULL` check doesn't look right
          * (compared to other checks in this function which skip data that can't be found).
          *
          * This is done since the search for sequence strips doesn't use a global lookup:
@@ -1383,7 +1360,7 @@ static size_t animfilter_act_group(bAnimContext *ac,
    * but the group isn't expanded (1)...
    * (1) this only matters if we actually care about the hierarchy though.
    *     - Hierarchy matters: this hack should be applied
-   *     - Hierarchy ignored: cases like T21276 won't work properly, unless we skip this hack
+   *     - Hierarchy ignored: cases like #21276 won't work properly, unless we skip this hack
    */
   if (
       /* Care about hierarchy but group isn't expanded. */
@@ -1870,7 +1847,7 @@ static size_t animdata_filter_gpencil(bAnimContext *ac,
   BKE_view_layer_synced_ensure(scene, view_layer);
   LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {
     /* Only consider this object if it has got some GP data (saving on all the other tests) */
-    if (base->object && (base->object->type == OB_GPENCIL)) {
+    if (base->object && (base->object->type == OB_GPENCIL_LEGACY)) {
       Object *ob = base->object;
 
       /* firstly, check if object can be included, by the following factors:
@@ -2829,7 +2806,7 @@ static size_t animdata_filter_dopesheet_ob(
     }
 
     /* object data */
-    if ((ob->data) && (ob->type != OB_GPENCIL)) {
+    if ((ob->data) && (ob->type != OB_GPENCIL_LEGACY)) {
       tmp_items += animdata_filter_ds_obdata(ac, &tmp_data, ads, ob, filter_mode);
     }
 
@@ -2839,7 +2816,8 @@ static size_t animdata_filter_dopesheet_ob(
     }
 
     /* grease pencil */
-    if ((ob->type == OB_GPENCIL) && (ob->data) && !(ads->filterflag & ADS_FILTER_NOGPENCIL)) {
+    if ((ob->type == OB_GPENCIL_LEGACY) && (ob->data) &&
+        !(ads->filterflag & ADS_FILTER_NOGPENCIL)) {
       tmp_items += animdata_filter_ds_gpencil(ac, &tmp_data, ads, ob->data, filter_mode);
     }
   }
@@ -3144,7 +3122,7 @@ static bool animdata_filter_base_is_ok(bDopeSheet *ads,
     if (object_mode & OB_MODE_POSE) {
       /* When in pose-mode handle all pose-mode objects.
        * This avoids problems with pose-mode where objects may be unselected,
-       * where a selected bone of an unselected object would be hidden. see: T81922. */
+       * where a selected bone of an unselected object would be hidden. see: #81922. */
       if (!(base->object->mode & object_mode)) {
         return false;
       }
@@ -3476,7 +3454,7 @@ size_t ANIM_animdata_filter(bAnimContext *ac,
         SpaceAction *saction = (SpaceAction *)ac->sl;
         bDopeSheet *ads = (saction) ? &saction->ads : NULL;
 
-        /* specially check for AnimData filter, see T36687. */
+        /* specially check for AnimData filter, see #36687. */
         if (UNLIKELY(filter_mode & ANIMFILTER_ANIMDATA)) {
           /* all channels here are within the same AnimData block, hence this special case */
           if (LIKELY(obact->adt)) {
@@ -3497,7 +3475,7 @@ size_t ANIM_animdata_filter(bAnimContext *ac,
       {
         Key *key = (Key *)data;
 
-        /* specially check for AnimData filter, see T36687. */
+        /* specially check for AnimData filter, see #36687. */
         if (UNLIKELY(filter_mode & ANIMFILTER_ANIMDATA)) {
           /* all channels here are within the same AnimData block, hence this special case */
           if (LIKELY(key->adt)) {

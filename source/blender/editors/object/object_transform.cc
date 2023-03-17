@@ -13,7 +13,7 @@
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
 #include "DNA_collection_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_light_types.h"
 #include "DNA_mesh_types.h"
@@ -25,7 +25,8 @@
 #include "BLI_array.hh"
 #include "BLI_listbase.h"
 #include "BLI_math.h"
-#include "BLI_math_vector.hh"
+#include "BLI_math_matrix.hh"
+#include "BLI_task.hh"
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
@@ -34,15 +35,15 @@
 #include "BKE_curve.h"
 #include "BKE_curves.hh"
 #include "BKE_editmesh.h"
-#include "BKE_gpencil.h"
-#include "BKE_gpencil_geom.h"
+#include "BKE_gpencil_geom_legacy.h"
+#include "BKE_gpencil_legacy.h"
 #include "BKE_idtype.h"
 #include "BKE_lattice.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_mball.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_multires.h"
 #include "BKE_object.h"
 #include "BKE_pointcloud.h"
@@ -647,7 +648,7 @@ static void transform_positions(blender::MutableSpan<blender::float3> positions,
   using namespace blender;
   threading::parallel_for(positions.index_range(), 1024, [&](const IndexRange range) {
     for (float3 &position : positions.slice(range)) {
-      position = matrix * position;
+      position = math::transform_point(matrix, position);
     }
   });
 }
@@ -709,7 +710,7 @@ static int apply_objects_internal(bContext *C,
              OB_CURVES_LEGACY,
              OB_SURF,
              OB_FONT,
-             OB_GPENCIL,
+             OB_GPENCIL_LEGACY,
              OB_CURVES,
              OB_POINTCLOUD)) {
       ID *obdata = static_cast<ID *>(ob->data);
@@ -769,7 +770,7 @@ static int apply_objects_internal(bContext *C,
       }
     }
 
-    if (ob->type == OB_GPENCIL) {
+    if (ob->type == OB_GPENCIL_LEGACY) {
       bGPdata *gpd = static_cast<bGPdata *>(ob->data);
       if (gpd) {
         if (gpd->layers.first) {
@@ -791,7 +792,7 @@ static int apply_objects_internal(bContext *C,
                         "Can't apply to a GP data-block where all layers are parented: Object "
                         "\"%s\", %s \"%s\", aborting",
                         ob->id.name + 2,
-                        BKE_idtype_idcode_to_name(ID_GD),
+                        BKE_idtype_idcode_to_name(ID_GD_LEGACY),
                         gpd->id.name + 2);
             changed = false;
           }
@@ -803,7 +804,7 @@ static int apply_objects_internal(bContext *C,
               RPT_ERROR,
               R"(Can't apply to GP data-block with no layers: Object "%s", %s "%s", aborting)",
               ob->id.name + 2,
-              BKE_idtype_idcode_to_name(ID_GD),
+              BKE_idtype_idcode_to_name(ID_GD_LEGACY),
               gpd->id.name + 2);
         }
       }
@@ -938,14 +939,14 @@ static int apply_objects_internal(bContext *C,
         cu->fsize *= scale;
       }
     }
-    else if (ob->type == OB_GPENCIL) {
+    else if (ob->type == OB_GPENCIL_LEGACY) {
       bGPdata *gpd = static_cast<bGPdata *>(ob->data);
       BKE_gpencil_transform(gpd, mat);
     }
     else if (ob->type == OB_CURVES) {
       Curves &curves = *static_cast<Curves *>(ob->data);
-      blender::bke::CurvesGeometry::wrap(curves.geometry).transform(mat);
-      blender::bke::CurvesGeometry::wrap(curves.geometry).calculate_bezier_auto_handles();
+      curves.geometry.wrap().transform(float4x4(mat));
+      curves.geometry.wrap().calculate_bezier_auto_handles();
     }
     else if (ob->type == OB_POINTCLOUD) {
       PointCloud &pointcloud = *static_cast<PointCloud *>(ob->data);
@@ -1594,7 +1595,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
       lt->id.tag |= LIB_TAG_DOIT;
       do_inverse_offset = true;
     }
-    else if (ob->type == OB_GPENCIL) {
+    else if (ob->type == OB_GPENCIL_LEGACY) {
       bGPdata *gpd = static_cast<bGPdata *>(ob->data);
       float gpcenter[3];
       if (gpd) {
@@ -1674,7 +1675,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
     else if (ob->type == OB_CURVES) {
       using namespace blender;
       Curves &curves_id = *static_cast<Curves *>(ob->data);
-      bke::CurvesGeometry &curves = bke::CurvesGeometry::wrap(curves_id.geometry);
+      bke::CurvesGeometry &curves = curves_id.geometry.wrap();
       if (ELEM(centermode, ORIGIN_TO_CENTER_OF_MASS_SURFACE, ORIGIN_TO_CENTER_OF_MASS_VOLUME) ||
           !ELEM(around, V3D_AROUND_CENTER_BOUNDS, V3D_AROUND_CENTER_MEDIAN)) {
         BKE_report(

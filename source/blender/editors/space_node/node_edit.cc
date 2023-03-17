@@ -329,7 +329,7 @@ void ED_node_composite_job(const bContext *C, bNodeTree *nodetree, Scene *scene_
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
 
-  /* See T32272. */
+  /* See #32272. */
   if (G.is_rendering) {
     return;
   }
@@ -715,7 +715,7 @@ void ED_node_set_active(
     if ((node->flag & NODE_ACTIVE_TEXTURE) && !was_active_texture) {
       /* If active texture changed, free glsl materials. */
       LISTBASE_FOREACH (Material *, ma, &bmain->materials) {
-        if (ma->nodetree && ma->use_nodes && ntreeHasTree(ma->nodetree, ntree)) {
+        if (ma->nodetree && ma->use_nodes && ntreeContainsTree(ma->nodetree, ntree)) {
           GPU_material_free(&ma->gpumaterial);
 
           /* Sync to active texpaint slot, otherwise we can end up painting on a different slot
@@ -734,7 +734,7 @@ void ED_node_set_active(
       }
 
       LISTBASE_FOREACH (World *, wo, &bmain->worlds) {
-        if (wo->nodetree && wo->use_nodes && ntreeHasTree(wo->nodetree, ntree)) {
+        if (wo->nodetree && wo->use_nodes && ntreeContainsTree(wo->nodetree, ntree)) {
           GPU_material_free(&wo->gpumaterial);
         }
       }
@@ -916,8 +916,8 @@ static int node_resize_modal(bContext *C, wmOperator *op, const wmEvent *event)
       WM_event_drag_start_mval(event, region, mval);
       float mx, my;
       UI_view2d_region_to_view(&region->v2d, mval.x, mval.y, &mx, &my);
-      const float dx = (mx - nsw->mxstart) / UI_DPI_FAC;
-      const float dy = (my - nsw->mystart) / UI_DPI_FAC;
+      const float dx = (mx - nsw->mxstart) / UI_SCALE_FAC;
+      const float dy = (my - nsw->mystart) / UI_SCALE_FAC;
 
       if (node) {
         float *pwidth = &node->width;
@@ -941,8 +941,8 @@ static int node_resize_modal(bContext *C, wmOperator *op, const wmEvent *event)
 
         /* Height works the other way round. */
         {
-          float heightmin = UI_DPI_FAC * node->typeinfo->minheight;
-          float heightmax = UI_DPI_FAC * node->typeinfo->maxheight;
+          float heightmin = UI_SCALE_FAC * node->typeinfo->minheight;
+          float heightmax = UI_SCALE_FAC * node->typeinfo->maxheight;
           if (nsw->directions & NODE_RESIZE_TOP) {
             float locmin = nsw->oldlocy - nsw->oldheight;
 
@@ -1129,13 +1129,14 @@ bNodeSocket *node_find_indicated_socket(SpaceNode &snode,
   rctf rect;
   const float size_sock_padded = NODE_SOCKSIZE + 4;
 
-  snode.edittree->ensure_topology_cache();
-  const Span<float2> socket_locations = snode.runtime->all_socket_locations;
-  if (socket_locations.size() != snode.edittree->all_sockets().size()) {
+  bNodeTree &node_tree = *snode.edittree;
+  node_tree.ensure_topology_cache();
+  const Span<float2> socket_locations = node_tree.runtime->all_socket_locations;
+  if (socket_locations.size() != node_tree.all_sockets().size()) {
     /* Sockets haven't been drawn yet, e.g. when the file is currently opening. */
     return nullptr;
   }
-  const Span<bNode *> nodes = snode.edittree->all_nodes();
+  const Span<bNode *> nodes = node_tree.all_nodes();
   if (nodes.is_empty()) {
     return nullptr;
   }

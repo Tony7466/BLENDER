@@ -827,7 +827,7 @@ static void update_data_blocks(BMesh *bm, CustomData *olddata, CustomData *data)
   }
 
   if (oldpool) {
-    /* this should never happen but can when dissolve fails - T28960. */
+    /* this should never happen but can when dissolve fails - #28960. */
     BLI_assert(data->pool != oldpool);
 
     BLI_mempool_destroy(oldpool);
@@ -841,7 +841,7 @@ void BM_data_layer_add(BMesh *bm, CustomData *data, int type)
   /* The pool is now owned by `olddata` and must not be shared. */
   data->pool = NULL;
 
-  CustomData_add_layer(data, type, CD_SET_DEFAULT, NULL, 0);
+  CustomData_add_layer(data, type, CD_SET_DEFAULT, 0);
 
   update_data_blocks(bm, &olddata, data);
   if (olddata.layers) {
@@ -856,7 +856,7 @@ void BM_data_layer_add_named(BMesh *bm, CustomData *data, int type, const char *
   /* The pool is now owned by `olddata` and must not be shared. */
   data->pool = NULL;
 
-  CustomData_add_layer_named(data, type, CD_SET_DEFAULT, NULL, 0, name);
+  CustomData_add_layer_named(data, type, CD_SET_DEFAULT, 0, name);
 
   update_data_blocks(bm, &olddata, data);
   if (olddata.layers) {

@@ -13,6 +13,8 @@
 
 #include "BLI_math.h"
 
+#include "BLT_translation.h"
+
 #include "BKE_customdata.h"
 
 #include "RNA_define.h"
@@ -55,7 +57,7 @@ const EnumPropertyItem rna_enum_ramp_blend_items[] = {
 
 #  include "MEM_guardedalloc.h"
 
-#  include "DNA_gpencil_types.h"
+#  include "DNA_gpencil_legacy_types.h"
 #  include "DNA_node_types.h"
 #  include "DNA_object_types.h"
 #  include "DNA_screen_types.h"
@@ -63,7 +65,7 @@ const EnumPropertyItem rna_enum_ramp_blend_items[] = {
 
 #  include "BKE_colorband.h"
 #  include "BKE_context.h"
-#  include "BKE_gpencil.h"
+#  include "BKE_gpencil_legacy.h"
 #  include "BKE_main.h"
 #  include "BKE_material.h"
 #  include "BKE_node.h"
@@ -108,7 +110,7 @@ static void rna_MaterialGpencil_update(Main *bmain, Scene *scene, PointerRNA *pt
 
   /* Need set all caches as dirty. */
   for (Object *ob = bmain->objects.first; ob; ob = ob->id.next) {
-    if (ob->type == OB_GPENCIL) {
+    if (ob->type == OB_GPENCIL_LEGACY) {
       bGPdata *gpd = (bGPdata *)ob->data;
       DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
     }
@@ -530,6 +532,7 @@ static void rna_def_material_greasepencil(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, NULL, "mix_factor");
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_ui_text(prop, "Mix", "Mix Factor");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_GPENCIL);
   RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_update");
 
   /* Stroke Mix factor */
@@ -537,6 +540,7 @@ static void rna_def_material_greasepencil(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, NULL, "mix_stroke_factor");
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_ui_text(prop, "Mix", "Mix Stroke Factor");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_GPENCIL);
   RNA_def_property_update(prop, NC_GPENCIL | ND_SHADING, "rna_MaterialGpencil_update");
 
   /* Texture angle */

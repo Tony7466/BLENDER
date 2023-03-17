@@ -52,6 +52,7 @@ set(SRC
   intern/array_utils.cc
   intern/astar.c
   intern/atomic_disjoint_set.cc
+  intern/bit_span.cc
   intern/bitmap.c
   intern/bitmap_draw_2d.c
   intern/boxpack_2d.c
@@ -177,6 +178,8 @@ set(SRC
   BLI_assert.h
   BLI_astar.h
   BLI_atomic_disjoint_set.hh
+  BLI_bit_ref.hh
+  BLI_bit_span.hh
   BLI_bit_vector.hh
   BLI_bitmap.h
   BLI_bitmap_draw_2d.h
@@ -218,8 +221,6 @@ set(SRC
   BLI_fileops.hh
   BLI_fileops_types.h
   BLI_filereader.h
-  BLI_float3x3.hh
-  BLI_float4x4.hh
   BLI_fnmatch.h
   BLI_function_ref.hh
   BLI_generic_array.hh
@@ -261,28 +262,40 @@ set(SRC
   BLI_map.hh
   BLI_map_slots.hh
   BLI_math.h
+  BLI_math_angle_types.hh
+  BLI_math_axis_angle.hh
+  BLI_math_axis_angle_types.hh
   BLI_math_base.h
   BLI_math_base.hh
   BLI_math_base_safe.h
+  BLI_math_basis_types.hh
   BLI_math_bits.h
   BLI_math_boolean.hh
   BLI_math_color.h
   BLI_math_color.hh
   BLI_math_color_blend.h
+  BLI_math_euler.hh
+  BLI_math_euler_types.hh
   BLI_math_geom.h
   BLI_math_inline.h
   BLI_math_interp.h
   BLI_math_matrix.h
+  BLI_math_matrix.hh
+  BLI_math_matrix_types.hh
   BLI_math_mpq.hh
+  BLI_math_quaternion.hh
+  BLI_math_quaternion_types.hh
   BLI_math_rotation.h
+  BLI_math_rotation.hh
   BLI_math_rotation_legacy.hh
+  BLI_math_rotation_types.hh
   BLI_math_solvers.h
   BLI_math_statistics.h
   BLI_math_time.h
-  BLI_math_vector_mpq_types.hh
-  BLI_math_vector_types.hh
   BLI_math_vector.h
   BLI_math_vector.hh
+  BLI_math_vector_mpq_types.hh
+  BLI_math_vector_types.hh
   BLI_memarena.h
   BLI_memblock.h
   BLI_memiter.h
@@ -455,6 +468,8 @@ if(WITH_GTESTS)
     tests/BLI_array_store_test.cc
     tests/BLI_array_test.cc
     tests/BLI_array_utils_test.cc
+    tests/BLI_bit_ref_test.cc
+    tests/BLI_bit_span_test.cc
     tests/BLI_bit_vector_test.cc
     tests/BLI_bitmap_test.cc
     tests/BLI_bounds_test.cc
@@ -465,7 +480,6 @@ if(WITH_GTESTS)
     tests/BLI_edgehash_test.cc
     tests/BLI_expr_pylike_eval_test.cc
     tests/BLI_fileops_test.cc
-    tests/BLI_float3x3_test.cc
     tests/BLI_function_ref_test.cc
     tests/BLI_generic_array_test.cc
     tests/BLI_generic_span_test.cc
@@ -489,13 +503,14 @@ if(WITH_GTESTS)
     tests/BLI_math_bits_test.cc
     tests/BLI_math_color_test.cc
     tests/BLI_math_geom_test.cc
-    tests/BLI_math_matrix_types_test.cc
     tests/BLI_math_matrix_test.cc
+    tests/BLI_math_matrix_types_test.cc
     tests/BLI_math_rotation_test.cc
+    tests/BLI_math_rotation_types_test.cc
     tests/BLI_math_solvers_test.cc
     tests/BLI_math_time_test.cc
-    tests/BLI_math_vector_types_test.cc
     tests/BLI_math_vector_test.cc
+    tests/BLI_math_vector_types_test.cc
     tests/BLI_memiter_test.cc
     tests/BLI_memory_utils_test.cc
     tests/BLI_mesh_boolean_test.cc

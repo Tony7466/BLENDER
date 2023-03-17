@@ -48,6 +48,7 @@ struct bPoseChannel;
 struct bScreen;
 struct rctf;
 struct rcti;
+struct wmEvent;
 struct wmGizmo;
 struct wmWindow;
 struct wmWindowManager;
@@ -245,7 +246,7 @@ typedef enum {
    * Clamp the edge within the viewport limits defined by
    * #V3D_PROJ_TEST_CLIP_WIN, #V3D_PROJ_TEST_CLIP_NEAR & #V3D_PROJ_TEST_CLIP_FAR.
    * This resolves the problem of a visible edge having one of it's vertices
-   * behind the viewport. See: T32214.
+   * behind the viewport. See: #32214.
    *
    * This is not default behavior as it may be important for the screen-space location
    * of an edges vertex to represent that vertices location (instead of a location along the edge).
@@ -760,7 +761,7 @@ bool ED_view3d_viewplane_get(struct Depsgraph *depsgraph,
                              float *r_pixsize);
 
 /**
- * Use instead of: `GPU_polygon_offset(rv3d->dist, ...)` see bug T37727.
+ * Use instead of: `GPU_polygon_offset(rv3d->dist, ...)` see bug #37727.
  */
 void ED_view3d_polygon_offset(const struct RegionView3D *rv3d, float dist);
 
@@ -862,6 +863,20 @@ void ED_view3d_backbuf_depth_validate(struct ViewContext *vc);
 int ED_view3d_backbuf_sample_size_clamp(struct ARegion *region, float dist);
 
 void ED_view3d_select_id_validate(struct ViewContext *vc);
+
+/** Check if the last auto-dist can be used. */
+bool ED_view3d_autodist_last_check(struct wmWindow *win, const struct wmEvent *event);
+/**
+ * \return true when `r_ofs` is set.
+ * \warning #ED_view3d_autodist_last_check should be called first to ensure the data is available.
+ */
+bool ED_view3d_autodist_last_get(struct wmWindow *win, float r_ofs[3]);
+void ED_view3d_autodist_last_set(struct wmWindow *win,
+                                 const struct wmEvent *event,
+                                 const float ofs[3],
+                                 const bool has_depth);
+/** Clear and free auto-dist data. */
+void ED_view3d_autodist_last_clear(struct wmWindow *win);
 
 /**
  * Get the world-space 3d location from a screen-space 2d point.

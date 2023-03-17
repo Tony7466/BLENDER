@@ -167,6 +167,7 @@ typedef enum {
   PBVH_TopologyUpdated = 1 << 17, /* Used internally by pbvh_bmesh.c */
 
 } PBVHNodeFlags;
+ENUM_OPERATORS(PBVHNodeFlags, PBVH_TopologyUpdated);
 
 typedef struct PBVHFrustumPlanes {
   float (*planes)[4];
@@ -287,7 +288,7 @@ PBVH *BKE_pbvh_new(PBVHType type);
  */
 void BKE_pbvh_build_mesh(PBVH *pbvh,
                          struct Mesh *mesh,
-                         const struct MPoly *mpoly,
+                         const struct MPoly *polys,
                          const struct MLoop *mloop,
                          float (*vert_positions)[3],
                          int totvert,
@@ -734,7 +735,7 @@ typedef struct PBVHFaceIter {
   int cd_hide_poly_, cd_face_set_;
   bool *hide_poly_;
   int *face_sets_;
-  const struct MPoly *mpoly_;
+  const struct MPoly *polys_;
   const struct MLoopTri *looptri_;
   const struct MLoop *mloop_;
   int prim_index_;
@@ -774,7 +775,7 @@ void BKE_pbvh_node_get_bm_orco_data(PBVHNode *node,
 /**
  * \note doing a full search on all vertices here seems expensive,
  * however this is important to avoid having to recalculate bound-box & sync the buffers to the
- * GPU (which is far more expensive!) See: T47232.
+ * GPU (which is far more expensive!) See: #47232.
  */
 bool BKE_pbvh_node_has_vert_with_normal_update_tag(PBVH *pbvh, PBVHNode *node);
 
@@ -782,10 +783,8 @@ bool BKE_pbvh_node_has_vert_with_normal_update_tag(PBVH *pbvh, PBVHNode *node);
 // void BKE_pbvh_node_BB_expand(PBVHNode *node, float co[3]);
 
 bool pbvh_has_mask(const PBVH *pbvh);
-void pbvh_show_mask_set(PBVH *pbvh, bool show_mask);
 
 bool pbvh_has_face_sets(PBVH *pbvh);
-void pbvh_show_face_sets_set(PBVH *pbvh, bool show_face_sets);
 
 /* Parallelization. */
 

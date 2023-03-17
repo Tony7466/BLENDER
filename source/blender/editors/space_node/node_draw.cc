@@ -51,6 +51,7 @@
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_matrix.h"
+#include "GPU_shader_shared.h"
 #include "GPU_state.h"
 #include "GPU_viewport.h"
 
@@ -180,6 +181,23 @@ void ED_node_tag_update_id(ID *id)
 
 namespace blender::ed::space_node {
 
+static const char *node_socket_get_translation_context(const bNodeSocket &socket)
+{
+  /* The node is not explicitly defined. */
+  if (socket.runtime->declaration == nullptr) {
+    return nullptr;
+  }
+
+  blender::StringRefNull translation_context = socket.runtime->declaration->translation_context;
+
+  /* Default context. */
+  if (translation_context.is_empty()) {
+    return nullptr;
+  }
+
+  return translation_context.data();
+}
+
 static void node_socket_add_tooltip_in_node_editor(const bNodeTree &ntree,
                                                    const bNodeSocket &sock,
                                                    uiLayout &layout);
@@ -267,6 +285,9 @@ void node_sort(bNodeTree &ntree)
     ntree.runtime->nodes_by_id.add_new(sort_nodes[i]);
     sort_nodes[i]->runtime->index_in_tree = i;
   }
+
+  /* Nodes have been reordered; the socket locations are invalid until the node tree is redrawn. */
+  ntree.runtime->all_socket_locations.clear();
 }
 
 static Array<uiBlock *> node_uiblocks_init(const bContext &C, const Span<bNode *> nodes)
@@ -287,7 +308,7 @@ float2 node_to_view(const bNode &node, const float2 &co)
 {
   float2 result;
   nodeToView(&node, co.x, co.y, &result.x, &result.y);
-  return result * UI_DPI_FAC;
+  return result * UI_SCALE_FAC;
 }
 
 void node_to_updated_rect(const bNode &node, rctf &r_rect)
@@ -303,8 +324,8 @@ void node_to_updated_rect(const bNode &node, rctf &r_rect)
 
 float2 node_from_view(const bNode &node, const float2 &co)
 {
-  const float x = co.x / UI_DPI_FAC;
-  const float y = co.y / UI_DPI_FAC;
+  const float x = co.x / UI_SCALE_FAC;
+  const float y = co.y / UI_SCALE_FAC;
   float2 result;
   nodeFromView(&node, x, y, &result.x, &result.y);
   return result;
@@ -376,8 +397,14 @@ static void node_update_basis(const bContext &C,
     /* Align output buttons to the right. */
     uiLayout *row = uiLayoutRow(layout, true);
     uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
+
     const char *socket_label = nodeSocketLabel(socket);
-    socket->typeinfo->draw((bContext *)&C, row, &sockptr, &nodeptr, IFACE_(socket_label));
+    const char *socket_translation_context = node_socket_get_translation_context(*socket);
+    socket->typeinfo->draw((bContext *)&C,
+                           row,
+                           &sockptr,
+                           &nodeptr,
+                           CTX_IFACE_(socket_translation_context, socket_label));
 
     node_socket_add_tooltip_in_node_editor(ntree, *socket, *row);
 
@@ -510,7 +537,12 @@ static void node_update_basis(const bContext &C,
     uiLayout *row = uiLayoutRow(layout, true);
 
     const char *socket_label = nodeSocketLabel(socket);
-    socket->typeinfo->draw((bContext *)&C, row, &sockptr, &nodeptr, IFACE_(socket_label));
+    const char *socket_translation_context = node_socket_get_translation_context(*socket);
+    socket->typeinfo->draw((bContext *)&C,
+                           row,
+                           &sockptr,
+                           &nodeptr,
+                           CTX_IFACE_(socket_translation_context, socket_label));
 
     node_socket_add_tooltip_in_node_editor(ntree, *socket, *row);
 
@@ -736,10 +768,10 @@ static void node_socket_draw_multi_input(const float color[4],
                                          const float2 location)
 {
   /* The other sockets are drawn with the keyframe shader. There, the outline has a base thickness
-   * that can be varied but always scales with the size the socket is drawn at. Using `U.dpi_fac`
-   * has the same effect here. It scales the outline correctly across different screen DPI's
-   * and UI scales without being affected by the 'line-width'. */
-  const float outline_width = NODE_SOCK_OUTLINE_SCALE * U.dpi_fac;
+   * that can be varied but always scales with the size the socket is drawn at. Using
+   * `UI_SCALE_FAC` has the same effect here. It scales the outline correctly across different
+   * screen DPI's and UI scales without being affected by the 'line-width'. */
+  const float outline_width = NODE_SOCK_OUTLINE_SCALE * UI_SCALE_FAC;
 
   /* UI_draw_roundbox draws the outline on the outer side, so compensate for the outline width. */
   const rctf rect = {
@@ -909,7 +941,7 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
   }
 
   auto to_string = [](int value) {
-    char str[16];
+    char str[BLI_STR_FORMAT_INT32_GROUPED_SIZE];
     BLI_str_format_int_grouped(str, value);
     return std::string(str);
   };
@@ -1989,7 +2021,7 @@ static void node_draw_extra_info_row(const bNode &node,
                                      const int row,
                                      const NodeExtraInfoRow &extra_info_row)
 {
-  const float but_icon_left = rect.xmin + 6.0f * U.dpi_fac;
+  const float but_icon_left = rect.xmin + 6.0f * UI_SCALE_FAC;
   const float but_icon_width = NODE_HEADER_ICON_SIZE * 0.8f;
   const float but_icon_right = but_icon_left + but_icon_width;
 
@@ -1999,7 +2031,7 @@ static void node_draw_extra_info_row(const bNode &node,
                                  0,
                                  extra_info_row.icon,
                                  int(but_icon_left),
-                                 int(rect.ymin + row * (20.0f * U.dpi_fac)),
+                                 int(rect.ymin + row * (20.0f * UI_SCALE_FAC)),
                                  but_icon_width,
                                  UI_UNIT_Y,
                                  nullptr,
@@ -2016,7 +2048,7 @@ static void node_draw_extra_info_row(const bNode &node,
   }
   UI_block_emboss_set(&block, UI_EMBOSS);
 
-  const float but_text_left = but_icon_right + 6.0f * U.dpi_fac;
+  const float but_text_left = but_icon_right + 6.0f * UI_SCALE_FAC;
   const float but_text_right = rect.xmax;
   const float but_text_width = but_text_right - but_text_left;
 
@@ -2025,7 +2057,7 @@ static void node_draw_extra_info_row(const bNode &node,
                              0,
                              extra_info_row.text.c_str(),
                              int(but_text_left),
-                             int(rect.ymin + row * (20.0f * U.dpi_fac)),
+                             int(rect.ymin + row * (20.0f * UI_SCALE_FAC)),
                              short(but_text_width),
                              short(NODE_DY),
                              nullptr,
@@ -2055,19 +2087,19 @@ static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
   float color[4];
   rctf extra_info_rect;
 
-  const float width = (node.width - 6.0f) * U.dpi_fac;
+  const float width = (node.width - 6.0f) * UI_SCALE_FAC;
 
   if (node.is_frame()) {
     extra_info_rect.xmin = rct.xmin;
-    extra_info_rect.xmax = rct.xmin + 95.0f * U.dpi_fac;
-    extra_info_rect.ymin = rct.ymin + 2.0f * U.dpi_fac;
-    extra_info_rect.ymax = rct.ymin + 2.0f * U.dpi_fac;
+    extra_info_rect.xmax = rct.xmin + 95.0f * UI_SCALE_FAC;
+    extra_info_rect.ymin = rct.ymin + 2.0f * UI_SCALE_FAC;
+    extra_info_rect.ymax = rct.ymin + 2.0f * UI_SCALE_FAC;
   }
   else {
-    extra_info_rect.xmin = rct.xmin + 3.0f * U.dpi_fac;
+    extra_info_rect.xmin = rct.xmin + 3.0f * UI_SCALE_FAC;
     extra_info_rect.xmax = rct.xmin + width;
     extra_info_rect.ymin = rct.ymax;
-    extra_info_rect.ymax = rct.ymax + extra_info_rows.size() * (20.0f * U.dpi_fac);
+    extra_info_rect.ymax = rct.ymax + extra_info_rows.size() * (20.0f * UI_SCALE_FAC);
 
     if (node.flag & NODE_MUTED) {
       UI_GetThemeColorBlend4f(TH_BACK, TH_NODE, 0.2f, color);
@@ -2083,10 +2115,11 @@ static void node_draw_extra_info_panel(TreeDrawContext &tree_draw_ctx,
 
     /* Draw outline. */
     const float outline_width = 1.0f;
-    extra_info_rect.xmin = rct.xmin + 3.0f * U.dpi_fac - outline_width;
+    extra_info_rect.xmin = rct.xmin + 3.0f * UI_SCALE_FAC - outline_width;
     extra_info_rect.xmax = rct.xmin + width + outline_width;
     extra_info_rect.ymin = rct.ymax - outline_width;
-    extra_info_rect.ymax = rct.ymax + outline_width + extra_info_rows.size() * (20.0f * U.dpi_fac);
+    extra_info_rect.ymax = rct.ymax + outline_width +
+                           extra_info_rows.size() * (20.0f * UI_SCALE_FAC);
 
     UI_GetThemeColorBlendShade4fv(TH_BACK, TH_NODE, 0.4f, -20, color);
     UI_draw_roundbox_corner_set(
@@ -2296,7 +2329,7 @@ static void node_draw_basis(const bContext &C,
                         showname,
                         int(rct.xmin + NODE_MARGIN_X + 0.4f),
                         int(rct.ymax - NODE_DY),
-                        short(iconofs - rct.xmin - (18.0f * U.dpi_fac)),
+                        short(iconofs - rct.xmin - (18.0f * UI_SCALE_FAC)),
                         short(NODE_DY),
                         nullptr,
                         0,
@@ -2528,7 +2561,7 @@ static void node_draw_hidden(const bContext &C,
                         showname,
                         round_fl_to_int(rct.xmin + NODE_MARGIN_X),
                         round_fl_to_int(centy - NODE_DY * 0.5f),
-                        short(BLI_rctf_size_x(&rct) - ((18.0f + 12.0f) * U.dpi_fac)),
+                        short(BLI_rctf_size_x(&rct) - ((18.0f + 12.0f) * UI_SCALE_FAC)),
                         short(NODE_DY),
                         nullptr,
                         0,
@@ -2684,13 +2717,26 @@ static void count_multi_input_socket_links(bNodeTree &ntree, SpaceNode &snode)
   }
 }
 
+static float frame_node_label_height(const NodeFrame &frame_data)
+{
+  return frame_data.label_size * UI_SCALE_FAC;
+}
+
+#define NODE_FRAME_MARGIN (1.5f * U.widget_unit)
+
 /* XXX Does a bounding box update by iterating over all children.
  * Not ideal to do this in every draw call, but doing as transform callback doesn't work,
  * since the child node totr rects are not updated properly at that point. */
 static void frame_node_prepare_for_draw(bNode &node, Span<bNode *> nodes)
 {
-  const float margin = 1.5f * U.widget_unit;
   NodeFrame *data = (NodeFrame *)node.storage;
+
+  const float margin = NODE_FRAME_MARGIN;
+  const float has_label = node.label[0] != '\0';
+
+  const float label_height = frame_node_label_height(*data);
+  /* Add an additional 25 % to account for the descenders. This works well in most cases. */
+  const float margin_top = 0.5f * margin + (has_label ? 1.25f * label_height : 0.5f * margin);
 
   /* Initialize rect from current frame size. */
   rctf rect;
@@ -2711,7 +2757,7 @@ static void frame_node_prepare_for_draw(bNode &node, Span<bNode *> nodes)
     noderect.xmin -= margin;
     noderect.xmax += margin;
     noderect.ymin -= margin;
-    noderect.ymax += margin;
+    noderect.ymax += margin_top;
 
     /* First child initializes frame. */
     if (bbinit) {
@@ -2809,8 +2855,7 @@ static void frame_node_draw_label(TreeDrawContext &tree_draw_ctx,
 
   BLF_enable(fontid, BLF_ASPECT);
   BLF_aspect(fontid, aspect, aspect, 1.0f);
-  /* Clamp. Otherwise it can suck up a LOT of memory. */
-  BLF_size(fontid, MIN2(24.0f, font_size) * U.dpi_fac);
+  BLF_size(fontid, font_size * UI_SCALE_FAC);
 
   /* Title color. */
   int color_id = node_get_colorid(tree_draw_ctx, node);
@@ -2818,21 +2863,18 @@ static void frame_node_draw_label(TreeDrawContext &tree_draw_ctx,
   UI_GetThemeColorBlendShade3ubv(TH_TEXT, color_id, 0.4f, 10, color);
   BLF_color3ubv(fontid, color);
 
-  const float margin = float(NODE_DY / 4);
+  const float margin = NODE_FRAME_MARGIN;
   const float width = BLF_width(fontid, label, sizeof(label));
-  const float ascender = BLF_ascender(fontid);
-  const int label_height = ((margin / aspect) + (ascender * aspect));
+  const int label_height = frame_node_label_height(*data);
 
-  /* 'x' doesn't need aspect correction */
   const rctf &rct = node.runtime->totr;
-  /* XXX a bit hacky, should use separate align values for x and y. */
-  float x = BLI_rctf_cent_x(&rct) - (0.5f * width);
-  float y = rct.ymax - label_height;
+  const float label_x = BLI_rctf_cent_x(&rct) - (0.5f * width);
+  const float label_y = rct.ymax - label_height - (0.5f * margin);
 
-  /* label */
+  /* Label. */
   const bool has_label = node.label[0] != '\0';
   if (has_label) {
-    BLF_position(fontid, x, y, 0);
+    BLF_position(fontid, label_x, label_y, 0);
     BLF_draw(fontid, label, sizeof(label));
   }
 
@@ -2841,21 +2883,15 @@ static void frame_node_draw_label(TreeDrawContext &tree_draw_ctx,
     const Text *text = (const Text *)node.id;
     const int line_height_max = BLF_height_max(fontid);
     const float line_spacing = (line_height_max * aspect);
-    const float line_width = (BLI_rctf_size_x(&rct) - margin) / aspect;
+    const float line_width = (BLI_rctf_size_x(&rct) - 2 * margin) / aspect;
 
-    /* 'x' doesn't need aspect correction. */
-    x = rct.xmin + margin;
-    y = rct.ymax - label_height - (has_label ? line_spacing : 0);
+    const float x = rct.xmin + margin;
+    float y = rct.ymax - label_height - (has_label ? line_spacing + margin : 0);
 
-    int y_min = y + ((margin * 2) - (y - rct.ymin));
+    const int y_min = rct.ymin + margin;
 
     BLF_enable(fontid, BLF_CLIPPING | BLF_WORD_WRAP);
-    BLF_clipping(fontid,
-                 rct.xmin,
-                 /* Round to avoid clipping half-way through a line. */
-                 y - (floorf(((y - rct.ymin) - (margin * 2)) / line_spacing) * line_spacing),
-                 rct.xmin + line_width,
-                 rct.ymax);
+    BLF_clipping(fontid, rct.xmin, rct.ymin + margin, rct.xmax, rct.ymax);
 
     BLF_wordwrap(fontid, line_width);
 
@@ -3083,7 +3119,7 @@ static void draw_tree_path(const bContext &C, ARegion &region)
   const rcti *rect = ED_region_visible_rect(&region);
 
   const uiStyle *style = UI_style_get_dpi();
-  const float padding_x = 16 * UI_DPI_FAC;
+  const float padding_x = 16 * UI_SCALE_FAC;
   const int x = rect->xmin + padding_x;
   const int y = region.winy - UI_UNIT_Y * 0.6f;
   const int width = BLI_rcti_size_x(rect) - 2 * padding_x;
@@ -3177,16 +3213,16 @@ static void draw_nodetree(const bContext &C,
   else if (ntree.type == NTREE_COMPOSIT) {
     tree_draw_ctx.used_by_realtime_compositor = realtime_compositor_is_in_use(C);
   }
-  snode->runtime->all_socket_locations.reinitialize(ntree.all_sockets().size());
+  ntree.runtime->all_socket_locations.reinitialize(ntree.all_sockets().size());
 
   node_update_nodetree(
-      C, tree_draw_ctx, ntree, nodes, blocks, snode->runtime->all_socket_locations);
+      C, tree_draw_ctx, ntree, nodes, blocks, ntree.runtime->all_socket_locations);
   node_draw_nodetree(C,
                      tree_draw_ctx,
                      region,
                      *snode,
                      ntree,
-                     snode->runtime->all_socket_locations,
+                     ntree.runtime->all_socket_locations,
                      nodes,
                      blocks,
                      parent_key);
@@ -3237,8 +3273,8 @@ void node_draw_space(const bContext &C, ARegion &region)
                            win->eventstate->xy[1] - region.winrct.ymin,
                            &snode.runtime->cursor[0],
                            &snode.runtime->cursor[1]);
-  snode.runtime->cursor[0] /= UI_DPI_FAC;
-  snode.runtime->cursor[1] /= UI_DPI_FAC;
+  snode.runtime->cursor[0] /= UI_SCALE_FAC;
+  snode.runtime->cursor[1] /= UI_SCALE_FAC;
 
   ED_region_draw_cb_draw(&C, &region, REGION_DRAW_PRE_VIEW);
 

@@ -18,7 +18,7 @@
 #include "DNA_collection_types.h"
 #include "DNA_curveprofile_types.h"
 #include "DNA_defaults.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_linestyle_types.h"
 #include "DNA_mask_types.h"
 #include "DNA_material_types.h"
@@ -65,7 +65,7 @@
 #include "BKE_effect.h"
 #include "BKE_fcurve.h"
 #include "BKE_freestyle.h"
-#include "BKE_gpencil.h"
+#include "BKE_gpencil_legacy.h"
 #include "BKE_icons.h"
 #include "BKE_idprop.h"
 #include "BKE_idtype.h"
@@ -2588,7 +2588,7 @@ static bool check_rendered_viewport_visible(Main *bmain)
   return false;
 }
 
-/* TODO(@campbellbarton): shouldn't we be able to use 'DEG_get_view_layer' here?
+/* TODO(@ideasman42): shouldn't we be able to use 'DEG_get_view_layer' here?
  * Currently this is nullptr on load, so don't. */
 static void prepare_mesh_for_viewport_render(Main *bmain,
                                              const Scene *scene,
@@ -3083,7 +3083,7 @@ double BKE_scene_unit_scale(const UnitSettings *unit, const int unit_type, doubl
       return value * pow(unit->scale_length, 3);
     case B_UNIT_MASS:
       return value * pow(unit->scale_length, 3);
-    case B_UNIT_CAMERA: /* *Do not* use scene's unit scale for camera focal lens! See T42026. */
+    case B_UNIT_CAMERA: /* *Do not* use scene's unit scale for camera focal lens! See #42026. */
     default:
       return value;
   }

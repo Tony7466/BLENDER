@@ -829,7 +829,7 @@ PyObject *BPY_app_translations_struct(void)
 {
   PyObject *ret;
 
-  /* Let's finalize our contexts structseq definition! */
+  /* Let's finalize our contexts `PyStructSequence` definition! */
   {
     BLT_i18n_contexts_descriptor *ctxt;
     PyStructSequence_Field *desc;
@@ -854,7 +854,7 @@ PyObject *BPY_app_translations_struct(void)
 
   /* prevent user from creating new instances */
   BlenderAppTranslationsType.tp_new = NULL;
-  /* without this we can't do set(sys.modules) T29635. */
+  /* without this we can't do set(sys.modules) #29635. */
   BlenderAppTranslationsType.tp_hash = (hashfunc)_Py_HashPointer;
 
   return ret;
@@ -862,7 +862,7 @@ PyObject *BPY_app_translations_struct(void)
 
 void BPY_app_translations_end(void)
 {
-  /* In case the object remains in a module's name-space, see T44127. */
+  /* In case the object remains in a module's name-space, see #44127. */
 #ifdef WITH_INTERNATIONAL
   _clear_translations_cache();
 #endif

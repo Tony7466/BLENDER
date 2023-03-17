@@ -22,7 +22,7 @@
 #include "BKE_customdata.h"
 #include "BKE_editmesh.h"
 #include "BKE_global.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 
 #include "intern/bmesh_private.h"
 
@@ -1053,11 +1053,11 @@ static void bm_mesh_loops_calc_normals_for_vert_without_clnors(
 }
 
 /**
- * BMesh version of BKE_mesh_normals_loop_split() in `mesh_evaluate.cc`
+ * BMesh version of bke::mesh::normals_calc_loop() in `mesh_evaluate.cc`
  * Will use first clnors_data array, and fallback to cd_loop_clnors_offset
  * (use nullptr and -1 to not use clnors).
  *
- * \note This sets #BM_ELEM_TAG which is used in tool code (e.g. T84426).
+ * \note This sets #BM_ELEM_TAG which is used in tool code (e.g. #84426).
  * we could add a low-level API flag for this, see #BM_ELEM_API_FLAG_ENABLE and friends.
  */
 static void bm_mesh_loops_calc_normals__single_threaded(BMesh *bm,
@@ -1404,7 +1404,7 @@ static bool bm_mesh_loops_split_lnor_fans(BMesh *bm,
       /* Notes:
        * * In case of mono-loop smooth fan, we have nothing to do.
        * * Loops in this linklist are ordered (in reversed order compared to how they were
-       *   discovered by BKE_mesh_normals_loop_split(), but this is not a problem).
+       *   discovered by bke::mesh::normals_calc_loop(), but this is not a problem).
        *   Which means if we find a mismatching clnor,
        *   we know all remaining loops will have to be in a new, different smooth fan/lnor space.
        * * In smooth fan case, we compare each clnor against a ref one,
@@ -1449,7 +1449,7 @@ static bool bm_mesh_loops_split_lnor_fans(BMesh *bm,
       /* We also have to check between last and first loops,
        * otherwise we may miss some sharp edges here!
        * This is just a simplified version of above while loop.
-       * See T45984. */
+       * See #45984. */
       loops = lnors_spacearr->lspacearr[i]->loops;
       if (loops && org_nor) {
         BMLoop *ml = static_cast<BMLoop *>(loops->link);

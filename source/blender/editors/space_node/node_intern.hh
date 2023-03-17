@@ -44,17 +44,23 @@ struct bNodeLinkDrag {
   Vector<bNodeLink> links;
   eNodeSocketInOut in_out;
 
-  /** Draw handler for the "+" icon when dragging a link in empty space. */
+  /** Draw handler for the tooltip icon when dragging a link in empty space. */
   void *draw_handle;
 
   /** Temporarily stores the last picked link from multi-input socket operator. */
   bNodeLink *last_picked_multi_input_socket_link;
 
   /**
-   * Temporarily stores the last hovered socket for multi-input socket operator.
+   * Temporarily stores the last hovered node for multi-input socket operator.
    * Store it to recalculate sorting after it is no longer hovered.
    */
   bNode *last_node_hovered_while_dragging_a_link;
+
+  /**
+   * Temporarily stores the currently hovered socket for link swapping to allow reliably swap links
+   * even when dragging multiple links at once. `nullptr`, when no socket is hovered.
+   */
+  bNodeSocket *hovered_socket;
 
   /* The cursor position, used for drawing a + icon when dragging a node link. */
   std::array<int, 2> cursor;
@@ -66,17 +72,13 @@ struct bNodeLinkDrag {
   /** The number of links connected to the #start_socket when the drag started. */
   int start_link_count;
 
+  bool swap_links = false;
+
   /* Data for edge panning */
   View2DEdgePanData pan_data;
 };
 
 struct SpaceNode_Runtime {
-  /**
-   * The location of all sockets in the tree, calculated while drawing the nodes.
-   * To be indexed with #bNodeSocket::index_in_tree().
-   */
-  Vector<float2> all_socket_locations;
-
   float aspect;
 
   /** Mouse position for drawing socket-less links and adding nodes. */
@@ -127,8 +129,8 @@ ENUM_OPERATORS(NodeResizeDirection, NODE_RESIZE_LEFT);
 #define NODE_DYS (U.widget_unit / 2)
 #define NODE_DY U.widget_unit
 #define NODE_SOCKDY (0.1f * U.widget_unit)
-#define NODE_WIDTH(node) (node.width * UI_DPI_FAC)
-#define NODE_HEIGHT(node) (node.height * UI_DPI_FAC)
+#define NODE_WIDTH(node) (node.width * UI_SCALE_FAC)
+#define NODE_HEIGHT(node) (node.height * UI_SCALE_FAC)
 #define NODE_MARGIN_X (1.2f * U.widget_unit)
 #define NODE_SOCKSIZE (0.25f * U.widget_unit)
 #define NODE_SOCKSIZE_DRAW_MULIPLIER 2.25f
@@ -300,6 +302,8 @@ void NODE_OT_detach(wmOperatorType *ot);
 void NODE_OT_link_viewer(wmOperatorType *ot);
 
 void NODE_OT_insert_offset(wmOperatorType *ot);
+
+struct wmKeyMap *node_link_modal_keymap(struct wmKeyConfig *keyconf);
 
 /* node_edit.cc */
 

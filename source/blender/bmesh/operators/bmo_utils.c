@@ -147,6 +147,22 @@ void bmo_reverse_faces_exec(BMesh *bm, BMOperator *op)
 #define SEL_FLAG 1
 #define SEL_ORIG 2
 
+void bmo_flip_quad_tessellation_exec(BMesh *bm, BMOperator *op)
+{
+  BMOIter siter;
+  BMFace *f;
+  bool changed = false;
+  BMO_ITER (f, &siter, op->slots_in, "faces", BM_FACE) {
+    if (f->len == 4) {
+      f->l_first = f->l_first->next;
+      changed = true;
+    }
+  }
+  if (changed) {
+    bm->elem_index_dirty |= BM_LOOP;
+  }
+}
+
 static void bmo_face_flag_set_flush(BMesh *bm, BMFace *f, const short oflag, const bool value)
 {
   BMLoop *l_iter;
@@ -557,27 +573,28 @@ void bmo_reverse_uvs_exec(BMesh *bm, BMOperator *op)
 /**************************************************************************** *
  * Cycle colors for a face
  **************************************************************************** */
+
 static void bmo_get_loop_color_ref(BMesh *bm,
                                    int index,
                                    int *r_cd_color_offset,
                                    int *r_cd_color_type)
 {
   Mesh me_query;
-
-  BKE_id_attribute_copy_domains_temp(
-      ID_ME, &bm->vdata, NULL, &bm->ldata, NULL, NULL, &me_query.id);
+  memset(&me_query, 0, sizeof(Mesh));
+  CustomData_reset(&me_query.vdata);
+  CustomData_reset(&me_query.edata);
+  CustomData_reset(&me_query.pdata);
+  me_query.ldata = bm->ldata;
+  *((short *)me_query.id.name) = ID_ME;
 
   CustomDataLayer *layer = BKE_id_attribute_from_index(
-      &me_query.id, index, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
-
-  if (!layer || BKE_id_attribute_domain(&me_query.id, layer) != ATTR_DOMAIN_CORNER) {
+      &me_query.id, index, ATTR_DOMAIN_MASK_CORNER, CD_MASK_COLOR_ALL);
+  if (!layer) {
     *r_cd_color_offset = -1;
     return;
   }
 
-  int layer_i = CustomData_get_layer_index(&bm->ldata, layer->type);
-
-  *r_cd_color_offset = bm->ldata.layers[layer_i].offset;
+  *r_cd_color_offset = layer->offset;
   *r_cd_color_type = layer->type;
 }
 

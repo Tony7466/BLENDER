@@ -24,7 +24,7 @@
 #include "BKE_editmesh.h"
 #include "BKE_editmesh_cache.h"
 #include "BKE_layer.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_report.h"
 
 #include "WM_api.h"
@@ -5203,7 +5203,7 @@ static int verg_radial(const void *va, const void *vb)
  * This function leaves faces tagged which are a part of the new region.
  *
  * \note faces already tagged are ignored, to avoid finding the same regions twice:
- * important when we have regions with equal face counts, see: T40309
+ * important when we have regions with equal face counts, see: #40309
  */
 static int loop_find_regions(BMEditMesh *em, const bool selbigger)
 {

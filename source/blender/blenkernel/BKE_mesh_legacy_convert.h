@@ -36,7 +36,7 @@ void BKE_mesh_legacy_convert_uvs_to_generic(Mesh *mesh);
  * Move face sets to the legacy type from a generic type.
  */
 void BKE_mesh_legacy_face_set_from_generic(
-    Mesh *mesh, blender::MutableSpan<CustomDataLayer> poly_layers_to_write);
+    blender::MutableSpan<CustomDataLayer> poly_layers_to_write);
 /**
  * Copy face sets to the generic data type from the legacy type.
  */
@@ -96,8 +96,14 @@ void BKE_mesh_legacy_convert_loose_edges_to_flag(struct Mesh *mesh);
 void BKE_mesh_legacy_attribute_flags_to_strings(struct Mesh *mesh);
 void BKE_mesh_legacy_attribute_strings_to_flags(struct Mesh *mesh);
 
+void BKE_mesh_legacy_sharp_faces_to_flags(struct Mesh *mesh);
+void BKE_mesh_legacy_sharp_faces_from_flags(struct Mesh *mesh);
+
 void BKE_mesh_legacy_sharp_edges_to_flags(struct Mesh *mesh);
 void BKE_mesh_legacy_sharp_edges_from_flags(struct Mesh *mesh);
+
+void BKE_mesh_legacy_uv_seam_to_flags(struct Mesh *mesh);
+void BKE_mesh_legacy_uv_seam_from_flags(struct Mesh *mesh);
 
 struct MVert *BKE_mesh_legacy_convert_positions_to_verts(
     Mesh *mesh,
@@ -145,10 +151,7 @@ void BKE_mesh_convert_mfaces_to_mpolys(struct Mesh *mesh);
  */
 void BKE_mesh_do_versions_convert_mfaces_to_mpolys(struct Mesh *mesh);
 
-/**
- * Convert legacy #MFace.edcode to edge #ME_EDGEDRAW.
- */
-void BKE_mesh_calc_edges_legacy(struct Mesh *me, bool use_old);
+void BKE_mesh_calc_edges_legacy(struct Mesh *me);
 
 void BKE_mesh_do_versions_cd_flag_init(struct Mesh *mesh);
 

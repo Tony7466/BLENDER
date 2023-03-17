@@ -29,9 +29,8 @@
 #  include "BLI_threads.h"
 #  include "BLI_utildefines.h"
 
-#  include "BLO_readfile.h" /* only for BLO_has_bfile_extension */
-
 #  include "BKE_blender_version.h"
+#  include "BKE_blendfile.h"
 #  include "BKE_context.h"
 
 #  include "BKE_global.h"
@@ -478,6 +477,7 @@ static int arg_handle_print_version(int UNUSED(argc),
 {
   print_version_full();
   exit(0);
+  BLI_assert_unreachable();
   return 0;
 }
 
@@ -684,6 +684,7 @@ static int arg_handle_print_help(int UNUSED(argc), const char **UNUSED(argv), vo
 #  endif
 
   exit(0);
+  BLI_assert_unreachable();
 
   return 0;
 }
@@ -1236,6 +1237,7 @@ static int arg_handle_env_system_set(int argc, const char **argv, void *UNUSED(d
   if (argc < 2) {
     fprintf(stderr, "%s requires one argument\n", argv[0]);
     exit(1);
+    BLI_assert_unreachable();
   }
 
   for (; *ch_src; ch_src++, ch_dst++) {
@@ -1722,7 +1724,7 @@ static int arg_handle_scene_set(int argc, const char **argv, void *data)
     if (scene) {
       CTX_data_scene_set(C, scene);
 
-      /* Set the scene of the first window, see: T55991,
+      /* Set the scene of the first window, see: #55991,
        * otherwise scripts that run later won't get this scene back from the context. */
       wmWindow *win = CTX_wm_window(C);
       if (win == NULL) {
@@ -2068,7 +2070,7 @@ static int arg_handle_load_file(int UNUSED(argc), const char **argv, void *data)
       return -1;
     }
 
-    if (BLO_has_bfile_extension(filepath)) {
+    if (BKE_blendfile_extension_check(filepath)) {
       /* Just pretend a file was loaded, so the user can press Save and it'll
        * save at the filepath from the CLI. */
       STRNCPY(G_MAIN->filepath, filepath);

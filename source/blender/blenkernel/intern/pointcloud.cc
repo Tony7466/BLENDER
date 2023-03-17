@@ -65,7 +65,6 @@ static void pointcloud_init_data(ID *id)
   CustomData_add_layer_named(&pointcloud->pdata,
                              CD_PROP_FLOAT3,
                              CD_SET_DEFAULT,
-                             nullptr,
                              pointcloud->totpoint,
                              POINTCLOUD_ATTR_POSITION);
 
@@ -379,6 +378,8 @@ static void pointcloud_evaluate_modifiers(struct Depsgraph *depsgraph,
     if (!BKE_modifier_is_enabled(scene, md, required_mode)) {
       continue;
     }
+
+    blender::bke::ScopedModifierTimer modifier_timer{*md};
 
     if (mti->modifyGeometrySet) {
       mti->modifyGeometrySet(md, &mectx, &geometry_set);
