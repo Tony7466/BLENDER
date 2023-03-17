@@ -13,9 +13,9 @@
 /* Not all texture types are supported by all platforms. This define safe guards them until we have
  * a working workaround or decided to remove support for those texture types. */
 #define RUN_UNSUPPORTED false
+
 /* Skip tests that haven't been developed yet due to non standard data types or it needs an
- * framebuffer to create the texture.. */
-#define RUN_16F_UNIMPLEMENTED false
+ * framebuffer to create the texture. */
 #define RUN_SRGB_UNIMPLEMENTED false
 #define RUN_NON_STANDARD_UNIMPLEMENTED false
 #define RUN_COMPONENT_UNIMPLEMENTED false
@@ -79,6 +79,7 @@ template<eGPUTextureFormat DeviceFormat,
          int Size = 16>
 static void texture_create_upload_read()
 {
+  static_assert(!std::is_same<DataType, float>());
   static_assert(validate_data_format(DeviceFormat, HostFormat));
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_HOST_READ;
   GPUTexture *texture = GPU_texture_create_2d(
@@ -92,15 +93,65 @@ static void texture_create_upload_read()
   DataType *read_data = static_cast<DataType *>(GPU_texture_read(texture, HostFormat, 0));
   bool failed = false;
   for (int i : IndexRange(data_len)) {
-    if constexpr (std::is_same_v<DataType, float>) {
-      bool ok = abs(read_data[i] - data[i]) < 0.01;
-      failed |= !ok;
-    }
-    else {
-      bool ok = (read_data[i] - data[i]) == 0;
-      failed |= !ok;
-    }
-    // EXPECT_EQ(read_data[i], data[i]);
+    bool ok = (read_data[i] - data[i]) == 0;
+    failed |= !ok;
+  }
+  EXPECT_FALSE(failed);
+
+  MEM_freeN(read_data);
+  MEM_freeN(data);
+
+  GPU_texture_free(texture);
+}
+
+template<eGPUTextureFormat DeviceFormat, eGPUDataFormat HostFormat, int Size = 16>
+static void texture_create_upload_read_with_bias(float max_allowed_bias)
+{
+  static_assert(validate_data_format(DeviceFormat, HostFormat));
+  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_HOST_READ;
+  GPUTexture *texture = GPU_texture_create_2d(
+      "texture", Size, Size, 1, DeviceFormat, usage, nullptr);
+  ASSERT_NE(texture, nullptr);
+
+  size_t data_len = Size * Size * to_component_len(DeviceFormat);
+  float *data = static_cast<float *>(generate_test_data<float>(data_len));
+  GPU_texture_update(texture, HostFormat, data);
+
+  float *read_data = static_cast<float *>(GPU_texture_read(texture, HostFormat, 0));
+  float max_used_bias = 0.0f;
+  for (int i : IndexRange(data_len)) {
+    float bias = abs(read_data[i] - data[i]);
+    max_used_bias = max_ff(max_used_bias, bias);
+  }
+  EXPECT_LE(max_used_bias, max_allowed_bias);
+
+  MEM_freeN(read_data);
+  MEM_freeN(data);
+
+  GPU_texture_free(texture);
+}
+
+/* Derivative of texture_create_upload_read_pixels that doesn't test each component, but a pixel at
+ * a time. This is needed to check the R11G11B10 and similar types. */
+template<eGPUTextureFormat DeviceFormat, eGPUDataFormat HostFormat, int Size = 16>
+static void texture_create_upload_read_pixel()
+{
+  using DataType = uint32_t;
+  static_assert(validate_data_format(DeviceFormat, HostFormat));
+  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_HOST_READ;
+  GPUTexture *texture = GPU_texture_create_2d(
+      "texture", Size, Size, 1, DeviceFormat, usage, nullptr);
+  ASSERT_NE(texture, nullptr);
+
+  size_t data_len = Size * Size;
+  DataType *data = static_cast<DataType *>(generate_test_data<DataType>(data_len));
+  GPU_texture_update(texture, HostFormat, data);
+
+  DataType *read_data = static_cast<DataType *>(GPU_texture_read(texture, HostFormat, 0));
+  bool failed = false;
+  for (int i : IndexRange(data_len)) {
+    bool ok = (read_data[i] - data[i]) == 0;
+    failed |= !ok;
   }
   EXPECT_FALSE(failed);
 
@@ -115,98 +166,92 @@ static void texture_create_upload_read()
  * \{ */
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RGBA8()
 {
-  texture_create_upload_read<GPU_RGBA8, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_RGBA8, GPU_DATA_FLOAT>(0.004f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RGBA8);
 
-#if RUN_16F_UNIMPLEMENTED
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RGBA16F()
 {
-  texture_create_upload_read<GPU_RGBA16F, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_RGBA16F, GPU_DATA_FLOAT>(0.9f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RGBA16F);
-#endif
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RGBA16()
 {
-  texture_create_upload_read<GPU_RGBA16, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_RGBA16, GPU_DATA_FLOAT>(0.00002f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RGBA16);
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RGBA32F()
 {
-  texture_create_upload_read<GPU_RGBA32F, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_RGBA32F, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RGBA32F);
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RG8()
 {
-  texture_create_upload_read<GPU_RG8, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_RG8, GPU_DATA_FLOAT>(0.004f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RG8);
 
-#if RUN_16F_UNIMPLEMENTED
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RG16F()
 {
-  texture_create_upload_read<GPU_RG16F, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_RG16F, GPU_DATA_FLOAT>(0.9f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RG16F);
-#endif
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RG16()
 {
-  texture_create_upload_read<GPU_RG16, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_RG16, GPU_DATA_FLOAT>(0.00002f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RG16);
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RG32F()
 {
-  texture_create_upload_read<GPU_RG32F, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_RG32F, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RG32F);
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_R8()
 {
-  texture_create_upload_read<GPU_R8, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_R8, GPU_DATA_FLOAT>(0.004f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_R8);
 
-#if RUN_16F_UNIMPLEMENTED
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_R16F()
 {
-  texture_create_upload_read<GPU_R16F, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_R16F, GPU_DATA_FLOAT>(0.9f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_R16F);
-#endif
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_R16()
 {
-  texture_create_upload_read<GPU_R16, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_R16, GPU_DATA_FLOAT>(0.00002f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_R16);
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_R32F()
 {
-  texture_create_upload_read<GPU_R32F, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_R32F, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_R32F);
 
 #if RUN_NON_STANDARD_UNIMPLEMENTED
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RGB10_A2()
 {
-  texture_create_upload_read<GPU_RGB10_A2, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_RGB10_A2, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RGB10_A2);
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RGB10_A2UI()
 {
-  texture_create_upload_read<GPU_RGB10_A2UI, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_RGB10_A2UI, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RGB10_A2UI);
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_R11F_G11F_B10F()
 {
-  texture_create_upload_read<GPU_R11F_G11F_B10F, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_R11F_G11F_B10F, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_R11F_G11F_B10F);
 #endif
@@ -214,122 +259,118 @@ GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_R11F_G11F_B10F);
 #if RUN_SRGB_UNIMPLEMENTED
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_SRGB8_A8()
 {
-  texture_create_upload_read<GPU_SRGB8_A8, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_SRGB8_A8, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_SRGB8_A8);
 #endif
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RGBA8_SNORM()
 {
-  texture_create_upload_read<GPU_RGBA8_SNORM, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_RGBA8_SNORM, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RGBA8_SNORM);
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RGBA16_SNORM()
 {
-  texture_create_upload_read<GPU_RGBA16_SNORM, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_RGBA16_SNORM, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RGBA16_SNORM);
 
 #if RUN_UNSUPPORTED
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RGB8()
 {
-  texture_create_upload_read<GPU_RGB8, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_RGB8, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RGB8);
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RGB8_SNORM()
 {
-  texture_create_upload_read<GPU_RGB8_SNORM, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_RGB8_SNORM, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RGB8_SNORM);
-#endif
 
-#if RUN_16F_UNIMPLEMENTED
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RGB16F()
 {
-  texture_create_upload_read<GPU_RGB16F, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_RGB16F, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RGB16F);
-#endif
 
-#if RUN_UNSUPPORTED
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RGB16()
 {
-  texture_create_upload_read<GPU_RGB16, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_RGB16, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RGB16);
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RGB16_SNORM()
 {
-  texture_create_upload_read<GPU_RGB16_SNORM, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_RGB16_SNORM, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RGB16_SNORM);
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RGB32F()
 {
-  texture_create_upload_read<GPU_RGB32F, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_RGB32F, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RGB32F);
 #endif
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RG8_SNORM()
 {
-  texture_create_upload_read<GPU_RG8_SNORM, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_RG8_SNORM, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RG8_SNORM);
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RG16_SNORM()
 {
-  texture_create_upload_read<GPU_RG16_SNORM, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_RG16_SNORM, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RG16_SNORM);
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_R8_SNORM()
 {
-  texture_create_upload_read<GPU_R8_SNORM, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_R8_SNORM, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_R8_SNORM);
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_R16_SNORM()
 {
-  texture_create_upload_read<GPU_R16_SNORM, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_R16_SNORM, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_R16_SNORM);
 
 #if RUN_NON_STANDARD_UNIMPLEMENTED
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_SRGB8_A8_DXT1()
 {
-  texture_create_upload_read<GPU_SRGB8_A8_DXT1, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_SRGB8_A8_DXT1, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_SRGB8_A8_DXT1);
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_SRGB8_A8_DXT3()
 {
-  texture_create_upload_read<GPU_SRGB8_A8_DXT3, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_SRGB8_A8_DXT3, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_SRGB8_A8_DXT3);
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_SRGB8_A8_DXT5()
 {
-  texture_create_upload_read<GPU_SRGB8_A8_DXT5, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_SRGB8_A8_DXT5, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_SRGB8_A8_DXT5);
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RGBA8_DXT1()
 {
-  texture_create_upload_read<GPU_RGBA8_DXT1, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_RGBA8_DXT1, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RGBA8_DXT1);
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RGBA8_DXT3()
 {
-  texture_create_upload_read<GPU_RGBA8_DXT3, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_RGBA8_DXT3, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RGBA8_DXT3);
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RGBA8_DXT5()
 {
-  texture_create_upload_read<GPU_RGBA8_DXT5, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_RGBA8_DXT5, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RGBA8_DXT5);
 #endif
@@ -337,7 +378,7 @@ GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RGBA8_DXT5);
 #if RUN_SRGB_UNIMPLEMENTED
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_SRGB8()
 {
-  texture_create_upload_read<GPU_SRGB8, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_SRGB8, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_SRGB8);
 #endif
@@ -345,7 +386,7 @@ GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_SRGB8);
 #if RUN_NON_STANDARD_UNIMPLEMENTED
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_RGB9_E5()
 {
-  texture_create_upload_read<GPU_RGB9_E5, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_RGB9_E5, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RGB9_E5);
 #endif
@@ -353,7 +394,7 @@ GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_RGB9_E5);
 #if RUN_UNSUPPORTED
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_DEPTH_COMPONENT32F()
 {
-  texture_create_upload_read<GPU_DEPTH_COMPONENT32F, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_DEPTH_COMPONENT32F, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_DEPTH_COMPONENT32F);
 #endif
@@ -361,13 +402,13 @@ GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_DEPTH_COMPONENT32F);
 #if RUN_COMPONENT_UNIMPLEMENTED
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_DEPTH_COMPONENT24()
 {
-  texture_create_upload_read<GPU_DEPTH_COMPONENT24, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_DEPTH_COMPONENT24, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_DEPTH_COMPONENT24);
 
 static void test_texture_roundtrip__GPU_DATA_FLOAT__GPU_DEPTH_COMPONENT16()
 {
-  texture_create_upload_read<GPU_DEPTH_COMPONENT16, GPU_DATA_FLOAT, float>();
+  texture_create_upload_read_with_bias<GPU_DEPTH_COMPONENT16, GPU_DATA_FLOAT>(0.0f);
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_FLOAT__GPU_DEPTH_COMPONENT16);
 #endif
@@ -695,7 +736,7 @@ GPU_TEST(texture_roundtrip__GPU_DATA_UINT_24_8__GPU_DEPTH24_STENCIL8);
 
 static void test_texture_roundtrip__GPU_DATA_10_11_11_REV__GPU_R11F_G11F_B10F()
 {
-  texture_create_upload_read<GPU_R11F_G11F_B10F, GPU_DATA_10_11_11_REV, uint32_t>();
+  texture_create_upload_read<GPU_R11F_G11F_B10F, GPU_DATA_10_11_11_REV, uint8_t>();
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_10_11_11_REV__GPU_R11F_G11F_B10F);
 
@@ -707,12 +748,13 @@ GPU_TEST(texture_roundtrip__GPU_DATA_10_11_11_REV__GPU_R11F_G11F_B10F);
 
 static void test_texture_roundtrip__GPU_DATA_2_10_10_10_REV__GPU_RGB10_A2()
 {
-  texture_create_upload_read<GPU_RGB10_A2, GPU_DATA_2_10_10_10_REV, uint32_t>();
+  texture_create_upload_read_pixel<GPU_RGB10_A2, GPU_DATA_2_10_10_10_REV>();
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_2_10_10_10_REV__GPU_RGB10_A2);
+
 static void test_texture_roundtrip__GPU_DATA_2_10_10_10_REV__GPU_RGB10_A2UI()
 {
-  texture_create_upload_read<GPU_RGB10_A2UI, GPU_DATA_2_10_10_10_REV, uint32_t>();
+  texture_create_upload_read_pixel<GPU_RGB10_A2UI, GPU_DATA_2_10_10_10_REV>();
 }
 GPU_TEST(texture_roundtrip__GPU_DATA_2_10_10_10_REV__GPU_RGB10_A2UI);
 
@@ -730,17 +772,15 @@ static std::string to_prim_type_string(eGPUDataFormat host_format)
   switch (host_format) {
     case GPU_DATA_FLOAT:
       return std::string("float");
-
     case GPU_DATA_HALF_FLOAT:
       return std::string("uint16_t");
     case GPU_DATA_INT:
       return std::string("int32_t");
     case GPU_DATA_UBYTE:
+    case GPU_DATA_10_11_11_REV:
       return std::string("uint8_t");
     case GPU_DATA_UINT:
     case GPU_DATA_UINT_24_8:
-    case GPU_DATA_10_11_11_REV:
-    case GPU_DATA_2_10_10_10_REV:
       return std::string("uint32_t");
   }
   return std::string("UNKNOWN");
@@ -763,8 +803,6 @@ static std::string to_string(eGPUDataFormat host_format)
       return std::string("GPU_DATA_UINT_24_8");
     case GPU_DATA_10_11_11_REV:
       return std::string("GPU_DATA_10_11_11_REV");
-    case GPU_DATA_2_10_10_10_REV:
-      return std::string("GPU_DATA_2_10_10_10_REV");
   }
   return std::string("UNKNOWN");
 }
@@ -784,7 +822,6 @@ TEST(gpu_util, generate_test_cases)
   host_formats.append(GPU_DATA_UBYTE);
   host_formats.append(GPU_DATA_UINT_24_8);
   host_formats.append(GPU_DATA_10_11_11_REV);
-  host_formats.append(GPU_DATA_2_10_10_10_REV);
 
   Vector<eGPUTextureFormat> texture_formats;
   texture_formats.append(GPU_RGBA8UI);
