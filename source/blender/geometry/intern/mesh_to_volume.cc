@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_math_matrix.hh"
+#include "BLI_task.hh"
 
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.h"
@@ -150,16 +151,20 @@ static openvdb::FloatGrid::Ptr mesh_to_sdf_volume_grid(const Mesh &mesh,
   std::vector<openvdb::Vec3s> points(positions.size());
   std::vector<openvdb::Vec3I> triangles(looptris.size());
 
-  for (const int i : positions.index_range()) {
-    const float3 &co = positions[i];
-    points[i] = openvdb::Vec3s(co.x, co.y, co.z) - 0.5f * voxel_size;
-  }
+  threading::parallel_for(positions.index_range(), 2048, [&](const IndexRange range) {
+    for (const int i : range) {
+      const float3 &co = positions[i];
+      points[i] = openvdb::Vec3s(co.x, co.y, co.z) - 0.5f * voxel_size;
+    }
+  });
 
-  for (const int i : looptris.index_range()) {
-    const MLoopTri &loop_tri = looptris[i];
-    triangles[i] = openvdb::Vec3I(
-        loops[loop_tri.tri[0]].v, loops[loop_tri.tri[1]].v, loops[loop_tri.tri[2]].v);
-  }
+  threading::parallel_for(looptris.index_range(), 2048, [&](const IndexRange range) {
+    for (const int i : range) {
+      const MLoopTri &loop_tri = looptris[i];
+      triangles[i] = openvdb::Vec3I(
+          loops[loop_tri.tri[0]].v, loops[loop_tri.tri[1]].v, loops[loop_tri.tri[2]].v);
+    }
+  });
 
   openvdb::math::Transform::Ptr transform = openvdb::math::Transform::createLinearTransform(
       voxel_size);

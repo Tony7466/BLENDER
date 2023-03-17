@@ -51,7 +51,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     grid = openvdb::tools::createLevelSetSphere<openvdb::FloatGrid>(
         radius, openvdb::Vec3f(0, 0, 0), voxel_size, half_width);
   }
-  catch (openvdb::ArithmeticError) {
+  catch (openvdb::ArithmeticError &) {
     params.error_message_add(NodeWarningType::Error, TIP_("Voxel size is too small"));
     params.set_default_remaining_outputs();
     return;

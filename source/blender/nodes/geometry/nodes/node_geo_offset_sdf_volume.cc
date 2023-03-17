@@ -24,6 +24,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Geometry>(N_("Volume"));
 }
 
+#ifdef WITH_OPENVDB
 static void sdf_volume_offset(Volume &volume, const GeoNodeExecParams &params)
 {
   VolumeGrid *volume_grid = BKE_volume_grid_find_for_write(&volume, "distance");
@@ -41,6 +42,7 @@ static void sdf_volume_offset(Volume &volume, const GeoNodeExecParams &params)
 
   filter.offset(-params.get_input<float>("Distance"));
 }
+#endif
 
 static void node_geo_exec(GeoNodeExecParams params)
 {

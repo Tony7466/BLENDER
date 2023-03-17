@@ -389,7 +389,8 @@ class NODE_MT_geometry_node_GEO_MESH_OPERATIONS(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeMeshBoolean")
         node_add_menu.add_node_type(layout, "GeometryNodeMeshToCurve")
         node_add_menu.add_node_type(layout, "GeometryNodeMeshToPoints")
-        node_add_menu.add_node_type(layout, "GeometryNodeMeshToSDFVolume")
+        if _context.preferences.experimental.use_new_volume_nodes:
+            node_add_menu.add_node_type(layout, "GeometryNodeMeshToSDFVolume")
         node_add_menu.add_node_type(layout, "GeometryNodeMeshToVolume")
         node_add_menu.add_node_type(layout, "GeometryNodeScaleElements")
         node_add_menu.add_node_type(layout, "GeometryNodeSplitEdges")
@@ -454,7 +455,8 @@ class NODE_MT_category_GEO_POINT(Menu):
         layout.separator()
         node_add_menu.add_node_type(layout, "GeometryNodePoints")
         node_add_menu.add_node_type(layout, "GeometryNodePointsToVertices")
-        node_add_menu.add_node_type(layout, "GeometryNodePointsToSDFVolume")
+        if _context.preferences.experimental.use_new_volume_nodes:
+            node_add_menu.add_node_type(layout, "GeometryNodePointsToSDFVolume")
         node_add_menu.add_node_type(layout, "GeometryNodePointsToVolume")
         layout.separator()
         node_add_menu.add_node_type(layout, "GeometryNodeSetPointRadius")

@@ -25,6 +25,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Geometry>(N_("Volume"));
 }
 
+#ifdef WITH_OPENVDB
 static void sdf_volume_mean_filter(Volume &volume, const GeoNodeExecParams &params)
 {
   VolumeGrid *volume_grid = BKE_volume_grid_find_for_write(&volume, "distance");
@@ -45,6 +46,7 @@ static void sdf_volume_mean_filter(Volume &volume, const GeoNodeExecParams &para
     filter.mean(params.get_input<int>("Width"));
   }
 }
+#endif
 
 static void node_geo_exec(GeoNodeExecParams params)
 {

@@ -40,7 +40,7 @@ float volume_compute_voxel_size(const Depsgraph *depsgraph,
                                 float exterior_band_width,
                                 const float4x4 &transform);
 /**
- * Add a new fog VolumeGrid to the Volume by converting the supplied mesh
+ * Add a new fog VolumeGrid to the Volume by converting the supplied mesh.
  */
 VolumeGrid *fog_volume_grid_add_from_mesh(Volume *volume,
                                           StringRefNull name,
@@ -52,7 +52,7 @@ VolumeGrid *fog_volume_grid_add_from_mesh(Volume *volume,
                                           float interior_band_width,
                                           float density);
 /**
- * Add a new SDF VolumeGrid to the Volume by converting the supplied mesh
+ * Add a new SDF VolumeGrid to the Volume by converting the supplied mesh.
  */
 VolumeGrid *sdf_volume_grid_add_from_mesh(
     Volume *volume, StringRefNull name, const Mesh &mesh, float voxel_size, float half_band_width);

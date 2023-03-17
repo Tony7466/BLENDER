@@ -20,7 +20,7 @@ namespace blender::geometry {
 #ifdef WITH_OPENVDB
 
 /**
- * Add a new fog VolumeGrid to the Volume by converting the supplied points
+ * Add a new fog VolumeGrid to the Volume by converting the supplied points.
  */
 VolumeGrid *fog_volume_grid_add_from_points(Volume *volume,
                                             StringRefNull name,
@@ -29,7 +29,7 @@ VolumeGrid *fog_volume_grid_add_from_points(Volume *volume,
                                             float voxel_size,
                                             float density);
 /**
- * Add a new SDF VolumeGrid to the Volume by converting the supplied points
+ * Add a new SDF VolumeGrid to the Volume by converting the supplied points.
  */
 VolumeGrid *sdf_volume_grid_add_from_points(Volume *volume,
                                             StringRefNull name,
