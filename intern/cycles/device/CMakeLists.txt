@@ -16,9 +16,8 @@ if(WITH_CYCLES_DEVICE_OPTIX OR WITH_CYCLES_DEVICE_CUDA)
 endif()
 
 if(WITH_CYCLES_DEVICE_HIPRT)
-  set (HIPRTSDK $ENV{HIPRT_SDK_DIR})
       list(APPEND INC
-       ${HIPRTSDK}
+        ${HIPRT_INCLUDE_DIR}
       )
       add_definitions(-DWITH_HIP)
       add_definitions(-DWITH_HIPRT)

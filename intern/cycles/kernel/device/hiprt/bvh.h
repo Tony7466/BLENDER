@@ -71,7 +71,6 @@ ccl_device_intersect bool scene_intersect_local(KernelGlobals kg,
                                                 ccl_private uint *lcg_state,
                                                 int max_hits)
 {
-
   if (!scene_intersect_valid(ray)) {
     if (local_isect) {
       local_isect->num_hits = 0;
@@ -141,7 +140,6 @@ ccl_device_intersect bool scene_intersect_shadow_all(KernelGlobals kg,
                                                      ccl_private uint *num_recorded_hits,
                                                      ccl_private float *throughput)
 {
-
   *throughput = 1.0f;
   *num_recorded_hits = 0;
 
@@ -178,7 +176,6 @@ ccl_device_intersect bool scene_intersect_volume(KernelGlobals kg,
                                                  ccl_private Intersection *isect,
                                                  const uint visibility)
 {
-
   isect->t = ray->tmax;
   isect->u = 0.0f;
   isect->v = 0.0f;

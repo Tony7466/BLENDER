@@ -11,13 +11,30 @@
 
 #define HIPRT_SHARED_STACK
 
-#define HIPRT_GLOBAL_STACK_SIZE 512 * 1024 * 1024
-#define HIPRT_SHARED_STACK_SIZE 24  // LDS (Local Data Storage) allocation for each thread
+
+
+// This is the size of the memory that serves as a fallback stack for traversal.
+// The total memory required for the global stack is a function of number threads in a kernel exectuion and the size of stack per thread.
+// The maximum number of threads is a function of number of compute units and number of threads per unit.
+// The stack size is emperical and is defined in HIPRT_THREAD_STACK_SIZE
+// Currently allocating this buffer dynamically causes instability, so HIPRT_GLOBAL_STACK_SIZE and maximum number of threads is hard coded
+// The total size will be (max numer of threads) x (thread stack size) x sizeof(int) x (headroom factor)
+// A headroom factor of 2 is emperical
 #define HIPRT_THREAD_STACK_SIZE \
-  64  // global stack allocation per thread (memory reserved for each thread in
+  64  // The size of global stack  availavle to eacj thread (memory reserved for each thread in
       // global_stack_buffer)
+#define HIPRT_NUM_MAX_THREADS 1024*1024
+#define HIPRT_STACK_ELEMENT_BYTE 4
+#define HIPRT_GLOBAL_STACK_HEADROOM_FACTOR 2
+#define HIPRT_GLOBAL_STACK_SIZE \
+  HIPRT_THREAD_STACK_SIZE * HIPRT_NUM_MAX_THREADS * HIPRT_STACK_ELEMENT_BYTE * HIPRT_GLOBAL_STACK_HEADROOM_FACTOR
+#define HIPRT_SHARED_STACK_SIZE 24  // LDS (Local Data Storage) allocation for each thread, the number is obtained emperically
+// HIPRT_THREAD_GROUP_SIZE is the number of threads per work group for intersection kernels
+// The default number of threads per workgroup is 1024, however, since HIP RT intersection kernels use local memory,
+// and the local memory size in those kernels scales up with the number of threads, the number of threads to is scaled down to 256
+// to avoid going over maximum local memory and to strike a balance between memory access and the number of waves
 #define HIPRT_THREAD_GROUP_SIZE \
-  256  // total locaal stack size would be number of threads * HIPRT_SHARED_STACK_SIZE
+  256  // total local stack size would be number of threads * HIPRT_SHARED_STACK_SIZE
 
 CCL_NAMESPACE_BEGIN
 
@@ -61,6 +78,71 @@ struct KernelParamsHIPRT {
   hiprtFuncTable table_shadow_intersect;
   hiprtFuncTable table_local_intersect;
   hiprtFuncTable table_volume_intersect;
+};
+
+  // Intersection_Function_Table_Index defines index values to retrieve custom intersection
+// functions from function table.
+
+enum Intersection_Function_Table_Index {
+  // Triangles use the intersection function provided by HIP RT and don't need custom intersection
+  // functions
+  // Custom intersection functions for closest intersect.
+  Curve_Intersect_Function = 1,        // Custom intersection for curves
+  Motion_Triangle_Intersect_Function,  // Custom intersection for triangles with vertex motion blur
+                                       // attributes.
+  Point_Intersect_Function,            // Custom intersection for point cloud.
+  // Custom intersection functions for shadow rendering are the same as the function for closest intersect.
+  // However, the table indices are different
+  Triangle_Intersect_Shadow_None,
+  Curve_Intersect_Shadow,
+  Motion_Triangle_Intersect_Shadow,
+  Point_Intersect_Shadow,
+  // Custom intersection functions for subsurface scattering.
+  // Only motion triangles have valid custom intersection function
+  Triangle_Intersect_Local_None,
+  Curve_Intersect_Local_None,
+  Motion_Triangle_Intersect_Local,
+  Point_Intersect_Local_None,
+  // Custom intersection functions for volume rendering.
+  // Only motion triangles have valid custom intersection function
+  Triangle_Intersect_Volume_None,
+  Curve_Intersect_Volume_None,
+  Motion_Triangle_Intersect_Volume,
+  Point_Intersect_Volume_None,
+};
+
+// Filter functions, filter hits, i.e. test whether a hit should be accepted or not, and whether
+// traversal should stop or continue.
+enum Filter_Function_Table_Index {
+  Triangle_Filter_Closest = 0,  // Filter function for triangles for closest intersect, no custom
+                               // intersection function is needed.
+  Curve_Filter_Opaque_None,    // No filter function is needed and everything is handled in the
+                               // intersection function.
+  Motion_Triangle_Filter_Opaque_None,  // No filter function is needed and everything is handled in
+                                       // intersection function.
+  Point_Filter_Opaque_Non,             // No filter function is needed.
+  // Filter function for all primitives for shadow intersection.
+  // All primitives use the same function but each has a different index in the table.
+  Triangle_Filter_Shadow,
+  Curve_Filter_Shadow,
+  Motion_Triangle_Filter_Shadow,
+  Point_Filter_Shadow,
+  // Filter functions for subsurface scattering. Triangles and motion triagnles need function
+  // assignment. They indices for triangles and motion triangles point to the same function. Points
+  // and curves dont need any function since subsurface scattering is not applied on either.
+  Triangle_Filter_Local,    // Filter functions for triangles
+  Curve_Filter_Local_None,  // Subsurface scattering is not applied on curves, no filter function
+                            // is
+                          // needed.
+  Motion_Triangle_Filter_Local,
+  Point_Filter_Local_None,
+  // Filter functions for volume rendering.
+  // Volume rendering only applies to triangles and motion triangles.
+  // Triangles and motion triangles use the same filter functions for volume rendering
+  Triangle_Filter_Volume,
+  Curve_Filter_Volume_None,
+  Motion_Triangle_Filter_Volume,
+  Point_Filter_Volume_None,
 };
 
 #ifdef __KERNEL_GPU__

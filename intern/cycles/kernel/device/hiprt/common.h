@@ -374,7 +374,7 @@ ccl_device_inline bool point_custom_intersect(const hiprtRay &ray,
 
 // intersection filters
 
-ccl_device_inline bool opaque_intersection_filter(const hiprtRay &ray,
+ccl_device_inline bool closest_intersection_filter(const hiprtRay &ray,
                                                   const void *data,
                                                   void *user_data,
                                                   const hiprtHit &hit)
@@ -507,7 +507,6 @@ ccl_device_inline bool local_intersection_filter(const hiprtRay &ray,
                                                  void *user_data,
                                                  const hiprtHit &hit)
 {
-
 #  ifdef __BVH_LOCAL__
   LocalPayload *payload = (LocalPayload *)user_data;
   KernelGlobals kg = payload->kg;
@@ -578,6 +577,7 @@ ccl_device_inline bool volume_intersection_filter(const hiprtRay &ray,
   else
     return false;
 }
+
 HIPRT_DEVICE bool intersectFunc(u32 geomType,
                                 u32 rayType,
                                 const hiprtFuncTableHeader &tableHeader,
@@ -585,24 +585,21 @@ HIPRT_DEVICE bool intersectFunc(u32 geomType,
                                 void *payload,
                                 hiprtHit &hit)
 {
-
   const u32 index = tableHeader.numGeomTypes * rayType + geomType;
   const void *data = tableHeader.funcDataSets[index].filterFuncData;
   switch (index) {
-    case 1:
-    case 5:
-    case 9:
-    case 13:
+    case Curve_Intersect_Function:
+    case Curve_Intersect_Shadow:
       return curve_custom_intersect(ray, data, payload, hit);
-    case 2:
-    case 6:
-    case 10:  // motion_triangle_custom_local_intersect
-    case 14:  // motion_triangle_custom_volume_intersect
+    case Motion_Triangle_Intersect_Function:
+    case Motion_Triangle_Intersect_Shadow:
       return motion_triangle_custom_intersect(ray, data, payload, hit);
-    case 3:
-    case 7:
-    case 11:
-    case 15:
+    case Motion_Triangle_Intersect_Local:
+      return motion_triangle_custom_local_intersect(ray, data, payload, hit);
+    case Motion_Triangle_Intersect_Volume:
+      return motion_triangle_custom_volume_intersect(ray, data, payload, hit);
+    case Point_Intersect_Function:
+    case Point_Intersect_Shadow:
       return point_custom_intersect(ray, data, payload, hit);
     default:
       break;
@@ -619,22 +616,18 @@ HIPRT_DEVICE bool filterFunc(u32 geomType,
   const u32 index = tableHeader.numGeomTypes * rayType + geomType;
   const void *data = tableHeader.funcDataSets[index].intersectFuncData;
   switch (index) {
-    case 0:
-      return opaque_intersection_filter(ray, data, payload, hit);
-    case 4:
-    case 5:
-    case 6:
-    case 7:
+    case Triangle_Filter_Closest:
+      return closest_intersection_filter(ray, data, payload, hit);
+    case Triangle_Filter_Shadow:
+    case Curve_Filter_Shadow:
+    case Motion_Triangle_Filter_Shadow:
+    case Point_Filter_Shadow:
       return shadow_intersection_filter(ray, data, payload, hit);
-    case 8:
-    case 9:
-    case 10:
-    case 11:
+    case Triangle_Filter_Local:
+    case Motion_Triangle_Filter_Local:
       return local_intersection_filter(ray, data, payload, hit);
-    case 12:
-    case 13:
-    case 14:
-    case 15:
+    case Triangle_Filter_Volume:
+    case Motion_Triangle_Filter_Volume:
       return volume_intersection_filter(ray, data, payload, hit);
     default:
       break;

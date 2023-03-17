@@ -86,10 +86,6 @@ set(SRC_KERNEL_DEVICE_HIPRT_HEADERS
   device/hiprt/common.h
   device/hiprt/globals.h
   device/hiprt/hiprt_kernels.h
-  device/hiprt/hiprt_common.h
-  device/hiprt/hiprt_device.h
-  device/hiprt/hiprt_types.h
-  device/hiprt/hiprt_vec.h
 )
 
 set(SRC_KERNEL_DEVICE_OPTIX_HEADERS
@@ -655,6 +651,8 @@ if(WITH_CYCLES_HIP_BINARIES AND WITH_CYCLES_DEVICE_HIP)
   cycles_set_solution_folder(cycles_kernel_hip)
 endif()
 
+# HIP RT module
+
 if(WITH_CYCLES_HIPRT_BINARIES AND WITH_CYCLES_DEVICE_HIPRT)
   set(hiprt_sources device/hiprt/kernel.cpp
     ${SRC_KERNEL_HEADERS}
@@ -695,6 +693,7 @@ if(WITH_CYCLES_HIPRT_BINARIES AND WITH_CYCLES_DEVICE_HIPRT)
     -emit-llvm
     -I ${CMAKE_CURRENT_SOURCE_DIR}/..
     -I ${CMAKE_CURRENT_SOURCE_DIR}/device/hiprt
+    -I ${HIPRT_INCLUDE_DIR}
     -Wno-parentheses-equality
     -Wno-unused-value
     --hipcc-func-supp
@@ -711,7 +710,7 @@ if(WITH_CYCLES_HIPRT_BINARIES AND WITH_CYCLES_DEVICE_HIPRT)
     set(hiprt_link_command ${CMAKE_COMMAND})
     set(hiprt_link_flags   -E env "HIP_PATH=${HIP_ROOT_DIR}"
       clang++)
-    set(hiprt_bitcode $ENV{HIPRT_SDK_DIR}/hiprt${HIPRT_VERSION}_amd_lib_win.bc)
+    set(hiprt_bitcode ${HIPRT_INCLUDE_DIR}/hiprt${HIPRT_VERSION}_amd_lib_win.bc)
   else()
     # not implemented yet
   endif()

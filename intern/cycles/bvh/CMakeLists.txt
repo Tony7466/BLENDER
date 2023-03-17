@@ -37,12 +37,13 @@ endif()
 if(WITH_CYCLES_DEVICE_HIPRT)
   list(APPEND INC
     ../../../extern/hipew/include
-	$ENV{HIPRT_SDK_DIR}
+    ${HIPRT_INCLUDE_DIR}
       )
   add_definitions(-DWITH_HIPRT)
   add_definitions(-DWITH_HIP)
   add_definitions(-DWITH_HIP_DYNLOAD)
 endif()
+
 
 set(SRC_HEADERS
   bvh.h

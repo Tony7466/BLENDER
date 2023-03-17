@@ -25,7 +25,30 @@
 #  include "scene/object.h"
 #  include "scene/pointcloud.h"
 
+
 CCL_NAMESPACE_BEGIN
+
+static void get_hiprt_transform(float matrix[][4], Transform &tfm)
+{
+  int row = 0;
+  int col = 0;
+  matrix[row][col++] = tfm.x.x;
+  matrix[row][col++] = tfm.x.y;
+  matrix[row][col++] = tfm.x.z;
+  matrix[row][col++] = tfm.x.w;
+  row++;
+  col = 0;
+  matrix[row][col++] = tfm.y.x;
+  matrix[row][col++] = tfm.y.y;
+  matrix[row][col++] = tfm.y.z;
+  matrix[row][col++] = tfm.y.w;
+  row++;
+  col = 0;
+  matrix[row][col++] = tfm.z.x;
+  matrix[row][col++] = tfm.z.y;
+  matrix[row][col++] = tfm.z.z;
+  matrix[row][col++] = tfm.z.w;
+}
 
 class HIPRTDevice;
 
@@ -98,43 +121,72 @@ string HIPRTDevice::compile_kernel_get_common_cflags(const uint kernel_features)
 
 bool HIPRTDevice::set_function_table(hiprtFuncNameSet *func_name_set)
 {
-
   static const char *filter_functions[] = {
-      "opaque_intersection_filter",
+      "closest_intersection_filter",
       "shadow_intersection_filter",
       "local_intersection_filter",
       "volume_intersection_filter",
   };
 
-  static const char *intersect_function[] = {"none",
+  static const char *intersect_function[] = {"NULL",
+                                             "NULL",
+                                             "NULL",
+                                             "NULL",
                                              "curve_custom_intersect",
+                                             "curve_custom_intersect",
+                                             "NULL",
+                                             "NULL",
                                              "motion_triangle_custom_intersect",
+                                             "motion_triangle_custom_intersect",
+                                             "motion_triangle_custom_local_intersect",
+                                             "motion_triangle_custom_volume_intersect",
+                                             "point_custom_intersect",
                                              "point_custom_intersect"};
-
-  //"motion_triangle_custom_local_intersect", "motion_triangle_custom_volume_intersect"
 
   for (int filter_function = 0; filter_function < Max_Intersect_Filter_Function;
        filter_function++) {
     for (int prim = 0; prim < Max_Primitive_Type; prim++) {
+
       int table_index = prim + filter_function * Max_Intersect_Filter_Function;
-      if (prim != Triangle && filter_function != Opaque) {
-        func_name_set[table_index].filterFuncName = filter_functions[filter_function];
-        func_name_set[table_index].intersectFuncName = intersect_function[prim];
+
+      switch (table_index) {
+        case Curve_Intersect_Function:
+        case Curve_Intersect_Shadow:
+        case Motion_Triangle_Intersect_Function:
+        case Motion_Triangle_Intersect_Shadow:
+        case Motion_Triangle_Intersect_Local:
+        case Motion_Triangle_Intersect_Volume:
+        case Point_Intersect_Function:
+        case Point_Intersect_Shadow:
+          func_name_set[table_index].intersectFuncName =
+              intersect_function[Max_Primitive_Type * prim + filter_function];
+          break;
+        default:
+          break;
       }
-      else if (prim == Triangle)
-        // triangle primitives dont need a custom intersection function
-        func_name_set[table_index].filterFuncName = filter_functions[filter_function];
-      else
-        // custom primitives for scene_intersect don't need a filter function because the custom
-        // intersection function can handle whatever filter function plans to achieve
-        func_name_set[table_index].intersectFuncName = intersect_function[prim];
+
+      switch (table_index) {
+        case Triangle_Filter_Closest:
+        case Triangle_Filter_Shadow:
+        case Curve_Filter_Shadow:
+        case Motion_Triangle_Filter_Shadow:
+        case Point_Filter_Shadow:
+        case Triangle_Filter_Local:
+        case Motion_Triangle_Filter_Local:
+        case Triangle_Filter_Volume:
+        case Motion_Triangle_Filter_Volume:
+          func_name_set[table_index].filterFuncName = filter_functions[filter_function];
+          break;
+        default:
+          break;
+      }
     }
   }
 
   hiprtFuncDataSet func_data_set;
   hiprtError result = hiprtCreateFuncTable(
       hiprt_context, Max_Primitive_Type, Max_Intersect_Filter_Function, &functions_table);
-  if (result == 0)
+  if (result == hiprtSuccess)
     result = hiprtSetFuncTable(hiprt_context,
                                functions_table,
                                Max_Primitive_Type,
@@ -146,7 +198,6 @@ bool HIPRTDevice::set_function_table(hiprtFuncNameSet *func_name_set)
 
 string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name, const char *base)
 {
-
   int major, minor;
   hipDeviceGetAttribute(&major, hipDeviceAttributeComputeCapabilityMajor, hipDevId);
   hipDeviceGetAttribute(&minor, hipDeviceAttributeComputeCapabilityMinor, hipDevId);
@@ -158,7 +209,7 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
     arch = props.gcnArchName;
   }
 
-  hiprtFuncNameSet func_name_sets[Max_Primitive_Type * Max_Intersect_Filter_Function];
+  hiprtFuncNameSet func_name_sets[Max_Primitive_Type * Max_Intersect_Filter_Function] = {0};
 
   if (!set_function_table(func_name_sets))
     return string();
@@ -239,7 +290,8 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
 
   double starttime = time_dt();
 
-  // compile hipcc
+  const string hiprt_path = getenv("HIPRT_ROOT_DIR");
+  //First, app kernels are compiled into bitcode, without access to implementation of HIP RT functions
   if (!path_exists(bitcode)) {
 
     std::string rtc_options;
@@ -249,10 +301,11 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
     rtc_options.append(" -ffast-math -O3 -std=c++17");
     rtc_options.append(" -fgpu-rdc -c --gpu-bundle-output -c -emit-llvm");
 
-    string command = string_printf("%s %s -I %s  %s -o \"%s\"",
+    string command = string_printf("%s %s -I %s  -I %s %s -o \"%s\"",
                                    hipcc,
                                    rtc_options.c_str(),
                                    include_path.c_str(),
+                                   hiprt_path.c_str(),
                                    source_path.c_str(),
                                    bitcode.c_str());
 
@@ -272,12 +325,13 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
   }
 
   // linking
+  // with bitcode compilation of hiprt functions and produces its own bitcode
   string linker_options;
   linker_options.append(" --offload-arch=").append(arch);
   linker_options.append(" -fgpu-rdc --hip-link --cuda-device-only ");
   string hiprt_ver(HIPRT_VERSION_STR);
   string hiprt_bc;
-  hiprt_bc = "hiprt" + hiprt_ver + "_amd_lib_win.bc";
+  hiprt_bc = hiprt_path + "\\hiprt" + hiprt_ver + "_amd_lib_win.bc";
 
   string linker_command = string_printf("clang %s \"%s\" %s -o \"%s\"",
                                         linker_options.c_str(),
@@ -393,13 +447,13 @@ void HIPRTDevice::const_copy_to(const char *name, void *host, size_t size)
   KERNEL_DATA_ARRAY(int2, custom_prim_info)
   KERNEL_DATA_ARRAY(int, prim_time_offset)
   KERNEL_DATA_ARRAY(float2, prims_time)
+  //KERNEL_DATA_ARRAY(int, global_stack_buffer)
 #  include "kernel/data_arrays.h"
 #  undef KERNEL_DATA_ARRAY
 }
 
 hiprtGeometryBuildInput HIPRTDevice::prepare_triangle_blas(BVHHIPRT *bvh, Mesh *mesh)
 {
-
   hiprtGeometryBuildInput geomInput;
   geomInput.geomType = Triangle;
 
@@ -499,7 +553,6 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_triangle_blas(BVHHIPRT *bvh, Mesh *
 
 hiprtGeometryBuildInput HIPRTDevice::prepare_curve_blas(BVHHIPRT *bvh, Hair *hair)
 {
-
   hiprtGeometryBuildInput geomInput;
 
   const PrimitiveType primitive_type = hair->primitive_type();
@@ -623,7 +676,6 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_curve_blas(BVHHIPRT *bvh, Hair *hai
 
 hiprtGeometryBuildInput HIPRTDevice::prepare_point_blas(BVHHIPRT *bvh, PointCloud *pointcloud)
 {
-
   hiprtGeometryBuildInput geomInput;
 
   const Attribute *point_attr_mP = NULL;
@@ -1018,6 +1070,13 @@ hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
         table_device_ptr + kernel_param_offset[index], &functions_table, sizeof(device_ptr)));
   }
 
+  // Allocating global stack buffer.
+  HIPRTDeviceQueue queue(this);
+  /*int max_path = queue.num_concurrent_states(0);
+  global_stack_buffer.alloc(max_path * HIPRT_SHARED_STACK_SIZE * sizeof(int));
+  global_stack_buffer.zero_to_device();*/
+
+
   return scene;
 }
 
@@ -1043,29 +1102,6 @@ void HIPRTDevice::build_bvh(BVH *bvh, Progress &progress, bool refit)
     scene = build_tlas(bvh_rt, objects, options, refit);
   }
 }
-
-void get_hiprt_transform(float matrix[][4], Transform &tfm)
-{
-  int row = 0;
-  int col = 0;
-  matrix[row][col++] = tfm.x.x;
-  matrix[row][col++] = tfm.x.y;
-  matrix[row][col++] = tfm.x.z;
-  matrix[row][col++] = tfm.x.w;
-  row++;
-  col = 0;
-  matrix[row][col++] = tfm.y.x;
-  matrix[row][col++] = tfm.y.y;
-  matrix[row][col++] = tfm.y.z;
-  matrix[row][col++] = tfm.y.w;
-  row++;
-  col = 0;
-  matrix[row][col++] = tfm.z.x;
-  matrix[row][col++] = tfm.z.y;
-  matrix[row][col++] = tfm.z.z;
-  matrix[row][col++] = tfm.z.w;
-}
-
 CCL_NAMESPACE_END
 
 #endif

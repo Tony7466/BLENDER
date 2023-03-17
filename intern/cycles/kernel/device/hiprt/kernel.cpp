@@ -4,7 +4,7 @@
 
 #  include "kernel/device/hip/compat.h"
 #  include "kernel/device/hip/config.h"
-#  include "kernel/device/hiprt/hiprt_device.h"
+#  include "hiprt/hiprt_device.h"
 #  include "kernel/device/hiprt/globals.h"
 
 #  include "kernel/device/gpu/image.h"

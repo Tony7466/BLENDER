@@ -9,7 +9,7 @@
 #    include "bvh/params.h"
 
 #    ifdef WITH_HIPRT
-#      include "hiprt/hiprt.h"
+#      include "hiprt/hiprt_types.h"
 #    endif
 
 #    include "device/memory.h"

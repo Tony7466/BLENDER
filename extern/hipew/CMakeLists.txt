@@ -4,6 +4,7 @@
 set(INC
   .
   include
+  ${HIPRT_INCLUDE_DIR}
 )
 
 set(INC_SYS
@@ -12,11 +13,14 @@ set(INC_SYS
 
 set(SRC
   src/hipew.c
+  src/hiprtew.cc
 
   include/hipew.h
+  include/hiprtew.h
 )
 
 set(LIB
 )
+
 
 blender_add_lib(extern_hipew "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

@@ -18,6 +18,7 @@
 #include "device/multi/device.h"
 #include "device/oneapi/device.h"
 #include "device/optix/device.h"
+#include "device/hiprt/device_impl.h"
 
 #include "util/foreach.h"
 #include "util/half.h"
@@ -185,7 +186,8 @@ vector<DeviceType> Device::available_types()
   types.push_back(DEVICE_ONEAPI);
 #endif
 #ifdef WITH_HIPRT
-  types.push_back(DEVICE_HIPRT);
+  if (InitHIPRT())
+    types.push_back(DEVICE_HIPRT);
 #endif
   return types;
 }

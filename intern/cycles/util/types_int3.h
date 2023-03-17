@@ -48,7 +48,6 @@ ccl_device_inline int3 make_int3(int x, int y, int z);
 #endif /* __KERNEL_NATIVE_VECTOR_TYPES__ */
 
 ccl_device_inline int3 make_int3(int i);
-
 ccl_device_inline void print_int3(ccl_private const char *label, const int3 a);
 
 #if defined(__KERNEL_METAL__)
