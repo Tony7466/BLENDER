@@ -13,6 +13,7 @@
 
 #include "BKE_attribute.h"
 #include "BKE_context.h"
+#include "BKE_fcurve.h"
 #include "BKE_geometry_set.h"
 #include "BKE_image.h"
 #include "BKE_key.h"
@@ -2382,7 +2383,7 @@ static void rna_SpaceGraphEditor_normalize_update(bContext *C, PointerRNA *UNUSE
     return;
   }
 
-  ANIM_frame_graph_y(C, &ac);
+  ANIM_frame_channel_y_extents(C, &ac);
   ED_area_tag_refresh(ac.area);
 }
 
