@@ -13,3 +13,4 @@ Referenced by issue #102502, Regression: DAE Imports materials wrong
 Referenced by issue #101871, Regression: Realize instances losing materials
 Referenced by issue #100822, Regression: Merging objects does not assign materials correctly
 Referenced by issue #95967, Struct of Arrays Refactor for Mesh Polygons
+Referenced by issue #105577, Python API allows setting negative material indices
