@@ -42,6 +42,7 @@ void write_faces(FileBuffer &buffer, const PlyData &ply_data)
   const uint32_t *indices = ply_data.face_vertices.data();
   for (uint32_t face_size : ply_data.face_sizes) {
     buffer.write_face(char(face_size), Span<uint32_t>(indices, face_size));
+    indices += face_size;
   }
   buffer.write_to_file();
 }

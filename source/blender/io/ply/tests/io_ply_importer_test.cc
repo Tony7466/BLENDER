@@ -34,11 +34,9 @@ class ply_import_test : public testing::Test {
       ADD_FAILURE();
       return;
     }
-    std::unique_ptr<PlyData> data;
-    try {
-      data = import_ply_data(infile, header);
-    }
-    catch (std::exception &e) {
+    std::unique_ptr<PlyData> data = import_ply_data(infile, header);
+    if (!data->error.empty()) {
+      fprintf(stderr, "%s\n", data->error.c_str());
       ASSERT_EQ(0, exp.totvert);
       ASSERT_EQ(0, exp.totpoly);
       return;

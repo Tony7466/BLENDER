@@ -145,7 +145,7 @@ static int2 get_uv_index(const PlyElement &element)
   return {get_index(element, "s"), get_index(element, "t")};
 }
 
-static void parse_row_ascii(PlyReadBuffer &file, Vector<float> &r_values)
+static const char *parse_row_ascii(PlyReadBuffer &file, Vector<float> &r_values)
 {
   Span<char> line = file.read_line();
 
@@ -158,6 +158,7 @@ static void parse_row_ascii(PlyReadBuffer &file, Vector<float> &r_values)
     p = parse_float(p, end, 0.0f, val);
     r_values[value_idx++] = val;
   }
+  return nullptr;
 }
 
 template<typename T> static T get_binary_value(PlyDataTypes type, const uint8_t *&r_ptr)
@@ -199,25 +200,24 @@ template<typename T> static T get_binary_value(PlyDataTypes type, const uint8_t 
       r_ptr += 8;
       break;
     default:
-      throw std::runtime_error("Unknown property type");
+      BLI_assert_msg(false, "Unknown property type");
   }
   return val;
 }
 
-static void parse_row_binary(PlyReadBuffer &file,
-                             const PlyHeader &header,
-                             const PlyElement &element,
-                             Vector<uint8_t> &r_scratch,
-                             Vector<float> &r_values)
+static const char *parse_row_binary(PlyReadBuffer &file,
+                                    const PlyHeader &header,
+                                    const PlyElement &element,
+                                    Vector<uint8_t> &r_scratch,
+                                    Vector<float> &r_values)
 {
   if (element.stride == 0) {
-    throw std::runtime_error(
-        "Vertex/Edge element contains list properties, this is not supported");
+    return "Vertex/Edge element contains list properties, this is not supported";
   }
   BLI_assert(r_scratch.size() == element.stride);
   BLI_assert(r_values.size() == element.properties.size());
   if (!file.read_bytes(r_scratch.data(), r_scratch.size())) {
-    throw std::runtime_error("Could not read row of binary property");
+    return "Could not read row of binary property";
   }
 
   const uint8_t *ptr = r_scratch.data();
@@ -239,14 +239,15 @@ static void parse_row_binary(PlyReadBuffer &file,
     }
   }
   else {
-    throw std::runtime_error("Unknown binary ply format for vertex element");
+    return "Unknown binary ply format for vertex element";
   }
+  return nullptr;
 }
 
-static void load_vertex_element(PlyReadBuffer &file,
-                                const PlyHeader &header,
-                                const PlyElement &element,
-                                PlyData *data)
+static const char *load_vertex_element(PlyReadBuffer &file,
+                                       const PlyHeader &header,
+                                       const PlyElement &element,
+                                       PlyData *data)
 {
   /* Figure out vertex component indices. */
   int3 vertex_index = get_vertex_index(element);
@@ -262,7 +263,7 @@ static void load_vertex_element(PlyReadBuffer &file,
   bool has_alpha = alpha_index >= 0;
 
   if (!has_vertex) {
-    throw std::runtime_error("Vertex positions are not present in the file");
+    return "Vertex positions are not present in the file";
   }
 
   data->vertices.reserve(element.count);
@@ -294,11 +295,15 @@ static void load_vertex_element(PlyReadBuffer &file,
 
   for (int i = 0; i < element.count; i++) {
 
+    const char *error = nullptr;
     if (header.type == PlyFormatType::ASCII) {
-      parse_row_ascii(file, value_vec);
+      error = parse_row_ascii(file, value_vec);
     }
     else {
-      parse_row_binary(file, header, element, scratch, value_vec);
+      error = parse_row_binary(file, header, element, scratch, value_vec);
+    }
+    if (error != nullptr) {
+      return error;
     }
 
     /* Vertex coord */
@@ -340,6 +345,7 @@ static void load_vertex_element(PlyReadBuffer &file,
       data->uv_coordinates.append(uvmap);
     }
   }
+  return nullptr;
 }
 
 static uint32_t read_list_count(PlyReadBuffer &file,
@@ -372,10 +378,10 @@ static void skip_property(PlyReadBuffer &file,
   }
 }
 
-static void load_face_element(PlyReadBuffer &file,
-                              const PlyHeader &header,
-                              const PlyElement &element,
-                              PlyData *data)
+static const char *load_face_element(PlyReadBuffer &file,
+                                     const PlyHeader &header,
+                                     const PlyElement &element,
+                                     PlyData *data)
 {
   int prop_index = get_index(element, "vertex_indices");
   if (prop_index < 0) {
@@ -385,11 +391,11 @@ static void load_face_element(PlyReadBuffer &file,
     prop_index = 0;
   }
   if (prop_index < 0) {
-    throw std::runtime_error("Face element does not contain vertex indices property");
+    return "Face element does not contain vertex indices property";
   }
   const PlyProperty &prop = element.properties[prop_index];
   if (prop.count_type == PlyDataTypes::NONE) {
-    throw std::runtime_error("Face element vertex indices property must be a list");
+    return "Face element vertex indices property must be a list";
   }
 
   data->face_vertices.reserve(element.count * 3);
@@ -466,22 +472,23 @@ static void load_face_element(PlyReadBuffer &file,
       }
     }
   }
+  return nullptr;
 }
 
-static void load_tristrips_element(PlyReadBuffer &file,
-                                   const PlyHeader &header,
-                                   const PlyElement &element,
-                                   PlyData *data)
+static const char *load_tristrips_element(PlyReadBuffer &file,
+                                          const PlyHeader &header,
+                                          const PlyElement &element,
+                                          PlyData *data)
 {
   if (element.count != 1) {
-    throw std::runtime_error("Tristrips element should contain one row");
+    return "Tristrips element should contain one row";
   }
   if (element.properties.size() != 1) {
-    throw std::runtime_error("Tristrips element should contain one property");
+    return "Tristrips element should contain one property";
   }
   const PlyProperty &prop = element.properties[0];
   if (prop.count_type == PlyDataTypes::NONE) {
-    throw std::runtime_error("Tristrips element property must be a list");
+    return "Tristrips element property must be a list";
   }
 
   Vector<int> strip;
@@ -543,17 +550,18 @@ static void load_tristrips_element(PlyReadBuffer &file,
       }
     }
   }
+  return nullptr;
 }
 
-static void load_edge_element(PlyReadBuffer &file,
-                              const PlyHeader &header,
-                              const PlyElement &element,
-                              PlyData *data)
+static const char *load_edge_element(PlyReadBuffer &file,
+                                     const PlyHeader &header,
+                                     const PlyElement &element,
+                                     PlyData *data)
 {
   int prop_vertex1 = get_index(element, "vertex1");
   int prop_vertex2 = get_index(element, "vertex2");
   if (prop_vertex1 < 0 || prop_vertex2 < 0) {
-    throw std::runtime_error("Edge element does not contain vertex1 and vertex2 properties");
+    return "Edge element does not contain vertex1 and vertex2 properties";
   }
 
   data->edges.reserve(element.count);
@@ -565,16 +573,21 @@ static void load_edge_element(PlyReadBuffer &file,
   }
 
   for (int i = 0; i < element.count; i++) {
+    const char *error = nullptr;
     if (header.type == PlyFormatType::ASCII) {
-      parse_row_ascii(file, value_vec);
+      error = parse_row_ascii(file, value_vec);
     }
     else {
-      parse_row_binary(file, header, element, scratch, value_vec);
+      error = parse_row_binary(file, header, element, scratch, value_vec);
+    }
+    if (error != nullptr) {
+      return error;
     }
     int index1 = value_vec[prop_vertex1];
     int index2 = value_vec[prop_vertex2];
     data->edges.append(std::make_pair(index1, index2));
   }
+  return nullptr;
 }
 
 std::unique_ptr<PlyData> import_ply_data(PlyReadBuffer &file, PlyHeader &header)
@@ -582,17 +595,22 @@ std::unique_ptr<PlyData> import_ply_data(PlyReadBuffer &file, PlyHeader &header)
   std::unique_ptr<PlyData> data = std::make_unique<PlyData>();
 
   for (const PlyElement &element : header.elements) {
+    const char *error = nullptr;
     if (element.name == "vertex") {
-      load_vertex_element(file, header, element, data.get());
+      error = load_vertex_element(file, header, element, data.get());
     }
     else if (element.name == "face") {
-      load_face_element(file, header, element, data.get());
+      error = load_face_element(file, header, element, data.get());
     }
     else if (element.name == "tristrips") {
-      load_tristrips_element(file, header, element, data.get());
+      error = load_tristrips_element(file, header, element, data.get());
     }
     else if (element.name == "edge") {
-      load_edge_element(file, header, element, data.get());
+      error = load_edge_element(file, header, element, data.get());
+    }
+    if (error != nullptr) {
+      data->error = error;
+      return data;
     }
   }
 

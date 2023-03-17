@@ -184,9 +184,26 @@ void importer_main(Main *bmain,
     return;
   }
 
+  /* Parse actual file data. */
+  std::unique_ptr<PlyData> data = import_ply_data(file, header);
+  if (data == nullptr) {
+    fprintf(stderr, "PLY Importer: failed importing %s, unknown error\n", ob_name);
+    BKE_report(op->reports, RPT_ERROR, "PLY Importer: failed importing, unknown error.");
+    return;
+  }
+  if (!data->error.empty()) {
+    fprintf(stderr, "PLY Importer: failed importing %s: %s\n", ob_name, data->error.c_str());
+    BKE_report(op->reports, RPT_ERROR, "PLY Importer: failed importing, unknown error.");
+    return;
+  }
+  if (data->vertices.is_empty()) {
+    fprintf(stderr, "PLY Importer: file %s contains no vertices\n", ob_name);
+    BKE_report(op->reports, RPT_ERROR, "PLY Importer: failed importing, no vertices.");
+    return;
+  }
+
   /* Create mesh and do all prep work. */
   Mesh *mesh = BKE_mesh_add(bmain, ob_name);
-
   BKE_view_layer_base_deselect_all(scene, view_layer);
   LayerCollection *lc = BKE_layer_collection_get_active(view_layer);
   Object *obj = BKE_object_add_only_object(bmain, OB_MESH, ob_name);
@@ -196,19 +213,10 @@ void importer_main(Main *bmain,
   Base *base = BKE_view_layer_base_find(view_layer, obj);
   BKE_view_layer_base_select_and_set_active(view_layer, base);
 
-  /* Parse actual file data. */
-  try {
-    std::unique_ptr<PlyData> data = import_ply_data(file, header);
-
-    Mesh *temp_val = convert_ply_to_mesh(*data, mesh, import_params);
-    if (import_params.merge_verts && temp_val != mesh) {
-      BKE_mesh_nomain_to_mesh(temp_val, mesh, obj);
-    }
-  }
-  catch (std::exception &e) {
-    fprintf(stderr, "PLY Importer: failed to read file. %s.\n", e.what());
-    BKE_report(op->reports, RPT_ERROR, "PLY Importer: failed to parse file.");
-    return;
+  /* Stuff ply data into the mesh. */
+  Mesh *temp_val = convert_ply_to_mesh(*data, mesh, import_params);
+  if (import_params.merge_verts && temp_val != mesh) {
+    BKE_mesh_nomain_to_mesh(temp_val, mesh, obj);
   }
 
   /* Object matrix and finishing up. */

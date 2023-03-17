@@ -22,6 +22,7 @@ struct PlyData {
   Vector<uint32_t> face_vertices;
   Vector<uint32_t> face_sizes;
   Vector<float2> uv_coordinates;
+  std::string error;
 };
 
 enum PlyFormatType { ASCII, BINARY_LE, BINARY_BE };
