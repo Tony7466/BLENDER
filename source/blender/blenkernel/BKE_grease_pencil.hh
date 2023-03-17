@@ -50,7 +50,7 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
   }
   TreeNode &operator=(const TreeNode &other) = delete;
   TreeNode &operator=(TreeNode &&other) = delete;
-  ~TreeNode()
+  virtual ~TreeNode()
   {
     if (this->name) {
       MEM_freeN(this->name);
@@ -219,6 +219,9 @@ class Layer : public TreeNode, ::GreasePencilLayer {
     }
     return *this;
   }
+  ~Layer()
+  {
+  }
 
   bool operator==(const Layer &other) const
   {
@@ -227,11 +230,6 @@ class Layer : public TreeNode, ::GreasePencilLayer {
   bool operator!=(const Layer &other) const
   {
     return this != &other;
-  }
-
-  Layer &as_layer()
-  {
-    return *this;
   }
 };
 
