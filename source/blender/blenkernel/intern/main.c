@@ -649,6 +649,8 @@ ListBase *which_libbase(Main *bmain, short type)
       return &(bmain->volumes);
     case ID_SIM:
       return &(bmain->simulations);
+    case ID_GP:
+      return &(bmain->greasepencils);
   }
   return NULL;
 }

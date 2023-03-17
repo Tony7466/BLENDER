@@ -1657,6 +1657,10 @@ void DepsgraphNodeBuilder::build_object_data_geometry_datablock(ID *obdata)
       op_node->set_as_entry();
       break;
     }
+    case ID_GP: {
+      /* TODO. */
+      break;
+    }
     default:
       BLI_assert_msg(0, "Should not happen");
       break;

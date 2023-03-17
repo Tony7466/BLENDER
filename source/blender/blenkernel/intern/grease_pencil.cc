@@ -33,14 +33,28 @@ using blender::Vector;
 
 static void grease_pencil_init_data(ID *id)
 {
+  using namespace blender::bke;
+
+  printf("grease_pencil_init_data\n");
+  GreasePencil *grease_pencil = (GreasePencil *)id;
+  grease_pencil->runtime = MEM_new<GreasePencilRuntime>(__func__);
 }
 
 static void grease_pencil_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int flag)
 {
+  using namespace blender::bke;
+
+  printf("grease_pencil_copy_data\n");
+  GreasePencil *grease_pencil_dst = (GreasePencil *)id_dst;
+  const GreasePencil *grease_pencil_src = (GreasePencil *)id_src;
+
+  grease_pencil_dst->runtime = MEM_new<GreasePencilRuntime>(__func__);
+  // grease_pencil_dst->runtime->root_group() = grease_pencil_src->runtime->root_group()
 }
 
 static void grease_pencil_free_data(ID *id)
 {
+  printf("grease_pencil_free_data\n");
   GreasePencil *grease_pencil = (GreasePencil *)id;
   BKE_animdata_free(&grease_pencil->id, false);
 
@@ -48,6 +62,9 @@ static void grease_pencil_free_data(ID *id)
   // TODO: free layer tree
 
   MEM_SAFE_FREE(grease_pencil->material_array);
+
+  MEM_delete(grease_pencil->runtime);
+  grease_pencil->runtime = nullptr;
 }
 
 static void grease_pencil_foreach_id(ID *id, LibraryForeachIDData *data)
@@ -98,19 +115,19 @@ static void grease_pencil_blend_write(BlendWriter *writer, ID *id, const void *i
     GreasePencilLayerTreeNode *node = grease_pencil->layer_tree_storage.nodes[i];
     switch (node->type) {
       case GREASE_PENCIL_LAYER_TREE_LEAF: {
-        GreasePencilLayerTreeLeaf *node_leaf = reinterpret_cast<GreasePencilLayerTreeLeaf *>(node);
-        BLO_write_struct(writer, GreasePencilLayerTreeLeaf, node_leaf);
+        GreasePencilLayerTreeLeaf *node_leaf = reinterpret_cast<GreasePencilLayerTreeLeaf
+        *>(node); BLO_write_struct(writer, GreasePencilLayerTreeLeaf, node_leaf);
         /* Write layer data. */
         BLO_write_int32_array(
             writer, node_leaf->layer.frames_storage.size, node_leaf->layer.frames_storage.keys);
         BLO_write_int32_array(
-            writer, node_leaf->layer.frames_storage.size, node_leaf->layer.frames_storage.values);
+            writer, node_leaf->layer.frames_storage.size,
+            node_leaf->layer.frames_storage.values);
         break;
       }
       case GREASE_PENCIL_LAYER_TREE_GROUP: {
-        GreasePencilLayerTreeGroup *group = reinterpret_cast<GreasePencilLayerTreeGroup *>(node);
-        BLO_write_struct(writer, GreasePencilLayerTreeGroup, group);
-        break;
+        GreasePencilLayerTreeGroup *group = reinterpret_cast<GreasePencilLayerTreeGroup
+        *>(node); BLO_write_struct(writer, GreasePencilLayerTreeGroup, group); break;
       }
     }
   }
@@ -154,19 +171,20 @@ static void grease_pencil_blend_read_data(BlendDataReader *reader, ID *id)
     GreasePencilLayerTreeNode *node = grease_pencil->layer_tree_storage.nodes[i];
     switch (node->type) {
       case GREASE_PENCIL_LAYER_TREE_LEAF: {
-        GreasePencilLayerTreeLeaf *node_leaf = reinterpret_cast<GreasePencilLayerTreeLeaf *>(node);
-        BLO_read_data_address(reader, &node_leaf);
+        GreasePencilLayerTreeLeaf *node_leaf = reinterpret_cast<GreasePencilLayerTreeLeaf
+        *>(node); BLO_read_data_address(reader, &node_leaf);
         /* Read layer data. */
         BLO_read_int32_array(
-            reader, node_leaf->layer.frames_storage.size, &node_leaf->layer.frames_storage.keys);
+            reader, node_leaf->layer.frames_storage.size,
+            &node_leaf->layer.frames_storage.keys);
         BLO_read_int32_array(
-            reader, node_leaf->layer.frames_storage.size, &node_leaf->layer.frames_storage.values);
+            reader, node_leaf->layer.frames_storage.size,
+            &node_leaf->layer.frames_storage.values);
         break;
       }
       case GREASE_PENCIL_LAYER_TREE_GROUP: {
-        GreasePencilLayerTreeGroup *group = reinterpret_cast<GreasePencilLayerTreeGroup *>(node);
-        BLO_read_data_address(reader, &group);
-        break;
+        GreasePencilLayerTreeGroup *group = reinterpret_cast<GreasePencilLayerTreeGroup
+        *>(node); BLO_read_data_address(reader, &group); break;
       }
     }
   }
@@ -228,7 +246,7 @@ void *BKE_grease_pencil_add(Main *bmain, const char *name)
 
 BoundBox *BKE_grease_pencil_boundbox_get(Object *ob)
 {
-  BLI_assert(ob->type == OB_CURVES);
+  BLI_assert(ob->type == OB_GREASE_PENCIL);
   const GreasePencil *grease_pencil = static_cast<const GreasePencil *>(ob->data);
 
   if (ob->runtime.bb != nullptr && (ob->runtime.bb->flag & BOUNDBOX_DIRTY) == 0) {
