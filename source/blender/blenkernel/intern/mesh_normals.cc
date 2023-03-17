@@ -1655,7 +1655,7 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
       }
 
       LinkNode *loop_link = lnors_spacearr.lspacearr[i]->loops;
-      int corner_prev = -1;
+      int prev_corner = -1;
       const float *org_nor = nullptr;
 
       while (loop_link) {
@@ -1674,13 +1674,13 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
           const int mlp = (lidx == poly.loopstart) ? poly.loopstart + poly.totloop - 1 : lidx - 1;
           const int edge = corner_edges[lidx];
           const int edge_p = corner_edges[mlp];
-          const int prev_edge = corner_edges[corner_prev];
+          const int prev_edge = corner_edges[prev_corner];
           sharp_edges[prev_edge == edge_p ? prev_edge : edge] = true;
 
           org_nor = nor;
         }
 
-        corner_prev = lidx;
+        prev_corner = lidx;
         loop_link = loop_link->next;
         done_loops[lidx].set();
       }
@@ -1699,7 +1699,7 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
           const int mlp = (lidx == poly.loopstart) ? poly.loopstart + poly.totloop - 1 : lidx - 1;
           const int edge = corner_edges[lidx];
           const int edge_p = corner_edges[mlp];
-          const int prev_edge = corner_edges[corner_prev];
+          const int prev_edge = corner_edges[prev_corner];
           sharp_edges[prev_edge == edge_p ? prev_edge : edge] = true;
         }
       }
