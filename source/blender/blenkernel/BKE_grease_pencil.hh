@@ -26,7 +26,7 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
   using ItemIterFn = FunctionRef<void(TreeNode &)>;
 
  protected:
-  Vector<TreeNode, 0> children_;
+  Vector<std::unique_ptr<TreeNode>> children_;
 
  public:
   TreeNode(GreasePencilLayerTreeNodeType type)
@@ -48,24 +48,8 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
     this->name = other.name;
     other.name = nullptr;
   }
-  TreeNode &operator=(const TreeNode &other)
-  {
-    if (this != &other) {
-      if (this->name) {
-        MEM_freeN(this->name);
-      }
-      this->name = BLI_strdup(other.name);
-    }
-    return *this;
-  }
-  TreeNode &operator=(TreeNode &&other)
-  {
-    if (this != &other) {
-      this->name = other.name;
-      other.name = nullptr;
-    }
-    return *this;
-  }
+  TreeNode &operator=(const TreeNode &other) = delete;
+  TreeNode &operator=(TreeNode &&other) = delete;
   ~TreeNode()
   {
     if (this->name) {
@@ -86,7 +70,7 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
       {
         if (root != nullptr) {
           for (auto it = root->children_.rbegin(); it != root->children_.rend(); it++) {
-            next_node_.push(&(*it));
+            next_node_.push((*it).get());
           }
         }
       }
@@ -106,7 +90,7 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
         BLI_assert(!next_node_.is_empty());
         TreeNode &next_node = *next_node_.pop();
         for (auto it = next_node.children_.rbegin(); it != next_node.children_.rend(); it++) {
-          next_node_.push(&(*it));
+          next_node_.push((*it).get());
         }
         return *this;
       }
@@ -155,22 +139,16 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
  public:
   constexpr bool is_group() const
   {
-    return type == GREASE_PENCIL_LAYER_TREE_GROUP;
+    return this->type == GREASE_PENCIL_LAYER_TREE_GROUP;
   }
 
   constexpr bool is_layer() const
   {
-    return type == GREASE_PENCIL_LAYER_TREE_LEAF;
+    return this->type == GREASE_PENCIL_LAYER_TREE_LEAF;
   }
 
-  LayerGroup &as_group()
-  {
-    return *static_cast<LayerGroup *>(this);
-  }
-  Layer &as_layer()
-  {
-    return *static_cast<Layer *>(this);
-  }
+  LayerGroup &as_group();
+  Layer &as_layer();
 
   PreOrderRange children_in_pre_order()
   {
@@ -179,15 +157,15 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
 
   void foreach_children_pre_order(ItemIterFn function)
   {
-    for (TreeNode &child : children_) {
-      child.foreach_children_pre_order_recursive_(function);
+    for (auto &child : children_) {
+      child->foreach_children_pre_order_recursive_(function);
     }
   }
 
   void foreach_leaf_pre_order(ItemIterFn function)
   {
-    for (TreeNode &child : children_) {
-      child.foreach_leaf_pre_order_recursive_(function);
+    for (auto &child : children_) {
+      child->foreach_leaf_pre_order_recursive_(function);
     }
   }
 
@@ -195,8 +173,8 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
   void foreach_children_pre_order_recursive_(ItemIterFn function)
   {
     function(*this);
-    for (TreeNode &child : children_) {
-      child.foreach_children_pre_order_recursive_(function);
+    for (auto &child : children_) {
+      child->foreach_children_pre_order_recursive_(function);
     }
   }
 
@@ -205,8 +183,8 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
     if (children_.size() == 0) {
       function(*this);
     }
-    for (TreeNode &child : children_) {
-      child.foreach_children_pre_order_recursive_(function);
+    for (auto &child : children_) {
+      child->foreach_children_pre_order_recursive_(function);
     }
   }
 };
@@ -287,22 +265,22 @@ class LayerGroup : public TreeNode {
 
   void add_group(LayerGroup &group)
   {
-    children_.append(group);
+    children_.append(std::make_unique<LayerGroup>(group));
   }
 
   void add_group(LayerGroup &&group)
   {
-    children_.append(std::move(group));
+    children_.append(std::make_unique<LayerGroup>(group));
   }
 
   void add_layer(Layer &layer)
   {
-    children_.append(layer);
+    children_.append(std::make_unique<Layer>(layer));
   }
 
   void add_layer(Layer &&layer)
   {
-    children_.append(std::move(layer));
+    children_.append(std::make_unique<Layer>(layer));
   }
 
   int num_children()

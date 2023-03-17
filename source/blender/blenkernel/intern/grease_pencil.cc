@@ -267,6 +267,20 @@ BoundBox *BKE_grease_pencil_boundbox_get(Object *ob)
   return ob->runtime.bb;
 }
 
+namespace blender::bke::gpencil {
+
+LayerGroup &TreeNode::as_group()
+{
+  return *static_cast<LayerGroup *>(this);
+}
+
+Layer &TreeNode::as_layer()
+{
+  return *static_cast<Layer *>(this);
+}
+
+}  // namespace blender::bke::gpencil
+
 // Span<GreasePencilDrawingOrReference> blender::bke::GreasePencil::drawings() const
 // {
 //   return Span<GreasePencilDrawingOrReference>{this->drawing_array, this->drawing_array_size};

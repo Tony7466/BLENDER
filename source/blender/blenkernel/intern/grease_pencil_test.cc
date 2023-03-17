@@ -20,13 +20,7 @@ TEST(gpencil, build_layer_tree)
   root.add_group(std::move(group));
   root.add_layer(Layer("Group2"));
 
-  root.foreach_children_pre_order([](LayerGroup &child) { std::cout << child.name << std::endl; });
-
-  // root.remove_child(0);
-
-  // for (LayerGroup &child : root.children_in_pre_order()) {
-  //   std::cout << child.name << std::endl;
-  // }
+  root.foreach_children_pre_order([](TreeNode &child) { std::cout << child.name << std::endl; });
 }
 
 }  // namespace blender::bke::gpencil::tests
