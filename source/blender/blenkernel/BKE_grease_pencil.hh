@@ -39,11 +39,12 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
     this->type = type;
     this->name = BLI_strdup(name.c_str());
   }
-  TreeNode(const TreeNode &other)
+  TreeNode(const TreeNode &other) : children_(other.children_)
   {
+    this->type = other.type;
     this->name = BLI_strdup(other.name);
   }
-  TreeNode(TreeNode &&other)
+  TreeNode(TreeNode &&other) : children_(std::move(other.children_))
   {
     this->name = other.name;
     other.name = nullptr;
