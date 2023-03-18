@@ -279,9 +279,7 @@ void ForwardPipeline::render(View &view,
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Deferred Pipeline
- *
- * Closure data are written to intermediate buffer allowing screen space processing.
+/** \name Deferred Layer
  * \{ */
 
 void DeferredLayer::begin_sync()
@@ -350,13 +348,13 @@ void DeferredLayer::begin_sync()
     }
 
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM | DRW_STATE_DEPTH_EQUAL |
-                     DRW_STATE_CULL_BACK | DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_ALWAYS;
-
-    gbuffer_single_sided_ps_ = &gbuffer_ps_.sub("SingleSided");
-    gbuffer_single_sided_ps_->state_set(state | DRW_STATE_CULL_BACK);
+                     DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_ALWAYS;
 
     gbuffer_double_sided_ps_ = &gbuffer_ps_.sub("DoubleSided");
     gbuffer_double_sided_ps_->state_set(state);
+
+    gbuffer_single_sided_ps_ = &gbuffer_ps_.sub("SingleSided");
+    gbuffer_single_sided_ps_->state_set(state | DRW_STATE_CULL_BACK);
   }
 }
 
