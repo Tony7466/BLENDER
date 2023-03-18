@@ -182,8 +182,6 @@ static int geometry_attribute_remove_exec(bContext *C, wmOperator *op)
   ID *id = static_cast<ID *>(ob->data);
   CustomDataLayer *layer = BKE_id_attributes_active_get(id);
 
-  next_color_attributes(id, layer->name);
-
   if (!BKE_id_attribute_remove(id, layer->name, op->reports)) {
     return OPERATOR_CANCELLED;
   }
@@ -435,8 +433,6 @@ static int geometry_color_attribute_remove_exec(bContext *C, wmOperator *op)
   if (active_name.empty()) {
     return OPERATOR_CANCELLED;
   }
-
-  next_color_attributes(id, active_name);
 
   if (!BKE_id_attribute_remove(id, active_name.c_str(), op->reports)) {
     return OPERATOR_CANCELLED;
