@@ -77,7 +77,6 @@ static void extract_uv_init(const MeshRenderData *mr,
                             void *buf,
                             void * /*tls_data*/)
 {
-  SCOPED_TIMER_AVERAGED(__func__);
   GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
   GPUVertFormat format = {0};
 
