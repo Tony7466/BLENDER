@@ -31,7 +31,7 @@ namespace blender::geometry {
  * Otherwise,
  *  return the (positive) distance to the line segment only.
  */
-static float signedDistanceToEdge(float2 probe, float2 uva, float2 uvb)
+static float signed_distance_to_edge(float2 probe, float2 uva, float2 uvb)
 {
   const float2 edge = uvb - uva;
   const float2 side = probe - uva;
@@ -58,7 +58,7 @@ static float signedDistanceToEdge(float2 probe, float2 uva, float2 uvb)
 void PackIsland::addTriangle(const float2 uv0, const float2 uv1, const float2 uv2)
 {
   /* Be careful with winding. */
-  if (signedDistanceToEdge(uv0, uv1, uv2) < 0.0f) {
+  if (signed_distance_to_edge(uv0, uv1, uv2) < 0.0f) {
     triangleVertices.append(uv0);
     triangleVertices.append(uv1);
     triangleVertices.append(uv2);
@@ -245,91 +245,86 @@ class Occupancy {
   void increaseScale(); /* Resize the scale of the bitmap and clear it. */
 
   /* Write or Query a triangle on the bitmap. */
-  bool traceTriangle(const float2 &uv0,
-                     const float2 &uv1,
-                     const float2 &uv2,
-                     const float margin,
-                     const bool write) const;
+  float traceTriangle(const float2 &uv0,
+                      const float2 &uv1,
+                      const float2 &uv2,
+                      const float margin,
+                      const bool write) const;
 
   /* Write or Query an island on the bitmap. */
-  bool traceIsland(PackIsland *island,
-                   const float scale,
-                   const float margin,
-                   float u,
-                   float v,
-                   const bool write) const;
+  float traceIsland(PackIsland *island,
+                    const float scale,
+                    const float margin,
+                    const float2 uv,
+                    const bool write) const;
 
-  int bitmap_radix;
-  float bitmap_scale_reciprocal; /* == 1.0f / bitmap_scale. */
+  int bitmap_radix;              /* Width and Height of `bitmap`. */
+  float bitmap_scale_reciprocal; /* == 1.0f / `bitmap_scale`. */
  private:
-  mutable blender::Array<bool> bitmap;
+  mutable blender::Array<float> bitmap;
 
-  mutable float2 witness;    /* Witness to a previously known bad pixel. */
-  mutable int triangle_hint; /* Hint to a previously suspected bad triangle. */
+  mutable float2 witness;     /* Witness to a previously known occupied pixel. */
+  mutable uint triangle_hint; /* Hint to a previously suspected overlapping triangle. */
+
+  const float terminal = 1048576.0f; /* A "very" large number, much bigger than 4 * bitmap_radix */
 };
 
 Occupancy::Occupancy(const float initial_scale)
-    : bitmap_radix(512), bitmap(bitmap_radix * bitmap_radix, false)
+    : bitmap_radix(800), bitmap(bitmap_radix * bitmap_radix, false)
 {
-  bitmap_scale_reciprocal = bitmap_radix;
-  witness.x = -1;
-  witness.y = -1;
-  triangle_hint = 0;
+  increaseScale();
+  bitmap_scale_reciprocal = bitmap_radix / initial_scale;
 }
 
 void Occupancy::increaseScale()
 {
   bitmap_scale_reciprocal *= 0.5f;
   for (int i = 0; i < bitmap_radix * bitmap_radix; i++) {
-    bitmap[i] = false;
+    bitmap[i] = terminal;
   }
   witness.x = -1;
   witness.y = -1;
+  triangle_hint = 0;
 }
 
-static bool pointInsideFatTriangle(
-    float2 probe, float2 uv0, float2 uv1, float2 uv2, const float epsilon)
+static float signed_distance_fat_triangle(float2 probe, float2 uv0, float2 uv1, float2 uv2)
 {
   /* Be careful with ordering, uv0 <- uv1 <- uv2 <- uv0 <- uv1 etc. */
-  if (signedDistanceToEdge(probe, uv0, uv1) > epsilon) {
-    return false; /* Outside. */
-  }
-  if (signedDistanceToEdge(probe, uv1, uv2) > epsilon) {
-    return false; /* Outside. */
-  }
-  if (signedDistanceToEdge(probe, uv2, uv0) > epsilon) {
-    return false; /* Outside. */
-  }
-  return true; /* Inside. */
+  float dist01 = signed_distance_to_edge(probe, uv0, uv1);
+  float dist12 = signed_distance_to_edge(probe, uv1, uv2);
+  float dist20 = signed_distance_to_edge(probe, uv2, uv0);
+  return max_fff(dist01, dist12, dist20);
 }
 
-bool Occupancy::traceTriangle(const float2 &uv0,
-                              const float2 &uv1,
-                              const float2 &uv2,
-                              const float margin,
-                              const bool write) const
+float Occupancy::traceTriangle(const float2 &uv0,
+                               const float2 &uv1,
+                               const float2 &uv2,
+                               const float margin,
+                               const bool write) const
 {
   const float x0 = min_fff(uv0.x, uv1.x, uv2.x);
   const float y0 = min_fff(uv0.y, uv1.y, uv2.y);
   const float x1 = max_fff(uv0.x, uv1.x, uv2.x);
   const float y1 = max_fff(uv0.y, uv1.y, uv2.y);
-  int ix0 = std::max(int(floorf((x0 - margin) * bitmap_scale_reciprocal)), 0);
-  int iy0 = std::max(int(floorf((y0 - margin) * bitmap_scale_reciprocal)), 0);
-  int ix1 = std::min(int(floorf((x1 + margin) * bitmap_scale_reciprocal + 1)), bitmap_radix);
-  int iy1 = std::min(int(floorf((y1 + margin) * bitmap_scale_reciprocal + 1)), bitmap_radix);
+  float spread = write ? margin * 2 : 0.0f;
+  int ix0 = std::max(int(floorf((x0 - spread) * bitmap_scale_reciprocal)), 0);
+  int iy0 = std::max(int(floorf((y0 - spread) * bitmap_scale_reciprocal)), 0);
+  int ix1 = std::min(int(floorf((x1 + spread) * bitmap_scale_reciprocal + 1)), bitmap_radix);
+  int iy1 = std::min(int(floorf((y1 + spread) * bitmap_scale_reciprocal + 1)), bitmap_radix);
 
   const float2 uv0s = uv0 * bitmap_scale_reciprocal;
   const float2 uv1s = uv1 * bitmap_scale_reciprocal;
   const float2 uv2s = uv2 * bitmap_scale_reciprocal;
 
-  float epsilon = 0.70710678118f; /* sqrt(0.5) pixels. */
-  epsilon = std::max(epsilon, margin * bitmap_scale_reciprocal);
+  float epsilon = 1.4142137f; /* == sqrt(2) */
+  epsilon = std::max(epsilon, 2 * margin * bitmap_scale_reciprocal);
 
   if (!write) {
     if (ix0 <= witness.x && witness.x < ix1) {
       if (iy0 <= witness.y && witness.y < iy1) {
-        if (pointInsideFatTriangle(witness, uv0s, uv1s, uv2s, epsilon)) {
-          return true;
+        const float extent = epsilon - signed_distance_fat_triangle(witness, uv0s, uv1s, uv2s);
+        if (extent > 0.0f) {
+          return extent; /* Witness observes occupied. */
         }
       }
     }
@@ -338,56 +333,100 @@ bool Occupancy::traceTriangle(const float2 &uv0,
   /* Iterate in opposite direction to outer search to improve witness effectiveness. */
   for (int y = iy1 - 1; y >= iy0; --y) {
     for (int x = ix1 - 1; x >= ix0; --x) {
-      bool *hotspot = &bitmap[y * bitmap_radix + x];
-      if (!write && !*hotspot) {
+      float *hotspot = &bitmap[y * bitmap_radix + x];
+      if (!write && *hotspot > epsilon) {
         continue;
       }
       float2 probe(x, y);
-      if (pointInsideFatTriangle(probe, uv0s, uv1s, uv2s, epsilon)) {
-        if (write) {
-          *hotspot = true;
-        }
-        else {
-          witness = probe;
-          return true;
-        }
+      float distance = signed_distance_fat_triangle(probe, uv0s, uv1s, uv2s);
+      if (write) {
+        *hotspot = min_ff(distance, *hotspot);
+        continue;
+      }
+      const float extent = epsilon - distance;
+      if (extent > 0.0f) {
+        witness = probe;
+        return extent; /* Occupied. */
       }
     }
   }
-  return false;
+  return -1.0f; /* Available. */
 }
 
-bool Occupancy::traceIsland(PackIsland *island,
-                            const float scale,
-                            const float margin,
-                            float u,
-                            float v,
-                            const bool write) const
+float Occupancy::traceIsland(PackIsland *island,
+                             const float scale,
+                             const float margin,
+                             const float2 uv,
+                             const bool write) const
 {
 
   if (!write) {
-    if (u < 0.0f || v < 0.0f) {
-      return true;
+    if (uv.x <= 0.0f || uv.y <= 0.0f) {
+      return std::max(-uv.x, -uv.y); /* Occupied. */
     }
   }
   const float2 origin(island->bounds_rect.xmin, island->bounds_rect.ymin);
+  const float2 delta = uv - origin * scale;
+  uint vert_count = uint(island->triangleVertices.size());
+  for (uint i = 0; i < vert_count; i += 3) {
+    uint j = (i + triangle_hint) % vert_count;
+    float extent = traceTriangle(delta + island->triangleVertices[j] * scale,
+                                 delta + island->triangleVertices[j + 1] * scale,
+                                 delta + island->triangleVertices[j + 2] * scale,
+                                 margin,
+                                 write);
 
-  int s = int(island->triangleVertices.size());
-  for (int i = 0; i < s; i += 3) {
-    int j = (i + triangle_hint) % s;
-    bool occupied = traceTriangle(
-        (island->triangleVertices[j] - origin) * scale + float2(u, v),
-        (island->triangleVertices[j + 1] - origin) * scale + float2(u, v),
-        (island->triangleVertices[j + 2] - origin) * scale + float2(u, v),
-        margin,
-        write);
-
-    if (!write && occupied) {
+    if (!write && extent >= 0.0f) {
       triangle_hint = j;
-      return true;
+      return extent; /* Occupied. */
     }
   }
-  return false;
+  return -1.0f; /* Available. */
+}
+
+static float2 find_best_fit_for_island(
+    PackIsland *island, int scan_line, Occupancy &occupancy, const float scale, const float margin)
+{
+  int t = 0;
+  while (t <= scan_line) {
+    float2 horiz(scan_line / occupancy.bitmap_scale_reciprocal -
+                     BLI_rctf_size_x(&island->bounds_rect) * scale,
+                 t / occupancy.bitmap_scale_reciprocal -
+                     BLI_rctf_size_y(&island->bounds_rect) * scale);
+
+    const float extentH = occupancy.traceIsland(island, scale, margin, horiz, false);
+
+    if (extentH < 0.0f) {
+      return horiz;
+    }
+    float2 vert(t / occupancy.bitmap_scale_reciprocal -
+                    BLI_rctf_size_x(&island->bounds_rect) * scale,
+                scan_line / occupancy.bitmap_scale_reciprocal -
+                    BLI_rctf_size_y(&island->bounds_rect) * scale);
+    const float extentV = occupancy.traceIsland(island, scale, margin, vert, false);
+
+    if (extentV < 0.0f) {
+      return vert;
+    }
+
+    const float min_extent = std::min(extentH, extentV);
+
+    t = t + std::max(1, int(min_extent));
+  }
+  return float2(-1, -1);
+}
+
+static float guess_initial_scale(const Span<PackIsland *> islands,
+                                 const float scale,
+                                 const float margin)
+{
+  float sum = 1e-40f;
+  for (int64_t i : islands.index_range()) {
+    PackIsland *island = islands[i];
+    sum += BLI_rctf_size_x(&island->bounds_rect) * scale + 2 * margin;
+    sum += BLI_rctf_size_y(&island->bounds_rect) * scale + 2 * margin;
+  }
+  return sqrtf(sum) / 3.0f;
 }
 
 /**
@@ -413,73 +452,57 @@ static void pack_island_xatlas(const Span<UVAABBIsland *> island_indices,
                                float *r_max_u,
                                float *r_max_v)
 {
-  Occupancy occupancy(1.0f);
+  Occupancy occupancy(guess_initial_scale(islands, scale, margin));
   float max_u = 0.0f;
   float max_v = 0.0f;
 
-  int s0 = 0;
+  int scan_line = 0;
   int i = 0;
+
+  /* The following `while` loop is setting up a three-way race:
+   * for (scan_line=0; scan_line<bitmap_radix; scan_line++)
+   * for (i : island_indices.index_range())
+   * while (bitmap_scale_reciprocal > 0) { bitmap_scale_reciprocal *= 0.5f; }
+   */
+
   while (i < island_indices.size()) {
     PackIsland *island = islands[island_indices[i]->index];
-    bool found = false;
-    float best_u = 1.2f;
-    float best_v = 0.5f;
+    float2 best = find_best_fit_for_island(island, scan_line, occupancy, scale, margin);
 
-    if (i < 128 || (i & 31) == 16) {
-      s0 = 0;
-    }
+    if (best.x <= -1.0f) {
+      /* Unable to find a fit on this scan_line. */
 
-    for (int s = s0; s < occupancy.bitmap_radix; s++) {
-      for (int t = 0; t <= s; t++) {
-        float u = s / occupancy.bitmap_scale_reciprocal -
-                  BLI_rctf_size_x(&island->bounds_rect) * scale;
-        float v = t / occupancy.bitmap_scale_reciprocal -
-                  BLI_rctf_size_y(&island->bounds_rect) * scale;
+      scan_line += 2; /* !! */
 
-        if (!occupancy.traceIsland(island, scale, 0.0f, u, v, false)) {
-          best_u = u;
-          best_v = v;
-          s0 = std::max(s0, s - 25); /* TODO: Tune me. */
-          s = t = 1048576;           /* Fixme. */
-          found = true;
-          break;
-        }
-        u = t / occupancy.bitmap_scale_reciprocal - BLI_rctf_size_x(&island->bounds_rect) * scale;
-        v = s / occupancy.bitmap_scale_reciprocal - BLI_rctf_size_y(&island->bounds_rect) * scale;
-        if (!occupancy.traceIsland(island, scale, 0.0f, u, v, false)) {
-          best_u = u;
-          best_v = v;
-          s0 = std::max(s0, s - 25); /* TODO: Tune me. */
-          s = t = 1048576;           /* Fixme. */
-          found = true;
-          break;
-        }
+      if (scan_line < occupancy.bitmap_radix) {
+        continue;
       }
-    }
 
-    if (best_u + BLI_rctf_size_x(&island->bounds_rect) * scale + 2 * margin >
-        0.75f * occupancy.bitmap_radix / occupancy.bitmap_scale_reciprocal) {
-      found = false; /* TODO: fixme.... */
-    }
-
-    if (!found) {
-      s0 = 0;
+      scan_line = 0;
       occupancy.increaseScale();
       for (int j = 0; j < i; j++) {
         BoxPack *box = box_array + j;
         occupancy.traceIsland(
-            islands[island_indices[j]->index], scale, 2.0f * margin, box->x, box->y, true);
+            islands[island_indices[j]->index], scale, margin, float2(box->x, box->y), true);
       }
       continue;
     }
 
+    /* Place island. */
     BoxPack *box = box_array + i;
-    box->x = best_u;
-    box->y = best_v;
-    max_u = std::max(best_u + BLI_rctf_size_x(&island->bounds_rect) * scale + 2 * margin, max_u);
-    max_v = std::max(best_v + BLI_rctf_size_y(&island->bounds_rect) * scale + 2 * margin, max_v);
-    occupancy.traceIsland(island, scale, 2.0f * margin, box->x, box->y, true);
+    box->x = best.x;
+    box->y = best.y;
+    max_u = std::max(box->x + BLI_rctf_size_x(&island->bounds_rect) * scale + 2 * margin, max_u);
+    max_v = std::max(box->y + BLI_rctf_size_y(&island->bounds_rect) * scale + 2 * margin, max_v);
+    occupancy.traceIsland(island, scale, margin, float2(box->x, box->y), true);
     i++; /* Next island. */
+
+    if (i < 128 || (i & 31) == 16) {
+      scan_line = 0;
+    }
+    else {
+      scan_line = std::max(0, scan_line - 25);
+    }
   }
 
   *r_max_u = max_u;
