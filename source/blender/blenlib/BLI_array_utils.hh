@@ -24,7 +24,7 @@ template<typename T>
 inline void copy(const Span<T> src, MutableSpan<T> dst, const int64_t grain_size = 4096)
 {
   BLI_assert(src.size() == dst.size());
-  threading::parallel_for(src.index_range(), grain_size, [src, dst](const IndexRange range) {
+  threading::parallel_for(src.index_range(), grain_size, [&](const IndexRange range) {
     dst.slice(range).copy_from(src.slice(range));
   });
 }
