@@ -20,13 +20,10 @@
 
 #include "BLI_array.hh"
 #include "BLI_convexhull_2d.h"
-#include "BLI_heap.h"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
 #include "BLI_math.h"
 #include "BLI_memarena.h"
-#include "BLI_polyfill_2d.h"
-#include "BLI_polyfill_2d_beautify.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 #include "BLI_uvproject.h"
@@ -1394,7 +1391,6 @@ static void uvedit_pack_islands_multi(const Scene *scene,
   }
 
   MemArena *arena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __FILE__);
-  Heap *heap = BLI_heap_new();
 
   float scale[2] = {1.0f, 1.0f};
   blender::Vector<blender::geometry::PackIsland *> pack_island_vector;
@@ -1407,40 +1403,25 @@ static void uvedit_pack_islands_multi(const Scene *scene,
 
     for (int i = 0; i < face_island->faces_len; i++) {
       BMFace *f = face_island->faces[i];
-      int nverts = f->len;
 
       /* Storage. */
-      int nfilltri = f->len - 2;
-      uint(*tris)[3] = static_cast<uint(*)[3]>(
-          BLI_memarena_alloc(arena, sizeof(*tris) * size_t(nfilltri)));
-      float(*projverts)[2] = static_cast<float(*)[2]>(
-          BLI_memarena_alloc(arena, sizeof(*projverts) * f->len));
+      blender::Array<blender::float2> uvs(f->len);
 
-      /* Obtain UVs of n-gon. */
+      /* Obtain UVs of polygon. */
       BMLoop *l;
       BMIter iter;
       int j;
       BM_ITER_ELEM_INDEX (l, &iter, f, BM_LOOPS_OF_FACE, j) {
-        copy_v2_v2(projverts[j], BM_ELEM_CD_GET_FLOAT_P(l, face_island->offsets.uv));
+        copy_v2_v2(uvs[j], BM_ELEM_CD_GET_FLOAT_P(l, face_island->offsets.uv));
       }
 
-      /* Triangulate. */
-      BLI_polyfill_calc_arena(projverts, f->len, 0, tris, arena);
-      /* Improves performance of packer. */
-      BLI_polyfill_beautify(projverts, f->len, tris, arena, heap);
+      pack_island->addPolygon(uvs, arena);
 
-      /* Add triangles to pack_island. */
-      for (int j = 0; j < nfilltri; j++) {
-        uint *tri = tris[j];
-        pack_island->addTriangle(projverts[tri[0]], projverts[tri[1]], projverts[tri[2]]);
-      }
-
-      BLI_heap_clear(heap, nullptr);
       BLI_memarena_clear(arena);
     }
+    pack_island->finalizeGeometry(*params, arena);
   }
   BLI_memarena_free(arena);
-  BLI_heap_free(heap, nullptr);
   pack_islands(pack_island_vector, *params, scale);
 
   float base_offset[2] = {0.0f, 0.0f};
@@ -1605,6 +1586,7 @@ static const EnumPropertyItem pack_margin_method_items[] = {
 
 static const EnumPropertyItem pack_shape_method_items[] = {
     {ED_UVPACK_SHAPE_AABB, "AABB", 0, "AABB", "Use Axis-Aligned Bounding Boxes"},
+    {ED_UVPACK_SHAPE_CONVEX, "CONVEX", 0, "Convex hull", "Use convex hull"},
     {ED_UVPACK_SHAPE_CONCAVE_HOLE,
      "CONCAVE_HOLE",
      0,

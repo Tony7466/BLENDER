@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_math_matrix.hh"
+#include "BLI_memarena.h"
 #include "BLI_span.hh"
 #include "BLI_vector.hh"
 
@@ -25,7 +26,10 @@ enum eUVPackIsland_ShapeMethod {
   ED_UVPACK_SHAPE_AABB = 0,         /* Use Axis-Aligned Bounding-Boxes. */
   ED_UVPACK_SHAPE_CONVEX = 1,       /* Use convex hull. */
   ED_UVPACK_SHAPE_CONCAVE = 2,      /* Use concave hull. */
-  ED_UVPACK_SHAPE_CONCAVE_HOLE = 2, /* Use concave hull with holes. */
+  ED_UVPACK_SHAPE_CONCAVE_HOLE = 3, /* Use concave hull with holes. */
+
+  ED_UVPACK_SHAPE_FASTEST = ED_UVPACK_SHAPE_AABB,
+  ED_UVPACK_SHAPE_TIGHTEST = ED_UVPACK_SHAPE_CONCAVE_HOLE,
 };
 
 namespace blender::geometry {
@@ -70,6 +74,8 @@ class PackIsland {
   int caller_index;     /* Unchanged by #pack_islands, used by caller. */
 
   void addTriangle(const float2 uv0, const float2 uv1, const float2 uv2);
+  void addPolygon(const blender::Span<float2> uvs, MemArena *arena);
+  void finalizeGeometry(const UVPackIsland_Params &params, MemArena *arena);
 
  private:
   blender::Vector<float2> triangleVertices;
