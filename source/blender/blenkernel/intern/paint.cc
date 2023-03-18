@@ -2015,22 +2015,22 @@ int BKE_sculpt_mask_layers_ensure(Depsgraph *depsgraph,
 
         /* mask center */
         for (j = 0; j < poly.size(); j++) {
-          const int vert_i = corner_verts[poly.start() + j];
-          avg += paint_mask[vert_i];
+          const int vert = corner_verts[poly.start() + j];
+          avg += paint_mask[vert];
         }
         avg /= float(poly.size());
 
         /* fill in multires mask corner */
         for (j = 0; j < poly.size(); j++) {
           GridPaintMask *gpm = &gmask[poly.start() + j];
-          const int vert_i = corner_verts[poly.start() + j];
+          const int vert = corner_verts[poly.start() + j];
           const int prev = ME_POLY_LOOP_PREV(poly, j);
           const int next = ME_POLY_LOOP_NEXT(poly, j);
 
           gpm->data[0] = avg;
-          gpm->data[1] = (paint_mask[vert_i] + paint_mask[corner_verts[next]]) * 0.5f;
-          gpm->data[2] = (paint_mask[vert_i] + paint_mask[corner_verts[prev]]) * 0.5f;
-          gpm->data[3] = paint_mask[vert_i];
+          gpm->data[1] = (paint_mask[vert] + paint_mask[corner_verts[next]]) * 0.5f;
+          gpm->data[2] = (paint_mask[vert] + paint_mask[corner_verts[prev]]) * 0.5f;
+          gpm->data[3] = paint_mask[vert];
         }
       }
     }

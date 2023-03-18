@@ -846,7 +846,8 @@ void BKE_pbvh_build_mesh(PBVH *pbvh,
   pbvh->corner_verts = corner_verts;
   pbvh->looptri = looptri;
   pbvh->vert_positions = vert_positions;
-  BKE_mesh_vert_normals_ensure(mesh);
+  /* Make sure cached normals start out calculated. */
+  mesh->vert_normals();
   pbvh->vert_normals = BKE_mesh_vert_normals_for_write(mesh);
   pbvh->hide_vert = static_cast<bool *>(CustomData_get_layer_named_for_write(
       &mesh->vdata, CD_PROP_BOOL, ".hide_vert", mesh->totvert));
@@ -3741,6 +3742,7 @@ static void pbvh_face_iter_step(PBVHFaceIter *fd, bool do_step)
 
       pbvh_face_iter_verts_reserve(fd, poly_size);
 
+      const int *poly_verts = &fd->corner_verts_[poly_start];
       const int grid_area = fd->subdiv_key_.grid_area;
 
       for (int i = 0; i < poly_size; i++) {
@@ -3749,7 +3751,7 @@ static void pbvh_face_iter_step(PBVHFaceIter *fd, bool do_step)
           fd->verts[i].i = (poly_start + i) * grid_area + grid_area - 1;
         }
         else {
-          fd->verts[i].i = fd->corner_verts_[poly_start + i];
+          fd->verts[i].i = poly_verts[i];
         }
       }
       break;

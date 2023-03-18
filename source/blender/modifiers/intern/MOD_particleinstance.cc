@@ -493,14 +493,14 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
         for (; j; j--, orig_corner_i++, dst_corner_i++) {
           corner_verts[dst_corner_i] = orig_corner_verts[orig_corner_i] + (p_skip * totvert);
           corner_edges[dst_corner_i] = orig_corner_edges[orig_corner_i] + (p_skip * totedge);
-          const int vert_i = corner_verts[orig_corner_i];
+          const int vert = corner_verts[orig_corner_i];
           if (mloopcols_index != nullptr) {
-            const int part_index = vert_part_index[vert_i];
+            const int part_index = vert_part_index[vert];
             store_float_in_vcol(&mloopcols_index[dst_corner_i],
                                 float(part_index) / float(psys->totpart - 1));
           }
           if (mloopcols_value != nullptr) {
-            const float part_value = vert_part_value[vert_i];
+            const float part_value = vert_part_value[vert];
             store_float_in_vcol(&mloopcols_value[dst_corner_i], part_value);
           }
         }

@@ -148,8 +148,8 @@ static bool sculpt_expand_is_face_in_active_component(SculptSession *ss,
                                                       ExpandCache *expand_cache,
                                                       const int f)
 {
-  const int vert_i = ss->corner_verts[ss->polys[f].start()];
-  return sculpt_expand_is_vert_in_active_component(ss, expand_cache, BKE_pbvh_make_vref(vert_i));
+  const int vert = ss->corner_verts[ss->polys[f].start()];
+  return sculpt_expand_is_vert_in_active_component(ss, expand_cache, BKE_pbvh_make_vref(vert));
 }
 
 /**

@@ -64,13 +64,13 @@ static Mesh *remesh_quadriflow(const Mesh *input_mesh,
                                void *update_cb_data)
 {
   const Span<float3> input_positions = input_mesh->vert_positions();
-  const Span<int> src_corner_verts = input_mesh->corner_verts();
+  const Span<int> input_corner_verts = input_mesh->corner_verts();
   const Span<MLoopTri> looptris = input_mesh->looptris();
 
   /* Gather the required data for export to the internal quadriflow mesh format. */
   Array<MVertTri> verttri(looptris.size());
   BKE_mesh_runtime_verttri_from_looptri(
-      verttri.data(), src_corner_verts.data(), looptris.data(), looptris.size());
+      verttri.data(), input_corner_verts.data(), looptris.data(), looptris.size());
 
   const int totfaces = looptris.size();
   const int totverts = input_mesh->totvert;

@@ -366,7 +366,7 @@ static void apply_weights_vertex_normal(WeightedNormalModifierData *wnmd,
       /* NOTE: in theory, we could avoid this extra allocation & copying...
        * But think we can live with it for now,
        * and it makes code simpler & cleaner. */
-      blender::Array<blender::float3> vert_normals;
+      blender::Array<blender::float3> vert_normals(verts_num, float3(0));
 
       for (int ml_index = 0; ml_index < corner_verts.size(); ml_index++) {
         const int mv_index = corner_verts[ml_index];

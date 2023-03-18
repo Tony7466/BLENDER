@@ -100,46 +100,28 @@ static void add_v3_v3_atomic(float r[3], const float a[3])
  * Related to managing normals but not directly related to calculating normals.
  * \{ */
 
-void BKE_mesh_normals_tag_dirty(Mesh *mesh)
-{
-  mesh->runtime->vert_normals_dirty = true;
-  mesh->runtime->poly_normals_dirty = true;
-}
-
 float (*BKE_mesh_vert_normals_for_write(Mesh *mesh))[3]
 {
-  if (mesh->runtime->vert_normals == nullptr) {
-    mesh->runtime->vert_normals = (float(*)[3])MEM_malloc_arrayN(
-        mesh->totvert, sizeof(float[3]), __func__);
-  }
-
-  BLI_assert(MEM_allocN_len(mesh->runtime->vert_normals) >= sizeof(float[3]) * mesh->totvert);
-
-  return mesh->runtime->vert_normals;
+  mesh->runtime->vert_normals.reinitialize(mesh->totvert);
+  return reinterpret_cast<float(*)[3]>(mesh->runtime->vert_normals.data());
 }
 
 float (*BKE_mesh_poly_normals_for_write(Mesh *mesh))[3]
 {
-  if (mesh->runtime->poly_normals == nullptr) {
-    mesh->runtime->poly_normals = (float(*)[3])MEM_malloc_arrayN(
-        mesh->totpoly, sizeof(float[3]), __func__);
-  }
-
-  BLI_assert(MEM_allocN_len(mesh->runtime->poly_normals) >= sizeof(float[3]) * mesh->totpoly);
-
-  return mesh->runtime->poly_normals;
+  mesh->runtime->poly_normals.reinitialize(mesh->totpoly);
+  return reinterpret_cast<float(*)[3]>(mesh->runtime->poly_normals.data());
 }
 
 void BKE_mesh_vert_normals_clear_dirty(Mesh *mesh)
 {
   mesh->runtime->vert_normals_dirty = false;
-  BLI_assert(mesh->runtime->vert_normals || mesh->totvert == 0);
+  BLI_assert(mesh->runtime->vert_normals.size() == mesh->totvert);
 }
 
 void BKE_mesh_poly_normals_clear_dirty(Mesh *mesh)
 {
   mesh->runtime->poly_normals_dirty = false;
-  BLI_assert(mesh->runtime->poly_normals || mesh->totpoly == 0);
+  BLI_assert(mesh->runtime->poly_normals.size() == mesh->totpoly);
 }
 
 bool BKE_mesh_vert_normals_are_dirty(const Mesh *mesh)
@@ -343,85 +325,74 @@ void normals_calc_poly_vert(const Span<float3> positions,
 /** \name Mesh Normal Calculation
  * \{ */
 
-const float (*BKE_mesh_vert_normals_ensure(const Mesh *mesh))[3]
+blender::Span<blender::float3> Mesh::vert_normals() const
 {
-  if (!BKE_mesh_vert_normals_are_dirty(mesh)) {
-    BLI_assert(mesh->runtime->vert_normals != nullptr || mesh->totvert == 0);
-    return mesh->runtime->vert_normals;
+  if (!this->runtime->vert_normals_dirty) {
+    BLI_assert(this->runtime->vert_normals.size() == this->totvert);
+    return this->runtime->vert_normals;
   }
 
-  if (mesh->totvert == 0) {
-    return nullptr;
+  std::lock_guard lock{this->runtime->normals_mutex};
+  if (!this->runtime->vert_normals_dirty) {
+    BLI_assert(this->runtime->vert_normals.size() == this->totvert);
+    return this->runtime->vert_normals;
   }
-
-  std::lock_guard lock{mesh->runtime->normals_mutex};
-  if (!BKE_mesh_vert_normals_are_dirty(mesh)) {
-    BLI_assert(mesh->runtime->vert_normals != nullptr);
-    return mesh->runtime->vert_normals;
-  }
-
-  float(*vert_normals)[3];
-  float(*poly_normals)[3];
 
   /* Isolate task because a mutex is locked and computing normals is multi-threaded. */
   blender::threading::isolate_task([&]() {
-    Mesh &mesh_mutable = *const_cast<Mesh *>(mesh);
-    const Span<float3> positions = mesh_mutable.vert_positions();
-    const blender::OffsetIndices polys = mesh_mutable.polys();
-    const Span<int> corner_verts = mesh_mutable.corner_verts();
+    const Span<float3> positions = this->vert_positions();
+    const blender::OffsetIndices polys = this->polys();
+    const Span<int> corner_verts = this->corner_verts();
 
-    vert_normals = BKE_mesh_vert_normals_for_write(&mesh_mutable);
-    poly_normals = BKE_mesh_poly_normals_for_write(&mesh_mutable);
+    this->runtime->vert_normals.reinitialize(positions.size());
+    this->runtime->poly_normals.reinitialize(polys.ranges_num());
     blender::bke::mesh::normals_calc_poly_vert(
-        positions,
-        polys,
-        corner_verts,
-        {reinterpret_cast<float3 *>(poly_normals), mesh->totpoly},
-        {reinterpret_cast<float3 *>(vert_normals), mesh->totvert});
+        positions, polys, corner_verts, this->runtime->poly_normals, this->runtime->vert_normals);
 
-    BKE_mesh_vert_normals_clear_dirty(&mesh_mutable);
-    BKE_mesh_poly_normals_clear_dirty(&mesh_mutable);
+    this->runtime->vert_normals_dirty = false;
+    this->runtime->poly_normals_dirty = false;
   });
 
-  return vert_normals;
+  return this->runtime->vert_normals;
+}
+
+blender::Span<blender::float3> Mesh::poly_normals() const
+{
+  if (!this->runtime->poly_normals_dirty) {
+    BLI_assert(this->runtime->poly_normals.size() == this->totpoly);
+    return this->runtime->poly_normals;
+  }
+
+  std::lock_guard lock{this->runtime->normals_mutex};
+  if (!this->runtime->poly_normals_dirty) {
+    BLI_assert(this->runtime->poly_normals.size() == this->totpoly);
+    return this->runtime->poly_normals;
+  }
+
+  /* Isolate task because a mutex is locked and computing normals is multi-threaded. */
+  blender::threading::isolate_task([&]() {
+    const Span<float3> positions = this->vert_positions();
+    const blender::OffsetIndices polys = this->polys();
+    const Span<int> corner_verts = this->corner_verts();
+
+    this->runtime->poly_normals.reinitialize(polys.ranges_num());
+    blender::bke::mesh::normals_calc_polys(
+        positions, polys, corner_verts, this->runtime->poly_normals);
+
+    this->runtime->poly_normals_dirty = false;
+  });
+
+  return this->runtime->poly_normals;
+}
+
+const float (*BKE_mesh_vert_normals_ensure(const Mesh *mesh))[3]
+{
+  return reinterpret_cast<const float(*)[3]>(mesh->vert_normals().data());
 }
 
 const float (*BKE_mesh_poly_normals_ensure(const Mesh *mesh))[3]
 {
-  if (!BKE_mesh_poly_normals_are_dirty(mesh)) {
-    BLI_assert(mesh->runtime->poly_normals != nullptr || mesh->totpoly == 0);
-    return mesh->runtime->poly_normals;
-  }
-
-  if (mesh->totpoly == 0) {
-    return nullptr;
-  }
-
-  std::lock_guard lock{mesh->runtime->normals_mutex};
-  if (!BKE_mesh_poly_normals_are_dirty(mesh)) {
-    BLI_assert(mesh->runtime->poly_normals != nullptr);
-    return mesh->runtime->poly_normals;
-  }
-
-  float(*poly_normals)[3];
-
-  /* Isolate task because a mutex is locked and computing normals is multi-threaded. */
-  blender::threading::isolate_task([&]() {
-    Mesh &mesh_mutable = *const_cast<Mesh *>(mesh);
-    const Span<float3> positions = mesh_mutable.vert_positions();
-    const Span<int> corner_verts = mesh_mutable.corner_verts();
-
-    poly_normals = BKE_mesh_poly_normals_for_write(&mesh_mutable);
-    blender::bke::mesh::normals_calc_polys(
-        positions,
-        mesh_mutable.polys(),
-        corner_verts,
-        {reinterpret_cast<float3 *>(poly_normals), mesh->totpoly});
-
-    BKE_mesh_poly_normals_clear_dirty(&mesh_mutable);
-  });
-
-  return poly_normals;
+  return reinterpret_cast<const float(*)[3]>(mesh->vert_normals().data());
 }
 
 void BKE_mesh_ensure_normals_for_display(Mesh *mesh)
@@ -429,8 +400,8 @@ void BKE_mesh_ensure_normals_for_display(Mesh *mesh)
   switch (mesh->runtime->wrapper_type) {
     case ME_WRAPPER_TYPE_SUBD:
     case ME_WRAPPER_TYPE_MDATA:
-      BKE_mesh_vert_normals_ensure(mesh);
-      BKE_mesh_poly_normals_ensure(mesh);
+      mesh->vert_normals();
+      mesh->poly_normals();
       break;
     case ME_WRAPPER_TYPE_BMESH: {
       BMEditMesh *em = mesh->edit_mesh;
@@ -1674,7 +1645,7 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
       }
 
       LinkNode *loop_link = lnors_spacearr.lspacearr[i]->loops;
-      int corner_prev = -1;
+      int prev_corner = -1;
       const float *org_nor = nullptr;
 
       while (loop_link) {
@@ -1693,13 +1664,13 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
           const int mlp = (lidx == poly.start()) ? poly.start() + poly.size() - 1 : lidx - 1;
           const int edge = corner_edges[lidx];
           const int edge_p = corner_edges[mlp];
-          const int prev_edge = corner_edges[corner_prev];
+          const int prev_edge = corner_edges[prev_corner];
           sharp_edges[prev_edge == edge_p ? prev_edge : edge] = true;
 
           org_nor = nor;
         }
 
-        corner_prev = lidx;
+        prev_corner = lidx;
         loop_link = loop_link->next;
         done_loops[lidx].set();
       }
@@ -1718,7 +1689,7 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
           const int mlp = (lidx == poly.start()) ? poly.start() + poly.size() - 1 : lidx - 1;
           const int edge = corner_edges[lidx];
           const int edge_p = corner_edges[mlp];
-          const int prev_edge = corner_edges[corner_prev];
+          const int prev_edge = corner_edges[prev_corner];
           sharp_edges[prev_edge == edge_p ? prev_edge : edge] = true;
         }
       }

@@ -39,7 +39,7 @@ struct CDDerivedMesh {
   /* these point to data in the DerivedMesh custom data layers,
    * they are only here for efficiency and convenience */
   float (*vert_positions)[3];
-  const float (*vert_normals)[3];
+  const blender::float3 *vert_normals;
   MEdge *medge;
   MFace *mface;
   int *corner_verts;
@@ -229,7 +229,7 @@ static DerivedMesh *cdDM_from_mesh_ex(Mesh *mesh,
       &dm->vertData, CD_PROP_FLOAT3, "position", mesh->totvert));
   /* Though this may be an unnecessary calculation, simply retrieving the layer may return nothing
    * or dirty normals. */
-  cddm->vert_normals = BKE_mesh_vert_normals_ensure(mesh);
+  cddm->vert_normals = mesh->vert_normals().data();
   cddm->medge = static_cast<MEdge *>(
       CustomData_get_layer_for_write(&dm->edgeData, CD_MEDGE, mesh->totedge));
   cddm->corner_verts = static_cast<int *>(CustomData_get_layer_named_for_write(

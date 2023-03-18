@@ -417,8 +417,8 @@ void GeometryExporter::create_mesh_primitive_list(short material_index,
       BCPolygonNormalsIndices normal_indices = norind[i];
 
       for (int j = 0; j < loop_count; j++) {
-        const int vert_i = corner_verts[poly[j]];
-        primitive_list->appendValues(vert_i);
+        const int vert = corner_verts[poly[j]];
+        primitive_list->appendValues(vert);
         primitive_list->appendValues(normal_indices[j]);
         if (has_uvs) {
           primitive_list->appendValues(texindex + j);
