@@ -77,7 +77,7 @@ void main()
                             g_reflection_data.roughness);
     imageStore(out_gbuff_closure_img, ivec3(out_texel, 0), out_reflect);
 
-    vec4 color = gbuffer_color_pack(g_diffuse_data.color);
+    vec4 color = gbuffer_color_pack(g_reflection_data.color);
     imageStore(out_gbuff_color_img, ivec3(out_texel, 0), color);
   }
 
