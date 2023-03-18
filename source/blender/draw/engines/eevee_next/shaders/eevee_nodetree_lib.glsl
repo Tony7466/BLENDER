@@ -36,7 +36,9 @@ bool closure_select(float weight, inout float total_weight, inout float r)
 
 #define SELECT_CLOSURE(destination, random, candidate) \
   if (closure_select(candidate.weight, destination.weight, random)) { \
+    float tmp = destination.weight; \
     destination = candidate; \
+    destination.weight = tmp; \
   }
 
 float g_closure_rand;
