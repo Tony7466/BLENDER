@@ -107,36 +107,6 @@ static int geometry_attribute_add_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static void next_color_attribute(ID *id, const StringRefNull name, bool is_render)
-{
-  const CustomDataLayer *layer = BKE_id_attributes_color_find(id, name.c_str());
-  int index = BKE_id_attribute_to_index(id, layer, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
-
-  index++;
-
-  layer = BKE_id_attribute_from_index(id, index, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
-
-  if (!layer) {
-    index = 0;
-    layer = BKE_id_attribute_from_index(id, index, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
-  }
-
-  if (layer) {
-    if (is_render) {
-      BKE_id_attributes_active_color_set(id, layer->name);
-    }
-    else {
-      BKE_id_attributes_default_color_set(id, layer->name);
-    }
-  }
-}
-
-static void next_color_attributes(ID *id, const StringRefNull name)
-{
-  next_color_attribute(id, name, false); /* active */
-  next_color_attribute(id, name, true);  /* render */
-}
-
 void GEOMETRY_OT_attribute_add(wmOperatorType *ot)
 {
   /* identifiers */
