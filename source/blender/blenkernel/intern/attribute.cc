@@ -428,17 +428,18 @@ bool BKE_id_attribute_remove(ID *id, const char *name, ReportList *reports)
           const bool is_default_color_attribute = name == StringRef(mesh->default_color_attribute);
           const int active_index = color_name_to_index(id, mesh->active_color_attribute);
           const int default_index = color_name_to_index(id, mesh->default_color_attribute);
-          if (BM_data_layer_free_named(em->bm, data, name)) {
-            if (is_active_color_attribute) {
-              BKE_id_attributes_active_color_set(
-                  id, color_name_from_index(id, color_clamp_index(id, active_index)));
-            }
-            if (is_default_color_attribute) {
-              BKE_id_attributes_default_color_set(
-                  id, color_name_from_index(id, color_clamp_index(id, default_index)));
-            }
-            return true;
+          if (!BM_data_layer_free_named(em->bm, data, name)) {
+            return false;
           }
+          if (is_active_color_attribute) {
+            BKE_id_attributes_active_color_set(
+                id, color_name_from_index(id, color_clamp_index(id, active_index)));
+          }
+          if (is_default_color_attribute) {
+            BKE_id_attributes_default_color_set(
+                id, color_name_from_index(id, color_clamp_index(id, default_index)));
+          }
+          return true;
         }
       }
       return false;
@@ -466,18 +467,18 @@ bool BKE_id_attribute_remove(ID *id, const char *name, ReportList *reports)
     const bool is_default_color_attribute = name == StringRef(mesh->default_color_attribute);
     const int active_index = color_name_to_index(id, mesh->active_color_attribute);
     const int default_index = color_name_to_index(id, mesh->default_color_attribute);
-    if (attributes->remove(name)) {
-      if (is_active_color_attribute) {
-        BKE_id_attributes_active_color_set(
-            id, color_name_from_index(id, color_clamp_index(id, active_index)));
-      }
-      if (is_default_color_attribute) {
-        BKE_id_attributes_default_color_set(
-            id, color_name_from_index(id, color_clamp_index(id, default_index)));
-      }
-      return true;
+    if (!attributes->remove(name)) {
+      return false;
     }
-    return false;
+    if (is_active_color_attribute) {
+      BKE_id_attributes_active_color_set(
+          id, color_name_from_index(id, color_clamp_index(id, active_index)));
+    }
+    if (is_default_color_attribute) {
+      BKE_id_attributes_default_color_set(
+          id, color_name_from_index(id, color_clamp_index(id, default_index)));
+    }
+    return true;
   }
 
   return attributes->remove(name);
