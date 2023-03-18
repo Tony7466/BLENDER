@@ -141,8 +141,8 @@ void load_plydata(PlyData &plyData, Depsgraph *depsgraph, const PLYExportParams 
         int ply_vertex_index = vertex_map.lookup(key);
         plyData.face_vertices.append(ply_vertex_index + vertex_offset);
       }
-      loop_offset += poly.totloop;
-      plyData.face_sizes.append(poly.totloop);
+      loop_offset += mesh_poly_verts.size();
+      plyData.face_sizes.append(mesh_poly_verts.size());
     }
 
     Array<int> mesh_vertex_index_LUT(vertex_map.size());
