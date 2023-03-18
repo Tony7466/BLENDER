@@ -302,15 +302,14 @@ BLI_NOINLINE static void calculate_sphere_uvs(Mesh *mesh,
   uv_attribute.finish();
 }
 
-static void calculate_and_set_bounds_for_uv_sphere(Mesh *mesh,
-                                                   const int segments,
-                                                   const int rings,
-                                                   const float radius)
+static Bounds<float3> calculate_bounds_uv_sphere(const float radius,
+                                                 const int segments,
+                                                 const int rings)
 {
   const float delta_theta = M_PI / float(rings);
-  const float sin_equator = std::sin(std::round(0.5f * rings)) * delta_theta;
+  const float sin_equator = std::sin(std::round(0.5f * rings) * delta_theta);
 
-  calculate_and_set_bounds_radial_primitive(mesh, segments, 0.0f, radius * sin_equator, radius);
+  return calculate_bounds_radial_primitive(0.0f, radius * sin_equator, segments, radius);
 }
 
 static Mesh *create_uv_sphere_mesh(const float radius,
@@ -350,6 +349,8 @@ static Mesh *create_uv_sphere_mesh(const float radius,
   mesh->loose_edges_tag_none();
 
   BLI_assert(BKE_mesh_is_valid(mesh));
+
+  mesh->bounds_set_eager(calculate_bounds_uv_sphere(radius, segments, rings));
 
   return mesh;
 }
