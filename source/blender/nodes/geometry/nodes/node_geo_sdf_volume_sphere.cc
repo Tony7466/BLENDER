@@ -11,6 +11,9 @@
 #include "BKE_lib_id.h"
 #include "BKE_volume.h"
 
+#include "NOD_add_node_search.hh"
+#include "NOD_socket_search_link.hh"
+
 namespace blender::nodes::node_geo_sdf_volume_sphere_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
@@ -23,6 +26,20 @@ static void node_declare(NodeDeclarationBuilder &b)
       .min(1.01f)
       .max(10.0f);
   b.add_output<decl::Geometry>(N_("Volume"));
+}
+
+static void search_node_add_ops(GatherAddNodeSearchParams &params)
+{
+  if (U.experimental.use_new_volume_nodes) {
+    blender::nodes::search_node_add_ops_for_basic_node(params);
+  }
+}
+
+static void search_link_ops(GatherLinkSearchOpParams &params)
+{
+  if (U.experimental.use_new_volume_nodes) {
+    blender::nodes::search_link_ops_for_basic_node(params);
+  }
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -78,5 +95,7 @@ void register_node_type_geo_sdf_volume_sphere()
   ntype.declare = file_ns::node_declare;
   node_type_size(&ntype, 180, 120, 300);
   ntype.geometry_node_execute = file_ns::node_geo_exec;
+  ntype.gather_add_node_search_ops = file_ns::search_node_add_ops;
+  ntype.gather_link_search_ops = file_ns::search_link_ops;
   nodeRegisterType(&ntype);
 }

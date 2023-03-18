@@ -12,6 +12,9 @@
 
 #include "DNA_node_types.h"
 
+#include "NOD_add_node_search.hh"
+#include "NOD_socket_search_link.hh"
+
 #include "UI_interface.h"
 #include "UI_resources.h"
 
@@ -23,6 +26,20 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Int>(N_("Iterations")).min(1).max(256).default_value(1);
   b.add_input<decl::Int>(N_("Width")).min(0).default_value(1);
   b.add_output<decl::Geometry>(N_("Volume"));
+}
+
+static void search_node_add_ops(GatherAddNodeSearchParams &params)
+{
+  if (U.experimental.use_new_volume_nodes) {
+    blender::nodes::search_node_add_ops_for_basic_node(params);
+  }
+}
+
+static void search_link_ops(GatherLinkSearchOpParams &params)
+{
+  if (U.experimental.use_new_volume_nodes) {
+    blender::nodes::search_link_ops_for_basic_node(params);
+  }
 }
 
 #ifdef WITH_OPENVDB
@@ -83,5 +100,7 @@ void register_node_type_geo_mean_filter_sdf_volume()
   node_type_size(&ntype, 160, 120, 700);
   ntype.declare = file_ns::node_declare;
   ntype.geometry_node_execute = file_ns::node_geo_exec;
+  ntype.gather_add_node_search_ops = file_ns::search_node_add_ops;
+  ntype.gather_link_search_ops = file_ns::search_link_ops;
   nodeRegisterType(&ntype);
 }
