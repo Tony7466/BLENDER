@@ -64,14 +64,18 @@ vec3 gbuffer_sss_radii_unpack(vec3 sss_radii_packed)
 
 vec4 gbuffer_color_pack(vec3 color)
 {
-  /* TODO(fclem): 2 exponent inside 2bit Alpha. */
-  return vec4(color, 1.0);
+  float max_comp = max(color.x, max(color.y, color.z));
+  /* Store 2bit exponent inside Alpha. Allows values up to 8 with some color degradation.
+   * Above 8, the result will be clampped when writing the data to the output buffer. */
+  float exponent = (max_comp > 1) ? ((max_comp > 2) ? ((max_comp > 4) ? 3.0 : 2.0) : 1.0) : 0.0;
+  /* TODO(fclem): Could try dithering to avoid banding artifacts on higher exponents. */
+  return vec4(color / exp2(exponent), exponent / 3.0);
 }
 
 vec3 gbuffer_color_unpack(vec4 color_packed)
 {
-  /* TODO(fclem): 2 exponent inside 2bit Alpha. */
-  return color_packed.rgb;
+  float exponent = color_packed.a * 3.0;
+  return color_packed.rgb * exp2(exponent);
 }
 
 float gbuffer_object_id_unorm16_pack(uint object_id)
