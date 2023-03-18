@@ -6125,7 +6125,7 @@ void uiTemplateRunningJobs(uiLayout *layout, bContext *C)
   void *owner = nullptr;
   int handle_event, icon = 0;
   const char *op_name = nullptr;
-  const char *op_desc = nullptr;
+  const char *op_description = nullptr;
 
   uiBlock *block = uiLayoutGetBlock(layout);
   UI_block_layout_set_current(block, layout);
@@ -6188,7 +6188,7 @@ void uiTemplateRunningJobs(uiLayout *layout, bContext *C)
       handle_event = B_STOPRENDER;
       icon = ICON_SCENE;
       op_name = "RENDER_OT_view_show";
-      op_desc = "Show the render window";
+      op_description = "Show the render window";
       break;
     }
     if (WM_jobs_test(wm, scene, WM_JOB_TYPE_COMPOSITE)) {
@@ -6256,7 +6256,7 @@ void uiTemplateRunningJobs(uiLayout *layout, bContext *C)
                     0,
                     UI_UNIT_X,
                     UI_UNIT_Y,
-                    TIP_(op_desc));
+                    TIP_(op_description));
     }
 
     /* job name and icon if not previously set */
