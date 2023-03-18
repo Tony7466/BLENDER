@@ -403,8 +403,11 @@ static int outliner_item_rename(bContext *C, wmOperator *op, const wmEvent *even
   SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
   const bool use_active = RNA_boolean_get(op->ptr, "use_active");
 
-  TreeElement *te = use_active ? outliner_item_rename_find_active(space_outliner, op->reports) :
-                                 outliner_item_rename_find_hovered(space_outliner, region, event);
+  /* Intends to rename the hovered item when double clicking. */
+  TreeElement *te = use_active && event->type != LEFTMOUSE ?
+                        outliner_item_rename_find_active(space_outliner, op->reports) :
+                        outliner_item_rename_find_hovered(space_outliner, region, event);
+
   if (!te) {
     return OPERATOR_CANCELLED;
   }
