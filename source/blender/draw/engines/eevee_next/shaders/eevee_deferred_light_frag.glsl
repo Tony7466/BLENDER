@@ -1,15 +1,14 @@
 
 /**
- * Compute light contribution using Gbuffer data.
+ * Compute light objects lighting contribution using Gbuffer data.
  *
- * Output light .
+ * Output light either directly to the radiance buffers or to temporary radiance accumulation
+ * buffer that will be processed by other deferred lighting passes.
  */
 
 #pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_light_eval_lib.glsl)
-
-#define imageAdd(tex, coord, val) imageStore(tex, coord, imageLoad(tex, coord) + (val))
 
 void main()
 {
@@ -62,15 +61,19 @@ void main()
     vec4 color_1_packed = texelFetch(gbuffer_color_tx, ivec3(texel, 1), 0);
 
     reflection_data.color = gbuffer_color_unpack(color_0_packed);
-    diffuse_data.color = is_refraction ? vec3(0.0) : gbuffer_color_unpack(color_1_packed);
+    diffuse_data.color = gbuffer_color_unpack(color_1_packed);
+
+    if (is_refraction) {
+      diffuse_data.color = vec3(0.0);
+    }
 
     reflection_light *= reflection_data.color;
     diffuse_light *= diffuse_data.color;
     /* Add radiance to light pass. */
-    imageAdd(
-        rp_light_img, ivec3(texel, RENDER_PASS_LAYER_DIFFUSE_LIGHT), vec4(diffuse_light, 0.0));
-    imageAdd(
-        rp_light_img, ivec3(texel, RENDER_PASS_LAYER_SPECULAR_LIGHT), vec4(reflection_light, 0.0));
+    imageStore(
+        rp_light_img, ivec3(texel, RENDER_PASS_LAYER_DIFFUSE_LIGHT), vec4(diffuse_light, 1.0));
+    imageStore(
+        rp_light_img, ivec3(texel, RENDER_PASS_LAYER_SPECULAR_LIGHT), vec4(reflection_light, 1.0));
     /* Add radiance to combined pass. */
     out_radiance = vec4(diffuse_light + reflection_light, 0.0);
     out_transmittance = vec4(1.0);

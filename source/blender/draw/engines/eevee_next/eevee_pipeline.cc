@@ -386,7 +386,7 @@ void DeferredLayer::end_sync()
     inst_.sampling.bind_resources(&eval_light_ps_);
     inst_.hiz_buffer.bind_resources(&eval_light_ps_);
 
-    eval_light_ps_.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
+    eval_light_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
     eval_light_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
   }
 }
@@ -419,12 +419,14 @@ void DeferredLayer::render(View &view,
                            Framebuffer &combined_fb,
                            int2 extent)
 {
-  inst_.gbuffer.acquire(extent, closure_bits_);
 
   GPU_framebuffer_bind(prepass_fb);
   inst_.manager->submit(prepass_ps_, view);
 
   inst_.hiz_buffer.set_dirty();
+  inst_.shadows.set_view(view);
+
+  inst_.gbuffer.acquire(extent, closure_bits_);
 
   GPU_framebuffer_bind(combined_fb);
   inst_.manager->submit(gbuffer_ps_, view);
@@ -435,7 +437,6 @@ void DeferredLayer::render(View &view,
   diffuse_light_tx_.clear(float4(0.0f));
   specular_light_tx_.clear(float4(0.0f));
 
-  inst_.shadows.set_view(view);
   inst_.manager->submit(eval_light_ps_, view);
 
   diffuse_light_tx_.release();

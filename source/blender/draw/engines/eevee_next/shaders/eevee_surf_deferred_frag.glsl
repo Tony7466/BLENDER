@@ -16,8 +16,14 @@
 
 vec4 closure_to_rgba(Closure cl)
 {
-  /* Should never be called. */
-  return vec4(0.0);
+  vec4 out_color;
+  out_color.rgb = g_emission;
+  out_color.a = saturate(1.0 - avg(g_transmittance));
+
+  /* Reset for the next closure tree. */
+  closure_weights_reset();
+
+  return out_color;
 }
 
 void main()
@@ -56,7 +62,7 @@ void main()
   /* ----- Render Passes output ----- */
 
   ivec2 out_texel = ivec2(gl_FragCoord.xy);
-#ifdef MAT_RENDER_PASS_SUPPORT
+#ifdef MAT_RENDER_PASS_SUPPORT /* Needed because node_tree isn't present in test shaders. */
   /* Some render pass can be written during the gbuffer pass. Light passes are written later. */
   vec4 cryptomatte_output = vec4(cryptomatte_object_buf[resource_id], node_tree.crypto_hash, 0.0);
   imageStore(rp_cryptomatte_img, out_texel, cryptomatte_output);

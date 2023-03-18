@@ -193,11 +193,6 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
     inst_.sampling.reset();
   }
 
-  if ((pipeline_type == MAT_PIPE_DEFERRED) &&
-      GPU_material_flag_get(matpass.gpumat, GPU_MATFLAG_SHADER_TO_RGBA)) {
-    pipeline_type = MAT_PIPE_FORWARD;
-  }
-
   if (ELEM(pipeline_type,
            MAT_PIPE_FORWARD,
            MAT_PIPE_FORWARD_PREPASS,

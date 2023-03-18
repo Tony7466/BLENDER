@@ -243,6 +243,11 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     }
   }
 
+  /* WORKAROUND: Needed because node_tree isn't present in test shaders. */
+  if (pipeline_type == MAT_PIPE_DEFERRED) {
+    info.define("MAT_RENDER_PASS_SUPPORT");
+  }
+
   if (GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSPARENT)) {
     info.define("MAT_TRANSPARENT");
     /* Transparent material do not have any velocity specific pipeline. */

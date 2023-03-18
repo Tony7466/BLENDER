@@ -115,7 +115,7 @@ GPU_SHADER_CREATE_INFO(eevee_surf_deferred)
     // .image_array_out(RBUFS_LIGHT_SLOT, Qualifier::WRITE, GPU_RGBA16F, "rp_light_img")
     /* TODO(fclem): Merge all render-pass into the same texture array. */
     // .image_out(RBUFS_DIFF_COLOR_SLOT, Qualifier::WRITE, GPU_RGBA16F, "rp_diffuse_color_img")
-    .image_array_out(RBUFS_SPEC_COLOR_SLOT, Qualifier::WRITE, GPU_RGBA16F, "rp_specular_color_img")
+    .image_out(RBUFS_SPEC_COLOR_SLOT, Qualifier::WRITE, GPU_RGBA16F, "rp_specular_color_img")
     .image_out(RBUFS_EMISSION_SLOT, Qualifier::WRITE, GPU_RGBA16F, "rp_emission_img")
     .fragment_source("eevee_surf_deferred_frag.glsl")
     .additional_info("eevee_camera",
