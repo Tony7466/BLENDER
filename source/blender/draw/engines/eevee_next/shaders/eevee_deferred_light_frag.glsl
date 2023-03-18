@@ -32,9 +32,10 @@ void main()
 
   ClosureDiffuse diffuse_data;
   diffuse_data.N = gbuffer_normal_unpack(gbuffer_1_packed.xy);
-  diffuse_data.sss_radius = vec3(0.0); /* Only set for SSS case. */
-  diffuse_data.sss_id = 0u;            /* Only set for SSS case. */
-  float thickness = 0.0;               /* Only set for SSS case. */
+  /* These are only set for SSS case. */
+  diffuse_data.sss_radius = vec3(0.0);
+  diffuse_data.sss_id = 0u;
+  float thickness = 0.0;
 
   bool is_refraction = gbuffer_is_refraction(gbuffer_1_packed);
   if (is_refraction) {
@@ -61,7 +62,7 @@ void main()
     vec4 color_1_packed = texelFetch(gbuffer_color_tx, ivec3(texel, 1), 0);
 
     reflection_data.color = gbuffer_color_unpack(color_0_packed);
-    diffuse_data.color = gbuffer_color_unpack(color_1_packed);
+    diffuse_data.color = is_refraction ? vec3(0.0) : gbuffer_color_unpack(color_1_packed);
 
     reflection_light *= reflection_data.color;
     diffuse_light *= diffuse_data.color;

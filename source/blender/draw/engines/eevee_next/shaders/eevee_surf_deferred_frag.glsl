@@ -92,6 +92,9 @@ void main()
     closure.xy = gbuffer_normal_pack(g_refraction_data.N);
     closure.z = g_refraction_data.roughness;
     closure.w = gbuffer_ior_pack(g_refraction_data.ior);
+    /* Clamp to just bellow 1 to be able to distinguish between refraction and diffuse.
+     * Ceiling value is chosen by the storage format (16bit UNORM). */
+    closure.w = min(closure.w, float(0xFFFFu - 1u) / float(0xFFFFu));
     imageStore(out_gbuff_closure_img, ivec3(out_texel, 1), closure);
 
     vec4 color = gbuffer_color_pack(g_refraction_data.color);
@@ -102,7 +105,8 @@ void main()
     vec4 closure;
     closure.xy = gbuffer_normal_pack(g_diffuse_data.N);
     closure.z = gbuffer_thickness_pack(thickness);
-    closure.w = 0.0; /* Unused. */
+    /* Used to detect the refraction case. Could be used for roughness. */
+    closure.w = 1.0;
     imageStore(out_gbuff_closure_img, ivec3(out_texel, 1), closure);
 
     vec4 color = gbuffer_color_pack(g_diffuse_data.color);

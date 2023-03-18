@@ -102,6 +102,5 @@ uint gbuffer_object_id_f16_unpack(float object_id_packed)
 
 bool gbuffer_is_refraction(vec4 gbuffer)
 {
-  /* TODO. */
-  return false;
+  return gbuffer.w < 1.0;
 }
