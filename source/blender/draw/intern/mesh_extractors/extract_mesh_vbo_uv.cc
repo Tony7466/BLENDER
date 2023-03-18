@@ -110,15 +110,11 @@ static void extract_uv_init(const MeshRenderData *mr,
         }
       }
       else {
-        for (const int i : IndexRange(MAX_MTFACE)) {
-          if (uv_layers & (1 << i)) {
-            const Span<float2> uv_map(
-                static_cast<const float2 *>(CustomData_get_layer_n(cd_ldata, CD_PROP_FLOAT2, i)),
-                mr->loop_len);
-            array_utils::copy(uv_map, uv_data.slice(vbo_index, mr->loop_len));
-            vbo_index += mr->loop_len;
-          }
-        }
+        const Span<float2> uv_map(
+            static_cast<const float2 *>(CustomData_get_layer_n(cd_ldata, CD_PROP_FLOAT2, i)),
+            mr->loop_len);
+        array_utils::copy(uv_map, uv_data.slice(vbo_index, mr->loop_len));
+        vbo_index += mr->loop_len;
       }
     }
   }
