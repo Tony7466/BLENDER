@@ -406,13 +406,25 @@ bool BKE_id_attribute_remove(ID *id, const char *name, ReportList *reports)
           /* Because it's possible that name is owned by the layer and will be freed
            * when freeing the layer, do these checks before freeing. */
           const bool is_active_color_attribute = name == StringRef(mesh->active_color_attribute);
+          const CustomDataLayer *active_layer = BKE_id_attribute_search(
+              id, mesh->active_color_attribute, CD_MASK_COLOR_ALL, ATTR_DOMAIN_MASK_COLOR);
+          int active_index = BKE_id_attribute_to_index(
+              id, active_layer, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
           const bool is_default_color_attribute = name == StringRef(mesh->default_color_attribute);
+          const CustomDataLayer *default_layer = BKE_id_attribute_search(
+              id, mesh->default_color_attribute, CD_MASK_COLOR_ALL, ATTR_DOMAIN_MASK_COLOR);
+          int default_index = BKE_id_attribute_to_index(
+              id, default_layer, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
           if (BM_data_layer_free_named(em->bm, data, name)) {
             if (is_active_color_attribute) {
-              MEM_SAFE_FREE(mesh->active_color_attribute);
+              const CustomDataLayer *layer = BKE_id_attribute_from_index(
+                  id, active_index, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
+              BKE_id_attributes_active_color_set(id, (layer) ? layer->name : nullptr);
             }
-            else if (is_default_color_attribute) {
-              MEM_SAFE_FREE(mesh->default_color_attribute);
+            if (is_default_color_attribute) {
+              const CustomDataLayer *layer = BKE_id_attribute_from_index(
+                  id, default_index, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
+              BKE_id_attributes_default_color_set(id, (layer) ? layer->name : nullptr);
             }
             return true;
           }
@@ -429,7 +441,6 @@ bool BKE_id_attribute_remove(ID *id, const char *name, ReportList *reports)
   }
 
   if (GS(id->name) == ID_ME) {
-
     std::optional<blender::bke::AttributeMetaData> metadata = attributes->lookup_meta_data(name);
     if (metadata->data_type == CD_PROP_FLOAT2) {
       /* remove UV sub-attributes. */
@@ -438,6 +449,32 @@ bool BKE_id_attribute_remove(ID *id, const char *name, ReportList *reports)
       BKE_id_attribute_remove(id, BKE_uv_map_edge_select_name_get(name, buffer_src), reports);
       BKE_id_attribute_remove(id, BKE_uv_map_pin_name_get(name, buffer_src), reports);
     }
+
+    Mesh *mesh = reinterpret_cast<Mesh *>(id);
+    const bool is_active_color_attribute = name == StringRef(mesh->active_color_attribute);
+    const CustomDataLayer *active_layer = BKE_id_attribute_search(
+        id, mesh->active_color_attribute, CD_MASK_COLOR_ALL, ATTR_DOMAIN_MASK_COLOR);
+    int active_index = BKE_id_attribute_to_index(
+        id, active_layer, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
+    const bool is_default_color_attribute = name == StringRef(mesh->default_color_attribute);
+    const CustomDataLayer *default_layer = BKE_id_attribute_search(
+        id, mesh->default_color_attribute, CD_MASK_COLOR_ALL, ATTR_DOMAIN_MASK_COLOR);
+    int default_index = BKE_id_attribute_to_index(
+        id, default_layer, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
+    if (attributes->remove(name)) {
+      if (is_active_color_attribute) {
+        const CustomDataLayer *layer = BKE_id_attribute_from_index(
+            id, active_index, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
+        BKE_id_attributes_active_color_set(id, (layer) ? layer->name : nullptr);
+      }
+      if (is_default_color_attribute) {
+        const CustomDataLayer *layer = BKE_id_attribute_from_index(
+            id, default_index, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
+        BKE_id_attributes_default_color_set(id, (layer) ? layer->name : nullptr);
+      }
+      return true;
+    }
+    return false;
   }
 
   return attributes->remove(name);
