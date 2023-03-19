@@ -24,11 +24,11 @@ enum eUVPackIsland_MarginMethod {
 
 enum eUVPackIsland_ShapeMethod {
   ED_UVPACK_SHAPE_AABB = 0,         /* Use Axis-Aligned Bounding-Boxes. */
-  ED_UVPACK_SHAPE_CONVEX = 1,       /* Use convex hull. */
-  ED_UVPACK_SHAPE_CONCAVE = 2,      /* Use concave hull. */
-  ED_UVPACK_SHAPE_CONCAVE_HOLE = 3, /* Use concave hull with holes. */
+  ED_UVPACK_SHAPE_FASTEST = 1,      /* Use fastest method. */
+  ED_UVPACK_SHAPE_CONVEX = 2,       /* Use convex hull. */
+  ED_UVPACK_SHAPE_CONCAVE = 3,      /* Use concave hull. */
+  ED_UVPACK_SHAPE_CONCAVE_HOLE = 4, /* Use concave hull with holes. */
 
-  ED_UVPACK_SHAPE_FASTEST = ED_UVPACK_SHAPE_AABB,
   ED_UVPACK_SHAPE_TIGHTEST = ED_UVPACK_SHAPE_CONCAVE_HOLE,
 };
 

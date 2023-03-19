@@ -1585,6 +1585,7 @@ static const EnumPropertyItem pack_margin_method_items[] = {
 };
 
 static const EnumPropertyItem pack_shape_method_items[] = {
+    {ED_UVPACK_SHAPE_FASTEST, "FASTEST", 0, "Fastest", "Pack as fast as possible"},
     {ED_UVPACK_SHAPE_AABB, "AABB", 0, "AABB", "Use Axis-Aligned Bounding Boxes"},
     {ED_UVPACK_SHAPE_CONVEX, "CONVEX", 0, "Convex hull", "Use convex hull"},
     {ED_UVPACK_SHAPE_CONCAVE_HOLE,
@@ -1629,8 +1630,12 @@ void UV_OT_pack_islands(wmOperatorType *ot)
                "");
   RNA_def_float_factor(
       ot->srna, "margin", 0.001f, 0.0f, 1.0f, "Margin", "Space between islands", 0.0f, 1.0f);
-  RNA_def_enum(
-      ot->srna, "shape_method", pack_shape_method_items, ED_UVPACK_SHAPE_AABB, "Shape Method", "");
+  RNA_def_enum(ot->srna,
+               "shape_method",
+               pack_shape_method_items,
+               ED_UVPACK_SHAPE_CONVEX,
+               "Shape Method",
+               "");
 }
 
 /** \} */
