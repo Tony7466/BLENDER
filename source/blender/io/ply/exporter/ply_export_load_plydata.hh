@@ -51,7 +51,7 @@ struct UV_vertex_key {
 };
 
 void generate_vertex_map(const Mesh *mesh,
-                         const float2 *uv_map,
+                         const Span<float2> uv_map,
                          const PLYExportParams &export_params,
                          Map<UV_vertex_key, int> &r_map);
 

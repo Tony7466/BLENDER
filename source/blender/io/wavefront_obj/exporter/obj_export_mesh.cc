@@ -297,23 +297,23 @@ Vector<int> OBJMesh::calc_poly_vertex_indices(const int poly_index) const
 void OBJMesh::store_uv_coords_and_indices()
 {
   const int totvert = export_mesh_->totvert;
-  const StringRef active_uv_name = CustomData_get_active_layer_name(&export_mesh_->ldata,
-                                                                    CD_PROP_FLOAT2);
-  if (active_uv_name.is_empty()) {
+  const bke::AttributeAccessor attributes = export_mesh_->attributes();
+  const VArray<float2> uv_map = attributes.lookup<float2>(export_mesh_->active_uv_attribute,
+                                                          ATTR_DOMAIN_CORNER);
+  if (!uv_map) {
     tot_uv_vertices_ = 0;
     return;
   }
-  const bke::AttributeAccessor attributes = export_mesh_->attributes();
-  const VArraySpan<float2> uv_map = attributes.lookup<float2>(active_uv_name, ATTR_DOMAIN_CORNER);
 
   const float limit[2] = {STD_UV_CONNECT_LIMIT, STD_UV_CONNECT_LIMIT};
 
+  const VArraySpan uv_map_span(uv_map);
   UvVertMap *uv_vert_map = BKE_mesh_uv_vert_map_create(
       mesh_polys_.data(),
       nullptr,
       nullptr,
       mesh_loops_.data(),
-      reinterpret_cast<const float(*)[2]>(uv_map.data()),
+      reinterpret_cast<const float(*)[2]>(uv_map_span.data()),
       mesh_polys_.size(),
       totvert,
       limit,

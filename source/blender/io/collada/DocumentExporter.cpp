@@ -119,17 +119,6 @@ const char *bc_CustomData_get_layer_name(const struct CustomData *data, int type
   return data->layers[layer_index + n].name;
 }
 
-const char *bc_CustomData_get_active_layer_name(const CustomData *data, int type)
-{
-  /* get the layer index of the active layer of type */
-  int layer_index = CustomData_get_active_layer_index(data, type);
-  if (layer_index < 0) {
-    return nullptr;
-  }
-
-  return data->layers[layer_index].name;
-}
-
 DocumentExporter::DocumentExporter(BlenderContext &blender_context,
                                    ExportSettings *export_settings)
     : blender_context(blender_context),

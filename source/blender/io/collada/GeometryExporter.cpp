@@ -369,20 +369,20 @@ void GeometryExporter::create_mesh_primitive_list(short material_index,
 
   /* if mesh has uv coords writes <input> for TEXCOORD */
   int num_layers = CustomData_number_of_layers(&me->ldata, CD_PROP_FLOAT2);
-  int active_uv_index = CustomData_get_active_layer_index(&me->ldata, CD_PROP_FLOAT2);
+  const blender::StringRef active_uv = me->active_uv_attribute;
   for (int i = 0; i < num_layers; i++) {
-    int layer_index = CustomData_get_layer_index_n(&me->ldata, CD_PROP_FLOAT2, i);
-    if (!this->export_settings.get_active_uv_only() || layer_index == active_uv_index) {
-
-      // char *name = CustomData_get_layer_name(&me->ldata, CD_PROP_FLOAT2, i);
-      COLLADASW::Input texcoord_input(
-          COLLADASW::InputSemantic::TEXCOORD,
-          makeUrl(makeTexcoordSourceId(geom_id, i, this->export_settings.get_active_uv_only())),
-          2, /* this is only until we have optimized UV sets */
-          (this->export_settings.get_active_uv_only()) ? 0 : layer_index - 1 /* set (0,1,2,...) */
-      );
-      til.push_back(texcoord_input);
+    const char *name = CustomData_get_layer_name(&me->ldata, CD_PROP_FLOAT2, i);
+    if (this->export_settings.get_active_uv_only() && name == active_uv) {
+      continue;
     }
+    int layer_index = CustomData_get_layer_index_n(&me->ldata, CD_PROP_FLOAT2, i);
+    COLLADASW::Input texcoord_input(
+        COLLADASW::InputSemantic::TEXCOORD,
+        makeUrl(makeTexcoordSourceId(geom_id, i, this->export_settings.get_active_uv_only())),
+        2, /* this is only until we have optimized UV sets */
+        (this->export_settings.get_active_uv_only()) ? 0 : layer_index - 1 /* set (0,1,2,...) */
+    );
+    til.push_back(texcoord_input);
   }
 
   int totlayer_mcol = CustomData_number_of_layers(&me->ldata, CD_PROP_BYTE_COLOR);
@@ -543,37 +543,38 @@ void GeometryExporter::createTexcoordsSource(std::string geom_id, Mesh *me)
 
   /* write <source> for each layer
    * each <source> will get id like meshName + "map-channel-1" */
-  int active_uv_index = CustomData_get_active_layer_index(&me->ldata, CD_PROP_FLOAT2);
+  const blender::StringRef active_uv = me->active_uv_attribute;
   for (int a = 0; a < num_layers; a++) {
-    int layer_index = CustomData_get_layer_index_n(&me->ldata, CD_PROP_FLOAT2, a);
-    if (!this->export_settings.get_active_uv_only() || layer_index == active_uv_index) {
-      const blender::float2 *uv_map = static_cast<const blender::float2 *>(
-          CustomData_get_layer_n(&me->ldata, CD_PROP_FLOAT2, a));
-
-      COLLADASW::FloatSourceF source(mSW);
-      std::string layer_id = makeTexcoordSourceId(
-          geom_id, a, this->export_settings.get_active_uv_only());
-      source.setId(layer_id);
-      source.setArrayId(layer_id + ARRAY_ID_SUFFIX);
-
-      source.setAccessorCount(totuv);
-      source.setAccessorStride(2);
-      COLLADASW::SourceBase::ParameterNameList &param = source.getParameterNameList();
-      param.push_back("S");
-      param.push_back("T");
-
-      source.prepareToAppendValues();
-
-      for (const int i : polys.index_range()) {
-        const MPoly *poly = &polys[i];
-        const blender::float2 *mloop = uv_map + poly->loopstart;
-        for (int j = 0; j < poly->totloop; j++) {
-          source.appendValues(mloop[j][0], mloop[j][1]);
-        }
-      }
-
-      source.finish();
+    const char *name = CustomData_get_layer_name(&me->ldata, CD_PROP_FLOAT2, a);
+    if (this->export_settings.get_active_uv_only() && name == active_uv) {
+      continue;
     }
+    const blender::float2 *uv_map = static_cast<const blender::float2 *>(
+        CustomData_get_layer_n(&me->ldata, CD_PROP_FLOAT2, a));
+
+    COLLADASW::FloatSourceF source(mSW);
+    std::string layer_id = makeTexcoordSourceId(
+        geom_id, a, this->export_settings.get_active_uv_only());
+    source.setId(layer_id);
+    source.setArrayId(layer_id + ARRAY_ID_SUFFIX);
+
+    source.setAccessorCount(totuv);
+    source.setAccessorStride(2);
+    COLLADASW::SourceBase::ParameterNameList &param = source.getParameterNameList();
+    param.push_back("S");
+    param.push_back("T");
+
+    source.prepareToAppendValues();
+
+    for (const int i : polys.index_range()) {
+      const MPoly *poly = &polys[i];
+      const blender::float2 *mloop = uv_map + poly->loopstart;
+      for (int j = 0; j < poly->totloop; j++) {
+        source.appendValues(mloop[j][0], mloop[j][1]);
+      }
+    }
+
+    source.finish();
   }
 }
 

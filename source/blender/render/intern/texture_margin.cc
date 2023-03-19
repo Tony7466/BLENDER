@@ -543,15 +543,8 @@ void RE_generate_texturemargin_adjacentfaces(ImBuf *ibuf,
                                              char const *uv_layer,
                                              const float uv_offset[2])
 {
-  const blender::float2 *mloopuv;
-  if ((uv_layer == nullptr) || (uv_layer[0] == '\0')) {
-    mloopuv = static_cast<const blender::float2 *>(
-        CustomData_get_layer(&mesh->ldata, CD_PROP_FLOAT2));
-  }
-  else {
-    mloopuv = static_cast<const blender::float2 *>(
-        CustomData_get_layer_named(&mesh->ldata, CD_PROP_FLOAT2, uv_layer));
-  }
+  const blender::float2 *mloopuv = reinterpret_cast<const blender::float2 *>(
+      BKE_mesh_get_uv_map_or_active(mesh, uv_layer));
 
   blender::render::texturemargin::generate_margin(ibuf,
                                                   mask,

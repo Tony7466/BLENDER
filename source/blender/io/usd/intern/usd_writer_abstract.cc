@@ -32,10 +32,7 @@ static std::string get_mesh_active_uvlayer_name(const Object *ob)
   }
 
   const Mesh *me = static_cast<Mesh *>(ob->data);
-
-  const char *name = CustomData_get_active_layer_name(&me->ldata, CD_PROP_FLOAT2);
-
-  return name ? name : "";
+  return me->active_uv_attribute ? me->active_uv_attribute : "";
 }
 
 namespace blender::io::usd {

@@ -111,9 +111,10 @@ void load_plydata(PlyData &plyData, Depsgraph *depsgraph, const PLYExportParams 
       manually_free_mesh = true;
     }
 
-    const float2 *uv_map = static_cast<const float2 *>(
-        CustomData_get_layer(&mesh->ldata, CD_PROP_FLOAT2));
+    const bke::AttributeAccessor attributes = mesh->attributes();
 
+    const VArraySpan<float2> uv_map = attributes.lookup<float2>(mesh->active_uv_attribute,
+                                                                ATTR_DOMAIN_CORNER);
     Map<UV_vertex_key, int> vertex_map;
     generate_vertex_map(mesh, uv_map, export_params, vertex_map);
 
@@ -130,7 +131,7 @@ void load_plydata(PlyData &plyData, Depsgraph *depsgraph, const PLYExportParams 
 
       for (int i = 0; i < poly_loops.size(); ++i) {
         float2 uv;
-        if (export_params.export_uv && uv_map != nullptr) {
+        if (export_params.export_uv && !uv_map.is_empty()) {
           uv = uv_map[i + loop_offset];
         }
         else {
@@ -184,7 +185,6 @@ void load_plydata(PlyData &plyData, Depsgraph *depsgraph, const PLYExportParams 
     if (export_params.vertex_colors != PLY_VERTEX_COLOR_NONE) {
       const StringRef name = mesh->active_color_attribute;
       if (!name.is_empty()) {
-        const bke::AttributeAccessor attributes = mesh->attributes();
         const VArray<ColorGeometry4f> color_attribute =
             attributes.lookup_or_default<ColorGeometry4f>(
                 name, ATTR_DOMAIN_POINT, {0.0f, 0.0f, 0.0f, 0.0f});
@@ -223,7 +223,7 @@ void load_plydata(PlyData &plyData, Depsgraph *depsgraph, const PLYExportParams 
 }
 
 void generate_vertex_map(const Mesh *mesh,
-                         const float2 *uv_map,
+                         const Span<float2> uv_map,
                          const PLYExportParams &export_params,
                          Map<UV_vertex_key, int> &r_map)
 {
@@ -234,7 +234,7 @@ void generate_vertex_map(const Mesh *mesh,
 
   r_map.reserve(totvert);
 
-  if (uv_map == nullptr || !export_params.export_uv) {
+  if (uv_map.is_empty() || !export_params.export_uv) {
     for (int vertex_index = 0; vertex_index < totvert; ++vertex_index) {
       UV_vertex_key key = UV_vertex_key({0, 0}, vertex_index);
       r_map.add_new(key, int(r_map.size()));
@@ -243,16 +243,17 @@ void generate_vertex_map(const Mesh *mesh,
   }
 
   const float limit[2] = {STD_UV_CONNECT_LIMIT, STD_UV_CONNECT_LIMIT};
-  UvVertMap *uv_vert_map = BKE_mesh_uv_vert_map_create(polys.data(),
-                                                       nullptr,
-                                                       nullptr,
-                                                       loops.data(),
-                                                       reinterpret_cast<const float(*)[2]>(uv_map),
-                                                       uint(polys.size()),
-                                                       totvert,
-                                                       limit,
-                                                       false,
-                                                       false);
+  UvVertMap *uv_vert_map = BKE_mesh_uv_vert_map_create(
+      polys.data(),
+      nullptr,
+      nullptr,
+      loops.data(),
+      reinterpret_cast<const float(*)[2]>(uv_map.data()),
+      uint(polys.size()),
+      totvert,
+      limit,
+      false,
+      false);
 
   for (int vertex_index = 0; vertex_index < totvert; vertex_index++) {
     const UvMapVert *uv_vert = BKE_mesh_uv_vert_map_get_vert(uv_vert_map, vertex_index);
