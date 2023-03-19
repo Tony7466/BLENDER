@@ -725,7 +725,7 @@ static void rna_MeshPolygon_material_index_set(PointerRNA *ptr, int value)
   Mesh *mesh = rna_mesh(ptr);
   int *material_indices = BKE_mesh_material_indices_for_write(mesh);
   const int index = rna_MeshPolygon_index_get(ptr);
-  material_indices[index] = value;
+  material_indices[index] = max_ii(0, value);
 }
 
 static void rna_MeshPolygon_center_get(PointerRNA *ptr, float *values)
@@ -1343,7 +1343,7 @@ static PointerRNA rna_Mesh_sculpt_vertex_color_active_get(PointerRNA *ptr)
 {
   Mesh *mesh = (Mesh *)ptr->data;
   CustomDataLayer *layer = BKE_id_attribute_search(
-      &mesh->id, mesh->active_color_attribute, CD_MASK_PROP_COLOR, ATTR_DOMAIN_POINT);
+      &mesh->id, mesh->active_color_attribute, CD_MASK_PROP_COLOR, ATTR_DOMAIN_MASK_POINT);
   return rna_pointer_inherit_refine(ptr, &RNA_MeshVertColorLayer, layer);
 }
 
@@ -1365,7 +1365,7 @@ static int rna_Mesh_sculpt_vertex_color_active_index_get(PointerRNA *ptr)
 {
   Mesh *mesh = (Mesh *)ptr->data;
   CustomDataLayer *layer = BKE_id_attribute_search(
-      &mesh->id, mesh->active_color_attribute, CD_MASK_PROP_COLOR, ATTR_DOMAIN_POINT);
+      &mesh->id, mesh->active_color_attribute, CD_MASK_PROP_COLOR, ATTR_DOMAIN_MASK_POINT);
   if (!layer) {
     return 0;
   }

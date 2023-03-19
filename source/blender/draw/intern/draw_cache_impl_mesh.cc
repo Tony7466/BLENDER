@@ -365,7 +365,7 @@ static DRW_MeshCDMask mesh_cd_calc_used_gpu_layers(const Object *object,
                         CustomData_get_named_layer(
                             cd_ldata, CD_PROP_FLOAT2, default_uv_name.c_str());
           }
-          if (layer != -1) {
+          if (layer != -1 && !CustomData_layer_is_anonymous(cd_ldata, CD_PROP_FLOAT2, layer)) {
             cd_used.uv |= (1 << layer);
           }
           break;
