@@ -1,3 +1,4 @@
 Referenced by commit e22247a965e, Fix: crash when opening file with visible node editor
 Referenced by issue #104219, Regression: Node Editor: Node links are sometimes created from the wrong socket
 Referenced by pull request #105877, Fix #105720: crash when adding viewer node
+Referenced by commit cc44b98871b3635e0f133640d72f465c7092f290, Fix #105720: crash when adding viewer node
