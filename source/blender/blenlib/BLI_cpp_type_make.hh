@@ -56,11 +56,7 @@ template<typename T> void copy_assign_compressed_cb(const void *src, void *dst, 
   const T *src_ = static_cast<const T *>(src);
   T *dst_ = static_cast<T *>(dst);
 
-  mask.foreach_span_or_range([&](const auto mask_segment) {
-    for (const int64_t i : IndexRange(mask_segment.size())) {
-      dst_[i] = src_[mask_segment[i]];
-    }
-  });
+  mask.foreach_index([&](const int64_t i, const int64_t i_in_mask) { dst_[i_in_mask] = src_[i]; });
 }
 
 template<typename T> void copy_construct_cb(const void *src, void *dst)
@@ -79,11 +75,8 @@ template<typename T> void copy_construct_compressed_cb(const void *src, void *ds
   const T *src_ = static_cast<const T *>(src);
   T *dst_ = static_cast<T *>(dst);
 
-  mask.foreach_span_or_range([&](const auto mask_segment) {
-    for (const int64_t i : IndexRange(mask_segment.size())) {
-      new (dst_ + i) T(src_[mask_segment[i]]);
-    }
-  });
+  mask.foreach_index_optimized(
+      [&](const int64_t i, const int64_t i_in_mask) { new (dst_ + i_in_mask) T(src_[i]); });
 }
 
 template<typename T> void move_assign_cb(void *src, void *dst)
