@@ -103,6 +103,7 @@ static bool ED_uvedit_ensure_uvs(Object *obedit)
     return 1;
   }
 
+  Mesh *mesh = static_cast<Mesh *>(obedit->data);
   BMEditMesh *em = BKE_editmesh_from_object(obedit);
   BMFace *efa;
   BMIter iter;
@@ -116,7 +117,7 @@ static bool ED_uvedit_ensure_uvs(Object *obedit)
     return 0;
   }
 
-  const char *active_uv_name = CustomData_get_active_layer_name(&em->bm->ldata, CD_PROP_FLOAT2);
+  const char *active_uv_name = mesh->active_uv_attribute;
   BM_uv_map_ensure_vert_select_attr(em->bm, active_uv_name);
   BM_uv_map_ensure_edge_select_attr(em->bm, active_uv_name);
   const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
@@ -2015,7 +2016,9 @@ static void shrink_loop_uv_by_aspect_ratio(BMFace *efa,
 
 static void correct_uv_aspect(Object *ob, BMEditMesh *em)
 {
-  const int cd_loop_uv_offset = CustomData_get_offset(&em->bm->ldata, CD_PROP_FLOAT2);
+  Mesh *mesh = static_cast<Mesh *>(ob->data);
+  const int cd_loop_uv_offset = CustomData_get_offset_named(
+      &em->bm->ldata, CD_PROP_FLOAT2, mesh->active_uv_attribute);
   const float aspect_y = ED_uvedit_get_aspect_y(ob);
   if (aspect_y == 1.0f) {
     /* Scaling by 1.0 has no effect. */
@@ -2041,7 +2044,9 @@ static void correct_uv_aspect_per_face(Object *ob, BMEditMesh *em)
   blender::Array<float, 16> material_aspect_y(materials_num, -1);
   /* Lazily initialize aspect ratio for materials. */
 
-  const int cd_loop_uv_offset = CustomData_get_offset(&em->bm->ldata, CD_PROP_FLOAT2);
+  Mesh *mesh = static_cast<Mesh *>(ob->data);
+  const int cd_loop_uv_offset = CustomData_get_offset_named(
+      &em->bm->ldata, CD_PROP_FLOAT2, mesh->active_uv_attribute);
 
   BMFace *efa;
   BMIter iter;
@@ -2971,7 +2976,9 @@ static int uv_from_view_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    const int cd_loop_uv_offset = CustomData_get_offset(&em->bm->ldata, CD_PROP_FLOAT2);
+    Mesh *mesh = static_cast<Mesh *>(obedit->data);
+    const int cd_loop_uv_offset = CustomData_get_offset_named(
+        &em->bm->ldata, CD_PROP_FLOAT2, mesh->active_uv_attribute);
 
     if (use_orthographic) {
       uv_map_rotation_matrix_ex(rotmat, rv3d, obedit, 90.0f, 0.0f, 1.0f, objects_pos_offset);
