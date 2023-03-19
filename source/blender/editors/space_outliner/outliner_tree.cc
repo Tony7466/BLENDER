@@ -166,7 +166,7 @@ static void check_persistent(
   tselem->type = type;
   tselem->nr = type ? nr : 0;
   tselem->id = id;
-  tselem->used = 0;
+  tselem->used = 1;
   tselem->flag = TSE_CLOSED;
   te->store_elem = tselem;
   space_outliner->runtime->tree_hash->add_element(*tselem);
