@@ -38,16 +38,18 @@ const IndexMask &get_static_index_mask_for_min_size(const int64_t min_size)
     static const int16_t *static_offsets = get_static_indices_array().data();
     static const int16_t static_cumulative_segment_sizes[2] = {0, chunk_capacity};
 
-    threading::parallel_for(IndexRange(chunks_num), 1024, [&](const IndexRange range) {
-      for (const int64_t i : range) {
-        Chunk &chunk = chunks_array[i];
-        chunk.segments_num = 1;
-        chunk.indices_by_segment = &static_offsets;
-        chunk.cumulative_segment_sizes = static_cumulative_segment_sizes;
+    threading::isolate_task([&]() {
+      threading::parallel_for(IndexRange(chunks_num), 1024, [&](const IndexRange range) {
+        for (const int64_t i : range) {
+          Chunk &chunk = chunks_array[i];
+          chunk.segments_num = 1;
+          chunk.indices_by_segment = &static_offsets;
+          chunk.cumulative_segment_sizes = static_cumulative_segment_sizes;
 
-        chunk_ids_array[i] = i;
-        cumulative_chunk_sizes[i] = i * chunk_capacity;
-      }
+          chunk_ids_array[i] = i;
+          cumulative_chunk_sizes[i] = i * chunk_capacity;
+        }
+      });
     });
     cumulative_chunk_sizes.last() = max_size;
 
