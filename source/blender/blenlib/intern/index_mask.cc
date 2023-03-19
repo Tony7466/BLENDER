@@ -702,7 +702,7 @@ static std::optional<ChunkSlice> try_get_chunk_by_id(const IndexMask &mask, cons
 }
 
 static Set<int16_t> eval_expr_for_chunk_id__index_set(const Expr &base_expr,
-                                                      const IndexRange universe,
+                                                      const IndexRange chunk_universe,
                                                       const int64_t chunk_id)
 {
   Set<int16_t> result;
@@ -725,7 +725,7 @@ static Set<int16_t> eval_expr_for_chunk_id__index_set(const Expr &base_expr,
       const UnionExpr &expr = static_cast<const UnionExpr &>(base_expr);
       for (const Expr *child : expr.children) {
         const Set<int16_t> child_result = eval_expr_for_chunk_id__index_set(
-            *child, universe, chunk_id);
+            *child, chunk_universe, chunk_id);
         for (const int16_t index : child_result) {
           result.add(index);
         }
@@ -734,10 +734,10 @@ static Set<int16_t> eval_expr_for_chunk_id__index_set(const Expr &base_expr,
     }
     case Expr::Type::Difference: {
       const DifferenceExpr &expr = static_cast<const DifferenceExpr &>(base_expr);
-      result = eval_expr_for_chunk_id__index_set(*expr.base, universe, chunk_id);
+      result = eval_expr_for_chunk_id__index_set(*expr.base, chunk_universe, chunk_id);
       for (const Expr *child : expr.children) {
         const Set<int16_t> child_result = eval_expr_for_chunk_id__index_set(
-            *child, universe, chunk_id);
+            *child, chunk_universe, chunk_id);
         result.remove_if([&](const int16_t index) { return child_result.contains(index); });
       }
       break;
@@ -745,8 +745,8 @@ static Set<int16_t> eval_expr_for_chunk_id__index_set(const Expr &base_expr,
     case Expr::Type::Complement: {
       const ComplementExpr &expr = static_cast<const ComplementExpr &>(base_expr);
       const Set<int16_t> child_result = eval_expr_for_chunk_id__index_set(
-          *expr.base, universe, chunk_id);
-      for (const int64_t index : IndexRange(chunk_capacity)) {
+          *expr.base, chunk_universe, chunk_id);
+      for (const int64_t index : chunk_universe) {
         if (!child_result.contains(int16_t(index))) {
           result.add_new(int16_t(index));
         }
@@ -755,10 +755,10 @@ static Set<int16_t> eval_expr_for_chunk_id__index_set(const Expr &base_expr,
     }
     case Expr::Type::Intersection: {
       const IntersectionExpr &expr = static_cast<const IntersectionExpr &>(base_expr);
-      result = eval_expr_for_chunk_id__index_set(*expr.children[0], universe, chunk_id);
+      result = eval_expr_for_chunk_id__index_set(*expr.children[0], chunk_universe, chunk_id);
       for (const Expr *child : expr.children.as_span().drop_front(1)) {
         const Set<int16_t> child_result = eval_expr_for_chunk_id__index_set(
-            *child, universe, chunk_id);
+            *child, chunk_universe, chunk_id);
         result.remove_if([&](const int16_t index) { return !child_result.contains(index); });
       }
       break;
@@ -779,8 +779,14 @@ static void eval_expressions_for_chunk_ids(const Expr &expr,
     const int64_t chunk_id = chunk_ids[chunk_i];
     Chunk &chunk = r_chunks[chunk_i];
 
+    const int64_t chunk_offset = chunk_id * chunk_capacity;
+    const int64_t chunk_universe_start = std::max<int64_t>(0, universe.start() - chunk_offset);
+    const int64_t chunk_universe_end = std::min<int64_t>(chunk_capacity,
+                                                         universe.one_after_last() - chunk_offset);
+    const IndexRange chunk_universe{chunk_universe_start,
+                                    chunk_universe_end - chunk_universe_start};
     const Set<int16_t> indices_in_chunk = eval_expr_for_chunk_id__index_set(
-        expr, universe, chunk_id);
+        expr, chunk_universe, chunk_id);
 
     MutableSpan<const int16_t *> indices_by_segment;
     MutableSpan<int16_t> indices_in_segment;

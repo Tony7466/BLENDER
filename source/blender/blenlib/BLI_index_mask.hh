@@ -551,7 +551,7 @@ inline IndexMask IndexMask::slice(const int64_t start, const int64_t size) const
     return {};
   }
   const RawMaskIterator first_it = this->index_to_iterator(start);
-  const RawMaskIterator last_it = this->index_to_iterator(start + size);
+  const RawMaskIterator last_it = this->index_to_iterator(start + size - 1);
 
   IndexMask sliced;
   sliced.data_.chunks_num = last_it.chunk_i - first_it.chunk_i + 1;
