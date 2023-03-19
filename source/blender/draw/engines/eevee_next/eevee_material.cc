@@ -242,6 +242,11 @@ Material &MaterialModule::material_sync(Object *ob,
     /* Order is important for transparent. */
     mat.prepass = material_pass_get(ob, blender_mat, prepass_pipe, geometry_type);
     mat.shading = material_pass_get(ob, blender_mat, surface_pipe, geometry_type);
+    if (true) {
+      /* TODO(fclem): This can be expensive since it can trigger a shader compilation. So better
+       * avoid this if we can. */
+      mat.capture = material_pass_get(ob, blender_mat, MAT_PIPE_CAPTURE, geometry_type);
+    }
     if (blender_mat->blend_shadow == MA_BS_NONE) {
       mat.shadow = MaterialPass();
     }

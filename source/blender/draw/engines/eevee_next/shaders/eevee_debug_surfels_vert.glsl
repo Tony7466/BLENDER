@@ -4,7 +4,7 @@
 void main()
 {
   surfel_index = gl_InstanceID;
-  DebugSurfel surfel = surfels_buf[surfel_index];
+  Surfel surfel = surfels_buf[surfel_index];
 
   vec3 lP;
 
@@ -35,4 +35,5 @@ void main()
   P = (model_matrix * vec4(lP, 1)).xyz;
 
   gl_Position = point_world_to_ndc(P);
+  gl_Position.z -= 2.5e-5;
 }

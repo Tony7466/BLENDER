@@ -414,7 +414,6 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
       info.additional_info("eevee_geom_curves");
       break;
     case MAT_GEOM_MESH:
-    default:
       info.additional_info("eevee_geom_mesh");
       break;
   }
@@ -439,6 +438,9 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
         case MAT_PIPE_SHADOW:
           info.additional_info("eevee_surf_shadow");
           break;
+        case MAT_PIPE_CAPTURE:
+          info.additional_info("eevee_surf_capture");
+          break;
         case MAT_PIPE_DEFERRED:
           info.additional_info("eevee_surf_deferred");
           break;
@@ -446,7 +448,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
           info.additional_info("eevee_surf_forward");
           break;
         default:
-          BLI_assert(0);
+          BLI_assert_unreachable();
           break;
       }
       break;

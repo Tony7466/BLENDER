@@ -249,6 +249,8 @@ void Instance::render_sample()
 
   main_view.render();
 
+  irradiance_cache.create_surfels();
+
   motion_blur.step();
 }
 

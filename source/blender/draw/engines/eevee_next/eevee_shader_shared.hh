@@ -51,7 +51,8 @@ enum eDebugMode : uint32_t {
   /**
    * Display IrradianceCache surfels.
    */
-  DEBUG_IRRADIANCE_CACHE_SURFELS = 3u,
+  DEBUG_IRRADIANCE_CACHE_SURFELS_NORMAL = 3u,
+  DEBUG_IRRADIANCE_CACHE_SURFELS_IRRADIANCE = 4u,
   /**
    * Show tiles depending on their status.
    */
@@ -826,17 +827,48 @@ static inline ShadowTileDataPacked shadow_tile_pack(ShadowTileData tile)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Debug
+/** \name Irradiance Cache
  * \{ */
 
-struct DebugSurfel {
+struct Surfel {
+  /** World position of the surfel. */
   packed_float3 position;
   int _pad0;
+  /** World orientation of the surface. */
   packed_float3 normal;
   int _pad1;
-  float4 color;
+  /** Surface albedo to apply to incoming radiance. */
+  packed_float3 albedo;
+  int _pad2;
+  /** Accumulated reflected radiance at this point. */
+  packed_float3 radiance;
+  int _pad3;
 };
-BLI_STATIC_ASSERT_ALIGN(DebugSurfel, 16)
+BLI_STATIC_ASSERT_ALIGN(Surfel, 16)
+
+struct CaptureInfoData {
+  /** True if the surface shader needs to write the surfel data. */
+  bool1 do_surfel_output;
+  /** True if the surface shader needs to increment the surfel_len. */
+  bool1 do_surfel_count;
+  /** Number of surfels inside the surfel buffer or the needed len. */
+  uint surfel_len;
+  int _pad0;
+};
+BLI_STATIC_ASSERT_ALIGN(CaptureInfoData, 16)
+
+enum SurfelListEntryType : uint32_t {
+  ENTRY_SURFEL = 0u,
+  ENTRY_IRRADIANCE_SAMPLE = 1u,
+};
+
+struct SurfelListEntry {
+  uint next_entry_index;
+  SurfelListEntryType type;
+  uint payload;
+  uint _pad0;
+};
+BLI_STATIC_ASSERT_ALIGN(SurfelListEntry, 16)
 
 /** \} */
 
@@ -947,7 +979,6 @@ using DepthOfFieldDataBuf = draw::UniformBuffer<DepthOfFieldData>;
 using DepthOfFieldScatterListBuf = draw::StorageArrayBuffer<ScatterRect, 16, true>;
 using DrawIndirectBuf = draw::StorageBuffer<DrawCommand, true>;
 using FilmDataBuf = draw::UniformBuffer<FilmData>;
-using DebugSurfelBuf = draw::StorageArrayBuffer<DebugSurfel, 64>;
 using HiZDataBuf = draw::UniformBuffer<HiZData>;
 using LightCullingDataBuf = draw::StorageBuffer<LightCullingData>;
 using LightCullingKeyBuf = draw::StorageArrayBuffer<uint, LIGHT_CHUNK, true>;
@@ -965,6 +996,8 @@ using ShadowPageCacheBuf = draw::StorageArrayBuffer<uint2, SHADOW_MAX_PAGE, true
 using ShadowTileMapDataBuf = draw::StorageVectorBuffer<ShadowTileMapData, SHADOW_MAX_TILEMAP>;
 using ShadowTileMapClipBuf = draw::StorageArrayBuffer<ShadowTileMapClip, SHADOW_MAX_TILEMAP, true>;
 using ShadowTileDataBuf = draw::StorageArrayBuffer<ShadowTileDataPacked, SHADOW_MAX_TILE, true>;
+using SurfelBuf = draw::StorageArrayBuffer<Surfel, 64, true>;
+using CaptureInfoBuf = draw::StorageBuffer<CaptureInfoData>;
 using VelocityGeometryBuf = draw::StorageArrayBuffer<float4, 16, true>;
 using VelocityIndexBuf = draw::StorageArrayBuffer<VelocityIndex, 16>;
 using VelocityObjectBuf = draw::StorageArrayBuffer<float4x4, 16>;

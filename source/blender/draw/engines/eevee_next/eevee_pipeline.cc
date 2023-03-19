@@ -503,4 +503,37 @@ void DeferredPipeline::render(View &view,
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Capture Pipeline
+ *
+ * \{ */
+
+void CapturePipeline::sync()
+{
+  surface_ps_.init();
+  /* Surfel output is done using a SSBO, so no need for a fragment shader output color or depth. */
+  /* WORKAROUND: Avoid rasterizer discard, but the shaders actually use no fragment output. */
+  surface_ps_.state_set(DRW_STATE_WRITE_STENCIL);
+  surface_ps_.framebuffer_set(&inst_.irradiance_cache.empty_raster_fb_);
+
+  surface_ps_.bind_ssbo(SURFEL_BUF_SLOT, &inst_.irradiance_cache.surfels_buf_);
+  surface_ps_.bind_ssbo(CAPTURE_BUF_SLOT, &inst_.irradiance_cache.capture_info_buf_);
+
+  surface_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
+  /* TODO(fclem): Remove. There should be no view dependent behavior during capture. */
+  surface_ps_.bind_ubo(CAMERA_BUF_SLOT, inst_.camera.ubo_get());
+}
+
+PassMain::Sub *CapturePipeline::surface_material_add(GPUMaterial *gpumat)
+{
+  return &surface_ps_.sub(GPU_material_get_name(gpumat));
+}
+
+void CapturePipeline::render(View &view)
+{
+  inst_.manager->submit(surface_ps_, view);
+}
+
+/** \} */
+
 }  // namespace blender::eevee

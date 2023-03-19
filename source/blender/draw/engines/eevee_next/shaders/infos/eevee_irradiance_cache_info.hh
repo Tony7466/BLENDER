@@ -11,6 +11,7 @@ GPU_SHADER_CREATE_INFO(eevee_debug_surfels)
     .vertex_out(eeve_debug_surfel_iface)
     .fragment_source("eevee_debug_surfels_frag.glsl")
     .fragment_out(0, Type::VEC4, "out_color")
-    .storage_buf(0, Qualifier::READ, "DebugSurfel", "surfels_buf[]")
+    .storage_buf(0, Qualifier::READ, "Surfel", "surfels_buf[]")
     .push_constant(Type::FLOAT, "surfel_radius")
+    .push_constant(Type::INT, "debug_mode")
     .do_static_compilation(true);
