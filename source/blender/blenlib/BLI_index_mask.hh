@@ -421,19 +421,24 @@ inline bool operator==(const RawMaskIterator &a, const RawMaskIterator &b)
 /** \name #IndexMask Inline Methods
  * \{ */
 
-inline IndexMask::IndexMask()
+inline void init_empty_mask(IndexMaskData &data)
 {
   static constexpr int64_t cumulative_sizes_for_empty_mask[1] = {0};
 
-  data_.chunks_num = 0;
-  data_.indices_num = 0;
-  data_.chunks = nullptr;
-  data_.chunk_ids = nullptr;
-  data_.cumulative_chunk_sizes = cumulative_sizes_for_empty_mask;
-  data_.begin_it.segment_i = 0;
-  data_.begin_it.index_in_segment = 0;
-  data_.end_it.segment_i = 0;
-  data_.end_it.index_in_segment = 0;
+  data.chunks_num = 0;
+  data.indices_num = 0;
+  data.chunks = nullptr;
+  data.chunk_ids = nullptr;
+  data.cumulative_chunk_sizes = cumulative_sizes_for_empty_mask;
+  data.begin_it.segment_i = 0;
+  data.begin_it.index_in_segment = 0;
+  data.end_it.segment_i = 0;
+  data.end_it.index_in_segment = 0;
+}
+
+inline IndexMask::IndexMask()
+{
+  init_empty_mask(data_);
 }
 
 inline IndexMask::IndexMask(const int64_t size)
@@ -448,6 +453,7 @@ inline IndexMask::IndexMask(const int64_t size)
 inline IndexMask::IndexMask(const IndexRange range)
 {
   if (range.is_empty()) {
+    init_empty_mask(data_);
     return;
   }
   *this = get_static_index_mask_for_min_size(range.one_after_last());
