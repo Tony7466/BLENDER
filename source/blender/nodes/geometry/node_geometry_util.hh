@@ -80,7 +80,7 @@ void separate_geometry(GeometrySet &geometry_set,
 
 void get_closest_in_bvhtree(BVHTreeFromMesh &tree_data,
                             const VArray<float3> &positions,
-                            const IndexMask mask,
+                            const IndexMask &mask,
                             const MutableSpan<int> r_indices,
                             const MutableSpan<float> r_distances_sq,
                             const MutableSpan<float3> r_positions);
@@ -100,7 +100,7 @@ class FieldAtIndexInput final : public bke::GeometryFieldInput {
   FieldAtIndexInput(Field<int> index_field, GField value_field, eAttrDomain value_field_domain);
 
   GVArray get_varray_for_context(const bke::GeometryFieldContext &context,
-                                 const IndexMask mask) const final;
+                                 const IndexMask &mask) const final;
 
   std::optional<eAttrDomain> preferred_domain(const GeometryComponent & /*component*/) const final
   {

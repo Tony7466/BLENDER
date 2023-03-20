@@ -112,7 +112,7 @@ TEST(index_mask, FromBits)
 TEST(index_mask, FromSize)
 {
   {
-    IndexMask mask(5);
+    const IndexMask &mask(5);
     Vector<OffsetSpan<int64_t, int16_t>> segments;
     mask.foreach_span(
         [&](const OffsetSpan<int64_t, int16_t> segment) { segments.append(segment); });
@@ -123,7 +123,7 @@ TEST(index_mask, FromSize)
     EXPECT_EQ(mask.min_array_size(), 5);
   }
   {
-    IndexMask mask(chunk_capacity);
+    const IndexMask &mask(chunk_capacity);
     Vector<OffsetSpan<int64_t, int16_t>> segments;
     mask.foreach_span(
         [&](const OffsetSpan<int64_t, int16_t> segment) { segments.append(segment); });
@@ -179,9 +179,9 @@ TEST(index_mask, Expr)
 {
   IndexMaskMemory memory;
 
-  const IndexMask mask1(IndexRange(10, 5));
-  const IndexMask mask2(IndexRange(40, 5));
-  const IndexMask mask3 = IndexMask::from_indices<int>({12, 13, 20, 21, 22}, memory);
+  const IndexMask &mask1(IndexRange(10, 5));
+  const IndexMask &mask2(IndexRange(40, 5));
+  const IndexMask &mask3 = IndexMask::from_indices<int>({12, 13, 20, 21, 22}, memory);
 
   const AtomicExpr expr1{mask1};
   const AtomicExpr expr2{mask2};
@@ -212,7 +212,7 @@ TEST(index_mask, ToRange)
   }
   {
     const IndexRange range{16000, 40000};
-    const IndexMask mask{range};
+    const IndexMask &mask{range};
     EXPECT_TRUE(mask.to_range().has_value());
     EXPECT_EQ(*mask.to_range(), range);
   }

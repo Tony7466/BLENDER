@@ -97,7 +97,7 @@ class ShortestEdgePathsNextVertFieldInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask /*mask*/) const final
+                                 const IndexMask & /*mask*/) const final
   {
     bke::MeshFieldContext edge_context{mesh, ATTR_DOMAIN_EDGE};
     fn::FieldEvaluator edge_evaluator{edge_context, mesh.totedge};
@@ -172,7 +172,7 @@ class ShortestEdgePathsCostFieldInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask /*mask*/) const final
+                                 const IndexMask & /*mask*/) const final
   {
     bke::MeshFieldContext edge_context{mesh, ATTR_DOMAIN_EDGE};
     fn::FieldEvaluator edge_evaluator{edge_context, mesh.totedge};

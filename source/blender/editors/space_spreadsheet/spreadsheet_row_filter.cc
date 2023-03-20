@@ -27,7 +27,7 @@ namespace blender::ed::spreadsheet {
 template<typename T, typename OperationFn>
 static IndexMask apply_filter_operation(const VArray<T> &data,
                                         OperationFn check_fn,
-                                        const IndexMask mask,
+                                        const IndexMask &mask,
                                         IndexMaskMemory &memory)
 {
   return IndexMask::from_predicate(

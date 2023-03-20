@@ -27,20 +27,20 @@ void sample_point_attribute(const Mesh &mesh,
                             Span<int> looptri_indices,
                             Span<float3> bary_coords,
                             const GVArray &src,
-                            IndexMask mask,
+                            const IndexMask &mask,
                             GMutableSpan dst);
 
 void sample_corner_attribute(const Mesh &mesh,
                              Span<int> looptri_indices,
                              Span<float3> bary_coords,
                              const GVArray &src,
-                             IndexMask mask,
+                             const IndexMask &mask,
                              GMutableSpan dst);
 
 void sample_face_attribute(const Mesh &mesh,
                            Span<int> looptri_indices,
                            const GVArray &src,
-                           IndexMask mask,
+                           const IndexMask &mask,
                            GMutableSpan dst);
 
 enum class eAttributeMapMode {
@@ -57,7 +57,7 @@ enum class eAttributeMapMode {
  */
 class MeshAttributeInterpolator {
   const Mesh *mesh_;
-  const IndexMask mask_;
+  const IndexMask &mask_;
   const Span<float3> positions_;
   const Span<int> looptri_indices_;
 
@@ -66,7 +66,7 @@ class MeshAttributeInterpolator {
 
  public:
   MeshAttributeInterpolator(const Mesh *mesh,
-                            IndexMask mask,
+                            const IndexMask &mask,
                             Span<float3> positions,
                             Span<int> looptri_indices);
 

@@ -352,7 +352,7 @@ static void split_edge_per_poly(const int edge_i,
 }
 
 void split_edges(Mesh &mesh,
-                 const IndexMask mask,
+                 const IndexMask &mask,
                  const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   /* Flag vertices that need to be split. */

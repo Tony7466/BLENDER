@@ -259,7 +259,7 @@ void CurvesGeometry::fill_curve_types(const CurveType type)
   this->tag_topology_changed();
 }
 
-void CurvesGeometry::fill_curve_types(const IndexMask selection, const CurveType type)
+void CurvesGeometry::fill_curve_types(const IndexMask &selection, const CurveType type)
 {
   if (selection.size() == this->curves_num()) {
     this->fill_curve_types(type);
@@ -1336,9 +1336,8 @@ static void reverse_curve_point_data(const CurvesGeometry &curves,
                                      MutableSpan<T> data)
 {
   const OffsetIndices points_by_curve = curves.points_by_curve();
-  curve_selection.foreach_index([&](const int curve_i) {
-    data.slice(points_by_curve[curve_i]).reverse();
-  });
+  curve_selection.foreach_index(
+      [&](const int curve_i) { data.slice(points_by_curve[curve_i]).reverse(); });
 }
 
 template<typename T>

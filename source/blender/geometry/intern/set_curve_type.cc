@@ -324,7 +324,7 @@ static bke::CurvesGeometry convert_curves_to_bezier(
       propagation_info,
       attributes_to_skip);
 
-  auto catmull_rom_to_bezier = [&](IndexMask selection) {
+  auto catmull_rom_to_bezier = [&](const IndexMask &selection) {
     bke::curves::fill_points<int8_t>(
         dst_points_by_curve, selection, BEZIER_HANDLE_ALIGN, dst_types_l);
     bke::curves::fill_points<int8_t>(
@@ -347,7 +347,7 @@ static bke::CurvesGeometry convert_curves_to_bezier(
     }
   };
 
-  auto poly_to_bezier = [&](IndexMask selection) {
+  auto poly_to_bezier = [&](const IndexMask &selection) {
     bke::curves::copy_point_data(
         src_points_by_curve, dst_points_by_curve, selection, src_positions, dst_positions);
     bke::curves::fill_points<int8_t>(
@@ -361,7 +361,7 @@ static bke::CurvesGeometry convert_curves_to_bezier(
     }
   };
 
-  auto bezier_to_bezier = [&](IndexMask selection) {
+  auto bezier_to_bezier = [&](const IndexMask &selection) {
     const VArraySpan<int8_t> src_types_l = src_curves.handle_types_left();
     const VArraySpan<int8_t> src_types_r = src_curves.handle_types_right();
     const Span<float3> src_handles_l = src_curves.handle_positions_left();
@@ -386,7 +386,7 @@ static bke::CurvesGeometry convert_curves_to_bezier(
     }
   };
 
-  auto nurbs_to_bezier = [&](IndexMask selection) {
+  auto nurbs_to_bezier = [&](const IndexMask &selection) {
     bke::curves::fill_points<int8_t>(
         dst_points_by_curve, selection, BEZIER_HANDLE_ALIGN, dst_types_l);
     bke::curves::fill_points<int8_t>(
@@ -509,7 +509,7 @@ static bke::CurvesGeometry convert_curves_to_nurbs(
     }
   };
 
-  auto catmull_rom_to_nurbs = [&](IndexMask selection) {
+  auto catmull_rom_to_nurbs = [&](const IndexMask &selection) {
     MutableSpan<int8_t> nurbs_order = dst_curves.nurbs_orders_for_write();
     MutableSpan<int8_t> nurbs_knots_modes = dst_curves.nurbs_knots_modes_for_write();
     fill_weights_if_necessary(selection);
@@ -535,7 +535,7 @@ static bke::CurvesGeometry convert_curves_to_nurbs(
     }
   };
 
-  auto poly_to_nurbs = [&](IndexMask selection) {
+  auto poly_to_nurbs = [&](const IndexMask &selection) {
     index_mask::masked_fill<int8_t>(dst_curves.nurbs_orders_for_write(), 4, selection);
     bke::curves::copy_point_data(
         src_points_by_curve, dst_points_by_curve, selection, src_positions, dst_positions);
@@ -563,7 +563,7 @@ static bke::CurvesGeometry convert_curves_to_nurbs(
     }
   };
 
-  auto bezier_to_nurbs = [&](IndexMask selection) {
+  auto bezier_to_nurbs = [&](const IndexMask &selection) {
     const Span<float3> src_handles_l = src_curves.handle_positions_left();
     const Span<float3> src_handles_r = src_curves.handle_positions_right();
 
@@ -591,7 +591,7 @@ static bke::CurvesGeometry convert_curves_to_nurbs(
     }
   };
 
-  auto nurbs_to_nurbs = [&](IndexMask selection) {
+  auto nurbs_to_nurbs = [&](const IndexMask &selection) {
     bke::curves::copy_point_data(
         src_points_by_curve, dst_points_by_curve, selection, src_positions, dst_positions);
 
@@ -660,7 +660,7 @@ bke::CurvesGeometry convert_curves(const bke::CurvesGeometry &src_curves,
   return {};
 }
 
-bool try_curves_conversion_in_place(const IndexMask selection,
+bool try_curves_conversion_in_place(const IndexMask &selection,
                                     const CurveType dst_type,
                                     FunctionRef<bke::CurvesGeometry &()> get_writable_curves_fn)
 {

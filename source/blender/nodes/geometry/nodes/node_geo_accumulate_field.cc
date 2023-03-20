@@ -213,7 +213,7 @@ template<typename T> class AccumulateFieldInput final : public bke::GeometryFiel
   }
 
   GVArray get_varray_for_context(const bke::GeometryFieldContext &context,
-                                 const IndexMask /*mask*/) const final
+                                 const IndexMask & /*mask*/) const final
   {
     const AttributeAccessor attributes = *context.attributes();
     const int domain_size = attributes.domain_size(source_domain_);
@@ -309,7 +309,7 @@ template<typename T> class TotalFieldInput final : public bke::GeometryFieldInpu
   }
 
   GVArray get_varray_for_context(const bke::GeometryFieldContext &context,
-                                 IndexMask /*mask*/) const final
+                                 const IndexMask & /*mask*/) const final
   {
     const AttributeAccessor attributes = *context.attributes();
     const int domain_size = attributes.domain_size(source_domain_);

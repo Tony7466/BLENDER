@@ -334,7 +334,7 @@ bke::CurvesGeometry subdivide_curves(
   const bke::AttributeAccessor src_attributes = src_curves.attributes();
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
 
-  auto subdivide_catmull_rom = [&](IndexMask selection) {
+  auto subdivide_catmull_rom = [&](const IndexMask &selection) {
     for (auto &attribute : bke::retrieve_attributes_for_transfer(
              src_attributes, dst_attributes, ATTR_DOMAIN_MASK_POINT, propagation_info)) {
       subdivide_attribute_catmull_rom(src_points_by_curve,
@@ -348,7 +348,7 @@ bke::CurvesGeometry subdivide_curves(
     }
   };
 
-  auto subdivide_poly = [&](IndexMask selection) {
+  auto subdivide_poly = [&](const IndexMask &selection) {
     for (auto &attribute : bke::retrieve_attributes_for_transfer(
              src_attributes, dst_attributes, ATTR_DOMAIN_MASK_POINT, propagation_info)) {
       subdivide_attribute_linear(src_points_by_curve,
@@ -361,7 +361,7 @@ bke::CurvesGeometry subdivide_curves(
     }
   };
 
-  auto subdivide_bezier = [&](IndexMask selection) {
+  auto subdivide_bezier = [&](const IndexMask &selection) {
     const Span<float3> src_positions = src_curves.positions();
     const VArraySpan<int8_t> src_types_l{src_curves.handle_types_left()};
     const VArraySpan<int8_t> src_types_r{src_curves.handle_types_right()};

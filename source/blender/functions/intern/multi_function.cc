@@ -34,7 +34,7 @@ static bool supports_threading_by_slicing_params(const MultiFunction &fn)
   return true;
 }
 
-static int64_t compute_grain_size(const ExecutionHints &hints, const IndexMask mask)
+static int64_t compute_grain_size(const ExecutionHints &hints, const IndexMask &mask)
 {
   int64_t grain_size = hints.min_grain_size;
   if (hints.uniform_execution_time) {
@@ -110,7 +110,7 @@ static void add_sliced_parameters(const Signature &signature,
   }
 }
 
-void MultiFunction::call_auto(IndexMask mask, Params params, Context context) const
+void MultiFunction::call_auto(const IndexMask &mask, Params params, Context context) const
 {
   if (mask.is_empty()) {
     return;
@@ -150,7 +150,7 @@ void MultiFunction::call_auto(IndexMask mask, Params params, Context context) co
         IndexMaskMemory memory;
         const IndexMask offset_mask = mask.slice_and_offset(sub_range, memory);
 
-        ParamsBuilder sliced_params{*this, offset_mask.min_array_size()};
+        ParamsBuilder sliced_params{*this, &offset_mask};
         add_sliced_parameters(*signature_ref_, params, input_slice_range, sliced_params);
         this->call(offset_mask, sliced_params, context);
       });

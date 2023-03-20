@@ -379,7 +379,7 @@ inline void execute_materialized(TypeSequence<ParamTags...> /* param_tags */,
 template<typename ElementFn, typename ExecPreset, typename... ParamTags, size_t... I>
 inline void execute_element_fn_as_multi_function(const ElementFn element_fn,
                                                  const ExecPreset exec_preset,
-                                                 const IndexMask mask,
+                                                 const IndexMask &mask,
                                                  Params params,
                                                  TypeSequence<ParamTags...> /*param_tags*/,
                                                  std::index_sequence<I...> /*indices*/)
@@ -488,7 +488,7 @@ inline auto build_multi_function_call_from_element_fn(const ElementFn element_fn
                                                       const ExecPreset exec_preset,
                                                       TypeSequence<ParamTags...> /*param_tags*/)
 {
-  return [element_fn, exec_preset](const IndexMask mask, Params params) {
+  return [element_fn, exec_preset](const IndexMask &mask, Params params) {
     execute_element_fn_as_multi_function(element_fn,
                                          exec_preset,
                                          mask,
@@ -516,7 +516,7 @@ template<typename CallFn, typename... ParamTags> class CustomMF : public MultiFu
     this->set_signature(&signature_);
   }
 
-  void call(IndexMask mask, Params params, Context /*context*/) const override
+  void call(const IndexMask &mask, Params params, Context /*context*/) const override
   {
     call_fn_(mask, params);
   }
@@ -665,7 +665,7 @@ class CustomMF_GenericConstant : public MultiFunction {
  public:
   CustomMF_GenericConstant(const CPPType &type, const void *value, bool make_value_copy);
   ~CustomMF_GenericConstant();
-  void call(IndexMask mask, Params params, Context context) const override;
+  void call(const IndexMask &mask, Params params, Context context) const override;
   uint64_t hash() const override;
   bool equals(const MultiFunction &other) const override;
 };
@@ -681,7 +681,7 @@ class CustomMF_GenericConstantArray : public MultiFunction {
 
  public:
   CustomMF_GenericConstantArray(GSpan array);
-  void call(IndexMask mask, Params params, Context context) const override;
+  void call(const IndexMask &mask, Params params, Context context) const override;
 };
 
 /**
@@ -700,7 +700,7 @@ template<typename T> class CustomMF_Constant : public MultiFunction {
     this->set_signature(&signature_);
   }
 
-  void call(IndexMask mask, Params params, Context /*context*/) const override
+  void call(const IndexMask &mask, Params params, Context /*context*/) const override
   {
     MutableSpan<T> output = params.uninitialized_single_output<T>(0);
     mask.foreach_span_or_range([&](const auto mask_segment) {
@@ -740,7 +740,7 @@ class CustomMF_DefaultOutput : public MultiFunction {
 
  public:
   CustomMF_DefaultOutput(Span<DataType> input_types, Span<DataType> output_types);
-  void call(IndexMask mask, Params params, Context context) const override;
+  void call(const IndexMask &mask, Params params, Context context) const override;
 };
 
 class CustomMF_GenericCopy : public MultiFunction {
@@ -749,7 +749,7 @@ class CustomMF_GenericCopy : public MultiFunction {
 
  public:
   CustomMF_GenericCopy(DataType data_type);
-  void call(IndexMask mask, Params params, Context context) const override;
+  void call(const IndexMask &mask, Params params, Context context) const override;
 };
 
 }  // namespace blender::fn::multi_function

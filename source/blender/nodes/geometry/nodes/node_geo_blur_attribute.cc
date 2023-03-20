@@ -215,7 +215,7 @@ static Array<Vector<int>> build_face_to_face_by_edge_map(const Span<MPoly> polys
 
 static Array<Vector<int>> create_mesh_map(const Mesh &mesh,
                                           const eAttrDomain domain,
-                                          const IndexMask mask)
+                                          const IndexMask &mask)
 {
   switch (domain) {
     case ATTR_DOMAIN_POINT: {
@@ -402,7 +402,7 @@ class BlurAttributeFieldInput final : public bke::GeometryFieldInput {
   }
 
   GVArray get_varray_for_context(const bke::GeometryFieldContext &context,
-                                 const IndexMask /*mask*/) const final
+                                 const IndexMask & /*mask*/) const final
   {
     const int64_t domain_size = context.attributes()->domain_size(context.domain());
 

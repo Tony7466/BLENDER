@@ -140,10 +140,10 @@ class GeometryFieldInput : public fn::FieldInput {
  public:
   using fn::FieldInput::FieldInput;
   GVArray get_varray_for_context(const fn::FieldContext &context,
-                                 IndexMask mask,
+                                 const IndexMask &mask,
                                  ResourceScope &scope) const override;
   virtual GVArray get_varray_for_context(const GeometryFieldContext &context,
-                                         IndexMask mask) const = 0;
+                                         const IndexMask &mask) const = 0;
   virtual std::optional<eAttrDomain> preferred_domain(const GeometryComponent &component) const;
 };
 
@@ -151,11 +151,11 @@ class MeshFieldInput : public fn::FieldInput {
  public:
   using fn::FieldInput::FieldInput;
   GVArray get_varray_for_context(const fn::FieldContext &context,
-                                 IndexMask mask,
+                                 const IndexMask &mask,
                                  ResourceScope &scope) const override;
   virtual GVArray get_varray_for_context(const Mesh &mesh,
                                          eAttrDomain domain,
-                                         IndexMask mask) const = 0;
+                                         const IndexMask &mask) const = 0;
   virtual std::optional<eAttrDomain> preferred_domain(const Mesh &mesh) const;
 };
 
@@ -163,11 +163,11 @@ class CurvesFieldInput : public fn::FieldInput {
  public:
   using fn::FieldInput::FieldInput;
   GVArray get_varray_for_context(const fn::FieldContext &context,
-                                 IndexMask mask,
+                                 const IndexMask &mask,
                                  ResourceScope &scope) const override;
   virtual GVArray get_varray_for_context(const CurvesGeometry &curves,
                                          eAttrDomain domain,
-                                         IndexMask mask) const = 0;
+                                         const IndexMask &mask) const = 0;
   virtual std::optional<eAttrDomain> preferred_domain(const CurvesGeometry &curves) const;
 };
 
@@ -175,18 +175,20 @@ class PointCloudFieldInput : public fn::FieldInput {
  public:
   using fn::FieldInput::FieldInput;
   GVArray get_varray_for_context(const fn::FieldContext &context,
-                                 IndexMask mask,
+                                 const IndexMask &mask,
                                  ResourceScope &scope) const override;
-  virtual GVArray get_varray_for_context(const PointCloud &pointcloud, IndexMask mask) const = 0;
+  virtual GVArray get_varray_for_context(const PointCloud &pointcloud,
+                                         const IndexMask &mask) const = 0;
 };
 
 class InstancesFieldInput : public fn::FieldInput {
  public:
   using fn::FieldInput::FieldInput;
   GVArray get_varray_for_context(const fn::FieldContext &context,
-                                 IndexMask mask,
+                                 const IndexMask &mask,
                                  ResourceScope &scope) const override;
-  virtual GVArray get_varray_for_context(const Instances &instances, IndexMask mask) const = 0;
+  virtual GVArray get_varray_for_context(const Instances &instances,
+                                         const IndexMask &mask) const = 0;
 };
 
 class AttributeFieldInput : public GeometryFieldInput {
@@ -213,7 +215,7 @@ class AttributeFieldInput : public GeometryFieldInput {
   }
 
   GVArray get_varray_for_context(const GeometryFieldContext &context,
-                                 IndexMask mask) const override;
+                                 const IndexMask &mask) const override;
 
   std::string socket_inspection_name() const override;
 
@@ -230,7 +232,7 @@ class IDAttributeFieldInput : public GeometryFieldInput {
   }
 
   GVArray get_varray_for_context(const GeometryFieldContext &context,
-                                 IndexMask mask) const override;
+                                 const IndexMask &mask) const override;
 
   std::string socket_inspection_name() const override;
 
@@ -240,7 +242,7 @@ class IDAttributeFieldInput : public GeometryFieldInput {
 
 VArray<float3> curve_normals_varray(const CurvesGeometry &curves, const eAttrDomain domain);
 
-VArray<float3> mesh_normals_varray(const Mesh &mesh, const IndexMask mask, eAttrDomain domain);
+VArray<float3> mesh_normals_varray(const Mesh &mesh, const IndexMask &mask, eAttrDomain domain);
 
 class NormalFieldInput : public GeometryFieldInput {
  public:
@@ -250,7 +252,7 @@ class NormalFieldInput : public GeometryFieldInput {
   }
 
   GVArray get_varray_for_context(const GeometryFieldContext &context,
-                                 IndexMask mask) const override;
+                                 const IndexMask &mask) const override;
 
   std::string socket_inspection_name() const override;
 
@@ -289,7 +291,7 @@ class AnonymousAttributeFieldInput : public GeometryFieldInput {
   }
 
   GVArray get_varray_for_context(const GeometryFieldContext &context,
-                                 IndexMask mask) const override;
+                                 const IndexMask &mask) const override;
 
   std::string socket_inspection_name() const override;
 
@@ -303,7 +305,7 @@ class CurveLengthFieldInput final : public CurvesFieldInput {
   CurveLengthFieldInput();
   GVArray get_varray_for_context(const CurvesGeometry &curves,
                                  eAttrDomain domain,
-                                 IndexMask mask) const final;
+                                 const IndexMask &mask) const final;
   uint64_t hash() const override;
   bool is_equal_to(const fn::FieldNode &other) const override;
   std::optional<eAttrDomain> preferred_domain(const bke::CurvesGeometry &curves) const final;

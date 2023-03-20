@@ -154,7 +154,7 @@ class CurvesGeometry : public ::CurvesGeometry {
   /** Set all curve types to the value and call #update_curve_types. */
   void fill_curve_types(CurveType type);
   /** Set the types for the curves in the selection and call #update_curve_types. */
-  void fill_curve_types(IndexMask selection, CurveType type);
+  void fill_curve_types(const IndexMask &selection, CurveType type);
   /** Update the cached count of curves of each type, necessary after #curve_types_for_write. */
   void update_curve_types();
 

@@ -83,7 +83,7 @@ static FieldTreeInfo preprocess_field_tree(Span<GFieldRef> entry_fields)
  */
 static Vector<GVArray> get_field_context_inputs(
     ResourceScope &scope,
-    const IndexMask mask,
+    const IndexMask &mask,
     const FieldContext &context,
     const Span<std::reference_wrapper<const FieldInput>> field_inputs)
 {
@@ -278,7 +278,7 @@ static void build_multi_function_procedure_for_fields(mf::Procedure &procedure,
 
 Vector<GVArray> evaluate_fields(ResourceScope &scope,
                                 Span<GFieldRef> fields_to_evaluate,
-                                IndexMask mask,
+                                const IndexMask &mask,
                                 const FieldContext &context,
                                 Span<GVMutableArray> dst_varrays)
 {
@@ -422,7 +422,8 @@ Vector<GVArray> evaluate_fields(ResourceScope &scope,
     build_multi_function_procedure_for_fields(
         procedure, scope, field_tree_info, constant_fields_to_evaluate);
     mf::ProcedureExecutor procedure_executor{procedure};
-    mf::ParamsBuilder mf_params{procedure_executor, 1};
+    const IndexMask mask(1);
+    mf::ParamsBuilder mf_params{procedure_executor, &mask};
     mf::ContextBuilder mf_context;
 
     /* Provide inputs to the procedure executor. */
@@ -449,7 +450,7 @@ Vector<GVArray> evaluate_fields(ResourceScope &scope,
       r_varrays[out_index] = GVArray::ForSingleRef(type, array_size, buffer);
     }
 
-    procedure_executor.call(IndexRange(1), mf_params, mf_context);
+    procedure_executor.call(mask, mf_params, mf_context);
   }
 
   /* Copy data to supplied destination arrays if necessary. In some cases the evaluation above
@@ -534,7 +535,7 @@ GField make_constant_field(const CPPType &type, const void *value)
 }
 
 GVArray FieldContext::get_varray_for_input(const FieldInput &field_input,
-                                           IndexMask mask,
+                                           const IndexMask &mask,
                                            ResourceScope &scope) const
 {
   /* By default ask the field input to create the varray. Another field context might overwrite
@@ -547,14 +548,14 @@ IndexFieldInput::IndexFieldInput() : FieldInput(CPPType::get<int>(), "Index")
   category_ = Category::Generated;
 }
 
-GVArray IndexFieldInput::get_index_varray(IndexMask mask)
+GVArray IndexFieldInput::get_index_varray(const IndexMask &mask)
 {
   auto index_func = [](int i) { return i; };
   return VArray<int>::ForFunc(mask.min_array_size(), index_func);
 }
 
 GVArray IndexFieldInput::get_varray_for_context(const fn::FieldContext & /*context*/,
-                                                IndexMask mask,
+                                                const IndexMask &mask,
                                                 ResourceScope & /*scope*/) const
 {
   /* TODO: Investigate a similar method to IndexRange::as_span() */

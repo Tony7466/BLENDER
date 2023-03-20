@@ -130,7 +130,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 static void sample_indices_and_lengths(const Span<float> accumulated_lengths,
                                        const Span<float> sample_lengths,
                                        const GeometryNodeCurveSampleMode length_mode,
-                                       const IndexMask mask,
+                                       const IndexMask &mask,
                                        MutableSpan<int> r_segment_indices,
                                        MutableSpan<float> r_length_in_segment)
 {
@@ -162,7 +162,7 @@ static void sample_indices_and_lengths(const Span<float> accumulated_lengths,
 static void sample_indices_and_factors_to_compressed(const Span<float> accumulated_lengths,
                                                      const Span<float> sample_lengths,
                                                      const GeometryNodeCurveSampleMode length_mode,
-                                                     const IndexMask mask,
+                                                     const IndexMask &mask,
                                                      MutableSpan<int> r_segment_indices,
                                                      MutableSpan<float> r_factor_in_segment)
 {
@@ -223,7 +223,7 @@ class SampleFloatSegmentsFunction : public mf::MultiFunction {
     this->set_signature(&signature);
   }
 
-  void call(IndexMask mask, mf::Params params, mf::Context /*context*/) const override
+  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
   {
     const VArraySpan<float> lengths = params.readonly_single_input<float>(0, "Length");
     MutableSpan<int> indices = params.uninitialized_single_output<int>(1, "Curve Index");
@@ -270,7 +270,7 @@ class SampleCurveFunction : public mf::MultiFunction {
     this->evaluate_source();
   }
 
-  void call(IndexMask mask, mf::Params params, mf::Context /*context*/) const override
+  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
   {
     MutableSpan<float3> sampled_positions = params.uninitialized_single_output_if_required<float3>(
         2, "Position");
@@ -323,7 +323,7 @@ class SampleCurveFunction : public mf::MultiFunction {
     GArray<> src_original_values(source_data_->type());
     GArray<> src_evaluated_values(source_data_->type());
 
-    auto fill_invalid = [&](const IndexMask mask) {
+    auto fill_invalid = [&](const IndexMask &mask) {
       if (!sampled_positions.is_empty()) {
         index_mask::masked_fill(sampled_positions, float3(0), mask);
       }
@@ -341,7 +341,7 @@ class SampleCurveFunction : public mf::MultiFunction {
       }
     };
 
-    auto sample_curve = [&](const int curve_i, const IndexMask mask) {
+    auto sample_curve = [&](const int curve_i, const IndexMask &mask) {
       const Span<float> accumulated_lengths = curves.evaluated_lengths_for_curve(curve_i,
                                                                                  cyclic[curve_i]);
       if (accumulated_lengths.is_empty()) {

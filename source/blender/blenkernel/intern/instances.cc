@@ -105,7 +105,7 @@ blender::Span<InstanceReference> Instances::references() const
   return references_;
 }
 
-void Instances::remove(const IndexMask mask,
+void Instances::remove(const IndexMask &mask,
                        const AnonymousAttributePropagationInfo &propagation_info)
 {
   using namespace blender;

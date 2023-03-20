@@ -115,7 +115,7 @@ Curves *curve_legacy_to_curves(const Curve &curve_legacy, const ListBase &nurbs_
   MutableSpan<float> radii = radius_attribute.span;
   MutableSpan<float> tilts = curves.tilt_for_write();
 
-  auto create_poly = [&](IndexMask selection) {
+  auto create_poly = [&](const IndexMask &selection) {
     selection.foreach_index(GrainSize(256), [&](const int curve_i) {
       const Nurb &src_curve = *src_curves[curve_i];
       const Span<BPoint> src_points(src_curve.bp, src_curve.pntsu);
@@ -134,7 +134,7 @@ Curves *curve_legacy_to_curves(const Curve &curve_legacy, const ListBase &nurbs_
    * positions don't agree with the types because of evaluation, or because one-sided aligned
    * handles weren't considered. While recalculating automatic handles to fix those situations
    * is an option, currently this opts not to for the sake of flexibility. */
-  auto create_bezier = [&](IndexMask selection) {
+  auto create_bezier = [&](const IndexMask &selection) {
     MutableSpan<int> resolutions = curves.resolution_for_write();
     MutableSpan<float3> handle_positions_l = curves.handle_positions_left_for_write();
     MutableSpan<float3> handle_positions_r = curves.handle_positions_right_for_write();
@@ -161,7 +161,7 @@ Curves *curve_legacy_to_curves(const Curve &curve_legacy, const ListBase &nurbs_
     });
   };
 
-  auto create_nurbs = [&](IndexMask selection) {
+  auto create_nurbs = [&](const IndexMask &selection) {
     MutableSpan<int> resolutions = curves.resolution_for_write();
     MutableSpan<float> nurbs_weights = curves.nurbs_weights_for_write();
     MutableSpan<int8_t> nurbs_orders = curves.nurbs_orders_for_write();
@@ -190,7 +190,7 @@ Curves *curve_legacy_to_curves(const Curve &curve_legacy, const ListBase &nurbs_
       curves.curve_types(),
       curves.curve_type_counts(),
       curves.curves_range(),
-      [&](IndexMask /*selection*/) { BLI_assert_unreachable(); },
+      [&](const IndexMask & /*selection*/) { BLI_assert_unreachable(); },
       create_poly,
       create_bezier,
       create_nurbs);

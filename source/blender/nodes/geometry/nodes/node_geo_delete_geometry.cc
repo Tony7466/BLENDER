@@ -75,7 +75,7 @@ static void copy_attributes_based_on_mask(const Map<AttributeIDRef, AttributeKin
                                           const bke::AttributeAccessor src_attributes,
                                           bke::MutableAttributeAccessor dst_attributes,
                                           const eAttrDomain domain,
-                                          const IndexMask mask)
+                                          const IndexMask &mask)
 {
   for (Map<AttributeIDRef, AttributeKind>::Item entry : attributes.items()) {
     const AttributeIDRef attribute_id = entry.key;

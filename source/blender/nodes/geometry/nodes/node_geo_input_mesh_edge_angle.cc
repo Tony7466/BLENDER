@@ -65,7 +65,7 @@ class AngleFieldInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask /*mask*/) const final
+                                 const IndexMask & /*mask*/) const final
   {
     const Span<float3> positions = mesh.vert_positions();
     const Span<MPoly> polys = mesh.polys();
@@ -116,7 +116,7 @@ class SignedAngleFieldInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask /*mask*/) const final
+                                 const IndexMask & /*mask*/) const final
   {
     const Span<float3> positions = mesh.vert_positions();
     const Span<MEdge> edges = mesh.edges();

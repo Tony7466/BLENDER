@@ -50,7 +50,7 @@ class EdgesOfVertInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask mask) const final
+                                 const IndexMask &mask) const final
   {
     const IndexRange vert_range(mesh.totvert);
     const Span<MEdge> edges = mesh.edges();
@@ -157,7 +157,7 @@ class EdgesOfVertCountInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask /*mask*/) const final
+                                 const IndexMask & /*mask*/) const final
   {
     if (domain != ATTR_DOMAIN_POINT) {
       return {};

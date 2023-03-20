@@ -98,7 +98,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 
 static void get_closest_mesh_looptris(const Mesh &mesh,
                                       const VArray<float3> &positions,
-                                      const IndexMask mask,
+                                      const IndexMask &mask,
                                       const MutableSpan<int> r_looptri_indices,
                                       const MutableSpan<float> r_distances_sq,
                                       const MutableSpan<float3> r_positions)
@@ -147,7 +147,7 @@ class SampleNearestSurfaceFunction : public mf::MultiFunction {
     this->set_signature(&signature_);
   }
 
-  void call(IndexMask mask, mf::Params params, mf::Context /*context*/) const override
+  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
   {
     const VArray<float3> &positions = params.readonly_single_input<float3>(0, "Position");
     GMutableSpan dst = params.uninitialized_single_output_if_required(1, "Value");

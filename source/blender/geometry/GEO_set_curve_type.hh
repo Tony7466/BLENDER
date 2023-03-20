@@ -18,7 +18,7 @@ namespace blender::geometry {
  * \param get_writable_curves_fn: Should return the write-able curves to change directly if
  * possible. This is a function in order to avoid the cost of retrieval when unnecessary.
  */
-bool try_curves_conversion_in_place(IndexMask selection,
+bool try_curves_conversion_in_place(const IndexMask &selection,
                                     CurveType dst_type,
                                     FunctionRef<bke::CurvesGeometry &()> get_writable_curves_fn);
 

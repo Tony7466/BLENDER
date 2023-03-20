@@ -44,7 +44,7 @@ class FaceSetFromBoundariesInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask /*mask*/) const final
+                                 const IndexMask & /*mask*/) const final
   {
     const bke::MeshFieldContext context{mesh, ATTR_DOMAIN_EDGE};
     fn::FieldEvaluator evaluator{context, mesh.totedge};
@@ -59,9 +59,8 @@ class FaceSetFromBoundariesInput final : public bke::MeshFieldInput {
         polys, loops, mesh.totedge);
 
     AtomicDisjointSet islands(polys.size());
-    non_boundary_edges.foreach_index([&](const int edge) {
-      join_indices(islands, edge_to_face_map[edge]);
-    });
+    non_boundary_edges.foreach_index(
+        [&](const int edge) { join_indices(islands, edge_to_face_map[edge]); });
 
     Array<int> output(polys.size());
     islands.calc_reduced_ids(output);

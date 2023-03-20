@@ -119,7 +119,7 @@ void MeshComponent::ensure_owns_direct_data()
 namespace blender::bke {
 
 VArray<float3> mesh_normals_varray(const Mesh &mesh,
-                                   const IndexMask mask,
+                                   const IndexMask &mask,
                                    const eAttrDomain domain)
 {
   switch (domain) {
@@ -975,7 +975,7 @@ class VArrayImpl_For_VertexWeights final : public VMutableArrayImpl<float> {
     });
   }
 
-  void materialize(IndexMask mask, float *dst) const override
+  void materialize(const IndexMask &mask, float *dst) const override
   {
     if (dverts_ == nullptr) {
       mask.foreach_index([&](const int i) { dst[i] = 0.0f; });
@@ -990,7 +990,7 @@ class VArrayImpl_For_VertexWeights final : public VMutableArrayImpl<float> {
     });
   }
 
-  void materialize_to_uninitialized(IndexMask mask, float *dst) const override
+  void materialize_to_uninitialized(const IndexMask &mask, float *dst) const override
   {
     this->materialize(mask, dst);
   }

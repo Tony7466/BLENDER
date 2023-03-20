@@ -37,7 +37,7 @@ class PlanarFieldInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 IndexMask /*mask*/) const final
+                                 const IndexMask & /*mask*/) const final
   {
     const Span<float3> positions = mesh.vert_positions();
     const Span<MPoly> polys = mesh.polys();

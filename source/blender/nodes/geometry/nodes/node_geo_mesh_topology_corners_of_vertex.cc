@@ -50,7 +50,7 @@ class CornersOfVertInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask mask) const final
+                                 const IndexMask &mask) const final
   {
     const IndexRange vert_range(mesh.totvert);
     const Span<MLoop> loops = mesh.loops();
@@ -156,7 +156,7 @@ class CornersOfVertCountInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask /*mask*/) const final
+                                 const IndexMask & /*mask*/) const final
   {
     if (domain != ATTR_DOMAIN_POINT) {
       return {};

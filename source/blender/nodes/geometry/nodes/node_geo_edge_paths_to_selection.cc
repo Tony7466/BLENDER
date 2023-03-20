@@ -66,7 +66,7 @@ class PathToEdgeSelectionFieldInput final : public bke::MeshFieldInput {
 
   GVArray get_varray_for_context(const Mesh &mesh,
                                  const eAttrDomain domain,
-                                 const IndexMask /*mask*/) const final
+                                 const IndexMask & /*mask*/) const final
   {
     bke::MeshFieldContext context{mesh, ATTR_DOMAIN_POINT};
     fn::FieldEvaluator evaluator{context, mesh.totvert};

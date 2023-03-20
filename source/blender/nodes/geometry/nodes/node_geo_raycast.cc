@@ -127,7 +127,7 @@ static eAttributeMapMode get_map_mode(GeometryNodeRaycastMapMode map_mode)
   }
 }
 
-static void raycast_to_mesh(IndexMask mask,
+static void raycast_to_mesh(const IndexMask &mask,
                             const Mesh &mesh,
                             const VArray<float3> &ray_origins,
                             const VArray<float3> &ray_directions,
@@ -241,7 +241,7 @@ class RaycastFunction : public mf::MultiFunction {
     this->set_signature(&signature_);
   }
 
-  void call(IndexMask mask, mf::Params params, mf::Context /*context*/) const override
+  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
   {
     /* Hit positions are always necessary for retrieving the attribute from the target if that
      * output is required, so always retrieve a span from the evaluator in that case (it's

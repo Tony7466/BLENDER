@@ -18,7 +18,7 @@ BLI_NOINLINE static void sample_point_attribute(const Mesh &mesh,
                                                 const Span<int> looptri_indices,
                                                 const Span<float3> bary_coords,
                                                 const VArray<T> &src,
-                                                const IndexMask mask,
+                                                const IndexMask &mask,
                                                 const MutableSpan<T> dst)
 {
   const Span<MLoop> loops = mesh.loops();
@@ -46,7 +46,7 @@ void sample_point_attribute(const Mesh &mesh,
                             const Span<int> looptri_indices,
                             const Span<float3> bary_coords,
                             const GVArray &src,
-                            const IndexMask mask,
+                            const IndexMask &mask,
                             const GMutableSpan dst)
 {
   BLI_assert(src.size() == mesh.totvert);
@@ -65,7 +65,7 @@ BLI_NOINLINE static void sample_corner_attribute(const Mesh &mesh,
                                                  const Span<int> looptri_indices,
                                                  const Span<float3> bary_coords,
                                                  const VArray<T> &src,
-                                                 const IndexMask mask,
+                                                 const IndexMask &mask,
                                                  const MutableSpan<T> dst)
 {
   const Span<MLoopTri> looptris = mesh.looptris();
@@ -92,7 +92,7 @@ void sample_corner_attribute(const Mesh &mesh,
                              const Span<int> looptri_indices,
                              const Span<float3> bary_coords,
                              const GVArray &src,
-                             const IndexMask mask,
+                             const IndexMask &mask,
                              const GMutableSpan dst)
 {
   BLI_assert(src.size() == mesh.totloop);
@@ -110,7 +110,7 @@ template<typename T>
 void sample_face_attribute(const Mesh &mesh,
                            const Span<int> looptri_indices,
                            const VArray<T> &src,
-                           const IndexMask mask,
+                           const IndexMask &mask,
                            const MutableSpan<T> dst)
 {
   const Span<MLoopTri> looptris = mesh.looptris();
@@ -126,7 +126,7 @@ void sample_face_attribute(const Mesh &mesh,
 void sample_face_attribute(const Mesh &mesh,
                            const Span<int> looptri_indices,
                            const GVArray &src,
-                           const IndexMask mask,
+                           const IndexMask &mask,
                            const GMutableSpan dst)
 {
   BLI_assert(src.size() == mesh.totpoly);
@@ -140,7 +140,7 @@ void sample_face_attribute(const Mesh &mesh,
 }
 
 MeshAttributeInterpolator::MeshAttributeInterpolator(const Mesh *mesh,
-                                                     const IndexMask mask,
+                                                     const IndexMask &mask,
                                                      const Span<float3> positions,
                                                      const Span<int> looptri_indices)
     : mesh_(mesh), mask_(mask), positions_(positions), looptri_indices_(looptri_indices)
