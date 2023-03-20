@@ -2280,6 +2280,13 @@ static void version_ensure_missing_regions(ScrArea *area, SpaceLink *sl)
 
       break;
     }
+    case SPACE_SEQ: {
+      do_versions_ensure_region(regionbase,
+                                RGN_TYPE_CHANNELS,
+                                "versioning: channels region for sequencer",
+                                RGN_TYPE_TOOLS);
+      break;
+    }
   }
 }
 
