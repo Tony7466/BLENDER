@@ -212,7 +212,7 @@ void normals_calc_polys(const Span<float3> positions,
                         const Span<int> corner_verts,
                         MutableSpan<float3> poly_normals)
 {
-  BLI_assert(polys.size() == poly_normals.size());
+  BLI_assert(polys.ranges_num() == poly_normals.size());
   threading::parallel_for(polys.index_range(), 1024, [&](const IndexRange range) {
     for (const int i : range) {
       poly_normals[i] = poly_normal_calc(positions, corner_verts.slice(polys[i]));
