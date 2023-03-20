@@ -233,7 +233,6 @@ void solve_collision_constraints(const OffsetIndices<int> points_by_curve,
   });
 }
 
-#if 1
 void solve_keyhole_constraints(const OffsetIndices<int> points_by_curve,
                                const IndexMask curve_selection,
                                const Span<float3> goals,
@@ -325,49 +324,5 @@ void solve_keyhole_constraints(const OffsetIndices<int> points_by_curve,
     }
   });
 }
-#else
-void solve_keyhole_constraints(const OffsetIndices<int> points_by_curve,
-                               const IndexMask curve_selection,
-                               const Span<float3> goals,
-                               MutableSpan<float3> positions_cu)
-{
-  threading::parallel_for(curve_selection.index_range(), 64, [&](const IndexRange range) {
-    for (const int curve_i : curve_selection.slice(range)) {
-      const IndexRange points = points_by_curve[curve_i].drop_back(1);
-      const float3 &goal = goals[curve_i];
-
-      // XXX computing the closest point from scratch every step is not very efficient.
-      // Could use an iterative approach, store a "current closest" point, then move that along the curve each step.
-      // This becomes path-dependent and may require smaller substeps, but would also be more robust
-      // (less likely to jump suddenly because some part of the curve moves closer to the goal, it would always move
-      // to the next local minimum)
-
-      int min_point_i = -1;
-      float min_distance_sq = FLT_MAX;
-      float min_lambda;
-      float3 min_closest;
-      for (const int point_i : points) {
-        float3 closest;
-        const float lambda = closest_to_line_segment_v3(closest, goal, positions_cu[point_i], positions_cu[point_i + 1]);
-        const float distance_sq = math::distance_squared(closest, goal);
-        if (distance_sq < min_distance_sq) {
-          min_point_i = point_i;
-          min_distance_sq = distance_sq;
-          min_lambda = lambda;
-          min_closest = closest;
-        }
-      }
-
-      if (min_point_i >= 0) {
-        const float3 delta = goal - min_closest;
-//        std::cout << "DELTA X " << delta.x << std::endl;
-//        std::cout << "GOAL X " << goal.x << std::endl;
-        positions_cu[min_point_i] += delta;
-        positions_cu[min_point_i + 1] += delta;
-      }
-    }
-  });
-}
-#endif
 
 }  // namespace blender::geometry::curve_constraints
