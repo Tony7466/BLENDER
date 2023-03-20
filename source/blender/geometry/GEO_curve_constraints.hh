@@ -11,10 +11,15 @@ void compute_segment_lengths(OffsetIndices<int> points_by_curve,
                              IndexMask curve_selection,
                              MutableSpan<float> r_segment_lengths);
 
-void solve_length_constraints(OffsetIndices<int> points_by_curve,
-                              IndexMask curve_selection,
-                              Span<float> segment_lenghts,
-                              MutableSpan<float3> positions);
+void solve_fixed_root_length_constraints(OffsetIndices<int> points_by_curve,
+                                         IndexMask curve_selection,
+                                         Span<float> segment_lenghts,
+                                         MutableSpan<float3> positions);
+
+void solve_symmetric_length_constraints(OffsetIndices<int> points_by_curve,
+                                        IndexMask curve_selection,
+                                        Span<float> segment_lenghts,
+                                        MutableSpan<float3> positions);
 
 void solve_collision_constraints(OffsetIndices<int> points_by_curve,
                                  IndexMask curve_selection,

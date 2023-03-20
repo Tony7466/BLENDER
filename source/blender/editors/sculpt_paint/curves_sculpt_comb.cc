@@ -147,10 +147,14 @@ struct CombOperationExecutor {
       if (falloff_shape_ == PAINT_FALLOFF_SHAPE_SPHERE) {
         this->initialize_spherical_brush_reference_point();
       }
-      self_->constraint_solver_.initialize(*curves_orig_,
-                                           curve_selection_,
-                                           curves_id_orig_->flag & CV_SCULPT_COLLISION_ENABLED,
-                                           CurvesConstraintSolver::GoalType::Slip);
+      self_->constraint_solver_.initialize(
+          *curves_orig_,
+          curve_selection_,
+          curves_id_orig_->flag & CV_SCULPT_COLLISION_ENABLED ?
+              CurvesConstraintSolver::CollisionConstraintType::Raycast :
+              CurvesConstraintSolver::CollisionConstraintType::None,
+          CurvesConstraintSolver::LengthConstraintType::Symmetric,
+          CurvesConstraintSolver::GoalConstraintType::Keyhole);
 
       self_->curve_lengths_.reinitialize(curves_orig_->curves_num());
       const Span<float> segment_lengths = self_->constraint_solver_.segment_lengths();

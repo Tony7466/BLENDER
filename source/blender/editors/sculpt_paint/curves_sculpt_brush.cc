@@ -436,24 +436,44 @@ void report_invalid_uv_map(ReportList *reports)
 
 void CurvesConstraintSolver::initialize(const bke::CurvesGeometry &curves,
                                         const IndexMask curve_selection,
-                                        const bool use_surface_collision,
-                                        const GoalType goal_type)
+                                        CollisionConstraintType collision_constraint_type,
+                                        LengthConstraintType length_constraint_type,
+                                        GoalConstraintType goal_constraint_type)
 {
-  use_surface_collision_ = use_surface_collision;
-  goal_type_ = goal_type;
-  segment_lengths_.reinitialize(curves.points_num());
-  geometry::curve_constraints::compute_segment_lengths(
-      curves.points_by_curve(), curves.positions(), curve_selection, segment_lengths_);
-  if (use_surface_collision_) {
-    start_positions_ = curves.positions();
+  collision_constraint_type_ = collision_constraint_type;
+  length_constraint_type_ = length_constraint_type;
+  goal_constraint_type_ = goal_constraint_type;
+
+  switch (length_constraint_type_) {
+    case LengthConstraintType::FixedRoot:
+    case LengthConstraintType::Symmetric:
+      segment_lengths_.reinitialize(curves.points_num());
+      geometry::curve_constraints::compute_segment_lengths(
+          curves.points_by_curve(), curves.positions(), curve_selection, segment_lengths_);
+      break;
   }
 
-  goals_.reinitialize(curves.curves_num());
-  has_goals_.reinitialize(curves.curves_num());
-  has_goals_.fill(false);
-  goal_factors_.reinitialize(curves.curves_num());
-  closest_points_.reinitialize(curves.curves_num());
-  closest_factors_.reinitialize(curves.curves_num());
+  switch (collision_constraint_type_) {
+    case CollisionConstraintType::None:
+      break;
+    case CollisionConstraintType::Raycast:
+      start_positions_ = curves.positions();
+      break;
+  }
+
+  switch (goal_constraint_type_) {
+    case GoalConstraintType::None:
+      break;
+    case GoalConstraintType::Grab:
+    case GoalConstraintType::Keyhole:
+      goals_.reinitialize(curves.curves_num());
+      has_goals_.reinitialize(curves.curves_num());
+      has_goals_.fill(false);
+      goal_factors_.reinitialize(curves.curves_num());
+      closest_points_.reinitialize(curves.curves_num());
+      closest_factors_.reinitialize(curves.curves_num());
+      break;
+  }
 }
 
 void CurvesConstraintSolver::solve_step(bke::CurvesGeometry &curves,
@@ -463,11 +483,10 @@ void CurvesConstraintSolver::solve_step(bke::CurvesGeometry &curves,
                                         const VArray<float> point_factors,
                                         const int iterations)
 {
-  const bool solve_length = true;
-  const bool solve_collision = use_surface_collision_ && surface != nullptr;
-//  const bool solve_length = false;
-//  const bool solve_collision = false;
-  const bool require_start_positions = solve_collision;
+  const bool collision_available = surface != nullptr;
+  const bool require_start_positions = collision_available &&
+                                       ELEM(collision_constraint_type_,
+                                            CollisionConstraintType::Raycast);
 
   Vector<int64_t> goal_indices;
   IndexMask goal_selection = index_mask_ops::find_indices_based_on_predicate(
@@ -477,14 +496,14 @@ void CurvesConstraintSolver::solve_step(bke::CurvesGeometry &curves,
   const float step_size = 1.0f / iterations;
 
   for (const int iter : IndexRange(iterations)) {
-    switch (goal_type_) {
-      case GoalType::None:
+    switch (goal_constraint_type_) {
+      case GoalConstraintType::None:
         break;
-      case GoalType::Grab:
+      case GoalConstraintType::Grab:
         // TODO
         BLI_assert_unreachable();
         break;
-      case GoalType::Slip:
+      case GoalConstraintType::Keyhole:
         geometry::curve_constraints::solve_keyhole_constraints(curves.points_by_curve(),
                                                                goal_selection,
                                                                goals_,
@@ -496,20 +515,37 @@ void CurvesConstraintSolver::solve_step(bke::CurvesGeometry &curves,
                                                                closest_factors_);
         break;
     }
-    if (solve_length) {
-      geometry::curve_constraints::solve_length_constraints(curves.points_by_curve(),
-                                                            curve_selection,
-                                                            segment_lengths_,
-                                                            curves.positions_for_write());
+
+    switch (length_constraint_type_) {
+      case LengthConstraintType::FixedRoot:
+        geometry::curve_constraints::solve_fixed_root_length_constraints(
+            curves.points_by_curve(),
+            curve_selection,
+            segment_lengths_,
+            curves.positions_for_write());
+        break;
+      case LengthConstraintType::Symmetric:
+        geometry::curve_constraints::solve_symmetric_length_constraints(
+            curves.points_by_curve(),
+            curve_selection,
+            segment_lengths_,
+            curves.positions_for_write());
+        break;
     }
-    if (solve_collision) {
-      geometry::curve_constraints::solve_collision_constraints(curves.points_by_curve(),
-                                                               curve_selection,
-                                                               segment_lengths_,
-                                                               start_positions_,
-                                                               *surface,
-                                                               transforms,
-                                                               curves.positions_for_write());
+
+    switch (collision_constraint_type_) {
+      case  CollisionConstraintType::None:
+        break;
+      case  CollisionConstraintType::Raycast:
+        geometry::curve_constraints::solve_collision_constraints(curves.points_by_curve(),
+                                                                 curve_selection,
+                                                                 segment_lengths_,
+                                                                 start_positions_,
+                                                                 *surface,
+                                                                 transforms,
+                                                                 curves.positions_for_write());
+
+        break;
     }
 
     if (require_start_positions) {

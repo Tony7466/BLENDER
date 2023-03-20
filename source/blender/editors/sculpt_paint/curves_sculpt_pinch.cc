@@ -129,7 +129,11 @@ struct PinchOperationExecutor {
       }
 
       self_->constraint_solver_.initialize(
-          *curves_, curve_selection_, curves_id_->flag & CV_SCULPT_COLLISION_ENABLED);
+          *curves_,
+          curve_selection_,
+          curves_id_->flag & CV_SCULPT_COLLISION_ENABLED ?
+              CurvesConstraintSolver::CollisionConstraintType::Raycast :
+              CurvesConstraintSolver::CollisionConstraintType::None);
     }
 
     Array<bool> changed_curves(curves_->curves_num(), false);

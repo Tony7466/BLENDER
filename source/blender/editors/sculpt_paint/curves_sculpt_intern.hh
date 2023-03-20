@@ -150,20 +150,42 @@ void report_invalid_uv_map(ReportList *reports);
  */
 struct CurvesConstraintSolver {
  public:
-  enum GoalType {
+  enum class LengthConstraintType {
+    /* Solve constraints from the root to the tip, only moving the 2nd point.
+     * This "follow-the-leader" method solves length constraints exactly in a single iteration,
+     * but causes root points to have exponentially more weight than tips.
+     * For combination with other constraints and for physically correct behavior
+     * the symmetric length constraint type should be used. */
+    FixedRoot,
+    /* Symmetric length constraints, both points of a segment are moved.
+     * Requires more iterations but creates physically plausible behavior. */
+    Symmetric,
+  };
+
+  enum class CollisionConstraintType {
+    /* No collision handling */
+    None,
+    /* Raycast-based continuous collision detection (CCD) */
+    Raycast,
+  };
+
+  enum class GoalConstraintType {
     /* Only use positions as initial deform, constraints can override them. */
     None,
     /* Try to solve for exact position match with goals. */
     Grab,
     /* Allow slip along the curve direction, minimize lateral distance to goals. */
-    Slip,
+    Keyhole,
   };
 
  private:
-  bool use_surface_collision_;
+  CollisionConstraintType collision_constraint_type_;
   Array<float3> start_positions_;
+
+  LengthConstraintType length_constraint_type_;
   Array<float> segment_lengths_;
-  GoalType goal_type_;
+
+  GoalConstraintType goal_constraint_type_;
   Array<bool> has_goals_;
   Array<float3> goals_;
   Array<float> goal_factors_;
@@ -173,8 +195,9 @@ struct CurvesConstraintSolver {
  public:
   void initialize(const bke::CurvesGeometry &curves,
                   IndexMask curve_selection,
-                  const bool use_surface_collision,
-                  const GoalType goal_type = GoalType::None);
+                  CollisionConstraintType collision_constraint_type,
+                  LengthConstraintType length_constraint_type = LengthConstraintType::FixedRoot,
+                  GoalConstraintType goal_constraint_type = GoalConstraintType::None);
 
   void solve_step(bke::CurvesGeometry &curves,
                   IndexMask curve_selection,

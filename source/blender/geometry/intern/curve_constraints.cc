@@ -36,11 +36,31 @@ void compute_segment_lengths(const OffsetIndices<int> points_by_curve,
   });
 }
 
-#if 1
-void solve_length_constraints(const OffsetIndices<int> points_by_curve,
-                              const IndexMask curve_selection,
-                              const Span<float> segment_lenghts,
-                              MutableSpan<float3> positions)
+void solve_fixed_root_length_constraints(const OffsetIndices<int> points_by_curve,
+                                         const IndexMask curve_selection,
+                                         const Span<float> segment_lenghts,
+                                         MutableSpan<float3> positions)
+{
+  BLI_assert(segment_lenghts.size() == points_by_curve.total_size());
+
+  threading::parallel_for(curve_selection.index_range(), 256, [&](const IndexRange range) {
+    for (const int curve_i : curve_selection.slice(range)) {
+      const IndexRange points = points_by_curve[curve_i].drop_back(1);
+      for (const int point_i : points) {
+        const float3 &p1 = positions[point_i];
+        float3 &p2 = positions[point_i + 1];
+        const float3 direction = math::normalize(p2 - p1);
+        const float goal_length = segment_lenghts[point_i];
+        p2 = p1 + direction * goal_length;
+      }
+    }
+  });
+}
+
+void solve_symmetric_length_constraints(const OffsetIndices<int> points_by_curve,
+                                        const IndexMask curve_selection,
+                                        const Span<float> segment_lenghts,
+                                        MutableSpan<float3> positions)
 {
   BLI_assert(segment_lenghts.size() == points_by_curve.total_size());
 
@@ -96,29 +116,6 @@ void solve_length_constraints(const OffsetIndices<int> points_by_curve,
     }
   });
 }
-#else
-void solve_length_constraints(const OffsetIndices<int> points_by_curve,
-                              const IndexMask curve_selection,
-                              const Span<float> segment_lenghts,
-                              MutableSpan<float3> positions)
-{
-  BLI_assert(segment_lenghts.size() == points_by_curve.total_size());
-
-  threading::parallel_for(curve_selection.index_range(), 256, [&](const IndexRange range) {
-    for (const int curve_i : curve_selection.slice(range)) {
-      const IndexRange points = points_by_curve[curve_i].drop_back(1);
-      for (const int point_i : points) {
-        const float3 &p1 = positions[point_i];
-        float3 &p2 = positions[point_i + 1];
-        const float3 direction = math::normalize(p2 - p1);
-
-        const float goal_length = segment_lenghts[point_i];
-        p2 = p1 + direction * goal_length;
-      }
-    }
-  });
-}
-#endif
 
 void solve_collision_constraints(const OffsetIndices<int> points_by_curve,
                                  const IndexMask curve_selection,
