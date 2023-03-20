@@ -23,7 +23,7 @@
 #include <cstdio>
 #include <cstring>
 #include <iostream>
-
+#include <fstream>
 /* Set to 0 to allow devices that do not have the required features.
  * This allows development on OSX until we really needs these features. */
 #define STRICT_REQUIREMENTS 1
@@ -79,7 +79,31 @@ static const char *vulkan_error_as_string(VkResult result)
       return "Unknown Error";
   }
 }
-
+static bool is_vklayer_exist()
+{
+  const char *ev_val = getenv("VK_LAYER_PATH");
+  bool exists = false;
+  if (ev_val != nullptr) {
+    std::string _json = std::string(ev_val) +  "/VkLayer_khronos_validation.json";
+    std::ifstream infile(_json.c_str());
+    exists = infile.good();
+  }
+  if (!exists) {
+#if defined(_WIN32)
+    fprintf(stderr,
+            "Warning: Layer requested, we are trying to use the VulkanValidationLayer explicitly. "
+            "\n  Set the path ..VulkanSDK\1.2.198.1\Bin of VulkanSDK (version1.2.198.1) to the "
+            "environment variable VK_LAYER_PATH.\nSee more details "
+            "https://vulkan.lunarg.com/doc/sdk/1.3.239.0/windows/layer_configuration.html.");
+#elif !defined(__APPLE__)
+    fprintf(stderr,
+            "Warning: Layer requested, we are trying to use the VulkanValidationLayer explicitly. "
+            "\n  Set the path ..vulkan/explicit_layer.d of VulkanSDK (version1.2.198.1) to the "
+            "environment variable VK_LAYER_PATH.\n"See more details https://vulkan.lunarg.com/doc/sdk/1.3.239.0/linux/layer_configuration.html.");
+#endif
+  }
+  return exists;
+}
 #define __STR(A) "" #A
 #define VK_CHECK(__expression) \
   do { \
@@ -864,7 +888,9 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
 
   vector<const char *> layers_enabled;
   if (m_debug) {
-    enableLayer(layers_available, layers_enabled, "VK_LAYER_KHRONOS_validation", m_debug);
+    if (is_vklayer_exist()) {
+      enableLayer(layers_available, layers_enabled, "VK_LAYER_KHRONOS_validation", m_debug);
+    }
   }
 
   vector<const char *> extensions_device;
