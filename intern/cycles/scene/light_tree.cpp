@@ -298,7 +298,7 @@ bool LightTree::should_split(const vector<LightTreePrimitive> &prims,
   float min_cost = FLT_MAX;
   for (int dim = 0; dim < 3; dim++) {
     /* If the centroid bounding box is 0 along a given dimension, skip it. */
-    if (centroid_bbox.size()[dim] == 0.0f && measure.is_zero()) {
+    if (centroid_bbox.size()[dim] == 0.0f && dim != 0) {
       continue;
     }
 
@@ -325,7 +325,7 @@ bool LightTree::should_split(const vector<LightTreePrimitive> &prims,
       left_buckets[i] = left_buckets[i - 1] + buckets[i];
     }
 
-    if (measure.is_zero()) {
+    if (dim == 0) {
       /* Calculate node measure by summing up the bucket measure. */
       measure = left_buckets.back().measure + buckets.back().measure;
 
