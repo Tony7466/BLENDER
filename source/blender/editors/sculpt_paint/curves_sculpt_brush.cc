@@ -489,8 +489,11 @@ void CurvesConstraintSolver::solve_step(bke::CurvesGeometry &curves,
                                             CollisionConstraintType::Raycast);
 
   Vector<int64_t> goal_indices;
-  IndexMask goal_selection = index_mask_ops::find_indices_based_on_predicate(
-      curve_selection, 256, goal_indices, [this](int64_t index) { return has_goals_[index]; });
+  IndexMask goal_selection;
+  if (!ELEM(goal_constraint_type_, GoalConstraintType::None)) {
+    goal_selection = index_mask_ops::find_indices_based_on_predicate(
+        curve_selection, 256, goal_indices, [this](int64_t index) { return has_goals_[index]; });
+  }
 
   /* Step size is used to make constraint softness independent from iteration count. */
   const float step_size = 1.0f / iterations;
