@@ -18,7 +18,7 @@
 #include "BLI_task.h"
 
 #include "BKE_customdata.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.h"
 #include "BKE_multires.h"
 #include "BKE_subdiv.h"
@@ -368,8 +368,8 @@ int multires_reshape_grid_to_corner(const MultiresReshapeContext *reshape_contex
 
 bool multires_reshape_is_quad_face(const MultiresReshapeContext *reshape_context, int face_index)
 {
-  const MPoly *base_poly = &reshape_context->base_polys[face_index];
-  return (base_poly->totloop == 4);
+  const MPoly &base_poly = reshape_context->base_polys[face_index];
+  return (base_poly.totloop == 4);
 }
 
 int multires_reshape_grid_to_ptex_index(const MultiresReshapeContext *reshape_context,

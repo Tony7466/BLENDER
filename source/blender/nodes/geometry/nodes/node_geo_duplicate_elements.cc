@@ -14,7 +14,7 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
 #include "BKE_instances.hh"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_pointcloud.h"
 
 #include "node_geometry_util.hh"
@@ -322,7 +322,7 @@ static void duplicate_curves(GeometrySet &geometry_set,
   int dst_curves_num = 0;
   int dst_points_num = 0;
   for (const int i_curve : selection.index_range()) {
-    const int count = std::max(counts[selection[i_curve]], 0);
+    const int count = counts[selection[i_curve]];
     curve_offset_data[i_curve] = dst_curves_num;
     point_offset_data[i_curve] = dst_points_num;
     dst_curves_num += count;
@@ -498,7 +498,7 @@ static void duplicate_faces(GeometrySet &geometry_set,
   int total_loops = 0;
   Array<int> offset_data(selection.size() + 1);
   for (const int i_selection : selection.index_range()) {
-    const int count = std::max(counts[selection[i_selection]], 0);
+    const int count = counts[selection[i_selection]];
     offset_data[i_selection] = total_polys;
     total_polys += count;
     total_loops += count * polys[selection[i_selection]].totloop;
@@ -507,7 +507,7 @@ static void duplicate_faces(GeometrySet &geometry_set,
 
   const OffsetIndices<int> duplicates(offset_data);
 
-  Mesh *new_mesh = BKE_mesh_new_nomain(total_loops, total_loops, 0, total_loops, total_polys);
+  Mesh *new_mesh = BKE_mesh_new_nomain(total_loops, total_loops, total_loops, total_polys);
   MutableSpan<MEdge> new_edges = new_mesh->edges_for_write();
   MutableSpan<MPoly> new_polys = new_mesh->polys_for_write();
   MutableSpan<MLoop> new_loops = new_mesh->loops_for_write();
@@ -690,7 +690,7 @@ static void duplicate_edges(GeometrySet &geometry_set,
       selection, counts, offset_data);
   const int output_edges_num = duplicates.total_size();
 
-  Mesh *new_mesh = BKE_mesh_new_nomain(output_edges_num * 2, output_edges_num, 0, 0, 0);
+  Mesh *new_mesh = BKE_mesh_new_nomain(output_edges_num * 2, output_edges_num, 0, 0);
   MutableSpan<MEdge> new_edges = new_mesh->edges_for_write();
 
   Array<int> vert_orig_indices(output_edges_num * 2);
@@ -850,7 +850,7 @@ static void duplicate_points_mesh(GeometrySet &geometry_set,
   const OffsetIndices<int> duplicates = accumulate_counts_to_offsets(
       selection, counts, offset_data);
 
-  Mesh *new_mesh = BKE_mesh_new_nomain(duplicates.total_size(), 0, 0, 0, 0);
+  Mesh *new_mesh = BKE_mesh_new_nomain(duplicates.total_size(), 0, 0, 0);
 
   copy_attributes_without_id(duplicates,
                              selection,
@@ -1042,7 +1042,13 @@ static void node_geo_exec(GeoNodeExecParams params)
   const NodeGeometryDuplicateElements &storage = node_storage(params.node());
   const eAttrDomain duplicate_domain = eAttrDomain(storage.domain);
 
-  Field<int> count_field = params.extract_input<Field<int>>("Amount");
+  static auto max_zero_fn = mf::build::SI1_SO<int, int>(
+      "max_zero",
+      [](int value) { return std::max(0, value); },
+      mf::build::exec_presets::AllSpanOrSingle());
+  Field<int> count_field(
+      FieldOperation::Create(max_zero_fn, {params.extract_input<Field<int>>("Amount")}));
+
   Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
   IndexAttributes attribute_outputs;
   attribute_outputs.duplicate_index = params.get_output_anonymous_attribute_id_if_needed(

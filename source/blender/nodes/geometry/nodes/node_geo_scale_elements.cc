@@ -13,7 +13,7 @@
 #include "UI_interface.h"
 #include "UI_resources.h"
 
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 
 #include "node_geometry_util.hh"
 
@@ -188,7 +188,7 @@ static void scale_vertex_islands_uniformly(Mesh &mesh,
     }
   });
 
-  BKE_mesh_tag_coords_changed(&mesh);
+  BKE_mesh_tag_positions_changed(&mesh);
 }
 
 static void scale_vertex_islands_on_axis(Mesh &mesh,
@@ -234,7 +234,7 @@ static void scale_vertex_islands_on_axis(Mesh &mesh,
     }
   });
 
-  BKE_mesh_tag_coords_changed(&mesh);
+  BKE_mesh_tag_positions_changed(&mesh);
 }
 
 static Vector<ElementIsland> prepare_face_islands(const Mesh &mesh, const IndexMask face_selection)

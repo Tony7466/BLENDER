@@ -21,7 +21,7 @@
 
 #include "BKE_ccg.h"
 #include "BKE_context.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.h"
 #include "BKE_object.h"
 #include "BKE_paint.h"
@@ -181,10 +181,9 @@ static float *SCULPT_geodesic_mesh_create(Object *ob,
           if (ss->hide_poly && ss->hide_poly[poly]) {
             continue;
           }
-          const MPoly *mpoly = &polys[poly];
 
-          for (int loop_index = 0; loop_index < mpoly->totloop; loop_index++) {
-            const MLoop *mloop = &loops[loop_index + mpoly->loopstart];
+          for (int loop_index = 0; loop_index < polys[poly].totloop; loop_index++) {
+            const MLoop *mloop = &loops[loop_index + polys[poly].loopstart];
             const int v_other = mloop->v;
             if (ELEM(v_other, v1, v2)) {
               continue;

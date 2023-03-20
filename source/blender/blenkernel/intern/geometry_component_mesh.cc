@@ -12,7 +12,7 @@
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_lib_id.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.h"
 
 #include "FN_multi_function_builder.hh"
@@ -127,14 +127,14 @@ VArray<float3> mesh_normals_varray(const Mesh &mesh,
       return VArray<float3>::ForSpan(mesh.poly_normals());
     }
     case ATTR_DOMAIN_POINT: {
-      return VArray<float3>::ForSpan(mesh.vertex_normals());
+      return VArray<float3>::ForSpan(mesh.vert_normals());
     }
     case ATTR_DOMAIN_EDGE: {
       /* In this case, start with vertex normals and convert to the edge domain, since the
        * conversion from edges to vertices is very simple. Use "manual" domain interpolation
        * instead of the GeometryComponent API to avoid calculating unnecessary values and to
        * allow normalizing the result more simply. */
-      Span<float3> vert_normals = mesh.vertex_normals();
+      Span<float3> vert_normals = mesh.vert_normals();
       const Span<MEdge> edges = mesh.edges();
       Array<float3> edge_normals(mask.min_array_size());
       for (const int i : mask) {
@@ -211,7 +211,8 @@ void adapt_mesh_domain_corner_to_point_impl(const Mesh &mesh,
 
   /* Deselect loose vertices without corners that are still selected from the 'true' default. */
   /* The record fact says that the value is true.
-   *Writing to the array from different threads is okay because each thread sets the same value. */
+   * Writing to the array from different threads is okay because each thread sets the same value.
+   */
   threading::parallel_for(loose_verts.index_range(), 2048, [&](const IndexRange range) {
     for (const int vert_index : range) {
       if (loose_verts[vert_index]) {
@@ -908,18 +909,8 @@ static void tag_component_positions_changed(void *owner)
 {
   Mesh *mesh = static_cast<Mesh *>(owner);
   if (mesh != nullptr) {
-    BKE_mesh_tag_coords_changed(mesh);
+    BKE_mesh_tag_positions_changed(mesh);
   }
-}
-
-static bool get_shade_smooth(const MPoly &mpoly)
-{
-  return mpoly.flag & ME_SMOOTH;
-}
-
-static void set_shade_smooth(MPoly &mpoly, bool value)
-{
-  SET_FLAG_FROM_TEST(mpoly.flag, value, ME_SMOOTH);
 }
 
 static float get_crease(const float &crease)
@@ -1216,17 +1207,16 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
                                                        nullptr,
                                                        AttributeValidator{&material_index_clamp});
 
-  static BuiltinCustomDataLayerProvider shade_smooth(
-      "shade_smooth",
-      ATTR_DOMAIN_FACE,
-      CD_PROP_BOOL,
-      CD_MPOLY,
-      BuiltinAttributeProvider::NonCreatable,
-      BuiltinAttributeProvider::NonDeletable,
-      face_access,
-      make_derived_read_attribute<MPoly, bool, get_shade_smooth>,
-      make_derived_write_attribute<MPoly, bool, get_shade_smooth, set_shade_smooth>,
-      nullptr);
+  static BuiltinCustomDataLayerProvider sharp_face("sharp_face",
+                                                   ATTR_DOMAIN_FACE,
+                                                   CD_PROP_BOOL,
+                                                   CD_PROP_BOOL,
+                                                   BuiltinAttributeProvider::Creatable,
+                                                   BuiltinAttributeProvider::Deletable,
+                                                   face_access,
+                                                   make_array_read_attribute<bool>,
+                                                   make_array_write_attribute<bool>,
+                                                   nullptr);
 
   static BuiltinCustomDataLayerProvider sharp_edge("sharp_edge",
                                                    ATTR_DOMAIN_EDGE,
@@ -1258,7 +1248,7 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
   static CustomDataAttributeProvider face_custom_data(ATTR_DOMAIN_FACE, face_access);
 
   return ComponentAttributeProviders(
-      {&position, &id, &material_index, &shade_smooth, &sharp_edge, &crease},
+      {&position, &id, &material_index, &sharp_face, &sharp_edge, &crease},
       {&corner_custom_data,
        &vertex_groups,
        &point_custom_data,
