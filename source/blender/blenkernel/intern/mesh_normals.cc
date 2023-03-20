@@ -212,7 +212,7 @@ void normals_calc_polys(const Span<float3> positions,
                         const Span<int> corner_verts,
                         MutableSpan<float3> poly_normals)
 {
-  BLI_assert(polys.ranges_num() == poly_normals.size());
+  BLI_assert(polys.size() == poly_normals.size());
   threading::parallel_for(polys.index_range(), 1024, [&](const IndexRange range) {
     for (const int i : range) {
       poly_normals[i] = poly_normal_calc(positions, corner_verts.slice(polys[i]));
@@ -345,7 +345,7 @@ blender::Span<blender::float3> Mesh::vert_normals() const
     const Span<int> corner_verts = this->corner_verts();
 
     this->runtime->vert_normals.reinitialize(positions.size());
-    this->runtime->poly_normals.reinitialize(polys.ranges_num());
+    this->runtime->poly_normals.reinitialize(polys.size());
     blender::bke::mesh::normals_calc_poly_vert(
         positions, polys, corner_verts, this->runtime->poly_normals, this->runtime->vert_normals);
 
@@ -375,7 +375,7 @@ blender::Span<blender::float3> Mesh::poly_normals() const
     const blender::OffsetIndices polys = this->polys();
     const Span<int> corner_verts = this->corner_verts();
 
-    this->runtime->poly_normals.reinitialize(polys.ranges_num());
+    this->runtime->poly_normals.reinitialize(polys.size());
     blender::bke::mesh::normals_calc_polys(
         positions, polys, corner_verts, this->runtime->poly_normals);
 
@@ -825,7 +825,7 @@ void edges_sharp_from_angle_set(const OffsetIndices<int> polys,
                        corner_edges,
                        loop_to_poly,
                        poly_normals,
-                       Span<bool>(sharp_faces, sharp_faces ? polys.ranges_num() : 0),
+                       Span<bool>(sharp_faces, sharp_faces ? polys.size() : 0),
                        sharp_edges,
                        true,
                        split_angle,
@@ -1446,8 +1446,7 @@ void normals_calc_loop(const Span<float3> vert_positions,
     loop_to_poly = local_loop_to_poly_map;
   }
   else {
-    local_loop_to_poly_map = mesh_topology::build_loop_to_poly_map(polys);
-    loop_to_poly = local_loop_to_poly_map;
+    loop_to_poly = loop_to_poly_map;
   }
 
   /* When using custom loop normals, disable the angle feature! */
@@ -1499,7 +1498,7 @@ void normals_calc_loop(const Span<float3> vert_positions,
                        corner_edges,
                        loop_to_poly,
                        poly_normals,
-                       Span<bool>(sharp_faces, sharp_faces ? polys.ranges_num() : 0),
+                       Span<bool>(sharp_faces, sharp_faces ? polys.size() : 0),
                        Span<bool>(sharp_edges, sharp_edges ? edges.size() : 0),
                        check_angle,
                        split_angle,

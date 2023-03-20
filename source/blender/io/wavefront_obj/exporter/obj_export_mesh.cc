@@ -202,7 +202,7 @@ void OBJMesh::calc_smooth_groups(const bool use_bitflags)
       CustomData_get_layer_named(&export_mesh_->pdata, CD_PROP_BOOL, "sharp_face"));
   poly_smooth_groups_ = BKE_mesh_calc_smoothgroups(mesh_edges_.size(),
                                                    mesh_polys_.data(),
-                                                   mesh_polys_.ranges_num(),
+                                                   mesh_polys_.size(),
                                                    export_mesh_->corner_edges().data(),
                                                    export_mesh_->totloop,
                                                    sharp_edges,
@@ -312,7 +312,7 @@ void OBJMesh::store_uv_coords_and_indices()
       false,
       false);
 
-  uv_indices_.resize(mesh_polys_.ranges_num());
+  uv_indices_.resize(mesh_polys_.size());
   /* At least total vertices of a mesh will be present in its texture map. So
    * reserve minimum space early. */
   uv_coords_.reserve(totvert);

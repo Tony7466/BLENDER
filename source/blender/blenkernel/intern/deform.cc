@@ -1108,7 +1108,7 @@ void BKE_defvert_extract_vgroup_to_polyweights(const MDeformVert *dvert,
                                                float *r_weights)
 {
   if (dvert && defgroup != -1) {
-    int i = polys.ranges_num();
+    int i = polys.size();
     float *tmp_weights = static_cast<float *>(
         MEM_mallocN(sizeof(*tmp_weights) * size_t(verts_num), __func__));
 
@@ -1130,7 +1130,7 @@ void BKE_defvert_extract_vgroup_to_polyweights(const MDeformVert *dvert,
     MEM_freeN(tmp_weights);
   }
   else {
-    copy_vn_fl(r_weights, polys.ranges_num(), 0.0f);
+    copy_vn_fl(r_weights, polys.size(), 0.0f);
   }
 }
 

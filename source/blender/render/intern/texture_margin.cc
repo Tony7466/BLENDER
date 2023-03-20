@@ -481,7 +481,7 @@ static void generate_margin(ImBuf *ibuf,
                             const Span<float2> mloopuv,
                             const float uv_offset[2])
 {
-  Array<MLoopTri> looptris(poly_to_tri_count(polys.ranges_num(), corner_edges.size()));
+  Array<MLoopTri> looptris(poly_to_tri_count(polys.size(), corner_edges.size()));
   bke::mesh::looptris_calc(vert_positions, polys, corner_edges, looptris);
 
   TextureMarginMap map(ibuf->x, ibuf->y, uv_offset, edges_num, polys, corner_edges, mloopuv);

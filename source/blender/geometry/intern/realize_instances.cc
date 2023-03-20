@@ -966,7 +966,7 @@ static void execute_realize_mesh_task(const RealizeInstancesOptions &options,
 
   const IndexRange dst_vert_range(task.start_indices.vertex, src_positions.size());
   const IndexRange dst_edge_range(task.start_indices.edge, src_edges.size());
-  const IndexRange dst_poly_range(task.start_indices.poly, src_polys.ranges_num());
+  const IndexRange dst_poly_range(task.start_indices.poly, src_polys.size());
   const IndexRange dst_loop_range(task.start_indices.loop, src_corner_verts.size());
 
   MutableSpan<float3> dst_positions = all_dst_positions.slice(dst_vert_range);

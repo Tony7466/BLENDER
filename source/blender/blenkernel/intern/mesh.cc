@@ -296,6 +296,7 @@ static void mesh_blend_write(BlendWriter *writer, ID *id, const void *id_address
 
       /* Set deprecated mesh data pointers for forward compatibility. */
       mesh->medge = const_cast<MEdge *>(mesh->edges().data());
+      mesh->mpoly = legacy_polys.data();
       mesh->dvert = const_cast<MDeformVert *>(mesh->deform_verts().data());
     }
 
@@ -968,6 +969,7 @@ void BKE_mesh_poly_offsets_ensure(Mesh *mesh)
         MEM_malloc_arrayN(mesh->totpoly + 1, sizeof(int), __func__));
   }
 #ifdef DEBUG
+  /* Fill offsets with obviously bad values to simplify finding missing initialization. */
   mesh->poly_offsets_for_write().fill(-1);
 #endif
   mesh->poly_offsets_for_write().last() = mesh->totloop;

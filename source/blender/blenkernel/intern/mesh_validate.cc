@@ -246,7 +246,7 @@ bool BKE_mesh_validate_arrays(Mesh *mesh,
       mesh->attributes_for_write().lookup_for_write<int>("material_index");
   blender::MutableVArraySpan<int> material_indices_span(material_indices.varray);
 
-#ifdef DEBUG
+#if 0
   const blender::OffsetIndices<int> polys({poly_offsets, totpoly + 1});
   for (const int i : polys.index_range()) {
     BLI_assert(polys[i].size() > 2);

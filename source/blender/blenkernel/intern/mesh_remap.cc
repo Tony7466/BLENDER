@@ -1105,7 +1105,7 @@ static void mesh_island_to_astar_graph(MeshIslandStore *islands,
   int *poly_island_index_map = nullptr;
   BLI_bitmap *done_edges = BLI_BITMAP_NEW(numedges, __func__);
 
-  const int node_num = islands ? island_poly_map->count : polys.ranges_num();
+  const int node_num = islands ? island_poly_map->count : polys.size();
   uchar *poly_status = static_cast<uchar *>(
       MEM_callocN(sizeof(*poly_status) * size_t(node_num), __func__));
   float(*poly_centers)[3];
@@ -1121,7 +1121,7 @@ static void mesh_island_to_astar_graph(MeshIslandStore *islands,
   if (islands) {
     /* poly_island_index_map is owned by graph memarena. */
     poly_island_index_map = static_cast<int *>(BLI_memarena_calloc(
-        r_as_graph->mem, sizeof(*poly_island_index_map) * size_t(polys.ranges_num())));
+        r_as_graph->mem, sizeof(*poly_island_index_map) * size_t(polys.size())));
     for (i = island_poly_map->count; i--;) {
       poly_island_index_map[island_poly_map->indices[i]] = i;
     }
@@ -1405,7 +1405,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
                                   int(corner_edges_src.size()));
     if (use_from_vert) {
       loop_to_poly_map_src = blender::bke::mesh_topology::build_loop_to_poly_map(polys_src);
-      poly_cents_src.reinitialize(polys_src.ranges_num());
+      poly_cents_src.reinitialize(polys_src.size());
       for (const int64_t i : polys_src.index_range()) {
         poly_cents_src[i] = blender::bke::mesh::poly_center_calc(
             positions_src, corner_verts_src.slice(polys_src[i]));
@@ -1547,7 +1547,7 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
           MEM_mallocN(sizeof(**islands_res) * islands_res_buff_size, __func__));
     }
 
-    for (pidx_dst = 0; pidx_dst < polys_dst.ranges_num(); pidx_dst++) {
+    for (pidx_dst = 0; pidx_dst < polys_dst.size(); pidx_dst++) {
       const blender::IndexRange poly_dst = polys_dst[pidx_dst];
       float pnor_dst[3];
 
@@ -2136,10 +2136,10 @@ void BKE_mesh_remap_calc_polys_from_mesh(const int mode,
     poly_normals_dst = mesh_dst->poly_normals();
   }
 
-  BKE_mesh_remap_init(r_map, polys_dst.ranges_num());
+  BKE_mesh_remap_init(r_map, polys_dst.size());
 
   if (mode == MREMAP_MODE_TOPOLOGY) {
-    BLI_assert(polys_dst.ranges_num() == me_src->totpoly);
+    BLI_assert(polys_dst.size() == me_src->totpoly);
     for (const int64_t i : polys_dst.index_range()) {
       const int index = int(i);
       mesh_remap_item_define(r_map, int(i), FLT_MAX, 0, 1, &index, &full_weight);
@@ -2391,7 +2391,7 @@ void BKE_mesh_remap_calc_polys_from_mesh(const int mode,
     }
     else {
       CLOG_WARN(&LOG, "Unsupported mesh-to-mesh poly mapping mode (%d)!", mode);
-      memset(r_map->items, 0, sizeof(*r_map->items) * size_t(polys_dst.ranges_num()));
+      memset(r_map->items, 0, sizeof(*r_map->items) * size_t(polys_dst.size()));
     }
 
     free_bvhtree_from_mesh(&treedata);

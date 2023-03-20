@@ -1670,7 +1670,7 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
       if (!geom_map_init[PDATA]) {
         const int num_polys_src = me_src->totpoly;
 
-        if ((map_poly_mode == MREMAP_MODE_TOPOLOGY) && (polys_dst.ranges_num() != num_polys_src)) {
+        if ((map_poly_mode == MREMAP_MODE_TOPOLOGY) && (polys_dst.size() != num_polys_src)) {
           BKE_report(reports,
                      RPT_ERROR,
                      "Source and destination meshes do not have the same amount of faces, "
@@ -1684,7 +1684,7 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
                      "None of the 'Edge' mappings can be used in this case");
           continue;
         }
-        if (ELEM(0, polys_dst.ranges_num(), num_polys_src)) {
+        if (ELEM(0, polys_dst.size(), num_polys_src)) {
           BKE_report(
               reports,
               RPT_ERROR,
@@ -1708,7 +1708,7 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
 
       if (mdef && vg_idx != -1 && !weights[PDATA]) {
         weights[PDATA] = static_cast<float *>(
-            MEM_mallocN(sizeof(*weights[PDATA]) * polys_dst.ranges_num(), __func__));
+            MEM_mallocN(sizeof(*weights[PDATA]) * polys_dst.size(), __func__));
         BKE_defvert_extract_vgroup_to_polyweights(mdef,
                                                   vg_idx,
                                                   num_verts_dst,
@@ -1729,7 +1729,7 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
                                                mix_mode,
                                                mix_factor,
                                                weights[PDATA],
-                                               polys_dst.ranges_num(),
+                                               polys_dst.size(),
                                                use_create,
                                                use_delete,
                                                fromlayers,

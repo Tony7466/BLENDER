@@ -827,7 +827,6 @@ BLI_INLINE const int *BKE_mesh_poly_offsets(const Mesh *mesh)
 }
 BLI_INLINE int *BKE_mesh_poly_offsets_for_write(Mesh *mesh)
 {
-  /* TODO: CoW. */
   return mesh->poly_offsets_data;
 }
 

@@ -87,12 +87,11 @@ Mesh *STLMeshHelper::to_mesh(Main *bmain, char *mesh_name)
       &mesh->ldata, CD_PROP_INT32, CD_SET_DEFAULT, mesh->totloop, ".corner_vert");
 
   MutableSpan<int> poly_offsets = mesh->poly_offsets_for_write();
-  threading::parallel_for(
-      poly_offsets.index_range(), 4096, [poly_offsets](const IndexRange range) {
-        for (const int i : range) {
-          poly_offsets[i] = i * 3;
-        }
-      });
+  threading::parallel_for(poly_offsets.index_range(), 4096, [&](const IndexRange range) {
+    for (const int i : range) {
+      poly_offsets[i] = i * 3;
+    }
+  });
 
   MutableSpan<int> corner_verts = mesh->corner_verts_for_write();
   threading::parallel_for(tris_.index_range(), 2048, [&](IndexRange tris_range) {

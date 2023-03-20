@@ -199,11 +199,11 @@ class MeshFairingContext : public FairingContext {
 
     MutableSpan<float3> positions = mesh->vert_positions_for_write();
     edges_ = mesh->edges();
-    polys_ = mesh->polys();
+    polys = mesh->polys();
     corner_verts_ = mesh->corner_verts();
     corner_edges_ = mesh->corner_edges();
     BKE_mesh_vert_loop_map_create(
-        &vlmap_, &vlmap_mem_, polys_, corner_verts_.data(), mesh->totvert);
+        &vlmap_, &vlmap_mem_, polys, corner_verts_.data(), mesh->totvert);
 
     /* Deformation coords. */
     co_.reserve(mesh->totvert);
@@ -218,7 +218,7 @@ class MeshFairingContext : public FairingContext {
       }
     }
 
-    loop_to_poly_map_ = blender::bke::mesh_topology::build_loop_to_poly_map(polys_);
+    loop_to_poly_map_ = blender::bke::mesh_topology::build_loop_to_poly_map(polys);
   }
 
   ~MeshFairingContext() override
@@ -232,7 +232,7 @@ class MeshFairingContext : public FairingContext {
                                   float r_adj_prev[3]) override
   {
     const int vert = corner_verts_[loop];
-    const blender::IndexRange poly = polys_[loop_to_poly_map_[loop]];
+    const blender::IndexRange poly = polys[loop_to_poly_map_[loop]];
     const int corner = poly_find_loop_from_vert(corner_verts_.slice(poly), vert);
     copy_v3_v3(r_adj_next, co_[corner_verts_[ME_POLY_LOOP_NEXT(poly, corner)]]);
     copy_v3_v3(r_adj_prev, co_[corner_verts_[ME_POLY_LOOP_PREV(poly, corner)]]);
@@ -251,7 +251,7 @@ class MeshFairingContext : public FairingContext {
   Mesh *mesh_;
   Span<int> corner_verts_;
   Span<int> corner_edges_;
-  blender::OffsetIndices<int> polys_;
+  blender::OffsetIndices<int> polys;
   Span<MEdge> edges_;
   Array<int> loop_to_poly_map_;
 };

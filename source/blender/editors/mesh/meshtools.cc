@@ -1298,7 +1298,7 @@ bool ED_mesh_pick_face_vert(
       }
     }
     else {
-      if (poly_index < polys.ranges_num()) {
+      if (poly_index < polys.size()) {
         ed_mesh_pick_face_vert__mpoly_find(region,
                                            mval_f,
                                            polys[poly_index],

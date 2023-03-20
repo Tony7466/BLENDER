@@ -363,7 +363,7 @@ static void subdiv_foreach_corner_vertices(SubdivForeachTaskContext *ctx,
                                            void *tls,
                                            const int coarse_poly_index)
 {
-  if (ctx->coarse_polys.size(coarse_poly_index) == 4) {
+  if (ctx->coarse_polys[coarse_poly_index].size() == 4) {
     subdiv_foreach_corner_vertices_regular(ctx, tls, coarse_poly_index);
   }
   else {
@@ -394,7 +394,7 @@ static void subdiv_foreach_every_corner_vertices(SubdivForeachTaskContext *ctx, 
   }
   const Mesh *coarse_mesh = ctx->coarse_mesh;
   for (int poly_index = 0; poly_index < coarse_mesh->totpoly; poly_index++) {
-    if (ctx->coarse_polys.size(poly_index) == 4) {
+    if (ctx->coarse_polys[poly_index].size() == 4) {
       subdiv_foreach_every_corner_vertices_regular(ctx, tls, poly_index);
     }
     else {
@@ -539,7 +539,7 @@ static void subdiv_foreach_edge_vertices(SubdivForeachTaskContext *ctx,
                                          void *tls,
                                          const int coarse_poly_index)
 {
-  if (ctx->coarse_polys.size(coarse_poly_index) == 4) {
+  if (ctx->coarse_polys[coarse_poly_index].size() == 4) {
     subdiv_foreach_edge_vertices_regular(ctx, tls, coarse_poly_index);
   }
   else {
@@ -570,7 +570,7 @@ static void subdiv_foreach_every_edge_vertices(SubdivForeachTaskContext *ctx, vo
   }
   const Mesh *coarse_mesh = ctx->coarse_mesh;
   for (int poly_index = 0; poly_index < coarse_mesh->totpoly; poly_index++) {
-    if (ctx->coarse_polys.size(poly_index) == 4) {
+    if (ctx->coarse_polys[poly_index].size() == 4) {
       subdiv_foreach_every_edge_vertices_regular(ctx, tls, poly_index);
     }
     else {
@@ -648,7 +648,7 @@ static void subdiv_foreach_inner_vertices(SubdivForeachTaskContext *ctx,
                                           void *tls,
                                           const int coarse_poly_index)
 {
-  if (ctx->coarse_polys.size(coarse_poly_index) == 4) {
+  if (ctx->coarse_polys[coarse_poly_index].size() == 4) {
     subdiv_foreach_inner_vertices_regular(ctx, tls, coarse_poly_index);
   }
   else {
@@ -934,7 +934,7 @@ static void subdiv_foreach_edges_all_patches(SubdivForeachTaskContext *ctx,
                                              void *tls,
                                              const int coarse_poly_index)
 {
-  if (ctx->coarse_polys.size(coarse_poly_index) == 4) {
+  if (ctx->coarse_polys[coarse_poly_index].size() == 4) {
     subdiv_foreach_edges_all_patches_regular(ctx, tls, coarse_poly_index);
   }
   else {
@@ -1607,7 +1607,7 @@ static void subdiv_foreach_loops_special(SubdivForeachTaskContext *ctx,
 
 static void subdiv_foreach_loops(SubdivForeachTaskContext *ctx, void *tls, int poly_index)
 {
-  if (ctx->coarse_polys.size(poly_index) == 4) {
+  if (ctx->coarse_polys[poly_index].size() == 4) {
     subdiv_foreach_loops_regular(ctx, tls, poly_index);
   }
   else {

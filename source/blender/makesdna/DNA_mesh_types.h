@@ -75,6 +75,10 @@ typedef struct Mesh {
   /** The number of face corners in the mesh, and the size of #ldata. */
   int totloop;
 
+  /**
+   * Array owned by mesh. Index of the first corner of each polygon, with the total number of
+   * corners at the end. See #Mesh::polys() and #OffsetIndices.
+   */
   int *poly_offsets_data;
 
   CustomData vdata, edata, pdata, ldata;
@@ -237,11 +241,14 @@ typedef struct Mesh {
   /** Write access to edge data. */
   blender::MutableSpan<MEdge> edges_for_write();
   /**
-   * Face topology storage of the size and offset of each face's section of the face corners.
+   * Face topology storage of the offset of each face's section of the face corners. The size of
+   * each polygon is encoded using the next offset value. Can be used to slice the #corner_verts or
+   * #corner_edges arrays to find the vertices or edges that make up each face.
    */
   blender::OffsetIndices<int> polys() const;
+  /** The first corner index of every polygon. */
   blender::Span<int> poly_offsets() const;
-  /** Write access to polygon data. */
+  /** Write access to #poly_offsets data. */
   blender::MutableSpan<int> poly_offsets_for_write();
 
   /**

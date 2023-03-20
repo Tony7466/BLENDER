@@ -148,7 +148,7 @@ blender::Span<MLoopTri> Mesh::looptris() const
     const blender::OffsetIndices polys = this->polys();
     const Span<int> corner_verts = this->corner_verts();
 
-    r_data.reinitialize(poly_to_tri_count(polys.ranges_num(), corner_verts.size()));
+    r_data.reinitialize(poly_to_tri_count(polys.size(), corner_verts.size()));
 
     if (BKE_mesh_poly_normals_are_dirty(this)) {
       blender::bke::mesh::looptris_calc(positions, polys, corner_verts, r_data);
@@ -317,7 +317,7 @@ bool BKE_mesh_runtime_is_valid(Mesh *me_eval)
 
   MutableSpan<float3> positions = me_eval->vert_positions_for_write();
   MutableSpan<MEdge> edges = me_eval->edges_for_write();
-  MutableSpan<int> polys = me_eval->poly_offsets_for_write();
+  MutableSpan<int> poly_offsets = me_eval->poly_offsets_for_write();
   MutableSpan<int> corner_verts = me_eval->corner_verts_for_write();
   MutableSpan<int> corner_edges = me_eval->corner_edges_for_write();
 
@@ -346,7 +346,7 @@ bool BKE_mesh_runtime_is_valid(Mesh *me_eval)
                                        corner_verts.data(),
                                        corner_edges.data(),
                                        corner_verts.size(),
-                                       polys.data(),
+                                       poly_offsets.data(),
                                        me_eval->totpoly,
                                        me_eval->deform_verts_for_write().data(),
                                        do_verbose,

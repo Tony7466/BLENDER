@@ -77,7 +77,7 @@ void ED_draw_object_facemap(Depsgraph *depsgraph,
     facemap_data = static_cast<const int *>(CustomData_get_layer(&me->pdata, CD_FACEMAP));
 
     /* Make a batch and free it each time for now. */
-    const int looptris_len = poly_to_tri_count(polys.ranges_num(), corner_verts.size());
+    const int looptris_len = poly_to_tri_count(polys.size(), corner_verts.size());
     const int vbo_len_capacity = looptris_len * 3;
     int vbo_len_used = 0;
 

@@ -101,6 +101,7 @@ void load_plydata(PlyData &plyData, Depsgraph *depsgraph, const PLYExportParams 
     for (const int i : polys.index_range()) {
       if (polys[i].size() > 255) {
         force_triangulation = true;
+        break;
       }
     }
 

@@ -887,10 +887,9 @@ static void sculpt_vertex_neighbors_get_faces(SculptSession *ss,
       /* Skip connectivity from hidden faces. */
       continue;
     }
-    const int poly_i = vert_map->indices[i];
+    const blender::IndexRange poly = ss->polys[vert_map->indices[i]];
     int f_adj_v[2];
-    if (poly_get_adj_loops_from_vert(
-            ss->corner_verts.slice(ss->polys[poly_i]), vertex.i, f_adj_v) != -1) {
+    if (poly_get_adj_loops_from_vert(ss->corner_verts.slice(poly), vertex.i, f_adj_v) != -1) {
       for (int j = 0; j < ARRAY_SIZE(f_adj_v); j += 1) {
         if (f_adj_v[j] != vertex.i) {
           sculpt_vertex_neighbor_add(iter, BKE_pbvh_make_vref(f_adj_v[j]), f_adj_v[j]);

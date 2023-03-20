@@ -174,7 +174,7 @@ static void average_read_displacement_object(MultiresDisplacementData *data,
                                              float r_D[3])
 {
   const PolyCornerIndex *poly_corner = &data->ptex_poly_corner[ptex_face_index];
-  const int num_corners = data->polys.size(poly_corner->poly_index);
+  const int num_corners = data->polys[poly_corner->poly_index].size();
   /* Get (u, v) coordinate within the other ptex face which corresponds to
    * the grid coordinates. */
   float u, v;
@@ -200,7 +200,7 @@ static void average_get_other_ptex_and_corner(MultiresDisplacementData *data,
 {
   const PolyCornerIndex *poly_corner = &data->ptex_poly_corner[ptex_face_index];
   const int poly_index = poly_corner->poly_index;
-  const int num_corners = data->polys.size(poly_corner->poly_index);
+  const int num_corners = data->polys[poly_corner->poly_index].size();
   const bool is_quad = (num_corners == 4);
   const int start_ptex_face_index = data->face_ptex_offset[poly_index];
   *r_other_corner_index = (corner + corner_delta + num_corners) % num_corners;
@@ -248,7 +248,7 @@ static void average_with_all(SubdivDisplacement *displacement,
   MultiresDisplacementData *data = static_cast<MultiresDisplacementData *>(
       displacement->user_data);
   const PolyCornerIndex *poly_corner = &data->ptex_poly_corner[ptex_face_index];
-  const int num_corners = data->polys.size(poly_corner->poly_index);
+  const int num_corners = data->polys[poly_corner->poly_index].size();
   for (int corner_delta = 1; corner_delta < num_corners; corner_delta++) {
     average_with_other(displacement, ptex_face_index, corner, 0.0f, 0.0f, corner_delta, r_D);
   }
@@ -303,7 +303,7 @@ static int displacement_get_face_corner(MultiresDisplacementData *data,
                                         const float v)
 {
   const PolyCornerIndex *poly_corner = &data->ptex_poly_corner[ptex_face_index];
-  const int num_corners = data->polys.size(poly_corner->poly_index);
+  const int num_corners = data->polys[poly_corner->poly_index].size();
   const bool is_quad = (num_corners == 4);
   if (is_quad) {
     float dummy_corner_u, dummy_corner_v;

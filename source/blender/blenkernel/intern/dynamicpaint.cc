@@ -1824,7 +1824,7 @@ static void dynamicPaint_applySurfaceDisplace(DynamicPaintSurface *surface, Mesh
 
   /* displace paint */
   if (surface->type == MOD_DPAINT_SURFACE_T_DISPLACE) {
-    DynamicPaintModifierApplyData data;
+    DynamicPaintModifierApplyData data{};
     data.surface = surface;
     data.vert_positions = BKE_mesh_vert_positions_for_write(result);
     data.vert_normals = result->vert_normals();
@@ -1982,9 +1982,9 @@ static Mesh *dynamicPaint_Modifier_apply(DynamicPaintModifierData *pmd, Object *
             {
               TaskParallelSettings settings;
               BLI_parallel_range_settings_defaults(&settings);
-              settings.use_threading = (polys.ranges_num() > 1000);
+              settings.use_threading = (polys.size() > 1000);
               BLI_task_parallel_range(
-                  0, polys.ranges_num(), &data, dynamic_paint_apply_surface_vpaint_cb, &settings);
+                  0, polys.size(), &data, dynamic_paint_apply_surface_vpaint_cb, &settings);
             }
 
             MEM_freeN(fcolor);

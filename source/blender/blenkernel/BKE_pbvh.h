@@ -317,7 +317,6 @@ void BKE_pbvh_build_grids(PBVH *pbvh,
                           unsigned int **grid_hidden,
                           struct Mesh *me,
                           struct SubdivCCG *subdiv_ccg);
-
 /**
  * Build a PBVH from a BMesh.
  */

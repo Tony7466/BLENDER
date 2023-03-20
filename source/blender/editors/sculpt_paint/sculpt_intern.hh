@@ -963,41 +963,39 @@ int SCULPT_vertex_count_get(SculptSession *ss);
 const float *SCULPT_vertex_co_get(SculptSession *ss, PBVHVertRef vertex);
 
 /** Get the normal for a given sculpt vertex; do not modify the result */
-void SCULPT_vertex_normal_get(struct SculptSession *ss, PBVHVertRef vertex, float no[3]);
+void SCULPT_vertex_normal_get(SculptSession *ss, PBVHVertRef vertex, float no[3]);
 
 float SCULPT_vertex_mask_get(SculptSession *ss, PBVHVertRef vertex);
 void SCULPT_vertex_color_get(const SculptSession *ss, PBVHVertRef vertex, float r_color[4]);
 void SCULPT_vertex_color_set(SculptSession *ss, PBVHVertRef vertex, const float color[4]);
 
-bool SCULPT_vertex_is_occluded(struct SculptSession *ss, PBVHVertRef vertex, bool original);
+bool SCULPT_vertex_is_occluded(SculptSession *ss, PBVHVertRef vertex, bool original);
 
 /** Returns true if a color attribute exists in the current sculpt session. */
-bool SCULPT_has_colors(const struct SculptSession *ss);
+bool SCULPT_has_colors(const SculptSession *ss);
 
 /** Returns true if the active color attribute is on loop (ATTR_DOMAIN_CORNER) domain. */
 bool SCULPT_has_loop_colors(const Object *ob);
 
-const float *SCULPT_vertex_persistent_co_get(struct SculptSession *ss, PBVHVertRef vertex);
-void SCULPT_vertex_persistent_normal_get(struct SculptSession *ss,
-                                         PBVHVertRef vertex,
-                                         float no[3]);
+const float *SCULPT_vertex_persistent_co_get(SculptSession *ss, PBVHVertRef vertex);
+void SCULPT_vertex_persistent_normal_get(SculptSession *ss, PBVHVertRef vertex, float no[3]);
 
 /**
  * Coordinates used for manipulating the base mesh when Grab Active Vertex is enabled.
  */
-const float *SCULPT_vertex_co_for_grab_active_get(struct SculptSession *ss, PBVHVertRef vertex);
+const float *SCULPT_vertex_co_for_grab_active_get(SculptSession *ss, PBVHVertRef vertex);
 
 /**
  * Returns the info of the limit surface when multi-res is available,
  * otherwise it returns the current coordinate of the vertex.
  */
-void SCULPT_vertex_limit_surface_get(struct SculptSession *ss, PBVHVertRef vertex, float r_co[3]);
+void SCULPT_vertex_limit_surface_get(SculptSession *ss, PBVHVertRef vertex, float r_co[3]);
 
 /**
  * Returns the pointer to the coordinates that should be edited from a brush tool iterator
  * depending on the given deformation target.
  */
-float *SCULPT_brush_deform_target_vertex_co_get(struct SculptSession *ss,
+float *SCULPT_brush_deform_target_vertex_co_get(SculptSession *ss,
                                                 int deform_target,
                                                 PBVHVertexIter *iter);
 
@@ -1032,13 +1030,13 @@ void SCULPT_vertex_neighbors_get(SculptSession *ss,
   } \
   ((void)0)
 
-PBVHVertRef SCULPT_active_vertex_get(struct SculptSession *ss);
-const float *SCULPT_active_vertex_co_get(struct SculptSession *ss);
-void SCULPT_active_vertex_normal_get(struct SculptSession *ss, float normal[3]);
+PBVHVertRef SCULPT_active_vertex_get(SculptSession *ss);
+const float *SCULPT_active_vertex_co_get(SculptSession *ss);
+void SCULPT_active_vertex_normal_get(SculptSession *ss, float normal[3]);
 
 /* Returns PBVH deformed vertices array if shape keys or deform modifiers are used, otherwise
  * returns mesh original vertices array. */
-float (*SCULPT_mesh_deformed_positions_get(struct SculptSession *ss))[3];
+float (*SCULPT_mesh_deformed_positions_get(SculptSession *ss))[3];
 
 /* Fake Neighbors */
 
@@ -1052,7 +1050,7 @@ void SCULPT_fake_neighbors_free(Object *ob);
 /* Vertex Info. */
 void SCULPT_boundary_info_ensure(Object *object);
 /* Boundary Info needs to be initialized in order to use this function. */
-bool SCULPT_vertex_is_boundary(const struct SculptSession *ss, PBVHVertRef vertex);
+bool SCULPT_vertex_is_boundary(const SculptSession *ss, PBVHVertRef vertex);
 
 /** \} */
 
@@ -1060,13 +1058,13 @@ bool SCULPT_vertex_is_boundary(const struct SculptSession *ss, PBVHVertRef verte
 /** \name Sculpt Visibility API
  * \{ */
 
-void SCULPT_vertex_visible_set(struct SculptSession *ss, PBVHVertRef vertex, bool visible);
-bool SCULPT_vertex_visible_get(struct SculptSession *ss, PBVHVertRef vertex);
-bool SCULPT_vertex_all_faces_visible_get(const struct SculptSession *ss, PBVHVertRef vertex);
-bool SCULPT_vertex_any_face_visible_get(struct SculptSession *ss, PBVHVertRef vertex);
+void SCULPT_vertex_visible_set(SculptSession *ss, PBVHVertRef vertex, bool visible);
+bool SCULPT_vertex_visible_get(SculptSession *ss, PBVHVertRef vertex);
+bool SCULPT_vertex_all_faces_visible_get(const SculptSession *ss, PBVHVertRef vertex);
+bool SCULPT_vertex_any_face_visible_get(SculptSession *ss, PBVHVertRef vertex);
 
-void SCULPT_face_visibility_all_invert(struct SculptSession *ss);
-void SCULPT_face_visibility_all_set(struct SculptSession *ss, bool visible);
+void SCULPT_face_visibility_all_invert(SculptSession *ss);
+void SCULPT_face_visibility_all_set(SculptSession *ss, bool visible);
 
 void SCULPT_visibility_sync_all_from_faces(Object *ob);
 
@@ -1076,19 +1074,19 @@ void SCULPT_visibility_sync_all_from_faces(Object *ob);
 /** \name Face Sets API
  * \{ */
 
-int SCULPT_active_face_set_get(struct SculptSession *ss);
-int SCULPT_vertex_face_set_get(struct SculptSession *ss, PBVHVertRef vertex);
-void SCULPT_vertex_face_set_set(struct SculptSession *ss, PBVHVertRef vertex, int face_set);
+int SCULPT_active_face_set_get(SculptSession *ss);
+int SCULPT_vertex_face_set_get(SculptSession *ss, PBVHVertRef vertex);
+void SCULPT_vertex_face_set_set(SculptSession *ss, PBVHVertRef vertex, int face_set);
 
-int SCULPT_face_set_get(const struct SculptSession *ss, PBVHFaceRef face);
-void SCULPT_face_set_set(struct SculptSession *ss, PBVHFaceRef face, int fset);
+int SCULPT_face_set_get(const SculptSession *ss, PBVHFaceRef face);
+void SCULPT_face_set_set(SculptSession *ss, PBVHFaceRef face, int fset);
 
-bool SCULPT_vertex_has_face_set(struct SculptSession *ss, PBVHVertRef vertex, int face_set);
-bool SCULPT_vertex_has_unique_face_set(struct SculptSession *ss, PBVHVertRef vertex);
+bool SCULPT_vertex_has_face_set(SculptSession *ss, PBVHVertRef vertex, int face_set);
+bool SCULPT_vertex_has_unique_face_set(SculptSession *ss, PBVHVertRef vertex);
 
-int SCULPT_face_set_next_available_get(struct SculptSession *ss);
+int SCULPT_face_set_next_available_get(SculptSession *ss);
 
-void SCULPT_face_set_visibility_set(struct SculptSession *ss, int face_set, bool visible);
+void SCULPT_face_set_visibility_set(SculptSession *ss, int face_set, bool visible);
 
 /** \} */
 
@@ -1190,9 +1188,9 @@ int SCULPT_plane_trim(const StrokeCache *cache, const Brush *brush, const float 
 /**
  * Handles clipping against a mirror modifier and #SCULPT_LOCK_X/Y/Z axis flags.
  */
-void SCULPT_clip(Sculpt *sd, struct SculptSession *ss, float co[3], const float val[3]);
+void SCULPT_clip(Sculpt *sd, SculptSession *ss, float co[3], const float val[3]);
 
-float SCULPT_brush_plane_offset_get(Sculpt *sd, struct SculptSession *ss);
+float SCULPT_brush_plane_offset_get(Sculpt *sd, SculptSession *ss);
 
 ePaintSymmetryAreas SCULPT_get_vertex_symm_area(const float co[3]);
 bool SCULPT_check_vertex_pivot_symmetry(const float vco[3], const float pco[3], char symm);
@@ -1244,10 +1242,10 @@ void SCULPT_combine_transform_proxies(Sculpt *sd, Object *ob);
  * \return The brush falloff function.
  */
 
-SculptBrushTestFn SCULPT_brush_test_init_with_falloff_shape(struct SculptSession *ss,
+SculptBrushTestFn SCULPT_brush_test_init_with_falloff_shape(SculptSession *ss,
                                                             SculptBrushTest *test,
                                                             char falloff_shape);
-const float *SCULPT_brush_frontface_normal_from_falloff_shape(struct SculptSession *ss,
+const float *SCULPT_brush_frontface_normal_from_falloff_shape(SculptSession *ss,
                                                               char falloff_shape);
 
 /**
@@ -1296,9 +1294,7 @@ void SCULPT_tilt_apply_to_normal(float r_normal[3], StrokeCache *cache, float ti
 /**
  * Get effective surface normal with pen tilt and tilt strength applied to it.
  */
-void SCULPT_tilt_effective_normal_get(const struct SculptSession *ss,
-                                      const Brush *brush,
-                                      float r_no[3]);
+void SCULPT_tilt_effective_normal_get(const SculptSession *ss, const Brush *brush, float r_no[3]);
 
 /** \} */
 
@@ -1319,7 +1315,7 @@ void SCULPT_floodfill_add_initial(SculptFloodFill *flood, PBVHVertRef vertex);
 void SCULPT_floodfill_add_and_skip_initial(SculptFloodFill *flood, PBVHVertRef vertex);
 void SCULPT_floodfill_execute(SculptSession *ss,
                               SculptFloodFill *flood,
-                              bool (*func)(struct SculptSession *ss,
+                              bool (*func)(SculptSession *ss,
                                            PBVHVertRef from_v,
                                            PBVHVertRef to_v,
                                            bool is_duplicate,
@@ -1360,7 +1356,7 @@ void sculpt_dynamic_topology_disable_with_undo(Main *bmain,
  * Others, like smooth, are better without.
  * Same goes for alt-key smoothing.
  */
-bool SCULPT_stroke_is_dynamic_topology(const struct SculptSession *ss, const Brush *brush);
+bool SCULPT_stroke_is_dynamic_topology(const SculptSession *ss, const Brush *brush);
 
 void SCULPT_dynamic_topology_triangulate(BMesh *bm);
 
@@ -1388,7 +1384,7 @@ void SCULPT_automasking_node_begin(Object *ob,
                                    PBVHNode *node);
 
 /* Call before SCULPT_automasking_factor_get and SCULPT_brush_strength_factor. */
-void SCULPT_automasking_node_update(struct SculptSession *ss,
+void SCULPT_automasking_node_update(SculptSession *ss,
                                     AutomaskingNodeData *automask_data,
                                     PBVHVertexIter *vd);
 
@@ -1406,15 +1402,13 @@ AutomaskingCache *SCULPT_automasking_cache_init(Sculpt *sd, Brush *brush, Object
 void SCULPT_automasking_cache_free(AutomaskingCache *automasking);
 
 bool SCULPT_is_automasking_mode_enabled(const Sculpt *sd, const Brush *br, eAutomasking_flag mode);
-bool SCULPT_is_automasking_enabled(const Sculpt *sd,
-                                   const struct SculptSession *ss,
-                                   const Brush *br);
+bool SCULPT_is_automasking_enabled(const Sculpt *sd, const SculptSession *ss, const Brush *br);
 
 float *SCULPT_boundary_automasking_init(Object *ob,
                                         eBoundaryAutomaskMode mode,
                                         int propagation_steps,
                                         float *automask_factor);
-bool SCULPT_automasking_needs_normal(const struct SculptSession *ss,
+bool SCULPT_automasking_needs_normal(const SculptSession *ss,
                                      const Sculpt *sculpt,
                                      const Brush *brush);
 bool SCULPT_automasking_needs_original(const Sculpt *sd, const Brush *brush);
@@ -1517,7 +1511,7 @@ void SCULPT_cloth_plane_falloff_preview_draw(uint gpuattr,
                                              const float outline_col[3],
                                              float outline_alpha);
 
-PBVHNode **SCULPT_cloth_brush_affected_nodes_gather(struct SculptSession *ss,
+PBVHNode **SCULPT_cloth_brush_affected_nodes_gather(SculptSession *ss,
                                                     Brush *brush,
                                                     int *r_totnode);
 
@@ -1543,14 +1537,14 @@ BLI_INLINE bool SCULPT_is_cloth_deform_brush(const Brush *brush)
  */
 void SCULPT_bmesh_four_neighbor_average(float avg[3], float direction[3], BMVert *v);
 
-void SCULPT_neighbor_coords_average(struct SculptSession *ss, float result[3], PBVHVertRef vertex);
-float SCULPT_neighbor_mask_average(struct SculptSession *ss, PBVHVertRef vertex);
-void SCULPT_neighbor_color_average(struct SculptSession *ss, float result[4], PBVHVertRef vertex);
+void SCULPT_neighbor_coords_average(SculptSession *ss, float result[3], PBVHVertRef vertex);
+float SCULPT_neighbor_mask_average(SculptSession *ss, PBVHVertRef vertex);
+void SCULPT_neighbor_color_average(SculptSession *ss, float result[4], PBVHVertRef vertex);
 
 /**
  * Mask the mesh boundaries smoothing only the mesh surface without using auto-masking.
  */
-void SCULPT_neighbor_coords_average_interior(struct SculptSession *ss,
+void SCULPT_neighbor_coords_average_interior(SculptSession *ss,
                                              float result[3],
                                              PBVHVertRef vertex);
 
@@ -1560,14 +1554,14 @@ void SCULPT_do_smooth_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnod
 
 /* Surface Smooth Brush. */
 
-void SCULPT_surface_smooth_laplacian_step(struct SculptSession *ss,
+void SCULPT_surface_smooth_laplacian_step(SculptSession *ss,
                                           float *disp,
                                           const float co[3],
                                           float (*laplacian_disp)[3],
                                           PBVHVertRef vertex,
                                           const float origco[3],
                                           float alpha);
-void SCULPT_surface_smooth_displace_step(struct SculptSession *ss,
+void SCULPT_surface_smooth_displace_step(SculptSession *ss,
                                          float *co,
                                          float (*laplacian_disp)[3],
                                          PBVHVertRef vertex,
@@ -1796,7 +1790,7 @@ void SCULPT_boundary_pivot_line_preview_draw(uint gpuattr, SculptSession *ss);
 void SCULPT_do_multiplane_scrape_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode);
 void SCULPT_multiplane_scrape_preview_draw(uint gpuattr,
                                            Brush *brush,
-                                           struct SculptSession *ss,
+                                           SculptSession *ss,
                                            const float outline_col[3],
                                            float outline_alpha);
 /* Draw Face Sets Brush. */
@@ -1908,7 +1902,7 @@ void SCULPT_topology_islands_ensure(Object *ob);
  * Mark vertex island keys as invalid.
  * Call when adding or hiding geometry.
  */
-void SCULPT_topology_islands_invalidate(struct SculptSession *ss);
+void SCULPT_topology_islands_invalidate(SculptSession *ss);
 
 /** Get vertex island key. */
 int SCULPT_vertex_island_get(SculptSession *ss, PBVHVertRef vertex);

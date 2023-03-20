@@ -185,25 +185,24 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
     mesh = mesh_bisect;
   }
 
-  const blender::OffsetIndices src_polys = mesh->polys();
   const int src_verts_num = mesh->totvert;
   const int src_edges_num = mesh->totedge;
-  const int src_polys_num = src_polys.ranges_num();
+  const blender::OffsetIndices src_polys = mesh->polys();
   const int src_loops_num = mesh->totloop;
 
   Mesh *result = BKE_mesh_new_nomain_from_template(
-      mesh, src_verts_num * 2, src_edges_num * 2, src_loops_num * 2, src_polys_num * 2);
+      mesh, src_verts_num * 2, src_edges_num * 2, src_loops_num * 2, src_polys.size() * 2);
 
   /* Copy custom-data to original geometry. */
   CustomData_copy_data(&mesh->vdata, &result->vdata, 0, 0, src_verts_num);
   CustomData_copy_data(&mesh->edata, &result->edata, 0, 0, src_edges_num);
-  CustomData_copy_data(&mesh->pdata, &result->pdata, 0, 0, src_polys_num);
+  CustomData_copy_data(&mesh->pdata, &result->pdata, 0, 0, src_polys.size());
   CustomData_copy_data(&mesh->ldata, &result->ldata, 0, 0, src_loops_num);
 
   /* Copy custom data to mirrored geometry. Loops are copied later. */
   CustomData_copy_data(&mesh->vdata, &result->vdata, 0, src_verts_num, src_verts_num);
   CustomData_copy_data(&mesh->edata, &result->edata, 0, src_edges_num, src_edges_num);
-  CustomData_copy_data(&mesh->pdata, &result->pdata, 0, src_polys_num, src_polys_num);
+  CustomData_copy_data(&mesh->pdata, &result->pdata, 0, src_polys.size(), src_polys.size());
 
   if (do_vtargetmap) {
     /* second half is filled with -1 */
@@ -298,16 +297,16 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
     result_edges[i].v2 += src_verts_num;
   }
 
-  result_poly_offsets.take_front(src_polys_num).copy_from(mesh->poly_offsets().drop_back(1));
+  result_poly_offsets.take_front(src_polys.size()).copy_from(mesh->poly_offsets().drop_back(1));
   for (const int i : src_polys.index_range()) {
-    result_poly_offsets[src_polys_num + i] = src_polys[i].start() + src_loops_num;
+    result_poly_offsets[src_polys.size() + i] = src_polys[i].start() + src_loops_num;
   }
   const blender::OffsetIndices result_polys = result->polys();
 
   /* reverse loop order (normals) */
   for (const int i : src_polys.index_range()) {
     const blender::IndexRange src_poly = src_polys[i];
-    const int mirror_i = src_polys_num + i;
+    const int mirror_i = src_polys.size() + i;
     const blender::IndexRange mirror_poly = result_polys[mirror_i];
 
     /* reverse the loop, but we keep the first vertex in the face the same,
@@ -415,7 +414,7 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
     /* mirroring has to account for loops being reversed in polys in second half */
     for (const int i : src_polys.index_range()) {
       const blender::IndexRange src_poly = src_polys[i];
-      const int mirror_i = src_polys_num + i;
+      const int mirror_i = src_polys.size() + i;
 
       for (const int j : src_poly) {
         int mirrorj = result_polys[mirror_i].start();

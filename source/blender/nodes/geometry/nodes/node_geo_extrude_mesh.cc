@@ -391,7 +391,7 @@ static void extrude_mesh_edges(Mesh &mesh,
   /* The duplicate edges are extruded copies of the selected edges. */
   const IndexRange duplicate_edge_range = connect_edge_range.after(edge_selection.size());
   /* There is a new polygon for every selected edge. */
-  const IndexRange new_poly_range{orig_polys.ranges_num(), edge_selection.size()};
+  const IndexRange new_poly_range{orig_polys.size(), edge_selection.size()};
   /* Every new polygon is a quad with four corners. */
   const IndexRange new_loop_range{orig_loop_size, new_poly_range.size() * 4};
 
@@ -650,7 +650,7 @@ static void extrude_mesh_face_regions(Mesh &mesh,
     return;
   }
 
-  Array<bool> poly_selection_array(orig_polys.ranges_num(), false);
+  Array<bool> poly_selection_array(orig_polys.size(), false);
   for (const int i_poly : poly_selection) {
     poly_selection_array[i_poly] = true;
   }
@@ -678,7 +678,7 @@ static void extrude_mesh_face_regions(Mesh &mesh,
   /* All vertices that are connected to the selected polygons.
    * Start the size at one vert per poly to reduce unnecessary reallocation. */
   VectorSet<int> all_selected_verts;
-  all_selected_verts.reserve(orig_polys.ranges_num());
+  all_selected_verts.reserve(orig_polys.size());
   for (const int i_poly : poly_selection) {
     for (const int vert : orig_corner_verts.slice(orig_polys[i_poly])) {
       all_selected_verts.add(vert);
@@ -753,7 +753,7 @@ static void extrude_mesh_face_regions(Mesh &mesh,
   /* Duplicated edges inside regions that were connected to deselected faces. */
   const IndexRange new_inner_edge_range = boundary_edge_range.after(new_inner_edge_indices.size());
   /* Each edge selected for extrusion is extruded into a single face. */
-  const IndexRange side_poly_range{orig_polys.ranges_num(), boundary_edge_indices.size()};
+  const IndexRange side_poly_range{orig_polys.size(), boundary_edge_indices.size()};
   /* The loops that form the new side faces. */
   const IndexRange side_loop_range{orig_corner_verts.size(), side_poly_range.size() * 4};
 
@@ -1053,7 +1053,7 @@ static void extrude_individual_mesh_faces(Mesh &mesh,
 
   /* Use a mesh for the result of the evaluation because the mesh is reallocated before
    * the vertices are moved, and the evaluated result might reference an attribute. */
-  Array<float3> poly_offset(orig_polys.ranges_num());
+  Array<float3> poly_offset(orig_polys.size());
   const bke::MeshFieldContext poly_context{mesh, ATTR_DOMAIN_FACE};
   FieldEvaluator poly_evaluator{poly_context, mesh.totpoly};
   poly_evaluator.set_selection(selection_field);
@@ -1078,7 +1078,7 @@ static void extrude_individual_mesh_faces(Mesh &mesh,
   /* Each selected edge is duplicated to form a single edge on the extrusion. */
   const IndexRange duplicate_edge_range = connect_edge_range.after(extrude_corner_size);
   /* Each edge selected for extrusion is extruded into a single face. */
-  const IndexRange side_poly_range{orig_polys.ranges_num(), duplicate_edge_range.size()};
+  const IndexRange side_poly_range{orig_polys.size(), duplicate_edge_range.size()};
   const IndexRange side_loop_range{orig_loop_size, side_poly_range.size() * 4};
 
   expand_mesh(mesh,

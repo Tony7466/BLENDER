@@ -57,12 +57,12 @@ class FaceSetFromBoundariesInput final : public bke::MeshFieldInput {
     const Array<Vector<int, 2>> edge_to_face_map = bke::mesh_topology::build_edge_to_poly_map(
         polys, mesh.corner_edges(), mesh.totedge);
 
-    AtomicDisjointSet islands(polys.ranges_num());
+    AtomicDisjointSet islands(polys.size());
     for (const int edge : non_boundary_edges) {
       join_indices(islands, edge_to_face_map[edge]);
     }
 
-    Array<int> output(polys.ranges_num());
+    Array<int> output(polys.size());
     islands.calc_reduced_ids(output);
 
     return mesh.attributes().adapt_domain(

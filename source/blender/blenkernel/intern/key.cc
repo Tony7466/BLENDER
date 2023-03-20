@@ -2263,14 +2263,14 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
         {reinterpret_cast<const blender::float3 *>(positions), mesh->totvert},
         polys,
         corner_verts,
-        {reinterpret_cast<blender::float3 *>(poly_normals), polys.ranges_num()});
+        {reinterpret_cast<blender::float3 *>(poly_normals), polys.size()});
   }
   if (vert_normals_needed) {
     blender::bke::mesh::normals_calc_poly_vert(
         {reinterpret_cast<const blender::float3 *>(positions), mesh->totvert},
         polys,
         corner_verts,
-        {reinterpret_cast<blender::float3 *>(poly_normals), polys.ranges_num()},
+        {reinterpret_cast<blender::float3 *>(poly_normals), polys.size()},
         {reinterpret_cast<blender::float3 *>(vert_normals), mesh->totvert});
   }
   if (loop_normals_needed) {
@@ -2288,7 +2288,7 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
         corner_edges,
         {},
         {reinterpret_cast<blender::float3 *>(vert_normals), mesh->totvert},
-        {reinterpret_cast<blender::float3 *>(poly_normals), polys.ranges_num()},
+        {reinterpret_cast<blender::float3 *>(poly_normals), polys.size()},
         sharp_edges,
         sharp_faces,
         (mesh->flag & ME_AUTOSMOOTH) != 0,

@@ -54,7 +54,7 @@ UvVertMap *BKE_mesh_uv_vert_map_create(const blender::OffsetIndices<int> polys,
   /* generate UvMapVert array */
   for (const int64_t a : polys.index_range()) {
     if (!selected || (!(hide_poly && hide_poly[a]) && (select_poly && select_poly[a]))) {
-      totuv += polys.size(a);
+      totuv += polys[a].size();
     }
   }
 
@@ -74,14 +74,13 @@ UvVertMap *BKE_mesh_uv_vert_map_create(const blender::OffsetIndices<int> polys,
   bool *winding = nullptr;
   if (use_winding) {
     winding = static_cast<bool *>(
-        MEM_calloc_arrayN(sizeof(*winding), size_t(polys.ranges_num()), "winding"));
+        MEM_calloc_arrayN(sizeof(*winding), size_t(polys.size()), "winding"));
   }
 
   for (const int64_t a : polys.index_range()) {
+    const blender::IndexRange poly = polys[a];
     if (!selected || (!(hide_poly && hide_poly[a]) && (select_poly && select_poly[a]))) {
       float(*tf_uv)[2] = nullptr;
-
-      const blender::IndexRange poly = polys[a];
 
       if (use_winding) {
         tf_uv = (float(*)[2])BLI_buffer_reinit_data(&tf_uv_buf, vec2f, size_t(poly.size()));
@@ -501,14 +500,14 @@ void BKE_mesh_origindex_map_create_looptri(MeshElemMap **r_map,
                                            const MLoopTri *looptri,
                                            const int looptri_num)
 {
-  MeshElemMap *map = MEM_cnew_array<MeshElemMap>(size_t(polys.ranges_num()), __func__);
+  MeshElemMap *map = MEM_cnew_array<MeshElemMap>(size_t(polys.size()), __func__);
   int *indices = static_cast<int *>(MEM_mallocN(sizeof(int) * size_t(looptri_num), __func__));
   int *index_step;
   int i;
 
   /* create offsets */
   index_step = indices;
-  for (i = 0; i < polys.ranges_num(); i++) {
+  for (const int64_t i : polys.index_range()) {
     map[i].indices = index_step;
     index_step += ME_POLY_TRI_TOT(polys[i].size());
   }
@@ -649,7 +648,7 @@ static void poly_edge_loop_islands_calc(const int totedge,
   /* map vars */
   int *edge_poly_mem = nullptr;
 
-  if (polys.ranges_num() == 0) {
+  if (polys.size() == 0) {
     *r_totgroup = 0;
     *r_poly_groups = nullptr;
     if (r_edge_borders) {
@@ -673,9 +672,8 @@ static void poly_edge_loop_islands_calc(const int totedge,
                                   int(corner_edges.size()));
   }
 
-  poly_groups = static_cast<int *>(
-      MEM_callocN(sizeof(int) * size_t(polys.ranges_num()), __func__));
-  poly_stack = static_cast<int *>(MEM_mallocN(sizeof(int) * size_t(polys.ranges_num()), __func__));
+  poly_groups = static_cast<int *>(MEM_callocN(sizeof(int) * size_t(polys.size()), __func__));
+  poly_stack = static_cast<int *>(MEM_mallocN(sizeof(int) * size_t(polys.size()), __func__));
 
   while (true) {
     int poly;
@@ -683,13 +681,13 @@ static void poly_edge_loop_islands_calc(const int totedge,
     int poly_group_id;
     int ps_curr_idx = 0, ps_end_idx = 0; /* stack indices */
 
-    for (poly = poly_prev; poly < int(polys.ranges_num()); poly++) {
+    for (poly = poly_prev; poly < int(polys.size()); poly++) {
       if (poly_groups[poly] == 0) {
         break;
       }
     }
 
-    if (poly == int(polys.ranges_num())) {
+    if (poly == int(polys.size())) {
       /* all done */
       break;
     }
@@ -786,7 +784,7 @@ static void poly_edge_loop_islands_calc(const int totedge,
   }
 
   if (UNLIKELY(group_id_overflow)) {
-    int i = int(polys.ranges_num()), *gid = poly_groups;
+    int i = int(polys.size()), *gid = poly_groups;
     for (; i--; gid++) {
       if (*gid == poly_group_id_overflowed) {
         *gid = 0;
@@ -1090,7 +1088,7 @@ static bool mesh_calc_islands_loop_poly_uv(const int totedge,
   }
 
   poly_indices = static_cast<int *>(
-      MEM_mallocN(sizeof(*poly_indices) * size_t(polys.ranges_num()), __func__));
+      MEM_mallocN(sizeof(*poly_indices) * size_t(polys.size()), __func__));
   loop_indices = static_cast<int *>(
       MEM_mallocN(sizeof(*loop_indices) * size_t(totloop), __func__));
 

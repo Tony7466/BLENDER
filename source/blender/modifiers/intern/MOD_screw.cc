@@ -458,6 +458,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 
   /* build polygon -> edge map */
   if (totpoly) {
+    
     edge_poly_map = static_cast<uint *>(
         MEM_malloc_arrayN(totedge, sizeof(*edge_poly_map), __func__));
     memset(edge_poly_map, 0xff, sizeof(*edge_poly_map) * totedge);
@@ -490,7 +491,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     vert_connect = static_cast<ScrewVertConnect *>(
         MEM_malloc_arrayN(totvert, sizeof(ScrewVertConnect), __func__));
     /* skip the first slice of verts. */
-    // vert_connect = (ScrewVertConnect *) &edges_new[totvert];
+    // vert_connect = (ScrewVertConnect *) &medge_new[totvert];
     vc = vert_connect;
 
     /* Copy Vert Locations */

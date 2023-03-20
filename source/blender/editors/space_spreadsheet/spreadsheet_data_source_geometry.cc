@@ -156,7 +156,7 @@ static std::unique_ptr<ColumnValues> build_mesh_debug_columns(const Mesh &mesh,
       if (name == "Corner Size") {
         const OffsetIndices polys = mesh.polys();
         return std::make_unique<ColumnValues>(
-            name, VArray<int>::ForFunc(polys.ranges_num(), [polys](int64_t index) {
+            name, VArray<int>::ForFunc(polys.size(), [polys](int64_t index) {
               return polys[index].size();
             }));
       }

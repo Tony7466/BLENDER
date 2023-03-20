@@ -104,7 +104,7 @@ static int count_num_ptex_faces(const Mesh *mesh)
 {
   int num_ptex_faces = 0;
   const blender::OffsetIndices polys = mesh->polys();
-  for (int poly_index = 0; poly_index < mesh->totpoly; poly_index++) {
+  for (const int poly_index : polys.index_range()) {
     num_ptex_faces += (polys[poly_index].size() == 4) ? 1 : polys[poly_index].size();
   }
   return num_ptex_faces;
@@ -121,7 +121,7 @@ static void mask_data_init_mapping(SubdivCCGMaskEvaluator *mask_evaluator, const
   /* Fill in offsets. */
   int ptex_face_index = 0;
   PolyCornerIndex *ptex_poly_corner = data->ptex_poly_corner;
-  for (int poly_index = 0; poly_index < mesh->totpoly; poly_index++) {
+  for (const int poly_index : polys.index_range()) {
     const blender::IndexRange poly = polys[poly_index];
     if (poly.size() == 4) {
       ptex_poly_corner[ptex_face_index].poly_index = poly_index;

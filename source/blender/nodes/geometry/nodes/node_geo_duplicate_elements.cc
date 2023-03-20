@@ -492,7 +492,7 @@ static void duplicate_faces(GeometrySet &geometry_set,
   const Span<int> corner_edges = mesh.corner_edges();
 
   bke::MeshFieldContext field_context{mesh, ATTR_DOMAIN_FACE};
-  FieldEvaluator evaluator(field_context, polys.ranges_num());
+  FieldEvaluator evaluator(field_context, polys.size());
   evaluator.add(count_field);
   evaluator.set_selection(selection_field);
   evaluator.evaluate();

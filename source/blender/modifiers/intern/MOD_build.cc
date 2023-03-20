@@ -76,12 +76,11 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 
   int *vertMap = static_cast<int *>(MEM_malloc_arrayN(vert_src_num, sizeof(int), __func__));
   int *edgeMap = static_cast<int *>(MEM_malloc_arrayN(edges_src.size(), sizeof(int), __func__));
-  int *faceMap = static_cast<int *>(
-      MEM_malloc_arrayN(polys_src.ranges_num(), sizeof(int), __func__));
+  int *faceMap = static_cast<int *>(MEM_malloc_arrayN(polys_src.size(), sizeof(int), __func__));
 
   range_vn_i(vertMap, vert_src_num, 0);
   range_vn_i(edgeMap, edges_src.size(), 0);
-  range_vn_i(faceMap, polys_src.ranges_num(), 0);
+  range_vn_i(faceMap, polys_src.size(), 0);
 
   Scene *scene = DEG_get_input_scene(ctx->depsgraph);
   frac = (BKE_scene_ctime_get(scene) - bmd->start) / bmd->length;
@@ -90,7 +89,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     frac = 1.0f - frac;
   }
 
-  faces_dst_num = polys_src.ranges_num() * frac;
+  faces_dst_num = polys_src.size() * frac;
   edges_dst_num = edges_src.size() * frac;
 
   /* if there's at least one face, build based on faces */
@@ -98,7 +97,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     uintptr_t hash_num, hash_num_alt;
 
     if (bmd->flag & MOD_BUILD_FLAG_RANDOMIZE) {
-      BLI_array_randomize(faceMap, sizeof(*faceMap), polys_src.ranges_num(), bmd->seed);
+      BLI_array_randomize(faceMap, sizeof(*faceMap), polys_src.size(), bmd->seed);
     }
 
     /* get the set of all vert indices that will be in the final mesh,

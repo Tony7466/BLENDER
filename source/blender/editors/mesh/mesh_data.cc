@@ -1224,7 +1224,7 @@ static void mesh_add_loops(Mesh *mesh, int len)
 
   mesh->totloop = totloop;
 
-  /* Keep the last poly offset up to date with the loop total (they must be the same). We have
+  /* Keep the last poly offset up to date with the corner total (they must be the same). We have
    * to be careful here though, since the mesh may not be in a valid state at this point. */
   if (mesh->poly_offsets_data) {
     mesh->poly_offsets_for_write().last() = mesh->totloop;

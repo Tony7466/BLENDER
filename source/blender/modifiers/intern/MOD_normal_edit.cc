@@ -192,7 +192,6 @@ static bool polygons_check_flip(blender::MutableSpan<int> corner_verts,
 
   for (const int i : polys.index_range()) {
     const blender::IndexRange poly = polys[i];
-
     float norsum[3] = {0.0f};
 
     for (const int64_t j : poly) {

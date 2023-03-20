@@ -610,8 +610,8 @@ void MeshImporter::read_polys(COLLADAFW::Mesh *collada_mesh,
 
   MutableSpan<int> poly_offsets = me->poly_offsets_for_write();
   MutableSpan<int> corner_verts = me->corner_verts_for_write();
-  int loop_index = 0;
   int poly_index = 0;
+  int loop_index = 0;
 
   MaterialIdPrimitiveArrayMap mat_prim_map;
 
@@ -734,6 +734,7 @@ void MeshImporter::read_polys(COLLADAFW::Mesh *collada_mesh,
           /* If it turns out that we have complete custom normals for each poly
            * and we want to use custom normals, this will be overridden. */
           sharp_faces[poly_index] = is_flat_face(normal_indices, nor, vcount);
+
           if (use_custom_normals) {
             /* Store the custom normals for later application. */
             float vert_normal[3];
@@ -768,10 +769,6 @@ void MeshImporter::read_polys(COLLADAFW::Mesh *collada_mesh,
         }
 
         poly_index++;
-        sharp_faces++;
-        if (material_indices) {
-          material_indices++;
-        }
         loop_index += vcount;
         start_index += vcount;
         prim.totpoly++;

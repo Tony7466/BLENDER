@@ -1236,16 +1236,16 @@ static bool draw_subdiv_build_cache(DRWSubdivCache *cache,
     }
 
     cache->subdiv_polygon_offset_buffer = draw_subdiv_build_origindex_buffer(
-        cache->subdiv_polygon_offset, polys.ranges_num());
+        cache->subdiv_polygon_offset, polys.size());
 
     cache->face_ptex_offset_buffer = draw_subdiv_build_origindex_buffer(cache->face_ptex_offset,
-                                                                        polys.ranges_num() + 1);
+                                                                        polys.size() + 1);
 
     build_vertex_face_adjacency_maps(cache);
   }
 
   cache->resolution = to_mesh_settings.resolution;
-  cache->num_coarse_poly = polys.ranges_num();
+  cache->num_coarse_poly = polys.size();
 
   /* To avoid floating point precision issues when evaluating patches at patch boundaries,
    * ensure that all loops sharing a vertex use the same patch coordinate. This could cause

@@ -27,7 +27,7 @@ static VArray<float> construct_face_area_varray(const Mesh &mesh, const eAttrDom
   };
 
   return mesh.attributes().adapt_domain<float>(
-      VArray<float>::ForFunc(polys.ranges_num(), area_fn), ATTR_DOMAIN_FACE, domain);
+      VArray<float>::ForFunc(polys.size(), area_fn), ATTR_DOMAIN_FACE, domain);
 }
 
 class FaceAreaFieldInput final : public bke::MeshFieldInput {

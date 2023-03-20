@@ -291,7 +291,7 @@ bool BKE_mesh_center_median_from_polys(const Mesh *me, float r_cent[3])
     for (const int vert : corner_verts.slice(polys[i])) {
       add_v3_v3(r_cent, positions[vert]);
     }
-    tot += polys.size(i);
+    tot += polys[i].size();
   }
   /* otherwise we get NAN for 0 verts */
   if (me->totpoly) {
@@ -800,7 +800,7 @@ void BKE_mesh_calc_relative_deform(const int *poly_offsets,
                                    const float (*vert_cos_org)[3],
                                    float (*vert_cos_new)[3])
 {
-  const blender::OffsetIndices<int> polys(blender::Span(poly_offsets, totpoly + 1));
+  const blender::OffsetIndices<int> polys({poly_offsets, totpoly + 1});
 
   int *vert_accum = (int *)MEM_calloc_arrayN(size_t(totvert), sizeof(*vert_accum), __func__);
 

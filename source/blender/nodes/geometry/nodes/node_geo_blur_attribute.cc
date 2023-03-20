@@ -196,7 +196,7 @@ static Array<Vector<int>> build_face_to_face_by_edge_map(const OffsetIndices<int
                                                          const int edges_num,
                                                          const IndexMask poly_mask)
 {
-  Array<Vector<int>> map(polys.ranges_num());
+  Array<Vector<int>> map(polys.size());
   Array<Vector<int>> faces_by_edge = build_face_to_edge_by_loop_map(
       polys, corner_edges, edges_num);
 

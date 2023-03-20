@@ -919,7 +919,6 @@ static Mesh *calc_dual_mesh(const Mesh &src_mesh,
     dst_poly_offsets.drop_back(1).copy_from(loop_lengths);
     offset_indices::accumulate_counts_to_offsets(dst_poly_offsets);
   }
-
   mesh_out->corner_verts_for_write().copy_from(loops);
   mesh_out->corner_edges_for_write().copy_from(loop_edges);
 

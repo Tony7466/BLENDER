@@ -464,7 +464,7 @@ static void get_topology(struct Mesh *mesh,
   poly_verts.clear();
   loop_counts.clear();
   poly_verts.reserve(corner_verts.size());
-  loop_counts.reserve(polys.ranges_num());
+  loop_counts.reserve(polys.size());
 
   /* NOTE: data needs to be written in the reverse order. */
   for (const int i : polys.index_range()) {

@@ -97,7 +97,7 @@ void BKE_mesh_calc_loop_tangent_single_ex(const float (*vert_positions)[3],
   mesh_to_tangent.luvs = loop_uvs;
   mesh_to_tangent.loop_normals = loop_normals;
   mesh_to_tangent.tangents = r_looptangent;
-  mesh_to_tangent.num_polys = polys.ranges_num();
+  mesh_to_tangent.num_polys = polys.size();
 
   mikk::Mikktspace<BKEMeshToTangent> mikk(mesh_to_tangent);
 
@@ -452,7 +452,7 @@ void BKE_mesh_calc_loop_tangent_ex(const float (*vert_positions)[3],
     int *face_as_quad_map = nullptr;
 
     /* map faces to quads */
-    if (looptri_len != uint(polys.ranges_num())) {
+    if (looptri_len != uint(polys.size())) {
       /* Over allocate, since we don't know how many ngon or quads we have. */
 
       /* map fake face index to looptri */

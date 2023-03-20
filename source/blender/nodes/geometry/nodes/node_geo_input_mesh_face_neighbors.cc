@@ -29,7 +29,7 @@ static VArray<int> construct_neighbor_count_varray(const Mesh &mesh, const eAttr
     edge_count[edge]++;
   }
 
-  Array<int> poly_count(polys.ranges_num(), 0);
+  Array<int> poly_count(polys.size(), 0);
   for (const int poly_index : polys.index_range()) {
     for (const int edge : corner_edges.slice(polys[poly_index])) {
       poly_count[poly_index] += edge_count[edge] - 1;
@@ -76,7 +76,7 @@ static VArray<int> construct_vertex_count_varray(const Mesh &mesh, const eAttrDo
 {
   const OffsetIndices polys = mesh.polys();
   return mesh.attributes().adapt_domain<int>(
-      VArray<int>::ForFunc(polys.ranges_num(),
+      VArray<int>::ForFunc(polys.size(),
                            [polys](const int i) -> float { return polys[i].size(); }),
       ATTR_DOMAIN_FACE,
       domain);

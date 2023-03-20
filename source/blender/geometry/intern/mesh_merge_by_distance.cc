@@ -170,81 +170,84 @@ static void weld_assert_poly_and_loop_kill_len(WeldMesh *weld_mesh,
   int poly_kills = 0;
   int loop_kills = corner_verts.size();
   for (const int i : polys.index_range()) {
-    if (!weld_iter_loop_of_poly_begin(iter,
-                                      *wp,
-                                      weld_mesh->wloop,
-                                      corner_verts,
-                                      corner_edges,
-                                      weld_mesh->loop_map,
-                                      nullptr)) {
-      poly_kills++;
-      continue;
-    }
-    else {
-      if (wp->poly_dst != OUT_OF_CONTEXT) {
+    int poly_ctx = weld_mesh->poly_map[i];
+    if (poly_ctx != OUT_OF_CONTEXT) {
+      const WeldPoly *wp = &weld_mesh->wpoly[poly_ctx];
+      WeldLoopOfPolyIter iter;
+      if (!weld_iter_loop_of_poly_begin(iter,
+                                        *wp,
+                                        weld_mesh->wloop,
+                                        corner_verts,
+                                        corner_edges,
+                                        weld_mesh->loop_map,
+                                        nullptr)) {
         poly_kills++;
         continue;
       }
-      int remain = wp->loop_len;
-      int l = wp->loop_start;
-      while (remain) {
-        int l_next = l + 1;
-        int loop_ctx = weld_mesh->loop_map[l];
-        if (loop_ctx != OUT_OF_CONTEXT) {
-          const WeldLoop *wl = &weld_mesh->wloop[loop_ctx];
-          if (wl->loop_skip_to != OUT_OF_CONTEXT) {
-            l_next = wl->loop_skip_to;
+      else {
+        if (wp->poly_dst != OUT_OF_CONTEXT) {
+          poly_kills++;
+          continue;
+        }
+        int remain = wp->loop_len;
+        int l = wp->loop_start;
+        while (remain) {
+          int l_next = l + 1;
+          int loop_ctx = weld_mesh->loop_map[l];
+          if (loop_ctx != OUT_OF_CONTEXT) {
+            const WeldLoop *wl = &weld_mesh->wloop[loop_ctx];
+            if (wl->loop_skip_to != OUT_OF_CONTEXT) {
+              l_next = wl->loop_skip_to;
+            }
+            if (wl->flag != ELEM_COLLAPSED) {
+              loop_kills--;
+              remain--;
+            }
           }
-          if (wl->flag != ELEM_COLLAPSED) {
+          else {
             loop_kills--;
             remain--;
           }
+          l = l_next;
         }
-        else {
-          loop_kills--;
-          remain--;
-        }
-        l = l_next;
-      }
-    }
-  }
-  else
-  {
-    loop_kills -= polys[i].size();
-  }
-}
-
-for (const int i : weld_mesh->wpoly.index_range().take_back(weld_mesh->wpoly_new_len)) {
-  const WeldPoly &wp = weld_mesh->wpoly[i];
-  if (wp.poly_dst != OUT_OF_CONTEXT) {
-    poly_kills++;
-    continue;
-  }
-  int remain = wp.loop_len;
-  int l = wp.loop_start;
-  while (remain) {
-    int l_next = l + 1;
-    int loop_ctx = weld_mesh->loop_map[l];
-    if (loop_ctx != OUT_OF_CONTEXT) {
-      const WeldLoop *wl = &weld_mesh->wloop[loop_ctx];
-      if (wl->loop_skip_to != OUT_OF_CONTEXT) {
-        l_next = wl->loop_skip_to;
-      }
-      if (wl->flag != ELEM_COLLAPSED) {
-        loop_kills--;
-        remain--;
       }
     }
     else {
-      loop_kills--;
-      remain--;
+      loop_kills -= polys[i].size();
     }
-    l = l_next;
   }
-}
 
-BLI_assert(poly_kills == supposed_poly_kill_len);
-BLI_assert(loop_kills == supposed_loop_kill_len);
+  for (const int i : weld_mesh->wpoly.index_range().take_back(weld_mesh->wpoly_new_len)) {
+    const WeldPoly &wp = weld_mesh->wpoly[i];
+    if (wp.poly_dst != OUT_OF_CONTEXT) {
+      poly_kills++;
+      continue;
+    }
+    int remain = wp.loop_len;
+    int l = wp.loop_start;
+    while (remain) {
+      int l_next = l + 1;
+      int loop_ctx = weld_mesh->loop_map[l];
+      if (loop_ctx != OUT_OF_CONTEXT) {
+        const WeldLoop *wl = &weld_mesh->wloop[loop_ctx];
+        if (wl->loop_skip_to != OUT_OF_CONTEXT) {
+          l_next = wl->loop_skip_to;
+        }
+        if (wl->flag != ELEM_COLLAPSED) {
+          loop_kills--;
+          remain--;
+        }
+      }
+      else {
+        loop_kills--;
+        remain--;
+      }
+      l = l_next;
+    }
+  }
+
+  BLI_assert(poly_kills == supposed_poly_kill_len);
+  BLI_assert(loop_kills == supposed_loop_kill_len);
 }
 
 static void weld_assert_poly_no_vert_repetition(const WeldPoly &wp,
@@ -795,7 +798,7 @@ static void weld_poly_loop_ctx_alloc(const OffsetIndices<int> polys,
 {
   /* Loop/Poly Context. */
   Array<int> loop_map(corner_verts.size());
-  Array<int> poly_map(polys.ranges_num());
+  Array<int> poly_map(polys.size());
   int wloop_len = 0;
   int wpoly_len = 0;
   int max_ctx_poly_len = 4;
@@ -804,7 +807,7 @@ static void weld_poly_loop_ctx_alloc(const OffsetIndices<int> polys,
   wloop.reserve(corner_verts.size());
 
   Vector<WeldPoly> wpoly;
-  wpoly.reserve(polys.ranges_num());
+  wpoly.reserve(polys.size());
 
   int maybe_new_poly = 0;
 
@@ -1544,8 +1547,7 @@ static Mesh *create_merged_mesh(const Mesh &mesh,
   const int result_nverts = totvert - weld_mesh.vert_kill_len;
   const int result_nedges = totedge - weld_mesh.edge_kill_len;
   const int result_nloops = src_corner_verts.size() - weld_mesh.loop_kill_len;
-  const int result_npolys = src_polys.ranges_num() - weld_mesh.poly_kill_len +
-                            weld_mesh.wpoly_new_len;
+  const int result_npolys = src_polys.size() - weld_mesh.poly_kill_len + weld_mesh.wpoly_new_len;
 
   Mesh *result = BKE_mesh_new_nomain_from_template(
       &mesh, result_nverts, result_nedges, result_nloops, result_npolys);

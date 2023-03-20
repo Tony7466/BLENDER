@@ -435,7 +435,7 @@ static void wn_face_area(WeightedNormalModifierData *wnmd, WeightedNormalData *w
   const blender::Span<int> corner_verts = wn_data->corner_verts;
 
   ModePair *face_area = static_cast<ModePair *>(
-      MEM_malloc_arrayN(polys.ranges_num(), sizeof(*face_area), __func__));
+      MEM_malloc_arrayN(polys.size(), sizeof(*face_area), __func__));
 
   ModePair *f_area = face_area;
   for (const int i : polys.index_range()) {
@@ -443,7 +443,7 @@ static void wn_face_area(WeightedNormalModifierData *wnmd, WeightedNormalData *w
     f_area[i].index = i;
   }
 
-  qsort(face_area, polys.ranges_num(), sizeof(*face_area), modepair_cmp_by_val_inverse);
+  qsort(face_area, polys.size(), sizeof(*face_area), modepair_cmp_by_val_inverse);
 
   wn_data->mode_pair = face_area;
   apply_weights_vertex_normal(wnmd, wn_data);

@@ -197,7 +197,7 @@ static void mesh_recalc_looptri__single_threaded(const Span<int> corner_verts,
     BLI_memarena_free(pf_arena);
     pf_arena = nullptr;
   }
-  BLI_assert(tri_index == uint(poly_to_tri_count(polys.ranges_num(), int(corner_verts.size()))));
+  BLI_assert(tri_index == uint(poly_to_tri_count(polys.size(), int(corner_verts.size()))));
 }
 
 struct TessellationUserData {
@@ -292,7 +292,7 @@ static void looptris_calc_all(const Span<float3> positions,
   settings.func_free = mesh_calc_tessellation_for_face_free_fn;
 
   BLI_task_parallel_range(0,
-                          polys.ranges_num(),
+                          polys.size(),
                           &data,
                           data.poly_normals ? mesh_calc_tessellation_for_face_with_normal_fn :
                                               mesh_calc_tessellation_for_face_fn,
@@ -313,7 +313,7 @@ void looptris_calc_with_normals(const Span<float3> vert_positions,
                                 const Span<float3> poly_normals,
                                 MutableSpan<MLoopTri> looptris)
 {
-  BLI_assert(!poly_normals.is_empty() || polys.ranges_num() == 0);
+  BLI_assert(!poly_normals.is_empty() || polys.size() == 0);
   looptris_calc_all(vert_positions, polys, corner_verts, poly_normals, looptris);
 }
 
