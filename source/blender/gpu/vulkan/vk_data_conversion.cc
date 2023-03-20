@@ -7,6 +7,8 @@
 
 #include "vk_data_conversion.hh"
 
+#include "Imath/half.h"
+
 namespace blender::gpu {
 
 /* -------------------------------------------------------------------- */
@@ -572,25 +574,8 @@ using UI32 = ComponentValue<uint32_t>;
 using I8 = ComponentValue<int8_t>;
 using I16 = ComponentValue<int16_t>;
 using I32 = ComponentValue<int32_t>;
-
-union F32 {
-  uint32_t u;
-  float value;
-  struct {
-    uint Mantissa : 23;
-    uint Exponent : 8;
-    uint Sign : 1;
-  };
-};
-
-union F16 {
-  uint16_t u;
-  struct {
-    uint Mantissa : 10;
-    uint Exponent : 5;
-    uint Sign : 1;
-  };
-};
+using F32 = ComponentValue<uint16_t>;
+using F16 = ComponentValue<float>;
 
 template<typename StorageType>
 void convert_component(SignedNormalized<StorageType> &dst, const F32 &src)
@@ -638,78 +623,14 @@ void convert_component(DestinationType &dst, const SourceType &src)
   dst.value = src.value;
 }
 
-static F16 float_to_half(const F32 &value)
-{
-  F16 result;
-  /* Sign bit, shifted to its position. */
-  uint sign_bit = value.u & 0x80000000;
-  sign_bit >>= 16;
-  /* Exponent. */
-  uint exponent_bits = value.u & 0x7f800000;
-  /* Non-sign bits. */
-  uint value_bits = value.u & 0x7fffffff;
-  value_bits >>= 13;     /* Align mantissa on MSB. */
-  value_bits -= 0x1c000; /* Adjust bias. */
-  /* Flush-to-zero. */
-  value_bits = (exponent_bits < 0x38800000) ? 0 : value_bits;
-  /* Clamp-to-max. */
-  value_bits = (exponent_bits > 0x47000000) ? 0x7bff : value_bits;
-  /* Denormals-as-zero. */
-  value_bits = (exponent_bits == 0 ? 0 : value_bits);
-  /* Re-insert sign bit and return. */
-  result.u = (value_bits | sign_bit);
-  return result;
-}
-
-static F32 half_to_float(const F16 &h)
-{
-  F32 o = {0};
-
-  // From ISPC ref code
-  if (h.Exponent == 0 && h.Mantissa == 0)  // (Signed) zero
-    o.Sign = h.Sign;
-  else {
-    if (h.Exponent == 0)  // Denormal (will convert to normalized)
-    {
-      // Adjust mantissa so it's normalized (and keep track of exp adjust)
-      int e = -1;
-      uint m = h.Mantissa;
-      do {
-        e++;
-        m <<= 1;
-      } while ((m & 0x400) == 0);
-
-      o.Mantissa = (m & 0x3ff) << 13;
-      o.Exponent = 127 - 15 - e;
-      o.Sign = h.Sign;
-    }
-    else if (h.Exponent == 0x1f)  // Inf/NaN
-    {
-      // NOTE: It's safe to treat both with the same code path by just truncating
-      // lower Mantissa bits in NaNs (this is valid).
-      o.Mantissa = h.Mantissa << 13;
-      o.Exponent = 255;
-      o.Sign = h.Sign;
-    }
-    else  // Normalized number
-    {
-      o.Mantissa = h.Mantissa << 13;
-      o.Exponent = 127 - 15 + h.Exponent;
-      o.Sign = h.Sign;
-    }
-  }
-
-  return o;
-}
-
 static void convert_component(F16 &dst, const F32 &src)
 {
-  dst = float_to_half(src);
+  dst.value = imath_float_to_half(src.value);
 }
 
 static void convert_component(F32 &dst, const F16 &src)
 {
-  dst = half_to_float(src);
+  dst.value = imath_half_to_float(src.value);
 }
 
 /* \} */
