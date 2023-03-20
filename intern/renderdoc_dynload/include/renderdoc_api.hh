@@ -1,4 +1,6 @@
 #pragma once
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2023 Blender Foundation. All rights reserved. */
 
 #include "renderdoc_app.h"
 
@@ -32,6 +34,11 @@ class Renderdoc {
                          RENDERDOC_WindowHandle window_handle);
 
  private:
+  /**
+   * Check if renderdoc has been loaded.
+   * 
+   * When not loaded it tries to load the API, but only tries to do it once.
+   */
   bool check_loaded();
   void load();
 };

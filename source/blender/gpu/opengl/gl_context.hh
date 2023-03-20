@@ -95,7 +95,6 @@ class GLContext : public Context {
   /** #GLBackend owns this data. */
   GLSharedOrphanLists &shared_orphan_list_;
 
-
  public:
   GLContext(void *ghost_window, GLSharedOrphanLists &shared_orphan_list);
   ~GLContext();
