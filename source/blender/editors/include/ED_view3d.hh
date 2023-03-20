@@ -1225,8 +1225,8 @@ void ED_view3d_grid_steps(const Scene *scene,
  * Currently the simulation is only done when RV3D_VIEW_IS_AXIS.
  */
 float ED_view3d_grid_view_scale(Scene *scene,
-                                View3D *v3d,
-                                ARegion *region,
+                                const View3D *v3d,
+                                const ARegion *region,
                                 const char **r_grid_unit);
 
 /**

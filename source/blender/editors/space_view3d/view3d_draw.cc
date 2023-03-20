@@ -915,12 +915,12 @@ void ED_view3d_grid_steps(const Scene *scene,
 }
 
 float ED_view3d_grid_view_scale(Scene *scene,
-                                View3D *v3d,
-                                ARegion *region,
+                                const View3D *v3d,
+                                const ARegion *region,
                                 const char **r_grid_unit)
 {
   float grid_scale;
-  RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
+  const RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
   if (!rv3d->is_persp && RV3D_VIEW_IS_AXIS(rv3d->view)) {
     /* Decrease the distance between grid snap points depending on zoom. */
     float dist = 12.0f / (region->sizex * rv3d->winmat[0][0]);
