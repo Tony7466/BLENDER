@@ -234,7 +234,7 @@ static void mesh_render_data_mat_tri_len_build(const MeshRenderData &mr,
   }
 
   mat_tri_len.fill(0);
-  for (const Span<int> counts : all_tri_counts) {
+  for (const Array<int> &counts : all_tri_counts) {
     for (const int i : mat_tri_len.index_range()) {
       mat_tri_len[i] += counts[i];
     }
