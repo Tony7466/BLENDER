@@ -320,12 +320,6 @@ enum {
   UI_BUT_CHECKBOX_INVERT = 1 << 25,
 };
 
-/* scale fixed button widths by this to account for DPI */
-
-#define UI_DPI_FAC (U.dpi_fac)
-/* 16 to copy ICON_DEFAULT_HEIGHT */
-#define UI_DPI_ICON_SIZE ((float)16 * UI_DPI_FAC)
-
 /**
  * Button types, bits stored in 1 value... and a short even!
  * - bits 0-4:  #uiBut.bitnr (0-31)
@@ -1818,16 +1812,22 @@ void UI_but_drag_set_asset(uiBut *but,
                            struct ImBuf *imb,
                            float scale);
 void UI_but_drag_set_rna(uiBut *but, struct PointerRNA *ptr);
-void UI_but_drag_set_path(uiBut *but, const char *path, bool use_free);
+/**
+ * Enable dragging a path from this button.
+ * \param path: The path to drag. The passed string may be destructed, button keeps a copy.
+ */
+void UI_but_drag_set_path(uiBut *but, const char *path);
 void UI_but_drag_set_name(uiBut *but, const char *name);
 /**
  * Value from button itself.
  */
 void UI_but_drag_set_value(uiBut *but);
 
-/** Sets #UI_BUT_DRAG_FULL_BUT so the full button can be dragged. */
-void UI_but_drag_set_image(
-    uiBut *but, const char *path, int icon, struct ImBuf *imb, float scale, bool use_free);
+/**
+ * Sets #UI_BUT_DRAG_FULL_BUT so the full button can be dragged.
+ * \param path: The path to drag. The passed string may be destructed, button keeps a copy.
+ */
+void UI_but_drag_set_image(uiBut *but, const char *path, int icon, struct ImBuf *imb, float scale);
 
 /* Panels
  *
@@ -2987,6 +2987,17 @@ uiBut *UI_context_active_but_prop_get(const struct bContext *C,
                                       struct PointerRNA *r_ptr,
                                       struct PropertyRNA **r_prop,
                                       int *r_index);
+
+/**
+ * As above, but for a specified region.
+ *
+ * \return active button, NULL if none found or if it doesn't contain valid RNA data.
+ */
+uiBut *UI_region_active_but_prop_get(const struct ARegion *region,
+                                     struct PointerRNA *r_ptr,
+                                     struct PropertyRNA **r_prop,
+                                     int *r_index);
+
 void UI_context_active_but_prop_handle(struct bContext *C, bool handle_undo);
 void UI_context_active_but_clear(struct bContext *C, struct wmWindow *win, struct ARegion *region);
 

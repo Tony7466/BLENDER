@@ -401,13 +401,15 @@ static bool checkLayerSupport(vector<VkLayerProperties> &layers_available, const
 
 static void enableLayer(vector<VkLayerProperties> &layers_available,
                         vector<const char *> &layers_enabled,
-                        const char *layer_name)
+                        const char *layer_name,
+                        const bool debug)
 {
   if (checkLayerSupport(layers_available, layer_name)) {
     layers_enabled.push_back(layer_name);
   }
-  else {
-    fprintf(stderr, "Error: %s not supported.\n", layer_name);
+  else if (debug) {
+    fprintf(
+        stderr, "Warning: Layer requested, but not supported by the platform. [%s]\n", layer_name);
   }
 }
 
@@ -535,7 +537,7 @@ static GHOST_TSuccess getGraphicQueueFamily(VkPhysicalDevice device, uint32_t *r
   for (const auto &queue_family : queue_families) {
     /* Every vulkan implementation by spec must have one queue family that support both graphics
      * and compute pipelines. We select this one; compute only queue family hints at async compute
-     * implementations.*/
+     * implementations. */
     if ((queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT) &&
         (queue_family.queueFlags & VK_QUEUE_COMPUTE_BIT)) {
       return GHOST_kSuccess;
@@ -862,7 +864,7 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
 
   vector<const char *> layers_enabled;
   if (m_debug) {
-    enableLayer(layers_available, layers_enabled, "VK_LAYER_KHRONOS_validation");
+    enableLayer(layers_available, layers_enabled, "VK_LAYER_KHRONOS_validation", m_debug);
   }
 
   vector<const char *> extensions_device;
@@ -878,7 +880,7 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
   }
   extensions_device.push_back("VK_KHR_dedicated_allocation");
   extensions_device.push_back("VK_KHR_get_memory_requirements2");
-  /* Enable MoltenVK required instance extensions.*/
+  /* Enable MoltenVK required instance extensions. */
 #ifdef VK_MVK_MOLTENVK_EXTENSION_NAME
   requireExtension(
       extensions_available, extensions_enabled, "VK_KHR_get_physical_device_properties2");

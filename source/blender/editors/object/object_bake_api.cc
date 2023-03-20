@@ -32,7 +32,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.h"
 #include "BKE_modifier.h"
 #include "BKE_node.h"
@@ -988,18 +988,18 @@ static int find_original_loop(const blender::Span<MPoly> orig_polys,
   /* Get original vertex and polygon index. There is currently no loop mapping
    * in modifier stack evaluation. */
   const int vert_orig = vert_origindex[vert_eval];
-  const int poly_orig = poly_origindex[poly_eval];
+  const int poly_orig_i = poly_origindex[poly_eval];
 
-  if (vert_orig == ORIGINDEX_NONE || poly_orig == ORIGINDEX_NONE) {
+  if (vert_orig == ORIGINDEX_NONE || poly_orig_i == ORIGINDEX_NONE) {
     return ORIGINDEX_NONE;
   }
 
   /* Find matching loop with original vertex in original polygon. */
-  const MPoly *mpoly_orig = &orig_polys[poly_orig];
-  const MLoop *mloop_orig = &orig_loops[mpoly_orig->loopstart];
-  for (int j = 0; j < mpoly_orig->totloop; ++j, ++mloop_orig) {
+  const MPoly &poly_orig = orig_polys[poly_orig_i];
+  const MLoop *mloop_orig = &orig_loops[poly_orig.loopstart];
+  for (int j = 0; j < poly_orig.totloop; ++j, ++mloop_orig) {
     if (mloop_orig->v == vert_orig) {
-      return mpoly_orig->loopstart + j;
+      return poly_orig.loopstart + j;
     }
   }
 
@@ -1034,12 +1034,8 @@ static void bake_targets_populate_pixels_color_attributes(BakeTargets *targets,
   MLoopTri *looptri = static_cast<MLoopTri *>(MEM_mallocN(sizeof(*looptri) * tottri, __func__));
 
   const blender::Span<MLoop> loops = me_eval->loops();
-  BKE_mesh_recalc_looptri(loops.data(),
-                          me_eval->polys().data(),
-                          BKE_mesh_vert_positions(me_eval),
-                          me_eval->totloop,
-                          me_eval->totpoly,
-                          looptri);
+  blender::bke::mesh::looptris_calc(
+      me_eval->vert_positions(), me_eval->polys(), loops, {looptri, tottri});
 
   /* For mapping back to original mesh in case there are modifiers. */
   const int *vert_origindex = static_cast<const int *>(

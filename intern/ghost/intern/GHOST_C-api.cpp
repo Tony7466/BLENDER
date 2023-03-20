@@ -918,6 +918,12 @@ void GHOST_UseWindowFocus(bool use_focus)
   return system->useWindowFocus(use_focus);
 }
 
+void GHOST_SetAutoFocus(bool auto_focus)
+{
+  GHOST_ISystem *system = GHOST_ISystem::getSystem();
+  system->setAutoFocus(auto_focus);
+}
+
 float GHOST_GetNativePixelSize(GHOST_WindowHandle windowhandle)
 {
   GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
@@ -1228,4 +1234,4 @@ void GHOST_GetVulkanBackbuffer(GHOST_WindowHandle windowhandle,
   window->getVulkanBackbuffer(image, framebuffer, render_pass, extent, fb_id);
 }
 
-#endif /* WITH_VULKAN */
+#endif /* WITH_VULKAN_BACKEND */

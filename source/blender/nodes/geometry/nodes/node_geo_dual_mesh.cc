@@ -7,7 +7,7 @@
 #include "DNA_meshdata_types.h"
 
 #include "BKE_attribute_math.hh"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.h"
 
 #include "node_geometry_util.hh"
@@ -140,6 +140,7 @@ static void transfer_attributes(
    * Remove anonymous attributes that don't need to be propagated. */
   Set<AttributeIDRef> attribute_ids = src_attributes.all_ids();
   attribute_ids.remove("position");
+  attribute_ids.remove("sharp_face");
   attribute_ids.remove_if([&](const AttributeIDRef &id) {
     return id.is_anonymous() && !propagation_info.propagate(id.anonymous_id());
   });
@@ -674,13 +675,11 @@ static Mesh *calc_dual_mesh(const Mesh &src_mesh,
     }
   });
 
-  Vector<float3> vertex_positions(src_mesh.totpoly);
-  for (const int i : IndexRange(src_mesh.totpoly)) {
+  Vector<float3> vert_positions(src_mesh.totpoly);
+  for (const int i : src_polys.index_range()) {
     const MPoly &poly = src_polys[i];
-    BKE_mesh_calc_poly_center(&poly,
-                              &src_loops[poly.loopstart],
-                              reinterpret_cast<const float(*)[3]>(src_positions.data()),
-                              vertex_positions[i]);
+    vert_positions[i] = bke::mesh::poly_center_calc(src_positions,
+                                                    src_loops.slice(poly.loopstart, poly.totloop));
   }
 
   Array<int> boundary_edge_midpoint_index;
@@ -692,8 +691,8 @@ static Mesh *calc_dual_mesh(const Mesh &src_mesh,
       if (edge_types[i] == EdgeType::Boundary) {
         const MEdge &edge = src_edges[i];
         const float3 mid = math::midpoint(src_positions[edge.v1], src_positions[edge.v2]);
-        boundary_edge_midpoint_index[i] = vertex_positions.size();
-        vertex_positions.append(mid);
+        boundary_edge_midpoint_index[i] = vert_positions.size();
+        vert_positions.append(mid);
       }
     }
   }
@@ -837,12 +836,12 @@ static Mesh *calc_dual_mesh(const Mesh &src_mesh,
       else {
         loop_edges.append(old_to_new_edges_map[edge1]);
       }
-      loop_indices.append(vertex_positions.size());
+      loop_indices.append(vert_positions.size());
       /* This is sort of arbitrary, but interpolating would be a lot harder to do. */
       new_to_old_face_corners_map.append(sorted_corners.first());
       boundary_vertex_to_relevant_face_map.append(
           std::pair(loop_indices.last(), last_face_center));
-      vertex_positions.append(src_positions[i]);
+      vert_positions.append(src_positions[i]);
       const int boundary_vertex = loop_indices.last();
       add_edge(src_edges,
                edge1,
@@ -886,7 +885,8 @@ static Mesh *calc_dual_mesh(const Mesh &src_mesh,
     }
   }
   Mesh *mesh_out = BKE_mesh_new_nomain(
-      vertex_positions.size(), new_edges.size(), 0, loops.size(), loop_lengths.size());
+      vert_positions.size(), new_edges.size(), loops.size(), loop_lengths.size());
+  BKE_mesh_smooth_flag_set(mesh_out, false);
 
   transfer_attributes(vertex_types,
                       keep_boundaries,
@@ -897,7 +897,7 @@ static Mesh *calc_dual_mesh(const Mesh &src_mesh,
                       src_mesh.attributes(),
                       mesh_out->attributes_for_write());
 
-  mesh_out->vert_positions_for_write().copy_from(vertex_positions);
+  mesh_out->vert_positions_for_write().copy_from(vert_positions);
   MutableSpan<MEdge> dst_edges = mesh_out->edges_for_write();
   MutableSpan<MPoly> dst_polys = mesh_out->polys_for_write();
   MutableSpan<MLoop> dst_loops = mesh_out->loops_for_write();

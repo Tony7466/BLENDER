@@ -10,7 +10,7 @@
 #include "BKE_customdata.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_object.h"
 
 #include "BLI_math.h"
@@ -162,8 +162,7 @@ static void *add_customdata_cb(Mesh *mesh, const char *name, const int data_type
 
   /* Create a new layer. */
   numloops = mesh->totloop;
-  cd_ptr = CustomData_add_layer_named(
-      loopdata, cd_data_type, CD_SET_DEFAULT, nullptr, numloops, name);
+  cd_ptr = CustomData_add_layer_named(loopdata, cd_data_type, CD_SET_DEFAULT, numloops, name);
   return cd_ptr;
 }
 
@@ -277,7 +276,6 @@ void USDMeshReader::read_mpolys(Mesh *mesh)
 
     /* Polygons are always assumed to be smooth-shaded. If the mesh should be flat-shaded,
      * this is encoded in custom loop normals. */
-    poly.flag |= ME_SMOOTH;
 
     if (is_left_handed_) {
       int loop_end_index = loop_index + (face_size - 1);
@@ -533,7 +531,7 @@ void USDMeshReader::read_vertex_creases(Mesh *mesh, const double motionSampleTim
   }
 
   float *creases = static_cast<float *>(
-      CustomData_add_layer(&mesh->vdata, CD_CREASE, CD_SET_DEFAULT, nullptr, mesh->totvert));
+      CustomData_add_layer(&mesh->vdata, CD_CREASE, CD_SET_DEFAULT, mesh->totvert));
 
   for (size_t i = 0; i < corner_indices.size(); i++) {
     creases[corner_indices[i]] = corner_sharpnesses[i];
@@ -556,10 +554,10 @@ void USDMeshReader::process_normals_vertex_varying(Mesh *mesh)
     return;
   }
 
-  MutableSpan vert_normals{(float3 *)BKE_mesh_vertex_normals_for_write(mesh), mesh->totvert};
+  MutableSpan vert_normals{(float3 *)BKE_mesh_vert_normals_for_write(mesh), mesh->totvert};
   BLI_STATIC_ASSERT(sizeof(normals_[0]) == sizeof(float3), "Expected float3 normals size");
   vert_normals.copy_from({(float3 *)normals_.data(), int64_t(normals_.size())});
-  BKE_mesh_vertex_normals_clear_dirty(mesh);
+  BKE_mesh_vert_normals_clear_dirty(mesh);
 }
 
 void USDMeshReader::process_normals_face_varying(Mesh *mesh)
@@ -651,7 +649,7 @@ void USDMeshReader::read_mesh_sample(ImportSettings *settings,
     for (int i = 0; i < positions_.size(); i++) {
       vert_positions[i] = {positions_[i][0], positions_[i][1], positions_[i][2]};
     }
-    BKE_mesh_tag_coords_changed(mesh);
+    BKE_mesh_tag_positions_changed(mesh);
 
     read_vertex_creases(mesh, motionSampleTime);
   }
@@ -844,7 +842,7 @@ Mesh *USDMeshReader::read_mesh(Mesh *existing_mesh,
   if (topology_changed(existing_mesh, params.motion_sample_time)) {
     new_mesh = true;
     active_mesh = BKE_mesh_new_nomain_from_template(
-        existing_mesh, positions_.size(), 0, 0, face_indices_.size(), face_counts_.size());
+        existing_mesh, positions_.size(), 0, face_indices_.size(), face_counts_.size());
 
     for (pxr::TfToken token : uv_tokens) {
       add_customdata_cb(active_mesh, token.GetText(), CD_PROP_FLOAT2);

@@ -7082,7 +7082,7 @@ static void pyrna_subtype_set_rna(PyObject *newclass, StructRNA *srna)
   PyObject_SetAttr(newclass, bpy_intern_str_bl_rna, item);
   Py_DECREF(item);
 
-  /* Add staticmethods and classmethods. */
+  /* Add `staticmethod` and `classmethod` functions. */
   {
     const PointerRNA func_ptr = {NULL, srna, NULL};
     const ListBase *lb;
@@ -7092,7 +7092,7 @@ static void pyrna_subtype_set_rna(PyObject *newclass, StructRNA *srna)
     for (link = lb->first; link; link = link->next) {
       FunctionRNA *func = (FunctionRNA *)link;
       const int flag = RNA_function_flag(func);
-      if ((flag & FUNC_NO_SELF) &&         /* Is staticmethod or classmethod. */
+      if ((flag & FUNC_NO_SELF) &&         /* Is `staticmethod` or `classmethod`. */
           (flag & FUNC_REGISTER) == false) /* Is not for registration. */
       {
         /* We may want to set the type of this later. */
@@ -7405,6 +7405,27 @@ PyObject *pyrna_struct_CreatePyObject(PointerRNA *ptr)
   }
 #endif
   return (PyObject *)pyrna;
+}
+
+PyObject *pyrna_struct_CreatePyObject_with_primitive_support(PointerRNA *ptr)
+{
+  if (ptr->type == &RNA_PrimitiveString) {
+    const PrimitiveStringRNA *data = ptr->data;
+    return PyC_UnicodeFromBytes(data->value);
+  }
+  if (ptr->type == &RNA_PrimitiveInt) {
+    const PrimitiveIntRNA *data = ptr->data;
+    return PyLong_FromLong(data->value);
+  }
+  if (ptr->type == &RNA_PrimitiveFloat) {
+    const PrimitiveFloatRNA *data = ptr->data;
+    return PyFloat_FromDouble(data->value);
+  }
+  if (ptr->type == &RNA_PrimitiveBoolean) {
+    const PrimitiveBooleanRNA *data = ptr->data;
+    return PyBool_FromLong(data->value);
+  }
+  return pyrna_struct_CreatePyObject(ptr);
 }
 
 PyObject *pyrna_prop_CreatePyObject(PointerRNA *ptr, PropertyRNA *prop)
@@ -8093,10 +8114,10 @@ static int rna_function_arg_count(FunctionRNA *func, int *min_count)
   return count;
 }
 
-static int bpy_class_validate_recursive(PointerRNA *dummyptr,
+static int bpy_class_validate_recursive(PointerRNA *dummy_ptr,
                                         StructRNA *srna,
                                         void *py_data,
-                                        int *have_function)
+                                        bool *have_function)
 {
   const ListBase *lb;
   Link *link;
@@ -8109,7 +8130,7 @@ static int bpy_class_validate_recursive(PointerRNA *dummyptr,
   const char *py_class_name = ((PyTypeObject *)py_class)->tp_name; /* __name__ */
 
   if (srna_base) {
-    if (bpy_class_validate_recursive(dummyptr, srna_base, py_data, have_function) != 0) {
+    if (bpy_class_validate_recursive(dummy_ptr, srna_base, py_data, have_function) != 0) {
       return -1;
     }
   }
@@ -8256,7 +8277,7 @@ static int bpy_class_validate_recursive(PointerRNA *dummyptr,
   { \
     if ((item = PyObject_GetAttr(py_class, py_attr))) { \
       if (item != Py_None) { \
-        if (pyrna_py_to_prop(dummyptr, prop, NULL, item, "validating class:") != 0) { \
+        if (pyrna_py_to_prop(dummy_ptr, prop, NULL, item, "validating class:") != 0) { \
           Py_DECREF(item); \
           return -1; \
         } \
@@ -8287,7 +8308,7 @@ static int bpy_class_validate_recursive(PointerRNA *dummyptr,
       PyErr_Clear();
     }
     else {
-      if (pyrna_py_to_prop(dummyptr, prop, NULL, item, "validating class:") != 0) {
+      if (pyrna_py_to_prop(dummy_ptr, prop, NULL, item, "validating class:") != 0) {
         Py_DECREF(item);
         return -1;
       }
@@ -8298,9 +8319,9 @@ static int bpy_class_validate_recursive(PointerRNA *dummyptr,
   return 0;
 }
 
-static int bpy_class_validate(PointerRNA *dummyptr, void *py_data, int *have_function)
+static int bpy_class_validate(PointerRNA *dummy_ptr, void *py_data, bool *have_function)
 {
-  return bpy_class_validate_recursive(dummyptr, dummyptr->type, py_data, have_function);
+  return bpy_class_validate_recursive(dummy_ptr, dummy_ptr->type, py_data, have_function);
 }
 
 /* TODO: multiple return values like with RNA functions. */
