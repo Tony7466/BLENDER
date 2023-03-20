@@ -1747,6 +1747,7 @@ constexpr IDTypeInfo get_type_info()
 IDTypeInfo IDType_ID_SCE = get_type_info();
 
 const char *RE_engine_id_BLENDER_EEVEE = "BLENDER_EEVEE";
+const char *RE_engine_id_BLENDER_EEVEE_NEXT = "BLENDER_EEVEE_NEXT";
 const char *RE_engine_id_BLENDER_WORKBENCH = "BLENDER_WORKBENCH";
 const char *RE_engine_id_BLENDER_WORKBENCH_NEXT = "BLENDER_WORKBENCH_NEXT";
 const char *RE_engine_id_CYCLES = "CYCLES";
@@ -2935,7 +2936,8 @@ bool BKE_scene_use_spherical_stereo(Scene *scene)
 
 bool BKE_scene_uses_blender_eevee(const Scene *scene)
 {
-  return STREQ(scene->r.engine, RE_engine_id_BLENDER_EEVEE);
+  return STREQ(scene->r.engine, RE_engine_id_BLENDER_EEVEE) ||
+         STREQ(scene->r.engine, RE_engine_id_BLENDER_EEVEE_NEXT);
 }
 
 bool BKE_scene_uses_blender_workbench(const Scene *scene)

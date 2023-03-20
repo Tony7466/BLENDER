@@ -29,9 +29,6 @@ class IrradianceCache {
   Framebuffer empty_raster_fb_ = {"empty_raster_fb_"};
   View view_ = {"ortho_raster_view"};
 
-  /* TODO: Remove this. */
-  void generate_random_surfels();
-
  public:
   IrradianceCache(Instance &inst) : inst_(inst){};
   ~IrradianceCache(){};

@@ -23,6 +23,7 @@
 #include "eevee_hizbuffer.hh"
 #include "eevee_irradiance_cache.hh"
 #include "eevee_light.hh"
+#include "eevee_lightprobe.hh"
 #include "eevee_material.hh"
 #include "eevee_motion_blur.hh"
 #include "eevee_pipeline.hh"
@@ -63,6 +64,7 @@ class Instance {
   RenderBuffers render_buffers;
   MainView main_view;
   World world;
+  LightProbeModule light_probes;
   IrradianceCache irradiance_cache;
 
   /** Input data. */
@@ -108,6 +110,7 @@ class Instance {
         render_buffers(*this),
         main_view(*this),
         world(*this),
+        light_probes(*this),
         irradiance_cache(*this){};
   ~Instance(){};
 
