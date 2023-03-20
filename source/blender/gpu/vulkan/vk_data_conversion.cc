@@ -574,8 +574,8 @@ using UI32 = ComponentValue<uint32_t>;
 using I8 = ComponentValue<int8_t>;
 using I16 = ComponentValue<int16_t>;
 using I32 = ComponentValue<int32_t>;
-using F32 = ComponentValue<uint16_t>;
-using F16 = ComponentValue<float>;
+using F32 = ComponentValue<float>;
+using F16 = ComponentValue<uint16_t>;
 
 template<typename StorageType>
 void convert_component(SignedNormalized<StorageType> &dst, const F32 &src)
