@@ -210,7 +210,7 @@ LightTree::LightTree(vector<LightTreePrimitive> &prims,
 
   root = create_node(BoundBox::empty, OrientationBounds::empty, 0.0f, 0);
   /* All local lights are grouped to the left child as an inner node. */
-  recursive_build<left>(root, 0, num_local_lights, &prims, 0, 1);
+  recursive_build(left, root.get(), 0, num_local_lights, &prims, 0, 1);
   task_pool.wait_work();
 
   OrientationBounds bcone = OrientationBounds::empty;
@@ -221,14 +221,13 @@ LightTree::LightTree(vector<LightTreePrimitive> &prims,
     bcone = merge(bcone, prim.bcone);
     energy_total += prim.energy;
   }
-  LightTreeNode *distant_node = create_node(BoundBox::empty, bcone, energy_total, 1);
-  distant_node->make_leaf(num_local_lights, num_distant_lights);
 
-  root->children[right] = distant_node;
+  root->children[right] = create_node(BoundBox::empty, bcone, energy_total, 1);
+  root->children[right]->make_leaf(num_local_lights, num_distant_lights);
 }
 
-template<Child child>
-void LightTree::recursive_build(LightTreeNode *parent,
+void LightTree::recursive_build(const LightTreeChild child,
+                                LightTreeNode *parent,
                                 const int start,
                                 const int end,
                                 vector<LightTreePrimitive> *prims,
@@ -250,8 +249,8 @@ void LightTree::recursive_build(LightTreeNode *parent,
     energy_total += prim.energy;
   }
 
-  LightTreeNode *current_node = create_node(bbox, bcone, energy_total, bit_trail);
-  parent->children[child] = current_node;
+  parent->children[child] = create_node(bbox, bcone, energy_total, bit_trail);
+  LightTreeNode *current_node = parent->children[child].get();
 
   const bool try_splitting = num_prims > 1 && len(centroid_bounds.size()) > 0.0f;
   int split_dim = -1, split_bucket = 0, num_left_prims = 0;
@@ -285,23 +284,23 @@ void LightTree::recursive_build(LightTreeNode *parent,
     /* Recursively build the left branch. */
     if (middle - start > MIN_PRIMS_PER_THREAD) {
       task_pool.push([=] {
-        recursive_build<left>(current_node, start, middle, prims, bit_trail, depth + 1);
+        recursive_build(left, current_node, start, middle, prims, bit_trail, depth + 1);
       });
     }
     else {
-      recursive_build<left>(current_node, start, middle, prims, bit_trail, depth + 1);
+      recursive_build(left, current_node, start, middle, prims, bit_trail, depth + 1);
     }
 
     /* Recursively build the right branch. */
     if (end - middle > MIN_PRIMS_PER_THREAD) {
       task_pool.push([=] {
-        recursive_build<right>(
-            current_node, middle, end, prims, bit_trail | (1u << depth), depth + 1);
+        recursive_build(
+            right, current_node, middle, end, prims, bit_trail | (1u << depth), depth + 1);
       });
     }
     else {
-      recursive_build<right>(
-          current_node, middle, end, prims, bit_trail | (1u << depth), depth + 1);
+      recursive_build(
+          right, current_node, middle, end, prims, bit_trail | (1u << depth), depth + 1);
     }
   }
   else {

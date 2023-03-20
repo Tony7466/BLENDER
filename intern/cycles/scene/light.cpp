@@ -655,8 +655,8 @@ void LightManager::device_update_tree(Device *,
     else {
       /* Fill in the stacks. */
       left_index_stack[stack_id] = index;
-      right_node_stack[stack_id] = node->children[right];
-      node = node->children[left];
+      right_node_stack[stack_id] = node->children[right].get();
+      node = node->children[left].get();
       stack_id++;
     }
   }

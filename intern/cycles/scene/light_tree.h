@@ -54,7 +54,7 @@ OrientationBounds merge(const OrientationBounds &cone_a, const OrientationBounds
  */
 
 /* Left or right child of an inner node. */
-enum Child {
+enum LightTreeChild {
   left = 0,
   right = 1,
 };
@@ -102,10 +102,10 @@ struct LightTreeNode {
   OrientationBounds bcone;
   float energy;
   uint bit_trail;
-  int num_prims = -1;         /* The number of primitives a leaf node stores. A negative
-                                 number indicates it is an inner node. */
-  int first_prim_index;       /* Leaf nodes contain an index to first primitive. */
-  LightTreeNode *children[2]; /* Inner node. */
+  int num_prims = -1;                    /* The number of primitives a leaf node stores. A negative
+                                            number indicates it is an inner node. */
+  int first_prim_index;                  /* Leaf nodes contain an index to first primitive. */
+  unique_ptr<LightTreeNode> children[2]; /* Inner node. */
 
   LightTreeNode() = default;
 
@@ -134,7 +134,7 @@ struct LightTreeNode {
  * BVH-like data structure that keeps track of lights
  * and considers additional orientation and energy information */
 class LightTree {
-  LightTreeNode *root;
+  unique_ptr<LightTreeNode> root;
   atomic<int> num_nodes = 0;
   uint max_lights_in_leaf_;
 
@@ -150,17 +150,17 @@ class LightTree {
 
   LightTreeNode *get_root() const
   {
-    return root;
+    return root.get();
   };
 
   /* NOTE: Always use this function to create a new node so the number of nodes is in sync. */
-  LightTreeNode *create_node(const BoundBox &bbox,
-                             const OrientationBounds &bcone,
-                             const float &energy,
-                             const uint &bit_trial)
+  unique_ptr<LightTreeNode> create_node(const BoundBox &bbox,
+                                        const OrientationBounds &bcone,
+                                        const float &energy,
+                                        const uint &bit_trial)
   {
     num_nodes++;
-    return new LightTreeNode(bbox, bcone, energy, bit_trial);
+    return make_unique<LightTreeNode>(bbox, bcone, energy, bit_trial);
   }
 
  private:
@@ -169,8 +169,8 @@ class LightTree {
   /* Do not spawn a thread if less than this amount of primitives are to be processed. */
   enum { MIN_PRIMS_PER_THREAD = 4096 };
 
-  template<Child child>
-  void recursive_build(LightTreeNode *parent,
+  void recursive_build(LightTreeChild child,
+                       LightTreeNode *parent,
                        int start,
                        int end,
                        vector<LightTreePrimitive> *prims,
