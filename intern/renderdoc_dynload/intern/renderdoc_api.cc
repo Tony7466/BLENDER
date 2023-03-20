@@ -1,0 +1,69 @@
+
+#include "renderdoc_api.hh"
+
+#ifdef _WIN32
+#else
+#  include <dlfcn.h>
+#endif
+#include <iostream>
+
+namespace renderdoc::api {
+void Renderdoc::start_frame_capture()
+{
+  if (!check_loaded()) {
+    return;
+  }
+  renderdoc_api_->StartFrameCapture(nullptr, nullptr);
+}
+
+void Renderdoc::end_frame_capture()
+{
+  if (!check_loaded()) {
+    return;
+  }
+  renderdoc_api_->EndFrameCapture(nullptr, nullptr);
+}
+
+bool Renderdoc::check_loaded()
+{
+  switch (state_) {
+    case State::UNINITIALIZED:
+      load();
+      return renderdoc_api_ != nullptr;
+      break;
+    case State::NOT_FOUND:
+      return false;
+    case State::LOADED:
+      return true;
+  }
+  return false;
+}
+
+void Renderdoc::load()
+{
+#ifdef _WIN32
+  if (HMODULE mod = GetModuleHandleA("renderdoc.dll")) {
+    pRENDERDOC_GetAPI RENDERDOC_GetAPI = (pRENDERDOC_GetAPI)GetProcAddress(mod,
+                                                                           "RENDERDOC_GetAPI");
+    RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_1_2, (void **)&renderdoc_api_);
+  }
+#else
+  if (void *mod = dlopen("librenderdoc.so", RTLD_NOW | RTLD_NOLOAD)) {
+    pRENDERDOC_GetAPI RENDERDOC_GetAPI = (pRENDERDOC_GetAPI)dlsym(mod, "RENDERDOC_GetAPI");
+    RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_1_2, (void **)&renderdoc_api_);
+  }
+#endif
+
+  if (renderdoc_api_ != nullptr) {
+    int major;
+    int minor;
+    int patch;
+    renderdoc_api_->GetAPIVersion(&major, &minor, &patch);
+    std::cout << "Found renderdoc API [" << major << "." << minor << "." << patch << "]";
+  }
+  else {
+    std::cerr << "Unable to load renderdoc API.\n";
+  }
+}
+
+}  // namespace renderdoc::api

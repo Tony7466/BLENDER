@@ -382,11 +382,13 @@ void GLContext::debug_group_end()
 
 bool GLContext::debug_capture_begin()
 {
-  return false;
+  renderdoc_.start_frame_capture();
+  return true;
 }
 
 void GLContext::debug_capture_end()
 {
+  renderdoc_.end_frame_capture();
 }
 
 void *GLContext::debug_capture_scope_create(const char * /*name*/)

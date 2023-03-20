@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include "renderdoc_api.hh"
+
 #include "gpu_context_private.hh"
 
 #include "GPU_framebuffer.h"
@@ -94,6 +96,8 @@ class GLContext : public Context {
   Vector<GLuint> orphaned_framebuffers_;
   /** #GLBackend owns this data. */
   GLSharedOrphanLists &shared_orphan_list_;
+
+  renderdoc::api::Renderdoc renderdoc_;
 
  public:
   GLContext(void *ghost_window, GLSharedOrphanLists &shared_orphan_list);
