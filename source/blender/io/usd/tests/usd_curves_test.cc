@@ -46,17 +46,17 @@ namespace blender::io::usd {
 const StringRefNull usd_curves_test_filename = "usd/usd_curves_test.blend";
 const StringRefNull output_filename = "usd/output.usda";
 
-void check_catmullRom_curve(const pxr::UsdPrim prim,
-                            const bool is_periodic,
-                            const int vertex_count);
-void check_bezier_curve(const pxr::UsdPrim bezier_prim,
-                        const bool is_periodic,
-                        const int vertex_count);
-void check_nurbs_curve(const pxr::UsdPrim nurbs_prim,
-                       const int vertex_count,
-                       const int knots_count,
-                       const int order,
-                       const bool is_periodic);
+static void check_catmullRom_curve(const pxr::UsdPrim prim,
+                                   const bool is_periodic,
+                                   const int vertex_count);
+static void check_bezier_curve(const pxr::UsdPrim bezier_prim,
+                               const bool is_periodic,
+                               const int vertex_count);
+static void check_nurbs_curve(const pxr::UsdPrim nurbs_prim,
+                              const int vertex_count,
+                              const int knots_count,
+                              const int order,
+                              const bool is_periodic);
 
 class UsdCurvesTest : public BlendfileLoadingBaseTest {
  protected:

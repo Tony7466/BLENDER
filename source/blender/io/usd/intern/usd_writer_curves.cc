@@ -19,6 +19,10 @@
 #include "BKE_material.h"
 
 #include "BLI_math_geom.h"
+#include "BLT_translation.h"
+
+#include "RNA_access.h"
+#include "RNA_enum_types.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -116,21 +120,21 @@ static void populate_curve_verts(const bke::CurvesGeometry &geometry,
   const OffsetIndices points_by_curve = geometry.points_by_curve();
   for (const int i_curve : geometry.curves_range()) {
 
-    const IndexRange curve_points = points_by_curve[i_curve];
-    for (const int i_point : curve_points) {
+    const IndexRange points = points_by_curve[i_curve];
+    for (const int i_point : points) {
       verts.push_back(
           pxr::GfVec3f(positions[i_point][0], positions[i_point][1], positions[i_point][2]));
     }
 
-    const int tot_points = curve_points.size();
+    const int tot_points = points.size();
     control_point_counts[i_curve] = tot_points;
 
     /* For periodic linear curve, segment count = curveVertexCount.
-       For periodic cubic curve, segment count = curveVertexCount / vstep.
-       For nonperiodic linear curve, segment count = curveVertexCount - 1.
-       For nonperiodic cubic curve, segment count = ((curveVertexCount - 4) / vstep) + 1.
-       This function handles linear and Catmull-Rom curves. For Catmull-Rom, vstep is 1.
-       https://graphics.pixar.com/usd/dev/api/class_usd_geom_basis_curves.html */
+     * For periodic cubic curve, segment count = curveVertexCount / vstep.
+     * For nonperiodic linear curve, segment count = curveVertexCount - 1.
+     * For nonperiodic cubic curve, segment count = ((curveVertexCount - 4) / vstep) + 1.
+     * This function handles linear and Catmull-Rom curves. For Catmull-Rom, vstep is 1.
+     * https://graphics.pixar.com/usd/dev/api/class_usd_geom_basis_curves.html */
     if (is_cyclic) {
       segments[i_curve] = tot_points;
     }
@@ -175,11 +179,11 @@ static void populate_curve_verts_for_bezier(const bke::CurvesGeometry &geometry,
   const int bezier_vstep = 3;
   const OffsetIndices points_by_curve = geometry.points_by_curve();
 
-  for (int i_curve = 0; i_curve < geometry.curve_num; i_curve++) {
+  for (const int i_curve : geometry.curves_range()) {
 
-    const IndexRange curve_points = points_by_curve[i_curve];
-    const int start_point_index = curve_points[0];
-    const int last_point_index = curve_points[curve_points.size() - 1];
+    const IndexRange points = points_by_curve[i_curve];
+    const int start_point_index = points[0];
+    const int last_point_index = points[points.size() - 1];
 
     const int start_verts_count = verts.size();
 
@@ -203,9 +207,10 @@ static void populate_curve_verts_for_bezier(const bke::CurvesGeometry &geometry,
                                  positions[last_point_index][1],
                                  positions[last_point_index][2]));
 
-    /* For USD representation of periodic bezier curve, one of the curve's points must be repeated
-     * to close the curve. The repeated point is the first point. Since the curve is closed, we now
-     * need to include the right handle of the last point and the left handle of the first point.
+    /* For USD representation of periodic bezier curve, one of the curve's points must be
+     * repeated to close the curve. The repeated point is the first point. Since the curve is
+     * closed, we now need to include the right handle of the last point and the left handle of
+     * the first point.
      */
     if (is_cyclic) {
       const blender::float3 right_handle = handles_r[last_point_index];
@@ -274,13 +279,13 @@ static void populate_curve_props_for_nurbs(const bke::CurvesGeometry &geometry,
 
   const OffsetIndices points_by_curve = geometry.points_by_curve();
   for (const int i_curve : geometry.curves_range()) {
-    const IndexRange curve_points = points_by_curve[i_curve];
-    for (const int i_point : curve_points) {
+    const IndexRange points = points_by_curve[i_curve];
+    for (const int i_point : points) {
       verts.push_back(
           pxr::GfVec3f(positions[i_point][0], positions[i_point][1], positions[i_point][2]));
     }
 
-    const int tot_points = curve_points.size();
+    const int tot_points = points.size();
     control_point_counts[i_curve] = tot_points;
 
     const int8_t order = geom_orders[i_curve];
@@ -382,7 +387,7 @@ void USDCurvesWriter::do_write(HierarchyContext &context)
       });
 
   if (number_of_curve_types > 1) {
-    WM_report(RPT_WARNING, "Cannot export mixed curve types in the same Curve object.");
+    WM_report(RPT_WARNING, "Cannot export mixed curve types in the same Curves object.");
     return;
   }
 
@@ -399,7 +404,7 @@ void USDCurvesWriter::do_write(HierarchyContext &context)
 
   if (!all_same_cyclic_type) {
     WM_report(RPT_WARNING,
-              "Cannot export mixed cyclic and non-cyclic curves in the same Curve object.");
+              "Cannot export mixed cyclic and non-cyclic curves in the same Curves object.");
     return;
   }
 
@@ -418,11 +423,18 @@ void USDCurvesWriter::do_write(HierarchyContext &context)
     first_frame_curve_type = curve_type;
   }
   else if (first_frame_curve_type != curve_type) {
+    const char *first_frame_curve_type_name = nullptr;
+    RNA_enum_name_from_value(
+        rna_enum_curves_types, (int)first_frame_curve_type, &first_frame_curve_type_name);
+
+    const char *current_curve_type_name = nullptr;
+    RNA_enum_name_from_value(rna_enum_curves_types, (int)curve_type, &current_curve_type_name);
+
     WM_reportf(RPT_WARNING,
-               "USD does not support animating curve types. The curve type changes from %i to "
-               "%i on frame %f",
-               first_frame_curve_type,
-               curve_type,
+               "USD does not support animating curve types. The curve type changes from %s to "
+               "%s on frame %f",
+               IFACE_(first_frame_curve_type_name),
+               IFACE_(current_curve_type_name),
                timecode);
     return;
   }
