@@ -76,8 +76,8 @@ typedef struct Mesh {
   int totloop;
 
   /**
-   * Array owned by mesh. Index of the first corner of each polygon, with the total number of
-   * corners at the end. See #Mesh::polys() and #OffsetIndices.
+   * Array owned by mesh. May be null of there are no polygons. Index of the first corner of each
+   * polygon, with the total number of corners at the end. See #Mesh::polys() and #OffsetIndices.
    */
   int *poly_offsets_data;
 
