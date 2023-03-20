@@ -4257,6 +4257,20 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
       LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
         LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
           version_ensure_missing_regions(area, sl);
+
+          const ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
+                                                                       &sl->regionbase;
+          if (sl->spacetype == SPACE_SEQ) {
+            ARegion *region_main = BKE_region_find_in_listbase_by_type(regionbase,
+                                                                       RGN_TYPE_WINDOW);
+            region_main->flag &= ~RGN_FLAG_HIDDEN;
+            region_main->alignment = RGN_ALIGN_NONE;
+
+            ARegion *region_preview = BKE_region_find_in_listbase_by_type(regionbase,
+                                                                          RGN_TYPE_PREVIEW);
+            region_preview->flag &= ~RGN_FLAG_HIDDEN;
+            region_preview->alignment = RGN_ALIGN_NONE;
+          }
         }
       }
     }
