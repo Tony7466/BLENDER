@@ -17,7 +17,7 @@ template<typename T> void default_construct_cb(void *ptr)
 }
 template<typename T> void default_construct_indices_cb(void *ptr, IndexMask mask)
 {
-  mask.foreach_index([&](int64_t i) { new (static_cast<T *>(ptr) + i) T; });
+  mask.foreach_index_optimized([&](int64_t i) { new (static_cast<T *>(ptr) + i) T; });
 }
 
 template<typename T> void value_initialize_cb(void *ptr)
@@ -27,7 +27,7 @@ template<typename T> void value_initialize_cb(void *ptr)
 
 template<typename T> void value_initialize_indices_cb(void *ptr, IndexMask mask)
 {
-  mask.foreach_index([&](int64_t i) { new (static_cast<T *>(ptr) + i) T(); });
+  mask.foreach_index_optimized([&](int64_t i) { new (static_cast<T *>(ptr) + i) T(); });
 }
 
 template<typename T> void destruct_cb(void *ptr)
@@ -37,7 +37,7 @@ template<typename T> void destruct_cb(void *ptr)
 template<typename T> void destruct_indices_cb(void *ptr, IndexMask mask)
 {
   T *ptr_ = static_cast<T *>(ptr);
-  mask.foreach_index([&](int64_t i) { ptr_[i].~T(); });
+  mask.foreach_index_optimized([&](int64_t i) { ptr_[i].~T(); });
 }
 
 template<typename T> void copy_assign_cb(const void *src, void *dst)
@@ -49,14 +49,15 @@ template<typename T> void copy_assign_indices_cb(const void *src, void *dst, Ind
   const T *src_ = static_cast<const T *>(src);
   T *dst_ = static_cast<T *>(dst);
 
-  mask.foreach_index([&](int64_t i) { dst_[i] = src_[i]; });
+  mask.foreach_index_optimized([&](int64_t i) { dst_[i] = src_[i]; });
 }
 template<typename T> void copy_assign_compressed_cb(const void *src, void *dst, IndexMask mask)
 {
   const T *src_ = static_cast<const T *>(src);
   T *dst_ = static_cast<T *>(dst);
 
-  mask.foreach_index([&](const int64_t i, const int64_t i_in_mask) { dst_[i_in_mask] = src_[i]; });
+  mask.foreach_index_optimized(
+      [&](const int64_t i, const int64_t i_in_mask) { dst_[i_in_mask] = src_[i]; });
 }
 
 template<typename T> void copy_construct_cb(const void *src, void *dst)
@@ -68,7 +69,7 @@ template<typename T> void copy_construct_indices_cb(const void *src, void *dst, 
   const T *src_ = static_cast<const T *>(src);
   T *dst_ = static_cast<T *>(dst);
 
-  mask.foreach_index([&](int64_t i) { new (dst_ + i) T(src_[i]); });
+  mask.foreach_index_optimized([&](int64_t i) { new (dst_ + i) T(src_[i]); });
 }
 template<typename T> void copy_construct_compressed_cb(const void *src, void *dst, IndexMask mask)
 {
@@ -88,7 +89,7 @@ template<typename T> void move_assign_indices_cb(void *src, void *dst, IndexMask
   T *src_ = static_cast<T *>(src);
   T *dst_ = static_cast<T *>(dst);
 
-  mask.foreach_index([&](int64_t i) { dst_[i] = std::move(src_[i]); });
+  mask.foreach_index_optimized([&](int64_t i) { dst_[i] = std::move(src_[i]); });
 }
 
 template<typename T> void move_construct_cb(void *src, void *dst)
@@ -100,7 +101,7 @@ template<typename T> void move_construct_indices_cb(void *src, void *dst, IndexM
   T *src_ = static_cast<T *>(src);
   T *dst_ = static_cast<T *>(dst);
 
-  mask.foreach_index([&](int64_t i) { new (dst_ + i) T(std::move(src_[i])); });
+  mask.foreach_index_optimized([&](int64_t i) { new (dst_ + i) T(std::move(src_[i])); });
 }
 
 template<typename T> void relocate_assign_cb(void *src, void *dst)
@@ -116,7 +117,7 @@ template<typename T> void relocate_assign_indices_cb(void *src, void *dst, Index
   T *src_ = static_cast<T *>(src);
   T *dst_ = static_cast<T *>(dst);
 
-  mask.foreach_index([&](int64_t i) {
+  mask.foreach_index_optimized([&](int64_t i) {
     dst_[i] = std::move(src_[i]);
     src_[i].~T();
   });
@@ -135,7 +136,7 @@ template<typename T> void relocate_construct_indices_cb(void *src, void *dst, In
   T *src_ = static_cast<T *>(src);
   T *dst_ = static_cast<T *>(dst);
 
-  mask.foreach_index([&](int64_t i) {
+  mask.foreach_index_optimized([&](int64_t i) {
     new (dst_ + i) T(std::move(src_[i]));
     src_[i].~T();
   });
@@ -155,7 +156,7 @@ template<typename T> void fill_assign_indices_cb(const void *value, void *dst, I
   const T &value_ = *static_cast<const T *>(value);
   T *dst_ = static_cast<T *>(dst);
 
-  mask.foreach_index([&](int64_t i) { dst_[i] = value_; });
+  mask.foreach_index_optimized([&](int64_t i) { dst_[i] = value_; });
 }
 
 template<typename T> void fill_construct_cb(const void *value, void *dst, int64_t n)
@@ -172,7 +173,7 @@ template<typename T> void fill_construct_indices_cb(const void *value, void *dst
   const T &value_ = *static_cast<const T *>(value);
   T *dst_ = static_cast<T *>(dst);
 
-  mask.foreach_index([&](int64_t i) { new (dst_ + i) T(value_); });
+  mask.foreach_index_optimized([&](int64_t i) { new (dst_ + i) T(value_); });
 }
 
 template<typename T> void print_cb(const void *value, std::stringstream &ss)
