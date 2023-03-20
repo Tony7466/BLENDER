@@ -8,12 +8,16 @@
 #include "BKE_context.h"
 #include "DEG_depsgraph.h"
 
+#include "CLG_log.h"
+
 #include "light.h"
 #include "mesh.h"
 #include "object.h"
 #include "world.h"
 
 namespace blender::render::hydra {
+
+extern struct CLG_LogRef *LOG_BSD;  /* BSD - Blender Scene Delegate */
 
 class BlenderSceneDelegate : public pxr::HdSceneDelegate {
  public:

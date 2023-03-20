@@ -13,13 +13,13 @@ endif()
 add_definitions(-DTBB_SUPPRESS_DEPRECATED_MESSAGES=1)
 
 add_definitions(${GFLAGS_DEFINES})
-add_definitions(${GLOG_DEFINES})
 add_definitions(-DGLOG_NO_ABBREVIATED_SEVERITIES)
 add_definitions(-DBLENDER_GFLAGS_NAMESPACE=${GFLAGS_NAMESPACE})
 
 add_definitions(-DBOOST_ALL_NO_LIB)
 
 set(INC
+  ../../../../intern/clog
   ../../../../intern/glew-mx
   ../../../../intern/guardedalloc
   ../../makesdna
@@ -45,7 +45,6 @@ set(INC_SYS
   ${USD_INCLUDE_DIRS}
   ${BOOST_INCLUDE_DIR}
   ${TBB_INCLUDE_DIR}
-  ${GLOG_INCLUDE_DIRS}
   ${GFLAGS_INCLUDE_DIRS}
 )
 

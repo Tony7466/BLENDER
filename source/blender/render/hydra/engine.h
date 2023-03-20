@@ -15,11 +15,15 @@
 
 #include "RE_engine.h"
 
+#include "CLG_log.h"
+
 #include "render_task_delegate.h"
 #include "scene_delegate/blender_scene_delegate.h"
 #include "simple_light_task_delegate.h"
 
 namespace blender::render::hydra {
+
+extern struct CLG_LogRef *LOG_EN; /* EN - Engine */
 
 class Engine {
  public:

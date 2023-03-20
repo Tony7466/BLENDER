@@ -4,8 +4,6 @@
 #include <pxr/base/gf/vec2f.h>
 #include <pxr/imaging/hd/tokens.h>
 
-#include "glog/logging.h"
-
 #include "BKE_material.h"
 #include "BKE_mesh.h"
 #include "BKE_mesh_runtime.h"
@@ -139,7 +137,7 @@ void MeshData::add_instance(DupliObject *dupli)
   if (instancer_id.IsEmpty()) {
     instancer_id = prim_id(scene_delegate, (Object *)id).AppendElementString("Instancer");
     scene_delegate->GetRenderIndex().InsertInstancer(scene_delegate, instancer_id);
-    LOG(INFO) << "Add instancer: " << name() << " id=" << instancer_id.GetAsString();
+    CLOG_INFO(LOG_BSD, 2, "Instancer: %s, id=%s", name().c_str(), instancer_id.GetText());
   }
   if (instances.empty()) {
     // USD hides the prototype mesh when instancing in contrary to the Blender, so we must add it
@@ -147,7 +145,7 @@ void MeshData::add_instance(DupliObject *dupli)
     instances.push_back(pxr::GfMatrix4d(1.0));
   }
   instances.push_back(transform().GetInverse() * gf_matrix_from_transform(dupli->mat));
-  LOG(INFO) << "Add instance: " << instancer_id.GetAsString() << " " << dupli->random_id;
+  CLOG_INFO(LOG_BSD, 2, "%s - %d", instancer_id.GetText(), dupli->random_id);
 }
 
 void MeshData::set_mesh(Mesh *mesh)
@@ -210,7 +208,7 @@ void MeshData::insert_prim()
 
   pxr::SdfPath p_id = prim_id(scene_delegate, (Object *)id);
   scene_delegate->GetRenderIndex().InsertRprim(pxr::HdPrimTypeTokens->mesh, scene_delegate, p_id);
-  LOG(INFO) << "Add mesh: " << name() << " id=" << p_id.GetAsString();
+  CLOG_INFO(LOG_BSD, 2, "Add: %s id=%s", name().c_str(), p_id.GetString().c_str());
 }
 
 void MeshData::remove_prim()
@@ -221,7 +219,7 @@ void MeshData::remove_prim()
   }
 
   scene_delegate->GetRenderIndex().RemoveRprim(p_id);
-  LOG(INFO) << "Remove mesh: " << name();
+  CLOG_INFO(LOG_BSD, 2, "Remove: %s", name().c_str());
 }
 
 void MeshData::mark_prim_dirty(DirtyBits dirty_bits)
@@ -257,7 +255,7 @@ void MeshData::mark_prim_dirty(DirtyBits dirty_bits)
       break;
   }
   scene_delegate->GetRenderIndex().GetChangeTracker().MarkRprimDirty(p_id, bits);
-  LOG(INFO) << "Update mesh: " << name() << " [" << (int)dirty_bits << "]";
+  CLOG_INFO(LOG_BSD, 2, "Update: [%d] %s", dirty_bits, name().c_str());
 }
 
 }  // namespace blender::render::hydra

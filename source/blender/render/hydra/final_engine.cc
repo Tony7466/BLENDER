@@ -6,8 +6,6 @@
 #include "BKE_lib_id.h"
 #include "DEG_depsgraph_query.h"
 
-#include "glog/logging.h"
-
 #include "camera.h"
 #include "final_engine.h"
 #include "utils.h"

@@ -7,6 +7,7 @@
 #include <pxr/imaging/glf/drawTarget.h>
 #include <pxr/usd/usdGeom/camera.h>
 
+// clang-format off
 #include "DNA_camera_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_vec_types.h" /* this include must be before BKE_camera.h due to "rctf" type */
@@ -14,8 +15,7 @@
 #include "BLI_math_matrix.h"
 #include "DEG_depsgraph_query.h"
 #include "GPU_shader.h"
-
-#include "glog/logging.h"
+// clang-format on
 
 #include "camera.h"
 #include "utils.h"

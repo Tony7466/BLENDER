@@ -20,8 +20,6 @@
 #include "BKE_node_runtime.hh"
 #include "NOD_shader.h"
 
-#include "glog/logging.h"
-
 #include "../utils.h"
 #include "blender_scene_delegate.h"
 #include "world.h"
@@ -130,14 +128,14 @@ void WorldData::insert_prim()
   pxr::SdfPath p_id = prim_id(scene_delegate);
   scene_delegate->GetRenderIndex().InsertSprim(
       pxr::HdPrimTypeTokens->domeLight, scene_delegate, p_id);
-  LOG(INFO) << "Add World: id=" << p_id.GetAsString();
+  CLOG_INFO(LOG_BSD, 2, "Add: id=%s", p_id.GetText());
 }
 
 void WorldData::remove_prim()
 {
   pxr::SdfPath p_id = prim_id(scene_delegate);
   scene_delegate->GetRenderIndex().RemoveSprim(pxr::HdPrimTypeTokens->domeLight, p_id);
-  LOG(INFO) << "Remove World";
+  CLOG_INFO(LOG_BSD, 2, "Remove");
 }
 
 void WorldData::mark_prim_dirty(DirtyBits dirty_bits)
@@ -152,7 +150,7 @@ void WorldData::mark_prim_dirty(DirtyBits dirty_bits)
   }
   pxr::SdfPath p_id = prim_id(scene_delegate);
   scene_delegate->GetRenderIndex().GetChangeTracker().MarkSprimDirty(p_id, bits);
-  LOG(INFO) << "Update World";
+  CLOG_INFO(LOG_BSD, 2, "Update");
 }
 
 }  // namespace blender::render::hydra

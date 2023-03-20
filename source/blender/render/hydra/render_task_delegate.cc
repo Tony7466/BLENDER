@@ -7,8 +7,6 @@
 #include <pxr/imaging/hd/renderDelegate.h>
 #include <pxr/imaging/hdx/renderTask.h>
 
-#include "glog/logging.h"
-
 #include "render_task_delegate.h"
 
 namespace blender::render::hydra {
@@ -40,7 +38,6 @@ pxr::SdfPath RenderTaskDelegate::get_aov_id(pxr::TfToken const &aov) const
 
 pxr::VtValue RenderTaskDelegate::Get(pxr::SdfPath const &id, pxr::TfToken const &key)
 {
-  LOG(INFO) << "RenderTaskDelegate::Get - " << id.GetAsString() << " " << key.GetString() << "\n";
   if (key == pxr::HdTokens->params) {
     return pxr::VtValue(task_params);
   }
@@ -57,13 +54,11 @@ pxr::VtValue RenderTaskDelegate::Get(pxr::SdfPath const &id, pxr::TfToken const 
 
 pxr::HdRenderBufferDescriptor RenderTaskDelegate::GetRenderBufferDescriptor(pxr::SdfPath const &id)
 {
-  LOG(INFO) << "RenderTaskDelegate::GetRenderBufferDescriptor - " << id.GetAsString() << "\n";
   return buffer_descriptors[id];
 }
 
 pxr::TfTokenVector RenderTaskDelegate::GetTaskRenderTags(pxr::SdfPath const &task_id)
 {
-  LOG(INFO) << "RenderTaskDelegate::GetTaskRenderTags - " << task_id.GetAsString() << "\n";
   return {pxr::HdRenderTagTokens->geometry};
 }
 

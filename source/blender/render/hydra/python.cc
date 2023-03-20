@@ -11,8 +11,6 @@
 #include "BLI_fileops.h"
 #include "BLI_path_util.h"
 
-#include "glog/logging.h"
-
 #include "final_engine.h"
 #include "preview_engine.h"
 #include "utils.h"
@@ -43,11 +41,10 @@ void setup_usd_mtlx_environment()
 
 static PyObject *init_func(PyObject * /*self*/, PyObject *args)
 {
-  LOG(INFO) << "init_func";
+  CLOG_INFO(LOG_EN, 1, "Init");
 
   pxr::PlugRegistry::GetInstance().RegisterPlugins(std::string(BKE_appdir_program_dir()) +
                                                    "/blender.shared/usd");
-
   setup_usd_mtlx_environment();
 
   Py_RETURN_NONE;
@@ -60,7 +57,6 @@ static PyObject *register_plugins_func(PyObject * /*self*/, PyObject *args)
     Py_RETURN_NONE;
   }
 
-  LOG(INFO) << "register_plugins_func";
 
   std::vector<std::string> plugin_dirs, path_dirs;
   PyObject *pyiter, *pyitem;
@@ -90,13 +86,23 @@ static PyObject *register_plugins_func(PyObject * /*self*/, PyObject *args)
   pxr::PlugRegistry &registry = pxr::PlugRegistry::GetInstance();
   registry.RegisterPlugins(plugin_dirs);
 
+  /* logging */
+  std::stringstream ss;
+  ss << "plugins=[";
+  for (auto &s : plugin_dirs) {
+    ss << s << ", ";
+  }
+  ss << "], path=[";
+  for (auto &s : path_dirs) {
+    ss << s << ", ";
+  }
+  CLOG_INFO(LOG_EN, 1, "Register %s", ss.str().c_str());
+
   Py_RETURN_NONE;
 }
 
 static PyObject *get_render_plugins_func(PyObject * /*self*/, PyObject *args)
 {
-  LOG(INFO) << "get_render_plugins_func";
-
   pxr::PlugRegistry &registry = pxr::PlugRegistry::GetInstance();
   pxr::TfTokenVector plugin_ids = pxr::UsdImagingGLEngine::GetRendererPlugins();
   PyObject *ret = PyTuple_New(plugin_ids.size());
@@ -132,8 +138,6 @@ static PyObject *get_render_plugins_func(PyObject * /*self*/, PyObject *args)
 
 static PyObject *engine_create_func(PyObject * /*self*/, PyObject *args)
 {
-  LOG(INFO) << "create_func";
-
   PyObject *pyengine;
   char *engine_type, *render_delegate_id;
   if (!PyArg_ParseTuple(args, "Oss", &pyengine, &engine_type, &render_delegate_id)) {
@@ -141,13 +145,13 @@ static PyObject *engine_create_func(PyObject * /*self*/, PyObject *args)
   }
 
   RenderEngine *bl_engine = (RenderEngine *)PyLong_AsVoidPtr(pyengine);
+  
 
   Engine *engine;
-
-  if (std::string(engine_type) == "VIEWPORT") {
+  if (STREQ(engine_type, "VIEWPORT")) {
     engine = new ViewportEngine(bl_engine, render_delegate_id);
   }
-  else if (std::string(engine_type) == "PREVIEW") {
+  else if (STREQ(engine_type, "PREVIEW")) {
     engine = new PreviewEngine(bl_engine, render_delegate_id);
   }
   else {
@@ -159,19 +163,22 @@ static PyObject *engine_create_func(PyObject * /*self*/, PyObject *args)
     }
   }
 
+  CLOG_INFO(LOG_EN, 2, "Engine %016llx %s", engine, engine_type);
+
   return PyLong_FromVoidPtr(engine);
 }
 
 static PyObject *engine_free_func(PyObject * /*self*/, PyObject *args)
 {
-  LOG(INFO) << "free_func";
-
   PyObject *pyengine;
   if (!PyArg_ParseTuple(args, "O", &pyengine)) {
     Py_RETURN_NONE;
   }
 
-  delete (Engine *)PyLong_AsVoidPtr(pyengine);
+  Engine *engine = (Engine *) PyLong_AsVoidPtr(pyengine);
+  delete engine;
+
+  CLOG_INFO(LOG_EN, 2, "Engine %016llx", engine);
   Py_RETURN_NONE;
 }
 
@@ -209,6 +216,8 @@ static PyObject *engine_sync_func(PyObject * /*self*/, PyObject *args)
   }
 
   engine->sync(depsgraph, context, settings);
+
+  CLOG_INFO(LOG_EN, 2, "Engine %016llx", engine);
   Py_RETURN_NONE;
 }
 
@@ -228,6 +237,7 @@ static PyObject *engine_render_func(PyObject * /*self*/, PyObject *args)
   engine->render(depsgraph);
   Py_END_ALLOW_THREADS;
 
+  CLOG_INFO(LOG_EN, 2, "Engine %016llx", engine);
   Py_RETURN_NONE;
 }
 
@@ -247,6 +257,7 @@ static PyObject *engine_view_draw_func(PyObject * /*self*/, PyObject *args)
   engine->render(depsgraph, context);
   Py_END_ALLOW_THREADS;
 
+  CLOG_INFO(LOG_EN, 3, "Engine %016llx", engine);
   Py_RETURN_NONE;
 }
 

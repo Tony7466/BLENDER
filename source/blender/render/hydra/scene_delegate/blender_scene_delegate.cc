@@ -4,11 +4,12 @@
 #include "DEG_depsgraph_query.h"
 #include "DNA_scene_types.h"
 
-#include "glog/logging.h"
-
+#include "..\utils.h"
 #include "blender_scene_delegate.h"
 
 namespace blender::render::hydra {
+
+CLG_LOGREF_DECLARE_GLOBAL(LOG_BSD, "rhd.bsd");
 
 BlenderSceneDelegate::BlenderSceneDelegate(pxr::HdRenderIndex *parent_index,
                                            pxr::SdfPath const &delegate_id,
@@ -81,7 +82,7 @@ bool BlenderSceneDelegate::GetVisible(pxr::SdfPath const &id)
 
 pxr::SdfPath BlenderSceneDelegate::GetInstancerId(pxr::SdfPath const &prim_id)
 {
-  LOG(INFO) << "GetInstancerId: " << prim_id.GetAsString();
+  CLOG_INFO(LOG_BSD, 3, "%s", prim_id.GetText());
   MeshData *m_data = mesh_data(prim_id);
   if (m_data) {
     return m_data->instancer_id;
@@ -91,7 +92,7 @@ pxr::SdfPath BlenderSceneDelegate::GetInstancerId(pxr::SdfPath const &prim_id)
 
 pxr::SdfPathVector BlenderSceneDelegate::GetInstancerPrototypes(pxr::SdfPath const &instancer_id)
 {
-  LOG(INFO) << "GetInstancerPrototypes: " << instancer_id.GetString();
+  CLOG_INFO(LOG_BSD, 3, "%s", instancer_id.GetText());
   pxr::SdfPathVector paths;
   paths.push_back(instancer_id.GetParentPath());
   return paths;
@@ -100,8 +101,7 @@ pxr::SdfPathVector BlenderSceneDelegate::GetInstancerPrototypes(pxr::SdfPath con
 pxr::VtIntArray BlenderSceneDelegate::GetInstanceIndices(pxr::SdfPath const &instancer_id,
                                                          pxr::SdfPath const &prototype_id)
 {
-  LOG(INFO) << "GetInstanceIndices: " << instancer_id.GetString() << " "
-            << prototype_id.GetString();
+  CLOG_INFO(LOG_BSD, 3, "%s, %s", instancer_id.GetText(), prototype_id.GetText());
   MeshData *m_data = mesh_data(prototype_id);
   pxr::VtIntArray ret = m_data->instance_indices();
   return ret;
@@ -109,7 +109,6 @@ pxr::VtIntArray BlenderSceneDelegate::GetInstanceIndices(pxr::SdfPath const &ins
 
 pxr::GfMatrix4d BlenderSceneDelegate::get_instancer_transform(pxr::SdfPath const &instancer_id)
 {
-  LOG(INFO) << "get_instancer_transform: " << instancer_id.GetString();
   // TODO: add a separate object for instancer for cleaner handling code
   // Actual instancer transform is get here
   return pxr::GfMatrix4d(1.0);
@@ -120,7 +119,6 @@ size_t BlenderSceneDelegate::SampleInstancerTransform(pxr::SdfPath const &instan
                                                       float *sample_times,
                                                       pxr::GfMatrix4d *sample_values)
 {
-  LOG(INFO) << "SampleInstancerTransform: " << instancer_id.GetString();
   size_t ret = 0;
   MeshData *m_data = mesh_data(instancer_id.GetParentPath());
   ret = m_data->sample_instancer_transform(max_sample_count, sample_times, sample_values);
@@ -334,7 +332,7 @@ void BlenderSceneDelegate::populate(Depsgraph *deps, bContext *cont)
     shading = (id->recalc & (ID_RECALC_SHADING | ID_RECALC_ANIMATION)) != 0;
     geometry = (id->recalc & ID_RECALC_GEOMETRY) != 0;
 
-    LOG(INFO) << "Update: " << id->name << " [" << transform << geometry << shading << "]";
+    CLOG_INFO(LOG_BSD, 1, "Update: %s [%d%d%d]", id->name, transform, geometry, shading);
 
     switch (GS(id->name)) {
       case ID_OB: {
@@ -392,14 +390,14 @@ void BlenderSceneDelegate::populate(Depsgraph *deps, bContext *cont)
 
 pxr::HdMeshTopology BlenderSceneDelegate::GetMeshTopology(pxr::SdfPath const &id)
 {
-  LOG(INFO) << "GetMeshTopology: " << id.GetString();
+  CLOG_INFO(LOG_BSD, 3, "%s", id.GetText());
   MeshData *m_data = mesh_data(id);
   return m_data->mesh_topology();
 }
 
 pxr::VtValue BlenderSceneDelegate::Get(pxr::SdfPath const &id, pxr::TfToken const &key)
 {
-  LOG(INFO) << "Get: " << id.GetString() << " " << key.GetString();
+  CLOG_INFO(LOG_BSD, 3, "%s, %s", id.GetText(), key.GetText());
   ObjectData *obj_data = object_data(id);
   // TODO: add a separate object for instancer for cleaner handling code
   if (!obj_data && id.GetName() == "Instancer") {
@@ -419,7 +417,7 @@ pxr::VtValue BlenderSceneDelegate::Get(pxr::SdfPath const &id, pxr::TfToken cons
 pxr::HdPrimvarDescriptorVector BlenderSceneDelegate::GetPrimvarDescriptors(
     pxr::SdfPath const &id, pxr::HdInterpolation interpolation)
 {
-  LOG(INFO) << "GetPrimvarDescriptors: " << id.GetString() << " " << interpolation;
+  CLOG_INFO(LOG_BSD, 3, "%s, %d", id.GetText(), interpolation);
   if (mesh_data(id)) {
     return mesh_data(id)->primvar_descriptors(interpolation);
   }
@@ -449,7 +447,7 @@ pxr::VtValue BlenderSceneDelegate::GetMaterialResource(pxr::SdfPath const &id)
 
 pxr::GfMatrix4d BlenderSceneDelegate::GetTransform(pxr::SdfPath const &id)
 {
-  LOG(INFO) << "GetTransform: " << id.GetString();
+  CLOG_INFO(LOG_BSD, 3, "%s", id.GetText());
   ObjectData *obj_data = object_data(id);
   if (obj_data) {
     return obj_data->transform();

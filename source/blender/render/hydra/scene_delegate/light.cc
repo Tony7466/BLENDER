@@ -7,8 +7,6 @@
 #include <pxr/imaging/hd/tokens.h>
 #include <pxr/usd/usdLux/tokens.h>
 
-#include "glog/logging.h"
-
 #include "BKE_light.h"
 #include "DNA_light_types.h"
 
@@ -116,8 +114,6 @@ pxr::TfToken LightData::prim_type()
 
 pxr::VtValue LightData::get_data(pxr::TfToken const &key)
 {
-  LOG(INFO) << "Get data light: " << name() << " [" << key.GetString() << "]";
-
   pxr::VtValue ret;
   auto it = data.find(key);
   if (it != data.end()) {
@@ -141,14 +137,14 @@ void LightData::insert_prim()
 {
   pxr::SdfPath p_id = prim_id(scene_delegate, (Object *)id);
   scene_delegate->GetRenderIndex().InsertSprim(prim_type(), scene_delegate, p_id);
-  LOG(INFO) << "Add light: " << name() << " id=" << p_id.GetAsString();
+  CLOG_INFO(LOG_BSD, 2, "Add: %s id=%s", name().c_str(), p_id.GetString().c_str());
 }
 
 void LightData::remove_prim()
 {
   pxr::SdfPath p_id = prim_id(scene_delegate, (Object *)id);
   scene_delegate->GetRenderIndex().RemoveSprim(prim_type(), p_id);
-  LOG(INFO) << "Remove light: " << name();
+  CLOG_INFO(LOG_BSD, 2, "Remove: %s", name().c_str());
 }
 
 void LightData::mark_prim_dirty(DirtyBits dirty_bits)
@@ -171,7 +167,7 @@ void LightData::mark_prim_dirty(DirtyBits dirty_bits)
   }
   pxr::SdfPath p_id = prim_id(scene_delegate, (Object *)id);
   scene_delegate->GetRenderIndex().GetChangeTracker().MarkSprimDirty(p_id, bits);
-  LOG(INFO) << "Update light: " << name() << " [" << (int)dirty_bits << "]";
+  CLOG_INFO(LOG_BSD, 2, "Update: [%d] %s", dirty_bits, name().c_str());
 }
 
 }  // namespace blender::render::hydra

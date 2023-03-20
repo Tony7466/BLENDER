@@ -8,11 +8,11 @@
 #include <pxr/imaging/hgi/tokens.h>
 #include <pxr/usd/usdGeom/tokens.h>
 
-#include "glog/logging.h"
-
 #include "engine.h"
 
 namespace blender::render::hydra {
+
+CLG_LOGREF_DECLARE_GLOBAL(LOG_EN, "rhd.en");
 
 Engine::Engine(RenderEngine *bl_engine, const std::string &delegate_id) : bl_engine(bl_engine)
 {
