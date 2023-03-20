@@ -30,16 +30,6 @@ template<typename T> class OffsetIndices {
     BLI_assert(std::is_sorted(offsets_.begin(), offsets_.end()));
   }
 
-  T size(const int64_t index) const
-  {
-    BLI_assert(index >= 0);
-    BLI_assert(index < offsets_.size() - 1);
-    const int64_t begin = offsets_[index];
-    const int64_t end = offsets_[index + 1];
-    const int64_t size = end - begin;
-    return size;
-  }
-
   const T *data() const
   {
     return offsets_.data();
@@ -56,10 +46,23 @@ template<typename T> class OffsetIndices {
     return offsets_.index_range().drop_back(1);
   }
 
-  /** Return the number of ranges encoded by the offsets. */
-  T ranges_num() const
+  /**
+   * Return the number of ranges encoded by the offsets, not including the last value used
+   * internally.
+   */
+  int64_t size() const
   {
     return std::max(offsets_.size() - 1, 0L);
+  }
+
+  bool is_empty() const
+  {
+    return this->size() == 0;
+  }
+
+  IndexRange index_range() const
+  {
+    return IndexRange(this->size());
   }
 
   IndexRange operator[](const int64_t index) const
