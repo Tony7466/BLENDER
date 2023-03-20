@@ -405,7 +405,8 @@ class GPUDevice : public Device {
   /* This function should return device pointer corresponding to shared pointer, which
    * is host buffer, allocated in `alloc_host`. The function should `true`, if such
    * address transformation is possible and `false` otherwise. */
-  virtual bool transform_host_pointer(void *&device_pointer, void *&shared_pointer) = 0;
+
+  virtual void transform_host_pointer(void *&device_pointer, void *&shared_pointer) = 0;
   virtual void copy_host_to_device(void *device_pointer, void *host_pointer, size_t size, size_t offset) = 0;
 };
 
