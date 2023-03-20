@@ -420,7 +420,8 @@ static void data_transfer_dtdata_type_preprocess(Mesh *me_src,
       blender::bke::mesh::normals_calc_loop(me_dst->vert_positions(),
                                             me_dst->edges(),
                                             me_dst->polys(),
-                                            me_dst->loops(),
+                                            me_dst->corner_verts(),
+                                            me_dst->corner_edges(),
                                             {},
                                             me_dst->vert_normals(),
                                             me_dst->poly_normals(),
@@ -469,7 +470,8 @@ static void data_transfer_dtdata_type_postprocess(Object * /*ob_src*/,
     blender::bke::mesh::normals_loop_custom_set(me_dst->vert_positions(),
                                                 me_dst->edges(),
                                                 me_dst->polys(),
-                                                me_dst->loops(),
+                                                me_dst->corner_verts(),
+                                                me_dst->corner_edges(),
                                                 me_dst->vert_normals(),
                                                 me_dst->poly_normals(),
                                                 sharp_faces,
@@ -1624,7 +1626,8 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
       const int num_verts_dst = me_dst->totvert;
       const blender::Span<MEdge> edges_dst = me_dst->edges();
       const blender::Span<MPoly> polys_dst = me_dst->polys();
-      const blender::Span<MLoop> loops_dst = me_dst->loops();
+      const blender::Span<int> corner_verts_dst = me_dst->corner_verts();
+      const blender::Span<int> corner_edges_dst = me_dst->corner_edges();
       CustomData *ldata_dst = &me_dst->ldata;
 
       MeshRemapIslandsCalc island_callback = data_transfer_get_loop_islands_generator(cddata_type);
@@ -1632,7 +1635,8 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
       if (!geom_map_init[LDATA]) {
         const int num_loops_src = me_src->totloop;
 
-        if ((map_loop_mode == MREMAP_MODE_TOPOLOGY) && (loops_dst.size() != num_loops_src)) {
+        if ((map_loop_mode == MREMAP_MODE_TOPOLOGY) &&
+            (corner_verts_dst.size() != num_loops_src)) {
           BKE_report(reports,
                      RPT_ERROR,
                      "Source and destination meshes do not have the same amount of face corners, "
@@ -1646,7 +1650,7 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
                      "None of the 'Edge' mappings can be used in this case");
           continue;
         }
-        if (ELEM(0, loops_dst.size(), num_loops_src)) {
+        if (ELEM(0, corner_verts_dst.size(), num_loops_src)) {
           BKE_report(
               reports,
               RPT_ERROR,
@@ -1663,8 +1667,9 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
                                             num_verts_dst,
                                             edges_dst.data(),
                                             edges_dst.size(),
-                                            loops_dst.data(),
-                                            loops_dst.size(),
+                                            corner_verts_dst.data(),
+                                            corner_edges_dst.data(),
+                                            corner_verts_dst.size(),
                                             polys_dst.data(),
                                             polys_dst.size(),
                                             ldata_dst,
@@ -1680,12 +1685,12 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
 
       if (mdef && vg_idx != -1 && !weights[LDATA]) {
         weights[LDATA] = static_cast<float *>(
-            MEM_mallocN(sizeof(*weights[LDATA]) * size_t(loops_dst.size()), __func__));
+            MEM_mallocN(sizeof(*weights[LDATA]) * size_t(corner_verts_dst.size()), __func__));
         BKE_defvert_extract_vgroup_to_loopweights(mdef,
                                                   vg_idx,
                                                   num_verts_dst,
-                                                  loops_dst.data(),
-                                                  loops_dst.size(),
+                                                  corner_verts_dst.data(),
+                                                  corner_verts_dst.size(),
                                                   invert_vgroup,
                                                   weights[LDATA]);
       }
@@ -1700,7 +1705,7 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
                                                mix_mode,
                                                mix_factor,
                                                weights[LDATA],
-                                               loops_dst.size(),
+                                               corner_verts_dst.size(),
                                                use_create,
                                                use_delete,
                                                fromlayers,
@@ -1722,7 +1727,7 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
       const float(*positions_dst)[3] = BKE_mesh_vert_positions(me_dst);
       const int num_verts_dst = me_dst->totvert;
       const blender::Span<MPoly> polys_dst = me_dst->polys();
-      const blender::Span<MLoop> loops_dst = me_dst->loops();
+      const blender::Span<int> corner_verts_dst = me_dst->corner_verts();
 
       if (!geom_map_init[PDATA]) {
         const int num_polys_src = me_src->totpoly;
@@ -1756,7 +1761,7 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
                                             me_dst,
                                             positions_dst,
                                             num_verts_dst,
-                                            loops_dst.data(),
+                                            corner_verts_dst.data(),
                                             polys_dst.data(),
                                             polys_dst.size(),
                                             me_src,
@@ -1770,8 +1775,8 @@ bool BKE_object_data_transfer_ex(struct Depsgraph *depsgraph,
         BKE_defvert_extract_vgroup_to_polyweights(mdef,
                                                   vg_idx,
                                                   num_verts_dst,
-                                                  loops_dst.data(),
-                                                  loops_dst.size(),
+                                                  corner_verts_dst.data(),
+                                                  corner_verts_dst.size(),
                                                   polys_dst.data(),
                                                   polys_dst.size(),
                                                   invert_vgroup,
