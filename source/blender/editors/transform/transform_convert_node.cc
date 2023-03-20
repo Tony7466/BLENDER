@@ -45,6 +45,7 @@ static void create_transform_data_for_node(TransData &td,
                                            const float dpi_fac)
 {
   float locx, locy;
+  /* Account for parents (nested nodes). */
   nodeToView(&node, node.offsetx, node.offsety, &locx, &locy);
 
   /* use top-left corner as the transform origin for nodes */
@@ -134,7 +135,7 @@ static void createTransNodeData(bContext * /*C*/, TransInfo *t)
   tc->data_2d = MEM_cnew_array<TransData2D>(tc->data_len, __func__);
 
   for (const int i : nodes.index_range()) {
-    create_transform_data_for_node(tc->data[i], tc->data_2d[i], *nodes[i], UI_DPI_FAC);
+    create_transform_data_for_node(tc->data[i], tc->data_2d[i], *nodes[i], UI_SCALE_FAC);
   }
 }
 
@@ -189,7 +190,7 @@ static void node_snap_grid_apply(TransInfo *t)
 static void flushTransNodes(TransInfo *t)
 {
   using namespace blender::ed;
-  const float dpi_fac = UI_DPI_FAC;
+  const float dpi_fac = UI_SCALE_FAC;
   SpaceNode *snode = static_cast<SpaceNode *>(t->area->spacedata.first);
 
   TransCustomDataNode *customdata = (TransCustomDataNode *)t->custom.type.data;
@@ -236,8 +237,7 @@ static void flushTransNodes(TransInfo *t)
 
       loc[0] -= node->offsetx;
       loc[1] -= node->offsety;
-
-      if (const bNode *parent_space = node->parent; parent_space != nullptr) {
+      if (const bNode *parent_space = node->parent) {
         nodeFromView(parent_space, loc[0], loc[1], &loc[0], &loc[1]);
       }
 
