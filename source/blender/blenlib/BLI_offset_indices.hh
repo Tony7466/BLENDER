@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <algorithm>
+
 #include "BLI_index_range.hh"
 #include "BLI_span.hh"
 
