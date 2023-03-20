@@ -121,7 +121,7 @@ namespace detail {
  * as output parameters. Usually types in #args are devirtualized (e.g. a `Span<int>` is passed in
  * instead of a `VArray<int>`).
  */
-template<typename... Args, typename... ParamTags, size_t... I, typename ElementFn>
+template<typename MaskT, typename... Args, typename... ParamTags, size_t... I, typename ElementFn>
 /* Perform additional optimizations on this loop because it is a very hot loop. For example, the
  * math node in geometry nodes is processed here. */
 #if (defined(__GNUC__) && !defined(__clang__))
@@ -131,13 +131,24 @@ inline void
 execute_array(TypeSequence<ParamTags...> /*param_tags*/,
               std::index_sequence<I...> /*indices*/,
               ElementFn element_fn,
-              const IndexMask &mask,
+              MaskT mask,
               /* Use restrict to tell the compiler that pointer inputs do not alias each
                * other. This is important for some compiler optimizations. */
               Args &&__restrict... args)
 {
-  /* TODO: Make sure auto-vectorization works. */
-  mask.foreach_index_optimized([&](const int64_t i) { element_fn(args[i]...); });
+  if constexpr (std::is_same_v<std::decay_t<MaskT>, IndexRange>) {
+    /* Having this explicit loop is necessary for MSVC to be able to vectorize this. */
+    const int64_t start = mask.start();
+    const int64_t end = mask.one_after_last();
+    for (int64_t i = start; i < end; i++) {
+      element_fn(args[i]...);
+    }
+  }
+  else {
+    for (const int64_t i : mask) {
+      element_fn(args[i]...);
+    }
+  }
 }
 
 enum class MaterializeArgMode {
@@ -382,6 +393,17 @@ inline void execute_element_fn_as_multi_function(const ElementFn element_fn,
     }
   }()...);
 
+  Vector<IndexRange> mask_ranges;
+  Vector<OffsetSpan<int64_t, int16_t>> mask_spans;
+  mask.foreach_span_or_range([&](const auto segment) {
+    if constexpr (std::is_same_v<std::decay_t<decltype(segment)>, IndexRange>) {
+      mask_ranges.append(segment);
+    }
+    else {
+      mask_spans.append(segment);
+    }
+  });
+
   /* Try execute devirtualized if enabled and the input types allow it. */
   bool executed_devirtualized = false;
   if constexpr (ExecPreset::use_devirtualization) {
@@ -389,11 +411,20 @@ inline void execute_element_fn_as_multi_function(const ElementFn element_fn,
         TypeSequence<ParamTags...>(), std::index_sequence<I...>(), loaded_params);
     executed_devirtualized = call_with_devirtualized_parameters(
         devirtualizers, [&](auto &&...args) {
-          execute_array(TypeSequence<ParamTags...>(),
-                        std::index_sequence<I...>(),
-                        element_fn,
-                        mask,
-                        std::forward<decltype(args)>(args)...);
+          for (const IndexRange &mask_range : mask_ranges) {
+            execute_array(TypeSequence<ParamTags...>(),
+                          std::index_sequence<I...>(),
+                          element_fn,
+                          mask_range,
+                          std::forward<decltype(args)>(args)...);
+          }
+          for (const OffsetSpan<int64_t, int16_t> &mask_span : mask_spans) {
+            execute_array(TypeSequence<ParamTags...>(),
+                          std::index_sequence<I...>(),
+                          element_fn,
+                          mask_span,
+                          std::forward<decltype(args)>(args)...);
+          }
         });
   }
   else {
