@@ -11,6 +11,8 @@
 
 #include "BLI_vector.hh"
 
+#include "renderdoc_api.hh"
+
 #include "gl_batch.hh"
 #include "gl_compute.hh"
 #include "gl_context.hh"
@@ -30,6 +32,7 @@ namespace gpu {
 class GLBackend : public GPUBackend {
  private:
   GLSharedOrphanLists shared_orphan_list_;
+  renderdoc::api::Renderdoc renderdoc_;
 
  public:
   GLBackend()
@@ -154,6 +157,9 @@ class GLBackend : public GPUBackend {
   void render_begin(void) override{};
   void render_end(void) override{};
   void render_step(void) override{};
+
+  void debug_capture_begin();
+  void debug_capture_end();
 
  private:
   static void platform_init();

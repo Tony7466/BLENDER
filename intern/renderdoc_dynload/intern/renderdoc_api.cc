@@ -8,20 +8,23 @@
 #include <iostream>
 
 namespace renderdoc::api {
-void Renderdoc::start_frame_capture()
+void Renderdoc::start_frame_capture(RENDERDOC_DevicePointer device_handle,
+                                    RENDERDOC_WindowHandle window_handle)
 {
   if (!check_loaded()) {
     return;
   }
-  renderdoc_api_->StartFrameCapture(nullptr, nullptr);
+  renderdoc_api_->StartFrameCapture(device_handle, window_handle);
 }
 
-void Renderdoc::end_frame_capture()
+void Renderdoc::end_frame_capture(RENDERDOC_DevicePointer device_handle,
+                                  RENDERDOC_WindowHandle window_handle)
+
 {
   if (!check_loaded()) {
     return;
   }
-  renderdoc_api_->EndFrameCapture(nullptr, nullptr);
+  renderdoc_api_->EndFrameCapture(device_handle, window_handle);
 }
 
 bool Renderdoc::check_loaded()

@@ -19,6 +19,7 @@
 
 #include "CLG_log.h"
 
+#include "gl_backend.hh"
 #include "gl_context.hh"
 #include "gl_uniform_buffer.hh"
 
@@ -382,13 +383,23 @@ void GLContext::debug_group_end()
 
 bool GLContext::debug_capture_begin()
 {
-  renderdoc_.start_frame_capture();
+  GLBackend::get()->debug_capture_begin();
   return true;
+}
+
+void GLBackend::debug_capture_begin()
+{
+  renderdoc_.start_frame_capture(nullptr, nullptr);
 }
 
 void GLContext::debug_capture_end()
 {
-  renderdoc_.end_frame_capture();
+  GLBackend::get()->debug_capture_end();
+}
+
+void GLBackend::debug_capture_end()
+{
+  renderdoc_.end_frame_capture(nullptr, nullptr);
 }
 
 void *GLContext::debug_capture_scope_create(const char * /*name*/)

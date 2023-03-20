@@ -9,6 +9,8 @@
 
 #include "gpu_backend.hh"
 
+#include "renderdoc_api.hh"
+
 #include "vk_common.hh"
 
 #include "shaderc/shaderc.hpp"
@@ -20,6 +22,7 @@ class VKContext;
 class VKBackend : public GPUBackend {
  private:
   shaderc::Compiler shaderc_compiler_;
+  renderdoc::api::Renderdoc renderdoc_api_;
 
  public:
   VKBackend()
@@ -59,9 +62,17 @@ class VKBackend : public GPUBackend {
   void render_end() override;
   void render_step() override;
 
+  void debug_capture_begin(VkInstance vk_instance);
+  void debug_capture_end(VkInstance vk_instance);
+
   shaderc::Compiler &get_shaderc_compiler();
 
   static void capabilities_init(VKContext &context);
+
+  static VKBackend &get()
+  {
+    return *static_cast<VKBackend *>(GPUBackend::get());
+  }
 
  private:
   static void init_platform();
