@@ -131,6 +131,7 @@ void register_node_type_geo_rotate_instances();
 void register_node_type_geo_sample_index();
 void register_node_type_geo_sample_nearest_surface();
 void register_node_type_geo_sample_nearest();
+void register_node_type_geo_sample_random_index();
 void register_node_type_geo_sample_uv_surface();
 void register_node_type_geo_scale_elements();
 void register_node_type_geo_scale_instances();
