@@ -11,7 +11,9 @@
 
 #include "BLI_vector.hh"
 
-#include "renderdoc_api.hh"
+#ifdef WITH_RENDERDOC
+#  include "renderdoc_api.hh"
+#endif
 
 #include "gl_batch.hh"
 #include "gl_compute.hh"
@@ -32,7 +34,9 @@ namespace gpu {
 class GLBackend : public GPUBackend {
  private:
   GLSharedOrphanLists shared_orphan_list_;
+  #ifdef WITH_RENDERDOC
   renderdoc::api::Renderdoc renderdoc_;
+  #endif
 
  public:
   GLBackend()

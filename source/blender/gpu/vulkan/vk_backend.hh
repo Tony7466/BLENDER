@@ -9,7 +9,9 @@
 
 #include "gpu_backend.hh"
 
-#include "renderdoc_api.hh"
+#ifdef WITH_RENDERDOC
+#  include "renderdoc_api.hh"
+#endif
 
 #include "vk_common.hh"
 
@@ -22,7 +24,9 @@ class VKContext;
 class VKBackend : public GPUBackend {
  private:
   shaderc::Compiler shaderc_compiler_;
+#ifdef WITH_RENDERDOC
   renderdoc::api::Renderdoc renderdoc_api_;
+#endif
 
  public:
   VKBackend()

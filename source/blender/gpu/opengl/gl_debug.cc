@@ -389,7 +389,9 @@ bool GLContext::debug_capture_begin()
 
 void GLBackend::debug_capture_begin()
 {
+#ifdef WITH_RENDERDOC
   renderdoc_.start_frame_capture(nullptr, nullptr);
+#endif
 }
 
 void GLContext::debug_capture_end()
@@ -399,7 +401,9 @@ void GLContext::debug_capture_end()
 
 void GLBackend::debug_capture_end()
 {
+#ifdef WITH_RENDERDOC
   renderdoc_.end_frame_capture(nullptr, nullptr);
+#endif
 }
 
 void *GLContext::debug_capture_scope_create(const char * /*name*/)

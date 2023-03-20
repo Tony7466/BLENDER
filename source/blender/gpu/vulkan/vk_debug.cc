@@ -25,7 +25,11 @@ bool VKContext::debug_capture_begin()
 
 void VKBackend::debug_capture_begin(VkInstance vk_instance)
 {
+#ifdef WITH_RENDERDOC
   renderdoc_api_.start_frame_capture(vk_instance, nullptr);
+#else
+  UNUSED_VARS(vk_instance);
+#endif
 }
 
 void VKContext::debug_capture_end()
@@ -35,7 +39,11 @@ void VKContext::debug_capture_end()
 
 void VKBackend::debug_capture_end(VkInstance vk_instance)
 {
+#ifdef WITH_RENDERDOC
   renderdoc_api_.end_frame_capture(vk_instance, nullptr);
+#else
+  UNUSED_VARS(vk_instance);
+#endif
 }
 
 void *VKContext::debug_capture_scope_create(const char * /*name*/)

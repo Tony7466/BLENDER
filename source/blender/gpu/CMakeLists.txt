@@ -40,9 +40,15 @@ set(INC
   ../../../intern/ghost
   ../../../intern/guardedalloc
   ../../../intern/mantaflow/extern
-  ../../../extern/renderdoc/include
-  ../../../intern/renderdoc_dynload/include
 )
+
+if(WITH_RENDERDOC)
+  list(APPEND INC
+    ../../../extern/renderdoc/include
+    ../../../intern/renderdoc_dynload/include
+  )
+  add_definitions(-DWITH_RENDERDOC)
+endif()
 
 set(INC_SYS
   ${Epoxy_INCLUDE_DIRS}
@@ -739,11 +745,14 @@ target_link_libraries(bf_gpu PUBLIC
   bf_compositor_shaders
   bf_draw_shaders
   bf_gpu_shaders
-  bf_intern_renderdoc_dynload
 )
 
 if(WITH_OPENCOLORIO)
   target_link_libraries(bf_gpu PUBLIC bf_ocio_shaders)
+endif()
+
+if(WITH_RENDERDOC)
+  target_link_libraries(bf_gpu PUBLIC bf_intern_renderdoc_dynload)
 endif()
 
 
@@ -784,7 +793,6 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
     bf_intern_clog
     bf_blenlib
     bf_intern_ghost
-    bf_intern_renderdoc_dynload
     ${PLATFORM_LINKLIBS}
   )
   target_include_directories(shader_builder PRIVATE ${INC} ${CMAKE_CURRENT_BINARY_DIR})
