@@ -570,6 +570,34 @@ class RENDER_PT_eevee_indirect_lighting(RenderButtonsPanel, Panel):
         col.prop(props, "gi_filter_quality")
 
 
+class RENDER_PT_eevee_next_indirect_lighting(RenderButtonsPanel, Panel):
+    bl_label = "Indirect Lighting"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
+
+    @classmethod
+    def poll(cls, context):
+        return (context.engine in cls.COMPAT_ENGINES)
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False  # No animation.
+
+        scene = context.scene
+        props = scene.eevee
+
+        col = layout.column()
+        col.operator("scene.light_cache_bake", text="Bake Indirect Lighting", icon='RENDER_STILL')
+        col.operator("scene.light_cache_free", text="Delete Lighting Cache")
+
+        cache_info = scene.eevee.gi_cache_info
+        if cache_info:
+            col.label(text=cache_info)
+
+        col.prop(props, "gi_auto_bake")
+
+
 class RENDER_PT_eevee_indirect_lighting_display(RenderButtonsPanel, Panel):
     bl_label = "Display"
     bl_parent_id = "RENDER_PT_eevee_indirect_lighting"
@@ -905,6 +933,7 @@ classes = (
     RENDER_PT_eevee_next_shadows,
     RENDER_PT_eevee_indirect_lighting,
     RENDER_PT_eevee_indirect_lighting_display,
+    RENDER_PT_eevee_next_indirect_lighting,
     RENDER_PT_eevee_film,
     RENDER_PT_eevee_next_film,
 

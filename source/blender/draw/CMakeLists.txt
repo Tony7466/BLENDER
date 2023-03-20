@@ -146,6 +146,7 @@ set(SRC
   engines/eevee_next/eevee_instance.cc
   engines/eevee_next/eevee_irradiance_cache.cc
   engines/eevee_next/eevee_light.cc
+  engines/eevee_next/eevee_lightcache.cc
   engines/eevee_next/eevee_material.cc
   engines/eevee_next/eevee_motion_blur.cc
   engines/eevee_next/eevee_pipeline.cc

@@ -83,6 +83,7 @@
 #include "RE_pipeline.h"
 
 #include "engines/eevee/eevee_lightcache.h"
+#include "engines/eevee_next/eevee_lightcache.h"
 
 #include "render_intern.hh" /* own include */
 
@@ -1393,15 +1394,23 @@ static int light_cache_bake_exec(bContext *C, wmOperator *op)
 
   G.is_break = false;
 
+  RenderEngineType *engine_type = RE_engines_find(scene->r.engine);
+  bool use_eevee_next = STREQ(engine_type->idname, "BLENDER_EEVEE_NEXT");
+
   /* TODO: abort if selected engine is not eevee. */
-  void *rj = EEVEE_lightbake_job_data_alloc(bmain, view_layer, scene, false, scene->r.cfra);
+  void *rj = ((use_eevee_next) ?
+                  EEVEE_NEXT_lightbake_job_data_alloc :
+                  EEVEE_lightbake_job_data_alloc)(bmain, view_layer, scene, false, scene->r.cfra);
 
   light_cache_bake_tag_cache(scene, op);
 
   bool stop = false, do_update;
   float progress; /* Not actually used. */
-  EEVEE_lightbake_job(rj, &stop, &do_update, &progress);
-  EEVEE_lightbake_job_data_free(rj);
+  /* Do the job. */
+  ((use_eevee_next) ? EEVEE_NEXT_lightbake_job :
+                      EEVEE_lightbake_job)(rj, &stop, &do_update, &progress);
+  /* Free baking data. Result is already stored in the scene data. */
+  ((use_eevee_next) ? EEVEE_NEXT_lightbake_job_data_free : EEVEE_lightbake_job_data_free)(rj);
 
   /* No redraw needed, we leave state as we entered it. */
   ED_update_for_newframe(bmain, CTX_data_depsgraph_pointer(C));
@@ -1420,7 +1429,11 @@ static int light_cache_bake_invoke(bContext *C, wmOperator *op, const wmEvent * 
   Scene *scene = CTX_data_scene(C);
   int delay = RNA_int_get(op->ptr, "delay");
 
-  wmJob *wm_job = EEVEE_lightbake_job_create(
+  RenderEngineType *engine_type = RE_engines_find(scene->r.engine);
+  bool use_eevee_next = STREQ(engine_type->idname, "BLENDER_EEVEE_NEXT");
+
+  wmJob *wm_job = ((use_eevee_next) ? EEVEE_NEXT_lightbake_job_create :
+                                      EEVEE_lightbake_job_create)(
       wm, win, bmain, view_layer, scene, delay, scene->r.cfra);
 
   if (!wm_job) {
