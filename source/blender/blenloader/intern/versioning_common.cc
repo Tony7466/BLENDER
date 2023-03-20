@@ -66,7 +66,7 @@ ARegion *do_versions_ensure_region(ListBase *regionbase,
     }
   }
 
-  ARegion *new_region = static_cast<ARegion *>(MEM_callocN(sizeof(ARegion), allocname));
+  ARegion *new_region = MEM_cnew<ARegion>(allocname);
   new_region->regiontype = region_type;
   BLI_insertlinkafter(regionbase, link_after_region, new_region);
   return new_region;

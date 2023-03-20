@@ -2233,29 +2233,25 @@ static void version_ensure_missing_regions(ScrArea *area, SpaceLink *sl)
 
   switch (sl->spacetype) {
     case SPACE_FILE: {
-      ARegion *new_region;
-
-      new_region = do_versions_add_region_if_not_found(
-          regionbase, RGN_TYPE_UI, "versioning: UI region for file", RGN_TYPE_TOOLS);
-      if (new_region) {
-        new_region->alignment = RGN_ALIGN_TOP;
-        new_region->flag |= RGN_FLAG_DYNAMIC_SIZE;
+      if (ARegion *ui_region = do_versions_add_region_if_not_found(
+              regionbase, RGN_TYPE_UI, "versioning: UI region for file", RGN_TYPE_TOOLS)) {
+        ui_region->alignment = RGN_ALIGN_TOP;
+        ui_region->flag |= RGN_FLAG_DYNAMIC_SIZE;
       }
 
-      new_region = do_versions_add_region_if_not_found(
-          regionbase, RGN_TYPE_EXECUTE, "versioning: execute region for file", RGN_TYPE_UI);
-      if (new_region) {
-        new_region->alignment = RGN_ALIGN_BOTTOM;
-        new_region->flag = RGN_FLAG_DYNAMIC_SIZE;
+      if (ARegion *exec_region = do_versions_add_region_if_not_found(
+              regionbase, RGN_TYPE_EXECUTE, "versioning: execute region for file", RGN_TYPE_UI)) {
+        exec_region->alignment = RGN_ALIGN_BOTTOM;
+        exec_region->flag = RGN_FLAG_DYNAMIC_SIZE;
       }
 
-      new_region = do_versions_add_region_if_not_found(regionbase,
-                                                       RGN_TYPE_TOOL_PROPS,
-                                                       "versioning: tool props region for file",
-                                                       RGN_TYPE_EXECUTE);
-      if (new_region) {
-        new_region->alignment = RGN_ALIGN_RIGHT;
-        new_region->flag = RGN_FLAG_HIDDEN;
+      if (ARegion *tool_props_region = do_versions_add_region_if_not_found(
+              regionbase,
+              RGN_TYPE_TOOL_PROPS,
+              "versioning: tool props region for file",
+              RGN_TYPE_EXECUTE)) {
+        tool_props_region->alignment = RGN_ALIGN_RIGHT;
+        tool_props_region->flag = RGN_FLAG_HIDDEN;
       }
       break;
     }
