@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "BKE_gpencil_legacy.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_image.h"
 #include "DRW_gpu_wrapper.hh"
 #include "DRW_render.h"
@@ -117,15 +117,16 @@ class ObjectModule {
                     Framebuffer &main_fb,
                     PassSortable &main_ps)
   {
-    Object *object = object_ref.object;
-    bGPdata *gpd = static_cast<bGPdata *>(object->data);
-    ListBaseWrapper<const bGPDlayer> layers(&gpd->layers);
+    using namespace blender::bke::gpencil;
 
-    if (BLI_listbase_is_empty(&gpd->layers)) {
+    Object *object = object_ref.object;
+    GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+
+    if (grease_pencil.drawings().is_empty()) {
       return;
     }
 
-    const bool is_stroke_order_3d = (gpd->draw_mode == GP_DRAWMODE_3D);
+    const bool is_stroke_order_3d = true; /* TODO */
     bool do_material_holdout = false;
     bool do_layer_blending = false;
     bool object_has_vfx = false;  // TODO vfx.object_has_vfx(gpd);
@@ -136,9 +137,8 @@ class ObjectModule {
     }
 
     uint layer_offset = layers_.object_offset_get();
-    for (const bGPDlayer *layer : layers) {
-      layers_.sync(object, layer, do_layer_blending);
-    }
+    grease_pencil.runtime->root_group().foreach_layer_pre_order(
+        [&](Layer &layer) { layers_.sync(object, layer, do_layer_blending); });
 
     /* Order rendering using camera Z distance. */
     float3 position = float3(object->object_to_world[3]);
@@ -160,45 +160,43 @@ class ObjectModule {
     object_subpass.state_set(state);
     object_subpass.shader_set(shaders_.static_shader_get(GREASE_PENCIL));
 
-    Vector<FrameData, 5> frames;
-    displayed_frame_select(frames, layers);
+    grease_pencil.foreach_visible_drawing(
+        current_frame_, [&](GreasePencilDrawing &drawing, bke::gpencil::Layer &layer) {
+          /* TODO(fclem): Pass per frame object matrix here. */
+          ResourceHandle handle = manager.resource_handle(object_ref);
+          gpObject &ob = objects_buf_.get_or_resize(handle.resource_index());
+          ob.is_shadeless = false;
+          ob.stroke_order3d = false;
+          ob.tint = float4(1.0);  // frame_tint_get(gpd, frame.gpf, current_frame_);
+          ob.layer_offset = layer_offset;
+          ob.material_offset = material_offset;
 
-    for (const FrameData &frame : frames) {
-      /* TODO(fclem): Pass per frame object matrix here. */
-      ResourceHandle handle = manager.resource_handle(object_ref);
-      gpObject &ob = objects_buf_.get_or_resize(handle.resource_index());
-      ob.is_shadeless = false;
-      ob.stroke_order3d = false;
-      ob.tint = frame_tint_get(gpd, frame.gpf, current_frame_);
-      ob.layer_offset = layer_offset;
-      ob.material_offset = material_offset;
+          GPUVertBuf *position_tx = DRW_cache_gpencil_position_buffer_get(object, current_frame_);
+          GPUVertBuf *color_tx = DRW_cache_gpencil_color_buffer_get(object, current_frame_);
+          GPUBatch *geom = DRW_cache_gpencil_get(object, current_frame_);
 
-      GPUVertBuf *position_tx = DRW_cache_gpencil_position_buffer_get(object, frame.gpf->framenum);
-      GPUVertBuf *color_tx = DRW_cache_gpencil_color_buffer_get(object, frame.gpf->framenum);
-      GPUBatch *geom = DRW_cache_gpencil_get(object, frame.gpf->framenum);
+          if (do_layer_blending) {
+            // for (const LayerData &layer : frame.layers) {
+            // UNUSED_VARS(layer);
+            // if (has_blending(layer)) {
+            //   object_subpass.framebuffer_set(*vfx_fb.current());
+            // }
 
-      if (do_layer_blending) {
-        for (const LayerData &layer : frame.layers) {
-          UNUSED_VARS(layer);
-          // if (has_blending(layer)) {
-          //   object_subpass.framebuffer_set(*vfx_fb.current());
-          // }
+            /* TODO(fclem): Only draw subrange of geometry for this layer. */
+            object_subpass.draw(geom, handle);
 
-          /* TODO(fclem): Only draw subrange of geometry for this layer. */
-          object_subpass.draw(geom, handle);
-
-          // if (has_blending(layer)) {
-          //   layer_blend_sync(object_ref, object_subpass);
-          // }
-        }
-      }
-      else {
-        /* Fast path. */
-        object_subpass.bind_texture("gp_pos_tx", position_tx);
-        object_subpass.bind_texture("gp_col_tx", color_tx);
-        object_subpass.draw(geom, handle);
-      }
-    }
+            // if (has_blending(layer)) {
+            //   layer_blend_sync(object_ref, object_subpass);
+            // }
+            // }
+          }
+          else {
+            /* Fast path. */
+            object_subpass.bind_texture("gp_pos_tx", position_tx);
+            object_subpass.bind_texture("gp_col_tx", color_tx);
+            object_subpass.draw(geom, handle);
+          }
+        });
 
 #if 0
     if (object_has_vfx) {
@@ -262,43 +260,44 @@ class ObjectModule {
   }
 
  private:
-  static float4 frame_tint_get(const bGPdata *gpd, const bGPDframe *gpf, int /* current_frame */)
-  {
-    /* TODO(fclem): Onion color should rely on time and or frame id and not on runtime.onion_id.
-     * This should be evaluated at draw time as it is just a way of displaying the data. */
-    const bool use_onion_custom_col = (gpd->onion_flag & GP_ONION_GHOST_PREVCOL) != 0;
-    const bool use_onion_fade = (gpd->onion_flag & GP_ONION_FADE) != 0;
-    const bool use_next_col = gpf->runtime.onion_id > 0.0f;
+  // static float4 frame_tint_get(const bGPdata *gpd, const bGPDframe *gpf, int /* current_frame
+  // */)
+  // {
+  //   /* TODO(fclem): Onion color should rely on time and or frame id and not on runtime.onion_id.
+  //    * This should be evaluated at draw time as it is just a way of displaying the data. */
+  //   const bool use_onion_custom_col = (gpd->onion_flag & GP_ONION_GHOST_PREVCOL) != 0;
+  //   const bool use_onion_fade = (gpd->onion_flag & GP_ONION_FADE) != 0;
+  //   const bool use_next_col = gpf->runtime.onion_id > 0.0f;
 
-    const float *onion_col_custom = (use_onion_custom_col) ?
-                                        (use_next_col ? gpd->gcolor_next : gpd->gcolor_prev) :
-                                        U.gpencil_new_layer_col;
+  //   const float *onion_col_custom = (use_onion_custom_col) ?
+  //                                       (use_next_col ? gpd->gcolor_next : gpd->gcolor_prev) :
+  //                                       U.gpencil_new_layer_col;
 
-    float4 tint = {UNPACK3(onion_col_custom), 1.0f};
+  //   float4 tint = {UNPACK3(onion_col_custom), 1.0f};
 
-    tint[3] = use_onion_fade ? (1.0f / abs(gpf->runtime.onion_id)) : 0.5f;
-    tint[3] *= gpd->onion_factor;
-    tint[3] = (gpd->onion_factor > 0.0f) ? clamp_f(tint[3], 0.1f, 1.0f) :
-                                           clamp_f(tint[3], 0.01f, 1.0f);
-    return tint;
-  }
+  //   tint[3] = use_onion_fade ? (1.0f / abs(gpf->runtime.onion_id)) : 0.5f;
+  //   tint[3] *= gpd->onion_factor;
+  //   tint[3] = (gpd->onion_factor > 0.0f) ? clamp_f(tint[3], 0.1f, 1.0f) :
+  //                                          clamp_f(tint[3], 0.01f, 1.0f);
+  //   return tint;
+  // }
 
-  void displayed_frame_select(Vector<FrameData, 5> &frames,
-                              ListBaseWrapper<const bGPDlayer> layers)
-  {
-    /* TODO(fclem): Select onion skin frames. */
-    /** \note Change data layout to be Frame major instead of Layer major.
-     * Hopefully the GPencil data layout will be closer to that in the future. */
-    FrameData frame_data;
-    frame_data.gpf = layers.get(0)->actframe;
-    for (const bGPDlayer *layer : layers) {
-      LayerData layer_data;
-      layer_data.gpf = layer->actframe;
-      layer_data.gpl = layer;
-      frame_data.layers.append(layer_data);
-    }
-    frames.append(frame_data);
-  }
+  // void displayed_frame_select(Vector<FrameData, 5> &frames,
+  //                             ListBaseWrapper<const bGPDlayer> layers)
+  // {
+  //   /* TODO(fclem): Select onion skin frames. */
+  //   /** \note Change data layout to be Frame major instead of Layer major.
+  //    * Hopefully the GPencil data layout will be closer to that in the future. */
+  //   FrameData frame_data;
+  //   frame_data.gpf = layers.get(0)->actframe;
+  //   for (const bGPDlayer *layer : layers) {
+  //     LayerData layer_data;
+  //     layer_data.gpf = layer->actframe;
+  //     layer_data.gpl = layer;
+  //     frame_data.layers.append(layer_data);
+  //   }
+  //   frames.append(frame_data);
+  // }
 };
 
 }  // namespace blender::gpencil

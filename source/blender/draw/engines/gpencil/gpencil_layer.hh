@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "BKE_gpencil_legacy.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_image.h"
 #include "DRW_gpu_wrapper.hh"
 #include "DRW_render.h"
@@ -30,17 +30,17 @@ class LayerModule {
     layers_buf_.clear();
   }
 
-  void sync(const Object *object, const bGPDlayer *gpl, bool &do_layer_blending)
+  void sync(const Object *object, const bke::gpencil::Layer &layer, bool &do_layer_blending)
   {
-    UNUSED_VARS(object, gpl);
+    UNUSED_VARS(object, layer);
     /* TODO(fclem): All of this is placeholder. */
-    gpLayer layer;
-    layer.vertex_color_opacity = 0.0f;
-    layer.opacity = 1.0f;
-    layer.thickness_offset = 0.0f;
-    layer.tint = float4(1.0f, 1.0f, 1.0f, 0.0f);
+    gpLayer gp_layer;
+    gp_layer.vertex_color_opacity = 0.0f;
+    gp_layer.opacity = 1.0f;
+    gp_layer.thickness_offset = 0.0f;
+    gp_layer.tint = float4(1.0f, 1.0f, 1.0f, 0.0f);
 
-    layers_buf_.append(layer);
+    layers_buf_.append(gp_layer);
 
     do_layer_blending = false;
   }

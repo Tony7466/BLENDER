@@ -115,19 +115,19 @@ static void grease_pencil_blend_write(BlendWriter *writer, ID *id, const void *i
     GreasePencilLayerTreeNode *node = grease_pencil->layer_tree_storage.nodes[i];
     switch (node->type) {
       case GREASE_PENCIL_LAYER_TREE_LEAF: {
-        GreasePencilLayerTreeLeaf *node_leaf = reinterpret_cast<GreasePencilLayerTreeLeaf
-        *>(node); BLO_write_struct(writer, GreasePencilLayerTreeLeaf, node_leaf);
+        GreasePencilLayerTreeLeaf *node_leaf = reinterpret_cast<GreasePencilLayerTreeLeaf *>(node);
+        BLO_write_struct(writer, GreasePencilLayerTreeLeaf, node_leaf);
         /* Write layer data. */
         BLO_write_int32_array(
             writer, node_leaf->layer.frames_storage.size, node_leaf->layer.frames_storage.keys);
         BLO_write_int32_array(
-            writer, node_leaf->layer.frames_storage.size,
-            node_leaf->layer.frames_storage.values);
+            writer, node_leaf->layer.frames_storage.size, node_leaf->layer.frames_storage.values);
         break;
       }
       case GREASE_PENCIL_LAYER_TREE_GROUP: {
-        GreasePencilLayerTreeGroup *group = reinterpret_cast<GreasePencilLayerTreeGroup
-        *>(node); BLO_write_struct(writer, GreasePencilLayerTreeGroup, group); break;
+        GreasePencilLayerTreeGroup *group = reinterpret_cast<GreasePencilLayerTreeGroup *>(node);
+        BLO_write_struct(writer, GreasePencilLayerTreeGroup, group);
+        break;
       }
     }
   }
@@ -171,20 +171,19 @@ static void grease_pencil_blend_read_data(BlendDataReader *reader, ID *id)
     GreasePencilLayerTreeNode *node = grease_pencil->layer_tree_storage.nodes[i];
     switch (node->type) {
       case GREASE_PENCIL_LAYER_TREE_LEAF: {
-        GreasePencilLayerTreeLeaf *node_leaf = reinterpret_cast<GreasePencilLayerTreeLeaf
-        *>(node); BLO_read_data_address(reader, &node_leaf);
+        GreasePencilLayerTreeLeaf *node_leaf = reinterpret_cast<GreasePencilLayerTreeLeaf *>(node);
+        BLO_read_data_address(reader, &node_leaf);
         /* Read layer data. */
         BLO_read_int32_array(
-            reader, node_leaf->layer.frames_storage.size,
-            &node_leaf->layer.frames_storage.keys);
+            reader, node_leaf->layer.frames_storage.size, &node_leaf->layer.frames_storage.keys);
         BLO_read_int32_array(
-            reader, node_leaf->layer.frames_storage.size,
-            &node_leaf->layer.frames_storage.values);
+            reader, node_leaf->layer.frames_storage.size, &node_leaf->layer.frames_storage.values);
         break;
       }
       case GREASE_PENCIL_LAYER_TREE_GROUP: {
-        GreasePencilLayerTreeGroup *group = reinterpret_cast<GreasePencilLayerTreeGroup
-        *>(node); BLO_read_data_address(reader, &group); break;
+        GreasePencilLayerTreeGroup *group = reinterpret_cast<GreasePencilLayerTreeGroup *>(node);
+        BLO_read_data_address(reader, &group);
+        break;
       }
     }
   }
