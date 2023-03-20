@@ -190,7 +190,7 @@ template<typename... ParamTags, size_t... I, typename ElementFn, typename... Loa
 inline void execute_materialized(TypeSequence<ParamTags...> /* param_tags */,
                                  std::index_sequence<I...> /* indices */,
                                  const ElementFn element_fn,
-                                 const IndexMask mask,
+                                 const OffsetSpan<int64_t, int16_t> mask,
                                  const std::tuple<LoadedParams...> &loaded_params)
 {
 
@@ -237,14 +237,17 @@ inline void execute_materialized(TypeSequence<ParamTags...> /* param_tags */,
       }(),
       ...);
 
+  const index_mask::IndexRangeChecker range_checker;
+  index_mask::IndexMaskFromSegment index_mask_from_segment;
+  const int64_t index_mask_chunk_id = index_mask::index_to_chunk_id(mask.offset());
+
   /* Outer loop over all chunks. */
   for (int64_t chunk_start = 0; chunk_start < mask_size; chunk_start += MaxChunkSize) {
     const int64_t chunk_end = std::min<int64_t>(chunk_start + MaxChunkSize, mask_size);
     const int64_t chunk_size = chunk_end - chunk_start;
-    const IndexMask sliced_mask = mask.slice(chunk_start, chunk_size);
+    const OffsetSpan<int64_t, int16_t> sliced_mask = mask.slice(chunk_start, chunk_size);
     const int64_t mask_start = sliced_mask[0];
-    const std::optional<IndexRange> sliced_mask_range = sliced_mask.to_range();
-    const bool sliced_mask_is_range = sliced_mask_range.has_value();
+    const bool sliced_mask_is_range = range_checker.check(sliced_mask.base_span());
 
     /* Move mutable data into temporary array. */
     if (!sliced_mask_is_range) {
@@ -263,6 +266,8 @@ inline void execute_materialized(TypeSequence<ParamTags...> /* param_tags */,
           }(),
           ...);
     }
+
+    bool updated_mask_from_segment = false;
 
     execute_materialized_impl(
         TypeSequence<ParamTags...>(),
@@ -286,9 +291,14 @@ inline void execute_materialized(TypeSequence<ParamTags...> /* param_tags */,
               return arg_info.internal_span_data + mask_start;
             }
             const GVArrayImpl &varray_impl = *std::get<I>(loaded_params);
+            if (!updated_mask_from_segment) {
+              index_mask_from_segment.update(index_mask_chunk_id, sliced_mask.base_span());
+              updated_mask_from_segment = true;
+            }
             /* As a fallback, do a virtual function call to retrieve all elements in the current
              * chunk. The elements are stored in a temporary buffer reused for every chunk. */
-            varray_impl.materialize_compressed_to_uninitialized(sliced_mask, tmp_buffer);
+            varray_impl.materialize_compressed_to_uninitialized(index_mask_from_segment.mask,
+                                                                tmp_buffer);
             /* Remember that this parameter has been materialized, so that the values are
              * destructed properly when the chunk is done. */
             arg_info.mode = MaterializeArgMode::Materialized;
@@ -437,11 +447,13 @@ inline void execute_element_fn_as_multi_function(const ElementFn element_fn,
     /* The materialized method is most common because it avoids most virtual function overhead but
      * still instantiates the function only once. */
     if constexpr (ExecPreset::fallback_mode == exec_presets::FallbackMode::Materialized) {
-      execute_materialized(TypeSequence<ParamTags...>(),
-                           std::index_sequence<I...>(),
-                           element_fn,
-                           mask,
-                           loaded_params);
+      mask.foreach_span([&](const OffsetSpan<int64_t, int16_t> mask_segment) {
+        execute_materialized(TypeSequence<ParamTags...>(),
+                             std::index_sequence<I...>(),
+                             element_fn,
+                             mask_segment,
+                             loaded_params);
+      });
     }
     else {
       /* This fallback is slower because it uses virtual method calls for every element. */

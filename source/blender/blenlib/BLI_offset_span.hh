@@ -41,6 +41,16 @@ template<typename T, typename BaseT> class OffsetSpan {
     return T(data_[i]) + offset_;
   }
 
+  OffsetSpan slice(const IndexRange &range) const
+  {
+    return {offset_, data_.slice(range)};
+  }
+
+  OffsetSpan slice(const int64_t start, const int64_t size) const
+  {
+    return {offset_, data_.slice(start, size)};
+  }
+
   class Iterator {
    private:
     T offset_;
