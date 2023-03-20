@@ -585,9 +585,10 @@ static bNodeSocket *determine_socket_to_view(bNode &node_to_view)
       is_currently_viewed = true;
       break;
     }
-    if (!is_currently_viewed) {
-      return &output_socket;
+    if (is_currently_viewed) {
+      continue;
     }
+    return &output_socket;
   }
   return nullptr;
 }
