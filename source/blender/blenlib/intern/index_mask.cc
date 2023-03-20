@@ -466,6 +466,12 @@ IndexMask IndexMask::from_bools(const IndexMask &universe,
                                 const VArray<bool> &bools,
                                 IndexMaskMemory &memory)
 {
+  if (const std::optional<bool> single_value = bools.get_if_single()) {
+    if (*single_value) {
+      return universe;
+    }
+    return {};
+  }
   return IndexMask::from_predicate(
       universe, GrainSize(512), memory, [&](const int64_t index) { return bools[index]; });
 }
