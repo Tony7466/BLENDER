@@ -58,6 +58,7 @@ set(SRC
   intern/MOD_gpenciltint.c
   intern/MOD_gpencilweight_angle.c
   intern/MOD_gpencilweight_proximity.c
+  intern/MOD_gpencilsurdeform.c
 
   MOD_gpencil_lineart.h
   MOD_gpencil_modifiertypes.h
