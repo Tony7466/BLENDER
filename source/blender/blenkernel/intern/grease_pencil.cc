@@ -299,7 +299,26 @@ Layer &TreeNode::as_layer()
 
 }  // namespace blender::bke::gpencil
 
-// Span<GreasePencilDrawingOrReference> blender::bke::GreasePencil::drawings() const
-// {
-//   return Span<GreasePencilDrawingOrReference>{this->drawing_array, this->drawing_array_size};
-// }
+blender::Span<GreasePencilDrawingOrReference *> GreasePencil::drawings() const
+{
+  return blender::Span<GreasePencilDrawingOrReference *>{this->drawing_array,
+                                                         this->drawing_array_size};
+}
+
+void GreasePencil::foreach_visible_drawing(
+    int frame,
+    blender::FunctionRef<void(GreasePencilDrawing &, blender::bke::gpencil::Layer &)> function)
+{
+  blender::Span<GreasePencilDrawingOrReference *> drawings = this->drawings();
+  this->runtime->root_group().foreach_layer_pre_order([&](blender::bke::gpencil::Layer &layer) {
+    if (layer.frames().contains(frame)) {
+      int index = layer.frames().lookup(frame);
+      GreasePencilDrawingOrReference *drawing_or_reference = drawings[index];
+      if (drawing_or_reference->type == GREASE_PENCIL_DRAWING) {
+        GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(
+            drawing_or_reference);
+        function(*drawing, layer);
+      }
+    }
+  });
+}

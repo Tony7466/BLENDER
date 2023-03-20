@@ -10,10 +10,14 @@
 #include "DNA_curves_types.h"
 
 #ifdef __cplusplus
+#  include "BLI_function_ref.hh"
 #  include "BLI_map.hh"
 #  include "BLI_span.hh"
 namespace blender::bke {
 class GreasePencilRuntime;
+namespace gpencil {
+class Layer;
+}
 }  // namespace blender::bke
 using GreasePencilRuntimeHandle = blender::bke::GreasePencilRuntime;
 #else
@@ -153,6 +157,12 @@ typedef struct GreasePencil {
   int drawing_array_size;
   char _pad[4];
 
+#ifdef __cplusplus
+  blender::Span<GreasePencilDrawingOrReference *> drawings() const;
+  void foreach_visible_drawing(
+      int frame,
+      blender::FunctionRef<void(GreasePencilDrawing &, blender::bke::gpencil::Layer &)> function);
+#endif
   /* Only used for storage in the .blend file. */
   GreasePencilLayerTreeStorage layer_tree_storage;
 

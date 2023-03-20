@@ -23,7 +23,8 @@ class LayerGroup;
 class Layer;
 
 class TreeNode : public ::GreasePencilLayerTreeNode {
-  using ItemIterFn = FunctionRef<void(TreeNode &)>;
+  using TreeNodeIterFn = FunctionRef<void(TreeNode &)>;
+  using LayerIterFn = FunctionRef<void(Layer &)>;
 
  protected:
   Vector<std::unique_ptr<TreeNode>> children_;
@@ -160,22 +161,22 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
     return PreOrderRange(this);
   }
 
-  void foreach_children_pre_order(ItemIterFn function)
+  void foreach_children_pre_order(TreeNodeIterFn function)
   {
     for (auto &child : children_) {
       child->foreach_children_pre_order_recursive_(function);
     }
   }
 
-  void foreach_leaf_pre_order(ItemIterFn function)
+  void foreach_layer_pre_order(LayerIterFn function)
   {
     for (auto &child : children_) {
-      child->foreach_leaf_pre_order_recursive_(function);
+      child->foreach_layer_pre_order_recursive_(function);
     }
   }
 
  private:
-  void foreach_children_pre_order_recursive_(ItemIterFn function)
+  void foreach_children_pre_order_recursive_(TreeNodeIterFn function)
   {
     function(*this);
     for (auto &child : children_) {
@@ -183,13 +184,13 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
     }
   }
 
-  void foreach_leaf_pre_order_recursive_(ItemIterFn function)
+  void foreach_layer_pre_order_recursive_(LayerIterFn function)
   {
-    if (children_.size() == 0) {
-      function(*this);
+    if (this->is_layer()) {
+      function(this->as_layer());
     }
     for (auto &child : children_) {
-      child->foreach_children_pre_order_recursive_(function);
+      child->foreach_layer_pre_order_recursive_(function);
     }
   }
 };
@@ -247,6 +248,11 @@ class Layer : public TreeNode, ::GreasePencilLayer {
   bool operator!=(const Layer &other) const
   {
     return this != &other;
+  }
+
+  const Map<int, int> &frames()
+  {
+    return frames_;
   }
 
   bool insert_frame(int frame_number, int index)
