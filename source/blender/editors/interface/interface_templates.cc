@@ -6187,8 +6187,10 @@ void uiTemplateRunningJobs(uiLayout *layout, bContext *C)
     if (WM_jobs_test(wm, scene, WM_JOB_TYPE_RENDER)) {
       handle_event = B_STOPRENDER;
       icon = ICON_SCENE;
-      op_name = "RENDER_OT_view_show";
-      op_description = "Show the render window";
+      if (U.render_display_type != USER_RENDER_DISPLAY_NONE) {
+        op_name = "RENDER_OT_view_show";
+        op_description = "Show the render window";
+      }
       break;
     }
     if (WM_jobs_test(wm, scene, WM_JOB_TYPE_COMPOSITE)) {
