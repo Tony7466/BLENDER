@@ -485,15 +485,15 @@ void CurvesConstraintSolver::solve_step(bke::CurvesGeometry &curves,
         BLI_assert_unreachable();
         break;
       case GoalType::Slip:
-        geometry::curve_constraints::solve_slip_constraints(curves.points_by_curve(),
-                                                            goal_selection,
-                                                            goals_,
-                                                            goal_factors_,
-                                                            point_factors,
-                                                            step_size,
-                                                            curves.positions_for_write(),
-                                                            closest_points_,
-                                                            closest_factors_);
+        geometry::curve_constraints::solve_keyhole_constraints(curves.points_by_curve(),
+                                                               goal_selection,
+                                                               goals_,
+                                                               goal_factors_,
+                                                               point_factors,
+                                                               step_size,
+                                                               curves.positions_for_write(),
+                                                               closest_points_,
+                                                               closest_factors_);
         break;
     }
     if (solve_length) {

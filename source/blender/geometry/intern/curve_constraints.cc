@@ -237,15 +237,15 @@ void solve_collision_constraints(const OffsetIndices<int> points_by_curve,
 }
 
 #if 1
-void solve_slip_constraints(const OffsetIndices<int> points_by_curve,
-                            const IndexMask curve_selection,
-                            const Span<float3> goals,
-                            const Span<float> goal_factors,
-                            const VArray<float> point_factors,
-                            const float step_size,
-                            MutableSpan<float3> positions_cu,
-                            MutableSpan<int> closest_points,
-                            MutableSpan<float> closest_factors)
+void solve_keyhole_constraints(const OffsetIndices<int> points_by_curve,
+                               const IndexMask curve_selection,
+                               const Span<float3> goals,
+                               const Span<float> goal_factors,
+                               const VArray<float> point_factors,
+                               const float step_size,
+                               MutableSpan<float3> positions_cu,
+                               MutableSpan<int> closest_points,
+                               MutableSpan<float> closest_factors)
 {
   /* Compensation factor for step-size dependent softness (see XPBD paper) */
   const float alpha_compensation = 1.0f /* / (step_size * step_size)*/;
@@ -329,10 +329,10 @@ void solve_slip_constraints(const OffsetIndices<int> points_by_curve,
   });
 }
 #else
-void solve_slip_constraints(const OffsetIndices<int> points_by_curve,
-                            const IndexMask curve_selection,
-                            const Span<float3> goals,
-                            MutableSpan<float3> positions_cu)
+void solve_keyhole_constraints(const OffsetIndices<int> points_by_curve,
+                               const IndexMask curve_selection,
+                               const Span<float3> goals,
+                               MutableSpan<float3> positions_cu)
 {
   threading::parallel_for(curve_selection.index_range(), 64, [&](const IndexRange range) {
     for (const int curve_i : curve_selection.slice(range)) {

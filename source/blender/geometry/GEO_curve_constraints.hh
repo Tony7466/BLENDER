@@ -24,14 +24,14 @@ void solve_collision_constraints(OffsetIndices<int> points_by_curve,
                                  const bke::CurvesSurfaceTransforms &transforms,
                                  MutableSpan<float3> positions_cu);
 
-void solve_slip_constraints(OffsetIndices<int> points_by_curve,
-                            IndexMask curve_selection,
-                            Span<float3> goals,
-                            Span<float> goal_factors,
-                            VArray<float> point_factors,
-                            float step_size,
-                            MutableSpan<float3> positions_cu,
-                            MutableSpan<int> closest_points,
-                            MutableSpan<float> closest_factors);
+void solve_keyhole_constraints(OffsetIndices<int> points_by_curve,
+                               IndexMask curve_selection,
+                               Span<float3> goals,
+                               Span<float> goal_factors,
+                               VArray<float> point_factors,
+                               float step_size,
+                               MutableSpan<float3> positions_cu,
+                               MutableSpan<int> closest_points,
+                               MutableSpan<float> closest_factors);
 
 }  // namespace blender::geometry::curve_constraints
