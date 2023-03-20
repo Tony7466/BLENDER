@@ -30,20 +30,10 @@ template<typename T> class OffsetIndices {
     BLI_assert(std::is_sorted(offsets_.begin(), offsets_.end()));
   }
 
-  const T *data() const
-  {
-    return offsets_.data();
-  }
-
   /** Return the total number of elements in the the referenced arrays. */
   T total_size() const
   {
     return offsets_.size() == 1 ? 0 : offsets_.last();
-  }
-
-  IndexRange index_range() const
-  {
-    return offsets_.index_range().drop_back(1);
   }
 
   /**
@@ -92,6 +82,11 @@ template<typename T> class OffsetIndices {
   {
     BLI_assert(offsets_.index_range().drop_back(1).contains(range.last()));
     return OffsetIndices(offsets_.slice(range.start(), range.one_after_last()));
+  }
+
+  const T *data() const
+  {
+    return offsets_.data();
   }
 };
 
