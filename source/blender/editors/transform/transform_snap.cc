@@ -1209,19 +1209,32 @@ static bool snap_grid(TransInfo *t, const float mval[2], const int val_size, flo
   }
 
   if (t->spacetype == SPACE_VIEW3D) {
-    float lambda;
-    float plane[4];
     float ray_dir[3];
     ED_view3d_win_to_ray_clipped(
         t->depsgraph, t->region, (View3D *)t->view, mval, r_val, ray_dir, true);
 
-    plane_from_point_normal_v3(plane, t->center_global, ray_dir);
-
-    if (isect_ray_plane_v3(r_val, ray_dir, plane, &lambda, true)) {
-      madd_v3_v3fl(r_val, ray_dir, lambda);
+    if ((t->mode != TFM_ROTATION) && (t->con.mode & CON_APPLY)) {
+      if (!transform_constraint_isect_ray(t, r_val, ray_dir, r_val)) {
+        return false;
+      }
     }
     else {
-      return false;
+      float lambda;
+      float plane[4];
+      if (t->persp != RV3D_ORTHO) {
+        /* Intersect Plane Z. */
+        copy_v4_fl4(plane, 0.0f, 0.0f, 1.0f, 0.0f);
+      }
+      else {
+        plane_from_point_normal_v3(plane, t->center_global, ray_dir);
+      }
+
+      if (isect_ray_plane_v3(r_val, ray_dir, plane, &lambda, true)) {
+        madd_v3_v3fl(r_val, ray_dir, lambda);
+      }
+      else {
+        return false;
+      }
     }
   }
   else {

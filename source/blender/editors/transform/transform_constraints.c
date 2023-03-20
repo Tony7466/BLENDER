@@ -101,6 +101,20 @@ static void constraint_plane_calc(const TransInfo *t, float r_plane[4])
   r_plane[3] = -dot_v3v3(r_plane, t->center_global);
 }
 
+static void constraint_axis_calc(const TransInfo *t, float r_dir[4])
+{
+  if (t->con.mode & CON_AXIS0) {
+    copy_v3_v3(r_dir, t->spacemtx[0]);
+  }
+  else if (t->con.mode & CON_AXIS1) {
+    copy_v3_v3(r_dir, t->spacemtx[1]);
+  }
+  else {
+    BLI_assert(t->con.mode & CON_AXIS2);
+    copy_v3_v3(r_dir, t->spacemtx[2]);
+  }
+}
+
 void constraintNumInput(TransInfo *t, float vec[3])
 {
   int mode = t->con.mode;
@@ -170,6 +184,20 @@ static void viewAxisCorrectCenter(const TransInfo *t, float t_con_center[3])
   }
 }
 
+static bool isAxisProjectionViewAligned(const TransInfo *t, const float axis[3])
+{
+  float angle = fabsf(angle_v3v3(axis, t->viewinv[2]));
+  if (angle > (float)M_PI_2) {
+    angle = (float)M_PI - angle;
+  }
+
+  if (angle < DEG2RADF(5.0f)) {
+    return true;
+  }
+
+  return false;
+}
+
 /**
  * Axis calculation taking the view into account, correcting view-aligned axis.
  */
@@ -178,7 +206,7 @@ static void axisProjection(const TransInfo *t,
                            const float in[3],
                            float out[3])
 {
-  float vec[3], factor, angle;
+  float vec[3], factor;
   float t_con_center[3];
 
   if (is_zero_v3(in)) {
@@ -190,15 +218,10 @@ static void axisProjection(const TransInfo *t,
   /* checks for center being too close to the view center */
   viewAxisCorrectCenter(t, t_con_center);
 
-  angle = fabsf(angle_v3v3(axis, t->viewinv[2]));
-  if (angle > (float)M_PI_2) {
-    angle = (float)M_PI - angle;
-  }
-
   /* For when view is parallel to constraint... will cause NaNs otherwise
    * So we take vertical motion in 3D space and apply it to the
    * constraint axis. Nice for camera grab + MMB */
-  if (angle < DEG2RADF(5.0f)) {
+  if (isAxisProjectionViewAligned(t, axis)) {
     project_v3_v3v3(vec, in, t->viewinv[1]);
     factor = dot_v3v3(t->viewinv[1], vec) * 2.0f;
     /* Since camera distance is quite relative, use quadratic relationship.
@@ -434,17 +457,7 @@ static void applyAxisConstraintVec(const TransInfo *t,
       }
       else if (dims == 1) {
         float c[3];
-
-        if (t->con.mode & CON_AXIS0) {
-          copy_v3_v3(c, t->spacemtx[0]);
-        }
-        else if (t->con.mode & CON_AXIS1) {
-          copy_v3_v3(c, t->spacemtx[1]);
-        }
-        else {
-          BLI_assert(t->con.mode & CON_AXIS2);
-          copy_v3_v3(c, t->spacemtx[2]);
-        }
+        constraint_axis_calc(t, c);
 
         if (is_snap_to_edge) {
           transform_constraint_snap_axis_to_edge(t, c, out);
@@ -1250,3 +1263,34 @@ int getConstraintSpaceDimension(const TransInfo *t)
 }
 
 /** \} */
+
+bool transform_constraint_isect_ray(const TransInfo *t,
+                                    const float ray_co[3],
+                                    const float ray_dir[3],
+                                    float out[3])
+{
+  float lambda;
+  const int dims = getConstraintSpaceDimension(t);
+  if (dims == 2) {
+    float plane[4];
+    constraint_plane_calc(t, plane);
+    if (!isPlaneProjectionViewAligned(t, plane)) {
+      if (isect_ray_plane_v3(ray_co, ray_dir, plane, &lambda, false)) {
+        madd_v3_v3v3fl(out, ray_co, ray_dir, lambda);
+        return true;
+      }
+    }
+  }
+  else if (dims == 1) {
+    float axis[3];
+    constraint_axis_calc(t, axis);
+    if (!isAxisProjectionViewAligned(t, axis)) {
+      if (isect_ray_ray_v3(t->center_global, axis, ray_co, ray_dir, &lambda, NULL)) {
+        madd_v3_v3v3fl(out, t->center_global, axis, lambda);
+        return true;
+      }
+    }
+  }
+
+  return false;
+}

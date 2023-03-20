@@ -201,10 +201,10 @@ void transform_mode_snap_source_init(TransInfo *t)
     }
   }
 
-  if ((t->tsnap.mode & ~(SCE_SNAP_MODE_INCREMENT | SCE_SNAP_MODE_GRID)) == 0) {
+  if (t->tsnap.mode == SCE_SNAP_MODE_INCREMENT) {
     /* Initialize snap modes for geometry. */
-    t->tsnap.mode &= ~(SCE_SNAP_MODE_INCREMENT | SCE_SNAP_MODE_GRID);
-    t->tsnap.mode |= SCE_SNAP_MODE_GEOM & ~SCE_SNAP_MODE_FACE_NEAREST;
+    t->tsnap.mode &= ~SCE_SNAP_MODE_INCREMENT;
+    t->tsnap.mode |= SCE_SNAP_MODE_GEOM | SCE_SNAP_MODE_GRID & ~SCE_SNAP_MODE_FACE_NEAREST;
   }
 
   if (t->data_type == &TransConvertType_Mesh) {
