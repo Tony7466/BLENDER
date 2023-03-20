@@ -546,8 +546,8 @@ static bNodeSocket *determine_socket_to_view(bNode &node_to_view)
     }
   }
 
-  /* If no sockets are viewed then choose the first viewable socket */
   if (last_linked_socket_index == -1) {
+    /* Return the first socket that can be viewed. */
     for (bNodeSocket *socket : node_to_view.output_sockets()) {
       if (socket_can_be_viewed(*socket)) {
         return socket;
@@ -573,13 +573,17 @@ static bNodeSocket *determine_socket_to_view(bNode &node_to_view)
     for (const bNodeLink *link : output_socket.directly_linked_links()) {
       bNodeSocket &target_socket = *link->tosock;
       bNode &target_node = *link->tonode;
-      if (is_viewer_socket(target_socket)) {
-        if (link->is_muted() || !(target_node.flag & NODE_DO_OUTPUT)) {
-          continue;
-        }
-        is_currently_viewed = true;
-        break;
+      if (!is_viewer_socket(target_socket)) {
+        continue;
       }
+      if (link->is_muted()) {
+        continue;
+      }
+      if (!(target_node.flag & NODE_DO_OUTPUT)) {
+        continue;
+      }
+      is_currently_viewed = true;
+      break;
     }
     if (!is_currently_viewed) {
       return &output_socket;
