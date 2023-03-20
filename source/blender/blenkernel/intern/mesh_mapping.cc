@@ -54,7 +54,7 @@ UvVertMap *BKE_mesh_uv_vert_map_create(const blender::OffsetIndices<int> polys,
   /* generate UvMapVert array */
   for (const int64_t a : polys.index_range()) {
     if (!selected || (!(hide_poly && hide_poly[a]) && (select_poly && select_poly[a]))) {
-      totuv += polys[a].size();
+      totuv += int(polys[a].size());
     }
   }
 
@@ -503,7 +503,6 @@ void BKE_mesh_origindex_map_create_looptri(MeshElemMap **r_map,
   MeshElemMap *map = MEM_cnew_array<MeshElemMap>(size_t(polys.size()), __func__);
   int *indices = static_cast<int *>(MEM_mallocN(sizeof(int) * size_t(looptri_num), __func__));
   int *index_step;
-  int i;
 
   /* create offsets */
   index_step = indices;
@@ -513,7 +512,7 @@ void BKE_mesh_origindex_map_create_looptri(MeshElemMap **r_map,
   }
 
   /* assign poly-tessface users */
-  for (i = 0; i < looptri_num; i++) {
+  for (int i = 0; i < looptri_num; i++) {
     MeshElemMap *map_ele = &map[looptri[i].poly];
     map_ele->indices[map_ele->count++] = i;
   }

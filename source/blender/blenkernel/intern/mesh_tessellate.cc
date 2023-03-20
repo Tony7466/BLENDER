@@ -292,7 +292,7 @@ static void looptris_calc_all(const Span<float3> positions,
   settings.func_free = mesh_calc_tessellation_for_face_free_fn;
 
   BLI_task_parallel_range(0,
-                          polys.size(),
+                          int(polys.size()),
                           &data,
                           data.poly_normals ? mesh_calc_tessellation_for_face_with_normal_fn :
                                               mesh_calc_tessellation_for_face_fn,

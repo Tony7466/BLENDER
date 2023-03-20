@@ -151,7 +151,8 @@ class CornersOfFaceCountInput final : public bke::MeshFieldInput {
       return {};
     }
     const OffsetIndices polys = mesh.polys();
-    return VArray<int>::ForFunc(mesh.totpoly, [polys](const int64_t i) { return polys.size(i); });
+    return VArray<int>::ForFunc(mesh.totpoly,
+                                [polys](const int64_t i) { return polys[i].size(); });
   }
 
   uint64_t hash() const final

@@ -1105,7 +1105,7 @@ static void mesh_island_to_astar_graph(MeshIslandStore *islands,
   int *poly_island_index_map = nullptr;
   BLI_bitmap *done_edges = BLI_BITMAP_NEW(numedges, __func__);
 
-  const int node_num = islands ? island_poly_map->count : polys.size();
+  const int node_num = islands ? island_poly_map->count : int(polys.size());
   uchar *poly_status = static_cast<uchar *>(
       MEM_callocN(sizeof(*poly_status) * size_t(node_num), __func__));
   float(*poly_centers)[3];
@@ -2136,7 +2136,7 @@ void BKE_mesh_remap_calc_polys_from_mesh(const int mode,
     poly_normals_dst = mesh_dst->poly_normals();
   }
 
-  BKE_mesh_remap_init(r_map, polys_dst.size());
+  BKE_mesh_remap_init(r_map, int(polys_dst.size()));
 
   if (mode == MREMAP_MODE_TOPOLOGY) {
     BLI_assert(polys_dst.size() == me_src->totpoly);
