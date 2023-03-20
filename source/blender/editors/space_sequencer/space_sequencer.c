@@ -245,16 +245,6 @@ static void sequencer_refresh(const bContext *C, ScrArea *area)
   bool view_changed = false;
 
   switch (sseq->view) {
-    case SEQ_VIEW_SEQUENCE:
-      if (region_main && region_main->alignment != RGN_ALIGN_NONE) {
-        region_main->alignment = RGN_ALIGN_NONE;
-        view_changed = true;
-      }
-      if (region_preview && region_preview->alignment != RGN_ALIGN_NONE) {
-        region_preview->alignment = RGN_ALIGN_NONE;
-        view_changed = true;
-      }
-      break;
     case SEQ_VIEW_PREVIEW:
       /* Reset scrolling when preview region just appears. */
       if (!(region_preview->v2d.flag & V2D_IS_INIT)) {
@@ -262,60 +252,39 @@ static void sequencer_refresh(const bContext *C, ScrArea *area)
         /* Only redraw, don't re-init. */
         ED_area_tag_redraw(area);
       }
-      if (region_main && region_main->alignment != RGN_ALIGN_NONE) {
-        region_main->alignment = RGN_ALIGN_NONE;
-        view_changed = true;
-      }
-      if (region_preview && region_preview->alignment != RGN_ALIGN_NONE) {
+      if (region_preview->alignment != RGN_ALIGN_NONE) {
         region_preview->alignment = RGN_ALIGN_NONE;
         view_changed = true;
       }
       break;
-    case SEQ_VIEW_SEQUENCE_PREVIEW:
-      if (region_main && region_preview) {
-        /* Get available height (without DPI correction). */
-        const float height = (area->winy - ED_area_headersize()) / UI_SCALE_FAC;
+    case SEQ_VIEW_SEQUENCE_PREVIEW: {
+      /* Get available height (without DPI correction). */
+      const float height = (area->winy - ED_area_headersize()) / UI_SCALE_FAC;
 
-        /* We reuse hidden region's size, allows to find same layout as before if we just switch
-         * between one 'full window' view and the combined one. This gets lost if we switch to both
-         * 'full window' views before, though... Better than nothing. */
-        if (!(region_preview->v2d.flag & V2D_IS_INIT)) {
-          region_preview->v2d.cur = region_preview->v2d.tot;
-          region_main->sizey = (int)(height - region_preview->sizey);
-          region_preview->sizey = (int)(height - region_main->sizey);
-          view_changed = true;
-        }
-        if (region_main->alignment != RGN_ALIGN_NONE) {
-          region_main->alignment = RGN_ALIGN_NONE;
-          view_changed = true;
-        }
-        if (region_preview->alignment != RGN_ALIGN_TOP) {
-          region_preview->alignment = RGN_ALIGN_TOP;
-          view_changed = true;
-        }
-        /* Final check that both preview and main height are reasonable. */
-        if (region_preview->sizey < 10 || region_main->sizey < 10 ||
-            region_preview->sizey + region_main->sizey > height) {
-          region_preview->sizey = roundf(height * 0.4f);
-          region_main->sizey = (int)(height - region_preview->sizey);
-          view_changed = true;
-        }
+      /* We reuse hidden region's size, allows to find same layout as before if we just switch
+       * between one 'full window' view and the combined one. This gets lost if we switch to both
+       * 'full window' views before, though... Better than nothing. */
+      if (!(region_preview->v2d.flag & V2D_IS_INIT)) {
+        region_preview->v2d.cur = region_preview->v2d.tot;
+        region_main->sizey = (int)(height - region_preview->sizey);
+        region_preview->sizey = (int)(height - region_main->sizey);
+        view_changed = true;
+      }
+      if (region_preview->alignment != RGN_ALIGN_TOP) {
+        region_preview->alignment = RGN_ALIGN_TOP;
+        view_changed = true;
+      }
+      /* Final check that both preview and main height are reasonable. */
+      if (region_preview->sizey < 10 || region_main->sizey < 10 ||
+          region_preview->sizey + region_main->sizey > height) {
+        region_preview->sizey = roundf(height * 0.4f);
+        region_main->sizey = (int)(height - region_preview->sizey);
+        view_changed = true;
       }
       break;
-  }
-
-  ARegion *region_channels = sequencer_find_region(area, RGN_TYPE_CHANNELS);
-  if (sseq->view == SEQ_VIEW_SEQUENCE) {
-    if (region_channels && region_channels->alignment != RGN_ALIGN_LEFT) {
-      region_channels->alignment = RGN_ALIGN_LEFT;
-      view_changed = true;
     }
-  }
-  else {
-    if (region_channels && region_channels->alignment != RGN_ALIGN_NONE) {
-      region_channels->alignment = RGN_ALIGN_NONE;
-      view_changed = true;
-    }
+    case SEQ_VIEW_SEQUENCE:
+      break;
   }
 
   if (view_changed) {

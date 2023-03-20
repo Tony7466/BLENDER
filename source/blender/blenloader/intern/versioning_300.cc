@@ -4265,6 +4265,8 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
         LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
           version_ensure_missing_regions(area, sl);
 
+          /* Ensure expected region state. Previously this was modified to hide/unhide regions. */
+
           const ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase :
                                                                        &sl->regionbase;
           if (sl->spacetype == SPACE_SEQ) {
@@ -4277,6 +4279,10 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
                                                                           RGN_TYPE_PREVIEW);
             region_preview->flag &= ~RGN_FLAG_HIDDEN;
             region_preview->alignment = RGN_ALIGN_NONE;
+
+            ARegion *region_channels = BKE_region_find_in_listbase_by_type(regionbase,
+                                                                           RGN_TYPE_CHANNELS);
+            region_channels->alignment = RGN_ALIGN_LEFT;
           }
         }
       }
