@@ -84,7 +84,9 @@ static void texture_create_upload_read()
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_HOST_READ;
   GPUTexture *texture = GPU_texture_create_2d(
       "texture", Size, Size, 1, DeviceFormat, usage, nullptr);
-  ASSERT_NE(texture, nullptr);
+  if (texture == nullptr) {
+    GTEST_SKIP() << "Platform doesn't support texture format [" << STRINGIFY(DeviceFormat) << "]";
+  }
 
   size_t data_len = Size * Size * to_component_len(DeviceFormat);
   DataType *data = static_cast<DataType *>(generate_test_data<DataType>(data_len));
@@ -111,7 +113,9 @@ static void texture_create_upload_read_with_bias(float max_allowed_bias)
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_HOST_READ;
   GPUTexture *texture = GPU_texture_create_2d(
       "texture", Size, Size, 1, DeviceFormat, usage, nullptr);
-  ASSERT_NE(texture, nullptr);
+  if (texture == nullptr) {
+    GTEST_SKIP() << "Platform doesn't support texture format [" << STRINGIFY(DeviceFormat) << "]";
+  }
 
   size_t data_len = Size * Size * to_component_len(DeviceFormat);
   float *data = static_cast<float *>(generate_test_data<float>(data_len));
