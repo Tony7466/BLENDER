@@ -226,7 +226,7 @@ LightTree::LightTree(vector<LightTreePrimitive> &prims,
   root->children[right]->make_leaf(num_local_lights, num_distant_lights);
 }
 
-void LightTree::recursive_build(const LightTreeChild child,
+void LightTree::recursive_build(const Child child,
                                 LightTreeNode *parent,
                                 const int start,
                                 const int end,

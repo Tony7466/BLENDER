@@ -53,12 +53,6 @@ OrientationBounds merge(const OrientationBounds &cone_a, const OrientationBounds
  * The light tree construction is based on PBRT's BVH construction.
  */
 
-/* Left or right child of an inner node. */
-enum LightTreeChild {
-  left = 0,
-  right = 1,
-};
-
 /* Light Tree Primitive
  * Struct that indexes into the scene's triangle and light arrays. */
 struct LightTreePrimitive {
@@ -139,6 +133,12 @@ class LightTree {
   uint max_lights_in_leaf_;
 
  public:
+  /* Left or right child of an inner node. */
+  enum Child {
+    left = 0,
+    right = 1,
+  };
+
   LightTree(vector<LightTreePrimitive> &prims,
             const int &num_distant_lights,
             uint max_lights_in_leaf);
@@ -169,7 +169,7 @@ class LightTree {
   /* Do not spawn a thread if less than this amount of primitives are to be processed. */
   enum { MIN_PRIMS_PER_THREAD = 4096 };
 
-  void recursive_build(LightTreeChild child,
+  void recursive_build(Child child,
                        LightTreeNode *parent,
                        int start,
                        int end,
