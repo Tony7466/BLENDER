@@ -145,7 +145,7 @@ static openvdb::FloatGrid::Ptr mesh_to_sdf_volume_grid(const Mesh &mesh,
   }
 
   const Span<float3> positions = mesh.vert_positions();
-  const Span<MLoop> loops = mesh.loops();
+  const Span<int> corner_verts = mesh.corner_verts();
   const Span<MLoopTri> looptris = mesh.looptris();
 
   std::vector<openvdb::Vec3s> points(positions.size());
@@ -161,8 +161,9 @@ static openvdb::FloatGrid::Ptr mesh_to_sdf_volume_grid(const Mesh &mesh,
   threading::parallel_for(looptris.index_range(), 2048, [&](const IndexRange range) {
     for (const int i : range) {
       const MLoopTri &loop_tri = looptris[i];
-      triangles[i] = openvdb::Vec3I(
-          loops[loop_tri.tri[0]].v, loops[loop_tri.tri[1]].v, loops[loop_tri.tri[2]].v);
+      triangles[i] = openvdb::Vec3I(corner_verts[loop_tri.tri[0]],
+                                    corner_verts[loop_tri.tri[1]],
+                                    corner_verts[loop_tri.tri[2]]);
     }
   });
 
