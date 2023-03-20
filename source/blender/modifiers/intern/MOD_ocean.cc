@@ -698,7 +698,7 @@ ModifierTypeInfo modifierType_Ocean = {
     /*icon*/ ICON_MOD_OCEAN,
 
     /*copyData*/ copyData,
-    /*deformMatrices_DM*/ nullptr,
+    /*deformMatrices*/ nullptr,
 
     /*deformMatrices*/ nullptr,
     /*deformVertsEM*/ nullptr,

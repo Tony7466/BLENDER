@@ -259,6 +259,8 @@ static void mesh_blend_write(BlendWriter *writer, ID *id, const void *id_address
     if (!BLO_write_is_undo(writer)) {
       /* When converting to the old mesh format, don't save redundant attributes. */
       names_to_skip.add_multiple_new({"position",
+                                      ".corner_vert",
+                                      ".corner_edge",
                                       ".hide_vert",
                                       ".hide_edge",
                                       ".hide_poly",
