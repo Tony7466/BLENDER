@@ -224,6 +224,8 @@ class IndexMask {
 
  private:
   void foreach_span_impl(FunctionRef<void(OffsetSpan<int64_t, int16_t>)> fn) const;
+
+  template<typename Fn> void foreach_span_template(Fn &&fn) const;
 };
 
 class IndexMaskFromSegment : NonCopyable, NonMovable {
@@ -722,6 +724,98 @@ template<typename Fn>
 constexpr bool has_mask_segment_and_start_parameter =
     std::is_invocable_r_v<void, Fn, OffsetSpan<int64_t, int16_t>, int64_t> ||
     std::is_invocable_r_v<void, Fn, IndexRange, int64_t>;
+
+template<typename Fn> inline void IndexMask::foreach_span_template(Fn &&fn) const
+{
+  if (data_.indices_num == 0) {
+    return;
+  }
+  const RawChunkIterator begin_it = data_.begin_it;
+  const RawChunkIterator end_it = data_.end_it;
+  if (data_.chunks_num == 1) {
+    const Chunk &chunk = data_.chunks[0];
+    const int64_t chunk_id = data_.chunk_ids[0];
+    if (begin_it.segment_i == end_it.segment_i) {
+      const int64_t segment_i = begin_it.segment_i;
+      const int64_t segment_size = end_it.index_in_segment - begin_it.index_in_segment;
+      const Span<int16_t> indices{chunk.indices_by_segment[segment_i] + begin_it.index_in_segment,
+                                  segment_size};
+      fn(chunk_id, indices);
+    }
+    else {
+      {
+        const int64_t segment_i = begin_it.segment_i;
+        const int64_t segment_size = chunk.cumulative_segment_sizes[segment_i + 1] -
+                                     chunk.cumulative_segment_sizes[segment_i] -
+                                     begin_it.index_in_segment;
+        const Span<int16_t> indices{
+            chunk.indices_by_segment[segment_i] + begin_it.index_in_segment, segment_size};
+        fn(chunk_id, indices);
+      }
+      for (int64_t segment_i = begin_it.segment_i + 1; segment_i < end_it.segment_i; segment_i++) {
+        const int64_t segment_size = chunk.cumulative_segment_sizes[segment_i + 1] -
+                                     chunk.cumulative_segment_sizes[segment_i];
+        const Span<int16_t> indices{chunk.indices_by_segment[segment_i], segment_size};
+        fn(chunk_id, indices);
+      }
+      {
+        const int64_t segment_i = end_it.segment_i;
+        const int64_t segment_size = end_it.index_in_segment;
+        const Span<int16_t> indices{chunk.indices_by_segment[segment_i], segment_size};
+        fn(chunk_id, indices);
+      }
+    }
+  }
+  else {
+    {
+      const Chunk &chunk = data_.chunks[0];
+      const int64_t chunk_id = data_.chunk_ids[0];
+      {
+        const int64_t segment_i = begin_it.segment_i;
+        const int64_t segment_size = chunk.cumulative_segment_sizes[segment_i + 1] -
+                                     chunk.cumulative_segment_sizes[segment_i] -
+                                     begin_it.index_in_segment;
+        const Span<int16_t> indices{
+            chunk.indices_by_segment[segment_i] + begin_it.index_in_segment, segment_size};
+        fn(chunk_id, indices);
+      }
+      for (int64_t segment_i = begin_it.segment_i + 1; segment_i < chunk.segments_num;
+           segment_i++) {
+        const int64_t segment_size = chunk.cumulative_segment_sizes[segment_i + 1] -
+                                     chunk.cumulative_segment_sizes[segment_i];
+        const Span<int16_t> indices{chunk.indices_by_segment[segment_i], segment_size};
+        fn(chunk_id, indices);
+      }
+    }
+    for (int64_t chunk_i = 1; chunk_i < data_.chunks_num - 1; chunk_i++) {
+      const Chunk &chunk = data_.chunks[chunk_i];
+      const int64_t chunk_id = data_.chunk_ids[chunk_i];
+      for (int64_t segment_i = 0; segment_i < chunk.segments_num; segment_i++) {
+        const int64_t segment_size = chunk.cumulative_segment_sizes[segment_i + 1] -
+                                     chunk.cumulative_segment_sizes[segment_i];
+        const Span<int16_t> indices{chunk.indices_by_segment[segment_i], segment_size};
+        fn(chunk_id, indices);
+      }
+    }
+    {
+      const int64_t chunk_i = data_.chunks_num - 1;
+      const Chunk &chunk = data_.chunks[chunk_i];
+      const int64_t chunk_id = data_.chunk_ids[chunk_i];
+      for (int64_t segment_i = 0; segment_i < end_it.segment_i; segment_i++) {
+        const int64_t segment_size = chunk.cumulative_segment_sizes[segment_i + 1] -
+                                     chunk.cumulative_segment_sizes[segment_i];
+        const Span<int16_t> indices{chunk.indices_by_segment[segment_i], segment_size};
+        fn(chunk_id, indices);
+      }
+      {
+        const int64_t segment_i = end_it.segment_i;
+        const int64_t segment_size = end_it.index_in_segment;
+        const Span<int16_t> indices{chunk.indices_by_segment[segment_i], segment_size};
+        fn(chunk_id, indices);
+      }
+    }
+  }
+}
 
 template<typename Fn> inline void IndexMask::foreach_index(Fn &&fn) const
 {
