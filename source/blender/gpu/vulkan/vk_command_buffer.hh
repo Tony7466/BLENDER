@@ -59,6 +59,7 @@ class VKCommandBuffer : NonCopyable, NonMovable {
              VkImageLayout vk_image_layout,
              const VkClearColorValue &vk_clear_color,
              Span<VkImageSubresourceRange> ranges);
+  void fill(VKBuffer &buffer, uint32_t data);
 
   /**
    * Stop recording commands, encode + send the recordings to Vulkan, wait for the until the
