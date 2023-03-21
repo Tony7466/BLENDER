@@ -348,12 +348,12 @@ class VariableState : NonCopyable, NonMovable {
     return false;
   }
 
-  bool is_fully_initialized(const IndexMask full_mask)
+  bool is_fully_initialized(const IndexMask &full_mask)
   {
     return tot_initialized_ == full_mask.size();
   }
 
-  bool is_fully_uninitialized(const IndexMask full_mask)
+  bool is_fully_uninitialized(const IndexMask &full_mask)
   {
     UNUSED_VARS(full_mask);
     return tot_initialized_ == 0;
@@ -398,7 +398,7 @@ class VariableState : NonCopyable, NonMovable {
     }
   }
 
-  void ensure_is_mutable(IndexMask full_mask,
+  void ensure_is_mutable(const IndexMask &full_mask,
                          const DataType &data_type,
                          ValueAllocator &value_allocator)
   {
@@ -473,7 +473,7 @@ class VariableState : NonCopyable, NonMovable {
 
   void add_as_mutable(ParamsBuilder &params,
                       const IndexMask &mask,
-                      IndexMask full_mask,
+                      const IndexMask &full_mask,
                       const DataType &data_type,
                       ValueAllocator &value_allocator)
   {
@@ -506,7 +506,7 @@ class VariableState : NonCopyable, NonMovable {
 
   void add_as_output(ParamsBuilder &params,
                      const IndexMask &mask,
-                     IndexMask full_mask,
+                     const IndexMask &full_mask,
                      const DataType &data_type,
                      ValueAllocator &value_allocator)
   {
@@ -696,7 +696,7 @@ class VariableState : NonCopyable, NonMovable {
    *  released.
    */
   bool destruct(const IndexMask &mask,
-                IndexMask full_mask,
+                const IndexMask &full_mask,
                 const DataType &data_type,
                 ValueAllocator &value_allocator)
   {
@@ -822,12 +822,12 @@ class VariableStates {
   const Procedure &procedure_;
   /** The state of every variable, indexed by #Variable::index_in_procedure(). */
   Array<VariableState> variable_states_;
-  IndexMask full_mask_;
+  const IndexMask &full_mask_;
 
  public:
   VariableStates(LinearAllocator<> &linear_allocator,
                  const Procedure &procedure,
-                 IndexMask full_mask)
+                 const IndexMask &full_mask)
       : value_allocator_(linear_allocator),
         procedure_(procedure),
         variable_states_(procedure.variables().size()),
