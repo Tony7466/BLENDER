@@ -74,6 +74,8 @@ class VKFrameBuffer : public FrameBuffer {
 
  private:
   void update_attachments();
+  void render_pass_free();
+  void render_pass_create();
 };
 
 }  // namespace blender::gpu

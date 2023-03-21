@@ -127,6 +127,12 @@ void VKCommandBuffer::clear(VkImage vk_image,
                        ranges.data());
 }
 
+void VKCommandBuffer::clear(Span<VkClearAttachment> attachments, Span<VkClearRect> areas)
+{
+  vkCmdClearAttachments(
+      vk_command_buffer_, attachments.size(), attachments.data(), areas.size(), areas.data());
+}
+
 void VKCommandBuffer::pipeline_barrier(VkPipelineStageFlags source_stages,
                                        VkPipelineStageFlags destination_stages)
 {
