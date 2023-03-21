@@ -379,7 +379,7 @@ static GPUTexture *image_get_gpu_texture(Image *ima,
     ima->gpu_pass = requested_pass;
     ima->gpu_layer = requested_layer;
     ima->gpu_view = requested_view;
-    /* The cache should be inavlidated here, but it is inmtentionally isn't due to possible
+    /* The cache should be invalidated here, but it is intentionally isn't due to possible
      * performance implications, see the BKE_image_ensure_gpu_texture function for more
      * information. */
   }

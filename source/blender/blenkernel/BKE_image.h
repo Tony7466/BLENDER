@@ -513,8 +513,14 @@ void BKE_image_ensure_gpu_texture(struct Image *image, struct ImageUser *iuser);
  * `iuser` and `ibuf` are mutual exclusive parameters. The caller can pass the `ibuf` when already
  * available. It is also required when requesting the #GPUTexture for a render result.
  *
- * Call BKE_image_ensure_gpu_texture first if the requested layer, pass, and view might differ
- * across calls.
+ * The requested GPU texture will be cached for subsequent calls, but only a single layer, pass,
+ * and view can be cached at a time, so the cache should be invalidated in operators and RNA
+ * callbacks that change the layer, pass, or view of the image to maintain a correct cache state.
+ * However, in some cases, multiple layers, passes, or views might be needed at the same time, like
+ * is the case for the realtime compositor. This is currently not supported, so the caller should
+ * ensure that the requested layer is indeed the cached one and invalidated the cached otherwise by
+ * calling BKE_image_ensure_gpu_texture. This is a workaround until image can support a more
+ * complete caching system.
  */
 struct GPUTexture *BKE_image_get_gpu_texture(struct Image *image,
                                              struct ImageUser *iuser,
