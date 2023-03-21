@@ -52,14 +52,14 @@ void draw_channel_names(bContext *C, bAnimContext *ac, ARegion *region)
 {
   ListBase anim_data = {NULL, NULL};
   bAnimListElem *ale;
-  int filter;
+  eAnimFilter_Flags filter;
 
   View2D *v2d = &region->v2d;
   size_t items;
 
   /* build list of channels to draw */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_LIST_CHANNELS);
-  items = ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
+  items = ANIM_animdata_filter(ac, &anim_data, filter, ac->data, eAnimCont_Types(ac->datatype));
 
   const int height = ANIM_UI_get_channels_total_height(v2d, items);
   const float pad_bottom = BLI_listbase_is_empty(ac->markers) ? 0 : UI_MARKER_MARGIN_Y;
@@ -74,7 +74,8 @@ void draw_channel_names(bContext *C, bAnimContext *ac, ARegion *region)
     size_t channel_index = 0;
     float ymax = ANIM_UI_get_first_channel_top(v2d);
 
-    for (ale = anim_data.first; ale; ale = ale->next, ymax -= channel_step, channel_index++) {
+    for (ale = static_cast<bAnimListElem *>(anim_data.first); ale;
+         ale = ale->next, ymax -= channel_step, channel_index++) {
       const float ymin = ymax - ANIM_UI_get_channel_height();
 
       /* check if visible */
@@ -90,7 +91,8 @@ void draw_channel_names(bContext *C, bAnimContext *ac, ARegion *region)
     size_t channel_index = 0;
     float ymax = ANIM_UI_get_first_channel_top(v2d);
 
-    for (ale = anim_data.first; ale; ale = ale->next, ymax -= channel_step, channel_index++) {
+    for (ale = static_cast<bAnimListElem *>(anim_data.first); ale;
+         ale = ale->next, ymax -= channel_step, channel_index++) {
       const float ymin = ymax - ANIM_UI_get_channel_height();
 
       /* check if visible */
@@ -133,7 +135,8 @@ static void draw_channel_action_ranges(ListBase *anim_data, View2D *v2d)
   const float ystep = ANIM_UI_get_channel_step();
   float ymin = ymax - ystep;
 
-  for (bAnimListElem *ale = anim_data->first; ale; ale = ale->next, ymax = ymin, ymin -= ystep) {
+  for (bAnimListElem *ale = static_cast<bAnimListElem *>(anim_data->first); ale;
+       ale = ale->next, ymax = ymin, ymin -= ystep) {
     bAction *action = NULL;
     AnimData *adt = NULL;
 
@@ -196,8 +199,10 @@ void draw_channel_strips(bAnimContext *ac, SpaceAction *saction, ARegion *region
   UI_GetThemeColor4ubv(TH_DOPESHEET_CHANNELSUBOB, col2b);
 
   /* build list of channels to draw */
-  int filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_LIST_CHANNELS);
-  size_t items = ANIM_animdata_filter(ac, &anim_data, filter, ac->data, ac->datatype);
+  eAnimFilter_Flags filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE |
+                              ANIMFILTER_LIST_CHANNELS);
+  size_t items = ANIM_animdata_filter(
+      ac, &anim_data, filter, ac->data, eAnimCont_Types(ac->datatype));
 
   const int height = ANIM_UI_get_channels_total_height(v2d, items);
   const float pad_bottom = BLI_listbase_is_empty(ac->markers) ? 0 : UI_MARKER_MARGIN_Y;
@@ -220,7 +225,8 @@ void draw_channel_strips(bAnimContext *ac, SpaceAction *saction, ARegion *region
   /* first backdrop strips */
   float ymax = ANIM_UI_get_first_channel_top(v2d);
   const float channel_step = ANIM_UI_get_channel_step();
-  for (ale = anim_data.first; ale; ale = ale->next, ymax -= channel_step) {
+  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale;
+       ale = ale->next, ymax -= channel_step) {
     const float ymin = ymax - ANIM_UI_get_channel_height();
 
     /* check if visible */
@@ -255,7 +261,7 @@ void draw_channel_strips(bAnimContext *ac, SpaceAction *saction, ARegion *region
               break;
             }
             case ANIMTYPE_GROUP: {
-              bActionGroup *agrp = ale->data;
+              bActionGroup *agrp = static_cast<bActionGroup *>(ale->data);
               if (show_group_colors && agrp->customCol) {
                 if (sel) {
                   immUniformColor3ubvAlpha((uchar *)agrp->cs.select, col1a[3]);
@@ -270,7 +276,7 @@ void draw_channel_strips(bAnimContext *ac, SpaceAction *saction, ARegion *region
               break;
             }
             case ANIMTYPE_FCURVE: {
-              FCurve *fcu = ale->data;
+              FCurve *fcu = static_cast<FCurve *>(ale->data);
               if (show_group_colors && fcu->grp && fcu->grp->customCol) {
                 immUniformColor3ubvAlpha((uchar *)fcu->grp->cs.active, sel ? col1[3] : col2[3]);
               }
@@ -379,7 +385,8 @@ void draw_channel_strips(bAnimContext *ac, SpaceAction *saction, ARegion *region
 
   const float scale_factor = ANIM_UI_get_keyframe_scale_factor();
 
-  for (ale = anim_data.first; ale; ale = ale->next, ymax -= channel_step) {
+  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale;
+       ale = ale->next, ymax -= channel_step) {
     const float ymin = ymax - ANIM_UI_get_channel_height();
     float ycenter = (ymin + ymax) / 2.0f;
 
@@ -393,28 +400,67 @@ void draw_channel_strips(bAnimContext *ac, SpaceAction *saction, ARegion *region
         /* draw 'keyframes' for each specific datatype */
         switch (ale->datatype) {
           case ALE_ALL:
-            draw_summary_channel(draw_list, ale->data, ycenter, scale_factor, action_flag);
+            draw_summary_channel(draw_list,
+                                 static_cast<bAnimContext *>(ale->data),
+                                 ycenter,
+                                 scale_factor,
+                                 action_flag);
             break;
           case ALE_SCE:
-            draw_scene_channel(draw_list, ads, ale->key_data, ycenter, scale_factor, action_flag);
+            draw_scene_channel(draw_list,
+                               ads,
+                               static_cast<Scene *>(ale->key_data),
+                               ycenter,
+                               scale_factor,
+                               action_flag);
             break;
           case ALE_OB:
-            draw_object_channel(draw_list, ads, ale->key_data, ycenter, scale_factor, action_flag);
+            draw_object_channel(draw_list,
+                                ads,
+                                static_cast<Object *>(ale->key_data),
+                                ycenter,
+                                scale_factor,
+                                action_flag);
             break;
           case ALE_ACT:
-            draw_action_channel(draw_list, adt, ale->key_data, ycenter, scale_factor, action_flag);
+            draw_action_channel(draw_list,
+                                adt,
+                                static_cast<bAction *>(ale->key_data),
+                                ycenter,
+                                scale_factor,
+                                action_flag);
             break;
           case ALE_GROUP:
-            draw_agroup_channel(draw_list, adt, ale->data, ycenter, scale_factor, action_flag);
+            draw_agroup_channel(draw_list,
+                                adt,
+                                static_cast<bActionGroup *>(ale->data),
+                                ycenter,
+                                scale_factor,
+                                action_flag);
             break;
           case ALE_FCURVE:
-            draw_fcurve_channel(draw_list, adt, ale->key_data, ycenter, scale_factor, action_flag);
+            draw_fcurve_channel(draw_list,
+                                adt,
+                                static_cast<FCurve *>(ale->key_data),
+                                ycenter,
+                                scale_factor,
+                                action_flag);
             break;
           case ALE_GPFRAME:
-            draw_gpl_channel(draw_list, ads, ale->data, ycenter, scale_factor, action_flag);
+            draw_gpl_channel(draw_list,
+                             ads,
+                             static_cast<bGPDlayer *>(ale->data),
+                             ycenter,
+                             scale_factor,
+                             action_flag);
             break;
           case ALE_MASKLAY:
-            draw_masklay_channel(draw_list, ads, ale->data, ycenter, scale_factor, action_flag);
+            draw_masklay_channel(draw_list,
+                                 ads,
+                                 static_cast<MaskLayer *>(ale->data),
+                                 ycenter,
+                                 scale_factor,
+                                 action_flag);
             break;
         }
       }
