@@ -37,7 +37,6 @@ struct Image;
 struct ImagePool;
 struct ImageUser;
 struct ListBase;
-struct MLoop;
 struct MLoopTri;
 struct Main;
 struct Mesh;
@@ -577,8 +576,8 @@ typedef struct SculptSession {
 
   /* These are always assigned to base mesh data when using PBVH_FACES and PBVH_GRIDS. */
   float (*vert_positions)[3];
-  const struct MPoly *mpoly;
-  const struct MLoop *mloop;
+  const struct MPoly *polys;
+  const int *corner_verts;
 
   /* These contain the vertex and poly counts of the final mesh. */
   int totvert, totpoly;

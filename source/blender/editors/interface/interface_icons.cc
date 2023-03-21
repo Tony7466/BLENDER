@@ -29,7 +29,7 @@
 #include "DNA_collection_types.h"
 #include "DNA_curve_types.h"
 #include "DNA_dynamicpaint_types.h"
-#include "DNA_gpencil_types.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_sequence_types.h"
@@ -1617,12 +1617,12 @@ static void icon_draw_cache_texture_flush_ex(GPUTexture *texture,
     return;
   }
 
-  GPUShader *shader = GPU_shader_get_builtin_shader(GPU_SHADER_2D_IMAGE_MULTI_RECT_COLOR);
+  GPUShader *shader = GPU_shader_get_builtin_shader(GPU_SHADER_ICON_MULTI);
   GPU_shader_bind(shader);
 
-  const int data_binding = GPU_shader_get_ubo_binding(shader, "multi_rect_data");
+  const int data_binding = GPU_shader_get_ubo_binding(shader, "multi_icon_data");
   GPUUniformBuf *ubo = GPU_uniformbuf_create_ex(
-      sizeof(MultiRectCallData), texture_draw_calls->drawcall_cache, __func__);
+      sizeof(MultiIconCallData), texture_draw_calls->drawcall_cache, __func__);
   GPU_uniformbuf_bind(ubo, data_binding);
 
   const int img_binding = GPU_shader_get_sampler_binding(shader, "image");
@@ -1741,7 +1741,7 @@ static void icon_draw_texture(float x,
                               bool with_border,
                               const IconTextOverlay *text_overlay)
 {
-  const float zoom_factor = w / UI_DPI_ICON_SIZE;
+  const float zoom_factor = w / UI_ICON_SIZE;
   float text_width = 0.0f;
 
   /* No need to show if too zoomed out, otherwise it just adds noise. */
@@ -1798,7 +1798,7 @@ static void icon_draw_texture(float x,
   GPU_shader_bind(shader);
 
   const int img_binding = GPU_shader_get_sampler_binding(shader, "image");
-  const int color_loc = GPU_shader_get_builtin_uniform(shader, GPU_UNIFORM_COLOR);
+  const int color_loc = GPU_shader_get_uniform(shader, "finalColor");
   const int rect_tex_loc = GPU_shader_get_uniform(shader, "rect_icon");
   const int rect_geom_loc = GPU_shader_get_uniform(shader, "rect_geom");
 
@@ -2377,7 +2377,7 @@ int UI_icon_from_idcode(const int idcode)
       return ICON_FILE;
     case ID_CU_LEGACY:
       return ICON_CURVE_DATA;
-    case ID_GD:
+    case ID_GD_LEGACY:
       return ICON_OUTLINER_DATA_GREASEPENCIL;
     case ID_GR:
       return ICON_OUTLINER_COLLECTION;
@@ -2492,13 +2492,13 @@ int UI_icon_color_from_collection(const Collection *collection)
 void UI_icon_draw(float x, float y, int icon_id)
 {
   UI_icon_draw_ex(
-      x, y, icon_id, U.inv_dpi_fac, 1.0f, 0.0f, nullptr, false, UI_NO_ICON_OVERLAY_TEXT);
+      x, y, icon_id, UI_INV_SCALE_FAC, 1.0f, 0.0f, nullptr, false, UI_NO_ICON_OVERLAY_TEXT);
 }
 
 void UI_icon_draw_alpha(float x, float y, int icon_id, float alpha)
 {
   UI_icon_draw_ex(
-      x, y, icon_id, U.inv_dpi_fac, alpha, 0.0f, nullptr, false, UI_NO_ICON_OVERLAY_TEXT);
+      x, y, icon_id, UI_INV_SCALE_FAC, alpha, 0.0f, nullptr, false, UI_NO_ICON_OVERLAY_TEXT);
 }
 
 void UI_icon_draw_preview(float x, float y, int icon_id, float aspect, float alpha, int size)

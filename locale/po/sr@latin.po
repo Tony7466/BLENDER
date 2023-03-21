@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 3.5.0 Beta (b'5fd4d47206ff')\n"
+"Project-Id-Version: Blender 3.5.0 Beta (b'3962d9b931f1')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-02-20 13:46:36\n"
+"POT-Creation-Date: 2023-03-20 13:37:56\n"
 "PO-Revision-Date: 2012-09-07 22:32+0100\n"
 "Last-Translator: Nikola Radovanovic <cobisimo@gmail.com>\n"
 "Language-Team: Nikola Radovanovic\n"
@@ -1845,10 +1845,6 @@ msgstr "Spoljna debljina stranice"
 
 msgid "Enabled"
 msgstr "Omogućeno"
-
-
-msgid "Enable this objects as a collider for physics systems"
-msgstr "Omogući sudaranje sa ovim objektom"
 
 
 msgid "Kill Particles"
@@ -4537,10 +4533,6 @@ msgid "Effective but slow compression"
 msgstr "Efikasna, ali spora kompresija"
 
 
-msgid "Number"
-msgstr "Broj"
-
-
 msgid "p0"
 msgstr "p0"
 
@@ -5448,18 +5440,6 @@ msgstr "Oduzimanje boje"
 
 msgid "Mask Texture Overlay Alpha"
 msgstr "Maskiraj providnost preklapanja teksture"
-
-
-msgid "Root"
-msgstr "Koren"
-
-
-msgid "Sharp"
-msgstr "Oštro"
-
-
-msgid "Sharper"
-msgstr "Oštrije"
 
 
 msgid "Fill Threshold"
@@ -7642,6 +7622,10 @@ msgid "Roughness Curve"
 msgstr "Kriva hrapavosti"
 
 
+msgid "Number"
+msgstr "Broj"
+
+
 msgid "Show particle number"
 msgstr "Prikaži broj čestica"
 
@@ -8012,10 +7996,6 @@ msgid "Modified"
 msgstr "Izmenjen"
 
 
-msgid "Lines"
-msgstr "Linije"
-
-
 msgid "Lines of text"
 msgstr "Linije teksta"
 
@@ -8336,8 +8316,16 @@ msgid "Use soft marble"
 msgstr "Koristi meki mermer"
 
 
+msgid "Sharp"
+msgstr "Oštro"
+
+
 msgid "Use more clearly defined marble"
 msgstr "Koristi jesnije definisan mermer"
+
+
+msgid "Sharper"
+msgstr "Oštrije"
 
 
 msgid "Use very clearly defined marble"
@@ -9241,6 +9229,10 @@ msgid "Weight of the point"
 msgstr "Težina tačke"
 
 
+msgid "Active Point"
+msgstr "Aktivna tačka"
+
+
 msgid "Alignment"
 msgstr "Poravnanje"
 
@@ -9621,6 +9613,10 @@ msgstr "Koža temena"
 
 msgid "Radius of the skin"
 msgstr "Radius kože"
+
+
+msgid "Root"
+msgstr "Koren"
 
 
 msgid "Name of skin layer"
@@ -10539,10 +10535,6 @@ msgid "Projectors"
 msgstr "Projektori"
 
 
-msgid "Add target position to uv coordinates"
-msgstr "Dodaj ciljnu poziciju na UV koordinate"
-
-
 msgid "U-Axis"
 msgstr "U osa"
 
@@ -10752,6 +10744,10 @@ msgstr "Izmeni putanju"
 
 msgid "Number of frames cached"
 msgstr "Broj kadrova u ostavi"
+
+
+msgid "Lines"
+msgstr "Linije"
 
 
 msgid "Free Run"
@@ -20922,10 +20918,6 @@ msgid "2D Cursor"
 msgstr "2D kursor"
 
 
-msgid "Active Point"
-msgstr "Aktivna tačka"
-
-
 msgid "Footage Settings"
 msgstr "Podešavanje videa"
 
@@ -24732,10 +24724,6 @@ msgid "Alpha Threshold"
 msgstr "Prag providnosti"
 
 
-msgid "Unknown"
-msgstr "Nepoznato"
-
-
 msgid "Jump Height"
 msgstr "Visina skakanja"
 
@@ -25139,10 +25127,6 @@ msgid "Invert Selection"
 msgstr "Obrni izbor"
 
 
-msgid "[{}]: \"{}\" ({})"
-msgstr "[{}]: \"{}\" ({})"
-
-
 msgid "Tracking"
 msgstr "Praćenje"
 
@@ -25168,6 +25152,10 @@ msgstr "Otvori..."
 msgctxt "Operator"
 msgid "Manual"
 msgstr "Uputstvo"
+
+
+msgid "Unknown"
+msgstr "Nepoznato"
 
 
 msgid "Frame Numbers"
@@ -25993,10 +25981,6 @@ msgid "Author:"
 msgstr "Autor:"
 
 
-msgid "author"
-msgstr "autor"
-
-
 msgid "Version:"
 msgstr "Verzija:"
 
@@ -26793,10 +26777,6 @@ msgid "Online Python Reference"
 msgstr "Python uputstvo na internetu"
 
 
-msgid "Value:"
-msgstr "Vrednost"
-
-
 msgid "(Gamma Corrected)"
 msgstr "Ispravka"
 
@@ -27525,6 +27505,10 @@ msgstr "Svojstvo"
 
 msgid "Driver Value:"
 msgstr "Vrednost vozača:"
+
+
+msgid "Value:"
+msgstr "Vrednost"
 
 
 msgid "Update Dependencies"

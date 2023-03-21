@@ -108,6 +108,17 @@ class Vector {
   template<typename OtherT, int64_t OtherInlineBufferCapacity, typename OtherAllocator>
   friend class Vector;
 
+  /** Required in case `T` is an incomplete type. */
+  static constexpr bool is_nothrow_move_constructible()
+  {
+    if constexpr (InlineBufferCapacity == 0) {
+      return true;
+    }
+    else {
+      return std::is_nothrow_move_constructible_v<T>;
+    }
+  }
+
  public:
   /**
    * Create an empty vector.
@@ -234,7 +245,7 @@ class Vector {
    */
   template<int64_t OtherInlineBufferCapacity>
   Vector(Vector<T, OtherInlineBufferCapacity, Allocator> &&other) noexcept(
-      std::is_nothrow_move_constructible_v<T>)
+      is_nothrow_move_constructible())
       : Vector(NoExceptConstructor(), other.allocator_)
   {
     const int64_t size = other.size();
@@ -974,7 +985,7 @@ class Vector {
     std::cout << "  Capacity: " << (capacity_end_ - begin_) << "\n";
     std::cout << "  Inline Capacity: " << InlineBufferCapacity << "\n";
 
-    char memory_size_str[15];
+    char memory_size_str[BLI_STR_FORMAT_INT64_BYTE_UNIT_SIZE];
     BLI_str_format_byte_unit(memory_size_str, sizeof(*this), true);
     std::cout << "  Size on Stack: " << memory_size_str << "\n";
   }

@@ -6,6 +6,7 @@
 #include <mutex>
 
 #include "BLI_cache_mutex.hh"
+#include "BLI_math_vector_types.hh"
 #include "BLI_multi_value_map.hh"
 #include "BLI_resource_scope.hh"
 #include "BLI_utility_mixins.hh"
@@ -174,6 +175,13 @@ class bNodeSocketRuntime : NonCopyable, NonMovable {
    * including dragged node links that aren't actually in the tree.
    */
   short total_inputs = 0;
+
+  /**
+   * The location of the socket in the tree, calculated while drawing the nodes and invalid if the
+   * node tree hasn't been drawn yet. In the node tree's "world space" (the same as
+   * #bNode::runtime::totr).
+   */
+  float2 location;
 
   /** Only valid when #topology_cache_is_dirty is false. */
   Vector<bNodeLink *> directly_linked_links;

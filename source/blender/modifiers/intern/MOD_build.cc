@@ -24,7 +24,7 @@
 #include "DEG_depsgraph_query.h"
 
 #include "BKE_context.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_modifier.h"
 #include "BKE_particle.h"
 #include "BKE_scene.h"
@@ -61,8 +61,6 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   int faces_dst_num, edges_dst_num, loops_dst_num = 0;
   float frac;
   MPoly *mpoly_dst;
-  MLoop *ml_dst;
-  const MLoop *ml_src;
   GHashIterator gh_iter;
   /* maps vert indices in old mesh to indices in new mesh */
   GHash *vertHash = BLI_ghash_int_new("build ve apply gh");
@@ -74,7 +72,8 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   const int vert_src_num = mesh->totvert;
   const blender::Span<MEdge> edges_src = mesh->edges();
   const blender::Span<MPoly> polys_src = mesh->polys();
-  const blender::Span<MLoop> loops_src = mesh->loops();
+  const blender::Span<int> corner_verts_src = mesh->corner_verts();
+  const blender::Span<int> corner_edges_src = mesh->corner_edges();
 
   int *vertMap = static_cast<int *>(MEM_malloc_arrayN(vert_src_num, sizeof(int), __func__));
   int *edgeMap = static_cast<int *>(MEM_malloc_arrayN(edges_src.size(), sizeof(int), __func__));
@@ -96,8 +95,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 
   /* if there's at least one face, build based on faces */
   if (faces_dst_num) {
-    const MPoly *mpoly, *mp;
-    const MLoop *ml, *mloop;
+    const MPoly *polys, *poly;
     uintptr_t hash_num, hash_num_alt;
 
     if (bmd->flag & MOD_BUILD_FLAG_RANDOMIZE) {
@@ -107,22 +105,20 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     /* get the set of all vert indices that will be in the final mesh,
      * mapped to the new indices
      */
-    mpoly = polys_src.data();
-    mloop = loops_src.data();
+    polys = polys_src.data();
     hash_num = 0;
     for (i = 0; i < faces_dst_num; i++) {
-      mp = mpoly + faceMap[i];
-      ml = mloop + mp->loopstart;
-
-      for (j = 0; j < mp->totloop; j++, ml++) {
+      poly = polys + faceMap[i];
+      for (j = 0; j < poly->totloop; j++) {
+        const int vert_i = corner_verts_src[poly->loopstart + j];
         void **val_p;
-        if (!BLI_ghash_ensure_p(vertHash, POINTER_FROM_INT(ml->v), &val_p)) {
+        if (!BLI_ghash_ensure_p(vertHash, POINTER_FROM_INT(vert_i), &val_p)) {
           *val_p = (void *)hash_num;
           hash_num++;
         }
       }
 
-      loops_dst_num += mp->totloop;
+      loops_dst_num += poly->totloop;
     }
     BLI_assert(hash_num == BLI_ghash_len(vertHash));
 
@@ -132,10 +128,10 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     hash_num = 0;
     hash_num_alt = 0;
     for (i = 0; i < edges_src.size(); i++, hash_num_alt++) {
-      const MEdge *me = edges_src.data() + i;
+      const MEdge *edge = edges_src.data() + i;
 
-      if (BLI_ghash_haskey(vertHash, POINTER_FROM_INT(me->v1)) &&
-          BLI_ghash_haskey(vertHash, POINTER_FROM_INT(me->v2))) {
+      if (BLI_ghash_haskey(vertHash, POINTER_FROM_INT(edge->v1)) &&
+          BLI_ghash_haskey(vertHash, POINTER_FROM_INT(edge->v2))) {
         BLI_ghash_insert(edgeHash, (void *)hash_num, (void *)hash_num_alt);
         BLI_ghash_insert(edgeHash2, (void *)hash_num_alt, (void *)hash_num);
         hash_num++;
@@ -144,7 +140,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     BLI_assert(hash_num == BLI_ghash_len(edgeHash));
   }
   else if (edges_dst_num) {
-    const MEdge *medge, *me;
+    const MEdge *edge;
     uintptr_t hash_num;
 
     if (bmd->flag & MOD_BUILD_FLAG_RANDOMIZE) {
@@ -154,18 +150,18 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     /* get the set of all vert indices that will be in the final mesh,
      * mapped to the new indices
      */
-    medge = edges_src.data();
+    const MEdge *edges = edges_src.data();
     hash_num = 0;
     BLI_assert(hash_num == BLI_ghash_len(vertHash));
     for (i = 0; i < edges_dst_num; i++) {
       void **val_p;
-      me = medge + edgeMap[i];
+      edge = edges + edgeMap[i];
 
-      if (!BLI_ghash_ensure_p(vertHash, POINTER_FROM_INT(me->v1), &val_p)) {
+      if (!BLI_ghash_ensure_p(vertHash, POINTER_FROM_INT(edge->v1), &val_p)) {
         *val_p = (void *)hash_num;
         hash_num++;
       }
-      if (!BLI_ghash_ensure_p(vertHash, POINTER_FROM_INT(me->v2), &val_p)) {
+      if (!BLI_ghash_ensure_p(vertHash, POINTER_FROM_INT(edge->v2), &val_p)) {
         *val_p = (void *)hash_num;
         hash_num++;
       }
@@ -197,10 +193,11 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 
   /* now we know the number of verts, edges and faces, we can create the mesh. */
   result = BKE_mesh_new_nomain_from_template(
-      mesh, BLI_ghash_len(vertHash), BLI_ghash_len(edgeHash), 0, loops_dst_num, faces_dst_num);
+      mesh, BLI_ghash_len(vertHash), BLI_ghash_len(edgeHash), loops_dst_num, faces_dst_num);
   blender::MutableSpan<MEdge> result_edges = result->edges_for_write();
   blender::MutableSpan<MPoly> result_polys = result->polys_for_write();
-  blender::MutableSpan<MLoop> result_loops = result->loops_for_write();
+  blender::MutableSpan<int> result_corner_verts = result->corner_verts_for_write();
+  blender::MutableSpan<int> result_corner_edges = result->corner_edges_for_write();
 
   /* copy the vertices across */
   GHASH_ITER (gh_iter, vertHash) {
@@ -226,7 +223,6 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   }
 
   mpoly_dst = result_polys.data();
-  ml_dst = result_loops.data();
 
   /* copy the faces across, remapping indices */
   k = 0;
@@ -243,10 +239,13 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
     CustomData_copy_data(
         &mesh->ldata, &result->ldata, source->loopstart, dest->loopstart, dest->totloop);
 
-    ml_src = &loops_src[source->loopstart];
-    for (j = 0; j < source->totloop; j++, k++, ml_src++, ml_dst++) {
-      ml_dst->v = POINTER_AS_INT(BLI_ghash_lookup(vertHash, POINTER_FROM_INT(ml_src->v)));
-      ml_dst->e = POINTER_AS_INT(BLI_ghash_lookup(edgeHash2, POINTER_FROM_INT(ml_src->e)));
+    for (j = 0; j < source->totloop; j++, k++) {
+      const int vert_src = corner_verts_src[source->loopstart + j];
+      const int edge_src = corner_edges_src[source->loopstart + j];
+      result_corner_verts[dest->loopstart + j] = POINTER_AS_INT(
+          BLI_ghash_lookup(vertHash, POINTER_FROM_INT(vert_src)));
+      result_corner_edges[dest->loopstart + j] = POINTER_AS_INT(
+          BLI_ghash_lookup(edgeHash2, POINTER_FROM_INT(edge_src)));
     }
   }
 
