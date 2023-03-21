@@ -20,7 +20,7 @@ class VKFrameBuffer : public FrameBuffer {
   /* Vulkan device who created the handle. */
   VkDevice vk_device_ = VK_NULL_HANDLE;
   /* Base render pass used for framebuffer creation. */
-  VkRenderPass render_pass_ = VK_NULL_HANDLE;
+  VkRenderPass vk_render_pass_ = VK_NULL_HANDLE;
   /* Number of layers if the attachments are layered textures. */
   int depth_ = 1;
   /** Internal frame-buffers are immutable. */

@@ -37,6 +37,9 @@ class VKCommandBuffer : NonCopyable, NonMovable {
   void bind(const VKDescriptorSet &descriptor_set,
             const VkPipelineLayout vk_pipeline_layout,
             VkPipelineBindPoint bind_point);
+  void bind(const VkRenderPass vk_render_pass,
+            const VkFramebuffer vk_framebuffer,
+            VkRect2D render_area);
   /**
    * Add a push constant command to the command buffer.
    *

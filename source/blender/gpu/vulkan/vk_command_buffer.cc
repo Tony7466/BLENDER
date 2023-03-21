@@ -72,6 +72,19 @@ void VKCommandBuffer::bind(const VKDescriptorSet &descriptor_set,
       vk_command_buffer_, bind_point, vk_pipeline_layout, 0, 1, &vk_descriptor_set, 0, 0);
 }
 
+void VKCommandBuffer::bind(const VkRenderPass vk_render_pass,
+                           const VkFramebuffer vk_framebuffer,
+                           VkRect2D render_area)
+{
+  VkRenderPassBeginInfo render_pass_begin_info{};
+  render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+  render_pass_begin_info.renderPass = vk_render_pass;
+  render_pass_begin_info.framebuffer = vk_framebuffer;
+  render_pass_begin_info.renderArea = render_area;
+
+  vkCmdBeginRenderPass(vk_command_buffer_, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+}
+
 void VKCommandBuffer::push_constants(const VKPushConstants &push_constants,
                                      const VkPipelineLayout vk_pipeline_layout,
                                      const VkShaderStageFlags vk_shader_stages)

@@ -50,6 +50,8 @@ class VKTexture : public Texture {
     return vk_image_view_;
   }
 
+  void ensure_allocated();
+
  protected:
   bool init_internal() override;
   bool init_internal(GPUVertBuf *vbo) override;

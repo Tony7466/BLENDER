@@ -208,6 +208,13 @@ bool VKTexture::init_internal(const GPUTexture * /*src*/, int /*mip_offset*/, in
   return false;
 }
 
+void VKTexture::ensure_allocated()
+{
+  if (!is_allocated()) {
+    allocate();
+  }
+}
+
 bool VKTexture::is_allocated()
 {
   return vk_image_ != VK_NULL_HANDLE && allocation_ != VK_NULL_HANDLE;
@@ -234,6 +241,8 @@ bool VKTexture::allocate()
   image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   image_info.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
                      VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
+  // TODO: this conflicts with other usages.  | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+  image_info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
   image_info.samples = VK_SAMPLE_COUNT_1_BIT;
 
   VkResult result;
