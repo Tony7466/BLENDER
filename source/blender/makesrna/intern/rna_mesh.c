@@ -2988,7 +2988,7 @@ static void rna_def_mloopuv(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop,
       "MeshUVLoop (Deprecated)",
-      "This struct is deprecated, use uv, vertex_select, edge_select or pin properties instead");
+      "Deprecated, use 'uv', 'vertex_select', 'edge_select' or 'pin' properties instead");
   RNA_def_property_collection_funcs(prop,
                                     "rna_MeshUVLoopLayer_data_begin",
                                     "rna_iterator_array_next",
