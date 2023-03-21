@@ -108,7 +108,7 @@ class VKDescriptorSet : NonCopyable {
   void mark_freed();
 };
 
-class VKDescriptorSetTracker : protected ResourceTracker<VKDescriptorSet> {
+class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
   friend class VKDescriptorSet;
 
  public:

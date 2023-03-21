@@ -28,15 +28,15 @@ class VKCommandBuffer;
  * If the submission id is the same a new version of the resource to now
  * intervene with other commands that uses the resource.
  *
- * SubmissionID is the identifier to keep track if a new submission is
+ * VKSubmissionID is the identifier to keep track if a new submission is
  * being recorded.
  */
-struct SubmissionID {
+struct VKSubmissionID {
  private:
   int64_t id_ = -1;
 
  public:
-  SubmissionID() = default;
+  VKSubmissionID() = default;
 
  private:
   /**
@@ -64,18 +64,18 @@ struct SubmissionID {
   }
 
  public:
-  const SubmissionID &operator=(const SubmissionID &other)
+  const VKSubmissionID &operator=(const VKSubmissionID &other)
   {
     id_ = other.id_;
     return *this;
   }
 
-  bool operator==(const SubmissionID &other)
+  bool operator==(const VKSubmissionID &other)
   {
     return id_ == other.id_;
   }
 
-  bool operator!=(const SubmissionID &other)
+  bool operator!=(const VKSubmissionID &other)
   {
     return id_ != other.id_;
   }
@@ -87,40 +87,40 @@ struct SubmissionID {
  * Submission tracker keeps track of the last known submission id of the
  * command buffer.
  */
-class SubmissionTracker {
-  SubmissionID last_known_id_;
+class VKSubmissionTracker {
+  VKSubmissionID last_known_id_;
 
  public:
   /**
    * Check if the submission_id has changed since the last time it was called
-   * on this SubmissionTracker.
+   * on this VKSubmissionTracker.
    */
   bool is_changed(VKContext &context);
 };
 
 /**
- * ResourceTracker will keep track of resources.
+ * VKResourceTracker will keep track of resources.
  */
-template<typename Resource> class ResourceTracker : NonCopyable {
-  SubmissionTracker submission_tracker_;
+template<typename Resource> class VKResourceTracker : NonCopyable {
+  VKSubmissionTracker submission_tracker_;
   Vector<std::unique_ptr<Resource>> tracked_resources_;
 
  protected:
-  ResourceTracker<Resource>() = default;
-  ResourceTracker<Resource>(ResourceTracker<Resource> &&other)
+  VKResourceTracker<Resource>() = default;
+  VKResourceTracker<Resource>(VKResourceTracker<Resource> &&other)
       : submission_tracker_(other.submission_tracker_),
         tracked_resources_(std::move(other.tracked_resources_))
   {
   }
 
-  ResourceTracker<Resource> &operator=(ResourceTracker<Resource> &&other)
+  VKResourceTracker<Resource> &operator=(VKResourceTracker<Resource> &&other)
   {
     submission_tracker_ = other.submission_tracker_;
     tracked_resources_ = std::move(other.tracked_resources_);
     return *this;
   }
 
-  virtual ~ResourceTracker()
+  virtual ~VKResourceTracker()
   {
     free_tracked_resources();
   }

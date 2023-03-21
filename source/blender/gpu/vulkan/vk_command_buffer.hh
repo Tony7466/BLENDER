@@ -28,7 +28,7 @@ class VKCommandBuffer : NonCopyable, NonMovable {
 
   /** Owning handles */
   VkFence vk_fence_ = VK_NULL_HANDLE;
-  SubmissionID submission_id_;
+  VKSubmissionID submission_id_;
 
  public:
   virtual ~VKCommandBuffer();
@@ -61,7 +61,7 @@ class VKCommandBuffer : NonCopyable, NonMovable {
    */
   void submit();
 
-  const SubmissionID &submission_id_get() const
+  const VKSubmissionID &submission_id_get() const
   {
     return submission_id_;
   }

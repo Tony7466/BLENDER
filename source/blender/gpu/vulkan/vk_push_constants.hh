@@ -43,7 +43,7 @@ class VKContext;
  * It should also keep track of the submissions in order to reuse the allocated
  * data.
  */
-class VKPushConstants : ResourceTracker<VKUniformBuffer> {
+class VKPushConstants : VKResourceTracker<VKUniformBuffer> {
  public:
   /** Different methods to store push constants. */
   enum class StorageType {
