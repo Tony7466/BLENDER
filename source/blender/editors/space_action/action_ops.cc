@@ -5,8 +5,8 @@
  * \ingroup spaction
  */
 
-#include <math.h>
-#include <stdlib.h>
+#include <cmath>
+#include <cstdlib>
 
 #include "DNA_space_types.h"
 

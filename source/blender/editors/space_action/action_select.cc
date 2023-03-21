@@ -5,10 +5,10 @@
  * \ingroup spaction
  */
 
-#include <float.h>
-#include <math.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cfloat>
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -68,16 +68,16 @@ static bAnimListElem *actkeys_find_list_element_at_position(bAnimContext *ac,
                                   ANIM_UI_get_first_channel_top(v2d),
                                   view_x,
                                   view_y,
-                                  NULL,
+                                  nullptr,
                                   &channel_index);
 
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   ANIM_animdata_filter(ac, &anim_data, filter, ac->data, eAnimCont_Types(ac->datatype));
 
   bAnimListElem *ale = static_cast<bAnimListElem *>(BLI_findlink(&anim_data, channel_index));
-  if (ale != NULL) {
+  if (ale != nullptr) {
     BLI_remlink(&anim_data, ale);
-    ale->next = ale->prev = NULL;
+    ale->next = ale->prev = nullptr;
   }
   ANIM_animdata_freelist(&anim_data);
 
@@ -90,7 +90,7 @@ static void actkeys_list_element_to_keylist(bAnimContext *ac,
 {
   AnimData *adt = ANIM_nla_mapping_get(ac, ale);
 
-  bDopeSheet *ads = NULL;
+  bDopeSheet *ads = nullptr;
   if (ELEM(ac->datatype, ANIMCONT_DOPESHEET, ANIMCONT_TIMELINE)) {
     ads = static_cast<bDopeSheet *>(ac->data);
   }
@@ -196,7 +196,7 @@ static void actkeys_find_key_at_position(bAnimContext *ac,
   *r_found = false;
   *r_ale = actkeys_find_list_element_at_position(ac, filter, region_x, region_y);
 
-  if (*r_ale != NULL) {
+  if (*r_ale != nullptr) {
     actkeys_find_key_in_list_element(
         ac, *r_ale, region_x, r_selx, r_frame, r_found, r_is_selected);
   }
@@ -214,7 +214,7 @@ static bool actkeys_is_key_at_position(bAnimContext *ac, float region_x, float r
   actkeys_find_key_at_position(
       ac, filter, region_x, region_y, &ale, &selx, &frame, &found, &is_selected);
 
-  if (ale != NULL) {
+  if (ale != nullptr) {
     MEM_freeN(ale);
   }
   return found;
@@ -239,11 +239,11 @@ static bool actkeys_is_key_at_position(bAnimContext *ac, float region_x, float r
  */
 static void deselect_action_keys(bAnimContext *ac, short test, short sel)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   eAnimFilter_Flags filter;
 
-  KeyframeEditData ked = {{NULL}};
+  KeyframeEditData ked = {{nullptr}};
   KeyframeEditFunc test_cb, sel_cb;
 
   /* determine type-based settings */
@@ -272,7 +272,7 @@ static void deselect_action_keys(bAnimContext *ac, short test, short sel)
       }
       else {
         if (ANIM_fcurve_keyframes_loop(
-                &ked, static_cast<FCurve *>(ale->key_data), NULL, test_cb, NULL)) {
+                &ked, static_cast<FCurve *>(ale->key_data), nullptr, test_cb, nullptr)) {
           sel = SELECT_SUBTRACT;
           break;
         }
@@ -293,7 +293,8 @@ static void deselect_action_keys(bAnimContext *ac, short test, short sel)
       ED_masklayer_frame_select_set(static_cast<MaskLayer *>(ale->data), sel);
     }
     else {
-      ANIM_fcurve_keyframes_loop(&ked, static_cast<FCurve *>(ale->key_data), NULL, sel_cb, NULL);
+      ANIM_fcurve_keyframes_loop(
+          &ked, static_cast<FCurve *>(ale->key_data), nullptr, sel_cb, nullptr);
     }
   }
 
@@ -334,9 +335,9 @@ static int actkeys_deselectall_exec(bContext *C, wmOperator *op)
   }
 
   /* set notifier that keyframe selection have changed */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);
   if (ANIM_animdata_can_have_greasepencil(eAnimCont_Types(eAnimCont_Types(ac.datatype)))) {
-    WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_SELECTED, NULL);
+    WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_SELECTED, nullptr);
   }
   return OPERATOR_FINISHED;
 }
@@ -430,7 +431,7 @@ static void box_select_elem(
       }
 
       if (ale->type == ANIMTYPE_SUMMARY) {
-        ListBase anim_data = {NULL, NULL};
+        ListBase anim_data = {nullptr, nullptr};
         ANIM_animdata_filter(
             ac, &anim_data, ANIMFILTER_DATA_VISIBLE, ac->data, eAnimCont_Types(ac->datatype));
 
@@ -444,7 +445,7 @@ static void box_select_elem(
 
       if (!ELEM(ac->datatype, ANIMCONT_GPENCIL, ANIMCONT_MASK)) {
         ANIM_animchannel_keyframes_loop(
-            &sel_data->ked, ac->ads, ale, sel_data->ok_cb, sel_data->select_cb, NULL);
+            &sel_data->ked, ac->ads, ale, sel_data->ok_cb, sel_data->select_cb, nullptr);
       }
     }
   }
@@ -452,7 +453,7 @@ static void box_select_elem(
 
 static void box_select_action(bAnimContext *ac, const rcti rect, short mode, short selectmode)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   eAnimFilter_Flags filter;
 
@@ -479,7 +480,7 @@ static void box_select_action(bAnimContext *ac, const rcti rect, short mode, sho
     sel_data.ok_cb = ANIM_editkeyframes_ok(BEZT_OK_FRAMERANGE);
   }
   else {
-    sel_data.ok_cb = NULL;
+    sel_data.ok_cb = nullptr;
   }
 
   /* init editing data */
@@ -587,9 +588,9 @@ static int actkeys_box_select_exec(bContext *C, wmOperator *op)
   box_select_action(&ac, rect, mode, selectmode);
 
   /* set notifier that keyframe selection have changed */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);
   if (ANIM_animdata_can_have_greasepencil(eAnimCont_Types(ac.datatype))) {
-    WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_SELECTED, NULL);
+    WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_SELECTED, nullptr);
   }
   return OPERATOR_FINISHED;
 }
@@ -689,7 +690,7 @@ static void region_select_elem(RegionSelectData *sel_data, bAnimListElem *ale, b
       }
 
       if (ale->type == ANIMTYPE_SUMMARY) {
-        ListBase anim_data = {NULL, NULL};
+        ListBase anim_data = {nullptr, nullptr};
         ANIM_animdata_filter(
             ac, &anim_data, ANIMFILTER_DATA_VISIBLE, ac->data, eAnimCont_Types(ac->datatype));
 
@@ -703,7 +704,7 @@ static void region_select_elem(RegionSelectData *sel_data, bAnimListElem *ale, b
 
       if (!ELEM(ac->datatype, ANIMCONT_GPENCIL, ANIMCONT_MASK)) {
         ANIM_animchannel_keyframes_loop(
-            &sel_data->ked, ac->ads, ale, sel_data->ok_cb, sel_data->select_cb, NULL);
+            &sel_data->ked, ac->ads, ale, sel_data->ok_cb, sel_data->select_cb, nullptr);
       }
     }
   }
@@ -712,7 +713,7 @@ static void region_select_elem(RegionSelectData *sel_data, bAnimListElem *ale, b
 static void region_select_action_keys(
     bAnimContext *ac, const rctf *rectf_view, short mode, short selectmode, void *data)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   eAnimFilter_Flags filter;
 
@@ -819,7 +820,7 @@ static int actkeys_lassoselect_exec(bContext *C, wmOperator *op)
 
   data_lasso.rectf_view = &rect_fl;
   data_lasso.mcoords = WM_gesture_lasso_path_to_array(C, op, &data_lasso.mcoords_len);
-  if (data_lasso.mcoords == NULL) {
+  if (data_lasso.mcoords == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
@@ -839,9 +840,9 @@ static int actkeys_lassoselect_exec(bContext *C, wmOperator *op)
   MEM_freeN((void *)data_lasso.mcoords);
 
   /* send notifier that keyframe selection has changed */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);
   if (ANIM_animdata_can_have_greasepencil(eAnimCont_Types(ac.datatype))) {
-    WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_SELECTED, NULL);
+    WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_SELECTED, nullptr);
   }
   return OPERATOR_FINISHED;
 }
@@ -908,9 +909,9 @@ static int action_circle_select_exec(bContext *C, wmOperator *op)
   region_select_action_keys(&ac, &rect_fl, BEZT_OK_CHANNEL_CIRCLE, selectmode, &data);
 
   /* send notifier that keyframe selection has changed */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);
   if (ANIM_animdata_can_have_greasepencil(eAnimCont_Types(ac.datatype))) {
-    WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_SELECTED, NULL);
+    WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_SELECTED, nullptr);
   }
   return OPERATOR_FINISHED;
 }
@@ -958,7 +959,7 @@ static const EnumPropertyItem prop_column_select_types[] = {
      0,
      "Between Min/Max Selected Markers",
      ""},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 /* ------------------- */
@@ -968,12 +969,12 @@ static const EnumPropertyItem prop_column_select_types[] = {
  * graph_select.c should de-duplicate. */
 static void markers_selectkeys_between(bAnimContext *ac)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   eAnimFilter_Flags filter;
 
   KeyframeEditFunc ok_cb, select_cb;
-  KeyframeEditData ked = {{NULL}};
+  KeyframeEditData ked = {{nullptr}};
   float min, max;
 
   /* get extreme markers */
@@ -1010,11 +1011,11 @@ static void markers_selectkeys_between(bAnimContext *ac)
         FCurve *fcurve = static_cast<FCurve *>(ale->key_data);
         if (adt) {
           ANIM_nla_mapping_apply_fcurve(adt, fcurve, 0, 1);
-          ANIM_fcurve_keyframes_loop(&ked, fcurve, ok_cb, select_cb, NULL);
+          ANIM_fcurve_keyframes_loop(&ked, fcurve, ok_cb, select_cb, nullptr);
           ANIM_nla_mapping_apply_fcurve(adt, fcurve, 1, 1);
         }
         else {
-          ANIM_fcurve_keyframes_loop(&ked, fcurve, ok_cb, select_cb, NULL);
+          ANIM_fcurve_keyframes_loop(&ked, fcurve, ok_cb, select_cb, nullptr);
         }
         break;
       }
@@ -1032,14 +1033,14 @@ static void markers_selectkeys_between(bAnimContext *ac)
 /* Selects all visible keyframes in the same frames as the specified elements */
 static void columnselect_action_keys(bAnimContext *ac, short mode)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   eAnimFilter_Flags filter;
 
   Scene *scene = ac->scene;
   CfraElem *ce;
   KeyframeEditFunc select_cb, ok_cb;
-  KeyframeEditData ked = {{NULL}};
+  KeyframeEditData ked = {{nullptr}};
 
   /* build list of columns */
   switch (mode) {
@@ -1062,7 +1063,7 @@ static void columnselect_action_keys(bAnimContext *ac, short mode)
           }
           else {
             ANIM_fcurve_keyframes_loop(
-                &ked, static_cast<FCurve *>(ale->key_data), NULL, bezt_to_cfraelem, NULL);
+                &ked, static_cast<FCurve *>(ale->key_data), nullptr, bezt_to_cfraelem, nullptr);
           }
         }
       }
@@ -1120,7 +1121,7 @@ static void columnselect_action_keys(bAnimContext *ac, short mode)
       }
       else {
         ANIM_fcurve_keyframes_loop(
-            &ked, static_cast<FCurve *>(ale->key_data), ok_cb, select_cb, NULL);
+            &ked, static_cast<FCurve *>(ale->key_data), ok_cb, select_cb, nullptr);
       }
     }
   }
@@ -1155,9 +1156,9 @@ static int actkeys_columnselect_exec(bContext *C, wmOperator *op)
   }
 
   /* set notifier that keyframe selection have changed */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);
   if (ANIM_animdata_can_have_greasepencil(eAnimCont_Types(ac.datatype))) {
-    WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_SELECTED, NULL);
+    WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_SELECTED, nullptr);
   }
   return OPERATOR_FINISHED;
 }
@@ -1191,7 +1192,7 @@ static int actkeys_select_linked_exec(bContext *C, wmOperator * /*op*/)
 {
   bAnimContext ac;
 
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   eAnimFilter_Flags filter;
 
@@ -1212,9 +1213,9 @@ static int actkeys_select_linked_exec(bContext *C, wmOperator * /*op*/)
     FCurve *fcu = (FCurve *)ale->key_data;
 
     /* check if anything selected? */
-    if (ANIM_fcurve_keyframes_loop(NULL, fcu, NULL, ok_cb, NULL)) {
+    if (ANIM_fcurve_keyframes_loop(nullptr, fcu, nullptr, ok_cb, nullptr)) {
       /* select every keyframe in this curve then */
-      ANIM_fcurve_keyframes_loop(NULL, fcu, NULL, sel_cb, NULL);
+      ANIM_fcurve_keyframes_loop(nullptr, fcu, nullptr, sel_cb, nullptr);
     }
   }
 
@@ -1222,9 +1223,9 @@ static int actkeys_select_linked_exec(bContext *C, wmOperator * /*op*/)
   ANIM_animdata_freelist(&anim_data);
 
   /* set notifier that keyframe selection has changed */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);
   if (ANIM_animdata_can_have_greasepencil(eAnimCont_Types(ac.datatype))) {
-    WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_SELECTED, NULL);
+    WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_SELECTED, nullptr);
   }
   return OPERATOR_FINISHED;
 }
@@ -1253,11 +1254,11 @@ void ACTION_OT_select_linked(wmOperatorType *ot)
 /* Common code to perform selection */
 static void select_moreless_action_keys(bAnimContext *ac, short mode)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   eAnimFilter_Flags filter;
 
-  KeyframeEditData ked = {{NULL}};
+  KeyframeEditData ked = {{nullptr}};
   KeyframeEditFunc build_cb;
 
   /* init selmap building data */
@@ -1277,20 +1278,20 @@ static void select_moreless_action_keys(bAnimContext *ac, short mode)
 
     /* only continue if F-Curve has keyframes */
     FCurve *fcu = (FCurve *)ale->key_data;
-    if (fcu->bezt == NULL) {
+    if (fcu->bezt == nullptr) {
       continue;
     }
 
     /* build up map of whether F-Curve's keyframes should be selected or not */
     ked.data = MEM_callocN(fcu->totvert, "selmap actEdit more");
-    ANIM_fcurve_keyframes_loop(&ked, fcu, NULL, build_cb, NULL);
+    ANIM_fcurve_keyframes_loop(&ked, fcu, nullptr, build_cb, nullptr);
 
     /* based on this map, adjust the selection status of the keyframes */
-    ANIM_fcurve_keyframes_loop(&ked, fcu, NULL, bezt_selmap_flush, NULL);
+    ANIM_fcurve_keyframes_loop(&ked, fcu, nullptr, bezt_selmap_flush, nullptr);
 
     /* free the selmap used here */
     MEM_freeN(ked.data);
-    ked.data = NULL;
+    ked.data = nullptr;
   }
 
   /* Cleanup */
@@ -1312,9 +1313,9 @@ static int actkeys_select_more_exec(bContext *C, wmOperator * /*op*/)
   select_moreless_action_keys(&ac, SELMAP_MORE);
 
   /* set notifier that keyframe selection has changed */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);
   if (ANIM_animdata_can_have_greasepencil(eAnimCont_Types(ac.datatype))) {
-    WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_SELECTED, NULL);
+    WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_SELECTED, nullptr);
   }
   return OPERATOR_FINISHED;
 }
@@ -1349,9 +1350,9 @@ static int actkeys_select_less_exec(bContext *C, wmOperator * /*op*/)
   select_moreless_action_keys(&ac, SELMAP_LESS);
 
   /* set notifier that keyframe selection has changed */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);
   if (ANIM_animdata_can_have_greasepencil(eAnimCont_Types(ac.datatype))) {
-    WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_SELECTED, NULL);
+    WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_SELECTED, nullptr);
   }
   return OPERATOR_FINISHED;
 }
@@ -1384,19 +1385,19 @@ static const EnumPropertyItem prop_actkeys_leftright_select_types[] = {
     {ACTKEYS_LRSEL_TEST, "CHECK", 0, "Check if Select Left or Right", ""},
     {ACTKEYS_LRSEL_LEFT, "LEFT", 0, "Before Current Frame", ""},
     {ACTKEYS_LRSEL_RIGHT, "RIGHT", 0, "After Current Frame", ""},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 /* --------------------------------- */
 
 static void actkeys_select_leftright(bAnimContext *ac, short leftright, short select_mode)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   eAnimFilter_Flags filter;
 
   KeyframeEditFunc ok_cb, select_cb;
-  KeyframeEditData ked = {{NULL}};
+  KeyframeEditData ked = {{nullptr}};
   Scene *scene = ac->scene;
 
   /* if select mode is replace, deselect all keyframes (and channels) first */
@@ -1445,11 +1446,11 @@ static void actkeys_select_leftright(bAnimContext *ac, short leftright, short se
         FCurve *fcurve = static_cast<FCurve *>(ale->key_data);
         if (adt) {
           ANIM_nla_mapping_apply_fcurve(adt, fcurve, 0, 1);
-          ANIM_fcurve_keyframes_loop(&ked, fcurve, ok_cb, select_cb, NULL);
+          ANIM_fcurve_keyframes_loop(&ked, fcurve, ok_cb, select_cb, nullptr);
           ANIM_nla_mapping_apply_fcurve(adt, fcurve, 1, 1);
         }
         else {
-          ANIM_fcurve_keyframes_loop(&ked, fcurve, ok_cb, select_cb, NULL);
+          ANIM_fcurve_keyframes_loop(&ked, fcurve, ok_cb, select_cb, nullptr);
         }
         break;
       }
@@ -1514,8 +1515,8 @@ static int actkeys_select_leftright_exec(bContext *C, wmOperator *op)
   actkeys_select_leftright(&ac, leftright, selectmode);
 
   /* set notifier that keyframe selection (and channels too) have changed */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
-  WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_SELECTED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_SELECTED, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -1598,7 +1599,7 @@ static void actkeys_mselect_single(bAnimContext *ac,
                                    short select_mode,
                                    float selx)
 {
-  KeyframeEditData ked = {{NULL}};
+  KeyframeEditData ked = {{nullptr}};
   KeyframeEditFunc select_cb, ok_cb;
 
   /* get functions for selecting keyframes */
@@ -1617,7 +1618,7 @@ static void actkeys_mselect_single(bAnimContext *ac,
   }
   else {
     if (ale->type == ANIMTYPE_SUMMARY && ale->datatype == ALE_ALL) {
-      ListBase anim_data = {NULL, NULL};
+      ListBase anim_data = {nullptr, nullptr};
       eAnimFilter_Flags filter;
 
       filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_NODUPLIS);
@@ -1639,7 +1640,7 @@ static void actkeys_mselect_single(bAnimContext *ac,
     }
 
     if (!ELEM(ac->datatype, ANIMCONT_GPENCIL, ANIMCONT_MASK)) {
-      ANIM_animchannel_keyframes_loop(&ked, ac->ads, ale, ok_cb, select_cb, NULL);
+      ANIM_animchannel_keyframes_loop(&ked, ac->ads, ale, ok_cb, select_cb, nullptr);
     }
   }
 }
@@ -1651,12 +1652,12 @@ static void actkeys_mselect_single(bAnimContext *ac,
 /* Option 3) Selects all visible keyframes in the same frame as the mouse click */
 static void actkeys_mselect_column(bAnimContext *ac, short select_mode, float selx)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   eAnimFilter_Flags filter;
 
   KeyframeEditFunc select_cb, ok_cb;
-  KeyframeEditData ked = {{NULL}};
+  KeyframeEditData ked = {{nullptr}};
 
   /* set up BezTriple edit callbacks */
   select_cb = ANIM_editkeyframes_select(select_mode);
@@ -1689,7 +1690,7 @@ static void actkeys_mselect_column(bAnimContext *ac, short select_mode, float se
       }
 
       ANIM_fcurve_keyframes_loop(
-          &ked, static_cast<FCurve *>(ale->key_data), ok_cb, select_cb, NULL);
+          &ked, static_cast<FCurve *>(ale->key_data), ok_cb, select_cb, nullptr);
     }
   }
 
@@ -1718,7 +1719,7 @@ static void actkeys_mselect_channel_only(bAnimContext *ac, bAnimListElem *ale, s
   }
   else {
     if (ale->type == ANIMTYPE_SUMMARY && ale->datatype == ALE_ALL) {
-      ListBase anim_data = {NULL, NULL};
+      ListBase anim_data = {nullptr, nullptr};
       eAnimFilter_Flags filter;
 
       filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_NODUPLIS);
@@ -1739,7 +1740,7 @@ static void actkeys_mselect_channel_only(bAnimContext *ac, bAnimListElem *ale, s
     }
 
     if (!ELEM(ac->datatype, ANIMCONT_GPENCIL, ANIMCONT_MASK)) {
-      ANIM_animchannel_keyframes_loop(NULL, ac->ads, ale, NULL, select_cb, NULL);
+      ANIM_animchannel_keyframes_loop(nullptr, ac->ads, ale, nullptr, select_cb, nullptr);
     }
   }
 }
@@ -1757,7 +1758,7 @@ static int mouse_action_keys(bAnimContext *ac,
   eAnimFilter_Flags filter = ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE |
                              ANIMFILTER_LIST_CHANNELS;
 
-  bAnimListElem *ale = NULL;
+  bAnimListElem *ale = nullptr;
   bool found = false;
   bool is_selected = false;
   float frame = 0.0f; /* frame of keyframe under mouse - NLA corrections not applied/included */
@@ -1793,7 +1794,7 @@ static int mouse_action_keys(bAnimContext *ac,
         ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_CLEAR);
 
         /* Highlight Action-Group or F-Curve? */
-        if (ale != NULL && ale->data) {
+        if (ale != nullptr && ale->data) {
           if (ale->type == ANIMTYPE_GROUP) {
             bActionGroup *agrp = static_cast<bActionGroup *>(ale->data);
 
@@ -1825,7 +1826,7 @@ static int mouse_action_keys(bAnimContext *ac,
         ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_CLEAR);
 
         /* Highlight GPencil Layer */
-        if (ale != NULL && ale->data != NULL && ale->type == ANIMTYPE_GPLAYER) {
+        if (ale != nullptr && ale->data != nullptr && ale->type == ANIMTYPE_GPLAYER) {
           bGPdata *gpd = (bGPdata *)ale->id;
           bGPDlayer *gpl = static_cast<bGPDlayer *>(ale->data);
 
@@ -1836,7 +1837,7 @@ static int mouse_action_keys(bAnimContext *ac,
         /* deselect all other channels first */
         ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_CLEAR);
 
-        if (ale != NULL && ale->data != NULL && ale->type == ANIMTYPE_MASKLAYER) {
+        if (ale != nullptr && ale->data != nullptr && ale->type == ANIMTYPE_MASKLAYER) {
           MaskLayer *masklay = static_cast<MaskLayer *>(ale->data);
 
           masklay->flag |= MASK_LAYERFLAG_SELECT;
@@ -1846,7 +1847,7 @@ static int mouse_action_keys(bAnimContext *ac,
   }
 
   /* only select keyframes if we clicked on a valid channel and hit something */
-  if (ale != NULL) {
+  if (ale != nullptr) {
     if (found) {
       /* apply selection to keyframes */
       if (column) {
@@ -1911,8 +1912,8 @@ static int actkeys_clickselect_exec(bContext *C, wmOperator *op)
       &ac, mval, selectmode, deselect_all, column, channel, wait_to_deselect_others);
 
   /* set notifier that keyframe selection (and channels too) have changed */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, NULL);
-  WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_SELECTED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN | NA_SELECTED, nullptr);
 
   /* for tweak grab to work */
   return ret_value | OPERATOR_PASS_THROUGH;

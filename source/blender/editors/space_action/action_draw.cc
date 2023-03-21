@@ -7,10 +7,10 @@
 
 /* System includes ----------------------------------------------------- */
 
-#include <float.h>
-#include <math.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cfloat>
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
 
 #include "BLI_blenlib.h"
 #include "BLI_math.h"
@@ -50,7 +50,7 @@
 
 void draw_channel_names(bContext *C, bAnimContext *ac, ARegion *region)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
   eAnimFilter_Flags filter;
 
@@ -66,7 +66,7 @@ void draw_channel_names(bContext *C, bAnimContext *ac, ARegion *region)
   v2d->tot.ymin = -(height + pad_bottom);
 
   /* need to do a view-sync here, so that the keys area doesn't jump around (it must copy this) */
-  UI_view2d_sync(NULL, ac->area, v2d, V2D_LOCK_COPY);
+  UI_view2d_sync(nullptr, ac->area, v2d, V2D_LOCK_COPY);
 
   const float channel_step = ANIM_UI_get_channel_step();
   /* Loop through channels, and set up drawing depending on their type. */
@@ -126,8 +126,8 @@ void draw_channel_names(bContext *C, bAnimContext *ac, ARegion *region)
 static void draw_channel_action_ranges(ListBase *anim_data, View2D *v2d)
 {
   /* Variables for coalescing the Y region of one action. */
-  bAction *cur_action = NULL;
-  AnimData *cur_adt = NULL;
+  bAction *cur_action = nullptr;
+  AnimData *cur_adt = nullptr;
   float cur_ymax;
 
   /* Walk through channels, grouping contiguous spans referencing the same action. */
@@ -137,8 +137,8 @@ static void draw_channel_action_ranges(ListBase *anim_data, View2D *v2d)
 
   for (bAnimListElem *ale = static_cast<bAnimListElem *>(anim_data->first); ale;
        ale = ale->next, ymax = ymin, ymin -= ystep) {
-    bAction *action = NULL;
-    AnimData *adt = NULL;
+    bAction *action = nullptr;
+    AnimData *adt = nullptr;
 
     /* check if visible */
     if (IN_RANGE(ymin, v2d->cur.ymin, v2d->cur.ymax) ||
@@ -173,12 +173,12 @@ static void draw_channel_action_ranges(ListBase *anim_data, View2D *v2d)
 
 void draw_channel_strips(bAnimContext *ac, SpaceAction *saction, ARegion *region)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   bAnimListElem *ale;
 
   View2D *v2d = &region->v2d;
   bDopeSheet *ads = &saction->ads;
-  AnimData *adt = NULL;
+  AnimData *adt = nullptr;
 
   uchar col1[4], col2[4];
   uchar col1a[4], col2a[4];
@@ -676,7 +676,7 @@ static void timeline_cache_draw_single(PTCacheID *pid, float y_offset, float hei
 
 void timeline_draw_cache(SpaceAction *saction, Object *ob, Scene *scene)
 {
-  if ((saction->cache_display & TIME_CACHE_DISPLAY) == 0 || ob == NULL) {
+  if ((saction->cache_display & TIME_CACHE_DISPLAY) == 0 || ob == nullptr) {
     return;
   }
 
@@ -697,7 +697,7 @@ void timeline_draw_cache(SpaceAction *saction, Object *ob, Scene *scene)
       continue;
     }
 
-    if (pid->cache->cached_frames == NULL) {
+    if (pid->cache->cached_frames == nullptr) {
       continue;
     }
 

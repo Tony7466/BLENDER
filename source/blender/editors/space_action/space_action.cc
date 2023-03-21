@@ -5,8 +5,8 @@
  * \ingroup spaction
  */
 
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 
 #include "DNA_action_types.h"
 #include "DNA_anim_types.h"
@@ -192,7 +192,7 @@ static void action_main_region_draw(const bContext *C, ARegion *region)
 
   /* Draw the manually set intended playback frame range highlight in the Action editor. */
   if (ELEM(saction->mode, SACTCONT_ACTION, SACTCONT_SHAPEKEY) && saction->action) {
-    AnimData *adt = ED_actedit_animdata_from_context(C, NULL);
+    AnimData *adt = ED_actedit_animdata_from_context(C, nullptr);
 
     ANIM_draw_action_framerange(adt, saction->action, v2d, -FLT_MAX, FLT_MAX);
   }
@@ -246,7 +246,7 @@ static void action_main_region_draw_overlay(const bContext *C, ARegion *region)
   ED_time_scrub_draw_current_frame(region, scene, saction->flag & SACTION_DRAWTIME);
 
   /* scrollers */
-  UI_view2d_scrollers_draw(v2d, NULL);
+  UI_view2d_scrollers_draw(v2d, nullptr);
 }
 
 /* add handlers, stuff you only do once or on area/region changes */
