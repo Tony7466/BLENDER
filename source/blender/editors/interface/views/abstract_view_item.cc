@@ -264,45 +264,6 @@ class ViewItemAPIWrapper {
 
     return true;
   }
-
-  static bool can_drop(const AbstractViewItem &item,
-                       const wmDrag &drag,
-                       const char **r_disabled_hint)
-  {
-    const std::unique_ptr<AbstractViewItemDropController> drop_controller =
-        item.create_drop_controller();
-    if (!drop_controller) {
-      return false;
-    }
-
-    return drop_controller->can_drop(drag, r_disabled_hint);
-  }
-
-  static std::string drop_tooltip(const AbstractViewItem &item, const wmDrag &drag)
-  {
-    const std::unique_ptr<AbstractViewItemDropController> drop_controller =
-        item.create_drop_controller();
-    if (!drop_controller) {
-      return {};
-    }
-
-    return drop_controller->drop_tooltip(drag);
-  }
-
-  static bool drop_handle(bContext &C, const AbstractViewItem &item, const ListBase &drags)
-  {
-    std::unique_ptr<AbstractViewItemDropController> drop_controller =
-        item.create_drop_controller();
-
-    const char *disabled_hint_dummy = nullptr;
-    LISTBASE_FOREACH (const wmDrag *, drag, &drags) {
-      if (drop_controller->can_drop(*drag, &disabled_hint_dummy)) {
-        return drop_controller->on_drop(&C, *drag);
-      }
-    }
-
-    return false;
-  }
 };
 
 }  // namespace blender::ui
@@ -348,26 +309,11 @@ bool UI_view_item_drag_start(bContext *C, const uiViewItemHandle *item_)
   return ViewItemAPIWrapper::drag_start(*C, item);
 }
 
-bool UI_view_item_can_drop(const uiViewItemHandle *item_,
-                           const wmDrag *drag,
-                           const char **r_disabled_hint)
+std::unique_ptr<DropControllerInterface> UI_view_item_drop_controller(
+    const uiViewItemHandle *item_handle)
 {
-  const AbstractViewItem &item = reinterpret_cast<const AbstractViewItem &>(*item_);
-  return ViewItemAPIWrapper::can_drop(item, *drag, r_disabled_hint);
-}
-
-char *UI_view_item_drop_tooltip(const uiViewItemHandle *item_, const wmDrag *drag)
-{
-  const AbstractViewItem &item = reinterpret_cast<const AbstractViewItem &>(*item_);
-
-  const std::string tooltip = ViewItemAPIWrapper::drop_tooltip(item, *drag);
-  return tooltip.empty() ? nullptr : BLI_strdup(tooltip.c_str());
-}
-
-bool UI_view_item_drop_handle(bContext *C, const uiViewItemHandle *item_, const ListBase *drags)
-{
-  const AbstractViewItem &item = reinterpret_cast<const AbstractViewItem &>(*item_);
-  return ViewItemAPIWrapper::drop_handle(*C, item, *drags);
+  const AbstractViewItem &item = reinterpret_cast<const AbstractViewItem &>(*item_handle);
+  return item.create_drop_controller();
 }
 
 /** \} */

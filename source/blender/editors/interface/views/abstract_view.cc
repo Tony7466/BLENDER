@@ -62,6 +62,12 @@ void AbstractView::update_from_old(uiBlock &new_block)
 /** \name Default implementations of virtual functions
  * \{ */
 
+std::unique_ptr<AbstractViewDropController> AbstractView::create_drop_controller() const
+{
+  /* There's no drop controller (and hence no drop support) by default. */
+  return nullptr;
+}
+
 bool AbstractView::listen(const wmNotifier & /*notifier*/) const
 {
   /* Nothing by default. */
@@ -104,6 +110,25 @@ MutableSpan<char> AbstractView::get_rename_buffer()
   return *rename_buffer_;
 }
 
+std::optional<rcti> AbstractView::get_bounds() const
+{
+  return bounds_;
+}
+
 /** \} */
 
 }  // namespace blender::ui
+
+/* ---------------------------------------------------------------------- */
+/** \name C-API
+ * \{ */
+
+using namespace blender::ui;
+
+std::unique_ptr<DropControllerInterface> UI_view_drop_controller(const uiViewHandle *view_handle)
+{
+  const AbstractView &view = reinterpret_cast<const AbstractView &>(*view_handle);
+  return view.create_drop_controller();
+}
+
+/** \} */

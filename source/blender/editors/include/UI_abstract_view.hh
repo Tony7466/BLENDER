@@ -19,16 +19,21 @@
 
 #include <array>
 #include <memory>
+#include <optional>
 
 #include "DNA_defs.h"
+#include "DNA_vec_types.h"
 
 #include "BLI_span.hh"
 #include "BLI_string_ref.hh"
+
+#include "UI_interface.hh"
 
 struct bContext;
 struct uiBlock;
 struct uiLayout;
 struct uiViewItemHandle;
+struct ViewLink;
 struct wmDrag;
 struct wmNotifier;
 
@@ -38,8 +43,13 @@ class AbstractViewItem;
 class AbstractViewItemDropController;
 class AbstractViewItemDragController;
 
+/** The view drop controller can share logic with the view item drop controller for now, so just an
+ * alias. */
+using AbstractViewDropController = AbstractViewItemDropController;
+
 class AbstractView {
   friend class AbstractViewItem;
+  friend struct ::ViewLink;
 
   bool is_reconstructed_ = false;
   /**
@@ -51,8 +61,20 @@ class AbstractView {
    */
   std::unique_ptr<std::array<char, MAX_NAME>> rename_buffer_;
 
+  /* See #get_bounds(). */
+  std::optional<rcti> bounds_;
+
  public:
   virtual ~AbstractView() = default;
+
+  /**
+   * If a view wants to support dropping data into it, it has to return a drop controller here.
+   * That is an object implementing #AbstractViewDropController.
+   *
+   * \note This drop controller may be requested for each event. The view doesn't keep a drop
+   *       controller around currently. So it can not contain persistent state.
+   */
+  virtual std::unique_ptr<AbstractViewDropController> create_drop_controller() const;
 
   /** Listen to a notifier, returning true if a redraw is needed. */
   virtual bool listen(const wmNotifier &) const;
@@ -70,6 +92,11 @@ class AbstractView {
   void end_renaming();
   Span<char> get_rename_buffer() const;
   MutableSpan<char> get_rename_buffer();
+  /**
+   * Get the rectangle containing all the view items that are in the layout, in button space.
+   * Updated as part of #UI_block_end(), before that it's unset.
+   */
+  std::optional<rcti> get_bounds() const;
 
  protected:
   AbstractView() = default;
@@ -225,35 +252,12 @@ class AbstractViewItemDragController {
  * when dragging over this item. An item can return a drop controller for itself via a custom
  * implementation of #AbstractViewItem::create_drop_controller().
  */
-class AbstractViewItemDropController {
+class AbstractViewItemDropController : public DropControllerInterface {
  protected:
   AbstractView &view_;
 
  public:
   AbstractViewItemDropController(AbstractView &view);
-  virtual ~AbstractViewItemDropController() = default;
-
-  /**
-   * Check if the data dragged with \a drag can be dropped on the item this controller is for.
-   * \param r_disabled_hint: Return a static string to display to the user, explaining why dropping
-   *                         isn't possible on this item. Shouldn't be done too aggressively, e.g.
-   *                         don't set this if the drag-type can't be dropped here; only if it can
-   *                         but there's another reason it can't be dropped.
-   *                         Can assume this is a non-null pointer.
-   */
-  virtual bool can_drop(const wmDrag &drag, const char **r_disabled_hint) const = 0;
-  /**
-   * Custom text to display when dragging over a view item. Should explain what happens when
-   * dropping the data onto this item. Will only be used if #AbstractViewItem::can_drop()
-   * returns true, so the implementing override doesn't have to check that again.
-   * The returned value must be a translated string.
-   */
-  virtual std::string drop_tooltip(const wmDrag &drag) const = 0;
-  /**
-   * Execute the logic to apply a drop of the data dragged with \a drag onto/into the item this
-   * controller is for.
-   */
-  virtual bool on_drop(struct bContext *C, const wmDrag &drag) = 0;
 
   /** Request the view the item is registered for as type #ViewType. Throws a `std::bad_cast`
    * exception if the view is not of the requested type. */

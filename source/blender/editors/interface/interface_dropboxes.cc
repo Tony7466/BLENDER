@@ -20,6 +20,9 @@
 #include "WM_api.h"
 
 #include "UI_interface.h"
+#include "UI_interface.hh"
+
+using namespace blender::ui;
 
 /* -------------------------------------------------------------------- */
 /** \name View Drag/Drop Callbacks
@@ -28,28 +31,28 @@
 static bool ui_view_drop_poll(bContext *C, wmDrag *drag, const wmEvent *event)
 {
   const ARegion *region = CTX_wm_region(C);
-  const uiViewItemHandle *hovered_item = UI_region_views_find_item_at(region, event->xy);
-  if (!hovered_item) {
+
+  std::unique_ptr<DropControllerInterface> drop_controller =
+      UI_region_views_find_drop_controller_at(region, event->xy);
+  if (!drop_controller) {
     return false;
   }
 
   if (drag->drop_state.free_disabled_info) {
     MEM_SAFE_FREE(drag->drop_state.disabled_info);
   }
-
   drag->drop_state.free_disabled_info = false;
-  return UI_view_item_can_drop(hovered_item, drag, &drag->drop_state.disabled_info);
+
+  return drop_controller->can_drop(*drag, &drag->drop_state.disabled_info);
 }
 
 static char *ui_view_drop_tooltip(bContext *C, wmDrag *drag, const int xy[2], wmDropBox * /*drop*/)
 {
   const ARegion *region = CTX_wm_region(C);
-  const uiViewItemHandle *hovered_item = UI_region_views_find_item_at(region, xy);
-  if (!hovered_item) {
-    return nullptr;
-  }
+  std::unique_ptr<DropControllerInterface> drop_controller =
+      UI_region_views_find_drop_controller_at(region, xy);
 
-  return UI_view_item_drop_tooltip(hovered_item, drag);
+  return UI_drop_controller_drop_tooltip(*drop_controller, *drag);
 }
 
 /** \} */

@@ -113,7 +113,7 @@ class AssetCatalogDropController : public ui::AbstractViewItemDropController {
 
   bool can_drop(const wmDrag &drag, const char **r_disabled_hint) const override;
   std::string drop_tooltip(const wmDrag &drag) const override;
-  bool on_drop(struct bContext *C, const wmDrag &drag) override;
+  bool on_drop(struct bContext *C, const wmDrag &drag) const override;
 
   ::AssetLibrary &get_asset_library() const;
 
@@ -151,7 +151,7 @@ class AssetCatalogTreeViewAllItem : public ui::BasicTreeViewItem {
 
     bool can_drop(const wmDrag &drag, const char **r_disabled_hint) const override;
     std::string drop_tooltip(const wmDrag &drag) const override;
-    bool on_drop(struct bContext *C, const wmDrag &drag) override;
+    bool on_drop(struct bContext *C, const wmDrag &drag) const override;
   };
 
   std::unique_ptr<ui::AbstractViewItemDropController> create_drop_controller() const override;
@@ -165,7 +165,7 @@ class AssetCatalogTreeViewUnassignedItem : public ui::BasicTreeViewItem {
 
     bool can_drop(const wmDrag &drag, const char **r_disabled_hint) const override;
     std::string drop_tooltip(const wmDrag &drag) const override;
-    bool on_drop(struct bContext *C, const wmDrag &drag) override;
+    bool on_drop(struct bContext *C, const wmDrag &drag) const override;
   };
 
   std::unique_ptr<ui::AbstractViewItemDropController> create_drop_controller() const override;
@@ -429,7 +429,7 @@ std::string AssetCatalogDropController::drop_tooltip_asset_list(const wmDrag &dr
   return basic_tip;
 }
 
-bool AssetCatalogDropController::on_drop(struct bContext *C, const wmDrag &drag)
+bool AssetCatalogDropController::on_drop(struct bContext *C, const wmDrag &drag) const
 {
   if (drag.type == WM_DRAG_ASSET_CATALOG) {
     return drop_asset_catalog_into_catalog(
@@ -623,7 +623,7 @@ std::string AssetCatalogTreeViewAllItem::DropController::drop_tooltip(const wmDr
 }
 
 bool AssetCatalogTreeViewAllItem::DropController::on_drop(struct bContext * /*C*/,
-                                                          const wmDrag &drag)
+                                                          const wmDrag &drag) const
 {
   BLI_assert(drag.type == WM_DRAG_ASSET_CATALOG);
   return AssetCatalogDropController::drop_asset_catalog_into_catalog(
@@ -667,7 +667,7 @@ std::string AssetCatalogTreeViewUnassignedItem::DropController::drop_tooltip(
 }
 
 bool AssetCatalogTreeViewUnassignedItem::DropController::on_drop(struct bContext *C,
-                                                                 const wmDrag &drag)
+                                                                 const wmDrag &drag) const
 {
   /* Assign to nil catalog ID. */
   return AssetCatalogDropController::drop_assets_into_catalog(
