@@ -403,7 +403,8 @@ void split_edges(Mesh &mesh,
   Vector<int> new_to_old_edges_map(IndexRange(new_edges.size()).as_span());
 
   /* Step 1: Split the edges. */
-  mask.foreach_index([&](const int edge_i) {
+
+  mask.foreach_index(GrainSize(512), [&](const int edge_i) {
     split_edge_per_poly(edge_i,
                         edge_offsets[edge_i],
                         edge_to_loop_map,

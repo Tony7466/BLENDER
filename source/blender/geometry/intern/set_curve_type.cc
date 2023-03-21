@@ -296,7 +296,8 @@ static bke::CurvesGeometry convert_curves_to_bezier(
 
   MutableSpan<int> dst_offsets = dst_curves.offsets_for_write();
   bke::curves::copy_curve_sizes(src_points_by_curve, unselected_ranges, dst_offsets);
-  selection.foreach_index([&](const int i) {
+
+  selection.foreach_index(GrainSize(1024), [&](const int i) {
     dst_offsets[i] = to_bezier_size(CurveType(src_types[i]),
                                     src_cyclic[i],
                                     KnotsMode(src_knot_modes[i]),
