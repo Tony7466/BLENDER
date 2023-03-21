@@ -433,7 +433,7 @@ inline int16_t Chunk::iterator_to_index(const RawChunkIterator &it) const
   BLI_assert(it.segment_i >= 0);
   BLI_assert(it.segment_i < this->segments_num);
   BLI_assert(it.index_in_segment >= 0);
-  BLI_assert(it.index_in_segment < this->segment_offsets().size(it.segment_i));
+  BLI_assert(it.index_in_segment < this->segment_offsets()[it.segment_i].size());
   return this->cumulative_segment_sizes[it.segment_i] + it.index_in_segment;
 }
 
@@ -629,7 +629,7 @@ inline RawChunkIterator Chunk::end_iterator() const
   RawChunkIterator data;
   if (this->segments_num > 0) {
     data.segment_i = this->segments_num - 1;
-    data.index_in_segment = this->segment_offsets().size(this->segments_num - 1);
+    data.index_in_segment = this->segment_offsets()[this->segments_num - 1].size();
   }
   else {
     data.segment_i = 0;

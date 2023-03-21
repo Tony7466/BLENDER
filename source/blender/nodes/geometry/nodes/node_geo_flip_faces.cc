@@ -30,15 +30,16 @@ static void mesh_flip_faces(Mesh &mesh, const Field<bool> &selection_field)
   const IndexMask selection = evaluator.get_evaluated_as_mask(0);
 
   const Span<MPoly> polys = mesh.polys();
-  MutableSpan<MLoop> loops = mesh.loops_for_write();
+  MutableSpan<int> corner_verts = mesh.corner_verts_for_write();
+  MutableSpan<int> corner_edges = mesh.corner_edges_for_write();
 
   selection.foreach_index(GrainSize(1024), [&](const int i) {
     const IndexRange poly(polys[i].loopstart, polys[i].totloop);
     for (const int j : IndexRange(poly.size() / 2)) {
       const int a = poly[j + 1];
       const int b = poly.last(j);
-      std::swap(loops[a].v, loops[b].v);
-      std::swap(loops[a - 1].e, loops[b].e);
+      std::swap(corner_verts[a], corner_verts[b]);
+      std::swap(corner_edges[a - 1], corner_edges[b]);
     }
   });
 
@@ -49,6 +50,9 @@ static void mesh_flip_faces(Mesh &mesh, const Field<bool> &selection_field)
           return true;
         }
         if (meta_data.domain != ATTR_DOMAIN_CORNER) {
+          return true;
+        }
+        if (ELEM(attribute_id.name(), ".corner_vert", ".corner_edge")) {
           return true;
         }
         GSpanAttributeWriter attribute = attributes.lookup_for_write_span(attribute_id);
