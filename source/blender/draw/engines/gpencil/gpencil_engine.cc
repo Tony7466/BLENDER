@@ -142,7 +142,7 @@ class Instance {
       //   objects.sync_gpencil(manager, object_ref, main_fb_, main_ps_);
       //   break;
       case OB_GREASE_PENCIL:
-        objects.sync_gpencil(manager, object_ref, main_fb_, main_ps_);
+        // objects.sync_gpencil(manager, object_ref, main_fb_, main_ps_);
       case OB_LAMP:
         lights.sync(object_ref);
         break;
