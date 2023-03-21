@@ -24,7 +24,7 @@ set(INC_SYS
 
 set(SRC
   action_buttons.cc
-  action_data.c
+  action_data.cc
   action_draw.cc
   action_edit.c
   action_ops.c

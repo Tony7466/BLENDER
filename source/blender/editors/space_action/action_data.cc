@@ -205,7 +205,7 @@ static bool action_new_poll(bContext *C)
   return false;
 }
 
-static int action_new_exec(bContext *C, wmOperator *UNUSED(op))
+static int action_new_exec(bContext *C, wmOperator * /*op*/)
 {
   PointerRNA ptr, idptr;
   PropertyRNA *prop;
@@ -225,7 +225,7 @@ static int action_new_exec(bContext *C, wmOperator *UNUSED(op))
 
     /* stash the old action to prevent it from being lost */
     if (ptr.type == &RNA_AnimData) {
-      adt = ptr.data;
+      adt = static_cast<AnimData *>(ptr.data);
       adt_id_owner = ptr.owner_id;
     }
     else if (ptr.type == &RNA_SpaceDopeSheetEditor) {
@@ -252,7 +252,7 @@ static int action_new_exec(bContext *C, wmOperator *UNUSED(op))
          * or else the user gets decremented twice!
          */
         if (ptr.type == &RNA_SpaceDopeSheetEditor) {
-          SpaceAction *saction = ptr.data;
+          SpaceAction *saction = static_cast<SpaceAction *>(ptr.data);
           saction->action = NULL;
         }
       }
@@ -598,11 +598,11 @@ void ED_animedit_unlink_action(
       NlaTrack *nlt, *nlt_next;
       NlaStrip *strip, *nstrip;
 
-      for (nlt = adt->nla_tracks.first; nlt; nlt = nlt_next) {
+      for (nlt = static_cast<NlaTrack *>(adt->nla_tracks.first); nlt; nlt = nlt_next) {
         nlt_next = nlt->next;
 
         if (strstr(nlt->name, DATA_("[Action Stash]"))) {
-          for (strip = nlt->strips.first; strip; strip = nstrip) {
+          for (strip = static_cast<NlaStrip *>(nlt->strips.first); strip; strip = nstrip) {
             nstrip = strip->next;
 
             if (strip->act == act) {
@@ -733,7 +733,7 @@ static NlaStrip *action_layer_get_nlastrip(ListBase *strips, float ctime)
 {
   NlaStrip *strip;
 
-  for (strip = strips->first; strip; strip = strip->next) {
+  for (strip = static_cast<NlaStrip *>(strips->first); strip; strip = strip->next) {
     /* Can we use this? */
     if (IN_RANGE_INCL(ctime, strip->start, strip->end)) {
       /* in range - use this one */
@@ -982,7 +982,7 @@ static int action_layer_prev_exec(bContext *C, wmOperator *op)
   }
   else {
     /* Active Action - Use the top-most track */
-    nlt = adt->nla_tracks.last;
+    nlt = static_cast<NlaTrack *>(adt->nla_tracks.last);
   }
 
   /* Find previous action and hook it up */
