@@ -6,7 +6,6 @@ set(INC
   ../../intern/guardedalloc
   ../blender/blenkernel
   ../blender/blenlib
-  ../blender/blenloader
   ../blender/depsgraph
   ../blender/editors/include
   ../blender/gpu
@@ -411,7 +410,7 @@ if(WITH_PYTHON)
   endif()
 
   install(
-    DIRECTORY ${CMAKE_SOURCE_DIR}/release/scripts
+    DIRECTORY ${CMAKE_SOURCE_DIR}/scripts
     DESTINATION ${TARGETDIR_VER}
     PATTERN ".git" EXCLUDE
     PATTERN ".gitignore" EXCLUDE
@@ -426,12 +425,12 @@ if(WITH_PYTHON)
   if(WITH_PYTHON_INSTALL)
     if(WIN32)
       install(
-        FILES ${CMAKE_SOURCE_DIR}/release/scripts/site/sitecustomize.py
+        FILES ${CMAKE_SOURCE_DIR}/scripts/site/sitecustomize.py
         DESTINATION ${TARGETDIR_VER}/python/lib/site-packages
       )
     else()
       install(
-        FILES ${CMAKE_SOURCE_DIR}/release/scripts/site/sitecustomize.py
+        FILES ${CMAKE_SOURCE_DIR}/scripts/site/sitecustomize.py
         DESTINATION ${TARGETDIR_VER}/python/lib/python${PYTHON_VERSION}/site-packages
       )
     endif()
@@ -448,7 +447,7 @@ install(
 
 # localization
 if(WITH_INTERNATIONAL)
-  set(_locale_dir "${CMAKE_SOURCE_DIR}/release/datafiles/locale")
+  set(_locale_dir "${CMAKE_SOURCE_DIR}/locale")
   set(_locale_target_dir ${TARGETDIR_VER}/datafiles/locale)
 
   file(GLOB _po_files "${_locale_dir}/po/*.po")
@@ -1215,6 +1214,16 @@ elseif(WIN32)
   windows_install_shared_manifest(
     FILES ${LIBDIR}/sndfile/lib/libsndfile-1.dll
     ALL
+  )
+
+  windows_install_shared_manifest(
+    FILES ${LIBDIR}/shaderc/bin/shaderc_shared.dll
+    RELEASE
+  )
+
+  windows_install_shared_manifest(
+    FILES ${LIBDIR}/shaderc/bin/shaderc_shared_d.dll
+    DEBUG
   )
 
   windows_install_shared_manifest(

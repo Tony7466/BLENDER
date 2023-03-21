@@ -46,7 +46,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_main.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_modifier.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
@@ -834,15 +834,21 @@ static void initialize_group_input(NodesModifierData &nmd,
   }
 }
 
-static const lf::FunctionNode &find_viewer_lf_node(const bNode &viewer_bnode)
+static const lf::FunctionNode *find_viewer_lf_node(const bNode &viewer_bnode)
 {
-  return *blender::nodes::ensure_geometry_nodes_lazy_function_graph(viewer_bnode.owner_tree())
-              ->mapping.viewer_node_map.lookup(&viewer_bnode);
+  if (const blender::nodes::GeometryNodesLazyFunctionGraphInfo *lf_graph_info =
+          blender::nodes::ensure_geometry_nodes_lazy_function_graph(viewer_bnode.owner_tree())) {
+    return lf_graph_info->mapping.viewer_node_map.lookup_default(&viewer_bnode, nullptr);
+  }
+  return nullptr;
 }
-static const lf::FunctionNode &find_group_lf_node(const bNode &group_bnode)
+static const lf::FunctionNode *find_group_lf_node(const bNode &group_bnode)
 {
-  return *blender::nodes::ensure_geometry_nodes_lazy_function_graph(group_bnode.owner_tree())
-              ->mapping.group_node_map.lookup(&group_bnode);
+  if (const blender::nodes::GeometryNodesLazyFunctionGraphInfo *lf_graph_info =
+          blender::nodes::ensure_geometry_nodes_lazy_function_graph(group_bnode.owner_tree())) {
+    return lf_graph_info->mapping.group_node_map.lookup_default(&group_bnode, nullptr);
+  }
+  return nullptr;
 }
 
 static void find_side_effect_nodes_for_viewer_path(
@@ -888,15 +894,22 @@ static void find_side_effect_nodes_for_viewer_path(
   if (found_viewer_node == nullptr) {
     return;
   }
+  const lf::FunctionNode *lf_viewer_node = find_viewer_lf_node(*found_viewer_node);
+  if (lf_viewer_node == nullptr) {
+    return;
+  }
 
   /* Not only mark the viewer node as having side effects, but also all group nodes it is contained
    * in. */
-  r_side_effect_nodes.add_non_duplicates(compute_context_builder.hash(),
-                                         &find_viewer_lf_node(*found_viewer_node));
+  r_side_effect_nodes.add_non_duplicates(compute_context_builder.hash(), lf_viewer_node);
   compute_context_builder.pop();
   while (!compute_context_builder.is_empty()) {
-    r_side_effect_nodes.add_non_duplicates(compute_context_builder.hash(),
-                                           &find_group_lf_node(*group_node_stack.pop()));
+    const lf::FunctionNode *lf_group_node = find_group_lf_node(*group_node_stack.pop());
+    if (lf_group_node == nullptr) {
+      return;
+    }
+
+    r_side_effect_nodes.add_non_duplicates(compute_context_builder.hash(), lf_group_node);
     compute_context_builder.pop();
   }
 }
@@ -1345,13 +1358,13 @@ static void modifyGeometry(ModifierData *md,
        * #eModifierTypeFlag_SupportsMapping flag is set. If the layers did not exist before, it is
        * assumed that the output mesh does not have a mapping to the original mesh. */
       if (use_orig_index_verts) {
-        CustomData_add_layer(&mesh->vdata, CD_ORIGINDEX, CD_SET_DEFAULT, nullptr, mesh->totvert);
+        CustomData_add_layer(&mesh->vdata, CD_ORIGINDEX, CD_SET_DEFAULT, mesh->totvert);
       }
       if (use_orig_index_edges) {
-        CustomData_add_layer(&mesh->edata, CD_ORIGINDEX, CD_SET_DEFAULT, nullptr, mesh->totedge);
+        CustomData_add_layer(&mesh->edata, CD_ORIGINDEX, CD_SET_DEFAULT, mesh->totedge);
       }
       if (use_orig_index_polys) {
-        CustomData_add_layer(&mesh->pdata, CD_ORIGINDEX, CD_SET_DEFAULT, nullptr, mesh->totpoly);
+        CustomData_add_layer(&mesh->pdata, CD_ORIGINDEX, CD_SET_DEFAULT, mesh->totpoly);
       }
     }
   }
@@ -1365,7 +1378,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
 
   Mesh *new_mesh = geometry_set.get_component_for_write<MeshComponent>().release();
   if (new_mesh == nullptr) {
-    return BKE_mesh_new_nomain(0, 0, 0, 0, 0);
+    return BKE_mesh_new_nomain(0, 0, 0, 0);
   }
   return new_mesh;
 }

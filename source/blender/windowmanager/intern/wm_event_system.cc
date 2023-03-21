@@ -239,6 +239,11 @@ static void wm_event_free_last_handled(wmWindow *win, wmEvent *event)
   if (win->event_last_handled) {
     wm_event_free(win->event_last_handled);
   }
+
+  /* While not essential, these values are undefined, as the event is no longer in a list
+   * clear the linked-list pointers to avoid any confusion. */
+  event->next = event->prev = nullptr;
+
   /* Don't store custom data in the last handled event as we don't have control how long this event
    * will be stored and the referenced data may become invalid (also it's not needed currently). */
   wm_event_custom_free(event);
@@ -927,6 +932,8 @@ void WM_report(eReportType type, const char *message)
 void WM_reportf(eReportType type, const char *format, ...)
 {
   va_list args;
+
+  format = TIP_(format);
 
   DynStr *ds = BLI_dynstr_new();
   va_start(args, format);
@@ -2638,8 +2645,8 @@ static eHandlerActionFlag wm_handler_fileselect_do(bContext *C,
                                             IFACE_("Blender File View"),
                                             WM_window_pixels_x(win) / 2,
                                             WM_window_pixels_y(win) / 2,
-                                            U.file_space_data.temp_win_sizex * UI_DPI_FAC,
-                                            U.file_space_data.temp_win_sizey * UI_DPI_FAC,
+                                            U.file_space_data.temp_win_sizex * UI_SCALE_FAC,
+                                            U.file_space_data.temp_win_sizey * UI_SCALE_FAC,
                                             SPACE_FILE,
                                             U.filebrowser_display_type,
                                             true))) {
@@ -3669,22 +3676,26 @@ static void wm_paintcursor_test(bContext *C, const wmEvent *event)
   }
 }
 
-static void wm_event_drag_and_drop_test(wmWindowManager *wm, wmWindow *win, wmEvent *event)
+static eHandlerActionFlag wm_event_drag_and_drop_test(wmWindowManager *wm,
+                                                      wmWindow *win,
+                                                      wmEvent *event)
 {
   bScreen *screen = WM_window_get_active_screen(win);
 
   if (BLI_listbase_is_empty(&wm->drags)) {
-    return;
+    return WM_HANDLER_CONTINUE;
   }
 
   if (event->type == MOUSEMOVE || ISKEYMODIFIER(event->type)) {
     screen->do_draw_drag = true;
   }
-  else if (event->type == EVT_ESCKEY) {
+  else if (ELEM(event->type, EVT_ESCKEY, RIGHTMOUSE)) {
     wm_drags_exit(wm, win);
     WM_drag_free_list(&wm->drags);
 
     screen->do_draw_drag = true;
+
+    return WM_HANDLER_BREAK;
   }
   else if (event->type == LEFTMOUSE && event->val == KM_RELEASE) {
     event->type = EVT_DROP;
@@ -3703,6 +3714,8 @@ static void wm_event_drag_and_drop_test(wmWindowManager *wm, wmWindow *win, wmEv
     /* Restore cursor (disabled, see `wm_dragdrop.cc`) */
     // WM_cursor_modal_restore(win);
   }
+
+  return WM_HANDLER_CONTINUE;
 }
 
 /**
@@ -3955,6 +3968,27 @@ void wm_event_do_handlers(bContext *C)
       }
       const bool event_queue_check_drag_prev = win->event_queue_check_drag;
 
+      {
+        const bool is_consecutive = WM_event_consecutive_gesture_test(event);
+        if (win->event_queue_consecutive_gesture_type != 0) {
+          if (event->type == win->event_queue_consecutive_gesture_type) {
+            event->flag |= WM_EVENT_IS_CONSECUTIVE;
+          }
+          else if (is_consecutive || WM_event_consecutive_gesture_test_break(win, event)) {
+            CLOG_INFO(WM_LOG_HANDLERS, 1, "consecutive gesture break (%d)", event->type);
+            win->event_queue_consecutive_gesture_type = 0;
+            WM_event_consecutive_data_free(win);
+          }
+        }
+        else if (is_consecutive) {
+          CLOG_INFO(WM_LOG_HANDLERS, 1, "consecutive gesture begin (%d)", event->type);
+          win->event_queue_consecutive_gesture_type = event->type;
+          copy_v2_v2_int(win->event_queue_consecutive_gesture_xy, event->xy);
+          /* While this should not be set, it's harmless to free here. */
+          WM_event_consecutive_data_free(win);
+        }
+      }
+
       /* Active screen might change during handlers, update pointer. */
       screen = WM_window_get_active_screen(win);
 
@@ -4025,7 +4059,7 @@ void wm_event_do_handlers(bContext *C)
       }
 
       /* Check dragging, creates new event or frees, adds draw tag. */
-      wm_event_drag_and_drop_test(wm, win, event);
+      action |= wm_event_drag_and_drop_test(wm, win, event);
 
       if ((action & WM_HANDLER_BREAK) == 0) {
         /* NOTE: setting sub-window active should be done here,
@@ -4294,6 +4328,56 @@ void WM_event_add_fileselect(bContext *C, wmOperator *op)
   if (ctx_win != root_win) {
     CTX_wm_window_set(C, ctx_win);
   }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Consecutive Event Access
+ * \{ */
+
+using wmEvent_ConsecutiveData = struct wmEvent_ConsecutiveData {
+  /** Owned custom-data. */
+  void *custom_data;
+  /** Unique identifier per struct type. */
+  char id[0];
+};
+
+void *WM_event_consecutive_data_get(wmWindow *win, const char *id)
+{
+  wmEvent_ConsecutiveData *cdata = win->event_queue_consecutive_gesture_data;
+  if (cdata && STREQ(cdata->id, id)) {
+    return cdata->custom_data;
+  }
+  return nullptr;
+}
+
+void WM_event_consecutive_data_set(wmWindow *win, const char *id, void *custom_data)
+{
+  if (win->event_queue_consecutive_gesture_data) {
+    WM_event_consecutive_data_free(win);
+  }
+
+  const size_t id_size = strlen(id) + 1;
+  wmEvent_ConsecutiveData *cdata = static_cast<wmEvent_ConsecutiveData *>(
+      MEM_mallocN(sizeof(*cdata) + id_size, __func__));
+  cdata->custom_data = custom_data;
+  memcpy((cdata + 1), id, id_size);
+  win->event_queue_consecutive_gesture_data = cdata;
+}
+
+void WM_event_consecutive_data_free(wmWindow *win)
+{
+  wmEvent_ConsecutiveData *cdata = win->event_queue_consecutive_gesture_data;
+  if (cdata == nullptr) {
+    return;
+  }
+
+  if (cdata->custom_data) {
+    MEM_freeN(cdata->custom_data);
+  }
+  MEM_freeN(cdata);
+  win->event_queue_consecutive_gesture_data = nullptr;
 }
 
 /** \} */
