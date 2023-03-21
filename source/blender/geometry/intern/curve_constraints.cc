@@ -42,6 +42,7 @@ void solve_fixed_root_length_constraints(const OffsetIndices<int> points_by_curv
                                          MutableSpan<float3> positions)
 {
   BLI_assert(segment_lengths.size() == points_by_curve.total_size());
+  BLI_assert(positions.size() == points_by_curve.total_size());
 
   threading::parallel_for(curve_selection.index_range(), 256, [&](const IndexRange range) {
     for (const int curve_i : curve_selection.slice(range)) {
@@ -63,6 +64,7 @@ void solve_symmetric_length_constraints(const OffsetIndices<int> points_by_curve
                                         MutableSpan<float3> positions)
 {
   BLI_assert(segment_lengths.size() == points_by_curve.total_size());
+  BLI_assert(positions.size() == points_by_curve.total_size());
 
   threading::parallel_for(curve_selection.index_range(), 256, [&](const IndexRange range) {
     for (const int curve_i : curve_selection.slice(range)) {
@@ -113,6 +115,30 @@ void solve_symmetric_length_constraints(const OffsetIndices<int> points_by_curve
           p1 -= weight_p1 * lambda * gradient_p1;
         }
       }
+    }
+  });
+}
+
+void compute_length_constraints_errors(const OffsetIndices<int> points_by_curve,
+                                       const IndexMask curve_selection,
+                                       const Span<float> segment_lengths,
+                                       const Span<float3> positions,
+                                       MutableSpan<float> errors_sq)
+{
+  BLI_assert(segment_lengths.size() == points_by_curve.total_size());
+  BLI_assert(positions.size() == points_by_curve.total_size());
+  BLI_assert(errors_sq.size() == points_by_curve.total_size());
+
+  threading::parallel_for(curve_selection.index_range(), 256, [&](const IndexRange range) {
+    for (const int curve_i : curve_selection.slice(range)) {
+      const IndexRange points = points_by_curve[curve_i].drop_back(1);
+      for (const int point_i : points) {
+        const float3 &p1 = positions[point_i];
+        const float3 &p2 = positions[point_i + 1];
+        const float goal_length = segment_lengths[point_i];
+        errors_sq[point_i] = pow2f(math::distance(p1, p2) - goal_length);
+      }
+      errors_sq[points_by_curve[curve_i].last()] = 0.0f;
     }
   });
 }
@@ -233,6 +259,100 @@ void solve_collision_constraints(const OffsetIndices<int> points_by_curve,
   });
 }
 
+static void eval_keyhole_constraint(const IndexRange points,
+                                    const float3 &goal,
+                                    Span<float3> positions_cu,
+                                    const int closest_point,
+                                    const float closest_param,
+                                    float3 &r_distance,
+                                    float r_gradient_point[4],
+                                    float3 &r_gradient_param)
+{
+  const float3 p0_fallback = positions_cu[closest_point];
+  const float3 p3_fallback = positions_cu[closest_point + 1];
+  const float3 &p0 = closest_point > points.first() ? positions_cu[closest_point - 1] : p0_fallback;
+  const float3 &p1 = positions_cu[closest_point];
+  const float3 &p2 = positions_cu[closest_point + 1];
+  const float3 &p3 = closest_point < points.last() ? positions_cu[closest_point + 2] : p3_fallback;
+
+  const float u = closest_param;
+  const float u2 = u * u;
+  const float u3 = u2 * u;
+  const float v = 1.0 - u;
+  const float v2 = v * v;
+  const float v3 = v2 * v;
+
+  /* Uniform cubic b-spline basis functions ensure smooth derivatives. */
+  const float b0 = v3 / 6.0f;
+  const float b1 = (3.0f * u3 - 6.0f * u2 + 4.0f) / 6.0f;
+  const float b2 = (-3.0f * u3 + 3.0f * u2 + 3.0f * u + 1.0f) / 6.0f;
+  const float b3 = u3 / 6.0f;
+  const float db0 = v2 / 2.0f;
+  const float db1 = (3.0f * u2 - 4.0f * u) / 2.0f;
+  const float db2 = (-3.0f * u2 + 2.0f * u + 1.0f) / 2.0f;
+  const float db3 = u2 / 2.0f;
+
+  /* Linear basis for testing */
+  //      const float b0 = 0.0f;
+  //      const float b1 = v;
+  //      const float b2 = u;
+  //      const float b3 = 0.0f;
+  //      const float db0 = 0.0f;
+  //      const float db1 = -1.0f;
+  //      const float db2 = 1.0f;
+  //      const float db3 = 0.0f;
+
+  r_distance = b0 * p0 + b1 * p1 + b2 * p2 + b3 * p3 - goal;
+  /* Note: technically gradients here are float3x3 matrices,
+   * but they are scaled identities, so only need to store the scalar factor. */
+  r_gradient_point[0] = b0;
+  r_gradient_point[1] = b1;
+  r_gradient_point[2] = b2;
+  r_gradient_point[3] = b3;
+  r_gradient_param = p0 * db0 + p1 * db1 + p2 * db2 + p3 * db3;
+}
+
+static void get_keyhole_constraint_force(const IndexRange points,
+                                         const float3 &goal,
+                                         const float goal_factor,
+                                         Span<float3> positions_cu,
+                                         const int closest_point,
+                                         const float closest_param,
+                                         float3 &r_distance,
+                                         float r_gradient_point[4],
+                                         float3 &r_gradient_param,
+                                         float r_weight_point[4],
+                                         float &r_weight_param,
+                                         float3 &r_lambda)
+{
+  /* Compensation factor for step-size dependent softness (see XPBD paper) */
+  const float alpha_compensation = 1.0f /* / (step_size * step_size)*/;
+
+  eval_keyhole_constraint(points,
+                          goal,
+                          positions_cu,
+                          closest_point,
+                          closest_param,
+                          r_distance,
+                          r_gradient_point,
+                          r_gradient_param);
+
+  r_weight_point[0] = closest_point > points.first() + 1 ? 1.0f : 0.0f;
+  r_weight_point[1] = closest_point > points.first() ? 1.0f : 0.0f;
+  r_weight_point[2] = 1.0f;
+  r_weight_point[3] = 1.0f;
+  r_weight_param = 100.0f;
+
+  const float gradient_sq_sum = r_weight_point[0] * pow2f(r_gradient_point[0]) +
+                                r_weight_point[1] * pow2f(r_gradient_point[1]) +
+                                r_weight_point[2] * pow2f(r_gradient_point[2]) +
+                                r_weight_point[3] * pow2f(r_gradient_point[3]) +
+                                r_weight_param * math::dot(r_gradient_param, r_gradient_param);
+  /* TODO implement warm starting: this is in fact delta_lambda.
+   * If lambda is stored between iteration we can use the old value and speed up convergence. */
+  r_lambda = goal_factor * r_distance / (goal_factor * gradient_sq_sum + alpha_compensation * (1.0f - goal_factor));
+}
+
 void solve_keyhole_constraints(const OffsetIndices<int> points_by_curve,
                                const IndexMask curve_selection,
                                const Span<float3> goals,
@@ -243,84 +363,92 @@ void solve_keyhole_constraints(const OffsetIndices<int> points_by_curve,
                                MutableSpan<int> closest_points,
                                MutableSpan<float> closest_factors)
 {
-  /* Compensation factor for step-size dependent softness (see XPBD paper) */
-  const float alpha_compensation = 1.0f /* / (step_size * step_size)*/;
+  threading::parallel_for(curve_selection.index_range(), 64, [&](const IndexRange range) {
+    for (const int curve_i : curve_selection.slice(range)) {
+      const IndexRange points = points_by_curve[curve_i].drop_back(1);
+      const float3 &goal = goals[curve_i];
+      const float goal_factor = goal_factors[curve_i];
+
+      int &closest_point = closest_points[curve_i];
+      float &closest_u = closest_factors[curve_i];
+
+      float3 distance;
+      float gradient_p[4];
+      float3 gradient_u;
+      float weight_p[4];
+      float weight_u;
+      float3 lambda;
+      get_keyhole_constraint_force(points,
+                                   goal,
+                                   goal_factor,
+                                   positions_cu,
+                                   closest_point,
+                                   closest_u,
+                                   distance,
+                                   gradient_p,
+                                   gradient_u,
+                                   weight_p,
+                                   weight_u,
+                                   lambda);
+
+      /* See above: gradients wrt. positions are actually matrices, but with uniform diagonals. */
+      if (closest_point > points.first()) {
+        positions_cu[closest_point - 1] -= weight_p[0] * lambda * gradient_p[0];
+      }
+      positions_cu[closest_point] -= weight_p[1] * lambda * gradient_p[1];
+      positions_cu[closest_point + 1] -= weight_p[2] * lambda * gradient_p[2];
+      if (closest_point < points.last()) {
+        positions_cu[closest_point + 2] -= weight_p[3] * lambda * gradient_p[3];
+      }
+
+      const float curve_factor_unclamped = closest_point + closest_u - weight_u * math::dot(lambda, gradient_u);
+      closest_point = math::clamp((int)curve_factor_unclamped, (int)points.first(), (int)points.last());
+      closest_u = math::clamp(curve_factor_unclamped, (float)points.first(), (float)points.last() + 1.0f) - (float)closest_point;
+    }
+  });
+}
+
+void compute_keyhole_constraints_error(const OffsetIndices<int> points_by_curve,
+                                       const IndexMask curve_selection,
+                                       const Span<float3> goals,
+                                       const Span<float> goal_factors,
+                                       const VArray<float> point_factors,
+                                       const Span<float3> positions_cu,
+                                       const Span<int> closest_points,
+                                       const Span<float> closest_factors,
+                                       MutableSpan<float> errors_sq)
+{
+  BLI_assert(errors_sq.size() == points_by_curve.size());
 
   threading::parallel_for(curve_selection.index_range(), 64, [&](const IndexRange range) {
     for (const int curve_i : curve_selection.slice(range)) {
       const IndexRange points = points_by_curve[curve_i].drop_back(1);
       const float3 &goal = goals[curve_i];
+      const float goal_factor = goal_factors[curve_i];
 
-      int &closest_point = closest_points[curve_i];
-      float &closest_u = closest_factors[curve_i];
-      float3 p0_fallback = positions_cu[closest_point];
-      float3 p3_fallback = positions_cu[closest_point + 1];
-      float3 &p0 = closest_point > points.first() ? positions_cu[closest_point - 1] : p0_fallback;
-      float3 &p1 = positions_cu[closest_point];
-      float3 &p2 = positions_cu[closest_point + 1];
-      float3 &p3 = closest_point < points.last() ? positions_cu[closest_point + 2] : p3_fallback;
+      const int closest_point = closest_points[curve_i];
+      const float closest_u = closest_factors[curve_i];
 
-      const float u = closest_u;
-      const float u2 = u * u;
-      const float u3 = u2 * u;
-      const float v = 1.0 - u;
-      const float v2 = v * v;
-      const float v3 = v2 * v;
+      float3 distance;
+      float gradient_p[4];
+      float3 gradient_u;
+      float weight_p[4];
+      float weight_u;
+      float3 lambda;
+      get_keyhole_constraint_force(points,
+                                   goal,
+                                   goal_factor,
+                                   positions_cu,
+                                   closest_point,
+                                   closest_u,
+                                   distance,
+                                   gradient_p,
+                                   gradient_u,
+                                   weight_p,
+                                   weight_u,
+                                   lambda);
 
-      /* Uniform cubic b-spline basis functions ensure smooth derivatives. */
-      const float b0 = v3 / 6.0f;
-      const float b1 = (3.0f * u3 - 6.0f * u2 + 4.0f) / 6.0f;
-      const float b2 = (-3.0f * u3 + 3.0f * u2 + 3.0f * u + 1.0f) / 6.0f;
-      const float b3 = u3 / 6.0f;
-      const float db0 = v2 / 2.0f;
-      const float db1 = (3.0f * u2 - 4.0f * u) / 2.0f;
-      const float db2 = (-3.0f * u2 + 2.0f * u + 1.0f) / 2.0f;
-      const float db3 = u2 / 2.0f;
-
-      /* Linear basis for testing */
-//      const float b0 = 0.0f;
-//      const float b1 = v;
-//      const float b2 = u;
-//      const float b3 = 0.0f;
-//      const float db0 = 0.0f;
-//      const float db1 = -1.0f;
-//      const float db2 = 1.0f;
-//      const float db3 = 0.0f;
-
-      const float3 distance = b0 * p0 + b1 * p1 + b2 * p2 + b3 * p3 - goal;
-      /* Note: technically gradients here are float3x3 matrices,
-       * but they are scaled identities, so only need to store the scalar factor. */
-      const float gradient_p0 = b0;
-      const float gradient_p1 = b1;
-      const float gradient_p2 = b2;
-      const float gradient_p3 = b3;
-      const float3 gradient_u = p0 * db0 + p1 * db1 + p2 * db2 + p3 * db3;
-
-      const float weight_p0 = closest_point > points.first() + 1 ? 1.0f : 0.0f;
-      const float weight_p1 = closest_point > points.first() ? 1.0f : 0.0f;
-      const float weight_p2 = 1.0f;
-      const float weight_p3 = 1.0f;
-      const float weight_u = 100.0f;
-
-      const float gradient_sq_sum = weight_p0 * gradient_p0 * gradient_p0 +
-                                    weight_p1 * gradient_p1 * gradient_p1 +
-                                    weight_p2 * gradient_p2 * gradient_p2 +
-                                    weight_p3 * gradient_p3 * gradient_p3 +
-                                    weight_u * math::dot(gradient_u, gradient_u);
-      const float factor = goal_factors[curve_i];
-      /* TODO implement warm starting: this is in fact delta_lambda.
-       * If lambda is stored between iteration we can use the old value and speed up convergence. */
-      const float3 lambda = factor * distance / (factor * gradient_sq_sum + alpha_compensation * (1.0f - factor));
-
-      /* See above: gradients wrt. positions are actually matrices, but with uniform diagonals. */
-      p0 -= weight_p0 * lambda * gradient_p0;
-      p1 -= weight_p1 * lambda * gradient_p1;
-      p2 -= weight_p2 * lambda * gradient_p2;
-      p3 -= weight_p3 * lambda * gradient_p3;
-
-      const float curve_factor_unclamped = closest_point + closest_u - weight_u * math::dot(lambda, gradient_u);
-      closest_point = math::clamp((int)curve_factor_unclamped, (int)points.first(), (int)points.last());
-      closest_u = math::clamp(curve_factor_unclamped, (float)points.first(), (float)points.last() + 1.0f) - (float)closest_point;
+      errors_sq[curve_i] = math::length_squared(lambda);
     }
   });
 }

@@ -206,6 +206,14 @@ struct CurvesConstraintSolver {
                   VArray<float> point_factors,
                   const int iterations = 1);
 
+  void compute_error(const bke::CurvesGeometry &curves,
+                     IndexMask curve_selection,
+                     const Mesh *surface,
+                     const CurvesSurfaceTransforms &transforms,
+                     VArray<float> point_factors,
+                     float &r_rms_length_error,
+                     float &r_rms_goal_error);
+
   Span<float> segment_lengths() const
   {
     return segment_lengths_;

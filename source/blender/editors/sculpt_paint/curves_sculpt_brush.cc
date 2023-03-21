@@ -536,19 +536,21 @@ void CurvesConstraintSolver::solve_step(bke::CurvesGeometry &curves,
         break;
     }
 
-    switch (collision_constraint_type_) {
-      case  CollisionConstraintType::None:
-        break;
-      case  CollisionConstraintType::Raycast:
-        geometry::curve_constraints::solve_collision_constraints(curves.points_by_curve(),
-                                                                 curve_selection,
-                                                                 segment_lengths_,
-                                                                 start_positions_,
-                                                                 *surface,
-                                                                 transforms,
-                                                                 curves.positions_for_write());
+    if (collision_available){
+      switch (collision_constraint_type_) {
+        case CollisionConstraintType::None:
+          break;
+        case CollisionConstraintType::Raycast:
+          geometry::curve_constraints::solve_collision_constraints(curves.points_by_curve(),
+                                                                   curve_selection,
+                                                                   segment_lengths_,
+                                                                   start_positions_,
+                                                                   *surface,
+                                                                   transforms,
+                                                                   curves.positions_for_write());
 
-        break;
+          break;
+      }
     }
 
     if (require_start_positions) {
@@ -557,6 +559,73 @@ void CurvesConstraintSolver::solve_step(bke::CurvesGeometry &curves,
   }
 
   curves.tag_positions_changed();
+}
+
+void CurvesConstraintSolver::compute_error(const bke::CurvesGeometry &curves,
+                                           const IndexMask curve_selection,
+                                           const Mesh *surface,
+                                           const CurvesSurfaceTransforms &transforms,
+                                           const VArray<float> point_factors,
+                                           float &r_rms_length_error,
+                                           float &r_rms_goal_error)
+{
+  const bool collision_available = surface != nullptr;
+
+  Vector<int64_t> goal_indices;
+  IndexMask goal_selection;
+  if (!ELEM(goal_constraint_type_, GoalConstraintType::None)) {
+    goal_selection = index_mask_ops::find_indices_based_on_predicate(
+        curve_selection, 256, goal_indices, [this](int64_t index) { return has_goals_[index]; });
+  }
+
+  Array<float> goal_constraint_errors(curves.curves_num());
+  switch (goal_constraint_type_) {
+    case GoalConstraintType::None:
+      break;
+    case GoalConstraintType::Grab:
+      // TODO
+      BLI_assert_unreachable();
+      break;
+    case GoalConstraintType::Keyhole:
+      geometry::curve_constraints::compute_keyhole_constraints_errors(curves.points_by_curve(),
+                                                                      goal_selection,
+                                                                      goals_,
+                                                                      goal_factors_,
+                                                                      point_factors,
+                                                                      curves.positions(),
+                                                                      closest_points_,
+                                                                      closest_factors_,
+                                                                      goal_constraint_errors);
+      break;
+  }
+
+  Array<float> length_constraint_errors(curves.points_num());
+  switch (length_constraint_type_) {
+    case LengthConstraintType::FixedRoot:
+    case LengthConstraintType::Symmetric:
+      geometry::curve_constraints::compute_length_constraints_errors(curves.points_by_curve(),
+                                                                     curve_selection,
+                                                                     segment_lengths_,
+                                                                     curves.positions(),
+                                                                     length_constraint_errors);
+      break;
+  }
+
+  if (collision_available) {
+    switch (collision_constraint_type_) {
+      case CollisionConstraintType::None:
+        break;
+      case CollisionConstraintType::Raycast:
+        /* TODO */
+        break;
+    }
+  }
+
+  float sum_goal_error_sq = std::accumulate(goal_constraint_errors.begin(), goal_constraint_errors.end(), 0.0f);
+  r_rms_goal_error = goal_constraint_errors.is_empty() ? 0.0f : math::sqrt(sum_goal_error_sq / goal_constraint_errors.size());
+
+  float sum_length_error_sq = std::accumulate(length_constraint_errors.begin(), length_constraint_errors.end(), 0.0f);
+  r_rms_length_error = length_constraint_errors.is_empty() ? 0.0f : math::sqrt(sum_length_error_sq / length_constraint_errors.size());
 }
 
 }  // namespace blender::ed::sculpt_paint
