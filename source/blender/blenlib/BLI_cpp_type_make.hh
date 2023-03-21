@@ -17,6 +17,9 @@ template<typename T> void default_construct_cb(void *ptr)
 }
 template<typename T> void default_construct_indices_cb(void *ptr, const IndexMask &mask)
 {
+  if constexpr (std::is_trivially_constructible_v<T>) {
+    return;
+  }
   mask.foreach_index_optimized([&](int64_t i) { new (static_cast<T *>(ptr) + i) T; });
 }
 
@@ -36,6 +39,9 @@ template<typename T> void destruct_cb(void *ptr)
 }
 template<typename T> void destruct_indices_cb(void *ptr, const IndexMask &mask)
 {
+  if (std::is_trivially_destructible_v<T>) {
+    return;
+  }
   T *ptr_ = static_cast<T *>(ptr);
   mask.foreach_index_optimized([&](int64_t i) { ptr_[i].~T(); });
 }
