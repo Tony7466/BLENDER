@@ -13,12 +13,12 @@
 
 // This is the size of the memory that serves as a fallback stack for traversal.
 // The total memory required for the global stack is a function of number threads in a kernel
-// exectuion and the size of stack per thread. The maximum number of threads is a function of
-// number of compute units and number of threads per unit. The stack size is emperical and is
+// execution and the size of stack per thread. The maximum number of threads is a function of
+// number of compute units and number of threads per unit. The stack size is empirical and is
 // defined in HIPRT_THREAD_STACK_SIZE Currently allocating this buffer dynamically causes
 // instability, so HIPRT_GLOBAL_STACK_SIZE and maximum number of threads is hard coded The total
-// size will be (max numer of threads) x (thread stack size) x sizeof(int) x (headroom factor) A
-// headroom factor of 2 is emperical
+// size will be (max number of threads) x (thread stack size) x sizeof(int) x (headroom factor) A
+// headroom factor of 2 is empirical
 #define HIPRT_THREAD_STACK_SIZE \
   64  // The size of global stack  availavle to eacj thread (memory reserved for each thread in
       // global_stack_buffer)
@@ -29,7 +29,7 @@
   HIPRT_THREAD_STACK_SIZE *HIPRT_NUM_MAX_THREADS *HIPRT_STACK_ELEMENT_BYTE \
       *HIPRT_GLOBAL_STACK_HEADROOM_FACTOR
 #define HIPRT_SHARED_STACK_SIZE \
-  24  // LDS (Local Data Storage) allocation for each thread, the number is obtained emperically
+  24  // LDS (Local Data Storage) allocation for each thread, the number is obtained empirically
 // HIPRT_THREAD_GROUP_SIZE is the number of threads per work group for intersection kernels
 // The default number of threads per workgroup is 1024, however, since HIP RT intersection kernels
 // use local memory, and the local memory size in those kernels scales up with the number of
@@ -130,7 +130,7 @@ enum Filter_Function_Table_Index {
   Curve_Filter_Shadow,
   Motion_Triangle_Filter_Shadow,
   Point_Filter_Shadow,
-  // Filter functions for subsurface scattering. Triangles and motion triagnles need function
+  // Filter functions for subsurface scattering. Triangles and motion triangles need function
   // assignment. They indices for triangles and motion triangles point to the same function. Points
   // and curves dont need any function since subsurface scattering is not applied on either.
   Triangle_Filter_Local,    // Filter functions for triangles
@@ -152,7 +152,7 @@ enum Filter_Function_Table_Index {
 __constant__ KernelParamsHIPRT kernel_params;
 
 // global_stack_buffer is defined in global memory and the size is hard coded otherwise it causes
-// instablity the correct size of global_stack_buffer is (total number of threads) x STACK_SIZE it
+// instability the correct size of global_stack_buffer is (total number of threads) x STACK_SIZE it
 // is a fallback space for HIPRT traversal if the stack on the local memory overflows each thread
 // can store up to HIPRT_SHARED_STACK_SIZE elements in local memory and up to
 // HIPRT_THREAD_STACK_SIZE elements in global memory.
