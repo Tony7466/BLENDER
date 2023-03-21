@@ -1533,7 +1533,11 @@ static int light_cache_free_exec(bContext *C, wmOperator * /*op*/)
   EEVEE_lightcache_free(scene->eevee.light_cache_data);
   scene->eevee.light_cache_data = nullptr;
 
-  EEVEE_lightcache_info_update(&scene->eevee);
+  RenderEngineType *engine_type = RE_engines_find(scene->r.engine);
+  bool use_eevee_next = STREQ(engine_type->idname, "BLENDER_EEVEE_NEXT");
+
+  ((use_eevee_next) ? EEVEE_NEXT_lightcache_info_update :
+                      EEVEE_lightcache_info_update)(&scene->eevee);
 
   DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
 

@@ -13,6 +13,10 @@ extern "C" {
 /** Opaque type hiding eevee::LightBake. */
 typedef struct EEVEE_NEXT_LightBake EEVEE_NEXT_LightBake;
 
+/* -------------------------------------------------------------------- */
+/** \name Light Bake Job
+ * \{ */
+
 /**
  * Create the job description.
  * This is called for async (modal) bake operator.
@@ -64,6 +68,39 @@ void EEVEE_NEXT_lightbake_job(void *job_data /* EEVEE_NEXT_LightBake */,
                               bool *stop,
                               bool *do_update,
                               float *progress);
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Light Cache Create / Delete
+ * \{ */
+
+/**
+ * Create an empty light-cache.
+ */
+struct LightCache *EEVEE_NEXT_lightcache_create(void);
+
+/**
+ * Free a light-cache and its associated data.
+ */
+void EEVEE_NEXT_lightcache_free(struct LightCache *lcache);
+
+/**
+ * Update the UI message in the render panel about the state of the cache.
+ */
+void EEVEE_NEXT_lightcache_info_update(struct SceneEEVEE *eevee);
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Light Cache Read/Write to file
+ * \{ */
+
+void EEVEE_NEXT_lightcache_blend_write(struct BlendWriter *writer, struct LightCache *light_cache);
+void EEVEE_NEXT_lightcache_blend_read_data(struct BlendDataReader *reader,
+                                           struct LightCache *light_cache);
+
+/** \} */
 
 #ifdef __cplusplus
 }

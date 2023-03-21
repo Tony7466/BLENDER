@@ -107,6 +107,7 @@
 #include "BLO_read_write.h"
 
 #include "engines/eevee/eevee_lightcache.h"
+#include "engines/eevee_next/eevee_lightcache.h"
 
 #include "PIL_time.h"
 
@@ -1439,7 +1440,11 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
       EEVEE_lightcache_blend_read_data(reader, sce->eevee.light_cache_data);
     }
   }
-  EEVEE_lightcache_info_update(&sce->eevee);
+
+  RenderEngineType *engine_type = RE_engines_find(sce->r.engine);
+  bool use_eevee_next = STREQ(engine_type->idname, "BLENDER_EEVEE_NEXT");
+
+  (use_eevee_next ? EEVEE_NEXT_lightcache_info_update : EEVEE_lightcache_info_update)(&sce->eevee);
 
   BKE_screen_view3d_shading_blend_read_data(reader, &sce->display.shading);
 

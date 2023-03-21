@@ -92,6 +92,22 @@ class LightBake {
   void update()
   {
     BLI_assert(BLI_thread_is_main());
+    Scene *original_scene = DEG_get_input_scene(depsgraph_);
+
+    if (original_scene->eevee.light_cache_data == nullptr) {
+      LightCache *light_cache = EEVEE_NEXT_lightcache_create();
+
+      LightCacheIrradianceGrid *grids = (LightCacheIrradianceGrid *)MEM_callocN(
+          1 * sizeof(LightCacheIrradianceGrid), "LightCacheIrradianceGrid");
+      grids[0].resolution[0] = 1;
+      grids[0].resolution[1] = 2;
+      grids[0].resolution[2] = 3;
+      light_cache->grid_len = 1;
+      light_cache->grids = grids;
+      original_scene->eevee.light_cache_data = light_cache;
+    }
+
+    EEVEE_NEXT_lightcache_info_update(&original_scene->eevee);
   }
 
   /**
@@ -204,6 +220,10 @@ extern "C" {
 
 using namespace blender::eevee;
 
+/* -------------------------------------------------------------------- */
+/** \name Light Bake Job
+ * \{ */
+
 wmJob *EEVEE_NEXT_lightbake_job_create(struct wmWindowManager *wm,
                                        struct wmWindow *win,
                                        struct Main *bmain,
@@ -269,6 +289,113 @@ void EEVEE_NEXT_lightbake_job(void *job_data, bool *stop, bool *do_update, float
 {
   reinterpret_cast<LightBake *>(job_data)->run(stop, do_update, progress);
 }
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Light Cache Create / Delete
+ * \{ */
+
+LightCache *EEVEE_NEXT_lightcache_create()
+{
+  LightCache *light_cache = (LightCache *)MEM_callocN(sizeof(LightCache), "LightCache");
+
+  light_cache->version = LIGHTCACHE_NEXT_STATIC_VERSION;
+  light_cache->type = LIGHTCACHE_TYPE_STATIC;
+
+  return light_cache;
+}
+
+void EEVEE_NEXT_lightcache_free(LightCache *light_cache)
+{
+  if (light_cache->version < LIGHTCACHE_NEXT_STATIC_VERSION) {
+    /* Allow deleting old EEVEE cache. */
+    DRW_TEXTURE_FREE_SAFE(light_cache->cube_tx.tex);
+    MEM_SAFE_FREE(light_cache->cube_tx.data);
+    DRW_TEXTURE_FREE_SAFE(light_cache->grid_tx.tex);
+    MEM_SAFE_FREE(light_cache->grid_tx.data);
+    if (light_cache->cube_mips) {
+      for (int i = 0; i < light_cache->mips_len; i++) {
+        MEM_SAFE_FREE(light_cache->cube_mips[i].data);
+      }
+      MEM_SAFE_FREE(light_cache->cube_mips);
+    }
+    MEM_SAFE_FREE(light_cache->cube_data);
+    MEM_SAFE_FREE(light_cache->grid_data);
+  }
+
+  MEM_SAFE_FREE(light_cache->grids);
+  MEM_freeN(light_cache);
+}
+
+void EEVEE_NEXT_lightcache_info_update(SceneEEVEE *eevee)
+{
+  LightCache *light_cache = eevee->light_cache_data;
+
+  if (light_cache == nullptr) {
+    BLI_strncpy(eevee->light_cache_info,
+                TIP_("No light cache in this scene"),
+                sizeof(eevee->light_cache_info));
+    return;
+  }
+
+  if (light_cache->version != LIGHTCACHE_NEXT_STATIC_VERSION) {
+    BLI_strncpy(eevee->light_cache_info,
+                TIP_("Incompatible Light cache version, please bake again"),
+                sizeof(eevee->light_cache_info));
+    return;
+  }
+
+  if (light_cache->flag & LIGHTCACHE_INVALID) {
+    BLI_strncpy(eevee->light_cache_info,
+                TIP_("Error: Light cache dimensions not supported by the GPU"),
+                sizeof(eevee->light_cache_info));
+    return;
+  }
+
+  if (light_cache->flag & LIGHTCACHE_BAKING) {
+    BLI_strncpy(
+        eevee->light_cache_info, TIP_("Baking light cache"), sizeof(eevee->light_cache_info));
+    return;
+  }
+
+  int irradiance_sample_len = 0;
+  for (const LightCacheIrradianceGrid &grid :
+       blender::Span<LightCacheIrradianceGrid>(light_cache->grids, light_cache->grid_len)) {
+    irradiance_sample_len += grid.resolution[0] * grid.resolution[1] * grid.resolution[2];
+  }
+
+  size_t size_in_bytes = irradiance_sample_len * sizeof(uint16_t) * 4 * 3;
+
+  char formatted_mem[BLI_STR_FORMAT_INT64_BYTE_UNIT_SIZE];
+  BLI_str_format_byte_unit(formatted_mem, size_in_bytes, false);
+
+  BLI_snprintf(eevee->light_cache_info,
+               sizeof(eevee->light_cache_info),
+               TIP_("%d Ref. Cubemaps, %d Irr. Samples (%s in memory)"),
+               light_cache->cube_len,
+               irradiance_sample_len,
+               formatted_mem);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Light Cache Read/Write to file
+ * \{ */
+
+void EEVEE_NEXT_lightcache_blend_write(BlendWriter *writer, LightCache *light_cache)
+{
+  BLO_write_struct_array(
+      writer, LightCacheIrradianceGrid, light_cache->grid_len, light_cache->grids);
+}
+
+void EEVEE_NEXT_lightcache_blend_read_data(BlendDataReader *reader, LightCache *light_cache)
+{
+  BLO_read_data_address(reader, &light_cache->grids);
+}
+
+/** \} */
 }
 
 /** \} */
