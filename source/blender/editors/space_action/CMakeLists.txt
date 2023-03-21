@@ -23,7 +23,7 @@ set(INC_SYS
 )
 
 set(SRC
-  action_buttons.c
+  action_buttons.cc
   action_data.c
   action_draw.cc
   action_edit.c
