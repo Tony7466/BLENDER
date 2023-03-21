@@ -1391,6 +1391,7 @@ static void uvedit_pack_islands_multi(const Scene *scene,
   }
 
   MemArena *arena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __FILE__);
+  Heap *heap = BLI_heap_new();
 
   float scale[2] = {1.0f, 1.0f};
   blender::Vector<blender::geometry::PackIsland *> pack_island_vector;
@@ -1415,12 +1416,13 @@ static void uvedit_pack_islands_multi(const Scene *scene,
         copy_v2_v2(uvs[j], BM_ELEM_CD_GET_FLOAT_P(l, face_island->offsets.uv));
       }
 
-      pack_island->addPolygon(uvs, arena);
+      pack_island->add_polygon(uvs, arena, heap);
 
       BLI_memarena_clear(arena);
     }
-    pack_island->finalizeGeometry(*params, arena);
+    pack_island->finalize_geometry(*params, arena, heap);
   }
+  BLI_heap_free(heap, nullptr);
   BLI_memarena_free(arena);
   pack_islands(pack_island_vector, *params, scale);
 
@@ -1585,14 +1587,10 @@ static const EnumPropertyItem pack_margin_method_items[] = {
 };
 
 static const EnumPropertyItem pack_shape_method_items[] = {
-    {ED_UVPACK_SHAPE_FASTEST, "FASTEST", 0, "Fastest", "Pack as fast as possible"},
-    {ED_UVPACK_SHAPE_AABB, "AABB", 0, "AABB", "Use Axis-Aligned Bounding Boxes"},
-    {ED_UVPACK_SHAPE_CONVEX, "CONVEX", 0, "Convex hull", "Use convex hull"},
-    {ED_UVPACK_SHAPE_CONCAVE_HOLE,
-     "CONCAVE_HOLE",
-     0,
-     "Concave with hole fill",
-     "Use concave hull with hole filling"},
+    {ED_UVPACK_SHAPE_CONCAVE, "CONCAVE", 0, "Exact shape (Concave)", "Uses exact geometry"},
+    {ED_UVPACK_SHAPE_CONVEX, "CONVEX", 0, "Boundary shape (Convex)", "Uses convex hull"},
+    RNA_ENUM_ITEM_SEPR,
+    {ED_UVPACK_SHAPE_AABB, "AABB", 0, "Bounding box", "Uses bounding boxes"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -1633,7 +1631,7 @@ void UV_OT_pack_islands(wmOperatorType *ot)
   RNA_def_enum(ot->srna,
                "shape_method",
                pack_shape_method_items,
-               ED_UVPACK_SHAPE_CONVEX,
+               ED_UVPACK_SHAPE_CONCAVE,
                "Shape Method",
                "");
 }
