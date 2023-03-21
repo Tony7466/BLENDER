@@ -163,11 +163,26 @@ wmKeyMap *WM_keymap_guess_from_context(const bContext *C)
         break;
     }
   }
+  else if (sl->spacetype == SPACE_SEQ) {
+    const SpaceSeq *sseq = (SpaceSeq *)sl;
+    enum eSpaceSeq_Displays view = sseq->view;
+    switch (view) {
+      case SEQ_VIEW_SEQUENCE:
+        km_id = "Sequencer";
+        break;
+      case SEQ_VIEW_PREVIEW:
+        km_id = "SequencerPreview";
+        break;
+      case SEQ_VIEW_SEQUENCE_PREVIEW:
+        km_id = "SequencerCommon";
+        break;
+    }
+  }
   else {
     return NULL;
   }
 
-  wmKeyMap *km = WM_keymap_find_all(CTX_wm_manager(C), km_id, 0, 0);
+  wmKeyMap *km = WM_keymap_find_all_spaceid_or_empty(CTX_wm_manager(C), km_id, sl->spacetype, 0);
   BLI_assert(km);
   return km;
 }
