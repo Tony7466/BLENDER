@@ -226,6 +226,8 @@ class IndexMask {
 
  private:
   void foreach_span_impl(FunctionRef<void(OffsetSpan<int64_t, int16_t>)> fn) const;
+  void to_ranges_and_spans_impl(Vector<IndexRange> &r_ranges,
+                                Vector<OffsetSpan<int64_t, int16_t>> &r_spans) const;
 
   template<typename Fn> void foreach_span_template(Fn &&fn) const;
 };
@@ -1022,6 +1024,30 @@ inline IndexMask IndexMask::from_predicate(const IndexMask &universe,
     }
   });
   return IndexMask::from_indices<int64_t>(indices, memory);
+}
+
+std::optional<IndexRange> inline IndexMask::to_range() const
+{
+  if (data_.indices_num == 0) {
+    return IndexRange{};
+  }
+  const int64_t first_index = this->first();
+  const int64_t last_index = this->last();
+  if (last_index - first_index == data_.indices_num - 1) {
+    return IndexRange(first_index, data_.indices_num);
+  }
+  return std::nullopt;
+}
+
+inline void IndexMask::to_ranges_and_spans(Vector<IndexRange> &r_ranges,
+                                           Vector<OffsetSpan<int64_t, int16_t>> &r_spans) const
+{
+  if (std::optional<IndexRange> range = this->to_range()) {
+    r_ranges.append(*range);
+  }
+  else {
+    this->to_ranges_and_spans_impl(r_ranges, r_spans);
+  }
 }
 
 }  // namespace index_mask

@@ -865,19 +865,6 @@ void IndexMask::to_bools(MutableSpan<bool> r_bools, int64_t offset) const
   this->foreach_index_optimized([&](const int64_t i) { r_bools[i - offset] = true; });
 }
 
-std::optional<IndexRange> IndexMask::to_range() const
-{
-  if (data_.indices_num == 0) {
-    return IndexRange{};
-  }
-  const int64_t first_index = this->first();
-  const int64_t last_index = this->last();
-  if (last_index - first_index == data_.indices_num - 1) {
-    return IndexRange(first_index, data_.indices_num);
-  }
-  return std::nullopt;
-}
-
 Vector<IndexRange> IndexMask::to_ranges() const
 {
   Vector<IndexRange> ranges;
@@ -891,8 +878,8 @@ Vector<IndexRange> IndexMask::to_ranges_invert(const IndexRange universe) const
   return this->complement(universe, memory).to_ranges();
 }
 
-void IndexMask::to_ranges_and_spans(Vector<IndexRange> &r_ranges,
-                                    Vector<OffsetSpan<int64_t, int16_t>> &r_spans) const
+void IndexMask::to_ranges_and_spans_impl(Vector<IndexRange> &r_ranges,
+                                         Vector<OffsetSpan<int64_t, int16_t>> &r_spans) const
 {
   const IndexRangeChecker range_checker;
   this->foreach_span_template(
