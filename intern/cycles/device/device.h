@@ -221,7 +221,8 @@ class Device {
   {
     return 0;
   }
-  
+
+  /* This gets the memory pointer for the given device given the virtual device pointer */
   virtual device_ptr find_matching_mem(device_ptr key, Device * /*sub*/)
   {
     return key;
