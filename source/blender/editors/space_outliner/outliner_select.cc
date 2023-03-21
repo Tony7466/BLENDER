@@ -385,7 +385,9 @@ static void tree_element_object_activate(bContext *C,
     }
 
     if (set != OL_SETSEL_NONE) {
-      ED_object_base_activate_with_mode_exit_if_needed(C, base); /* adds notifier */
+      if (!recursive) {
+        ED_object_base_activate_with_mode_exit_if_needed(C, base); /* adds notifier */
+      }
       DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
       WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
     }
