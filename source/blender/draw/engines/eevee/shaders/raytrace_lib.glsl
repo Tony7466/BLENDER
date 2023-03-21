@@ -126,6 +126,10 @@ bool raytrace(Ray ray,
 
   float lod_fac = saturate(fast_sqrt(params.roughness) * 2.0 - 0.4);
 
+#if defined(GPU_METAL) && defined(GPU_ATI)
+  bool hit_valid = true;
+#endif
+
   /* Cross at least one pixel. */
   float t = 1.001, time = 1.001;
   bool hit = false;
@@ -143,22 +147,43 @@ bool raytrace(Ray ray,
     vec4 ss_p = ssray.origin + ssray.direction * time;
     depth_sample = textureLod(maxzBuffer, ss_p.xy * hizUvScale.xy, floor(lod)).r;
 
+#if defined(GPU_METAL) && defined(GPU_ATI)
+    /* NOTE(Metal): Invalidate all future hits using immediate test to avoid side-effects from
+     * non-uniform control flow. This must only be used to invalidate while hit is false.  */
+    bool raytrace_fail_check =
+        (((discard_backface && prev_delta < 0.0) || (depth_sample == 1.0)) && !hit);
+#endif
     delta = depth_sample - ss_p.z;
     /* Check if the ray is below the surface ... */
     hit = (delta < 0.0);
     /* ... and above it with the added thickness. */
     hit = hit && (delta > ss_p.z - ss_p.w || abs(delta) < abs(ssray.direction.z * stride * 2.0));
+
+#if defined(GPU_METAL) && defined(GPU_ATI)
+    if (hit && raytrace_fail_check) {
+      hit_valid = false;
+    }
+#endif
   }
+
+#if !(defined(GPU_METAL) && defined(GPU_ATI))
   /* Discard back-face hits. */
   hit = hit && !(discard_backface && prev_delta < 0.0);
   /* Reject hit if background. */
   hit = hit && (depth_sample != 1.0);
+#endif
   /* Refine hit using intersection between the sampled heightfield and the ray.
    * This simplifies nicely to this single line. */
   time = mix(prev_time, time, saturate(prev_delta / (prev_delta - delta)));
 
   hit_position = ssray.origin.xyz + ssray.direction.xyz * time;
 
+#if (defined(GPU_METAL) && defined(GPU_ATI))
+  /* Apply failed ray flag to discard bad hits. */
+  if (!hit_valid) {
+    return false;
+  }
+#endif
   return hit;
 }
 
