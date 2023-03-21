@@ -36,7 +36,7 @@
 #include "BKE_attribute.h"
 #include "BKE_ccg.h"
 #include "BKE_customdata.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_paint.h"
 #include "BKE_pbvh.h"
 #include "BKE_subdiv_ccg.h"
@@ -333,30 +333,26 @@ struct PBVHBatches {
           foreach_faces,
       GPUVertBufRaw *access)
   {
-    float fno[3];
-    short no[3];
-    int last_poly = -1;
     const bool *sharp_faces = static_cast<const bool *>(
         CustomData_get_layer_named(args->pdata, CD_PROP_BOOL, "sharp_face"));
+    short no[3];
+    int last_poly = -1;
+    bool flat = false;
 
     foreach_faces([&](int /*buffer_i*/, int /*tri_i*/, int vertex_i, const MLoopTri *tri) {
-      bool smooth = false;
       if (tri->poly != last_poly) {
         last_poly = tri->poly;
-
-        if (sharp_faces && sharp_faces[tri->poly]) {
-          smooth = true;
+        flat = sharp_faces && sharp_faces[tri->poly];
+        if (flat) {
           const MPoly &poly = args->polys[tri->poly];
-          BKE_mesh_calc_poly_normal(
-              &poly, args->mloop + poly.loopstart, args->vert_positions, fno);
+          const float3 fno = blender::bke::mesh::poly_normal_calc(
+              {reinterpret_cast<const float3 *>(args->vert_positions), args->mesh_verts_num},
+              {&args->corner_verts[poly.loopstart], poly.totloop});
           normal_float_to_short_v3(no, fno);
-        }
-        else {
-          smooth = false;
         }
       }
 
-      if (!smooth) {
+      if (!flat) {
         normal_float_to_short_v3(no, args->vert_normals[vertex_i]);
       }
 
@@ -550,10 +546,10 @@ struct PBVHBatches {
 
   void fill_vbo_faces(PBVHVbo &vbo, PBVH_GPU_Args *args)
   {
+    const blender::Span<int> corner_verts = args->corner_verts;
     auto foreach_faces =
         [&](std::function<void(int buffer_i, int tri_i, int vertex_i, const MLoopTri *tri)> func) {
           int buffer_i = 0;
-          const MLoop *mloop = args->mloop;
 
           for (int i : IndexRange(args->totprim)) {
             int face_index = args->mlooptri[args->prim_indices[i]].poly;
@@ -565,7 +561,7 @@ struct PBVHBatches {
             const MLoopTri *tri = args->mlooptri + args->prim_indices[i];
 
             for (int j : IndexRange(3)) {
-              func(buffer_i, j, mloop[tri->tri[j]].v, tri);
+              func(buffer_i, j, corner_verts[tri->tri[j]], tri);
               buffer_i++;
             }
           }
@@ -994,7 +990,8 @@ struct PBVHBatches {
       }
 
       int r_edges[3];
-      BKE_mesh_looptri_get_real_edges(edges.data(), args->mloop, lt, r_edges);
+      BKE_mesh_looptri_get_real_edges(
+          edges.data(), args->corner_verts.data(), args->corner_edges.data(), lt, r_edges);
 
       if (r_edges[0] != -1) {
         edge_count++;
@@ -1019,7 +1016,8 @@ struct PBVHBatches {
       }
 
       int r_edges[3];
-      BKE_mesh_looptri_get_real_edges(edges.data(), args->mloop, lt, r_edges);
+      BKE_mesh_looptri_get_real_edges(
+          edges.data(), args->corner_verts.data(), args->corner_edges.data(), lt, r_edges);
 
       if (r_edges[0] != -1) {
         GPU_indexbuf_add_line_verts(&elb_lines, vertex_i, vertex_i + 1);

@@ -14,7 +14,7 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
 #include "BKE_instances.hh"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_pointcloud.h"
 
 #include "node_geometry_util.hh"
@@ -115,7 +115,7 @@ static void threaded_id_offset_copy(const OffsetIndices<int> offsets,
                                     MutableSpan<int> all_dst)
 {
   BLI_assert(offsets.total_size() == all_dst.size());
-  threading::parallel_for(IndexRange(offsets.ranges_num()), 512, [&](IndexRange range) {
+  threading::parallel_for(offsets.index_range(), 512, [&](IndexRange range) {
     for (const int i : range) {
       MutableSpan<int> dst = all_dst.slice(offsets[i]);
       if (dst.is_empty()) {
@@ -280,7 +280,7 @@ static void copy_stable_id_curves(const bke::CurvesGeometry &src_curves,
       const int i_src_curve = selection[i_selection];
       const Span<int> curve_src = src.slice(src_points_by_curve[i_src_curve]);
       const IndexRange duplicates_range = offsets[i_selection];
-      for (const int i_duplicate : IndexRange(offsets.size(i_selection)).drop_front(1)) {
+      for (const int i_duplicate : IndexRange(offsets[i_selection].size()).drop_front(1)) {
         const int i_dst_curve = duplicates_range[i_duplicate];
         copy_hashed_ids(curve_src, i_duplicate, dst.slice(dst_points_by_curve[i_dst_curve]));
       }
@@ -322,11 +322,11 @@ static void duplicate_curves(GeometrySet &geometry_set,
   int dst_curves_num = 0;
   int dst_points_num = 0;
   for (const int i_curve : selection.index_range()) {
-    const int count = std::max(counts[selection[i_curve]], 0);
+    const int count = counts[selection[i_curve]];
     curve_offset_data[i_curve] = dst_curves_num;
     point_offset_data[i_curve] = dst_points_num;
     dst_curves_num += count;
-    dst_points_num += count * points_by_curve.size(selection[i_curve]);
+    dst_points_num += count * points_by_curve[selection[i_curve]].size();
   }
   curve_offset_data.last() = dst_curves_num;
   point_offset_data.last() = dst_points_num;
@@ -389,8 +389,12 @@ static void copy_face_attributes_without_id(
     const bke::AttributeAccessor src_attributes,
     bke::MutableAttributeAccessor dst_attributes)
 {
-  for (auto &attribute : bke::retrieve_attributes_for_transfer(
-           src_attributes, dst_attributes, ATTR_DOMAIN_MASK_ALL, propagation_info, {"id"})) {
+  for (auto &attribute :
+       bke::retrieve_attributes_for_transfer(src_attributes,
+                                             dst_attributes,
+                                             ATTR_DOMAIN_MASK_ALL,
+                                             propagation_info,
+                                             {"id", ".corner_vert", ".corner_edge"})) {
     attribute_math::convert_to_static_type(attribute.src.type(), [&](auto dummy) {
       using T = decltype(dummy);
       const Span<T> src = attribute.src.typed<T>();
@@ -484,7 +488,8 @@ static void duplicate_faces(GeometrySet &geometry_set,
   const Mesh &mesh = *geometry_set.get_mesh_for_read();
   const Span<MEdge> edges = mesh.edges();
   const Span<MPoly> polys = mesh.polys();
-  const Span<MLoop> loops = mesh.loops();
+  const Span<int> corner_verts = mesh.corner_verts();
+  const Span<int> corner_edges = mesh.corner_edges();
 
   bke::MeshFieldContext field_context{mesh, ATTR_DOMAIN_FACE};
   FieldEvaluator evaluator(field_context, polys.size());
@@ -498,7 +503,7 @@ static void duplicate_faces(GeometrySet &geometry_set,
   int total_loops = 0;
   Array<int> offset_data(selection.size() + 1);
   for (const int i_selection : selection.index_range()) {
-    const int count = std::max(counts[selection[i_selection]], 0);
+    const int count = counts[selection[i_selection]];
     offset_data[i_selection] = total_polys;
     total_polys += count;
     total_loops += count * polys[selection[i_selection]].totloop;
@@ -510,11 +515,12 @@ static void duplicate_faces(GeometrySet &geometry_set,
   Mesh *new_mesh = BKE_mesh_new_nomain(total_loops, total_loops, total_loops, total_polys);
   MutableSpan<MEdge> new_edges = new_mesh->edges_for_write();
   MutableSpan<MPoly> new_polys = new_mesh->polys_for_write();
-  MutableSpan<MLoop> new_loops = new_mesh->loops_for_write();
+  MutableSpan<int> new_corner_verts = new_mesh->corner_verts_for_write();
+  MutableSpan<int> new_corner_edges = new_mesh->corner_edges_for_write();
 
   Array<int> vert_mapping(new_mesh->totvert);
   Array<int> edge_mapping(new_edges.size());
-  Array<int> loop_mapping(new_loops.size());
+  Array<int> loop_mapping(total_loops);
 
   int poly_index = 0;
   int loop_index = 0;
@@ -526,11 +532,11 @@ static void duplicate_faces(GeometrySet &geometry_set,
       new_polys[poly_index] = source;
       new_polys[poly_index].loopstart = loop_index;
       for (const int i_loops : IndexRange(source.totloop)) {
-        const MLoop &current_loop = loops[source.loopstart + i_loops];
-        loop_mapping[loop_index] = source.loopstart + i_loops;
-        vert_mapping[loop_index] = current_loop.v;
-        new_edges[loop_index] = edges[current_loop.e];
-        edge_mapping[loop_index] = current_loop.e;
+        const int src_corner = source.loopstart + i_loops;
+        loop_mapping[loop_index] = src_corner;
+        vert_mapping[loop_index] = corner_verts[src_corner];
+        new_edges[loop_index] = edges[corner_edges[src_corner]];
+        edge_mapping[loop_index] = corner_edges[src_corner];
         new_edges[loop_index].v1 = loop_index;
         if (i_loops + 1 != source.totloop) {
           new_edges[loop_index].v2 = loop_index + 1;
@@ -538,8 +544,8 @@ static void duplicate_faces(GeometrySet &geometry_set,
         else {
           new_edges[loop_index].v2 = new_polys[poly_index].loopstart;
         }
-        new_loops[loop_index].v = loop_index;
-        new_loops[loop_index].e = loop_index;
+        new_corner_verts[loop_index] = loop_index;
+        new_corner_edges[loop_index] = loop_index;
         loop_index++;
       }
       poly_index++;
@@ -1042,7 +1048,13 @@ static void node_geo_exec(GeoNodeExecParams params)
   const NodeGeometryDuplicateElements &storage = node_storage(params.node());
   const eAttrDomain duplicate_domain = eAttrDomain(storage.domain);
 
-  Field<int> count_field = params.extract_input<Field<int>>("Amount");
+  static auto max_zero_fn = mf::build::SI1_SO<int, int>(
+      "max_zero",
+      [](int value) { return std::max(0, value); },
+      mf::build::exec_presets::AllSpanOrSingle());
+  Field<int> count_field(
+      FieldOperation::Create(max_zero_fn, {params.extract_input<Field<int>>("Amount")}));
+
   Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
   IndexAttributes attribute_outputs;
   attribute_outputs.duplicate_index = params.get_output_anonymous_attribute_id_if_needed(
