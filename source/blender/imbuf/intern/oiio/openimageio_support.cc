@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "openimageio_support.hh"
+#include <OpenImageIO/imagebuf.h>
+#include <OpenImageIO/imagebufalgo.h>
 
 #include "BLI_blenlib.h"
 
@@ -291,10 +293,19 @@ bool imb_oiio_write(const WriteContext &ctx, const char *filepath, const ImageSp
     return false;
   }
 
-  auto write_op = [&out, &ctx]() {
-    return out->write_image(
-        ctx.mem_format, ctx.mem_start, ctx.mem_xstride, -ctx.mem_ystride, AutoStride);
-  };
+  ImageBuf orig_buf(ctx.mem_spec, ctx.mem_start, ctx.mem_xstride, -ctx.mem_ystride, AutoStride);
+  ImageBuf final_buf{};
+
+  /* Grayscale images need to be based on luminance weights rather than only
+   * using a single channel from the source. */
+  if (file_spec.nchannels == 1) {
+    float weights[3];
+    IMB_colormanagement_get_luminance_coefficients(weights);
+    ImageBufAlgo::channel_sum(final_buf, orig_buf, weights);
+  }
+  else {
+    final_buf = std::move(orig_buf);
+  }
 
   bool ok = false;
   if (ctx.flags & IB_mem) {
@@ -304,11 +315,11 @@ bool imb_oiio_write(const WriteContext &ctx, const char *filepath, const ImageSp
     imb_addencodedbufferImBuf(ctx.ibuf);
     out->set_ioproxy(&writer);
     out->open("", file_spec);
-    ok = write_op();
+    ok = final_buf.write(out.get());
   }
   else {
     out->open(filepath, file_spec);
-    ok = write_op();
+    ok = final_buf.write(out.get());
   }
 
   out->close();
@@ -332,15 +343,15 @@ WriteContext imb_create_write_context(const char *file_format,
     const int mem_channels = ibuf->channels ? ibuf->channels : 4;
     ctx.mem_xstride = sizeof(float) * mem_channels;
     ctx.mem_ystride = width * ctx.mem_xstride;
-    ctx.mem_format = TypeDesc::FLOAT;
     ctx.mem_start = reinterpret_cast<uchar *>(ibuf->rect_float);
+    ctx.mem_spec = ImageSpec(width, height, mem_channels, TypeDesc::FLOAT);
   }
   else {
     const int mem_channels = 4;
     ctx.mem_xstride = sizeof(uchar) * mem_channels;
     ctx.mem_ystride = width * ctx.mem_xstride;
-    ctx.mem_format = TypeDesc::UINT8;
     ctx.mem_start = reinterpret_cast<uchar *>(ibuf->rect);
+    ctx.mem_spec = ImageSpec(width, height, mem_channels, TypeDesc::UINT8);
   }
 
   /* We always write using a negative y-stride so ensure we start at the end. */
