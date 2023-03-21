@@ -833,6 +833,20 @@ template<typename Fn> inline void IndexMask::foreach_index(Fn &&fn) const
   });
 }
 
+template<typename Fn>
+#if (defined(__GNUC__) && !defined(__clang__))
+[[gnu::optimize("-funroll-loops")]] [[gnu::optimize("O3")]]
+#endif
+inline void
+foreach_index_in_range(const IndexRange range, Fn &&fn)
+{
+  const int64_t start = range.start();
+  const int64_t end = range.one_after_last();
+  for (int64_t i = start; i < end; i++) {
+    fn(i);
+  }
+}
+
 template<typename Fn> inline void IndexMask::foreach_index_optimized(Fn &&fn) const
 {
   this->foreach_span_or_range([&](const auto mask_segment, const int64_t start) {
@@ -840,6 +854,9 @@ template<typename Fn> inline void IndexMask::foreach_index_optimized(Fn &&fn) co
       for (const int64_t i : mask_segment.index_range()) {
         fn(mask_segment[i], start + i);
       }
+    }
+    else if constexpr (std::is_same_v<std::decay_t<decltype(mask_segment)>, IndexRange>) {
+      foreach_index_in_range(mask_segment, fn);
     }
     else {
       for (const int64_t index : mask_segment) {
