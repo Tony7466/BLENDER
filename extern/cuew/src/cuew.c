@@ -68,7 +68,6 @@ typedef void* DynamicLibrary;
 
 static DynamicLibrary cuda_lib;
 static DynamicLibrary nvrtc_lib;
-static DynamicLibrary nvtx_lib;
 
 /* Function definitions. */
 tcuGetErrorString *cuGetErrorString;
@@ -681,6 +680,7 @@ static int cuewNvrtcInit(void) {
   result = CUEW_SUCCESS;
   return result;
 }
+
 
 int cuewInit(cuuint32_t flags) {
   int result = CUEW_SUCCESS;

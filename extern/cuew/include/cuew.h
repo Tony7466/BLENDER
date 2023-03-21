@@ -887,6 +887,7 @@ typedef enum  {
 
 typedef struct _nvrtcProgram* nvrtcProgram;
 
+
 /* Function types. */
 typedef CUresult CUDAAPI tcuGetErrorString(CUresult error, const char** pStr);
 typedef CUresult CUDAAPI tcuGetErrorName(CUresult error, const char** pStr);
