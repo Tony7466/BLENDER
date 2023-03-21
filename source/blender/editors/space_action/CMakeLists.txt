@@ -29,7 +29,7 @@ set(SRC
   action_edit.c
   action_ops.c
   action_select.c
-  space_action.c
+  space_action.cc
 
   action_intern.h
 )

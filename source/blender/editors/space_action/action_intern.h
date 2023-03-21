@@ -16,6 +16,10 @@ struct bAnimContext;
 struct bContext;
 struct wmOperatorType;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* internal exports only */
 
 /* **************************************** */
@@ -133,3 +137,7 @@ enum eActKeys_Mirror_Mode {
 
 void action_operatortypes(void);
 void action_keymap(struct wmKeyConfig *keyconf);
+
+#ifdef __cplusplus
+}
+#endif
