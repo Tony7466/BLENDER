@@ -212,7 +212,7 @@ TEST(index_mask, ToRange)
   }
   {
     const IndexRange range{16000, 40000};
-    const IndexMask &mask{range};
+    const IndexMask mask{range};
     EXPECT_TRUE(mask.to_range().has_value());
     EXPECT_EQ(*mask.to_range(), range);
   }

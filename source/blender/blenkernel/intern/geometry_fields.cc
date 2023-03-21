@@ -423,7 +423,7 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
   }
 
   bke::GeometryFieldContext field_context{component, domain};
-  const IndexMask &mask{IndexMask(domain_size)};
+  const IndexMask mask{domain_size};
   const bke::AttributeValidator validator = attributes.lookup_validator(attribute_id);
 
   const std::optional<AttributeMetaData> meta_data = attributes.lookup_meta_data(attribute_id);
@@ -434,7 +434,7 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
   if (attribute_exists) {
     if (GSpanAttributeWriter dst_attribute = attributes.lookup_for_write_span(attribute_id)) {
       bke::GeometryFieldContext field_context{component, domain};
-      const IndexMask &mask{IndexMask(domain_size)};
+      const IndexMask mask{domain_size};
 
       fn::FieldEvaluator evaluator{field_context, &mask};
       evaluator.add(validator.validate_field_if_necessary(field));
