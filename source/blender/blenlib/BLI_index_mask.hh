@@ -218,6 +218,8 @@ class IndexMask {
   std::optional<IndexRange> to_range() const;
   Vector<IndexRange> to_ranges() const;
   Vector<IndexRange> to_ranges_invert(IndexRange universe) const;
+  void to_ranges_and_spans(Vector<IndexRange> &r_ranges,
+                           Vector<OffsetSpan<int64_t, int16_t>> &r_spans) const;
 
   const IndexMaskData &data() const;
   IndexMaskData &data_for_inplace_construction();

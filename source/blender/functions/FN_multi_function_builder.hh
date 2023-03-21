@@ -405,14 +405,7 @@ inline void execute_element_fn_as_multi_function(const ElementFn element_fn,
 
   Vector<IndexRange> mask_ranges;
   Vector<OffsetSpan<int64_t, int16_t>> mask_spans;
-  mask.foreach_span_or_range([&](const auto segment) {
-    if constexpr (std::is_same_v<std::decay_t<decltype(segment)>, IndexRange>) {
-      mask_ranges.append(segment);
-    }
-    else {
-      mask_spans.append(segment);
-    }
-  });
+  mask.to_ranges_and_spans(mask_ranges, mask_spans);
 
   /* Try execute devirtualized if enabled and the input types allow it. */
   bool executed_devirtualized = false;

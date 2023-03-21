@@ -891,6 +891,22 @@ Vector<IndexRange> IndexMask::to_ranges_invert(const IndexRange universe) const
   return this->complement(universe, memory).to_ranges();
 }
 
+void IndexMask::to_ranges_and_spans(Vector<IndexRange> &r_ranges,
+                                    Vector<OffsetSpan<int64_t, int16_t>> &r_spans) const
+{
+  const IndexRangeChecker range_checker;
+  this->foreach_span_template(
+      [&, range_checker](const int64_t chunk_id, const Span<int16_t> indices) {
+        const int64_t chunk_offset = chunk_id << chunk_size_shift;
+        if (range_checker.check(indices)) {
+          r_ranges.append_as(indices[0] + chunk_offset, indices.size());
+        }
+        else {
+          r_spans.append_as(chunk_offset, indices);
+        }
+      });
+}
+
 template IndexMask IndexMask::from_indices(Span<int32_t>, IndexMaskMemory &);
 template IndexMask IndexMask::from_indices(Span<int64_t>, IndexMaskMemory &);
 template void IndexMask::to_indices(MutableSpan<int32_t>) const;
