@@ -112,13 +112,13 @@ public:
 	 */
 	void write(const float* data, int position, int count);
 
-  /**
-   * Fills the properties frame range with constant value and marks it animated.
-   * \param data The new value.
-   * \param position_start The start position in the animation in frames.
-   * \param position_end The end position in the animation in frames.
-   */
-  void write_range(const float* data, int position_start, int position_end);
+	/**
+	 * Fills the properties frame range with constant value and marks it animated.
+	 * \param data The new value.
+	 * \param position_start The start position in the animation in frames.
+	 * \param position_end The end position in the animation in frames.
+	 */
+	void write_range(const float* data, int position_start, int position_end);
 
 	/**
 	 * Reads the properties value.

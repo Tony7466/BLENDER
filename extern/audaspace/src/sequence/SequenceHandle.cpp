@@ -264,7 +264,7 @@ bool SequenceHandle::seek(double position)
 	}
 
 	double seekpos = target_frame / m_entry->m_fps;
-	
+
 	m_handle->setPitch(1.0f);
 	m_handle->seek(seekpos);
 
