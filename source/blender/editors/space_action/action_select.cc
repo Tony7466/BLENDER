@@ -46,7 +46,7 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
-#include "action_intern.h"
+#include "action_intern.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Keyframes Stuff

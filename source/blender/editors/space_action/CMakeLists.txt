@@ -31,7 +31,7 @@ set(SRC
   action_select.cc
   space_action.cc
 
-  action_intern.h
+  action_intern.hh
 )
 
 set(LIB

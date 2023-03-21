@@ -52,7 +52,7 @@
 
 #include "UI_interface.h"
 
-#include "action_intern.h"
+#include "action_intern.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Utilities

@@ -44,7 +44,7 @@
 
 #include "BLO_read_write.h"
 
-#include "action_intern.h" /* own include */
+#include "action_intern.hh" /* own include */
 
 /* -------------------------------------------------------------------- */
 /** \name Default Callbacks for Action Space

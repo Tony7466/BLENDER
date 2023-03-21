@@ -42,7 +42,7 @@
 #include "ED_anim_api.h"
 #include "ED_keyframes_draw.h"
 
-#include "action_intern.h"
+#include "action_intern.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Channel List

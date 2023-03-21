@@ -15,7 +15,7 @@
 #include "BKE_context.h"
 #include "BKE_screen.h"
 
-#include "action_intern.h" /* own include */
+#include "action_intern.hh" /* own include */
 
 /* ******************* action editor space & buttons ************** */
 

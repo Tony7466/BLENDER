@@ -13,7 +13,7 @@
 #include "ED_anim_api.h"
 #include "ED_transform.h"
 
-#include "action_intern.h"
+#include "action_intern.hh"
 
 #include "RNA_access.h"
 
