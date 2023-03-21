@@ -85,7 +85,7 @@ static bAnimListElem *actkeys_find_list_element_at_position(bAnimContext *ac,
 }
 
 static void actkeys_list_element_to_keylist(bAnimContext *ac,
-                                            struct AnimKeylist *keylist,
+                                            AnimKeylist *keylist,
                                             bAnimListElem *ale)
 {
   AnimData *adt = ANIM_nla_mapping_get(ac, ale);
@@ -152,7 +152,7 @@ static void actkeys_find_key_in_list_element(bAnimContext *ac,
 
   View2D *v2d = &ac->region->v2d;
 
-  struct AnimKeylist *keylist = ED_keylist_create();
+  AnimKeylist *keylist = ED_keylist_create();
   actkeys_list_element_to_keylist(ac, keylist, ale);
   ED_keylist_prepare_for_direct_access(keylist);
 
@@ -380,13 +380,13 @@ enum {
   ACTKEYS_BORDERSEL_CHANNELS,
 } /*eActKeys_BoxSelect_Mode*/;
 
-typedef struct BoxSelectData {
+struct BoxSelectData {
   bAnimContext *ac;
   short selectmode;
 
   KeyframeEditData ked;
   KeyframeEditFunc ok_cb, select_cb;
-} BoxSelectData;
+};
 
 static void box_select_elem(
     BoxSelectData *sel_data, bAnimListElem *ale, float xmin, float xmax, bool summary)
@@ -635,14 +635,14 @@ void ACTION_OT_select_box(wmOperatorType *ot)
  * original Graph Editor implementation of these to do it this way.
  * \{ */
 
-typedef struct RegionSelectData {
+struct RegionSelectData {
   bAnimContext *ac;
   short mode;
   short selectmode;
 
   KeyframeEditData ked;
   KeyframeEditFunc ok_cb, select_cb;
-} RegionSelectData;
+};
 
 static void region_select_elem(RegionSelectData *sel_data, bAnimListElem *ale, bool summary)
 {

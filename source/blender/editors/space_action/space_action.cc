@@ -133,7 +133,7 @@ static void action_free(SpaceLink * /*sl*/)
 }
 
 /* spacetype; init callback */
-static void action_init(struct wmWindowManager * /*wm*/, ScrArea *area)
+static void action_init(wmWindowManager * /*wm*/, ScrArea *area)
 {
   SpaceAction *saction = static_cast<SpaceAction *>(area->spacedata.first);
   saction->runtime.flag |= SACTION_RUNTIME_FLAG_NEED_CHAN_SYNC;
@@ -360,7 +360,7 @@ static void action_channel_region_listener(const wmRegionListenerParams *params)
 
 static void saction_channel_region_message_subscribe(const wmRegionMessageSubscribeParams *params)
 {
-  struct wmMsgBus *mbus = params->message_bus;
+  wmMsgBus *mbus = params->message_bus;
   bScreen *screen = params->screen;
   ScrArea *area = params->area;
   ARegion *region = params->region;
@@ -476,7 +476,7 @@ static void action_main_region_listener(const wmRegionListenerParams *params)
 
 static void saction_main_region_message_subscribe(const wmRegionMessageSubscribeParams *params)
 {
-  struct wmMsgBus *mbus = params->message_bus;
+  wmMsgBus *mbus = params->message_bus;
   Scene *scene = params->scene;
   bScreen *screen = params->screen;
   ScrArea *area = params->area;
@@ -808,9 +808,7 @@ static void action_refresh(const bContext *C, ScrArea *area)
   /* XXX re-sizing y-extents of tot should go here? */
 }
 
-static void action_id_remap(ScrArea * /*area*/,
-                            SpaceLink *slink,
-                            const struct IDRemapper *mappings)
+static void action_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemapper *mappings)
 {
   SpaceAction *sact = (SpaceAction *)slink;
 

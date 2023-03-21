@@ -381,7 +381,7 @@ void draw_channel_strips(bAnimContext *ac, SpaceAction *saction, ARegion *region
 
   ymax = ANIM_UI_get_first_channel_top(v2d);
 
-  struct AnimKeylistDrawList *draw_list = ED_keylist_draw_list_create();
+  AnimKeylistDrawList *draw_list = ED_keylist_draw_list_create();
 
   const float scale_factor = ANIM_UI_get_keyframe_scale_factor();
 

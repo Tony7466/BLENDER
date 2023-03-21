@@ -21,7 +21,7 @@ struct wmOperatorType;
 /* **************************************** */
 /* space_action.c / action_buttons.c */
 
-void action_buttons_register(struct ARegionType *art);
+void action_buttons_register(ARegionType *art);
 
 /* ***************************************** */
 /* action_draw.c */
@@ -29,29 +29,27 @@ void action_buttons_register(struct ARegionType *art);
 /**
  * Left hand part.
  */
-void draw_channel_names(struct bContext *C, struct bAnimContext *ac, struct ARegion *region);
+void draw_channel_names(bContext *C, bAnimContext *ac, ARegion *region);
 /**
  * Draw keyframes in each channel.
  */
-void draw_channel_strips(struct bAnimContext *ac,
-                         struct SpaceAction *saction,
-                         struct ARegion *region);
+void draw_channel_strips(bAnimContext *ac, SpaceAction *saction, ARegion *region);
 
-void timeline_draw_cache(struct SpaceAction *saction, struct Object *ob, struct Scene *scene);
+void timeline_draw_cache(SpaceAction *saction, Object *ob, Scene *scene);
 
 /* ***************************************** */
 /* action_select.c */
 
-void ACTION_OT_select_all(struct wmOperatorType *ot);
-void ACTION_OT_select_box(struct wmOperatorType *ot);
-void ACTION_OT_select_lasso(struct wmOperatorType *ot);
-void ACTION_OT_select_circle(struct wmOperatorType *ot);
-void ACTION_OT_select_column(struct wmOperatorType *ot);
-void ACTION_OT_select_linked(struct wmOperatorType *ot);
-void ACTION_OT_select_more(struct wmOperatorType *ot);
-void ACTION_OT_select_less(struct wmOperatorType *ot);
-void ACTION_OT_select_leftright(struct wmOperatorType *ot);
-void ACTION_OT_clickselect(struct wmOperatorType *ot);
+void ACTION_OT_select_all(wmOperatorType *ot);
+void ACTION_OT_select_box(wmOperatorType *ot);
+void ACTION_OT_select_lasso(wmOperatorType *ot);
+void ACTION_OT_select_circle(wmOperatorType *ot);
+void ACTION_OT_select_column(wmOperatorType *ot);
+void ACTION_OT_select_linked(wmOperatorType *ot);
+void ACTION_OT_select_more(wmOperatorType *ot);
+void ACTION_OT_select_less(wmOperatorType *ot);
+void ACTION_OT_select_leftright(wmOperatorType *ot);
+void ACTION_OT_clickselect(wmOperatorType *ot);
 
 /* defines for left-right select tool */
 enum eActKeys_LeftRightSelect_Mode {
@@ -71,42 +69,42 @@ enum eActKeys_ColumnSelect_Mode {
 /* ***************************************** */
 /* action_edit.c */
 
-void ACTION_OT_previewrange_set(struct wmOperatorType *ot);
-void ACTION_OT_view_all(struct wmOperatorType *ot);
-void ACTION_OT_view_selected(struct wmOperatorType *ot);
-void ACTION_OT_view_frame(struct wmOperatorType *ot);
+void ACTION_OT_previewrange_set(wmOperatorType *ot);
+void ACTION_OT_view_all(wmOperatorType *ot);
+void ACTION_OT_view_selected(wmOperatorType *ot);
+void ACTION_OT_view_frame(wmOperatorType *ot);
 
-void ACTION_OT_copy(struct wmOperatorType *ot);
-void ACTION_OT_paste(struct wmOperatorType *ot);
+void ACTION_OT_copy(wmOperatorType *ot);
+void ACTION_OT_paste(wmOperatorType *ot);
 
-void ACTION_OT_keyframe_insert(struct wmOperatorType *ot);
-void ACTION_OT_duplicate(struct wmOperatorType *ot);
-void ACTION_OT_delete(struct wmOperatorType *ot);
-void ACTION_OT_clean(struct wmOperatorType *ot);
-void ACTION_OT_sample(struct wmOperatorType *ot);
+void ACTION_OT_keyframe_insert(wmOperatorType *ot);
+void ACTION_OT_duplicate(wmOperatorType *ot);
+void ACTION_OT_delete(wmOperatorType *ot);
+void ACTION_OT_clean(wmOperatorType *ot);
+void ACTION_OT_sample(wmOperatorType *ot);
 
-void ACTION_OT_keyframe_type(struct wmOperatorType *ot);
-void ACTION_OT_handle_type(struct wmOperatorType *ot);
-void ACTION_OT_interpolation_type(struct wmOperatorType *ot);
-void ACTION_OT_extrapolation_type(struct wmOperatorType *ot);
-void ACTION_OT_easing_type(struct wmOperatorType *ot);
+void ACTION_OT_keyframe_type(wmOperatorType *ot);
+void ACTION_OT_handle_type(wmOperatorType *ot);
+void ACTION_OT_interpolation_type(wmOperatorType *ot);
+void ACTION_OT_extrapolation_type(wmOperatorType *ot);
+void ACTION_OT_easing_type(wmOperatorType *ot);
 
-void ACTION_OT_frame_jump(struct wmOperatorType *ot);
+void ACTION_OT_frame_jump(wmOperatorType *ot);
 
-void ACTION_OT_snap(struct wmOperatorType *ot);
-void ACTION_OT_mirror(struct wmOperatorType *ot);
+void ACTION_OT_snap(wmOperatorType *ot);
+void ACTION_OT_mirror(wmOperatorType *ot);
 
-void ACTION_OT_new(struct wmOperatorType *ot);
-void ACTION_OT_unlink(struct wmOperatorType *ot);
+void ACTION_OT_new(wmOperatorType *ot);
+void ACTION_OT_unlink(wmOperatorType *ot);
 
-void ACTION_OT_push_down(struct wmOperatorType *ot);
-void ACTION_OT_stash(struct wmOperatorType *ot);
-void ACTION_OT_stash_and_create(struct wmOperatorType *ot);
+void ACTION_OT_push_down(wmOperatorType *ot);
+void ACTION_OT_stash(wmOperatorType *ot);
+void ACTION_OT_stash_and_create(wmOperatorType *ot);
 
-void ACTION_OT_layer_next(struct wmOperatorType *ot);
-void ACTION_OT_layer_prev(struct wmOperatorType *ot);
+void ACTION_OT_layer_next(wmOperatorType *ot);
+void ACTION_OT_layer_prev(wmOperatorType *ot);
 
-void ACTION_OT_markers_make_local(struct wmOperatorType *ot);
+void ACTION_OT_markers_make_local(wmOperatorType *ot);
 
 /* defines for snap keyframes
  * NOTE: keep in sync with eEditKeyframes_Snap (in ED_keyframes_edit.h)
@@ -132,4 +130,4 @@ enum eActKeys_Mirror_Mode {
 /* action_ops.c */
 
 void action_operatortypes(void);
-void action_keymap(struct wmKeyConfig *keyconf);
+void action_keymap(wmKeyConfig *keyconf);
