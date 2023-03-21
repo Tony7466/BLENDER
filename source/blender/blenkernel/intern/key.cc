@@ -2270,6 +2270,7 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
         {reinterpret_cast<const blender::float3 *>(positions), mesh->totvert},
         polys,
         corner_verts,
+        mesh->vert_to_poly_map(),
         {reinterpret_cast<const blender::float3 *>(poly_normals), polys.size()},
         {reinterpret_cast<blender::float3 *>(vert_normals), mesh->totvert});
   }

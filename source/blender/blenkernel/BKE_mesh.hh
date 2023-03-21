@@ -73,9 +73,10 @@ void normals_calc_polys(Span<float3> vert_positions,
  * \note Usually #Mesh::vert_normals() is the preferred way to access vertex normals,
  * since they may already be calculated and cached on the mesh.
  */
-void normals_calc_verts(Span<float3> vert_positions,
+void normals_calc_verts(Span<float3> positions,
                         OffsetIndices<int> polys,
                         Span<int> corner_verts,
+                        const VertToPolyMap &vert_to_poly,
                         Span<float3> poly_normals,
                         MutableSpan<float3> vert_normals);
 
