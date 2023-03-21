@@ -368,11 +368,10 @@ static void saction_channel_region_message_subscribe(const wmRegionMessageSubscr
   PointerRNA ptr;
   RNA_pointer_create(&screen->id, &RNA_SpaceDopeSheetEditor, area->spacedata.first, &ptr);
 
-  wmMsgSubscribeValue msg_sub_value_region_tag_redraw = {
-      .owner = region,
-      .user_data = region,
-      .notify = ED_region_do_msg_notify_tag_redraw,
-  };
+  wmMsgSubscribeValue msg_sub_value_region_tag_redraw{};
+  msg_sub_value_region_tag_redraw.owner = region;
+  msg_sub_value_region_tag_redraw.user_data = region;
+  msg_sub_value_region_tag_redraw.notify = ED_region_do_msg_notify_tag_redraw;
 
   /* All dopesheet filter settings, etc. affect the drawing of this editor,
    * also same applies for all animation-related datatypes that may appear here,
@@ -486,11 +485,10 @@ static void saction_main_region_message_subscribe(const wmRegionMessageSubscribe
   PointerRNA ptr;
   RNA_pointer_create(&screen->id, &RNA_SpaceDopeSheetEditor, area->spacedata.first, &ptr);
 
-  wmMsgSubscribeValue msg_sub_value_region_tag_redraw = {
-      .owner = region,
-      .user_data = region,
-      .notify = ED_region_do_msg_notify_tag_redraw,
-  };
+  wmMsgSubscribeValue msg_sub_value_region_tag_redraw{};
+  msg_sub_value_region_tag_redraw.owner = region;
+  msg_sub_value_region_tag_redraw.user_data = region;
+  msg_sub_value_region_tag_redraw.notify = ED_region_do_msg_notify_tag_redraw;
 
   /* Timeline depends on scene properties. */
   {
