@@ -28,7 +28,7 @@ set(SRC
   action_draw.cc
   action_edit.cc
   action_ops.cc
-  action_select.c
+  action_select.cc
   space_action.cc
 
   action_intern.h
