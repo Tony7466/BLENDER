@@ -44,12 +44,12 @@ namespace blender {
         object_vk_label(ctx, to_vk_object_type(obj), (uint64_t)obj, label);
       };
       void object_vk_label(VKContext* ctx, VkObjectType objType, uint64_t obj, const char* name);
-      void pushMarker(VkCommandBuffer cmd, const char* name);
-      void setMarker(VkCommandBuffer cmd, const char* name);
-      void popMarker(VkCommandBuffer cmd);
-      void pushMarker(VkQueue q, const char* name);
-      void setMarker(VkQueue q, const char* name);
-      void popMarker(VkQueue q);
+      void pushMarker(VKContext *ctx, VkCommandBuffer cmd, const char *name);
+      void setMarker(VKContext *ctx, VkCommandBuffer cmd, const char *name);
+      void popMarker(VKContext *ctx, VkCommandBuffer cmd);
+      void pushMarker(VKContext *ctx, VkQueue q, const char *name);
+      void setMarker(VKContext *ctx, VkQueue q, const char *name);
+      void popMarker(VKContext *ctx, VkQueue q);
     }
 	}
 }
