@@ -79,30 +79,35 @@ static const char *vulkan_error_as_string(VkResult result)
       return "Unknown Error";
   }
 }
-static bool is_vklayer_exist()
+static bool is_vklayer_exist(const char* vk_extension_config)
 {
   const char *ev_val = getenv("VK_LAYER_PATH");
   bool exists = false;
   if (ev_val != nullptr) {
-    std::string _json = std::string(ev_val) +  "/VkLayer_khronos_validation.json";
-    std::ifstream infile(_json.c_str());
-    exists = infile.good();
+    const size_t size_max =  strlen(ev_val) +  strlen(vk_extension_config) + 2;
+    char *filename = (char *)malloc(size_max);
+    memset(filename, 0, size_max);
+    strcpy(filename, ev_val);
+    strcat(filename, "/");
+    strcat(filename, vk_extension_config);
+    struct stat buffer;
+    exists = (stat(filename, &buffer) == 0);
+    free(filename);
   }
-  if (!exists) {
+  if (exists) {
+    return exists;
+  }
+
 #if defined(_WIN32)
-    fprintf(stderr,
-            "Warning: Layer requested, we are trying to use the VulkanValidationLayer explicitly. "
-            "\n  Set the path ..VulkanSDK\1.2.198.1\Bin of VulkanSDK (version1.2.198.1) to the "
-            "environment variable VK_LAYER_PATH.\nSee more details "
-            "https://vulkan.lunarg.com/doc/sdk/1.3.239.0/windows/layer_configuration.html.");
-#elif !defined(__APPLE__)
-    fprintf(stderr,
-            "Warning: Layer requested, we are trying to use the VulkanValidationLayer explicitly. "
-            "\n  Set the path ..vulkan/explicit_layer.d of VulkanSDK (version1.2.198.1) to the "
-            "environment variable VK_LAYER_PATH.\n"See more details https://vulkan.lunarg.com/doc/sdk/1.3.239.0/linux/layer_configuration.html.");
+  printf("Warning: VK_LAYER_KHRONOS_validation is deactivated.\nSet `..VulkanSDK/1.2.198.1/Bin` of VulkanSDK (version1.2.198.1) to "
+  "VK_LAYER_PATH.");
+#else
+  printf("Warning: VK_LAYER_KHRONOS_validation is deactivated.\nSet  `..vulkan/explicit_layer.d` of VulkanSDK (version1.2.198.1) to "
+      "VK_LAYER_PATH.");
 #endif
-  }
-  return exists;
+
+  return false;
+
 }
 #define __STR(A) "" #A
 #define VK_CHECK(__expression) \
@@ -888,7 +893,7 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
 
   vector<const char *> layers_enabled;
   if (m_debug) {
-    if (is_vklayer_exist()) {
+    if (is_vklayer_exist("VkLayer_khronos_validation.json")) {
       enableLayer(layers_available, layers_enabled, "VK_LAYER_KHRONOS_validation", m_debug);
     }
   }
