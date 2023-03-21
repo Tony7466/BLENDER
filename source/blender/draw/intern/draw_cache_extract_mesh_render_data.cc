@@ -220,8 +220,7 @@ static void accumululate_material_counts_mesh(
 }
 
 /* Count how many triangles for each material. */
-static void mesh_render_data_mat_tri_len_build(const MeshRenderData &mr,
-                                               MutableSpan<int> mat_tri_len)
+static Array<int> mesh_render_data_mat_tri_len_build(const MeshRenderData &mr)
 {
   threading::EnumerableThreadSpecific<Array<int>> all_tri_counts(
       [&]() { return Array<int>(mr.mat_len, 0); });
@@ -233,20 +232,18 @@ static void mesh_render_data_mat_tri_len_build(const MeshRenderData &mr,
     accumululate_material_counts_mesh(mr, all_tri_counts);
   }
 
-  mat_tri_len.fill(0);
+  Array<int> mat_tri_len(mr.mat_len, 0);
   for (const Array<int> &counts : all_tri_counts) {
     for (const int i : mat_tri_len.index_range()) {
       mat_tri_len[i] += counts[i];
     }
   }
+  return mat_tri_len;
 }
 
 static void mesh_render_data_polys_sorted_build(MeshRenderData *mr, MeshBufferCache *cache)
 {
-  cache->poly_sorted.tri_first_index.reinitialize(mr->poly_len);
-  cache->poly_sorted.mat_tri_len.reinitialize(mr->mat_len);
-
-  mesh_render_data_mat_tri_len_build(*mr, cache->poly_sorted.mat_tri_len);
+  cache->poly_sorted.mat_tri_len = mesh_render_data_mat_tri_len_build(*mr);
   const Span<int> mat_tri_len = cache->poly_sorted.mat_tri_len;
 
   /* Apply offset. */
@@ -260,6 +257,7 @@ static void mesh_render_data_polys_sorted_build(MeshRenderData *mr, MeshBufferCa
   }
   cache->poly_sorted.visible_tri_len = visible_tri_len;
 
+  cache->poly_sorted.tri_first_index.reinitialize(mr->poly_len);
   MutableSpan<int> tri_first_index = cache->poly_sorted.tri_first_index;
 
   /* Sort per material. */
