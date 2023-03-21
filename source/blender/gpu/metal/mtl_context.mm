@@ -272,12 +272,12 @@ MTLContext::~MTLContext()
   this->free_dummy_resources();
 
   /* Release Sampler States. */
-  for (int extend_y_i = 0; extend_y_i < GPU_SAMPLER_EXTEND_MODES_COUNT; extend_y_i++) {
+  for (int extend_yz_i = 0; extend_yz_i < GPU_SAMPLER_EXTEND_MODES_COUNT; extend_yz_i++) {
     for (int extend_x_i = 0; extend_x_i < GPU_SAMPLER_EXTEND_MODES_COUNT; extend_x_i++) {
       for (int filtering_i = 0; filtering_i < GPU_SAMPLER_FILTERING_TYPES_COUNT; filtering_i++) {
-        if (sampler_state_cache_[extend_y_i][extend_x_i][filtering_i] != nil) {
-          [sampler_state_cache_[extend_y_i][extend_x_i][filtering_i] release];
-          sampler_state_cache_[extend_y_i][extend_x_i][filtering_i] = nil;
+        if (sampler_state_cache_[extend_yz_i][extend_x_i][filtering_i] != nil) {
+          [sampler_state_cache_[extend_yz_i][extend_x_i][filtering_i] release];
+          sampler_state_cache_[extend_yz_i][extend_x_i][filtering_i] = nil;
         }
       }
     }
@@ -2034,25 +2034,37 @@ id<MTLSamplerState> MTLContext::get_sampler_from_state(MTLSamplerState sampler_s
     return custom_sampler_state_cache_[sampler_state.state.custom_type];
   }
 
-  return sampler_state_cache_[sampler_state.state.extend_y][sampler_state.state.extend_x]
+  return sampler_state_cache_[sampler_state.state.extend_yz][sampler_state.state.extend_x]
                              [sampler_state.state.filtering];
 }
 
-/** A static array that maps GPUSamplerExtendMode values to their MTL enum counterparts. */
-static const MTLSamplerAddressMode mtl_sampler_address_mode_map[] = {
-    MTLSamplerAddressModeClampToEdge,
-    MTLSamplerAddressModeRepeat,
-    MTLSamplerAddressModeMirrorRepeat,
-    MTLSamplerAddressModeClampToBorderColor,
-};
+/** A function that maps GPUSamplerExtendMode values to their Metal enum counterparts. */
+static inline MTLSamplerAddressMode to_mtl_type(GPUSamplerExtendMode wrap_mode)
+{
+  switch (wrap_mode) {
+    case GPU_SAMPLER_EXTEND_MODE_EXTEND:
+      return MTLSamplerAddressModeClampToEdge;
+    case GPU_SAMPLER_EXTEND_MODE_REPEAT:
+      return MTLSamplerAddressModeRepeat;
+    case GPU_SAMPLER_EXTEND_MODE_MIRRORED_REPEAT:
+      return MTLSamplerAddressModeMirrorRepeat;
+    case GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER:
+      return MTLSamplerAddressModeClampToBorderColor;
+    default:
+      BLI_assert_unreachable();
+      return MTLSamplerAddressModeClampToEdge;
+  }
+}
 
 void MTLContext::sampler_state_cache_init()
 {
-  for (int extend_y_i = 0; extend_y_i < GPU_SAMPLER_EXTEND_MODES_COUNT; extend_y_i++) {
-    const MTLSamplerAddressMode extend_t = mtl_sampler_address_mode_map[extend_y_i];
+  for (int extend_yz_i = 0; extend_yz_i < GPU_SAMPLER_EXTEND_MODES_COUNT; extend_yz_i++) {
+    const GPUSamplerExtendMode extend_yz = static_cast<GPUSamplerExtendMode>(extend_yz_i);
+    const MTLSamplerAddressMode extend_t = to_mtl_type(extend_yz);
 
     for (int extend_x_i = 0; extend_x_i < GPU_SAMPLER_EXTEND_MODES_COUNT; extend_x_i++) {
-      const MTLSamplerAddressMode extend_s = mtl_sampler_address_mode_map[extend_x_i];
+      const GPUSamplerExtendMode extend_x = static_cast<GPUSamplerExtendMode>(extend_x_i);
+      const MTLSamplerAddressMode extend_s = to_mtl_type(extend_x);
 
       for (int filtering_i = 0; filtering_i < GPU_SAMPLER_FILTERING_TYPES_COUNT; filtering_i++) {
         const GPUSamplerFiltering filtering = GPUSamplerFiltering(filtering_i);
@@ -2061,6 +2073,7 @@ void MTLContext::sampler_state_cache_init()
         descriptor.normalizedCoordinates = true;
         descriptor.sAddressMode = extend_s;
         descriptor.tAddressMode = extend_t;
+        descriptor.rAddressMode = extend_t;
         descriptor.borderColor = MTLSamplerBorderColorTransparentBlack;
         descriptor.minFilter = (filtering & GPU_SAMPLER_FILTERING_LINEAR) ?
                                    MTLSamplerMinMagFilterLinear :
@@ -2079,7 +2092,7 @@ void MTLContext::sampler_state_cache_init()
         descriptor.supportArgumentBuffers = true;
 
         id<MTLSamplerState> state = [this->device newSamplerStateWithDescriptor:descriptor];
-        sampler_state_cache_[extend_y_i][extend_x_i][filtering_i] = state;
+        sampler_state_cache_[extend_yz_i][extend_x_i][filtering_i] = state;
 
         BLI_assert(state != nil);
         [descriptor autorelease];

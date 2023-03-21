@@ -646,14 +646,14 @@ void GPU_texture_extend_mode_x(GPUTexture *tex_, GPUSamplerExtendMode extend_mod
 void GPU_texture_extend_mode_y(GPUTexture *tex_, GPUSamplerExtendMode extend_mode)
 {
   Texture *tex = reinterpret_cast<Texture *>(tex_);
-  tex->sampler_state.extend_y = extend_mode;
+  tex->sampler_state.extend_yz = extend_mode;
 }
 
 void GPU_texture_extend_mode(GPUTexture *tex_, GPUSamplerExtendMode extend_mode)
 {
   Texture *tex = reinterpret_cast<Texture *>(tex_);
   tex->sampler_state.extend_x = extend_mode;
-  tex->sampler_state.extend_y = extend_mode;
+  tex->sampler_state.extend_yz = extend_mode;
 }
 
 void GPU_texture_swizzle_set(GPUTexture *tex, const char swizzle[4])

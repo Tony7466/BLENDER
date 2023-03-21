@@ -57,19 +57,19 @@ static int node_shader_gpu_tex_image(GPUMaterial *mat,
   switch (tex->extension) {
     case SHD_IMAGE_EXTENSION_EXTEND:
       sampler_state.extend_x = GPU_SAMPLER_EXTEND_MODE_EXTEND;
-      sampler_state.extend_y = GPU_SAMPLER_EXTEND_MODE_EXTEND;
+      sampler_state.extend_yz = GPU_SAMPLER_EXTEND_MODE_EXTEND;
       break;
     case SHD_IMAGE_EXTENSION_REPEAT:
       sampler_state.extend_x = GPU_SAMPLER_EXTEND_MODE_REPEAT;
-      sampler_state.extend_y = GPU_SAMPLER_EXTEND_MODE_REPEAT;
+      sampler_state.extend_yz = GPU_SAMPLER_EXTEND_MODE_REPEAT;
       break;
     case SHD_IMAGE_EXTENSION_CLIP:
       sampler_state.extend_x = GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER;
-      sampler_state.extend_y = GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER;
+      sampler_state.extend_yz = GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER;
       break;
     case SHD_IMAGE_EXTENSION_MIRROR:
       sampler_state.extend_x = GPU_SAMPLER_EXTEND_MODE_MIRRORED_REPEAT;
-      sampler_state.extend_y = GPU_SAMPLER_EXTEND_MODE_MIRRORED_REPEAT;
+      sampler_state.extend_yz = GPU_SAMPLER_EXTEND_MODE_MIRRORED_REPEAT;
       break;
     default:
       break;

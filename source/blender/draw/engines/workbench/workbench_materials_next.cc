@@ -76,19 +76,19 @@ void get_material_image(Object *ob,
           case SHD_IMAGE_EXTENSION_EXTEND:
           default:
             sampler_state.extend_x = GPU_SAMPLER_EXTEND_MODE_EXTEND;
-            sampler_state.extend_y = GPU_SAMPLER_EXTEND_MODE_EXTEND;
+            sampler_state.extend_yz = GPU_SAMPLER_EXTEND_MODE_EXTEND;
             break;
           case SHD_IMAGE_EXTENSION_REPEAT:
             sampler_state.extend_x = GPU_SAMPLER_EXTEND_MODE_REPEAT;
-            sampler_state.extend_y = GPU_SAMPLER_EXTEND_MODE_REPEAT;
+            sampler_state.extend_yz = GPU_SAMPLER_EXTEND_MODE_REPEAT;
             break;
           case SHD_IMAGE_EXTENSION_MIRROR:
             sampler_state.extend_x = GPU_SAMPLER_EXTEND_MODE_MIRRORED_REPEAT;
-            sampler_state.extend_y = GPU_SAMPLER_EXTEND_MODE_MIRRORED_REPEAT;
+            sampler_state.extend_yz = GPU_SAMPLER_EXTEND_MODE_MIRRORED_REPEAT;
             break;
           case SHD_IMAGE_EXTENSION_CLIP:
             sampler_state.extend_x = GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER;
-            sampler_state.extend_y = GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER;
+            sampler_state.extend_yz = GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER;
             break;
         }
         break;

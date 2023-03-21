@@ -102,19 +102,19 @@ BLI_INLINE void workbench_material_get_image(
           case SHD_IMAGE_EXTENSION_EXTEND:
           default:
             r_sampler->extend_x = GPU_SAMPLER_EXTEND_MODE_EXTEND;
-            r_sampler->extend_y = GPU_SAMPLER_EXTEND_MODE_EXTEND;
+            r_sampler->extend_yz = GPU_SAMPLER_EXTEND_MODE_EXTEND;
             break;
           case SHD_IMAGE_EXTENSION_REPEAT:
             r_sampler->extend_x = GPU_SAMPLER_EXTEND_MODE_REPEAT;
-            r_sampler->extend_y = GPU_SAMPLER_EXTEND_MODE_REPEAT;
+            r_sampler->extend_yz = GPU_SAMPLER_EXTEND_MODE_REPEAT;
             break;
           case SHD_IMAGE_EXTENSION_MIRROR:
             r_sampler->extend_x = GPU_SAMPLER_EXTEND_MODE_MIRRORED_REPEAT;
-            r_sampler->extend_y = GPU_SAMPLER_EXTEND_MODE_MIRRORED_REPEAT;
+            r_sampler->extend_yz = GPU_SAMPLER_EXTEND_MODE_MIRRORED_REPEAT;
             break;
           case SHD_IMAGE_EXTENSION_CLIP:
             r_sampler->extend_x = GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER;
-            r_sampler->extend_y = GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER;
+            r_sampler->extend_yz = GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER;
             break;
         }
         break;

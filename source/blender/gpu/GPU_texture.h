@@ -141,13 +141,13 @@ typedef enum GPUSamplerCustomType {
  */
 typedef enum GPUSamplerStateType {
   /**
-   * The filtering, extend_x, and extend_y members of the GPUSamplerState structure will be used in
-   * setting up the sampler state for the texture. The custom_type member will be ignored in that
-   * case.
+   * The filtering, extend_x, and extend_yz members of the GPUSamplerState structure will be used
+   * in setting up the sampler state for the texture. The custom_type member will be ignored in
+   * that case.
    */
   GPU_SAMPLER_STATE_TYPE_PARAMETERS = 0,
   /**
-   * The filtering, extend_x, and extend_y members of the GPUSamplerState structure will be
+   * The filtering, extend_x, and extend_yz members of the GPUSamplerState structure will be
    * ignored, and the predefined custom parameters outlined in the documentation of
    * GPUSamplerCustomType will be used in setting up the sampler state for the texture.
    */
@@ -157,7 +157,7 @@ typedef enum GPUSamplerStateType {
    * the texture will be used. In other words, this is a signal value and stores no useful or
    * actual data.
    */
-  GPU_SAMPLER_STATE_TYPE_INTERNAL = 2,
+  GPU_SAMPLER_STATE_TYPE_INTERNAL,
 } GPUSamplerStateType;
 
 /**
@@ -176,10 +176,22 @@ typedef enum GPUSamplerStateType {
  *
  */
 typedef struct GPUSamplerState {
+  /** Specifies the enabled filtering options for the sampler. */
   GPUSamplerFiltering filtering : 8;
+  /**
+   * Specifies how the texture will be extrapolated for out-of-bound texture sampling along the x
+   * axis.
+   */
   GPUSamplerExtendMode extend_x : 4;
-  GPUSamplerExtendMode extend_y : 4;
+  /**
+   * Specifies how the texture will be extrapolated for out-of-bound texture sampling along both
+   * the y and z axis. There is no individual control for the z axis because 3D textures have
+   * limited use, and when used, their extend mode is typically the same for all axis.
+   */
+  GPUSamplerExtendMode extend_yz : 4;
+  /** Specifies the type of sampler if the state type is GPU_SAMPLER_STATE_TYPE_CUSTOM. */
   GPUSamplerCustomType custom_type : 8;
+  /** Specifies how the GPUSamplerState structure should be interpreted when passed around. */
   GPUSamplerStateType type : 8;
 
 #ifdef __cplusplus
@@ -334,18 +346,35 @@ typedef struct GPUSamplerState {
         BLI_assert_unreachable();
     }
 
-    switch (this->extend_y) {
+    switch (this->extend_yz) {
       case GPU_SAMPLER_EXTEND_MODE_EXTEND:
-        serialized_paramaters += "extend-y";
+        serialized_paramaters += "extend-y_";
         break;
       case GPU_SAMPLER_EXTEND_MODE_REPEAT:
-        serialized_paramaters += "repeat-y";
+        serialized_paramaters += "repeat-y_";
         break;
       case GPU_SAMPLER_EXTEND_MODE_MIRRORED_REPEAT:
-        serialized_paramaters += "mirrored-repeat-y";
+        serialized_paramaters += "mirrored-repeat-y_";
         break;
       case GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER:
-        serialized_paramaters += "clamp-to-border-y";
+        serialized_paramaters += "clamp-to-border-y_";
+        break;
+      default:
+        BLI_assert_unreachable();
+    }
+
+    switch (this->extend_yz) {
+      case GPU_SAMPLER_EXTEND_MODE_EXTEND:
+        serialized_paramaters += "extend-z";
+        break;
+      case GPU_SAMPLER_EXTEND_MODE_REPEAT:
+        serialized_paramaters += "repeat-z";
+        break;
+      case GPU_SAMPLER_EXTEND_MODE_MIRRORED_REPEAT:
+        serialized_paramaters += "mirrored-repeat-z";
+        break;
+      case GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER:
+        serialized_paramaters += "clamp-to-border-z";
         break;
       default:
         BLI_assert_unreachable();
@@ -357,7 +386,7 @@ typedef struct GPUSamplerState {
   bool operator==(GPUSamplerState const &rhs) const
   {
     return this->filtering == rhs.filtering && this->extend_x == rhs.extend_x &&
-           this->extend_y == rhs.extend_y && this->custom_type == rhs.custom_type &&
+           this->extend_yz == rhs.extend_yz && this->custom_type == rhs.custom_type &&
            this->type == rhs.type;
   }
 #endif

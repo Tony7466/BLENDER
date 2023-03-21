@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include "BLI_assert.h"
+
 #include "DNA_userdef_types.h"
 
 #include "GPU_capabilities.h"
@@ -545,13 +547,23 @@ struct GPUFrameBuffer *GLTexture::framebuffer_get()
 /** \name Sampler objects
  * \{ */
 
-/** A static array that maps GPUSamplerExtendMode values to their OpenGL enum counterparts. */
-static const GLenum gl_texture_wrap_mode_map[] = {
-    GL_CLAMP_TO_EDGE,
-    GL_REPEAT,
-    GL_MIRRORED_REPEAT,
-    GL_CLAMP_TO_BORDER,
-};
+/** A function that maps GPUSamplerExtendMode values to their OpenGL enum counterparts. */
+static inline GLenum to_gl(GPUSamplerExtendMode extend_mode)
+{
+  switch (extend_mode) {
+    case GPU_SAMPLER_EXTEND_MODE_EXTEND:
+      return GL_CLAMP_TO_EDGE;
+    case GPU_SAMPLER_EXTEND_MODE_REPEAT:
+      return GL_REPEAT;
+    case GPU_SAMPLER_EXTEND_MODE_MIRRORED_REPEAT:
+      return GL_MIRRORED_REPEAT;
+    case GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER:
+      return GL_CLAMP_TO_BORDER;
+    default:
+      BLI_assert_unreachable();
+      return GL_CLAMP_TO_EDGE;
+  }
+}
 
 GLuint GLTexture::samplers_state_cache_[GPU_SAMPLER_EXTEND_MODES_COUNT]
                                        [GPU_SAMPLER_EXTEND_MODES_COUNT]
@@ -562,13 +574,13 @@ void GLTexture::samplers_init()
 {
   glGenSamplers(samplers_state_cache_count_, &samplers_state_cache_[0][0][0]);
 
-  for (int extend_y_i = 0; extend_y_i < GPU_SAMPLER_EXTEND_MODES_COUNT; extend_y_i++) {
-    const GPUSamplerExtendMode extend_y = static_cast<GPUSamplerExtendMode>(extend_y_i);
-    const GLenum extend_t = gl_texture_wrap_mode_map[extend_y_i];
+  for (int extend_yz_i = 0; extend_yz_i < GPU_SAMPLER_EXTEND_MODES_COUNT; extend_yz_i++) {
+    const GPUSamplerExtendMode extend_yz = static_cast<GPUSamplerExtendMode>(extend_yz_i);
+    const GLenum extend_t = to_gl(extend_yz);
 
     for (int extend_x_i = 0; extend_x_i < GPU_SAMPLER_EXTEND_MODES_COUNT; extend_x_i++) {
       const GPUSamplerExtendMode extend_x = static_cast<GPUSamplerExtendMode>(extend_x_i);
-      const GLenum extend_s = gl_texture_wrap_mode_map[extend_x_i];
+      const GLenum extend_s = to_gl(extend_x);
 
       for (int filtering_i = 0; filtering_i < GPU_SAMPLER_FILTERING_TYPES_COUNT; filtering_i++) {
         const GPUSamplerFiltering filtering = GPUSamplerFiltering(filtering_i);
@@ -584,10 +596,10 @@ void GLTexture::samplers_init()
         const GLenum min_filter = (filtering & GPU_SAMPLER_FILTERING_LINEAR) ? linear_min_filter :
                                                                                nearest_min_filter;
 
-        GLuint sampler = samplers_state_cache_[extend_y_i][extend_x_i][filtering_i];
+        GLuint sampler = samplers_state_cache_[extend_yz_i][extend_x_i][filtering_i];
         glSamplerParameteri(sampler, GL_TEXTURE_WRAP_S, extend_s);
         glSamplerParameteri(sampler, GL_TEXTURE_WRAP_T, extend_t);
-        glSamplerParameteri(sampler, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
+        glSamplerParameteri(sampler, GL_TEXTURE_WRAP_R, extend_t);
         glSamplerParameteri(sampler, GL_TEXTURE_MIN_FILTER, min_filter);
         glSamplerParameteri(sampler, GL_TEXTURE_MAG_FILTER, mag_filter);
 
@@ -598,7 +610,7 @@ void GLTexture::samplers_init()
          * - GL_TEXTURE_LOD_BIAS is 0.0f.
          */
 
-        const GPUSamplerState sampler_state = {filtering, extend_x, extend_y};
+        const GPUSamplerState sampler_state = {filtering, extend_x, extend_yz};
         const std::string sampler_name = sampler_state.to_string();
         debug::object_label(GL_SAMPLER, sampler, sampler_name.c_str());
       }
@@ -640,14 +652,14 @@ void GLTexture::samplers_update()
 
   const float anisotropic_filter = min_ff(max_anisotropy, U.anisotropic_filter);
 
-  for (int extend_y_i = 0; extend_y_i < GPU_SAMPLER_EXTEND_MODES_COUNT; extend_y_i++) {
+  for (int extend_yz_i = 0; extend_yz_i < GPU_SAMPLER_EXTEND_MODES_COUNT; extend_yz_i++) {
     for (int extend_x_i = 0; extend_x_i < GPU_SAMPLER_EXTEND_MODES_COUNT; extend_x_i++) {
       for (int filtering_i = 0; filtering_i < GPU_SAMPLER_FILTERING_TYPES_COUNT; filtering_i++) {
         const GPUSamplerFiltering filtering = GPUSamplerFiltering(filtering_i);
 
         if ((filtering & GPU_SAMPLER_FILTERING_ANISOTROPIC) &&
             (filtering & GPU_SAMPLER_FILTERING_MIPMAP)) {
-          glSamplerParameterf(samplers_state_cache_[extend_y_i][extend_x_i][filtering_i],
+          glSamplerParameterf(samplers_state_cache_[extend_yz_i][extend_x_i][filtering_i],
                               GL_TEXTURE_MAX_ANISOTROPY_EXT,
                               anisotropic_filter);
         }
@@ -671,7 +683,7 @@ GLuint GLTexture::get_sampler(const GPUSamplerState &sampler_state)
     return custom_samplers_state_cache_[sampler_state.custom_type];
   }
 
-  return samplers_state_cache_[sampler_state.extend_y][sampler_state.extend_x]
+  return samplers_state_cache_[sampler_state.extend_yz][sampler_state.extend_x]
                               [sampler_state.filtering];
 }
 
