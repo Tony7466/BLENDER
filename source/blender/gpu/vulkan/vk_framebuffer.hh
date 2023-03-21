@@ -71,6 +71,9 @@ class VKFrameBuffer : public FrameBuffer {
                int dst_slot,
                int dst_offset_x,
                int dst_offset_y) override;
+
+ private:
+  void update_attachments();
 };
 
 }  // namespace blender::gpu

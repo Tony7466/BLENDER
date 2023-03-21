@@ -62,7 +62,7 @@ void VKFrameBuffer::clear(eGPUFrameBufferBits /*buffers*/,
 {
 }
 
-void VKFrameBuffer::clear_multi(const float (*/*clear_col*/)[4])
+void VKFrameBuffer::clear_multi(const float (* /*clear_col*/)[4])
 {
 }
 
@@ -94,6 +94,27 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits /*planes*/,
                             int /*dst_offset_x*/,
                             int /*dst_offset_y*/)
 {
+}
+
+void VKFrameBuffer::update_attachments()
+{
+  if (!dirty_attachments_) {
+    return;
+  }
+  /*
+    remove_all_attachments();
+    Vec<VkAttachmentDescription> attachment_descriptors;
+
+    for (GPUAttachmentType type = GPU_FB_MAX_ATTACHMENT - 1; type >= 0; --type) {
+      GPUAttachment &attachment = attachments_[type];
+      switch (type) {
+        case GPU_FB_DEPTH_ATTACHMENT:
+        case GPU_FB_DEPTH_STENCIL_ATTACHMENT:
+      }
+    }
+    */
+
+  dirty_attachments_ = false;
 }
 
 }  // namespace blender::gpu
