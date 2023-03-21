@@ -271,6 +271,12 @@ static int hipewHipInit(void) {
 #ifdef _WIN32
   /* Expected in C:/Windows/System32 or similar, no path needed. */
   const char* hip_paths[] = {"amdhip64.dll", NULL};
+
+  // hiprtc is only needed when runtime compiler is used.
+  // It exports all the function that start with hiprtc
+  // The numbers are associated with comgr/compiler version
+  // Currently, kernels are compiled through hipcc, but if runtime compiler is used
+  // the hiprtc version should match the comgr version
   const char *hiprtc_paths[] = {"hiprtc0504.dll",
                                 "hiprtc0503.dll",
                                 NULL};
@@ -327,8 +333,8 @@ static int hipewHipInit(void) {
   HIP_LIBRARY_FIND_CHECKED(hipDeviceGet);
   HIP_LIBRARY_FIND_CHECKED(hipDeviceGetName);
   HIP_LIBRARY_FIND_CHECKED(hipDeviceGetAttribute);
-  HIP_LIBRARY_FIND( hipDeviceGetLimit );
-  HIP_LIBRARY_FIND( hipDeviceSetLimit );
+  HIP_LIBRARY_FIND(hipDeviceGetLimit);
+  HIP_LIBRARY_FIND(hipDeviceSetLimit);
   HIP_LIBRARY_FIND_CHECKED(hipDeviceComputeCapability);
   HIP_LIBRARY_FIND_CHECKED(hipDevicePrimaryCtxRetain);
   HIP_LIBRARY_FIND_CHECKED(hipDevicePrimaryCtxRelease);
@@ -455,11 +461,11 @@ static int hipewHipInit(void) {
 	  HIPRTC_LIBRARY_FIND_CHECKED(hiprtcGetBitcodeSize);
       HIPRTC_LIBRARY_FIND_CHECKED(hiprtcGetBitcode);
       HIPRTC_LIBRARY_FIND_CHECKED(hiprtcGetCodeSize);
-	  HIPRTC_LIBRARY_FIND_CHECKED( hiprtcLinkCreate );
-	  HIPRTC_LIBRARY_FIND_CHECKED( hiprtcLinkAddFile );
-	  HIPRTC_LIBRARY_FIND_CHECKED( hiprtcLinkAddData );
-	  HIPRTC_LIBRARY_FIND_CHECKED( hiprtcLinkComplete );
-	  HIPRTC_LIBRARY_FIND_CHECKED( hiprtcLinkDestroy );
+	  HIPRTC_LIBRARY_FIND_CHECKED(hiprtcLinkCreate);
+	  HIPRTC_LIBRARY_FIND_CHECKED(hiprtcLinkAddFile);
+	  HIPRTC_LIBRARY_FIND_CHECKED(hiprtcLinkAddData);
+	  HIPRTC_LIBRARY_FIND_CHECKED(hiprtcLinkComplete);
+	  HIPRTC_LIBRARY_FIND_CHECKED(hiprtcLinkDestroy);
   }
   else
   {
@@ -473,11 +479,11 @@ static int hipewHipInit(void) {
       HIP_LIBRARY_FIND_CHECKED(hiprtcGetProgramLogSize);
       HIP_LIBRARY_FIND_CHECKED(hiprtcGetCode);
       HIP_LIBRARY_FIND_CHECKED(hiprtcGetCodeSize);
-	  HIP_LIBRARY_FIND_CHECKED( hiprtcLinkCreate );
-	  HIP_LIBRARY_FIND_CHECKED( hiprtcLinkAddFile );
-	  HIP_LIBRARY_FIND_CHECKED( hiprtcLinkAddData );
-	  HIP_LIBRARY_FIND_CHECKED( hiprtcLinkComplete );
-	  HIP_LIBRARY_FIND_CHECKED( hiprtcLinkDestroy );
+	  HIP_LIBRARY_FIND_CHECKED(hiprtcLinkCreate);
+	  HIP_LIBRARY_FIND_CHECKED(hiprtcLinkAddFile);
+	  HIP_LIBRARY_FIND_CHECKED(hiprtcLinkAddData);
+	  HIP_LIBRARY_FIND_CHECKED(hiprtcLinkComplete);
+	  HIP_LIBRARY_FIND_CHECKED(hiprtcLinkDestroy);
   }
 
   result = HIPEW_SUCCESS;
