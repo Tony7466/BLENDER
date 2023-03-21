@@ -54,7 +54,12 @@ void LinkSearchOpParams::connect_available_socket(bNode &new_node, StringRef soc
     BLI_assert_unreachable();
     return;
   }
-  nodeAddLink(&node_tree, &new_node, new_node_socket, &node, &socket);
+  const bNodeLink &link = *nodeAddLink(&node_tree, &new_node, new_node_socket, &node, &socket);
+  if (in_out == SOCK_OUT) {
+    /* If the old socket already contained a value, then transfer it to a new one, from
+     * which this value will get there. */
+    bke::node_link_move_default_value_back(C, node_tree, link);
+  }
 }
 
 bNode &LinkSearchOpParams::add_node(StringRef idname)

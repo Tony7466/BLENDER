@@ -178,6 +178,8 @@ typedef struct bNodeSocket {
   /** Utility to access the value of the socket. */
   template<typename T> const T *default_value_typed() const;
 
+  template<typename T> T *default_value_typed();
+
   /* The following methods are only available when #bNodeTree.ensure_topology_cache has been
    * called. */
 

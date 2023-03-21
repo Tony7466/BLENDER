@@ -733,6 +733,12 @@ bNode *node_copy_with_mapping(bNodeTree *dst_tree,
 bNode *node_copy(bNodeTree *dst_tree, const bNode &src_node, int flag, bool use_unique);
 
 /**
+ * Move socket default_value from TO_SOCKET to FROM_SOCKET or some other other place specified for
+ * FROM_NODE.
+ */
+void node_link_move_default_value_back(const bContext &C, bNodeTree &tree, const bNodeLink &link);
+
+/**
  * Free the node itself.
  *
  * \note ID user reference-counting and changing the `nodes_by_id` vector are up to the caller.
