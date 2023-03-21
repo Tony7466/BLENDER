@@ -79,7 +79,6 @@ namespace blender {
       bool init_vk_callbacks(VKContext* ctx, PFN_vkGetInstanceProcAddr instload)
       {
         CLOG_ENSURE(&LOG);
-        VKDebuggingTools tools  = ctx->debuggingtools_get();
         if (instload ) {
           vulkan_dynamic_debug_functions(ctx, instload);
           return true;

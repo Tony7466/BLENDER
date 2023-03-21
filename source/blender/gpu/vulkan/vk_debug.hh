@@ -34,16 +34,19 @@ namespace blender {
       }VKDebuggingTools;
       bool init_vk_callbacks(VKContext* ctx, PFN_vkGetInstanceProcAddr instload);
       void destroy_vk_callbacks(VKContext* ctx);
+      void object_vk_label(VKContext* ctx, VkObjectType objType, uint64_t obj, const char* name);
       template<typename T> void object_vk_label(VKContext* ctx, T obj, const char* name) {
         if (!(G.debug & G_DEBUG_GPU)) {
-          return;
+          //return;
         }
-        char label[64];
+        const size_t label_size = 64;
+        char label[label_size];
+        memset(label,0,label_size);
         static int stats = 0;
         SNPRINTF(label, "%s_%d", name, stats++);
-        object_vk_label(ctx, to_vk_object_type(obj), (uint64_t)obj, label);
+        object_vk_label(ctx, to_vk_object_type(obj), (uint64_t)obj, (const char*)label);
       };
-      void object_vk_label(VKContext* ctx, VkObjectType objType, uint64_t obj, const char* name);
+      
       void pushMarker(VKContext *ctx, VkCommandBuffer cmd, const char *name);
       void setMarker(VKContext *ctx, VkCommandBuffer cmd, const char *name);
       void popMarker(VKContext *ctx, VkCommandBuffer cmd);
