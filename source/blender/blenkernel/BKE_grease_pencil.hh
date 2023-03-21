@@ -9,6 +9,7 @@
 
 #include "BLI_function_ref.hh"
 #include "BLI_map.hh"
+#include "BLI_math_vector.h"
 #include "BLI_stack.hh"
 #include "BLI_string.h"
 
@@ -40,10 +41,11 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
     this->type = type;
     this->name = BLI_strdup(name.c_str());
   }
-  TreeNode(const TreeNode &other)
+  TreeNode(const TreeNode &other) : TreeNode(GreasePencilLayerTreeNodeType(other.type))
   {
-    this->type = other.type;
-    this->name = BLI_strdup(other.name);
+    if (other.name) {
+      this->name = BLI_strdup(other.name);
+    }
     children_.reserve(other.children_.size());
     for (const std::unique_ptr<TreeNode> &elem : other.children_) {
       children_.append(std::make_unique<TreeNode>(*elem));
@@ -156,6 +158,23 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
   LayerGroup &as_group();
   Layer &as_layer();
 
+  int total_num_children() const
+  {
+    int total = 0;
+    Stack<TreeNode *> stack;
+    for (auto it = this->children_.rbegin(); it != this->children_.rend(); it++) {
+      stack.push((*it).get());
+    }
+    while (!stack.is_empty()) {
+      TreeNode &next_node = *stack.pop();
+      total++;
+      for (auto it = next_node.children_.rbegin(); it != next_node.children_.rend(); it++) {
+        stack.push((*it).get());
+      }
+    }
+    return total;
+  }
+
   PreOrderRange children_in_pre_order()
   {
     return PreOrderRange(this);
@@ -172,6 +191,16 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
   {
     for (auto &child : children_) {
       child->foreach_layer_pre_order_recursive_(function);
+    }
+  }
+
+  void save_to_storage(GreasePencilLayerTreeNode *dst)
+  {
+    dst->type = this->type;
+    copy_v3_v3_uchar(dst->color, this->color);
+    dst->flag = this->flag;
+    if (this->name) {
+      dst->name = BLI_strdup(this->name);
     }
   }
 
@@ -222,6 +251,7 @@ class Layer : public TreeNode, ::GreasePencilLayer {
    * drawings, then the last referenced drawing is held for the rest of the duration.
    */
   Map<int, int> frames_;
+  Vector<int> sorted_keys_cache_;
 
  public:
   Layer() : TreeNode(GREASE_PENCIL_LAYER_TREE_LEAF), frames_()
@@ -257,12 +287,56 @@ class Layer : public TreeNode, ::GreasePencilLayer {
 
   bool insert_frame(int frame_number, int index)
   {
+    sorted_keys_cache_.clear_and_shrink();
     return frames_.add(frame_number, index);
   }
 
   bool overwrite_frame(int frame_number, int index)
   {
+    sorted_keys_cache_.clear_and_shrink();
     return frames_.add_overwrite(frame_number, index);
+  }
+
+  Span<int> sorted_keys()
+  {
+    if (sorted_keys_cache_.is_empty() && frames_.size() > 0) {
+      sorted_keys_cache_.reserve(frames_.size());
+      for (int16_t key : frames_.keys()) {
+        sorted_keys_cache_.append(key);
+      }
+      std::sort(sorted_keys_cache_.begin(), sorted_keys_cache_.end());
+    }
+    return sorted_keys_cache_.as_span();
+  }
+
+  void save_to_storage(GreasePencilLayerTreeNode **dst)
+  {
+    GreasePencilLayerTreeLeaf *new_leaf = MEM_cnew<GreasePencilLayerTreeLeaf>(__func__);
+    /* Save properties. */
+    TreeNode::save_to_storage(&new_leaf->base);
+
+    /* Save frames map. */
+    int frames_size = frames_.size();
+    new_leaf->layer.frames_storage.size = frames_size;
+    new_leaf->layer.frames_storage.keys = MEM_cnew_array<int>(frames_size, __func__);
+    new_leaf->layer.frames_storage.values = MEM_cnew_array<int>(frames_size, __func__);
+
+    MutableSpan<int> keys{new_leaf->layer.frames_storage.keys, frames_size};
+    MutableSpan<int> values{new_leaf->layer.frames_storage.values, frames_size};
+    keys.copy_from(sorted_keys());
+    for (int i : keys.index_range()) {
+      values[i] = frames_.lookup(keys[i]);
+    }
+
+    /* Store pointer. */
+    *dst = reinterpret_cast<GreasePencilLayerTreeNode *>(new_leaf);
+  }
+
+  void load_from_storage(GreasePencilLayer &node)
+  {
+    for (int i = 0; i < node.frames_storage.size; i++) {
+      this->frames_.add(node.frames_storage.keys[i], node.frames_storage.values[i]);
+    }
   }
 };
 
@@ -326,6 +400,19 @@ class LayerGroup : public TreeNode {
     BLI_assert(index >= 0 && index < children_.size());
     children_.remove(index);
   }
+
+  void save_to_storage(GreasePencilLayerTreeNode **dst)
+  {
+    GreasePencilLayerTreeGroup *new_group = MEM_cnew<GreasePencilLayerTreeGroup>(__func__);
+    /* Save properties. */
+    TreeNode::save_to_storage(&new_group->base);
+
+    /* Save number of children. */
+    new_group->children_num = total_num_children();
+
+    /* Store pointer. */
+    *dst = reinterpret_cast<GreasePencilLayerTreeNode *>(new_group);
+  }
 };
 
 namespace convert {
@@ -345,6 +432,9 @@ class GreasePencilRuntime {
 
  public:
   GreasePencilRuntime()
+  {
+  }
+  GreasePencilRuntime(const GreasePencilRuntime &other) : root_group_(other.root_group_)
   {
   }
 

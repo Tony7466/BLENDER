@@ -30,6 +30,8 @@ extern "C" {
 #endif
 
 struct GreasePencil;
+struct BlendDataReader;
+struct BlendWriter;
 
 typedef enum GreasePencilDrawingType {
   GREASE_PENCIL_DRAWING = 0,
@@ -162,10 +164,19 @@ typedef struct GreasePencil {
   void foreach_visible_drawing(
       int frame,
       blender::FunctionRef<void(GreasePencilDrawing &, blender::bke::gpencil::Layer &)> function);
+  void read_drawing_array(BlendDataReader *reader);
+  void write_drawing_array(BlendWriter *writer);
+  void free_drawing_array();
 #endif
   /* Only used for storage in the .blend file. */
   GreasePencilLayerTreeStorage layer_tree_storage;
-
+#ifdef __cplusplus
+  void save_layer_tree_to_storage();
+  void load_layer_tree_from_storage();
+  void read_layer_tree_storage(BlendDataReader *reader);
+  void write_layer_tree_storage(BlendWriter *writer);
+  void free_layer_tree_storage();
+#endif
   /**
    * An array of materials.
    */
