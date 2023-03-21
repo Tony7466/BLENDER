@@ -58,6 +58,25 @@ GPU_SHADER_CREATE_INFO(eevee_geom_world)
     .vertex_source("eevee_geom_world_vert.glsl")
     .additional_info("draw_modelmat_new", "draw_resource_id_varying", "draw_view");
 
+GPU_SHADER_INTERFACE_INFO(eevee_geom_volume_vert_geom_iface, "volume_vert_iface")
+    .smooth(Type::VEC4, "vPos");
+
+GPU_SHADER_INTERFACE_INFO(eevee_geom_volume_geom_frag_iface, "volume_geom_iface")
+    .flat(Type::INT, "slice");
+
+GPU_SHADER_CREATE_INFO(eevee_geom_volume)
+    .additional_info("eevee_volume_lib", "draw_resource_id_varying")
+    .define("MAT_GEOM_VOLUME")
+    .vertex_source("eevee_volume_vert.glsl")
+    .geometry_source("eevee_volume_geom.glsl")
+    .vertex_out(eevee_geom_volume_vert_geom_iface)
+    .geometry_out(eevee_geom_volume_geom_frag_iface)
+    .geometry_layout(PrimitiveIn::TRIANGLES, PrimitiveOut::TRIANGLE_STRIP, 3)
+    .fragment_out(0, Type::VEC4, "volumeScattering")
+    .fragment_out(1, Type::VEC4, "volumeExtinction")
+    .fragment_out(2, Type::VEC4, "volumeEmissive")
+    .fragment_out(3, Type::VEC4, "volumePhase");
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

@@ -135,9 +135,10 @@ vec3 participating_media_extinction(vec3 wpos, sampler3D volume_extinction)
 
 vec3 light_volume_shadow(LightData ld, vec3 ray_wpos, vec4 l_vector, sampler3D volume_extinction)
 {
-#if defined(VOLUME_SHADOW)
+  /* TODO (Miguel Pozo) */
+#if 0 && defined(VOLUME_SHADOW)
   /* If light is shadowed, use the shadow vector, if not, reuse the light vector. */
-  if (volUseSoftShadows && ld.shadowid >= 0.0) {
+  if (volumes_buf.use_soft_shadows && ld.shadowid >= 0.0) {
     ShadowData sd = shadows_data[int(ld.shadowid)];
 
     if (ld.type == LIGHT_SUN) {
@@ -151,8 +152,8 @@ vec3 light_volume_shadow(LightData ld, vec3 ray_wpos, vec4 l_vector, sampler3D v
   }
 
   /* Heterogeneous volume shadows */
-  float dd = l_vector.w / volShadowSteps;
-  vec3 L = l_vector.xyz / volShadowSteps;
+  float dd = l_vector.w / volumes_buf.shadow_steps;
+  vec3 L = l_vector.xyz / volumes_buf.shadow_steps;
 
   if (ld.type == LIGHT_SUN) {
     /* For sun light we scan the whole frustum. So we need to get the correct endpoints. */
@@ -165,12 +166,12 @@ vec3 light_volume_shadow(LightData ld, vec3 ray_wpos, vec4 l_vector, sampler3D v
 
     vec4 L_hom = ViewMatrixInverse * (ProjectionMatrixInverse * vec4(frustum_isect, 1.0));
     L = (L_hom.xyz / L_hom.w) - ray_wpos;
-    L /= volShadowSteps;
+    L /= volumes_buf.shadow_steps;
     dd = length(L);
   }
 
   vec3 shadow = vec3(1.0);
-  for (float s = 1.0; s < VOLUMETRIC_SHADOW_MAX_STEP && s <= volShadowSteps; s += 1.0) {
+  for (float s = 1.0; s < VOLUMETRIC_SHADOW_MAX_STEP && s <= volumes_buf.shadow_steps; s += 1.0) {
     vec3 pos = ray_wpos + L * s;
     vec3 s_extinction = participating_media_extinction(pos, volume_extinction);
     shadow *= exp(-s_extinction * dd);

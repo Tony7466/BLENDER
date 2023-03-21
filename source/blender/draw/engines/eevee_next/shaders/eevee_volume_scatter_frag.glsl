@@ -15,7 +15,8 @@ void main()
   outScattering = texelFetch(volumeEmission, volume_cell, 0);
   outTransmittance = texelFetch(volumeExtinction, volume_cell, 0);
   vec3 s_scattering = texelFetch(volumeScattering, volume_cell, 0).rgb;
-  vec3 volume_ndc = volume_to_ndc((vec3(volume_cell) + volumes_buf.jitter) * volumes_buf.inv_tex_size);
+  vec3 volume_ndc = volume_to_ndc((vec3(volume_cell) + volumes_buf.jitter) *
+                                  volumes_buf.inv_tex_size);
   vec3 P = get_world_space_from_depth(volume_ndc.xy, volume_ndc.z);
   vec3 V = cameraVec(P);
 
@@ -25,7 +26,9 @@ void main()
   /* Environment : Average color. */
   outScattering.rgb += irradiance_volumetric(P) * s_scattering * phase_function_isotropic();
 
-#ifdef VOLUME_LIGHTING /* Lights */
+  /* TODO (Miguel Pozo) */
+#if 0
+#  ifdef VOLUME_LIGHTING /* Lights */
   for (int i = 0; i < MAX_LIGHT && i < laNumLight; i++) {
     LightData ld = lights_data[i];
 
@@ -48,8 +51,11 @@ void main()
     outScattering.rgb += Li * vis * s_scattering *
                          phase_function(-V, l_vector.xyz / l_vector.w, s_anisotropy);
   }
+#  endif
 #endif
 
+  /* TODO (Miguel Pozo) */
+#if 0
   /* Temporal supersampling */
   /* Note : this uses the cell non-jittered position (texel center). */
   vec3 curr_ndc = volume_to_ndc(vec3(gl_FragCoord.xy, float(volume_geom_iface.slice) + 0.5) *
@@ -58,13 +64,14 @@ void main()
   vec3 prev_ndc = project_point(pastViewProjectionMatrix, wpos);
   vec3 prev_volume = ndc_to_volume(prev_ndc * 0.5 + 0.5);
 
-  if ((volHistoryAlpha > 0.0) && all(greaterThan(prev_volume, vec3(0.0))) &&
+  if ((volumes_buf.history_alpha > 0.0) && all(greaterThan(prev_volume, vec3(0.0))) &&
       all(lessThan(prev_volume, vec3(1.0)))) {
     vec4 h_Scattering = texture(historyScattering, prev_volume);
     vec4 h_Transmittance = texture(historyTransmittance, prev_volume);
-    outScattering = mix(outScattering, h_Scattering, volHistoryAlpha);
-    outTransmittance = mix(outTransmittance, h_Transmittance, volHistoryAlpha);
+    outScattering = mix(outScattering, h_Scattering, volumes_buf.history_alpha);
+    outTransmittance = mix(outTransmittance, h_Transmittance, volumes_buf.history_alpha);
   }
+#endif
 
   /* Catch NaNs */
   if (any(isnan(outScattering)) || any(isnan(outTransmittance))) {

@@ -147,7 +147,6 @@ GPU_SHADER_CREATE_INFO(eevee_volume_integration_common_no_geom)
 
 GPU_SHADER_CREATE_INFO(eevee_volume_integration)
     .additional_info("eevee_volume_integration_common_geom")
-    .additional_info("eevee_volume_integration_common")
     .do_static_compilation(true)
     .auto_resource_location(true);
 
