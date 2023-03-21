@@ -358,10 +358,16 @@ IndexMask IndexMask::slice_and_offset(const int64_t start,
   if (size == 0) {
     return {};
   }
+  if (this->to_range().has_value()) {
+    return IndexMask(size);
+  }
   const IndexMask sliced_mask = this->slice(start, size);
   const int64_t offset = sliced_mask.first();
   if (offset == 0) {
-    return {};
+    return sliced_mask;
+  }
+  if (sliced_mask.to_range().has_value()) {
+    return IndexMask(size);
   }
   const int64_t range_size = sliced_mask.last() - sliced_mask.first() + 1;
   BitVector bits(range_size);
