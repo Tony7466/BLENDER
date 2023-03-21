@@ -66,7 +66,7 @@ class VKBackend : public GPUBackend {
   void render_end() override;
   void render_step() override;
 
-  void debug_capture_begin(VkInstance vk_instance);
+  bool debug_capture_begin(VkInstance vk_instance);
   void debug_capture_end(VkInstance vk_instance);
 
   shaderc::Compiler &get_shaderc_compiler();

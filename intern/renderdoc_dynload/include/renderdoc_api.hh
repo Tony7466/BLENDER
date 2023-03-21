@@ -28,7 +28,7 @@ class Renderdoc {
   RENDERDOC_API_1_6_0 *renderdoc_api_ = nullptr;
 
  public:
-  void start_frame_capture(RENDERDOC_DevicePointer device_handle,
+  bool start_frame_capture(RENDERDOC_DevicePointer device_handle,
                            RENDERDOC_WindowHandle window_handle);
   void end_frame_capture(RENDERDOC_DevicePointer device_handle,
                          RENDERDOC_WindowHandle window_handle);
