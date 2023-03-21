@@ -1,0 +1,55 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright 2023 Blender Foundation. All rights reserved. */
+
+ /** \file
+	* \ingroup gpu
+	*/
+#pragma once
+
+#include "BKE_global.h"
+#include "BLI_string.h"
+#include "vk_common.hh"
+#include <regex>
+#include <typeindex>
+
+namespace blender {
+	namespace gpu {
+    class VKContext;
+    namespace debug {
+      typedef struct VKDebuggingTools {
+        bool enabled = false;
+        /* Function pointer definitions .*/
+        PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessengerEXT_r = nullptr;
+        PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT_r = nullptr;
+        PFN_vkSubmitDebugUtilsMessageEXT vkSubmitDebugUtilsMessageEXT_r = nullptr;
+        PFN_vkCmdBeginDebugUtilsLabelEXT vkCmdBeginDebugUtilsLabelEXT_r = nullptr;
+        PFN_vkCmdEndDebugUtilsLabelEXT vkCmdEndDebugUtilsLabelEXT_r = nullptr;
+        PFN_vkCmdInsertDebugUtilsLabelEXT vkCmdInsertDebugUtilsLabelEXT_r = nullptr;
+        PFN_vkQueueBeginDebugUtilsLabelEXT vkQueueBeginDebugUtilsLabelEXT_r = nullptr;
+        PFN_vkQueueEndDebugUtilsLabelEXT vkQueueEndDebugUtilsLabelEXT_r = nullptr;
+        PFN_vkQueueInsertDebugUtilsLabelEXT vkQueueInsertDebugUtilsLabelEXT_r = nullptr;
+        PFN_vkSetDebugUtilsObjectNameEXT vkSetDebugUtilsObjectNameEXT_r = nullptr;
+        PFN_vkSetDebugUtilsObjectTagEXT vkSetDebugUtilsObjectTagEXT_r = nullptr;
+
+      }VKDebuggingTools;
+      bool init_vk_callbacks(VKContext* ctx, PFN_vkGetInstanceProcAddr instload);
+      void destroy_vk_callbacks(VKContext* ctx);
+      template<typename T> void object_vk_label(VKContext* ctx, T obj, const char* name) {
+        if (!(G.debug & G_DEBUG_GPU)) {
+          return;
+        }
+        char label[64];
+        static int stats = 0;
+        SNPRINTF(label, "%s_%d", name, stats++);
+        object_vk_label(ctx, to_vk_object_type(obj), (uint64_t)obj, label);
+      };
+      void object_vk_label(VKContext* ctx, VkObjectType objType, uint64_t obj, const char* name);
+      void pushMarker(VkCommandBuffer cmd, const char* name);
+      void setMarker(VkCommandBuffer cmd, const char* name);
+      void popMarker(VkCommandBuffer cmd);
+      void pushMarker(VkQueue q, const char* name);
+      void setMarker(VkQueue q, const char* name);
+      void popMarker(VkQueue q);
+    }
+	}
+}
