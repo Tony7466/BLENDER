@@ -243,7 +243,7 @@ void Volumes::begin_sync()
   if (world && world->use_nodes && world->nodetree &&
       !LOOK_DEV_STUDIO_LIGHT_ENABLED(draw_ctx->v3d)) {
 
-    GPUMaterial *mat = inst_.shaders.world_shader_get(world, world->nodetree, MAT_PIPE_VOLUME);
+    mat = inst_.shaders.world_shader_get(world, world->nodetree, MAT_PIPE_VOLUME);
 
     if (!GPU_material_has_volume_output(mat)) {
       /* TODO (Miguel Pozo): This should never happen ? */
@@ -252,11 +252,14 @@ void Volumes::begin_sync()
   }
 
   PassMain::Sub &ps = world_ps_.sub("World Volume");
-  if (mat && volume_sub_pass(ps, nullptr, nullptr, mat)) {
-    /* TODO (Miguel Pozo):
-     * effects->enabled_effects |= (EFFECT_VOLUMETRIC | EFFECT_POST_BUFFER);
-     */
-    enabled_ = true;
+  if (mat) {
+    ps.shader_set(GPU_material_get_shader(mat));
+    if (volume_sub_pass(ps, nullptr, nullptr, mat)) {
+      /* TODO (Miguel Pozo):
+       * effects->enabled_effects |= (EFFECT_VOLUMETRIC | EFFECT_POST_BUFFER);
+       */
+      enabled_ = true;
+    }
   }
   else {
     /* If no world or volume material is present just clear the buffer with this drawcall */
