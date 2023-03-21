@@ -1390,7 +1390,7 @@ static void uvedit_pack_islands_multi(const Scene *scene,
     selection_center[1] = (selection_min_co[1] + selection_max_co[1]) / 2.0f;
   }
 
-  MemArena *arena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __FILE__);
+  MemArena *arena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __func__);
   Heap *heap = BLI_heap_new();
 
   float scale[2] = {1.0f, 1.0f};
