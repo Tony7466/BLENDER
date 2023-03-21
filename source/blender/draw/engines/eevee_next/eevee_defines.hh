@@ -117,6 +117,8 @@
 
 #define CAMERA_BUF_SLOT 6
 
+#define VOLUMES_BUF_SLOT 7
+
 /* Storage Buffers. */
 #define LIGHT_CULL_BUF_SLOT 0
 #define LIGHT_BUF_SLOT 1

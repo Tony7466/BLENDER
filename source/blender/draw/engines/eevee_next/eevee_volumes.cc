@@ -53,6 +53,7 @@ namespace blender::eevee {
 
 void Volumes::bind_common_buffers(PassMain &ps)
 {
+  ps.bind_ubo(VOLUMES_BUF_SLOT, data_);
 #if 0
   /* TODO (Miguel Pozo) */
   DRW_shgroup_uniform_block(grp, "common_block", sldata->common_ubo);

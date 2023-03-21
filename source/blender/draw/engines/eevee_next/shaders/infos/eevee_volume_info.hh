@@ -7,7 +7,7 @@
 GPU_SHADER_CREATE_INFO(eevee_volume_lib)
     .additional_info("eevee_shared")
     .additional_info("draw_view")
-    .uniform_buf(0, "VolumesData", "volumes_buf")
+    .uniform_buf(VOLUMES_BUF_SLOT, "VolumesData", "volumes_buf")
     //.additional_info("eevee_legacy_lights_lib")
     //.additional_info("eevee_legacy_lightprobe_lib")
     //.additional_info("eevee_legacy_irradiance_lib")
