@@ -116,7 +116,7 @@ Scene::Scene(const SceneParams &params_, Device *device)
 {
   /* Create a DeviceScene for each device */
   device->foreach_device([this](Device *sub_device) {
-    DeviceScene *sub_dscene = new DeviceScene(sub_device);
+    auto sub_dscene = new DeviceScene(sub_device);
     this->dscenes.push_back(sub_dscene);
     memset((void *)&sub_dscene->data, 0, sizeof(sub_dscene->data));
   });

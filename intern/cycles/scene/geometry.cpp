@@ -1214,7 +1214,7 @@ void GeometryManager::deviceDataXferAndBVHUpdate(int idx,
 						 bool need_update_scene_bvh,
                                                  Progress &progress)
 {
-  DeviceScene *sub_dscene = scene->dscenes[idx];
+  auto sub_dscene = scene->dscenes[idx];
   sub_dscene->data.bvh.bvh_layout = BVH_LAYOUT_NONE;
   // Get the device to use for this DeviceScene from one of the buffers
   Device *sub_device = sub_dscene->tri_verts.device;
@@ -1351,7 +1351,7 @@ void GeometryManager::updateSceneBVHs(Device *device,
   });
 
   bool can_refit = device_update_bvh_preprocess(device, dscene, scene, progress);
-  foreach (DeviceScene *sub_dscene, scene->dscenes) {
+  foreach (auto sub_dscene, scene->dscenes) {
     Device *sub_device = sub_dscene->tri_verts.device;
     device_update_bvh(sub_device, sub_dscene, scene, can_refit, 1, 1, progress);
   }
@@ -1484,34 +1484,22 @@ void GeometryManager::device_update(Device *device,
     can_refit_scene_bvh = device_update_bvh_preprocess(device, dscene, scene, progress);
   }
   {
-    size_t n_scenes = scene->dscenes.size();
+    size_t num_scenes = scene->dscenes.size();
     // Parallel upload the geometry data to the devices and
     // calculate or refit the BVHs
-    tbb::parallel_for(size_t(0),
-                      n_scenes,
-                      [this,
-                       true_displacement_used,
-                       curve_shadow_transparency_used,
-                       scene,
-                       dscene,
-                       &sizes,
-                       &attrib_sizes,
-                       bvh_layout,
-                       num_bvh,
-		       can_refit_scene_bvh,
-		       need_update_scene_bvh,
-                       &progress](const size_t idx) {
-                        deviceDataXferAndBVHUpdate(idx,
-                                                   scene,
-                                                   dscene,
-                                                   sizes,
-                                                   attrib_sizes,
-                                                   bvh_layout,
-                                                   num_bvh,
-						   can_refit_scene_bvh,
-						   need_update_scene_bvh,
-                                                   progress);			
-		      });
+    parallel_for(
+        size_t(0), num_scenes, [=, this, &sizes, &attrib_sizes, &progress](const size_t idx) {
+          deviceDataXferAndBVHUpdate(idx,
+                                     scene,
+                                     dscene,
+                                     sizes,
+                                     attrib_sizes,
+                                     bvh_layout,
+                                     num_bvh,
+                                     can_refit_scene_bvh,
+                                     need_update_scene_bvh,
+                                     progress);
+        });
     if (need_update_scene_bvh) {
       device_update_bvh_postprocess(device, dscene, scene, progress);
     }
@@ -1520,7 +1508,7 @@ void GeometryManager::device_update(Device *device,
       double max_attrib_time = 0.0f;
       double max_object_bvh_time = 0.0f;
       double max_scene_bvh_time = 0.0f;
-      for (size_t i = 0; i < n_scenes; i++) {
+      for (size_t i = 0; i < num_scenes; i++) {
         max_mesh_time = max(max_mesh_time, scene->mesh_times[i]);
         max_attrib_time = max(max_attrib_time, scene->attrib_times[i]);
         max_object_bvh_time = max(max_object_bvh_time, scene->object_bvh_times[i]);
