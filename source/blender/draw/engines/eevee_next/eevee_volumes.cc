@@ -139,37 +139,12 @@ void Volumes::init()
     const uint max_sample = ht_primes[0] * ht_primes[1] * ht_primes[2];
     current_sample = current_sample_ = (current_sample_ + 1) % max_sample;
     if (current_sample != max_sample - 1) {
+      /* TODO (Miguel Pozo): This shouldn't be done here ? */
       DRW_viewport_request_redraw();
     }
   }
 
   set_jitter(current_sample);
-
-  float integration_start = scene_eval->eevee.volumetric_start;
-  float integration_end = scene_eval->eevee.volumetric_end;
-  if (DRW_view_is_persp_get(nullptr)) {
-    float sample_distribution = scene_eval->eevee.volumetric_sample_distribution;
-    sample_distribution = 4.0f * std::max(1.0f - sample_distribution, 1e-2f);
-
-    const float clip_start = DRW_view_near_distance_get(nullptr);
-    /* Negate */
-    float near = integration_start = std::min(-integration_start, clip_start - 1e-4f);
-    float far = integration_end = std::min(-integration_end, near - 1e-4f);
-
-    data_.depth_param[0] = (far - near * exp2(1.0f / sample_distribution)) / (far - near);
-    data_.depth_param[1] = (1.0f - data_.depth_param[0]) / near;
-    data_.depth_param[2] = sample_distribution;
-  }
-  else {
-    const float clip_start = DRW_view_near_distance_get(nullptr);
-    const float clip_end = DRW_view_far_distance_get(nullptr);
-    integration_start = std::min(integration_end, clip_start);
-    integration_end = std::max(-integration_end, clip_end);
-
-    data_.depth_param[0] = integration_start;
-    data_.depth_param[1] = integration_end;
-    data_.depth_param[2] = 1.0f / (integration_end - integration_start);
-  }
 
   /* TODO (Miguel Pozo): Check eevee_lights use of effects->volume_light_clamp. */
   light_clamp_ = scene_eval->eevee.volumetric_light_clamp;
@@ -187,14 +162,43 @@ void Volumes::init()
 
   data_.use_lights = (scene_eval->eevee.flag & SCE_EEVEE_VOLUMETRIC_LIGHTS) != 0;
   data_.use_soft_shadows = (scene_eval->eevee.flag & SCE_EEVEE_SHADOW_SOFT) != 0;
-
-  data_.push_update();
 }
 
 void Volumes::begin_sync()
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
   Scene *scene = draw_ctx->scene;
+  const Scene *scene_eval = DEG_get_evaluated_scene(draw_ctx->depsgraph);
+
+  /* TODO (Miguel Pozo): Done here since it needs to run after camera sync.
+   * Is this the way to go? */
+  float integration_start = scene_eval->eevee.volumetric_start;
+  float integration_end = scene_eval->eevee.volumetric_end;
+  if (inst_.camera.is_perspective()) {
+    float sample_distribution = scene_eval->eevee.volumetric_sample_distribution;
+    sample_distribution = 4.0f * std::max(1.0f - sample_distribution, 1e-2f);
+
+    const float clip_start = inst_.camera.data_get().clip_near;
+    /* Negate */
+    float near = integration_start = std::min(-integration_start, clip_start - 1e-4f);
+    float far = integration_end = std::min(-integration_end, near - 1e-4f);
+
+    data_.depth_param[0] = (far - near * exp2(1.0f / sample_distribution)) / (far - near);
+    data_.depth_param[1] = (1.0f - data_.depth_param[0]) / near;
+    data_.depth_param[2] = sample_distribution;
+  }
+  else {
+    const float clip_start = inst_.camera.data_get().clip_near;
+    const float clip_end = inst_.camera.data_get().clip_far;
+    integration_start = std::min(integration_end, clip_start);
+    integration_end = std::max(-integration_end, clip_end);
+
+    data_.depth_param[0] = integration_start;
+    data_.depth_param[1] = integration_end;
+    data_.depth_param[2] = 1.0f / (integration_end - integration_start);
+  }
+
+  data_.push_update();
 
   /* Quick breakdown of the Volumetric rendering:
    *
