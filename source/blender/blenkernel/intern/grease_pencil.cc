@@ -41,7 +41,10 @@ static void grease_pencil_init_data(ID *id)
   grease_pencil->runtime = MEM_new<GreasePencilRuntime>(__func__);
 }
 
-static void grease_pencil_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int flag)
+static void grease_pencil_copy_data(Main * /*bmain*/,
+                                    ID *id_dst,
+                                    const ID *id_src,
+                                    const int /*flag*/)
 {
   using namespace blender;
 
@@ -59,13 +62,17 @@ static void grease_pencil_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_s
       case GREASE_PENCIL_DRAWING: {
         const GreasePencilDrawing *src_drawing = reinterpret_cast<const GreasePencilDrawing *>(
             src_drawing_or_ref);
+        const bke::CurvesGeometry &src_geom = src_drawing->geometry.wrap();
         grease_pencil_dst->drawing_array[i] = reinterpret_cast<GreasePencilDrawingOrReference *>(
             MEM_cnew<GreasePencilDrawing>(__func__));
         GreasePencilDrawing *dst_drawing = reinterpret_cast<GreasePencilDrawing *>(
             grease_pencil_dst->drawing_array[i]);
+
+        bke::CurvesGeometry &dst_geom = dst_drawing->geometry.wrap();
         dst_drawing->base.type = src_drawing->base.type;
         dst_drawing->base.flag = src_drawing->base.flag;
-        new (&dst_drawing->geometry) CurvesGeometry(src_drawing->geometry.wrap());
+
+        new (&dst_drawing->geometry) bke::CurvesGeometry(src_drawing->geometry.wrap());
         break;
       }
       case GREASE_PENCIL_DRAWING_REFERENCE: {
@@ -157,7 +164,6 @@ static void grease_pencil_blend_read_data(BlendDataReader *reader, ID *id)
   /* Read materials. */
   BLO_read_pointer_array(reader, (void **)&grease_pencil->material_array);
 
-  /* TODO: Convert storage data to runtime structs. */
   grease_pencil->runtime = MEM_new<blender::bke::GreasePencilRuntime>(__func__);
   grease_pencil->load_layer_tree_from_storage();
 }
@@ -320,6 +326,9 @@ void GreasePencil::read_drawing_array(BlendDataReader *reader)
       case GREASE_PENCIL_DRAWING: {
         GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_or_ref);
         drawing->geometry.wrap().blend_read(*reader);
+        /* Initialize runtime data. */
+        drawing->geometry.runtime = MEM_new<blender::bke::CurvesGeometryRuntime>(__func__);
+        drawing->geometry.wrap().update_curve_types();
         break;
       }
       case GREASE_PENCIL_DRAWING_REFERENCE: {
@@ -374,6 +383,8 @@ void GreasePencil::free_drawing_array()
     }
   }
   MEM_freeN(this->drawing_array);
+  this->drawing_array = nullptr;
+  this->drawing_array_size = 0;
 }
 
 void GreasePencil::save_layer_tree_to_storage()
@@ -520,4 +531,6 @@ void GreasePencil::free_layer_tree_storage()
     }
   }
   MEM_freeN(this->layer_tree_storage.nodes);
+  this->layer_tree_storage.nodes = nullptr;
+  this->layer_tree_storage.nodes_num = 0;
 }
