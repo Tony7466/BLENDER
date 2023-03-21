@@ -210,7 +210,7 @@ struct CombOperationExecutor {
     MutableSpan<int> closest_points = self_->constraint_solver_.closest_points();
     MutableSpan<float> closest_factors = self_->constraint_solver_.closest_factors();
 
-    BLI_assert(goals.size() == points_by_curve.ranges_num());
+    BLI_assert(goals.size() == points_by_curve.size());
 
     float4x4 projection;
     ED_view3d_ob_project_mat_get(ctx_.rv3d, curves_ob_orig_, projection.ptr());
@@ -278,7 +278,7 @@ struct CombOperationExecutor {
     MutableSpan<int> closest_points = self_->constraint_solver_.closest_points();
     MutableSpan<float> closest_factors = self_->constraint_solver_.closest_factors();
 
-    BLI_assert(goals.size() == points_by_curve.ranges_num());
+    BLI_assert(goals.size() == points_by_curve.size());
 
     threading::parallel_for(curve_selection.index_range(), 256, [&](const IndexRange range) {
       for (const int curve_i : curve_selection.slice(range)) {

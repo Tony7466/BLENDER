@@ -408,15 +408,15 @@ void solve_keyhole_constraints(const OffsetIndices<int> points_by_curve,
   });
 }
 
-void compute_keyhole_constraints_error(const OffsetIndices<int> points_by_curve,
-                                       const IndexMask curve_selection,
-                                       const Span<float3> goals,
-                                       const Span<float> goal_factors,
-                                       const VArray<float> point_factors,
-                                       const Span<float3> positions_cu,
-                                       const Span<int> closest_points,
-                                       const Span<float> closest_factors,
-                                       MutableSpan<float> errors_sq)
+void compute_keyhole_constraints_errors(const OffsetIndices<int> points_by_curve,
+                                        const IndexMask curve_selection,
+                                        const Span<float3> goals,
+                                        const Span<float> goal_factors,
+                                        const VArray<float> point_factors,
+                                        const Span<float3> positions_cu,
+                                        const Span<int> closest_points,
+                                        const Span<float> closest_factors,
+                                        MutableSpan<float> errors_sq)
 {
   BLI_assert(errors_sq.size() == points_by_curve.size());
 
