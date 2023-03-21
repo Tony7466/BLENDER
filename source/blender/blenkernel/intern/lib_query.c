@@ -471,6 +471,8 @@ uint64_t BKE_library_id_can_use_filter_id(const ID *id_owner)
     case ID_IP:
       /* Deprecated... */
       return 0;
+    case ID_GP:
+      return FILTER_ID_GP | FILTER_ID_MA;
   }
 
   BLI_assert_unreachable();
