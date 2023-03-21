@@ -16,14 +16,7 @@
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
 
-#include "BKE_object.h"
-
-#include "DNA_collection_types.h"
-#include "DNA_lightprobe_types.h"
-
 #include "PIL_time.h"
-
-#include "eevee_lightcache.h"
 
 #include "GPU_capabilities.h"
 #include "GPU_context.h"
@@ -35,18 +28,13 @@
 
 #include "wm_window.h"
 
+#include "eevee_instance.hh"
+
+#include "eevee_lightcache.h"
+
 /* -------------------------------------------------------------------- */
 /** \name Light Probe Baking
  * \{ */
-
-/* TODO: should be replace by a more elegant alternative. */
-extern void DRW_opengl_context_enable(void);
-extern void DRW_opengl_context_disable(void);
-
-extern void DRW_opengl_render_context_enable(void *re_gl_context);
-extern void DRW_opengl_render_context_disable(void *re_gl_context);
-extern void DRW_gpu_render_context_enable(void *re_gpu_context);
-extern void DRW_gpu_render_context_disable(void *re_gpu_context);
 
 namespace blender::eevee {
 
@@ -64,8 +52,11 @@ class LightBake {
    * Created on main thread but first bound in worker thread.
    */
   void *gl_context_ = nullptr;
-  /** GPUContext associated to `gl_context_`. Created in the worker thread. */
-  void *gpu_context_ = nullptr;
+  /** Context associated to `gl_context_`. Created in the worker thread. */
+  GPUContext *gpu_context_ = nullptr;
+
+  /** Baking instance. Created and freed in the worker thread. */
+  Instance *instance_ = nullptr;
 
  public:
   LightBake(struct Main *bmain,
@@ -84,13 +75,11 @@ class LightBake {
       gl_context_ = WM_opengl_context_create();
       wm_window_reset_drawable();
     }
-    std::cout << "Create" << std::endl;
   }
 
   ~LightBake()
   {
     BLI_assert(BLI_thread_is_main());
-    std::cout << "Delete" << std::endl;
     DEG_graph_free(depsgraph_);
   }
 
@@ -103,7 +92,6 @@ class LightBake {
   void update()
   {
     BLI_assert(BLI_thread_is_main());
-    std::cout << "update" << std::endl;
   }
 
   /**
@@ -117,18 +105,62 @@ class LightBake {
     DEG_evaluate_on_framechange(depsgraph_, frame_);
 
     PIL_sleep_ms(1000);
-    std::cout << "run" << std::endl;
+
+    context_enable();
+
+    instance_ = new eevee::Instance();
+
+    context_disable();
 
     delete_resources();
   }
 
  private:
-  void context_enable()
+  void context_enable(bool render_begin = true)
   {
+    if (GPU_use_main_context_workaround() && !BLI_thread_is_main()) {
+      /* Reuse main draw context. */
+      GPU_context_main_lock();
+      DRW_opengl_context_enable();
+    }
+    else if (gl_context_ == nullptr) {
+      /* Main thread case. */
+      DRW_opengl_context_enable();
+    }
+    else {
+      /* Worker thread case. */
+      DRW_opengl_render_context_enable(gl_context_);
+      if (gpu_context_ == nullptr) {
+        /* Create GPUContext in worker thread as it needs the correct gl context bound (which can
+         * only be bound in worker thread because of some GL driver requirements). */
+        gpu_context_ = GPU_context_create(nullptr, gl_context_);
+      }
+      DRW_gpu_render_context_enable(gpu_context_);
+    }
+
+    if (render_begin) {
+      GPU_render_begin();
+    }
   }
 
   void context_disable()
   {
+    GPU_render_end();
+
+    if (GPU_use_main_context_workaround() && !BLI_thread_is_main()) {
+      /* Reuse main draw context. */
+      DRW_opengl_context_disable();
+      GPU_context_main_unlock();
+    }
+    else if (gl_context_ == nullptr) {
+      /* Main thread case. */
+      DRW_opengl_context_disable();
+    }
+    else {
+      /* Worker thread case. */
+      DRW_gpu_render_context_disable(gpu_context_);
+      DRW_opengl_render_context_disable(gl_context_);
+    }
   }
 
   /**
@@ -139,6 +171,30 @@ class LightBake {
    */
   void delete_resources()
   {
+    /* Bind context without GPU_render_begin(). */
+    context_enable(false);
+
+    /* Free instance and its resources (Textures, Framebuffers, etc...).  */
+    delete instance_;
+
+    /* Delete / unbind the GL & GPU context. Assumes it is currently bound. */
+    if (GPU_use_main_context_workaround() && !BLI_thread_is_main()) {
+      /* Reuse main draw context. */
+      DRW_opengl_context_disable();
+      GPU_context_main_unlock();
+    }
+    else if (gl_context_ == nullptr) {
+      /* Main thread case. */
+      DRW_opengl_context_disable();
+    }
+    else {
+      /* Worker thread case. */
+      if (gpu_context_ != nullptr) {
+        GPU_context_discard(gpu_context_);
+      }
+      DRW_opengl_render_context_disable(gl_context_);
+      WM_opengl_context_dispose(gl_context_);
+    }
   }
 };
 
