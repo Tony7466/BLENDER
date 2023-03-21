@@ -215,6 +215,7 @@ set(VULKAN_SRC
   vulkan/vk_texture.cc
   vulkan/vk_uniform_buffer.cc
   vulkan/vk_vertex_buffer.cc
+  vulkan/vk_debug.cc
 
   vulkan/vk_backend.hh
   vulkan/vk_batch.hh
@@ -242,6 +243,8 @@ set(VULKAN_SRC
   vulkan/vk_texture.hh
   vulkan/vk_uniform_buffer.hh
   vulkan/vk_vertex_buffer.hh
+  vulkan/vk_debug.hh
+
 )
 
 set(METAL_SRC

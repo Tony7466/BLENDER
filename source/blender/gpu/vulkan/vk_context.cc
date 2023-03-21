@@ -5,6 +5,7 @@
  * \ingroup gpu
  */
 
+#include "vk_debug.hh"
 #include "vk_context.hh"
 
 #include "vk_backend.hh"
@@ -31,8 +32,11 @@ VKContext::VKContext(void *ghost_window, void *ghost_context)
                          &vk_device_,
                          &vk_queue_family_,
                          &vk_queue_);
-  init_physical_device_limits();
 
+  debug::init_vk_callbacks(this, vkGetInstanceProcAddr);
+  init_physical_device_limits();
+  debug::object_vk_label(this, vk_device_, "LogicalDevice");
+  debug::object_vk_label(this, vk_queue_, "GraphicsQueue");
   /* Initialize the memory allocator. */
   VmaAllocatorCreateInfo info = {};
   /* Should use same vulkan version as GHOST (1.2), but set to 1.0 as 1.2 requires
@@ -57,6 +61,7 @@ VKContext::VKContext(void *ghost_window, void *ghost_context)
 VKContext::~VKContext()
 {
   vmaDestroyAllocator(mem_allocator_);
+  debug::destroy_vk_callbacks(this);
 }
 
 void VKContext::init_physical_device_limits()

@@ -8,9 +8,10 @@
 #pragma once
 
 #include "gpu_context_private.hh"
-
+#include  "vk_common.hh"
 #include "vk_command_buffer.hh"
 #include "vk_descriptor_pools.hh"
+#include "vk_debug.hh"
 
 namespace blender::gpu {
 
@@ -30,7 +31,7 @@ class VKContext : public Context {
 
   /** Limits of the device linked to this context. */
   VkPhysicalDeviceLimits vk_physical_device_limits_;
-
+  debug::VKDebuggingTools vk_debugging_tools;
   void *ghost_context_;
 
  public:
@@ -70,6 +71,11 @@ class VKContext : public Context {
     return vk_physical_device_limits_;
   }
 
+  VkInstance instance_get() const
+  {
+    return vk_instance_;
+  };
+
   VkDevice device_get() const
   {
     return vk_device_;
@@ -100,7 +106,12 @@ class VKContext : public Context {
     return mem_allocator_;
   }
 
- private:
+  debug::VKDebuggingTools& debuggingtools_get()
+  {
+    return vk_debugging_tools;
+  }
+
+private:
   void init_physical_device_limits();
 };
 
