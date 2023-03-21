@@ -24,10 +24,9 @@ class VKCommandBuffer;
  * a new version of these resources should be created.
  *
  * When a resource is updated it should check the submission id of the
- * command buffer. If this is different than resources can be reused.
- * If they the submission id is the same that the resource uses it
- * should create a new version of the resource to now intervene with
- * other commands that uses the resource.
+ * command buffer. If it is different, then the resource can be reused.
+ * If the submission id is the same a new version of the resource to now
+ * intervene with other commands that uses the resource.
  *
  * SubmissionID is the identifier to keep track if a new submission is
  * being recorded.

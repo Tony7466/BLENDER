@@ -123,7 +123,7 @@ struct Shader {
   void dispatch()
   {
     /* Dispatching 1000000 times to add some stress to the GPU. Without it tests may succeed when
-     * using to simple shaders. */
+     * using too simple shaders. */
     GPU_compute_dispatch(shader, 1000, 1000, 1);
   }
 };
