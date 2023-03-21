@@ -493,7 +493,6 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
       uiLayoutContextCopy(layout, but->context);
       CTX_store_set(C, uiLayoutGetContextStore(layout));
     }
-
     uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
   }
 
