@@ -38,10 +38,10 @@ void compute_segment_lengths(const OffsetIndices<int> points_by_curve,
 
 void solve_fixed_root_length_constraints(const OffsetIndices<int> points_by_curve,
                                          const IndexMask curve_selection,
-                                         const Span<float> segment_lenghts,
+                                         const Span<float> segment_lengths,
                                          MutableSpan<float3> positions)
 {
-  BLI_assert(segment_lenghts.size() == points_by_curve.total_size());
+  BLI_assert(segment_lengths.size() == points_by_curve.total_size());
 
   threading::parallel_for(curve_selection.index_range(), 256, [&](const IndexRange range) {
     for (const int curve_i : curve_selection.slice(range)) {
@@ -50,7 +50,7 @@ void solve_fixed_root_length_constraints(const OffsetIndices<int> points_by_curv
         const float3 &p1 = positions[point_i];
         float3 &p2 = positions[point_i + 1];
         const float3 direction = math::normalize(p2 - p1);
-        const float goal_length = segment_lenghts[point_i];
+        const float goal_length = segment_lengths[point_i];
         p2 = p1 + direction * goal_length;
       }
     }
@@ -59,10 +59,10 @@ void solve_fixed_root_length_constraints(const OffsetIndices<int> points_by_curv
 
 void solve_symmetric_length_constraints(const OffsetIndices<int> points_by_curve,
                                         const IndexMask curve_selection,
-                                        const Span<float> segment_lenghts,
+                                        const Span<float> segment_lengths,
                                         MutableSpan<float3> positions)
 {
-  BLI_assert(segment_lenghts.size() == points_by_curve.total_size());
+  BLI_assert(segment_lengths.size() == points_by_curve.total_size());
 
   threading::parallel_for(curve_selection.index_range(), 256, [&](const IndexRange range) {
     for (const int curve_i : curve_selection.slice(range)) {
@@ -84,7 +84,7 @@ void solve_symmetric_length_constraints(const OffsetIndices<int> points_by_curve
               p = root + (p - root) * total_distance / math::sqrt(distance_sq);
             }
 
-            total_distance += segment_lenghts[point_i];
+            total_distance += segment_lengths[point_i];
           }
         }
       }
@@ -95,7 +95,7 @@ void solve_symmetric_length_constraints(const OffsetIndices<int> points_by_curve
           float3 &p0 = positions[point_i];
           float3 &p1 = positions[point_i + 1];
 
-          const float goal_length = segment_lenghts[point_i];
+          const float goal_length = segment_lengths[point_i];
           float length;
           const float3 gradient_p0 = math::normalize_and_get_length(p0 - p1, length) / goal_length;
           const float3 gradient_p1 = -gradient_p0;
