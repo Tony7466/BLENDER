@@ -43,14 +43,48 @@ static void grease_pencil_init_data(ID *id)
 
 static void grease_pencil_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int flag)
 {
-  using namespace blender::bke;
+  using namespace blender;
 
   printf("grease_pencil_copy_data\n");
   GreasePencil *grease_pencil_dst = (GreasePencil *)id_dst;
   const GreasePencil *grease_pencil_src = (GreasePencil *)id_src;
 
-  grease_pencil_dst->runtime = MEM_new<GreasePencilRuntime>(__func__);
-  // grease_pencil_dst->runtime->root_group() = grease_pencil_src->runtime->root_group()
+  /* Duplicate drawing array. */
+  grease_pencil_dst->drawing_array_size = grease_pencil_src->drawing_array_size;
+  grease_pencil_dst->drawing_array = MEM_cnew_array<GreasePencilDrawingOrReference *>(
+      grease_pencil_src->drawing_array_size, __func__);
+  for (int i = 0; i < grease_pencil_dst->drawing_array_size; i++) {
+    const GreasePencilDrawingOrReference *src_drawing_or_ref = grease_pencil_src->drawing_array[i];
+    GreasePencilDrawingOrReference *dst_drawing_or_ref = grease_pencil_dst->drawing_array[i];
+    switch (src_drawing_or_ref->type) {
+      case GREASE_PENCIL_DRAWING: {
+        const GreasePencilDrawing *src_drawing = reinterpret_cast<const GreasePencilDrawing *>(
+            src_drawing_or_ref);
+        GreasePencilDrawing *dst_drawing = reinterpret_cast<GreasePencilDrawing *>(
+            dst_drawing_or_ref);
+        dst_drawing = MEM_cnew<GreasePencilDrawing>(__func__);
+        dst_drawing->base.type = src_drawing->base.type;
+        dst_drawing->base.flag = src_drawing->base.flag;
+        dst_drawing->geometry.runtime = MEM_new<bke::CurvesGeometryRuntime>(__func__);
+        dst_drawing->geometry.wrap() = src_drawing->geometry.wrap();
+        break;
+      }
+      case GREASE_PENCIL_DRAWING_REFERENCE: {
+        const GreasePencilDrawingReference *src_drawing_reference =
+            reinterpret_cast<const GreasePencilDrawingReference *>(src_drawing_or_ref);
+        GreasePencilDrawingReference *dst_drawing_reference =
+            reinterpret_cast<GreasePencilDrawingReference *>(dst_drawing_or_ref);
+        dst_drawing_reference = static_cast<GreasePencilDrawingReference *>(
+            MEM_dupallocN(src_drawing_reference));
+        break;
+      }
+    }
+  }
+
+  if (grease_pencil_src->runtime) {
+    grease_pencil_dst->runtime = MEM_new<bke::GreasePencilRuntime>(__func__,
+                                                                   *grease_pencil_src->runtime);
+  }
 }
 
 static void grease_pencil_free_data(ID *id)
