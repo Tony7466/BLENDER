@@ -16,6 +16,11 @@
 #include "util/string.h"
 #include "util/vector.h"
 
+#ifdef WITH_OCIO
+#  include <OpenColorIO/OpenColorIO.h>
+namespace OCIO = OCIO_NAMESPACE;
+#endif
+
 using testing::_;
 using testing::AnyNumber;
 using testing::HasSubstr;
@@ -165,15 +170,29 @@ class RenderGraph : public testing::Test {
 
   virtual void SetUp()
   {
-    util_logging_start();
-    util_logging_verbosity_set(5);
+    /* The test is running outside of the typical application configuration when the OCIO is
+     * initialized prior to Cycles. Explicitly create the raw configuration to avoid the warning
+     * printed by the OCIO when accessing non-figured environment.
+     * Functionally it is the same as not doing this explicit call: the OCIO will warn and then do
+     * the same raw configuration. */
+    OCIO::SetCurrentConfig(OCIO::Config::CreateRaw());
 
     device_cpu = Device::create(device_info, stats, profiler);
     scene = new Scene(scene_params, device_cpu);
+
+    /* Initialize logging after the creation of the essential resources. This way the logging
+     * mock sink does not warn about uninteresting messages which happens prior to the setup of
+     * the actual mock sinks. */
+    util_logging_start();
+    util_logging_verbosity_set(5);
   }
 
   virtual void TearDown()
   {
+    /* Effectively disable logging, so that the next test suit starts in an environment which is
+     * not logging by default. */
+    util_logging_verbosity_set(0);
+
     delete scene;
     delete device_cpu;
   }
