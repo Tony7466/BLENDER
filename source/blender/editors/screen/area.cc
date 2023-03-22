@@ -57,6 +57,8 @@
 
 #include "screen_intern.h"
 
+#include "../interface/view2d_intern.hh"
+
 enum RegionEmbossSide {
   REGION_EMBOSS_LEFT = (1 << 0),
   REGION_EMBOSS_TOP = (1 << 1),
@@ -1053,6 +1055,26 @@ static void region_azone_edge_init(ScrArea *area,
   }
   else {
     region_azone_edge(az, region);
+  }
+}
+
+void apply_sidebar_offset_scrollbar_azone(ScrArea *area, ARegion *region)
+{
+  if (!UI_panel_category_is_visible(region)) {
+    return;
+  }
+  LISTBASE_FOREACH (AZone *, az, &area->actionzones) {
+    if (!(az->region == region && az->type == AZONE_REGION_SCROLL)) {
+      continue;
+    }
+    rcti scroller_vert = region->v2d.vert;
+    BLI_rcti_translate(&scroller_vert, region->winrct.xmin, region->winrct.ymin);
+
+    const float hide_width = V2D_SCROLL_HIDE_HEIGHT;
+    az->x1 = scroller_vert.xmin - hide_width;
+    az->x2 = scroller_vert.xmax + hide_width;
+    BLI_rcti_init(&az->rect, az->x1, az->x2, az->y1, az->y2);
+    break;
   }
 }
 
@@ -3126,15 +3148,13 @@ void ED_region_panels_draw(const bContext *C, ARegion *region)
   if (region->runtime.category) {
     UI_panel_category_draw_all(region, region->runtime.category);
   }
-
   /* scrollers */
-  bool use_mask = false;
-  rcti mask;
-  if (region->runtime.category && (RGN_ALIGN_ENUM_FROM_MASK(region->alignment) == RGN_ALIGN_RIGHT))
-  {
-    use_mask = true;
+  rcti mask{};
+  float mask_offset = UI_panel_region_right_sidebar_width_get(region);
+  bool use_mask = mask_offset != 0;
+  if (use_mask) {
     UI_view2d_mask_from_win(v2d, &mask);
-    mask.xmax -= UI_PANEL_CATEGORY_MARGIN_WIDTH;
+    mask.xmax = mask.xmax - mask_offset;
   }
   bool use_full_hide = false;
   if (region->overlap) {
@@ -3142,6 +3162,7 @@ void ED_region_panels_draw(const bContext *C, ARegion *region)
     use_full_hide = true;
   }
   UI_view2d_scrollers_draw_ex(v2d, use_mask ? &mask : nullptr, use_full_hide);
+  apply_sidebar_offset_scrollbar_azone(CTX_wm_area(C), region);
 }
 
 void ED_region_panels_ex(const bContext *C, ARegion *region, const char *contexts[])

@@ -3291,6 +3291,12 @@ uiViewHandle *UI_region_view_find_at(const struct ARegion *region, const int xy[
 uiViewItemHandle *UI_region_views_find_item_at(const struct ARegion *region, const int xy[2])
     ATTR_NONNULL();
 uiViewItemHandle *UI_region_views_find_active_item(const struct ARegion *region);
+/**
+ * \return the width in pixels of the sidebar when it exists and is aligned to the right within the
+ * region.
+ * \return 0 if there is no sidebar in the region.
+ */
+float UI_panel_region_right_sidebar_width_get(const struct ARegion *region);
 
 #ifdef __cplusplus
 }

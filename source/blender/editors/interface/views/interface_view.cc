@@ -301,3 +301,15 @@ uiButViewItem *ui_block_view_find_matching_view_item_but_in_old_block(
 
   return nullptr;
 }
+
+float UI_panel_region_right_sidebar_width_get(const ARegion *region)
+{
+  if (UI_panel_category_is_visible(region) &&
+      RGN_ALIGN_ENUM_FROM_MASK(region->alignment) == RGN_ALIGN_RIGHT && region->uiblocks.first)
+  {
+    const float aspect = ((uiBlock *)region->uiblocks.first)->aspect;
+    const float zoom = 1.0f / aspect;
+    return round_fl_to_int(UI_PANEL_CATEGORY_MARGIN_WIDTH * zoom);
+  }
+  return 0.0f;
+}
