@@ -4,7 +4,7 @@
 
 #include <atomic>
 
-#include "BLI_implicit_sharing_user.hh"
+#include "BLI_implicit_sharing_ptr.hh"
 #include "BLI_set.hh"
 #include "BLI_string_ref.hh"
 
@@ -32,7 +32,7 @@ namespace blender::bke {
  * because that is not available in C code. If possible, the #AutoAnonymousAttributeID wrapper
  * should be used to avoid manual reference counting in C++ code.
  */
-class AnonymousAttributeID : public ImplicitShareMixin {
+class AnonymousAttributeID : public ImplicitSharingMixin {
  protected:
   std::string name_;
 

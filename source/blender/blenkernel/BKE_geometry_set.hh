@@ -43,7 +43,7 @@ class Instances;
  * copy-on-write behavior to avoid read-only copies. It also integrates with attribute API, which
  * generalizes storing and modifying generic information on a geometry.
  */
-class GeometryComponent : public blender::ImplicitShareMixin {
+class GeometryComponent : public blender::ImplicitSharingMixin {
  private:
   GeometryComponentType type_;
 

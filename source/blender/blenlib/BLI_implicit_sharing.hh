@@ -32,18 +32,18 @@ namespace blender {
  * #bCopyOnWrite is used in two ways:
  * - It can be allocated separately from the referenced data as is typically the case with raw
  *   arrays (e.g. for mesh attributes).
- * - It can be embedded into another struct. For that it's best to use #ImplicitShareMixin.
+ * - It can be embedded into another struct. For that it's best to use #ImplicitSharingMixin.
  */
-struct ImplicitShareInfo : blender::NonCopyable, blender::NonMovable {
+struct ImplicitSharingInfo : blender::NonCopyable, blender::NonMovable {
  private:
   mutable std::atomic<int> users_;
 
  public:
-  ImplicitShareInfo(const int initial_users) : users_(initial_users)
+  ImplicitSharingInfo(const int initial_users) : users_(initial_users)
   {
   }
 
-  virtual ~ImplicitShareInfo()
+  virtual ~ImplicitSharingInfo()
   {
     BLI_assert(this->is_mutable());
   }
@@ -69,7 +69,7 @@ struct ImplicitShareInfo : blender::NonCopyable, blender::NonMovable {
     BLI_assert(old_user_count >= 1);
     const bool was_last_user = old_user_count == 1;
     if (was_last_user) {
-      const_cast<ImplicitShareInfo *>(this)->delete_self_with_data();
+      const_cast<ImplicitSharingInfo *>(this)->delete_self_with_data();
     }
   }
 
@@ -81,9 +81,9 @@ struct ImplicitShareInfo : blender::NonCopyable, blender::NonMovable {
 /**
  * Makes it easy to embed copy-on-write behavior into a struct.
  */
-struct ImplicitShareMixin : public ImplicitShareInfo {
+struct ImplicitSharingMixin : public ImplicitSharingInfo {
  public:
-  ImplicitShareMixin() : ImplicitShareInfo(1)
+  ImplicitSharingMixin() : ImplicitSharingInfo(1)
   {
   }
 
